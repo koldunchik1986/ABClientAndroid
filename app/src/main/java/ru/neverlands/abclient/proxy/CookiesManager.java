@@ -171,10 +171,14 @@ public class CookiesManager {
      * @return нормализованное имя хоста
      */
     private static String normalizeHost(String host) {
-        if (host.startsWith("www.")) {
-            return host;
+        if (host == null) {
+            return "";
         }
-        
-        return "www." + host;
+        String h = host.trim().toLowerCase();
+        if (h.equals("forum.neverlands.ru")) {
+            return "www.neverlands.ru";
+        }
+        // Do not force-prepend www for unrelated hosts; keep exact host like PC version
+        return h;
     }
 }
