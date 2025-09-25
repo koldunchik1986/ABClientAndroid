@@ -270,7 +270,7 @@ public class SettingsActivity extends AppCompatActivity {
             Preference clearLogsPref = findPreference("clear_logs");
             if (clearLogsPref != null) {
                 clearLogsPref.setOnPreferenceClickListener(preference -> {
-                    ru.neverlands.abclient.utils.Log.clearLogs();
+                    ru.neverlands.abclient.utils.AppLogger.clearLogs();
                     return true;
                 });
             }

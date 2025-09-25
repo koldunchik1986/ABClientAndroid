@@ -1,0 +1,5 @@
+task wrapper(type: Wrapper) {
+    gradleVersion = '7.6'
+    distributionType = Wrapper.DistributionType.ALL
+}
+

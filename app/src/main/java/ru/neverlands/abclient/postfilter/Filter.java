@@ -114,11 +114,11 @@ public class Filter {
         }
         
         // Логирование запросов, не являющихся JS или SWF
-        int pos1 = address.indexOf(".js", 0, true);
+        int pos1 = address.toLowerCase().indexOf(".js");
         if (pos1 < 0) {
-            int pos2 = address.indexOf(".swf", 0, true);
+            int pos2 = address.toLowerCase().indexOf(".swf");
             if (pos2 < 0) {
-                ru.neverlands.abclient.utils.Log.write(address, html);
+                ru.neverlands.abclient.utils.AppLogger.write(address, html);
             }
         }
         

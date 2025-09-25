@@ -21,7 +21,7 @@ import ru.neverlands.abclient.databinding.ActivityLoginBinding;
 import ru.neverlands.abclient.model.UserConfig;
 import ru.neverlands.abclient.proxy.CookiesManager;
 import ru.neverlands.abclient.utils.AppVars;
-import ru.neverlands.abclient.utils.Log;
+import ru.neverlands.abclient.utils.AppLogger;
 
 /**
  * Активность для входа в игру.

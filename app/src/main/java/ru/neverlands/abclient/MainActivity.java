@@ -36,7 +36,7 @@ import ru.neverlands.abclient.databinding.ActivityMainBinding;
 import ru.neverlands.abclient.model.UserConfig;
 import ru.neverlands.abclient.proxy.CookiesManager;
 import ru.neverlands.abclient.utils.AppVars;
-import ru.neverlands.abclient.utils.Log;
+import ru.neverlands.abclient.utils.AppLogger;
 
 /**
  * Основная активность приложения.
@@ -75,7 +75,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         webSettings.setJavaScriptEnabled(true);
         webSettings.setDomStorageEnabled(true);
         webSettings.setDatabaseEnabled(true);
-        webSettings.setAppCacheEnabled(true);
+        //webSettings.setAppCacheEnabled(true);
         webSettings.setUseWideViewPort(true);
         webSettings.setLoadWithOverviewMode(true);
         webSettings.setSupportZoom(true);
@@ -99,7 +99,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             public void onPageFinished(WebView view, String url) {
                 super.onPageFinished(view, url);
                 // Обработка завершения загрузки страницы
-                Log.write("Page loaded: " + url);
+                                AppLogger.write("Page loaded: " + url);
             }
         });
         

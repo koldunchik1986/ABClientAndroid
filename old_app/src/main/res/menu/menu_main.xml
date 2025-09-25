@@ -1,0 +1,138 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <!-- Группа "Игра" -->
+    <group android:id="@+id/menuGroupGame">
+        <item
+            android:id="@+id/action_login"
+            android:orderInCategory="100"
+            android:title="@string/action_login"
+            app:showAsAction="never" />
+        <item
+            android:id="@+id/action_exit"
+            android:orderInCategory="101"
+            android:title="@string/action_exit"
+            app:showAsAction="never" />
+    </group>
+
+    <!-- Группа "Вкладки" -->
+    <group android:id="@+id/menuGroupTabs">
+        <item
+            android:id="@+id/action_forum"
+            android:orderInCategory="200"
+            android:title="@string/action_forum"
+            app:showAsAction="never" />
+        <item
+            android:id="@+id/action_chat"
+            android:orderInCategory="201"
+            android:title="@string/action_chat"
+            app:showAsAction="never" />
+        <item
+            android:id="@+id/action_notepad"
+            android:orderInCategory="202"
+            android:title="@string/action_notepad"
+            app:showAsAction="never" />
+        <item
+            android:id="@+id/action_new_tab"
+            android:orderInCategory="203"
+            android:title="@string/action_new_tab"
+            app:showAsAction="never" />
+        <item
+            android:id="@+id/action_site"
+            android:orderInCategory="204"
+            android:title="@string/action_site"
+            app:showAsAction="never">
+            <menu>
+                <item
+                    android:id="@+id/action_site_neverlands"
+                    android:title="Neverlands.ru" />
+                <item
+                    android:id="@+id/action_site_forum"
+                    android:title="Форум" />
+                <item
+                    android:id="@+id/action_site_wiki"
+                    android:title="Вики" />
+            </menu>
+        </item>
+    </group>
+
+    <!-- Группа "Команды" -->
+    <group android:id="@+id/menuGroupCommands">
+        <item
+            android:id="@+id/action_clan_private"
+            android:orderInCategory="300"
+            android:title="@string/action_clan_private"
+            app:showAsAction="never" />
+        <item
+            android:id="@+id/action_rek_private"
+            android:orderInCategory="301"
+            android:title="@string/action_rek_private"
+            app:showAsAction="never" />
+        <item
+            android:id="@+id/action_minimize"
+            android:orderInCategory="302"
+            android:title="@string/action_minimize"
+            app:showAsAction="never" />
+        <item
+            android:id="@+id/action_guamod"
+            android:orderInCategory="303"
+            android:title="@string/action_guamod"
+            android:checkable="true"
+            app:showAsAction="never" />
+    </group>
+
+    <!-- Группа "Настройки" -->
+    <group android:id="@+id/menuGroupSettings">
+        <item
+            android:id="@+id/action_settings"
+            android:orderInCategory="400"
+            android:title="@string/action_settings"
+            app:showAsAction="never" />
+        <item
+            android:id="@+id/action_settings_general"
+            android:orderInCategory="401"
+            android:title="@string/action_settings_general"
+            app:showAsAction="never" />
+        <item
+            android:id="@+id/action_cache_refresh"
+            android:orderInCategory="402"
+            android:title="@string/action_cache_refresh"
+            android:checkable="true"
+            app:showAsAction="never" />
+    </group>
+
+    <!-- Группа "Справка" -->
+    <group android:id="@+id/menuGroupHelp">
+        <item
+            android:id="@+id/action_check_new_version"
+            android:orderInCategory="500"
+            android:title="@string/action_check_new_version"
+            app:showAsAction="never" />
+        <item
+            android:id="@+id/action_update_key"
+            android:orderInCategory="501"
+            android:title="@string/action_update_key"
+            app:showAsAction="never" />
+        <item
+            android:id="@+id/action_fish_advisor"
+            android:orderInCategory="502"
+            android:title="@string/action_fish_advisor"
+            app:showAsAction="never" />
+        <item
+            android:id="@+id/action_about"
+            android:orderInCategory="503"
+            android:title="@string/action_about"
+            app:showAsAction="never" />
+    </group>
+
+    <!-- Группа "Отладка" -->
+    <group android:id="@+id/menuGroupDebug">
+        <item
+            android:id="@+id/action_view_logs"
+            android:orderInCategory="600"
+            android:title="Просмотр логов"
+            app:showAsAction="never" />
+    </group>
+
+</menu>

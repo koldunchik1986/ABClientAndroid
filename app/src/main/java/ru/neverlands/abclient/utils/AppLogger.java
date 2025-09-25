@@ -16,7 +16,7 @@ import ru.neverlands.abclient.ABClientApplication;
  * Класс для работы с логами.
  * Аналог Log.cs в оригинальном приложении.
  */
-public class Log {
+public class AppLogger {
     private static final String TAG = "ABClient";
     private static final SimpleDateFormat LOG_DATE_FORMAT = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US);
     

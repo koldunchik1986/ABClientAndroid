@@ -1,0 +1,9 @@
+gradle.rootProject { rp ->
+    if (!rp.tasks.findByName('wrapper')) {
+        rp.tasks.register('wrapper', Wrapper) {
+            gradleVersion = '7.6'
+            distributionType = Wrapper.DistributionType.ALL
+        }
+    }
+}
+
