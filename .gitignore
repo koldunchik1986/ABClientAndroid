@@ -78,6 +78,9 @@ fastlane/readme.md
 # Version control
 vcs.xml
 
+# Do not commit secret Gradle properties
+gradle.properties
+
 # lint
 lint/intermediates/
 lint/generated/
