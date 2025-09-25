@@ -10,7 +10,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
-import java.io.ByteArrayOutputStream;
 
 /**
  * Менеджер данных приложения.
@@ -189,15 +188,5 @@ public class DataManager {
     public static boolean deleteFile(String fileName) {
         File file = new File(appContext.getFilesDir(), fileName);
         return !file.exists() || file.delete();
-    }
-
-    public static byte[] readAllBytes(InputStream is) throws IOException {
-        ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        byte[] buffer = new byte[4096];
-        int read;
-        while ((read = is.read(buffer)) != -1) {
-            baos.write(buffer, 0, read);
-        }
-        return baos.toByteArray();
     }
 }

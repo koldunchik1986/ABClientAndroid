@@ -15,8 +15,7 @@ import ru.neverlands.abclient.utils.Russian;
  */
 public class Filter {
     private static final String TAG = "Filter";
-    // Safe, lenient DOCTYPE matcher across lines (case-insensitive)
-    private static final Pattern DOCTYPE_PATTERN = Pattern.compile("(?is)<!DOCTYPE[^>]*>");
+    private static final Pattern DOCTYPE_PATTERN = Pattern.compile("<!DOCTYPE[^>[]*(\\[[^]]*\\])?>", Pattern.DOTALL);
     
     /**
      * Предварительная обработка запроса

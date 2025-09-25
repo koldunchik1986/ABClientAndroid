@@ -3,18 +3,7 @@ plugins {
     id 'kotlin-android'
 }
 
-androidComponents {
-    onVariants(selector().all()) { variant ->
-        def appName = "abclient"
-        variant.outputs.each { output ->
-            def versionName = output.versionName.getOrNull()
-            output.outputFileName.set("${appName}_v${versionName}.apk")
-        }
-    }
-}
-
 android {
-    namespace "ru.neverlands.abclient"
     compileSdkVersion 33
     buildToolsVersion "33.0.2"
 
@@ -23,7 +12,7 @@ android {
         minSdkVersion 21
         targetSdkVersion 33
         versionCode 1
-        versionName "1.0.1"
+        versionName "1.0"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -55,6 +44,13 @@ android {
     }
     buildFeatures {
         viewBinding true
+    }
+
+    applicationVariants.all { variant ->
+        variant.outputs.all {
+            def appName = "abclient"
+            outputFileName = "${appName}_v${variant.versionName}.apk"
+        }
     }
 }
 
