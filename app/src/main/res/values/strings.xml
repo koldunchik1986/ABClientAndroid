@@ -1,0 +1,27 @@
+<resources>
+    <string name="app_name">ABClient</string>
+    <string name="navigation_drawer_open">Открыть панель навигации</string>
+    <string name="navigation_drawer_close">Закрыть панель навигации</string>
+    <string name="nav_header_title">ABClient</string>
+    <string name="nav_header_subtitle">Игровой клиент для neverlands.ru</string>
+    <string name="nav_header_desc">Навигационная панель</string>
+    <string name="action_settings">Настройки</string>
+
+    <string name="menu_home">Главная</string>
+    <string name="menu_chat">Чат</string>
+    <string name="menu_map">Карта</string>
+    <string name="menu_inventory">Инвентарь</string>
+    <string name="menu_profile">Профиль</string>
+    <string name="menu_settings">Настройки</string>
+    
+    <string name="proxy_notification_title">ABClient Proxy</string>
+    <string name="proxy_notification_text">Прокси-сервер активен</string>
+    <string name="proxy_notification_channel_id">proxy_service_channel</string>
+    <string name="proxy_notification_channel_name">Прокси-сервис</string>
+    
+    <string name="login_button">Войти</string>
+    <string name="login_username">Имя пользователя</string>
+    <string name="login_password">Пароль</string>
+    <string name="login_remember">Запомнить меня</string>
+    <string name="login_error">Ошибка авторизации</string>
+</resources>
