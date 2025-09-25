@@ -18,6 +18,7 @@ public class WebViewCookieJar implements CookieJar {
         String urlString = url.scheme() + "://" + url.host();
         for (Cookie cookie : cookies) {
             cookieManager.setCookie(urlString, cookie.toString());
+            cookieManager.flush();
         }
     }
 

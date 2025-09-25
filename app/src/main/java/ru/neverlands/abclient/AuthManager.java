@@ -37,10 +37,10 @@ public class AuthManager {
 
         // 1. GET initial page
         Request initialRequest = new Request.Builder()
-                .url("http://www.neverlands.ru/")
-                .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36")
-                .header("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9")
-                .header("Accept-Language", "en-US,en;q=0.9,ru;q=0.8")
+                .url("http://neverlands.ru/")
+                .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36")
+                .header("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7")
+                .header("Accept-Language", "ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7")
                 .build();
 
         AppLogger.write("AuthManager", "Initial request: " + initialRequest.toString());
@@ -69,11 +69,13 @@ public class AuthManager {
                             .build();
 
                     Request loginRequest = new Request.Builder()
-                            .url("http://www.neverlands.ru/game.php")
-                            .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36")
-                            .header("Referer", "http://www.neverlands.ru/")
-                            .header("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9")
-                            .header("Accept-Language", "en-US,en;q=0.9,ru;q=0.8")
+                            .url("http://neverlands.ru/game.php")
+                            .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36")
+                            .header("Referer", "http://neverlands.ru/")
+                            .header("Origin", "http://neverlands.ru")
+                            .header("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7")
+                            .header("Accept-Language", "ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7")
+                            .header("Upgrade-Insecure-Requests", "1")
                             .header("Content-Type", "application/x-www-form-urlencoded; charset=windows-1251")
                             .post(formBody)
                             .build();
@@ -98,11 +100,11 @@ public class AuthManager {
 
                             // 3. GET main page to verify
                             Request mainPageRequest = new Request.Builder()
-                                    .url("http://www.neverlands.ru/main.php")
-                                    .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36")
-                                    .header("Referer", "http://www.neverlands.ru/game.php")
-                                    .header("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9")
-                                    .header("Accept-Language", "en-US,en;q=0.9,ru;q=0.8")
+                                    .url("http://neverlands.ru/main.php")
+                                    .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36")
+                                    .header("Referer", "http://neverlands.ru/game.php")
+                                    .header("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7")
+                                    .header("Accept-Language", "ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7")
                                     .build();
 
                             AppLogger.write("AuthManager", "Main page request: " + mainPageRequest.toString());

@@ -115,8 +115,8 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         // Запуск таймера для обновления времени
         startTimer();
         
-        // Загрузка начальной страницы
-        webView.loadUrl("http://www.neverlands.ru/");
+        // Загрузка главной страницы после авторизации
+        webView.loadUrl("http://neverlands.ru/main.php");
     }
     
     @Override
@@ -170,15 +170,15 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         int id = item.getItemId();
         
         if (id == R.id.nav_home) {
-            binding.appBarMain.contentMain.webView.loadUrl("http://www.neverlands.ru/");
+            binding.appBarMain.contentMain.webView.loadUrl("http://neverlands.ru/");
         } else if (id == R.id.nav_chat) {
-            binding.appBarMain.contentMain.webView.loadUrl("http://www.neverlands.ru/ch.php?lo=1");
+            binding.appBarMain.contentMain.webView.loadUrl("http://neverlands.ru/ch.php?lo=1");
         } else if (id == R.id.nav_map) {
-            binding.appBarMain.contentMain.webView.loadUrl("http://www.neverlands.ru/map.php");
+            binding.appBarMain.contentMain.webView.loadUrl("http://neverlands.ru/map.php");
         } else if (id == R.id.nav_inventory) {
-            binding.appBarMain.contentMain.webView.loadUrl("http://www.neverlands.ru/main.php?get_id=33&act=10");
+            binding.appBarMain.contentMain.webView.loadUrl("http://neverlands.ru/main.php?get_id=33&act=10");
         } else if (id == R.id.nav_profile) {
-            binding.appBarMain.contentMain.webView.loadUrl("http://www.neverlands.ru/main.php?get_id=33&act=1");
+            binding.appBarMain.contentMain.webView.loadUrl("http://neverlands.ru/main.php?get_id=33&act=1");
         } else if (id == R.id.nav_settings) {
             // Открытие настроек
         }
@@ -196,10 +196,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         System.setProperty("http.proxyHost", AppVars.LocalProxyAddress);
         System.setProperty("http.proxyPort", String.valueOf(AppVars.LocalProxyPort));
         
-        // Очистка кэша WebView
-        binding.appBarMain.contentMain.webView.clearCache(true);
-        CookieManager.getInstance().removeAllCookies(null);
-        CookieManager.getInstance().flush();
+        // Не очищаем cookies после авторизации, чтобы сохранить сессию
     }
     
     /**
