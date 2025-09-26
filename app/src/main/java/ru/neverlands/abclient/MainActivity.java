@@ -148,6 +148,16 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         CookieManager.getInstance().setAcceptCookie(true);
         CookieManager.getInstance().setAcceptThirdPartyCookies(chatUsersWebView, true);
         chatUsersWebView.loadUrl("http://neverlands.ru/ch/ch_list.php");
+
+        WebView chatButtonsWebView = binding.appBarMain.contentMain.chatButtonsWebview;
+        WebSettings chatButtonsWebSettings = chatButtonsWebView.getSettings();
+        chatButtonsWebSettings.setJavaScriptEnabled(true);
+        chatButtonsWebSettings.setDomStorageEnabled(true);
+        chatButtonsWebSettings.setDatabaseEnabled(true);
+        chatButtonsWebSettings.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
+        CookieManager.getInstance().setAcceptCookie(true);
+        CookieManager.getInstance().setAcceptThirdPartyCookies(chatButtonsWebView, true);
+        chatButtonsWebView.loadUrl("http://neverlands.ru/ch/but.php");
     }
     
     @Override
