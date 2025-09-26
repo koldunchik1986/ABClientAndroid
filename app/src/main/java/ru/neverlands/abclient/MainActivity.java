@@ -147,7 +147,17 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         chatUsersWebSettings.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
         CookieManager.getInstance().setAcceptCookie(true);
         CookieManager.getInstance().setAcceptThirdPartyCookies(chatUsersWebView, true);
-        chatUsersWebView.loadUrl("http://neverlands.ru/ch/ch_list.php");
+        chatUsersWebView.loadUrl("http://neverlands.ru/ch.php?lo=1");
+        chatUsersWebView.setWebViewClient(new WebViewClient() {
+            @Override
+            public void onPageFinished(WebView view, String url) {
+                super.onPageFinished(view, url);
+                view.evaluateJavascript("javascript:(function() { " +
+                    "var frameset = document.getElementsByTagName('frameset')[0];" +
+                    "if (frameset) { frameset.cols = '0, *'; }" +
+                    "})()", null);
+            }
+        });
 
         WebView chatButtonsWebView = binding.appBarMain.contentMain.chatButtonsWebview;
         WebSettings chatButtonsWebSettings = chatButtonsWebView.getSettings();
