@@ -6,6 +6,7 @@ import android.content.Intent;
 import android.os.Build;
 
 import ru.neverlands.abclient.proxy.ProxyService;
+import ru.neverlands.abclient.repository.ThingsRepository;
 import ru.neverlands.abclient.utils.AppVars;
 import ru.neverlands.abclient.utils.DataManager;
 
@@ -26,6 +27,9 @@ public class ABClientApplication extends Application {
         
         // Инициализация менеджера данных
         DataManager.init(this);
+
+        // Инициализация репозитория вещей
+        ThingsRepository.INSTANCE.initialize(this);
     }
 
     /**

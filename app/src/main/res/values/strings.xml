@@ -24,4 +24,13 @@
     <string name="login_password">Пароль</string>
     <string name="login_remember">Запомнить меня</string>
     <string name="login_error">Ошибка авторизации</string>
+    <string name="login_edit_profile">Редактировать</string>
+    <string name="login_add_profile">Добавить</string>
+    <string name="profile_flash_password">Пароль от флешки</string>
+    <string name="profile_auto_logon">Автовход</string>
+    <string name="profile_use_proxy">Использовать прокси</string>
+    <string name="profile_proxy_address">Адрес прокси</string>
+    <string name="profile_proxy_username">Имя пользователя прокси</string>
+    <string name="profile_proxy_password">Пароль прокси</string>
+    <string name="profile_save">Сохранить</string>
 </resources>
