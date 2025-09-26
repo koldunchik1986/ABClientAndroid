@@ -66,7 +66,7 @@
             app:key="proxy_password"
             app:title="Пароль прокси"
             app:dependency="do_proxy"
-            app:useSimpleSummaryProvider="true" />
+             />
 
     </PreferenceCategory>
 

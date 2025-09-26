@@ -81,6 +81,11 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         webSettings.setSupportZoom(true);
         webSettings.setBuiltInZoomControls(true);
         webSettings.setDisplayZoomControls(false);
+        webSettings.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
+
+        // Enable cookies including third-party for frames/chat
+        CookieManager.getInstance().setAcceptCookie(true);
+        CookieManager.getInstance().setAcceptThirdPartyCookies(webView, true);
         
         // Настройка WebViewClient для перехвата запросов
         webView.setWebViewClient(new WebViewClient() {
@@ -91,7 +96,6 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             
             @Override
             public WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest request) {
-                // Здесь можно перехватывать запросы, но мы используем прокси-сервер
                 return super.shouldInterceptRequest(view, request);
             }
             
@@ -109,13 +113,13 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         // Сохранение ссылки на WebView в глобальных переменных
         AppVars.MainWebView = webView;
         
-        // Запуск прокси-сервиса
+        // Запуск прокси-сервиса только если включен в профиле
         ((ABClientApplication) getApplication()).startProxyService();
         
         // Запуск таймера для обновления времени
         startTimer();
         
-        // Загрузка главной страницы после авторизации
+        // Загрузка фреймсета игры (включает нижний чат и верхнюю панель)
         webView.loadUrl("http://neverlands.ru/main.php");
     }
     

@@ -103,7 +103,11 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             public void onPageFinished(WebView view, String url) {
                 super.onPageFinished(view, url);
                 // Обработка завершения загрузки страницы
-                                AppLogger.write("Page loaded: " + url);
+                AppLogger.write("Page loaded: " + url);
+                view.evaluateJavascript("javascript:(function() { " +
+                    "var frameset = document.getElementsByTagName('frameset')[0];" +
+                    "if (frameset) { frameset.rows = '*, 0'; }" +
+                    "})()", null);
             }
         });
         
@@ -115,12 +119,26 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         
         // Запуск прокси-сервиса только если включен в профиле
         ((ABClientApplication) getApplication()).startProxyService();
-        
+
+        AppVars.NextCheckNoConnection = new Date();
+
         // Запуск таймера для обновления времени
         startTimer();
         
         // Загрузка фреймсета игры (включает нижний чат и верхнюю панель)
         webView.loadUrl("http://neverlands.ru/main.php");
+
+        // Настройка и загрузка чата
+        WebView chatWebView = new WebView(this);
+        WebSettings chatWebSettings = chatWebView.getSettings();
+        chatWebSettings.setJavaScriptEnabled(true);
+        chatWebSettings.setDomStorageEnabled(true);
+        chatWebSettings.setDatabaseEnabled(true);
+        chatWebSettings.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
+        CookieManager.getInstance().setAcceptCookie(true);
+        CookieManager.getInstance().setAcceptThirdPartyCookies(chatWebView, true);
+        binding.appBarMain.contentMain.chatContainer.addView(chatWebView);
+        chatWebView.loadUrl("http://neverlands.ru/ch.php?lo=1");
     }
     
     @Override

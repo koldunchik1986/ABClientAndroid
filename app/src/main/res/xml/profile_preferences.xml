@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PreferenceScreen xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <PreferenceCategory app:title="Данные для входа">
+
+        <EditTextPreference
+            app:key="user_nick"
+            app:title="Имя персонажа"
+            app:useSimpleSummaryProvider="true" />
+
+        <EditTextPreference
+            app:key="user_password"
+            app:title="Пароль"
+            android:password="true"
+            app:useSimpleSummaryProvider="true" />
+
+        <EditTextPreference
+            app:key="user_flash_password"
+            app:title="Флеш-пароль (если есть)"
+            android:password="true"
+            app:useSimpleSummaryProvider="true" />
+
+        <SwitchPreferenceCompat
+            app:key="user_autologon"
+            app:title="Автовход" />
+
+    </PreferenceCategory>
+
+    <PreferenceCategory app:title="Прокси-сервер">
+
+        <SwitchPreferenceCompat
+            app:key="proxy_enabled"
+            app:title="Использовать прокси" />
+
+        <EditTextPreference
+            app:key="proxy_address"
+            app:title="Адрес прокси (хост:порт)"
+            app:dependency="proxy_enabled"
+            app:useSimpleSummaryProvider="true" />
+
+        <EditTextPreference
+            app:key="proxy_user"
+            app:title="Логин прокси"
+            app:dependency="proxy_enabled"
+            app:useSimpleSummaryProvider="true" />
+
+        <EditTextPreference
+            app:key="proxy_password"
+            app:title="Пароль прокси"
+            android:password="true"
+            app:dependency="proxy_enabled"
+            app:useSimpleSummaryProvider="true" />
+
+        <Preference
+            app:key="detect_proxy"
+            app:title="Определить системный прокси"
+            app:summary="Попытаться найти настройки прокси из системы" 
+            app:dependency="proxy_enabled"/>
+
+    </PreferenceCategory>
+
+</PreferenceScreen>

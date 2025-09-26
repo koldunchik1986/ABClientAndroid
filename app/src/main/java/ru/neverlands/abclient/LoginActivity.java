@@ -21,10 +21,12 @@ public class LoginActivity extends AppCompatActivity {
         binding = ActivityLoginBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
 
-        if (AppVars.Profile != null) {
+        AppVars.Profile = UserConfig.load(this);
+
+        if (AppVars.Profile != null && !AppVars.Profile.UserNick.isEmpty()) {
             binding.usernameEditText.setText(AppVars.Profile.UserNick);
             binding.passwordEditText.setText(AppVars.Profile.UserPassword);
-            binding.rememberCheckBox.setChecked(true);
+            binding.rememberCheckBox.setChecked(!AppVars.Profile.UserPassword.isEmpty());
         }
 
         binding.loginButton.setOnClickListener(v -> login());

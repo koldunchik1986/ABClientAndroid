@@ -8,10 +8,6 @@ import androidx.preference.PreferenceManager;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * Класс конфигурации пользователя.
- * Аналог UserConfig.cs в оригинальном приложении.
- */
 public class UserConfig {
     // Основные настройки
     public String UserNick = "";
@@ -21,6 +17,7 @@ public class UserConfig {
     public boolean DoHttpLog = false;
     public boolean DoTexLog = false;
     public boolean ShowPerformance = false;
+    public long ServDiff = 0;
     
     // Настройки прокси
     public boolean DoProxy = false;
@@ -36,20 +33,27 @@ public class UserConfig {
     public boolean AutoDig = false;
     public boolean AutoTorg = false;
     public boolean TorgActive = false;
+    public boolean ChatKeepMoving = false;
+    public boolean DoGuamod = false;
+    public String UserPasswordFlash = "";
+
+    public boolean LightForum = false;
+    public int FishUm = 0;
+    public String TorgTabl = "";
+    public String TorgMessageTooExp = "";
+    public String TorgMessageLess90 = "";
+    public String TorgDeny = "";
+    public boolean TorgSliv = false;
+    public String TorgMessageThanks = "";
+    public String TorgMessageNoMoney = "";
     
     // Настройки таймеров
     public List<AppConfigTimer> AppConfigTimers = new ArrayList<>();
     
-    /**
-     * Загрузка конфигурации из SharedPreferences
-     * @param context контекст приложения
-     * @return загруженная конфигурация
-     */
     public static UserConfig load(Context context) {
         SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
         UserConfig config = new UserConfig();
         
-        // Загрузка основных настроек
         config.UserNick = prefs.getString("user_nick", "");
         config.UserKey = prefs.getString("user_key", "");
         config.UserPassword = prefs.getString("user_password", "");
@@ -58,13 +62,11 @@ public class UserConfig {
         config.DoTexLog = prefs.getBoolean("do_tex_log", false);
         config.ShowPerformance = prefs.getBoolean("show_performance", false);
         
-        // Загрузка настроек прокси
         config.DoProxy = prefs.getBoolean("do_proxy", false);
         config.ProxyAddress = prefs.getString("proxy_address", "");
         config.ProxyUserName = prefs.getString("proxy_username", "");
         config.ProxyPassword = prefs.getString("proxy_password", "");
         
-        // Загрузка настроек автоматизации
         config.AutoFish = prefs.getBoolean("auto_fish", false);
         config.AutoHerb = prefs.getBoolean("auto_herb", false);
         config.AutoMine = prefs.getBoolean("auto_mine", false);
@@ -72,8 +74,17 @@ public class UserConfig {
         config.AutoDig = prefs.getBoolean("auto_dig", false);
         config.AutoTorg = prefs.getBoolean("auto_torg", false);
         config.TorgActive = prefs.getBoolean("torg_active", false);
-        
-        // Загрузка таймеров
+
+        config.LightForum = prefs.getBoolean("LightForum", false);
+        config.FishUm = prefs.getInt("FishUm", 0);
+        config.TorgTabl = prefs.getString("TorgTabl", "");
+        config.TorgMessageTooExp = prefs.getString("torg_msg_too_exp", "");
+        config.TorgMessageLess90 = prefs.getString("torg_msg_less_90", "");
+        config.TorgDeny = prefs.getString("torg_deny", "");
+        config.TorgSliv = prefs.getBoolean("torg_sliv", false);
+        config.TorgMessageThanks = prefs.getString("torg_msg_thanks", "");
+        config.TorgMessageNoMoney = prefs.getString("torg_msg_no_money", "");
+
         int timerCount = prefs.getInt("timer_count", 0);
         for (int i = 0; i < timerCount; i++) {
             AppConfigTimer timer = new AppConfigTimer();
@@ -86,15 +97,10 @@ public class UserConfig {
         return config;
     }
     
-    /**
-     * Сохранение конфигурации в SharedPreferences
-     * @param context контекст приложения
-     */
     public void save(Context context) {
         SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
         SharedPreferences.Editor editor = prefs.edit();
         
-        // Сохранение основных настроек
         editor.putString("user_nick", UserNick);
         editor.putString("user_key", UserKey);
         editor.putString("user_password", UserPassword);
@@ -103,13 +109,11 @@ public class UserConfig {
         editor.putBoolean("do_tex_log", DoTexLog);
         editor.putBoolean("show_performance", ShowPerformance);
         
-        // Сохранение настроек прокси
         editor.putBoolean("do_proxy", DoProxy);
         editor.putString("proxy_address", ProxyAddress);
         editor.putString("proxy_username", ProxyUserName);
         editor.putString("proxy_password", ProxyPassword);
         
-        // Сохранение настроек автоматизации
         editor.putBoolean("auto_fish", AutoFish);
         editor.putBoolean("auto_herb", AutoHerb);
         editor.putBoolean("auto_mine", AutoMine);
@@ -117,8 +121,17 @@ public class UserConfig {
         editor.putBoolean("auto_dig", AutoDig);
         editor.putBoolean("auto_torg", AutoTorg);
         editor.putBoolean("torg_active", TorgActive);
+
+        editor.putBoolean("LightForum", LightForum);
+        editor.putInt("FishUm", FishUm);
+        editor.putString("TorgTabl", TorgTabl);
+        editor.putString("torg_msg_too_exp", TorgMessageTooExp);
+        editor.putString("torg_msg_less_90", TorgMessageLess90);
+        editor.putString("torg_deny", TorgDeny);
+        editor.putBoolean("torg_sliv", TorgSliv);
+        editor.putString("torg_msg_thanks", TorgMessageThanks);
+        editor.putString("torg_msg_no_money", TorgMessageNoMoney);
         
-        // Сохранение таймеров
         editor.putInt("timer_count", AppConfigTimers.size());
         for (int i = 0; i < AppConfigTimers.size(); i++) {
             AppConfigTimer timer = AppConfigTimers.get(i);
@@ -129,10 +142,25 @@ public class UserConfig {
         
         editor.apply();
     }
+
+    public String getUserNick() { return UserNick; }
+    public String getUserPassword() { return UserPassword; }
+    public String getTorgTabl() { return TorgTabl; }
+    public int getFishUm() { return FishUm; }
+    public void setFishUm(int um) { this.FishUm = um; }
+    public boolean isLightForum() { return LightForum; }
+    public String getTorgMessageTooExp() { return TorgMessageTooExp; }
+    public String getTorgMessageLess90() { return TorgMessageLess90; }
+    public String getTorgDeny() { return TorgDeny; }
+    public boolean isTorgSliv() { return TorgSliv; }
+    public String getTorgMessageThanks() { return TorgMessageThanks; }
+    public String getTorgMessageNoMoney() { return TorgMessageNoMoney; }
+    public boolean isAutoLogon() { return false; }
+    public long getLastLogon() { return 0; }
+    public void setLastLogon(long lastLogon) { }
+    public boolean isChatKeepMoving() { return ChatKeepMoving; }
+    public boolean isTorgActive() { return TorgActive; }
     
-    /**
-     * Класс для хранения настроек таймера
-     */
     public static class AppConfigTimer {
         public String Name = "";
         public int Interval = 0;

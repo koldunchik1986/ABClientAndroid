@@ -36,7 +36,8 @@ public class AppLogger {
      */
     public static void write(String tag, String message) {
         android.util.Log.d(TAG + ":" + tag, message);
-        writeToFile("log_" + tag + ".txt", message);
+        String sanitizedTag = tag.replaceAll("[/\\\\:*?\"<>|]", "_");
+        writeToFile("log_" + sanitizedTag + ".txt", message);
     }
     
     /**

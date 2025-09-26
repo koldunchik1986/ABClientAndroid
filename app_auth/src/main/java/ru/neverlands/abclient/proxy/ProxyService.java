@@ -51,11 +51,10 @@ public class ProxyService extends Service {
             return START_STICKY;
         }
         
+        // Start only if profile has proxy enabled and address set
         createNotificationChannel();
         startForeground(NOTIFICATION_ID, createNotification());
-        
         startProxyServer();
-        
         return START_STICKY;
     }
     

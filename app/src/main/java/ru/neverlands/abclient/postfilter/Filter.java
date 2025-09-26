@@ -1,368 +1,125 @@
 package ru.neverlands.abclient.postfilter;
 
-import android.util.Log;
-
-import java.nio.charset.StandardCharsets;
-import java.util.regex.Matcher;
+import java.util.Date;
 import java.util.regex.Pattern;
 
 import ru.neverlands.abclient.utils.AppVars;
 import ru.neverlands.abclient.utils.Russian;
 
-/**
- * Класс для фильтрации HTTP-ответов.
- * Аналог Filter.cs в оригинальном приложении.
- */
 public class Filter {
-    private static final String TAG = "Filter";
-    // Safe, lenient DOCTYPE matcher across lines (case-insensitive)
     private static final Pattern DOCTYPE_PATTERN = Pattern.compile("(?is)<!DOCTYPE[^>]*>");
-    
-    /**
-     * Предварительная обработка запроса
-     * @param address адрес запроса
-     * @param array данные запроса
-     * @return обработанные данные
-     */
+
     public static byte[] preProcess(String address, byte[] array) {
-        if (address == null || address.isEmpty() || array == null) {
-            return array;
-        }
-        
-        // В оригинальном коде здесь была обработка некоторых запросов,
-        // но большая часть кода закомментирована. Оставляем базовую реализацию.
         return array;
     }
-    
-    /**
-     * Обработка ответа
-     * @param address адрес запроса
-     * @param array данные ответа
-     * @return обработанные данные
-     */
+
     public static byte[] process(String address, byte[] array) {
         if (address == null || address.isEmpty() || array == null) {
             return array;
         }
-        
-        String html = Russian.Codepage.getString(array);
-        
-        // Обработка JavaScript файлов
+
         if (address.contains(".js")) {
+            if (address.contains("liveinternet.ru") || address.contains("top.mail.ru") || address.contains("hotlog.ru")) {
+                return CounterJs.process();
+            }
             if (address.contains("/js/hp.js")) {
-                return processHpJs(array);
+                return HpJs.process(array);
             }
-            
             if (address.contains("/js/map.js")) {
-                return processMapJs(array);
+                return MapJs.process(array);
             }
-            
             if (address.contains("/arena")) {
-                return processArenaJs();
+                return ArenaJs.process();
             }
-            
             if (address.endsWith("/js/game.js")) {
-                return processGameJs(array);
+                return GameJs.process(array);
             }
-            
             if (address.contains("pinfo_v01.js")) {
-                return processPinfoJs(array);
+                return PinfoJs.process(array);
             }
-            
             if (address.contains("/js/fight_v")) {
-                return processFightJs(array);
+                // return FightJs.process(array);
+                return array; // Заглушка
             }
-            
             if (address.contains("/js/building")) {
-                return processBuildingJs(array);
+                return BuildingJs.process(array);
             }
-            
             if (address.endsWith("/js/hpmp.js")) {
-                return processHpmpJs();
+                return HpmpJs.process();
             }
-            
             if (address.endsWith("/ch/ch_msg_v01.js")) {
-                return processChMsgJs(array);
+                return ChMsgJs.process(array);
             }
-            
             if (address.endsWith("/js/pv.js")) {
-                return processPvJs(array);
+                return PvJs.process(array);
             }
-            
             if (address.endsWith("/ch/ch_list.js")) {
-                return processChListJs();
+                return ChListJs.process();
             }
-            
             if (address.endsWith("/js/svitok.js")) {
-                return processSvitokJs(array);
+                return SvitokJs.process(array);
             }
-            
             if (address.endsWith("/js/slots.js")) {
-                return processSlotsJs(array);
+                return SlotsJs.process(array);
             }
-            
             if (address.contains("/js/logs")) {
-                return processLogsJs(array);
+                return LogsJs.process(array);
             }
-            
             if (address.contains("/js/shop")) {
-                return processShopJs(array);
+                return ShopJs.process(array);
             }
-            
             if (address.contains("/js/forum/forum_topic.js")) {
-                return processForumTopicJs(array);
+                return ForumTopicJs.process(array);
+            }
+            if (address.endsWith("/js/top.js")) {
+                return TopJs.process(array);
             }
         }
-        
-        // Логирование запросов, не являющихся JS или SWF
-        int pos1 = address.toLowerCase().indexOf(".js");
-        if (pos1 < 0) {
-            int pos2 = address.toLowerCase().indexOf(".swf");
-            if (pos2 < 0) {
-                ru.neverlands.abclient.utils.AppLogger.write(address, html);
-            }
-        }
-        
-        // Обработка основных страниц
-        if (address.startsWith("http://www.neverlands.ru/index.cgi") || 
-            address.equals("http://www.neverlands.ru/")) {
-            return processIndexCgi(array);
-        }
-        
-        if (address.startsWith("http://www.neverlands.ru/pinfo.cgi") || 
-            address.startsWith("http://www.neverlands.ru/pbots.cgi") || 
-            address.startsWith("http://forum.neverlands.ru/")) {
-            return removeDoctype(array);
-        }
-        
+
         if (address.startsWith("http://www.neverlands.ru/game.php")) {
-            return processGamePhp(array);
+            return GamePhp.process(array);
         }
-        
+
         if (address.startsWith("http://www.neverlands.ru/main.php")) {
             AppVars.NextCheckNoConnection = new Date(System.currentTimeMillis() + 5 * 60 * 1000);
-            return processMainPhp(address, array);
+            return MainPhp.process(address, array);
         }
-        
+
         if (address.startsWith("http://www.neverlands.ru/ch/msg.php")) {
-            return processMsgPhp(array);
+            return MsgPhp.process(array);
         }
-        
+
         if (address.startsWith("http://www.neverlands.ru/ch/but.php")) {
-            return processButPhp(array);
+            return ButPhp.process(array);
         }
-        
-        if (address.startsWith("http://www.neverlands.ru/gameplay/trade.php")) {
-            return AppVars.Profile.TorgActive ? processTradePhp(array) : array;
+
+        if (address.contains("/ch.php?0")) {
+            return ChZero.process(array);
         }
         
         if (address.startsWith("http://www.neverlands.ru/gameplay/ajax/map_act_ajax.php")) {
-            return processMapActAjaxPhp(array);
+            return MapActAjaxPhp.process(array);
         }
-        
-        if (address.startsWith("http://www.neverlands.ru/gameplay/ajax/fish_ajax.php")) {
-            return processFishAjaxPhp(array);
-        }
-        
-        if (address.startsWith("http://www.neverlands.ru/gameplay/ajax/shop_ajax.php")) {
-            return processShopAjaxPhp(array);
-        }
-        
-        if (address.startsWith("http://www.neverlands.ru/gameplay/ajax/roulette_ajax.php")) {
-            return processRouletteAjaxPhp(array);
-        }
-        
-        if (address.startsWith("http://www.neverlands.ru/ch.php?lo=")) {
-            return processChRoomPhp(array);
-        }
-        
-        if (address.contains("/ch.php?0")) {
-            return processChZero(array);
-        }
-        
+
+        // ... и другие обработчики ...
+
         return array;
     }
-    
-    /**
-     * Создание редиректа
-     * @param description описание
-     * @param link ссылка
-     * @return HTML-код редиректа
-     */
-    private static String buildRedirect(String description, String link) {
-        StringBuilder sb = new StringBuilder();
-        sb.append("<html><head><meta http-equiv=&quot;Content-Type&quot; content=&quot;text/html; charset=windows-1251&quot;>");
-        sb.append("<title>ABClient</title></head><body>");
-        sb.append(description);
-        sb.append("<script language=&quot;JavaScript&quot;>");
-        sb.append("  window.location = &quot;");
-        sb.append(link);
-        sb.append("&quot;;</script></body></html>");
-        return sb.toString();
+
+    public static byte[] buildRedirect(String description, String link) {
+        String html = "<html><head><meta http-equiv=\"Content-Type\" content=\"text/html; charset=windows-1251\"><title>ABClient</title></head><body>" +
+                      description +
+                      "<script language=\"JavaScript\">window.location = \"" + link + "\";</script></body></html>";
+        return Russian.getBytes(html);
     }
-    
-    /**
-     * Удаление DOCTYPE из HTML
-     * @param html HTML-код
-     * @return HTML-код без DOCTYPE
-     */
-    private static String removeDoctype(String html) {
+
+    public static String removeDoctype(String html) {
         return DOCTYPE_PATTERN.matcher(html).replaceAll("");
     }
-    
-    /**
-     * Удаление DOCTYPE из массива байт
-     * @param array массив байт
-     * @return массив байт без DOCTYPE
-     */
-    private static byte[] removeDoctype(byte[] array) {
-        String html = Russian.Codepage.getString(array);
+
+    public static byte[] removeDoctype(byte[] array) {
+        String html = Russian.getString(array);
         html = removeDoctype(html);
-        return Russian.Codepage.getBytes(html);
-    }
-    
-    // Методы обработки конкретных страниц и скриптов
-    // В реальной реализации здесь будут методы для обработки различных страниц и скриптов
-    // Для примера реализуем несколько базовых методов
-    
-    private static byte[] processHpJs(byte[] array) {
-        // Реализация обработки hp.js
-        return array;
-    }
-    
-    private static byte[] processMapJs(byte[] array) {
-        // Реализация обработки map.js
-        return array;
-    }
-    
-    private static byte[] processArenaJs() {
-        // Реализация обработки arena.js
-        // В оригинале здесь возвращается содержимое файла arena_v04.js
-        return new byte[0];
-    }
-    
-    private static byte[] processGameJs(byte[] array) {
-        // Реализация обработки game.js
-        return array;
-    }
-    
-    private static byte[] processPinfoJs(byte[] array) {
-        // Реализация обработки pinfo_v01.js
-        return array;
-    }
-    
-    private static byte[] processFightJs(byte[] array) {
-        // Реализация обработки fight.js
-        return array;
-    }
-    
-    private static byte[] processBuildingJs(byte[] array) {
-        // Реализация обработки building.js
-        return array;
-    }
-    
-    private static byte[] processHpmpJs() {
-        // Реализация обработки hpmp.js
-        return new byte[0];
-    }
-    
-    private static byte[] processChMsgJs(byte[] array) {
-        // Реализация обработки ch_msg_v01.js
-        return array;
-    }
-    
-    private static byte[] processPvJs(byte[] array) {
-        // Реализация обработки pv.js
-        return array;
-    }
-    
-    private static byte[] processChListJs() {
-        // Реализация обработки ch_list.js
-        return new byte[0];
-    }
-    
-    private static byte[] processSvitokJs(byte[] array) {
-        // Реализация обработки svitok.js
-        return array;
-    }
-    
-    private static byte[] processSlotsJs(byte[] array) {
-        // Реализация обработки slots.js
-        return array;
-    }
-    
-    private static byte[] processLogsJs(byte[] array) {
-        // Реализация обработки logs.js
-        return array;
-    }
-    
-    private static byte[] processShopJs(byte[] array) {
-        // Реализация обработки shop.js
-        return array;
-    }
-    
-    private static byte[] processForumTopicJs(byte[] array) {
-        // Реализация обработки forum_topic.js
-        return array;
-    }
-    
-    private static byte[] processIndexCgi(byte[] array) {
-        // Реализация обработки index.cgi
-        return array;
-    }
-    
-    private static byte[] processGamePhp(byte[] array) {
-        // Реализация обработки game.php
-        return array;
-    }
-    
-    private static byte[] processMainPhp(String address, byte[] array) {
-        // Реализация обработки main.php
-        return array;
-    }
-    
-    private static byte[] processMsgPhp(byte[] array) {
-        // Реализация обработки msg.php
-        return array;
-    }
-    
-    private static byte[] processButPhp(byte[] array) {
-        // Реализация обработки but.php
-        return array;
-    }
-    
-    private static byte[] processTradePhp(byte[] array) {
-        // Реализация обработки trade.php
-        return array;
-    }
-    
-    private static byte[] processMapActAjaxPhp(byte[] array) {
-        // Реализация обработки map_act_ajax.php
-        return array;
-    }
-    
-    private static byte[] processFishAjaxPhp(byte[] array) {
-        // Реализация обработки fish_ajax.php
-        return array;
-    }
-    
-    private static byte[] processShopAjaxPhp(byte[] array) {
-        // Реализация обработки shop_ajax.php
-        return array;
-    }
-    
-    private static byte[] processRouletteAjaxPhp(byte[] array) {
-        // Реализация обработки roulette_ajax.php
-        return array;
-    }
-    
-    private static byte[] processChRoomPhp(byte[] array) {
-        // Реализация обработки ch.php?lo=
-        return array;
-    }
-    
-    private static byte[] processChZero(byte[] array) {
-        // Реализация обработки ch.php?0
-        return array;
+        return Russian.getBytes(html);
     }
 }
