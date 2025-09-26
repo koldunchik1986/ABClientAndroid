@@ -14,11 +14,26 @@
         android:layout_height="0dp"
         android:layout_weight="1" />
 
-    <FrameLayout
+    <LinearLayout
         android:id="@+id/chat_container"
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:layout_weight="0.4" />
+        android:layout_weight="0.4"
+        android:orientation="horizontal">
+
+        <WebView
+            android:id="@+id/chat_msg_webview"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="2" />
+
+        <WebView
+            android:id="@+id/chat_users_webview"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1" />
+
+    </LinearLayout>
 
     <include
         android:id="@+id/status_bar"

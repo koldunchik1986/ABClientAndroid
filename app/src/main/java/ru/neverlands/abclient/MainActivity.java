@@ -129,16 +129,25 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         webView.loadUrl("http://neverlands.ru/main.php");
 
         // Настройка и загрузка чата
-        WebView chatWebView = new WebView(this);
-        WebSettings chatWebSettings = chatWebView.getSettings();
-        chatWebSettings.setJavaScriptEnabled(true);
-        chatWebSettings.setDomStorageEnabled(true);
-        chatWebSettings.setDatabaseEnabled(true);
-        chatWebSettings.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
+        WebView chatMsgWebView = binding.appBarMain.contentMain.chatMsgWebview;
+        WebSettings chatMsgWebSettings = chatMsgWebView.getSettings();
+        chatMsgWebSettings.setJavaScriptEnabled(true);
+        chatMsgWebSettings.setDomStorageEnabled(true);
+        chatMsgWebSettings.setDatabaseEnabled(true);
+        chatMsgWebSettings.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
         CookieManager.getInstance().setAcceptCookie(true);
-        CookieManager.getInstance().setAcceptThirdPartyCookies(chatWebView, true);
-        binding.appBarMain.contentMain.chatContainer.addView(chatWebView);
-        chatWebView.loadUrl("http://neverlands.ru/ch.php?lo=1");
+        CookieManager.getInstance().setAcceptThirdPartyCookies(chatMsgWebView, true);
+        chatMsgWebView.loadUrl("http://neverlands.ru/ch/msg.php");
+
+        WebView chatUsersWebView = binding.appBarMain.contentMain.chatUsersWebview;
+        WebSettings chatUsersWebSettings = chatUsersWebView.getSettings();
+        chatUsersWebSettings.setJavaScriptEnabled(true);
+        chatUsersWebSettings.setDomStorageEnabled(true);
+        chatUsersWebSettings.setDatabaseEnabled(true);
+        chatUsersWebSettings.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
+        CookieManager.getInstance().setAcceptCookie(true);
+        CookieManager.getInstance().setAcceptThirdPartyCookies(chatUsersWebView, true);
+        chatUsersWebView.loadUrl("http://neverlands.ru/ch/ch_list.php");
     }
     
     @Override
