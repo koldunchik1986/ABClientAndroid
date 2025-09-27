@@ -22,13 +22,13 @@ public class Filter {
             if (address.contains("liveinternet.ru") || address.contains("top.mail.ru") || address.contains("hotlog.ru")) {
                 return CounterJs.process();
             }
-            if (address.contains("/js/hp.js")) {
+            if (address.endsWith("/js/hp.js")) {
                 return HpJs.process(array);
             }
-            if (address.contains("/js/map.js")) {
+            if (address.endsWith("/js/map.js")) {
                 return MapJs.process(array);
             }
-            if (address.contains("/arena")) {
+            if (address.endsWith("/arena.js")) {
                 return ArenaJs.process();
             }
             if (address.endsWith("/js/game.js")) {
@@ -38,10 +38,9 @@ public class Filter {
                 return PinfoJs.process(array);
             }
             if (address.contains("/js/fight_v")) {
-                // return FightJs.process(array);
-                return array; // Заглушка
+                return FightJs.process(array);
             }
-            if (address.contains("/js/building")) {
+            if (address.contains("/js/building.js")) {
                 return BuildingJs.process(array);
             }
             if (address.endsWith("/js/hpmp.js")) {
@@ -53,27 +52,64 @@ public class Filter {
             if (address.endsWith("/js/pv.js")) {
                 return PvJs.process(array);
             }
-            if (address.endsWith("/ch/ch_list.js")) {
+            if (address.endsWith("/ch_list.js")) {
                 return ChListJs.process();
             }
-            if (address.endsWith("/js/svitok.js")) {
-                return SvitokJs.process(array);
+            if (address.endsWith("/castle.js")) {
+                return CastleJs.process(array);
             }
-            if (address.endsWith("/js/slots.js")) {
-                return SlotsJs.process(array);
+            if (address.endsWith("/counter.js")) {
+                return CounterJs.process();
             }
-            if (address.contains("/js/logs")) {
-                return LogsJs.process(array);
-            }
-            if (address.contains("/js/shop")) {
-                return ShopJs.process(array);
-            }
-            if (address.contains("/js/forum/forum_topic.js")) {
+            if (address.endsWith("/forum_topic.js")) {
                 return ForumTopicJs.process(array);
             }
-            if (address.endsWith("/js/top.js")) {
+            if (address.endsWith("/logs.js")) {
+                return LogsJs.process(array);
+            }
+            if (address.endsWith("/nl_pinfo.js")) {
+                return NlPinfoJs.process(array);
+            }
+            if (address.endsWith("/outpost.js")) {
+                return OutpostJs.process(array);
+            }
+            if (address.endsWith("/pinfonew.js")) {
+                return PinfonewJs.process(array);
+            }
+            if (address.endsWith("/shop.js")) {
+                return ShopJs.process(array);
+            }
+            if (address.endsWith("/slots.js")) {
+                return SlotsJs.process(array);
+            }
+            if (address.endsWith("/svitok.js")) {
+                return SvitokJs.process(array);
+            }
+            if (address.endsWith("/tarena.js")) {
+                return TarenaJs.process(array);
+            }
+            if (address.endsWith("/top.js")) {
                 return TopJs.process(array);
             }
+            if (address.endsWith("/tower.js")) {
+                return TowerJs.process(array);
+            }
+        }
+
+        if (address.startsWith("http://www.neverlands.ru/index.cgi") || address.equals("http://www.neverlands.ru/")) {
+            return IndexCgi.process(array);
+        }
+
+        if (address.startsWith("http://www.neverlands.ru/pinfo.cgi")) {
+            return Pinfo.process(array);
+        }
+
+        if (address.startsWith("http://www.neverlands.ru/pbots.cgi")) {
+            return removeDoctype(array);
+        }
+
+        if (address.startsWith("http://forum.neverlands.ru/")) {
+            return removeDoctype(array);
         }
 
         if (address.startsWith("http://www.neverlands.ru/game.php")) {
@@ -81,8 +117,11 @@ public class Filter {
         }
 
         if (address.startsWith("http://www.neverlands.ru/main.php")) {
+            ru.neverlands.abclient.utils.DebugLogger.log("Filter: Processing main.php. HTML content BEFORE processing:\n" + ru.neverlands.abclient.utils.Russian.getString(array));
             AppVars.NextCheckNoConnection = new Date(System.currentTimeMillis() + 5 * 60 * 1000);
-            return MainPhp.process(address, array);
+            byte[] processedArray = MainPhp.process(address, array);
+            ru.neverlands.abclient.utils.DebugLogger.log("Filter: Processing main.php. HTML content AFTER processing:\n" + ru.neverlands.abclient.utils.Russian.getString(processedArray));
+            return processedArray;
         }
 
         if (address.startsWith("http://www.neverlands.ru/ch/msg.php")) {
@@ -90,18 +129,42 @@ public class Filter {
         }
 
         if (address.startsWith("http://www.neverlands.ru/ch/but.php")) {
-            return ButPhp.process(array);
+            return ButPhp.process(address, array);
+        }
+
+        if (address.startsWith("http://www.neverlands.ru/gameplay/trade.php")) {
+            return TradePhp.process(array);
+        }
+
+        if (address.contains("map_ajax.php")) {
+            String html = Russian.getString(array);
+            html = MapAjax.process(html);
+            return Russian.getBytes(html);
+        }
+
+        if (address.contains("map_act_ajax.php")) {
+            return MapActAjaxPhp.process(array);
+        }
+
+        if (address.startsWith("http://www.neverlands.ru/gameplay/ajax/fish_ajax.php")) {
+            return FishAjaxPhp.process(array);
+        }
+
+        if (address.startsWith("http://www.neverlands.ru/gameplay/ajax/shop_ajax.php")) {
+            return ShopAjaxPhp.process(array);
+        }
+
+        if (address.startsWith("http://www.neverlands.ru/gameplay/ajax/roulette_ajax.php")) {
+            return RouletteAjaxPhp.process(array);
+        }
+
+        if (address.startsWith("http://www.neverlands.ru/ch.php?lo=")) {
+            return ChRoomPhp.process(array);
         }
 
         if (address.contains("/ch.php?0")) {
             return ChZero.process(array);
         }
-        
-        if (address.startsWith("http://www.neverlands.ru/gameplay/ajax/map_act_ajax.php")) {
-            return MapActAjaxPhp.process(array);
-        }
-
-        // ... и другие обработчики ...
 
         return array;
     }

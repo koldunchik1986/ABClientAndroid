@@ -1,0 +1,7 @@
+package ru.neverlands.abclient.postfilter;
+
+public class PinfonewJs {
+    public static byte[] process(byte[] array) {
+        return array;
+    }
+}

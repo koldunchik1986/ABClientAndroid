@@ -4,32 +4,20 @@ import ru.neverlands.abclient.utils.Russian;
 
 public class ChMsgJs {
     public static byte[] process(byte[] array) {
-        String js = Russian.getString(array);
+        String html = Russian.getString(array);
 
-        js = js.replace(
+        // Hook for filtering every chat message
+        html = html.replace(
             "s += txt + \"<BR>\";",
-            "s += AndroidBridge.ChatFilter(txt) + \"<BR>\";"
-        );
+            "s += window.AndroidBridge.chatFilter(txt) + \"<BR>\";");
 
-        js = js.replace(
+        // Hook for chat update event
+        html = html.replace(
             ",65000);",
-            ", 65000); AndroidBridge.ChatUpdated()"
-        );
+            ", 65000); window.AndroidBridge.chatUpdated();");
 
-        // TODO: Исправить и раскомментировать проблемные замены
-        /*
-        js = js.replace(
-            "msgp[2].replace(user,'<SPAN alt=\"%' + user2 + '\">' + user + '</SPAN>');",
-            "msgp[2].replace(user,'<SPAN alt=\"%\' + user + \'\">' + user + '</SPAN>');"
-        );
-
-        js = js.replace(
-            "msgp[2] = msgp[2].replace(' " + user, ' <SPAN alt=\"\'" + user2 + "\">' + user + '</SPAN>');",
-            "msgp[2] = msgp[2].replace(' " + user, ' <SPAN alt=\"%\' + user + \'\">' + user + '</SPAN>');"
-        );
-        */
-
-        js = js.replace(
+        // Replace complex logic for private message handling
+        html = html.replace(
             "login = login.replace ('%', '');",
             "top.frames['ch_buttons'].document.FBT.text.focus(); " +
             "var prompt = top.frames['ch_buttons'].document.FBT.text.value; " +
@@ -38,12 +26,14 @@ public class ChMsgJs {
             "if (login.charAt(1) == '%'){ login = login.substr(2); top.frames['ch_buttons'].document.FBT.text.value = '%clan%%<' + login + '> ' + prompt; return false; } else login = login.substr(1); }"
         );
 
-        js = js.replace("alt=", "title=");
-        js = js.replace(".alt", ".title");
+        // Fix alt attributes for tooltips
+        html = html.replace("alt=", "title=");
+        html = html.replace(".alt", ".title");
 
-        js = js.replace(" + document.body.scrollLeft", "");
-        js = js.replace(" + document.body.scrollTop", "");
+        // Fix scroll positioning issues
+        html = html.replace(" + document.body.scrollLeft", "");
+        html = html.replace(" + document.body.scrollTop", "");
 
-        return Russian.getBytes(js);
+        return Russian.getBytes(html);
     }
 }

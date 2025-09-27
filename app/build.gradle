@@ -22,8 +22,8 @@ android {
         applicationId "ru.neverlands.abclient"
         minSdkVersion 21
         targetSdkVersion 33
-        versionCode 1
-        versionName "1.0.1"
+        versionCode 2
+        versionName "1.0.2"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -82,9 +82,31 @@ dependencies {
     def room_version = "2.5.2"
     implementation "androidx.room:room-runtime:$room_version"
     implementation "androidx.room:room-ktx:$room_version"
+    implementation 'org.jsoup:jsoup:1.17.2'
     kapt "androidx.room:room-compiler:$room_version"
 
     testImplementation 'junit:junit:4.13.2'
     androidTestImplementation 'androidx.test.ext:junit:1.1.5'
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.5.1'
+}
+
+import java.text.SimpleDateFormat
+
+task backupSource(type: Zip) {
+    def timestamp = new SimpleDateFormat("yyyyMMddHHmmss").format(new Date())
+    def version = android.defaultConfig.versionName
+    archiveFileName = "v_${version}_${timestamp}.zip"
+    destinationDirectory = file("../backup")
+    from('src') {
+        into 'src'
+    }
+}
+
+afterEvaluate {
+    tasks.named('assembleDebug').configure {
+        dependsOn backupSource
+    }
+    tasks.named('assembleRelease').configure {
+        dependsOn backupSource
+    }
 }

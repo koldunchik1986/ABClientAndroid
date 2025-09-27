@@ -20,7 +20,7 @@ public class Cache {
     private static final String TAG = "Cache";
     private static final ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
     private static final Map<String, byte[]> memCache = new HashMap<>();
-    private static final File cacheDir = new File(ABClientApplication.getAppContext().getFilesDir(), "abcache");
+    private static final File cacheDir = new File(ABClientApplication.getAppContext().getExternalFilesDir(null), "abcache");
     
     static {
         if (!cacheDir.exists()) {

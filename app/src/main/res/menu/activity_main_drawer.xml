@@ -32,6 +32,10 @@
                 android:id="@+id/nav_settings"
                 android:icon="@android:drawable/ic_menu_preferences"
                 android:title="@string/menu_settings" />
+            <item
+                android:id="@+id/nav_logs"
+                android:icon="@android:drawable/ic_menu_agenda"
+                android:title="Логи" />
         </menu>
     </item>
 </menu>

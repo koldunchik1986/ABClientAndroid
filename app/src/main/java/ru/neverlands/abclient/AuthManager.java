@@ -1,12 +1,10 @@
 package ru.neverlands.abclient;
 
 import android.content.Context;
-import android.content.Intent;
-import android.widget.Toast;
+import android.os.Build;
+import android.webkit.CookieManager;
 
 import java.io.IOException;
-import java.io.UnsupportedEncodingException;
-import java.net.URLEncoder;
 import java.nio.charset.Charset;
 import java.util.concurrent.TimeUnit;
 
@@ -17,7 +15,7 @@ import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.RequestBody;
 import okhttp3.Response;
-import ru.neverlands.abclient.utils.AppLogger;
+import ru.neverlands.abclient.utils.DebugLogger;
 
 public class AuthManager {
 
@@ -27,6 +25,12 @@ public class AuthManager {
     }
 
     public static void authorize(Context context, String username, String password, AuthCallback callback) {
+        DebugLogger.log("AuthManager: Starting authorization for user: " + username);
+
+        DebugLogger.log("AuthManager: Clearing all cookies.");
+        CookieManager.getInstance().removeAllCookies(null);
+        CookieManager.getInstance().flush();
+
         OkHttpClient client = new OkHttpClient.Builder()
                 .connectTimeout(30, TimeUnit.SECONDS)
                 .readTimeout(30, TimeUnit.SECONDS)
@@ -43,20 +47,24 @@ public class AuthManager {
                 .header("Accept-Language", "ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7")
                 .build();
 
-        AppLogger.write("AuthManager", "Initial request: " + initialRequest.toString());
+        DebugLogger.log("AuthManager: 1. Initial GET request\n" + initialRequest.toString() + "\nHeaders:\n" + initialRequest.headers().toString());
 
         client.newCall(initialRequest).enqueue(new Callback() {
             @Override
             public void onFailure(Call call, IOException e) {
+                DebugLogger.log("AuthManager: 1. Initial GET request FAILED: " + e.getMessage());
+                DebugLogger.close();
                 callback.onFailure("Ошибка соединения: " + e.getMessage());
             }
 
             @Override
             public void onResponse(Call call, Response response) throws IOException {
-                AppLogger.write("AuthManager", "Initial response: " + response.toString());
+                DebugLogger.log("AuthManager: 1. Initial GET response\n" + response.toString() + "\nHeaders:\n" + response.headers().toString());
                 response.body().close(); // We only need the cookies
 
                 if (!response.isSuccessful()) {
+                    DebugLogger.log("AuthManager: 1. Initial GET request was not successful. Code: " + response.code());
+                    DebugLogger.close();
                     callback.onFailure("Ошибка получения начальной страницы: " + response.code());
                     return;
                 }
@@ -80,56 +88,47 @@ public class AuthManager {
                             .post(formBody)
                             .build();
 
-                    AppLogger.write("AuthManager", "Login request: " + loginRequest.toString());
+                    DebugLogger.log("AuthManager: 2. Login POST request\n" + loginRequest.toString() + "\nHeaders:\n" + loginRequest.headers().toString());
 
                     client.newCall(loginRequest).enqueue(new Callback() {
                         @Override
                         public void onFailure(Call call, IOException e) {
+                            DebugLogger.log("AuthManager: 2. Login POST request FAILED: " + e.getMessage());
+                            DebugLogger.close();
                             callback.onFailure("Ошибка авторизации: " + e.getMessage());
                         }
 
                         @Override
                         public void onResponse(Call call, Response response) throws IOException {
-                            AppLogger.write("AuthManager", "Login response: " + response.toString());
-                            response.body().close(); // We only need the cookies
+                            DebugLogger.log("AuthManager: 2. Login POST response\n" + response.toString() + "\nHeaders:\n" + response.headers().toString());
+                            String responseBody = response.body().string(); // Read the body to check for errors
 
                             if (!response.isSuccessful()) {
+                                DebugLogger.log("AuthManager: 2. Login POST request was not successful. Code: " + response.code());
+                                DebugLogger.close();
                                 callback.onFailure("Ошибка авторизации: " + response.code());
                                 return;
                             }
 
-                            // 3. GET main page to verify
-                            Request mainPageRequest = new Request.Builder()
-                                    .url("http://neverlands.ru/main.php")
-                                    .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36")
-                                    .header("Referer", "http://neverlands.ru/game.php")
-                                    .header("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7")
-                                    .header("Accept-Language", "ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7")
-                                    .build();
-
-                            AppLogger.write("AuthManager", "Main page request: " + mainPageRequest.toString());
-
-                            client.newCall(mainPageRequest).enqueue(new Callback() {
-                                @Override
-                                public void onFailure(Call call, IOException e) {
-                                    callback.onFailure("Ошибка проверки авторизации: " + e.getMessage());
+                            if (responseBody.contains("auth_form")) {
+                                DebugLogger.log("AuthManager: Authorization FAILED. Found 'auth_form' in response.");
+                                DebugLogger.close();
+                                callback.onFailure("Ошибка авторизации: неверный логин или пароль.");
+                            } else {
+                                DebugLogger.log("AuthManager: Authorization SUCCESS.");
+                                DebugLogger.close();
+                                // Принудительно сохраняем cookies, чтобы WebView их подхватил
+                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                                    CookieManager.getInstance().flush();
                                 }
 
-                                @Override
-                                public void onResponse(Call call, Response response) throws IOException {
-                                    AppLogger.write("AuthManager", "Main page response: " + response.toString());
-                                    String mainPageBody = new String(response.body().bytes(), Charset.forName("windows-1251"));
-
-                                    if (mainPageBody.contains("auth_form")) {
-                                        callback.onFailure("Ошибка авторизации: неверный логин или пароль.");
-                                    } else {
-                                        callback.onSuccess();
-                                    }
-                                }
-                            });
+                                callback.onSuccess();
+                            }
                         }
                     });
                 } catch (Exception e) {
+                    DebugLogger.log("AuthManager: Exception during login POST step: " + e.getMessage());
+                    DebugLogger.close();
                     callback.onFailure("Ошибка авторизации: " + e.getMessage());
                 }
             }

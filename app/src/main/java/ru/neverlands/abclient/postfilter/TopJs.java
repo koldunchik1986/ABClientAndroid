@@ -5,10 +5,10 @@ import ru.neverlands.abclient.utils.Russian;
 public class TopJs {
     public static byte[] process(byte[] array) {
         String html = Russian.getString(array);
-        int pos = html.indexOf("()");
-        if (pos != -1) {
-            pos += "()".length();
-            html = html.substring(0, pos) + "{ return ''; }";
+        int posone = html.indexOf("()");
+        if (posone != -1) {
+            posone += "()".length();
+            html = html.substring(0, posone) + "{ return ''; }";
         }
         return Russian.getBytes(html);
     }

@@ -39,7 +39,7 @@ public class DataManager {
      */
     private static void createRequiredDirectories() {
         // Директория для кэша
-        File cacheDir = new File(appContext.getFilesDir(), "abcache");
+        File cacheDir = new File(appContext.getExternalFilesDir(null), "abcache");
         if (!cacheDir.exists()) {
             if (!cacheDir.mkdirs()) {
                 Log.e(TAG, "Failed to create cache directory");
@@ -47,12 +47,29 @@ public class DataManager {
         }
         
         // Директория для логов
-        File logsDir = new File(appContext.getFilesDir(), "logs");
+        File logsDir = new File(appContext.getExternalFilesDir(null), "logs");
         if (!logsDir.exists()) {
             if (!logsDir.mkdirs()) {
                 Log.e(TAG, "Failed to create logs directory");
             }
         }
+
+        // Директория для профилей
+        getProfilesDir();
+    }
+
+    /**
+     * Возвращает директорию для хранения профилей, создавая ее при необходимости.
+     * @return File объект директории профилей
+     */
+    public static File getProfilesDir() {
+        File profilesDir = new File(appContext.getExternalFilesDir(null), "profiles");
+        if (!profilesDir.exists()) {
+            if (!profilesDir.mkdirs()) {
+                Log.e(TAG, "Failed to create profiles directory");
+            }
+        }
+        return profilesDir;
     }
     
     /**
@@ -82,7 +99,7 @@ public class DataManager {
      * @throws IOException при ошибке ввода/вывода
      */
     private static void copyAssetIfNotExists(String fileName) throws IOException {
-        File outFile = new File(appContext.getFilesDir(), fileName);
+        File outFile = new File(appContext.getExternalFilesDir(null), fileName);
         if (!outFile.exists()) {
             try (InputStream in = appContext.getAssets().open(fileName);
                  OutputStream out = new FileOutputStream(outFile)) {
@@ -101,7 +118,7 @@ public class DataManager {
      * @return содержимое файла или null при ошибке
      */
     public static String readFileToString(String fileName) {
-        File file = new File(appContext.getFilesDir(), fileName);
+        File file = new File(appContext.getExternalFilesDir(null), fileName);
         if (!file.exists()) {
             return null;
         }
@@ -123,12 +140,22 @@ public class DataManager {
      * @return true при успешной записи, false при ошибке
      */
     public static boolean writeStringToFile(String fileName, String content) {
-        File file = new File(appContext.getFilesDir(), fileName);
+        File file = new File(appContext.getExternalFilesDir(null), fileName);
+        return writeStringToFile(file, content);
+    }
+
+    /**
+     * Запись строки в файл
+     * @param file файл для записи
+     * @param content содержимое
+     * @return true при успешной записи, false при ошибке
+     */
+    public static boolean writeStringToFile(File file, String content) {
         try (FileOutputStream fos = new FileOutputStream(file)) {
             fos.write(content.getBytes(StandardCharsets.UTF_8));
             return true;
         } catch (IOException e) {
-            Log.e(TAG, "Error writing file: " + fileName, e);
+            Log.e(TAG, "Error writing file: " + file.getName(), e);
             return false;
         }
     }
@@ -139,7 +166,7 @@ public class DataManager {
      * @return содержимое файла или null при ошибке
      */
     public static byte[] readFileToBytes(String fileName) {
-        File file = new File(appContext.getFilesDir(), fileName);
+        File file = new File(appContext.getExternalFilesDir(null), fileName);
         if (!file.exists()) {
             return null;
         }
@@ -161,7 +188,7 @@ public class DataManager {
      * @return true при успешной записи, false при ошибке
      */
     public static boolean writeBytesToFile(String fileName, byte[] content) {
-        File file = new File(appContext.getFilesDir(), fileName);
+        File file = new File(appContext.getExternalFilesDir(null), fileName);
         try (FileOutputStream fos = new FileOutputStream(file)) {
             fos.write(content);
             return true;
@@ -177,7 +204,7 @@ public class DataManager {
      * @return true если файл существует, false в противном случае
      */
     public static boolean fileExists(String fileName) {
-        File file = new File(appContext.getFilesDir(), fileName);
+        File file = new File(appContext.getExternalFilesDir(null), fileName);
         return file.exists();
     }
     
@@ -187,7 +214,7 @@ public class DataManager {
      * @return true при успешном удалении, false при ошибке
      */
     public static boolean deleteFile(String fileName) {
-        File file = new File(appContext.getFilesDir(), fileName);
+        File file = new File(appContext.getExternalFilesDir(null), fileName);
         return !file.exists() || file.delete();
     }
 

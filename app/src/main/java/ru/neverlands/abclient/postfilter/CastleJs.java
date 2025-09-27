@@ -1,14 +1,21 @@
 package ru.neverlands.abclient.postfilter;
 
+import java.io.IOException;
+import java.io.InputStream;
+
+import ru.neverlands.abclient.utils.AppVars;
+import ru.neverlands.abclient.utils.DataManager;
+import ru.neverlands.abclient.utils.Russian;
+
 public class CastleJs {
-    /**
-     * Обрабатывает /js/castle.js.
-     * В оригинальном C# коде сюда добавлялся полифил json2.js, но вызов был закомментирован.
-     * В современном WebView это не требуется.
-     * @param array Массив байт, содержащий JS-код.
-     * @return Неизмененный массив байт.
-     */
     public static byte[] process(byte[] array) {
-        return array;
+        try (InputStream is = AppVars.getAssetManager().open("js/json2.js")) {
+            String json2 = Russian.getString(DataManager.readAllBytes(is));
+            String html = Russian.getString(array);
+            return Russian.getBytes(json2 + " " + html);
+        } catch (IOException e) {
+            e.printStackTrace();
+            return array;
+        }
     }
 }

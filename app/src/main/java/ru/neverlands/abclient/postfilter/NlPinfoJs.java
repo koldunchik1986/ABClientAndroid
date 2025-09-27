@@ -6,8 +6,8 @@ public class NlPinfoJs {
     public static byte[] process(byte[] array) {
         String html = Russian.getString(array);
         html = html.replace(
-                "+alt+",
-                "+AndroidBridge.InfoToolTip(arr[0],alt)+");
+            "+alt+",
+            "+window.AndroidBridge.InfoToolTip(arr[0],alt)+");
         return Russian.getBytes(html);
     }
 }

@@ -1,6 +1,9 @@
 package ru.neverlands.abclient;
 
+import android.Manifest;
 import android.content.Intent;
+import android.content.pm.PackageManager;
+import android.os.Build;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.AdapterView;
@@ -9,7 +12,10 @@ import android.widget.Toast;
 
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
 
 import com.google.gson.Gson;
 
@@ -18,8 +24,10 @@ import java.util.List;
 import ru.neverlands.abclient.databinding.ActivityLoginBinding;
 import ru.neverlands.abclient.model.UserConfig;
 import ru.neverlands.abclient.utils.AppVars;
+import ru.neverlands.abclient.utils.CryptoUtils;
 
 public class LoginActivity extends AppCompatActivity {
+    private static final int STORAGE_PERMISSION_REQUEST_CODE = 101;
     private ActivityLoginBinding binding;
     private List<UserConfig> profiles;
     private UserConfig selectedProfile;
@@ -39,6 +47,24 @@ public class LoginActivity extends AppCompatActivity {
         binding = ActivityLoginBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
 
+        setVersionName();
+
+        if (checkAndRequestPermissions()) {
+            initializeUi();
+        }
+    }
+
+    private void setVersionName() {
+        try {
+            String versionName = getPackageManager().getPackageInfo(getPackageName(), 0).versionName;
+            binding.versionTextView.setText("v" + versionName);
+        } catch (PackageManager.NameNotFoundException e) {
+            e.printStackTrace();
+            binding.versionTextView.setText("");
+        }
+    }
+
+    private void initializeUi() {
         loadProfiles();
 
         binding.loginButton.setOnClickListener(v -> login());
@@ -50,14 +76,52 @@ public class LoginActivity extends AppCompatActivity {
         });
     }
 
+    private boolean checkAndRequestPermissions() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
+                ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE}, STORAGE_PERMISSION_REQUEST_CODE);
+                return false;
+            } else {
+                return true;
+            }
+        } else {
+            // Permission is automatically granted on sdk < 23 upon installation
+            return true;
+        }
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode == STORAGE_PERMISSION_REQUEST_CODE) {
+            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                // Permission granted
+                initializeUi();
+            } else {
+                // Permission denied
+                Toast.makeText(this, "Разрешение на доступ к хранилищу необходимо для работы приложения", Toast.LENGTH_LONG).show();
+                finish();
+            }
+        }
+    }
+
     private void loadProfiles() {
-        profiles = UserConfig.loadProfiles(this);
+        profiles = UserConfig.loadAllProfiles(this);
 
         if (profiles.isEmpty()) {
-            profiles.add(new UserConfig());
+            // Если профилей нет, создаем пустой, чтобы пользователь мог его настроить
+            selectedProfile = new UserConfig();
+            profiles.add(selectedProfile);
+        } else {
+            // Ищем последний использованный профиль
+            UserConfig lastUsed = profiles.get(0);
+            for (UserConfig profile : profiles) {
+                if (profile.LastLogin > lastUsed.LastLogin) {
+                    lastUsed = profile;
+                }
+            }
+            selectedProfile = lastUsed;
         }
-
-        selectedProfile = UserConfig.load(this);
 
         ArrayAdapter<UserConfig> adapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_item, profiles);
         adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
@@ -72,7 +136,13 @@ public class LoginActivity extends AppCompatActivity {
             @Override
             public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
                 selectedProfile = profiles.get(position);
-                binding.passwordEditText.setText(selectedProfile.UserPassword);
+                if (selectedProfile.isEncrypted) {
+                    binding.passwordInputLayout.setHint("Пароль шифрования");
+                    binding.passwordEditText.setText(""); // Очищаем поле при смене на шифрованный профиль
+                } else {
+                    binding.passwordInputLayout.setHint("Пароль");
+                    binding.passwordEditText.setText(selectedProfile.UserPassword);
+                }
             }
 
             @Override
@@ -83,42 +153,61 @@ public class LoginActivity extends AppCompatActivity {
 
     private void openProfileActivity(UserConfig profile) {
         Intent intent = new Intent(this, ProfileActivity.class);
-        if (profile != null) {
-            intent.putExtra("profile", new Gson().toJson(profile));
+        if (profile != null && profile.id != null) {
+            intent.putExtra("profile_id", profile.id);
         }
         profileActivityLauncher.launch(intent);
     }
 
     private void login() {
         String username = selectedProfile.UserNick;
-        String password = binding.passwordEditText.getText().toString().trim();
+        String passwordOrKey = binding.passwordEditText.getText().toString().trim();
 
-        if (username.isEmpty() || password.isEmpty()) {
-            Toast.makeText(this, "Введите имя пользователя и пароль", Toast.LENGTH_SHORT).show();
+        if (username.isEmpty()) {
+            Toast.makeText(this, "Выберите или создайте профиль", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        if (passwordOrKey.isEmpty()) {
+            Toast.makeText(this, binding.passwordInputLayout.getHint(), Toast.LENGTH_SHORT).show();
             return;
         }
 
         binding.progressBar.setVisibility(View.VISIBLE);
         binding.loginButton.setEnabled(false);
 
-        if (AppVars.Profile == null) {
-            AppVars.Profile = new UserConfig();
-        }
+        final UserConfig profileToLogin = selectedProfile;
+        String gamePassword;
 
-        AppVars.Profile.UserNick = username;
-
-        if (binding.rememberCheckBox.isChecked()) {
-            AppVars.Profile.UserPassword = password;
+        if (profileToLogin.isEncrypted) {
+            try {
+                gamePassword = CryptoUtils.decrypt(profileToLogin.UserPassword, passwordOrKey);
+            } catch (Exception e) {
+                Toast.makeText(this, "Неверный пароль шифрования", Toast.LENGTH_SHORT).show();
+                binding.progressBar.setVisibility(View.GONE);
+                binding.loginButton.setEnabled(true);
+                return;
+            }
         } else {
-            AppVars.Profile.UserPassword = "";
+            gamePassword = passwordOrKey;
         }
 
-        AppVars.Profile.save(this);
-
-        AuthManager.authorize(this, username, password, new AuthManager.AuthCallback() {
+        AuthManager.authorize(this, username, gamePassword, new AuthManager.AuthCallback() {
             @Override
             public void onSuccess() {
                 runOnUiThread(() -> {
+                    // Пароль сохраняется только после успешного входа
+                    if (!profileToLogin.isEncrypted && binding.rememberCheckBox.isChecked()) {
+                        profileToLogin.UserPassword = gamePassword;
+                    } else if (!profileToLogin.isEncrypted) {
+                        profileToLogin.UserPassword = "";
+                    }
+                    // Для зашифрованных профилей пароль не пересохраняем на этом этапе
+                    profileToLogin.save(LoginActivity.this);
+
+                    // Устанавливаем глобальный профиль для сессии
+                    AppVars.Profile = profileToLogin;
+
                     Intent intent = new Intent(LoginActivity.this, MainActivity.class);
                     startActivity(intent);
                     finish();

@@ -1,20 +1,24 @@
 package ru.neverlands.abclient.postfilter;
 
 import java.util.ArrayList;
-import java.util.ListIterator;
+import java.util.List;
 
 import ru.neverlands.abclient.utils.AppVars;
 import ru.neverlands.abclient.utils.Russian;
 
 public class ShopAjaxPhp {
+
     public static byte[] process(byte[] array) {
         String html = Russian.getString(array);
+
         AppVars.BulkSellOldScript = "";
-        AppVars.ShopList.clear();
+        List<ShopEntry> shopList = new ArrayList<>();
 
         final String patternStartShop = "</b></div></td></tr>";
         int pos = html.indexOf(patternStartShop);
-        if (pos == -1) return array;
+        if (pos == -1) {
+            return array;
+        }
 
         pos += patternStartShop.length();
         int posStartShop = pos;
@@ -27,47 +31,53 @@ public class ShopAjaxPhp {
 
             final String patternEndTr = "</td></tr></table></td></tr></table></td></tr>";
             int posEnd = html.indexOf(patternEndTr, pos);
-            if (posEnd == -1) return array;
+            if (posEnd == -1) {
+                return array; // Malformed HTML
+            }
 
             posEnd += patternEndTr.length();
             String htmlEntry = html.substring(pos, posEnd);
             ShopEntry shopEntry = new ShopEntry(htmlEntry);
 
-            if (AppVars.BulkSellOldScript.isEmpty() &&
-                AppVars.BulkSellOldName != null && !AppVars.BulkSellOldName.isEmpty() &&
+            if (AppVars.BulkSellOldName != null && !AppVars.BulkSellOldName.isEmpty() &&
                 shopEntry.name != null && shopEntry.name.equalsIgnoreCase(AppVars.BulkSellOldName) &&
                 AppVars.BulkSellOldPrice != null && !AppVars.BulkSellOldPrice.isEmpty() &&
                 shopEntry.price != null && shopEntry.price.equalsIgnoreCase(AppVars.BulkSellOldPrice)) {
                 AppVars.BulkSellOldScript = shopEntry.sellCall;
             }
 
-            AppVars.ShopList.add(shopEntry);
+            shopList.add(shopEntry);
             pos = posEnd;
         }
 
-        if (AppVars.ShopList.size() > 1) {
-            for (int indexFirst = 0; indexFirst < AppVars.ShopList.size() - 1; indexFirst++) {
-                for (int indexSecond = indexFirst + 1; indexSecond < AppVars.ShopList.size(); indexSecond++) {
-                    if (AppVars.ShopList.get(indexFirst).compareTo(AppVars.ShopList.get(indexSecond)) == 0) {
-                        AppVars.ShopList.get(indexFirst).inc();
-                        AppVars.ShopList.remove(indexSecond);
-                        indexSecond--;
+        if (shopList.size() > 1) {
+            for (int indexFirst = 0; indexFirst < shopList.size() - 1; indexFirst++) {
+                for (int indexSecond = indexFirst + 1; indexSecond < shopList.size(); indexSecond++) {
+                    if (shopList.get(indexFirst).compareTo(shopList.get(indexSecond)) != 0) {
+                        continue;
                     }
+
+                    shopList.get(indexFirst).inc();
+                    shopList.remove(indexSecond);
+                    indexSecond--;
                 }
             }
         }
 
-        if (AppVars.BulkSellOldScript.isEmpty()) {
+        if (AppVars.BulkSellOldScript == null || AppVars.BulkSellOldScript.isEmpty()) {
             AppVars.BulkSellOldName = "";
             AppVars.BulkSellOldPrice = "";
         }
 
         StringBuilder sb = new StringBuilder();
-        for (ShopEntry entry : AppVars.ShopList) {
+        for (ShopEntry entry : shopList) {
             sb.append(entry.toString());
         }
 
-        String finalHtml = html.substring(0, posStartShop) + sb.toString() + html.substring(pos);
-        return Russian.getBytes(finalHtml);
+        StringBuilder sbnew = new StringBuilder(html.substring(0, posStartShop));
+        sbnew.append(sb.toString());
+        sbnew.append(html.substring(pos));
+        html = sbnew.toString();
+        return Russian.getBytes(html);
     }
 }

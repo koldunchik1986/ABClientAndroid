@@ -1,106 +1,38 @@
-
 ### 1. План портирования MapPath.cs
 
-Файл `MapPath.cs` содержит основную, используемую в проекте, реализацию алгоритма поиска пути. Этот алгоритм является вариацией **поиска в ширину (BFS)**, очень похожей на реализацию в `MapPath_0103.cs`.
+Файл `MapPath.cs` — это движок навигатора. Он содержит алгоритм поиска пути (pathfinding) для нахождения оптимального маршрута между двумя точками на игровой карте.
 
 ### 2. Функциональность в C#
 
-- **Назначение:** Найти оптимальный (в первую очередь, кратчайший по числу шагов) путь между двумя точками.
-- **Алгоритм:** Поиск в ширину, который итеративно исследует "слои" карты, удаляющиеся от стартовой точки.
-- **Отличия от `MapPath_0103.cs`:**
-    - **Логика Острова:** Содержит жестко закодированный список ячеек острова (`_islandCells`). Если путь ведет с материка на остров, точка старта принудительно меняется на "11-398" (вероятно, причал).
-    - **Отсечение пути:** Имеет дополнительную эвристику для прекращения поиска по ветке, если она становится на 10 шагов длиннее, чем уже найденный лучший путь.
+- **Назначение:** Построить кратчайший/оптимальный маршрут от исходной клетки до одной из клеток назначения.
+- **Алгоритм:** Реализует алгоритм поиска в ширину, похожий на **алгоритм Дейкстры**. 
+    1.  Начинает с исходной клетки.
+    2.  В цикле `do...while` итеративно исследует все доступные соседние клетки.
+    3.  Для каждой клетки рассматриваются 8 стандартных направлений, а также особые переходы: городские ворота (например, из `8-259` в `8-294`) и телепорты.
+    4.  Каждый возможный маршрут до клетки хранится как объект `MapPathNode` в словаре `_matrix`. `MapPathNode` содержит сам путь (массив `RegNum`), его общую стоимость, наличие телепорта и т.д.
+    5.  При нахождении нового пути к уже исследованной клетке, он сравнивается со старым. Если новый путь лучше (меньше по стоимости или другим критериям), он заменяет старый.
+    6.  Когда путь достигает одной из целевых клеток, он добавляется в список `_bestPathes`.
+- **`CanUseExistingPath()`:** Важный метод, который проверяет, можно ли использовать уже рассчитанный путь для текущей навигации. Он определяет следующий шаг (`NextJump`), его тип (обычный, телепорт, городские ворота) и оставшееся количество шагов.
 
 ### 3. Решение для портирования на Android
 
-Рекомендации те же, что и для других файлов `MapPath_*.cs`. Следует использовать стандартную библиотеку для поиска пути, такую как **JGraphT**.
+Это класс с чистой логикой, который можно портировать в Java практически один в один. Главное изменение — замена обращений к статическому классу `Map` на обращения к `MapRepository`.
+
+- **Архитектура:**
+    - **`utils/MapPath.java`:** Java-версия класса.
+    - **`utils/MapPathNode.java`:** Вспомогательный класс для узла пути.
+    - **Зависимости:** Все вызовы `Map.Cells`, `Map.Teleports`, `Map.Location` будут заменены на вызовы методов `MapRepository` (например, `mapRepository.getCell()`, `mapRepository.isTeleport()`).
 
 ### 4. План реализации
 
-### 4. План реализации
+1.  **[ЗАВИСИМОСТЬ] Портировать `Map.cs`:**
+    - [ ] Как описано в `todo_Map.cs.md`, создать `MapRepository` и наполнить его данными.
+2.  **Создать `MapPathNode.java`:**
+    - [ ] Создать класс, содержащий поля `CellNumbers`, `Cost`, `HasTeleport` и т.д.
+    - [ ] Реализовать метод `compareTo` для сравнения двух путей.
+3.  **Реализовать `MapPath.java`:**
+    - [ ] Перенести все поля и основной конструктор.
+    - [ ] Перевести алгоритм поиска пути, заменяя обращения к `Map` на `MapRepository`.
+    - [ ] Перенести метод `CanUseExistingPath`.
 
-Поскольку в коде Android отсутствует реализация поиска пути, этот план описывает создание системы с нуля с использованием библиотеки JGraphT.
-
-1.  **Интегрировать JGraphT:**
-    - Добавить зависимость в `build.gradle`:
-      ```groovy
-      implementation 'org.jgrapht:jgrapht-core:1.5.1'
-      ```
-
-2.  **Создать класс `MapGraph`:**
-    - Этот класс будет отвечать за построение графа.
-      ```kotlin
-      import org.jgrapht.graph.DefaultWeightedEdge
-      import org.jgrapht.graph.SimpleDirectedWeightedGraph
-
-      object MapGraph {
-          val graph = SimpleDirectedWeightedGraph<String, DefaultWeightedEdge>(DefaultWeightedEdge::class.java)
-
-          // Этот метод нужно будет вызвать один раз после загрузки данных из БД
-          suspend fun build(mapRepository: MapRepository) {
-              val allCells = mapRepository.getAllCells()
-              for (cell in allCells) {
-                  graph.addVertex(cell.cellNumber)
-              }
-
-              for (cell in allCells) {
-                  // Добавить ребра к 8 соседям
-                  val neighbors = mapRepository.getNeighbors(cell.cellNumber)
-                  for (neighbor in neighbors) {
-                      val edge = graph.addEdge(cell.cellNumber, neighbor.cellNumber)
-                      graph.setEdgeWeight(edge, neighbor.cost.toDouble())
-                  }
-
-                  // Добавить ребра для врат и телепортов
-                  // ...
-              }
-          }
-      }
-      ```
-
-3.  **Создать класс `Pathfinder`:**
-    - Будет использовать JGraphT для поиска пути.
-      ```kotlin
-      import org.jgrapht.alg.shortestpath.AStarShortestPath
-      import org.jgrapht.alg.interfaces.AStarAdmissibleHeuristic
-
-      class Pathfinder(private val graph: SimpleDirectedWeightedGraph<String, DefaultWeightedEdge>) {
-
-          fun findPath(start: String, end: String): List<String>? {
-              // Эвристика для A* (можно использовать манхэттенское расстояние)
-              val heuristic = object : AStarAdmissibleHeuristic<String> {
-                  override fun getCostEstimate(source: String, target: String): Double {
-                      // TODO: Реализовать расчет расстояния между ячейками
-                      return 0.0
-                  }
-              }
-
-              val aStar = AStarShortestPath(graph, heuristic)
-              val path = aStar.getPath(start, end)
-              return path?.vertexList
-          }
-      }
-      ```
-
-4.  **Создать data-класс `MapPath`:**
-    - Будет хранить результат и содержать логику навигации по нему.
-      ```kotlin
-      data class MapPath(val path: List<String>, val totalCost: Double) {
-          var currentIndex: Int = 0
-          val destination: String = path.last()
-
-          fun getNextJump(): String? {
-              if (currentIndex + 1 < path.size) {
-                  return path[currentIndex + 1]
-              }
-              return null
-          }
-          // ... остальная логика из CanUseExistingPath
-      }
-      ```
-
-- [ ] Добавить зависимость `JGraphT`.
-- [ ] Реализовать `MapGraph` для построения полного графа карты, включая все типы переходов.
-- [ ] Реализовать `Pathfinder` с использованием `AStarShortestPath`.
-- [ ] Реализовать эвристику для A* (например, на основе координат).
-- [ ] Создать итоговый класс `MapPath` для использования в навигаторе.
+- [ ] Создать классы-заглушки для `MapPath` и `MapPathNode`.

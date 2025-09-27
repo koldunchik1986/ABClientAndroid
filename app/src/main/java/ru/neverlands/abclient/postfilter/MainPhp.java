@@ -1,61 +1,113 @@
 package ru.neverlands.abclient.postfilter;
 
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
+import org.jsoup.Jsoup;
+import org.jsoup.nodes.Document;
+import org.jsoup.nodes.Element;
+import org.jsoup.select.Elements;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+
+import ru.neverlands.abclient.model.InvComparer;
+import ru.neverlands.abclient.model.InvEntry;
 import ru.neverlands.abclient.utils.AppVars;
 import ru.neverlands.abclient.utils.Russian;
 
 public class MainPhp {
-
-    /**
-     * Основной метод обработки main.php.
-     * На данный момент является "заглушкой" и выполняет только базовые функции.
-     * Вся сложная логика автоматизации будет добавлена позже согласно плану в TODO/todo_MainPhp.cs.md.
-     */
     public static byte[] process(String address, byte[] array) {
-        filterGetLocation(address);
-
         AppVars.IdleTimer = System.currentTimeMillis();
         AppVars.LastMainPhp = System.currentTimeMillis();
+        AppVars.ContentMainPhp = null;
 
         String html = Russian.getString(array);
         html = Filter.removeDoctype(html);
 
+        // TODO: Port the full logic from all MainPhp*.cs partial classes here.
+
+        // Placeholder for fight logic
+        if (html.contains("magic_slots();")) {
+            html = mainPhpFight(html);
+        }
+
+        // Placeholder for inventory logic
+        if (html.contains("/invent/0.gif")) {
+            html = mainPhpInv(html);
+        }
+
+        if (html.contains("var map = [[")) {
+            html = MapAjax.process(html);
+        }
+
+        // ... other placeholders ...
+
         AppVars.ContentMainPhp = html;
-
-        // TODO: В будущем здесь будет вызываться конвейер обработчиков:
-        // parsePlayerState(html);
-        // handleSystemMessages(html);
-        // String redirectHtml = handleAutoActions(html, address);
-        // if (redirectHtml != null) return Russian.Codepage.getBytes(redirectHtml);
-
         return Russian.getBytes(html);
     }
 
-    /**
-     * Извлекает координаты (gx, gy) из URL и сохраняет их.
-     */
-    private static void filterGetLocation(String url) {
-        if (url == null) return;
+    private static String mainPhpFight(String html) {
+        // TODO: Port MainPhpFight.cs
+        return html;
+    }
 
-        try {
-            Pattern patternX = Pattern.compile("&gx=(\\d+)");
-            Matcher matcherX = patternX.matcher(url);
-            if (!matcherX.find()) return;
+    private static String mainPhpInv(String html) {
+        Document doc = Jsoup.parse(html);
+        Elements itemTables = doc.select("tr:has(td > table)"); // A bit fragile, but should work
 
-            Pattern patternY = Pattern.compile("&gy=(\\d+)");
-            Matcher matcherY = patternY.matcher(url);
-            if (!matcherY.find()) return;
-
-            int gx = Integer.parseInt(matcherX.group(1));
-            int gy = Integer.parseInt(matcherY.group(1));
-
-            // TODO: Реализовать Map.convertToRegNum(gx, gy) и сохранить в AppVars.LocationReal
-            // AppVars.LocationReal = Map.convertToRegNum(gx, gy);
-
-        } catch (Exception e) {
-            // Ошибка парсинга, ничего не делаем
+        if (itemTables.isEmpty()) {
+            return html;
         }
+
+        List<InvEntry> invList = new ArrayList<>();
+        Element inventoryContainer = null;
+
+        for (Element table : itemTables) {
+            if (table.html().contains("Срок годности")) { // Heuristic to find inventory items
+                if (inventoryContainer == null) {
+                    inventoryContainer = table.parent();
+                }
+                invList.add(new InvEntry(table));
+            }
+        }
+
+        if (inventoryContainer == null) {
+            return html;
+        }
+
+        // Packing logic
+        if (AppVars.Profile != null && AppVars.Profile.DoInvPack) {
+            for (int i = 0; i < invList.size() - 1; i++) {
+                for (int j = i + 1; j < invList.size(); j++) {
+                    if (invList.get(i).compareTo(invList.get(j)) == 0) {
+                        if (invList.get(i).compareDolg(invList.get(j)) > 0) {
+                            invList.set(i, invList.get(j));
+                        }
+                        invList.get(i).inc();
+                        invList.remove(j);
+                        j--;
+                    }
+                }
+            }
+        }
+
+        // Add custom buttons
+        for (InvEntry entry : invList) {
+            entry.addBulkSell();
+            entry.addBulkDelete();
+        }
+
+        // Sorting logic
+        if (AppVars.Profile != null && AppVars.Profile.DoInvSort) {
+            Collections.sort(invList, new InvComparer());
+        }
+
+        // Rebuild HTML
+        StringBuilder newHtml = new StringBuilder();
+        for (InvEntry entry : invList) {
+            newHtml.append(entry.build());
+        }
+
+        inventoryContainer.html(newHtml.toString());
+        return doc.outerHtml();
     }
 }
