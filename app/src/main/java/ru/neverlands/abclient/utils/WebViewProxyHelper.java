@@ -14,7 +14,7 @@ public class WebViewProxyHelper {
 
     public static void setWebViewProxy(String proxyHost, int proxyPort, Runnable onProxySetCallback) {
         ProxyConfig proxyConfig = new ProxyConfig.Builder()
-                .addProxyRule(proxyHost + ":" + proxyPort)
+                .addProxyRule("http://" + proxyHost + ":" + proxyPort)
                 .build();
 
         Executor executor = new MainThreadExecutor();
