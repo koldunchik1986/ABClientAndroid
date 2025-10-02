@@ -1,0 +1,10 @@
+#topbar {background: #FCFAF3; margin: 0; padding: 6px; border-bottom: 1px solid #FFFFFF; height: 15px;}
+#topbar div.nick {float:left; color: #222222; font-family: Verdana,Tahoma,Arial; font-size: 12px; text-decoration: none; vertical-align: middle;}
+#topbar div.hpmp {float:left; margin-left: 4px;}
+#topbar div.hpmp div {padding-top: 2px}
+#topbar #hbar {float:left; font-size: 11px;}
+#topbar #main_buttons {float:right; margin-right: 80px; margin-top: -1px;}
+#topbar .exit {float:right; margin-right: 8px;}
+#topbarlines {border-top: 1px solid #B9A05C; background: #F3ECD7; border-bottom: 1px solid #FFFFFF; height: 1px;}
+
+#rating_image {margin-top: 8px; text-align: center;}

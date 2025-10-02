@@ -93,7 +93,7 @@ public class TorgList {
     public String doFilter(String message, String thing, String thingLevel, int price, int tableprice, int thingRealDolg, int thingFullDolg, int price90) {
         if (AppVars.Profile == null) return message;
         return message
-                .replace("{таблица}", AppVars.Profile.getTorgTabl())
+                .replace("{таблица}", AppVars.Profile.TorgTabl)
                 .replace("{вещь}", thing)
                 .replace("{вещьур}", thingLevel)
                 .replace("{вещьдолг}", thingRealDolg + "/" + thingFullDolg)

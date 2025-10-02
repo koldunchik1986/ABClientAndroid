@@ -5,19 +5,168 @@ import android.util.Log;
 import android.webkit.JavascriptInterface;
 import android.widget.Toast;
 
+import ru.neverlands.abclient.manager.ContactsManager;
+import ru.neverlands.abclient.utils.AppVars;
+
+/**
+ * Класс-мост (bridge) для взаимодействия между JavaScript в WebView и нативным кодом Android.
+ * Методы, аннотированные @JavascriptInterface, могут быть вызваны из JS.
+ * В JS этот объект доступен как `AndroidBridge`.
+ */
 public class WebAppInterface {
     Context mContext;
 
-    /** Instantiate the interface and set the context */
+    /** Конструктор, инициализирующий контекст. */
     public WebAppInterface(Context c) {
         mContext = c;
     }
 
-    /** Show a toast from the web page */
+    /** Показывает всплывающее сообщение (Toast) из веб-страницы. */
     @JavascriptInterface
     public void showToast(String toast) {
         Toast.makeText(mContext, toast, Toast.LENGTH_SHORT).show();
     }
+
+    /**
+     * Возвращает ID класса контакта (друг, враг, нейтрал).
+     * Вызывается из ch_list.js для определения цвета ника.
+     * @param name Ник персонажа.
+     * @return ID класса.
+     */
+    @JavascriptInterface
+    public int GetClassIdOfContact(String name) {
+        return ContactsManager.getClassIdOfContact(name);
+    }
+
+    // --- Методы для проверки отображения кнопок быстрых действий --- //
+    // --- Логика портирована из ScriptManager.cs --- //
+
+    /**
+     * Проверяет, нужно ли отображать кнопку быстрого действия.
+     * @param login Ник цели.
+     * @param wmlabQ HTML-код кнопки.
+     * @return HTML-код кнопки, если ее нужно показать, иначе - пустая строка.
+     */
+    @JavascriptInterface
+    public String CheckQuick(String login, String wmlabQ) {
+        if (AppVars.Profile == null || login.equalsIgnoreCase(AppVars.Profile.UserNick)) {
+            return "";
+        }
+        return wmlabQ;
+    }
+
+    @JavascriptInterface
+    public String CheckFastAttack(String login, String wmlabFA) {
+        if (AppVars.Profile == null || login.equalsIgnoreCase(AppVars.Profile.UserNick)) {
+            return "";
+        }
+        return AppVars.Profile.doShowFastAttack ? wmlabFA : "";
+    }
+
+    @JavascriptInterface
+    public String CheckFastAttackBlood(String login, String wmlabFAB) {
+        if (AppVars.Profile == null || login.equalsIgnoreCase(AppVars.Profile.UserNick)) {
+            return "";
+        }
+        return AppVars.Profile.doShowFastAttackBlood ? wmlabFAB : "";
+    }
+
+    @JavascriptInterface
+    public String CheckFastAttackUltimate(String login, String wmlabFAU) {
+        if (AppVars.Profile == null || login.equalsIgnoreCase(AppVars.Profile.UserNick)) {
+            return "";
+        }
+        return AppVars.Profile.doShowFastAttackUltimate ? wmlabFAU : "";
+    }
+
+    @JavascriptInterface
+    public String CheckFastAttackClosedUltimate(String login, String wmlabFACU) {
+        if (AppVars.Profile == null || login.equalsIgnoreCase(AppVars.Profile.UserNick)) {
+            return "";
+        }
+        return AppVars.Profile.doShowFastAttackClosedUltimate ? wmlabFACU : "";
+    }
+
+    @JavascriptInterface
+    public String CheckFastAttackFist(String login, String wmlabFAF) {
+        if (AppVars.Profile == null || login.equalsIgnoreCase(AppVars.Profile.UserNick)) {
+            return "";
+        }
+        return AppVars.Profile.doShowFastAttackFist ? wmlabFAF : "";
+    }
+
+    @JavascriptInterface
+    public String CheckFastAttackClosedFist(String login, String wmlabFACF) {
+        if (AppVars.Profile == null || login.equalsIgnoreCase(AppVars.Profile.UserNick)) {
+            return "";
+        }
+        return AppVars.Profile.doShowFastAttackClosedFist ? wmlabFACF : "";
+    }
+
+    @JavascriptInterface
+    public String CheckFastAttackPortal(String login, String wmlabFP) {
+        if (AppVars.Profile == null || login.equalsIgnoreCase(AppVars.Profile.UserNick)) {
+            return "";
+        }
+        return AppVars.Profile.doShowFastAttackPortal ? wmlabFP : "";
+    }
+
+    @JavascriptInterface
+    public String CheckFastAttackClosed(String login, String wmlabFC) {
+        if (AppVars.Profile == null || login.equalsIgnoreCase(AppVars.Profile.UserNick)) {
+            return "";
+        }
+        return AppVars.Profile.doShowFastAttackClosed ? wmlabFC : "";
+    }
+
+    @JavascriptInterface
+    public String CheckFastAttackPoison(String login, String wmlabFAP) {
+        if (AppVars.Profile == null || login.equalsIgnoreCase(AppVars.Profile.UserNick)) {
+            return "";
+        }
+        return AppVars.Profile.doShowFastAttackPoison ? wmlabFAP : "";
+    }
+
+    @JavascriptInterface
+    public String CheckFastAttackStrong(String login, String wmlabFAS) {
+        if (AppVars.Profile == null || login.equalsIgnoreCase(AppVars.Profile.UserNick)) {
+            return "";
+        }
+        return AppVars.Profile.doShowFastAttackStrong ? wmlabFAS : "";
+    }
+
+    @JavascriptInterface
+    public String CheckFastAttackNevid(String login, String wmlabFAN) {
+        if (AppVars.Profile == null || login.equalsIgnoreCase(AppVars.Profile.UserNick)) {
+            return "";
+        }
+        return AppVars.Profile.doShowFastAttackNevid ? wmlabFAN : "";
+    }
+
+    @JavascriptInterface
+    public String CheckFastAttackFog(String login, String wmlabFAFG) {
+        if (AppVars.Profile == null || login.equalsIgnoreCase(AppVars.Profile.UserNick)) {
+            return "";
+        }
+        return AppVars.Profile.doShowFastAttackFog ? wmlabFAFG : "";
+    }
+
+    @JavascriptInterface
+    public String CheckFastAttackZas(String login, String wmlabFAZ) {
+        if (AppVars.Profile == null || login.equalsIgnoreCase(AppVars.Profile.UserNick)) {
+            return "";
+        }
+        return AppVars.Profile.doShowFastAttackZas ? wmlabFAZ : "";
+    }
+
+    @JavascriptInterface
+    public String CheckFastAttackTotem(String login, String wmlabFTOT) {
+        if (AppVars.Profile == null || login.equalsIgnoreCase(AppVars.Profile.UserNick)) {
+            return "";
+        }
+        return AppVars.Profile.doShowFastAttackTotem ? wmlabFTOT : "";
+    }
+
 
     @JavascriptInterface
     public void showSmiles(int index) {

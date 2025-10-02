@@ -6,4 +6,9 @@
         android:orderInCategory="100"
         android:title="@string/action_settings"
         app:showAsAction="never" />
+    <item
+        android:id="@+id/action_snapshot"
+        android:orderInCategory="101"
+        android:title="Снимок Кода"
+        app:showAsAction="never" />
 </menu>

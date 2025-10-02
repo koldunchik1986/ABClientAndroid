@@ -1,197 +1,147 @@
 package ru.neverlands.abclient.model;
 
-import org.jsoup.Jsoup;
-import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
-
-import java.util.Comparator;
-import java.util.Date;
-import java.util.Locale;
 
 import ru.neverlands.abclient.utils.AppVars;
 import ru.neverlands.abclient.utils.HelperStrings;
 
-public class InvEntry implements Comparable<InvEntry>, Cloneable {
+import java.util.Locale;
 
-    public String name = "";
-    public String wearLink = "";
-    public String dropThing = "";
-    public String dropLink = "";
-    public String dropPrice = "";
-    public String pssThing = "";
-    public String pssLink = "";
-    public int pssPrice = 0;
+public class InvEntry implements Cloneable, Comparable<InvEntry> {
+    public String html;
+    public String Dolg;
+    public String Name;
+    public int Count;
+    public String Image;
+    public String Id;
+    public String Signature;
+    public String PssThing;
+    public int PssPrice;
+    public String PssLink;
+    public String DropThing;
+    public String DropPrice;
+    public String DropLink;
+    public boolean isArt;
+    public boolean isUniq;
+    private String buttonsHtml = "";
 
-    private String img = "";
-    private int level = 0;
-    private String dolg = "";
-    private String properties = "";
-    private int dolgOne = 0;
-    private int dolgTwo = 0;
-    private int countButton = 0;
-    private boolean expired = false;
-    private boolean expirible = false;
-    private Element rawElement;
-    private int count = 1;
+    // Поля для реконструкции HTML
+    private String rowClass;
+    private String imageCellHtml;
+    private String infoCellHtml;
 
-    public InvEntry(Element element) {
-        this.rawElement = element;
-        this.count = 1;
+    public InvEntry(Element table) {
+        this.html = table.outerHtml();
+        this.Count = 1;
 
-        // Parse Wear Link
-        Element wearButton = element.selectFirst("input[value=Надеть]");
-        if (wearButton != null) {
-            String onclick = wearButton.attr("onclick");
-            this.wearLink = HelperStrings.subString(onclick, "location='", "'");
+        // Парсим основные ячейки, чтобы потом их пересобрать
+        Elements cells = table.select("> tbody > tr > td");
+        if (cells.size() >= 2) {
+            this.imageCellHtml = cells.get(0).html();
+            this.infoCellHtml = cells.get(1).html();
         }
 
-        // Parse Sell Link
-        Element sellButton = element.selectFirst("input[value^=Продать за]");
-        if (sellButton != null) {
-            String onclick = sellButton.attr("onclick");
-            this.pssThing = HelperStrings.subString(onclick, "продать < ", " >");
-            String priceStr = HelperStrings.subString(onclick, "> за ", " NV?");
-            this.pssLink = HelperStrings.subString(onclick, "location='", "'");
-            if (priceStr != null) {
-                try {
-                    this.pssPrice = Integer.parseInt(priceStr.trim());
-                } catch (NumberFormatException e) { /* ignore */ }
-            }
-        }
-
-        // Parse Drop Link
-        Element dropButton = element.selectFirst("input[src*=del.gif]");
-        if (dropButton != null) {
-            String onclick = dropButton.attr("onclick");
-            this.dropThing = HelperStrings.subString(onclick, "if(top.DeleteTrue('", "'))");
-            this.dropLink = HelperStrings.subString(onclick, "{ location='", "' }");
-        }
-
-        // Parse Name
-        Element nameElement = element.selectFirst("font.nickname > b");
+        Element nameElement = table.selectFirst("b");
         if (nameElement != null) {
-            this.name = nameElement.text().trim();
+            this.Name = nameElement.text();
         }
 
-        // Parse Image
-        Element imgElement = element.selectFirst("img[src*=weapon], img[src*=tools], img[src*=resources]");
-        if (imgElement != null) {
-            this.img = imgElement.attr("src");
-        }
-
-        // Parse Properties
-        Elements propElements = element.select("font.weaponch");
-        StringBuilder propsSb = new StringBuilder();
-        for (Element prop : propElements) {
-            String propHtml = prop.html();
-            if (propHtml.contains("Цена:")) {
-                if (this.dropPrice == null || this.dropPrice.isEmpty()) {
-                    this.dropPrice = HelperStrings.subString(propHtml, "Цена: <b>", " NV</b>");
-                }
-                continue;
-            }
-            if (propHtml.contains("Материал:")) continue;
-
-            if (propHtml.contains("Долговечность:")) {
-                this.dolg = HelperStrings.subString(propHtml, "Долговечность: <b>", "</b>");
-                if (this.dolg != null) {
-                    String[] parts = this.dolg.split("/");
-                    if (parts.length == 2) {
-                        try {
-                            this.dolgOne = Integer.parseInt(parts[0]);
-                            this.dolgTwo = Integer.parseInt(parts[1]);
-                        } catch (NumberFormatException e) { /* ignore */ }
-                    }
-                }
-            } else {
-                if (propsSb.length() > 0) propsSb.append("|");
-                propsSb.append(prop.text());
+        Elements imgElements = table.select("img[src^=http://image.neverlands.ru/weapon/]");
+        if (!imgElements.isEmpty()) {
+            this.Image = imgElements.attr("src");
+            if (this.Name == null || this.Name.isEmpty()) {
+                this.Name = imgElements.attr("alt");
             }
         }
-        this.properties = propsSb.toString();
 
-        // Other fields
-        this.countButton = element.select("input[type=button]").size();
+        this.Dolg = HelperStrings.subString(this.html, "Долговечность: ", "/");
+
+        Elements links = table.select("a[href^=main.php?]");
+        for (Element link : links) {
+            String href = link.attr("href");
+            if (href.contains("act=3")) { // Pss - Sell
+                this.PssLink = href;
+                this.PssThing = HelperStrings.subString(href, "pss=", "&");
+                String priceStr = HelperStrings.subString(href, "price=", "&");
+                try {
+                    this.PssPrice = Integer.parseInt(priceStr);
+                } catch (NumberFormatException e) {
+                    this.PssPrice = 0;
+                }
+            } else if (href.contains("act=2")) { // Drop
+                this.DropLink = href;
+                this.DropThing = HelperStrings.subString(href, "drop=", "&");
+                this.DropPrice = HelperStrings.subString(href, "price=", "&");
+            }
+        }
+
+        this.isArt = this.html.contains("artefact.gif");
+        this.isUniq = this.html.contains("uniq.gif");
     }
 
-    public String build() {
-        if (count > 1) {
-            Element nameElement = rawElement.selectFirst("font.nickname > b");
-            if (nameElement != null) {
-                nameElement.append(String.format(Locale.US, " (%d шт.)", count));
-            }
-        }
-        return rawElement.outerHtml();
+    public void inc() {
+        this.Count++;
     }
 
     public void addBulkSell() {
-        if (count <= 1 || pssThing == null || pssThing.isEmpty()) return;
-        Element sellButton = rawElement.selectFirst("input[value^=Продать за]");
-        if (sellButton != null) {
+        if (PssPrice > 0 && AppVars.Profile != null && AppVars.Profile.DoButtonSell) {
             String script = String.format(Locale.US,
-                    "javascript: if(confirm('Вы точно хотите продать все предметы < %s > по %d NV?')) { window.AndroidBridge.startBulkSell('%s', '%d', '%s'); }",
-                    pssThing, pssPrice, pssThing, pssPrice, pssLink);
-            Element newButton = new Element("input")
-                    .attr("type", "button")
-                    .attr("class", "invbut")
-                    .attr("onclick", script)
-                    .attr("value", String.format(Locale.US, "Продать пачку за %d NV", pssPrice * count));
-            sellButton.after(newButton);
+                "top.frames[\"main_frame\"].location='main.php?get_id=56&act=10&bulk_sell=1&pss=%s&price=%d&vcode=%s';",
+                this.PssThing, this.PssPrice, AppVars.VCode);
+            this.buttonsHtml += "<input type=button class=lbut style=\"width:100px\" value=\"Продать все\" onclick=\"" + script + "\">";
         }
     }
 
     public void addBulkDelete() {
-        if (count <= 1 || dropThing == null || dropThing.isEmpty()) return;
-        Element dropButton = rawElement.selectFirst("input[src*=del.gif]");
-        if (dropButton != null) {
+        if (DropLink != null && !DropLink.isEmpty() && AppVars.Profile != null && AppVars.Profile.DoButtonDrop) {
             String script = String.format(Locale.US,
-                    "javascript: if(top.DeleteTrue('Пачку')) { window.AndroidBridge.startBulkDrop('%s', '%s'); }",
-                    dropThing, dropPrice);
-            Element newButton = new Element("input")
-                    .attr("type", "image")
-                    .attr("src", "http://image.neverlands.ru/del.gif")
-                    .attr("width", "14").attr("height", "14").attr("border", "0")
-                    .attr("title", "Выбросить всю пачку")
-                    .attr("onclick", script);
-            dropButton.before(newButton);
+                "if(confirm('Вы уверены, что хотите выбросить все предметы &laquo;%s&raquo;? Восстановить их будет невозможно.')) { top.frames[\"main_frame\"].location='main.php?get_id=56&act=10&bulk_drop=1&drop=%s&price=%s&vcode=%s'; }",
+                this.Name, this.DropThing, this.DropPrice, AppVars.VCode);
+            this.buttonsHtml += "<input type=button class=lbut style=\"width:100px\" value=\"Выбросить все\" onclick=\"" + script + "\">";
         }
     }
 
-    public void inc() { this.count++; }
-    public boolean isExpired() { return this.expirible && this.expired; }
+    public String build() {
+        if (imageCellHtml == null || infoCellHtml == null) {
+            return this.html; // Возвращаем оригинал, если парсинг прошел неудачно
+        }
+
+        String finalInfoCellHtml = this.infoCellHtml;
+        if (this.Count > 1) {
+            finalInfoCellHtml = finalInfoCellHtml.replace("<b>" + this.Name + "</b>", "<b>" + this.Name + " (x" + this.Count + ")</b>");
+        }
+
+        String buttonsRow = "";
+        if (!this.buttonsHtml.isEmpty()) {
+            buttonsRow = "<tr><td colspan=2 align=right>" + this.buttonsHtml + "</td></tr>";
+        }
+
+        // Собираем HTML строки таблицы заново
+        return "<tr><td bgcolor=#F5F5F5>" + imageCellHtml + "</td><td width=100% bgcolor=#FFFFFF valign=top><table cellpadding=0 cellspacing=0 border=0 width=100%>" + finalInfoCellHtml + buttonsRow + "</table></td></tr>";
+    }
 
     @Override
     public int compareTo(InvEntry other) {
-        int result = this.name.compareTo(other.name);
-        if (result != 0) return result;
-
-        result = this.img.compareTo(other.img);
-        if (result != 0) return result;
-
-        result = Boolean.compare(this.expirible, other.expirible);
-        if (result != 0) return result;
-
-        result = Integer.compare(this.level, other.level);
-        if (result != 0) return result;
-
-        result = Integer.compare(this.countButton, other.countButton);
-        if (result != 0) return result;
-
-        return this.properties.compareTo(other.properties);
+        if (this.Name == null || other.Name == null) return 1;
+        if (!this.Name.equals(other.Name)) return this.Name.compareTo(other.Name);
+        if (this.isArt != other.isArt) return 1;
+        if (this.isUniq != other.isUniq) return 1;
+        if (this.Dolg == null && other.Dolg == null) return 0;
+        if (this.Dolg == null || other.Dolg == null) return 1;
+        if (!this.Dolg.equals(other.Dolg)) return 1;
+        return 0; // They are the same
     }
 
     public int compareDolg(InvEntry other) {
-        if (other == null) return 0;
-        boolean isFull = dolgOne == dolgTwo;
-        boolean isFullOther = other.dolgOne == other.dolgTwo;
-        int result = Boolean.compare(isFull, isFullOther);
-        if (result != 0) return result;
-
-        result = Integer.compare(dolgOne, other.dolgOne);
-        if (result != 0) return result;
-
-        return Integer.compare(dolgTwo, other.dolgTwo);
+        if (this.Dolg == null || other.Dolg == null) return 0;
+        try {
+            int dolg1 = Integer.parseInt(this.Dolg);
+            int dolg2 = Integer.parseInt(other.Dolg);
+            return Integer.compare(dolg1, dolg2);
+        } catch (NumberFormatException e) {
+            return this.Dolg.compareTo(other.Dolg);
+        }
     }
 
     @Override
@@ -199,4 +149,3 @@ public class InvEntry implements Comparable<InvEntry>, Cloneable {
         return super.clone();
     }
 }
-

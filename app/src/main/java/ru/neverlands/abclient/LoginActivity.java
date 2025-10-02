@@ -74,6 +74,26 @@ public class LoginActivity extends AppCompatActivity {
                 openProfileActivity(selectedProfile);
             }
         });
+
+        binding.deleteProfileButton.setOnClickListener(v -> deleteSelectedProfile());
+    }
+
+    private void deleteSelectedProfile() {
+        if (selectedProfile == null || selectedProfile.UserNick.isEmpty()) {
+            Toast.makeText(this, "Не выбран профиль для удаления", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        new androidx.appcompat.app.AlertDialog.Builder(this)
+                .setTitle("Удаление профиля")
+                .setMessage("Вы уверены, что хотите удалить профиль '" + selectedProfile.UserNick + "'? Это действие необратимо.")
+                .setPositiveButton("Удалить", (dialog, which) -> {
+                    selectedProfile.delete(this);
+                    Toast.makeText(this, "Профиль '" + selectedProfile.UserNick + "' удален", Toast.LENGTH_SHORT).show();
+                    loadProfiles(); // Перезагружаем список профилей
+                })
+                .setNegativeButton("Отмена", null)
+                .show();
     }
 
     private boolean checkAndRequestPermissions() {
@@ -194,8 +214,11 @@ public class LoginActivity extends AppCompatActivity {
 
         AuthManager.authorize(this, username, gamePassword, new AuthManager.AuthCallback() {
             @Override
-            public void onSuccess() {
+            public void onSuccess(List<java.net.HttpCookie> cookies) {
                 runOnUiThread(() -> {
+                    // Сохраняем куки для последующей передачи в WebView
+                    AppVars.lastCookies = cookies;
+
                     // Пароль сохраняется только после успешного входа
                     if (!profileToLogin.isEncrypted && binding.rememberCheckBox.isChecked()) {
                         profileToLogin.UserPassword = gamePassword;

@@ -1,8 +1,13 @@
 # Built application files
-*.apk
+# *.apk
 *.aar
 *.ap_
 *.aab
+*.har
+*.gitignore
+
+#Logs
+Logs/
 
 # Files for the ART/Dalvik VM
 *.dex
@@ -10,6 +15,9 @@
 # Java class files
 *.class
 
+#backup files
+backup/
+*.profile
 # Generated files
 bin/
 gen/

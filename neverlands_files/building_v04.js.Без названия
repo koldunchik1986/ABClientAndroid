@@ -1,0 +1,291 @@
+var d = document; 
+var getById = function (id) { return d.getElementById(id) }
+
+/* AJAX */
+var xmlHttp = false;
+function GetHttpRequest()
+{
+    var xmlHttpObj = false;
+    if(window.XMLHttpRequest) {
+        // IE7+, Firefox, Chrome, Opera, Safari
+        xmlHttpObj = new XMLHttpRequest();
+    }
+    else if(window.ActiveXObject) {
+        // IE6, IE5
+        try {
+            xmlHttpObj = new ActiveXObject('Microsoft.XMLHTTP');
+        }
+        catch(e) {
+            try {
+                xmlHttpObj = new ActiveXObject('Msxml2.XMLHTTP');                     
+            }
+            catch(e){}
+        }
+    }
+    return xmlHttpObj;
+}
+
+function AjaxGetSync(script, callback_func)
+{
+    if(!xmlHttp) 
+    {
+        xmlHttp = GetHttpRequest();
+        if(!xmlHttp) return;
+    }
+    xmlHttp.open('GET','./gameplay/ajax/'+script, false);
+    if (typeof(callback_func) == 'undefined')
+    {
+        xmlHttp.onreadystatechange = AjaxProcessChange;
+    }
+    else
+    {
+        xmlHttp.onreadystatechange = function() {
+            if (xmlHttp.readyState === 4 && xmlHttp.status === 200) {
+                var response = xmlHttp.responseText;
+                callback_func(response);
+            }
+        }
+    }
+    xmlHttp.send(null);
+}
+
+function AjaxGet(script, callback_func)
+{
+    if(!xmlHttp) 
+    {
+        xmlHttp = GetHttpRequest();
+        if(!xmlHttp) return;
+    }
+    xmlHttp.open('GET','./gameplay/ajax/'+script,true);
+    if (typeof(callback_func) == 'undefined')
+    {
+        xmlHttp.onreadystatechange = AjaxProcessChange;
+    }
+    else
+    {
+        xmlHttp.onreadystatechange = function() {
+            if (xmlHttp.readyState === 4 && xmlHttp.status === 200) {
+                var response = xmlHttp.responseText;
+                callback_func(response);
+            }
+        }
+    }
+    xmlHttp.send(null);
+}
+
+function AjaxPost(script, data, callback_func)
+{
+    if(!xmlHttp) 
+    {
+        xmlHttp = GetHttpRequest();
+        if(!xmlHttp) return;
+    }
+    xmlHttp.open('POST','./gameplay/ajax/'+script,true);
+    xmlHttp.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
+    
+    if (typeof(callback_func) == 'undefined')
+    {
+        xmlHttp.onreadystatechange = AjaxProcessChange;
+    }
+    else
+    {
+        xmlHttp.onreadystatechange = function() {
+            if (xmlHttp.readyState == 4 && xmlHttp.status == 200) {
+                var response = xmlHttp.responseText;
+                callback_func(response);
+            }
+        }
+    }
+    
+    var data_str = '';
+    data['r'] = Math.random();
+    for (var k in data) {
+        if (data.hasOwnProperty(k)) {
+            data_str += (data_str !== '' ? '&' : '') + encodeURIComponent(k) + '=' + encodeURIComponent(data[k]);
+        }
+    }
+    xmlHttp.send(data_str);
+}
+
+function AjaxProcessChange()
+{
+    if(xmlHttp.readyState === 4) {
+        if(xmlHttp.status === 200) {
+            var ret = xmlHttp.responseText;
+            if(ret !== 'ERR') {
+                arr_res = ret.split('@');
+                if(arr_res[0] !== 'QUEST') {
+                    StateReady();
+                }
+                else {
+                    QuestReady();
+                }
+            }
+        }
+    }
+}
+
+/* Align and Clan signs */
+var align_ar = ["0;0","darks.gif;Дети Тьмы","lights.gif;Дети Света","sumers.gif;Дети Сумерек","chaoss.gif;Дети Хаоса","light.gif;Истинный Свет","dark.gif;Истинная Тьма","sumer.gif;Нейтральные Сумерки","chaos.gif;Абсолютный Хаос","angel.gif;Ангел"];
+
+function sh_align(alid,mode)
+{
+    if(alid > 0)
+    {
+        split_ar = align_ar[alid].split(";");
+        return '<img src=http://image.neverlands.ru/signs/'+split_ar[0]+' width=15 height=12 border=0 title="'+split_ar[1]+'">'+(!mode ? '&nbsp;' : '');
+    }
+    return '';
+}
+
+function sh_sign(sign,signn,signs)
+{
+    var reg_exp = /[f]\d\d\d/i;
+    if(reg_exp.test(sign)) sign = 'fami.gif';
+    if(sign && sign!=='none' && sign!=='n') {
+        return '<img src=http://image.neverlands.ru/signs/'+sign+' width=15 height=12 border=0 title=" '+signn+(signs ? ' ('+signs+')' : '')+' ">&nbsp;';
+    }
+    return '';
+}
+
+function sh_sign_s(sign)
+{
+    var reg_exp = /[f]\d\d\d/i;
+    if(reg_exp.test(sign)) {
+        sign = 'fami';
+    }
+    if(sign && sign!=='n') {
+        return '<img src=http://image.neverlands.ru/signs/'+sign+'.gif width=15 height=12 border=0>&nbsp;';
+    }
+    return '';
+}
+
+/* HP and MP */
+var hpmp_change_interval;
+
+function ins_HP()
+{
+    hpmp_change_interval = setInterval("cha_HP()",1000);
+    if(inshp[0] < 0) inshp[0] = 0;
+    if(inshp[3] < 7) inshp[3] = 7;
+}
+
+function cha_HP()
+{
+    if(inshp[0] < 0) inshp[0] = 0;
+    if(inshp[0] > inshp[1]) inshp[0] = inshp[1];
+    if(inshp[2] > inshp[3]) inshp[2] = inshp[3];
+    if(inshp[0] >= inshp[1] && inshp[2] >= inshp[3]) clearInterval(hpmp_change_interval);
+    
+    s_hp_f = Math.round(160*(inshp[0]/inshp[1]));
+    s_ma_f = Math.round(160*(inshp[2]/inshp[3]));
+
+    document.getElementById('fHP').width = s_hp_f;
+    document.getElementById('eHP').width = 160 - s_hp_f;
+    document.getElementById('fMP').width = s_ma_f;
+    document.getElementById('eMP').width = 160 - s_ma_f;
+    document.getElementById('hbar').innerHTML = '&nbsp;[<font color=#bb0000><b>'+Math.round(inshp[0])+'</b>/<b>'+inshp[1]+'</b></font> | <font color=#336699><b>'+Math.round(inshp[2])+'</b>/<b>'+inshp[3]+'</b></font>]';
+
+    inshp[0] += inshp[1]/inshp[4];
+    inshp[2] += inshp[3]/inshp[5];
+}
+
+/* Game Rating counter */
+function view_t()
+{
+    return '<a href="http://top.mail.ru/jump?from=665202" target="_blank"><img src="http://d6.c2.ba.a0.top.mail.ru/counter?id=665202;t=79;js=13;r='+escape(d.referrer)+';j='+navigator.javaEnabled()+';s='+(screen.width+'*'+screen.height)+';d='+(screen.colorDepth ? screen.colorDepth : screen.pixelDepth)+';rand='+Math.random()+'" border="0" height="31" width="38" style="filter:alpha(opacity=50);"></a>';
+}
+
+/* Neverlands message */
+var msgboxClass = false;
+var msgboxDiv = false;
+var msgboxOverlay = false;
+var msgboxTimer = 0;
+var msgboxTimeLeft = 0;
+var msgboxGlogalMessage = false;
+
+function RetClass()
+{
+    var userAgent = navigator.userAgent.toLowerCase();
+    if(userAgent.indexOf('mac') != -1 && userAgent.indexOf('firefox')!=-1) msgboxClass = 'TB_overlayMacFFBGHack';
+    else msgboxClass = 'TB_overlayBG';
+    return msgboxClass;    
+}
+
+function MessBoxDiv(mess)
+{
+    if(!msgboxDiv)
+    {
+        msgboxOverlay = document.createElement('div');
+        msgboxOverlay.id = 'darker';
+        msgboxOverlay.className = (msgboxClass ? msgboxClass : RetClass());
+        msgboxOverlay.style.display = 'block';
+        document.body.appendChild(msgboxOverlay);
+        
+        msgboxDiv = document.createElement('div');
+        msgboxDiv.className = 'png';
+        msgboxDiv.id = 'static_window';
+        msgboxDiv.style.top = (getMidWin() - 91)+'px';
+        msgboxDiv.innerHTML = '<div class="ws_top png"></div><div class="ws_right png"></div><div class="ws_bottom png"></div><div class="ws_middle"><a href="javascript: MessBoxDivClose();" class="circ"></a><div class="text" id="mess_box_d">'+mess+'</div><a class="cl_but" href="javascript: MessBoxDivClose();"></a></div>';
+        document.body.appendChild(msgboxDiv);        
+    }    
+}
+
+function MessBoxDivClose()
+{
+    if(msgboxTimer) clearInterval(msgboxTimer);
+    document.body.removeChild(msgboxDiv);
+    document.body.removeChild(msgboxOverlay);
+    msgboxOverlay = false;
+    msgboxDiv = false;    
+}
+
+function getBodyScrollTop()
+{
+    return self.pageYOffset || (document.documentElement && document.documentElement.scrollTop) || (document.body && document.body.scrollTop);
+}
+
+function getMidWin()
+{
+    var wheight = typeof( window.innerHeight ) == 'number' ? window.innerHeight : browserHeight = document.documentElement.clientHeight;
+    return (wheight / 2 + getBodyScrollTop());
+}
+
+function timeCheck()
+{
+    msgboxTimeLeft -= 1000;
+    if(msgboxTimeLeft <= 0)
+    {
+        MessBoxDivClose();
+    }
+    else
+    {
+        d.getElementById('mess_box_d').innerHTML = msgboxGlogalMessage+' '+timeFormat(msgboxTimeLeft / 1000);
+    }    
+}
+
+function timeStarting(mess, tinit)
+{
+    msgboxGlogalMessage = mess;
+    MessBoxDiv(mess+' '+timeFormat(tinit));
+    msgboxTimeLeft = tinit * 1000;
+    msgboxTimer = setInterval('timeCheck()',1000);
+}
+
+function timeFormat(leftsec)
+{
+    var fstr;
+    var hour = Math.floor(leftsec / 3600);
+    if(hour < 10) fstr = '0' + hour.toString();
+    else fstr = hour.toString();
+    fstr += ':';
+    leftsec -= 3600*hour;
+    var min = Math.floor(leftsec / 60);
+    if(min < 10) fstr += '0' + min.toString();
+    else fstr += min.toString();
+    fstr += ':';
+    var sec = leftsec - min*60;
+    if(sec < 10) fstr += '0' + sec.toString();
+    else fstr += sec.toString();
+    return fstr;
+}

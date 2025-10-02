@@ -1,0 +1,32 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<!-- saved from url=(0029)http://neverlands.ru/main.php -->
+<html><head><meta http-equiv="Content-Type" content="text/html; charset=windows-1251">
+
+<meta http-equiv="Cache-Control" content="No-Cache">
+<meta http-equiv="Pragma" content="No-Cache">
+<meta http-equiv="Expires" content="0">
+<link href="./game_v02.css" rel="STYLESHEET" type="text/css">
+<link href="./game.css" rel="STYLESHEET" type="text/css">
+<link href="./frame.css" rel="STYLESHEET" type="text/css">
+<link href="./nl_calendar.css" rel="STYLESHEET" type="text/css">
+<link href="./stl.css" rel="STYLESHEET" type="text/css">
+<script src="./nl_calendar.js.Без названия"></script>
+<script src="./building_v04.js.Без названия" charset="windows-1251"></script>
+<script src="./castle_v05.js.Без названия" charset="windows-1251"></script>
+<script src="./nl_tooltip.js.Без названия"></script>
+</head>
+<body>
+
+<script language="JavaScript">
+var inshp = [355,355,2527,2527,833,2195];
+var vcode = [[1,"c0c056fc8b79ef5a007055e4835540b4"],[1,"21265b8d1f0911d1d1126b3bd73fa798"],[1,"0a53862feb3a3c8d0ccb8ca78524771b"]];
+var build = ["Блудя",22,4,"c174.gif","Триглав","I am Legend",1,"main","Замок","1011x1002",1,0,""];
+var mapbt = [["inf","Ваш персонаж","c0c056fc8b79ef5a007055e4835540b4",[]],["inv","Инвентарь","21265b8d1f0911d1d1126b3bd73fa798",[]],["up","Выйти","0a53862feb3a3c8d0ccb8ca78524771b",[]]];
+var castle = ["76167a41387c28ee567f0f59ece58c8d","b73f98c3d1c95016df2c72820590363b"];
+var buildings = [4,0,4,3,3,0,3,3,3,0];
+var bcodes = {"main":"d199fac08ac97b937932122c46f7774c","wall":"b293105855bcbde340927c5ccd31cde7","mtower":"4bf1bb9594fc6b307c72b57609904b18","fountain":"8ad99869e9d5d8fd7ef2fad980527339","pond":"b57f04636e4d260bc45fa85d39349615","prison":"6073ea7db9d31a3e95da4cc59e39897c","portal":"ecb2dda3f4d609656244caa5cfe96e6d","hall":"539d342d20a4fc99da777fa1a98a1e6f","storage":"f181bcf85e078116bc884881e2443225","barrack":"5c4434c3b84934bc6af40cd948dbd101"};
+view_castle();
+</script><div id="topbar"><div class="nick"><img src="./chaoss.gif" width="15" height="12" border="0" title="Дети Хаоса">&nbsp;<img src="./c174.gif" width="15" height="12" border="0" title=" Триглав (I am Legend) ">&nbsp;<b>Блудя</b>[22]&nbsp;</div><div class="hpmp"><div class="hp"><img src="./hp.gif" width="160" height="6" border="0" id="fHP"><img src="./nohp.gif" width="0" height="6" border="0" id="eHP"></div><div class="mp"><img src="./ma.gif" width="160" height="6" border="0" id="fMP"><img src="./noma.gif" width="0" height="6" border="0" id="eMP"></div></div><div id="hbar">&nbsp;[<font color="#bb0000"><b>355</b>/<b>355</b></font> | <font color="#336699"><b>2527</b>/<b>2527</b></font>]</div><div class="exit"><a href="javascript: top.exit_redir()"><img src="./exit.gif" align="absmiddle" width="15" height="15" border="0"></a></div><div align="center" id="main_buttons"> <input type="button" class="fr_but" id="inf" value="Ваш персонаж" onclick="ButClick(&quot;inf&quot;)"> <input type="button" class="fr_but" id="inv" value="Инвентарь" onclick="ButClick(&quot;inv&quot;)"> <input type="button" class="fr_but" id="up" value="Выйти" onclick="ButClick(&quot;up&quot;)"></div></div><div id="topbarlines"></div><div style="margin: 10px auto; width: 1064px; height: 357px;" id="castle_images"><img src="./back.png" style="position: absolute; z-index: 10;"><img src="./sky.png" style="position: absolute; z-index: 11;"><img src="./mtower_4.png" style="position: absolute; z-index: 14;"><img src="./main_4.png" style="position: absolute; z-index: 16;"><img src="./fountain_3.png" style="position: absolute; z-index: 18;"><img src="./pond_3.png" style="position: absolute; z-index: 20;"><img src="./portal_3.png" style="position: absolute; z-index: 24;"><img src="./hall_3.png" style="position: absolute; z-index: 26;"><img src="./storage_3.png" style="position: absolute; z-index: 28;"><img src="./1x1.gif" width="1064" height="357" style="position: absolute; z-index: 50;" usemap="#castleMap"><map id="castleMap" name="castleMap"><area shape="poly" coords="329,14,321,161,302,177,301,205,322,214,377,228,403,218,387,94,361,11,343,3" href="http://neverlands.ru/main.php#" onclick="view_building(&#39;mtower&#39;); return false;" alt="Башня Магов" onmouseover="tooltip(this,&#39;Башня Магов&#39;)" onmouseout="hide_info(this)"><area shape="poly" coords="557,14,469,132,475,155,501,197,702,213,758,184,758,135,723,12,624,0" href="http://neverlands.ru/main.php#" onclick="view_building(&#39;main&#39;); return false;" alt="Цитадель" onmouseover="tooltip(this,&#39;Цитадель&#39;)" onmouseout="hide_info(this)"><area shape="poly" coords="586,285,643,217,670,217,705,251,704,261,690,288" href="http://neverlands.ru/main.php#" onclick="view_building(&#39;fountain&#39;); return false;" alt="Фонтан" onmouseover="tooltip(this,&#39;Фонтан&#39;)" onmouseout="hide_info(this)"><area shape="poly" coords="376,293,436,275,541,288,559,324,509,349,413,346,368,321" href="http://neverlands.ru/main.php#" onclick="view_building(&#39;pond&#39;); return false;" alt="Пруд" onmouseover="tooltip(this,&#39;Пруд&#39;)" onmouseout="hide_info(this)"><area shape="poly" coords="423,197,420,261,493,261,486,192,473,172,434,170" href="http://neverlands.ru/main.php#" onclick="view_building(&#39;portal&#39;); return false;" alt="Портал" onmouseover="tooltip(this,&#39;Портал&#39;)" onmouseout="hide_info(this)"><area shape="poly" coords="719,215,789,150,800,153,799,176,863,202,869,239,792,292,718,285" href="http://neverlands.ru/main.php#" onclick="view_building(&#39;hall&#39;); return false;" alt="Дипломатический Холл" onmouseover="tooltip(this,&#39;Дипломатический Холл&#39;)" onmouseout="hide_info(this)"><area shape="poly" coords="262,354,256,275,97,210,0,213,0,351" href="http://neverlands.ru/main.php#" onclick="view_building(&#39;storage&#39;); return false;" alt="Хранилище" onmouseover="tooltip(this,&#39;Хранилище&#39;)" onmouseout="hide_info(this)"></map></div><div id="building" style="margin: 10px auto; width: 1064px;"></div><div id="rating_image"><a href="http://top.mail.ru/jump?from=665202" target="_blank"><img src="./counter" border="0" height="31" width="38" style="filter:alpha(opacity=50);"></a></div>
+<div id="tooltip" style="z-index: 10000; opacity: 1; visibility: hidden; left: 928px; top: 130px;">Цитадель</div>
+
+</body></html>

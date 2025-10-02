@@ -18,7 +18,7 @@ import ru.neverlands.abclient.ABClientApplication;
  */
 public class Cache {
     private static final String TAG = "Cache";
-    private static final ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
+    private static final Object lock = new Object();
     private static final Map<String, byte[]> memCache = new HashMap<>();
     private static final File cacheDir = new File(ABClientApplication.getAppContext().getExternalFilesDir(null), "abcache");
     
@@ -61,9 +61,8 @@ public class Cache {
         }
         
         String key = getKey(url);
-        
-        try {
-            lock.readLock().lock();
+
+        synchronized (lock) {
             byte[] data = memCache.get(key);
             if (data == null) {
                 data = getDisk(key);
@@ -72,8 +71,6 @@ public class Cache {
                 }
             }
             return data;
-        } finally {
-            lock.readLock().unlock();
         }
     }
     
@@ -89,14 +86,11 @@ public class Cache {
         }
         
         String key = getKey(url);
-        
-        try {
-            lock.writeLock().lock();
+
+        synchronized (lock) {
             memCache.put(key, data);
-        } finally {
-            lock.writeLock().unlock();
         }
-        
+
         if (storeToDisk) {
             storeDisk(key, data);
         }
@@ -106,11 +100,8 @@ public class Cache {
      * Очистка кэша
      */
     public static void clear() {
-        try {
-            lock.writeLock().lock();
+        synchronized (lock) {
             memCache.clear();
-        } finally {
-            lock.writeLock().unlock();
         }
     }
     

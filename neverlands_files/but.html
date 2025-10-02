@@ -1,0 +1,65 @@
+
+<!-- saved from url=(0031)http://neverlands.ru/ch/but.php -->
+<html><head><meta http-equiv="Content-Type" content="text/html; charset=windows-1251">
+<meta http-equiv="Cache-Control" content="No-Cache">
+<meta http-equiv="Pragma" content="No-Cache">
+<meta http-equiv="Expires" content="0">
+
+    <link href="./button.css" rel="STYLESHEET" type="text/css">
+    <script language="JavaScript" src="./ch_but.js.Без названия"></script>
+    <script>
+        function reset_length()
+        {
+            var w=window,d=document,e=d.documentElement,g=d.getElementsByTagName('body')[0],x=w.innerWidth||e.clientWidth||g.clientWidth,y=w.innerHeight||e.clientHeight||g.clientHeight;
+            var browser = navigator.userAgent.toLowerCase();
+            if(browser.indexOf('firefox') > -1 || browser.indexOf('chrome') > -1)
+                x -= 140;
+            var size = x - 587;
+            if(size < 100) size = 100;
+            window.document.FBT.text.size = 2*size/13;
+            window.document.getElementById('INPT').width = size;
+        }
+        window.onresize = reset_length;
+    </script>
+</head>
+<body leftmargin="0" topmargin="0" marginheight="0" marginwidth="0" bgcolor="#FFFFFF" onload="reset_length();status=&#39;NeverLands.Ru - Come as you are.&#39;">
+<form action="http://neverlands.ru/ch.php" target="ch_refr" method="POST" name="FBT" onsubmit="submit_msg();top.ch_refresh_n();">
+    <table cellspacing="0" cellpadding="0" width="100%" border="0" height="30" background="./main_bg.gif">
+        <tbody><tr>
+            <td background="./1bg.gif"><input type="submit" name="sbmsg" style="display:none"><input type="hidden" name="fyo" value=""><input type="hidden" name="lmid" value="8"><img src="./spacer.gif" width="5" height="30" border="0" align="absmiddle"></td>
+            <td background="./1bg.gif" class="action_text" align="absmiddle"><input type="checkbox" name="pactiondo" value="1"></td><td background="./1bg.gif" class="action_text">Действие</td>
+            <td width="75" height="30"><img src="./1_1.gif" width="75" height="30" border="0" alt="Сказать:" title="Сказать" align="absmiddle"></td>
+            <td id="INPT" background="./fbg.gif" align="absmiddle" width="713"><input name="text" type="text" class="chat_forma" size="109" maxlength="250" onkeyup="if ((event.ctrlKey) &amp;&amp; ((event.keyCode==10) || (event.keyCode==13))) { document.FBT.sbmsg.click() }"></td>
+            <td width="6" height="30"><img src="./1_2.gif" width="6" height="30" border="0" align="absmiddle"></td>
+            <td width="23" height="30"><img src="./b1.gif" width="23" height="30" border="0" class="chatpostbut" align="absmiddle" alt="Отправить сообщение" title="Отправить сообщение" onclick="document.FBT.sbmsg.click()"></td>
+            <td width="19" height="30"><img src="./b2.gif" width="19" height="30" border="0" align="absmiddle" class="chatpostbut" onclick="top.clr_input();" alt="Очистить поле ввода" title="Очистить поле ввода"></td>
+            <td width="11" height="30"><img src="./b3.gif" width="11" height="30" border="0" align="absmiddle" class="chatpostbut" onclick="smile_open(&#39;&#39;, event);" alt="Смайлы №1" title="Смайлы №1"></td><td width="10" height="30"><img src="./b4.gif" width="10" height="30" border="0" align="absmiddle" class="chatpostbut" onclick="smile_open(&#39;2&#39;, event);" alt="Смайлы №2" title="Смайлы №2"></td>
+            <td width="15" height="30"><img src="./1_3.gif" width="15" height="30" border="0" align="absmiddle"></td>
+            <td width="30" height="30"><img src="./bb0.gif" width="30" height="30" border="0" align="absmiddle" class="chatpostbut" onclick="top.clan_private();" alt="Клан-приват" title="Клан-приват"></td>            <td width="30" height="30"><img src="./bb1.gif" width="30" height="30" border="0" align="absmiddle" class="chatpostbut" onclick="top.ch_refresh();" alt="Обновить окно чата" title="Обновить окно чата"></td>
+            <td width="30" height="30"><img src="./bb2.gif" width="30" height="30" border="0" align="absmiddle" class="chatpostbut" onclick="top.clr_chat();" alt="Очистить окно чата" title="Очистить окно чата"></td>
+            <td width="30" height="30"><img src="./bb3_all.gif" width="30" height="30" border="0" align="absmiddle" class="chatpostbut" onclick="top.change_chatsetup();" name="schat" alt="Режим чата (Показывать все сообщения)" title="Режим чата (Показывать все сообщения)"></td>
+            <td width="30" height="30"><img src="./bb_10.gif" width="30" height="30" border="0" align="absmiddle" class="chatpostbut" onclick="top.change_chatspeed();" name="spchat" alt="Скорость обновления (раз в 10 секунд)" title="Скорость обновления (раз в 10 секунд)"></td>
+            <td width="30" height="30"><img src="./bb4_nc.gif" width="30" height="30" border="0" align="absmiddle" class="chatpostbut" name="lrchat" onclick="top.change_latrus();" alt="LAT &lt;-&gt; RUS (Транслит выключен)" title="LAT &lt;-&gt; RUS (Транслит выключен)"></td>
+            <td height="30" width="145"><div id="serverTime" style="font-size: 18px; font-style: italic; text-align: center">00:37:30</div></td>
+            <td width="26" height="30"><img src="./ab1.gif" width="26" height="30" border="0" align="absmiddle" class="chatpostbut" onclick="use_action(&#39;clan-action&#39;);" alt="Клан" title="Клан"></td>
+            <td width="26" height="30"><img src="./ab3.gif" width="26" height="30" border="0" align="absmiddle" class="chatpostbut" onclick="use_action(&#39;addon-action&#39;);" alt="Возможности игрока" title="Возможности игрока"></td>
+            <td width="26" height="30"><img src="./spacer.gif" width="126" height="30" border="0"></td>
+        </tr>
+    </tbody></table>
+</form>
+<script language="JavaScript">
+    document.FBT.text.focus();
+
+    var serverDate = new Date(2025, 09, 30, 0, 37, 04);
+    var updated = new Date();
+    function updateServerTime()
+    {
+        var now = new Date();
+        var d = new Date(serverDate.getTime() + (now.getTime() - updated.getTime()));
+        window.document.getElementById("serverTime").innerText = (d.getHours() < 10 ? "0" : "") + d.getHours() + ":" + (d.getMinutes() < 10 ? "0" : "") + d.getMinutes() + ":" + (d.getSeconds() < 10 ? "0" : "") + d.getSeconds();
+    }
+    updateServerTime();
+    setInterval(updateServerTime, 1000);
+</script>
+
+</body></html>

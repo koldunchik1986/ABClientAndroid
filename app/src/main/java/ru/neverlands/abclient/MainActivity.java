@@ -6,6 +6,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.pm.PackageManager;
+import android.content.res.AssetManager;
 import android.net.Uri;
 import android.os.Bundle;
 import android.util.Log;
@@ -19,6 +20,10 @@ import android.webkit.WebResourceResponse;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
+import android.webkit.WebChromeClient;
+import android.webkit.ConsoleMessage;
+import android.widget.ArrayAdapter;
+import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -34,24 +39,34 @@ import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 import com.google.android.material.navigation.NavigationView;
 
 import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.lang.ref.WeakReference;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Date;
+import java.util.HashMap;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Timer;
 import java.util.TimerTask;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import java.util.zip.GZIPInputStream;
 
+import ru.neverlands.abclient.bridge.WebAppInterface;
 import ru.neverlands.abclient.databinding.ActivityMainBinding;
+import ru.neverlands.abclient.manager.RoomManager;
 import ru.neverlands.abclient.model.UserConfig;
 import ru.neverlands.abclient.proxy.CookiesManager;
 import ru.neverlands.abclient.utils.AppLogger;
 import ru.neverlands.abclient.utils.AppVars;
 import ru.neverlands.abclient.utils.Chat;
+import ru.neverlands.abclient.utils.Russian;
 
 /**
  * Основная активность приложения.
@@ -62,6 +77,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     private ActivityMainBinding binding;
     private Timer timer;
     private boolean isExiting = false;
+    private boolean isRoomManagerStarted = false;
 
     private final BroadcastReceiver broadcastReceiver = new BroadcastReceiver() {
         @Override
@@ -83,29 +99,28 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                     }
                     break;
                 case AppVars.ACTION_STOP_AUTOFISH:
-                    // TODO: Implement ViewModel call to stop auto-fish
                     Toast.makeText(context, "Авторыбалка остановлена", Toast.LENGTH_SHORT).show();
                     break;
             }
         }
     };
-    
+
     @SuppressLint("SetJavaScriptEnabled")
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        AppVars.init(this);
+        AppVars.mainActivity = new WeakReference<>(this);
         
         binding = ActivityMainBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
         
-        // Настройка тулбара
         Toolbar toolbar = binding.appBarMain.toolbar;
         setSupportActionBar(toolbar);
         if (AppVars.Profile != null && AppVars.Profile.UserNick != null) {
             getSupportActionBar().setTitle(AppVars.Profile.UserNick);
         }
         
-        // Настройка бокового меню
         DrawerLayout drawer = binding.drawerLayout;
         NavigationView navigationView = binding.navView;
         ActionBarDrawerToggle toggle = new ActionBarDrawerToggle(
@@ -114,7 +129,6 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         toggle.syncState();
         navigationView.setNavigationItemSelectedListener(this);
 
-        // Установка версии в заголовке бокового меню
         View headerView = navigationView.getHeaderView(0);
         TextView navHeaderTitle = headerView.findViewById(R.id.nav_header_title);
         try {
@@ -124,119 +138,66 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             e.printStackTrace();
             navHeaderTitle.setText("");
         }
-        
-        // Настройка WebView
-        WebView webView = binding.appBarMain.contentMain.webView;
-        WebSettings webSettings = webView.getSettings();
-        webSettings.setJavaScriptEnabled(true);
-        webSettings.setDomStorageEnabled(true);
-        webSettings.setDatabaseEnabled(true);
-        //webSettings.setAppCacheEnabled(true);
-        webSettings.setUseWideViewPort(true);
-        webSettings.setLoadWithOverviewMode(true);
-        webSettings.setSupportZoom(true);
-        webSettings.setBuiltInZoomControls(true);
-        webSettings.setDisplayZoomControls(false);
-        webSettings.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
 
-        // Add Javascript Interface
-        webView.addJavascriptInterface(new ru.neverlands.abclient.bridge.WebAppInterface(this), "AndroidBridge");
-
-        // Enable cookies including third-party for frames/chat
-        CookieManager.getInstance().setAcceptCookie(true);
-        CookieManager.getInstance().setAcceptThirdPartyCookies(webView, true);
-        
-        // Настройка WebViewClient для перехвата запросов
-        webView.setWebViewClient(new WebViewClient() {
-            @Override
-            public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
-                return false; // Позволяем WebView обрабатывать URL
-            }
-            
-            @Override
-            public void onPageFinished(WebView view, String url) {
-                super.onPageFinished(view, url);
-                // Обработка завершения загрузки страницы
-                AppLogger.write("Page loaded: " + url);
-                view.evaluateJavascript("javascript:(function() { " +
-                    "var frameset = document.getElementsByTagName('frameset')[0];" +
-                    "if (frameset) { frameset.rows = '*, 0'; }" +
-                    "})()", null);
-            }
-        });
-        
-        // Настройка прокси для WebView
-        setupProxy();
-
-        // Запуск прокси-сервиса только если включен в профиле
-        ((ABClientApplication) getApplication()).startProxyService();
+        // Настраиваем и загружаем WebView
+        setupWebViews();
+        loadInitialUrls();
 
         AppVars.NextCheckNoConnection = new Date();
-
-        // Запуск таймера для обновления времени
         startTimer();
-        
-        // Загрузка фреймсета игры (включает нижний чат и верхнюю панель)
-        webView.loadUrl("http://neverlands.ru/main.php");
-
-        // Настройка и загрузка чата
-        WebView chatMsgWebView = binding.appBarMain.contentMain.chatMsgWebview;
-        WebSettings chatMsgWebSettings = chatMsgWebView.getSettings();
-        chatMsgWebSettings.setJavaScriptEnabled(true);
-        chatMsgWebSettings.setDomStorageEnabled(true);
-        chatMsgWebSettings.setDatabaseEnabled(true);
-        chatMsgWebSettings.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
-        CookieManager.getInstance().setAcceptCookie(true);
-        CookieManager.getInstance().setAcceptThirdPartyCookies(chatMsgWebView, true);
-        chatMsgWebView.loadUrl("http://neverlands.ru/ch/msg.php");
-
-        WebView chatUsersWebView = binding.appBarMain.contentMain.chatUsersWebview;
-        WebSettings chatUsersWebSettings = chatUsersWebView.getSettings();
-        chatUsersWebSettings.setJavaScriptEnabled(true);
-        chatUsersWebSettings.setDomStorageEnabled(true);
-        chatUsersWebSettings.setDatabaseEnabled(true);
-        chatUsersWebSettings.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
-        CookieManager.getInstance().setAcceptCookie(true);
-        CookieManager.getInstance().setAcceptThirdPartyCookies(chatUsersWebView, true);
-        chatUsersWebView.loadUrl("http://neverlands.ru/ch.php?lo=1");
-        chatUsersWebView.setWebViewClient(new WebViewClient() {
-            @Override
-            public void onPageFinished(WebView view, String url) {
-                super.onPageFinished(view, url);
-                view.evaluateJavascript("javascript:(function() { " +
-                    "var frameset = document.getElementsByTagName('frameset')[0];" +
-                    "if (frameset) { frameset.cols = '0, *'; }" +
-                    "})()", null);
-            }
-        });
-
-        WebView chatButtonsWebView = binding.appBarMain.contentMain.chatButtonsWebview;
-        WebSettings chatButtonsWebSettings = chatButtonsWebView.getSettings();
-        chatButtonsWebSettings.setJavaScriptEnabled(true);
-        chatButtonsWebSettings.setDomStorageEnabled(true);
-        chatButtonsWebSettings.setDatabaseEnabled(true);
-        chatButtonsWebSettings.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
-        CookieManager.getInstance().setAcceptCookie(true);
-        CookieManager.getInstance().setAcceptThirdPartyCookies(chatButtonsWebView, true);
-        chatButtonsWebView.loadUrl("http://neverlands.ru/ch/but.php");
     }
-    
-    @Override
-    protected void onDestroy() {
-        ru.neverlands.abclient.utils.DebugLogger.log("MainActivity: onDestroy() called.");
-        stopTimer();
 
-        if (isExiting) {
-            ((ABClientApplication) getApplication()).stopProxyService();
+    @SuppressLint("SetJavaScriptEnabled")
+    private void setupWebViews() {
+        // Настройка всех WebView
+        WebView webView = binding.appBarMain.contentMain.webView;
+        WebView chatMsgWebView = binding.appBarMain.contentMain.chatMsgWebview;
+        WebView chatUsersWebView = binding.appBarMain.contentMain.chatUsersWebview;
+        WebView chatButtonsWebView = binding.appBarMain.contentMain.chatButtonsWebview;
+
+        CustomWebViewClient customWebViewClient = new CustomWebViewClient();
+
+        setupWebView(webView, customWebViewClient);
+        setupWebView(chatMsgWebView, customWebViewClient);
+        setupWebView(chatUsersWebView, customWebViewClient);
+        setupWebView(chatButtonsWebView, customWebViewClient);
+
+        // Внедряем cookies, полученные после авторизации
+        if (AppVars.lastCookies != null && !AppVars.lastCookies.isEmpty()) {
+            // Хирургически удаляем дубликаты, особенно "watermark", сохраняя только последний.
+            java.util.List<java.net.HttpCookie> filteredCookies = new java.util.ArrayList<>();
+            java.util.Set<String> names = new java.util.HashSet<>();
+            // Итерируем в обратном порядке, чтобы сохранить последний из дубликатов
+            for (int i = AppVars.lastCookies.size() - 1; i >= 0; i--) {
+                java.net.HttpCookie cookie = AppVars.lastCookies.get(i);
+                if (!names.contains(cookie.getName())) {
+                    filteredCookies.add(0, cookie); // Добавляем в начало, чтобы сохранить порядок
+                    names.add(cookie.getName());
+                }
+            }
+
+            CookieManager cookieManager = CookieManager.getInstance();
+            String url = "http://neverlands.ru"; // Устанавливаем cookies для основного домена
+            for (java.net.HttpCookie cookie : filteredCookies) {
+                String cookieString = cookie.getName() + "=" + cookie.getValue() + "; domain=" + cookie.getDomain();
+                cookieManager.setCookie(url, cookieString);
+            }
+            cookieManager.flush();
+            AppVars.lastCookies = null; // Очищаем после использования
         }
+    }
 
-        // Уничтожаем все WebView, чтобы избежать утечек памяти
-        destroyWebView(binding.appBarMain.contentMain.webView);
-        destroyWebView(binding.appBarMain.contentMain.chatMsgWebview);
-        destroyWebView(binding.appBarMain.contentMain.chatUsersWebview);
-        destroyWebView(binding.appBarMain.contentMain.chatButtonsWebview);
+    private void loadInitialUrls() {
+        WebView webView = binding.appBarMain.contentMain.webView;
+        WebView chatMsgWebView = binding.appBarMain.contentMain.chatMsgWebview;
+        WebView chatUsersWebView = binding.appBarMain.contentMain.chatUsersWebview;
+        WebView chatButtonsWebView = binding.appBarMain.contentMain.chatButtonsWebview;
 
-        super.onDestroy();
+        // Загрузка URL
+        webView.loadUrl("http://neverlands.ru/main.php");
+        chatMsgWebView.loadUrl("http://neverlands.ru/ch/msg.php");
+        chatUsersWebView.loadUrl("http://neverlands.ru/ch.php?lo=1");
+        chatButtonsWebView.loadUrl("http://neverlands.ru/ch/but.php");
     }
 
     @Override
@@ -254,6 +215,58 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         super.onPause();
         LocalBroadcastManager.getInstance(this).unregisterReceiver(broadcastReceiver);
     }
+
+    private void setupWebView(WebView webView, WebViewClient client) {
+        WebSettings webSettings = webView.getSettings();
+        webSettings.setJavaScriptEnabled(true);
+        webSettings.setDomStorageEnabled(true);
+        webSettings.setDatabaseEnabled(true);
+        webSettings.setUseWideViewPort(true);
+        webSettings.setLoadWithOverviewMode(true);
+        webSettings.setSupportZoom(true);
+        webSettings.setBuiltInZoomControls(true);
+        webSettings.setDisplayZoomControls(false);
+        webSettings.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
+
+        webView.addJavascriptInterface(new WebAppInterface(this), "AndroidBridge");
+
+        CookieManager.getInstance().setAcceptCookie(true);
+        CookieManager.getInstance().setAcceptThirdPartyCookies(webView, true);
+
+        webView.setWebViewClient(client);
+        webView.setWebChromeClient(new WebChromeClient() {
+            @Override
+            public boolean onConsoleMessage(ConsoleMessage consoleMessage) {
+                Log.e("JS_CONSOLE", consoleMessage.message() + " -- From line "
+                        + consoleMessage.lineNumber() + " of "
+                        + consoleMessage.sourceId());
+                return true;
+            }
+        });
+    }
+
+
+    
+    @Override
+    protected void onDestroy() {
+        ru.neverlands.abclient.utils.DebugLogger.log("MainActivity: onDestroy() called.");
+        stopTimer();
+        RoomManager.stopTracing();
+
+        if (isExiting) {
+            // ((ABClientApplication) getApplication()).stopProxyService();
+        }
+
+        // Уничтожаем все WebView, чтобы избежать утечек памяти
+        destroyWebView(binding.appBarMain.contentMain.webView);
+        destroyWebView(binding.appBarMain.contentMain.chatMsgWebview);
+        destroyWebView(binding.appBarMain.contentMain.chatUsersWebview);
+        destroyWebView(binding.appBarMain.contentMain.chatButtonsWebview);
+
+        super.onDestroy();
+    }
+
+
 
     private void destroyWebView(WebView webView) {
         if (webView != null) {
@@ -299,9 +312,36 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         if (id == R.id.action_settings) {
             // Открытие настроек
             return true;
+        } else if (id == R.id.action_snapshot) {
+            takeSnapshot();
+            return true;
         }
         
         return super.onOptionsItemSelected(item);
+    }
+
+    private void takeSnapshot() {
+        String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(new Date());
+        boolean mainSuccess = false;
+        boolean chatSuccess = false;
+
+        if (AppVars.lastMainPhpResponse != null) {
+            String fileName = "HtmlLog_Main_" + timeStamp + ".txt";
+            String html = Russian.getString(AppVars.lastMainPhpResponse);
+            mainSuccess = ru.neverlands.abclient.utils.DataManager.writeStringToFile("Logs/" + fileName, html);
+        }
+
+        if (AppVars.lastChatMsgResponse != null) {
+            String fileName = "HtmlLog_Chat_" + timeStamp + ".txt";
+            String html = Russian.getString(AppVars.lastChatMsgResponse);
+            chatSuccess = ru.neverlands.abclient.utils.DataManager.writeStringToFile("Logs/" + fileName, html);
+        }
+
+        if (mainSuccess || chatSuccess) {
+            Toast.makeText(this, "Снимки кода сохранены в папке Logs", Toast.LENGTH_SHORT).show();
+        } else {
+            Toast.makeText(this, "Ошибка: нет данных для сохранения", Toast.LENGTH_SHORT).show();
+        }
     }
     
     @Override
@@ -310,8 +350,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         
         if (id == R.id.nav_home) {
             binding.appBarMain.contentMain.webView.loadUrl("http://neverlands.ru/");
-        } else if (id == R.id.nav_chat) {
-            binding.appBarMain.contentMain.webView.loadUrl("http://neverlands.ru/ch.php?lo=1");
+
         } else if (id == R.id.nav_map) {
             binding.appBarMain.contentMain.webView.loadUrl("http://neverlands.ru/map.php");
         } else if (id == R.id.nav_inventory) {
@@ -330,16 +369,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         return true;
     }
     
-    /**
-     * Настройка прокси для WebView
-     */
-    private void setupProxy() {
-        // Настройка прокси для WebView
-        System.setProperty("http.proxyHost", AppVars.LocalProxyAddress);
-        System.setProperty("http.proxyPort", String.valueOf(AppVars.LocalProxyPort));
-        
-        // Не очищаем cookies после авторизации, чтобы сохранить сессию
-    }
+
     
     /**
      * Запуск таймера для обновления времени
@@ -449,5 +479,260 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                 })
                 .setNegativeButton("Нет", null)
                 .show();
+    }
+
+    public void updateRoom(List<RoomManager.MenuItem> pvList, String travmText, List<RoomManager.MenuItem> travmList) {
+        runOnUiThread(() -> {
+            Spinner pvSpinner = binding.appBarMain.pvSpinner;
+            Spinner travmSpinner = binding.appBarMain.travmSpinner;
+
+            if (pvList != null) {
+                List<String> pvTitles = new ArrayList<>();
+                for (RoomManager.MenuItem item : pvList) {
+                    pvTitles.add(item.title);
+                }
+                ArrayAdapter<String> pvAdapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_item, pvTitles);
+                pvAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+                pvSpinner.setAdapter(pvAdapter);
+                pvSpinner.setEnabled(pvList.size() > 0);
+            }
+
+            if (travmList != null) {
+                List<String> travmTitles = new ArrayList<>();
+                travmTitles.add(travmText);
+                for (RoomManager.MenuItem item : travmList) {
+                    travmTitles.add(item.title);
+                }
+                ArrayAdapter<String> travmAdapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_item, travmTitles);
+                travmAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+                travmSpinner.setAdapter(travmAdapter);
+                travmSpinner.setEnabled(travmList.size() > 0);
+            }
+        });
+    }
+
+    public void addMessageToChat(String message) {
+        runOnUiThread(() -> {
+            if (message != null) {
+                Chat.addMessageToChat(message);
+            }
+        });
+    }
+
+    private class CustomWebViewClient extends WebViewClient {
+        @Override
+        public void onPageFinished(WebView view, String url) {
+            super.onPageFinished(view, url);
+            AppLogger.write("Page loaded: " + url);
+
+            String script = "javascript:(function() { " +
+                    "if (typeof top.start !== 'function') { top.start = function() {}; }" +
+                    "if (typeof top.save_scroll_p !== 'function') { top.save_scroll_p = function() {}; }" +
+                    "})()";
+            view.evaluateJavascript(script, null);
+
+            if (url.endsWith("main.php")) {
+                view.evaluateJavascript("javascript:(function() { var frameset = document.getElementsByTagName('frameset')[0]; if (frameset) { frameset.rows = '*, 0'; } })()", null);
+                if (!isRoomManagerStarted) {
+                    RoomManager.startTracing(MainActivity.this);
+                    isRoomManagerStarted = true;
+                }
+            } else if (url.contains("ch.php")) {
+                view.evaluateJavascript("javascript:(function() { var frameset = document.getElementsByTagName('frameset')[0]; if (frameset) { frameset.cols = '0, *'; } })()", null);
+            }
+        }
+
+            @Override
+            public WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest request) {
+                final String url = request.getUrl().toString();
+                ru.neverlands.abclient.utils.DebugLogger.log("Intercepting request: " + url);
+
+                String fileName = Uri.parse(url).getPath();
+                if (fileName != null && fileName.startsWith("/")) {
+                    fileName = fileName.substring(1);
+                }
+
+                try {
+                    byte[] data = readAssetFile(fileName);
+                    String mimeType = getMimeTypeFromUrl(url);
+
+                    if (fileName.equals("ch/ch_list.js")) {
+                        String js = Russian.getString(data);
+
+                        // Создаем мост для совместимости со старым кодом, который вызывает window.external
+                        String bridgeScript = "window.external = window.AndroidBridge;\n";
+
+                        // Добавляем массив ChatListU, если он есть
+                        if (AppVars.chatListU != null) {
+                            js = "var ChatListU = new Array(" + AppVars.chatListU + ");\n" + js;
+                        }
+
+                        // Собираем все вместе
+                        js = bridgeScript + js;
+                        data = Russian.getBytes(js);
+                    }
+
+                    return new WebResourceResponse(mimeType, "UTF-8", new ByteArrayInputStream(data));
+                } catch (IOException e) {
+                    // Файл не найден в assets, продолжаем с сетевым запросом
+                }
+
+                try {
+                    // 1. Создание соединения
+                    URL urlObj = new URL(url);
+                    HttpURLConnection connection = (HttpURLConnection) urlObj.openConnection();
+
+                    // 2. Настройка заголовков запроса
+                    Map<String, String> requestHeaders = request.getRequestHeaders();
+                    ru.neverlands.abclient.utils.DebugLogger.log("Request Headers for " + url + ": " + requestHeaders.toString());
+                    for (Map.Entry<String, String> entry : requestHeaders.entrySet()) {
+                        connection.setRequestProperty(entry.getKey(), entry.getValue());
+                    }
+                    connection.setRequestProperty("Cookie", CookiesManager.obtain(url));
+
+                    // 3. Получение ответа
+                    InputStream inputStream = connection.getInputStream();
+                    String contentType = connection.getContentType();
+                    String encoding = connection.getContentEncoding();
+
+                    ru.neverlands.abclient.utils.DebugLogger.log("Response Headers for " + url + ": " + connection.getHeaderFields().toString());
+
+                    // Получаем MIME-тип
+                    String mimeType = "text/plain";
+                    if (contentType != null) {
+                        if (contentType.contains(";")) {
+                            mimeType = contentType.split(";")[0].trim();
+                        } else {
+                            mimeType = contentType.trim();
+                        }
+                    }
+
+                    byte[] data;
+                    // 4. Чтение и обработка ответа
+                    ByteArrayOutputStream baos = new ByteArrayOutputStream();
+                    byte[] buffer = new byte[1024];
+                    int len;
+                    while ((len = inputStream.read(buffer)) != -1) {
+                        baos.write(buffer, 0, len);
+                    }
+                    data = baos.toByteArray();
+
+                    ru.neverlands.abclient.utils.DebugLogger.log("Response Body for " + url + ": " + new String(data));
+
+                    if ("gzip".equalsIgnoreCase(encoding)) {
+                        data = decompressGzip(data);
+                        encoding = null; // Мы его распаковали
+                    }
+
+                    if (url.contains("ch.php?lo=1")) {
+                        String html = Russian.getString(data);
+                        Pattern pattern = Pattern.compile("var ChatListU = new Array\\((.*)\\);", Pattern.DOTALL);
+                        Matcher matcher = pattern.matcher(html);
+                        if (matcher.find()) {
+                            AppVars.chatListU = matcher.group(1);
+                        }
+                    }
+
+                    if (contentType != null && contentType.contains("text/html")) {
+                        data = injectJsFix(data, url);
+                    }
+
+                    // Применяем другие фильтры, если необходимо
+                    data = ru.neverlands.abclient.postfilter.Filter.process(url, data);
+
+                    // 5. Возвращаем обработанный ответ
+                    return new WebResourceResponse(mimeType, "windows-1251", new ByteArrayInputStream(data));
+
+                } catch (IOException e) {
+                    ru.neverlands.abclient.utils.DebugLogger.log("Error intercepting request: " + url + " - " + e.getMessage());
+                    return new WebResourceResponse("text/plain", "utf-8", new ByteArrayInputStream("".getBytes()));
+                }
+            }
+    }
+
+    private byte[] readAssetFile(String fileName) throws IOException {
+        AssetManager assetManager = getAssets();
+        InputStream inputStream = assetManager.open(fileName);
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        byte[] buffer = new byte[1024];
+        int len;
+        while ((len = inputStream.read(buffer)) != -1) {
+            baos.write(buffer, 0, len);
+        }
+        return baos.toByteArray();
+    }
+
+    private String getMimeTypeFromUrl(String url) {
+        if (url.endsWith(".css")) return "text/css";
+        if (url.endsWith(".js")) return "application/javascript";
+        if (url.endsWith(".jpg") || url.endsWith(".jpeg")) return "image/jpeg";
+        if (url.endsWith(".png")) return "image/png";
+        if (url.endsWith(".gif")) return "image/gif";
+        if (url.endsWith(".ico")) return "image/x-icon";
+        if (url.endsWith(".swf")) return "application/x-shockwave-flash";
+        if (url.contains(".php") || url.endsWith("/") || !url.substring(url.lastIndexOf("/") + 1).contains(".")) return "text/html";
+        return "text/plain";
+    }
+
+    private byte[] decompressGzip(byte[] compressedData) throws IOException {
+        if (compressedData == null || compressedData.length == 0) {
+            return compressedData;
+        }
+        try (ByteArrayInputStream bais = new ByteArrayInputStream(compressedData);
+             GZIPInputStream gzis = new GZIPInputStream(bais);
+             ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
+            byte[] buffer = new byte[1024];
+            int len;
+            while ((len = gzis.read(buffer)) > 0) {
+                baos.write(buffer, 0, len);
+            }
+            return baos.toByteArray();
+        }
+    }
+
+    private boolean isCacheable(String url) {
+        String lowerUrl = url.toLowerCase();
+        return lowerUrl.endsWith(".gif") || lowerUrl.endsWith(".jpg") || lowerUrl.endsWith(".jpeg") ||
+               lowerUrl.endsWith(".png") || lowerUrl.endsWith(".swf") || lowerUrl.endsWith(".ico") ||
+               lowerUrl.endsWith(".css") || lowerUrl.contains(".js") ||
+               // Также кэшируем страницы чата и главную
+               lowerUrl.contains("neverlands.ru/ch.php") || lowerUrl.contains("neverlands.ru/main.php");
+    }
+
+    private byte[] injectJsFix(byte[] body, String url) {
+        try {
+            if (body == null || body.length == 0) {
+                Log.w(TAG, "InjectJsFix: body for " + url + " is empty!");
+                return body;
+            }
+
+            String html = new String(body, "windows-1251");
+
+            String fix = "<script type=\"text/javascript\">" +
+                "if (typeof top.start == 'undefined') { top.start = function() {}; }" +
+                "if (typeof window.chatlist_build == 'undefined') { window.chatlist_build = function() {}; }" +
+                "if (typeof window.get_by_id == 'undefined') { window.get_by_id = function(id) { return document.getElementById(id); }; }" +
+                "if (typeof top.save_scroll_p == 'undefined') { top.save_scroll_p = function() {}; }" +
+                "if (typeof window.ins_HP == 'undefined') { window.ins_HP = function() {}; }" +
+                "if (typeof window.slots_inv == 'undefined') { window.slots_inv = function() {}; }" +
+                "if (typeof window.compl_view == 'undefined') { window.compl_view = function() {}; }" +
+                "if (typeof window.view_t == 'undefined') { window.view_t = function() {}; }" +
+                "if (typeof top.ch_refresh_n == 'undefined') { top.ch_refresh_n = function() {}; }" +
+                "if (typeof window.ButClick == 'undefined') { window.ButClick = function() {}; }" +
+                "</script>";
+
+            String newHtml;
+            if (html.toLowerCase().contains("<head>")) {
+                newHtml = html.replaceFirst("(?i)<head>", "<head>" + fix);
+            } else {
+                newHtml = fix + html;
+            }
+            
+            return newHtml.getBytes("windows-1251");
+
+        } catch (Exception e) {
+            Log.e(TAG, "Failed to inject JS fix for " + url, e);
+            return body; // Возвращаем оригинал в случае ошибки
+        }
     }
 }

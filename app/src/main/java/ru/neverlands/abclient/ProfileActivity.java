@@ -56,8 +56,10 @@ public class ProfileActivity extends AppCompatActivity {
         originalUserNick = profile.UserNick;
 
         binding.usernameEditText.setText(profile.UserNick);
-        binding.passwordEditText.setText(profile.UserPassword);
-        binding.flashPasswordEditText.setText(profile.UserPasswordFlash);
+        if (!profile.isEncrypted) {
+            binding.passwordEditText.setText(profile.UserPassword);
+            binding.flashPasswordEditText.setText(profile.UserPasswordFlash);
+        }
         binding.autoLogonCheckBox.setChecked(profile.UserAutoLogon);
         binding.useProxyCheckBox.setChecked(profile.UseProxy);
         binding.proxyAddressEditText.setText(profile.ProxyAddress);
@@ -163,10 +165,12 @@ public class ProfileActivity extends AppCompatActivity {
         profile.ProxyUserName = binding.proxyUsernameEditText.getText().toString().trim();
         profile.ProxyPassword = binding.proxyPasswordEditText.getText().toString().trim();
 
-        String password = binding.passwordEditText.getText().toString();
-        String flashPassword = binding.flashPasswordEditText.getText().toString();
+        // --- Логика сохранения пароля --- //
 
+        // Случай 1: Происходит шифрование (пользователь создал пароль шифрования)
         if (encryptionPassword != null) {
+            String password = binding.passwordEditText.getText().toString();
+            String flashPassword = binding.flashPasswordEditText.getText().toString();
             try {
                 profile.UserPassword = CryptoUtils.encrypt(password, encryptionPassword);
                 profile.UserPasswordFlash = CryptoUtils.encrypt(flashPassword, encryptionPassword);
@@ -175,13 +179,18 @@ public class ProfileActivity extends AppCompatActivity {
                 Toast.makeText(this, "Ошибка шифрования", Toast.LENGTH_SHORT).show();
                 return;
             }
-        } else {
-            // Если пароль шифрования не предоставлен, сохраняем как есть
-            // (либо потому что шифрование не нужно, либо пароли уже расшифрованы)
-            profile.UserPassword = password;
-            profile.UserPasswordFlash = flashPassword;
-            profile.isEncrypted = binding.savePasswordsCheckBox.isChecked();
+        } 
+        // Случай 2: Шифрование ОТКЛЮЧЕНО (галочка снята)
+        else if (!binding.savePasswordsCheckBox.isChecked()) {
+            // Пароли либо уже были расшифрованы в диалоге, либо вводятся как есть.
+            profile.UserPassword = binding.passwordEditText.getText().toString();
+            profile.UserPasswordFlash = binding.flashPasswordEditText.getText().toString();
+            profile.isEncrypted = false;
         }
+        // Случай 3 (неявный): Шифрование ВКЛЮЧЕНО, но новый пароль шифрования не вводится.
+        // Это значит, что мы просто сохраняем другие изменения в профиле.
+        // В этом случае мы НЕ ТРОГАЕМ поля паролей в объекте `profile`,
+        // так как они уже содержат нужные зашифрованные значения, а поля ввода на экране пусты.
 
         profile.save(this);
 

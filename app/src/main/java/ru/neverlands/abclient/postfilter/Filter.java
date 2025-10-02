@@ -14,6 +14,7 @@ public class Filter {
     }
 
     public static byte[] process(String address, byte[] array) {
+        ru.neverlands.abclient.utils.DebugLogger.log("Filter.process called for: " + address);
         if (address == null || address.isEmpty() || array == null) {
             return array;
         }
@@ -53,9 +54,12 @@ public class Filter {
                 return PvJs.process(array);
             }
             if (address.endsWith("/ch_list.js")) {
-                return ChListJs.process();
+                return ChListJs.process(array);
             }
             if (address.endsWith("/castle.js")) {
+                return CastleJs.process(array);
+            }
+            if (address.endsWith("/castle_v05.js")) {
                 return CastleJs.process(array);
             }
             if (address.endsWith("/counter.js")) {
@@ -164,6 +168,12 @@ public class Filter {
 
         if (address.contains("/ch.php?0")) {
             return ChZero.process(array);
+        }
+
+        if (address.startsWith("http://www.neverlands.ru/ch.php")) {
+            String html = Russian.getString(array);
+            html = ru.neverlands.abclient.manager.RoomManager.process(html);
+            return Russian.getBytes(html);
         }
 
         return array;

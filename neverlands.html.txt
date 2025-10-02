@@ -1,0 +1,15 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<!-- saved from url=(0029)http://neverlands.ru/game.php -->
+<html xmlns="http://www.w3.org/1999/xhtml" id="html"><head><meta http-equiv="Content-Type" content="text/html; charset=windows-1251">
+<title>NeverLands: Земли, которых нет... - бесплатная браузерная онлайн игра в стиле фэнтези</title>
+
+<meta http-equiv="Cache-Control" content="No-Cache">
+<meta http-equiv="Pragma" content="No-Cache">
+<meta http-equiv="Expires" content="0">
+<script src="./neverlands_files/game.js.Без названия"></script>
+<script>
+    view_frames();
+</script></head><frameset rows="*,8,1,240,1,30,0" frameborder="0" framespacing="0" border="0" id="mainframes"><frame src="./neverlands_files/main.html" name="main_top" scrolling="YES"><frame src="./neverlands_files/resize.html" name="resize" scrolling="NO" noresize=""><frame src="./neverlands_files/temp.html" name="temp_f" scrolling="NO" noresize=""><frameset cols="*,300"><frame src="./neverlands_files/msg.html" name="chmain" scrolling="YES" marginwidth="2" marginheight="2"><frame src="./neverlands_files/ch.html" name="ch_list" scrolling="YES" frameborder="0" border="0" framespacing="0" marginwidth="3" marginheight="0"></frameset><frame src="./neverlands_files/tempw.html" name="temp_s" scrolling="NO" noresize=""><frame src="./neverlands_files/but.html" name="ch_buttons" scrolling="NO" noresize=""><frame target="_top" name="ch_refr" src="./neverlands_files/refr.html" noresize="" scrolling="no"></frameset>
+
+
+</html>

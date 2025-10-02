@@ -1,0 +1,27 @@
+
+<!-- saved from url=(0031)http://neverlands.ru/ch/msg.php -->
+<html><head><meta http-equiv="Content-Type" content="text/html; charset=windows-1251">
+<meta http-equiv="Cache-Control" content="No-Cache">
+<meta http-equiv="Pragma" content="No-Cache">
+<meta http-equiv="Expires" content="0">
+
+<link href="./chat.css" rel="STYLESHEET" type="text/css">
+<script>
+var user = 'Блудя';
+</script>
+<script language="JavaScript" src="./ch_msg_v01.js.Без названия"></script>
+</head>
+<body leftmargin="2" topmargin="2" rightmargin="2" marginheight="2" marginwidth="2" bgcolor="#F5F5F5" onload="top.start()">
+<textarea id="cpnick" style="display:none;"></textarea>
+<div id="user_menu" class="usermenu"></div>
+<div id="msg"></div>
+<script language="javascript">
+var e_m;
+e_m = get_by_id('user_menu');
+e_m.onmouseout = function (evt) { return ch_close_menu(evt); };
+e_m = get_by_id('msg');
+e_m.onclick = function(evt) { return to_what_who(evt); };
+e_m.oncontextmenu = function (evt) { return ch_open_menu(evt); };
+</script>
+
+</body></html>
