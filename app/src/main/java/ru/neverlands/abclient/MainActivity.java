@@ -43,6 +43,8 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.lang.ref.WeakReference;
+import java.net.InetSocketAddress;
+import java.net.Proxy;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.text.SimpleDateFormat;
@@ -547,6 +549,10 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                 final String url = request.getUrl().toString();
                 ru.neverlands.abclient.utils.DebugLogger.log("Intercepting request: " + url);
 
+                if (url.contains("main.php?get_id=")) {
+                    return null; // Let the WebView handle it.
+                }
+
                 String fileName = Uri.parse(url).getPath();
                 if (fileName != null && fileName.startsWith("/")) {
                     fileName = fileName.substring(1);
@@ -574,7 +580,16 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
 
                     return new WebResourceResponse(mimeType, "UTF-8", new ByteArrayInputStream(data));
                 } catch (IOException e) {
-                    // Файл не найден в assets, продолжаем с сетевым запросом
+                    // Файл не найден в assets, продолжаем
+                }
+
+                // Попытка загрузки из дискового кэша
+                byte[] cachedData = ru.neverlands.abclient.proxy.DiskCacheManager.get(url);
+                if (cachedData != null) {
+                    String mimeType = getMimeTypeFromUrl(url);
+                    // Применяем фильтры к кэшированным данным так же, как к сетевым
+                    byte[] processedData = ru.neverlands.abclient.postfilter.Filter.process(url, cachedData);
+                    return new WebResourceResponse(mimeType, "windows-1251", new ByteArrayInputStream(processedData));
                 }
 
                 try {
@@ -618,6 +633,10 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                     data = baos.toByteArray();
 
                     ru.neverlands.abclient.utils.DebugLogger.log("Response Body for " + url + ": " + new String(data));
+
+                    if (isCacheable(url)) {
+                        ru.neverlands.abclient.proxy.DiskCacheManager.put(url, data);
+                    }
 
                     if ("gzip".equalsIgnoreCase(encoding)) {
                         data = decompressGzip(data);

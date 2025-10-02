@@ -29,6 +29,9 @@ public class ABClientApplication extends Application {
 
         // Инициализация репозитория вещей
         ThingsRepository.INSTANCE.initialize(this);
+
+        // Инициализация менеджера кэша
+        ru.neverlands.abclient.proxy.DiskCacheManager.init(this);
     }
 
     /**
