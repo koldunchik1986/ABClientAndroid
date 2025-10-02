@@ -20,7 +20,7 @@
 ### Шаг 2: Извлечение и передача в `LoginActivity`
 -   **Файл:** `AuthManager.java`
 -   **Механизм:**
-    -   После успешной авторизации, `AuthManager` извлекает все накопленные cookies из хранилища:
+    -   После успешной авторизации, `AuthManager` извлекает все накопленные cookies из своего `cookieManager`:
         ```java
         List<java.net.HttpCookie> cookies = cookieManager.getCookieStore().get(HttpUrl.get("http://neverlands.ru/").uri());
         ```
@@ -70,4 +70,4 @@
 -   `AppVars.lastCookies`: `List<java.net.HttpCookie>`, временное статическое хранилище для передачи cookies между `Activity`.
 -   `MainActivity`: Конечный получатель, ответственный за инъекцию в системный `CookieManager`.
 -   `android.webkit.CookieManager`: Системное хранилище cookies для всех `WebView` в приложении.
--   `CookiesManager`: Вспомогательный класс для удобного получения строки cookies из системного `CookieManager`.
+-   `ru.neverlands.abclient.proxy.CookiesManager`: Вспомогательный класс для удобного получения строки cookies из системного `CookieManager`.
