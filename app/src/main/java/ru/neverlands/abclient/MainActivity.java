@@ -229,6 +229,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         webSettings.setBuiltInZoomControls(true);
         webSettings.setDisplayZoomControls(false);
         webSettings.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
+        webSettings.setSupportMultipleWindows(true);
 
         webView.addJavascriptInterface(new WebAppInterface(this), "AndroidBridge");
 
@@ -242,6 +243,25 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                 Log.e("JS_CONSOLE", consoleMessage.message() + " -- From line "
                         + consoleMessage.lineNumber() + " of "
                         + consoleMessage.sourceId());
+                return true;
+            }
+
+            @Override
+            public boolean onCreateWindow(WebView view, boolean isDialog, boolean isUserGesture, android.os.Message resultMsg) {
+                // Эта логика перехватывает ссылки, которые должны открыться в новом окне (target="_blank")
+                // и принудительно загружает их в текущем WebView.
+                WebView tempWebView = new WebView(MainActivity.this);
+                tempWebView.setWebViewClient(new WebViewClient() {
+                    @Override
+                    public boolean shouldOverrideUrlLoading(WebView view, String url) {
+                        // Получив URL, загружаем его в основном WebView
+                        binding.appBarMain.contentMain.webView.loadUrl(url);
+                        return true;
+                    }
+                });
+                WebView.WebViewTransport transport = (WebView.WebViewTransport) resultMsg.obj;
+                transport.setWebView(tempWebView);
+                resultMsg.sendToTarget();
                 return true;
             }
         });
@@ -361,6 +381,9 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             binding.appBarMain.contentMain.webView.loadUrl("http://neverlands.ru/main.php?get_id=33&act=1");
         } else if (id == R.id.nav_settings) {
             // Открытие настроек
+        } else if (id == R.id.nav_contacts) {
+            Intent intent = new Intent(this, ContactsActivity.class);
+            startActivity(intent);
         } else if (id == R.id.nav_logs) {
             Intent intent = new Intent(this, LogsActivity.class);
             startActivity(intent);
@@ -544,12 +567,23 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             }
         }
 
+        @Override
+        public boolean shouldOverrideUrlLoading(WebView view, String url) {
+            if (url != null && url.startsWith("http://neverlands.ru/pinfo.cgi")) {
+                Intent intent = new Intent(MainActivity.this, PinfoActivity.class);
+                intent.putExtra("url", url);
+                startActivity(intent);
+                return true; // Мы обработали этот URL
+            }
+            return false; // Позволяем WebView загрузить URL
+        }
+
             @Override
             public WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest request) {
                 final String url = request.getUrl().toString();
                 ru.neverlands.abclient.utils.DebugLogger.log("Intercepting request: " + url);
 
-                if (url.contains("main.php?get_id=")) {
+                if (url.contains("main.php?get_id=") || url.contains("main.php?mselect=")) {
                     return null; // Let the WebView handle it.
                 }
 

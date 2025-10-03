@@ -1,0 +1,19 @@
+2025-10-03 18:07:52.885: Logger initialized for AddCont_20251003_180752.txt
+2025-10-03 18:07:52.887: Starting to add contact: Блудя
+2025-10-03 18:07:52.895: REQUEST_URL: http://www.neverlands.ru/modules/api/getid.cgi?%C1%EB%F3%E4%FF
+2025-10-03 18:07:52.897: REQUEST_HEADERS: User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36
+Referer: http://www.neverlands.ru/main.php
+
+2025-10-03 18:07:53.035: RESPONSE_CODE: 200
+2025-10-03 18:07:53.036: RESPONSE_BODY: 1444298|Блудя
+2025-10-03 18:07:53.046: Step 1 SUCCESS. PlayerID: 1444298
+2025-10-03 18:07:54.048: 1 second delay passed. Starting Step 2.
+2025-10-03 18:07:54.059: REQUEST_URL: http://www.neverlands.ru/modules/api/info.cgi?playerid=1444298&info=1
+2025-10-03 18:07:54.061: REQUEST_HEADERS: User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36
+Referer: http://www.neverlands.ru/main.php
+
+2025-10-03 18:07:54.168: RESPONSE_CODE: 200
+2025-10-03 18:07:54.172: RESPONSE_BODY: 3|Блудя|22|4|c174|c174.gif|Триглав|I am Legend|0|0|0|0|0|1|Замок Ellary Akhe [Замок Ellary Akhe]|0|dr13--male.jpg
+
+2025-10-03 18:07:54.190: Step 2 SUCCESS. Contact info received.
+2025-10-03 18:07:54.192: Logger closing.

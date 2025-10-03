@@ -1,6 +1,7 @@
 package ru.neverlands.abclient;
 
 import android.content.Context;
+import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
 
@@ -19,6 +20,7 @@ import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.RequestBody;
 import okhttp3.Response;
+import ru.neverlands.abclient.network.NetworkClient;
 import ru.neverlands.abclient.utils.DebugLogger;
 
 public class AuthManager {
@@ -35,16 +37,8 @@ public class AuthManager {
         Handler handler = new Handler(Looper.getMainLooper());
 
         executor.execute(() -> {
-            java.net.CookieManager cookieManager = new java.net.CookieManager();
-            cookieManager.setCookiePolicy(CookiePolicy.ACCEPT_ALL);
-
-            OkHttpClient client = new OkHttpClient.Builder()
-                    .connectTimeout(30, TimeUnit.SECONDS)
-                    .readTimeout(30, TimeUnit.SECONDS)
-                    .writeTimeout(30, TimeUnit.SECONDS)
-                    .followRedirects(true)
-                    .cookieJar(new JavaNetCookieJar(cookieManager))
-                    .build();
+            OkHttpClient client = NetworkClient.getInstance();
+            java.net.CookieManager cookieManager = NetworkClient.getCookieManager();
 
             try {
                 // Step 1: Initial GET request
@@ -108,6 +102,17 @@ public class AuthManager {
                 // All steps successful
                 DebugLogger.log("AuthManager: Full Authorization SUCCESS.");
                 List<java.net.HttpCookie> cookies = cookieManager.getCookieStore().get(HttpUrl.get("http://neverlands.ru/").uri());
+
+                // Ручная синхронизация cookies в WebView
+                android.webkit.CookieManager webViewCookieManager = android.webkit.CookieManager.getInstance();
+                for (java.net.HttpCookie cookie : cookies) {
+                    String cookieString = cookie.getName() + "=" + cookie.getValue() + "; domain=" + cookie.getDomain();
+                    webViewCookieManager.setCookie("http://neverlands.ru", cookieString);
+                }
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                    webViewCookieManager.flush();
+                }
+
                 handler.post(() -> callback.onSuccess(cookies));
 
             } catch (Exception e) {

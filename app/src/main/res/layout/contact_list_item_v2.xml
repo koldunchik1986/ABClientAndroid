@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="horizontal"
+    android:gravity="center_vertical"
+    android:padding="8dp">
+
+    <!-- 1. Индикатор онлайна -->
+    <ImageView
+        android:id="@+id/onlineStatusIndicator"
+        android:layout_width="12dp"
+        android:layout_height="12dp"
+        android:layout_marginEnd="8dp"
+        android:src="@drawable/ic_status_circle"
+        tools:src="@drawable/ic_online" />
+
+    <!-- 2. Иконка склонности -->
+    <ImageView
+        android:id="@+id/inclinationIcon"
+        android:layout_width="20dp"
+        android:layout_height="20dp"
+        android:layout_marginEnd="4dp"
+        tools:src="@drawable/ic_inclination_light" />
+
+    <!-- 3. Иконка клана -->
+    <ImageView
+        android:id="@+id/clanIcon"
+        android:layout_width="20dp"
+        android:layout_height="20dp"
+        android:layout_marginEnd="8dp"
+        tools:src="@drawable/ic_clan_default" />
+
+    <!-- 4. Ссылка на бой -->
+    <TextView
+        android:id="@+id/warStatusText"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginEnd="8dp"
+        android:text="[в бою]"
+        android:textColor="@color/red"
+        android:textStyle="bold"
+        android:visibility="gone"
+        tools:visibility="visible" />
+
+    <!-- 5. Ник персонажа -->
+    <TextView
+        android:id="@+id/contactNickText"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:textSize="16sp"
+        android:textStyle="bold"
+        tools:text="Персонаж" />
+
+    <!-- 6. Иконка информации -->
+    <ImageButton
+        android:id="@+id/infoButton"
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:src="@android:drawable/ic_menu_info_details" />
+
+</LinearLayout>

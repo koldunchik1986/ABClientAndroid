@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <item
+        android:id="@+id/action_pinfo_private"
+        android:title="Приват"
+        app:showAsAction="ifRoom" />
+
+    <item
+        android:id="@+id/action_pinfo_add_contact"
+        android:title="В контакты"
+        app:showAsAction="ifRoom" />
+
+    <item
+        android:id="@+id/action_pinfo_add_clan"
+        android:title="Весь клан"
+        app:showAsAction="never" />
+
+    <item
+        android:id="@+id/action_pinfo_compas"
+        android:title="Компас"
+        app:showAsAction="never" />
+
+</menu>

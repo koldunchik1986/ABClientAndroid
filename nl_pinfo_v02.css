@@ -1,0 +1,1023 @@
+
+html {
+    background: url("http://image.neverlands.ru/pinfo/main_bg.jpg") repeat-x scroll center top;
+    font: 12px Verdana;
+    height: 100%;
+    width: 100%;
+}
+body {
+    height: auto !important;
+    margin: 0;
+    min-height: 100%;
+    min-width: 100%;
+    position: relative;
+    width: auto !important;
+}
+a {
+    color: #FFFFFF;
+    outline: medium none;
+}
+img {
+    border: 0 none;
+}
+td {
+    vertical-align: top;
+}
+#main {
+    margin: 0 auto;
+    padding-bottom: 60px;
+    width: 1004px;
+}
+#top_username_block {
+    background: url("http://image.neverlands.ru/pinfo/top_username_block.png") no-repeat scroll 0 0;
+    height: 77px;
+    margin-left: -10px;
+    position: absolute;
+    text-align: center;
+    width: 412px;
+}
+* + html #top_username_block {
+    margin-left: -27px;
+}
+#top_username {
+    background: url("http://image.neverlands.ru/pinfo/top_username_left.png") no-repeat scroll 0 0;
+    display: inline-block;
+    margin-left: 4px;
+    padding: 0 0 0 21px;
+}
+#top_username div {
+    background: url("http://image.neverlands.ru/pinfo/top_username_right.png") no-repeat scroll right top;
+    display: inline-block;
+    padding: 0 22px 0 0;
+}
+#top_username div div {
+    background: url("http://image.neverlands.ru/pinfo/top_username_bg.png") repeat-x scroll 0 25px;
+    color: #474747;
+    font-weight: bold;
+    height: 32px;
+    line-height: 32px;
+    padding: 25px 18px 0 20px;
+}
+#top_username sup {
+    color: #B50000;
+    font-weight: bold;
+    line-height: 12px;
+}
+#top_username div div img {
+    margin-right: 4px;
+    margin-top: -3px;
+    vertical-align: middle;
+}
+#effects {
+    margin: 25px 0 0 33px;
+    position: absolute;
+    width: 271px;
+}
+#effects img {
+    float: left;
+    margin: 0 6px 5px 0;
+    vertical-align: middle;
+}
+#znaki {
+    margin: 25px 0 0 697px;
+    position: absolute;
+    width: 281px;
+}
+#znaki img {
+    float: right;
+    margin: 0 0 5px 6px;
+    vertical-align: middle;
+}
+#footer {
+    background: url("http://image.neverlands.ru/pinfo/right_flag.jpg") no-repeat scroll left bottom;
+    bottom: 0;
+    height: 60px;
+    left: 0;
+    margin: 0;
+    min-width: 1004px;
+    position: absolute;
+    width: 100%;
+}
+#footer div {
+    background: url("http://image.neverlands.ru/pinfo/left_flag.jpg") no-repeat scroll right bottom;
+    color: #9E9E9E;
+    font: 11px/20px Verdana;
+    height: 42px;
+    padding-top: 18px;
+    text-align: center;
+}
+#footer div a {
+    color: #9E9E9E;
+}
+.center_info {
+    height: 431px;
+    margin: 0 auto;
+    position: relative;
+    top: 77px;
+}
+.center_info .top_left {
+    background: url("http://image.neverlands.ru/pinfo/center_info_top_left.png") no-repeat scroll 0 0;
+}
+.center_info .top_right {
+    background: url("http://image.neverlands.ru/pinfo/center_info_top_right.png") no-repeat scroll 0 0;
+}
+.center_info .top_center {
+    background: url("http://image.neverlands.ru/pinfo/center_info_top_center.png") no-repeat scroll 0 0;
+}
+.center_info .bot_left {
+    background: url("http://image.neverlands.ru/pinfo/center_info_bot_left.png") no-repeat scroll 0 0;
+}
+.center_info .bot_right {
+    background: url("http://image.neverlands.ru/pinfo/center_info_bot_right.png") no-repeat scroll 0 0;
+}
+.center_info .bot_center {
+    background: url("http://image.neverlands.ru/pinfo/center_info_bot_center.png") no-repeat scroll 0 0;
+}
+.center_info .bot_center img {
+    float: none;
+    vertical-align: top;
+}
+.center_info img {
+    float: left;
+}
+.center_info .top_left img {
+    float: none;
+    vertical-align: top;
+}
+.center_info .top_right img {
+    float: none;
+    vertical-align: top;
+}
+.text_block_cont {
+    height: 55px;
+    margin-left: -68px;
+    margin-top: 7px;
+    position: absolute;
+    text-align: center;
+    width: 392px;
+}
+.text_block {
+    background: url("http://image.neverlands.ru/pinfo/text_block_left.png") no-repeat scroll left top;
+    color: #484848;
+    display: inline-block;
+    font-size: 11px;
+    height: 55px;
+    margin: 0 auto;
+    padding-left: 15px;
+}
+.text_block div {
+    background: url("http://image.neverlands.ru/pinfo/text_block_right.png") no-repeat scroll right top;
+    padding-right: 15px;
+}
+.text_block div div {
+    background: url("http://image.neverlands.ru/pinfo/text_block_center.png") repeat-x scroll 0 0;
+    height: 42px;
+    min-width: 290px;
+    padding: 13px 0 0;
+    text-align: center;
+    white-space: nowrap;
+}
+.bot_ind {
+    background: url("http://image.neverlands.ru/pinfo/center_info_bg_11.jpg") no-repeat scroll 0 0;
+    height: 17px;
+}
+.bot_hp {
+    color: #FFFFFF;
+    float: left;
+    font-size: 10px;
+    height: 17px;
+    line-height: 18px;
+    margin-left: 4px;
+    text-align: center;
+    width: 89px;
+}
+.bot_mp {
+    color: #FFFFFF;
+    float: right;
+    font-size: 10px;
+    height: 17px;
+    line-height: 18px;
+    margin-right: 3px;
+    text-align: center;
+    width: 89px;
+}
+#left_hp {
+    height: 151px;
+    margin: 100px 0 0 33px;
+    position: absolute;
+    width: 11px;
+}
+#left_hp div {
+    background: url("http://image.neverlands.ru/pinfo/left_hp.png") no-repeat scroll center bottom;
+    height: 100%;
+    width: 100%;
+}
+#right_mp {
+    height: 151px;
+    margin: 100px 0 0 8px;
+    position: absolute;
+    width: 11px;
+}
+#right_mp div {
+    background: url("http://image.neverlands.ru/pinfo/right_mp.png") no-repeat scroll center bottom;
+    height: 100%;
+    width: 100%;
+}
+.infoblock {
+}
+.infoblock .top_left_left {
+    background: url("http://image.neverlands.ru/pinfo/infoblock_top_left.png") no-repeat scroll 0 0;
+    height: 57px;
+    margin-left: -25px;
+    margin-top: -4px;
+    position: absolute;
+    width: 64px;
+}
+.infoblock .top_right_left {
+    background: url("http://image.neverlands.ru/pinfo/infoblock_top_right.png") no-repeat scroll 0 0;
+    height: 18px;
+    margin-left: -10px;
+    margin-top: -5px;
+    position: absolute;
+    width: 34px;
+}
+.infoblock .top_name_left {
+    background: url("http://image.neverlands.ru/pinfo/infoblock_top_name.png") no-repeat scroll 0 0;
+    color: #E5E5E5;
+    font: bold 11px/18px Verdana;
+    height: 19px;
+    margin-left: 75px;
+    margin-top: -6px;
+    position: absolute;
+    text-align: center;
+    width: 135px;
+}
+.top_left_right {
+    background: url("http://image.neverlands.ru/pinfo/infoblock_top_right_right.png") no-repeat scroll 0 0;
+    height: 18px;
+    margin-left: -12px;
+    margin-top: -6px;
+    position: absolute;
+    width: 34px;
+}
+.top_right_right {
+    background: url("http://image.neverlands.ru/pinfo/infoblock_top_left_right.png") no-repeat scroll 0 0;
+    height: 57px;
+    margin-left: -29px;
+    margin-top: -5px;
+    position: absolute;
+    width: 64px;
+}
+.top_name_right {
+    background: url("http://image.neverlands.ru/pinfo/infoblock_top_name.png") no-repeat scroll 0 0;
+    color: #E5E5E5;
+    font: bold 11px/18px Verdana;
+    height: 19px;
+    margin-left: 9px;
+    margin-top: -6px;
+    position: absolute;
+    text-align: center;
+    width: 135px;
+}
+.infoblock .left {
+    background: url("http://image.neverlands.ru/pinfo/l.png") no-repeat 1px top;
+    width: 12px;
+    position: relative;
+}
+.infoblock .center {
+    background: url("http://image.neverlands.ru/pinfo/c.png") repeat-x center top;
+    width: 52px;
+    position: relative;
+}
+.infoblock .right {
+    /*background: url("http://image.neverlands.ru/pinfo/infoblock_right.png") no-repeat scroll -1px top;*/
+    background: url("http://image.neverlands.ru/pinfo/p.png") no-repeat -1px top;
+    width: 11px;
+    position: relative;
+}
+.infoblock .layer {
+    background: url("http://image.neverlands.ru/pinfo/infoblock_layer_middle.png") repeat-y scroll 0 23px;
+    width: 11px;
+}
+.infoblock .layer div {
+    background: url("http://image.neverlands.ru/pinfo/infoblock_layer_top.png") no-repeat scroll 0 0;
+    height: 23px;
+}
+.infoblock .bot_left {
+    background: url("http://image.neverlands.ru/pinfo/infoblock_left_bot.png") no-repeat scroll 1px top;
+    height: 7px;
+}
+.infoblock .bot_center {
+    background: url("http://image.neverlands.ru/pinfo/infoblock_center_bot.png") repeat-x scroll 0 0;
+}
+.infoblock .bot_right {
+    background: url("http://image.neverlands.ru/pinfo/infoblock_right_bot.png") no-repeat scroll -1px 0;
+}
+.infoblock .bot_layer {
+    background: url("http://image.neverlands.ru/pinfo/infoblock_layer_bot.png") no-repeat scroll 0 0;
+}
+.infoblock .chars {
+    padding: 20px 10px 0;
+}
+.infoblock .chars .char_item {
+    height: 23px;
+}
+.infoblock .chars .char_item div {
+    color: #E5E5E5;
+    float: left;
+    font: bold 11px/22px Verdana;
+}
+.infoblock .chars .char_item span {
+    color: #D7D7D7;
+    float: right;
+    font: 13px/22px Verdana;
+}
+.infoblock .chars .char_item b {
+    color: #FFFFFF;
+}
+.infoblock .chars .char_item span.tb {
+    width: 120px;
+}
+.infoblock .chars .char_item span.tb b {
+    float: left;
+}
+.infoblock .chars .char_item u {
+    float: right;
+    text-decoration: none;
+}
+.infoblock .info_text {
+    padding: 12px 10px 0;
+}
+.infoblock .info_text .line_text {
+    color: #B8B8B8;
+    font: 13px Verdana;
+    margin: 3px 0;
+}
+.infoblock .info_text .line_text strong {
+    color: #DCDCDC;
+    font-weight: bold;
+}
+.infoblock .info_text .line_text b {
+    color: #FFFFFF;
+    font-weight: bold;
+}
+.underline {
+    background: url("http://image.neverlands.ru/pinfo/underline.png") no-repeat scroll center center;
+    height: 1px;
+}
+.uzor {
+    background: url("http://image.neverlands.ru/pinfo/uzor.png") no-repeat scroll center center;
+    height: 20px;
+    position: relative;
+}
+.infoblock .block_awards {
+    display: none;
+    overflow: hidden;
+    padding: 17px 0 0;
+    width: 232px;
+}
+.infoblock .block_awards div {
+    float: left;
+    height: 45px;
+    margin: 0 0 5px 3px;
+    width: 44px;
+}
+.infoblock .block_awards div.first {
+    margin-left: 0;
+}
+.infoblock .block_awards span {
+    color: #DBDBDB;
+    font: 11px Arial;
+    margin-left: 7px;
+    margin-top: 27px;
+    position: absolute;
+}
+.infoblock .block_awards img {
+    position: absolute;
+}
+.infoblock .left_but {
+    background: url("http://image.neverlands.ru/pinfo/info_right_but.png") no-repeat scroll 0 0;
+    height: 27px;
+    margin-left: -10px;
+    margin-top: -7px;
+    position: absolute;
+    width: 28px;
+}
+.infoblock .left_but:hover {
+    background: url("http://image.neverlands.ru/pinfo/info_right_but_hov.png") no-repeat scroll 0 0;
+}
+.infoblock .right_but {
+    background: url("http://image.neverlands.ru/pinfo/info_left_but.png") no-repeat scroll 0 0;
+    height: 27px;
+    margin-left: -7px;
+    margin-top: -7px;
+    position: absolute;
+    width: 28px;
+}
+.infoblock .right_but:hover {
+    background: url("http://image.neverlands.ru/pinfo/info_left_but_hov.png") no-repeat scroll 0 0;
+}
+.infoblock #awards .block_awards {
+    height: 50px;
+}
+.infoblock #progress .block_awards {
+    height: 100px;
+}
+.div {
+    height: 16px;
+    margin: 20px 0;
+    position: relative;
+    text-align: center;
+}
+.div .div_block {
+    background: url("http://image.neverlands.ru/pinfo/div_left.jpg") no-repeat scroll 0 0;
+    display: inline-block;
+    height: 16px;
+    padding-left: 52px;
+}
+.div .div_right {
+    background: url("http://image.neverlands.ru/pinfo/div_right.jpg") no-repeat scroll right center;
+    height: 16px;
+    padding-right: 52px;
+}
+.div .div_gr {
+    background: url("http://image.neverlands.ru/pinfo/div_gr.jpg") repeat-x scroll 0 0;
+    height: 16px;
+    text-align: center;
+    width: 600px;
+}
+.div .div_center {
+    background: url("http://image.neverlands.ru/pinfo/div_center.jpg") repeat-x scroll 0 0;
+    display: inline-block;
+    height: 16px;
+    width: 297px;
+}
+.div .div_center2 {
+    background: url("http://image.neverlands.ru/pinfo/div_center2.jpg") repeat-x scroll 0 0;
+    display: inline-block;
+    height: 16px;
+    width: 277px;
+}
+.presents {
+    overflow: hidden;
+    padding-left: 22px;
+    padding-top: 15px;
+    text-align: left;
+}
+.presents img {
+    margin-bottom: 10px;
+    margin-right: 7px;
+}
+.infoblock2 {
+    color: #474747;
+    font: 11px Verdana;
+    margin: 12px auto 0;
+}
+.infoblock2 a {
+    color: #474747;
+}
+.infoblock2 .left_top {
+    background: url("http://image.neverlands.ru/pinfo/infoblock2_left_top2.jpg") no-repeat scroll right center;
+    height: 30px;
+    width: 21px;
+}
+.infoblock2 .right_top {
+    background: url("http://image.neverlands.ru/pinfo/infoblock2_right_top2.jpg") no-repeat scroll left center;
+    width: 23px;
+}
+.infoblock2 .center_top {
+    background: url("http://image.neverlands.ru/pinfo/infoblock2_center_top.jpg") repeat-x scroll 0 0;
+}
+.infoblock2 .left_middle {
+    background: url("http://image.neverlands.ru/pinfo/infoblock2_left_middle2.jpg") repeat-y scroll right top;
+}
+.infoblock2 .right_middle {
+    background: url("http://image.neverlands.ru/pinfo/infoblock2_right_middle2.jpg") repeat-y scroll left top;
+}
+.infoblock2 .center_middle {
+    background: url("http://image.neverlands.ru/pinfo/infoblock2_center_middle.jpg") repeat scroll center top;
+    padding: 7px 12px 12px;
+    width: 487px;
+}
+.infoblock2 .left_bot {
+    background: url("http://image.neverlands.ru/pinfo/infoblock2_left_bot2.jpg") no-repeat scroll right top;
+    height: 15px;
+}
+.infoblock2 .right_bot {
+    background: url("http://image.neverlands.ru/pinfo/infoblock2_right_bot2.jpg") no-repeat scroll left top;
+}
+.infoblock2 .center_bot {
+    background: url("http://image.neverlands.ru/pinfo/infoblock2_center_bot.jpg") repeat-x scroll 0 0;
+}
+.infoblock2 .top_name_right {
+    margin-left: 10px;
+    margin-top: -5px;
+}
+.infoblock2 .top_left_right {
+    margin-left: -12px;
+    margin-top: -6px;
+}
+.infoblock2 .top_right_right {
+    margin-left: -12px;
+    margin-top: -6px;
+}
+.infoblock2 .chars {
+    float: left;
+    margin-top: -23px;
+    position: relative;
+}
+.infoblock2 .chars .char_item {
+    clear: both;
+    float: none;
+    height: 18px;
+    line-height: 18px;
+}
+.infoblock2 .chars .char_item div {
+    float: left;
+    font-weight: bold;
+    text-align: right;
+    width: 140px;
+}
+.infoblock2 .chars .char_item span {
+    float: left;
+    margin-left: 8px;
+}
+.infoblock2 .center_middle .text {
+    float: left;
+    margin-top: -23px;
+    padding: 20px 0 13px;
+    position: relative;
+}
+.left_counter {
+    bottom: 2px;
+    height: 31px;
+    left: 2px;
+    position: absolute;
+    width: 31px;
+}
+.right_counter {
+    bottom: 2px;
+    height: 31px;
+    position: absolute;
+    right: 2px;
+    width: 31px;
+}
+#tooltip {
+    background: none repeat scroll 0 0 #FFFFFF;
+    border: 1px solid #999999;
+    color: #333333;
+    font: 12px Tahoma;
+    margin: 0;
+    padding: 3px 5px;
+    position: absolute;
+    visibility: hidden;
+    z-index: 10;
+}
+
+/*added*/
+
+#ach {
+    position: relative;
+    margin: 5px 0;
+}
+
+#achievements {
+    position: relative;
+    overflow: hidden;
+    width: 232px;
+}
+
+#ashift {
+    position: relative;
+    left: 0;
+    margin-top: 10px;
+}
+
+.aframe {
+    width: 56px;
+    margin-left: auto;
+    margin-right: auto;
+    text-align: center;
+}
+
+.aframe > img {
+    margin: 0 auto;
+    display: inline;
+    position: relative;
+    margin: 0 1px;
+    -webkit-user-select: none;
+    -khtml-user-select: none;
+    -moz-user-select: none;
+    -o-user-select: none;
+    user-select: none;
+}
+
+#med {
+    position: relative;
+    margin: 5px 0;
+}
+
+#medals {
+    position: relative;
+    overflow: hidden;
+    width: 232px;
+}
+
+#mshift {
+
+    position: relative;
+    left: 0;
+    margin-top: 10px;
+}
+
+.mframe {
+    width: 56px;
+    display: block;
+    margin-left: auto;
+    margin-right: auto;
+    text-align: center;
+}
+
+.mframe > img {
+    margin: 0 auto;
+    display: inline;
+    position: relative;
+
+    -webkit-user-select: none;
+    -khtml-user-select: none;
+    -moz-user-select: none;
+    -o-user-select: none;
+    user-select: none;
+
+}
+
+.none {
+    color: #dcdcdc;
+    font: bold 13px/50px Verdana;
+    width: 155px;
+    height: 45px;
+    margin: auto;
+    text-align: center;
+    margin-top: 10px;
+}
+
+div[name="button"] {
+    height: 28px;
+    width: 28px;
+    border: none;
+    padding: 0;
+    top: 50%;
+    position: absolute;
+    margin-top: -14px;
+    z-index: 1;
+}
+
+.back {
+    left: -35px;
+    background: url(http://image.neverlands.ru/pinfo/buttons_red_left.png) no-repeat -1px -1px;
+}
+
+.back:hover {
+    background: url(http://image.neverlands.ru/pinfo/buttons_red_left.png) no-repeat -1px -29.1px;
+}
+
+.back:active {
+    background: url(http://image.neverlands.ru/pinfo/buttons_red_left.png) no-repeat -1px -57px;
+}
+
+.forward {
+    right: -35px;
+    /*-webkit-transform:scaleX(-1);
+    -moz-transform:scaleX(-1);
+    -ms-transform:scaleX(-1);
+    -o-transform:scaleX(-1);
+    transform:scaleX(-1);*/
+    background: url(http://image.neverlands.ru/pinfo/buttons_red_right.png) no-repeat  -1px -1px;
+}
+
+.forward:hover {
+    background: url(http://image.neverlands.ru/pinfo/buttons_red_right.png) no-repeat  -1px -29px;
+}
+
+.forward:active {
+    background: url(http://image.neverlands.ru/pinfo/buttons_red_right.png) no-repeat  -1px -57px;
+}
+
+/*button[disabled=disabled]:hover {
+    background: url(../img/buttons_red.png) no-repeat  -1px -1px;
+}*/
+
+
+
+/* Доработки */
+.clearfix:after {
+    display: block;
+    visibility: hidden;
+    clear: both;
+    height: 0;
+    content: '';
+}
+
+* html .clearfix {
+    zoom: 1;
+}
+
+*:first-child + html .clearfix {
+    zoom: 1;
+}
+
+.clear {
+    clear: both;
+}
+
+/* Меню левый блок */
+table.infoblock .chars {
+    margin-top: 74px;
+}
+table.infoblock {
+    position: relative;
+}
+.tabs_title_block {
+    left: -18px;
+    top: 12px;
+    position: absolute;
+}
+.tabs_title_block>div {
+    background: url("http://image.neverlands.ru/pinfo/menu_for_info.png") no-repeat;
+    background-position: 0 -32px;
+    width: 272px;
+    height: 32px;
+    color: #676565;
+    font-size: 11px;
+    font-family: Tahoma, sans-serif;
+    font-weight: bold;
+    line-height: 28px;
+    padding-left: 32px;
+    box-sizing: border-box;
+    position: relative;
+    z-index: 1;
+    margin-bottom: -6px;
+    cursor: pointer;
+}
+.tabs_title_block>div:before {
+    content: "";
+    position: absolute;
+    left: 3px;
+    top: 2px;
+    width: 22px;
+    height: 22px;
+    background: url("http://image.neverlands.ru/pinfo/menu_icons.png") no-repeat;
+}
+.tabs_title_block>div:nth-child(1):before {
+    background-position: 0 -22px;
+}
+.tabs_title_block>div:hover:nth-child(1):before,
+.tabs_title_block>div.active:nth-child(1):before {
+    background-position: 0 0;
+}
+.tabs_title_block>div:nth-child(2):before {
+    background-position: -22px -22px;
+}
+.tabs_title_block>div:hover:nth-child(2):before,
+.tabs_title_block>div.active:nth-child(2):before {
+    background-position: -22px 0;
+}
+.tabs_title_block>div:nth-child(3):before {
+    background-position: -44px -22px;
+}
+.tabs_title_block>div:hover:nth-child(3):before,
+.tabs_title_block>div.active:nth-child(3):before {
+    background-position: -44px 0;
+}
+.tabs_title_block>div:hover {
+    color: #fff;
+}
+.tabs_title_block>div.active {
+    background-position: 0 0;
+    color: #fff;
+    z-index: 2;
+}
+
+/* Центральный блок */
+#top_username>div>div {
+    display: none;
+}
+#top_username>div>div:first-child {
+    display: block;
+}
+.character_info_center_block {
+    width: 360px;
+    margin: 77px auto 0;
+}
+.character_info_center_block .top_block {
+    position: relative;
+    background: url(http://image.neverlands.ru/pinfo/center_info_top_center.png) no-repeat scroll 51px 0;
+    width: 100%;
+    height: 37px;
+}
+.character_info_center_block .top_block:before,
+.character_info_center_block .top_block:after {
+    content: "";
+    position: absolute;
+    top: 0;
+}
+.character_info_center_block .top_block:before {
+    left: -1px;
+    background: url(http://image.neverlands.ru/pinfo/center_info_top_left.png) no-repeat scroll 0 0;
+    width: 52px;
+    height: 78px;
+}
+.character_info_center_block .top_block:after {
+    right: 2px;
+    background: url(http://image.neverlands.ru/pinfo/center_info_top_right.png) no-repeat scroll 0 0;
+    width: 54px;
+    height: 81px;
+}
+.character_info_center_block .middle_block {
+    background: url("http://image.neverlands.ru/pinfo/block.png") no-repeat;
+    width: 296px;
+    height: 389px;
+    text-align: center;
+    margin: -27px 0 0 29px;
+    position: relative;
+    box-sizing: border-box;
+    padding: 39px 20px 25px 22px;
+    overflow: hidden;
+    z-index: 1;
+}
+.character_info_center_block .middle_block .character_tab_content {
+    display: none;
+}
+.character_info_center_block .middle_block .character_tab_content:first-child {
+    display: block;
+}
+.character_info_center_block .character_things_block {
+    float: left;
+    width: 62px;
+    min-height: 100px;
+    margin-top: -12px;
+}
+.character_info_center_block .character_things_block:last-child {
+    margin-top: -11px;
+}
+.character_info_center_block .character_things_block img {
+    display: block;
+    float: left;
+}
+.character_info_center_block .character_avatar_block {
+    float: left;
+    width: 125px;
+    text-align: center;
+    margin: 0 2px;
+}
+.character_info_center_block .character_avatar_block .avatar_block {
+    height: 275px;
+    margin-top: 11px;
+}
+.character_info_center_block .character_avatar_block .avatar_block img {
+    max-width: 100%;
+    max-height: 100%;
+}
+.character_info_center_block .character_avatar_block .things_slots {
+    text-align: center;
+    height: 31px;
+    margin-top: 6px;
+}
+.character_info_center_block .character_avatar_block .things_slots img {
+    float: left;
+    display: block;
+}
+.character_info_center_block .character_avatar_block .things_slots p {
+    color: #E5E5E5;
+    font-size: 11px;
+    font-family: Tahoma, sans-serif;
+    font-weight: bold;
+    margin: 0;
+    line-height: 25px;
+}
+.character_info_center_block .character_hp_block,
+.character_info_center_block .character_mp_block {
+    position: absolute;
+    width: 11px;
+    top: 90px;
+}
+.character_info_center_block .character_hp_block {
+    left: 3px;
+    background: url("http://image.neverlands.ru/pinfo/hp2.png") no-repeat center bottom;
+}
+.character_info_center_block .character_mp_block {
+    right: 2px;
+    background: url("http://image.neverlands.ru/pinfo/mp2.png") no-repeat center bottom;
+}
+.character_info_center_block .character_info_bottom {
+    position: absolute;
+    left: 0;
+    bottom: 11px;
+    width: 100%;
+    height: 12px;
+    color: #FFFFFF;
+    font-size: 10px;
+    text-align: center;
+}
+.character_info_center_block .character_info_bottom .hp {
+    position: absolute;
+    width: 90px;
+    left: 25px;
+}
+.character_info_center_block .character_info_bottom .mp {
+    position: absolute;
+    width: 90px;
+    right: 20px;
+}
+
+.character_info_center_block .bottom_block {
+    position: relative;
+    width: 100%;
+    height: 73px;
+    background: url(http://image.neverlands.ru/pinfo/center_info_bot_center.png) no-repeat 51px 0;
+    margin-top: -11px;
+    text-align: center;
+}
+.character_info_center_block .bottom_block:before,
+.character_info_center_block .bottom_block:after {
+    content: "";
+    position: absolute;
+    top: -8px;
+    height: 81px;
+}
+.character_info_center_block .bottom_block:before {
+    left: -1px;
+    background: url(http://image.neverlands.ru/pinfo/center_info_bot_left.png);
+    width: 52px;
+}
+.character_info_center_block .bottom_block:after {
+    right: 2px;
+    background: url(http://image.neverlands.ru/pinfo/center_info_bot_right.png);
+    width: 54px;
+}
+.character_info_center_block .bottom_content_block {
+    padding: 0 15px;
+    text-align: center;
+    position: relative;
+    color: #484848;
+    font-size: 11px;
+    box-sizing: border-box;
+    z-index: 1;
+    top: 8px;
+    display: inline-block;
+}
+.character_info_center_block .bottom_content_block>div {
+    background: url(http://image.neverlands.ru/pinfo/text_block_center.png) repeat-x scroll 0 0;
+    min-width: 290px;
+    max-width: 350px;
+    height: 56px;
+    padding: 13px 0 0;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    overflow: hidden;
+}
+.character_info_center_block .bottom_content_block:before,
+.character_info_center_block .bottom_content_block:after {
+    content: "";
+    position: absolute;
+    top: 0;
+    width: 15px;
+    height: 56px;
+}
+.character_info_center_block .bottom_content_block:before {
+    left: 0;
+    background: url(http://image.neverlands.ru/pinfo/text_block_left.png) no-repeat scroll left top;
+}
+.character_info_center_block .bottom_content_block:after {
+    right: 0;
+    background: url(http://image.neverlands.ru/pinfo/text_block_right.png) no-repeat scroll left top;
+}
+
+/* Доработка рамок в infoblock */
+.infoblock .center:before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    background: url("http://image.neverlands.ru/pinfo/c2.png") repeat center top;
+    width: 100%;
+    height: 100%;
+    z-index: -1;
+}
+.infoblock .left:before,
+.infoblock .right:before {
+    content: '';
+    position: absolute;
+    top: 5px;
+    bottom: 0;
+    width: 100%;
+    z-index: -1;
+}
+.infoblock .left:before {
+    left: 1px;
+    background: url("http://image.neverlands.ru/pinfo/l2.png") repeat;
+}
+.infoblock .right:before {
+    left: -1px;
+    background: url("http://image.neverlands.ru/pinfo/p2.png") repeat;
+}
