@@ -5,23 +5,34 @@ import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
+import android.view.LayoutInflater;
 import android.view.View;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
+import android.widget.EditText;
+import android.widget.ImageView;
+import android.widget.ProgressBar;
 import android.widget.Toast;
 
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 
-import com.google.gson.Gson;
+import com.bumptech.glide.Glide;
 
+import java.net.HttpCookie;
 import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 import ru.neverlands.abclient.databinding.ActivityLoginBinding;
+import ru.neverlands.abclient.model.AuthResult;
 import ru.neverlands.abclient.model.UserConfig;
 import ru.neverlands.abclient.utils.AppVars;
 import ru.neverlands.abclient.utils.CryptoUtils;
@@ -212,39 +223,86 @@ public class LoginActivity extends AppCompatActivity {
             gamePassword = passwordOrKey;
         }
 
-        AuthManager.authorize(this, username, gamePassword, new AuthManager.AuthCallback() {
-            @Override
-            public void onSuccess(List<java.net.HttpCookie> cookies) {
-                runOnUiThread(() -> {
-                    // Сохраняем куки для последующей передачи в WebView
-                    AppVars.lastCookies = cookies;
+        ExecutorService executor = Executors.newSingleThreadExecutor();
+        Handler handler = new Handler(Looper.getMainLooper());
 
-                    // Пароль сохраняется только после успешного входа
-                    if (!profileToLogin.isEncrypted && binding.rememberCheckBox.isChecked()) {
-                        profileToLogin.UserPassword = gamePassword;
-                    } else if (!profileToLogin.isEncrypted) {
-                        profileToLogin.UserPassword = "";
-                    }
-                    // Для зашифрованных профилей пароль не пересохраняем на этом этапе
-                    profileToLogin.save(LoginActivity.this);
+        executor.execute(() -> {
+            AuthManager authManager = new AuthManager();
+            AuthResult result = authManager.authorize(username, gamePassword);
 
-                    // Устанавливаем глобальный профиль для сессии
-                    AppVars.Profile = profileToLogin;
+            handler.post(() -> handleAuthResult(result, username, gamePassword, profileToLogin));
+        });
+    }
 
-                    Intent intent = new Intent(LoginActivity.this, MainActivity.class);
-                    startActivity(intent);
-                    finish();
-                });
-            }
+    private void handleAuthResult(AuthResult result, String username, String gamePassword, UserConfig profileToLogin) {
+        binding.progressBar.setVisibility(View.GONE);
+        binding.loginButton.setEnabled(true);
 
-            @Override
-            public void onFailure(String message) {
-                runOnUiThread(() -> {
-                    binding.progressBar.setVisibility(View.GONE);
-                    binding.loginButton.setEnabled(true);
-                    Toast.makeText(LoginActivity.this, message, Toast.LENGTH_SHORT).show();
+        if (result.isSuccess()) {
+            onLoginSuccess(result.getCookies(), gamePassword, profileToLogin);
+        } else if (result.isCaptchaRequired()) {
+            showCaptchaDialog(username, gamePassword, result.getCaptchaUrl(), result.getVcode(), profileToLogin);
+        } else {
+            Toast.makeText(LoginActivity.this, result.getErrorMessage(), Toast.LENGTH_LONG).show();
+        }
+    }
+
+    private void onLoginSuccess(List<HttpCookie> cookies, String gamePassword, UserConfig profileToLogin) {
+        // Сохраняем куки для последующей передачи в WebView
+        AppVars.lastCookies = cookies;
+
+        // Пароль сохраняется только после успешного входа
+        if (!profileToLogin.isEncrypted && binding.rememberCheckBox.isChecked()) {
+            profileToLogin.UserPassword = gamePassword;
+        } else if (!profileToLogin.isEncrypted) {
+            profileToLogin.UserPassword = "";
+        }
+        // Для зашифрованных профилей пароль не пересохраняем на этом этапе
+        profileToLogin.save(LoginActivity.this);
+
+        // Устанавливаем глобальный профиль для сессии
+        AppVars.Profile = profileToLogin;
+
+        Intent intent = new Intent(LoginActivity.this, MainActivity.class);
+        startActivity(intent);
+        finish();
+    }
+
+    private void showCaptchaDialog(String username, String gamePassword, String captchaUrl, String vcode, UserConfig profileToLogin) {
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        LayoutInflater inflater = getLayoutInflater();
+        View dialogView = inflater.inflate(R.layout.dialog_captcha, null);
+        builder.setView(dialogView);
+
+        ImageView captchaImageView = dialogView.findViewById(R.id.captchaImageView);
+        EditText captchaEditText = dialogView.findViewById(R.id.captchaEditText);
+        ProgressBar captchaProgressBar = dialogView.findViewById(R.id.captchaProgressBar);
+
+        captchaProgressBar.setVisibility(View.VISIBLE);
+        Glide.with(this)
+                .load(captchaUrl)
+                .into(captchaImageView)
+                .onLoadFailed(null);
+        captchaProgressBar.setVisibility(View.GONE);
+
+        builder.setPositiveButton("OK", (dialog, which) -> {
+            String verify = captchaEditText.getText().toString().trim();
+            if (!verify.isEmpty()) {
+                binding.progressBar.setVisibility(View.VISIBLE);
+                binding.loginButton.setEnabled(false);
+
+                ExecutorService executor = Executors.newSingleThreadExecutor();
+                Handler handler = new Handler(Looper.getMainLooper());
+
+                executor.execute(() -> {
+                    AuthManager authManager = new AuthManager();
+                    AuthResult result = authManager.authorizeWithCaptcha(username, gamePassword, vcode, verify);
+                    handler.post(() -> handleAuthResult(result, username, gamePassword, profileToLogin));
                 });
             }
         });
+        builder.setNegativeButton("Отмена", (dialog, which) -> dialog.cancel());
+
+        builder.create().show();
     }
 }

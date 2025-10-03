@@ -1,0 +1,17 @@
+2025-10-03 20:45:25.365: Logger initialized.
+2025-10-03 20:45:25.367: AuthManager: Starting synchronous authorization for user: Блудя
+2025-10-03 20:45:25.506: AuthManager: 1. Initial GET request
+Request{method=GET, url=http://neverlands.ru/, headers=[User-Agent:Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36, Accept:text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7, Accept-Language:ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7]}
+2025-10-03 20:45:25.696: AuthManager: 1. Initial GET response
+Response{protocol=http/1.1, code=200, message=OK, url=http://neverlands.ru/}
+2025-10-03 20:45:25.701: AuthManager: 2. Login POST request
+Request{method=POST, url=http://neverlands.ru/game.php, headers=[User-Agent:Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36, Referer:http://neverlands.ru/, Origin:http://neverlands.ru]}
+2025-10-03 20:45:25.757: AuthManager: 2. Login POST response
+Response{protocol=http/1.1, code=200, message=OK, url=http://neverlands.ru/game.php}
+2025-10-03 20:45:25.761: AuthManager: 2. Login POST SUCCESS.
+2025-10-03 20:45:25.763: AuthManager: 3. Final GET request
+Request{method=GET, url=http://neverlands.ru/main.php, headers=[User-Agent:Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36, Referer:http://neverlands.ru/game.php]}
+2025-10-03 20:45:25.820: AuthManager: 3. Final GET response
+Response{protocol=http/1.1, code=200, message=OK, url=http://neverlands.ru/main.php}
+2025-10-03 20:45:25.829: AuthManager: Full Authorization SUCCESS.
+2025-10-03 20:45:26.256: Logger closing.

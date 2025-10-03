@@ -678,11 +678,14 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                     }
 
                     if (url.contains("ch.php?lo=1")) {
+                        ru.neverlands.abclient.utils.DebugLogger.log("ch.php?lo=1 - Raw data before Russian.getString: " + new String(data, "windows-1251"));
                         String html = Russian.getString(data);
+                        ru.neverlands.abclient.utils.DebugLogger.log("ch.php?lo=1 - HTML after Russian.getString: " + html);
                         Pattern pattern = Pattern.compile("var ChatListU = new Array\\((.*)\\);", Pattern.DOTALL);
                         Matcher matcher = pattern.matcher(html);
                         if (matcher.find()) {
                             AppVars.chatListU = matcher.group(1);
+                            ru.neverlands.abclient.utils.DebugLogger.log("ch.php?lo=1 - Extracted ChatListU: " + AppVars.chatListU);
                         }
                     }
 
@@ -692,6 +695,8 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
 
                     // Применяем другие фильтры, если необходимо
                     data = ru.neverlands.abclient.postfilter.Filter.process(url, data);
+
+                    ru.neverlands.abclient.utils.DebugLogger.log("Final processedData for " + url + ": " + new String(data, "windows-1251"));
 
                     // 5. Возвращаем обработанный ответ
                     return new WebResourceResponse(mimeType, "windows-1251", new ByteArrayInputStream(data));
