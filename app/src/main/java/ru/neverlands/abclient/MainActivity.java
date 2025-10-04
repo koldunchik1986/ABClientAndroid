@@ -261,9 +261,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
 
     @Override
     protected void onDestroy() {
-        ru.neverlands.abclient.utils.DebugLogger.log("MainActivity: onDestroy() called.");
-        stopTimer();
-        RoomManager.stopTracing();
+
 
         if (isExiting) {
             // ((ABClientApplication) getApplication()).stopProxyService();
@@ -331,6 +329,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(new Date(System.currentTimeMillis()));
         boolean mainSuccess = false;
         boolean chatSuccess = false;
+        boolean chatUsersSuccess = false;
 
         if (AppVars.lastMainPhpResponse != null) {
             String fileName = "HtmlLog_Main_" + timeStamp + ".txt";
@@ -343,6 +342,13 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             String html = Russian.getString(AppVars.lastChatMsgResponse);
             chatSuccess = ru.neverlands.abclient.utils.DataManager.writeStringToFile("Logs/" + fileName, html);
         }
+
+        binding.appBarMain.contentMain.chatUsersWebview.evaluateJavascript(
+                "(function() { return '<html>'+document.getElementsByTagName('html')[0].innerHTML+'</html>'; })();",
+                html -> {
+                    String fileName = "HtmlLog_ChatUsers_" + timeStamp + ".txt";
+                    ru.neverlands.abclient.utils.DataManager.writeStringToFile("Logs/" + fileName, html);
+                });
 
         if (mainSuccess || chatSuccess) {
             Toast.makeText(this, "Снимки кода сохранены в папке Logs", Toast.LENGTH_SHORT).show();
@@ -502,13 +508,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                     "})()";
             view.evaluateJavascript(script, null);
 
-            if (url.endsWith("main.php")) {
-                view.evaluateJavascript("javascript:(function() { var frameset = document.getElementsByTagName('frameset')[0]; if (frameset) { frameset.rows = '*\n, 0'; } })()", null);
-                if (!isRoomManagerStarted) {
-                    ru.neverlands.abclient.manager.RoomManager.startTracing(MainActivity.this);
-                    isRoomManagerStarted = true;
-                }
-            } else if (url.contains("ch.php")) {
+            if (url.contains("ch.php")) {
                 view.evaluateJavascript("javascript:(function() { var frameset = document.getElementsByTagName('frameset')[0]; if (frameset) { frameset.cols = '0, *'; } })()", null);
             }
         }
@@ -613,11 +613,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                         encoding = null;
                     }
 
-                    if (url.contains("ch.php?lo=1")) {
-                        String html = Russian.getString(data);
-                        html = ru.neverlands.abclient.manager.RoomManager.process(MainActivity.this, html);
-                        data = Russian.getBytes(html);
-                    }
+
 
                     if (contentType != null && contentType.contains("text/html")) {
                         data = injectJsFix(data, url);

@@ -1,0 +1,118 @@
+
+<HTML>
+<head><script type="text/javascript">if (typeof top.start == 'undefined') { top.start = function() {}; }if (typeof window.chatlist_build == 'undefined') { window.chatlist_build = function() {}; }if (typeof window.get_by_id == 'undefined') { window.get_by_id = function(id) { return document.getElementById(id); }; }if (typeof top.save_scroll_p == 'undefined') { top.save_scroll_p = function() {}; }if (typeof window.ins_HP == 'undefined') { window.ins_HP = function() {}; }if (typeof window.slots_inv == 'undefined') { window.slots_inv = function() {}; }if (typeof window.compl_view == 'undefined') { window.compl_view = function() {}; }if (typeof window.view_t == 'undefined') { window.view_t = function() {}; }if (typeof top.ch_refresh_n == 'undefined') { top.ch_refresh_n = function() {}; }if (typeof window.ButClick == 'undefined') { window.ButClick = function() {}; }</script>
+<LINK href="./css/game.css" rel=STYLESHEET type=text/css>
+<LINK href="/css/frame.css" rel=STYLESHEET type=text/css>
+<META Http-Equiv=Content-Type Content="text/html; charset=windows-1251">
+<META Http-Equiv=Cache-Control Content=No-Cache>
+<META Http-Equiv=Pragma Content=No-Cache>
+<META Http-Equiv=Expires Content=0>
+<SCRIPT src="./js/hp.js"></SCRIPT>
+<SCRIPT src="./js/slots_v02.js"></SCRIPT>
+<SCRIPT src="./js/dealer.js"></SCRIPT>
+<SCRIPT src="./js/addstat.js"></SCRIPT>
+<SCRIPT src="./js/transfer.js"></SCRIPT>
+<SCRIPT src="./js/addskill_v02.js"></SCRIPT>
+<SCRIPT src="./js/addperk_v03.js"></SCRIPT>
+<SCRIPT src="./js/t_v01.js"></SCRIPT>
+<SCRIPT src="/js/effects_v04.js"></SCRIPT>
+<SCRIPT src="/js/nl_tooltip.js"></SCRIPT>
+</HEAD>
+<BODY bgcolor=#FFFFFF topmargin=0 bottommargin=0 marginwidth=0 marginheight=0 leftmargin=0 rightmargin=0>
+
+<div id="tooltip"></div>
+<table cellpadding=4 cellspacing=0 border=0 width=100%>
+<tr><td bgcolor=#FCFAF3>
+<table cellpadding=0 cellspacing=0 border=0>
+<tr><td rowspan=3><font class=nickname><img src=http://image.neverlands.ru/signs/c174.gif width=15 height=12 border=0 align=absmiddle alt=" Триглав (I am Legend)">&nbsp;<b>Блудя</b> [22]&nbsp;</font></td><td><img src=http://image.neverlands.ru/1x1.gif width=1 height=2><br><img src=http://image.neverlands.ru/gameplay/hp.gif width=0 height=6 border=0 name=leftp vspace=0 align=absmiddle><img src=http://image.neverlands.ru/gameplay/nohp.gif width=0 height=6 border=0 name=rightp vspace=0 align=absmiddle></td><td rowspan=3> <div id=hbar><font class=hpfont>: </div></td></tr>
+<tr><td bgcolor=#ffffff><img src=http://image.neverlands.ru/1x1.gif width=1 height=1></td></tr>
+<tr><td><img src=http://image.neverlands.ru/gameplay/ma.gif width=0 height=6 border=0 name=leftm vspace=0 align=absmiddle><img src=http://image.neverlands.ru/gameplay/noma.gif width=0 height=6 border=0 name=rightm vspace=0 align=absmiddle></td></tr>
+</table>
+</td><td bgcolor=#FCFAF3><div align=center><input type=button class=lbutdis value="Ваш персонаж" DISABLED> <input type=button class=lbut onclick="location='main.php?get_id=56&act=10&go=inv&vcode=40630d49171054363c12d891120c142a'" value="Инвентарь"> <input type=button class=lbut onclick="location='main.php?get_id=56&act=10&go=ret&vcode=9569568af401920632c6f1c22c184d94'" value="Вернуться"> <input type=button class=lbut onclick="location='main.php?get_id=56&act=10&go=up&vcode=413fb9a49c2c10f4179e70679edcc48c'" value="Природа"></div></td><td bgcolor=#FCFAF3><div align=right><a href="javascript:top.exit_redir();"><img src=http://image.neverlands.ru/exit.gif align=absmiddle width=15 height=15 border=0></a></div></td></tr>
+</table>
+
+<table cellpadding=0 cellspacing=0 border=0 width=100%>
+<tr><td bgcolor=#FFFFFF><img src=http://image.neverlands.ru/1x1.gif width=1 height=1></td></tr>
+<tr><td bgcolor=#B9A05C><img src=http://image.neverlands.ru/1x1.gif width=1 height=1></td></tr>
+<tr><td bgcolor=#F3ECD7><img src=http://image.neverlands.ru/1x1.gif width=1 height=2></td></tr>
+</table><SCRIPT language="JavaScript">
+ins_HP(355,355,2527,2527,833,2195);
+</SCRIPT>
+
+<table cellpadding=0 cellspacing=0 border=0 width=100%>
+<tr><td valign=top><img src=http://image.neverlands.ru/1x1.gif width=10 height=10></td>
+<td valign=top width=180>
+<table cellpadding=0 cellspacing=0 border=0 width=180>
+<tr><td colspan=6></td><td><img src=http://image.neverlands.ru/1x1.gif width=180 height=10></td></tr>
+<tr>
+<SCRIPT language="JavaScript">
+slots_pla("dr13--male.jpg","Блудя","sl_l_0.gif:Слот для шлема@kaas30sl.gif:Амулет Мага Воздуха:|0|0|10|0|90|120|300@lsp30dks.gif:Посох Мага Воздуха (+1):AirBorn|40|60|0|75|0|180|300@w26_li4a.gif:Искрящийся Пояс Лича:|0|0|40|0|80|180|450@sl_l_4.gif:Слот для содержимого пояса@sl_l_4.gif:Слот для содержимого пояса@sl_l_4.gif:Слот для содержимого пояса@sl_l_5.gif:Слот для сапог@w48_01.gif:Чёрный жемчуг:|0|0|0|0|30|50|100@i_svi_206.gif:Свиток выжигания маны:|0|0|0|0|0|0|3@w80_li4a.gif:Искрящиеся Наручи Лича:|2|3|40|15|0|0|450@sl_r_3.gif:Слот для перчаток@w30_arar.gif:Книга Урагана:Летучий рЫб)|0|0|20|0|0|200|300@j20sk20s.gif:Перстень Мага Воздуха (+2):|2|5|5|5|15|90|300@j20sk20s.gif:Перстень Мага Воздуха:|2|5|5|5|15|90|300@sl_r_6.gif:Слот для брони@sl_l_6.gif:Слот для штанов@sl_r_7.gif:Слот для реликвии@sl_r_5.gif:Слот для кольца@sl_r_5.gif:Слот для кольца@","@216@17@450@@@@@100@3@450@@300@189@156@@@@@@",115);
+</SCRIPT>
+<td width=5 valign=top rowspan=2><img src=http://image.neverlands.ru/1x1.gif width=5 height=1></td>
+<td valign=top width=180 rowspan=2>
+<table cellpadding=0 cellspacing=0 border=0 width=100%>
+<tr><td><table cellpadding=0 cellspacing=1 border=0 width=100%>
+<tr><td bgcolor=#FCFAF3><font class=nickname><img src=http://image.neverlands.ru/money_all.gif width=16 height=14 border=0 alt="Передать NV" align=absmiddle onclick="transferform('0','0','Игровую валюту','fb0a541f9fba9459764e303a45c90b95','0','0','0','0')" vspace=1>&nbsp;Деньги:</td><td width=100% bgcolor=#fafafa nowrap><font class=nickname><b id="user_nv">&nbsp;113264.25 NV</td></tr>
+<tr><td bgcolor=#F0F0F0><img src=http://image.neverlands.ru/money_dea.gif width=14 height=14 border=0 align=absmiddle vspace=1></td><td width=100% bgcolor=#F0F0F0 nowrap><font class=nickname><b id="user_goldmoney">&nbsp;5 $</td></tr><tr><td bgcolor=#F0F0F0><img src=http://image.neverlands.ru/money_dea.gif width=14 height=14 border=0 alt="Передать DNV" align=absmiddle onclick="m_form('48dac703f27b6f54cd2d5f5fa812d2c2')" vspace=1></td><td width=100% bgcolor=#F0F0F0 nowrap><font class=nickname><b id="user_deamoney">&nbsp;0.08 DNV</td></tr>
+</table></td></tr>
+<tr><td>
+<table cellpadding=0 cellspacing=0 border=0 width=100%>
+<tr><td bgcolor=#FCFAF3 class=nickname>&nbsp;Сила:</td><td bgcolor=#FFFFFF><img src=http://image.neverlands.ru/1x1.gif width=1 height=1></td><td bgcolor=#FAFAFA class=nickname id="st0"><b>&nbsp;14</b></td><td width=100% bgcolor=#FAFAFA class=nickname nowrap>&nbsp;(12+<font color=#cc0000>2</font>)</td></tr>
+<tr><td bgcolor=#FFFFFF colspan=4><img src=http://image.neverlands.ru/1x1.gif width=1 height=1></td></tr>
+<tr><td bgcolor=#FCFAF3 class=nickname>&nbsp;Ловкость:</td><td bgcolor=#FFFFFF><img src=http://image.neverlands.ru/1x1.gif width=1 height=1></td><td bgcolor=#FAFAFA class=nickname id="st1"><b>&nbsp;66</b></td><td width=100% bgcolor=#FAFAFA class=nickname nowrap>&nbsp;(32+<font color=#cc0000>34</font>)</td></tr>
+<tr><td bgcolor=#FFFFFF colspan=4><img src=http://image.neverlands.ru/1x1.gif width=1 height=1></td></tr>
+<tr><td bgcolor=#FCFAF3 class=nickname>&nbsp;Удача:</td><td bgcolor=#FFFFFF><img src=http://image.neverlands.ru/1x1.gif width=1 height=1></td><td bgcolor=#FAFAFA class=nickname id="st2"><b>&nbsp;57</b></td><td width=100% bgcolor=#FAFAFA class=nickname nowrap>&nbsp;(44+<font color=#cc0000>13</font>)</td></tr>
+<tr><td bgcolor=#FFFFFF colspan=4><img src=http://image.neverlands.ru/1x1.gif width=1 height=1></td></tr>
+<tr><td bgcolor=#FCFAF3 class=nickname>&nbsp;Здоровье:</td><td bgcolor=#FFFFFF><img src=http://image.neverlands.ru/1x1.gif width=1 height=1></td><td bgcolor=#FAFAFA class=nickname id="st4"><b>&nbsp;25</b></td><td width=100% bgcolor=#FAFAFA class=nickname nowrap></td></tr>
+<tr><td bgcolor=#FFFFFF colspan=4><img src=http://image.neverlands.ru/1x1.gif width=1 height=1></td></tr>
+<tr><td bgcolor=#FCFAF3 class=nickname>&nbsp;Знания:</td><td bgcolor=#FFFFFF><img src=http://image.neverlands.ru/1x1.gif width=1 height=1></td><td bgcolor=#FAFAFA class=nickname id="st3"><b>&nbsp;231</b></td><td width=100% bgcolor=#FAFAFA class=nickname nowrap>&nbsp;(140+<font color=#cc0000>91</font>)</td></tr>
+<tr><td bgcolor=#FFFFFF colspan=4><img src=http://image.neverlands.ru/1x1.gif width=1 height=1></td></tr>
+<tr><td bgcolor=#FCFAF3 class=nickname>&nbsp;Мудрость:</td><td bgcolor=#FFFFFF><img src=http://image.neverlands.ru/1x1.gif width=1 height=1></td><td bgcolor=#FAFAFA class=nickname id="st5"><b>&nbsp;1</b></td><td width=100% bgcolor=#FAFAFA class=nickname nowrap></td></tr>
+
+</table>
+</td></tr>
+<tr><td bgcolor=#FFFFFF><img src=http://image.neverlands.ru/1x1.gif width=1 height=2></td></tr>
+<tr><td bgcolor=#3564A5><img src=http://image.neverlands.ru/1x1.gif width=1 height=1></td></tr>
+<tr><td bgcolor=#FFFFFF><img src=http://image.neverlands.ru/1x1.gif width=1 height=2></td></tr>
+<tr><td><table cellpadding=0 cellspacing=1 border=0 width=100%>
+<tr><td bgcolor=#FCFAF3><font class=travma>&nbsp;<b>Опыт</b></td><td width=100% bgcolor=#FAFAFA><font class=travma><b>&nbsp;</b></td></tr>
+<tr><td bgcolor=#FCFAF3><font class=travma>&nbsp;<font color=#BB0000>Боевой:</td><td width=100% bgcolor=#FAFAFA><font class=travma><b><font color=#BB0000>&nbsp;1336926747</b></td></tr>
+<tr><td bgcolor=#FCFAF3><font class=travma>&nbsp;<font color=#0A8900>Слава:</td><td width=100% bgcolor=#FAFAFA><font class=travma><b><font color=#0A8900>&nbsp;4646050</b></td></tr>
+<tr><td bgcolor=#FCFAF3><font class=travma>&nbsp;<font color=#004BBB>Доблесть:</td><td width=100% bgcolor=#FAFAFA><font class=travma><b><font color=#004BBB>&nbsp;1200</b></td></tr>
+<tr><td bgcolor=#FCFAF3 nowrap><font class=travma>&nbsp;До уровня:</td><td width=100% bgcolor=#FAFAFA><font class=travma><b>&nbsp;1163073253</b></td></tr>
+</table></td></tr>
+<tr><td bgcolor=#FFFFFF><img src=http://image.neverlands.ru/1x1.gif width=1 height=2></td></tr>
+<tr><td bgcolor=#3564A5><img src=http://image.neverlands.ru/1x1.gif width=1 height=1></td></tr>
+<tr><td bgcolor=#FFFFFF><img src=http://image.neverlands.ru/1x1.gif width=1 height=2></td></tr>
+<tr><td><table cellpadding=0 cellspacing=1 border=0 width=100%>
+<tr><td bgcolor=#FCFAF3><font class=travma>&nbsp;Побед:</td><td bgcolor=#FAFAFA><font class=travma><b>&nbsp;5398</b></td></tr>
+<tr><td bgcolor=#FCFAF3><font class=travma>&nbsp;Поражений:</td><td bgcolor=#FAFAFA><font class=travma><b>&nbsp;2064</b></td></tr>
+<tr><td bgcolor=#FCFAF3><font class=travma>&nbsp;Побед над NPC:</td><td bgcolor=#FAFAFA><font class=travma><b>&nbsp;282170</b></td></tr>
+<tr><td bgcolor=#FCFAF3><font class=travma>&nbsp;Поражений от NPC:</td><td bgcolor=#FAFAFA><font class=travma><b>&nbsp;10259</b></td></tr>
+</table></td></tr>
+<tr><td bgcolor=#FFFFFF><img src=http://image.neverlands.ru/1x1.gif width=1 height=4></td></tr><tr><td><table cellpadding=0 cellspacing=1 border=0 width=100%><tr><td bgcolor=#FAFAFA width=75% nowrap><font class=nickname><font class=proce><font color=#336699>&nbsp;Усталость:</td><td bgcolor=#336699 nowrap><font class=proce><font color=#ffffff><b><div align=center>&nbsp;<b>0</b>%</b>&nbsp;</div></td></tr><tr><td bgcolor=#fafafa width=75% nowrap><font class=nickname><font class=proce>&nbsp;ОД на удар:</td><td bgcolor=#D16F67 nowrap><font class=proce><font color=#FFFFFF><b><div align=center>&nbsp;70</b>&nbsp;</div></td></tr><tr><td bgcolor=#fafafa width=75% nowrap><font class=nickname><font class=proce>&nbsp;Арт. коэф:</td><td bgcolor=#D16F67 nowrap><font class=proce><font color=#FFFFFF><b><div align=center>&nbsp;малый</b>&nbsp;</div></td></tr><tr><td bgcolor=#FAFAFA width=75% nowrap><font class=nickname><font class=proce>&nbsp;Класс брони:</td><td bgcolor=#D16F67 nowrap><font class=proce><font color=#FFFFFF><b><div align=center>&nbsp;150&nbsp;</div></b></td></tr><tr><td bgcolor=#FAFAFA width=75% nowrap><font class=nickname><font class=proce>&nbsp;Уловка:</td><td bgcolor=#D16F67 nowrap><font class=proce><font color=#FFFFFF><b><div align=center>&nbsp;710%&nbsp;</div></b></td></tr><tr><td bgcolor=#FAFAFA width=75% nowrap><font class=nickname><font class=proce>&nbsp;Точность:</td><td bgcolor=#D16F67 nowrap><font class=proce><font color=#FFFFFF><b><div align=center>&nbsp;280%&nbsp;</div></b></td></tr><tr><td bgcolor=#FAFAFA width=75% nowrap><font class=nickname><font class=proce>&nbsp;Сокрушение:</td><td bgcolor=#D16F67 nowrap><font class=proce><font color=#FFFFFF><b><div align=center>&nbsp;240%&nbsp;</div></b></td></tr><tr><td bgcolor=#FAFAFA width=75% nowrap><font class=nickname><font class=proce>&nbsp;Стойкость:</td><td bgcolor=#D16F67 nowrap><font class=proce><font color=#FFFFFF><b><div align=center>&nbsp;460%&nbsp;</div></b></td></tr><tr><td bgcolor=#FAFAFA width=75% nowrap><font class=nickname><font class=proce>&nbsp;Пробой брони:</td><td bgcolor=#D16F67 nowrap><font class=proce><font color=#FFFFFF><b><div align=center>&nbsp;100%&nbsp;</div></b></td></tr></table></td></tr></table></td></tr><tr><td colspan=5 valign=top align=center></td></tr></table></td><td valign=top><img src=http://image.neverlands.ru/1x1.gif width=5 height=10></td>
+<td valign=top width=100%>
+<table cellpadding=0 cellspacing=0 border=0 width=100%>
+<tr><td><img src=http://image.neverlands.ru/1x1.gif width=1 height=10></td></tr>
+<tr><td><div id=transfer><img src=http://image.neverlands.ru/1x1.gif width=1 height=1></div></td></tr>
+<tr><td bgcolor=#3564A5 width=100%><img src=http://image.neverlands.ru/1x1.gif width=1 height=2></td></tr>
+<tr><td><img src=http://image.neverlands.ru/1x1.gif width=1 height=1></td></tr>
+<tr><td bgcolor=#EAEAEA><table cellpadding=4 cellspacing=0 border=0 width=100%><tr><td align=center><b><font class=freemain><font color=#3564A5><a href="?mselect=10"><font color=#3564A5>Сервисы</font></a> | <img src=http://image.neverlands.ru/money_dea.gif width=14 height=14 border=0 align=absmiddle> <a href="?mselect=12"><font color=#3564A5>Биржа DNV</font></a> | <a href="?mselect=15"><font color=#3564A5>Слот-машина</font></a> | <a href="http://forum.neverlands.ru/" target=_blank><font color=#3564A5>Форум</font></a> | <a href="?mselect=14"><font color=#3564A5>Голосование</font></a></font></font></b></td></tr></table></td></tr>
+<tr><td><img src=http://image.neverlands.ru/1x1.gif width=1 height=2></td></tr>
+<tr><td bgcolor=#E0D6BB><img src=http://image.neverlands.ru/1x1.gif width=1 height=1></td></tr>
+<tr><td bgcolor=#FCFAF3><table cellpadding=4 cellspacing=0 border=0 width=100%><tr><td align=center><input type=button class=lbut value="Умения" onclick="location='main.php?mselect=1'"> <input type=button class=lbut value="Навыки" onclick="location='main.php?mselect=2'"> <input type=button class=lbut value="Достижения" onclick="location='main.php?mselect=17'"> <input type=button class=lbut value="Наставничество" onclick="location='main.php?mselect=18'"> <input type=button class=lbut value="Настройки" onclick="location='main.php?mselect=3'"> <input type=button class=lbut value="О Вас" onclick="location='main.php?mselect=5'"> <input type=button class=lbut value="Отчёты" onclick="location='main.php?mselect=8'"><hr size=1 color=#e0e0e0><input type=button class=lbut value="Платные сервисы" onclick="location='main.php?mselect=11'"> <input type=button class=lbut value="Лотерея" onclick="location='main.php?mselect=19'"> <input type=button class=lbut value="Открытки" onclick="location='main.php?mselect=6'"> <input type=button class=lbut value="Подарки" onclick="location='main.php?mselect=7'"> <input type=button class=lbut value="Пароль" onclick="location='main.php?mselect=4'"> <input type=button class=lbut value="Реферралы" onclick="location='main.php?mselect=16'"></td></tr></table></td></tr>
+<tr><td><img src=http://image.neverlands.ru/1x1.gif width=1 height=3></td></tr>
+<tr><td bgcolor=#CCCCCC width=100%>
+<table cellpadding=5 cellspacing=1 border=0 width=100%><tr><td bgcolor=#f5f5f5 class=freetxt>
+О всех пожеланиях, глюках, ошибках просьба сообщать на <a href="http://forum.neverlands.ru" target=_black>форуме</a> проекта.<br><form method=POST action=main.php>Подписаться на новости проекта NeverLands.Ru<br>Ваш E-mail: <input type=hidden name=post_id value=6><input type=hidden name=mdc value=c2ac31033200d56a613dbaa20f37f6b5><input type=text name=subemail size=40 class=LogintextBox4 maxlength=40> <input type=checkbox name=subhtml value=1> html-версия <input type=submit value="Ок" class=lbut></form><br><br>Мы работаем для Вас. &copy;<br>С уважением, Администрация NeverLands.Ru</b></td></tr></table>
+</td></tr>
+<tr><td><img src=http://image.neverlands.ru/1x1.gif width=1 height=3></td></tr>
+<tr><td align=right>
+<SCRIPT language="JavaScript">
+document.write(view_t());
+</SCRIPT>
+</td></tr>
+</table></td><td valign=top><img src=http://image.neverlands.ru/1x1.gif width=10 height=10></td></tr>
+<tr><td colspan=5><img src=http://image.neverlands.ru/1x1.gif width=1 height=3></td></tr></table>
+</BODY>
+</HTML>

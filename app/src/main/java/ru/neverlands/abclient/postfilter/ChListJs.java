@@ -1,65 +1,44 @@
+// ChListJs.java
 package ru.neverlands.abclient.postfilter;
 
 import android.util.Log;
-
-import java.io.File;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.OutputStream;
-
 import ru.neverlands.abclient.utils.AppVars;
 import ru.neverlands.abclient.utils.DataManager;
 import ru.neverlands.abclient.utils.Russian;
 
-/**
- * Пост-фильтр для скрипта ch_list.js.
- */
 public class ChListJs {
-    /**
-     * Обрабатывает скрипт ch_list.js ПОСЛЕ того, как он был изменен в MainActivity.
-     * MainActivity уже добавил в начало скрипта мост `window.external` и массив `ChatListU`.
-     * Этот метод выполняет финальные строковые замены.
-     * @param array Массив байт, содержащий ИЗМЕНЕННЫЙ скрипт.
-     * @return Финальная версия скрипта для выполнения в WebView.
-     */
+    private static final String TAG = "ChListJs";
+
     public static byte[] process(byte[] array) {
-        Log.d("ChListJs", "process() called");
-        if (array == null || array.length == 0) {
-            return array;
-        }
-
+        Log.d(TAG, "process() called");
         try {
-            String html = Russian.getString(array);
+            // Читаем ch_list.js из assets
+            InputStream is = AppVars.getAssetManager().open("js/ch_list.js");
+            byte[] fileBytes = DataManager.readAllBytes(is);
+            is.close();
 
-            try {
-                File logFile = new File(AppVars.getLogsDir(), "ChListJs_original.html");
-                try (OutputStream os = new FileOutputStream(logFile)) {
-                    os.write(html.getBytes());
-                }
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
+            // Декодируем в строку
+            String js = Russian.getString(fileBytes);
 
-            html = html.replace("alt=", "title=");
-            html = html.replace("target=_blank", "target=\"_blank\"");
+            // ВАЖНО: Заменяем `alt=` на `title=` для совместимости
+            js = js.replace("alt=", "title=");
 
-            try {
-                File logFile = new File(AppVars.getLogsDir(), "ChListJs_modified.html");
-                try (OutputStream os = new FileOutputStream(logFile)) {
-                    os.write(html.getBytes());
-                }
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
+            // Добавляем мост для Android
+            String bridgeScript = "window.external = window.AndroidBridge;";
+            js = bridgeScript + js;
 
-            Log.d("ChListJs", "Finished processing ch_list.js");
-            return Russian.getBytes(html);
-        } catch (Exception e) {
-            e.printStackTrace();
-            Log.e("ChListJs", "Error processing ch_list.js", e);
-            // Return an empty script to avoid breaking the page
-            return new byte[0];
+            // Логируем для отладки (опционально)
+            // ru.neverlands.abclient.utils.DataManager.writeStringToFile("Logs/ch_list_debug.js.txt", js);
+
+            // Кодируем обратно и возвращаем
+            return Russian.getBytes(js);
+
+        } catch (IOException e) {
+            Log.e(TAG, "Error reading ch_list.js from assets", e);
+            // В случае ошибки возвращаем оригинальный массив, чтобы не сломать страницу
+            return array;
         }
     }
 }

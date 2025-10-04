@@ -11,6 +11,7 @@ import ru.neverlands.abclient.utils.Russian;
 public class Filter {
     private static final Pattern DOCTYPE_PATTERN = Pattern.compile("(?is)<!DOCTYPE[^>]*>");
 
+
     public static byte[] preProcess(String address, byte[] array) {
         return array;
     }
@@ -18,6 +19,10 @@ public class Filter {
     public static byte[] process(Context context, String address, byte[] array) {
         if (address == null || address.isEmpty() || array == null) {
             return array;
+        }
+
+        if (address.contains("ch.php?lo=1")) {
+            return ChRoomPhp.process(array);
         }
 
         if (address.contains(".js")) {
@@ -158,12 +163,6 @@ public class Filter {
 
         if (address.startsWith("http://www.neverlands.ru/gameplay/ajax/roulette_ajax.php")) {
             return RouletteAjaxPhp.process(array);
-        }
-
-        if (address.startsWith("http://www.neverlands.ru/ch.php")) {
-            String html = Russian.getString(array);
-            html = ru.neverlands.abclient.manager.RoomManager.process(context, html);
-            return Russian.getBytes(html);
         }
 
         return array;
