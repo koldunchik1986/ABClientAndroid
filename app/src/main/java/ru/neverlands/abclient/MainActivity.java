@@ -70,10 +70,6 @@ import ru.neverlands.abclient.utils.AppVars;
 import ru.neverlands.abclient.utils.Chat;
 import ru.neverlands.abclient.utils.Russian;
 
-/**
- * Основная активность приложения.
- * Аналог FormMain.cs в оригинальном приложении.
- */
 public class MainActivity extends AppCompatActivity implements NavigationView.OnNavigationItemSelectedListener {
     private static final String TAG = "MainActivity";
     private ActivityMainBinding binding;
@@ -134,24 +130,27 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         View headerView = navigationView.getHeaderView(0);
         TextView navHeaderTitle = headerView.findViewById(R.id.nav_header_title);
         try {
-            String versionName = getPackageManager().getPackageInfo(getPackageName(), 0).versionName;
-            navHeaderTitle.setText("v" + versionName);
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+                String versionName = getPackageManager().getPackageInfo(getPackageName(), PackageManager.PackageInfoFlags.of(0)).versionName;
+                navHeaderTitle.setText("v" + versionName);
+            } else {
+                String versionName = getPackageManager().getPackageInfo(getPackageName(), 0).versionName;
+                navHeaderTitle.setText("v" + versionName);
+            }
         } catch (PackageManager.NameNotFoundException e) {
             e.printStackTrace();
             navHeaderTitle.setText("");
         }
 
-        // Настраиваем и загружаем WebView
         setupWebViews();
         loadInitialUrls();
 
-        AppVars.NextCheckNoConnection = new Date();
+        AppVars.NextCheckNoConnection = new Date(System.currentTimeMillis());
         startTimer();
     }
 
     @SuppressLint("SetJavaScriptEnabled")
     private void setupWebViews() {
-        // Настройка всех WebView
         WebView webView = binding.appBarMain.contentMain.webView;
         WebView chatMsgWebView = binding.appBarMain.contentMain.chatMsgWebview;
         WebView chatUsersWebView = binding.appBarMain.contentMain.chatUsersWebview;
@@ -164,28 +163,25 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         setupWebView(chatUsersWebView, customWebViewClient);
         setupWebView(chatButtonsWebView, customWebViewClient);
 
-        // Внедряем cookies, полученные после авторизации
         if (AppVars.lastCookies != null && !AppVars.lastCookies.isEmpty()) {
-            // Хирургически удаляем дубликаты, особенно "watermark", сохраняя только последний.
             java.util.List<java.net.HttpCookie> filteredCookies = new java.util.ArrayList<>();
             java.util.Set<String> names = new java.util.HashSet<>();
-            // Итерируем в обратном порядке, чтобы сохранить последний из дубликатов
             for (int i = AppVars.lastCookies.size() - 1; i >= 0; i--) {
                 java.net.HttpCookie cookie = AppVars.lastCookies.get(i);
                 if (!names.contains(cookie.getName())) {
-                    filteredCookies.add(0, cookie); // Добавляем в начало, чтобы сохранить порядок
+                    filteredCookies.add(0, cookie);
                     names.add(cookie.getName());
                 }
             }
 
             CookieManager cookieManager = CookieManager.getInstance();
-            String url = "http://neverlands.ru"; // Устанавливаем cookies для основного домена
+            String url = "http://neverlands.ru";
             for (java.net.HttpCookie cookie : filteredCookies) {
                 String cookieString = cookie.getName() + "=" + cookie.getValue() + "; domain=" + cookie.getDomain();
                 cookieManager.setCookie(url, cookieString);
             }
             cookieManager.flush();
-            AppVars.lastCookies = null; // Очищаем после использования
+            AppVars.lastCookies = null;
         }
     }
 
@@ -195,7 +191,6 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         WebView chatUsersWebView = binding.appBarMain.contentMain.chatUsersWebview;
         WebView chatButtonsWebView = binding.appBarMain.contentMain.chatButtonsWebview;
 
-        // Загрузка URL
         webView.loadUrl("http://neverlands.ru/main.php");
         chatMsgWebView.loadUrl("http://neverlands.ru/ch/msg.php");
         chatUsersWebView.loadUrl("http://neverlands.ru/ch.php?lo=1");
@@ -248,14 +243,11 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
 
             @Override
             public boolean onCreateWindow(WebView view, boolean isDialog, boolean isUserGesture, android.os.Message resultMsg) {
-                // Эта логика перехватывает ссылки, которые должны открыться в новом окне (target="_blank")
-                // и принудительно загружает их в текущем WebView.
                 WebView tempWebView = new WebView(MainActivity.this);
                 tempWebView.setWebViewClient(new WebViewClient() {
                     @Override
-                    public boolean shouldOverrideUrlLoading(WebView view, String url) {
-                        // Получив URL, загружаем его в основном WebView
-                        binding.appBarMain.contentMain.webView.loadUrl(url);
+                    public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
+                        binding.appBarMain.contentMain.webView.loadUrl(request.getUrl().toString());
                         return true;
                     }
                 });
@@ -267,8 +259,6 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         });
     }
 
-
-    
     @Override
     protected void onDestroy() {
         ru.neverlands.abclient.utils.DebugLogger.log("MainActivity: onDestroy() called.");
@@ -279,7 +269,6 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             // ((ABClientApplication) getApplication()).stopProxyService();
         }
 
-        // Уничтожаем все WebView, чтобы избежать утечек памяти
         destroyWebView(binding.appBarMain.contentMain.webView);
         destroyWebView(binding.appBarMain.contentMain.chatMsgWebview);
         destroyWebView(binding.appBarMain.contentMain.chatUsersWebview);
@@ -288,11 +277,8 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         super.onDestroy();
     }
 
-
-
     private void destroyWebView(WebView webView) {
         if (webView != null) {
-            // Отсоединяем WebView от его родителя
             android.view.ViewParent parent = webView.getParent();
             if (parent instanceof android.view.ViewGroup) {
                 ((android.view.ViewGroup) parent).removeView(webView);
@@ -332,7 +318,6 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         int id = item.getItemId();
         
         if (id == R.id.action_settings) {
-            // Открытие настроек
             return true;
         } else if (id == R.id.action_snapshot) {
             takeSnapshot();
@@ -343,7 +328,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     }
 
     private void takeSnapshot() {
-        String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(new Date());
+        String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(new Date(System.currentTimeMillis()));
         boolean mainSuccess = false;
         boolean chatSuccess = false;
 
@@ -372,7 +357,6 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         
         if (id == R.id.nav_home) {
             binding.appBarMain.contentMain.webView.loadUrl("http://neverlands.ru/");
-
         } else if (id == R.id.nav_map) {
             binding.appBarMain.contentMain.webView.loadUrl("http://neverlands.ru/map.php");
         } else if (id == R.id.nav_inventory) {
@@ -380,7 +364,6 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         } else if (id == R.id.nav_profile) {
             binding.appBarMain.contentMain.webView.loadUrl("http://neverlands.ru/main.php?get_id=33&act=1");
         } else if (id == R.id.nav_settings) {
-            // Открытие настроек
         } else if (id == R.id.nav_contacts) {
             Intent intent = new Intent(this, ContactsActivity.class);
             startActivity(intent);
@@ -394,11 +377,6 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         return true;
     }
     
-
-    
-    /**
-     * Запуск таймера для обновления времени
-     */
     private void startTimer() {
         timer = new Timer();
         timer.scheduleAtFixedRate(new TimerTask() {
@@ -412,9 +390,6 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         }, 0, 1000);
     }
     
-    /**
-     * Остановка таймера
-     */
     private void stopTimer() {
         if (timer != null) {
             timer.cancel();
@@ -422,27 +397,17 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         }
     }
     
-    /**
-     * Обновление часов
-     */
     private void updateClock() {
         SimpleDateFormat sdf = new SimpleDateFormat("HH:mm:ss", Locale.getDefault());
-        binding.appBarMain.contentMain.statusBar.clockTextView.setText(sdf.format(new Date()));
+        binding.appBarMain.contentMain.statusBar.clockTextView.setText(sdf.format(new Date(System.currentTimeMillis())));
     }
     
-    /**
-     * Обновление серверного времени
-     * @param serverDateTime серверное время
-     */
     public void updateServerTime(Date serverDateTime) {
         AppVars.ServerDateTime = serverDateTime;
         SimpleDateFormat sdf = new SimpleDateFormat("dd.MM.yyyy HH:mm:ss", Locale.getDefault());
         binding.appBarMain.contentMain.statusBar.serverTimeTextView.setText(sdf.format(serverDateTime));
     }
     
-    /**
-     * Проверка соединения
-     */
     private void checkConnection() {
         if (System.currentTimeMillis() > AppVars.NextCheckNoConnection.getTime()) {
             AppVars.NextCheckNoConnection = new Date(System.currentTimeMillis() + 5 * 60 * 1000);
@@ -450,28 +415,16 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         }
     }
     
-    /**
-     * Добавление адреса в строку статуса
-     * @param address адрес
-     */
     public void addAddressToStatusString(String address) {
         binding.appBarMain.contentMain.statusBar.statusTextView.setText(address);
     }
     
-    /**
-     * Удаление адреса из строки статуса
-     * @param address адрес
-     */
     public void removeAddressFromStatusString(String address) {
         if (binding.appBarMain.contentMain.statusBar.statusTextView.getText().toString().equals(address)) {
             binding.appBarMain.contentMain.statusBar.statusTextView.setText("");
         }
     }
     
-    /**
-     * Обновление информации о сохраненном трафике
-     * @param bytes количество байт
-     */
     public void updateSavedTraffic(int bytes) {
         String text = binding.appBarMain.contentMain.statusBar.trafficTextView.getText().toString();
         int savedBytes = 0;
@@ -483,17 +436,10 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         binding.appBarMain.contentMain.statusBar.trafficTextView.setText(String.valueOf(savedBytes));
     }
     
-    /**
-     * Обновление информации о сохраненном трафике (потокобезопасная версия)
-     * @param bytes количество байт
-     */
     public void updateSavedTrafficSafe(int bytes) {
         runOnUiThread(() -> updateSavedTraffic(bytes));
     }
     
-    /**
-     * Показ диалога подтверждения выхода
-     */
     private void showExitConfirmationDialog() {
         new AlertDialog.Builder(this)
                 .setTitle("Выход")
@@ -557,9 +503,9 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             view.evaluateJavascript(script, null);
 
             if (url.endsWith("main.php")) {
-                view.evaluateJavascript("javascript:(function() { var frameset = document.getElementsByTagName('frameset')[0]; if (frameset) { frameset.rows = '*, 0'; } })()", null);
+                view.evaluateJavascript("javascript:(function() { var frameset = document.getElementsByTagName('frameset')[0]; if (frameset) { frameset.rows = '*\n, 0'; } })()", null);
                 if (!isRoomManagerStarted) {
-                    RoomManager.startTracing(MainActivity.this);
+                    ru.neverlands.abclient.manager.RoomManager.startTracing(MainActivity.this);
                     isRoomManagerStarted = true;
                 }
             } else if (url.contains("ch.php")) {
@@ -568,14 +514,14 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         }
 
         @Override
-        public boolean shouldOverrideUrlLoading(WebView view, String url) {
-            if (url != null && url.startsWith("http://neverlands.ru/pinfo.cgi")) {
+        public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
+            if (request.getUrl().toString() != null && request.getUrl().toString().startsWith("http://neverlands.ru/pinfo.cgi")) {
                 Intent intent = new Intent(MainActivity.this, PinfoActivity.class);
-                intent.putExtra("url", url);
+                intent.putExtra("url", request.getUrl().toString());
                 startActivity(intent);
-                return true; // Мы обработали этот URL
+                return true;
             }
-            return false; // Позволяем WebView загрузить URL
+            return false;
         }
 
             @Override
@@ -584,7 +530,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                 ru.neverlands.abclient.utils.DebugLogger.log("Intercepting request: " + url);
 
                 if (url.contains("main.php?get_id=") || url.contains("main.php?mselect=")) {
-                    return null; // Let the WebView handle it.
+                    return null;
                 }
 
                 String fileName = Uri.parse(url).getPath();
@@ -592,61 +538,54 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                     fileName = fileName.substring(1);
                 }
 
+                if ("ch/ch_list.js".equals(fileName)) {
+                    try {
+                        InputStream is = getAssets().open("js/ch_list.js");
+                        int size = is.available();
+                        byte[] buffer = new byte[size];
+                        is.read(buffer);
+                        is.close();
+                        String js = new String(buffer);
+                        js = js.replace("alt=", "title=");
+                        String bridgeScript = "window.external = window.AndroidBridge;\n";
+                        js = bridgeScript + js;
+                        byte[] data = Russian.getBytes(js);
+                        ru.neverlands.abclient.utils.DataManager.writeStringToFile("Logs/ch_list_" + new java.text.SimpleDateFormat("yyyyMMdd_HHmmss").format(new java.util.Date()) + ".js.txt", js);
+                        return new WebResourceResponse("application/javascript", "UTF-8", new ByteArrayInputStream(data));
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                        return new WebResourceResponse(null, null, null);
+                    }
+                }
+
                 try {
                     byte[] data = readAssetFile(fileName);
                     String mimeType = getMimeTypeFromUrl(url);
-
-                    if (fileName.equals("ch/ch_list.js")) {
-                        String js = Russian.getString(data);
-
-                        // Создаем мост для совместимости со старым кодом, который вызывает window.external
-                        String bridgeScript = "window.external = window.AndroidBridge;\n";
-
-                        // Добавляем массив ChatListU, если он есть
-                        if (AppVars.chatListU != null) {
-                            js = "var ChatListU = new Array(" + AppVars.chatListU + ");\n" + js;
-                        }
-
-                        // Собираем все вместе
-                        js = bridgeScript + js;
-                        data = Russian.getBytes(js);
-                    }
-
                     return new WebResourceResponse(mimeType, "UTF-8", new ByteArrayInputStream(data));
                 } catch (IOException e) {
-                    // Файл не найден в assets, продолжаем
                 }
 
-                // Попытка загрузки из дискового кэша
                 byte[] cachedData = ru.neverlands.abclient.proxy.DiskCacheManager.get(url);
                 if (cachedData != null) {
                     String mimeType = getMimeTypeFromUrl(url);
-                    // Применяем фильтры к кэшированным данным так же, как к сетевым
-                    byte[] processedData = ru.neverlands.abclient.postfilter.Filter.process(url, cachedData);
+                    byte[] processedData = ru.neverlands.abclient.postfilter.Filter.process(MainActivity.this, url, cachedData);
                     return new WebResourceResponse(mimeType, "windows-1251", new ByteArrayInputStream(processedData));
                 }
 
                 try {
-                    // 1. Создание соединения
                     URL urlObj = new URL(url);
                     HttpURLConnection connection = (HttpURLConnection) urlObj.openConnection();
 
-                    // 2. Настройка заголовков запроса
                     Map<String, String> requestHeaders = request.getRequestHeaders();
-                    ru.neverlands.abclient.utils.DebugLogger.log("Request Headers for " + url + ": " + requestHeaders.toString());
                     for (Map.Entry<String, String> entry : requestHeaders.entrySet()) {
                         connection.setRequestProperty(entry.getKey(), entry.getValue());
                     }
                     connection.setRequestProperty("Cookie", CookiesManager.obtain(url));
 
-                    // 3. Получение ответа
                     InputStream inputStream = connection.getInputStream();
                     String contentType = connection.getContentType();
                     String encoding = connection.getContentEncoding();
 
-                    ru.neverlands.abclient.utils.DebugLogger.log("Response Headers for " + url + ": " + connection.getHeaderFields().toString());
-
-                    // Получаем MIME-тип
                     String mimeType = "text/plain";
                     if (contentType != null) {
                         if (contentType.contains(";")) {
@@ -657,7 +596,6 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                     }
 
                     byte[] data;
-                    // 4. Чтение и обработка ответа
                     ByteArrayOutputStream baos = new ByteArrayOutputStream();
                     byte[] buffer = new byte[1024];
                     int len;
@@ -666,39 +604,29 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                     }
                     data = baos.toByteArray();
 
-                    ru.neverlands.abclient.utils.DebugLogger.log("Response Body for " + url + ": " + new String(data));
-
                     if (isCacheable(url)) {
                         ru.neverlands.abclient.proxy.DiskCacheManager.put(url, data);
                     }
 
                     if ("gzip".equalsIgnoreCase(encoding)) {
                         data = decompressGzip(data);
-                        encoding = null; // Мы его распаковали
+                        encoding = null;
                     }
 
                     if (url.contains("ch.php?lo=1")) {
-                        ru.neverlands.abclient.utils.DebugLogger.log("ch.php?lo=1 - Raw data before Russian.getString: " + new String(data, "windows-1251"));
                         String html = Russian.getString(data);
-                        ru.neverlands.abclient.utils.DebugLogger.log("ch.php?lo=1 - HTML after Russian.getString: " + html);
-                        Pattern pattern = Pattern.compile("var ChatListU = new Array\\((.*)\\);", Pattern.DOTALL);
-                        Matcher matcher = pattern.matcher(html);
-                        if (matcher.find()) {
-                            AppVars.chatListU = matcher.group(1);
-                            ru.neverlands.abclient.utils.DebugLogger.log("ch.php?lo=1 - Extracted ChatListU: " + AppVars.chatListU);
-                        }
+                        html = ru.neverlands.abclient.manager.RoomManager.process(MainActivity.this, html);
+                        data = Russian.getBytes(html);
                     }
 
                     if (contentType != null && contentType.contains("text/html")) {
                         data = injectJsFix(data, url);
                     }
 
-                    // Применяем другие фильтры, если необходимо
-                    data = ru.neverlands.abclient.postfilter.Filter.process(url, data);
+                    data = ru.neverlands.abclient.postfilter.Filter.process(MainActivity.this, url, data);
 
                     ru.neverlands.abclient.utils.DebugLogger.log("Final processedData for " + url + ": " + new String(data, "windows-1251"));
 
-                    // 5. Возвращаем обработанный ответ
                     return new WebResourceResponse(mimeType, "windows-1251", new ByteArrayInputStream(data));
 
                 } catch (IOException e) {
@@ -753,7 +681,6 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         return lowerUrl.endsWith(".gif") || lowerUrl.endsWith(".jpg") || lowerUrl.endsWith(".jpeg") ||
                lowerUrl.endsWith(".png") || lowerUrl.endsWith(".swf") || lowerUrl.endsWith(".ico") ||
                lowerUrl.endsWith(".css") || lowerUrl.contains(".js") ||
-               // Также кэшируем страницы чата и главную
                lowerUrl.contains("neverlands.ru/ch.php") || lowerUrl.contains("neverlands.ru/main.php");
     }
 
@@ -790,7 +717,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
 
         } catch (Exception e) {
             Log.e(TAG, "Failed to inject JS fix for " + url, e);
-            return body; // Возвращаем оригинал в случае ошибки
+            return body;
         }
     }
 }

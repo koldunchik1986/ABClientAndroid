@@ -114,17 +114,17 @@ function chatlist_build (sort_type)
   {
     str_array = ChatListU[cou].split(":");
 
-    var ss='';
-    var sleeps='';
-    var altadd='';
-    var ign = '';
-    var inj = '';
-    var psg = '';
-    var align = '';
+    var ss="";
+    var sleeps="";
+    var altadd="";
+    var ign = "";
+    var inj = "";
+    var psg = "";
+    var align = "";
 
     nn_sec = str_array[1];
     var login = str_array[1];
-    while (nn_sec.indexOf('+')>=0) nn_sec = nn_sec.replace('+','%2B');
+    while (nn_sec.indexOf("+")>=0) nn_sec = nn_sec.replace("+","%2B");
     if (login.indexOf ('<i>') > -1)
     {
       login = login.replace ('<i>', '');
@@ -161,7 +161,7 @@ function chatlist_build (sort_type)
        align = "<img src=http://image.neverlands.ru/signs/"+sign_array[0]+" width=15 height=12 align=absmiddle border=0 alt=\""+sign_array[1]+"\">";
      }
      else if (str_array[7] == '0')
-         align = "<img src=http://image.neverlands.ru/1x1.gif width=15 height=12 align=absmiddle border=0 alt=\"\">&nbsp";
+         align = "<img src=http://image.neverlands.ru/1x1.gif width=15 height=12 align=absmiddle border=0 alt=\"" >";
 
     var classid = window.external.GetClassIdOfContact(login);
     if (classid == 1) {
@@ -207,7 +207,7 @@ function chatlist_build (sort_type)
             "</b></a>[" +
             str_array[2] +
             "]</font><a href=\"/pinfo.cgi?" + nn_sec +
-            "" target=_blank><img src=http://image.neverlands.ru/chat/info.gif width=11 height=12 border=0 align=absmiddle></a>" + sleeps + "&nbsp;" + ign + "&nbsp;" + inj +
+            "\" target=_blank><img src=http://image.neverlands.ru/chat/info.gif width=11 height=12 border=0 align=absmiddle></a>" + sleeps + "&nbsp;" + ign + "&nbsp;" + inj +
             "<br>";
     }
 
@@ -240,7 +240,7 @@ function chatlist_build (sort_type)
             window.external.CheckFastAttackPoison(login, wmlabFAP) +
             window.external.CheckFastAttackStrong(login, wmlabFAS) +
             window.external.CheckFastAttackNevid(login, wmlabFAN) +
-            window.external.CheckFastAttackFog(login, wmlabFAFG) +
+            window.external.CheckFastAttackFog(login, wmlabFAFG) +            
             window.external.CheckFastAttackTotem(login, wmlabFTOT) +
             "<img src=http://image.neverlands.ru/1x1.gif width=5 height=0>" +
             "<a href=\"javascript:top.say_private('" + login + "')\"><img src=http://image.neverlands.ru/chat/private.gif width=11 height=12 border=0 align=absmiddle></a>&nbsp;" +
@@ -252,7 +252,7 @@ function chatlist_build (sort_type)
             "</b></a>[" +
             str_array[2] +
             "]</font><a href=\"/pinfo.cgi?" + nn_sec +
-            "" target=_blank><img src=http://image.neverlands.ru/chat/info.gif width=11 height=12 border=0 align=absmiddle></a>" + sleeps + "&nbsp;" + ign + "&nbsp;" + inj +
+            "\" target=_blank><img src=http://image.neverlands.ru/chat/info.gif width=11 height=12 border=0 align=absmiddle></a>" + sleeps + "&nbsp;" + ign + "&nbsp;" + inj +
             "<br>";
     }
 
@@ -298,7 +298,7 @@ function chatlist_build (sort_type)
             "</b></a>[" +
             str_array[2] +
             "]</font><a href=\"/pinfo.cgi?" + nn_sec +
-            "" target=_blank><img src=http://image.neverlands.ru/chat/info.gif width=11 height=12 border=0 align=absmiddle></a>" + sleeps + "&nbsp;" + ign + "&nbsp;" + inj +
+            "\" target=_blank><img src=http://image.neverlands.ru/chat/info.gif width=11 height=12 border=0 align=absmiddle></a>" + sleeps + "&nbsp;" + ign + "&nbsp;" + inj +
             "<br>";
     }
 
@@ -319,7 +319,7 @@ function chatlist_build (sort_type)
         wmlabFAZ = " <a class=\"activeico\" href=\"javascript:window.external.FastAttackZas('" + login + "')\"><img src=http://image.neverlands.ru/weapon/i_w28_27.gif width=14 height=11 border=0 alt=' ' align=absmiddle></a>";
         wmlabFTOT = " <a class=\"activeico\" href=\"javascript:window.external.FastAttackTotem('" + login + "')\"><img src=http://image.neverlands.ru/signs/totems/9.gif width=11 height=11 border=0 alt=' ' align=absmiddle></a>";
         ddn = ddn + "<img src=http://image.neverlands.ru/1x1.gif width=5 height=0>" +
-            "<a href=\"javascript:top.say_private('"+login+"')\"><img src=http://image.neverlands.ru/chat/private.gif width=11 height=12 border=0 align=absmiddle></a>&nbsp;" +
+            "<a href=\"javascript:top.say_private('"+login+"')\"><img src=http://image.neverlands.ru/chat/private.gif width=11 height=12 border=0 align=absmiddle></a>&nbsp;" + 
             psg + 
             align + 
             ss + 
@@ -328,7 +328,7 @@ function chatlist_build (sort_type)
             "</b></a>[" + 
             str_array[2] + 
             "]</font><a href=\"/pinfo.cgi?" + nn_sec + 
-            "" target=_blank><img src=http://image.neverlands.ru/chat/info.gif width=11 height=12 border=0 align=absmiddle></a>" + sleeps + "&nbsp;" + ign + "&nbsp;" + inj +
+            "\" target=_blank><img src=http://image.neverlands.ru/chat/info.gif width=11 height=12 border=0 align=absmiddle></a>" + sleeps + "&nbsp;" + ign + "&nbsp;" + inj +
             window.external.CheckQuick(login, wmlabQ) +
             window.external.CheckFastAttack(login, wmlabFA) + 
             window.external.CheckFastAttackBlood(login, wmlabFAB) +
@@ -348,7 +348,7 @@ function chatlist_build (sort_type)
      }
   }
   
-  document.write(dd1 + dd2 + dd0 + ddn);
+  document.getElementById('char_list').innerHTML = dd1 + dd2 + dd0 + ddn;
 }
 
 function clipboardcopy(text2copy)

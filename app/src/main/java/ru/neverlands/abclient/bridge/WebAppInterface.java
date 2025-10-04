@@ -167,6 +167,83 @@ public class WebAppInterface {
         return AppVars.Profile.doShowFastAttackTotem ? wmlabFTOT : "";
     }
 
+    // --- Методы для выполнения быстрых действий --- //
+
+    @JavascriptInterface
+    public void Quick(String login) {
+        Toast.makeText(mContext, "Quick: " + login, Toast.LENGTH_SHORT).show();
+    }
+
+    @JavascriptInterface
+    public void FastAttack(String login) {
+        Toast.makeText(mContext, "FastAttack: " + login, Toast.LENGTH_SHORT).show();
+    }
+
+    @JavascriptInterface
+    public void FastAttackBlood(String login) {
+        Toast.makeText(mContext, "FastAttackBlood: " + login, Toast.LENGTH_SHORT).show();
+    }
+
+    @JavascriptInterface
+    public void FastAttackUltimate(String login) {
+        Toast.makeText(mContext, "FastAttackUltimate: " + login, Toast.LENGTH_SHORT).show();
+    }
+
+    @JavascriptInterface
+    public void FastAttackClosedUltimate(String login) {
+        Toast.makeText(mContext, "FastAttackClosedUltimate: " + login, Toast.LENGTH_SHORT).show();
+    }
+
+    @JavascriptInterface
+    public void FastAttackFist(String login) {
+        Toast.makeText(mContext, "FastAttackFist: " + login, Toast.LENGTH_SHORT).show();
+    }
+
+    @JavascriptInterface
+    public void FastAttackClosedFist(String login) {
+        Toast.makeText(mContext, "FastAttackClosedFist: " + login, Toast.LENGTH_SHORT).show();
+    }
+
+    @JavascriptInterface
+    public void FastAttackPortal(String login) {
+        Toast.makeText(mContext, "FastAttackPortal: " + login, Toast.LENGTH_SHORT).show();
+    }
+
+    @JavascriptInterface
+    public void FastAttackClosed(String login) {
+        Toast.makeText(mContext, "FastAttackClosed: " + login, Toast.LENGTH_SHORT).show();
+    }
+
+    @JavascriptInterface
+    public void FastAttackPoison(String login) {
+        Toast.makeText(mContext, "FastAttackPoison: " + login, Toast.LENGTH_SHORT).show();
+    }
+
+    @JavascriptInterface
+    public void FastAttackStrong(String login) {
+        Toast.makeText(mContext, "FastAttackStrong: " + login, Toast.LENGTH_SHORT).show();
+    }
+
+    @JavascriptInterface
+    public void FastAttackNevid(String login) {
+        Toast.makeText(mContext, "FastAttackNevid: " + login, Toast.LENGTH_SHORT).show();
+    }
+
+    @JavascriptInterface
+    public void FastAttackFog(String login) {
+        Toast.makeText(mContext, "FastAttackFog: " + login, Toast.LENGTH_SHORT).show();
+    }
+
+    @JavascriptInterface
+    public void FastAttackZas(String login) {
+        Toast.makeText(mContext, "FastAttackZas: " + login, Toast.LENGTH_SHORT).show();
+    }
+
+    @JavascriptInterface
+    public void FastAttackTotem(String login) {
+        Toast.makeText(mContext, "FastAttackTotem: " + login, Toast.LENGTH_SHORT).show();
+    }
+
 
     @JavascriptInterface
     public void showSmiles(int index) {

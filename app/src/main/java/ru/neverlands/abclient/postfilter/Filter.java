@@ -1,5 +1,7 @@
 package ru.neverlands.abclient.postfilter;
 
+import android.content.Context;
+
 import java.util.Date;
 import java.util.regex.Pattern;
 
@@ -13,8 +15,7 @@ public class Filter {
         return array;
     }
 
-    public static byte[] process(String address, byte[] array) {
-        ru.neverlands.abclient.utils.DebugLogger.log("Filter.process called for: " + address);
+    public static byte[] process(Context context, String address, byte[] array) {
         if (address == null || address.isEmpty() || array == null) {
             return array;
         }
@@ -121,11 +122,8 @@ public class Filter {
         }
 
         if (address.startsWith("http://www.neverlands.ru/main.php")) {
-            ru.neverlands.abclient.utils.DebugLogger.log("Filter: Processing main.php. HTML content BEFORE processing:\n" + ru.neverlands.abclient.utils.Russian.getString(array));
             AppVars.NextCheckNoConnection = new Date(System.currentTimeMillis() + 5 * 60 * 1000);
-            byte[] processedArray = MainPhp.process(address, array);
-            ru.neverlands.abclient.utils.DebugLogger.log("Filter: Processing main.php. HTML content AFTER processing:\n" + ru.neverlands.abclient.utils.Russian.getString(processedArray));
-            return processedArray;
+            return MainPhp.process(address, array);
         }
 
         if (address.startsWith("http://www.neverlands.ru/ch/msg.php")) {
@@ -162,17 +160,9 @@ public class Filter {
             return RouletteAjaxPhp.process(array);
         }
 
-        if (address.startsWith("http://www.neverlands.ru/ch.php?lo=")) {
-            return ChRoomPhp.process(array);
-        }
-
-        if (address.contains("/ch.php?0")) {
-            return ChZero.process(array);
-        }
-
         if (address.startsWith("http://www.neverlands.ru/ch.php")) {
             String html = Russian.getString(array);
-            html = ru.neverlands.abclient.manager.RoomManager.process(html);
+            html = ru.neverlands.abclient.manager.RoomManager.process(context, html);
             return Russian.getBytes(html);
         }
 

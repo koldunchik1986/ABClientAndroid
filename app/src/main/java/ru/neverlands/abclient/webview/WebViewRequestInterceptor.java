@@ -27,19 +27,21 @@ public class WebViewRequestInterceptor {
                 return null;
             }
 
+            if (urlString.contains("ch.php?lo=1")) {
+                urlString += "&" + System.currentTimeMillis();
+            }
+
             URL url = new URL(urlString);
             HttpURLConnection connection = (HttpURLConnection) url.openConnection();
             connection.setInstanceFollowRedirects(true);
             connection.setRequestMethod(request.getMethod());
             connection.setDoInput(true);
 
-            // Forward headers and cookies
-            for (Map.Entry<String, String> h : request.getRequestHeaders().entrySet()) {
-                if (!h.getKey().equalsIgnoreCase("Host") && !h.getKey().equalsIgnoreCase("Content-Length")) {
-                    // Override Accept-Encoding to avoid gzip; we return plain bytes
-                    if (h.getKey().equalsIgnoreCase("Accept-Encoding")) continue;
-                    connection.setRequestProperty(h.getKey(), h.getValue());
-                }
+            if (urlString.contains("ch.php?lo=1")) {
+                connection.setUseCaches(false);
+                connection.setRequestProperty("Cache-Control", "no-cache, no-store, must-revalidate");
+                connection.setRequestProperty("Pragma", "no-cache");
+                connection.setRequestProperty("Expires", "0");
             }
             connection.setRequestProperty("Accept-Encoding", "identity");
             String cookie = CookiesManager.obtain(url.getHost());
@@ -102,18 +104,24 @@ public class WebViewRequestInterceptor {
                 htmlWin1251 = new String(bytes, Charset.forName("windows-1251"));
             }
 
-            byte[] processed = Filter.process(urlString, bytes);
+            byte[] processed = Filter.process(ru.neverlands.abclient.utils.AppVars.getContext(), urlString, bytes);
             if (processed == null) processed = bytes;
 
             String contentType = headers.get("Content-Type") != null && !headers.get("Content-Type").isEmpty()
                     ? headers.get("Content-Type").get(0)
                     : "text/html; charset=windows-1251";
 
-            return new WebResourceResponse(
+            WebResourceResponse response = new WebResourceResponse(
                     getMime(contentType),
                     getCharset(contentType),
                     new ByteArrayInputStream(processed)
             );
+
+            if (urlString.contains("ch.php?lo=1")) {
+                response.setResponseHeaders(java.util.Collections.singletonMap("Cache-Control", "no-cache"));
+            }
+
+            return response;
         } catch (IOException e) {
             return null;
         }

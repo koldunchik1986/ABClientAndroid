@@ -80,14 +80,21 @@ public class AppVars {
     public static String myWalkers1 = "";
     public static String myWalkers2 = "";
     public static boolean DoShowWalkers = true;
-    public static String chatListU = null;
+
+
+    private static Context context;
 
     public static void init(Context context) {
+        AppVars.context = context;
         assetManager = context.getAssets();
         logsDir = context.getExternalFilesDir("Logs");
         if (logsDir != null && !logsDir.exists()) {
             logsDir.mkdirs();
         }
+    }
+
+    public static Context getContext() {
+        return context;
     }
 
 

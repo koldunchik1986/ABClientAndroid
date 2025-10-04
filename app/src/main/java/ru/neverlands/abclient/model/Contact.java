@@ -34,6 +34,7 @@ public class Contact {
     public Contact() {}
 
     // Старый конструктор для обратной совместимости
+    @androidx.room.Ignore
     public Contact(String nick, int classId) {
         this.nick = nick;
         this.classId = classId;
