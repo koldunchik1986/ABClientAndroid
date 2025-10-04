@@ -1,0 +1,286 @@
+2025-10-04 15:37:16.494: Logger initialized.
+2025-10-04 15:37:16.496: Intercepting request: http://neverlands.ru/main.php
+2025-10-04 15:37:16.500: Intercepting request: http://neverlands.ru/ch/msg.php
+2025-10-04 15:37:16.509: Intercepting request: http://neverlands.ru/ch.php?lo=1
+2025-10-04 15:37:16.512: RoomManager.process: HTML before processing:
+<html>
+<head>
+<LINK href=/ch/list.css rel=STYLESHEET type=text/css>
+<meta content="text/html; charset=windows-1251" http-equiv=Content-type>
+<META Http-Equiv=Cache-Control Content=no-cache>
+<meta http-equiv=PRAGMA content=NO-CACHE>
+<META Http-Equiv=Expires Content=0>
+</HEAD>
+<SCRIPT LANGUAGE="JavaScript" src='/ch/ch_list.js'></SCRIPT>
+<body bgcolor=#FCFAF3 mardginheight=0 topmardgin=0 topmargin=0 marginheight=0 onscroll="top.save_scroll_p()" onload="document.body.scrollTop=top.OnlineScrollPosition">
+<table border=0 cellpadding=0 cellspacing=0 width=100%>
+<tr><td nowrap>
+<div align=center><img src=http://image.neverlands.ru/1x1.gif width=1 height=4></div>
+<div align=center>
+<font class=placename>Сортировка: <a href=ch.php?lo=1&order=a_z class=sort>a-z</a> <a href=ch.php?lo=1&order=z_a class=sort>z-a</a> <a href=ch.php?lo=1&order=0_33 class=sort>0-33</a> <a href=ch.php?lo=1&order=33_0 class=sort><b>33-0</b></a><br>
+<img src=http://image.neverlands.ru/1x1.gif width=1 height=8><br>
+<script>
+document.write ('<input type=checkbox onclick="top.OnlineStop=!top.OnlineStop;top.reload(false);" '+ (top.OnlineStop ? '' : 'checked') + '>');</script>
+<INPUT TYPE=image src=http://image.neverlands.ru/chat/reload.gif width=69 height=15 border=0 onclick="location='ch.php?lo=1&'"><br>
+<font class=placename><a href=ch.php?lo=1&>
+<font class=placename><b>Замок Ellary Akhe</b></font></a> [ 1 ] <br><b>Всего</b> [ 1867 ]</font><br>
+<img src=http://image.neverlands.ru/1x1.gif width=1 height=4></div><br>
+<SCRIPT>
+var ChatListU = new Array(
+"блудя:Блудя:22:c174.gif;Триглав;I am Legend:0:0:0:0:chaoss.gif;Дети Хаоса");
+chatlist_build('33_0');
+</SCRIPT><br>
+</td></tr>
+</table>
+</body>
+
+
+
+2025-10-04 15:37:16.516: RoomManager.process: Generated HTML:
+<a href="#" onclick="top.say_private('Блудя');"><img src=http://image.neverlands.ru/chat/private.gif width=11 height=12 border=0 align=absmiddle></a>&nbsp;<img src=http://image.neverlands.ru/signs/chaoss.gif width=15 height=12 align=absmiddle border=0 alt="Дети Хаоса")">&nbsp<img src=http://image.neverlands.ru/signs/c174.gif width=15 height=12 align=absmiddle alt="Триглав (I am Legend)">&nbsp;<a class="activenick" href="#" onclick="top.say_to('Блудя');"><font class=nickname><b>Блудя</b></a>[22]</font><a href="http://www.neverlands.ru/pinfo.cgi?Блудя" onclick="window.open(this.href);"><img src=http://image.neverlands.ru/chat/info.gif width=11 height=12 border=0 align=absmiddle></a>
+2025-10-04 15:37:16.518: RoomManager.process: HTML after processing:
+<html>
+<head>
+<LINK href=/ch/list.css rel=STYLESHEET type=text/css>
+<meta content="text/html; charset=windows-1251" http-equiv=Content-type>
+<META Http-Equiv=Cache-Control Content=no-cache>
+<meta http-equiv=PRAGMA content=NO-CACHE>
+<META Http-Equiv=Expires Content=0>
+</HEAD>
+<SCRIPT LANGUAGE="JavaScript" src='/ch/ch_list.js'></SCRIPT>
+<body bgcolor=#FCFAF3 mardginheight=0 topmardgin=0 topmargin=0 marginheight=0 onscroll="top.save_scroll_p()" onload="document.body.scrollTop=top.OnlineScrollPosition">
+<table border=0 cellpadding=0 cellspacing=0 width=100%>
+<tr><td nowrap>
+<div align=center><img src=http://image.neverlands.ru/1x1.gif width=1 height=4></div>
+<div align=center>
+<font class=placename>Сортировка: <a href=ch.php?lo=1&order=a_z class=sort>a-z</a> <a href=ch.php?lo=1&order=z_a class=sort>z-a</a> <a href=ch.php?lo=1&order=0_33 class=sort>0-33</a> <a href=ch.php?lo=1&order=33_0 class=sort><b>33-0</b></a><br>
+<img src=http://image.neverlands.ru/1x1.gif width=1 height=8><br>
+<script>
+document.write ('<input type=checkbox onclick="top.OnlineStop=!top.OnlineStop;top.reload(false);" '+ (top.OnlineStop ? '' : 'checked') + '>');</script>
+<INPUT TYPE=image src=http://image.neverlands.ru/chat/reload.gif width=69 height=15 border=0 onclick="location='ch.php?lo=1&'"><br>
+<font class=placename><a href=ch.php?lo=1&>
+<font class=placename><b>Замок Ellary Akhe</b></font></a> [ 1 ] <br><b>Всего</b> [ 1867 ]</font><br>
+<img src=http://image.neverlands.ru/1x1.gif width=1 height=4></div><br>
+<SCRIPT>
+var ChatListU = new Array(
+"блудя:Блудя:22:c174.gif;Триглав;I am Legend:0:0:0:0:chaoss.gif;Дети Хаоса");
+chatlist_build('33_0');
+</SCRIPT><br>
+</td></tr>
+</table>
+<a href="#" onclick="top.say_private('Блудя');"><img src=http://image.neverlands.ru/chat/private.gif width=11 height=12 border=0 align=absmiddle></a>&nbsp;<img src=http://image.neverlands.ru/signs/chaoss.gif width=15 height=12 align=absmiddle border=0 alt="Дети Хаоса")">&nbsp<img src=http://image.neverlands.ru/signs/c174.gif width=15 height=12 align=absmiddle alt="Триглав (I am Legend)">&nbsp;<a class="activenick" href="#" onclick="top.say_to('Блудя');"><font class=nickname><b>Блудя</b></a>[22]</font><a href="http://www.neverlands.ru/pinfo.cgi?Блудя" onclick="window.open(this.href);"><img src=http://image.neverlands.ru/chat/info.gif width=11 height=12 border=0 align=absmiddle></a></body>
+
+
+
+2025-10-04 15:37:16.519: Intercepting request: http://neverlands.ru/ch/but.php
+2025-10-04 15:37:16.611: Intercepting request: http://neverlands.ru/css/game.css
+2025-10-04 15:37:16.614: Intercepting request: http://neverlands.ru/js/hp.js
+2025-10-04 15:37:16.615: Intercepting request: http://neverlands.ru/js/slots_v02.js
+2025-10-04 15:37:16.617: Intercepting request: http://neverlands.ru/css/frame.css
+2025-10-04 15:37:16.621: Intercepting request: http://neverlands.ru/js/dealer.js
+2025-10-04 15:37:16.626: Intercepting request: http://neverlands.ru/js/addskill_v02.js
+2025-10-04 15:37:16.626: Intercepting request: http://neverlands.ru/js/transfer.js
+2025-10-04 15:37:16.629: Intercepting request: http://neverlands.ru/js/addperk_v03.js
+2025-10-04 15:37:16.631: Intercepting request: http://neverlands.ru/js/t_v01.js
+2025-10-04 15:37:16.633: Intercepting request: http://neverlands.ru/js/addstat.js
+2025-10-04 15:37:16.634: Intercepting request: http://neverlands.ru/js/nl_tooltip.js
+2025-10-04 15:37:16.635: Intercepting request: http://neverlands.ru/ch/list.css
+2025-10-04 15:37:16.631: Intercepting request: http://neverlands.ru/js/effects_v04.js
+2025-10-04 15:37:16.636: Intercepting request: http://image.neverlands.ru/chat/reload.gif
+2025-10-04 15:37:16.637: Intercepting request: http://neverlands.ru/ch/ch_list.js
+2025-10-04 15:37:16.645: Final processedData for http://neverlands.ru/ch/msg.php: <HTML>
+<META Content="text/html; Charset=windows-1251" Http-Equiv=Content-type>
+<META Http-Equiv=Cache-Control Content=No-Cache>
+<META Http-Equiv=Pragma Content=No-Cache>
+<META Http-Equiv=Expires Content=0>
+<head><script type="text/javascript">if (typeof top.start == 'undefined') { top.start = function() {}; }if (typeof window.chatlist_build == 'undefined') { window.chatlist_build = function() {}; }if (typeof window.get_by_id == 'undefined') { window.get_by_id = function(id) { return document.getElementById(id); }; }if (typeof top.save_scroll_p == 'undefined') { top.save_scroll_p = function() {}; }if (typeof window.ins_HP == 'undefined') { window.ins_HP = function() {}; }if (typeof window.slots_inv == 'undefined') { window.slots_inv = function() {}; }if (typeof window.compl_view == 'undefined') { window.compl_view = function() {}; }if (typeof window.view_t == 'undefined') { window.view_t = function() {}; }if (typeof top.ch_refresh_n == 'undefined') { top.ch_refresh_n = function() {}; }if (typeof window.ButClick == 'undefined') { window.ButClick = function() {}; }</script>
+<LINK href="../ch/chat.css" rel=STYLESHEET type=text/css>
+<SCRIPT>
+var user = 'Блудя';
+</SCRIPT>
+<SCRIPT LANGUAGE="JavaScript" src="../ch/ch_msg_v01.js"></SCRIPT>
+</HEAD>
+<BODY LeftMargin=2 TopMargin=2 RightMargin=2 MarginHeight=2 MarginWidth=2 BgColor=#F5F5F5 OnLoad="top.start()">
+<TEXTAREA id=cpnick style="display:none;"></TEXTAREA>
+<div id="user_menu" class="usermenu"></DIV>
+<div id="msg"></DIV>
+<script language="javascript">
+var e_m;
+e_m = get_by_id('user_menu');
+e_m.onmouseout = function (evt) { return ch_close_menu(evt); };
+e_m = get_by_id('msg');
+e_m.onclick = function(evt) { return to_what_who(evt); };
+e_m.oncontextmenu = function (evt) { return ch_open_menu(evt); };
+</script>
+</BODY>
+</HTML>
+2025-10-04 15:37:16.662: Final processedData for http://neverlands.ru/ch/but.php: <HTML>
+<META Content="text/html; Charset=windows-1251" Http-Equiv=Content-type>
+<META Http-Equiv=Cache-Control Content=No-Cache>
+<META Http-Equiv=Pragma Content=No-Cache>
+<META Http-Equiv=Expires Content=0>
+<head><script type="text/javascript">if (typeof top.start == 'undefined') { top.start = function() {}; }if (typeof window.chatlist_build == 'undefined') { window.chatlist_build = function() {}; }if (typeof window.get_by_id == 'undefined') { window.get_by_id = function(id) { return document.getElementById(id); }; }if (typeof top.save_scroll_p == 'undefined') { top.save_scroll_p = function() {}; }if (typeof window.ins_HP == 'undefined') { window.ins_HP = function() {}; }if (typeof window.slots_inv == 'undefined') { window.slots_inv = function() {}; }if (typeof window.compl_view == 'undefined') { window.compl_view = function() {}; }if (typeof window.view_t == 'undefined') { window.view_t = function() {}; }if (typeof top.ch_refresh_n == 'undefined') { top.ch_refresh_n = function() {}; }if (typeof window.ButClick == 'undefined') { window.ButClick = function() {}; }</script>
+    <LINK href="../ch/button.css" rel=STYLESHEET type=text/css>
+    <SCRIPT LANGUAGE="JavaScript" src="../ch/ch_but.js"></SCRIPT>
+    <SCRIPT>
+        function reset_length()
+        {
+            var w=window,d=document,e=d.documentElement,g=d.getElementsByTagName('body')[0],x=w.innerWidth||e.clientWidth||g.clientWidth,y=w.innerHeight||e.clientHeight||g.clientHeight;
+            var browser = navigator.userAgent.toLowerCase();
+            if(browser.indexOf('firefox') > -1 || browser.indexOf('chrome') > -1)
+                x -= 140;
+            var size = x - 587;
+            if(size < 100) size = 100;
+            window.document.FBT.text.size = 2*size/13;
+            window.document.getElementById('INPT').width = size;
+        }
+        window.onresize = reset_length;
+    </SCRIPT>
+</HEAD>
+<BODY LeftMargin=0 TopMargin=0 MarginHeight=0 MarginWidth=0 BgColor=#FFFFFF OnLoad="reset_length();status='NeverLands.Ru - Come as you are.'">
+<FORM action="/ch.php" target="ch_refr" method=POST name="FBT" onsubmit="submit_msg();top.ch_refresh_n();">
+    <TABLE cellSpacing="0" cellPadding="0" width="100%" border="0" height="30" background="http://image.neverlands.ru/chat/main_bg.gif">
+        <TR>
+            <TD background=http://image.neverlands.ru/chat/1bg.gif><input type=submit name=sbmsg style="display:none"><INPUT TYPE="hidden" name="fyo" value=""><INPUT TYPE="hidden" name="lmid" value=""><img src=http://image.neverlands.ru/chat/spacer.gif width=5 height=30 border=0 align=absmiddle></TD>
+            <TD background=http://image.neverlands.ru/chat/1bg.gif class=action_text align=absmiddle><input type=checkbox name=pactiondo value="1"></td><td background=http://image.neverlands.ru/chat/1bg.gif class=action_text>Действие</TD>
+            <TD width=75 height=30><img src=http://image.neverlands.ru/chat/1_1.gif width=75 height=30 border=0 alt="Сказать:" title="Сказать" align=absmiddle></TD>
+            <TD id=INPT background=http://image.neverlands.ru/chat/fbg.gif align=absmiddle><input name=text type=text class=chat_forma size=80 maxlength=250 onkeyup="if ((event.ctrlKey) && ((event.keyCode==10) || (event.keyCode==13))) { document.FBT.sbmsg.click() }"></TD>
+            <TD width=6 height=30><img src=http://image.neverlands.ru/chat/1_2.gif width=6 height=30 border=0 align=absmiddle></TD>
+            <TD width=23 height=30><img src=http://image.neverlands.ru/chat/b1.gif width=23 height=30 border=0 class=chatpostbut align=absmiddle alt="Отправить сообщение" title="Отправить сообщение" onclick="document.FBT.sbmsg.click()"></TD>
+            <TD width=19 height=30><img src=http://image.neverlands.ru/chat/b2.gif width=19 height=30 border=0 align=absmiddle class=chatpostbut onclick="top.clr_input();" alt="Очистить поле ввода" title="Очистить поле ввода"></TD>
+            <TD width=11 height=30><img src=http://image.neverlands.ru/chat/b3.gif width=11 height=30 border=0 align=absmiddle class=chatpostbut onclick="smile_open('', event);" alt="Смайлы №1" title="Смайлы №1"></td><td width=10 height=30><img src=http://image.neverlands.ru/chat/b4.gif width=10 height=30 border=0 align=absmiddle class=chatpostbut onclick="smile_open('2', event);" alt="Смайлы №2" title="Смайлы №2"></TD>
+            <TD width=15 height=30><img src=http://image.neverlands.ru/chat/1_3.gif width=15 height=30 border=0 align=absmiddle></TD>
+            <TD width=30 height=30><img src=http://image.neverlands.ru/chat/bb0.gif width=30 height=30 border=0 align=absmiddle class=chatpostbut onclick="top.clan_private();" alt="Клан-приват" title="Клан-приват"></TD>            <TD width=30 height=30><img src=http://image.neverlands.ru/chat/bb1.gif width=30 height=30 border=0 align=absmiddle class=chatpostbut onclick="top.ch_refresh();" alt="Обновить окно чата" title="Обновить окно чата"></TD>
+            <TD width=30 height=30><img src=http://image.neverlands.ru/chat/bb2.gif width=30 height=30 border=0 align=absmiddle class=chatpostbut onclick="top.clr_chat();" alt="Очистить окно чата" title="Очистить окно чата"></TD>
+            <TD width=30 height=30><img src=http://image.neverlands.ru/chat/bb3_all.gif width=30 height=30 border=0 align=absmiddle class=chatpostbut onclick="top.change_chatsetup();" name=schat alt="Режим чата (Показывать все сообщения)" title="Режим чата (Показывать все сообщения)"></TD>
+            <TD width=30 height=30><img src=http://image.neverlands.ru/chat/bb_10.gif width=30 height=30 border=0 align=absmiddle class=chatpostbut onclick="top.change_chatspeed();" name=spchat alt="Скорость обновления (раз в 10 секунд)" title="Скорость обновления (раз в 10 секунд)"></TD>
+            <TD width=30 height=30><img src=http://image.neverlands.ru/chat/bb4_nc.gif width=30 height=30 border=0 align=absmiddle class=chatpostbut name=lrchat onclick="top.change_latrus();" alt="LAT <-> RUS (Транслит выключен)" title="LAT <-> RUS (Транслит выключен)"></TD>
+            <TD height=30 width=145><div id="serverTime" style="font-size: 18px; font-style: italic; text-align: center"></div></TD>
+            <TD width=26 height=30><img src=http://image.neverlands.ru/chat/ab1.gif width=26 height=30 border=0 align=absmiddle class=chatpostbut onclick="use_action('clan-action');" alt="Клан" title="Клан"></TD>
+            <TD width=26 height=30><img src=http://image.neverlands.ru/chat/ab3.gif width=26 height=30 border=0 align=absmiddle class=chatpostbut onclick="use_action('addon-action');" alt="Возможности игрока" title="Возможности игрока"></TD>
+            <TD width=26 height=30><img src=http://image.neverlands.ru/chat/spacer.gif width=126 height=30 border=0></TD>
+        </TR>
+    </TABLE>
+</FORM>
+<SCRIPT LANGUAGE="JavaScript">
+    document.FBT.text.focus();
+
+    var serverDate = new Date(2025, 10, 04, 15, 37, 12);
+    var updated = new Date();
+    function updateServerTime()
+    {
+        var now = new Date();
+        var d = new Date(serverDate.getTime() + (now.getTime() - updated.getTime()));
+        window.document.getElementById("serverTime").innerText = (d.getHours() < 10 ? "0" : "") + d.getHours() + ":" + (d.getMinutes() < 10 ? "0" : "") + d.getMinutes() + ":" + (d.getSeconds() < 10 ? "0" : "") + d.getSeconds();
+    }
+    updateServerTime();
+    setInterval(updateServerTime, 1000);
+</SCRIPT>
+</BODY>
+</HTML>
+2025-10-04 15:37:16.799: Intercepting request: http://neverlands.ru/ch/chat.css
+2025-10-04 15:37:16.803: Intercepting request: http://neverlands.ru/ch/ch_msg_v01.js
+2025-10-04 15:37:16.820: Intercepting request: http://neverlands.ru/ch/button.css
+2025-10-04 15:37:16.827: Intercepting request: http://neverlands.ru/ch/ch_but.js
+2025-10-04 15:37:16.841: Intercepting request: http://image.neverlands.ru/1x1.gif
+2025-10-04 15:37:16.841: Intercepting request: http://image.neverlands.ru/chat/spacer.gif
+2025-10-04 15:37:16.843: Intercepting request: http://image.neverlands.ru/signs/c174.gif
+2025-10-04 15:37:16.844: Intercepting request: http://image.neverlands.ru/1x1.gif
+2025-10-04 15:37:16.851: Intercepting request: http://image.neverlands.ru/gameplay/hp.gif
+2025-10-04 15:37:16.852: Intercepting request: http://image.neverlands.ru/gameplay/noma.gif
+2025-10-04 15:37:16.852: Intercepting request: http://image.neverlands.ru/gameplay/ma.gif
+2025-10-04 15:37:16.852: Intercepting request: http://image.neverlands.ru/gameplay/nohp.gif
+2025-10-04 15:37:16.852: Intercepting request: http://image.neverlands.ru/exit.gif
+2025-10-04 15:37:16.853: Intercepting request: http://image.neverlands.ru/money_dea.gif
+2025-10-04 15:37:16.854: Intercepting request: http://image.neverlands.ru/1x1.gif
+2025-10-04 15:37:16.854: Intercepting request: http://image.neverlands.ru/money_all.gif
+2025-10-04 15:37:16.857: Intercepting request: http://image.neverlands.ru/chat/private.gif
+2025-10-04 15:37:16.868: Intercepting request: http://image.neverlands.ru/weapon/kaas30sl.gif
+2025-10-04 15:37:16.867: Intercepting request: http://image.neverlands.ru/weapon/sl_l_0.gif
+2025-10-04 15:37:16.868: Intercepting request: http://image.neverlands.ru/weapon/sl_l_6.gif
+2025-10-04 15:37:16.868: Intercepting request: http://image.neverlands.ru/weapon/lsp30dks.gif
+2025-10-04 15:37:16.869: Intercepting request: http://image.neverlands.ru/weapon/sl_l_5.gif
+2025-10-04 15:37:16.872: Intercepting request: http://image.neverlands.ru/weapon/j20sk20s.gif
+2025-10-04 15:37:16.871: Intercepting request: http://image.neverlands.ru/obrazy/dr13--male.jpg
+2025-10-04 15:37:16.873: Intercepting request: http://image.neverlands.ru/weapon/sl_l_4.gif
+2025-10-04 15:37:16.874: Intercepting request: http://image.neverlands.ru/weapon/w48_01.gif
+2025-10-04 15:37:16.874: Intercepting request: http://image.neverlands.ru/weapon/slots/1x1gr.gif
+2025-10-04 15:37:16.876: Intercepting request: http://image.neverlands.ru/weapon/i_svi_206.gif
+2025-10-04 15:37:16.876: Intercepting request: http://image.neverlands.ru/signs/chaoss.gif
+2025-10-04 15:37:16.877: Intercepting request: http://image.neverlands.ru/weapon/w80_li4a.gif
+2025-10-04 15:37:16.878: Intercepting request: http://image.neverlands.ru/weapon/sl_r_3.gif
+2025-10-04 15:37:16.880: Intercepting request: http://image.neverlands.ru/chat/info.gif
+2025-10-04 15:37:16.873: Intercepting request: http://image.neverlands.ru/weapon/sl_r_5.gif
+2025-10-04 15:37:16.881: Intercepting request: http://image.neverlands.ru/weapon/w30_arar.gif
+2025-10-04 15:37:16.882: Intercepting request: http://image.neverlands.ru/signs/c174.gif
+2025-10-04 15:37:16.883: Intercepting request: http://image.neverlands.ru/weapon/sl_r_6.gif
+2025-10-04 15:37:16.884: Intercepting request: http://image.neverlands.ru/1x1.gif
+2025-10-04 15:37:16.884: Intercepting request: http://image.neverlands.ru/weapon/w26_li4a.gif
+2025-10-04 15:37:16.885: Intercepting request: http://image.neverlands.ru/weapon/sl_r_7.gif
+2025-10-04 15:37:16.880: Intercepting request: http://image.neverlands.ru/1x1.gif
+2025-10-04 15:37:16.888: Intercepting request: http://d6.c2.ba.a0.top.mail.ru/counter?id=665202;t=79;js=13;r=;j=false;s=411*730;d=24;rand=0.25668047975135466
+2025-10-04 15:37:16.975: Intercepting request: http://neverlands.ru/favicon.ico
+2025-10-04 15:37:16.994: Intercepting request: http://image.neverlands.ru/chat/1_1.gif
+2025-10-04 15:37:17.009: Intercepting request: http://image.neverlands.ru/chat/b1.gif
+2025-10-04 15:37:17.009: Intercepting request: http://image.neverlands.ru/chat/b2.gif
+2025-10-04 15:37:17.010: Intercepting request: http://image.neverlands.ru/chat/1_2.gif
+2025-10-04 15:37:17.012: Intercepting request: http://image.neverlands.ru/chat/1_3.gif
+2025-10-04 15:37:17.011: Intercepting request: http://image.neverlands.ru/chat/b4.gif
+2025-10-04 15:37:17.011: Intercepting request: http://image.neverlands.ru/chat/b3.gif
+2025-10-04 15:37:17.014: Intercepting request: http://image.neverlands.ru/chat/bb1.gif
+2025-10-04 15:37:17.012: Intercepting request: http://image.neverlands.ru/chat/bb0.gif
+2025-10-04 15:37:17.019: Intercepting request: http://image.neverlands.ru/chat/bb2.gif
+2025-10-04 15:37:17.020: Intercepting request: http://image.neverlands.ru/chat/bb_10.gif
+2025-10-04 15:37:17.017: Intercepting request: http://image.neverlands.ru/chat/bb3_all.gif
+2025-10-04 15:37:17.024: Intercepting request: http://image.neverlands.ru/chat/bb4_nc.gif
+2025-10-04 15:37:17.025: Intercepting request: http://image.neverlands.ru/chat/ab3.gif
+2025-10-04 15:37:17.027: Intercepting request: http://image.neverlands.ru/chat/main_bg.gif
+2025-10-04 15:37:17.030: Intercepting request: http://image.neverlands.ru/chat/fbg.gif
+2025-10-04 15:37:17.031: Intercepting request: http://image.neverlands.ru/chat/1bg.gif
+2025-10-04 15:37:17.039: Intercepting request: http://www.neverlands.ru/main.php
+2025-10-04 15:37:17.023: Intercepting request: http://image.neverlands.ru/chat/ab1.gif
+2025-10-04 15:37:17.162: Final processedData for http://d6.c2.ba.a0.top.mail.ru/counter?id=665202;t=79;js=13;r=;j=false;s=411*730;d=24;rand=0.25668047975135466: 
+2025-10-04 15:37:17.177: Intercepting request: http://www.neverlands.ru/css/frame.css
+2025-10-04 15:37:17.177: Intercepting request: http://www.neverlands.ru/js/hp.js
+2025-10-04 15:37:17.177: Intercepting request: http://www.neverlands.ru/css/game.css
+2025-10-04 15:37:17.178: Intercepting request: http://www.neverlands.ru/js/slots_v02.js
+2025-10-04 15:37:17.178: Intercepting request: http://www.neverlands.ru/js/dealer.js
+2025-10-04 15:37:17.188: Intercepting request: http://www.neverlands.ru/js/addstat.js
+2025-10-04 15:37:17.196: Intercepting request: http://www.neverlands.ru/js/addskill_v02.js
+2025-10-04 15:37:17.197: Intercepting request: http://www.neverlands.ru/js/addperk_v03.js
+2025-10-04 15:37:17.197: Intercepting request: http://www.neverlands.ru/js/transfer.js
+2025-10-04 15:37:17.210: Intercepting request: http://www.neverlands.ru/js/t_v01.js
+2025-10-04 15:37:17.210: Intercepting request: http://www.neverlands.ru/js/effects_v04.js
+2025-10-04 15:37:17.211: Intercepting request: http://www.neverlands.ru/js/nl_tooltip.js
+2025-10-04 15:37:17.212: Intercepting request: http://neverlands.ru/favicon.ico
+2025-10-04 15:37:17.214: Intercepting request: http://neverlands.ru/favicon.ico
+2025-10-04 15:37:17.249: Intercepting request: http://image.neverlands.ru/1x1.gif
+2025-10-04 15:37:17.248: Intercepting request: http://image.neverlands.ru/signs/c174.gif
+2025-10-04 15:37:17.256: Intercepting request: http://image.neverlands.ru/gameplay/nohp.gif
+2025-10-04 15:37:17.256: Intercepting request: http://image.neverlands.ru/gameplay/hp.gif
+2025-10-04 15:37:17.257: Intercepting request: http://image.neverlands.ru/gameplay/ma.gif
+2025-10-04 15:37:17.259: Intercepting request: http://image.neverlands.ru/gameplay/noma.gif
+2025-10-04 15:37:17.259: Intercepting request: http://image.neverlands.ru/money_all.gif
+2025-10-04 15:37:17.260: Intercepting request: http://image.neverlands.ru/money_dea.gif
+2025-10-04 15:37:17.260: Intercepting request: http://image.neverlands.ru/exit.gif
+2025-10-04 15:37:17.271: Intercepting request: http://image.neverlands.ru/weapon/sl_l_0.gif
+2025-10-04 15:37:17.274: Intercepting request: http://image.neverlands.ru/weapon/kaas30sl.gif
+2025-10-04 15:37:17.274: Intercepting request: http://image.neverlands.ru/weapon/lsp30dks.gif
+2025-10-04 15:37:17.275: Intercepting request: http://image.neverlands.ru/weapon/sl_l_6.gif
+2025-10-04 15:37:17.276: Intercepting request: http://image.neverlands.ru/weapon/sl_l_5.gif
+2025-10-04 15:37:17.277: Intercepting request: http://image.neverlands.ru/weapon/j20sk20s.gif
+2025-10-04 15:37:17.277: Intercepting request: http://image.neverlands.ru/obrazy/dr13--male.jpg
+2025-10-04 15:37:17.279: Intercepting request: http://image.neverlands.ru/weapon/sl_r_5.gif
+2025-10-04 15:37:17.279: Intercepting request: http://image.neverlands.ru/weapon/sl_l_4.gif
+2025-10-04 15:37:17.281: Intercepting request: http://image.neverlands.ru/weapon/slots/1x1gr.gif
+2025-10-04 15:37:17.283: Intercepting request: http://image.neverlands.ru/weapon/w30_arar.gif
+2025-10-04 15:37:17.283: Intercepting request: http://image.neverlands.ru/weapon/w80_li4a.gif
+2025-10-04 15:37:17.285: Intercepting request: http://image.neverlands.ru/weapon/sl_r_3.gif
+2025-10-04 15:37:17.283: Intercepting request: http://image.neverlands.ru/weapon/i_svi_206.gif
+2025-10-04 15:37:17.285: Intercepting request: http://image.neverlands.ru/weapon/w48_01.gif
+2025-10-04 15:37:17.288: Intercepting request: http://image.neverlands.ru/weapon/sl_r_6.gif
+2025-10-04 15:37:17.288: Intercepting request: http://image.neverlands.ru/weapon/w26_li4a.gif
+2025-10-04 15:37:17.294: Intercepting request: http://image.neverlands.ru/weapon/sl_r_7.gif
+2025-10-04 15:37:17.321: Intercepting request: http://d6.c2.ba.a0.top.mail.ru/counter?id=665202;t=79;js=13;r=;j=false;s=411*730;d=24;rand=0.4544356993381651
+2025-10-04 15:37:17.424: Final processedData for http://d6.c2.ba.a0.top.mail.ru/counter?id=665202;t=79;js=13;r=;j=false;s=411*730;d=24;rand=0.4544356993381651: 
+2025-10-04 15:37:17.470: Intercepting request: http://www.neverlands.ru/favicon.ico

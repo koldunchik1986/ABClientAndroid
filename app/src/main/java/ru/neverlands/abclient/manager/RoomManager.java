@@ -13,15 +13,46 @@ import ru.neverlands.abclient.MainActivity;
 import ru.neverlands.abclient.utils.Russian;
 
 public class RoomManager {
-    // Вместо этого, метод process должен просто вернуть сгенерированный список
     public static String process(Context context, String html) {
-        FilterProcRoomResult filterResult = FilterProcRoom(html);
-        // Здесь можно добавить логику для генерации выпадающего списка навигации и кнопки свитка
-        // и вставить их в filterResult.html
-        return filterResult.html; // Возвращаем ТОЛЬКО сгенерированный список игроков
+        ru.neverlands.abclient.utils.DebugLogger.log("RoomManager.process: HTML before processing:\n" + html);
+        try {
+            AssetManager assetManager = context.getAssets();
+            InputStream inputStream = assetManager.open("js/ch_list.js");
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            byte[] buffer = new byte[1024];
+            int len;
+            while ((len = inputStream.read(buffer)) != -1) {
+                baos.write(buffer, 0, len);
+            }
+            String chListJs = baos.toString();
+
+            FilterProcRoomResult filterResult = FilterProcRoom(html);
+
+            String script = "<script>" +
+                          "window.external = window.AndroidBridge;\n" +
+                          "var ChatListU = [" + filterResult.chatListU + "];\n" +
+                          chListJs +
+                          "</script>";
+
+            ru.neverlands.abclient.utils.DebugLogger.log("RoomManager.process: Generated HTML:\n" + filterResult.html);
+            String newHtml = html.replace("</body>", filterResult.html + "</body>");
+            newHtml = newHtml.replace("</head>", script + "</head>");
+
+            ru.neverlands.abclient.utils.DebugLogger.log("RoomManager.process: HTML after processing:\n" + newHtml);
+            return newHtml;
+        } catch (IOException e) {
+            e.printStackTrace();
+            return html;
+        }
     }
 
-    public static String HtmlChar(String schar) {
+    public static void startTracing(MainActivity mainActivity) {
+    }
+
+    public static void stopTracing() {
+    }
+
+    private static String HtmlChar(String schar) {
         String[] strArray = schar.split(":");
         String nnSec = strArray[1];
         String login = strArray[1];
@@ -131,7 +162,7 @@ public class RoomManager {
             inj;
     }
 
-    public static FilterProcRoomResult FilterProcRoom(String html) {
+    private static FilterProcRoomResult FilterProcRoom(String html) {
         FilterProcRoomResult result = new FilterProcRoomResult();
 
         Pattern pattern = Pattern.compile("var ChatListU = new Array\\((.*)\\);", Pattern.DOTALL);
@@ -161,10 +192,10 @@ public class RoomManager {
         public String title;
     }
 
-    public static class FilterProcRoomResult {
+    private static class FilterProcRoomResult {
         int numCharsInRoom;
         String enemyAttack;
-        public String html;
+        String html;
         String chatListU;
     }
 }

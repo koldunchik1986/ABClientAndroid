@@ -107,6 +107,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        isRoomManagerStarted = false;
         AppVars.init(this);
         AppVars.mainActivity = new WeakReference<>(this);
         
@@ -261,7 +262,9 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
 
     @Override
     protected void onDestroy() {
-
+        ru.neverlands.abclient.utils.DebugLogger.log("MainActivity: onDestroy() called.");
+        stopTimer();
+        RoomManager.stopTracing();
 
         if (isExiting) {
             // ((ABClientApplication) getApplication()).stopProxyService();
@@ -508,7 +511,13 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                     "})()";
             view.evaluateJavascript(script, null);
 
-            if (url.contains("ch.php")) {
+            if (url.endsWith("main.php")) {
+                view.evaluateJavascript("javascript:(function() { var frameset = document.getElementsByTagName('frameset')[0]; if (frameset) { frameset.rows = '*\n, 0'; } })()", null);
+                if (!isRoomManagerStarted) {
+                    ru.neverlands.abclient.manager.RoomManager.startTracing(MainActivity.this);
+                    isRoomManagerStarted = true;
+                }
+            } else if (url.contains("ch.php")) {
                 view.evaluateJavascript("javascript:(function() { var frameset = document.getElementsByTagName('frameset')[0]; if (frameset) { frameset.cols = '0, *'; } })()", null);
             }
         }
@@ -613,7 +622,12 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                         encoding = null;
                     }
 
-
+                    if (url.contains("ch.php?lo=1")) {
+                        String html = Russian.getString(data);
+                        html = ru.neverlands.abclient.manager.RoomManager.process(MainActivity.this, html);
+                        data = Russian.getBytes(html);
+                        return new WebResourceResponse(mimeType, "windows-1251", new ByteArrayInputStream(data));
+                    }
 
                     if (contentType != null && contentType.contains("text/html")) {
                         data = injectJsFix(data, url);

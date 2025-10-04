@@ -28,7 +28,7 @@
 <tr><td bgcolor=#ffffff><img src=http://image.neverlands.ru/1x1.gif width=1 height=1></td></tr>
 <tr><td><img src=http://image.neverlands.ru/gameplay/ma.gif width=0 height=6 border=0 name=leftm vspace=0 align=absmiddle><img src=http://image.neverlands.ru/gameplay/noma.gif width=0 height=6 border=0 name=rightm vspace=0 align=absmiddle></td></tr>
 </table>
-</td><td bgcolor=#FCFAF3><div align=center><input type=button class=lbutdis value="Ваш персонаж" DISABLED> <input type=button class=lbut onclick="location='main.php?get_id=56&act=10&go=inv&vcode=40630d49171054363c12d891120c142a'" value="Инвентарь"> <input type=button class=lbut onclick="location='main.php?get_id=56&act=10&go=ret&vcode=9569568af401920632c6f1c22c184d94'" value="Вернуться"> <input type=button class=lbut onclick="location='main.php?get_id=56&act=10&go=up&vcode=413fb9a49c2c10f4179e70679edcc48c'" value="Природа"></div></td><td bgcolor=#FCFAF3><div align=right><a href="javascript:top.exit_redir();"><img src=http://image.neverlands.ru/exit.gif align=absmiddle width=15 height=15 border=0></a></div></td></tr>
+</td><td bgcolor=#FCFAF3><div align=center><input type=button class=lbutdis value="Ваш персонаж" DISABLED> <input type=button class=lbut onclick="location='main.php?get_id=56&act=10&go=inv&vcode=98708138646bdbd44801c9fccaf54594'" value="Инвентарь"> <input type=button class=lbut onclick="location='main.php?get_id=56&act=10&go=ret&vcode=c5340a8ce6f5045031f380a6ee15cafd'" value="Вернуться"> <input type=button class=lbut onclick="location='main.php?get_id=56&act=10&go=up&vcode=8cbc010e7e79a8ce48f117fa09c8ef8b'" value="Природа"></div></td><td bgcolor=#FCFAF3><div align=right><a href="javascript:top.exit_redir();"><img src=http://image.neverlands.ru/exit.gif align=absmiddle width=15 height=15 border=0></a></div></td></tr>
 </table>
 
 <table cellpadding=0 cellspacing=0 border=0 width=100%>
@@ -52,8 +52,8 @@ slots_pla("dr13--male.jpg","Блудя","sl_l_0.gif:Слот для шлема@k
 <td valign=top width=180 rowspan=2>
 <table cellpadding=0 cellspacing=0 border=0 width=100%>
 <tr><td><table cellpadding=0 cellspacing=1 border=0 width=100%>
-<tr><td bgcolor=#FCFAF3><font class=nickname><img src=http://image.neverlands.ru/money_all.gif width=16 height=14 border=0 alt="Передать NV" align=absmiddle onclick="transferform('0','0','Игровую валюту','fb0a541f9fba9459764e303a45c90b95','0','0','0','0')" vspace=1>&nbsp;Деньги:</td><td width=100% bgcolor=#fafafa nowrap><font class=nickname><b id="user_nv">&nbsp;113264.25 NV</td></tr>
-<tr><td bgcolor=#F0F0F0><img src=http://image.neverlands.ru/money_dea.gif width=14 height=14 border=0 align=absmiddle vspace=1></td><td width=100% bgcolor=#F0F0F0 nowrap><font class=nickname><b id="user_goldmoney">&nbsp;5 $</td></tr><tr><td bgcolor=#F0F0F0><img src=http://image.neverlands.ru/money_dea.gif width=14 height=14 border=0 alt="Передать DNV" align=absmiddle onclick="m_form('48dac703f27b6f54cd2d5f5fa812d2c2')" vspace=1></td><td width=100% bgcolor=#F0F0F0 nowrap><font class=nickname><b id="user_deamoney">&nbsp;0.08 DNV</td></tr>
+<tr><td bgcolor=#FCFAF3><font class=nickname><img src=http://image.neverlands.ru/money_all.gif width=16 height=14 border=0 alt="Передать NV" align=absmiddle onclick="transferform('0','0','Игровую валюту','2a707151dfadf6b4f2cc32719db167a7','0','0','0','0')" vspace=1>&nbsp;Деньги:</td><td width=100% bgcolor=#fafafa nowrap><font class=nickname><b id="user_nv">&nbsp;113264.25 NV</td></tr>
+<tr><td bgcolor=#F0F0F0><img src=http://image.neverlands.ru/money_dea.gif width=14 height=14 border=0 align=absmiddle vspace=1></td><td width=100% bgcolor=#F0F0F0 nowrap><font class=nickname><b id="user_goldmoney">&nbsp;5 $</td></tr><tr><td bgcolor=#F0F0F0><img src=http://image.neverlands.ru/money_dea.gif width=14 height=14 border=0 alt="Передать DNV" align=absmiddle onclick="m_form('9241f96c95d5d2306892f2f33da7cff0')" vspace=1></td><td width=100% bgcolor=#F0F0F0 nowrap><font class=nickname><b id="user_deamoney">&nbsp;0.08 DNV</td></tr>
 </table></td></tr>
 <tr><td>
 <table cellpadding=0 cellspacing=0 border=0 width=100%>
@@ -104,7 +104,7 @@ slots_pla("dr13--male.jpg","Блудя","sl_l_0.gif:Слот для шлема@k
 <tr><td><img src=http://image.neverlands.ru/1x1.gif width=1 height=3></td></tr>
 <tr><td bgcolor=#CCCCCC width=100%>
 <table cellpadding=5 cellspacing=1 border=0 width=100%><tr><td bgcolor=#f5f5f5 class=freetxt>
-О всех пожеланиях, глюках, ошибках просьба сообщать на <a href="http://forum.neverlands.ru" target=_black>форуме</a> проекта.<br><form method=POST action=main.php>Подписаться на новости проекта NeverLands.Ru<br>Ваш E-mail: <input type=hidden name=post_id value=6><input type=hidden name=mdc value=c2ac31033200d56a613dbaa20f37f6b5><input type=text name=subemail size=40 class=LogintextBox4 maxlength=40> <input type=checkbox name=subhtml value=1> html-версия <input type=submit value="Ок" class=lbut></form><br><br>Мы работаем для Вас. &copy;<br>С уважением, Администрация NeverLands.Ru</b></td></tr></table>
+О всех пожеланиях, глюках, ошибках просьба сообщать на <a href="http://forum.neverlands.ru" target=_black>форуме</a> проекта.<br><form method=POST action=main.php>Подписаться на новости проекта NeverLands.Ru<br>Ваш E-mail: <input type=hidden name=post_id value=6><input type=hidden name=mdc value=8ce982792f05db03e65663d3a73daf8e><input type=text name=subemail size=40 class=LogintextBox4 maxlength=40> <input type=checkbox name=subhtml value=1> html-версия <input type=submit value="Ок" class=lbut></form><br><br>Мы работаем для Вас. &copy;<br>С уважением, Администрация NeverLands.Ru</b></td></tr></table>
 </td></tr>
 <tr><td><img src=http://image.neverlands.ru/1x1.gif width=1 height=3></td></tr>
 <tr><td align=right>
