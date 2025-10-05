@@ -18,6 +18,14 @@ import java.util.Map;
 import ru.neverlands.abclient.adapter.ContactsAdapter;
 import ru.neverlands.abclient.manager.ContactsManager;
 import ru.neverlands.abclient.model.Contact;
+import java.io.File;
+import ru.neverlands.abclient.repository.ApiRepository;
+import java.io.BufferedReader;
+import java.io.FileReader;
+import java.io.FileInputStream;
+import java.io.InputStreamReader;
+import java.io.IOException;
+import android.util.Log;
 import android.os.Handler;
 import android.os.Looper;
 
@@ -44,6 +52,7 @@ public class ContactsActivity extends AppCompatActivity {
         setupRecyclerView();
         addContactButton.setOnClickListener(v -> addContactFromInput());
         loadContactsFromManager();
+        downloadClanList();
     }
 
     private void setupRecyclerView() {
@@ -245,6 +254,8 @@ public class ContactsActivity extends AppCompatActivity {
         final CharSequence[] items = {
                 "Обновить всех в группе",
                 "Удалить всех из группы",
+                "Добавить весь клан",
+                "--- Тип ---",
                 "Сделать всех Друзьями",
                 "Сделать всех Врагами",
                 "Сделать всех Нейтралами"
@@ -253,6 +264,7 @@ public class ContactsActivity extends AppCompatActivity {
         new AlertDialog.Builder(this)
                 .setTitle("Группа: " + group.clanName)
                 .setItems(items, (dialog, which) -> {
+                    // Note: The separator is a text item and will be handled as a no-op.
                     switch (which) {
                         case 0: // Обновить всех
                             updateGroup(group.clanName);
@@ -260,18 +272,89 @@ public class ContactsActivity extends AppCompatActivity {
                         case 1: // Удалить всех
                             deleteGroup(group.clanName);
                             break;
-                        case 2: // Сделать всех Друзьями
+                        case 2: // Добавить весь клан
+                            importClanMembers(group);
+                            break;
+                        case 3: // Separator
+                            break;
+                        case 4: // Сделать всех Друзьями
                             setClassIdForGroup(group.clanName, 2);
                             break;
-                        case 3: // Сделать всех Врагами
+                        case 5: // Сделать всех Врагами
                             setClassIdForGroup(group.clanName, 1);
                             break;
-                        case 4: // Сделать всех Нейтралами
+                        case 6: // Сделать всех Нейтралами
                             setClassIdForGroup(group.clanName, 0);
                             break;
                     }
                 })
                 .show();
+    }
+
+    private void importClanMembers(ContactsAdapter.GroupHeaderItem group) {
+        Toast.makeText(this, "Импорт клана '" + group.clanName + "'...", Toast.LENGTH_SHORT).show();
+
+        if (group.clanIco == null || group.clanIco.isEmpty()) {
+            Toast.makeText(this, "Невозможно определить ID клана (отсутствует иконка)", Toast.LENGTH_LONG).show();
+            return;
+        }
+
+        final String clanId = group.clanIco.replace(".gif", "");
+
+        new Thread(() -> {
+            File infoDir = new File(getExternalFilesDir(null), "info");
+            File clanFile = new File(infoDir, "clans.txt");
+
+            if (!clanFile.exists()) {
+                runOnUiThread(() -> Toast.makeText(ContactsActivity.this, "Файл кланов не найден. Обновите список.", Toast.LENGTH_LONG).show());
+                return;
+            }
+
+            boolean clanFound = false;
+            try (BufferedReader reader = new BufferedReader(new InputStreamReader(new FileInputStream(clanFile), "windows-1251"))) {
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    String[] clanParts = line.split("\\|");
+                    if (clanParts.length > 5 && clanParts[0].equalsIgnoreCase(clanId)) {
+                        clanFound = true;
+                        String[] players = clanParts[5].split("#");
+                        for (String player : players) {
+                            String[] playerParts = player.split(",");
+                            if (playerParts.length > 1) {
+                                String nick = playerParts[1];
+                                ContactsManager.addContact(ContactsActivity.this, nick, new ContactsManager.ContactOperationCallback() {
+                                    @Override
+                                    public void onSuccess(Contact contact) {
+                                        Log.d("ClanImport", "Added/Updated: " + contact.nick);
+                                    }
+
+                                    @Override
+                                    public void onFailure(String message) {
+                                        Log.e("ClanImport", "Failed to add " + nick + ": " + message);
+                                    }
+                                });
+                                try { Thread.sleep(1000); } catch (InterruptedException e) { e.printStackTrace(); }
+                            }
+                        }
+                        break; 
+                    }
+                }
+
+                final boolean finalClanFound = clanFound;
+                runOnUiThread(() -> {
+                    if (finalClanFound) {
+                        Toast.makeText(ContactsActivity.this, "Импорт клана завершен. Обновление списка...", Toast.LENGTH_LONG).show();
+                        new Handler(Looper.getMainLooper()).postDelayed(this::loadContactsFromManager, 3000);
+                    } else {
+                        Toast.makeText(ContactsActivity.this, "Клан не найден в файле clans.txt", Toast.LENGTH_LONG).show();
+                    }
+                });
+
+            } catch (IOException e) {
+                runOnUiThread(() -> Toast.makeText(ContactsActivity.this, "Ошибка чтения файла кланов.", Toast.LENGTH_LONG).show());
+                Log.e("ClanImport", "Error reading clans.txt", e);
+            }
+        }).start();
     }
 
     private void updateGroup(String clanName) {
@@ -320,5 +403,23 @@ public class ContactsActivity extends AppCompatActivity {
             }
         }
         loadContactsFromManager();
+    }
+
+    private void downloadClanList() {
+        String url = "http://service.neverlands.ru/info/clans.txt";
+        File infoDir = new File(getExternalFilesDir(null), "info");
+        File destinationFile = new File(infoDir, "clans.txt");
+
+        ApiRepository.downloadFile(url, destinationFile, new ApiRepository.ApiCallback<String>() {
+            @Override
+            public void onSuccess(String filePath) {
+                runOnUiThread(() -> Toast.makeText(ContactsActivity.this, "Список кланов обновлен", Toast.LENGTH_SHORT).show());
+            }
+
+            @Override
+            public void onFailure(String message) {
+                runOnUiThread(() -> Toast.makeText(ContactsActivity.this, "Ошибка обновления списка кланов: " + message, Toast.LENGTH_LONG).show());
+            }
+        });
     }
 }

@@ -3,6 +3,7 @@ package ru.neverlands.abclient.repository;
 import androidx.annotation.NonNull;
 
 import java.io.IOException;
+import java.io.File;
 import java.net.URLEncoder;
 import java.util.concurrent.TimeUnit;
 
@@ -11,6 +12,9 @@ import okhttp3.Callback;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
+import okio.BufferedSink;
+import okio.BufferedSource;
+import okio.Okio;
 import ru.neverlands.abclient.model.Contact;
 import ru.neverlands.abclient.network.NetworkClient;
 
@@ -164,5 +168,46 @@ public class ApiRepository {
             default: contact.inclinationName = "0"; break;
         }
         return contact;
+    }
+
+    public static void downloadFile(String url, java.io.File destinationFile, ApiCallback<String> callback) {
+        try {
+            Request request = new Request.Builder()
+                    .url(url)
+                    .build();
+
+            getClient().newCall(request).enqueue(new Callback() {
+                @Override
+                public void onFailure(@NonNull Call call, @NonNull IOException e) {
+                    callback.onFailure(e.getMessage() != null ? e.getMessage() : "Unknown network error");
+                }
+
+                @Override
+                public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
+                    if (!response.isSuccessful() || response.body() == null) {
+                        callback.onFailure("Server error or empty response: " + response.code());
+                        return;
+                    }
+                    try (okhttp3.ResponseBody body = response.body()) {
+                        okio.BufferedSource source = body.source();
+                        java.io.File parentDir = destinationFile.getParentFile();
+                        if (parentDir != null && !parentDir.exists()) {
+                            if (!parentDir.mkdirs()) {
+                                callback.onFailure("Failed to create directory: " + parentDir.getPath());
+                                return;
+                            }
+                        }
+                        try (okio.BufferedSink sink = okio.Okio.buffer(okio.Okio.sink(destinationFile))) {
+                            sink.writeAll(source);
+                        }
+                        callback.onSuccess(destinationFile.getPath());
+                    } catch (Exception e) {
+                        callback.onFailure("Failed to save file: " + e.getMessage());
+                    }
+                }
+            });
+        } catch (Exception e) {
+            callback.onFailure(e.getMessage() != null ? e.getMessage() : "Error during file download");
+        }
     }
 }
