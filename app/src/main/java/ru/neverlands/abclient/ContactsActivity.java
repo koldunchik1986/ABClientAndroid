@@ -64,7 +64,7 @@ public class ContactsActivity extends AppCompatActivity {
                         startActivity(intent);
                     }
                 },
-                this::showDeleteConfirmationDialog
+                this::showContactContextMenu
         );
         contactsRecyclerView.setLayoutManager(new LinearLayoutManager(this));
         contactsRecyclerView.setAdapter(contactsAdapter);
@@ -93,38 +93,77 @@ public class ContactsActivity extends AppCompatActivity {
             return;
         }
 
-        final CharSequence[] items = {"Враг", "Друг", "Нейтрал"};
+        addContactButton.setEnabled(false);
+        Toast.makeText(this, "Добавление " + nick + "...", Toast.LENGTH_SHORT).show();
+
+        ContactsManager.addContact(this, nick, new ContactsManager.ContactOperationCallback() {
+            @Override
+            public void onSuccess(Contact contact) {
+                // By default, all new contacts are neutral
+                contact.classId = 0;
+                ContactsManager.updateContact(contact);
+                addContactButton.setEnabled(true);
+                Toast.makeText(ContactsActivity.this, "Контакт " + contact.nick + " добавлен", Toast.LENGTH_LONG).show();
+                nickEditText.getText().clear();
+                loadContactsFromManager();
+            }
+
+            @Override
+            public void onFailure(String message) {
+                addContactButton.setEnabled(true);
+                Toast.makeText(ContactsActivity.this, "Ошибка: " + message, Toast.LENGTH_LONG).show();
+            }
+        });
+    }
+
+    private void showContactContextMenu(Contact contact) {
+        final CharSequence[] items = {
+                "Обновить контакт",
+                "Удалить контакт",
+                "Сделать Другом",
+                "Сделать Врагом",
+                "Сделать Нейтралом"
+        };
+
         new AlertDialog.Builder(this)
-                .setTitle("Добавить контакт: " + nick)
+                .setTitle(contact.nick)
                 .setItems(items, (dialog, which) -> {
-                    int classId = 0;
                     switch (which) {
-                        case 0: classId = 1; break; // Foe
-                        case 1: classId = 2; break; // Friend
-                        case 2: classId = 0; break; // Neutral
-                    }
-                    
-                    addContactButton.setEnabled(false);
-                    Toast.makeText(this, "Добавление " + nick + "...", Toast.LENGTH_SHORT).show();
-
-                    int finalClassId = classId;
-                    ContactsManager.addContact(this, nick, new ContactsManager.ContactOperationCallback() {
-                        @Override
-                        public void onSuccess(Contact contact) {
-                            contact.classId = finalClassId;
+                        case 0: // Обновить контакт
+                            Toast.makeText(this, "Обновление " + contact.nick + "...", Toast.LENGTH_SHORT).show();
+                            ContactsManager.addContact(this, contact.nick, new ContactsManager.ContactOperationCallback() {
+                                @Override
+                                public void onSuccess(Contact updatedContact) {
+                                    updatedContact.classId = contact.classId;
+                                    ContactsManager.updateContact(updatedContact);
+                                    Toast.makeText(ContactsActivity.this, "Контакт " + updatedContact.nick + " обновлен", Toast.LENGTH_LONG).show();
+                                    loadContactsFromManager();
+                                }
+                                @Override
+                                public void onFailure(String message) {
+                                    Toast.makeText(ContactsActivity.this, "Ошибка: " + message, Toast.LENGTH_LONG).show();
+                                }
+                            });
+                            break;
+                        case 1: // Удалить контакт
+                            showDeleteConfirmationDialog(contact);
+                            break;
+                        case 2: // Сделать Другом
+                            contact.classId = 2;
                             ContactsManager.updateContact(contact);
-                            addContactButton.setEnabled(true);
-                            Toast.makeText(ContactsActivity.this, "Контакт " + contact.nick + " добавлен", Toast.LENGTH_LONG).show();
-                            nickEditText.getText().clear();
                             loadContactsFromManager();
-                        }
-
-                        @Override
-                        public void onFailure(String message) {
-                            addContactButton.setEnabled(true);
-                            Toast.makeText(ContactsActivity.this, "Ошибка: " + message, Toast.LENGTH_LONG).show();
-                        }
-                    });
+                            break;
+                        case 3: // Сделать Врагом
+                            contact.classId = 1;
+                            ContactsManager.updateContact(contact);
+                            loadContactsFromManager();
+                            break;
+                        case 4: // Сделать Нейтралом
+                            contact.classId = 0;
+                            ContactsManager.updateContact(contact);
+                            loadContactsFromManager();
+                            break;
+                    }
                 })
                 .show();
     }

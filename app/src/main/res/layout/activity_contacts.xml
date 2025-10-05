@@ -18,35 +18,7 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
 
-    <RadioGroup
-        android:id="@+id/contactTypeRadioGroup"
-        android:layout_width="0dp"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="8dp"
-        android:orientation="horizontal"
-        app:layout_constraintEnd_toEndOf="@+id/nickEditText"
-        app:layout_constraintStart_toStartOf="@+id/nickEditText"
-        app:layout_constraintTop_toBottomOf="@+id/nickEditText">
 
-        <RadioButton
-            android:id="@+id/friendRadioButton"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Друг" />
-
-        <RadioButton
-            android:id="@+id/enemyRadioButton"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Враг" />
-
-        <RadioButton
-            android:id="@+id/neutralRadioButton"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:checked="true"
-            android:text="Нейтрал" />
-    </RadioGroup>
 
     <Button
         android:id="@+id/addContactButton"
@@ -54,9 +26,9 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="8dp"
         android:text="Добавить / Обновить"
-        app:layout_constraintEnd_toEndOf="@+id/contactTypeRadioGroup"
-        app:layout_constraintStart_toStartOf="@+id/contactTypeRadioGroup"
-        app:layout_constraintTop_toBottomOf="@+id/contactTypeRadioGroup" />
+        app:layout_constraintEnd_toEndOf="@+id/nickEditText"
+        app:layout_constraintStart_toStartOf="@+id/nickEditText"
+        app:layout_constraintTop_toBottomOf="@+id/nickEditText" />
 
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/contactsRecyclerView"
