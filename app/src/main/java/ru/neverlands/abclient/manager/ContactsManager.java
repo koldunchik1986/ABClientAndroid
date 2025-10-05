@@ -199,7 +199,7 @@ public class ContactsManager {
                             handler.post(() -> callback.onFailure(message));
                         }
                     });
-                }, 3000);
+                }, 500);
             }
 
             @Override

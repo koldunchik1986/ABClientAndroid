@@ -18,6 +18,8 @@ CryptoUtils.java
 #backup files
 backup/
 *.profile
+files/
+
 # Generated files
 bin/
 gen/

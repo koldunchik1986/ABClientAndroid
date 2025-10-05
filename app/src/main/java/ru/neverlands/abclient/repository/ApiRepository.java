@@ -33,6 +33,7 @@ public class ApiRepository {
     public static void getPlayerId(String nick, ApiCallback<String> callback) {
         try {
             String encodedNick = URLEncoder.encode(nick, "windows-1251");
+            encodedNick = encodedNick.replace("+", "%20");
             String url = "http://www.neverlands.ru/modules/api/getid.cgi?" + encodedNick;
 
             Request request = new Request.Builder()

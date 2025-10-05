@@ -14,12 +14,62 @@ import java.util.List;
 import ru.neverlands.abclient.R;
 import ru.neverlands.abclient.model.Contact;
 
-public class ContactsAdapter extends RecyclerView.Adapter<ContactsAdapter.ContactViewHolder> {
+public class ContactsAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
 
-    private List<Contact> contacts;
+    // --- Item types and models ---
+    public static abstract class DisplayableItem {
+        abstract public int getType();
+        abstract public long getId();
+    }
+
+    public static class GroupHeaderItem extends DisplayableItem {
+        public final String clanName;
+        public final String clanIco;
+        public boolean isExpanded;
+
+        public GroupHeaderItem(String clanName, String clanIco) {
+            this.clanName = clanName;
+            this.clanIco = clanIco;
+            this.isExpanded = true; // Groups are expanded by default
+        }
+
+        @Override
+        public int getType() {
+            return R.layout.list_item_contact_group_header;
+        }
+
+        @Override
+        public long getId() {
+            return clanName.hashCode();
+        }
+    }
+
+    public static class ContactItem extends DisplayableItem {
+        public final Contact contact;
+
+        public ContactItem(Contact contact) {
+            this.contact = contact;
+        }
+
+        @Override
+        public int getType() {
+            return R.layout.contact_list_item_v2;
+        }
+
+        @Override
+        public long getId() {
+            return contact.playerID.hashCode();
+        }
+    }
+
+    // --- Adapter fields and interfaces ---
+
+    private List<DisplayableItem> items;
     private final OnInfoClickListener onInfoClickListener;
     private final OnWarStatusClickListener onWarStatusClickListener;
     private final OnItemLongClickListener onItemLongClickListener;
+    private final OnGroupClickListener onGroupClickListener;
+    private final OnGroupLongClickListener onGroupLongClickListener;
 
     public interface OnInfoClickListener {
         void onInfoClick(Contact contact);
@@ -33,34 +83,99 @@ public class ContactsAdapter extends RecyclerView.Adapter<ContactsAdapter.Contac
         void onItemLongClick(Contact contact);
     }
 
-    public ContactsAdapter(List<Contact> contacts, OnInfoClickListener onInfoClickListener, OnWarStatusClickListener onWarStatusClickListener, OnItemLongClickListener onItemLongClickListener) {
-        this.contacts = contacts;
+    public interface OnGroupClickListener {
+        void onGroupClick(GroupHeaderItem groupHeaderItem);
+    }
+
+    public interface OnGroupLongClickListener {
+        void onGroupLongClick(GroupHeaderItem groupHeaderItem);
+    }
+
+    public ContactsAdapter(List<DisplayableItem> items, OnInfoClickListener onInfoClickListener, OnWarStatusClickListener onWarStatusClickListener, OnItemLongClickListener onItemLongClickListener, OnGroupClickListener onGroupClickListener, OnGroupLongClickListener onGroupLongClickListener) {
+        this.items = items;
         this.onInfoClickListener = onInfoClickListener;
         this.onWarStatusClickListener = onWarStatusClickListener;
         this.onItemLongClickListener = onItemLongClickListener;
+        this.onGroupClickListener = onGroupClickListener;
+        this.onGroupLongClickListener = onGroupLongClickListener;
+        setHasStableIds(true);
+    }
+
+    // --- RecyclerView.Adapter overrides ---
+
+    @Override
+    public long getItemId(int position) {
+        return items.get(position).getId();
+    }
+
+    @Override
+    public int getItemViewType(int position) {
+        return items.get(position).getType();
     }
 
     @NonNull
     @Override
-    public ContactViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
-        View view = LayoutInflater.from(parent.getContext()).inflate(R.layout.contact_list_item_v2, parent, false);
-        return new ContactViewHolder(view);
+    public RecyclerView.ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
+        if (viewType == R.layout.list_item_contact_group_header) {
+            View view = LayoutInflater.from(parent.getContext()).inflate(R.layout.list_item_contact_group_header, parent, false);
+            return new GroupHeaderViewHolder(view);
+        } else {
+            View view = LayoutInflater.from(parent.getContext()).inflate(R.layout.contact_list_item_v2, parent, false);
+            return new ContactViewHolder(view);
+        }
     }
 
     @Override
-    public void onBindViewHolder(@NonNull ContactViewHolder holder, int position) {
-        Contact contact = contacts.get(position);
-        holder.bind(contact, onInfoClickListener, onWarStatusClickListener, onItemLongClickListener);
+    public void onBindViewHolder(@NonNull RecyclerView.ViewHolder holder, int position) {
+        if (holder instanceof GroupHeaderViewHolder) {
+            ((GroupHeaderViewHolder) holder).bind((GroupHeaderItem) items.get(position), onGroupClickListener, onGroupLongClickListener);
+        } else if (holder instanceof ContactViewHolder) {
+            ((ContactViewHolder) holder).bind(((ContactItem) items.get(position)).contact, onInfoClickListener, onWarStatusClickListener, onItemLongClickListener);
+        }
     }
 
     @Override
     public int getItemCount() {
-        return contacts.size();
+        return items.size();
     }
 
-    public void updateContacts(List<Contact> newContacts) {
-        this.contacts = newContacts;
+    public void updateItems(List<DisplayableItem> newItems) {
+        this.items = newItems;
         notifyDataSetChanged();
+    }
+
+    // --- ViewHolders ---
+
+    static class GroupHeaderViewHolder extends RecyclerView.ViewHolder {
+        private final ImageView clanIconImageView;
+        private final TextView clanNameTextView;
+        private final ImageView expandIndicatorImageView;
+
+        public GroupHeaderViewHolder(@NonNull View itemView) {
+            super(itemView);
+            clanIconImageView = itemView.findViewById(R.id.clanIconImageView);
+            clanNameTextView = itemView.findViewById(R.id.clanNameTextView);
+            expandIndicatorImageView = itemView.findViewById(R.id.expandIndicatorImageView);
+        }
+
+        public void bind(final GroupHeaderItem group, final OnGroupClickListener groupClickListener, final OnGroupLongClickListener groupLongClickListener) {
+            clanNameTextView.setText(group.clanName);
+
+            if (group.clanIco != null && !group.clanIco.isEmpty()) {
+                clanIconImageView.setVisibility(View.VISIBLE);
+                String clanIconUrl = "http://image.neverlands.ru/signs/" + group.clanIco;
+                Glide.with(itemView.getContext()).load(clanIconUrl).into(clanIconImageView);
+            } else {
+                clanIconImageView.setVisibility(View.INVISIBLE);
+            }
+
+            expandIndicatorImageView.setRotation(group.isExpanded ? 0 : -90);
+            itemView.setOnClickListener(v -> groupClickListener.onGroupClick(group));
+            itemView.setOnLongClickListener(v -> {
+                groupLongClickListener.onGroupLongClick(group);
+                return true;
+            });
+        }
     }
 
     static class ContactViewHolder extends RecyclerView.ViewHolder {
@@ -100,13 +215,7 @@ public class ContactsAdapter extends RecyclerView.Adapter<ContactsAdapter.Contac
                 inclinationIcon.setVisibility(View.GONE);
             }
 
-            if (contact.clanIco != null && !contact.clanIco.isEmpty()) {
-                clanIcon.setVisibility(View.VISIBLE);
-                String clanIconUrl = "http://image.neverlands.ru/signs/" + contact.clanIco;
-                Glide.with(itemView.getContext()).load(clanIconUrl).into(clanIcon);
-            } else {
-                clanIcon.setVisibility(View.GONE);
-            }
+
 
             if (contact.warLogNumber != null && !contact.warLogNumber.equals("0") && !contact.warLogNumber.isEmpty()) {
                 warStatusText.setVisibility(View.VISIBLE);
