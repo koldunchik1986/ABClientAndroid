@@ -5,7 +5,6 @@ import androidx.annotation.NonNull;
 import java.io.IOException;
 import java.io.File;
 import java.net.URLEncoder;
-import java.util.concurrent.TimeUnit;
 
 import okhttp3.Call;
 import okhttp3.Callback;
@@ -17,25 +16,41 @@ import okio.BufferedSource;
 import okio.Okio;
 import ru.neverlands.abclient.model.Contact;
 import ru.neverlands.abclient.network.NetworkClient;
-
 import ru.neverlands.abclient.utils.CustomDebugLogger;
 
+/**
+ * Репозиторий для взаимодействия с внешним API игры.
+ * Инкапсулирует логику сетевых запросов (OkHttp) и парсинга ответов.
+ * Все методы асинхронны и используют интерфейс ApiCallback для возврата результатов.
+ */
 public class ApiRepository {
 
+    /**
+     * Вспомогательный метод для получения единственного экземпляра OkHttpClient.
+     * Зависимость: `NetworkClient.getInstance()`
+     * @return Синглтон OkHttpClient.
+     */
     private static OkHttpClient getClient() {
         return NetworkClient.getInstance();
     }
 
+    /**
+     * Универсальный интерфейс колбэка для асинхронной обработки результатов API-запросов.
+     * @param <T> Тип ожидаемого успешного результата.
+     */
     public interface ApiCallback<T> {
         void onSuccess(T result);
         void onFailure(String message);
     }
 
     /**
-     * Шаг 1: Получает ID персонажа по его нику.
+     * Шаг 1 в процессе добавления контакта: получает ID персонажа по его нику.
+     * @param nick Ник персонажа. Может содержать кириллицу и пробелы.
+     * @param callback Колбэк, в который возвращается необработанная строка ответа сервера (playerID|nick).
      */
     public static void getPlayerId(String nick, ApiCallback<String> callback) {
         try {
+            // Кодирование ника в windows-1251 и замена пробелов на %20 для корректного URL.
             String encodedNick = URLEncoder.encode(nick, "windows-1251");
             encodedNick = encodedNick.replace("+", "%20");
             String url = "http://www.neverlands.ru/modules/api/getid.cgi?" + encodedNick;
@@ -49,6 +64,7 @@ public class ApiRepository {
             CustomDebugLogger.log("REQUEST_URL: " + request.url());
             CustomDebugLogger.log("REQUEST_HEADERS: " + request.headers().toString());
 
+            // Асинхронный вызов
             getClient().newCall(request).enqueue(new Callback() {
                 @Override
                 public void onFailure(@NonNull Call call, @NonNull IOException e) {
@@ -86,7 +102,9 @@ public class ApiRepository {
     }
 
     /**
-     * Шаг 2: Получает полную информацию о персонаже по его ID.
+     * Шаг 2: Получает полную информацию о персонаже по его ID и парсит ее в объект Contact.
+     * @param playerId Уникальный ID игрока.
+     * @param callback Колбэк, в который возвращается готовый объект Contact.
      */
     public static void getPlayerInfo(String playerId, ApiCallback<Contact> callback) {
         try {
@@ -123,6 +141,7 @@ public class ApiRepository {
                     }
 
                     try {
+                        // Парсинг ответа в объект Contact
                         Contact contact = parseContactInfo(playerId, responseBody);
                         callback.onSuccess(contact);
                     } catch (Exception e) {
@@ -136,6 +155,12 @@ public class ApiRepository {
         }
     }
 
+    /**
+     * Вспомогательный метод для парсинга ответа от info.cgi.
+     * @param playerId ID игрока, который был использован в запросе.
+     * @param response Строка ответа сервера, разделенная символами "|".
+     * @return Заполненный объект Contact.
+     */
     private static Contact parseContactInfo(String playerId, String response) {
         String[] parts = response.split("\\|");
         if (parts.length < 16) {
@@ -160,6 +185,7 @@ public class ApiRepository {
         contact.geoLocation = parts[14];
         contact.warLogNumber = parts[15];
 
+        // Преобразование цифрового ID склонности в текстовое название
         switch (contact.inclination) {
             case 4: contact.inclinationName = "Chaos"; break;
             case 3: contact.inclinationName = "Sumers"; break;
@@ -170,7 +196,13 @@ public class ApiRepository {
         return contact;
     }
 
-    public static void downloadFile(String url, java.io.File destinationFile, ApiCallback<String> callback) {
+    /**
+     * Универсальный метод для скачивания файла по URL и сохранения его на диск.
+     * @param url URL для скачивания.
+     * @param destinationFile Файл, в который нужно сохранить результат.
+     * @param callback Колбэк, возвращающий путь к файлу в случае успеха.
+     */
+    public static void downloadFile(String url, File destinationFile, ApiCallback<String> callback) {
         try {
             Request request = new Request.Builder()
                     .url(url)
@@ -190,14 +222,16 @@ public class ApiRepository {
                     }
                     try (okhttp3.ResponseBody body = response.body()) {
                         okio.BufferedSource source = body.source();
-                        java.io.File parentDir = destinationFile.getParentFile();
+                        // Создание родительских директорий, если их нет
+                        File parentDir = destinationFile.getParentFile();
                         if (parentDir != null && !parentDir.exists()) {
                             if (!parentDir.mkdirs()) {
                                 callback.onFailure("Failed to create directory: " + parentDir.getPath());
                                 return;
                             }
                         }
-                        try (okio.BufferedSink sink = okio.Okio.buffer(okio.Okio.sink(destinationFile))) {
+                        // Запись файла на диск с использованием эффективной библиотеки Okio
+                        try (BufferedSink sink = Okio.buffer(Okio.sink(destinationFile))) {
                             sink.writeAll(source);
                         }
                         callback.onSuccess(destinationFile.getPath());

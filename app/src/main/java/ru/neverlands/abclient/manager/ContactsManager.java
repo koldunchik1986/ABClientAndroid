@@ -1,4 +1,3 @@
-
 package ru.neverlands.abclient.manager;
 
 import android.content.Context;
@@ -6,7 +5,6 @@ import android.content.res.AssetManager;
 import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
-import android.widget.Toast;
 
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
@@ -35,14 +33,41 @@ import ru.neverlands.abclient.model.Contact;
 import ru.neverlands.abclient.repository.ApiRepository;
 import ru.neverlands.abclient.utils.CustomDebugLogger;
 
+/**
+ * Управляет всеми операциями, связанными с контактами:
+ * - Загрузка из XML-файла при старте.
+ * - Хранение контактов в кэше в памяти для быстрого доступа.
+ * - Добавление, обновление и удаление контактов.
+ * - Сохранение изменений обратно в XML-файл.
+ */
 public class ContactsManager {
 
     private static final String TAG = "ContactsManager";
     private static final String CONTACTS_FILE_NAME = "contacts.xml";
+
+    /**
+     * Основное хранилище контактов в памяти. Ключ - ник персонажа (String), значение - объект Contact.
+     * Используется ConcurrentHashMap для потокобезопасности.
+     */
     private static final ConcurrentHashMap<String, Contact> contactsCache = new ConcurrentHashMap<>();
+
+    /**
+     * Файл, в котором хранятся контакты на устройстве.
+     * Зависимость: `CONTACTS_FILE_NAME`
+     */
     private static File contactsFile;
+
+    /**
+     * Однопоточный исполнитель для асинхронной записи в файл, чтобы не блокировать UI.
+     */
     private static final ExecutorService executor = Executors.newSingleThreadExecutor();
+
+    /**
+     * Handler для выполнения колбэков в основном потоке UI.
+     */
     private static final Handler handler = new Handler(Looper.getMainLooper());
+
+    // --- Интерфейсы для колбэков ---
 
     public interface ContactOperationCallback {
         void onSuccess(Contact contact);
@@ -54,6 +79,11 @@ public class ContactsManager {
         void onFailure(String message);
     }
 
+    /**
+     * Инициализирует менеджер. Вызывается один раз при старте приложения.
+     * Находит или создает файл contacts.xml и запускает загрузку контактов в кэш.
+     * @param context Контекст приложения.
+     */
     public static void initialize(Context context) {
         File filesDir = context.getExternalFilesDir(null);
         if (filesDir != null) {
@@ -65,6 +95,9 @@ public class ContactsManager {
         }
     }
 
+    /**
+     * Копирует стандартный `contacts.xml` из assets в файловую систему, если он отсутствует.
+     */
     private static void copyDefaultContactsFromAssets(Context context) {
         AssetManager assetManager = context.getAssets();
         try (InputStream in = assetManager.open(CONTACTS_FILE_NAME);
@@ -80,6 +113,9 @@ public class ContactsManager {
         }
     }
 
+    /**
+     * Загружает все контакты из `contacts.xml` в `contactsCache`.
+     */
     private static void loadContactsFromXml() {
         if (contactsFile == null || !contactsFile.exists()) {
             return;
@@ -98,6 +134,7 @@ public class ContactsManager {
                 if (node.getNodeType() == Node.ELEMENT_NODE) {
                     Element element = (Element) node;
                     Contact contact = new Contact();
+                    // Заполнение полей объекта Contact из XML
                     contact.playerID = getTagValue("playerID", element);
                     contact.nick = getTagValue("nick", element);
                     contact.playerLevel = Integer.parseInt(getTagValue("playerLevel", element, "0"));
@@ -126,6 +163,9 @@ public class ContactsManager {
         }
     }
 
+    /**
+     * Асинхронно сохраняет все контакты из `contactsCache` в `contacts.xml`.
+     */
     private static void saveContactsToXml() {
         if (contactsFile == null) {
             return;
@@ -143,6 +183,7 @@ public class ContactsManager {
                     Element contactElement = doc.createElement("contact");
                     rootElement.appendChild(contactElement);
                     
+                    // Создание XML-элементов для каждого поля контакта
                     createChildElement(doc, contactElement, "playerID", contact.playerID);
                     createChildElement(doc, contactElement, "nick", contact.nick);
                     createChildElement(doc, contactElement, "playerLevel", String.valueOf(contact.playerLevel));
@@ -178,6 +219,13 @@ public class ContactsManager {
         });
     }
 
+    /**
+     * Добавляет или обновляет контакт. 
+     * Выполняет цепочку асинхронных запросов: сначала получает ID по нику, затем полную информацию по ID.
+     * Зависимости: `ApiRepository.getPlayerId`, `ApiRepository.getPlayerInfo`.
+     * @param nick Ник персонажа для добавления/обновления.
+     * @param callback Колбэк для уведомления о результате.
+     */
     public static void addContact(Context context, String nick, final ContactOperationCallback callback) {
         CustomDebugLogger.initialize("add_contact_" + nick + ".txt");
         ApiRepository.getPlayerId(nick, new ApiRepository.ApiCallback<String>() {
@@ -209,22 +257,39 @@ public class ContactsManager {
         });
     }
 
+    /**
+     * Удаляет контакт из кэша и инициирует сохранение в XML.
+     * @param name Ник контакта для удаления.
+     */
     public static void deleteContact(String name) {
         contactsCache.remove(name);
         saveContactsToXml();
     }
 
+    /**
+     * Обновляет данные контакта в кэше и инициирует сохранение в XML.
+     * Используется для изменения `classId` или комментария.
+     * @param contact Объект контакта с обновленными данными.
+     */
     public static void updateContact(Contact contact) {
         if (contact == null || contact.nick == null) return;
         contactsCache.put(contact.nick, contact);
         saveContactsToXml();
     }
 
+    /**
+     * Загружает список всех контактов из кэша.
+     * @param callback Колбэк, в который передается список контактов.
+     */
     public static void loadContacts(Context context, final LoadContactsCallback callback) {
-        // This method now loads from the cache, but we keep the async structure for compatibility with the Activity
         handler.post(() -> callback.onSuccess(new ArrayList<>(contactsCache.values())));
     }
 
+    /**
+     * Возвращает `classId` для указанного ника. Используется для окрашивания ников в чате/комнате.
+     * @param name Ник персонажа.
+     * @return Строковое представление `classId` (0, 1 или 2).
+     */
     public static String getClassIdOfContact(String name) {
         Contact contact = contactsCache.get(name);
         int classId = 0;
@@ -234,6 +299,8 @@ public class ContactsManager {
         Log.d(TAG, "GetClassIdOfContact for '" + name + "' returned " + classId);
         return String.valueOf(classId);
     }
+
+    // --- Вспомогательные методы для работы с XML ---
 
     private static String getTagValue(String tag, Element element) {
         NodeList nodeList = element.getElementsByTagName(tag).item(0).getChildNodes();

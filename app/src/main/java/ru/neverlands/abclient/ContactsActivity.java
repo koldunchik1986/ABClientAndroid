@@ -2,6 +2,9 @@ package ru.neverlands.abclient;
 
 import android.content.Intent;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
+import android.util.Log;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.Toast;
@@ -9,6 +12,12 @@ import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
 import java.net.URLEncoder;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -18,62 +27,118 @@ import java.util.Map;
 import ru.neverlands.abclient.adapter.ContactsAdapter;
 import ru.neverlands.abclient.manager.ContactsManager;
 import ru.neverlands.abclient.model.Contact;
-import java.io.File;
 import ru.neverlands.abclient.repository.ApiRepository;
-import java.io.BufferedReader;
-import java.io.FileReader;
-import java.io.FileInputStream;
-import java.io.InputStreamReader;
-import java.io.IOException;
-import android.util.Log;
-import android.os.Handler;
-import android.os.Looper;
 
+/**
+ * Activity для отображения и управления списком контактов.
+ * Отвечает за загрузку данных, построение сгруппированного списка, обработку всех действий пользователя.
+ */
 public class ContactsActivity extends AppCompatActivity {
 
+    // --- UI Элементы ---
     private RecyclerView contactsRecyclerView;
+    private EditText nickEditText;
+    private Button addContactButton;
+
+    // --- Адаптер и структуры данных для списка ---
     private ContactsAdapter contactsAdapter;
+    /**
+     * Основной список для отображения в RecyclerView. Содержит гетерогенные элементы: заголовки и контакты.
+     * Зависимость: ContactsAdapter.DisplayableItem
+     */
     private List<ContactsAdapter.DisplayableItem> displayList = new ArrayList<>();
+    /**
+     * "Источник правды" - полный плоский список всех контактов, загруженный из ContactsManager.
+     */
     private List<Contact> allContacts = new ArrayList<>();
+    /**
+     * Хранит состояние (свернуто/развернуто) для каждой группы клана.
+     * Ключ - clanName, значение - true (развернуто) или false (свернуто).
+     */
     private Map<String, Boolean> groupExpansionStates = new HashMap<>();
+    /**
+     * Кэш с информацией о кланах (уровень), загруженной из clans.txt.
+     * Ключ - clanId (например, "dshi"), значение - объект ClanInfo.
+     */
     private Map<String, ClanInfo> clanInfoCache = new HashMap<>();
 
+    /**
+     * Внутренний класс для хранения информации о клане из clans.txt.
+     */
     private static class ClanInfo {
         String clanId;
         String clanName;
         String clanLevel;
     }
 
-    private EditText nickEditText;
-    private Button addContactButton;
+    // --- Методы жизненного цикла Activity ---
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_contacts);
 
+        // Инициализация UI
         nickEditText = findViewById(R.id.nickEditText);
         addContactButton = findViewById(R.id.addContactButton);
         contactsRecyclerView = findViewById(R.id.contactsRecyclerView);
 
+        // Настройка RecyclerView и обработчиков
         setupRecyclerView();
         addContactButton.setOnClickListener(v -> addContactFromInput());
+
+        // Первичная загрузка данных
         loadContactsFromManager();
         downloadClanList();
     }
 
+    // --- Настройка UI ---
+
+    /**
+     * Инициализирует RecyclerView и адаптер, передавая ему все необходимые колбэки для обработки нажатий.
+     */
     private void setupRecyclerView() {
         contactsAdapter = new ContactsAdapter(displayList,
-                this::handleInfoClick,
-                this::handleWarStatusClick,
-                this::showContactContextMenu,
-                this::handleGroupClick,
-                this::showGroupContextMenu
+                this::handleInfoClick, // Нажатие на кнопку "инфо"
+                this::handleWarStatusClick, // Нажатие на статус боя
+                this::showContactContextMenu, // Долгое нажатие на контакт
+                this::handleGroupClick, // Обычное нажатие на группу (свернуть/развернуть)
+                this::showGroupContextMenu // Долгое нажатие на группу
         );
         contactsRecyclerView.setLayoutManager(new LinearLayoutManager(this));
         contactsRecyclerView.setAdapter(contactsAdapter);
     }
 
+    // --- Логика загрузки и обработки данных ---
+
+    /**
+     * Загружает `clans.txt` с сервера и запускает его парсинг.
+     * Зависимости: `ApiRepository.downloadFile`, `parseAndCacheClanInfo`
+     */
+    private void downloadClanList() {
+        String url = "http://service.neverlands.ru/info/clans.txt";
+        File infoDir = new File(getExternalFilesDir(null), "info");
+        File destinationFile = new File(infoDir, "clans.txt");
+
+        ApiRepository.downloadFile(url, destinationFile, new ApiRepository.ApiCallback<String>() {
+            @Override
+            public void onSuccess(String filePath) {
+                runOnUiThread(() -> Toast.makeText(ContactsActivity.this, "Список кланов обновлен", Toast.LENGTH_SHORT).show());
+                // После успешной загрузки, парсим файл в кэш
+                parseAndCacheClanInfo();
+            }
+
+            @Override
+            public void onFailure(String message) {
+                runOnUiThread(() -> Toast.makeText(ContactsActivity.this, "Ошибка обновления списка кланов: " + message, Toast.LENGTH_LONG).show());
+            }
+        });
+    }
+
+    /**
+     * Парсит локальный файл `clans.txt` и кэширует информацию о кланах в `clanInfoCache`.
+     * Выполняется в фоновом потоке. После успешного парсинга инициирует перерисовку списка.
+     */
     private void parseAndCacheClanInfo() {
         new Thread(() -> {
             File infoDir = new File(getExternalFilesDir(null), "info");
@@ -96,13 +161,17 @@ public class ContactsActivity extends AppCompatActivity {
                 clanInfoCache.clear();
                 clanInfoCache.putAll(tempCache);
                 Log.d("ClanInfoParser", "Successfully parsed and cached " + clanInfoCache.size() + " clans.");
-                runOnUiThread(this::buildDisplayList); // Refresh the UI with new clan info
+                // Перерисовываем список, чтобы отобразить загруженный clanLevel
+                runOnUiThread(this::buildDisplayList);
             } catch (IOException e) {
                 Log.e("ClanInfoParser", "Error reading or parsing clans.txt", e);
             }
         }).start();
     }
 
+    /**
+     * Загружает "плоский" список контактов из ContactsManager и запускает построение сгруппированного списка.
+     */
     private void loadContactsFromManager() {
         ContactsManager.loadContacts(this, new ContactsManager.LoadContactsCallback() {
             @Override
@@ -118,11 +187,15 @@ public class ContactsActivity extends AppCompatActivity {
         });
     }
 
+    /**
+     * Главный метод построения иерархического списка для адаптера.
+     * Сортирует контакты, группирует их по кланам, подсчитывает участников и формирует `displayList`.
+     */
     private void buildDisplayList() {
         displayList.clear();
         if (allContacts == null) return;
 
-        // Sort contacts by clan name, then by nick
+        // Сортировка: сначала по имени клана, затем по нику
         Collections.sort(allContacts, (c1, c2) -> {
             String clan1 = (c1.clanName == null || c1.clanName.equals("none")) ? "" : c1.clanName;
             String clan2 = (c2.clanName == null || c2.clanName.equals("none")) ? "" : c2.clanName;
@@ -139,39 +212,46 @@ public class ContactsActivity extends AppCompatActivity {
         for (Contact contact : allContacts) {
             String contactClan = (contact.clanName == null || contact.clanName.equals("none")) ? "" : contact.clanName;
 
+            // Откладываем контакты без клана, чтобы добавить их в конце
             if (contactClan.isEmpty()) {
                 noClanContacts.add(contact);
                 continue;
             }
 
+            // Если начался новый клан, создаем для него заголовок
             if (!contactClan.equals(currentClan)) {
                 currentClan = contactClan;
                 if (!groupExpansionStates.containsKey(currentClan)) {
-                    groupExpansionStates.put(currentClan, true); // Expand new groups by default
+                    groupExpansionStates.put(currentClan, true); // Новые группы по умолчанию развернуты
                 }
 
-                // Get additional clan info
+                // Получаем доп. информацию о клане из кэша
                 String clanId = contact.clanIco.replace(".gif", "");
                 ClanInfo clanInfo = clanInfoCache.get(clanId);
                 String clanLevel = (clanInfo != null) ? clanInfo.clanLevel : "N/A";
 
-                // Calculate member count for the current group
-                int memberCount = 0;
+                // Считаем кол-во участников в группе (общее и онлайн)
+                int totalMemberCount = 0;
+                int onlineMemberCount = 0;
                 for (Contact c : allContacts) {
                     if (currentClan.equals(c.clanName)) {
-                        memberCount++;
+                        totalMemberCount++;
+                        if (c.onlineStatus == 1) {
+                            onlineMemberCount++;
+                        }
                     }
                 }
 
-                displayList.add(new ContactsAdapter.GroupHeaderItem(contact.clanName, contact.clanIco, clanLevel, memberCount));
+                displayList.add(new ContactsAdapter.GroupHeaderItem(contact.clanName, contact.clanIco, clanLevel, totalMemberCount, onlineMemberCount));
             }
 
+            // Добавляем контакт в список, если его группа развернута
             if (Boolean.TRUE.equals(groupExpansionStates.get(currentClan))) {
                 displayList.add(new ContactsAdapter.ContactItem(contact));
             }
         }
 
-        // Add no-clan contacts at the end
+        // Добавляем контакты без клана в самый конец
         for (Contact contact : noClanContacts) {
             displayList.add(new ContactsAdapter.ContactItem(contact));
         }
@@ -179,12 +259,20 @@ public class ContactsActivity extends AppCompatActivity {
         contactsAdapter.updateItems(displayList);
     }
 
+    // --- Обработчики UI событий ---
+
+    /**
+     * Обрабатывает обычное нажатие на заголовок группы (свернуть/развернуть).
+     */
     private void handleGroupClick(ContactsAdapter.GroupHeaderItem groupHeaderItem) {
         boolean isExpanded = Boolean.TRUE.equals(groupExpansionStates.get(groupHeaderItem.clanName));
         groupExpansionStates.put(groupHeaderItem.clanName, !isExpanded);
-        buildDisplayList();
+        buildDisplayList(); // Перестраиваем список с учетом нового состояния
     }
 
+    /**
+     * Обрабатывает нажатие на кнопку "инфо" у контакта.
+     */
     private void handleInfoClick(Contact contact) {
         try {
             Intent intent = new Intent(this, PinfoActivity.class);
@@ -198,6 +286,9 @@ public class ContactsActivity extends AppCompatActivity {
         }
     }
 
+    /**
+     * Обрабатывает нажатие на статус боя у контакта.
+     */
     private void handleWarStatusClick(Contact contact) {
         if (contact.warLogNumber != null && !contact.warLogNumber.equals("0") && !contact.warLogNumber.isEmpty()) {
             Intent intent = new Intent(this, LogsActivity.class);
@@ -207,6 +298,10 @@ public class ContactsActivity extends AppCompatActivity {
         }
     }
 
+    /**
+     * Добавляет новый контакт. Вызывается по нажатию на кнопку.
+     * `classId` по умолчанию устанавливается в 0 (Нейтрал).
+     */
     private void addContactFromInput() {
         String nick = nickEditText.getText().toString().trim();
         if (nick.isEmpty()) {
@@ -220,12 +315,12 @@ public class ContactsActivity extends AppCompatActivity {
         ContactsManager.addContact(this, nick, new ContactsManager.ContactOperationCallback() {
             @Override
             public void onSuccess(Contact contact) {
-                contact.classId = 0; // By default, all new contacts are neutral
+                contact.classId = 0; // Нейтрал по умолчанию
                 ContactsManager.updateContact(contact);
                 addContactButton.setEnabled(true);
                 Toast.makeText(ContactsActivity.this, "Контакт " + contact.nick + " добавлен", Toast.LENGTH_LONG).show();
                 nickEditText.getText().clear();
-                loadContactsFromManager();
+                loadContactsFromManager(); // Обновляем список
             }
 
             @Override
@@ -236,6 +331,11 @@ public class ContactsActivity extends AppCompatActivity {
         });
     }
 
+    // --- Контекстные меню ---
+
+    /**
+     * Показывает контекстное меню для отдельного контакта.
+     */
     private void showContactContextMenu(Contact contact) {
         final CharSequence[] items = {
                 "Обновить контакт",
@@ -254,7 +354,7 @@ public class ContactsActivity extends AppCompatActivity {
                             ContactsManager.addContact(this, contact.nick, new ContactsManager.ContactOperationCallback() {
                                 @Override
                                 public void onSuccess(Contact updatedContact) {
-                                    updatedContact.classId = contact.classId; // Preserve old classId
+                                    updatedContact.classId = contact.classId; // Сохраняем старый classId
                                     ContactsManager.updateContact(updatedContact);
                                     Toast.makeText(ContactsActivity.this, "Контакт " + updatedContact.nick + " обновлен", Toast.LENGTH_LONG).show();
                                     loadContactsFromManager();
@@ -288,6 +388,9 @@ public class ContactsActivity extends AppCompatActivity {
                 .show();
     }
 
+    /**
+     * Показывает диалог подтверждения перед удалением контакта.
+     */
     private void showDeleteConfirmationDialog(Contact contact) {
         new AlertDialog.Builder(this)
                 .setTitle("Удаление контакта")
@@ -300,6 +403,10 @@ public class ContactsActivity extends AppCompatActivity {
                 .setNegativeButton("Отмена", null)
                 .show();
     }
+
+    /**
+     * Показывает контекстное меню для группы контактов (клана).
+     */
     private void showGroupContextMenu(ContactsAdapter.GroupHeaderItem group) {
         final CharSequence[] items = {
                 "Обновить всех в группе",
@@ -314,33 +421,22 @@ public class ContactsActivity extends AppCompatActivity {
         new AlertDialog.Builder(this)
                 .setTitle("Группа: " + group.clanName)
                 .setItems(items, (dialog, which) -> {
-                    // Note: The separator is a text item and will be handled as a no-op.
                     switch (which) {
-                        case 0: // Обновить всех
-                            updateGroup(group.clanName);
-                            break;
-                        case 1: // Удалить всех
-                            deleteGroup(group.clanName);
-                            break;
-                        case 2: // Добавить весь клан
-                            importClanMembers(group);
-                            break;
-                        case 3: // Separator
-                            break;
-                        case 4: // Сделать всех Друзьями
-                            setClassIdForGroup(group.clanName, 2);
-                            break;
-                        case 5: // Сделать всех Врагами
-                            setClassIdForGroup(group.clanName, 1);
-                            break;
-                        case 6: // Сделать всех Нейтралами
-                            setClassIdForGroup(group.clanName, 0);
-                            break;
+                        case 0: updateGroup(group.clanName); break;
+                        case 1: deleteGroup(group.clanName); break;
+                        case 2: importClanMembers(group); break;
+                        case 3: /* Separator */ break;
+                        case 4: setClassIdForGroup(group.clanName, 2); break;
+                        case 5: setClassIdForGroup(group.clanName, 1); break;
+                        case 6: setClassIdForGroup(group.clanName, 0); break;
                     }
                 })
                 .show();
     }
 
+    /**
+     * Импортирует всех членов клана в контакты.
+     */
     private void importClanMembers(ContactsAdapter.GroupHeaderItem group) {
         Toast.makeText(this, "Импорт клана '" + group.clanName + "'...", Toast.LENGTH_SHORT).show();
 
@@ -374,14 +470,9 @@ public class ContactsActivity extends AppCompatActivity {
                                 String nick = playerParts[1];
                                 ContactsManager.addContact(ContactsActivity.this, nick, new ContactsManager.ContactOperationCallback() {
                                     @Override
-                                    public void onSuccess(Contact contact) {
-                                        Log.d("ClanImport", "Added/Updated: " + contact.nick);
-                                    }
-
+                                    public void onSuccess(Contact contact) { Log.d("ClanImport", "Added/Updated: " + contact.nick); }
                                     @Override
-                                    public void onFailure(String message) {
-                                        Log.e("ClanImport", "Failed to add " + nick + ": " + message);
-                                    }
+                                    public void onFailure(String message) { Log.e("ClanImport", "Failed to add " + nick + ": " + message); }
                                 });
                                 try { Thread.sleep(1000); } catch (InterruptedException e) { e.printStackTrace(); }
                             }
@@ -407,6 +498,9 @@ public class ContactsActivity extends AppCompatActivity {
         }).start();
     }
 
+    /**
+     * Обновляет информацию для всех контактов в указанной группе.
+     */
     private void updateGroup(String clanName) {
         Toast.makeText(this, "Обновление группы " + clanName + "...", Toast.LENGTH_SHORT).show();
         for (Contact contact : allContacts) {
@@ -414,20 +508,20 @@ public class ContactsActivity extends AppCompatActivity {
                 ContactsManager.addContact(this, contact.nick, new ContactsManager.ContactOperationCallback() {
                     @Override
                     public void onSuccess(Contact updatedContact) {
-                        updatedContact.classId = contact.classId; // Preserve old classId
+                        updatedContact.classId = contact.classId; // Сохраняем старый classId
                         ContactsManager.updateContact(updatedContact);
                     }
                     @Override
-                    public void onFailure(String message) {
-                        // Silently fail for single user update in group
-                    }
+                    public void onFailure(String message) { /* Молчаливое падение для одного юзера */ }
                 });
             }
         }
-        // Reload after a delay to allow updates to process
         new Handler(Looper.getMainLooper()).postDelayed(this::loadContactsFromManager, 5000);
     }
 
+    /**
+     * Удаляет всех контактов из указанной группы.
+     */
     private void deleteGroup(String clanName) {
         new AlertDialog.Builder(this)
                 .setTitle("Удаление группы")
@@ -445,6 +539,9 @@ public class ContactsActivity extends AppCompatActivity {
                 .show();
     }
 
+    /**
+     * Устанавливает `classId` для всех контактов в указанной группе.
+     */
     private void setClassIdForGroup(String clanName, int classId) {
         for (Contact contact : allContacts) {
             if (clanName.equals(contact.clanName)) {
@@ -453,24 +550,5 @@ public class ContactsActivity extends AppCompatActivity {
             }
         }
         loadContactsFromManager();
-    }
-
-    private void downloadClanList() {
-        String url = "http://service.neverlands.ru/info/clans.txt";
-        File infoDir = new File(getExternalFilesDir(null), "info");
-        File destinationFile = new File(infoDir, "clans.txt");
-
-        ApiRepository.downloadFile(url, destinationFile, new ApiRepository.ApiCallback<String>() {
-            @Override
-            public void onSuccess(String filePath) {
-                runOnUiThread(() -> Toast.makeText(ContactsActivity.this, "Список кланов обновлен", Toast.LENGTH_SHORT).show());
-                parseAndCacheClanInfo();
-            }
-
-            @Override
-            public void onFailure(String message) {
-                runOnUiThread(() -> Toast.makeText(ContactsActivity.this, "Ошибка обновления списка кланов: " + message, Toast.LENGTH_LONG).show());
-            }
-        });
     }
 }

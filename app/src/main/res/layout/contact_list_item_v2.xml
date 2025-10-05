@@ -44,15 +44,29 @@
         android:visibility="gone"
         tools:visibility="visible" />
 
-    <!-- 5. Ник персонажа -->
-    <TextView
-        android:id="@+id/contactNickText"
+    <!-- 5. Nickname and Location Block -->
+    <LinearLayout
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_weight="1"
-        android:textSize="16sp"
-        android:textStyle="bold"
-        tools:text="Персонаж" />
+        android:orientation="vertical">
+
+        <TextView
+            android:id="@+id/contactNickText"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            tools:text="Персонаж : [10]" />
+
+        <TextView
+            android:id="@+id/locationTextView"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textSize="12sp"
+            tools:text="[Neverlands city]" />
+
+    </LinearLayout>
 
     <!-- 6. Иконка информации -->
     <ImageButton
