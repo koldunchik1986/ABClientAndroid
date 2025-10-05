@@ -169,7 +169,11 @@ public class ContactsAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
                 clanIconImageView.setVisibility(View.INVISIBLE);
             }
 
-            expandIndicatorImageView.setRotation(group.isExpanded ? 0 : -90);
+            if (group.isExpanded) {
+                expandIndicatorImageView.setImageResource(R.drawable.ic_expand_less);
+            } else {
+                expandIndicatorImageView.setImageResource(R.drawable.ic_expand_more);
+            }
             itemView.setOnClickListener(v -> groupClickListener.onGroupClick(group));
             itemView.setOnLongClickListener(v -> {
                 groupLongClickListener.onGroupLongClick(group);
@@ -214,9 +218,14 @@ public class ContactsAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
             } else {
                 inclinationIcon.setVisibility(View.GONE);
             }
-
-
-
+            if (contact.clanIco != null && !contact.clanIco.isEmpty()) {
+                clanIcon.setVisibility(View.VISIBLE);
+                String clanIconUrl = "http://image.neverlands.ru/signs/" + contact.clanIco;
+                Glide.with(itemView.getContext()).load(clanIconUrl).into(clanIcon);
+            } else {
+                // We don't show the clan icon next to the name anymore, it's in the group header
+                clanIcon.setVisibility(View.GONE);
+                }
             if (contact.warLogNumber != null && !contact.warLogNumber.equals("0") && !contact.warLogNumber.isEmpty()) {
                 warStatusText.setVisibility(View.VISIBLE);
                 warStatusText.setOnClickListener(v -> warListener.onWarStatusClick(contact));
