@@ -32,20 +32,38 @@ public class ChListJs {
         try {
             String html = Russian.getString(array);
 
-            try {
-                File logFile = new File(AppVars.getLogsDir(), "ChListJs_original.html");
-                try (OutputStream os = new FileOutputStream(logFile)) {
-                    os.write(html.getBytes());
-                }
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
+            // Prepend the bridge script
+            html = "window.external = window.AndroidBridge;\n" + html;
 
+            // This is the block of code we want to insert.
+            // It modifies str_array[1] in place.
+            String insertion = "    var classid = '0';\n" +
+                               "    try {\n" +
+                               "        var rawClassId = window.external.GetClassIdOfContact(login);\n" +
+                               "        console.log('Raw classId for ' + login + ': ' + rawClassId);\n" +
+                               "        classid = String(rawClassId || '0');\n" +
+                               "    } catch (e) {\n" +
+                               "        console.log('Error getting classId for ' + login + ': ' + e.message);\n" +
+                               "    }\n" +
+                               "    if (classid == '1') {\n" +
+                               "        str_array[1] = \"<font color='#8A0808'>\" + str_array[1] + \"</font>\";\n" +
+                               "    } else if (classid == '2') {\n" +
+                               "        str_array[1] = \"<font color='#0B610B'>\" + str_array[1] + \"</font>\";\n" +
+                               "    }\n";
+
+            // We find the line where the `login` variable is set, and insert our code right after it.
+            String targetLine = "var login = str_array[1];";
+            String replacement = targetLine + "\n" + insertion;
+            
+            html = html.replace(targetLine, replacement);
+
+            // Other original replacements
             html = html.replace("alt=", "title=");
-            html = html.replace("target=_blank", "target=\"_blank\"");
+            html = html.replace("target=\"_blank\"", "target='_blank'");
 
+            // Log the final script
             try {
-                File logFile = new File(AppVars.getLogsDir(), "ChListJs_modified.html");
+                File logFile = new File(AppVars.getLogsDir(), "ChListJs_final.txt");
                 try (OutputStream os = new FileOutputStream(logFile)) {
                     os.write(html.getBytes());
                 }
@@ -58,7 +76,6 @@ public class ChListJs {
         } catch (Exception e) {
             e.printStackTrace();
             Log.e("ChListJs", "Error processing ch_list.js", e);
-            // Return an empty script to avoid breaking the page
             return new byte[0];
         }
     }

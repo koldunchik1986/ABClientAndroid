@@ -10,6 +10,7 @@ import android.webkit.WebViewClient;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 
 import ru.neverlands.abclient.model.Contact;
@@ -76,10 +77,24 @@ public class PinfoActivity extends AppCompatActivity {
             return true;
         } else if (id == R.id.action_pinfo_add_contact) {
             if (AppVars.Profile != null) {
-                Contact contact = new Contact(nick, 0); // Add as neutral by default
-                AppVars.Profile.contacts.put(nick.toLowerCase(), contact);
-                AppVars.Profile.save(this);
-                Toast.makeText(this, nick + " добавлен в контакты (нейтрал)", Toast.LENGTH_SHORT).show();
+                final CharSequence[] items = {"Враг", "Друг", "Нейтрал"};
+                new AlertDialog.Builder(this)
+                        .setTitle("Добавить контакт: " + nick)
+                        .setItems(items, (dialog, which) -> {
+                            int classId = 0;
+                            switch (which) {
+                                case 0: classId = 1; break; // Foe
+                                case 1: classId = 2; break; // Friend
+                                case 2: classId = 0; break; // Neutral
+                            }
+                            Contact contact = new Contact();
+                            contact.nick = nick;
+                            contact.classId = classId;
+                            AppVars.Profile.contacts.put(nick.toLowerCase(), contact);
+                            AppVars.Profile.save(this);
+                            Toast.makeText(this, nick + " добавлен в контакты", Toast.LENGTH_SHORT).show();
+                        })
+                        .show();
             }
             return true;
         } else if (id == R.id.action_pinfo_add_clan) {

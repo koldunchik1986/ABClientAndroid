@@ -61,6 +61,7 @@ import java.util.regex.Pattern;
 import java.util.zip.GZIPInputStream;
 
 import ru.neverlands.abclient.bridge.WebAppInterface;
+import ru.neverlands.abclient.manager.ContactsManager;
 import ru.neverlands.abclient.databinding.ActivityMainBinding;
 import ru.neverlands.abclient.manager.RoomManager;
 import ru.neverlands.abclient.model.UserConfig;
@@ -109,6 +110,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         super.onCreate(savedInstanceState);
         isRoomManagerStarted = false;
         AppVars.init(this);
+        ContactsManager.initialize(this);
         AppVars.mainActivity = new WeakReference<>(this);
         
         binding = ActivityMainBinding.inflate(getLayoutInflater());
@@ -547,25 +549,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                     fileName = fileName.substring(1);
                 }
 
-                if ("ch/ch_list.js".equals(fileName)) {
-                    try {
-                        InputStream is = getAssets().open("js/ch_list.js");
-                        int size = is.available();
-                        byte[] buffer = new byte[size];
-                        is.read(buffer);
-                        is.close();
-                        String js = new String(buffer);
-                        js = js.replace("alt=", "title=");
-                        String bridgeScript = "window.external = window.AndroidBridge;\n";
-                        js = bridgeScript + js;
-                        byte[] data = Russian.getBytes(js);
-                        ru.neverlands.abclient.utils.DataManager.writeStringToFile("Logs/ch_list_" + new java.text.SimpleDateFormat("yyyyMMdd_HHmmss").format(new java.util.Date()) + ".js.txt", js);
-                        return new WebResourceResponse("application/javascript", "UTF-8", new ByteArrayInputStream(data));
-                    } catch (IOException e) {
-                        e.printStackTrace();
-                        return new WebResourceResponse(null, null, null);
-                    }
-                }
+
 
                 try {
                     byte[] data = readAssetFile(fileName);

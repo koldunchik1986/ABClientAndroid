@@ -1,3 +1,4 @@
+
 package ru.neverlands.abclient;
 
 import android.content.Intent;
@@ -20,7 +21,7 @@ public class ContactsActivity extends AppCompatActivity {
 
     private RecyclerView contactsRecyclerView;
     private ContactsAdapter contactsAdapter;
-    private final List<Contact> contactList = new ArrayList<>();
+    private List<Contact> contactList = new ArrayList<>();
 
     private EditText nickEditText;
     private Button addContactButton;
@@ -38,7 +39,7 @@ public class ContactsActivity extends AppCompatActivity {
 
         addContactButton.setOnClickListener(v -> addContactFromInput());
 
-        loadContactsFromDb();
+        loadContactsFromManager();
     }
 
     private void setupRecyclerView() {
@@ -56,10 +57,12 @@ public class ContactsActivity extends AppCompatActivity {
                     }
                 },
                 contact -> {
-                    Intent intent = new Intent(this, LogsActivity.class);
-                    String url = "http://neverlands.ru/logs.fcg?fid=" + contact.warLogNumber;
-                    intent.putExtra("url", url);
-                    startActivity(intent);
+                    if (contact.warLogNumber != null && !contact.warLogNumber.equals("0") && !contact.warLogNumber.isEmpty()) {
+                        Intent intent = new Intent(this, LogsActivity.class);
+                        String url = "http://neverlands.ru/logs.fcg?fid=" + contact.warLogNumber;
+                        intent.putExtra("url", url);
+                        startActivity(intent);
+                    }
                 },
                 this::showDeleteConfirmationDialog
         );
@@ -67,7 +70,7 @@ public class ContactsActivity extends AppCompatActivity {
         contactsRecyclerView.setAdapter(contactsAdapter);
     }
 
-    private void loadContactsFromDb() {
+    private void loadContactsFromManager() {
         ContactsManager.loadContacts(this, new ContactsManager.LoadContactsCallback() {
             @Override
             public void onSuccess(List<Contact> contacts) {
@@ -90,24 +93,40 @@ public class ContactsActivity extends AppCompatActivity {
             return;
         }
 
-        addContactButton.setEnabled(false);
-        Toast.makeText(this, "Добавление " + nick + "...", Toast.LENGTH_SHORT).show();
+        final CharSequence[] items = {"Враг", "Друг", "Нейтрал"};
+        new AlertDialog.Builder(this)
+                .setTitle("Добавить контакт: " + nick)
+                .setItems(items, (dialog, which) -> {
+                    int classId = 0;
+                    switch (which) {
+                        case 0: classId = 1; break; // Foe
+                        case 1: classId = 2; break; // Friend
+                        case 2: classId = 0; break; // Neutral
+                    }
+                    
+                    addContactButton.setEnabled(false);
+                    Toast.makeText(this, "Добавление " + nick + "...", Toast.LENGTH_SHORT).show();
 
-        ContactsManager.addContact(this, nick, new ContactsManager.ContactOperationCallback() {
-            @Override
-            public void onSuccess(Contact contact) {
-                addContactButton.setEnabled(true);
-                Toast.makeText(ContactsActivity.this, "Контакт " + contact.nick + " добавлен", Toast.LENGTH_LONG).show();
-                nickEditText.getText().clear();
-                loadContactsFromDb();
-            }
+                    int finalClassId = classId;
+                    ContactsManager.addContact(this, nick, new ContactsManager.ContactOperationCallback() {
+                        @Override
+                        public void onSuccess(Contact contact) {
+                            contact.classId = finalClassId;
+                            ContactsManager.updateContact(contact);
+                            addContactButton.setEnabled(true);
+                            Toast.makeText(ContactsActivity.this, "Контакт " + contact.nick + " добавлен", Toast.LENGTH_LONG).show();
+                            nickEditText.getText().clear();
+                            loadContactsFromManager();
+                        }
 
-            @Override
-            public void onFailure(String message) {
-                addContactButton.setEnabled(true);
-                Toast.makeText(ContactsActivity.this, "Ошибка: " + message, Toast.LENGTH_LONG).show();
-            }
-        });
+                        @Override
+                        public void onFailure(String message) {
+                            addContactButton.setEnabled(true);
+                            Toast.makeText(ContactsActivity.this, "Ошибка: " + message, Toast.LENGTH_LONG).show();
+                        }
+                    });
+                })
+                .show();
     }
 
     private void showDeleteConfirmationDialog(Contact contact) {
@@ -115,8 +134,8 @@ public class ContactsActivity extends AppCompatActivity {
                 .setTitle("Удаление контакта")
                 .setMessage("Вы уверены, что хотите удалить '" + contact.nick + "' из списка контактов?")
                 .setPositiveButton("Удалить", (dialog, which) -> {
-                    ContactsManager.deleteContact(this, contact);
-                    loadContactsFromDb();
+                    ContactsManager.deleteContact(contact.nick);
+                    loadContactsFromManager();
                     Toast.makeText(this, "Контакт " + contact.nick + " удален", Toast.LENGTH_SHORT).show();
                 })
                 .setNegativeButton("Отмена", null)

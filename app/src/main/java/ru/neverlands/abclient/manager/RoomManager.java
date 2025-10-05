@@ -14,6 +14,7 @@ import ru.neverlands.abclient.utils.Russian;
 
 public class RoomManager {
     public static String process(Context context, String html) {
+        /*
         ru.neverlands.abclient.utils.DebugLogger.log("RoomManager.process: HTML before processing:\n" + html);
         try {
             AssetManager assetManager = context.getAssets();
@@ -44,6 +45,8 @@ public class RoomManager {
             e.printStackTrace();
             return html;
         }
+        */
+        return html;
     }
 
     public static void startTracing(MainActivity mainActivity) {
@@ -56,6 +59,15 @@ public class RoomManager {
         String[] strArray = schar.split(":");
         String nnSec = strArray[1];
         String login = strArray[1];
+        int classId = Integer.parseInt(ContactsManager.getClassIdOfContact(login));
+
+        String color = "#000000";
+        if (classId == 1) {
+            color = "#008000"; // Green
+        } else if (classId == 2) {
+            color = "#FF0000"; // Red
+        }
+
         while (nnSec.contains("+")) {
             nnSec = nnSec.replace("+", "%2B");
         }
@@ -150,7 +162,7 @@ public class RoomManager {
             ss +
             "<a class=\"activenick\" href=\"#\" onclick=\"top.say_to('" +
             login +
-            "');\"><font class=nickname><b>" +
+            "');\"><font class=nickname color=\"" + color + "\"><b>" +
             strArray[1] +
             "</b></a>[" +
             strArray[2] +

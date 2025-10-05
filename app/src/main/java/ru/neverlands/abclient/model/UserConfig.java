@@ -152,7 +152,9 @@ public class UserConfig {
                             }
                         }
                         if (name != null && !name.isEmpty()) {
-                            Contact contact = new Contact(name, classId);
+                            Contact contact = new Contact();
+                            contact.nick = name;
+                            contact.classId = classId;
                             this.contacts.put(name.toLowerCase(), contact);
                         }
                     } else if ("fastactions".equals(tagName)) {
@@ -211,8 +213,8 @@ public class UserConfig {
             serializer.startTag(null, "contacts");
             for (Contact contact : this.contacts.values()) {
                 serializer.startTag(null, "contactentry");
-                serializer.attribute(null, "name", contact.getName());
-                serializer.attribute(null, "classid", String.valueOf(contact.getClassId()));
+                serializer.attribute(null, "name", contact.nick);
+                serializer.attribute(null, "classid", String.valueOf(contact.classId));
                 serializer.endTag(null, "contactentry");
             }
             serializer.endTag(null, "contacts");

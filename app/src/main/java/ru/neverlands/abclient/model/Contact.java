@@ -1,16 +1,8 @@
 package ru.neverlands.abclient.model;
 
-import androidx.room.Entity;
-import androidx.room.PrimaryKey;
-import androidx.annotation.NonNull;
-
-@Entity(tableName = "contacts")
 public class Contact {
 
-    @PrimaryKey
-    @NonNull
     public String playerID;
-
     public String nick;
     public int playerLevel;
     public int inclination;
@@ -27,26 +19,10 @@ public class Contact {
     public int onlineStatus;
     public String geoLocation;
     public String warLogNumber;
+    public int classId; // 0 - neutral, 1 - foe, 2 - friend
+    public String comment;
 
-    public int classId; // Для обратной совместимости
-
-    // Пустой конструктор для Room
     public Contact() {}
 
-    // Старый конструктор для обратной совместимости
-    @androidx.room.Ignore
-    public Contact(String nick, int classId) {
-        this.nick = nick;
-        this.classId = classId;
-        this.playerID = nick; // В старой логике ID был просто ником
-    }
-
-    // Методы для обратной совместимости
-    public String getName() {
-        return nick;
-    }
-
-    public int getClassId() {
-        return classId;
-    }
+    // Getters and setters can be added if needed
 }

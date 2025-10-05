@@ -34,8 +34,8 @@ public class WebAppInterface {
      * @return ID класса.
      */
     @JavascriptInterface
-    public int GetClassIdOfContact(String name) {
-        return ContactsManager.getClassIdOfContact(name);
+    public String GetClassIdOfContact(String name) {
+        return String.valueOf(ContactsManager.getClassIdOfContact(name));
     }
 
     // --- Методы для проверки отображения кнопок быстрых действий --- //

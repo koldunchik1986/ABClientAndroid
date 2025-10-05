@@ -13,8 +13,10 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import org.xmlpull.v1.XmlPullParser;
 import org.xmlpull.v1.XmlPullParserFactory;
+/*
 import ru.neverlands.abclient.db.AppDatabase;
 import ru.neverlands.abclient.db.ThingDao;
+*/
 import ru.neverlands.abclient.model.Thing;
 
 public class ThingsRepository {
@@ -25,6 +27,7 @@ public class ThingsRepository {
 
     private ThingsRepository() {}
 
+/*
     public void initialize(Context context) {
         executor.execute(() -> {
             ThingDao dao = AppDatabase.getDatabase(context).thingDao();
@@ -42,6 +45,7 @@ public class ThingsRepository {
             }
         });
     }
+    */
 
     private List<Thing> parseThingsXml(InputStream inputStream) throws Exception {
         List<Thing> things = new ArrayList<>();
@@ -89,8 +93,10 @@ public class ThingsRepository {
         return map;
     }
 
+/*
     public LiveData<List<Thing>> findByImage(Context context, String image) {
         ThingDao dao = AppDatabase.getDatabase(context).thingDao();
         return dao.findByImage(image);
     }
+    */
 }
