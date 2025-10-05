@@ -36,6 +36,13 @@ public class ContactsActivity extends AppCompatActivity {
     private List<ContactsAdapter.DisplayableItem> displayList = new ArrayList<>();
     private List<Contact> allContacts = new ArrayList<>();
     private Map<String, Boolean> groupExpansionStates = new HashMap<>();
+    private Map<String, ClanInfo> clanInfoCache = new HashMap<>();
+
+    private static class ClanInfo {
+        String clanId;
+        String clanName;
+        String clanLevel;
+    }
 
     private EditText nickEditText;
     private Button addContactButton;
@@ -65,6 +72,35 @@ public class ContactsActivity extends AppCompatActivity {
         );
         contactsRecyclerView.setLayoutManager(new LinearLayoutManager(this));
         contactsRecyclerView.setAdapter(contactsAdapter);
+    }
+
+    private void parseAndCacheClanInfo() {
+        new Thread(() -> {
+            File infoDir = new File(getExternalFilesDir(null), "info");
+            File clanFile = new File(infoDir, "clans.txt");
+            if (!clanFile.exists()) return;
+
+            Map<String, ClanInfo> tempCache = new HashMap<>();
+            try (BufferedReader reader = new BufferedReader(new InputStreamReader(new FileInputStream(clanFile), "windows-1251"))) {
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    String[] clanParts = line.split("\\|");
+                    if (clanParts.length > 3) {
+                        ClanInfo info = new ClanInfo();
+                        info.clanId = clanParts[0];
+                        info.clanName = clanParts[1];
+                        info.clanLevel = clanParts[3];
+                        tempCache.put(info.clanId, info);
+                    }
+                }
+                clanInfoCache.clear();
+                clanInfoCache.putAll(tempCache);
+                Log.d("ClanInfoParser", "Successfully parsed and cached " + clanInfoCache.size() + " clans.");
+                runOnUiThread(this::buildDisplayList); // Refresh the UI with new clan info
+            } catch (IOException e) {
+                Log.e("ClanInfoParser", "Error reading or parsing clans.txt", e);
+            }
+        }).start();
     }
 
     private void loadContactsFromManager() {
@@ -113,7 +149,21 @@ public class ContactsActivity extends AppCompatActivity {
                 if (!groupExpansionStates.containsKey(currentClan)) {
                     groupExpansionStates.put(currentClan, true); // Expand new groups by default
                 }
-                displayList.add(new ContactsAdapter.GroupHeaderItem(contact.clanName, contact.clanIco));
+
+                // Get additional clan info
+                String clanId = contact.clanIco.replace(".gif", "");
+                ClanInfo clanInfo = clanInfoCache.get(clanId);
+                String clanLevel = (clanInfo != null) ? clanInfo.clanLevel : "N/A";
+
+                // Calculate member count for the current group
+                int memberCount = 0;
+                for (Contact c : allContacts) {
+                    if (currentClan.equals(c.clanName)) {
+                        memberCount++;
+                    }
+                }
+
+                displayList.add(new ContactsAdapter.GroupHeaderItem(contact.clanName, contact.clanIco, clanLevel, memberCount));
             }
 
             if (Boolean.TRUE.equals(groupExpansionStates.get(currentClan))) {
@@ -414,6 +464,7 @@ public class ContactsActivity extends AppCompatActivity {
             @Override
             public void onSuccess(String filePath) {
                 runOnUiThread(() -> Toast.makeText(ContactsActivity.this, "Список кланов обновлен", Toast.LENGTH_SHORT).show());
+                parseAndCacheClanInfo();
             }
 
             @Override

@@ -25,11 +25,15 @@ public class ContactsAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
     public static class GroupHeaderItem extends DisplayableItem {
         public final String clanName;
         public final String clanIco;
+        public final String clanLevel;
+        public final int memberCount;
         public boolean isExpanded;
 
-        public GroupHeaderItem(String clanName, String clanIco) {
+        public GroupHeaderItem(String clanName, String clanIco, String clanLevel, int memberCount) {
             this.clanName = clanName;
             this.clanIco = clanIco;
+            this.clanLevel = clanLevel;
+            this.memberCount = memberCount;
             this.isExpanded = true; // Groups are expanded by default
         }
 
@@ -159,7 +163,8 @@ public class ContactsAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
         }
 
         public void bind(final GroupHeaderItem group, final OnGroupClickListener groupClickListener, final OnGroupLongClickListener groupLongClickListener) {
-            clanNameTextView.setText(group.clanName);
+            String headerText = group.clanName + " (Level: " + group.clanLevel + " Users: " + group.memberCount + ")";
+            clanNameTextView.setText(headerText);
 
             if (group.clanIco != null && !group.clanIco.isEmpty()) {
                 clanIconImageView.setVisibility(View.VISIBLE);
@@ -234,6 +239,18 @@ public class ContactsAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
             }
 
             contactNickText.setText(contact.nick);
+
+            switch (contact.classId) {
+                case 1: // Foe
+                    contactNickText.setTextColor(Color.RED);
+                    break;
+                case 2: // Friend
+                    contactNickText.setTextColor(Color.parseColor("#008000")); // Dark Green
+                    break;
+                default: // Neutral
+                    contactNickText.setTextColor(Color.parseColor("#FF6200EE")); //Purple_500
+                    break;
+            }
             infoButton.setOnClickListener(v -> infoListener.onInfoClick(contact));
             itemView.setOnLongClickListener(v -> {
                 longListener.onItemLongClick(contact);
