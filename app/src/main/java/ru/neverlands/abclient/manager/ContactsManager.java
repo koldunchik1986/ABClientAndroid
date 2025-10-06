@@ -304,6 +304,83 @@ public class ContactsManager {
         return new ArrayList<>(contactsCache.values());
     }
 
+    /**
+     * Запускает полное фоновое обновление всех контактов.
+     * @param context Контекст для выполнения запросов.
+     * @param onComplete Колбэк, который будет вызван по завершении всех обновлений.
+     */
+    public static void refreshAllContacts(Context context, Runnable onComplete) {
+        List<Contact> currentContacts = new ArrayList<>(contactsCache.values());
+        if (currentContacts.isEmpty()) {
+            if (onComplete != null) handler.post(onComplete);
+            return;
+        }
+        updateContactsByIdRecursive(context, currentContacts, 0, onComplete);
+    }
+
+    /**
+     * Запускает фоновое обновление контактов для указанной группы.
+     * @param context Контекст для выполнения запросов.
+     * @param clanName Имя клана для обновления.
+     * @param onComplete Колбэк, который будет вызван по завершении всех обновлений.
+     */
+    public static void refreshGroupContacts(Context context, String clanName, Runnable onComplete) {
+        List<Contact> contactsToUpdate = new ArrayList<>();
+        for (Contact contact : contactsCache.values()) {
+            if (clanName.equals(contact.clanName)) {
+                contactsToUpdate.add(contact);
+            }
+        }
+        if (!contactsToUpdate.isEmpty()) {
+            updateContactsByIdRecursive(context, contactsToUpdate, 0, onComplete);
+        }
+    }
+
+    /**
+     * Рекурсивно обновляет список контактов один за другим, используя PlayerID.
+     */
+    private static void updateContactsByIdRecursive(Context context, final List<Contact> contacts, final int index, final Runnable onComplete) {
+        if (index >= contacts.size()) {
+            if (onComplete != null) handler.post(onComplete);
+            return;
+        }
+
+        Contact oldContact = contacts.get(index);
+        if (oldContact.playerID == null || oldContact.playerID.isEmpty()) {
+            Log.w(TAG, "Skipping contact refresh for " + oldContact.nick + " due to missing playerID.");
+            // Пропускаем и сразу переходим к следующему
+            updateContactsByIdRecursive(context, contacts, index + 1, onComplete);
+            return;
+        }
+
+        ApiRepository.getPlayerInfo(oldContact.playerID, new ApiRepository.ApiCallback<Contact>() {
+            @Override
+            public void onSuccess(Contact newContact) {
+                // Сохраняем кастомные поля, которые не приходят от сервера
+                newContact.classId = oldContact.classId;
+                newContact.comment = oldContact.comment;
+                updateContact(newContact); // Обновляем кэш и сохраняем в XML
+                try {
+                    Thread.sleep(500); // Задержка для предотвращения ошибок сервера
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+                updateContactsByIdRecursive(context, contacts, index + 1, onComplete);
+            }
+
+            @Override
+            public void onFailure(String message) {
+                Log.e(TAG, "Failed to refresh contact by ID " + oldContact.playerID + " ("+oldContact.nick+"): " + message);
+                try {
+                    Thread.sleep(500); // Задержка для предотвращения ошибок сервера
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+                updateContactsByIdRecursive(context, contacts, index + 1, onComplete);
+            }
+        });
+    }
+
     // --- Вспомогательные методы для работы с XML ---
 
     private static String getTagValue(String tag, Element element) {

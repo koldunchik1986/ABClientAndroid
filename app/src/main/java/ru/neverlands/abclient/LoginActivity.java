@@ -263,6 +263,12 @@ public class LoginActivity extends AppCompatActivity {
         // Устанавливаем глобальный профиль для сессии
         AppVars.Profile = profileToLogin;
 
+        // Запускаем фоновое обновление всех контактов
+        android.util.Log.d("LoginActivity", "Starting background contact refresh after successful login.");
+        ru.neverlands.abclient.manager.ContactsManager.refreshAllContacts(this, () -> {
+            android.util.Log.d("LoginActivity", "Background contact refresh completed.");
+        });
+
         Intent intent = new Intent(LoginActivity.this, MainActivity.class);
         startActivity(intent);
         finish();

@@ -1,0 +1,19 @@
+2025-10-06 15:19:29.298: Logger initialized for add_contact_leka_ne.txt
+2025-10-06 15:19:29.308: REQUEST_URL: http://www.neverlands.ru/modules/api/getid.cgi?leka_ne
+2025-10-06 15:19:29.309: REQUEST_HEADERS: User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36
+Referer: http://www.neverlands.ru/main.php
+
+2025-10-06 15:19:29.455: RESPONSE_CODE: 200
+2025-10-06 15:19:29.458: RESPONSE_BODY: 2411623|leka_ne
+2025-10-06 15:19:29.465: REQUEST_URL: http://www.neverlands.ru/modules/api/info.cgi?playerid=2411623&info=1
+2025-10-06 15:19:29.467: REQUEST_HEADERS: User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36
+Referer: http://www.neverlands.ru/main.php
+
+2025-10-06 15:19:29.540: RESPONSE_CODE: 536
+2025-10-06 15:19:29.541: RESPONSE_BODY: 
+2025-10-06 15:19:29.544: REQUEST_URL: http://www.neverlands.ru/modules/api/getid.cgi?%C1%EB%F3%E4%FF
+2025-10-06 15:19:29.546: REQUEST_HEADERS: User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36
+Referer: http://www.neverlands.ru/main.php
+
+2025-10-06 15:19:29.620: RESPONSE_CODE: 536
+2025-10-06 15:19:29.621: RESPONSE_BODY: 
