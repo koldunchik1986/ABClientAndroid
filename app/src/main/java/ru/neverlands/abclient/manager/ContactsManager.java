@@ -315,7 +315,7 @@ public class ContactsManager {
             if (onComplete != null) handler.post(onComplete);
             return;
         }
-        updateContactsByIdRecursive(context, currentContacts, 0, onComplete);
+        updateContactsRecursive(context, currentContacts, 0, onComplete);
     }
 
     /**
@@ -332,53 +332,46 @@ public class ContactsManager {
             }
         }
         if (!contactsToUpdate.isEmpty()) {
-            updateContactsByIdRecursive(context, contactsToUpdate, 0, onComplete);
+            updateContactsRecursive(context, contactsToUpdate, 0, onComplete);
         }
     }
 
     /**
-     * Рекурсивно обновляет список контактов один за другим, используя PlayerID.
+     * Рекурсивно обновляет список контактов один за другим с задержкой, используя PlayerID.
      */
-    private static void updateContactsByIdRecursive(Context context, final List<Contact> contacts, final int index, final Runnable onComplete) {
+    private static void updateContactsRecursive(Context context, final List<Contact> contacts, final int index, final Runnable onComplete) {
         if (index >= contacts.size()) {
             if (onComplete != null) handler.post(onComplete);
             return;
         }
 
-        Contact oldContact = contacts.get(index);
-        if (oldContact.playerID == null || oldContact.playerID.isEmpty()) {
-            Log.w(TAG, "Skipping contact refresh for " + oldContact.nick + " due to missing playerID.");
-            // Пропускаем и сразу переходим к следующему
-            updateContactsByIdRecursive(context, contacts, index + 1, onComplete);
-            return;
-        }
-
-        ApiRepository.getPlayerInfo(oldContact.playerID, new ApiRepository.ApiCallback<Contact>() {
-            @Override
-            public void onSuccess(Contact newContact) {
-                // Сохраняем кастомные поля, которые не приходят от сервера
-                newContact.classId = oldContact.classId;
-                newContact.comment = oldContact.comment;
-                updateContact(newContact); // Обновляем кэш и сохраняем в XML
-                try {
-                    Thread.sleep(500); // Задержка для предотвращения ошибок сервера
-                } catch (InterruptedException e) {
-                    e.printStackTrace();
-                }
-                updateContactsByIdRecursive(context, contacts, index + 1, onComplete);
+        handler.postDelayed(() -> {
+            Contact oldContact = contacts.get(index);
+            if (oldContact.playerID == null || oldContact.playerID.isEmpty()) {
+                Log.w(TAG, "Skipping contact refresh for " + oldContact.nick + " due to missing playerID.");
+                updateContactsRecursive(context, contacts, index + 1, onComplete);
+                return;
             }
 
-            @Override
-            public void onFailure(String message) {
-                Log.e(TAG, "Failed to refresh contact by ID " + oldContact.playerID + " ("+oldContact.nick+"): " + message);
-                try {
-                    Thread.sleep(500); // Задержка для предотвращения ошибок сервера
-                } catch (InterruptedException e) {
-                    e.printStackTrace();
+            ApiRepository.getPlayerInfo(oldContact.playerID, new ApiRepository.ApiCallback<Contact>() {
+                @Override
+                public void onSuccess(Contact newContact) {
+                    // Сохраняем кастомные поля, которые не приходят от сервера
+                    newContact.classId = oldContact.classId;
+                    newContact.comment = oldContact.comment;
+                    updateContact(newContact); // Обновляем кэш и сохраняем в XML
+                    // Сразу же вызываем следующий шаг рекурсии (задержка уже отработала)
+                    updateContactsRecursive(context, contacts, index + 1, onComplete);
                 }
-                updateContactsByIdRecursive(context, contacts, index + 1, onComplete);
-            }
-        });
+
+                @Override
+                public void onFailure(String message) {
+                    Log.e(TAG, "Failed to refresh contact by ID " + oldContact.playerID + " ("+oldContact.nick+"): " + message);
+                    // Все равно продолжаем, даже в случае ошибки
+                    updateContactsRecursive(context, contacts, index + 1, onComplete);
+                }
+            });
+        }, 500); // Задержка 500 мс перед каждым запросом
     }
 
     // --- Вспомогательные методы для работы с XML ---
