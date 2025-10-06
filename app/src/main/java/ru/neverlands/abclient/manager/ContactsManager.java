@@ -300,6 +300,10 @@ public class ContactsManager {
         return String.valueOf(classId);
     }
 
+    public static List<Contact> getContactsFromCache() {
+        return new ArrayList<>(contactsCache.values());
+    }
+
     // --- Вспомогательные методы для работы с XML ---
 
     private static String getTagValue(String tag, Element element) {

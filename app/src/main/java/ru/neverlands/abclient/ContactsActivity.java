@@ -569,7 +569,9 @@ public class ContactsActivity extends AppCompatActivity implements ContactsAdapt
             // Базовый случай: все контакты обновлены
             runOnUiThread(() -> {
                 Toast.makeText(this, "Обновление группы завершено", Toast.LENGTH_SHORT).show();
-                loadContactsFromManager();
+                // Напрямую получаем обновленные данные из кэша и перерисовываем список
+                allContacts = ContactsManager.getContactsFromCache();
+                buildDisplayList();
             });
             return;
         }
