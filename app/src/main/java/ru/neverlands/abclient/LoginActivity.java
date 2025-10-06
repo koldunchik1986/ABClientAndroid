@@ -257,7 +257,6 @@ public class LoginActivity extends AppCompatActivity {
         } else if (!profileToLogin.isEncrypted) {
             profileToLogin.UserPassword = "";
         }
-        // Для зашифрованных профилей пароль не пересохраняем на этом этапе
         profileToLogin.save(LoginActivity.this);
 
         // Устанавливаем глобальный профиль для сессии
@@ -265,13 +264,50 @@ public class LoginActivity extends AppCompatActivity {
 
         // Запускаем фоновое обновление всех контактов
         android.util.Log.d("LoginActivity", "Starting background contact refresh after successful login.");
-        ru.neverlands.abclient.manager.ContactsManager.refreshAllContacts(this, () -> {
-            android.util.Log.d("LoginActivity", "Background contact refresh completed.");
-        });
+        List<ru.neverlands.abclient.model.Contact> contactsToUpdate = ru.neverlands.abclient.manager.ContactsManager.getContactsFromCache();
+        if (contactsToUpdate != null && !contactsToUpdate.isEmpty()) {
+            updateContactsRecursive(contactsToUpdate, 0);
+        }
 
         Intent intent = new Intent(LoginActivity.this, MainActivity.class);
         startActivity(intent);
         finish();
+    }
+
+    /**
+     * Рекурсивно обновляет список контактов один за другим с задержкой.
+     */
+    private void updateContactsRecursive(final List<ru.neverlands.abclient.model.Contact> contacts, final int index) {
+        if (index >= contacts.size()) {
+            android.util.Log.d("LoginActivity", "Background contact refresh completed.");
+            // Опционально: можно показать Toast, но это может сбить пользователя с толку, т.к. он уже на другом экране
+            // runOnUiThread(() -> Toast.makeText(getApplicationContext(), "Контакты обновлены в фоне", Toast.LENGTH_SHORT).show());
+            return;
+        }
+
+        new Handler(Looper.getMainLooper()).postDelayed(() -> {
+            final ru.neverlands.abclient.model.Contact oldContact = contacts.get(index);
+            if (oldContact.playerID == null || oldContact.playerID.isEmpty()) {
+                updateContactsRecursive(contacts, index + 1);
+                return;
+            }
+
+            ru.neverlands.abclient.repository.ApiRepository.getPlayerInfo(oldContact.playerID, new ru.neverlands.abclient.repository.ApiRepository.ApiCallback<ru.neverlands.abclient.model.Contact>() {
+                @Override
+                public void onSuccess(ru.neverlands.abclient.model.Contact newContact) {
+                    newContact.classId = oldContact.classId;
+                    newContact.comment = oldContact.comment;
+                    ru.neverlands.abclient.manager.ContactsManager.updateContact(newContact);
+                    updateContactsRecursive(contacts, index + 1);
+                }
+
+                @Override
+                public void onFailure(String message) {
+                    android.util.Log.e("LoginActivity", "Failed to refresh contact by ID " + oldContact.playerID + ": " + message);
+                    updateContactsRecursive(contacts, index + 1);
+                }
+            });
+        }, 500);
     }
 
     private void showCaptchaDialog(String username, String gamePassword, String captchaUrl, String vcode, UserConfig profileToLogin) {
