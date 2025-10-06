@@ -5,6 +5,8 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
+import android.view.Menu;
+import android.view.MenuItem;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.Toast;
@@ -62,6 +64,20 @@ public class ContactsActivity extends AppCompatActivity {
      */
     private Map<String, ClanInfo> clanInfoCache = new HashMap<>();
 
+    private enum SortType {
+        DEFAULT,
+        ONLINE_STATUS,
+        LEVEL_DESC,
+        LEVEL_ASC,
+        NAME_ASC,
+        NAME_DESC,
+        CLASS_ID_FOE_FIRST,
+        CLASS_ID_FRIEND_FIRST
+    }
+
+    private SortType currentSort = SortType.DEFAULT;
+
+
     /**
      * Внутренний класс для хранения информации о клане из clans.txt.
      */
@@ -71,7 +87,10 @@ public class ContactsActivity extends AppCompatActivity {
         String clanLevel;
     }
 
+
+
     // --- Методы жизненного цикла Activity ---
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -90,6 +109,21 @@ public class ContactsActivity extends AppCompatActivity {
         // Первичная загрузка данных
         loadContactsFromManager();
         downloadClanList();
+    }
+
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        getMenuInflater().inflate(R.menu.contacts_menu, menu);
+        return true;
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        if (item.getItemId() == R.id.action_sort) {
+            showSortDialog();
+            return true;
+        }
+        return super.onOptionsItemSelected(item);
     }
 
     // --- Настройка UI ---
@@ -187,76 +221,141 @@ public class ContactsActivity extends AppCompatActivity {
         });
     }
 
-    /**
-     * Главный метод построения иерархического списка для адаптера.
-     * Сортирует контакты, группирует их по кланам, подсчитывает участников и формирует `displayList`.
-     */
+
     private void buildDisplayList() {
         displayList.clear();
         if (allContacts == null) return;
 
-        // Сортировка: сначала по имени клана, затем по нику
-        Collections.sort(allContacts, (c1, c2) -> {
-            String clan1 = (c1.clanName == null || c1.clanName.equals("none")) ? "" : c1.clanName;
-            String clan2 = (c2.clanName == null || c2.clanName.equals("none")) ? "" : c2.clanName;
-            int clanCompare = clan1.compareTo(clan2);
-            if (clanCompare != 0) {
-                return clanCompare;
-            }
-            return c1.nick.compareTo(c2.nick);
-        });
-
-        String currentClan = "";
+        // --- 1. Группируем контакты по кланам ---
+        Map<String, List<Contact>> groupedContacts = new HashMap<>();
         List<Contact> noClanContacts = new ArrayList<>();
 
         for (Contact contact : allContacts) {
-            String contactClan = (contact.clanName == null || contact.clanName.equals("none")) ? "" : contact.clanName;
-
-            // Откладываем контакты без клана, чтобы добавить их в конце
-            if (contactClan.isEmpty()) {
+            String clanName = (contact.clanName == null || contact.clanName.isEmpty() || contact.clanName.equals("none")) ? "" : contact.clanName;
+            if (clanName.isEmpty()) {
                 noClanContacts.add(contact);
-                continue;
+            } else {
+                if (!groupedContacts.containsKey(clanName)) {
+                    groupedContacts.put(clanName, new ArrayList<>());
+                }
+                groupedContacts.get(clanName).add(contact);
+            }
+        }
+
+        // --- 2. Сортируем контакты ВНУТРИ каждой группы ---
+        for (List<Contact> group : groupedContacts.values()) {
+            sortContactList(group, currentSort);
+        }
+        sortContactList(noClanContacts, currentSort); // Сортируем и тех, кто без клана
+
+        // --- 3. Сортируем сами группы (по имени клана) ---
+        List<String> sortedClanNames = new ArrayList<>(groupedContacts.keySet());
+        Collections.sort(sortedClanNames);
+
+        // --- 4. Строим иерархический список для отображения ---
+        for (String clanName : sortedClanNames) {
+            List<Contact> clanMembers = groupedContacts.get(clanName);
+            if (clanMembers == null || clanMembers.isEmpty()) continue;
+
+            // Устанавливаем состояние группы (развернута/свернута)
+            if (!groupExpansionStates.containsKey(clanName)) {
+                groupExpansionStates.put(clanName, true); // Новые группы по умолчанию развернуты
             }
 
-            // Если начался новый клан, создаем для него заголовок
-            if (!contactClan.equals(currentClan)) {
-                currentClan = contactClan;
-                if (!groupExpansionStates.containsKey(currentClan)) {
-                    groupExpansionStates.put(currentClan, true); // Новые группы по умолчанию развернуты
+            // Берем информацию из первого контакта для заголовка
+            Contact representative = clanMembers.get(0);
+            String clanId = representative.clanIco.replace(".gif", "");
+            ClanInfo clanInfo = clanInfoCache.get(clanId);
+            String clanLevel = (clanInfo != null) ? clanInfo.clanLevel : "N/A";
+
+            // Считаем онлайн
+            int onlineMemberCount = 0;
+            for (Contact member : clanMembers) {
+                if (member.onlineStatus == 1) {
+                    onlineMemberCount++;
                 }
-
-                // Получаем доп. информацию о клане из кэша
-                String clanId = contact.clanIco.replace(".gif", "");
-                ClanInfo clanInfo = clanInfoCache.get(clanId);
-                String clanLevel = (clanInfo != null) ? clanInfo.clanLevel : "N/A";
-
-                // Считаем кол-во участников в группе (общее и онлайн)
-                int totalMemberCount = 0;
-                int onlineMemberCount = 0;
-                for (Contact c : allContacts) {
-                    if (currentClan.equals(c.clanName)) {
-                        totalMemberCount++;
-                        if (c.onlineStatus == 1) {
-                            onlineMemberCount++;
-                        }
-                    }
-                }
-
-                displayList.add(new ContactsAdapter.GroupHeaderItem(contact.clanName, contact.clanIco, clanLevel, totalMemberCount, onlineMemberCount));
             }
 
-            // Добавляем контакт в список, если его группа развернута
-            if (Boolean.TRUE.equals(groupExpansionStates.get(currentClan))) {
+            displayList.add(new ContactsAdapter.GroupHeaderItem(clanName, representative.clanIco, clanLevel, clanMembers.size(), onlineMemberCount));
+
+            // Добавляем контакты, если группа развернута
+            if (Boolean.TRUE.equals(groupExpansionStates.get(clanName))) {
+                for (Contact member : clanMembers) {
+                    displayList.add(new ContactsAdapter.ContactItem(member));
+                }
+            }
+        }
+
+        // --- 5. Добавляем контакты без клана в самый конец ---
+        if (!noClanContacts.isEmpty()) {
+            // Можно добавить заголовок для "Без клана", если нужно
+            // displayList.add(new ContactsAdapter.GroupHeaderItem("Без клана", "", "N/A", noClanContacts.size(), (int)noClanContacts.stream().filter(c -> c.onlineStatus == 1).count()));
+            for (Contact contact : noClanContacts) {
                 displayList.add(new ContactsAdapter.ContactItem(contact));
             }
         }
 
-        // Добавляем контакты без клана в самый конец
-        for (Contact contact : noClanContacts) {
-            displayList.add(new ContactsAdapter.ContactItem(contact));
-        }
-
         contactsAdapter.updateItems(displayList);
+    }
+
+    /**
+     * Вспомогательный метод для сортировки списка контактов по заданному типу.
+     * @param listToSort Список контактов для сортировки.
+     * @param sortType Тип сортировки.
+     */
+    private void sortContactList(List<Contact> listToSort, SortType sortType) {
+        switch (sortType) {
+            case ONLINE_STATUS:
+                Collections.sort(listToSort, (c1, c2) -> Integer.compare(c2.onlineStatus, c1.onlineStatus));
+                break;
+            case LEVEL_DESC:
+                Collections.sort(listToSort, (c1, c2) -> Integer.compare(c2.playerLevel, c1.playerLevel));
+                break;
+            case LEVEL_ASC:
+                Collections.sort(listToSort, (c1, c2) -> Integer.compare(c1.playerLevel, c2.playerLevel));
+                break;
+            case NAME_ASC:
+                Collections.sort(listToSort, (c1, c2) -> c1.nick.compareToIgnoreCase(c2.nick));
+                break;
+            case NAME_DESC:
+                Collections.sort(listToSort, (c1, c2) -> c2.nick.compareToIgnoreCase(c1.nick));
+                break;
+            case CLASS_ID_FOE_FIRST:
+                Collections.sort(listToSort, (c1, c2) -> Integer.compare(getSortWeight(c1.classId, true), getSortWeight(c2.classId, true)));
+                break;
+            case CLASS_ID_FRIEND_FIRST:
+                Collections.sort(listToSort, (c1, c2) -> Integer.compare(getSortWeight(c1.classId, false), getSortWeight(c2.classId, false)));
+                break;
+            case DEFAULT:
+            default:
+                // Внутри группы сортировка по умолчанию - по нику
+                Collections.sort(listToSort, (c1, c2) -> c1.nick.compareTo(c2.nick));
+                break;
+        }
+    }
+
+    /**
+     * Вспомогательный метод для сортировки по типу контакта (враг/друг).
+     * @param classId ID типа (0, 1, 2).
+     * @param foeFirst true, если враги должны быть первыми.
+     * @return "Вес" типа для компаратора.
+     */
+    private int getSortWeight(int classId, boolean foeFirst) {
+        if (foeFirst) {
+            switch (classId) {
+                case 1: return 0; // Враг
+                case 0: return 1; // Нейтрал
+                case 2: return 2; // Друг
+                default: return 3;
+            }
+        } else {
+            switch (classId) {
+                case 2: return 0; // Друг
+                case 0: return 1; // Нейтрал
+                case 1: return 2; // Враг
+                default: return 3;
+            }
+        }
     }
 
     // --- Обработчики UI событий ---
@@ -270,9 +369,41 @@ public class ContactsActivity extends AppCompatActivity {
         buildDisplayList(); // Перестраиваем список с учетом нового состояния
     }
 
-    /**
-     * Обрабатывает нажатие на кнопку "инфо" у контакта.
-     */
+    private void showSortDialog() {
+        final CharSequence[] items = {
+                "По умолчанию",
+                "Сначала онлайн",
+                "Уровень (убыв.)",
+                "Уровень (возр.)",
+                "Имя (А-Я)",
+                "Имя (Я-А)",
+                "Сначала враги",
+                "Сначала друзья"
+        };
+
+        new AlertDialog.Builder(this)
+                .setTitle("Сортировка")
+                .setItems(items, (dialog, which) -> {
+                    switch (which) {
+                        case 0: currentSort = SortType.DEFAULT; break;
+                        case 1: currentSort = SortType.ONLINE_STATUS; break;
+                        case 2: currentSort = SortType.LEVEL_DESC; break;
+                        case 3: currentSort = SortType.LEVEL_ASC; break;
+                        case 4: currentSort = SortType.NAME_ASC; break;
+                        case 5: currentSort = SortType.NAME_DESC; break;
+                        case 6: currentSort = SortType.CLASS_ID_FOE_FIRST; break;
+                        case 7: currentSort = SortType.CLASS_ID_FRIEND_FIRST; break;
+                    }
+                    buildDisplayList();
+                })
+                .show();
+    }
+
+
+
+
+
+
     private void handleInfoClick(Contact contact) {
         try {
             Intent intent = new Intent(this, PinfoActivity.class);
