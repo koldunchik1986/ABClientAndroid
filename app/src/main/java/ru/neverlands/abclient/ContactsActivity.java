@@ -541,10 +541,6 @@ public class ContactsActivity extends AppCompatActivity implements ContactsAdapt
                 .show();
     }
 
-    /**
-     * Обновляет информацию для всех контактов в указанной группе.
-     * Запускает последовательное рекурсивное обновление, чтобы избежать перегрузки сети.
-     */
     private void updateGroup(String clanName) {
         Toast.makeText(this, "Обновление группы " + clanName + "...", Toast.LENGTH_SHORT).show();
         List<Contact> contactsToUpdate = new ArrayList<>();
@@ -555,7 +551,7 @@ public class ContactsActivity extends AppCompatActivity implements ContactsAdapt
         }
 
         if (!contactsToUpdate.isEmpty()) {
-            updateContactsRecursive(contactsToUpdate, 0);
+            updateContactsRecursive(contactsToUpdate, 0, "Обновление группы завершено");
         }
     }
 
@@ -563,36 +559,50 @@ public class ContactsActivity extends AppCompatActivity implements ContactsAdapt
      * Рекурсивно обновляет список контактов один за другим, чтобы избежать "взрыва" запросов.
      * @param contactsToUpdate список контактов для обновления.
      * @param index индекс текущего контакта для обновления.
+     * @param finishMessage сообщение, отображаемое по завершении.
      */
-    private void updateContactsRecursive(final List<Contact> contactsToUpdate, final int index) {
+    private void updateContactsRecursive(final List<Contact> contactsToUpdate, final int index, final String finishMessage) {
         if (index >= contactsToUpdate.size()) {
-            // Базовый случай: все контакты обновлены
+            // Базовый случай: все контакты обновлены, вызываем рабочий метод обновления UI
             runOnUiThread(() -> {
-                Toast.makeText(this, "Обновление группы завершено", Toast.LENGTH_SHORT).show();
-                // Напрямую получаем обновленные данные из кэша и перерисовываем список
-                allContacts = ContactsManager.getContactsFromCache();
-                buildDisplayList();
+                Toast.makeText(this, finishMessage, Toast.LENGTH_SHORT).show();
+                loadContactsFromManager();
             });
             return;
         }
 
-        Contact contactToUpdate = contactsToUpdate.get(index);
-        ContactsManager.addContact(this, contactToUpdate.nick, new ContactsManager.ContactOperationCallback() {
-            @Override
-            public void onSuccess(Contact updatedContact) {
-                updatedContact.classId = contactToUpdate.classId; // Сохраняем старый classId
-                ContactsManager.updateContact(updatedContact);
-                // Рекурсивный вызов для следующего контакта
-                updateContactsRecursive(contactsToUpdate, index + 1);
-            }
+        final Contact oldContact = contactsToUpdate.get(index);
+        if (oldContact.playerID == null || oldContact.playerID.isEmpty()) {
+            Log.w("UpdateRecursive", "Skipping contact refresh for " + oldContact.nick + " due to missing playerID.");
+            // Пропускаем и сразу переходим к следующему
+            updateContactsRecursive(contactsToUpdate, index + 1, finishMessage);
+            return;
+        }
 
-            @Override
-            public void onFailure(String message) {
-                Log.e("UpdateGroup", "Не удалось обновить контакт " + contactToUpdate.nick + ": " + message);
-                // Продолжаем со следующим контактом даже в случае ошибки
-                updateContactsRecursive(contactsToUpdate, index + 1);
-            }
-        });
+        // Выполняем запрос в фоновом потоке
+        new Thread(() -> {
+            ApiRepository.getPlayerInfo(oldContact.playerID, new ApiRepository.ApiCallback<Contact>() {
+                @Override
+                public void onSuccess(Contact newContact) {
+                    // Сохраняем кастомные поля, которые не приходят от сервера
+                    newContact.classId = oldContact.classId;
+                    newContact.comment = oldContact.comment;
+                    ContactsManager.updateContact(newContact); // Обновляем кэш и сохраняем в XML
+                    
+                    // Задержка перед следующим запросом
+                    try { Thread.sleep(500); } catch (InterruptedException e) { e.printStackTrace(); }
+                    updateContactsRecursive(contactsToUpdate, index + 1, finishMessage);
+                }
+
+                @Override
+                public void onFailure(String message) {
+                    Log.e("UpdateRecursive", "Failed to refresh contact by ID " + oldContact.playerID + " ("+oldContact.nick+"): " + message);
+                    // Все равно продолжаем, даже в случае ошибки
+                    try { Thread.sleep(500); } catch (InterruptedException e) { e.printStackTrace(); }
+                    updateContactsRecursive(contactsToUpdate, index + 1, finishMessage);
+                }
+            });
+        }).start();
     }
 
     private void setClassIdForGroup(String clanName, int classId) {
