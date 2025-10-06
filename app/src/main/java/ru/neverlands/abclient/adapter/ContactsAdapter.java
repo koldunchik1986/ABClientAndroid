@@ -1,11 +1,15 @@
 package ru.neverlands.abclient.adapter;
 
+import android.content.Context;
 import android.graphics.Color;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.AdapterView;
+import android.widget.ArrayAdapter;
 import android.widget.ImageButton;
 import android.widget.ImageView;
+import android.widget.Spinner;
 import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
@@ -42,14 +46,20 @@ public class ContactsAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
         public final String clanLevel;
         public final int totalMemberCount;
         public final int onlineMemberCount;
+        /**
+         * Совокупный classId для группы. Определяется в Activity.
+         * 0: Нейтрал, 1: Враг, 2: Друг
+         */
+        public final int groupClassId;
         public boolean isExpanded;
 
-        public GroupHeaderItem(String clanName, String clanIco, String clanLevel, int totalMemberCount, int onlineMemberCount) {
+        public GroupHeaderItem(String clanName, String clanIco, String clanLevel, int totalMemberCount, int onlineMemberCount, int groupClassId) {
             this.clanName = clanName;
             this.clanIco = clanIco;
             this.clanLevel = clanLevel;
             this.totalMemberCount = totalMemberCount;
             this.onlineMemberCount = onlineMemberCount;
+            this.groupClassId = groupClassId;
             this.isExpanded = true; // По умолчанию группы развернуты
         }
 
@@ -96,6 +106,7 @@ public class ContactsAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
     private final OnItemLongClickListener onItemLongClickListener;
     private final OnGroupClickListener onGroupClickListener;
     private final OnGroupLongClickListener onGroupLongClickListener;
+    private final OnGroupClassIdChangeListener onGroupClassIdChangeListener;
 
     // --- Интерфейсы для обработки нажатий в Activity ---
     public interface OnInfoClickListener { void onInfoClick(Contact contact); }
@@ -103,14 +114,16 @@ public class ContactsAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
     public interface OnItemLongClickListener { void onItemLongClick(Contact contact); }
     public interface OnGroupClickListener { void onGroupClick(GroupHeaderItem groupHeaderItem); }
     public interface OnGroupLongClickListener { void onGroupLongClick(GroupHeaderItem groupHeaderItem); }
+    public interface OnGroupClassIdChangeListener { void onClassIdChanged(GroupHeaderItem group, int newClassId); }
 
-    public ContactsAdapter(List<DisplayableItem> items, OnInfoClickListener onInfoClickListener, OnWarStatusClickListener onWarStatusClickListener, OnItemLongClickListener onItemLongClickListener, OnGroupClickListener onGroupClickListener, OnGroupLongClickListener onGroupLongClickListener) {
+    public ContactsAdapter(List<DisplayableItem> items, OnInfoClickListener onInfoClickListener, OnWarStatusClickListener onWarStatusClickListener, OnItemLongClickListener onItemLongClickListener, OnGroupClickListener onGroupClickListener, OnGroupLongClickListener onGroupLongClickListener, OnGroupClassIdChangeListener onGroupClassIdChangeListener) {
         this.items = items;
         this.onInfoClickListener = onInfoClickListener;
         this.onWarStatusClickListener = onWarStatusClickListener;
         this.onItemLongClickListener = onItemLongClickListener;
         this.onGroupClickListener = onGroupClickListener;
         this.onGroupLongClickListener = onGroupLongClickListener;
+        this.onGroupClassIdChangeListener = onGroupClassIdChangeListener;
         setHasStableIds(true); // Включаем поддержку стабильных ID для улучшения производительности
     }
 
@@ -150,7 +163,7 @@ public class ContactsAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
     @Override
     public void onBindViewHolder(@NonNull RecyclerView.ViewHolder holder, int position) {
         if (holder instanceof GroupHeaderViewHolder) {
-            ((GroupHeaderViewHolder) holder).bind((GroupHeaderItem) items.get(position), onGroupClickListener, onGroupLongClickListener);
+            ((GroupHeaderViewHolder) holder).bind((GroupHeaderItem) items.get(position), onGroupClickListener, onGroupLongClickListener, onGroupClassIdChangeListener);
         } else if (holder instanceof ContactViewHolder) {
             ((ContactViewHolder) holder).bind(((ContactItem) items.get(position)).contact, onInfoClickListener, onWarStatusClickListener, onItemLongClickListener);
         }
@@ -177,22 +190,28 @@ public class ContactsAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
     static class GroupHeaderViewHolder extends RecyclerView.ViewHolder {
         private final ImageView clanIconImageView;
         private final TextView clanNameTextView;
+        private final TextView groupStatsTextView; // Новый TextView для статистики
         private final ImageView expandIndicatorImageView;
+        private final Spinner groupClassIdSpinner;
 
         public GroupHeaderViewHolder(@NonNull View itemView) {
             super(itemView);
             clanIconImageView = itemView.findViewById(R.id.clanIconImageView);
             clanNameTextView = itemView.findViewById(R.id.clanNameTextView);
+            groupStatsTextView = itemView.findViewById(R.id.groupStatsTextView); // Инициализация
             expandIndicatorImageView = itemView.findViewById(R.id.expandIndicatorImageView);
+            groupClassIdSpinner = itemView.findViewById(R.id.groupClassIdSpinner);
         }
 
         /**
          * Заполняет View заголовка данными из объекта GroupHeaderItem.
          */
-        public void bind(final GroupHeaderItem group, final OnGroupClickListener groupClickListener, final OnGroupLongClickListener groupLongClickListener) {
-            // Формирование строки заголовка: "Имя (Level: Уровень Users: онлайн/всего)"
-            String headerText = String.format("%s (Level: %s Users: %d/%d)", group.clanName, group.clanLevel, group.onlineMemberCount, group.totalMemberCount);
-            clanNameTextView.setText(headerText);
+        public void bind(final GroupHeaderItem group, final OnGroupClickListener groupClickListener, final OnGroupLongClickListener groupLongClickListener, final OnGroupClassIdChangeListener classIdChangeListener) {
+            // Устанавливаем имя клана в верхнюю строку
+            clanNameTextView.setText(group.clanName);
+            // Формируем и устанавливаем строку статистики во вторую строку
+            String statsText = String.format("Level: %s Users: %d/%d", group.clanLevel, group.onlineMemberCount, group.totalMemberCount);
+            groupStatsTextView.setText(statsText);
 
             // Загрузка иконки клана
             if (group.clanIco != null && !group.clanIco.isEmpty()) {
@@ -203,17 +222,48 @@ public class ContactsAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
                 clanIconImageView.setVisibility(View.INVISIBLE); // Скрываем, если иконки нет
             }
 
-            // Установка иконки-индикатора (стрелка вверх/вниз)
-            if (group.isExpanded) {
-                expandIndicatorImageView.setImageResource(R.drawable.ic_expand_less);
-            } else {
-                expandIndicatorImageView.setImageResource(R.drawable.ic_expand_more);
-            }
-            // Установка обработчиков нажатий
+            expandIndicatorImageView.setImageResource(group.isExpanded ? R.drawable.ic_expand_less : R.drawable.ic_expand_more);
+
+            // Настройка спиннера для выбора статуса группы
+            setupSpinner(group, classIdChangeListener);
+
+            // Установка обработчиков нажатий на весь элемент
             itemView.setOnClickListener(v -> groupClickListener.onGroupClick(group));
             itemView.setOnLongClickListener(v -> {
                 groupLongClickListener.onGroupLongClick(group);
                 return true;
+            });
+        }
+
+        /**
+         * Настраивает спиннер для выбора classId группы.
+         * @param group Объект заголовка группы.
+         * @param classIdChangeListener Слушатель для обратного вызова в Activity.
+         */
+        private void setupSpinner(final GroupHeaderItem group, final OnGroupClassIdChangeListener classIdChangeListener) {
+            Context context = itemView.getContext();
+            // Создаем адаптер для спиннера со значениями Нейтрал, Враг, Друг
+            ArrayAdapter<String> adapter = new ArrayAdapter<>(context, android.R.layout.simple_spinner_item, new String[]{"Нейтрал", "Враг", "Друг"});
+            adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+            groupClassIdSpinner.setAdapter(adapter);
+
+            // Устанавливаем начальное значение в соответствии с groupClassId, не вызывая слушателя
+            // Мы предполагаем, что 0=Нейтрал, 1=Враг, 2=Друг. Эта логика должна соответствовать Activity.
+            int initialPosition = group.groupClassId;
+            groupClassIdSpinner.setSelection(initialPosition, false);
+
+            // Устанавливаем слушатель, который сработает при выборе пользователя
+            groupClassIdSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+                @Override
+                public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+                    // Вызываем колбэк в Activity, только если пользователь выбрал новое значение
+                    if (position != group.groupClassId) {
+                        classIdChangeListener.onClassIdChanged(group, position);
+                    }
+                }
+
+                @Override
+                public void onNothingSelected(AdapterView<?> parent) {}
             });
         }
     }
@@ -222,14 +272,12 @@ public class ContactsAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
      * ViewHolder для элемента контакта.
      */
     static class ContactViewHolder extends RecyclerView.ViewHolder {
-        // ... view поля ...
         private final ImageView onlineStatusIndicator, inclinationIcon, clanIcon;
         private final TextView warStatusText, contactNickText, locationTextView;
         private final ImageButton infoButton;
 
         public ContactViewHolder(@NonNull View itemView) {
             super(itemView);
-            // ... инициализация view ...
             onlineStatusIndicator = itemView.findViewById(R.id.onlineStatusIndicator);
             inclinationIcon = itemView.findViewById(R.id.inclinationIcon);
             clanIcon = itemView.findViewById(R.id.clanIcon);
@@ -262,7 +310,7 @@ public class ContactsAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
                 inclinationIcon.setVisibility(View.GONE);
             }
 
-            // Иконка клана рядом с ником (теперь отображается всегда)
+            // Иконка клана
             if (contact.clanIco != null && !contact.clanIco.isEmpty()) {
                 clanIcon.setVisibility(View.VISIBLE);
                 String clanIconUrl = "http://image.neverlands.ru/signs/" + contact.clanIco;
@@ -279,9 +327,9 @@ public class ContactsAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
                 warStatusText.setVisibility(View.GONE);
             }
 
-            // Формирование основной строки с ником, уровнем и локацией
+            // Ник, уровень и локация
             String nickAndLevel = contact.nick + " : [" + contact.playerLevel + "]";
-            String location = "[" + contact.geoLocation + "]";
+            String location = contact.geoLocation;
             contactNickText.setText(nickAndLevel);
             locationTextView.setText(location);
 
