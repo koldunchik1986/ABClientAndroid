@@ -85,6 +85,22 @@ public class ContactsActivity extends AppCompatActivity implements ContactsAdapt
     }
 
     @Override
+    protected void onResume() {
+        super.onResume();
+        refreshContacts();
+    }
+
+    private void refreshContacts() {
+        Toast.makeText(this, "Обновление списка контактов...", Toast.LENGTH_SHORT).show();
+        ContactsManager.refreshAllContacts(this, () -> {
+            runOnUiThread(() -> {
+                Toast.makeText(ContactsActivity.this, "Список контактов обновлен", Toast.LENGTH_SHORT).show();
+                loadContactsFromManager();
+            });
+        });
+    }
+
+    @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         getMenuInflater().inflate(R.menu.contacts_menu, menu);
         return true;
@@ -94,6 +110,10 @@ public class ContactsActivity extends AppCompatActivity implements ContactsAdapt
     public boolean onOptionsItemSelected(MenuItem item) {
         if (item.getItemId() == R.id.action_sort) {
             showSortDialog();
+            return true;
+        }
+        if (item.getItemId() == R.id.action_refresh) {
+            refreshContacts();
             return true;
         }
         return super.onOptionsItemSelected(item);
@@ -217,8 +237,10 @@ public class ContactsActivity extends AppCompatActivity implements ContactsAdapt
         if (currentSort == SortType.CLASS_ID_FOE_FIRST || currentSort == SortType.CLASS_ID_FRIEND_FIRST) {
             boolean foeFirst = currentSort == SortType.CLASS_ID_FOE_FIRST;
             Collections.sort(sortedClanNames, (clan1, clan2) -> {
-                int classId1 = groupClassIds.getOrDefault(clan1, 0);
-                int classId2 = groupClassIds.getOrDefault(clan2, 0);
+                Integer classId1Int = groupClassIds.get(clan1);
+                int classId1 = (classId1Int == null) ? 0 : classId1Int;
+                Integer classId2Int = groupClassIds.get(clan2);
+                int classId2 = (classId2Int == null) ? 0 : classId2Int;
                 int weight1 = getSortWeight(classId1, foeFirst);
                 int weight2 = getSortWeight(classId2, foeFirst);
                 if (weight1 != weight2) {
@@ -250,7 +272,8 @@ public class ContactsActivity extends AppCompatActivity implements ContactsAdapt
                 }
             }
 
-            int groupClassId = groupClassIds.getOrDefault(clanName, 0);
+            Integer groupClassIdInt = groupClassIds.get(clanName);
+            int groupClassId = (groupClassIdInt == null) ? 0 : groupClassIdInt;
 
             displayList.add(new ContactsAdapter.GroupHeaderItem(clanName, representative.clanIco, clanLevel, clanMembers.size(), onlineMemberCount, groupClassId));
 
