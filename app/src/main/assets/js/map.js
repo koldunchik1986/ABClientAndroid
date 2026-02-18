@@ -382,7 +382,7 @@ function timerst(lp) {
         d.getElementById('timerdiv').style.display = 'none';
         d.getElementById('timerfon').style.display = 'none';
         clearInterval(tsec);
-        location = 'http://www.neverlands.ru/main.php';        
+        location = 'http://neverlands.ru/main.php';        
     }
     else {
         d.getElementById('tdsec').innerHTML = (time_left_sec / 1000);
@@ -463,7 +463,7 @@ function StateReady() {
                         case 0:
                             var tr = 0;
                             var butalt;
-                            var messal = '<FORM id="ALHF"><table cellpadding=0 cellspacing=0 border=0 width=100%><tr><td bgcolor=#CCCCCC><table cellpadding=10 cellspacing=1 border=0 width=100%>' + (ingr[1] != '00000' ? '<tr><td bgcolor=#FFFFFF colspan=4 class="centr"><img src=http://image.neverlands.ru/1x1.gif width=1 height=10><br><img src="http://www.neverlands.ru/modules/code/code.php?' + ingr[1] + '" width=134 height=60><br><img src=http://image.neverlands.ru/1x1.gif width=1 height=10><br>: <input type=text name=code size=4 class=gr_text id=CAPCODE><br><img src=http://image.neverlands.ru/1x1.gif width=1 height=10></td></tr>' : '');
+                            var messal = '<FORM id="ALHF"><table cellpadding=0 cellspacing=0 border=0 width=100%><tr><td bgcolor=#CCCCCC><table cellpadding=10 cellspacing=1 border=0 width=100%>' + (ingr[1] != '00000' ? '<tr><td bgcolor=#FFFFFF colspan=4 class="centr"><img src=http://image.neverlands.ru/1x1.gif width=1 height=10><br><img src="http://neverlands.ru/modules/code/code.php?' + ingr[1] + '" width=134 height=60><br><img src=http://image.neverlands.ru/1x1.gif width=1 height=10><br>: <input type=text name=code size=4 class=gr_text id=CAPCODE><br><img src=http://image.neverlands.ru/1x1.gif width=1 height=10></td></tr>' : '');
 
                             // ABC
                             var abcingr = '';
@@ -508,7 +508,7 @@ function StateReady() {
                             // -ABC
 
                             for (var i = 5; i < ingr.length; i++) messal += '<tr><td bgcolor=#FFFFFF class="centr"><input type=radio name=primid value=' + ingr[i][0] + (ingr[i][2] > 4 ? '' : ' DISABLED') + window.external.CheckPri(ingr[i][1], ingr[i][2]) + '></td><td bgcolor=#FFFFFF><img src=http://image.neverlands.ru/tools/' + ingr[i][0] + '.gif width=60 height=60></td><td bgcolor=#FFFFFF class="centr"><b>' + ingr[i][1] + '</b></td><td bgcolor=#FFFFFF class="centr"><b>' + ingr[i][2] + '</b></td></tr>';
-                            messal += (ingr[1] ? '<tr><td bgcolor=#FFFFFF colspan=5 class="centr"><img src=http://image.neverlands.ru/1x1.gif width=1 height=10><br><img src="http://www.neverlands.ru/modules/code/code.php?' + ingr[1] + '" width=134 height=60><br><img src=http://image.neverlands.ru/1x1.gif width=1 height=10><br>: <input type=text name=code size=4 class=gr_text id=CAPCODE><br><img src=http://image.neverlands.ru/1x1.gif width=1 height=10>' + window.external.InsertGuaDiv(ingr[1]) + '</td></tr>' : '') + '</table></td></tr></table></FORM>';
+                            messal += (ingr[1] ? '<tr><td bgcolor=#FFFFFF colspan=5 class="centr"><img src=http://image.neverlands.ru/1x1.gif width=1 height=10><br><img src="http://neverlands.ru/modules/code/code.php?' + ingr[1] + '" width=134 height=60><br><img src=http://image.neverlands.ru/1x1.gif width=1 height=10><br>: <input type=text name=code size=4 class=gr_text id=CAPCODE><br><img src=http://image.neverlands.ru/1x1.gif width=1 height=10>' + window.external.InsertGuaDiv(ingr[1]) + '</td></tr>' : '') + '</table></td></tr></table></FORM>';
                             buttons = '<a class="but lov" id=fishbutton href="javascript: FishStart(\'' + ingr[2] + '\',' + (ingr[1] ? 1 : 0) + ');"></a>';
 
                             // ABC

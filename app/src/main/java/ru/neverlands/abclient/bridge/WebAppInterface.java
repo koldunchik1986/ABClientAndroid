@@ -352,4 +352,44 @@ public class WebAppInterface {
         // TODO: Pass this data to a ViewModel
         System.out.println("Bulk sell: " + name + " for " + price);
     }
+
+    @JavascriptInterface
+    public void loadFrame(String frameName, String url) {
+        Log.d("WebAppInterface", "loadFrame: " + frameName + " to " + url);
+        if (AppVars.mainActivity == null || AppVars.mainActivity.get() == null) {
+            return;
+        }
+
+        // Ensure the URL is absolute
+        if (!url.startsWith("http")) {
+            url = "http://neverlands.ru/" + url.replaceFirst("^/+", "");
+        }
+
+        final String finalUrl = url;
+        AppVars.mainActivity.get().runOnUiThread(() -> {
+            switch (frameName) {
+                case "main_top":
+                    AppVars.mainActivity.get().binding.appBarMain.contentMain.webView.loadUrl(finalUrl);
+                    break;
+                case "ch_list":
+                    AppVars.mainActivity.get().binding.appBarMain.contentMain.chatUsersWebview.loadUrl(finalUrl);
+                    break;
+                case "ch_buttons":
+                    AppVars.mainActivity.get().binding.appBarMain.contentMain.chatButtonsWebview.loadUrl(finalUrl);
+                    break;
+                case "chmain":
+                    AppVars.mainActivity.get().binding.appBarMain.contentMain.chatMsgWebview.loadUrl(finalUrl);
+                    break;
+                case "ch_refr":
+                    // This is a hidden frame, we can probably ignore it or load it in a hidden webview if needed.
+                    // For now, just log it.
+                    Log.d("WebAppInterface", "loadFrame: ch_refr to " + finalUrl);
+                    break;
+                default:
+                    // Load in the main webview by default
+                    AppVars.mainActivity.get().binding.appBarMain.contentMain.webView.loadUrl(finalUrl);
+                    break;
+            }
+        });
+    }
 }

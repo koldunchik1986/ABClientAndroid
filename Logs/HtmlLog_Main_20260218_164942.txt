@@ -1,0 +1,37 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+    <HTML>
+    <HEAD>
+    <META Http-Equiv="Content-Type" Content="text/html; charset=windows-1251">
+    <META Http-Equiv="Cache-Control" Content="No-Cache">
+    <META Http-Equiv="Pragma" Content="No-Cache">
+    <META Http-Equiv="Expires" Content="0">
+    <LINK href="/css/frame.css" rel="STYLESHEET" type="text/css">
+    <LINK href="/css/stl.css" rel="STYLESHEET" type="text/css">
+    <!--[if lt IE 7]>
+    <LINK href="/css/iepng.css" rel="STYLESHEET" type="text/css">
+    <![endif]-->
+    <SCRIPT src="/js/building_v03.js"></SCRIPT>
+    <SCRIPT src="/js/ajax.js"></SCRIPT>
+    <SCRIPT src="/js/signs.js"></SCRIPT>
+    <SCRIPT src="/js/hpmp.js"></SCRIPT>
+    <SCRIPT src="/js/t_v01.js"></SCRIPT>
+    <SCRIPT src="/js/basic.js"></SCRIPT>
+    <SCRIPT src="/js/taverna_v03.js"></SCRIPT>
+    <SCRIPT src="/js/items.js"></SCRIPT>
+    <SCRIPT src="/js/quest.js"></SCRIPT>
+    <SCRIPT src="/js/nl_tooltip.js"></SCRIPT>
+    </HEAD>
+    <BODY>
+
+    <SCRIPT language="JavaScript">
+    var inshp = [355,355,2611,2611,833,2195];
+    var vcode = [[1,"61315df7b250a9d15bc5de1a800c8554"],[1,"76c7457ce1beda9dd0736fc165b7e394"],[1,"75e7e29fbfc486d063a787580011234e"]];
+    var build = ["Блудя",22,4,"c174.gif","Триглав","I am Legend",2,"main","Таверна","bar0",1,0,"eb045e01a7ab2cfa6988982428a2c372"];
+    var ajaxp = ["2a0ad92ac635a3b47dd6d4a52aa5e183",3];
+    var taverna = [173494.25,"kitch01","145cf6f24155d47c6c8ddc0fe99436f5"];
+    var items = ["47760e73b9ef3ed97d9d1e05711a53ad","6,2"];
+    view_taverna();
+    </SCRIPT>
+
+    </BODY>
+    </HTML>

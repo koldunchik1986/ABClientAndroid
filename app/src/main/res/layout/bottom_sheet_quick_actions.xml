@@ -1,0 +1,181 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="16dp">
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Быстрые действия"
+        android:textSize="18sp"
+        android:textStyle="bold"
+        android:layout_marginBottom="12dp" />
+
+    <EditText
+        android:id="@+id/editTextNick"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="Ник цели"
+        android:inputType="text"
+        android:singleLine="true"
+        android:layout_marginBottom="8dp" />
+
+    <androidx.appcompat.widget.SwitchCompat
+        android:id="@+id/switchAutoClose"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Закрыть после действия"
+        android:checked="true"
+        android:layout_marginBottom="12dp" />
+
+    <!-- Ряд 1: Нападалки -->
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Нападалки"
+        android:textSize="13sp"
+        android:textColor="?android:attr/textColorSecondary"
+        android:layout_marginBottom="4dp" />
+
+    <GridLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:columnCount="4"
+        android:layout_marginBottom="12dp">
+
+        <ImageButton
+            android:id="@+id/buttonHitSimple"
+            android:layout_width="56dp"
+            android:layout_height="48dp"
+            android:layout_margin="4dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="Обычная нападалка"
+            android:scaleType="centerInside" />
+
+        <ImageButton
+            android:id="@+id/buttonHitBlood"
+            android:layout_width="56dp"
+            android:layout_height="48dp"
+            android:layout_margin="4dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="Кровавая нападалка"
+            android:scaleType="centerInside" />
+
+        <ImageButton
+            android:id="@+id/buttonHitUltimate"
+            android:layout_width="56dp"
+            android:layout_height="48dp"
+            android:layout_margin="4dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="Боевая нападалка"
+            android:scaleType="centerInside" />
+
+        <ImageButton
+            android:id="@+id/buttonHitClosedUltimate"
+            android:layout_width="56dp"
+            android:layout_height="48dp"
+            android:layout_margin="4dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="Закрытая боевая нападалка"
+            android:scaleType="centerInside" />
+    </GridLayout>
+
+    <!-- Ряд 2: Кулачки -->
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Кулачки"
+        android:textSize="13sp"
+        android:textColor="?android:attr/textColorSecondary"
+        android:layout_marginBottom="4dp" />
+
+    <GridLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:columnCount="4"
+        android:layout_marginBottom="12dp">
+
+        <ImageButton
+            android:id="@+id/buttonFistSimple"
+            android:layout_width="56dp"
+            android:layout_height="48dp"
+            android:layout_margin="4dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="Обычная кулачка"
+            android:scaleType="centerInside" />
+
+        <ImageButton
+            android:id="@+id/buttonFistClosed"
+            android:layout_width="56dp"
+            android:layout_height="48dp"
+            android:layout_margin="4dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="Закрытая кулачка"
+            android:scaleType="centerInside" />
+
+        <ImageButton
+            android:id="@+id/buttonClosed"
+            android:layout_width="56dp"
+            android:layout_height="48dp"
+            android:layout_margin="4dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="Закрытая нападалка"
+            android:scaleType="centerInside" />
+    </GridLayout>
+
+    <!-- Ряд 3: Абилки -->
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Абилки"
+        android:textSize="13sp"
+        android:textColor="?android:attr/textColorSecondary"
+        android:layout_marginBottom="4dp" />
+
+    <GridLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:columnCount="4"
+        android:layout_marginBottom="8dp">
+
+        <ImageButton
+            android:id="@+id/buttonFog"
+            android:layout_width="56dp"
+            android:layout_height="48dp"
+            android:layout_margin="4dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="Туман"
+            android:scaleType="centerInside" />
+
+        <ImageButton
+            android:id="@+id/buttonPoison"
+            android:layout_width="56dp"
+            android:layout_height="48dp"
+            android:layout_margin="4dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="Яд"
+            android:scaleType="centerInside" />
+
+        <ImageButton
+            android:id="@+id/buttonStrong"
+            android:layout_width="56dp"
+            android:layout_height="48dp"
+            android:layout_margin="4dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="Сильная спина"
+            android:scaleType="centerInside" />
+
+        <ImageButton
+            android:id="@+id/buttonInvisible"
+            android:layout_width="56dp"
+            android:layout_height="48dp"
+            android:layout_margin="4dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="Невид"
+            android:scaleType="centerInside" />
+    </GridLayout>
+
+</LinearLayout>

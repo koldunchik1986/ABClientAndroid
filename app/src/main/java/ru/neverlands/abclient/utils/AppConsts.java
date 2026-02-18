@@ -21,7 +21,7 @@ public final class AppConsts {
 
     // Адреса
     public static final String HTTP_PREFIX = "http://";
-    public static final String GAME_HOST = "www.neverlands.ru";
+    public static final String GAME_HOST = "neverlands.ru";
     public static final String GAME_URL = HTTP_PREFIX + GAME_HOST;
 
     // Ключи для SharedPreferences (ранее XML-теги)

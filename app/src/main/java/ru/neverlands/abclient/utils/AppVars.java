@@ -81,6 +81,15 @@ public class AppVars {
     public static String myWalkers2 = "";
     public static boolean DoShowWalkers = true;
 
+    // Fast Attack variables (портировано из AppVars.cs — FormMainFast.cs)
+    public static volatile boolean FastNeed = false;
+    public static volatile String FastId = null;
+    public static volatile String FastNick = null;
+    public static volatile int FastCount = 0;
+    public static volatile boolean FastWaitEndOfBoiActive = false;
+    public static volatile boolean FastWaitEndOfBoiCancel = false;
+    public static volatile boolean FastNeedAbilDarkTeleport = false;
+    public static volatile boolean FastNeedAbilDarkFog = false;
 
     private static Context context;
 

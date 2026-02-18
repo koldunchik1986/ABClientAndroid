@@ -44,9 +44,8 @@ public class CustomDebugLogger {
 
     public static void log(String message) {
         if (!isInitialized) {
-            // Не инициализируем автоматически, чтобы избежать создания логов по умолчанию
-            Log.e(TAG, "Logger not initialized, cannot write log.");
-            return;
+            // Автоматически инициализируем с именем файла по умолчанию, если логгер еще не готов
+            initialize("default_log.txt");
         }
         if (fos == null) {
             return;

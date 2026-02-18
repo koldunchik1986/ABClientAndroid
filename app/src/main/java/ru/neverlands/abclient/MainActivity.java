@@ -46,6 +46,7 @@ import java.lang.ref.WeakReference;
 import java.net.InetSocketAddress;
 import java.net.Proxy;
 import java.net.HttpURLConnection;
+import java.net.URLConnection;
 import java.net.URL;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -70,10 +71,11 @@ import ru.neverlands.abclient.utils.AppLogger;
 import ru.neverlands.abclient.utils.AppVars;
 import ru.neverlands.abclient.utils.Chat;
 import ru.neverlands.abclient.utils.Russian;
+import ru.neverlands.abclient.webview.WebViewRequestInterceptor;
 
 public class MainActivity extends AppCompatActivity implements NavigationView.OnNavigationItemSelectedListener {
     private static final String TAG = "MainActivity";
-    private ActivityMainBinding binding;
+    public ActivityMainBinding binding;
     private Timer timer;
     private boolean isExiting = false;
     private boolean isRoomManagerStarted = false;
@@ -219,6 +221,9 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     private void setupWebView(WebView webView, WebViewClient client) {
         WebSettings webSettings = webView.getSettings();
         webSettings.setJavaScriptEnabled(true);
+        webSettings.setAllowFileAccess(true);
+        webSettings.setAllowFileAccessFromFileURLs(true);
+        webSettings.setAllowUniversalAccessFromFileURLs(true);
         webSettings.setDomStorageEnabled(true);
         webSettings.setDatabaseEnabled(true);
         webSettings.setUseWideViewPort(true);
@@ -374,6 +379,8 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             binding.appBarMain.contentMain.webView.loadUrl("http://neverlands.ru/main.php?get_id=33&act=10");
         } else if (id == R.id.nav_profile) {
             binding.appBarMain.contentMain.webView.loadUrl("http://neverlands.ru/main.php?get_id=33&act=1");
+        } else if (id == R.id.nav_quick_actions) {
+            ru.neverlands.abclient.ui.QuickActionsBottomSheet.newInstance(null).show(getSupportFragmentManager(), "QuickActions");
         } else if (id == R.id.nav_settings) {
         } else if (id == R.id.nav_contacts) {
             Intent intent = new Intent(this, ContactsActivity.class);
@@ -422,7 +429,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     private void checkConnection() {
         if (System.currentTimeMillis() > AppVars.NextCheckNoConnection.getTime()) {
             AppVars.NextCheckNoConnection = new Date(System.currentTimeMillis() + 5 * 60 * 1000);
-            binding.appBarMain.contentMain.webView.loadUrl("http://www.neverlands.ru/main.php");
+            binding.appBarMain.contentMain.webView.loadUrl("http://neverlands.ru/main.php");
         }
     }
     
@@ -507,11 +514,38 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             super.onPageFinished(view, url);
             AppLogger.write("Page loaded: " + url);
 
-            String script = "javascript:(function() { " +
-                    "if (typeof top.start !== 'function') { top.start = function() {}; }" +
-                    "if (typeof top.save_scroll_p !== 'function') { top.save_scroll_p = function() {}; }" +
-                    "})()";
-            view.evaluateJavascript(script, null);
+            String jsFix =
+                "window.external = window.AndroidBridge;" +
+                "if (typeof top.start == 'undefined') { top.start = function() {}; }" +
+                "if (typeof window.chatlist_build == 'undefined') { window.chatlist_build = function() {}; }" +
+                "if (typeof window.get_by_id == 'undefined') { window.get_by_id = function(id) { return document.getElementById(id); }; }" +
+                "if (typeof top.save_scroll_p == 'undefined') { top.save_scroll_p = function() {}; }" +
+                "if (typeof window.ins_HP == 'undefined') { window.ins_HP = function() {}; }" +
+                "if (typeof window.cha_HP == 'undefined') { window.cha_HP = function() {}; }" +
+                "if (typeof window.slots_inv == 'undefined') { window.slots_inv = function() {}; }" +
+                "if (typeof window.compl_view == 'undefined') { window.compl_view = function() {}; }" +
+                "if (typeof window.view_t == 'undefined') { window.view_t = function() {}; }" +
+                "if (typeof top.ch_refresh_n == 'undefined') { top.ch_refresh_n = function() {}; }" +
+                "if (typeof window.ButClick == 'undefined') { window.ButClick = function() {}; }" +
+                "if (typeof top.frames == 'undefined' || !top.frames['main_top']) { " +
+                "  if (typeof top.frames == 'undefined') { top.frames = {}; } " +
+                "  if (!top.frames['ch_buttons']) { top.frames['ch_buttons'] = { set location(url) { AndroidBridge.loadFrame('ch_buttons', url); } }; } " +
+                "  if (!top.frames['ch_refr']) { top.frames['ch_refr'] = { set location(url) { AndroidBridge.loadFrame('ch_refr', url); } }; } " +
+                "  if (!top.frames['ch_list']) { top.frames['ch_list'] = { set location(url) { AndroidBridge.loadFrame('ch_list', url); } }; } " +
+                "  if (!top.frames['chmain']) { top.frames['chmain'] = { set location(url) { AndroidBridge.loadFrame('chmain', url); } }; } " +
+                "  if (!top.frames['main_top']) { top.frames['main_top'] = { " +
+                "    set location(url) { AndroidBridge.loadFrame('main_top', url); }, " +
+                "    innerHeight: 800, " +
+                "    innerWidth: 600, " +
+                "    document: { " +
+                "      write: function(s) { document.write(s); }, " +
+                "      getElementById: function(id) { return document.getElementById(id); } " +
+                "    } " +
+                "  }; } " +
+                "}" +
+                "if (top.frames && top.frames['main_top']) { top.frames['main_top'].innerHeight = 800; top.frames['main_top'].innerWidth = 600; }";
+
+            view.evaluateJavascript(jsFix, null);
 
             if (url.endsWith("main.php")) {
                 view.evaluateJavascript("javascript:(function() { var frameset = document.getElementsByTagName('frameset')[0]; if (frameset) { frameset.rows = '*\n, 0'; } })()", null);
@@ -525,6 +559,11 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         }
 
         @Override
+        public WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest request) {
+            return WebViewRequestInterceptor.intercept(request);
+        }
+
+        @Override
         public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
             if (request.getUrl().toString() != null && request.getUrl().toString().startsWith("http://neverlands.ru/pinfo.cgi")) {
                 Intent intent = new Intent(MainActivity.this, PinfoActivity.class);
@@ -535,99 +574,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             return false;
         }
 
-            @Override
-            public WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest request) {
-                final String url = request.getUrl().toString();
-                ru.neverlands.abclient.utils.DebugLogger.log("Intercepting request: " + url);
 
-                if (url.contains("main.php?get_id=") || url.contains("main.php?mselect=")) {
-                    return null;
-                }
-
-                String fileName = Uri.parse(url).getPath();
-                if (fileName != null && fileName.startsWith("/")) {
-                    fileName = fileName.substring(1);
-                }
-
-
-
-                try {
-                    byte[] data = readAssetFile(fileName);
-                    String mimeType = getMimeTypeFromUrl(url);
-                    return new WebResourceResponse(mimeType, "UTF-8", new ByteArrayInputStream(data));
-                } catch (IOException e) {
-                }
-
-                byte[] cachedData = ru.neverlands.abclient.proxy.DiskCacheManager.get(url);
-                if (cachedData != null) {
-                    String mimeType = getMimeTypeFromUrl(url);
-                    byte[] processedData = ru.neverlands.abclient.postfilter.Filter.process(MainActivity.this, url, cachedData);
-                    return new WebResourceResponse(mimeType, "windows-1251", new ByteArrayInputStream(processedData));
-                }
-
-                try {
-                    URL urlObj = new URL(url);
-                    HttpURLConnection connection = (HttpURLConnection) urlObj.openConnection();
-
-                    Map<String, String> requestHeaders = request.getRequestHeaders();
-                    for (Map.Entry<String, String> entry : requestHeaders.entrySet()) {
-                        connection.setRequestProperty(entry.getKey(), entry.getValue());
-                    }
-                    connection.setRequestProperty("Cookie", CookiesManager.obtain(url));
-
-                    InputStream inputStream = connection.getInputStream();
-                    String contentType = connection.getContentType();
-                    String encoding = connection.getContentEncoding();
-
-                    String mimeType = "text/plain";
-                    if (contentType != null) {
-                        if (contentType.contains(";")) {
-                            mimeType = contentType.split(";")[0].trim();
-                        } else {
-                            mimeType = contentType.trim();
-                        }
-                    }
-
-                    byte[] data;
-                    ByteArrayOutputStream baos = new ByteArrayOutputStream();
-                    byte[] buffer = new byte[1024];
-                    int len;
-                    while ((len = inputStream.read(buffer)) != -1) {
-                        baos.write(buffer, 0, len);
-                    }
-                    data = baos.toByteArray();
-
-                    if (isCacheable(url)) {
-                        ru.neverlands.abclient.proxy.DiskCacheManager.put(url, data);
-                    }
-
-                    if ("gzip".equalsIgnoreCase(encoding)) {
-                        data = decompressGzip(data);
-                        encoding = null;
-                    }
-
-                    if (url.contains("ch.php?lo=1")) {
-                        String html = Russian.getString(data);
-                        html = ru.neverlands.abclient.manager.RoomManager.process(MainActivity.this, html);
-                        data = Russian.getBytes(html);
-                        return new WebResourceResponse(mimeType, "windows-1251", new ByteArrayInputStream(data));
-                    }
-
-                    if (contentType != null && contentType.contains("text/html")) {
-                        data = injectJsFix(data, url);
-                    }
-
-                    data = ru.neverlands.abclient.postfilter.Filter.process(MainActivity.this, url, data);
-
-                    ru.neverlands.abclient.utils.DebugLogger.log("Final processedData for " + url + ": " + new String(data, "windows-1251"));
-
-                    return new WebResourceResponse(mimeType, "windows-1251", new ByteArrayInputStream(data));
-
-                } catch (IOException e) {
-                    ru.neverlands.abclient.utils.DebugLogger.log("Error intercepting request: " + url + " - " + e.getMessage());
-                    return new WebResourceResponse("text/plain", "utf-8", new ByteArrayInputStream("".getBytes()));
-                }
-            }
     }
 
     private byte[] readAssetFile(String fileName) throws IOException {
@@ -678,36 +625,61 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                lowerUrl.contains("neverlands.ru/ch.php") || lowerUrl.contains("neverlands.ru/main.php");
     }
 
-    private byte[] injectJsFix(byte[] body, String url) {
+    private byte[] injectJsFix(byte[] body, String url, String contentType) {
         try {
             if (body == null || body.length == 0) {
                 Log.w(TAG, "InjectJsFix: body for " + url + " is empty!");
                 return body;
             }
 
-            String html = new String(body, "windows-1251");
-
-            String fix = "<script type=\"text/javascript\">" +
+            String jsFix =
+                "window.external = window.AndroidBridge;" +
                 "if (typeof top.start == 'undefined') { top.start = function() {}; }" +
                 "if (typeof window.chatlist_build == 'undefined') { window.chatlist_build = function() {}; }" +
                 "if (typeof window.get_by_id == 'undefined') { window.get_by_id = function(id) { return document.getElementById(id); }; }" +
                 "if (typeof top.save_scroll_p == 'undefined') { top.save_scroll_p = function() {}; }" +
                 "if (typeof window.ins_HP == 'undefined') { window.ins_HP = function() {}; }" +
+                "if (typeof window.cha_HP == 'undefined') { window.cha_HP = function() {}; }" +
                 "if (typeof window.slots_inv == 'undefined') { window.slots_inv = function() {}; }" +
                 "if (typeof window.compl_view == 'undefined') { window.compl_view = function() {}; }" +
                 "if (typeof window.view_t == 'undefined') { window.view_t = function() {}; }" +
                 "if (typeof top.ch_refresh_n == 'undefined') { top.ch_refresh_n = function() {}; }" +
                 "if (typeof window.ButClick == 'undefined') { window.ButClick = function() {}; }" +
-                "</script>";
+                "if (typeof top.frames == 'undefined' || !top.frames['main_top']) { " +
+                "  if (typeof top.frames == 'undefined') { top.frames = {}; } " +
+                "  if (!top.frames['ch_buttons']) { top.frames['ch_buttons'] = { set location(url) { AndroidBridge.loadFrame('ch_buttons', url); } }; } " +
+                "  if (!top.frames['ch_refr']) { top.frames['ch_refr'] = { set location(url) { AndroidBridge.loadFrame('ch_refr', url); } }; } " +
+                "  if (!top.frames['ch_list']) { top.frames['ch_list'] = { set location(url) { AndroidBridge.loadFrame('ch_list', url); } }; } " +
+                "  if (!top.frames['chmain']) { top.frames['chmain'] = { set location(url) { AndroidBridge.loadFrame('chmain', url); } }; } " +
+                "  if (!top.frames['main_top']) { top.frames['main_top'] = { " +
+                "    set location(url) { AndroidBridge.loadFrame('main_top', url); }, " +
+                "    innerHeight: 800, " +
+                "    innerWidth: 600, " +
+                "    document: { " +
+                "      write: function(s) { document.write(s); }, " +
+                "      getElementById: function(id) { return document.getElementById(id); } " +
+                "    } " +
+                "  }; } " +
+                "}" +
+                "if (top.frames && top.frames['main_top']) { top.frames['main_top'].innerHeight = 800; top.frames['main_top'].innerWidth = 600; }";
 
-            String newHtml;
-            if (html.toLowerCase().contains("<head>")) {
-                newHtml = html.replaceFirst("(?i)<head>", "<head>" + fix);
-            } else {
-                newHtml = fix + html;
+            if (contentType != null && contentType.contains("text/html")) {
+                String html = new String(body, "windows-1251");
+                String fix = "<script type=\"text/javascript\">" + jsFix + "</script>";
+
+                String newHtml;
+                if (html.toLowerCase().contains("<head>")) {
+                    newHtml = html.replaceFirst("(?i)<head>", "<head>" + fix);
+                } else {
+                    newHtml = fix + html;
+                }
+                return newHtml.getBytes("windows-1251");
+            } else if (contentType != null && contentType.contains("application/javascript")) {
+                String js = new String(body, "windows-1251");
+                return (jsFix + js).getBytes("windows-1251");
             }
-            
-            return newHtml.getBytes("windows-1251");
+
+            return body;
 
         } catch (Exception e) {
             Log.e(TAG, "Failed to inject JS fix for " + url, e);

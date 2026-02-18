@@ -12,12 +12,16 @@ import java.util.List;
 
 import ru.neverlands.abclient.model.InvComparer;
 import ru.neverlands.abclient.model.InvEntry;
+import ru.neverlands.abclient.manager.FastActionManager;
 import ru.neverlands.abclient.utils.AppVars;
 import ru.neverlands.abclient.utils.HelperStrings;
 import ru.neverlands.abclient.utils.Russian;
 
 public class MainPhp {
+    private static final String TAG = "MainPhp";
+
     public static byte[] process(String address, byte[] array) {
+        android.util.Log.d(TAG, "process() called for " + address + ", bytes=" + (array != null ? array.length : 0));
         // Сохраняем исходный ответ, если он нужен где-то еще
         AppVars.lastMainPhpResponse = array;
         AppVars.IdleTimer = System.currentTimeMillis();
@@ -25,6 +29,8 @@ public class MainPhp {
         AppVars.ContentMainPhp = null;
 
         String html = Russian.getString(array);
+        android.util.Log.d(TAG, "HTML length after getString: " + html.length());
+        android.util.Log.d(TAG, "HTML first 200: " + html.substring(0, Math.min(200, html.length())));
         html = Filter.removeDoctype(html);
 
         // Извлечение vcode - полезная логика из новой версии
@@ -34,6 +40,14 @@ public class MainPhp {
         }
 
         // Логирование в файлы убрано, чтобы устранить зависания
+
+        // Обработка быстрых действий (портировано из MainPhpFast.cs)
+        if (AppVars.FastNeed) {
+            String fastResult = FastActionManager.processMainPhp(html);
+            if (fastResult != null) {
+                return Russian.getBytes(fastResult);
+            }
+        }
 
         // Placeholder for fight logic
         if (html.contains("magic_slots();")) {
@@ -52,7 +66,10 @@ public class MainPhp {
         // ... other placeholders ...
 
         AppVars.ContentMainPhp = html;
-        return Russian.getBytes(html);
+        byte[] result = Russian.getBytes(html);
+        android.util.Log.d(TAG, "process() returning " + result.length + " bytes for " + address);
+        android.util.Log.d(TAG, "Result first 200: " + html.substring(0, Math.min(200, html.length())));
+        return result;
     }
 
     private static String mainPhpFight(String html) {
@@ -83,7 +100,6 @@ public class MainPhp {
                 return html;
             }
 
-            // Используем локальный список, а не глобальный AppVars.InvList
             List<InvEntry> invList = new ArrayList<>();
 
             for (Element table : itemTables) {
@@ -123,6 +139,9 @@ public class MainPhp {
             if (AppVars.Profile != null && AppVars.Profile.DoInvSort) {
                 Collections.sort(invList, new InvComparer());
             }
+
+            // Сохраняем в AppVars для доступа из других компонентов
+            AppVars.InvList = new ArrayList<>(invList);
 
             // Пересобираем HTML инвентаря
             StringBuilder newHtml = new StringBuilder();

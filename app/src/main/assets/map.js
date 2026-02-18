@@ -453,7 +453,7 @@ function timerst(lp)
         clearInterval(tsec);
 
         // +ABC
-        location = 'http://www.neverlands.ru/main.php';
+        location = 'http://neverlands.ru/main.php';
         // -ABC
     }
     else

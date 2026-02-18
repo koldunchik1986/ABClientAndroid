@@ -68,7 +68,7 @@ public class CookiesManager {
         // Логика нормализации из старой версии сохранена на всякий случай.
         String h = host.trim().toLowerCase();
         if (h.equals("forum.neverlands.ru")) {
-            return "www.neverlands.ru";
+            return "neverlands.ru";
         }
         return h;
     }

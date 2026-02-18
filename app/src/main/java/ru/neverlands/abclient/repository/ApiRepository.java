@@ -53,12 +53,12 @@ public class ApiRepository {
             // Кодирование ника в windows-1251 и замена пробелов на %20 для корректного URL.
             String encodedNick = URLEncoder.encode(nick, "windows-1251");
             encodedNick = encodedNick.replace("+", "%20");
-            String url = "http://www.neverlands.ru/modules/api/getid.cgi?" + encodedNick;
+            String url = "http://neverlands.ru/modules/api/getid.cgi?" + encodedNick;
 
             Request request = new Request.Builder()
                     .url(url)
                     .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36")
-                    .header("Referer", "http://www.neverlands.ru/main.php")
+                    .header("Referer", "http://neverlands.ru/main.php")
                     .build();
 
             CustomDebugLogger.log("REQUEST_URL: " + request.url());
@@ -108,11 +108,11 @@ public class ApiRepository {
      */
     public static void getPlayerInfo(String playerId, ApiCallback<Contact> callback) {
         try {
-            String url = "http://www.neverlands.ru/modules/api/info.cgi?playerid=" + playerId + "&info=1";
+            String url = "http://neverlands.ru/modules/api/info.cgi?playerid=" + playerId + "&info=1";
             Request request = new Request.Builder()
                     .url(url)
                     .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36")
-                    .header("Referer", "http://www.neverlands.ru/main.php")
+                    .header("Referer", "http://neverlands.ru/main.php")
                     .build();
 
             CustomDebugLogger.log("REQUEST_URL: " + request.url());

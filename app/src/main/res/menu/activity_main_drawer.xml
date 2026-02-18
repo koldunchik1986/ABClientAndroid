@@ -23,6 +23,15 @@
             android:title="@string/menu_profile" />
     </group>
 
+    <item android:title="Действия">
+        <menu>
+            <item
+                android:id="@+id/nav_quick_actions"
+                android:icon="@android:drawable/ic_menu_send"
+                android:title="Быстрые действия" />
+        </menu>
+    </item>
+
     <item android:title="Дополнительно">
         <menu>
             <item

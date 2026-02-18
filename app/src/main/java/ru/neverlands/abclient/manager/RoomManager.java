@@ -166,7 +166,7 @@ public class RoomManager {
             strArray[1] +
             "</b></a>[" +
             strArray[2] +
-            "]</font><a href=\"http://www.neverlands.ru/pinfo.cgi?" +
+            "]</font><a href=\"http://neverlands.ru/pinfo.cgi?" +
             nnSec +
             "\" onclick=\"window.open(this.href);\"><img src=http://image.neverlands.ru/chat/info.gif width=11 height=12 border=0 align=absmiddle></a>" +
             sleeps +

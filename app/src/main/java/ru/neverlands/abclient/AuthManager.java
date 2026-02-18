@@ -87,6 +87,12 @@ public class AuthManager {
             }
             DebugLogger.log("AuthManager: 2. Login POST SUCCESS.");
 
+            try {
+                Thread.sleep(500);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+
             // Step 3: Final GET to main.php
             Request mainRequest = new Request.Builder()
                     .url("http://neverlands.ru/main.php")
@@ -105,16 +111,6 @@ public class AuthManager {
             // All steps successful
             DebugLogger.log("AuthManager: Full Authorization SUCCESS.");
             List<HttpCookie> cookies = cookieManager.getCookieStore().get(HttpUrl.get("http://neverlands.ru/").uri());
-
-            // Ручная синхронизация cookies в WebView
-            android.webkit.CookieManager webViewCookieManager = android.webkit.CookieManager.getInstance();
-            for (java.net.HttpCookie cookie : cookies) {
-                String cookieString = cookie.getName() + "=" + cookie.getValue() + "; domain=" + cookie.getDomain();
-                webViewCookieManager.setCookie("http://neverlands.ru", cookieString);
-            }
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-                webViewCookieManager.flush();
-            }
 
             return new AuthResult(cookies);
 
@@ -175,6 +171,12 @@ public class AuthManager {
             }
             DebugLogger.log("AuthManager: 2. Captcha Login POST SUCCESS.");
 
+            try {
+                Thread.sleep(500);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+
             // Step 3: Final GET to main.php
             Request mainRequest = new Request.Builder()
                     .url("http://neverlands.ru/main.php")
@@ -194,15 +196,7 @@ public class AuthManager {
             DebugLogger.log("AuthManager: Full Authorization SUCCESS.");
             List<HttpCookie> cookies = cookieManager.getCookieStore().get(HttpUrl.get("http://neverlands.ru/").uri());
 
-            // Ручная синхронизация cookies в WebView
-            android.webkit.CookieManager webViewCookieManager = android.webkit.CookieManager.getInstance();
-            for (java.net.HttpCookie cookie : cookies) {
-                String cookieString = cookie.getName() + "=" + cookie.getValue() + "; domain=" + cookie.getDomain();
-                webViewCookieManager.setCookie("http://neverlands.ru", cookieString);
-            }
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-                webViewCookieManager.flush();
-            }
+
 
             return new AuthResult(cookies);
 
