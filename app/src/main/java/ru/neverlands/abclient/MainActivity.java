@@ -131,6 +131,12 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                         binding.appBarMain.contentMain.webView.loadUrl(url);
                     }
                     break;
+                case AppVars.ACTION_WEBVIEW_EVAL_JS:
+                    String js = intent.getStringExtra("js");
+                    if (js != null && binding.appBarMain.contentMain.webView != null) {
+                        binding.appBarMain.contentMain.webView.evaluateJavascript(js, null);
+                    }
+                    break;
                 case AppVars.ACTION_STOP_AUTOFISH:
                     Toast.makeText(context, "Авторыбалка остановлена", Toast.LENGTH_SHORT).show();
                     break;
@@ -248,6 +254,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         IntentFilter filter = new IntentFilter();
         filter.addAction(AppVars.ACTION_ADD_CHAT_MESSAGE);
         filter.addAction(AppVars.ACTION_WEBVIEW_LOAD_URL);
+        filter.addAction(AppVars.ACTION_WEBVIEW_EVAL_JS);
         filter.addAction(AppVars.ACTION_STOP_AUTOFISH);
         LocalBroadcastManager.getInstance(this).registerReceiver(broadcastReceiver, filter);
     }

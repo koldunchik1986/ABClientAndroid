@@ -512,23 +512,22 @@ public class FastActionManager {
     // --- Утилиты ---
 
     /**
-     * Перезагружает main.php в WebView через broadcast (аналог ReloadMainFrame в C#).
-     * Навигирует на правильную вкладку инвентаря в зависимости от типа FastId:
-     * - Нападалки/свитки (i_svi_*, i_w28_*) → вкладка свитков (wca=28)
-     * - Зелья → вкладка зелий (wca=27)
-     * - Абилки (туман) → вкладка свитков (wca=28)
+     * Перезагружает main.php в WebView через loadUrl
+     * (аналог ReloadMainPhpInvoke -> NavigateFrame("main_top", "main.php") в C#).
+     *
+     * В C# клиент навигирует фрейм main_top через DOM. На Android loadUrl("javascript:...")
+     * и evaluateJavascript не работают для навигации sub-frame в frameset.
+     *
+     * Вместо этого используем loadUrl с прямым URL инвентаря (go=inv).
+     * WebView загрузит его как полную страницу (заменив frameset), но shouldInterceptRequest
+     * перехватит запрос, Filter обработает, и processMainPhp найдёт предмет.
+     * После авто-submit формы WebView перейдёт на результат действия и вернётся в игру.
      */
     private static void reloadMainFrame() {
         if (AppVars.getContext() == null) return;
 
-        String url = getInventoryTabUrl();
-
-        // Если у нас есть сохраненный VCode, добавляем его к URL
-        if (AppVars.VCode != null && !AppVars.VCode.isEmpty() && url.contains("get_id=56")) {
-            if (!url.contains("vcode=")) {
-                url += "&vcode=" + AppVars.VCode;
-            }
-        }
+        String url = getInventoryUrl();
+        Log.d(TAG, "reloadMainFrame: loading " + url);
 
         Intent intent = new Intent(AppVars.ACTION_WEBVIEW_LOAD_URL);
         intent.putExtra("url", url);
@@ -536,28 +535,32 @@ public class FastActionManager {
     }
 
     /**
-     * Определяет URL вкладки инвентаря по FastId (аналог логики из C# FormMainFast).
+     * Строит URL инвентаря с правильной категорией.
+     * Для свитков/нападалок: go=inv с фильтром wca=28 (свитки)
+     * Для зелий: go=inv с фильтром wca=27 (зелья)
      */
-    private static String getInventoryTabUrl() {
-        if (AppVars.FastId == null) {
-            return "http://neverlands.ru/main.php";
+    private static String getInventoryUrl() {
+        String base = "http://neverlands.ru/main.php?get_id=56&act=10&go=inv";
+
+        // Добавляем vcode если есть
+        if (AppVars.VCode != null && !AppVars.VCode.isEmpty()) {
+            base += "&vcode=" + AppVars.VCode;
         }
 
+        if (AppVars.FastId == null) return base;
+
+        // Добавляем фильтр категории
         String fastId = AppVars.FastId;
-
-        // Зелья → вкладка зелий (wca=27)
         if (!fastId.endsWith(".gif")) {
-            // Все зелья не имеют .gif суффикса (напр. "Яд", "Зелье Сильной Спины")
-            return "http://neverlands.ru/main.php?get_id=56&act=10&im=0&wca=27";
+            // Зелья → вкладка зелий (wca=27)
+            return base + "&im=0&wca=27";
         }
-
-        // Нападалки и свитки → вкладка свитков (wca=28)
         if (fastId.startsWith("i_svi_") || fastId.startsWith("i_w28_")) {
-            return "http://neverlands.ru/main.php?get_id=56&act=10&im=0&wca=28";
+            // Нападалки и свитки → вкладка свитков (wca=28)
+            return base + "&im=0&wca=28";
         }
 
-        // Fallback — обычная main.php
-        return "http://neverlands.ru/main.php";
+        return base;
     }
 
     /**
