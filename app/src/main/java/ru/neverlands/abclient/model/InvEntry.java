@@ -31,48 +31,69 @@ public class InvEntry implements Cloneable, Comparable<InvEntry> {
     private String imageCellHtml;
     private String infoCellHtml;
 
-    public InvEntry(Element table) {
-        this.html = table.outerHtml();
+    public InvEntry(Element row) {
+        this.html = row.outerHtml();
         this.Count = 1;
 
-        // Парсим основные ячейки, чтобы потом их пересобрать
-        Elements cells = table.select("> tbody > tr > td");
+        // Парсим основные ячейки строки
+        Elements cells = row.select("> td");
         if (cells.size() >= 2) {
             this.imageCellHtml = cells.get(0).html();
             this.infoCellHtml = cells.get(1).html();
+        } else {
+            // Если структура не плоская, пробуем найти ячейки глубже
+            cells = row.select("td");
+            if (cells.size() >= 2) {
+                this.imageCellHtml = cells.get(0).html();
+                this.infoCellHtml = cells.get(1).html();
+            }
         }
 
-        Element nameElement = table.selectFirst("b");
+        Element nameElement = row.selectFirst("b");
         if (nameElement != null) {
             this.Name = nameElement.text();
         }
 
-        Elements imgElements = table.select("img[src^=http://image.neverlands.ru/weapon/]");
+        Elements imgElements = row.select("img[src*='/weapon/'], img[src*='/invent/']");
         if (!imgElements.isEmpty()) {
-            this.Image = imgElements.attr("src");
+            this.Image = imgElements.first().attr("src");
             if (this.Name == null || this.Name.isEmpty()) {
-                this.Name = imgElements.attr("alt");
+                this.Name = imgElements.first().attr("alt");
             }
         }
 
-        this.Dolg = HelperStrings.subString(this.html, "Долговечность: ", "/");
+        // Парсинг долговечности (более надежный)
+        String text = row.text();
+        if (text.contains("Долговечность:")) {
+            this.Dolg = HelperStrings.subString(this.html, "Долговечность: <b>", "</b>");
+            if (this.Dolg == null) {
+                this.Dolg = HelperStrings.subString(text, "Долговечность: ", "/");
+            }
+        }
 
-        Elements links = table.select("a[href^=main.php?]");
+        Elements links = row.select("a[href^=main.php?], input[onclick*='main.php?']");
         for (Element link : links) {
-            String href = link.attr("href");
+            String href = link.hasAttr("href") ? link.attr("href") : link.attr("onclick");
             if (href.contains("act=3")) { // Pss - Sell
                 this.PssLink = href;
                 this.PssThing = HelperStrings.subString(href, "pss=", "&");
+                if (this.PssThing == null) this.PssThing = HelperStrings.subString(href, "pss=", "'");
+                
                 String priceStr = HelperStrings.subString(href, "price=", "&");
+                if (priceStr == null) priceStr = HelperStrings.subString(href, "price=", "'");
+                
                 try {
-                    this.PssPrice = Integer.parseInt(priceStr);
+                    if (priceStr != null) this.PssPrice = Integer.parseInt(priceStr);
                 } catch (NumberFormatException e) {
                     this.PssPrice = 0;
                 }
             } else if (href.contains("act=2")) { // Drop
                 this.DropLink = href;
                 this.DropThing = HelperStrings.subString(href, "drop=", "&");
+                if (this.DropThing == null) this.DropThing = HelperStrings.subString(href, "drop=", "'");
+                
                 this.DropPrice = HelperStrings.subString(href, "price=", "&");
+                if (this.DropPrice == null) this.DropPrice = HelperStrings.subString(href, "price=", "'");
             }
         }
 

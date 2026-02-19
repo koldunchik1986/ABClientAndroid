@@ -152,7 +152,7 @@ public class FastActionManager {
     public static String processMainPhp(String html) {
         Log.d(TAG, "processMainPhp: FastNeed=" + AppVars.FastNeed + ", FastId=" + AppVars.FastId
                 + ", FastNick=" + AppVars.FastNick + ", htmlLen=" + (html != null ? html.length() : 0));
-        if (!AppVars.FastNeed || AppVars.FastId == null) return null;
+        if (!AppVars.FastNeed || AppVars.FastId == null || html == null) return null;
 
         // Логируем наличие ключевых паттернов в HTML
         Log.d(TAG, "processMainPhp: contains w28_form=" + html.contains("w28_form(")
@@ -177,7 +177,7 @@ public class FastActionManager {
                 result = mainPhpFastHit(html, new String[]{"29"}, "закрытую боевую нападалку");
                 break;
             case "i_svi_205.gif":
-                result = mainPhpFastHit(html, new String[]{"30"}, "закрытую нападалку");
+                result = mainPhpFastHit(html, new String[]{"14"}, "закрытую нападалку");
                 break;
             case "i_w28_24.gif":
                 result = mainPhpFastHit(html, new String[]{"24"}, "кулачку");
@@ -248,6 +248,15 @@ public class FastActionManager {
                 break;
         }
 
+        if (result == null && html.contains("get_id=56")) {
+            Log.d(TAG, "processMainPhp: Предмет не найден, но мы в get_id=56. Ищем ссылку на нужный раздел.");
+            String targetLink = findTargetLink(html, fastId);
+            if (targetLink != null) {
+                Log.d(TAG, "processMainPhp: Выполняем переход на: " + targetLink);
+                return HTML_HEAD + "<script language=\"JavaScript\">location='" + targetLink + "';</script></body></html>";
+            }
+        }
+
         if (result != null) {
             // Действие выполнено, уменьшаем счётчик
             AppVars.FastCount--;
@@ -255,12 +264,66 @@ public class FastActionManager {
                 AppVars.FastNeed = false;
             }
             Log.d(TAG, "processMainPhp: УСПЕХ для FastId=" + fastId + ", resultLen=" + result.length());
-            Log.d(TAG, "processMainPhp: generated HTML: " + result.substring(0, Math.min(300, result.length())));
+            Log.d(TAG, "processMainPhp: generated HTML: " + (result.length() > 300 ? result.substring(0, 300) : result));
         } else {
             Log.w(TAG, "processMainPhp: НЕУДАЧА, result=null для FastId=" + fastId);
         }
 
         return result;
+    }
+
+    /**
+     * Ищет ссылку на нужный раздел инвентаря в текущем HTML.
+     */
+    private static String findTargetLink(String html, String fastId) {
+        if (fastId == null) return null;
+
+        boolean isPotion = !fastId.endsWith(".gif");
+        String wca = isPotion ? "wca=27" : "wca=28";
+
+        Log.d(TAG, "findTargetLink: ищем категорию " + wca + " для FastId=" + fastId);
+
+        // 1. Ищем прямую ссылку на нужную категорию (Свитки или Зелья)
+        String link = findLinkWithPattern(html, wca);
+        if (link != null) {
+            Log.d(TAG, "findTargetLink: найдена прямая ссылка на категорию: " + link);
+            return link;
+        }
+
+        // 2. Если не нашли категорию, ищем общую ссылку на инвентарь (go=inv)
+        link = findLinkWithPattern(html, "go=inv");
+        if (link != null) {
+            Log.d(TAG, "findTargetLink: найдена ссылка на общий инвентарь: " + link);
+            return link;
+        }
+
+        Log.w(TAG, "findTargetLink: ссылки на инвентарь не найдены в HTML");
+        return null;
+    }
+
+    /**
+     * Вспомогательный метод для поиска ссылки по паттерну внутри location='...'
+     * Перебирает все вхождения location='...' и проверяет, содержит ли URL нужный паттерн.
+     */
+    private static String findLinkWithPattern(String html, String pattern) {
+        String marker = "location='";
+        int pos = 0;
+        while (pos < html.length()) {
+            int start = html.indexOf(marker, pos);
+            if (start == -1) break;
+            start += marker.length();
+
+            int end = html.indexOf("'", start);
+            if (end == -1) break;
+
+            String link = html.substring(start, end);
+            if (link.contains(pattern) && link.startsWith("main.php?")) {
+                return link;
+            }
+
+            pos = end + 1;
+        }
+        return null;
     }
 
     // --- Парсеры ---
@@ -459,6 +522,13 @@ public class FastActionManager {
         if (AppVars.getContext() == null) return;
 
         String url = getInventoryTabUrl();
+
+        // Если у нас есть сохраненный VCode, добавляем его к URL
+        if (AppVars.VCode != null && !AppVars.VCode.isEmpty() && url.contains("get_id=56")) {
+            if (!url.contains("vcode=")) {
+                url += "&vcode=" + AppVars.VCode;
+            }
+        }
 
         Intent intent = new Intent(AppVars.ACTION_WEBVIEW_LOAD_URL);
         intent.putExtra("url", url);

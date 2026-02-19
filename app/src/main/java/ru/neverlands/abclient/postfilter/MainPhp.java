@@ -82,9 +82,8 @@ public class MainPhp {
         try {
             Document doc = Jsoup.parse(html);
             
-            // Ищем контейнер с инвентарем. Более надежный селектор, чем просто по таблицам.
-            // Предполагаем, что инвентарь находится внутри <td background="http://image.neverlands.ru/gameplay/design/i_bg_2.gif">
-            Elements inventoryContainers = doc.select("td[background=http://image.neverlands.ru/gameplay/design/i_bg_2.gif]");
+            // Ищем контейнер с инвентарем. Используем более гибкий селектор.
+            Elements inventoryContainers = doc.select("td[background*='i_bg_2.gif']");
             if (inventoryContainers.isEmpty()) {
                 return html; // Не нашли инвентарь, ничего не делаем
             }
@@ -94,18 +93,23 @@ public class MainPhp {
                 return html;
             }
 
-            Elements itemTables = inventoryContainer.select("table[cellpadding=5]");
-
-            if (itemTables.isEmpty()) {
-                return html;
-            }
-
+            // Ищем все таблицы внутри контейнера, которые могут быть предметами
+            Elements tables = inventoryContainer.select("table");
             List<InvEntry> invList = new ArrayList<>();
 
-            for (Element table : itemTables) {
-                // Проверяем, что это действительно таблица с предметом
-                if (table.html().contains("/invent/")) {
-                    invList.add(new InvEntry(table.parent().parent().parent()));
+            for (Element table : tables) {
+                // Предмет в инвентаре обычно имеет картинку из /weapon/ или /invent/
+                String tableHtml = table.html();
+                if (tableHtml.contains("/weapon/") || tableHtml.contains("/invent/")) {
+                    // В оригинальном коде брался parent().parent().parent(), 
+                    // что соответствует строке таблицы инвентаря.
+                    Element row = table;
+                    while (row != null && !row.tagName().equals("tr")) {
+                        row = row.parent();
+                    }
+                    if (row != null) {
+                        invList.add(new InvEntry(row));
+                    }
                 }
             }
 

@@ -85,9 +85,26 @@ public class UserConfig {
     public boolean AutoDig = false;
     public boolean AutoTorg = false;
     public boolean TorgActive = false;
+    public boolean DoGuamod = false;
+
+    // --- Lez AutoBoi --- //
+    public boolean LezDoAutoboi = true;
+    public boolean LezDoWaitHp = false;
+    public boolean LezDoWaitMa = false;
+    public int LezWaitHp = 100;
+    public int LezWaitMa = 100;
+    public boolean LezDoDrinkHp = false;
+    public boolean LezDoDrinkMa = true;
+    public int LezDrinkHp = 50;
+    public int LezDrinkMa = 50;
+    public boolean LezDoWinTimeout = true;
+    public LezSayType LezSay = LezSayType.No;
+    public List<LezBotsGroup> LezGroups = new ArrayList<>();
+    public LezSayType BossSay = LezSayType.No;
 
     public UserConfig() {
         // Конструктор по умолчанию
+        LezGroups.add(new LezBotsGroup(1, 0));
     }
 
     /**

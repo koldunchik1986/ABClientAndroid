@@ -1,5 +1,5 @@
 
-### 1. План портирования LezBotsClassCollection.cs
+### 1. План портирования LezBotsClassCollection.cs - [+] Реализован в LezBotsClassCollection.java
 
 Файл `LezBotsClassCollection.cs` представляет собой статическую коллекцию, которая хранит и управляет списком всех известных "классов" ботов.
 

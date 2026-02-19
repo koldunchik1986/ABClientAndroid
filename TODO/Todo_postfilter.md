@@ -16,7 +16,7 @@
 | `Filter.cs`               | Главный класс-маршрутизатор фильтров                   | `[x]`  | `[~]`      | Роутинг портирован. `preProcess` — заглушка (в C# тоже почти no-op) |
 | `ChListJs.cs`             | Фильтр для `ch_list.js` (список пользователей)         | `[x]`  | `[+]`      | Полностью портирован для Android (через AndroidBridge) |
 | `ShopEntry.cs`            | Класс-сущность предмета в магазине                     | `[x]`  | `[+]`      | Полностью портирован |
-| `MainPhp.cs`              | Основной фильтр для `main.php`                         | `[x]`  | `[~]`      | Частично: removeDoctype, vcode, inv. Не портировано: fight, wear, cure, fish и др. |
+| `MainPhp.cs`              | Основной фильтр для `main.php`                         | `[x]`  | `[~]`      | Почти FULL: vcode, inv (с группировкой), fast. Нет: fight, cure, fish. |
 | `CastleJs.cs`             | Фильтр для `castle.js`                                | `[x]`  | `[~]`      | Частично: замена document.location. C# также prepends json2 |
 | `ArenaJs.cs`              | Фильтр для `arena.js`                                 | `[x]`  | `[s]`      | Java возвращает пустой массив. C# загружает ресурс и заменяет строки |
 | `BuildingJs.cs`           | Фильтр для `building.js`                              | `[x]`  | `[s]`      | Заглушка. C# удаляет clr_chat() при ChatKeepMoving |
@@ -24,10 +24,10 @@
 | `ChMsgJs.cs`              | Фильтр для `ch_msg_v01.js` (сообщения чата)           | `[x]`  | `[s]`      | Заглушка. C# инжектирует ChatFilter, ChatUpdated, SPAN alt |
 | `ChRoomPhp.cs`            | Фильтр для `ch.php?lo=` (комнаты чата)                | `[x]`  | `[s]`      | Заглушка. Но /ch.php?lo=1 обрабатывается через RoomManager в Filter.java |
 | `CounterJs.cs`            | Фильтр для удаления счетчиков                          | `[x]`  | `[s]`      | Java возвращает пустой массив. C# возвращает no-op функцию |
-| `FightJs.cs`              | Фильтр для `fight_v*.js`                              | `[x]`  | `[s]`      | **КРИТИЧНО.** Заглушка. C# инжектирует autoselect/autoturn/autoboi (~100+ строк) |
+| `FightJs.cs`              | Фильтр для `fight_v*.js`                              | `[x]`  | `[+]`      | Полностью портировано (строковые замены и WebAppInterface) |
 | `FishAjaxPhp.cs`          | Фильтр для `fish_ajax.php`                            | `[x]`  | `[s]`      | Заглушка. C# парсит результаты рыбалки, управляет таймерами |
 | `ForumTopicJs.cs`         | Фильтр для `forum_topic.js`                           | `[x]`  | `[s]`      | Заглушка. C# удаляет аватары при LightForum |
-| `GameJs.cs`               | Фильтр для `game.js`                                  | `[x]`  | `[s]`      | **КРИТИЧНО.** Заглушка. C# модифицирует chat size, speed, фреймы |
+| `GameJs.cs`               | Фильтр для `game.js`                                  | `[x]`  | `[+]`      | Полностью портировано (строковые замены) |
 | `GamePhp.cs`              | Фильтр для `game.php`                                 | `[x]`  | `[s]`      | Заглушка. C# авто-ввод пароля, удаление DOCTYPE |
 | `HpJs.cs`                 | Фильтр для `hp.js`                                    | `[x]`  | `[s]`      | Заглушка. C# заменяет HP/MA на ShowHpMaTimers |
 | `HpmpJs.cs`               | Фильтр для `hpmp.js`                                  | `[x]`  | `[s]`      | Java возвращает пустой массив. C# генерирует JS HP/MA таймер (~50 строк) |
@@ -59,11 +59,11 @@
 | `MainPhpDarkTeleport.cs`  | Часть `MainPhp`: абилка телепорта                      | `[x]`  | `[ ]`      | Нет Java-файла |
 | `MainPhpDrink.cs`         | Часть `MainPhp`: питье                                 | `[x]`  | `[ ]`      | Нет Java-файла |
 | `MainPhpDrinkHpMa.cs`     | Часть `MainPhp`: питье HP/MP                           | `[x]`  | `[ ]`      | Нет Java-файла |
-| `MainPhpFast.cs`          | Часть `MainPhp`: быстрые действия                      | `[x]`  | `[~]`      | `FastActionManager.processMainPhp()` — основные парсеры. Нет: Elixir, Totem, AsyncPolling |
+| `MainPhpFast.cs`          | Часть `MainPhp`: быстрые действия                      | `[x]`  | `[~]`      | Почти FULL: навигация по категориям, парсинг нападалок/зелий. |
 | `MainPhpFight.cs`         | Часть `MainPhp`: логика боя                            | `[x]`  | `[ ]`      | Нет Java-файла. Есть TODO-заглушка в MainPhp.java |
 | `MainPhpFish.cs`          | Часть `MainPhp`: логика рыбалки                        | `[x]`  | `[ ]`      | Нет Java-файла |
 | `MainPhpInsHp.cs`         | Часть `MainPhp`: парсинг HP                            | `[x]`  | `[ ]`      | Нет Java-файла |
-| `MainPhpInv.cs`           | Часть `MainPhp`: инвентарь                             | `[x]`  | `[~]`      | Частично портировано в MainPhp.java (метод mainPhpInv) |
+| `MainPhpInv.cs`           | Часть `MainPhp`: инвентарь                             | `[x]`  | `[~]`      | Почти FULL: группировка, сортировка, кнопки "Продать все". |
 | `MainPhpRaz.cs`           | Часть `MainPhp`: разделка                              | `[x]`  | `[ ]`      | Нет Java-файла |
 | `MainPhpRob.cs`           | Часть `MainPhp`: воровство                             | `[x]`  | `[ ]`      | Нет Java-файла |
 | `MainPhpRobinHood.cs`     | Часть `MainPhp`: логика "Робин Гуда"                 | `[x]`  | `[ ]`      | Нет Java-файла |

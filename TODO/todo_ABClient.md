@@ -39,7 +39,7 @@
 | `Forms` | Старые формы (только HerbNavigator) | 1 | `[ ]` Не реализована |
 | `MyProfile` | Конфигурация профиля | 11 | `[~]` Частично (UserConfig портирован) |
 | `ExtMap` | Карта и навигация | 13 | `[~]` Частично (Cell, AbcCell, MapPath, Position портированы) |
-| `Lez` | ИИ боя (автобой) | 9 | `[ ]` Не реализована |
+| `Lez` | ИИ боя (автобой) | 9 | `[~]` Частично (State, Engine, ViewModel портированы) |
 | `AppControls` | WinForms контролы | 11 | `[-]` Не требует (Windows-специфика) |
 | `Helpers` | Утилиты (Crypts, Russian, etc.) | 8 | `[~]` Частично (Russian, Crypts портированы) |
 | `MyHelpers` | Утилиты (Strings, Converters, etc.) | 5 | `[~]` Частично (HelperStrings портирован) |
@@ -63,7 +63,7 @@
 | `AppTimer.cs` | Кастомный таймер | `[ ]` Не реализован |
 | `AppTimerManager.cs` | Менеджер таймеров | `[ ]` Не реализован |
 | `AutoAnswerMachine.cs` | Автоответчик | `[ ]` Не реализован |
-| `AutoboiState.cs` | Enum состояний автобоя | `[ ]` Не реализован |
+| `AutoboiState.cs` | Enum состояний автобоя | `[+]` AutoboiState.java |
 | `Bookmark.cs` | Закладки | `[ ]` Не реализован |
 | `BossContact.cs` | Контакты боссов | `[ ]` Не реализован |
 | `BossMap.cs` | Карта боссов | `[ ]` Не реализован |

@@ -21,6 +21,13 @@ public class AppVars {
     public static boolean CacheRefresh = false;
     public static boolean WaitFlash = false;
     public static String ContentMainPhp = "";
+    public static ru.neverlands.abclient.model.AutoboiState Autoboi = ru.neverlands.abclient.model.AutoboiState.AutoboiOff;
+    public static String GuamodCode = "";
+    public static String FightLink = "";
+    public static String LastBoiLog = "";
+    public static String LastBoiSostav = "";
+    public static String LastBoiTravm = "";
+    public static Date LastBoiTimer = new Date();
     public static long IdleTimer = 0;
     public static long LastMainPhp = 0;
     public static Date NextCheckNoConnection;
@@ -96,6 +103,7 @@ public class AppVars {
     public static void init(Context context) {
         AppVars.context = context;
         assetManager = context.getAssets();
+        ru.neverlands.abclient.model.LezSpellCollection.init(context);
         logsDir = context.getExternalFilesDir("Logs");
         if (logsDir != null && !logsDir.exists()) {
             logsDir.mkdirs();

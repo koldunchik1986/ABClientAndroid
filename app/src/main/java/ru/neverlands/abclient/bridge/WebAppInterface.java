@@ -267,19 +267,34 @@ public class WebAppInterface {
     @JavascriptInterface
     public void AutoSelect() {
         Log.d("WebAppInterface", "AutoSelect called");
-        // TODO: Implement logic to show best move
+        if (AppVars.mainActivity != null && AppVars.mainActivity.get() != null) {
+            AppVars.mainActivity.get().requestAutoSelect();
+        }
     }
 
     @JavascriptInterface
     public void AutoTurn() {
         Log.d("WebAppInterface", "AutoTurn called");
-        // TODO: Implement logic to perform best move
+        if (AppVars.mainActivity != null && AppVars.mainActivity.get() != null) {
+            // We will call evaluateJavascript from MainActivity to get HTML and then process it
+            AppVars.mainActivity.get().requestAutoTurn();
+        }
     }
 
     @JavascriptInterface
     public void AutoBoi() {
         Log.d("WebAppInterface", "AutoBoi called");
-        // TODO: Toggle auto-battle state
+        if (AppVars.mainActivity != null && AppVars.mainActivity.get() != null) {
+            AppVars.mainActivity.get().getFightViewModel().toggleAutoBattle();
+        }
+    }
+
+    @JavascriptInterface
+    public void processFightHtml(String html) {
+        Log.d("WebAppInterface", "processFightHtml called");
+        if (AppVars.mainActivity != null && AppVars.mainActivity.get() != null) {
+            AppVars.mainActivity.get().getFightViewModel().processFightHtml(html);
+        }
     }
 
     @JavascriptInterface
@@ -297,13 +312,13 @@ public class WebAppInterface {
     @JavascriptInterface
     public void ResetLastBoiTimer() {
         Log.d("WebAppInterface", "ResetLastBoiTimer called");
-        // TODO: Implement this
+        AppVars.LastBoiTimer = new java.util.Date();
     }
 
     @JavascriptInterface
     public String XodButtonElapsedTime() {
-        // TODO: Implement timer logic
-        return " ход (0:00) ";
+        long millis = System.currentTimeMillis() - AppVars.LastBoiTimer.getTime();
+        return " ход " + ru.neverlands.abclient.utils.ConverterUtils.timeSpanToString(millis) + " ";
     }
 
     @JavascriptInterface

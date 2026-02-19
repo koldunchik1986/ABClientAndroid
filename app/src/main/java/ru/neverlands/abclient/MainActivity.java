@@ -73,12 +73,44 @@ import ru.neverlands.abclient.utils.Chat;
 import ru.neverlands.abclient.utils.Russian;
 import ru.neverlands.abclient.webview.WebViewRequestInterceptor;
 
+import androidx.lifecycle.ViewModelProvider;
+import ru.neverlands.abclient.ui.viewmodel.FightViewModel;
+
 public class MainActivity extends AppCompatActivity implements NavigationView.OnNavigationItemSelectedListener {
     private static final String TAG = "MainActivity";
     public ActivityMainBinding binding;
     private Timer timer;
     private boolean isExiting = false;
     private boolean isRoomManagerStarted = false;
+    private FightViewModel fightViewModel;
+
+    public FightViewModel getFightViewModel() {
+        return fightViewModel;
+    }
+
+    public void requestAutoSelect() {
+        binding.appBarMain.contentMain.webView.evaluateJavascript(
+                "(function() { return document.documentElement.innerHTML; })();",
+                html -> {
+                    if (html != null && !html.equals("null")) {
+                        com.google.gson.Gson gson = new com.google.gson.Gson();
+                        String unquoted = gson.fromJson(html, String.class);
+                        fightViewModel.autoSelect(unquoted);
+                    }
+                });
+    }
+
+    public void requestAutoTurn() {
+        binding.appBarMain.contentMain.webView.evaluateJavascript(
+                "(function() { return document.documentElement.innerHTML; })();",
+                html -> {
+                    if (html != null && !html.equals("null")) {
+                        com.google.gson.Gson gson = new com.google.gson.Gson();
+                        String unquoted = gson.fromJson(html, String.class);
+                        fightViewModel.processFightHtml(unquoted);
+                    }
+                });
+    }
 
     private final BroadcastReceiver broadcastReceiver = new BroadcastReceiver() {
         @Override
@@ -149,6 +181,14 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
 
         setupWebViews();
         loadInitialUrls();
+
+        fightViewModel = new ViewModelProvider(this).get(FightViewModel.class);
+        fightViewModel.getSubmitAction().observe(this, result -> {
+            if (result != null) {
+                binding.appBarMain.contentMain.webView.evaluateJavascript("javascript:AutoSubmit('" + result + "')", null);
+                fightViewModel.onActionSubmitted();
+            }
+        });
 
         AppVars.NextCheckNoConnection = new Date(System.currentTimeMillis());
         startTimer();
@@ -514,41 +554,21 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             super.onPageFinished(view, url);
             AppLogger.write("Page loaded: " + url);
 
-            String jsFix =
-                "window.external = window.AndroidBridge;" +
-                "if (typeof top.start == 'undefined') { top.start = function() {}; }" +
-                "if (typeof window.chatlist_build == 'undefined') { window.chatlist_build = function() {}; }" +
-                "if (typeof window.get_by_id == 'undefined') { window.get_by_id = function(id) { return document.getElementById(id); }; }" +
-                "if (typeof top.save_scroll_p == 'undefined') { top.save_scroll_p = function() {}; }" +
-                "if (typeof window.ins_HP == 'undefined') { window.ins_HP = function() {}; }" +
-                "if (typeof window.cha_HP == 'undefined') { window.cha_HP = function() {}; }" +
-                "if (typeof window.slots_inv == 'undefined') { window.slots_inv = function() {}; }" +
-                "if (typeof window.compl_view == 'undefined') { window.compl_view = function() {}; }" +
-                "if (typeof window.view_t == 'undefined') { window.view_t = function() {}; }" +
-                "if (typeof top.ch_refresh_n == 'undefined') { top.ch_refresh_n = function() {}; }" +
-                "if (typeof window.ButClick == 'undefined') { window.ButClick = function() {}; }" +
-                "if (typeof top.frames == 'undefined' || !top.frames['main_top']) { " +
-                "  if (typeof top.frames == 'undefined') { top.frames = {}; } " +
-                "  if (!top.frames['ch_buttons']) { top.frames['ch_buttons'] = { set location(url) { AndroidBridge.loadFrame('ch_buttons', url); } }; } " +
-                "  if (!top.frames['ch_refr']) { top.frames['ch_refr'] = { set location(url) { AndroidBridge.loadFrame('ch_refr', url); } }; } " +
-                "  if (!top.frames['ch_list']) { top.frames['ch_list'] = { set location(url) { AndroidBridge.loadFrame('ch_list', url); } }; } " +
-                "  if (!top.frames['chmain']) { top.frames['chmain'] = { set location(url) { AndroidBridge.loadFrame('chmain', url); } }; } " +
-                "  if (!top.frames['main_top']) { top.frames['main_top'] = { " +
-                "    set location(url) { AndroidBridge.loadFrame('main_top', url); }, " +
-                "    innerHeight: 800, " +
-                "    innerWidth: 600, " +
-                "    document: { " +
-                "      write: function(s) { document.write(s); }, " +
-                "      getElementById: function(id) { return document.getElementById(id); } " +
-                "    } " +
-                "  }; } " +
-                "}" +
-                "if (top.frames && top.frames['main_top']) { top.frames['main_top'].innerHeight = 800; top.frames['main_top'].innerWidth = 600; }";
+            String jsFix = ru.neverlands.abclient.utils.HtmlUtils.getJsFix();
 
             view.evaluateJavascript(jsFix, null);
 
             if (url.endsWith("main.php")) {
                 view.evaluateJavascript("javascript:(function() { var frameset = document.getElementsByTagName('frameset')[0]; if (frameset) { frameset.rows = '*\n, 0'; } })()", null);
+                
+                // Inject fight state extractor
+                try {
+                    String extractorJs = new String(readAssetFile("js/extract_fight_state.js"));
+                    view.evaluateJavascript("javascript:" + extractorJs, null);
+                } catch (IOException e) {
+                    Log.e(TAG, "Failed to read extract_fight_state.js", e);
+                }
+
                 if (!isRoomManagerStarted) {
                     ru.neverlands.abclient.manager.RoomManager.startTracing(MainActivity.this);
                     isRoomManagerStarted = true;
@@ -623,67 +643,5 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                lowerUrl.endsWith(".png") || lowerUrl.endsWith(".swf") || lowerUrl.endsWith(".ico") ||
                lowerUrl.endsWith(".css") || lowerUrl.contains(".js") ||
                lowerUrl.contains("neverlands.ru/ch.php") || lowerUrl.contains("neverlands.ru/main.php");
-    }
-
-    private byte[] injectJsFix(byte[] body, String url, String contentType) {
-        try {
-            if (body == null || body.length == 0) {
-                Log.w(TAG, "InjectJsFix: body for " + url + " is empty!");
-                return body;
-            }
-
-            String jsFix =
-                "window.external = window.AndroidBridge;" +
-                "if (typeof top.start == 'undefined') { top.start = function() {}; }" +
-                "if (typeof window.chatlist_build == 'undefined') { window.chatlist_build = function() {}; }" +
-                "if (typeof window.get_by_id == 'undefined') { window.get_by_id = function(id) { return document.getElementById(id); }; }" +
-                "if (typeof top.save_scroll_p == 'undefined') { top.save_scroll_p = function() {}; }" +
-                "if (typeof window.ins_HP == 'undefined') { window.ins_HP = function() {}; }" +
-                "if (typeof window.cha_HP == 'undefined') { window.cha_HP = function() {}; }" +
-                "if (typeof window.slots_inv == 'undefined') { window.slots_inv = function() {}; }" +
-                "if (typeof window.compl_view == 'undefined') { window.compl_view = function() {}; }" +
-                "if (typeof window.view_t == 'undefined') { window.view_t = function() {}; }" +
-                "if (typeof top.ch_refresh_n == 'undefined') { top.ch_refresh_n = function() {}; }" +
-                "if (typeof window.ButClick == 'undefined') { window.ButClick = function() {}; }" +
-                "if (typeof top.frames == 'undefined' || !top.frames['main_top']) { " +
-                "  if (typeof top.frames == 'undefined') { top.frames = {}; } " +
-                "  if (!top.frames['ch_buttons']) { top.frames['ch_buttons'] = { set location(url) { AndroidBridge.loadFrame('ch_buttons', url); } }; } " +
-                "  if (!top.frames['ch_refr']) { top.frames['ch_refr'] = { set location(url) { AndroidBridge.loadFrame('ch_refr', url); } }; } " +
-                "  if (!top.frames['ch_list']) { top.frames['ch_list'] = { set location(url) { AndroidBridge.loadFrame('ch_list', url); } }; } " +
-                "  if (!top.frames['chmain']) { top.frames['chmain'] = { set location(url) { AndroidBridge.loadFrame('chmain', url); } }; } " +
-                "  if (!top.frames['main_top']) { top.frames['main_top'] = { " +
-                "    set location(url) { AndroidBridge.loadFrame('main_top', url); }, " +
-                "    innerHeight: 800, " +
-                "    innerWidth: 600, " +
-                "    document: { " +
-                "      write: function(s) { document.write(s); }, " +
-                "      getElementById: function(id) { return document.getElementById(id); } " +
-                "    } " +
-                "  }; } " +
-                "}" +
-                "if (top.frames && top.frames['main_top']) { top.frames['main_top'].innerHeight = 800; top.frames['main_top'].innerWidth = 600; }";
-
-            if (contentType != null && contentType.contains("text/html")) {
-                String html = new String(body, "windows-1251");
-                String fix = "<script type=\"text/javascript\">" + jsFix + "</script>";
-
-                String newHtml;
-                if (html.toLowerCase().contains("<head>")) {
-                    newHtml = html.replaceFirst("(?i)<head>", "<head>" + fix);
-                } else {
-                    newHtml = fix + html;
-                }
-                return newHtml.getBytes("windows-1251");
-            } else if (contentType != null && contentType.contains("application/javascript")) {
-                String js = new String(body, "windows-1251");
-                return (jsFix + js).getBytes("windows-1251");
-            }
-
-            return body;
-
-        } catch (Exception e) {
-            Log.e(TAG, "Failed to inject JS fix for " + url, e);
-            return body;
-        }
     }
 }

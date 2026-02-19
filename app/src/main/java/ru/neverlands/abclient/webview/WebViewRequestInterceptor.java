@@ -214,10 +214,6 @@ public class WebViewRequestInterceptor {
                 Log.d(TAG, "Filter.process returned " + processed.length + " bytes for " + urlString);
             }
 
-            // Log first 200 chars of processed HTML
-            String processedPreview = new String(processed, Charset.forName("windows-1251"));
-            Log.d(TAG, "Processed preview (" + urlString + "): " + processedPreview.substring(0, Math.min(200, processedPreview.length())));
-
             // Get Content-Type (case-insensitive)
             String contentType = null;
             List<String> ctList = getHeaderIgnoreCase(headers, "Content-Type");
@@ -227,6 +223,13 @@ public class WebViewRequestInterceptor {
             if (contentType == null || contentType.isEmpty()) {
                 contentType = "text/html; charset=windows-1251";
             }
+
+            // Inject JS fixes into the processed body
+            processed = ru.neverlands.abclient.utils.HtmlUtils.injectJsFix(processed, urlString, contentType);
+
+            // Log first 200 chars of processed HTML
+            String processedPreview = new String(processed, Charset.forName("windows-1251"));
+            Log.d(TAG, "Processed preview (" + urlString + "): " + processedPreview.substring(0, Math.min(200, processedPreview.length())));
 
             WebResourceResponse response = new WebResourceResponse(
                     getMime(contentType),

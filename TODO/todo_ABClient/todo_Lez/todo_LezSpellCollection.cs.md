@@ -1,5 +1,5 @@
 
-### 1. План портирования LezSpellCollection.cs
+### 1. План портирования LezSpellCollection.cs - [+] Реализован в LezSpellCollection.java
 
 Файл `LezSpellCollection.cs` — это статическая база данных, которая хранит всю информацию о заклинаниях и приемах, доступных в игре.
 
