@@ -20,6 +20,9 @@ backup/
 *.profile
 files/
 
+#node
+node_modules/
+
 # Generated files
 bin/
 gen/
