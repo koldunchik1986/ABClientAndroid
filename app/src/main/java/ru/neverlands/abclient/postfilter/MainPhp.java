@@ -41,11 +41,13 @@ public class MainPhp {
 
         // Логирование в файлы убрано, чтобы устранить зависания
 
-        // Обработка быстрых действий (портировано из MainPhpFast.cs)
+        // Обработка быстрых действий (портировано из MainPhp.cs строки 1429-1619)
+        // В C# FastAction обрабатывается ВНУТРИ MainPhp, а не в отдельном менеджере.
+        // Алгоритм: MainPhpFindInv → BuildRedirect на инвентарь → MainPhpIsInv → MainPhpFast → BuildRedirect на категорию
         if (AppVars.FastNeed) {
-            String fastResult = FastActionManager.processMainPhp(html);
+            byte[] fastResult = processMainPhpFast(address, html);
             if (fastResult != null) {
-                return Russian.getBytes(fastResult);
+                return fastResult;
             }
         }
 
@@ -70,6 +72,339 @@ public class MainPhp {
         android.util.Log.d(TAG, "process() returning " + result.length + " bytes for " + address);
         android.util.Log.d(TAG, "Result first 200: " + html.substring(0, Math.min(200, html.length())));
         return result;
+    }
+
+    /**
+     * Обработка FastAction внутри MainPhp (аналог C# MainPhp.cs строки 1429-1619).
+     *
+     * Алгоритм C#:
+     * 1. Определяем нужную категорию (wca=28 для свитков, wca=27 для зелий)
+     * 2. Если мы НЕ на инвентаре — MainPhpFindInv → BuildRedirect на инвентарь с фильтром
+     * 3. Если мы НА инвентаре — MainPhpFast → ищем предмет → авто-submit
+     * 4. Если предмет не найден и мы не на нужной вкладке — BuildRedirect на вкладку
+     * 5. Если мы на нужной вкладке и предмет не найден — отмена
+     *
+     * @return byte[] с результатом (HTML redirect или форма), или null если FastAction не обработан
+     */
+    private static byte[] processMainPhpFast(String address, String html) {
+        if (!AppVars.FastNeed || AppVars.FastId == null) return null;
+
+        String fastId = AppVars.FastId;
+        android.util.Log.d(TAG, "processMainPhpFast: FastId=" + fastId + ", address=" + address);
+
+        // Определяем нужный фильтр категории
+        String filter = getInventoryFilter(fastId);
+        if (filter == null) {
+            android.util.Log.w(TAG, "processMainPhpFast: неизвестный FastId=" + fastId);
+            return null;
+        }
+
+        android.util.Log.d(TAG, "processMainPhpFast: filter=" + filter
+                + ", isInv=" + mainPhpIsInv(html)
+                + ", w28_form=" + html.contains("w28_form(")
+                + ", magicreform=" + html.contains("magicreform("));
+
+        // 1. Если мы НЕ на инвентаре — ищем ссылку на инвентарь с фильтром
+        String invRedirect = mainPhpFindInv(html, filter);
+        if (invRedirect != null) {
+            android.util.Log.d(TAG, "processMainPhpFast: redirect на инвентарь: " + invRedirect);
+            return Russian.getBytes(invRedirect);
+        }
+
+        // 2. Если мы НА инвентаре — пытаемся найти предмет
+        if (mainPhpIsInv(html)) {
+            String fastHtml = FastActionManager.processMainPhp(html);
+            if (fastHtml != null) {
+                // Предмет найден! processMainPhp уже обработал FastCount
+                android.util.Log.d(TAG, "processMainPhpFast: УСПЕХ, предмет найден");
+                return Russian.getBytes(fastHtml);
+            }
+
+            // 3. Предмет не найден — может мы на неправильной вкладке?
+            if (!address.endsWith(filter.startsWith("&") ? filter.substring(1) : filter)) {
+                android.util.Log.d(TAG, "processMainPhpFast: предмет не найден, переключаем на " + filter);
+                return Filter.buildRedirect("Переключение на нужную категорию", "main.php?" + (filter.startsWith("&") ? filter.substring(1) : filter));
+            }
+
+            // 4. Мы на правильной вкладке, предмет не найден — отмена
+            android.util.Log.w(TAG, "processMainPhpFast: предмет не найден на правильной вкладке, отмена");
+            FastActionManager.fastCancel();
+            return null;
+        }
+
+        // Мы не на инвентаре и MainPhpFindInv не нашла ссылку — вероятно, нужен обычный reload
+        android.util.Log.d(TAG, "processMainPhpFast: не на инвентаре, MainPhpFindInv не нашла ссылку");
+        return null;
+    }
+
+    /**
+     * Определяет фильтр инвентаря по FastId.
+     * Аналог switch в C# MainPhp.cs строки 1436-1534
+     *
+     * @return строка фильтра (например "&im=0&wca=28") или null для неизвестного FastId
+     */
+    private static String getInventoryFilter(String fastId) {
+        if (fastId == null) return null;
+
+        switch (fastId) {
+            // Свитки и нападалки → wca=28
+            case "i_svi_001.gif":
+            case "i_svi_002.gif":
+            case "i_w28_26.gif":
+            case "i_w28_26X.gif":
+            case "i_svi_205.gif":
+            case "i_w28_24.gif":
+            case "i_w28_25.gif":
+            case "i_w28_22.gif":
+            case "i_w28_23.gif":
+            case "i_w28_28.gif":
+            case "i_svi_213.gif":
+            case "i_w28_27.gif":
+            case "i_w28_86.gif":
+                return "&im=0&wca=28";
+
+            // Зелья → wca=27
+            case "Яд":
+            case "Зелье Сильной Спины":
+            case "Зелье Невидимости":
+            case "Зелье Блаженства":
+            case "Зелье Метаболизма":
+            case "Зелье Просветления":
+            case "Зелье Сокрушительных Ударов":
+            case "Зелье Стойкости":
+            case "Зелье Недосягаемости":
+            case "Зелье Точного Попадания":
+            case "Зелье Ловких Ударов":
+            case "Зелье Мужества":
+            case "Зелье Жизни":
+            case "Зелье Лечения":
+            case "Зелье Восстановления Маны":
+            case "Зелье Энергии":
+            case "Зелье Удачи":
+            case "Зелье Силы":
+            case "Зелье Ловкости":
+            case "Зелье Гения":
+            case "Зелье Боевой Славы":
+            case "Зелье Секрет Волшебника":
+            case "Зелье Медитации":
+            case "Зелье Иммунитета":
+            case "Зелье Лечения Отравлений":
+            case "Зелье Огненного Ореола":
+            case "Зелье Колкости":
+            case "Зелье Загрубелой Кожи":
+            case "Зелье Панциря":
+            case "Зелье Человек-гора":
+            case "Зелье Скорости":
+            case "Жажда Жизни":
+            case "Ментальная Жажда":
+            case "Зелье подвижности":
+            case "Ярость Берсерка":
+            case "Зелье Хрупкости":
+            case "Зелье Мифриловый Стержень":
+            case "Зелье Соколиный взор":
+            case "Секретное Зелье":
+                return "&im=0&wca=27";
+
+            // Эликсиры → im=6
+            case "Эликсир Блаженства":
+            case "Эликсир Мгновенного Исцеления":
+            case "Эликсир Восстановления":
+                return "&im=6";
+
+            // Телепорт остров
+            case "Телепорт (Остров Туротор)":
+                return "&im=0&wca=28";
+
+            default:
+                return null;
+        }
+    }
+
+    /**
+     * Проверяет, что мы на странице инвентаря (аналог MainPhpIsInv в MainPhpDrink.cs:221-224).
+     * Инвентарь содержит ссылку <a href="?im=0"><img...
+     */
+    private static boolean mainPhpIsInv(String html) {
+        return html.contains("<a href=\"?im=0\"><img") || html.contains("<a href=?im=0><img");
+    }
+
+    /**
+     * Ищет ссылку на инвентарь в текущем HTML и генерирует redirect.
+     * Портировано из MainPhpDrink.cs — MainPhpFindInv (строки 86-219).
+     *
+     * В C# есть несколько стратегий поиска vcode:
+     * 1. view_arena() + var vcode = [...] — арена
+     * 2. view_moor()/view_taverna()/etc + var vcode = [[1,"..."]] — здания
+     * 3. Кнопка "Инвентарь" с onclick location='...'
+     * 4. JSON массив ["inv","Инвентарь","vcode"...]
+     *
+     * @param html   HTML страницы
+     * @param filter Фильтр категории (например "&im=0&wca=28")
+     * @return HTML redirect строка или null
+     */
+    private static String mainPhpFindInv(String html, String filter) {
+        // Если мы уже на инвентаре — не нужен redirect
+        if (mainPhpIsInv(html)) {
+            return null;
+        }
+
+        // Стратегия 1: view_arena() — арена
+        if (html.contains("view_arena()")) {
+            String result = mainPhpFindInvArena(html, filter);
+            if (result != null) return result;
+        }
+
+        // Стратегия 2: view_moor/taverna/magic_sch/library/teleport — здания
+        if (html.contains("view_moor()") || html.contains("view_taverna()")
+                || html.contains("view_magic_sch()") || html.contains("view_library()")
+                || html.contains("view_teleport()")) {
+            String result = mainPhpFindInvBuilding(html, filter);
+            if (result != null) return result;
+        }
+
+        // Стратегия 3: Кнопка "Инвентарь" с onclick
+        if (html.contains("Инвентарь") || html.contains("\u0418\u043D\u0432\u0435\u043D\u0442\u0430\u0440\u044C")) {
+            String result = mainPhpFindInvOld(html, filter);
+            if (result != null) return result;
+        }
+
+        // Стратегия 4: JSON ["inv","Инвентарь","vcode"...]
+        String patternEnter = "[\"inv\",\"Инвентарь\",\"";
+        int pos = html.indexOf(patternEnter);
+        if (pos == -1) {
+            // Пробуем варианты с экранированными кавычками
+            patternEnter = "[\"inv\",\"\u0418\u043D\u0432\u0435\u043D\u0442\u0430\u0440\u044C\",\"";
+            pos = html.indexOf(patternEnter);
+        }
+        if (pos != -1) {
+            pos += patternEnter.length();
+            int posEnd = html.indexOf('"', pos);
+            if (posEnd != -1) {
+                String vcodeInv = html.substring(pos, posEnd);
+                String link = "main.php?get_id=56&act=10&go=inv&vcode=" + vcodeInv + filter;
+                return buildRedirectHtml("Переключение на инвентарь", link);
+            }
+        }
+
+        // Стратегия 5: Кнопка "Вернуться" → main.php (для случая когда мы внутри инвентаря, но на другой странице)
+        if (html.contains("value=\"Вернуться\">") || html.contains("value=\"\u0412\u0435\u0440\u043D\u0443\u0442\u044C\u0441\u044F\">")) {
+            if (html.contains("onclick=\"location='../main.php'\"") || html.contains("onclick=\"location='main.php'\"")) {
+                return buildRedirectHtml("Переключение на инвентарь", "main.php");
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Стратегия поиска инвентаря на арене (view_arena).
+     * Аналог MainPhpDrink.cs строки 99-130
+     */
+    private static String mainPhpFindInvArena(String html, String filter) {
+        String patternArena = "var vcode = [";
+        int pos = html.indexOf(patternArena);
+        if (pos == -1) return null;
+
+        pos += patternArena.length();
+        int posEnd = html.indexOf(']', pos);
+        if (posEnd == -1) return null;
+
+        String vcodeargs = html.substring(pos, posEnd);
+        String[] pvcode = vcodeargs.split(",");
+        if (pvcode.length < 2) return null;
+
+        String avcode = pvcode[1].replace("\"", "").trim();
+        if (avcode.isEmpty()) return null;
+
+        String link = "main.php?get_id=56&act=10&go=inv&vcode=" + avcode + filter;
+        return buildRedirectHtml("Переключение на инвентарь", link);
+    }
+
+    /**
+     * Стратегия поиска инвентаря в зданиях (view_moor, view_taverna и т.д.).
+     * Аналог MainPhpDrink.cs строки 142-180
+     */
+    private static String mainPhpFindInvBuilding(String html, String filter) {
+        String patternArena = "var vcode = [";
+        int pos = html.indexOf(patternArena);
+        if (pos == -1) return null;
+
+        pos += patternArena.length();
+        // Ищем второй vcode в формате [1,"hash"]
+        String pattern2 = ",[1,\"";
+        pos = html.indexOf(pattern2, pos);
+        if (pos == -1) return null;
+
+        pos += pattern2.length();
+        int posEnd = html.indexOf("]", pos);
+        if (posEnd == -1) return null;
+
+        // vcode заканчивается перед последней кавычкой и скобкой
+        String avcode = html.substring(pos, posEnd - 1);
+        if (avcode.isEmpty()) return null;
+
+        String link = "main.php?get_id=56&act=10&go=inv&vcode=" + avcode + filter;
+        return buildRedirectHtml("Переключение на инвентарь", link);
+    }
+
+    /**
+     * Ищет кнопку "Инвентарь" с onclick (аналог MainPhpFindInvOld в MainPhpDrink.cs:33-84).
+     */
+    private static String mainPhpFindInvOld(String html, String filter) {
+        // Вариант 1: value="Инвентарь">
+        String s1 = "value=\"Инвентарь\">";
+        int p1 = html.indexOf(s1);
+        if (p1 == -1) {
+            s1 = "value=\"\u0418\u043D\u0432\u0435\u043D\u0442\u0430\u0440\u044C\">";
+            p1 = html.indexOf(s1);
+        }
+
+        if (p1 != -1) {
+            String onclick = "onclick=\"location='";
+            int p2 = html.lastIndexOf(onclick, p1);
+            if (p2 != -1) {
+                p2 += onclick.length();
+                int p3 = html.indexOf("'", p2);
+                if (p3 != -1) {
+                    String link = html.substring(p2, p3) + filter;
+                    return buildRedirectHtml("Переключение на инвентарь", link);
+                }
+            }
+        }
+
+        // Вариант 2: class=lbut value="Инвентарь"
+        String s1x = "class=lbut value=\"Инвентарь\"";
+        int p1x = html.indexOf(s1x);
+        if (p1x == -1) {
+            s1x = "class=lbut value=\"\u0418\u043D\u0432\u0435\u043D\u0442\u0430\u0440\u044C\"";
+            p1x = html.indexOf(s1x);
+        }
+
+        if (p1x != -1) {
+            String onclick = "onclick=\"location='";
+            int p2 = html.indexOf(onclick, p1x);
+            if (p2 != -1) {
+                p2 += onclick.length();
+                int p3 = html.indexOf("'", p2);
+                if (p3 != -1) {
+                    String link = html.substring(p2, p3) + filter;
+                    return buildRedirectHtml("Переключение на инвентарь", link);
+                }
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Генерирует HTML-страницу с JavaScript redirect (String-версия buildRedirect).
+     * Аналог BuildRedirect в Filter.cs:280-291
+     */
+    private static String buildRedirectHtml(String description, String link) {
+        return "<html><head><meta http-equiv=\"Content-Type\" content=\"text/html; charset=windows-1251\">" +
+                "<title>ABClient</title></head><body>" +
+                description +
+                "<script language=\"JavaScript\">window.location = \"" + link + "\";</script></body></html>";
     }
 
     private static String mainPhpFight(String html) {
