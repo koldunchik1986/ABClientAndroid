@@ -393,7 +393,7 @@ public class FastActionManager {
             }
             if (!validSub) continue;
 
-            // Генерируем HTML с формой авто-submit (аналог C# StringBuilder)
+            // Генерируем HTML с формой + fetch/redirect (аналог C# StringBuilder)
             return HTML_HEAD +
                     "Используем " + description + " на " + AppVars.FastNick + "..." +
                     "<form action=\"http://neverlands.ru/main.php\" method=POST name=ff>" +
@@ -405,10 +405,7 @@ public class FastActionManager {
                     "<input name=pnick type=hidden value=\"" + AppVars.FastNick + "\">" +
                     "<input name=agree type=hidden value=\"Выполнить\">" +
                     "</form>" +
-                    "<script language=\"JavaScript\">" +
-                    "console.log('ABClient: submitting form ff, action=' + document.ff.action);" +
-                    "document.ff.submit();" +
-                    "</script></body></html>";
+                    buildSubmitScript();
         }
 
         Log.w(TAG, description + " не найдена в HTML");
@@ -454,10 +451,7 @@ public class FastActionManager {
                     "<input name=pnick type=hidden value=\"" + AppVars.FastNick + "\">" +
                     "<input name=agree type=hidden value=\"Выполнить\">" +
                     "</form>" +
-                    "<script language=\"JavaScript\">" +
-                    "console.log('ABClient: submitting form ff (w28), action=' + document.ff.action);" +
-                    "document.ff.submit();" +
-                    "</script></body></html>";
+                    buildSubmitScript();
         }
 
         Log.w(TAG, description + " не найден в HTML");
@@ -504,10 +498,7 @@ public class FastActionManager {
                 "<input name=fnick type=hidden value=\"" + AppVars.FastNick + "\">" +
                 "<input name=agree type=hidden value=\"Выполнить\">" +
                 "</form>" +
-                "<script language=\"JavaScript\">" +
-                "console.log('ABClient: submitting form ff (fog), action=' + document.ff.action);" +
-                "document.ff.submit();" +
-                "</script></body></html>";
+                buildSubmitScript();
     }
 
     /**
@@ -515,8 +506,8 @@ public class FastActionManager {
      * Ищет magicreform('wuid','target','potionName','wmcode')
      */
     private static String mainPhpFastPotion(String html) {
-        String namepotion = "'" + AppVars.FastId + "'";
-        Log.d(TAG, "mainPhpFastPotion: ищем " + namepotion + " в HTML (" + html.length() + " chars)");
+        String fastId = AppVars.FastId;
+        Log.d(TAG, "mainPhpFastPotion: ищем '" + fastId + "' в HTML (" + html.length() + " chars)");
 
         // Диагностика: показать все magicreform вызовы
         int diagPos = 0;
@@ -534,8 +525,27 @@ public class FastActionManager {
         }
         Log.d(TAG, "mainPhpFastPotion: всего magicreform = " + magicCount);
 
+        // Ищем зелье среди magicreform вызовов.
+        // В C# ищется "'Зелье Сильной Спины'" (с кавычками), но на сервере зелья могут
+        // иметь префиксы (например "Превосходное Зелье Сильной Спины").
+        // Поэтому ищем FastId БЕЗ кавычек внутри контекста magicreform вызовов.
+        String wuid = null;
+        String wmcode = null;
+
+        // Стратегия 1: точное совпадение с кавычками (как в C#)
+        String namepotion = "'" + fastId + "'";
         int p0 = indexOfIgnoreCase(html, namepotion, 0);
-        if (p0 == -1) { Log.w(TAG, "Зелье не найдено: " + AppVars.FastId); return null; }
+
+        // Стратегия 2: поиск без кавычек (для "Превосходное Зелье ..." и подобных вариантов)
+        if (p0 == -1) {
+            Log.d(TAG, "mainPhpFastPotion: точное совпадение не найдено, ищем без кавычек");
+            p0 = indexOfIgnoreCase(html, fastId, 0);
+        }
+
+        if (p0 == -1) {
+            Log.w(TAG, "Зелье не найдено: " + fastId);
+            return null;
+        }
 
         int ps = html.lastIndexOf('<', p0);
         if (ps == -1) return null;
@@ -544,7 +554,10 @@ public class FastActionManager {
         if (pe == -1) return null;
 
         String chunk = html.substring(ps, pe);
-        if (indexOfIgnoreCase(chunk, "magicreform(", 0) == -1) return null;
+        if (indexOfIgnoreCase(chunk, "magicreform(", 0) == -1) {
+            Log.d(TAG, "mainPhpFastPotion: найдено имя зелья, но нет magicreform в контексте");
+            return null;
+        }
 
         String args = HelperStrings.subString(chunk, "magicreform('", "')");
         if (args == null || args.isEmpty()) return null;
@@ -552,8 +565,10 @@ public class FastActionManager {
         String[] arg = args.split("'");
         if (arg.length < 7) return null;
 
-        String wuid = arg[0];
-        String wmcode = arg[6];
+        wuid = arg[0];
+        wmcode = arg[6];
+
+        Log.d(TAG, "mainPhpFastPotion: НАЙДЕНО wuid=" + wuid + ", wmcode=" + wmcode);
 
         return HTML_HEAD +
                 "Используем " + AppVars.FastId + "..." +
@@ -565,8 +580,20 @@ public class FastActionManager {
                 "<input name=fornickname type=hidden value=\"" + AppVars.FastNick + "\">" +
                 "<input name=agree type=hidden value=\"Применить\">" +
                 "</form>" +
-                "<script language=\"JavaScript\">" +
-                "console.log('ABClient: submitting form ff (potion), action=' + document.ff.action);" +
+                buildSubmitScript();
+    }
+
+    /**
+     * Генерирует JavaScript для отправки формы через document.ff.submit().
+     *
+     * POST идёт напрямую на сервер, ответ отображается в WebView.
+     * Ответ НЕ проходит через наш Filter (shouldInterceptRequest не перехватывает POST),
+     * но содержит системные сообщения о результате действия
+     * (например "нельзя нападать на себя", "нельзя чаще раз в 5 секунд" и т.д.).
+     */
+    private static String buildSubmitScript() {
+        return "<script language=\"JavaScript\">" +
+                "console.log('ABClient: submitting form ff, action=' + document.ff.action);" +
                 "document.ff.submit();" +
                 "</script></body></html>";
     }
