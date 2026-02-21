@@ -65,12 +65,24 @@ public final class HtmlUtils {
                 "if (top.frames && top.frames['main_top']) { top.frames['main_top'].innerHeight = 800; top.frames['main_top'].innerWidth = 600; }";
     }
 
+    /**
+     * Маркер для генерируемых страниц (редиректы, формы быстрых действий).
+     * Страницы с этим маркером НЕ получают инъекцию JS-стубов,
+     * т.к. стубы могут помешать document.ff.submit() и window.location.
+     */
+    public static final String GENERATED_PAGE_MARKER = "<!--ABCLIENT_GENERATED-->";
+
     public static byte[] injectJsFix(byte[] body, String url, String contentType) {
         try {
             if (body == null || body.length == 0) return body;
             String jsFix = getJsFix();
             if (contentType != null && contentType.contains("text/html")) {
                 String html = Russian.getString(body);
+                // НЕ инжектируем стубы в наши генерируемые страницы (формы, редиректы).
+                // Они содержат document.ff.submit() или window.location, и стубы могут помешать.
+                if (html.contains(GENERATED_PAGE_MARKER)) {
+                    return body;
+                }
                 String fix = "<script type=\"text/javascript\">" + jsFix + "</script>";
                 String newHtml = html.toLowerCase().contains("<head>") ? html.replaceFirst("(?i)<head>", "<head>" + fix) : fix + html;
                 return Russian.getBytes(newHtml);

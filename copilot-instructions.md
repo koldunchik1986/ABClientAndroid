@@ -75,6 +75,11 @@
     | `[FileName2.cs]` | [Краткое описание]                     | `[x]` Проанализирован         
     ```
 
+#### ВАЖНО: Алгоритм размещения TODO-анализа
+- Если исходный файл (например, RoomManager.cs) находится в **корне** папки ABClient, то соответствующий TODO-файл размещается в корне `TODO/todo_ABClient/` с именем `todo_RoomManager.cs.md`.
+- Если исходный файл находится в подпапке (например, ABClient/Lez/LezFight.cs), то TODO-файл размещается в `TODO/todo_ABClient/Lez/todo_LezFight.cs.md`.
+- Не создавать лишних подпапок для файлов из корня ABClient.
+
 ### Шаг 2: Обновление сводного файла проекта (`todo_ProjectName.md`)
 
 1.  **Расположение:** `TODO\todo_ProjectName.md` (например, `TODO\todo_ABClient.md`).

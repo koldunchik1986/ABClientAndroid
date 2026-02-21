@@ -9,7 +9,16 @@
       "Bash(adb shell:*)",
       "Bash(adb version:*)",
       "Bash(echo:*)",
-      "Bash(iconv:*)"
+      "Bash(iconv:*)",
+      "Bash(powershell -Command \"Get-Content Logs/logcat.txt -Encoding Unicode\")",
+      "Bash(Select-Object -Skip 2405)",
+      "Bash(Select-Object -First 40)",
+      "Bash(powershell -Command \"\\(Get-Content Logs/logcat.txt -Encoding Unicode\\)[2405..2445]\")",
+      "Bash(python:*)",
+      "Bash(file:*)",
+      "Bash(grep fast\\\\|Fast\\\\|MainPhp\\\\|reload:*)",
+      "Bash(head:*)",
+      "Bash(node:*)"
     ]
   }
 }

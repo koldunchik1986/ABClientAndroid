@@ -6,6 +6,7 @@ import android.util.Log;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 
 import ru.neverlands.abclient.utils.AppVars;
+import ru.neverlands.abclient.utils.HtmlUtils;
 import ru.neverlands.abclient.utils.HelperStrings;
 
 /**
@@ -24,8 +25,10 @@ import ru.neverlands.abclient.utils.HelperStrings;
 public class FastActionManager {
     private static final String TAG = "FastActionManager";
 
-    // Стандартная HTML-шапка для генерируемых страниц (аналог HelperErrors.Head() в C#)
-    private static final String HTML_HEAD = "<html><head><meta http-equiv=\"Content-Type\" " +
+    // Стандартная HTML-шапка для генерируемых страниц (аналог HelperErrors.Head() в C#).
+    // Содержит GENERATED_PAGE_MARKER чтобы injectJsFix НЕ добавлял стубы в эти страницы.
+    private static final String HTML_HEAD = HtmlUtils.GENERATED_PAGE_MARKER +
+            "<html><head><meta http-equiv=\"Content-Type\" " +
             "content=\"text/html; charset=windows-1251\"></head><body>";
 
     // --- Часть 1: Управление (из FormMainFast.cs) ---
@@ -393,15 +396,19 @@ public class FastActionManager {
             // Генерируем HTML с формой авто-submit (аналог C# StringBuilder)
             return HTML_HEAD +
                     "Используем " + description + " на " + AppVars.FastNick + "..." +
-                    "<form action=main.php method=POST name=ff>" +
+                    "<form action=\"http://neverlands.ru/main.php\" method=POST name=ff>" +
                     "<input name=post_id type=hidden value=\"8\">" +
                     "<input name=vcode type=hidden value=\"" + vcode + "\">" +
                     "<input name=wuid type=hidden value=\"" + wuid + "\">" +
                     "<input name=wsubid type=hidden value=\"" + wsubid + "\">" +
                     "<input name=wsolid type=hidden value=\"" + wsolid + "\">" +
                     "<input name=pnick type=hidden value=\"" + AppVars.FastNick + "\">" +
+                    "<input name=agree type=hidden value=\"Выполнить\">" +
                     "</form>" +
-                    "<script language=\"JavaScript\">document.ff.submit();</script></body></html>";
+                    "<script language=\"JavaScript\">" +
+                    "console.log('ABClient: submitting form ff, action=' + document.ff.action);" +
+                    "document.ff.submit();" +
+                    "</script></body></html>";
         }
 
         Log.w(TAG, description + " не найдена в HTML");
@@ -438,15 +445,19 @@ public class FastActionManager {
 
             return HTML_HEAD +
                     "Применяем " + description + " " + AppVars.FastNick + "..." +
-                    "<form action=main.php method=POST name=ff>" +
+                    "<form action=\"http://neverlands.ru/main.php\" method=POST name=ff>" +
                     "<input name=post_id type=hidden value=\"25\">" +
                     "<input name=vcode type=hidden value=\"" + vcode + "\">" +
                     "<input name=wuid type=hidden value=\"" + wuid + "\">" +
                     "<input name=wsubid type=hidden value=\"" + wsubid + "\">" +
                     "<input name=wsolid type=hidden value=\"" + wsolid + "\">" +
                     "<input name=pnick type=hidden value=\"" + AppVars.FastNick + "\">" +
+                    "<input name=agree type=hidden value=\"Выполнить\">" +
                     "</form>" +
-                    "<script language=\"JavaScript\">document.ff.submit();</script></body></html>";
+                    "<script language=\"JavaScript\">" +
+                    "console.log('ABClient: submitting form ff (w28), action=' + document.ff.action);" +
+                    "document.ff.submit();" +
+                    "</script></body></html>";
         }
 
         Log.w(TAG, description + " не найден в HTML");
@@ -484,15 +495,19 @@ public class FastActionManager {
 
         return HTML_HEAD +
                 "Используем Свиток Искажающего Тумана..." +
-                "<form action=main.php method=POST name=ff>" +
+                "<form action=\"http://neverlands.ru/main.php\" method=POST name=ff>" +
                 "<input name=post_id type=hidden value=\"44\">" +
                 "<input name=uid type=hidden value=\"" + wuid + "\">" +
                 "<input name=mid type=hidden value=\"" + wmid + "\">" +
                 "<input name=curs type=hidden value=\"" + wmsolid + "\">" +
                 "<input name=vcode type=hidden value=\"" + wmcode + "\">" +
                 "<input name=fnick type=hidden value=\"" + AppVars.FastNick + "\">" +
+                "<input name=agree type=hidden value=\"Выполнить\">" +
                 "</form>" +
-                "<script language=\"JavaScript\">document.ff.submit();</script></body></html>";
+                "<script language=\"JavaScript\">" +
+                "console.log('ABClient: submitting form ff (fog), action=' + document.ff.action);" +
+                "document.ff.submit();" +
+                "</script></body></html>";
     }
 
     /**
@@ -542,14 +557,18 @@ public class FastActionManager {
 
         return HTML_HEAD +
                 "Используем " + AppVars.FastId + "..." +
-                "<form action=main.php method=POST name=ff>" +
+                "<form action=\"http://neverlands.ru/main.php\" method=POST name=ff>" +
                 "<input name=magicrestart type=hidden value=\"1\">" +
                 "<input name=magicreuid type=hidden value=\"" + wuid + "\">" +
                 "<input name=vcode type=hidden value=\"" + wmcode + "\">" +
                 "<input name=post_id type=hidden value=\"46\">" +
                 "<input name=fornickname type=hidden value=\"" + AppVars.FastNick + "\">" +
+                "<input name=agree type=hidden value=\"Применить\">" +
                 "</form>" +
-                "<script language=\"JavaScript\">document.ff.submit();</script></body></html>";
+                "<script language=\"JavaScript\">" +
+                "console.log('ABClient: submitting form ff (potion), action=' + document.ff.action);" +
+                "document.ff.submit();" +
+                "</script></body></html>";
     }
 
     // --- Утилиты ---

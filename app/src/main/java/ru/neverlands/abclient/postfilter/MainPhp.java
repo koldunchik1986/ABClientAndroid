@@ -401,7 +401,8 @@ public class MainPhp {
      * Аналог BuildRedirect в Filter.cs:280-291
      */
     private static String buildRedirectHtml(String description, String link) {
-        return "<html><head><meta http-equiv=\"Content-Type\" content=\"text/html; charset=windows-1251\">" +
+        return ru.neverlands.abclient.utils.HtmlUtils.GENERATED_PAGE_MARKER +
+                "<html><head><meta http-equiv=\"Content-Type\" content=\"text/html; charset=windows-1251\">" +
                 "<title>ABClient</title></head><body>" +
                 description +
                 "<script language=\"JavaScript\">window.location = \"" + link + "\";</script></body></html>";

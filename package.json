@@ -1,0 +1,6 @@
+{
+  "dependencies": {
+    "@heyputer/puter.js": "^2.2.10",
+    "openai": "^6.22.0"
+  }
+}

@@ -170,7 +170,8 @@ public class Filter {
     }
 
     public static byte[] buildRedirect(String description, String link) {
-        String html = "<html><head><meta http-equiv=\"Content-Type\" content=\"text/html; charset=windows-1251\"><title>ABClient</title></head><body>" +
+        String html = ru.neverlands.abclient.utils.HtmlUtils.GENERATED_PAGE_MARKER +
+                      "<html><head><meta http-equiv=\"Content-Type\" content=\"text/html; charset=windows-1251\"><title>ABClient</title></head><body>" +
                       description +
                       "<script language=\"JavaScript\">window.location = \"" + link + "\";</script></body></html>";
         return Russian.getBytes(html);
