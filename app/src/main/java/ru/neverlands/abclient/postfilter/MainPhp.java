@@ -111,8 +111,23 @@ public class MainPhp {
             return Russian.getBytes(invRedirect);
         }
 
-        // 2. Если мы НА инвентаре — пытаемся найти предмет
+        // 2. Если мы НА инвентаре — проверяем категорию и ищем предмет
         if (mainPhpIsInv(html)) {
+            String filterClean = filter.startsWith("&") ? filter.substring(1) : filter;
+
+            // 2a. Сначала проверяем, на правильной ли мы вкладке категории.
+            // Если address не содержит нужный фильтр (wca=28/wca=27),
+            // перенаправляем на нужную категорию ПЕРЕД поиском предмета.
+            // Это критично при 500+ предметах в инвентаре — поиск по всему
+            // HTML (695KB) вместо отфильтрованной страницы (28KB) слишком медленный.
+            if (!address.contains(filterClean)) {
+                android.util.Log.d(TAG, "processMainPhpFast: на инвентаре, но не на нужной категории ("
+                        + filterClean + "), переключаем");
+                return Filter.buildRedirect("Переключение на нужную категорию",
+                        "main.php?" + filterClean);
+            }
+
+            // 2b. Мы на правильной вкладке — ищем предмет
             String fastHtml = FastActionManager.processMainPhp(html);
             if (fastHtml != null) {
                 // Предмет найден! processMainPhp уже обработал FastCount
@@ -120,14 +135,9 @@ public class MainPhp {
                 return Russian.getBytes(fastHtml);
             }
 
-            // 3. Предмет не найден — может мы на неправильной вкладке?
-            if (!address.endsWith(filter.startsWith("&") ? filter.substring(1) : filter)) {
-                android.util.Log.d(TAG, "processMainPhpFast: предмет не найден, переключаем на " + filter);
-                return Filter.buildRedirect("Переключение на нужную категорию", "main.php?" + (filter.startsWith("&") ? filter.substring(1) : filter));
-            }
-
-            // 4. Мы на правильной вкладке, предмет не найден — отмена
-            android.util.Log.w(TAG, "processMainPhpFast: предмет не найден на правильной вкладке, отмена");
+            // 3. Мы на правильной вкладке, предмет не найден — отмена
+            android.util.Log.w(TAG, "processMainPhpFast: предмет не найден на правильной вкладке ("
+                    + filterClean + "), отмена");
             FastActionManager.fastCancel();
             return null;
         }
