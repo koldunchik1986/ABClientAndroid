@@ -357,11 +357,14 @@ public class ContactsActivity extends AppCompatActivity implements ContactsAdapt
 
     private void handleInfoClick(Contact contact) {
         try {
-            Intent intent = new Intent(this, PinfoActivity.class);
             String encodedNick = URLEncoder.encode(contact.nick, "windows-1251");
             String url = "http://neverlands.ru/pinfo.cgi?" + encodedNick;
-            intent.putExtra("url", url);
-            startActivity(intent);
+            
+            Intent resultIntent = new Intent();
+            resultIntent.putExtra("open_pinfo_url", url);
+            resultIntent.putExtra("open_pinfo_title", contact.nick);
+            setResult(RESULT_OK, resultIntent);
+            finish();
         } catch (Exception e) {
             e.printStackTrace();
             Toast.makeText(this, "Ошибка кодирования URL", Toast.LENGTH_SHORT).show();

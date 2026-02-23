@@ -79,6 +79,7 @@ import ru.neverlands.abclient.ui.viewmodel.FightViewModel;
 
 public class MainActivity extends AppCompatActivity implements NavigationView.OnNavigationItemSelectedListener {
     private static final String TAG = "MainActivity";
+    private static final int REQUEST_CODE_CONTACTS = 1001;
     public ActivityMainBinding binding;
     private Timer timer;
     private boolean isExiting = false;
@@ -345,6 +346,18 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     }
 
     @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == REQUEST_CODE_CONTACTS && resultCode == RESULT_OK && data != null) {
+            String url = data.getStringExtra("open_pinfo_url");
+            String title = data.getStringExtra("open_pinfo_title");
+            if (url != null && tabManager != null) {
+                tabManager.openTab(url, title != null ? title : "PINFO");
+            }
+        }
+    }
+
+    @Override
     protected void onDestroy() {
         ru.neverlands.abclient.utils.DebugLogger.log("MainActivity: onDestroy() called.");
         stopTimer();
@@ -466,7 +479,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         } else if (id == R.id.nav_settings) {
         } else if (id == R.id.nav_contacts) {
             Intent intent = new Intent(this, ContactsActivity.class);
-            startActivity(intent);
+            startActivityForResult(intent, REQUEST_CODE_CONTACTS);
         } else if (id == R.id.nav_logs) {
             Intent intent = new Intent(this, LogsActivity.class);
             startActivity(intent);
