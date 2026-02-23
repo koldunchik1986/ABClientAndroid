@@ -1,6 +1,8 @@
 package ru.neverlands.abclient.manager;
 
 import android.annotation.SuppressLint;
+import android.content.ClipData;
+import android.content.ClipboardManager;
 import android.content.Context;
 import android.util.Log;
 import android.view.LayoutInflater;
@@ -11,9 +13,11 @@ import android.webkit.WebView;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebResourceResponse;
 import android.webkit.WebViewClient;
+import android.widget.Button;
 import android.widget.FrameLayout;
 import android.widget.ImageButton;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import com.google.android.material.tabs.TabLayout;
 
@@ -34,18 +38,27 @@ import ru.neverlands.abclient.webview.WebViewRequestInterceptor;
 public class TabManager {
     private static final String TAG = "TabManager";
 
+    /** Типы вкладок для определения набора кнопок */
+    public enum TabType {
+        FORUM,    // Форум: Назад, Обновить, Копировать URL
+        PINFO,    // PINFO: Обновить, Добавить в контакты, Закрыть
+        OTHER     // Другие: только закрытие
+    }
+
     /** Информация о вспомогательной вкладке */
     public static class TabInfo {
         public String title;
         public String url;
         public WebView webView;
         public View contentView; // корневой View вкладки
+        public TabType tabType;  // тип вкладки для определения кнопок
 
-        public TabInfo(String title, String url, WebView webView, View contentView) {
+        public TabInfo(String title, String url, WebView webView, View contentView, TabType tabType) {
             this.title = title;
             this.url = url;
             this.webView = webView;
             this.contentView = contentView;
+            this.tabType = tabType;
         }
     }
 
@@ -173,8 +186,12 @@ public class TabManager {
         // =========================================================================================
 
         // Создаём TabInfo
-        TabInfo tabInfo = new TabInfo(title, url, webView, contentView);
+        TabType tabType = determineTabType(url, title);
+        TabInfo tabInfo = new TabInfo(title, url, webView, contentView, tabType);
         secondaryTabs.add(tabInfo);
+
+        // Настраиваем кнопки панели действий
+        setupActionButtons(contentView, tabInfo);
 
         // Добавляем кастомный Tab в TabLayout
         TabLayout.Tab newTab = tabLayout.newTab();
@@ -183,6 +200,109 @@ public class TabManager {
 
         // Переключаемся на новую вкладку
         tabLayout.selectTab(newTab);
+    }
+
+    /**
+     * Определить тип вкладки по URL и заголовку.
+     */
+    private TabType determineTabType(String url, String title) {
+        if (url != null && url.contains("forum.neverlands.ru")) {
+            return TabType.FORUM;
+        }
+        if ("PINFO".equals(title) || (url != null && url.contains("pinfo"))) {
+            return TabType.PINFO;
+        }
+        return TabType.OTHER;
+    }
+
+    /**
+     * Настроить кнопки панели действий в зависимости от типа вкладки.
+     */
+    private void setupActionButtons(View contentView, TabInfo tabInfo) {
+        View actionBar = contentView.findViewById(R.id.action_buttons_bar);
+        if (actionBar == null) {
+            Log.w(TAG, "setupActionButtons: action bar not found");
+            return;
+        }
+
+        Button btn1 = actionBar.findViewById(R.id.action_button_1);
+        Button btn2 = actionBar.findViewById(R.id.action_button_2);
+        Button btn3 = actionBar.findViewById(R.id.action_button_3);
+
+        switch (tabInfo.tabType) {
+            case FORUM:
+                // Форум: Назад, Обновить, Копировать URL
+                btn1.setText("Назад");
+                btn1.setOnClickListener(v -> {
+                    if (tabInfo.webView != null && tabInfo.webView.canGoBack()) {
+                        tabInfo.webView.goBack();
+                    }
+                });
+
+                btn2.setText("Обновить");
+                btn2.setOnClickListener(v -> {
+                    if (tabInfo.webView != null) {
+                        tabInfo.webView.reload();
+                    }
+                });
+
+                btn3.setText("Копировать URL");
+                btn3.setOnClickListener(v -> {
+                    if (tabInfo.url != null) {
+                        copyToClipboard(tabInfo.url);
+                    }
+                });
+                break;
+
+            case PINFO:
+                // PINFO: Обновить, Добавить в контакты, Закрыть
+                btn1.setText("Обновить");
+                btn1.setOnClickListener(v -> {
+                    if (tabInfo.webView != null) {
+                        tabInfo.webView.reload();
+                    }
+                });
+
+                btn2.setText("В контакты");
+                btn2.setOnClickListener(v -> {
+                    addToContacts(tabInfo.title);
+                });
+
+                btn3.setText("Закрыть");
+                btn3.setOnClickListener(v -> {
+                    closeCurrentTab();
+                });
+                break;
+
+            case OTHER:
+            default:
+                // Для других вкладок - только кнопка закрытия
+                btn1.setVisibility(View.GONE);
+                btn2.setVisibility(View.GONE);
+                btn3.setText("Закрыть");
+                btn3.setOnClickListener(v -> {
+                    closeCurrentTab();
+                });
+                break;
+        }
+    }
+
+    /**
+     * Скопировать текст в буфер обмена.
+     */
+    private void copyToClipboard(String text) {
+        ClipboardManager clipboard = (ClipboardManager) context.getSystemService(Context.CLIPBOARD_SERVICE);
+        ClipData clip = ClipData.newPlainText("URL", text);
+        clipboard.setPrimaryClip(clip);
+        Toast.makeText(context, "URL скопирован в буфер", Toast.LENGTH_SHORT).show();
+    }
+
+    /**
+     * Добавить игрока в контакты (заглушка - требует реализации ContactManager).
+     */
+    private void addToContacts(String playerName) {
+        Toast.makeText(context, "Добавлен в контакты: " + playerName, Toast.LENGTH_SHORT).show();
+        Log.d(TAG, "addToContacts: " + playerName);
     }
 
     /**
@@ -350,6 +470,12 @@ public class TabManager {
             @Override
             public boolean shouldOverrideUrlLoading(WebView view, String url) {
                 Log.d(TAG, "shouldOverrideUrlLoading secondary: " + url);
+                
+                // Обновляем URL для форума при навигации
+                if (url != null && url.indexOf("forum.neverlands.ru") != -1) {
+                    updateTabUrl(view, url);
+                }
+                
                 // Перехватываем не форумные ссылки для открытия в новой вкладке
                 if (url != null && 
                     url.indexOf("forum.neverlands.ru") == -1 &&
@@ -377,10 +503,46 @@ public class TabManager {
             public void onPageFinished(WebView view, String url) {
                 super.onPageFinished(view, url);
                 Log.d(TAG, "onPageFinished secondary: " + url);
+                
+                // Для форума НЕ обновляем URL здесь, т.к. shouldOverrideUrlLoading уже делает это корректно
+                // Для остальных - обновляем
+                String currentUrl = view.getUrl();
+                if (currentUrl != null && !currentUrl.isEmpty()) {
+                    TabInfo tabInfo = findTabByWebView(view);
+                    if (tabInfo != null && tabInfo.tabType != TabType.FORUM) {
+                        updateTabUrl(view, currentUrl);
+                    }
+                }
+                
                 // Инъекция JavaScript для перехвата кликов по ссылкам
                 injectClickInterceptor(view);
             }
         });
+    }
+
+    /**
+     * Найти TabInfo по WebView.
+     */
+    private TabInfo findTabByWebView(WebView webView) {
+        for (TabInfo tab : secondaryTabs) {
+            if (tab.webView == webView) {
+                return tab;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Обновить URL вкладки при навигации.
+     */
+    private void updateTabUrl(WebView webView, String url) {
+        for (TabInfo tab : secondaryTabs) {
+            if (tab.webView == webView) {
+                tab.url = url;
+                Log.d(TAG, "updateTabUrl: обновлен URL для вкладки " + tab.title + " -> " + url);
+                break;
+            }
+        }
     }
     
     /**

@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Панель кнопок действий для вспомогательных вкладок -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/action_buttons_bar"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="horizontal"
+    android:background="@color/tab_button_bar_background"
+    android:padding="8dp"
+    android:gravity="center">
+
+    <!-- Кнопка 1 -->
+    <Button
+        android:id="@+id/action_button_1"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:layout_marginEnd="4dp"
+        android:textSize="12sp"
+        android:minHeight="40dp" />
+
+    <!-- Кнопка 2 -->
+    <Button
+        android:id="@+id/action_button_2"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:layout_marginStart="4dp"
+        android:layout_marginEnd="4dp"
+        android:textSize="12sp"
+        android:minHeight="40dp" />
+
+    <!-- Кнопка 3 -->
+    <Button
+        android:id="@+id/action_button_3"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:layout_marginStart="4dp"
+        android:textSize="12sp"
+        android:minHeight="40dp" />
+
+</LinearLayout>

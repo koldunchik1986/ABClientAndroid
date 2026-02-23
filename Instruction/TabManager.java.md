@@ -22,6 +22,17 @@
 - `url` (String) - URL страницы
 - `webView` (WebView) - WebView для отображения контента
 - `contentView` (View) - корневой View вкладки
+- `tabType` (TabType) - тип вкладки для определения набора кнопок
+
+### Вложенный enum: TabType
+
+Определяет тип вкладки для настройки кнопок панели действий.
+
+| Значение | Описание | Кнопки |
+|----------|----------|--------|
+| `FORUM` | Вкладка форума | Назад, Обновить, Копировать URL |
+| `PINFO` | Вкладка информации о персонаже | Обновить, В контакты, Закрыть |
+| `OTHER` | Другие вкладки | Только Закрыть |
 
 ### Поля класса
 
@@ -80,12 +91,20 @@ public void openTab(String url, String title)
    - добавление в `secondaryContainer`
    - загрузка URL
 
-5. **Создание кастомного вида Tab:**
+5. **Определение типа вкладки** - метод `determineTabType()`
+   - `FORUM` - если URL содержит `forum.neverlands.ru`
+   - `PINFO` - если title = "PINFO" или URL содержит `pinfo`
+   - `OTHER` - для всех остальных
+
+6. **Настройка кнопок панели действий** - метод `setupActionButtons()`
+   - В зависимости от типа вкладки настраиваются соответствующие кнопки
+
+7. **Создание кастомного вида Tab:**
    - inflate `R.layout.tab_item_with_close`
    - установка заголовка
    - обработчик закрытия с динамическим поиском позиции
 
-6. **Добавление в TabLayout** и переключение на новую вкладку
+8. **Добавление в TabLayout** и переключение на новую вкладку
 
 ---
 
@@ -226,6 +245,73 @@ public void destroyAll()
 
 ---
 
+### Метод: determineTabType()
+
+**Сигнатура:**
+```java
+private TabType determineTabType(String url, String title)
+```
+
+**Назначение:** Определить тип вкладки по URL и заголовку для настройки кнопок панели действий.
+
+**Логика:**
+- `FORUM` - если URL содержит `forum.neverlands.ru`
+- `PINFO` - если title = "PINFO" или URL содержит `pinfo`
+- `OTHER` - для всех остальных случаев
+
+---
+
+### Метод: setupActionButtons()
+
+**Сигнатура:**
+```java
+private void setupActionButtons(View contentView, TabInfo tabInfo)
+```
+
+**Назначение:** Настроить кнопки панели действий в зависимости от типа вкладки.
+
+**Для FORUM:**
+- Кнопка 1: "Назад" → `webView.goBack()`
+- Кнопка 2: "Обновить" → `webView.reload()`
+- Кнопка 3: "Копировать URL" → копирование URL в буфер обмена
+
+**Для PINFO:**
+- Кнопка 1: "Обновить" → `webView.reload()`
+- Кнопка 2: "В контакты" → добавление игрока в контакты
+- Кнопка 3: "Закрыть" → закрытие текущей вкладки
+
+**Для OTHER:**
+- Кнопки 1, 2 скрыты
+- Кнопка 3: "Закрыть" → закрытие текущей вкладки
+
+---
+
+### Метод: copyToClipboard()
+
+**Сигнатура:**
+```java
+private void copyToClipboard(String text)
+```
+
+**Назначение:** Скопировать текст в буфер обмена устройства.
+
+**Использование:** Для кнопки "Копировать URL" на вкладках форума.
+
+---
+
+### Метод: addToContacts()
+
+**Сигнатура:**
+```java
+private void addToContacts(String playerName)
+```
+
+**Назначение:** Добавить игрока в контакты.
+
+**Примечание:** В текущей реализации - заглушка (Toast-сообщение). Требует интеграции с ContactManager.
+
+---
+
 ### Методы-геттеры
 
 | Метод | Назначение |
@@ -237,6 +323,8 @@ public void destroyAll()
 
 ### Android SDK
 - `android.content.Context`
+- `android.content.ClipData`
+- `android.content.ClipboardManager`
 - `android.annotation.SuppressLint`
 - `android.util.Log`
 - `android.view.LayoutInflater`
@@ -247,7 +335,9 @@ public void destroyAll()
 - `android.webkit.WebResourceRequest`
 - `android.webkit.WebResourceResponse`
 - `android.webkit.WebViewClient`
+- `android.widget.Button`
 - `android.widget.FrameLayout`
+- `android.widget.Toast`
 - `android.widget.ImageButton`
 - `android.widget.TextView`
 - `com.google.android.material.tabs.TabLayout`
@@ -279,6 +369,28 @@ for (int i = 0; i < tabLayout.getTabCount(); i++) {
 }
 ```
 
+### Добавление панели кнопок действий
+
+**Описание:** На каждой вспомогательной вкладке добавлена панель кнопок (аналог функционала ПК-версии). Набор кнопок зависит от типа вкладки:
+
+**Для вкладок форума:**
+- Кнопка 1: "Назад" - переход на предыдущую страницу в истории WebView
+- Кнопка 2: "Обновить" - перезагрузка текущей страницы
+- Кнопка 3: "Копировать URL" - копирование текущего URL в буфер обмена
+
+**Для вкладок PINFO:**
+- Кнопка 1: "Обновить" - перезагрузка текущей страницы
+- Кнопка 2: "В контакты" - добавление персонажа в контакты (заглушка)
+- Кнопка 3: "Закрыть" - закрытие текущей вкладки
+
+**Для других вкладок:**
+- Только кнопка 3: "Закрыть"
+
+**Файлы:**
+- `action_buttons_bar.xml` - layout панели кнопок
+- `tab_secondary.xml` - модифицирован для включения панели кнопок
+- `colors.xml` - добавлен цвет `tab_button_bar_background`
+
 ## Связь с другими компонентами
 
 | Компонент | Взаимодействие |
@@ -286,5 +398,8 @@ for (int i = 0; i < tabLayout.getTabCount(); i++) {
 | `MainActivity` | Создает экземпляр TabManager, вызывает `openTab()`, `closeCurrentTab()`, `destroyAll()` |
 | `WebAppInterface` | Предоставляет метод `openInNewTab()` для JS-моста |
 | `WebViewRequestInterceptor` | Перехватывает запросы для фильтрации/модификации |
-| `R.layout.tab_secondary` | Layout для содержимого вспомогательной вкладки |
+| `R.layout.tab_secondary` | Layout для содержимого вспомогательной вкладки (включает панель кнопок) |
 | `R.layout.tab_item_with_close` | Layout для кастомного Tab с кнопкой закрытия |
+| `R.layout.action_buttons_bar` | Layout для панели кнопок действий (Назад, Обновить, Копировать URL и др.) |
+| `R.color.tab_button_bar_background` | Цвет фона панели кнопок |
+| `ContactManager` (заглушка) | Интерфейс для добавления игроков в контакты |
