@@ -17,6 +17,7 @@ import android.widget.TextView;
 
 import com.google.android.material.tabs.TabLayout;
 
+import java.net.URLDecoder;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -90,6 +91,24 @@ public class TabManager {
      * @param title Заголовок вкладки
      */
     public void openTab(String url, String title) {
+        // ==================== ДЕКОДИРОВАНИЕ КИРИЛЛИЧЕСКИХ НИКОВ (внутри TabManager) ====================
+        // Аналог NickDecode из HelperConverters.cs и openInNewTab из MainActivity
+        if ("PINFO".equals(title) && url != null) {
+            try {
+                String decoded = URLDecoder.decode(url, "windows-1251");
+                int idx = decoded.indexOf("pinfo.cgi?");
+                if (idx != -1) {
+                    String nick = decoded.substring(idx + 10);
+                    nick = nick.replace("|", " ").replace("%20", " ").replace("%2B", "+");
+                    title = nick;
+                }
+            } catch (Exception e) {
+                Log.e(TAG, "Error decoding nick", e);
+                title = "PINFO"; // fallback
+            }
+        }
+        // =================================================================================================
+
         // Нормализуем URL (убираем www для корректного сравнения)
         String normalizedUrl = normalizeUrl(url);
         
@@ -132,11 +151,26 @@ public class TabManager {
         ImageButton closeButton = tabView.findViewById(R.id.tab_item_close);
         
         titleView.setText(title);
-        final int tabPosition = secondaryTabs.size() + 1;
+
+        // ==================== ИСПРАВЛЕНИЕ БАГА С КНОПКАМИ ЗАКРЫТИЯ ====================
+        // Кнопка закрытия теперь всегда находит правильную позицию даже после закрытия других вкладок
+        final View finalTabView = tabView; // захватываем ссылку на сам View
         closeButton.setOnClickListener(v -> {
-            Log.d(TAG, "Клик по кнопке закрытия вкладки " + tabPosition);
-            closeTab(tabPosition);
+            Log.d(TAG, "Клик по кнопке закрытия вкладки");
+            // Ищем текущую позицию по customView
+            int position = -1;
+            for (int i = 0; i < tabLayout.getTabCount(); i++) {
+                TabLayout.Tab tab = tabLayout.getTabAt(i);
+                if (tab != null && tab.getCustomView() == finalTabView) {
+                    position = i;
+                    break;
+                }
+            }
+            if (position > 0) {
+                closeTab(position);
+            }
         });
+        // =========================================================================================
 
         // Создаём TabInfo
         TabInfo tabInfo = new TabInfo(title, url, webView, contentView);
@@ -314,6 +348,32 @@ public class TabManager {
             }
             
             @Override
+            public boolean shouldOverrideUrlLoading(WebView view, String url) {
+                Log.d(TAG, "shouldOverrideUrlLoading secondary: " + url);
+                // Перехватываем не форумные ссылки для открытия в новой вкладке
+                if (url != null && 
+                    url.indexOf("forum.neverlands.ru") == -1 &&
+                    (url.indexOf("pinfo") != -1 || 
+                     url.indexOf("ch.php") != -1 ||
+                     url.indexOf("log.php") != -1 ||
+                     url.indexOf("fight") != -1 ||
+                     url.indexOf("pname") != -1 ||
+                     url.indexOf("pbots") != -1)) {
+                    
+                    String title = "Новая вкладка";
+                    if (url.contains("pinfo")) title = "PINFO"; // декодирование будет в openTab()
+                    else if (url.indexOf("ch.php") != -1) title = "Комната";
+                    else if (url.indexOf("log.php") != -1 || url.indexOf("fight") != -1) title = "Бой";
+                    else if (url.indexOf("pname") != -1) title = "Персонаж";
+                    else if (url.indexOf("pbots") != -1) title = "Боты";
+                    
+                    openTab(url, title);
+                    return true;
+                }
+                return false;
+            }
+            
+            @Override
             public void onPageFinished(WebView view, String url) {
                 super.onPageFinished(view, url);
                 Log.d(TAG, "onPageFinished secondary: " + url);
@@ -325,32 +385,38 @@ public class TabManager {
     
     /**
      * Инъекция JavaScript для перехвата кликов по ссылкам во вторичных вкладках.
+     * Для форума - НЕ перехватываем, пусть открывается внутри.
      */
     private void injectClickInterceptor(WebView view) {
         String script = 
             "(function() {" +
             "  if (window._clickInterceptorInjected) return;" +
             "  window._clickInterceptorInjected = true;" +
+            "  console.log('Click interceptor injected in secondary');" +
             "  " +
             "  document.addEventListener('click', function(e) {" +
             "    var target = e.target;" +
             "    while (target) {" +
             "      if (target.tagName === 'A' && target.href) {" +
             "        var href = target.href;" +
-            "        if (href.indexOf('forum.neverlands.ru') !== -1 ||" +
-            "            href.indexOf('pinfo.cgi') !== -1 ||" +
-            "            href.indexOf('ch.php') !== -1 ||" +
-            "            href.indexOf('log.php') !== -1 ||" +
-            "            href.indexOf('fight') !== -1 ||" +
-            "            href.indexOf('pname.cgi') !== -1 ||" +
-            "            href.indexOf('pbots.cgi') !== -1) {" +
+            "        console.log('Link clicked: ' + href);" +
+            "        // Перехватываем ТОЛЬКО не форумные ссылки" +
+            "        if (href.indexOf('forum.neverlands.ru') === -1 &&" +
+            "            (href.indexOf('pinfo.cgi') !== -1 ||" +
+            "             href.indexOf('ch.php') !== -1 ||" +
+            "             href.indexOf('log.php') !== -1 ||" +
+            "             href.indexOf('fight') !== -1 ||" +
+            "             href.indexOf('pname.cgi') !== -1 ||" +
+            "             href.indexOf('pbots.cgi') !== -1)) {" +
+            "          console.log('Opening new tab for: ' + href);" +
             "          e.preventDefault();" +
             "          e.stopPropagation();" +
             "          var title = 'Новая вкладка';" +
-            "          if (href.indexOf('forum.neverlands.ru') !== -1) title = 'Форум';" +
-            "          else if (href.indexOf('pinfo.cgi') !== -1) title = 'PINFO';" +
+            "          if (href.indexOf('pinfo.cgi') !== -1 || href.indexOf('pinfo') !== -1) title = 'PINFO';" +
             "          else if (href.indexOf('ch.php') !== -1) title = 'Комната';" +
             "          else if (href.indexOf('log.php') !== -1 || href.indexOf('fight') !== -1) title = 'Бой';" +
+            "          else if (href.indexOf('pname.cgi') !== -1) title = 'Персонаж';" +
+            "          else if (href.indexOf('pbots.cgi') !== -1) title = 'Боты';" +
             "          if (window.AndroidBridge) {" +
             "            window.AndroidBridge.openInNewTab(href, title);" +
             "          }" +
