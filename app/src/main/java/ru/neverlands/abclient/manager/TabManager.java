@@ -4,6 +4,8 @@ import android.annotation.SuppressLint;
 import android.content.ClipData;
 import android.content.ClipboardManager;
 import android.content.Context;
+import android.os.Handler;
+import android.os.Looper;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -13,9 +15,8 @@ import android.webkit.WebView;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebResourceResponse;
 import android.webkit.WebViewClient;
-import android.widget.Button;
-import android.widget.FrameLayout;
 import android.widget.ImageButton;
+import android.widget.FrameLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -27,6 +28,8 @@ import java.util.List;
 
 import ru.neverlands.abclient.R;
 import ru.neverlands.abclient.bridge.WebAppInterface;
+import ru.neverlands.abclient.manager.ContactsManager;
+import ru.neverlands.abclient.model.Contact;
 import ru.neverlands.abclient.webview.WebViewRequestInterceptor;
 
 /**
@@ -225,28 +228,38 @@ public class TabManager {
             return;
         }
 
-        Button btn1 = actionBar.findViewById(R.id.action_button_1);
-        Button btn2 = actionBar.findViewById(R.id.action_button_2);
-        Button btn3 = actionBar.findViewById(R.id.action_button_3);
+        ImageButton btn1 = actionBar.findViewById(R.id.action_button_1);
+        ImageButton btn2 = actionBar.findViewById(R.id.action_button_2);
+        ImageButton btn3 = actionBar.findViewById(R.id.action_button_3);
+
+        btn1.setVisibility(View.VISIBLE);
+        btn2.setVisibility(View.VISIBLE);
+        btn3.setVisibility(View.VISIBLE);
 
         switch (tabInfo.tabType) {
             case FORUM:
                 // Форум: Назад, Обновить, Копировать URL
-                btn1.setText("Назад");
+                btn1.setImageResource(R.drawable.ic_back);
                 btn1.setOnClickListener(v -> {
                     if (tabInfo.webView != null && tabInfo.webView.canGoBack()) {
                         tabInfo.webView.goBack();
                     }
                 });
+                btn1.post(() -> {
+                    boolean canGoBack = tabInfo.webView != null && tabInfo.webView.canGoBack();
+                    btn1.setImageResource(canGoBack ? R.drawable.ic_back : R.drawable.ic_back_disabled);
+                    btn1.setEnabled(canGoBack);
+                    btn1.setAlpha(canGoBack ? 1.0f : 0.5f);
+                });
 
-                btn2.setText("Обновить");
+                btn2.setImageResource(R.drawable.ic_refresh);
                 btn2.setOnClickListener(v -> {
                     if (tabInfo.webView != null) {
                         tabInfo.webView.reload();
                     }
                 });
 
-                btn3.setText("Копировать URL");
+                btn3.setImageResource(R.drawable.ic_copy);
                 btn3.setOnClickListener(v -> {
                     if (tabInfo.url != null) {
                         copyToClipboard(tabInfo.url);
@@ -256,19 +269,19 @@ public class TabManager {
 
             case PINFO:
                 // PINFO: Обновить, Добавить в контакты, Закрыть
-                btn1.setText("Обновить");
+                btn1.setImageResource(R.drawable.ic_refresh);
                 btn1.setOnClickListener(v -> {
                     if (tabInfo.webView != null) {
                         tabInfo.webView.reload();
                     }
                 });
 
-                btn2.setText("В контакты");
+                btn2.setImageResource(R.drawable.ic_contacts);
                 btn2.setOnClickListener(v -> {
                     addToContacts(tabInfo.title);
                 });
 
-                btn3.setText("Закрыть");
+                btn3.setImageResource(R.drawable.ic_close);
                 btn3.setOnClickListener(v -> {
                     closeCurrentTab();
                 });
@@ -279,7 +292,7 @@ public class TabManager {
                 // Для других вкладок - только кнопка закрытия
                 btn1.setVisibility(View.GONE);
                 btn2.setVisibility(View.GONE);
-                btn3.setText("Закрыть");
+                btn3.setImageResource(R.drawable.ic_close);
                 btn3.setOnClickListener(v -> {
                     closeCurrentTab();
                 });
@@ -298,11 +311,32 @@ public class TabManager {
     }
 
     /**
-     * Добавить игрока в контакты (заглушка - требует реализации ContactManager).
+     * Добавить игрока в контакты.
      */
     private void addToContacts(String playerName) {
-        Toast.makeText(context, "Добавлен в контакты: " + playerName, Toast.LENGTH_SHORT).show();
+        if (playerName == null || playerName.isEmpty()) {
+            Toast.makeText(context, "Неизвестный игрок", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        
         Log.d(TAG, "addToContacts: " + playerName);
+        Toast.makeText(context, "Добавление " + playerName + "...", Toast.LENGTH_SHORT).show();
+        
+        ContactsManager.addContact(context, playerName, new ContactsManager.ContactOperationCallback() {
+            @Override
+            public void onSuccess(Contact contact) {
+                new Handler(Looper.getMainLooper()).post(() -> {
+                    Toast.makeText(context, contact.nick + " добавлен в контакты", Toast.LENGTH_LONG).show();
+                });
+            }
+
+            @Override
+            public void onFailure(String message) {
+                new Handler(Looper.getMainLooper()).post(() -> {
+                    Toast.makeText(context, "Ошибка: " + message, Toast.LENGTH_LONG).show();
+                });
+            }
+        });
     }
 
     /**
@@ -514,10 +548,32 @@ public class TabManager {
                     }
                 }
                 
+                // Обновляем состояние кнопки Назад
+                updateBackButtonState(view);
+                
                 // Инъекция JavaScript для перехвата кликов по ссылкам
                 injectClickInterceptor(view);
             }
         });
+    }
+
+    /**
+     * Обновить состояние кнопки Назад (активна/неактивна).
+     */
+    private void updateBackButtonState(WebView webView) {
+        TabInfo tabInfo = findTabByWebView(webView);
+        if (tabInfo == null || tabInfo.contentView == null) return;
+        
+        View actionBar = tabInfo.contentView.findViewById(R.id.action_buttons_bar);
+        if (actionBar == null) return;
+        
+        ImageButton btnBack = actionBar.findViewById(R.id.action_button_1);
+        if (btnBack == null) return;
+        
+        boolean canGoBack = webView.canGoBack();
+        btnBack.setImageResource(canGoBack ? R.drawable.ic_back : R.drawable.ic_back_disabled);
+        btnBack.setEnabled(canGoBack);
+        btnBack.setAlpha(canGoBack ? 1.0f : 0.5f);
     }
 
     /**

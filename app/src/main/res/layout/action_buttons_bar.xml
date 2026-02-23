@@ -9,35 +9,38 @@
     android:padding="8dp"
     android:gravity="center">
 
-    <!-- Кнопка 1 -->
-    <Button
+    <!-- Кнопка 1 (Назад/Обновить) -->
+    <ImageButton
         android:id="@+id/action_button_1"
-        android:layout_width="0dp"
-        android:layout_height="wrap_content"
-        android:layout_weight="1"
-        android:layout_marginEnd="4dp"
-        android:textSize="12sp"
-        android:minHeight="40dp" />
+        android:layout_width="48dp"
+        android:layout_height="48dp"
+        android:layout_marginEnd="8dp"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:scaleType="centerInside"
+        android:padding="8dp"
+        android:contentDescription="Кнопка 1" />
 
-    <!-- Кнопка 2 -->
-    <Button
+    <!-- Кнопка 2 (Обновить/Контакты/Копировать) -->
+    <ImageButton
         android:id="@+id/action_button_2"
-        android:layout_width="0dp"
-        android:layout_height="wrap_content"
-        android:layout_weight="1"
-        android:layout_marginStart="4dp"
-        android:layout_marginEnd="4dp"
-        android:textSize="12sp"
-        android:minHeight="40dp" />
+        android:layout_width="48dp"
+        android:layout_height="48dp"
+        android:layout_marginStart="8dp"
+        android:layout_marginEnd="8dp"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:scaleType="centerInside"
+        android:padding="8dp"
+        android:contentDescription="Кнопка 2" />
 
-    <!-- Кнопка 3 -->
-    <Button
+    <!-- Кнопка 3 (Копировать/Закрыть) -->
+    <ImageButton
         android:id="@+id/action_button_3"
-        android:layout_width="0dp"
-        android:layout_height="wrap_content"
-        android:layout_weight="1"
-        android:layout_marginStart="4dp"
-        android:textSize="12sp"
-        android:minHeight="40dp" />
+        android:layout_width="48dp"
+        android:layout_height="48dp"
+        android:layout_marginStart="8dp"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:scaleType="centerInside"
+        android:padding="8dp"
+        android:contentDescription="Кнопка 3" />
 
 </LinearLayout>
