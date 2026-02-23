@@ -276,7 +276,7 @@ public class TabManager {
                     }
                 });
 
-                btn2.setImageResource(R.drawable.ic_contacts);
+                btn2.setImageResource(R.drawable.ic_add_contact);
                 btn2.setOnClickListener(v -> {
                     addToContacts(tabInfo.title);
                 });
