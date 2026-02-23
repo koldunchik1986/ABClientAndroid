@@ -18,7 +18,9 @@
       "Bash(file:*)",
       "Bash(grep fast\\\\|Fast\\\\|MainPhp\\\\|reload:*)",
       "Bash(head:*)",
-      "Bash(node:*)"
+      "Bash(node:*)",
+      "Bash(cd:*)",
+      "Bash(grep:*)"
     ]
   }
 }

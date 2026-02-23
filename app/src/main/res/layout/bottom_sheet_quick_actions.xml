@@ -178,4 +178,108 @@
             android:scaleType="centerInside" />
     </GridLayout>
 
+    <!-- Ряд 4: Свитки (без цели) -->
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Свитки (на себя)"
+        android:textSize="13sp"
+        android:textColor="?android:attr/textColorSecondary"
+        android:layout_marginBottom="4dp" />
+
+    <GridLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:columnCount="4"
+        android:layout_marginBottom="12dp">
+
+        <ImageButton
+            android:id="@+id/buttonSelfRass"
+            android:layout_width="56dp"
+            android:layout_height="48dp"
+            android:layout_margin="4dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="Рассеять невид"
+            android:scaleType="centerInside" />
+
+        <ImageButton
+            android:id="@+id/buttonOpenNevid"
+            android:layout_width="56dp"
+            android:layout_height="48dp"
+            android:layout_margin="4dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="Обнаружение"
+            android:scaleType="centerInside" />
+
+        <ImageButton
+            android:id="@+id/buttonTeleport"
+            android:layout_width="56dp"
+            android:layout_height="48dp"
+            android:layout_margin="4dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="Телепорт"
+            android:scaleType="centerInside" />
+
+        <ImageButton
+            android:id="@+id/buttonIsland"
+            android:layout_width="56dp"
+            android:layout_height="48dp"
+            android:layout_margin="4dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="Остров"
+            android:scaleType="centerInside" />
+    </GridLayout>
+
+    <!-- Ряд 5: Тотем + Эликсиры -->
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Тотем / Эликсиры"
+        android:textSize="13sp"
+        android:textColor="?android:attr/textColorSecondary"
+        android:layout_marginBottom="4dp" />
+
+    <GridLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:columnCount="4"
+        android:layout_marginBottom="8dp">
+
+        <ImageButton
+            android:id="@+id/buttonTotem"
+            android:layout_width="56dp"
+            android:layout_height="48dp"
+            android:layout_margin="4dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="Тотем"
+            android:scaleType="centerInside" />
+
+        <ImageButton
+            android:id="@+id/buttonElixirBlaz"
+            android:layout_width="56dp"
+            android:layout_height="48dp"
+            android:layout_margin="4dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="Эликсир Блаженства"
+            android:scaleType="centerInside" />
+
+        <ImageButton
+            android:id="@+id/buttonElixirCure"
+            android:layout_width="56dp"
+            android:layout_height="48dp"
+            android:layout_margin="4dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="Эликсир Исцеления"
+            android:scaleType="centerInside" />
+
+        <ImageButton
+            android:id="@+id/buttonElixirRestore"
+            android:layout_width="56dp"
+            android:layout_height="48dp"
+            android:layout_margin="4dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="Эликсир Восстановления"
+            android:scaleType="centerInside" />
+    </GridLayout>
+
 </LinearLayout>

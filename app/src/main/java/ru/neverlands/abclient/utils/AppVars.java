@@ -98,6 +98,15 @@ public class AppVars {
     public static volatile boolean FastWaitEndOfBoiCancel = false;
     public static volatile boolean FastNeedAbilDarkTeleport = false;
     public static volatile boolean FastNeedAbilDarkFog = false;
+    // NeverTimer — cooldown перед выполнением быстрого действия (аналог DateTime.Now > AppVars.NeverTimer в C#)
+    public static volatile long NeverTimer = 0;
+    // WaitOpen — ждать окончания боя даже для открытых боёв (аналог AppVars.WaitOpen в C#)
+    public static volatile boolean WaitOpen = false;
+    // DoPerenap — атаковать повторно (аналог AppVars.DoPerenap в C#)
+    public static volatile boolean DoPerenap = false;
+    // Тротлинг сообщений тотема (аналог FastTotemMessageTime + FastTotemMessageTimeBlockSeconds в C#)
+    public static volatile long FastTotemMessageTime = 0;
+    public static final int FAST_TOTEM_MESSAGE_BLOCK_SECONDS = 10;
 
     private static Context context;
 

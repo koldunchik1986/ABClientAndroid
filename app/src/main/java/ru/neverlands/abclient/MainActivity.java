@@ -561,13 +561,57 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             super.onPageFinished(view, url);
             AppLogger.write("Page loaded: " + url);
 
-            String jsFix = ru.neverlands.abclient.utils.HtmlUtils.getJsFix();
+            // POST-ответ от сервера: document.ff.submit() → WebView загружает main.php без параметров.
+            // Это голая страница результата действия (windows-1251, без наших фреймов).
+            // Нужно: 1) извлечь системное сообщение, 2) перезагрузить нормальную страницу.
+            if ("http://neverlands.ru/main.php".equals(url)) {
+                Log.d(TAG, "onPageFinished: POST-ответ main.php, извлекаем сообщение и перезагружаем");
+                // Извлекаем системное сообщение из тела страницы через JS
+                view.evaluateJavascript(
+                    "(function() {" +
+                    "  var b = document.body ? document.body.innerHTML : '';" +
+                    "  var marker = '<font class=nickname><font color=#cc0000><b>';" +
+                    "  var end = '<br><br></b></font></font>';" +
+                    "  var s = b.indexOf(marker);" +
+                    "  if (s >= 0) {" +
+                    "    var e = b.indexOf(end, s);" +
+                    "    if (e >= 0) return b.substring(s + marker.length, e);" +
+                    "  }" +
+                    "  return '';" +
+                    "})()",
+                    result -> {
+                        if (result != null && !result.equals("\"\"") && !result.equals("null")) {
+                            // убираем кавычки JSON-строки
+                            String msg = result.replaceAll("^\"|\"$", "");
+                            if (!msg.isEmpty()) {
+                                Log.d(TAG, "onPageFinished: sysMessage из POST = " + msg);
+                                Intent msgIntent = new Intent(ru.neverlands.abclient.utils.AppVars.ACTION_ADD_CHAT_MESSAGE);
+                                msgIntent.putExtra("message", "<font color=#cc0000><b>" + msg + "</b></font>");
+                                LocalBroadcastManager.getInstance(MainActivity.this).sendBroadcast(msgIntent);
+                            }
+                        }
+                        // Перезагружаем нормальную страницу после небольшой задержки,
+                        // чтобы JS успел выполниться
+                        view.postDelayed(() -> {
+                            String reloadUrl = "http://neverlands.ru/main.php?get_id=56&act=10&go=inf";
+                            if (ru.neverlands.abclient.utils.AppVars.VCode != null
+                                    && !ru.neverlands.abclient.utils.AppVars.VCode.isEmpty()) {
+                                reloadUrl += "&vcode=" + ru.neverlands.abclient.utils.AppVars.VCode;
+                            }
+                            Log.d(TAG, "onPageFinished: POST-ответ, перезагружаем " + reloadUrl);
+                            view.loadUrl(reloadUrl);
+                        }, 300);
+                    }
+                );
+                return; // не делаем стандартный jsFix для POST-ответа
+            }
 
+            String jsFix = ru.neverlands.abclient.utils.HtmlUtils.getJsFix();
             view.evaluateJavascript(jsFix, null);
 
-            if (url.endsWith("main.php")) {
+            if (url.contains("main.php")) {
                 view.evaluateJavascript("javascript:(function() { var frameset = document.getElementsByTagName('frameset')[0]; if (frameset) { frameset.rows = '*\n, 0'; } })()", null);
-                
+
                 // Inject fight state extractor
                 try {
                     String extractorJs = new String(readAssetFile("js/extract_fight_state.js"));

@@ -10,6 +10,10 @@ import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 
+import android.content.Intent;
+
+import androidx.localbroadcastmanager.content.LocalBroadcastManager;
+
 import ru.neverlands.abclient.model.InvComparer;
 import ru.neverlands.abclient.model.InvEntry;
 import ru.neverlands.abclient.manager.FastActionManager;
@@ -39,7 +43,44 @@ public class MainPhp {
             AppVars.VCode = vcode;
         }
 
-        // Логирование в файлы убрано, чтобы устранить зависания
+        // Системное сообщение (аналог MainPhp.cs строки 207-223).
+        // Паттерн: <font class=nickname><font color=#cc0000><b>ТЕКСТ<br><br></b></font></font>
+        // Диагностика: ищем cc0000 в HTML чтобы понять реальный паттерн сервера
+        if (address.contains("get_id=43")) {
+            int diagIdx = html.toLowerCase().indexOf("cc0000");
+            if (diagIdx >= 0) {
+                int start = Math.max(0, diagIdx - 80);
+                int end = Math.min(html.length(), diagIdx + 200);
+                android.util.Log.d(TAG, "process: get_id=43 cc0000 context: " + html.substring(start, end));
+            } else {
+                android.util.Log.d(TAG, "process: get_id=43 — cc0000 не найден. HTML[0:300]=" + html.substring(0, Math.min(300, html.length())));
+            }
+        }
+        String sysMessage = HelperStrings.subString(html,
+                "<font class=nickname><font color=#cc0000><b>",
+                "<br><br></b></font></font>");
+        // Fallback: попробуем без учёта регистра через поиск lower-case копии
+        if (sysMessage == null || sysMessage.isEmpty()) {
+            sysMessage = HelperStrings.subString(html.toLowerCase(),
+                    "<font class=nickname><font color=#cc0000><b>",
+                    "<br><br></b></font></font>");
+            if (sysMessage != null && !sysMessage.isEmpty()) {
+                // Найдено в lowercase — берём кусок из оригинала
+                int idx = html.toLowerCase().indexOf("<font class=nickname><font color=#cc0000><b>");
+                if (idx >= 0) {
+                    int eIdx = html.toLowerCase().indexOf("<br><br></b></font></font>", idx);
+                    if (eIdx >= 0) {
+                        sysMessage = html.substring(idx + "<font class=nickname><font color=#cc0000><b>".length(), eIdx);
+                    }
+                }
+            }
+        }
+        if (sysMessage != null && !sysMessage.isEmpty() && AppVars.getContext() != null) {
+            android.util.Log.d(TAG, "process: sysMessage=" + sysMessage);
+            Intent msgIntent = new Intent(AppVars.ACTION_ADD_CHAT_MESSAGE);
+            msgIntent.putExtra("message", "<font color=#cc0000><b>" + sysMessage + "</b></font>");
+            LocalBroadcastManager.getInstance(AppVars.getContext()).sendBroadcast(msgIntent);
+        }
 
         // Обработка быстрых действий (портировано из MainPhp.cs строки 1429-1619)
         // В C# FastAction обрабатывается ВНУТРИ MainPhp, а не в отдельном менеджере.
@@ -92,6 +133,21 @@ public class MainPhp {
         String fastId = AppVars.FastId;
         android.util.Log.d(TAG, "processMainPhpFast: FastId=" + fastId + ", address=" + address);
 
+        // NeverTimer — cooldown (аналог DateTime.Now > AppVars.NeverTimer в C#)
+        if (AppVars.NeverTimer > 0 && System.currentTimeMillis() < AppVars.NeverTimer) {
+            android.util.Log.d(TAG, "processMainPhpFast: NeverTimer ещё не истёк, пропускаем");
+            return null;
+        }
+
+        // --- Особый случай: get_id=43 — это страница применения эликсира/предмета.
+        // Сервер уже применил действие (по GET-запросу), поэтому FastNeed нужно сбросить.
+        // Иначе мы будем бесконечно перезапускать процесс.
+        if (address.contains("get_id=43")) {
+            android.util.Log.d(TAG, "processMainPhpFast: get_id=43 — действие уже выполнено, сбрасываем FastNeed");
+            FastActionManager.fastCancel();
+            return null;
+        }
+
         // Определяем нужный фильтр категории
         String filter = getInventoryFilter(fastId);
         if (filter == null) {
@@ -103,6 +159,21 @@ public class MainPhp {
                 + ", isInv=" + mainPhpIsInv(html)
                 + ", w28_form=" + html.contains("w28_form(")
                 + ", magicreform=" + html.contains("magicreform("));
+
+        // --- Особый случай: Тотем НЕ требует инвентаря ---
+        // В C# тотем ищет ["fig","Напасть","vcode"] на основной странице.
+        // mainPhpFindFlora делает redirect на основную страницу, если нужно.
+        if ("TOTEM".equals(filter)) {
+            android.util.Log.d(TAG, "processMainPhpFast: тотем — без навигации на инвентарь");
+            String fastHtml = FastActionManager.processMainPhp(html);
+            if (fastHtml != null) {
+                android.util.Log.d(TAG, "processMainPhpFast: УСПЕХ, тотем найден");
+                return Russian.getBytes(fastHtml);
+            }
+            android.util.Log.w(TAG, "processMainPhpFast: тотем не найден, отмена");
+            FastActionManager.fastCancel();
+            return null;
+        }
 
         // 1. Если мы НЕ на инвентаре — ищем ссылку на инвентарь с фильтром
         String invRedirect = mainPhpFindInv(html, filter);
@@ -224,6 +295,11 @@ public class MainPhp {
             // Телепорт остров
             case "Телепорт (Остров Туротор)":
                 return "&im=0&wca=28";
+
+            // Тотем — НЕ требует инвентаря, работает с основной страницы
+            // Возвращаем специальный маркер, processMainPhpFast обрабатывает его отдельно
+            case "Тотем":
+                return "TOTEM";
 
             default:
                 return null;

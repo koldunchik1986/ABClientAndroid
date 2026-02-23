@@ -143,6 +143,166 @@ public class FastActionManager {
         fastStart("i_w28_27.gif", stripItalic(nick));
     }
 
+    /** Телепорт (аналог FormMain.FastAttackTeleport) — wsubid=22, post_id=25 */
+    public static void fastAttackTeleport(String nick) {
+        fastStart("i_w28_22.gif", stripItalic(nick));
+    }
+
+    /** Саморассеивание (аналог FormMain.FastAttackSelfRass) — wsubid=23, без pnick */
+    public static void fastAttackSelfRass() {
+        fastStart("i_w28_23.gif", "себя");
+    }
+
+    /** Обнаружение (аналог FormMain.FastAttackOpenNevid) — wsubid=28, без pnick */
+    public static void fastAttackOpenNevid() {
+        fastStart("i_w28_28.gif", "клетке");
+    }
+
+    /** Тотем (аналог FormMain.FastAttackTotem) */
+    public static void fastAttackTotem(String nick) {
+        fastStart("Тотем", stripItalic(nick));
+    }
+
+    /** Остров телепорт (аналог FormMain.FastAttackIslandPot) — на себя */
+    public static void fastAttackIslandPot() {
+        String ownNick = AppVars.Profile != null ? AppVars.Profile.UserNick : "";
+        fastStart("Телепорт (Остров Туротор)", ownNick != null ? ownNick : "");
+    }
+
+    /** Эликсир Блаженства (аналог FormMain.FastAttackBlazElixir) — на себя */
+    public static void fastAttackBlazElixir() {
+        String ownNick = AppVars.Profile != null ? AppVars.Profile.UserNick : "";
+        fastStart("Эликсир Блаженства", ownNick != null ? ownNick : "");
+    }
+
+    /** Эликсир Мгновенного Исцеления (аналог FormMain.FastAttackMomentCureElixir) — на себя */
+    public static void fastAttackMomentCureElixir() {
+        String ownNick = AppVars.Profile != null ? AppVars.Profile.UserNick : "";
+        fastStart("Эликсир Мгновенного Исцеления", ownNick != null ? ownNick : "");
+    }
+
+    /** Эликсир Восстановления (аналог FormMain.FastAttackMomentRestoreElixir) — на себя */
+    public static void fastAttackMomentRestoreElixir() {
+        String ownNick = AppVars.Profile != null ? AppVars.Profile.UserNick : "";
+        fastStart("Эликсир Восстановления", ownNick != null ? ownNick : "");
+    }
+
+    // --- Часть 1b: FastAttackAsync — фоновый поток ожидания окончания боя ---
+
+    /**
+     * Запускает быстрое действие с ожиданием окончания боя цели (аналог FormMainFast.FastAttackAsync в C#).
+     *
+     * Алгоритм:
+     *  1. NeverApi.getAll(nick) → получаем fightLog (ID боя цели)
+     *  2. Если fightLog не пустой — опрашиваем logs.fcg?fid=X до "var off = 1;"
+     *  3. После окончания боя (или если цель не в бою) → fastStart + reloadMainFrame
+     *
+     * @param weapon  ID предмета или название (например "i_svi_001.gif", "Тотем")
+     * @param nick    ник цели (уже без итальянских тегов)
+     */
+    public static void fastAttackAsync(final String weapon, final String nick) {
+        new Thread(() -> fastAttackAsyncImpl(weapon, nick), "FastAttackAsync").start();
+    }
+
+    private static void fastAttackAsyncImpl(String weapon, String nick) {
+        Log.d(TAG, "fastAttackAsync: weapon=" + weapon + ", nick=" + nick);
+
+        // 1. Получаем информацию о цели
+        NeverApi.UserInfo userInfo = NeverApi.getAll(nick);
+        if (userInfo == null) {
+            writeChatMsg("<font color=#FF0000>Ошибка анализа инфы атакуемого.</font>");
+            return;
+        }
+
+        String flog = userInfo.fightLog; // "" если не в бою
+
+        // 2. Если цель в бою — ждём окончания
+        if (!flog.isEmpty()) {
+            int scans = 0;
+            long startMs = System.currentTimeMillis();
+            AppVars.FastWaitEndOfBoiCancel = false;
+            AppVars.FastWaitEndOfBoiActive = true;
+
+            Log.d(TAG, "fastAttackAsync: цель в бою flog=" + flog + ", начинаем ожидание");
+
+            while (!AppVars.FastWaitEndOfBoiCancel) {
+                String html = NeverApi.getFlog(flog);
+                if (html == null || html.isEmpty()) continue;
+
+                scans++;
+
+                // Условие окончания 1: "var off = 1;" в HTML лога боя
+                String off = ru.neverlands.abclient.utils.HelperStrings.subString(html, "var off = ", ";");
+                if (off == null) continue;
+
+                if (off.equals("1")) {
+                    Log.d(TAG, "fastAttackAsync: бой завершён (off=1), scans=" + scans);
+                    break;
+                }
+
+                // Условие окончания 2: открытый бой + WaitOpen=false → не ждём
+                if (!AppVars.WaitOpen) {
+                    boolean closedFight = html.contains("нападение бота")
+                            || html.contains("закрытый бой")
+                            || html.contains("закрытое нападение")
+                            || html.contains("закрытое кулачное нападение")
+                            || html.contains("закрытое боевое нападение");
+                    if (!closedFight) {
+                        Log.d(TAG, "fastAttackAsync: открытый бой, WaitOpen=false → не ждём");
+                        break;
+                    }
+                }
+
+                // Сообщения о прогрессе (аналог C#)
+                if (scans == 1) {
+                    writeChatMsg("Ожидание окончания боя (отмена: меню → быстрые действия → отмена).");
+                } else if (scans % 100 == 0) {
+                    long avgMs = (System.currentTimeMillis() - startMs) / scans;
+                    writeChatMsg("Ожидание окончания боя (запросов: " + scans + ", средн: " + avgMs + "мс)");
+                }
+            }
+        }
+
+        // 3. Очищаем флаги
+        AppVars.FastWaitEndOfBoiActive = false;
+
+        if (AppVars.FastWaitEndOfBoiCancel) {
+            AppVars.FastWaitEndOfBoiCancel = false;
+            writeChatMsg("Ожидание окончания боя прекращено.");
+            Log.d(TAG, "fastAttackAsync: отменено пользователем");
+            return;
+        }
+
+        // 4. Бой закончился (или цель не была в бою) → запускаем быстрое действие
+        // fastStart уже вызывает reloadMainFrame() внутри себя
+        Log.d(TAG, "fastAttackAsync: армируем действие weapon=" + weapon + " nick=" + nick);
+        int count = AppVars.DoPerenap ? Integer.MAX_VALUE : 1;
+        fastStart(weapon, nick, count);
+    }
+
+    /**
+     * Отправляет сообщение в чат через LocalBroadcast (аналог WriteChatMsgSafe в C#).
+     */
+    static void writeChatMsg(String message) {
+        android.content.Context ctx = AppVars.getContext();
+        if (ctx == null) return;
+        android.content.Intent intent = new android.content.Intent(AppVars.ACTION_ADD_CHAT_MESSAGE);
+        intent.putExtra("message", message);
+        androidx.localbroadcastmanager.content.LocalBroadcastManager
+                .getInstance(ctx).sendBroadcast(intent);
+    }
+
+    /**
+     * Отменяет ожидание боя (аналог FastCancelSafe в C#).
+     * Вызывается из UI при нажатии кнопки отмены.
+     */
+    public static void cancelWaitFight() {
+        if (AppVars.FastWaitEndOfBoiActive) {
+            AppVars.FastWaitEndOfBoiCancel = true;
+            Log.d(TAG, "cancelWaitFight: запрос отмены ожидания");
+        }
+    }
+
     // --- Часть 2: Парсинг HTML (из PostFilter/MainPhpFast.cs) ---
 
     /**
@@ -200,7 +360,32 @@ public class FastActionManager {
                 result = mainPhpFastW28(html, "86", "портал на");
                 break;
             case "i_w28_22.gif":
-                result = mainPhpFastW28(html, "22", "телепорт");
+                result = mainPhpFastTeleport(html);
+                break;
+
+            // Самонацеленные свитки (без pnick)
+            case "i_w28_23.gif": // Саморассеивание
+                result = mainPhpFastW28Self(html, "23", "Применяем свиток рассеивания невидимости на себя");
+                break;
+            case "i_w28_28.gif": // Обнаружение
+                result = mainPhpFastW28Self(html, "28", "Применяем свиток обнаружения");
+                break;
+
+            // Островной телепорт
+            case "Телепорт (Остров Туротор)":
+                result = mainPhpFastIsland(html);
+                break;
+
+            // Тотем (не требует инвентаря)
+            case "Тотем":
+                result = mainPhpFastTotem(html);
+                break;
+
+            // Эликсиры (GET redirect)
+            case "Эликсир Блаженства":
+            case "Эликсир Мгновенного Исцеления":
+            case "Эликсир Восстановления":
+                result = mainPhpFastElixir(html);
                 break;
 
             // Зелья (magicreform парсинг)
@@ -251,7 +436,11 @@ public class FastActionManager {
                 break;
         }
 
-        if (result == null && html.contains("get_id=56")) {
+        // Тотем и островной телепорт не используют инвентарь — не делаем fallback навигацию.
+        boolean noInventoryFallback = "Тотем".equals(fastId)
+                || "Телепорт (Остров Туротор)".equals(fastId);
+
+        if (result == null && !noInventoryFallback && html.contains("get_id=56")) {
             Log.d(TAG, "processMainPhp: Предмет не найден, но мы в get_id=56. Ищем ссылку на нужный раздел.");
             String targetLink = findTargetLink(html, fastId);
             if (targetLink != null) {
@@ -579,6 +768,253 @@ public class FastActionManager {
                 "<input name=post_id type=hidden value=\"46\">" +
                 "<input name=fornickname type=hidden value=\"" + AppVars.FastNick + "\">" +
                 "<input name=agree type=hidden value=\"Применить\">" +
+                "</form>" +
+                buildSubmitScript();
+    }
+
+    /**
+     * Парсер для свитков без pnick (саморассеивание, обнаружение).
+     * Аналог MainPhpFastSelfRass / MainPhpFastOpenNevid в C#.
+     * Используют w28_form, post_id=25, БЕЗ поля pnick.
+     */
+    private static String mainPhpFastW28Self(String html, String targetSubId, String description) {
+        String patternW28Form = "w28_form(";
+        int p1 = 0;
+        while (p1 != -1) {
+            p1 = html.indexOf(patternW28Form, p1);
+            if (p1 == -1) break;
+
+            p1 += patternW28Form.length();
+            int p2 = html.indexOf(")", p1);
+            if (p2 == -1) continue;
+
+            String args = html.substring(p1, p2);
+            if (args.isEmpty()) continue;
+
+            String[] arg = args.split(",");
+            if (arg.length < 4) continue;
+
+            String vcode = arg[0].replace("'", "").trim();
+            String wuid = arg[1].replace("'", "").trim();
+            String wsubid = arg[2].replace("'", "").trim();
+            String wsolid = arg[3].replace("'", "").trim();
+
+            if (!wsubid.equals(targetSubId)) continue;
+
+            return HTML_HEAD +
+                    description + "..." +
+                    "<form action=\"http://neverlands.ru/main.php\" method=POST name=ff>" +
+                    "<input name=post_id type=hidden value=\"25\">" +
+                    "<input name=vcode type=hidden value=\"" + vcode + "\">" +
+                    "<input name=wuid type=hidden value=\"" + wuid + "\">" +
+                    "<input name=wsubid type=hidden value=\"" + wsubid + "\">" +
+                    "<input name=wsolid type=hidden value=\"" + wsolid + "\">" +
+                    "<input name=agree type=hidden value=\"Выполнить\">" +
+                    "</form>" +
+                    buildSubmitScript();
+        }
+
+        Log.w(TAG, description + " не найден в HTML");
+        return null;
+    }
+
+    /**
+     * Парсер для телепорта (wsubid=22) с wtelid — случайный пункт назначения.
+     * Аналог MainPhpFastTeleport в C#.
+     * post_id=25, дополнительное поле wtelid (1-12).
+     */
+    private static String mainPhpFastTeleport(String html) {
+        String patternW28Form = "w28_form(";
+        int p1 = 0;
+        while (p1 != -1) {
+            p1 = html.indexOf(patternW28Form, p1);
+            if (p1 == -1) break;
+
+            p1 += patternW28Form.length();
+            int p2 = html.indexOf(")", p1);
+            if (p2 == -1) continue;
+
+            String args = html.substring(p1, p2);
+            if (args.isEmpty()) continue;
+
+            String[] arg = args.split(",");
+            if (arg.length < 4) continue;
+
+            String vcode = arg[0].replace("'", "").trim();
+            String wuid = arg[1].replace("'", "").trim();
+            String wsubid = arg[2].replace("'", "").trim();
+            String wsolid = arg[3].replace("'", "").trim();
+
+            if (!wsubid.equals("22")) continue;
+
+            // Случайный пункт назначения (1-12), аналог Dice.Make(12) + 1 в C#
+            int wtelid = (int)(Math.random() * 12) + 1;
+
+            return HTML_HEAD +
+                    "Используем телепорт..." +
+                    "<form action=\"http://neverlands.ru/main.php\" method=POST name=ff>" +
+                    "<input name=post_id type=hidden value=\"25\">" +
+                    "<input name=vcode type=hidden value=\"" + vcode + "\">" +
+                    "<input name=wuid type=hidden value=\"" + wuid + "\">" +
+                    "<input name=wsubid type=hidden value=\"" + wsubid + "\">" +
+                    "<input name=wsolid type=hidden value=\"" + wsolid + "\">" +
+                    "<input name=wtelid type=hidden value=\"" + wtelid + "\">" +
+                    "<input name=agree type=hidden value=\"Выполнить\">" +
+                    "</form>" +
+                    buildSubmitScript();
+        }
+
+        Log.w(TAG, "Свиток телепорта не найден в HTML");
+        return null;
+    }
+
+    /**
+     * Парсер для эликсиров (аналог MainPhpFastElixir в C#).
+     * Ищет "Использовать <ElixirName> сейчас?" → извлекает ссылку → GET redirect.
+     * confirm('Использовать Эликсир Блаженства сейчас?')) { location='main.php?get_id=43&act=107&...'
+     */
+    private static String mainPhpFastElixir(String html) {
+        String fastId = AppVars.FastId;
+        String namepotion = "Использовать " + fastId + " сейчас?";
+        Log.d(TAG, "mainPhpFastElixir: ищем '" + namepotion + "'");
+
+        int p0 = indexOfIgnoreCase(html, namepotion, 0);
+        if (p0 == -1) {
+            Log.w(TAG, "mainPhpFastElixir: не найдено '" + namepotion + "'");
+            return null;
+        }
+
+        // Ищем ='...' после найденной строки
+        int ps = html.indexOf("='", p0);
+        if (ps == -1) { Log.w(TAG, "mainPhpFastElixir: =' не найден"); return null; }
+        ps += 2;
+        int pe = html.indexOf("'", ps);
+        if (pe == -1) { Log.w(TAG, "mainPhpFastElixir: закрывающая ' не найдена"); return null; }
+
+        String link = html.substring(ps, pe);
+        Log.d(TAG, "mainPhpFastElixir: redirect на " + link);
+
+        // Эликсиры используют GET redirect (не POST форму)
+        return HtmlUtils.GENERATED_PAGE_MARKER +
+                "<html><head><meta http-equiv=\"Content-Type\" content=\"text/html; charset=windows-1251\">" +
+                "<title>ABClient</title></head><body>" +
+                "Используем " + fastId + "..." +
+                "<script language=\"JavaScript\">window.location = \"" + link + "\";</script></body></html>";
+    }
+
+    /**
+     * Парсер для островного телепорта (аналог MainPhpFastIsland в C#).
+     * Вариант 1: Ищет "Использовать Свиток Телепорта сейчас?" → GET redirect.
+     * Вариант 2 (fallback): Ищет w28_form с wsubid=22 → POST форма с wtelid=13 (Остров Туротор).
+     */
+    private static String mainPhpFastIsland(String html) {
+        // Вариант 1: страница с подтверждением (как в PC-версии)
+        String str = "Использовать Свиток Телепорта сейчас?";
+        Log.d(TAG, "mainPhpFastIsland: ищем '" + str + "'");
+
+        int p0 = indexOfIgnoreCase(html, str, 0);
+        if (p0 != -1) {
+            int ps = html.indexOf("='", p0);
+            if (ps != -1) {
+                ps += 2;
+                int pe = html.indexOf("'", ps);
+                if (pe != -1) {
+                    String link = html.substring(ps, pe);
+                    Log.d(TAG, "mainPhpFastIsland: redirect на " + link);
+                    return HtmlUtils.GENERATED_PAGE_MARKER +
+                            "<html><head><meta http-equiv=\"Content-Type\" content=\"text/html; charset=windows-1251\">" +
+                            "<title>ABClient</title></head><body>" +
+                            "Используем Телепорт (Остров Туротор)..." +
+                            "<script language=\"JavaScript\">window.location = \"" + link + "\";</script></body></html>";
+                }
+            }
+        }
+
+        // Вариант 2 (fallback): страница инвентаря со свитками (w28_form)
+        // Остров Туротор = wtelid=13, wsubid=22 (свиток телепорта)
+        Log.d(TAG, "mainPhpFastIsland: подтверждение не найдено, ищем w28_form с wsubid=22");
+        String patternW28Form = "w28_form(";
+        int p1 = 0;
+        while (p1 != -1) {
+            p1 = html.indexOf(patternW28Form, p1);
+            if (p1 == -1) break;
+
+            p1 += patternW28Form.length();
+            int p2 = html.indexOf(")", p1);
+            if (p2 == -1) continue;
+
+            String args = html.substring(p1, p2);
+            if (args.isEmpty()) continue;
+
+            String[] arg = args.split(",");
+            if (arg.length < 4) continue;
+
+            String vcode = arg[0].replace("'", "").trim();
+            String wuid = arg[1].replace("'", "").trim();
+            String wsubid = arg[2].replace("'", "").trim();
+            String wsolid = arg[3].replace("'", "").trim();
+
+            if (!wsubid.equals("22")) continue;
+
+            // Остров Туротор = wtelid=13
+            int wtelid = 13;
+            Log.d(TAG, "mainPhpFastIsland: найден w28_form wsubid=22, используем wtelid=" + wtelid);
+
+            return HTML_HEAD +
+                    "Используем Телепорт (Остров Туротор)..." +
+                    "<form action=\"http://neverlands.ru/main.php\" method=POST name=ff>" +
+                    "<input name=post_id type=hidden value=\"25\">" +
+                    "<input name=vcode type=hidden value=\"" + vcode + "\">" +
+                    "<input name=wuid type=hidden value=\"" + wuid + "\">" +
+                    "<input name=wsubid type=hidden value=\"" + wsubid + "\">" +
+                    "<input name=wsolid type=hidden value=\"" + wsolid + "\">" +
+                    "<input name=wtelid type=hidden value=\"" + wtelid + "\">" +
+                    "<input name=agree type=hidden value=\"Выполнить\">" +
+                    "</form>" +
+                    buildSubmitScript();
+        }
+
+        Log.w(TAG, "mainPhpFastIsland: не найдено");
+        return null;
+    }
+
+    /**
+     * Парсер для тотемного нападения (аналог MainPhpFastTotem в C#).
+     * Ищет ["fig","Напасть","<vcode>"] → POST с post_id=8.
+     * Тотем НЕ требует инвентаря — он доступен на основной странице.
+     */
+    private static String mainPhpFastTotem(String html) {
+        String patternEnter = "[\"fig\",\"Напасть\",\"";
+        Log.d(TAG, "mainPhpFastTotem: ищем паттерн Напасть");
+
+        int pos = html.indexOf(patternEnter);
+        if (pos == -1) {
+            // Пробуем с unicode
+            patternEnter = "[\"fig\",\"\u041D\u0430\u043F\u0430\u0441\u0442\u044C\",\"";
+            pos = html.indexOf(patternEnter);
+        }
+        if (pos == -1) {
+            Log.w(TAG, "mainPhpFastTotem: паттерн не найден");
+            return null;
+        }
+
+        pos += patternEnter.length();
+        int posEnd = html.indexOf('"', pos);
+        if (posEnd == -1) {
+            Log.w(TAG, "mainPhpFastTotem: закрывающая кавычка не найдена");
+            return null;
+        }
+
+        String vcode = html.substring(pos, posEnd);
+        Log.d(TAG, "mainPhpFastTotem: vcode=" + vcode);
+
+        return HTML_HEAD +
+                "Используем тотемное нападение на " + AppVars.FastNick + "..." +
+                "<form action=\"http://neverlands.ru/main.php\" method=POST name=ff>" +
+                "<input name=post_id type=hidden value=\"8\">" +
+                "<input name=vcode type=hidden value=\"" + vcode + "\">" +
+                "<input name=pnick type=hidden value=\"" + AppVars.FastNick + "\">" +
+                "<input name=agree type=hidden value=\"Выполнить\">" +
                 "</form>" +
                 buildSubmitScript();
     }
