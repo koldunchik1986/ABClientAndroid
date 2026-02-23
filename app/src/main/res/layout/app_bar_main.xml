@@ -30,6 +30,22 @@
 
         </androidx.appcompat.widget.Toolbar>
 
+        <!-- Система вкладок (аналог TabControl в C# версии) -->
+        <com.google.android.material.tabs.TabLayout
+            android:id="@+id/tab_layout"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="?attr/colorPrimary"
+            app:tabMode="scrollable"
+            app:tabGravity="start"
+            app:tabMinWidth="80dp"
+            app:tabTextColor="@android:color/white"
+            app:tabSelectedTextColor="@android:color/white"
+            app:tabIndicatorColor="@android:color/white"
+            app:tabIndicatorHeight="3dp"
+            app:tabPaddingStart="8dp"
+            app:tabPaddingEnd="8dp" />
+
     </com.google.android.material.appbar.AppBarLayout>
 
     <include

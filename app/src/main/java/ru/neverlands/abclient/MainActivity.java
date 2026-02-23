@@ -64,6 +64,7 @@ import java.util.zip.GZIPInputStream;
 import ru.neverlands.abclient.bridge.WebAppInterface;
 import ru.neverlands.abclient.manager.ContactsManager;
 import ru.neverlands.abclient.databinding.ActivityMainBinding;
+import ru.neverlands.abclient.manager.TabManager;
 import ru.neverlands.abclient.manager.RoomManager;
 import ru.neverlands.abclient.model.UserConfig;
 import ru.neverlands.abclient.proxy.CookiesManager;
@@ -83,6 +84,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     private boolean isExiting = false;
     private boolean isRoomManagerStarted = false;
     private FightViewModel fightViewModel;
+    private TabManager tabManager;
 
     public FightViewModel getFightViewModel() {
         return fightViewModel;
@@ -110,6 +112,35 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                         fightViewModel.processFightHtml(unquoted);
                     }
                 });
+    }
+
+    /**
+     * Открыть URL в новой вспомогательной вкладке.
+     * Аналог CreateNewTab в C# версии (FormMainTabs.cs).
+     * @param url URL для загрузки
+     * @param title Заголовок вкладки (может быть "PINFO" для декодирования ника)
+     */
+    public void openInNewTab(String url, String title) {
+        Log.d(TAG, "openInNewTab: " + title + " -> " + url);
+        
+        // Декодируем ник для pinfo/pname (аналог NickDecode в HelperConverters.cs)
+        if ("PINFO".equals(title) && url != null) {
+            try {
+                String decoded = java.net.URLDecoder.decode(url, "windows-1251");
+                int idx = decoded.indexOf("pinfo.cgi?");
+                if (idx != -1) {
+                    String nick = decoded.substring(idx + 10);
+                    nick = nick.replace("|", " ").replace("%20", " ").replace("%2B", "+");
+                    title = nick;
+                }
+            } catch (Exception e) {
+                Log.e(TAG, "Error decoding nick", e);
+            }
+        }
+        
+        if (tabManager != null) {
+            tabManager.openTab(url, title);
+        }
     }
 
     private final BroadcastReceiver broadcastReceiver = new BroadcastReceiver() {
@@ -186,6 +217,13 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         }
 
         setupWebViews();
+        
+        // Инициализация менеджера вкладок (аналог TabControl из C# версии)
+        com.google.android.material.tabs.TabLayout tabLayout = binding.appBarMain.tabLayout;
+        View mainContent = binding.appBarMain.contentMain.tabMainContent;
+        android.widget.FrameLayout secondaryContainer = binding.appBarMain.contentMain.tabSecondaryContainer;
+        tabManager = new TabManager(this, tabLayout, mainContent, secondaryContainer);
+        
         loadInitialUrls();
 
         fightViewModel = new ViewModelProvider(this).get(FightViewModel.class);
@@ -298,18 +336,10 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
 
             @Override
             public boolean onCreateWindow(WebView view, boolean isDialog, boolean isUserGesture, android.os.Message resultMsg) {
-                WebView tempWebView = new WebView(MainActivity.this);
-                tempWebView.setWebViewClient(new WebViewClient() {
-                    @Override
-                    public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
-                        binding.appBarMain.contentMain.webView.loadUrl(request.getUrl().toString());
-                        return true;
-                    }
-                });
-                WebView.WebViewTransport transport = (WebView.WebViewTransport) resultMsg.obj;
-                transport.setWebView(tempWebView);
+                // Перехват window.open() теперь выполняется через JavaScript (см. onPageFinished)
+                // Здесь ничего не делаем - просто возвращаем false
                 resultMsg.sendToTarget();
-                return true;
+                return false;
             }
         });
     }
@@ -319,6 +349,11 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         ru.neverlands.abclient.utils.DebugLogger.log("MainActivity: onDestroy() called.");
         stopTimer();
         RoomManager.stopTracing();
+        
+        // Уничтожение всех вспомогательных вкладок
+        if (tabManager != null) {
+            tabManager.destroyAll();
+        }
 
         if (isExiting) {
             // ((ABClientApplication) getApplication()).stopProxyService();
@@ -554,6 +589,48 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             }
         });
     }
+    
+    /**
+     * Инъекция JavaScript для перехвата кликов по ссылкам.
+     * Перехватываем клики и вызываем AndroidBridge для открытия в новой вкладке.
+     */
+    private void injectClickInterceptor(WebView view) {
+        String script = 
+            "(function() {" +
+            "  if (window._clickInterceptorInjected) return;" +
+            "  window._clickInterceptorInjected = true;" +
+            "  " +
+            "  document.addEventListener('click', function(e) {" +
+            "    var target = e.target;" +
+            "    while (target) {" +
+            "      if (target.tagName === 'A' && target.href) {" +
+            "        var href = target.href;" +
+            "        if (href.indexOf('forum.neverlands.ru') !== -1 ||" +
+            "            href.indexOf('pinfo.cgi') !== -1 ||" +
+            "            href.indexOf('ch.php') !== -1 ||" +
+            "            href.indexOf('log.php') !== -1 ||" +
+            "            href.indexOf('fight') !== -1 ||" +
+            "            href.indexOf('pname.cgi') !== -1 ||" +
+            "            href.indexOf('pbots.cgi') !== -1) {" +
+            "          e.preventDefault();" +
+            "          e.stopPropagation();" +
+            "          var title = 'Новая вкладка';" +
+            "          if (href.indexOf('forum.neverlands.ru') !== -1) title = 'Форум';" +
+            "          else if (href.indexOf('pinfo.cgi') !== -1) title = 'PINFO';" +
+            "          else if (href.indexOf('ch.php') !== -1) title = 'Комната';" +
+            "          else if (href.indexOf('log.php') !== -1 || href.indexOf('fight') !== -1) title = 'Бой';" +
+            "          if (window.AndroidBridge) {" +
+            "            window.AndroidBridge.openInNewTab(href, title);" +
+            "          }" +
+            "          return;" +
+            "        }" +
+            "      }" +
+            "      target = target.parentElement;" +
+            "    }" +
+            "  }, true);" +
+            "})()";
+        view.evaluateJavascript(script, null);
+    }
 
     private class CustomWebViewClient extends WebViewClient {
         @Override
@@ -627,6 +704,10 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             } else if (url.contains("ch.php")) {
                 view.evaluateJavascript("javascript:(function() { var frameset = document.getElementsByTagName('frameset')[0]; if (frameset) { frameset.cols = '0, *'; } })()", null);
             }
+            
+            // Инъекция JavaScript для перехвата кликов по ссылкам
+            // Это нужно, т.к. ссылки внутри фреймов не вызывают shouldOverrideUrlLoading
+            injectClickInterceptor(view);
         }
 
         @Override
@@ -636,12 +717,54 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
 
         @Override
         public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
-            if (request.getUrl().toString() != null && request.getUrl().toString().startsWith("http://neverlands.ru/pinfo.cgi")) {
+            String url = request.getUrl().toString();
+            Log.d(TAG, "shouldOverrideUrlLoading: " + url);
+            
+            if (url == null) {
+                return false;
+            }
+            
+            // Определяем тип ссылки (аналог BeforeNewWindow в C# версии)
+            String title = "Новая вкладка";
+            boolean shouldOpenInNewTab = false;
+            
+            if (url.contains("forum.neverlands.ru")) {
+                title = "Форум";
+                shouldOpenInNewTab = true;
+            } else if (url.contains("pinfo.cgi")) {
+                // PInfo - открываем в новой вкладке
+                title = "Информация";
+                shouldOpenInNewTab = true;
+            } else if (url.contains("ch.php")) {
+                // Комната
+                title = "Комната";
+                shouldOpenInNewTab = true;
+            } else if (url.contains("log.php") || url.contains("fight")) {
+                title = "Бой";
+                shouldOpenInNewTab = true;
+            } else if (url.contains("pname.cgi")) {
+                title = "Поиск";
+                shouldOpenInNewTab = true;
+            } else if (url.contains("pbots.cgi")) {
+                title = "Боты";
+                shouldOpenInNewTab = true;
+            }
+            
+            // Открываем в новой вкладке если это special URL
+            if (shouldOpenInNewTab) {
+                Log.d(TAG, "shouldOverrideUrlLoading: открываем вкладку " + title + " -> " + url);
+                openInNewTab(url, title);
+                return true; // Не даём WebView загружать этот URL
+            }
+            
+            // Для pinfo.cgi также открываем PinfoActivity
+            if (url.startsWith("http://neverlands.ru/pinfo.cgi")) {
                 Intent intent = new Intent(MainActivity.this, PinfoActivity.class);
-                intent.putExtra("url", request.getUrl().toString());
+                intent.putExtra("url", url);
                 startActivity(intent);
                 return true;
             }
+            
             return false;
         }
 

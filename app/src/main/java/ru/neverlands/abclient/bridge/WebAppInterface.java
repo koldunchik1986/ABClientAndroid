@@ -407,4 +407,24 @@ public class WebAppInterface {
             }
         });
     }
+
+    /**
+     * Открыть URL в новой вспомогательной вкладке.
+     * Аналог CreateNewTab в C# версии.
+     * @param url URL для загрузки
+     * @param title Заголовок вкладки
+     */
+    @JavascriptInterface
+    public void openInNewTab(String url, String title) {
+        Log.d("WebAppInterface", "openInNewTab: " + title + " -> " + url);
+        
+        // Всегда используем MainActivity для открытия вкладки
+        if (AppVars.mainActivity == null || AppVars.mainActivity.get() == null) {
+            return;
+        }
+        
+        AppVars.mainActivity.get().runOnUiThread(() -> {
+            AppVars.mainActivity.get().openInNewTab(url, title);
+        });
+    }
 }
