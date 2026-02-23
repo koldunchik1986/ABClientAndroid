@@ -15,6 +15,13 @@
         android:orientation="vertical"
         android:visibility="visible">
 
+        <!-- Панель быстрых кнопок (сверху основной вкладки) -->
+        <include
+            android:id="@+id/quick_buttons_bar"
+            layout="@layout/quick_buttons_bar"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content" />
+
         <WebView
             android:id="@+id/webView"
             android:layout_width="match_parent"
@@ -58,6 +65,13 @@
         <include
             android:id="@+id/status_bar"
             layout="@layout/status_bar"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content" />
+
+        <!-- Панель быстрых кнопок (снизу) -->
+        <include
+            android:id="@+id/quick_buttons_bar_bottom"
+            layout="@layout/quick_buttons_bar_bottom"
             android:layout_width="match_parent"
             android:layout_height="wrap_content" />
 

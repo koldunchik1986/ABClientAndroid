@@ -76,6 +76,7 @@ import ru.neverlands.abclient.webview.WebViewRequestInterceptor;
 
 import androidx.lifecycle.ViewModelProvider;
 import ru.neverlands.abclient.ui.viewmodel.FightViewModel;
+import ru.neverlands.abclient.ui.QuickButtonsPanel;
 
 public class MainActivity extends AppCompatActivity implements NavigationView.OnNavigationItemSelectedListener {
     private static final String TAG = "MainActivity";
@@ -86,6 +87,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     private boolean isRoomManagerStarted = false;
     private FightViewModel fightViewModel;
     private TabManager tabManager;
+    private QuickButtonsPanel quickButtonsPanel;
 
     public FightViewModel getFightViewModel() {
         return fightViewModel;
@@ -224,6 +226,14 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         View mainContent = binding.appBarMain.contentMain.tabMainContent;
         android.widget.FrameLayout secondaryContainer = binding.appBarMain.contentMain.tabSecondaryContainer;
         tabManager = new TabManager(this, tabLayout, mainContent, secondaryContainer);
+        
+        // Инициализация панели быстрых кнопок - ищем по всему корневому view
+        quickButtonsPanel = new QuickButtonsPanel(this, binding.getRoot(), actionType -> {
+            if (actionType == ru.neverlands.abclient.model.QuickActionType.QUICK_ACTIONS) {
+                ru.neverlands.abclient.ui.QuickActionsBottomSheet.newInstance(null)
+                    .show(getSupportFragmentManager(), "QuickActions");
+            }
+        });
         
         loadInitialUrls();
 
