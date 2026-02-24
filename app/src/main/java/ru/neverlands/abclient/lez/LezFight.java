@@ -32,6 +32,8 @@ public class LezFight {
     private int _currentHp, _maxHp;
     private int _currentMa, _maxMa;
     private int _percentHp, _percentMa;
+    private int _foeCurrentHp, _foeMaxHp;
+    private int _foeCurrentMa, _foeMaxMa;
     private String _foeImage, _foeName;
     private int _foeLevel, _foeGroupId;
     public LezBotsGroup FoeGroup;
@@ -106,13 +108,25 @@ public class LezFight {
         String[] paramen = ParseString(html, "var param_en = [", 0);
         String[] slotsen = ParseString(html, "var slots_en = [", 0);
         String[] fightpm = ParseString(html, "var fight_pm = [", 0);
+        String[] fexp = ParseString(html, "var fexp = [", 0);
 
         if (paramen == null || slotsen == null || fightpm == null) return false;
 
         // Сохраняем данные для Frame
         _fightpm = fightpm;
-        _vcode = AppVars.VCode != null ? AppVars.VCode : "";
+        
+        // VCode - сначала пробуем из AppVars, иначе из fight_pm[4]
+        if (AppVars.VCode != null && !AppVars.VCode.isEmpty()) {
+            _vcode = AppVars.VCode;
+        } else if (fightpm.length > 4) {
+            _vcode = Strip(fightpm[4]);
+        } else {
+            _vcode = "";
+        }
+        
         _levbot = Strip(paramen[5]);
+
+        android.util.Log.d("LezFight", "fight_pm: magmax=" + fightpm[0] + ", odmax=" + fightpm[1] + ", hitval=" + fightpm[2] + ", vcode=" + _vcode.substring(0, Math.min(8, _vcode.length())));
 
         // Парсим alchemy
         String[] alchemyArr = ParseString(html, "var alchemy = [", 0);
@@ -128,13 +142,31 @@ public class LezFight {
         FoeName = Strip(paramen[0]);
         _foeName = FoeName;
         try { _foeLevel = Integer.parseInt(Strip(paramen[5])); } catch (Exception e) { _foeLevel = 33; }
+        
+        // Парсим HP и MA противника
+        try {
+            _foeCurrentHp = (int) Double.parseDouble(Strip(paramen[1]));
+            _foeMaxHp = (int) Double.parseDouble(Strip(paramen[2]));
+            _foeCurrentMa = (int) Double.parseDouble(Strip(paramen[3]));
+            _foeMaxMa = (int) Double.parseDouble(Strip(paramen[4]));
+        } catch (Exception e) {
+            _foeCurrentHp = 0;
+            _foeMaxHp = 0;
+            _foeCurrentMa = 0;
+            _foeMaxMa = 0;
+        }
+        
         _foeImage = Strip(slotsen[0]);
 
         if (!_foeImage.startsWith("bot") && !_foeImage.startsWith("_xneto") && !_foeImage.startsWith("_xsilf")) {
             _foeName = "Человек";
         }
 
+        android.util.Log.d("LezFight", "Foe: name=" + _foeName + ", level=" + _foeLevel + ", image=" + _foeImage);
+
         SelectFoeGroup();
+
+        android.util.Log.d("LezFight", "FoeGroup selected: Id=" + FoeGroup.Id + ", DoHits=" + FoeGroup.DoHits + ", DoBlocks=" + FoeGroup.DoBlocks + ", DoMiscAbils=" + FoeGroup.DoMiscAbils);
 
         try {
             _magmax = Integer.parseInt(Strip(fightpm[0]));
@@ -156,6 +188,8 @@ public class LezFight {
                 try { lstandin.add(Integer.parseInt(Strip(s))); } catch (Exception ignored) {}
             }
         }
+        android.util.Log.d("LezFight", "stand_in parsed: " + lstandin);
+
         Selpl(0, lstandin);
 
         List<Integer> lmagicin = new ArrayList<>();
@@ -164,6 +198,8 @@ public class LezFight {
                 try { lmagicin.add(Integer.parseInt(Strip(s))); } catch (Exception ignored) {}
             }
         }
+        android.util.Log.d("LezFight", "magic_in parsed: " + lmagicin);
+
         if (!lmagicin.isEmpty()) Selpl(1, lmagicin);
 
         _bs = 0;
@@ -192,6 +228,8 @@ public class LezFight {
         for (int h : _hits) _ehits.add(IsHitAllowed(h));
 
         GenerateCombinations();
+
+        android.util.Log.d("LezFight", "GenerateCombinations: combinations count = " + LezCombinations.size());
 
         DoStop = FoeGroup.DoStopNow;
         IsLowHp = FoeGroup.DoStopLowHp && (_percentHp <= FoeGroup.StopLowHp);
@@ -384,9 +422,9 @@ public class LezFight {
         
         // Заголовок с информацией о противнике
         sb.append("<b>").append(FoeName).append("</b> [").append(_foeLevel).append("] [<font color=#bb0000><b>");
-        sb.append(_currentHp).append("</b>/<b>").append(_maxHp);
+        sb.append(_foeCurrentHp).append("</b>/<b>").append(_foeMaxHp);
         sb.append("</b></font> | <font color=#336699><b>");
-        sb.append(_currentMa).append("</b>/<b>").append(_maxMa).append("</b></font>]<br>");
+        sb.append(_foeCurrentMa).append("</b>/<b>").append(_foeMaxMa).append("</b></font>]<br>");
         
         // Форма авто-submit
         sb.append("<form action=\"main.php\" method=POST name=ff>");
@@ -495,8 +533,49 @@ public class LezFight {
 
     private String Strip(String arg) { return arg.replace("\"", "").trim(); }
 
+    private String[] _fexp;
+
     private boolean ParseNonFight() {
-        // Логика завершения боя (case "2", case "7" и т.д.)
+        // Логика завершения боя - парсим fexp для ссылки завершения
+        _fexp = ParseString(_html, "var fexp = [", 0);
+        
+        if (_fexp != null && _fexp.length >= 14) {
+            BuildFightLink();
+        }
+        
         return true;
+    }
+    
+    private void BuildFightLink() {
+        if (_fexp == null || _fexp.length < 14) return;
+        
+        try {
+            String fexp0 = Strip(_fexp[0]);
+            String fexp1 = Strip(_fexp[1]);
+            String fexp3 = Strip(_fexp[3]);
+            String fexp5 = Strip(_fexp[5]);
+            String fexp8 = Strip(_fexp[8]);
+            String fexp9 = Strip(_fexp[9]);
+            String fexp10 = Strip(_fexp[10]);
+            String fexp11 = Strip(_fexp[11]);
+            String fexp12 = Strip(_fexp[12]);
+            String fexp13 = Strip(_fexp[13]);
+            
+            String fightLink = "main.php?code=????&get_id=61&act=7&fexp=" + fexp0 +
+                "&fres=" + fexp1 +
+                "&vcode=" + fexp3 +
+                "&min1=" + fexp8 +
+                "&max1=" + fexp9 +
+                "&min2=" + fexp10 +
+                "&max2=" + fexp11 +
+                "&sum1=" + fexp12 +
+                "&sum2=" + fexp13 +
+                "&ftype=" + fexp5;
+            
+            AppVars.FightLink = fightLink;
+            android.util.Log.d("LezFight", "BuildFightLink: " + fightLink);
+        } catch (Exception e) {
+            android.util.Log.e("LezFight", "BuildFightLink error: " + e.getMessage());
+        }
     }
 }
