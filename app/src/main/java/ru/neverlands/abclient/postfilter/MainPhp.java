@@ -14,6 +14,8 @@ import android.content.Intent;
 
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 
+import ru.neverlands.abclient.lez.LezFight;
+import ru.neverlands.abclient.model.AutoboiState;
 import ru.neverlands.abclient.model.InvComparer;
 import ru.neverlands.abclient.model.InvEntry;
 import ru.neverlands.abclient.manager.FastActionManager;
@@ -504,8 +506,7 @@ public class MainPhp {
 
     /**
      * Обработка страницы боя (портирование MainPhpFight.cs).
-     * Пока реализовано только детальное логирование для анализа структуры HTML от сервера.
-     * TODO: Добавить LezFight.parse() и генерацию fight.Frame
+     * Анализирует HTML боя, генерирует авто-ход если автобой включен.
      */
     private static String mainPhpFight(String address, String html) {
         android.util.Log.d(TAG, "mainPhpFight: address=" + address + ", htmlLen=" + html.length());
@@ -518,20 +519,93 @@ public class MainPhp {
         logFightVariable(html, "slots_my");
         logFightVariable(html, "LogBoi");
 
-        // --- Логирование всего HTML страницы боя ---
-        // Разбиваем на части по 800 символов, чтобы logcat не обрезал
-        int chunkSize = 800;
-        int totalLen = html.length();
-        int chunks = (totalLen + chunkSize - 1) / chunkSize;
-        android.util.Log.d(TAG, "mainPhpFight: HTML dump, total=" + totalLen + " bytes, chunks=" + chunks);
-        for (int i = 0; i < chunks; i++) {
-            int start = i * chunkSize;
-            int end = Math.min(start + chunkSize, totalLen);
-            android.util.Log.d(TAG, "mainPhpFight HTML[" + start + "-" + end + "]: "
-                    + html.substring(start, end));
+        // --- Парсинг боя с помощью LezFight ---
+        LezFight fight = new LezFight(html);
+        
+        // Детальный дамп HTML для диагностики (если нужен)
+        if (true) { // TODO: сделать через настройку
+            int chunkSize = 800;
+            int totalLen = html.length();
+            int chunks = (totalLen + chunkSize - 1) / chunkSize;
+            android.util.Log.d(TAG, "mainPhpFight: HTML dump, total=" + totalLen + " bytes, chunks=" + chunks);
+            for (int i = 0; i < chunks; i++) {
+                int start = i * chunkSize;
+                int end = Math.min(start + chunkSize, totalLen);
+                android.util.Log.d(TAG, "mainPhpFight HTML[" + start + "-" + end + "]: "
+                        + html.substring(start, end));
+            }
+        }
+        
+        android.util.Log.d(TAG, "mainPhpFight: LezFight parsed:"
+                + " IsValid=" + fight.IsValid
+                + " IsBoi=" + fight.IsBoi
+                + " IsWaitingForNextTurn=" + fight.IsWaitingForNextTurn
+                + " DoStop=" + fight.DoStop
+                + " IsLowHp=" + fight.IsLowHp
+                + " IsLowMa=" + fight.IsLowMa
+                + " DoExit=" + fight.DoExit
+                + " LogBoi=" + fight.LogBoi);
+
+        if (!fight.IsValid) {
+            android.util.Log.d(TAG, "mainPhpFight: fight.IsValid=false, returning original HTML");
+            return html;
         }
 
-        // --- Проверяем наличие ключевых признаков страницы боя ---
+        // Проверяем, ждём ли мы хода противника - нужно auto-refresh
+        if (fight.IsWaitingForNextTurn) {
+            android.util.Log.d(TAG, "mainPhpFight: waiting for opponent turn, returning Frame for auto-refresh");
+            return fight.Frame;
+        }
+
+        // Проверяем, включен ли автобой в профиле
+        if (AppVars.Profile != null && AppVars.Profile.LezDoAutoboi) {
+            android.util.Log.d(TAG, "mainPhpFight: LezDoAutoboi enabled, Autoboi state=" + AppVars.Autoboi);
+            
+            // Проверяем состояние автобоя
+            if (AppVars.Autoboi == AutoboiState.AutoboiOn) {
+                if (fight.IsBoi) {
+                    // Мы в бою
+                    android.util.Log.d(TAG, "mainPhpFight: in fight, checking safety conditions:"
+                            + " DoStop=" + fight.DoStop
+                            + " IsLowHp=" + fight.IsLowHp
+                            + " IsLowMa=" + fight.IsLowMa
+                            + " DoExit=" + fight.DoExit);
+                    
+                    if (!fight.DoStop && !fight.IsLowHp && !fight.IsLowMa && !fight.DoExit) {
+                        // Бой идёт, условия безопасные - возвращаем авто-ход
+                        android.util.Log.d(TAG, "mainPhpFight: SAFE - returning fight.Frame for auto-attack");
+                        android.util.Log.d(TAG, "mainPhpFight: fight.Frame = " + (fight.Frame != null ? fight.Frame.substring(0, Math.min(200, fight.Frame.length())) : "NULL"));
+                        return fight.Frame;
+                    } else {
+                        // Опасная ситуация - останавливаем автобой
+                        android.util.Log.d(TAG, "mainPhpFight: DANGEROUS - stopping autoboi, setting Timeout");
+                        if (AppVars.Autoboi != AutoboiState.Timeout) {
+                            notifyFightStopped(fight);
+                            AppVars.Autoboi = AutoboiState.Timeout;
+                        }
+                    }
+                } else {
+                    // Бой завершился
+                    android.util.Log.d(TAG, "mainPhpFight: fight ended, restoring autoboi");
+                    // Вычисляем восстановление после боя (аналог CalcRestoreAfterBoi)
+                    int restoreHp = AppVars.Profile.LezWaitHp;
+                    if (AppVars.Profile.LezDoWaitHp && restoreHp > 0) {
+                        AppVars.Autoboi = AutoboiState.Restoring;
+                    } else {
+                        AppVars.Autoboi = AutoboiState.AutoboiOn;
+                        if (!AppVars.FightLink.isEmpty()) {
+                            return Russian.getString(Filter.buildRedirect("Завершение боя", AppVars.FightLink));
+                        }
+                    }
+                }
+            } else {
+                android.util.Log.d(TAG, "mainPhpFight: Autoboi state is " + AppVars.Autoboi + ", not AutoboiOn");
+            }
+        } else {
+            android.util.Log.d(TAG, "mainPhpFight: LezDoAutoboi disabled or Profile is null");
+        }
+
+        // Логируем ключевые признаки страницы боя для диагностики
         android.util.Log.d(TAG, "mainPhpFight flags:"
                 + " magic_slots=" + html.contains("magic_slots();")
                 + " fight_ty=" + html.contains("var fight_ty")
@@ -541,8 +615,32 @@ public class MainPhp {
                 + " autosubmit=" + html.contains("document.ff.submit")
         );
 
-        // TODO: Здесь будет вызов LezFight.parse(html) и возврат fight.Frame при автобое
         return html;
+    }
+
+    /**
+     * Отправляет уведомление в чат об остановке боя.
+     */
+    private static void notifyFightStopped(LezFight fight) {
+        if (AppVars.getContext() == null) return;
+        
+        String message = "Автобой остановлен: ";
+        if (fight.DoStop) {
+            message += "остановка в группе; ";
+        }
+        if (fight.IsLowHp) {
+            message += "низкое HP; ";
+        }
+        if (fight.IsLowMa) {
+            message += "низкая мана; ";
+        }
+        if (fight.DoExit) {
+            message += "выход из боя; ";
+        }
+        
+        Intent msgIntent = new Intent(AppVars.ACTION_ADD_CHAT_MESSAGE);
+        msgIntent.putExtra("message", "<font color=#cc0000><b>" + message + "</b></font>");
+        LocalBroadcastManager.getInstance(AppVars.getContext()).sendBroadcast(msgIntent);
     }
 
     /**

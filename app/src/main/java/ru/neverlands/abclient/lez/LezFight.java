@@ -41,6 +41,12 @@ public class LezFight {
     private String[] _bspar;
     private boolean _hitByScroll;
     
+    // Данные для генерации Frame
+    private String[] _fightpm;
+    private String _vcode;
+    private String _levbot;
+    private int[] _alchemy;
+    
     private final List<Integer> _hits = new ArrayList<>();
     private final List<Boolean> _ehits = new ArrayList<>();
     private final List<Integer> _magblocks = new ArrayList<>();
@@ -102,6 +108,22 @@ public class LezFight {
         String[] fightpm = ParseString(html, "var fight_pm = [", 0);
 
         if (paramen == null || slotsen == null || fightpm == null) return false;
+
+        // Сохраняем данные для Frame
+        _fightpm = fightpm;
+        _vcode = AppVars.VCode != null ? AppVars.VCode : "";
+        _levbot = Strip(paramen[5]);
+
+        // Парсим alchemy
+        String[] alchemyArr = ParseString(html, "var alchemy = [", 0);
+        if (alchemyArr != null && alchemyArr.length > 0) {
+            _alchemy = new int[alchemyArr.length];
+            for (int i = 0; i < alchemyArr.length; i++) {
+                try { _alchemy[i] = Integer.parseInt(Strip(alchemyArr[i])); } catch (Exception e) { _alchemy[i] = 0; }
+            }
+        } else {
+            _alchemy = new int[18];
+        }
 
         FoeName = Strip(paramen[0]);
         _foeName = FoeName;
@@ -179,6 +201,7 @@ public class LezFight {
         if (LezCombinations.size() > 0) {
             LezCombination = LezCombinations.get((int)(Math.random() * LezCombinations.size()));
             BuildResult();
+            BuildFrame();
         }
 
         return true;
@@ -351,6 +374,86 @@ public class LezFight {
         for (int i = 0; i < 18; i++) if (LezCombination.MagicFlags[i]) sb.append(LezCombination.MagicCodes[i]).append("|");
         
         Result = sb.toString();
+    }
+
+    private void BuildFrame() {
+        if (_fightpm == null || _fightpm.length < 11) return;
+        
+        StringBuilder sb = new StringBuilder();
+        sb.append("<html><head><meta http-equiv=\"Content-Type\" content=\"text/html; charset=windows-1251\"><title>ABClient</title></head><body>");
+        
+        // Заголовок с информацией о противнике
+        sb.append("<b>").append(FoeName).append("</b> [").append(_foeLevel).append("] [<font color=#bb0000><b>");
+        sb.append(_currentHp).append("</b>/<b>").append(_maxHp);
+        sb.append("</b></font> | <font color=#336699><b>");
+        sb.append(_currentMa).append("</b>/<b>").append(_maxMa).append("</b></font>]<br>");
+        
+        // Форма авто-submit
+        sb.append("<form action=\"main.php\" method=POST name=ff>");
+        
+        // post_id = 7
+        sb.append("<input name=post_id type=hidden value=\"7\">");
+        
+        // vcode
+        sb.append("<input name=vcode type=hidden value=\"").append(_vcode).append("\">");
+        
+        // enemy
+        String enemy = _fightpm.length > 5 ? Strip(_fightpm[5]) : "";
+        sb.append("<input name=enemy type=hidden value=\"").append(enemy).append("\">");
+        
+        // group
+        String group = _fightpm.length > 6 ? Strip(_fightpm[6]) : "";
+        sb.append("<input name=group type=hidden value=\"").append(group).append("\">");
+        
+        // inf_bot
+        String infbot = _fightpm.length > 7 ? Strip(_fightpm[7]) : "";
+        sb.append("<input name=inf_bot type=hidden value=\"").append(infbot).append("\">");
+        
+        // inf_zb
+        String infzb = _fightpm.length > 10 ? Strip(_fightpm[10]) : "";
+        sb.append("<input name=inf_zb type=hidden value=\"").append(infzb).append("\">");
+        
+        // lev_bot
+        sb.append("<input name=lev_bot type=hidden value=\"").append(_levbot).append("\">");
+        
+        // ftr
+        sb.append("<input name=ftr type=hidden value=\"").append(_ftype).append("\">");
+        
+        // inu (удары)
+        StringBuilder inu = new StringBuilder();
+        for (int i = 0; i < 4; i++) {
+            if (LezCombination.HitOps[i] > 0) {
+                int code = LezCombination.HitCodes[i];
+                inu.append(i).append("_").append(code).append("_").append(_posma[code]).append("@");
+            }
+        }
+        sb.append("<input name=inu type=hidden value=\"").append(inu.toString()).append("\">");
+        
+        // inb (блоки)
+        String inb = LezCombination.BlockOp > 0 ? 
+            LezCombination.BlockCombo + "_" + LezCombination.BlockOp + "_" + _posma[LezCombination.BlockCode] : "";
+        sb.append("<input name=inb type=hidden value=\"").append(inb).append("\">");
+        
+        // ina (магия)
+        StringBuilder ina = new StringBuilder();
+        for (int i = 0; i < 18; i++) {
+            if (LezCombination.MagicFlags[i]) {
+                int code = LezCombination.MagicCodes[i];
+                int posType = LezSpellCollection.PosType[code];
+                ina.append(code);
+                if (posType > 3 && _alchemy != null && i < _alchemy.length) {
+                    ina.append("_").append(_alchemy[i]);
+                }
+                ina.append("@");
+            }
+        }
+        sb.append("<input name=ina type=hidden value=\"").append(ina.toString()).append("\">");
+        
+        sb.append("</form>");
+        sb.append("<script language=\"JavaScript\">document.ff.submit();</script></body></html>");
+        
+        Frame = sb.toString();
+        android.util.Log.d("LezFight", "BuildFrame: Frame generated, length=" + Frame.length());
     }
 
     private void Selpl(int type, List<Integer> list) {

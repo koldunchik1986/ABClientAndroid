@@ -261,6 +261,13 @@ public class LoginActivity extends AppCompatActivity {
 
         // Устанавливаем глобальный профиль для сессии
         AppVars.Profile = profileToLogin;
+        
+        // Синхронизируем состояние автобоя с профилем
+        if (profileToLogin.LezDoAutoboi) {
+            AppVars.Autoboi = ru.neverlands.abclient.model.AutoboiState.AutoboiOn;
+        } else {
+            AppVars.Autoboi = ru.neverlands.abclient.model.AutoboiState.AutoboiOff;
+        }
 
         // Запускаем фоновое обновление всех контактов
         android.util.Log.d("LoginActivity", "Starting background contact refresh after successful login.");

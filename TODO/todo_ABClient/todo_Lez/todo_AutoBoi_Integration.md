@@ -524,10 +524,10 @@ AutoBoiSettingsFragment (новый)
 ## 10. Статус задач
 
 ### Этап 1: MainPhpFight интеграция
-- [ ] Добавить `processMainPhpFight()` в `MainPhp.java`
-- [ ] Вызвать при `html.contains("var fight_ty = [")`
-- [ ] Обрабатывать все состояния AutoboiState
-- [ ] Уведомлять в чат при остановке
+- [x] Добавить `processMainPhpFight()` в `MainPhp.java` (реализовано как `mainPhpFight()`)
+- [x] Вызвать при `html.contains("var fight_ty = [")` (уже вызывается в process())
+- [x] Обрабатывать все состояния AutoboiState
+- [x] Уведомлять в чат при остановке
 
 ### Этап 2: Уведомление о нападении
 - [ ] При смене `LogBoi` — отправлять уведомление в чат
@@ -536,12 +536,12 @@ AutoBoiSettingsFragment (новый)
 - [ ] Определять опасный бой (ftype >= 80)
 
 ### Этап 3: AndroidBridge методы
-- [ ] `AutoSelect()` — ручной выбор одного хода
-- [ ] `AutoTurn()` — один автоход
-- [ ] `AutoBoi()` — переключение автобоя
-- [ ] `ResetCure()` — сброс состояния
-- [ ] `XodButtonElapsedTime()` — строка таймера хода
-- [ ] `ResetLastBoiTimer()` — сброс таймера
+- [x] `AutoSelect()` — ручной выбор одного хода (реализовано в WebAppInterface)
+- [x] `AutoTurn()` — один автоход (реализовано в WebAppInterface)
+- [x] `AutoBoi()` — переключение автобоя (реализовано в WebAppInterface)
+- [x] `ResetCure()` — сброс состояния
+- [x] `XodButtonElapsedTime()` —мера хода строка тай
+- [x] `ResetLastBoiTimer()` — сброс таймера
 
 ### Этап 4: AutoBoiSettingsFragment (UI)
 - [ ] Создать DialogFragment с TabLayout (4 вкладки)
@@ -553,8 +553,8 @@ AutoBoiSettingsFragment (новый)
 - [ ] Открытие из AUTO_FIGHT (long press) или меню настроек
 
 ### Этап 5: WebViewRequestInterceptor
-- [ ] Убедиться что Filter.process() вызывается для main.php
-- [ ] Убедиться что FightJs.process() вызывается для fight_v*.js
+- [x] Убедиться что Filter.process() вызывается для main.php (подтверждено в логах)
+- [x] Убедиться что FightJs.process() вызывается для fight_v*.js
 
 ### Этап 6: Сериализация LezGroups
 - [ ] Проверить save/load LezBotsGroup в UserConfig.java

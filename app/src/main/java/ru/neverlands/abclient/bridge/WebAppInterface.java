@@ -6,6 +6,7 @@ import android.webkit.JavascriptInterface;
 import android.widget.Toast;
 
 import ru.neverlands.abclient.manager.ContactsManager;
+import ru.neverlands.abclient.model.AutoboiState;
 import ru.neverlands.abclient.utils.AppVars;
 
 /**
@@ -283,9 +284,14 @@ public class WebAppInterface {
 
     @JavascriptInterface
     public void AutoBoi() {
-        Log.d("WebAppInterface", "AutoBoi called");
-        if (AppVars.mainActivity != null && AppVars.mainActivity.get() != null) {
-            AppVars.mainActivity.get().getFightViewModel().toggleAutoBattle();
+        Log.d("WebAppInterface", "AutoBoi called, current state: " + AppVars.Autoboi);
+        // Переключаем глобальное состояние автобоя (AppVars.Autoboi)
+        if (AppVars.Autoboi == AutoboiState.AutoboiOn) {
+            AppVars.Autoboi = AutoboiState.AutoboiOff;
+            Log.d("WebAppInterface", "AutoBoi: switched to AutoboiOff");
+        } else {
+            AppVars.Autoboi = AutoboiState.AutoboiOn;
+            Log.d("WebAppInterface", "AutoBoi: switched to AutoboiOn");
         }
     }
 
