@@ -172,7 +172,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                     }
                     break;
                 case AppVars.ACTION_STOP_AUTOFISH:
-                    Toast.makeText(context, "Авторыбалка остановлена", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(context, "Авто-Рыбалка остановлена", Toast.LENGTH_SHORT).show();
                     break;
             }
         }

@@ -176,7 +176,7 @@ public class QuickButtonsPanel {
             button.setBackgroundResource(R.drawable.quick_button_enabled);
         } else {
             // Выключено - полупрозрачность
-            button.setAlpha(0.5f);
+            button.setAlpha(0.6f);
             button.setBackgroundResource(R.drawable.quick_button_disabled);
         }
     }
@@ -356,7 +356,7 @@ public class QuickButtonsPanel {
             case AUTO_FIGHT:
                 Log.d(TAG, "executeAction: AUTO_FIGHT");
                 autoFunctionsManager.toggleAutoFight();
-                Toast.makeText(context, autoFunctionsManager.isAutoFightEnabled() ? "Автобой ВКЛ" : "Автобой ВЫКЛ", Toast.LENGTH_SHORT).show();
+                Toast.makeText(context, autoFunctionsManager.isAutoFightEnabled() ? "Авто-Бой ВКЛ" : "Авто-Бой ВЫКЛ", Toast.LENGTH_SHORT).show();
                 loadAndUpdateButtons();
                 break;
             case QUICK_ACTIONS:
@@ -366,22 +366,22 @@ public class QuickButtonsPanel {
                 break;
             case AUTO_FISH:
                 autoFunctionsManager.toggleAutoFish();
-                Toast.makeText(context, autoFunctionsManager.isAutoFishEnabled() ? "Авторыбалка ВКЛ" : "Авторыбалка ВЫКЛ", Toast.LENGTH_SHORT).show();
+                Toast.makeText(context, autoFunctionsManager.isAutoFishEnabled() ? "Авто-Рыбалка ВКЛ" : "Авто-Рыбалка ВЫКЛ", Toast.LENGTH_SHORT).show();
                 loadAndUpdateButtons();
                 break;
             case LEZ_FIGHT:
                 autoFunctionsManager.toggleLezFight();
-                Toast.makeText(context, autoFunctionsManager.isLezFightEnabled() ? "Автоохота ВКЛ" : "Автоохота ВЫКЛ", Toast.LENGTH_SHORT).show();
+                Toast.makeText(context, autoFunctionsManager.isLezFightEnabled() ? "Авто-Охота ВКЛ" : "Авто-Охота ВЫКЛ", Toast.LENGTH_SHORT).show();
                 loadAndUpdateButtons();
                 break;
             case AUTO_ATTACK:
                 autoFunctionsManager.toggleAutoAttack();
-                Toast.makeText(context, autoFunctionsManager.isAutoAttackEnabled() ? "Автонападение ВКЛ" : "Автонападение ВЫКЛ", Toast.LENGTH_SHORT).show();
+                Toast.makeText(context, autoFunctionsManager.isAutoAttackEnabled() ? "Авто-Нападение ВКЛ" : "Авто-Нападение ВЫКЛ", Toast.LENGTH_SHORT).show();
                 loadAndUpdateButtons();
                 break;
             case AUTO_INVISIBLE:
                 autoFunctionsManager.toggleAutoInvisible();
-                Toast.makeText(context, autoFunctionsManager.isAutoInvisibleEnabled() ? "АвтоНевид ВКЛ" : "АвтоНевид ВЫКЛ", Toast.LENGTH_SHORT).show();
+                Toast.makeText(context, autoFunctionsManager.isAutoInvisibleEnabled() ? "Авто-Невид ВКЛ" : "Авто-Невид ВЫКЛ", Toast.LENGTH_SHORT).show();
                 loadAndUpdateButtons();
                 break;
             case LOCATION_TRACKING:
@@ -391,17 +391,17 @@ public class QuickButtonsPanel {
                 break;
             case AUTO_DETECT:
                 autoFunctionsManager.toggleAutoDetect();
-                Toast.makeText(context, autoFunctionsManager.isAutoDetectEnabled() ? "АвтоОбнаружение ВКЛ" : "АвтоОбнаружение ВЫКЛ", Toast.LENGTH_SHORT).show();
+                Toast.makeText(context, autoFunctionsManager.isAutoDetectEnabled() ? "Авто-Обнаружение ВКЛ" : "Авто-Обнаружение ВЫКЛ", Toast.LENGTH_SHORT).show();
                 loadAndUpdateButtons();
                 break;
             case AUTO_SUMMON:
                 autoFunctionsManager.toggleAutoSummon();
-                Toast.makeText(context, autoFunctionsManager.isAutoSummonEnabled() ? "АвтоПризыв ВКЛ" : "АвтоПризыв ВЫКЛ", Toast.LENGTH_SHORT).show();
+                Toast.makeText(context, autoFunctionsManager.isAutoSummonEnabled() ? "Авто-Тотем ВКЛ" : "Авто-Тотем ВЫКЛ", Toast.LENGTH_SHORT).show();
                 loadAndUpdateButtons();
                 break;
             case AUTO_CURE:
                 autoFunctionsManager.toggleAutoCure();
-                Toast.makeText(context, autoFunctionsManager.isAutoCureEnabled() ? "Автолечение ВКЛ" : "Автолечение ВЫКЛ", Toast.LENGTH_SHORT).show();
+                Toast.makeText(context, autoFunctionsManager.isAutoCureEnabled() ? "Авто-Лечение ВКЛ" : "Авто-Лечение ВЫКЛ", Toast.LENGTH_SHORT).show();
                 loadAndUpdateButtons();
                 break;
             case OPEN_CONTACTS:

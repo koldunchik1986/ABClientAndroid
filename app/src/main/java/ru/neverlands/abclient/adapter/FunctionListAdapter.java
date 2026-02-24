@@ -194,8 +194,6 @@ public class FunctionListAdapter extends BaseAdapter {
                 return R.drawable.ic_add;
             case AUTO_MOVING:
                 return R.drawable.ic_add;
-            case AUTO_SKIN:
-                return R.drawable.ic_add;
             case AUTO_REFRESH:
                 return R.drawable.ic_refresh;
             default:

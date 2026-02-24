@@ -9,8 +9,8 @@ import ru.neverlands.abclient.model.QuickActionType;
 import ru.neverlands.abclient.utils.AppVars;
 
 /**
- * Менеджер автоматических функций (автобой, авторыбалка и т.д.).
- * Управляет включением/выключением автофункций и их состоянием.
+ * Менеджер автоматических функций (авто-бой, авто-рыбалка и т.д.).
+ * Управляет включением/выключением авто-функций и их состоянием.
  */
 public class AutoFunctionsManager {
     private static final String TAG = "AutoFunctionsManager";
@@ -33,7 +33,7 @@ public class AutoFunctionsManager {
         return instance;
     }
     
-    // === AUTO_FIGHT (Автобой) ===
+    // === AUTO_FIGHT (Авто-Бой) ===
     
     public boolean isAutoFightEnabled() {
         return prefs.getBoolean(KEY_PREFIX + "auto_fight", false);
@@ -50,7 +50,7 @@ public class AutoFunctionsManager {
         Log.d(TAG, "setAutoFightEnabled: " + enabled);
     }
     
-    // === AUTO_FISH (Авторыбалка) ===
+    // === AUTO_FISH (Авто-Рыбалка) ===
     
     public boolean isAutoFishEnabled() {
         return prefs.getBoolean(KEY_PREFIX + "auto_fish", false);
@@ -66,7 +66,7 @@ public class AutoFunctionsManager {
         Log.d(TAG, "setAutoFishEnabled: " + enabled);
     }
     
-    // === AUTO_BAIT (Автоприманка) ===
+    // === AUTO_BAIT (Авто-Приманка) ===
     
     public boolean isAutoBaitEnabled() {
         return prefs.getBoolean(KEY_PREFIX + "auto_bait", false);
@@ -82,7 +82,7 @@ public class AutoFunctionsManager {
         Log.d(TAG, "setAutoBaitEnabled: " + enabled);
     }
     
-    // === LEZ_FIGHT (Автоохота) ===
+    // === LEZ_FIGHT (Авто-Охота) ===
     
     public boolean isLezFightEnabled() {
         return prefs.getBoolean(KEY_PREFIX + "lez_fight", false);
@@ -98,7 +98,7 @@ public class AutoFunctionsManager {
         Log.d(TAG, "setLezFightEnabled: " + enabled);
     }
     
-    // === AUTO_ATTACK (Автонападение) ===
+    // === AUTO_ATTACK (Авто-Нападение) ===
     
     public boolean isAutoAttackEnabled() {
         return prefs.getBoolean(KEY_PREFIX + "auto_attack", false);
@@ -114,7 +114,7 @@ public class AutoFunctionsManager {
         Log.d(TAG, "setAutoAttackEnabled: " + enabled);
     }
     
-    // === AUTO_INVISIBLE (АвтоНевид) ===
+    // === AUTO_INVISIBLE (Авто-Невид) ===
     
     public boolean isAutoInvisibleEnabled() {
         return prefs.getBoolean(KEY_PREFIX + "auto_invisible", false);
@@ -146,7 +146,7 @@ public class AutoFunctionsManager {
         Log.d(TAG, "setLocationTrackingEnabled: " + enabled);
     }
     
-    // === AUTO_DETECT (АвтоОбнаружение) ===
+    // === AUTO_DETECT (Авто-Обнаружение) ===
     
     public boolean isAutoDetectEnabled() {
         return prefs.getBoolean(KEY_PREFIX + "auto_detect", false);
@@ -162,7 +162,7 @@ public class AutoFunctionsManager {
         Log.d(TAG, "setAutoDetectEnabled: " + enabled);
     }
     
-    // === AUTO_SUMMON (АвтоПризыв) ===
+    // === AUTO_SUMMON (Авто-Тотем) ===
     
     public boolean isAutoSummonEnabled() {
         return prefs.getBoolean(KEY_PREFIX + "auto_summon", false);
@@ -178,7 +178,7 @@ public class AutoFunctionsManager {
         Log.d(TAG, "setAutoSummonEnabled: " + enabled);
     }
     
-    // === AUTO_CURE (Автолечение - DoAutoCure) ===
+    // === AUTO_CURE (Авто-Лечение - DoAutoCure) ===
     
     public boolean isAutoCureEnabled() {
         return prefs.getBoolean(KEY_PREFIX + "auto_cure", false);
@@ -194,7 +194,7 @@ public class AutoFunctionsManager {
         Log.d(TAG, "setAutoCureEnabled: " + enabled);
     }
     
-    // === AUTO_DRINK (АвтоПитье) ===
+    // === AUTO_DRINK (Авто-Питье) ===
     
     public boolean isAutoDrinkEnabled() {
         return prefs.getBoolean(KEY_PREFIX + "auto_drink", false);
@@ -210,7 +210,7 @@ public class AutoFunctionsManager {
         Log.d(TAG, "setAutoDrinkEnabled: " + enabled);
     }
     
-    // === AUTO_MOVING (АвтоДвижение) ===
+    // === AUTO_MOVING (Авто-Движение) ===
     
     public boolean isAutoMovingEnabled() {
         return prefs.getBoolean(KEY_PREFIX + "auto_moving", false);
@@ -242,7 +242,7 @@ public class AutoFunctionsManager {
         Log.d(TAG, "setAutoCutEnabled: " + enabled);
     }
     
-    // === AUTO_REFRESH (АвтоОбновление) ===
+    // === AUTO_REFRESH (Авто-Обновление) ===
     
     public boolean isAutoRefreshEnabled() {
         return prefs.getBoolean(KEY_PREFIX + "auto_refresh", false);
@@ -307,7 +307,7 @@ public class AutoFunctionsManager {
     }
     
     /**
-     * Отключить все автофункции.
+     * Отключить все авто-функции.
      */
     public void disableAll() {
         setAutoFightEnabled(false);
