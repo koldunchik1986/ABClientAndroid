@@ -133,9 +133,9 @@ public class FunctionListAdapter extends BaseAdapter {
         switch (type) {
             case AUTO_FIGHT:
                 return "http://image.neverlands.ru/achievement/2/a_2_10.gif";
-            case AUTO_RECALL:
+            case AUTO_FISH:
                 return "http://image.neverlands.ru/achievement/40/a_40_10.gif";
-            case AUTO_HUNT:
+            case LEZ_FIGHT:
                 return "http://image.neverlands.ru/achievement/70/a_70_10.gif";
             case AUTO_ATTACK:
                 return "http://image.neverlands.ru/achievement/13/a_13_10.gif";
@@ -147,8 +147,16 @@ public class FunctionListAdapter extends BaseAdapter {
                 return "http://image.neverlands.ru/achievement/26/a_26_10.gif";
             case AUTO_SUMMON:
                 return "http://image.neverlands.ru/achievement/11/a_11_10.gif";
-            case AUTO_HEAL:
+            case AUTO_CURE:
                 return "http://image.neverlands.ru/achievement/150/a_150_10.gif";
+            case AUTO_DRINK:
+                return null;
+            case AUTO_MOVING:
+                return null;
+            case AUTO_CUT:
+                return null;
+            case AUTO_REFRESH:
+                return null;
             case QUICK_SELF_RASS:
                 return "http://image.neverlands.ru/weapon/i_w28_23.gif";
             case QUICK_OPEN_NEVID:
@@ -181,6 +189,14 @@ public class FunctionListAdapter extends BaseAdapter {
             case OPEN_LOGS:
                 return R.drawable.ic_add;
             case REFRESH_CONTACTS:
+                return R.drawable.ic_refresh;
+            case AUTO_DRINK:
+                return R.drawable.ic_add;
+            case AUTO_MOVING:
+                return R.drawable.ic_add;
+            case AUTO_SKIN:
+                return R.drawable.ic_add;
+            case AUTO_REFRESH:
                 return R.drawable.ic_refresh;
             default:
                 return R.drawable.ic_add;

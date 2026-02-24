@@ -187,9 +187,11 @@ public class QuickButtonsPanel {
                 return "http://image.neverlands.ru/achievement/2/a_2_10.gif";
             case QUICK_ACTIONS:
                 return null;
-            case AUTO_RECALL:
+            case AUTO_FISH:
                 return "http://image.neverlands.ru/achievement/40/a_40_10.gif";
-            case AUTO_HUNT:
+            case AUTO_BAIT:
+                return null;
+            case LEZ_FIGHT:
                 return "http://image.neverlands.ru/achievement/70/a_70_10.gif";
             case AUTO_ATTACK:
                 return "http://image.neverlands.ru/achievement/13/a_13_10.gif";
@@ -201,8 +203,16 @@ public class QuickButtonsPanel {
                 return "http://image.neverlands.ru/achievement/26/a_26_10.gif";
             case AUTO_SUMMON:
                 return "http://image.neverlands.ru/achievement/11/a_11_10.gif";
-            case AUTO_HEAL:
+            case AUTO_CURE:
                 return "http://image.neverlands.ru/achievement/150/a_150_10.gif";
+            case AUTO_DRINK:
+                return null;
+            case AUTO_MOVING:
+                return null;
+            case AUTO_CUT:
+                return null;
+            case AUTO_REFRESH:
+                return null;
             case OPEN_CONTACTS:
                 return null;
             case OPEN_PINFO:
@@ -248,14 +258,19 @@ public class QuickButtonsPanel {
     private boolean isAutoFunction(QuickActionType type) {
         switch (type) {
             case AUTO_FIGHT:
-            case AUTO_RECALL:
-            case AUTO_HUNT:
+            case AUTO_FISH:
+            case AUTO_BAIT:
+            case LEZ_FIGHT:
             case AUTO_ATTACK:
             case AUTO_INVISIBLE:
             case LOCATION_TRACKING:
             case AUTO_DETECT:
             case AUTO_SUMMON:
-            case AUTO_HEAL:
+            case AUTO_CURE:
+            case AUTO_DRINK:
+            case AUTO_MOVING:
+            case AUTO_CUT:
+            case AUTO_REFRESH:
                 return true;
             default:
                 return false;
@@ -268,10 +283,12 @@ public class QuickButtonsPanel {
                 return R.drawable.ic_auto_fight;
             case QUICK_ACTIONS:
                 return R.drawable.ic_sort;
-            case AUTO_RECALL:
-                return R.drawable.ic_auto_recall;
-            case AUTO_HUNT:
-                return R.drawable.ic_auto_hunt;
+            case AUTO_FISH:
+                return R.drawable.ic_auto_fish;
+            case AUTO_BAIT:
+                return R.drawable.ic_add;
+            case LEZ_FIGHT:
+                return R.drawable.ic_lez_fight;
             case AUTO_ATTACK:
                 return R.drawable.ic_auto_attack;
             case AUTO_INVISIBLE:
@@ -282,8 +299,16 @@ public class QuickButtonsPanel {
                 return R.drawable.ic_auto_detect;
             case AUTO_SUMMON:
                 return R.drawable.ic_auto_summon;
-            case AUTO_HEAL:
+            case AUTO_CURE:
                 return R.drawable.ic_red_cross;
+            case AUTO_DRINK:
+                return R.drawable.ic_add;
+            case AUTO_MOVING:
+                return R.drawable.ic_add;
+            case AUTO_CUT:
+                return R.drawable.ic_add;
+            case AUTO_REFRESH:
+                return R.drawable.ic_refresh;
             case OPEN_CONTACTS:
                 return R.drawable.ic_add_contact;
             case OPEN_PINFO:
@@ -339,14 +364,14 @@ public class QuickButtonsPanel {
                     actionListener.onQuickAction(actionType);
                 }
                 break;
-            case AUTO_RECALL:
-                autoFunctionsManager.toggleAutoRecall();
-                Toast.makeText(context, autoFunctionsManager.isAutoRecallEnabled() ? "Авторыбалка ВКЛ" : "Авторыбалка ВЫКЛ", Toast.LENGTH_SHORT).show();
+            case AUTO_FISH:
+                autoFunctionsManager.toggleAutoFish();
+                Toast.makeText(context, autoFunctionsManager.isAutoFishEnabled() ? "Авторыбалка ВКЛ" : "Авторыбалка ВЫКЛ", Toast.LENGTH_SHORT).show();
                 loadAndUpdateButtons();
                 break;
-            case AUTO_HUNT:
-                autoFunctionsManager.toggleAutoHunt();
-                Toast.makeText(context, autoFunctionsManager.isAutoHuntEnabled() ? "Автоохота ВКЛ" : "Автоохота ВЫКЛ", Toast.LENGTH_SHORT).show();
+            case LEZ_FIGHT:
+                autoFunctionsManager.toggleLezFight();
+                Toast.makeText(context, autoFunctionsManager.isLezFightEnabled() ? "Автоохота ВКЛ" : "Автоохота ВЫКЛ", Toast.LENGTH_SHORT).show();
                 loadAndUpdateButtons();
                 break;
             case AUTO_ATTACK:
@@ -374,9 +399,9 @@ public class QuickButtonsPanel {
                 Toast.makeText(context, autoFunctionsManager.isAutoSummonEnabled() ? "АвтоПризыв ВКЛ" : "АвтоПризыв ВЫКЛ", Toast.LENGTH_SHORT).show();
                 loadAndUpdateButtons();
                 break;
-            case AUTO_HEAL:
-                autoFunctionsManager.toggleAutoHeal();
-                Toast.makeText(context, autoFunctionsManager.isAutoHealEnabled() ? "АвтоЛечение ВКЛ" : "АвтоЛечение ВЫКЛ", Toast.LENGTH_SHORT).show();
+            case AUTO_CURE:
+                autoFunctionsManager.toggleAutoCure();
+                Toast.makeText(context, autoFunctionsManager.isAutoCureEnabled() ? "Автолечение ВКЛ" : "Автолечение ВЫКЛ", Toast.LENGTH_SHORT).show();
                 loadAndUpdateButtons();
                 break;
             case OPEN_CONTACTS:

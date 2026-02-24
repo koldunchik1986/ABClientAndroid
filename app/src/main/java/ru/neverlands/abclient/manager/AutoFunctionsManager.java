@@ -50,36 +50,52 @@ public class AutoFunctionsManager {
         Log.d(TAG, "setAutoFightEnabled: " + enabled);
     }
     
-    // === AUTO_RECALL (Авторыбалка) ===
+    // === AUTO_FISH (Авторыбалка) ===
     
-    public boolean isAutoRecallEnabled() {
-        return prefs.getBoolean(KEY_PREFIX + "auto_recall", false);
+    public boolean isAutoFishEnabled() {
+        return prefs.getBoolean(KEY_PREFIX + "auto_fish", false);
     }
     
-    public void toggleAutoRecall() {
-        boolean newState = !isAutoRecallEnabled();
-        setAutoRecallEnabled(newState);
+    public void toggleAutoFish() {
+        boolean newState = !isAutoFishEnabled();
+        setAutoFishEnabled(newState);
     }
     
-    public void setAutoRecallEnabled(boolean enabled) {
-        prefs.edit().putBoolean(KEY_PREFIX + "auto_recall", enabled).apply();
-        Log.d(TAG, "setAutoRecallEnabled: " + enabled);
+    public void setAutoFishEnabled(boolean enabled) {
+        prefs.edit().putBoolean(KEY_PREFIX + "auto_fish", enabled).apply();
+        Log.d(TAG, "setAutoFishEnabled: " + enabled);
     }
     
-    // === AUTO_HUNT (Автоохота) ===
+    // === AUTO_BAIT (Автоприманка) ===
     
-    public boolean isAutoHuntEnabled() {
-        return prefs.getBoolean(KEY_PREFIX + "auto_hunt", false);
+    public boolean isAutoBaitEnabled() {
+        return prefs.getBoolean(KEY_PREFIX + "auto_bait", false);
     }
     
-    public void toggleAutoHunt() {
-        boolean newState = !isAutoHuntEnabled();
-        setAutoHuntEnabled(newState);
+    public void toggleAutoBait() {
+        boolean newState = !isAutoBaitEnabled();
+        setAutoBaitEnabled(newState);
     }
     
-    public void setAutoHuntEnabled(boolean enabled) {
-        prefs.edit().putBoolean(KEY_PREFIX + "auto_hunt", enabled).apply();
-        Log.d(TAG, "setAutoHuntEnabled: " + enabled);
+    public void setAutoBaitEnabled(boolean enabled) {
+        prefs.edit().putBoolean(KEY_PREFIX + "auto_bait", enabled).apply();
+        Log.d(TAG, "setAutoBaitEnabled: " + enabled);
+    }
+    
+    // === LEZ_FIGHT (Автоохота) ===
+    
+    public boolean isLezFightEnabled() {
+        return prefs.getBoolean(KEY_PREFIX + "lez_fight", false);
+    }
+    
+    public void toggleLezFight() {
+        boolean newState = !isLezFightEnabled();
+        setLezFightEnabled(newState);
+    }
+    
+    public void setLezFightEnabled(boolean enabled) {
+        prefs.edit().putBoolean(KEY_PREFIX + "lez_fight", enabled).apply();
+        Log.d(TAG, "setLezFightEnabled: " + enabled);
     }
     
     // === AUTO_ATTACK (Автонападение) ===
@@ -162,20 +178,84 @@ public class AutoFunctionsManager {
         Log.d(TAG, "setAutoSummonEnabled: " + enabled);
     }
     
-    // === AUTO_HEAL (АвтоЛечение) ===
+    // === AUTO_CURE (Автолечение - DoAutoCure) ===
     
-    public boolean isAutoHealEnabled() {
-        return prefs.getBoolean(KEY_PREFIX + "auto_heal", false);
+    public boolean isAutoCureEnabled() {
+        return prefs.getBoolean(KEY_PREFIX + "auto_cure", false);
     }
     
-    public void toggleAutoHeal() {
-        boolean newState = !isAutoHealEnabled();
-        setAutoHealEnabled(newState);
+    public void toggleAutoCure() {
+        boolean newState = !isAutoCureEnabled();
+        setAutoCureEnabled(newState);
     }
     
-    public void setAutoHealEnabled(boolean enabled) {
-        prefs.edit().putBoolean(KEY_PREFIX + "auto_heal", enabled).apply();
-        Log.d(TAG, "setAutoHealEnabled: " + enabled);
+    public void setAutoCureEnabled(boolean enabled) {
+        prefs.edit().putBoolean(KEY_PREFIX + "auto_cure", enabled).apply();
+        Log.d(TAG, "setAutoCureEnabled: " + enabled);
+    }
+    
+    // === AUTO_DRINK (АвтоПитье) ===
+    
+    public boolean isAutoDrinkEnabled() {
+        return prefs.getBoolean(KEY_PREFIX + "auto_drink", false);
+    }
+    
+    public void toggleAutoDrink() {
+        boolean newState = !isAutoDrinkEnabled();
+        setAutoDrinkEnabled(newState);
+    }
+    
+    public void setAutoDrinkEnabled(boolean enabled) {
+        prefs.edit().putBoolean(KEY_PREFIX + "auto_drink", enabled).apply();
+        Log.d(TAG, "setAutoDrinkEnabled: " + enabled);
+    }
+    
+    // === AUTO_MOVING (АвтоДвижение) ===
+    
+    public boolean isAutoMovingEnabled() {
+        return prefs.getBoolean(KEY_PREFIX + "auto_moving", false);
+    }
+    
+    public void toggleAutoMoving() {
+        boolean newState = !isAutoMovingEnabled();
+        setAutoMovingEnabled(newState);
+    }
+    
+    public void setAutoMovingEnabled(boolean enabled) {
+        prefs.edit().putBoolean(KEY_PREFIX + "auto_moving", enabled).apply();
+        Log.d(TAG, "setAutoMovingEnabled: " + enabled);
+    }
+    
+    // === AUTO_CUT (Авто-Травник) ===
+    
+    public boolean isAutoCutEnabled() {
+        return prefs.getBoolean(KEY_PREFIX + "auto_cut", false);
+    }
+    
+    public void toggleAutoCut() {
+        boolean newState = !isAutoCutEnabled();
+        setAutoCutEnabled(newState);
+    }
+    
+    public void setAutoCutEnabled(boolean enabled) {
+        prefs.edit().putBoolean(KEY_PREFIX + "auto_cut", enabled).apply();
+        Log.d(TAG, "setAutoCutEnabled: " + enabled);
+    }
+    
+    // === AUTO_REFRESH (АвтоОбновление) ===
+    
+    public boolean isAutoRefreshEnabled() {
+        return prefs.getBoolean(KEY_PREFIX + "auto_refresh", false);
+    }
+    
+    public void toggleAutoRefresh() {
+        boolean newState = !isAutoRefreshEnabled();
+        setAutoRefreshEnabled(newState);
+    }
+    
+    public void setAutoRefreshEnabled(boolean enabled) {
+        prefs.edit().putBoolean(KEY_PREFIX + "auto_refresh", enabled).apply();
+        Log.d(TAG, "setAutoRefreshEnabled: " + enabled);
     }
     
     // === Универсальные методы ===
@@ -186,14 +266,19 @@ public class AutoFunctionsManager {
     public boolean isFunctionEnabled(QuickActionType type) {
         switch (type) {
             case AUTO_FIGHT: return isAutoFightEnabled();
-            case AUTO_RECALL: return isAutoRecallEnabled();
-            case AUTO_HUNT: return isAutoHuntEnabled();
+            case AUTO_FISH: return isAutoFishEnabled();
+            case AUTO_BAIT: return isAutoBaitEnabled();
+            case LEZ_FIGHT: return isLezFightEnabled();
             case AUTO_ATTACK: return isAutoAttackEnabled();
             case AUTO_INVISIBLE: return isAutoInvisibleEnabled();
             case LOCATION_TRACKING: return isLocationTrackingEnabled();
             case AUTO_DETECT: return isAutoDetectEnabled();
             case AUTO_SUMMON: return isAutoSummonEnabled();
-            case AUTO_HEAL: return isAutoHealEnabled();
+            case AUTO_CURE: return isAutoCureEnabled();
+            case AUTO_DRINK: return isAutoDrinkEnabled();
+            case AUTO_MOVING: return isAutoMovingEnabled();
+            case AUTO_CUT: return isAutoCutEnabled();
+            case AUTO_REFRESH: return isAutoRefreshEnabled();
             default: return false;
         }
     }
@@ -204,14 +289,19 @@ public class AutoFunctionsManager {
     public void toggleFunction(QuickActionType type) {
         switch (type) {
             case AUTO_FIGHT: toggleAutoFight(); break;
-            case AUTO_RECALL: toggleAutoRecall(); break;
-            case AUTO_HUNT: toggleAutoHunt(); break;
+            case AUTO_FISH: toggleAutoFish(); break;
+            case AUTO_BAIT: toggleAutoBait(); break;
+            case LEZ_FIGHT: toggleLezFight(); break;
             case AUTO_ATTACK: toggleAutoAttack(); break;
             case AUTO_INVISIBLE: toggleAutoInvisible(); break;
             case LOCATION_TRACKING: toggleLocationTracking(); break;
             case AUTO_DETECT: toggleAutoDetect(); break;
             case AUTO_SUMMON: toggleAutoSummon(); break;
-            case AUTO_HEAL: toggleAutoHeal(); break;
+            case AUTO_CURE: toggleAutoCure(); break;
+            case AUTO_DRINK: toggleAutoDrink(); break;
+            case AUTO_MOVING: toggleAutoMoving(); break;
+            case AUTO_CUT: toggleAutoCut(); break;
+            case AUTO_REFRESH: toggleAutoRefresh(); break;
             default: break;
         }
     }
@@ -221,13 +311,18 @@ public class AutoFunctionsManager {
      */
     public void disableAll() {
         setAutoFightEnabled(false);
-        setAutoRecallEnabled(false);
-        setAutoHuntEnabled(false);
+        setAutoFishEnabled(false);
+        setAutoBaitEnabled(false);
+        setLezFightEnabled(false);
         setAutoAttackEnabled(false);
         setAutoInvisibleEnabled(false);
         setLocationTrackingEnabled(false);
         setAutoDetectEnabled(false);
         setAutoSummonEnabled(false);
-        setAutoHealEnabled(false);
+        setAutoCureEnabled(false);
+        setAutoDrinkEnabled(false);
+        setAutoMovingEnabled(false);
+        setAutoCutEnabled(false);
+        setAutoRefreshEnabled(false);
     }
 }

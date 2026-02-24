@@ -1,6 +1,6 @@
 ### 1. План портирования FormSettingsAutoCut.cs
 
-Файл `FormSettingsAutoCut.cs` реализует UI и логику для окна настроек функции "Авто-срезание" трав.
+Файл `FormSettingsAutoCut.cs` реализует UI и логику для окна настроек функции "Авто-травник" (DoHerbAutoCut).
 
 ### 2. Функциональность в C#
 

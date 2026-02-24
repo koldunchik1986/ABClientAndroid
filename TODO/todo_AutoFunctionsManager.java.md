@@ -16,10 +16,13 @@
 ### Текущая реализация (только Toast):
 ```java
 case AUTO_FIGHT:
-    Toast.makeText(context, "Автобой", Toast.LENGTH_SHORT).show();
+    Toast.makeText(context, "Авто-Бой", Toast.LENGTH_SHORT).show();
     break;
-case AUTO_RECALL:
-    Toast.makeText(context, "Авторыбалка", Toast.LENGTH_SHORT).show();
+case AUTO_FISH:
+    Toast.makeText(context, "Авто-Рыбалка", Toast.LENGTH_SHORT).show();
+    break;
+case LEZ_FIGHT:
+    Toast.makeText(context, "Авто-Охота", Toast.LENGTH_SHORT).show();
     break;
 // ... и т.д.
 ```
@@ -38,13 +41,13 @@ public class AutoFunctionsManager {
     // Состояния автофункций
     private boolean autoFightEnabled = false;
     private boolean autoRecallEnabled = false;
-    private boolean autoHuntEnabled = false;
+    private boolean lezFightEnabled = false;
     private boolean autoAttackEnabled = false;
     private boolean autoInvisibleEnabled = false;
     private boolean locationTrackingEnabled = false;
     private boolean autoDetectEnabled = false;
     private boolean autoSummonEnabled = false;
-    private boolean autoHealEnabled = false;
+    private boolean autoCureEnabled = false;
     
     // Методы управления
     public static synchronized AutoFunctionsManager getInstance(Context context)
@@ -83,8 +86,8 @@ case AUTO_FIGHT:
 1. [x] Создать класс `AutoFunctionsManager.java`
 2. [x] Реализовать методы toggle/start/stop для каждой автофункции
 3. [x] Обновить `QuickButtonsPanel.java` - добавить вызовы
-4. [ ] Добавить иконки для автофункций (два состояния: вкл/выкл)
-5. [ ] Реализовать визуальный индикатор состояния (вкл/выкл)
+4. [x] Добавить иконки для автофункций (два состояния: вкл/выкл)
+5. [x] Реализовать визуальный индикатор состояния (вкл/выкл)
 
 ## Иконки для автофункций
 
@@ -97,14 +100,14 @@ case AUTO_FIGHT:
 | Функция | Иконка выкл | Иконка вкл |
 |---------|-------------|------------|
 | AUTO_FIGHT | ic_auto_fight_off.xml | ic_auto_fight_on.xml |
-| AUTO_RECALL | ic_auto_recall_off.xml | ic_auto_recall_on.xml |
-| AUTO_HUNT | ic_auto_hunt_off.xml | ic_auto_hunt_on.xml |
+| AUTO_FISH | ic_auto_recall_off.xml | ic_auto_recall_on.xml |
+| LEZ_FIGHT | ic_lez_fight_off.xml | ic_lez_fight_on.xml |
 | AUTO_ATTACK | ic_auto_attack_off.xml | ic_auto_attack_on.xml |
 | AUTO_INVISIBLE | ic_auto_invisible_off.xml | ic_auto_invisible_on.xml |
 | LOCATION_TRACKING | ic_location_tracking_off.xml | ic_location_tracking_on.xml |
 | AUTO_DETECT | ic_auto_detect_off.xml | ic_auto_detect_on.xml |
 | AUTO_SUMMON | ic_auto_summon_off.xml | ic_auto_summon_on.xml |
-| AUTO_HEAL | ic_auto_heal_off.xml | ic_auto_heal_on.xml |
+| AUTO_CURE | ic_auto_cure_off.xml | ic_auto_cure_on.xml |
 
 ### Интеграция иконок в QuickButtonsPanel
 
@@ -125,20 +128,20 @@ updateButtonAppearance(position, button, isEnabled);
 
 ## Особенности реализации
 
-### Автобой (AUTO_FIGHT)
+### Авто-Бой (AUTO_FIGHT)
 Требует взаимодействия с WebView для отправки команд на сервер.
-См. `ABClient\PostFilter\Fight.cs` для понимания логики.
+См. `ABClient\PostFilter\FightJs.cs` для понимания логики.
 
-### Авторыбалка (AUTO_RECALL)
+### Авто-Рыбалка (AUTO_RECALL)
 См. `ABClient\PostFilter\Recall.cs`
 
-### Автоохота (AUTO_HUNT)
-См. `ABClient\PostFilter\Hunt.cs`
+### Авто-Охота (LEZ_FIGHT)
+См. `ABClient\Lez\LezFight.cs`
 
 ### Автонападение (AUTO_ATTACK)
 См. `ABClient\PostFilter\AutoAttack.cs`
 
-### АвтоНевид (AUTO_INVISIBLE)
+### Авто-Невид (AUTO_INVISIBLE)
 См. `ABClient\PostFilter\Invisible.cs`
 
 ### Слежение за локацией (LOCATION_TRACKING)
@@ -150,8 +153,8 @@ updateButtonAppearance(position, button, isEnabled);
 ### АвтоПризыв (AUTO_SUMMON)
 См. `ABClient\PostFilter\Summon.cs`
 
-### АвтоЛечение (AUTO_HEAL)
-См. `ABClient\PostFilter\Heal.cs`
+### Авто-Лечение (AUTO_CURE)
+См. `ABClient\PostFilter\MainPhpAutoCure.cs`
 
 ## Зависимости
 
@@ -160,7 +163,7 @@ updateButtonAppearance(position, button, isEnabled);
 - `ru.neverlands.abclient.manager.FastActionManager`
 - `ru.neverlands.abclient.model.QuickActionType`
 - `ru.neverlands.abclient.model.AutoboiState` - состояния автобоя
-- `ru.neverlands.abclient.lez.LezFight` - логика автобоя
+- `ru.neverlands.abclient.lez.LezFight` - логика автоохоты/автобоя
 
 ## Существующая инфраструктура
 
