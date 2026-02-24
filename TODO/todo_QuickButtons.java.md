@@ -34,7 +34,7 @@ AUTO_ATTACK("Автонападение", "auto_attack"),
 AUTO_INVISIBLE("АвтоНевид", "auto_invisible"),
 LOCATION_TRACKING("Слежение за локацией", "location_tracking"),
 AUTO_DETECT("АвтоОбнаружение", "auto_detect"),
-AUTO_SUMMON("АвтоПризыв", "auto_summon"),
+AUTO_SUMMON("АвтоТотем", "auto_summon"),
 AUTO_HEAL("АвтоЛечение", "auto_heal"),
 
 // Дополнительные действия

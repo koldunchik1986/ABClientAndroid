@@ -184,25 +184,25 @@ public class QuickButtonsPanel {
     private String getIconUrlForAction(QuickActionType type) {
         switch (type) {
             case AUTO_FIGHT:
-                return "http://image.neverlands.ru/weapon/i_svi_000.gif";
+                return "http://image.neverlands.ru/achievement/2/a_2_10.gif";
             case QUICK_ACTIONS:
                 return null;
             case AUTO_RECALL:
-                return "http://image.neverlands.ru/signs/fish1.gif";
+                return "http://image.neverlands.ru/achievement/40/a_40_10.gif";
             case AUTO_HUNT:
-                return "http://image.neverlands.ru/weapon/i_w28_24.gif";
+                return "http://image.neverlands.ru/achievement/70/a_70_10.gif";
             case AUTO_ATTACK:
-                return "http://image.neverlands.ru/weapon/i_svi_001.gif";
+                return "http://image.neverlands.ru/achievement/13/a_13_10.gif";
             case AUTO_INVISIBLE:
                 return "http://image.neverlands.ru/weapon/i_w27_53.gif";
             case LOCATION_TRACKING:
                 return "http://image.neverlands.ru/signs/compass.gif";
             case AUTO_DETECT:
-                return "http://image.neverlands.ru/weapon/i_w28_28.gif";
+                return "http://image.neverlands.ru/achievement/26/a_26_10.gif";
             case AUTO_SUMMON:
-                return "http://image.neverlands.ru/signs/totems/9.gif";
+                return "http://image.neverlands.ru/achievement/11/a_11_10.gif";
             case AUTO_HEAL:
-                return "http://image.neverlands.ru/weapon/i_w61_104.gif";
+                return "http://image.neverlands.ru/achievement/150/a_150_10.gif";
             case OPEN_CONTACTS:
                 return null;
             case OPEN_PINFO:
@@ -283,7 +283,7 @@ public class QuickButtonsPanel {
             case AUTO_SUMMON:
                 return R.drawable.ic_auto_summon;
             case AUTO_HEAL:
-                return R.drawable.ic_auto_heal;
+                return R.drawable.ic_red_cross;
             case OPEN_CONTACTS:
                 return R.drawable.ic_add_contact;
             case OPEN_PINFO:

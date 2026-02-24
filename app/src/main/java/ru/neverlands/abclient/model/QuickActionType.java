@@ -6,16 +6,16 @@ package ru.neverlands.abclient.model;
  */
 public enum QuickActionType {
     // Основные действия
-    AUTO_FIGHT("Автобой", "auto_fight"),
+    AUTO_FIGHT("Авто-Бой", "auto_fight"),
     QUICK_ACTIONS("Быстрые действия ▼", "quick_actions"),
-    AUTO_RECALL("Авторыбалка", "auto_recall"),
-    AUTO_HUNT("Автоохота", "auto_hunt"),
-    AUTO_ATTACK("Автонападение", "auto_attack"),
-    AUTO_INVISIBLE("АвтоНевид", "auto_invisible"),
+    AUTO_RECALL("Авто-Рыбалка", "auto_recall"),
+    AUTO_HUNT("Авто-Охота", "auto_hunt"),
+    AUTO_ATTACK("Авто-Нападение", "auto_attack"),
+    AUTO_INVISIBLE("Авто-Невид", "auto_invisible"),
     LOCATION_TRACKING("Слежение за локацией", "location_tracking"),
-    AUTO_DETECT("АвтоОбнаружение", "auto_detect"),
-    AUTO_SUMMON("АвтоПризыв", "auto_summon"),
-    AUTO_HEAL("АвтоЛечение", "auto_heal"),
+    AUTO_DETECT("Авто-Обнаружение", "auto_detect"),
+    AUTO_SUMMON("Авто-Тотем", "auto_summon"),
+    AUTO_HEAL("Авто-Лечение", "auto_heal"),
     
     // Дополнительные действия
     OPEN_CONTACTS("Открыть контакты", "open_contacts"),
