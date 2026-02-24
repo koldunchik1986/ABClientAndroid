@@ -228,7 +228,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         tabManager = new TabManager(this, tabLayout, mainContent, secondaryContainer);
         
         // Инициализация панели быстрых кнопок - ищем по всему корневому view
-        quickButtonsPanel = new QuickButtonsPanel(this, binding.getRoot(), actionType -> {
+        quickButtonsPanel = new QuickButtonsPanel(this, binding.getRoot(), tabManager, actionType -> {
             if (actionType == ru.neverlands.abclient.model.QuickActionType.QUICK_ACTIONS) {
                 ru.neverlands.abclient.ui.QuickActionsBottomSheet.newInstance(null)
                     .show(getSupportFragmentManager(), "QuickActions");

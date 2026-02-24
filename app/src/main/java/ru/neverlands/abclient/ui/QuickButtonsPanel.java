@@ -11,6 +11,7 @@ import androidx.appcompat.app.AlertDialog;
 
 import com.bumptech.glide.Glide;
 
+import java.net.URLEncoder;
 import java.util.List;
 
 import ru.neverlands.abclient.R;
@@ -19,10 +20,11 @@ import ru.neverlands.abclient.manager.QuickButtonsManager;
 import ru.neverlands.abclient.model.QuickActionType;
 import ru.neverlands.abclient.model.QuickButton;
 import ru.neverlands.abclient.ContactsActivity;
-import ru.neverlands.abclient.PinfoActivity;
 import ru.neverlands.abclient.LogsActivity;
 import ru.neverlands.abclient.manager.ContactsManager;
 import ru.neverlands.abclient.manager.FastActionManager;
+import ru.neverlands.abclient.manager.TabManager;
+import ru.neverlands.abclient.manager.AutoFunctionsManager;
 
 /**
  * Панель быстрых кнопок.
@@ -36,17 +38,21 @@ public class QuickButtonsPanel {
     
     private final Context context;
     private final QuickButtonsManager buttonsManager;
+    private final AutoFunctionsManager autoFunctionsManager;
     private final ImageButton[] buttons = new ImageButton[TOTAL_BUTTONS];
+    private final TabManager tabManager;
     private OnQuickActionListener actionListener;
 
     public interface OnQuickActionListener {
         void onQuickAction(QuickActionType actionType);
     }
 
-    public QuickButtonsPanel(Context context, View rootView, OnQuickActionListener listener) {
+    public QuickButtonsPanel(Context context, View rootView, TabManager tabManager, OnQuickActionListener listener) {
         this.context = context;
         this.actionListener = listener;
         this.buttonsManager = QuickButtonsManager.getInstance(context);
+        this.autoFunctionsManager = AutoFunctionsManager.getInstance(context);
+        this.tabManager = tabManager;
         
         initButtons(rootView);
         loadAndUpdateButtons();
@@ -127,51 +133,76 @@ public class QuickButtonsPanel {
         if (button == null || button.isEmpty()) {
             buttons[position].setImageResource(R.drawable.ic_add);
             buttons[position].setContentDescription("Добавить функцию");
+            buttons[position].setAlpha(0.3f);
+            buttons[position].setBackgroundResource(R.drawable.quick_button_empty);
             Log.d(TAG, "updateButtonAppearance: set empty icon for position " + position);
         } else {
-            loadIconForAction(buttons[position], button.getActionType());
-            buttons[position].setContentDescription(button.getDisplayName());
-            Log.d(TAG, "updateButtonAppearance: icon loaded for position " + position);
+            boolean isEnabled = autoFunctionsManager.isFunctionEnabled(button.getActionType());
+            loadIconForAction(buttons[position], button.getActionType(), isEnabled);
+            buttons[position].setContentDescription(button.getDisplayName() + (isEnabled ? " (ВКЛ)" : " (ВЫКЛ)"));
+            Log.d(TAG, "updateButtonAppearance: icon loaded for position " + position + ", enabled=" + isEnabled);
         }
         
         // Принудительно обновляем кнопку на UI потоке
         buttons[position].post(() -> buttons[position].invalidate());
     }
 
-    private void loadIconForAction(ImageButton button, QuickActionType type) {
+    private void loadIconForAction(ImageButton button, QuickActionType type, boolean isEnabled) {
         String iconUrl = getIconUrlForAction(type);
         if (iconUrl != null) {
             Glide.with(context)
                 .load(iconUrl)
                 .placeholder(R.drawable.ic_add)
+                .error(getIconForAction(type, isEnabled))
                 .into(button);
         } else {
-            button.setImageResource(R.drawable.ic_add);
+            button.setImageResource(getIconForAction(type, isEnabled));
+        }
+        
+        // Визуальная индикация состояния только для автофункций
+        if (isAutoFunction(type)) {
+            updateButtonVisualState(button, isEnabled);
+        } else {
+            // Для обычных функций - обычный вид
+            button.setAlpha(1.0f);
+            button.setBackgroundResource(R.drawable.quick_button_normal);
+        }
+    }
+    
+    private void updateButtonVisualState(ImageButton button, boolean isEnabled) {
+        if (isEnabled) {
+            // Включено - полная непрозрачность + зеленоватая подсветка
+            button.setAlpha(1.0f);
+            button.setBackgroundResource(R.drawable.quick_button_enabled);
+        } else {
+            // Выключено - полупрозрачность
+            button.setAlpha(0.5f);
+            button.setBackgroundResource(R.drawable.quick_button_disabled);
         }
     }
 
     private String getIconUrlForAction(QuickActionType type) {
         switch (type) {
             case AUTO_FIGHT:
-                return null;
+                return "http://image.neverlands.ru/weapon/i_svi_000.gif";
             case QUICK_ACTIONS:
                 return null;
             case AUTO_RECALL:
-                return null;
+                return "http://image.neverlands.ru/signs/fish1.gif";
             case AUTO_HUNT:
-                return null;
+                return "http://image.neverlands.ru/weapon/i_w28_24.gif";
             case AUTO_ATTACK:
-                return null;
+                return "http://image.neverlands.ru/weapon/i_svi_001.gif";
             case AUTO_INVISIBLE:
-                return null;
+                return "http://image.neverlands.ru/weapon/i_w27_53.gif";
             case LOCATION_TRACKING:
-                return null;
+                return "http://image.neverlands.ru/signs/compass.gif";
             case AUTO_DETECT:
-                return null;
+                return "http://image.neverlands.ru/weapon/i_w28_28.gif";
             case AUTO_SUMMON:
-                return null;
+                return "http://image.neverlands.ru/signs/totems/9.gif";
             case AUTO_HEAL:
-                return null;
+                return "http://image.neverlands.ru/weapon/i_w61_104.gif";
             case OPEN_CONTACTS:
                 return null;
             case OPEN_PINFO:
@@ -201,32 +232,62 @@ public class QuickButtonsPanel {
         }
     }
 
+    private int getIconForAction(QuickActionType type, boolean isEnabled) {
+        // Для автофункций пока возвращаем те же иконки, но с разной прозрачностью
+        // Позже нужно создать отдельные иконки для вкл/выкл состояний
+        int iconRes = getIconForAction(type);
+        
+        // Для автофункций можно добавить визуальную индикацию
+        if (isEnabled && isAutoFunction(type)) {
+            // В будущем здесь будет переход на _on иконку
+        }
+        
+        return iconRes;
+    }
+    
+    private boolean isAutoFunction(QuickActionType type) {
+        switch (type) {
+            case AUTO_FIGHT:
+            case AUTO_RECALL:
+            case AUTO_HUNT:
+            case AUTO_ATTACK:
+            case AUTO_INVISIBLE:
+            case LOCATION_TRACKING:
+            case AUTO_DETECT:
+            case AUTO_SUMMON:
+            case AUTO_HEAL:
+                return true;
+            default:
+                return false;
+        }
+    }
+    
     private int getIconForAction(QuickActionType type) {
         switch (type) {
             case AUTO_FIGHT:
-                return R.drawable.ic_add;
+                return R.drawable.ic_auto_fight;
             case QUICK_ACTIONS:
                 return R.drawable.ic_sort;
             case AUTO_RECALL:
-                return R.drawable.ic_add;
+                return R.drawable.ic_auto_recall;
             case AUTO_HUNT:
-                return R.drawable.ic_add;
+                return R.drawable.ic_auto_hunt;
             case AUTO_ATTACK:
-                return R.drawable.ic_add;
+                return R.drawable.ic_auto_attack;
             case AUTO_INVISIBLE:
-                return R.drawable.ic_add;
+                return R.drawable.ic_auto_invisible;
             case LOCATION_TRACKING:
-                return R.drawable.ic_add;
+                return R.drawable.ic_location;
             case AUTO_DETECT:
-                return R.drawable.ic_add;
+                return R.drawable.ic_auto_detect;
             case AUTO_SUMMON:
-                return R.drawable.ic_add;
+                return R.drawable.ic_auto_summon;
             case AUTO_HEAL:
-                return R.drawable.ic_add;
+                return R.drawable.ic_auto_heal;
             case OPEN_CONTACTS:
                 return R.drawable.ic_add_contact;
             case OPEN_PINFO:
-                return R.drawable.ic_add;
+                return R.drawable.ic_info;
             case OPEN_LOGS:
                 return R.drawable.ic_add;
             case REFRESH_CONTACTS:
@@ -269,7 +330,9 @@ public class QuickButtonsPanel {
         switch (actionType) {
             case AUTO_FIGHT:
                 Log.d(TAG, "executeAction: AUTO_FIGHT");
-                Toast.makeText(context, "Автобой", Toast.LENGTH_SHORT).show();
+                autoFunctionsManager.toggleAutoFight();
+                Toast.makeText(context, autoFunctionsManager.isAutoFightEnabled() ? "Автобой ВКЛ" : "Автобой ВЫКЛ", Toast.LENGTH_SHORT).show();
+                loadAndUpdateButtons();
                 break;
             case QUICK_ACTIONS:
                 if (actionListener != null) {
@@ -277,34 +340,50 @@ public class QuickButtonsPanel {
                 }
                 break;
             case AUTO_RECALL:
-                Toast.makeText(context, "Авторыбалка", Toast.LENGTH_SHORT).show();
+                autoFunctionsManager.toggleAutoRecall();
+                Toast.makeText(context, autoFunctionsManager.isAutoRecallEnabled() ? "Авторыбалка ВКЛ" : "Авторыбалка ВЫКЛ", Toast.LENGTH_SHORT).show();
+                loadAndUpdateButtons();
                 break;
             case AUTO_HUNT:
-                Toast.makeText(context, "Автоохота", Toast.LENGTH_SHORT).show();
+                autoFunctionsManager.toggleAutoHunt();
+                Toast.makeText(context, autoFunctionsManager.isAutoHuntEnabled() ? "Автоохота ВКЛ" : "Автоохота ВЫКЛ", Toast.LENGTH_SHORT).show();
+                loadAndUpdateButtons();
                 break;
             case AUTO_ATTACK:
-                Toast.makeText(context, "Автонападение", Toast.LENGTH_SHORT).show();
+                autoFunctionsManager.toggleAutoAttack();
+                Toast.makeText(context, autoFunctionsManager.isAutoAttackEnabled() ? "Автонападение ВКЛ" : "Автонападение ВЫКЛ", Toast.LENGTH_SHORT).show();
+                loadAndUpdateButtons();
                 break;
             case AUTO_INVISIBLE:
-                Toast.makeText(context, "АвтоНевид", Toast.LENGTH_SHORT).show();
+                autoFunctionsManager.toggleAutoInvisible();
+                Toast.makeText(context, autoFunctionsManager.isAutoInvisibleEnabled() ? "АвтоНевид ВКЛ" : "АвтоНевид ВЫКЛ", Toast.LENGTH_SHORT).show();
+                loadAndUpdateButtons();
                 break;
             case LOCATION_TRACKING:
-                Toast.makeText(context, "Слежение за локацией", Toast.LENGTH_SHORT).show();
+                autoFunctionsManager.toggleLocationTracking();
+                Toast.makeText(context, autoFunctionsManager.isLocationTrackingEnabled() ? "Слежение ВКЛ" : "Слежение ВЫКЛ", Toast.LENGTH_SHORT).show();
+                loadAndUpdateButtons();
                 break;
             case AUTO_DETECT:
-                Toast.makeText(context, "АвтоОбнаружение", Toast.LENGTH_SHORT).show();
+                autoFunctionsManager.toggleAutoDetect();
+                Toast.makeText(context, autoFunctionsManager.isAutoDetectEnabled() ? "АвтоОбнаружение ВКЛ" : "АвтоОбнаружение ВЫКЛ", Toast.LENGTH_SHORT).show();
+                loadAndUpdateButtons();
                 break;
             case AUTO_SUMMON:
-                Toast.makeText(context, "АвтоПризыв", Toast.LENGTH_SHORT).show();
+                autoFunctionsManager.toggleAutoSummon();
+                Toast.makeText(context, autoFunctionsManager.isAutoSummonEnabled() ? "АвтоПризыв ВКЛ" : "АвтоПризыв ВЫКЛ", Toast.LENGTH_SHORT).show();
+                loadAndUpdateButtons();
                 break;
             case AUTO_HEAL:
-                Toast.makeText(context, "АвтоЛечение", Toast.LENGTH_SHORT).show();
+                autoFunctionsManager.toggleAutoHeal();
+                Toast.makeText(context, autoFunctionsManager.isAutoHealEnabled() ? "АвтоЛечение ВКЛ" : "АвтоЛечение ВЫКЛ", Toast.LENGTH_SHORT).show();
+                loadAndUpdateButtons();
                 break;
             case OPEN_CONTACTS:
                 openContacts();
                 break;
             case OPEN_PINFO:
-                Toast.makeText(context, "Открыть PINFO - выберите игрока", Toast.LENGTH_SHORT).show();
+                openPinfo();
                 break;
             case OPEN_LOGS:
                 openLogs();
@@ -437,6 +516,41 @@ public class QuickButtonsPanel {
         Intent intent = new Intent(context, LogsActivity.class);
         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
         context.startActivity(intent);
+    }
+
+    private void openPinfo() {
+        View dialogView = View.inflate(context, R.layout.dialog_input_nick, null);
+        android.widget.EditText editText = dialogView.findViewById(R.id.input_nick);
+        
+        new AlertDialog.Builder(context)
+            .setTitle("Введите ник игрока")
+            .setView(dialogView)
+            .setPositiveButton("Открыть", (dialog, which) -> {
+                String nick = editText.getText().toString().trim();
+                if (nick.isEmpty()) {
+                    Toast.makeText(context, "Введите ник", Toast.LENGTH_SHORT).show();
+                    return;
+                }
+                openPinfoTab(nick);
+            })
+            .setNegativeButton("Отмена", null)
+            .show();
+    }
+
+    private void openPinfoTab(String nick) {
+        try {
+            String encodedNick = URLEncoder.encode(nick, "windows-1251");
+            String url = "http://neverlands.ru/pinfo.cgi?" + encodedNick;
+            
+            if (tabManager != null) {
+                tabManager.openTab(url, "PINFO");
+            } else {
+                Toast.makeText(context, "TabManager не доступен", Toast.LENGTH_SHORT).show();
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Error encoding nick", e);
+            Toast.makeText(context, "Ошибка кодирования URL", Toast.LENGTH_SHORT).show();
+        }
     }
 
     private void refreshContacts() {
