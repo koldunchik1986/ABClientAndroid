@@ -62,6 +62,26 @@ public class AutoFunctionsManager {
     }
     
     public void setAutoFishEnabled(boolean enabled) {
+        if (enabled) {
+            // При включении: если Авто-Бой выключен - включаем его
+            if (!isAutoFightEnabled()) {
+                setAutoFightEnabled(true);
+                Log.d(TAG, "setAutoFishEnabled: Авто-Бой также включен");
+            }
+            // Эксклюзивные функции: выключаем Авто-Охоту, Авто-Травник, Авто-Приманку
+            if (isAutoSkinEnabled()) {
+                setAutoSkinEnabled(false);
+                Log.d(TAG, "setAutoFishEnabled: Авто-Охота выключена");
+            }
+            if (isAutoCutEnabled()) {
+                setAutoCutEnabled(false);
+                Log.d(TAG, "setAutoFishEnabled: Авто-Травник выключен");
+            }
+            if (isAutoBaitEnabled()) {
+                setAutoBaitEnabled(false);
+                Log.d(TAG, "setAutoFishEnabled: Авто-Приманка выключена");
+            }
+        }
         prefs.edit().putBoolean(KEY_PREFIX + "auto_fish", enabled).apply();
         Log.d(TAG, "setAutoFishEnabled: " + enabled);
     }
@@ -78,6 +98,26 @@ public class AutoFunctionsManager {
     }
     
     public void setAutoBaitEnabled(boolean enabled) {
+        if (enabled) {
+            // При включении: если Авто-Бой выключен - включаем его
+            if (!isAutoFightEnabled()) {
+                setAutoFightEnabled(true);
+                Log.d(TAG, "setAutoBaitEnabled: Авто-Бой также включен");
+            }
+            // Эксклюзивные функции: выключаем Авто-Рыбалку, Авто-Охоту, Авто-Травник
+            if (isAutoFishEnabled()) {
+                setAutoFishEnabled(false);
+                Log.d(TAG, "setAutoBaitEnabled: Авто-Рыбалка выключена");
+            }
+            if (isAutoSkinEnabled()) {
+                setAutoSkinEnabled(false);
+                Log.d(TAG, "setAutoBaitEnabled: Авто-Охота выключена");
+            }
+            if (isAutoCutEnabled()) {
+                setAutoCutEnabled(false);
+                Log.d(TAG, "setAutoBaitEnabled: Авто-Травник выключен");
+            }
+        }
         prefs.edit().putBoolean(KEY_PREFIX + "auto_bait", enabled).apply();
         Log.d(TAG, "setAutoBaitEnabled: " + enabled);
     }
@@ -94,6 +134,28 @@ public class AutoFunctionsManager {
     }
     
     public void setAutoSkinEnabled(boolean enabled) {
+        if (enabled) {
+            // При включении Авто-Охоты: если Авто-Бой выключен - включаем оба
+            if (!isAutoFightEnabled()) {
+                setAutoFightEnabled(true);
+                Log.d(TAG, "setAutoSkinEnabled: Авто-Бой также включен");
+            }
+            
+            // Эксклюзивные функции: выключаем Авто-Рыбалку, Авто-Травник, Авто-Приманку
+            if (isAutoFishEnabled()) {
+                setAutoFishEnabled(false);
+                Log.d(TAG, "setAutoSkinEnabled: Авто-Рыбалка выключена");
+            }
+            if (isAutoCutEnabled()) {
+                setAutoCutEnabled(false);
+                Log.d(TAG, "setAutoSkinEnabled: Авто-Травник выключен");
+            }
+            if (isAutoBaitEnabled()) {
+                setAutoBaitEnabled(false);
+                Log.d(TAG, "setAutoSkinEnabled: Авто-Приманка выключена");
+            }
+        }
+        
         prefs.edit().putBoolean(KEY_PREFIX + "auto_skin", enabled).apply();
         Log.d(TAG, "setAutoSkinEnabled: " + enabled);
     }
@@ -238,6 +300,26 @@ public class AutoFunctionsManager {
     }
     
     public void setAutoCutEnabled(boolean enabled) {
+        if (enabled) {
+            // При включении: если Авто-Бой выключен - включаем его
+            if (!isAutoFightEnabled()) {
+                setAutoFightEnabled(true);
+                Log.d(TAG, "setAutoCutEnabled: Авто-Бой также включен");
+            }
+            // Эксклюзивные функции: выключаем Авто-Рыбалку, Авто-Охоту, Авто-Приманку
+            if (isAutoFishEnabled()) {
+                setAutoFishEnabled(false);
+                Log.d(TAG, "setAutoCutEnabled: Авто-Рыбалка выключена");
+            }
+            if (isAutoSkinEnabled()) {
+                setAutoSkinEnabled(false);
+                Log.d(TAG, "setAutoCutEnabled: Авто-Охота выключена");
+            }
+            if (isAutoBaitEnabled()) {
+                setAutoBaitEnabled(false);
+                Log.d(TAG, "setAutoCutEnabled: Авто-Приманка выключена");
+            }
+        }
         prefs.edit().putBoolean(KEY_PREFIX + "auto_cut", enabled).apply();
         Log.d(TAG, "setAutoCutEnabled: " + enabled);
     }

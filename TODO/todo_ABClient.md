@@ -39,7 +39,7 @@
 | `Forms` | Старые формы (только HerbNavigator) | 1 | `[ ]` Не реализована |
 | `MyProfile` | Конфигурация профиля | 11 | `[~]` Частично (UserConfig портирован) |
 | `ExtMap` | Карта и навигация | 13 | `[~]` Частично (Cell, AbcCell, MapPath, Position портированы) |
-| `Lez` | ИИ боя (автобой) | 9 | `[~]` Частично (State, Engine, ViewModel портированы) |
+| `Lez` | ИИ боя (автобой) | 9 | `[+]` Полностью (LezFight, LezBotsGroup, LezBotsClassCollection, LezSpell, LezSpellCollection, LezNode портированы) |
 | `AppControls` | WinForms контролы | 11 | `[-]` Не требует (Windows-специфика) |
 | `Helpers` | Утилиты (Crypts, Russian, etc.) | 8 | `[~]` Частично (Russian, Crypts портированы) |
 | `MyHelpers` | Утилиты (Strings, Converters, etc.) | 5 | `[~]` Частично (HelperStrings портирован) |
@@ -50,8 +50,8 @@
 | `Tabs` | Мульти-вкладки браузера | 3 | `[ ]` Не реализована |
 | `Things` | База предметов | 2 | `[~]` Частично (ThingsRepository портирован) |
 | `Properties` | Ресурсы/настройки проекта | 3 | `[-]` Не требует |
-| **QuickButtons** | Быстрые кнопки на UI | 5 | `[~]` Частично (UI + PINFO готовы, автофункции в процессе) |
-| **Авто-Функции** | Автобой, авторыбалка, автоохота и т.д. | 10+ | `[~]` Частично (FastActionManager + переключатели готовы, логика автофункций не реализована) |
+| **QuickButtons** | Быстрые кнопки на UI | 5 | `[~]` Частично (UI + PINFO готовы ✅, переключатели авто-функций ⚠️, логика авто-функций ❌) |
+| **Авто-Функции** | Автобой, авторыбалка, автоохота и т.д. | 10+ | `[~]` Частично (LezFight + FastActionManager = ✅, AutoFunctionsManager = ⚠️ заглушки, логика = ❌, см. TODO/todo_LezFight.md) |
 
 ---
 
@@ -66,7 +66,7 @@
 | `AppTimerManager.cs` | Менеджер таймеров | `[ ]` Не реализован |
 | `AutoAnswerMachine.cs` | Автоответчик | `[ ]` Не реализован |
 | `AutoboiState.cs` | Enum состояний автобоя | `[+]` AutoboiState.java |
-| **Авто-Функции (FastAction)** | FastActionManager, AutoFunctionsManager | `[~]` Частично (FastAction + переключатели готовы, логика авто-функций - заглушки) |
+| **Авто-Функции (FastAction)** | LezFight, FastActionManager, AutoFunctionsManager | `[~]` Частично (LezFight ✅, FastActionManager ✅, AutoFunctionsManager ⚠️ заглушки) |
 | `Bookmark.cs` | Закладки | `[ ]` Не реализован |
 | `BossContact.cs` | Контакты боссов | `[ ]` Не реализован |
 | `BossMap.cs` | Карта боссов | `[ ]` Не реализован |
