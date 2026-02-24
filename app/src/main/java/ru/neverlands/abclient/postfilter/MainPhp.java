@@ -92,9 +92,17 @@ public class MainPhp {
             }
         }
 
-        // Placeholder for fight logic
-        if (html.contains("magic_slots();")) {
-            html = mainPhpFight(html);
+        // Обработка страницы боя
+        // magic_slots() — признак страницы боя (fight frame)
+        // var fight_ty — признак верхнего фрейма с данными о противнике
+        boolean isFightFrame = html.contains("magic_slots();");
+        boolean isFightTopFrame = html.contains("var fight_ty");
+        if (isFightFrame || isFightTopFrame) {
+            android.util.Log.d(TAG, "=== FIGHT FRAME DETECTED ==="
+                    + " isFightFrame=" + isFightFrame
+                    + " isFightTopFrame=" + isFightTopFrame
+                    + " address=" + address);
+            html = mainPhpFight(address, html);
         }
 
         // Обработка инвентаря, основанная на стабильной версии из app_work
@@ -494,9 +502,65 @@ public class MainPhp {
                 "<script language=\"JavaScript\">window.location = \"" + link + "\";</script></body></html>";
     }
 
-    private static String mainPhpFight(String html) {
-        // TODO: Port MainPhpFight.cs
+    /**
+     * Обработка страницы боя (портирование MainPhpFight.cs).
+     * Пока реализовано только детальное логирование для анализа структуры HTML от сервера.
+     * TODO: Добавить LezFight.parse() и генерацию fight.Frame
+     */
+    private static String mainPhpFight(String address, String html) {
+        android.util.Log.d(TAG, "mainPhpFight: address=" + address + ", htmlLen=" + html.length());
+
+        // --- Логирование переменных верхнего фрейма (fight_ty, param_en, slots_en) ---
+        logFightVariable(html, "fight_ty");
+        logFightVariable(html, "param_en");
+        logFightVariable(html, "slots_en");
+        logFightVariable(html, "param_my");
+        logFightVariable(html, "slots_my");
+        logFightVariable(html, "LogBoi");
+
+        // --- Логирование всего HTML страницы боя ---
+        // Разбиваем на части по 800 символов, чтобы logcat не обрезал
+        int chunkSize = 800;
+        int totalLen = html.length();
+        int chunks = (totalLen + chunkSize - 1) / chunkSize;
+        android.util.Log.d(TAG, "mainPhpFight: HTML dump, total=" + totalLen + " bytes, chunks=" + chunks);
+        for (int i = 0; i < chunks; i++) {
+            int start = i * chunkSize;
+            int end = Math.min(start + chunkSize, totalLen);
+            android.util.Log.d(TAG, "mainPhpFight HTML[" + start + "-" + end + "]: "
+                    + html.substring(start, end));
+        }
+
+        // --- Проверяем наличие ключевых признаков страницы боя ---
+        android.util.Log.d(TAG, "mainPhpFight flags:"
+                + " magic_slots=" + html.contains("magic_slots();")
+                + " fight_ty=" + html.contains("var fight_ty")
+                + " IsBoi_form=" + html.contains("<form")
+                + " StartAct=" + html.contains("StartAct()")
+                + " document.ff=" + html.contains("document.ff")
+                + " autosubmit=" + html.contains("document.ff.submit")
+        );
+
+        // TODO: Здесь будет вызов LezFight.parse(html) и возврат fight.Frame при автобое
         return html;
+    }
+
+    /**
+     * Логирует JavaScript-переменную из HTML боя.
+     * Ищет паттерн: var NAME = [...] или var NAME = "..."
+     */
+    private static void logFightVariable(String html, String varName) {
+        String pattern = "var " + varName;
+        int idx = html.indexOf(pattern);
+        if (idx < 0) {
+            android.util.Log.d(TAG, "logFightVar: " + varName + " — NOT FOUND");
+            return;
+        }
+        // Берём подстроку от "var NAME" до конца строки (до \n или ;)
+        int end = html.indexOf("\n", idx);
+        if (end < 0 || end > idx + 500) end = Math.min(idx + 500, html.length());
+        String value = html.substring(idx, end).trim();
+        android.util.Log.d(TAG, "logFightVar: " + varName + " = " + value);
     }
 
     // Этот метод основан на стабильной и производительной реализации из app_work
