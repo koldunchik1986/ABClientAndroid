@@ -191,7 +191,7 @@ public class QuickButtonsPanel {
                 return "http://image.neverlands.ru/achievement/40/a_40_10.gif";
             case AUTO_BAIT:
                 return null;
-            case LEZ_FIGHT:
+            case AUTO_SKIN:
                 return "http://image.neverlands.ru/achievement/70/a_70_10.gif";
             case AUTO_ATTACK:
                 return "http://image.neverlands.ru/achievement/13/a_13_10.gif";
@@ -260,7 +260,7 @@ public class QuickButtonsPanel {
             case AUTO_FIGHT:
             case AUTO_FISH:
             case AUTO_BAIT:
-            case LEZ_FIGHT:
+            case AUTO_SKIN:
             case AUTO_ATTACK:
             case AUTO_INVISIBLE:
             case LOCATION_TRACKING:
@@ -287,7 +287,7 @@ public class QuickButtonsPanel {
                 return R.drawable.ic_auto_fish;
             case AUTO_BAIT:
                 return R.drawable.ic_add;
-            case LEZ_FIGHT:
+            case AUTO_SKIN:
                 return R.drawable.ic_lez_fight;
             case AUTO_ATTACK:
                 return R.drawable.ic_auto_attack;
@@ -369,9 +369,9 @@ public class QuickButtonsPanel {
                 Toast.makeText(context, autoFunctionsManager.isAutoFishEnabled() ? "Авто-Рыбалка ВКЛ" : "Авто-Рыбалка ВЫКЛ", Toast.LENGTH_SHORT).show();
                 loadAndUpdateButtons();
                 break;
-            case LEZ_FIGHT:
-                autoFunctionsManager.toggleLezFight();
-                Toast.makeText(context, autoFunctionsManager.isLezFightEnabled() ? "Авто-Охота ВКЛ" : "Авто-Охота ВЫКЛ", Toast.LENGTH_SHORT).show();
+            case AUTO_SKIN:
+                autoFunctionsManager.toggleAutoSkin();
+                Toast.makeText(context, autoFunctionsManager.isAutoSkinEnabled() ? "Авто-Охота ВКЛ" : "Авто-Охота ВЫКЛ", Toast.LENGTH_SHORT).show();
                 loadAndUpdateButtons();
                 break;
             case AUTO_ATTACK:

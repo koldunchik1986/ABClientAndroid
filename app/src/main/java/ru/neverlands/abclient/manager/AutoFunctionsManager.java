@@ -82,20 +82,20 @@ public class AutoFunctionsManager {
         Log.d(TAG, "setAutoBaitEnabled: " + enabled);
     }
     
-    // === LEZ_FIGHT (Авто-Охота) ===
+    // === AUTO_SKIN (Авто-Охота) ===
     
-    public boolean isLezFightEnabled() {
-        return prefs.getBoolean(KEY_PREFIX + "lez_fight", false);
+    public boolean isAutoSkinEnabled() {
+        return prefs.getBoolean(KEY_PREFIX + "auto_skin", false);
     }
     
-    public void toggleLezFight() {
-        boolean newState = !isLezFightEnabled();
-        setLezFightEnabled(newState);
+    public void toggleAutoSkin() {
+        boolean newState = !isAutoSkinEnabled();
+        setAutoSkinEnabled(newState);
     }
     
-    public void setLezFightEnabled(boolean enabled) {
-        prefs.edit().putBoolean(KEY_PREFIX + "lez_fight", enabled).apply();
-        Log.d(TAG, "setLezFightEnabled: " + enabled);
+    public void setAutoSkinEnabled(boolean enabled) {
+        prefs.edit().putBoolean(KEY_PREFIX + "auto_skin", enabled).apply();
+        Log.d(TAG, "setAutoSkinEnabled: " + enabled);
     }
     
     // === AUTO_ATTACK (Авто-Нападение) ===
@@ -268,7 +268,7 @@ public class AutoFunctionsManager {
             case AUTO_FIGHT: return isAutoFightEnabled();
             case AUTO_FISH: return isAutoFishEnabled();
             case AUTO_BAIT: return isAutoBaitEnabled();
-            case LEZ_FIGHT: return isLezFightEnabled();
+            case AUTO_SKIN: return isAutoSkinEnabled();
             case AUTO_ATTACK: return isAutoAttackEnabled();
             case AUTO_INVISIBLE: return isAutoInvisibleEnabled();
             case LOCATION_TRACKING: return isLocationTrackingEnabled();
@@ -291,7 +291,7 @@ public class AutoFunctionsManager {
             case AUTO_FIGHT: toggleAutoFight(); break;
             case AUTO_FISH: toggleAutoFish(); break;
             case AUTO_BAIT: toggleAutoBait(); break;
-            case LEZ_FIGHT: toggleLezFight(); break;
+            case AUTO_SKIN: toggleAutoSkin(); break;
             case AUTO_ATTACK: toggleAutoAttack(); break;
             case AUTO_INVISIBLE: toggleAutoInvisible(); break;
             case LOCATION_TRACKING: toggleLocationTracking(); break;
@@ -313,7 +313,7 @@ public class AutoFunctionsManager {
         setAutoFightEnabled(false);
         setAutoFishEnabled(false);
         setAutoBaitEnabled(false);
-        setLezFightEnabled(false);
+        setAutoSkinEnabled(false);
         setAutoAttackEnabled(false);
         setAutoInvisibleEnabled(false);
         setLocationTrackingEnabled(false);

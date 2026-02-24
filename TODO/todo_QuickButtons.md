@@ -11,7 +11,7 @@
 2. Быстрые действия ▼ (QUICK_ACTIONS)
 3. Авторыбалка (AUTO_FISH)
 4. Автоприманка (AUTO_BAIT)
-5. Автоохота (LEZ_FIGHT)
+5. Авто-Охота (AUTO_SKIN)
 6. Авто-Нападение (AUTO_ATTACK)
 7. Авто-Невид (AUTO_INVISIBLE)
 8. Слежение за локацией (LOCATION_TRACKING)
@@ -77,7 +77,7 @@
 | Авто-Нападение | achievement/13/a_13_10.gif | ✅ |
 | Авторыбалка (AUTO_FISH) | achievement/40/a_40_10.gif | ✅ |
 | Автоприманка (AUTO_BAIT) | - | ⏳ ожидает иконку |
-| Автоохота (LEZ_FIGHT) | achievement/70/a_70_10.gif | ✅ |
+| Авто-Охота (AUTO_SKIN) | achievement/70/a_70_10.gif | ✅ |
 | Авто-Обнаружение | achievement/26/a_26_10.gif | ✅ |
 | Авто-Тотем | achievement/11/a_11_10.gif | ✅ |
 | Автолечение (AUTO_CURE) | achievement/150/a_150_10.gif | ✅ |

@@ -10,7 +10,6 @@ public enum QuickActionType {
     QUICK_ACTIONS("Быстрые действия ▼", "quick_actions"),
     AUTO_FISH("Авто-Рыбалка", "auto_fish"),
     AUTO_BAIT("Авто-Приманка", "auto_bait"),
-    LEZ_FIGHT("Авто-Охота", "lez_fight"),
     AUTO_ATTACK("Авто-Нападение", "auto_attack"),
     AUTO_INVISIBLE("Авто-Невид", "auto_invisible"),
     LOCATION_TRACKING("Слежение за локацией", "location_tracking"),
@@ -21,6 +20,7 @@ public enum QuickActionType {
     AUTO_MOVING("Авто-Движение", "auto_moving"),
     AUTO_CUT("Авто-Травник", "auto_cut"),
     AUTO_REFRESH("Авто-Обновление", "auto_refresh"),
+    AUTO_SKIN("Авто-Охота", "auto_skin"),
     
     // Дополнительные действия
     OPEN_CONTACTS("Открыть контакты", "open_contacts"),

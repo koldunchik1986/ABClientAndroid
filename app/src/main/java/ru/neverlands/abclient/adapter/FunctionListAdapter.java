@@ -135,7 +135,7 @@ public class FunctionListAdapter extends BaseAdapter {
                 return "http://image.neverlands.ru/achievement/2/a_2_10.gif";
             case AUTO_FISH:
                 return "http://image.neverlands.ru/achievement/40/a_40_10.gif";
-            case LEZ_FIGHT:
+            case AUTO_SKIN:
                 return "http://image.neverlands.ru/achievement/70/a_70_10.gif";
             case AUTO_ATTACK:
                 return "http://image.neverlands.ru/achievement/13/a_13_10.gif";
