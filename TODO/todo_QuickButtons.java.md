@@ -29,8 +29,8 @@
 AUTO_FIGHT("Авто-Бой", "auto_fight"),
 QUICK_ACTIONS("Быстрые действия ▼", "quick_actions"),
 AUTO_FISH("Авторыбалка", "auto_fish"),
-AUTO_BAIT("Автоприманка", "auto_bait"),
-LEZ_FIGHT("Автоохота", "lez_fight"),
+AUTO_BAIT("Авто-Приманка", "auto_bait"),
+AUTO_SKIN("Авто-Охота", "auto_skin"),  // Переименовано с LEZ_FIGHT
 AUTO_ATTACK("Авто-Нападение", "auto_attack"),
 AUTO_INVISIBLE("Авто-Невид", "auto_invisible"),
 LOCATION_TRACKING("Слежение за локацией", "location_tracking"),

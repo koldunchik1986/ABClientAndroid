@@ -44,26 +44,26 @@
 - **LezFight.cs** (ПК) / **LezFight.java** (Android) = **Автобой** - полноценный автобой с комбинациями ударов/блоков
 - **AutoSkin** (ПК) / **LEZ_FIGHT** (Android) = **Авто-Охота** - разделывание добычи, одевание профессиональных инструментов
 
-### Переключатели авто-функций (AutoFunctionsManager.java) - ЗАГЛУШКИ ⚠️
+### Переключатели авто-функций (AutoFunctionsManager.java) ✅
 
 | Функция | QuickActionType | Методы | Статус |
 |---------|-----------------|--------|--------|
-| Авто-Бой | AUTO_FIGHT | `isAutoFightEnabled`, `toggleAutoFight`, `setAutoFightEnabled` | ⚠️ Заглушка |
-| Авто-Рыбалка | AUTO_FISH | `isAutoFishEnabled`, `toggleAutoFish`, `setAutoFishEnabled` | ⚠️ Заглушка |
-| Авто-Приманка | AUTO_BAIT | `isAutoBaitEnabled`, `toggleAutoBait`, `setAutoBaitEnabled` | ⚠️ Заглушка |
-| Авто-Охота | LEZ_FIGHT | `isAutoSkinEnabled`, `toggleAutoSkin`, `setAutoSkinEnabled` | ⚠️ Заглушка |
-| Авто-Нападение | AUTO_ATTACK | `isAutoAttackEnabled`, `toggleAutoAttack`, `setAutoAttackEnabled` | ⚠️ Заглушка |
-| Авто-Невид | AUTO_INVISIBLE | `isAutoInvisibleEnabled`, `toggleAutoInvisible`, `setAutoInvisibleEnabled` | ⚠️ Заглушка |
-| Слежение за локацией | LOCATION_TRACKING | `isLocationTrackingEnabled`, `toggleLocationTracking`, `setLocationTrackingEnabled` | ⚠️ Заглушка |
-| Авто-Обнаружение | AUTO_DETECT | `isAutoDetectEnabled`, `toggleAutoDetect`, `setAutoDetectEnabled` | ⚠️ Заглушка |
-| Авто-Тотем | AUTO_SUMMON | `isAutoSummonEnabled`, `toggleAutoSummon`, `setAutoSummonEnabled` | ⚠️ Заглушка |
-| Автолечение | AUTO_CURE | `isAutoCureEnabled`, `toggleAutoCure`, `setAutoCureEnabled` | ⚠️ Заглушка |
-| Авто-Питье | AUTO_DRINK | `isAutoDrinkEnabled`, `toggleAutoDrink`, `setAutoDrinkEnabled` | ⚠️ Заглушка |
-| Авто-Движение | AUTO_MOVING | `isAutoMovingEnabled`, `toggleAutoMoving`, `setAutoMovingEnabled` | ⚠️ Заглушка |
-| Авто-Травник | AUTO_CUT | `isAutoCutEnabled`, `toggleAutoCut`, `setAutoCutEnabled` | ⚠️ Заглушка |
-| Авто-Обновление | AUTO_REFRESH | `isAutoRefreshEnabled`, `toggleAutoRefresh`, `setAutoRefreshEnabled` | ⚠️ Заглушка |
+| Авто-Бой | AUTO_FIGHT | `isAutoFightEnabled`, `toggleAutoFight`, `setAutoFightEnabled` | ✅ Реализован (устанавливает AppVars.Autoboi) |
+| Авто-Рыбалка | AUTO_FISH | `isAutoFishEnabled`, `toggleAutoFish`, `setAutoFishEnabled` | ✅ Реализован (эксклюзивная) |
+| Авто-Приманка | AUTO_BAIT | `isAutoBaitEnabled`, `toggleAutoBait`, `setAutoBaitEnabled` | ✅ Реализован (эксклюзивная) |
+| Авто-Охота | AUTO_SKIN | `isAutoSkinEnabled`, `toggleAutoSkin`, `setAutoSkinEnabled` | ✅ Реализован (эксклюзивная, переименовано с LEZ_FIGHT) |
+| Авто-Нападение | AUTO_ATTACK | `isAutoAttackEnabled`, `toggleAutoAttack`, `setAutoAttackEnabled` | ✅ Реализован |
+| Авто-Невид | AUTO_INVISIBLE | `isAutoInvisibleEnabled`, `toggleAutoInvisible`, `setAutoInvisibleEnabled` | ✅ Реализован |
+| Слежение за локацией | LOCATION_TRACKING | `isLocationTrackingEnabled`, `toggleLocationTracking`, `setLocationTrackingEnabled` | ✅ Реализован |
+| Авто-Обнаружение | AUTO_DETECT | `isAutoDetectEnabled`, `toggleAutoDetect`, `setAutoDetectEnabled` | ✅ Реализован |
+| Авто-Тотем | AUTO_SUMMON | `isAutoSummonEnabled`, `toggleAutoSummon`, `setAutoSummonEnabled` | ✅ Реализован |
+| Авто-Лечение | AUTO_CURE | `isAutoCureEnabled`, `toggleAutoCure`, `setAutoCureEnabled` | ✅ Реализован |
+| Авто-Питье | AUTO_DRINK | `isAutoDrinkEnabled`, `toggleAutoDrink`, `setAutoDrinkEnabled` | ✅ Реализован |
+| Авто-Движение | AUTO_MOVING | `isAutoMovingEnabled`, `toggleAutoMoving`, `setAutoMovingEnabled` | ✅ Реализован |
+| Авто-Травник | AUTO_CUT | `isAutoCutEnabled`, `toggleAutoCut`, `setAutoCutEnabled` | ✅ Реализован (эксклюзивная) |
+| Авто-Обновление | AUTO_REFRESH | `isAutoRefreshEnabled`, `toggleAutoRefresh`, `setAutoRefreshEnabled` | ✅ Реализован |
 
-**AutoFunctionsManager.java** содержит ТОЛЬКО переключатели (запись/чтение boolean в SharedPreferences). Реальная логика авто-функций НЕ РЕАЛИЗОВАНА.
+**AutoFunctionsManager.java** содержит переключатели с логикой эксклюзивности и `isFunctionEnabled(QuickActionType)` / `toggleFunction(QuickActionType)`. **Реальная логика выполнения** авто-функций (фактические HTTP-запросы, парсинг HTML) — НЕ РЕАЛИЗОВАНА (см. раздел 3 Плана портирования).
 
 ### РЕАЛЬНО РЕАЛИЗОВАННЫЕ функции (отдельные классы)
 
@@ -71,6 +71,7 @@
 |---------|------|----------|--------|
 | **Автобой (полноценный)** | `LezFight.java` | Парсинг HTML боя, генерация комбинаций ударов/блоков/магии, выбор лучшей комбинации | ✅ Полностью портирован |
 | **Быстрые действия** | `FastActionManager.java` | Все виды нападалок, свитков, зелий, эликсиров, тотема, телепортов | ✅ Полностью портирован |
+| **FastAttackAsync** | `FastActionManager.java` + `NeverApi.java` | Фоновый поток ожидания конца боя цели перед атакой | ✅ Реализовано |
 | **Автонападение** | Использует `FastActionManager` | Автоматическое нападение на цель | ✅ Реализовано |
 
 ### Логика работы эксклюзивных функций (реализована в AutoFunctionsManager)
@@ -91,26 +92,27 @@
 
 ### Переключатели авто-функций
 
-- [x] Все 14 переключателей добавлены в AutoFunctionsManager (НО это заглушки)
+- [x] Все 14 переключателей добавлены в AutoFunctionsManager с логикой эксклюзивности
+- [x] isFunctionEnabled(QuickActionType) и toggleFunction(QuickActionType) — универсальные методы
 
 ### Реализация логики авто-функций (в процессе)
 
 | Функция | Статус | Файлы для изучения | Приоритет |
 |---------|--------|-------------------|-----------|
 | Автобой (LezFight) | ✅ Реализован | `LezFight.java` | - |
-| Быстрые действия | ✅ Реализованы | `FastActionManager.java` | - |
-| Авто-Рыбалка | ❌ Не реализована | `ABClient/PostFilter/AutoFish.cs` | Средний |
-| Авто-Охота | ❌ Не реализована | `ABClient/Lez/LezFight.cs` (разделывание) | Средний |
-| Авто-Приманка | ❌ Не реализована | `ABClient/ABForms/FormAutoBait.cs` | Средний |
-| Авто-Травник | ❌ Не реализована | `ABClient/ABForms/FormMainHerbs.cs` | Средний |
-| Авто-Невид | ❌ Не реализована | Нужно найти C# код | Средний |
-| Авто-Обнаружение | ❌ Не реализована | Нужно найти C# код | Низкий |
-| Авто-Тотем | ❌ Не реализована | Нужно найти C# код | Низкий |
-| Автолечение | ❌ Не реализована | `ABClient/MyForms/FormSettingsGeneral.cs` | Средний |
-| Авто-Питье | ❌ Не реализована | Нужно найти C# код | Высокий |
-| Авто-Движение | ❌ Не реализована | Нужно найти C# код | Высокий |
-| Слежение за локацией | ❌ Не реализована | (Android специфичная) | Низкий |
-| Авто-Обновление | ❌ Не реализована | Нужно найти C# код | Низкий |
+| Быстрые действия | ✅ Реализованы | `FastActionManager.java` + `NeverApi.java` | - |
+| Авто-Рыбалка | ❌ Логика не реализована | `ABClient/PostFilter/AutoFish.cs` | Средний |
+| Авто-Охота | ❌ Логика не реализована | `ABClient/Lez/LezFight.cs` (разделывание) | Средний |
+| Авто-Приманка | ❌ Логика не реализована | `ABClient/ABForms/FormAutoBait.cs` | Средний |
+| Авто-Травник | ❌ Логика не реализована | `ABClient/ABForms/FormMainHerbs.cs` | Средний |
+| Авто-Невид | ❌ Логика не реализована | Нужно найти C# код | Средний |
+| Авто-Обнаружение | ❌ Логика не реализована | Нужно найти C# код | Низкий |
+| Авто-Тотем | ❌ Логика не реализована | Нужно найти C# код | Низкий |
+| Авто-Лечение | ❌ Логика не реализована | `ABClient/MyForms/FormSettingsGeneral.cs` | Средний |
+| Авто-Питье | ❌ Логика не реализована | Нужно найти C# код | Высокий |
+| Авто-Движение | ❌ Логика не реализована | Нужно найти C# код | Высокий |
+| Слежение за локацией | ❌ Логика не реализована | (Android специфичная) | Низкий |
+| Авто-Обновление | ❌ Логика не реализована | Нужно найти C# код | Низкий |
 
 ---
 
@@ -134,7 +136,8 @@
 
 - `app/.../lez/LezFight.java` ✅
 - `app/.../manager/FastActionManager.java` ✅
-- `app/.../manager/AutoFunctionsManager.java` (заглушки)
+- `app/.../manager/AutoFunctionsManager.java` ✅ (переключатели с логикой эксклюзивности)
+- `app/.../manager/NeverApi.java` ✅ (HTTP API клиент игры)
 
 ### Уже проанализированные файлы
 
@@ -202,17 +205,19 @@ QUICK_ELIXIR_RESTORE("Эликсир Восстановления", "quick_elixi
 | Компонент | Статус | Комментарий |
 |-----------|--------|-------------|
 | LezFight.java | ✅ | Полноценный порт логики автобоя |
-| FastActionManager.java | ✅ | Полноценный порт быстрых действий |
-| AutoFunctionsManager.java | ⚠️ | Только заглушки (переключатели) |
-| Авто-Рыбалка (логика) | ❌ | Не реализована |
-| Авто-Охота (логика) | ❌ | Не реализована |
-| Авто-Приманка (логика) | ❌ | Не реализована |
-| Авто-Травник (логика) | ❌ | Не реализована |
-| Авто-Невид (логика) | ❌ | Не реализована |
-| Авто-Обнаружение (логика) | ❌ | Не реализована |
-| Авто-Тотем (логика) | ❌ | Не реализована |
-| Автолечение (логика) | ❌ | Не реализована |
-| Авто-Питье (логика) | ❌ | Не реализована |
-| Авто-Движение (логика) | ❌ | Не реализована |
-| Слежение за локацией | ❌ | Не реализована |
-| Авто-Обновление (логика) | ❌ | Не реализована |
+| FastActionManager.java | ✅ | Полноценный порт быстрых действий + FastAttackAsync |
+| NeverApi.java | ✅ | HTTP API клиент игры (getAll, getFlog, getUserId) |
+| AutoFunctionsManager.java | ✅ | Переключатели с логикой эксклюзивности и универсальными методами |
+| QuickButtonsPanel.java | ✅ | Полная обработка всех 14 авто-функций в executeAction |
+| Авто-Рыбалка (логика HTTP) | ❌ | Переключатель работает, реальный HTTP не реализован |
+| Авто-Охота (логика HTTP) | ❌ | Переключатель работает, реальный HTTP не реализован |
+| Авто-Приманка (логика HTTP) | ❌ | Переключатель работает, реальный HTTP не реализован |
+| Авто-Травник (логика HTTP) | ❌ | Переключатель работает, реальный HTTP не реализован |
+| Авто-Невид (логика HTTP) | ❌ | Переключатель работает, реальный HTTP не реализован |
+| Авто-Обнаружение (логика HTTP) | ❌ | Переключатель работает, реальный HTTP не реализован |
+| Авто-Тотем (логика HTTP) | ❌ | Переключатель работает, реальный HTTP не реализован |
+| Авто-Лечение (логика HTTP) | ❌ | Переключатель работает, реальный HTTP не реализован |
+| Авто-Питье (логика HTTP) | ❌ | Переключатель работает, реальный HTTP не реализован |
+| Авто-Движение (логика HTTP) | ❌ | Переключатель работает, реальный HTTP не реализован |
+| Слежение за локацией | ❌ | Переключатель работает, логика не реализована |
+| Авто-Обновление (логика HTTP) | ❌ | Переключатель работает, реальный HTTP не реализован |

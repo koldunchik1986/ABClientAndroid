@@ -404,6 +404,31 @@ public class QuickButtonsPanel {
                 Toast.makeText(context, autoFunctionsManager.isAutoCureEnabled() ? "Авто-Лечение ВКЛ" : "Авто-Лечение ВЫКЛ", Toast.LENGTH_SHORT).show();
                 loadAndUpdateButtons();
                 break;
+            case AUTO_BAIT:
+                autoFunctionsManager.toggleAutoBait();
+                Toast.makeText(context, autoFunctionsManager.isAutoBaitEnabled() ? "Авто-Приманка ВКЛ" : "Авто-Приманка ВЫКЛ", Toast.LENGTH_SHORT).show();
+                loadAndUpdateButtons();
+                break;
+            case AUTO_DRINK:
+                autoFunctionsManager.toggleAutoDrink();
+                Toast.makeText(context, autoFunctionsManager.isAutoDrinkEnabled() ? "Авто-Питье ВКЛ" : "Авто-Питье ВЫКЛ", Toast.LENGTH_SHORT).show();
+                loadAndUpdateButtons();
+                break;
+            case AUTO_MOVING:
+                autoFunctionsManager.toggleAutoMoving();
+                Toast.makeText(context, autoFunctionsManager.isAutoMovingEnabled() ? "Авто-Движение ВКЛ" : "Авто-Движение ВЫКЛ", Toast.LENGTH_SHORT).show();
+                loadAndUpdateButtons();
+                break;
+            case AUTO_CUT:
+                autoFunctionsManager.toggleAutoCut();
+                Toast.makeText(context, autoFunctionsManager.isAutoCutEnabled() ? "Авто-Травник ВКЛ" : "Авто-Травник ВЫКЛ", Toast.LENGTH_SHORT).show();
+                loadAndUpdateButtons();
+                break;
+            case AUTO_REFRESH:
+                autoFunctionsManager.toggleAutoRefresh();
+                Toast.makeText(context, autoFunctionsManager.isAutoRefreshEnabled() ? "Авто-Обновление ВКЛ" : "Авто-Обновление ВЫКЛ", Toast.LENGTH_SHORT).show();
+                loadAndUpdateButtons();
+                break;
             case OPEN_CONTACTS:
                 openContacts();
                 break;
