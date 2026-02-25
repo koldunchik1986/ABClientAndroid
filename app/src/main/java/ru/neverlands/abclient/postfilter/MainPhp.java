@@ -94,6 +94,13 @@ public class MainPhp {
             }
         }
 
+        // Обработка страницы завершения боя (get_id=61&act=7)
+        // Автоматически нажимает кнопку "Завершить"
+        if (address.contains("get_id=61") && address.contains("act=7")) {
+            android.util.Log.d(TAG, "=== FIGHT END PAGE DETECTED ===");
+            html = mainPhpFightEnd(address, html);
+        }
+
         // Обработка страницы боя
         // magic_slots() — признак страницы боя (fight frame)
         // var fight_ty — признак верхнего фрейма с данными о противнике
@@ -551,10 +558,48 @@ public class MainPhp {
             return html;
         }
 
-        // Проверяем, ждём ли мы хода противника - нужно auto-refresh
+            // Проверяем, ждём ли мы хода противника - нужно auto-refresh
         if (fight.IsWaitingForNextTurn) {
-            android.util.Log.d(TAG, "mainPhpFight: waiting for opponent turn, returning Frame for auto-refresh");
-            return fight.Frame;
+            // Проверяем - это конец боя (враг мёртв) или просто ожидание хода противника
+            // Признак конца боя: IsBoi=false (нам не нужно делать ход) + есть FightLink
+            // Примечание: IsFoeDead не работает т.к. парсинг выходит раньше при IsBoi=false
+            if (!fight.IsBoi && !AppVars.FightLink.isEmpty()) {
+                android.util.Log.d(TAG, "mainPhpFight: FIGHT ENDED - IsBoi=false, FightLink available, clicking finish button");
+                // Бой завершён - нажимаем кнопку завершения
+                android.util.Log.d(TAG, "mainPhpFight: LezDoAutoboi=" + (AppVars.Profile != null ? AppVars.Profile.LezDoAutoboi : "null") 
+                        + ", Autoboi=" + AppVars.Autoboi);
+                if (AppVars.Profile != null && AppVars.Profile.LezDoAutoboi && AppVars.Autoboi == AutoboiState.AutoboiOn) {
+                    if (!AppVars.FightLink.isEmpty()) {
+                        android.util.Log.d(TAG, "mainPhpFight: Building POST form for fight completion");
+                        String fightLink = AppVars.FightLink;
+                        AppVars.FightLink = ""; // Очищаем после использования
+                        return Russian.getString(Filter.buildPostForm(
+                            "Завершение боя",
+                            "main.php",
+                            "get_id", "61",
+                            "act", "7",
+                            "fexp", getUrlParam(fightLink, "fexp"),
+                            "fres", getUrlParam(fightLink, "fres"),
+                            "vcode", getUrlParam(fightLink, "vcode"),
+                            "ftype", getUrlParam(fightLink, "ftype"),
+                            "min1", getUrlParam(fightLink, "min1"),
+                            "max1", getUrlParam(fightLink, "max1"),
+                            "min2", getUrlParam(fightLink, "min2"),
+                            "max2", getUrlParam(fightLink, "max2"),
+                            "sum1", getUrlParam(fightLink, "sum1"),
+                            "sum2", getUrlParam(fightLink, "sum2")
+                        ));
+                    }
+                }
+                android.util.Log.d(TAG, "mainPhpFight: NOT creating form - Autoboi disabled or not in AutoboiOn state");
+                return html;
+            } else if (!fight.IsBoi && AppVars.FightLink.isEmpty()) {
+                android.util.Log.d(TAG, "mainPhpFight: FIGHT ENDED but FightLink is empty - returning original HTML");
+                return html;
+            }
+            // Просто ждём хода противника - возвращаем оригинальную страницу для авто-обновления
+            android.util.Log.d(TAG, "mainPhpFight: waiting for opponent turn (foe HP=" + fight.FoeCurrentHp + "), returning original HTML for auto-refresh");
+            return null;
         }
 
         // Проверяем, включен ли автобой в профиле
@@ -616,6 +661,91 @@ public class MainPhp {
         );
 
         return html;
+    }
+
+    /**
+     * Обработка страницы завершения боя (get_id=61&act=7).
+     * Автоматически нажимает кнопку "Завершить" - аналог PC версии.
+     */
+    private static String mainPhpFightEnd(String address, String html) {
+        android.util.Log.d(TAG, "mainPhpFightEnd: processing fight end page");
+        
+        // Проверяем, есть ли уже параметры в адресе (URL содержит все нужные параметры)
+        if (address.contains("fexp=") && address.contains("act=7")) {
+            android.util.Log.d(TAG, "mainPhpFightEnd: has fexp, building redirect");
+            
+            // Параметры уже есть в URL - извлекаем их
+            String fexp = getUrlParam(address, "fexp");
+            String fres = getUrlParam(address, "fres");
+            String vcode = getUrlParam(address, "vcode");
+            String ftype = getUrlParam(address, "ftype");
+            String min1 = getUrlParam(address, "min1");
+            String max1 = getUrlParam(address, "max1");
+            String min2 = getUrlParam(address, "min2");
+            String max2 = getUrlParam(address, "max2");
+            String sum1 = getUrlParam(address, "sum1");
+            String sum2 = getUrlParam(address, "sum2");
+            
+            // Проверяем, не является ли это повторным заходом на страницу завершения боя
+            // (защита от бесконечного цикла)
+            if (html.contains("error.css") || html.contains("Ошибка") || html.contains("error")) {
+                // Сервер вернул ошибку - возвращаем оригинальную страницу
+                android.util.Log.d(TAG, "mainPhpFightEnd: server returned error page, returning original HTML");
+                return html;
+            }
+            
+            // Ищем форму завершения боя в HTML - если есть, извлекаем параметры и делаем POST
+            // Но так как WebView не перехватывает POST, просто возвращаем HTML с авто-submit
+            if (html.contains("<form") && html.contains("act=7")) {
+                android.util.Log.d(TAG, "mainPhpFightEnd: found form in HTML, auto-submitting");
+                // Возвращаем HTML с авто-submit формой
+                return html; // WebView сам отправит форму
+            }
+            
+            // Строим POST форму для завершения боя (сервер ожидает POST, не GET)
+            android.util.Log.d(TAG, "mainPhpFightEnd: building form for fight end");
+            
+            return Russian.getString(Filter.buildPostForm(
+                "Завершение боя",
+                "main.php",
+                "get_id", "61",
+                "act", "7",
+                "fexp", fexp,
+                "fres", fres,
+                "vcode", vcode,
+                "ftype", ftype,
+                "min1", min1,
+                "max1", max1,
+                "min2", min2,
+                "max2", max2,
+                "sum1", sum1,
+                "sum2", sum2
+            ));
+        }
+        
+        // Параметры не найдены в URL - ищем в HTML (fexp может быть в JavaScript)
+        // Пока возвращаем как есть
+        android.util.Log.d(TAG, "mainPhpFightEnd: no fexp in URL, returning original HTML");
+        return html;
+    }
+
+    /**
+     * Извлекает параметр из URL.
+     */
+    private static String getUrlParam(String url, String paramName) {
+        try {
+            String search = paramName + "=";
+            int idx = url.indexOf(search);
+            if (idx >= 0) {
+                idx += search.length();
+                int end = url.indexOf("&", idx);
+                if (end < 0) end = url.length();
+                return url.substring(idx, end);
+            }
+        } catch (Exception e) {
+            android.util.Log.e(TAG, "getUrlParam error: " + paramName, e);
+        }
+        return "";
     }
 
     /**

@@ -16,7 +16,7 @@
 | `Filter.cs`               | Главный класс-маршрутизатор фильтров                   | `[x]`  | `[~]`      | Роутинг портирован. `preProcess` — заглушка (в C# тоже почти no-op) |
 | `ChListJs.cs`             | Фильтр для `ch_list.js` (список пользователей)         | `[x]`  | `[+]`      | Полностью портирован для Android (через AndroidBridge) |
 | `ShopEntry.cs`            | Класс-сущность предмета в магазине                     | `[x]`  | `[+]`      | Полностью портирован |
-| `MainPhp.cs`              | Основной фильтр для `main.php`                         | `[x]`  | `[~]`      | Почти FULL: vcode, inv (с группировкой), fast. Нет: fight, cure, fish. |
+| `MainPhp.cs`              | Основной фильтр для `main.php`                         | `[x]`  | `[~]`      | Почти FULL: vcode, inv (с группировкой), fast, **fight (LezFight интеграция)**. Нет: cure, fish. |
 | `CastleJs.cs`             | Фильтр для `castle.js`                                | `[x]`  | `[~]`      | Частично: замена document.location. C# также prepends json2 |
 | `ArenaJs.cs`              | Фильтр для `arena.js`                                 | `[x]`  | `[s]`      | Java возвращает пустой массив. C# загружает ресурс и заменяет строки |
 | `BuildingJs.cs`           | Фильтр для `building.js`                              | `[x]`  | `[s]`      | Заглушка. C# удаляет clr_chat() при ChatKeepMoving |
@@ -60,7 +60,7 @@
 | `MainPhpDrink.cs`         | Часть `MainPhp`: питье                                 | `[x]`  | `[ ]`      | Нет Java-файла |
 | `MainPhpDrinkHpMa.cs`     | Часть `MainPhp`: питье HP/MP                           | `[x]`  | `[ ]`      | Нет Java-файла |
 | `MainPhpFast.cs`          | Часть `MainPhp`: быстрые действия                      | `[x]`  | `[~]`      | Почти FULL: навигация по категориям, парсинг нападалок/зелий. |
-| `MainPhpFight.cs`         | Часть `MainPhp`: логика боя                            | `[x]`  | `[ ]`      | Нет Java-файла. Есть TODO-заглушка в MainPhp.java |
+| `MainPhpFight.cs`         | Часть `MainPhp`: логика боя                            | `[x]`  | `[~]`      | Интегрировано в MainPhp.java: mainPhpFight(), mainPhpFightEnd(). ЛеzFight работает. |
 | `MainPhpFish.cs`          | Часть `MainPhp`: логика рыбалки                        | `[x]`  | `[ ]`      | Нет Java-файла |
 | `MainPhpInsHp.cs`         | Часть `MainPhp`: парсинг HP                            | `[x]`  | `[ ]`      | Нет Java-файла |
 | `MainPhpInv.cs`           | Часть `MainPhp`: инвентарь                             | `[x]`  | `[~]`      | Почти FULL: группировка, сортировка, кнопки "Продать все". |
@@ -74,16 +74,26 @@
 | `TeleportAjax.cs`         | Фильтр для `teleport_ajax`                             | `[x]`  | `[ ]`      | Нет Java-файла |
 | `json2.js`                | Библиотека JSON2                                       | `[x]`  | `[+]`      | Присутствует в assets/js/json2.js |
 
+## Сессия 24.02.2026 - Исправления
+
+В рамках работы над интеграцией автобоя были внесены следующие изменения в PostFilter:
+
+| Компонент | Изменение | Файл |
+|-----------|-----------|------|
+| `MainPhp.java` | Добавлена обработка `get_id=61&act=7` (завершение боя) | `postfilter/MainPhp.java` |
+| `LezFight.java` | Изменён POST → GET для авто-формы | `lez/LezFight.java` |
+| `LoginActivity.java` | Синхронизация Autoboi с профилем | `LoginActivity.java` |
+
 ## Сводная статистика
 
 | Категория | Количество |
 | --------- | ---------- |
 | `[+]` Полностью портировано | 3 (ChListJs, ShopEntry, json2.js) |
-| `[~]` Частично портировано | 4 (Filter, MainPhp, CastleJs, MainPhpInv) |
+| `[~]` Частично портировано | 5 (Filter, MainPhp, CastleJs, MainPhpInv, MainPhpFight) |
 | `[=]` Заглушка = C# no-op | 6 (ChZero, LogsJs, MapActAjaxPhp, Pinfo, PinfonewJs, SlotsJs) |
 | `[s]` Заглушка (нужно портировать) | 28 |
-| `[ ]` Отсутствует в Java | 18 |
-| **Итого требуют портирования** | **46** |
+| `[ ]` Отсутствует в Java | 17 |
+| **Итого требуют портирования** | **45** |
 
 ## Java-файлы без C# аналога
 

@@ -6,6 +6,7 @@ import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
 import java.util.Locale;
+import java.util.Random;
 import ru.neverlands.abclient.model.*;
 import ru.neverlands.abclient.utils.AppVars;
 import ru.neverlands.abclient.utils.HelperStrings;
@@ -22,6 +23,8 @@ public class LezFight {
     public boolean DoExit;
     public boolean IsLowHp;
     public boolean IsLowMa;
+    public boolean IsFoeDead; // true если враг мёртв (HP <= 0)
+    public int FoeCurrentHp; // HP врага для отладки
     public String LogBoi = "";
     public String FoeName = "";
 
@@ -42,6 +45,9 @@ public class LezFight {
     private int[] _posma;
     private String[] _bspar;
     private boolean _hitByScroll;
+    
+    // Random для анти-детекта (имитация поведения реального игрока)
+    private static final Random _random = new Random();
     
     // Данные для генерации Frame
     private String[] _fightpm;
@@ -85,6 +91,8 @@ public class LezFight {
         }
 
         IsBoi = (_fightty[3].length() >= 1) && (_fightty[3].charAt(0) == '1');
+        // IsWaitingForNextTurn = true когда наш ход закончен, ждем хода противника
+        IsWaitingForNextTurn = (_fightty[3].length() >= 1) && (_fightty[3].charAt(0) == '0');
 
         String[] paramow = ParseString(html, "var param_ow = [", 0);
         if (paramow == null) return false;
@@ -155,6 +163,12 @@ public class LezFight {
             _foeCurrentMa = 0;
             _foeMaxMa = 0;
         }
+        
+        // Сохраняем HP врага в публичное поле для отладки
+        FoeCurrentHp = _foeCurrentHp;
+        
+        // Проверяем, мёртв ли враг
+        IsFoeDead = (_foeCurrentHp <= 0);
         
         _foeImage = Strip(slotsen[0]);
 
@@ -426,8 +440,8 @@ public class LezFight {
         sb.append("</b></font> | <font color=#336699><b>");
         sb.append(_foeCurrentMa).append("</b>/<b>").append(_foeMaxMa).append("</b></font>]<br>");
         
-        // Форма авто-submit
-        sb.append("<form action=\"main.php\" method=POST name=ff>");
+        // Форма авто-submit - POST обязателен для сервера
+        sb.append("<form action=\"main.php\" method=POST name=ff id=form_main>");
         
         // post_id = 7
         sb.append("<input name=post_id type=hidden value=\"7\">");
@@ -488,10 +502,15 @@ public class LezFight {
         sb.append("<input name=ina type=hidden value=\"").append(ina.toString()).append("\">");
         
         sb.append("</form>");
-        sb.append("<script language=\"JavaScript\">document.ff.submit();</script></body></html>");
+        // Добавляем random delay для анти-детекта (1000-2000ms)
+        // Реальный игрок не может отправлять ходы чаще чем 1 раз в секунду
+        int delay = 1000 + _random.nextInt(1000);
+        sb.append("<script language=\"JavaScript\">");
+        sb.append("setTimeout(function(){ document.ff.submit(); }, ").append(delay).append(");");
+        sb.append("</script></body></html>");
         
         Frame = sb.toString();
-        android.util.Log.d("LezFight", "BuildFrame: Frame generated, length=" + Frame.length());
+        android.util.Log.d("LezFight", "BuildFrame: Frame generated, length=" + Frame.length() + ", delay=" + delay + "ms");
     }
 
     private void Selpl(int type, List<Integer> list) {
@@ -532,8 +551,6 @@ public class LezFight {
     }
 
     private String Strip(String arg) { return arg.replace("\"", "").trim(); }
-
-    private String[] _fexp;
 
     private boolean ParseNonFight() {
         // Логика завершения боя - парсим fexp для ссылки завершения

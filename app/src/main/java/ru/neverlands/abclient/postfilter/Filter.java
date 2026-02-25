@@ -177,6 +177,23 @@ public class Filter {
         return Russian.getBytes(html);
     }
 
+    public static byte[] buildPostForm(String description, String action, String... params) {
+        StringBuilder sb = new StringBuilder();
+        sb.append(ru.neverlands.abclient.utils.HtmlUtils.GENERATED_PAGE_MARKER);
+        sb.append("<html><head><meta http-equiv=\"Content-Type\" content=\"text/html; charset=windows-1251\"><title>ABClient</title></head><body>");
+        sb.append(description);
+        sb.append("<form action=\"").append(action).append("\" method=POST name=ff>");
+        
+        for (int i = 0; i < params.length; i += 2) {
+            if (i + 1 < params.length) {
+                sb.append("<input type=hidden name=\"").append(params[i]).append("\" value=\"").append(params[i + 1]).append("\">");
+            }
+        }
+        
+        sb.append("<script language=\"JavaScript\">document.ff.submit();</script></form></body></html>");
+        return Russian.getBytes(sb.toString());
+    }
+
     public static String removeDoctype(String html) {
         return DOCTYPE_PATTERN.matcher(html).replaceAll("");
     }
