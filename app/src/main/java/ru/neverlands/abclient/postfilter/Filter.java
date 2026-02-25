@@ -170,10 +170,11 @@ public class Filter {
     }
 
     public static byte[] buildRedirect(String description, String link) {
+        // Используем AndroidBridge.redirectToUrl вместо window.location для перехвата в Android
         String html = ru.neverlands.abclient.utils.HtmlUtils.GENERATED_PAGE_MARKER +
                       "<html><head><meta http-equiv=\"Content-Type\" content=\"text/html; charset=windows-1251\"><title>ABClient</title></head><body>" +
                       description +
-                      "<script language=\"JavaScript\">window.location = \"" + link + "\";</script></body></html>";
+                      "<script language=\"JavaScript\">if(typeof AndroidBridge !== 'undefined' && AndroidBridge.redirectToUrl){ AndroidBridge.redirectToUrl(\"" + link + "\"); } else { window.location = \"" + link + "\"; }</script></body></html>";
         return Russian.getBytes(html);
     }
 
@@ -191,6 +192,29 @@ public class Filter {
         }
         
         sb.append("<script language=\"JavaScript\">document.ff.submit();</script></form></body></html>");
+        return Russian.getBytes(sb.toString());
+    }
+
+    public static byte[] buildGetForm(String description, String action, String... params) {
+        StringBuilder sb = new StringBuilder();
+        sb.append(ru.neverlands.abclient.utils.HtmlUtils.GENERATED_PAGE_MARKER);
+        sb.append("<html><head><meta http-equiv=\"Content-Type\" content=\"text/html; charset=windows-1251\"><title>ABClient</title></head><body>");
+        sb.append(description);
+        
+        // Формируем URL с GET параметрами
+        StringBuilder url = new StringBuilder();
+        url.append(action).append("?");
+        for (int i = 0; i < params.length; i += 2) {
+            if (i > 0) url.append("&");
+            url.append(params[i]).append("=").append(params[i + 1]);
+        }
+        
+        // Используем GET редирект с задержкой для имитации реального игрока
+        // Задержка 500-1500ms + случайная составляющая
+        sb.append("<script language=\"JavaScript\">");
+        sb.append("var delay = 500 + Math.floor(Math.random() * 1000);");
+        sb.append("setTimeout(function(){ window.location = \"").append(url.toString()).append("\"; }, delay);");
+        sb.append("</script></body></html>");
         return Russian.getBytes(sb.toString());
     }
 

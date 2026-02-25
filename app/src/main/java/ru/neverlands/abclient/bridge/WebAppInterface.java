@@ -1,6 +1,7 @@
 package ru.neverlands.abclient.bridge;
 
 import android.content.Context;
+import android.content.Intent;
 import android.util.Log;
 import android.webkit.JavascriptInterface;
 import android.widget.Toast;
@@ -432,5 +433,19 @@ public class WebAppInterface {
         AppVars.mainActivity.get().runOnUiThread(() -> {
             AppVars.mainActivity.get().openInNewTab(url, title);
         });
+    }
+
+    @JavascriptInterface
+    public void redirectToUrl(String url) {
+        Log.d("WebAppInterface", "redirectToUrl: " + url);
+        
+        // Используем broadcast для загрузки URL в WebView
+        if (mContext == null) {
+            return;
+        }
+        
+        Intent intent = new Intent(AppVars.ACTION_WEBVIEW_LOAD_URL);
+        intent.putExtra("url", url);
+        mContext.sendBroadcast(intent);
     }
 }

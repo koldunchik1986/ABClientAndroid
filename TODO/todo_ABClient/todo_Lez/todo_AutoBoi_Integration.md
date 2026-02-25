@@ -969,14 +969,91 @@ if (fight.IsWaitingForNextTurn) {
 - [x] Добавить проверку FightLink перед возвратом null при IsWaitingForNextTurn ✅
 - [x] Очищать FightLink после использования ✅
 
-### Этап 9: Баг бесконечного цикла
+### Этап 9: Баг бесконечного цикла при завершении боя
 - [x] Добавлен buildPostForm() в Filter.java ✅
-- [x] Использована POST форма вместо GET редиректа ✅
-- [x] Добавлена защита от бесконечного цикла (проверка на error.css) ✅
+- [x] Изменён buildGetForm() для использования GET с задержкой ✅
+- [x] Заменена POST форма на GET для завершения боя (mainPhpFightEnd) ✅
+- [x] Задержка 500-1500ms с случайной составляющей для имитации игрока ✅
 
 ---
 
-## 19. Анти-детект: Задержка между запросами (Rate Limiting)
+## 20. Исправления 25.02.2026 - POST → GET для завершения боя
+
+### Проблема
+POST запросы не перехватываются Android WebView через `shouldInterceptRequest()`. 
+Форма завершения боя уходила напрямую на сервер, ответ не обрабатывался, что приводило к бесконечному циклу.
+
+### Решение
+1. Обновлён метод `buildGetForm()` в `Filter.java`:
+   - Использует GET запрос вместо POST
+   - Добавляет случайную задержку 500-1500ms перед редиректом
+   - Использует `window.location = URL` для перехвата в WebView
+
+2. Обновлён метод `mainPhpFightEnd()` в `MainPhp.java`:
+   - Заменён вызов `buildPostForm()` на `buildGetForm()`
+
+### Файлы изменены
+- `app/src/main/java/ru/neverlands/abclient/postfilter/Filter.java` - buildGetForm()
+- `app/src/main/java/ru/neverlands/abclient/postfilter/MainPhp.java` - mainPhpFightEnd()
+
+---
+
+## 21. Статус задач (обновлено 25.02.2026 вечер)
+
+### Этап 1: MainPhpFight интеграция
+- [x] Добавить `mainPhpFight()` в `MainPhp.java` ✅
+- [x] Вызывать при `html.contains("var fight_ty = [")` ✅
+- [x] Обрабатывать все состояния AutoboiState ✅
+- [x] Уведомлять в чат при остановке ✅
+- [x] **ИСПРАВЛЕНО:** Синхронизация Autoboi с профилем при старте ✅
+- [x] **ИСПРАВЛЕНО:** POST → GET для авто-формы ✅
+- [x] **ИСПРАВЛЕНО:** Обработка завершения боя (get_id=61&act=7) ✅
+
+### Этап 2: Уведомление о нападении
+- [ ] При смене `LogBoi` — отправлять уведомление в чат
+- [ ] Парсить имя/уровень/тип противника из `param_en`/`slots_en`
+- [ ] Определять невидимку (levelprot == -1)
+- [ ] Определять опасный бой (ftype >= 80)
+
+### Этап 3: AndroidBridge методы
+- [x] `AutoSelect()` — ручной выбор одного хода ✅
+- [x] `AutoTurn()` — один автоход ✅
+- [x] `AutoBoi()` — переключение автобоя ✅
+- [x] `ResetCure()` — сброс состояния ✅
+- [x] `XodButtonElapsedTime()` — таймер хода ✅
+- [x] `ResetLastBoiTimer()` — сброс таймера ✅
+
+### Этап 4: AutoBoiSettingsFragment (UI)
+- [ ] Создать DialogFragment с TabLayout (4 вкладки)
+- [ ] Вкладка 1: Общие настройки (CheckBox + SeekBar)
+- [ ] Вкладка 2: Группы противников (RecyclerView + Spinner)
+- [ ] Вкладка 3: Ротация (CheckBox + SeekBar + 5 списков заклинаний)
+- [ ] Вкладка 4: Останов боя (CheckBox + SeekBar)
+- [ ] Сохранение в Profile
+- [ ] Открытие из AUTO_FIGHT (long press) или меню настроек
+
+### Этап 5: WebViewRequestInterceptor
+- [x] Filter.process() вызывается для main.php ✅
+- [x] FightJs.process() вызывается для fight_v*.js ✅
+
+### Этап 6: Сериализация LezGroups
+- [ ] Проверить save/load LezBotsGroup в UserConfig.java
+
+### Этап 7: Исправления проблем сессии
+- [x] Исправлена синхронизация Autoboi с профилем ✅
+- [x] Исправлен POST → GET для авто-формы ✅
+- [x] Добавлена обработка завершения боя (get_id=61&act=7) ✅
+- [x] **Автобой РАБОТАЕТ** после ввода капчи ✅
+
+### Этап 8: Баг завершения боя
+- [x] Исправить определение конца боя в MainPhp.java ✅
+- [x] Добавить проверку FightLink перед возвратом null при IsWaitingForNextTurn ✅
+- [x] Очищать FightLink после использования ✅
+
+### Этап 9: Баг бесконечного цикла при завершении боя
+- [x] Изменён buildGetForm() на использование GET вместо POST ✅
+- [x] Добавлена случайная задержка 500-1500ms ✅
+- [x] Заменена форма завершения боя на GET ✅
 
 ### Зачем нужно
 Сервер Neverlands может детектить авто-бой по слишком частым запросам. Реальный игрок не может отправлять ходы чаще чем 1 раз в секунду.
