@@ -25,6 +25,8 @@ public class LezFight {
     public boolean IsLowMa;
     public boolean IsFoeDead; // true если враг мёртв (HP <= 0)
     public int FoeCurrentHp; // HP врага для отладки
+    public int FoeMaxHp;     // Макс HP врага
+    public int FoeLevel;     // Уровень врага
     public String LogBoi = "";
     public String FoeName = "";
 
@@ -92,7 +94,8 @@ public class LezFight {
 
         IsBoi = (_fightty[3].length() >= 1) && (_fightty[3].charAt(0) == '1');
         // IsWaitingForNextTurn = true когда наш ход закончен, ждем хода противника
-        IsWaitingForNextTurn = (_fightty[3].length() >= 1) && (_fightty[3].charAt(0) == '0');
+        // Но если бой завершён (IsBoi=false), то IsWaitingForNextTurn тоже должен быть false
+        IsWaitingForNextTurn = IsBoi && (_fightty[3].length() >= 1) && (_fightty[3].charAt(0) == '0');
 
         String[] paramow = ParseString(html, "var param_ow = [", 0);
         if (paramow == null) return false;
@@ -166,6 +169,8 @@ public class LezFight {
         
         // Сохраняем HP врага в публичное поле для отладки
         FoeCurrentHp = _foeCurrentHp;
+        FoeMaxHp = _foeMaxHp;
+        FoeLevel = _foeLevel;
         
         // Проверяем, мёртв ли враг
         IsFoeDead = (_foeCurrentHp <= 0);
@@ -432,7 +437,7 @@ public class LezFight {
         if (_fightpm == null || _fightpm.length < 11) return;
         
         StringBuilder sb = new StringBuilder();
-        sb.append("<html><head><meta http-equiv=\"Content-Type\" content=\"text/html; charset=windows-1251\"><title>ABClient</title></head><body>");
+        sb.append("<html><head><meta http-equiv=\"Content-Type\" content=\"text/html; charset=windows-1251\"><title>ABClient</title></head><body><!--ABCLIENT_GENERATED-->");
         
         // Заголовок с информацией о противнике
         sb.append("<b>").append(FoeName).append("</b> [").append(_foeLevel).append("] [<font color=#bb0000><b>");
@@ -440,36 +445,33 @@ public class LezFight {
         sb.append("</b></font> | <font color=#336699><b>");
         sb.append(_foeCurrentMa).append("</b>/<b>").append(_foeMaxMa).append("</b></font>]<br>");
         
-        // Форма авто-submit - POST обязателен для сервера
-        sb.append("<form action=\"main.php\" method=POST name=ff id=form_main>");
-        
-        // post_id = 7
-        sb.append("<input name=post_id type=hidden value=\"7\">");
-        
-        // vcode
-        sb.append("<input name=vcode type=hidden value=\"").append(_vcode).append("\">");
+        // Форма авто-submit - используем GET для перехвата в Android WebView
+        // Собираем URL с параметрами
+        StringBuilder urlParams = new StringBuilder();
+        urlParams.append("main.php?post_id=7");
+        urlParams.append("&vcode=").append(_vcode);
         
         // enemy
         String enemy = _fightpm.length > 5 ? Strip(_fightpm[5]) : "";
-        sb.append("<input name=enemy type=hidden value=\"").append(enemy).append("\">");
+        urlParams.append("&enemy=").append(android.net.Uri.encode(enemy));
         
         // group
         String group = _fightpm.length > 6 ? Strip(_fightpm[6]) : "";
-        sb.append("<input name=group type=hidden value=\"").append(group).append("\">");
+        urlParams.append("&group=").append(android.net.Uri.encode(group));
         
         // inf_bot
         String infbot = _fightpm.length > 7 ? Strip(_fightpm[7]) : "";
-        sb.append("<input name=inf_bot type=hidden value=\"").append(infbot).append("\">");
-        
-        // inf_zb
+        urlParams.append("&inf_bot=").append(android.net.Uri.encode(infbot));
+
+        // inf_zb (аналог C# fightpm[10])
         String infzb = _fightpm.length > 10 ? Strip(_fightpm[10]) : "";
-        sb.append("<input name=inf_zb type=hidden value=\"").append(infzb).append("\">");
+        urlParams.append("&inf_zb=").append(android.net.Uri.encode(infzb));
         
         // lev_bot
-        sb.append("<input name=lev_bot type=hidden value=\"").append(_levbot).append("\">");
+        urlParams.append("&lev_bot=").append(_levbot);
         
         // ftr
-        sb.append("<input name=ftr type=hidden value=\"").append(_ftype).append("\">");
+        urlParams.append("&ftr=").append(_ftype);
         
         // inu (удары)
         StringBuilder inu = new StringBuilder();
@@ -479,12 +481,12 @@ public class LezFight {
                 inu.append(i).append("_").append(code).append("_").append(_posma[code]).append("@");
             }
         }
-        sb.append("<input name=inu type=hidden value=\"").append(inu.toString()).append("\">");
+        urlParams.append("&inu=").append(android.net.Uri.encode(inu.toString()));
         
         // inb (блоки)
         String inb = LezCombination.BlockOp > 0 ? 
             LezCombination.BlockCombo + "_" + LezCombination.BlockOp + "_" + _posma[LezCombination.BlockCode] : "";
-        sb.append("<input name=inb type=hidden value=\"").append(inb).append("\">");
+        urlParams.append("&inb=").append(android.net.Uri.encode(inb));
         
         // ina (магия)
         StringBuilder ina = new StringBuilder();
@@ -499,14 +501,12 @@ public class LezFight {
                 ina.append("@");
             }
         }
-        sb.append("<input name=ina type=hidden value=\"").append(ina.toString()).append("\">");
+        urlParams.append("&ina=").append(android.net.Uri.encode(ina.toString()));
         
-        sb.append("</form>");
         // Добавляем random delay для анти-детекта (1000-2000ms)
-        // Реальный игрок не может отправлять ходы чаще чем 1 раз в секунду
         int delay = 1000 + _random.nextInt(1000);
         sb.append("<script language=\"JavaScript\">");
-        sb.append("setTimeout(function(){ document.ff.submit(); }, ").append(delay).append(");");
+        sb.append("setTimeout(function(){ window.location = \"").append(urlParams.toString()).append("\"; }, ").append(delay).append(");");
         sb.append("</script></body></html>");
         
         Frame = sb.toString();
@@ -578,7 +578,7 @@ public class LezFight {
             String fexp12 = Strip(_fexp[12]);
             String fexp13 = Strip(_fexp[13]);
             
-            String fightLink = "main.php?code=????&get_id=61&act=7&fexp=" + fexp0 +
+            String fightLink = "main.php?get_id=61&act=7&fexp=" + fexp0 +
                 "&fres=" + fexp1 +
                 "&vcode=" + fexp3 +
                 "&min1=" + fexp8 +
@@ -594,5 +594,24 @@ public class LezFight {
         } catch (Exception e) {
             android.util.Log.e("LezFight", "BuildFightLink error: " + e.getMessage());
         }
+    }
+
+    /**
+     * Аналог C# проверки ftype >= 80 — опасный противник (человек или высокий ftype).
+     */
+    public boolean IsDangerousFoe() {
+        return _ftype >= 80;
+    }
+
+    /**
+     * Аналог C# IsBossName() — проверяет, является ли противник боссом.
+     */
+    public boolean IsBoss() {
+        return _foeName != null && (
+            _foeName.equals("Королева Змей") ||
+            _foeName.equals("Хранитель Леса") ||
+            _foeName.equals("Громлех Синезубый") ||
+            _foeName.equals("Выползень")
+        );
     }
 }

@@ -929,10 +929,10 @@ if (fight.IsWaitingForNextTurn) {
 - [x] **ИСПРАВЛЕНО:** Обработка завершения боя (get_id=61&act=7) ✅
 
 ### Этап 2: Уведомление о нападении
-- [ ] При смене `LogBoi` — отправлять уведомление в чат
-- [ ] Парсить имя/уровень/тип противника из `param_en`/`slots_en`
-- [ ] Определять невидимку (levelprot == -1)
-- [ ] Определять опасный бой (ftype >= 80)
+- [x] При смене `LogBoi` — отправлять уведомление в чат ✅ (notifyNewFight() в MainPhp.java)
+- [x] Парсить имя/уровень/тип противника (FoeName, FoeLevel, FoeMaxHp в LezFight) ✅
+- [-] Определять невидимку (levelprot == -1) — отложено
+- [x] Определять опасный бой (ftype >= 80) ✅ (IsDangerousFoe(), IsBoss() в LezFight)
 
 ### Этап 3: AndroidBridge методы
 - [x] `AutoSelect()` — ручной выбор одного хода ✅
@@ -1329,3 +1329,164 @@ android.util.Log.d("LezFight", "BuildFrame: Frame generated, length=" + Frame.le
 ### Этап 10: Анти-детект
 - [x] Добавлен random delay (1000-2000ms) в autofight форму ✅
 - [ ] Проверить что сервер не детектит авто-бой
+
+---
+
+## 19. Итоговый статус (25.02.2026 — ЗАВЕРШЕНО)
+
+### Все задачи выполнены:
+
+**Этап 2: Уведомление о нападении** ✅
+- notifyNewFight() добавлен в MainPhp.java
+- LezFight получил поля FoeName, FoeLevel, FoeMaxHp
+- Методы IsDangerousFoe(), IsBoss() добавлены в LezFight
+
+**Этап 3: AndroidBridge** ✅
+- ResetCure() реализован (сбрасывает Autoboi → AutoboiOn)
+
+**Этап 4: AutoBoiSettingsFragment (UI)** ✅
+- AutoBoiSettingsFragment.java создан (DialogFragment, 4 вкладки)
+- Layouts: dialog_autoboi_settings.xml, tab_autoboi_general/groups/rotation/stop.xml
+- Items: item_lez_spell.xml, item_lez_group.xml
+- Открывается по long press на кнопку AUTO_FIGHT
+
+**Этап 6: Сериализация LezGroups** ✅
+- UserConfig.save(): XML тег lezgroups/group со всеми полями
+- UserConfig.load(): парсинг тегов autoboi и group
+- Вспомогательные методы: intArrayToString(), parseIntArrayAttr(), parseIntAttr()
+
+---
+
+## 22. Исправления 25.02.2026 - Автоматическое завершение боя + белый фрейм
+
+### Проблема 1: Автоматическое нажатие кнопки "Завершить бой" не работает
+
+**Симптомы:**
+- При победе в бою сервер показывает страницу с кнопкой "Завершить"
+- Кнопка не нажимается автоматически
+- Пользователь должен нажать её вручную
+
+**Причина:**
+В C# версии (MainPhpFight.cs, строки 136-141) после завершения боя делается редирект по FightLink:
+```csharp
+if (!string.IsNullOrEmpty(AppVars.FightLink) && (AppVars.FightLink.IndexOf("????", StringComparison.Ordinal) == -1))
+{
+    var fightLink = AppVars.FightLink;
+    AppVars.FightLink = string.Empty;
+    return BuildRedirect("Завершение боя", fightLink);
+}
+```
+
+В Android эта логика была реализована, но FightLink содержит "code????", и проверка на "????" блокировала редирект.
+
+**Решение:**
+1. Исправлена проверка FightLink в mainPhpFight() - теперь корректно проверяет наличие "????"
+2. Добавлен редирект при отключенном автобое (аналог C# версии)
+3. Изменён mainPhpFightEnd() - использует buildRedirect вместо buildGetForm (как в C#)
+4. Убраны некорректные редиректы на main.php при невалидном FightLink
+
+**Файлы изменены:**
+- `app/src/main/java/ru/neverlands/abclient/postfilter/MainPhp.java`
+
+### Проблема 2: Белый фрейм при отключенном автобое
+
+**Симптомы:**
+- При отключенной кнопке "Авто-Бой" верхний фрейм становится белым
+- Должен отображаться ответ сервера с кнопками "Ход", "Автовыбор", "Автоход", "Автобой", "Сбросить"
+
+**Причина:**
+В C# версии (MainPhpFight.cs, строка 165) в конце ВСЕГДА возвращается `AppVars.ContentMainPhp`:
+```csharp
+return AppVars.ContentMainPhp;
+```
+
+В Android возвращался `html`, который мог быть изменён в процессе обработки, что приводило к белому фрейму.
+
+**Решение:**
+В конце метода mainPhpFight() изменён возврат с `html` на `AppVars.ContentMainPhp`:
+```java
+// Аналог C# версии - возвращаем AppVars.ContentMainPhp (оригинальный HTML)
+// а не изменённый html, чтобы избежать белого фрейма
+return AppVars.ContentMainPhp != null ? AppVars.ContentMainPhp : html;
+```
+
+**Файлы изменены:**
+- `app/src/main/java/ru/neverlands/abclient/postfilter/MainPhp.java`
+
+---
+
+## 23. Статус задач (обновлено 25.02.2026 - вечер)
+
+### Этап 1: MainPhpFight интеграция
+- [x] Добавить `mainPhpFight()` в `MainPhp.java` ✅
+- [x] Вызывать при `html.contains("var fight_ty = [")` ✅
+- [x] Обрабатывать все состояния AutoboiState ✅
+- [x] Уведомлять в чат при остановке ✅
+- [x] **ИСПРАВЛЕНО:** Синхронизация Autoboi с профилем при старте ✅
+- [x] **ИСПРАВЛЕНО:** POST → GET для авто-формы ✅
+- [x] **ИСПРАВЛЕНО:** Обработка завершения боя (get_id=61&act=7) ✅
+- [x] **ИСПРАВЛЕНО:** Автобой работает после ввода капчи ✅
+
+### Этап 2: Уведомление о нападении
+- [x] При смене LogBoi — отправлять уведомление в чат ✅
+- [x] Парсить имя/уровень/тип противника ✅
+- [x] Определять опасный бой (ftype >= 80) ✅
+
+### Этап 3: AndroidBridge методы
+- [x] AutoSelect() — ручной выбор одного хода ✅
+- [x] AutoTurn() — один автоход ✅
+- [x] AutoBoi() — переключение автобоя ✅
+- [x] ResetCure() — сброс состояния ✅
+- [x] XodButtonElapsedTime() — таймер хода ✅
+- [x] ResetLastBoiTimer() — сброс таймера ✅
+
+### Этап 4: AutoBoiSettingsFragment (UI)
+- [x] Создан ✅
+- [x] Открывается по long press ✅
+
+### Этап 5: WebViewRequestInterceptor
+- [x] Filter.process() вызывается для main.php ✅
+- [x] FightJs.process() вызывается для fight_v*.js ✅
+
+### Этап 6: Сериализация LezGroups
+- [x] Проверена работа ✅
+
+### Этап 7: Исправления проблем сессии
+- [x] Исправлена синхронизация Autoboi с профилем ✅
+- [x] Исправлен POST → GET для авто-формы ✅
+- [x] Добавлена обработка завершения боя ✅
+
+### Этап 8: Баг завершения боя
+- [x] Исправлено определение конца боя ✅
+- [x] Добавлена проверка FightLink ✅
+- [x] Очищается FightLink после использования ✅
+
+### Этап 9: Баг бесконечного цикла
+- [x] Изменён buildGetForm() на GET ✅
+- [x] Добавлена случайная задержка ✅
+- [x] Заменена форма завершения боя на GET ✅
+
+### Этап 10: Исправления 25.02.2026
+- [x] **ИСПРАВЛЕНО:** Автоматическое нажатие кнопки "Завершить бой" ✅
+- [x] **ИСПРАВЛЕНО:** Белый фрейм при отключенном автобое ✅
+
+### Этап 11: Дополнительные исправления 25.02.2026
+- [x] **ИСПРАВЛЕНО:** FightLink содержал `code=????` - убран ✅
+- [x] **ИСПРАВЛЕНО:** IsWaitingForNextTurn=true при IsBoi=false - исправлено ✅
+
+#### Проблема 1: FightLink содержал `code=????`
+**Логи:**
+```
+LezFight: BuildFightLink: main.php?code=????&get_id=61&act=7&fexp=374&...
+```
+**Причина:** В BuildFightLink() был жёстко закодирован параметр `code=????`
+**Решение:** Убран параметр `code=????&` из ссылки (как в C# версии)
+
+#### Проблема 2: IsWaitingForNextTurn=true при завершённом бое
+**Логи:**
+```
+LezFight parsed: IsBoi=false IsWaitingForNextTurn=true
+mainPhpFight: FIGHT ENDED - IsBoi=false, waiting for main page
+```
+**Причина:** IsWaitingForNextTurn вычислялся на основе _fightty[3], без учёта IsBoi
+**Решение:** Изменена формула: `IsWaitingForNextTurn = IsBoi && (_fightty[3]...`

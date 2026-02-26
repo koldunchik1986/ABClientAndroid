@@ -1,0 +1,245 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="16dp">
+
+        <!-- Восстановление HP -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Восстановление"
+            android:textStyle="bold"
+            android:layout_marginBottom="4dp" />
+
+        <CheckBox
+            android:id="@+id/checkDoRestoreHp"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Восстанавливать HP если ≤:" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:layout_marginBottom="4dp">
+
+            <SeekBar
+                android:id="@+id/seekRestoreHp"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:max="100" />
+
+            <TextView
+                android:id="@+id/tvRestoreHp"
+                android:layout_width="50dp"
+                android:layout_height="wrap_content"
+                android:gravity="end"
+                android:text="100%" />
+
+        </LinearLayout>
+
+        <Button
+            android:id="@+id/btnFullHp"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Полное HP (100%)"
+            style="@style/Widget.MaterialComponents.Button.TextButton"
+            android:layout_marginBottom="8dp" />
+
+        <CheckBox
+            android:id="@+id/checkDoRestoreMa"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Восстанавливать MA если ≤:" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:layout_marginBottom="4dp">
+
+            <SeekBar
+                android:id="@+id/seekRestoreMa"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:max="100" />
+
+            <TextView
+                android:id="@+id/tvRestoreMa"
+                android:layout_width="50dp"
+                android:layout_height="wrap_content"
+                android:gravity="end"
+                android:text="100%" />
+
+        </LinearLayout>
+
+        <Button
+            android:id="@+id/btnFullMa"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Полная MA (100%)"
+            style="@style/Widget.MaterialComponents.Button.TextButton"
+            android:layout_marginBottom="12dp" />
+
+        <!-- Абилки -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Абилки"
+            android:textStyle="bold"
+            android:layout_marginBottom="4dp" />
+
+        <CheckBox
+            android:id="@+id/checkDoAbilBlocks"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Абилки-блоки" />
+
+        <CheckBox
+            android:id="@+id/checkDoAbilHits"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Абилки-удары" />
+
+        <CheckBox
+            android:id="@+id/checkDoMagHits"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Магические удары" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:layout_marginBottom="4dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Ударов: " />
+
+            <SeekBar
+                android:id="@+id/seekMagHits"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:max="1000" />
+
+            <TextView
+                android:id="@+id/tvMagHits"
+                android:layout_width="50dp"
+                android:layout_height="wrap_content"
+                android:gravity="end"
+                android:text="5" />
+
+        </LinearLayout>
+
+        <CheckBox
+            android:id="@+id/checkDoMagBlocks"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Магические блоки" />
+
+        <CheckBox
+            android:id="@+id/checkDoHits"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Обычные удары" />
+
+        <CheckBox
+            android:id="@+id/checkDoBlocks"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Обычные блоки" />
+
+        <CheckBox
+            android:id="@+id/checkDoMiscAbils"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Прочие абилки"
+            android:layout_marginBottom="12dp" />
+
+        <!-- Заклинания ударов -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Заклинания ударов:"
+            android:textStyle="bold"
+            android:layout_marginBottom="4dp" />
+
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/listSpellsHits"
+            android:layout_width="match_parent"
+            android:layout_height="150dp"
+            android:layout_marginBottom="8dp" />
+
+        <!-- Заклинания блоков -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Заклинания блоков:"
+            android:textStyle="bold"
+            android:layout_marginBottom="4dp" />
+
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/listSpellsBlocks"
+            android:layout_width="match_parent"
+            android:layout_height="150dp"
+            android:layout_marginBottom="8dp" />
+
+        <!-- Заклинания HP -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Заклинания восст. HP:"
+            android:textStyle="bold"
+            android:layout_marginBottom="4dp" />
+
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/listSpellsRestoreHp"
+            android:layout_width="match_parent"
+            android:layout_height="150dp"
+            android:layout_marginBottom="8dp" />
+
+        <!-- Заклинания MA -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Заклинания восст. MA:"
+            android:textStyle="bold"
+            android:layout_marginBottom="4dp" />
+
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/listSpellsRestoreMa"
+            android:layout_width="match_parent"
+            android:layout_height="150dp"
+            android:layout_marginBottom="8dp" />
+
+        <!-- Прочие заклинания -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Прочие заклинания:"
+            android:textStyle="bold"
+            android:layout_marginBottom="4dp" />
+
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/listSpellsMisc"
+            android:layout_width="match_parent"
+            android:layout_height="150dp"
+            android:layout_marginBottom="8dp" />
+
+    </LinearLayout>
+
+</ScrollView>

@@ -19,6 +19,7 @@ public class AppVars {
     public static List<HttpCookie> lastCookies;
     public static UserConfig Profile;
     public static boolean CacheRefresh = false;
+    public static boolean AutoRefresh = false;
     public static boolean WaitFlash = false;
     public static String ContentMainPhp = "";
     public static ru.neverlands.abclient.model.AutoboiState Autoboi = ru.neverlands.abclient.model.AutoboiState.AutoboiOff;

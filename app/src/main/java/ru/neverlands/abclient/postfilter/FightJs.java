@@ -69,7 +69,7 @@ public class FightJs {
             
             html = html.replace(
                     "<input type=submit class=fbut value=\"Завершить",
-                    "<input type=button class=fbut onclick=\"javascript: ResetCure(); document.forms['FEND'].submit();\" value=\"Завершить");
+                    "<input type=button class=fbut onclick=\"javascript: ResetCure(); document.forms[\\\'FEND\\\'].submit();\" value=\"Завершить");
 
             // Добавление новых JavaScript-функций
             StringBuilder sb = new StringBuilder(html);

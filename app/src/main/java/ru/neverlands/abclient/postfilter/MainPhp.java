@@ -551,25 +551,48 @@ public class MainPhp {
             return html;
         }
 
-        // Если бой завершён (IsBoi=false) - просто возвращаем HTML и ждём основную страницу
-        // Сервер сам перенаправит на основную страницу через некоторое время
+        // Этап 2: Уведомление о нападении при смене LogBoi
+        // Аналог ParseFightLog + TrayBalloon в C# (MainPhp.cs)
+        if (fight.IsBoi && fight.LogBoi != null && !fight.LogBoi.isEmpty()
+                && !fight.LogBoi.equals(AppVars.LastBoiLog)) {
+            android.util.Log.d(TAG, "mainPhpFight: NEW FIGHT detected! LogBoi changed: "
+                    + AppVars.LastBoiLog + " -> " + fight.LogBoi);
+            AppVars.LastBoiLog = fight.LogBoi;
+            notifyNewFight(fight);
+        }
+
+        // Если бой завершён (IsBoi=false) - обрабатываем редирект на завершение боя
+        // Аналог PC версии (MainPhpFight.cs строки 105-163):
+        // Даже при отключенном автобое нужно нажать кнопку "Завершить бой"
+        // Сервер сам перенаправит на нужную страницу
         if (!fight.IsBoi) {
-            android.util.Log.d(TAG, "mainPhpFight: FIGHT ENDED - IsBoi=false, waiting for main page");
+            android.util.Log.d(TAG, "mainPhpFight: FIGHT ENDED - IsBoi=false, processing fight completion");
             
-            // Очищаем FightLink чтобы не пытаться завершить бой снова
-            if (!AppVars.FightLink.isEmpty()) {
-                android.util.Log.d(TAG, "mainPhpFight: Clearing FightLink after victory");
-                AppVars.FightLink = "";
+            // Проверяем FightLink - аналог PC версии с проверкой на "????"
+            // В ПК версии: if (!string.IsNullOrEmpty(AppVars.FightLink) && (AppVars.FightLink.IndexOf("????", StringComparison.Ordinal) == -1))
+            if (!AppVars.FightLink.isEmpty() && !AppVars.FightLink.contains("????")) {
+                android.util.Log.d(TAG, "mainPhpFight: FightLink found, building redirect to complete fight: " + AppVars.FightLink);
+                String fightLink = AppVars.FightLink;
+                AppVars.FightLink = ""; // Очищаем после использования
+                return Russian.getString(Filter.buildRedirect("Завершение боя", fightLink));
             }
             
-            // Возвращаем оригинальный HTML - сервер сам перенаправит на основную страницу
-            return html;
+            // FightLink пустой или содержит "????" - делаем редирект на main.php
+            // Это нужно для обновления верхнего фрейма и предотвращения белого экрана
+            android.util.Log.d(TAG, "mainPhpFight: No valid FightLink (empty or contains ????), redirecting to main.php");
+            AppVars.FightLink = ""; // Очищаем на всякий случай
+            return Russian.getString(Filter.buildRedirect("Завершение боя - обновление", "main.php"));
         }
 
         // Проверяем, ждём ли мы хода противника - нужно auto-refresh
         if (fight.IsWaitingForNextTurn) {
-            android.util.Log.d(TAG, "mainPhpFight: waiting for opponent turn (foe HP=" + fight.FoeCurrentHp + "), returning original HTML for auto-refresh");
-            return null;
+            android.util.Log.d(TAG, "mainPhpFight: waiting for opponent turn (foe HP=" + fight.FoeCurrentHp + ")");
+            if (AppVars.AutoRefresh) {
+                android.util.Log.d(TAG, "mainPhpFight: AutoRefresh enabled, returning fight.Frame");
+                return fight.Frame;
+            }
+            android.util.Log.d(TAG, "mainPhpFight: AutoRefresh disabled, returning original content");
+            return AppVars.ContentMainPhp != null ? AppVars.ContentMainPhp : html;
         }
 
         // Проверяем, включен ли автобой в профиле
@@ -608,9 +631,14 @@ public class MainPhp {
                         AppVars.Autoboi = AutoboiState.Restoring;
                     } else {
                         AppVars.Autoboi = AutoboiState.AutoboiOn;
-                        if (!AppVars.FightLink.isEmpty()) {
-                            return Russian.getString(Filter.buildRedirect("Завершение боя", AppVars.FightLink));
+                        // Проверяем FightLink с валидацией как в ПК версии
+                        if (!AppVars.FightLink.isEmpty() && !AppVars.FightLink.contains("????")) {
+                            String fightLink = AppVars.FightLink;
+                            AppVars.FightLink = ""; // Очищаем после использования
+                            return Russian.getString(Filter.buildRedirect("Завершение боя", fightLink));
                         }
+                        // FightLink пустой или содержит "????" - возвращаем оригинальный HTML
+                        // Аналог ПК версии - сервер сам перенаправит на основную страницу
                     }
                 }
             } else {
@@ -618,6 +646,16 @@ public class MainPhp {
             }
         } else {
             android.util.Log.d(TAG, "mainPhpFight: LezDoAutoboi disabled or Profile is null");
+            
+            // Проверяем FightLink даже при отключенном автобое - аналог C# версии
+            // В C# редирект на завершение боя делается когда автобой включен (строки 136-141)
+            // Но мы также проверяем при отключенном - сервер всё равно может перенаправить
+            if (!fight.IsBoi && !AppVars.FightLink.isEmpty() && !AppVars.FightLink.contains("????")) {
+                android.util.Log.d(TAG, "mainPhpFight: FIGHT ENDED (autoboi disabled) - clicking finish button via FightLink");
+                String fightLink = AppVars.FightLink;
+                AppVars.FightLink = "";
+                return Russian.getString(Filter.buildRedirect("Завершение боя", fightLink));
+            }
         }
 
         // Логируем ключевые признаки страницы боя для диагностики
@@ -630,7 +668,9 @@ public class MainPhp {
                 + " autosubmit=" + html.contains("document.ff.submit")
         );
 
-        return html;
+        // Аналог C# версии - возвращаем AppVars.ContentMainPhp (оригинальный HTML)
+        // а не изменённый html, чтобы избежать белого фрейма
+        return AppVars.ContentMainPhp != null ? AppVars.ContentMainPhp : html;
     }
 
     /**
@@ -672,25 +712,24 @@ public class MainPhp {
                 return html; // WebView сам отправит форму
             }
             
-            // Строим GET форму для завершения боя (используем GET для перехвата в WebView)
-            android.util.Log.d(TAG, "mainPhpFightEnd: building GET form for fight end");
+            // Строим GET редирект для завершения боя (аналог C# BuildRedirect)
+            // Используем window.location для перехвата в WebView
+            android.util.Log.d(TAG, "mainPhpFightEnd: building redirect for fight end");
             
-            return Russian.getString(Filter.buildGetForm(
-                "Завершение боя",
-                "main.php",
-                "get_id", "61",
-                "act", "7",
-                "fexp", fexp,
-                "fres", fres,
-                "vcode", vcode,
-                "ftype", ftype,
-                "min1", min1,
-                "max1", max1,
-                "min2", min2,
-                "max2", max2,
-                "sum1", sum1,
-                "sum2", sum2
-            ));
+            // Формируем URL с GET параметрами
+            String redirectUrl = "main.php?get_id=61&act=7" +
+                "&fexp=" + fexp +
+                "&fres=" + fres +
+                "&vcode=" + vcode +
+                "&ftype=" + ftype +
+                "&min1=" + min1 +
+                "&max1=" + max1 +
+                "&min2=" + min2 +
+                "&max2=" + max2 +
+                "&sum1=" + sum1 +
+                "&sum2=" + sum2;
+            
+            return Russian.getString(Filter.buildRedirect("Завершение боя", redirectUrl));
         }
         
         // Параметры не найдены в URL - ищем в HTML (fexp может быть в JavaScript)
@@ -721,6 +760,36 @@ public class MainPhp {
     /**
      * Отправляет уведомление в чат об остановке боя.
      */
+    /**
+     * Уведомление о начале нового боя (аналог TrayBalloon при смене LogBoi в C#).
+     * Отправляет сообщение в чат: имя противника, уровень, HP/MA, тип боя.
+     */
+    private static void notifyNewFight(LezFight fight) {
+        if (AppVars.getContext() == null) return;
+
+        // Определяем тип противника по имени и ftype
+        String foeType;
+        boolean isDangerous = fight.IsDangerousFoe();
+        if (isDangerous) {
+            foeType = " ⚠ ОПАСНЫЙ";
+        } else if (fight.IsBoss()) {
+            foeType = " [БОСС]";
+        } else {
+            foeType = "";
+        }
+
+        String message = "Нападение: " + fight.FoeName
+                + " [" + fight.FoeLevel + "]"
+                + " HP:" + fight.FoeCurrentHp + "/" + fight.FoeMaxHp
+                + foeType;
+
+        android.util.Log.d(TAG, "notifyNewFight: " + message);
+
+        Intent msgIntent = new Intent(AppVars.ACTION_ADD_CHAT_MESSAGE);
+        msgIntent.putExtra("message", "<font color=#ff8800><b>" + message + "</b></font>");
+        LocalBroadcastManager.getInstance(AppVars.getContext()).sendBroadcast(msgIntent);
+    }
+
     private static void notifyFightStopped(LezFight fight) {
         if (AppVars.getContext() == null) return;
         

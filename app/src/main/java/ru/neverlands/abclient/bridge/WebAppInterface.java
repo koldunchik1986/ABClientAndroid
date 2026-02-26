@@ -286,13 +286,27 @@ public class WebAppInterface {
     @JavascriptInterface
     public void AutoBoi() {
         Log.d("WebAppInterface", "AutoBoi called, current state: " + AppVars.Autoboi);
-        // Переключаем глобальное состояние автобоя (AppVars.Autoboi)
+
         if (AppVars.Autoboi == AutoboiState.AutoboiOn) {
             AppVars.Autoboi = AutoboiState.AutoboiOff;
-            Log.d("WebAppInterface", "AutoBoi: switched to AutoboiOff");
+            if (AppVars.Profile != null) {
+                AppVars.Profile.LezDoAutoboi = false;
+                if (mContext != null) {
+                    AppVars.Profile.save(mContext);
+                }
+            }
+            Log.d("WebAppInterface", "AutoBoi: switched to AutoboiOff and LezDoAutoboi=false");
         } else {
             AppVars.Autoboi = AutoboiState.AutoboiOn;
-            Log.d("WebAppInterface", "AutoBoi: switched to AutoboiOn");
+            if (AppVars.Profile != null) {
+                AppVars.Profile.LezDoAutoboi = true;
+                if (mContext != null) {
+                    AppVars.Profile.save(mContext);
+                }
+            }
+            Log.d("WebAppInterface", "AutoBoi: switched to AutoboiOn and LezDoAutoboi=true");
+
+
         }
     }
 
@@ -313,7 +327,12 @@ public class WebAppInterface {
     @JavascriptInterface
     public void ResetCure() {
         Log.d("WebAppInterface", "ResetCure called");
-        // TODO: Implement this
+        // Сброс состояния "восстановление" — возвращаем автобой в активное состояние
+        // Аналог ResetCure() в C# ScriptManager.cs
+        if (AppVars.Autoboi == AutoboiState.Restoring || AppVars.Autoboi == AutoboiState.Timeout) {
+            AppVars.Autoboi = AutoboiState.AutoboiOn;
+            Log.d("WebAppInterface", "ResetCure: Autoboi reset to AutoboiOn");
+        }
     }
 
     @JavascriptInterface

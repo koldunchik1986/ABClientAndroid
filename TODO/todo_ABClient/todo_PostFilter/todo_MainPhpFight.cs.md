@@ -45,3 +45,23 @@
 - [ ] Разработать интерфейс `FightStrategy` и несколько его реализаций.
 - [ ] Интегрировать движок с `WebViewClient`.
 - [ ] Реализовать логику послебоевого восстановления.
+
+---
+
+## Обновление 2026-02-26: проблема верхнего фрейма при ручной остановке автобоя (Android)
+
+### Диагностика
+- В C# состояние автобоя управляется согласованно: AppVars.Autoboi + профильный флаг Profile.LezDoAutoboi.
+- В Android WebAppInterface.AutoBoi() переключал только AppVars.Autoboi, но не Profile.LezDoAutoboi.
+- В MainPhp.mainPhpFight() gating выполнен по Profile.LezDoAutoboi, поэтому после ручного стопа кнопкой возникало рассогласование веток обработки.
+- Дополнительно ветка fight.IsWaitingForNextTurn возвращала null, тогда как в C# логика: fight.Frame только при AutoRefresh, иначе ContentMainPhp.
+
+### План портирования (выполненный)
+- [x] Синхронизировать AutoBoi() с Profile.LezDoAutoboi и сохранением профиля.
+- [x] При включении автобоя инициировать reload main.php?get_id=56&act=10&go=inf (аналог ReloadMainPhpInvoke).
+- [x] Восстановить поведение ожидания хода в mainPhpFight: fight.Frame при AutoRefresh, иначе возврат оригинального контента.
+- [x] Добавить в AppVars флаг AutoRefresh (аналог C# AppVars.AutoRefresh).
+
+### Ожидаемый эффект
+- После остановки автобоя кнопкой верхний фрейм корректно возвращается к обычной логике отображения.
+- Поведение Android в критических ветках mainPhpFight и AutoBoi ближе к эталону C#.

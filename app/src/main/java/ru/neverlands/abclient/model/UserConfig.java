@@ -18,6 +18,8 @@ import java.util.Map;
 import java.util.SortedMap;
 import java.util.TreeMap;
 
+// LezBotsGroup и LezSayType в том же пакете model — дополнительный импорт не нужен
+
 /**
  * Класс конфигурации пользователя, содержащий все настройки профиля.
  * Является портом C# класса UserConfig.
@@ -174,6 +176,60 @@ public class UserConfig {
                             contact.classId = classId;
                             this.contacts.put(name.toLowerCase(), contact);
                         }
+                    } else if ("autoboi".equals(tagName)) {
+                        this.LezDoAutoboi = Boolean.parseBoolean(parser.getAttributeValue(null, "enabled"));
+                        this.LezDoWaitHp = Boolean.parseBoolean(parser.getAttributeValue(null, "waitHp"));
+                        this.LezDoWaitMa = Boolean.parseBoolean(parser.getAttributeValue(null, "waitMa"));
+                        this.LezWaitHp = parseIntAttr(parser, "waitHpVal", 100);
+                        this.LezWaitMa = parseIntAttr(parser, "waitMaVal", 100);
+                        this.LezDoDrinkHp = Boolean.parseBoolean(parser.getAttributeValue(null, "drinkHp"));
+                        this.LezDoDrinkMa = Boolean.parseBoolean(parser.getAttributeValue(null, "drinkMa"));
+                        this.LezDrinkHp = parseIntAttr(parser, "drinkHpVal", 50);
+                        this.LezDrinkMa = parseIntAttr(parser, "drinkMaVal", 50);
+                        this.LezDoWinTimeout = Boolean.parseBoolean(parser.getAttributeValue(null, "winTimeout"));
+                        try {
+                            String sayStr = parser.getAttributeValue(null, "say");
+                            this.LezSay = sayStr != null ? LezSayType.valueOf(sayStr) : LezSayType.No;
+                        } catch (Exception e) { this.LezSay = LezSayType.No; }
+                    } else if ("group".equals(tagName)) {
+                        LezBotsGroup g = new LezBotsGroup(
+                            parseIntAttr(parser, "id", 1),
+                            parseIntAttr(parser, "minLevel", 0)
+                        );
+                        g.DoRestoreHp = Boolean.parseBoolean(parser.getAttributeValue(null, "doRestoreHp"));
+                        g.DoRestoreMa = Boolean.parseBoolean(parser.getAttributeValue(null, "doRestoreMa"));
+                        g.RestoreHp = parseIntAttr(parser, "restoreHp", 100);
+                        g.RestoreMa = parseIntAttr(parser, "restoreMa", 100);
+                        g.DoAbilBlocks = Boolean.parseBoolean(parser.getAttributeValue(null, "doAbilBlocks"));
+                        g.DoAbilHits = Boolean.parseBoolean(parser.getAttributeValue(null, "doAbilHits"));
+                        g.DoMagHits = Boolean.parseBoolean(parser.getAttributeValue(null, "doMagHits"));
+                        g.MagHits = parseIntAttr(parser, "magHits", 5);
+                        g.DoMagBlocks = Boolean.parseBoolean(parser.getAttributeValue(null, "doMagBlocks"));
+                        g.DoHits = Boolean.parseBoolean(parser.getAttributeValue(null, "doHits"));
+                        g.DoBlocks = Boolean.parseBoolean(parser.getAttributeValue(null, "doBlocks"));
+                        g.DoMiscAbils = Boolean.parseBoolean(parser.getAttributeValue(null, "doMiscAbils"));
+                        g.DoStopNow = Boolean.parseBoolean(parser.getAttributeValue(null, "doStopNow"));
+                        g.DoStopLowHp = Boolean.parseBoolean(parser.getAttributeValue(null, "doStopLowHp"));
+                        g.DoStopLowMa = Boolean.parseBoolean(parser.getAttributeValue(null, "doStopLowMa"));
+                        g.StopLowHp = parseIntAttr(parser, "stopLowHp", 0);
+                        g.StopLowMa = parseIntAttr(parser, "stopLowMa", 0);
+                        g.DoExit = Boolean.parseBoolean(parser.getAttributeValue(null, "doExit"));
+                        g.DoExitRisky = Boolean.parseBoolean(parser.getAttributeValue(null, "doExitRisky"));
+                        g.SpellsHits = parseIntArrayAttr(parser, "spellsHits");
+                        g.SpellsBlocks = parseIntArrayAttr(parser, "spellsBlocks");
+                        g.SpellsRestoreHp = parseIntArrayAttr(parser, "spellsRestoreHp");
+                        g.SpellsRestoreMa = parseIntArrayAttr(parser, "spellsRestoreMa");
+                        g.SpellsMisc = parseIntArrayAttr(parser, "spellsMisc");
+                        // Обновляем или добавляем группу (Id=1,MinLevel=0 — группа "Все", всегда существует)
+                        boolean found = false;
+                        for (int gi = 0; gi < this.LezGroups.size(); gi++) {
+                            if (this.LezGroups.get(gi).Id == g.Id) {
+                                this.LezGroups.set(gi, g);
+                                found = true;
+                                break;
+                            }
+                        }
+                        if (!found) this.LezGroups.add(g);
                     } else if ("fastactions".equals(tagName)) {
                         // In a real implementation, we should handle null attributes gracefully
                         this.doShowFastAttack = Boolean.parseBoolean(parser.getAttributeValue(null, "simple"));
@@ -255,6 +311,57 @@ public class UserConfig {
             serializer.attribute(null, "portal", String.valueOf(this.doShowFastAttackPortal));
             serializer.endTag(null, "fastactions");
 
+            // Сохранение настроек AutoBoi (аналог UserConfigVars.cs / FormSettingsAb.cs)
+            serializer.startTag(null, "autoboi");
+            serializer.attribute(null, "enabled", String.valueOf(this.LezDoAutoboi));
+            serializer.attribute(null, "waitHp", String.valueOf(this.LezDoWaitHp));
+            serializer.attribute(null, "waitMa", String.valueOf(this.LezDoWaitMa));
+            serializer.attribute(null, "waitHpVal", String.valueOf(this.LezWaitHp));
+            serializer.attribute(null, "waitMaVal", String.valueOf(this.LezWaitMa));
+            serializer.attribute(null, "drinkHp", String.valueOf(this.LezDoDrinkHp));
+            serializer.attribute(null, "drinkMa", String.valueOf(this.LezDoDrinkMa));
+            serializer.attribute(null, "drinkHpVal", String.valueOf(this.LezDrinkHp));
+            serializer.attribute(null, "drinkMaVal", String.valueOf(this.LezDrinkMa));
+            serializer.attribute(null, "winTimeout", String.valueOf(this.LezDoWinTimeout));
+            serializer.attribute(null, "say", this.LezSay != null ? this.LezSay.name() : "No");
+            serializer.endTag(null, "autoboi");
+
+            // Сохранение групп противников (аналог LezBotsGroup сериализации в C#)
+            serializer.startTag(null, "lezgroups");
+            if (this.LezGroups != null) {
+                for (LezBotsGroup g : this.LezGroups) {
+                    serializer.startTag(null, "group");
+                    serializer.attribute(null, "id", String.valueOf(g.Id));
+                    serializer.attribute(null, "minLevel", String.valueOf(g.MinimalLevel));
+                    serializer.attribute(null, "doRestoreHp", String.valueOf(g.DoRestoreHp));
+                    serializer.attribute(null, "doRestoreMa", String.valueOf(g.DoRestoreMa));
+                    serializer.attribute(null, "restoreHp", String.valueOf(g.RestoreHp));
+                    serializer.attribute(null, "restoreMa", String.valueOf(g.RestoreMa));
+                    serializer.attribute(null, "doAbilBlocks", String.valueOf(g.DoAbilBlocks));
+                    serializer.attribute(null, "doAbilHits", String.valueOf(g.DoAbilHits));
+                    serializer.attribute(null, "doMagHits", String.valueOf(g.DoMagHits));
+                    serializer.attribute(null, "magHits", String.valueOf(g.MagHits));
+                    serializer.attribute(null, "doMagBlocks", String.valueOf(g.DoMagBlocks));
+                    serializer.attribute(null, "doHits", String.valueOf(g.DoHits));
+                    serializer.attribute(null, "doBlocks", String.valueOf(g.DoBlocks));
+                    serializer.attribute(null, "doMiscAbils", String.valueOf(g.DoMiscAbils));
+                    serializer.attribute(null, "doStopNow", String.valueOf(g.DoStopNow));
+                    serializer.attribute(null, "doStopLowHp", String.valueOf(g.DoStopLowHp));
+                    serializer.attribute(null, "doStopLowMa", String.valueOf(g.DoStopLowMa));
+                    serializer.attribute(null, "stopLowHp", String.valueOf(g.StopLowHp));
+                    serializer.attribute(null, "stopLowMa", String.valueOf(g.StopLowMa));
+                    serializer.attribute(null, "doExit", String.valueOf(g.DoExit));
+                    serializer.attribute(null, "doExitRisky", String.valueOf(g.DoExitRisky));
+                    serializer.attribute(null, "spellsHits", intArrayToString(g.SpellsHits));
+                    serializer.attribute(null, "spellsBlocks", intArrayToString(g.SpellsBlocks));
+                    serializer.attribute(null, "spellsRestoreHp", intArrayToString(g.SpellsRestoreHp));
+                    serializer.attribute(null, "spellsRestoreMa", intArrayToString(g.SpellsRestoreMa));
+                    serializer.attribute(null, "spellsMisc", intArrayToString(g.SpellsMisc));
+                    serializer.endTag(null, "group");
+                }
+            }
+            serializer.endTag(null, "lezgroups");
+
             serializer.endTag(null, "profile");
             serializer.endDocument();
         } catch (Exception e) {
@@ -282,5 +389,34 @@ public class UserConfig {
     @Override
     public String toString() {
         return UserNick != null ? UserNick : "";
+    }
+
+    // --- Вспомогательные методы для XML сериализации LezGroups --- //
+
+    private static int parseIntAttr(XmlPullParser parser, String attr, int defaultVal) {
+        String val = parser.getAttributeValue(null, attr);
+        if (val == null || val.isEmpty()) return defaultVal;
+        try { return Integer.parseInt(val); } catch (NumberFormatException e) { return defaultVal; }
+    }
+
+    private static String intArrayToString(int[] arr) {
+        if (arr == null || arr.length == 0) return "";
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < arr.length; i++) {
+            if (i > 0) sb.append(",");
+            sb.append(arr[i]);
+        }
+        return sb.toString();
+    }
+
+    private static int[] parseIntArrayAttr(XmlPullParser parser, String attr) {
+        String val = parser.getAttributeValue(null, attr);
+        if (val == null || val.isEmpty()) return new int[0];
+        String[] parts = val.split(",");
+        int[] result = new int[parts.length];
+        for (int i = 0; i < parts.length; i++) {
+            try { result[i] = Integer.parseInt(parts[i].trim()); } catch (NumberFormatException e) { result[i] = 0; }
+        }
+        return result;
     }
 }

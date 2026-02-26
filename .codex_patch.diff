@@ -1,0 +1,7 @@
+*** Begin Patch
+*** Update File: app/src/main/java/ru/neverlands/abclient/utils/AppVars.java
+@@
+     public static boolean CacheRefresh = false;
++    public static boolean AutoRefresh = false;
+     public static boolean WaitFlash = false;
+*** End Patch

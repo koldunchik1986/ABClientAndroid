@@ -25,6 +25,7 @@ import ru.neverlands.abclient.manager.ContactsManager;
 import ru.neverlands.abclient.manager.FastActionManager;
 import ru.neverlands.abclient.manager.TabManager;
 import ru.neverlands.abclient.manager.AutoFunctionsManager;
+import androidx.fragment.app.FragmentActivity;
 
 /**
  * Панель быстрых кнопок.
@@ -506,11 +507,31 @@ public class QuickButtonsPanel {
 
     private void showButtonOptions(int position) {
         QuickButton button = buttonsManager.getButton(position);
-        
+
         if (button.isEmpty()) {
             showFunctionSelector(position);
+        } else if (button.getActionType() == QuickActionType.AUTO_FIGHT) {
+            // Для AUTO_FIGHT показываем меню: Настройки / Удалить
+            new AlertDialog.Builder(context)
+                .setTitle("Авто-Бой")
+                .setItems(new CharSequence[]{"Настройки автобоя", "Удалить кнопку"}, (dialog, which) -> {
+                    if (which == 0) {
+                        openAutoBoiSettings();
+                    } else {
+                        showRemoveConfirmation(position);
+                    }
+                })
+                .setNegativeButton("Отмена", null)
+                .show();
         } else {
             showRemoveConfirmation(position);
+        }
+    }
+
+    private void openAutoBoiSettings() {
+        if (context instanceof FragmentActivity) {
+            AutoBoiSettingsFragment fragment = new AutoBoiSettingsFragment();
+            fragment.show(((FragmentActivity) context).getSupportFragmentManager(), "autoboi_settings");
         }
     }
 
