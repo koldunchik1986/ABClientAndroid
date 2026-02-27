@@ -1,3 +1,4 @@
+@ -1,502 +1,581 @@
 package ru.neverlands.abclient.lez;
 
 import android.util.Log;
@@ -6,7 +7,6 @@ import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
 import java.util.Locale;
-import java.util.Random;
 import ru.neverlands.abclient.model.*;
 import ru.neverlands.abclient.utils.AppVars;
 import ru.neverlands.abclient.utils.HelperStrings;
@@ -23,10 +23,6 @@ public class LezFight {
     public boolean DoExit;
     public boolean IsLowHp;
     public boolean IsLowMa;
-    public boolean IsFoeDead; // true если враг мёртв (HP <= 0)
-    public int FoeCurrentHp; // HP врага для отладки
-    public int FoeMaxHp;     // Макс HP врага
-    public int FoeLevel;     // Уровень врага
     public String LogBoi = "";
     public String FoeName = "";
 
@@ -47,9 +43,6 @@ public class LezFight {
     private int[] _posma;
     private String[] _bspar;
     private boolean _hitByScroll;
-    
-    // Random для анти-детекта (имитация поведения реального игрока)
-    private static final Random _random = new Random();
     
     // Данные для генерации Frame
     private String[] _fightpm;
@@ -93,8 +86,6 @@ public class LezFight {
         }
 
         IsBoi = (_fightty[3].length() >= 1) && (_fightty[3].charAt(0) == '1');
-        // Waiting flag mirrors C# logic: fight_ty[3]=='0' means foe's turn, so we should poll the frame.
-        IsWaitingForNextTurn = IsBoi && _fightty[3].length() >= 1 && _fightty[3].charAt(0) == '0';
 
         String[] paramow = ParseString(html, "var param_ow = [", 0);
         if (paramow == null) return false;
@@ -165,14 +156,6 @@ public class LezFight {
             _foeCurrentMa = 0;
             _foeMaxMa = 0;
         }
-        
-        // Сохраняем HP врага в публичное поле для отладки
-        FoeCurrentHp = _foeCurrentHp;
-        FoeMaxHp = _foeMaxHp;
-        FoeLevel = _foeLevel;
-        
-        // Проверяем, мёртв ли враг
-        IsFoeDead = (_foeCurrentHp <= 0);
         
         _foeImage = Strip(slotsen[0]);
 
@@ -436,7 +419,7 @@ public class LezFight {
         if (_fightpm == null || _fightpm.length < 11) return;
         
         StringBuilder sb = new StringBuilder();
-        sb.append("<html><head><meta http-equiv=\"Content-Type\" content=\"text/html; charset=windows-1251\"><title>ABClient</title></head><body><!--ABCLIENT_GENERATED-->");
+        sb.append("<html><head><meta http-equiv=\"Content-Type\" content=\"text/html; charset=windows-1251\"><title>ABClient</title></head><body>");
         
         // Заголовок с информацией о противнике
         sb.append("<b>").append(FoeName).append("</b> [").append(_foeLevel).append("] [<font color=#bb0000><b>");
@@ -444,32 +427,36 @@ public class LezFight {
         sb.append("</b></font> | <font color=#336699><b>");
         sb.append(_foeCurrentMa).append("</b>/<b>").append(_foeMaxMa).append("</b></font>]<br>");
         
-        // Параметры удара (будем отправлять POST urlencoded, как в PC версии)
-        StringBuilder urlParams = new StringBuilder();
-        urlParams.append("post_id=7");
-        urlParams.append("&vcode=").append(_vcode);
+        // Форма авто-submit
+        sb.append("<form action=\"main.php\" method=POST name=ff>");
+        
+        // post_id = 7
+        sb.append("<input name=post_id type=hidden value=\"7\">");
+        
+        // vcode
+        sb.append("<input name=vcode type=hidden value=\"").append(_vcode).append("\">");
         
         // enemy
         String enemy = _fightpm.length > 5 ? Strip(_fightpm[5]) : "";
-        urlParams.append("&enemy=").append(android.net.Uri.encode(enemy));
+        sb.append("<input name=enemy type=hidden value=\"").append(enemy).append("\">");
         
         // group
         String group = _fightpm.length > 6 ? Strip(_fightpm[6]) : "";
-        urlParams.append("&group=").append(android.net.Uri.encode(group));
+        sb.append("<input name=group type=hidden value=\"").append(group).append("\">");
         
         // inf_bot
         String infbot = _fightpm.length > 7 ? Strip(_fightpm[7]) : "";
-        urlParams.append("&inf_bot=").append(android.net.Uri.encode(infbot));
-
-        // inf_zb (аналог C# fightpm[10])
+        sb.append("<input name=inf_bot type=hidden value=\"").append(infbot).append("\">");
+        
+        // inf_zb
         String infzb = _fightpm.length > 10 ? Strip(_fightpm[10]) : "";
-        urlParams.append("&inf_zb=").append(android.net.Uri.encode(infzb));
+        sb.append("<input name=inf_zb type=hidden value=\"").append(infzb).append("\">");
         
         // lev_bot
-        urlParams.append("&lev_bot=").append(_levbot);
+        sb.append("<input name=lev_bot type=hidden value=\"").append(_levbot).append("\">");
         
         // ftr
-        urlParams.append("&ftr=").append(_ftype);
+        sb.append("<input name=ftr type=hidden value=\"").append(_ftype).append("\">");
         
         // inu (удары)
         StringBuilder inu = new StringBuilder();
@@ -479,12 +466,12 @@ public class LezFight {
                 inu.append(i).append("_").append(code).append("_").append(_posma[code]).append("@");
             }
         }
-        urlParams.append("&inu=").append(android.net.Uri.encode(inu.toString()));
+        sb.append("<input name=inu type=hidden value=\"").append(inu.toString()).append("\">");
         
         // inb (блоки)
         String inb = LezCombination.BlockOp > 0 ? 
             LezCombination.BlockCombo + "_" + LezCombination.BlockOp + "_" + _posma[LezCombination.BlockCode] : "";
-        urlParams.append("&inb=").append(android.net.Uri.encode(inb));
+        sb.append("<input name=inb type=hidden value=\"").append(inb).append("\">");
         
         // ina (магия)
         StringBuilder ina = new StringBuilder();
@@ -499,27 +486,13 @@ public class LezFight {
                 ina.append("@");
             }
         }
-        urlParams.append("&ina=").append(android.net.Uri.encode(ina.toString()));
+        sb.append("<input name=ina type=hidden value=\"").append(ina.toString()).append("\">");
         
-        // В C# LezFight.BuildFrame() удар отправляется сразу (document.ff.submit()).
-        // Держим минимальную паузу 1.0–1.5s, чтобы не выглядело как DoS.
-        int delay = 1000 + _random.nextInt(501);
-        // Короткая страница: отправляем POST через fetch urlencoded и подстраховываемся fallback-редиректом
-        sb.append("<script language=\"JavaScript\">");
-        sb.append("setTimeout(function(){");
-        sb.append("  console.log('ABCLIENT_AUTOBATTLE_SUBMIT');");
-        sb.append("  var payload=\"").append(urlParams).append("\";");
-        sb.append("  var fallback=setTimeout(function(){window.location.href='main.php?get_id=56&act=10&go=inf';},5000);");
-        sb.append("  fetch('main.php',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:payload,credentials:'include'})");
-        sb.append("    .then(function(r){return r.text();})");
-        sb.append("    .then(function(){clearTimeout(fallback);window.location.href='main.php?get_id=56&act=10&go=inf';})");
-        sb.append("    .catch(function(){window.location.href='main.php?get_id=56&act=10&go=inf';});");
-        sb.append("},").append(delay).append(");");
-        sb.append("</script></body></html>");
-
+        sb.append("</form>");
+        sb.append("<script language=\"JavaScript\">document.ff.submit();</script></body></html>");
+        
         Frame = sb.toString();
-        android.util.Log.d("LezFight", "BuildFrame: Frame generated, length=" + Frame.length() + ", delay=" + delay + "ms"
-                + ", params=" + urlParams);
+        android.util.Log.d("LezFight", "BuildFrame: Frame generated, length=" + Frame.length());
     }
 
     private void Selpl(int type, List<Integer> list) {
@@ -561,21 +534,9 @@ public class LezFight {
 
     private String Strip(String arg) { return arg.replace("\"", "").trim(); }
 
-    private boolean ParseNonFight() {
-        // Состояния вне активного хода (ожидание, окончание боя и т.п.).
-        IsWaitingForNextTurn = false;
-        try {
-            String state = (_fightty != null && _fightty.length > 4) ? Strip(_fightty[4]) : "";
-            if ("3".equals(state)) {
-                // Ожидание хода противника (аналог C# ParseNonFight() case "3").
-                String vcode = (_fightty != null && _fightty.length > 6) ? Strip(_fightty[6]) : "";
-                if (vcode.length() <= 2) {
-                    IsWaitingForNextTurn = true;
-                }
-            }
-        } catch (Exception ignored) {
-        }
+    private String[] _fexp;
 
+    private boolean ParseNonFight() {
         // Логика завершения боя - парсим fexp для ссылки завершения
         _fexp = ParseString(_html, "var fexp = [", 0);
         
@@ -601,7 +562,7 @@ public class LezFight {
             String fexp12 = Strip(_fexp[12]);
             String fexp13 = Strip(_fexp[13]);
             
-            String fightLink = "main.php?get_id=61&act=7&fexp=" + fexp0 +
+            String fightLink = "main.php?code=????&get_id=61&act=7&fexp=" + fexp0 +
                 "&fres=" + fexp1 +
                 "&vcode=" + fexp3 +
                 "&min1=" + fexp8 +
@@ -617,24 +578,5 @@ public class LezFight {
         } catch (Exception e) {
             android.util.Log.e("LezFight", "BuildFightLink error: " + e.getMessage());
         }
-    }
-
-    /**
-     * Аналог C# проверки ftype >= 80 — опасный противник (человек или высокий ftype).
-     */
-    public boolean IsDangerousFoe() {
-        return _ftype >= 80;
-    }
-
-    /**
-     * Аналог C# IsBossName() — проверяет, является ли противник боссом.
-     */
-    public boolean IsBoss() {
-        return _foeName != null && (
-            _foeName.equals("Королева Змей") ||
-            _foeName.equals("Хранитель Леса") ||
-            _foeName.equals("Громлех Синезубый") ||
-            _foeName.equals("Выползень")
-        );
     }
 }

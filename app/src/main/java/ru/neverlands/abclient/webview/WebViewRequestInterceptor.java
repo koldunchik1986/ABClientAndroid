@@ -81,6 +81,16 @@ public class WebViewRequestInterceptor {
                 return null;
             }
 
+            // В автобое упрощаем: не тянем тяжёлые бойовые скрипты, которые не нужны нашему минимальному фрейму
+            if (ru.neverlands.abclient.utils.AppVars.Profile != null
+                    && ru.neverlands.abclient.utils.AppVars.Profile.LezDoAutoboi
+                    && ru.neverlands.abclient.utils.AppVars.Autoboi == ru.neverlands.abclient.model.AutoboiState.AutoboiOn) {
+                if (urlString.contains("fight_v") || urlString.contains("hpmp.js") || urlString.contains("game.js")) {
+                    Log.d(TAG, "Skipping heavy fight js during autoboi: " + urlString);
+                    return new WebResourceResponse("application/javascript", "utf-8", new ByteArrayInputStream(new byte[0]));
+                }
+            }
+
             Log.d(TAG, "Intercepting: " + urlString);
 
             if (urlString.contains("ch.php?lo=1")) {
