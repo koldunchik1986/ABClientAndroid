@@ -461,7 +461,7 @@ public class LezFight {
         sb.append("<input name=inf_bot type=hidden value=\"").append(infbot).append("\">");
         sb.append("<input name=inf_zb type=hidden value=\"").append(infzb).append("\">");
         sb.append("<input name=lev_bot type=hidden value=\"").append(_levbot).append("\">");
-        sb.append("<input name=ftr type=hidden value=\"").append(_fightty[2]).append("\">");
+        sb.append("<input name=ftr type=hidden value=\"").append(_ftype).append("\">");
         
         StringBuilder inu = new StringBuilder();
         for (int i = 0; i < 4; i++) {

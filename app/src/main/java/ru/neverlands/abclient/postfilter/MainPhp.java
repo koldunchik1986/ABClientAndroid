@@ -669,6 +669,7 @@ public class MainPhp {
                         }
                         // FightLink пустой или содержит "????" - возвращаем оригинальный HTML
                         // Аналог ПК версии - сервер сам перенаправит на основную страницу
+                        return Russian.getString(Filter.buildRedirect("Завершение боя - обновление", "main.php"));
                     }
                 }
             } else {

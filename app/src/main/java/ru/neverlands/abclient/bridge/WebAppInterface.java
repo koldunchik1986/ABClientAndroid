@@ -311,6 +311,23 @@ public class WebAppInterface {
             }
             Log.d("WebAppInterface", "AutoBoi: switched to AutoboiOn and LezDoAutoboi=true");
 
+            // Если включили автобой в середине боя — сразу инициируем ход и обновление кадра
+            MainActivity activity = getMainActivityOrNull();
+            if (activity != null) {
+                activity.runOnUiThread(() -> {
+                    Log.d("WebAppInterface", "AutoBoi: triggering requestAutoTurn after toggle ON");
+                    activity.requestAutoTurn();
+                    String reloadUrl = "http://neverlands.ru/main.php?get_id=56&act=10&go=inf";
+                    if (ru.neverlands.abclient.utils.AppVars.VCode != null
+                            && !ru.neverlands.abclient.utils.AppVars.VCode.isEmpty()) {
+                        reloadUrl += "&vcode=" + ru.neverlands.abclient.utils.AppVars.VCode;
+                    }
+                    reloadUrl += "&ts=" + System.currentTimeMillis(); // форсируем перезагрузку кадра
+                    Log.d("WebAppInterface", "AutoBoi: loading fight frame " + reloadUrl);
+                    activity.getMainWebView().loadUrl(reloadUrl);
+                });
+            }
+
 
         }
     }

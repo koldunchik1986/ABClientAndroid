@@ -52,6 +52,26 @@ public class AutoFunctionsManager {
             AppVars.Profile.save(context);
         }
         Log.d(TAG, "setAutoFightEnabled: " + enabled);
+
+        if (enabled) {
+            // При включении автобоя дергаем авто-ход и форсируем загрузку боевого кадра, как в ПК версии.
+            if (AppVars.mainActivity != null && AppVars.mainActivity.get() != null) {
+                AppVars.mainActivity.get().runOnUiThread(() -> {
+                    try {
+                        AppVars.mainActivity.get().requestAutoTurn();
+                        String reloadUrl = "http://neverlands.ru/main.php?get_id=56&act=10&go=inf";
+                        if (AppVars.VCode != null && !AppVars.VCode.isEmpty()) {
+                            reloadUrl += "&vcode=" + AppVars.VCode;
+                        }
+                        reloadUrl += "&ts=" + System.currentTimeMillis();
+                        Log.d(TAG, "setAutoFightEnabled: reload fight frame " + reloadUrl);
+                        AppVars.mainActivity.get().getMainWebView().loadUrl(reloadUrl);
+                    } catch (Exception e) {
+                        Log.e(TAG, "setAutoFightEnabled: failed to trigger auto turn", e);
+                    }
+                });
+            }
+        }
     }
     
     // === AUTO_FISH (Авто-Рыбалка) ===

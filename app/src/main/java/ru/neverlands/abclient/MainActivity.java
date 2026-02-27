@@ -94,6 +94,10 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         return fightViewModel;
     }
 
+    public android.webkit.WebView getMainWebView() {
+        return binding.appBarMain.contentMain.webView;
+    }
+
     public void requestAutoSelect() {
         binding.appBarMain.contentMain.webView.evaluateJavascript(
                 "(function() { return document.documentElement.innerHTML; })();",
@@ -107,13 +111,17 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     }
 
     public void requestAutoTurn() {
+        Log.d(TAG, "requestAutoTurn: grabbing current HTML for auto-turn");
         binding.appBarMain.contentMain.webView.evaluateJavascript(
                 "(function() { return document.documentElement.innerHTML; })();",
                 html -> {
                     if (html != null && !html.equals("null")) {
                         com.google.gson.Gson gson = new com.google.gson.Gson();
                         String unquoted = gson.fromJson(html, String.class);
+                        Log.d(TAG, "requestAutoTurn: html length=" + (unquoted != null ? unquoted.length() : 0));
                         fightViewModel.autoTurnOnce(unquoted);
+                    } else {
+                        Log.d(TAG, "requestAutoTurn: html is null");
                     }
                 });
     }
