@@ -581,26 +581,23 @@ public class MainPhp {
             notifyNewFight(fight);
         }
 
-        // Если бой завершён (IsBoi=false) - обрабатываем редирект на завершение боя
-        // Аналог PC версии (MainPhpFight.cs строки 105-163):
-        // Даже при отключенном автобое нужно нажать кнопку "Завершить бой"
-        // Сервер сам перенаправит на нужную страницу
-        if (!fight.IsBoi && !fight.IsWaitingForNextTurn) {
-            android.util.Log.d(TAG, "mainPhpFight: FIGHT ENDED - IsBoi=false, processing fight completion");
-            
-            // Проверяем FightLink - аналог PC версии с проверкой на "????"
-            // В ПК версии: if (!string.IsNullOrEmpty(AppVars.FightLink) && (AppVars.FightLink.IndexOf("????", StringComparison.Ordinal) == -1))
+        // Завершение боя: делаем автоматический клик "Завершить" только когда автобой действительно включён.
+        if (!fight.IsBoi && !fight.IsWaitingForNextTurn
+                && AppVars.Profile != null && AppVars.Profile.LezDoAutoboi
+                && AppVars.Autoboi == AutoboiState.AutoboiOn) {
+            android.util.Log.d(TAG, "mainPhpFight: FIGHT ENDED with autoboi ON - processing finish");
+
             if (!AppVars.FightLink.isEmpty() && !AppVars.FightLink.contains("????")) {
-                android.util.Log.d(TAG, "mainPhpFight: FightLink found, building redirect to complete fight: " + AppVars.FightLink);
+                android.util.Log.d(TAG, "mainPhpFight: FightLink found, redirecting to complete fight: " + AppVars.FightLink);
                 String fightLink = AppVars.FightLink;
-                AppVars.FightLink = ""; // Очищаем после использования
+                AppVars.FightLink = "";
                 return Russian.getString(Filter.buildRedirect("Завершение боя", fightLink));
             }
-            
             // FightLink пустой или содержит "????" - делаем редирект на main.php
             // Это нужно для обновления верхнего фрейма и предотвращения белого экрана
-            android.util.Log.d(TAG, "mainPhpFight: No valid FightLink (empty or contains ????), redirecting to main.php");
-            AppVars.FightLink = ""; // Очищаем на всякий случай
+
+            android.util.Log.d(TAG, "mainPhpFight: FightLink missing, redirecting to main.php");
+            AppVars.FightLink = "";
             return Russian.getString(Filter.buildRedirect("Завершение боя - обновление", "main.php"));
         }
 
@@ -677,15 +674,8 @@ public class MainPhp {
             }
         } else {
             android.util.Log.d(TAG, "mainPhpFight: LezDoAutoboi disabled or Profile is null");
-            
-            // Проверяем FightLink даже при отключенном автобое - аналог C# версии
-            // В C# редирект на завершение боя делается когда автобой включен (строки 136-141)
-            // Но мы также проверяем при отключенном - сервер всё равно может перенаправить
-            if (!fight.IsBoi && !AppVars.FightLink.isEmpty() && !AppVars.FightLink.contains("????")) {
-                android.util.Log.d(TAG, "mainPhpFight: FIGHT ENDED (autoboi disabled) - clicking finish button via FightLink");
-                String fightLink = AppVars.FightLink;
-                AppVars.FightLink = "";
-                return Russian.getString(Filter.buildRedirect("Завершение боя", fightLink));
+            if (!fight.IsBoi) {
+                android.util.Log.d(TAG, "mainPhpFight: autoboi disabled, keeping original fight frame for manual finish");
             }
         }
 

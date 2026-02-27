@@ -478,7 +478,13 @@ public class WebAppInterface {
 
     @JavascriptInterface
     public void redirectToUrl(String url) {
-        Log.d("WebAppInterface", "redirectToUrl: " + url);
+        // Приводим ссылку к абсолютной, иначе WebView.loadUrl(...) её не откроет и перехватчик не сработает.
+        String finalUrl = url;
+        if (finalUrl != null && !finalUrl.startsWith("http")) {
+            finalUrl = "http://neverlands.ru/" + finalUrl.replaceFirst("^/+", "");
+        }
+
+        Log.d("WebAppInterface", "redirectToUrl: " + finalUrl);
         
         // Используем broadcast для загрузки URL в WebView
         if (mContext == null) {
@@ -486,7 +492,7 @@ public class WebAppInterface {
         }
         
         Intent intent = new Intent(AppVars.ACTION_WEBVIEW_LOAD_URL);
-        intent.putExtra("url", url);
+        intent.putExtra("url", finalUrl);
         mContext.sendBroadcast(intent);
     }
 }
