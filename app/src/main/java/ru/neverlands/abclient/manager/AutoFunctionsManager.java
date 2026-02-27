@@ -58,6 +58,9 @@ public class AutoFunctionsManager {
             if (AppVars.mainActivity != null && AppVars.mainActivity.get() != null) {
                 AppVars.mainActivity.get().runOnUiThread(() -> {
                     try {
+                        // сброс кеша и таймера, чтобы не зависать на старом кадре ручного боя
+                        AppVars.ContentMainPhp = null;
+                        AppVars.LastBoiTimer = new java.util.Date();
                         AppVars.mainActivity.get().requestAutoTurn();
                         String reloadUrl = "http://neverlands.ru/main.php?get_id=56&act=10&go=inf";
                         if (AppVars.VCode != null && !AppVars.VCode.isEmpty()) {
@@ -66,6 +69,13 @@ public class AutoFunctionsManager {
                         reloadUrl += "&ts=" + System.currentTimeMillis();
                         Log.d(TAG, "setAutoFightEnabled: reload fight frame " + reloadUrl);
                         AppVars.mainActivity.get().getMainWebView().loadUrl(reloadUrl);
+                        // страховочный повтор через ~1.2с, если первый кадр ещё был ручным
+                        final String secondReload = reloadUrl;
+                        new android.os.Handler(android.os.Looper.getMainLooper())
+                                .postDelayed(() -> {
+                                    Log.d(TAG, "setAutoFightEnabled: second reload fight frame " + secondReload);
+                                    AppVars.mainActivity.get().getMainWebView().loadUrl(secondReload);
+                                }, 1200);
                     } catch (Exception e) {
                         Log.e(TAG, "setAutoFightEnabled: failed to trigger auto turn", e);
                     }
