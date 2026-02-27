@@ -486,13 +486,18 @@ public class WebAppInterface {
 
         Log.d("WebAppInterface", "redirectToUrl: " + finalUrl);
         
-        // Используем broadcast для загрузки URL в WebView
-        if (mContext == null) {
-            return;
+        // Используем локальный broadcast, чтобы его получил MainActivity (регистрируется через LocalBroadcastManager)
+        if (mContext != null) {
+            Intent intent = new Intent(AppVars.ACTION_WEBVIEW_LOAD_URL);
+            intent.putExtra("url", finalUrl);
+            androidx.localbroadcastmanager.content.LocalBroadcastManager.getInstance(mContext).sendBroadcast(intent);
         }
-        
-        Intent intent = new Intent(AppVars.ACTION_WEBVIEW_LOAD_URL);
-        intent.putExtra("url", finalUrl);
-        mContext.sendBroadcast(intent);
+
+        // Дополнительно — прямой вызов, если активити доступна (страховка от пропуска broadcast)
+        MainActivity activity = getMainActivityOrNull();
+        if (activity != null) {
+            final String toLoad = finalUrl;
+            activity.runOnUiThread(() -> activity.getMainWebView().loadUrl(toLoad));
+        }
     }
 }
