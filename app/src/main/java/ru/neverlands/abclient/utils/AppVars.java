@@ -37,6 +37,7 @@ public class AppVars {
     public static final String ACTION_WEBVIEW_LOAD_URL = "ru.neverlands.abclient.ACTION_WEBVIEW_LOAD_URL";
     public static final String ACTION_WEBVIEW_EVAL_JS = "ru.neverlands.abclient.ACTION_WEBVIEW_EVAL_JS";
     public static final String ACTION_PROXY_READY = "ru.neverlands.abclient.ACTION_PROXY_READY";
+    public static final String ACTION_SHOW_CAPTCHA = "ru.neverlands.abclient.ACTION_SHOW_CAPTCHA";
 
     public static byte[] lastMainPhpResponse;
     public static byte[] lastChatMsgResponse;

@@ -587,9 +587,27 @@ public class MainPhp {
                 && AppVars.Autoboi == AutoboiState.AutoboiOn) {
             android.util.Log.d(TAG, "mainPhpFight: FIGHT ENDED with autoboi ON - processing finish");
 
+            String captchaUrl = extractCaptchaUrl(html);
+            boolean needCaptcha = captchaUrl != null && !captchaUrl.isEmpty();
+
             if (!AppVars.FightLink.isEmpty() && !AppVars.FightLink.contains("????")) {
                 android.util.Log.d(TAG, "mainPhpFight: FightLink found, redirecting to complete fight: " + AppVars.FightLink);
                 String fightLink = AppVars.FightLink;
+
+                if (needCaptcha) {
+                    android.util.Log.d(TAG, "mainPhpFight: CAPTCHA required, stopping autoboi and showing dialog: " + captchaUrl);
+                    AppVars.Autoboi = AutoboiState.AutoboiOff;
+                    AppVars.ContentMainPhp = html; // отрисовать форму с капчей
+                    Intent intent = new Intent(AppVars.ACTION_SHOW_CAPTCHA);
+                    intent.putExtra("captchaUrl", captchaUrl);
+                    intent.putExtra("finishUrl", "http://neverlands.ru/" + fightLink);
+                    if (AppVars.getContext() != null) {
+                        androidx.localbroadcastmanager.content.LocalBroadcastManager.getInstance(AppVars.getContext()).sendBroadcast(intent);
+                    }
+                    // отдаем страницу с капчей напрямую
+                    return html;
+                }
+
                 AppVars.FightLink = "";
                 return Russian.getString(Filter.buildRedirect("Завершение боя", fightLink));
             }
@@ -692,6 +710,26 @@ public class MainPhp {
         // Аналог C# версии - возвращаем AppVars.ContentMainPhp (оригинальный HTML)
         // а не изменённый html, чтобы избежать белого фрейма
         return AppVars.ContentMainPhp != null ? AppVars.ContentMainPhp : html;
+    }
+
+    private static String extractCaptchaUrl(String html) {
+        try {
+            String marker = "/modules/code/code.php?";
+            int idx = html.indexOf(marker);
+            if (idx >= 0) {
+                int end = html.indexOf("\"", idx);
+                if (end < 0) end = html.indexOf("'", idx);
+                if (end < 0) end = Math.min(idx + 200, html.length());
+                String url = html.substring(idx, end);
+                if (!url.startsWith("http")) {
+                    url = "http://neverlands.ru" + url;
+                }
+                return url;
+            }
+        } catch (Exception e) {
+            android.util.Log.e(TAG, "extractCaptchaUrl error", e);
+        }
+        return null;
     }
 
     /**

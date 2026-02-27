@@ -155,6 +155,46 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         }
     }
 
+    private void showCaptchaDialog(String captchaUrl, String finishUrl) {
+        Log.d(TAG, "showCaptchaDialog: " + captchaUrl + " -> " + finishUrl);
+
+        android.webkit.WebView imageView = new android.webkit.WebView(this);
+        imageView.getSettings().setJavaScriptEnabled(false);
+        int heightPx = (int) (getResources().getDisplayMetrics().density * 140);
+        imageView.setLayoutParams(new android.view.ViewGroup.LayoutParams(
+                android.view.ViewGroup.LayoutParams.MATCH_PARENT, heightPx));
+        imageView.loadUrl(captchaUrl);
+
+        android.widget.EditText input = new android.widget.EditText(this);
+        input.setInputType(android.text.InputType.TYPE_CLASS_NUMBER);
+        input.setHint("Код с картинки");
+
+        android.widget.LinearLayout layout = new android.widget.LinearLayout(this);
+        layout.setOrientation(android.widget.LinearLayout.VERTICAL);
+        int pad = (int) (getResources().getDisplayMetrics().density * 12);
+        layout.setPadding(pad, pad, pad, pad);
+        layout.addView(imageView);
+        layout.addView(input);
+
+        new androidx.appcompat.app.AlertDialog.Builder(this)
+                .setTitle("Введите капчу для завершения боя")
+                .setView(layout)
+                .setPositiveButton("ОК", (d, which) -> {
+                    String code = input.getText().toString().trim();
+                    if (code.isEmpty()) return;
+                    String submitUrl = finishUrl;
+                    if (submitUrl.contains("code=")) {
+                        submitUrl = submitUrl.replaceAll("code=[^&]*", "code=" + code);
+                    } else {
+                        submitUrl += (submitUrl.contains("?") ? "&" : "?") + "code=" + code;
+                    }
+                    Log.d(TAG, "showCaptchaDialog: submitting " + submitUrl);
+                    binding.appBarMain.contentMain.webView.loadUrl(submitUrl);
+                })
+                .setNegativeButton("Отмена", null)
+                .show();
+    }
+
     private final BroadcastReceiver broadcastReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
@@ -178,6 +218,13 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                     String js = intent.getStringExtra("js");
                     if (js != null && binding.appBarMain.contentMain.webView != null) {
                         binding.appBarMain.contentMain.webView.evaluateJavascript(js, null);
+                    }
+                    break;
+                case AppVars.ACTION_SHOW_CAPTCHA:
+                    String captchaUrl = intent.getStringExtra("captchaUrl");
+                    String finishUrl = intent.getStringExtra("finishUrl");
+                    if (captchaUrl != null && finishUrl != null) {
+                        showCaptchaDialog(captchaUrl, finishUrl);
                     }
                     break;
                 case AppVars.ACTION_STOP_AUTOFISH:
@@ -317,6 +364,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         filter.addAction(AppVars.ACTION_ADD_CHAT_MESSAGE);
         filter.addAction(AppVars.ACTION_WEBVIEW_LOAD_URL);
         filter.addAction(AppVars.ACTION_WEBVIEW_EVAL_JS);
+        filter.addAction(AppVars.ACTION_SHOW_CAPTCHA);
         filter.addAction(AppVars.ACTION_STOP_AUTOFISH);
         LocalBroadcastManager.getInstance(this).registerReceiver(broadcastReceiver, filter);
     }
