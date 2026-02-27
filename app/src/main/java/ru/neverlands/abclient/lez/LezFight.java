@@ -444,34 +444,25 @@ public class LezFight {
         sb.append("</b></font> | <font color=#336699><b>");
         sb.append(_foeCurrentMa).append("</b>/<b>").append(_foeMaxMa).append("</b></font>]<br>");
         
-        // Параметры удара (будем отправлять POST urlencoded, как в PC версии)
-        StringBuilder urlParams = new StringBuilder();
-        urlParams.append("post_id=7");
-        urlParams.append("&vcode=").append(_vcode);
+        // Собираем hidden-форму удара (аналог ПК версии) и шлём её через submit().
+        int delay = 1000 + _random.nextInt(501); // 1.0–1.5s
+        sb.append("<form action=\"main.php\" method=POST name=ff>");
         
-        // enemy
+        sb.append("<input name=post_id type=hidden value=\"7\">");
+        
         String enemy = _fightpm.length > 5 ? Strip(_fightpm[5]) : "";
-        urlParams.append("&enemy=").append(android.net.Uri.encode(enemy));
-        
-        // group
         String group = _fightpm.length > 6 ? Strip(_fightpm[6]) : "";
-        urlParams.append("&group=").append(android.net.Uri.encode(group));
-        
-        // inf_bot
         String infbot = _fightpm.length > 7 ? Strip(_fightpm[7]) : "";
-        urlParams.append("&inf_bot=").append(android.net.Uri.encode(infbot));
-
-        // inf_zb (аналог C# fightpm[10])
         String infzb = _fightpm.length > 10 ? Strip(_fightpm[10]) : "";
-        urlParams.append("&inf_zb=").append(android.net.Uri.encode(infzb));
         
-        // lev_bot
-        urlParams.append("&lev_bot=").append(_levbot);
+        sb.append("<input name=vcode type=hidden value=\"").append(_vcode).append("\">");
+        sb.append("<input name=enemy type=hidden value=\"").append(enemy).append("\">");
+        sb.append("<input name=group type=hidden value=\"").append(group).append("\">");
+        sb.append("<input name=inf_bot type=hidden value=\"").append(infbot).append("\">");
+        sb.append("<input name=inf_zb type=hidden value=\"").append(infzb).append("\">");
+        sb.append("<input name=lev_bot type=hidden value=\"").append(_levbot).append("\">");
+        sb.append("<input name=ftr type=hidden value=\"").append(_fightty[2]).append("\">");
         
-        // ftr
-        urlParams.append("&ftr=").append(_ftype);
-        
-        // inu (удары)
         StringBuilder inu = new StringBuilder();
         for (int i = 0; i < 4; i++) {
             if (LezCombination.HitOps[i] > 0) {
@@ -479,14 +470,12 @@ public class LezFight {
                 inu.append(i).append("_").append(code).append("_").append(_posma[code]).append("@");
             }
         }
-        urlParams.append("&inu=").append(android.net.Uri.encode(inu.toString()));
+        sb.append("<input name=inu type=hidden value=\"").append(inu.toString()).append("\">");
         
-        // inb (блоки)
         String inb = LezCombination.BlockOp > 0 ? 
             LezCombination.BlockCombo + "_" + LezCombination.BlockOp + "_" + _posma[LezCombination.BlockCode] : "";
-        urlParams.append("&inb=").append(android.net.Uri.encode(inb));
+        sb.append("<input name=inb type=hidden value=\"").append(inb).append("\">");
         
-        // ina (магия)
         StringBuilder ina = new StringBuilder();
         for (int i = 0; i < 18; i++) {
             if (LezCombination.MagicFlags[i]) {
@@ -499,27 +488,16 @@ public class LezFight {
                 ina.append("@");
             }
         }
-        urlParams.append("&ina=").append(android.net.Uri.encode(ina.toString()));
+        sb.append("<input name=ina type=hidden value=\"").append(ina.toString()).append("\">");
         
-        // В C# LezFight.BuildFrame() удар отправляется сразу (document.ff.submit()).
-        // Держим минимальную паузу 1.0–1.5s, чтобы не выглядело как DoS.
-        int delay = 1000 + _random.nextInt(501);
-        // Короткая страница: отправляем POST через fetch urlencoded и подстраховываемся fallback-редиректом
+        sb.append("</form>");
         sb.append("<script language=\"JavaScript\">");
-        sb.append("setTimeout(function(){");
-        sb.append("  console.log('ABCLIENT_AUTOBATTLE_SUBMIT');");
-        sb.append("  var payload=\"").append(urlParams).append("\";");
-        sb.append("  var fallback=setTimeout(function(){window.location.href='main.php?get_id=56&act=10&go=inf';},5000);");
-        sb.append("  fetch('main.php',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:payload,credentials:'include'})");
-        sb.append("    .then(function(r){return r.text();})");
-        sb.append("    .then(function(){clearTimeout(fallback);window.location.href='main.php?get_id=56&act=10&go=inf';})");
-        sb.append("    .catch(function(){window.location.href='main.php?get_id=56&act=10&go=inf';});");
-        sb.append("},").append(delay).append(");");
+        sb.append("setTimeout(function(){ console.log('ABCLIENT_AUTOBATTLE_SUBMIT'); document.ff.submit(); }, ").append(delay).append(");");
+        sb.append("setTimeout(function(){ window.location.href='main.php?get_id=56&act=10&go=inf'; }, ").append(delay + 5000).append(");");
         sb.append("</script></body></html>");
 
         Frame = sb.toString();
-        android.util.Log.d("LezFight", "BuildFrame: Frame generated, length=" + Frame.length() + ", delay=" + delay + "ms"
-                + ", params=" + urlParams);
+        android.util.Log.d("LezFight", "BuildFrame: Frame generated, length=" + Frame.length() + ", delay=" + delay + "ms");
     }
 
     private void Selpl(int type, List<Integer> list) {
