@@ -42,6 +42,25 @@ public class FightViewModel extends ViewModel {
         }).start();
     }
 
+    /**
+     * Выполнить один "автоход" (1 раз) независимо от состояния авто-боя.
+     * Используется кнопкой "Автоход" из верхнего фрейма боя.
+     */
+    public void autoTurnOnce(final String html) {
+        if (html == null) return;
+
+        new Thread(() -> {
+            LezFight fight = new LezFight(html);
+            if (!fight.IsValid) return;
+
+            if (fight.IsBoi && !fight.IsWaitingForNextTurn) {
+                if (fight.Result != null) {
+                    _submitAction.postValue(fight.Result);
+                }
+            }
+        }).start();
+    }
+
     public void toggleAutoBattle() {
         boolean currentState = Boolean.TRUE.equals(_isAutoBattleActive.getValue());
         _isAutoBattleActive.setValue(!currentState);

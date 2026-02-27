@@ -9,6 +9,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
 import java.util.List;
+import java.util.Random;
 
 import android.content.Intent;
 
@@ -21,10 +22,24 @@ import ru.neverlands.abclient.model.InvEntry;
 import ru.neverlands.abclient.manager.FastActionManager;
 import ru.neverlands.abclient.utils.AppVars;
 import ru.neverlands.abclient.utils.HelperStrings;
+import ru.neverlands.abclient.utils.HtmlUtils;
 import ru.neverlands.abclient.utils.Russian;
 
 public class MainPhp {
     private static final String TAG = "MainPhp";
+    private static final Random RANDOM = new Random();
+
+    private static String buildWaitForTurnAutoRefreshHtml(String reloadUrl, int delayMs) {
+        String safeUrl = (reloadUrl != null && !reloadUrl.isEmpty()) ? reloadUrl : "main.php";
+        int safeDelay = Math.max(300, delayMs);
+        return HtmlUtils.GENERATED_PAGE_MARKER +
+                "<html><head><meta http-equiv=\"Content-Type\" content=\"text/html; charset=windows-1251\">" +
+                "<title>ABClient</title></head><body>" +
+                "Ожидаем хода противника...<br>" +
+                "<script language=\"JavaScript\">" +
+                "setTimeout(function(){ window.location = '" + safeUrl + "'; }, " + safeDelay + ");" +
+                "</script></body></html>";
+    }
 
     public static byte[] process(String address, byte[] array) {
         android.util.Log.d(TAG, "process() called for " + address + ", bytes=" + (array != null ? array.length : 0));
@@ -35,6 +50,7 @@ public class MainPhp {
         AppVars.ContentMainPhp = null;
 
         String html = Russian.getString(array);
+        String originalHtml = html;
         android.util.Log.d(TAG, "HTML length after getString: " + html.length());
         android.util.Log.d(TAG, "HTML first 200: " + html.substring(0, Math.min(200, html.length())));
         html = Filter.removeDoctype(html);
@@ -105,6 +121,8 @@ public class MainPhp {
                     + " isFightTopFrame=" + isFightTopFrame
                     + " address=" + address);
             html = mainPhpFight(address, html);
+            // Preserve original fight HTML for manual mode (avoid losing images after auto frame)
+            AppVars.ContentMainPhp = originalHtml;
         }
 
         // Обработка инвентаря, основанная на стабильной версии из app_work
@@ -118,7 +136,9 @@ public class MainPhp {
 
         // ... other placeholders ...
 
-        AppVars.ContentMainPhp = html;
+        if (!(isFightFrame || isFightTopFrame)) {
+            AppVars.ContentMainPhp = html;
+        }
         byte[] result = Russian.getBytes(html);
         android.util.Log.d(TAG, "process() returning " + result.length + " bytes for " + address);
         android.util.Log.d(TAG, "Result first 200: " + html.substring(0, Math.min(200, html.length())));
@@ -565,7 +585,7 @@ public class MainPhp {
         // Аналог PC версии (MainPhpFight.cs строки 105-163):
         // Даже при отключенном автобое нужно нажать кнопку "Завершить бой"
         // Сервер сам перенаправит на нужную страницу
-        if (!fight.IsBoi) {
+        if (!fight.IsBoi && !fight.IsWaitingForNextTurn) {
             android.util.Log.d(TAG, "mainPhpFight: FIGHT ENDED - IsBoi=false, processing fight completion");
             
             // Проверяем FightLink - аналог PC версии с проверкой на "????"
@@ -587,10 +607,20 @@ public class MainPhp {
         // Проверяем, ждём ли мы хода противника - нужно auto-refresh
         if (fight.IsWaitingForNextTurn) {
             android.util.Log.d(TAG, "mainPhpFight: waiting for opponent turn (foe HP=" + fight.FoeCurrentHp + ")");
-            if (AppVars.AutoRefresh) {
-                android.util.Log.d(TAG, "mainPhpFight: AutoRefresh enabled, returning fight.Frame");
-                return fight.Frame;
+
+            boolean shouldAutoRefresh = AppVars.AutoRefresh;
+            if (!shouldAutoRefresh && AppVars.Profile != null && AppVars.Profile.LezDoAutoboi
+                    && AppVars.Autoboi == AutoboiState.AutoboiOn) {
+                // Для AutoBoi нужно продолжать обновлять фрейм, иначе после 1 удара остановимся на ходе противника.
+                shouldAutoRefresh = true;
             }
+
+            if (shouldAutoRefresh) {
+                int delay = 1200 + RANDOM.nextInt(900); // 1200-2100ms
+                android.util.Log.d(TAG, "mainPhpFight: auto-refresh waiting enabled, reloading after " + delay + "ms: " + address);
+                return buildWaitForTurnAutoRefreshHtml(address, delay);
+            }
+
             android.util.Log.d(TAG, "mainPhpFight: AutoRefresh disabled, returning original content");
             return AppVars.ContentMainPhp != null ? AppVars.ContentMainPhp : html;
         }

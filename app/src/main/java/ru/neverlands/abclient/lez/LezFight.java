@@ -93,9 +93,8 @@ public class LezFight {
         }
 
         IsBoi = (_fightty[3].length() >= 1) && (_fightty[3].charAt(0) == '1');
-        // IsWaitingForNextTurn = true когда наш ход закончен, ждем хода противника
-        // Но если бой завершён (IsBoi=false), то IsWaitingForNextTurn тоже должен быть false
-        IsWaitingForNextTurn = IsBoi && (_fightty[3].length() >= 1) && (_fightty[3].charAt(0) == '0');
+        // Waiting flag mirrors C# logic: fight_ty[3]=='0' means foe's turn, so we should poll the frame.
+        IsWaitingForNextTurn = IsBoi && _fightty[3].length() >= 1 && _fightty[3].charAt(0) == '0';
 
         String[] paramow = ParseString(html, "var param_ow = [", 0);
         if (paramow == null) return false;
@@ -505,9 +504,22 @@ public class LezFight {
         
         // Добавляем random delay для анти-детекта (1000-2000ms)
         int delay = 1000 + _random.nextInt(1000);
-        sb.append("<script language=\"JavaScript\">");
-        sb.append("setTimeout(function(){ window.location = \"").append(urlParams.toString()).append("\"; }, ").append(delay).append(");");
-        sb.append("</script></body></html>");
+        // В C# LezFight.BuildFrame() удар отправляется через POST-форму (document.ff.submit()).
+        // Портируем так же: GET-переход (window.location) сервером может не засчитываться как удар.
+        sb.append("<form action=\"main.php\" method=POST name=ff id=form_main>");
+        sb.append("<input name=post_id type=hidden value=\"7\">");
+        sb.append("<input name=vcode type=hidden value=\"").append(_vcode).append("\">");
+        sb.append("<input name=enemy type=hidden value=\"").append(enemy).append("\">");
+        sb.append("<input name=group type=hidden value=\"").append(group).append("\">");
+        sb.append("<input name=inf_bot type=hidden value=\"").append(infbot).append("\">");
+        sb.append("<input name=inf_zb type=hidden value=\"").append(infzb).append("\">");
+        sb.append("<input name=lev_bot type=hidden value=\"").append(_levbot).append("\">");
+        sb.append("<input name=ftr type=hidden value=\"").append(_fightty[2]).append("\">");
+        sb.append("<input name=inu type=hidden value=\"").append(inu).append("\">");
+        sb.append("<input name=inb type=hidden value=\"").append(inb).append("\">");
+        sb.append("<input name=ina type=hidden value=\"").append(ina).append("\">");
+        sb.append("</form>");
+        sb.append("<script language=\"JavaScript\">setTimeout(function(){ document.ff.submit(); }, ").append(delay).append(");</script></body></html>");
         
         Frame = sb.toString();
         android.util.Log.d("LezFight", "BuildFrame: Frame generated, length=" + Frame.length() + ", delay=" + delay + "ms");
@@ -553,6 +565,20 @@ public class LezFight {
     private String Strip(String arg) { return arg.replace("\"", "").trim(); }
 
     private boolean ParseNonFight() {
+        // Состояния вне активного хода (ожидание, окончание боя и т.п.).
+        IsWaitingForNextTurn = false;
+        try {
+            String state = (_fightty != null && _fightty.length > 4) ? Strip(_fightty[4]) : "";
+            if ("3".equals(state)) {
+                // Ожидание хода противника (аналог C# ParseNonFight() case "3").
+                String vcode = (_fightty != null && _fightty.length > 6) ? Strip(_fightty[6]) : "";
+                if (vcode.length() <= 2) {
+                    IsWaitingForNextTurn = true;
+                }
+            }
+        } catch (Exception ignored) {
+        }
+
         // Логика завершения боя - парсим fexp для ссылки завершения
         _fexp = ParseString(_html, "var fexp = [", 0);
         

@@ -6,6 +6,7 @@ import android.util.Log;
 import android.webkit.JavascriptInterface;
 import android.widget.Toast;
 
+import ru.neverlands.abclient.MainActivity;
 import ru.neverlands.abclient.manager.ContactsManager;
 import ru.neverlands.abclient.model.AutoboiState;
 import ru.neverlands.abclient.utils.AppVars;
@@ -21,6 +22,11 @@ public class WebAppInterface {
     /** Конструктор, инициализирующий контекст. */
     public WebAppInterface(Context c) {
         mContext = c;
+    }
+
+    private MainActivity getMainActivityOrNull() {
+        if (AppVars.mainActivity == null) return null;
+        return AppVars.mainActivity.get();
     }
 
     /** Показывает всплывающее сообщение (Toast) из веб-страницы. */
@@ -269,18 +275,17 @@ public class WebAppInterface {
     @JavascriptInterface
     public void AutoSelect() {
         Log.d("WebAppInterface", "AutoSelect called");
-        if (AppVars.mainActivity != null && AppVars.mainActivity.get() != null) {
-            AppVars.mainActivity.get().requestAutoSelect();
-        }
+        MainActivity activity = getMainActivityOrNull();
+        if (activity == null) return;
+        activity.runOnUiThread(activity::requestAutoSelect);
     }
 
     @JavascriptInterface
     public void AutoTurn() {
         Log.d("WebAppInterface", "AutoTurn called");
-        if (AppVars.mainActivity != null && AppVars.mainActivity.get() != null) {
-            // We will call evaluateJavascript from MainActivity to get HTML and then process it
-            AppVars.mainActivity.get().requestAutoTurn();
-        }
+        MainActivity activity = getMainActivityOrNull();
+        if (activity == null) return;
+        activity.runOnUiThread(activity::requestAutoTurn);
     }
 
     @JavascriptInterface

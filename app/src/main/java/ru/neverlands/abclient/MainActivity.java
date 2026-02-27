@@ -80,6 +80,7 @@ import ru.neverlands.abclient.ui.QuickButtonsPanel;
 
 public class MainActivity extends AppCompatActivity implements NavigationView.OnNavigationItemSelectedListener {
     private static final String TAG = "MainActivity";
+    private static final String BUILD_MARKER = "2026-02-27_01-34";
     private static final int REQUEST_CODE_CONTACTS = 1001;
     public ActivityMainBinding binding;
     private Timer timer;
@@ -112,7 +113,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                     if (html != null && !html.equals("null")) {
                         com.google.gson.Gson gson = new com.google.gson.Gson();
                         String unquoted = gson.fromJson(html, String.class);
-                        fightViewModel.processFightHtml(unquoted);
+                        fightViewModel.autoTurnOnce(unquoted);
                     }
                 });
     }
@@ -186,6 +187,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         AppVars.init(this);
         ContactsManager.initialize(this);
         AppVars.mainActivity = new WeakReference<>(this);
+        Log.i(TAG, "ABCLIENT_ANDROID_BUILD=" + BUILD_MARKER);
         
         binding = ActivityMainBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
@@ -240,7 +242,10 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         fightViewModel = new ViewModelProvider(this).get(FightViewModel.class);
         fightViewModel.getSubmitAction().observe(this, result -> {
             if (result != null) {
-                binding.appBarMain.contentMain.webView.evaluateJavascript("javascript:AutoSubmit('" + result + "')", null);
+                // Avoid JS syntax errors/injection by encoding the argument as a JSON string.
+                com.google.gson.Gson gson = new com.google.gson.Gson();
+                String jsonArg = gson.toJson(result);
+                binding.appBarMain.contentMain.webView.evaluateJavascript("AutoSubmit(" + jsonArg + ")", null);
                 fightViewModel.onActionSubmitted();
             }
         });
@@ -710,7 +715,8 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             view.evaluateJavascript(jsFix, null);
 
             if (url.contains("main.php")) {
-                view.evaluateJavascript("javascript:(function() { var frameset = document.getElementsByTagName('frameset')[0]; if (frameset) { frameset.rows = '*\n, 0'; } })()", null);
+                // NOTE: Keep this JS one-line: a literal newline inside quotes breaks parsing (SyntaxError).
+                view.evaluateJavascript("javascript:(function() { var frameset = document.getElementsByTagName('frameset')[0]; if (frameset) { frameset.rows = '*,0'; } })()", null);
 
                 // Inject fight state extractor
                 try {

@@ -47,6 +47,10 @@ public class AutoFunctionsManager {
     public void setAutoFightEnabled(boolean enabled) {
         prefs.edit().putBoolean(KEY_PREFIX + "auto_fight", enabled).apply();
         AppVars.Autoboi = enabled ? AutoboiState.AutoboiOn : AutoboiState.AutoboiOff;
+        if (AppVars.Profile != null) {
+            AppVars.Profile.LezDoAutoboi = enabled;
+            AppVars.Profile.save(context);
+        }
         Log.d(TAG, "setAutoFightEnabled: " + enabled);
     }
     

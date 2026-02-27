@@ -55,8 +55,19 @@ public class WebViewRequestInterceptor {
         try {
             Uri uri = request.getUrl();
             String urlString = uri.toString();
+            String host = uri.getHost();
+
+            if (host == null) {
+                return null;
+            }
 
             if (!urlString.contains("neverlands.ru")) {
+                // Short-circuit slow external counters that often time out inside WebView
+                if (host.contains("mail.ru") || host.contains("yadro.ru")
+                        || host.contains("mc.yandex.ru") || host.contains("google-analytics.com")) {
+                    Log.d(TAG, "Blocking tracker host: " + host);
+                    return new WebResourceResponse("text/plain", "utf-8", new ByteArrayInputStream(new byte[0]));
+                }
                 return null;
             }
 

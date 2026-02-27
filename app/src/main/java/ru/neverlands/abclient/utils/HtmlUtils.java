@@ -37,7 +37,10 @@ public final class HtmlUtils {
         return "window.external = window.AndroidBridge;" +
                 "if (typeof top.start !== 'function') { top.start = function() {}; }" +
                 "if (typeof window.chatlist_build !== 'function') { window.chatlist_build = function() {}; }" +
-                "if (typeof window.get_by_id !== 'function') { window.get_by_id = function(id) { return document.getElementById(id); }; }" +
+                "if (!document._abclientOrigGetElementById) { document._abclientOrigGetElementById = document.getElementById.bind(document); document.getElementById = function(id) { var el = document._abclientOrigGetElementById(id); if (el) return el; if (!id) return null; try { var dummy = document.createElement('span'); dummy.id = id; dummy.style.display = 'none'; (document.body || document.documentElement).appendChild(dummy); return dummy; } catch(e) { return null; } }; }" +
+                // В некоторых страницах (и при отсутствии frames) скрипты делают get_by_id(...).innerHTML.
+                // Чтобы не падать с TypeError на null, возвращаем dummy-элемент, если id не найден.
+                "window.get_by_id = function(id) { return document.getElementById(id) || { innerHTML: '', value: '', style: {} }; };" +
                 "if (typeof top.save_scroll_p !== 'function') { top.save_scroll_p = function() {}; }" +
                 "if (typeof window.ins_HP !== 'function') { window.ins_HP = function() {}; }" +
                 "if (typeof window.cha_HP !== 'function') { window.cha_HP = function() {}; }" +
@@ -58,7 +61,7 @@ public final class HtmlUtils {
                 "    innerWidth: 600, " +
                 "    document: { " +
                 "      write: function(s) { document.write(s); }, " +
-                "      getElementById: function(id) { return document.getElementById(id); } " +
+                "      getElementById: function(id) { return document.getElementById(id) || { innerHTML: '', value: '', style: {} }; } " +
                 "    } " +
                 "  }; } " +
                 "}" +
