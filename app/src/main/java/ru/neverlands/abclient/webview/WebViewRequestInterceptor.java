@@ -251,6 +251,19 @@ public class WebViewRequestInterceptor {
             // Log first 200 chars of processed HTML
             String processedPreview = new String(processed, Charset.forName("windows-1251"));
             Log.d(TAG, "Processed preview (" + urlString + "): " + processedPreview.substring(0, Math.min(200, processedPreview.length())));
+            if (urlString.contains("ch.php") && urlString.contains("show=1")) {
+                boolean hasAdd = processedPreview.contains("add_msg");
+                boolean hasLmid = processedPreview.contains("set_lmid");
+                if (!hasAdd || !hasLmid) {
+                    String full = processedPreview;
+                    if (processed.length > 0 && processed.length < 20000) {
+                        full = new String(processed, Charset.forName("windows-1251"));
+                        hasAdd = full.contains("add_msg");
+                        hasLmid = full.contains("set_lmid");
+                    }
+                }
+                Log.d(TAG, "ch_refr response markers: add_msg=" + hasAdd + ", set_lmid=" + hasLmid);
+            }
 
             WebResourceResponse response = new WebResourceResponse(
                     getMime(contentType),

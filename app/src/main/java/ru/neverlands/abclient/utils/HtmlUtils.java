@@ -47,14 +47,35 @@ public final class HtmlUtils {
                 "if (typeof window.slots_inv !== 'function') { window.slots_inv = function() {}; }" +
                 "if (typeof window.compl_view !== 'function') { window.compl_view = function() {}; }" +
                 "if (typeof window.view_t !== 'function') { window.view_t = function() {}; }" +
-                "if (typeof top.ch_refresh_n !== 'function') { top.ch_refresh_n = function() {}; }" +
+                "if (typeof top.ch_refresh_n !== 'function') { top.ch_refresh_n = function(){ if(window.AndroidBridge && AndroidBridge.chatRefreshN){ AndroidBridge.chatRefreshN(); } }; }" +
+                "if (typeof top.set_lmid !== 'function') { top.set_lmid = function(v){ if(window.AndroidBridge && AndroidBridge.chatSetLmid){ AndroidBridge.chatSetLmid(v); } }; }" +
+                "if (typeof top.add_msg !== 'function') { top.add_msg = function(t){ if(window.AndroidBridge && AndroidBridge.chatAddMsg){ AndroidBridge.chatAddMsg(t); } }; }" +
+                "if (typeof top.say_private !== 'function') { top.say_private = function(n){ if(window.AndroidBridge && AndroidBridge.chatSayPrivate){ AndroidBridge.chatSayPrivate(n); } }; }" +
+                "if (typeof top.say_to !== 'function') { top.say_to = function(n){ if(window.AndroidBridge && AndroidBridge.chatSayTo){ AndroidBridge.chatSayTo(n); } }; }" +
+                "if (typeof top.clr_input !== 'function') { top.clr_input = function(){ if(window.AndroidBridge && AndroidBridge.chatClearInput){ AndroidBridge.chatClearInput(); } }; }" +
+                "if (typeof top.clr_chat !== 'function') { top.clr_chat = function(){ if(window.AndroidBridge && AndroidBridge.chatClearChat){ AndroidBridge.chatClearChat(); } }; }" +
+                "if (typeof top.ch_refresh !== 'function') { top.ch_refresh = function(){ if(window.AndroidBridge && AndroidBridge.chatRefreshNow){ AndroidBridge.chatRefreshNow(); } }; }" +
+                "if (typeof top.clan_private !== 'function') { top.clan_private = function(){ if(window.AndroidBridge && AndroidBridge.chatClanPrivate){ AndroidBridge.chatClanPrivate(); } }; }" +
+                "if (typeof top.change_chatspeed !== 'function') { top.change_chatspeed = function(){ if(window.AndroidBridge && AndroidBridge.chatChangeChatSpeed){ AndroidBridge.chatChangeChatSpeed(); } }; }" +
+                "if (typeof top.change_chatsetup !== 'function') { top.change_chatsetup = function(){ if(window.AndroidBridge && AndroidBridge.chatChangeChatSetup){ AndroidBridge.chatChangeChatSetup(); } }; }" +
+                "if (typeof top.change_latrus !== 'function') { top.change_latrus = function(){ if(window.AndroidBridge && AndroidBridge.chatChangeLatrus){ AndroidBridge.chatChangeLatrus(); } }; }" +
+                "if (typeof top.latrus === 'undefined') { top.latrus = 0; }" +
                 "if (typeof window.ButClick !== 'function') { window.ButClick = function() {}; }" +
                 "if (typeof top.frames == 'undefined' || !top.frames['main_top']) { " +
                 "  if (typeof top.frames == 'undefined') { top.frames = {}; } " +
                 "  if (!top.frames['ch_buttons']) { top.frames['ch_buttons'] = { set location(url) { AndroidBridge.loadFrame('ch_buttons', url); } }; } " +
                 "  if (!top.frames['ch_refr']) { top.frames['ch_refr'] = { set location(url) { AndroidBridge.loadFrame('ch_refr', url); } }; } " +
                 "  if (!top.frames['ch_list']) { top.frames['ch_list'] = { set location(url) { AndroidBridge.loadFrame('ch_list', url); } }; } " +
-                "  if (!top.frames['chmain']) { top.frames['chmain'] = { set location(url) { AndroidBridge.loadFrame('chmain', url); } }; } " +
+                "  if (!top.frames['chmain']) { top.frames['chmain'] = { " +
+                "    set location(url) { AndroidBridge.loadFrame('chmain', url); }, " +
+                "    add_msg: function(t){ if (window.AndroidBridge && AndroidBridge.chatAddMsg) { AndroidBridge.chatAddMsg(t); } }, " +
+                "    set_lmid: function(v){ if (window.AndroidBridge && AndroidBridge.chatSetLmid) { AndroidBridge.chatSetLmid(v); } }, " +
+                "    ch_refresh_n: function(){ if (window.AndroidBridge && AndroidBridge.chatRefreshN) { AndroidBridge.chatRefreshN(); } }, " +
+                "    document: { " +
+                "      write: function(s) { document.write(s); }, " +
+                "      getElementById: function(id) { return document.getElementById(id) || { innerHTML: '', value: '', style: {} }; } " +
+                "    } " +
+                "  }; } " +
                 "  if (!top.frames['main_top']) { top.frames['main_top'] = { " +
                 "    set location(url) { AndroidBridge.loadFrame('main_top', url); }, " +
                 "    innerHeight: 800, " +

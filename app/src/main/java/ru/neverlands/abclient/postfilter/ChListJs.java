@@ -32,8 +32,15 @@ public class ChListJs {
         try {
             String html = Russian.getString(array);
 
-            // Prepend the bridge script
-            html = "window.external = window.AndroidBridge;\n" + html;
+            // Prepend the bridge script and missing top.* helpers
+            html = "window.external = window.AndroidBridge;\n" +
+                   "if (typeof top.say_private !== 'function') { top.say_private = function(n){ if(window.external && window.external.chatSayPrivate){ window.external.chatSayPrivate(n); } }; }\n" +
+                   "if (typeof top.say_to !== 'function') { top.say_to = function(n){ if(window.external && window.external.chatSayTo){ window.external.chatSayTo(n); } }; }\n" +
+                   "if (typeof top.reload !== 'function') { top.reload = function(){ if(window.external && window.external.loadFrame){ window.external.loadFrame('ch_list','http://neverlands.ru/ch.php?lo=1&'+(new Date().getTime())); } }; }\n" +
+                   "if (typeof top.save_scroll_p !== 'function') { top.save_scroll_p = function() {}; }\n" +
+                   "if (typeof top.OnlineStop === 'undefined') { top.OnlineStop = 0; }\n" +
+                   "if (typeof top.OnlineScrollPosition === 'undefined') { top.OnlineScrollPosition = 0; }\n" +
+                   html;
 
             // This is the block of code we want to insert.
             // It modifies str_array[1] in place.

@@ -9,6 +9,8 @@ import android.content.pm.PackageManager;
 import android.content.res.AssetManager;
 import android.net.Uri;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -82,6 +84,8 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     private static final String TAG = "MainActivity";
     private static final String BUILD_MARKER = "2026-02-27_01-34";
     private static final int REQUEST_CODE_CONTACTS = 1001;
+    private static final int CHAT_REFRESH_DEFAULT_SECONDS = 12;
+    private static final int CHAT_REFRESH_INITIAL_DELAY_MS = 1000;
     public ActivityMainBinding binding;
     private Timer timer;
     private boolean isExiting = false;
@@ -89,6 +93,13 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     private FightViewModel fightViewModel;
     private TabManager tabManager;
     private QuickButtonsPanel quickButtonsPanel;
+    private WebView chatRefrWebView;
+    private final java.util.List<WebView> chatPopupWebViews = new java.util.ArrayList<>();
+    private final Handler chatRefreshHandler = new Handler(Looper.getMainLooper());
+    private Runnable chatRefreshRunnable;
+    private int chatRefreshSeconds = CHAT_REFRESH_DEFAULT_SECONDS;
+    private int chatFyo = 0;
+    private boolean chatLatrus = false;
 
     public FightViewModel getFightViewModel() {
         return fightViewModel;
@@ -96,6 +107,30 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
 
     public android.webkit.WebView getMainWebView() {
         return binding.appBarMain.contentMain.webView;
+    }
+
+    public void loadChatRefrUrl(String url) {
+        if (chatRefrWebView == null || url == null || url.isEmpty()) {
+            return;
+        }
+        chatRefrWebView.loadUrl(url);
+    }
+
+    public void postChatRefrUrl(String url, String data) {
+        if (chatRefrWebView == null || url == null || url.isEmpty()) {
+            return;
+        }
+        byte[] body = data == null ? new byte[0] : ru.neverlands.abclient.utils.Russian.getBytes(data);
+        chatRefrWebView.postUrl(url, body);
+    }
+
+    public void requestChatRefreshSoon() {
+        if (chatRefreshRunnable == null) {
+            startChatRefresh();
+            return;
+        }
+        chatRefreshHandler.removeCallbacks(chatRefreshRunnable);
+        chatRefreshHandler.postDelayed(chatRefreshRunnable, 200);
     }
 
     public void requestAutoSelect() {
@@ -307,6 +342,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
 
         AppVars.NextCheckNoConnection = new Date(System.currentTimeMillis());
         startTimer();
+        startChatRefresh();
     }
 
     @SuppressLint("SetJavaScriptEnabled")
@@ -322,6 +358,14 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         setupWebView(chatMsgWebView, customWebViewClient);
         setupWebView(chatUsersWebView, customWebViewClient);
         setupWebView(chatButtonsWebView, customWebViewClient);
+        if (chatRefrWebView == null) {
+            chatRefrWebView = new WebView(this);
+            setupWebView(chatRefrWebView, customWebViewClient);
+            chatRefrWebView.setVisibility(View.GONE);
+            if (binding != null && binding.getRoot() instanceof ViewGroup) {
+                ((ViewGroup) binding.getRoot()).addView(chatRefrWebView, new ViewGroup.LayoutParams(1, 1));
+            }
+        }
 
         if (AppVars.lastCookies != null && !AppVars.lastCookies.isEmpty()) {
             java.util.List<java.net.HttpCookie> filteredCookies = new java.util.ArrayList<>();
@@ -408,6 +452,17 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
 
             @Override
             public boolean onCreateWindow(WebView view, boolean isDialog, boolean isUserGesture, android.os.Message resultMsg) {
+                // Для чата: target="ch_refr" создаёт новое окно — нужен новый WebView (не навигированный),
+                // иначе Chromium падает с "New WebView for popup window must not have been previously navigated".
+                if (binding != null && binding.appBarMain != null
+                        && binding.appBarMain.contentMain != null
+                        && view == binding.appBarMain.contentMain.chatButtonsWebview) {
+                    WebView popup = createChatPopupWebView();
+                    WebView.WebViewTransport transport = (WebView.WebViewTransport) resultMsg.obj;
+                    transport.setWebView(popup);
+                    resultMsg.sendToTarget();
+                    return true;
+                }
                 // Перехват window.open() теперь выполняется через JavaScript (см. onPageFinished)
                 // Здесь ничего не делаем - просто возвращаем false
                 resultMsg.sendToTarget();
@@ -432,6 +487,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     protected void onDestroy() {
         ru.neverlands.abclient.utils.DebugLogger.log("MainActivity: onDestroy() called.");
         stopTimer();
+        stopChatRefresh();
         RoomManager.stopTracing();
         
         // Уничтожение всех вспомогательных вкладок
@@ -447,6 +503,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         destroyWebView(binding.appBarMain.contentMain.chatMsgWebview);
         destroyWebView(binding.appBarMain.contentMain.chatUsersWebview);
         destroyWebView(binding.appBarMain.contentMain.chatButtonsWebview);
+        destroyWebView(chatRefrWebView);
 
         super.onDestroy();
     }
@@ -579,6 +636,68 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             timer.cancel();
             timer = null;
         }
+    }
+
+    private void startChatRefresh() {
+        stopChatRefresh();
+        chatRefreshRunnable = new Runnable() {
+            @Override
+            public void run() {
+                requestChatRefresh();
+                chatRefreshHandler.postDelayed(this, chatRefreshSeconds * 1000L);
+            }
+        };
+        chatRefreshHandler.postDelayed(chatRefreshRunnable, CHAT_REFRESH_INITIAL_DELAY_MS);
+    }
+
+    private void stopChatRefresh() {
+        if (chatRefreshRunnable != null) {
+            chatRefreshHandler.removeCallbacks(chatRefreshRunnable);
+            chatRefreshRunnable = null;
+        }
+    }
+
+    private void requestChatRefresh() {
+        if (chatRefrWebView == null) return;
+        long ts = System.currentTimeMillis();
+        String url = "http://neverlands.ru/ch.php?" + ts + "&show=1&fyo=" + chatFyo;
+        chatRefrWebView.loadUrl(url);
+    }
+
+    public void requestChatRefreshNow() {
+        requestChatRefresh();
+    }
+
+    public int getChatRefreshSeconds() {
+        return chatRefreshSeconds;
+    }
+
+    public void setChatRefreshSeconds(int seconds) {
+        if (seconds <= 0) return;
+        chatRefreshSeconds = seconds;
+        startChatRefresh();
+    }
+
+    public int getChatFyo() {
+        return chatFyo;
+    }
+
+    public void setChatFyo(int fyo) {
+        chatFyo = fyo;
+        if (chatFyo == 2) {
+            stopChatRefresh();
+        } else {
+            startChatRefresh();
+            requestChatRefreshSoon();
+        }
+    }
+
+    public boolean isChatLatrus() {
+        return chatLatrus;
+    }
+
+    public void setChatLatrus(boolean value) {
+        chatLatrus = value;
     }
     
     private void updateClock() {
@@ -722,6 +841,11 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             super.onPageFinished(view, url);
             AppLogger.write("Page loaded: " + url);
 
+            if (chatPopupWebViews.contains(view)) {
+                chatPopupWebViews.remove(view);
+                view.postDelayed(() -> destroyWebView(view), 500);
+            }
+
             // POST-ответ от сервера: document.ff.submit() → WebView загружает main.php без параметров.
             // Это голая страница результата действия (windows-1251, без наших фреймов).
             // Нужно: 1) извлечь системное сообщение, 2) перезагрузить нормальную страницу.
@@ -807,6 +931,21 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             
             if (url == null) {
                 return false;
+            }
+
+            boolean isChatWebView = (binding != null
+                    && binding.appBarMain != null
+                    && binding.appBarMain.contentMain != null
+                    && (view == binding.appBarMain.contentMain.chatMsgWebview
+                        || view == binding.appBarMain.contentMain.chatUsersWebview
+                        || view == binding.appBarMain.contentMain.chatButtonsWebview))
+                    || view == chatRefrWebView;
+
+            if (isChatWebView) {
+                // Для внутренних чатовских навигаций не открываем новые вкладки.
+                if (url.contains("ch.php")) {
+                    return false;
+                }
             }
             
             // Определяем тип ссылки (аналог BeforeNewWindow в C# версии)
@@ -902,5 +1041,16 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                lowerUrl.endsWith(".png") || lowerUrl.endsWith(".swf") || lowerUrl.endsWith(".ico") ||
                lowerUrl.endsWith(".css") || lowerUrl.contains(".js") ||
                lowerUrl.contains("neverlands.ru/ch.php") || lowerUrl.contains("neverlands.ru/main.php");
+    }
+
+    private WebView createChatPopupWebView() {
+        WebView popup = new WebView(this);
+        setupWebView(popup, new CustomWebViewClient());
+        popup.setVisibility(View.GONE);
+        if (binding != null && binding.getRoot() instanceof ViewGroup) {
+            ((ViewGroup) binding.getRoot()).addView(popup, new ViewGroup.LayoutParams(1, 1));
+        }
+        chatPopupWebViews.add(popup);
+        return popup;
     }
 }

@@ -3,13 +3,30 @@ package ru.neverlands.abclient.bridge;
 import android.content.Context;
 import android.content.Intent;
 import android.util.Log;
+import android.webkit.CookieManager;
 import android.webkit.JavascriptInterface;
 import android.widget.Toast;
+
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.net.URLDecoder;
+import java.net.URLEncoder;
+import java.nio.charset.Charset;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.zip.GZIPInputStream;
 
 import ru.neverlands.abclient.MainActivity;
 import ru.neverlands.abclient.manager.ContactsManager;
 import ru.neverlands.abclient.model.AutoboiState;
+import ru.neverlands.abclient.proxy.CookiesManager;
 import ru.neverlands.abclient.utils.AppVars;
+import ru.neverlands.abclient.utils.Russian;
 
 /**
  * Класс-мост (bridge) для взаимодействия между JavaScript в WebView и нативным кодом Android.
@@ -273,6 +290,456 @@ public class WebAppInterface {
     }
 
     @JavascriptInterface
+    public void chatAddMsg(String message) {
+        MainActivity activity = getMainActivityOrNull();
+        if (activity == null) return;
+        String safeMessage = message == null ? "" : message;
+        safeMessage = adjustClanMarkers(safeMessage);
+        com.google.gson.Gson gson = new com.google.gson.Gson();
+        String json = gson.toJson(safeMessage);
+        activity.runOnUiThread(() -> {
+            if (activity.binding != null && activity.binding.appBarMain != null
+                    && activity.binding.appBarMain.contentMain != null
+                    && activity.binding.appBarMain.contentMain.chatMsgWebview != null) {
+                activity.binding.appBarMain.contentMain.chatMsgWebview
+                        .evaluateJavascript("if (typeof add_msg === 'function') { add_msg(" + json + "); }", null);
+            }
+        });
+    }
+
+    @JavascriptInterface
+    public void chatSetLmid(String lmid) {
+        String safe = lmid == null ? "" : lmid;
+        com.google.gson.Gson gson = new com.google.gson.Gson();
+        String json = gson.toJson(safe);
+        evalChatButtonsJs("if(document.FBT && document.FBT.lmid){document.FBT.lmid.value=" + json + ";}");
+    }
+
+    @JavascriptInterface
+    public void chatRefreshN() {
+        MainActivity activity = getMainActivityOrNull();
+        if (activity == null) return;
+        activity.runOnUiThread(activity::requestChatRefreshSoon);
+    }
+
+    @JavascriptInterface
+    public void chatClearInput() {
+        evalChatButtonsJs("if(document.FBT && document.FBT.text){document.FBT.text.value='';document.FBT.text.focus();}");
+    }
+
+    @JavascriptInterface
+    public void chatSubmit(String action, String method, String data) {
+        MainActivity activity = getMainActivityOrNull();
+        if (activity == null) return;
+        String url = action == null ? "" : action;
+        if (!url.startsWith("http")) {
+            url = "http://neverlands.ru/" + url.replaceFirst("^/+", "");
+        }
+        String safeMethod = method == null ? "POST" : method.toUpperCase();
+        String payload = data == null ? "" : data;
+        payload = recodeUrlEncoded(payload, Charset.forName("UTF-8"), Charset.forName("windows-1251"));
+        Log.d("WebAppInterface", "chatSubmit: " + safeMethod + " " + url + " dataLen=" + payload.length());
+        final String baseUrl = url;
+        final String finalPayload = payload;
+        if ("GET".equals(safeMethod)) {
+            activity.runOnUiThread(() -> {
+                String getUrl = baseUrl;
+                if (!finalPayload.isEmpty()) {
+                    getUrl = getUrl + (getUrl.contains("?") ? "&" : "?") + finalPayload;
+                }
+                activity.loadChatRefrUrl(getUrl);
+            });
+            return;
+        }
+
+        new Thread(() -> {
+            ChatPostResult result = postChatMessage(baseUrl, finalPayload);
+            if (result == null) {
+                MainActivity fallbackActivity = getMainActivityOrNull();
+                if (fallbackActivity != null) {
+                    fallbackActivity.runOnUiThread(() -> fallbackActivity.postChatRefrUrl(baseUrl, finalPayload));
+                }
+                return;
+            }
+            if (result.lmid != null && !result.lmid.isEmpty()) {
+                chatSetLmid(result.lmid);
+            }
+            if (!result.messages.isEmpty()) {
+                for (String msg : result.messages) {
+                    if (msg != null && !msg.isEmpty()) {
+                        chatAddMsg(msg);
+                    }
+                }
+            }
+            chatClearInput();
+            MainActivity refreshActivity = getMainActivityOrNull();
+            if (refreshActivity != null) {
+                refreshActivity.runOnUiThread(refreshActivity::requestChatRefreshSoon);
+            }
+        }, "chat-submit").start();
+    }
+
+    private static class ChatPostResult {
+        final List<String> messages = new ArrayList<>();
+        String lmid;
+    }
+
+    private ChatPostResult postChatMessage(String url, String payload) {
+        HttpURLConnection connection = null;
+        try {
+            URL target = new URL(url);
+            connection = (HttpURLConnection) target.openConnection();
+            connection.setInstanceFollowRedirects(true);
+            connection.setRequestMethod("POST");
+            connection.setDoInput(true);
+            connection.setDoOutput(true);
+            connection.setRequestProperty("Content-Type", "application/x-www-form-urlencoded; charset=windows-1251");
+            connection.setRequestProperty("Accept-Encoding", "identity");
+
+            String wvCookie = CookieManager.getInstance().getCookie(url);
+            if (wvCookie != null && !wvCookie.isEmpty()) {
+                connection.setRequestProperty("Cookie", wvCookie);
+            } else {
+                String cookie = CookiesManager.obtain(target.getHost());
+                if (cookie != null && !cookie.isEmpty()) {
+                    connection.setRequestProperty("Cookie", cookie);
+                }
+            }
+
+            byte[] body = Russian.getBytes(payload == null ? "" : payload);
+            connection.setRequestProperty("Content-Length", String.valueOf(body.length));
+            try (OutputStream os = connection.getOutputStream()) {
+                os.write(body);
+                os.flush();
+            }
+
+            int code = connection.getResponseCode();
+            byte[] bytes;
+            try (InputStream responseStream = code >= 400 && connection.getErrorStream() != null
+                    ? connection.getErrorStream()
+                    : connection.getInputStream()) {
+                bytes = readAllBytes(responseStream);
+            }
+
+            String contentEncoding = connection.getContentEncoding();
+            if ("gzip".equalsIgnoreCase(contentEncoding) && bytes.length > 2
+                    && (bytes[0] & 0xff) == 0x1f && (bytes[1] & 0xff) == 0x8b) {
+                bytes = decompressGzip(bytes);
+            }
+            if (bytes.length > 2 && (bytes[0] & 0xff) == 0x1f && (bytes[1] & 0xff) == 0x8b) {
+                bytes = decompressGzip(bytes);
+            }
+
+            Map<String, List<String>> headers = connection.getHeaderFields();
+            applySetCookies(target, headers);
+
+            String response = new String(bytes, Charset.forName("windows-1251"));
+            ChatPostResult result = parseChatPostResponse(response);
+            Log.d("WebAppInterface", "chatSubmit: response bytes=" + bytes.length
+                    + " addMsg=" + result.messages.size()
+                    + " lmid=" + (result.lmid == null ? "" : result.lmid));
+            return result;
+        } catch (Exception e) {
+            Log.e("WebAppInterface", "chatSubmit: POST failed", e);
+            return null;
+        } finally {
+            if (connection != null) {
+                connection.disconnect();
+            }
+        }
+    }
+
+    private void applySetCookies(URL url, Map<String, List<String>> headers) {
+        if (headers == null) return;
+        for (Map.Entry<String, List<String>> entry : headers.entrySet()) {
+            if (entry.getKey() != null && "Set-Cookie".equalsIgnoreCase(entry.getKey())) {
+                List<String> values = entry.getValue();
+                if (values == null) continue;
+                for (String sc : values) {
+                    CookiesManager.assign(url.getHost(), sc);
+                    CookieManager.getInstance().setCookie(url.getProtocol() + "://" + url.getHost(), sc);
+                }
+                CookieManager.getInstance().flush();
+                break;
+            }
+        }
+    }
+
+    private ChatPostResult parseChatPostResponse(String html) {
+        ChatPostResult result = new ChatPostResult();
+        if (html == null || html.isEmpty()) return result;
+        int idx = 0;
+        while (idx >= 0 && idx < html.length()) {
+            idx = html.indexOf("add_msg", idx);
+            if (idx < 0) break;
+            int p = html.indexOf('(', idx);
+            if (p < 0) break;
+            String msg = extractJsStringArg(html, p + 1);
+            if (msg != null) {
+                result.messages.add(msg);
+            }
+            idx = p + 1;
+        }
+        int lidx = 0;
+        while (lidx >= 0 && lidx < html.length()) {
+            lidx = html.indexOf("set_lmid", lidx);
+            if (lidx < 0) break;
+            int p = html.indexOf('(', lidx);
+            if (p < 0) break;
+            String lmid = extractJsTokenArg(html, p + 1);
+            if (lmid != null && !lmid.isEmpty()) {
+                result.lmid = lmid;
+            }
+            lidx = p + 1;
+        }
+        return result;
+    }
+
+    private String extractJsStringArg(String text, int start) {
+        int i = start;
+        int len = text.length();
+        while (i < len && Character.isWhitespace(text.charAt(i))) i++;
+        if (i >= len) return null;
+        char quote = text.charAt(i);
+        if (quote != '\'' && quote != '"') return null;
+        i++;
+        StringBuilder sb = new StringBuilder();
+        boolean escape = false;
+        for (; i < len; i++) {
+            char c = text.charAt(i);
+            if (escape) {
+                if (c == 'n') sb.append('\n');
+                else if (c == 'r') sb.append('\r');
+                else if (c == 't') sb.append('\t');
+                else sb.append(c);
+                escape = false;
+                continue;
+            }
+            if (c == '\\') {
+                escape = true;
+                continue;
+            }
+            if (c == quote) {
+                return sb.toString();
+            }
+            sb.append(c);
+        }
+        return sb.toString();
+    }
+
+    private String extractJsTokenArg(String text, int start) {
+        int i = start;
+        int len = text.length();
+        while (i < len && Character.isWhitespace(text.charAt(i))) i++;
+        if (i >= len) return null;
+        char c = text.charAt(i);
+        if (c == '\'' || c == '"') {
+            return extractJsStringArg(text, i);
+        }
+        StringBuilder sb = new StringBuilder();
+        for (; i < len; i++) {
+            c = text.charAt(i);
+            if (c == ')' || c == ';' || Character.isWhitespace(c)) break;
+            sb.append(c);
+        }
+        return sb.toString();
+    }
+
+    private byte[] readAllBytes(InputStream is) throws IOException {
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        byte[] buffer = new byte[4096];
+        int read;
+        while ((read = is.read(buffer)) != -1) {
+            baos.write(buffer, 0, read);
+        }
+        return baos.toByteArray();
+    }
+
+    private byte[] decompressGzip(byte[] compressed) throws IOException {
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        try (GZIPInputStream gzis = new GZIPInputStream(new java.io.ByteArrayInputStream(compressed))) {
+            byte[] buffer = new byte[4096];
+            int read;
+            while ((read = gzis.read(buffer)) != -1) {
+                baos.write(buffer, 0, read);
+            }
+        }
+        return baos.toByteArray();
+    }
+
+    private String recodeUrlEncoded(String payload, Charset from, Charset to) {
+        if (payload == null || payload.isEmpty()) return payload;
+        try {
+            String[] pairs = payload.split("&", -1);
+            StringBuilder sb = new StringBuilder();
+            for (int i = 0; i < pairs.length; i++) {
+                String pair = pairs[i];
+                int eq = pair.indexOf('=');
+                String key = eq >= 0 ? pair.substring(0, eq) : pair;
+                String val = eq >= 0 ? pair.substring(eq + 1) : "";
+                String keyDecoded = URLDecoder.decode(key, from.name());
+                String valDecoded = URLDecoder.decode(val, from.name());
+                String keyEncoded = URLEncoder.encode(keyDecoded, to.name());
+                String valEncoded = URLEncoder.encode(valDecoded, to.name());
+                sb.append(keyEncoded);
+                if (eq >= 0) {
+                    sb.append('=').append(valEncoded);
+                }
+                if (i < pairs.length - 1) sb.append('&');
+            }
+            return sb.toString();
+        } catch (Exception e) {
+            return payload;
+        }
+    }
+
+    private void evalChatButtonsJs(String js) {
+        MainActivity activity = getMainActivityOrNull();
+        if (activity == null) return;
+        activity.runOnUiThread(() -> {
+            if (activity.binding != null && activity.binding.appBarMain != null
+                    && activity.binding.appBarMain.contentMain != null
+                    && activity.binding.appBarMain.contentMain.chatButtonsWebview != null) {
+                activity.binding.appBarMain.contentMain.chatButtonsWebview.evaluateJavascript(js, null);
+            }
+        });
+    }
+
+    private String jsQuote(String s) {
+        if (s == null) return "";
+        return s.replace("\\", "\\\\")
+                .replace("'", "\\'")
+                .replace("\n", "\\n")
+                .replace("\r", "");
+    }
+
+    @JavascriptInterface
+    public void chatFocus() {
+        evalChatButtonsJs("if(document.FBT && document.FBT.text){document.FBT.text.focus();}");
+    }
+
+    @JavascriptInterface
+    public void chatAppend(String text) {
+        String t = jsQuote(text);
+        evalChatButtonsJs("if(document.FBT && document.FBT.text){document.FBT.text.value += '" + t + "';document.FBT.text.focus();}");
+    }
+
+    @JavascriptInterface
+    public void chatSayPrivate(String nick) {
+        String raw = nick == null ? "" : nick;
+        boolean isPair = raw.startsWith("%%%");
+        boolean isClan = !isPair && raw.startsWith("%%");
+        boolean isPrivate = !isPair && !isClan && raw.startsWith("%");
+        if (isPair) raw = raw.substring(3);
+        else if (isClan) raw = raw.substring(2);
+        else if (isPrivate) raw = raw.substring(1);
+        String prefix = isPair ? "%pair%" : (isClan ? "%clan%" : "");
+        String n = jsQuote(raw);
+        String p = jsQuote(prefix);
+        evalChatButtonsJs("if(document.FBT && document.FBT.text){var v=document.FBT.text.value;if(v.length<255) document.FBT.text.value='" + p + "%<" + n + "> '+v;document.FBT.text.focus();}");
+    }
+
+    @JavascriptInterface
+    public void chatSayTo(String nick) {
+        String n = jsQuote(nick);
+        evalChatButtonsJs("if(document.FBT && document.FBT.text){var v=document.FBT.text.value;if(v.length<255) document.FBT.text.value='<" + n + "> '+v;document.FBT.text.focus();}");
+    }
+
+    @JavascriptInterface
+    public void chatClearChat() {
+        MainActivity activity = getMainActivityOrNull();
+        if (activity == null) return;
+        activity.runOnUiThread(() -> {
+            if (activity.binding != null && activity.binding.appBarMain != null
+                    && activity.binding.appBarMain.contentMain != null
+                    && activity.binding.appBarMain.contentMain.chatMsgWebview != null) {
+                activity.binding.appBarMain.contentMain.chatMsgWebview
+                        .evaluateJavascript("if(document.getElementById('msg')){document.getElementById('msg').innerHTML='';}", null);
+            }
+        });
+        chatFocus();
+    }
+
+    @JavascriptInterface
+    public void chatRefreshNow() {
+        MainActivity activity = getMainActivityOrNull();
+        if (activity == null) return;
+        activity.runOnUiThread(activity::requestChatRefreshNow);
+    }
+
+    @JavascriptInterface
+    public void chatClanPrivate() {
+        evalChatButtonsJs("if(document.FBT && document.FBT.text){document.FBT.text.value='%clan% ' + document.FBT.text.value;document.FBT.text.focus();}");
+    }
+
+    private String adjustClanMarkers(String message) {
+        if (message == null || message.isEmpty()) return message;
+        String lower = message.toLowerCase();
+        String updated = message;
+        if (lower.contains("pair:") || lower.contains("%<pair>")) {
+            updated = updated
+                    .replaceAll("(?i)(<span\\s+alt=\")%(?!%)", "$1%%%")
+                    .replaceAll("(?i)(<span\\s+title=\")%(?!%)", "$1%%%")
+                    .replaceAll("(?i)(<span\\s+alt=')%(?!%)", "$1%%%")
+                    .replaceAll("(?i)(<span\\s+title=')%(?!%)", "$1%%%");
+        } else if (lower.contains("clan:") || lower.contains("%<clan>")) {
+            updated = updated
+                    .replaceAll("(?i)(<span\\s+alt=\")%(?!%)", "$1%%")
+                    .replaceAll("(?i)(<span\\s+title=\")%(?!%)", "$1%%")
+                    .replaceAll("(?i)(<span\\s+alt=')%(?!%)", "$1%%")
+                    .replaceAll("(?i)(<span\\s+title=')%(?!%)", "$1%%");
+        }
+        return updated;
+    }
+
+    @JavascriptInterface
+    public void chatChangeChatSpeed() {
+        MainActivity activity = getMainActivityOrNull();
+        if (activity == null) return;
+        int current = activity.getChatRefreshSeconds();
+        int next = (current == 10) ? 30 : (current == 30 ? 60 : 10);
+        activity.setChatRefreshSeconds(next);
+        evalChatButtonsJs("if(document.FBT && document.FBT.spchat){document.FBT.spchat.src='http://image.neverlands.ru/chat/bb_" + next + ".gif';" +
+                "document.FBT.spchat.alt='Скорость обновления (раз в " + next + " секунд)';" +
+                "document.FBT.spchat.title='Скорость обновления (раз в " + next + " секунд)';}");
+    }
+
+    @JavascriptInterface
+    public void chatChangeChatSetup() {
+        MainActivity activity = getMainActivityOrNull();
+        if (activity == null) return;
+        int current = activity.getChatFyo();
+        int next = (current == 0) ? 1 : (current == 1 ? 2 : 0);
+        activity.setChatFyo(next);
+        String img;
+        String alt;
+        if (next == 1) {
+            img = "http://image.neverlands.ru/chat/bb3_me.gif";
+            alt = "Режим чата (Показывать только личные сообщения)";
+        } else if (next == 2) {
+            img = "http://image.neverlands.ru/chat/bb3_none.gif";
+            alt = "Режим чата (Не показывать сообщения)";
+        } else {
+            img = "http://image.neverlands.ru/chat/bb3_all.gif";
+            alt = "Режим чата (Показывать все сообщения)";
+        }
+        evalChatButtonsJs("if(document.FBT){if(document.FBT.fyo) document.FBT.fyo.value=" + next + ";" +
+                "if(document.FBT.schat){document.FBT.schat.src='" + img + "';document.FBT.schat.alt='" + alt + "';document.FBT.schat.title='" + alt + "';}}");
+    }
+
+    @JavascriptInterface
+    public void chatChangeLatrus() {
+        MainActivity activity = getMainActivityOrNull();
+        if (activity == null) return;
+        boolean next = !activity.isChatLatrus();
+        activity.setChatLatrus(next);
+        String img = next ? "http://image.neverlands.ru/chat/bb4_ac.gif" : "http://image.neverlands.ru/chat/bb4_nc.gif";
+        String alt = next ? "LAT <-> RUS (Транслит включён)" : "LAT <-> RUS (Транслит выключен)";
+        evalChatButtonsJs("top.latrus=" + (next ? "1" : "0") + ";" +
+                "if(document.FBT && document.FBT.lrchat){document.FBT.lrchat.src='" + img + "';document.FBT.lrchat.alt='" + alt + "';document.FBT.lrchat.title='" + alt + "';}");
+    }
+
+    @JavascriptInterface
     public void AutoSelect() {
         Log.d("WebAppInterface", "AutoSelect called");
         MainActivity activity = getMainActivityOrNull();
@@ -444,9 +911,9 @@ public class WebAppInterface {
                     AppVars.mainActivity.get().binding.appBarMain.contentMain.chatMsgWebview.loadUrl(finalUrl);
                     break;
                 case "ch_refr":
-                    // This is a hidden frame, we can probably ignore it or load it in a hidden webview if needed.
-                    // For now, just log it.
+                    AppVars.url_ch_refr = finalUrl;
                     Log.d("WebAppInterface", "loadFrame: ch_refr to " + finalUrl);
+                    AppVars.mainActivity.get().loadChatRefrUrl(finalUrl);
                     break;
                 default:
                     // Load in the main webview by default
