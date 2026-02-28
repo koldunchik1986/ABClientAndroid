@@ -278,6 +278,7 @@ public class WebAppInterface {
 
     @JavascriptInterface
     public String chatFilter(String message) {
+        // Пропуск входящих сообщений чата через Java‑фильтр (XP/лут/системные).
         String safeMessage = message == null ? "" : message;
         Log.d("ChatFilter", safeMessage);
         return ru.neverlands.abclient.utils.ChatFilter.filter(safeMessage);
@@ -285,12 +286,14 @@ public class WebAppInterface {
 
     @JavascriptInterface
     public void chatUpdated() {
+        // Сигнал из JS: чат обновился (нужен для автоответов).
         Log.d("WebAppInterface", "Chat updated");
         ru.neverlands.abclient.utils.Chat.chatUpdated();
     }
 
     @JavascriptInterface
     public void chatAddMsg(String message) {
+        // Добавление сообщения в окно чата (вызов JS add_msg в chatMsgWebview).
         MainActivity activity = getMainActivityOrNull();
         if (activity == null) return;
         String safeMessage = message == null ? "" : message;
@@ -309,6 +312,7 @@ public class WebAppInterface {
 
     @JavascriptInterface
     public void chatSetLmid(String lmid) {
+        // Обновление lmid (last message id) в форме чата.
         String safe = lmid == null ? "" : lmid;
         com.google.gson.Gson gson = new com.google.gson.Gson();
         String json = gson.toJson(safe);
@@ -317,6 +321,7 @@ public class WebAppInterface {
 
     @JavascriptInterface
     public void chatRefreshN() {
+        // Мягкий запрос на скорое обновление чата (top.ch_refresh_n).
         MainActivity activity = getMainActivityOrNull();
         if (activity == null) return;
         activity.runOnUiThread(activity::requestChatRefreshSoon);
@@ -329,6 +334,7 @@ public class WebAppInterface {
 
     @JavascriptInterface
     public void chatSubmit(String action, String method, String data) {
+        // Отправка сообщения чата: формируем POST и грузим в скрытый ch_refr WebView.
         MainActivity activity = getMainActivityOrNull();
         if (activity == null) return;
         String url = action == null ? "" : action;
@@ -352,6 +358,7 @@ public class WebAppInterface {
             return;
         }
 
+        // POST выполняем в фоне, ответ парсим: add_msg / set_lmid.
         new Thread(() -> {
             ChatPostResult result = postChatMessage(baseUrl, finalPayload);
             if (result == null) {
@@ -384,6 +391,7 @@ public class WebAppInterface {
         String lmid;
     }
 
+    // POST в ch.php: возвращает кусок JS с add_msg/set_lmid, парсим вручную.
     private ChatPostResult postChatMessage(String url, String payload) {
         HttpURLConnection connection = null;
         try {
@@ -615,17 +623,20 @@ public class WebAppInterface {
 
     @JavascriptInterface
     public void chatFocus() {
+        // Фокус на поле ввода чата (chat buttons).
         evalChatButtonsJs("if(document.FBT && document.FBT.text){document.FBT.text.focus();}");
     }
 
     @JavascriptInterface
     public void chatAppend(String text) {
+        // Добавить текст в поле ввода чата (например, смайлы).
         String t = jsQuote(text);
         evalChatButtonsJs("if(document.FBT && document.FBT.text){document.FBT.text.value += '" + t + "';document.FBT.text.focus();}");
     }
 
     @JavascriptInterface
     public void chatSayPrivate(String nick) {
+        // Вставка адресата в поле ввода (учёт %clan/%pair/%private).
         String raw = nick == null ? "" : nick;
         boolean isPair = raw.startsWith("%%%");
         boolean isClan = !isPair && raw.startsWith("%%");
@@ -641,6 +652,7 @@ public class WebAppInterface {
 
     @JavascriptInterface
     public void chatSayTo(String nick) {
+        // Вставка "<Nick> " в поле ввода (обычный чат).
         String n = jsQuote(nick);
         evalChatButtonsJs("if(document.FBT && document.FBT.text){var v=document.FBT.text.value;if(v.length<255) document.FBT.text.value='<" + n + "> '+v;document.FBT.text.focus();}");
     }
@@ -662,6 +674,7 @@ public class WebAppInterface {
 
     @JavascriptInterface
     public void chatRefreshNow() {
+        // Немедленное обновление чата (top.ch_refresh).
         MainActivity activity = getMainActivityOrNull();
         if (activity == null) return;
         activity.runOnUiThread(activity::requestChatRefreshNow);
@@ -694,6 +707,7 @@ public class WebAppInterface {
 
     @JavascriptInterface
     public void chatChangeChatSpeed() {
+        // Переключение скорости опроса чата (10/30/60 сек).
         MainActivity activity = getMainActivityOrNull();
         if (activity == null) return;
         int current = activity.getChatRefreshSeconds();
@@ -706,6 +720,7 @@ public class WebAppInterface {
 
     @JavascriptInterface
     public void chatChangeChatSetup() {
+        // Переключение режима чата (все/личные/выкл).
         MainActivity activity = getMainActivityOrNull();
         if (activity == null) return;
         int current = activity.getChatFyo();
@@ -729,6 +744,7 @@ public class WebAppInterface {
 
     @JavascriptInterface
     public void chatChangeLatrus() {
+        // Переключение LAT<->RUS (транслит) для чата.
         MainActivity activity = getMainActivityOrNull();
         if (activity == null) return;
         boolean next = !activity.isChatLatrus();
@@ -885,6 +901,7 @@ public class WebAppInterface {
 
     @JavascriptInterface
     public void loadFrame(String frameName, String url) {
+        // Замена frameset‑навигации: перенаправляем в нужный WebView.
         Log.d("WebAppInterface", "loadFrame: " + frameName + " to " + url);
         if (AppVars.mainActivity == null || AppVars.mainActivity.get() == null) {
             return;

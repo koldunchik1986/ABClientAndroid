@@ -13,6 +13,8 @@ import ru.neverlands.abclient.MainActivity;
 import ru.neverlands.abclient.utils.Russian;
 
 public class RoomManager {
+    // Обработчик списка игроков комнаты (ch.php?lo=1).
+    // В текущей версии метод process заглушен, но содержит портированную логику парсинга списка.
     public static String process(Context context, String html) {
         /*
         ru.neverlands.abclient.utils.DebugLogger.log("RoomManager.process: HTML before processing:\n" + html);
@@ -55,6 +57,7 @@ public class RoomManager {
     public static void stopTracing() {
     }
 
+    // Формирует HTML строки пользователя для списка комнаты (порт логики C#).
     private static String HtmlChar(String schar) {
         String[] strArray = schar.split(":");
         String nnSec = strArray[1];
@@ -174,6 +177,7 @@ public class RoomManager {
             inj;
     }
 
+    // Парсит JS-массив ChatListU и формирует HTML списка игроков.
     private static FilterProcRoomResult FilterProcRoom(String html) {
         FilterProcRoomResult result = new FilterProcRoomResult();
 
@@ -204,6 +208,7 @@ public class RoomManager {
         public String title;
     }
 
+    // Результаты разбора списка комнаты.
     private static class FilterProcRoomResult {
         int numCharsInRoom;
         String enemyAttack;

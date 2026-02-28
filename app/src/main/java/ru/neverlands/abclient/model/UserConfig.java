@@ -95,6 +95,9 @@ public class UserConfig {
     public boolean ChatKeepLog = true;
     public boolean DoAutoAnswer = false;
     public boolean DoChatLevels = false;
+    // Разница между локальным временем и временем сервера (мс). Аналог ServDiff в C#.
+    // Используется для корректного отображения "серверных" часов в чате и событиях.
+    public long ServDiff = Long.MIN_VALUE;
 
     // --- Lez AutoBoi --- //
     public boolean LezDoAutoboi = true;

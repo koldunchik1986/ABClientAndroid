@@ -19,7 +19,7 @@ public class ChListJs {
     /**
      * Обрабатывает скрипт ch_list.js ПОСЛЕ того, как он был изменен в MainActivity.
      * MainActivity уже добавил в начало скрипта мост `window.external` и массив `ChatListU`.
-     * Этот метод выполняет финальные строковые замены.
+     * Этот метод выполняет финальные строковые замены (цвета ников/клик/target).
      * @param array Массив байт, содержащий ИЗМЕНЕННЫЙ скрипт.
      * @return Финальная версия скрипта для выполнения в WebView.
      */
@@ -32,7 +32,7 @@ public class ChListJs {
         try {
             String html = Russian.getString(array);
 
-            // Prepend the bridge script and missing top.* helpers
+            // Препендим Android‑мост и недостающие top.* функции (frameset API).
             html = "window.external = window.AndroidBridge;\n" +
                    "if (typeof top.say_private !== 'function') { top.say_private = function(n){ if(window.external && window.external.chatSayPrivate){ window.external.chatSayPrivate(n); } }; }\n" +
                    "if (typeof top.say_to !== 'function') { top.say_to = function(n){ if(window.external && window.external.chatSayTo){ window.external.chatSayTo(n); } }; }\n" +
@@ -42,8 +42,8 @@ public class ChListJs {
                    "if (typeof top.OnlineScrollPosition === 'undefined') { top.OnlineScrollPosition = 0; }\n" +
                    html;
 
-            // This is the block of code we want to insert.
-            // It modifies str_array[1] in place.
+            // Вставка для раскраски ников по classId (контакты).
+            // Модифицирует str_array[1] на месте.
             String insertion = "    var classid = '0';\n" +
                                "    try {\n" +
                                "        var rawClassId = window.external.GetClassIdOfContact(login);\n" +
@@ -58,17 +58,17 @@ public class ChListJs {
                                "        str_array[1] = \"<font color='#0B610B'>\" + str_array[1] + \"</font>\";\n" +
                                "    }\n";
 
-            // We find the line where the `login` variable is set, and insert our code right after it.
+            // Находим строку `var login = str_array[1];` и вставляем блок сразу после.
             String targetLine = "var login = str_array[1];";
             String replacement = targetLine + "\n" + insertion;
             
             html = html.replace(targetLine, replacement);
 
-            // Other original replacements
+            // Прочие замены: alt->title, target='_blank' (для корректного клика в WebView).
             html = html.replace("alt=", "title=");
             html = html.replace("target=\"_blank\"", "target='_blank'");
 
-            // Log the final script
+            // Логируем финальный скрипт для отладки (при необходимости).
             try {
                 File logFile = new File(AppVars.getLogsDir(), "ChListJs_final.txt");
                 try (OutputStream os = new FileOutputStream(logFile)) {

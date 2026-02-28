@@ -93,6 +93,7 @@ public class WebViewRequestInterceptor {
 
             Log.d(TAG, "Intercepting: " + urlString);
 
+            // Обновление списка игроков чата: добавляем timestamp для защиты от кеша.
             if (urlString.contains("ch.php?lo=1")) {
                 urlString += "&" + System.currentTimeMillis();
             }
@@ -103,6 +104,7 @@ public class WebViewRequestInterceptor {
             connection.setRequestMethod("GET");
             connection.setDoInput(true);
 
+            // Список игроков чата — отключаем кеширование на уровне HTTP.
             if (urlString.contains("ch.php?lo=1")) {
                 connection.setUseCaches(false);
                 connection.setRequestProperty("Cache-Control", "no-cache, no-store, must-revalidate");
@@ -251,6 +253,7 @@ public class WebViewRequestInterceptor {
             // Log first 200 chars of processed HTML
             String processedPreview = new String(processed, Charset.forName("windows-1251"));
             Log.d(TAG, "Processed preview (" + urlString + "): " + processedPreview.substring(0, Math.min(200, processedPreview.length())));
+            // Диагностика ответов ch_refr: наличие add_msg/set_lmid.
             if (urlString.contains("ch.php") && urlString.contains("show=1")) {
                 boolean hasAdd = processedPreview.contains("add_msg");
                 boolean hasLmid = processedPreview.contains("set_lmid");

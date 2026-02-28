@@ -37,16 +37,19 @@ public class FastActionManager {
      * Запуск быстрого действия (аналог FastStartSafe в C#).
      * Устанавливает глобальные переменные и инициирует перезагрузку main.php.
      */
+    // Упрощённый вызов: одно действие без "перенаправления" (count=1).
     public static void fastStart(String id, String nick) {
         fastStart(id, nick, 1);
     }
 
     public static void fastStart(String id, String nick, int count) {
+        // Глобальные флаги, которые считывает MainPhp.process() при обработке main.php.
         AppVars.FastNeed = true;
         AppVars.FastId = id;
         AppVars.FastNick = nick;
         AppVars.FastCount = count;
         Log.d(TAG, "fastStart: id=" + id + ", nick=" + nick + ", count=" + count);
+        // Запускаем цепочку через reload main.php (как в ПК версии).
         reloadMainFrame();
     }
 
@@ -54,6 +57,7 @@ public class FastActionManager {
      * Отмена быстрого действия (аналог FastCancelSafe в C#).
      */
     public static void fastCancel() {
+        // Полный сброс параметров быстрого действия.
         AppVars.FastNeed = false;
         AppVars.FastNick = null;
         AppVars.FastId = null;
@@ -62,6 +66,7 @@ public class FastActionManager {
         AppVars.FastNeedAbilDarkFog = false;
 
         if (AppVars.FastWaitEndOfBoiActive) {
+            // Если активен фон ожидания конца боя — запрашиваем отмену.
             AppVars.FastWaitEndOfBoiCancel = true;
         }
         Log.d(TAG, "fastCancel");
@@ -201,10 +206,12 @@ public class FastActionManager {
      * @param nick    ник цели (уже без итальянских тегов)
      */
     public static void fastAttackAsync(final String weapon, final String nick) {
+        // Фон: не блокируем UI при ожидании конца боя цели.
         new Thread(() -> fastAttackAsyncImpl(weapon, nick), "FastAttackAsync").start();
     }
 
     private static void fastAttackAsyncImpl(String weapon, String nick) {
+        // Основной поток логики ожидания конца боя и последующего fastStart.
         Log.d(TAG, "fastAttackAsync: weapon=" + weapon + ", nick=" + nick);
 
         // 1. Получаем информацию о цели
@@ -286,6 +293,7 @@ public class FastActionManager {
     static void writeChatMsg(String message) {
         android.content.Context ctx = AppVars.getContext();
         if (ctx == null) return;
+        // Отправляем системное сообщение через LocalBroadcast, слушатель — Chat/WebView.
         android.content.Intent intent = new android.content.Intent(AppVars.ACTION_ADD_CHAT_MESSAGE);
         intent.putExtra("message", message);
         androidx.localbroadcastmanager.content.LocalBroadcastManager
@@ -312,6 +320,7 @@ public class FastActionManager {
      * @param html HTML-содержимое страницы main.php
      * @return Сгенерированный HTML с авто-submit формой, или null если действие не найдено
      */
+    // Парсит HTML main.php и формирует авто‑submit/redirect для быстрого действия.
     public static String processMainPhp(String html) {
         Log.d(TAG, "processMainPhp: FastNeed=" + AppVars.FastNeed + ", FastId=" + AppVars.FastId
                 + ", FastNick=" + AppVars.FastNick + ", htmlLen=" + (html != null ? html.length() : 0));
@@ -1049,6 +1058,7 @@ public class FastActionManager {
      * Filter обработает, processMainPhpFast сделает redirect, WebView выполнит redirect,
      * и цепочка продолжится до тех пор пока предмет не будет найден и использован.
      */
+    // Перезагрузка main.php для запуска цепочки FastAction в MainPhp.process().
     private static void reloadMainFrame() {
         if (AppVars.getContext() == null) return;
 
@@ -1063,6 +1073,7 @@ public class FastActionManager {
         }
         Log.d(TAG, "reloadMainFrame: loading " + url);
 
+        // Broadcast в MainActivity: попросить WebView загрузить URL.
         Intent intent = new Intent(AppVars.ACTION_WEBVIEW_LOAD_URL);
         intent.putExtra("url", url);
         LocalBroadcastManager.getInstance(AppVars.getContext()).sendBroadcast(intent);

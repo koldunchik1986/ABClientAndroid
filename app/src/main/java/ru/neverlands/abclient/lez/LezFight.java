@@ -18,6 +18,7 @@ import ru.neverlands.abclient.utils.HelperStrings;
  * Портировано из LezFight.cs.
  */
 public class LezFight {
+    // Парсер состава боя из var logs (имена и уровни участников).
     private static final Pattern LOG_MEMBER_PATTERN = Pattern.compile("\\[1,\\d+,\"([^\"]+)\",(\\d+)");
     public boolean IsValid;
     public boolean IsBoi;
@@ -77,11 +78,13 @@ public class LezFight {
     public String Result;
     public String Frame;
 
+    // Конструктор: сразу парсит HTML боя и готовит состояние.
     public LezFight(String html) {
         _html = html;
         IsValid = Parse(html);
     }
 
+    // Основной разбор HTML боя: fight_ty/param_ow/stand_in/magic_in и т.д.
     private boolean Parse(String html) {
         AppVars.FightLink = "";
 
@@ -266,6 +269,7 @@ public class LezFight {
         return true;
     }
 
+    // Выбор группы противника (настройки авто‑боя по уровням/типам).
     private void SelectFoeGroup() {
         _foeGroupId = 0;
         if (AppVars.Profile == null) {
@@ -313,6 +317,7 @@ public class LezFight {
         return 0;
     }
 
+    // Генерация комбинаций ударов/блоков/магии по правилам группы.
     private void GenerateCombinations() {
         _lezHits.clear();
         _lezHits.add(new LezNode());
@@ -411,6 +416,7 @@ public class LezFight {
         }
     }
 
+    // Сбор строки Result для AutoSubmit (VCODE|ENEMY|GROUP|...).
     private void BuildResult() {
         StringBuilder sb = new StringBuilder();
         // Формирование строки VCODE|ENEMY|GROUP|...
@@ -435,6 +441,7 @@ public class LezFight {
         Result = sb.toString();
     }
 
+    // Формирование минимального fight.Frame для автобоя (инфо + auto-submit).
     private void BuildFrame() {
         if (_fightpm == null || _fightpm.length < 11) return;
         
@@ -542,6 +549,7 @@ public class LezFight {
 
     private String Strip(String arg) { return arg.replace("\"", "").trim(); }
 
+    // Обработка небоевого состояния (ожидание хода/завершение боя).
     private boolean ParseNonFight() {
         // Состояния вне активного хода (ожидание, окончание боя и т.п.).
         IsWaitingForNextTurn = false;
@@ -567,6 +575,7 @@ public class LezFight {
         return true;
     }
     
+    // Сбор ссылки "Завершить бой" из fexp (аналог C#).
     private void BuildFightLink() {
         if (_fexp == null || _fexp.length < 14) return;
         
@@ -607,6 +616,7 @@ public class LezFight {
      * Обновляет AppVars.LastBoiSostav/LastBoiTravm на основе логов боя.
      * Аналог ParseFightLog в C#.
      */
+    // Парсит var logs и обновляет состав/травм. (LastBoiSostav/LastBoiTravm).
     public void updateLastBoiFromLogs() {
         try {
             String fightty2 = (_fightty != null && _fightty.length > 2) ? Strip(_fightty[2]) : "";

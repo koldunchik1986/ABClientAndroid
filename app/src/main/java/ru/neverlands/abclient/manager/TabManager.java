@@ -72,6 +72,7 @@ public class TabManager {
     private final List<TabInfo> secondaryTabs = new ArrayList<>();
     private int currentTabIndex = 0; // 0 = основная, 1+ = вспомогательные
 
+    // Инициализация менеджера вкладок и базовой "Основной" вкладки.
     public TabManager(Context context, TabLayout tabLayout, View mainContent, FrameLayout secondaryContainer) {
         this.context = context;
         this.tabLayout = tabLayout;
@@ -106,6 +107,7 @@ public class TabManager {
      * @param url   URL для загрузки
      * @param title Заголовок вкладки
      */
+    // Открытие URL в новой вкладке (или фокус уже существующей).
     public void openTab(String url, String title) {
         // ==================== ДЕКОДИРОВАНИЕ КИРИЛЛИЧЕСКИХ НИКОВ (внутри TabManager) ====================
         // Аналог NickDecode из HelperConverters.cs и openInNewTab из MainActivity
@@ -208,6 +210,7 @@ public class TabManager {
     /**
      * Определить тип вкладки по URL и заголовку.
      */
+    // Определяем тип вкладки для набора кнопок действий.
     private TabType determineTabType(String url, String title) {
         if (url != null && url.contains("forum.neverlands.ru")) {
             return TabType.FORUM;
@@ -221,6 +224,7 @@ public class TabManager {
     /**
      * Настроить кнопки панели действий в зависимости от типа вкладки.
      */
+    // Настройка кнопок панели действий в зависимости от типа вкладки.
     private void setupActionButtons(View contentView, TabInfo tabInfo) {
         View actionBar = contentView.findViewById(R.id.action_buttons_bar);
         if (actionBar == null) {
@@ -303,6 +307,7 @@ public class TabManager {
     /**
      * Скопировать текст в буфер обмена.
      */
+    // Скопировать URL/текст в буфер.
     private void copyToClipboard(String text) {
         ClipboardManager clipboard = (ClipboardManager) context.getSystemService(Context.CLIPBOARD_SERVICE);
         ClipData clip = ClipData.newPlainText("URL", text);
@@ -313,6 +318,7 @@ public class TabManager {
     /**
      * Добавить игрока в контакты.
      */
+    // Добавить ник в список контактов (через ContactsManager).
     private void addToContacts(String playerName) {
         if (playerName == null || playerName.isEmpty()) {
             Toast.makeText(context, "Неизвестный игрок", Toast.LENGTH_SHORT).show();
@@ -345,6 +351,7 @@ public class TabManager {
      *
      * @param tabPosition позиция в TabLayout (1+)
      */
+    // Закрытие вкладки по позиции в TabLayout (1+).
     public void closeTab(int tabPosition) {
         if (tabPosition <= 0 || tabPosition > secondaryTabs.size()) {
             Log.w(TAG, "closeTab: невозможно закрыть вкладку " + tabPosition);
@@ -389,6 +396,7 @@ public class TabManager {
      * Убирает www, слеши в конце, и приводит к одному формату.
      * Для форума - сравнивает только домен.
      */
+    // Нормализация URL для сравнения (убрать www/слеши).
     private String normalizeUrl(String url) {
         if (url == null) return null;
         url = url.replace("www.", "");
@@ -409,6 +417,7 @@ public class TabManager {
     /**
      * Закрыть текущую активную вспомогательную вкладку.
      */
+    // Закрытие текущей вкладки (если это не основная).
     public void closeCurrentTab() {
         if (currentTabIndex > 0) {
             closeTab(currentTabIndex);
@@ -420,6 +429,7 @@ public class TabManager {
      *
      * @param position 0 = основная, 1+ = вспомогательные
      */
+    // Переключение UI между основной и вторичными вкладками.
     private void switchToTab(int position) {
         Log.d(TAG, "switchToTab: " + position);
         currentTabIndex = position;
@@ -460,6 +470,7 @@ public class TabManager {
     /**
      * Получить текущий индекс вкладки.
      */
+    // Текущая выбранная вкладка (0 = основная).
     public int getCurrentTabIndex() {
         return currentTabIndex;
     }
@@ -467,6 +478,7 @@ public class TabManager {
     /**
      * Получить количество вспомогательных вкладок.
      */
+    // Количество вторичных вкладок.
     public int getSecondaryTabCount() {
         return secondaryTabs.size();
     }
@@ -476,6 +488,7 @@ public class TabManager {
      * Аналогично setupWebView в MainActivity, но без чата и фильтров.
      */
     @SuppressLint("SetJavaScriptEnabled")
+    // Настройка WebView для вторичной вкладки (без чата).
     private void setupSecondaryWebView(WebView webView) {
         WebSettings webSettings = webView.getSettings();
         webSettings.setJavaScriptEnabled(true);
@@ -560,6 +573,7 @@ public class TabManager {
     /**
      * Обновить состояние кнопки Назад (активна/неактивна).
      */
+    // Обновляет доступность кнопки "Назад" в панели действий.
     private void updateBackButtonState(WebView webView) {
         TabInfo tabInfo = findTabByWebView(webView);
         if (tabInfo == null || tabInfo.contentView == null) return;
@@ -579,6 +593,7 @@ public class TabManager {
     /**
      * Найти TabInfo по WebView.
      */
+    // Поиск TabInfo по WebView.
     private TabInfo findTabByWebView(WebView webView) {
         for (TabInfo tab : secondaryTabs) {
             if (tab.webView == webView) {
@@ -591,6 +606,7 @@ public class TabManager {
     /**
      * Обновить URL вкладки при навигации.
      */
+    // Синхронизация URL в TabInfo при навигации.
     private void updateTabUrl(WebView webView, String url) {
         for (TabInfo tab : secondaryTabs) {
             if (tab.webView == webView) {
@@ -605,6 +621,7 @@ public class TabManager {
      * Инъекция JavaScript для перехвата кликов по ссылкам во вторичных вкладках.
      * Для форума - НЕ перехватываем, пусть открывается внутри.
      */
+    // JS-инъекция для перехвата кликов и открытия специальных ссылок во вкладках.
     private void injectClickInterceptor(WebView view) {
         String script = 
             "(function() {" +
@@ -651,6 +668,7 @@ public class TabManager {
     /**
      * Уничтожить все вспомогательные вкладки (вызывается при onDestroy).
      */
+    // Уничтожить все вторичные вкладки и их WebView.
     public void destroyAll() {
         for (TabInfo tab : secondaryTabs) {
             if (tab.webView != null) {

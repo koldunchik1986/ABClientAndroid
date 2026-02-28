@@ -101,14 +101,17 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     private int chatFyo = 0;
     private boolean chatLatrus = false;
 
+    // Доступ к ViewModel боя для других компонентов/фрагментов.
     public FightViewModel getFightViewModel() {
         return fightViewModel;
     }
 
+    // Основной WebView (main.php + фреймы игры).
     public android.webkit.WebView getMainWebView() {
         return binding.appBarMain.contentMain.webView;
     }
 
+    // Загрузка URL в скрытый chatRefrWebView (аналог frames['ch_refr'] в браузере).
     public void loadChatRefrUrl(String url) {
         if (chatRefrWebView == null || url == null || url.isEmpty()) {
             return;
@@ -116,6 +119,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         chatRefrWebView.loadUrl(url);
     }
 
+    // POST в chatRefrWebView — используется для отправки сообщений чата.
     public void postChatRefrUrl(String url, String data) {
         if (chatRefrWebView == null || url == null || url.isEmpty()) {
             return;
@@ -124,6 +128,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         chatRefrWebView.postUrl(url, body);
     }
 
+    // Быстрый повторный опрос чата (используется после активности/отправки).
     public void requestChatRefreshSoon() {
         if (chatRefreshRunnable == null) {
             startChatRefresh();
@@ -133,6 +138,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         chatRefreshHandler.postDelayed(chatRefreshRunnable, 200);
     }
 
+    // Автовыбор: берем HTML текущего боя и отправляем в FightViewModel.
     public void requestAutoSelect() {
         binding.appBarMain.contentMain.webView.evaluateJavascript(
                 "(function() { return document.documentElement.innerHTML; })();",
@@ -145,6 +151,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                 });
     }
 
+    // Автоход: забираем HTML боя и формируем одно действие.
     public void requestAutoTurn() {
         Log.d(TAG, "requestAutoTurn: grabbing current HTML for auto-turn");
         binding.appBarMain.contentMain.webView.evaluateJavascript(
@@ -190,6 +197,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         }
     }
 
+    // Диалог капчи для завершения боя (когда сервер требует подтверждение).
     private void showCaptchaDialog(String captchaUrl, String finishUrl) {
         Log.d(TAG, "showCaptchaDialog: " + captchaUrl + " -> " + finishUrl);
 
@@ -230,6 +238,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                 .show();
     }
 
+    // Локальные события: чат, загрузка URL, JS, капча, авто-рыбалка.
     private final BroadcastReceiver broadcastReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
@@ -269,6 +278,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         }
     };
 
+    // Основная инициализация UI/WebView/менеджеров.
     @SuppressLint("SetJavaScriptEnabled")
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -311,6 +321,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             navHeaderTitle.setText("");
         }
 
+        // Инициализируем все WebView (main + chat + скрытый ch_refr).
         setupWebViews();
         
         // Инициализация менеджера вкладок (аналог TabControl из C# версии)
@@ -327,8 +338,10 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             }
         });
         
+        // Первичная загрузка main.php + чат-фреймов.
         loadInitialUrls();
 
+        // Подписка на действия автободя: результат -> AutoSubmit() в WebView.
         fightViewModel = new ViewModelProvider(this).get(FightViewModel.class);
         fightViewModel.getSubmitAction().observe(this, result -> {
             if (result != null) {
@@ -358,6 +371,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         setupWebView(chatMsgWebView, customWebViewClient);
         setupWebView(chatUsersWebView, customWebViewClient);
         setupWebView(chatButtonsWebView, customWebViewClient);
+        // Скрытый WebView для ch_refr (серверные ответы чата и отправка форм).
         if (chatRefrWebView == null) {
             chatRefrWebView = new WebView(this);
             setupWebView(chatRefrWebView, customWebViewClient);
@@ -389,6 +403,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         }
     }
 
+    // Первичная загрузка основных и чат-фреймов.
     private void loadInitialUrls() {
         WebView webView = binding.appBarMain.contentMain.webView;
         WebView chatMsgWebView = binding.appBarMain.contentMain.chatMsgWebview;
@@ -401,6 +416,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         chatButtonsWebView.loadUrl("http://neverlands.ru/ch/but.php");
     }
 
+    // Подписка на LocalBroadcast события приложения.
     @Override
     protected void onResume() {
         super.onResume();
@@ -413,12 +429,14 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         LocalBroadcastManager.getInstance(this).registerReceiver(broadcastReceiver, filter);
     }
 
+    // Отписка от LocalBroadcast событий (во избежание утечек).
     @Override
     protected void onPause() {
         super.onPause();
         LocalBroadcastManager.getInstance(this).unregisterReceiver(broadcastReceiver);
     }
 
+    // Общая настройка WebView (JS, cookies, bridge, окна).
     private void setupWebView(WebView webView, WebViewClient client) {
         WebSettings webSettings = webView.getSettings();
         webSettings.setJavaScriptEnabled(true);
@@ -483,6 +501,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         }
     }
 
+    // Освобождаем таймеры/вебвью и менеджеры при уничтожении Activity.
     @Override
     protected void onDestroy() {
         ru.neverlands.abclient.utils.DebugLogger.log("MainActivity: onDestroy() called.");
@@ -508,6 +527,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         super.onDestroy();
     }
 
+    // Безопасное уничтожение WebView, чтобы избежать утечек.
     private void destroyWebView(WebView webView) {
         if (webView != null) {
             android.view.ViewParent parent = webView.getParent();
@@ -618,6 +638,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         return true;
     }
     
+    // Таймер UI: обновление часов + проверка соединения раз в секунду.
     private void startTimer() {
         timer = new Timer();
         timer.scheduleAtFixedRate(new TimerTask() {
@@ -631,6 +652,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         }, 0, 1000);
     }
     
+    // Остановка таймера UI.
     private void stopTimer() {
         if (timer != null) {
             timer.cancel();
@@ -638,6 +660,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         }
     }
 
+    // Запуск периодического опроса чата (ch.php?show=1&fyo=...).
     private void startChatRefresh() {
         stopChatRefresh();
         chatRefreshRunnable = new Runnable() {
@@ -650,6 +673,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         chatRefreshHandler.postDelayed(chatRefreshRunnable, CHAT_REFRESH_INITIAL_DELAY_MS);
     }
 
+    // Остановка периодического опроса чата.
     private void stopChatRefresh() {
         if (chatRefreshRunnable != null) {
             chatRefreshHandler.removeCallbacks(chatRefreshRunnable);
@@ -657,6 +681,8 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         }
     }
 
+    // Запрос обновления чата через скрытый chatRefrWebView.
+    // Выполняем серверный poll чата через скрытый WebView (ch_refr).
     private void requestChatRefresh() {
         if (chatRefrWebView == null) return;
         long ts = System.currentTimeMillis();
@@ -664,6 +690,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         chatRefrWebView.loadUrl(url);
     }
 
+    // Немедленное обновление чата (из JS-моста).
     public void requestChatRefreshNow() {
         requestChatRefresh();
     }
@@ -672,6 +699,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         return chatRefreshSeconds;
     }
 
+    // Настройка частоты опроса чата (кнопка скорости в chat buttons).
     public void setChatRefreshSeconds(int seconds) {
         if (seconds <= 0) return;
         chatRefreshSeconds = seconds;
@@ -682,6 +710,8 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         return chatFyo;
     }
 
+    // Режимы чата: 0-все, 1-только личные, 2-не показывать.
+    // Установка режима чата: 0-все, 1-личные, 2-скрыть.
     public void setChatFyo(int fyo) {
         chatFyo = fyo;
         if (chatFyo == 2) {
@@ -700,9 +730,16 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         chatLatrus = value;
     }
     
+    // Обновление часов в статус-баре с учетом server diff.
     private void updateClock() {
         SimpleDateFormat sdf = new SimpleDateFormat("HH:mm:ss", Locale.getDefault());
-        binding.appBarMain.contentMain.statusBar.clockTextView.setText(sdf.format(new Date(System.currentTimeMillis())));
+        long now = System.currentTimeMillis();
+        // Отображаем "серверное" время как в ПК‑версии:
+        // localNow - ServDiff = serverNow. Если ServDiff ещё не получен — показываем локальное.
+        if (AppVars.Profile != null && AppVars.Profile.ServDiff != Long.MIN_VALUE) {
+            now = now - AppVars.Profile.ServDiff;
+        }
+        binding.appBarMain.contentMain.statusBar.clockTextView.setText(sdf.format(new Date(now)));
     }
     
     public void updateServerTime(Date serverDateTime) {
@@ -711,6 +748,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         binding.appBarMain.contentMain.statusBar.serverTimeTextView.setText(sdf.format(serverDateTime));
     }
     
+    // Периодическая проверка соединения (перезагрузка main.php раз в 5 минут).
     private void checkConnection() {
         if (System.currentTimeMillis() > AppVars.NextCheckNoConnection.getTime()) {
             AppVars.NextCheckNoConnection = new Date(System.currentTimeMillis() + 5 * 60 * 1000);
@@ -835,6 +873,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         view.evaluateJavascript(script, null);
     }
 
+    // WebViewClient с перехватом запросов, JS-инъекциями и обработкой POST-ответов.
     private class CustomWebViewClient extends WebViewClient {
         @Override
         public void onPageFinished(WebView view, String url) {
@@ -995,6 +1034,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
 
     }
 
+    // Чтение файла из assets (например, JS для инъекций).
     private byte[] readAssetFile(String fileName) throws IOException {
         AssetManager assetManager = getAssets();
         InputStream inputStream = assetManager.open(fileName);
@@ -1007,6 +1047,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         return baos.toByteArray();
     }
 
+    // Простейшее определение MIME по расширению (для внутренних ответов).
     private String getMimeTypeFromUrl(String url) {
         if (url.endsWith(".css")) return "text/css";
         if (url.endsWith(".js")) return "application/javascript";
@@ -1019,6 +1060,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         return "text/plain";
     }
 
+    // Декодирование gzip-ответов, если необходимо.
     private byte[] decompressGzip(byte[] compressedData) throws IOException {
         if (compressedData == null || compressedData.length == 0) {
             return compressedData;
@@ -1035,6 +1077,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         }
     }
 
+    // Логика кеширования статических ресурсов (изображения/JS/CSS).
     private boolean isCacheable(String url) {
         String lowerUrl = url.toLowerCase();
         return lowerUrl.endsWith(".gif") || lowerUrl.endsWith(".jpg") || lowerUrl.endsWith(".jpeg") ||
@@ -1043,6 +1086,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                lowerUrl.contains("neverlands.ru/ch.php") || lowerUrl.contains("neverlands.ru/main.php");
     }
 
+    // Создает временный popup WebView (используется chat buttons → ch_refr).
     private WebView createChatPopupWebView() {
         WebView popup = new WebView(this);
         setupWebView(popup, new CustomWebViewClient());

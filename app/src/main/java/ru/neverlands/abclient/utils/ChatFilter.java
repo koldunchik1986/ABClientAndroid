@@ -10,13 +10,16 @@ import ru.neverlands.abclient.manager.ChatUserList;
 import ru.neverlands.abclient.model.ChatUser;
 
 public class ChatFilter {
+    // Извлечение лута из строк вида «...».
     private static final Pattern LOOT_PATTERN = Pattern.compile("\u00AB([^\u00BB]+)\u00BB");
+    // Ники берём из <SPAN title/alt="..."> (для кликов/автоответа).
     private static final Pattern SPAN_NICK_PATTERN = Pattern.compile("<SPAN[^>]+(?:title|alt)=\"([^\"]+)\"", Pattern.CASE_INSENSITIVE);
 
     public static String filter(String message) {
         if (message == null) return "";
         String result = message;
 
+        // Парсинг боевого опыта и накопление статистики (аналог C# ChatFilter).
         String xpStr = HelperStrings.subString(
                 result,
                 "Получено <font color=#CC0000>боевого</font> опыта: <b><font color=#CC0000>",
@@ -30,6 +33,7 @@ public class ChatFilter {
         }
 
         String thingStr = HelperStrings.subString(result, "Результат обыска бота: <B>", "</B>.");
+        // Парсинг лута (результат обыска бота) + привязка к времени строки.
         if (thingStr != null && !thingStr.isEmpty()) {
             String timeStr = HelperStrings.subString(
                     result,
@@ -66,6 +70,7 @@ public class ChatFilter {
                                 AppVars.LastBoiUron +
                                 "</b></FONT>";
 
+                // Завершение боя: считаем бой и фиксируем последний лог.
                 if (AppVars.LastBoiLog != null
                         && !AppVars.LastBoiLog.isEmpty()
                         && !AppVars.LastBoiLog.equals(AppVars.LastBoiEndLog)) {
@@ -89,6 +94,7 @@ public class ChatFilter {
                 AppVars.LastBoiSostav = "";
             }
         } else {
+            // Приват/клан/парный чат: автоответ и звук, если сообщение адресовано нам.
             String myNick = AppVars.Profile != null ? AppVars.Profile.UserNick : "";
             if (!myNick.isEmpty()) {
                 String needle = "\">" + myNick + "</SPAN>";
@@ -111,6 +117,7 @@ public class ChatFilter {
                 }
             }
 
+            // Подстановка уровней и значков в нике (DoChatLevels).
             if (AppVars.Profile != null && AppVars.Profile.DoChatLevels) {
                 int posSpanEnd = result.toLowerCase(Locale.ROOT).indexOf("</span>");
                 if (posSpanEnd != -1) {
@@ -149,12 +156,14 @@ public class ChatFilter {
             }
         }
 
+        // Для корректной обработки кликов по нику в парном/клан‑чате.
         if (result.toLowerCase(Locale.ROOT).contains("pair:")) {
             result = result.replace("<SPAN title=\"%", "<SPAN title=\"%%%");
         } else if (result.toLowerCase(Locale.ROOT).contains("clan:")) {
             result = result.replace("<SPAN title=\"%", "<SPAN title=\"%%");
         }
 
+        // Замена [[[logid]]] на ссылку лога боя.
         while (true) {
             int pos1 = result.indexOf("[[[");
             if (pos1 == -1) break;

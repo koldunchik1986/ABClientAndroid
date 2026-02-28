@@ -15,6 +15,7 @@ public class FightJs {
      * @param array Массив байт с исходным JS-кодом.
      * @return Модифицированный массив байт.
      */
+    // Обработка fight_v*.js: добавляем кнопки автобоя и мосты в AndroidBridge.
     public static byte[] process(byte[] array) {
         if (array == null || array.length == 0) {
             return array;
@@ -30,7 +31,7 @@ public class FightJs {
                         "code.php?'+fexp[4]+'\" width=134 height=60><br><img src=http://image.neverlands.ru/1x1.gif width=1 height=8><br><span id=guamod3><font class=nickname><font color=#004A7F><b>* * * *</b></font></font></span></TD>");
             }
 
-            // Замена стандартных кнопок на кнопки автобоя
+            // Замена стандартных кнопок на кнопки автобоя + автоход/автовыбор.
             String oldButtons = "<input type=button value=\" xoд \" name=\"btx0\" class=fbut onclick=\"javascript: StartAct()\"> " +
                                 "<input type=button value=сбросить name=\"bt2\" class=fbut onclick=\"javascript: RefreshF()\">";
 
@@ -62,7 +63,7 @@ public class FightJs {
 
             html = html.replace(oldButtons, newButtons);
 
-            // Перехват завершения боя
+            // Перехват завершения боя: сброс лечения перед выходом (ResetCure).
             html = html.replace(
                     "<input type=button class=fbut value=\"Завершить\" onclick=\"location",
                     "<input type=button class=fbut value=\"Завершить\" onclick=\"ResetCure(); location");
@@ -71,7 +72,7 @@ public class FightJs {
                     "<input type=submit class=fbut value=\"Завершить",
                     "<input type=button class=fbut onclick=\"javascript: ResetCure(); document.forms[\\\'FEND\\\'].submit();\" value=\"Завершить");
 
-            // Добавление новых JavaScript-функций
+            // Добавление новых JavaScript-функций (AutoSubmit/AutoSelect/AutoTurn/AutoBoi).
             StringBuilder sb = new StringBuilder(html);
             sb.append("\n");
             sb.append("function AutoSubmit(result)\n");

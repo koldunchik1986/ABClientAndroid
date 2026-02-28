@@ -27,10 +27,12 @@ import ru.neverlands.abclient.utils.HelperStrings;
 import ru.neverlands.abclient.utils.HtmlUtils;
 import ru.neverlands.abclient.utils.Russian;
 
+// Главный пост‑фильтр main.php: бой, инвентарь, быстрые действия, системные сообщения.
 public class MainPhp {
     private static final String TAG = "MainPhp";
     private static final Random RANDOM = new Random();
 
+    // HTML‑заглушка "ожидаем ход противника" с авто‑обновлением.
     private static String buildWaitForTurnAutoRefreshHtml(String reloadUrl, int delayMs) {
         String safeUrl = (reloadUrl != null && !reloadUrl.isEmpty()) ? reloadUrl : "main.php";
         int safeDelay = Math.max(300, delayMs);
@@ -43,6 +45,7 @@ public class MainPhp {
                 "</script></body></html>";
     }
 
+    // Центральный обработчик main.php (порт логики из C# MainPhp.cs).
     public static byte[] process(String address, byte[] array) {
         android.util.Log.d(TAG, "process() called for " + address + ", bytes=" + (array != null ? array.length : 0));
         // Сохраняем исходный ответ, если он нужен где-то еще
@@ -848,7 +851,13 @@ public class MainPhp {
                 ? AppVars.LastBoiSostav
                 : (fight.FoeName + " [" + fight.FoeLevel + "]");
 
-        Date serverTime = AppVars.ServerDateTime != null ? AppVars.ServerDateTime : new Date();
+        // Временная метка "Нападение" должна быть в серверном времени (как в C#).
+        // Используем ServDiff, вычисленный из but.php (hour/min/sec).
+        long serverMs = System.currentTimeMillis();
+        if (AppVars.Profile != null && AppVars.Profile.ServDiff != Long.MIN_VALUE) {
+            serverMs = serverMs - AppVars.Profile.ServDiff;
+        }
+        Date serverTime = new Date(serverMs);
         String timeStr = new SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(serverTime);
         String timeHtml = "<font class=chattime>&nbsp;" + timeStr + "&nbsp;</font> ";
 

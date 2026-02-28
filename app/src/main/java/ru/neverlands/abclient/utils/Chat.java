@@ -22,6 +22,8 @@ public class Chat {
     private static boolean critical = false;
     private static long lastAnswerTime = 0;
     private static String chatLogFileName;
+    // Лог чата — один файл в день: YYYYMMDD_chat.html
+    // Используется для формирования имени файла в addStringToChat/getCurrentLogPath.
     private static final SimpleDateFormat LOG_TS_FORMAT = new SimpleDateFormat("yyyyMMdd", Locale.US);
     private static final Handler HANDLER = new Handler(Looper.getMainLooper());
     private static final Runnable SEND_RUNNABLE = new Runnable() {
@@ -31,22 +33,27 @@ public class Chat {
         }
     };
 
+    // Вызывается после добавления сообщений в чат (JS add_msg).
+    // Снимает критическое состояние и планирует автоответы.
     public static void chatUpdated() {
         lastChanged = System.currentTimeMillis();
         critical = false;
         scheduleAutoAnswer();
     }
 
+    // Критическое состояние блокирует автоответы (аналог C# Critical).
     public static void setCritical(boolean value) {
         critical = value;
     }
 
+    // Очередь автоответов (аналог MyChat.AnswersCollection).
     public static void addAnswer(String message) {
         if (message == null || message.isEmpty()) return;
         ANSWERS.add(message);
         scheduleAutoAnswer();
     }
 
+    // Получить следующий автоответ (учитывает Critical и LastChanged).
     public static String getAnswer() {
         if (critical || (System.currentTimeMillis() - lastChanged) < 3000) {
             return "";
@@ -57,11 +64,13 @@ public class Chat {
         return msg;
     }
 
+    // Планирование отправки автоответа с задержкой (чтобы не спамить сервер).
     public static void scheduleAutoAnswer() {
         HANDLER.removeCallbacks(SEND_RUNNABLE);
         HANDLER.postDelayed(SEND_RUNNABLE, 3000);
     }
 
+    // Попытка отправить автоответ, если условия позволяют.
     private static void attemptSendAutoAnswer() {
         if (AppVars.Profile == null || !AppVars.Profile.DoAutoAnswer) return;
         if (critical) return;
@@ -83,6 +92,7 @@ public class Chat {
         sendChatMessage(activity, msg);
     }
 
+    // Отправка текста в форму чата (через chatButtonsWebview).
     private static void sendChatMessage(MainActivity activity, String message) {
         String safe = message == null ? "" : message;
         com.google.gson.Gson gson = new com.google.gson.Gson();
@@ -97,6 +107,7 @@ public class Chat {
         });
     }
 
+    // Вставка сообщения в окно чата (chatMsgWebview) через add_msg JS.
     public static void addMessageToChat(String message) {
         Log.i(TAG, "addMessageToChat: " + message);
         try {
@@ -120,26 +131,31 @@ public class Chat {
 
     public static void addStringToChat(String message) {
         if (message == null || message.isEmpty()) return;
+        // Логируем чат только если включено хранение логов.
         if (AppVars.Profile == null || !AppVars.Profile.ChatKeepLog) return;
         if (AppVars.getContext() == null) return;
         synchronized (LOG_LOCK) {
             try {
+                // Имя файла лога фиксируется на текущий день.
                 if (chatLogFileName == null) {
                     chatLogFileName = LOG_TS_FORMAT.format(new Date()) + "_chat.html";
                 }
                 String nick = AppVars.Profile != null ? AppVars.Profile.UserNick : "unknown";
                 if (nick == null || nick.isEmpty()) nick = "unknown";
                 String safeNick = nick.replaceAll("[/\\\\:*?\"<>|]", "_");
+                // Базовая директория логов в AppVars (ExternalFiles/Logs).
                 File baseLogs = AppVars.getLogsDir();
                 if (baseLogs == null) {
                     baseLogs = new File(AppVars.getContext().getFilesDir(), "Logs");
                 }
+                // Для каждого ника — отдельная подпапка (Logs/<Nick>/...).
                 File userDir = new File(baseLogs, safeNick);
                 if (!userDir.exists()) userDir.mkdirs();
                 File file = new File(userDir, chatLogFileName);
                 boolean newFile = !file.exists();
                 try (FileOutputStream fos = new FileOutputStream(file, true)) {
                     if (newFile) {
+                        // Шапка HTML-лога с css чата (как в ПК версии).
                         String header =
                                 "<HTML>" +
                                 "<META Content=\"text/html; Charset=utf-8\" Http-Equiv=Content-type>" +
@@ -169,6 +185,7 @@ public class Chat {
             baseLogs = new File(AppVars.getContext().getFilesDir(), "Logs");
         }
         if (baseLogs == null) return "";
+        // Текущий дневной лог: YYYYMMDD_chat.html
         String fileName = chatLogFileName;
         if (fileName == null) {
             fileName = LOG_TS_FORMAT.format(new Date()) + "_chat.html";

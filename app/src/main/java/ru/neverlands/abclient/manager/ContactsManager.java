@@ -84,6 +84,7 @@ public class ContactsManager {
      * Находит или создает файл contacts.xml и запускает загрузку контактов в кэш.
      * @param context Контекст приложения.
      */
+    // Инициализация: подготовка файла contacts.xml и загрузка в кеш.
     public static void initialize(Context context) {
         File filesDir = context.getExternalFilesDir(null);
         if (filesDir != null) {
@@ -98,6 +99,7 @@ public class ContactsManager {
     /**
      * Копирует стандартный `contacts.xml` из assets в файловую систему, если он отсутствует.
      */
+    // Копирует дефолтный contacts.xml из assets при первом запуске.
     private static void copyDefaultContactsFromAssets(Context context) {
         AssetManager assetManager = context.getAssets();
         try (InputStream in = assetManager.open(CONTACTS_FILE_NAME);
@@ -116,6 +118,7 @@ public class ContactsManager {
     /**
      * Загружает все контакты из `contacts.xml` в `contactsCache`.
      */
+    // Считывание XML контактов в in-memory кеш.
     private static void loadContactsFromXml() {
         if (contactsFile == null || !contactsFile.exists()) {
             return;
@@ -166,6 +169,7 @@ public class ContactsManager {
     /**
      * Асинхронно сохраняет все контакты из `contactsCache` в `contacts.xml`.
      */
+    // Асинхронное сохранение кеша обратно в contacts.xml.
     private static void saveContactsToXml() {
         if (contactsFile == null) {
             return;
@@ -226,6 +230,7 @@ public class ContactsManager {
      * @param nick Ник персонажа для добавления/обновления.
      * @param callback Колбэк для уведомления о результате.
      */
+    // Добавление контакта: ник -> playerId -> подробная инфа -> сохранение в XML.
     public static void addContact(Context context, String nick, final ContactOperationCallback callback) {
         CustomDebugLogger.initialize("add_contact_" + nick + ".txt");
         ApiRepository.getPlayerId(nick, new ApiRepository.ApiCallback<String>() {
@@ -261,6 +266,7 @@ public class ContactsManager {
      * Удаляет контакт из кэша и инициирует сохранение в XML.
      * @param name Ник контакта для удаления.
      */
+    // Удаление контакта из кеша и XML.
     public static void deleteContact(String name) {
         contactsCache.remove(name);
         saveContactsToXml();
@@ -271,6 +277,7 @@ public class ContactsManager {
      * Используется для изменения `classId` или комментария.
      * @param contact Объект контакта с обновленными данными.
      */
+    // Обновление контакта (кеш + XML).
     public static void updateContact(Contact contact) {
         if (contact == null || contact.nick == null) return;
         contactsCache.put(contact.nick, contact);
@@ -281,6 +288,7 @@ public class ContactsManager {
      * Загружает список всех контактов из кэша.
      * @param callback Колбэк, в который передается список контактов.
      */
+    // Возвращает список контактов из кеша.
     public static void loadContacts(Context context, final LoadContactsCallback callback) {
         handler.post(() -> callback.onSuccess(new ArrayList<>(contactsCache.values())));
     }
@@ -290,6 +298,7 @@ public class ContactsManager {
      * @param name Ник персонажа.
      * @return Строковое представление `classId` (0, 1 или 2).
      */
+    // classId используется для окраски ников в чате/комнате.
     public static String getClassIdOfContact(String name) {
         Contact contact = contactsCache.get(name);
         int classId = 0;
@@ -300,6 +309,7 @@ public class ContactsManager {
         return String.valueOf(classId);
     }
 
+    // Быстрый доступ к копии кеша.
     public static List<Contact> getContactsFromCache() {
         return new ArrayList<>(contactsCache.values());
     }
@@ -309,6 +319,7 @@ public class ContactsManager {
      * @param context Контекст для выполнения запросов.
      * @param onComplete Колбэк, который будет вызван по завершении всех обновлений.
      */
+    // Полное обновление всех контактов по playerID.
     public static void refreshAllContacts(Context context, Runnable onComplete) {
         List<Contact> currentContacts = new ArrayList<>(contactsCache.values());
         if (currentContacts.isEmpty()) {
@@ -324,6 +335,7 @@ public class ContactsManager {
      * @param clanName Имя клана для обновления.
      * @param onComplete Колбэк, который будет вызван по завершении всех обновлений.
      */
+    // Обновление контактов по клану.
     public static void refreshGroupContacts(Context context, String clanName, Runnable onComplete) {
         List<Contact> contactsToUpdate = new ArrayList<>();
         for (Contact contact : contactsCache.values()) {
@@ -339,6 +351,7 @@ public class ContactsManager {
     /**
      * Рекурсивно обновляет список контактов один за другим с задержкой, используя PlayerID.
      */
+    // Рекурсивное обновление контактов по одному с задержкой (чтобы не спамить сервер).
     private static void updateContactsRecursive(Context context, final List<Contact> contacts, final int index, final Runnable onComplete) {
         if (index >= contacts.size()) {
             if (onComplete != null) handler.post(onComplete);

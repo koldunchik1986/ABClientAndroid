@@ -13,20 +13,22 @@ public class ChMsgJs {
         try {
             String html = Russian.getString(array);
 
-            // Inject Android bridge helpers for missing frameset APIs.
+            // Инъекция Android‑моста вместо frameset API (в WebView нет настоящих frames).
             StringBuilder inject = new StringBuilder();
             inject.append("window.external = window.AndroidBridge || window.external;\n");
+            // Аналоги переходов/фокуса/добавления текста для чата.
             inject.append("function androidChatLoadRefr(u){ if(window.AndroidBridge && AndroidBridge.loadFrame){ AndroidBridge.loadFrame('ch_refr', u); } else { location=u; } }\n");
             inject.append("function androidChatFocus(){ if(window.AndroidBridge && AndroidBridge.chatFocus){ AndroidBridge.chatFocus(); } }\n");
             inject.append("function androidChatAppend(t){ if(window.AndroidBridge && AndroidBridge.chatAppend){ AndroidBridge.chatAppend(t); } }\n");
             inject.append("if (typeof top !== 'undefined') {\n");
+            // Мосты для say_private/say_to.
             inject.append("  if (!top.say_private) top.say_private = function(n){ if(window.AndroidBridge && AndroidBridge.chatSayPrivate){ AndroidBridge.chatSayPrivate(n); } };\n");
             inject.append("  if (!top.say_to) top.say_to = function(n){ if(window.AndroidBridge && AndroidBridge.chatSayTo){ AndroidBridge.chatSayTo(n); } };\n");
             inject.append("}\n");
 
             html = inject.toString() + html;
 
-            // Replace frameset-dependent calls with Android bridge helpers.
+            // Замены frameset‑зависимых вызовов на Android‑мосты.
             html = html.replace(
                     "top.frames['ch_refr'].location = '/ch.php?a=ign&s=1&u='+nick;",
                     "androidChatLoadRefr('/ch.php?a=ign&s=1&u='+nick);"
@@ -43,6 +45,7 @@ public class ChMsgJs {
                     "window.scrollBy(0,65000);",
                     "window.scrollBy(0,65000); if(window.AndroidBridge && AndroidBridge.chatUpdated){ AndroidBridge.chatUpdated(); }"
             );
+            // Пропускаем сообщения через ChatFilter (XP/лут/системные, автоответ и т.д.).
             html = html.replace(
                     "s += txt + \"<BR>\";",
                     "s += (window.AndroidBridge && AndroidBridge.chatFilter ? AndroidBridge.chatFilter(txt) : txt) + \"<BR>\";"
@@ -54,7 +57,7 @@ public class ChMsgJs {
                             "else { msgp[1] = msgp[1].replace('<SPAN>','<SPAN alt=\"%'+user2+'\">'); } }"
             );
 
-            // Fix nick click handling for non-standard alt/title attributes in modern WebView.
+            // Фикс клика по нику: корректно обрабатываем alt/title и префиксы %clan/%pair.
             String fixClick =
                     "\n(function(){\n" +
                     "  if (typeof to_what_who === 'function') {\n" +

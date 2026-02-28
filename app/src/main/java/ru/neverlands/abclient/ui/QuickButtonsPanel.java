@@ -54,6 +54,7 @@ public class QuickButtonsPanel {
         void onQuickAction(QuickActionType actionType);
     }
 
+    // Конструктор: связывает панель с менеджером кнопок, автофункциями и табами.
     public QuickButtonsPanel(Context context, View rootView, TabManager tabManager, OnQuickActionListener listener) {
         this.context = context;
         this.actionListener = listener;
@@ -65,6 +66,7 @@ public class QuickButtonsPanel {
         loadAndUpdateButtons();
     }
 
+    // Инициализация 20 кнопок (10 верх + 10 низ) и привязка обработчиков клика/лонг-клика.
     private void initButtons(View rootView) {
         Log.d(TAG, "initButtons: starting...");
         
@@ -115,6 +117,7 @@ public class QuickButtonsPanel {
         Log.d(TAG, "initButtons: finished");
     }
 
+    // Загружаем конфигурацию кнопок из менеджера и синхронизируем UI.
     private void loadAndUpdateButtons() {
         Log.d(TAG, "loadAndUpdateButtons: starting...");
         List<QuickButton> buttonList = buttonsManager.getButtons();
@@ -130,6 +133,7 @@ public class QuickButtonsPanel {
         }
     }
 
+    // Обновляем иконку/подпись/состояние одной кнопки.
     private void updateButtonAppearance(int position, QuickButton button) {
         Log.d(TAG, "updateButtonAppearance: position=" + position + ", button=" + (button != null ? button.getActionType() : "null"));
         if (position >= buttons.length || buttons[position] == null) {
@@ -144,6 +148,7 @@ public class QuickButtonsPanel {
             buttons[position].setBackgroundResource(R.drawable.quick_button_empty);
             Log.d(TAG, "updateButtonAppearance: set empty icon for position " + position);
         } else {
+            // Для заданной функции учитываем включено/выключено (для авто-режимов).
             boolean isEnabled = autoFunctionsManager.isFunctionEnabled(button.getActionType());
             loadIconForAction(buttons[position], button.getActionType(), isEnabled);
             buttons[position].setContentDescription(button.getDisplayName() + (isEnabled ? " (ВКЛ)" : " (ВЫКЛ)"));
@@ -154,6 +159,7 @@ public class QuickButtonsPanel {
         buttons[position].post(() -> buttons[position].invalidate());
     }
 
+    // Загрузка иконки: либо URL (Glide), либо локальный drawable.
     private void loadIconForAction(ImageButton button, QuickActionType type, boolean isEnabled) {
         String iconUrl = getIconUrlForAction(type);
         if (iconUrl != null) {
@@ -176,6 +182,7 @@ public class QuickButtonsPanel {
         }
     }
     
+    // Визуальная индикация включенного/выключенного авто-режима.
     private void updateButtonVisualState(ImageButton button, boolean isEnabled) {
         if (isEnabled) {
             // Включено - полная непрозрачность + зеленоватая подсветка
@@ -188,6 +195,7 @@ public class QuickButtonsPanel {
         }
     }
 
+    // Карта внешних иконок (из image.neverlands.ru) для некоторых быстрых действий.
     private String getIconUrlForAction(QuickActionType type) {
         switch (type) {
             case AUTO_FIGHT:
@@ -251,6 +259,7 @@ public class QuickButtonsPanel {
         }
     }
 
+    // Локальные иконки/плейсхолдеры; при необходимости можно различать ON/OFF.
     private int getIconForAction(QuickActionType type, boolean isEnabled) {
         // Для автофункций пока возвращаем те же иконки, но с разной прозрачностью
         // Позже нужно создать отдельные иконки для вкл/выкл состояний
@@ -264,6 +273,7 @@ public class QuickButtonsPanel {
         return iconRes;
     }
     
+    // Авто-функции имеют ON/OFF визуальное состояние.
     private boolean isAutoFunction(QuickActionType type) {
         switch (type) {
             case AUTO_FIGHT:
@@ -286,6 +296,7 @@ public class QuickButtonsPanel {
         }
     }
     
+    // Fallback иконки по типу (локальные ресурсы приложения).
     private int getIconForAction(QuickActionType type) {
         switch (type) {
             case AUTO_FIGHT:
@@ -349,6 +360,7 @@ public class QuickButtonsPanel {
         }
     }
 
+    // Исполнение действия кнопки: либо назначение, либо запуск функции.
     private void executeAction(int position) {
         Log.d(TAG, "executeAction: position=" + position);
         QuickButton button = buttonsManager.getButton(position);
@@ -484,6 +496,7 @@ public class QuickButtonsPanel {
         }
     }
 
+    // Быстрые действия (эликсиры/тотем/невид) делегируются в FastActionManager.
     private void executeQuickAction(String actionKey, String actionName) {
         Log.d(TAG, "executeQuickAction: actionKey=" + actionKey + ", actionName=" + actionName);
         Toast.makeText(context, actionName, Toast.LENGTH_SHORT).show();
@@ -518,6 +531,7 @@ public class QuickButtonsPanel {
         }
     }
 
+    // Лонг-клик по кнопке: меню настроек или удаление.
     private void showButtonOptions(int position) {
         QuickButton button = buttonsManager.getButton(position);
 
@@ -541,6 +555,7 @@ public class QuickButtonsPanel {
         }
     }
 
+    // Открывает настройки авто-боя во фрагменте.
     private void openAutoBoiSettings() {
         if (context instanceof FragmentActivity) {
             AutoBoiSettingsFragment fragment = new AutoBoiSettingsFragment();
@@ -548,6 +563,7 @@ public class QuickButtonsPanel {
         }
     }
 
+    // Диалог выбора функции для конкретной кнопки.
     private void showFunctionSelector(int position) {
         View dialogView = View.inflate(context, R.layout.dialog_select_function, null);
         android.widget.ListView listView = dialogView.findViewById(R.id.functions_list);
@@ -574,6 +590,7 @@ public class QuickButtonsPanel {
         dialog.show();
     }
 
+    // Подтверждение удаления назначенной функции с кнопки.
     private void showRemoveConfirmation(int position) {
         QuickButton button = buttonsManager.getButton(position);
         String rowName = position < BUTTONS_PER_ROW ? "верхнего" : "нижнего";
@@ -590,19 +607,23 @@ public class QuickButtonsPanel {
             .show();
     }
 
+    // Открыть окно контактов.
     private void openContacts() {
         Intent intent = new Intent(context, ContactsActivity.class);
         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
         context.startActivity(intent);
     }
 
+    // Открыть окно логов.
     private void openLogs() {
         Intent intent = new Intent(context, LogsActivity.class);
         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
         context.startActivity(intent);
     }
 
+    // Открыть окно статистики боя/лута.
     private void openStats() {
+        // Основная реализация: кастомный диалог с иконками и действиями.
         boolean useNewStatsDialog = true;
         if (useNewStatsDialog) {
             int padding = dpToPx(16);
@@ -707,6 +728,7 @@ public class QuickButtonsPanel {
             .show();
     }
 
+    // Формирование текста статистики из ChatStats (XP/поединки/дроп).
     private String buildStatsText() {
         long xp = ChatStats.getTotalXp();
         long fights = ChatStats.getTotalFights();
@@ -728,10 +750,12 @@ public class QuickButtonsPanel {
         return sb.toString().trim();
     }
 
+    // Утилита для перевода dp -> px.
     private int dpToPx(int dp) {
         return Math.round(dp * context.getResources().getDisplayMetrics().density);
     }
 
+    // Диалог ввода ника и переход в pinfo.
     private void openPinfo() {
         View dialogView = View.inflate(context, R.layout.dialog_input_nick, null);
         android.widget.EditText editText = dialogView.findViewById(R.id.input_nick);
@@ -751,6 +775,7 @@ public class QuickButtonsPanel {
             .show();
     }
 
+    // Открыть вкладку pinfo с нужной кодировкой Windows-1251.
     private void openPinfoTab(String nick) {
         try {
             String encodedNick = URLEncoder.encode(nick, "windows-1251");
@@ -767,6 +792,7 @@ public class QuickButtonsPanel {
         }
     }
 
+    // Принудительное обновление списка контактов (с уведомлением).
     private void refreshContacts() {
         Toast.makeText(context, "Обновление контактов...", Toast.LENGTH_SHORT).show();
         ContactsManager.refreshAllContacts(context, () -> {
@@ -777,6 +803,7 @@ public class QuickButtonsPanel {
         });
     }
 
+    // Внешний вызов для пересинхронизации кнопок (например, после настроек).
     public void refresh() {
         loadAndUpdateButtons();
     }

@@ -8,18 +8,22 @@ import java.util.regex.Pattern;
 import ru.neverlands.abclient.utils.AppVars;
 import ru.neverlands.abclient.utils.Russian;
 
+// Маршрутизатор пост‑фильтров: выбирает обработчик по URL (JS/HTML/CGI).
 public class Filter {
     private static final Pattern DOCTYPE_PATTERN = Pattern.compile("(?is)<!DOCTYPE[^>]*>");
 
+    // Пред‑обработка (пока не используется, оставлена под будущие хуки).
     public static byte[] preProcess(String address, byte[] array) {
         return array;
     }
 
+    // Главная точка входа фильтрации ответа.
     public static byte[] process(Context context, String address, byte[] array) {
         if (address == null || address.isEmpty() || array == null) {
             return array;
         }
 
+        // JS‑фильтры (подмены/инъекции скриптов).
         if (address.contains(".js")) {
             if (address.contains("liveinternet.ru") || address.contains("top.mail.ru") || address.contains("hotlog.ru")) {
                 return CounterJs.process();
@@ -101,6 +105,7 @@ public class Filter {
             }
         }
 
+        // Основные HTML/CGI обработчики.
         if (address.startsWith("http://neverlands.ru/index.cgi") || address.equals("http://neverlands.ru/")) {
             return IndexCgi.process(array);
         }
@@ -121,15 +126,18 @@ public class Filter {
             return GamePhp.process(array);
         }
 
+        // Главная страница: обновляем таймер соединения, обрабатываем фреймы/бой.
         if (address.startsWith("http://neverlands.ru/main.php")) {
             AppVars.NextCheckNoConnection = new Date(System.currentTimeMillis() + 5 * 60 * 1000);
             return MainPhp.process(address, array);
         }
 
+        // Чат: окно сообщений.
         if (address.startsWith("http://neverlands.ru/ch/msg.php")) {
             return MsgPhp.process(array);
         }
 
+        // Чат: окно кнопок/ввода (инъекция submit и парсинг времени сервера).
         if (address.startsWith("http://neverlands.ru/ch/but.php")) {
             return ButPhp.process(address, array);
         }
@@ -160,6 +168,7 @@ public class Filter {
             return RouletteAjaxPhp.process(array);
         }
 
+        // Список игроков в чате (RoomManager).
         if (address.contains("/ch.php?lo=1")) {
             String html = Russian.getString(array);
             html = ru.neverlands.abclient.manager.RoomManager.process(context, html);
