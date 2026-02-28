@@ -21,22 +21,51 @@ public class LezNode implements Serializable, Cloneable, Comparable<LezNode> {
     private int _zHit;
     private int _zBlock;
 
+    /**
+     * Количество активных ударов в комбинации.
+     * Зависимости:
+     * - Поля HitOps/HitCodes: считаем только заполненные (op > 0).
+     * Назначение:
+     * - Используется при расчёте валидности и стоимости комбинации.
+     */
     private int HitCounts() {
         int count = 0;
         for (int op : HitOps) if (op > 0) count++;
         return count;
     }
 
+    /**
+     * Проверяет наличие блока в комбинации.
+     * Зависимости:
+     * - BlockOp: если > 0, блок задан.
+     * Назначение:
+     * - Упрощённый счётчик для валидности/стоимости.
+     */
     private int BlockCounts() {
         return (BlockOp > 0) ? 1 : 0;
     }
 
+    /**
+     * Количество активных магий/эффектов в комбинации.
+     * Зависимости:
+     * - MagicFlags: true означает выбранный слот.
+     * Назначение:
+     * - Используется при проверке валидности и расчёте стоимости.
+     */
     private int MagicCounts() {
         int count = 0;
         for (boolean flag : MagicFlags) if (flag) count++;
         return count;
     }
 
+    /**
+     * Проверка валидности комбинации (аналог C# LezNode.IsValid).
+     * Зависимости:
+     * - HitCounts/BlockCounts/MagicCounts.
+     * Назначение:
+     * - Комбинация допустима, если есть удар+магия, блок+магия, удар+блок
+     *   либо более одного удара.
+     */
     public boolean IsValid() {
         int hc = HitCounts();
         int bc = BlockCounts();
@@ -44,6 +73,14 @@ public class LezNode implements Serializable, Cloneable, Comparable<LezNode> {
         return ((hc > 0 && mc > 0) || (bc > 0 && mc > 0) || (hc > 0 && bc > 0) || hc > 1);
     }
 
+    /**
+     * Расчёт стоимости ОД (очков действия) для комбинации.
+     * Зависимости:
+     * - posod: стоимость по коду удара/блока/магии.
+     * - HitOps/HitCodes, BlockCode, MagicCodes.
+     * Назначение:
+     * - Используется авто-боем для оценки комбинаций.
+     */
     public int Od(int[] posod) {
         int od = 0;
         int hc = HitCounts();
@@ -59,6 +96,14 @@ public class LezNode implements Serializable, Cloneable, Comparable<LezNode> {
         return od;
     }
 
+    /**
+     * Расчёт стоимости маны для комбинации.
+     * Зависимости:
+     * - posma: стоимость по коду удара/блока/магии.
+     * - HitOps/HitCodes, BlockCode, MagicCodes.
+     * Назначение:
+     * - Используется авто-боем для фильтрации комбинаций по мане.
+     */
     public int Mana(int[] posma) {
         int mana = 0;
         if (HitCounts() > 0) {
@@ -71,10 +116,25 @@ public class LezNode implements Serializable, Cloneable, Comparable<LezNode> {
         return mana;
     }
 
+    /**
+     * Строка сортировки комбинации (приоритет/вес).
+     * Зависимости:
+     * - _zScroll/_zRestore/_zMag/_zBlock/_zHit: накопленные веса.
+     * Назначение:
+     * - Используется в compareTo для стабильной сортировки.
+     */
     private String Z() {
         return String.format(java.util.Locale.US, "%d.%d.%02d.%d.%02d", _zScroll, _zRestore, _zMag, _zBlock, _zHit);
     }
 
+    /**
+     * Добавляет удар в комбинацию.
+     * Зависимости:
+     * - LezSpell.IsPhHit / IsMagHit: определяет тип удара и вес.
+     * - HitOps/HitCodes: хранение выбранного удара.
+     * Назначение:
+     * - Формирование комбинации для авто-боя.
+     */
     public void AddHit(int combo, int op, int code) {
         HitOps[combo] = op;
         HitCodes[combo] = code;
@@ -86,6 +146,14 @@ public class LezNode implements Serializable, Cloneable, Comparable<LezNode> {
         }
     }
 
+    /**
+     * Добавляет блок в комбинацию.
+     * Зависимости:
+     * - LezSpell.IsPhBlock / IsMagBlock: тип блока.
+     * - LezSpellCollection.Spells: получение названия для оценки веса.
+     * Назначение:
+     * - Формирование комбинации для авто-боя.
+     */
     public void AddBlock(int combo, int op, int code) {
         BlockCombo = combo;
         BlockOp = op;
@@ -104,6 +172,14 @@ public class LezNode implements Serializable, Cloneable, Comparable<LezNode> {
         }
     }
 
+    /**
+     * Добавляет магию/эффект в комбинацию.
+     * Зависимости:
+     * - MagicFlags/MagicCodes: фиксация выбранного слота и кода.
+     * - _zScroll/_zRestore/_zMag: накопление весов.
+     * Назначение:
+     * - Формирование комбинации для авто-боя.
+     */
     public void AddMagic(int op, int code, int zmag, int zrestore, int zscroll) {
         MagicFlags[op] = true;
         MagicCodes[op] = code;
@@ -112,6 +188,13 @@ public class LezNode implements Serializable, Cloneable, Comparable<LezNode> {
         _zMag += zmag;
     }
 
+    /**
+     * Сливает другую комбинацию в текущую.
+     * Зависимости:
+     * - Поля other.* (удары/блок/магия + веса).
+     * Назначение:
+     * - Построение итоговой комбинации из частей.
+     */
     public void AddCombination(LezNode other) {
         for (int i = 0; i < 4; i++) {
             if (other.HitOps[i] > 0) {
@@ -137,6 +220,14 @@ public class LezNode implements Serializable, Cloneable, Comparable<LezNode> {
         _zBlock += other._zBlock;
     }
 
+    /**
+     * Проверяет наличие немагического блока/контр-магии против группы ботов.
+     * Зависимости:
+     * - foeGroup.SpellsBlocks: список блокирующих эффектов у противника.
+     * - MagicFlags/MagicCodes + BlockCode.
+     * Назначение:
+     * - Учитывается при выборе безопасной комбинации.
+     */
     public boolean HasNonPhBlock(LezBotsGroup foeGroup) {
         if (BlockOp > 0) {
             if (LezSpell.IsMagBlock(BlockCode)) return true;
@@ -155,12 +246,26 @@ public class LezNode implements Serializable, Cloneable, Comparable<LezNode> {
     }
 
     @Override
+    /**
+     * Сортировка комбинаций по весу (строке Z()).
+     * Зависимости:
+     * - Z(): агрегирует веса в строку.
+     * Назначение:
+     * - Упорядочивание вариантов комбинаций.
+     */
     public int compareTo(LezNode other) {
         if (other == null) return -1;
         return Z().compareTo(other.Z());
     }
 
     @Override
+    /**
+     * Глубокое клонирование комбинации.
+     * Зависимости:
+     * - Массивы HitOps/HitCodes/MagicFlags/MagicCodes.
+     * Назначение:
+     * - Безопасное копирование при генерации вариантов комбинаций.
+     */
     public LezNode clone() {
         try {
             LezNode cloned = (LezNode) super.clone();

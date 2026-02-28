@@ -138,7 +138,7 @@ public class Filter {
         }
 
         // Чат: окно кнопок/ввода (инъекция submit и парсинг времени сервера).
-        if (address.startsWith("http://neverlands.ru/ch/but.php")) {
+        if (address.contains("/ch/but.php")) {
             return ButPhp.process(address, array);
         }
 

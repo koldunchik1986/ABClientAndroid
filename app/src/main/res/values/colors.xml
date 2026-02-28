@@ -16,4 +16,7 @@
     <color name="colorDivider">#BDBDBD</color>
     <color name="red">#FF0000</color>
     <color name="tab_button_bar_background">#E0E0E0</color>
+    <color name="ab_autoboi_bg">#1E1E1E</color>
+    <color name="ab_autoboi_text_primary">#EDEDED</color>
+    <color name="ab_autoboi_text_secondary">#B0B0B0</color>
 </resources>

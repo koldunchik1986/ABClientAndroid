@@ -53,7 +53,7 @@ public class AutoBoiSettingsFragment extends DialogFragment {
     @Override
     public void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setStyle(DialogFragment.STYLE_NORMAL, android.R.style.Theme_Material_Light_Dialog_Alert);
+        setStyle(DialogFragment.STYLE_NORMAL, android.R.style.Theme_Material_Dialog_Alert);
     }
 
     @Nullable

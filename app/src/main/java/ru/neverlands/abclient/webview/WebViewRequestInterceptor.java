@@ -15,6 +15,9 @@ import java.net.URL;
 import java.nio.charset.Charset;
 import java.util.List;
 import java.util.Map;
+import java.util.Date;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.zip.GZIPInputStream;
 
 import ru.neverlands.abclient.postfilter.Filter;
@@ -22,6 +25,15 @@ import ru.neverlands.abclient.proxy.CookiesManager;
 
 public class WebViewRequestInterceptor {
     private static final String TAG = "WebViewInterceptor";
+    private static final Pattern CHAT_TIME_PATTERN = Pattern.compile("chattime[^>]*>\\s*&nbsp;\\s*(\\d{1,2}):(\\d{2}):(\\d{2})\\s*&nbsp;", Pattern.CASE_INSENSITIVE);
+    private static final Pattern SERVER_DATE_PATTERN = Pattern.compile(
+            "serverDate\\s*=\\s*new\\s+Date\\((\\d{4})\\s*,\\s*(\\d{1,2})\\s*,\\s*(\\d{1,2})\\s*,\\s*(\\d{1,2})\\s*,\\s*(\\d{1,2})\\s*,\\s*(\\d{1,2})\\s*\\)",
+            Pattern.CASE_INSENSITIVE
+    );
+    private static final Pattern SERVER_TIME_DIV_PATTERN = Pattern.compile(
+            "id\\s*=\\s*['\"]?serverTime['\"]?[^>]*>\\s*(\\d{1,2}):(\\d{2}):(\\d{2})\\s*<",
+            Pattern.CASE_INSENSITIVE
+    );
 
     /**
      * Определяет, нужно ли перехватывать данный URL.
@@ -191,6 +203,15 @@ public class WebViewRequestInterceptor {
             String preview = new String(bytes, Charset.forName("windows-1251"));
             Log.d(TAG, "HTML preview (" + urlString + "): " + preview.substring(0, Math.min(200, preview.length())));
 
+            // Попытка синхронизировать серверное время по времени в чате + HTTP Date.
+            if (urlString.contains("ch.php") && urlString.contains("show=1")) {
+                updateServerTimeFromChat(preview, headers);
+            }
+            // Попытка синхронизировать серверное время по but.php (кнопки чата).
+            if (urlString.contains("/ch/but.php")) {
+                updateServerTimeFromBut(preview, headers);
+            }
+
             // Handle "Cookie..." transitional page by re-requesting once with cookies
             if (preview.contains("Cookie...")) {
                 HttpURLConnection second = (HttpURLConnection) url.openConnection();
@@ -302,6 +323,10 @@ public class WebViewRequestInterceptor {
 
     /**
      * Case-insensitive header lookup from HttpURLConnection.getHeaderFields().
+     * Зависимости:
+     * - Структура Map<String, List<String>> из HttpURLConnection.
+     * Назначение:
+     * - Надёжно получить заголовки вроде Date/Content-Type независимо от регистра.
      */
     private static List<String> getHeaderIgnoreCase(Map<String, List<String>> headers, String name) {
         for (Map.Entry<String, List<String>> entry : headers.entrySet()) {
@@ -332,5 +357,277 @@ public class WebViewRequestInterceptor {
             baos.write(buffer, 0, read);
         }
         return baos.toByteArray();
+    }
+
+    /**
+     * Синхронизация времени по ch.php (сообщения чата).
+     * Зависимости:
+     * - CHAT_TIME_PATTERN: ищет <font class=chattime>HH:mm:ss</font>.
+     * - HTTP Date заголовок: используется в updateServerTimeFromParts для вычисления даты.
+     * - shouldApplyServerTime(): защита от резких скачков после боя.
+     * Назначение:
+     * - Поддерживать время актуальным, но не ломать синхронизацию, полученную из but.php.
+     */
+    private static void updateServerTimeFromChat(String html, Map<String, List<String>> headers) {
+        if (html == null || headers == null) return;
+        Matcher matcher = CHAT_TIME_PATTERN.matcher(html);
+        if (!matcher.find()) return;
+
+        try {
+            int hour = Integer.parseInt(matcher.group(1));
+            int min = Integer.parseInt(matcher.group(2));
+            int sec = Integer.parseInt(matcher.group(3));
+            updateServerTimeFromParts(hour, min, sec, headers, "chat", 5 * 60 * 1000L);
+        } catch (Exception ignored) {
+        }
+    }
+
+    /**
+     * Синхронизация времени по but.php.
+     * Зависимости:
+     * - HTML but.php: serverDate (JS), serverTime (DIV), либо просто HH:mm:ss.
+     * - HTTP Date заголовок: используется для проверки валидности serverDate
+     *   и для получения даты, если в HTML есть только время.
+     * Назначение:
+     * - Обновить AppVars.Profile.ServDiff и AppVars.ServerDateTime сразу при входе,
+     *   не дожидаясь системных сообщений чата/боя.
+     */
+    /**
+     * Синхронизация времени по but.php.
+     * Зависимости:
+     * - SERVER_DATE_PATTERN: парсит new Date(Y,M,D,h,m,s).
+     * - SERVER_TIME_DIV_PATTERN: извлекает текст serverTime (HH:mm:ss).
+     * - HTTP Date заголовок: проверка валидности serverDate, а также дата для HH:mm:ss.
+     * Назначение:
+     * - Самый ранний и приоритетный источник серверного времени при входе.
+     */
+    private static void updateServerTimeFromBut(String html, Map<String, List<String>> headers) {
+        if (html == null) return;
+        if (updateServerTimeFromJsDate(html, headers, "but")) {
+            return;
+        }
+        Matcher div = SERVER_TIME_DIV_PATTERN.matcher(html);
+        if (div.find()) {
+            try {
+                int hour = Integer.parseInt(div.group(1));
+                int min = Integer.parseInt(div.group(2));
+                int sec = Integer.parseInt(div.group(3));
+                updateServerTimeFromParts(hour, min, sec, headers, "but", Long.MAX_VALUE);
+                return;
+            } catch (Exception ignored) {
+            }
+        }
+        Pattern hmsPattern = Pattern.compile("\\b(\\d{1,2}):(\\d{2}):(\\d{2})\\b");
+        Matcher hms = hmsPattern.matcher(html);
+        if (hms.find()) {
+            try {
+                int hour = Integer.parseInt(hms.group(1));
+                int min = Integer.parseInt(hms.group(2));
+                int sec = Integer.parseInt(hms.group(3));
+                updateServerTimeFromParts(hour, min, sec, headers, "but", Long.MAX_VALUE);
+                return;
+            } catch (Exception ignored) {
+            }
+        }
+        Pattern hPattern = Pattern.compile("\\bhour\\s*=\\s*(\\d{1,2})", Pattern.CASE_INSENSITIVE);
+        Pattern mPattern = Pattern.compile("\\bmin\\s*=\\s*(\\d{1,2})", Pattern.CASE_INSENSITIVE);
+        Pattern sPattern = Pattern.compile("\\bsec\\s*=\\s*(\\d{1,2})", Pattern.CASE_INSENSITIVE);
+        Matcher mh = hPattern.matcher(html);
+        Matcher mm = mPattern.matcher(html);
+        Matcher ms = sPattern.matcher(html);
+        if (mh.find() && mm.find() && ms.find()) {
+            try {
+                int hour = Integer.parseInt(mh.group(1));
+                int min = Integer.parseInt(mm.group(1));
+                int sec = Integer.parseInt(ms.group(1));
+                updateServerTimeFromParts(hour, min, sec, headers, "but", Long.MAX_VALUE);
+            } catch (Exception ignored) {
+            }
+        }
+    }
+
+    /**
+     * Синхронизация по JS-конструктору serverDate из but.php.
+     * Зависимости:
+     * - SERVER_DATE_PATTERN: парсит new Date(Y,M,D,h,m,s).
+     * - HTTP Date header: проверка "разумности" (расхождение > 24ч — игнор).
+     * Назначение:
+     * - Дать точное серверное время сразу при загрузке but.php.
+     */
+    /**
+     * Синхронизация по JS-конструктору serverDate из but.php.
+     * Зависимости:
+     * - SERVER_DATE_PATTERN: парсит new Date(Y,M,D,h,m,s).
+     * - HTTP Date header: проверка "разумности" (расхождение > 24ч — игнор).
+     * - applyServerTime(): записывает ServDiff и ServerDateTime.
+     * Назначение:
+     * - Дать максимально точное время при загрузке but.php.
+     */
+    private static boolean updateServerTimeFromJsDate(String html, Map<String, List<String>> headers, String source) {
+        if (html == null) return false;
+        Matcher matcher = SERVER_DATE_PATTERN.matcher(html);
+        if (!matcher.find()) return false;
+        try {
+            int year = Integer.parseInt(matcher.group(1));
+            int rawMonth = Integer.parseInt(matcher.group(2));
+            int day = Integer.parseInt(matcher.group(3));
+            int hour = Integer.parseInt(matcher.group(4));
+            int min = Integer.parseInt(matcher.group(5));
+            int sec = Integer.parseInt(matcher.group(6));
+            int month = rawMonth;
+            List<String> dateHeader = headers != null ? getHeaderIgnoreCase(headers, "Date") : null;
+            if (rawMonth >= 1 && rawMonth <= 12 && dateHeader != null && !dateHeader.isEmpty()) {
+                try {
+                    java.text.SimpleDateFormat sdf = new java.text.SimpleDateFormat("EEE, dd MMM yyyy HH:mm:ss zzz", java.util.Locale.US);
+                    sdf.setTimeZone(java.util.TimeZone.getTimeZone("GMT"));
+                    Date httpDate = sdf.parse(dateHeader.get(0));
+                    if (httpDate != null) {
+                        java.util.Calendar httpCal = java.util.Calendar.getInstance(java.util.TimeZone.getTimeZone("GMT"));
+                        httpCal.setTime(httpDate);
+                        int httpMonth = httpCal.get(java.util.Calendar.MONTH);
+                        int m1 = rawMonth - 1;
+                        int m2 = rawMonth;
+                        int d1 = Math.abs(m1 - httpMonth);
+                        int d2 = Math.abs(m2 - httpMonth);
+                        month = d1 <= d2 ? m1 : m2;
+                    }
+                } catch (Exception ignored) {
+                }
+            } else if (rawMonth >= 1 && rawMonth <= 12) {
+                month = rawMonth - 1;
+            }
+            if (month < 0) month = 0;
+            if (month > 11) month = 11;
+
+            java.util.Calendar cal = java.util.Calendar.getInstance();
+            cal.set(year, month, day, hour, min, sec);
+            cal.set(java.util.Calendar.MILLISECOND, 0);
+            long serverMs = cal.getTimeInMillis();
+            // Если HTTP Date сильно расходится (больше суток) — считаем jsDate некорректным.
+            if (dateHeader != null && !dateHeader.isEmpty()) {
+                try {
+                    java.text.SimpleDateFormat sdf = new java.text.SimpleDateFormat("EEE, dd MMM yyyy HH:mm:ss zzz", java.util.Locale.US);
+                    sdf.setTimeZone(java.util.TimeZone.getTimeZone("GMT"));
+                    Date httpDate = sdf.parse(dateHeader.get(0));
+                    if (httpDate != null) {
+                        long diff = Math.abs(serverMs - httpDate.getTime());
+                        if (diff > 24L * 60L * 60L * 1000L) {
+                            Log.w(TAG, "Server time sync (" + source + " jsDate): httpDate mismatch, skipping");
+                            return false;
+                        }
+                    }
+                } catch (Exception ignored) {
+                }
+            }
+            applyServerTime(serverMs, source + " jsDate");
+            return true;
+        } catch (Exception ignored) {
+            return false;
+        }
+    }
+
+    /**
+     * Синхронизация по времени из HTML (HH:mm:ss).
+     * Зависимости:
+     * - HTTP Date заголовок: даёт дату, чтобы собрать корректный DateTime сервера.
+     * - Calendar: собираем серверное время с учётом GMT.
+     * Назначение:
+     * - Используется для чата (ch.php) и для but.php, если нет serverDate.
+     */
+    /**
+     * Синхронизация по времени из HTML (HH:mm:ss) с защитой от "скачков" времени.
+     * Зависимости:
+     * - HTTP Date заголовок: даёт дату, чтобы собрать корректный DateTime сервера.
+     * - AppVars.Profile.ServDiff: используется как текущее "серверное" время для проверки дельты.
+     * - shouldApplyServerTime(): отсекает подозрительные смещения (например, после боя).
+     * Назначение:
+     * - Используется для ch.php и but.php, если нет serverDate.
+     * - Позволяет синхронизировать время, не ломая уже корректную синхронизацию.
+     */
+    private static void updateServerTimeFromParts(int hour, int min, int sec, Map<String, List<String>> headers, String source, long maxDeltaMs) {
+        try {
+            // Если есть HTTP Date — считаем серверное время на его основе + время из HTML.
+            List<String> dateHeader = headers != null ? getHeaderIgnoreCase(headers, "Date") : null;
+            if (dateHeader != null && !dateHeader.isEmpty()) {
+                java.text.SimpleDateFormat sdf = new java.text.SimpleDateFormat("EEE, dd MMM yyyy HH:mm:ss zzz", java.util.Locale.US);
+                sdf.setTimeZone(java.util.TimeZone.getTimeZone("GMT"));
+                Date baseDate = sdf.parse(dateHeader.get(0));
+                if (baseDate != null) {
+                    java.util.Calendar cal = java.util.Calendar.getInstance(java.util.TimeZone.getTimeZone("GMT"));
+                    cal.setTimeInMillis(baseDate.getTime());
+                    int httpSec = cal.get(java.util.Calendar.HOUR_OF_DAY) * 3600
+                            + cal.get(java.util.Calendar.MINUTE) * 60
+                            + cal.get(java.util.Calendar.SECOND);
+                    int chatSec = hour * 3600 + min * 60 + sec;
+                    int diffSec = chatSec - httpSec;
+                    if (diffSec > 12 * 3600) diffSec -= 24 * 3600;
+                    if (diffSec < -12 * 3600) diffSec += 24 * 3600;
+                    long serverMs = baseDate.getTime() + diffSec * 1000L;
+                    if (shouldApplyServerTime(serverMs, maxDeltaMs)) {
+                        applyServerTime(serverMs, source + " httpDate=" + dateHeader.get(0));
+                    }
+                    return;
+                }
+            }
+
+            // Фоллбек: как в C# (ButPhp) — серверные часы/мин/сек + локальная дата.
+            java.util.Calendar now = java.util.Calendar.getInstance();
+            java.util.Calendar server = (java.util.Calendar) now.clone();
+            server.set(java.util.Calendar.HOUR_OF_DAY, hour);
+            server.set(java.util.Calendar.MINUTE, min);
+            server.set(java.util.Calendar.SECOND, sec);
+            server.set(java.util.Calendar.MILLISECOND, 0);
+
+            long nowMs = now.getTimeInMillis();
+            long serverMs = server.getTimeInMillis();
+            long diffMs = nowMs - serverMs;
+            if (diffMs > 24L * 3600L * 1000L || diffMs < -24L * 3600L * 1000L) {
+                Log.w(TAG, "Server time sync (" + source + "): diffMs out of range, skipping");
+                return;
+            }
+            if (shouldApplyServerTime(serverMs, maxDeltaMs)) {
+                applyServerTime(serverMs, source + " localDate");
+            }
+        } catch (Exception ignored) {
+        }
+    }
+
+    /**
+     * Решает, можно ли применять новый serverMs, чтобы не получить резкий скачок времени.
+     * Зависимости:
+     * - AppVars.Profile.ServDiff: используется для вычисления текущего serverMs.
+     * - maxDeltaMs: допустимый порог, задаётся источником (chat/but).
+     * Назначение:
+     * - Для chat ограничиваем изменение (5 минут), чтобы не было +2 часа после боя.
+     * - Для but.php допускаем без ограничений (Long.MAX_VALUE).
+     */
+    private static boolean shouldApplyServerTime(long serverMs, long maxDeltaMs) {
+        if (maxDeltaMs == Long.MAX_VALUE) return true;
+        if (ru.neverlands.abclient.utils.AppVars.Profile == null) return true;
+        if (ru.neverlands.abclient.utils.AppVars.Profile.ServDiff == Long.MIN_VALUE) return true;
+        long currentServerMs = System.currentTimeMillis() - ru.neverlands.abclient.utils.AppVars.Profile.ServDiff;
+        long delta = Math.abs(currentServerMs - serverMs);
+        if (delta > maxDeltaMs) {
+            Log.w(TAG, "Server time sync rejected: deltaMs=" + delta + ", maxDeltaMs=" + maxDeltaMs);
+            return false;
+        }
+        return true;
+    }
+
+    /**
+     * Применение серверного времени: сохраняет ServDiff и ServerDateTime.
+     * Зависимости:
+     * - AppVars.Profile.ServDiff: используется в UI (часы/чат) для смещения.
+     * - AppVars.ServerDateTime: хранит последнее известное серверное DateTime.
+     * Назначение:
+     * - Единая точка записи серверного времени для всех источников (but/chat).
+     */
+    private static void applyServerTime(long serverMs, String source) {
+        long diffMs = System.currentTimeMillis() - serverMs;
+        if (ru.neverlands.abclient.utils.AppVars.Profile != null) {
+            ru.neverlands.abclient.utils.AppVars.Profile.ServDiff = diffMs;
+        }
+        ru.neverlands.abclient.utils.AppVars.ServerDateTime = new Date(serverMs);
+        Log.d(TAG, "Server time sync (" + source + "): diffMs=" + diffMs);
     }
 }

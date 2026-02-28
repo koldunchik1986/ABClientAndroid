@@ -3,11 +3,15 @@ package ru.neverlands.abclient.utils;
 public class HelperStrings {
 
     /**
-     * Extracts the content between two strings.
-     * @param html The source string to search in.
-     * @param s1 The starting delimiter string.
-     * @param s2 The ending delimiter string.
-     * @return The substring between s1 and s2, or null if not found.
+     * Извлекает подстроку между двумя маркерами.
+     * Зависимости:
+     * - Обычный поиск по строке (indexOf), без regex и без учета вложенности.
+     * Назначение:
+     * - Используется парсерами HTML/JS (например, ButPhp) для извлечения значений.
+     * @param html Строка-источник.
+     * @param s1 Маркер начала.
+     * @param s2 Маркер окончания.
+     * @return Подстрока между s1 и s2 или null, если не найдено.
      */
     public static String subString(String html, String s1, String s2) {
         if (html == null || s1 == null || s2 == null) {
@@ -29,6 +33,17 @@ public class HelperStrings {
         return html.substring(p1, p2);
     }
 
+    /**
+     * Парсит список аргументов вида: "1,'text',abc".
+     * Зависимости:
+     * - Примитивный разбор по запятым и одиночным кавычкам.
+     * - Не поддерживает экранирование и вложенные кавычки.
+     * Назначение:
+     * - Вспомогательный метод для простых JS/HTML конструкций, где аргументы
+     *   передаются строкой (используется в старых обработчиках).
+     * @param str Строка с аргументами.
+     * @return Массив аргументов, каждый без внешних кавычек.
+     */
     public static String[] parseArguments(String str) {
         java.util.List<String> list = new java.util.ArrayList<>();
         if (str == null || str.isEmpty()) {

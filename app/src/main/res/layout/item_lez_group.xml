@@ -13,7 +13,8 @@
         android:layout_height="wrap_content"
         android:layout_weight="1"
         android:text="Группа"
-        android:textSize="15sp" />
+        android:textSize="15sp"
+        android:textColor="@color/ab_autoboi_text_primary" />
 
     <TextView
         android:id="@+id/tvGroupSelected"
