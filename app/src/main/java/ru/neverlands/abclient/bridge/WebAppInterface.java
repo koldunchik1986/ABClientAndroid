@@ -278,15 +278,15 @@ public class WebAppInterface {
 
     @JavascriptInterface
     public String chatFilter(String message) {
-        // TODO: Implement chat message parsing and event handling
-        Log.d("ChatFilter", message);
-        return message; // Return message unmodified for now
+        String safeMessage = message == null ? "" : message;
+        Log.d("ChatFilter", safeMessage);
+        return ru.neverlands.abclient.utils.ChatFilter.filter(safeMessage);
     }
 
     @JavascriptInterface
     public void chatUpdated() {
-        // TODO: Trigger UI refresh if needed
         Log.d("WebAppInterface", "Chat updated");
+        ru.neverlands.abclient.utils.Chat.chatUpdated();
     }
 
     @JavascriptInterface

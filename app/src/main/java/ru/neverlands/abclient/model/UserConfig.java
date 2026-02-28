@@ -89,6 +89,13 @@ public class UserConfig {
     public boolean TorgActive = false;
     public boolean DoGuamod = false;
 
+    public int ChatHeight = 115;
+    public int ChatDelay = 10;
+    public int ChatMode = 0;
+    public boolean ChatKeepLog = true;
+    public boolean DoAutoAnswer = false;
+    public boolean DoChatLevels = false;
+
     // --- Lez AutoBoi --- //
     public boolean LezDoAutoboi = true;
     public boolean LezDoWaitHp = false;
@@ -176,6 +183,13 @@ public class UserConfig {
                             contact.classId = classId;
                             this.contacts.put(name.toLowerCase(), contact);
                         }
+                    } else if ("chat".equals(tagName)) {
+                        this.ChatHeight = parseIntAttr(parser, "height", this.ChatHeight);
+                        this.ChatDelay = parseIntAttr(parser, "delay", this.ChatDelay);
+                        this.ChatMode = parseIntAttr(parser, "mode", this.ChatMode);
+                        this.ChatKeepLog = Boolean.parseBoolean(parser.getAttributeValue(null, "keepLog"));
+                        this.DoAutoAnswer = Boolean.parseBoolean(parser.getAttributeValue(null, "autoAnswer"));
+                        this.DoChatLevels = Boolean.parseBoolean(parser.getAttributeValue(null, "chatLevels"));
                     } else if ("autoboi".equals(tagName)) {
                         this.LezDoAutoboi = Boolean.parseBoolean(parser.getAttributeValue(null, "enabled"));
                         this.LezDoWaitHp = Boolean.parseBoolean(parser.getAttributeValue(null, "waitHp"));
@@ -291,6 +305,16 @@ public class UserConfig {
                 serializer.endTag(null, "contactentry");
             }
             serializer.endTag(null, "contacts");
+
+            // Настройки чата
+            serializer.startTag(null, "chat");
+            serializer.attribute(null, "height", String.valueOf(this.ChatHeight));
+            serializer.attribute(null, "delay", String.valueOf(this.ChatDelay));
+            serializer.attribute(null, "mode", String.valueOf(this.ChatMode));
+            serializer.attribute(null, "keepLog", String.valueOf(this.ChatKeepLog));
+            serializer.attribute(null, "autoAnswer", String.valueOf(this.DoAutoAnswer));
+            serializer.attribute(null, "chatLevels", String.valueOf(this.DoChatLevels));
+            serializer.endTag(null, "chat");
 
             // Сохранение настроек быстрых действий
             serializer.startTag(null, "fastactions");

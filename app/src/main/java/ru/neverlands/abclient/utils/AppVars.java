@@ -26,8 +26,10 @@ public class AppVars {
     public static String GuamodCode = "";
     public static String FightLink = "";
     public static String LastBoiLog = "";
+    public static String LastBoiEndLog = "";
     public static String LastBoiSostav = "";
     public static String LastBoiTravm = "";
+    public static String LastBoiUron = "";
     public static Date LastBoiTimer = new Date();
     public static long IdleTimer = 0;
     public static long LastMainPhp = 0;

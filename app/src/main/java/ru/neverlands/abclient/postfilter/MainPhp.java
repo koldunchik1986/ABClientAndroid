@@ -571,6 +571,10 @@ public class MainPhp {
             return html;
         }
 
+        if (!fight.IsBoi && !fight.IsWaitingForNextTurn) {
+            registerFightEnd(fight);
+        }
+
         // Этап 2: Уведомление о нападении при смене LogBoi
         // Аналог ParseFightLog + TrayBalloon в C# (MainPhp.cs)
         if (fight.IsBoi && fight.LogBoi != null && !fight.LogBoi.isEmpty()
@@ -578,6 +582,7 @@ public class MainPhp {
             android.util.Log.d(TAG, "mainPhpFight: NEW FIGHT detected! LogBoi changed: "
                     + AppVars.LastBoiLog + " -> " + fight.LogBoi);
             AppVars.LastBoiLog = fight.LogBoi;
+            fight.updateLastBoiFromLogs();
             notifyNewFight(fight);
         }
 
@@ -837,15 +842,21 @@ public class MainPhp {
             foeType = "";
         }
 
-        String message = "Нападение: " + fight.FoeName
-                + " [" + fight.FoeLevel + "]"
-                + " HP:" + fight.FoeCurrentHp + "/" + fight.FoeMaxHp
-                + foeType;
+        String foes = (AppVars.LastBoiSostav != null && !AppVars.LastBoiSostav.isEmpty())
+                ? AppVars.LastBoiSostav
+                : (fight.FoeName + " [" + fight.FoeLevel + "]");
+
+        String message = "Нападение: " + foes + foeType;
+
+        String messageHtml =
+                "<b><font color=#cc0000>Нападение:</font></b> " +
+                "<font color=#004bbb>" + foes + "</font>" +
+                foeType;
 
         android.util.Log.d(TAG, "notifyNewFight: " + message);
 
         Intent msgIntent = new Intent(AppVars.ACTION_ADD_CHAT_MESSAGE);
-        msgIntent.putExtra("message", "<font color=#ff8800><b>" + message + "</b></font>");
+        msgIntent.putExtra("message", messageHtml);
         LocalBroadcastManager.getInstance(AppVars.getContext()).sendBroadcast(msgIntent);
     }
 
@@ -869,6 +880,16 @@ public class MainPhp {
         Intent msgIntent = new Intent(AppVars.ACTION_ADD_CHAT_MESSAGE);
         msgIntent.putExtra("message", "<font color=#cc0000><b>" + message + "</b></font>");
         LocalBroadcastManager.getInstance(AppVars.getContext()).sendBroadcast(msgIntent);
+    }
+
+    private static void registerFightEnd(LezFight fight) {
+        String logId = fight != null ? fight.LogBoi : "";
+        if (logId == null || logId.isEmpty()) return;
+        if (!logId.equals(AppVars.LastBoiEndLog)) {
+            AppVars.LastBoiEndLog = logId;
+            ru.neverlands.abclient.utils.ChatStats.addFight();
+            android.util.Log.d(TAG, "registerFightEnd: fight counted, LogBoi=" + logId);
+        }
     }
 
     /**

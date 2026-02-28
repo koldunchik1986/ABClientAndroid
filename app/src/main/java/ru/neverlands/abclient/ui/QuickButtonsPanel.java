@@ -1,10 +1,15 @@
 package ru.neverlands.abclient.ui;
 
+import android.content.ClipData;
+import android.content.ClipboardManager;
 import android.content.Context;
 import android.content.Intent;
 import android.util.Log;
+import android.view.Gravity;
 import android.view.View;
 import android.widget.ImageButton;
+import android.widget.LinearLayout;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.appcompat.app.AlertDialog;
@@ -25,6 +30,7 @@ import ru.neverlands.abclient.manager.ContactsManager;
 import ru.neverlands.abclient.manager.FastActionManager;
 import ru.neverlands.abclient.manager.TabManager;
 import ru.neverlands.abclient.manager.AutoFunctionsManager;
+import ru.neverlands.abclient.utils.ChatStats;
 import androidx.fragment.app.FragmentActivity;
 
 /**
@@ -220,6 +226,8 @@ public class QuickButtonsPanel {
                 return null;
             case OPEN_LOGS:
                 return null;
+            case OPEN_STATS:
+                return null;
             case REFRESH_CONTACTS:
                 return null;
             case QUICK_SELF_RASS:
@@ -316,6 +324,8 @@ public class QuickButtonsPanel {
                 return R.drawable.ic_info;
             case OPEN_LOGS:
                 return R.drawable.ic_add;
+            case OPEN_STATS:
+                return R.drawable.ic_info;
             case REFRESH_CONTACTS:
                 return R.drawable.ic_refresh;
             case QUICK_SELF_RASS:
@@ -438,6 +448,9 @@ public class QuickButtonsPanel {
                 break;
             case OPEN_LOGS:
                 openLogs();
+                break;
+            case OPEN_STATS:
+                openStats();
                 break;
             case REFRESH_CONTACTS:
                 refreshContacts();
@@ -587,6 +600,136 @@ public class QuickButtonsPanel {
         Intent intent = new Intent(context, LogsActivity.class);
         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
         context.startActivity(intent);
+    }
+
+    private void openStats() {
+        boolean useNewStatsDialog = true;
+        if (useNewStatsDialog) {
+            int padding = dpToPx(16);
+            LinearLayout root = new LinearLayout(context);
+            root.setOrientation(LinearLayout.VERTICAL);
+            root.setPadding(padding, padding, padding, padding);
+
+            TextView statsText = new TextView(context);
+            statsText.setText(buildStatsText());
+            root.addView(statsText, new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            ));
+
+            LinearLayout actions = new LinearLayout(context);
+            actions.setOrientation(LinearLayout.HORIZONTAL);
+            actions.setGravity(Gravity.END);
+            LinearLayout.LayoutParams actionsParams = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            );
+            actionsParams.topMargin = dpToPx(8);
+            actions.setLayoutParams(actionsParams);
+
+            ImageButton resetButton = new ImageButton(context);
+            resetButton.setImageResource(R.drawable.ic_refresh);
+            resetButton.setBackgroundResource(android.R.color.transparent);
+            resetButton.setContentDescription("Сброс статистики");
+
+            ImageButton copyButton = new ImageButton(context);
+            copyButton.setImageResource(R.drawable.ic_copy);
+            copyButton.setBackgroundResource(android.R.color.transparent);
+            copyButton.setContentDescription("Копировать в буфер");
+
+            ImageButton closeButton = new ImageButton(context);
+            closeButton.setImageResource(R.drawable.ic_close);
+            closeButton.setBackgroundResource(android.R.color.transparent);
+            closeButton.setContentDescription("Закрыть");
+
+            int iconPad = dpToPx(6);
+            resetButton.setPadding(iconPad, iconPad, iconPad, iconPad);
+            copyButton.setPadding(iconPad, iconPad, iconPad, iconPad);
+            closeButton.setPadding(iconPad, iconPad, iconPad, iconPad);
+
+            actions.addView(resetButton);
+            actions.addView(copyButton);
+            actions.addView(closeButton);
+            root.addView(actions);
+
+            AlertDialog dialog = new AlertDialog.Builder(context)
+                .setTitle("Статистика")
+                .setView(root)
+                .create();
+
+            resetButton.setOnClickListener(v -> {
+                ChatStats.reset();
+                statsText.setText(buildStatsText());
+                Toast.makeText(context, "Статистика сброшена", Toast.LENGTH_SHORT).show();
+            });
+
+            copyButton.setOnClickListener(v -> {
+                ClipboardManager clipboard = (ClipboardManager) context.getSystemService(Context.CLIPBOARD_SERVICE);
+                if (clipboard != null) {
+                    ClipData clip = ClipData.newPlainText("stats", buildStatsText());
+                    clipboard.setPrimaryClip(clip);
+                    Toast.makeText(context, "Скопировано", Toast.LENGTH_SHORT).show();
+                } else {
+                    Toast.makeText(context, "Буфер недоступен", Toast.LENGTH_SHORT).show();
+                }
+            });
+
+            closeButton.setOnClickListener(v -> dialog.dismiss());
+
+            dialog.show();
+            return;
+        }
+        long xp = ru.neverlands.abclient.utils.ChatStats.getTotalXp();
+        java.util.List<String> loot = ru.neverlands.abclient.utils.ChatStats.getLootLog();
+        String logPath = ru.neverlands.abclient.utils.Chat.getCurrentLogPath();
+
+        StringBuilder sb = new StringBuilder();
+        sb.append("Опыт: ").append(xp).append("\n");
+        sb.append("Лут: ").append(loot.size()).append("\n\n");
+
+        if (!loot.isEmpty()) {
+            sb.append("Последние находки:\n");
+            int start = Math.max(0, loot.size() - 10);
+            for (int i = start; i < loot.size(); i++) {
+                sb.append("• ").append(loot.get(i)).append("\n");
+            }
+            sb.append("\n");
+        }
+
+        if (logPath != null && !logPath.isEmpty()) {
+            sb.append("Лог: ").append(logPath).append("\n");
+        }
+
+        new AlertDialog.Builder(context)
+            .setTitle("Статистика")
+            .setMessage(sb.toString())
+            .setPositiveButton("ОК", null)
+            .show();
+    }
+
+    private String buildStatsText() {
+        long xp = ChatStats.getTotalXp();
+        long fights = ChatStats.getTotalFights();
+        java.util.List<String> loot = ChatStats.getLootLog();
+
+        StringBuilder sb = new StringBuilder();
+        sb.append("Опыт: ").append(xp).append("\n");
+        sb.append("Поединки: ").append(fights).append("\n");
+        sb.append("Лут/дроп с ботов: ").append(loot.size()).append("\n\n");
+
+        if (!loot.isEmpty()) {
+            sb.append("Последние находки:\n");
+            int start = Math.max(0, loot.size() - 10);
+            for (int i = start; i < loot.size(); i++) {
+                sb.append("• ").append(loot.get(i)).append("\n");
+            }
+        }
+
+        return sb.toString().trim();
+    }
+
+    private int dpToPx(int dp) {
+        return Math.round(dp * context.getResources().getDisplayMetrics().density);
     }
 
     private void openPinfo() {

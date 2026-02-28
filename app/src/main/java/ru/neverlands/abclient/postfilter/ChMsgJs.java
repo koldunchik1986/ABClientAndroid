@@ -44,6 +44,10 @@ public class ChMsgJs {
                     "window.scrollBy(0,65000); if(window.AndroidBridge && AndroidBridge.chatUpdated){ AndroidBridge.chatUpdated(); }"
             );
             html = html.replace(
+                    "s += txt + \"<BR>\";",
+                    "s += (window.AndroidBridge && AndroidBridge.chatFilter ? AndroidBridge.chatFilter(txt) : txt) + \"<BR>\";"
+            );
+            html = html.replace(
                     "if(user2 != '') msgp[1] = msgp[1].replace('<SPAN>','<SPAN alt=\"%'+user2+'\">');",
                     "if(user2 != '') { if (txt.indexOf('%<clan>') >= 0) { msgp[1] = msgp[1].replace('<SPAN>','<SPAN alt=\"%%'+user2+'\">'); } " +
                             "else if (txt.indexOf('%<pair>') >= 0) { msgp[1] = msgp[1].replace('<SPAN>','<SPAN alt=\"%%%'+user2+'\">'); } " +

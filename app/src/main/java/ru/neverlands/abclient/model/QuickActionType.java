@@ -26,6 +26,7 @@ public enum QuickActionType {
     OPEN_CONTACTS("Открыть контакты", "open_contacts"),
     OPEN_PINFO("Открыть PINFO", "open_pinfo"),
     OPEN_LOGS("Открыть Логи", "open_logs"),
+    OPEN_STATS("Статистика", "open_stats"),
     REFRESH_CONTACTS("Обновить контакты", "refresh_contacts"),
     
     // Быстрые действия на себя

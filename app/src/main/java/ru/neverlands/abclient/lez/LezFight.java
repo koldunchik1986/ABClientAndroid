@@ -7,6 +7,8 @@ import java.util.Date;
 import java.util.List;
 import java.util.Locale;
 import java.util.Random;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import ru.neverlands.abclient.model.*;
 import ru.neverlands.abclient.utils.AppVars;
 import ru.neverlands.abclient.utils.HelperStrings;
@@ -16,6 +18,7 @@ import ru.neverlands.abclient.utils.HelperStrings;
  * Портировано из LezFight.cs.
  */
 public class LezFight {
+    private static final Pattern LOG_MEMBER_PATTERN = Pattern.compile("\\[1,\\d+,\"([^\"]+)\",(\\d+)");
     public boolean IsValid;
     public boolean IsBoi;
     public boolean IsWaitingForNextTurn;
@@ -600,6 +603,139 @@ public class LezFight {
     /**
      * Аналог C# проверки ftype >= 80 — опасный противник (человек или высокий ftype).
      */
+    /**
+     * Обновляет AppVars.LastBoiSostav/LastBoiTravm на основе логов боя.
+     * Аналог ParseFightLog в C#.
+     */
+    public void updateLastBoiFromLogs() {
+        try {
+            String fightty2 = (_fightty != null && _fightty.length > 2) ? Strip(_fightty[2]) : "";
+            AppVars.LastBoiSostav = "";
+            AppVars.LastBoiTravm = "";
+            AppVars.LastBoiTimer = new Date();
+
+            String ftmppic = "";
+            String ftmp = "";
+            switch (fightty2) {
+                case "10":
+                    ftmppic = "4";
+                    ftmp = "низкий";
+                    break;
+                case "30":
+                    ftmppic = "3";
+                    ftmp = "средний";
+                    break;
+                case "50":
+                    ftmppic = "2";
+                    ftmp = "высокий";
+                    break;
+                case "80":
+                case "100":
+                    ftmppic = "1";
+                    ftmp = "оч. высокий";
+                    break;
+                case "110":
+                    ftmppic = "0";
+                    ftmp = "травма";
+                    break;
+            }
+
+            if (!ftmppic.isEmpty()) {
+                AppVars.LastBoiTravm =
+                        "<img src=http://image.neverlands.ru/gameplay/injury" +
+                                ftmppic +
+                                ".gif alt=\"% травматичности: " +
+                                ftmp +
+                                "\" width=17 height=17 align=absmiddle>";
+            }
+
+            String log1 = HelperStrings.subString(_html, "var logs = ", ";");
+            if (log1 == null) return;
+
+            int start = log1.indexOf("\"Бой между\"");
+            if (start < 0) return;
+            start += "\"Бой между\"".length();
+            int end = log1.indexOf("\" начался", start);
+            if (end < 0) return;
+
+            String between = log1.substring(start, end);
+            int splitIdx = between.indexOf("\" и\",");
+            int splitLen = 0;
+            if (splitIdx >= 0) {
+                splitLen = 5;
+            } else {
+                splitIdx = between.indexOf("\" и\"");
+                if (splitIdx >= 0) {
+                    splitLen = 4;
+                }
+            }
+
+            List<String> opponents;
+            String myNick = (AppVars.Profile != null && AppVars.Profile.UserNick != null)
+                    ? AppVars.Profile.UserNick
+                    : "";
+
+            if (splitIdx >= 0) {
+                String left = between.substring(0, splitIdx);
+                String right = between.substring(splitIdx + splitLen);
+
+                List<String> leftMembers = extractMembers(left);
+                List<String> rightMembers = extractMembers(right);
+
+                boolean leftHasMe = containsNick(leftMembers, myNick);
+                boolean rightHasMe = containsNick(rightMembers, myNick);
+                opponents = (leftHasMe && !rightHasMe) ? rightMembers
+                        : (rightHasMe && !leftHasMe) ? leftMembers
+                        : leftMembers;
+            } else {
+                opponents = extractMembers(between);
+                if (!myNick.isEmpty()) {
+                    opponents.removeIf(m -> m != null && m.startsWith(myNick + "["));
+                }
+            }
+
+            if (opponents != null && !opponents.isEmpty()) {
+                AppVars.LastBoiSostav = joinMembers(opponents);
+            }
+        } catch (Exception e) {
+            Log.e("LezFight", "updateLastBoiFromLogs error: " + e.getMessage());
+        }
+    }
+
+    private List<String> extractMembers(String source) {
+        List<String> result = new ArrayList<>();
+        if (source == null || source.isEmpty()) return result;
+        Matcher matcher = LOG_MEMBER_PATTERN.matcher(source);
+        while (matcher.find()) {
+            String name = matcher.group(1);
+            String level = matcher.group(2);
+            if (name != null && !name.isEmpty() && level != null && !level.isEmpty()) {
+                result.add(name + "[" + level + "]");
+            }
+        }
+        return result;
+    }
+
+    private boolean containsNick(List<String> members, String nick) {
+        if (members == null || members.isEmpty() || nick == null || nick.isEmpty()) return false;
+        for (String member : members) {
+            if (member != null && member.startsWith(nick + "[")) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private String joinMembers(List<String> members) {
+        StringBuilder sb = new StringBuilder();
+        for (String member : members) {
+            if (member == null || member.isEmpty()) continue;
+            if (sb.length() > 0) sb.append(", ");
+            sb.append(member);
+        }
+        return sb.toString();
+    }
+
     public boolean IsDangerousFoe() {
         return _ftype >= 80;
     }
