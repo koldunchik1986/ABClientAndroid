@@ -22,7 +22,7 @@ public class Chat {
     private static boolean critical = false;
     private static long lastAnswerTime = 0;
     private static String chatLogFileName;
-    private static final SimpleDateFormat LOG_TS_FORMAT = new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US);
+    private static final SimpleDateFormat LOG_TS_FORMAT = new SimpleDateFormat("yyyyMMdd", Locale.US);
     private static final Handler HANDLER = new Handler(Looper.getMainLooper());
     private static final Runnable SEND_RUNNABLE = new Runnable() {
         @Override

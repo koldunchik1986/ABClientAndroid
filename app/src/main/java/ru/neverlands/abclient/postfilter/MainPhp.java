@@ -9,7 +9,9 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
 import java.util.List;
+import java.util.Locale;
 import java.util.Random;
+import java.text.SimpleDateFormat;
 
 import android.content.Intent;
 
@@ -846,9 +848,14 @@ public class MainPhp {
                 ? AppVars.LastBoiSostav
                 : (fight.FoeName + " [" + fight.FoeLevel + "]");
 
+        Date serverTime = AppVars.ServerDateTime != null ? AppVars.ServerDateTime : new Date();
+        String timeStr = new SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(serverTime);
+        String timeHtml = "<font class=chattime>&nbsp;" + timeStr + "&nbsp;</font> ";
+
         String message = "Нападение: " + foes + foeType;
 
         String messageHtml =
+                timeHtml +
                 "<b><font color=#cc0000>Нападение:</font></b> " +
                 "<font color=#004bbb>" + foes + "</font>" +
                 foeType;
