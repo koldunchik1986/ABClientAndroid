@@ -109,6 +109,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     private int activeFightCaptchaImageHash = 0;
     private String activeFightCaptchaUrl = "";
     private String activeFightFinishUrl = "";
+    private boolean replacingFightCaptchaDialog = false;
 
     // Доступ к ViewModel боя для других компонентов/фрагментов.
     public FightViewModel getFightViewModel() {
@@ -234,6 +235,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                 return;
             }
             Log.d(TAG, "showCaptchaDialog: challenge changed, replacing active dialog");
+            replacingFightCaptchaDialog = true;
             activeFightCaptchaDialog.dismiss();
         }
         AppVars.IsFightCaptchaDialogVisible = true;
@@ -281,25 +283,40 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         inputRow.addView(refreshButton);
         layout.addView(inputRow);
 
+        final boolean[] captchaSubmitted = {false};
         AlertDialog dialog = new androidx.appcompat.app.AlertDialog.Builder(this)
                 .setTitle("Введите капчу для завершения боя")
                 .setView(layout)
                 .setPositiveButton("ОК", (d, which) -> {
                     String code = input.getText().toString().trim();
                     if (code.isEmpty()) return;
+                    captchaSubmitted[0] = true;
+                    if (AppVars.ResumeAutoboiAfterCaptcha
+                            && AppVars.Profile != null
+                            && AppVars.Profile.LezDoAutoboi) {
+                        AppVars.Autoboi = ru.neverlands.abclient.model.AutoboiState.AutoboiOn;
+                        Log.d(TAG, "showCaptchaDialog: restoring autoboi after captcha submit");
+                    }
+                    AppVars.ResumeAutoboiAfterCaptcha = false;
                     String submitUrl = appendOrReplaceCaptchaCode(finishUrl, code);
                     Log.d(TAG, "showCaptchaDialog: submitting " + submitUrl);
                     binding.appBarMain.contentMain.webView.loadUrl(submitUrl);
                 })
-                .setNegativeButton("Отмена", null)
+                .setNegativeButton("Отмена", (d, which) -> AppVars.ResumeAutoboiAfterCaptcha = false)
                 .create();
 
+        dialog.setOnCancelListener(d -> AppVars.ResumeAutoboiAfterCaptcha = false);
         dialog.setOnDismissListener(d -> {
             stopFightCaptchaAutoRefresh();
             AppVars.IsFightCaptchaDialogVisible = false;
             activeFightCaptchaDialog = null;
             activeFightCaptchaUrl = "";
             activeFightFinishUrl = "";
+            if (replacingFightCaptchaDialog) {
+                replacingFightCaptchaDialog = false;
+            } else if (!captchaSubmitted[0]) {
+                AppVars.ResumeAutoboiAfterCaptcha = false;
+            }
         });
         activeFightCaptchaDialog = dialog;
         activeFightCaptchaUrl = captchaUrl == null ? "" : captchaUrl;

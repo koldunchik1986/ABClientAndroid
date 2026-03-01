@@ -35,6 +35,7 @@ public class AppVars {
     public static volatile byte[] LastFightCaptchaImageBytes = null;
     // Флаг "диалог капчи завершения боя сейчас открыт/показывается".
     public static volatile boolean IsFightCaptchaDialogVisible = false;
+    public static volatile boolean ResumeAutoboiAfterCaptcha = false;
     public static String LastBoiLog = "";
     public static String LastBoiEndLog = "";
     public static String LastBoiSostav = "";

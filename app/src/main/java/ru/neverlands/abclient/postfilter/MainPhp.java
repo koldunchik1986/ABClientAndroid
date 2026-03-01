@@ -704,6 +704,7 @@ public class MainPhp {
             if (needCaptcha && fightLink != null && !fightLink.isEmpty()) {
                 android.util.Log.d(TAG, "mainPhpFight: CAPTCHA required, stopping autoboi and showing dialog: " + captchaUrl);
 
+                AppVars.ResumeAutoboiAfterCaptcha = true;
                 AppVars.Autoboi = AutoboiState.AutoboiOff;
                     AppVars.ContentMainPhp = html; // отрисовать форму с капчей
                     showFightCaptchaDialogOnce(captchaUrl, fightLink, fight.LogBoi);
