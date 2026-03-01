@@ -275,23 +275,23 @@ private static String processMainPhpFight(String html) {
 }
 ```
 
-- [ ] Добавить `processMainPhpFight()` в `MainPhp.java`
+- [x] Добавить `processMainPhpFight()` в `MainPhp.java`
 - [ ] Вызывать при обнаружении `var fight_ty = [`
-- [ ] Добавить уведомление в чат при остановке боя
+- [x] Добавить уведомление в чат при остановке боя
 - [ ] Обрабатывать переход состояний Autoboi → Timeout → AutoboiOn
 
 ### Этап 2: Уведомление о нападении
 
 **Задача:** При новом бое (смене LogBoi) показывать уведомление в чат.
 
-- [ ] Добавить в `LezFight.Parse()` вызов `ParseFightLog()` при смене LogBoi
-- [ ] Парсить имя, уровень, тип противника
-- [ ] Отправлять в чат через `AppVars.ACTION_ADD_CHAT_MESSAGE`:
+- [x] Добавить в `LezFight.Parse()` вызов `ParseFightLog()` при смене LogBoi
+- [x] Парсить имя, уровень, тип противника
+- [x] Отправлять в чат через `AppVars.ACTION_ADD_CHAT_MESSAGE`:
   ```
   Нападение: Орк [15] HP:120/200 MA:30/50
   (опасный бой!)
   ```
-- [ ] Добавить `AppVars.LastBoiLog` обновление
+- [x] Добавить `AppVars.LastBoiLog` обновление
 
 **Примечание:** `AppVars.LastBoiLog` уже есть в Android AppVars.java ✅
 
@@ -450,7 +450,7 @@ profile.LezGroups = new ArrayList<>(editedGroups); // deep copy
 ProfileManager.save(profile, context);
 ```
 
-- [ ] Создать `AutoBoiSettingsFragment.java` (DialogFragment, 4 вкладки)
+- [x] Создать `AutoBoiSettingsFragment.java` (DialogFragment, 4 вкладки)
 - [ ] Создать XML layout файлы для каждой вкладки
 - [ ] Реализовать `loadSettings()` / `saveSettings()`
 - [ ] Реализовать `loadGroup()` / `saveGroup()`
