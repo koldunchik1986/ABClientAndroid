@@ -167,6 +167,14 @@ public class WebViewRequestInterceptor {
             byte[] bytes = readAllBytes(responseStream);
             Log.d(TAG, "Raw bytes: " + bytes.length + " for " + urlString);
 
+            // Сохраняем свежие байты картинки капчи завершения боя для отображения в popup без повторного HTTP-запроса.
+            if (urlString.contains("/modules/code/code.php")) {
+                ru.neverlands.abclient.utils.AppVars.LastFightCaptchaImageBytes = bytes;
+                ru.neverlands.abclient.utils.AppVars.LastFightCaptchaImageAtMs = System.currentTimeMillis();
+                ru.neverlands.abclient.utils.AppVars.LastFightCaptchaImageUrl = urlString;
+                Log.d(TAG, "Captured fight captcha image BYTES: " + bytes.length + " for " + urlString);
+            }
+
             // Log first bytes for diagnostics
             if (bytes.length > 0) {
                 StringBuilder hex = new StringBuilder();

@@ -25,10 +25,16 @@ public class AppVars {
     public static ru.neverlands.abclient.model.AutoboiState Autoboi = ru.neverlands.abclient.model.AutoboiState.AutoboiOff;
     public static String GuamodCode = "";
     public static String FightLink = "";
+    // URL боевой капчи (аналог AppVars.CodeAddress в C#).
+    public static String CodeAddress = "";
     // Последняя замеченная URL-картинка капчи завершения боя (/modules/code/code.php?...).
     public static volatile String LastFightCaptchaImageUrl = "";
     // Время (ms) когда была замечена LastFightCaptchaImageUrl.
     public static volatile long LastFightCaptchaImageAtMs = 0L;
+    // Последние сырые байты PNG-капчи, сохранённые в WebViewRequestInterceptor.
+    public static volatile byte[] LastFightCaptchaImageBytes = null;
+    // Флаг "диалог капчи завершения боя сейчас открыт/показывается".
+    public static volatile boolean IsFightCaptchaDialogVisible = false;
     public static String LastBoiLog = "";
     public static String LastBoiEndLog = "";
     public static String LastBoiSostav = "";

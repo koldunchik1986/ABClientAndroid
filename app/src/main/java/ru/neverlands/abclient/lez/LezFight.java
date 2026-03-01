@@ -553,8 +553,25 @@ public class LezFight {
     private boolean ParseNonFight() {
         // Состояния вне активного хода (ожидание, окончание боя и т.п.).
         IsWaitingForNextTurn = false;
+        AppVars.CodeAddress = "";
         try {
             String state = (_fightty != null && _fightty.length > 4) ? Strip(_fightty[4]) : "";
+            if ("2".equals(state)) {
+                _fexp = ParseString(_html, "var fexp = [", 0);
+                if (_fexp == null || _fexp.length < 14) {
+                    return false;
+                }
+                String captchaToken = Strip(_fexp[4]);
+                String captchaFlag = (_fexp.length > 6) ? Strip(_fexp[6]) : "";
+                boolean needManualCaptcha = captchaToken.length() > 2 && "0".equals(captchaFlag);
+                if (needManualCaptcha) {
+                    AppVars.CodeAddress = "http://neverlands.ru/modules/code/code.php?" + captchaToken;
+                    BuildFightLink(true);
+                } else {
+                    BuildFightLink(false);
+                }
+                return true;
+            }
             if ("3".equals(state)) {
                 // Ожидание хода противника (аналог C# ParseNonFight() case "3").
                 String vcode = (_fightty != null && _fightty.length > 6) ? Strip(_fightty[6]) : "";
@@ -566,17 +583,11 @@ public class LezFight {
         }
 
         // Логика завершения боя - парсим fexp для ссылки завершения
-        _fexp = ParseString(_html, "var fexp = [", 0);
-        
-        if (_fexp != null && _fexp.length >= 14) {
-            BuildFightLink();
-        }
-        
         return true;
     }
     
     // Сбор ссылки "Завершить бой" из fexp (аналог C#).
-    private void BuildFightLink() {
+    private void BuildFightLink(boolean withCaptchaPlaceholder) {
         if (_fexp == null || _fexp.length < 14) return;
         
         try {
@@ -591,7 +602,7 @@ public class LezFight {
             String fexp12 = Strip(_fexp[12]);
             String fexp13 = Strip(_fexp[13]);
             
-            String fightLink = "main.php?get_id=61&act=7&fexp=" + fexp0 +
+            String fightLink = (withCaptchaPlaceholder ? "main.php?code=????&get_id=61&act=7&fexp=" : "main.php?get_id=61&act=7&fexp=") + fexp0 +
                 "&fres=" + fexp1 +
                 "&vcode=" + fexp3 +
                 "&min1=" + fexp8 +
@@ -603,7 +614,8 @@ public class LezFight {
                 "&ftype=" + fexp5;
             
             AppVars.FightLink = fightLink;
-            android.util.Log.d("LezFight", "BuildFightLink: " + fightLink);
+            android.util.Log.d("LezFight", "BuildFightLink(" + (withCaptchaPlaceholder ? "captcha" : "normal")
+                    + "): " + fightLink + ", codeAddress=" + AppVars.CodeAddress);
         } catch (Exception e) {
             android.util.Log.e("LezFight", "BuildFightLink error: " + e.getMessage());
         }

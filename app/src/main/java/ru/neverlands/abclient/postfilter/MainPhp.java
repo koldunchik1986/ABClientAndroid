@@ -37,6 +37,9 @@ public class MainPhp {
     private static volatile long lastAutoFinishRedirectAtMs = 0L;
     // Защита от повторного показа одного и того же диалога капчи завершения боя.
     private static volatile String lastFightCaptchaDialogKey = "";
+    private static volatile long lastFightCaptchaDialogAtMs = 0L;
+    private static volatile String lastCaptchaRejectKey = "";
+    private static volatile long lastCaptchaRejectAtMs = 0L;
 
     // HTML‑заглушка "ожидаем ход противника" с авто‑обновлением.
     private static String buildWaitForTurnAutoRefreshHtml(String reloadUrl, int delayMs) {
@@ -68,11 +71,32 @@ public class MainPhp {
                 "</script></body></html>";
     }
 
+    private static String buildCaptchaDialogHoldHtml() {
+        return HtmlUtils.GENERATED_PAGE_MARKER +
+                "<html><head><meta http-equiv=\"Content-Type\" content=\"text/html; charset=windows-1251\">" +
+                "<title>ABClient</title></head><body>" +
+                "Ожидание ввода капчи...<br>" +
+                "Введите код во всплывающем окне." +
+                "</body></html>";
+    }
+
     // URL капчи из уже загруженного HTML + fallback по последнему запросу /modules/code/code.php.
     private static String resolveFightCaptchaUrl(String html) {
+        if (AppVars.CodeAddress != null && !AppVars.CodeAddress.isEmpty()) {
+            return AppVars.CodeAddress;
+        }
+
         String captchaUrl = extractCaptchaUrl(html);
         if (captchaUrl != null && !captchaUrl.isEmpty()) {
             return captchaUrl;
+        }
+
+        // В части ответов сервера img src с code.php отсутствует в HTML,
+        // но token капчи есть в var fexp[4] (как в fight_v10.js: code.php?'+fexp[4]).
+        String captchaUrlFromFexp = extractCaptchaUrlFromFexp(html);
+        if (captchaUrlFromFexp != null && !captchaUrlFromFexp.isEmpty()) {
+            android.util.Log.d(TAG, "resolveFightCaptchaUrl: built from fexp[4]: " + captchaUrlFromFexp);
+            return captchaUrlFromFexp;
         }
 
         String fallbackUrl = AppVars.LastFightCaptchaImageUrl;
@@ -85,6 +109,30 @@ public class MainPhp {
             }
         }
         return null;
+    }
+
+    private static String extractCaptchaUrlFromFexp(String html) {
+        try {
+            if (html == null || html.isEmpty()) {
+                return null;
+            }
+            String rawFexp = HelperStrings.subString(html, "var fexp = [", "];");
+            if (rawFexp == null || rawFexp.isEmpty()) {
+                return null;
+            }
+            String[] parts = rawFexp.split(",");
+            if (parts.length < 5) {
+                return null;
+            }
+            String captchaToken = parts[4].replace("\"", "").replace("'", "").trim();
+            if (captchaToken.length() <= 2) {
+                return null;
+            }
+            return "http://neverlands.ru/modules/code/code.php?" + captchaToken;
+        } catch (Exception e) {
+            android.util.Log.e(TAG, "extractCaptchaUrlFromFexp error", e);
+            return null;
+        }
     }
 
     // Центральный обработчик main.php (порт логики из C# MainPhp.cs).
@@ -651,22 +699,19 @@ public class MainPhp {
 
             String captchaUrl = resolveFightCaptchaUrl(html);
             boolean needCaptcha = captchaUrl != null && !captchaUrl.isEmpty();
+            String fightLink = AppVars.FightLink;
 
-            if (!AppVars.FightLink.isEmpty() && !AppVars.FightLink.contains("????")) {
-                android.util.Log.d(TAG, "mainPhpFight: FightLink found, redirecting to complete fight: " + AppVars.FightLink);
-                String fightLink = AppVars.FightLink;
+            if (needCaptcha && fightLink != null && !fightLink.isEmpty()) {
+                android.util.Log.d(TAG, "mainPhpFight: CAPTCHA required, stopping autoboi and showing dialog: " + captchaUrl);
 
-                if (needCaptcha) {
-                    android.util.Log.d(TAG, "mainPhpFight: CAPTCHA required, stopping autoboi and showing dialog: " + captchaUrl);
-                    AppVars.Autoboi = AutoboiState.AutoboiOff;
+                AppVars.Autoboi = AutoboiState.AutoboiOff;
                     AppVars.ContentMainPhp = html; // отрисовать форму с капчей
-                    AppVars.LastFightCaptchaImageUrl = "";
-                    AppVars.LastFightCaptchaImageAtMs = 0L;
                     showFightCaptchaDialogOnce(captchaUrl, fightLink, fight.LogBoi);
                     // отдаем страницу с капчей напрямую
                     return html;
                 }
 
+            if (fightLink != null && !fightLink.isEmpty() && !fightLink.contains("????")) {
                 long now = System.currentTimeMillis();
                 long sinceLast = now - lastAutoFinishRedirectAtMs;
                 if (sinceLast >= 0 && sinceLast < AUTO_FINISH_MIN_DELAY_MS) {
@@ -713,9 +758,17 @@ public class MainPhp {
                     finishLink = address;
                 }
                 android.util.Log.d(TAG, "mainPhpFight: manual mode CAPTCHA detected, showing dialog: " + manualCaptchaUrl);
-                AppVars.LastFightCaptchaImageUrl = "";
-                AppVars.LastFightCaptchaImageAtMs = 0L;
+                boolean fromCaptchaSubmit = address != null && address.contains("code=");
+                if (fromCaptchaSubmit) {
+                    String submittedCode = getUrlParam(address, "code");
+                    String submittedVcode = getUrlParam(address, "vcode");
+                    android.util.Log.d(TAG, "mainPhpFight: captcha submit still requires challenge, code="
+                            + submittedCode + ", vcode=" + submittedVcode);
+                    notifyCaptchaRejectedOnce(submittedCode, submittedVcode);
+                }
                 showFightCaptchaDialogOnce(manualCaptchaUrl, finishLink, fight.LogBoi);
+                AppVars.ContentMainPhp = html;
+                return html;
             }
         }
 
@@ -881,24 +934,36 @@ public class MainPhp {
         if (captchaUrl == null || captchaUrl.isEmpty() || finishUrl == null || finishUrl.isEmpty()) {
             return;
         }
+        long now = System.currentTimeMillis();
 
         String normalizedFinishUrl = finishUrl;
         if (!normalizedFinishUrl.startsWith("http")) {
             normalizedFinishUrl = "http://neverlands.ru/" + normalizedFinishUrl.replaceFirst("^/+", "");
         }
 
-        String key = (logBoi == null ? "" : logBoi) + "|" + captchaUrl + "|" + normalizedFinishUrl;
-        if (key.equals(lastFightCaptchaDialogKey)) {
+        String fightExp = getUrlParam(normalizedFinishUrl, "fexp");
+        String finishVcode = getUrlParam(normalizedFinishUrl, "vcode");
+        String normalizedCaptchaUrl = captchaUrl.replaceFirst("^https://", "http://");
+        String key = (logBoi == null ? "" : logBoi) + "|" + (fightExp == null ? "" : fightExp) + "|"
+                + (finishVcode == null ? "" : finishVcode) + "|" + normalizedCaptchaUrl;
+        if (AppVars.IsFightCaptchaDialogVisible && key.equals(lastFightCaptchaDialogKey) && (now - lastFightCaptchaDialogAtMs) < 1500L) {
+            android.util.Log.d(TAG, "showFightCaptchaDialogOnce: dialog already visible for same key, skip");
+            return;
+        }
+        if (key.equals(lastFightCaptchaDialogKey) && (now - lastFightCaptchaDialogAtMs) < 3000L) {
             android.util.Log.d(TAG, "showFightCaptchaDialogOnce: duplicate key, skip dialog");
             return;
         }
         lastFightCaptchaDialogKey = key;
+        lastFightCaptchaDialogAtMs = now;
 
         if (AppVars.getContext() == null) {
             android.util.Log.w(TAG, "showFightCaptchaDialogOnce: context is null, skip dialog");
+            AppVars.IsFightCaptchaDialogVisible = false;
             return;
         }
 
+        AppVars.IsFightCaptchaDialogVisible = true;
         Intent intent = new Intent(AppVars.ACTION_SHOW_CAPTCHA);
         intent.putExtra("captchaUrl", captchaUrl);
         intent.putExtra("finishUrl", normalizedFinishUrl);
@@ -1056,6 +1121,25 @@ public class MainPhp {
             message += "выход из боя; ";
         }
         
+        Intent msgIntent = new Intent(AppVars.ACTION_ADD_CHAT_MESSAGE);
+        msgIntent.putExtra("message", "<font color=#cc0000><b>" + message + "</b></font>");
+        LocalBroadcastManager.getInstance(AppVars.getContext()).sendBroadcast(msgIntent);
+    }
+
+    private static void notifyCaptchaRejectedOnce(String submittedCode, String submittedVcode) {
+        if (AppVars.getContext() == null) return;
+
+        String code = submittedCode == null ? "" : submittedCode;
+        String vcode = submittedVcode == null ? "" : submittedVcode;
+        String key = code + "|" + vcode;
+        long now = System.currentTimeMillis();
+        if (key.equals(lastCaptchaRejectKey) && (now - lastCaptchaRejectAtMs) < 2000L) {
+            return;
+        }
+        lastCaptchaRejectKey = key;
+        lastCaptchaRejectAtMs = now;
+
+        String message = "Капча не принята сервером. Введите код заново.";
         Intent msgIntent = new Intent(AppVars.ACTION_ADD_CHAT_MESSAGE);
         msgIntent.putExtra("message", "<font color=#cc0000><b>" + message + "</b></font>");
         LocalBroadcastManager.getInstance(AppVars.getContext()).sendBroadcast(msgIntent);

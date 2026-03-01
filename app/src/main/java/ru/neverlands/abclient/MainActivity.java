@@ -52,6 +52,7 @@ import java.net.URLConnection;
 import java.net.URL;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
@@ -100,6 +101,13 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     private int chatRefreshSeconds = CHAT_REFRESH_DEFAULT_SECONDS;
     private int chatFyo = 0;
     private boolean chatLatrus = false;
+    private AlertDialog activeFightCaptchaDialog;
+    private final Handler fightCaptchaHandler = new Handler(Looper.getMainLooper());
+    private Runnable fightCaptchaRefreshRunnable;
+    private long activeFightCaptchaImageAtMs = 0L;
+    private int activeFightCaptchaImageHash = 0;
+    private String activeFightCaptchaUrl = "";
+    private String activeFightFinishUrl = "";
 
     // Доступ к ViewModel боя для других компонентов/фрагментов.
     public FightViewModel getFightViewModel() {
@@ -217,6 +225,17 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
      */
     private void showCaptchaDialog(String captchaUrl, String finishUrl) {
         Log.d(TAG, "showCaptchaDialog: " + captchaUrl + " -> " + finishUrl);
+        if (activeFightCaptchaDialog != null && activeFightCaptchaDialog.isShowing()) {
+            boolean sameCaptcha = isSameCaptchaUrl(captchaUrl, activeFightCaptchaUrl);
+            boolean sameFinish = isSameFightFinishUrl(finishUrl, activeFightFinishUrl);
+            if (sameCaptcha && sameFinish) {
+                Log.d(TAG, "showCaptchaDialog: already visible with same challenge, skip duplicate");
+                return;
+            }
+            Log.d(TAG, "showCaptchaDialog: challenge changed, replacing active dialog");
+            activeFightCaptchaDialog.dismiss();
+        }
+        AppVars.IsFightCaptchaDialogVisible = true;
 
         int imageHeightPx = (int) (getResources().getDisplayMetrics().density * 120);
         android.widget.ProgressBar progressBar = new android.widget.ProgressBar(this);
@@ -231,6 +250,13 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
 
         android.widget.EditText input = new android.widget.EditText(this);
         input.setInputType(android.text.InputType.TYPE_CLASS_NUMBER);
+        input.setFilters(new android.text.InputFilter[]{
+                new android.text.InputFilter.LengthFilter(5)
+        });
+
+        android.widget.Button refreshButton = new android.widget.Button(this);
+        refreshButton.setText("↻");
+        refreshButton.setAllCaps(false);
         input.setHint("Код с картинки");
 
         android.widget.LinearLayout layout = new android.widget.LinearLayout(this);
@@ -239,28 +265,122 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         layout.setPadding(pad, pad, pad, pad);
         layout.addView(progressBar);
         layout.addView(imageView);
-        layout.addView(input);
+        android.widget.LinearLayout inputRow = new android.widget.LinearLayout(this);
+        inputRow.setOrientation(android.widget.LinearLayout.HORIZONTAL);
+        inputRow.setLayoutParams(new android.widget.LinearLayout.LayoutParams(
+                android.view.ViewGroup.LayoutParams.MATCH_PARENT,
+                android.view.ViewGroup.LayoutParams.WRAP_CONTENT
+        ));
+        android.widget.LinearLayout.LayoutParams inputParams = new android.widget.LinearLayout.LayoutParams(
+                0,
+                android.view.ViewGroup.LayoutParams.WRAP_CONTENT,
+                1f
+        );
+        inputRow.addView(input, inputParams);
+        inputRow.addView(refreshButton);
+        layout.addView(inputRow);
 
-        new androidx.appcompat.app.AlertDialog.Builder(this)
+        AlertDialog dialog = new androidx.appcompat.app.AlertDialog.Builder(this)
                 .setTitle("Введите капчу для завершения боя")
                 .setView(layout)
                 .setPositiveButton("ОК", (d, which) -> {
                     String code = input.getText().toString().trim();
                     if (code.isEmpty()) return;
-                    String submitUrl = finishUrl;
-                    String encodedCode = Uri.encode(code);
-                    if (submitUrl.contains("code=")) {
-                        submitUrl = submitUrl.replaceAll("code=[^&]*", "code=" + encodedCode);
-                    } else {
-                        submitUrl += (submitUrl.contains("?") ? "&" : "?") + "code=" + encodedCode;
-                    }
+                    String submitUrl = appendOrReplaceCaptchaCode(finishUrl, code);
                     Log.d(TAG, "showCaptchaDialog: submitting " + submitUrl);
                     binding.appBarMain.contentMain.webView.loadUrl(submitUrl);
                 })
                 .setNegativeButton("Отмена", null)
-                .show();
+                .create();
 
+        dialog.setOnDismissListener(d -> {
+            stopFightCaptchaAutoRefresh();
+            AppVars.IsFightCaptchaDialogVisible = false;
+            activeFightCaptchaDialog = null;
+            activeFightCaptchaUrl = "";
+            activeFightFinishUrl = "";
+        });
+        activeFightCaptchaDialog = dialog;
+        activeFightCaptchaUrl = captchaUrl == null ? "" : captchaUrl;
+        activeFightFinishUrl = finishUrl == null ? "" : finishUrl;
+        dialog.show();
+
+        dialog.setOnShowListener(d -> {
+            android.widget.Button positiveButton = dialog.getButton(AlertDialog.BUTTON_POSITIVE);
+            if (positiveButton != null) {
+                positiveButton.setEnabled(false);
+            }
+            input.addTextChangedListener(new android.text.TextWatcher() {
+                @Override
+                public void beforeTextChanged(CharSequence s, int start, int count, int after) { }
+
+                @Override
+                public void onTextChanged(CharSequence s, int start, int before, int count) { }
+
+                @Override
+                public void afterTextChanged(android.text.Editable s) {
+                    String value = s == null ? "" : s.toString().trim();
+                    boolean enabled = false;
+                    if (!value.isEmpty() && value.length() <= 5) {
+                        try {
+                            int numeric = Integer.parseInt(value);
+                            enabled = numeric >= 0 && numeric <= 99999;
+                        } catch (NumberFormatException ignored) {
+                            enabled = false;
+                        }
+                    }
+                    android.widget.Button btn = dialog.getButton(AlertDialog.BUTTON_POSITIVE);
+                    if (btn != null) {
+                        btn.setEnabled(enabled);
+                    }
+                }
+            });
+        });
+
+        activeFightCaptchaImageAtMs = 0L;
+        activeFightCaptchaImageHash = 0;
         loadCaptchaImageAsync(captchaUrl, imageView, progressBar);
+        refreshButton.setOnClickListener(v -> {
+            activeFightCaptchaImageAtMs = 0L;
+            activeFightCaptchaImageHash = 0;
+            updateCaptchaImageFromCaptured(imageView, progressBar, captchaUrl, true);
+        });
+        startFightCaptchaAutoRefresh(imageView, progressBar, captchaUrl);
+    }
+
+    /**
+     * Формирует URL завершения боя с корректным параметром {@code code=} для капчи.
+     * Меняется только query-параметр {@code code}; параметр {@code vcode} не затрагивается.
+     */
+    private String appendOrReplaceCaptchaCode(String finishUrl, String code) {
+        String submitUrl = finishUrl == null ? "" : finishUrl;
+        String encodedCode = Uri.encode(code == null ? "" : code);
+        if (submitUrl.isEmpty()) {
+            return "code=" + encodedCode;
+        }
+
+        String fragment = "";
+        int fragmentIndex = submitUrl.indexOf('#');
+        if (fragmentIndex >= 0) {
+            fragment = submitUrl.substring(fragmentIndex);
+            submitUrl = submitUrl.substring(0, fragmentIndex);
+        }
+
+        Pattern codeParamPattern = Pattern.compile("([?&])code=[^&]*");
+        Matcher codeMatcher = codeParamPattern.matcher(submitUrl);
+        if (codeMatcher.find()) {
+            submitUrl = codeMatcher.replaceFirst("$1code=" + encodedCode);
+        } else {
+            int queryIndex = submitUrl.indexOf('?');
+            if (queryIndex >= 0) {
+                String base = submitUrl.substring(0, queryIndex);
+                String query = submitUrl.substring(queryIndex + 1);
+                submitUrl = base + "?code=" + encodedCode + (query.isEmpty() ? "" : "&" + query);
+            } else {
+                submitUrl = submitUrl + "?code=" + encodedCode;
+            }
+        }
+        return submitUrl + fragment;
     }
 
     // Локальные события: чат, загрузка URL, JS, капча, авто-рыбалка.
@@ -285,6 +405,35 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     private void loadCaptchaImageAsync(String captchaUrl, android.widget.ImageView imageView, android.widget.ProgressBar progressBar) {
         progressBar.setVisibility(View.VISIBLE);
         imageView.setImageDrawable(null);
+        if (updateCaptchaImageFromCaptured(imageView, progressBar, captchaUrl, true)) {
+            return;
+        }
+        boolean allowNetworkFallback = false;
+        if (!allowNetworkFallback) {
+            Log.d(TAG, "loadCaptchaImageAsync: network fallback disabled, waiting for intercepted bytes");
+            return;
+        }
+
+        byte[] cachedBytes = AppVars.LastFightCaptchaImageBytes;
+        String cachedUrl = AppVars.LastFightCaptchaImageUrl;
+        long cachedAt = AppVars.LastFightCaptchaImageAtMs;
+        long cachedAge = cachedAt > 0 ? (System.currentTimeMillis() - cachedAt) : Long.MAX_VALUE;
+        boolean isSameCaptchaUrl = isSameCaptchaUrl(cachedUrl, captchaUrl);
+        boolean hasFreshSameUrlCaptchaBytes = isSameCaptchaUrl && cachedBytes != null && cachedBytes.length > 0
+                && cachedAge >= 0 && cachedAge <= 30000L;
+        if (hasFreshSameUrlCaptchaBytes) {
+            android.graphics.Bitmap cachedBitmap = android.graphics.BitmapFactory.decodeByteArray(cachedBytes, 0, cachedBytes.length);
+            if (cachedBitmap != null) {
+                Log.d(TAG, "loadCaptchaImageAsync: showing cached captcha preview, size=" + cachedBytes.length + ", ageMs=" + cachedAge);
+                imageView.setImageBitmap(cachedBitmap);
+            } else {
+                Log.d(TAG, "loadCaptchaImageAsync: cached captcha bytes exist but decode failed, size=" + cachedBytes.length);
+            }
+        }
+
+        // Важно: для боевой капчи используем байты, которые уже перехватил WebView для этого же URL.
+        // Это гарантирует, что картинка капчи соответствует finishUrl/vcode из того же состояния боя.
+        // Повторный GET code.php может вернуть уже другой challenge или "пустой" PNG (например, 258 bytes).
         new Thread(() -> {
             byte[] captchaBytes = downloadCaptchaImageBytes(captchaUrl);
             final android.graphics.Bitmap bitmap = captchaBytes == null
@@ -296,13 +445,199 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                     return;
                 }
                 progressBar.setVisibility(View.GONE);
-                if (bitmap != null) {
+                if (bitmap != null && captchaBytes != null) {
+                    if (hasFreshSameUrlCaptchaBytes && captchaBytes.length < 1024) {
+                        Log.w(TAG, "loadCaptchaImageAsync: network captcha is too small, keep cached preview, bytes=" + captchaBytes.length);
+                        return;
+                    }
+                    Log.d(TAG, "loadCaptchaImageAsync: bitmap decoded from network, url=" + captchaUrl
+                            + ", bytes=" + captchaBytes.length);
                     imageView.setImageBitmap(bitmap);
                 } else {
-                    Toast.makeText(this, "Failed to load captcha image", Toast.LENGTH_SHORT).show();
+                    Log.w(TAG, "loadCaptchaImageAsync: bitmap decode failed, url=" + captchaUrl
+                            + ", bytes=" + (captchaBytes != null ? captchaBytes.length : 0));
+                    if (!hasFreshSameUrlCaptchaBytes) {
+                        Toast.makeText(this, "Failed to load captcha image", Toast.LENGTH_SHORT).show();
+                    }
                 }
             });
         }, "fight-captcha-loader").start();
+    }
+
+    private void tryRefreshCaptchaImageFromLatest(android.widget.ImageView imageView, long dialogShownAtMs, String initialCaptchaUrl) {
+        if (activeFightCaptchaDialog == null || !activeFightCaptchaDialog.isShowing()) {
+            return;
+        }
+
+        byte[] latestBytes = AppVars.LastFightCaptchaImageBytes;
+        long latestAtMs = AppVars.LastFightCaptchaImageAtMs;
+        String latestUrl = AppVars.LastFightCaptchaImageUrl;
+        if (latestBytes == null || latestBytes.length == 0 || latestAtMs <= dialogShownAtMs) {
+            return;
+        }
+        if (initialCaptchaUrl == null || latestUrl == null || !latestUrl.equals(initialCaptchaUrl)) {
+            return;
+        }
+
+        android.graphics.Bitmap latestBitmap = android.graphics.BitmapFactory.decodeByteArray(latestBytes, 0, latestBytes.length);
+        if (latestBitmap == null) {
+            return;
+        }
+
+        imageView.setImageBitmap(latestBitmap);
+        Log.d(TAG, "tryRefreshCaptchaImageFromLatest: image updated from latest bytes,"
+                + " initialUrl=" + initialCaptchaUrl
+                + ", latestUrl=" + latestUrl
+                + ", bytes=" + latestBytes.length
+                + ", deltaMs=" + (latestAtMs - dialogShownAtMs));
+    }
+
+    /**
+     * Периодически проверяет новые байты боевой капчи из WebViewRequestInterceptor.
+     * Это прямой аналог C#-подхода (FormCode.ShowPic + AppVars.CodePng): не делаем отдельный HTTP-запрос из popup.
+     */
+    private void startFightCaptchaAutoRefresh(
+            android.widget.ImageView imageView,
+            android.widget.ProgressBar progressBar,
+            String expectedCaptchaUrl
+    ) {
+        stopFightCaptchaAutoRefresh();
+        fightCaptchaRefreshRunnable = new Runnable() {
+            @Override
+            public void run() {
+                if (activeFightCaptchaDialog == null || !activeFightCaptchaDialog.isShowing()) {
+                    return;
+                }
+                updateCaptchaImageFromCaptured(imageView, progressBar, expectedCaptchaUrl, false);
+                fightCaptchaHandler.postDelayed(this, 350);
+            }
+        };
+        fightCaptchaHandler.postDelayed(fightCaptchaRefreshRunnable, 200);
+    }
+
+    private void stopFightCaptchaAutoRefresh() {
+        if (fightCaptchaRefreshRunnable != null) {
+            fightCaptchaHandler.removeCallbacks(fightCaptchaRefreshRunnable);
+            fightCaptchaRefreshRunnable = null;
+        }
+    }
+
+    /**
+     * Обновляет изображение popup-капчи из AppVars.LastFightCaptchaImageBytes.
+     */
+    private boolean updateCaptchaImageFromCaptured(
+            android.widget.ImageView imageView,
+            android.widget.ProgressBar progressBar,
+            String expectedCaptchaUrl,
+            boolean forceUpdate
+    ) {
+        byte[] latestBytes = AppVars.LastFightCaptchaImageBytes;
+        if (latestBytes == null || latestBytes.length == 0) {
+            if (forceUpdate) {
+                progressBar.setVisibility(View.VISIBLE);
+            }
+            return false;
+        }
+
+        String latestUrl = AppVars.LastFightCaptchaImageUrl;
+        if (!isSameCaptchaUrl(expectedCaptchaUrl, latestUrl)) {
+            if (forceUpdate) {
+                progressBar.setVisibility(View.VISIBLE);
+            }
+            Log.d(TAG, "updateCaptchaImageFromCaptured: skip foreign bytes, expected="
+                    + expectedCaptchaUrl + ", got=" + latestUrl);
+            return false;
+        }
+
+        long latestAtMs = AppVars.LastFightCaptchaImageAtMs;
+        int latestHash = Arrays.hashCode(latestBytes);
+        boolean hasNewTime = latestAtMs > activeFightCaptchaImageAtMs;
+        boolean hasNewBytes = latestHash != activeFightCaptchaImageHash;
+        if (!forceUpdate && !hasNewTime && !hasNewBytes) {
+            return false;
+        }
+
+        android.graphics.Bitmap latestBitmap = android.graphics.BitmapFactory.decodeByteArray(latestBytes, 0, latestBytes.length);
+        if (latestBitmap == null) {
+            if (forceUpdate) {
+                progressBar.setVisibility(View.VISIBLE);
+            }
+            Log.w(TAG, "updateCaptchaImageFromCaptured: decode failed, bytes=" + latestBytes.length);
+            return false;
+        }
+
+        imageView.setImageBitmap(latestBitmap);
+        progressBar.setVisibility(View.GONE);
+        if (latestAtMs > 0L) {
+            activeFightCaptchaImageAtMs = latestAtMs;
+        }
+        activeFightCaptchaImageHash = latestHash;
+        Log.d(TAG, "updateCaptchaImageFromCaptured: image updated, bytes=" + latestBytes.length
+                + ", atMs=" + latestAtMs + ", url=" + latestUrl);
+        return true;
+    }
+
+    private boolean isSameCaptchaUrl(String firstUrl, String secondUrl) {
+        if (firstUrl == null || firstUrl.isEmpty() || secondUrl == null || secondUrl.isEmpty()) {
+            return false;
+        }
+        String firstNormalized = normalizeCaptchaUrlForCompare(firstUrl);
+        String secondNormalized = normalizeCaptchaUrlForCompare(secondUrl);
+        if (firstNormalized.isEmpty() || secondNormalized.isEmpty()) {
+            return false;
+        }
+        return firstNormalized.equals(secondNormalized);
+    }
+
+    private boolean isSameFightFinishUrl(String firstUrl, String secondUrl) {
+        if (firstUrl == null || firstUrl.isEmpty() || secondUrl == null || secondUrl.isEmpty()) {
+            return false;
+        }
+        String firstNormalized = normalizeFightFinishUrlForCompare(firstUrl);
+        String secondNormalized = normalizeFightFinishUrlForCompare(secondUrl);
+        if (firstNormalized.isEmpty() || secondNormalized.isEmpty()) {
+            return false;
+        }
+        return firstNormalized.equals(secondNormalized);
+    }
+
+    /**
+     * Нормализация URL капчи для сравнения:
+     * - http/https + www выравниваются,
+     * - query сохраняется (token критичен, должен совпадать с текущим challenge).
+     */
+    private String normalizeCaptchaUrlForCompare(String rawUrl) {
+        if (rawUrl == null || rawUrl.isEmpty()) {
+            return "";
+        }
+        try {
+            String normalized = rawUrl.replaceFirst("^https://", "http://");
+            normalized = normalized.replaceFirst("^http://www\\.neverlands\\.ru", "http://neverlands.ru");
+            int fragmentIndex = normalized.indexOf('#');
+            if (fragmentIndex >= 0) {
+                normalized = normalized.substring(0, fragmentIndex);
+            }
+            return normalized;
+        } catch (Exception ignored) {
+            return "";
+        }
+    }
+
+    private String normalizeFightFinishUrlForCompare(String rawUrl) {
+        if (rawUrl == null || rawUrl.isEmpty()) {
+            return "";
+        }
+        try {
+            String normalized = rawUrl.replaceFirst("^https://", "http://");
+            normalized = normalized.replaceFirst("^http://www\\.neverlands\\.ru", "http://neverlands.ru");
+            int fragmentIndex = normalized.indexOf('#');
+            if (fragmentIndex >= 0) {
+                normalized = normalized.substring(0, fragmentIndex);
+            }
+            return normalized;
+        } catch (Exception ignored) {
+            return "";
+        }
     }
 
     /**
@@ -335,15 +670,25 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             connection.setReadTimeout(10000);
             connection.setUseCaches(false);
             connection.setRequestProperty("Accept", "image/webp,image/apng,image/*,*/*;q=0.8");
+            connection.setRequestProperty("Accept-Encoding", "identity");
+            connection.setRequestProperty("Accept-Language", "ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7");
+            connection.setRequestProperty("Cache-Control", "no-cache");
+            connection.setRequestProperty("Pragma", "no-cache");
             connection.setRequestProperty("Referer", "http://neverlands.ru/main.php");
             connection.setRequestProperty("User-Agent", AppVars.BROWSER_USER_AGENT);
 
             String cookie = CookieManager.getInstance().getCookie(captchaUrl);
+            if (cookie == null || cookie.isEmpty()) {
+                cookie = CookieManager.getInstance().getCookie("http://neverlands.ru/");
+            }
             if ((cookie == null || cookie.isEmpty()) && url.getHost() != null) {
                 cookie = CookiesManager.obtain(url.getHost());
             }
             if (cookie != null && !cookie.isEmpty()) {
                 connection.setRequestProperty("Cookie", cookie);
+                Log.d(TAG, "downloadCaptchaImageBytes: using cookie len=" + cookie.length());
+            } else {
+                Log.w(TAG, "downloadCaptchaImageBytes: cookie is empty for " + captchaUrl);
             }
 
             int responseCode = connection.getResponseCode();
@@ -654,6 +999,11 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         stopTimer();
         stopChatRefresh();
         RoomManager.stopTracing();
+        AppVars.IsFightCaptchaDialogVisible = false;
+        if (activeFightCaptchaDialog != null && activeFightCaptchaDialog.isShowing()) {
+            activeFightCaptchaDialog.dismiss();
+        }
+        activeFightCaptchaDialog = null;
         
         // Уничтожение всех вспомогательных вкладок
         if (tabManager != null) {
