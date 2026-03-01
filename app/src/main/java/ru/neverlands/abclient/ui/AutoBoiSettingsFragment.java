@@ -241,6 +241,15 @@ public class AutoBoiSettingsFragment extends DialogFragment {
         }
 
         void saveSettings(UserConfig p) {
+            // Важно для ViewPager2: если вкладка ещё не открывалась пользователем,
+            // onViewCreated() мог не выполниться и поля останутся null.
+            // В этом случае просто пропускаем сохранение этой вкладки без крэша.
+            if (checkDoAutoboi == null || checkDoWaitHp == null || checkDoWaitMa == null
+                    || checkDoDrinkHp == null || checkDoDrinkMa == null || checkDoWinTimeout == null
+                    || seekWaitHp == null || seekWaitMa == null || seekDrinkHp == null || seekDrinkMa == null
+                    || radioGroupSay == null) {
+                return;
+            }
             p.LezDoAutoboi = checkDoAutoboi.isChecked();
             p.LezDoWaitHp = checkDoWaitHp.isChecked();
             p.LezDoWaitMa = checkDoWaitMa.isChecked();
@@ -491,6 +500,14 @@ public class AutoBoiSettingsFragment extends DialogFragment {
         }
 
         void saveGroup(LezBotsGroup g) {
+            // Защита от NPE при "Сохранить" без открытия вкладки "Ротация".
+            // Зависимость: жизненный цикл ViewPager2 (fragment view создаётся лениво).
+            if (checkDoRestoreHp == null || checkDoRestoreMa == null || checkDoAbilBlocks == null
+                    || checkDoAbilHits == null || checkDoMagHits == null || checkDoMagBlocks == null
+                    || checkDoHits == null || checkDoBlocks == null || checkDoMiscAbils == null
+                    || seekRestoreHp == null || seekRestoreMa == null || seekMagHits == null) {
+                return;
+            }
             g.DoRestoreHp = checkDoRestoreHp.isChecked();
             g.DoRestoreMa = checkDoRestoreMa.isChecked();
             g.RestoreHp = seekRestoreHp.getProgress();
@@ -566,6 +583,13 @@ public class AutoBoiSettingsFragment extends DialogFragment {
         }
 
         void saveGroup(LezBotsGroup g) {
+            // Защита от NPE при "Сохранить" без открытия вкладки "Останов".
+            // Зависимость: жизненный цикл ViewPager2 (fragment view создаётся лениво).
+            if (checkDoStopNow == null || checkDoStopLowHp == null || checkDoStopLowMa == null
+                    || checkDoExit == null || checkDoExitRisky == null
+                    || seekStopLowHp == null || seekStopLowMa == null) {
+                return;
+            }
             g.DoStopNow = checkDoStopNow.isChecked();
             g.DoStopLowHp = checkDoStopLowHp.isChecked();
             g.StopLowHp = seekStopLowHp.getProgress();

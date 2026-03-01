@@ -33,4 +33,8 @@
     <string name="profile_proxy_username">Имя пользователя прокси</string>
     <string name="profile_proxy_password">Пароль прокси</string>
     <string name="profile_save">Сохранить</string>
+    <string name="captcha_notification_channel_name">Капча (бой)</string>
+    <string name="captcha_notification_channel_description">Уведомления о ручном вводе капчи для завершения боя</string>
+    <string name="captcha_notification_title">Требуется капча</string>
+    <string name="captcha_notification_text">Откройте ABClient и введите код с картинки</string>
 </resources>

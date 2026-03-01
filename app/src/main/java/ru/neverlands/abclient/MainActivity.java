@@ -1,12 +1,18 @@
 package ru.neverlands.abclient;
 
+import android.Manifest;
 import android.annotation.SuppressLint;
+import android.app.NotificationChannel;
+import android.app.NotificationManager;
+import android.app.PendingIntent;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.pm.PackageManager;
 import android.content.res.AssetManager;
+import android.media.AudioAttributes;
+import android.media.RingtoneManager;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
@@ -34,6 +40,10 @@ import androidx.appcompat.app.ActionBarDrawerToggle;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
+import androidx.core.app.ActivityCompat;
+import androidx.core.app.NotificationCompat;
+import androidx.core.app.NotificationManagerCompat;
+import androidx.core.content.ContextCompat;
 import androidx.core.view.GravityCompat;
 import androidx.drawerlayout.widget.DrawerLayout;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
@@ -85,9 +95,12 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     private static final String TAG = "MainActivity";
     private static final String BUILD_MARKER = "2026-02-27_01-34";
     private static final int REQUEST_CODE_CONTACTS = 1001;
+    private static final int REQUEST_CODE_POST_NOTIFICATIONS = 1002;
     private static final int CHAT_REFRESH_DEFAULT_SECONDS = 12;
     private static final int CHAT_REFRESH_INITIAL_DELAY_MS = 1000;
     private static final long CAPTCHA_IMAGE_STABILIZE_DELAY_MS = 180L;
+    private static final int CAPTCHA_NOTIFICATION_ID = 6107;
+    private static final String CAPTCHA_NOTIFICATION_CHANNEL_ID = "captcha_alerts";
     public ActivityMainBinding binding;
     private Timer timer;
     private boolean isExiting = false;
@@ -239,6 +252,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             activeFightCaptchaDialog.dismiss();
         }
         AppVars.IsFightCaptchaDialogVisible = true;
+        showCaptchaSystemNotification();
 
         int imageHeightPx = (int) (getResources().getDisplayMetrics().density * 120);
         android.widget.ProgressBar progressBar = new android.widget.ProgressBar(this);
@@ -309,6 +323,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         dialog.setOnDismissListener(d -> {
             stopFightCaptchaAutoRefresh();
             AppVars.IsFightCaptchaDialogVisible = false;
+            cancelCaptchaSystemNotification();
             activeFightCaptchaDialog = null;
             activeFightCaptchaUrl = "";
             activeFightFinishUrl = "";
@@ -364,6 +379,125 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             updateCaptchaImageFromCaptured(imageView, progressBar, captchaUrl, true);
         });
         startFightCaptchaAutoRefresh(imageView, progressBar, captchaUrl);
+    }
+
+    /**
+     * Создаёт Android NotificationChannel для уведомлений о боевой капче.
+     *
+     * Зависимости:
+     * - `NotificationManager`/`NotificationChannel` (API 26+),
+     * - строки `captcha_notification_*` из `strings.xml`,
+     * - системный звук `RingtoneManager.TYPE_NOTIFICATION`.
+     *
+     * Назначение:
+     * - вынести капчу в отдельный канал, чтобы пользователь мог в настройках Android
+     *   независимо управлять звуком, вибрацией и показом в шторке.
+     */
+    private void createCaptchaNotificationChannel() {
+        if (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.O) {
+            return;
+        }
+        NotificationManager notificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+        if (notificationManager == null) {
+            return;
+        }
+        NotificationChannel channel = new NotificationChannel(
+                CAPTCHA_NOTIFICATION_CHANNEL_ID,
+                getString(R.string.captcha_notification_channel_name),
+                NotificationManager.IMPORTANCE_HIGH
+        );
+        channel.setDescription(getString(R.string.captcha_notification_channel_description));
+        channel.enableVibration(true);
+        channel.setVibrationPattern(new long[]{0, 250, 150, 250});
+        Uri sound = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION);
+        AudioAttributes audioAttributes = new AudioAttributes.Builder()
+                .setUsage(AudioAttributes.USAGE_NOTIFICATION)
+                .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                .build();
+        channel.setSound(sound, audioAttributes);
+        notificationManager.createNotificationChannel(channel);
+    }
+
+    /**
+     * Проверяет право на отправку уведомлений.
+     *
+     * Зависимости:
+     * - `Manifest.permission.POST_NOTIFICATIONS` (Android 13+),
+     * - `ContextCompat.checkSelfPermission`.
+     */
+    private boolean canPostNotifications() {
+        if (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.TIRAMISU) {
+            return true;
+        }
+        return ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS)
+                == PackageManager.PERMISSION_GRANTED;
+    }
+
+    /**
+     * Запрашивает runtime-разрешение на уведомления (Android 13+), если ещё не выдано.
+     *
+     * Зависимости:
+     * - `ActivityCompat.requestPermissions`,
+     * - `REQUEST_CODE_POST_NOTIFICATIONS`,
+     * - обработчик `onRequestPermissionsResult`.
+     */
+    private void requestPostNotificationsPermissionIfNeeded() {
+        if (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.TIRAMISU) {
+            return;
+        }
+        if (canPostNotifications()) {
+            return;
+        }
+        ActivityCompat.requestPermissions(
+                this,
+                new String[]{Manifest.permission.POST_NOTIFICATIONS},
+                REQUEST_CODE_POST_NOTIFICATIONS
+        );
+    }
+
+    /**
+     * Публикует системное уведомление о появлении капчи.
+     *
+     * Зависимости:
+     * - канал `CAPTCHA_NOTIFICATION_CHANNEL_ID`,
+     * - `NotificationCompat`/`NotificationManagerCompat`,
+     * - `PendingIntent` для возврата в `MainActivity`.
+     *
+     * Важно:
+     * - не отправляет уведомление без `POST_NOTIFICATIONS` на Android 13+.
+     */
+    private void showCaptchaSystemNotification() {
+        if (!canPostNotifications()) {
+            Log.d(TAG, "showCaptchaSystemNotification: POST_NOTIFICATIONS not granted");
+            return;
+        }
+        Intent openIntent = new Intent(this, MainActivity.class);
+        openIntent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+        int flags = PendingIntent.FLAG_UPDATE_CURRENT;
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
+            flags |= PendingIntent.FLAG_IMMUTABLE;
+        }
+        PendingIntent contentIntent = PendingIntent.getActivity(this, 0, openIntent, flags);
+
+        NotificationCompat.Builder builder = new NotificationCompat.Builder(this, CAPTCHA_NOTIFICATION_CHANNEL_ID)
+                .setSmallIcon(R.drawable.ic_launcher)
+                .setContentTitle(getString(R.string.captcha_notification_title))
+                .setContentText(getString(R.string.captcha_notification_text))
+                .setPriority(NotificationCompat.PRIORITY_HIGH)
+                .setCategory(NotificationCompat.CATEGORY_ALARM)
+                .setAutoCancel(true)
+                .setOnlyAlertOnce(false)
+                .setDefaults(NotificationCompat.DEFAULT_ALL)
+                .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+                .setContentIntent(contentIntent);
+        NotificationManagerCompat.from(this).notify(CAPTCHA_NOTIFICATION_ID, builder.build());
+    }
+
+    /**
+     * Снимает активное уведомление о капче при закрытии popup-диалога.
+     */
+    private void cancelCaptchaSystemNotification() {
+        NotificationManagerCompat.from(this).cancel(CAPTCHA_NOTIFICATION_ID);
     }
 
     /**
@@ -618,6 +752,13 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         return firstNormalized.equals(secondNormalized);
     }
 
+    /**
+     * Сравнивает URL завершения боя (finishUrl) с нормализацией протокола/host.
+     *
+     * Зависимости:
+     * - `normalizeFightFinishUrlForCompare`,
+     * - используется в `showCaptchaDialog` для определения: тот же challenge или новый.
+     */
     private boolean isSameFightFinishUrl(String firstUrl, String secondUrl) {
         if (firstUrl == null || firstUrl.isEmpty() || secondUrl == null || secondUrl.isEmpty()) {
             return false;
@@ -805,6 +946,8 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         super.onCreate(savedInstanceState);
         isRoomManagerStarted = false;
         AppVars.init(this);
+        createCaptchaNotificationChannel();
+        requestPostNotificationsPermissionIfNeeded();
         ContactsManager.initialize(this);
         AppVars.mainActivity = new WeakReference<>(this);
         Log.i(TAG, "ABCLIENT_ANDROID_BUILD=" + BUILD_MARKER);
@@ -1182,6 +1325,15 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         if (timer != null) {
             timer.cancel();
             timer = null;
+        }
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode == REQUEST_CODE_POST_NOTIFICATIONS) {
+            boolean granted = grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED;
+            Log.d(TAG, "onRequestPermissionsResult: POST_NOTIFICATIONS granted=" + granted);
         }
     }
 

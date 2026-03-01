@@ -26,6 +26,7 @@ import java.util.TreeMap;
  * Поля сделаны публичными для совместимости с существующим кодом, который ожидает прямой доступ.
  */
 public class UserConfig {
+    private static final String TAG = "UserConfig";
 
     // --- Публичные поля для совместимости с C# и существующим кодом --- //
 
@@ -213,30 +214,53 @@ public class UserConfig {
                             parseIntAttr(parser, "id", 1),
                             parseIntAttr(parser, "minLevel", 0)
                         );
-                        g.DoRestoreHp = Boolean.parseBoolean(parser.getAttributeValue(null, "doRestoreHp"));
-                        g.DoRestoreMa = Boolean.parseBoolean(parser.getAttributeValue(null, "doRestoreMa"));
-                        g.RestoreHp = parseIntAttr(parser, "restoreHp", 100);
-                        g.RestoreMa = parseIntAttr(parser, "restoreMa", 100);
-                        g.DoAbilBlocks = Boolean.parseBoolean(parser.getAttributeValue(null, "doAbilBlocks"));
-                        g.DoAbilHits = Boolean.parseBoolean(parser.getAttributeValue(null, "doAbilHits"));
-                        g.DoMagHits = Boolean.parseBoolean(parser.getAttributeValue(null, "doMagHits"));
-                        g.MagHits = parseIntAttr(parser, "magHits", 5);
-                        g.DoMagBlocks = Boolean.parseBoolean(parser.getAttributeValue(null, "doMagBlocks"));
-                        g.DoHits = Boolean.parseBoolean(parser.getAttributeValue(null, "doHits"));
-                        g.DoBlocks = Boolean.parseBoolean(parser.getAttributeValue(null, "doBlocks"));
-                        g.DoMiscAbils = Boolean.parseBoolean(parser.getAttributeValue(null, "doMiscAbils"));
-                        g.DoStopNow = Boolean.parseBoolean(parser.getAttributeValue(null, "doStopNow"));
-                        g.DoStopLowHp = Boolean.parseBoolean(parser.getAttributeValue(null, "doStopLowHp"));
-                        g.DoStopLowMa = Boolean.parseBoolean(parser.getAttributeValue(null, "doStopLowMa"));
-                        g.StopLowHp = parseIntAttr(parser, "stopLowHp", 0);
-                        g.StopLowMa = parseIntAttr(parser, "stopLowMa", 0);
-                        g.DoExit = Boolean.parseBoolean(parser.getAttributeValue(null, "doExit"));
-                        g.DoExitRisky = Boolean.parseBoolean(parser.getAttributeValue(null, "doExitRisky"));
-                        g.SpellsHits = parseIntArrayAttr(parser, "spellsHits");
-                        g.SpellsBlocks = parseIntArrayAttr(parser, "spellsBlocks");
-                        g.SpellsRestoreHp = parseIntArrayAttr(parser, "spellsRestoreHp");
-                        g.SpellsRestoreMa = parseIntArrayAttr(parser, "spellsRestoreMa");
-                        g.SpellsMisc = parseIntArrayAttr(parser, "spellsMisc");
+                        g.DoRestoreHp = parseBoolAttr(parser, "doRestoreHp", g.DoRestoreHp);
+                        g.DoRestoreMa = parseBoolAttr(parser, "doRestoreMa", g.DoRestoreMa);
+                        g.RestoreHp = parseIntAttr(parser, "restoreHp", g.RestoreHp);
+                        g.RestoreMa = parseIntAttr(parser, "restoreMa", g.RestoreMa);
+                        g.DoAbilBlocks = parseBoolAttr(parser, "doAbilBlocks", g.DoAbilBlocks);
+                        g.DoAbilHits = parseBoolAttr(parser, "doAbilHits", g.DoAbilHits);
+                        g.DoMagHits = parseBoolAttr(parser, "doMagHits", g.DoMagHits);
+                        g.MagHits = parseIntAttr(parser, "magHits", g.MagHits);
+                        g.DoMagBlocks = parseBoolAttr(parser, "doMagBlocks", g.DoMagBlocks);
+                        g.DoHits = parseBoolAttr(parser, "doHits", g.DoHits);
+                        g.DoBlocks = parseBoolAttr(parser, "doBlocks", g.DoBlocks);
+                        g.DoMiscAbils = parseBoolAttr(parser, "doMiscAbils", g.DoMiscAbils);
+                        g.DoStopNow = parseBoolAttr(parser, "doStopNow", g.DoStopNow);
+                        g.DoStopLowHp = parseBoolAttr(parser, "doStopLowHp", g.DoStopLowHp);
+                        g.DoStopLowMa = parseBoolAttr(parser, "doStopLowMa", g.DoStopLowMa);
+                        g.StopLowHp = parseIntAttr(parser, "stopLowHp", g.StopLowHp);
+                        g.StopLowMa = parseIntAttr(parser, "stopLowMa", g.StopLowMa);
+                        g.DoExit = parseBoolAttr(parser, "doExit", g.DoExit);
+                        g.DoExitRisky = parseBoolAttr(parser, "doExitRisky", g.DoExitRisky);
+
+                        int[] spellsHits = parseIntArrayAttr(parser, "spellsHits");
+                        if (spellsHits.length > 0) g.SpellsHits = spellsHits;
+                        int[] spellsBlocks = parseIntArrayAttr(parser, "spellsBlocks");
+                        if (spellsBlocks.length > 0) g.SpellsBlocks = spellsBlocks;
+                        int[] spellsRestoreHp = parseIntArrayAttr(parser, "spellsRestoreHp");
+                        if (spellsRestoreHp.length > 0) g.SpellsRestoreHp = spellsRestoreHp;
+                        int[] spellsRestoreMa = parseIntArrayAttr(parser, "spellsRestoreMa");
+                        if (spellsRestoreMa.length > 0) g.SpellsRestoreMa = spellsRestoreMa;
+                        int[] spellsMisc = parseIntArrayAttr(parser, "spellsMisc");
+                        if (spellsMisc.length > 0) g.SpellsMisc = spellsMisc;
+
+                        if (!g.DoAbilBlocks && !g.DoAbilHits
+                                && !g.DoMagHits && !g.DoMagBlocks
+                                && !g.DoHits && !g.DoBlocks && !g.DoMiscAbils) {
+                            LezBotsGroup defaults = new LezBotsGroup(g.Id, g.MinimalLevel);
+                            g.DoAbilBlocks = defaults.DoAbilBlocks;
+                            g.DoAbilHits = defaults.DoAbilHits;
+                            g.DoMagHits = defaults.DoMagHits;
+                            g.DoMagBlocks = defaults.DoMagBlocks;
+                            g.DoHits = defaults.DoHits;
+                            g.DoBlocks = defaults.DoBlocks;
+                            g.DoMiscAbils = defaults.DoMiscAbils;
+                            if (g.SpellsHits == null || g.SpellsHits.length == 0) g.SpellsHits = defaults.SpellsHits;
+                            if (g.SpellsBlocks == null || g.SpellsBlocks.length == 0) g.SpellsBlocks = defaults.SpellsBlocks;
+                            if (g.SpellsMisc == null || g.SpellsMisc.length == 0) g.SpellsMisc = defaults.SpellsMisc;
+                            android.util.Log.w(TAG, "load: fixed invalid autoboi combat flags for group id=" + g.Id);
+                        }
                         // Обновляем или добавляем группу (Id=1,MinLevel=0 — группа "Все", всегда существует)
                         boolean found = false;
                         for (int gi = 0; gi < this.LezGroups.size(); gi++) {
@@ -421,9 +445,15 @@ public class UserConfig {
     // --- Вспомогательные методы для XML сериализации LezGroups --- //
 
     private static int parseIntAttr(XmlPullParser parser, String attr, int defaultVal) {
-        String val = parser.getAttributeValue(null, attr);
+        String val = getAttributeValueIgnoreCase(parser, attr);
         if (val == null || val.isEmpty()) return defaultVal;
         try { return Integer.parseInt(val); } catch (NumberFormatException e) { return defaultVal; }
+    }
+
+    private static boolean parseBoolAttr(XmlPullParser parser, String attr, boolean defaultVal) {
+        String val = getAttributeValueIgnoreCase(parser, attr);
+        if (val == null || val.isEmpty()) return defaultVal;
+        return Boolean.parseBoolean(val.trim());
     }
 
     private static String intArrayToString(int[] arr) {
@@ -437,7 +467,7 @@ public class UserConfig {
     }
 
     private static int[] parseIntArrayAttr(XmlPullParser parser, String attr) {
-        String val = parser.getAttributeValue(null, attr);
+        String val = getAttributeValueIgnoreCase(parser, attr);
         if (val == null || val.isEmpty()) return new int[0];
         String[] parts = val.split(",");
         int[] result = new int[parts.length];
@@ -445,5 +475,17 @@ public class UserConfig {
             try { result[i] = Integer.parseInt(parts[i].trim()); } catch (NumberFormatException e) { result[i] = 0; }
         }
         return result;
+    }
+
+    private static String getAttributeValueIgnoreCase(XmlPullParser parser, String attr) {
+        String direct = parser.getAttributeValue(null, attr);
+        if (direct != null) return direct;
+        for (int i = 0; i < parser.getAttributeCount(); i++) {
+            String name = parser.getAttributeName(i);
+            if (name != null && name.equalsIgnoreCase(attr)) {
+                return parser.getAttributeValue(i);
+            }
+        }
+        return null;
     }
 }

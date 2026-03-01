@@ -108,6 +108,15 @@ public class LoginActivity extends AppCompatActivity {
     }
 
     private boolean checkAndRequestPermissions() {
+        // На Android 10+ (API 29+) для работы с app-specific внешней папкой
+        // (getExternalFilesDir) runtime-разрешение на storage не требуется.
+        // Зависимости:
+        // - UserConfig/DataManager/логи используют только app-specific storage,
+        // - поэтому WRITE_EXTERNAL_STORAGE нужен только для старых Android (до API 29).
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            return true;
+        }
+
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             if (ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
                 ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE}, STORAGE_PERMISSION_REQUEST_CODE);

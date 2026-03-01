@@ -35,6 +35,11 @@ public class AppVars {
     public static volatile byte[] LastFightCaptchaImageBytes = null;
     // Флаг "диалог капчи завершения боя сейчас открыт/показывается".
     public static volatile boolean IsFightCaptchaDialogVisible = false;
+    // Флаг восстановления авто-боя после ручного ввода капчи завершения боя.
+    // Цепочка зависимостей:
+    // 1) MainPhp.mainPhpFight(...) выставляет true, когда капча пришла при AutoboiOn.
+    // 2) MainActivity.showCaptchaDialog(...) после успешного submit возвращает AutoboiOn.
+    // 3) При отмене/закрытии диалога флаг сбрасывается в false (без авто-восстановления).
     public static volatile boolean ResumeAutoboiAfterCaptcha = false;
     public static String LastBoiLog = "";
     public static String LastBoiEndLog = "";

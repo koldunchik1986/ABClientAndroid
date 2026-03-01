@@ -80,7 +80,20 @@ public class MainPhp {
                 "</body></html>";
     }
 
-    // URL капчи из уже загруженного HTML + fallback по последнему запросу /modules/code/code.php.
+    /**
+     * Вычисляет актуальный URL боевой капчи для текущего шага завершения боя.
+     *
+     * Порядок источников (от более приоритетного к fallback):
+     * 1) `AppVars.CodeAddress` (получен из `LezFight.ParseNonFight`, аналог C# `CodeAddress`),
+     * 2) прямой `img src` в HTML (`extractCaptchaUrl`),
+     * 3) token из `var fexp[4]` (`extractCaptchaUrlFromFexp`),
+     * 4) последний перехваченный URL из interceptor (`AppVars.LastFightCaptchaImageUrl`) с TTL.
+     *
+     * Зависимости:
+     * - `LezFight.BuildFightLink(...)`,
+     * - `WebViewRequestInterceptor` (captured code.php URL/bytes),
+     * - используется в auto/manual ветках `mainPhpFight(...)`.
+     */
     private static String resolveFightCaptchaUrl(String html) {
         if (AppVars.CodeAddress != null && !AppVars.CodeAddress.isEmpty()) {
             return AppVars.CodeAddress;
@@ -111,6 +124,13 @@ public class MainPhp {
         return null;
     }
 
+    /**
+     * Собирает URL капчи из массива `fexp` (элемент `fexp[4]`).
+     *
+     * Зависимости:
+     * - `HelperStrings.subString`,
+     * - формат `fight_v10.js`: `code.php?` + token.
+     */
     private static String extractCaptchaUrlFromFexp(String html) {
         try {
             if (html == null || html.isEmpty()) {
@@ -216,6 +236,10 @@ public class MainPhp {
                     + " isFightTopFrame=" + isFightTopFrame
                     + " address=" + address);
             html = mainPhpFight(address, html);
+            if (html == null) {
+                android.util.Log.w(TAG, "process: mainPhpFight returned null, fallback to original HTML");
+                html = originalHtml;
+            }
             // Preserve original fight HTML for manual mode (avoid losing images after auto frame)
             AppVars.ContentMainPhp = originalHtml;
         }
@@ -704,6 +728,9 @@ public class MainPhp {
             if (needCaptcha && fightLink != null && !fightLink.isEmpty()) {
                 android.util.Log.d(TAG, "mainPhpFight: CAPTCHA required, stopping autoboi and showing dialog: " + captchaUrl);
 
+                // Важно: фикс восстановления AutoBoi после ручной капчи.
+                // Если капча пришла в режиме AutoboiOn, запоминаем это состояние,
+                // чтобы MainActivity после submit кода вернул `AutoboiOn`.
                 AppVars.ResumeAutoboiAfterCaptcha = true;
                 AppVars.Autoboi = AutoboiState.AutoboiOff;
                     AppVars.ContentMainPhp = html; // отрисовать форму с капчей
@@ -812,7 +839,15 @@ public class MainPhp {
                         // Бой идёт, условия безопасные - возвращаем авто-ход
                         android.util.Log.d(TAG, "mainPhpFight: SAFE - returning fight.Frame for auto-attack");
                         android.util.Log.d(TAG, "mainPhpFight: fight.Frame = " + (fight.Frame != null ? fight.Frame.substring(0, Math.min(200, fight.Frame.length())) : "NULL"));
-                        return fight.Frame;
+                        if (fight.Frame != null && !fight.Frame.isEmpty()) {
+                            return fight.Frame;
+                        }
+                        android.util.Log.w(TAG, "mainPhpFight: fight.Frame is empty, stopping autoboi to avoid null flow");
+                        if (AppVars.Autoboi != AutoboiState.Timeout) {
+                            notifyFightStopped(fight);
+                            AppVars.Autoboi = AutoboiState.Timeout;
+                        }
+                        return AppVars.ContentMainPhp != null ? AppVars.ContentMainPhp : html;
                     } else {
                         // Опасная ситуация - останавливаем автобой
                         android.util.Log.d(TAG, "mainPhpFight: DANGEROUS - stopping autoboi, setting Timeout");
