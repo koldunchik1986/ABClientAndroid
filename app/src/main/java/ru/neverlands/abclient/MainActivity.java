@@ -198,15 +198,36 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     }
 
     // Диалог капчи для завершения боя (когда сервер требует подтверждение).
+    /**
+     * Показывает диалог завершения боя с ручным вводом капчи.
+     *
+     * Что делает:
+     * - строит UI диалога (картинка капчи + поле ввода кода),
+     * - загружает изображение капчи в фоне через {@link #loadCaptchaImageAsync(String, android.widget.ImageView, android.widget.ProgressBar)},
+     * - при нажатии "ОК" формирует URL завершения боя с параметром {@code code=} и открывает его в основном WebView.
+     *
+     * Зависимости:
+     * - {@code AppVars.ACTION_SHOW_CAPTCHA} (вызов через BroadcastReceiver),
+     * - {@code binding.appBarMain.contentMain.webView} (отправка URL завершения),
+     * - {@link Uri#encode(String)} (безопасная передача введённого кода),
+     * - методы загрузки изображения капчи (см. ниже).
+     *
+     * @param captchaUrl URL изображения капчи ({@code /modules/code/code.php?...}).
+     * @param finishUrl URL завершения боя ({@code main.php?get_id=61&act=7...}).
+     */
     private void showCaptchaDialog(String captchaUrl, String finishUrl) {
         Log.d(TAG, "showCaptchaDialog: " + captchaUrl + " -> " + finishUrl);
 
-        android.webkit.WebView imageView = new android.webkit.WebView(this);
-        imageView.getSettings().setJavaScriptEnabled(false);
-        int heightPx = (int) (getResources().getDisplayMetrics().density * 140);
+        int imageHeightPx = (int) (getResources().getDisplayMetrics().density * 120);
+        android.widget.ProgressBar progressBar = new android.widget.ProgressBar(this);
+        progressBar.setIndeterminate(true);
+        progressBar.setVisibility(View.VISIBLE);
+
+        android.widget.ImageView imageView = new android.widget.ImageView(this);
+        imageView.setScaleType(android.widget.ImageView.ScaleType.FIT_CENTER);
+        imageView.setAdjustViewBounds(true);
         imageView.setLayoutParams(new android.view.ViewGroup.LayoutParams(
-                android.view.ViewGroup.LayoutParams.MATCH_PARENT, heightPx));
-        imageView.loadUrl(captchaUrl);
+                android.view.ViewGroup.LayoutParams.MATCH_PARENT, imageHeightPx));
 
         android.widget.EditText input = new android.widget.EditText(this);
         input.setInputType(android.text.InputType.TYPE_CLASS_NUMBER);
@@ -216,6 +237,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         layout.setOrientation(android.widget.LinearLayout.VERTICAL);
         int pad = (int) (getResources().getDisplayMetrics().density * 12);
         layout.setPadding(pad, pad, pad, pad);
+        layout.addView(progressBar);
         layout.addView(imageView);
         layout.addView(input);
 
@@ -226,19 +248,143 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                     String code = input.getText().toString().trim();
                     if (code.isEmpty()) return;
                     String submitUrl = finishUrl;
+                    String encodedCode = Uri.encode(code);
                     if (submitUrl.contains("code=")) {
-                        submitUrl = submitUrl.replaceAll("code=[^&]*", "code=" + code);
+                        submitUrl = submitUrl.replaceAll("code=[^&]*", "code=" + encodedCode);
                     } else {
-                        submitUrl += (submitUrl.contains("?") ? "&" : "?") + "code=" + code;
+                        submitUrl += (submitUrl.contains("?") ? "&" : "?") + "code=" + encodedCode;
                     }
                     Log.d(TAG, "showCaptchaDialog: submitting " + submitUrl);
                     binding.appBarMain.contentMain.webView.loadUrl(submitUrl);
                 })
                 .setNegativeButton("Отмена", null)
                 .show();
+
+        loadCaptchaImageAsync(captchaUrl, imageView, progressBar);
     }
 
     // Локальные события: чат, загрузка URL, JS, капча, авто-рыбалка.
+    /**
+     * Асинхронно загружает PNG-капчу и отображает её в диалоге.
+     *
+     * Что делает:
+     * - очищает текущее изображение и показывает индикатор загрузки,
+     * - запускает фоновый поток для HTTP-запроса,
+     * - декодирует полученные байты в Bitmap,
+     * - возвращается в UI-поток и обновляет ImageView.
+     *
+     * Зависимости:
+     * - {@link #downloadCaptchaImageBytes(String)} (сетевое получение PNG),
+     * - {@link android.graphics.BitmapFactory} (декодирование),
+     * - проверки {@code isFinishing/isDestroyed} для безопасного обновления UI.
+     *
+     * @param captchaUrl URL изображения капчи.
+     * @param imageView целевой ImageView в диалоге.
+     * @param progressBar индикатор загрузки.
+     */
+    private void loadCaptchaImageAsync(String captchaUrl, android.widget.ImageView imageView, android.widget.ProgressBar progressBar) {
+        progressBar.setVisibility(View.VISIBLE);
+        imageView.setImageDrawable(null);
+        new Thread(() -> {
+            byte[] captchaBytes = downloadCaptchaImageBytes(captchaUrl);
+            final android.graphics.Bitmap bitmap = captchaBytes == null
+                    ? null
+                    : android.graphics.BitmapFactory.decodeByteArray(captchaBytes, 0, captchaBytes.length);
+
+            runOnUiThread(() -> {
+                if (isFinishing() || isDestroyed()) {
+                    return;
+                }
+                progressBar.setVisibility(View.GONE);
+                if (bitmap != null) {
+                    imageView.setImageBitmap(bitmap);
+                } else {
+                    Toast.makeText(this, "Failed to load captcha image", Toast.LENGTH_SHORT).show();
+                }
+            });
+        }, "fight-captcha-loader").start();
+    }
+
+    /**
+     * Выполняет HTTP GET изображения капчи и возвращает сырые байты.
+     *
+     * Что делает:
+     * - открывает соединение с таймаутами и отключённым кэшем,
+     * - устанавливает безопасный браузерный User-Agent ({@link AppVars#BROWSER_USER_AGENT}),
+     * - прокидывает cookies текущей игровой сессии из WebView CookieManager
+     *   с fallback через {@link CookiesManager},
+     * - читает тело ответа в {@code byte[]}.
+     *
+     * Зависимости:
+     * - {@link HttpURLConnection},
+     * - {@link CookieManager} и {@link CookiesManager},
+     * - {@link ByteArrayOutputStream}/{@link InputStream}.
+     *
+     * @param captchaUrl URL изображения капчи.
+     * @return bytes изображения или {@code null} при ошибке/неуспешном HTTP-коде.
+     */
+    private byte[] downloadCaptchaImageBytes(String captchaUrl) {
+        HttpURLConnection connection = null;
+        InputStream inputStream = null;
+        ByteArrayOutputStream outputStream = null;
+        try {
+            URL url = new URL(captchaUrl);
+            connection = (HttpURLConnection) url.openConnection();
+            connection.setRequestMethod("GET");
+            connection.setConnectTimeout(10000);
+            connection.setReadTimeout(10000);
+            connection.setUseCaches(false);
+            connection.setRequestProperty("Accept", "image/webp,image/apng,image/*,*/*;q=0.8");
+            connection.setRequestProperty("Referer", "http://neverlands.ru/main.php");
+            connection.setRequestProperty("User-Agent", AppVars.BROWSER_USER_AGENT);
+
+            String cookie = CookieManager.getInstance().getCookie(captchaUrl);
+            if ((cookie == null || cookie.isEmpty()) && url.getHost() != null) {
+                cookie = CookiesManager.obtain(url.getHost());
+            }
+            if (cookie != null && !cookie.isEmpty()) {
+                connection.setRequestProperty("Cookie", cookie);
+            }
+
+            int responseCode = connection.getResponseCode();
+            if (responseCode < 200 || responseCode >= 300) {
+                Log.w(TAG, "downloadCaptchaImageBytes: HTTP " + responseCode + " for " + captchaUrl);
+                return null;
+            }
+
+            inputStream = connection.getInputStream();
+            outputStream = new ByteArrayOutputStream();
+            byte[] buffer = new byte[4096];
+            int read;
+            while ((read = inputStream.read(buffer)) != -1) {
+                outputStream.write(buffer, 0, read);
+            }
+
+            byte[] data = outputStream.toByteArray();
+            Log.d(TAG, "downloadCaptchaImageBytes: loaded " + data.length + " bytes from " + captchaUrl);
+            return data.length > 0 ? data : null;
+        } catch (Exception e) {
+            Log.e(TAG, "downloadCaptchaImageBytes: failed for " + captchaUrl, e);
+            return null;
+        } finally {
+            if (inputStream != null) {
+                try {
+                    inputStream.close();
+                } catch (IOException ignored) {
+                }
+            }
+            if (outputStream != null) {
+                try {
+                    outputStream.close();
+                } catch (IOException ignored) {
+                }
+            }
+            if (connection != null) {
+                connection.disconnect();
+            }
+        }
+    }
+
     private final BroadcastReceiver broadcastReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {

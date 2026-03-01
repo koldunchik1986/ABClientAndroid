@@ -25,6 +25,10 @@ public class AppVars {
     public static ru.neverlands.abclient.model.AutoboiState Autoboi = ru.neverlands.abclient.model.AutoboiState.AutoboiOff;
     public static String GuamodCode = "";
     public static String FightLink = "";
+    // Последняя замеченная URL-картинка капчи завершения боя (/modules/code/code.php?...).
+    public static volatile String LastFightCaptchaImageUrl = "";
+    // Время (ms) когда была замечена LastFightCaptchaImageUrl.
+    public static volatile long LastFightCaptchaImageAtMs = 0L;
     public static String LastBoiLog = "";
     public static String LastBoiEndLog = "";
     public static String LastBoiSostav = "";
@@ -40,6 +44,21 @@ public class AppVars {
     public static final String ACTION_WEBVIEW_EVAL_JS = "ru.neverlands.abclient.ACTION_WEBVIEW_EVAL_JS";
     public static final String ACTION_PROXY_READY = "ru.neverlands.abclient.ACTION_PROXY_READY";
     public static final String ACTION_SHOW_CAPTCHA = "ru.neverlands.abclient.ACTION_SHOW_CAPTCHA";
+    /**
+     * Единый User-Agent для всех прямых HTTP-запросов приложения.
+     *
+     * Важно:
+     * - строка должна оставаться браузерной (Chrome/Windows),
+     * - запрещено добавлять идентификаторы клиента/приложения (например, ABClient/Android; ABClient),
+     *   чтобы не оставлять серверу сигнатуру неофициального ПО.
+     *
+     * Использование:
+     * - AuthManager (авторизация),
+     * - ApiRepository (внешние API-запросы),
+     * - NeverApi/getInfo (опрос API и логов),
+     * - MainActivity/downloadCaptchaImageBytes (загрузка изображения капчи).
+     */
+    public static final String BROWSER_USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36";
 
     public static byte[] lastMainPhpResponse;
     public static byte[] lastChatMsgResponse;

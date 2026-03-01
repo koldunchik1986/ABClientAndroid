@@ -1490,3 +1490,73 @@ mainPhpFight: FIGHT ENDED - IsBoi=false, waiting for main page
 ```
 **Причина:** IsWaitingForNextTurn вычислялся на основе _fightty[3], без учёта IsBoi
 **Решение:** Изменена формула: `IsWaitingForNextTurn = IsBoi && (_fightty[3]...`
+
+---
+
+## 24. Актуализация анализа (01.03.2026): `Autoboi` / `LezFight` / `FightJs` / `Foe` / `Attack`
+
+### 24.1 Что проверено в эталоне C# (без изменений в `ABClient`)
+
+- `ABClient/ABForms/FormMainAutoBoi.cs`
+- `ABClient/PostFilter/MainPhpFight.cs`
+- `ABClient/PostFilter/FightJs.cs`
+- `ABClient/Lez/LezFight.cs`
+- `ABClient/Foe.cs`
+- `ABClient/UnderAttack.cs`
+- `ABClient/ABForms/FormAutoAttack.cs`
+- Связанные вызовы в `ABClient/ScriptManager.cs`, `ABClient/ABForms/FormMainFast.cs`, `ABClient/RoomManager.cs`
+
+### 24.2 Сводка соответствия C# ↔ Android
+
+| C# модуль | Android модуль | Статус анализа | Статус портирования | Комментарий |
+|---|---|---|---|---|
+| `MainPhpFight.cs` | `app/src/main/java/ru/neverlands/abclient/postfilter/MainPhp.java` (`mainPhpFight`) | `[x]` | `[ ]` | Базовый поток боя портирован, но есть отклонения от C# по восстановлению/веткам состояний |
+| `LezFight.cs` | `app/src/main/java/ru/neverlands/abclient/lez/LezFight.java` | `[x]` | `[ ]` | Порт основной логики есть; отсутствует полноценный аналог `CalcRestoreAfterBoi()` и всех `ParseNonFight` кейсов |
+| `FightJs.cs` | `app/src/main/java/ru/neverlands/abclient/postfilter/FightJs.java` | `[x]` | `[+]` | Кнопки/JS-мост перенесены, таймер и reset-ветки присутствуют |
+| `FormMainAutoBoi.cs` | `app/src/main/java/ru/neverlands/abclient/bridge/WebAppInterface.java`, `.../manager/AutoFunctionsManager.java` | `[x]` | `[ ]` | Переключение работает, но управление рассредоточено по двум точкам и частично дублируется |
+| `FormSettingsAb.cs` | `app/src/main/java/ru/neverlands/abclient/ui/AutoBoiSettingsFragment.java` | `[x]` | `[ ]` | UI есть, но выбор группы не доведён: ротация/останов используют группу `0` |
+| `Foe.cs` | (отдельного класса нет, логика в `LezFight.java`) | `[x]` | `[ ]` | Нет отдельного порта сущности `Foe` (валидация/сравнение/типизация) |
+| `UnderAttack.cs` | Частично в `MainPhp.java` (`notifyNewFight`) | `[x]` | `[ ]` | Нет полного аналога логики `LezSay` (`Chat/Clan/Pair/No`) и сценариев уведомлений C# |
+| `FormAutoAttack.cs` + `AutoAttackToolId` | `AutoFunctionsManager`/`QuickButtonsPanel`/`FastActionManager` | `[x]` | `[ ]` | Флаг авто-нападения есть, но нет эквивалента выбора `AutoAttackToolId` как в C# |
+
+### 24.3 Найденные расхождения (приоритет)
+
+1. `[ ]` **Нет полного `CalcRestoreAfterBoi`-поведения C#**
+   - В C#: расчёт времени восстановления по HP/MA и `Pers.IntHP`.
+   - В Android: упрощённая проверка по `LezWaitHp` без эквивалентной формулы и тайминга.
+
+2. `[ ]` **`ParseNonFight` в `LezFight.java` покрывает не все ветки C#**
+   - В C# детально обрабатываются кейсы (`fight_ty[4]`) `3/4/5/7`, `act=6/act=7`, `FightLink`, ожидание и завершение.
+   - В Android часть переходов сведена к общему `fexp`-разбору.
+
+3. `[ ]` **`AutoBoiSettingsFragment` не привязывает выбранную группу к вкладкам 3/4**
+   - Локально выбирается `selectedGroupIdx` во вкладке групп.
+   - Вкладки ротации/останов загружают `LezGroups.get(0)` вместо текущей выбранной группы.
+
+4. `[ ]` **`AutoUd()` в JS-мосте не реализован**
+   - `FightJs.java` вызывает `AndroidBridge.AutoUd()`, в `WebAppInterface` метод содержит `TODO`.
+
+5. `[ ]` **Сильное логирование в боевом цикле включено постоянно**
+   - В `mainPhpFight()` принудительный дамп HTML чанками (`if (true)`), что создаёт нагрузку и влияет на ритм авто-боя.
+
+6. `[ ]` **Нет отдельного порта `Foe` и полного `UnderAttack`-потока**
+   - Типизация/валидация противника и маршрутизация уведомлений (`LezSay`) реализованы не в полном объёме C#.
+
+7. `[ ]` **`Attack`-ветка (авто-нападение с выбором инструмента) не доведена до C#-эквивалента**
+   - В C# используется `AutoAttackToolId` + интеграция с `RoomManager`.
+   - В Android есть on/off `AUTO_ATTACK`, но нет полноценного аналога выбора/применения `toolId` в общем потоке.
+
+### 24.4 План доработки (обновлённый)
+
+- [ ] Вынести и портировать `CalcRestoreAfterBoi()` в `LezFight.java` 1:1 с C# формулой и перейти на него из `MainPhp.mainPhpFight`.
+- [ ] Довести `ParseNonFight()` до полного покрытия C# кейсов (`3/4/5/7`, таймаут, `FightLink`-переходы).
+- [ ] Исправить связку вкладок в `AutoBoiSettingsFragment`: единый `selectedGroupIndex` для Groups/Rotation/Stop.
+- [ ] Реализовать `AutoUd()` в `WebAppInterface` по C#-поведению (`AutoUd` + `AutoSelect`).
+- [ ] Перевести боевой дамп HTML в управляемый debug-флаг (выкл по умолчанию).
+- [ ] Добавить/портировать слой `Foe` (или эквивалентную строгую типизацию) и закрыть пробелы `UnderAttack` (`LezSay`).
+- [ ] Закрыть `Attack`-ветку: добавить аналог `AutoAttackToolId` и связать с авто-нападением в общем цикле.
+
+### 24.5 Примечание по правилам
+
+- Папка `ABClient` использована только как эталон для сверки.
+- Изменения выполнены только в TODO-документации проекта Android.

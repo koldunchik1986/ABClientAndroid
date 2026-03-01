@@ -31,6 +31,12 @@ import ru.neverlands.abclient.utils.Russian;
 public class MainPhp {
     private static final String TAG = "MainPhp";
     private static final Random RANDOM = new Random();
+    private static final int AUTO_FINISH_MIN_DELAY_MS = 1000;
+    private static final int AUTO_FINISH_EXTRA_DELAY_MS = 700;
+    private static final long CAPTCHA_FALLBACK_TTL_MS = 30000L;
+    private static volatile long lastAutoFinishRedirectAtMs = 0L;
+    // Защита от повторного показа одного и того же диалога капчи завершения боя.
+    private static volatile String lastFightCaptchaDialogKey = "";
 
     // HTML‑заглушка "ожидаем ход противника" с авто‑обновлением.
     private static String buildWaitForTurnAutoRefreshHtml(String reloadUrl, int delayMs) {
@@ -43,6 +49,42 @@ public class MainPhp {
                 "<script language=\"JavaScript\">" +
                 "setTimeout(function(){ window.location = '" + safeUrl + "'; }, " + safeDelay + ");" +
                 "</script></body></html>";
+    }
+
+    // Отложенный redirect для завершения боя (чтобы не спамить сервер слишком частыми запросами).
+    private static String buildDelayedRedirectHtml(String description, String link, int delayMs) {
+        String safeLink = (link != null && !link.isEmpty()) ? link : "main.php";
+        int safeDelay = Math.max(AUTO_FINISH_MIN_DELAY_MS, delayMs);
+        return HtmlUtils.GENERATED_PAGE_MARKER +
+                "<html><head><meta http-equiv=\"Content-Type\" content=\"text/html; charset=windows-1251\">" +
+                "<title>ABClient</title></head><body>" +
+                description +
+                "<script language=\"JavaScript\">" +
+                "setTimeout(function(){" +
+                "if(typeof AndroidBridge !== 'undefined' && AndroidBridge.redirectToUrl){" +
+                "AndroidBridge.redirectToUrl(\"" + safeLink + "\");" +
+                "} else { window.location = \"" + safeLink + "\"; }" +
+                "}," + safeDelay + ");" +
+                "</script></body></html>";
+    }
+
+    // URL капчи из уже загруженного HTML + fallback по последнему запросу /modules/code/code.php.
+    private static String resolveFightCaptchaUrl(String html) {
+        String captchaUrl = extractCaptchaUrl(html);
+        if (captchaUrl != null && !captchaUrl.isEmpty()) {
+            return captchaUrl;
+        }
+
+        String fallbackUrl = AppVars.LastFightCaptchaImageUrl;
+        long fallbackAt = AppVars.LastFightCaptchaImageAtMs;
+        if (fallbackUrl != null && !fallbackUrl.isEmpty() && fallbackAt > 0L) {
+            long age = System.currentTimeMillis() - fallbackAt;
+            if (age >= 0 && age <= CAPTCHA_FALLBACK_TTL_MS) {
+                android.util.Log.d(TAG, "resolveFightCaptchaUrl: use fallback from interceptor, ageMs=" + age);
+                return fallbackUrl;
+            }
+        }
+        return null;
     }
 
     // Центральный обработчик main.php (порт логики из C# MainPhp.cs).
@@ -576,7 +618,14 @@ public class MainPhp {
             return html;
         }
 
-        if (!fight.IsBoi && !fight.IsWaitingForNextTurn) {
+        // Унифицированный флаг "бой завершён":
+        // - IsBoi=false: мы уже не в активной фазе ударов,
+        // - IsWaitingForNextTurn=false: это не ожидание ответа противника.
+        // Используется сразу в двух потоках:
+        // 1) AutoBoi-поток (автозавершение/капча),
+        // 2) ручной поток (показ капчи без авто-нажатия).
+        boolean fightEnded = !fight.IsBoi && !fight.IsWaitingForNextTurn;
+        if (fightEnded) {
             registerFightEnd(fight);
         }
 
@@ -591,13 +640,16 @@ public class MainPhp {
             notifyNewFight(fight);
         }
 
-        // Завершение боя: делаем автоматический клик "Завершить" только когда автобой действительно включён.
-        if (!fight.IsBoi && !fight.IsWaitingForNextTurn
+        // Ветка завершения боя в AutoBoi:
+        // - зависит от AppVars.Profile.LezDoAutoboi и AppVars.Autoboi==AutoboiOn,
+        // - использует AppVars.FightLink, который формируется в LezFight.BuildFightLink(),
+        // - при капче вызывает showFightCaptchaDialogOnce(...) и НЕ делает auto-submit.
+        if (fightEnded
                 && AppVars.Profile != null && AppVars.Profile.LezDoAutoboi
                 && AppVars.Autoboi == AutoboiState.AutoboiOn) {
             android.util.Log.d(TAG, "mainPhpFight: FIGHT ENDED with autoboi ON - processing finish");
 
-            String captchaUrl = extractCaptchaUrl(html);
+            String captchaUrl = resolveFightCaptchaUrl(html);
             boolean needCaptcha = captchaUrl != null && !captchaUrl.isEmpty();
 
             if (!AppVars.FightLink.isEmpty() && !AppVars.FightLink.contains("????")) {
@@ -608,14 +660,26 @@ public class MainPhp {
                     android.util.Log.d(TAG, "mainPhpFight: CAPTCHA required, stopping autoboi and showing dialog: " + captchaUrl);
                     AppVars.Autoboi = AutoboiState.AutoboiOff;
                     AppVars.ContentMainPhp = html; // отрисовать форму с капчей
-                    Intent intent = new Intent(AppVars.ACTION_SHOW_CAPTCHA);
-                    intent.putExtra("captchaUrl", captchaUrl);
-                    intent.putExtra("finishUrl", "http://neverlands.ru/" + fightLink);
-                    if (AppVars.getContext() != null) {
-                        androidx.localbroadcastmanager.content.LocalBroadcastManager.getInstance(AppVars.getContext()).sendBroadcast(intent);
-                    }
+                    AppVars.LastFightCaptchaImageUrl = "";
+                    AppVars.LastFightCaptchaImageAtMs = 0L;
+                    showFightCaptchaDialogOnce(captchaUrl, fightLink, fight.LogBoi);
                     // отдаем страницу с капчей напрямую
                     return html;
+                }
+
+                long now = System.currentTimeMillis();
+                long sinceLast = now - lastAutoFinishRedirectAtMs;
+                if (sinceLast >= 0 && sinceLast < AUTO_FINISH_MIN_DELAY_MS) {
+                    int waitMs = (int) (AUTO_FINISH_MIN_DELAY_MS - sinceLast) + 120;
+                    android.util.Log.d(TAG, "mainPhpFight: throttling finish redirect, waitMs=" + waitMs);
+                    return buildWaitForTurnAutoRefreshHtml(address, waitMs);
+                }
+
+                int redirectDelay = AUTO_FINISH_MIN_DELAY_MS + RANDOM.nextInt(AUTO_FINISH_EXTRA_DELAY_MS + 1);
+                if (redirectDelay >= 0) {
+                    lastAutoFinishRedirectAtMs = now;
+                    AppVars.FightLink = "";
+                    return buildDelayedRedirectHtml("Завершение боя", fightLink, redirectDelay);
                 }
 
                 AppVars.FightLink = "";
@@ -626,7 +690,33 @@ public class MainPhp {
 
             android.util.Log.d(TAG, "mainPhpFight: FightLink missing, redirecting to main.php");
             AppVars.FightLink = "";
+            int redirectDelayToMain = AUTO_FINISH_MIN_DELAY_MS + RANDOM.nextInt(AUTO_FINISH_EXTRA_DELAY_MS + 1);
+            if (redirectDelayToMain >= 0) {
+                return buildDelayedRedirectHtml("Завершение боя - обновление", "main.php", redirectDelayToMain);
+            }
             return Russian.getString(Filter.buildRedirect("Завершение боя - обновление", "main.php"));
+        }
+
+        // Ветка ручного режима:
+        // если сервер вернул капчу на странице завершения боя, показываем тот же popup,
+        // что и в AutoBoi, но без попытки автоматического нажатия "Завершить".
+        // Зависимости:
+        // - extractCaptchaUrl(html): извлечение URL картинки,
+        // - AppVars.FightLink/address: URL, куда будет отправлен code=<digits>,
+        // - showFightCaptchaDialogOnce(...): broadcast в MainActivity.
+        if (fightEnded) {
+            String manualCaptchaUrl = resolveFightCaptchaUrl(html);
+            if (manualCaptchaUrl != null && !manualCaptchaUrl.isEmpty()) {
+                String finishLink = AppVars.FightLink;
+                if (finishLink == null || finishLink.isEmpty()) {
+                    // fallback: используем текущий адрес страницы завершения
+                    finishLink = address;
+                }
+                android.util.Log.d(TAG, "mainPhpFight: manual mode CAPTCHA detected, showing dialog: " + manualCaptchaUrl);
+                AppVars.LastFightCaptchaImageUrl = "";
+                AppVars.LastFightCaptchaImageAtMs = 0L;
+                showFightCaptchaDialogOnce(manualCaptchaUrl, finishLink, fight.LogBoi);
+            }
         }
 
         // Проверяем, ждём ли мы хода противника - нужно auto-refresh
@@ -722,24 +812,97 @@ public class MainPhp {
         return AppVars.ContentMainPhp != null ? AppVars.ContentMainPhp : html;
     }
 
+    /**
+     * Извлекает URL капчи завершения боя из HTML.
+     *
+     * Назначение:
+     * - определить, что сервер потребовал ручной ввод цифр (капча),
+     * - передать абсолютный URL картинки в диалог MainActivity.
+     *
+     * Что поддерживается:
+     * - `/modules/code/code.php?...`
+     * - `modules/code/code.php?...`
+     * - `http://neverlands.ru/modules/code/code.php?...`
+     *
+     * Зависимости:
+     * - вызывается из mainPhpFight(...) в AutoBoi и ручной ветках завершения,
+     * - результат используется showFightCaptchaDialogOnce(...),
+     * - диагностические логи пишутся в TAG `MainPhp`.
+     */
     private static String extractCaptchaUrl(String html) {
         try {
-            String marker = "/modules/code/code.php?";
-            int idx = html.indexOf(marker);
-            if (idx >= 0) {
-                int end = html.indexOf("\"", idx);
-                if (end < 0) end = html.indexOf("'", idx);
-                if (end < 0) end = Math.min(idx + 200, html.length());
-                String url = html.substring(idx, end);
+            // Поддержка разных вариантов src:
+            // 1) /modules/code/code.php?...
+            // 2) modules/code/code.php?...
+            // 3) http://neverlands.ru/modules/code/code.php?...
+            java.util.regex.Pattern pattern = java.util.regex.Pattern.compile(
+                    "(?i)(https?://[^\\s\"']+?/modules/code/code\\.php\\?[^\\s\"']+|/?modules/code/code\\.php\\?[^\\s\"']+)"
+            );
+            java.util.regex.Matcher matcher = pattern.matcher(html);
+            if (matcher.find()) {
+                String url = matcher.group(1);
+                if (url == null || url.isEmpty()) {
+                    return null;
+                }
                 if (!url.startsWith("http")) {
+                    if (!url.startsWith("/")) {
+                        url = "/" + url;
+                    }
                     url = "http://neverlands.ru" + url;
                 }
+                android.util.Log.d(TAG, "extractCaptchaUrl: found " + url);
                 return url;
+            }
+            if (html != null && html.contains("code.php")) {
+                android.util.Log.d(TAG, "extractCaptchaUrl: code.php present but url pattern not matched");
             }
         } catch (Exception e) {
             android.util.Log.e(TAG, "extractCaptchaUrl error", e);
         }
         return null;
+    }
+
+    /**
+     * Инициирует показ popup-капчи завершения боя через LocalBroadcast.
+     *
+     * Поведение:
+     * - нормализует finishUrl до абсолютного адреса `http://neverlands.ru/...`,
+     * - дедуплицирует показ по ключу `logBoi|captchaUrl|finishUrl`,
+     * - отправляет `AppVars.ACTION_SHOW_CAPTCHA`, который принимает MainActivity
+     *   и открывает showCaptchaDialog(...).
+     *
+     * Зависимости:
+     * - `AppVars.ACTION_SHOW_CAPTCHA` (контракт события),
+     * - `AppVars.getContext()` (доступ к LocalBroadcastManager),
+     * - `MainActivity.broadcastReceiver` и `MainActivity.showCaptchaDialog(...)`,
+     * - `lastFightCaptchaDialogKey` (защита от многократного открытия окна).
+     */
+    private static void showFightCaptchaDialogOnce(String captchaUrl, String finishUrl, String logBoi) {
+        if (captchaUrl == null || captchaUrl.isEmpty() || finishUrl == null || finishUrl.isEmpty()) {
+            return;
+        }
+
+        String normalizedFinishUrl = finishUrl;
+        if (!normalizedFinishUrl.startsWith("http")) {
+            normalizedFinishUrl = "http://neverlands.ru/" + normalizedFinishUrl.replaceFirst("^/+", "");
+        }
+
+        String key = (logBoi == null ? "" : logBoi) + "|" + captchaUrl + "|" + normalizedFinishUrl;
+        if (key.equals(lastFightCaptchaDialogKey)) {
+            android.util.Log.d(TAG, "showFightCaptchaDialogOnce: duplicate key, skip dialog");
+            return;
+        }
+        lastFightCaptchaDialogKey = key;
+
+        if (AppVars.getContext() == null) {
+            android.util.Log.w(TAG, "showFightCaptchaDialogOnce: context is null, skip dialog");
+            return;
+        }
+
+        Intent intent = new Intent(AppVars.ACTION_SHOW_CAPTCHA);
+        intent.putExtra("captchaUrl", captchaUrl);
+        intent.putExtra("finishUrl", normalizedFinishUrl);
+        LocalBroadcastManager.getInstance(AppVars.getContext()).sendBroadcast(intent);
     }
 
     /**

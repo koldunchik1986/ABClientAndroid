@@ -19,10 +19,32 @@ import okhttp3.RequestBody;
 import okhttp3.Response;
 import ru.neverlands.abclient.model.AuthResult;
 import ru.neverlands.abclient.network.NetworkClient;
+import ru.neverlands.abclient.utils.AppVars;
 import ru.neverlands.abclient.utils.DebugLogger;
 
 public class AuthManager {
 
+    /**
+     * Полный цикл авторизации без капчи.
+     *
+     * Этапы:
+     * 1) GET стартовой страницы для инициализации сессионных cookies,
+     * 2) POST на {@code game.php} с логином/паролем,
+     * 3) GET {@code main.php} для финализации входа.
+     *
+     * При обнаружении формы капчи возвращает специальный {@link AuthResult}
+     * с параметрами капчи, не считая вход успешным.
+     *
+     * Зависимости:
+     * - {@link NetworkClient} (общий OkHttpClient + cookie store),
+     * - {@link AppVars#BROWSER_USER_AGENT} (единый браузерный User-Agent),
+     * - {@link Jsoup} (парсинг HTML формы капчи),
+     * - {@link DebugLogger} (диагностика сетевого процесса).
+     *
+     * @param username логин персонажа.
+     * @param password пароль персонажа.
+     * @return результат авторизации (успех / ошибка / требование капчи).
+     */
     public AuthResult authorize(String username, String password) {
         DebugLogger.log("AuthManager: Starting synchronous authorization for user: " + username);
 
@@ -33,7 +55,7 @@ public class AuthManager {
             // Step 1: Initial GET request
             Request initialRequest = new Request.Builder()
                     .url("http://neverlands.ru/")
-                    .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36")
+                    .header("User-Agent", AppVars.BROWSER_USER_AGENT)
                     .header("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7")
                     .header("Accept-Language", "ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7")
                     .build();
@@ -54,7 +76,7 @@ public class AuthManager {
 
             Request loginRequest = new Request.Builder()
                     .url("http://neverlands.ru/game.php")
-                    .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36")
+                    .header("User-Agent", AppVars.BROWSER_USER_AGENT)
                     .header("Referer", "http://neverlands.ru/")
                     .header("Origin", "http://neverlands.ru")
                     .post(formBody)
@@ -96,7 +118,7 @@ public class AuthManager {
             // Step 3: Final GET to main.php
             Request mainRequest = new Request.Builder()
                     .url("http://neverlands.ru/main.php")
-                    .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36")
+                    .header("User-Agent", AppVars.BROWSER_USER_AGENT)
                     .header("Referer", "http://neverlands.ru/game.php")
                     .build();
 
@@ -122,6 +144,26 @@ public class AuthManager {
         }
     }
 
+    /**
+     * Продолжение авторизации при требовании капчи.
+     *
+     * Этапы:
+     * 1) POST на {@code game.php} с параметрами {@code vcode} и введённым {@code verify},
+     * 2) повторная проверка на наличие новой капчи (ошибка ввода),
+     * 3) GET {@code main.php} для финализации сессии при успешной проверке.
+     *
+     * Зависимости:
+     * - {@link NetworkClient} и его cookie store,
+     * - {@link AppVars#BROWSER_USER_AGENT},
+     * - {@link Jsoup} для разбора повторной капчи,
+     * - {@link DebugLogger} для трассировки.
+     *
+     * @param username логин персонажа.
+     * @param password пароль персонажа.
+     * @param vcode серверный идентификатор капчи.
+     * @param verify код, введённый пользователем с картинки.
+     * @return результат авторизации (успех / ошибка / повторная капча).
+     */
     public AuthResult authorizeWithCaptcha(String username, String password, String vcode, String verify) {
         DebugLogger.log("AuthManager: Starting authorization with captcha for user: " + username);
 
@@ -138,7 +180,7 @@ public class AuthManager {
 
             Request loginRequest = new Request.Builder()
                     .url("http://neverlands.ru/game.php")
-                    .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36")
+                    .header("User-Agent", AppVars.BROWSER_USER_AGENT)
                     .header("Referer", "http://neverlands.ru/game.php")
                     .header("Origin", "http://neverlands.ru")
                     .post(formBody)
@@ -180,7 +222,7 @@ public class AuthManager {
             // Step 3: Final GET to main.php
             Request mainRequest = new Request.Builder()
                     .url("http://neverlands.ru/main.php")
-                    .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36")
+                    .header("User-Agent", AppVars.BROWSER_USER_AGENT)
                     .header("Referer", "http://neverlands.ru/game.php")
                     .build();
 

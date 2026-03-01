@@ -11,6 +11,7 @@ import java.nio.charset.Charset;
 import java.util.HashMap;
 import java.util.Map;
 
+import ru.neverlands.abclient.utils.AppVars;
 import ru.neverlands.abclient.utils.Russian;
 
 /**
@@ -114,6 +115,20 @@ public class NeverApi {
      * Выполняет GET-запрос с куками WebView (аналог CookieAwareWebClient в C#).
      * Декодирует ответ из windows-1251.
      */
+    /**
+     * Универсальный GET-запрос к API Neverlands с cookies текущей WebView-сессии.
+     *
+     * Что делает:
+     * - открывает {@link HttpURLConnection} с таймаутами,
+     * - добавляет Cookie из {@link CookieManager} для текущего URL,
+     * - отправляет единый браузерный User-Agent ({@link AppVars#BROWSER_USER_AGENT}),
+     * - читает ответ в bytes и декодирует через windows-1251.
+     *
+     * Метод является базовой сетевой зависимостью для getUserId/getAll/getFlog.
+     *
+     * @param urlString полный URL API-эндпоинта.
+     * @return строка ответа или {@code null} при ошибке/HTTP != 200.
+     */
     static String getInfo(String urlString) {
         HttpURLConnection conn = null;
         try {
@@ -128,8 +143,7 @@ public class NeverApi {
             if (cookie != null && !cookie.isEmpty()) {
                 conn.setRequestProperty("Cookie", cookie);
             }
-            conn.setRequestProperty("User-Agent",
-                "Mozilla/5.0 (Android; ABClient)");
+            conn.setRequestProperty("User-Agent", AppVars.BROWSER_USER_AGENT);
 
             int code = conn.getResponseCode();
             if (code != 200) {

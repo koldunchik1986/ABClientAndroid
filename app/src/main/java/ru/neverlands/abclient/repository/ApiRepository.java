@@ -16,6 +16,7 @@ import okio.BufferedSource;
 import okio.Okio;
 import ru.neverlands.abclient.model.Contact;
 import ru.neverlands.abclient.network.NetworkClient;
+import ru.neverlands.abclient.utils.AppVars;
 import ru.neverlands.abclient.utils.CustomDebugLogger;
 
 /**
@@ -57,7 +58,7 @@ public class ApiRepository {
 
             Request request = new Request.Builder()
                     .url(url)
-                    .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36")
+                    .header("User-Agent", AppVars.BROWSER_USER_AGENT)
                     .header("Referer", "http://neverlands.ru/main.php")
                     .build();
 
@@ -111,7 +112,7 @@ public class ApiRepository {
             String url = "http://neverlands.ru/modules/api/info.cgi?playerid=" + playerId + "&info=1";
             Request request = new Request.Builder()
                     .url(url)
-                    .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36")
+                    .header("User-Agent", AppVars.BROWSER_USER_AGENT)
                     .header("Referer", "http://neverlands.ru/main.php")
                     .build();
 
