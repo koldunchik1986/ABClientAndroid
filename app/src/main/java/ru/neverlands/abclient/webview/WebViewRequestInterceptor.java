@@ -105,9 +105,7 @@ public class WebViewRequestInterceptor {
 
             // Запоминаем URL картинки капчи завершения боя для fallback-детекта в MainPhp.
             if (urlString.contains("/modules/code/code.php")) {
-                ru.neverlands.abclient.utils.AppVars.LastFightCaptchaImageUrl = urlString;
-                ru.neverlands.abclient.utils.AppVars.LastFightCaptchaImageAtMs = System.currentTimeMillis();
-                Log.d(TAG, "Captured fight captcha image URL: " + urlString);
+                Log.d(TAG, "Captured fight captcha image URL (request): " + urlString);
             }
 
             Log.d(TAG, "Intercepting: " + urlString);
@@ -170,8 +168,8 @@ public class WebViewRequestInterceptor {
             // Сохраняем свежие байты картинки капчи завершения боя для отображения в popup без повторного HTTP-запроса.
             if (urlString.contains("/modules/code/code.php")) {
                 ru.neverlands.abclient.utils.AppVars.LastFightCaptchaImageBytes = bytes;
-                ru.neverlands.abclient.utils.AppVars.LastFightCaptchaImageAtMs = System.currentTimeMillis();
                 ru.neverlands.abclient.utils.AppVars.LastFightCaptchaImageUrl = urlString;
+                ru.neverlands.abclient.utils.AppVars.LastFightCaptchaImageAtMs = System.currentTimeMillis();
                 Log.d(TAG, "Captured fight captcha image BYTES: " + bytes.length + " for " + urlString);
             }
 

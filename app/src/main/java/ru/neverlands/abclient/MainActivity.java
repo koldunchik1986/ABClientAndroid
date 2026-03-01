@@ -87,6 +87,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     private static final int REQUEST_CODE_CONTACTS = 1001;
     private static final int CHAT_REFRESH_DEFAULT_SECONDS = 12;
     private static final int CHAT_REFRESH_INITIAL_DELAY_MS = 1000;
+    private static final long CAPTCHA_IMAGE_STABILIZE_DELAY_MS = 180L;
     public ActivityMainBinding binding;
     private Timer timer;
     private boolean isExiting = false;
@@ -555,6 +556,17 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         boolean hasNewBytes = latestHash != activeFightCaptchaImageHash;
         if (!forceUpdate && !hasNewTime && !hasNewBytes) {
             return false;
+        }
+        if (latestAtMs > 0L) {
+            long ageMs = System.currentTimeMillis() - latestAtMs;
+            if (ageMs >= 0 && ageMs < CAPTCHA_IMAGE_STABILIZE_DELAY_MS) {
+                if (forceUpdate) {
+                    progressBar.setVisibility(View.VISIBLE);
+                }
+                Log.d(TAG, "updateCaptchaImageFromCaptured: wait stabilize, ageMs=" + ageMs
+                        + ", need=" + CAPTCHA_IMAGE_STABILIZE_DELAY_MS);
+                return false;
+            }
         }
 
         android.graphics.Bitmap latestBitmap = android.graphics.BitmapFactory.decodeByteArray(latestBytes, 0, latestBytes.length);
