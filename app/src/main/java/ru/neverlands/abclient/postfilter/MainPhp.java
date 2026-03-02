@@ -937,8 +937,8 @@ public class MainPhp {
 
         // --- Парсинг боя с помощью LezFight ---
         LezFight fight = new LezFight(html);
-        // РЎРЅРёРјРѕРє ins_HP(...) РґР»СЏ UI РѕР¶РёРґР°РЅРёСЏ Р»РµС‡РµРЅРёСЏ (Restoring).
-        // РџСЂРёРѕСЂРёС‚РµС‚: СЃРµСЂРІРµСЂРЅС‹Рµ cur/max/int РёР· HTML РІРµСЂС…РЅРµРіРѕ С„СЂРµР№РјР°.
+        // Снимок ins_HP(...) для UI ожидания лечения (Restoring).
+        // Приоритет: серверные cur/max/int из HTML верхнего фрейма.
         InsHpSnapshot insHpSnapshot = parseInsHpSnapshot(html);
         
         // Детальный дамп HTML для диагностики (если нужен)
@@ -1030,7 +1030,7 @@ public class MainPhp {
             }
 
             if (AppVars.Autoboi == AutoboiState.AutoboiOn) {
- boolean restoreAlreadyCompletedForCurrentLog =
+                boolean restoreAlreadyCompletedForCurrentLog =
                         fight.LogBoi != null
                                 && !fight.LogBoi.isEmpty()
                                 && fight.LogBoi.equals(AppVars.AutoboiReadyCompletedLog);
