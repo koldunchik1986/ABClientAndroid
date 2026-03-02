@@ -97,9 +97,17 @@ public class WebViewRequestInterceptor {
             if (ru.neverlands.abclient.utils.AppVars.Profile != null
                     && ru.neverlands.abclient.utils.AppVars.Profile.LezDoAutoboi
                     && ru.neverlands.abclient.utils.AppVars.Autoboi == ru.neverlands.abclient.model.AutoboiState.AutoboiOn) {
-                if (urlString.contains("fight_v") || urlString.contains("hpmp.js") || urlString.contains("game.js")) {
-                    Log.d(TAG, "Skipping heavy fight js during autoboi: " + urlString);
-                    return new WebResourceResponse("application/javascript", "utf-8", new ByteArrayInputStream(new byte[0]));
+                if (urlString.contains("fight_v")) {
+                    Log.d(TAG, "Replacing heavy fight js with autoboi shim: " + urlString);
+                    byte[] shimBytes = buildAutoboiFightJsShim().getBytes(Charset.forName("UTF-8"));
+                    return new WebResourceResponse("application/javascript", "utf-8",
+                            new ByteArrayInputStream(shimBytes));
+                }
+                if (urlString.contains("hpmp.js") || urlString.contains("game.js")) {
+                    Log.d(TAG, "Skipping heavy support js during autoboi: " + urlString);
+                    byte[] emptyBytes = "/* abclient autoboi skip */".getBytes(Charset.forName("UTF-8"));
+                    return new WebResourceResponse("application/javascript", "utf-8",
+                            new ByteArrayInputStream(emptyBytes));
                 }
             }
 
@@ -336,6 +344,33 @@ public class WebViewRequestInterceptor {
             return contentType.substring(p + 8).trim();
         }
         return "windows-1251";
+    }
+
+    /**
+     * Минимальный JS-shim для AutoBoi вместо полного `fight_v*.js`.
+     *
+     * Назначение:
+     * - убрать ошибки `magic_slots is not defined` / `AutoSubmit is not defined`;
+     * - сохранить рабочий fallback для страниц, где вызывается AutoSubmit(...).
+     *
+     * Поведение:
+     * - `magic_slots()` -> no-op;
+     * - `AutoSubmit(...)` -> пробует отправить `document.ff` либо первую доступную форму.
+     *
+     * Зависимости:
+     * - используется в intercept(...) только при `AutoboiOn`.
+     */
+    private static String buildAutoboiFightJsShim() {
+        return "(function(){"
+                + "if(typeof window.magic_slots!=='function'){window.magic_slots=function(){};}"
+                + "if(typeof window.AutoSubmit!=='function'){window.AutoSubmit=function(){"
+                + "try{"
+                + "if(document&&document.ff&&typeof document.ff.submit==='function'){document.ff.submit();return true;}"
+                + "if(document&&document.forms&&document.forms.length>0&&typeof document.forms[0].submit==='function'){document.forms[0].submit();return true;}"
+                + "}catch(e){console.log('ABCLIENT_AUTOSUBMIT_SHIM_ERR:'+e);}"
+                + "return false;"
+                + "};}"
+                + "})();";
     }
 
     /**

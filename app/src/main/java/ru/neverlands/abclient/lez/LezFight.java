@@ -9,6 +9,7 @@ import java.util.Locale;
 import java.util.Random;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import ru.neverlands.abclient.manager.UnderAttackManager;
 import ru.neverlands.abclient.model.*;
 import ru.neverlands.abclient.utils.AppVars;
 import ru.neverlands.abclient.utils.HelperStrings;
@@ -135,10 +136,11 @@ public class LezFight {
         // Сохраняем данные для Frame
         _fightpm = fightpm;
         
-        // VCode - сначала пробуем из AppVars, иначе из fight_pm[4]
-        if (AppVars.VCode != null && !AppVars.VCode.isEmpty()) {
-            _vcode = AppVars.VCode;
-        } else if (fightpm.length > 4) {
+        // VCode для submit-цепочки берём только из текущего fight_pm[4].
+        // Зависимости:
+        // - BuildResult() и BuildFrame() отправляют это значение в `vcode`.
+        // - сервер валидирует vcode по текущему кадру боя, поэтому кэш из AppVars здесь недопустим.
+        if (fightpm.length > 4) {
             _vcode = Strip(fightpm[4]);
         } else {
             _vcode = "";
@@ -262,7 +264,20 @@ public class LezFight {
         DoStop = FoeGroup.DoStopNow;
         IsLowHp = FoeGroup.DoStopLowHp && (_percentHp <= FoeGroup.StopLowHp);
         IsLowMa = FoeGroup.DoStopLowMa && (_percentMa <= FoeGroup.StopLowMa);
-        // DoExit logic...
+        // C# parity: аварийный выход из рискованного PvP.
+        // Условия совпадают с LezFight.cs: человек-цель + тип боя >= 80 + включённый DoExitRisky.
+        DoExit = FoeGroup.DoExitRisky && _ftype >= 80 && "Человек".equals(_foeName);
+
+        // Защита сценария "на нас напали": не применять stop/exit-ветки, если это не наша инициатива.
+        // Зависимость: UnderAttackManager хранит контекст источника атаки между фильтрами боя.
+        if ((DoStop || IsLowHp || IsLowMa || DoExit)
+                && UnderAttackManager.isHumanFight()
+                && !UnderAttackManager.isMeAttacker()) {
+            DoStop = false;
+            IsLowHp = false;
+            IsLowMa = false;
+            DoExit = false;
+        }
         
         if (LezCombinations.size() > 0) {
             LezCombination = LezCombinations.get((int)(Math.random() * LezCombinations.size()));
@@ -321,99 +336,252 @@ public class LezFight {
         return 0;
     }
 
-    // Генерация комбинаций ударов/блоков/магии по правилам группы.
+    /**
+     * Генерация доступных комбинаций удара/блока/магии по правилам группы.
+     *
+     * Пайплайн 1:1 с C# `LezFight.GenerateCombinations()`:
+     * 1) собрать валидные hit-узлы (1/2/3 удара),
+     * 2) собрать block-узлы,
+     * 3) собрать magic-узлы (1/2/3 каста с anti-conflict ограничениями),
+     * 4) склеить и отобрать лучший набор через `compareTo`.
+     *
+     * Ключевые зависимости:
+     * - `LezNode` (расчёт OD/Mana/валидности и приоритет комбинации),
+     * - `FoeGroup` (правила и доступные спеллы),
+     * - `_posod/_posma/_odmax/_currentMa` (лимиты ресурсов текущего хода),
+     * - `LezSpellCollection` + `LezSpell` (классификация кода действия).
+     */
     private void GenerateCombinations() {
+        LezCombinations.clear();
         _lezHits.clear();
         _lezHits.add(new LezNode());
-        
+
         _lezBlocks.clear();
         _lezBlocks.add(new LezNode());
-        
+
         _lezMagics.clear();
         _lezMagics.add(new LezNode());
 
-        // 1. Удары (Hits)
+        // 1) Одиночные удары (4 боевые зоны).
         for (int combo = 0; combo < 4; combo++) {
             for (int op = 1; op <= _hits.size(); op++) {
                 if (!_ehits.get(op - 1)) continue;
-                LezNode node = new LezNode();
+
+                LezNode hit = new LezNode();
                 int code = _hits.get(op - 1);
-                node.AddHit(combo, op, code);
-                if (node.Od(_posod) > _odmax || node.Mana(_posma) > _currentMa) continue;
-                _lezHits.add(node);
+                hit.AddHit(combo, op, code);
+                if (hit.Od(_posod) > _odmax || hit.Mana(_posma) > _currentMa) continue;
+
+                _lezHits.add(hit);
             }
         }
 
-        // Двойные удары
-        for (int c1 = 0; c1 < 3; c1++) {
+        // 2) Двойные удары (с ограничением на недопустимые пары зон).
+        for (int combo1 = 0; combo1 < 3; combo1++) {
             for (int op1 = 1; op1 <= _hits.size(); op1++) {
                 if (!_ehits.get(op1 - 1)) continue;
-                LezNode node1 = new LezNode();
-                node1.AddHit(c1, op1, _hits.get(op1 - 1));
-                if (node1.Od(_posod) > _odmax || node1.Mana(_posma) > _currentMa) continue;
 
-                for (int c2 = c1 + 1; c2 < 4; c2++) {
-                    if (c2 - c1 == 3) continue;
+                LezNode hit = new LezNode();
+                int code1 = _hits.get(op1 - 1);
+                hit.AddHit(combo1, op1, code1);
+                if (hit.Od(_posod) > _odmax || hit.Mana(_posma) > _currentMa) continue;
+
+                for (int combo2 = combo1 + 1; combo2 < 4; combo2++) {
+                    if (combo2 - combo1 == 3) continue;
+
                     for (int op2 = 1; op2 <= _hits.size(); op2++) {
                         if (!_ehits.get(op2 - 1)) continue;
-                        LezNode node2 = node1.clone();
-                        node2.AddHit(c2, op2, _hits.get(op2 - 1));
-                        if (node2.Od(_posod) > _odmax || node2.Mana(_posma) > _currentMa) continue;
-                        _lezHits.add(node2);
+
+                        LezNode hit2 = hit.clone();
+                        int code2 = _hits.get(op2 - 1);
+                        hit2.AddHit(combo2, op2, code2);
+                        if (hit2.Od(_posod) > _odmax || hit2.Mana(_posma) > _currentMa) continue;
+
+                        _lezHits.add(hit2);
                     }
                 }
             }
         }
 
-        // 2. Блоки (Blocks)
-        for (int combo = 0; combo < 4; combo++) {
-            for (int op = 1; op <= _blocks.get(combo).size(); op++) {
-                if (!_eblocks.get(combo).get(op - 1)) continue;
-                LezNode node = new LezNode();
-                int code = _blocks.get(combo).get(op - 1);
-                if (combo > 0 && !LezSpell.IsPhBlock(code)) continue;
-                node.AddBlock(combo, op, code);
-                if (node.Od(_posod) > _odmax || node.Mana(_posma) > _currentMa) continue;
-                _lezBlocks.add(node);
-            }
-        }
+        // 3) Тройные удары (последовательные зоны).
+        for (int combo1 = 0; combo1 < 2; combo1++) {
+            for (int op1 = 1; op1 <= _hits.size(); op1++) {
+                if (!_ehits.get(op1 - 1)) continue;
 
-        // 3. Магия (Magics)
-        int magicCount = 0;
-        for (boolean e : _emagics) if (e) magicCount++;
+                LezNode hit = new LezNode();
+                int code1 = _hits.get(op1 - 1);
+                hit.AddHit(combo1, op1, code1);
+                if (hit.Od(_posod) > _odmax || hit.Mana(_posma) > _currentMa) continue;
 
-        if (magicCount > 0) {
-            for (int flag = 0; flag < _magics.size(); flag++) {
-                if (_emagics.get(flag)) {
-                    int code = _magics.get(flag);
-                    LezNode node = new LezNode();
-                    node.AddMagic(flag, code, ZMag(FoeGroup, code), ZRestore(FoeGroup, code), ZScroll(code));
-                    if (node.Od(_posod) <= _odmax && node.Mana(_posma) <= _currentMa) _lezMagics.add(node);
+                int combo2 = combo1 + 1;
+                for (int op2 = 1; op2 <= _hits.size(); op2++) {
+                    if (!_ehits.get(op2 - 1)) continue;
+
+                    LezNode hit2 = hit.clone();
+                    int code2 = _hits.get(op2 - 1);
+                    hit2.AddHit(combo2, op2, code2);
+                    if (hit2.Od(_posod) > _odmax || hit2.Mana(_posma) > _currentMa) continue;
+
+                    int combo3 = combo2 + 1;
+                    for (int op3 = 1; op3 <= _hits.size(); op3++) {
+                        if (!_ehits.get(op3 - 1)) continue;
+
+                        LezNode hit3 = hit2.clone();
+                        int code3 = _hits.get(op3 - 1);
+                        hit3.AddHit(combo3, op3, code3);
+                        if (hit3.Od(_posod) > _odmax || hit3.Mana(_posma) > _currentMa) continue;
+
+                        _lezHits.add(hit3);
+                    }
                 }
             }
         }
 
-        // Финальная сборка и выбор лучшей
-        for (LezNode hNode : _lezHits) {
-            for (LezNode bNode : _lezBlocks) {
-                boolean hasNonPhBlock2 = bNode.HasNonPhBlock(FoeGroup);
-                for (LezNode mNode : _lezMagics) {
-                    if (hasNonPhBlock2 && mNode.HasNonPhBlock(FoeGroup)) continue;
-                    
-                    LezNode comb = hNode.clone();
-                    comb.AddCombination(bNode);
-                    comb.AddCombination(mNode);
-                    
-                    if (comb.Od(_posod) > _odmax || comb.Mana(_posma) > _currentMa) continue;
-                    if (!comb.IsValid()) continue;
+        // 4) Блоки: первый слот допускает всё, остальные только физблок.
+        for (int combo = 0; combo < 4; combo++) {
+            for (int op = 1; op <= _blocks.get(combo).size(); op++) {
+                if (!_eblocks.get(combo).get(op - 1)) continue;
+
+                LezNode block = new LezNode();
+                int code = _blocks.get(combo).get(op - 1);
+                if (combo > 0 && !LezSpell.IsPhBlock(code)) continue;
+
+                block.AddBlock(combo, op, code);
+                if (block.Od(_posod) > _odmax || block.Mana(_posma) > _currentMa) continue;
+
+                _lezBlocks.add(block);
+            }
+        }
+
+        // 5) Магия: считаем реально кликабельные кнопки текущего кадра.
+        int magicClickablesCount = MagicClickablesCount();
+        if (magicClickablesCount > 0) {
+            for (int flag = 0; flag < _magics.size(); flag++) {
+                if (_emagics.get(flag)) {
+                    int code = _magics.get(flag);
+                    LezNode magic = new LezNode();
+                    magic.AddMagic(flag, code, ZMag(FoeGroup, code), ZRestore(FoeGroup, code), ZScroll(code));
+                    if (magic.Od(_posod) > _odmax || magic.Mana(_posma) > _currentMa) continue;
+
+                    _lezMagics.add(magic);
+                }
+            }
+        }
+
+        // 6) Пары магий с фильтрацией конфликтов (двойной блок, 388 + restoreHp и т.п.).
+        if (magicClickablesCount > 1) {
+            for (int flag1 = 0; flag1 < _magics.size() - 1; flag1++) {
+                if (_emagics.get(flag1)) {
+                    int code1 = _magics.get(flag1);
+                    LezNode magic = new LezNode();
+                    magic.AddMagic(flag1, code1, ZMag(FoeGroup, code1), ZRestore(FoeGroup, code1), ZScroll(code1));
+                    if (magic.Od(_posod) > _odmax || magic.Mana(_posma) > _currentMa) continue;
+
+                    for (int flag2 = flag1 + 1; flag2 < _magics.size(); flag2++) {
+                        if (_emagics.get(flag2)) {
+                            int code2 = _magics.get(flag2);
+                            if ((code1 == 388 && contains(FoeGroup.SpellsRestoreHp, code2))
+                                    || (code2 == 388 && contains(FoeGroup.SpellsRestoreHp, code1))) {
+                                continue;
+                            }
+
+                            if (contains(FoeGroup.SpellsBlocks, code1) && contains(FoeGroup.SpellsBlocks, code2)) {
+                                continue;
+                            }
+
+                            LezNode magic2 = magic.clone();
+                            magic2.AddMagic(flag2, code2, ZMag(FoeGroup, code2), ZRestore(FoeGroup, code2), ZScroll(code2));
+                            if (magic2.Od(_posod) > _odmax || magic2.Mana(_posma) > _currentMa) continue;
+
+                            _lezMagics.add(magic2);
+                        }
+                    }
+                }
+            }
+        }
+
+        // 7) Тройки магий с теми же конфликтными ограничениями.
+        if (magicClickablesCount > 2) {
+            for (int flag1 = 0; flag1 < _magics.size() - 2; flag1++) {
+                if (_emagics.get(flag1)) {
+                    int code1 = _magics.get(flag1);
+                    LezNode magic = new LezNode();
+                    magic.AddMagic(flag1, code1, ZMag(FoeGroup, code1), ZRestore(FoeGroup, code1), ZScroll(code1));
+                    if (magic.Od(_posod) > _odmax || magic.Mana(_posma) > _currentMa) continue;
+
+                    for (int flag2 = flag1 + 1; flag2 < _magics.size() - 1; flag2++) {
+                        if (_emagics.get(flag2)) {
+                            int code2 = _magics.get(flag2);
+                            if ((code1 == 388 && contains(FoeGroup.SpellsRestoreHp, code2))
+                                    || (code2 == 388 && contains(FoeGroup.SpellsRestoreHp, code1))) {
+                                continue;
+                            }
+
+                            if (contains(FoeGroup.SpellsBlocks, code1) && contains(FoeGroup.SpellsBlocks, code2)) {
+                                continue;
+                            }
+
+                            LezNode magic2 = magic.clone();
+                            magic2.AddMagic(flag2, code2, ZMag(FoeGroup, code2), ZRestore(FoeGroup, code2), ZScroll(code2));
+                            if (magic2.Od(_posod) > _odmax || magic2.Mana(_posma) > _currentMa) continue;
+
+                            for (int flag3 = flag2 + 1; flag3 < _magics.size(); flag3++) {
+                                if (_emagics.get(flag3)) {
+                                    int code3 = _magics.get(flag3);
+                                    if ((code1 == 388 && contains(FoeGroup.SpellsRestoreHp, code3))
+                                            || (code2 == 388 && contains(FoeGroup.SpellsRestoreHp, code3))
+                                            || (code3 == 388 && contains(FoeGroup.SpellsRestoreHp, code1))
+                                            || (code3 == 388 && contains(FoeGroup.SpellsRestoreHp, code2))) {
+                                        continue;
+                                    }
+
+                                    if ((contains(FoeGroup.SpellsBlocks, code1) && contains(FoeGroup.SpellsBlocks, code3))
+                                            || (contains(FoeGroup.SpellsBlocks, code2) && contains(FoeGroup.SpellsBlocks, code3))) {
+                                        continue;
+                                    }
+
+                                    LezNode magic3 = magic2.clone();
+                                    magic3.AddMagic(flag3, code3, ZMag(FoeGroup, code3), ZRestore(FoeGroup, code3), ZScroll(code3));
+                                    if (magic3.Od(_posod) > _odmax || magic3.Mana(_posma) > _currentMa) continue;
+
+                                    _lezMagics.add(magic3);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // 8) Финальная декартова сборка hit+block+magic и отбор лучшего(их) варианта.
+        for (int ihits = 0; ihits < _lezHits.size(); ihits++) {
+            LezNode combination = new LezNode();
+            combination.AddCombination(_lezHits.get(ihits));
+            for (int iblocks = 0; iblocks < _lezBlocks.size(); iblocks++) {
+                boolean hasNonPhBlock2 = _lezBlocks.get(iblocks).HasNonPhBlock(FoeGroup);
+
+                LezNode combination2 = combination.clone();
+                combination2.AddCombination(_lezBlocks.get(iblocks));
+                if (combination2.Od(_posod) > _odmax || combination2.Mana(_posma) > _currentMa) continue;
+
+                for (int imagic = 0; imagic < _lezMagics.size(); imagic++) {
+                    if (hasNonPhBlock2) {
+                        boolean hasNonPhBlock3 = _lezMagics.get(imagic).HasNonPhBlock(FoeGroup);
+                        if (hasNonPhBlock3) continue;
+                    }
+
+                    LezNode combination3 = combination2.clone();
+                    combination3.AddCombination(_lezMagics.get(imagic));
+                    if (combination3.Od(_posod) > _odmax || combination3.Mana(_posma) > _currentMa) continue;
+                    if (!combination3.IsValid()) continue;
 
                     if (LezCombinations.isEmpty()) {
-                        LezCombinations.add(comb);
+                        LezCombinations.add(combination3);
                     } else {
-                        int comp = comb.compareTo(LezCombinations.get(0));
-                        if (comp < 0) continue;
-                        if (comp > 0) LezCombinations.clear();
-                        LezCombinations.add(comb);
+                        int compare = combination3.compareTo(LezCombinations.get(0));
+                        if (compare < 0) continue;
+                        if (compare > 0) LezCombinations.clear();
+                        LezCombinations.add(combination3);
                     }
                 }
             }
@@ -567,14 +735,34 @@ public class LezFight {
         android.util.Log.d("LezFight", "BuildFrame: Frame generated, length=" + Frame.length() + ", delay=" + delay + "ms");
     }
 
+    /**
+     * Раскладывает коды действий по внутренним коллекциям `_hits/_magblocks/_magics`.
+     *
+     * @param type источник списка: `0` = stand_in, `1` = magic_in
+     * @param list список action-кодов из JS-массивов текущего кадра
+     *
+     * Зависимости:
+     * - `LezSpellCollection.PosType` определяет класс действия (hit/block/magic),
+     * - `IsMagicAllowed()` определяет флаг кликабельности магии (`_emagics`).
+     */
     private void Selpl(int type, List<Integer> list) {
         for (int i : list) {
+            if (i < 0 || i >= LezSpellCollection.PosType.length) continue;
             int pos = LezSpellCollection.PosType[i];
-            if (type == 0) {
-                if (pos == 1) _hits.add(i);
-                else if (pos == 2) _magblocks.add(i);
+            if (pos == 1) {
+                _hits.add(i);
+                if (type == 1) {
+                    _magics.add(i);
+                    _emagics.add(false);
+                }
+            } else if (pos == 2) {
+                _magblocks.add(i);
+                if (type == 1) {
+                    _magics.add(i);
+                    _emagics.add(false);
+                }
             } else {
-                if (pos == 3 || pos == 4 || pos == 5 || pos == 6) {
+                if (pos == 3 || pos == 4) {
                     _magics.add(i);
                     _emagics.add(IsMagicAllowed(i));
                 }
@@ -582,15 +770,81 @@ public class LezFight {
         }
     }
 
-    private boolean IsHitAllowed(int code) { return FoeGroup.DoHits; }
-    private boolean IsBlockAllowed(int code) { return FoeGroup.DoBlocks; }
-    private boolean IsMagicAllowed(int code) {
-        if (code == 388 || contains(FoeGroup.SpellsRestoreHp, code)) return FoeGroup.DoRestoreHp;
-        if (contains(FoeGroup.SpellsRestoreMa, code)) return FoeGroup.DoRestoreMa;
-        return FoeGroup.DoMiscAbils;
+    /**
+     * Возвращает число маг-кнопок, которые разрешены к использованию на этом ходу.
+     * Зависимости: `_emagics`, который заполняется в `Selpl()` через `IsMagicAllowed()`.
+     */
+    private int MagicClickablesCount() {
+        int count = 0;
+        for (boolean c : _emagics) {
+            if (c) count++;
+        }
+        return count;
     }
 
+    /**
+     * Проверка разрешения удара по настройкам группы противника.
+     * Зависимости: `LezSpell` (тип удара), `FoeGroup.DoHits/DoMagHits/DoAbilHits`, `FoeGroup.SpellsHits`.
+     */
+    private boolean IsHitAllowed(int code) {
+        if (LezSpell.IsPhHit(code) && FoeGroup.DoHits) return true;
+        if (LezSpell.IsMagHit(code) && FoeGroup.DoMagHits) return true;
+        if (contains(FoeGroup.SpellsHits, code) && FoeGroup.DoAbilHits) return true;
+        return false;
+    }
+
+    /**
+     * Проверка разрешения блока по настройкам группы противника.
+     * Зависимости: `LezSpell` (тип блока), `FoeGroup.DoBlocks/DoMagBlocks/DoAbilBlocks`, `FoeGroup.SpellsBlocks`.
+     */
+    private boolean IsBlockAllowed(int code) {
+        if (LezSpell.IsPhBlock(code) && FoeGroup.DoBlocks) return true;
+        if (LezSpell.IsMagBlock(code) && FoeGroup.DoMagBlocks) return true;
+        if (contains(FoeGroup.SpellsBlocks, code) && FoeGroup.DoAbilBlocks) return true;
+        return false;
+    }
+
+    /**
+     * Проверка разрешения магии/абилки.
+     *
+     * Логика совпадает с C#:
+     * - restore HP/MA разрешаются только при включённом флаге и достижении порога,
+     * - блок/удар/прочие абилки проверяются через списки группы,
+     * - scroll hit и код 328 исключаются из авто-каста.
+     *
+     * Зависимости: `FoeGroup` (флаги + пороги + списки спеллов), `_currentHp/_maxHp/_currentMa/_maxMa`.
+     */
+    private boolean IsMagicAllowed(int code) {
+        if (contains(FoeGroup.SpellsRestoreHp, code)) {
+            if (FoeGroup.DoRestoreHp && _maxHp > 0) {
+                int php = (int) (_currentHp * 100.0 / _maxHp);
+                if (php <= FoeGroup.RestoreHp) return true;
+            }
+            return false;
+        }
+
+        if (contains(FoeGroup.SpellsRestoreMa, code)) {
+            if (FoeGroup.DoRestoreMa && _maxMa > 0) {
+                int pma = (int) (_currentMa * 100.0 / _maxMa);
+                if (pma <= FoeGroup.RestoreMa) return true;
+            }
+            return false;
+        }
+
+        if (contains(FoeGroup.SpellsBlocks, code)) return FoeGroup.DoAbilBlocks;
+        if (contains(FoeGroup.SpellsHits, code)) return FoeGroup.DoAbilHits;
+        if (contains(FoeGroup.SpellsMisc, code)) return FoeGroup.DoMiscAbils;
+        if (LezSpell.IsScrollHit(code)) return false;
+        if (code == 328) return false;
+
+        return false;
+    }
+
+    /**
+     * Null-safe проверка вхождения кода в C#-подобных int[] списках настроек группы.
+     */
     private boolean contains(int[] arr, int val) {
+        if (arr == null) return false;
         for (int a : arr) if (a == val) return true;
         return false;
     }
