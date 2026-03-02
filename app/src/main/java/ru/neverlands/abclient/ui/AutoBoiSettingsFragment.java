@@ -539,6 +539,7 @@ public class AutoBoiSettingsFragment extends DialogFragment {
             spellsRestoreHpAdapter = setupSpellList(v, R.id.listSpellsRestoreHp, LezSpellCollection.RestoreHp, null);
             spellsRestoreMaAdapter = setupSpellList(v, R.id.listSpellsRestoreMa, LezSpellCollection.RestoreMa, null);
             spellsMiscAdapter = setupSpellList(v, R.id.listSpellsMisc, LezSpellCollection.Misc, null);
+            setupCollapsibleSpellCategories(v);
 
             loadGroup();
         }
@@ -546,10 +547,56 @@ public class AutoBoiSettingsFragment extends DialogFragment {
         private SpellListAdapter setupSpellList(View root, int recyclerViewId, int[] spellIds, int[] checked) {
             RecyclerView rv = root.findViewById(recyclerViewId);
             rv.setLayoutManager(new LinearLayoutManager(requireContext()));
+            // Для раскрывающихся секций используем общий скролл ScrollView,
+            // поэтому внутренний nested-scroll у списка отключен.
             rv.setNestedScrollingEnabled(false);
             SpellListAdapter adapter = new SpellListAdapter(spellIds, checked);
             rv.setAdapter(adapter);
             return adapter;
+        }
+
+        /**
+         * Настройка разворачиваемых/сворачиваемых категорий заклинаний во вкладке "Ротация".
+         * Зависимости:
+         * - id заголовков/стрелок/списков из tab_autoboi_rotation.xml;
+         * - RecyclerView категорий уже инициализированы через setupSpellList(...).
+         */
+        private void setupCollapsibleSpellCategories(@NonNull View root) {
+            setupCategoryToggle(root, R.id.headerSpellsHits, R.id.tvArrowSpellsHits, R.id.listSpellsHits, true);
+            setupCategoryToggle(root, R.id.headerSpellsBlocks, R.id.tvArrowSpellsBlocks, R.id.listSpellsBlocks, true);
+            setupCategoryToggle(root, R.id.headerSpellsMisc, R.id.tvArrowSpellsMisc, R.id.listSpellsMisc, true);
+            setupCategoryToggle(root, R.id.headerSpellsRestoreHp, R.id.tvArrowSpellsRestoreHp, R.id.listSpellsRestoreHp, true);
+            setupCategoryToggle(root, R.id.headerSpellsRestoreMa, R.id.tvArrowSpellsRestoreMa, R.id.listSpellsRestoreMa, true);
+        }
+
+        /**
+         * Привязывает поведение "клик по заголовку -> показать/скрыть список".
+         * Стрелка: вниз (▼) = свернуто, вверх (▲) = раскрыто.
+         */
+        private void setupCategoryToggle(@NonNull View root,
+                                         int headerId,
+                                         int arrowId,
+                                         int listId,
+                                         boolean expandedByDefault) {
+            View header = root.findViewById(headerId);
+            TextView arrow = root.findViewById(arrowId);
+            View list = root.findViewById(listId);
+            if (header == null || arrow == null || list == null) {
+                return;
+            }
+            applyCategoryExpanded(list, arrow, expandedByDefault);
+            header.setOnClickListener(clicked -> {
+                boolean expanded = list.getVisibility() == View.VISIBLE;
+                applyCategoryExpanded(list, arrow, !expanded);
+            });
+        }
+
+        /**
+         * Применяет состояние категории к UI.
+         */
+        private void applyCategoryExpanded(@NonNull View list, @NonNull TextView arrow, boolean expanded) {
+            list.setVisibility(expanded ? View.VISIBLE : View.GONE);
+            arrow.setText(expanded ? "▲" : "▼");
         }
 
         private void setupSeekBar(SeekBar bar, TextView label, String suffix) {
@@ -774,7 +821,7 @@ public class AutoBoiSettingsFragment extends DialogFragment {
             // Имя и иконка для отображения в строке заклинания.
             // Зависимость: resolveDisplaySpellName()/resolveSpellIconUrl() используют словарь из требования UI.
             String displayName = resolveDisplaySpellName(spell != null ? spell.Name : null);
-            String iconUrl = resolveSpellIconUrl(spell != null ? spell.Name : null);
+            String iconUrl = resolveSpellIconUrl(id, spell != null ? spell.Name : null);
             if (displayName == null || displayName.isEmpty()) {
                 displayName = "Заклинание #" + id;
             }
@@ -830,9 +877,19 @@ public class AutoBoiSettingsFragment extends DialogFragment {
             map.put(normalizeSpellName("Смазанный удар"), "http://image.neverlands.ru/magic/m269.gif");
             map.put(normalizeSpellName("Огненная стрела"), "http://image.neverlands.ru/magic/m37.gif");
             map.put(normalizeSpellName("Тело-Огонь"), "http://image.neverlands.ru/magic/m56.gif");
+            map.put(normalizeSpellName("Молния"), "http://image.neverlands.ru/magic/m205.gif");
+            map.put(normalizeSpellName("Ураган"), "http://image.neverlands.ru/magic/m208.gif");
+            map.put(normalizeSpellName("Песочная стрела"), "http://image.neverlands.ru/magic/m122.gif");
+            map.put(normalizeSpellName("Колючки"), "http://image.neverlands.ru/magic/m94.gif");
+            map.put(normalizeSpellName("Ледяная стрела"), "http://image.neverlands.ru/magic/m144.gif");
+            map.put(normalizeSpellName("Прикосновение льдом"), "http://image.neverlands.ru/magic/m148.gif");
             map.put(normalizeSpellName("Святой кокон"), "http://image.neverlands.ru/magic/m267.gif");
             map.put(normalizeSpellName("Кривое зеркало Хаоса"), "http://image.neverlands.ru/magic/m271.gif");
             map.put(normalizeSpellName("Огненный щит"), "http://image.neverlands.ru/magic/m57.gif");
+            map.put(normalizeSpellName("Воздушный барьер"), "http://image.neverlands.ru/magic/m258.gif");
+            map.put(normalizeSpellName("Стена из песка"), "http://image.neverlands.ru/magic/m142.gif");
+            map.put(normalizeSpellName("Ледяной щит"), "http://image.neverlands.ru/magic/m181.gif");
+            map.put(normalizeSpellName("Тотальная защита"), "http://image.neverlands.ru/magic/m380.gif");
             map.put(normalizeSpellName("Уязвимость от огня"), "http://image.neverlands.ru/magic/m55.gif");
             map.put(normalizeSpellName("Танец огня"), "http://image.neverlands.ru/magic/m49.gif");
             map.put(normalizeSpellName("Танец пламени"), "http://image.neverlands.ru/magic/m49.gif");
@@ -845,8 +902,21 @@ public class AutoBoiSettingsFragment extends DialogFragment {
             return map;
         }
 
-        private static String resolveSpellIconUrl(String spellName) {
-            return SPELL_ICON_BY_NAME.get(normalizeSpellName(spellName));
+        /**
+         * Возвращает URL иконки заклинания:
+         * 1) сначала по явному маппингу имени (для переименований/исключений),
+         * 2) затем fallback по ID в формате image.neverlands.ru/magic/m{ID}.gif.
+         * Это убирает необходимость вручную добавлять каждое новое заклинание.
+         */
+        private static String resolveSpellIconUrl(int spellId, String spellName) {
+            String mapped = SPELL_ICON_BY_NAME.get(normalizeSpellName(spellName));
+            if (mapped != null && !mapped.isEmpty()) {
+                return mapped;
+            }
+            if (spellId >= 0) {
+                return "http://image.neverlands.ru/magic/m" + spellId + ".gif";
+            }
+            return null;
         }
 
         /**

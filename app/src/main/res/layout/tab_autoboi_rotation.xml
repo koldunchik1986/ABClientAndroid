@@ -153,6 +153,7 @@
 
         <!-- Заклинания ударов -->
         <LinearLayout
+            android:id="@+id/headerSpellsHits"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
@@ -173,16 +174,28 @@
                 android:textStyle="bold"
                 android:textSize="15sp"
                 android:textColor="@color/red" />
+
+            <TextView
+                android:id="@+id/tvArrowSpellsHits"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="▲"
+                android:textSize="16sp"
+                android:textStyle="bold"
+                android:textColor="@color/red"
+                android:paddingStart="6dp"
+                android:paddingEnd="2dp" />
         </LinearLayout>
 
         <androidx.recyclerview.widget.RecyclerView
             android:id="@+id/listSpellsHits"
             android:layout_width="match_parent"
-            android:layout_height="150dp"
+            android:layout_height="wrap_content"
             android:layout_marginBottom="8dp" />
 
         <!-- Заклинания блоков -->
         <LinearLayout
+            android:id="@+id/headerSpellsBlocks"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
@@ -203,16 +216,28 @@
                 android:textStyle="bold"
                 android:textSize="15sp"
                 android:textColor="@color/red" />
+
+            <TextView
+                android:id="@+id/tvArrowSpellsBlocks"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="▲"
+                android:textSize="16sp"
+                android:textStyle="bold"
+                android:textColor="@color/red"
+                android:paddingStart="6dp"
+                android:paddingEnd="2dp" />
         </LinearLayout>
 
         <androidx.recyclerview.widget.RecyclerView
             android:id="@+id/listSpellsBlocks"
             android:layout_width="match_parent"
-            android:layout_height="150dp"
+            android:layout_height="wrap_content"
             android:layout_marginBottom="8dp" />
 
         <!-- Заклинания HP -->
         <LinearLayout
+            android:id="@+id/headerSpellsMisc"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
@@ -233,44 +258,95 @@
                 android:textStyle="bold"
                 android:textSize="15sp"
                 android:textColor="@color/red" />
+
+            <TextView
+                android:id="@+id/tvArrowSpellsMisc"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="▲"
+                android:textSize="16sp"
+                android:textStyle="bold"
+                android:textColor="@color/red"
+                android:paddingStart="6dp"
+                android:paddingEnd="2dp" />
         </LinearLayout>
 
         <androidx.recyclerview.widget.RecyclerView
             android:id="@+id/listSpellsMisc"
             android:layout_width="match_parent"
-            android:layout_height="150dp"
+            android:layout_height="wrap_content"
             android:layout_marginBottom="8dp" />
 
-        <!-- Заклинания MA -->
-        <TextView
+        <!-- Заклинания восст. HP -->
+        <LinearLayout
+            android:id="@+id/headerSpellsRestoreHp"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Заклинания восст. HP"
-            android:textStyle="bold"
-            android:textSize="15sp"
-            android:textColor="@color/red"
-            android:layout_marginBottom="4dp" />
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:layout_marginBottom="4dp">
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Заклинания восст. HP"
+                android:textStyle="bold"
+                android:textSize="15sp"
+                android:textColor="@color/red" />
+
+            <TextView
+                android:id="@+id/tvArrowSpellsRestoreHp"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="▲"
+                android:textSize="16sp"
+                android:textStyle="bold"
+                android:textColor="@color/red"
+                android:paddingStart="6dp"
+                android:paddingEnd="2dp" />
+        </LinearLayout>
 
         <androidx.recyclerview.widget.RecyclerView
             android:id="@+id/listSpellsRestoreHp"
             android:layout_width="match_parent"
-            android:layout_height="150dp"
+            android:layout_height="wrap_content"
             android:layout_marginBottom="8dp" />
 
-        <!-- Прочие заклинания -->
-        <TextView
+        <!-- Заклинания восст. MA -->
+        <LinearLayout
+            android:id="@+id/headerSpellsRestoreMa"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Заклинания восст. MA"
-            android:textStyle="bold"
-            android:textSize="15sp"
-            android:textColor="@color/red"
-            android:layout_marginBottom="4dp" />
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:layout_marginBottom="4dp">
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Заклинания восст. MA"
+                android:textStyle="bold"
+                android:textSize="15sp"
+                android:textColor="@color/red" />
+
+            <TextView
+                android:id="@+id/tvArrowSpellsRestoreMa"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="▲"
+                android:textSize="16sp"
+                android:textStyle="bold"
+                android:textColor="@color/red"
+                android:paddingStart="6dp"
+                android:paddingEnd="2dp" />
+        </LinearLayout>
 
         <androidx.recyclerview.widget.RecyclerView
             android:id="@+id/listSpellsRestoreMa"
             android:layout_width="match_parent"
-            android:layout_height="150dp"
+            android:layout_height="wrap_content"
             android:layout_marginBottom="8dp" />
 
     </LinearLayout>
