@@ -329,7 +329,7 @@ public class MainPhp {
         }
     }
 
-    // Р В¦Р ВµР Р…РЎвЂљРЎР‚Р В°Р В»РЎРЉР Р…РЎвЂ№Р в„– Р С•Р В±РЎР‚Р В°Р В±Р С•РЎвЂљРЎвЂЎР С‘Р С” main.php (Р С—Р С•РЎР‚РЎвЂљ Р В»Р С•Р С–Р С‘Р С”Р С‘ Р С‘Р В· C# MainPhp.cs).
+    // Центральный обработчик main.php (порт логики из C# MainPhp.cs).
     public static byte[] process(String address, byte[] array) {
         android.util.Log.d(TAG, "process() called for " + address + ", bytes=" + (array != null ? array.length : 0));
         // Сохраняем исходный ответ, если он нужен где-то еще
