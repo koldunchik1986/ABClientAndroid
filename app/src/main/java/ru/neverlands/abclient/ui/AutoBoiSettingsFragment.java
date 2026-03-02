@@ -6,6 +6,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.CheckBox;
+import android.widget.ImageView;
 import android.widget.RadioButton;
 import android.widget.RadioGroup;
 import android.widget.SeekBar;
@@ -15,6 +16,7 @@ import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.core.content.ContextCompat;
 import androidx.fragment.app.DialogFragment;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
@@ -24,8 +26,10 @@ import androidx.fragment.app.FragmentActivity;
 
 import com.google.android.material.tabs.TabLayout;
 import com.google.android.material.tabs.TabLayoutMediator;
+import com.bumptech.glide.Glide;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 import ru.neverlands.abclient.R;
@@ -125,6 +129,9 @@ public class AutoBoiSettingsFragment extends DialogFragment {
 
         // Сохраняем профиль на диск
         if (getContext() != null) {
+            if (profile.LezGroups != null) {
+                Collections.sort(profile.LezGroups);
+            }
             profile.save(getContext());
         }
     }
@@ -187,7 +194,6 @@ public class AutoBoiSettingsFragment extends DialogFragment {
                 checkDoDrinkHp, checkDoDrinkMa, checkDoWinTimeout;
         private SeekBar seekWaitHp, seekWaitMa, seekDrinkHp, seekDrinkMa;
         private TextView tvWaitHp, tvWaitMa, tvDrinkHp, tvDrinkMa;
-        private RadioGroup radioGroupSay;
 
         @Nullable
         @Override
@@ -212,7 +218,6 @@ public class AutoBoiSettingsFragment extends DialogFragment {
             tvWaitMa = v.findViewById(R.id.tvWaitMa);
             tvDrinkHp = v.findViewById(R.id.tvDrinkHp);
             tvDrinkMa = v.findViewById(R.id.tvDrinkMa);
-            radioGroupSay = v.findViewById(R.id.radioGroupSay);
 
             setupSeekBar(seekWaitHp, tvWaitHp, "%");
             setupSeekBar(seekWaitMa, tvWaitMa, "%");
@@ -249,13 +254,6 @@ public class AutoBoiSettingsFragment extends DialogFragment {
             seekDrinkMa.setProgress(p.LezDrinkMa);
             tvDrinkMa.setText(p.LezDrinkMa + "%");
             checkDoWinTimeout.setChecked(p.LezDoWinTimeout);
-
-            // Радиокнопки LezSay
-            int sayId = R.id.radioSayNo;
-            if (p.LezSay == LezSayType.Chat) sayId = R.id.radioSayChat;
-            else if (p.LezSay == LezSayType.Clan) sayId = R.id.radioSayClan;
-            else if (p.LezSay == LezSayType.Pair) sayId = R.id.radioSayPair;
-            radioGroupSay.check(sayId);
         }
 
         void saveSettings(UserConfig p) {
@@ -264,8 +262,7 @@ public class AutoBoiSettingsFragment extends DialogFragment {
             // В этом случае просто пропускаем сохранение этой вкладки без крэша.
             if (checkDoAutoboi == null || checkDoWaitHp == null || checkDoWaitMa == null
                     || checkDoDrinkHp == null || checkDoDrinkMa == null || checkDoWinTimeout == null
-                    || seekWaitHp == null || seekWaitMa == null || seekDrinkHp == null || seekDrinkMa == null
-                    || radioGroupSay == null) {
+                    || seekWaitHp == null || seekWaitMa == null || seekDrinkHp == null || seekDrinkMa == null) {
                 return;
             }
             p.LezDoAutoboi = checkDoAutoboi.isChecked();
@@ -278,12 +275,6 @@ public class AutoBoiSettingsFragment extends DialogFragment {
             p.LezDrinkHp = seekDrinkHp.getProgress();
             p.LezDrinkMa = seekDrinkMa.getProgress();
             p.LezDoWinTimeout = checkDoWinTimeout.isChecked();
-
-            int checkedId = radioGroupSay.getCheckedRadioButtonId();
-            if (checkedId == R.id.radioSayChat) p.LezSay = LezSayType.Chat;
-            else if (checkedId == R.id.radioSayClan) p.LezSay = LezSayType.Clan;
-            else if (checkedId == R.id.radioSayPair) p.LezSay = LezSayType.Pair;
-            else p.LezSay = LezSayType.No;
         }
     }
 
@@ -343,6 +334,9 @@ public class AutoBoiSettingsFragment extends DialogFragment {
             // RecyclerView групп
             UserConfig p = AppVars.Profile;
             List<LezBotsGroup> groups = p != null ? p.LezGroups : new ArrayList<>();
+            if (groups != null) {
+                Collections.sort(groups);
+            }
             groupsAdapter = new GroupsAdapter(groups, idx -> {
                 selectedGroupIdx = idx;
                 notifyGroupIndexChanged();
@@ -375,14 +369,31 @@ public class AutoBoiSettingsFragment extends DialogFragment {
             if (classIdx < 0 || classIdx >= classes.size()) return;
             int classId = classes.get(classIdx).id;
             int level = seekNewGroupLevel.getProgress();
-            // Генерируем новый уникальный Id
-            int maxId = 0;
-            for (LezBotsGroup g : p.LezGroups) if (g.Id > maxId) maxId = g.Id;
-            LezBotsGroup newGroup = new LezBotsGroup(maxId + 1, level);
+            // C# parity: Id группы — это Id класса врага, а не автоинкремент.
+            // Сортировка и проверка дубликата выполняются как в FormSettingsAb.buttonCreateGroup_Click.
+            LezBotsGroup newGroup = new LezBotsGroup(1, 0);
             newGroup.Change(classId, level);
-            p.LezGroups.add(newGroup);
-            groupsAdapter.notifyItemInserted(p.LezGroups.size() - 1);
-            selectedGroupIdx = p.LezGroups.size() - 1;
+            int insertIndex = -1;
+            for (int i = 0; i < p.LezGroups.size(); i++) {
+                LezBotsGroup cursorGroup = p.LezGroups.get(i);
+                int result = newGroup.compareTo(cursorGroup);
+                if (result == -1) {
+                    p.LezGroups.add(i, newGroup);
+                    insertIndex = i;
+                    break;
+                }
+                if (result == 0) {
+                    android.widget.Toast.makeText(requireContext(),
+                            "Такая группа уже существует", android.widget.Toast.LENGTH_SHORT).show();
+                    return;
+                }
+            }
+            if (insertIndex < 0) {
+                p.LezGroups.add(newGroup);
+                insertIndex = p.LezGroups.size() - 1;
+            }
+            groupsAdapter.notifyDataSetChanged();
+            selectedGroupIdx = insertIndex;
             groupsAdapter.setSelected(selectedGroupIdx);
             notifyGroupIndexChanged();
         }
@@ -431,6 +442,10 @@ public class AutoBoiSettingsFragment extends DialogFragment {
                 LezBotsGroup g = groups.get(pos);
                 holder.tvName.setText(g.toString());
                 holder.tvSelected.setVisibility(pos == selected ? View.VISIBLE : View.GONE);
+                // Дополнительная визуализация выбранной группы: полупрозрачная фиолетовая подложка строки.
+                // Зависимость: цвет взят из ресурсов темы, чтобы совпадать с основной палитрой приложения.
+                int selectedBg = ContextCompat.getColor(holder.itemView.getContext(), R.color.ab_autoboi_group_selected_bg);
+                holder.itemView.setBackgroundColor(pos == selected ? selectedBg : android.graphics.Color.TRANSPARENT);
                 holder.itemView.setOnClickListener(v -> {
                     int newIndex = holder.getAdapterPosition();
                     if (newIndex == RecyclerView.NO_POSITION) return;
@@ -615,6 +630,7 @@ public class AutoBoiSettingsFragment extends DialogFragment {
         private CheckBox checkDoStopNow, checkDoStopLowHp, checkDoStopLowMa, checkDoExit, checkDoExitRisky;
         private SeekBar seekStopLowHp, seekStopLowMa;
         private TextView tvStopLowHp, tvStopLowMa;
+        private RadioGroup radioGroupSay;
 
         @Nullable @Override
         public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container,
@@ -633,6 +649,7 @@ public class AutoBoiSettingsFragment extends DialogFragment {
             seekStopLowMa = v.findViewById(R.id.seekStopLowMa);
             tvStopLowHp = v.findViewById(R.id.tvStopLowHp);
             tvStopLowMa = v.findViewById(R.id.tvStopLowMa);
+            radioGroupSay = v.findViewById(R.id.radioGroupSayByGroup);
 
             setupSeekBar(seekStopLowHp, tvStopLowHp);
             setupSeekBar(seekStopLowMa, tvStopLowMa);
@@ -669,6 +686,13 @@ public class AutoBoiSettingsFragment extends DialogFragment {
             tvStopLowMa.setText(g.StopLowMa + "%");
             checkDoExit.setChecked(g.DoExit);
             checkDoExitRisky.setChecked(g.DoExitRisky);
+            // Пер-групповая настройка "Сообщение о нападении".
+            int sayId = R.id.radioSayNoByGroup;
+            LezSayType say = g.AttackSay != null ? g.AttackSay : LezSayType.No;
+            if (say == LezSayType.Chat) sayId = R.id.radioSayChatByGroup;
+            else if (say == LezSayType.Clan) sayId = R.id.radioSayClanByGroup;
+            else if (say == LezSayType.Pair) sayId = R.id.radioSayPairByGroup;
+            radioGroupSay.check(sayId);
         }
 
         void saveGroup(LezBotsGroup g) {
@@ -676,7 +700,7 @@ public class AutoBoiSettingsFragment extends DialogFragment {
             // Зависимость: жизненный цикл ViewPager2 (fragment view создаётся лениво).
             if (checkDoStopNow == null || checkDoStopLowHp == null || checkDoStopLowMa == null
                     || checkDoExit == null || checkDoExitRisky == null
-                    || seekStopLowHp == null || seekStopLowMa == null) {
+                    || seekStopLowHp == null || seekStopLowMa == null || radioGroupSay == null) {
                 return;
             }
             g.DoStopNow = checkDoStopNow.isChecked();
@@ -686,6 +710,12 @@ public class AutoBoiSettingsFragment extends DialogFragment {
             g.StopLowMa = seekStopLowMa.getProgress();
             g.DoExit = checkDoExit.isChecked();
             g.DoExitRisky = checkDoExitRisky.isChecked();
+            // Сохраняем канал анонса нападения для выбранной группы.
+            int checkedId = radioGroupSay.getCheckedRadioButtonId();
+            if (checkedId == R.id.radioSayChatByGroup) g.AttackSay = LezSayType.Chat;
+            else if (checkedId == R.id.radioSayClanByGroup) g.AttackSay = LezSayType.Clan;
+            else if (checkedId == R.id.radioSayPairByGroup) g.AttackSay = LezSayType.Pair;
+            else g.AttackSay = LezSayType.No;
         }
     }
 
@@ -698,6 +728,11 @@ public class AutoBoiSettingsFragment extends DialogFragment {
     static class SpellListAdapter extends RecyclerView.Adapter<SpellListAdapter.VH> {
         private final int[] spellIds;
         private final boolean[] checked;
+        /**
+         * Явный словарь иконок заклинаний (по заданию пользователя).
+         * Ключ — нормализованное название заклинания.
+         */
+        private static final java.util.Map<String, String> SPELL_ICON_BY_NAME = createSpellIconMap();
 
         SpellListAdapter(int[] spellIds, int[] checkedIds) {
             this.spellIds = spellIds;
@@ -736,6 +771,13 @@ public class AutoBoiSettingsFragment extends DialogFragment {
         public void onBindViewHolder(@NonNull VH holder, int pos) {
             int id = spellIds[pos];
             LezSpell spell = LezSpellCollection.Spells.get(id);
+            // Имя и иконка для отображения в строке заклинания.
+            // Зависимость: resolveDisplaySpellName()/resolveSpellIconUrl() используют словарь из требования UI.
+            String displayName = resolveDisplaySpellName(spell != null ? spell.Name : null);
+            String iconUrl = resolveSpellIconUrl(spell != null ? spell.Name : null);
+            if (displayName == null || displayName.isEmpty()) {
+                displayName = "Заклинание #" + id;
+            }
             String name = spell != null ? spell.Name : "Заклинание #" + id;
 
             // Поиск index в массиве Hits/Blocks/etc. для Od и Mana
@@ -744,8 +786,17 @@ public class AutoBoiSettingsFragment extends DialogFragment {
             // Попытка найти OD/Mana из коллекции (по позиции в полных массивах)
             // В ПК версии Od и PosMana индексируются по общему порядку спеллов в коллекции
             // Здесь упрощённо берём из Spells если есть
-            holder.tvName.setText(name);
+            holder.tvName.setText(displayName);
             holder.tvInfo.setText("ID:" + id);
+            if (iconUrl != null && !iconUrl.isEmpty()) {
+                holder.spellIcon.setVisibility(View.VISIBLE);
+                Glide.with(holder.spellIcon.getContext())
+                        .load(iconUrl)
+                        .into(holder.spellIcon);
+            } else {
+                holder.spellIcon.setVisibility(View.GONE);
+                Glide.with(holder.spellIcon.getContext()).clear(holder.spellIcon);
+            }
             holder.checkSpell.setChecked(checked[pos]);
             holder.checkSpell.setOnCheckedChangeListener((btn, isChecked) -> {
                 int p = holder.getAdapterPosition();
@@ -759,13 +810,60 @@ public class AutoBoiSettingsFragment extends DialogFragment {
 
         static class VH extends RecyclerView.ViewHolder {
             CheckBox checkSpell;
+            ImageView spellIcon;
             TextView tvName, tvInfo;
             VH(@NonNull View v) {
                 super(v);
                 checkSpell = v.findViewById(R.id.checkSpell);
+                spellIcon = v.findViewById(R.id.ivSpellIcon);
                 tvName = v.findViewById(R.id.tvSpellName);
                 tvInfo = v.findViewById(R.id.tvSpellInfo);
             }
+        }
+
+        /**
+         * Маппинг названий заклинаний на URL иконок.
+         * Имена нормализуются (trim + ё->е) для устойчивого сопоставления.
+         */
+        private static java.util.Map<String, String> createSpellIconMap() {
+            java.util.Map<String, String> map = new java.util.HashMap<>();
+            map.put(normalizeSpellName("Смазанный удар"), "http://image.neverlands.ru/magic/m269.gif");
+            map.put(normalizeSpellName("Огненная стрела"), "http://image.neverlands.ru/magic/m37.gif");
+            map.put(normalizeSpellName("Тело-Огонь"), "http://image.neverlands.ru/magic/m56.gif");
+            map.put(normalizeSpellName("Святой кокон"), "http://image.neverlands.ru/magic/m267.gif");
+            map.put(normalizeSpellName("Кривое зеркало Хаоса"), "http://image.neverlands.ru/magic/m271.gif");
+            map.put(normalizeSpellName("Огненный щит"), "http://image.neverlands.ru/magic/m57.gif");
+            map.put(normalizeSpellName("Уязвимость от огня"), "http://image.neverlands.ru/magic/m55.gif");
+            map.put(normalizeSpellName("Танец огня"), "http://image.neverlands.ru/magic/m49.gif");
+            map.put(normalizeSpellName("Танец пламени"), "http://image.neverlands.ru/magic/m49.gif");
+            map.put(normalizeSpellName("Огненная спираль"), "http://image.neverlands.ru/magic/m51.gif");
+            map.put(normalizeSpellName("Вампиризм"), "http://image.neverlands.ru/magic/m265.gif");
+            map.put(normalizeSpellName("Защита пламени"), "http://image.neverlands.ru/magic/m73.gif");
+            map.put(normalizeSpellName("Освежающий бриз"), "http://image.neverlands.ru/magic/m223.gif");
+            map.put(normalizeSpellName("Источник"), "http://image.neverlands.ru/magic/m85.gif");
+            map.put(normalizeSpellName("Восстановление MP"), "http://image.neverlands.ru/magic/m306.gif");
+            return map;
+        }
+
+        private static String resolveSpellIconUrl(String spellName) {
+            return SPELL_ICON_BY_NAME.get(normalizeSpellName(spellName));
+        }
+
+        /**
+         * Переименование отображаемого названия:
+         * "Танец огня" -> "Танец пламени" (только UI, без изменения данных профиля/сервера).
+         */
+        private static String resolveDisplaySpellName(String spellName) {
+            String normalized = normalizeSpellName(spellName);
+            if ("Танец огня".equalsIgnoreCase(normalized)) {
+                return "Танец пламени";
+            }
+            return spellName;
+        }
+
+        private static String normalizeSpellName(String spellName) {
+            if (spellName == null) return "";
+            return spellName.trim().toLowerCase(java.util.Locale.ROOT);
         }
     }
 }

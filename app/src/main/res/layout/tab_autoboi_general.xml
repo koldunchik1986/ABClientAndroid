@@ -147,44 +147,6 @@
             android:text="Выйти из боя по таймауту"
             android:layout_marginBottom="12dp" />
 
-        <!-- Сообщение после боя -->
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="Сообщение после боя:"
-            android:layout_marginBottom="4dp" />
-
-        <RadioGroup
-            android:id="@+id/radioGroupSay"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content">
-
-            <RadioButton
-                android:id="@+id/radioSayNo"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="Не отправлять" />
-
-            <RadioButton
-                android:id="@+id/radioSayChat"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="В чат" />
-
-            <RadioButton
-                android:id="@+id/radioSayClan"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="В клан" />
-
-            <RadioButton
-                android:id="@+id/radioSayPair"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="Приватом" />
-
-        </RadioGroup>
-
     </LinearLayout>
 
 </ScrollView>

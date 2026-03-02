@@ -301,6 +301,7 @@ public class LezFight {
                 case 1: match = true; break;
                 case 10: match = _foeName.equals("Человек") && _foeLevel >= group.MinimalLevel; break;
                 case 20: match = !_foeName.equals("Человек") && _foeLevel >= group.MinimalLevel; break;
+                case 21: match = IsBoss(); break;
                 default:
                     String className = LezBotsClassCollection.getClass(group.Id).name;
                     match = _foeName.equalsIgnoreCase(className) && _foeLevel >= group.MinimalLevel;

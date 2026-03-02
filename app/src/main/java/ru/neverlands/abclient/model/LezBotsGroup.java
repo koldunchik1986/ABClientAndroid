@@ -30,6 +30,13 @@ public class LezBotsGroup implements Serializable, Cloneable, Comparable<LezBots
     public int StopLowMa;
     public boolean DoExit;
     public boolean DoExitRisky;
+    /**
+     * Канал сообщения о нападении для этой группы противника.
+     * Зависимости:
+     * - заполняется/сохраняется в UserConfig XML (`group@say`),
+     * - используется UnderAttackManager для выбора префикса чата (%clan%/%pair%/общий/откл.).
+     */
+    public LezSayType AttackSay;
 
     public int[] SpellsHits;
     public int[] SpellsBlocks;
@@ -60,6 +67,7 @@ public class LezBotsGroup implements Serializable, Cloneable, Comparable<LezBots
         StopLowMa = 25;
         DoExit = false;
         DoExitRisky = true;
+        AttackSay = LezSayType.No;
 
         SpellsHits = LezSpellCollection.Hits;
         SpellsBlocks = LezSpellCollection.Blocks;

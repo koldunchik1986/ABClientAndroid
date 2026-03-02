@@ -5,6 +5,8 @@ import android.util.Log;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+import ru.neverlands.abclient.model.LezBotsClassCollection;
+import ru.neverlands.abclient.model.LezBotsGroup;
 import ru.neverlands.abclient.model.LezSayType;
 import ru.neverlands.abclient.model.UserConfig;
 import ru.neverlands.abclient.utils.AppVars;
@@ -54,7 +56,7 @@ public final class UnderAttackManager {
 
     private static void parseInternal(String html) {
         UserConfig profile = AppVars.Profile;
-        if (profile == null || profile.LezSay == LezSayType.No) {
+        if (profile == null) {
             return;
         }
 
@@ -104,7 +106,16 @@ public final class UnderAttackManager {
             return;
         }
 
-        String channelPrefix = buildChannelPrefix(profile.LezSay);
+        // Канал сообщения о нападении теперь выбирается по конкретной группе противника (как просили в UI),
+        // а не по глобальному profile.LezSay.
+        // Зависимость:
+        // - resolveAttackSayType() использует тот же порядок/критерии групп, что и LezFight.SelectFoeGroup().
+        LezSayType attackSayType = resolveAttackSayType(profile, html);
+        if (attackSayType == null || attackSayType == LezSayType.No) {
+            return;
+        }
+
+        String channelPrefix = buildChannelPrefix(attackSayType);
         String locationSuffix = buildLocationSuffix();
         String message;
         if (isMeAttacker) {
@@ -154,5 +165,87 @@ public final class UnderAttackManager {
     private static String stripQuotes(String value) {
         if (value == null) return "";
         return value.replace("\"", "").replace("'", "").trim();
+    }
+
+    /**
+     * Выбирает канал сообщения о нападении по группе противника.
+     * Логика приоритета групп 1:1 совпадает с LezFight.SelectFoeGroup():
+     * first-match по отсортированному profile.LezGroups (Id DESC, MinimalLevel DESC).
+     */
+    private static LezSayType resolveAttackSayType(UserConfig profile, String html) {
+        if (profile == null || profile.LezGroups == null || profile.LezGroups.isEmpty()) {
+            return profile != null ? profile.LezSay : LezSayType.No;
+        }
+
+        String[] paramEn = parseJsArray(html, "var param_en = [");
+        String[] slotsEn = parseJsArray(html, "var slots_en = [");
+        if (paramEn == null || paramEn.length < 6 || slotsEn == null || slotsEn.length < 1) {
+            return profile.LezSay;
+        }
+
+        String foeName = stripQuotes(paramEn[0]);
+        int foeLevel;
+        try {
+            foeLevel = Integer.parseInt(stripQuotes(paramEn[5]));
+        } catch (Exception ignore) {
+            foeLevel = 33;
+        }
+
+        String foeImage = stripQuotes(slotsEn[0]).toLowerCase();
+        if (!foeImage.startsWith("bot") && !foeImage.startsWith("_xneto") && !foeImage.startsWith("_xsilf")) {
+            foeName = "Человек";
+        }
+
+        for (LezBotsGroup group : profile.LezGroups) {
+            if (group == null) continue;
+            boolean match = false;
+            switch (group.Id) {
+                case 1:
+                    match = true;
+                    break;
+                case 10:
+                    match = "Человек".equalsIgnoreCase(foeName) && foeLevel >= group.MinimalLevel;
+                    break;
+                case 20:
+                    match = !"Человек".equalsIgnoreCase(foeName) && foeLevel >= group.MinimalLevel;
+                    break;
+                case 21:
+                    match = isBossName(foeName);
+                    break;
+                default:
+                    String className = LezBotsClassCollection.getClass(group.Id).name;
+                    match = className != null
+                            && className.equalsIgnoreCase(foeName)
+                            && foeLevel >= group.MinimalLevel;
+                    break;
+            }
+            if (match) {
+                return group.AttackSay != null ? group.AttackSay : profile.LezSay;
+            }
+        }
+
+        return profile.LezSay;
+    }
+
+    /**
+     * Парсит JS-массив вида `var name = [ ... ];` в сырой список элементов.
+     */
+    private static String[] parseJsArray(String html, String marker) {
+        String jsArray = HelperStrings.subString(html, marker, "];");
+        if (jsArray == null || jsArray.trim().isEmpty()) {
+            return null;
+        }
+        return jsArray.split(",");
+    }
+
+    /**
+     * Аналог C# IsBossName() для выбора группы Id=21 (Боссы).
+     */
+    private static boolean isBossName(String name) {
+        if (name == null) return false;
+        return "Королева Змей".equalsIgnoreCase(name)
+                || "Хранитель Леса".equalsIgnoreCase(name)
+                || "Громлех Синезубый".equalsIgnoreCase(name)
+                || "Выползень".equalsIgnoreCase(name);
     }
 }

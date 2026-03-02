@@ -13,6 +13,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import org.xmlpull.v1.XmlSerializer;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.SortedMap;
@@ -214,6 +215,20 @@ public class UserConfig {
                             parseIntAttr(parser, "id", 1),
                             parseIntAttr(parser, "minLevel", 0)
                         );
+                        // Пер-групповая настройка канала сообщения о нападении (новый Android-порт).
+                        // Обратная совместимость:
+                        // - если у группы нет attr `say` (старый профиль), берём глобальный LezSay из <autoboi>.
+                        // - это сохраняет прежнее поведение до ручной настройки по группам.
+                        try {
+                            String groupSay = getAttributeValueIgnoreCase(parser, "say");
+                            if (groupSay == null || groupSay.trim().isEmpty()) {
+                                g.AttackSay = this.LezSay != null ? this.LezSay : LezSayType.No;
+                            } else {
+                                g.AttackSay = LezSayType.valueOf(groupSay);
+                            }
+                        } catch (Exception ignore) {
+                            g.AttackSay = this.LezSay != null ? this.LezSay : LezSayType.No;
+                        }
                         g.DoRestoreHp = parseBoolAttr(parser, "doRestoreHp", g.DoRestoreHp);
                         g.DoRestoreMa = parseBoolAttr(parser, "doRestoreMa", g.DoRestoreMa);
                         g.RestoreHp = parseIntAttr(parser, "restoreHp", g.RestoreHp);
@@ -261,10 +276,13 @@ public class UserConfig {
                             if (g.SpellsMisc == null || g.SpellsMisc.length == 0) g.SpellsMisc = defaults.SpellsMisc;
                             android.util.Log.w(TAG, "load: fixed invalid autoboi combat flags for group id=" + g.Id);
                         }
-                        // Обновляем или добавляем группу (Id=1,MinLevel=0 — группа "Все", всегда существует)
+                        // Обновляем или добавляем группу по полной паре ключей (Id + MinimalLevel).
+                        // C# parity: в профиле могут одновременно существовать, например, "Боты 10+" и "Боты 0+".
+                        // Если сравнивать только по Id (как раньше), одна из групп теряется при загрузке.
                         boolean found = false;
                         for (int gi = 0; gi < this.LezGroups.size(); gi++) {
-                            if (this.LezGroups.get(gi).Id == g.Id) {
+                            LezBotsGroup current = this.LezGroups.get(gi);
+                            if (current.Id == g.Id && current.MinimalLevel == g.MinimalLevel) {
                                 this.LezGroups.set(gi, g);
                                 found = true;
                                 break;
@@ -292,6 +310,7 @@ public class UserConfig {
                 }
                 eventType = parser.next();
             }
+            normalizeLezGroups();
             return true;
         } catch (IOException | XmlPullParserException e) {
             e.printStackTrace();
@@ -304,6 +323,11 @@ public class UserConfig {
      * @param context Контекст приложения.
      */
     public void save(Context context) {
+        // Перед сохранением приводим список к C#-совместимому виду:
+        // - гарантируем наличие группы "Все 0+"
+        // - сортируем по LezBotsGroup.compareTo() (Id DESC, MinimalLevel DESC)
+        normalizeLezGroups();
+
         File profilesDir = context.getExternalFilesDir("profiles");
         if (profilesDir == null) return;
         if (!profilesDir.exists()) {
@@ -403,6 +427,8 @@ public class UserConfig {
                     serializer.attribute(null, "stopLowMa", String.valueOf(g.StopLowMa));
                     serializer.attribute(null, "doExit", String.valueOf(g.DoExit));
                     serializer.attribute(null, "doExitRisky", String.valueOf(g.DoExitRisky));
+                    // Пер-групповый канал анонса нападения (Stop-вкладка, блок "Сообщение о нападении").
+                    serializer.attribute(null, "say", g.AttackSay != null ? g.AttackSay.name() : LezSayType.No.name());
                     serializer.attribute(null, "spellsHits", intArrayToString(g.SpellsHits));
                     serializer.attribute(null, "spellsBlocks", intArrayToString(g.SpellsBlocks));
                     serializer.attribute(null, "spellsRestoreHp", intArrayToString(g.SpellsRestoreHp));
@@ -487,5 +513,30 @@ public class UserConfig {
             }
         }
         return null;
+    }
+
+    /**
+     * Нормализует список групп автобоя под поведение ПК-версии (FormSettingsAb + LezFight):
+     * 1) всегда существует fallback-группа "Все 0+";
+     * 2) группы отсортированы по приоритету подбора (Id DESC, MinimalLevel DESC),
+     *    чтобы LezFight.SelectFoeGroup() мог брать первую подошедшую группу 1:1 как в C#.
+     */
+    private void normalizeLezGroups() {
+        if (this.LezGroups == null) {
+            this.LezGroups = new ArrayList<>();
+        }
+
+        boolean hasAllGroup = false;
+        for (LezBotsGroup group : this.LezGroups) {
+            if (group != null && group.Id == 1 && group.MinimalLevel == 0) {
+                hasAllGroup = true;
+                break;
+            }
+        }
+        if (!hasAllGroup) {
+            this.LezGroups.add(new LezBotsGroup(1, 0));
+        }
+
+        Collections.sort(this.LezGroups);
     }
 }

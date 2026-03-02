@@ -28,13 +28,18 @@
         android:layout_height="wrap_content"
         android:text="Добавить группу:"
         android:textStyle="bold"
+        android:textSize="15sp"
+        android:textColor="@color/red"
         android:layout_marginBottom="4dp" />
 
     <Spinner
         android:id="@+id/spinnerBotClass"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginBottom="8dp" />
+        android:layout_marginBottom="8dp"
+        android:background="@drawable/bg_autoboi_spinner_border"
+        android:paddingStart="8dp"
+        android:paddingEnd="8dp" />
 
     <LinearLayout
         android:layout_width="match_parent"

@@ -19,4 +19,5 @@
     <color name="ab_autoboi_bg">#1E1E1E</color>
     <color name="ab_autoboi_text_primary">#EDEDED</color>
     <color name="ab_autoboi_text_secondary">#B0B0B0</color>
+    <color name="ab_autoboi_group_selected_bg">#334462EE</color>
 </resources>
