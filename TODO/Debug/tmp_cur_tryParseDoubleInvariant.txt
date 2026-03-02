@@ -1,0 +1,16 @@
+    private static Double tryParseDoubleInvariant(String raw) {
+        if (raw == null) {
+            return null;
+        }
+        String normalized = raw.trim()
+                .replace("\"", "")
+                .replace("'", "");
+        if (normalized.isEmpty()) {
+            return null;
+        }
+        try {
+            return Double.parseDouble(normalized);
+        } catch (NumberFormatException ignored) {
+            return null;
+        }
+    }

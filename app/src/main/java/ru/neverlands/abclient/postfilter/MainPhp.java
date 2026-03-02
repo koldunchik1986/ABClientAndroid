@@ -43,7 +43,22 @@ public class MainPhp {
     private static volatile String lastCaptchaRejectKey = "";
     private static volatile long lastCaptchaRejectAtMs = 0L;
 
-    // HTML‑заглушка "ожидаем ход противника" с авто‑обновлением.
+    /**
+     * Снимок значений из `ins_HP(curh,maxh,curm,maxm,hp_int,ma_int)`.
+     * Используется для:
+     * - обновления интервалов регена `AppVars.PersIntHP`/`AppVars.PersIntMA`;
+     * - отображения статуса лечения в верхнем фрейме при `AutoboiState.Restoring`.
+     */
+    private static final class InsHpSnapshot {
+        int curHp;
+        int maxHp;
+        int curMa;
+        int maxMa;
+        double intHp;
+        double intMa;
+    }
+
+    // HTML-заглушка "ожидаем ход противника" с авто-обновлением.
     private static String buildWaitForTurnAutoRefreshHtml(String reloadUrl, int delayMs) {
         String safeUrl = (reloadUrl != null && !reloadUrl.isEmpty()) ? reloadUrl : "main.php";
         int safeDelay = Math.max(300, delayMs);
@@ -53,6 +68,74 @@ public class MainPhp {
                 "Ожидаем хода противника...<br>" +
                 "<script language=\"JavaScript\">" +
                 "setTimeout(function(){ window.location = '" + safeUrl + "'; }, " + safeDelay + ");" +
+                "</script></body></html>";
+    }
+
+    /**
+     * Форматирует секунды в `HH:mm:ss` для UI ожидания лечения.
+     */
+    private static String formatHms(long seconds) {
+        long total = Math.max(0L, seconds);
+        long h = total / 3600L;
+        long m = (total % 3600L) / 60L;
+        long s = total % 60L;
+        return String.format(Locale.US, "%02d:%02d:%02d", h, m, s);
+    }
+
+    /**
+     * Генерирует HTML статуса ожидания лечения после боя.
+     *
+     * Формат основной строки:
+     * `(curHP/maxHP + curMA/maxMA) + HH:mm:ss`
+     *
+     * Зависимости:
+     * - `remainingMs` рассчитывается в `LezFight.calcRestoreAfterBoiReadyAtMs()`;
+     * - сам расчёт времени идёт по `hp_int/ma_int`, которые обновляются из `ins_HP(...)`.
+     */
+    private static String buildRestoringStatusHtml(String reloadUrl,
+                                                   int reloadDelayMs,
+                                                   long remainingMs,
+                                                   int curHp,
+                                                   int maxHp,
+                                                   int curMa,
+                                                   int maxMa,
+                                                   boolean doWaitHp,
+                                                   int waitHpPercent,
+                                                   boolean doWaitMa,
+                                                   int waitMaPercent) {
+        String safeUrl = (reloadUrl != null && !reloadUrl.isEmpty()) ? reloadUrl : "main.php";
+        int safeDelay = Math.max(900, reloadDelayMs);
+        long remainSec = Math.max(0L, (long) Math.ceil(remainingMs / 1000.0));
+        int hpGoal = (doWaitHp && maxHp > 0) ? (int) Math.ceil(maxHp * (waitHpPercent / 100.0)) : maxHp;
+        int maGoal = (doWaitMa && maxMa > 0) ? (int) Math.ceil(maxMa * (waitMaPercent / 100.0)) : maxMa;
+        int hpPercent = maxHp > 0 ? (int) Math.round((curHp * 100.0) / maxHp) : 0;
+        int maPercent = maxMa > 0 ? (int) Math.round((curMa * 100.0) / maxMa) : 0;
+
+        String hpTargetText = doWaitHp
+                ? ("HP ≥ " + waitHpPercent + "% (" + hpGoal + "/" + maxHp + ")")
+                : "HP: ожидание выключено";
+        String maTargetText = doWaitMa
+                ? ("MA ≥ " + waitMaPercent + "% (" + maGoal + "/" + maxMa + ")")
+                : "MA: ожидание выключено";
+        String hpMaLine = "(" + curHp + "/" + maxHp + " + " + curMa + "/" + maxMa + ")";
+
+        return HtmlUtils.GENERATED_PAGE_MARKER +
+                "<html><head><meta http-equiv=\"Content-Type\" content=\"text/html; charset=windows-1251\">" +
+                "<title>ABClient</title></head>" +
+                "<body style='font-family:Arial,sans-serif;padding:10px;background:#fff;'>" +
+                "<div id='ab_restore_title' style='font-weight:bold;color:#7B0A0A;'>Останов лечения</div>" +
+                "<div id='ab_restore_main' style='margin-top:6px;font-weight:bold;'>" + hpMaLine + " + <span id='ab_restore_eta'>" + formatHms(remainSec) + "</span></div>" +
+                "<div style='margin-top:6px;'>HP: <b>" + curHp + "/" + maxHp + "</b> (" + hpPercent + "%)</div>" +
+                "<div>MA: <b>" + curMa + "/" + maxMa + "</b> (" + maPercent + "%)</div>" +
+                "<div style='margin-top:6px;color:#444;'>" + hpTargetText + "</div>" +
+                "<div style='color:#444;'>" + maTargetText + "</div>" +
+                "<script language=\"JavaScript\">" +
+                "var abRemain=" + remainSec + ";" +
+                "function abFmt(sec){sec=Math.max(0,Math.floor(sec));var h=Math.floor(sec/3600);var m=Math.floor((sec%3600)/60);var s=sec%60;" +
+                "return (h<10?'0'+h:h)+':'+(m<10?'0'+m:m)+':'+(s<10?'0'+s:s);}" +
+                "function abTick(){var n=document.getElementById('ab_restore_eta');if(n){n.innerHTML=abFmt(abRemain);}if(abRemain>0){abRemain--;}}" +
+                "abTick();setInterval(abTick,1000);" +
+                "setTimeout(function(){window.location='" + safeUrl + "';}," + safeDelay + ");" +
                 "</script></body></html>";
     }
 
@@ -157,7 +240,96 @@ public class MainPhp {
         }
     }
 
-    // Центральный обработчик main.php (порт логики из C# MainPhp.cs).
+    /**
+     * Порт `MainPhpInsHp.cs` (C# -> Android).
+     * Извлекает `hp_int`/`ma_int` из `ins_HP(...)` и обновляет
+     * `AppVars.PersIntHP`/`AppVars.PersIntMA`.
+     */
+    private static void mainPhpInsHp(String html) {
+        try {
+            InsHpSnapshot snapshot = parseInsHpSnapshot(html);
+            if (snapshot == null) return;
+
+            // Порт 1:1 из C# MainPhpInsHp.cs: par[4] -> IntHP, par[5] -> IntMA.
+            if (snapshot.intHp > 0d) AppVars.PersIntHP = snapshot.intHp;
+            if (snapshot.intMa > 0d) AppVars.PersIntMA = snapshot.intMa;
+
+            android.util.Log.d(TAG, "mainPhpInsHp: parsed hpInt=" + AppVars.PersIntHP + ", maInt=" + AppVars.PersIntMA);
+        } catch (Exception e) {
+            android.util.Log.e(TAG, "mainPhpInsHp error", e);
+        }
+    }
+
+    /**
+     * Парсит снимок из вызова `ins_HP(...)`: cur/max HP, cur/max MA, hp_int/ma_int.
+     * Возвращает `null`, если вызов не найден или формат невалиден.
+     */
+    private static InsHpSnapshot parseInsHpSnapshot(String html) {
+        if (html == null || html.isEmpty()) {
+            return null;
+        }
+
+        String htmlLower = html.toLowerCase(Locale.ROOT);
+        int start = htmlLower.indexOf("ins_hp(");
+        if (start == -1) {
+            return null;
+        }
+        start += "ins_hp(".length();
+        int end = html.indexOf(')', start);
+        if (end == -1 || end <= start) {
+            return null;
+        }
+
+        String args = html.substring(start, end);
+        String[] parts = args.split(",");
+        if (parts.length != 6) {
+            android.util.Log.d(TAG, "parseInsHpSnapshot: unexpected args count=" + parts.length + ", raw=" + args);
+            return null;
+        }
+
+        Double curHpRaw = tryParseDoubleInvariant(parts[0]);
+        Double maxHpRaw = tryParseDoubleInvariant(parts[1]);
+        Double curMaRaw = tryParseDoubleInvariant(parts[2]);
+        Double maxMaRaw = tryParseDoubleInvariant(parts[3]);
+        Double intHpRaw = tryParseDoubleInvariant(parts[4]);
+        Double intMaRaw = tryParseDoubleInvariant(parts[5]);
+        if (curHpRaw == null || maxHpRaw == null || curMaRaw == null || maxMaRaw == null
+                || intHpRaw == null || intMaRaw == null) {
+            return null;
+        }
+
+        InsHpSnapshot snapshot = new InsHpSnapshot();
+        snapshot.curHp = (int) Math.round(curHpRaw);
+        snapshot.maxHp = (int) Math.round(maxHpRaw);
+        snapshot.curMa = (int) Math.round(curMaRaw);
+        snapshot.maxMa = (int) Math.round(maxMaRaw);
+        snapshot.intHp = intHpRaw;
+        snapshot.intMa = intMaRaw;
+        return snapshot;
+    }
+
+    /**
+     * Invariant-парсинг числа (аналог NumberStyles.Any + InvariantCulture в C#).
+     * Допускает кавычки вокруг значения.
+     */
+    private static Double tryParseDoubleInvariant(String raw) {
+        if (raw == null) {
+            return null;
+        }
+        String normalized = raw.trim()
+                .replace("\"", "")
+                .replace("'", "");
+        if (normalized.isEmpty()) {
+            return null;
+        }
+        try {
+            return Double.parseDouble(normalized);
+        } catch (NumberFormatException ignored) {
+            return null;
+        }
+    }
+
+    // Р В¦Р ВµР Р…РЎвЂљРЎР‚Р В°Р В»РЎРЉР Р…РЎвЂ№Р в„– Р С•Р В±РЎР‚Р В°Р В±Р С•РЎвЂљРЎвЂЎР С‘Р С” main.php (Р С—Р С•РЎР‚РЎвЂљ Р В»Р С•Р С–Р С‘Р С”Р С‘ Р С‘Р В· C# MainPhp.cs).
     public static byte[] process(String address, byte[] array) {
         android.util.Log.d(TAG, "process() called for " + address + ", bytes=" + (array != null ? array.length : 0));
         // Сохраняем исходный ответ, если он нужен где-то еще
@@ -171,6 +343,10 @@ public class MainPhp {
         android.util.Log.d(TAG, "HTML length after getString: " + html.length());
         android.util.Log.d(TAG, "HTML first 200: " + html.substring(0, Math.min(200, html.length())));
         html = Filter.removeDoctype(html);
+        // Порт C# MainPhpInsHp.cs:
+        // обновляем интервалы восстановления HP/MA из `ins_HP(...)` до основной логики,
+        // чтобы расчёт `Restoring` выполнялся по актуальным `hp_int/ma_int`.
+        mainPhpInsHp(html);
 
         // Извлечение vcode - полезная логика из новой версии
         String vcode = HelperStrings.subString(html, "'main.php?get_id=56&act=10&go=inf&vcode=", "'");
@@ -761,6 +937,9 @@ public class MainPhp {
 
         // --- Парсинг боя с помощью LezFight ---
         LezFight fight = new LezFight(html);
+        // РЎРЅРёРјРѕРє ins_HP(...) РґР»СЏ UI РѕР¶РёРґР°РЅРёСЏ Р»РµС‡РµРЅРёСЏ (Restoring).
+        // РџСЂРёРѕСЂРёС‚РµС‚: СЃРµСЂРІРµСЂРЅС‹Рµ cur/max/int РёР· HTML РІРµСЂС…РЅРµРіРѕ С„СЂРµР№РјР°.
+        InsHpSnapshot insHpSnapshot = parseInsHpSnapshot(html);
         
         // Детальный дамп HTML для диагностики (если нужен)
         boolean dumpFightHtml = AppVars.DebugDumpFightHtml
@@ -822,7 +1001,27 @@ public class MainPhp {
                     long waitMs = AppVars.AutoboiReadyAtMs > now ? (AppVars.AutoboiReadyAtMs - now) : 1200L;
                     int delay = (int) Math.max(1000L, Math.min(5000L, waitMs));
                     android.util.Log.d(TAG, "mainPhpFight: restoring in progress, waitMs=" + waitMs);
-                    return buildWaitForTurnAutoRefreshHtml(address, delay);
+                    int curHp = insHpSnapshot != null ? insHpSnapshot.curHp : fight.getCurrentHp();
+                    int maxHp = insHpSnapshot != null ? insHpSnapshot.maxHp : fight.getMaxHp();
+                    int curMa = insHpSnapshot != null ? insHpSnapshot.curMa : fight.getCurrentMa();
+                    int maxMa = insHpSnapshot != null ? insHpSnapshot.maxMa : fight.getMaxMa();
+                    return buildRestoringStatusHtml(
+                            address,
+                            delay,
+                            waitMs,
+                            curHp,
+                            maxHp,
+                            curMa,
+                            maxMa,
+                            AppVars.Profile.LezDoWaitHp,
+                            AppVars.Profile.LezWaitHp,
+                            AppVars.Profile.LezDoWaitMa,
+                            AppVars.Profile.LezWaitMa
+                    );
+                }
+                if (!logChanged && timerReady && fight.LogBoi != null && !fight.LogBoi.isEmpty()) {
+                    AppVars.AutoboiReadyCompletedLog = fight.LogBoi;
+                    android.util.Log.d(TAG, "mainPhpFight: restoring timer elapsed, mark completed for log=" + fight.LogBoi);
                 }
                 AppVars.AutoboiReadyAtMs = 0L;
                 AppVars.AutoboiReadyLog = "";
@@ -831,15 +1030,41 @@ public class MainPhp {
             }
 
             if (AppVars.Autoboi == AutoboiState.AutoboiOn) {
-                long newReadyAtMs = fight.calcRestoreAfterBoiReadyAtMs();
-                if (newReadyAtMs > 0L) {
-                    if (fight.LogBoi != null && (!fight.LogBoi.equals(AppVars.AutoboiReadyLog) || now > AppVars.AutoboiReadyAtMs)) {
-                        AppVars.AutoboiReadyLog = fight.LogBoi;
-                        AppVars.AutoboiReadyAtMs = newReadyAtMs;
+ boolean restoreAlreadyCompletedForCurrentLog =
+                        fight.LogBoi != null
+                                && !fight.LogBoi.isEmpty()
+                                && fight.LogBoi.equals(AppVars.AutoboiReadyCompletedLog);
+                if (!restoreAlreadyCompletedForCurrentLog) {
+                    long newReadyAtMs = fight.calcRestoreAfterBoiReadyAtMs();
+                    if (newReadyAtMs > 0L) {
+                        if (fight.LogBoi != null && (!fight.LogBoi.equals(AppVars.AutoboiReadyLog) || now > AppVars.AutoboiReadyAtMs)) {
+                            AppVars.AutoboiReadyLog = fight.LogBoi;
+                            AppVars.AutoboiReadyAtMs = newReadyAtMs;
+                        }
+                        AppVars.Autoboi = AutoboiState.Restoring;
+                        android.util.Log.d(TAG, "mainPhpFight: set Restoring until " + AppVars.AutoboiReadyAtMs);
+                        long waitMs = Math.max(0L, AppVars.AutoboiReadyAtMs - now);
+                        int delay = (int) Math.max(1000L, Math.min(5000L, waitMs > 0L ? waitMs : 1200L));
+                        int curHp = insHpSnapshot != null ? insHpSnapshot.curHp : fight.getCurrentHp();
+                        int maxHp = insHpSnapshot != null ? insHpSnapshot.maxHp : fight.getMaxHp();
+                        int curMa = insHpSnapshot != null ? insHpSnapshot.curMa : fight.getCurrentMa();
+                        int maxMa = insHpSnapshot != null ? insHpSnapshot.maxMa : fight.getMaxMa();
+                        return buildRestoringStatusHtml(
+                                address,
+                                delay,
+                                waitMs,
+                                curHp,
+                                maxHp,
+                                curMa,
+                                maxMa,
+                                AppVars.Profile.LezDoWaitHp,
+                                AppVars.Profile.LezWaitHp,
+                                AppVars.Profile.LezDoWaitMa,
+                                AppVars.Profile.LezWaitMa
+                        );
                     }
-                    AppVars.Autoboi = AutoboiState.Restoring;
-                    android.util.Log.d(TAG, "mainPhpFight: set Restoring until " + AppVars.AutoboiReadyAtMs);
-                    return AppVars.ContentMainPhp != null ? AppVars.ContentMainPhp : html;
+                } else {
+                    android.util.Log.d(TAG, "mainPhpFight: restoring already completed for current log, continue to finish");
                 }
                 AppVars.AutoboiReadyAtMs = 0L;
                 AppVars.AutoboiReadyLog = "";
@@ -853,6 +1078,7 @@ public class MainPhp {
             android.util.Log.d(TAG, "mainPhpFight: NEW FIGHT detected! LogBoi changed: "
                     + AppVars.LastBoiLog + " -> " + fight.LogBoi);
             AppVars.LastBoiLog = fight.LogBoi;
+            AppVars.AutoboiReadyCompletedLog = "";
             fight.updateLastBoiFromLogs();
             notifyNewFight(fight);
             // C# аналог UnderAttack.Parse(html): анонс в чат с учётом LezSay (Chat/Clan/Pair/No).

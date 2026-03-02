@@ -1,0 +1,43 @@
+    private static InsHpSnapshot parseInsHpSnapshot(String html) {
+        if (html == null || html.isEmpty()) {
+            return null;
+        }
+
+        String htmlLower = html.toLowerCase(Locale.ROOT);
+        int start = htmlLower.indexOf("ins_hp(");
+        if (start == -1) {
+            return null;
+        }
+        start += "ins_hp(".length();
+        int end = html.indexOf(')', start);
+        if (end == -1 || end <= start) {
+            return null;
+        }
+
+        String args = html.substring(start, end);
+        String[] parts = args.split(",");
+        if (parts.length != 6) {
+            android.util.Log.d(TAG, "parseInsHpSnapshot: unexpected args count=" + parts.length + ", raw=" + args);
+            return null;
+        }
+
+        Double curHpRaw = tryParseDoubleInvariant(parts[0]);
+        Double maxHpRaw = tryParseDoubleInvariant(parts[1]);
+        Double curMaRaw = tryParseDoubleInvariant(parts[2]);
+        Double maxMaRaw = tryParseDoubleInvariant(parts[3]);
+        Double intHpRaw = tryParseDoubleInvariant(parts[4]);
+        Double intMaRaw = tryParseDoubleInvariant(parts[5]);
+        if (curHpRaw == null || maxHpRaw == null || curMaRaw == null || maxMaRaw == null
+                || intHpRaw == null || intMaRaw == null) {
+            return null;
+        }
+
+        InsHpSnapshot snapshot = new InsHpSnapshot();
+        snapshot.curHp = (int) Math.round(curHpRaw);
+        snapshot.maxHp = (int) Math.round(maxHpRaw);
+        snapshot.curMa = (int) Math.round(curMaRaw);
+        snapshot.maxMa = (int) Math.round(maxMaRaw);
+        snapshot.intHp = intHpRaw;
+        snapshot.intMa = intMaRaw;
+        return snapshot;
+    }

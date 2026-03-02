@@ -48,6 +48,7 @@ public class AppVars {
     // Аналог Pers.Ready / Pers.LogReady из C# (для Timeout/Restoring после боя).
     public static long AutoboiReadyAtMs = 0L;
     public static String AutoboiReadyLog = "";
+    public static String AutoboiReadyCompletedLog = "";
     // Управляемый флаг детального дампа HTML боя (вместо принудительного if(true)).
     public static boolean DebugDumpFightHtml = false;
     public static String LastBoiLog = "";

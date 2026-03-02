@@ -1,0 +1,42 @@
+    private static void notifyNewFight(LezFight fight) {
+        if (AppVars.getContext() == null) return;
+
+        // Определяем тип противника по имени и ftype
+        String foeType;
+        boolean isDangerous = fight.IsDangerousFoe();
+        if (isDangerous) {
+            foeType = " ⚠ ОПАСНЫЙ";
+        } else if (fight.IsBoss()) {
+            foeType = " [БОСС]";
+        } else {
+            foeType = "";
+        }
+
+        String foes = (AppVars.LastBoiSostav != null && !AppVars.LastBoiSostav.isEmpty())
+                ? AppVars.LastBoiSostav
+                : (fight.FoeName + " [" + fight.FoeLevel + "]");
+
+        // Временная метка "Нападение" должна быть в серверном времени (как в C#).
+        // Используем ServDiff, вычисленный из but.php (hour/min/sec).
+        long serverMs = System.currentTimeMillis();
+        if (AppVars.Profile != null && AppVars.Profile.ServDiff != Long.MIN_VALUE) {
+            serverMs = serverMs - AppVars.Profile.ServDiff;
+        }
+        Date serverTime = new Date(serverMs);
+        String timeStr = new SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(serverTime);
+        String timeHtml = "<font class=chattime>&nbsp;" + timeStr + "&nbsp;</font> ";
+
+        String message = "Нападение: " + foes + foeType;
+
+        String messageHtml =
+                timeHtml +
+                "<b><font color=#cc0000>Нападение:</font></b> " +
+                "<font color=#004bbb>" + foes + "</font>" +
+                foeType;
+
+        android.util.Log.d(TAG, "notifyNewFight: " + message);
+
+        Intent msgIntent = new Intent(AppVars.ACTION_ADD_CHAT_MESSAGE);
+        msgIntent.putExtra("message", messageHtml);
+        LocalBroadcastManager.getInstance(AppVars.getContext()).sendBroadcast(msgIntent);
+    }

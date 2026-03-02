@@ -1,0 +1,43 @@
+    private static void notifyNewFight(LezFight fight) {
+        if (AppVars.getContext() == null) return;
+
+        // ���������� ��� ���������� �� ����� � ftype
+        String foeType;
+        boolean isDangerous = fight.IsDangerousFoe();
+        if (isDangerous) {
+            foeType = " [\\u041e\\u041f\\u0410\\u0421\\u041d\\u042b\\u0419]";
+        } else if (fight.IsBoss()) {
+            foeType = " [\\u0411\\u041e\\u0421\\u0421]";
+        } else {
+            foeType = "";
+        }
+
+        String foes = (AppVars.LastBoiSostav != null && !AppVars.LastBoiSostav.isEmpty())
+                ? AppVars.LastBoiSostav
+                : (fight.FoeName + " [" + fight.FoeLevel + "]");
+
+        // ��������� ����� "���������" ������ ���� � ��������� ������� (��� � C#).
+        // ���������� ServDiff, ����������� �� but.php (hour/min/sec).
+        long serverMs = System.currentTimeMillis();
+        if (AppVars.Profile != null && AppVars.Profile.ServDiff != Long.MIN_VALUE) {
+            serverMs = serverMs - AppVars.Profile.ServDiff;
+        }
+        Date serverTime = new Date(serverMs);
+        String timeStr = new SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(serverTime);
+        String timeHtml = "<font class=chattime>&nbsp;" + timeStr + "&nbsp;</font> ";
+
+        String attackLabel = "\\u041d\\u0430\\u043f\\u0430\\u0434\\u0435\\u043d\\u0438\\u0435";
+        String message = attackLabel + ": " + foes + foeType;
+
+        String messageHtml =
+                timeHtml +
+                "<b><font color=#cc0000>" + attackLabel + ":</font></b> " +
+                "<font color=#004bbb>" + foes + "</font>" +
+                foeType;
+
+        android.util.Log.d(TAG, "notifyNewFight: " + message);
+
+        Intent msgIntent = new Intent(AppVars.ACTION_ADD_CHAT_MESSAGE);
+        msgIntent.putExtra("message", messageHtml);
+        LocalBroadcastManager.getInstance(AppVars.getContext()).sendBroadcast(msgIntent);
+    }

@@ -1,0 +1,14 @@
+    private static void mainPhpInsHp(String html) {
+        try {
+            InsHpSnapshot snapshot = parseInsHpSnapshot(html);
+            if (snapshot == null) return;
+
+            // ???? 1:1 ?? C# MainPhpInsHp.cs: par[4] -> IntHP, par[5] -> IntMA.
+            if (snapshot.intHp > 0d) AppVars.PersIntHP = snapshot.intHp;
+            if (snapshot.intMa > 0d) AppVars.PersIntMA = snapshot.intMa;
+
+            android.util.Log.d(TAG, "mainPhpInsHp: parsed hpInt=" + AppVars.PersIntHP + ", maInt=" + AppVars.PersIntMA);
+        } catch (Exception e) {
+            android.util.Log.e(TAG, "mainPhpInsHp error", e);
+        }
+    }

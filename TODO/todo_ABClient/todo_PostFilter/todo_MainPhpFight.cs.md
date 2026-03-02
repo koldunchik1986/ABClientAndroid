@@ -65,3 +65,36 @@
 ### Ожидаемый эффект
 - После остановки автобоя кнопкой верхний фрейм корректно возвращается к обычной логике отображения.
 - Поведение Android в критических ветках mainPhpFight и AutoBoi ближе к эталону C#.
+---
+
+## Обновление 2026-03-02: UI ожидания лечения в верхнем фрейме (Restoring)
+
+### Что требовалось
+- [x] Во время `AutoboiState.Restoring` показывать в верхнем фрейме статус в стиле ПК:
+  - `Останов лечения (HH:MM:SS)`
+  - текущие `HP cur/max` и `MA cur/max`
+  - целевые пороги из настроек `Ждать восстановления HP/MA`.
+
+### Что сделано (Android)
+- [x] В `MainPhp.mainPhpFight(...)` ветка `Restoring` теперь возвращает спец-HTML статуса ожидания вместо пустого/обычного контента.
+- [x] Статусный HTML содержит локальный секундный таймер и автопереход на reload URL.
+- [x] Источник текущих значений: `ins_HP(curh,maxh,curm,maxm,hp_int,ma_int)` через парсер `parseInsHpSnapshot(...)`.
+
+### Зависимости
+- `MainPhp.java`:
+  - `buildRestoringStatusHtml(...)`
+  - `parseInsHpSnapshot(...)`
+  - ветки `AutoboiState.Restoring` / `AutoboiState.AutoboiOn`.
+- `LezFight.java`:
+  - `calcRestoreAfterBoiReadyAtMs()` (используется для `AutoboiReadyAtMs`).
+
+### Примечание
+- UI-таймер в фрейме синхронизирован с `AutoboiReadyAtMs`, чтобы момент автозавершения боя совпадал с окончанием ожидания лечения.
+
+
+## Update 2026-03-02 (Restoring status format)
+- [x] Top-frame restoring line shows (curHP/maxHP + curMA/maxMA) + HH:mm:ss.
+- [x] mainPhpInsHp(...) updates AppVars.PersIntHP/PersIntMA from ins_HP(...) before fight logic.
+- [x] Added detailed comments with dependencies for new restoring helpers.
+
+- [x] Fixed loop after restoring timer: once timer elapsed for current LogBoi, client no longer re-enters Restoring and proceeds to normal finish/captcha branch.

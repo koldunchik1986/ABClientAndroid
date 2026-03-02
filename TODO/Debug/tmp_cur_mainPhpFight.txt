@@ -1,0 +1,333 @@
+    private static String mainPhpFight(String address, String html) {
+        android.util.Log.d(TAG, "mainPhpFight: address=" + address + ", htmlLen=" + html.length());
+
+        // --- ����������� ���������� �������� ������ (fight_ty, param_en, slots_en) ---
+        logFightVariable(html, "fight_ty");
+        logFightVariable(html, "param_en");
+        logFightVariable(html, "slots_en");
+        logFightVariable(html, "param_my");
+        logFightVariable(html, "slots_my");
+        logFightVariable(html, "LogBoi");
+
+        // --- ������� ��� � ������� LezFight ---
+        LezFight fight = new LezFight(html);
+        // ?????? ins_HP(...) ??? UI ???????? ??????? (Restoring).
+        // ?????????: ????????? cur/max/int ?? HTML ???????? ??????.
+        InsHpSnapshot insHpSnapshot = parseInsHpSnapshot(html);
+        
+        // ��������� ���� HTML ��� ����������� (���� �����)
+        boolean dumpFightHtml = AppVars.DebugDumpFightHtml
+                || (AppVars.Profile != null && AppVars.Profile.DoHttpLog);
+        if (dumpFightHtml) {
+            int chunkSize = 800;
+            int totalLen = html.length();
+            int chunks = (totalLen + chunkSize - 1) / chunkSize;
+            android.util.Log.d(TAG, "mainPhpFight: HTML dump, total=" + totalLen + " bytes, chunks=" + chunks);
+            for (int i = 0; i < chunks; i++) {
+                int start = i * chunkSize;
+                int end = Math.min(start + chunkSize, totalLen);
+                android.util.Log.d(TAG, "mainPhpFight HTML[" + start + "-" + end + "]: "
+                        + html.substring(start, end));
+            }
+        }
+        
+        android.util.Log.d(TAG, "mainPhpFight: LezFight parsed:"
+                + " IsValid=" + fight.IsValid
+                + " IsBoi=" + fight.IsBoi
+                + " IsWaitingForNextTurn=" + fight.IsWaitingForNextTurn
+                + " DoStop=" + fight.DoStop
+                + " IsLowHp=" + fight.IsLowHp
+                + " IsLowMa=" + fight.IsLowMa
+                + " DoExit=" + fight.DoExit
+                + " LogBoi=" + fight.LogBoi);
+
+        if (!fight.IsValid) {
+            android.util.Log.d(TAG, "mainPhpFight: fight.IsValid=false, returning original HTML");
+            return html;
+        }
+
+        // ��������������� ���� "��� ��������":
+        // - IsBoi=false: �� ��� �� � �������� ���� ������,
+        // - IsWaitingForNextTurn=false: ��� �� �������� ������ ����������.
+        // ������������ ����� � ���� �������:
+        // 1) AutoBoi-����� (��������������/�����),
+        // 2) ������ ����� (����� ����� ��� ����-�������).
+        boolean fightEnded = !fight.IsBoi && !fight.IsWaitingForNextTurn;
+        if (fightEnded) {
+            registerFightEnd(fight);
+        }
+
+        // ������������� Timeout/Restoring ��� � C# MainPhpFight.cs.
+        if (fightEnded && AppVars.Profile != null && AppVars.Profile.LezDoAutoboi) {
+            long now = System.currentTimeMillis();
+
+            if (AppVars.Autoboi == AutoboiState.Timeout) {
+                AppVars.AutoboiReadyAtMs = 0L;
+                AppVars.AutoboiReadyLog = "";
+                AppVars.Autoboi = AutoboiState.AutoboiOn;
+                android.util.Log.d(TAG, "mainPhpFight: Timeout finished on fight end -> AutoboiOn");
+            }
+
+            if (AppVars.Autoboi == AutoboiState.Restoring) {
+                boolean logChanged = fight.LogBoi != null && !fight.LogBoi.equals(AppVars.AutoboiReadyLog);
+                boolean timerReady = AppVars.AutoboiReadyAtMs > 0L && now >= AppVars.AutoboiReadyAtMs;
+                if (!logChanged && !timerReady) {
+                    long waitMs = AppVars.AutoboiReadyAtMs > now ? (AppVars.AutoboiReadyAtMs - now) : 1200L;
+                    int delay = (int) Math.max(1000L, Math.min(5000L, waitMs));
+                    android.util.Log.d(TAG, "mainPhpFight: restoring in progress, waitMs=" + waitMs);
+                    int curHp = insHpSnapshot != null ? insHpSnapshot.curHp : fight.getCurrentHp();
+                    int maxHp = insHpSnapshot != null ? insHpSnapshot.maxHp : fight.getMaxHp();
+                    int curMa = insHpSnapshot != null ? insHpSnapshot.curMa : fight.getCurrentMa();
+                    int maxMa = insHpSnapshot != null ? insHpSnapshot.maxMa : fight.getMaxMa();
+                    return buildRestoringStatusHtml(
+                            address,
+                            delay,
+                            waitMs,
+                            curHp,
+                            maxHp,
+                            curMa,
+                            maxMa,
+                            AppVars.Profile.LezDoWaitHp,
+                            AppVars.Profile.LezWaitHp,
+                            AppVars.Profile.LezDoWaitMa,
+                            AppVars.Profile.LezWaitMa
+                    );
+                }
+                if (!logChanged && timerReady && fight.LogBoi != null && !fight.LogBoi.isEmpty()) {
+                    AppVars.AutoboiReadyCompletedLog = fight.LogBoi;
+                    android.util.Log.d(TAG, "mainPhpFight: restoring timer elapsed, mark completed for log=" + fight.LogBoi);
+                }
+                AppVars.AutoboiReadyAtMs = 0L;
+                AppVars.AutoboiReadyLog = "";
+                AppVars.Autoboi = AutoboiState.AutoboiOn;
+                android.util.Log.d(TAG, "mainPhpFight: restoring finished -> AutoboiOn");
+            }
+
+            if (AppVars.Autoboi == AutoboiState.AutoboiOn) {
+                boolean restoreAlreadyCompletedForCurrentLog =
+                        fight.LogBoi != null
+                                && !fight.LogBoi.isEmpty()
+                                && fight.LogBoi.equals(AppVars.AutoboiReadyCompletedLog);
+                if (!restoreAlreadyCompletedForCurrentLog) {
+                    long newReadyAtMs = fight.calcRestoreAfterBoiReadyAtMs();
+                    if (newReadyAtMs > 0L) {
+                        if (fight.LogBoi != null && (!fight.LogBoi.equals(AppVars.AutoboiReadyLog) || now > AppVars.AutoboiReadyAtMs)) {
+                            AppVars.AutoboiReadyLog = fight.LogBoi;
+                            AppVars.AutoboiReadyAtMs = newReadyAtMs;
+                        }
+                        AppVars.Autoboi = AutoboiState.Restoring;
+                        android.util.Log.d(TAG, "mainPhpFight: set Restoring until " + AppVars.AutoboiReadyAtMs);
+                        long waitMs = Math.max(0L, AppVars.AutoboiReadyAtMs - now);
+                        int delay = (int) Math.max(1000L, Math.min(5000L, waitMs > 0L ? waitMs : 1200L));
+                        int curHp = insHpSnapshot != null ? insHpSnapshot.curHp : fight.getCurrentHp();
+                        int maxHp = insHpSnapshot != null ? insHpSnapshot.maxHp : fight.getMaxHp();
+                        int curMa = insHpSnapshot != null ? insHpSnapshot.curMa : fight.getCurrentMa();
+                        int maxMa = insHpSnapshot != null ? insHpSnapshot.maxMa : fight.getMaxMa();
+                        return buildRestoringStatusHtml(
+                                address,
+                                delay,
+                                waitMs,
+                                curHp,
+                                maxHp,
+                                curMa,
+                                maxMa,
+                                AppVars.Profile.LezDoWaitHp,
+                                AppVars.Profile.LezWaitHp,
+                                AppVars.Profile.LezDoWaitMa,
+                                AppVars.Profile.LezWaitMa
+                        );
+                    }
+                } else {
+                    android.util.Log.d(TAG, "mainPhpFight: restoring already completed for current log, continue to finish");
+                }
+                AppVars.AutoboiReadyAtMs = 0L;
+                AppVars.AutoboiReadyLog = "";
+            }
+        }
+
+        // ���� 2: ����������� � ��������� ��� ����� LogBoi
+        // ������ ParseFightLog + TrayBalloon � C# (MainPhp.cs)
+        if (fight.IsBoi && fight.LogBoi != null && !fight.LogBoi.isEmpty()
+                && !fight.LogBoi.equals(AppVars.LastBoiLog)) {
+            android.util.Log.d(TAG, "mainPhpFight: NEW FIGHT detected! LogBoi changed: "
+                    + AppVars.LastBoiLog + " -> " + fight.LogBoi);
+            AppVars.LastBoiLog = fight.LogBoi;
+            AppVars.AutoboiReadyCompletedLog = "";
+            fight.updateLastBoiFromLogs();
+            notifyNewFight(fight);
+            // C# ������ UnderAttack.Parse(html): ����� � ��� � ������ LezSay (Chat/Clan/Pair/No).
+            UnderAttackManager.parseAsync(html);
+        }
+
+        // ����� ���������� ��� � AutoBoi:
+        // - ������� �� AppVars.Profile.LezDoAutoboi � AppVars.Autoboi==AutoboiOn,
+        // - ���������� AppVars.FightLink, ������� ����������� � LezFight.BuildFightLink(),
+        // - ��� ����� �������� showFightCaptchaDialogOnce(...) � �� ������ auto-submit.
+        if (fightEnded
+                && AppVars.Profile != null && AppVars.Profile.LezDoAutoboi
+                && AppVars.Autoboi == AutoboiState.AutoboiOn) {
+            android.util.Log.d(TAG, "mainPhpFight: FIGHT ENDED with autoboi ON - processing finish");
+
+            String captchaUrl = resolveFightCaptchaUrl(html);
+            boolean needCaptcha = captchaUrl != null && !captchaUrl.isEmpty();
+            String fightLink = AppVars.FightLink;
+
+            if (needCaptcha && fightLink != null && !fightLink.isEmpty()) {
+                android.util.Log.d(TAG, "mainPhpFight: CAPTCHA required, stopping autoboi and showing dialog: " + captchaUrl);
+
+                // �����: ���� �������������� AutoBoi ����� ������ �����.
+                // ���� ����� ������ � ������ AutoboiOn, ���������� ��� ���������,
+                // ����� MainActivity ����� submit ���� ������ `AutoboiOn`.
+                AppVars.ResumeAutoboiAfterCaptcha = true;
+                AppVars.Autoboi = AutoboiState.AutoboiOff;
+                    AppVars.ContentMainPhp = html; // ���������� ����� � ������
+                    showFightCaptchaDialogOnce(captchaUrl, fightLink, fight.LogBoi);
+                    // ������ �������� � ������ ��������
+                    return html;
+                }
+
+            if (fightLink != null && !fightLink.isEmpty() && !fightLink.contains("????")) {
+                long now = System.currentTimeMillis();
+                long sinceLast = now - lastAutoFinishRedirectAtMs;
+                if (sinceLast >= 0 && sinceLast < AUTO_FINISH_MIN_DELAY_MS) {
+                    int waitMs = (int) (AUTO_FINISH_MIN_DELAY_MS - sinceLast) + 120;
+                    android.util.Log.d(TAG, "mainPhpFight: throttling finish redirect, waitMs=" + waitMs);
+                    return buildWaitForTurnAutoRefreshHtml(address, waitMs);
+                }
+
+                int redirectDelay = AUTO_FINISH_MIN_DELAY_MS + RANDOM.nextInt(AUTO_FINISH_EXTRA_DELAY_MS + 1);
+                if (redirectDelay >= 0) {
+                    lastAutoFinishRedirectAtMs = now;
+                    AppVars.FightLink = "";
+                    return buildDelayedRedirectHtml("���������� ���", fightLink, redirectDelay);
+                }
+
+                AppVars.FightLink = "";
+                return Russian.getString(Filter.buildRedirect("���������� ���", fightLink));
+            }
+            // FightLink ������ ��� �������� "????" - ������ �������� �� main.php
+            // ��� ����� ��� ���������� �������� ������ � �������������� ������ ������
+
+            android.util.Log.d(TAG, "mainPhpFight: FightLink missing, redirecting to main.php");
+            AppVars.FightLink = "";
+            int redirectDelayToMain = AUTO_FINISH_MIN_DELAY_MS + RANDOM.nextInt(AUTO_FINISH_EXTRA_DELAY_MS + 1);
+            if (redirectDelayToMain >= 0) {
+                return buildDelayedRedirectHtml("���������� ��� - ����������", "main.php", redirectDelayToMain);
+            }
+            return Russian.getString(Filter.buildRedirect("���������� ��� - ����������", "main.php"));
+        }
+
+        // ����� ������� ������:
+        // ���� ������ ������ ����� �� �������� ���������� ���, ���������� ��� �� popup,
+        // ��� � � AutoBoi, �� ��� ������� ��������������� ������� "���������".
+        // �����������:
+        // - extractCaptchaUrl(html): ���������� URL ��������,
+        // - AppVars.FightLink/address: URL, ���� ����� ��������� code=<digits>,
+        // - showFightCaptchaDialogOnce(...): broadcast � MainActivity.
+        if (fightEnded) {
+            String manualCaptchaUrl = resolveFightCaptchaUrl(html);
+            if (manualCaptchaUrl != null && !manualCaptchaUrl.isEmpty()) {
+                String finishLink = AppVars.FightLink;
+                if (finishLink == null || finishLink.isEmpty()) {
+                    // fallback: ���������� ������� ����� �������� ����������
+                    finishLink = address;
+                }
+                android.util.Log.d(TAG, "mainPhpFight: manual mode CAPTCHA detected, showing dialog: " + manualCaptchaUrl);
+                boolean fromCaptchaSubmit = address != null && address.contains("code=");
+                if (fromCaptchaSubmit) {
+                    String submittedCode = getUrlParam(address, "code");
+                    String submittedVcode = getUrlParam(address, "vcode");
+                    android.util.Log.d(TAG, "mainPhpFight: captcha submit still requires challenge, code="
+                            + submittedCode + ", vcode=" + submittedVcode);
+                    notifyCaptchaRejectedOnce(submittedCode, submittedVcode);
+                }
+                showFightCaptchaDialogOnce(manualCaptchaUrl, finishLink, fight.LogBoi);
+                AppVars.ContentMainPhp = html;
+                return html;
+            }
+        }
+
+        // ���������, ��� �� �� ���� ���������� - ����� auto-refresh
+        if (fight.IsWaitingForNextTurn) {
+            android.util.Log.d(TAG, "mainPhpFight: waiting for opponent turn (foe HP=" + fight.FoeCurrentHp + ")");
+
+            boolean shouldAutoRefresh = AppVars.AutoRefresh;
+            if (!shouldAutoRefresh && AppVars.Profile != null && AppVars.Profile.LezDoAutoboi
+                    && AppVars.Autoboi == AutoboiState.AutoboiOn) {
+                // ��� AutoBoi ����� ���������� ��������� �����, ����� ����� 1 ����� ����������� �� ���� ����������.
+                shouldAutoRefresh = true;
+            }
+
+            if (shouldAutoRefresh) {
+                int delay = 1200 + RANDOM.nextInt(900); // 1200-2100ms
+                android.util.Log.d(TAG, "mainPhpFight: auto-refresh waiting enabled, reloading after " + delay + "ms: " + address);
+                return buildWaitForTurnAutoRefreshHtml(address, delay);
+            }
+
+            android.util.Log.d(TAG, "mainPhpFight: AutoRefresh disabled, returning original content");
+            return AppVars.ContentMainPhp != null ? AppVars.ContentMainPhp : html;
+        }
+
+        // ���������, ������� �� ������� � �������
+        if (AppVars.Profile != null && AppVars.Profile.LezDoAutoboi) {
+            android.util.Log.d(TAG, "mainPhpFight: LezDoAutoboi enabled, Autoboi state=" + AppVars.Autoboi);
+            
+            // ��������� ��������� �������
+            if (AppVars.Autoboi == AutoboiState.AutoboiOn) {
+                if (fight.IsBoi) {
+                    // �� � ���
+                    android.util.Log.d(TAG, "mainPhpFight: in fight, checking safety conditions:"
+                            + " DoStop=" + fight.DoStop
+                            + " IsLowHp=" + fight.IsLowHp
+                            + " IsLowMa=" + fight.IsLowMa
+                            + " DoExit=" + fight.DoExit);
+                    
+                    if (!fight.DoStop && !fight.IsLowHp && !fight.IsLowMa && !fight.DoExit) {
+                        // ��� ���, ������� ���������� - ���������� ����-���
+                        android.util.Log.d(TAG, "mainPhpFight: SAFE - returning fight.Frame for auto-attack");
+                        android.util.Log.d(TAG, "mainPhpFight: fight.Frame = " + (fight.Frame != null ? fight.Frame.substring(0, Math.min(200, fight.Frame.length())) : "NULL"));
+                        if (fight.Frame != null && !fight.Frame.isEmpty()) {
+                            return fight.Frame;
+                        }
+                        android.util.Log.w(TAG, "mainPhpFight: fight.Frame is empty, stopping autoboi to avoid null flow");
+                        if (AppVars.Autoboi != AutoboiState.Timeout) {
+                            notifyFightStopped(fight);
+                            AppVars.Autoboi = AutoboiState.Timeout;
+                        }
+                        return AppVars.ContentMainPhp != null ? AppVars.ContentMainPhp : html;
+                    } else {
+                        // ������� �������� - ������������� �������
+                        android.util.Log.d(TAG, "mainPhpFight: DANGEROUS - stopping autoboi, setting Timeout");
+                        if (AppVars.Autoboi != AutoboiState.Timeout) {
+                            notifyFightStopped(fight);
+                            AppVars.Autoboi = AutoboiState.Timeout;
+                        }
+                    }
+                } else {
+                    // ���������� ��� ���������� ���� � ����� fightEnded (Timeout/Restoring/FightLink/�����).
+                    android.util.Log.d(TAG, "mainPhpFight: fight ended branch already handled, keep current frame");
+                }
+            } else {
+                android.util.Log.d(TAG, "mainPhpFight: Autoboi state is " + AppVars.Autoboi + ", not AutoboiOn");
+            }
+        } else {
+            android.util.Log.d(TAG, "mainPhpFight: LezDoAutoboi disabled or Profile is null");
+            if (!fight.IsBoi) {
+                android.util.Log.d(TAG, "mainPhpFight: autoboi disabled, keeping original fight frame for manual finish");
+            }
+        }
+
+        // �������� �������� �������� �������� ��� ��� �����������
+        android.util.Log.d(TAG, "mainPhpFight flags:"
+                + " magic_slots=" + html.contains("magic_slots();")
+                + " fight_ty=" + html.contains("var fight_ty")
+                + " IsBoi_form=" + html.contains("<form")
+                + " StartAct=" + html.contains("StartAct()")
+                + " document.ff=" + html.contains("document.ff")
+                + " autosubmit=" + html.contains("document.ff.submit")
+        );
+
+        // ������ C# ������ - ���������� AppVars.ContentMainPhp (������������ HTML)
+        // � �� ��������� html, ����� �������� ������ ������
+        return AppVars.ContentMainPhp != null ? AppVars.ContentMainPhp : html;
+    }

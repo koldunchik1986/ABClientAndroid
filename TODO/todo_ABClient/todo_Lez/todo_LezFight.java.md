@@ -122,3 +122,22 @@ Frame генерируется корректно. Однако для успе�
 
 **Файл:** `app/src/main/java/ru/neverlands/abclient/lez/LezFight.java`  
 **Дата последних изменений:** 25.02.2026
+
+---
+
+## Обновление 2026-03-02: расчёт Restoring по hp_int/ma_int
+
+### Изменения
+- [x] В `calcRestoreAfterBoiReadyAtMs()` разделены интервалы восстановления:
+  - HP рассчитывается через `AppVars.PersIntHP`
+  - MA рассчитывается через `AppVars.PersIntMA`
+- [x] Добавлены публичные геттеры состояния HP/MA (`getCurrentHp/getMaxHp/getCurrentMa/getMaxMa/getPercentHp/getPercentMa`) для использования в UI верхнего фрейма при ожидании лечения.
+
+### Зависимости
+- Значения `PersIntHP/PersIntMA` приходят из парсинга `ins_HP(...)` в `MainPhp`.
+- `MainPhp.mainPhpFight(...)` использует эти данные для состояния `AutoboiState.Restoring`.
+
+
+## Update 2026-03-02 (LezFight restoring parity)
+- [x] calcRestoreAfterBoiReadyAtMs() now uses separate intervals: HP -> PersIntHP, MA -> PersIntMA.
+- [x] Added getters getCurrentHp/getMaxHp/getCurrentMa/getMaxMa/getPercentHp/getPercentMa for top-frame restoring UI.

@@ -1,0 +1,132 @@
+    public static byte[] process(String address, byte[] array) {
+        android.util.Log.d(TAG, "process() called for " + address + ", bytes=" + (array != null ? array.length : 0));
+        // ��������� �������� �����, ���� �� ����� ���-�� ���
+        AppVars.lastMainPhpResponse = array;
+        AppVars.IdleTimer = System.currentTimeMillis();
+        AppVars.LastMainPhp = System.currentTimeMillis();
+        AppVars.ContentMainPhp = null;
+
+        String html = Russian.getString(array);
+        String originalHtml = html;
+        android.util.Log.d(TAG, "HTML length after getString: " + html.length());
+        android.util.Log.d(TAG, "HTML first 200: " + html.substring(0, Math.min(200, html.length())));
+        html = Filter.removeDoctype(html);
+        // ???? C# MainPhpInsHp.cs:
+        // ????????? ????????? ?????????????? HP/MA ?? `ins_HP(...)` ?? ???????? ??????,
+        // ????? ?????? `Restoring` ?????????? ?? ?????????? `hp_int/ma_int`.
+        mainPhpInsHp(html);
+
+        // ���������� vcode - �������� ������ �� ����� ������
+        String vcode = HelperStrings.subString(html, "'main.php?get_id=56&act=10&go=inf&vcode=", "'");
+        if (vcode != null) {
+            AppVars.VCode = vcode;
+        }
+
+        // ��������� ��������� (������ MainPhp.cs ������ 207-223).
+        // �������: <font class=nickname><font color=#cc0000><b>�����<br><br></b></font></font>
+        // �����������: ���� cc0000 � HTML ����� ������ �������� ������� �������
+        if (address.contains("get_id=43")) {
+            int diagIdx = html.toLowerCase().indexOf("cc0000");
+            if (diagIdx >= 0) {
+                int start = Math.max(0, diagIdx - 80);
+                int end = Math.min(html.length(), diagIdx + 200);
+                android.util.Log.d(TAG, "process: get_id=43 cc0000 context: " + html.substring(start, end));
+            } else {
+                android.util.Log.d(TAG, "process: get_id=43 � cc0000 �� ������. HTML[0:300]=" + html.substring(0, Math.min(300, html.length())));
+            }
+        }
+        String sysMessage = HelperStrings.subString(html,
+                "<font class=nickname><font color=#cc0000><b>",
+                "<br><br></b></font></font>");
+        // Fallback: ��������� ��� ����� �������� ����� ����� lower-case �����
+        if (sysMessage == null || sysMessage.isEmpty()) {
+            sysMessage = HelperStrings.subString(html.toLowerCase(),
+                    "<font class=nickname><font color=#cc0000><b>",
+                    "<br><br></b></font></font>");
+            if (sysMessage != null && !sysMessage.isEmpty()) {
+                // ������� � lowercase � ���� ����� �� ���������
+                int idx = html.toLowerCase().indexOf("<font class=nickname><font color=#cc0000><b>");
+                if (idx >= 0) {
+                    int eIdx = html.toLowerCase().indexOf("<br><br></b></font></font>", idx);
+                    if (eIdx >= 0) {
+                        sysMessage = html.substring(idx + "<font class=nickname><font color=#cc0000><b>".length(), eIdx);
+                    }
+                }
+            }
+        }
+        if (sysMessage != null && !sysMessage.isEmpty() && AppVars.getContext() != null) {
+            android.util.Log.d(TAG, "process: sysMessage=" + sysMessage);
+            Intent msgIntent = new Intent(AppVars.ACTION_ADD_CHAT_MESSAGE);
+            msgIntent.putExtra("message", "<font color=#cc0000><b>" + sysMessage + "</b></font>");
+            LocalBroadcastManager.getInstance(AppVars.getContext()).sendBroadcast(msgIntent);
+        }
+
+        // ������ C# MainPhp.cs: ���� ����-��������� ��������� � �������� ���,
+        // ��������� ���� �� ��������� blacklist � �������� fast-����.
+        // �����������:
+        // - `RoomManager.charAddToBlackList(...)` (������ �� ����������� ���������� ���������),
+        // - `FastActionManager.fastCancel()` (����� �������� fast-���������),
+        // - `AppVars.FastNick` (���� �������� fast-��������).
+        String htmlLower = html.toLowerCase(Locale.ROOT);
+        boolean closedFightInterfereError = htmlLower.contains("������ ��� �������������. ������ ��������� � �������� ���");
+        if (closedFightInterfereError && AppVars.AutoAttackToolId != 0 && AppVars.FastNick != null && !AppVars.FastNick.isEmpty()) {
+            String blockedNick = AppVars.FastNick;
+            android.util.Log.d(TAG, "[AA_TRACE] closed fight error: add to blacklist and cancel fast, nick=" + blockedNick
+                    + ", fastId=" + AppVars.FastId + ", autoTool=" + AppVars.AutoAttackToolId);
+            RoomManager.charAddToBlackList(blockedNick);
+            if (AppVars.getContext() != null) {
+                Intent blockedMsgIntent = new Intent(AppVars.ACTION_ADD_CHAT_MESSAGE);
+                blockedMsgIntent.putExtra("message", "<b>" + blockedNick + "</b> � ���, �������� ��������!");
+                LocalBroadcastManager.getInstance(AppVars.getContext()).sendBroadcast(blockedMsgIntent);
+            }
+            FastActionManager.fastCancel("closed-fight-interfere-error");
+        }
+
+        // ��������� ������� �������� (����������� �� MainPhp.cs ������ 1429-1619)
+        // � C# FastAction �������������� ������ MainPhp, � �� � ��������� ���������.
+        // ��������: MainPhpFindInv > BuildRedirect �� ��������� > MainPhpIsInv > MainPhpFast > BuildRedirect �� ���������
+        if (AppVars.FastNeed) {
+            byte[] fastResult = processMainPhpFast(address, html);
+            if (fastResult != null) {
+                return fastResult;
+            }
+        }
+
+        // ��������� �������� ���
+        // magic_slots() � ������� �������� ��� (fight frame)
+        // var fight_ty � ������� �������� ������ � ������� � ����������
+        boolean isFightFrame = html.contains("magic_slots();");
+        boolean isFightTopFrame = html.contains("var fight_ty");
+        if (isFightFrame || isFightTopFrame) {
+            android.util.Log.d(TAG, "=== FIGHT FRAME DETECTED ==="
+                    + " isFightFrame=" + isFightFrame
+                    + " isFightTopFrame=" + isFightTopFrame
+                    + " address=" + address);
+            html = mainPhpFight(address, html);
+            if (html == null) {
+                android.util.Log.w(TAG, "process: mainPhpFight returned null, fallback to original HTML");
+                html = originalHtml;
+            }
+            // Preserve original fight HTML for manual mode (avoid losing images after auto frame)
+            AppVars.ContentMainPhp = originalHtml;
+        }
+
+        // ��������� ���������, ���������� �� ���������� ������ �� app_work
+        if (html.contains("/invent/0.gif")) {
+            html = mainPhpInv(html);
+        }
+
+        if (html.contains("var map = [[")) {
+            html = MapAjax.process(html);
+        }
+
+        // ... other placeholders ...
+
+        if (!(isFightFrame || isFightTopFrame)) {
+            AppVars.ContentMainPhp = html;
+        }
+        byte[] result = Russian.getBytes(html);
+        android.util.Log.d(TAG, "process() returning " + result.length + " bytes for " + address);
+        android.util.Log.d(TAG, "Result first 200: " + html.substring(0, Math.min(200, html.length())));
+        return result;
+    }

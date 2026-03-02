@@ -1,0 +1,53 @@
+    private static String mainPhpFindInv(String html, String filter) {
+        // Если мы уже на инвентаре — не нужен redirect
+        if (mainPhpIsInv(html)) {
+            return null;
+        }
+
+        // Стратегия 1: view_arena() — арена
+        if (html.contains("view_arena()")) {
+            String result = mainPhpFindInvArena(html, filter);
+            if (result != null) return result;
+        }
+
+        // Стратегия 2: view_moor/taverna/magic_sch/library/teleport — здания
+        if (html.contains("view_moor()") || html.contains("view_taverna()")
+                || html.contains("view_magic_sch()") || html.contains("view_library()")
+                || html.contains("view_teleport()")) {
+            String result = mainPhpFindInvBuilding(html, filter);
+            if (result != null) return result;
+        }
+
+        // Стратегия 3: Кнопка "Инвентарь" с onclick
+        if (html.contains("Инвентарь") || html.contains("\u0418\u043D\u0432\u0435\u043D\u0442\u0430\u0440\u044C")) {
+            String result = mainPhpFindInvOld(html, filter);
+            if (result != null) return result;
+        }
+
+        // Стратегия 4: JSON ["inv","Инвентарь","vcode"...]
+        String patternEnter = "[\"inv\",\"Инвентарь\",\"";
+        int pos = html.indexOf(patternEnter);
+        if (pos == -1) {
+            // Пробуем варианты с экранированными кавычками
+            patternEnter = "[\"inv\",\"\u0418\u043D\u0432\u0435\u043D\u0442\u0430\u0440\u044C\",\"";
+            pos = html.indexOf(patternEnter);
+        }
+        if (pos != -1) {
+            pos += patternEnter.length();
+            int posEnd = html.indexOf('"', pos);
+            if (posEnd != -1) {
+                String vcodeInv = html.substring(pos, posEnd);
+                String link = "main.php?get_id=56&act=10&go=inv&vcode=" + vcodeInv + filter;
+                return buildRedirectHtml("Переключение на инвентарь", link);
+            }
+        }
+
+        // Стратегия 5: Кнопка "Вернуться" → main.php (для случая когда мы внутри инвентаря, но на другой странице)
+        if (html.contains("value=\"Вернуться\">") || html.contains("value=\"\u0412\u0435\u0440\u043D\u0443\u0442\u044C\u0441\u044F\">")) {
+            if (html.contains("onclick=\"location='../main.php'\"") || html.contains("onclick=\"location='main.php'\"")) {
+                return buildRedirectHtml("Переключение на инвентарь", "main.php");
+            }
+        }
+
+        return null;
+    }

@@ -1,0 +1,7 @@
+    private static String formatHms(long seconds) {
+        long total = Math.max(0L, seconds);
+        long h = total / 3600L;
+        long m = (total % 3600L) / 60L;
+        long s = total % 60L;
+        return String.format(Locale.US, "%02d:%02d:%02d", h, m, s);
+    }

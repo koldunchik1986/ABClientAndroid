@@ -998,6 +998,7 @@ public class LezFight {
 
         double sec = 0.0;
         double intHp = AppVars.PersIntHP > 0 ? AppVars.PersIntHP : 2000.0;
+        double intMa = AppVars.PersIntMA > 0 ? AppVars.PersIntMA : 9000.0;
 
         if (AppVars.Profile.LezDoWaitHp && _maxHp > 0 && _percentHp < AppVars.Profile.LezWaitHp) {
             int goalHp = (int) (AppVars.Profile.LezWaitHp * _maxHp / 100.0);
@@ -1006,7 +1007,7 @@ public class LezFight {
 
         if (AppVars.Profile.LezDoWaitMa && _maxMa > 0 && _percentMa < AppVars.Profile.LezWaitMa) {
             int goalMa = (int) (AppVars.Profile.LezWaitMa * _maxMa / 100.0);
-            double secMa = ((goalMa - _currentMa) * intHp) / _maxMa;
+            double secMa = ((goalMa - _currentMa) * intMa) / _maxMa;
             if (secMa > sec) {
                 sec = secMa;
             }
@@ -1017,6 +1018,39 @@ public class LezFight {
         }
         long delayMs = (long) Math.ceil(sec * 1000.0);
         return System.currentTimeMillis() + Math.max(0L, delayMs);
+    }
+
+    /**
+     * Текущее HP игрока, распарсенное из `param_my`.
+     * Зависимости: используется в MainPhp для строки статуса лечения.
+     */
+    public int getCurrentHp() {
+        return _currentHp;
+    }
+
+    /** Максимальное HP игрока. */
+    public int getMaxHp() {
+        return _maxHp;
+    }
+
+    /** Текущее MA игрока. */
+    public int getCurrentMa() {
+        return _currentMa;
+    }
+
+    /** Максимальное MA игрока. */
+    public int getMaxMa() {
+        return _maxMa;
+    }
+
+    /** Текущий процент HP (0..100). */
+    public int getPercentHp() {
+        return _percentHp;
+    }
+
+    /** Текущий процент MA (0..100). */
+    public int getPercentMa() {
+        return _percentMa;
     }
 
     /**

@@ -1,0 +1,283 @@
+    private static String mainPhpFight(String address, String html) {
+        android.util.Log.d(TAG, "mainPhpFight: address=" + address + ", htmlLen=" + html.length());
+
+        // --- Логирование переменных верхнего фрейма (fight_ty, param_en, slots_en) ---
+        logFightVariable(html, "fight_ty");
+        logFightVariable(html, "param_en");
+        logFightVariable(html, "slots_en");
+        logFightVariable(html, "param_my");
+        logFightVariable(html, "slots_my");
+        logFightVariable(html, "LogBoi");
+
+        // --- Парсинг боя с помощью LezFight ---
+        LezFight fight = new LezFight(html);
+        
+        // Детальный дамп HTML для диагностики (если нужен)
+        boolean dumpFightHtml = AppVars.DebugDumpFightHtml
+                || (AppVars.Profile != null && AppVars.Profile.DoHttpLog);
+        if (dumpFightHtml) {
+            int chunkSize = 800;
+            int totalLen = html.length();
+            int chunks = (totalLen + chunkSize - 1) / chunkSize;
+            android.util.Log.d(TAG, "mainPhpFight: HTML dump, total=" + totalLen + " bytes, chunks=" + chunks);
+            for (int i = 0; i < chunks; i++) {
+                int start = i * chunkSize;
+                int end = Math.min(start + chunkSize, totalLen);
+                android.util.Log.d(TAG, "mainPhpFight HTML[" + start + "-" + end + "]: "
+                        + html.substring(start, end));
+            }
+        }
+        
+        android.util.Log.d(TAG, "mainPhpFight: LezFight parsed:"
+                + " IsValid=" + fight.IsValid
+                + " IsBoi=" + fight.IsBoi
+                + " IsWaitingForNextTurn=" + fight.IsWaitingForNextTurn
+                + " DoStop=" + fight.DoStop
+                + " IsLowHp=" + fight.IsLowHp
+                + " IsLowMa=" + fight.IsLowMa
+                + " DoExit=" + fight.DoExit
+                + " LogBoi=" + fight.LogBoi);
+
+        if (!fight.IsValid) {
+            android.util.Log.d(TAG, "mainPhpFight: fight.IsValid=false, returning original HTML");
+            return html;
+        }
+
+        // Унифицированный флаг "бой завершён":
+        // - IsBoi=false: мы уже не в активной фазе ударов,
+        // - IsWaitingForNextTurn=false: это не ожидание ответа противника.
+        // Используется сразу в двух потоках:
+        // 1) AutoBoi-поток (автозавершение/капча),
+        // 2) ручной поток (показ капчи без авто-нажатия).
+        boolean fightEnded = !fight.IsBoi && !fight.IsWaitingForNextTurn;
+        if (fightEnded) {
+            registerFightEnd(fight);
+        }
+
+        // Синхронизация Timeout/Restoring как в C# MainPhpFight.cs.
+        if (fightEnded && AppVars.Profile != null && AppVars.Profile.LezDoAutoboi) {
+            long now = System.currentTimeMillis();
+
+            if (AppVars.Autoboi == AutoboiState.Timeout) {
+                AppVars.AutoboiReadyAtMs = 0L;
+                AppVars.AutoboiReadyLog = "";
+                AppVars.Autoboi = AutoboiState.AutoboiOn;
+                android.util.Log.d(TAG, "mainPhpFight: Timeout finished on fight end -> AutoboiOn");
+            }
+
+            if (AppVars.Autoboi == AutoboiState.Restoring) {
+                boolean logChanged = fight.LogBoi != null && !fight.LogBoi.equals(AppVars.AutoboiReadyLog);
+                boolean timerReady = AppVars.AutoboiReadyAtMs > 0L && now >= AppVars.AutoboiReadyAtMs;
+                if (!logChanged && !timerReady) {
+                    long waitMs = AppVars.AutoboiReadyAtMs > now ? (AppVars.AutoboiReadyAtMs - now) : 1200L;
+                    int delay = (int) Math.max(1000L, Math.min(5000L, waitMs));
+                    android.util.Log.d(TAG, "mainPhpFight: restoring in progress, waitMs=" + waitMs);
+                    return buildWaitForTurnAutoRefreshHtml(address, delay);
+                }
+                AppVars.AutoboiReadyAtMs = 0L;
+                AppVars.AutoboiReadyLog = "";
+                AppVars.Autoboi = AutoboiState.AutoboiOn;
+                android.util.Log.d(TAG, "mainPhpFight: restoring finished -> AutoboiOn");
+            }
+
+            if (AppVars.Autoboi == AutoboiState.AutoboiOn) {
+                long newReadyAtMs = fight.calcRestoreAfterBoiReadyAtMs();
+                if (newReadyAtMs > 0L) {
+                    if (fight.LogBoi != null && (!fight.LogBoi.equals(AppVars.AutoboiReadyLog) || now > AppVars.AutoboiReadyAtMs)) {
+                        AppVars.AutoboiReadyLog = fight.LogBoi;
+                        AppVars.AutoboiReadyAtMs = newReadyAtMs;
+                    }
+                    AppVars.Autoboi = AutoboiState.Restoring;
+                    android.util.Log.d(TAG, "mainPhpFight: set Restoring until " + AppVars.AutoboiReadyAtMs);
+                    return AppVars.ContentMainPhp != null ? AppVars.ContentMainPhp : html;
+                }
+                AppVars.AutoboiReadyAtMs = 0L;
+                AppVars.AutoboiReadyLog = "";
+            }
+        }
+
+        // Этап 2: Уведомление о нападении при смене LogBoi
+        // Аналог ParseFightLog + TrayBalloon в C# (MainPhp.cs)
+        if (fight.IsBoi && fight.LogBoi != null && !fight.LogBoi.isEmpty()
+                && !fight.LogBoi.equals(AppVars.LastBoiLog)) {
+            android.util.Log.d(TAG, "mainPhpFight: NEW FIGHT detected! LogBoi changed: "
+                    + AppVars.LastBoiLog + " -> " + fight.LogBoi);
+            AppVars.LastBoiLog = fight.LogBoi;
+            fight.updateLastBoiFromLogs();
+            notifyNewFight(fight);
+            // C# аналог UnderAttack.Parse(html): анонс в чат с учётом LezSay (Chat/Clan/Pair/No).
+            UnderAttackManager.parseAsync(html);
+        }
+
+        // Ветка завершения боя в AutoBoi:
+        // - зависит от AppVars.Profile.LezDoAutoboi и AppVars.Autoboi==AutoboiOn,
+        // - использует AppVars.FightLink, который формируется в LezFight.BuildFightLink(),
+        // - при капче вызывает showFightCaptchaDialogOnce(...) и НЕ делает auto-submit.
+        if (fightEnded
+                && AppVars.Profile != null && AppVars.Profile.LezDoAutoboi
+                && AppVars.Autoboi == AutoboiState.AutoboiOn) {
+            android.util.Log.d(TAG, "mainPhpFight: FIGHT ENDED with autoboi ON - processing finish");
+
+            String captchaUrl = resolveFightCaptchaUrl(html);
+            boolean needCaptcha = captchaUrl != null && !captchaUrl.isEmpty();
+            String fightLink = AppVars.FightLink;
+
+            if (needCaptcha && fightLink != null && !fightLink.isEmpty()) {
+                android.util.Log.d(TAG, "mainPhpFight: CAPTCHA required, stopping autoboi and showing dialog: " + captchaUrl);
+
+                // Важно: фикс восстановления AutoBoi после ручной капчи.
+                // Если капча пришла в режиме AutoboiOn, запоминаем это состояние,
+                // чтобы MainActivity после submit кода вернул `AutoboiOn`.
+                AppVars.ResumeAutoboiAfterCaptcha = true;
+                AppVars.Autoboi = AutoboiState.AutoboiOff;
+                    AppVars.ContentMainPhp = html; // отрисовать форму с капчей
+                    showFightCaptchaDialogOnce(captchaUrl, fightLink, fight.LogBoi);
+                    // отдаем страницу с капчей напрямую
+                    return html;
+                }
+
+            if (fightLink != null && !fightLink.isEmpty() && !fightLink.contains("????")) {
+                long now = System.currentTimeMillis();
+                long sinceLast = now - lastAutoFinishRedirectAtMs;
+                if (sinceLast >= 0 && sinceLast < AUTO_FINISH_MIN_DELAY_MS) {
+                    int waitMs = (int) (AUTO_FINISH_MIN_DELAY_MS - sinceLast) + 120;
+                    android.util.Log.d(TAG, "mainPhpFight: throttling finish redirect, waitMs=" + waitMs);
+                    return buildWaitForTurnAutoRefreshHtml(address, waitMs);
+                }
+
+                int redirectDelay = AUTO_FINISH_MIN_DELAY_MS + RANDOM.nextInt(AUTO_FINISH_EXTRA_DELAY_MS + 1);
+                if (redirectDelay >= 0) {
+                    lastAutoFinishRedirectAtMs = now;
+                    AppVars.FightLink = "";
+                    return buildDelayedRedirectHtml("Завершение боя", fightLink, redirectDelay);
+                }
+
+                AppVars.FightLink = "";
+                return Russian.getString(Filter.buildRedirect("Завершение боя", fightLink));
+            }
+            // FightLink пустой или содержит "????" - делаем редирект на main.php
+            // Это нужно для обновления верхнего фрейма и предотвращения белого экрана
+
+            android.util.Log.d(TAG, "mainPhpFight: FightLink missing, redirecting to main.php");
+            AppVars.FightLink = "";
+            int redirectDelayToMain = AUTO_FINISH_MIN_DELAY_MS + RANDOM.nextInt(AUTO_FINISH_EXTRA_DELAY_MS + 1);
+            if (redirectDelayToMain >= 0) {
+                return buildDelayedRedirectHtml("Завершение боя - обновление", "main.php", redirectDelayToMain);
+            }
+            return Russian.getString(Filter.buildRedirect("Завершение боя - обновление", "main.php"));
+        }
+
+        // Ветка ручного режима:
+        // если сервер вернул капчу на странице завершения боя, показываем тот же popup,
+        // что и в AutoBoi, но без попытки автоматического нажатия "Завершить".
+        // Зависимости:
+        // - extractCaptchaUrl(html): извлечение URL картинки,
+        // - AppVars.FightLink/address: URL, куда будет отправлен code=<digits>,
+        // - showFightCaptchaDialogOnce(...): broadcast в MainActivity.
+        if (fightEnded) {
+            String manualCaptchaUrl = resolveFightCaptchaUrl(html);
+            if (manualCaptchaUrl != null && !manualCaptchaUrl.isEmpty()) {
+                String finishLink = AppVars.FightLink;
+                if (finishLink == null || finishLink.isEmpty()) {
+                    // fallback: используем текущий адрес страницы завершения
+                    finishLink = address;
+                }
+                android.util.Log.d(TAG, "mainPhpFight: manual mode CAPTCHA detected, showing dialog: " + manualCaptchaUrl);
+                boolean fromCaptchaSubmit = address != null && address.contains("code=");
+                if (fromCaptchaSubmit) {
+                    String submittedCode = getUrlParam(address, "code");
+                    String submittedVcode = getUrlParam(address, "vcode");
+                    android.util.Log.d(TAG, "mainPhpFight: captcha submit still requires challenge, code="
+                            + submittedCode + ", vcode=" + submittedVcode);
+                    notifyCaptchaRejectedOnce(submittedCode, submittedVcode);
+                }
+                showFightCaptchaDialogOnce(manualCaptchaUrl, finishLink, fight.LogBoi);
+                AppVars.ContentMainPhp = html;
+                return html;
+            }
+        }
+
+        // Проверяем, ждём ли мы хода противника - нужно auto-refresh
+        if (fight.IsWaitingForNextTurn) {
+            android.util.Log.d(TAG, "mainPhpFight: waiting for opponent turn (foe HP=" + fight.FoeCurrentHp + ")");
+
+            boolean shouldAutoRefresh = AppVars.AutoRefresh;
+            if (!shouldAutoRefresh && AppVars.Profile != null && AppVars.Profile.LezDoAutoboi
+                    && AppVars.Autoboi == AutoboiState.AutoboiOn) {
+                // Для AutoBoi нужно продолжать обновлять фрейм, иначе после 1 удара остановимся на ходе противника.
+                shouldAutoRefresh = true;
+            }
+
+            if (shouldAutoRefresh) {
+                int delay = 1200 + RANDOM.nextInt(900); // 1200-2100ms
+                android.util.Log.d(TAG, "mainPhpFight: auto-refresh waiting enabled, reloading after " + delay + "ms: " + address);
+                return buildWaitForTurnAutoRefreshHtml(address, delay);
+            }
+
+            android.util.Log.d(TAG, "mainPhpFight: AutoRefresh disabled, returning original content");
+            return AppVars.ContentMainPhp != null ? AppVars.ContentMainPhp : html;
+        }
+
+        // Проверяем, включен ли автобой в профиле
+        if (AppVars.Profile != null && AppVars.Profile.LezDoAutoboi) {
+            android.util.Log.d(TAG, "mainPhpFight: LezDoAutoboi enabled, Autoboi state=" + AppVars.Autoboi);
+            
+            // Проверяем состояние автобоя
+            if (AppVars.Autoboi == AutoboiState.AutoboiOn) {
+                if (fight.IsBoi) {
+                    // Мы в бою
+                    android.util.Log.d(TAG, "mainPhpFight: in fight, checking safety conditions:"
+                            + " DoStop=" + fight.DoStop
+                            + " IsLowHp=" + fight.IsLowHp
+                            + " IsLowMa=" + fight.IsLowMa
+                            + " DoExit=" + fight.DoExit);
+                    
+                    if (!fight.DoStop && !fight.IsLowHp && !fight.IsLowMa && !fight.DoExit) {
+                        // Бой идёт, условия безопасные - возвращаем авто-ход
+                        android.util.Log.d(TAG, "mainPhpFight: SAFE - returning fight.Frame for auto-attack");
+                        android.util.Log.d(TAG, "mainPhpFight: fight.Frame = " + (fight.Frame != null ? fight.Frame.substring(0, Math.min(200, fight.Frame.length())) : "NULL"));
+                        if (fight.Frame != null && !fight.Frame.isEmpty()) {
+                            return fight.Frame;
+                        }
+                        android.util.Log.w(TAG, "mainPhpFight: fight.Frame is empty, stopping autoboi to avoid null flow");
+                        if (AppVars.Autoboi != AutoboiState.Timeout) {
+                            notifyFightStopped(fight);
+                            AppVars.Autoboi = AutoboiState.Timeout;
+                        }
+                        return AppVars.ContentMainPhp != null ? AppVars.ContentMainPhp : html;
+                    } else {
+                        // Опасная ситуация - останавливаем автобой
+                        android.util.Log.d(TAG, "mainPhpFight: DANGEROUS - stopping autoboi, setting Timeout");
+                        if (AppVars.Autoboi != AutoboiState.Timeout) {
+                            notifyFightStopped(fight);
+                            AppVars.Autoboi = AutoboiState.Timeout;
+                        }
+                    }
+                } else {
+                    // Завершение уже обработано выше в блоке fightEnded (Timeout/Restoring/FightLink/капча).
+                    android.util.Log.d(TAG, "mainPhpFight: fight ended branch already handled, keep current frame");
+                }
+            } else {
+                android.util.Log.d(TAG, "mainPhpFight: Autoboi state is " + AppVars.Autoboi + ", not AutoboiOn");
+            }
+        } else {
+            android.util.Log.d(TAG, "mainPhpFight: LezDoAutoboi disabled or Profile is null");
+            if (!fight.IsBoi) {
+                android.util.Log.d(TAG, "mainPhpFight: autoboi disabled, keeping original fight frame for manual finish");
+            }
+        }
+
+        // Логируем ключевые признаки страницы боя для диагностики
+        android.util.Log.d(TAG, "mainPhpFight flags:"
+                + " magic_slots=" + html.contains("magic_slots();")
+                + " fight_ty=" + html.contains("var fight_ty")
+                + " IsBoi_form=" + html.contains("<form")
+                + " StartAct=" + html.contains("StartAct()")
+                + " document.ff=" + html.contains("document.ff")
+                + " autosubmit=" + html.contains("document.ff.submit")
+        );
+
+        // Аналог C# версии - возвращаем AppVars.ContentMainPhp (оригинальный HTML)
+        // а не изменённый html, чтобы избежать белого фрейма
+        return AppVars.ContentMainPhp != null ? AppVars.ContentMainPhp : html;
+    }

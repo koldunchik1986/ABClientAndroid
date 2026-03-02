@@ -62,7 +62,7 @@
 | `MainPhpFast.cs`          | Часть `MainPhp`: быстрые действия                      | `[x]`  | `[~]`      | Почти FULL: навигация по категориям, парсинг нападалок/зелий. |
 | `MainPhpFight.cs`         | Часть `MainPhp`: логика боя                            | `[x]`  | `[~]`      | Интегрировано в MainPhp.java: mainPhpFight(), mainPhpFightEnd(). ЛеzFight работает. |
 | `MainPhpFish.cs`          | Часть `MainPhp`: логика рыбалки                        | `[x]`  | `[ ]`      | Нет Java-файла |
-| `MainPhpInsHp.cs`         | Часть `MainPhp`: парсинг HP                            | `[x]`  | `[ ]`      | Нет Java-файла |
+| `MainPhpInsHp.cs`         | Часть `MainPhp`: парсинг HP                            | `[x]`  | `[~]`      | Портировано в `MainPhp.java`: `mainPhpInsHp(...)` + запись `AppVars.PersIntHP/PersIntMA`. |
 | `MainPhpInv.cs`           | Часть `MainPhp`: инвентарь                             | `[x]`  | `[~]`      | Почти FULL: группировка, сортировка, кнопки "Продать все". |
 | `MainPhpRaz.cs`           | Часть `MainPhp`: разделка                              | `[x]`  | `[ ]`      | Нет Java-файла |
 | `MainPhpRob.cs`           | Часть `MainPhp`: воровство                             | `[x]`  | `[ ]`      | Нет Java-файла |
@@ -89,10 +89,10 @@
 | Категория | Количество |
 | --------- | ---------- |
 | `[+]` Полностью портировано | 3 (ChListJs, ShopEntry, json2.js) |
-| `[~]` Частично портировано | 5 (Filter, MainPhp, CastleJs, MainPhpInv, MainPhpFight) |
+| `[~]` Частично портировано | 6 (Filter, MainPhp, CastleJs, MainPhpInv, MainPhpFight, MainPhpInsHp) |
 | `[=]` Заглушка = C# no-op | 6 (ChZero, LogsJs, MapActAjaxPhp, Pinfo, PinfonewJs, SlotsJs) |
 | `[s]` Заглушка (нужно портировать) | 28 |
-| `[ ]` Отсутствует в Java | 17 |
+| `[ ]` Отсутствует в Java | 16 |
 | **Итого требуют портирования** | **45** |
 
 ## Java-файлы без C# аналога
