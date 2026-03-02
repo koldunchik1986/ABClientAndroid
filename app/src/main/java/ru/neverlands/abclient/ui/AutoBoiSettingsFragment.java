@@ -30,7 +30,10 @@ import com.bumptech.glide.Glide;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 import ru.neverlands.abclient.R;
 import ru.neverlands.abclient.model.LezBotsClass;
@@ -494,6 +497,14 @@ public class AutoBoiSettingsFragment extends DialogFragment {
                 checkDoMagHits, checkDoMagBlocks, checkDoHits, checkDoBlocks, checkDoMiscAbils;
         private SeekBar seekRestoreHp, seekRestoreMa, seekMagHits;
         private TextView tvRestoreHp, tvRestoreMa, tvMagHits;
+        // Локальные списки ID для вкладки "Ротация".
+        // В базовом сценарии равны LezSpellCollection.Hits/Blocks/... (как в C#),
+        // но для Misc могут расширяться fallback-элементами с сервера (новые ID).
+        private int[] hitsSpellIds;
+        private int[] blocksSpellIds;
+        private int[] restoreHpSpellIds;
+        private int[] restoreMaSpellIds;
+        private int[] miscSpellIds;
         private SpellListAdapter spellsHitsAdapter, spellsBlocksAdapter,
                 spellsRestoreHpAdapter, spellsRestoreMaAdapter, spellsMiscAdapter;
 
@@ -534,14 +545,114 @@ public class AutoBoiSettingsFragment extends DialogFragment {
 
             // Инициализация списков заклинаний
             LezSpellCollection.init(requireContext());
-            spellsHitsAdapter = setupSpellList(v, R.id.listSpellsHits, LezSpellCollection.Hits, null);
-            spellsBlocksAdapter = setupSpellList(v, R.id.listSpellsBlocks, LezSpellCollection.Blocks, null);
-            spellsRestoreHpAdapter = setupSpellList(v, R.id.listSpellsRestoreHp, LezSpellCollection.RestoreHp, null);
-            spellsRestoreMaAdapter = setupSpellList(v, R.id.listSpellsRestoreMa, LezSpellCollection.RestoreMa, null);
-            spellsMiscAdapter = setupSpellList(v, R.id.listSpellsMisc, LezSpellCollection.Misc, null);
+            resolveRotationSpellIdsWithServerFallback();
+            spellsHitsAdapter = setupSpellList(v, R.id.listSpellsHits, hitsSpellIds, null);
+            spellsBlocksAdapter = setupSpellList(v, R.id.listSpellsBlocks, blocksSpellIds, null);
+            spellsRestoreHpAdapter = setupSpellList(v, R.id.listSpellsRestoreHp, restoreHpSpellIds, null);
+            spellsRestoreMaAdapter = setupSpellList(v, R.id.listSpellsRestoreMa, restoreMaSpellIds, null);
+            spellsMiscAdapter = setupSpellList(v, R.id.listSpellsMisc, miscSpellIds, null);
             setupCollapsibleSpellCategories(v);
 
             loadGroup();
+        }
+
+        /**
+         * Формирует наборы ID для вкладки "Ротация".
+         *
+         * Базовая логика — строго как в C# LezSpellCollection (Hits/Blocks/RestoreHp/RestoreMa/Misc).
+         * Дополнение для Android:
+         * - если в `spells.txt` появились новые ID (обычно после обновления сервера),
+         *   они автоматически добавляются в категорию `Misc`, чтобы были доступны в UI
+         *   без немедленного обновления APK.
+         *
+         * Важно:
+         * - добавляются только ID > max(legacy C# categories), чтобы не "раздувать" список
+         *   историческими небоевыми/служебными spell-кодами;
+         * - приоритет категорий C# не меняется.
+         *
+         * Зависимости:
+         * - LezSpellCollection.{Hits, Blocks, RestoreHp, RestoreMa, Misc, Spells}
+         * - порядок Spells из TreeMap (возрастающий ID) для стабильного отображения.
+         */
+        private void resolveRotationSpellIdsWithServerFallback() {
+            hitsSpellIds = LezSpellCollection.Hits.clone();
+            blocksSpellIds = LezSpellCollection.Blocks.clone();
+            restoreHpSpellIds = LezSpellCollection.RestoreHp.clone();
+            restoreMaSpellIds = LezSpellCollection.RestoreMa.clone();
+            miscSpellIds = buildMiscWithServerFallback(LezSpellCollection.Misc);
+        }
+
+        /**
+         * Возвращает категорию Misc с fallback-новыми ID из серверного списка spell-имен.
+         * Новыми считаются ID, превышающие максимальный ID из базовых C#-категорий.
+         */
+        private int[] buildMiscWithServerFallback(int[] baseMisc) {
+            int legacyMaxId = findLegacyMaxSpellId();
+            Set<Integer> knownCategoryIds = new LinkedHashSet<>();
+            addAll(knownCategoryIds, LezSpellCollection.Hits);
+            addAll(knownCategoryIds, LezSpellCollection.Blocks);
+            addAll(knownCategoryIds, LezSpellCollection.RestoreHp);
+            addAll(knownCategoryIds, LezSpellCollection.RestoreMa);
+            addAll(knownCategoryIds, LezSpellCollection.Misc);
+
+            List<Integer> merged = new ArrayList<>();
+            for (int id : baseMisc) {
+                merged.add(id);
+            }
+
+            int added = 0;
+            for (Map.Entry<Integer, LezSpell> entry : LezSpellCollection.Spells.entrySet()) {
+                int id = entry.getKey();
+                if (id <= legacyMaxId) continue;
+                if (knownCategoryIds.contains(id)) continue;
+                LezSpell spell = entry.getValue();
+                if (spell == null) continue;
+                String name = spell.Name == null ? "" : spell.Name.trim();
+                if (name.isEmpty()) continue;
+                merged.add(id);
+                added++;
+            }
+
+            android.util.Log.d(TAG, "Rotation fallback: legacyMaxId=" + legacyMaxId
+                    + ", baseMisc=" + baseMisc.length
+                    + ", addedNewServerIds=" + added
+                    + ", finalMisc=" + merged.size());
+            return toIntArray(merged);
+        }
+
+        /**
+         * Ищет максимальный "эталонный" ID из C#-категорий.
+         */
+        private int findLegacyMaxSpellId() {
+            int max = 0;
+            max = Math.max(max, maxOf(LezSpellCollection.Hits));
+            max = Math.max(max, maxOf(LezSpellCollection.Blocks));
+            max = Math.max(max, maxOf(LezSpellCollection.RestoreHp));
+            max = Math.max(max, maxOf(LezSpellCollection.RestoreMa));
+            max = Math.max(max, maxOf(LezSpellCollection.Misc));
+            return max;
+        }
+
+        private int maxOf(int[] arr) {
+            int max = 0;
+            if (arr == null) return max;
+            for (int value : arr) {
+                if (value > max) max = value;
+            }
+            return max;
+        }
+
+        private void addAll(Set<Integer> set, int[] arr) {
+            if (arr == null) return;
+            for (int value : arr) set.add(value);
+        }
+
+        private int[] toIntArray(List<Integer> list) {
+            int[] result = new int[list.size()];
+            for (int i = 0; i < list.size(); i++) {
+                result[i] = list.get(i);
+            }
+            return result;
         }
 
         private SpellListAdapter setupSpellList(View root, int recyclerViewId, int[] spellIds, int[] checked) {
