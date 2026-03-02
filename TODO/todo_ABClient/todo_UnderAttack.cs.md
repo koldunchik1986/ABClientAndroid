@@ -20,22 +20,22 @@
 
 ## План реализации
 
-- [ ] **Создать файл `UnderAttackHandler.java`** в пакете `ru.neverlands.abclient.manager`.
+- [x] **Создать файл `UnderAttackManager.java`** в пакете `ru.neverlands.abclient.manager`.
 
-- [ ] **Реализовать класс как синглтон**.
+- [x] **Реализовать статический менеджер с фоновым Executor**.
 
-- [ ] **Портировать метод `parse(String html)`**:
-    - [ ] Метод должен принимать HTML-код страницы боя.
-    - [ ] Для выполнения парсинга в фоновом потоке следует использовать `ExecutorService` или корутины.
-    - [ ] Внутри фоновой задачи перенести логику парсинга `fight_ty`, `lives_g1`, `lives_g2` с помощью `String.indexOf` и `String.substring`.
-    - [ ] Перенести логику определения, кто является атакующим, а кто защищающимся.
-    - [ ] Перенести логику формирования сообщения.
+- [x] **Портировать метод `parseAsync(String html)`**:
+    - [x] Метод принимает HTML-код страницы боя.
+    - [x] Парсинг выполняется в фоновом `ExecutorService`.
+    - [x] Перенесён разбор `fight_ty`, `lives_g1`, `lives_g2`.
+    - [x] Перенесена логика определения "я атакую / напали на меня".
+    - [x] Перенесено формирование текста с `LezSay` (`Chat/Clan/Pair/No`) и дедуп по `fight_ty[8]`.
 
-- [ ] **Реализовать отправку сообщения**:
-    - [ ] Вместо прямого вызова `MainForm`, `UnderAttackHandler` должен отправлять событие с готовым сообщением (например, через `LiveData` в `ViewModel` или через `EventBus`).
-    - [ ] `MainActivity` будет подписана на это событие и, получив его, отобразит сообщение в соответствующем `WebView` чата.
+- [x] **Реализовать отправку сообщения**:
+    - [x] Добавлен аналог `WriteMessageToChat`: `Chat.sendMessageToServer(...)`.
+    - [x] `UnderAttackManager` отправляет сообщение напрямую в форму чата (`chatButtonsWebview`), как в ПК-версии.
 
-- [ ] **Интеграция**:
-    - [ ] В `PostFilter`-классе, который обрабатывает страницу боя (`fight.php`), нужно будет вызывать `UnderAttackHandler.getInstance().parse(html)`.
+- [x] **Интеграция**:
+    - [x] В `MainPhp.mainPhpFight(...)` при новом бою добавлен вызов `UnderAttackManager.parseAsync(html)`.
 
 - [ ] **Обновить `todo_ABClient.md`**, отметив `UnderAttack.cs` как проанализированный.

@@ -157,6 +157,9 @@ public class ContactsManager {
                     contact.warLogNumber = getTagValue("warLogNumber", element);
                     contact.classId = Integer.parseInt(getTagValue("classId", element, "0"));
                     contact.comment = getTagValue("comment", element);
+                    // Персональный инструмент авто-нападения (аналог C# Contact.ToolId).
+                    // Если тега нет в старых профилях — используем 0 (глобальный AutoAttackToolId).
+                    contact.toolId = Integer.parseInt(getTagValue("toolId", element, "0"));
                     contactsCache.put(contact.nick, contact);
                 }
             }
@@ -207,6 +210,8 @@ public class ContactsManager {
                     createChildElement(doc, contactElement, "warLogNumber", contact.warLogNumber);
                     createChildElement(doc, contactElement, "classId", String.valueOf(contact.classId));
                     createChildElement(doc, contactElement, "comment", contact.comment);
+                    // Сохраняем персональный инструмент авто-нападения.
+                    createChildElement(doc, contactElement, "toolId", String.valueOf(contact.toolId));
                 }
 
                 TransformerFactory transformerFactory = TransformerFactory.newInstance();
@@ -309,6 +314,30 @@ public class ContactsManager {
         return String.valueOf(classId);
     }
 
+    /**
+     * Возвращает `toolId` для контакта (аналог C# `ContactsManager.GetToolIdOfContact`).
+     *
+     * Зависимости:
+     * - `RoomManager` использует это значение как приоритетный инструмент авто-нападения.
+     * - При отсутствии контакта или значения возвращается `0` (fallback на глобальный `AppVars.AutoAttackToolId`).
+     */
+    public static int getToolIdOfContact(String name) {
+        Contact contact = contactsCache.get(name);
+        if (contact == null) {
+            return 0;
+        }
+        int toolId = contact.toolId;
+        if (toolId < 0) {
+            return 0;
+        }
+        // Supported range [0..7]:
+        // 0 = use global auto-attack tool, 1..7 = explicit per-contact tool.
+        if (toolId > 7) {
+            return 7;
+        }
+        return toolId;
+    }
+
     // Быстрый доступ к копии кеша.
     public static List<Contact> getContactsFromCache() {
         return new ArrayList<>(contactsCache.values());
@@ -372,6 +401,8 @@ public class ContactsManager {
                     // Сохраняем кастомные поля, которые не приходят от сервера
                     newContact.classId = oldContact.classId;
                     newContact.comment = oldContact.comment;
+                    // Сохраняем локальный выбор инструмента авто-нападения (аналог C# Contact.ToolId).
+                    newContact.toolId = oldContact.toolId;
                     updateContact(newContact); // Обновляем кэш и сохраняем в XML
                     // Сразу же вызываем следующий шаг рекурсии (задержка уже отработала)
                     updateContactsRecursive(context, contacts, index + 1, onComplete);

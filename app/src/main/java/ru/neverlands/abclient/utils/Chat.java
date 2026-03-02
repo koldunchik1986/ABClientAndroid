@@ -107,6 +107,30 @@ public class Chat {
         });
     }
 
+    /**
+     * Немедленная отправка сообщения в игровой чат.
+     *
+     * Назначение:
+     * - использовать из системных менеджеров (например, UnderAttack), где нужен
+     *   прямой аналог C# `WriteMessageToChat`, а не очередь автоответов.
+     *
+     * Зависимости:
+     * - активный `MainActivity` и `chatButtonsWebview`,
+     * - JS-форма `document.FBT` в нижнем фрейме чата.
+     */
+    public static void sendMessageToServer(String message) {
+        if (message == null || message.trim().isEmpty()) return;
+        MainActivity activity = AppVars.mainActivity != null ? AppVars.mainActivity.get() : null;
+        if (activity == null) {
+            Log.w(TAG, "sendMessageToServer: activity is null, skip");
+            return;
+        }
+        long now = System.currentTimeMillis();
+        lastChanged = now;
+        lastAnswerTime = now;
+        sendChatMessage(activity, message.trim());
+    }
+
     // Вставка сообщения в окно чата (chatMsgWebview) через add_msg JS.
     public static void addMessageToChat(String message) {
         Log.i(TAG, "addMessageToChat: " + message);

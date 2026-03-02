@@ -23,26 +23,26 @@
 
 ## План реализации
 
-- [ ] **Создать файл `Foe.java`** в пакете `ru.neverlands.abclient.model`.
+- [x] **Создать файл `Foe.java`** в пакете `ru.neverlands.abclient.model`.
 
-- [ ] **Определить поля класса**:
-    - [ ] `private final String triba;`
-    - [ ] `private final int level;`
-    - [ ] `private final boolean nevid;`
-    - [ ] `private boolean isValid;`
+- [x] **Определить поля класса**:
+    - [x] `private final String triba;`
+    - [x] `private final int level;`
+    - [x] `private final boolean nevid;`
+    - [x] `private boolean valid;`
 
-- [ ] **Портировать конструкторы**:
-    - [ ] Создать конструкторы, принимающие те же параметры, что и в C#.
-    - [ ] В конструкторе, принимающем строку, реализовать логику парсинга с помощью `String.indexOf` и `String.substring`.
+- [x] **Портировать конструкторы**:
+    - [x] Реализованы конструкторы `Foe()`, `Foe(String triba, int level, String link)`, `Foe(String source)`.
+    - [x] В строковом конструкторе реализован парсинг `triba[level]`.
 
-- [ ] **Портировать метод `checkValid()`**:
-    - [ ] Перенести `switch`-структуру в Java. Она будет работать практически без изменений.
+- [x] **Портировать метод `checkValid()`**:
+    - [x] Перенесён `switch` с диапазонами уровней/боссов из C#.
 
-- [ ] **Реализовать интерфейсы `Comparable<Foe>` и `Cloneable`**:
-    - [ ] `public int compareTo(Foe other)`: Перенести логику сравнения.
-    - [ ] `public Object clone()`: Реализовать клонирование.
+- [x] **Реализовать интерфейсы `Comparable<Foe>` и `Cloneable`**:
+    - [x] `public int compareTo(Foe other)` реализован.
+    - [x] `public Foe clone()` реализован.
 
-- [ ] **Переопределить `equals()` и `hashCode()`**:
-    - [ ] Написать стандартную для Java реализацию этих методов, повторяющую логику C#-версии.
+- [x] **Переопределить `equals()` и `hashCode()`**:
+    - [x] Реализованы с логикой сравнения невидимок/расы/уровня/ссылки.
 
 - [ ] **Обновить `todo_ABClient.md`**, отметив `Foe.cs` как проанализированный.

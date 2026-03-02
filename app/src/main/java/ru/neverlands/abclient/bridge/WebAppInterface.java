@@ -826,7 +826,9 @@ public class WebAppInterface {
     @JavascriptInterface
     public void AutoUd() {
         Log.d("WebAppInterface", "AutoUd called");
-        // TODO: Implement this
+        MainActivity activity = getMainActivityOrNull();
+        if (activity == null) return;
+        activity.runOnUiThread(activity::requestAutoTurn);
     }
 
     @JavascriptInterface
@@ -889,8 +891,15 @@ public class WebAppInterface {
 
     @JavascriptInterface
     public void showHpMaTimers(String s, float curHP, int maxHP, float intHP, float curMA, int maxMA, float intMA) {
-        // TODO: Pass this data to a ViewModel
-        System.out.println("HP: " + curHP + "/" + maxHP + ", MP: " + curMA + "/" + maxMA);
+        if (intHP > 0f) {
+            AppVars.PersIntHP = intHP;
+        }
+        if (intMA > 0f) {
+            AppVars.PersIntMA = intMA;
+        }
+        Log.d("WebAppInterface", "showHpMaTimers: hp=" + curHP + "/" + maxHP
+                + " ma=" + curMA + "/" + maxMA
+                + " intHP=" + intHP + " intMA=" + intMA);
     }
 
     @JavascriptInterface

@@ -16,6 +16,12 @@ public class AutoFunctionsManager {
     private static final String TAG = "AutoFunctionsManager";
     private static final String PREFS_NAME = "auto_functions_prefs";
     private static final String KEY_PREFIX = "auto_function_";
+    private static final String KEY_AUTO_ATTACK_LEGACY = KEY_PREFIX + "auto_attack";
+    private static final String KEY_AUTO_ATTACK_TOOL_ID = KEY_PREFIX + "auto_attack_tool_id";
+    private static final String KEY_AUTO_ATTACK_LAST_NON_ZERO_TOOL_ID = KEY_PREFIX + "auto_attack_last_non_zero_tool_id";
+    private static final String KEY_LOCATION_TRACKING = KEY_PREFIX + "location_tracking";
+    private static final String KEY_WALKERS_POLL_INTERVAL_SEC = KEY_PREFIX + "walkers_poll_interval_sec";
+    private static final int WALKERS_POLL_INTERVAL_DEFAULT_SEC = 1;
     
     private static AutoFunctionsManager instance;
     private final Context context;
@@ -25,6 +31,10 @@ public class AutoFunctionsManager {
     private AutoFunctionsManager(Context context) {
         this.context = context.getApplicationContext();
         this.prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+        // Поднимаем runtime-состояние выбранного инструмента авто-нападения из постоянного хранилища.
+        migrateLegacyAutoAttackFlagIfNeeded();
+        AppVars.AutoAttackToolId = getAutoAttackToolId();
+        AppVars.DoShowWalkers = isLocationTrackingEnabled();
     }
     
     public static synchronized AutoFunctionsManager getInstance(Context context) {
@@ -222,7 +232,7 @@ public class AutoFunctionsManager {
     
     // Авто-нападение: состояние.
     public boolean isAutoAttackEnabled() {
-        return prefs.getBoolean(KEY_PREFIX + "auto_attack", false);
+        return getAutoAttackToolId() != 0;
     }
     
     // Переключение авто-нападения.
@@ -233,8 +243,94 @@ public class AutoFunctionsManager {
     
     // Включение/выключение авто-нападения.
     public void setAutoAttackEnabled(boolean enabled) {
-        prefs.edit().putBoolean(KEY_PREFIX + "auto_attack", enabled).apply();
-        Log.d(TAG, "setAutoAttackEnabled: " + enabled);
+        if (enabled) {
+            int toolId = getAutoAttackToolId();
+            if (toolId == 0) {
+                toolId = getLastNonZeroAutoAttackToolId();
+            }
+            setAutoAttackToolId(toolId);
+        } else {
+            setAutoAttackToolId(0);
+        }
+
+        // Аналог ПК-логики: авто-нападение работает вместе со "Слежением за локацией".
+        // Поэтому при включении AUTO_ATTACK автоматически поднимаем LOCATION_TRACKING.
+        Log.d(TAG, "setAutoAttackEnabled(wrapper): " + enabled + ", toolId=" + getAutoAttackToolId());
+    }
+
+    /**
+     * Возвращает выбранный инструмент авто-нападения.
+     *
+     * Аналог C# `AppVars.AutoAttackToolId`.
+     * Значение хранится в SharedPreferences и дублируется в `AppVars` для быстрого доступа
+     * в потоке пост-фильтра/боевой логики.
+     */
+    public int getAutoAttackToolId() {
+        int toolId = prefs.getInt(KEY_AUTO_ATTACK_TOOL_ID, AppVars.AutoAttackToolId);
+        int safeToolId = normalizeAutoAttackToolId(toolId);
+        if (safeToolId != toolId) {
+            prefs.edit().putInt(KEY_AUTO_ATTACK_TOOL_ID, safeToolId).apply();
+        }
+        AppVars.AutoAttackToolId = safeToolId;
+        if (safeToolId > 0) {
+            rememberLastNonZeroAutoAttackToolId(safeToolId);
+        }
+        return safeToolId;
+    }
+
+    /**
+     * Устанавливает инструмент авто-нападения (0..5).
+     *
+     * Значение:
+     * - сохраняется в SharedPreferences для перезапуска клиента,
+     * - синхронизируется в `AppVars.AutoAttackToolId` для runtime-потока.
+     */
+    public void setAutoAttackToolId(int toolId) {
+        int safeToolId = normalizeAutoAttackToolId(toolId);
+        prefs.edit().putInt(KEY_AUTO_ATTACK_TOOL_ID, safeToolId).apply();
+        AppVars.AutoAttackToolId = safeToolId;
+        if (safeToolId > 0) {
+            rememberLastNonZeroAutoAttackToolId(safeToolId);
+            if (!isLocationTrackingEnabled()) {
+                setLocationTrackingEnabled(true);
+            }
+        }
+        Log.d(TAG, "setAutoAttackToolId: " + safeToolId);
+    }
+
+    private int normalizeAutoAttackToolId(int toolId) {
+        if (toolId < 0) return 0;
+        if (toolId > 5) return 5;
+        return toolId;
+    }
+
+    private int getLastNonZeroAutoAttackToolId() {
+        int candidate = normalizeAutoAttackToolId(
+                prefs.getInt(KEY_AUTO_ATTACK_LAST_NON_ZERO_TOOL_ID, 1));
+        return candidate == 0 ? 1 : candidate;
+    }
+
+    private void rememberLastNonZeroAutoAttackToolId(int toolId) {
+        int safeToolId = normalizeAutoAttackToolId(toolId);
+        if (safeToolId == 0) {
+            return;
+        }
+        prefs.edit().putInt(KEY_AUTO_ATTACK_LAST_NON_ZERO_TOOL_ID, safeToolId).apply();
+    }
+
+    private void migrateLegacyAutoAttackFlagIfNeeded() {
+        int toolId = normalizeAutoAttackToolId(prefs.getInt(KEY_AUTO_ATTACK_TOOL_ID, AppVars.AutoAttackToolId));
+        boolean legacyEnabled = prefs.getBoolean(KEY_AUTO_ATTACK_LEGACY, false);
+        if (toolId == 0 && legacyEnabled) {
+            toolId = 1;
+            prefs.edit()
+                    .putInt(KEY_AUTO_ATTACK_TOOL_ID, toolId)
+                    .putInt(KEY_AUTO_ATTACK_LAST_NON_ZERO_TOOL_ID, toolId)
+                    .apply();
+            Log.d(TAG, "migrateLegacyAutoAttackFlagIfNeeded: legacy auto_attack=true migrated to toolId=1");
+        } else if (toolId > 0) {
+            rememberLastNonZeroAutoAttackToolId(toolId);
+        }
     }
     
     // === AUTO_INVISIBLE (Авто-Невид) ===
@@ -260,7 +356,7 @@ public class AutoFunctionsManager {
     
     // Слежение за локацией: состояние.
     public boolean isLocationTrackingEnabled() {
-        return prefs.getBoolean(KEY_PREFIX + "location_tracking", false);
+        return prefs.getBoolean(KEY_LOCATION_TRACKING, false);
     }
     
     // Переключение слежения за локацией.
@@ -271,8 +367,63 @@ public class AutoFunctionsManager {
     
     // Включение/выключение слежения за локацией.
     public void setLocationTrackingEnabled(boolean enabled) {
-        prefs.edit().putBoolean(KEY_PREFIX + "location_tracking", enabled).apply();
+        prefs.edit().putBoolean(KEY_LOCATION_TRACKING, enabled).apply();
+        AppVars.DoShowWalkers = enabled;
+        if (enabled) {
+            AppVars.myCoordOld = "";
+            AppVars.myLocOld = "";
+            AppVars.myWalkers1 = "";
+            AppVars.myWalkers2 = "";
+        }
         Log.d(TAG, "setLocationTrackingEnabled: " + enabled);
+
+        // При включении сразу запрашиваем room-list, чтобы RoomManager получил тик немедленно.
+        if (AppVars.mainActivity != null && AppVars.mainActivity.get() != null) {
+            ru.neverlands.abclient.MainActivity activity = AppVars.mainActivity.get();
+            activity.runOnUiThread(() -> {
+                try {
+                    activity.onWalkersPollingConfigChanged();
+                    if (enabled) {
+                        activity.requestRoomUsersRefreshSoon();
+                    }
+                } catch (Exception e) {
+                    Log.w(TAG, "setLocationTrackingEnabled: room users refresh trigger failed", e);
+                }
+            });
+        }
+    }
+
+    public int getWalkersPollIntervalSec() {
+        int value = prefs.getInt(KEY_WALKERS_POLL_INTERVAL_SEC, WALKERS_POLL_INTERVAL_DEFAULT_SEC);
+        return normalizeWalkersPollIntervalSec(value);
+    }
+
+    public void setWalkersPollIntervalSec(int sec) {
+        int safe = normalizeWalkersPollIntervalSec(sec);
+        prefs.edit().putInt(KEY_WALKERS_POLL_INTERVAL_SEC, safe).apply();
+        Log.d(TAG, "setWalkersPollIntervalSec: " + safe);
+        if (AppVars.mainActivity != null && AppVars.mainActivity.get() != null) {
+            ru.neverlands.abclient.MainActivity activity = AppVars.mainActivity.get();
+            activity.runOnUiThread(() -> {
+                try {
+                    activity.onWalkersPollingConfigChanged();
+                } catch (Exception e) {
+                    Log.w(TAG, "setWalkersPollIntervalSec: polling reschedule failed", e);
+                }
+            });
+        }
+    }
+
+    private int normalizeWalkersPollIntervalSec(int sec) {
+        switch (sec) {
+            case 1:
+            case 2:
+            case 5:
+            case 10:
+                return sec;
+            default:
+                return WALKERS_POLL_INTERVAL_DEFAULT_SEC;
+        }
     }
     
     // === AUTO_DETECT (Авто-Обнаружение) ===

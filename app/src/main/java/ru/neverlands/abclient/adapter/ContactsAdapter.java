@@ -272,7 +272,7 @@ public class ContactsAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
      * ViewHolder для элемента контакта.
      */
     static class ContactViewHolder extends RecyclerView.ViewHolder {
-        private final ImageView onlineStatusIndicator, inclinationIcon, clanIcon;
+        private final ImageView onlineStatusIndicator, inclinationIcon, clanIcon, autoAttackToolIcon;
         private final TextView warStatusText, contactNickText, locationTextView;
         private final ImageButton infoButton;
 
@@ -281,6 +281,7 @@ public class ContactsAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
             onlineStatusIndicator = itemView.findViewById(R.id.onlineStatusIndicator);
             inclinationIcon = itemView.findViewById(R.id.inclinationIcon);
             clanIcon = itemView.findViewById(R.id.clanIcon);
+            autoAttackToolIcon = itemView.findViewById(R.id.autoAttackToolIcon);
             warStatusText = itemView.findViewById(R.id.warStatusText);
             contactNickText = itemView.findViewById(R.id.contactNickText);
             locationTextView = itemView.findViewById(R.id.locationTextView);
@@ -333,6 +334,19 @@ public class ContactsAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
             contactNickText.setText(nickAndLevel);
             locationTextView.setText(location);
 
+            // Иконка выбранного инструмента авто-нападения для контакта.
+            // Зависимости:
+            // - contact.toolId (из ContactsManager/contacts.xml),
+            // - getAutoAttackToolIconUrl(...) (маппинг toolId -> иконка свитка/зелья),
+            // - Glide (загрузка и кэширование удаленной иконки).
+            String toolIconUrl = getAutoAttackToolIconUrl(contact.toolId);
+            if (toolIconUrl != null) {
+                autoAttackToolIcon.setVisibility(View.VISIBLE);
+                Glide.with(itemView.getContext()).load(toolIconUrl).into(autoAttackToolIcon);
+            } else {
+                autoAttackToolIcon.setVisibility(View.GONE);
+            }
+
             // Окрашивание ника в зависимости от classId
             switch (contact.classId) {
                 case 1: // Враг
@@ -352,6 +366,31 @@ public class ContactsAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
                 longListener.onItemLongClick(contact);
                 return true;
             });
+        }
+
+        // Maps toolId (1..7) to Neverlands item icon URL for contact row rendering.
+        // Must stay synchronized with:
+        // - ContactsActivity.showAutoAttackToolDialog(...)
+        // - FastActionManager.fastAttackAutoByToolId(...)
+        private String getAutoAttackToolIconUrl(int toolId) {
+            switch (toolId) {
+                case 1:
+                    return "http://image.neverlands.ru/weapon/i_w28_26.gif";
+                case 2:
+                    return "http://image.neverlands.ru/weapon/i_w28_26.gif";
+                case 3:
+                    return "http://image.neverlands.ru/weapon/i_w28_24.gif";
+                case 4:
+                    return "http://image.neverlands.ru/weapon/i_w28_25.gif";
+                case 5:
+                    return "http://image.neverlands.ru/weapon/i_w28_86.gif";
+                case 6:
+                    return "http://image.neverlands.ru/weapon/i_w27_41.gif";
+                case 7:
+                    return "http://image.neverlands.ru/weapon/i_w27_52.gif";
+                default:
+                    return null;
+            }
         }
     }
 }

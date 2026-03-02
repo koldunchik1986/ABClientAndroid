@@ -43,12 +43,21 @@ public class FastActionManager {
     }
 
     public static void fastStart(String id, String nick, int count) {
+        boolean prevFastNeed = AppVars.FastNeed;
+        String prevFastId = AppVars.FastId;
+        String prevFastNick = AppVars.FastNick;
         // Глобальные флаги, которые считывает MainPhp.process() при обработке main.php.
         AppVars.FastNeed = true;
         AppVars.FastId = id;
         AppVars.FastNick = nick;
         AppVars.FastCount = count;
         Log.d(TAG, "fastStart: id=" + id + ", nick=" + nick + ", count=" + count);
+        Log.d(TAG, "[AA_TRACE] fastStart state: prevFastNeed=" + prevFastNeed
+                + ", prevFastId=" + prevFastId
+                + ", prevFastNick=" + prevFastNick
+                + ", newFastNeed=" + AppVars.FastNeed
+                + ", newFastId=" + AppVars.FastId
+                + ", newFastNick=" + AppVars.FastNick);
         // Запускаем цепочку через reload main.php (как в ПК версии).
         reloadMainFrame();
     }
@@ -57,6 +66,22 @@ public class FastActionManager {
      * Отмена быстрого действия (аналог FastCancelSafe в C#).
      */
     public static void fastCancel() {
+        fastCancel("unspecified");
+    }
+
+    /**
+     * Отмена быстрого действия с указанием причины.
+     *
+     * Зависимости:
+     * - `AppVars.Fast*` (сброс глобального состояния fast-конвейера),
+     * - `AppVars.FastWaitEndOfBoi*` (останавливает фон ожидания конца боя).
+     * Используется для детальной трассировки цепочки авто-нападения/автобоя.
+     */
+    public static void fastCancel(String reason) {
+        boolean oldFastNeed = AppVars.FastNeed;
+        String oldFastId = AppVars.FastId;
+        String oldFastNick = AppVars.FastNick;
+        int oldFastCount = AppVars.FastCount;
         // Полный сброс параметров быстрого действия.
         AppVars.FastNeed = false;
         AppVars.FastNick = null;
@@ -70,6 +95,11 @@ public class FastActionManager {
             AppVars.FastWaitEndOfBoiCancel = true;
         }
         Log.d(TAG, "fastCancel");
+        Log.d(TAG, "[AA_TRACE] fastCancel reason=" + reason
+                + ", oldFastNeed=" + oldFastNeed
+                + ", oldFastId=" + oldFastId
+                + ", oldFastNick=" + oldFastNick
+                + ", oldFastCount=" + oldFastCount);
     }
 
     /**
@@ -133,6 +163,16 @@ public class FastActionManager {
         fastStart("Зелье Сильной Спины", stripItalic(nick));
     }
 
+    /** Сильная спина с приоритетом "Превосходное" (если есть в инвентаре). */
+    // Auto-attack strong-back variant with priority for "Превосходное ...".
+    // Dependencies:
+    // - fastStart(...): launches unified fast-action pipeline.
+    // - mainPhpFastPotion(...): resolves potion in HTML and sends POST.
+    // Fallback to regular "Зелье Сильной Спины" is implemented in mainPhpFastPotion(...).
+    public static void fastAttackStrongBest(String nick) {
+        fastStart("Превосходное Зелье Сильной Спины", stripItalic(nick));
+    }
+
     /** Невидимость (аналог FormMain.FastAttackNevidPot) */
     public static void fastAttackNevidPot(String nick) {
         fastStart("Зелье Невидимости", stripItalic(nick));
@@ -141,6 +181,56 @@ public class FastActionManager {
     /** Портал (аналог FormMain.FastAttackPortal) */
     public static void fastAttackPortal(String nick) {
         fastStart("i_w28_86.gif", stripItalic(nick));
+    }
+
+    /**
+     * Выполняет авто-нападение по выбранному toolId (аналог switch в C# RoomManager.cs).
+     *
+     * Значения toolId:
+     * 1 - боевые, 2 - закрытые боевые, 3 - кулачки, 4 - закрытые кулачки, 5 - портал, 6 - яд, 7 - сильная спина.
+     *
+     * @return true, если toolId поддержан и действие запущено.
+     */
+    // Dispatcher for per-contact/global auto-attack tool selection.
+    // Dependencies:
+    // - RoomManager: resolves final toolId priority (contact > global).
+    // - ContactsManager/AppVars: provide source tool settings.
+    // - processMainPhp(...): executes selected tool through parsed HTML forms.
+    public static boolean fastAttackAutoByToolId(String nick, int toolId) {
+        Log.d(TAG, "[AA_TRACE] fastAttackAutoByToolId: nick=" + nick + ", toolId=" + toolId);
+        switch (toolId) {
+            case 1:
+                fastAttackUltimate(nick);
+                Log.d(TAG, "[AA_TRACE] fastAttackAutoByToolId: started fastAttackUltimate");
+                return true;
+            case 2:
+                fastAttackClosedUltimate(nick);
+                Log.d(TAG, "[AA_TRACE] fastAttackAutoByToolId: started fastAttackClosedUltimate");
+                return true;
+            case 3:
+                fastAttackFist(nick);
+                Log.d(TAG, "[AA_TRACE] fastAttackAutoByToolId: started fastAttackFist");
+                return true;
+            case 4:
+                fastAttackClosedFist(nick);
+                Log.d(TAG, "[AA_TRACE] fastAttackAutoByToolId: started fastAttackClosedFist");
+                return true;
+            case 5:
+                fastAttackPortal(nick);
+                Log.d(TAG, "[AA_TRACE] fastAttackAutoByToolId: started fastAttackPortal");
+                return true;
+            case 6:
+                fastAttackPoison(nick);
+                Log.d(TAG, "[AA_TRACE] fastAttackAutoByToolId: started fastAttackPoison");
+                return true;
+            case 7:
+                fastAttackStrongBest(nick);
+                Log.d(TAG, "[AA_TRACE] fastAttackAutoByToolId: started fastAttackStrongBest");
+                return true;
+            default:
+                Log.w(TAG, "[AA_TRACE] fastAttackAutoByToolId: unsupported toolId=" + toolId);
+                return false;
+        }
     }
 
     /** Защита (аналог FormMain.FastAttackZas) */
@@ -400,6 +490,7 @@ public class FastActionManager {
             // Зелья (magicreform парсинг)
             case "Яд":
             case "Зелье Сильной Спины":
+            case "Превосходное Зелье Сильной Спины":
             case "Зелье Невидимости":
             case "Зелье Блаженства":
             case "Зелье Метаболизма":
@@ -459,6 +550,10 @@ public class FastActionManager {
         }
 
         if (result != null) {
+            if (shouldEmitFastResultMessage(AppVars.FastCount)) {
+                writeChatMsg(buildFastResultMessage(fastId, AppVars.FastNick));
+            }
+
             // Действие выполнено, уменьшаем счётчик
             AppVars.FastCount--;
             if (AppVars.FastCount <= 0) {
@@ -471,6 +566,63 @@ public class FastActionManager {
         }
 
         return result;
+    }
+
+    /**
+     * Решает, нужно ли писать итог fast-действия в чат.
+     *
+     * Зачем:
+     * - при обычном count=1 пишем сообщение один раз;
+     * - при finite count>1 пишем только на последнем шаге (когда remaining==1),
+     *   чтобы не спамить чат;
+     * - при DoPerenap (count=Integer.MAX_VALUE) пишем только первый раз.
+     */
+    private static boolean shouldEmitFastResultMessage(int remainingCountBeforeDecrement) {
+        return remainingCountBeforeDecrement == Integer.MAX_VALUE || remainingCountBeforeDecrement <= 1;
+    }
+
+    /**
+     * Формирует системное сообщение в чат о факте отправки fast-запроса.
+     *
+     * Важно:
+     * - на этом этапе у нас есть только локальный факт "форма собрана/отправляется";
+     * - серверный итог (успех/ошибка) приходит отдельным POST-ответом `main.php`.
+     * Поэтому не используем формулировку "Выполнено", чтобы не вводить в заблуждение.
+     *
+     * Зависимости:
+     * - `writeChatMsg(...)` — отправка через LocalBroadcast в чат,
+     * - `resolveFastDisplayName(...)` — преобразование внутренних FastId в человекочитаемый текст.
+     */
+    private static String buildFastResultMessage(String fastId, String fastNick) {
+        String displayName = resolveFastDisplayName(fastId);
+        String target = (fastNick == null || fastNick.trim().isEmpty()) ? "" : " на <b>" + fastNick.trim() + "</b>";
+        return "<font color=#336699>Запрос отправлен: <b>" + displayName + "</b>" + target + ".</font>";
+    }
+
+    /**
+     * Нормализует внутренний идентификатор fast-действия для отображения в чате.
+     * Если специальный alias не задан — возвращает исходный fastId.
+     */
+    private static String resolveFastDisplayName(String fastId) {
+        if (fastId == null || fastId.trim().isEmpty()) return "быстрое действие";
+        switch (fastId) {
+            case "i_w28_24.gif":
+                return "Кулачки";
+            case "i_w28_25.gif":
+                return "Закрытые кулачки";
+            case "i_w28_26.gif":
+                return "Боевые";
+            case "i_w28_26X.gif":
+                return "Закрытые боевые";
+            case "i_w28_86.gif":
+                return "Портал";
+            case "i_svi_001.gif":
+                return "Нападение";
+            case "i_svi_002.gif":
+                return "Кровавое нападение";
+            default:
+                return fastId;
+        }
     }
 
     /**
@@ -738,6 +890,17 @@ public class FastActionManager {
         if (p0 == -1) {
             Log.d(TAG, "mainPhpFastPotion: точное совпадение не найдено, ищем без кавычек");
             p0 = indexOfIgnoreCase(html, fastId, 0);
+        }
+
+        // Для "Превосходного Зелья Сильной Спины" делаем fallback на обычное.
+        if (p0 == -1 && "Превосходное Зелье Сильной Спины".equalsIgnoreCase(fastId)) {
+            p0 = indexOfIgnoreCase(html, "'Зелье Сильной Спины'", 0);
+            if (p0 == -1) {
+                p0 = indexOfIgnoreCase(html, "Зелье Сильной Спины", 0);
+            }
+            if (p0 != -1) {
+                Log.d(TAG, "mainPhpFastPotion: fallback на обычное Зелье Сильной Спины");
+            }
         }
 
         if (p0 == -1) {

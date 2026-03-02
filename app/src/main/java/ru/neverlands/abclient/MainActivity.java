@@ -75,6 +75,7 @@ import java.util.regex.Pattern;
 import java.util.zip.GZIPInputStream;
 
 import ru.neverlands.abclient.bridge.WebAppInterface;
+import ru.neverlands.abclient.manager.AutoFunctionsManager;
 import ru.neverlands.abclient.manager.ContactsManager;
 import ru.neverlands.abclient.databinding.ActivityMainBinding;
 import ru.neverlands.abclient.manager.TabManager;
@@ -112,8 +113,14 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     private final java.util.List<WebView> chatPopupWebViews = new java.util.ArrayList<>();
     private final Handler chatRefreshHandler = new Handler(Looper.getMainLooper());
     private Runnable chatRefreshRunnable;
+    private final Handler roomUsersPollingHandler = new Handler(Looper.getMainLooper());
+    private Runnable roomUsersPollingRunnable;
     private int chatRefreshSeconds = CHAT_REFRESH_DEFAULT_SECONDS;
     private int chatFyo = 0;
+    // Временная метка последнего ручного обновления списка комнаты (`ch.php?lo=1`).
+    // Используется как анти-спам guard, когда авто-нападение включено.
+    private long lastRoomUsersRefreshAtMs = 0L;
+    private static final long ROOM_USERS_REFRESH_MIN_INTERVAL_MS = 1000L;
     private boolean chatLatrus = false;
     private AlertDialog activeFightCaptchaDialog;
     private final Handler fightCaptchaHandler = new Handler(Looper.getMainLooper());
@@ -161,7 +168,88 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         chatRefreshHandler.postDelayed(chatRefreshRunnable, 200);
     }
 
+    /**
+     * Принудительное обновление room-list (`ch.php?lo=1`) для авто-нападения.
+     *
+     * Зависимости:
+     * - `chatUsersWebview`: источник данных для `RoomManager.process(...)`,
+     * - `RoomManager`: именно здесь стартует цепочка авто-нападения по hostile контактам.
+     *
+     * Зачем:
+     * - после отдельных переходов/renderer-crash серверный JS может временно не вызывать `lo=1`,
+     * - без новых room-тиков авто-нападение выглядит как "остановилось".
+     */
+    public void requestRoomUsersRefreshSoon() {
+        if (binding == null || binding.appBarMain == null || binding.appBarMain.contentMain == null) {
+            return;
+        }
+        WebView chatUsersWebView = binding.appBarMain.contentMain.chatUsersWebview;
+        if (chatUsersWebView == null) {
+            return;
+        }
+
+        long now = System.currentTimeMillis();
+        if (now - lastRoomUsersRefreshAtMs < ROOM_USERS_REFRESH_MIN_INTERVAL_MS) {
+            return;
+        }
+
+        String roomUrl = "http://neverlands.ru/ch.php?lo=1&" + now;
+        Log.d(TAG, "[AA_TRACE] requestRoomUsersRefreshSoon: " + roomUrl);
+        AppVars.url_ch_list = roomUrl;
+        chatUsersWebView.loadUrl(roomUrl);
+        lastRoomUsersRefreshAtMs = now;
+    }
+
     // Автовыбор: берем HTML текущего боя и отправляем в FightViewModel.
+    public void onWalkersPollingConfigChanged() {
+        if (Looper.myLooper() == Looper.getMainLooper()) {
+            restartRoomUsersPolling();
+        } else {
+            runOnUiThread(this::restartRoomUsersPolling);
+        }
+    }
+
+    private void restartRoomUsersPolling() {
+        stopRoomUsersPolling();
+        startRoomUsersPolling();
+    }
+
+    private void startRoomUsersPolling() {
+        if (roomUsersPollingRunnable != null) {
+            roomUsersPollingHandler.removeCallbacks(roomUsersPollingRunnable);
+        }
+        roomUsersPollingRunnable = new Runnable() {
+            @Override
+            public void run() {
+                if (isFinishing() || isDestroyed()) {
+                    return;
+                }
+                AutoFunctionsManager autoFunctionsManager = AutoFunctionsManager.getInstance(MainActivity.this);
+                if (!autoFunctionsManager.isLocationTrackingEnabled()) {
+                    return;
+                }
+                requestRoomUsersRefreshSoon();
+                long delayMs = Math.max(
+                        ROOM_USERS_REFRESH_MIN_INTERVAL_MS,
+                        autoFunctionsManager.getWalkersPollIntervalSec() * 1000L
+                );
+                roomUsersPollingHandler.postDelayed(this, delayMs);
+            }
+        };
+
+        AutoFunctionsManager autoFunctionsManager = AutoFunctionsManager.getInstance(this);
+        if (autoFunctionsManager.isLocationTrackingEnabled()) {
+            roomUsersPollingHandler.post(roomUsersPollingRunnable);
+        }
+    }
+
+    private void stopRoomUsersPolling() {
+        if (roomUsersPollingRunnable != null) {
+            roomUsersPollingHandler.removeCallbacks(roomUsersPollingRunnable);
+            roomUsersPollingRunnable = null;
+        }
+    }
+
     public void requestAutoSelect() {
         binding.appBarMain.contentMain.webView.evaluateJavascript(
                 "(function() { return document.documentElement.innerHTML; })();",
@@ -1090,6 +1178,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         filter.addAction(AppVars.ACTION_SHOW_CAPTCHA);
         filter.addAction(AppVars.ACTION_STOP_AUTOFISH);
         LocalBroadcastManager.getInstance(this).registerReceiver(broadcastReceiver, filter);
+        startRoomUsersPolling();
     }
 
     // Отписка от LocalBroadcast событий (во избежание утечек).
@@ -1097,6 +1186,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     protected void onPause() {
         super.onPause();
         LocalBroadcastManager.getInstance(this).unregisterReceiver(broadcastReceiver);
+        stopRoomUsersPolling();
     }
 
     // Общая настройка WebView (JS, cookies, bridge, окна).
@@ -1170,6 +1260,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         ru.neverlands.abclient.utils.DebugLogger.log("MainActivity: onDestroy() called.");
         stopTimer();
         stopChatRefresh();
+        stopRoomUsersPolling();
         RoomManager.stopTracing();
         AppVars.IsFightCaptchaDialogVisible = false;
         if (activeFightCaptchaDialog != null && activeFightCaptchaDialog.isShowing()) {
@@ -1365,6 +1456,16 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         long ts = System.currentTimeMillis();
         String url = "http://neverlands.ru/ch.php?" + ts + "&show=1&fyo=" + chatFyo;
         chatRefrWebView.loadUrl(url);
+
+        // Поддерживаем room-list "живым" только при включенном "Слежении за локацией".
+        // Это соответствует логике ПК-версии: polling комнаты привязан к LocationTracking.
+        try {
+            if (AutoFunctionsManager.getInstance(this).isLocationTrackingEnabled()) {
+                requestRoomUsersRefreshSoon();
+            }
+        } catch (Exception e) {
+            Log.w(TAG, "requestChatRefresh: failed to refresh room users list", e);
+        }
     }
 
     // Немедленное обновление чата (из JS-моста).

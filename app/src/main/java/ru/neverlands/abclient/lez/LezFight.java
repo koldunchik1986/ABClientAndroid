@@ -99,8 +99,12 @@ public class LezFight {
         }
 
         IsBoi = (_fightty[3].length() >= 1) && (_fightty[3].charAt(0) == '1');
-        // Waiting flag mirrors C# logic: fight_ty[3]=='0' means foe's turn, so we should poll the frame.
-        IsWaitingForNextTurn = IsBoi && _fightty[3].length() >= 1 && _fightty[3].charAt(0) == '0';
+        // Важно: ожидание хода противника не должно зависеть от IsBoi.
+        // Если fight_ty[3]=='0', сервер ещё не принимает наш submit удара — нужно ждать/обновлять кадр.
+        // Предыдущая версия с `IsBoi && ... == '0'` делала флаг всегда false и вызывала "пустые" авто-удары.
+        IsWaitingForNextTurn = (_fightty[3].length() >= 1) && (_fightty[3].charAt(0) == '0');
+        android.util.Log.d("LezFight", "fight_ty[3]=" + (_fightty[3].length() > 0 ? _fightty[3].charAt(0) : '?')
+                + ", IsBoi=" + IsBoi + ", IsWaitingForNextTurn=" + IsWaitingForNextTurn);
 
         String[] paramow = ParseString(html, "var param_ow = [", 0);
         if (paramow == null) return false;
@@ -417,31 +421,70 @@ public class LezFight {
     }
 
     // Сбор строки Result для AutoSubmit (VCODE|ENEMY|GROUP|...).
+    // Должен полностью соответствовать C# LezFight.cs:
+    // vcode|enemy|group|inf_bot|lev_bot|ftr|inu|inb|ina
+    // Dependencies for BuildResult():
+    // - WebAppInterface.processFightHtml(...) forwards Result to JS AutoSubmit.
+    // - FightJs.AutoSubmit(...) parses exact "vcode|enemy|group|inf_bot|lev_bot|ftr|inu|inb|ina" format.
+    // - Any delimiter/order mismatch stops server-side hit processing.
     private void BuildResult() {
-        StringBuilder sb = new StringBuilder();
-        // Формирование строки VCODE|ENEMY|GROUP|...
-        sb.append(AppVars.VCode).append("|");
-        sb.append(FoeName).append("|");
-        sb.append(_foeGroupId).append("|0|0|");
-        
-        StringBuilder ftr = new StringBuilder();
+        String vcode = _vcode != null ? _vcode : "";
+        // C# parity: enemy/group/inf_bot берутся ИСХОДНЫМИ значениями из fight_pm (без Strip).
+        String enemy = _fightpm.length > 5 ? _fightpm[5] : "";
+        String group = _fightpm.length > 6 ? _fightpm[6] : "";
+        String infbot = _fightpm.length > 7 ? _fightpm[7] : "";
+        String ftrRaw = (_fightty != null && _fightty.length > 2) ? _fightty[2] : String.valueOf(_ftype);
+
+        StringBuilder inputu = new StringBuilder();
         for (int i = 0; i < 4; i++) {
             if (LezCombination.HitOps[i] > 0) {
                 int code = LezCombination.HitCodes[i];
-                ftr.append(i).append("_").append(code).append("_").append(_posma[code]).append("|");
+                inputu.append(i).append("_").append(code).append("_").append(_posma[code]).append("@");
             }
         }
-        sb.append(ftr).append("|");
-        sb.append(LezCombination.BlockCombo).append("_").append(LezCombination.BlockOp).append("_").append(LezCombination.BlockCode).append("|");
-        
-        for (int i = 0; i < 18; i++) if (LezCombination.MagicFlags[i]) sb.append(i).append("|");
-        sb.append("|");
-        for (int i = 0; i < 18; i++) if (LezCombination.MagicFlags[i]) sb.append(LezCombination.MagicCodes[i]).append("|");
-        
+
+        StringBuilder inputb = new StringBuilder();
+        if (LezCombination.BlockOp > 0) {
+            // В C# второй компонент — именно BlockCode, а не BlockOp.
+            inputb.append(LezCombination.BlockCombo)
+                    .append("_")
+                    .append(LezCombination.BlockCode)
+                    .append("_")
+                    .append(_posma[LezCombination.BlockCode])
+                    .append("@");
+        }
+
+        StringBuilder inputa = new StringBuilder();
+        for (int i = 0; i < LezCombination.MagicFlags.length; i++) {
+            if (!LezCombination.MagicFlags[i]) continue;
+            int code = LezCombination.MagicCodes[i];
+            int posType = LezSpellCollection.PosType[code];
+            if (posType <= 2) continue;
+
+            inputa.append(code);
+            if (posType > 3 && _alchemy != null && i < _alchemy.length) {
+                inputa.append("_").append(_alchemy[i]);
+            }
+            inputa.append("@");
+        }
+
+        StringBuilder sb = new StringBuilder();
+        sb.append(vcode).append("|")
+                .append(enemy).append("|")
+                .append(group).append("|")
+                .append(infbot).append("|")
+                .append(_levbot).append("|")
+                .append(ftrRaw).append("|")
+                .append(inputu).append("|")
+                .append(inputb).append("|")
+                .append(inputa);
         Result = sb.toString();
     }
 
     // Формирование минимального fight.Frame для автобоя (инфо + auto-submit).
+    // Dependencies for BuildFrame():
+    // - MainPhp.mainPhpFight(...) returns this lightweight frame in AutoboiOn mode.
+    // - Server expects post_id=7 and exact inu/inb/ina field formats.
     private void BuildFrame() {
         if (_fightpm == null || _fightpm.length < 11) return;
         
@@ -460,10 +503,12 @@ public class LezFight {
         
         sb.append("<input name=post_id type=hidden value=\"7\">");
         
-        String enemy = _fightpm.length > 5 ? Strip(_fightpm[5]) : "";
-        String group = _fightpm.length > 6 ? Strip(_fightpm[6]) : "";
-        String infbot = _fightpm.length > 7 ? Strip(_fightpm[7]) : "";
-        String infzb = _fightpm.length > 10 ? Strip(_fightpm[10]) : "";
+        // C# parity: поля enemy/group/inf_bot/inf_zb отправляются raw из fight_pm.
+        String enemy = _fightpm.length > 5 ? _fightpm[5] : "";
+        String group = _fightpm.length > 6 ? _fightpm[6] : "";
+        String infbot = _fightpm.length > 7 ? _fightpm[7] : "";
+        String infzb = _fightpm.length > 10 ? _fightpm[10] : "";
+        String ftrRaw = (_fightty != null && _fightty.length > 2) ? _fightty[2] : String.valueOf(_ftype);
         
         sb.append("<input name=vcode type=hidden value=\"").append(_vcode).append("\">");
         sb.append("<input name=enemy type=hidden value=\"").append(enemy).append("\">");
@@ -471,7 +516,7 @@ public class LezFight {
         sb.append("<input name=inf_bot type=hidden value=\"").append(infbot).append("\">");
         sb.append("<input name=inf_zb type=hidden value=\"").append(infzb).append("\">");
         sb.append("<input name=lev_bot type=hidden value=\"").append(_levbot).append("\">");
-        sb.append("<input name=ftr type=hidden value=\"").append(_ftype).append("\">");
+        sb.append("<input name=ftr type=hidden value=\"").append(ftrRaw).append("\">");
         
         StringBuilder inu = new StringBuilder();
         for (int i = 0; i < 4; i++) {
@@ -482,8 +527,9 @@ public class LezFight {
         }
         sb.append("<input name=inu type=hidden value=\"").append(inu.toString()).append("\">");
         
-        String inb = LezCombination.BlockOp > 0 ? 
-            LezCombination.BlockCombo + "_" + LezCombination.BlockOp + "_" + _posma[LezCombination.BlockCode] : "";
+        // Keep C#-compatible inb format: BlockCombo_BlockCode_posma@.
+        String inb = LezCombination.BlockOp > 0 ?
+            LezCombination.BlockCombo + "_" + LezCombination.BlockCode + "_" + _posma[LezCombination.BlockCode] + "@" : "";
         sb.append("<input name=inb type=hidden value=\"").append(inb).append("\">");
         
         StringBuilder ina = new StringBuilder();
@@ -491,16 +537,27 @@ public class LezFight {
             if (LezCombination.MagicFlags[i]) {
                 int code = LezCombination.MagicCodes[i];
                 int posType = LezSpellCollection.PosType[code];
-                ina.append(code);
-                if (posType > 3 && _alchemy != null && i < _alchemy.length) {
-                    ina.append("_").append(_alchemy[i]);
+                if (posType > 2) {
+                    ina.append(code);
+                    if (posType > 3 && _alchemy != null && i < _alchemy.length) {
+                        ina.append("_").append(_alchemy[i]);
+                    }
+                    ina.append("@");
                 }
-                ina.append("@");
             }
         }
         sb.append("<input name=ina type=hidden value=\"").append(ina.toString()).append("\">");
-        
+
         sb.append("</form>");
+        android.util.Log.d("LezFight", "BuildFrame payload: enemy=" + enemy
+                + ", group=" + group
+                + ", inf_bot=" + infbot
+                + ", inf_zb=" + infzb
+                + ", lev_bot=" + _levbot
+                + ", ftr=" + ftrRaw
+                + ", inu=" + inu
+                + ", inb=" + inb
+                + ", ina=" + ina);
         sb.append("<script language=\"JavaScript\">");
         sb.append("setTimeout(function(){ console.log('ABCLIENT_AUTOBATTLE_SUBMIT'); document.ff.submit(); }, ").append(delay).append(");");
         sb.append("setTimeout(function(){ window.location.href='main.php?get_id=56&act=10&go=inf'; }, ").append(delay + 5000).append(");");
@@ -556,34 +613,88 @@ public class LezFight {
         AppVars.CodeAddress = "";
         try {
             String state = (_fightty != null && _fightty.length > 4) ? Strip(_fightty[4]) : "";
-            if ("2".equals(state)) {
-                _fexp = ParseString(_html, "var fexp = [", 0);
-                if (_fexp == null || _fexp.length < 14) {
-                    return false;
+            switch (state) {
+                case "2": {
+                    _fexp = ParseString(_html, "var fexp = [", 0);
+                    if (_fexp == null || _fexp.length < 14) {
+                        return false;
+                    }
+                    String captchaToken = Strip(_fexp[4]);
+                    String captchaFlag = (_fexp.length > 6) ? Strip(_fexp[6]) : "";
+                    boolean needManualCaptcha = captchaToken.length() > 2 && "0".equals(captchaFlag);
+                    if (needManualCaptcha) {
+                        AppVars.CodeAddress = "http://neverlands.ru/modules/code/code.php?" + captchaToken;
+                        BuildFightLink(true);
+                    } else {
+                        BuildFightLink(false);
+                    }
+                    break;
                 }
-                String captchaToken = Strip(_fexp[4]);
-                String captchaFlag = (_fexp.length > 6) ? Strip(_fexp[6]) : "";
-                boolean needManualCaptcha = captchaToken.length() > 2 && "0".equals(captchaFlag);
-                if (needManualCaptcha) {
-                    AppVars.CodeAddress = "http://neverlands.ru/modules/code/code.php?" + captchaToken;
-                    BuildFightLink(true);
-                } else {
-                    BuildFightLink(false);
+                case "3": {
+                    String vcode = (_fightty != null && _fightty.length > 6) ? Strip(_fightty[6]) : "";
+                    if (vcode.length() > 2) {
+                        String group = (_fightty != null && _fightty.length > 7) ? Strip(_fightty[7]) : "";
+                        String mode = (AppVars.Profile != null && AppVars.Profile.LezDoWinTimeout) ? "1" : "0";
+                        AppVars.FightLink = "main.php?get_id=61&act=6&mode=" + mode
+                                + "&gr=" + group
+                                + "&vcode=" + vcode;
+                    } else {
+                        // Ожидание хода противника (аналог C# ParseNonFight() case "3").
+                        IsWaitingForNextTurn = true;
+                    }
+                    break;
                 }
-                return true;
+                case "4":
+                    // Ждём окончания боя (в C# тут только уведомление в Tray).
+                    break;
+                case "5": {
+                    String vcode = (_fightty != null && _fightty.length > 5) ? Strip(_fightty[5]) : "";
+                    AppVars.FightLink = "main.php?get_id=61&act=5&vcode=" + vcode;
+                    break;
+                }
+                case "7": {
+                    String st = (_fightty != null && _fightty.length > 4) ? Strip(_fightty[4]) : "";
+                    String vcode = (_fightty != null && _fightty.length > 5) ? Strip(_fightty[5]) : "";
+                    AppVars.FightLink = "main.php?get_id=61&act=5&st=" + st + "&vcode=" + vcode;
+                    break;
+                }
+                default:
+                    break;
             }
-            if ("3".equals(state)) {
-                // Ожидание хода противника (аналог C# ParseNonFight() case "3").
-                String vcode = (_fightty != null && _fightty.length > 6) ? Strip(_fightty[6]) : "";
-                if (vcode.length() <= 2) {
-                    IsWaitingForNextTurn = true;
-                }
-            }
+
+            updateLastBoiDamageIfNeeded();
         } catch (Exception ignored) {
         }
 
-        // Логика завершения боя - парсим fexp для ссылки завершения
         return true;
+    }
+
+    /**
+     * Аналог блока в конце C# ParseNonFight():
+     * считает суммарный урон из `var list = [[...]]` и запоминает его для статистики.
+     */
+    private void updateLastBoiDamageIfNeeded() {
+        if (LogBoi == null || LogBoi.isEmpty() || LogBoi.equals(AppVars.LastBoiEndLog)) {
+            return;
+        }
+        String[] list = ParseString(_html, "var list = [[", 0);
+        if (list == null || list.length <= 10) {
+            return;
+        }
+        int damage = 0;
+        for (int idx = 6; idx <= 10; idx++) {
+            damage += parseIntSafe(list[idx], 0);
+        }
+        AppVars.LastBoiUron = String.valueOf(damage);
+        AppVars.LastBoiEndLog = LogBoi;
+    }
+
+    private int parseIntSafe(String value, int fallback) {
+        try {
+            return Integer.parseInt(Strip(value));
+        } catch (Exception ignored) {
+            return fallback;
+        }
     }
     
     // Сбор ссылки "Завершить бой" из fexp (аналог C#).
@@ -619,6 +730,38 @@ public class LezFight {
         } catch (Exception e) {
             android.util.Log.e("LezFight", "BuildFightLink error: " + e.getMessage());
         }
+    }
+
+    /**
+     * Аналог C# CalcRestoreAfterBoi().
+     * Возвращает время готовности в миллисекундах или 0, если восстановление не требуется.
+     */
+    public long calcRestoreAfterBoiReadyAtMs() {
+        if (AppVars.Profile == null) {
+            return 0L;
+        }
+
+        double sec = 0.0;
+        double intHp = AppVars.PersIntHP > 0 ? AppVars.PersIntHP : 2000.0;
+
+        if (AppVars.Profile.LezDoWaitHp && _maxHp > 0 && _percentHp < AppVars.Profile.LezWaitHp) {
+            int goalHp = (int) (AppVars.Profile.LezWaitHp * _maxHp / 100.0);
+            sec = ((goalHp - _currentHp) * intHp) / _maxHp;
+        }
+
+        if (AppVars.Profile.LezDoWaitMa && _maxMa > 0 && _percentMa < AppVars.Profile.LezWaitMa) {
+            int goalMa = (int) (AppVars.Profile.LezWaitMa * _maxMa / 100.0);
+            double secMa = ((goalMa - _currentMa) * intHp) / _maxMa;
+            if (secMa > sec) {
+                sec = secMa;
+            }
+        }
+
+        if (sec < 1.0) {
+            return 0L;
+        }
+        long delayMs = (long) Math.ceil(sec * 1000.0);
+        return System.currentTimeMillis() + Math.max(0L, delayMs);
     }
 
     /**

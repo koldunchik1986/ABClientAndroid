@@ -415,7 +415,14 @@ public class ContactsActivity extends AppCompatActivity implements ContactsAdapt
     }
 
     private void showContactContextMenu(Contact contact) {
-        final CharSequence[] items = {"Обновить контакт", "Удалить контакт", "Сделать Другом", "Сделать Врагом", "Сделать Нейтралом"};
+        final CharSequence[] items = {
+                "Обновить контакт",
+                "Удалить контакт",
+                "Сделать Другом",
+                "Сделать Врагом",
+                "Сделать Нейтралом",
+                "Инструмент авто-нападения (" + getAutoAttackToolLabel(contact.toolId) + ")"
+        };
         new AlertDialog.Builder(this).setTitle(contact.nick).setItems(items, (dialog, which) -> {
             switch (which) {
                 case 0: // Обновить
@@ -424,6 +431,7 @@ public class ContactsActivity extends AppCompatActivity implements ContactsAdapt
                         @Override
                         public void onSuccess(Contact updatedContact) {
                             updatedContact.classId = getClassIdForClan(updatedContact.clanName);
+                            updatedContact.toolId = contact.toolId;
                             ContactsManager.updateContact(updatedContact);
                             runOnUiThread(() -> {
                                 Toast.makeText(ContactsActivity.this, "Контакт " + updatedContact.nick + " обновлен", Toast.LENGTH_LONG).show();
@@ -440,8 +448,62 @@ public class ContactsActivity extends AppCompatActivity implements ContactsAdapt
                 case 2: contact.classId = 2; ContactsManager.updateContact(contact); buildDisplayList(); break;
                 case 3: contact.classId = 1; ContactsManager.updateContact(contact); buildDisplayList(); break;
                 case 4: contact.classId = 0; ContactsManager.updateContact(contact); buildDisplayList(); break;
+                case 5: showAutoAttackToolDialog(contact); break;
             }
         }).show();
+    }
+
+    /**
+     * Выбор инструмента авто-нападения для конкретного контакта (аналог Contact.ToolId из C#).
+     */
+    private void showAutoAttackToolDialog(Contact contact) {
+        // Tool selector is persisted directly into contacts.xml via ContactsManager.updateContact(...).
+        // Priority is resolved later in RoomManager: contact.toolId > AppVars.AutoAttackToolId.
+        final String[] labels = {
+                "0 - По умолчанию (глобальный)",
+                "1 - Боевые",
+                "2 - Закрытые боевые",
+                "3 - Кулачки",
+                "4 - Закрытые кулачки",
+                "5 - Портал",
+                "6 - Яд",
+                "7 - Сильная спина (превосходное)"
+        };
+
+        int selected = contact.toolId;
+        if (selected < 0) selected = 0;
+        if (selected > 7) selected = 7;
+        final int safeSelected = selected;
+
+        new AlertDialog.Builder(this)
+                .setTitle("Авто-нападение: " + contact.nick)
+                .setSingleChoiceItems(labels, safeSelected, (dialog, which) -> {
+                    contact.toolId = which;
+                    ContactsManager.updateContact(contact);
+                    Toast.makeText(
+                            this,
+                            "Для " + contact.nick + ": " + getAutoAttackToolLabel(which),
+                            Toast.LENGTH_SHORT
+                    ).show();
+                    buildDisplayList();
+                    dialog.dismiss();
+                })
+                .setNegativeButton("Отмена", null)
+                .show();
+    }
+
+    private String getAutoAttackToolLabel(int toolId) {
+        // UI label mapper for toolId used by context menu title/toasts.
+        switch (toolId) {
+            case 1: return "Боевые";
+            case 2: return "Закрытые боевые";
+            case 3: return "Кулачки";
+            case 4: return "Закрытые кулачки";
+            case 5: return "Портал";
+            case 6: return "Яд";
+            case 7: return "Сильная спина (превосходное)";
+            default: return "По умолчанию";
+        }
     }
 
     private int getClassIdForClan(String clanName) {

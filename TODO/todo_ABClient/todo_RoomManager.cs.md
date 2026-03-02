@@ -82,3 +82,19 @@
     - [ ] Создать `ViewModel` (`MainViewModel`).
     - [ ] В `RoomManager`'е вызывать методы `ViewModel`'а для обновления `LiveData`.
     - [ ] В `MainActivity` подписаться на `LiveData` и обновлять UI.
+## Обновление 2026-03-02 (`buttonWalkers` parity)
+
+- [x] Добавлен `FilterGetWalkers`-контур в Android `RoomManager`:
+  - сравнение `текущий состав` vs `предыдущий состав`,
+  - расчёт пришедших/ушедших,
+  - учёт изменения количества невидимок.
+- [x] Добавлена генерация walkers-сообщений:
+  - `myWalkers1` (приходят в локацию),
+  - `myWalkers2` (покидают локацию),
+  - сообщения о входе/выходе собственного персонажа из невида.
+- [x] Добавлена отправка walkers-сообщений в чат через текущий broadcast/чат-пайплайн.
+- [x] Добавлен звуковой сигнал `EventSounds.playSndMsg()` для входящих событий (`myWalkers1`).
+- [x] Состояние walkers вынесено в canonical runtime:
+  - `AppVars.myCharsOld` -> `Map<String,String>`,
+  - `AppVars.myNevids`, `myNevidsOld`, `myLocOld`, `myCoordOld`.
+- [x] Polling-координата берётся из `AppVars.url_ch_list` (`r=`), синхронизируется в postfilter `Filter`.

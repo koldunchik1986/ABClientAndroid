@@ -188,3 +188,13 @@ public static AutoboiState Autoboi = AutoboiState.AutoboiOff;
 
 ### Таймер в MainActivity (уже есть)
 Запускается в `startTimer()`, выполняется каждую секунду. Можно использовать для проверки условий автофункций.
+# Обновление 2026-03-02 (buttonWalkers parity)
+
+- [x] `AUTO_ATTACK` переведён на C#-семантику: состояние вычисляется только по `AutoAttackToolId != 0`.
+- [x] Добавлена миграция legacy `auto_attack=true` -> `toolId=1`, если ранее `toolId` отсутствовал.
+- [x] `setAutoAttackEnabled(boolean)` оставлен как compatibility-wrapper (`0` / `lastNonZeroToolId`).
+- [x] `setAutoAttackToolId(int)` теперь при `toolId != 0` автоматически включает `LOCATION_TRACKING`.
+- [x] `LOCATION_TRACKING` синхронизируется с runtime `AppVars.DoShowWalkers`.
+- [x] Добавлены настройки интервала walkers polling:
+  - `auto_function_walkers_poll_interval_sec`
+  - whitelist: `1/2/5/10`, default: `1`.

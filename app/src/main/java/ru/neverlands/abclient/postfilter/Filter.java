@@ -171,6 +171,7 @@ public class Filter {
         // Список игроков в чате (RoomManager).
         if (address.contains("/ch.php?lo=1")) {
             String html = Russian.getString(array);
+            AppVars.url_ch_list = address;
             html = ru.neverlands.abclient.manager.RoomManager.process(context, html);
             return Russian.getBytes(html);
         }

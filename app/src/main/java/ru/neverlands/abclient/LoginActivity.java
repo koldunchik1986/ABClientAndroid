@@ -313,6 +313,8 @@ public class LoginActivity extends AppCompatActivity {
                 public void onSuccess(ru.neverlands.abclient.model.Contact newContact) {
                     newContact.classId = oldContact.classId;
                     newContact.comment = oldContact.comment;
+                    // Сохраняем персональный toolId при фоновом обновлении после логина.
+                    newContact.toolId = oldContact.toolId;
                     ru.neverlands.abclient.manager.ContactsManager.updateContact(newContact);
                     updateContactsRecursive(contacts, index + 1);
                 }

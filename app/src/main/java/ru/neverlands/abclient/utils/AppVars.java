@@ -41,6 +41,15 @@ public class AppVars {
     // 2) MainActivity.showCaptchaDialog(...) после успешного submit возвращает AutoboiOn.
     // 3) При отмене/закрытии диалога флаг сбрасывается в false (без авто-восстановления).
     public static volatile boolean ResumeAutoboiAfterCaptcha = false;
+    // Аналог Pers.IntHP / Pers.IntMA из C# (секунды полного восстановления HP/MA).
+    // По умолчанию совпадает с C#: IntHP=2000, IntMA=9000.
+    public static double PersIntHP = 2000.0;
+    public static double PersIntMA = 9000.0;
+    // Аналог Pers.Ready / Pers.LogReady из C# (для Timeout/Restoring после боя).
+    public static long AutoboiReadyAtMs = 0L;
+    public static String AutoboiReadyLog = "";
+    // Управляемый флаг детального дампа HTML боя (вместо принудительного if(true)).
+    public static boolean DebugDumpFightHtml = false;
     public static String LastBoiLog = "";
     public static String LastBoiEndLog = "";
     public static String LastBoiSostav = "";
@@ -116,7 +125,8 @@ public class AppVars {
     public static boolean AutoMoving = false;
     public static WeakReference<MainActivity> mainActivity;
 
-    public static List<String> myCharsOld = new ArrayList<>();
+    public static java.util.Map<String, String> myCharsOld = new java.util.LinkedHashMap<>();
+    public static int myNevids = 0;
     public static int myNevidsOld = 0;
     public static String myLocOld = "";
     public static String myCoordOld = "";
@@ -133,6 +143,23 @@ public class AppVars {
     public static volatile boolean FastWaitEndOfBoiCancel = false;
     public static volatile boolean FastNeedAbilDarkTeleport = false;
     public static volatile boolean FastNeedAbilDarkFog = false;
+    /**
+     * Инструмент авто-нападения (аналог `AppVars.AutoAttackToolId` из C#).
+     *
+     * Значения:
+     * 0 - авто-нападение отключено/инструмент не выбран,
+     * 1 - боевые,
+     * 2 - закрытые боевые,
+     * 3 - кулачки,
+     * 4 - закрытые кулачки,
+     * 5 - портал.
+     *
+     * Зависимости:
+     * - `AutoFunctionsManager` хранит значение в SharedPreferences и синхронизирует его сюда.
+     * - `QuickButtonsPanel` даёт UI выбора инструмента.
+     * - `RoomManager`/авто-нападение используют это значение как fallback, если у контакта нет своего toolId.
+     */
+    public static volatile int AutoAttackToolId = 0;
     // NeverTimer — cooldown перед выполнением быстрого действия (аналог DateTime.Now > AppVars.NeverTimer в C#)
     public static volatile long NeverTimer = 0;
     // WaitOpen — ждать окончания боя даже для открытых боёв (аналог AppVars.WaitOpen в C#)

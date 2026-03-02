@@ -22,6 +22,8 @@ import ru.neverlands.abclient.model.AutoboiState;
 import ru.neverlands.abclient.model.InvComparer;
 import ru.neverlands.abclient.model.InvEntry;
 import ru.neverlands.abclient.manager.FastActionManager;
+import ru.neverlands.abclient.manager.RoomManager;
+import ru.neverlands.abclient.manager.UnderAttackManager;
 import ru.neverlands.abclient.utils.AppVars;
 import ru.neverlands.abclient.utils.HelperStrings;
 import ru.neverlands.abclient.utils.HtmlUtils;
@@ -215,6 +217,27 @@ public class MainPhp {
             LocalBroadcastManager.getInstance(AppVars.getContext()).sendBroadcast(msgIntent);
         }
 
+        // Аналог C# MainPhp.cs: если авто-нападение уткнулось в закрытый бой,
+        // добавляем цель во временный blacklist и отменяем fast-цикл.
+        // Зависимости:
+        // - `RoomManager.charAddToBlackList(...)` (защита от мгновенного повторного нападения),
+        // - `FastActionManager.fastCancel()` (сброс текущего fast-состояния),
+        // - `AppVars.FastNick` (цель текущего fast-действия).
+        String htmlLower = html.toLowerCase(Locale.ROOT);
+        boolean closedFightInterfereError = htmlLower.contains("ошибка при использовании. нельзя вмешаться в закрытый бой");
+        if (closedFightInterfereError && AppVars.AutoAttackToolId != 0 && AppVars.FastNick != null && !AppVars.FastNick.isEmpty()) {
+            String blockedNick = AppVars.FastNick;
+            android.util.Log.d(TAG, "[AA_TRACE] closed fight error: add to blacklist and cancel fast, nick=" + blockedNick
+                    + ", fastId=" + AppVars.FastId + ", autoTool=" + AppVars.AutoAttackToolId);
+            RoomManager.charAddToBlackList(blockedNick);
+            if (AppVars.getContext() != null) {
+                Intent blockedMsgIntent = new Intent(AppVars.ACTION_ADD_CHAT_MESSAGE);
+                blockedMsgIntent.putExtra("message", "<b>" + blockedNick + "</b> в бою, отменяем действие!");
+                LocalBroadcastManager.getInstance(AppVars.getContext()).sendBroadcast(blockedMsgIntent);
+            }
+            FastActionManager.fastCancel("closed-fight-interfere-error");
+        }
+
         // Обработка быстрых действий (портировано из MainPhp.cs строки 1429-1619)
         // В C# FastAction обрабатывается ВНУТРИ MainPhp, а не в отдельном менеджере.
         // Алгоритм: MainPhpFindInv → BuildRedirect на инвентарь → MainPhpIsInv → MainPhpFast → BuildRedirect на категорию
@@ -293,7 +316,23 @@ public class MainPhp {
         // Иначе мы будем бесконечно перезапускать процесс.
         if (address.contains("get_id=43")) {
             android.util.Log.d(TAG, "processMainPhpFast: get_id=43 — действие уже выполнено, сбрасываем FastNeed");
-            FastActionManager.fastCancel();
+            FastActionManager.fastCancel("fast-get_id=43-action-already-applied");
+            return null;
+        }
+
+        // Если fast-атака уже привела нас в бой (fight frame), дальнейший поиск инвентаря
+        // становится бессмысленным и только мешает автобою.
+        // Сценарий:
+        // 1) Авто-нападение стартует из комнаты -> FastNeed=true.
+        // 2) Сервер переводит в fight.frame.
+        // 3) Мы продолжаем крутить processMainPhpFast на каждом обновлении боя.
+        // В C# после входа в бой fast-цикл для нападалки фактически завершён.
+        if (isFightFrameHtml(html)
+                && address.contains("get_id=56&act=10&go=inf")
+                && isAttackFastId(fastId)) {
+            android.util.Log.d(TAG, "processMainPhpFast: вошли в бой с FastId=" + fastId
+                    + ", сбрасываем FastNeed чтобы не блокировать авто-удары");
+            FastActionManager.fastCancel("entered-fight-frame-attack-fastid");
             return null;
         }
 
@@ -320,7 +359,7 @@ public class MainPhp {
                 return Russian.getBytes(fastHtml);
             }
             android.util.Log.w(TAG, "processMainPhpFast: тотем не найден, отмена");
-            FastActionManager.fastCancel();
+            FastActionManager.fastCancel("inventory-fast-item-not-found");
             return null;
         }
 
@@ -358,13 +397,40 @@ public class MainPhp {
             // 3. Мы на правильной вкладке, предмет не найден — отмена
             android.util.Log.w(TAG, "processMainPhpFast: предмет не найден на правильной вкладке ("
                     + filterClean + "), отмена");
-            FastActionManager.fastCancel();
+            FastActionManager.fastCancel("inventory-fast-unsupported-context");
             return null;
         }
 
         // Мы не на инвентаре и MainPhpFindInv не нашла ссылку — вероятно, нужен обычный reload
         android.util.Log.d(TAG, "processMainPhpFast: не на инвентаре, MainPhpFindInv не нашла ссылку");
         return null;
+    }
+
+    /**
+     * Проверяет, что HTML относится к боевому фрейму (верхний/основной бой).
+     */
+    private static boolean isFightFrameHtml(String html) {
+        return html != null && (html.contains("var fight_ty") || html.contains("magic_slots();"));
+    }
+
+    /**
+     * FastId, запускающие нападение/вход в бой (а не бафы/зелья).
+     * Для них при входе в бой fast-цикл должен завершаться.
+     */
+    private static boolean isAttackFastId(String fastId) {
+        if (fastId == null) return false;
+        switch (fastId) {
+            case "i_svi_001.gif":
+            case "i_svi_002.gif":
+            case "i_w28_26.gif":
+            case "i_w28_26X.gif":
+            case "i_svi_205.gif":
+            case "i_w28_24.gif":
+            case "i_w28_25.gif":
+                return true;
+            default:
+                return false;
+        }
     }
 
     /**
@@ -376,7 +442,9 @@ public class MainPhp {
     private static String getInventoryFilter(String fastId) {
         if (fastId == null) return null;
 
-        switch (fastId) {
+        String normalizedFastId = normalizeFastId(fastId);
+
+        switch (normalizedFastId) {
             // Свитки и нападалки → wca=28
             case "i_svi_001.gif":
             case "i_svi_002.gif":
@@ -396,6 +464,7 @@ public class MainPhp {
             // Зелья → wca=27
             case "Яд":
             case "Зелье Сильной Спины":
+            case "Превосходное Зелье Сильной Спины":
             case "Зелье Невидимости":
             case "Зелье Блаженства":
             case "Зелье Метаболизма":
@@ -451,8 +520,40 @@ public class MainPhp {
                 return "TOTEM";
 
             default:
+                // Дополнительная нормализация для Android-порта:
+                // в настройках/контактах название может прийти с отличиями по регистру
+                // и пробелам (включая неразрывные), поэтому для ключевых автодействий
+                // делаем мягкое сопоставление по фрагменту названия.
+                if (containsIgnoreCase(normalizedFastId, "сильной спины")) {
+                    return "&im=0&wca=27";
+                }
+                if (containsIgnoreCase(normalizedFastId, "яд")) {
+                    return "&im=0&wca=27";
+                }
                 return null;
         }
+    }
+
+    /**
+     * Нормализует FastId перед сопоставлением:
+     * - заменяет неразрывные пробелы на обычные;
+     * - убирает BOM/zero-width символы;
+     * - схлопывает повторяющиеся пробелы;
+     * - trim по краям.
+     */
+    private static String normalizeFastId(String fastId) {
+        if (fastId == null) return "";
+        String normalized = fastId
+                .replace('\u00A0', ' ')
+                .replace("\uFEFF", "")
+                .replace("\u200B", "")
+                .trim();
+        return normalized.replaceAll("\\s{2,}", " ");
+    }
+
+    private static boolean containsIgnoreCase(String value, String token) {
+        if (value == null || token == null) return false;
+        return value.toLowerCase(Locale.ROOT).contains(token.toLowerCase(Locale.ROOT));
     }
 
     /**
@@ -662,7 +763,9 @@ public class MainPhp {
         LezFight fight = new LezFight(html);
         
         // Детальный дамп HTML для диагностики (если нужен)
-        if (true) { // TODO: сделать через настройку
+        boolean dumpFightHtml = AppVars.DebugDumpFightHtml
+                || (AppVars.Profile != null && AppVars.Profile.DoHttpLog);
+        if (dumpFightHtml) {
             int chunkSize = 800;
             int totalLen = html.length();
             int chunks = (totalLen + chunkSize - 1) / chunkSize;
@@ -701,6 +804,48 @@ public class MainPhp {
             registerFightEnd(fight);
         }
 
+        // Синхронизация Timeout/Restoring как в C# MainPhpFight.cs.
+        if (fightEnded && AppVars.Profile != null && AppVars.Profile.LezDoAutoboi) {
+            long now = System.currentTimeMillis();
+
+            if (AppVars.Autoboi == AutoboiState.Timeout) {
+                AppVars.AutoboiReadyAtMs = 0L;
+                AppVars.AutoboiReadyLog = "";
+                AppVars.Autoboi = AutoboiState.AutoboiOn;
+                android.util.Log.d(TAG, "mainPhpFight: Timeout finished on fight end -> AutoboiOn");
+            }
+
+            if (AppVars.Autoboi == AutoboiState.Restoring) {
+                boolean logChanged = fight.LogBoi != null && !fight.LogBoi.equals(AppVars.AutoboiReadyLog);
+                boolean timerReady = AppVars.AutoboiReadyAtMs > 0L && now >= AppVars.AutoboiReadyAtMs;
+                if (!logChanged && !timerReady) {
+                    long waitMs = AppVars.AutoboiReadyAtMs > now ? (AppVars.AutoboiReadyAtMs - now) : 1200L;
+                    int delay = (int) Math.max(1000L, Math.min(5000L, waitMs));
+                    android.util.Log.d(TAG, "mainPhpFight: restoring in progress, waitMs=" + waitMs);
+                    return buildWaitForTurnAutoRefreshHtml(address, delay);
+                }
+                AppVars.AutoboiReadyAtMs = 0L;
+                AppVars.AutoboiReadyLog = "";
+                AppVars.Autoboi = AutoboiState.AutoboiOn;
+                android.util.Log.d(TAG, "mainPhpFight: restoring finished -> AutoboiOn");
+            }
+
+            if (AppVars.Autoboi == AutoboiState.AutoboiOn) {
+                long newReadyAtMs = fight.calcRestoreAfterBoiReadyAtMs();
+                if (newReadyAtMs > 0L) {
+                    if (fight.LogBoi != null && (!fight.LogBoi.equals(AppVars.AutoboiReadyLog) || now > AppVars.AutoboiReadyAtMs)) {
+                        AppVars.AutoboiReadyLog = fight.LogBoi;
+                        AppVars.AutoboiReadyAtMs = newReadyAtMs;
+                    }
+                    AppVars.Autoboi = AutoboiState.Restoring;
+                    android.util.Log.d(TAG, "mainPhpFight: set Restoring until " + AppVars.AutoboiReadyAtMs);
+                    return AppVars.ContentMainPhp != null ? AppVars.ContentMainPhp : html;
+                }
+                AppVars.AutoboiReadyAtMs = 0L;
+                AppVars.AutoboiReadyLog = "";
+            }
+        }
+
         // Этап 2: Уведомление о нападении при смене LogBoi
         // Аналог ParseFightLog + TrayBalloon в C# (MainPhp.cs)
         if (fight.IsBoi && fight.LogBoi != null && !fight.LogBoi.isEmpty()
@@ -710,6 +855,8 @@ public class MainPhp {
             AppVars.LastBoiLog = fight.LogBoi;
             fight.updateLastBoiFromLogs();
             notifyNewFight(fight);
+            // C# аналог UnderAttack.Parse(html): анонс в чат с учётом LezSay (Chat/Clan/Pair/No).
+            UnderAttackManager.parseAsync(html);
         }
 
         // Ветка завершения боя в AutoBoi:
@@ -857,24 +1004,8 @@ public class MainPhp {
                         }
                     }
                 } else {
-                    // Бой завершился
-                    android.util.Log.d(TAG, "mainPhpFight: fight ended, restoring autoboi");
-                    // Вычисляем восстановление после боя (аналог CalcRestoreAfterBoi)
-                    int restoreHp = AppVars.Profile.LezWaitHp;
-                    if (AppVars.Profile.LezDoWaitHp && restoreHp > 0) {
-                        AppVars.Autoboi = AutoboiState.Restoring;
-                    } else {
-                        AppVars.Autoboi = AutoboiState.AutoboiOn;
-                        // Проверяем FightLink с валидацией как в ПК версии
-                        if (!AppVars.FightLink.isEmpty() && !AppVars.FightLink.contains("????")) {
-                            String fightLink = AppVars.FightLink;
-                            AppVars.FightLink = ""; // Очищаем после использования
-                            return Russian.getString(Filter.buildRedirect("Завершение боя", fightLink));
-                        }
-                        // FightLink пустой или содержит "????" - возвращаем оригинальный HTML
-                        // Аналог ПК версии - сервер сам перенаправит на основную страницу
-                        return Russian.getString(Filter.buildRedirect("Завершение боя - обновление", "main.php"));
-                    }
+                    // Завершение уже обработано выше в блоке fightEnded (Timeout/Restoring/FightLink/капча).
+                    android.util.Log.d(TAG, "mainPhpFight: fight ended branch already handled, keep current frame");
                 }
             } else {
                 android.util.Log.d(TAG, "mainPhpFight: Autoboi state is " + AppVars.Autoboi + ", not AutoboiOn");

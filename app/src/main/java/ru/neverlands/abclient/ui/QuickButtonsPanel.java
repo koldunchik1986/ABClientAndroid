@@ -398,9 +398,7 @@ public class QuickButtonsPanel {
                 loadAndUpdateButtons();
                 break;
             case AUTO_ATTACK:
-                autoFunctionsManager.toggleAutoAttack();
-                Toast.makeText(context, autoFunctionsManager.isAutoAttackEnabled() ? "Авто-Нападение ВКЛ" : "Авто-Нападение ВЫКЛ", Toast.LENGTH_SHORT).show();
-                loadAndUpdateButtons();
+                showAutoAttackToolSelector();
                 break;
             case AUTO_INVISIBLE:
                 autoFunctionsManager.toggleAutoInvisible();
@@ -550,6 +548,31 @@ public class QuickButtonsPanel {
                 })
                 .setNegativeButton("Отмена", null)
                 .show();
+        } else if (button.getActionType() == QuickActionType.AUTO_ATTACK) {
+            // Для AUTO_ATTACK показываем меню: выбор инструмента / удалить кнопку.
+            new AlertDialog.Builder(context)
+                    .setTitle("Авто-Нападение")
+                    .setItems(new CharSequence[]{"Выбрать инструмент", "Удалить кнопку"}, (dialog, which) -> {
+                        if (which == 0) {
+                            showAutoAttackToolSelector();
+                        } else {
+                            showRemoveConfirmation(position);
+                        }
+                    })
+                    .setNegativeButton("Отмена", null)
+                    .show();
+        } else if (button.getActionType() == QuickActionType.LOCATION_TRACKING) {
+            new AlertDialog.Builder(context)
+                    .setTitle("Слежение за локацией")
+                    .setItems(new CharSequence[]{"Интервал опроса локации", "Удалить кнопку"}, (dialog, which) -> {
+                        if (which == 0) {
+                            showWalkersPollIntervalSelector();
+                        } else {
+                            showRemoveConfirmation(position);
+                        }
+                    })
+                    .setNegativeButton("Отмена", null)
+                    .show();
         } else {
             showRemoveConfirmation(position);
         }
@@ -563,7 +586,62 @@ public class QuickButtonsPanel {
         }
     }
 
+    /**
+     * Выбор инструмента авто-нападения (аналог dropdown из C# `FormAutoAttack.cs`).
+     *
+     * Зависимости:
+     * - `AutoFunctionsManager.setAutoAttackToolId(...)` — сохраняет выбор в prefs,
+     * - `AppVars.AutoAttackToolId` — runtime-синхронизация для post-filter потока.
+     */
+    private void showAutoAttackToolSelector() {
+        final CharSequence[] labels = new CharSequence[]{
+                "0 — Отключено",
+                "1 — Боевые",
+                "2 — Закрытые боевые",
+                "3 — Кулачки",
+                "4 — Закрытые кулачки",
+                "5 — Портал"
+        };
+        int selected = autoFunctionsManager.getAutoAttackToolId();
+        if (selected < 0 || selected > 5) selected = 0;
+
+        new AlertDialog.Builder(context)
+                .setTitle("Инструмент авто-нападения")
+                .setSingleChoiceItems(labels, selected, (dialog, which) -> {
+                    autoFunctionsManager.setAutoAttackToolId(which);
+                    loadAndUpdateButtons();
+                    Toast.makeText(context, "Выбран инструмент: " + labels[which], Toast.LENGTH_SHORT).show();
+                    dialog.dismiss();
+                })
+                .setNegativeButton("Отмена", null)
+                .show();
+    }
+
     // Диалог выбора функции для конкретной кнопки.
+    private void showWalkersPollIntervalSelector() {
+        final int[] values = new int[]{1, 2, 5, 10};
+        final CharSequence[] labels = new CharSequence[]{"1 сек", "2 сек", "5 сек", "10 сек"};
+        int currentValue = autoFunctionsManager.getWalkersPollIntervalSec();
+        int selectedIndex = 0;
+        for (int index = 0; index < values.length; index++) {
+            if (values[index] == currentValue) {
+                selectedIndex = index;
+                break;
+            }
+        }
+
+        new AlertDialog.Builder(context)
+                .setTitle("Интервал опроса локации")
+                .setSingleChoiceItems(labels, selectedIndex, (dialog, which) -> {
+                    int sec = values[which];
+                    autoFunctionsManager.setWalkersPollIntervalSec(sec);
+                    Toast.makeText(context, "Интервал опроса: " + sec + " сек", Toast.LENGTH_SHORT).show();
+                    dialog.dismiss();
+                })
+                .setNegativeButton("Отмена", null)
+                .show();
+    }
+
     private void showFunctionSelector(int position) {
         View dialogView = View.inflate(context, R.layout.dialog_select_function, null);
         android.widget.ListView listView = dialogView.findViewById(R.id.functions_list);

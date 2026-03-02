@@ -114,6 +114,25 @@ public class Contact {
      */
     public String comment;
 
+    /**
+     * Инструмент авто-нападения для конкретного контакта (аналог C# `Contact.ToolId`).
+     *
+     * Значения:
+     * 0 - использовать глобальный `AppVars.AutoAttackToolId`,
+     * 1 - боевые,
+     * 2 - закрытые боевые,
+     * 3 - кулачки,
+     * 4 - закрытые кулачки,
+     * 5 - портал,
+     * 6 - яд,
+     * 7 - сильная спина (приоритет: превосходное зелье).
+     *
+     * Зависимости:
+     * - `ContactsManager.getToolIdOfContact(...)` читает это поле как override,
+     * - `RoomManager` использует это значение при авто-нападении.
+     */
+    public int toolId;
+
     public Contact() {}
 
 }

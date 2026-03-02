@@ -3,8 +3,8 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:orientation="horizontal"
     android:gravity="center_vertical"
+    android:orientation="horizontal"
     android:padding="8dp">
 
     <!-- 1. Индикатор онлайна -->
@@ -44,21 +44,41 @@
         android:visibility="gone"
         tools:visibility="visible" />
 
-    <!-- 5. Nickname and Location Block -->
+    <!-- 5. Блок Nickname и локации -->
     <LinearLayout
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_weight="1"
         android:orientation="vertical">
 
-        <TextView
-            android:id="@+id/contactNickText"
+        <!-- 5.1 Строка ника: Nick[level] + иконка выбранного инструмента авто-нападения -->
+        <LinearLayout
+            android:id="@+id/nickRowLayout"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:textSize="16sp"
-            android:textStyle="bold"
-            tools:text="Персонаж : [10]" />
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
 
+            <TextView
+                android:id="@+id/contactNickText"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textSize="16sp"
+                android:textStyle="bold"
+                tools:text="Персонаж : [10]" />
+
+            <!-- 5.1.1 Иконка инструмента из Contact.toolId -->
+            <ImageView
+                android:id="@+id/autoAttackToolIcon"
+                android:layout_width="18dp"
+                android:layout_height="18dp"
+                android:layout_marginStart="6dp"
+                android:visibility="gone"
+                tools:src="@android:drawable/ic_menu_send"
+                tools:visibility="visible" />
+        </LinearLayout>
+
+        <!-- 5.2 Текущая локация -->
         <TextView
             android:id="@+id/locationTextView"
             android:layout_width="wrap_content"

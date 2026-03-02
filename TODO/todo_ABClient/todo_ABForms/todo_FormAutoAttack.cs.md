@@ -25,20 +25,20 @@
 
 Эта функциональность будет реализована как часть `MainActivity`.
 
-1.  **В `MainViewModel`:**
-    - Добавить `val selectedAttackId = MutableLiveData<Int>()`.
-    - Добавить `val isWalkersEnabled = MutableLiveData<Boolean>()`.
-2.  **В макете `activity_main.xml`:**
-    - Добавить `Spinner` или `Button` для выбора режима атаки.
-    - Добавить `Switch` или `ToggleButton` для режима "Ходилки".
-3.  **В `MainActivity.kt`:**
-    - Настроить `Spinner` или `PopupMenu` со списком доступных атак.
-    - Установить слушатель выбора (`OnItemSelectedListener` или `OnMenuItemClickListener`).
-    - В слушателе:
-        - Вызывать метод `viewModel.setAttackMode(selectedId)`.
-        - Вызывать метод `viewModel.setWalkersEnabled(true)`.
-    - Подписаться на `viewModel.isWalkersEnabled`, чтобы программно обновлять состояние `Switch` на UI.
+1.  **Реализованная Android-адаптация (фактическая):**
+    - В `AutoFunctionsManager` добавлено поле `AutoAttackToolId` (0..5) с хранением в `SharedPreferences`.
+    - В `QuickButtonsPanel` для кнопки `AUTO_ATTACK` добавлен long-press диалог выбора инструмента (0/1/2/3/4/5).
+    - При первом включении `AUTO_ATTACK` автоматически выбирается toolId=1 (боевые), если ранее был 0.
+    - Синхронизация runtime-состояния выполняется через `AppVars.AutoAttackToolId`.
 
-- [ ] Добавить `Spinner` или `Button` с `PopupMenu` в макет `activity_main.xml`.
-- [ ] Добавить `selectedAttackId` и `isWalkersEnabled` в `MainViewModel`.
-- [ ] Реализовать логику обновления `ViewModel` при выборе атаки в `MainActivity`.
+- [x] Добавить runtime/persistent аналог `AutoAttackToolId`.
+- [x] Добавить UI выбора инструмента авто-нападения.
+- [x] Синхронизировать выбор инструмента с быстрым переключателем `AUTO_ATTACK`.
+- [ ] Довести полную parity с C# dropdown-кнопкой `buttonAutoAttack` в основном тулбаре (не в quick panel).
+## Обновление 2026-03-02 (buttonAutoAttack -> buttonWalkers)
+
+- [x] Кнопка `AUTO_ATTACK` в Android переведена на selector-driven модель (выбор инструмента), без boolean ON/OFF toggle.
+- [x] Источник истины для авто-нападения: только `AutoAttackToolId != 0` (как в C#).
+- [x] При выборе инструмента `toolId != 0` автоматически включается `LOCATION_TRACKING` (аналог `buttonWalkers.Checked = true`).
+- [x] Добавлен compatibility-путь для старого boolean API через `setAutoAttackEnabled(boolean)`.
+- [x] Long-press `AUTO_ATTACK` сохранён: выбор инструмента / удаление кнопки.

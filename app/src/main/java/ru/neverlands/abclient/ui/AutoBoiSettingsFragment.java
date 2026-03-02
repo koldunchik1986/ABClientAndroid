@@ -50,6 +50,10 @@ public class AutoBoiSettingsFragment extends DialogFragment {
     // Текущая выбранная группа (для вкладок Ротация и Останов)
     private int selectedGroupIndex = 0;
 
+    private interface OnGroupIndexChangedListener {
+        void onGroupIndexChanged(int index);
+    }
+
     @Override
     public void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -107,12 +111,14 @@ public class AutoBoiSettingsFragment extends DialogFragment {
         // Сохраняем текущую группу (вкладки 3 и 4)
         RotationTabFragment rotation = adapter.getRotation();
         if (rotation != null && profile.LezGroups != null
+                && selectedGroupIndex >= 0
                 && selectedGroupIndex < profile.LezGroups.size()) {
             rotation.saveGroup(profile.LezGroups.get(selectedGroupIndex));
         }
 
         StopTabFragment stop = adapter.getStop();
         if (stop != null && profile.LezGroups != null
+                && selectedGroupIndex >= 0
                 && selectedGroupIndex < profile.LezGroups.size()) {
             stop.saveGroup(profile.LezGroups.get(selectedGroupIndex));
         }
@@ -141,12 +147,24 @@ public class AutoBoiSettingsFragment extends DialogFragment {
             switch (position) {
                 case 1:
                     groups = new GroupsTabFragment();
+                    groups.setSelectedGroupIndex(selectedGroupIndex);
+                    groups.setOnGroupIndexChangedListener(index -> {
+                        selectedGroupIndex = index;
+                        if (rotation != null) {
+                            rotation.setSelectedGroupIndex(index);
+                        }
+                        if (stop != null) {
+                            stop.setSelectedGroupIndex(index);
+                        }
+                    });
                     return groups;
                 case 2:
                     rotation = new RotationTabFragment();
+                    rotation.setSelectedGroupIndex(selectedGroupIndex);
                     return rotation;
                 case 3:
                     stop = new StopTabFragment();
+                    stop.setSelectedGroupIndex(selectedGroupIndex);
                     return stop;
                 default:
                     general = new GeneralTabFragment();
@@ -278,6 +296,18 @@ public class AutoBoiSettingsFragment extends DialogFragment {
         private TextView tvNewGroupLevel;
         private GroupsAdapter groupsAdapter;
         private int selectedGroupIdx = 0;
+        private OnGroupIndexChangedListener groupIndexChangedListener;
+
+        void setOnGroupIndexChangedListener(OnGroupIndexChangedListener listener) {
+            groupIndexChangedListener = listener;
+        }
+
+        void setSelectedGroupIndex(int index) {
+            selectedGroupIdx = Math.max(0, index);
+            if (groupsAdapter != null) {
+                groupsAdapter.setSelected(selectedGroupIdx);
+            }
+        }
 
         @Nullable
         @Override
@@ -313,12 +343,29 @@ public class AutoBoiSettingsFragment extends DialogFragment {
             // RecyclerView групп
             UserConfig p = AppVars.Profile;
             List<LezBotsGroup> groups = p != null ? p.LezGroups : new ArrayList<>();
-            groupsAdapter = new GroupsAdapter(groups, idx -> selectedGroupIdx = idx);
+            groupsAdapter = new GroupsAdapter(groups, idx -> {
+                selectedGroupIdx = idx;
+                notifyGroupIndexChanged();
+            });
             recyclerGroups.setLayoutManager(new LinearLayoutManager(requireContext()));
             recyclerGroups.setAdapter(groupsAdapter);
 
+            if (groups.isEmpty()) {
+                selectedGroupIdx = 0;
+            } else if (selectedGroupIdx >= groups.size()) {
+                selectedGroupIdx = groups.size() - 1;
+            }
+            groupsAdapter.setSelected(selectedGroupIdx);
+            notifyGroupIndexChanged();
+
             v.findViewById(R.id.btnCreateGroup).setOnClickListener(btn -> createGroup(classes));
             v.findViewById(R.id.btnDeleteGroup).setOnClickListener(btn -> deleteGroup());
+        }
+
+        private void notifyGroupIndexChanged() {
+            if (groupIndexChangedListener != null) {
+                groupIndexChangedListener.onGroupIndexChanged(selectedGroupIdx);
+            }
         }
 
         private void createGroup(List<LezBotsClass> classes) {
@@ -335,6 +382,9 @@ public class AutoBoiSettingsFragment extends DialogFragment {
             newGroup.Change(classId, level);
             p.LezGroups.add(newGroup);
             groupsAdapter.notifyItemInserted(p.LezGroups.size() - 1);
+            selectedGroupIdx = p.LezGroups.size() - 1;
+            groupsAdapter.setSelected(selectedGroupIdx);
+            notifyGroupIndexChanged();
         }
 
         private void deleteGroup() {
@@ -351,6 +401,9 @@ public class AutoBoiSettingsFragment extends DialogFragment {
             p.LezGroups.remove(selectedGroupIdx);
             groupsAdapter.notifyItemRemoved(selectedGroupIdx);
             if (selectedGroupIdx >= p.LezGroups.size()) selectedGroupIdx = p.LezGroups.size() - 1;
+            if (selectedGroupIdx < 0) selectedGroupIdx = 0;
+            groupsAdapter.setSelected(selectedGroupIdx);
+            notifyGroupIndexChanged();
         }
 
         // RecyclerView адаптер для групп
@@ -379,15 +432,33 @@ public class AutoBoiSettingsFragment extends DialogFragment {
                 holder.tvName.setText(g.toString());
                 holder.tvSelected.setVisibility(pos == selected ? View.VISIBLE : View.GONE);
                 holder.itemView.setOnClickListener(v -> {
-                    int old = selected;
-                    selected = holder.getAdapterPosition();
-                    notifyItemChanged(old);
-                    notifyItemChanged(selected);
+                    int newIndex = holder.getAdapterPosition();
+                    if (newIndex == RecyclerView.NO_POSITION) return;
+                    setSelected(newIndex);
                     listener.onSelected(selected);
                 });
             }
 
             @Override public int getItemCount() { return groups.size(); }
+
+            void setSelected(int index) {
+                if (groups.isEmpty()) {
+                    selected = 0;
+                    notifyDataSetChanged();
+                    return;
+                }
+                int bounded = Math.max(0, Math.min(index, groups.size() - 1));
+                if (selected == bounded) {
+                    notifyDataSetChanged();
+                    return;
+                }
+                int old = selected;
+                selected = bounded;
+                if (old >= 0 && old < groups.size()) {
+                    notifyItemChanged(old);
+                }
+                notifyItemChanged(selected);
+            }
 
             static class VH extends RecyclerView.ViewHolder {
                 TextView tvName, tvSelected;
@@ -403,6 +474,7 @@ public class AutoBoiSettingsFragment extends DialogFragment {
     // ─────────────────────────── Вкладка 3: Ротация ─────────────────────────────
 
     public static class RotationTabFragment extends Fragment {
+        private int selectedGroupIdx = 0;
         private CheckBox checkDoRestoreHp, checkDoRestoreMa, checkDoAbilBlocks, checkDoAbilHits,
                 checkDoMagHits, checkDoMagBlocks, checkDoHits, checkDoBlocks, checkDoMiscAbils;
         private SeekBar seekRestoreHp, seekRestoreMa, seekMagHits;
@@ -473,10 +545,18 @@ public class AutoBoiSettingsFragment extends DialogFragment {
             });
         }
 
+        void setSelectedGroupIndex(int index) {
+            selectedGroupIdx = Math.max(0, index);
+            if (getView() != null) {
+                loadGroup();
+            }
+        }
+
         private void loadGroup() {
             UserConfig p = AppVars.Profile;
             if (p == null || p.LezGroups == null || p.LezGroups.isEmpty()) return;
-            LezBotsGroup g = p.LezGroups.get(0);
+            int safeIndex = Math.max(0, Math.min(selectedGroupIdx, p.LezGroups.size() - 1));
+            LezBotsGroup g = p.LezGroups.get(safeIndex);
             checkDoRestoreHp.setChecked(g.DoRestoreHp);
             checkDoRestoreMa.setChecked(g.DoRestoreMa);
             seekRestoreHp.setProgress(g.RestoreHp);
@@ -531,6 +611,7 @@ public class AutoBoiSettingsFragment extends DialogFragment {
     // ─────────────────────────── Вкладка 4: Останов ─────────────────────────────
 
     public static class StopTabFragment extends Fragment {
+        private int selectedGroupIdx = 0;
         private CheckBox checkDoStopNow, checkDoStopLowHp, checkDoStopLowMa, checkDoExit, checkDoExitRisky;
         private SeekBar seekStopLowHp, seekStopLowMa;
         private TextView tvStopLowHp, tvStopLowMa;
@@ -567,10 +648,18 @@ public class AutoBoiSettingsFragment extends DialogFragment {
             });
         }
 
+        void setSelectedGroupIndex(int index) {
+            selectedGroupIdx = Math.max(0, index);
+            if (getView() != null) {
+                loadGroup();
+            }
+        }
+
         private void loadGroup() {
             UserConfig p = AppVars.Profile;
             if (p == null || p.LezGroups == null || p.LezGroups.isEmpty()) return;
-            LezBotsGroup g = p.LezGroups.get(0);
+            int safeIndex = Math.max(0, Math.min(selectedGroupIdx, p.LezGroups.size() - 1));
+            LezBotsGroup g = p.LezGroups.get(safeIndex);
             checkDoStopNow.setChecked(g.DoStopNow);
             checkDoStopLowHp.setChecked(g.DoStopLowHp);
             seekStopLowHp.setProgress(g.StopLowHp);
