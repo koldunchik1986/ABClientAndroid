@@ -36,8 +36,10 @@ public class MainPhp {
     private static final Random RANDOM = new Random();
     private static final int AUTO_FINISH_MIN_DELAY_MS = 1000;
     private static final int AUTO_FINISH_EXTRA_DELAY_MS = 700;
+    private static final long AUTO_DRINK_TRIGGER_COOLDOWN_MS = 2500L;
     private static final long CAPTCHA_FALLBACK_TTL_MS = 30000L;
     private static volatile long lastAutoFinishRedirectAtMs = 0L;
+    private static volatile long lastAutoDrinkTriggerAtMs = 0L;
     // Защита от повторного показа одного и того же диалога капчи завершения боя.
     private static volatile String lastFightCaptchaDialogKey = "";
     private static volatile long lastFightCaptchaDialogAtMs = 0L;
@@ -353,6 +355,92 @@ public class MainPhp {
     }
 
     /**
+     * Авто-питьё "Эликсира Восстановления" по данным верхнего фрейма (`ins_HP(...)`).
+     *
+     * Условия запуска:
+     * - включен Auto-Fight (persisted state),
+     * - включена хотя бы одна опция `LezDoDrinkHp`/`LezDoDrinkMa`,
+     * - текущие проценты HP/MA ниже заданных порогов,
+     * - нет активного fast-конвейера (`AppVars.FastNeed == false`),
+     * - текущая страница не является боевым фреймом.
+     *
+     * Особенность:
+     * - если одновременно сработали HP и MA, выполняется ОДИН запуск fast-action
+     *   (`FastActionManager.fastAttackMomentRestoreElixir()`), т.к. эликсир восстанавливает оба ресурса.
+     */
+    private static void tryTriggerAutoDrinkRestoreElixir(String address,
+                                                         String html,
+                                                         boolean isFightFrame,
+                                                         boolean isFightTopFrame) {
+        if (html == null || html.isEmpty()) {
+            return;
+        }
+        if (AppVars.Profile == null) {
+            return;
+        }
+        if (!isAutoFightEnabledByPreference()) {
+            android.util.Log.d(TAG, "AUTO_DRINK_TRACE skip: auto-fight disabled in preferences");
+            return;
+        }
+        if (isFightFrame || isFightTopFrame) {
+            return;
+        }
+        if (AppVars.FastNeed) {
+            android.util.Log.d(TAG, "AUTO_DRINK_TRACE skip: FastNeed active, fastId=" + AppVars.FastId);
+            return;
+        }
+        if (address != null && address.contains("get_id=43")) {
+            android.util.Log.d(TAG, "AUTO_DRINK_TRACE skip: get_id=43 action page");
+            return;
+        }
+        if (AppVars.IsFightCaptchaDialogVisible) {
+            android.util.Log.d(TAG, "AUTO_DRINK_TRACE skip: captcha dialog visible");
+            return;
+        }
+
+        InsHpSnapshot snapshot = parseInsHpSnapshot(html);
+        if (snapshot == null || (snapshot.maxHp <= 0 && snapshot.maxMa <= 0)) {
+            android.util.Log.d(TAG, "AUTO_DRINK_TRACE skip: ins_HP snapshot missing or invalid");
+            return;
+        }
+
+        double hpPercent = snapshot.maxHp > 0 ? (snapshot.curHp * 100.0 / snapshot.maxHp) : 0.0;
+        double maPercent = snapshot.maxMa > 0 ? (snapshot.curMa * 100.0 / snapshot.maxMa) : 0.0;
+
+        boolean hpBelow = AppVars.Profile.LezDoDrinkHp
+                && snapshot.maxHp > 0
+                && hpPercent < AppVars.Profile.LezDrinkHp;
+        boolean maBelow = AppVars.Profile.LezDoDrinkMa
+                && snapshot.maxMa > 0
+                && maPercent < AppVars.Profile.LezDrinkMa;
+        if (!hpBelow && !maBelow) {
+            android.util.Log.d(TAG, "AUTO_DRINK_TRACE no-trigger: hp="
+                    + String.format(Locale.US, "%.1f", hpPercent) + "%/" + AppVars.Profile.LezDrinkHp
+                    + " (enabled=" + AppVars.Profile.LezDoDrinkHp + "), ma="
+                    + String.format(Locale.US, "%.1f", maPercent) + "%/" + AppVars.Profile.LezDrinkMa
+                    + " (enabled=" + AppVars.Profile.LezDoDrinkMa + "), address=" + address);
+            return;
+        }
+
+        long now = System.currentTimeMillis();
+        long sinceLastTrigger = now - lastAutoDrinkTriggerAtMs;
+        if (sinceLastTrigger >= 0 && sinceLastTrigger < AUTO_DRINK_TRIGGER_COOLDOWN_MS) {
+            android.util.Log.d(TAG, "AUTO_DRINK_TRACE skip cooldown: sinceLastMs=" + sinceLastTrigger
+                    + ", hpBelow=" + hpBelow + ", maBelow=" + maBelow);
+            return;
+        }
+
+        lastAutoDrinkTriggerAtMs = now;
+        android.util.Log.d(TAG, "AUTO_DRINK_TRACE trigger restore elixir: hp="
+                + snapshot.curHp + "/" + snapshot.maxHp + " (" + String.format(Locale.US, "%.1f", hpPercent) + "%)"
+                + ", ma=" + snapshot.curMa + "/" + snapshot.maxMa + " (" + String.format(Locale.US, "%.1f", maPercent) + "%)"
+                + ", hpThreshold=" + AppVars.Profile.LezDrinkHp + ", maThreshold=" + AppVars.Profile.LezDrinkMa
+                + ", hpEnabled=" + AppVars.Profile.LezDoDrinkHp + ", maEnabled=" + AppVars.Profile.LezDoDrinkMa
+                + ", address=" + address);
+        FastActionManager.fastAttackMomentRestoreElixir();
+    }
+
+    /**
      * Invariant-парсинг числа (аналог NumberStyles.Any + InvariantCulture в C#).
      * Допускает кавычки вокруг значения.
      */
@@ -444,6 +532,9 @@ public class MainPhp {
         // - `FastActionManager.fastCancel()` (сброс текущего fast-состояния),
         // - `AppVars.FastNick` (цель текущего fast-действия).
         String htmlLower = html.toLowerCase(Locale.ROOT);
+        boolean isFightFrame = html.contains("magic_slots();");
+        boolean isFightTopFrame = html.contains("var fight_ty");
+        boolean isFightFinishAddress = address != null && address.contains("get_id=61") && address.contains("act=7");
         boolean closedFightInterfereError = htmlLower.contains("ошибка при использовании. нельзя вмешаться в закрытый бой");
         if (closedFightInterfereError && AppVars.AutoAttackToolId != 0 && AppVars.FastNick != null && !AppVars.FastNick.isEmpty()) {
             String blockedNick = AppVars.FastNick;
@@ -458,6 +549,10 @@ public class MainPhp {
             FastActionManager.fastCancel("closed-fight-interfere-error");
         }
 
+        // Проверка автопитья после получения верхнего фрейма персонажа.
+        // При совпадении условий запускает единый fast-action "Эликсир Восстановления".
+        tryTriggerAutoDrinkRestoreElixir(address, html, isFightFrame, isFightTopFrame);
+
         // Обработка быстрых действий (портировано из MainPhp.cs строки 1429-1619)
         // В C# FastAction обрабатывается ВНУТРИ MainPhp, а не в отдельном менеджере.
         // Алгоритм: MainPhpFindInv → BuildRedirect на инвентарь → MainPhpIsInv → MainPhpFast → BuildRedirect на категорию
@@ -471,9 +566,6 @@ public class MainPhp {
         // Обработка страницы боя
         // magic_slots() — признак страницы боя (fight frame)
         // var fight_ty — признак верхнего фрейма с данными о противнике
-        boolean isFightFrame = html.contains("magic_slots();");
-        boolean isFightTopFrame = html.contains("var fight_ty");
-        boolean isFightFinishAddress = address != null && address.contains("get_id=61") && address.contains("act=7");
 
         // Fallback-подсчёт завершённого поединка по URL завершения боя.
         // Нужен для случаев, когда сервер сразу переводит на `act=7` без повторного кадра `fight_ty`,
