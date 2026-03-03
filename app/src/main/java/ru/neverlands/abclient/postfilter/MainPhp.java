@@ -21,6 +21,7 @@ import ru.neverlands.abclient.lez.LezFight;
 import ru.neverlands.abclient.model.AutoboiState;
 import ru.neverlands.abclient.model.InvComparer;
 import ru.neverlands.abclient.model.InvEntry;
+import ru.neverlands.abclient.manager.AutoFunctionsManager;
 import ru.neverlands.abclient.manager.FastActionManager;
 import ru.neverlands.abclient.manager.RoomManager;
 import ru.neverlands.abclient.manager.UnderAttackManager;
@@ -69,6 +70,49 @@ public class MainPhp {
                 "<script language=\"JavaScript\">" +
                 "setTimeout(function(){ window.location = '" + safeUrl + "'; }, " + safeDelay + ");" +
                 "</script></body></html>";
+    }
+
+    /**
+     * Returns persisted Auto-Fight switch state from AutoFunctionsManager.
+     * Fallbacks to profile flag if manager/context is not available.
+     */
+    private static boolean isAutoFightEnabledByPreference() {
+        try {
+            android.content.Context context = AppVars.getContext();
+            if (context == null) {
+                return AppVars.Profile != null && AppVars.Profile.LezDoAutoboi;
+            }
+            return AutoFunctionsManager.getInstance(context).isAutoFightEnabled();
+        } catch (Exception e) {
+            android.util.Log.w(TAG, "isAutoFightEnabledByPreference: fallback to profile flag", e);
+            return AppVars.Profile != null && AppVars.Profile.LezDoAutoboi;
+        }
+    }
+
+    /**
+     * Self-heals runtime desync where persisted Auto-Fight is ON, but AppVars.Autoboi is OFF.
+     *
+     * This recovery is intentionally blocked while CAPTCHA flow is active.
+     */
+    private static void recoverAutoboiRuntimeStateIfNeeded(boolean fightEnded, String fightCaptchaUrl) {
+        if (!fightEnded || AppVars.Autoboi != AutoboiState.AutoboiOff) {
+            return;
+        }
+        if (AppVars.Profile == null || !AppVars.Profile.LezDoAutoboi) {
+            return;
+        }
+        if (!isAutoFightEnabledByPreference()) {
+            return;
+        }
+
+        boolean captchaExpected = fightCaptchaUrl != null && !fightCaptchaUrl.isEmpty();
+        if (captchaExpected || AppVars.IsFightCaptchaDialogVisible || AppVars.ResumeAutoboiAfterCaptcha) {
+            android.util.Log.d(TAG, "recoverAutoboiRuntimeStateIfNeeded: skip (captcha flow active)");
+            return;
+        }
+
+        AppVars.Autoboi = AutoboiState.AutoboiOn;
+        android.util.Log.w(TAG, "recoverAutoboiRuntimeStateIfNeeded: restored AppVars.Autoboi -> AutoboiOn");
     }
 
     /**
@@ -991,6 +1035,8 @@ public class MainPhp {
         if (fightEnded) {
             registerFightEnd(fight);
         }
+        String fightCaptchaUrl = fightEnded ? resolveFightCaptchaUrl(html) : null;
+        recoverAutoboiRuntimeStateIfNeeded(fightEnded, fightCaptchaUrl);
 
         // Синхронизация Timeout/Restoring как в C# MainPhpFight.cs.
         if (fightEnded && AppVars.Profile != null && AppVars.Profile.LezDoAutoboi) {
@@ -1103,7 +1149,7 @@ public class MainPhp {
                 && AppVars.Autoboi == AutoboiState.AutoboiOn) {
             android.util.Log.d(TAG, "mainPhpFight: FIGHT ENDED with autoboi ON - processing finish");
 
-            String captchaUrl = resolveFightCaptchaUrl(html);
+            String captchaUrl = fightCaptchaUrl;
             boolean needCaptcha = captchaUrl != null && !captchaUrl.isEmpty();
             String fightLink = AppVars.FightLink;
 
@@ -1160,7 +1206,7 @@ public class MainPhp {
         // - AppVars.FightLink/address: URL, куда будет отправлен code=<digits>,
         // - showFightCaptchaDialogOnce(...): broadcast в MainActivity.
         if (fightEnded) {
-            String manualCaptchaUrl = resolveFightCaptchaUrl(html);
+            String manualCaptchaUrl = fightCaptchaUrl;
             if (manualCaptchaUrl != null && !manualCaptchaUrl.isEmpty()) {
                 String finishLink = AppVars.FightLink;
                 if (finishLink == null || finishLink.isEmpty()) {

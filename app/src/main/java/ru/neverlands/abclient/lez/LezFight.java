@@ -671,7 +671,9 @@ public class LezFight {
         sb.append(_foeCurrentMa).append("</b>/<b>").append(_foeMaxMa).append("</b></font>]<br>");
         
         // Собираем hidden-форму удара (аналог ПК версии) и шлём её через submit().
-        int delay = 1000 + _random.nextInt(501); // 1.0–1.5s
+        // Анти-детект/анти-ddos: держим интервал удара в диапазоне 1.0–2.0с.
+        // Это ближе к поведению ПК-клиента по темпу, но без "мгновенного" спама запросов.
+        int delay = 1000 + _random.nextInt(1001); // 1.0–2.0s
         sb.append("<form action=\"main.php\" method=POST name=ff>");
         
         sb.append("<input name=post_id type=hidden value=\"7\">");
@@ -733,7 +735,10 @@ public class LezFight {
                 + ", ina=" + ina);
         sb.append("<script language=\"JavaScript\">");
         sb.append("setTimeout(function(){ console.log('ABCLIENT_AUTOBATTLE_SUBMIT'); document.ff.submit(); }, ").append(delay).append(");");
-        sb.append("setTimeout(function(){ window.location.href='main.php?get_id=56&act=10&go=inf'; }, ").append(delay + 5000).append(");");
+        // Fallback-возврат на fight.frame:
+        // раньше было +5000мс, что давало визуальные паузы 5-7с между ударами в начале боя.
+        // Ставим короткий watchdog, чтобы не застревать и быстрее получать следующий боевой кадр.
+        sb.append("setTimeout(function(){ window.location.href='main.php?get_id=56&act=10&go=inf'; }, ").append(delay + 1800).append(");");
         sb.append("</script></body></html>");
 
         Frame = sb.toString();
