@@ -48,10 +48,11 @@ public class AutoModeForegroundService extends Service {
     private static final long AUTO_TURN_MIN_INTERVAL_MS = 1000L;
     private static final long ROOM_REFRESH_MIN_INTERVAL_MS = 1000L;
     private static final long FIGHT_FRAME_RECOVERY_COOLDOWN_MS = 5_000L;
+    private static final long CHAT_REFRESH_STALE_GRACE_MS = 3_000L;
 
     private static final String ACTION_SYNC = "ru.neverlands.abclient.action.AUTO_BG_SYNC";
 
-    private final Handler handler = new Handler(Looper.getMainLooper());
+    private final Handler handler = createMainHandler();
     private Runnable tickRunnable;
     private PowerManager.WakeLock wakeLock;
     private WifiManager.WifiLock wifiLock;
@@ -59,6 +60,18 @@ public class AutoModeForegroundService extends Service {
     private long lastRoomUsersTickAtMs = 0L;
     private long lastAutoTurnTickAtMs = 0L;
     private long lastFightFrameRecoveryAtMs = 0L;
+    private long lastForcedChatRefreshAtMs = 0L;
+
+    /**
+     * Создает "асинхронный" main handler (API 28+), чтобы tick loop сервиса
+     * не зависел от sync barrier UI-pipeline при lockscreen/background.
+     */
+    private static Handler createMainHandler() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            return Handler.createAsync(Looper.getMainLooper());
+        }
+        return new Handler(Looper.getMainLooper());
+    }
 
     /**
      * Синхронизирует состояние сервиса с текущими авто-флагами.
@@ -206,6 +219,8 @@ public class AutoModeForegroundService extends Service {
                         + ", walkersPollIntervalSec=" + walkersPollIntervalSec
                         + ", fightLikelyActive=" + fightLikelyActive);
 
+                ensureChatRefreshAlive(activity, tickNow);
+
                 if (locationTrackingEnabled) {
                     if (tickNow - lastRoomUsersTickAtMs >= roomTickIntervalMs) {
                         activity.requestRoomUsersRefreshSoon();
@@ -243,6 +258,48 @@ public class AutoModeForegroundService extends Service {
                 Log.e(TAG, BG_TRACE_PREFIX + " uiTick: failed", e);
             }
         });
+    }
+
+    /**
+     * Watchdog chat polling:
+     * если периодический `ch.php?show=1` в Activity "замолчал" в фоне,
+     * сервис форсирует разовый refresh, чтобы не пропускать входящие события боя.
+     */
+    private void ensureChatRefreshAlive(MainActivity activity, long tickNow) {
+        if (activity == null) {
+            return;
+        }
+        if (!activity.isChatRefreshEnabled()) {
+            return;
+        }
+        int refreshSeconds = Math.max(1, activity.getChatRefreshSeconds());
+        long refreshIntervalMs = refreshSeconds * 1000L;
+        long staleThresholdMs = refreshIntervalMs + CHAT_REFRESH_STALE_GRACE_MS;
+        long lastChatRefreshAtMs = activity.getLastChatRefreshAtMs();
+        long forceCooldownMs = Math.max(1_000L, refreshIntervalMs);
+
+        // Начальный bootstrap: если Activity еще не делала ни одного poll-запроса.
+        if (lastChatRefreshAtMs <= 0L) {
+            if (tickNow - lastForcedChatRefreshAtMs >= forceCooldownMs) {
+                Log.d(TAG, BG_TRACE_PREFIX + " uiTick: chat refresh bootstrap");
+                activity.requestChatRefreshNow();
+                lastForcedChatRefreshAtMs = tickNow;
+            }
+            return;
+        }
+
+        long staleForMs = tickNow - lastChatRefreshAtMs;
+        if (staleForMs < staleThresholdMs) {
+            return;
+        }
+        if (tickNow - lastForcedChatRefreshAtMs < forceCooldownMs) {
+            return;
+        }
+
+        Log.w(TAG, BG_TRACE_PREFIX + " uiTick: chat refresh watchdog, staleForMs=" + staleForMs
+                + ", refreshIntervalMs=" + refreshIntervalMs);
+        activity.requestChatRefreshNow();
+        lastForcedChatRefreshAtMs = tickNow;
     }
 
     private boolean isFightSessionLikelyActive(MainActivity activity) {

@@ -14,6 +14,7 @@ import android.content.res.AssetManager;
 import android.media.AudioAttributes;
 import android.media.RingtoneManager;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -106,6 +107,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     private static final int AUTO_SUBMIT_RETRY_DELAY_MS = 180;
     private static final int AUTO_SUBMIT_MAX_RETRY_COUNT = 3;
     private static final long CAPTCHA_IMAGE_STABILIZE_DELAY_MS = 180L;
+    private static final long CAPTCHA_NETWORK_FALLBACK_DELAY_MS = 900L;
     private static final int CAPTCHA_NOTIFICATION_ID = 6107;
     private static final String CAPTCHA_NOTIFICATION_CHANNEL_ID = "captcha_alerts";
     public ActivityMainBinding binding;
@@ -117,22 +119,27 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     private QuickButtonsPanel quickButtonsPanel;
     private WebView chatRefrWebView;
     private final java.util.List<WebView> chatPopupWebViews = new java.util.ArrayList<>();
-    private final Handler chatRefreshHandler = new Handler(Looper.getMainLooper());
+    private final Handler chatRefreshHandler = createMainHandler();
     private Runnable chatRefreshRunnable;
-    private final Handler roomUsersPollingHandler = new Handler(Looper.getMainLooper());
+    private final Handler roomUsersPollingHandler = createMainHandler();
     private Runnable roomUsersPollingRunnable;
     private int chatRefreshSeconds = CHAT_REFRESH_DEFAULT_SECONDS;
     private int chatFyo = 0;
+    // Временная метка последнего запроса chat polling (`ch.php?show=1`).
+    // Используется foreground-сервисом как watchdog, чтобы в фоне не было "тихих" пауз.
+    private volatile long lastChatRefreshAtMs = 0L;
     // Временная метка последнего ручного обновления списка комнаты (`ch.php?lo=1`).
     // Используется как анти-спам guard, когда авто-нападение включено.
     private long lastRoomUsersRefreshAtMs = 0L;
     private static final long ROOM_USERS_REFRESH_MIN_INTERVAL_MS = 1000L;
     private boolean chatLatrus = false;
     private AlertDialog activeFightCaptchaDialog;
-    private final Handler fightCaptchaHandler = new Handler(Looper.getMainLooper());
+    private final Handler fightCaptchaHandler = createMainHandler();
     private Runnable fightCaptchaRefreshRunnable;
     private long activeFightCaptchaImageAtMs = 0L;
     private int activeFightCaptchaImageHash = 0;
+    private boolean activeFightCaptchaImageLocked = false;
+    private long activeFightCaptchaLoadSeq = 0L;
     private String activeFightCaptchaUrl = "";
     private String activeFightFinishUrl = "";
     private boolean replacingFightCaptchaDialog = false;
@@ -151,6 +158,17 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                             }
                         }
                     });
+
+    /**
+     * Создает "асинхронный" main handler (API 28+), чтобы periodic callback-и
+     * меньше зависели от sync barrier UI-pipeline в фоне/lockscreen.
+     */
+    private static Handler createMainHandler() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            return Handler.createAsync(Looper.getMainLooper());
+        }
+        return new Handler(Looper.getMainLooper());
+    }
 
     // Доступ к ViewModel боя для других компонентов/фрагментов.
     public FightViewModel getFightViewModel() {
@@ -539,7 +557,11 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             if (sameCaptcha && sameFinish) {
                 Log.d(TAG, "showCaptchaDialog: already visible with same challenge, skip duplicate");
             } else {
-                Log.d(TAG, "showCaptchaDialog: dialog already visible, ignore new challenge while open");
+                Log.d(TAG, "showCaptchaDialog: replacing dialog with newer challenge");
+                replacingFightCaptchaDialog = true;
+                activeFightCaptchaLoadSeq++;
+                activeFightCaptchaDialog.dismiss();
+                binding.getRoot().post(() -> showCaptchaDialog(captchaUrl, finishUrl));
             }
             return;
         }
@@ -619,6 +641,8 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             activeFightCaptchaDialog = null;
             activeFightCaptchaUrl = "";
             activeFightFinishUrl = "";
+            activeFightCaptchaImageLocked = false;
+            activeFightCaptchaLoadSeq++;
             if (replacingFightCaptchaDialog) {
                 replacingFightCaptchaDialog = false;
             } else if (!captchaSubmitted[0]) {
@@ -664,11 +688,14 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
 
         activeFightCaptchaImageAtMs = 0L;
         activeFightCaptchaImageHash = 0;
+        activeFightCaptchaImageLocked = false;
         loadCaptchaImageAsync(captchaUrl, imageView, progressBar);
         refreshButton.setOnClickListener(v -> {
             activeFightCaptchaImageAtMs = 0L;
             activeFightCaptchaImageHash = 0;
-            updateCaptchaImageFromCaptured(imageView, progressBar, captchaUrl, true);
+            activeFightCaptchaImageLocked = false;
+            loadCaptchaImageAsync(captchaUrl, imageView, progressBar);
+            startFightCaptchaAutoRefresh(imageView, progressBar, captchaUrl);
         });
         startFightCaptchaAutoRefresh(imageView, progressBar, captchaUrl);
     }
@@ -847,16 +874,14 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
      * @param progressBar индикатор загрузки.
      */
     private void loadCaptchaImageAsync(String captchaUrl, android.widget.ImageView imageView, android.widget.ProgressBar progressBar) {
+        final long loadSeq = ++activeFightCaptchaLoadSeq;
         progressBar.setVisibility(View.VISIBLE);
         imageView.setImageDrawable(null);
         if (updateCaptchaImageFromCaptured(imageView, progressBar, captchaUrl, true)) {
             return;
         }
-        boolean allowNetworkFallback = false;
-        if (!allowNetworkFallback) {
-            Log.d(TAG, "loadCaptchaImageAsync: network fallback disabled, waiting for intercepted bytes");
-            return;
-        }
+        Log.d(TAG, "loadCaptchaImageAsync: waiting captured bytes before network fallback, delayMs="
+                + CAPTCHA_NETWORK_FALLBACK_DELAY_MS);
 
         byte[] cachedBytes = AppVars.LastFightCaptchaImageBytes;
         String cachedUrl = AppVars.LastFightCaptchaImageUrl;
@@ -875,37 +900,102 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             }
         }
 
-        // Важно: для боевой капчи используем байты, которые уже перехватил WebView для этого же URL.
-        // Это гарантирует, что картинка капчи соответствует finishUrl/vcode из того же состояния боя.
-        // Повторный GET code.php может вернуть уже другой challenge или "пустой" PNG (например, 258 bytes).
-        new Thread(() -> {
-            byte[] captchaBytes = downloadCaptchaImageBytes(captchaUrl);
-            final android.graphics.Bitmap bitmap = captchaBytes == null
-                    ? null
-                    : android.graphics.BitmapFactory.decodeByteArray(captchaBytes, 0, captchaBytes.length);
+        // Важно: повторный GET code.php может сгенерировать новый challenge.
+        // Поэтому даём WebView/interceptor приоритет и только после таймаута делаем fallback-запрос.
+        fightCaptchaHandler.postDelayed(() -> {
+            if (loadSeq != activeFightCaptchaLoadSeq) {
+                Log.d(TAG, "loadCaptchaImageAsync: skip stale delayed fallback, loadSeq=" + loadSeq
+                        + ", activeSeq=" + activeFightCaptchaLoadSeq);
+                return;
+            }
+            if (isFinishing() || isDestroyed()) {
+                return;
+            }
+            if (activeFightCaptchaDialog == null || !activeFightCaptchaDialog.isShowing()) {
+                return;
+            }
+            if (!isSameCaptchaUrl(captchaUrl, activeFightCaptchaUrl)) {
+                return;
+            }
+            if (activeFightCaptchaImageLocked) {
+                Log.d(TAG, "loadCaptchaImageAsync: challenge already locked from interceptor, skip network fallback");
+                return;
+            }
+            if (updateCaptchaImageFromCaptured(imageView, progressBar, captchaUrl, true)) {
+                Log.d(TAG, "loadCaptchaImageAsync: captured bytes arrived before fallback, skip network");
+                return;
+            }
+            if (activeFightCaptchaImageLocked) {
+                Log.d(TAG, "loadCaptchaImageAsync: challenge locked after captured update, skip network fallback");
+                return;
+            }
 
-            runOnUiThread(() -> {
-                if (isFinishing() || isDestroyed()) {
-                    return;
-                }
-                progressBar.setVisibility(View.GONE);
-                if (bitmap != null && captchaBytes != null) {
-                    if (hasFreshSameUrlCaptchaBytes && captchaBytes.length < 1024) {
-                        Log.w(TAG, "loadCaptchaImageAsync: network captcha is too small, keep cached preview, bytes=" + captchaBytes.length);
+            final long fallbackStartedAtMs = System.currentTimeMillis();
+            new Thread(() -> {
+                byte[] captchaBytes = downloadCaptchaImageBytes(captchaUrl);
+                final android.graphics.Bitmap bitmap = captchaBytes == null
+                        ? null
+                        : android.graphics.BitmapFactory.decodeByteArray(captchaBytes, 0, captchaBytes.length);
+
+                runOnUiThread(() -> {
+                    if (loadSeq != activeFightCaptchaLoadSeq) {
+                        Log.d(TAG, "loadCaptchaImageAsync: skip stale network result, loadSeq=" + loadSeq
+                                + ", activeSeq=" + activeFightCaptchaLoadSeq);
                         return;
                     }
-                    Log.d(TAG, "loadCaptchaImageAsync: bitmap decoded from network, url=" + captchaUrl
-                            + ", bytes=" + captchaBytes.length);
-                    imageView.setImageBitmap(bitmap);
-                } else {
-                    Log.w(TAG, "loadCaptchaImageAsync: bitmap decode failed, url=" + captchaUrl
-                            + ", bytes=" + (captchaBytes != null ? captchaBytes.length : 0));
-                    if (!hasFreshSameUrlCaptchaBytes) {
-                        Toast.makeText(this, "Failed to load captcha image", Toast.LENGTH_SHORT).show();
+                    if (isFinishing() || isDestroyed()) {
+                        return;
                     }
-                }
-            });
-        }, "fight-captcha-loader").start();
+                    if (!isSameCaptchaUrl(captchaUrl, activeFightCaptchaUrl)) {
+                        Log.d(TAG, "loadCaptchaImageAsync: skip stale fallback, activeCaptchaUrl=" + activeFightCaptchaUrl);
+                        return;
+                    }
+
+                    // Пока шёл fallback-запрос, bytes могли уже приехать из WebView interceptor — приоритет у них.
+                    if (activeFightCaptchaImageLocked) {
+                        Log.d(TAG, "loadCaptchaImageAsync: skip network apply, challenge already locked");
+                        return;
+                    }
+                    if (updateCaptchaImageFromCaptured(imageView, progressBar, captchaUrl, true)) {
+                        Log.d(TAG, "loadCaptchaImageAsync: intercepted bytes arrived during fallback, network result ignored");
+                        return;
+                    }
+                    if (activeFightCaptchaImageLocked) {
+                        Log.d(TAG, "loadCaptchaImageAsync: skip network apply after captured lock");
+                        return;
+                    }
+
+                    progressBar.setVisibility(View.GONE);
+                    if (bitmap != null && captchaBytes != null) {
+                        if (hasFreshSameUrlCaptchaBytes && captchaBytes.length < 1024) {
+                            Log.w(TAG, "loadCaptchaImageAsync: network captcha is too small, keep cached preview, bytes=" + captchaBytes.length);
+                            return;
+                        }
+                        Log.d(TAG, "loadCaptchaImageAsync: bitmap decoded from network, url=" + captchaUrl
+                                + ", bytes=" + captchaBytes.length
+                                + ", elapsedMs=" + (System.currentTimeMillis() - fallbackStartedAtMs));
+                        imageView.setImageBitmap(bitmap);
+
+                        long now = System.currentTimeMillis();
+                        activeFightCaptchaImageAtMs = now;
+                        activeFightCaptchaImageHash = Arrays.hashCode(captchaBytes);
+                        activeFightCaptchaImageLocked = true;
+                        stopFightCaptchaAutoRefresh();
+                        // Публикуем fallback-bytes в общий кэш капчи, чтобы последующий WebView-запрос
+                        // на тот же URL мог быть обслужен из памяти без повторного code.php запроса.
+                        AppVars.LastFightCaptchaImageBytes = captchaBytes;
+                        AppVars.LastFightCaptchaImageUrl = captchaUrl;
+                        AppVars.LastFightCaptchaImageAtMs = now;
+                    } else {
+                        Log.w(TAG, "loadCaptchaImageAsync: bitmap decode failed, url=" + captchaUrl
+                                + ", bytes=" + (captchaBytes != null ? captchaBytes.length : 0));
+                        if (!hasFreshSameUrlCaptchaBytes) {
+                            Toast.makeText(this, "Failed to load captcha image", Toast.LENGTH_SHORT).show();
+                        }
+                    }
+                });
+            }, "fight-captcha-loader").start();
+        }, CAPTCHA_NETWORK_FALLBACK_DELAY_MS);
     }
 
     private void tryRefreshCaptchaImageFromLatest(android.widget.ImageView imageView, long dialogShownAtMs, String initialCaptchaUrl) {
@@ -987,9 +1077,9 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         if (!isSameCaptchaUrl(expectedCaptchaUrl, latestUrl)) {
             if (forceUpdate) {
                 progressBar.setVisibility(View.VISIBLE);
+                Log.d(TAG, "updateCaptchaImageFromCaptured: skip foreign bytes, expected="
+                        + expectedCaptchaUrl + ", got=" + latestUrl);
             }
-            Log.d(TAG, "updateCaptchaImageFromCaptured: skip foreign bytes, expected="
-                    + expectedCaptchaUrl + ", got=" + latestUrl);
             return false;
         }
 
@@ -998,6 +1088,9 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         boolean hasNewTime = latestAtMs > activeFightCaptchaImageAtMs;
         boolean hasNewBytes = latestHash != activeFightCaptchaImageHash;
         if (!forceUpdate && !hasNewTime && !hasNewBytes) {
+            return false;
+        }
+        if (!forceUpdate && activeFightCaptchaImageLocked) {
             return false;
         }
         if (latestAtMs > 0L) {
@@ -1023,10 +1116,17 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
 
         imageView.setImageBitmap(latestBitmap);
         progressBar.setVisibility(View.GONE);
+        int previousHash = activeFightCaptchaImageHash;
         if (latestAtMs > 0L) {
             activeFightCaptchaImageAtMs = latestAtMs;
         }
         activeFightCaptchaImageHash = latestHash;
+        // Стабилизируем challenge в текущем popup: после первой отрисовки не перерисовываем
+        // автоматически, чтобы пользователь вводил код именно с зафиксированной картинки.
+        if (!forceUpdate && previousHash == 0) {
+            activeFightCaptchaImageLocked = true;
+            stopFightCaptchaAutoRefresh();
+        }
         Log.d(TAG, "updateCaptchaImageFromCaptured: image updated, bytes=" + latestBytes.length
                 + ", atMs=" + latestAtMs + ", url=" + latestUrl);
         return true;
@@ -1685,6 +1785,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     private void requestChatRefresh() {
         if (chatRefrWebView == null) return;
         long ts = System.currentTimeMillis();
+        lastChatRefreshAtMs = ts;
         String url = "http://neverlands.ru/ch.php?" + ts + "&show=1&fyo=" + chatFyo;
         Log.d(TAG, BG_TRACE_PREFIX + " requestChatRefresh: " + url);
         chatRefrWebView.loadUrl(url);
@@ -1705,6 +1806,14 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         requestChatRefresh();
     }
 
+    /**
+     * Возвращает таймстамп последнего запроса chat polling.
+     * Нужен foreground-сервису для детекта "зависшего" опроса в фоне.
+     */
+    public long getLastChatRefreshAtMs() {
+        return lastChatRefreshAtMs;
+    }
+
     public int getChatRefreshSeconds() {
         return chatRefreshSeconds;
     }
@@ -1718,6 +1827,14 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
 
     public int getChatFyo() {
         return chatFyo;
+    }
+
+    /**
+     * Возвращает true, если периодический chat polling должен быть активен.
+     * При `fyo=2` пользователь отключил показ сообщений, poll не форсируем.
+     */
+    public boolean isChatRefreshEnabled() {
+        return chatFyo != 2;
     }
 
     // Режимы чата: 0-все, 1-только личные, 2-не показывать.
@@ -1927,6 +2044,10 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                         // Перезагружаем нормальную страницу после небольшой задержки,
                         // чтобы JS успел выполниться
                         view.postDelayed(() -> {
+                            if (AppVars.IsFightCaptchaDialogVisible) {
+                                Log.d(TAG, "onPageFinished: skip POST reload while captcha dialog is visible");
+                                return;
+                            }
                             String reloadUrl = "http://neverlands.ru/main.php?get_id=56&act=10&go=inf";
                             if (ru.neverlands.abclient.utils.AppVars.VCode != null
                                     && !ru.neverlands.abclient.utils.AppVars.VCode.isEmpty()) {

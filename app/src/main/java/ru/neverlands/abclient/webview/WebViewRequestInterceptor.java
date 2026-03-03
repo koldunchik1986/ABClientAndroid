@@ -93,6 +93,29 @@ public class WebViewRequestInterceptor {
                 return null;
             }
 
+            if (urlString.contains("/modules/code/code.php")
+                    && ru.neverlands.abclient.utils.AppVars.IsFightCaptchaDialogVisible) {
+                byte[] cachedCaptchaBytes = ru.neverlands.abclient.utils.AppVars.LastFightCaptchaImageBytes;
+                String cachedCaptchaUrl = ru.neverlands.abclient.utils.AppVars.LastFightCaptchaImageUrl;
+                long cachedCaptchaAtMs = ru.neverlands.abclient.utils.AppVars.LastFightCaptchaImageAtMs;
+                long cachedAgeMs = cachedCaptchaAtMs > 0L
+                        ? (System.currentTimeMillis() - cachedCaptchaAtMs)
+                        : Long.MAX_VALUE;
+                if (cachedCaptchaBytes != null
+                        && cachedCaptchaBytes.length > 0
+                        && urlString.equals(cachedCaptchaUrl)
+                        && cachedAgeMs >= 0
+                        && cachedAgeMs <= 30_000L) {
+                    Log.d(TAG, "Serving cached fight captcha bytes: " + cachedCaptchaBytes.length
+                            + " for " + urlString + ", ageMs=" + cachedAgeMs);
+                    return new WebResourceResponse(
+                            "image/png",
+                            null,
+                            new ByteArrayInputStream(cachedCaptchaBytes)
+                    );
+                }
+            }
+
             // В автобое упрощаем: не тянем тяжёлые бойовые скрипты, которые не нужны нашему минимальному фрейму
             if (ru.neverlands.abclient.utils.AppVars.Profile != null
                     && ru.neverlands.abclient.utils.AppVars.Profile.LezDoAutoboi

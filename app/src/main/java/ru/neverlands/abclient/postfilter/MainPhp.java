@@ -1348,14 +1348,24 @@ public class MainPhp {
         String normalizedCaptchaUrl = captchaUrl.replaceFirst("^https://", "http://");
         String key = (logBoi == null ? "" : logBoi) + "|" + (fightExp == null ? "" : fightExp) + "|"
                 + (finishVcode == null ? "" : finishVcode) + "|" + normalizedCaptchaUrl;
-        // Если диалог уже открыт, не переоткрываем его новым challenge.
-        // Иначе при активном авто-цикле можно получить «шторм» popup-окон и постоянную ротацию капчи.
         if (AppVars.IsFightCaptchaDialogVisible) {
             if (key.equals(lastFightCaptchaDialogKey)) {
                 android.util.Log.d(TAG, "showFightCaptchaDialogOnce: dialog already visible for same key, skip");
-            } else {
-                android.util.Log.d(TAG, "showFightCaptchaDialogOnce: dialog already visible, ignore new key while open");
+                return;
             }
+            // Если challenge изменился при уже открытом popup — отправляем обновление.
+            // MainActivity сам корректно заменяет текущее окно на новое.
+            android.util.Log.d(TAG, "showFightCaptchaDialogOnce: dialog visible, update to new key");
+            lastFightCaptchaDialogKey = key;
+            lastFightCaptchaDialogAtMs = now;
+            if (AppVars.getContext() == null) {
+                android.util.Log.w(TAG, "showFightCaptchaDialogOnce: context is null while updating dialog");
+                return;
+            }
+            Intent updateIntent = new Intent(AppVars.ACTION_SHOW_CAPTCHA);
+            updateIntent.putExtra("captchaUrl", captchaUrl);
+            updateIntent.putExtra("finishUrl", normalizedFinishUrl);
+            LocalBroadcastManager.getInstance(AppVars.getContext()).sendBroadcast(updateIntent);
             return;
         }
         if (key.equals(lastFightCaptchaDialogKey) && (now - lastFightCaptchaDialogAtMs) < 3000L) {
