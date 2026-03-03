@@ -21,6 +21,10 @@ import ru.neverlands.abclient.utils.HelperStrings;
 public class LezFight {
     // Парсер состава боя из var logs (имена и уровни участников).
     private static final Pattern LOG_MEMBER_PATTERN = Pattern.compile("\\[1,\\d+,\"([^\"]+)\",(\\d+)");
+    // Дедуп только для обновления урона `LastBoiUron`.
+    // Важно: это НЕ маркер завершения боя. Маркер завершения (`LastBoiEndLog`)
+    // используется MainPhp/ChatFilter для счётчика поединков и не должен выставляться здесь.
+    private static volatile String lastDamageLogId = "";
     public boolean IsValid;
     public boolean IsBoi;
     public boolean IsWaitingForNextTurn;
@@ -929,7 +933,7 @@ public class LezFight {
      * считает суммарный урон из `var list = [[...]]` и запоминает его для статистики.
      */
     private void updateLastBoiDamageIfNeeded() {
-        if (LogBoi == null || LogBoi.isEmpty() || LogBoi.equals(AppVars.LastBoiEndLog)) {
+        if (LogBoi == null || LogBoi.isEmpty() || LogBoi.equals(lastDamageLogId)) {
             return;
         }
         String[] list = ParseString(_html, "var list = [[", 0);
@@ -941,7 +945,7 @@ public class LezFight {
             damage += parseIntSafe(list[idx], 0);
         }
         AppVars.LastBoiUron = String.valueOf(damage);
-        AppVars.LastBoiEndLog = LogBoi;
+        lastDamageLogId = LogBoi;
     }
 
     private int parseIntSafe(String value, int fallback) {

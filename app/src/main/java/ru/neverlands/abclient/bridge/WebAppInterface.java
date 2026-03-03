@@ -22,6 +22,7 @@ import java.util.Map;
 import java.util.zip.GZIPInputStream;
 
 import ru.neverlands.abclient.MainActivity;
+import ru.neverlands.abclient.manager.AutoFunctionsManager;
 import ru.neverlands.abclient.manager.ContactsManager;
 import ru.neverlands.abclient.model.AutoboiState;
 import ru.neverlands.abclient.proxy.CookiesManager;
@@ -34,6 +35,7 @@ import ru.neverlands.abclient.utils.Russian;
  * В JS этот объект доступен как `AndroidBridge`.
  */
 public class WebAppInterface {
+    private static final String BG_TRACE_PREFIX = "[BG_TRACE]";
     Context mContext;
 
     /** Конструктор, инициализирующий контекст. */
@@ -757,7 +759,7 @@ public class WebAppInterface {
 
     @JavascriptInterface
     public void AutoSelect() {
-        Log.d("WebAppInterface", "AutoSelect called");
+        Log.d("WebAppInterface", BG_TRACE_PREFIX + " AutoSelect called");
         MainActivity activity = getMainActivityOrNull();
         if (activity == null) return;
         activity.runOnUiThread(activity::requestAutoSelect);
@@ -765,7 +767,7 @@ public class WebAppInterface {
 
     @JavascriptInterface
     public void AutoTurn() {
-        Log.d("WebAppInterface", "AutoTurn called");
+        Log.d("WebAppInterface", BG_TRACE_PREFIX + " AutoTurn called");
         MainActivity activity = getMainActivityOrNull();
         if (activity == null) return;
         activity.runOnUiThread(activity::requestAutoTurn);
@@ -774,50 +776,27 @@ public class WebAppInterface {
     @JavascriptInterface
     public void AutoBoi() {
         Log.d("WebAppInterface", "AutoBoi called, current state: " + AppVars.Autoboi);
-
-        if (AppVars.Autoboi == AutoboiState.AutoboiOn) {
-            AppVars.Autoboi = AutoboiState.AutoboiOff;
-            if (AppVars.Profile != null) {
-                AppVars.Profile.LezDoAutoboi = false;
-                if (mContext != null) {
-                    AppVars.Profile.save(mContext);
+        boolean enable = AppVars.Autoboi != AutoboiState.AutoboiOn;
+        try {
+            if (mContext != null) {
+                AutoFunctionsManager.getInstance(mContext).setAutoFightEnabled(enable);
+            } else {
+                AppVars.Autoboi = enable ? AutoboiState.AutoboiOn : AutoboiState.AutoboiOff;
+                if (AppVars.Profile != null) {
+                    AppVars.Profile.LezDoAutoboi = enable;
                 }
             }
-            Log.d("WebAppInterface", "AutoBoi: switched to AutoboiOff and LezDoAutoboi=false");
-        } else {
-            AppVars.Autoboi = AutoboiState.AutoboiOn;
-            if (AppVars.Profile != null) {
-                AppVars.Profile.LezDoAutoboi = true;
-                if (mContext != null) {
-                    AppVars.Profile.save(mContext);
-                }
-            }
-            Log.d("WebAppInterface", "AutoBoi: switched to AutoboiOn and LezDoAutoboi=true");
-
-            // Если включили автобой в середине боя — сразу инициируем ход и обновление кадра
-            MainActivity activity = getMainActivityOrNull();
-            if (activity != null) {
-                activity.runOnUiThread(() -> {
-                    Log.d("WebAppInterface", "AutoBoi: triggering requestAutoTurn after toggle ON");
-                    activity.requestAutoTurn();
-                    String reloadUrl = "http://neverlands.ru/main.php?get_id=56&act=10&go=inf";
-                    if (ru.neverlands.abclient.utils.AppVars.VCode != null
-                            && !ru.neverlands.abclient.utils.AppVars.VCode.isEmpty()) {
-                        reloadUrl += "&vcode=" + ru.neverlands.abclient.utils.AppVars.VCode;
-                    }
-                    reloadUrl += "&ts=" + System.currentTimeMillis(); // форсируем перезагрузку кадра
-                    Log.d("WebAppInterface", "AutoBoi: loading fight frame " + reloadUrl);
-                    activity.getMainWebView().loadUrl(reloadUrl);
-                });
-            }
-
-
+            Log.d("WebAppInterface", BG_TRACE_PREFIX + " AutoBoi toggled: enable=" + enable
+                    + ", appVarsAutoboi=" + AppVars.Autoboi);
+        } catch (Exception e) {
+            Log.e("WebAppInterface", BG_TRACE_PREFIX + " AutoBoi toggle failed", e);
         }
     }
 
     @JavascriptInterface
     public void processFightHtml(String html) {
-        Log.d("WebAppInterface", "processFightHtml called");
+        Log.d("WebAppInterface", BG_TRACE_PREFIX + " processFightHtml called"
+                + ", htmlLen=" + (html == null ? 0 : html.length()));
         if (AppVars.mainActivity != null && AppVars.mainActivity.get() != null) {
             AppVars.mainActivity.get().getFightViewModel().processFightHtml(html);
         }
@@ -825,7 +804,7 @@ public class WebAppInterface {
 
     @JavascriptInterface
     public void AutoUd() {
-        Log.d("WebAppInterface", "AutoUd called");
+        Log.d("WebAppInterface", BG_TRACE_PREFIX + " AutoUd called");
         MainActivity activity = getMainActivityOrNull();
         if (activity == null) return;
         activity.runOnUiThread(activity::requestAutoTurn);

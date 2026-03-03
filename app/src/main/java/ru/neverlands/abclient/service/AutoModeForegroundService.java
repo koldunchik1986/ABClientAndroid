@@ -1,0 +1,386 @@
+package ru.neverlands.abclient.service;
+
+import android.app.Notification;
+import android.app.NotificationChannel;
+import android.app.NotificationManager;
+import android.app.PendingIntent;
+import android.app.Service;
+import android.content.Context;
+import android.content.Intent;
+import android.net.wifi.WifiManager;
+import android.os.Build;
+import android.os.Handler;
+import android.os.IBinder;
+import android.os.Looper;
+import android.os.PowerManager;
+import android.util.Log;
+
+import androidx.annotation.Nullable;
+import androidx.core.app.NotificationCompat;
+import androidx.core.content.ContextCompat;
+
+import ru.neverlands.abclient.MainActivity;
+import ru.neverlands.abclient.R;
+import ru.neverlands.abclient.manager.AutoFunctionsManager;
+import ru.neverlands.abclient.model.AutoboiState;
+import ru.neverlands.abclient.utils.AppVars;
+
+/**
+ * Foreground-service для поддержания авто-контуров при заблокированном экране.
+ *
+ * Задачи:
+ * - держать процесс в foreground режиме во время активного авто-режима,
+ * - удерживать CPU/Wi‑Fi (через WakeLock/WifiLock) только пока нужен авто-режим,
+ * - периодически пинговать UI-контур (room polling + auto-turn) через MainActivity, если Activity жива.
+ *
+ * Ограничения текущей архитектуры:
+ * - боевой pipeline всё ещё опирается на WebView/Activity,
+ * - если Activity уничтожена системой, сервис не может полностью заменить WebView-контур.
+ */
+public class AutoModeForegroundService extends Service {
+    private static final String TAG = "AutoModeFgService";
+    private static final String BG_TRACE_PREFIX = "[BG_TRACE]";
+
+    private static final String CHANNEL_ID = "auto_mode_background";
+    private static final int NOTIFICATION_ID = 6201;
+    private static final long TICK_INTERVAL_MS = 1000L;
+    private static final long NO_ACTIVITY_STOP_TIMEOUT_MS = 60_000L;
+    private static final long AUTO_TURN_MIN_INTERVAL_MS = 1000L;
+    private static final long ROOM_REFRESH_MIN_INTERVAL_MS = 1000L;
+    private static final long FIGHT_FRAME_RECOVERY_COOLDOWN_MS = 5_000L;
+
+    private static final String ACTION_SYNC = "ru.neverlands.abclient.action.AUTO_BG_SYNC";
+
+    private final Handler handler = new Handler(Looper.getMainLooper());
+    private Runnable tickRunnable;
+    private PowerManager.WakeLock wakeLock;
+    private WifiManager.WifiLock wifiLock;
+    private long lastMainActivitySeenAtMs = 0L;
+    private long lastRoomUsersTickAtMs = 0L;
+    private long lastAutoTurnTickAtMs = 0L;
+    private long lastFightFrameRecoveryAtMs = 0L;
+
+    /**
+     * Синхронизирует состояние сервиса с текущими авто-флагами.
+     */
+    public static void syncServiceState(Context context, String reason) {
+        if (context == null) {
+            return;
+        }
+        Context appContext = context.getApplicationContext();
+        boolean shouldRun = shouldRunInBackground(appContext);
+        Log.d(TAG, BG_TRACE_PREFIX + " syncServiceState: shouldRun=" + shouldRun + ", reason=" + reason);
+        if (shouldRun) {
+            Intent intent = new Intent(appContext, AutoModeForegroundService.class);
+            intent.setAction(ACTION_SYNC);
+            intent.putExtra("reason", reason);
+            ContextCompat.startForegroundService(appContext, intent);
+        } else {
+            appContext.stopService(new Intent(appContext, AutoModeForegroundService.class));
+        }
+    }
+
+    /**
+     * Единая проверка: нужен ли фоновый режим.
+     *
+     * Включаем сервис, если:
+     * - активен Авто-Бой, или
+     * - активно Авто-Нападение + включено Слежение за локацией.
+     */
+    public static boolean shouldRunInBackground(Context context) {
+        try {
+            AutoFunctionsManager autoFunctionsManager = AutoFunctionsManager.getInstance(context);
+            boolean autoFightEnabled = autoFunctionsManager.isAutoFightEnabled()
+                    || AppVars.Autoboi == AutoboiState.AutoboiOn;
+            boolean autoAttackEnabled = autoFunctionsManager.isAutoAttackEnabled();
+            boolean locationTrackingEnabled = autoFunctionsManager.isLocationTrackingEnabled();
+            return autoFightEnabled || (autoAttackEnabled && locationTrackingEnabled);
+        } catch (Exception e) {
+            Log.w(TAG, BG_TRACE_PREFIX + " shouldRunInBackground: fallback by AppVars.Autoboi", e);
+            return AppVars.Autoboi == AutoboiState.AutoboiOn;
+        }
+    }
+
+    @Override
+    public void onCreate() {
+        super.onCreate();
+        createNotificationChannelIfNeeded();
+        startForeground(NOTIFICATION_ID, buildNotification("Авто-режим работает в фоне"));
+        ensureLocks();
+        Log.d(TAG, BG_TRACE_PREFIX + " onCreate: foreground started");
+    }
+
+    @Override
+    public int onStartCommand(Intent intent, int flags, int startId) {
+        String reason = intent != null ? intent.getStringExtra("reason") : "unknown";
+        Log.d(TAG, BG_TRACE_PREFIX + " onStartCommand: reason=" + reason + ", startId=" + startId);
+        startTickLoop();
+        return START_STICKY;
+    }
+
+    @Override
+    public void onDestroy() {
+        stopTickLoop();
+        releaseLocks();
+        Log.d(TAG, BG_TRACE_PREFIX + " onDestroy: foreground stopped");
+        super.onDestroy();
+    }
+
+    @Nullable
+    @Override
+    public IBinder onBind(Intent intent) {
+        return null;
+    }
+
+    private void startTickLoop() {
+        if (tickRunnable != null) {
+            handler.removeCallbacks(tickRunnable);
+        }
+        tickRunnable = new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    boolean shouldRun = shouldRunInBackground(AutoModeForegroundService.this);
+                    if (!shouldRun) {
+                        Log.d(TAG, BG_TRACE_PREFIX + " tick: stopSelf (flags disabled)");
+                        stopSelf();
+                        return;
+                    }
+
+                    ensureLocks();
+                    runBackgroundTick();
+                } catch (Exception e) {
+                    Log.e(TAG, BG_TRACE_PREFIX + " tick: error", e);
+                } finally {
+                    if (tickRunnable != null) {
+                        handler.postDelayed(this, TICK_INTERVAL_MS);
+                    }
+                }
+            }
+        };
+        handler.post(tickRunnable);
+    }
+
+    private void stopTickLoop() {
+        if (tickRunnable != null) {
+            handler.removeCallbacks(tickRunnable);
+            tickRunnable = null;
+        }
+    }
+
+    private void runBackgroundTick() {
+        MainActivity activity = (AppVars.mainActivity != null) ? AppVars.mainActivity.get() : null;
+        long now = System.currentTimeMillis();
+        if (activity == null) {
+            if (lastMainActivitySeenAtMs == 0L) {
+                lastMainActivitySeenAtMs = now;
+            }
+            long noActivityForMs = now - lastMainActivitySeenAtMs;
+            Log.d(TAG, BG_TRACE_PREFIX + " tick: mainActivity=null, noActivityForMs=" + noActivityForMs);
+            if (noActivityForMs >= NO_ACTIVITY_STOP_TIMEOUT_MS) {
+                Log.d(TAG, BG_TRACE_PREFIX + " tick: stopSelf (no activity for too long)");
+                stopSelf();
+            }
+            return;
+        }
+
+        lastMainActivitySeenAtMs = now;
+        activity.runOnUiThread(() -> {
+            try {
+                AutoFunctionsManager autoFunctionsManager = AutoFunctionsManager.getInstance(activity);
+                boolean locationTrackingEnabled = autoFunctionsManager.isLocationTrackingEnabled();
+                boolean autoFightEnabled = autoFunctionsManager.isAutoFightEnabled()
+                        || AppVars.Autoboi == AutoboiState.AutoboiOn;
+                boolean captchaDialogVisible = AppVars.IsFightCaptchaDialogVisible;
+                int walkersPollIntervalSec = autoFunctionsManager.getWalkersPollIntervalSec();
+                long roomTickIntervalMs = Math.max(
+                        ROOM_REFRESH_MIN_INTERVAL_MS,
+                        walkersPollIntervalSec * 1000L
+                );
+                long tickNow = System.currentTimeMillis();
+
+                boolean fightLikelyActive = isFightSessionLikelyActive(activity);
+                Log.d(TAG, BG_TRACE_PREFIX + " uiTick: locationTracking=" + locationTrackingEnabled
+                        + ", autoFight=" + autoFightEnabled
+                        + ", captchaDialogVisible=" + captchaDialogVisible
+                        + ", walkersPollIntervalSec=" + walkersPollIntervalSec
+                        + ", fightLikelyActive=" + fightLikelyActive);
+
+                if (locationTrackingEnabled) {
+                    if (tickNow - lastRoomUsersTickAtMs >= roomTickIntervalMs) {
+                        activity.requestRoomUsersRefreshSoon();
+                        lastRoomUsersTickAtMs = tickNow;
+                    } else {
+                        Log.d(TAG, BG_TRACE_PREFIX + " uiTick: room refresh throttled, remainingMs="
+                                + (roomTickIntervalMs - (tickNow - lastRoomUsersTickAtMs)));
+                    }
+                }
+
+                if (autoFightEnabled && fightLikelyActive && !captchaDialogVisible) {
+                    // Recovery после renderer restart/срыва навигации:
+                    // если бой активен по AppVars, но top frame ушёл с fight.frame,
+                    // форсируем возврат на боевой URL c cooldown.
+                    if (shouldRecoverFightFrame() &&
+                            (tickNow - lastFightFrameRecoveryAtMs) >= FIGHT_FRAME_RECOVERY_COOLDOWN_MS) {
+                        String reloadUrl = buildFightFrameReloadUrl();
+                        Log.d(TAG, BG_TRACE_PREFIX + " uiTick: fight frame recovery -> " + reloadUrl);
+                        activity.getMainWebView().loadUrl(reloadUrl);
+                        lastFightFrameRecoveryAtMs = tickNow;
+                        return;
+                    }
+
+                    if (tickNow - lastAutoTurnTickAtMs >= AUTO_TURN_MIN_INTERVAL_MS) {
+                        activity.requestAutoTurn();
+                        lastAutoTurnTickAtMs = tickNow;
+                    } else {
+                        Log.d(TAG, BG_TRACE_PREFIX + " uiTick: autoTurn throttled, remainingMs="
+                                + (AUTO_TURN_MIN_INTERVAL_MS - (tickNow - lastAutoTurnTickAtMs)));
+                    }
+                } else if (autoFightEnabled && captchaDialogVisible) {
+                    Log.d(TAG, BG_TRACE_PREFIX + " uiTick: skip autoTurn, captcha dialog visible");
+                }
+            } catch (Exception e) {
+                Log.e(TAG, BG_TRACE_PREFIX + " uiTick: failed", e);
+            }
+        });
+    }
+
+    private boolean isFightSessionLikelyActive(MainActivity activity) {
+        String mainHtml = AppVars.ContentMainPhp;
+        if (mainHtml != null && (mainHtml.contains("var fight_ty") || mainHtml.contains("magic_slots();"))) {
+            return true;
+        }
+
+        if (activity != null && activity.getMainWebView() != null) {
+            String currentMainUrl = activity.getMainWebView().getUrl();
+            if (currentMainUrl != null && currentMainUrl.contains("get_id=56&act=10&go=inf")) {
+                return true;
+            }
+        }
+
+        String topUrl = AppVars.url_main_top;
+        if (topUrl != null && topUrl.contains("get_id=56&act=10&go=inf")) {
+            return true;
+        }
+        String fightLink = AppVars.FightLink;
+        return fightLink != null && fightLink.contains("get_id=61&act=");
+    }
+
+    /**
+     * Проверка рассинхрона верхнего фрейма:
+     * - fight-сессия активна (по AppVars),
+     * - но `url_main_top` уже не указывает на fight.frame.
+     */
+    private boolean shouldRecoverFightFrame() {
+        String fightLink = AppVars.FightLink;
+        boolean fightLinkActive = fightLink != null && fightLink.contains("get_id=61&act=");
+        String topUrl = AppVars.url_main_top;
+        boolean topOnFightFrame = topUrl != null && topUrl.contains("get_id=56&act=10&go=inf");
+        return fightLinkActive && !topOnFightFrame;
+    }
+
+    /**
+     * Формирует URL возврата на fight.frame (с vcode, если доступен).
+     */
+    private String buildFightFrameReloadUrl() {
+        String reloadUrl = "http://neverlands.ru/main.php?get_id=56&act=10&go=inf";
+        if (AppVars.VCode != null && !AppVars.VCode.isEmpty()) {
+            reloadUrl += "&vcode=" + AppVars.VCode;
+        }
+        reloadUrl += "&ts=" + System.currentTimeMillis();
+        return reloadUrl;
+    }
+
+    @SuppressWarnings("deprecation")
+    private void ensureLocks() {
+        if (wakeLock == null) {
+            PowerManager powerManager = (PowerManager) getSystemService(Context.POWER_SERVICE);
+            if (powerManager != null) {
+                wakeLock = powerManager.newWakeLock(
+                        PowerManager.PARTIAL_WAKE_LOCK,
+                        "ru.neverlands.abclient:AutoModeWakeLock");
+                wakeLock.setReferenceCounted(false);
+            }
+        }
+        if (wakeLock != null && !wakeLock.isHeld()) {
+            wakeLock.acquire();
+            Log.d(TAG, BG_TRACE_PREFIX + " ensureLocks: wakeLock acquired");
+        }
+
+        if (wifiLock == null) {
+            try {
+                WifiManager wifiManager = (WifiManager) getApplicationContext().getSystemService(Context.WIFI_SERVICE);
+                if (wifiManager != null) {
+                    int wifiLockMode = WifiManager.WIFI_MODE_FULL;
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                        wifiLockMode = WifiManager.WIFI_MODE_FULL_LOW_LATENCY;
+                    }
+                    wifiLock = wifiManager.createWifiLock(
+                            wifiLockMode,
+                            "ru.neverlands.abclient:AutoModeWifiLock");
+                    wifiLock.setReferenceCounted(false);
+                }
+            } catch (Exception e) {
+                Log.w(TAG, BG_TRACE_PREFIX + " ensureLocks: wifiLock unavailable", e);
+            }
+        }
+        if (wifiLock != null && !wifiLock.isHeld()) {
+            wifiLock.acquire();
+            Log.d(TAG, BG_TRACE_PREFIX + " ensureLocks: wifiLock acquired");
+        }
+    }
+
+    private void releaseLocks() {
+        if (wakeLock != null && wakeLock.isHeld()) {
+            wakeLock.release();
+            Log.d(TAG, BG_TRACE_PREFIX + " releaseLocks: wakeLock released");
+        }
+        wakeLock = null;
+
+        if (wifiLock != null && wifiLock.isHeld()) {
+            wifiLock.release();
+            Log.d(TAG, BG_TRACE_PREFIX + " releaseLocks: wifiLock released");
+        }
+        wifiLock = null;
+    }
+
+    private void createNotificationChannelIfNeeded() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) {
+            return;
+        }
+        NotificationManager notificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+        if (notificationManager == null) {
+            return;
+        }
+        NotificationChannel channel = new NotificationChannel(
+                CHANNEL_ID,
+                "Фоновый авто-режим",
+                NotificationManager.IMPORTANCE_LOW
+        );
+        channel.setDescription("Поддерживает авто-режимы при заблокированном экране");
+        channel.setShowBadge(false);
+        notificationManager.createNotificationChannel(channel);
+    }
+
+    private Notification buildNotification(String contentText) {
+        Intent openIntent = new Intent(this, MainActivity.class);
+        openIntent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+        PendingIntent pendingIntent = PendingIntent.getActivity(
+                this,
+                0,
+                openIntent,
+                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
+        );
+
+        return new NotificationCompat.Builder(this, CHANNEL_ID)
+                .setSmallIcon(R.drawable.ic_notification)
+                .setContentTitle("ABClient: фоновый авто-режим")
+                .setContentText(contentText)
+                .setOngoing(true)
+                .setSilent(true)
+                .setPriority(NotificationCompat.PRIORITY_LOW)
+                .setCategory(NotificationCompat.CATEGORY_SERVICE)
+                .setContentIntent(pendingIntent)
+                .build();
+    }
+}

@@ -17,6 +17,7 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.os.PowerManager;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -35,6 +36,8 @@ import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.ActionBarDrawerToggle;
 import androidx.appcompat.app.AlertDialog;
@@ -87,6 +90,7 @@ import ru.neverlands.abclient.utils.AppVars;
 import ru.neverlands.abclient.utils.Chat;
 import ru.neverlands.abclient.utils.Russian;
 import ru.neverlands.abclient.webview.WebViewRequestInterceptor;
+import ru.neverlands.abclient.service.AutoModeForegroundService;
 
 import androidx.lifecycle.ViewModelProvider;
 import ru.neverlands.abclient.ui.viewmodel.FightViewModel;
@@ -94,11 +98,13 @@ import ru.neverlands.abclient.ui.QuickButtonsPanel;
 
 public class MainActivity extends AppCompatActivity implements NavigationView.OnNavigationItemSelectedListener {
     private static final String TAG = "MainActivity";
+    private static final String BG_TRACE_PREFIX = "[BG_TRACE]";
     private static final String BUILD_MARKER = "2026-02-27_01-34";
-    private static final int REQUEST_CODE_CONTACTS = 1001;
     private static final int REQUEST_CODE_POST_NOTIFICATIONS = 1002;
     private static final int CHAT_REFRESH_DEFAULT_SECONDS = 12;
     private static final int CHAT_REFRESH_INITIAL_DELAY_MS = 1000;
+    private static final int AUTO_SUBMIT_RETRY_DELAY_MS = 180;
+    private static final int AUTO_SUBMIT_MAX_RETRY_COUNT = 3;
     private static final long CAPTCHA_IMAGE_STABILIZE_DELAY_MS = 180L;
     private static final int CAPTCHA_NOTIFICATION_ID = 6107;
     private static final String CAPTCHA_NOTIFICATION_CHANNEL_ID = "captcha_alerts";
@@ -130,6 +136,21 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     private String activeFightCaptchaUrl = "";
     private String activeFightFinishUrl = "";
     private boolean replacingFightCaptchaDialog = false;
+    private boolean appBroadcastReceiverRegistered = false;
+    private boolean screenStateReceiverRegistered = false;
+    private final ActivityResultLauncher<Intent> contactsActivityLauncher =
+            registerForActivityResult(
+                    new ActivityResultContracts.StartActivityForResult(),
+                    result -> {
+                        Intent data = result.getData();
+                        if (result.getResultCode() == RESULT_OK && data != null) {
+                            String url = data.getStringExtra("open_pinfo_url");
+                            String title = data.getStringExtra("open_pinfo_title");
+                            if (url != null && tabManager != null) {
+                                tabManager.openTab(url, title != null ? title : "PINFO");
+                            }
+                        }
+                    });
 
     // Доступ к ViewModel боя для других компонентов/фрагментов.
     public FightViewModel getFightViewModel() {
@@ -181,15 +202,19 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
      */
     public void requestRoomUsersRefreshSoon() {
         if (binding == null || binding.appBarMain == null || binding.appBarMain.contentMain == null) {
+            Log.d(TAG, BG_TRACE_PREFIX + " requestRoomUsersRefreshSoon: skip binding=null");
             return;
         }
         WebView chatUsersWebView = binding.appBarMain.contentMain.chatUsersWebview;
         if (chatUsersWebView == null) {
+            Log.d(TAG, BG_TRACE_PREFIX + " requestRoomUsersRefreshSoon: skip chatUsersWebView=null");
             return;
         }
 
         long now = System.currentTimeMillis();
         if (now - lastRoomUsersRefreshAtMs < ROOM_USERS_REFRESH_MIN_INTERVAL_MS) {
+            Log.d(TAG, BG_TRACE_PREFIX + " requestRoomUsersRefreshSoon: throttled, deltaMs="
+                    + (now - lastRoomUsersRefreshAtMs));
             return;
         }
 
@@ -198,6 +223,108 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         AppVars.url_ch_list = roomUrl;
         chatUsersWebView.loadUrl(roomUrl);
         lastRoomUsersRefreshAtMs = now;
+    }
+
+    /**
+     * Возвращает true, если авто-контуры должны продолжать работу в фоне.
+     *
+     * Используем общий критерий из foreground-service, чтобы логика включения/выключения
+     * оставалась консистентной между Activity и сервисом.
+     */
+    private boolean shouldKeepBackgroundLoops() {
+        return AutoModeForegroundService.shouldRunInBackground(this);
+    }
+
+    /**
+     * Логирует сводное состояние фона/питания/авто-флагов для lockscreen-диагностики.
+     */
+    private void logBackgroundState(String stage) {
+        boolean autoFightEnabled = false;
+        boolean autoAttackEnabled = false;
+        boolean locationTrackingEnabled = false;
+        try {
+            AutoFunctionsManager autoFunctionsManager = AutoFunctionsManager.getInstance(this);
+            autoFightEnabled = autoFunctionsManager.isAutoFightEnabled();
+            autoAttackEnabled = autoFunctionsManager.isAutoAttackEnabled();
+            locationTrackingEnabled = autoFunctionsManager.isLocationTrackingEnabled();
+        } catch (Exception e) {
+            Log.w(TAG, BG_TRACE_PREFIX + " " + stage + ": failed to read auto flags", e);
+        }
+
+        boolean isInteractive = true;
+        boolean isDeviceIdleMode = false;
+        boolean batteryOptimized = false;
+        try {
+            PowerManager powerManager = (PowerManager) getSystemService(Context.POWER_SERVICE);
+            if (powerManager != null) {
+                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.KITKAT_WATCH) {
+                    isInteractive = powerManager.isInteractive();
+                }
+                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
+                    isDeviceIdleMode = powerManager.isDeviceIdleMode();
+                    batteryOptimized = !powerManager.isIgnoringBatteryOptimizations(getPackageName());
+                }
+            }
+        } catch (Exception e) {
+            Log.w(TAG, BG_TRACE_PREFIX + " " + stage + ": failed to read power state", e);
+        }
+
+        Log.d(TAG, BG_TRACE_PREFIX + " " + stage
+                + ": interactive=" + isInteractive
+                + ", idleMode=" + isDeviceIdleMode
+                + ", batteryOptimized=" + batteryOptimized
+                + ", autoFight=" + autoFightEnabled
+                + ", appVarsAutoboi=" + AppVars.Autoboi
+                + ", autoAttack=" + autoAttackEnabled
+                + ", locationTracking=" + locationTrackingEnabled
+                + ", chatRefreshActive=" + (chatRefreshRunnable != null)
+                + ", roomPollingActive=" + (roomUsersPollingRunnable != null));
+    }
+
+    private void registerAppBroadcastReceiverIfNeeded() {
+        if (appBroadcastReceiverRegistered) {
+            return;
+        }
+        IntentFilter filter = new IntentFilter();
+        filter.addAction(AppVars.ACTION_ADD_CHAT_MESSAGE);
+        filter.addAction(AppVars.ACTION_WEBVIEW_LOAD_URL);
+        filter.addAction(AppVars.ACTION_WEBVIEW_EVAL_JS);
+        filter.addAction(AppVars.ACTION_SHOW_CAPTCHA);
+        filter.addAction(AppVars.ACTION_STOP_AUTOFISH);
+        LocalBroadcastManager.getInstance(this).registerReceiver(broadcastReceiver, filter);
+        appBroadcastReceiverRegistered = true;
+        Log.d(TAG, BG_TRACE_PREFIX + " registerAppBroadcastReceiverIfNeeded: registered");
+    }
+
+    private void unregisterAppBroadcastReceiverIfNeeded() {
+        if (!appBroadcastReceiverRegistered) {
+            return;
+        }
+        LocalBroadcastManager.getInstance(this).unregisterReceiver(broadcastReceiver);
+        appBroadcastReceiverRegistered = false;
+        Log.d(TAG, BG_TRACE_PREFIX + " unregisterAppBroadcastReceiverIfNeeded: unregistered");
+    }
+
+    private void registerScreenStateReceiverIfNeeded() {
+        if (screenStateReceiverRegistered) {
+            return;
+        }
+        IntentFilter filter = new IntentFilter();
+        filter.addAction(Intent.ACTION_SCREEN_OFF);
+        filter.addAction(Intent.ACTION_SCREEN_ON);
+        filter.addAction(Intent.ACTION_USER_PRESENT);
+        registerReceiver(screenStateReceiver, filter);
+        screenStateReceiverRegistered = true;
+        Log.d(TAG, BG_TRACE_PREFIX + " registerScreenStateReceiverIfNeeded: registered");
+    }
+
+    private void unregisterScreenStateReceiverIfNeeded() {
+        if (!screenStateReceiverRegistered) {
+            return;
+        }
+        unregisterReceiver(screenStateReceiver);
+        screenStateReceiverRegistered = false;
+        Log.d(TAG, BG_TRACE_PREFIX + " unregisterScreenStateReceiverIfNeeded: unregistered");
     }
 
     // Автовыбор: берем HTML текущего боя и отправляем в FightViewModel.
@@ -210,11 +337,14 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     }
 
     private void restartRoomUsersPolling() {
+        Log.d(TAG, BG_TRACE_PREFIX + " restartRoomUsersPolling");
         stopRoomUsersPolling();
         startRoomUsersPolling();
     }
 
     private void startRoomUsersPolling() {
+        Log.d(TAG, BG_TRACE_PREFIX + " startRoomUsersPolling: begin, hasRunnable="
+                + (roomUsersPollingRunnable != null));
         if (roomUsersPollingRunnable != null) {
             roomUsersPollingHandler.removeCallbacks(roomUsersPollingRunnable);
         }
@@ -222,10 +352,12 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             @Override
             public void run() {
                 if (isFinishing() || isDestroyed()) {
+                    Log.d(TAG, BG_TRACE_PREFIX + " roomUsersPolling: stop due to finishing/destroyed");
                     return;
                 }
                 AutoFunctionsManager autoFunctionsManager = AutoFunctionsManager.getInstance(MainActivity.this);
                 if (!autoFunctionsManager.isLocationTrackingEnabled()) {
+                    Log.d(TAG, BG_TRACE_PREFIX + " roomUsersPolling: skip tick, locationTracking=false");
                     return;
                 }
                 requestRoomUsersRefreshSoon();
@@ -239,7 +371,10 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
 
         AutoFunctionsManager autoFunctionsManager = AutoFunctionsManager.getInstance(this);
         if (autoFunctionsManager.isLocationTrackingEnabled()) {
+            Log.d(TAG, BG_TRACE_PREFIX + " startRoomUsersPolling: first post");
             roomUsersPollingHandler.post(roomUsersPollingRunnable);
+        } else {
+            Log.d(TAG, BG_TRACE_PREFIX + " startRoomUsersPolling: locationTracking disabled");
         }
     }
 
@@ -247,10 +382,14 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         if (roomUsersPollingRunnable != null) {
             roomUsersPollingHandler.removeCallbacks(roomUsersPollingRunnable);
             roomUsersPollingRunnable = null;
+            Log.d(TAG, BG_TRACE_PREFIX + " stopRoomUsersPolling: stopped");
+        } else {
+            Log.d(TAG, BG_TRACE_PREFIX + " stopRoomUsersPolling: already stopped");
         }
     }
 
     public void requestAutoSelect() {
+        Log.d(TAG, BG_TRACE_PREFIX + " requestAutoSelect: start");
         binding.appBarMain.contentMain.webView.evaluateJavascript(
                 "(function() { return document.documentElement.innerHTML; })();",
                 html -> {
@@ -264,6 +403,11 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
 
     // Автоход: забираем HTML боя и формируем одно действие.
     public void requestAutoTurn() {
+        if (AppVars.IsFightCaptchaDialogVisible) {
+            Log.d(TAG, BG_TRACE_PREFIX + " requestAutoTurn: skip, captcha dialog visible");
+            return;
+        }
+        Log.d(TAG, BG_TRACE_PREFIX + " requestAutoTurn: start");
         Log.d(TAG, "requestAutoTurn: grabbing current HTML for auto-turn");
         binding.appBarMain.contentMain.webView.evaluateJavascript(
                 "(function() { return document.documentElement.innerHTML; })();",
@@ -277,6 +421,67 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                         Log.d(TAG, "requestAutoTurn: html is null");
                     }
                 });
+    }
+
+    /**
+     * Безопасная отправка auto-battle действия в WebView.
+     *
+     * Зачем:
+     * - устраняет race после SCREEN_ON/RESUME, когда страница уже жива, но AutoSubmit ещё не определён;
+     * - использует fallback через form submit, если JS-функция временно отсутствует.
+     *
+     * Зависимости:
+     * - `evaluateJavascript(...)` основного `webView`;
+     * - JS-контур `FightJs.AutoSubmit(...)` и резервный submit формы (`document.ff`/`document.forms[0]`).
+     */
+    private void submitAutoBattleActionToWebView(String result, int retriesLeft) {
+        if (result == null || binding == null || binding.appBarMain == null
+                || binding.appBarMain.contentMain == null
+                || binding.appBarMain.contentMain.webView == null) {
+            Log.w(TAG, "submitAutoBattleActionToWebView: skip, invalid state");
+            return;
+        }
+
+        com.google.gson.Gson gson = new com.google.gson.Gson();
+        String jsonArg = gson.toJson(result);
+        String script = "(function(payload){"
+                + "try{"
+                + "if(typeof window.AutoSubmit==='function'){window.AutoSubmit(payload);return 'ok_autosubmit';}"
+                + "if(typeof AutoSubmit==='function'){AutoSubmit(payload);return 'ok_AutoSubmit';}"
+                + "if(document&&document.ff&&typeof document.ff.submit==='function'){document.ff.submit();return 'ok_ff_submit';}"
+                + "if(document&&document.forms&&document.forms.length>0&&typeof document.forms[0].submit==='function'){document.forms[0].submit();return 'ok_form_submit';}"
+                + "return 'missing';"
+                + "}catch(e){"
+                + "console.log('ABCLIENT_AUTOBATTLE_SUBMIT_ERR:'+e);"
+                + "return 'error';"
+                + "}"
+                + "})(" + jsonArg + ")";
+
+        binding.appBarMain.contentMain.webView.evaluateJavascript(script, rawStatus -> {
+            String status = null;
+            try {
+                status = gson.fromJson(rawStatus, String.class);
+            } catch (Exception ignored) {
+                status = rawStatus;
+            }
+
+            boolean missing = status != null && status.contains("missing");
+            if (missing && retriesLeft > 0) {
+                int nextRetriesLeft = retriesLeft - 1;
+                Log.d(TAG, BG_TRACE_PREFIX + " submitAutoBattleAction: AutoSubmit missing, retry left=" + nextRetriesLeft);
+                binding.appBarMain.contentMain.webView.postDelayed(
+                        () -> submitAutoBattleActionToWebView(result, nextRetriesLeft),
+                        AUTO_SUBMIT_RETRY_DELAY_MS
+                );
+                return;
+            }
+
+            if (missing) {
+                Log.w(TAG, BG_TRACE_PREFIX + " submitAutoBattleAction: AutoSubmit still missing after retries");
+            } else {
+                Log.d(TAG, BG_TRACE_PREFIX + " submitAutoBattleAction: status=" + status);
+            }
+        });
     }
 
     /**
@@ -333,11 +538,10 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             boolean sameFinish = isSameFightFinishUrl(finishUrl, activeFightFinishUrl);
             if (sameCaptcha && sameFinish) {
                 Log.d(TAG, "showCaptchaDialog: already visible with same challenge, skip duplicate");
-                return;
+            } else {
+                Log.d(TAG, "showCaptchaDialog: dialog already visible, ignore new challenge while open");
             }
-            Log.d(TAG, "showCaptchaDialog: challenge changed, replacing active dialog");
-            replacingFightCaptchaDialog = true;
-            activeFightCaptchaDialog.dismiss();
+            return;
         }
         AppVars.IsFightCaptchaDialogVisible = true;
         showCaptchaSystemNotification();
@@ -988,6 +1192,24 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         }
     }
 
+    private final BroadcastReceiver screenStateReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            if (intent == null || intent.getAction() == null) {
+                return;
+            }
+            String action = intent.getAction();
+            Log.d(TAG, BG_TRACE_PREFIX + " screenStateReceiver: action=" + action);
+            logBackgroundState("screen_event_" + action);
+            AutoModeForegroundService.syncServiceState(context, "screen_event_" + action);
+
+            if (Intent.ACTION_SCREEN_OFF.equals(action) && shouldKeepBackgroundLoops()) {
+                startRoomUsersPolling();
+                requestRoomUsersRefreshSoon();
+            }
+        }
+    };
+
     private final BroadcastReceiver broadcastReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
@@ -1034,11 +1256,14 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         super.onCreate(savedInstanceState);
         isRoomManagerStarted = false;
         AppVars.init(this);
+        registerAppBroadcastReceiverIfNeeded();
+        registerScreenStateReceiverIfNeeded();
         createCaptchaNotificationChannel();
         requestPostNotificationsPermissionIfNeeded();
         ContactsManager.initialize(this);
         AppVars.mainActivity = new WeakReference<>(this);
         Log.i(TAG, "ABCLIENT_ANDROID_BUILD=" + BUILD_MARKER);
+        logBackgroundState("onCreate_afterInit");
         
         binding = ActivityMainBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
@@ -1096,10 +1321,9 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         fightViewModel = new ViewModelProvider(this).get(FightViewModel.class);
         fightViewModel.getSubmitAction().observe(this, result -> {
             if (result != null) {
-                // Avoid JS syntax errors/injection by encoding the argument as a JSON string.
-                com.google.gson.Gson gson = new com.google.gson.Gson();
-                String jsonArg = gson.toJson(result);
-                binding.appBarMain.contentMain.webView.evaluateJavascript("AutoSubmit(" + jsonArg + ")", null);
+                // Подаём действие через безопасный wrapper с retry,
+                // чтобы избежать race "AutoSubmit is not defined" после resume/screen on.
+                submitAutoBattleActionToWebView(result, AUTO_SUBMIT_MAX_RETRY_COUNT);
                 fightViewModel.onActionSubmitted();
             }
         });
@@ -1107,6 +1331,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         AppVars.NextCheckNoConnection = new Date(System.currentTimeMillis());
         startTimer();
         startChatRefresh();
+        AutoModeForegroundService.syncServiceState(this, "onCreate");
     }
 
     @SuppressLint("SetJavaScriptEnabled")
@@ -1171,25 +1396,30 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     @Override
     protected void onResume() {
         super.onResume();
-        IntentFilter filter = new IntentFilter();
-        filter.addAction(AppVars.ACTION_ADD_CHAT_MESSAGE);
-        filter.addAction(AppVars.ACTION_WEBVIEW_LOAD_URL);
-        filter.addAction(AppVars.ACTION_WEBVIEW_EVAL_JS);
-        filter.addAction(AppVars.ACTION_SHOW_CAPTCHA);
-        filter.addAction(AppVars.ACTION_STOP_AUTOFISH);
-        LocalBroadcastManager.getInstance(this).registerReceiver(broadcastReceiver, filter);
+        registerAppBroadcastReceiverIfNeeded();
+        registerScreenStateReceiverIfNeeded();
         startRoomUsersPolling();
+        logBackgroundState("onResume");
+        AutoModeForegroundService.syncServiceState(this, "onResume");
     }
 
     // Отписка от LocalBroadcast событий (во избежание утечек).
     @Override
     protected void onPause() {
         super.onPause();
-        LocalBroadcastManager.getInstance(this).unregisterReceiver(broadcastReceiver);
-        stopRoomUsersPolling();
+        boolean keepBackgroundLoops = shouldKeepBackgroundLoops();
+        logBackgroundState("onPause_keep=" + keepBackgroundLoops);
+        if (keepBackgroundLoops) {
+            startRoomUsersPolling();
+            requestRoomUsersRefreshSoon();
+        } else {
+            stopRoomUsersPolling();
+        }
+        AutoModeForegroundService.syncServiceState(this, "onPause");
     }
 
     // Общая настройка WebView (JS, cookies, bridge, окна).
+    @SuppressWarnings("deprecation")
     private void setupWebView(WebView webView, WebViewClient client) {
         WebSettings webSettings = webView.getSettings();
         webSettings.setJavaScriptEnabled(true);
@@ -1242,25 +1472,16 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         });
     }
 
-    @Override
-    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
-        super.onActivityResult(requestCode, resultCode, data);
-        if (requestCode == REQUEST_CODE_CONTACTS && resultCode == RESULT_OK && data != null) {
-            String url = data.getStringExtra("open_pinfo_url");
-            String title = data.getStringExtra("open_pinfo_title");
-            if (url != null && tabManager != null) {
-                tabManager.openTab(url, title != null ? title : "PINFO");
-            }
-        }
-    }
-
     // Освобождаем таймеры/вебвью и менеджеры при уничтожении Activity.
     @Override
     protected void onDestroy() {
         ru.neverlands.abclient.utils.DebugLogger.log("MainActivity: onDestroy() called.");
+        logBackgroundState("onDestroy_enter");
         stopTimer();
         stopChatRefresh();
         stopRoomUsersPolling();
+        unregisterAppBroadcastReceiverIfNeeded();
+        unregisterScreenStateReceiverIfNeeded();
         RoomManager.stopTracing();
         AppVars.IsFightCaptchaDialogVisible = false;
         if (activeFightCaptchaDialog != null && activeFightCaptchaDialog.isShowing()) {
@@ -1282,6 +1503,12 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         destroyWebView(binding.appBarMain.contentMain.chatUsersWebview);
         destroyWebView(binding.appBarMain.contentMain.chatButtonsWebview);
         destroyWebView(chatRefrWebView);
+
+        if (isExiting) {
+            AutoModeForegroundService.syncServiceState(this, "onDestroy_exiting");
+        } else {
+            AutoModeForegroundService.syncServiceState(this, "onDestroy");
+        }
 
         super.onDestroy();
     }
@@ -1386,7 +1613,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         } else if (id == R.id.nav_settings) {
         } else if (id == R.id.nav_contacts) {
             Intent intent = new Intent(this, ContactsActivity.class);
-            startActivityForResult(intent, REQUEST_CODE_CONTACTS);
+            contactsActivityLauncher.launch(intent);
         } else if (id == R.id.nav_logs) {
             Intent intent = new Intent(this, LogsActivity.class);
             startActivity(intent);
@@ -1430,6 +1657,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
 
     // Запуск периодического опроса чата (ch.php?show=1&fyo=...).
     private void startChatRefresh() {
+        Log.d(TAG, BG_TRACE_PREFIX + " startChatRefresh: seconds=" + chatRefreshSeconds);
         stopChatRefresh();
         chatRefreshRunnable = new Runnable() {
             @Override
@@ -1446,6 +1674,9 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         if (chatRefreshRunnable != null) {
             chatRefreshHandler.removeCallbacks(chatRefreshRunnable);
             chatRefreshRunnable = null;
+            Log.d(TAG, BG_TRACE_PREFIX + " stopChatRefresh: stopped");
+        } else {
+            Log.d(TAG, BG_TRACE_PREFIX + " stopChatRefresh: already stopped");
         }
     }
 
@@ -1455,6 +1686,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         if (chatRefrWebView == null) return;
         long ts = System.currentTimeMillis();
         String url = "http://neverlands.ru/ch.php?" + ts + "&show=1&fyo=" + chatFyo;
+        Log.d(TAG, BG_TRACE_PREFIX + " requestChatRefresh: " + url);
         chatRefrWebView.loadUrl(url);
 
         // Поддерживаем room-list "живым" только при включенном "Слежении за локацией".

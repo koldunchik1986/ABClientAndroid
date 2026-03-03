@@ -615,7 +615,7 @@ public class WebViewRequestInterceptor {
                     if (diffSec > 12 * 3600) diffSec -= 24 * 3600;
                     if (diffSec < -12 * 3600) diffSec += 24 * 3600;
                     long serverMs = baseDate.getTime() + diffSec * 1000L;
-                    if (shouldApplyServerTime(serverMs, maxDeltaMs)) {
+                    if (shouldApplyServerTime(serverMs, maxDeltaMs, source)) {
                         applyServerTime(serverMs, source + " httpDate=" + dateHeader.get(0));
                     }
                     return;
@@ -637,7 +637,7 @@ public class WebViewRequestInterceptor {
                 Log.w(TAG, "Server time sync (" + source + "): diffMs out of range, skipping");
                 return;
             }
-            if (shouldApplyServerTime(serverMs, maxDeltaMs)) {
+            if (shouldApplyServerTime(serverMs, maxDeltaMs, source)) {
                 applyServerTime(serverMs, source + " localDate");
             }
         } catch (Exception ignored) {
@@ -653,14 +653,23 @@ public class WebViewRequestInterceptor {
      * - Для chat ограничиваем изменение (5 минут), чтобы не было +2 часа после боя.
      * - Для but.php допускаем без ограничений (Long.MAX_VALUE).
      */
-    private static boolean shouldApplyServerTime(long serverMs, long maxDeltaMs) {
+    private static boolean shouldApplyServerTime(long serverMs, long maxDeltaMs, String source) {
         if (maxDeltaMs == Long.MAX_VALUE) return true;
         if (ru.neverlands.abclient.utils.AppVars.Profile == null) return true;
         if (ru.neverlands.abclient.utils.AppVars.Profile.ServDiff == Long.MIN_VALUE) return true;
         long currentServerMs = System.currentTimeMillis() - ru.neverlands.abclient.utils.AppVars.Profile.ServDiff;
         long delta = Math.abs(currentServerMs - serverMs);
         if (delta > maxDeltaMs) {
-            Log.w(TAG, "Server time sync rejected: deltaMs=" + delta + ", maxDeltaMs=" + maxDeltaMs);
+            // Chat может приходить с часовым поясом, отличным от HTTP Date/but.php.
+            // Если базовая синхронизация уже есть, пропускаем chat-коррекцию без WARN-шума.
+            if ("chat".equalsIgnoreCase(source)
+                    && ru.neverlands.abclient.utils.AppVars.ServerDateTime != null) {
+                Log.d(TAG, "Server time sync skipped (" + source + "): deltaMs=" + delta
+                        + ", maxDeltaMs=" + maxDeltaMs);
+            } else {
+                Log.w(TAG, "Server time sync rejected: deltaMs=" + delta
+                        + ", maxDeltaMs=" + maxDeltaMs + ", source=" + source);
+            }
             return false;
         }
         return true;

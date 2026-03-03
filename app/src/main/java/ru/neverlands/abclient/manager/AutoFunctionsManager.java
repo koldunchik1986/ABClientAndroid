@@ -6,6 +6,7 @@ import android.util.Log;
 
 import ru.neverlands.abclient.model.AutoboiState;
 import ru.neverlands.abclient.model.QuickActionType;
+import ru.neverlands.abclient.service.AutoModeForegroundService;
 import ru.neverlands.abclient.utils.AppVars;
 
 /**
@@ -14,6 +15,7 @@ import ru.neverlands.abclient.utils.AppVars;
  */
 public class AutoFunctionsManager {
     private static final String TAG = "AutoFunctionsManager";
+    private static final String BG_TRACE_PREFIX = "[BG_TRACE]";
     private static final String PREFS_NAME = "auto_functions_prefs";
     private static final String KEY_PREFIX = "auto_function_";
     private static final String KEY_AUTO_ATTACK_LEGACY = KEY_PREFIX + "auto_attack";
@@ -72,6 +74,7 @@ public class AutoFunctionsManager {
             AppVars.Profile.save(context);
         }
         Log.d(TAG, "setAutoFightEnabled: " + enabled);
+        syncBackgroundService("setAutoFightEnabled(" + enabled + ")");
 
         // При включении делаем форсированную загрузку боевого кадра (fight.frame).
         if (enabled) {
@@ -296,6 +299,7 @@ public class AutoFunctionsManager {
             }
         }
         Log.d(TAG, "setAutoAttackToolId: " + safeToolId);
+        syncBackgroundService("setAutoAttackToolId(" + safeToolId + ")");
     }
 
     private int normalizeAutoAttackToolId(int toolId) {
@@ -376,6 +380,7 @@ public class AutoFunctionsManager {
             AppVars.myWalkers2 = "";
         }
         Log.d(TAG, "setLocationTrackingEnabled: " + enabled);
+        syncBackgroundService("setLocationTrackingEnabled(" + enabled + ")");
 
         // При включении сразу запрашиваем room-list, чтобы RoomManager получил тик немедленно.
         if (AppVars.mainActivity != null && AppVars.mainActivity.get() != null) {
@@ -423,6 +428,15 @@ public class AutoFunctionsManager {
                 return sec;
             default:
                 return WALKERS_POLL_INTERVAL_DEFAULT_SEC;
+        }
+    }
+
+    private void syncBackgroundService(String reason) {
+        try {
+            AutoModeForegroundService.syncServiceState(context, reason);
+            Log.d(TAG, BG_TRACE_PREFIX + " syncBackgroundService: " + reason);
+        } catch (Exception e) {
+            Log.w(TAG, BG_TRACE_PREFIX + " syncBackgroundService failed: " + reason, e);
         }
     }
     

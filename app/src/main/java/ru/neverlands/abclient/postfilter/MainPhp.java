@@ -429,6 +429,15 @@ public class MainPhp {
         // var fight_ty — признак верхнего фрейма с данными о противнике
         boolean isFightFrame = html.contains("magic_slots();");
         boolean isFightTopFrame = html.contains("var fight_ty");
+        boolean isFightFinishAddress = address != null && address.contains("get_id=61") && address.contains("act=7");
+
+        // Fallback-подсчёт завершённого поединка по URL завершения боя.
+        // Нужен для случаев, когда сервер сразу переводит на `act=7` без повторного кадра `fight_ty`,
+        // и обычный путь `mainPhpFight(...)->registerFightEnd(...)` не успевает сработать.
+        if (isFightFinishAddress) {
+            registerFightEndByLogId(AppVars.LastBoiLog, "fight_finish_url");
+        }
+
         if (isFightFrame || isFightTopFrame) {
             android.util.Log.d(TAG, "=== FIGHT FRAME DETECTED ==="
                     + " isFightFrame=" + isFightFrame
@@ -1339,8 +1348,14 @@ public class MainPhp {
         String normalizedCaptchaUrl = captchaUrl.replaceFirst("^https://", "http://");
         String key = (logBoi == null ? "" : logBoi) + "|" + (fightExp == null ? "" : fightExp) + "|"
                 + (finishVcode == null ? "" : finishVcode) + "|" + normalizedCaptchaUrl;
-        if (AppVars.IsFightCaptchaDialogVisible && key.equals(lastFightCaptchaDialogKey) && (now - lastFightCaptchaDialogAtMs) < 1500L) {
-            android.util.Log.d(TAG, "showFightCaptchaDialogOnce: dialog already visible for same key, skip");
+        // Если диалог уже открыт, не переоткрываем его новым challenge.
+        // Иначе при активном авто-цикле можно получить «шторм» popup-окон и постоянную ротацию капчи.
+        if (AppVars.IsFightCaptchaDialogVisible) {
+            if (key.equals(lastFightCaptchaDialogKey)) {
+                android.util.Log.d(TAG, "showFightCaptchaDialogOnce: dialog already visible for same key, skip");
+            } else {
+                android.util.Log.d(TAG, "showFightCaptchaDialogOnce: dialog already visible, ignore new key while open");
+            }
             return;
         }
         if (key.equals(lastFightCaptchaDialogKey) && (now - lastFightCaptchaDialogAtMs) < 3000L) {
@@ -1540,11 +1555,22 @@ public class MainPhp {
 
     private static void registerFightEnd(LezFight fight) {
         String logId = fight != null ? fight.LogBoi : "";
+        registerFightEndByLogId(logId, "fight_frame");
+    }
+
+    /**
+     * Унифицированный учёт завершённого боя в статистике.
+     * Дедуп по `AppVars.LastBoiEndLog`, чтобы не считать один и тот же бой повторно
+     * при дублирующих загрузках верхнего фрейма/страницы завершения.
+     */
+    private static void registerFightEndByLogId(String logId, String source) {
         if (logId == null || logId.isEmpty()) return;
         if (!logId.equals(AppVars.LastBoiEndLog)) {
             AppVars.LastBoiEndLog = logId;
             ru.neverlands.abclient.utils.ChatStats.addFight();
-            android.util.Log.d(TAG, "registerFightEnd: fight counted, LogBoi=" + logId);
+            android.util.Log.d(TAG, "registerFightEnd: fight counted, source=" + source + ", LogBoi=" + logId);
+        } else {
+            android.util.Log.d(TAG, "registerFightEnd: skip duplicate, source=" + source + ", LogBoi=" + logId);
         }
     }
 

@@ -513,16 +513,15 @@ public class TabManager {
             public WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest request) {
                 return WebViewRequestInterceptor.intercept(request);
             }
-            
-            @Override
-            public boolean shouldOverrideUrlLoading(WebView view, String url) {
+
+            private boolean handleSecondaryUrlLoading(WebView view, String url) {
                 Log.d(TAG, "shouldOverrideUrlLoading secondary: " + url);
-                
+
                 // Обновляем URL для форума при навигации
                 if (url != null && url.indexOf("forum.neverlands.ru") != -1) {
                     updateTabUrl(view, url);
                 }
-                
+
                 // Перехватываем не форумные ссылки для открытия в новой вкладке
                 if (url != null && 
                     url.indexOf("forum.neverlands.ru") == -1 &&
@@ -544,6 +543,20 @@ public class TabManager {
                     return true;
                 }
                 return false;
+            }
+
+            @Override
+            public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
+                String url = request != null && request.getUrl() != null
+                        ? request.getUrl().toString()
+                        : null;
+                return handleSecondaryUrlLoading(view, url);
+            }
+
+            @Override
+            @SuppressWarnings("deprecation")
+            public boolean shouldOverrideUrlLoading(WebView view, String url) {
+                return handleSecondaryUrlLoading(view, url);
             }
             
             @Override

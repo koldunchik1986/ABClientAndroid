@@ -24,6 +24,7 @@ import ru.neverlands.abclient.utils.EventSounds;
 
 public class RoomManager {
     private static final String TAG = "RoomManager";
+    private static final String BG_TRACE_PREFIX = "[BG_TRACE]";
     private static final long AUTO_ATTACK_BLACKLIST_MS = 10_000L;
     private static final String AA_TRACE_PREFIX = "[AA_TRACE]";
     // Временный blacklist целей авто-нападения (аналог C# RoomManager.BlackList).
@@ -33,6 +34,9 @@ public class RoomManager {
     // Обработчик списка игроков комнаты (ch.php?lo=1).
     // В текущей версии метод process заглушен, но содержит портированную логику парсинга списка.
     public static String process(Context context, String html) {
+        Log.d(TAG, BG_TRACE_PREFIX + " process: htmlLen=" + (html == null ? 0 : html.length())
+                + ", contextNull=" + (context == null)
+                + ", doShowWalkers=" + AppVars.DoShowWalkers);
         FilterProcRoomResult filterResult = FilterProcRoom(html);
         FilterGetWalkers(html, filterResult);
         boolean fightActive = isFightSessionActive();
@@ -615,7 +619,9 @@ public class RoomManager {
 
     private static boolean isAutoAttackEnabled(Context context) {
         try {
-            return AutoFunctionsManager.getInstance(context).isAutoAttackEnabled();
+            boolean enabled = AutoFunctionsManager.getInstance(context).isAutoAttackEnabled();
+            Log.d(TAG, BG_TRACE_PREFIX + " isAutoAttackEnabled: " + enabled);
+            return enabled;
         } catch (Exception e) {
             Log.w(TAG, "isAutoAttackEnabled failed", e);
             return false;

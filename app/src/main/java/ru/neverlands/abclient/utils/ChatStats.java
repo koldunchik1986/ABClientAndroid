@@ -45,6 +45,7 @@ public class ChatStats {
     public static synchronized void addFight() {
         ensureLoaded();
         totalFights++;
+        Log.d(TAG, "addFight: totalFights=" + totalFights + ", date=" + loadedDate);
         saveInternal();
     }
 

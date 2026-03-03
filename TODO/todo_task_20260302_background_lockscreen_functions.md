@@ -8,12 +8,12 @@
 
 | Компонент | Детальный TODO | Статус |
 | --- | --- | --- |
-| `MainActivity.java` | `TODO/Debug/todo_MainActivity_lockscreen_functions_20260302.md` | `[x]` Проанализирован (статически) |
-| `AutoFunctionsManager.java` | `TODO/Debug/todo_AutoFunctionsManager_lockscreen_functions_20260302.md` | `[x]` Проанализирован (статически) |
-| `RoomManager.java` | `TODO/Debug/todo_RoomManager_lockscreen_functions_20260302.md` | `[x]` Проанализирован (статически) |
-| `WebAppInterface.java` | `TODO/Debug/todo_WebAppInterface_lockscreen_functions_20260302.md` | `[x]` Проанализирован (статически) |
-| `FightViewModel.java` | `TODO/Debug/todo_FightViewModel_lockscreen_functions_20260302.md` | `[x]` Проанализирован (статически) |
-| `AndroidManifest.xml` + runtime power constraints | `TODO/Debug/todo_BackgroundInfra_lockscreen_20260302.md` | `[x]` Проанализирован (статически) |
+| `MainActivity.java` | `TODO/Debug/todo_MainActivity_lockscreen_functions_20260302.md` | `[x]` Реализовано и логировано (первый этап) |
+| `AutoFunctionsManager.java` | `TODO/Debug/todo_AutoFunctionsManager_lockscreen_functions_20260302.md` | `[x]` Реализовано и логировано (первый этап) |
+| `RoomManager.java` | `TODO/Debug/todo_RoomManager_lockscreen_functions_20260302.md` | `[x]` Логирование добавлено |
+| `WebAppInterface.java` | `TODO/Debug/todo_WebAppInterface_lockscreen_functions_20260302.md` | `[x]` Реализовано и логировано (первый этап) |
+| `FightViewModel.java` | `TODO/Debug/todo_FightViewModel_lockscreen_functions_20260302.md` | `[x]` Логирование добавлено |
+| `AndroidManifest.xml` + runtime power constraints | `TODO/Debug/todo_BackgroundInfra_lockscreen_20260302.md` | `[x]` Реализовано (foreground service + locks) |
 
 ## Порядок выполнения
 - [x] 1) `MainActivity` (lifecycle + polling).

@@ -37,3 +37,7 @@
 - [x] Даже при генерации `Result` цепочка упирается в активность WebView/UI-потока.
 - [x] Отдельного фонового транспорта submit-команд (вне UI WebView) в текущей реализации нет.
 - [ ] Нужна runtime-проверка: перестаёт ли формироваться `_submitAction` или перестаёт исполняться `AutoSubmit(...)`.
+
+## Обновление по runtime-логу (2026-03-02)
+- [x] По `Logs/logcat_runtime_20260302_11.txt` подтвержден рассинхрон: `processFightHtml` вызывался, но при `AppVars.Autoboi=AutoboiOn` внутренний флаг был `autoBattleActive=false`.
+- [x] Внесён фикс: `processFightHtml(...)` перешёл на runtime-проверку (`UI flag || AppVars.Autoboi || Profile.LezDoAutoboi`).

@@ -30,3 +30,12 @@
 - [x] В текущем Android-коде не найдено использования `PowerManager.WakeLock` для удержания CPU при `screen off`.
 - [x] Явной инфраструктуры устойчивого фонового scheduler (service + notification + wake control) сейчас нет.
 - [ ] Нужно утвердить вариант реализации (foreground service + ограниченный wake-lock) до кодовых правок.
+
+## Обновление реализации (2026-03-02)
+- [x] Добавлен `AutoModeForegroundService` и регистрация `<service ... foregroundServiceType="dataSync" />`.
+- [x] Реализованы `PARTIAL_WAKE_LOCK` + `WifiLock` с release в `onDestroy`.
+- [x] Добавлен throttling сервисных тиков:
+  - room refresh по `walkers_poll_interval_sec`,
+  - auto-turn не чаще 1 раза в секунду.
+- [x] Добавлен recovery-переход в `fight.frame` при рассинхроне верхнего фрейма (cooldown 5 сек).
+- [x] Усилен детектор активного боя в сервисе: добавлен fallback по `MainWebView.getUrl()` в дополнение к `AppVars.ContentMainPhp/url_main_top`.
