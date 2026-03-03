@@ -779,18 +779,17 @@ public class QuickButtonsPanel {
             return;
         }
         long xp = ru.neverlands.abclient.utils.ChatStats.getTotalXp();
-        java.util.List<String> loot = ru.neverlands.abclient.utils.ChatStats.getLootLog();
+        java.util.Map<String, Long> items = ru.neverlands.abclient.utils.ChatStats.getItemCountByName();
         String logPath = ru.neverlands.abclient.utils.Chat.getCurrentLogPath();
 
         StringBuilder sb = new StringBuilder();
         sb.append("Опыт: ").append(xp).append("\n");
-        sb.append("Лут: ").append(loot.size()).append("\n\n");
+        sb.append("Предметов: ").append(items.size()).append("\n\n");
 
-        if (!loot.isEmpty()) {
-            sb.append("Последние находки:\n");
-            int start = Math.max(0, loot.size() - 10);
-            for (int i = start; i < loot.size(); i++) {
-                sb.append("• ").append(loot.get(i)).append("\n");
+        if (!items.isEmpty()) {
+            sb.append("Предметы (шт.):\n");
+            for (java.util.Map.Entry<String, Long> entry : items.entrySet()) {
+                sb.append("• ").append(entry.getKey()).append(": ").append(entry.getValue()).append(" шт.\n");
             }
             sb.append("\n");
         }
@@ -814,7 +813,7 @@ public class QuickButtonsPanel {
      * - Поединки (`ChatStats.getTotalFights()`),
      * - Денежные средства (`ChatStats.getTotalNv()`),
      * - Ресурсы (`ChatStats.getTotalResourceKg()` и `ChatStats.getResourceKgByType()`),
-     * - Последние предметные находки (`ChatStats.getLootLog()`), без денежных NV и без ресурсных записей в кг.
+     * - Предметы по названиям (`ChatStats.getItemCountByName()`), в формате "Название: N шт.".
      *
      * Зависимости:
      * - `ChatStats` хранит и восстанавливает дневную статистику из `Logs/YYYYMMDD_stat.txt`;
@@ -826,7 +825,7 @@ public class QuickButtonsPanel {
         long totalNv = ChatStats.getTotalNv();
         double totalResourcesKg = ChatStats.getTotalResourceKg();
         java.util.Map<String, Double> resourceKgByType = ChatStats.getResourceKgByType();
-        java.util.List<String> loot = ChatStats.getLootLog();
+        java.util.Map<String, Long> itemCountByName = ChatStats.getItemCountByName();
 
         StringBuilder sb = new StringBuilder();
         sb.append("Опыт: ").append(xp).append("\n");
@@ -842,11 +841,10 @@ public class QuickButtonsPanel {
             sb.append("\n");
         }
 
-        if (!loot.isEmpty()) {
-            sb.append("Последние находки:\n");
-            int start = Math.max(0, loot.size() - 10);
-            for (int i = start; i < loot.size(); i++) {
-                sb.append("• ").append(loot.get(i)).append("\n");
+        if (!itemCountByName.isEmpty()) {
+            sb.append("Предметы (шт.):\n");
+            for (java.util.Map.Entry<String, Long> entry : itemCountByName.entrySet()) {
+                sb.append("• ").append(entry.getKey()).append(": ").append(entry.getValue()).append(" шт.\n");
             }
         }
 

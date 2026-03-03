@@ -29,7 +29,7 @@ public class ChatStats {
      * Зависимости:
      * - используется только в {@link #parseMoneyNv(String)} для выделения суммы;
      * - результат влияет на распределение дропа в {@link #addLoot(String, List)}:
-     *   денежный дроп идёт в totalNv, предметный — в lootLog.
+     *   денежный дроп идёт в totalNv, предметный — в itemCountByName.
      */
     private static final Pattern NV_AMOUNT_PATTERN = Pattern.compile("(?i)(\\d[\\d\\s]*)\\s*NV");
     /**
@@ -70,6 +70,18 @@ public class ChatStats {
      * - используется UI-слоем для показа детальной разбивки в окне статистики.
      */
     private static final Map<String, Double> resourceKgByType = new LinkedHashMap<>();
+    /**
+     * Накопление предметного дропа по названиям в штуках.
+     *
+     * Пример:
+     * - "Золотой ключ" -> 3
+     *
+     * Зависимости:
+     * - пополняется в {@link #addLoot(String, List)} для non-NV/non-KG записей;
+     * - отображается в окне статистики через {@link ru.neverlands.abclient.ui.QuickButtonsPanel#buildStatsText()};
+     * - сохраняется как `ITEM_COUNT=<name>\t<count>` и восстанавливается в {@link #loadFromFile(String)}.
+     */
+    private static final Map<String, Long> itemCountByName = new LinkedHashMap<>();
     private static final List<String> lootLog = new ArrayList<>();
     // Состояние загрузки/кеша статистики за текущую дату.
     private static boolean loaded = false;
@@ -132,16 +144,24 @@ public class ChatStats {
         return Collections.unmodifiableMap(new LinkedHashMap<>(resourceKgByType));
     }
 
+    /**
+     * Возвращает разбивку предметного дропа по названиям: "название предмета" -> "количество (шт.)".
+     */
+    public static synchronized Map<String, Long> getItemCountByName() {
+        ensureLoaded();
+        return Collections.unmodifiableMap(new LinkedHashMap<>(itemCountByName));
+    }
+
     // Добавление лута (с таймштампом) — сразу сохраняем.
     public static synchronized void addLoot(String time, List<String> items) {
         ensureLoaded();
         if (items == null || items.isEmpty()) return;
-        String prefix = (time == null || time.isEmpty()) ? "" : (time + " ");
         for (String item : items) {
             if (item == null || item.isEmpty()) continue;
             // Разделяем денежный и предметный дроп:
             // - "NNN NV" -> суммируем в totalNv;
-            // - остальной дроп -> пишем в список последних находок.
+            // - "Название (x.xx кг)" -> суммируем как ресурс в кг;
+            // - остальной дроп -> суммируем как предмет в штуках.
             long nv = parseMoneyNv(item);
             if (nv > 0) {
                 totalNv += nv;
@@ -155,7 +175,12 @@ public class ChatStats {
                 resourceKgByType.put(resourceKgEntry.resourceName, current + resourceKgEntry.kilograms);
                 continue;
             }
-            lootLog.add(prefix + item);
+            String normalizedItem = item.trim();
+            if (!normalizedItem.isEmpty()) {
+                long currentCount = itemCountByName.containsKey(normalizedItem)
+                        ? itemCountByName.get(normalizedItem) : 0L;
+                itemCountByName.put(normalizedItem, currentCount + 1L);
+            }
         }
         saveInternal();
     }
@@ -174,6 +199,7 @@ public class ChatStats {
         totalNv = 0;
         totalResourceKg = 0;
         resourceKgByType.clear();
+        itemCountByName.clear();
         lootLog.clear();
         saveInternal();
     }
@@ -198,6 +224,7 @@ public class ChatStats {
         totalNv = 0;
         totalResourceKg = 0;
         resourceKgByType.clear();
+        itemCountByName.clear();
         lootLog.clear();
         statFile = resolveStatFile(date);
         if (statFile == null || !statFile.exists()) {
@@ -225,10 +252,27 @@ public class ChatStats {
                             resourceKgByType.put(resourceName, kilograms);
                         }
                     }
+                } else if (line.startsWith("ITEM_COUNT=")) {
+                    String value = line.substring(11);
+                    int splitPos = value.lastIndexOf('\t');
+                    if (splitPos > 0 && splitPos < value.length() - 1) {
+                        String itemName = value.substring(0, splitPos).trim();
+                        long count = parseLongSafe(value.substring(splitPos + 1));
+                        if (!itemName.isEmpty() && count > 0L) {
+                            itemCountByName.put(itemName, count);
+                        }
+                    }
                 } else if (line.startsWith("LOOT=")) {
                     String value = line.substring(5);
                     if (!value.isEmpty()) {
                         lootLog.add(value);
+                        // Миграция старого формата: LOOT-строки (последние находки) конвертируем в поштучную статистику.
+                        String migratedItem = migrateLegacyLootEntryToItemName(value);
+                        if (migratedItem != null && !migratedItem.isEmpty()) {
+                            long currentCount = itemCountByName.containsKey(migratedItem)
+                                    ? itemCountByName.get(migratedItem) : 0L;
+                            itemCountByName.put(migratedItem, currentCount + 1L);
+                        }
                     }
                 }
             }
@@ -257,6 +301,9 @@ public class ChatStats {
         sb.append("KG_TOTAL=").append(totalResourceKg).append("\n");
         for (Map.Entry<String, Double> entry : resourceKgByType.entrySet()) {
             sb.append("KG_ITEM=").append(entry.getKey()).append("\t").append(entry.getValue()).append("\n");
+        }
+        for (Map.Entry<String, Long> entry : itemCountByName.entrySet()) {
+            sb.append("ITEM_COUNT=").append(entry.getKey()).append("\t").append(entry.getValue()).append("\n");
         }
         for (String loot : lootLog) {
             sb.append("LOOT=").append(loot).append("\n");
@@ -299,6 +346,26 @@ public class ChatStats {
         } catch (Exception ignored) {
             return 0d;
         }
+    }
+
+    /**
+     * Миграция legacy-строки `LOOT=` в имя предмета для новой поштучной статистики.
+     *
+     * Старый формат мог быть:
+     * - `HH:mm:ss Название предмета`
+     * - `Название предмета`
+     */
+    private static String migrateLegacyLootEntryToItemName(String lootValue) {
+        if (lootValue == null) return null;
+        String trimmed = lootValue.trim();
+        if (trimmed.isEmpty()) return null;
+        if (trimmed.matches("^\\d{2}:\\d{2}:\\d{2}\\s+.+$")) {
+            int splitPos = trimmed.indexOf(' ');
+            if (splitPos > 0 && splitPos < trimmed.length() - 1) {
+                return trimmed.substring(splitPos + 1).trim();
+            }
+        }
+        return trimmed;
     }
 
     /**
