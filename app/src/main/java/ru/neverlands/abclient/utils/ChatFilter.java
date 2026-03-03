@@ -10,8 +10,9 @@ import ru.neverlands.abclient.manager.ChatUserList;
 import ru.neverlands.abclient.model.ChatUser;
 
 public class ChatFilter {
-    // Извлечение лута из строк вида «...».
-    private static final Pattern LOOT_PATTERN = Pattern.compile("\u00AB([^\u00BB]+)\u00BB");
+    // Извлечение лута из строк вида «...», включая вес ресурса в формате "(x.xx кг)".
+    private static final Pattern LOOT_PATTERN = Pattern.compile(
+            "\u00AB([^\u00BB]+)\u00BB(?:\\s*\\((\\d+(?:[\\.,]\\d+)?)\\s*[кК][гГ]\\))?");
     // Ники берём из <SPAN title/alt="..."> (для кликов/автоответа).
     private static final Pattern SPAN_NICK_PATTERN = Pattern.compile("<SPAN[^>]+(?:title|alt)=\"([^\"]+)\"", Pattern.CASE_INSENSITIVE);
 
@@ -43,9 +44,14 @@ public class ChatFilter {
                 List<String> items = new ArrayList<>();
                 Matcher matcher = LOOT_PATTERN.matcher(thingStr);
                 while (matcher.find()) {
-                    String item = matcher.group(1);
-                    if (item != null && !item.isEmpty()) {
-                        items.add(item.trim());
+                    String itemName = matcher.group(1);
+                    String itemWeightKg = matcher.group(2);
+                    if (itemName != null && !itemName.isEmpty()) {
+                        String normalizedItem = itemName.trim();
+                        if (itemWeightKg != null && !itemWeightKg.isEmpty()) {
+                            normalizedItem = normalizedItem + " (" + itemWeightKg.replace(',', '.') + " кг)";
+                        }
+                        items.add(normalizedItem);
                     }
                 }
                 if (!items.isEmpty()) {

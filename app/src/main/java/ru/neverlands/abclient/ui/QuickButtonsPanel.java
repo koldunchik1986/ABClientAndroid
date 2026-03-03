@@ -806,16 +806,41 @@ public class QuickButtonsPanel {
             .show();
     }
 
-    // Формирование текста статистики из ChatStats (XP/поединки/дроп).
+    /**
+     * Формирует текст для всплывающего окна "Статистика".
+     *
+     * Состав:
+     * - Опыт (`ChatStats.getTotalXp()`),
+     * - Поединки (`ChatStats.getTotalFights()`),
+     * - Денежные средства (`ChatStats.getTotalNv()`),
+     * - Ресурсы (`ChatStats.getTotalResourceKg()` и `ChatStats.getResourceKgByType()`),
+     * - Последние предметные находки (`ChatStats.getLootLog()`), без денежных NV и без ресурсных записей в кг.
+     *
+     * Зависимости:
+     * - `ChatStats` хранит и восстанавливает дневную статистику из `Logs/YYYYMMDD_stat.txt`;
+     * - значение этого метода используется и для текста окна, и для копирования в буфер.
+     */
     private String buildStatsText() {
         long xp = ChatStats.getTotalXp();
         long fights = ChatStats.getTotalFights();
+        long totalNv = ChatStats.getTotalNv();
+        double totalResourcesKg = ChatStats.getTotalResourceKg();
+        java.util.Map<String, Double> resourceKgByType = ChatStats.getResourceKgByType();
         java.util.List<String> loot = ChatStats.getLootLog();
 
         StringBuilder sb = new StringBuilder();
         sb.append("Опыт: ").append(xp).append("\n");
         sb.append("Поединки: ").append(fights).append("\n");
-        sb.append("Лут/дроп с ботов: ").append(loot.size()).append("\n\n");
+        sb.append("Денежные средства (NV): ").append(totalNv).append("\n");
+        sb.append("Ресурсы (кг): ").append(formatKg(totalResourcesKg)).append("\n\n");
+
+        if (!resourceKgByType.isEmpty()) {
+            sb.append("Ресурсы по типам:\n");
+            for (java.util.Map.Entry<String, Double> entry : resourceKgByType.entrySet()) {
+                sb.append("• ").append(entry.getKey()).append(": ").append(formatKg(entry.getValue())).append(" кг\n");
+            }
+            sb.append("\n");
+        }
 
         if (!loot.isEmpty()) {
             sb.append("Последние находки:\n");
@@ -826,6 +851,11 @@ public class QuickButtonsPanel {
         }
 
         return sb.toString().trim();
+    }
+
+    // Формат числа килограммов с точностью до сотых для статистики.
+    private String formatKg(double kilograms) {
+        return String.format(java.util.Locale.US, "%.2f", kilograms);
     }
 
     // Утилита для перевода dp -> px.
