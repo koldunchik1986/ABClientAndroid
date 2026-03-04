@@ -18,6 +18,7 @@ public class AutoFunctionsManager {
     private static final String BG_TRACE_PREFIX = "[BG_TRACE]";
     private static final String PREFS_NAME = "auto_functions_prefs";
     private static final String KEY_PREFIX = "auto_function_";
+    private static final String KEY_AUTO_SKIN = KEY_PREFIX + "auto_skin";
     private static final String KEY_AUTO_ATTACK_LEGACY = KEY_PREFIX + "auto_attack";
     private static final String KEY_AUTO_ATTACK_TOOL_ID = KEY_PREFIX + "auto_attack_tool_id";
     private static final String KEY_AUTO_ATTACK_LAST_NON_ZERO_TOOL_ID = KEY_PREFIX + "auto_attack_last_non_zero_tool_id";
@@ -37,6 +38,7 @@ public class AutoFunctionsManager {
         migrateLegacyAutoAttackFlagIfNeeded();
         AppVars.AutoAttackToolId = getAutoAttackToolId();
         AppVars.DoShowWalkers = isLocationTrackingEnabled();
+        syncAutoSkinWithProfileIfPresent();
     }
     
     public static synchronized AutoFunctionsManager getInstance(Context context) {
@@ -194,7 +196,17 @@ public class AutoFunctionsManager {
     
     // Авто-охота: состояние.
     public boolean isAutoSkinEnabled() {
-        return prefs.getBoolean(KEY_PREFIX + "auto_skin", false);
+        if (AppVars.Profile != null) {
+            boolean profileValue = AppVars.Profile.SkinAuto;
+            boolean prefValue = prefs.getBoolean(KEY_AUTO_SKIN, false);
+            if (profileValue != prefValue) {
+                prefs.edit().putBoolean(KEY_AUTO_SKIN, profileValue).apply();
+                applyAutoSkinRuntimeFlags(profileValue, "sync_from_profile");
+                Log.d(TAG, "isAutoSkinEnabled: sync pref from profile SkinAuto=" + profileValue);
+                return profileValue;
+            }
+        }
+        return prefs.getBoolean(KEY_AUTO_SKIN, false);
     }
     
     // Переключение авто-охоты.
@@ -205,9 +217,10 @@ public class AutoFunctionsManager {
     
     // Включение авто-охоты включает авто-бой и отключает несовместимые режимы.
     public void setAutoSkinEnabled(boolean enabled) {
+        boolean autoFightWasEnabled = isAutoFightEnabled();
         if (enabled) {
             // При включении Авто-Охоты: если Авто-Бой выключен - включаем оба
-            if (!isAutoFightEnabled()) {
+            if (!autoFightWasEnabled) {
                 setAutoFightEnabled(true);
                 Log.d(TAG, "setAutoSkinEnabled: Авто-Бой также включен");
             }
@@ -227,8 +240,77 @@ public class AutoFunctionsManager {
             }
         }
         
-        prefs.edit().putBoolean(KEY_PREFIX + "auto_skin", enabled).apply();
+        prefs.edit().putBoolean(KEY_AUTO_SKIN, enabled).apply();
+        applyAutoSkinRuntimeFlags(enabled, "setAutoSkinEnabled");
+        if (enabled && autoFightWasEnabled) {
+            triggerAutoSkinCharacterCheck();
+        }
+        if (AppVars.Profile != null && AppVars.Profile.SkinAuto != enabled) {
+            AppVars.Profile.SkinAuto = enabled;
+            AppVars.Profile.save(context);
+        }
         Log.d(TAG, "setAutoSkinEnabled: " + enabled);
+    }
+
+    /**
+     * Синхронизирует runtime-флаги AutoSkin с C#-семантикой `buttonAutoSkin`:
+     * - при включении инициирует последовательность проверки умения/ножа/ресурсов;
+     * - при выключении останавливает активные проверки AutoSkin.
+     */
+    private void applyAutoSkinRuntimeFlags(boolean enabled, String reason) {
+        if (enabled) {
+            AppVars.AutoSkinCheckUm = true;
+            AppVars.AutoSkinCheckRes = true;
+            AppVars.SkinUm = 0;
+            AppVars.AutoSkinCheckKnife = true;
+            AppVars.AutoSkinArmedKnife = false;
+            AppVars.AutoSkinLastChecked = System.currentTimeMillis();
+            Log.d(TAG, "applyAutoSkinRuntimeFlags: enabled, reason=" + reason);
+        } else {
+            AppVars.AutoSkinCheckUm = false;
+            AppVars.AutoSkinCheckRes = false;
+            AppVars.AutoSkinCheckKnife = false;
+            AppVars.AutoSkinArmedKnife = false;
+            Log.d(TAG, "applyAutoSkinRuntimeFlags: disabled, reason=" + reason);
+        }
+    }
+
+    /**
+     * При включении AutoSkin сразу запрашивает страницу персонажа (`go=inf`),
+     * чтобы цепочка `AutoSkinCheckUm/Res/Knife` стартовала без ручного перехода.
+     */
+    private void triggerAutoSkinCharacterCheck() {
+        if (AppVars.mainActivity == null || AppVars.mainActivity.get() == null) {
+            Log.w(TAG, "triggerAutoSkinCharacterCheck: mainActivity is null");
+            return;
+        }
+        AppVars.mainActivity.get().runOnUiThread(() -> {
+            try {
+                String reloadUrl = "http://neverlands.ru/main.php?get_id=56&act=10&go=inf";
+                if (AppVars.VCode != null && !AppVars.VCode.isEmpty()) {
+                    reloadUrl += "&vcode=" + AppVars.VCode;
+                }
+                reloadUrl += "&ts=" + System.currentTimeMillis();
+                Log.d(TAG, "triggerAutoSkinCharacterCheck: load " + reloadUrl);
+                AppVars.mainActivity.get().getMainWebView().loadUrl(reloadUrl);
+            } catch (Exception e) {
+                Log.e(TAG, "triggerAutoSkinCharacterCheck: failed", e);
+            }
+        });
+    }
+
+    /**
+     * Первичная синхронизация после создания менеджера:
+     * если профиль уже загружен, `Profile.SkinAuto` считается источником истины.
+     */
+    private void syncAutoSkinWithProfileIfPresent() {
+        if (AppVars.Profile == null) {
+            return;
+        }
+        boolean profileValue = AppVars.Profile.SkinAuto;
+        prefs.edit().putBoolean(KEY_AUTO_SKIN, profileValue).apply();
+        applyAutoSkinRuntimeFlags(profileValue, "constructor_sync");
+        Log.d(TAG, "syncAutoSkinWithProfileIfPresent: SkinAuto=" + profileValue);
     }
     
     // === AUTO_ATTACK (Авто-Нападение) ===

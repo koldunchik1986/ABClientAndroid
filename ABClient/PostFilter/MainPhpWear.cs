@@ -204,7 +204,7 @@ stopautofish:
 
         private static string MainPhpWearKnife(string html)
         {
-            var list = new[] { "Малый Разделочный Нож", "Охотничий Нож", "Вороненый Охотничий Нож", "Разделочный Топорик", "Арисайский Охотничий Нож" };
+            var list = new[] { "Малый Разделочный Нож", "Охотничий Нож", "Вороненый Охотничий Нож", "Разделочный Топорик", "Нож Мастера-охотника" };
 
             var ud = new ParsedDressed(html);
             if (!ud.Valid)

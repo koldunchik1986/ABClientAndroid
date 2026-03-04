@@ -21,6 +21,7 @@ import ru.neverlands.abclient.lez.LezFight;
 import ru.neverlands.abclient.model.AutoboiState;
 import ru.neverlands.abclient.model.InvComparer;
 import ru.neverlands.abclient.model.InvEntry;
+import ru.neverlands.abclient.model.ParsedDressed;
 import ru.neverlands.abclient.manager.AutoFunctionsManager;
 import ru.neverlands.abclient.manager.FastActionManager;
 import ru.neverlands.abclient.manager.RoomManager;
@@ -38,6 +39,7 @@ public class MainPhp {
     private static final int AUTO_FINISH_EXTRA_DELAY_MS = 700;
     private static final long AUTO_DRINK_TRIGGER_COOLDOWN_MS = 2500L;
     private static final long CAPTCHA_FALLBACK_TTL_MS = 30000L;
+    private static final long AUTO_SKIN_KNIFE_RECHECK_INTERVAL_MS = 60_000L;
     private static volatile long lastAutoFinishRedirectAtMs = 0L;
     private static volatile long lastAutoDrinkTriggerAtMs = 0L;
     // Защита от повторного показа одного и того же диалога капчи завершения боя.
@@ -45,6 +47,14 @@ public class MainPhp {
     private static volatile long lastFightCaptchaDialogAtMs = 0L;
     private static volatile String lastCaptchaRejectKey = "";
     private static volatile long lastCaptchaRejectAtMs = 0L;
+
+    /**
+     * Лёгкая DTO-запись предмета инвентаря для wear-логики (порт `GetInvList` + `InvEntry.WearLink` из C#).
+     */
+    private static final class WearInvEntry {
+        String name;
+        String wearLink;
+    }
 
     /**
      * Снимок значений из `ins_HP(curh,maxh,curm,maxm,hp_int,ma_int)`.
@@ -461,6 +471,508 @@ public class MainPhp {
         }
     }
 
+    /**
+     * Порт блока чтения умений из C# `MainPhp.cs`:
+     * - при наличии блока "Охота ... [N]" обновляет `AppVars.SkinUm`;
+     * - сбрасывает `AppVars.AutoSkinCheckUm = false` после успешного чтения;
+     * - при росте навыка (и включённом AutoSkin) отправляет сообщение в чат.
+     *
+     * Это обязательная часть C#-цепочки `AutoSkinCheckUm -> mselect=1`,
+     * без неё возникает бесконечный цикл "Переключение на умения персонажа".
+     */
+    private static void mainPhpProcessSkills(String html, String address) {
+        if (html == null || html.isEmpty()) {
+            return;
+        }
+
+        String skinSkill = HelperStrings.subString(
+                html,
+                "Охота</td><td bgcolor=#FCFAF3><font class=proce><font color=#555555><div align=center>[",
+                "]");
+
+        if (skinSkill == null || skinSkill.isEmpty()) {
+            // Fallback-парсинг на случай косметических изменений HTML.
+            java.util.regex.Matcher matcher = java.util.regex.Pattern
+                    .compile("Охота</td><td[^\\[]*\\[(\\d+)\\]", java.util.regex.Pattern.CASE_INSENSITIVE | java.util.regex.Pattern.DOTALL)
+                    .matcher(html);
+            if (matcher.find()) {
+                skinSkill = matcher.group(1);
+            }
+        }
+
+        if (skinSkill != null && !skinSkill.isEmpty()) {
+            try {
+                int skinUm = Integer.parseInt(skinSkill.trim());
+                AppVars.AutoSkinCheckUm = false;
+                if (AppVars.SkinUm != skinUm) {
+                    StringBuilder sb = new StringBuilder("Умение разделки: <span style=\"color:#009933;font-weight:bold;\">")
+                            .append(skinUm)
+                            .append("</span>");
+                    if (AppVars.SkinUm > 0 && AppVars.SkinUm < skinUm) {
+                        sb.append(" (+").append(skinUm - AppVars.SkinUm).append(")");
+                    }
+                    AppVars.SkinUm = skinUm;
+
+                    if (isAutoSkinEnabledByPreference() && AppVars.getContext() != null) {
+                        Intent msgIntent = new Intent(AppVars.ACTION_ADD_CHAT_MESSAGE);
+                        msgIntent.putExtra("message", sb.toString());
+                        LocalBroadcastManager.getInstance(AppVars.getContext()).sendBroadcast(msgIntent);
+                    }
+                }
+                android.util.Log.d(TAG, "AUTO_SKIN_TRACE skill parsed: SkinUm=" + skinUm + ", AutoSkinCheckUm=false");
+            } catch (Exception e) {
+                android.util.Log.w(TAG, "AUTO_SKIN_TRACE skill parse failed: " + skinSkill, e);
+            }
+            return;
+        }
+
+        // Защитный сброс от зацикливания: мы уже на странице mselect=1,
+        // но сервер не выдал ожидаемый блок навыка.
+        if (AppVars.AutoSkinCheckUm && address != null && address.contains("mselect=1")) {
+            AppVars.AutoSkinCheckUm = false;
+            android.util.Log.w(TAG, "AUTO_SKIN_TRACE mselect=1 without skill block, forced AutoSkinCheckUm=false");
+        }
+    }
+
+    /**
+     * Определяет, включена ли Авто-Охота (C# `Profile.SkinAuto` / `buttonAutoSkin`).
+     */
+    private static boolean isAutoSkinEnabledByPreference() {
+        if (AppVars.Profile != null) {
+            return AppVars.Profile.SkinAuto;
+        }
+        try {
+            if (AppVars.getContext() != null) {
+                return AutoFunctionsManager.getInstance(AppVars.getContext()).isAutoSkinEnabled();
+            }
+        } catch (Exception e) {
+            android.util.Log.w(TAG, "isAutoSkinEnabledByPreference: fallback=false", e);
+        }
+        return false;
+    }
+
+    /**
+     * Периодическая (раз в минуту) установка флага проверки ножа,
+     * аналог `FormMainTicks.cs`: `AutoSkinLastChecked` -> `AutoSkinCheckKnife = true`.
+     */
+    private static void maybeMarkAutoSkinKnifeRecheck() {
+        if (!isAutoSkinEnabledByPreference()) {
+            return;
+        }
+        long now = System.currentTimeMillis();
+        long lastChecked = AppVars.AutoSkinLastChecked;
+        if (lastChecked <= 0L || (now - lastChecked) > AUTO_SKIN_KNIFE_RECHECK_INTERVAL_MS) {
+            AppVars.AutoSkinLastChecked = now;
+            AppVars.AutoSkinCheckKnife = true;
+            android.util.Log.d(TAG, "AUTO_SKIN_TRACE periodic knife recheck requested");
+        }
+    }
+
+    /**
+     * Порт `MainPhpRaz.cs`: проверка `fight_ty[9]` и автопереход на разделку.
+     */
+    private static String mainPhpRaz(String html) {
+        String strFightTy = HelperStrings.subString(html, "var fight_ty = [", "];");
+        if (strFightTy == null || strFightTy.isEmpty()) {
+            String fallbackRazLink = extractRazLinkFromHtml(html);
+            if (fallbackRazLink != null) {
+                android.util.Log.d(TAG, "AUTO_SKIN_TRACE mainPhpRaz: fallback link redirect to " + fallbackRazLink);
+                return buildRedirectHtml("Разделка", fallbackRazLink);
+            }
+            return null;
+        }
+
+        List<String> fightTy = splitJsTopLevelCsv(strFightTy);
+        if (fightTy.size() <= 9) {
+            String fallbackRazLink = extractRazLinkFromHtml(html);
+            if (fallbackRazLink != null) {
+                android.util.Log.d(TAG, "AUTO_SKIN_TRACE mainPhpRaz: fallback link redirect to " + fallbackRazLink);
+                return buildRedirectHtml("Разделка", fallbackRazLink);
+            }
+            return null;
+        }
+
+        String fightTyNine = fightTy.get(9);
+        if (fightTyNine == null) {
+            String fallbackRazLink = extractRazLinkFromHtml(html);
+            if (fallbackRazLink != null) {
+                android.util.Log.d(TAG, "AUTO_SKIN_TRACE mainPhpRaz: fallback link redirect to " + fallbackRazLink);
+                return buildRedirectHtml("Разделка", fallbackRazLink);
+            }
+            return null;
+        }
+
+        String trimmed = fightTyNine.trim();
+        if (!trimmed.startsWith("[") || !trimmed.endsWith("]")) {
+            String fallbackRazLink = extractRazLinkFromHtml(html);
+            if (fallbackRazLink != null) {
+                android.util.Log.d(TAG, "AUTO_SKIN_TRACE mainPhpRaz: fallback link redirect to " + fallbackRazLink);
+                return buildRedirectHtml("Разделка", fallbackRazLink);
+            }
+            return null;
+        }
+
+        String inner = trimmed.substring(1, trimmed.length() - 1);
+        List<String> razParams = splitJsTopLevelCsv(inner);
+        if (razParams.size() <= 5) {
+            String fallbackRazLink = extractRazLinkFromHtml(html);
+            if (fallbackRazLink != null) {
+                android.util.Log.d(TAG, "AUTO_SKIN_TRACE mainPhpRaz: fallback link redirect to " + fallbackRazLink);
+                return buildRedirectHtml("Разделка", fallbackRazLink);
+            }
+            return null;
+        }
+
+        String type = trimJsToken(razParams.get(0));
+        String p = trimJsToken(razParams.get(1));
+        String uid = trimJsToken(razParams.get(2));
+        String s = trimJsToken(razParams.get(3));
+        String m = trimJsToken(razParams.get(4));
+        String vcode = trimJsToken(razParams.get(5));
+
+        if (type.isEmpty() || uid.isEmpty() || vcode.isEmpty()) {
+            return null;
+        }
+
+        String razLink = "http://neverlands.ru/main.php?get_id=17&type=" + type
+                + "&p=" + p
+                + "&uid=" + uid
+                + "&s=" + s
+                + "&m=" + m
+                + "&vcode=" + vcode;
+        android.util.Log.d(TAG, "AUTO_SKIN_TRACE mainPhpRaz: redirect to " + razLink);
+        return buildRedirectHtml("Разделка", razLink);
+    }
+
+    /**
+     * Порт `MainPhpFindPerc` из C# (`MainPhpDrink.cs`).
+     */
+    /**
+     * Fallback-поиск ссылки `main.php?get_id=17...` в HTML боя.
+     * Используется, когда `fight_ty[9]` пустой/урезанный, но сервер отдает прямую ссылку "Разделать".
+     */
+    private static String extractRazLinkFromHtml(String html) {
+        if (html == null || html.isEmpty()) {
+            return null;
+        }
+
+        String normalized = html.replace("&amp;", "&");
+        java.util.regex.Pattern pattern = java.util.regex.Pattern.compile(
+                "(?:https?://(?:www\\.)?neverlands\\.ru/)?main\\.php\\?get_id=17[^'\"\\s<]+",
+                java.util.regex.Pattern.CASE_INSENSITIVE);
+        java.util.regex.Matcher matcher = pattern.matcher(normalized);
+        if (!matcher.find()) {
+            return null;
+        }
+
+        String link = matcher.group();
+        if (link == null || link.isEmpty()) {
+            return null;
+        }
+
+        if (!link.startsWith("http://") && !link.startsWith("https://")) {
+            link = "http://neverlands.ru/" + link;
+        }
+
+        link = link.replace("https://www.neverlands.ru/", "http://neverlands.ru/");
+        link = link.replace("http://www.neverlands.ru/", "http://neverlands.ru/");
+        link = link.replace("https://neverlands.ru/", "http://neverlands.ru/");
+        return link;
+    }
+
+    private static String mainPhpFindPerc(String html) {
+        String vcode = HelperStrings.subString(html, "'main.php?get_id=56&act=10&go=inf&vcode=", "'");
+        if (vcode != null && !vcode.isEmpty()) {
+            String link = "main.php?get_id=56&act=10&go=inf&vcode=" + vcode;
+            return buildRedirectHtml("Переключение на персонаж", link);
+        }
+
+        String patternEnter = "[\"inf\",\"Ваш персонаж\",\"";
+        int posPatternEnter = html.indexOf(patternEnter);
+        if (posPatternEnter == -1) {
+            return null;
+        }
+
+        posPatternEnter += patternEnter.length();
+        int posEnd = html.indexOf('"', posPatternEnter);
+        if (posEnd == -1) {
+            return null;
+        }
+
+        String jsonVcode = html.substring(posPatternEnter, posEnd);
+        String link = "main.php?get_id=56&act=10&go=inf&vcode=" + jsonVcode;
+        return buildRedirectHtml("Переключение на персонаж", link);
+    }
+
+    /**
+     * Порт `MainPhpIsPerc` из C# (`MainPhpDrink.cs`).
+     */
+    private static boolean mainPhpIsPerc(String html) {
+        String lower = html.toLowerCase(Locale.ROOT);
+        return lower.contains("input type=button class=lbut value=\"умения\"");
+    }
+
+    /**
+     * Порт `MainPhpArmedKinfe` из C# (`MainPhpWear.cs`).
+     */
+    private static boolean mainPhpArmedKnife(String html) {
+        ParsedDressed parsedDressed = new ParsedDressed(html);
+        if (!parsedDressed.Valid) {
+            return false;
+        }
+        return parsedDressed.IsWearKnife();
+    }
+
+    /**
+     * Порт `MainPhpWearKnife` из C# (`MainPhpWear.cs`).
+     */
+    private static String mainPhpWearKnife(String html) {
+        ParsedDressed dressed = new ParsedDressed(html);
+        if (!dressed.Valid) {
+            return null;
+        }
+
+        boolean isWear = dressed.IsWearKnife();
+        if (!isWear) {
+            List<WearInvEntry> invList = getWearInvList(html);
+            String[] knives = ParsedDressed.getSkinKnifeNames();
+            for (WearInvEntry thing : invList) {
+                if (thing.name == null || thing.wearLink == null || thing.wearLink.isEmpty()) {
+                    continue;
+                }
+                for (String knife : knives) {
+                    if (containsIgnoreCase(thing.name, knife)) {
+                        android.util.Log.d(TAG, "AUTO_SKIN_TRACE mainPhpWearKnife: wear " + thing.name
+                                + ", link=" + thing.wearLink);
+                        return buildRedirectHtml("Одеваем " + thing.name, thing.wearLink);
+                    }
+                }
+            }
+        }
+
+        AppVars.AutoSkinArmedKnife = false;
+        return null;
+    }
+
+    /**
+     * Порт `MainPhpGetSkinRes` из C# (`MainPhpWear.cs`).
+     */
+    private static void mainPhpGetSkinRes(String html) {
+        final String patternStartRes = "<B>Рост</B></td></tr>";
+        int pos = html.indexOf(patternStartRes);
+        if (pos == -1) {
+            return;
+        }
+
+        StringBuilder sb = new StringBuilder();
+        List<String> lootForStats = new ArrayList<>();
+
+        pos += patternStartRes.length();
+        while (true) {
+            final String patternStartTr = "<input type=checkbox name=";
+            pos = html.indexOf(patternStartTr, pos);
+            if (pos == -1) {
+                break;
+            }
+
+            pos += patternStartTr.length();
+            final String patternEndTr = "</tr>";
+            int posEnd = html.indexOf(patternEndTr, pos);
+            if (posEnd == -1) {
+                break;
+            }
+            posEnd += patternEndTr.length();
+
+            String htmlEntry = html.substring(pos, posEnd);
+            String valString = HelperStrings.subString(htmlEntry, " width=15% class=travma align=center>", "</td>");
+            Double val = tryParseDoubleInvariant(valString);
+            if (val != null) {
+                String name = HelperStrings.subString(htmlEntry, " width=25% class=travma align=center><B>", "</B><BR>");
+                if (name != null && !name.isEmpty()) {
+                    if (sb.length() > 0) {
+                        sb.append(", ");
+                    }
+
+                    if (AppVars.SkinRes.containsKey(name)) {
+                        double oldVal = AppVars.SkinRes.get(name);
+                        if (Math.abs(oldVal - val) > 0.009d) {
+                            double diff = val - oldVal;
+                            sb.append("<span style=\"color:#009933;font-weight:bold;\">«")
+                                    .append(name).append(" ").append(String.format(Locale.US, "%.2f", val))
+                                    .append("»</span> (+")
+                                    .append(String.format(Locale.US, "%.2f", diff))
+                                    .append(")");
+                            AppVars.SkinRes.put(name, val);
+                            if (diff > 0d) {
+                                lootForStats.add(name + " (" + String.format(Locale.US, "%.2f", diff) + " кг)");
+                            }
+                        } else {
+                            sb.append("<span style=\"color:#009933;font-weight:bold;\">«")
+                                    .append(name).append(" ").append(String.format(Locale.US, "%.2f", val))
+                                    .append("»</span>");
+                        }
+                    } else {
+                        sb.append("<span style=\"color:#009933;font-weight:bold;\">«")
+                                .append(name).append(" ").append(String.format(Locale.US, "%.2f", val))
+                                .append("»</span>");
+                        AppVars.SkinRes.put(name, val);
+                        if (val > 0d) {
+                            lootForStats.add(name + " (" + String.format(Locale.US, "%.2f", val) + " кг)");
+                        }
+                    }
+                }
+            }
+
+            pos = posEnd;
+        }
+
+        if (sb.length() > 0) {
+            String message = "Охотничьи ресурсы: " + sb;
+            if (AppVars.getContext() != null) {
+                Intent intent = new Intent(AppVars.ACTION_ADD_CHAT_MESSAGE);
+                intent.putExtra("message", message);
+                LocalBroadcastManager.getInstance(AppVars.getContext()).sendBroadcast(intent);
+            }
+        }
+        if (!lootForStats.isEmpty()) {
+            ru.neverlands.abclient.utils.ChatStats.addLoot("", lootForStats);
+        }
+    }
+
+    /**
+     * Порт `GetInvList` из C# (`MainPhpWear.cs`) для поиска `WearLink`.
+     */
+    private static List<WearInvEntry> getWearInvList(String html) {
+        List<WearInvEntry> invList = new ArrayList<>();
+
+        final String patternStartInv = "</b></font></td></tr>";
+        int pos = html.indexOf(patternStartInv);
+        if (pos == -1) {
+            return invList;
+        }
+
+        pos += patternStartInv.length();
+        while (true) {
+            final String patternStartTr = "<tr><td bgcolor=#F5F5F5>";
+            if (pos + patternStartTr.length() > html.length()
+                    || !html.substring(pos, pos + patternStartTr.length()).startsWith(patternStartTr)) {
+                break;
+            }
+
+            final String patternEndTrLong = "<td bgcolor=#FCFAF3><img src=http://image.neverlands.ru/1x1.gif width=5 height=1></td></tr></table></td></tr></table></td></tr>";
+            int posEnd = html.indexOf(patternEndTrLong, pos);
+            if (posEnd == -1) {
+                final String patternEndTrShort = "<img src=http://image.neverlands.ru/1x1.gif width=1 height=5></td></tr></table></td></tr>";
+                posEnd = html.indexOf(patternEndTrShort, pos);
+                if (posEnd == -1) {
+                    return invList;
+                }
+                posEnd += patternEndTrShort.length();
+            } else {
+                posEnd += patternEndTrLong.length();
+            }
+
+            String htmlEntry = html.substring(pos, posEnd);
+            WearInvEntry entry = parseWearInvEntry(htmlEntry);
+            if (entry != null) {
+                invList.add(entry);
+            }
+            pos = posEnd;
+        }
+        return invList;
+    }
+
+    private static WearInvEntry parseWearInvEntry(String htmlEntry) {
+        WearInvEntry entry = new WearInvEntry();
+        entry.name = HelperStrings.subString(htmlEntry, "<font class=nickname><b> ", "</b>");
+        String wearLink = HelperStrings.subString(
+                htmlEntry,
+                "<input type=button class=invbut onclick=\"location='",
+                "'\" value=\"Надеть\">");
+        if ((wearLink == null || wearLink.isEmpty()) && htmlEntry.contains("value=\"Надеть\"")) {
+            int wearButtonPos = htmlEntry.indexOf("value=\"Надеть\"");
+            int locationPos = htmlEntry.lastIndexOf("location='", wearButtonPos);
+            if (locationPos != -1) {
+                int start = locationPos + "location='".length();
+                int end = htmlEntry.indexOf('\'', start);
+                if (end > start) {
+                    wearLink = htmlEntry.substring(start, end);
+                }
+            }
+        }
+        entry.wearLink = wearLink == null ? "" : wearLink;
+        return entry;
+    }
+
+    private static List<String> splitJsTopLevelCsv(String source) {
+        List<String> result = new ArrayList<>();
+        if (source == null || source.isEmpty()) {
+            return result;
+        }
+
+        int depthSquare = 0;
+        int depthRound = 0;
+        char quote = 0;
+        StringBuilder current = new StringBuilder();
+
+        for (int index = 0; index < source.length(); index++) {
+            char currentChar = source.charAt(index);
+            if (quote != 0) {
+                current.append(currentChar);
+                if (currentChar == quote && (index == 0 || source.charAt(index - 1) != '\\')) {
+                    quote = 0;
+                }
+                continue;
+            }
+
+            if (currentChar == '\'' || currentChar == '"') {
+                quote = currentChar;
+                current.append(currentChar);
+                continue;
+            }
+            if (currentChar == '[') {
+                depthSquare++;
+                current.append(currentChar);
+                continue;
+            }
+            if (currentChar == ']') {
+                depthSquare--;
+                current.append(currentChar);
+                continue;
+            }
+            if (currentChar == '(') {
+                depthRound++;
+                current.append(currentChar);
+                continue;
+            }
+            if (currentChar == ')') {
+                depthRound--;
+                current.append(currentChar);
+                continue;
+            }
+            if (currentChar == ',' && depthSquare == 0 && depthRound == 0) {
+                result.add(current.toString().trim());
+                current.setLength(0);
+                continue;
+            }
+            current.append(currentChar);
+        }
+        result.add(current.toString().trim());
+        return result;
+    }
+
+    private static String trimJsToken(String token) {
+        if (token == null) {
+            return "";
+        }
+        String trimmed = token.trim();
+        if ((trimmed.startsWith("\"") && trimmed.endsWith("\""))
+                || (trimmed.startsWith("'") && trimmed.endsWith("'"))) {
+            trimmed = trimmed.substring(1, trimmed.length() - 1);
+        }
+        return trimmed.trim();
+    }
+
     // Центральный обработчик main.php (порт логики из C# MainPhp.cs).
     public static byte[] process(String address, byte[] array) {
         android.util.Log.d(TAG, "process() called for " + address + ", bytes=" + (array != null ? array.length : 0));
@@ -535,6 +1047,7 @@ public class MainPhp {
         boolean isFightFrame = html.contains("magic_slots();");
         boolean isFightTopFrame = html.contains("var fight_ty");
         boolean isFightFinishAddress = address != null && address.contains("get_id=61") && address.contains("act=7");
+        maybeMarkAutoSkinKnifeRecheck();
         boolean closedFightInterfereError = htmlLower.contains("ошибка при использовании. нельзя вмешаться в закрытый бой");
         if (closedFightInterfereError && AppVars.AutoAttackToolId != 0 && AppVars.FastNick != null && !AppVars.FastNick.isEmpty()) {
             String blockedNick = AppVars.FastNick;
@@ -560,6 +1073,90 @@ public class MainPhp {
             byte[] fastResult = processMainPhpFast(address, html);
             if (fastResult != null) {
                 return fastResult;
+            }
+        }
+
+        // Чтение умения "Охота" (C# parity) до оркестрации AutoSkin,
+        // чтобы `AutoSkinCheckUm` корректно сбрасывался на `mselect=1`.
+        mainPhpProcessSkills(html, address);
+
+        // Авто-разделка (MainPhpRaz.cs): если в текущем боевом кадре доступна кнопка "Разделать",
+        // выполняем редирект на действие разделки до стандартной боевой обработки.
+        if (isAutoSkinEnabledByPreference()) {
+            String razHtml = mainPhpRaz(html);
+            if (razHtml != null) {
+                return Russian.getBytes(razHtml);
+            }
+        }
+
+        // Оркестрация AutoSkin из C# MainPhp.cs (MainPhpWear.cs + TInvUd.cs):
+        // 1) проверка/чтение умения "Охота";
+        // 2) считывание охотничьих ресурсов;
+        // 3) проверка надетого ножа;
+        // 4) авто-надевание ножа через инвентарь.
+        if (!isFightFrame && !isFightTopFrame && isAutoSkinEnabledByPreference()) {
+            long nowMs = System.currentTimeMillis();
+            if (AppVars.NeverTimer <= 0L || nowMs > AppVars.NeverTimer) {
+                if (AppVars.AutoSkinCheckUm) {
+                    String phtml = mainPhpFindPerc(html);
+                    if (phtml != null && !phtml.isEmpty()) {
+                        android.util.Log.d(TAG, "AUTO_SKIN_TRACE redirect to character page for skill check");
+                        return Russian.getBytes(phtml);
+                    }
+                    if (html.toLowerCase(Locale.ROOT).contains("<input type=button class=lbut value=\"умения\" onclick")) {
+                        android.util.Log.d(TAG, "AUTO_SKIN_TRACE redirect to skills page mselect=1");
+                        return Russian.getBytes(buildRedirectHtml("Переключение на умения персонажа", "main.php?mselect=1"));
+                    }
+                }
+
+                if (AppVars.AutoSkinCheckRes) {
+                    String invHtml = mainPhpFindInv(html, "&im=5");
+                    if (invHtml != null && !invHtml.isEmpty()) {
+                        android.util.Log.d(TAG, "AUTO_SKIN_TRACE redirect to resources inventory (&im=5)");
+                        return Russian.getBytes(invHtml);
+                    }
+                    if (mainPhpIsInv(html)) {
+                        AppVars.AutoSkinCheckRes = false;
+                        android.util.Log.d(TAG, "AUTO_SKIN_TRACE read skin resources");
+                        mainPhpGetSkinRes(html);
+                    }
+                }
+
+                if (AppVars.AutoSkinCheckKnife) {
+                    String perchtml = mainPhpFindPerc(html);
+                    if (perchtml != null && !perchtml.isEmpty()) {
+                        android.util.Log.d(TAG, "AUTO_SKIN_TRACE redirect to character page for knife check");
+                        return Russian.getBytes(perchtml);
+                    }
+
+                    AppVars.AutoSkinArmedKnife = false;
+                    if (mainPhpIsPerc(html)) {
+                        AppVars.AutoSkinArmedKnife = mainPhpArmedKnife(html);
+                        AppVars.AutoSkinCheckKnife = false;
+                        android.util.Log.d(TAG, "AUTO_SKIN_TRACE knife check result: armed=" + AppVars.AutoSkinArmedKnife);
+                    }
+                }
+
+                if (!AppVars.AutoSkinArmedKnife) {
+                    String invHtml = mainPhpFindInv(html, "&im=0&wca=4");
+                    if (invHtml != null && !invHtml.isEmpty()) {
+                        android.util.Log.d(TAG, "AUTO_SKIN_TRACE redirect to items inventory (&im=0&wca=4)");
+                        return Russian.getBytes(invHtml);
+                    }
+
+                    if (mainPhpIsInv(html)) {
+                        invHtml = mainPhpWearKnife(html);
+                        if (invHtml == null || invHtml.isEmpty()) {
+                            if (address == null || !address.endsWith("im=0&wca=4")) {
+                                android.util.Log.d(TAG, "AUTO_SKIN_TRACE switch to items tab for knife search");
+                                return Russian.getBytes(buildRedirectHtml("Переключение на вещи", "main.php?im=0&wca=4"));
+                            }
+                        } else {
+                            AppVars.AutoSkinCheckKnife = true;
+                            return Russian.getBytes(invHtml);
+                        }
+                    }
+                }
             }
         }
 
@@ -1230,6 +1827,19 @@ public class MainPhp {
             notifyNewFight(fight);
             // C# аналог UnderAttack.Parse(html): анонс в чат с учётом LezSay (Chat/Clan/Pair/No).
             UnderAttackManager.parseAsync(html);
+        }
+
+        // Перед авто-завершением боя (act=7) проверяем разделку ещё раз.
+        // Это страхует кейсы, когда данные разделки не были доступны на ранней стадии обработки.
+        if (fightEnded && isAutoSkinEnabledByPreference()) {
+            boolean alreadyOnRazAddress = address != null && address.contains("get_id=17");
+            if (!alreadyOnRazAddress) {
+                String razHtml = mainPhpRaz(html);
+                if (razHtml != null) {
+                    android.util.Log.d(TAG, "AUTO_SKIN_TRACE mainPhpFight: fight ended, run raz before finish");
+                    return razHtml;
+                }
+            }
         }
 
         // Ветка завершения боя в AutoBoi:

@@ -83,6 +83,24 @@ public class UserConfig {
     public boolean ShowPerformance = false;
     public boolean DoProxy = false;
     public boolean AutoFish = false;
+    /**
+     * Авто-надевание удочек (C# `FishAutoWear`).
+     * Нужен для C#-совместимого парсера `ParsedDressed`.
+     */
+    public boolean FishAutoWear = true;
+    /**
+     * Настройка предмета в первой руке для рыбалки (C# `FishHandOne`).
+     */
+    public String FishHandOne = "Любая удочка";
+    /**
+     * Настройка предмета во второй руке для рыбалки (C# `FishHandTwo`).
+     */
+    public String FishHandTwo = "";
+    /**
+     * Авто-охота (аналог `SkinAuto` в ПК C# профиле).
+     * Используется как профильный флаг для логики `buttonAutoSkin`.
+     */
+    public boolean SkinAuto = false;
     public boolean AutoHerb = false;
     public boolean AutoMine = false;
     public boolean AutoTree = false;
@@ -210,6 +228,15 @@ public class UserConfig {
                             String sayStr = parser.getAttributeValue(null, "say");
                             this.LezSay = sayStr != null ? LezSayType.valueOf(sayStr) : LezSayType.No;
                         } catch (Exception e) { this.LezSay = LezSayType.No; }
+                    } else if ("SkinAuto".equalsIgnoreCase(tagName)) {
+                        // Профильный флаг авто-охоты из C# (`<SkinAuto>true|false</SkinAuto>`).
+                        // Поддерживаем текстовый узел для совместимости с существующими профилями ПК-версии.
+                        try {
+                            String text = parser.nextText();
+                            this.SkinAuto = Boolean.parseBoolean(text);
+                        } catch (Exception ignore) {
+                            // Если узел поврежден, оставляем дефолт (false), как в C#.
+                        }
                     } else if ("group".equals(tagName)) {
                         LezBotsGroup g = new LezBotsGroup(
                             parseIntAttr(parser, "id", 1),
@@ -400,6 +427,11 @@ public class UserConfig {
             serializer.attribute(null, "winTimeout", String.valueOf(this.LezDoWinTimeout));
             serializer.attribute(null, "say", this.LezSay != null ? this.LezSay.name() : "No");
             serializer.endTag(null, "autoboi");
+
+            // Профильный флаг авто-охоты (C# TagSkinAuto).
+            serializer.startTag(null, "SkinAuto");
+            serializer.text(String.valueOf(this.SkinAuto));
+            serializer.endTag(null, "SkinAuto");
 
             // Сохранение групп противников (аналог LezBotsGroup сериализации в C#)
             serializer.startTag(null, "lezgroups");

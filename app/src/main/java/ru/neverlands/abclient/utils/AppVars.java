@@ -103,6 +103,44 @@ public class AppVars {
     public static boolean AutoFishCheckUm = false;
     public static boolean AutoFishCheckUd = false;
     public static boolean AutoFishWearUd = false;
+    /**
+     * AutoSkin: флаг "нужно перечитать умение охоты" (аналог C# `AutoSkinCheckUm`).
+     * Используется оркестратором `MainPhp` для перехода на вкладку умений.
+     */
+    public static boolean AutoSkinCheckUm = false;
+    /**
+     * Текущее значение умения охоты (аналог C# `SkinUm`).
+     */
+    public static int SkinUm = 0;
+    /**
+     * AutoSkin: требуется проверка, надет ли разделочный нож (аналог C# `AutoSkinCheckKnife`).
+     */
+    public static boolean AutoSkinCheckKnife = false;
+    /**
+     * AutoSkin: признак, что нож надет (аналог C# `AutoSkinArmedKnife`).
+     */
+    public static boolean AutoSkinArmedKnife = false;
+    /**
+     * Название надетого ножа (аналог C# `AutoSkinHand`).
+     */
+    public static String AutoSkinHand = "";
+    /**
+     * Долговечность надетого ножа в формате `cur/max` (аналог C# `AutoSkinHandD`).
+     */
+    public static String AutoSkinHandD = "";
+    /**
+     * Время последней периодической проверки ножа в ms (аналог C# `AutoSkinLastChecked`).
+     */
+    public static long AutoSkinLastChecked = 0L;
+    /**
+     * AutoSkin: флаг "нужно перечитать результаты охоты" (аналог C# `AutoSkinCheckRes`).
+     */
+    public static boolean AutoSkinCheckRes = false;
+    /**
+     * Последние значения охотничьих ресурсов (аналог C# `SkinRes`).
+     * Ключ: название ресурса, значение: текущий вес/объем на странице ресурсов.
+     */
+    public static final java.util.Map<String, Double> SkinRes = new java.util.LinkedHashMap<>();
     public static String NamePri = "";
     public static int ValPri = 0;
     public static double AutoFishNV = 0;

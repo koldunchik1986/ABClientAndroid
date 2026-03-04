@@ -93,7 +93,7 @@
 | `Prims.cs` | Примитивы | `[ ]` Не реализован |
 | `RoomManager.cs` | Менеджер комнат/чата | `[+]` RoomManager.java |
 | `ScriptManager.cs` | Менеджер JS-инъекций | `[~]` Частично (WebAppInterface.java) |
-| `TInvUd.cs` | Обновление инвентаря | `[ ]` Не реализован |
+| `TInvUd.cs` | Обновление инвентаря | `[~]` Частично реализован (`ParsedDressed` портирован, интеграция расширяется) |
 | `Tips.cs` | Подсказки | `[ ]` Не реализован |
 | `TorgList.cs` | Список торговли | `[+]` TorgList.java |
 | `TorgPair.cs` | Пара торговли | `[+]` TorgPair.java |

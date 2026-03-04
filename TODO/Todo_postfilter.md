@@ -64,11 +64,11 @@
 | `MainPhpFish.cs`          | Часть `MainPhp`: логика рыбалки                        | `[x]`  | `[ ]`      | Нет Java-файла |
 | `MainPhpInsHp.cs`         | Часть `MainPhp`: парсинг HP                            | `[x]`  | `[~]`      | Портировано в `MainPhp.java`: `mainPhpInsHp(...)` + запись `AppVars.PersIntHP/PersIntMA`. |
 | `MainPhpInv.cs`           | Часть `MainPhp`: инвентарь                             | `[x]`  | `[~]`      | Почти FULL: группировка, сортировка, кнопки "Продать все". |
-| `MainPhpRaz.cs`           | Часть `MainPhp`: разделка                              | `[x]`  | `[ ]`      | Нет Java-файла |
+| `MainPhpRaz.cs`           | Часть `MainPhp`: разделка                              | `[x]`  | `[~]`      | Реализовано в `MainPhp.java` (`mainPhpRaz`, redirect по `fight_ty[9]`) |
 | `MainPhpRob.cs`           | Часть `MainPhp`: воровство                             | `[x]`  | `[ ]`      | Нет Java-файла |
 | `MainPhpRobinHood.cs`     | Часть `MainPhp`: логика "Робин Гуда"                 | `[x]`  | `[ ]`      | Нет Java-файла |
 | `MainPhpTied.cs`          | Часть `MainPhp`: усталость                             | `[x]`  | `[ ]`      | Нет Java-файла |
-| `MainPhpWear.cs`          | Часть `MainPhp`: одевание                              | `[x]`  | `[ ]`      | Нет Java-файла |
+| `MainPhpWear.cs`          | Часть `MainPhp`: одевание                              | `[x]`  | `[~]`      | Реализовано в `MainPhp.java` (`mainPhpArmedKnife`, `mainPhpWearKnife`, `mainPhpGetSkinRes`) |
 | `MainPhpWearComplect.cs`  | Часть `MainPhp`: одевание комплектов                   | `[x]`  | `[ ]`      | Нет Java-файла |
 | `MainPhpWtime.cs`         | Часть `MainPhp`: обработка wtime                       | `[x]`  | `[ ]`      | Нет Java-файла |
 | `TeleportAjax.cs`         | Фильтр для `teleport_ajax`                             | `[x]`  | `[ ]`      | Нет Java-файла |
