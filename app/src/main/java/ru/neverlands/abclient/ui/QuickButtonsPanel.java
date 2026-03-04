@@ -778,6 +778,9 @@ public class QuickButtonsPanel {
             dialog.show();
             return;
         }
+        // Legacy fallback-блок отображения статистики (оставлен для совместимости).
+        // Важно: даже в этой ветке используем новую агрегированную модель предметов (шт.),
+        // чтобы формат окна совпадал с основным `buildStatsText()`.
         long xp = ru.neverlands.abclient.utils.ChatStats.getTotalXp();
         java.util.Map<String, Long> items = ru.neverlands.abclient.utils.ChatStats.getItemCountByName();
         String logPath = ru.neverlands.abclient.utils.Chat.getCurrentLogPath();
@@ -817,6 +820,7 @@ public class QuickButtonsPanel {
      *
      * Зависимости:
      * - `ChatStats` хранит и восстанавливает дневную статистику из `Logs/YYYYMMDD_stat.txt`;
+     * - порядок предметов/ресурсов определяется порядком накопления в `LinkedHashMap` внутри `ChatStats`;
      * - значение этого метода используется и для текста окна, и для копирования в буфер.
      */
     private String buildStatsText() {
@@ -851,7 +855,8 @@ public class QuickButtonsPanel {
         return sb.toString().trim();
     }
 
-    // Формат числа килограммов с точностью до сотых для статистики.
+    // Формат массы ресурсов для статистики (всегда 2 знака после запятой).
+    // Зависимость: вызывается только из buildStatsText() для строк ресурсов в кг.
     private String formatKg(double kilograms) {
         return String.format(java.util.Locale.US, "%.2f", kilograms);
     }

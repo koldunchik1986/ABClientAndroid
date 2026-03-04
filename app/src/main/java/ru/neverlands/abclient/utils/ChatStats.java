@@ -152,7 +152,19 @@ public class ChatStats {
         return Collections.unmodifiableMap(new LinkedHashMap<>(itemCountByName));
     }
 
-    // Добавление лута (с таймштампом) — сразу сохраняем.
+    /**
+     * Добавляет лут в статистику за текущий день.
+     *
+     * Приоритет разбора (как единый конвейер):
+     * 1) денежный дроп `NNN NV` -> `totalNv`,
+     * 2) ресурсный дроп `Название (x.xx кг)` -> `totalResourceKg` + `resourceKgByType`,
+     * 3) остальной дроп -> `itemCountByName` (`+1 шт.`).
+     *
+     * Зависимости:
+     * - входной список формируется в `ChatFilter` из строки "Результат обыска бота";
+     * - метод работает под `synchronized`, чтобы избежать гонок между потоками фильтра/интерцептора;
+     * - после любого изменения вызывает `saveInternal()` для немедленной персистентности.
+     */
     public static synchronized void addLoot(String time, List<String> items) {
         ensureLoaded();
         if (items == null || items.isEmpty()) return;
@@ -185,7 +197,13 @@ public class ChatStats {
         saveInternal();
     }
 
-    // Лог лута (копия списка, чтобы не отдавать внутреннюю коллекцию).
+    /**
+     * Legacy-журнал "последних находок" (совместимость со старым форматом статистики).
+     *
+     * Зависимости:
+     * - в новой логике UI предметная сводка строится из `itemCountByName`;
+     * - `lootLog` остаётся для обратной совместимости и миграции старых `LOOT=` файлов.
+     */
     public static synchronized List<String> getLootLog() {
         ensureLoaded();
         return Collections.unmodifiableList(new ArrayList<>(lootLog));
@@ -217,7 +235,15 @@ public class ChatStats {
         }
     }
 
-    // Загружает статистику из файла Logs/YYYYMMDD_stat.txt.
+    /**
+     * Загружает статистику из файла `Logs/YYYYMMDD_stat.txt`.
+     *
+     * Поддерживаемые ключи:
+     * - `XP=`, `FIGHTS=`, `NV=`,
+     * - `KG_TOTAL=`, `KG_ITEM=`,
+     * - `ITEM_COUNT=` (новый формат поштучной статистики),
+     * - `LOOT=` (legacy, используется для миграции старых данных).
+     */
     private static void loadFromFile(String date) {
         totalXp = 0;
         totalFights = 0;
@@ -266,7 +292,9 @@ public class ChatStats {
                     String value = line.substring(5);
                     if (!value.isEmpty()) {
                         lootLog.add(value);
-                        // Миграция старого формата: LOOT-строки (последние находки) конвертируем в поштучную статистику.
+                        // Миграция старого формата:
+                        // `LOOT=` строки конвертируем в `itemCountByName`,
+                        // чтобы пользователю не потерять предметную статистику после обновления формата.
                         String migratedItem = migrateLegacyLootEntryToItemName(value);
                         if (migratedItem != null && !migratedItem.isEmpty()) {
                             long currentCount = itemCountByName.containsKey(migratedItem)
@@ -281,7 +309,14 @@ public class ChatStats {
         }
     }
 
-    // Сохраняет статистику в файл Logs/YYYYMMDD_stat.txt.
+    /**
+     * Сохраняет статистику в файл `Logs/YYYYMMDD_stat.txt`.
+     *
+     * Зависимости:
+     * - вызывается после каждого изменения счётчиков (xp/fights/nv/kg/items);
+     * - пишет одновременно новый формат `ITEM_COUNT=` и legacy `LOOT=`,
+     *   чтобы сохранить совместимость с ранее накопленными данными.
+     */
     private static void saveInternal() {
         if (AppVars.getContext() == null) return;
         String currentDate = STAT_DATE_FORMAT.format(new Date());
@@ -349,11 +384,14 @@ public class ChatStats {
     }
 
     /**
-     * Миграция legacy-строки `LOOT=` в имя предмета для новой поштучной статистики.
+     * Конвертирует legacy-строку `LOOT=` в имя предмета для новой поштучной статистики.
      *
-     * Старый формат мог быть:
-     * - `HH:mm:ss Название предмета`
-     * - `Название предмета`
+     * Поддерживаемые legacy-варианты:
+     * - `HH:mm:ss Название предмета` (время отрезается),
+     * - `Название предмета` (используется как есть).
+     *
+     * Зависимости:
+     * - используется только в `loadFromFile(...)` как одноразовая миграция старых файлов.
      */
     private static String migrateLegacyLootEntryToItemName(String lootValue) {
         if (lootValue == null) return null;
