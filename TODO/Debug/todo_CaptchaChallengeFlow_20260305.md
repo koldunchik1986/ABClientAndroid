@@ -12,7 +12,7 @@
 ## Что считаем captcha-челленджем
 - [x] В HTML есть форма `FEND` с полем `code` и/или обязательным вводом.
 - [x] Подгружается `js/fkey.js` и активен keypad (`KeyInsert`, `BackKey`).
-- [ ] Сервер возвращает post-fight страницу, где без заполнения `code` нет перехода в обычный `main.php`.
+- [x] Сервер возвращает post-fight страницу, где без заполнения `code` нет перехода в обычный `main.php`.
 
 ## Матрица сигналов для логирования
 - [x] `MainPhp.mainPhpFight`: зафиксировать `fight_ty`, `LogBoi`, `IsBoi`, `FightLink`, факт `fightEnded`.
@@ -27,18 +27,18 @@
   - [x] action формы (без чувствительных данных)
 
 ## План анализа серверных ответов
-1. [ ] Собрать 3-5 runtime-логов с разными сценариями:
-   - [ ] бой без captcha
-   - [ ] бой с captcha
-   - [ ] повторный бой после успешного ввода captcha
-2. [ ] Для каждого сценария выделить последовательность URL/POST и финальное состояние.
-3. [ ] Построить таблицу переходов состояний:
-   - [ ] `state_id`
-   - [ ] `server markers`
-   - [ ] `client action`
-   - [ ] `expected next page`
-   - [ ] `actual result`
-4. [ ] Найти точку, где клиент неверно классифицирует captcha-required как обычный finish.
+1. [x] Собрать 3-5 runtime-логов с разными сценариями:
+   - [x] бой без captcha
+   - [x] бой с captcha
+   - [x] повторный бой после успешного ввода captcha
+2. [x] Для каждого сценария выделить последовательность URL/POST и финальное состояние.
+3. [x] Построить таблицу переходов состояний:
+   - [x] `state_id`
+   - [x] `server markers`
+   - [x] `client action`
+   - [x] `expected next page`
+   - [x] `actual result`
+4. [x] Найти точку, где клиент неверно классифицирует captcha-required как обычный finish.
 
 ## План реализации (Android)
 - [x] В `MainPhp` вынести явный `FinishFlowDecision`:
@@ -52,12 +52,27 @@
 - [x] Добавить антизацикливание на уровне повторов одного `LogBoi + challenge hash`.
 
 ## Критерии готовности
-- [ ] Нет бесконечного цикла `main.php -> fight-frame -> main.php`.
-- [ ] Для "без captcha" завершение боя стабильно уходит в обычный `main.php`.
-- [ ] Для "captcha required" клиент корректно останавливается на вводе captcha и после успешного ввода продолжает обычный поток.
-- [ ] В логах есть однозначный маркер, почему выбрана конкретная ветка завершения.
+- [x] Нет бесконечного цикла `main.php -> fight-frame -> main.php`.
+- [x] Для "без captcha" завершение боя стабильно уходит в обычный `main.php`.
+- [x] Для "captcha required" клиент корректно останавливается на вводе captcha и после успешного ввода продолжает обычный поток.
+- [x] В логах есть однозначный маркер, почему выбрана конкретная ветка завершения.
+
+## Обновление по логам 04/05/06
+
+### Таблица переходов состояний
+
+| state_id | server markers | client action | expected next page | actual result |
+| --- | --- | --- | --- | --- |
+| `S1_NO_CAPTCHA` | `fight ended`, `fightLink=get_id=61&act=7`, без `captchaUrl` | `DIRECT_FINISH_LINK` | обычный `main.php` | Цикла нет, завершение стабильно |
+| `S2_CAPTCHA_WAIT` | `finishFlow=CAPTCHA_REQUIRED`, есть `code.php?token` | показ диалога капчи, `AutoboiOff`, `skip autoTurn` | ожидание ввода кода | Без submit поток корректно в ожидании |
+| `S3_CAPTCHA_SUBMIT` | `showCaptchaDialog: submitting ...code=NNNNN...act=7`, HTTP `200` | submit по finish URL, восстановление `AutoboiOn` | переход в обычный post-fight поток | Поток продолжается, повторной captcha нет |
+
+### Вывод по классификации
+- Неверной классификации `captcha-required` как обычного finish не найдено.
+- Ветка завершения выбирается корректно и однозначно логируется (`finishFlow: decision=...` + `[CAPTCHA_FLOW]`).
 
 ## Файлы для правок/проверки
+
 - [x] `app/src/main/java/ru/neverlands/abclient/postfilter/MainPhp.java`
 - [x] `app/src/main/java/ru/neverlands/abclient/webview/WebViewRequestInterceptor.java`
 - [ ] `TODO/Debug/todo_ServerCaptchaResponseAnalysis_20260305.md` (сводный вывод по мере выполнения)
