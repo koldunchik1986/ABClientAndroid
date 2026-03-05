@@ -553,6 +553,7 @@ public class MainPhp {
                 if (!action.isEmpty()) {
                     markers.fendAction = action;
                 }
+                Element codeInput = fend.selectFirst("input[name=code]");
                 if (codeInput != null) {
                     markers.hasCodeInput = true;
                     String code = codeInput.hasAttr("value") ? codeInput.attr("value").trim() : "";
