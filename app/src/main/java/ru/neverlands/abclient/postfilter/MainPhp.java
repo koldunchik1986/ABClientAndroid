@@ -8,8 +8,10 @@ import org.jsoup.select.Elements;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Random;
 import java.text.SimpleDateFormat;
 
@@ -47,6 +49,8 @@ public class MainPhp {
     private static volatile long lastFightCaptchaDialogAtMs = 0L;
     private static volatile String lastCaptchaRejectKey = "";
     private static volatile long lastCaptchaRejectAtMs = 0L;
+    private static volatile String lastFightResultBroadcastKey = "";
+    private static volatile String lastAutoSkinProbeFightLog = "";
 
     /**
      * Лёгкая DTO-запись предмета инвентаря для wear-логики (порт `GetInvList` + `InvEntry.WearLink` из C#).
@@ -297,6 +301,171 @@ public class MainPhp {
     }
 
     /**
+     * Восстанавливает ссылку завершения боя (`get_id=61&act=7`) напрямую из HTML.
+     *
+     * Нужен как fallback, когда `LezFight.BuildFightLink(...)` не сработал
+     * и `AppVars.FightLink` остался пустым, но сервер уже прислал финальный кадр боя.
+     */
+    private static String extractFightFinishLinkFromHtml(String html, boolean withCaptchaPlaceholder) {
+        if (html == null || html.isEmpty()) {
+            return null;
+        }
+
+        // 1) Прямой линк в HTML/JS.
+        String directLink = findMainPhpLinkByQueryParts(html, "get_id=61", "act=7", "fexp=");
+        if (directLink != null && !directLink.isEmpty()) {
+            if (withCaptchaPlaceholder && !directLink.contains("code=")) {
+                directLink = setOrAppendQueryParam(directLink, "code", "????");
+            }
+            return normalizeNeverlandsMainLink(directLink);
+        }
+
+        // 2) Сборка по `var fexp = [...]` (аналог LezFight.BuildFightLink).
+        String rawFexp = HelperStrings.subString(html, "var fexp = [", "];");
+        if (rawFexp == null || rawFexp.isEmpty()) {
+            return null;
+        }
+
+        List<String> fexp = splitJsTopLevelCsv(rawFexp);
+        if (fexp.size() < 14) {
+            return null;
+        }
+
+        String fexp0 = trimJsToken(fexp.get(0));
+        String fexp1 = trimJsToken(fexp.get(1));
+        String fexp3 = trimJsToken(fexp.get(3));
+        String fexp5 = trimJsToken(fexp.get(5));
+        String fexp8 = trimJsToken(fexp.get(8));
+        String fexp9 = trimJsToken(fexp.get(9));
+        String fexp10 = trimJsToken(fexp.get(10));
+        String fexp11 = trimJsToken(fexp.get(11));
+        String fexp12 = trimJsToken(fexp.get(12));
+        String fexp13 = trimJsToken(fexp.get(13));
+
+        if (fexp0.isEmpty() || fexp1.isEmpty() || fexp3.isEmpty() || fexp5.isEmpty()) {
+            return null;
+        }
+
+        String finishLink = (withCaptchaPlaceholder
+                ? "main.php?code=????&get_id=61&act=7&fexp="
+                : "main.php?get_id=61&act=7&fexp=") + fexp0
+                + "&fres=" + fexp1
+                + "&vcode=" + fexp3
+                + "&min1=" + fexp8
+                + "&max1=" + fexp9
+                + "&min2=" + fexp10
+                + "&max2=" + fexp11
+                + "&sum1=" + fexp12
+                + "&sum2=" + fexp13
+                + "&ftype=" + fexp5;
+        return normalizeNeverlandsMainLink(finishLink);
+    }
+
+    /**
+     * Builds an auto-submit HTML wrapper for the server-provided finish form (`FEND`).
+     * Used when direct fight finish link is missing, but end-page form is present.
+     * Does not bypass captcha: if `code` is required and empty, returns null.
+     */
+    private static String buildFightEndFormSubmitHtml(String html) {
+        if (html == null || html.isEmpty()) {
+            return null;
+        }
+        try {
+            Document doc = Jsoup.parse(html);
+            Element form = doc.selectFirst("form[name=FEND], form#FEND, form[action*=main.php]");
+            if (form == null) {
+                return null;
+            }
+
+            Element codeInput = form.selectFirst("input[name=code]");
+            if (codeInput != null) {
+                String codeValue = codeInput.hasAttr("value") ? codeInput.attr("value").trim() : "";
+                if (codeValue.isEmpty() || "????".equals(codeValue)) {
+                    android.util.Log.d(TAG, "buildFightEndFormSubmitHtml: code required, skip auto-submit");
+                    return null;
+                }
+            }
+
+            String action = form.hasAttr("action") ? form.attr("action").trim() : "";
+            if (action.isEmpty()) {
+                action = "main.php";
+            }
+            String method = form.hasAttr("method") ? form.attr("method").trim().toLowerCase(Locale.ROOT) : "post";
+            if (!"get".equals(method) && !"post".equals(method)) {
+                method = "post";
+            }
+
+            Elements fields = form.select("input[name], select[name], textarea[name]");
+            if (fields.isEmpty()) {
+                return null;
+            }
+
+            StringBuilder sb = new StringBuilder();
+            sb.append(HtmlUtils.GENERATED_PAGE_MARKER);
+            sb.append("<html><head><meta http-equiv=\"Content-Type\" content=\"text/html; charset=windows-1251\">");
+            sb.append("<title>ABClient</title></head><body>");
+            sb.append("Завершение боя...<br>");
+            sb.append("<form id=\"ab_finish_form\" action=\"")
+                    .append(escapeHtmlAttr(action))
+                    .append("\" method=\"")
+                    .append(method)
+                    .append("\">");
+
+            for (Element field : fields) {
+                String tag = field.tagName().toLowerCase(Locale.ROOT);
+                String name = field.hasAttr("name") ? field.attr("name") : "";
+                if (name.isEmpty()) {
+                    continue;
+                }
+
+                String value = "";
+                if ("input".equals(tag)) {
+                    String type = field.hasAttr("type") ? field.attr("type").toLowerCase(Locale.ROOT) : "text";
+                    if ("submit".equals(type) || "button".equals(type) || "reset".equals(type)
+                            || "image".equals(type) || "file".equals(type)) {
+                        continue;
+                    }
+                    value = field.hasAttr("value") ? field.attr("value") : "";
+                } else if ("textarea".equals(tag)) {
+                    value = field.text();
+                } else if ("select".equals(tag)) {
+                    Element selected = field.selectFirst("option[selected]");
+                    if (selected == null) {
+                        selected = field.selectFirst("option");
+                    }
+                    value = selected != null ? selected.attr("value") : "";
+                }
+
+                sb.append("<input type=\"hidden\" name=\"")
+                        .append(escapeHtmlAttr(name))
+                        .append("\" value=\"")
+                        .append(escapeHtmlAttr(value))
+                        .append("\">");
+            }
+
+            sb.append("</form>");
+            sb.append("<script language=\"JavaScript\">");
+            sb.append("setTimeout(function(){var f=document.getElementById('ab_finish_form'); if(f){f.submit();}}, 350);");
+            sb.append("</script></body></html>");
+            return sb.toString();
+        } catch (Exception e) {
+            android.util.Log.e(TAG, "buildFightEndFormSubmitHtml error", e);
+            return null;
+        }
+    }
+
+    private static String escapeHtmlAttr(String value) {
+        if (value == null || value.isEmpty()) {
+            return "";
+        }
+        return value
+                .replace("&", "&amp;")
+                .replace("\"", "&quot;")
+                .replace("<", "&lt;")
+                .replace(">", "&gt;");
+    }
+
+    /**
      * Порт `MainPhpInsHp.cs` (C# -> Android).
      * Извлекает `hp_int`/`ma_int` из `ins_HP(...)` и обновляет
      * `AppVars.PersIntHP`/`AppVars.PersIntMA`.
@@ -460,7 +629,10 @@ public class MainPhp {
         }
         String normalized = raw.trim()
                 .replace("\"", "")
-                .replace("'", "");
+                .replace("'", "")
+                .replace('\u00A0', ' ')
+                .replace(" ", "")
+                .replace(",", ".");
         if (normalized.isEmpty()) {
             return null;
         }
@@ -655,29 +827,225 @@ public class MainPhp {
         if (html == null || html.isEmpty()) {
             return null;
         }
+        return findMainPhpLinkByQueryParts(html, "get_id=17");
+    }
 
-        String normalized = html.replace("&amp;", "&");
+    /**
+     * Нормализует ссылку `main.php` для auto-redirect:
+     * - приводит хост к `http://neverlands.ru` без `www`;
+     * - разворачивает относительные варианты (`main.php`, `/main.php`, `../main.php`);
+     * - декодирует `&amp;` в query-строке.
+     */
+    private static String normalizeNeverlandsMainLink(String link) {
+        if (link == null || link.trim().isEmpty()) {
+            return "http://neverlands.ru/main.php";
+        }
+
+        String normalized = link.trim().replace("&amp;", "&");
+
+        while (normalized.startsWith("../")) {
+            normalized = normalized.substring(3);
+        }
+
+        if (normalized.startsWith("//neverlands.ru/")) {
+            normalized = "http:" + normalized;
+        } else if (normalized.startsWith("/main.php")) {
+            normalized = "http://neverlands.ru" + normalized;
+        } else if (normalized.startsWith("main.php")) {
+            normalized = "http://neverlands.ru/" + normalized;
+        } else if (normalized.startsWith("?")) {
+            normalized = "http://neverlands.ru/main.php" + normalized;
+        }
+
+        normalized = normalized.replace("https://www.neverlands.ru/", "http://neverlands.ru/");
+        normalized = normalized.replace("http://www.neverlands.ru/", "http://neverlands.ru/");
+        normalized = normalized.replace("https://neverlands.ru/", "http://neverlands.ru/");
+        return normalized;
+    }
+
+    /**
+     * Универсальный fallback-поиск ссылки `main.php?...` по набору query-маркеров.
+     * Возвращает первую подходящую ссылку в нормализованном виде.
+     */
+    private static String findMainPhpLinkByQueryParts(String html, String... queryParts) {
+        if (html == null || html.isEmpty()) {
+            return null;
+        }
+
+        String source = html.replace("&amp;", "&");
         java.util.regex.Pattern pattern = java.util.regex.Pattern.compile(
-                "(?:https?://(?:www\\.)?neverlands\\.ru/)?main\\.php\\?get_id=17[^'\"\\s<]+",
+                "(?:https?://(?:www\\.)?neverlands\\.ru/|\\.\\./|/)?main\\.php\\?[^'\"\\s<]+",
                 java.util.regex.Pattern.CASE_INSENSITIVE);
-        java.util.regex.Matcher matcher = pattern.matcher(normalized);
-        if (!matcher.find()) {
+        java.util.regex.Matcher matcher = pattern.matcher(source);
+        while (matcher.find()) {
+            String candidate = matcher.group();
+            if (candidate == null || candidate.isEmpty()) {
+                continue;
+            }
+            String normalized = normalizeNeverlandsMainLink(candidate);
+            boolean matches = true;
+            if (queryParts != null) {
+                for (String part : queryParts) {
+                    if (part == null || part.isEmpty()) {
+                        continue;
+                    }
+                    if (!normalized.contains(part)) {
+                        matches = false;
+                        break;
+                    }
+                }
+            }
+            if (matches) {
+                return normalized;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Добавляет/дополняет query-параметры фильтра инвентаря (`&im=...&wca=...`) к найденной ссылке.
+     * Если ссылка указывает на `go=inf`, переводит её на `go=inv`.
+     */
+    private static String applyInventoryFilterToLink(String link, String filter) {
+        String normalized = normalizeNeverlandsMainLink(link);
+        if (normalized.contains("go=inf")) {
+            normalized = normalized.replace("go=inf", "go=inv");
+        }
+        if (filter == null || filter.isEmpty()) {
+            return normalized;
+        }
+
+        String filterNormalized = filter.startsWith("&") ? filter.substring(1) : filter;
+        if (filterNormalized.isEmpty()) {
+            return normalized;
+        }
+
+        String[] queryParts = filterNormalized.split("&");
+        String result = normalized;
+        for (String part : queryParts) {
+            if (part == null || part.isEmpty()) {
+                continue;
+            }
+            String key = part;
+            String value = "";
+            int eq = part.indexOf('=');
+            if (eq >= 0) {
+                key = part.substring(0, eq);
+                value = part.substring(eq + 1);
+            }
+            if (key.isEmpty()) {
+                continue;
+            }
+            result = setOrAppendQueryParam(result, key, value);
+        }
+        return result;
+    }
+
+    /**
+     * Устанавливает query-параметр в URL:
+     * - если параметр уже есть, заменяет его значение;
+     * - если параметра нет, добавляет его в query.
+     */
+    private static String setOrAppendQueryParam(String url, String key, String value) {
+        if (url == null || url.isEmpty() || key == null || key.isEmpty()) {
+            return url;
+        }
+        String safeValue = (value == null) ? "" : value;
+        String keyWithEq = key + "=";
+        int queryStart = url.indexOf('?');
+        if (queryStart == -1) {
+            return url + "?" + keyWithEq + safeValue;
+        }
+
+        int from = queryStart + 1;
+        while (from < url.length()) {
+            int amp = url.indexOf('&', from);
+            int end = (amp == -1) ? url.length() : amp;
+            String part = url.substring(from, end);
+            if (part.startsWith(keyWithEq) || part.equals(key)) {
+                return url.substring(0, from) + keyWithEq + safeValue + url.substring(end);
+            }
+            if (amp == -1) {
+                break;
+            }
+            from = amp + 1;
+        }
+
+        return url + "&" + keyWithEq + safeValue;
+    }
+
+    /**
+     * Проверяет, что текущий адрес уже находится в разделе инвентаря (`go=inv`).
+     * Используется как fallback-маркер, когда HTML-шаблон инвентаря может отличаться.
+     */
+    private static boolean isInventoryAddress(String address) {
+        if (address == null || address.isEmpty()) {
+            return false;
+        }
+        String normalizedAddress = normalizeNeverlandsMainLink(address).toLowerCase(Locale.ROOT);
+        return normalizedAddress.contains("main.php") && normalizedAddress.contains("go=inv");
+    }
+
+    /**
+     * Проверяет, что адрес инвентаря уже содержит все параметры из требуемого фильтра
+     * с совпадающими значениями (`im`, `wca` и т.д.).
+     */
+    private static boolean inventoryAddressMatchesFilter(String address, String filter) {
+        if (!isInventoryAddress(address)) {
+            return false;
+        }
+        String normalizedAddress = normalizeNeverlandsMainLink(address);
+        if (filter == null || filter.isEmpty()) {
+            return true;
+        }
+
+        String filterNormalized = filter.startsWith("&") ? filter.substring(1) : filter;
+        if (filterNormalized.isEmpty()) {
+            return true;
+        }
+
+        String[] queryParts = filterNormalized.split("&");
+        for (String part : queryParts) {
+            if (part == null || part.isEmpty()) {
+                continue;
+            }
+            int eq = part.indexOf('=');
+            String key = (eq >= 0) ? part.substring(0, eq) : part;
+            String expectedValue = (eq >= 0) ? part.substring(eq + 1) : "";
+            String currentValue = getQueryParamValue(normalizedAddress, key);
+            if (currentValue == null || !currentValue.equals(expectedValue)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /**
+     * Возвращает значение query-параметра из URL или null, если параметр отсутствует.
+     */
+    private static String getQueryParamValue(String url, String key) {
+        if (url == null || url.isEmpty() || key == null || key.isEmpty()) {
             return null;
         }
-
-        String link = matcher.group();
-        if (link == null || link.isEmpty()) {
+        int queryStart = url.indexOf('?');
+        if (queryStart == -1 || queryStart + 1 >= url.length()) {
             return null;
         }
-
-        if (!link.startsWith("http://") && !link.startsWith("https://")) {
-            link = "http://neverlands.ru/" + link;
+        String query = url.substring(queryStart + 1);
+        String[] parts = query.split("&");
+        String keyWithEq = key + "=";
+        for (String part : parts) {
+            if (part == null || part.isEmpty()) {
+                continue;
+            }
+            if (part.startsWith(keyWithEq)) {
+                return part.substring(keyWithEq.length());
+            }
+            if (part.equals(key)) {
+                return "";
+            }
         }
-
-        link = link.replace("https://www.neverlands.ru/", "http://neverlands.ru/");
-        link = link.replace("http://www.neverlands.ru/", "http://neverlands.ru/");
-        link = link.replace("https://neverlands.ru/", "http://neverlands.ru/");
-        return link;
+        return null;
     }
 
     private static String mainPhpFindPerc(String html) {
@@ -690,16 +1058,34 @@ public class MainPhp {
         String patternEnter = "[\"inf\",\"Ваш персонаж\",\"";
         int posPatternEnter = html.indexOf(patternEnter);
         if (posPatternEnter == -1) {
+            String fallbackLink = findMainPhpLinkByQueryParts(html, "get_id=56", "act=10", "go=inf", "vcode=");
+            if (fallbackLink != null) {
+                android.util.Log.d(TAG, "AUTO_FALLBACK_TRACE mainPhpFindPerc: regex fallback -> " + fallbackLink);
+                return buildRedirectHtml("Переключение на персонаж", fallbackLink);
+            }
             return null;
         }
 
         posPatternEnter += patternEnter.length();
         int posEnd = html.indexOf('"', posPatternEnter);
         if (posEnd == -1) {
+            String fallbackLink = findMainPhpLinkByQueryParts(html, "get_id=56", "act=10", "go=inf", "vcode=");
+            if (fallbackLink != null) {
+                android.util.Log.d(TAG, "AUTO_FALLBACK_TRACE mainPhpFindPerc: regex fallback -> " + fallbackLink);
+                return buildRedirectHtml("Переключение на персонаж", fallbackLink);
+            }
             return null;
         }
 
         String jsonVcode = html.substring(posPatternEnter, posEnd);
+        if (jsonVcode == null || jsonVcode.isEmpty()) {
+            String fallbackLink = findMainPhpLinkByQueryParts(html, "get_id=56", "act=10", "go=inf", "vcode=");
+            if (fallbackLink != null) {
+                android.util.Log.d(TAG, "AUTO_FALLBACK_TRACE mainPhpFindPerc: regex fallback -> " + fallbackLink);
+                return buildRedirectHtml("Переключение на персонаж", fallbackLink);
+            }
+            return null;
+        }
         String link = "main.php?get_id=56&act=10&go=inf&vcode=" + jsonVcode;
         return buildRedirectHtml("Переключение на персонаж", link);
     }
@@ -760,14 +1146,23 @@ public class MainPhp {
     private static void mainPhpGetSkinRes(String html) {
         final String patternStartRes = "<B>Рост</B></td></tr>";
         int pos = html.indexOf(patternStartRes);
-        if (pos == -1) {
-            return;
+        boolean anchorFound = pos != -1;
+        if (!anchorFound) {
+            // Fallback: на некоторых кадрах "Рост" может быть в другом шаблоне/регистре.
+            // В этом случае пробуем парсить весь HTML по шаблону ресурсных строк.
+            pos = 0;
         }
 
         StringBuilder sb = new StringBuilder();
-        List<String> lootForStats = new ArrayList<>();
+        List<String> deltaForChat = new ArrayList<>();
+        Map<String, Double> deltaForStatsKg = new LinkedHashMap<>();
+        boolean baselineFill = AppVars.SkinRes.isEmpty();
+        int parsedResources = 0;
+        int diffResources = 0;
 
-        pos += patternStartRes.length();
+        if (anchorFound) {
+            pos += patternStartRes.length();
+        }
         while (true) {
             final String patternStartTr = "<input type=checkbox name=";
             pos = html.indexOf(patternStartTr, pos);
@@ -789,10 +1184,7 @@ public class MainPhp {
             if (val != null) {
                 String name = HelperStrings.subString(htmlEntry, " width=25% class=travma align=center><B>", "</B><BR>");
                 if (name != null && !name.isEmpty()) {
-                    if (sb.length() > 0) {
-                        sb.append(", ");
-                    }
-
+                    parsedResources++;
                     if (AppVars.SkinRes.containsKey(name)) {
                         double oldVal = AppVars.SkinRes.get(name);
                         if (Math.abs(oldVal - val) > 0.009d) {
@@ -804,7 +1196,10 @@ public class MainPhp {
                                     .append(")");
                             AppVars.SkinRes.put(name, val);
                             if (diff > 0d) {
-                                lootForStats.add(name + " (" + String.format(Locale.US, "%.2f", diff) + " кг)");
+                                diffResources++;
+                                deltaForChat.add(name + " (+" + String.format(Locale.US, "%.2f", diff) + " кг)");
+                                Double existingDelta = deltaForStatsKg.get(name);
+                                deltaForStatsKg.put(name, (existingDelta == null ? 0d : existingDelta) + diff);
                             }
                         } else {
                             sb.append("<span style=\"color:#009933;font-weight:bold;\">«")
@@ -816,8 +1211,11 @@ public class MainPhp {
                                 .append(name).append(" ").append(String.format(Locale.US, "%.2f", val))
                                 .append("»</span>");
                         AppVars.SkinRes.put(name, val);
-                        if (val > 0d) {
-                            lootForStats.add(name + " (" + String.format(Locale.US, "%.2f", val) + " кг)");
+                        if (!baselineFill && val > 0d) {
+                            diffResources++;
+                            deltaForChat.add(name + " (+" + String.format(Locale.US, "%.2f", val) + " кг)");
+                            Double existingDelta = deltaForStatsKg.get(name);
+                            deltaForStatsKg.put(name, (existingDelta == null ? 0d : existingDelta) + val);
                         }
                     }
                 }
@@ -826,17 +1224,24 @@ public class MainPhp {
             pos = posEnd;
         }
 
-        if (sb.length() > 0) {
-            String message = "Охотничьи ресурсы: " + sb;
+        if (!deltaForChat.isEmpty()) {
+            String message = "<font color=#006600><b>Результат разделки:</b></font> "
+                    + String.join(", ", deltaForChat);
             if (AppVars.getContext() != null) {
                 Intent intent = new Intent(AppVars.ACTION_ADD_CHAT_MESSAGE);
                 intent.putExtra("message", message);
                 LocalBroadcastManager.getInstance(AppVars.getContext()).sendBroadcast(intent);
             }
         }
-        if (!lootForStats.isEmpty()) {
-            ru.neverlands.abclient.utils.ChatStats.addLoot("", lootForStats);
+        if (!deltaForStatsKg.isEmpty()) {
+            ru.neverlands.abclient.utils.ChatStats.addResourceDeltaKg(deltaForStatsKg);
         }
+
+        android.util.Log.d(TAG, "AUTO_SKIN_TRACE mainPhpGetSkinRes: anchorFound=" + anchorFound
+                + ", baselineFill=" + baselineFill
+                + ", parsedResources=" + parsedResources
+                + ", diffResources=" + diffResources
+                + ", deltaMapSize=" + deltaForStatsKg.size());
     }
 
     /**
@@ -1110,12 +1515,12 @@ public class MainPhp {
                 }
 
                 if (AppVars.AutoSkinCheckRes) {
-                    String invHtml = mainPhpFindInv(html, "&im=5");
+                    String invHtml = mainPhpFindInvWithFallback(html, "&im=5", address);
                     if (invHtml != null && !invHtml.isEmpty()) {
                         android.util.Log.d(TAG, "AUTO_SKIN_TRACE redirect to resources inventory (&im=5)");
                         return Russian.getBytes(invHtml);
                     }
-                    if (mainPhpIsInv(html)) {
+                    if (mainPhpIsInv(html) || inventoryAddressMatchesFilter(address, "&im=5")) {
                         AppVars.AutoSkinCheckRes = false;
                         android.util.Log.d(TAG, "AUTO_SKIN_TRACE read skin resources");
                         mainPhpGetSkinRes(html);
@@ -1138,16 +1543,16 @@ public class MainPhp {
                 }
 
                 if (!AppVars.AutoSkinArmedKnife) {
-                    String invHtml = mainPhpFindInv(html, "&im=0&wca=4");
+                    String invHtml = mainPhpFindInvWithFallback(html, "&im=0&wca=4", address);
                     if (invHtml != null && !invHtml.isEmpty()) {
                         android.util.Log.d(TAG, "AUTO_SKIN_TRACE redirect to items inventory (&im=0&wca=4)");
                         return Russian.getBytes(invHtml);
                     }
 
-                    if (mainPhpIsInv(html)) {
+                    if (mainPhpIsInv(html) || isInventoryAddress(address)) {
                         invHtml = mainPhpWearKnife(html);
                         if (invHtml == null || invHtml.isEmpty()) {
-                            if (address == null || !address.endsWith("im=0&wca=4")) {
+                            if (!inventoryAddressMatchesFilter(address, "&im=0&wca=4")) {
                                 android.util.Log.d(TAG, "AUTO_SKIN_TRACE switch to items tab for knife search");
                                 return Russian.getBytes(buildRedirectHtml("Переключение на вещи", "main.php?im=0&wca=4"));
                             }
@@ -1169,6 +1574,7 @@ public class MainPhp {
         // и обычный путь `mainPhpFight(...)->registerFightEnd(...)` не успевает сработать.
         if (isFightFinishAddress) {
             registerFightEndByLogId(AppVars.LastBoiLog, "fight_finish_url");
+            publishFightResultFromLogsIfNeeded(html, address, AppVars.LastBoiLog);
         }
 
         if (isFightFrame || isFightTopFrame) {
@@ -1263,6 +1669,7 @@ public class MainPhp {
 
         android.util.Log.d(TAG, "processMainPhpFast: filter=" + filter
                 + ", isInv=" + mainPhpIsInv(html)
+                + ", isInvByAddress=" + isInventoryAddress(address)
                 + ", w28_form=" + html.contains("w28_form(")
                 + ", magicreform=" + html.contains("magicreform("));
 
@@ -1282,14 +1689,14 @@ public class MainPhp {
         }
 
         // 1. Если мы НЕ на инвентаре — ищем ссылку на инвентарь с фильтром
-        String invRedirect = mainPhpFindInv(html, filter);
+        String invRedirect = mainPhpFindInvWithFallback(html, filter, address);
         if (invRedirect != null) {
             android.util.Log.d(TAG, "processMainPhpFast: redirect на инвентарь: " + invRedirect);
             return Russian.getBytes(invRedirect);
         }
 
         // 2. Если мы НА инвентаре — проверяем категорию и ищем предмет
-        if (mainPhpIsInv(html)) {
+        if (mainPhpIsInv(html) || isInventoryAddress(address)) {
             String filterClean = filter.startsWith("&") ? filter.substring(1) : filter;
 
             // 2a. Сначала проверяем, на правильной ли мы вкладке категории.
@@ -1297,7 +1704,7 @@ public class MainPhp {
             // перенаправляем на нужную категорию ПЕРЕД поиском предмета.
             // Это критично при 500+ предметах в инвентаре — поиск по всему
             // HTML (695KB) вместо отфильтрованной страницы (28KB) слишком медленный.
-            if (!address.contains(filterClean)) {
+            if (!inventoryAddressMatchesFilter(address, filter)) {
                 android.util.Log.d(TAG, "processMainPhpFast: на инвентаре, но не на нужной категории ("
                         + filterClean + "), переключаем");
                 return Filter.buildRedirect("Переключение на нужную категорию",
@@ -1554,6 +1961,41 @@ public class MainPhp {
      * Стратегия поиска инвентаря на арене (view_arena).
      * Аналог MainPhpDrink.cs строки 99-130
      */
+    private static String mainPhpFindInvWithFallback(String html, String filter, String address) {
+        // Анти-зацикливание: если уже на go=inv с нужным фильтром, redirect не нужен.
+        if (inventoryAddressMatchesFilter(address, filter)) {
+            return null;
+        }
+
+        // Если уже на go=inv, но фильтр не совпадает, синхронизируем адрес с нужными параметрами.
+        if (isInventoryAddress(address)) {
+            String normalizedAddress = normalizeNeverlandsMainLink(address);
+            String filteredAddress = applyInventoryFilterToLink(normalizedAddress, filter);
+            if (!normalizedAddress.equals(filteredAddress)) {
+                android.util.Log.d(TAG, "AUTO_FALLBACK_TRACE mainPhpFindInv: address filter sync -> " + filteredAddress);
+                return buildRedirectHtml("Переключение на инвентарь", filteredAddress);
+            }
+            return null;
+        }
+
+        String redirectHtml = mainPhpFindInv(html, filter);
+        if (redirectHtml != null) {
+            return redirectHtml;
+        }
+
+        String fallbackInvLink = findMainPhpLinkByQueryParts(html, "get_id=56", "act=10", "go=inv", "vcode=");
+        if (fallbackInvLink == null) {
+            fallbackInvLink = findMainPhpLinkByQueryParts(html, "get_id=56", "act=10", "go=inf", "vcode=");
+        }
+        if (fallbackInvLink == null) {
+            return null;
+        }
+
+        String filteredLink = applyInventoryFilterToLink(fallbackInvLink, filter);
+        android.util.Log.d(TAG, "AUTO_FALLBACK_TRACE mainPhpFindInv: regex fallback -> " + filteredLink);
+        return buildRedirectHtml("Переключение на инвентарь", filteredLink);
+    }
+
     private static String mainPhpFindInvArena(String html, String filter) {
         String patternArena = "var vcode = [";
         int pos = html.indexOf(patternArena);
@@ -1655,11 +2097,12 @@ public class MainPhp {
      * Аналог BuildRedirect в Filter.cs:280-291
      */
     private static String buildRedirectHtml(String description, String link) {
+        String normalizedLink = normalizeNeverlandsMainLink(link);
         return ru.neverlands.abclient.utils.HtmlUtils.GENERATED_PAGE_MARKER +
                 "<html><head><meta http-equiv=\"Content-Type\" content=\"text/html; charset=windows-1251\">" +
                 "<title>ABClient</title></head><body>" +
                 description +
-                "<script language=\"JavaScript\">window.location = \"" + link + "\";</script></body></html>";
+                "<script language=\"JavaScript\">window.location = \"" + normalizedLink + "\";</script></body></html>";
     }
 
     /**
@@ -1723,6 +2166,7 @@ public class MainPhp {
         boolean fightEnded = !fight.IsBoi && !fight.IsWaitingForNextTurn;
         if (fightEnded) {
             registerFightEnd(fight);
+            publishFightResultFromLogsIfNeeded(html, address, fight.LogBoi);
         }
         String fightCaptchaUrl = fightEnded ? resolveFightCaptchaUrl(html) : null;
         recoverAutoboiRuntimeStateIfNeeded(fightEnded, fightCaptchaUrl);
@@ -1822,6 +2266,7 @@ public class MainPhp {
             android.util.Log.d(TAG, "mainPhpFight: NEW FIGHT detected! LogBoi changed: "
                     + AppVars.LastBoiLog + " -> " + fight.LogBoi);
             AppVars.LastBoiLog = fight.LogBoi;
+            lastAutoSkinProbeFightLog = "";
             AppVars.AutoboiReadyCompletedLog = "";
             fight.updateLastBoiFromLogs();
             notifyNewFight(fight);
@@ -1839,6 +2284,19 @@ public class MainPhp {
                     android.util.Log.d(TAG, "AUTO_SKIN_TRACE mainPhpFight: fight ended, run raz before finish");
                     return razHtml;
                 }
+
+                // Если бой шел через go=inf и fight_ty[9] оказался пустым, делаем один probe полного main.php.
+                // Это повторяет поведение ПК-клиента, где после submit обрабатывается обычный main.php кадр,
+                // из которого приходит заполненный массив параметров разделки.
+                boolean infAddress = address != null && address.contains("get_id=56&act=10&go=inf");
+                boolean hasFightLog = fight.LogBoi != null && !fight.LogBoi.isEmpty();
+                boolean probeNotDoneForFight = hasFightLog && !fight.LogBoi.equals(lastAutoSkinProbeFightLog);
+                if (infAddress && probeNotDoneForFight) {
+                    lastAutoSkinProbeFightLog = fight.LogBoi;
+                    String probeUrl = "http://neverlands.ru/main.php?r=" + System.currentTimeMillis();
+                    android.util.Log.d(TAG, "AUTO_SKIN_TRACE mainPhpFight: raz probe redirect to " + probeUrl);
+                    return buildDelayedRedirectHtml("Проверка разделки", probeUrl, 260);
+                }
             }
         }
 
@@ -1854,6 +2312,16 @@ public class MainPhp {
             String captchaUrl = fightCaptchaUrl;
             boolean needCaptcha = captchaUrl != null && !captchaUrl.isEmpty();
             String fightLink = AppVars.FightLink;
+
+            // Fallback: если LezFight не успел собрать ссылку завершения, достаём её из текущего HTML.
+            if (fightLink == null || fightLink.isEmpty()) {
+                String recoveredFightLink = extractFightFinishLinkFromHtml(html, needCaptcha);
+                if (recoveredFightLink != null && !recoveredFightLink.isEmpty()) {
+                    fightLink = recoveredFightLink;
+                    AppVars.FightLink = recoveredFightLink;
+                    android.util.Log.d(TAG, "mainPhpFight: recovered finish link from html: " + recoveredFightLink);
+                }
+            }
 
             if (needCaptcha && fightLink != null && !fightLink.isEmpty()) {
                 android.util.Log.d(TAG, "mainPhpFight: CAPTCHA required, stopping autoboi and showing dialog: " + captchaUrl);
@@ -1888,16 +2356,21 @@ public class MainPhp {
                 AppVars.FightLink = "";
                 return Russian.getString(Filter.buildRedirect("Завершение боя", fightLink));
             }
-            // FightLink пустой или содержит "????" - делаем редирект на main.php
-            // Это нужно для обновления верхнего фрейма и предотвращения белого экрана
-
-            android.util.Log.d(TAG, "mainPhpFight: FightLink missing, redirecting to main.php");
-            AppVars.FightLink = "";
-            int redirectDelayToMain = AUTO_FINISH_MIN_DELAY_MS + RANDOM.nextInt(AUTO_FINISH_EXTRA_DELAY_MS + 1);
-            if (redirectDelayToMain >= 0) {
-                return buildDelayedRedirectHtml("Завершение боя - обновление", "main.php", redirectDelayToMain);
+            // FightLink пустой/неполный:
+            // 1) пробуем автосабмит server-side формы FEND (без капчи),
+            // 2) если не удалось распарсить форму, оставляем оригинальный HTML
+            //    (иначе fallback-редиректом легко получить цикл main.php -> fight frame -> main.php).
+            String finishFormSubmitHtml = buildFightEndFormSubmitHtml(html);
+            if (finishFormSubmitHtml != null) {
+                android.util.Log.d(TAG, "mainPhpFight: FightLink missing, auto-submit FEND form");
+                AppVars.FightLink = "";
+                return finishFormSubmitHtml;
             }
-            return Russian.getString(Filter.buildRedirect("Завершение боя - обновление", "main.php"));
+
+            android.util.Log.d(TAG, "mainPhpFight: FightLink missing and FEND not parsed, keep original fight HTML");
+            AppVars.FightLink = "";
+            AppVars.ContentMainPhp = html;
+            return html;
         }
 
         // Ветка ручного режима:
@@ -2227,6 +2700,113 @@ public class MainPhp {
      * Уведомление о начале нового боя (аналог TrayBalloon при смене LogBoi в C#).
      * Отправляет сообщение в чат: имя противника, уровень, HP/MA, тип боя.
      */
+    /**
+     * Публикует в чат итог боя/разделки на основе массива `var logs = [...]`.
+     * Нужен как fallback для кейсов, когда серверный итог не доходит до нижнего чата.
+     */
+    private static void publishFightResultFromLogsIfNeeded(String html, String address, String logIdHint) {
+        if (html == null || html.isEmpty() || !html.contains("var logs = ")) {
+            return;
+        }
+
+        String logsBlock = HelperStrings.subString(html, "var logs = ", ";");
+        if (logsBlock == null || logsBlock.isEmpty()) {
+            return;
+        }
+
+        String winnerNick = "";
+        java.util.regex.Matcher winnerMatcher = java.util.regex.Pattern.compile(
+                "\"<B>Победа за</B>\",\\[1,2,\\\"([^\\\"]+)\\\""
+        ).matcher(logsBlock);
+        if (winnerMatcher.find()) {
+            String winnerRaw = winnerMatcher.group(1);
+            winnerNick = winnerRaw == null ? "" : winnerRaw.trim();
+        }
+
+        boolean isSkinResult = address != null && address.contains("get_id=17");
+        boolean skinSkillRaised = false;
+        List<String> lootItems = new ArrayList<>();
+        java.util.regex.Matcher lootMatcher = java.util.regex.Pattern.compile(
+                "\\[8,\\d+,\\\"([^\\\"]+)\\\",(\\d+)\\]"
+        ).matcher(logsBlock);
+        while (lootMatcher.find()) {
+            String lootNameRaw = lootMatcher.group(1);
+            if (lootNameRaw == null) {
+                continue;
+            }
+            String skillRaiseRaw = lootMatcher.group(2);
+            String lootName = lootNameRaw.trim();
+            if (lootName.isEmpty()) {
+                continue;
+            }
+            if (isSkinResult && skillRaiseRaw != null && !skillRaiseRaw.isEmpty()) {
+                try {
+                    skinSkillRaised = skinSkillRaised || Integer.parseInt(skillRaiseRaw) > 0;
+                } catch (NumberFormatException ignore) {
+                    // Игнорируем битые значения в логе сервера.
+                }
+            }
+            if (!lootItems.contains(lootName)) {
+                lootItems.add(lootName);
+            }
+        }
+
+        if ((winnerNick == null || winnerNick.isEmpty()) && lootItems.isEmpty()) {
+            return;
+        }
+
+        String lootPrefix = isSkinResult
+                ? "Результат разделки"
+                : "Результат обыска бота";
+        String dedupKey = (logIdHint == null ? "" : logIdHint)
+                + "|" + winnerNick
+                + "|" + lootPrefix
+                + "|" + String.join(",", lootItems);
+        if (dedupKey.equals(lastFightResultBroadcastKey)) {
+            return;
+        }
+        lastFightResultBroadcastKey = dedupKey;
+
+        if (AppVars.getContext() != null) {
+            if (winnerNick != null && !winnerNick.isEmpty()) {
+                Intent victoryIntent = new Intent(AppVars.ACTION_ADD_CHAT_MESSAGE);
+                victoryIntent.putExtra(
+                        "message",
+                        "<font color=#009933><b>Победа за " + winnerNick + ".</b></font>"
+                );
+                LocalBroadcastManager.getInstance(AppVars.getContext()).sendBroadcast(victoryIntent);
+            }
+            if (!lootItems.isEmpty()) {
+                if (!isSkinResult) {
+                    Intent lootIntent = new Intent(AppVars.ACTION_ADD_CHAT_MESSAGE);
+                    lootIntent.putExtra(
+                            "message",
+                            "<font color=#006600><b>" + lootPrefix + ":</b></font> " + String.join(", ", lootItems)
+                    );
+                    LocalBroadcastManager.getInstance(AppVars.getContext()).sendBroadcast(lootIntent);
+                }
+            }
+        }
+
+        if (isSkinResult && !lootItems.isEmpty()) {
+            AppVars.AutoSkinCheckRes = true;
+            if (skinSkillRaised) {
+                AppVars.AutoSkinCheckUm = true;
+            }
+            android.util.Log.d(TAG, "AUTO_SKIN_TRACE publishFightResultFromLogsIfNeeded: "
+                    + "queue AutoSkinCheckRes=true, AutoSkinCheckUm=" + AppVars.AutoSkinCheckUm
+                    + ", lootCount=" + lootItems.size());
+        }
+
+        if (!isSkinResult && !lootItems.isEmpty()) {
+            ru.neverlands.abclient.utils.ChatStats.addLoot("", lootItems);
+        }
+
+        android.util.Log.d(TAG, "publishFightResultFromLogsIfNeeded: winner=" + winnerNick
+                + ", lootCount=" + lootItems.size()
+                + ", source=" + address);
+    }
+
     private static void notifyNewFight(LezFight fight) {
         if (AppVars.getContext() == null) return;
 

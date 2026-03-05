@@ -1,6 +1,7 @@
 package ru.neverlands.abclient.proxy;
 
 import android.webkit.CookieManager;
+import android.webkit.ValueCallback;
 
 /**
  * Менеджер куки.
@@ -38,8 +39,20 @@ public class CookiesManager {
      * Очистка всех куки в системном CookieManager.
      */
     public static void clear() {
-        CookieManager.getInstance().removeAllCookies(null);
-        CookieManager.getInstance().flush();
+        clear(null);
+    }
+
+    /**
+     * Asynchronously clears all WebView cookies and invokes callback when done.
+     */
+    public static void clear(ValueCallback<Boolean> callback) {
+        CookieManager manager = CookieManager.getInstance();
+        manager.removeAllCookies(value -> {
+            manager.flush();
+            if (callback != null) {
+                callback.onReceiveValue(value);
+            }
+        });
     }
 
     /**

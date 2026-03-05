@@ -34,6 +34,8 @@ import java.util.concurrent.Executors;
 import ru.neverlands.abclient.databinding.ActivityLoginBinding;
 import ru.neverlands.abclient.model.AuthResult;
 import ru.neverlands.abclient.model.UserConfig;
+import ru.neverlands.abclient.network.NetworkClient;
+import ru.neverlands.abclient.proxy.CookiesManager;
 import ru.neverlands.abclient.utils.AppVars;
 import ru.neverlands.abclient.utils.CryptoUtils;
 
@@ -232,13 +234,27 @@ public class LoginActivity extends AppCompatActivity {
             gamePassword = passwordOrKey;
         }
 
+        clearCookiesAndAuthorize(username, gamePassword, profileToLogin);
+    }
+
+    private void clearCookiesAndAuthorize(String username, String gamePassword, UserConfig profileToLogin) {
+        // Each new login must start from a clean cookie state (desktop behavior).
+        AppVars.lastCookies = null;
+        NetworkClient.clearCookies();
+        CookiesManager.clear(value -> {
+            if (isFinishing() || isDestroyed()) {
+                return;
+            }
+            startAuthorizeRequest(username, gamePassword, profileToLogin);
+        });
+    }
+
+    private void startAuthorizeRequest(String username, String gamePassword, UserConfig profileToLogin) {
         ExecutorService executor = Executors.newSingleThreadExecutor();
         Handler handler = new Handler(Looper.getMainLooper());
-
         executor.execute(() -> {
             AuthManager authManager = new AuthManager();
             AuthResult result = authManager.authorize(username, gamePassword);
-
             handler.post(() -> handleAuthResult(result, username, gamePassword, profileToLogin));
         });
     }

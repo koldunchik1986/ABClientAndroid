@@ -198,6 +198,46 @@ public class ChatStats {
     }
 
     /**
+     * Прямое добавление дельты ресурсов (кг) в статистику.
+     *
+     * Используется AutoSkin-веткой (`MainPhp.mainPhpGetSkinRes`) для случаев,
+     * когда дельта уже вычислена как разница "до/после" и не должна повторно
+     * проходить через строковый парсер `addLoot(...)`.
+     *
+     * Зависимости:
+     * - читает/обновляет `totalResourceKg` и `resourceKgByType`;
+     * - сохраняет состояние через `saveInternal()` при наличии изменений;
+     * - потокобезопасность обеспечивается `synchronized`, как и в остальных mutating-методах.
+     */
+    public static synchronized void addResourceDeltaKg(Map<String, Double> deltaByResource) {
+        ensureLoaded();
+        if (deltaByResource == null || deltaByResource.isEmpty()) {
+            return;
+        }
+        boolean changed = false;
+        for (Map.Entry<String, Double> entry : deltaByResource.entrySet()) {
+            if (entry == null) {
+                continue;
+            }
+            String resourceName = entry.getKey();
+            Double delta = entry.getValue();
+            if (resourceName == null || resourceName.trim().isEmpty() || delta == null || delta <= 0d) {
+                continue;
+            }
+            String key = resourceName.trim();
+            totalResourceKg += delta;
+            double current = resourceKgByType.containsKey(key) ? resourceKgByType.get(key) : 0d;
+            resourceKgByType.put(key, current + delta);
+            changed = true;
+        }
+        if (changed) {
+            Log.d(TAG, "addResourceDeltaKg: totalResourceKg=" + totalResourceKg
+                    + ", resourceTypes=" + resourceKgByType.size());
+            saveInternal();
+        }
+    }
+
+    /**
      * Legacy-журнал "последних находок" (совместимость со старым форматом статистики).
      *
      * Зависимости:

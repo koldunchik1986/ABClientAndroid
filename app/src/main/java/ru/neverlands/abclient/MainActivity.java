@@ -2041,21 +2041,59 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                                 LocalBroadcastManager.getInstance(MainActivity.this).sendBroadcast(msgIntent);
                             }
                         }
-                        // Перезагружаем нормальную страницу после небольшой задержки,
-                        // чтобы JS успел выполниться
-                        view.postDelayed(() -> {
-                            if (AppVars.IsFightCaptchaDialogVisible) {
-                                Log.d(TAG, "onPageFinished: skip POST reload while captcha dialog is visible");
-                                return;
-                            }
-                            String reloadUrl = "http://neverlands.ru/main.php?get_id=56&act=10&go=inf";
-                            if (ru.neverlands.abclient.utils.AppVars.VCode != null
-                                    && !ru.neverlands.abclient.utils.AppVars.VCode.isEmpty()) {
-                                reloadUrl += "&vcode=" + ru.neverlands.abclient.utils.AppVars.VCode;
-                            }
-                            Log.d(TAG, "onPageFinished: POST-ответ, перезагружаем " + reloadUrl);
-                            view.loadUrl(reloadUrl);
-                        }, 300);
+                        boolean autoSkinEnabled = AppVars.Profile != null && AppVars.Profile.SkinAuto;
+                        if (autoSkinEnabled) {
+                            // В POST-ответе (невидимом для перехватчика WebView) иногда уже есть fight_ty[9]
+                            // с параметрами "Разделать". Пытаемся достать ссылку сразу из DOM.
+                            view.evaluateJavascript(
+                                    "(function(){"
+                                            + "try{"
+                                            + " if(typeof fight_ty!=='undefined' && fight_ty && fight_ty.length>9 && fight_ty[9] && fight_ty[9].length>5){"
+                                            + "   var t=fight_ty[9];"
+                                            + "   return 'http://neverlands.ru/main.php?get_id=17&type='+t[0]+'&p='+t[1]+'&uid='+t[2]+'&s='+t[3]+'&m='+t[4]+'&vcode='+t[5];"
+                                            + " }"
+                                            + " var btn=document.querySelector('input[onclick*=\\'get_id=17\\']');"
+                                            + " if(btn&&btn.onclick){"
+                                            + "   var s=String(btn.onclick);"
+                                            + "   var i=s.indexOf('main.php?get_id=17');"
+                                            + "   if(i>=0){"
+                                            + "     var j=s.indexOf(\"'\",i);"
+                                            + "     return j>i ? ('http://neverlands.ru/'+s.substring(i,j)) : '';"
+                                            + "   }"
+                                            + " }"
+                                            + " var a=document.querySelector('a[href*=\\'get_id=17\\']');"
+                                            + " if(a&&a.getAttribute('href')){"
+                                            + "   var href=a.getAttribute('href');"
+                                            + "   return href.indexOf('http')===0 ? href : ('http://neverlands.ru/'+href.replace(/^\\/+/,''));"
+                                            + " }"
+                                            + "}catch(e){}"
+                                            + "return '';"
+                                            + "})()",
+                                    razResult -> {
+                                        String razUrl = razResult == null ? "" : razResult.trim();
+                                        if (razUrl.startsWith("\"") && razUrl.endsWith("\"") && razUrl.length() >= 2) {
+                                            razUrl = razUrl.substring(1, razUrl.length() - 1);
+                                        }
+                                        razUrl = razUrl
+                                                .replace("\\/", "/")
+                                                .replace("\\u0026", "&")
+                                                .replace("&amp;", "&")
+                                                .trim();
+
+                                        if (!razUrl.isEmpty() && razUrl.contains("get_id=17")) {
+                                            Log.d(TAG, "onPageFinished: POST-ответ, найдена разделка -> " + razUrl);
+                                            view.loadUrl(razUrl);
+                                            return;
+                                        }
+
+                                        schedulePostResponseReload(view, true);
+                                    }
+                            );
+                            return;
+                        }
+
+                        // Обычный POST fallback без AutoSkin.
+                        schedulePostResponseReload(view, false);
                     }
                 );
                 return; // не делаем стандартный jsFix для POST-ответа
@@ -2215,6 +2253,34 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                lowerUrl.endsWith(".png") || lowerUrl.endsWith(".swf") || lowerUrl.endsWith(".ico") ||
                lowerUrl.endsWith(".css") || lowerUrl.contains(".js") ||
                lowerUrl.contains("neverlands.ru/ch.php") || lowerUrl.contains("neverlands.ru/main.php");
+    }
+
+    /**
+     * POST fallback-навигация после submit-страницы `main.php`.
+     * - при AutoSkin=true перезагружает полный `main.php` (для серверного `fight_ty[9]`);
+     * - иначе возвращает быстрый `go=inf` кадр.
+     */
+    private void schedulePostResponseReload(WebView view, boolean autoSkinEnabled) {
+        view.postDelayed(() -> {
+            if (AppVars.IsFightCaptchaDialogVisible) {
+                Log.d(TAG, "onPageFinished: skip POST reload while captcha dialog is visible");
+                return;
+            }
+
+            String reloadUrl;
+            if (autoSkinEnabled) {
+                reloadUrl = "http://neverlands.ru/main.php?r=" + System.currentTimeMillis();
+            } else {
+                reloadUrl = "http://neverlands.ru/main.php?get_id=56&act=10&go=inf";
+                if (ru.neverlands.abclient.utils.AppVars.VCode != null
+                        && !ru.neverlands.abclient.utils.AppVars.VCode.isEmpty()) {
+                    reloadUrl += "&vcode=" + ru.neverlands.abclient.utils.AppVars.VCode;
+                }
+            }
+
+            Log.d(TAG, "onPageFinished: POST-ответ, перезагружаем " + reloadUrl);
+            view.loadUrl(reloadUrl);
+        }, 300);
     }
 
     // Создает временный popup WebView (используется chat buttons → ch_refr).

@@ -735,10 +735,27 @@ public class LezFight {
                 + ", ina=" + ina);
         sb.append("<script language=\"JavaScript\">");
         sb.append("setTimeout(function(){ console.log('ABCLIENT_AUTOBATTLE_SUBMIT'); document.ff.submit(); }, ").append(delay).append(");");
-        // Fallback-возврат на fight.frame:
-        // раньше было +5000мс, что давало визуальные паузы 5-7с между ударами в начале боя.
-        // Ставим короткий watchdog, чтобы не застревать и быстрее получать следующий боевой кадр.
-        sb.append("setTimeout(function(){ window.location.href='main.php?get_id=56&act=10&go=inf'; }, ").append(delay + 1800).append(");");
+
+        String fallbackReloadUrl;
+        if (AppVars.Profile != null && AppVars.Profile.SkinAuto) {
+            // C# parity для AutoSkin: нужен полный main.php, чтобы в fight_ty[9]
+            // приходили параметры кнопки "Разделать" (type/p/uid/s/m/vcode).
+            fallbackReloadUrl = "main.php?r=" + System.currentTimeMillis();
+        } else {
+            // Обычный быстрый режим AutoBoi оставляем на go=inf для минимального трафика UI.
+            fallbackReloadUrl = "main.php?get_id=56&act=10&go=inf";
+            if (AppVars.VCode != null && !AppVars.VCode.isEmpty()) {
+                fallbackReloadUrl += "&vcode=" + AppVars.VCode;
+            }
+        }
+
+        // Fallback-возврат на боевой кадр:
+        // короткий watchdog, чтобы не застревать и получать следующий серверный frame.
+        sb.append("setTimeout(function(){ window.location.href='")
+                .append(fallbackReloadUrl)
+                .append("'; }, ")
+                .append(delay + 1800)
+                .append(");");
         sb.append("</script></body></html>");
 
         Frame = sb.toString();

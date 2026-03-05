@@ -34,4 +34,10 @@ public class NetworkClient {
         }
         return cookieManager;
     }
+    /**
+     * Clears cookies used by OkHttp JavaNetCookieJar.
+     */
+    public static synchronized void clearCookies() {
+        getCookieManager().getCookieStore().removeAll();
+    }
 }
