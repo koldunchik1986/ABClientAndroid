@@ -51,6 +51,32 @@ public class MainPhp {
     private static volatile long lastCaptchaRejectAtMs = 0L;
     private static volatile String lastFightResultBroadcastKey = "";
     private static volatile String lastAutoSkinProbeFightLog = "";
+    private static volatile String lastFinishLoopKey = "";
+    private static volatile int lastFinishLoopRepeatCount = 0;
+    private static volatile long lastFinishLoopAtMs = 0L;
+    private static volatile String lastFendAutoSubmitKey = "";
+    private static volatile long lastFendAutoSubmitAtMs = 0L;
+
+    /**
+     * Явное дерево решений для обработки завершения боя.
+     *
+     * Зависимости:
+     * - {@link AppVars#FightLink} как прямой сигнал финализации.
+     * - Серверная форма завершения {@code FEND}, разобранная из текущего HTML.
+     * - URL капчи, определяемый через {@link #resolveFightCaptchaUrl(String)}.
+     *
+     * Ветви:
+     * - {@code DIRECT_FINISH_LINK}: завершение через редирект на готовый {@code get_id=61&act=7}.
+     * - {@code FEND_AUTOSUBMIT_ALLOWED}: завершение через авто-submit разобранной формы {@code FEND}.
+     * - {@code CAPTCHA_REQUIRED}: остановка autoboi и сохранение потока страницы/диалога капчи.
+     * - {@code KEEP_ORIGINAL_HTML}: безопасного действия нет, оставляем текущий кадр для защиты от циклов.
+     */
+    private enum FinishFlowDecision {
+        DIRECT_FINISH_LINK,
+        FEND_AUTOSUBMIT_ALLOWED,
+        CAPTCHA_REQUIRED,
+        KEEP_ORIGINAL_HTML
+    }
 
     /**
      * Лёгкая DTO-запись предмета инвентаря для wear-логики (порт `GetInvList` + `InvEntry.WearLink` из C#).
@@ -75,7 +101,34 @@ public class MainPhp {
         double intMa;
     }
 
-    // HTML-заглушка "ожидаем ход противника" с авто-обновлением.
+    /**
+     * Лёгкий снимок сигналов страницы завершения боя для диагностики и детекции циклов.
+     *
+     * Зависимости:
+     * - Заполняется из HTML через Jsoup и вспомогательные парсеры подстрок.
+     * - Используется логгером решений и ключами дедупликации в потоке завершения боя.
+     */
+    private static final class FightFinishPageMarkers {
+        boolean hasFendForm;
+        boolean hasCodeInput;
+        String codeState = "none";
+        boolean hasFkeyScript;
+        boolean hasCaptchaImage;
+        String fendAction = "";
+        String challengeHash = "";
+        String fexpCaptchaToken = "";
+    }
+
+    /**
+     * Генерирует HTML-заглушку "ожидаем ход противника" с авто-обновлением страницы.
+     *
+     * Зависимости:
+     * - {@link HtmlUtils#GENERATED_PAGE_MARKER} для маркировки сгенерированного клиентом HTML.
+     * - JavaScript-таймер {@code setTimeout(...)} для отложенного перехода на {@code reloadUrl}.
+     *
+     * Назначение:
+     * - Не оставлять WebView в "зависшем" кадре ожидания, а мягко перевести на следующий poll.
+     */
     private static String buildWaitForTurnAutoRefreshHtml(String reloadUrl, int delayMs) {
         String safeUrl = (reloadUrl != null && !reloadUrl.isEmpty()) ? reloadUrl : "main.php";
         int safeDelay = Math.max(300, delayMs);
@@ -89,8 +142,8 @@ public class MainPhp {
     }
 
     /**
-     * Returns persisted Auto-Fight switch state from AutoFunctionsManager.
-     * Fallbacks to profile flag if manager/context is not available.
+     * Возвращает сохранённое состояние переключателя Auto-Fight из AutoFunctionsManager.
+     * Если manager/context недоступен, используется fallback на флаг профиля.
      */
     private static boolean isAutoFightEnabledByPreference() {
         try {
@@ -106,9 +159,10 @@ public class MainPhp {
     }
 
     /**
-     * Self-heals runtime desync where persisted Auto-Fight is ON, but AppVars.Autoboi is OFF.
+     * Самовосстановление runtime-рассинхронизации, когда сохранённый Auto-Fight включён,
+     * а AppVars.Autoboi выключен.
      *
-     * This recovery is intentionally blocked while CAPTCHA flow is active.
+     * Это восстановление намеренно блокируется при активном потоке CAPTCHA.
      */
     private static void recoverAutoboiRuntimeStateIfNeeded(boolean fightEnded, String fightCaptchaUrl) {
         if (!fightEnded || AppVars.Autoboi != AutoboiState.AutoboiOff) {
@@ -199,7 +253,17 @@ public class MainPhp {
                 "</script></body></html>";
     }
 
-    // Отложенный redirect для завершения боя (чтобы не спамить сервер слишком частыми запросами).
+    /**
+     * Строит HTML с отложенным redirect для завершения боя.
+     *
+     * Зависимости:
+     * - {@link HtmlUtils#GENERATED_PAGE_MARKER} для маркировки служебной страницы.
+     * - JavaScript bridge {@code AndroidBridge.redirectToUrl(...)} при наличии, иначе fallback на {@code window.location}.
+     * - {@link #AUTO_FINISH_MIN_DELAY_MS} как нижняя граница задержки.
+     *
+     * Назначение:
+     * - Ограничить частоту финальных запросов и избежать избыточного спама к серверу.
+     */
     private static String buildDelayedRedirectHtml(String description, String link, int delayMs) {
         String safeLink = (link != null && !link.isEmpty()) ? link : "main.php";
         int safeDelay = Math.max(AUTO_FINISH_MIN_DELAY_MS, delayMs);
@@ -216,6 +280,15 @@ public class MainPhp {
                 "</script></body></html>";
     }
 
+    /**
+     * Строит промежуточную HTML-страницу удержания при активном диалоге капчи.
+     *
+     * Зависимости:
+     * - {@link HtmlUtils#GENERATED_PAGE_MARKER} для безопасной подмены текущего кадра.
+     *
+     * Назначение:
+     * - Сохранить контекст боя, пока пользователь вводит код в отдельном диалоге.
+     */
     private static String buildCaptchaDialogHoldHtml() {
         return HtmlUtils.GENERATED_PAGE_MARKER +
                 "<html><head><meta http-equiv=\"Content-Type\" content=\"text/html; charset=windows-1251\">" +
@@ -362,9 +435,9 @@ public class MainPhp {
     }
 
     /**
-     * Builds an auto-submit HTML wrapper for the server-provided finish form (`FEND`).
-     * Used when direct fight finish link is missing, but end-page form is present.
-     * Does not bypass captcha: if `code` is required and empty, returns null.
+     * Строит HTML-обёртку с авто-submit для серверной формы завершения (`FEND`).
+     * Используется, когда прямой ссылка-завершение боя отсутствует, но форма на странице есть.
+     * Капчу не обходит: если `code` обязателен и пустой, возвращает null.
      */
     private static String buildFightEndFormSubmitHtml(String html) {
         if (html == null || html.isEmpty()) {
@@ -454,6 +527,190 @@ public class MainPhp {
         }
     }
 
+    /**
+     * Извлекает компактные маркеры завершения боя из сырого HTML.
+     *
+     * Зависимости:
+     * - Селекторы Jsoup для {@code form[name=FEND]} и {@code input[name=code]}.
+     * - {@link HelperStrings#subString(String, String, String)} + {@link #splitJsTopLevelCsv(String)}
+     *   для массивов {@code fight_ty} / {@code fexp}.
+     *
+     * Результат:
+     * - Флаги наличия FEND/code/fkey/картинки капчи.
+     * - Опциональные challenge hash и captcha token для диагностики/дедупликации.
+     */
+    private static FightFinishPageMarkers inspectFightFinishPageMarkers(String html) {
+        FightFinishPageMarkers markers = new FightFinishPageMarkers();
+        if (html == null || html.isEmpty()) {
+            return markers;
+        }
+        try {
+            Document doc = Jsoup.parse(html);
+            Element fend = doc.selectFirst("form[name=FEND], form#FEND, form[action*=main.php]");
+            if (fend != null) {
+                markers.hasFendForm = true;
+                String action = fend.hasAttr("action") ? fend.attr("action").trim() : "";
+                if (!action.isEmpty()) {
+                    markers.fendAction = action;
+                }
+                if (codeInput != null) {
+                    markers.hasCodeInput = true;
+                    String code = codeInput.hasAttr("value") ? codeInput.attr("value").trim() : "";
+                    if (code.isEmpty()) {
+                        markers.codeState = "empty";
+                    } else if ("????".equals(code)) {
+                        markers.codeState = "placeholder";
+                    } else {
+                        markers.codeState = "filled";
+                    }
+                }
+            }
+
+            markers.hasFkeyScript = html.contains("js/fkey.js") || html.contains("d.FEND.code.value");
+            markers.hasCaptchaImage = html.contains("/modules/code/code.php");
+
+            String rawFightTy = HelperStrings.subString(html, "var fight_ty = [", "];");
+            if (rawFightTy != null && !rawFightTy.isEmpty()) {
+                List<String> fightTy = splitJsTopLevelCsv(rawFightTy);
+                if (fightTy.size() > 5) {
+                    markers.challengeHash = trimJsToken(fightTy.get(5));
+                }
+            }
+
+            String rawFexp = HelperStrings.subString(html, "var fexp = [", "];");
+            if (rawFexp != null && !rawFexp.isEmpty()) {
+                List<String> fexp = splitJsTopLevelCsv(rawFexp);
+                if (fexp.size() > 4) {
+                    markers.fexpCaptchaToken = trimJsToken(fexp.get(4));
+                }
+            }
+        } catch (Exception e) {
+            android.util.Log.e(TAG, "inspectFightFinishPageMarkers error", e);
+        }
+        return markers;
+    }
+
+    /**
+     * Строит стабильный ключ для детекции циклов завершения боя.
+     *
+     * Зависимости:
+     * - {@link LezFight#LogBoi}, чтобы привязать ключ к текущему логу боя.
+     * - Разобранный challenge hash из {@link FightFinishPageMarkers#challengeHash}.
+     *
+     * Формат: {@code <LogBoi>|<challengeHash>}.
+     */
+    private static String buildFinishLoopKey(LezFight fight, FightFinishPageMarkers markers) {
+        String log = (fight != null && fight.LogBoi != null) ? fight.LogBoi : "";
+        String challenge = (markers != null && markers.challengeHash != null) ? markers.challengeHash : "";
+        return log + "|" + challenge;
+    }
+
+    /**
+     * Регистрирует текущий ключ цикла завершения и возвращает счётчик повторов в окне времени.
+     *
+     * Зависимости:
+     * - Статические поля: {@code lastFinishLoopKey}, {@code lastFinishLoopRepeatCount}, {@code lastFinishLoopAtMs}.
+     * - Окно времени: 20 секунд для повторов одного и того же ключа.
+     *
+     * Назначение:
+     * - Детектировать повторяющиеся post-fight кадры и предотвращать тихие бесконечные циклы redirect/submit.
+     */
+    private static int registerFinishLoopKey(String key) {
+        long now = System.currentTimeMillis();
+        if (key == null) {
+            key = "";
+        }
+        if (!key.isEmpty() && key.equals(lastFinishLoopKey) && (now - lastFinishLoopAtMs) <= 20000L) {
+            lastFinishLoopRepeatCount++;
+        } else {
+            lastFinishLoopKey = key;
+            lastFinishLoopRepeatCount = 1;
+        }
+        lastFinishLoopAtMs = now;
+        return lastFinishLoopRepeatCount;
+    }
+
+    /**
+     * Дедуплицирует повторные попытки FEND auto-submit для одного и того же ключа цикла.
+     *
+     * Зависимости:
+     * - Статические поля: {@code lastFendAutoSubmitKey}, {@code lastFendAutoSubmitAtMs}.
+     * - Окно времени: 3.5 секунды (несколько почти одновременных callback/кадров).
+     *
+     * Возвращает:
+     * - {@code true}, если submit для этого ключа уже выполнялся недавно.
+     */
+    private static boolean isRepeatedFendSubmit(String finishLoopKey) {
+        long now = System.currentTimeMillis();
+        if (finishLoopKey == null || finishLoopKey.isEmpty()) {
+            finishLoopKey = "no_key";
+        }
+        if (finishLoopKey.equals(lastFendAutoSubmitKey) && (now - lastFendAutoSubmitAtMs) <= 3500L) {
+            return true;
+        }
+        lastFendAutoSubmitKey = finishLoopKey;
+        lastFendAutoSubmitAtMs = now;
+        return false;
+    }
+
+    /**
+     * Пишет одну структурированную диагностическую запись для выбранной ветви завершения боя.
+     *
+     * Зависимости:
+     * - Решение из {@link FinishFlowDecision}.
+     * - Разобранные маркеры страницы из {@link FightFinishPageMarkers}.
+     * - Runtime-контекст из {@link LezFight}, адрес запроса, ссылки, URL капчи.
+     *
+     * Примечания:
+     * - Этот логгер намеренно подробный и является основным источником
+     *   постмортем-анализа поведения finish/captcha в runtime-логах.
+     */
+    private static void logFinishFlowDecision(FinishFlowDecision decision,
+                                              LezFight fight,
+                                              String address,
+                                              String fightLink,
+                                              String captchaUrl,
+                                              FightFinishPageMarkers markers,
+                                              int loopRepeats,
+                                              String reason) {
+        String logBoi = (fight != null && fight.LogBoi != null) ? fight.LogBoi : "";
+        String challenge = (markers != null && markers.challengeHash != null) ? markers.challengeHash : "";
+        String codeState = (markers != null && markers.codeState != null) ? markers.codeState : "none";
+        boolean hasFend = markers != null && markers.hasFendForm;
+        boolean hasCodeInput = markers != null && markers.hasCodeInput;
+        boolean hasFkey = markers != null && markers.hasFkeyScript;
+        boolean hasCaptchaImage = markers != null && markers.hasCaptchaImage;
+        String fendAction = (markers != null && markers.fendAction != null) ? markers.fendAction : "";
+        String fexpToken = (markers != null && markers.fexpCaptchaToken != null) ? markers.fexpCaptchaToken : "";
+        String tokenState = fexpToken.isEmpty() ? "empty" : ("len=" + fexpToken.length());
+
+        android.util.Log.d(TAG, "mainPhpFight finishFlow:"
+                + " decision=" + decision
+                + ", reason=" + reason
+                + ", loopRepeats=" + loopRepeats
+                + ", LogBoi=" + logBoi
+                + ", challengeHash=" + challenge
+                + ", hasFEND=" + hasFend
+                + ", hasCodeInput=" + hasCodeInput
+                + ", codeState=" + codeState
+                + ", hasFkeyJs=" + hasFkey
+                + ", hasCaptchaImage=" + hasCaptchaImage
+                + ", fexpCaptchaToken=" + tokenState
+                + ", fendAction=" + fendAction
+                + ", fightLink=" + (fightLink == null ? "" : fightLink)
+                + ", captchaUrl=" + (captchaUrl == null ? "" : captchaUrl)
+                + ", address=" + (address == null ? "" : address));
+    }
+
+    /**
+     * Экранирует строку для безопасной подстановки в HTML-атрибут.
+     *
+     * Зависимости:
+     * - Используется при построении динамических HTML-форм (например, auto-submit для FEND).
+     *
+     * Назначение:
+     * - Исключить ломание разметки из-за спецсимволов ({@code & " < >}) в значениях input-полей.
+     */
     private static String escapeHtmlAttr(String value) {
         if (value == null || value.isEmpty()) {
             return "";
@@ -1048,6 +1305,17 @@ public class MainPhp {
         return null;
     }
 
+    /**
+     * Ищет и строит redirect на страницу персонажа ({@code go=inf}) через {@code vcode}.
+     *
+     * Зависимости:
+     * - {@link HelperStrings#subString(String, String, String)} для прямого извлечения vcode.
+     * - {@link #findMainPhpLinkByQueryParts(String, String...)} как fallback-поиск ссылки в HTML.
+     * - {@link #buildRedirectHtml(String, String)} для формирования служебного redirect HTML.
+     *
+     * Назначение:
+     * - Гарантированно вернуть контекст на "персонажа" после авто-действий, даже при отличиях шаблона страницы.
+     */
     private static String mainPhpFindPerc(String html) {
         String vcode = HelperStrings.subString(html, "'main.php?get_id=56&act=10&go=inf&vcode=", "'");
         if (vcode != null && !vcode.isEmpty()) {
@@ -1287,6 +1555,16 @@ public class MainPhp {
         return invList;
     }
 
+    /**
+     * Парсит одну запись предмета инвентаря для wear-логики.
+     *
+     * Зависимости:
+     * - {@link HelperStrings#subString(String, String, String)} для извлечения имени и ссылки "Надеть".
+     * - Локальный fallback-парсинг {@code location='...'} перед кнопкой value="Надеть".
+     *
+     * Назначение:
+     * - Получить минимальный DTO ({@link WearInvEntry}) для автопоиска и экипировки ножа.
+     */
     private static WearInvEntry parseWearInvEntry(String htmlEntry) {
         WearInvEntry entry = new WearInvEntry();
         entry.name = HelperStrings.subString(htmlEntry, "<font class=nickname><b> ", "</b>");
@@ -1309,6 +1587,16 @@ public class MainPhp {
         return entry;
     }
 
+    /**
+     * Делит JS-список значений по верхнеуровневым запятым.
+     *
+     * Зависимости:
+     * - Используется парсерами массивов {@code fight_ty}/{@code fexp}, где элементы могут содержать
+     *   вложенные скобки, массивы и строки с запятыми.
+     *
+     * Назначение:
+     * - Избежать некорректного split по запятым внутри строк/вложенных структур.
+     */
     private static List<String> splitJsTopLevelCsv(String source) {
         List<String> result = new ArrayList<>();
         if (source == null || source.isEmpty()) {
@@ -1366,6 +1654,15 @@ public class MainPhp {
         return result;
     }
 
+    /**
+     * Нормализует JS-токен: trim + снятие внешних кавычек.
+     *
+     * Зависимости:
+     * - Используется после {@link #splitJsTopLevelCsv(String)} для маркеров и параметров fight-flow.
+     *
+     * Назначение:
+     * - Получить "чистое" строковое значение независимо от формата токена в исходном JS.
+     */
     private static String trimJsToken(String token) {
         if (token == null) {
             return "";
@@ -1378,7 +1675,19 @@ public class MainPhp {
         return trimmed.trim();
     }
 
-    // Центральный обработчик main.php (порт логики из C# MainPhp.cs).
+    /**
+     * Центральный post-filter обработчик ответов {@code main.php}.
+     *
+     * Зависимости:
+     * - {@link Russian#getString(byte[])} и {@link Russian#getBytes(String)} для конвертации кодировок.
+     * - Ключевые ветви: бой ({@link #mainPhpFight(String, String)}), инвентарь ({@link #mainPhpInv(String)}),
+     *   разделка ({@link #mainPhpRaz(String)}), fast-действия ({@link #processMainPhpFast(String, String)}).
+     * - Глобальное состояние в {@link AppVars} (таймеры, флаги автобоя, ссылки, статистика).
+     * - Бродкасты в UI через {@link LocalBroadcastManager} и {@code AppVars.ACTION_*}.
+     *
+     * Назначение:
+     * - Единая точка маршрутизации и постобработки HTML main.php с сохранением совместимости с C#-логикой.
+     */
     public static byte[] process(String address, byte[] array) {
         android.util.Log.d(TAG, "process() called for " + address + ", bytes=" + (array != null ? array.length : 0));
         // Сохраняем исходный ответ, если он нужен где-то еще
@@ -1876,6 +2185,15 @@ public class MainPhp {
         return normalized.replaceAll("\\s{2,}", " ");
     }
 
+    /**
+     * Проверка вхождения подстроки без учёта регистра.
+     *
+     * Зависимости:
+     * - {@link Locale#ROOT} для стабильного lower-case без локалезависимых эффектов.
+     *
+     * Назначение:
+     * - Нормализация сравнения FastId/названий предметов при разном регистре и раскладке источника.
+     */
     private static boolean containsIgnoreCase(String value, String token) {
         if (value == null || token == null) return false;
         return value.toLowerCase(Locale.ROOT).contains(token.toLowerCase(Locale.ROOT));
@@ -1996,6 +2314,16 @@ public class MainPhp {
         return buildRedirectHtml("Переключение на инвентарь", filteredLink);
     }
 
+    /**
+     * Поиск ссылки инвентаря в шаблоне арены ({@code view_arena} + {@code var vcode=[...]}).
+     *
+     * Зависимости:
+     * - Привязка к формату JS-массива {@code vcode} на аренной странице.
+     * - {@link #buildRedirectHtml(String, String)} для выдачи перехода на {@code go=inv}.
+     *
+     * Назначение:
+     * - Вернуть рабочую ссылку на инвентарь в arena-layout, когда обычные шаблоны не подходят.
+     */
     private static String mainPhpFindInvArena(String html, String filter) {
         String patternArena = "var vcode = [";
         int pos = html.indexOf(patternArena);
@@ -2323,21 +2651,56 @@ public class MainPhp {
                 }
             }
 
-            if (needCaptcha && fightLink != null && !fightLink.isEmpty()) {
-                android.util.Log.d(TAG, "mainPhpFight: CAPTCHA required, stopping autoboi and showing dialog: " + captchaUrl);
+            FightFinishPageMarkers markers = inspectFightFinishPageMarkers(html);
+            String finishLoopKey = buildFinishLoopKey(fight, markers);
+            int loopRepeats = registerFinishLoopKey(finishLoopKey);
+
+            FinishFlowDecision decision;
+            String decisionReason;
+            String finishFormSubmitHtml = null;
+
+            if (needCaptcha) {
+                decision = FinishFlowDecision.CAPTCHA_REQUIRED;
+                decisionReason = "captcha_url_detected";
+                if (fightLink == null || fightLink.isEmpty()) {
+                    fightLink = address;
+                }
+                if (fightLink == null || fightLink.isEmpty()) {
+                    fightLink = "http://neverlands.ru/main.php";
+                }
+                String normalizedCaptchaFinish = normalizeNeverlandsMainLink(fightLink);
+                if (normalizedCaptchaFinish != null && !normalizedCaptchaFinish.isEmpty()) {
+                    fightLink = normalizedCaptchaFinish;
+                }
+            } else if (fightLink != null && !fightLink.isEmpty() && !fightLink.contains("????")) {
+                decision = FinishFlowDecision.DIRECT_FINISH_LINK;
+                decisionReason = "fight_link_ready";
+            } else {
+                finishFormSubmitHtml = buildFightEndFormSubmitHtml(html);
+                if (finishFormSubmitHtml != null) {
+                    decision = FinishFlowDecision.FEND_AUTOSUBMIT_ALLOWED;
+                    decisionReason = "fight_link_missing_but_fend_ready";
+                } else {
+                    decision = FinishFlowDecision.KEEP_ORIGINAL_HTML;
+                    decisionReason = "fight_link_missing_and_fend_not_ready";
+                }
+            }
+
+            logFinishFlowDecision(decision, fight, address, fightLink, captchaUrl, markers, loopRepeats, decisionReason);
 
                 // Важно: фикс восстановления AutoBoi после ручной капчи.
                 // Если капча пришла в режиме AutoboiOn, запоминаем это состояние,
                 // чтобы MainActivity после submit кода вернул `AutoboiOn`.
+            if (decision == FinishFlowDecision.CAPTCHA_REQUIRED) {
+                android.util.Log.d(TAG, "mainPhpFight: CAPTCHA required, stopping autoboi and showing dialog: " + captchaUrl);
                 AppVars.ResumeAutoboiAfterCaptcha = true;
                 AppVars.Autoboi = AutoboiState.AutoboiOff;
-                    AppVars.ContentMainPhp = html; // отрисовать форму с капчей
-                    showFightCaptchaDialogOnce(captchaUrl, fightLink, fight.LogBoi);
-                    // отдаем страницу с капчей напрямую
-                    return html;
-                }
+                AppVars.ContentMainPhp = html;
+                showFightCaptchaDialogOnce(captchaUrl, fightLink, fight.LogBoi);
+                return html;
+            }
 
-            if (fightLink != null && !fightLink.isEmpty() && !fightLink.contains("????")) {
+            if (decision == FinishFlowDecision.DIRECT_FINISH_LINK) {
                 long now = System.currentTimeMillis();
                 long sinceLast = now - lastAutoFinishRedirectAtMs;
                 if (sinceLast >= 0 && sinceLast < AUTO_FINISH_MIN_DELAY_MS) {
@@ -2354,19 +2717,25 @@ public class MainPhp {
                 }
 
                 AppVars.FightLink = "";
-                return Russian.getString(Filter.buildRedirect("Завершение боя", fightLink));
+                return Russian.getString(Filter.buildRedirect(" ", fightLink));
             }
-            // FightLink пустой/неполный:
-            // 1) пробуем автосабмит server-side формы FEND (без капчи),
-            // 2) если не удалось распарсить форму, оставляем оригинальный HTML
-            //    (иначе fallback-редиректом легко получить цикл main.php -> fight frame -> main.php).
-            String finishFormSubmitHtml = buildFightEndFormSubmitHtml(html);
-            if (finishFormSubmitHtml != null) {
+
+            if (decision == FinishFlowDecision.FEND_AUTOSUBMIT_ALLOWED && finishFormSubmitHtml != null) {
+                if (isRepeatedFendSubmit(finishLoopKey)) {
+                    android.util.Log.d(TAG, "mainPhpFight: skip repeated FEND auto-submit, key=" + finishLoopKey);
+                    AppVars.FightLink = "";
+                    AppVars.ContentMainPhp = html;
+                    return html;
+                }
                 android.util.Log.d(TAG, "mainPhpFight: FightLink missing, auto-submit FEND form");
                 AppVars.FightLink = "";
                 return finishFormSubmitHtml;
             }
 
+            if (loopRepeats >= 3) {
+                android.util.Log.w(TAG, "mainPhpFight: possible finish loop detected, key=" + finishLoopKey
+                        + ", repeats=" + loopRepeats);
+            }
             android.util.Log.d(TAG, "mainPhpFight: FightLink missing and FEND not parsed, keep original fight HTML");
             AppVars.FightLink = "";
             AppVars.ContentMainPhp = html;
@@ -2807,6 +3176,17 @@ public class MainPhp {
                 + ", source=" + address);
     }
 
+    /**
+     * Публикует чат-уведомление о начале боя.
+     *
+     * Зависимости:
+     * - {@link LezFight} для определения типа противника и признаков опасности.
+     * - {@link AppVars#Profile} / {@code ServDiff} для формирования времени в серверной шкале.
+     * - {@link LocalBroadcastManager} и {@code AppVars.ACTION_ADD_CHAT_MESSAGE} для отправки в чат UI.
+     *
+     * Назначение:
+     * - Синхронно информировать пользователя о старте боя в формате, близком к поведению ПК-клиента.
+     */
     private static void notifyNewFight(LezFight fight) {
         if (AppVars.getContext() == null) return;
 
@@ -2850,6 +3230,16 @@ public class MainPhp {
         LocalBroadcastManager.getInstance(AppVars.getContext()).sendBroadcast(msgIntent);
     }
 
+    /**
+     * Публикует чат-уведомление об остановке автобоя с причинами.
+     *
+     * Зависимости:
+     * - Флаги состояния из {@link LezFight}: {@code DoStop}, {@code IsLowHp}, {@code IsLowMa}, {@code DoExit}.
+     * - {@link LocalBroadcastManager} и {@code AppVars.ACTION_ADD_CHAT_MESSAGE}.
+     *
+     * Назначение:
+     * - Явно показать пользователю, почему автоматика остановила бой.
+     */
     private static void notifyFightStopped(LezFight fight) {
         if (AppVars.getContext() == null) return;
         
@@ -2872,6 +3262,16 @@ public class MainPhp {
         LocalBroadcastManager.getInstance(AppVars.getContext()).sendBroadcast(msgIntent);
     }
 
+    /**
+     * Публикует уведомление "капча отклонена" с дедупликацией по паре code/vcode.
+     *
+     * Зависимости:
+     * - Статические ключи дедупа: {@code lastCaptchaRejectKey}, {@code lastCaptchaRejectAtMs}.
+     * - {@link LocalBroadcastManager} и {@code AppVars.ACTION_ADD_CHAT_MESSAGE}.
+     *
+     * Назначение:
+     * - Не спамить повторными одинаковыми уведомлениями при дублирующих callback/перезагрузках.
+     */
     private static void notifyCaptchaRejectedOnce(String submittedCode, String submittedVcode) {
         if (AppVars.getContext() == null) return;
 
@@ -2891,6 +3291,15 @@ public class MainPhp {
         LocalBroadcastManager.getInstance(AppVars.getContext()).sendBroadcast(msgIntent);
     }
 
+    /**
+     * Обёртка регистрации завершения боя по текущему log-id.
+     *
+     * Зависимости:
+     * - Делегирует в {@link #registerFightEndByLogId(String, String)} с источником {@code fight_frame}.
+     *
+     * Назначение:
+     * - Унифицировать точку вызова в местах, где доступен объект {@link LezFight}.
+     */
     private static void registerFightEnd(LezFight fight) {
         String logId = fight != null ? fight.LogBoi : "";
         registerFightEndByLogId(logId, "fight_frame");
@@ -2930,7 +3339,18 @@ public class MainPhp {
         android.util.Log.d(TAG, "logFightVar: " + varName + " = " + value);
     }
 
-    // Этот метод основан на стабильной и производительной реализации из app_work
+    /**
+     * Обрабатывает HTML инвентаря: парсинг, упаковка, сортировка и вставка bulk-кнопок.
+     *
+     * Зависимости:
+     * - {@link Jsoup} для извлечения контейнера инвентаря и строк предметов.
+     * - {@link InvEntry}, {@link InvComparer} для агрегации/сортировки.
+     * - Профильные флаги {@link AppVars#Profile}: {@code DoInvPack}, {@code DoInvSort}.
+     * - {@link AppVars#InvList} как общий кэш текущего инвентаря.
+     *
+     * Назначение:
+     * - Сохранить поведение ПК-версии по упаковке/сортировке предметов и добавить mass-action кнопки.
+     */
     private static String mainPhpInv(String html) {
         try {
             Document doc = Jsoup.parse(html);

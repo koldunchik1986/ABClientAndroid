@@ -14,6 +14,7 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.charset.Charset;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Date;
 import java.util.regex.Matcher;
@@ -32,6 +33,30 @@ public class WebViewRequestInterceptor {
     );
     private static final Pattern SERVER_TIME_DIV_PATTERN = Pattern.compile(
             "id\\s*=\\s*['\"]?serverTime['\"]?[^>]*>\\s*(\\d{1,2}):(\\d{2}):(\\d{2})\\s*<",
+            Pattern.CASE_INSENSITIVE
+    );
+    /**
+     * Детектирует наличие формы завершения {@code FEND} в HTML конца боя.
+     * Зависимость: используется только в {@link #logCaptchaFlowMarkers(String, String, String)}.
+     */
+    private static final Pattern FEND_FORM_PATTERN = Pattern.compile(
+            "<form[^>]*(name\\s*=\\s*['\"]?FEND['\"]?|id\\s*=\\s*['\"]?FEND['\"]?)[^>]*>",
+            Pattern.CASE_INSENSITIVE
+    );
+    /**
+     * Извлекает {@code action} из формы {@code FEND} для диагностики.
+     * Зависимость: используется в {@link #logCaptchaFlowMarkers(String, String, String)}.
+     */
+    private static final Pattern FEND_ACTION_PATTERN = Pattern.compile(
+            "<form[^>]*(name\\s*=\\s*['\"]?FEND['\"]?|id\\s*=\\s*['\"]?FEND['\"]?)[^>]*action\\s*=\\s*['\"]([^'\"]+)['\"]",
+            Pattern.CASE_INSENSITIVE
+    );
+    /**
+     * Детектирует поле ввода капчи ({@code input[name=code]}) на странице завершения.
+     * Зависимость: используется в {@link #logCaptchaFlowMarkers(String, String, String)}.
+     */
+    private static final Pattern CODE_INPUT_PATTERN = Pattern.compile(
+            "<input[^>]*name\\s*=\\s*['\"]?code['\"]?[^>]*>",
             Pattern.CASE_INSENSITIVE
     );
 
@@ -63,6 +88,21 @@ public class WebViewRequestInterceptor {
         return false;
     }
 
+    /**
+     * Главная точка перехвата HTTP GET-запросов WebView для neverlands.ru.
+     *
+     * Зависимости:
+     * - {@link #shouldIntercept(String)} для отсечения URL, где post-filter не нужен.
+     * - {@link Filter#process(String, byte[])} для серверного контент-фильтра.
+     * - {@link CookiesManager} и {@link CookieManager} для проброса cookie между WebView и HttpURLConnection.
+     * - Вспомогательные методы: {@link #logCaptchaFlowMarkers(String, String, String)},
+     *   {@link #buildAutoboiFightJsShim()}, {@link #updateServerTimeFromChat(String, Map)},
+     *   {@link #updateServerTimeFromBut(String, Map)}.
+     *
+     * Назначение:
+     * - Управлять сетевым потоком (блок трекеров, декомпрессия, фильтрация, кэш капчи, синхронизация времени)
+     *   до передачи ответа в WebView.
+     */
     public static WebResourceResponse intercept(WebResourceRequest request) {
         try {
             Uri uri = request.getUrl();
@@ -250,6 +290,7 @@ public class WebViewRequestInterceptor {
             // Log first 200 chars of decoded HTML for diagnostics
             String preview = new String(bytes, Charset.forName("windows-1251"));
             Log.d(TAG, "HTML preview (" + urlString + "): " + preview.substring(0, Math.min(200, preview.length())));
+            logCaptchaFlowMarkers("raw", urlString, preview);
 
             // Попытка синхронизировать серверное время по времени в чате + HTTP Date.
             if (urlString.contains("ch.php") && urlString.contains("show=1")) {
@@ -322,6 +363,7 @@ public class WebViewRequestInterceptor {
             // Log first 200 chars of processed HTML
             String processedPreview = new String(processed, Charset.forName("windows-1251"));
             Log.d(TAG, "Processed preview (" + urlString + "): " + processedPreview.substring(0, Math.min(200, processedPreview.length())));
+            logCaptchaFlowMarkers("processed", urlString, processedPreview);
             // Диагностика ответов ch_refr: наличие add_msg/set_lmid.
             if (urlString.contains("ch.php") && urlString.contains("show=1")) {
                 boolean hasAdd = processedPreview.contains("add_msg");
@@ -355,11 +397,76 @@ public class WebViewRequestInterceptor {
         }
     }
 
+    /**
+     * Пишет компактные отпечатки captcha/fight-finish для сырого и обработанного ответа.
+     *
+     * Зависимости:
+     * - Вызывается из {@code intercept(...)} на обоих этапах: до/после обработки Filter.
+     * - Использует regex-шаблоны {@code FEND_FORM_PATTERN}, {@code FEND_ACTION_PATTERN}, {@code CODE_INPUT_PATTERN}.
+     * - Использует URL/body-маркеры: {@code fight_ty}, {@code fkey.js}, {@code /modules/code/code.php}
+     *   и финальный query ({@code get_id=61&act=7}).
+     *
+     * Цель:
+     * - Держать runtime-логи короткими, но достаточными для классификации переходов состояния сервера
+     *   и корреляции с решениями завершения в MainPhp.
+     */
+    private static void logCaptchaFlowMarkers(String stage, String url, String body) {
+        if (body == null || body.isEmpty()) {
+            return;
+        }
+        String lower = body.toLowerCase(Locale.ROOT);
+        boolean hasFightTy = lower.contains("var fight_ty");
+        boolean hasFend = FEND_FORM_PATTERN.matcher(body).find();
+        boolean hasCodeInput = CODE_INPUT_PATTERN.matcher(body).find();
+        boolean hasFkeyJs = lower.contains("js/fkey.js") || lower.contains("d.fend.code.value");
+        boolean hasCaptchaImage = lower.contains("/modules/code/code.php");
+        boolean hasFinishAct7 = lower.contains("get_id=61") && lower.contains("act=7");
+        boolean interesting = hasFightTy || hasFend || hasCodeInput || hasFkeyJs || hasCaptchaImage || hasFinishAct7
+                || (url != null && (url.contains("main.php") || url.contains("get_id=61")
+                || url.contains("/modules/code/code.php") || url.contains("fkey.js")));
+        if (!interesting) {
+            return;
+        }
+
+        String fendAction = "";
+        Matcher actionMatcher = FEND_ACTION_PATTERN.matcher(body);
+        if (actionMatcher.find()) {
+            fendAction = actionMatcher.group(2);
+        }
+
+        Log.d(TAG, "[CAPTCHA_FLOW][" + stage + "] url=" + (url == null ? "" : url)
+                + ", hasFightTy=" + hasFightTy
+                + ", hasFEND=" + hasFend
+                + ", hasCodeInput=" + hasCodeInput
+                + ", hasFkeyJs=" + hasFkeyJs
+                + ", hasCaptchaImage=" + hasCaptchaImage
+                + ", hasFinishAct7=" + hasFinishAct7
+                + ", fendAction=" + fendAction);
+    }
+
+    /**
+     * Выделяет MIME-тип из Content-Type (без параметров).
+     *
+     * Зависимости:
+     * - Используется при создании {@link WebResourceResponse}.
+     *
+     * Назначение:
+     * - Корректно отдать WebView только основную часть типа контента, например {@code text/html}.
+     */
     private static String getMime(String contentType) {
         int p = contentType.indexOf(';');
         return p > 0 ? contentType.substring(0, p).trim() : contentType;
     }
 
+    /**
+     * Извлекает charset из Content-Type или возвращает fallback {@code windows-1251}.
+     *
+     * Зависимости:
+     * - Используется в {@link WebResourceResponse} и декодировании текста после загрузки.
+     *
+     * Назначение:
+     * - Поддержать legacy-кодировку сервера при отсутствии явного charset в заголовке.
+     */
     private static String getCharset(String contentType) {
         String lower = contentType.toLowerCase();
         int p = lower.indexOf("charset=");
@@ -397,7 +504,7 @@ public class WebViewRequestInterceptor {
     }
 
     /**
-     * Case-insensitive header lookup from HttpURLConnection.getHeaderFields().
+     * Поиск заголовка без учёта регистра из HttpURLConnection.getHeaderFields().
      * Зависимости:
      * - Структура Map<String, List<String>> из HttpURLConnection.
      * Назначение:
@@ -412,6 +519,15 @@ public class WebViewRequestInterceptor {
         return null;
     }
 
+    /**
+     * Полностью читает InputStream в byte[].
+     *
+     * Зависимости:
+     * - Используется для чтения тела ответа HttpURLConnection (в том числе gzip/не-gzip).
+     *
+     * Назначение:
+     * - Получить буфер ответа для последующей фильтрации и/или декомпрессии.
+     */
     private static byte[] readAllBytes(InputStream is) throws IOException {
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
         byte[] buffer = new byte[4096];
@@ -422,6 +538,15 @@ public class WebViewRequestInterceptor {
         return baos.toByteArray();
     }
 
+    /**
+     * Декомпрессирует gzip-буфер в исходный byte[].
+     *
+     * Зависимости:
+     * - {@link GZIPInputStream} и {@link #readAllBytes(InputStream)}-подобная логика чтения.
+     *
+     * Назначение:
+     * - Привести сжатые ответы сервера к виду, пригодному для post-filter обработки.
+     */
     private static byte[] decompressGzip(byte[] compressed) throws IOException {
         ByteArrayInputStream bais = new ByteArrayInputStream(compressed);
         GZIPInputStream gzis = new GZIPInputStream(bais);
