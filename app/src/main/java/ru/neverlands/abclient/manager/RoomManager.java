@@ -32,7 +32,7 @@ public class RoomManager {
     private static final Map<String, Long> autoAttackBlackList = new ConcurrentHashMap<>();
 
     // Обработчик списка игроков комнаты (ch.php?lo=1).
-    // В текущей версии метод process заглушен, но содержит портированную логику парсинга списка.
+    // Метод process содержит портированную логику парсинга room-списка.
     public static String process(Context context, String html) {
         Log.d(TAG, BG_TRACE_PREFIX + " process: htmlLen=" + (html == null ? 0 : html.length())
                 + ", contextNull=" + (context == null)
@@ -53,7 +53,7 @@ public class RoomManager {
         // Зависимости:
         // - `AutoFunctionsManager` (флаг AUTO_ATTACK),
         // - `ContactsManager` (`classId`/`toolId` контакта),
-        // - `FastActionManager.fastAttackAutoByToolId(...)` (запуск быстрых нападалок),
+        // - `FastActionManager.fastAttackAutoByToolId(...)` (запуск быстрой атаки),
         // - `AppVars.FastNeed` (защита от параллельного fast-цикла).
         // Auto-attack pipeline:
         // - picks enemy from room list,
@@ -81,10 +81,10 @@ public class RoomManager {
         }
 
         // Критичный guard:
-        // во время активного боя нижний фрейм чата продолжает опрашиваться (ch.php),
-        // и без этой проверки RoomManager может повторно стартовать auto-attack
-        // по старому enemy list, что перезапускает FastNeed/FastId в середине боя.
-        // Итог — конфликт циклов "auto-attack" и "autoboi hit loop".
+        // Во время активного боя чат продолжает тикать (ch.php), и без этой проверки
+        // RoomManager может повторно запускать auto-attack по устаревшему enemy list.
+        // Это перезапускает FastNeed/FastId в середине боя и конфликтует с hit-loop.
+        // Итог: конфликт циклов "auto-attack" и "autoboi hit loop".
         if (fightActive) {
             Log.d(TAG, AA_TRACE_PREFIX + " auto-attack skipped: active fight session"
                     + ", fastNeed=" + AppVars.FastNeed
@@ -135,13 +135,13 @@ public class RoomManager {
      * Определяет, что сейчас активна боевая сессия в main frame.
      *
      * Зависимости:
-     * - `AppVars.ContentMainPhp`: туда MainPhp кладёт последний оригинальный HTML боя;
+     * - `AppVars.ContentMainPhp`: последний HTML боя, который сохраняет MainPhp;
      * - `AppVars.url_main_top`: текущий URL верхнего фрейма;
-     * - `AppVars.FightLink`: внутренняя ссылка цикла боя/завершения.
+     * - `AppVars.FightLink`: ссылка цикла боя/завершения.
      *
      * Почему отдельный метод:
-     * - RoomManager вызывается из чата (нижний фрейм), где нет прямого доступа к состоянию fight parser,
-     * - поэтому берём агрегированное состояние из AppVars и используем как guard перед auto-attack.
+     * - RoomManager вызывается из чата (нижний фрейм), где нет прямого доступа к fight parser;
+     * - поэтому используем агрегированное состояние из AppVars как guard перед auto-attack.
      */
     private static boolean isFightSessionActive() {
         String mainHtml = AppVars.ContentMainPhp;
@@ -166,7 +166,30 @@ public class RoomManager {
         autoAttackBlackList.clear();
     }
 
-    // Формирует HTML строки пользователя для списка комнаты (порт логики C#).
+    // Формирует сообщения о входе/выходе игроков в локации (порт C# логики).
+    /**
+     * Формирует и публикует события перемещения по локации (вход/выход видимых персонажей и невидимок).
+     *
+     * Зависимости:
+     * - `AppVars.DoShowWalkers`: глобальный флаг включения трейсинга walkers;
+     * - `AppVars.url_ch_list`: URL текущей комнаты, используется для вычисления ключа координат `r=...`;
+     * - `AppVars.myCharsOld`, `AppVars.myCoordOld`, `AppVars.myLocOld`, `AppVars.myNevidsOld`: предыдущее состояние;
+     * - `parseVisibleCharsMap(...)`: извлечение видимых никнеймов из `ChatListU`;
+     * - `resolveNevidsCount(...)`: расчет количества невидимок как разницы "серверный total на клетке - видимые";
+     * - `buildWalkersMessage(...)`: сборка человекочитаемого текста для чата;
+     * - `FastActionManager.writeChatMsg(...)`: публикация уведомлений в игровой чат;
+     * - `EventSounds.playSndMsg()`: звуковой сигнал при входящих событиях.
+     *
+     * Алгоритм:
+     * 1) Проверяет, что walkers включены и HTML не пустой.
+     * 2) Определяет текущую локацию и набор видимых персонажей.
+     * 3) На той же клетке/локации сравнивает прошлый и текущий наборы:
+     *    - кто исчез из видимых;
+     *    - кто появился в видимых;
+     *    - как изменилось число невидимок.
+     * 4) Формирует сообщения и отправляет их в чат.
+     * 5) Обновляет snapshot состояния для следующего тика.
+     */
     private static void FilterGetWalkers(String html, FilterProcRoomResult filterResult) {
         if (!AppVars.DoShowWalkers || isEmpty(html)) {
             return;
@@ -178,11 +201,13 @@ public class RoomManager {
         }
 
         Map<String, String> charsNow = parseVisibleCharsMap(html);
-        int visibleChars = filterResult != null ? filterResult.numCharsInRoom : charsNow.size();
+        int visibleChars = charsNow.size();
+        int locationCharsFromServer = parseLocationCharsCount(html);
         AppVars.myNevids = resolveNevidsCount(html, visibleChars);
         Log.d(TAG, AA_TRACE_PREFIX + " FilterGetWalkers: loc=" + locationNow
                 + ", coord=" + extractRoomCoordKey(AppVars.url_ch_list)
                 + ", visibleChars=" + visibleChars
+                + ", locationCharsFromServer=" + locationCharsFromServer
                 + ", nevids=" + AppVars.myNevids);
 
         String roomCoordNow = extractRoomCoordKey(AppVars.url_ch_list);
@@ -216,8 +241,34 @@ public class RoomManager {
 
             int diffNevids = AppVars.myNevids - AppVars.myNevidsOld;
             if (!leftChars.isEmpty() || !comeChars.isEmpty() || diffNevids != 0) {
-                AppVars.myWalkers1 = buildWalkersMessage(comeChars, diffNevids, true);
-                AppVars.myWalkers2 = buildWalkersMessage(leftChars, diffNevids, false);
+                int prevTotalChars = AppVars.myCharsOld.size() + Math.max(0, AppVars.myNevidsOld);
+                int currTotalChars = locationCharsFromServer >= 0
+                        ? locationCharsFromServer
+                        : (visibleChars + Math.max(0, AppVars.myNevids));
+
+                String revealFromNevidMsg = buildNevidStateChangeMessage(
+                        comeChars,
+                        leftChars,
+                        diffNevids,
+                        prevTotalChars,
+                        currTotalChars,
+                        false
+                );
+                String hideToNevidMsg = buildNevidStateChangeMessage(
+                        leftChars,
+                        comeChars,
+                        diffNevids,
+                        prevTotalChars,
+                        currTotalChars,
+                        true
+                );
+
+                AppVars.myWalkers1 = !isEmpty(revealFromNevidMsg)
+                        ? revealFromNevidMsg
+                        : buildWalkersMessage(comeChars, diffNevids, true);
+                AppVars.myWalkers2 = !isEmpty(hideToNevidMsg)
+                        ? hideToNevidMsg
+                        : buildWalkersMessage(leftChars, diffNevids, false);
             }
         }
 
@@ -239,6 +290,22 @@ public class RoomManager {
         }
     }
 
+    /**
+     * Извлекает карту видимых персонажей из JS-массива `ChatListU`.
+     *
+     * Зависимости:
+     * - формат серверного блока `var ChatListU = new Array(...);`;
+     * - `parseChatListEntries(...)`: безопасное разбиение массива на записи;
+     * - `normalizeChatUserEntry(...)`: нормализация записи к единому `:`-формату.
+     *
+     * Правила фильтрации:
+     * - пропускаются пустые/битые записи;
+     * - пропускаются записи с `<i>` (невидимые в списке видимых ников не учитываются);
+     * - дубликаты ников отбрасываются, сохраняется первое вхождение.
+     *
+     * @param html HTML комнаты/чата
+     * @return карта `nick -> rawEntry` для всех видимых персонажей на текущей клетке
+     */
     private static Map<String, String> parseVisibleCharsMap(String html) {
         Map<String, String> visibleChars = new LinkedHashMap<>();
         Matcher matcher = Pattern.compile("var\\s+ChatListU\\s*=\\s*new Array\\((.*?)\\);", Pattern.DOTALL).matcher(html);
@@ -267,6 +334,24 @@ public class RoomManager {
         return visibleChars;
     }
 
+    /**
+     * Собирает текст уведомления о входе/выходе персонажей и изменении количества невидимок.
+     *
+     * Зависимости:
+     * - `HtmlChar(...)`: рендер никнейма/иконок в HTML-представление;
+     * - правила склонения и построения фраз для русского текста.
+     *
+     * Поведение:
+     * - для `incoming=true` и `diffNevids>0` добавляет блок "невидимка/невидимок";
+     * - для `incoming=false` и `diffNevids<0` добавляет блок об ушедших невидимках;
+     * - добавляет список видимых персонажей из `chars`;
+     * - в конце добавляет хвост действия ("приходит/приходят", "покидает/покидают").
+     *
+     * @param chars карта персонажей, участвующих в конкретном событии
+     * @param diffNevids разница `currentNevids - previousNevids`
+     * @param incoming true для входа, false для выхода
+     * @return готовая строка для чата; пустая строка, если событие нечего публиковать
+     */
     private static String buildWalkersMessage(Map<String, String> chars, int diffNevids, boolean incoming) {
         StringBuilder sb = new StringBuilder();
         int count = 0;
@@ -314,6 +399,62 @@ public class RoomManager {
         return sb.toString();
     }
 
+    /**
+     * Формирует отдельное сообщение для перехода видимых персонажей в невидимость и обратно,
+     * если общее количество на клетке не изменилось.
+     *
+     * Пример:
+     * - было 2/2 (видимых/всего), стало 1/2, пропал ник "N" -> "N перешёл в невидимку".
+     */
+    private static String buildNevidStateChangeMessage(
+            Map<String, String> changedChars,
+            Map<String, String> oppositeChangedChars,
+            int diffNevids,
+            int prevTotalChars,
+            int currTotalChars,
+            boolean toNevid) {
+        if (changedChars == null || changedChars.isEmpty()) {
+            return "";
+        }
+        if (oppositeChangedChars != null && !oppositeChangedChars.isEmpty()) {
+            return "";
+        }
+        if (prevTotalChars < 0 || currTotalChars < 0 || prevTotalChars != currTotalChars) {
+            return "";
+        }
+
+        int expectedDiff = toNevid ? changedChars.size() : -changedChars.size();
+        if (diffNevids != expectedDiff) {
+            return "";
+        }
+
+        StringBuilder sb = new StringBuilder();
+        int count = 0;
+        for (String rawChar : changedChars.values()) {
+            if (count > 0) {
+                sb.append(", ");
+            }
+            count++;
+            try {
+                sb.append(HtmlChar(rawChar));
+            } catch (Exception e) {
+                Log.w(TAG, "buildNevidStateChangeMessage: skip malformed char entry: " + rawChar, e);
+            }
+        }
+        if (count == 0) {
+            return "";
+        }
+
+        sb.insert(0, "<font color=#5D7C91><b>[Невид]</b></font> ");
+
+        if (toNevid) {
+            sb.append(count > 1 ? " перешли в невидимку" : " перешёл в невидимку");
+        } else {
+            sb.append(count > 1 ? " вышли из невидимки" : " вышел из невидимки");
+        }
+        return sb.toString();
+    }
+
     private static boolean isSelfNick(String nick) {
         if (AppVars.Profile == null || isEmpty(AppVars.Profile.UserNick)) {
             return false;
@@ -343,13 +484,78 @@ public class RoomManager {
         return "";
     }
 
+    /**
+     * Вычисляет текущее число невидимок на клетке.
+     *
+     * Зависимости:
+     * - `parseLocationCharsCount(...)`: парсинг серверного total количества персонажей именно на локации;
+     * - `AppVars.myNevids`: fallback, если из HTML не удалось извлечь total.
+     *
+     * Формула:
+     * - `nevids = max(0, totalCharsOnLocation - visibleChars)`.
+     *
+     * @param html HTML текущей страницы комнаты
+     * @param visibleChars количество видимых ников из `ChatListU`
+     * @return количество невидимок на текущей клетке
+     */
     private static int resolveNevidsCount(String html, int visibleChars) {
-        int totalChars = parseFirstInt(html, "(?is)<b>\\s*Всего\\s*</b>.*?\\[\\s*(\\d+)\\s*\\]");
+        int totalChars = parseLocationCharsCount(html);
         if (totalChars < 0) {
             return AppVars.myNevids;
         }
         int nevids = totalChars - Math.max(0, visibleChars);
         return Math.max(0, nevids);
+    }
+
+    /**
+     * Извлекает серверное количество персонажей на текущей локации.
+     *
+     * Зависимости:
+     * - `parseFirstInt(...)`: первичный парсинг по приоритетному шаблону рядом с названием локации;
+     * - `parseLastBracketedIntBeforeChatList(...)`: резервный парсинг последнего `[N]` до блока `ChatListU`.
+     *
+     * Почему два шага:
+     * - в разных серверных шаблонах счетчик может находиться в разных местах HTML;
+     * - fallback нужен для устойчивости к вариациям верстки.
+     *
+     * @param html HTML страницы комнаты
+     * @return количество персонажей на локации или `-1`, если счетчик не найден
+     */
+    private static int parseLocationCharsCount(String html) {
+        int totalChars = parseFirstInt(html, "(?is)</b>\\s*</font>\\s*</a>\\s*\\[\\s*(\\d+)\\s*\\]");
+        if (totalChars >= 0) {
+            return totalChars;
+        }
+        return parseLastBracketedIntBeforeChatList(html);
+    }
+
+    /**
+     * Резервно ищет последний числовой маркер `[N]` перед определением `var ChatListU`.
+     *
+     * Зависимости:
+     * - серверный инвариант: счетчик "персонажей на клетке" располагается в HTML до чата;
+     * - граница поиска по `var ChatListU`, чтобы не зацепить нецелевые счетчики из других блоков.
+     *
+     * @param html HTML страницы комнаты
+     * @return найденное значение `N` или `-1`, если подходящий маркер отсутствует
+     */
+    private static int parseLastBracketedIntBeforeChatList(String html) {
+        if (isEmpty(html)) {
+            return -1;
+        }
+        int chatListPos = html.indexOf("var ChatListU");
+        int searchLimit = chatListPos >= 0 ? chatListPos : html.length();
+        String prefix = html.substring(0, searchLimit);
+        Matcher matcher = Pattern.compile("\\[\\s*(\\d+)\\s*\\]").matcher(prefix);
+        int result = -1;
+        while (matcher.find()) {
+            try {
+                result = Integer.parseInt(matcher.group(1));
+            } catch (Exception ignored) {
+                // Skip malformed numeric fragments and keep scanning.
+            }
+        }
+        return result;
     }
 
     private static int parseFirstInt(String source, String regex) {
@@ -556,7 +762,7 @@ public class RoomManager {
      *
      * Почему отдельный парсер:
      * - сервер может присылать переносы/пробелы между элементами (`",\r\n"`),
-     * - простой split по `","` в таких случаях возвращает 1 элемент.
+     * - простой split по `","` в таком случае может вернуть один элемент.
      *
      * Возвращает массив строк формата `nickLow:nick:level:...`.
      */
@@ -565,14 +771,14 @@ public class RoomManager {
             return new String[0];
         }
 
-        // Основной путь: split по кавычка-комма-кавычка с произвольными пробелами/переносами.
+        // Основной путь: split по разделителю элементов массива.
         String[] splitByComma = chatListU.split("\"\\s*,\\s*\"");
         if (splitByComma.length > 1) {
             return splitByComma;
         }
         Log.d(TAG, "[AA_TRACE] parseChatListEntries: splitByComma failed, fallback regex. rawLen=" + chatListU.length());
 
-        // Fallback: извлекаем всё, что в двойных кавычках.
+        // Fallback: извлекаем все элементы в двойных кавычках.
         List<String> quoted = new ArrayList<>();
         Matcher matcher = Pattern.compile("\"((?:\\\\.|[^\"])*)\"").matcher(chatListU);
         while (matcher.find()) {
@@ -583,7 +789,7 @@ public class RoomManager {
             return quoted.toArray(new String[0]);
         }
 
-        // Последний fallback — возвращаем как есть, чтобы не падать.
+        // Последний fallback: возвращаем исходник как один элемент.
         Log.w(TAG, "[AA_TRACE] parseChatListEntries: no quoted entries, using raw source");
         return new String[]{chatListU};
     }
@@ -759,7 +965,7 @@ public class RoomManager {
         public String title;
     }
 
-    // Результаты разбора списка комнаты.
+    // Вспомогательный контейнер результата парсинга списка комнаты.
     private static class FilterProcRoomResult {
         int numCharsInRoom;
         String enemyAttack;

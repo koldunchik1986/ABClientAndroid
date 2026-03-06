@@ -734,7 +734,32 @@ public class LezFight {
                 + ", inb=" + inb
                 + ", ina=" + ina);
         sb.append("<script language=\"JavaScript\">");
-        sb.append("setTimeout(function(){ console.log('ABCLIENT_AUTOBATTLE_SUBMIT'); document.ff.submit(); }, ").append(delay).append(");");
+        // Надежный submit: обычный таймер + аварийная отправка перед уходом со страницы.
+        // Это закрывает сценарий, когда пользователь/скрипт уводит WebView с fight.Frame раньше delay.
+        sb.append("var __abSubmitted=false;");
+        sb.append("function __abSubmit(reason){");
+        sb.append(" if(__abSubmitted){return;}");
+        sb.append(" __abSubmitted=true;");
+        sb.append(" try{");
+        sb.append("  console.log('ABCLIENT_AUTOBATTLE_SUBMIT'+(reason?('_'+reason):''));");
+        sb.append("  if(document&&document.ff&&typeof document.ff.submit==='function'){document.ff.submit();}");
+        sb.append(" }catch(e){");
+        sb.append("  console.log('ABCLIENT_AUTOBATTLE_SUBMIT_ERR:'+e);");
+        sb.append(" }");
+        sb.append("}");
+        sb.append("setTimeout(function(){ __abSubmit('timer'); }, ").append(delay).append(");");
+        sb.append("window.addEventListener('beforeunload', function(){ __abSubmit('beforeunload'); });");
+        sb.append("window.addEventListener('pagehide', function(){ __abSubmit('pagehide'); });");
+        sb.append("document.addEventListener('visibilitychange', function(){ if(document.visibilityState==='hidden'){ __abSubmit('hidden'); } });");
+        sb.append("document.addEventListener('click', function(e){");
+        sb.append(" try{");
+        sb.append("  var t=e&&e.target?e.target:null;");
+        sb.append("  while(t){");
+        sb.append("   if(t.tagName==='A'&&t.href){ __abSubmit('click'); break; }");
+        sb.append("   t=t.parentElement;");
+        sb.append("  }");
+        sb.append(" }catch(_e){}");
+        sb.append("}, true);");
 
         String fallbackReloadUrl;
         if (AppVars.Profile != null && AppVars.Profile.SkinAuto) {
