@@ -270,8 +270,10 @@ public final class FishAjaxPhp {
 
         long nowMs = System.currentTimeMillis();
         long dueAtMs = nowMs + (cooldownSec * 1000L);
-        AppVars.NeverTimer = dueAtMs;
-        long effectiveDueAtMs = Math.max(dueAtMs, AppVars.NeverTimer);
+        long prevNeverTimerMs = AppVars.NeverTimer;
+        // Важно: cooldown из act=2 не должен понижать уже установленный серверный гейт из map.js.
+        long effectiveDueAtMs = Math.max(dueAtMs, prevNeverTimerMs);
+        AppVars.NeverTimer = effectiveDueAtMs;
 
         if (!isAutoFishEnabled()) {
             return;
@@ -296,7 +298,8 @@ public final class FishAjaxPhp {
 
         long delayMs = Math.max(250L, effectiveDueAtMs - nowMs + FISH_AUTORELOAD_SAFETY_MS);
         long cycleToken = effectiveDueAtMs;
-        Log.d(TAG, "AUTO_FISH_TRACE act2 cooldown=" + cooldownSec + "s, schedule next cycle in " + delayMs + "ms");
+        Log.d(TAG, "AUTO_FISH_TRACE act2 cooldown=" + cooldownSec + "s, prevNeverTimerDelta="
+                + Math.max(0L, prevNeverTimerMs - nowMs) + "ms, schedule next cycle in " + delayMs + "ms");
         activity.runOnUiThread(() -> webView.postDelayed(
                 () -> kickFishCycleAttempt(cycleToken, 1),
                 delayMs));
@@ -304,6 +307,18 @@ public final class FishAjaxPhp {
 
     /**
      * Извлекает серверный fish-cooldown из payload (`@[0,[2,294]]@` -> `294` секунд).
+     */
+    /**
+     * Извлекает числовой cooldown рыбалки из ответа `act=2`.
+     *
+     * Зависимости:
+     * - шаблон `FISH_COOLDOWN_PATTERN` (`@[0,[2,<sec>]]@`) как единый источник парсинга;
+     * - `parseIntSafe(...)` для безопасной нормализации значения без исключений;
+     * - используется в `syncFishCooldownAndScheduleNextCycle(...)` и `fishReport(...)`.
+     *
+     * Возвращает:
+     * - секунды ожидания до следующего заброса;
+     * - `0`, если маркер не найден или формат некорректный.
      */
     private static int extractFishCooldownSec(String html) {
         if (html == null || html.isEmpty()) {
@@ -407,6 +422,22 @@ public final class FishAjaxPhp {
     /**
      * Парсит технический payload `act=1` для получения captcha/vcode/массы/списка приманок.
      */
+    /**
+     * Разбирает технический payload `fish_ajax.php?act=1` в структурированное состояние.
+     *
+     * Что извлекаем:
+     * - captcha-token и `vcode` из заголовка `[1,"captcha","vcode",massCur,massMax,...]`;
+     * - массу инвентаря (`massCurrent/massMax`);
+     * - список доступных приманок `[primid,name,count]`.
+     *
+     * Зависимости:
+     * - формат протокола Neverlands `RESO@...@[]@[1,...]`;
+     * - `cleanNumeric(...)` для полей массы;
+     * - `parseIntSafe(...)` для количества приманок;
+     * - `FishBaitSelection` как DTO результата.
+     *
+     * Возвращает `null`, если payload не соответствует ожидаемому формату.
+     */
     private static FishAct1State parseFishAct1State(String html) {
         if (html == null || html.isEmpty()) {
             return null;
@@ -449,6 +480,19 @@ public final class FishAjaxPhp {
     /**
      * Выбирает первую доступную приманку с остатком > 4 (C# parity `CheckPri`).
      */
+    /**
+     * Выбирает приманку для текущего заброса по правилам ПК-версии (`CheckPri` parity).
+     *
+     * Правила:
+     * - остаток приманки должен быть `> 4`;
+     * - приманка должна быть разрешена в профиле игрока (`FishEnabledPrims`).
+     *
+     * Зависимости:
+     * - `AppVars.Profile.FishEnabledPrims` (битовая маска `Prims`);
+     * - `isBaitEnabledInProfile(...)` для проверки конкретного `primid`.
+     *
+     * Возвращает первую подходящую приманку в порядке, который прислал сервер.
+     */
     private static FishBaitSelection selectAllowedBait(List<FishBaitSelection> baits) {
         if (baits == null || baits.isEmpty() || AppVars.Profile == null) {
             return null;
@@ -466,6 +510,14 @@ public final class FishAjaxPhp {
 
     /**
      * Проверка битмаски разрешённых приманок (`Prims`) по server-id.
+     */
+    /**
+     * Маппит server `primid` на флаги профиля `Prims` и проверяет, разрешена ли приманка.
+     *
+     * Зависимости:
+     * - `AppVars.Profile.FishEnabledPrims` (битовая маска настроек);
+     * - константы `Prims` (Bread/Worm/BigWorm/.../HiFlight);
+     * - используется в `selectAllowedBait(...)`.
      */
     private static boolean isBaitEnabledInProfile(String baitId) {
         if (AppVars.Profile == null || baitId == null || baitId.isEmpty()) {
@@ -499,6 +551,15 @@ public final class FishAjaxPhp {
 
     /**
      * Нормализует число из payload (`395.00`, `437`) в строку для `AutoFishMassa`.
+     */
+    /**
+     * Нормализует числовые фрагменты payload (масса, лимиты) до безопасной строки числа.
+     *
+     * Зависимости:
+     * - формат `act=1` payload, где значения могут приходить с шумом/разделителями;
+     * - используется только в `parseFishAct1State(...)`.
+     *
+     * В результате оставляет только `0-9`, `,`, `.`, `-`.
      */
     private static String cleanNumeric(String value) {
         if (value == null) {
@@ -783,6 +844,16 @@ public final class FishAjaxPhp {
     /**
      * Безопасный парсинг целых из строк с примесями (`"12 шт."`, `" 294 "`).
      */
+    /**
+     * Безопасно парсит целое число из "грязной" строки (`"294"`, `"12 шт."`, `"  -3 "`).
+     *
+     * Зависимости:
+     * - все разборы payload/отчётов (`act=1`, `act=2`, fish report);
+     * - вызывается из `extractFishCooldownSec(...)`, `parseFishAct1State(...)`,
+     *   `fishReport(...)` и др.
+     *
+     * Никогда не бросает исключение: при ошибке возвращает `0`.
+     */
     private static int parseIntSafe(String value) {
         if (value == null) {
             return 0;
@@ -797,6 +868,13 @@ public final class FishAjaxPhp {
     /**
      * Возвращает значение из таблицы коэффициентов с fallback.
      */
+    /**
+     * Читает коэффициент из справочной таблицы с fallback-значением.
+     *
+     * Зависимости:
+     * - `FISH_NV`/`FISH_MASS` как карты коэффициентов по названию рыбы;
+     * - используется в `fishReport(...)` для расчёта экономики и массы.
+     */
     private static double getOrDefault(Map<String, Double> map, String key, double fallback) {
         Double value = map.get(key);
         return value == null ? fallback : value;
@@ -805,12 +883,28 @@ public final class FishAjaxPhp {
     /**
      * Нормализует double для UI/чата (обрезает лишние нули).
      */
+    /**
+     * Форматирует число для UI/чата без лишних хвостов (`12.00 -> 12`, `12.30 -> 12.3`).
+     *
+     * Зависимости:
+     * - `Locale.US` для стабильной десятичной точки;
+     * - применяется в отчёте рыбалки и обновлении накопительных показателей.
+     */
     private static String formatDouble(double value) {
         return String.format(Locale.US, "%.2f", value).replaceAll("\\.?0+$", "");
     }
 
     /**
      * Регистрация коэффициентов вида рыбы в таблицах NV и массы.
+     */
+    /**
+     * Регистрирует экономические коэффициенты конкретного вида рыбы.
+     *
+     * Зависимости:
+     * - `FISH_NV` (стоимость по NV);
+     * - `FISH_MASS` (масса единицы рыбы).
+     *
+     * Используется только при инициализации статических таблиц.
      */
     private static void putFish(String name, double nv, double mass) {
         FISH_NV.put(name, nv);
@@ -819,6 +913,15 @@ public final class FishAjaxPhp {
 
     /**
      * Регистрация приманки по server-id (`primid`) и ее коэффициентов.
+     */
+    /**
+     * Регистрирует приманку в справочнике `BAIT_INFO`.
+     *
+     * Зависимости:
+     * - server `primid` (38..46) как ключ;
+     * - `BaitInfo` для хранения имени и коэффициентов расхода.
+     *
+     * Используется при статической инициализации перед запуском авто-рыбалки.
      */
     private static void putBait(String id, String name, double nvCost, double massCost) {
         BAIT_INFO.put(id, new BaitInfo(name, nvCost, massCost));

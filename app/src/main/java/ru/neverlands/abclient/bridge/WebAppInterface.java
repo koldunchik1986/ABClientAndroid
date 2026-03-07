@@ -138,8 +138,16 @@ public class WebAppInterface {
     }
 
     /**
-     * C# parity: map.js сигнализирует, что капчи нет и можно сразу жать "Ловить".
-     * На Android делаем тот же шаг через JS-клик по `fishbutton`.
+     * C# parity: map.js сигнализирует, что капчи нет и можно сразу продолжить заброс.
+     *
+     * Что делает метод:
+     * - в UI-потоке пытается нажать `fishbutton` в текущем map/fish фрейме;
+     * - если кнопка недоступна, делает fallback на `FishStart(ingr[2], 0)`.
+     *
+     * Зависимости:
+     * - `MainActivity` + `WebView` (доступ к текущей странице);
+     * - JS-контекст страницы (`fishbutton`, `FishStart`, `ingr`);
+     * - runtime-логирование `AUTO_FISH` через `Log.d`.
      */
     @JavascriptInterface
     public void SetFishNoCaptchaReady() {
@@ -181,13 +189,28 @@ public class WebAppInterface {
     }
 
     /**
-     * C# parity: уведомление map.js о перегрузе массы при рыбалке.
+     * C# parity: уведомление о перегрузе массы во время рыбалки.
+     *
+     * Зависимости:
+     * - `mContext` для показа системного `Toast`;
+     * - вызывается из JS (`window.external.FishOverload()`) при состоянии overweight.
+     *
+     * Метод только уведомляет пользователя, логику авто-функций не изменяет.
      */
     @JavascriptInterface
     public void FishOverload() {
         Toast.makeText(mContext, "Перегруз: рыбалка может остановиться", Toast.LENGTH_SHORT).show();
     }
 
+    /**
+     * Проверяет, включена ли приманка в настройках профиля по её текстовому имени.
+     *
+     * Зависимости:
+     * - `AppVars.Profile.FishEnabledPrims` (битовая маска);
+     * - константы `Prims` как источник соответствия "имя -> флаг".
+     *
+     * Используется из `CheckPri(...)` при парсинге HTML-радиокнопок приманок.
+     */
     private boolean isPrimEnabledByName(String namePri) {
         if (AppVars.Profile == null || namePri == null) {
             return false;
@@ -205,6 +228,13 @@ public class WebAppInterface {
         return false;
     }
 
+    /**
+     * Преобразует имя приманки в server `primid` (38..46) для `fish_ajax.php`.
+     *
+     * Зависимости:
+     * - стабильное соответствие имён приманок и id из протокола сервера;
+     * - используется в `CheckPri(...)` для заполнения runtime-полей `AutoFishLikeId/Val`.
+     */
     private String resolvePrimIdByName(String namePri) {
         if (namePri == null) return null;
         if ("Хлеб".equalsIgnoreCase(namePri)) return "38";
