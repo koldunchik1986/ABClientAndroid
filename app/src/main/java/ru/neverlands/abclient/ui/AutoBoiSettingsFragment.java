@@ -135,6 +135,17 @@ public class AutoBoiSettingsFragment extends DialogFragment {
             if (profile.LezGroups != null) {
                 Collections.sort(profile.LezGroups);
             }
+            profile.LezDoFury = profile.hasAnyLezFuryGroup();
+            AppVars.DoFury = profile.LezDoFury;
+            if (AppVars.DoFury) {
+                AppVars.AutoFuryCheckScroll = true;
+                AppVars.AutoFuryArmedScroll = false;
+            } else {
+                AppVars.AutoFuryCheckScroll = false;
+                AppVars.AutoFuryArmedScroll = false;
+                AppVars.AutoFuryHand = "";
+                AppVars.AutoFuryHandD = "";
+            }
             profile.save(getContext());
         }
     }
@@ -263,7 +274,8 @@ public class AutoBoiSettingsFragment extends DialogFragment {
             // Важно для ViewPager2: если вкладка ещё не открывалась пользователем,
             // onViewCreated() мог не выполниться и поля останутся null.
             // В этом случае просто пропускаем сохранение этой вкладки без крэша.
-            if (checkDoAutoboi == null || checkDoWaitHp == null || checkDoWaitMa == null
+            if (checkDoAutoboi == null
+                    || checkDoWaitHp == null || checkDoWaitMa == null
                     || checkDoDrinkHp == null || checkDoDrinkMa == null || checkDoWinTimeout == null
                     || seekWaitHp == null || seekWaitMa == null || seekDrinkHp == null || seekDrinkMa == null) {
                 return;
@@ -493,7 +505,7 @@ public class AutoBoiSettingsFragment extends DialogFragment {
 
     public static class RotationTabFragment extends Fragment {
         private int selectedGroupIdx = 0;
-        private CheckBox checkDoRestoreHp, checkDoRestoreMa, checkDoAbilBlocks, checkDoAbilHits,
+        private CheckBox checkDoFury, checkDoRestoreHp, checkDoRestoreMa, checkDoAbilBlocks, checkDoAbilHits,
                 checkDoMagHits, checkDoMagBlocks, checkDoHits, checkDoBlocks, checkDoMiscAbils;
         private SeekBar seekRestoreHp, seekRestoreMa, seekMagHits;
         private TextView tvRestoreHp, tvRestoreMa, tvMagHits;
@@ -516,6 +528,7 @@ public class AutoBoiSettingsFragment extends DialogFragment {
 
         @Override
         public void onViewCreated(@NonNull View v, @Nullable Bundle savedInstanceState) {
+            checkDoFury = v.findViewById(R.id.checkDoFury);
             checkDoRestoreHp = v.findViewById(R.id.checkDoRestoreHp);
             checkDoRestoreMa = v.findViewById(R.id.checkDoRestoreMa);
             checkDoAbilBlocks = v.findViewById(R.id.checkDoAbilBlocks);
@@ -730,6 +743,7 @@ public class AutoBoiSettingsFragment extends DialogFragment {
             if (p == null || p.LezGroups == null || p.LezGroups.isEmpty()) return;
             int safeIndex = Math.max(0, Math.min(selectedGroupIdx, p.LezGroups.size() - 1));
             LezBotsGroup g = p.LezGroups.get(safeIndex);
+            checkDoFury.setChecked(g.DoFury);
             checkDoRestoreHp.setChecked(g.DoRestoreHp);
             checkDoRestoreMa.setChecked(g.DoRestoreMa);
             seekRestoreHp.setProgress(g.RestoreHp);
@@ -755,12 +769,13 @@ public class AutoBoiSettingsFragment extends DialogFragment {
         void saveGroup(LezBotsGroup g) {
             // Защита от NPE при "Сохранить" без открытия вкладки "Ротация".
             // Зависимость: жизненный цикл ViewPager2 (fragment view создаётся лениво).
-            if (checkDoRestoreHp == null || checkDoRestoreMa == null || checkDoAbilBlocks == null
+            if (checkDoFury == null || checkDoRestoreHp == null || checkDoRestoreMa == null || checkDoAbilBlocks == null
                     || checkDoAbilHits == null || checkDoMagHits == null || checkDoMagBlocks == null
                     || checkDoHits == null || checkDoBlocks == null || checkDoMiscAbils == null
                     || seekRestoreHp == null || seekRestoreMa == null || seekMagHits == null) {
                 return;
             }
+            g.DoFury = checkDoFury.isChecked();
             g.DoRestoreHp = checkDoRestoreHp.isChecked();
             g.DoRestoreMa = checkDoRestoreMa.isChecked();
             g.RestoreHp = seekRestoreHp.getProgress();

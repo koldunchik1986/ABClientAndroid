@@ -294,6 +294,14 @@ public class LoginActivity extends AppCompatActivity {
             AppVars.Autoboi = ru.neverlands.abclient.model.AutoboiState.AutoboiOff;
         }
 
+        // Синхронизируем режим "Снежок/Ярость" (первый удар на осаде) с профилем.
+        AppVars.DoFury = profileToLogin.hasAnyLezFuryGroup();
+        profileToLogin.LezDoFury = AppVars.DoFury;
+        AppVars.AutoFuryCheckScroll = AppVars.DoFury;
+        AppVars.AutoFuryArmedScroll = false;
+        AppVars.AutoFuryHand = "";
+        AppVars.AutoFuryHandD = "";
+
         // Запускаем фоновое обновление всех контактов
         android.util.Log.d("LoginActivity", "Starting background contact refresh after successful login.");
         List<ru.neverlands.abclient.model.Contact> contactsToUpdate = ru.neverlands.abclient.manager.ContactsManager.getContactsFromCache();

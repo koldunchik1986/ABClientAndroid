@@ -100,6 +100,13 @@
             android:layout_marginBottom="4dp" />
 
         <CheckBox
+            android:id="@+id/checkDoFury"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Снежок или ярость (первый удар)"
+            android:layout_marginBottom="8dp" />
+
+        <CheckBox
             android:id="@+id/checkDoMagHits"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"

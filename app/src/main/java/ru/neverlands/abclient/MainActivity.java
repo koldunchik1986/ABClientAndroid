@@ -110,6 +110,9 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     private static final long CAPTCHA_NETWORK_FALLBACK_DELAY_MS = 900L;
     private static final int CAPTCHA_NOTIFICATION_ID = 6107;
     private static final String CAPTCHA_NOTIFICATION_CHANNEL_ID = "captcha_alerts";
+    private static final long POST_RELOAD_GUARD_WINDOW_MS = 5000L;
+    private static final int POST_RELOAD_GUARD_MAX_COUNT = 4;
+    private static final long POST_RELOAD_GUARD_BLOCK_MS = 12000L;
     public ActivityMainBinding binding;
     private Timer timer;
     private boolean isExiting = false;
@@ -145,6 +148,10 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     private boolean replacingFightCaptchaDialog = false;
     private boolean appBroadcastReceiverRegistered = false;
     private boolean screenStateReceiverRegistered = false;
+    private long postReloadGuardWindowStartMs = 0L;
+    private int postReloadGuardCount = 0;
+    private long postReloadGuardBlockUntilMs = 0L;
+    private String postReloadGuardKey = "";
     private final ActivityResultLauncher<Intent> contactsActivityLauncher =
             registerForActivityResult(
                     new ActivityResultContracts.StartActivityForResult(),
@@ -2012,119 +2019,38 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                 view.postDelayed(() -> destroyWebView(view), 500);
             }
 
+            if (!"http://neverlands.ru/main.php".equals(url)) {
+                resetPostReloadGuard("stable_url");
+            }
+
             // POST-ответ от сервера: document.ff.submit() → WebView загружает main.php без параметров.
             // Это голая страница результата действия (windows-1251, без наших фреймов).
             // Нужно: 1) извлечь системное сообщение, 2) перезагрузить нормальную страницу.
             if ("http://neverlands.ru/main.php".equals(url)) {
-                Log.d(TAG, "onPageFinished: POST-ответ main.php, извлекаем сообщение и перезагружаем");
-                // Извлекаем системное сообщение из тела страницы через JS
                 view.evaluateJavascript(
-                    "(function() {" +
-                    "  var b = document.body ? document.body.innerHTML : '';" +
-                    "  var marker = '<font class=nickname><font color=#cc0000><b>';" +
-                    "  var end = '<br><br></b></font></font>';" +
-                    "  var s = b.indexOf(marker);" +
-                    "  if (s >= 0) {" +
-                    "    var e = b.indexOf(end, s);" +
-                    "    if (e >= 0) return b.substring(s + marker.length, e);" +
-                    "  }" +
-                    "  return '';" +
-                    "})()",
-                    result -> {
-                        if (result != null && !result.equals("\"\"") && !result.equals("null")) {
-                            // убираем кавычки JSON-строки
-                            String msg = result.replaceAll("^\"|\"$", "");
-                            if (!msg.isEmpty()) {
-                                Log.d(TAG, "onPageFinished: sysMessage из POST = " + msg);
-                                Intent msgIntent = new Intent(ru.neverlands.abclient.utils.AppVars.ACTION_ADD_CHAT_MESSAGE);
-                                msgIntent.putExtra("message", "<font color=#cc0000><b>" + msg + "</b></font>");
-                                LocalBroadcastManager.getInstance(MainActivity.this).sendBroadcast(msgIntent);
+                        "(function(){"
+                                + "try{"
+                                + "  return (document.getElementsByTagName('frameset').length > 0) ? 'FRAMESET' : 'NO_FRAMESET';"
+                                + "}catch(e){"
+                                + "  return 'NO_FRAMESET';"
+                                + "}"
+                                + "})()",
+                        modeResult -> {
+                            String mode = normalizeJsStringResult(modeResult);
+                            if ("FRAMESET".equalsIgnoreCase(mode)) {
+                                Log.d(TAG, "onPageFinished: main.php has frameset, skip POST fallback");
+                                resetPostReloadGuard("frameset_main");
+                                applyPageFinishedFixes(view, url);
+                                return;
                             }
+
+                            Log.d(TAG, "onPageFinished: POST-like main.php, processing fallback");
+                            handlePostMainPhpResponse(view);
                         }
-                        boolean autoSkinEnabled = AppVars.Profile != null && AppVars.Profile.SkinAuto;
-                        if (autoSkinEnabled) {
-                            // В POST-ответе (невидимом для перехватчика WebView) иногда уже есть fight_ty[9]
-                            // с параметрами "Разделать". Пытаемся достать ссылку сразу из DOM.
-                            view.evaluateJavascript(
-                                    "(function(){"
-                                            + "try{"
-                                            + " if(typeof fight_ty!=='undefined' && fight_ty && fight_ty.length>9 && fight_ty[9] && fight_ty[9].length>5){"
-                                            + "   var t=fight_ty[9];"
-                                            + "   return 'http://neverlands.ru/main.php?get_id=17&type='+t[0]+'&p='+t[1]+'&uid='+t[2]+'&s='+t[3]+'&m='+t[4]+'&vcode='+t[5];"
-                                            + " }"
-                                            + " var btn=document.querySelector('input[onclick*=\\'get_id=17\\']');"
-                                            + " if(btn&&btn.onclick){"
-                                            + "   var s=String(btn.onclick);"
-                                            + "   var i=s.indexOf('main.php?get_id=17');"
-                                            + "   if(i>=0){"
-                                            + "     var j=s.indexOf(\"'\",i);"
-                                            + "     return j>i ? ('http://neverlands.ru/'+s.substring(i,j)) : '';"
-                                            + "   }"
-                                            + " }"
-                                            + " var a=document.querySelector('a[href*=\\'get_id=17\\']');"
-                                            + " if(a&&a.getAttribute('href')){"
-                                            + "   var href=a.getAttribute('href');"
-                                            + "   return href.indexOf('http')===0 ? href : ('http://neverlands.ru/'+href.replace(/^\\/+/,''));"
-                                            + " }"
-                                            + "}catch(e){}"
-                                            + "return '';"
-                                            + "})()",
-                                    razResult -> {
-                                        String razUrl = razResult == null ? "" : razResult.trim();
-                                        if (razUrl.startsWith("\"") && razUrl.endsWith("\"") && razUrl.length() >= 2) {
-                                            razUrl = razUrl.substring(1, razUrl.length() - 1);
-                                        }
-                                        razUrl = razUrl
-                                                .replace("\\/", "/")
-                                                .replace("\\u0026", "&")
-                                                .replace("&amp;", "&")
-                                                .trim();
-
-                                        if (!razUrl.isEmpty() && razUrl.contains("get_id=17")) {
-                                            Log.d(TAG, "onPageFinished: POST-ответ, найдена разделка -> " + razUrl);
-                                            view.loadUrl(razUrl);
-                                            return;
-                                        }
-
-                                        schedulePostResponseReload(view, true);
-                                    }
-                            );
-                            return;
-                        }
-
-                        // Обычный POST fallback без AutoSkin.
-                        schedulePostResponseReload(view, false);
-                    }
                 );
-                return; // не делаем стандартный jsFix для POST-ответа
+                return;
             }
-
-            String jsFix = ru.neverlands.abclient.utils.HtmlUtils.getJsFix();
-            view.evaluateJavascript(jsFix, null);
-
-            if (url.contains("main.php")) {
-                // NOTE: Keep this JS one-line: a literal newline inside quotes breaks parsing (SyntaxError).
-                view.evaluateJavascript("javascript:(function() { var frameset = document.getElementsByTagName('frameset')[0]; if (frameset) { frameset.rows = '*,0'; } })()", null);
-
-                // Inject fight state extractor
-                try {
-                    String extractorJs = new String(readAssetFile("js/extract_fight_state.js"));
-                    view.evaluateJavascript("javascript:" + extractorJs, null);
-                } catch (IOException e) {
-                    Log.e(TAG, "Failed to read extract_fight_state.js", e);
-                }
-
-                if (!isRoomManagerStarted) {
-                    ru.neverlands.abclient.manager.RoomManager.startTracing(MainActivity.this);
-                    isRoomManagerStarted = true;
-                }
-            } else if (url.contains("ch.php")) {
-                view.evaluateJavascript("javascript:(function() { var frameset = document.getElementsByTagName('frameset')[0]; if (frameset) { frameset.cols = '0, *'; } })()", null);
-            }
-            
-            // Инъекция JavaScript для перехвата кликов по ссылкам
-            // Это нужно, т.к. ссылки внутри фреймов не вызывают shouldOverrideUrlLoading
-            injectClickInterceptor(view);
+            applyPageFinishedFixes(view, url);
         }
 
         @Override
@@ -2204,6 +2130,126 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     }
 
     // Чтение файла из assets (например, JS для инъекций).
+    private void applyPageFinishedFixes(WebView view, String url) {
+        String jsFix = ru.neverlands.abclient.utils.HtmlUtils.getJsFix();
+        view.evaluateJavascript(jsFix, null);
+
+        if (url.contains("main.php")) {
+            // NOTE: Keep this JS one-line: a literal newline inside quotes breaks parsing (SyntaxError).
+            view.evaluateJavascript("javascript:(function() { var frameset = document.getElementsByTagName('frameset')[0]; if (frameset) { frameset.rows = '*,0'; } })()", null);
+
+            try {
+                String extractorJs = new String(readAssetFile("js/extract_fight_state.js"));
+                view.evaluateJavascript("javascript:" + extractorJs, null);
+            } catch (IOException e) {
+                Log.e(TAG, "Failed to read extract_fight_state.js", e);
+            }
+
+            if (!isRoomManagerStarted) {
+                ru.neverlands.abclient.manager.RoomManager.startTracing(MainActivity.this);
+                isRoomManagerStarted = true;
+            }
+        } else if (url.contains("ch.php")) {
+            view.evaluateJavascript("javascript:(function() { var frameset = document.getElementsByTagName('frameset')[0]; if (frameset) { frameset.cols = '0, *'; } })()", null);
+        }
+
+        injectClickInterceptor(view);
+    }
+
+    private void handlePostMainPhpResponse(WebView view) {
+        Log.d(TAG, "onPageFinished: POST-ответ main.php, извлекаем сообщение и перезагружаем");
+        view.evaluateJavascript(
+                "(function() {"
+                        + "  var b = document.body ? document.body.innerHTML : '';"
+                        + "  var marker = '<font class=nickname><font color=#cc0000><b>';"
+                        + "  var end = '<br><br></b></font></font>';"
+                        + "  var s = b.indexOf(marker);"
+                        + "  if (s >= 0) {"
+                        + "    var e = b.indexOf(end, s);"
+                        + "    if (e >= 0) return b.substring(s + marker.length, e);"
+                        + "  }"
+                        + "  return '';"
+                        + "})()",
+                result -> {
+                    boolean hasPostMessage = result != null && !result.equals("\"\"") && !result.equals("null");
+                    boolean autoSkinEnabled = AppVars.Profile != null && AppVars.Profile.SkinAuto;
+
+                    if (!hasPostMessage && !autoSkinEnabled) {
+                        Log.d(TAG, "onPageFinished: no POST marker on main.php, skip POST fallback");
+                        resetPostReloadGuard("no_post_marker");
+                        applyPageFinishedFixes(view, "http://neverlands.ru/main.php");
+                        return;
+                    }
+
+                    if (hasPostMessage) {
+                        String msg = result.replaceAll("^\"|\"$", "");
+                        if (!msg.isEmpty()) {
+                            Log.d(TAG, "onPageFinished: sysMessage из POST = " + msg);
+                            Intent msgIntent = new Intent(ru.neverlands.abclient.utils.AppVars.ACTION_ADD_CHAT_MESSAGE);
+                            msgIntent.putExtra("message", "<font color=#cc0000><b>" + msg + "</b></font>");
+                            LocalBroadcastManager.getInstance(MainActivity.this).sendBroadcast(msgIntent);
+                        }
+                    }
+
+                    if (autoSkinEnabled) {
+                        view.evaluateJavascript(
+                                "(function(){"
+                                        + "try{"
+                                        + " if(typeof fight_ty!=='undefined' && fight_ty && fight_ty.length>9 && fight_ty[9] && fight_ty[9].length>5){"
+                                        + "   var t=fight_ty[9];"
+                                        + "   return 'http://neverlands.ru/main.php?get_id=17&type='+t[0]+'&p='+t[1]+'&uid='+t[2]+'&s='+t[3]+'&m='+t[4]+'&vcode='+t[5];"
+                                        + " }"
+                                        + " var btn=document.querySelector('input[onclick*=\\'get_id=17\\']');"
+                                        + " if(btn&&btn.onclick){"
+                                        + "   var s=String(btn.onclick);"
+                                        + "   var i=s.indexOf('main.php?get_id=17');"
+                                        + "   if(i>=0){"
+                                        + "     var j=s.indexOf(\"'\",i);"
+                                        + "     return j>i ? ('http://neverlands.ru/'+s.substring(i,j)) : '';"
+                                        + "   }"
+                                        + " }"
+                                        + " var a=document.querySelector('a[href*=\\'get_id=17\\']');"
+                                        + " if(a&&a.getAttribute('href')){"
+                                        + "   var href=a.getAttribute('href');"
+                                        + "   return href.indexOf('http')===0 ? href : ('http://neverlands.ru/'+href.replace(/^\\/+/,''));"
+                                        + " }"
+                                        + "}catch(e){}"
+                                        + "return '';"
+                                        + "})()",
+                                razResult -> {
+                                    String razUrl = normalizeJsStringResult(razResult)
+                                            .replace("\\u0026", "&")
+                                            .replace("&amp;", "&")
+                                            .trim();
+
+                                    if (!razUrl.isEmpty() && razUrl.contains("get_id=17")) {
+                                        Log.d(TAG, "onPageFinished: POST-ответ, найдена разделка -> " + razUrl);
+                                        view.loadUrl(razUrl);
+                                        return;
+                                    }
+
+                                    schedulePostResponseReload(view, true);
+                                }
+                        );
+                        return;
+                    }
+
+                    schedulePostResponseReload(view, false);
+                }
+        );
+    }
+
+    private static String normalizeJsStringResult(String raw) {
+        if (raw == null) {
+            return "";
+        }
+        String result = raw.trim();
+        if (result.length() >= 2 && result.startsWith("\"") && result.endsWith("\"")) {
+            result = result.substring(1, result.length() - 1);
+        }
+        return result.replace("\\/", "/").replace("\\\"", "\"");
+    }
+
     private byte[] readAssetFile(String fileName) throws IOException {
         AssetManager assetManager = getAssets();
         InputStream inputStream = assetManager.open(fileName);
@@ -2278,12 +2324,51 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                 }
             }
 
+            if (isPostReloadBlocked(autoSkinEnabled ? "autoskin" : "fight")) {
+                Log.w(TAG, "onPageFinished: POST reload blocked by anti-loop guard, url=" + reloadUrl);
+                return;
+            }
+
             Log.d(TAG, "onPageFinished: POST-ответ, перезагружаем " + reloadUrl);
             view.loadUrl(reloadUrl);
         }, 300);
     }
 
     // Создает временный popup WebView (используется chat buttons → ch_refr).
+
+    private boolean isPostReloadBlocked(String key) {
+        long now = System.currentTimeMillis();
+        if (now < postReloadGuardBlockUntilMs) {
+            return true;
+        }
+
+        if (!key.equals(postReloadGuardKey) || now - postReloadGuardWindowStartMs > POST_RELOAD_GUARD_WINDOW_MS) {
+            postReloadGuardKey = key;
+            postReloadGuardWindowStartMs = now;
+            postReloadGuardCount = 0;
+        }
+
+        postReloadGuardCount++;
+        if (postReloadGuardCount > POST_RELOAD_GUARD_MAX_COUNT) {
+            postReloadGuardBlockUntilMs = now + POST_RELOAD_GUARD_BLOCK_MS;
+            Log.w(TAG, "POST_RELOAD_GUARD: block enabled for " + POST_RELOAD_GUARD_BLOCK_MS
+                    + "ms, key=" + key + ", count=" + postReloadGuardCount);
+            return true;
+        }
+        return false;
+    }
+
+    private void resetPostReloadGuard(String reason) {
+        if (postReloadGuardCount == 0 && postReloadGuardBlockUntilMs == 0L && postReloadGuardKey.isEmpty()) {
+            return;
+        }
+        postReloadGuardWindowStartMs = 0L;
+        postReloadGuardCount = 0;
+        postReloadGuardBlockUntilMs = 0L;
+        postReloadGuardKey = "";
+        Log.d(TAG, "POST_RELOAD_GUARD: reset, reason=" + reason);
+    }
+
     private WebView createChatPopupWebView() {
         WebView popup = new WebView(this);
         setupWebView(popup, new CustomWebViewClient());

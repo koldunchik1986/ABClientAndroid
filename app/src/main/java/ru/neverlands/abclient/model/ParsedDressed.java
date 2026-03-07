@@ -41,6 +41,26 @@ public class ParsedDressed {
 
     private final List<String> slist = new ArrayList<>();
     private final List<String> dlist = new ArrayList<>();
+    /**
+     * Полный список надетых предметов по всем слотам экипировки (не только руки).
+     *
+     * Зачем нужен:
+     * - режим AutoFury должен понимать, надет ли "Свиток Удар Ярости"/"Снежок" в любом слоте;
+     * - проверка только `slist` (слоты рук) давала ложный `armed=false` и вызывала цикл повторного надевания.
+     *
+     * Зависимости:
+     * - заполняется методом `collectEquippedSlots(...)` при разборе `slots_inv(...)` и `slots_pla(...)`;
+     * - читается в `IsWearFuryScroll()`.
+     */
+    private final List<String> equippedNameList = new ArrayList<>();
+    /**
+     * Состояние/долговечность для `equippedNameList` в том же индексе (`current/max`).
+     *
+     * Зависимости:
+     * - формируется в `collectEquippedSlots(...)` (с использованием `safeGet` и `extractMaxDolg`);
+     * - используется в `IsWearFuryScroll()` для заполнения `AppVars.AutoFuryHandD`.
+     */
+    private final List<String> equippedDolgList = new ArrayList<>();
 
     private static final String[] SKIN_KNIFE_NAMES = new String[]{
             "Малый Разделочный Нож",
@@ -48,6 +68,10 @@ public class ParsedDressed {
             "Вороненый Охотничий Нож",
             "Разделочный Топорик",
             "Нож Мастера-охотника"
+    };
+    private static final String[] FURY_SCROLL_NAMES = new String[]{
+            "Свиток Удар Ярости",
+            "Снежок"
     };
 
     public ParsedDressed(String html) {
@@ -90,6 +114,7 @@ public class ParsedDressed {
         if (fdo.length < 13) {
             return;
         }
+        collectEquippedSlots(fmain, fdo);
 
         String[] fhand1 = fmain[2].split(":", -1);
         if (fhand1.length < 2) {
@@ -158,6 +183,7 @@ public class ParsedDressed {
         if (sldlg.length < 13) {
             return;
         }
+        collectEquippedSlots(slmain, sldlg);
 
         String[] slhand1 = slmain[2].split(":", -1);
         if (slhand1.length < 2) {
@@ -322,6 +348,48 @@ public class ParsedDressed {
         return SKIN_KNIFE_NAMES.clone();
     }
 
+    /**
+     * Проверка, надет ли целевой свиток режима осады (`Свиток Удар Ярости`/`Снежок`).
+     *
+     * Назначение:
+     * - используется MainPhp в ветке авто-надевания свитка перед первым ударом.
+     *
+     * Побочный эффект:
+     * - обновляет AppVars.AutoFuryHand / AppVars.AutoFuryHandD при обнаружении свитка.
+     */
+    /**
+     * Проверяет, надет ли целевой свиток режима осады по всем экипированным слотам.
+     *
+     * Почему отдельный метод:
+     * - MainPhp использует его как единую проверку перед auto-wear;
+     * - метод должен работать даже если свиток не в руке, а в другом слоте экипировки.
+     *
+     * Зависимости:
+     * - `equippedNameList`/`equippedDolgList`, заполненные через `collectEquippedSlots(...)`;
+     * - словарь целей `FURY_SCROLL_NAMES`;
+     * - runtime-поля `AppVars.AutoFuryHand` и `AppVars.AutoFuryHandD`.
+     *
+     * Побочный эффект:
+     * - при обнаружении свитка обновляет `AppVars.AutoFuryHand*`, чтобы в логах/состоянии
+     *   был виден фактически найденный предмет.
+     */
+    public boolean IsWearFuryScroll() {
+        for (int i = 0; i < equippedNameList.size(); i++) {
+            for (String scrollName : FURY_SCROLL_NAMES) {
+                if (containsIgnoreCase(equippedNameList.get(i), scrollName)) {
+                    AppVars.AutoFuryHand = equippedNameList.get(i);
+                    AppVars.AutoFuryHandD = i < equippedDolgList.size() ? equippedDolgList.get(i) : "";
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    public static String[] getFuryScrollNames() {
+        return FURY_SCROLL_NAMES.clone();
+    }
+
     private void sendKnifeChangedChatMessage(String knifeName, String knifeDolg) {
         try {
             Context context = AppVars.getContext();
@@ -350,6 +418,47 @@ public class ParsedDressed {
             return "";
         }
         return details[7];
+    }
+
+    /**
+     * Собирает список всех надетых предметов из массива слотов экипировки.
+     *
+     * Вход:
+     * - `slotMain`: данные слотов (имя + meta) из `slots_inv` или `slots_pla`;
+     * - `slotDolg`: текущие значения износа/заряда по индексам слотов.
+     *
+     * Фильтрация:
+     * - пропускает пустые слоты (`Слот...`);
+     * - пропускает повреждённые записи, где невозможно извлечь имя предмета.
+     *
+     * Зависимости:
+     * - использует `startsWithSlot`, `safeGet`, `extractMaxDolg`;
+     * - заполняет `equippedNameList` и `equippedDolgList` синхронно по одному индексу.
+     *
+     * Важно:
+     * - метод не трогает `slist/dlist`, чтобы не ломать C#-паритет для логики рук (`IsWear1/IsWear2/IsWearKnife`).
+     */
+    private void collectEquippedSlots(String[] slotMain, String[] slotDolg) {
+        if (slotMain == null) {
+            return;
+        }
+
+        for (int i = 0; i < slotMain.length; i++) {
+            String[] slotParts = slotMain[i].split(":", -1);
+            if (slotParts.length < 2) {
+                continue;
+            }
+
+            String slotName = slotParts[1];
+            if (startsWithSlot(slotName)) {
+                continue;
+            }
+
+            String currentDolg = safeGet(slotDolg, i);
+            String maxDolg = extractMaxDolg(slotParts);
+            equippedNameList.add(slotName);
+            equippedDolgList.add(currentDolg + "/" + maxDolg);
+        }
     }
 
     private static boolean containsIgnoreCase(String source, String token) {

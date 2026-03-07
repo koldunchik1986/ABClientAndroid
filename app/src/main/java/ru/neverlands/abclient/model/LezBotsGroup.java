@@ -22,6 +22,19 @@ public class LezBotsGroup implements Serializable, Cloneable, Comparable<LezBots
     public boolean DoHits;
     public boolean DoBlocks;
     public boolean DoMiscAbils;
+    /**
+     * Пер-групповой флаг режима "Снежок/Ярость (первый удар свитком)".
+     *
+     * Назначение:
+     * - включает разрешение scroll-hit только для целей, попавших в эту группу ротации;
+     * - хранится именно на уровне `LezBotsGroup`, а не глобально, чтобы поведение было 1:1 с фильтрами групп.
+     *
+     * Зависимости:
+     * - UI вкладки "Ротация" (`AutoBoiSettingsFragment.RotationTabFragment`) читает/сохраняет `g.DoFury`;
+     * - сериализация профиля (`UserConfig`): `group@doFury`;
+     * - боевая проверка (`LezFight.IsMagicAllowed`) использует `FoeGroup.DoFury` для разрешения `LezSpell.IsScrollHit(code)`.
+     */
+    public boolean DoFury;
 
     public boolean DoStopNow;
     public boolean DoStopLowHp;
@@ -59,6 +72,7 @@ public class LezBotsGroup implements Serializable, Cloneable, Comparable<LezBots
         DoHits = true;
         DoBlocks = true;
         DoMiscAbils = true;
+        DoFury = false;
 
         DoStopNow = false;
         DoStopLowHp = false;

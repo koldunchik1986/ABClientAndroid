@@ -1,6 +1,9 @@
 package ru.neverlands.abclient.lez;
 
+import android.content.Context;
+import android.content.Intent;
 import android.util.Log;
+import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
@@ -73,6 +76,21 @@ public class LezFight {
     private final List<List<Boolean>> _eblocks = new ArrayList<>(Arrays.asList(new ArrayList<>(), new ArrayList<>(), new ArrayList<>(), new ArrayList<>()));
     private final List<Integer> _magics = new ArrayList<>();
     private final List<Boolean> _emagics = new ArrayList<>();
+    /**
+     * Карта индексов `magicFlag -> исходный индекс в var magic_in`.
+     *
+     * Зачем нужна:
+     * - сервер ожидает, что `ina=<code>_<alchemyUid>@` будет собран по позиции из `magic_in`,
+     *   а не по отфильтрованному внутреннему списку `_magics`;
+     * - если в `magic_in` есть коды, которые не попали в `_magics` (например, из-за PosType),
+     *   прямой доступ `_alchemy[i]` даёт сдвиг и отправляет UID другого предмета
+     *   (симптом: вместо "Свиток Удар Ярости" может примениться другое действие, например мана-поушен).
+     *
+     * Зависимости:
+     * - заполняется в `Selpl(...)` в момент добавления записи в `_magics`;
+     * - читается в `BuildResult()` и `BuildFrame()` через `resolveAlchemyIndexByMagicFlag(...)`.
+     */
+    private final List<Integer> _magicAlchemyIndexes = new ArrayList<>();
 
     private final List<LezNode> _lezHits = new ArrayList<>(Arrays.asList(new LezNode()));
     private final List<LezNode> _lezBlocks = new ArrayList<>(Arrays.asList(new LezNode()));
@@ -125,8 +143,22 @@ public class LezFight {
 
         _percentHp = _maxHp > 0 ? (_currentHp * 100) / _maxHp : 0;
         _percentMa = _maxMa > 0 ? (_currentMa * 100) / _maxMa : 0;
+        trackScrollHitByLogIfNeeded();
 
         if (!IsBoi) return ParseNonFight();
+
+        // После первого подтверждённого удара свитком (по логам боя) выключаем Fury
+        // только в рамках текущего боя.
+        //
+        // Зависимости:
+        // - `trackScrollHitByLogIfNeeded()` выставляет `_hitByScroll` на основании `var logs`;
+        // - `disableFuryModeAfterScrollHit()` сбрасывает runtime-флаги AutoFury
+        //   и запрашивает повторную проверку экипировки свитка на следующих кадрах;
+        // - групповая настройка `FoeGroup.DoFury` не изменяется (персистентная конфигурация остаётся прежней).
+        if (_hitByScroll) {
+            _hitByScroll = false;
+            disableFuryModeAfterScrollHit();
+        }
 
         String[] standin = ParseString(html, "var stand_in = [", 0);
         String[] magicin = ParseString(html, "var magic_in = [", 0);
@@ -234,6 +266,7 @@ public class LezFight {
         }
         android.util.Log.d("LezFight", "magic_in parsed: " + lmagicin);
 
+        _magicAlchemyIndexes.clear();
         if (!lmagicin.isEmpty()) Selpl(1, lmagicin);
 
         _bs = 0;
@@ -283,6 +316,8 @@ public class LezFight {
             DoExit = false;
         }
         
+        applyMagicPriorityFilters();
+
         if (LezCombinations.size() > 0) {
             LezCombination = LezCombinations.get((int)(Math.random() * LezCombinations.size()));
             BuildResult();
@@ -293,6 +328,81 @@ public class LezFight {
     }
 
     // Выбор группы противника (настройки авто‑боя по уровням/типам).
+    /**
+     * Определяет факт "удара свитком" текущего пользователя по блоку `var logs`.
+     *
+     * Алгоритм:
+     * - ищет последовательность "наш nick -> имя свитка -> глагол удара";
+     * - поддерживает оба варианта свитка: `Свиток Удар Ярости` и `Снежок`;
+     * - при совпадении выставляет `_hitByScroll=true`.
+     *
+     * Зависимости:
+     * - источник ника: `AppVars.Profile.UserNick`;
+     * - парсинг HTML: `HelperStrings.subString(_html, "var logs = ", ";")`;
+     * - регулярные выражения в `containsScrollHitAfterNick(...)`.
+     */
+    private void trackScrollHitByLogIfNeeded() {
+        _hitByScroll = false;
+
+        String logsStr = HelperStrings.subString(_html, "var logs = ", ";");
+        if (logsStr == null || logsStr.isEmpty()) {
+            return;
+        }
+
+        String userNick = (AppVars.Profile != null) ? AppVars.Profile.UserNick : null;
+        if (userNick == null || userNick.trim().isEmpty()) {
+            return;
+        }
+
+        boolean furyHit = containsScrollHitAfterNick(logsStr, userNick, "Свиток Удар Ярости", "ударом ярости");
+        boolean snowHit = containsScrollHitAfterNick(logsStr, userNick, "Снежок", "снежком");
+        _hitByScroll = furyHit || snowHit;
+    }
+
+    /**
+     * Проверка сигнатуры одной лог-записи: `nick -> свиток -> глагол действия`.
+     *
+     * Зависимости:
+     * - вызывается из `trackScrollHitByLogIfNeeded(...)` для обоих свитков;
+     * - использует `Pattern.quote(...)`, чтобы спецсимволы ника/текста не ломали regex;
+     * - чувствительность: `CASE_INSENSITIVE | UNICODE_CASE`.
+     */
+    private boolean containsScrollHitAfterNick(String logsStr, String nick, String scrollName, String verbToken) {
+        String nickPattern = Pattern.quote("\"" + nick + "\",");
+        String scrollPattern = Pattern.quote("\"" + scrollName + "\",");
+        String verbPattern = Pattern.quote(verbToken + "\",");
+        String combined = nickPattern + "[\\s\\S]{0,900}?" + scrollPattern + "[\\s\\S]{0,400}?" + verbPattern;
+        Pattern pattern = Pattern.compile(combined, Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CASE);
+        return pattern.matcher(logsStr).find();
+    }
+
+    /**
+     * Завершает одноразовое применение Fury в текущем бою.
+     *
+     * Поведение:
+     * - сбрасывает только runtime-состояние (`AppVars.DoFury`, `AutoFury*`);
+     * - не меняет профиль/группы, поэтому в следующем подходящем бою режим снова активен;
+     * - отправляет сервисное сообщение в чат о факте первого удара.
+     *
+     * Зависимости:
+     * - `AppVars.ACTION_ADD_CHAT_MESSAGE` + `LocalBroadcastManager`;
+     * - оркестратор `MainPhp` читает `AutoFuryCheckScroll` и заново проверяет/надевает свиток при необходимости.
+     */
+    private void disableFuryModeAfterScrollHit() {
+        AppVars.DoFury = false;
+        AppVars.AutoFuryCheckScroll = true;
+        AppVars.AutoFuryArmedScroll = false;
+        AppVars.AutoFuryHand = "";
+        AppVars.AutoFuryHandD = "";
+
+        Context context = AppVars.getContext();
+        if (context != null) {
+            Intent msgIntent = new Intent(AppVars.ACTION_ADD_CHAT_MESSAGE);
+            msgIntent.putExtra("message", "<b>Режим свитка осады</b>: первый удар выполнен.");
+            LocalBroadcastManager.getInstance(context).sendBroadcast(msgIntent);
+        }
+    }
+
     private void SelectFoeGroup() {
         _foeGroupId = 0;
         if (AppVars.Profile == null) {
@@ -318,6 +428,7 @@ public class LezFight {
             }
         }
         if (FoeGroup == null) FoeGroup = new LezBotsGroup(1, 0);
+        AppVars.DoFury = FoeGroup.DoFury;
     }
 
     private int ZMag(LezBotsGroup group, int code) {
@@ -635,8 +746,11 @@ public class LezFight {
             if (posType <= 2) continue;
 
             inputa.append(code);
-            if (posType > 3 && _alchemy != null && i < _alchemy.length) {
-                inputa.append("_").append(_alchemy[i]);
+            if (posType > 3 && _alchemy != null) {
+                int alchemyIndex = resolveAlchemyIndexByMagicFlag(i);
+                if (alchemyIndex >= 0 && alchemyIndex < _alchemy.length) {
+                    inputa.append("_").append(_alchemy[alchemyIndex]);
+                }
             }
             inputa.append("@");
         }
@@ -714,8 +828,11 @@ public class LezFight {
                 int posType = LezSpellCollection.PosType[code];
                 if (posType > 2) {
                     ina.append(code);
-                    if (posType > 3 && _alchemy != null && i < _alchemy.length) {
-                        ina.append("_").append(_alchemy[i]);
+                    if (posType > 3 && _alchemy != null) {
+                        int alchemyIndex = resolveAlchemyIndexByMagicFlag(i);
+                        if (alchemyIndex >= 0 && alchemyIndex < _alchemy.length) {
+                            ina.append("_").append(_alchemy[alchemyIndex]);
+                        }
                     }
                     ina.append("@");
                 }
@@ -798,28 +915,55 @@ public class LezFight {
      * - `IsMagicAllowed()` определяет флаг кликабельности магии (`_emagics`).
      */
     private void Selpl(int type, List<Integer> list) {
-        for (int i : list) {
-            if (i < 0 || i >= LezSpellCollection.PosType.length) continue;
-            int pos = LezSpellCollection.PosType[i];
+        for (int sourceIndex = 0; sourceIndex < list.size(); sourceIndex++) {
+            int code = list.get(sourceIndex);
+            if (code < 0 || code >= LezSpellCollection.PosType.length) continue;
+            int pos = LezSpellCollection.PosType[code];
             if (pos == 1) {
-                _hits.add(i);
+                _hits.add(code);
                 if (type == 1) {
-                    _magics.add(i);
+                    _magics.add(code);
                     _emagics.add(false);
+                    _magicAlchemyIndexes.add(sourceIndex);
                 }
             } else if (pos == 2) {
-                _magblocks.add(i);
+                _magblocks.add(code);
                 if (type == 1) {
-                    _magics.add(i);
+                    _magics.add(code);
                     _emagics.add(false);
+                    _magicAlchemyIndexes.add(sourceIndex);
                 }
             } else {
                 if (pos == 3 || pos == 4) {
-                    _magics.add(i);
-                    _emagics.add(IsMagicAllowed(i));
+                    _magics.add(code);
+                    _emagics.add(IsMagicAllowed(code));
+                    // Для источника `magic_in` сохраняем исходную позицию слота.
+                    // Для других источников (например `stand_in`) alchemy к ним не привязан.
+                    _magicAlchemyIndexes.add(type == 1 ? sourceIndex : -1);
                 }
             }
         }
+    }
+
+    /**
+     * Возвращает индекс alchemy для конкретного magic-flag, сохраняя привязку к исходному `magic_in`.
+     *
+     * Логика:
+     * - сначала пробуем карту `_magicAlchemyIndexes`;
+     * - если карта недоступна/повреждена, используем старый fallback (индекс самого flag),
+     *   чтобы не ломать существующий поток на нестандартных кадрах.
+     */
+    private int resolveAlchemyIndexByMagicFlag(int magicFlagIndex) {
+        if (magicFlagIndex < 0) {
+            return -1;
+        }
+        if (magicFlagIndex < _magicAlchemyIndexes.size()) {
+            int mapped = _magicAlchemyIndexes.get(magicFlagIndex);
+            if (mapped >= 0) {
+                return mapped;
+            }
+        }
+        return magicFlagIndex;
     }
 
     /**
@@ -832,6 +976,100 @@ public class LezFight {
             if (c) count++;
         }
         return count;
+    }
+
+    /**
+     * Применяет приоритеты по магии/свиткам к уже сгенерированным комбинациям.
+     *
+     * Правила приоритета:
+     * - если включён режим свитка (`FoeGroup.DoFury`), в приоритете комбинации со scroll-hit;
+     * - если включено восстановление HP и текущий процент HP <= порога (в т.ч. 100%),
+     *   в приоритете комбинации с заклинанием из `SpellsRestoreHp`.
+     *
+     * Важно:
+     * - фильтр "жёсткий", но только если есть хотя бы один валидный вариант;
+     * - при отсутствии валидных вариантов оставляем исходный список (fallback), чтобы бой не ломался.
+     */
+    private void applyMagicPriorityFilters() {
+        if (LezCombinations.isEmpty() || FoeGroup == null) {
+            return;
+        }
+
+        boolean preferScroll = FoeGroup.DoFury;
+        boolean preferRestoreHp = isRestoreHpEnabledNow();
+
+        List<LezNode> filtered = new ArrayList<>(LezCombinations);
+        if (preferScroll) {
+            List<LezNode> withScroll = new ArrayList<>();
+            for (LezNode node : filtered) {
+                if (hasScrollHitMagic(node)) {
+                    withScroll.add(node);
+                }
+            }
+            if (!withScroll.isEmpty()) {
+                filtered = withScroll;
+            }
+        }
+
+        if (preferRestoreHp) {
+            List<LezNode> withRestoreHp = new ArrayList<>();
+            for (LezNode node : filtered) {
+                if (hasRestoreHpMagic(node)) {
+                    withRestoreHp.add(node);
+                }
+            }
+            if (!withRestoreHp.isEmpty()) {
+                filtered = withRestoreHp;
+            }
+        }
+
+        if (filtered.size() != LezCombinations.size()) {
+            Log.d("LezFight", "Magic priority filter applied: base=" + LezCombinations.size()
+                    + ", filtered=" + filtered.size()
+                    + ", preferScroll=" + preferScroll
+                    + ", preferRestoreHp=" + preferRestoreHp);
+            LezCombinations.clear();
+            LezCombinations.addAll(filtered);
+        }
+    }
+
+    private boolean isRestoreHpEnabledNow() {
+        if (FoeGroup == null || !FoeGroup.DoRestoreHp || _maxHp <= 0) {
+            return false;
+        }
+        int hpPercent = (int) (_currentHp * 100.0 / _maxHp);
+        return hpPercent <= FoeGroup.RestoreHp;
+    }
+
+    private boolean hasScrollHitMagic(LezNode node) {
+        if (node == null) {
+            return false;
+        }
+        for (int i = 0; i < node.MagicFlags.length; i++) {
+            if (!node.MagicFlags[i]) {
+                continue;
+            }
+            if (LezSpell.IsScrollHit(node.MagicCodes[i])) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private boolean hasRestoreHpMagic(LezNode node) {
+        if (node == null || FoeGroup == null) {
+            return false;
+        }
+        for (int i = 0; i < node.MagicFlags.length; i++) {
+            if (!node.MagicFlags[i]) {
+                continue;
+            }
+            int code = node.MagicCodes[i];
+            if (code == 388 || contains(FoeGroup.SpellsRestoreHp, code)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**
@@ -886,7 +1124,7 @@ public class LezFight {
         if (contains(FoeGroup.SpellsBlocks, code)) return FoeGroup.DoAbilBlocks;
         if (contains(FoeGroup.SpellsHits, code)) return FoeGroup.DoAbilHits;
         if (contains(FoeGroup.SpellsMisc, code)) return FoeGroup.DoMiscAbils;
-        if (LezSpell.IsScrollHit(code)) return false;
+        if (LezSpell.IsScrollHit(code)) return FoeGroup != null && FoeGroup.DoFury;
         if (code == 328) return false;
 
         return false;

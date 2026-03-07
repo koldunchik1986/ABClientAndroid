@@ -23,6 +23,38 @@ public class AppVars {
     public static boolean WaitFlash = false;
     public static String ContentMainPhp = "";
     public static ru.neverlands.abclient.model.AutoboiState Autoboi = ru.neverlands.abclient.model.AutoboiState.AutoboiOff;
+    /**
+     * Режим "свитка осады" (аналог C# `AppVars.DoFury` / `buttonFury`).
+     *
+     * Назначение:
+     * - разрешает первый scroll-hit (`Снежок` / `Свиток Удар Ярости`) в `LezFight`,
+     * - включает оркестрацию авто-проверки/авто-надевания свитка в `MainPhp`,
+     * - после первого успешного удара свитком сбрасывается в false.
+     *
+     * Зависимости:
+     * - `UserConfig.LezDoFury` (профильный флаг в настройках AutoBoi),
+     * - `LezFight.IsMagicAllowed(...)` и post-hit auto-off логика,
+     * - `MainPhp` (ветка авто-проверки экипировки свитка).
+     */
+    public static boolean DoFury = false;
+    /**
+     * FuryAutoWear: требуется проверка, надет ли целевой свиток перед боем.
+     * Аналогично `AutoSkinCheckKnife`, но для режима `DoFury`.
+     */
+    public static boolean AutoFuryCheckScroll = false;
+    /**
+     * FuryAutoWear: признак, что целевой свиток уже надет.
+     * Аналогично `AutoSkinArmedKnife`, но для свитков `Снежок`/`Свиток Удар Ярости`.
+     */
+    public static boolean AutoFuryArmedScroll = false;
+    /**
+     * Название найденного/надетого свитка (для диагностики и чата).
+     */
+    public static String AutoFuryHand = "";
+    /**
+     * Долговечность надетого свитка в формате `cur/max` (если присутствует в slots-данных).
+     */
+    public static String AutoFuryHandD = "";
     public static String GuamodCode = "";
     public static String FightLink = "";
     // URL боевой капчи (аналог AppVars.CodeAddress в C#).

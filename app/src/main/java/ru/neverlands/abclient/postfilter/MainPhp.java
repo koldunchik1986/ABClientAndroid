@@ -982,6 +982,29 @@ public class MainPhp {
     }
 
     /**
+     * Определяет, включен ли режим "Снежок/Ярость (первый удар на осаде)".
+     *
+     * Источник:
+     * - профильный флаг `UserConfig.LezDoFury`;
+     * - fallback на runtime-флаг `AppVars.DoFury`.
+     */
+    private static boolean isAutoFuryEnabledByPreference() {
+        if (AppVars.Profile != null) {
+            boolean enabled = AppVars.Profile.hasAnyLezFuryGroup();
+            // Поддерживаем синхронизацию legacy-глобального флага для обратной совместимости.
+            // Зависимости:
+            // - старые ветки, где читается `Profile.LezDoFury` как единый переключатель;
+            // - новый режим, где источник истины — пер-групповые `group@doFury`.
+            AppVars.Profile.LezDoFury = enabled;
+            if (!enabled) {
+                AppVars.DoFury = false;
+            }
+            return enabled;
+        }
+        return AppVars.DoFury;
+    }
+
+    /**
      * Периодическая (раз в минуту) установка флага проверки ножа,
      * аналог `FormMainTicks.cs`: `AutoSkinLastChecked` -> `AutoSkinCheckKnife = true`.
      */
@@ -1410,6 +1433,50 @@ public class MainPhp {
     }
 
     /**
+     * Проверка, надет ли целевой свиток режима осады (`Свиток Удар Ярости`/`Снежок`).
+     */
+    private static boolean mainPhpArmedFuryScroll(String html) {
+        ParsedDressed parsedDressed = new ParsedDressed(html);
+        if (!parsedDressed.Valid) {
+            return false;
+        }
+        return parsedDressed.IsWearFuryScroll();
+    }
+
+    /**
+     * Поиск и надевание свитка режима осады в инвентаре (`wca=28`).
+     *
+     * Возвращает redirect-HTML на wear-link при успехе, иначе null.
+     */
+    private static String mainPhpWearFuryScroll(String html) {
+        ParsedDressed dressed = new ParsedDressed(html);
+        if (!dressed.Valid) {
+            return null;
+        }
+
+        boolean isWear = dressed.IsWearFuryScroll();
+        if (!isWear) {
+            List<WearInvEntry> invList = getWearInvList(html);
+            String[] scrollNames = ParsedDressed.getFuryScrollNames();
+            for (WearInvEntry thing : invList) {
+                if (thing.name == null || thing.wearLink == null || thing.wearLink.isEmpty()) {
+                    continue;
+                }
+                for (String scrollName : scrollNames) {
+                    if (containsIgnoreCase(thing.name, scrollName)) {
+                        android.util.Log.d(TAG, "AUTO_FURY_TRACE mainPhpWearFuryScroll: wear " + thing.name
+                                + ", link=" + thing.wearLink);
+                        return buildRedirectHtml("Одеваем " + thing.name, thing.wearLink);
+                    }
+                }
+            }
+        }
+
+        AppVars.AutoFuryArmedScroll = false;
+        return null;
+    }
+
+    /**
      * Порт `MainPhpGetSkinRes` из C# (`MainPhpWear.cs`).
      */
     private static void mainPhpGetSkinRes(String html) {
@@ -1794,6 +1861,52 @@ public class MainPhp {
         // Чтение умения "Охота" (C# parity) до оркестрации AutoSkin,
         // чтобы `AutoSkinCheckUm` корректно сбрасывался на `mselect=1`.
         mainPhpProcessSkills(html, address);
+
+        // Оркестрация режима "Снежок/Ярость" (buttonFury из C#) + авто-надевание свитка:
+        // 1) проверка надетого свитка на странице персонажа;
+        // 2) авто-переход в инвентарь свитков (`im=0&wca=28`);
+        // 3) авто-нажатие wear-link (`get_id=57&uid=...&s=1&vcode=...`).
+        if (!isFightFrame && !isFightTopFrame && isAutoFuryEnabledByPreference()) {
+            long nowMs = System.currentTimeMillis();
+            if (AppVars.NeverTimer <= 0L || nowMs > AppVars.NeverTimer) {
+                if (AppVars.AutoFuryCheckScroll) {
+                    String perchtml = mainPhpFindPerc(html);
+                    if (perchtml != null && !perchtml.isEmpty()) {
+                        android.util.Log.d(TAG, "AUTO_FURY_TRACE redirect to character page for scroll check");
+                        return Russian.getBytes(perchtml);
+                    }
+
+                    AppVars.AutoFuryArmedScroll = false;
+                    if (mainPhpIsPerc(html)) {
+                        AppVars.AutoFuryArmedScroll = mainPhpArmedFuryScroll(html);
+                        AppVars.AutoFuryCheckScroll = false;
+                        android.util.Log.d(TAG, "AUTO_FURY_TRACE scroll check result: armed=" + AppVars.AutoFuryArmedScroll
+                                + ", hand=" + AppVars.AutoFuryHand);
+                    }
+                }
+
+                if (!AppVars.AutoFuryArmedScroll) {
+                    String invHtml = mainPhpFindInvWithFallback(html, "&im=0&wca=28", address);
+                    if (invHtml != null && !invHtml.isEmpty()) {
+                        android.util.Log.d(TAG, "AUTO_FURY_TRACE redirect to scroll inventory (&im=0&wca=28)");
+                        return Russian.getBytes(invHtml);
+                    }
+
+                    if (mainPhpIsInv(html) || isInventoryAddress(address)) {
+                        invHtml = mainPhpWearFuryScroll(html);
+                        if (invHtml == null || invHtml.isEmpty()) {
+                            if (!inventoryAddressMatchesFilter(address, "&im=0&wca=28")) {
+                                android.util.Log.d(TAG, "AUTO_FURY_TRACE switch to scroll category (wca=28)");
+                                return Russian.getBytes(buildRedirectHtml("Переходим к свиткам", "main.php?im=0&wca=28"));
+                            }
+                        } else {
+                            AppVars.AutoFuryCheckScroll = true;
+                            return Russian.getBytes(invHtml);
+                        }
+                    }
+                }
+            }
+        }
 
         // Авто-разделка (MainPhpRaz.cs): если в текущем боевом кадре доступна кнопка "Разделать",
         // выполняем редирект на действие разделки до стандартной боевой обработки.

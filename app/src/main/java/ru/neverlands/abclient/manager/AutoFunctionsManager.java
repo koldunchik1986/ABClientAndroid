@@ -75,6 +75,19 @@ public class AutoFunctionsManager {
             AppVars.Profile.LezDoAutoboi = enabled;
             AppVars.Profile.save(context);
         }
+        boolean furyEnabledByProfile = AppVars.Profile != null && AppVars.Profile.hasAnyLezFuryGroup();
+        if (AppVars.Profile != null) {
+            AppVars.Profile.LezDoFury = furyEnabledByProfile;
+        }
+        AppVars.DoFury = furyEnabledByProfile;
+        if (enabled && furyEnabledByProfile) {
+            AppVars.AutoFuryCheckScroll = true;
+            AppVars.AutoFuryArmedScroll = false;
+            AppVars.AutoFuryHand = "";
+            AppVars.AutoFuryHandD = "";
+            Log.d(TAG, "setAutoFightEnabled: AutoFury primed (DoFury=true)");
+        }
+
         Log.d(TAG, "setAutoFightEnabled: " + enabled);
         syncBackgroundService("setAutoFightEnabled(" + enabled + ")");
 

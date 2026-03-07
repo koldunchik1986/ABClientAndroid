@@ -27,12 +27,12 @@ public class RoomManager {
     private static final String BG_TRACE_PREFIX = "[BG_TRACE]";
     private static final long AUTO_ATTACK_BLACKLIST_MS = 10_000L;
     private static final String AA_TRACE_PREFIX = "[AA_TRACE]";
-    // Временный blacklist целей авто-нападения (аналог C# RoomManager.BlackList).
-    // Ключ: lower-case ник, значение: время добавления в blacklist (ms).
+    // Временный чёрный список целей авто-нападения (аналог C# `RoomManager.BlackList`).
+    // Ключ: ник в нижнем регистре, значение: время добавления в список (мс).
     private static final Map<String, Long> autoAttackBlackList = new ConcurrentHashMap<>();
 
-    // Обработчик списка игроков комнаты (ch.php?lo=1).
-    // Метод process содержит портированную логику парсинга room-списка.
+    // Обработчик списка игроков комнаты (`ch.php?lo=1`).
+    // Метод `process(...)` содержит портированную логику разбора списка комнаты.
     public static String process(Context context, String html) {
         Log.d(TAG, BG_TRACE_PREFIX + " process: htmlLen=" + (html == null ? 0 : html.length())
                 + ", contextNull=" + (context == null)
@@ -49,16 +49,17 @@ public class RoomManager {
                 + ", fightActive=" + fightActive
                 + ", fightLink=" + AppVars.FightLink);
 
-        // Авто-нападение по списку комнаты (аналог C# RoomManager.Process -> EnemyAttack branch).
+        // Авто-нападение по списку комнаты (аналог ветки `RoomManager.Process -> EnemyAttack` в C#).
         // Зависимости:
         // - `AutoFunctionsManager` (флаг AUTO_ATTACK),
         // - `ContactsManager` (`classId`/`toolId` контакта),
         // - `FastActionManager.fastAttackAutoByToolId(...)` (запуск быстрой атаки),
-        // - `AppVars.FastNeed` (защита от параллельного fast-цикла).
-        // Auto-attack pipeline:
-        // - picks enemy from room list,
-        // - resolves tool with priority: contact.toolId -> global toolId,
-        // - starts fast action only when no other FastNeed cycle is running.
+        // - `AppVars.FastNeed` (защита от параллельного цикла быстрой атаки).
+        // Конвейер авто-нападения:
+        // 1) берём выбранного противника из списка комнаты (`filterResult.enemyAttack`);
+        // 2) определяем инструмент атаки с приоритетом `contact.toolId -> AppVars.AutoAttackToolId`;
+        // 3) запускаем `FastActionManager.fastAttackAutoByToolId(...)` только если
+        //    `AppVars.FastNeed == false`, чтобы не пересекаться с уже активным циклом быстрой атаки.
         if (context == null) {
             Log.d(TAG, AA_TRACE_PREFIX + " auto-attack skipped: context=null");
             return html;
@@ -80,11 +81,11 @@ public class RoomManager {
             return html;
         }
 
-        // Критичный guard:
-        // Во время активного боя чат продолжает тикать (ch.php), и без этой проверки
-        // RoomManager может повторно запускать auto-attack по устаревшему enemy list.
-        // Это перезапускает FastNeed/FastId в середине боя и конфликтует с hit-loop.
-        // Итог: конфликт циклов "auto-attack" и "autoboi hit loop".
+        // Критическая защита:
+        // Во время активного боя чат продолжает приходить тиками (`ch.php`), и без этой проверки
+        // `RoomManager` может повторно запускать авто-нападение по устаревшему списку врагов.
+        // Это перезапускает `FastNeed/FastId` в середине боя и конфликтует с циклом ударов автобоя.
+        // Итог: конфликт между циклами "авто-нападение" и "цикл ударов автобоя".
         if (fightActive) {
             Log.d(TAG, AA_TRACE_PREFIX + " auto-attack skipped: active fight session"
                     + ", fastNeed=" + AppVars.FastNeed
@@ -101,11 +102,15 @@ public class RoomManager {
         }
 
         String enemyNick = stripItalic(filterResult.enemyAttack);
-        // Per-contact override from contacts.xml (0 means "use global").
+        // Локальная настройка инструмента для конкретного контакта из `contacts.xml`.
+        // Значение `0` трактуется как "использовать глобальный инструмент".
         int contactToolId = ContactsManager.getToolIdOfContact(enemyNick);
-        // Global fast tool from quick settings panel.
+        // Глобальный инструмент авто-нападения из быстрых настроек (`AppVars.AutoAttackToolId`).
         int globalToolId = AppVars.AutoAttackToolId;
-        // Final tool resolver: contact setting has higher priority.
+        // Финальный выбор инструмента:
+        // - приоритет у настройки контакта (`contactToolId > 0`);
+        // - иначе используем глобальное значение.
+        // Зависимости: `ContactsManager`, `AppVars`.
         int toolId = (contactToolId > 0) ? contactToolId : globalToolId;
         if (toolId == 0) {
             Log.d(TAG, AA_TRACE_PREFIX + " auto-attack skipped: no tool selected, nick=" + enemyNick
@@ -132,7 +137,7 @@ public class RoomManager {
     }
 
     /**
-     * Определяет, что сейчас активна боевая сессия в main frame.
+     * Определяет, что сейчас активна боевая сессия в основном фрейме.
      *
      * Зависимости:
      * - `AppVars.ContentMainPhp`: последний HTML боя, который сохраняет MainPhp;
@@ -140,8 +145,8 @@ public class RoomManager {
      * - `AppVars.FightLink`: ссылка цикла боя/завершения.
      *
      * Почему отдельный метод:
-     * - RoomManager вызывается из чата (нижний фрейм), где нет прямого доступа к fight parser;
-     * - поэтому используем агрегированное состояние из AppVars как guard перед auto-attack.
+     * - `RoomManager` вызывается из чата (нижний фрейм), где нет прямого доступа к парсеру боя;
+     * - поэтому используем агрегированное состояние из `AppVars` как защитную проверку перед авто-нападением.
      */
     private static boolean isFightSessionActive() {
         String mainHtml = AppVars.ContentMainPhp;
@@ -171,24 +176,24 @@ public class RoomManager {
      * Формирует и публикует события перемещения по локации (вход/выход видимых персонажей и невидимок).
      *
      * Зависимости:
-     * - `AppVars.DoShowWalkers`: глобальный флаг включения трейсинга walkers;
+     * - `AppVars.DoShowWalkers`: глобальный флаг включения трекинга передвижений;
      * - `AppVars.url_ch_list`: URL текущей комнаты, используется для вычисления ключа координат `r=...`;
      * - `AppVars.myCharsOld`, `AppVars.myCoordOld`, `AppVars.myLocOld`, `AppVars.myNevidsOld`: предыдущее состояние;
      * - `parseVisibleCharsMap(...)`: извлечение видимых никнеймов из `ChatListU`;
-     * - `resolveNevidsCount(...)`: расчет количества невидимок как разницы "серверный total на клетке - видимые";
+     * - `resolveNevidsCount(...)`: расчет количества невидимок как разницы "серверный общий счётчик на клетке - видимые";
      * - `buildWalkersMessage(...)`: сборка человекочитаемого текста для чата;
      * - `FastActionManager.writeChatMsg(...)`: публикация уведомлений в игровой чат;
      * - `EventSounds.playSndMsg()`: звуковой сигнал при входящих событиях.
      *
      * Алгоритм:
-     * 1) Проверяет, что walkers включены и HTML не пустой.
+     * 1) Проверяет, что трекинг передвижений включен и HTML не пустой.
      * 2) Определяет текущую локацию и набор видимых персонажей.
      * 3) На той же клетке/локации сравнивает прошлый и текущий наборы:
      *    - кто исчез из видимых;
      *    - кто появился в видимых;
      *    - как изменилось число невидимок.
      * 4) Формирует сообщения и отправляет их в чат.
-     * 5) Обновляет snapshot состояния для следующего тика.
+     * 5) Обновляет снимок состояния для следующего тика.
      */
     private static void FilterGetWalkers(String html, FilterProcRoomResult filterResult) {
         if (!AppVars.DoShowWalkers || isEmpty(html)) {
@@ -488,8 +493,8 @@ public class RoomManager {
      * Вычисляет текущее число невидимок на клетке.
      *
      * Зависимости:
-     * - `parseLocationCharsCount(...)`: парсинг серверного total количества персонажей именно на локации;
-     * - `AppVars.myNevids`: fallback, если из HTML не удалось извлечь total.
+     * - `parseLocationCharsCount(...)`: парсинг серверного общего количества персонажей именно на локации;
+     * - `AppVars.myNevids`: резервное значение, если из HTML не удалось извлечь общий счётчик.
      *
      * Формула:
      * - `nevids = max(0, totalCharsOnLocation - visibleChars)`.
@@ -516,7 +521,7 @@ public class RoomManager {
      *
      * Почему два шага:
      * - в разных серверных шаблонах счетчик может находиться в разных местах HTML;
-     * - fallback нужен для устойчивости к вариациям верстки.
+     * - резервный шаг нужен для устойчивости к вариациям верстки.
      *
      * @param html HTML страницы комнаты
      * @return количество персонажей на локации или `-1`, если счетчик не найден
@@ -552,7 +557,8 @@ public class RoomManager {
             try {
                 result = Integer.parseInt(matcher.group(1));
             } catch (Exception ignored) {
-                // Skip malformed numeric fragments and keep scanning.
+                // Игнорируем повреждённый числовой фрагмент и продолжаем поиск,
+                // чтобы не терять корректный `[N]`, который может встретиться позже.
             }
         }
         return result;
@@ -597,9 +603,9 @@ public class RoomManager {
 
         String color = "#000000";
         if (classId == 1) {
-            color = "#008000"; // Green
+            color = "#008000"; // Зелёный (союзник/нейтральная метка по classId).
         } else if (classId == 2) {
-            color = "#FF0000"; // Red
+            color = "#FF0000"; // Красный (враждебная метка по classId).
         }
 
         while (nnSec.contains("+")) {
@@ -778,7 +784,8 @@ public class RoomManager {
         }
         Log.d(TAG, "[AA_TRACE] parseChatListEntries: splitByComma failed, fallback regex. rawLen=" + chatListU.length());
 
-        // Fallback: извлекаем все элементы в двойных кавычках.
+        // Резервный путь: извлекаем все элементы в двойных кавычках,
+        // если сервер прислал нестандартные разделители/переносы.
         List<String> quoted = new ArrayList<>();
         Matcher matcher = Pattern.compile("\"((?:\\\\.|[^\"])*)\"").matcher(chatListU);
         while (matcher.find()) {
@@ -789,7 +796,8 @@ public class RoomManager {
             return quoted.toArray(new String[0]);
         }
 
-        // Последний fallback: возвращаем исходник как один элемент.
+        // Последний резерв: возвращаем исходную строку как один элемент,
+        // чтобы внешняя логика могла безопасно обработать деградированный формат.
         Log.w(TAG, "[AA_TRACE] parseChatListEntries: no quoted entries, using raw source");
         return new String[]{chatListU};
     }

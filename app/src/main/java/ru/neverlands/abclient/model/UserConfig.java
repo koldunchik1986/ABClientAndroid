@@ -121,6 +121,7 @@ public class UserConfig {
 
     // --- Lez AutoBoi --- //
     public boolean LezDoAutoboi = true;
+    public boolean LezDoFury = false;
     public boolean LezDoWaitHp = false;
     public boolean LezDoWaitMa = false;
     public int LezWaitHp = 100;
@@ -215,6 +216,7 @@ public class UserConfig {
                         this.DoChatLevels = Boolean.parseBoolean(parser.getAttributeValue(null, "chatLevels"));
                     } else if ("autoboi".equals(tagName)) {
                         this.LezDoAutoboi = Boolean.parseBoolean(parser.getAttributeValue(null, "enabled"));
+                        this.LezDoFury = parseBoolAttr(parser, "fury", this.LezDoFury);
                         this.LezDoWaitHp = Boolean.parseBoolean(parser.getAttributeValue(null, "waitHp"));
                         this.LezDoWaitMa = Boolean.parseBoolean(parser.getAttributeValue(null, "waitMa"));
                         this.LezWaitHp = parseIntAttr(parser, "waitHpVal", 100);
@@ -268,6 +270,13 @@ public class UserConfig {
                         g.DoHits = parseBoolAttr(parser, "doHits", g.DoHits);
                         g.DoBlocks = parseBoolAttr(parser, "doBlocks", g.DoBlocks);
                         g.DoMiscAbils = parseBoolAttr(parser, "doMiscAbils", g.DoMiscAbils);
+                        // Обратная совместимость со старыми профилями:
+                        // если в `group` отсутствует атрибут `doFury`, берём legacy-флаг из `<autoboi fury=...>`.
+                        //
+                        // Зависимости:
+                        // - старые .profile, где был только глобальный `fury` без пер-группового режима;
+                        // - новая логика ротации, где источник истины — `group@doFury`.
+                        g.DoFury = parseBoolAttr(parser, "doFury", this.LezDoFury);
                         g.DoStopNow = parseBoolAttr(parser, "doStopNow", g.DoStopNow);
                         g.DoStopLowHp = parseBoolAttr(parser, "doStopLowHp", g.DoStopLowHp);
                         g.DoStopLowMa = parseBoolAttr(parser, "doStopLowMa", g.DoStopLowMa);
@@ -338,6 +347,7 @@ public class UserConfig {
                 eventType = parser.next();
             }
             normalizeLezGroups();
+            this.LezDoFury = hasAnyLezFuryGroup();
             return true;
         } catch (IOException | XmlPullParserException e) {
             e.printStackTrace();
@@ -354,6 +364,7 @@ public class UserConfig {
         // - гарантируем наличие группы "Все 0+"
         // - сортируем по LezBotsGroup.compareTo() (Id DESC, MinimalLevel DESC)
         normalizeLezGroups();
+        this.LezDoFury = hasAnyLezFuryGroup();
 
         File profilesDir = context.getExternalFilesDir("profiles");
         if (profilesDir == null) return;
@@ -416,6 +427,7 @@ public class UserConfig {
             // Сохранение настроек AutoBoi (аналог UserConfigVars.cs / FormSettingsAb.cs)
             serializer.startTag(null, "autoboi");
             serializer.attribute(null, "enabled", String.valueOf(this.LezDoAutoboi));
+            serializer.attribute(null, "fury", String.valueOf(this.LezDoFury));
             serializer.attribute(null, "waitHp", String.valueOf(this.LezDoWaitHp));
             serializer.attribute(null, "waitMa", String.valueOf(this.LezDoWaitMa));
             serializer.attribute(null, "waitHpVal", String.valueOf(this.LezWaitHp));
@@ -452,6 +464,7 @@ public class UserConfig {
                     serializer.attribute(null, "doHits", String.valueOf(g.DoHits));
                     serializer.attribute(null, "doBlocks", String.valueOf(g.DoBlocks));
                     serializer.attribute(null, "doMiscAbils", String.valueOf(g.DoMiscAbils));
+                    serializer.attribute(null, "doFury", String.valueOf(g.DoFury));
                     serializer.attribute(null, "doStopNow", String.valueOf(g.DoStopNow));
                     serializer.attribute(null, "doStopLowHp", String.valueOf(g.DoStopLowHp));
                     serializer.attribute(null, "doStopLowMa", String.valueOf(g.DoStopLowMa));
@@ -570,5 +583,29 @@ public class UserConfig {
         }
 
         Collections.sort(this.LezGroups);
+    }
+
+    /**
+     * Возвращает `true`, если хотя бы в одной группе автобоя включён флаг `DoFury`.
+     *
+     * Назначение:
+     * - агрегирует пер-групповые настройки в legacy-глобальный флаг `LezDoFury`;
+     * - позволяет сохранить совместимость с участками кода, где ещё читается глобальный признак.
+     *
+     * Зависимости:
+     * - вызывается при `load()`/`save()` для синхронизации `LezDoFury`;
+     * - используется `LoginActivity`, `AutoFunctionsManager`, `MainPhp` для runtime-решения
+     *   о включении оркестрации AutoFury.
+     */
+    public boolean hasAnyLezFuryGroup() {
+        if (this.LezGroups == null || this.LezGroups.isEmpty()) {
+            return false;
+        }
+        for (LezBotsGroup group : this.LezGroups) {
+            if (group != null && group.DoFury) {
+                return true;
+            }
+        }
+        return false;
     }
 }
