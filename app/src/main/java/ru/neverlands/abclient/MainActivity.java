@@ -2166,6 +2166,18 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                 return false;
             }
 
+            String host = "";
+            try {
+                Uri parsedUri = Uri.parse(url);
+                host = parsedUri != null && parsedUri.getHost() != null
+                        ? parsedUri.getHost().toLowerCase(Locale.ROOT)
+                        : "";
+            } catch (Exception ignored) {
+            }
+            boolean isNeverlandsHost = "neverlands.ru".equals(host) || host.endsWith(".neverlands.ru");
+            boolean isForumHost = "forum.neverlands.ru".equals(host);
+            String lowerUrl = url.toLowerCase(Locale.ROOT);
+
             boolean isChatWebView = (binding != null
                     && binding.appBarMain != null
                     && binding.appBarMain.contentMain != null
@@ -2185,24 +2197,24 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             String title = "Новая вкладка";
             boolean shouldOpenInNewTab = false;
             
-            if (url.contains("forum.neverlands.ru")) {
+            if (isForumHost) {
                 title = "Форум";
                 shouldOpenInNewTab = true;
-            } else if (url.contains("pinfo.cgi")) {
+            } else if (isNeverlandsHost && lowerUrl.contains("pinfo.cgi")) {
                 // PInfo - открываем в новой вкладке
                 title = "Информация";
                 shouldOpenInNewTab = true;
-            } else if (url.contains("ch.php")) {
+            } else if (isNeverlandsHost && lowerUrl.contains("ch.php")) {
                 // Комната
                 title = "Комната";
                 shouldOpenInNewTab = true;
-            } else if (url.contains("log.php") || url.contains("fight")) {
+            } else if (isNeverlandsHost && (lowerUrl.contains("log.php") || lowerUrl.contains("fight"))) {
                 title = "Бой";
                 shouldOpenInNewTab = true;
-            } else if (url.contains("pname.cgi")) {
+            } else if (isNeverlandsHost && lowerUrl.contains("pname.cgi")) {
                 title = "Поиск";
                 shouldOpenInNewTab = true;
-            } else if (url.contains("pbots.cgi")) {
+            } else if (isNeverlandsHost && lowerUrl.contains("pbots.cgi")) {
                 title = "Боты";
                 shouldOpenInNewTab = true;
             }
@@ -2215,7 +2227,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             }
             
             // Для pinfo.cgi также открываем PinfoActivity
-            if (url.startsWith("http://neverlands.ru/pinfo.cgi")) {
+            if (isNeverlandsHost && lowerUrl.contains("/pinfo.cgi")) {
                 Intent intent = new Intent(MainActivity.this, PinfoActivity.class);
                 intent.putExtra("url", url);
                 startActivity(intent);

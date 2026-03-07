@@ -89,6 +89,31 @@ public class WebViewRequestInterceptor {
     }
 
     /**
+     * Проверяет, относится ли host к игровым доменам Neverlands.
+     */
+    private static boolean isNeverlandsHost(String host) {
+        if (host == null || host.isEmpty()) {
+            return false;
+        }
+        String lower = host.toLowerCase(Locale.ROOT);
+        return "neverlands.ru".equals(lower) || lower.endsWith(".neverlands.ru");
+    }
+
+    /**
+     * Быстрый фильтр внешних трекеров/счетчиков, которые часто вызывают connect timeout.
+     */
+    private static boolean isKnownTrackerHost(String host) {
+        if (host == null || host.isEmpty()) {
+            return false;
+        }
+        String lower = host.toLowerCase(Locale.ROOT);
+        return lower.contains("mail.ru")
+                || lower.contains("yadro.ru")
+                || lower.contains("mc.yandex.ru")
+                || lower.contains("google-analytics.com");
+    }
+
+    /**
      * Главная точка перехвата HTTP GET-запросов WebView для neverlands.ru.
      *
      * Зависимости:
@@ -113,11 +138,16 @@ public class WebViewRequestInterceptor {
                 return null;
             }
 
-            if (!urlString.contains("neverlands.ru")) {
+            if (!isNeverlandsHost(host)) {
                 // Short-circuit slow external counters that often time out inside WebView
-                if (host.contains("mail.ru") || host.contains("yadro.ru")
-                        || host.contains("mc.yandex.ru") || host.contains("google-analytics.com")) {
+                if (isKnownTrackerHost(host)) {
                     Log.d(TAG, "Blocking tracker host: " + host);
+                    return new WebResourceResponse("text/plain", "utf-8", new ByteArrayInputStream(new byte[0]));
+                }
+                // Внешние подресурсы (скрипты/счетчики/пиксели) из неигровых доменов
+                // блокируем централизованно, чтобы не получать ложные timeout в авто-функциях.
+                if (!request.isForMainFrame()) {
+                    Log.d(TAG, "Blocking external subresource host: " + host + ", url=" + urlString);
                     return new WebResourceResponse("text/plain", "utf-8", new ByteArrayInputStream(new byte[0]));
                 }
                 return null;
@@ -193,6 +223,8 @@ public class WebViewRequestInterceptor {
             connection.setInstanceFollowRedirects(true);
             connection.setRequestMethod("GET");
             connection.setDoInput(true);
+            connection.setConnectTimeout(12_000);
+            connection.setReadTimeout(20_000);
 
             // Список игроков чата — отключаем кеширование на уровне HTTP.
             if (urlString.contains("ch.php?lo=1")) {
@@ -307,6 +339,8 @@ public class WebViewRequestInterceptor {
                 second.setInstanceFollowRedirects(true);
                 second.setRequestMethod("GET");
                 second.setDoInput(true);
+                second.setConnectTimeout(12_000);
+                second.setReadTimeout(20_000);
                 second.setRequestProperty("Accept-Encoding", "identity");
                 String cookie2 = CookieManager.getInstance().getCookie(urlString);
                 if (cookie2 == null || cookie2.isEmpty()) {

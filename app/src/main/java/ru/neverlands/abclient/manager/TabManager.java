@@ -4,6 +4,7 @@ import android.annotation.SuppressLint;
 import android.content.ClipData;
 import android.content.ClipboardManager;
 import android.content.Context;
+import android.net.Uri;
 import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
@@ -25,6 +26,7 @@ import com.google.android.material.tabs.TabLayout;
 import java.net.URLDecoder;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 
 import ru.neverlands.abclient.R;
 import ru.neverlands.abclient.bridge.WebAppInterface;
@@ -212,10 +214,21 @@ public class TabManager {
      */
     // Определяем тип вкладки для набора кнопок действий.
     private TabType determineTabType(String url, String title) {
-        if (url != null && url.contains("forum.neverlands.ru")) {
+        String host = "";
+        if (url != null) {
+            try {
+                Uri parsed = Uri.parse(url);
+                host = parsed != null && parsed.getHost() != null
+                        ? parsed.getHost().toLowerCase(Locale.ROOT)
+                        : "";
+            } catch (Exception ignored) {
+            }
+        }
+        if ("forum.neverlands.ru".equals(host)) {
             return TabType.FORUM;
         }
-        if ("PINFO".equals(title) || (url != null && url.contains("pinfo"))) {
+        if ("PINFO".equals(title) || (("neverlands.ru".equals(host) || host.endsWith(".neverlands.ru"))
+                && url != null && url.toLowerCase(Locale.ROOT).contains("pinfo"))) {
             return TabType.PINFO;
         }
         return TabType.OTHER;
@@ -400,17 +413,22 @@ public class TabManager {
     private String normalizeUrl(String url) {
         if (url == null) return null;
         url = url.replace("www.", "");
-        
-        // Убираем завершающий слеш для корректного сравнения
+
         while (url.endsWith("/")) {
             url = url.substring(0, url.length() - 1);
         }
-        
-        // Для форума - возвращаем только домен
-        if (url.contains("forum.neverlands.ru")) {
-            return "forum.neverlands.ru";
+
+        try {
+            Uri parsed = Uri.parse(url);
+            String host = parsed != null && parsed.getHost() != null
+                    ? parsed.getHost().toLowerCase(Locale.ROOT)
+                    : "";
+            if ("forum.neverlands.ru".equals(host)) {
+                return "forum.neverlands.ru";
+            }
+        } catch (Exception ignored) {
         }
-        
+
         return url;
     }
 
@@ -516,29 +534,42 @@ public class TabManager {
 
             private boolean handleSecondaryUrlLoading(WebView view, String url) {
                 Log.d(TAG, "shouldOverrideUrlLoading secondary: " + url);
+                if (url == null || url.isEmpty()) {
+                    return false;
+                }
 
-                // Обновляем URL для форума при навигации
-                if (url != null && url.indexOf("forum.neverlands.ru") != -1) {
+                String host = "";
+                try {
+                    Uri parsedUri = Uri.parse(url);
+                    host = parsedUri != null && parsedUri.getHost() != null
+                            ? parsedUri.getHost().toLowerCase(Locale.ROOT)
+                            : "";
+                } catch (Exception ignored) {
+                }
+                boolean isNeverlandsHost = "neverlands.ru".equals(host) || host.endsWith(".neverlands.ru");
+                boolean isForumHost = "forum.neverlands.ru".equals(host);
+                String lowerUrl = url.toLowerCase(Locale.ROOT);
+
+                if (isForumHost) {
                     updateTabUrl(view, url);
                 }
 
-                // Перехватываем не форумные ссылки для открытия в новой вкладке
-                if (url != null && 
-                    url.indexOf("forum.neverlands.ru") == -1 &&
-                    (url.indexOf("pinfo") != -1 || 
-                     url.indexOf("ch.php") != -1 ||
-                     url.indexOf("log.php") != -1 ||
-                     url.indexOf("fight") != -1 ||
-                     url.indexOf("pname") != -1 ||
-                     url.indexOf("pbots") != -1)) {
-                    
+                if (!isForumHost
+                        && isNeverlandsHost
+                        && (lowerUrl.contains("pinfo")
+                        || lowerUrl.contains("ch.php")
+                        || lowerUrl.contains("log.php")
+                        || lowerUrl.contains("fight")
+                        || lowerUrl.contains("pname")
+                        || lowerUrl.contains("pbots"))) {
+
                     String title = "Новая вкладка";
-                    if (url.contains("pinfo")) title = "PINFO"; // декодирование будет в openTab()
-                    else if (url.indexOf("ch.php") != -1) title = "Комната";
-                    else if (url.indexOf("log.php") != -1 || url.indexOf("fight") != -1) title = "Бой";
-                    else if (url.indexOf("pname") != -1) title = "Персонаж";
-                    else if (url.indexOf("pbots") != -1) title = "Боты";
-                    
+                    if (lowerUrl.contains("pinfo")) title = "PINFO";
+                    else if (lowerUrl.contains("ch.php")) title = "Комната";
+                    else if (lowerUrl.contains("log.php") || lowerUrl.contains("fight")) title = "Бой";
+                    else if (lowerUrl.contains("pname")) title = "Персонаж";
+                    else if (lowerUrl.contains("pbots")) title = "Боты";
+
                     openTab(url, title);
                     return true;
                 }

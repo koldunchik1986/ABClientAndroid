@@ -31,10 +31,14 @@ public final class FishAjaxPhp {
     private static final long FISH_CAPTCHA_DIALOG_DEDUP_MS = 1500L;
     private static final long FISH_AUTORELOAD_DEDUP_MS = 2500L;
     private static final long FISH_AUTORELOAD_SAFETY_MS = 350L;
+    private static final long FISH_CYCLE_RETRY_DELAY_MS = 12_000L;
+    private static final int FISH_CYCLE_MAX_ATTEMPTS = 4;
     private static volatile String lastFishCaptchaDialogKey = "";
     private static volatile long lastFishCaptchaDialogAtMs = 0L;
     private static volatile long lastFishAutoreloadAtMs = 0L;
     private static volatile long lastFishAutoreloadDueAtMs = 0L;
+    private static volatile long lastFishAct1AtMs = 0L;
+    private static volatile long lastFishCycleToken = 0L;
 
     private static final Map<String, Double> FISH_NV = new LinkedHashMap<>();
     private static final Map<String, Double> FISH_MASS = new LinkedHashMap<>();
@@ -153,6 +157,10 @@ public final class FishAjaxPhp {
         if (!isAutoFishEnabled()) {
             return;
         }
+        if (html != null && "ERR".equalsIgnoreCase(html.trim())) {
+            Log.d(TAG, "AUTO_FISH_TRACE act1 temporary ERR, will retry by cycle guard, address=" + address);
+            return;
+        }
 
         FishAct1State state = parseFishAct1State(html);
         if (state == null) {
@@ -179,6 +187,9 @@ public final class FishAjaxPhp {
             Log.w(TAG, "AUTO_FISH_TRACE act1 skip: empty vcode");
             return;
         }
+        // Маркируем успешный старт только после валидного parse + vcode.
+        // Это защищает от ложного "confirmed" при ответах вида ERR.
+        lastFishAct1AtMs = System.currentTimeMillis();
 
         boolean captchaRequired = state.captchaToken != null
                 && !state.captchaToken.isEmpty()
@@ -271,6 +282,7 @@ public final class FishAjaxPhp {
         }
         lastFishAutoreloadAtMs = nowMs;
         lastFishAutoreloadDueAtMs = dueAtMs;
+        lastFishCycleToken = dueAtMs;
 
         MainActivity activity = (AppVars.mainActivity == null) ? null : AppVars.mainActivity.get();
         if (activity == null) {
@@ -282,21 +294,11 @@ public final class FishAjaxPhp {
         }
 
         long delayMs = Math.max(250L, cooldownSec * 1000L + FISH_AUTORELOAD_SAFETY_MS);
-        Log.d(TAG, "AUTO_FISH_TRACE act2 cooldown=" + cooldownSec + "s, schedule main.php reload in " + delayMs + "ms");
-
-        activity.runOnUiThread(() -> webView.postDelayed(() -> {
-            if (!isAutoFishEnabled()) {
-                Log.d(TAG, "AUTO_FISH_TRACE act2 scheduled reload skipped: auto-fish disabled");
-                return;
-            }
-            MainActivity active = (AppVars.mainActivity == null) ? null : AppVars.mainActivity.get();
-            if (active == null || active.getMainWebView() == null) {
-                return;
-            }
-            String reloadUrl = "http://neverlands.ru/main.php?af_cycle=1&r=" + System.currentTimeMillis();
-            Log.d(TAG, "AUTO_FISH_TRACE act2 scheduled reload fire: " + reloadUrl);
-            active.getMainWebView().loadUrl(reloadUrl);
-        }, delayMs));
+        long cycleToken = dueAtMs;
+        Log.d(TAG, "AUTO_FISH_TRACE act2 cooldown=" + cooldownSec + "s, schedule next cycle in " + delayMs + "ms");
+        activity.runOnUiThread(() -> webView.postDelayed(
+                () -> kickFishCycleAttempt(cycleToken, 1),
+                delayMs));
     }
 
     /**
@@ -311,6 +313,84 @@ public final class FishAjaxPhp {
             return 0;
         }
         return parseIntSafe(matcher.group(1));
+    }
+
+    /**
+     * Делает попытку стартовать следующий цикл рыбалки после истечения cooldown.
+     *
+     * Зависимости:
+     * - `lastFishAct1AtMs`: маркер, что новый `act=1` уже пошёл (повтор не нужен);
+     * - `lastFishCycleToken`: защита от устаревших отложенных задач;
+     * - `MainActivity.getMainWebView()`: выполняем JS-старт (`FishStart`/`fishbutton`) и fallback `loadUrl(main.php)`.
+     */
+    private static void kickFishCycleAttempt(long cycleToken, int attempt) {
+        if (!isAutoFishEnabled()) {
+            return;
+        }
+        if (cycleToken != lastFishCycleToken) {
+            return;
+        }
+
+        MainActivity activity = (AppVars.mainActivity == null) ? null : AppVars.mainActivity.get();
+        if (activity == null) {
+            return;
+        }
+
+        activity.runOnUiThread(() -> {
+            WebView webView = activity.getMainWebView();
+            if (webView == null) {
+                return;
+            }
+
+            long attemptStartedAtMs = System.currentTimeMillis();
+            String jsKick = "(function(){"
+                    + "try{"
+                    + "  if(typeof ButClick==='function' && document.getElementById('fis')){ButClick('fis'); return 'open_fish_by_button';}"
+                    + "  if(typeof Fish==='function' && typeof bavail!=='undefined' && bavail && bavail['fis'] && bavail['fis'][0]){Fish(bavail['fis'][0]); return 'open_fish_by_vcode';}"
+                    + "  var form=document.getElementById('FISHF');"
+                    + "  var btn=document.getElementById('fishbutton');"
+                    + "  if(form && btn && typeof btn.click==='function'){btn.click(); return 'submit_fish_button';}"
+                    + "  if(typeof FishStart==='function' && typeof ingr!=='undefined' && ingr && ingr.length>2){FishStart(ingr[2],0); return 'submit_fish_start';}"
+                    + "}catch(e){return 'err:'+e;}"
+                    + "return 'miss';"
+                    + "})()";
+
+            webView.evaluateJavascript(jsKick, value -> {
+                boolean kickedViaJs = value != null
+                        && (value.contains("open_fish_by_button")
+                        || value.contains("open_fish_by_vcode")
+                        || value.contains("submit_fish_button")
+                        || value.contains("submit_fish_start"));
+                if (kickedViaJs) {
+                    Log.d(TAG, "AUTO_FISH_TRACE cycle kick via JS, attempt=" + attempt + ", result=" + value);
+                    return;
+                }
+
+                String reloadUrl = "http://neverlands.ru/main.php?af_cycle=1&r=" + System.currentTimeMillis();
+                Log.d(TAG, "AUTO_FISH_TRACE cycle kick fallback reload, attempt=" + attempt
+                        + ", jsResult=" + value + ", url=" + reloadUrl);
+                webView.loadUrl(reloadUrl);
+            });
+
+            webView.postDelayed(() -> {
+                if (!isAutoFishEnabled()) {
+                    return;
+                }
+                if (cycleToken != lastFishCycleToken) {
+                    return;
+                }
+                if (lastFishAct1AtMs >= attemptStartedAtMs) {
+                    Log.d(TAG, "AUTO_FISH_TRACE cycle kick confirmed by new act=1, attempt=" + attempt);
+                    return;
+                }
+                if (attempt >= FISH_CYCLE_MAX_ATTEMPTS) {
+                    Log.w(TAG, "AUTO_FISH_TRACE cycle kick exhausted attempts=" + attempt + ", token=" + cycleToken);
+                    return;
+                }
+                Log.d(TAG, "AUTO_FISH_TRACE cycle kick retry " + (attempt + 1) + "/" + FISH_CYCLE_MAX_ATTEMPTS);
+                kickFishCycleAttempt(cycleToken, attempt + 1);
+            }, FISH_CYCLE_RETRY_DELAY_MS);
+        });
     }
 
     /**
@@ -470,6 +550,7 @@ public final class FishAjaxPhp {
         double totalBalance = fishNv * fishLoot - baitNv * fishCatch - 2.5;
         AppVars.AutoFishNV += totalBalance;
         updateFishMass(fishMass, fishLoot, baitMass, fishCatch);
+        int cooldownSec = extractFishCooldownSec(html);
 
         AppVars.AutoFishCheckUd = true;
         AppVars.AutoFishWearUd = false;
@@ -481,8 +562,9 @@ public final class FishAjaxPhp {
                 fishUmUp,
                 totalBalance,
                 bait == null ? "" : bait.name,
-                baitRemainingAfter);
-        maybeWriteFishChat(fishName, fishLoot, fishCatch, fishUmUp);
+                baitRemainingAfter,
+                cooldownSec);
+        maybeWriteFishChat(fishName, fishLoot, fishCatch, fishUmUp, cooldownSec);
         return report;
     }
 
@@ -524,7 +606,8 @@ public final class FishAjaxPhp {
                                           boolean fishUmUp,
                                           double totalBalance,
                                           String baitName,
-                                          int baitRemaining) {
+                                          int baitRemaining,
+                                          int cooldownSec) {
         StringBuilder sb = new StringBuilder();
         sb.append("<b>").append(fishName).append("</b> [<b>")
                 .append(fishLoot).append('/').append(fishCatch).append("</b>]. ");
@@ -544,6 +627,9 @@ public final class FishAjaxPhp {
                 .append(": <b>").append(totalBalance < 0 ? "" : "+").append(formatDouble(totalBalance)).append(" NV</b>");
         sb.append("<br>").append(AppVars.AutoFishNV < 0 ? "Потери за рыбалку" : "Доход за рыбалку")
                 .append(": <b>").append(AppVars.AutoFishNV < 0 ? "" : "+").append(formatDouble(AppVars.AutoFishNV)).append(" NV</b>");
+        if (cooldownSec > 0) {
+            sb.append("<br>Таймаут: <b>").append(cooldownSec).append(" сек.</b>");
+        }
         return sb.toString();
     }
 
@@ -554,7 +640,11 @@ public final class FishAjaxPhp {
      * - `UserConfig.FishChatReport/FishChatReportColor`,
      * - транспорт чата через `pushChatMessage(...)`.
      */
-    private static void maybeWriteFishChat(String fishName, int fishLoot, int fishCatch, boolean fishUmUp) {
+    private static void maybeWriteFishChat(String fishName,
+                                           int fishLoot,
+                                           int fishCatch,
+                                           boolean fishUmUp,
+                                           int cooldownSec) {
         if (AppVars.Profile == null) {
             return;
         }
@@ -576,10 +666,13 @@ public final class FishAjaxPhp {
         } else {
             sb.append("Доход");
         }
+        String timeoutSuffix = cooldownSec > 0 ? " Таймаут: " + cooldownSec + " сек." : "";
         if (AppVars.Profile.FishChatReportColor) {
             sb.append(": <b>").append(formatDouble(AppVars.AutoFishNV)).append(" NV</b>.");
+            sb.append(timeoutSuffix);
         } else {
             sb.append(" за сеанс: ").append(formatDouble(AppVars.AutoFishNV)).append(" NV.");
+            sb.append(timeoutSuffix);
         }
         if (fishUmUp) {
             sb.append(" Умение \"Рыбалка\" ").append(AppVars.Profile.FishChatReportColor ? "<b>повысилось на 1</b>!" : "повысилось на 1!");
