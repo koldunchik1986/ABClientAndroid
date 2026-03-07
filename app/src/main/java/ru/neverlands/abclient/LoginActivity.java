@@ -7,6 +7,7 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.webkit.CookieManager;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.widget.AdapterView;
@@ -41,6 +42,8 @@ import ru.neverlands.abclient.utils.CryptoUtils;
 
 public class LoginActivity extends AppCompatActivity {
     private static final int STORAGE_PERMISSION_REQUEST_CODE = 101;
+    private static final int COOKIE_WARMUP_MAX_ATTEMPTS = 2;
+    private static final long COOKIE_WARMUP_DELAY_MS = 250L;
     private ActivityLoginBinding binding;
     private List<UserConfig> profiles;
     private UserConfig selectedProfile;
@@ -241,6 +244,37 @@ public class LoginActivity extends AppCompatActivity {
         // Each new login must start from a clean cookie state (desktop behavior).
         AppVars.lastCookies = null;
         NetworkClient.clearCookies();
+        clearCookiesAndAuthorizeInternal(username, gamePassword, profileToLogin, 0);
+    }
+
+    private void clearCookiesAndAuthorizeInternal(
+            String username,
+            String gamePassword,
+            UserConfig profileToLogin,
+            int warmupAttempt
+    ) {
+        if (isFinishing() || isDestroyed()) {
+            return;
+        }
+
+        try {
+            CookieManager.getInstance();
+        } catch (Throwable t) {
+            if (warmupAttempt < COOKIE_WARMUP_MAX_ATTEMPTS) {
+                android.util.Log.w(
+                        "LoginActivity",
+                        "CookieManager warm-up failed, retry " + (warmupAttempt + 1) + "/" + COOKIE_WARMUP_MAX_ATTEMPTS,
+                        t
+                );
+                new Handler(Looper.getMainLooper()).postDelayed(
+                        () -> clearCookiesAndAuthorizeInternal(username, gamePassword, profileToLogin, warmupAttempt + 1),
+                        COOKIE_WARMUP_DELAY_MS
+                );
+                return;
+            }
+            android.util.Log.w("LoginActivity", "CookieManager warm-up failed, continue authorize flow", t);
+        }
+
         CookiesManager.clear(value -> {
             if (isFinishing() || isDestroyed()) {
                 return;
@@ -268,7 +302,11 @@ public class LoginActivity extends AppCompatActivity {
         } else if (result.isCaptchaRequired()) {
             showCaptchaDialog(username, gamePassword, result.getCaptchaUrl(), result.getVcode(), profileToLogin);
         } else {
-            Toast.makeText(LoginActivity.this, result.getErrorMessage(), Toast.LENGTH_LONG).show();
+            String errorMessage = result != null && result.getErrorMessage() != null
+                    ? result.getErrorMessage()
+                    : "Ошибка авторизации";
+            android.util.Log.w("LoginActivity", "Authorization error: " + errorMessage);
+            Toast.makeText(LoginActivity.this, errorMessage, Toast.LENGTH_LONG).show();
         }
     }
 

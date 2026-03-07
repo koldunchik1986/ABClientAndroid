@@ -20,7 +20,12 @@ public class CookiesManager {
         if (host == null || host.isEmpty()) {
             return "";
         }
-        return CookieManager.getInstance().getCookie(normalizeHost(host));
+        try {
+            return CookieManager.getInstance().getCookie(normalizeHost(host));
+        } catch (Throwable t) {
+            android.util.Log.e("CookiesManager", "obtain: CookieManager unavailable", t);
+            return "";
+        }
     }
 
     /**
@@ -32,7 +37,11 @@ public class CookiesManager {
         if (host == null || host.isEmpty() || cookieHeader == null || cookieHeader.isEmpty()) {
             return;
         }
-        CookieManager.getInstance().setCookie(normalizeHost(host), cookieHeader);
+        try {
+            CookieManager.getInstance().setCookie(normalizeHost(host), cookieHeader);
+        } catch (Throwable t) {
+            android.util.Log.e("CookiesManager", "assign: CookieManager unavailable", t);
+        }
     }
 
     /**
@@ -46,13 +55,24 @@ public class CookiesManager {
      * Asynchronously clears all WebView cookies and invokes callback when done.
      */
     public static void clear(ValueCallback<Boolean> callback) {
-        CookieManager manager = CookieManager.getInstance();
-        manager.removeAllCookies(value -> {
-            manager.flush();
+        try {
+            CookieManager manager = CookieManager.getInstance();
+            manager.removeAllCookies(value -> {
+                try {
+                    manager.flush();
+                } catch (Throwable flushError) {
+                    android.util.Log.e("CookiesManager", "clear: flush failed", flushError);
+                }
+                if (callback != null) {
+                    callback.onReceiveValue(value);
+                }
+            });
+        } catch (Throwable t) {
+            android.util.Log.e("CookiesManager", "clear: CookieManager unavailable, continue without WebView cookie reset", t);
             if (callback != null) {
-                callback.onReceiveValue(value);
+                callback.onReceiveValue(false);
             }
-        });
+        }
     }
 
     /**

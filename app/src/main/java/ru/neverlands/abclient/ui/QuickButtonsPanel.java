@@ -4,11 +4,17 @@ import android.content.ClipData;
 import android.content.ClipboardManager;
 import android.content.Context;
 import android.content.Intent;
+import android.text.InputType;
 import android.util.Log;
 import android.view.Gravity;
 import android.view.View;
+import android.widget.ArrayAdapter;
+import android.widget.CheckBox;
+import android.widget.EditText;
 import android.widget.ImageButton;
 import android.widget.LinearLayout;
+import android.widget.ScrollView;
+import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -22,6 +28,7 @@ import java.util.List;
 import ru.neverlands.abclient.R;
 import ru.neverlands.abclient.adapter.FunctionListAdapter;
 import ru.neverlands.abclient.manager.QuickButtonsManager;
+import ru.neverlands.abclient.model.Prims;
 import ru.neverlands.abclient.model.QuickActionType;
 import ru.neverlands.abclient.model.QuickButton;
 import ru.neverlands.abclient.ContactsActivity;
@@ -30,6 +37,7 @@ import ru.neverlands.abclient.manager.ContactsManager;
 import ru.neverlands.abclient.manager.FastActionManager;
 import ru.neverlands.abclient.manager.TabManager;
 import ru.neverlands.abclient.manager.AutoFunctionsManager;
+import ru.neverlands.abclient.utils.AppVars;
 import ru.neverlands.abclient.utils.ChatStats;
 import androidx.fragment.app.FragmentActivity;
 
@@ -42,6 +50,41 @@ public class QuickButtonsPanel {
     private static final int BUTTONS_PER_ROW = 10;
     private static final int TOTAL_BUTTONS = 20;
     private static final int REQUEST_CODE_CONTACTS = 1002;
+    private static final String[] FISH_HAND_OPTIONS = new String[] {
+            "Нет",
+            "Любая удочка",
+            "Ореховая Удочка",
+            "Ивовая Удочка",
+            "Бамбуковая Удочка",
+            "Бамбуковая 2-х коленная Удочка",
+            "Бамбуковая 3-х коленная Удочка",
+            "Телескопическая Удочка",
+            "Телескопическая Облегченная Удочка",
+            "Телескопический Спиннинг",
+            "Сачок"
+    };
+    private static final String[] FISH_PRIM_LABELS = new String[] {
+            "Хлеб",
+            "Червяк",
+            "Крупный червяк",
+            "Опарыш",
+            "Мотыль",
+            "Блесна",
+            "Донка",
+            "Мормышка",
+            "Заговоренная блесна"
+    };
+    private static final int[] FISH_PRIM_FLAGS = new int[] {
+            Prims.Bread,
+            Prims.Worm,
+            Prims.BigWorm,
+            Prims.Stink,
+            Prims.Fly,
+            Prims.Light,
+            Prims.Donka,
+            Prims.Morm,
+            Prims.HiFlight
+    };
     
     private final Context context;
     private final QuickButtonsManager buttonsManager;
@@ -561,6 +604,18 @@ public class QuickButtonsPanel {
                     })
                     .setNegativeButton("Отмена", null)
                     .show();
+        } else if (button.getActionType() == QuickActionType.AUTO_FISH) {
+            new AlertDialog.Builder(context)
+                    .setTitle("Авто-Рыбалка")
+                    .setItems(new CharSequence[]{"Настройки авто-рыбалки", "Удалить кнопку"}, (dialog, which) -> {
+                        if (which == 0) {
+                            showAutoFishSettingsDialog();
+                        } else {
+                            showRemoveConfirmation(position);
+                        }
+                    })
+                    .setNegativeButton("Отмена", null)
+                    .show();
         } else if (button.getActionType() == QuickActionType.LOCATION_TRACKING) {
             new AlertDialog.Builder(context)
                     .setTitle("Слежение за локацией")
@@ -576,6 +631,244 @@ public class QuickButtonsPanel {
         } else {
             showRemoveConfirmation(position);
         }
+    }
+
+    /**
+     * Настройки авто-рыбалки через long-press quick-кнопки.
+     *
+     * Зависимости:
+     * - `AppVars.Profile` хранит значения (`FishAutoWear`, `FishHandOne`, `FishHandTwo`, `FishEnabledPrims`);
+     * - `MainPhp`/`ParsedDressed` читают эти поля в runtime для выбора снастей/приманки;
+     * - значения и названия опций соответствуют C# (`FormSettingsGeneral`).
+     */
+    /**
+     * Единая форма настроек авто-рыбалки: чекбоксы приманок + два выпадающих списка по рукам.
+     *
+     * Зависимости:
+     * - `AppVars.Profile` хранит значения (`FishAutoWear`, `FishHandOne`, `FishHandTwo`, `FishEnabledPrims`,
+     *   `FishTiedHigh`, `FishTiedZero`, `FishStopOverWeight`, `FishChatReport`, `FishChatReportColor`);
+     * - `MainPhp`/`ParsedDressed` читают эти поля в runtime для логики проверки экипировки;
+     * - `Prims.DEFAULT_ALL` используется как защитный fallback, если пользователь снял все приманки.
+     */
+    private void showAutoFishSettingsDialog() {
+        if (AppVars.Profile == null) {
+            Toast.makeText(context, "Профиль не загружен", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        final int pad = (int) (context.getResources().getDisplayMetrics().density * 12);
+        ScrollView scroll = new ScrollView(context);
+        LinearLayout root = new LinearLayout(context);
+        root.setOrientation(LinearLayout.VERTICAL);
+        root.setPadding(pad, pad, pad, pad);
+        scroll.addView(root);
+
+        CheckBox autoWear = new CheckBox(context);
+        autoWear.setText("Автонадевание снастей");
+        autoWear.setChecked(AppVars.Profile.FishAutoWear);
+        root.addView(autoWear);
+
+        TextView hand1Title = new TextView(context);
+        hand1Title.setText("???? 1");
+        hand1Title.setPadding(0, pad, 0, 0);
+        root.addView(hand1Title);
+
+        Spinner hand1Spinner = new Spinner(context);
+        ArrayAdapter<String> handAdapter = new ArrayAdapter<>(context, android.R.layout.simple_spinner_item, FISH_HAND_OPTIONS);
+        handAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        hand1Spinner.setAdapter(handAdapter);
+        int hand1Index = indexOfFishHand(AppVars.Profile.FishHandOne);
+        hand1Spinner.setSelection(hand1Index >= 0 ? hand1Index : 1);
+        root.addView(hand1Spinner);
+
+        TextView hand2Title = new TextView(context);
+        hand2Title.setText("???? 2");
+        hand2Title.setPadding(0, pad, 0, 0);
+        root.addView(hand2Title);
+
+        Spinner hand2Spinner = new Spinner(context);
+        hand2Spinner.setAdapter(handAdapter);
+        int hand2Index = indexOfFishHand(AppVars.Profile.FishHandTwo);
+        hand2Spinner.setSelection(hand2Index >= 0 ? hand2Index : 0);
+        root.addView(hand2Spinner);
+
+        TextView autoDrinkTitle = new TextView(context);
+        autoDrinkTitle.setText("Автопитье");
+        autoDrinkTitle.setPadding(0, pad, 0, 0);
+        root.addView(autoDrinkTitle);
+
+        LinearLayout tiedRow = new LinearLayout(context);
+        tiedRow.setOrientation(LinearLayout.HORIZONTAL);
+        tiedRow.setGravity(Gravity.CENTER_VERTICAL);
+        TextView tiedLabel = new TextView(context);
+        tiedLabel.setText("Глоток, если усталка больше");
+        tiedRow.addView(tiedLabel);
+        EditText tiedHighInput = new EditText(context);
+        tiedHighInput.setInputType(InputType.TYPE_CLASS_NUMBER);
+        tiedHighInput.setText(String.valueOf(Math.max(0, Math.min(99, AppVars.Profile.FishTiedHigh))));
+        LinearLayout.LayoutParams tiedParams = new LinearLayout.LayoutParams(
+                (int) (context.getResources().getDisplayMetrics().density * 56),
+                LinearLayout.LayoutParams.WRAP_CONTENT
+        );
+        tiedParams.leftMargin = (int) (context.getResources().getDisplayMetrics().density * 8);
+        tiedHighInput.setLayoutParams(tiedParams);
+        tiedRow.addView(tiedHighInput);
+        root.addView(tiedRow);
+
+        CheckBox tiedZero = new CheckBox(context);
+        tiedZero.setText("Пить до нуля усталости");
+        tiedZero.setChecked(AppVars.Profile.FishTiedZero);
+        root.addView(tiedZero);
+
+        CheckBox stopOverWeight = new CheckBox(context);
+        stopOverWeight.setText("Прекращать рыбалку при перегрузе");
+        stopOverWeight.setChecked(AppVars.Profile.FishStopOverWeight);
+        root.addView(stopOverWeight);
+
+        CheckBox fishChatReport = new CheckBox(context);
+        fishChatReport.setText("Выводить результаты лова в чат");
+        fishChatReport.setChecked(AppVars.Profile.FishChatReport);
+        root.addView(fishChatReport);
+
+        CheckBox fishChatReportColor = new CheckBox(context);
+        fishChatReportColor.setText("Выводить результаты лова в приват");
+        fishChatReportColor.setChecked(AppVars.Profile.FishChatReportColor);
+        root.addView(fishChatReportColor);
+
+        TextView primsTitle = new TextView(context);
+        primsTitle.setText("Приманки");
+        primsTitle.setPadding(0, pad, 0, 0);
+        root.addView(primsTitle);
+
+        final CheckBox[] primChecks = new CheckBox[FISH_PRIM_FLAGS.length];
+        for (int i = 0; i < FISH_PRIM_FLAGS.length; i++) {
+            CheckBox cb = new CheckBox(context);
+            cb.setText(FISH_PRIM_LABELS[i]);
+            cb.setChecked((AppVars.Profile.FishEnabledPrims & FISH_PRIM_FLAGS[i]) != 0);
+            primChecks[i] = cb;
+            root.addView(cb);
+        }
+
+        new AlertDialog.Builder(context)
+                .setTitle("Настройки авто-рыбалки")
+                .setView(scroll)
+                .setPositiveButton("Сохранить", (dialog, which) -> {
+                    AppVars.Profile.FishAutoWear = autoWear.isChecked();
+                    AppVars.Profile.FishHandOne = FISH_HAND_OPTIONS[Math.max(0, hand1Spinner.getSelectedItemPosition())];
+                    AppVars.Profile.FishHandTwo = FISH_HAND_OPTIONS[Math.max(0, hand2Spinner.getSelectedItemPosition())];
+                    int tiedHigh = AppVars.Profile.FishTiedHigh;
+                    try {
+                        String value = tiedHighInput.getText() == null ? "" : tiedHighInput.getText().toString().trim();
+                        if (!value.isEmpty()) {
+                            tiedHigh = Integer.parseInt(value);
+                        }
+                    } catch (Exception ignored) {
+                    }
+                    AppVars.Profile.FishTiedHigh = Math.max(0, Math.min(99, tiedHigh));
+                    AppVars.Profile.FishTiedZero = tiedZero.isChecked();
+                    AppVars.Profile.FishStopOverWeight = stopOverWeight.isChecked();
+                    AppVars.Profile.FishChatReport = fishChatReport.isChecked();
+                    AppVars.Profile.FishChatReportColor = fishChatReportColor.isChecked();
+
+                    int mask = 0;
+                    for (int i = 0; i < FISH_PRIM_FLAGS.length; i++) {
+                        if (primChecks[i].isChecked()) {
+                            mask |= FISH_PRIM_FLAGS[i];
+                        }
+                    }
+                    if (mask == 0) {
+                        mask = Prims.DEFAULT_ALL;
+                    }
+                    AppVars.Profile.FishEnabledPrims = mask;
+                    AppVars.Profile.save(context);
+                    Toast.makeText(context, "Настройки авто-рыбалки сохранены", Toast.LENGTH_SHORT).show();
+                })
+                .setNegativeButton("Отмена", null)
+                .show();
+    }
+    private void showFishHandSelector(boolean firstHand) {
+        if (AppVars.Profile == null) {
+            return;
+        }
+        String current = firstHand ? AppVars.Profile.FishHandOne : AppVars.Profile.FishHandTwo;
+        int selectedIndex = indexOfFishHand(current);
+        if (selectedIndex < 0) selectedIndex = 0;
+        final int safeSelectedIndex = selectedIndex;
+        String title = firstHand ? "Предмет в руке 1" : "Предмет в руке 2";
+
+        new AlertDialog.Builder(context)
+                .setTitle(title)
+                .setSingleChoiceItems(FISH_HAND_OPTIONS, safeSelectedIndex, (dialog, which) -> {
+                    if (firstHand) {
+                        AppVars.Profile.FishHandOne = FISH_HAND_OPTIONS[which];
+                    } else {
+                        AppVars.Profile.FishHandTwo = FISH_HAND_OPTIONS[which];
+                    }
+                    AppVars.Profile.save(context);
+                    Toast.makeText(context, title + ": " + FISH_HAND_OPTIONS[which], Toast.LENGTH_SHORT).show();
+                    dialog.dismiss();
+                    showAutoFishSettingsDialog();
+                })
+                .setNegativeButton("Отмена", (dialog, which) -> showAutoFishSettingsDialog())
+                .show();
+    }
+
+    private void showFishPrimsSelector() {
+        if (AppVars.Profile == null) {
+            return;
+        }
+        boolean[] selected = new boolean[FISH_PRIM_FLAGS.length];
+        for (int i = 0; i < FISH_PRIM_FLAGS.length; i++) {
+            selected[i] = (AppVars.Profile.FishEnabledPrims & FISH_PRIM_FLAGS[i]) != 0;
+        }
+
+        new AlertDialog.Builder(context)
+                .setTitle("Разрешенные приманки")
+                .setMultiChoiceItems(FISH_PRIM_LABELS, selected, (dialog, which, isChecked) -> selected[which] = isChecked)
+                .setPositiveButton("Сохранить", (dialog, which) -> {
+                    int mask = 0;
+                    for (int i = 0; i < FISH_PRIM_FLAGS.length; i++) {
+                        if (selected[i]) {
+                            mask |= FISH_PRIM_FLAGS[i];
+                        }
+                    }
+                    // Защита от пустого набора: C# дефолт включает все приманки.
+                    if (mask == 0) {
+                        mask = Prims.DEFAULT_ALL;
+                    }
+                    AppVars.Profile.FishEnabledPrims = mask;
+                    AppVars.Profile.save(context);
+                    Toast.makeText(context, "Приманки обновлены", Toast.LENGTH_SHORT).show();
+                    showAutoFishSettingsDialog();
+                })
+                .setNegativeButton("Отмена", (dialog, which) -> showAutoFishSettingsDialog())
+                .show();
+    }
+
+    private int indexOfFishHand(String value) {
+        if (value == null) return -1;
+        for (int i = 0; i < FISH_HAND_OPTIONS.length; i++) {
+            if (FISH_HAND_OPTIONS[i].equalsIgnoreCase(value)) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    private String safeFishHand(String value) {
+        if (value == null || value.isEmpty()) return "Нет";
+        return value;
+    }
+
+    private String describeFishPrims(int mask) {
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < FISH_PRIM_FLAGS.length; i++) {
+            if ((mask & FISH_PRIM_FLAGS[i]) != 0) {
+                if (sb.length() > 0) sb.append(", ");
+                sb.append(FISH_PRIM_LABELS[i]);
+            }
+        }
+        return sb.length() > 0 ? sb.toString() : "нет";
     }
 
     // Открывает настройки авто-боя во фрагменте.
@@ -919,3 +1212,4 @@ public class QuickButtonsPanel {
         loadAndUpdateButtons();
     }
 }
+

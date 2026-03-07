@@ -234,7 +234,7 @@ public class ParsedDressed {
 
         if (AppVars.Profile == null
                 || !AppVars.Profile.FishAutoWear
-                || equalsIgnoreCase(AppVars.Profile.FishHandOne, "нет")) {
+                || isNoFishHandSetting(AppVars.Profile.FishHandOne)) {
             isWear1 = true;
         } else {
             if (equalsIgnoreCase(AppVars.Profile.FishHandOne, "Любая удочка")) {
@@ -286,7 +286,7 @@ public class ParsedDressed {
 
         if (AppVars.Profile == null
                 || !AppVars.Profile.FishAutoWear
-                || equalsIgnoreCase(AppVars.Profile.FishHandTwo, "нет")) {
+                || isNoFishHandSetting(AppVars.Profile.FishHandTwo)) {
             isWear2 = true;
         } else {
             if (equalsIgnoreCase(AppVars.Profile.FishHandTwo, "Любая удочка")) {
@@ -476,6 +476,25 @@ public class ParsedDressed {
         if (left == null && right == null) return true;
         if (left == null || right == null) return false;
         return left.equals(right);
+    }
+
+    /**
+     * Нормализованная проверка "слот руки отключен" для авто-рыбалки.
+     *
+     * Зависимости:
+     * - профильные поля `UserConfig.FishHandOne/FishHandTwo`;
+     * - C#-совместимое значение `Нет`, означающее что рука не участвует в авто-надевании.
+     *
+     * Почему нужно:
+     * - в старых профилях могло храниться пустое значение (`""`) вместо `Нет`,
+     *   что вызывало циклический auto-wear (пустая строка матчится как wildcard).
+     */
+    private static boolean isNoFishHandSetting(String value) {
+        if (value == null) {
+            return true;
+        }
+        String normalized = value.trim();
+        return normalized.isEmpty() || equalsIgnoreCase(normalized, "Нет");
     }
 
     private static String safeGet(String[] source, int index) {

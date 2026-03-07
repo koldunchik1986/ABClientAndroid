@@ -42,11 +42,27 @@ public class MainPhp {
     private static final long AUTO_DRINK_TRIGGER_COOLDOWN_MS = 2500L;
     private static final long CAPTCHA_FALLBACK_TTL_MS = 30000L;
     private static final long AUTO_SKIN_KNIFE_RECHECK_INTERVAL_MS = 60_000L;
+    private static final int AUTO_FISH_WEAR_LOOP_MAX_REPEATS = 12;
+    private static final long AUTO_FISH_WEAR_LOOP_WINDOW_MS = 20_000L;
+    private static final int[] FISH_PRIM_IDS = new int[]{38, 39, 40, 41, 42, 43, 44, 45, 46};
+    private static final int[] FISH_PRIM_FLAGS = new int[]{
+            ru.neverlands.abclient.model.Prims.Bread,
+            ru.neverlands.abclient.model.Prims.Worm,
+            ru.neverlands.abclient.model.Prims.BigWorm,
+            ru.neverlands.abclient.model.Prims.Stink,
+            ru.neverlands.abclient.model.Prims.Fly,
+            ru.neverlands.abclient.model.Prims.Light,
+            ru.neverlands.abclient.model.Prims.Donka,
+            ru.neverlands.abclient.model.Prims.Morm,
+            ru.neverlands.abclient.model.Prims.HiFlight
+    };
     private static volatile long lastAutoFinishRedirectAtMs = 0L;
     private static volatile long lastAutoDrinkTriggerAtMs = 0L;
     // Защита от повторного показа одного и того же диалога капчи завершения боя.
     private static volatile String lastFightCaptchaDialogKey = "";
     private static volatile long lastFightCaptchaDialogAtMs = 0L;
+    private static volatile String lastFishCaptchaDialogKey = "";
+    private static volatile long lastFishCaptchaDialogAtMs = 0L;
     private static volatile String lastCaptchaRejectKey = "";
     private static volatile long lastCaptchaRejectAtMs = 0L;
     private static volatile String lastFightResultBroadcastKey = "";
@@ -982,6 +998,61 @@ public class MainPhp {
     }
 
     /**
+     * Определяет, включена ли Авто-Рыбалка в профиле/настройках.
+     */
+    private static boolean isAutoFishEnabledByPreference() {
+        if (AppVars.Profile != null) {
+            return AppVars.Profile.AutoFish;
+        }
+        try {
+            if (AppVars.getContext() != null) {
+                return AutoFunctionsManager.getInstance(AppVars.getContext()).isAutoFishEnabled();
+            }
+        } catch (Exception e) {
+            android.util.Log.w(TAG, "isAutoFishEnabledByPreference: fallback=false", e);
+        }
+        return false;
+    }
+
+    /**
+     * Чтение умения "Рыбалка" на странице `mselect=1` (C# parity для `AutoFishCheckUm`).
+     */
+    private static void mainPhpProcessFishSkills(String html, String address) {
+        if (html == null || html.isEmpty()) {
+            return;
+        }
+        String fishSkill = HelperStrings.subString(
+                html,
+                "Рыбалка</td><td bgcolor=#FCFAF3><font class=proce><font color=#555555><div align=center>[",
+                "]");
+        if (fishSkill == null || fishSkill.isEmpty()) {
+            java.util.regex.Matcher matcher = java.util.regex.Pattern
+                    .compile("Рыбалка</td><td[^\\[]*\\[(\\d+)\\]", java.util.regex.Pattern.CASE_INSENSITIVE | java.util.regex.Pattern.DOTALL)
+                    .matcher(html);
+            if (matcher.find()) {
+                fishSkill = matcher.group(1);
+            }
+        }
+        if (fishSkill != null && !fishSkill.isEmpty()) {
+            try {
+                int fishUm = Integer.parseInt(fishSkill.trim());
+                AppVars.AutoFishCheckUm = false;
+                if (AppVars.Profile != null) {
+                    AppVars.Profile.FishUm = fishUm;
+                }
+                android.util.Log.d(TAG, "AUTO_FISH_TRACE skill parsed: FishUm=" + fishUm + ", AutoFishCheckUm=false");
+            } catch (Exception e) {
+                android.util.Log.w(TAG, "AUTO_FISH_TRACE skill parse failed: " + fishSkill, e);
+            }
+            return;
+        }
+        if (AppVars.AutoFishCheckUm && address != null && address.contains("mselect=1")) {
+            AppVars.AutoFishCheckUm = false;
+            android.util.Log.w(TAG, "AUTO_FISH_TRACE mselect=1 without Рыбалка block, forced AutoFishCheckUm=false");
+        }
+    }
+
+    /**
      * Определяет, включен ли режим "Снежок/Ярость (первый удар на осаде)".
      *
      * Источник:
@@ -1383,6 +1454,89 @@ public class MainPhp {
     }
 
     /**
+     * Порт `MainPhpFindFlora` из ПК-версии (`MainPhpDrink.cs`):
+     * автоматический переход на "природу/карту" через кнопку "Вернуться".
+     *
+     * Зависимости:
+     * - `buildRedirectHtml(...)` для формирования redirect-страницы;
+     * - HTML-кнопка вида `value="Вернуться"` + `onclick="location='...'"`.
+     *
+     * Назначение:
+     * - после авто-надевания снастей вернуть клиента из "Ваш персонаж" обратно на карту,
+     *   где доступна кнопка "Рыбалка";
+     * - убрать ручной шаг пользователя "нажать Вернуться".
+     */
+    private static String mainPhpFindFlora(String html) {
+        if (html == null || html.isEmpty()) {
+            return null;
+        }
+
+        // C# parity: если "Причал" DISABLED, автопереход на природу не нужен.
+        if (containsIgnoreCase(html, "<input type=button class=lbutdis value=\"Причал\" disabled>")) {
+            return null;
+        }
+
+        final String returnMarker = "value=\"Вернуться\">";
+        int posReturn = html.toLowerCase(Locale.ROOT).indexOf(returnMarker.toLowerCase(Locale.ROOT));
+        if (posReturn == -1) {
+            return null;
+        }
+
+        final String onClickPrefix = "onclick=\"location='";
+        int posOnClick = html.toLowerCase(Locale.ROOT).lastIndexOf(
+                onClickPrefix.toLowerCase(Locale.ROOT),
+                posReturn
+        );
+        if (posOnClick == -1) {
+            return null;
+        }
+
+        int linkStart = posOnClick + onClickPrefix.length();
+        int linkEnd = html.indexOf('\'', linkStart);
+        if (linkEnd == -1 || linkEnd <= linkStart) {
+            return null;
+        }
+
+        String link = html.substring(linkStart, linkEnd);
+        if (link.isEmpty()) {
+            return null;
+        }
+
+        return buildRedirectHtml("Переключение на природу", link);
+    }
+
+    /**
+     * C# parity (`MainPhpFindFish`): на карте вставляет вызов `Fish('<vcode>')` после `view_map();`.
+     */
+    private static String mainPhpFindFish(String html) {
+        if (html == null || html.isEmpty()) {
+            return null;
+        }
+        String pattern = "[\"fis\",\"Рыбалка\",\"";
+        int posPattern = html.indexOf(pattern);
+        if (posPattern == -1) {
+            return null;
+        }
+        posPattern += pattern.length();
+        int posEnd = html.indexOf('"', posPattern);
+        if (posEnd == -1) {
+            return null;
+        }
+        String vcode = html.substring(posPattern, posEnd);
+        if (vcode.isEmpty()) {
+            return null;
+        }
+        String callFish = "Fish('" + vcode + "');";
+        String patternViewMap = "view_map();";
+        int posScript = html.indexOf(patternViewMap);
+        if (posScript == -1) {
+            return null;
+        }
+        posScript += patternViewMap.length();
+        return html.substring(0, posScript) + callFish + html.substring(posScript);
+    }
+
+    /**
      * Порт `MainPhpIsPerc` из C# (`MainPhpDrink.cs`).
      */
     private static boolean mainPhpIsPerc(String html) {
@@ -1430,6 +1584,249 @@ public class MainPhp {
 
         AppVars.AutoSkinArmedKnife = false;
         return null;
+    }
+
+    /**
+     * C# parity: проверка, нужно ли переодевать снасти авто-рыбалки.
+     */
+    private static boolean mainPhpIsMustWearUd(String html) {
+        ParsedDressed parsedDressed = new ParsedDressed(html);
+        if (!parsedDressed.Valid) {
+            return false;
+        }
+        boolean isWear1 = parsedDressed.IsWear1();
+        if (!isWear1 && AppVars.Profile != null && AppVars.Profile.FishAutoWear) {
+            return true;
+        }
+        boolean isWear2 = parsedDressed.IsWear2();
+        return !isWear2 && AppVars.Profile != null && AppVars.Profile.FishAutoWear;
+    }
+
+    /**
+     * C# parity: авто-надевание снастей в обе руки (`MainPhpWearUd`).
+     */
+    private static String mainPhpWearUd(String html) {
+        ParsedDressed ud = new ParsedDressed(html);
+        if (!ud.Valid || AppVars.Profile == null) {
+            return null;
+        }
+        List<WearInvEntry> invList = getWearInvList(html);
+
+        boolean isWear1 = ud.IsWear1();
+        if (!isWear1 && AppVars.Profile.FishAutoWear) {
+            for (WearInvEntry thing : invList) {
+                if (thing.name == null || thing.wearLink == null || thing.wearLink.isEmpty()) continue;
+                if (containsIgnoreCase(AppVars.Profile.FishHandOne, "Любая удочка")) {
+                    if (containsIgnoreCase(thing.name, "удочка") || containsIgnoreCase(thing.name, "спиннинг")) {
+                        return buildRedirectHtml("Одеваем первую попавшуюся удочку", thing.wearLink);
+                    }
+                } else if (containsIgnoreCase(thing.name, AppVars.Profile.FishHandOne)) {
+                    return buildRedirectHtml(AppVars.Profile.FishHandOne + " одевается", thing.wearLink);
+                }
+            }
+            disableAutoFish("Не найден предмет для первой руки");
+            return null;
+        }
+
+        boolean isWear2 = ud.IsWear2();
+        if (!isWear2 && AppVars.Profile.FishAutoWear) {
+            for (WearInvEntry thing : invList) {
+                if (thing.name == null || thing.wearLink == null || thing.wearLink.isEmpty()) continue;
+                boolean matches;
+                if (containsIgnoreCase(AppVars.Profile.FishHandTwo, "Любая удочка")) {
+                    matches = containsIgnoreCase(thing.name, "удочка") || containsIgnoreCase(thing.name, "спиннинг");
+                } else {
+                    matches = containsIgnoreCase(thing.name, AppVars.Profile.FishHandTwo);
+                }
+                if (!matches) continue;
+
+                if ((ud.Empty1 || ud.Empty2) || !ud.InRightSlot) {
+                    return buildRedirectHtml("Одеваем снасть во вторую руку", thing.wearLink);
+                }
+                if (ud.Wid != null && !ud.Wid.isEmpty() && ud.Vcod != null && !ud.Vcod.isEmpty()) {
+                    String removeLink = "main.php?get_id=57&uid=" + ud.Wid + "&s=0&vcode=" + ud.Vcod;
+                    return buildRedirectHtml("Снимаем " + ud.Hand1, removeLink);
+                }
+            }
+        }
+
+        AppVars.AutoFishWearUd = false;
+        return null;
+    }
+
+    /**
+     * Формирует ключ текущего состояния проверки снастей авто-рыбалки.
+     *
+     * Назначение:
+     * - нужен для anti-loop guard, чтобы различать повторение одной и той же
+     *   ситуации `mustWear=true` от нормального прогресса.
+     *
+     * Зависимости:
+     * - `AppVars.AutoFishHand1/2` (фактически распознанные надетые снасти);
+     * - `AppVars.Profile.FishHandOne/FishHandTwo` (целевая конфигурация из настроек).
+     */
+    private static String buildAutoFishWearLoopKey() {
+        String cfg1 = "";
+        String cfg2 = "";
+        if (AppVars.Profile != null) {
+            cfg1 = AppVars.Profile.FishHandOne == null ? "" : AppVars.Profile.FishHandOne;
+            cfg2 = AppVars.Profile.FishHandTwo == null ? "" : AppVars.Profile.FishHandTwo;
+        }
+        String h1 = AppVars.AutoFishHand1 == null ? "" : AppVars.AutoFishHand1;
+        String h2 = AppVars.AutoFishHand2 == null ? "" : AppVars.AutoFishHand2;
+        return cfg1 + "|" + cfg2 + "|" + h1 + "|" + h2;
+    }
+
+    /**
+     * Обновляет счётчик повторов для anti-loop guard авто-рыбалки.
+     *
+     * Поведение:
+     * - если ключ состояния не меняется в пределах окна `AUTO_FISH_WEAR_LOOP_WINDOW_MS`,
+     *   увеличиваем счётчик повторов;
+     * - при смене ключа или истечении окна — сбрасываем счётчик на 1.
+     *
+     * @return `true`, если достигнут лимит повторов и нужно аварийно останавливать авто-рыбалку.
+     */
+    private static boolean markAutoFishWearLoop(String stateKey) {
+        long now = System.currentTimeMillis();
+        boolean sameKey = stateKey.equals(AppVars.AutoFishWearLoopKey);
+        boolean inWindow = AppVars.AutoFishWearLoopStamp > 0L
+                && (now - AppVars.AutoFishWearLoopStamp) <= AUTO_FISH_WEAR_LOOP_WINDOW_MS;
+
+        if (sameKey && inWindow) {
+            AppVars.AutoFishWearLoopCount++;
+        } else {
+            AppVars.AutoFishWearLoopKey = stateKey;
+            AppVars.AutoFishWearLoopCount = 1;
+        }
+        AppVars.AutoFishWearLoopStamp = now;
+
+        return AppVars.AutoFishWearLoopCount >= AUTO_FISH_WEAR_LOOP_MAX_REPEATS;
+    }
+
+    /**
+     * Сбрасывает anti-loop runtime-состояние авто-рыбалки.
+     *
+     * Вызывается:
+     * - при успешной проверке `mustWear=false`;
+     * - при ручном/аварийном выключении авто-рыбалки.
+     */
+    private static void resetAutoFishWearLoopGuard() {
+        AppVars.AutoFishWearLoopKey = "";
+        AppVars.AutoFishWearLoopCount = 0;
+        AppVars.AutoFishWearLoopStamp = 0L;
+    }
+
+    private static void disableAutoFish(String reason) {
+        resetAutoFishWearLoopGuard();
+        android.util.Log.w(TAG, "AUTO_FISH_TRACE disable auto fish: " + reason);
+        try {
+            if (AppVars.getContext() != null) {
+                AutoFunctionsManager.getInstance(AppVars.getContext()).setAutoFishEnabled(false);
+            } else if (AppVars.Profile != null) {
+                AppVars.Profile.AutoFish = false;
+            }
+        } catch (Exception e) {
+            android.util.Log.w(TAG, "AUTO_FISH_TRACE disable auto fish failed", e);
+            if (AppVars.Profile != null) {
+                AppVars.Profile.AutoFish = false;
+            }
+        }
+        if (AppVars.getContext() != null) {
+            Intent msgIntent = new Intent(AppVars.ACTION_ADD_CHAT_MESSAGE);
+            msgIntent.putExtra("message", "<font color=#cc0000><b>Авто-рыбалка выключена: " + reason + "</b></font>");
+            LocalBroadcastManager.getInstance(AppVars.getContext()).sendBroadcast(msgIntent);
+        }
+    }
+
+    private static String extractInputValue(String html, String name) {
+        if (html == null || html.isEmpty() || name == null || name.isEmpty()) return "";
+        java.util.regex.Matcher m = java.util.regex.Pattern
+                .compile("name\\s*=\\s*['\"]?" + java.util.regex.Pattern.quote(name) + "['\"]?\\s+value\\s*=\\s*['\"]?([^'\"\\s>]+)",
+                        java.util.regex.Pattern.CASE_INSENSITIVE)
+                .matcher(html);
+        if (m.find()) return m.group(1);
+        m = java.util.regex.Pattern
+                .compile("value\\s*=\\s*['\"]?([^'\"\\s>]+)['\"]?\\s+name\\s*=\\s*['\"]?" + java.util.regex.Pattern.quote(name) + "['\"]?",
+                        java.util.regex.Pattern.CASE_INSENSITIVE)
+                .matcher(html);
+        return m.find() ? m.group(1) : "";
+    }
+
+    private static int pickFishPrimId(String html) {
+        if (AppVars.Profile == null) return -1;
+        List<Integer> candidates = new ArrayList<>();
+        for (int i = 0; i < FISH_PRIM_IDS.length; i++) {
+            if ((AppVars.Profile.FishEnabledPrims & FISH_PRIM_FLAGS[i]) == 0) continue;
+            String probe = "name=primid value=" + FISH_PRIM_IDS[i];
+            if (html.toLowerCase(Locale.ROOT).contains(probe.toLowerCase(Locale.ROOT))) {
+                candidates.add(FISH_PRIM_IDS[i]);
+            }
+        }
+        if (candidates.isEmpty()) return -1;
+        Collections.shuffle(candidates, RANDOM);
+        return candidates.get(0);
+    }
+
+    /**
+     * C# parity: подготовка шага рыбалки на странице выбора приманки (`MainPhpAutoFishPrepare`).
+     */
+    private static String mainPhpAutoFishPrepare(String html) {
+        if (html == null || html.isEmpty()) {
+            return null;
+        }
+        String lower = html.toLowerCase(Locale.ROOT);
+        if (!lower.contains("name=primid") || !lower.contains("name=get_id")) {
+            return null;
+        }
+
+        AppVars.CodeAddress = "";
+        String codeAddress = extractCaptchaUrl(html);
+        if (codeAddress != null && !codeAddress.isEmpty()) {
+            AppVars.CodeAddress = codeAddress;
+        }
+
+        String getid = extractInputValue(html, "get_id");
+        String act = extractInputValue(html, "act");
+        String vcode = extractInputValue(html, "vcode");
+        String lakeid = extractInputValue(html, "lakeid");
+        if (getid.isEmpty() || act.isEmpty() || vcode.isEmpty() || lakeid.isEmpty()) {
+            return null;
+        }
+
+        String massa = HelperStrings.subString(html, "<b>Масса Вашего инвентаря: ", "</b>");
+        if (massa != null && !massa.isEmpty()) {
+            AppVars.AutoFishMassa = massa;
+        }
+
+        int primid = pickFishPrimId(html);
+        if (primid <= 0) {
+            disableAutoFish("Нет доступной приманки по настройкам");
+            return null;
+        }
+
+        AppVars.AutoFishLikeId = String.valueOf(primid);
+        AppVars.AutoFishLikeVal = "";
+        String marker = "name=primid value=" + primid;
+        int markerPos = lower.indexOf(marker.toLowerCase(Locale.ROOT));
+        if (markerPos >= 0) {
+            int insertPos = markerPos + "name=primid value=".length() + String.valueOf(primid).length() + 1;
+            if (insertPos > 0 && insertPos <= html.length() && !lower.contains(marker.toLowerCase(Locale.ROOT) + " checked")) {
+                html = html.substring(0, insertPos) + "checked " + html.substring(insertPos);
+            }
+        }
+
+        AppVars.FightLink = "http://neverlands.ru/main.php?get_id=" + getid
+                + "&lakeid=" + lakeid
+                + "&act=" + act
+                + "&primid=" + primid
+                + (AppVars.CodeAddress == null || AppVars.CodeAddress.isEmpty() ? "" : "&code=????")
+                + "&vcode=" + vcode;
+
+        android.util.Log.d(TAG, "AUTO_FISH_TRACE prepared FightLink=" + AppVars.FightLink
+                + ", captcha=" + (AppVars.CodeAddress != null && !AppVars.CodeAddress.isEmpty())
+                + ", primid=" + primid);
+        return html;
     }
 
     /**
@@ -1861,6 +2258,113 @@ public class MainPhp {
         // Чтение умения "Охота" (C# parity) до оркестрации AutoSkin,
         // чтобы `AutoSkinCheckUm` корректно сбрасывался на `mselect=1`.
         mainPhpProcessSkills(html, address);
+        // Чтение умения "Рыбалка" (C# parity) до оркестрации AutoFish.
+        mainPhpProcessFishSkills(html, address);
+
+        // Оркестрация Авто-Рыбалки (C# MainPhp.cs + MainPhpWear.cs + MainPhpFish.cs):
+        // 1) при необходимости читаем умение Рыбалка (mselect=1);
+        // 2) проверяем/переодеваем снасти в обеих руках;
+        // 3) на странице рыбалки выбираем приманку и формируем FightLink.
+        boolean autoFightReloadProbeAddress = isAutoFightReloadProbeAddress(address);
+        if (autoFightReloadProbeAddress && isAutoFishEnabledByPreference()) {
+            android.util.Log.d(TAG, "AUTO_FISH_TRACE skip: auto-fight reload probe address=" + address);
+        }
+        if (!isFightFrame && !isFightTopFrame && !autoFightReloadProbeAddress && isAutoFishEnabledByPreference()) {
+            long nowMs = System.currentTimeMillis();
+            if (AppVars.NeverTimer <= 0L || nowMs > AppVars.NeverTimer) {
+                if (AppVars.AutoFishCheckUm) {
+                    String phtml = mainPhpFindPerc(html);
+                    if (phtml != null && !phtml.isEmpty()) {
+                        android.util.Log.d(TAG, "AUTO_FISH_TRACE redirect to character page for skill check");
+                        return Russian.getBytes(phtml);
+                    }
+                    if (html.toLowerCase(Locale.ROOT).contains("<input type=button class=lbut value=\"умения\" onclick")) {
+                        android.util.Log.d(TAG, "AUTO_FISH_TRACE redirect to skills page mselect=1");
+                        return Russian.getBytes(buildRedirectHtml("Переключение на умения персонажа", "main.php?mselect=1"));
+                    }
+                }
+
+                if (AppVars.AutoFishCheckUd) {
+                    String perchtml = mainPhpFindPerc(html);
+                    if (perchtml != null && !perchtml.isEmpty()) {
+                        android.util.Log.d(TAG, "AUTO_FISH_TRACE redirect to character page for fishing gear check");
+                        return Russian.getBytes(perchtml);
+                    }
+                    AppVars.AutoFishWearUd = false;
+                    if (mainPhpIsPerc(html)) {
+                        AppVars.AutoFishWearUd = mainPhpIsMustWearUd(html);
+                        AppVars.AutoFishCheckUd = false;
+                        if (AppVars.AutoFishWearUd) {
+                            String loopKey = buildAutoFishWearLoopKey();
+                            if (markAutoFishWearLoop(loopKey)) {
+                                disableAutoFish("Зацикливание проверки/надевания снастей");
+                                AppVars.AutoFishWearUd = false;
+                            }
+                        } else {
+                            resetAutoFishWearLoopGuard();
+                        }
+                        android.util.Log.d(TAG, "AUTO_FISH_TRACE gear check result: mustWear=" + AppVars.AutoFishWearUd);
+                    }
+                }
+
+                if (AppVars.AutoFishWearUd) {
+                    String invHtml = mainPhpFindInvWithFallback(html, "&im=0&wca=4", address);
+                    if (invHtml != null && !invHtml.isEmpty()) {
+                        android.util.Log.d(TAG, "AUTO_FISH_TRACE redirect to inventory for fishing gear (&im=0&wca=4)");
+                        return Russian.getBytes(invHtml);
+                    }
+                    if (mainPhpIsInv(html) || isInventoryAddress(address)) {
+                        invHtml = mainPhpWearUd(html);
+                        if (invHtml == null || invHtml.isEmpty()) {
+                            if (!inventoryAddressMatchesFilter(address, "&im=0&wca=4")) {
+                                android.util.Log.d(TAG, "AUTO_FISH_TRACE switch to items tab for fishing gear search");
+                                return Russian.getBytes(buildRedirectHtml("Переключение на вещи", "main.php?im=0&wca=4"));
+                            }
+                        } else {
+                            AppVars.AutoFishCheckUd = true;
+                            return Russian.getBytes(invHtml);
+                        }
+                    }
+                }
+
+                // C# parity (`MainPhpFindFlora`): если мы не на карте и есть кнопка "Вернуться",
+                // автоматически возвращаемся на природу перед поиском кнопки "Рыбалка".
+                String floraHtml = mainPhpFindFlora(html);
+                if (floraHtml != null && !floraHtml.isEmpty()) {
+                    android.util.Log.d(TAG, "AUTO_FISH_TRACE redirect to nature/map via return button");
+                    return Russian.getBytes(floraHtml);
+                }
+
+                // C# parity: на карте автоматически нажимаем "Рыбалка", чтобы открыть форму выбора приманки.
+                String fishMapHtml = mainPhpFindFish(html);
+                if (fishMapHtml != null && !fishMapHtml.isEmpty()) {
+                    android.util.Log.d(TAG, "AUTO_FISH_TRACE inject Fish(vcode) into map frame");
+                    return Russian.getBytes(fishMapHtml);
+                }
+
+                String fishPreparedHtml = mainPhpAutoFishPrepare(html);
+                if (fishPreparedHtml != null) {
+                    html = fishPreparedHtml;
+                    boolean hasCaptcha = AppVars.CodeAddress != null && !AppVars.CodeAddress.isEmpty();
+                    boolean isFishActionAddress = address != null
+                            && address.contains("get_id=55")
+                            && address.contains("act=4");
+                    if (hasCaptcha && AppVars.FightLink != null && !AppVars.FightLink.isEmpty() && !isFishActionAddress) {
+                        android.util.Log.d(TAG, "AUTO_FISH_TRACE captcha required, show dialog for fish action");
+                        showFishCaptchaDialogOnce(AppVars.CodeAddress, AppVars.FightLink);
+                        return Russian.getBytes(buildCaptchaDialogHoldHtml());
+                    }
+                    if (hasCaptcha && AppVars.IsFightCaptchaDialogVisible) {
+                        android.util.Log.d(TAG, "AUTO_FISH_TRACE captcha dialog is visible, keep hold page");
+                        return Russian.getBytes(buildCaptchaDialogHoldHtml());
+                    }
+                    if (!hasCaptcha && AppVars.FightLink != null && !AppVars.FightLink.isEmpty() && !isFishActionAddress) {
+                        android.util.Log.d(TAG, "AUTO_FISH_TRACE redirect to fish action: " + AppVars.FightLink);
+                        return Russian.getBytes(buildRedirectHtml("Авторыбалка: заброс", AppVars.FightLink));
+                    }
+                }
+            }
+        }
 
         // Оркестрация режима "Снежок/Ярость" (buttonFury из C#) + авто-надевание свитка:
         // 1) проверка надетого свитка на странице персонажа;
@@ -2159,6 +2663,23 @@ public class MainPhp {
      */
     private static boolean isFightFrameHtml(String html) {
         return html != null && (html.contains("var fight_ty") || html.contains("magic_slots();"));
+    }
+
+    /**
+     * Технический URL-пробник, который AutoFight использует для форс-обновления fight.frame:
+     * `main.php?get_id=56&act=10&go=inf&ts=...`.
+     * На таком кадре нельзя запускать цепочку AutoFish, иначе начинается race навигации.
+     */
+    private static boolean isAutoFightReloadProbeAddress(String address) {
+        if (address == null || address.isEmpty()) {
+            return false;
+        }
+        String lower = address.toLowerCase(Locale.ROOT);
+        return lower.contains("get_id=56")
+                && lower.contains("act=10")
+                && lower.contains("go=inf")
+                && lower.contains("ab_reload_probe=1")
+                && lower.contains("ts=");
     }
 
     /**
@@ -3085,6 +3606,47 @@ public class MainPhp {
             return;
         }
 
+        AppVars.IsFightCaptchaDialogVisible = true;
+        Intent intent = new Intent(AppVars.ACTION_SHOW_CAPTCHA);
+        intent.putExtra("captchaUrl", captchaUrl);
+        intent.putExtra("finishUrl", normalizedFinishUrl);
+        LocalBroadcastManager.getInstance(AppVars.getContext()).sendBroadcast(intent);
+    }
+
+    /**
+     * Инициирует показ captcha-диалога для авто-рыбалки (fish action `get_id=55&act=4`) с дедупликацией.
+     *
+     * Зависимости:
+     * - `AppVars.ACTION_SHOW_CAPTCHA` + `MainActivity.broadcastReceiver` (контракт открытия UI captcha);
+     * - `AppVars.IsFightCaptchaDialogVisible` как единый флаг видимости captcha-окна;
+     * - `lastFishCaptchaDialogKey/AtMs` для защиты от циклических повторов одного challenge.
+     */
+    private static void showFishCaptchaDialogOnce(String captchaUrl, String finishUrl) {
+        if (captchaUrl == null || captchaUrl.isEmpty() || finishUrl == null || finishUrl.isEmpty()) {
+            return;
+        }
+        long now = System.currentTimeMillis();
+
+        String normalizedFinishUrl = finishUrl;
+        if (!normalizedFinishUrl.startsWith("http")) {
+            normalizedFinishUrl = "http://neverlands.ru/" + normalizedFinishUrl.replaceFirst("^/+", "");
+        }
+        String normalizedCaptchaUrl = captchaUrl.replaceFirst("^https://", "http://");
+        String key = normalizedFinishUrl + "|" + normalizedCaptchaUrl;
+
+        if (key.equals(lastFishCaptchaDialogKey) && (now - lastFishCaptchaDialogAtMs) < 3000L) {
+            android.util.Log.d(TAG, "showFishCaptchaDialogOnce: duplicate key, skip");
+            return;
+        }
+        lastFishCaptchaDialogKey = key;
+        lastFishCaptchaDialogAtMs = now;
+
+        if (AppVars.getContext() == null) {
+            android.util.Log.w(TAG, "showFishCaptchaDialogOnce: context is null, skip");
+            return;
+        }
+
+        AppVars.ResumeAutoboiAfterCaptcha = false;
         AppVars.IsFightCaptchaDialogVisible = true;
         Intent intent = new Intent(AppVars.ACTION_SHOW_CAPTCHA);
         intent.putExtra("captchaUrl", captchaUrl);

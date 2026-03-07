@@ -104,7 +104,7 @@ public class AutoFunctionsManager {
                         // Запрашиваем авто-удар (логика автохода в MainActivity).
                         AppVars.mainActivity.get().requestAutoTurn();
                         // Прямая перезагрузка боевого фрейма, с vcode если он есть.
-                        String reloadUrl = "http://neverlands.ru/main.php?get_id=56&act=10&go=inf";
+                        String reloadUrl = "http://neverlands.ru/main.php?get_id=56&act=10&go=inf&ab_reload_probe=1";
                         if (AppVars.VCode != null && !AppVars.VCode.isEmpty()) {
                             reloadUrl += "&vcode=" + AppVars.VCode;
                         }
@@ -114,11 +114,16 @@ public class AutoFunctionsManager {
                         // страховочный повтор через ~1.2с, если первый кадр ещё был ручным
                         // Страховочный повтор через ~1.2с: нужен, если первый кадр был "ручным".
                         final String secondReload = reloadUrl;
-                        new android.os.Handler(android.os.Looper.getMainLooper())
-                                .postDelayed(() -> {
-                                    Log.d(TAG, "setAutoFightEnabled: second reload fight frame " + secondReload);
-                                    AppVars.mainActivity.get().getMainWebView().loadUrl(secondReload);
-                                }, 1200);
+                        final boolean autoFishEnabledNow = isAutoFishEnabled();
+                        if (!autoFishEnabledNow) {
+                            new android.os.Handler(android.os.Looper.getMainLooper())
+                                    .postDelayed(() -> {
+                                        Log.d(TAG, "setAutoFightEnabled: second reload fight frame " + secondReload);
+                                        AppVars.mainActivity.get().getMainWebView().loadUrl(secondReload);
+                                    }, 1200);
+                        } else {
+                            Log.d(TAG, "setAutoFightEnabled: skip second reload while auto fish is enabled");
+                        }
                     } catch (Exception e) {
                         Log.e(TAG, "setAutoFightEnabled: failed to trigger auto turn", e);
                     }
@@ -161,9 +166,95 @@ public class AutoFunctionsManager {
                 setAutoBaitEnabled(false);
                 Log.d(TAG, "setAutoFishEnabled: Авто-Приманка выключена");
             }
+
+            // C# parity (`FormMain.ButtonAutoFish_Click`): инициализируем runtime-состояние авто-рыбалки.
+            AppVars.AutoFishCheckUd = true;
+            AppVars.AutoFishWearUd = false;
+            AppVars.AutoFishCheckUm = AppVars.Profile != null && AppVars.Profile.FishUm == 0;
+            AppVars.AutoFishHand1 = "";
+            AppVars.AutoFishHand1D = "";
+            AppVars.AutoFishHand2 = "";
+            AppVars.AutoFishHand2D = "";
+            AppVars.AutoFishMassa = "";
+            AppVars.AutoFishNV = 0;
+            AppVars.AutoFishDrink = false;
+            AppVars.AutoFishWearLoopKey = "";
+            AppVars.AutoFishWearLoopCount = 0;
+            AppVars.AutoFishWearLoopStamp = 0L;
+            // Нормализация старых профилей: пустая 2-я рука трактуется как "Нет",
+            // иначе это приводит к циклическому переодеванию (пустая строка матчится везде).
+            if (AppVars.Profile != null) {
+                if (AppVars.Profile.FishHandOne == null || AppVars.Profile.FishHandOne.trim().isEmpty()) {
+                    AppVars.Profile.FishHandOne = "Любая удочка";
+                }
+                if (AppVars.Profile.FishHandTwo == null || AppVars.Profile.FishHandTwo.trim().isEmpty()) {
+                    AppVars.Profile.FishHandTwo = "Нет";
+                }
+            }
+            // Снимаем возможный cooldown fast-действий, чтобы авто-рыбалка стартовала сразу после включения.
+            AppVars.NeverTimer = 0L;
+        } else {
+            // При ручном выключении также очищаем anti-loop state, чтобы при следующем старте
+            // авто-рыбалка начинала с чистого runtime-контекста.
+            AppVars.AutoFishWearLoopKey = "";
+            AppVars.AutoFishWearLoopCount = 0;
+            AppVars.AutoFishWearLoopStamp = 0L;
         }
         prefs.edit().putBoolean(KEY_PREFIX + "auto_fish", enabled).apply();
+        if (AppVars.Profile != null) {
+            AppVars.Profile.AutoFish = enabled;
+            AppVars.Profile.save(context);
+        }
+        if (enabled && AppVars.mainActivity != null && AppVars.mainActivity.get() != null) {
+            AppVars.mainActivity.get().runOnUiThread(() -> {
+                try {
+                    if (AppVars.mainActivity.get() == null || AppVars.mainActivity.get().getMainWebView() == null) {
+                        return;
+                    }
+                    // Форсируем вход в поток main.php, чтобы MainPhp сразу начал C#-цепочку
+                    // проверки персонажа/инвентаря без ручного клика "Ваш персонаж".
+                    String url = "http://neverlands.ru/main.php?get_id=56&act=10&go=inf&af_bootstrap=1";
+                    if (AppVars.VCode != null && !AppVars.VCode.isEmpty()) {
+                        url += "&vcode=" + AppVars.VCode;
+                    }
+                    url += "&ts=" + System.currentTimeMillis();
+                    Log.d(TAG, "setAutoFishEnabled: bootstrap navigation to " + url);
+                    AppVars.mainActivity.get().getMainWebView().loadUrl(url);
+                } catch (Exception e) {
+                    Log.e(TAG, "setAutoFishEnabled: bootstrap navigation failed", e);
+                }
+            });
+        }
         Log.d(TAG, "setAutoFishEnabled: " + enabled);
+    }
+
+    /**
+     * Восстанавливает runtime-состояние сохранённых авто-режимов после успешного входа в MainActivity.
+     *
+     * Зависимости:
+     * - SharedPreferences (`isAutoFishEnabled()/isAutoFightEnabled()`) как источник сохранённых флагов;
+     * - `setAutoFishEnabled(true)` для полной C#-цепочки AutoFish (инициализация runtime + bootstrap-навигация в `go=inf`);
+     * - `setAutoFightEnabled(true)` как fallback, если включён только AutoFight;
+     * - `AppVars.mainActivity`/`MainActivity.getMainWebView()` внутри указанных методов для фактического старта потока.
+     *
+     * Почему нужен метод:
+     * - после повторного входа кнопки могут быть "ВКЛ" по prefs, но без повторного запуска runtime-инициализации
+     *   авто-цепочка не стартует до ручного перехода в "Ваш персонаж";
+     * - метод переиспользует существующие точки входа (`setAuto*Enabled`) без дублирования логики.
+     */
+    public void restorePersistentAutoModesAfterLogin() {
+        boolean autoFish = isAutoFishEnabled();
+        boolean autoFight = isAutoFightEnabled();
+        Log.d(TAG, "restorePersistentAutoModesAfterLogin: autoFish=" + autoFish + ", autoFight=" + autoFight);
+
+        if (autoFish) {
+            setAutoFishEnabled(true);
+            return;
+        }
+
+        if (autoFight) {
+            setAutoFightEnabled(true);
+        }
     }
     
     // === AUTO_BAIT (Авто-Приманка) ===

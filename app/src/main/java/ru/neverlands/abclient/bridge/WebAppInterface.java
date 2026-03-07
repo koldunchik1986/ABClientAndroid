@@ -25,6 +25,7 @@ import ru.neverlands.abclient.MainActivity;
 import ru.neverlands.abclient.manager.AutoFunctionsManager;
 import ru.neverlands.abclient.manager.ContactsManager;
 import ru.neverlands.abclient.model.AutoboiState;
+import ru.neverlands.abclient.model.Prims;
 import ru.neverlands.abclient.proxy.CookiesManager;
 import ru.neverlands.abclient.utils.AppVars;
 import ru.neverlands.abclient.utils.Russian;
@@ -63,6 +64,138 @@ public class WebAppInterface {
     @JavascriptInterface
     public String GetClassIdOfContact(String name) {
         return String.valueOf(ContactsManager.getClassIdOfContact(name));
+    }
+
+    /**
+     * C# parity: сообщает map.js, включена ли Авто-Рыбалка.
+     */
+    @JavascriptInterface
+    public boolean IsAutoFish() {
+        try {
+            if (mContext != null) {
+                return AutoFunctionsManager.getInstance(mContext).isAutoFishEnabled();
+            }
+        } catch (Exception e) {
+            Log.w("WebAppInterface", "IsAutoFish failed", e);
+        }
+        return AppVars.Profile != null && AppVars.Profile.AutoFish;
+    }
+
+    /**
+     * C# parity: map.js передаёт текущую массу инвентаря перед забросом.
+     */
+    @JavascriptInterface
+    public void SetAutoFishMassa(String massa) {
+        AppVars.AutoFishMassa = massa == null ? "" : massa.trim();
+    }
+
+    /**
+     * C# parity (`CheckPri`): выбирает первую подходящую приманку (остаток > 4) и
+     * возвращает `" CHECKED"` для вставки в HTML radio.
+     */
+    @JavascriptInterface
+    public String CheckPri(String namePri, int myst) {
+        if (AppVars.Profile == null) {
+            return "";
+        }
+        if (AppVars.PriSelected || myst <= 4 || namePri == null || namePri.isEmpty()) {
+            return "";
+        }
+
+        if (isPrimEnabledByName(namePri)) {
+            AppVars.PriSelected = true;
+            AppVars.NamePri = namePri;
+            AppVars.ValPri = myst;
+            String primId = resolvePrimIdByName(namePri);
+            if (primId != null) {
+                AppVars.AutoFishLikeId = primId;
+                AppVars.AutoFishLikeVal = String.valueOf(myst);
+            }
+            return " CHECKED";
+        }
+        return "";
+    }
+
+    /**
+     * C# parity: map.js сигнализирует, что капчи нет и можно сразу жать "Ловить".
+     * На Android делаем тот же шаг через JS-клик по `fishbutton`.
+     */
+    @JavascriptInterface
+    public void SetFishNoCaptchaReady() {
+        MainActivity activity = getMainActivityOrNull();
+        if (activity == null) {
+            return;
+        }
+        activity.runOnUiThread(() -> {
+            if (activity.binding == null || activity.binding.appBarMain == null
+                    || activity.binding.appBarMain.contentMain == null
+                    || activity.binding.appBarMain.contentMain.webView == null) {
+                return;
+            }
+            activity.binding.appBarMain.contentMain.webView.evaluateJavascript(
+                    "(function(){"
+                            + "try{"
+                            + "  var btn=document.getElementById('fishbutton');"
+                            + "  if(btn&&typeof btn.click==='function'){btn.click(); return 'button';}"
+                            + "  if(typeof FishStart==='function' && typeof ingr!=='undefined' && ingr && ingr.length>2){"
+                            + "    FishStart(ingr[2],0); return 'fishstart';"
+                            + "  }"
+                            + "}catch(e){return 'error:'+e;}"
+                            + "return 'miss';"
+                            + "})()",
+                    value -> Log.d("WebAppInterface", "SetFishNoCaptchaReady: " + value));
+        });
+    }
+
+    /**
+     * C# parity (`InsertGuaDiv`): вставляет блок Guamod под captcha в fish-окне.
+     */
+    @JavascriptInterface
+    public String InsertGuaDiv(String code) {
+        if (AppVars.Profile != null && AppVars.Profile.DoGuamod) {
+            return "<br><img src=http://image.neverlands.ru/1x1.gif width=1 height=8><br>"
+                    + "<span id=guamod3><font class=nickname><font color=#004A7F><b>* * * *</b></font></font></span>";
+        }
+        return "";
+    }
+
+    /**
+     * C# parity: уведомление map.js о перегрузе массы при рыбалке.
+     */
+    @JavascriptInterface
+    public void FishOverload() {
+        Toast.makeText(mContext, "Перегруз: рыбалка может остановиться", Toast.LENGTH_SHORT).show();
+    }
+
+    private boolean isPrimEnabledByName(String namePri) {
+        if (AppVars.Profile == null || namePri == null) {
+            return false;
+        }
+        int mask = AppVars.Profile.FishEnabledPrims;
+        if ("Хлеб".equalsIgnoreCase(namePri)) return (mask & Prims.Bread) != 0;
+        if ("Червяк".equalsIgnoreCase(namePri)) return (mask & Prims.Worm) != 0;
+        if ("Крупный червяк".equalsIgnoreCase(namePri)) return (mask & Prims.BigWorm) != 0;
+        if ("Опарыш".equalsIgnoreCase(namePri)) return (mask & Prims.Stink) != 0;
+        if ("Мотыль".equalsIgnoreCase(namePri)) return (mask & Prims.Fly) != 0;
+        if ("Блесна".equalsIgnoreCase(namePri)) return (mask & Prims.Light) != 0;
+        if ("Донка".equalsIgnoreCase(namePri)) return (mask & Prims.Donka) != 0;
+        if ("Мормышка".equalsIgnoreCase(namePri)) return (mask & Prims.Morm) != 0;
+        if ("Заговоренная блесна".equalsIgnoreCase(namePri)) return (mask & Prims.HiFlight) != 0;
+        return false;
+    }
+
+    private String resolvePrimIdByName(String namePri) {
+        if (namePri == null) return null;
+        if ("Хлеб".equalsIgnoreCase(namePri)) return "38";
+        if ("Червяк".equalsIgnoreCase(namePri)) return "39";
+        if ("Крупный червяк".equalsIgnoreCase(namePri)) return "40";
+        if ("Опарыш".equalsIgnoreCase(namePri)) return "41";
+        if ("Мотыль".equalsIgnoreCase(namePri)) return "42";
+        if ("Блесна".equalsIgnoreCase(namePri)) return "43";
+        if ("Донка".equalsIgnoreCase(namePri)) return "44";
+        if ("Мормышка".equalsIgnoreCase(namePri)) return "45";
+        if ("Заговоренная блесна".equalsIgnoreCase(namePri)) return "46";
+        return null;
     }
 
     // --- Методы для проверки отображения кнопок быстрых действий --- //

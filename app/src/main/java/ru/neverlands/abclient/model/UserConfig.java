@@ -95,7 +95,44 @@ public class UserConfig {
     /**
      * Настройка предмета во второй руке для рыбалки (C# `FishHandTwo`).
      */
-    public String FishHandTwo = "";
+    public String FishHandTwo = "Нет";
+    /**
+     * Битовая маска разрешенных приманок для авто-рыбалки (C# `FishEnabledPrims`/`Prims`).
+     *
+     * Зависимости:
+     * - читается в postfilter-логике выбора приманки;
+     * - сериализуется в `<autofish enabledprims="...">` для совместимости с ПК-профилями.
+     */
+    public int FishEnabledPrims = Prims.DEFAULT_ALL;
+    /**
+     * Текущее значение умения рыбалки из профиля (C# `FishUm`).
+     * Используется runtime-логикой авто-рыбалки при решении, нужно ли читать умения персонажа.
+     */
+    public int FishUm = 0;
+    /**
+     * Порог усталости рыбалки (C# `FishTiedHigh`).
+     */
+    public int FishTiedHigh = 20;
+    /**
+     * Флаг остановки при нулевой усталости (C# `FishTiedZero`).
+     */
+    public boolean FishTiedZero = false;
+    /**
+     * Остановка авто-рыбалки при перевесе (C# `FishStopOverWeight`).
+     */
+    public boolean FishStopOverWeight = true;
+    /**
+     * Максимальный уровень ботов для авто-рыбалки (C# `FishMaxLevelBots`).
+     */
+    public int FishMaxLevelBots = 8;
+    /**
+     * Выводить рыболовный отчет в чат (C# `FishChatReport`).
+     */
+    public boolean FishChatReport = false;
+    /**
+     * Цветной отчет в чат по рыбалке (C# `FishChatReportColor`).
+     */
+    public boolean FishChatReportColor = true;
     /**
      * Авто-охота (аналог `SkinAuto` в ПК C# профиле).
      * Используется как профильный флаг для логики `buttonAutoSkin`.
@@ -342,6 +379,26 @@ public class UserConfig {
                         this.doShowFastAttackZas = Boolean.parseBoolean(parser.getAttributeValue(null, "zas"));
                         this.doShowFastAttackTotem = Boolean.parseBoolean(parser.getAttributeValue(null, "totem"));
                         this.doShowFastAttackPortal = Boolean.parseBoolean(parser.getAttributeValue(null, "portal"));
+                    } else if ("autofish".equalsIgnoreCase(tagName)) {
+                        // C# parity (`ConstTagFish = "autofish"`): читаем рыболовные параметры профиля.
+                        this.AutoFish = parseBoolAttr(parser, "auto", this.AutoFish);
+                        this.FishTiedHigh = parseIntAttr(parser, "tiedhigh", this.FishTiedHigh);
+                        this.FishTiedZero = parseBoolAttr(parser, "tiedzero", this.FishTiedZero);
+                        this.FishStopOverWeight = parseBoolAttr(parser, "stopoverw", this.FishStopOverWeight);
+                        this.FishAutoWear = parseBoolAttr(parser, "autowear", this.FishAutoWear);
+                        String fishHandOne = getAttributeValueIgnoreCase(parser, "hand1");
+                        if (fishHandOne != null && !fishHandOne.isEmpty()) {
+                            this.FishHandOne = fishHandOne;
+                        }
+                        String fishHandTwo = getAttributeValueIgnoreCase(parser, "hand2");
+                        if (fishHandTwo != null) {
+                            this.FishHandTwo = fishHandTwo.trim().isEmpty() ? "Нет" : fishHandTwo;
+                        }
+                        this.FishEnabledPrims = parseIntAttr(parser, "enabledprims", this.FishEnabledPrims);
+                        this.FishUm = parseIntAttr(parser, "um", this.FishUm);
+                        this.FishMaxLevelBots = parseIntAttr(parser, "maxlevelbots", this.FishMaxLevelBots);
+                        this.FishChatReport = parseBoolAttr(parser, "chatreport", this.FishChatReport);
+                        this.FishChatReportColor = parseBoolAttr(parser, "chatreportcolor", this.FishChatReportColor);
                     }
                 }
                 eventType = parser.next();
@@ -423,6 +480,22 @@ public class UserConfig {
             serializer.attribute(null, "totem", String.valueOf(this.doShowFastAttackTotem));
             serializer.attribute(null, "portal", String.valueOf(this.doShowFastAttackPortal));
             serializer.endTag(null, "fastactions");
+
+            // C# parity (`UserConfigSave.WriteFish`): сохраняем настройки авто-рыбалки отдельным тегом.
+            serializer.startTag(null, "autofish");
+            serializer.attribute(null, "auto", String.valueOf(this.AutoFish));
+            serializer.attribute(null, "tiedhigh", String.valueOf(this.FishTiedHigh));
+            serializer.attribute(null, "tiedzero", String.valueOf(this.FishTiedZero));
+            serializer.attribute(null, "stopoverw", String.valueOf(this.FishStopOverWeight));
+            serializer.attribute(null, "autowear", String.valueOf(this.FishAutoWear));
+            serializer.attribute(null, "hand1", this.FishHandOne != null ? this.FishHandOne : "Любая удочка");
+            serializer.attribute(null, "hand2", this.FishHandTwo != null ? this.FishHandTwo : "Нет");
+            serializer.attribute(null, "enabledprims", String.valueOf(this.FishEnabledPrims));
+            serializer.attribute(null, "um", String.valueOf(this.FishUm));
+            serializer.attribute(null, "maxlevelbots", String.valueOf(this.FishMaxLevelBots));
+            serializer.attribute(null, "chatreport", String.valueOf(this.FishChatReport));
+            serializer.attribute(null, "chatreportcolor", String.valueOf(this.FishChatReportColor));
+            serializer.endTag(null, "autofish");
 
             // Сохранение настроек AutoBoi (аналог UserConfigVars.cs / FormSettingsAb.cs)
             serializer.startTag(null, "autoboi");

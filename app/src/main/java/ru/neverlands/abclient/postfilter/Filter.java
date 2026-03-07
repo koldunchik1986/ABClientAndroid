@@ -31,7 +31,7 @@ public class Filter {
             if (address.endsWith("/js/hp.js")) {
                 return HpJs.process(array);
             }
-            if (address.endsWith("/js/map.js")) {
+            if (address.contains("/js/map.js")) {
                 return MapJs.process(array);
             }
             if (address.endsWith("/arena.js")) {
@@ -157,7 +157,7 @@ public class Filter {
         }
 
         if (address.startsWith("http://neverlands.ru/gameplay/ajax/fish_ajax.php")) {
-            return FishAjaxPhp.process(array);
+            return FishAjaxPhp.process(address, array);
         }
 
         if (address.startsWith("http://neverlands.ru/gameplay/ajax/shop_ajax.php")) {

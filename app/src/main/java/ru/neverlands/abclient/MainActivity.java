@@ -619,8 +619,15 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         layout.addView(inputRow);
 
         final boolean[] captchaSubmitted = {false};
+        boolean isFishCaptcha = finishUrl != null
+                && ((finishUrl.contains("get_id=55") && finishUrl.contains("act=4"))
+                || (finishUrl.contains("/gameplay/ajax/fish_ajax.php") && finishUrl.contains("act=2")));
+        String captchaTitle = isFishCaptcha
+                ? "Введите капчу для рыбалки"
+                : "Введите капчу для завершения боя";
+
         AlertDialog dialog = new androidx.appcompat.app.AlertDialog.Builder(this)
-                .setTitle("Введите капчу для завершения боя")
+                .setTitle(captchaTitle)
                 .setView(layout)
                 .setPositiveButton("ОК", (d, which) -> {
                     String code = input.getText().toString().trim();
@@ -635,7 +642,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                     AppVars.ResumeAutoboiAfterCaptcha = false;
                     String submitUrl = appendOrReplaceCaptchaCode(finishUrl, code);
                     Log.d(TAG, "showCaptchaDialog: submitting " + submitUrl);
-                    binding.appBarMain.contentMain.webView.loadUrl(submitUrl);
+                    submitCaptchaSolution(submitUrl, isFishCaptcha);
                 })
                 .setNegativeButton("Отмена", (d, which) -> AppVars.ResumeAutoboiAfterCaptcha = false)
                 .create();
@@ -859,6 +866,97 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             }
         }
         return submitUrl + fragment;
+    }
+
+    /**
+     * Отправляет решение captcha в корректный серверный контур (бой/рыбалка), не ломая frame-flow.
+     *
+     * Зависимости:
+     * - `binding.appBarMain.contentMain.webView`: основной игровой WebView;
+     * - `submitFishCaptchaViaAjaxOrFallback(...)`: fish captcha (`fish_ajax.php?act=2`) через Ajax;
+     * - `WebView.loadUrl(...)`: fallback и штатный submit для боя (`main.php?get_id=61&act=7...`).
+     */
+    private void submitCaptchaSolution(String submitUrl, boolean isFishCaptcha) {
+        if (binding == null || binding.appBarMain == null || binding.appBarMain.contentMain == null) {
+            Log.w(TAG, "submitCaptchaSolution: skip, binding/content is null");
+            return;
+        }
+        WebView mainWebView = binding.appBarMain.contentMain.webView;
+        if (mainWebView == null) {
+            Log.w(TAG, "submitCaptchaSolution: skip, mainWebView is null");
+            return;
+        }
+        if (isFishCaptcha) {
+            submitFishCaptchaViaAjaxOrFallback(mainWebView, submitUrl);
+            return;
+        }
+        mainWebView.loadUrl(submitUrl);
+    }
+
+    /**
+     * Отправляет fish captcha через JS `AjaxGet(...)`, чтобы `RESO@...` обрабатывался игровым JS-контуром,
+     * а не открывался как отдельная страница верхнего фрейма.
+     *
+     * Зависимости:
+     * - `WebView.evaluateJavascript(...)` для вызова JS в текущем контексте страницы;
+     * - `AjaxGet`/`window.AjaxGet`/`parent.AjaxGet`/`frames.main.AjaxGet` как разные точки входа;
+     * - `Gson` для чтения статуса выполнения JS и принятия решения о fallback.
+     */
+    private void submitFishCaptchaViaAjaxOrFallback(WebView mainWebView, String submitUrl) {
+        if (submitUrl == null || submitUrl.isEmpty()) {
+            Log.w(TAG, "submitFishCaptchaViaAjaxOrFallback: submitUrl is empty");
+            return;
+        }
+
+        final com.google.gson.Gson gson = new com.google.gson.Gson();
+        final String jsonUrl = gson.toJson(submitUrl);
+        String script = "(function(rawUrl){"
+                + "try{"
+                + "var abs=(rawUrl||'').toString();"
+                + "if(!abs){return 'empty_url';}"
+                + "var rel=abs;"
+                + "try{"
+                + "if(/^https?:\\/\\//i.test(abs)){"
+                + "var a=document.createElement('a');a.href=abs;"
+                + "rel=(a.pathname||'')+(a.search||'')+(a.hash||'');"
+                + "if(!rel){rel=abs;}"
+                + "}"
+                + "}catch(_normErr){}"
+                + "try{"
+                + "rel=String(rel||'').replace(/^https?:\\/\\/[^/]+/i,'');"
+                + "var low=rel.toLowerCase();"
+                + "var prefix='/gameplay/ajax/';"
+                + "var idx=low.indexOf(prefix);"
+                + "if(idx>=0){rel=rel.substring(idx+prefix.length);}"
+                + "rel=rel.replace(/^\\/+/, '');"
+                + "}catch(_relErr){}"
+                + "if(!rel){return 'empty_rel';}"
+                + "if(typeof AjaxGet==='function'){AjaxGet(rel);return 'ok_ajaxget';}"
+                + "if(typeof window.AjaxGet==='function'){window.AjaxGet(rel);return 'ok_window_ajaxget';}"
+                + "if(window&&window.parent&&window.parent!==window&&typeof window.parent.AjaxGet==='function'){window.parent.AjaxGet(rel);return 'ok_parent_ajaxget';}"
+                + "if(window&&window.frames&&window.frames.main&&typeof window.frames.main.AjaxGet==='function'){window.frames.main.AjaxGet(rel);return 'ok_frame_main_ajaxget';}"
+                + "return 'missing_ajaxget';"
+                + "}catch(e){"
+                + "console.log('ABCLIENT_FISH_CAPTCHA_SUBMIT_ERR:'+e);"
+                + "return 'error';"
+                + "}"
+                + "})(" + jsonUrl + ")";
+
+        mainWebView.evaluateJavascript(script, rawStatus -> {
+            String status;
+            try {
+                status = gson.fromJson(rawStatus, String.class);
+            } catch (Exception ignored) {
+                status = rawStatus;
+            }
+
+            boolean ajaxOk = status != null && status.startsWith("ok_");
+            Log.d(TAG, "submitFishCaptchaViaAjaxOrFallback: status=" + status);
+            if (!ajaxOk) {
+                Log.w(TAG, "submitFishCaptchaViaAjaxOrFallback: fallback to loadUrl, status=" + status);
+                mainWebView.loadUrl(submitUrl);
+            }
+        });
     }
 
     // Локальные события: чат, загрузка URL, JS, капча, авто-рыбалка.
@@ -1423,6 +1521,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         
         // Первичная загрузка main.php + чат-фреймов.
         loadInitialUrls();
+        AutoFunctionsManager.getInstance(this).restorePersistentAutoModesAfterLogin();
 
         // Подписка на действия автободя: результат -> AutoSubmit() в WebView.
         fightViewModel = new ViewModelProvider(this).get(FightViewModel.class);

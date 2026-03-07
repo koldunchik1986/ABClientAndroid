@@ -180,7 +180,30 @@ public class AppVars {
     public static String AutoFishHand1D = "";
     public static String AutoFishHand2 = "";
     public static String AutoFishHand2D = "";
+    public static String AutoFishLikeId = "";
+    public static String AutoFishLikeVal = "";
     public static String AutoFishMassa = "";
+    /**
+     * Анти-зацикливание авто-рыбалки: ключ последней попытки проверки/переодевания снастей.
+     * Используется в MainPhp, чтобы остановить бесконечный цикл `inf -> inv -> wear -> inf`.
+     */
+    public static String AutoFishWearLoopKey = "";
+    /**
+     * Анти-зацикливание авто-рыбалки: количество повторов одного и того же `AutoFishWearLoopKey`.
+     */
+    public static int AutoFishWearLoopCount = 0;
+    /**
+     * Анти-зацикливание авто-рыбалки: время (ms) последнего инкремента `AutoFishWearLoopCount`.
+     */
+    public static long AutoFishWearLoopStamp = 0L;
+    /**
+     * C# parity: признак, что нужно выполнить "Пить" в рамках авто-рыбалки (`AutoFishDrink`).
+     */
+    public static boolean AutoFishDrink = false;
+    /**
+     * C# parity: одноразовый флаг "Пить" после рыбацкого шага (`AutoFishDrinkOnce`).
+     */
+    public static boolean AutoFishDrinkOnce = false;
     public static String BulkSellOldScript = "";
     public static String BulkSellOldName = "";
     public static String BulkSellOldPrice = "";

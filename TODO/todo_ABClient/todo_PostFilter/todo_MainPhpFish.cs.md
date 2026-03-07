@@ -1,51 +1,60 @@
 # План портирования MainPhpFish.cs (1:1 с ПК C#)
 
-## Фактический статус на Android (на 2026-03-07)
+## 1. Назначение файла в C#
 
-- [ ] В `MainPhp.java` отсутствует ветка `MainPhpAutoFishPrepare` (аналог C#).
-- [ ] В `MainPhp.java` отсутствует ветка `MainPhpFishReport` (аналог C#).
-- [ ] Не реализована C#-цепочка флагов `AutoFishCheckUd -> AutoFishWearUd`.
-- [ ] Не реализована C#-цепочка `AutoFishCheckUm` через `mselect=1` для актуализации `FishUm`.
-- [~] `UserConfig`/`ParsedDressed` частично готовы: есть `FishAutoWear`, `FishHandOne`, `FishHandTwo`, проверка двух рук.
-- [ ] Не встроена приоритетная логика выбора приманки по `FishEnabledPrims` в `MainPhp`-потоке.
-- [ ] Не реализована рыбацкая captcha-ветка (отдельно от боевой), включая `FightLink` c `&code=...`.
+`ABClient/PostFilter/MainPhpFish.cs` закрывает две ключевые части авто-рыбалки:
+- `MainPhpAutoFishPrepare(...)` — подготовка шага рыбалки (параметры, приманка, ссылка действия, капча);
+- `MainPhpFishReport(...)` — итоговый отчет и обновление runtime-полей после ловли.
 
-## Что делает C# эталон (ABClient/PostFilter/MainPhpFish.cs)
+## 2. Что уже есть в Android (факт)
 
-1. `MainPhpAutoFishPrepare(html)`:
-- проверяет страницу рыбалки;
-- парсит `get_id`, `act`, `vcode`, `lakeid`, текущую массу инвентаря;
-- выбирает доступную приманку из `Profile.FishEnabledPrims` (рандом в пределах разрешённых);
-- отмечает выбранную приманку в HTML (`checked`);
-- формирует `AppVars.FightLink` на следующий заброс;
-- если найдена капча, заполняет `AppVars.CodeAddress` и включает режим ручного ввода кода.
+- [x] Профильные поля авто-рыбалки (`AutoFish`, `FishAutoWear`, `FishHandOne/Two`, `FishEnabledPrims`, `FishUm`) реализованы.
+- [x] В `ParsedDressed` есть C#-совместимая проверка двух рыболовных слотов.
+- [x] Есть quick-кнопка `AUTO_FISH` + long-press настройки.
+- [x] В `MainPhp.java` реализован `mainPhpAutoFishPrepare(...)`.
+- [x] В `MainPhp.java` встроен fish-flow:
+  - [x] проверка умения (`AutoFishCheckUm`);
+  - [x] проверка/надевание снастей (`AutoFishCheckUd`/`AutoFishWearUd`);
+  - [x] переход в карту и вызов рыбалки;
+  - [x] подготовка `FightLink` для рыболовного шага.
+- [x] Добавлена fish captcha-ветка в `MainPhp` с показом диалога и anti-duplicate.
+- [x] Рыболовный отчет вынесен в `FishAjaxPhp.java` (по месту обработки `fish_ajax.php`).
 
-2. `MainPhpFishReport(html)`:
-- парсит результат улова (`nameFish`, `numFish`, `catchFish`, `fishUmUp`);
-- обновляет `FishUm`, `AutoFishNV`, `AutoFishMassa`, остаток наживки;
-- формирует подробный HTML-отчёт + чат/балун;
-- после отчёта ставит флаги на следующий цикл (`AutoFishCheckUd=true`, `AutoFishWearUd=false`).
+## 3. Поведение C# (что перенесено по смыслу)
 
-## Разрыв с Android-кодом
+### `MainPhpAutoFishPrepare(...)`
+- читает `get_id/act/vcode/lakeid`;
+- сохраняет массу инвентаря;
+- выбирает допустимую приманку из `FishEnabledPrims`;
+- заполняет `FightLink`;
+- при капче формирует ссылку с `code=????` и запускает ручной ввод через диалог.
 
-- В `app/src/main/java/ru/neverlands/abclient/postfilter/MainPhp.java` рыбалка не обрабатывается.
-- В `app/src/main/java/ru/neverlands/abclient/manager/AutoFunctionsManager.java` включение `AUTO_FISH`
-  не поднимает C#-инициализацию runtime-флагов (`CheckUd/CheckUm/...` и reset статистики).
-- Нет связки с диалогом капчи по рыбалке.
-- `FishEnabledPrims` отсутствует в текущем Android `UserConfig` как битовая маска C# `Prims`.
+### `MainPhpFishReport(...)` (в Android — через `FishAjaxPhp`)
+- парсит рыбу/клёв/улов/рост умения;
+- обновляет `FishUm`, `AutoFishNV`, `AutoFishMassa`;
+- формирует расширенный отчет;
+- переводит флаги на следующий цикл (`AutoFishCheckUd=true`, `AutoFishWearUd=false`).
 
-## План 1:1 реализации
+## 4. Gap и остаток работ
 
-- [ ] Перенести `MainPhpAutoFishPrepare` в `MainPhp.java` (с теми же именами runtime-полей `AppVars`).
-- [ ] Перенести `MainPhpFishReport` в `MainPhp.java` (до внедрения отдельного менеджера).
-- [ ] Добавить `FishEnabledPrims` в `UserConfig` + load/save профиля.
-- [ ] Добавить enum/битмаску `Prims` (C#-совместимые значения).
-- [ ] Добавить C#-инициализацию флагов в `AutoFunctionsManager.setAutoFishEnabled(true)`:
-  `AutoFishCheckUd`, `AutoFishWearUd`, `AutoFishCheckUm`, reset `AutoFishHand*`, `AutoFishMassa`, `AutoFishNV`.
-- [ ] Интегрировать рыбацкую captcha-ветку (UI/submit), не ломая существующую боевую капчу.
-- [ ] Прогнать сценарии: без капчи, с капчей, без доступной приманки, без снастей.
+- [ ] Довести рыбацкую captcha-ветку до полного паритета по реальным сценариям из логов.
+- [ ] Прогнать edge-кейсы (пустой ответ, нестандартный формат `fish_ajax`, быстрые повторные challenge).
+- [ ] Финально сверить шаги с HAR (`DressFishing.har`, `FishingCaptcha.har`) на 1:1.
 
-## Связанный task-файл
+## 5. План реализации (остаток)
 
-Детализированный рабочий план и чеклист по всему AutoFish-потоку:
-- `TODO/todo_task_20260307_autofish_1to1_port.md`
+- [x] Добавить в Android профиль `FishEnabledPrims` + load/save.
+- [x] Добавить битмаску `Prims` с C#-совместимыми значениями.
+- [x] Портировать `MainPhpAutoFishPrepare(...)`.
+- [x] Включить fish-flow в основной `main.php` pipeline.
+- [x] Реализовать fish captcha-flow (показ диалога + submit).
+- [x] Доработать `AutoFunctionsManager.setAutoFishEnabled(true)` под C# runtime-init.
+- [x] Добавить long-press настройки `AUTO_FISH`.
+- [ ] Закрыть финальную валидацию по runtime-логам.
+
+## 6. Статус
+
+- [x] Анализ C# и Android по `MainPhpFish` выполнен.
+- [x] Основное портирование в Java выполнено.
+- [ ] Финальная проверка 1:1 на боевых логах не завершена.
+
