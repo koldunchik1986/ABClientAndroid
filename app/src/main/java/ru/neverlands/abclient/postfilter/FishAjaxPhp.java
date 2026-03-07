@@ -271,18 +271,19 @@ public final class FishAjaxPhp {
         long nowMs = System.currentTimeMillis();
         long dueAtMs = nowMs + (cooldownSec * 1000L);
         AppVars.NeverTimer = dueAtMs;
+        long effectiveDueAtMs = Math.max(dueAtMs, AppVars.NeverTimer);
 
         if (!isAutoFishEnabled()) {
             return;
         }
 
-        if (Math.abs(dueAtMs - lastFishAutoreloadDueAtMs) <= 1000L
+        if (Math.abs(effectiveDueAtMs - lastFishAutoreloadDueAtMs) <= 1000L
                 && (nowMs - lastFishAutoreloadAtMs) < FISH_AUTORELOAD_DEDUP_MS) {
             return;
         }
         lastFishAutoreloadAtMs = nowMs;
-        lastFishAutoreloadDueAtMs = dueAtMs;
-        lastFishCycleToken = dueAtMs;
+        lastFishAutoreloadDueAtMs = effectiveDueAtMs;
+        lastFishCycleToken = effectiveDueAtMs;
 
         MainActivity activity = (AppVars.mainActivity == null) ? null : AppVars.mainActivity.get();
         if (activity == null) {
@@ -293,8 +294,8 @@ public final class FishAjaxPhp {
             return;
         }
 
-        long delayMs = Math.max(250L, cooldownSec * 1000L + FISH_AUTORELOAD_SAFETY_MS);
-        long cycleToken = dueAtMs;
+        long delayMs = Math.max(250L, effectiveDueAtMs - nowMs + FISH_AUTORELOAD_SAFETY_MS);
+        long cycleToken = effectiveDueAtMs;
         Log.d(TAG, "AUTO_FISH_TRACE act2 cooldown=" + cooldownSec + "s, schedule next cycle in " + delayMs + "ms");
         activity.runOnUiThread(() -> webView.postDelayed(
                 () -> kickFishCycleAttempt(cycleToken, 1),
@@ -339,6 +340,16 @@ public final class FishAjaxPhp {
         activity.runOnUiThread(() -> {
             WebView webView = activity.getMainWebView();
             if (webView == null) {
+                return;
+            }
+
+            long nowMs = System.currentTimeMillis();
+            long timerGateMs = AppVars.NeverTimer;
+            if (timerGateMs > nowMs + 250L) {
+                long waitMs = Math.max(300L, timerGateMs - nowMs + FISH_AUTORELOAD_SAFETY_MS);
+                Log.d(TAG, "AUTO_FISH_TRACE cycle gate by NeverTimer, wait=" + waitMs
+                        + "ms, attempt=" + attempt + ", token=" + cycleToken);
+                webView.postDelayed(() -> kickFishCycleAttempt(cycleToken, attempt), waitMs);
                 return;
             }
 
