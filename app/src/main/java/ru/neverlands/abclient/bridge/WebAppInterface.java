@@ -90,6 +90,27 @@ public class WebAppInterface {
     }
 
     /**
+     * C# parity (`ScriptManager.SetNeverTimer`): map.js передаёт остаток таймера в миллисекундах
+     * (переменная `time_left_sec`), а клиент фиксирует абсолютное время следующего действия.
+     *
+     * Зависимости:
+     * - `app/src/main/assets/js/map.js`: `window.external.SetNeverTimer(time_left_sec)` в `timerst(lp)`;
+     * - `AppVars.NeverTimer`: общий cooldown-гейт для авто-функций в `MainPhp`;
+     * - `MainPhp`: проверки вида `System.currentTimeMillis() > AppVars.NeverTimer`.
+     *
+     * Поведение:
+     * - вход < 0 нормализуется в 0, чтобы не уводить таймер в прошлое;
+     * - `NeverTimer` сохраняется как `текущее_время + остаток_мс` (как в ПК-версии: `DateTime.Now.AddMilliseconds`).
+     */
+    @JavascriptInterface
+    public void SetNeverTimer(long msLeft) {
+        if (msLeft < 0L) {
+            msLeft = 0L;
+        }
+        AppVars.NeverTimer = System.currentTimeMillis() + msLeft;
+    }
+
+    /**
      * C# parity (`CheckPri`): выбирает первую подходящую приманку (остаток > 4) и
      * возвращает `" CHECKED"` для вставки в HTML radio.
      */

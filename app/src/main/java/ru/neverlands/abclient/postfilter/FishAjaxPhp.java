@@ -2,6 +2,7 @@ package ru.neverlands.abclient.postfilter;
 
 import android.content.Intent;
 import android.util.Log;
+import android.webkit.WebView;
 
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 
@@ -14,6 +15,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import ru.neverlands.abclient.manager.AutoFunctionsManager;
+import ru.neverlands.abclient.MainActivity;
 import ru.neverlands.abclient.model.Prims;
 import ru.neverlands.abclient.model.UserConfig;
 import ru.neverlands.abclient.utils.AppVars;
@@ -27,12 +29,17 @@ public final class FishAjaxPhp {
     private static final String FISH_AJAX_ACT1 = "act=1";
     private static final String FISH_CAPTCHA_URL_PREFIX = "http://neverlands.ru/modules/code/code.php?";
     private static final long FISH_CAPTCHA_DIALOG_DEDUP_MS = 1500L;
+    private static final long FISH_AUTORELOAD_DEDUP_MS = 2500L;
+    private static final long FISH_AUTORELOAD_SAFETY_MS = 350L;
     private static volatile String lastFishCaptchaDialogKey = "";
     private static volatile long lastFishCaptchaDialogAtMs = 0L;
+    private static volatile long lastFishAutoreloadAtMs = 0L;
+    private static volatile long lastFishAutoreloadDueAtMs = 0L;
 
     private static final Map<String, Double> FISH_NV = new LinkedHashMap<>();
     private static final Map<String, Double> FISH_MASS = new LinkedHashMap<>();
     private static final Map<String, BaitInfo> BAIT_INFO = new LinkedHashMap<>();
+    private static final Pattern FISH_COOLDOWN_PATTERN = Pattern.compile("@\\[0,\\[2,(\\d+)\\]\\]@");
 
     static {
         putFish("Карась", 4.32, 2.0);
@@ -98,6 +105,10 @@ public final class FishAjaxPhp {
         if (lowerAddress.contains(FISH_AJAX_ACT1)) {
             processFishAct1(address, html);
             return array;
+        }
+
+        if (lowerAddress.contains("act=2")) {
+            syncFishCooldownAndScheduleNextCycle(html);
         }
 
         if (!lower.contains("лёв:") && !lower.contains("клев:")) {
@@ -229,6 +240,77 @@ public final class FishAjaxPhp {
         intent.putExtra("captchaUrl", captchaUrl);
         intent.putExtra("finishUrl", finishUrl);
         LocalBroadcastManager.getInstance(AppVars.getContext()).sendBroadcast(intent);
+    }
+
+    /**
+     * Синхронизирует cooldown после `fish_ajax.php?act=2` и планирует следующий цикл авто-рыбалки.
+     *
+     * Зависимости:
+     * - серверный payload: маркер `@[0,[2,<sec>]]@` со временем до следующего заброса;
+     * - `AppVars.NeverTimer`: общий cooldown-гейт для авто-функций в `MainPhp`;
+     * - `MainActivity.getMainWebView().loadUrl(...)`: гарантированный restart main.php,
+     *   чтобы снова прошла ветка `AUTO_FISH_TRACE` и ушёл следующий `act=1`.
+     */
+    private static void syncFishCooldownAndScheduleNextCycle(String html) {
+        int cooldownSec = extractFishCooldownSec(html);
+        if (cooldownSec <= 0) {
+            return;
+        }
+
+        long nowMs = System.currentTimeMillis();
+        long dueAtMs = nowMs + (cooldownSec * 1000L);
+        AppVars.NeverTimer = dueAtMs;
+
+        if (!isAutoFishEnabled()) {
+            return;
+        }
+
+        if (Math.abs(dueAtMs - lastFishAutoreloadDueAtMs) <= 1000L
+                && (nowMs - lastFishAutoreloadAtMs) < FISH_AUTORELOAD_DEDUP_MS) {
+            return;
+        }
+        lastFishAutoreloadAtMs = nowMs;
+        lastFishAutoreloadDueAtMs = dueAtMs;
+
+        MainActivity activity = (AppVars.mainActivity == null) ? null : AppVars.mainActivity.get();
+        if (activity == null) {
+            return;
+        }
+        WebView webView = activity.getMainWebView();
+        if (webView == null) {
+            return;
+        }
+
+        long delayMs = Math.max(250L, cooldownSec * 1000L + FISH_AUTORELOAD_SAFETY_MS);
+        Log.d(TAG, "AUTO_FISH_TRACE act2 cooldown=" + cooldownSec + "s, schedule main.php reload in " + delayMs + "ms");
+
+        activity.runOnUiThread(() -> webView.postDelayed(() -> {
+            if (!isAutoFishEnabled()) {
+                Log.d(TAG, "AUTO_FISH_TRACE act2 scheduled reload skipped: auto-fish disabled");
+                return;
+            }
+            MainActivity active = (AppVars.mainActivity == null) ? null : AppVars.mainActivity.get();
+            if (active == null || active.getMainWebView() == null) {
+                return;
+            }
+            String reloadUrl = "http://neverlands.ru/main.php?af_cycle=1&r=" + System.currentTimeMillis();
+            Log.d(TAG, "AUTO_FISH_TRACE act2 scheduled reload fire: " + reloadUrl);
+            active.getMainWebView().loadUrl(reloadUrl);
+        }, delayMs));
+    }
+
+    /**
+     * Извлекает серверный fish-cooldown из payload (`@[0,[2,294]]@` -> `294` секунд).
+     */
+    private static int extractFishCooldownSec(String html) {
+        if (html == null || html.isEmpty()) {
+            return 0;
+        }
+        Matcher matcher = FISH_COOLDOWN_PATTERN.matcher(html);
+        if (!matcher.find()) {
+            return 0;
+        }
+        return parseIntSafe(matcher.group(1));
     }
 
     /**
