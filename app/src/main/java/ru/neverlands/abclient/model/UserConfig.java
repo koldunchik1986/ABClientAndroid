@@ -168,6 +168,17 @@ public class UserConfig {
     public int LezDrinkHp = 50;
     public int LezDrinkMa = 50;
     public boolean LezDoWinTimeout = true;
+    /**
+     * Задержка автоудара в секундах (доп. настройка "Задержка ударов").
+     *
+     * Зависимости:
+     * - настраивается в `AutoBoiSettingsFragment.GeneralTabFragment`,
+     * - сериализуется в `<autoboi hitDelaySec="...">`,
+     * - применяется в `LezFight.BuildFrame()` как пауза перед submit хода.
+     *
+     * Значение `0` = legacy-режим (старый случайный интервал 1.0-2.0 сек).
+     */
+    public int LezHitDelaySec = 0;
     public LezSayType LezSay = LezSayType.No;
     public List<LezBotsGroup> LezGroups = new ArrayList<>();
     public LezSayType BossSay = LezSayType.No;
@@ -263,6 +274,10 @@ public class UserConfig {
                         this.LezDrinkHp = parseIntAttr(parser, "drinkHpVal", 50);
                         this.LezDrinkMa = parseIntAttr(parser, "drinkMaVal", 50);
                         this.LezDoWinTimeout = Boolean.parseBoolean(parser.getAttributeValue(null, "winTimeout"));
+                        this.LezHitDelaySec = parseIntAttr(parser, "hitDelaySec", this.LezHitDelaySec);
+                        if (this.LezHitDelaySec < 0) {
+                            this.LezHitDelaySec = 0;
+                        }
                         try {
                             String sayStr = parser.getAttributeValue(null, "say");
                             this.LezSay = sayStr != null ? LezSayType.valueOf(sayStr) : LezSayType.No;
@@ -510,6 +525,7 @@ public class UserConfig {
             serializer.attribute(null, "drinkHpVal", String.valueOf(this.LezDrinkHp));
             serializer.attribute(null, "drinkMaVal", String.valueOf(this.LezDrinkMa));
             serializer.attribute(null, "winTimeout", String.valueOf(this.LezDoWinTimeout));
+            serializer.attribute(null, "hitDelaySec", String.valueOf(Math.max(0, this.LezHitDelaySec)));
             serializer.attribute(null, "say", this.LezSay != null ? this.LezSay.name() : "No");
             serializer.endTag(null, "autoboi");
 

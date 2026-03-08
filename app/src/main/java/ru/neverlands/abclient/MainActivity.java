@@ -157,6 +157,10 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     private String postReloadGuardKey = "";
     private long lastMainFrameTimeoutRetryAtMs = 0L;
     private String lastMainFrameTimeoutRetryUrl = "";
+    private long lastAutoBattleSubmitAtMs = 0L;
+    private final Handler autoBattleDelayHandler = createMainHandler();
+    private Runnable pendingAutoBattleSubmitRunnable;
+    private String pendingAutoBattleSubmitPayload = "";
     private final ActivityResultLauncher<Intent> contactsActivityLauncher =
             registerForActivityResult(
                     new ActivityResultContracts.StartActivityForResult(),
@@ -1631,9 +1635,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         fightViewModel = new ViewModelProvider(this).get(FightViewModel.class);
         fightViewModel.getSubmitAction().observe(this, result -> {
             if (result != null) {
-                // Подаём действие через безопасный wrapper с retry,
-                // чтобы избежать race "AutoSubmit is not defined" после resume/screen on.
-                submitAutoBattleActionToWebView(result, AUTO_SUBMIT_MAX_RETRY_COUNT);
+                enqueueAutoBattleSubmit(result);
                 fightViewModel.onActionSubmitted();
             }
         });
@@ -1642,6 +1644,91 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         startTimer();
         startChatRefresh();
         AutoModeForegroundService.syncServiceState(this, "onCreate");
+    }
+
+    /**
+     * Планирует авто-удар с учётом пользовательской задержки между ударами.
+     *
+     * Поведение:
+     * - если задержка не задана (0 сек), отправляем сразу;
+     * - если задержка задана и ещё не прошла, ставим отложенную отправку payload (postDelayed),
+     *   а не теряем ход.
+     *
+     * Зависимости:
+     * - `AppVars.Profile.LezHitDelaySec` (настройка из AutoBoi -> "Общие"),
+     * - `submitAutoBattleActionToWebView(...)` (реальная отправка POST в бой),
+     * - `lastAutoBattleSubmitAtMs` (дедуп/троттлинг по времени).
+     */
+    private void enqueueAutoBattleSubmit(String payload) {
+        if (payload == null || payload.isEmpty()) {
+            return;
+        }
+
+        long waitMs = getAutoBattleSubmitWaitMs();
+        if (waitMs <= 0L) {
+            clearPendingAutoBattleSubmit();
+            submitAutoBattleNow(payload);
+            return;
+        }
+
+        pendingAutoBattleSubmitPayload = payload;
+        if (pendingAutoBattleSubmitRunnable != null) {
+            autoBattleDelayHandler.removeCallbacks(pendingAutoBattleSubmitRunnable);
+        }
+
+        pendingAutoBattleSubmitRunnable = () -> {
+            String delayedPayload = pendingAutoBattleSubmitPayload;
+            clearPendingAutoBattleSubmit();
+            if (delayedPayload == null || delayedPayload.isEmpty()) {
+                return;
+            }
+            long secondCheckWaitMs = getAutoBattleSubmitWaitMs();
+            if (secondCheckWaitMs > 0L) {
+                // Редкий случай смещения таймера/часов: перепланируем корректно.
+                enqueueAutoBattleSubmit(delayedPayload);
+                return;
+            }
+            submitAutoBattleNow(delayedPayload);
+        };
+
+        autoBattleDelayHandler.postDelayed(pendingAutoBattleSubmitRunnable, waitMs);
+        Log.d(TAG, BG_TRACE_PREFIX + " autoBattleDelay: queued, waitMs="
+                + waitMs + ", configuredSec=" + Math.max(0, AppVars.Profile != null ? AppVars.Profile.LezHitDelaySec : 0));
+    }
+
+    private void submitAutoBattleNow(String payload) {
+        lastAutoBattleSubmitAtMs = System.currentTimeMillis();
+        Log.d(TAG, BG_TRACE_PREFIX + " autoBattleDelay: submit now");
+        // Подаём действие через безопасный wrapper с retry,
+        // чтобы избежать race "AutoSubmit is not defined" после resume/screen on.
+        submitAutoBattleActionToWebView(payload, AUTO_SUBMIT_MAX_RETRY_COUNT);
+    }
+
+    private long getAutoBattleSubmitWaitMs() {
+        int delaySec = 0;
+        if (AppVars.Profile != null) {
+            delaySec = Math.max(0, AppVars.Profile.LezHitDelaySec);
+        }
+        if (delaySec <= 0) {
+            return 0L;
+        }
+        long configuredDelayMs = Math.min(300_000L, delaySec * 1000L);
+        if (lastAutoBattleSubmitAtMs <= 0L) {
+            return 0L;
+        }
+        long elapsedMs = System.currentTimeMillis() - lastAutoBattleSubmitAtMs;
+        if (elapsedMs >= configuredDelayMs) {
+            return 0L;
+        }
+        return configuredDelayMs - elapsedMs;
+    }
+
+    private void clearPendingAutoBattleSubmit() {
+        if (pendingAutoBattleSubmitRunnable != null) {
+            autoBattleDelayHandler.removeCallbacks(pendingAutoBattleSubmitRunnable);
+            pendingAutoBattleSubmitRunnable = null;
+        }
+        pendingAutoBattleSubmitPayload = "";
     }
 
     @SuppressLint("SetJavaScriptEnabled")
@@ -1790,6 +1877,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         stopTimer();
         stopChatRefresh();
         stopRoomUsersPolling();
+        clearPendingAutoBattleSubmit();
         unregisterAppBroadcastReceiverIfNeeded();
         unregisterScreenStateReceiverIfNeeded();
         RoomManager.stopTracing();

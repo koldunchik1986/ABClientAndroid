@@ -6,7 +6,9 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.CheckBox;
+import android.widget.EditText;
 import android.widget.ImageView;
+import android.text.InputType;
 import android.widget.RadioButton;
 import android.widget.RadioGroup;
 import android.widget.SeekBar;
@@ -16,6 +18,7 @@ import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.appcompat.app.AlertDialog;
 import androidx.core.content.ContextCompat;
 import androidx.fragment.app.DialogFragment;
 import androidx.recyclerview.widget.LinearLayoutManager;
@@ -206,8 +209,10 @@ public class AutoBoiSettingsFragment extends DialogFragment {
     public static class GeneralTabFragment extends Fragment {
         private CheckBox checkDoAutoboi, checkDoWaitHp, checkDoWaitMa,
                 checkDoDrinkHp, checkDoDrinkMa, checkDoWinTimeout;
+        private Button btnSetHitDelaySec;
         private SeekBar seekWaitHp, seekWaitMa, seekDrinkHp, seekDrinkMa;
-        private TextView tvWaitHp, tvWaitMa, tvDrinkHp, tvDrinkMa;
+        private TextView tvWaitHp, tvWaitMa, tvDrinkHp, tvDrinkMa, tvHitDelaySecValue;
+        private int pendingHitDelaySec = 0;
 
         @Nullable
         @Override
@@ -232,11 +237,14 @@ public class AutoBoiSettingsFragment extends DialogFragment {
             tvWaitMa = v.findViewById(R.id.tvWaitMa);
             tvDrinkHp = v.findViewById(R.id.tvDrinkHp);
             tvDrinkMa = v.findViewById(R.id.tvDrinkMa);
+            tvHitDelaySecValue = v.findViewById(R.id.tvHitDelaySecValue);
+            btnSetHitDelaySec = v.findViewById(R.id.btnSetHitDelaySec);
 
             setupSeekBar(seekWaitHp, tvWaitHp, "%");
             setupSeekBar(seekWaitMa, tvWaitMa, "%");
             setupSeekBar(seekDrinkHp, tvDrinkHp, "%");
             setupSeekBar(seekDrinkMa, tvDrinkMa, "%");
+            btnSetHitDelaySec.setOnClickListener(btn -> showHitDelayInputDialog());
 
             loadSettings();
         }
@@ -268,6 +276,71 @@ public class AutoBoiSettingsFragment extends DialogFragment {
             seekDrinkMa.setProgress(p.LezDrinkMa);
             tvDrinkMa.setText(p.LezDrinkMa + "%");
             checkDoWinTimeout.setChecked(p.LezDoWinTimeout);
+            pendingHitDelaySec = normalizeHitDelaySec(p.LezHitDelaySec);
+            updateHitDelayLabel(pendingHitDelaySec);
+        }
+
+        /**
+         * Окно ввода настройки "Задержка ударов" в секундах.
+         *
+         * Зависимости:
+         * - хранение значения в `AppVars.Profile.LezHitDelaySec`,
+         * - отображение текущего значения в `tvHitDelaySecValue`,
+         * - фактическое применение значения в `LezFight.BuildFrame()`.
+         *
+         * Формат:
+         * - `0` = legacy случайная задержка 1-2 сек;
+         * - `N > 0` = фиксированная пауза `N` секунд между автоударами.
+         */
+        private void showHitDelayInputDialog() {
+            if (getContext() == null) {
+                return;
+            }
+
+            final UserConfig profile = AppVars.Profile;
+            final int currentDelaySec = profile != null ? Math.max(0, profile.LezHitDelaySec) : 0;
+
+            final EditText input = new EditText(getContext());
+            input.setInputType(InputType.TYPE_CLASS_NUMBER);
+            input.setHint("0 = случайно (1-2 сек)");
+            input.setText(String.valueOf(currentDelaySec));
+            input.setSelection(input.getText().length());
+
+            new AlertDialog.Builder(requireContext())
+                    .setTitle("Задержка ударов")
+                    .setMessage("Введите задержку между ударами в секундах.\n0 = случайная (1-2 сек).")
+                    .setView(input)
+                    .setPositiveButton("ОК", (dialog, which) -> {
+                        int value;
+                        try {
+                            value = Integer.parseInt(input.getText().toString().trim());
+                        } catch (Exception ignored) {
+                            value = currentDelaySec;
+                        }
+                        value = normalizeHitDelaySec(value);
+                        pendingHitDelaySec = value;
+                        updateHitDelayLabel(value);
+                    })
+                    .setNegativeButton("Отмена", null)
+                    .show();
+        }
+
+        private static int normalizeHitDelaySec(int value) {
+            if (value < 0) {
+                return 0;
+            }
+            return Math.min(value, 300);
+        }
+
+        private void updateHitDelayLabel(int delaySec) {
+            if (tvHitDelaySecValue == null) {
+                return;
+            }
+            if (delaySec <= 0) {
+                tvHitDelaySecValue.setText("Задержка ударов: случайная (1-2 сек)");
+            } else {
+                tvHitDelaySecValue.setText("Задержка ударов: " + delaySec + " сек");
+            }
         }
 
         void saveSettings(UserConfig p) {
@@ -290,6 +363,7 @@ public class AutoBoiSettingsFragment extends DialogFragment {
             p.LezDrinkHp = seekDrinkHp.getProgress();
             p.LezDrinkMa = seekDrinkMa.getProgress();
             p.LezDoWinTimeout = checkDoWinTimeout.isChecked();
+            p.LezHitDelaySec = normalizeHitDelaySec(pendingHitDelaySec);
         }
     }
 

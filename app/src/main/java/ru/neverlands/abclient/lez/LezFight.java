@@ -787,7 +787,16 @@ public class LezFight {
         // Собираем hidden-форму удара (аналог ПК версии) и шлём её через submit().
         // Анти-детект/анти-ddos: держим интервал удара в диапазоне 1.0–2.0с.
         // Это ближе к поведению ПК-клиента по темпу, но без "мгновенного" спама запросов.
-        int delay = 1000 + _random.nextInt(1001); // 1.0–2.0s
+        // Настройка задержки между автоударами:
+        // - если в профиле задано `LezHitDelaySec > 0`, используем фиксированную паузу;
+        // - иначе сохраняем legacy-поведение (случайно 1.0-2.0с).
+        // Зависимости:
+        // - значение приходит из UI (AutoBoiSettingsFragment -> "Задержка ударов"),
+        // - хранится/сохраняется в UserConfig (`autoboi@hitDelaySec`).
+        int configuredDelaySec = (AppVars.Profile != null) ? Math.max(0, AppVars.Profile.LezHitDelaySec) : 0;
+        int delay = configuredDelaySec > 0
+                ? configuredDelaySec * 1000
+                : (1000 + _random.nextInt(1001)); // 1.0–2.0s
         sb.append("<form action=\"main.php\" method=POST name=ff>");
         
         sb.append("<input name=post_id type=hidden value=\"7\">");
