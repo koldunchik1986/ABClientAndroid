@@ -44,6 +44,8 @@ public class LoginActivity extends AppCompatActivity {
     private static final int STORAGE_PERMISSION_REQUEST_CODE = 101;
     private static final int COOKIE_WARMUP_MAX_ATTEMPTS = 2;
     private static final long COOKIE_WARMUP_DELAY_MS = 250L;
+    private static final int AUTH_MAX_RETRY_ATTEMPTS = 1;
+    private static final long AUTH_RETRY_DELAY_MS = 1200L;
     private ActivityLoginBinding binding;
     private List<UserConfig> profiles;
     private UserConfig selectedProfile;
@@ -279,35 +281,93 @@ public class LoginActivity extends AppCompatActivity {
             if (isFinishing() || isDestroyed()) {
                 return;
             }
-            startAuthorizeRequest(username, gamePassword, profileToLogin);
+            startAuthorizeRequest(username, gamePassword, profileToLogin, 0);
         });
     }
 
-    private void startAuthorizeRequest(String username, String gamePassword, UserConfig profileToLogin) {
+    /**
+     * Запускает синхронный auth-flow в фоновом потоке с контролем retry-индекса.
+     *
+     * Зависимости:
+     * - {@link AuthManager#authorize(String, String)} как основной HTTP-пайплайн входа;
+     * - главный поток (`Handler`) для безопасной работы с UI и переходами активностей;
+     * - {@link #handleAuthResult(AuthResult, String, String, UserConfig, int)} для развилки
+     *   успех/капча/авто-повтор/финальная ошибка.
+     */
+    private void startAuthorizeRequest(String username, String gamePassword, UserConfig profileToLogin, int retryAttempt) {
         ExecutorService executor = Executors.newSingleThreadExecutor();
         Handler handler = new Handler(Looper.getMainLooper());
         executor.execute(() -> {
             AuthManager authManager = new AuthManager();
             AuthResult result = authManager.authorize(username, gamePassword);
-            handler.post(() -> handleAuthResult(result, username, gamePassword, profileToLogin));
+            handler.post(() -> handleAuthResult(result, username, gamePassword, profileToLogin, retryAttempt));
         });
     }
 
-    private void handleAuthResult(AuthResult result, String username, String gamePassword, UserConfig profileToLogin) {
-        binding.progressBar.setVisibility(View.GONE);
-        binding.loginButton.setEnabled(true);
-
+    /**
+     * Обрабатывает итог попытки авторизации и выполняет один авто-retry для кратковременных
+     * сетевых срывов ("failed to connect"/timeout), чтобы вход проходил с одного нажатия.
+     *
+     * Зависимости:
+     * - {@link #isRetriableAuthError(String, int)} для классификации transient-сбоев;
+     * - {@link #startAuthorizeRequest(String, String, UserConfig, int)} для повторной попытки;
+     * - UI-состояние кнопки/прогресса (`binding.loginButton`, `binding.progressBar`).
+     */
+    private void handleAuthResult(AuthResult result, String username, String gamePassword, UserConfig profileToLogin, int retryAttempt) {
         if (result.isSuccess()) {
+            binding.progressBar.setVisibility(View.GONE);
+            binding.loginButton.setEnabled(true);
             onLoginSuccess(result.getCookies(), gamePassword, profileToLogin);
         } else if (result.isCaptchaRequired()) {
+            binding.progressBar.setVisibility(View.GONE);
+            binding.loginButton.setEnabled(true);
             showCaptchaDialog(username, gamePassword, result.getCaptchaUrl(), result.getVcode(), profileToLogin);
         } else {
             String errorMessage = result != null && result.getErrorMessage() != null
                     ? result.getErrorMessage()
                     : "Ошибка авторизации";
+
+            if (isRetriableAuthError(errorMessage, retryAttempt)) {
+                android.util.Log.w(
+                        "LoginActivity",
+                        "Authorization transient error, auto-retry " + (retryAttempt + 1) + "/" + AUTH_MAX_RETRY_ATTEMPTS
+                                + ": " + errorMessage
+                );
+                binding.progressBar.setVisibility(View.VISIBLE);
+                binding.loginButton.setEnabled(false);
+                new Handler(Looper.getMainLooper()).postDelayed(
+                        () -> startAuthorizeRequest(username, gamePassword, profileToLogin, retryAttempt + 1),
+                        AUTH_RETRY_DELAY_MS
+                );
+                return;
+            }
+
+            binding.progressBar.setVisibility(View.GONE);
+            binding.loginButton.setEnabled(true);
             android.util.Log.w("LoginActivity", "Authorization error: " + errorMessage);
             Toast.makeText(LoginActivity.this, errorMessage, Toast.LENGTH_LONG).show();
         }
+    }
+
+    /**
+     * Классифицирует ошибки авторизации, которые безопасно повторять автоматически.
+     *
+     * Зависимости:
+     * - текст ошибки из {@link AuthResult#getErrorMessage()},
+     * - лимит авто-повторов {@link #AUTH_MAX_RETRY_ATTEMPTS}.
+     */
+    private boolean isRetriableAuthError(String errorMessage, int retryAttempt) {
+        if (retryAttempt >= AUTH_MAX_RETRY_ATTEMPTS || errorMessage == null) {
+            return false;
+        }
+        String lower = errorMessage.toLowerCase();
+        return lower.contains("failed to connect")
+                || lower.contains("timed out")
+                || lower.contains("timeout")
+                || lower.contains("connection reset")
+                || lower.contains("unable to resolve host")
+                || lower.contains("не удалось подключиться")
+                || lower.contains("таймаут");
     }
 
     private void onLoginSuccess(List<HttpCookie> cookies, String gamePassword, UserConfig profileToLogin) {
@@ -419,7 +479,7 @@ public class LoginActivity extends AppCompatActivity {
                 executor.execute(() -> {
                     AuthManager authManager = new AuthManager();
                     AuthResult result = authManager.authorizeWithCaptcha(username, gamePassword, vcode, verify);
-                    handler.post(() -> handleAuthResult(result, username, gamePassword, profileToLogin));
+                    handler.post(() -> handleAuthResult(result, username, gamePassword, profileToLogin, 0));
                 });
             }
         });
