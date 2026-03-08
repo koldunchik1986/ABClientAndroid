@@ -230,6 +230,8 @@ public class UserConfig {
             parser.setFeature(XmlPullParser.FEATURE_PROCESS_NAMESPACES, false);
             parser.setInput(in, null);
 
+            boolean proxyTagParsed = false;
+            boolean legacyProxyNodesParsed = false;
             int eventType = parser.getEventType();
             while (eventType != XmlPullParser.END_DOCUMENT) {
                 if (eventType == XmlPullParser.START_TAG) {
@@ -263,6 +265,41 @@ public class UserConfig {
                         this.ChatKeepLog = Boolean.parseBoolean(parser.getAttributeValue(null, "keepLog"));
                         this.DoAutoAnswer = Boolean.parseBoolean(parser.getAttributeValue(null, "autoAnswer"));
                         this.DoChatLevels = Boolean.parseBoolean(parser.getAttributeValue(null, "chatLevels"));
+                    } else if ("proxy".equalsIgnoreCase(tagName)) {
+                        boolean proxyActive = parseBoolAttr(parser, "active", this.DoProxy || this.UseProxy);
+                        String proxyAddress = getAttributeValueIgnoreCase(parser, "address");
+                        String proxyUserName = getAttributeValueIgnoreCase(parser, "username");
+                        String proxyPassword = getAttributeValueIgnoreCase(parser, "password");
+                        proxyTagParsed = true;
+
+                        this.DoProxy = proxyActive;
+                        this.UseProxy = proxyActive;
+                        this.ProxyAddress = proxyAddress != null ? proxyAddress : this.ProxyAddress;
+                        this.ProxyUserName = proxyUserName != null ? proxyUserName : this.ProxyUserName;
+                        this.ProxyPassword = proxyPassword != null ? proxyPassword : this.ProxyPassword;
+                        android.util.Log.i(TAG, "load: proxy tag parsed, active=" + proxyActive
+                                + ", address=" + this.ProxyAddress);
+                    } else if ("DoProxy".equalsIgnoreCase(tagName) || "UseProxy".equalsIgnoreCase(tagName)) {
+                        // Legacy Android migration: старые профили могли хранить флаги отдельными узлами
+                        // без C#-совместимого `<proxy ...>`.
+                        boolean value = parseBoolNodeText(parser, false);
+                        this.DoProxy = value;
+                        this.UseProxy = value;
+                        legacyProxyNodesParsed = true;
+                        android.util.Log.i(TAG, "load: legacy proxy flag node parsed, value=" + value);
+                    } else if ("ProxyAddress".equalsIgnoreCase(tagName)) {
+                        String value = parseNodeText(parser, this.ProxyAddress);
+                        this.ProxyAddress = value == null ? "" : value.trim();
+                        legacyProxyNodesParsed = true;
+                        android.util.Log.i(TAG, "load: legacy ProxyAddress node parsed, address=" + this.ProxyAddress);
+                    } else if ("ProxyUserName".equalsIgnoreCase(tagName)) {
+                        String value = parseNodeText(parser, this.ProxyUserName);
+                        this.ProxyUserName = value == null ? "" : value.trim();
+                        legacyProxyNodesParsed = true;
+                    } else if ("ProxyPassword".equalsIgnoreCase(tagName)) {
+                        String value = parseNodeText(parser, this.ProxyPassword);
+                        this.ProxyPassword = value == null ? "" : value.trim();
+                        legacyProxyNodesParsed = true;
                     } else if ("autoboi".equals(tagName)) {
                         this.LezDoAutoboi = Boolean.parseBoolean(parser.getAttributeValue(null, "enabled"));
                         this.LezDoFury = parseBoolAttr(parser, "fury", this.LezDoFury);
@@ -426,6 +463,10 @@ public class UserConfig {
                 }
                 eventType = parser.next();
             }
+            if (!proxyTagParsed && legacyProxyNodesParsed) {
+                android.util.Log.i(TAG, "load: migrated legacy proxy nodes into runtime profile fields");
+            }
+            normalizeProxyFlags();
             normalizeLezGroups();
             this.LezDoFury = hasAnyLezFuryGroup();
             return true;
@@ -440,6 +481,7 @@ public class UserConfig {
      * @param context Контекст приложения.
      */
     public void save(Context context) {
+        normalizeProxyFlags();
         // Перед сохранением приводим список к C#-совместимому виду:
         // - гарантируем наличие группы "Все 0+"
         // - сортируем по LezBotsGroup.compareTo() (Id DESC, MinimalLevel DESC)
@@ -464,6 +506,15 @@ public class UserConfig {
             serializer.attribute(null, "password", this.UserPassword);
             serializer.attribute(null, "isEncrypted", String.valueOf(this.isEncrypted));
             serializer.endTag(null, "user");
+
+            // C# parity: сериализуем proxy-тег профиля в формате
+            // `<proxy active address username password>`.
+            serializer.startTag(null, "proxy");
+            serializer.attribute(null, "active", String.valueOf(this.DoProxy));
+            serializer.attribute(null, "address", this.ProxyAddress != null ? this.ProxyAddress : "");
+            serializer.attribute(null, "username", this.ProxyUserName != null ? this.ProxyUserName : "");
+            serializer.attribute(null, "password", this.ProxyPassword != null ? this.ProxyPassword : "");
+            serializer.endTag(null, "proxy");
 
             // Сохранение контактов
             serializer.startTag(null, "contacts");
@@ -619,6 +670,37 @@ public class UserConfig {
         try { return Integer.parseInt(val); } catch (NumberFormatException e) { return defaultVal; }
     }
 
+    /**
+     * Читает текстовое содержимое текущего XML-узла и возвращает fallback при ошибке.
+     *
+     * Назначение:
+     * - используется для миграции legacy-профилей, где proxy-параметры хранились как отдельные узлы,
+     *   а не как `<proxy ...>` атрибуты.
+     *
+     * Зависимости:
+     * - вызов `parser.nextText()` допустим только из обработчика `START_TAG`;
+     * - все исключения гасим локально, чтобы не ломать загрузку профиля целиком.
+     */
+    private static String parseNodeText(XmlPullParser parser, String fallback) {
+        try {
+            String value = parser.nextText();
+            return value != null ? value : fallback;
+        } catch (Exception e) {
+            return fallback;
+        }
+    }
+
+    /**
+     * Безопасно читает bool-значение из текстового XML-узла.
+     */
+    private static boolean parseBoolNodeText(XmlPullParser parser, boolean fallback) {
+        String value = parseNodeText(parser, String.valueOf(fallback));
+        if (value == null || value.trim().isEmpty()) {
+            return fallback;
+        }
+        return Boolean.parseBoolean(value.trim());
+    }
+
     private static boolean parseBoolAttr(XmlPullParser parser, String attr, boolean defaultVal) {
         String val = getAttributeValueIgnoreCase(parser, attr);
         if (val == null || val.isEmpty()) return defaultVal;
@@ -664,6 +746,27 @@ public class UserConfig {
      * 2) группы отсортированы по приоритету подбора (Id DESC, MinimalLevel DESC),
      *    чтобы LezFight.SelectFoeGroup() мог брать первую подошедшую группу 1:1 как в C#.
      */
+    /**
+     * Нормализует proxy-флаги и строковые поля в единый C#-совместимый вид.
+     *
+     * Зависимости:
+     * - `DoProxy` используется как основной runtime-флаг;
+     * - `UseProxy` оставлен как legacy-поле старых Android профилей и синхронизируется с `DoProxy`;
+     * - блок `<proxy ...>` при load/save должен опираться на уже нормализованные значения.
+     */
+    private void normalizeProxyFlags() {
+        boolean merged = this.DoProxy || this.UseProxy;
+        if (this.DoProxy != merged || this.UseProxy != merged) {
+            android.util.Log.i(TAG, "normalizeProxyFlags: doProxy=" + this.DoProxy
+                    + ", useProxy=" + this.UseProxy + " -> merged=" + merged);
+        }
+        this.DoProxy = merged;
+        this.UseProxy = merged;
+        if (this.ProxyAddress == null) this.ProxyAddress = "";
+        if (this.ProxyUserName == null) this.ProxyUserName = "";
+        if (this.ProxyPassword == null) this.ProxyPassword = "";
+    }
+
     private void normalizeLezGroups() {
         if (this.LezGroups == null) {
             this.LezGroups = new ArrayList<>();

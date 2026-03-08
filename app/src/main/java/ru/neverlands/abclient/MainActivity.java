@@ -87,6 +87,7 @@ import ru.neverlands.abclient.manager.TabManager;
 import ru.neverlands.abclient.manager.RoomManager;
 import ru.neverlands.abclient.model.UserConfig;
 import ru.neverlands.abclient.proxy.CookiesManager;
+import ru.neverlands.abclient.proxy.ProxyRuntimeManager;
 import ru.neverlands.abclient.utils.AppLogger;
 import ru.neverlands.abclient.utils.AppVars;
 import ru.neverlands.abclient.utils.Chat;
@@ -1439,7 +1440,14 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         ByteArrayOutputStream outputStream = null;
         try {
             URL url = new URL(captchaUrl);
-            connection = (HttpURLConnection) url.openConnection();
+            java.net.Proxy activeProxy = ProxyRuntimeManager.getActiveJavaProxyOrNull();
+            if (activeProxy == null && ProxyRuntimeManager.isStrictProxyRequiredForCurrentProfile()) {
+                Log.e(TAG, "PROXY_FAIL: strict proxy enabled and runtime proxy unavailable, blocking direct captcha download: " + captchaUrl);
+                return null;
+            }
+            connection = activeProxy != null
+                    ? (HttpURLConnection) url.openConnection(activeProxy)
+                    : (HttpURLConnection) url.openConnection();
             connection.setRequestMethod("GET");
             connection.setConnectTimeout(10000);
             connection.setReadTimeout(10000);
@@ -1586,6 +1594,13 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         if (AppVars.Profile != null && AppVars.Profile.UserNick != null) {
             getSupportActionBar().setTitle(AppVars.Profile.UserNick);
         }
+
+        // Поднимаем proxy runtime до первой загрузки frame-URL, чтобы сетевой контур
+        // Main WebView и вспомогательных WebView сразу работал через localhost proxy.
+        ProxyRuntimeManager.ensureStarted(getApplicationContext(), AppVars.Profile);
+        ProxyRuntimeManager.applyWebViewProxyOverride(getApplicationContext());
+        Log.i(TAG, "PROXY_BOOT: MainActivity runtime state, running="
+                + ProxyRuntimeManager.isRunning() + ", port=" + ProxyRuntimeManager.getActivePort());
         
         DrawerLayout drawer = binding.drawerLayout;
         NavigationView navigationView = binding.navView;
@@ -1890,7 +1905,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         }
 
         if (isExiting) {
-            // ((ABClientApplication) getApplication()).stopProxyService();
+            ProxyRuntimeManager.stop(true);
         }
 
         destroyWebView(binding.appBarMain.contentMain.webView);

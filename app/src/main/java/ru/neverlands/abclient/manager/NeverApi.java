@@ -12,6 +12,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 import ru.neverlands.abclient.utils.AppVars;
+import ru.neverlands.abclient.proxy.ProxyRuntimeManager;
 import ru.neverlands.abclient.utils.Russian;
 
 /**
@@ -133,7 +134,17 @@ public class NeverApi {
         HttpURLConnection conn = null;
         try {
             URL url = new URL(urlString);
-            conn = (HttpURLConnection) url.openConnection();
+            java.net.Proxy activeProxy = ProxyRuntimeManager.getActiveJavaProxyOrNull();
+            if (activeProxy == null && ProxyRuntimeManager.isStrictProxyRequiredForCurrentProfile()) {
+                android.util.Log.e(TAG, "PROXY_FAIL: strict proxy enabled and runtime proxy unavailable, blocking direct NeverApi call: " + urlString);
+                return null;
+            }
+            android.util.Log.d(TAG, "PROXY_BINDING: NeverApi openConnection via "
+                    + (activeProxy != null ? "local proxy" : "direct")
+                    + ", url=" + urlString);
+            conn = activeProxy != null
+                    ? (HttpURLConnection) url.openConnection(activeProxy)
+                    : (HttpURLConnection) url.openConnection();
             conn.setConnectTimeout(TIMEOUT_MS);
             conn.setReadTimeout(TIMEOUT_MS);
             conn.setRequestMethod("GET");

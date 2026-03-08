@@ -23,6 +23,7 @@ import java.util.zip.GZIPInputStream;
 
 import ru.neverlands.abclient.postfilter.Filter;
 import ru.neverlands.abclient.proxy.CookiesManager;
+import ru.neverlands.abclient.proxy.ProxyRuntimeManager;
 
 public class WebViewRequestInterceptor {
     private static final String TAG = "WebViewInterceptor";
@@ -233,7 +234,17 @@ public class WebViewRequestInterceptor {
             }
 
             URL url = new URL(urlString);
-            HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+            java.net.Proxy activeProxy = ProxyRuntimeManager.getActiveJavaProxyOrNull();
+            if (activeProxy == null && ProxyRuntimeManager.isStrictProxyRequiredForCurrentProfile()) {
+                Log.e(TAG, "PROXY_FAIL: strict proxy enabled and runtime proxy unavailable, blocking direct WebView request: " + urlString);
+                return buildStrictProxyBlockedResponse();
+            }
+            Log.d(TAG, "PROXY_BINDING: interceptor openConnection via "
+                    + (activeProxy != null ? "local proxy" : "direct")
+                    + ", url=" + urlString);
+            HttpURLConnection connection = activeProxy != null
+                    ? (HttpURLConnection) url.openConnection(activeProxy)
+                    : (HttpURLConnection) url.openConnection();
             connection.setInstanceFollowRedirects(true);
             connection.setRequestMethod("GET");
             connection.setDoInput(true);
@@ -349,7 +360,17 @@ public class WebViewRequestInterceptor {
 
             // Handle "Cookie..." transitional page by re-requesting once with cookies
             if (preview.contains("Cookie...")) {
-                HttpURLConnection second = (HttpURLConnection) url.openConnection();
+                java.net.Proxy secondProxy = ProxyRuntimeManager.getActiveJavaProxyOrNull();
+                if (secondProxy == null && ProxyRuntimeManager.isStrictProxyRequiredForCurrentProfile()) {
+                    Log.e(TAG, "PROXY_FAIL: strict proxy enabled and runtime proxy unavailable, blocking direct WebView retry: " + urlString);
+                    return buildStrictProxyBlockedResponse();
+                }
+                Log.d(TAG, "PROXY_BINDING: interceptor retry openConnection via "
+                        + (secondProxy != null ? "local proxy" : "direct")
+                        + ", url=" + urlString);
+                HttpURLConnection second = secondProxy != null
+                        ? (HttpURLConnection) url.openConnection(secondProxy)
+                        : (HttpURLConnection) url.openConnection();
                 second.setInstanceFollowRedirects(true);
                 second.setRequestMethod("GET");
                 second.setDoInput(true);
@@ -441,8 +462,27 @@ public class WebViewRequestInterceptor {
             return response;
         } catch (Exception e) {
             Log.e(TAG, "Intercept failed: " + request.getUrl(), e);
+            if (ProxyRuntimeManager.isStrictProxyRequiredForCurrentProfile()) {
+                return buildStrictProxyBlockedResponse();
+            }
             return null;
         }
+    }
+
+    /**
+     * Возвращает короткий synthetic-ответ для случая, когда strict proxy включен,
+     * но локальный proxy runtime недоступен.
+     *
+     * Назначение:
+     * - не отдавать WebView управление в direct network path (`return null`),
+     *   который может привести к утечке реального IP при включенном прокси.
+     */
+    private static WebResourceResponse buildStrictProxyBlockedResponse() {
+        return new WebResourceResponse(
+                "text/plain",
+                "utf-8",
+                new ByteArrayInputStream("proxy runtime unavailable".getBytes(Charset.forName("UTF-8")))
+        );
     }
 
     /**

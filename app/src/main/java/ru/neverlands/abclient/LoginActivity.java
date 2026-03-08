@@ -38,6 +38,7 @@ import ru.neverlands.abclient.databinding.ActivityLoginBinding;
 import ru.neverlands.abclient.model.AuthResult;
 import ru.neverlands.abclient.model.UserConfig;
 import ru.neverlands.abclient.network.NetworkClient;
+import ru.neverlands.abclient.proxy.ProxyRuntimeManager;
 import ru.neverlands.abclient.proxy.CookiesManager;
 import ru.neverlands.abclient.utils.AppVars;
 import ru.neverlands.abclient.utils.CryptoUtils;
@@ -255,6 +256,38 @@ public class LoginActivity extends AppCompatActivity {
     }
 
     private void clearCookiesAndAuthorize(String username, String gamePassword, UserConfig profileToLogin) {
+        // Поднимаем proxy runtime до auth-flow, чтобы первый вход уже шёл через единый контур,
+        // как в ПК версии (proxy стартует до основной логики приложения).
+        android.util.Log.i(
+                "LoginActivity",
+                "PROXY_BOOT: login pre-auth start, doProxy=" + profileToLogin.DoProxy
+                        + ", useProxy=" + profileToLogin.UseProxy
+                        + ", address=" + (profileToLogin.ProxyAddress == null ? "" : profileToLogin.ProxyAddress)
+        );
+        boolean proxyReady = ProxyRuntimeManager.ensureStarted(getApplicationContext(), profileToLogin);
+        if (!proxyReady) {
+            String reason = ProxyRuntimeManager.getLastStartError();
+            android.util.Log.e(
+                    "LoginActivity",
+                    "PROXY_FAIL: proxy runtime start failed before authorize, reason="
+                            + (reason == null ? "" : reason)
+            );
+            binding.progressBar.setVisibility(View.GONE);
+            binding.loginButton.setEnabled(true);
+            String message = (reason == null || reason.trim().isEmpty())
+                    ? "Не удалось запустить прокси-контур входа"
+                    : "Ошибка прокси: " + reason;
+            Toast.makeText(this, message, Toast.LENGTH_LONG).show();
+            return;
+        }
+        android.util.Log.i(
+                "LoginActivity",
+                "PROXY_BOOT: proxy runtime ready, port=" + ProxyRuntimeManager.getActivePort()
+        );
+
+        // Пересобираем сетевой клиент, чтобы он использовал актуальный localhost proxy endpoint.
+        NetworkClient.invalidateInstance();
+
         // Each new login must start from a clean cookie state (desktop behavior).
         AppVars.lastCookies = null;
         NetworkClient.clearCookies();

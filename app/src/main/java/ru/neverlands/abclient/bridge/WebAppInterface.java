@@ -28,6 +28,7 @@ import ru.neverlands.abclient.manager.ContactsManager;
 import ru.neverlands.abclient.model.AutoboiState;
 import ru.neverlands.abclient.model.Prims;
 import ru.neverlands.abclient.proxy.CookiesManager;
+import ru.neverlands.abclient.proxy.ProxyRuntimeManager;
 import ru.neverlands.abclient.utils.AppVars;
 import ru.neverlands.abclient.utils.Russian;
 
@@ -607,7 +608,17 @@ public class WebAppInterface {
         HttpURLConnection connection = null;
         try {
             URL target = new URL(url);
-            connection = (HttpURLConnection) target.openConnection();
+            java.net.Proxy activeProxy = ProxyRuntimeManager.getActiveJavaProxyOrNull();
+            if (activeProxy == null && ProxyRuntimeManager.isStrictProxyRequiredForCurrentProfile()) {
+                Log.e("WebAppInterface", "PROXY_FAIL: strict proxy enabled and runtime proxy unavailable, blocking direct chat POST: " + url);
+                return null;
+            }
+            Log.d("WebAppInterface", "PROXY_BINDING: chat POST via "
+                    + (activeProxy != null ? "local proxy" : "direct")
+                    + ", url=" + url);
+            connection = activeProxy != null
+                    ? (HttpURLConnection) target.openConnection(activeProxy)
+                    : (HttpURLConnection) target.openConnection();
             connection.setInstanceFollowRedirects(true);
             connection.setRequestMethod("POST");
             connection.setDoInput(true);

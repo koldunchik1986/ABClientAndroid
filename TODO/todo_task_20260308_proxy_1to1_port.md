@@ -41,41 +41,41 @@
 - [x] Выделить первопричины текущих проблем входа и нестабильности (отсутствие единого proxy-runtime слоя).
 
 ## Этап 4. Проектирование 1:1 для Android
-- [ ] Спроектировать `ProxyRuntimeManager`:
-  - [ ] жизненный цикл локального прокси;
-  - [ ] публикация активного порта и режима upstream/direct.
-- [ ] Спроектировать `LocalProxyService` (foreground/bound) + accept loop.
-- [ ] Спроектировать session pipeline:
-  - [ ] разбор запроса;
-  - [ ] выбор назначения (upstream или origin);
-  - [ ] прокидка/нормализация заголовков;
-  - [ ] поддержка `Proxy-Authorization` для upstream.
-- [ ] Спроектировать интеграцию с WebView:
-  - [ ] `WebViewProxyHelper.setWebViewProxy("127.0.0.1", activePort, ...)`;
-  - [ ] fallback clear/restore при остановке.
-- [ ] Спроектировать интеграцию с OkHttp/авторизацией:
-  - [ ] единая фабрика клиента с `Proxy(Type.HTTP, 127.0.0.1:activePort)`;
+- [x] Спроектировать `ProxyRuntimeManager`:
+  - [x] жизненный цикл локального прокси;
+  - [x] публикация активного порта и режима upstream/direct.
+- [-] Спроектировать `LocalProxyService` (foreground/bound) + accept loop.
+- [x] Спроектировать session pipeline:
+  - [x] разбор запроса;
+  - [x] выбор назначения (upstream или origin);
+  - [x] прокидка/нормализация заголовков;
+  - [x] поддержка `Proxy-Authorization` для upstream.
+- [x] Спроектировать интеграцию с WebView:
+  - [x] `WebViewProxyHelper.setWebViewProxy("127.0.0.1", activePort, ...)`;
+  - [x] fallback clear/restore при остановке.
+- [x] Спроектировать интеграцию с OkHttp/авторизацией:
+  - [x] единая фабрика клиента с `Proxy(Type.HTTP, 127.0.0.1:activePort)`;
   - [ ] единый cookie-контур.
-- [ ] Спроектировать совместимость профиля:
-  - [ ] убрать расхождение `UseProxy` vs `DoProxy` (один источник истины);
-  - [ ] добавить чтение/запись `<proxy ...>` в `.profile`.
+- [x] Спроектировать совместимость профиля:
+  - [x] убрать расхождение `UseProxy` vs `DoProxy` (один источник истины);
+  - [x] добавить чтение/запись `<proxy ...>` в `.profile`.
 
 ## Этап 5. Реализация
-- [ ] Реализовать `ProxyRuntimeManager`.
-- [ ] Реализовать `LocalProxyService` и базовый session-handler.
-- [ ] Включить proxy-runtime на старте приложения/сессии.
-- [ ] Подключить WebView к локальному proxy через `ProxyController`.
-- [ ] Подключить Auth/NetworkClient к локальному proxy.
-- [ ] Доработать `UserConfig` для полноценной сериализации `<proxy>`.
+- [x] Реализовать `ProxyRuntimeManager`.
+- [-] Реализовать `LocalProxyService` и базовый session-handler.
+- [x] Включить proxy-runtime на старте приложения/сессии.
+- [x] Подключить WebView к локальному proxy через `ProxyController`.
+- [x] Подключить Auth/NetworkClient к локальному proxy.
+- [x] Доработать `UserConfig` для полноценной сериализации `<proxy>`.
 
 ## Этап 6. Логирование и диагностика
-- [ ] Ввести обязательные logcat-маркеры:
-  - [ ] `PROXY_BOOT` (start/stop, port, mode);
-  - [ ] `PROXY_UPSTREAM` (gateway/auth on/off);
-  - [ ] `PROXY_SESSION` (client->target, status, latency);
-  - [ ] `PROXY_AUTH` (без утечки секретов; только факты наличия/режима);
-  - [ ] `PROXY_FAIL` (исключения и fallback).
-- [ ] Добавить dedup-ограничение для шумных повторяющихся ошибок.
+- [x] Ввести обязательные logcat-маркеры:
+  - [x] `PROXY_BOOT` (start/stop, port, mode);
+  - [x] `PROXY_UPSTREAM` (gateway/auth on/off);
+  - [x] `PROXY_SESSION` (client->target, status, latency);
+  - [x] `PROXY_AUTH` (без утечки секретов; только факты наличия/режима);
+  - [x] `PROXY_FAIL` (исключения и fallback).
+- [x] Добавить dedup-ограничение для шумных повторяющихся ошибок.
 
 ## Критерии готовности
 - [ ] Вход в игру не деградирует на «двойной таймаут» из-за отсутствия proxy runtime.
@@ -87,3 +87,4 @@
 ## Артефакты этой сессии
 - [x] Подготовить детальную инструкцию в `Instruction/proxy.md`.
 - [x] Подготовить сводный diff/roadmap в `TODO/Todo_proxy.md`.
+
