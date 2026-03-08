@@ -33,12 +33,17 @@ public final class FishAjaxPhp {
     private static final long FISH_AUTORELOAD_SAFETY_MS = 350L;
     private static final long FISH_CYCLE_RETRY_DELAY_MS = 12_000L;
     private static final int FISH_CYCLE_MAX_ATTEMPTS = 4;
+    private static final long FISH_NO_CAPTCHA_FALLBACK_DELAY_MS = 1200L;
+    private static final long FISH_NO_CAPTCHA_FALLBACK_DEDUP_MS = 2500L;
     private static volatile String lastFishCaptchaDialogKey = "";
     private static volatile long lastFishCaptchaDialogAtMs = 0L;
     private static volatile long lastFishAutoreloadAtMs = 0L;
     private static volatile long lastFishAutoreloadDueAtMs = 0L;
     private static volatile long lastFishAct1AtMs = 0L;
+    private static volatile long lastFishAct2AtMs = 0L;
     private static volatile long lastFishCycleToken = 0L;
+    private static volatile String lastFishNoCaptchaFallbackKey = "";
+    private static volatile long lastFishNoCaptchaFallbackAtMs = 0L;
 
     private static final Map<String, Double> FISH_NV = new LinkedHashMap<>();
     private static final Map<String, Double> FISH_MASS = new LinkedHashMap<>();
@@ -112,6 +117,7 @@ public final class FishAjaxPhp {
         }
 
         if (lowerAddress.contains("act=2")) {
+            lastFishAct2AtMs = System.currentTimeMillis();
             syncFishCooldownAndScheduleNextCycle(html);
         }
 
@@ -195,6 +201,7 @@ public final class FishAjaxPhp {
                 && !state.captchaToken.isEmpty()
                 && !"00000".equals(state.captchaToken);
         if (!captchaRequired) {
+            scheduleNoCaptchaAct2Fallback(state.vcode, selection.id, lastFishAct1AtMs);
             Log.d(TAG, "AUTO_FISH_TRACE act1: captcha not required, primid=" + selection.id
                     + ", vcode=" + state.vcode);
             return;
@@ -210,6 +217,83 @@ public final class FishAjaxPhp {
 
         Log.d(TAG, "AUTO_FISH_TRACE act1: captcha required, primid=" + selection.id
                 + ", vcode=" + state.vcode + ", captcha=" + captchaUrl);
+    }
+
+    /**
+     * Защитный no-captcha fallback: если сервер отдал `act=1` без капчи, но JS-ветка map.js
+     * не отправила `act=2`, через короткую задержку отправляем `act=2` принудительно.
+     *
+     * Зависимости:
+     * - `lastFishAct2AtMs`: контроль, что после текущего `act=1` уже пришёл `act=2` и дубль не нужен;
+     * - `MainActivity.getMainWebView()` + JS `AjaxGet(...)`: нативный fallback остаётся в игровом ajax-контуре;
+     * - `isAutoFishEnabled()`: не отправляем запрос после ручного выключения авто-рыбалки.
+     */
+    private static void scheduleNoCaptchaAct2Fallback(String vcode, String primid, long act1AtMs) {
+        if (vcode == null || vcode.isEmpty() || primid == null || primid.isEmpty()) {
+            return;
+        }
+        String safeVcode = vcode.replaceAll("[^a-zA-Z0-9]", "");
+        String safePrimid = primid.replaceAll("[^0-9]", "");
+        if (safeVcode.isEmpty() || safePrimid.isEmpty()) {
+            return;
+        }
+
+        long now = System.currentTimeMillis();
+        String key = safePrimid + "|" + safeVcode;
+        if (key.equals(lastFishNoCaptchaFallbackKey)
+                && now - lastFishNoCaptchaFallbackAtMs < FISH_NO_CAPTCHA_FALLBACK_DEDUP_MS) {
+            return;
+        }
+        lastFishNoCaptchaFallbackKey = key;
+        lastFishNoCaptchaFallbackAtMs = now;
+
+        MainActivity activity = (AppVars.mainActivity == null) ? null : AppVars.mainActivity.get();
+        if (activity == null) {
+            return;
+        }
+
+        activity.runOnUiThread(() -> {
+            WebView webView = activity.getMainWebView();
+            if (webView == null) {
+                return;
+            }
+            webView.postDelayed(() -> {
+                if (!isAutoFishEnabled()) {
+                    return;
+                }
+                if (lastFishAct2AtMs >= act1AtMs) {
+                    Log.d(TAG, "AUTO_FISH_TRACE no-captcha fallback skip: act2 already seen, primid="
+                            + safePrimid + ", vcode=" + safeVcode);
+                    return;
+                }
+
+                String js = "(function(){"
+                        + "try{"
+                        + " if(typeof AjaxGet==='function'){"
+                        + "   AjaxGet('fish_ajax.php?act=2&primid=" + safePrimid + "&vcode=" + safeVcode + "&r='+Math.random());"
+                        + "   return 'ajax';"
+                        + " }"
+                        + " if(typeof FishStart==='function'){ FishStart('" + safeVcode + "',0); return 'fishstart'; }"
+                        + "}catch(e){ return 'err:'+e; }"
+                        + "return 'miss';"
+                        + "})()";
+                webView.evaluateJavascript(js, value -> {
+                    Log.d(TAG, "AUTO_FISH_TRACE no-captcha fallback submit result=" + value
+                            + ", primid=" + safePrimid + ", vcode=" + safeVcode);
+                    boolean jsOk = value != null
+                            && (value.contains("ajax") || value.contains("fishstart"));
+                    if (jsOk) {
+                        return;
+                    }
+                    String url = "http://neverlands.ru/gameplay/ajax/fish_ajax.php?act=2"
+                            + "&primid=" + safePrimid
+                            + "&vcode=" + safeVcode
+                            + "&r=" + System.currentTimeMillis();
+                    Log.d(TAG, "AUTO_FISH_TRACE no-captcha fallback loadUrl: " + url);
+                    webView.loadUrl(url);
+                });
+            }, FISH_NO_CAPTCHA_FALLBACK_DELAY_MS);
+        });
     }
 
     /**

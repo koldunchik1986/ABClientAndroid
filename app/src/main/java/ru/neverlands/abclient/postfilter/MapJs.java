@@ -18,6 +18,22 @@ import java.nio.charset.Charset;
 public class MapJs {
     private static final String ABCLIENT_MAP_STUB_MARKER = "/*ABCLIENT_MAP_STUBS*/";
     private static final Charset WINDOWS_1251 = Charset.forName("windows-1251");
+    /**
+     * C#-паритет для no-captcha рыбалки:
+     * сервер может прислать маркер капчи как пустую строку ("") или строку "00000".
+     *
+     * В оригинальном `map.js` автозаброс без капчи запускается только по условию `!ingr[1]`,
+     * из-за чего кейс `ingr[1] == "00000"` не попадает в auto-flow и `act=2` не отправляется.
+     *
+     * Зависимости:
+     * - server payload `fish_ajax.php?act=1` (`ingr[1]` = captcha-token);
+     * - bridge `window.external.IsAutoFish()` / `SetFishNoCaptchaReady()`;
+     * - `FishAjaxPhp.processFishAct1(...)`, где "00000" уже трактуется как "капча не требуется".
+     */
+    private static final String FISH_NO_CAPTCHA_CONDITION_OLD =
+            "if (!ingr[1] && window.external.IsAutoFish()) {";
+    private static final String FISH_NO_CAPTCHA_CONDITION_NEW =
+            "if ((!ingr[1] || ingr[1] == '00000') && window.external.IsAutoFish()) {";
 
     /**
      * JS-prelude со стабами функций, которые должны существовать до выполнения server-side `map.js`.
@@ -47,7 +63,9 @@ public class MapJs {
             return array;
         }
 
-        String patched = MAP_JS_SAFE_PRELUDE + js;
+        // Нормализуем no-captcha условие авто-рыбалки: учитываем пустой токен и "00000".
+        String normalizedFishNoCaptcha = js.replace(FISH_NO_CAPTCHA_CONDITION_OLD, FISH_NO_CAPTCHA_CONDITION_NEW);
+        String patched = MAP_JS_SAFE_PRELUDE + normalizedFishNoCaptcha;
         return patched.getBytes(WINDOWS_1251);
     }
 }
