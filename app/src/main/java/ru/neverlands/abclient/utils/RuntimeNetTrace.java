@@ -16,6 +16,11 @@ import java.util.Locale;
  * - потребитель: `MainActivity.updateClock()` (обновляет `network_debug_text_view`).
  */
 public final class RuntimeNetTrace {
+    public static final int COLOR_NEUTRAL = 0;
+    public static final int COLOR_OK = 1;
+    public static final int COLOR_WARN = 2;
+    public static final int COLOR_FAIL = 3;
+
     private static final int MAX_TEXT_LEN = 220;
     private static volatile long lastAtMs = 0L;
     private static volatile String lastCommand = "NET";
@@ -32,7 +37,7 @@ public final class RuntimeNetTrace {
      */
     public static void push(String command, String values) {
         lastAtMs = System.currentTimeMillis();
-        lastCommand = safe(command);
+        lastCommand = safe(command).toUpperCase(Locale.ROOT);
         lastValues = safe(values);
     }
 
@@ -51,6 +56,39 @@ public final class RuntimeNetTrace {
         return line;
     }
 
+    /**
+     * Возвращает цветовое состояние runtime-строки для status bar.
+     *
+     * Логика:
+     * - FAIL: есть признаки ошибки/блокировки;
+     * - WARN: direct route/timeout;
+     * - OK: proxy/upstream пакет;
+     * - NEUTRAL: прочие события.
+     */
+    public static int colorStateForUi() {
+        String cmd = safe(lastCommand).toLowerCase(Locale.ROOT);
+        String values = safe(lastValues).toLowerCase(Locale.ROOT);
+        String combined = cmd + " " + values;
+
+        if (combined.contains("fail")
+                || combined.contains("blocked")
+                || combined.contains("error")
+                || combined.contains("407")
+                || combined.contains("502")) {
+            return COLOR_FAIL;
+        }
+        if (combined.contains("direct")
+                || combined.contains("timeout")) {
+            return COLOR_WARN;
+        }
+        if (combined.contains("proxy")
+                || combined.contains("upstream")
+                || combined.contains("mode=up")) {
+            return COLOR_OK;
+        }
+        return COLOR_NEUTRAL;
+    }
+
     private static String safe(String value) {
         if (value == null) {
             return "";
@@ -58,4 +96,3 @@ public final class RuntimeNetTrace {
         return value.replace('\n', ' ').replace('\r', ' ').trim();
     }
 }
-

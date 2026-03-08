@@ -156,6 +156,16 @@
         </com.google.android.material.textfield.TextInputLayout>
 
         <Button
+            android:id="@+id/test_proxy_button"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:text="ТЕСТ ПРОКСИ"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@+id/proxy_password_layout" />
+
+        <Button
             android:id="@+id/save_button"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
@@ -163,7 +173,7 @@
             android:text="@string/profile_save"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@+id/proxy_password_layout" />
+            app:layout_constraintTop_toBottomOf="@+id/test_proxy_button" />
 
     </androidx.constraintlayout.widget.ConstraintLayout>
 </ScrollView>

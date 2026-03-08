@@ -2,29 +2,29 @@ package ru.neverlands.abclient;
 
 import android.os.Bundle;
 import android.text.TextUtils;
-import android.widget.Toast;
-
-import androidx.appcompat.app.AppCompatActivity;
-
-import java.io.File;
-
-import ru.neverlands.abclient.databinding.ActivityProfileBinding;
-import ru.neverlands.abclient.model.UserConfig;
-
-import android.os.Bundle;
-import android.text.TextUtils;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.widget.EditText;
 import android.widget.Toast;
 
-import androidx.appcompat.app.AlertDialog;
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.app.AlertDialog;
 
 import java.io.File;
+import java.net.InetSocketAddress;
+import java.net.Proxy;
+import java.nio.charset.StandardCharsets;
+import java.util.concurrent.TimeUnit;
+
+import okhttp3.Credentials;
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
+import okhttp3.Response;
 
 import ru.neverlands.abclient.databinding.ActivityProfileBinding;
 import ru.neverlands.abclient.model.UserConfig;
+import ru.neverlands.abclient.utils.AppVars;
 import ru.neverlands.abclient.utils.CryptoUtils;
 
 public class ProfileActivity extends AppCompatActivity {
@@ -68,6 +68,217 @@ public class ProfileActivity extends AppCompatActivity {
         binding.savePasswordsCheckBox.setChecked(profile.isEncrypted);
 
         binding.saveButton.setOnClickListener(v -> prepareSaveProfile());
+        binding.testProxyButton.setOnClickListener(v -> startProxyConnectivityTest());
+    }
+
+    /**
+     * Запускает асинхронный тест proxy-настроек из текущей формы профиля.
+     *
+     * Зависимости:
+     * - UI-поля `proxyAddressEditText`, `proxyUsernameEditText`, `proxyPasswordEditText`;
+     * - `OkHttpClient` (одноразовый клиент для probe-запроса);
+     * - `AppVars.BROWSER_USER_AGENT` (браузерный User-Agent без идентификаторов клиента).
+     *
+     * Поведение:
+     * - валидирует адрес proxy (`host[:port]` или `[ipv6]:port`);
+     * - отправляет GET `http://neverlands.ru/` строго через указанный proxy;
+     * - при наличии логина/пароля добавляет `Proxy-Authorization` через `proxyAuthenticator`;
+     * - выводит результат в `Toast` без сохранения профиля.
+     */
+    private void startProxyConnectivityTest() {
+        final String rawAddress = safeTrim(binding.proxyAddressEditText.getText() == null
+                ? null
+                : binding.proxyAddressEditText.getText().toString());
+        final String proxyUser = safeTrim(binding.proxyUsernameEditText.getText() == null
+                ? null
+                : binding.proxyUsernameEditText.getText().toString());
+        final String proxyPassword = safeTrim(binding.proxyPasswordEditText.getText() == null
+                ? null
+                : binding.proxyPasswordEditText.getText().toString());
+
+        final ProxyEndpointParseResult endpoint = parseProxyEndpoint(rawAddress);
+        if (!endpoint.isValid()) {
+            Toast.makeText(this, "ТЕСТ ПРОКСИ: " + endpoint.errorMessage, Toast.LENGTH_LONG).show();
+            return;
+        }
+
+        binding.testProxyButton.setEnabled(false);
+        Toast.makeText(this, "ТЕСТ ПРОКСИ: выполняется проверка...", Toast.LENGTH_SHORT).show();
+
+        new Thread(() -> {
+            final String resultMessage = performProxyConnectivityTest(endpoint, proxyUser, proxyPassword);
+            runOnUiThread(() -> {
+                if (!isFinishing() && !isDestroyed()) {
+                    Toast.makeText(ProfileActivity.this, resultMessage, Toast.LENGTH_LONG).show();
+                    binding.testProxyButton.setEnabled(true);
+                }
+            });
+        }, "ProfileProxyTestThread").start();
+    }
+
+    /**
+     * Выполняет реальный HTTP probe-запрос на сервер игры через заданный proxy.
+     *
+     * Зависимости:
+     * - `okhttp3.OkHttpClient` c `proxy(...)` и `proxyAuthenticator(...)`;
+     * - `AppVars.BROWSER_USER_AGENT` для анти-детект совместимости.
+     *
+     * @param endpoint разобранный proxy endpoint.
+     * @param proxyUser логин proxy (может быть пустым).
+     * @param proxyPassword пароль proxy (может быть пустым).
+     * @return строка результата для UI.
+     */
+    @NonNull
+    private String performProxyConnectivityTest(@NonNull ProxyEndpointParseResult endpoint,
+                                                @NonNull String proxyUser,
+                                                @NonNull String proxyPassword) {
+        try {
+            Proxy proxy = new Proxy(Proxy.Type.HTTP, new InetSocketAddress(endpoint.host, endpoint.port));
+            OkHttpClient.Builder builder = new OkHttpClient.Builder()
+                    .proxy(proxy)
+                    .connectTimeout(45, TimeUnit.SECONDS)
+                    .readTimeout(60, TimeUnit.SECONDS)
+                    .writeTimeout(60, TimeUnit.SECONDS)
+                    .followRedirects(false);
+
+            if (!proxyUser.isEmpty() || !proxyPassword.isEmpty()) {
+                builder.proxyAuthenticator((route, response) -> {
+                    if (response.request().header("Proxy-Authorization") != null) {
+                        return null;
+                    }
+                    String credentials = Credentials.basic(proxyUser, proxyPassword, StandardCharsets.UTF_8);
+                    return response.request().newBuilder()
+                            .header("Proxy-Authorization", credentials)
+                            .build();
+                });
+            }
+
+            OkHttpClient client = builder.build();
+            Request request = new Request.Builder()
+                    .url("http://neverlands.ru/")
+                    .header("User-Agent", AppVars.BROWSER_USER_AGENT)
+                    .header("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8")
+                    .build();
+
+            try (Response response = client.newCall(request).execute()) {
+                int code = response.code();
+                if (code >= 200 && code < 400) {
+                    return "ТЕСТ ПРОКСИ: OK (HTTP " + code + ")";
+                }
+                if (code == 407) {
+                    return "ТЕСТ ПРОКСИ: ошибка авторизации proxy (HTTP 407)";
+                }
+                return "ТЕСТ ПРОКСИ: ошибка ответа proxy/сервера (HTTP " + code + ")";
+            }
+        } catch (Exception e) {
+            String message = e.getMessage() == null ? e.getClass().getSimpleName() : e.getMessage();
+            return "ТЕСТ ПРОКСИ: ошибка соединения (" + message + ")";
+        }
+    }
+
+    /**
+     * Разбирает адрес прокси в формат `host[:port]` или `[ipv6]:port`.
+     *
+     * Зависимости:
+     * - используется только для локальной валидации кнопки "ТЕСТ ПРОКСИ";
+     * - совпадает по ожидаемому формату с профилем (`UserConfig.ProxyAddress`).
+     */
+    @NonNull
+    private ProxyEndpointParseResult parseProxyEndpoint(String rawAddress) {
+        if (TextUtils.isEmpty(rawAddress)) {
+            return ProxyEndpointParseResult.error("адрес прокси пуст");
+        }
+
+        String value = rawAddress.trim();
+        String host;
+        int port = 8080;
+
+        if (value.startsWith("[")) {
+            int closeIndex = value.indexOf(']');
+            if (closeIndex <= 1) {
+                return ProxyEndpointParseResult.error("неверный IPv6-формат (ожидается [host]:port)");
+            }
+            host = value.substring(1, closeIndex).trim();
+            String tail = value.substring(closeIndex + 1).trim();
+            if (!tail.isEmpty()) {
+                if (!tail.startsWith(":")) {
+                    return ProxyEndpointParseResult.error("неверный суффикс после IPv6-адреса");
+                }
+                String portText = tail.substring(1).trim();
+                if (portText.isEmpty()) {
+                    return ProxyEndpointParseResult.error("порт прокси пуст");
+                }
+                try {
+                    port = Integer.parseInt(portText);
+                } catch (NumberFormatException e) {
+                    return ProxyEndpointParseResult.error("порт прокси должен быть числом");
+                }
+            }
+        } else {
+            int firstColon = value.indexOf(':');
+            int lastColon = value.lastIndexOf(':');
+            if (firstColon != -1 && firstColon != lastColon) {
+                return ProxyEndpointParseResult.error("IPv6 без [] не поддерживается");
+            }
+            if (lastColon > 0) {
+                host = value.substring(0, lastColon).trim();
+                String portText = value.substring(lastColon + 1).trim();
+                if (portText.isEmpty()) {
+                    return ProxyEndpointParseResult.error("порт прокси пуст");
+                }
+                try {
+                    port = Integer.parseInt(portText);
+                } catch (NumberFormatException e) {
+                    return ProxyEndpointParseResult.error("порт прокси должен быть числом");
+                }
+            } else {
+                host = value;
+            }
+        }
+
+        if (host.isEmpty()) {
+            return ProxyEndpointParseResult.error("host прокси пуст");
+        }
+        if (port <= 0 || port > 65535) {
+            return ProxyEndpointParseResult.error("порт прокси вне диапазона 1..65535");
+        }
+        return ProxyEndpointParseResult.success(host, port);
+    }
+
+    @NonNull
+    private String safeTrim(String value) {
+        return value == null ? "" : value.trim();
+    }
+
+    /**
+     * DTO результата разбора адреса proxy для тестовой кнопки.
+     *
+     * Зависимости:
+     * - используется `parseProxyEndpoint(...)` и `performProxyConnectivityTest(...)`;
+     * - не влияет на сохранение `UserConfig` и runtime-логику прокси.
+     */
+    private static final class ProxyEndpointParseResult {
+        final String host;
+        final int port;
+        final String errorMessage;
+
+        private ProxyEndpointParseResult(String host, int port, String errorMessage) {
+            this.host = host;
+            this.port = port;
+            this.errorMessage = errorMessage == null ? "" : errorMessage;
+        }
+
+        static ProxyEndpointParseResult success(String host, int port) {
+            return new ProxyEndpointParseResult(host, port, "");
+        }
+
+        static ProxyEndpointParseResult error(String message) {
+            return new ProxyEndpointParseResult("", -1, message);
+        }
+
+        boolean isValid() {
+            return errorMessage.isEmpty();
+        }
     }
 
     private void prepareSaveProfile() {

@@ -2179,6 +2179,23 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         }
         binding.appBarMain.contentMain.statusBar.clockTextView.setText(sdf.format(new Date(now)));
         binding.appBarMain.contentMain.statusBar.networkDebugTextView.setText(RuntimeNetTrace.snapshotForUi());
+        int netColorState = RuntimeNetTrace.colorStateForUi();
+        int netColor;
+        switch (netColorState) {
+            case RuntimeNetTrace.COLOR_OK:
+                netColor = ContextCompat.getColor(this, R.color.teal_200);
+                break;
+            case RuntimeNetTrace.COLOR_WARN:
+                netColor = ContextCompat.getColor(this, R.color.colorAccent);
+                break;
+            case RuntimeNetTrace.COLOR_FAIL:
+                netColor = ContextCompat.getColor(this, R.color.red);
+                break;
+            default:
+                netColor = ContextCompat.getColor(this, R.color.white);
+                break;
+        }
+        binding.appBarMain.contentMain.statusBar.networkDebugTextView.setTextColor(netColor);
     }
     
     public void updateServerTime(Date serverDateTime) {

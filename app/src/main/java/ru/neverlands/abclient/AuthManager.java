@@ -19,6 +19,7 @@ import okhttp3.RequestBody;
 import okhttp3.Response;
 import ru.neverlands.abclient.model.AuthResult;
 import ru.neverlands.abclient.network.NetworkClient;
+import ru.neverlands.abclient.proxy.ProxyRuntimeManager;
 import ru.neverlands.abclient.utils.AppVars;
 import ru.neverlands.abclient.utils.DebugLogger;
 
@@ -47,6 +48,10 @@ public class AuthManager {
      */
     public AuthResult authorize(String username, String password) {
         DebugLogger.log("AuthManager: Starting synchronous authorization for user: " + username);
+        final String authBaseUrl = resolveAuthBaseUrl();
+        final String refererRoot = authBaseUrl + "/";
+        final String gameUrl = authBaseUrl + "/game.php";
+        final String mainUrl = authBaseUrl + "/main.php";
 
         OkHttpClient client = NetworkClient.getInstance();
         java.net.CookieManager cookieManager = NetworkClient.getCookieManager();
@@ -54,7 +59,7 @@ public class AuthManager {
         try {
             // Step 1: Initial GET request
             Request initialRequest = new Request.Builder()
-                    .url("http://neverlands.ru/")
+                    .url(refererRoot)
                     .header("User-Agent", AppVars.BROWSER_USER_AGENT)
                     .header("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7")
                     .header("Accept-Language", "ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7")
@@ -75,10 +80,10 @@ public class AuthManager {
                     .build();
 
             Request loginRequest = new Request.Builder()
-                    .url("http://neverlands.ru/game.php")
+                    .url(gameUrl)
                     .header("User-Agent", AppVars.BROWSER_USER_AGENT)
-                    .header("Referer", "http://neverlands.ru/")
-                    .header("Origin", "http://neverlands.ru")
+                    .header("Referer", refererRoot)
+                    .header("Origin", authBaseUrl)
                     .post(formBody)
                     .build();
 
@@ -117,9 +122,9 @@ public class AuthManager {
 
             // Step 3: Final GET to main.php
             Request mainRequest = new Request.Builder()
-                    .url("http://neverlands.ru/main.php")
+                    .url(mainUrl)
                     .header("User-Agent", AppVars.BROWSER_USER_AGENT)
-                    .header("Referer", "http://neverlands.ru/game.php")
+                    .header("Referer", gameUrl)
                     .build();
 
             DebugLogger.log("AuthManager: 3. Final GET request\n" + mainRequest.toString());
@@ -166,6 +171,9 @@ public class AuthManager {
      */
     public AuthResult authorizeWithCaptcha(String username, String password, String vcode, String verify) {
         DebugLogger.log("AuthManager: Starting authorization with captcha for user: " + username);
+        final String authBaseUrl = resolveAuthBaseUrl();
+        final String gameUrl = authBaseUrl + "/game.php";
+        final String mainUrl = authBaseUrl + "/main.php";
 
         OkHttpClient client = NetworkClient.getInstance();
         java.net.CookieManager cookieManager = NetworkClient.getCookieManager();
@@ -179,10 +187,10 @@ public class AuthManager {
                     .build();
 
             Request loginRequest = new Request.Builder()
-                    .url("http://neverlands.ru/game.php")
+                    .url(gameUrl)
                     .header("User-Agent", AppVars.BROWSER_USER_AGENT)
-                    .header("Referer", "http://neverlands.ru/game.php")
-                    .header("Origin", "http://neverlands.ru")
+                    .header("Referer", gameUrl)
+                    .header("Origin", authBaseUrl)
                     .post(formBody)
                     .build();
 
@@ -221,9 +229,9 @@ public class AuthManager {
 
             // Step 3: Final GET to main.php
             Request mainRequest = new Request.Builder()
-                    .url("http://neverlands.ru/main.php")
+                    .url(mainUrl)
                     .header("User-Agent", AppVars.BROWSER_USER_AGENT)
-                    .header("Referer", "http://neverlands.ru/game.php")
+                    .header("Referer", gameUrl)
                     .build();
 
             DebugLogger.log("AuthManager: 3. Final GET request\n" + mainRequest.toString());
@@ -248,5 +256,19 @@ public class AuthManager {
         } finally {
             DebugLogger.close();
         }
+    }
+
+    /**
+     * Выбирает базовый URL auth-потока.
+     *
+     * Зависимости:
+     * - в proxy-режиме повторяем поведение ПК-версии (host `www.neverlands.ru`);
+     * - в direct-режиме сохраняем текущий Android-host (`neverlands.ru`).
+     */
+    private String resolveAuthBaseUrl() {
+        final boolean proxyActive = ProxyRuntimeManager.isRunning();
+        final String baseUrl = proxyActive ? "http://www.neverlands.ru" : "http://neverlands.ru";
+        DebugLogger.log("AuthManager: authBaseUrl=" + baseUrl + ", proxyActive=" + proxyActive);
+        return baseUrl;
     }
 }

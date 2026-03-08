@@ -13,6 +13,8 @@ import ru.neverlands.abclient.utils.RuntimeNetTrace;
 
 public class NetworkClient {
     private static final String TAG = "NetworkClient";
+    private static final int DIRECT_TIMEOUT_SECONDS = 30;
+    private static final int PROXY_TIMEOUT_SECONDS = 60;
 
     private static OkHttpClient instance;
     private static CookieManager cookieManager;
@@ -25,29 +27,39 @@ public class NetworkClient {
             cookieManager = new CookieManager();
             cookieManager.setCookiePolicy(CookiePolicy.ACCEPT_ALL);
 
+            boolean strictProxyRequired = ProxyRuntimeManager.isStrictProxyRequiredForCurrentProfile();
+            Proxy proxy = ProxyRuntimeManager.getActiveJavaProxyOrNull();
+            boolean proxyRuntimeActive = proxy != null;
+            int timeoutSeconds = (strictProxyRequired || proxyRuntimeActive)
+                    ? PROXY_TIMEOUT_SECONDS
+                    : DIRECT_TIMEOUT_SECONDS;
+
             OkHttpClient.Builder builder = new OkHttpClient.Builder()
-                    .connectTimeout(30, TimeUnit.SECONDS)
-                    .readTimeout(30, TimeUnit.SECONDS)
-                    .writeTimeout(30, TimeUnit.SECONDS)
+                    .connectTimeout(timeoutSeconds, TimeUnit.SECONDS)
+                    .readTimeout(timeoutSeconds, TimeUnit.SECONDS)
+                    .writeTimeout(timeoutSeconds, TimeUnit.SECONDS)
                     .followRedirects(true)
                     .cookieJar(new JavaNetCookieJar(cookieManager));
-
-            Proxy proxy = ProxyRuntimeManager.getActiveJavaProxyOrNull();
+            Log.i(TAG, "NET_TIMEOUT: mode="
+                    + ((strictProxyRequired || proxyRuntimeActive) ? "proxy" : "direct")
+                    + ", connect/read/write=" + timeoutSeconds + "s"
+                    + ", strictProxyRequired=" + strictProxyRequired
+                    + ", proxyRuntimeActive=" + proxyRuntimeActive);
             if (proxy != null) {
                 builder.proxy(proxy);
                 Log.i(TAG, "PROXY_BINDING: OkHttp proxy enabled");
-                RuntimeNetTrace.push("OKHTTP", "proxy enabled");
+                RuntimeNetTrace.push("OKHTTP", "route=proxy state=enabled");
             } else {
-                if (ProxyRuntimeManager.isStrictProxyRequiredForCurrentProfile()) {
+                if (strictProxyRequired) {
                     // Жесткий anti-leak: при включенном прокси запрещаем direct egress и даем
                     // заведомо нерабочий loopback endpoint, чтобы запрос не ушел напрямую наружу.
                     Proxy blockedProxy = new Proxy(Proxy.Type.HTTP, new InetSocketAddress("127.0.0.1", 1));
                     builder.proxy(blockedProxy);
                     Log.e(TAG, "PROXY_FAIL: strict proxy enabled but runtime proxy is null; direct egress blocked");
-                    RuntimeNetTrace.push("PROXY_FAIL", "strict=1 okHttp direct blocked");
+                    RuntimeNetTrace.push("PROXY_FAIL", "scope=okhttp strict=1 route=direct blocked=1");
                 } else {
                     Log.w(TAG, "PROXY_BINDING: OkHttp proxy is null, using direct client");
-                    RuntimeNetTrace.push("OKHTTP", "direct mode");
+                    RuntimeNetTrace.push("OKHTTP", "route=direct state=fallback");
                 }
             }
 

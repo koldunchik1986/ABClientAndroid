@@ -40,6 +40,7 @@ final class LocalHttpProxyServer {
     private static final String TAG = "LocalHttpProxyServer";
     private static final int MAX_BIND_ATTEMPTS = 64;
     private static final int HEADER_SIZE_LIMIT_BYTES = 64 * 1024;
+    private static final int RESPONSE_HEADER_SIZE_LIMIT_BYTES = 64 * 1024;
     private static final int SOCKET_TIMEOUT_MS = 20_000;
     private static final int LOG_DEDUP_WINDOW_MS = 5_000;
 
@@ -193,7 +194,7 @@ final class LocalHttpProxyServer {
                     + ", uri=" + request.uriToken
                     + ", bodyBytes=" + (request.body == null ? 0 : request.body.length));
             RuntimeNetTrace.push("PROXY_REQ",
-                    request.method + " " + trimForTrace(request.uriToken));
+                    "method=" + request.method + " uri=" + trimForTrace(request.uriToken));
 
             if ("CONNECT".equalsIgnoreCase(request.method)) {
                 writeSimpleError(clientOut, 501, "Not Implemented", "CONNECT is not supported");
@@ -205,7 +206,8 @@ final class LocalHttpProxyServer {
                     + ", connect=" + route.connectHost + ":" + route.connectPort
                     + ", target=" + route.requestTarget);
             RuntimeNetTrace.push("PROXY_ROUTE",
-                    route.originHost + ":" + route.originPort + " -> " + route.connectHost + ":" + route.connectPort);
+                    "origin=" + route.originHost + ":" + route.originPort
+                            + " connect=" + route.connectHost + ":" + route.connectPort);
             sessionTarget = route.originHost + ":" + route.originPort;
             long copiedBytes = forwardRequest(route, request, clientOut);
             long elapsed = Math.max(0L, System.currentTimeMillis() - startedAtMs);
@@ -252,51 +254,339 @@ final class LocalHttpProxyServer {
             OutputStream remoteOut = remote.getOutputStream();
             InputStream remoteIn = remote.getInputStream();
 
-            StringBuilder outHead = new StringBuilder();
-            outHead.append(request.method)
-                    .append(' ')
-                    .append(route.requestTarget)
-                    .append(' ')
-                    .append(request.httpVersion)
-                    .append("\r\n");
+            writeRequest(remoteOut, route, request, route.requestTarget, true);
+            ResponseHead responseHead = readResponseHead(remoteIn);
+            logProxyResponse(route, request, route.requestTarget, 1, responseHead);
 
-            boolean hasHostHeader = false;
-            for (Map.Entry<String, String> header : request.headers.entrySet()) {
-                String key = header.getKey();
-                if (key == null || key.isEmpty()) {
-                    continue;
+            if (shouldRetryAuthPostWithOriginForm(route, request, responseHead)) {
+                String absoluteWithPortTarget = buildAbsoluteTargetWithExplicitPort(route);
+                int retryAttempt = 2;
+                if (!absoluteWithPortTarget.equals(route.requestTarget)) {
+                    Log.w(TAG, "PROXY_UPSTREAM_RETRY: 405 on absolute-form POST /game.php, retry absolute-form with explicit port");
+                    ResponseHead retryHead = forwardSingleRetry(route, request, absoluteWithPortTarget, retryAttempt++);
+                    if (retryHead != null && retryHead.statusCode != 405) {
+                        clientOut.write(retryHead.rawBytes);
+                        long retryBodyBytes = copyStream(retryInputForLastRetry, clientOut);
+                        cleanupRetrySocket();
+                        return retryHead.rawBytes.length + retryBodyBytes;
+                    }
+                    cleanupRetrySocket();
                 }
-                String lower = key.toLowerCase(Locale.ROOT);
-                if ("host".equals(lower)) {
-                    hasHostHeader = true;
+
+                String originFormTarget = buildOriginFormTarget(route);
+                if (!originFormTarget.equals(route.requestTarget) && !originFormTarget.equals(absoluteWithPortTarget)) {
+                    Log.w(TAG, "PROXY_UPSTREAM_RETRY: 405 persists, retry origin-form POST target=" + originFormTarget);
+                    ResponseHead retryHead = forwardSingleRetry(route, request, originFormTarget, retryAttempt++);
+                    if (retryHead != null && retryHead.statusCode != 405) {
+                        clientOut.write(retryHead.rawBytes);
+                        long retryBodyBytes = copyStream(retryInputForLastRetry, clientOut);
+                        cleanupRetrySocket();
+                        return retryHead.rawBytes.length + retryBodyBytes;
+                    }
+                    cleanupRetrySocket();
                 }
-                if (shouldSkipRequestHeader(lower)) {
-                    continue;
-                }
-                outHead.append(key).append(": ").append(header.getValue()).append("\r\n");
+
+                Log.w(TAG, "PROXY_UPSTREAM_RETRY: 405 persists, retry via CONNECT tunnel");
+                return forwardViaUpstreamConnectTunnel(route, request, clientOut);
+            } else {
+                clientOut.write(responseHead.rawBytes);
+                long bodyBytes = copyStream(remoteIn, clientOut);
+                return responseHead.rawBytes.length + bodyBytes;
             }
+        }
+    }
 
-            if (!hasHostHeader) {
-                outHead.append("Host: ").append(route.originHost);
-                if (route.originPort != 80) {
-                    outHead.append(':').append(route.originPort);
-                }
-                outHead.append("\r\n");
+    private Socket retrySocketRef;
+    private InputStream retryInputForLastRetry;
+
+    /**
+     * Выполняет один дополнительный retry в upstream-режиме с альтернативным request-target.
+     * Возвращает разобранный head ответа, а body остаётся в {@code retryInputForLastRetry}
+     * для последующего проброса в клиент.
+     */
+    private ResponseHead forwardSingleRetry(ResolvedRoute route,
+                                            HttpRequest request,
+                                            String retryTarget,
+                                            int attempt) throws IOException {
+        cleanupRetrySocket();
+        Socket retrySocket = new Socket();
+        retrySocketRef = retrySocket;
+        retrySocket.setTcpNoDelay(true);
+        retrySocket.setSoTimeout(SOCKET_TIMEOUT_MS);
+        retrySocket.connect(new InetSocketAddress(route.connectHost, route.connectPort), SOCKET_TIMEOUT_MS);
+        OutputStream retryOut = retrySocket.getOutputStream();
+        InputStream retryIn = retrySocket.getInputStream();
+        retryInputForLastRetry = retryIn;
+        writeRequest(retryOut, route, request, retryTarget, true);
+        ResponseHead retryHead = readResponseHead(retryIn);
+        logProxyResponse(route, request, retryTarget, attempt, retryHead);
+        return retryHead;
+    }
+
+    private void cleanupRetrySocket() {
+        if (retryInputForLastRetry != null) {
+            try {
+                retryInputForLastRetry.close();
+            } catch (IOException ignored) {
             }
-            outHead.append("Connection: close\r\n");
+            retryInputForLastRetry = null;
+        }
+        if (retrySocketRef != null) {
+            closeQuietly(retrySocketRef);
+            retrySocketRef = null;
+        }
+    }
 
-            if (upstreamSettings.enabled && upstreamSettings.basicAuthHeader != null && !upstreamSettings.basicAuthHeader.isEmpty()) {
-                outHead.append("Proxy-Authorization: ").append(upstreamSettings.basicAuthHeader).append("\r\n");
+    private String buildAbsoluteTargetWithExplicitPort(ResolvedRoute route) {
+        String path = route.originPath == null || route.originPath.isEmpty() ? "/" : route.originPath;
+        return "http://" + route.originHost + ":" + route.originPort + path;
+    }
+
+    /**
+     * Возвращает origin-form target (`/path?query`) для upstream-retry.
+     *
+     * Зависимости:
+     * - используется только в fallback-ветке `POST /game.php` после 405;
+     * - позволяет пройти через прокси/шлюзы, которые принимают POST только в origin-form.
+     */
+    private String buildOriginFormTarget(ResolvedRoute route) {
+        if (route.originPath == null || route.originPath.isEmpty()) {
+            return "/";
+        }
+        return route.originPath.startsWith("/") ? route.originPath : "/" + route.originPath;
+    }
+
+    /**
+     * Формирует и отправляет HTTP-запрос на удалённый endpoint (direct/upstream) с заданным request-target.
+     *
+     * Зависимости:
+     * - {@link #shouldSkipRequestHeader(String)} для фильтра hop-by-hop заголовков;
+     * - поля {@code upstreamSettings.*} для проброса Proxy-Authorization в upstream-режиме;
+     * - {@link ResolvedRoute#originHost}/{@link ResolvedRoute#originPort} для fallback Host.
+     */
+    private void writeRequest(OutputStream remoteOut,
+                              ResolvedRoute route,
+                              HttpRequest request,
+                              String requestTarget,
+                              boolean includeProxyAuthorizationHeader) throws IOException {
+        StringBuilder outHead = new StringBuilder();
+        outHead.append(request.method)
+                .append(' ')
+                .append(requestTarget)
+                .append(' ')
+                .append(request.httpVersion)
+                .append("\r\n");
+
+        boolean hasHostHeader = false;
+        for (Map.Entry<String, String> header : request.headers.entrySet()) {
+            String key = header.getKey();
+            if (key == null || key.isEmpty()) {
+                continue;
             }
+            String lower = key.toLowerCase(Locale.ROOT);
+            if ("host".equals(lower)) {
+                hasHostHeader = true;
+            }
+            if (shouldSkipRequestHeader(lower)) {
+                continue;
+            }
+            outHead.append(key).append(": ").append(header.getValue()).append("\r\n");
+        }
 
+        if (!hasHostHeader) {
+            outHead.append("Host: ").append(route.originHost);
+            if (route.originPort != 80) {
+                outHead.append(':').append(route.originPort);
+            }
             outHead.append("\r\n");
-            remoteOut.write(outHead.toString().getBytes(StandardCharsets.ISO_8859_1));
-            if (request.body != null && request.body.length > 0) {
-                remoteOut.write(request.body);
-            }
-            remoteOut.flush();
+        }
+        outHead.append("Connection: close\r\n");
 
-            return copyStream(remoteIn, clientOut);
+        if (includeProxyAuthorizationHeader
+                && upstreamSettings.enabled
+                && upstreamSettings.basicAuthHeader != null
+                && !upstreamSettings.basicAuthHeader.isEmpty()) {
+            outHead.append("Proxy-Authorization: ").append(upstreamSettings.basicAuthHeader).append("\r\n");
+        }
+
+        outHead.append("\r\n");
+        remoteOut.write(outHead.toString().getBytes(StandardCharsets.ISO_8859_1));
+        if (request.body != null && request.body.length > 0) {
+            remoteOut.write(request.body);
+        }
+        remoteOut.flush();
+    }
+
+    /**
+     * Fallback для upstream-auth POST `/game.php`:
+     * открывает CONNECT-туннель к `neverlands.ru:80` через upstream proxy и повторяет POST в origin-form.
+     *
+     * Зависимости:
+     * - upstream credentials ({@code Proxy-Authorization}) для CONNECT;
+     * - {@link #writeRequest(OutputStream, ResolvedRoute, HttpRequest, String, boolean)}:
+     *   отправка POST внутри туннеля без proxy-заголовков;
+     * - {@link #readResponseHead(InputStream)} для диагностики CONNECT и итогового POST ответа.
+     */
+    private long forwardViaUpstreamConnectTunnel(ResolvedRoute route,
+                                                 HttpRequest request,
+                                                 OutputStream clientOut) throws IOException {
+        try (Socket tunnelSocket = new Socket()) {
+            tunnelSocket.setTcpNoDelay(true);
+            tunnelSocket.setSoTimeout(SOCKET_TIMEOUT_MS);
+            tunnelSocket.connect(new InetSocketAddress(route.connectHost, route.connectPort), SOCKET_TIMEOUT_MS);
+
+            OutputStream tunnelOut = tunnelSocket.getOutputStream();
+            InputStream tunnelIn = tunnelSocket.getInputStream();
+
+            StringBuilder connectHead = new StringBuilder();
+            connectHead.append("CONNECT ")
+                    .append(route.originHost)
+                    .append(":")
+                    .append(route.originPort)
+                    .append(" HTTP/1.1\r\n");
+            connectHead.append("Host: ")
+                    .append(route.originHost)
+                    .append(":")
+                    .append(route.originPort)
+                    .append("\r\n");
+            connectHead.append("Connection: keep-alive\r\n");
+            if (upstreamSettings.basicAuthHeader != null && !upstreamSettings.basicAuthHeader.isEmpty()) {
+                connectHead.append("Proxy-Authorization: ").append(upstreamSettings.basicAuthHeader).append("\r\n");
+            }
+            connectHead.append("\r\n");
+            tunnelOut.write(connectHead.toString().getBytes(StandardCharsets.ISO_8859_1));
+            tunnelOut.flush();
+
+            ResponseHead connectResponse = readResponseHead(tunnelIn);
+            Log.d(TAG, "PROXY_TUNNEL: CONNECT " + route.originHost + ":" + route.originPort
+                    + " status=" + connectResponse.statusCode
+                    + ", server=" + connectResponse.serverHeader
+                    + ", statusLine=" + connectResponse.statusLine);
+
+            if (connectResponse.statusCode != 200) {
+                clientOut.write(connectResponse.rawBytes);
+                long connectBodyBytes = copyStream(tunnelIn, clientOut);
+                return connectResponse.rawBytes.length + connectBodyBytes;
+            }
+
+            writeRequest(tunnelOut, route, request, route.originPath, false);
+            ResponseHead tunneledResponse = readResponseHead(tunnelIn);
+            logProxyResponse(route, request, route.originPath, 2, tunneledResponse);
+            clientOut.write(tunneledResponse.rawBytes);
+            long bodyBytes = copyStream(tunnelIn, clientOut);
+            return tunneledResponse.rawBytes.length + bodyBytes;
+        }
+    }
+
+    /**
+     * Считывает только head ответа (status-line + headers) и возвращает его в сыром виде для последующего
+     * проброса клиенту без модификации. Body остаётся в исходном InputStream и дочитывается отдельно.
+     *
+     * Зависимости:
+     * - лимит {@link #RESPONSE_HEADER_SIZE_LIMIT_BYTES} (защита от аномально больших заголовков);
+     * - ISO-8859-1 для корректной передачи wire-level байтов HTTP-head.
+     */
+    private ResponseHead readResponseHead(InputStream remoteIn) throws IOException {
+        ByteArrayOutputStream head = new ByteArrayOutputStream();
+        int state = 0;
+        while (true) {
+            int b = remoteIn.read();
+            if (b == -1) {
+                break;
+            }
+            head.write(b);
+            if (head.size() > RESPONSE_HEADER_SIZE_LIMIT_BYTES) {
+                throw new IOException("Response headers too large");
+            }
+            if (state == 0 && b == '\r') state = 1;
+            else if (state == 1 && b == '\n') state = 2;
+            else if (state == 2 && b == '\r') state = 3;
+            else if (state == 3 && b == '\n') break;
+            else state = 0;
+        }
+
+        byte[] raw = head.toByteArray();
+        String text = new String(raw, StandardCharsets.ISO_8859_1);
+        String[] lines = text.split("\r\n");
+        String statusLine = lines.length > 0 ? lines[0] : "";
+        int statusCode = parseStatusCode(statusLine);
+        String serverHeader = "";
+        for (int i = 1; i < lines.length; i++) {
+            String line = lines[i];
+            if (line == null || line.isEmpty()) {
+                continue;
+            }
+            int idx = line.indexOf(':');
+            if (idx <= 0) {
+                continue;
+            }
+            String key = line.substring(0, idx).trim();
+            if ("server".equalsIgnoreCase(key)) {
+                serverHeader = line.substring(idx + 1).trim();
+                break;
+            }
+        }
+        return new ResponseHead(raw, statusLine, statusCode, serverHeader);
+    }
+
+    /**
+     * Локальная диагностика ответа прокси-контура. Нужна для постмортема ошибок auth/game flow (405/407/5xx).
+     */
+    private void logProxyResponse(ResolvedRoute route,
+                                  HttpRequest request,
+                                  String requestTarget,
+                                  int attempt,
+                                  ResponseHead head) {
+        String mode = upstreamSettings.enabled ? "UPSTREAM" : "DIRECT";
+        Log.d(TAG, "PROXY_RESP: mode=" + mode
+                + ", attempt=" + attempt
+                + ", method=" + request.method
+                + ", target=" + requestTarget
+                + ", status=" + head.statusCode
+                + ", server=" + head.serverHeader
+                + ", statusLine=" + head.statusLine);
+        RuntimeNetTrace.push("PROXY_RESP",
+                "mode=" + mode + " code=" + head.statusCode + " target=" + trimForTrace(requestTarget));
+    }
+
+    /**
+     * Fallback-ветка совместимости для upstream proxy:
+     * некоторые upstream принимают GET в absolute-form, но отклоняют POST /game.php в absolute-form кодом 405.
+     * В этом случае повторяем один раз origin-form ("/game.php"), сохраняя остальные заголовки/тело запроса.
+     *
+     * Зависимости:
+     * - upstream-режим ({@link #upstreamSettings}),
+     * - auth endpoint neverlands ({@link ResolvedRoute#originPath} = "/game.php"),
+     * - статус первого ответа (405).
+     */
+    private boolean shouldRetryAuthPostWithOriginForm(ResolvedRoute route, HttpRequest request, ResponseHead head) {
+        if (!upstreamSettings.enabled || head == null || head.statusCode != 405) {
+            return false;
+        }
+        if (!"POST".equalsIgnoreCase(request.method)) {
+            return false;
+        }
+        if (!"neverlands.ru".equalsIgnoreCase(route.originHost)) {
+            return false;
+        }
+        if (route.originPath == null || !route.originPath.startsWith("/game.php")) {
+            return false;
+        }
+        return route.requestTarget != null && route.requestTarget.startsWith("http://");
+    }
+
+    private int parseStatusCode(String statusLine) {
+        if (statusLine == null || statusLine.isEmpty()) {
+            return -1;
+        }
+        String[] parts = statusLine.split(" ");
+        if (parts.length < 2) {
+            return -1;
+        }
+        try {
+            return Integer.parseInt(parts[1].trim());
+        } catch (NumberFormatException ignored) {
+            return -1;
         }
     }
 
@@ -359,7 +649,7 @@ final class LocalHttpProxyServer {
             requestTarget = originPath;
         }
 
-        return new ResolvedRoute(originHost, originPort, connectHost, connectPort, requestTarget);
+        return new ResolvedRoute(originHost, originPort, connectHost, connectPort, requestTarget, originPath);
     }
 
     private HttpRequest readRequest(InputStream in) throws IOException {
@@ -543,13 +833,34 @@ final class LocalHttpProxyServer {
         final String connectHost;
         final int connectPort;
         final String requestTarget;
+        final String originPath;
 
-        ResolvedRoute(String originHost, int originPort, String connectHost, int connectPort, String requestTarget) {
+        ResolvedRoute(String originHost,
+                      int originPort,
+                      String connectHost,
+                      int connectPort,
+                      String requestTarget,
+                      String originPath) {
             this.originHost = originHost;
             this.originPort = originPort;
             this.connectHost = connectHost;
             this.connectPort = connectPort;
             this.requestTarget = requestTarget;
+            this.originPath = originPath;
+        }
+    }
+
+    private static final class ResponseHead {
+        final byte[] rawBytes;
+        final String statusLine;
+        final int statusCode;
+        final String serverHeader;
+
+        ResponseHead(byte[] rawBytes, String statusLine, int statusCode, String serverHeader) {
+            this.rawBytes = rawBytes;
+            this.statusLine = statusLine == null ? "" : statusLine;
+            this.statusCode = statusCode;
+            this.serverHeader = serverHeader == null ? "" : serverHeader;
         }
     }
 }

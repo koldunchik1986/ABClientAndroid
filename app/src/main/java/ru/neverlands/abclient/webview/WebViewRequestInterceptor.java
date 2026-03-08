@@ -238,18 +238,18 @@ public class WebViewRequestInterceptor {
             java.net.Proxy activeProxy = ProxyRuntimeManager.getActiveJavaProxyOrNull();
             if (activeProxy == null && ProxyRuntimeManager.isStrictProxyRequiredForCurrentProfile()) {
                 Log.e(TAG, "PROXY_FAIL: strict proxy enabled and runtime proxy unavailable, blocking direct WebView request: " + urlString);
-                RuntimeNetTrace.push("PROXY_FAIL", "BLOCK direct webview strict=1 url=" + trimUrlForTrace(urlString));
+                RuntimeNetTrace.push("PROXY_FAIL", "cmd=block scope=webview strict=1 route=direct url=" + trimUrlForTrace(urlString));
                 return buildStrictProxyBlockedResponse();
             }
             if (isPinfoOrForumUrl(urlString)) {
                 String routeMode = activeProxy != null ? "local-proxy" : "direct";
                 Log.i(TAG, "PROXY_ROUTE: internal page via " + routeMode + ", url=" + urlString);
-                RuntimeNetTrace.push("NAV", "internal pinfo/forum via " + routeMode + " url=" + trimUrlForTrace(urlString));
+                RuntimeNetTrace.push("NAV", "target=pinfo_forum route=" + routeMode + " url=" + trimUrlForTrace(urlString));
             }
             Log.d(TAG, "PROXY_BINDING: interceptor openConnection via "
                     + (activeProxy != null ? "local proxy" : "direct")
                     + ", url=" + urlString);
-            RuntimeNetTrace.push("HTTP_OPEN", (activeProxy != null ? "proxy" : "direct") + " " + trimUrlForTrace(urlString));
+            RuntimeNetTrace.push("HTTP_OPEN", "route=" + (activeProxy != null ? "proxy" : "direct") + " url=" + trimUrlForTrace(urlString));
             HttpURLConnection connection = activeProxy != null
                     ? (HttpURLConnection) url.openConnection(activeProxy)
                     : (HttpURLConnection) url.openConnection();
@@ -293,7 +293,7 @@ public class WebViewRequestInterceptor {
 
             int code = connection.getResponseCode();
             Log.d(TAG, "Response code: " + code + " for " + urlString);
-            RuntimeNetTrace.push("HTTP_CODE", code + " " + trimUrlForTrace(urlString));
+            RuntimeNetTrace.push("HTTP_CODE", "code=" + code + " url=" + trimUrlForTrace(urlString));
 
             // Read response body, handling gzip if server sends it despite identity request
             String contentEncoding = connection.getContentEncoding();
@@ -372,13 +372,13 @@ public class WebViewRequestInterceptor {
                 java.net.Proxy secondProxy = ProxyRuntimeManager.getActiveJavaProxyOrNull();
                 if (secondProxy == null && ProxyRuntimeManager.isStrictProxyRequiredForCurrentProfile()) {
                     Log.e(TAG, "PROXY_FAIL: strict proxy enabled and runtime proxy unavailable, blocking direct WebView retry: " + urlString);
-                    RuntimeNetTrace.push("PROXY_FAIL", "BLOCK retry direct strict=1 url=" + trimUrlForTrace(urlString));
+                    RuntimeNetTrace.push("PROXY_FAIL", "cmd=block scope=webview_retry strict=1 route=direct url=" + trimUrlForTrace(urlString));
                     return buildStrictProxyBlockedResponse();
                 }
                 Log.d(TAG, "PROXY_BINDING: interceptor retry openConnection via "
                         + (secondProxy != null ? "local proxy" : "direct")
                         + ", url=" + urlString);
-                RuntimeNetTrace.push("HTTP_RETRY", (secondProxy != null ? "proxy" : "direct") + " " + trimUrlForTrace(urlString));
+                RuntimeNetTrace.push("HTTP_RETRY", "route=" + (secondProxy != null ? "proxy" : "direct") + " url=" + trimUrlForTrace(urlString));
                 HttpURLConnection second = secondProxy != null
                         ? (HttpURLConnection) url.openConnection(secondProxy)
                         : (HttpURLConnection) url.openConnection();
@@ -473,7 +473,7 @@ public class WebViewRequestInterceptor {
             return response;
         } catch (Exception e) {
             Log.e(TAG, "Intercept failed: " + request.getUrl(), e);
-            RuntimeNetTrace.push("HTTP_FAIL", trimUrlForTrace(String.valueOf(request.getUrl())) + " " + e.getClass().getSimpleName());
+            RuntimeNetTrace.push("HTTP_FAIL", "url=" + trimUrlForTrace(String.valueOf(request.getUrl())) + " error=" + e.getClass().getSimpleName());
             if (ProxyRuntimeManager.isStrictProxyRequiredForCurrentProfile()) {
                 return buildStrictProxyBlockedResponse();
             }

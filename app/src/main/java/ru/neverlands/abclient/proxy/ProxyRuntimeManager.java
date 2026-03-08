@@ -5,7 +5,7 @@ import android.util.Log;
 
 import java.net.InetSocketAddress;
 import java.net.Proxy;
-import java.nio.charset.StandardCharsets;
+import java.nio.charset.Charset;
 import java.util.Locale;
 
 import ru.neverlands.abclient.model.UserConfig;
@@ -284,7 +284,11 @@ public final class ProxyRuntimeManager {
         String pass = profile.ProxyPassword == null ? "" : profile.ProxyPassword.trim();
         if (!user.isEmpty() || !pass.isEmpty()) {
             String pair = user + ":" + pass;
-            String encoded = android.util.Base64.encodeToString(pair.getBytes(StandardCharsets.UTF_8), android.util.Base64.NO_WRAP);
+            // 1:1 с ПК-версией C#: BasicAuth кодируется через cp1251 (AppVars.Codepage).
+            String encoded = android.util.Base64.encodeToString(
+                    pair.getBytes(Charset.forName("windows-1251")),
+                    android.util.Base64.NO_WRAP
+            );
             basicAuthHeader = "Basic " + encoded;
         }
 
