@@ -187,21 +187,20 @@ public class WebViewRequestInterceptor {
             }
 
             // В автобое упрощаем: не тянем тяжёлые бойовые скрипты, которые не нужны нашему минимальному фрейму
+            // Визуальный режим AutoBoi:
+            // не подменяем fight_v*.js и не глушим hpmp.js/game.js,
+            // чтобы верхний боевой фрейм продолжал отрисовываться (без белого экрана).
+            //
+            // Зависимости:
+            // - отображение боя на странице зависит от оригинальных боевых JS;
+            // - логика авто-ударов остаётся через FightViewModel + submitAutoBattleActionToWebView(...).
             if (ru.neverlands.abclient.utils.AppVars.Profile != null
                     && ru.neverlands.abclient.utils.AppVars.Profile.LezDoAutoboi
-                    && ru.neverlands.abclient.utils.AppVars.Autoboi == ru.neverlands.abclient.model.AutoboiState.AutoboiOn) {
-                if (urlString.contains("fight_v")) {
-                    Log.d(TAG, "Replacing heavy fight js with autoboi shim: " + urlString);
-                    byte[] shimBytes = buildAutoboiFightJsShim().getBytes(Charset.forName("UTF-8"));
-                    return new WebResourceResponse("application/javascript", "utf-8",
-                            new ByteArrayInputStream(shimBytes));
-                }
-                if (urlString.contains("hpmp.js") || urlString.contains("game.js")) {
-                    Log.d(TAG, "Skipping heavy support js during autoboi: " + urlString);
-                    byte[] emptyBytes = "/* abclient autoboi skip */".getBytes(Charset.forName("UTF-8"));
-                    return new WebResourceResponse("application/javascript", "utf-8",
-                            new ByteArrayInputStream(emptyBytes));
-                }
+                    && ru.neverlands.abclient.utils.AppVars.Autoboi == ru.neverlands.abclient.model.AutoboiState.AutoboiOn
+                    && (urlString.contains("fight_v")
+                    || urlString.contains("hpmp.js")
+                    || urlString.contains("game.js"))) {
+                Log.d(TAG, "Autoboi visual frame mode: keep original fight JS: " + urlString);
             }
 
             // Запоминаем URL картинки капчи завершения боя для fallback-детекта в MainPhp.
