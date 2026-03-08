@@ -59,6 +59,21 @@ public class WebViewRequestInterceptor {
             "<input[^>]*name\\s*=\\s*['\"]?code['\"]?[^>]*>",
             Pattern.CASE_INSENSITIVE
     );
+    /**
+     * Извлекает серверный cooldown из JS: SetNeverTimer(286).
+     * Используется только для logcat-диагностики.
+     */
+    private static final Pattern SET_NEVER_TIMER_PATTERN = Pattern.compile(
+            "setnevertimer\\s*\\(\\s*(\\d+)\\s*\\)",
+            Pattern.CASE_INSENSITIVE
+    );
+    /**
+     * Извлекает timeout из RESO-пакета: @[0,[2,286]].
+     */
+    private static final Pattern RESO_TIMEOUT_PATTERN = Pattern.compile(
+            "@\\[0,\\[(\\d+),(\\d+)\\]\\]",
+            Pattern.CASE_INSENSITIVE
+    );
 
     /**
      * Определяет, нужно ли перехватывать данный URL.
@@ -447,6 +462,7 @@ public class WebViewRequestInterceptor {
         if (body == null || body.isEmpty()) {
             return;
         }
+        String urlLower = url == null ? "" : url.toLowerCase(Locale.ROOT);
         String lower = body.toLowerCase(Locale.ROOT);
         boolean hasFightTy = lower.contains("var fight_ty");
         boolean hasFend = FEND_FORM_PATTERN.matcher(body).find();
@@ -454,9 +470,22 @@ public class WebViewRequestInterceptor {
         boolean hasFkeyJs = lower.contains("js/fkey.js") || lower.contains("d.fend.code.value");
         boolean hasCaptchaImage = lower.contains("/modules/code/code.php");
         boolean hasFinishAct7 = lower.contains("get_id=61") && lower.contains("act=7");
-        boolean interesting = hasFightTy || hasFend || hasCodeInput || hasFkeyJs || hasCaptchaImage || hasFinishAct7
+        boolean hasResoPacket = lower.contains("reso@[");
+        boolean hasFishUrl = urlLower.contains("get_id=55") || urlLower.contains("act=4");
+        boolean hasFightUrl = urlLower.contains("get_id=61") || urlLower.contains("act=7");
+        boolean hasFishKeywords = lower.contains("рыбалк")
+                || lower.contains("ловить")
+                || lower.contains("приманк")
+                || lower.contains("умелка")
+                || lower.contains("потери за рыбалку");
+        boolean hasFishResult = hasResoPacket && (hasFishKeywords || lower.contains("масса:"));
+        int timeoutSec = extractServerTimeoutSeconds(body);
+        boolean hasTimeoutMarker = timeoutSec > 0;
+
+        boolean interesting = hasFightTy || hasFend || hasCodeInput || hasFkeyJs || hasCaptchaImage
+                || hasFinishAct7 || hasResoPacket || hasFishUrl || hasFightUrl || hasTimeoutMarker
                 || (url != null && (url.contains("main.php") || url.contains("get_id=61")
-                || url.contains("/modules/code/code.php") || url.contains("fkey.js")));
+                || url.contains("get_id=55") || url.contains("/modules/code/code.php") || url.contains("fkey.js")));
         if (!interesting) {
             return;
         }
@@ -467,13 +496,33 @@ public class WebViewRequestInterceptor {
             fendAction = actionMatcher.group(2);
         }
 
-        Log.d(TAG, "[CAPTCHA_FLOW][" + stage + "] url=" + (url == null ? "" : url)
+        String responseState = classifyServerResponse(
+                hasFightTy,
+                hasFightUrl,
+                hasFinishAct7,
+                hasFend,
+                hasCodeInput,
+                hasFkeyJs,
+                hasCaptchaImage,
+                hasFishUrl,
+                hasFishKeywords,
+                hasFishResult,
+                hasTimeoutMarker
+        );
+
+        Log.d(TAG, "[SERVER_FLOW][" + stage + "] state=" + responseState
+                + ", url=" + (url == null ? "" : url)
                 + ", hasFightTy=" + hasFightTy
                 + ", hasFEND=" + hasFend
                 + ", hasCodeInput=" + hasCodeInput
                 + ", hasFkeyJs=" + hasFkeyJs
                 + ", hasCaptchaImage=" + hasCaptchaImage
                 + ", hasFinishAct7=" + hasFinishAct7
+                + ", hasResoPacket=" + hasResoPacket
+                + ", hasFishUrl=" + hasFishUrl
+                + ", hasFishKeywords=" + hasFishKeywords
+                + ", hasFishResult=" + hasFishResult
+                + ", timeoutSec=" + timeoutSec
                 + ", fendAction=" + fendAction);
     }
 
@@ -486,6 +535,84 @@ public class WebViewRequestInterceptor {
      * Назначение:
      * - Корректно отдать WebView только основную часть типа контента, например {@code text/html}.
      */
+    /**
+     * Классифицирует тип серверного ответа по стабильным маркерам.
+     *
+     * Зависимости:
+     * - входные маркеры формируются в {@link #logCaptchaFlowMarkers(String, String, String)};
+     * - результат используется только в logcat (`[SERVER_FLOW]`), без влияния на поведение клиента.
+     */
+    private static String classifyServerResponse(boolean hasFightTy,
+                                                 boolean hasFightUrl,
+                                                 boolean hasFinishAct7,
+                                                 boolean hasFend,
+                                                 boolean hasCodeInput,
+                                                 boolean hasFkeyJs,
+                                                 boolean hasCaptchaImage,
+                                                 boolean hasFishUrl,
+                                                 boolean hasFishKeywords,
+                                                 boolean hasFishResult,
+                                                 boolean hasTimeoutMarker) {
+        boolean hasCaptchaChallenge = hasFend || hasCodeInput || hasFkeyJs || hasCaptchaImage;
+        if (hasCaptchaChallenge && (hasFishUrl || hasFishKeywords)) {
+            return "FISH_CAPTCHA";
+        }
+        if (hasCaptchaChallenge) {
+            return "FIGHT_CAPTCHA";
+        }
+        if (hasFightTy || hasFightUrl || hasFinishAct7) {
+            return "FIGHT";
+        }
+        if (hasFishResult) {
+            return "FISH_RESULT";
+        }
+        if (hasFishUrl || hasFishKeywords) {
+            return "FISH";
+        }
+        if (hasTimeoutMarker) {
+            return "TIMEOUT";
+        }
+        return "COMMON";
+    }
+
+    /**
+     * Извлекает серверный timeout/cooldown в секундах из тела ответа.
+     *
+     * Форматы:
+     * - JS: {@code SetNeverTimer(286)}
+     * - RESO: {@code @[0,[2,286]]}
+     *
+     * Зависимости:
+     * - {@link #SET_NEVER_TIMER_PATTERN}
+     * - {@link #RESO_TIMEOUT_PATTERN}
+     */
+    private static int extractServerTimeoutSeconds(String body) {
+        int timeoutSec = 0;
+
+        Matcher jsMatcher = SET_NEVER_TIMER_PATTERN.matcher(body);
+        if (jsMatcher.find()) {
+            try {
+                timeoutSec = Integer.parseInt(jsMatcher.group(1));
+            } catch (NumberFormatException ignored) {
+                // Диагностический парсер не должен ломать основной поток.
+            }
+        }
+
+        Matcher resoMatcher = RESO_TIMEOUT_PATTERN.matcher(body);
+        if (resoMatcher.find()) {
+            try {
+                int resoTimeoutSec = Integer.parseInt(resoMatcher.group(2));
+                if (resoTimeoutSec > timeoutSec) {
+                    timeoutSec = resoTimeoutSec;
+                }
+            } catch (NumberFormatException ignored) {
+                // Диагностический парсер не должен ломать основной поток.
+            }
+        }
+
+        return timeoutSec;
+    }
+
     private static String getMime(String contentType) {
         int p = contentType.indexOf(';');
         return p > 0 ? contentType.substring(0, p).trim() : contentType;

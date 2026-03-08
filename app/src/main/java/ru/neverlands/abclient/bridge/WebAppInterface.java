@@ -38,8 +38,14 @@ import ru.neverlands.abclient.utils.Russian;
  */
 public class WebAppInterface {
     private static final String BG_TRACE_PREFIX = "[BG_TRACE]";
+    private static final String MAIN_TOP_TRACE_PREFIX = "[MAIN_TOP_TRACE]";
+    private static final long MAIN_TOP_FIGHT_PULSE_GUARD_MS = 15000L;
+    private static final long MAIN_TOP_CLIENT_RELOAD_GUARD_MS = 2500L;
     private static volatile long lastNeverTimerLogAtMs = 0L;
     private static volatile long lastNeverTimerLoggedValueMs = Long.MIN_VALUE;
+    private static volatile long lastClientMainTopReloadAtMs = 0L;
+    private static volatile String lastClientMainTopReloadSource = "";
+    private static volatile String lastClientMainTopReloadPayload = "";
     Context mContext;
 
     /** Конструктор, инициализирующий контекст. */
@@ -1107,10 +1113,13 @@ public class WebAppInterface {
         AppVars.mainActivity.get().runOnUiThread(() -> {
             switch (frameName) {
                 case "main_top":
-                    if (shouldSuppressMainTopReloadDuringAutoFight(finalUrl)) {
-                        Log.d("WebAppInterface", "loadFrame: suppressed main_top reload during active auto-fight -> " + finalUrl);
+                    MainTopRoutingDecision routingDecision = buildMainTopRoutingDecision(finalUrl);
+                    logMainTopRoutingDecision("request", routingDecision);
+                    if (routingDecision.suppress) {
+                        logMainTopRoutingDecision("suppressed", routingDecision);
                         return;
                     }
+                    logMainTopRoutingDecision("accepted", routingDecision);
                     AppVars.url_main_top = finalUrl;
                     AppVars.mainActivity.get().binding.appBarMain.contentMain.webView.loadUrl(finalUrl);
                     break;
@@ -1137,32 +1146,138 @@ public class WebAppInterface {
         });
     }
 
-    private boolean shouldSuppressMainTopReloadDuringAutoFight(String finalUrl) {
-        if (finalUrl == null) {
-            return false;
-        }
+    /**
+     * JS trace hook для client-side попыток перезагрузки `main_top`.
+     *
+     * Назначение:
+     * - фиксирует источник "клиент попросил reload" (например, `game_js_toprefresh`);
+     * - дает тайм-маркер для последующей маршрутизации в {@link #loadFrame(String, String)};
+     * - позволяет в логах отделить серверные переходы от клиентских.
+     *
+     * Зависимости:
+     * - GameJs.process(...): вызывает `traceMainTopReload(...)` из `toprefresh`;
+     * - loadFrame(...): читает `lastClientMainTopReload*` для anti-loop решения.
+     */
+    @JavascriptInterface
+    public void traceMainTopReload(String source, String payload) {
+        long now = System.currentTimeMillis();
+        lastClientMainTopReloadAtMs = now;
+        lastClientMainTopReloadSource = source == null ? "" : source;
+        lastClientMainTopReloadPayload = payload == null ? "" : payload;
+        Log.d("WebAppInterface", MAIN_TOP_TRACE_PREFIX
+                + " client-reload: source=" + lastClientMainTopReloadSource
+                + ", payload=" + lastClientMainTopReloadPayload
+                + ", atMs=" + now);
+    }
 
-        String lowerUrl = finalUrl.toLowerCase(Locale.ROOT);
-        boolean targetIsPlainMain = "http://neverlands.ru/main.php".equals(lowerUrl);
-        if (!targetIsPlainMain) {
-            return false;
-        }
+    /**
+     * Формирует решение по маршрутизации `main_top` с полным диагностическим контекстом.
+     *
+     * Правила:
+     * 1) `main.php` от недавнего client-side reload (game.js) подавляем;
+     * 2) `main.php` в активной фазе auto-fight (fight html/link/pulse) подавляем;
+     * 3) остальные URL пропускаем как серверный источник истины.
+     *
+     * Зависимости:
+     * - AppVars.ContentMainPhp / FightLink / LastFightPulseAtMs (контекст боя);
+     * - AppVars.Autoboi / Profile.LezDoAutoboi (факт включенного авто-боя);
+     * - traceMainTopReload(...) (контекст client-side инициатора).
+     */
+    private MainTopRoutingDecision buildMainTopRoutingDecision(String finalUrl) {
+        MainTopRoutingDecision d = new MainTopRoutingDecision();
+        d.url = finalUrl == null ? "" : finalUrl;
+        String lowerUrl = d.url.toLowerCase(Locale.ROOT);
+        d.targetIsPlainMain = "http://neverlands.ru/main.php".equals(lowerUrl);
+        d.targetIsGoInf = lowerUrl.contains("get_id=56") && lowerUrl.contains("go=inf");
+        d.targetIsFightFinish = lowerUrl.contains("get_id=61") && lowerUrl.contains("act=7");
 
-        boolean autoFightEnabled = AppVars.Autoboi == AutoboiState.AutoboiOn
+        d.autoFightEnabled = AppVars.Autoboi == AutoboiState.AutoboiOn
                 || (AppVars.Profile != null && AppVars.Profile.LezDoAutoboi);
-        if (!autoFightEnabled) {
-            return false;
-        }
 
         String contentMainPhp = AppVars.ContentMainPhp;
-        boolean hasFightHtml = contentMainPhp != null
+        d.hasFightHtml = contentMainPhp != null
                 && (contentMainPhp.contains("var fight_ty") || contentMainPhp.contains("magic_slots();"));
         String fightLink = AppVars.FightLink;
-        boolean hasFightLink = fightLink != null && fightLink.contains("get_id=61&act=");
-        boolean recentFightPulse = AppVars.LastFightPulseAtMs > 0L
-                && (System.currentTimeMillis() - AppVars.LastFightPulseAtMs) <= 15000L;
+        d.hasFightLink = fightLink != null && fightLink.contains("get_id=61&act=");
 
-        return hasFightHtml || hasFightLink || recentFightPulse;
+        long now = System.currentTimeMillis();
+        d.recentFightPulse = AppVars.LastFightPulseAtMs > 0L
+                && (now - AppVars.LastFightPulseAtMs) <= MAIN_TOP_FIGHT_PULSE_GUARD_MS;
+        d.msSinceLastClientReload = lastClientMainTopReloadAtMs > 0L
+                ? (now - lastClientMainTopReloadAtMs)
+                : Long.MAX_VALUE;
+        d.lastClientReloadSource = lastClientMainTopReloadSource == null ? "" : lastClientMainTopReloadSource;
+        d.lastClientReloadPayload = lastClientMainTopReloadPayload == null ? "" : lastClientMainTopReloadPayload;
+        d.recentClientReload = d.msSinceLastClientReload >= 0L
+                && d.msSinceLastClientReload <= MAIN_TOP_CLIENT_RELOAD_GUARD_MS;
+
+        if (!d.targetIsPlainMain) {
+            d.suppress = false;
+            d.suppressReason = "allow_non_plain_main";
+            return d;
+        }
+
+        if (d.recentClientReload && d.lastClientReloadSource.startsWith("game_js_")) {
+            d.suppress = true;
+            d.suppressReason = "suppress_recent_game_js_reload";
+            return d;
+        }
+
+        if (d.autoFightEnabled && (d.hasFightHtml || d.hasFightLink || d.recentFightPulse)) {
+            d.suppress = true;
+            d.suppressReason = "suppress_active_autofight_plain_main";
+            return d;
+        }
+
+        d.suppress = false;
+        d.suppressReason = "allow_server_plain_main";
+        return d;
+    }
+
+    /**
+     * Единый logcat-дамп решения маршрутизации `main_top`.
+     * Нужен как "черный ящик" для пост-фактум анализа регрессий.
+     */
+    private void logMainTopRoutingDecision(String stage, MainTopRoutingDecision d) {
+        if (d == null) {
+            return;
+        }
+        Log.d("WebAppInterface", MAIN_TOP_TRACE_PREFIX + " " + stage
+                + ": url=" + d.url
+                + ", suppress=" + d.suppress
+                + ", reason=" + d.suppressReason
+                + ", plainMain=" + d.targetIsPlainMain
+                + ", goInf=" + d.targetIsGoInf
+                + ", fightFinish=" + d.targetIsFightFinish
+                + ", autoFight=" + d.autoFightEnabled
+                + ", hasFightHtml=" + d.hasFightHtml
+                + ", hasFightLink=" + d.hasFightLink
+                + ", recentFightPulse=" + d.recentFightPulse
+                + ", recentClientReload=" + d.recentClientReload
+                + ", clientReloadSource=" + d.lastClientReloadSource
+                + ", clientReloadPayload=" + d.lastClientReloadPayload
+                + ", msSinceClientReload="
+                + (d.msSinceLastClientReload == Long.MAX_VALUE ? -1L : d.msSinceLastClientReload));
+    }
+
+    /**
+     * DTO решения маршрутизации main_top.
+     */
+    private static final class MainTopRoutingDecision {
+        String url;
+        boolean targetIsPlainMain;
+        boolean targetIsGoInf;
+        boolean targetIsFightFinish;
+        boolean autoFightEnabled;
+        boolean hasFightHtml;
+        boolean hasFightLink;
+        boolean recentFightPulse;
+        boolean recentClientReload;
+        long msSinceLastClientReload;
+        String lastClientReloadSource;
+        String lastClientReloadPayload;
+        boolean suppress;
+        String suppressReason;
     }
 
     /**

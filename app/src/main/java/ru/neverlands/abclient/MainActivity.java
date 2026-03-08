@@ -2737,17 +2737,20 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             return;
         }
 
+        String timeoutContext = buildMainFrameTimeoutContext();
         long now = System.currentTimeMillis();
         if (failingUrl.equals(lastMainFrameTimeoutRetryUrl)
                 && (now - lastMainFrameTimeoutRetryAtMs) < MAINFRAME_TIMEOUT_RETRY_DEDUP_MS) {
-            Log.w(TAG, "onReceivedError: timeout retry skipped by dedup, url=" + failingUrl);
+            Log.w(TAG, "onReceivedError: timeout retry skipped by dedup, url=" + failingUrl
+                    + ", context={" + timeoutContext + "}");
             return;
         }
 
         lastMainFrameTimeoutRetryUrl = failingUrl;
         lastMainFrameTimeoutRetryAtMs = now;
         Log.w(TAG, "onReceivedError: timeout on main frame, retry in "
-                + MAINFRAME_TIMEOUT_RETRY_DELAY_MS + "ms, url=" + failingUrl);
+                + MAINFRAME_TIMEOUT_RETRY_DELAY_MS + "ms, url=" + failingUrl
+                + ", context={" + timeoutContext + "}");
 
         view.postDelayed(() -> {
             if (isFinishing() || (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR1 && isDestroyed())) {
@@ -2755,6 +2758,63 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             }
             view.loadUrl(failingUrl);
         }, MAINFRAME_TIMEOUT_RETRY_DELAY_MS);
+    }
+
+    /**
+     * Формирует диагностический контекст main-frame timeout для logcat.
+     *
+     * Назначение:
+     * - быстро понять, в каком режиме был клиент при `ERR_CONNECTION_TIMED_OUT`;
+     * - разделить сценарии "бой / рыбалка / обычная навигация" без ручной реконструкции.
+     *
+     * Зависимости:
+     * - AutoFunctionsManager: флаги авто-режимов;
+     * - AppVars.ContentMainPhp/FightLink/LastFightPulseAtMs: боевой контекст;
+     * - AppVars.NeverTimer: серверный cooldown (часто связан с авто-рыбалкой);
+     * - текущий URL WebView + `AppVars.url_main_top`: куда фактически смотрел верхний фрейм.
+     */
+    private String buildMainFrameTimeoutContext() {
+        boolean autoFightEnabled = false;
+        boolean autoFishEnabled = false;
+        try {
+            AutoFunctionsManager autoFunctionsManager = AutoFunctionsManager.getInstance(this);
+            autoFightEnabled = autoFunctionsManager.isAutoFightEnabled();
+            autoFishEnabled = autoFunctionsManager.isAutoFishEnabled();
+        } catch (Exception ignored) {
+            // Не ломаем обработку timeout из-за несущественной ошибки диагностики.
+        }
+
+        String contentMainPhp = AppVars.ContentMainPhp;
+        boolean hasFightHtml = contentMainPhp != null
+                && (contentMainPhp.contains("var fight_ty") || contentMainPhp.contains("magic_slots();"));
+        String fightLink = AppVars.FightLink;
+        boolean hasFightLink = fightLink != null && fightLink.contains("get_id=61&act=");
+        boolean recentFightPulse = AppVars.LastFightPulseAtMs > 0L
+                && (System.currentTimeMillis() - AppVars.LastFightPulseAtMs) <= 15000L;
+
+        String currentMainUrl = "";
+        try {
+            if (binding != null && binding.appBarMain != null && binding.appBarMain.contentMain != null
+                    && binding.appBarMain.contentMain.webView != null
+                    && binding.appBarMain.contentMain.webView.getUrl() != null) {
+                currentMainUrl = binding.appBarMain.contentMain.webView.getUrl();
+            }
+        } catch (Exception ignored) {
+            currentMainUrl = "";
+        }
+
+        long now = System.currentTimeMillis();
+        long neverTimerDeltaMs = AppVars.NeverTimer - now;
+
+        return "autoFight=" + autoFightEnabled
+                + ", autoFish=" + autoFishEnabled
+                + ", currentMainUrl=" + currentMainUrl
+                + ", appVarsMainTopUrl=" + AppVars.url_main_top
+                + ", hasFightHtml=" + hasFightHtml
+                + ", hasFightLink=" + hasFightLink
+                + ", recentFightPulse=" + recentFightPulse
+                + ", neverTimerDeltaMs=" + neverTimerDeltaMs
+                + ", captchaVisible=" + AppVars.IsFightCaptchaDialogVisible;
     }
 
     /**
