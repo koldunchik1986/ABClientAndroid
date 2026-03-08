@@ -31,6 +31,8 @@ import java.net.HttpCookie;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import ru.neverlands.abclient.databinding.ActivityLoginBinding;
 import ru.neverlands.abclient.model.AuthResult;
@@ -46,6 +48,16 @@ public class LoginActivity extends AppCompatActivity {
     private static final long COOKIE_WARMUP_DELAY_MS = 250L;
     private static final int AUTH_MAX_RETRY_ATTEMPTS = 1;
     private static final long AUTH_RETRY_DELAY_MS = 1200L;
+    /**
+     * При длительном полном сетевом timeout авто-retry только удваивает время ожидания входа.
+     * Поэтому для "длинных" таймаутов повтор не выполняем.
+     */
+    private static final long AUTH_NO_RETRY_TIMEOUT_MS = 25_000L;
+    /**
+     * Извлекает из текста ошибки значение "after N ms" (формат OkHttp/SocketException).
+     */
+    private static final Pattern AUTH_AFTER_MS_PATTERN =
+            Pattern.compile("after\\s+(\\d+)ms", Pattern.CASE_INSENSITIVE);
     private ActivityLoginBinding binding;
     private List<UserConfig> profiles;
     private UserConfig selectedProfile;
@@ -291,17 +303,31 @@ public class LoginActivity extends AppCompatActivity {
      * Зависимости:
      * - {@link AuthManager#authorize(String, String)} как основной HTTP-пайплайн входа;
      * - главный поток (`Handler`) для безопасной работы с UI и переходами активностей;
-     * - {@link #handleAuthResult(AuthResult, String, String, UserConfig, int)} для развилки
+     * - {@link #handleAuthResult(AuthResult, String, String, UserConfig, int, long)} для развилки
      *   успех/капча/авто-повтор/финальная ошибка.
      */
     private void startAuthorizeRequest(String username, String gamePassword, UserConfig profileToLogin, int retryAttempt) {
         ExecutorService executor = Executors.newSingleThreadExecutor();
         Handler handler = new Handler(Looper.getMainLooper());
+        final long attemptStartedAtMs = System.currentTimeMillis();
+        android.util.Log.d(
+                "LoginActivity",
+                "Authorization attempt start: retryAttempt=" + retryAttempt + ", startedAtMs=" + attemptStartedAtMs
+        );
         executor.execute(() -> {
             AuthManager authManager = new AuthManager();
             AuthResult result = authManager.authorize(username, gamePassword);
-            handler.post(() -> handleAuthResult(result, username, gamePassword, profileToLogin, retryAttempt));
+            handler.post(() -> handleAuthResult(
+                    result,
+                    username,
+                    gamePassword,
+                    profileToLogin,
+                    retryAttempt,
+                    attemptStartedAtMs
+            ));
         });
+        // Одноразовый executor для конкретной попытки входа.
+        executor.shutdown();
     }
 
     /**
@@ -309,11 +335,24 @@ public class LoginActivity extends AppCompatActivity {
      * сетевых срывов ("failed to connect"/timeout), чтобы вход проходил с одного нажатия.
      *
      * Зависимости:
-     * - {@link #isRetriableAuthError(String, int)} для классификации transient-сбоев;
+     * - {@link #isRetriableAuthError(String, int, long)} для классификации transient-сбоев;
      * - {@link #startAuthorizeRequest(String, String, UserConfig, int)} для повторной попытки;
      * - UI-состояние кнопки/прогресса (`binding.loginButton`, `binding.progressBar`).
      */
-    private void handleAuthResult(AuthResult result, String username, String gamePassword, UserConfig profileToLogin, int retryAttempt) {
+    private void handleAuthResult(AuthResult result,
+                                  String username,
+                                  String gamePassword,
+                                  UserConfig profileToLogin,
+                                  int retryAttempt,
+                                  long attemptStartedAtMs) {
+        long attemptElapsedMs = Math.max(0L, System.currentTimeMillis() - attemptStartedAtMs);
+        android.util.Log.d(
+                "LoginActivity",
+                "Authorization attempt result: retryAttempt=" + retryAttempt
+                        + ", elapsedMs=" + attemptElapsedMs
+                        + ", success=" + (result != null && result.isSuccess())
+                        + ", captcha=" + (result != null && result.isCaptchaRequired())
+        );
         if (result.isSuccess()) {
             binding.progressBar.setVisibility(View.GONE);
             binding.loginButton.setEnabled(true);
@@ -327,11 +366,11 @@ public class LoginActivity extends AppCompatActivity {
                     ? result.getErrorMessage()
                     : "Ошибка авторизации";
 
-            if (isRetriableAuthError(errorMessage, retryAttempt)) {
+            if (isRetriableAuthError(errorMessage, retryAttempt, attemptElapsedMs)) {
                 android.util.Log.w(
                         "LoginActivity",
                         "Authorization transient error, auto-retry " + (retryAttempt + 1) + "/" + AUTH_MAX_RETRY_ATTEMPTS
-                                + ": " + errorMessage
+                                + ", elapsedMs=" + attemptElapsedMs + ": " + errorMessage
                 );
                 binding.progressBar.setVisibility(View.VISIBLE);
                 binding.loginButton.setEnabled(false);
@@ -356,8 +395,18 @@ public class LoginActivity extends AppCompatActivity {
      * - текст ошибки из {@link AuthResult#getErrorMessage()},
      * - лимит авто-повторов {@link #AUTH_MAX_RETRY_ATTEMPTS}.
      */
-    private boolean isRetriableAuthError(String errorMessage, int retryAttempt) {
+    private boolean isRetriableAuthError(String errorMessage, int retryAttempt, long attemptElapsedMs) {
         if (retryAttempt >= AUTH_MAX_RETRY_ATTEMPTS || errorMessage == null) {
+            return false;
+        }
+        long timeoutFromMessageMs = extractTimeoutMsFromError(errorMessage);
+        if (attemptElapsedMs >= AUTH_NO_RETRY_TIMEOUT_MS
+                || timeoutFromMessageMs >= AUTH_NO_RETRY_TIMEOUT_MS) {
+            android.util.Log.d(
+                    "LoginActivity",
+                    "Authorization retry skipped: long-timeout detected, elapsedMs="
+                            + attemptElapsedMs + ", timeoutFromMessageMs=" + timeoutFromMessageMs
+            );
             return false;
         }
         String lower = errorMessage.toLowerCase();
@@ -368,6 +417,28 @@ public class LoginActivity extends AppCompatActivity {
                 || lower.contains("unable to resolve host")
                 || lower.contains("не удалось подключиться")
                 || lower.contains("таймаут");
+    }
+
+    /**
+     * Извлекает timeout в миллисекундах из хвоста ошибки вида "after 30000ms".
+     *
+     * Зависимости:
+     * - формат текста ошибок OkHttp/SocketException;
+     * - {@link #AUTH_AFTER_MS_PATTERN}.
+     */
+    private long extractTimeoutMsFromError(String errorMessage) {
+        if (errorMessage == null || errorMessage.isEmpty()) {
+            return -1L;
+        }
+        Matcher matcher = AUTH_AFTER_MS_PATTERN.matcher(errorMessage);
+        if (!matcher.find()) {
+            return -1L;
+        }
+        try {
+            return Long.parseLong(matcher.group(1));
+        } catch (NumberFormatException ignored) {
+            return -1L;
+        }
     }
 
     private void onLoginSuccess(List<HttpCookie> cookies, String gamePassword, UserConfig profileToLogin) {
@@ -475,12 +546,21 @@ public class LoginActivity extends AppCompatActivity {
 
                 ExecutorService executor = Executors.newSingleThreadExecutor();
                 Handler handler = new Handler(Looper.getMainLooper());
+                final long attemptStartedAtMs = System.currentTimeMillis();
 
                 executor.execute(() -> {
                     AuthManager authManager = new AuthManager();
                     AuthResult result = authManager.authorizeWithCaptcha(username, gamePassword, vcode, verify);
-                    handler.post(() -> handleAuthResult(result, username, gamePassword, profileToLogin, 0));
+                    handler.post(() -> handleAuthResult(
+                            result,
+                            username,
+                            gamePassword,
+                            profileToLogin,
+                            0,
+                            attemptStartedAtMs
+                    ));
                 });
+                executor.shutdown();
             }
         });
         builder.setNegativeButton("Отмена", (dialog, which) -> dialog.cancel());
