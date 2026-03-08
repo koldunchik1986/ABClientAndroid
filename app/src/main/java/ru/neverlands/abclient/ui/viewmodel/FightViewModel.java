@@ -4,6 +4,7 @@ import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.ViewModel;
 import android.util.Log;
+
 import ru.neverlands.abclient.lez.LezFight;
 import ru.neverlands.abclient.model.AutoboiState;
 import ru.neverlands.abclient.utils.AppVars;
@@ -37,6 +38,17 @@ public class FightViewModel extends ViewModel {
     // Парсит HTML боя и, при активном авто-бое, формирует действие на отправку.
     public void processFightHtml(final String html) {
         if (html == null) return;
+        if (!containsFightMarkers(html)) {
+            Log.d(TAG, BG_TRACE_PREFIX + " processFightHtml: skip, no fight markers");
+            return;
+        }
+        // Фикс "залипания после 1-го хода":
+        // как только получили HTML с боевыми маркерами, обновляем отдельный pulse для фонового сервиса.
+        // Это не заменяет LastBoiTimer (UI-таймер кнопки хода), а дополняет его для isFightSessionLikelyActive(...).
+        long fightPulseNow = System.currentTimeMillis();
+        AppVars.LastFightPulseAtMs = fightPulseNow;
+        AppVars.LastBoiTimer = new java.util.Date(fightPulseNow);
+
         boolean autoBattleUiEnabled = Boolean.TRUE.equals(_isAutoBattleActive.getValue());
         boolean captchaDialogVisible = AppVars.IsFightCaptchaDialogVisible;
         boolean autoBattleRuntimeEnabled = autoBattleUiEnabled
@@ -45,26 +57,41 @@ public class FightViewModel extends ViewModel {
         if (captchaDialogVisible) {
             autoBattleRuntimeEnabled = false;
         }
+
         Log.d(TAG, BG_TRACE_PREFIX + " processFightHtml: htmlLen=" + html.length()
                 + ", autoBattleUiEnabled=" + autoBattleUiEnabled
                 + ", autoBattleRuntimeEnabled=" + autoBattleRuntimeEnabled
                 + ", captchaDialogVisible=" + captchaDialogVisible
                 + ", appVarsAutoboi=" + AppVars.Autoboi);
+
         final boolean shouldAutoBattle = autoBattleRuntimeEnabled;
 
         new Thread(() -> {
             LezFight fight = new LezFight(html);
-            if (!fight.IsValid) return;
-
-            if (shouldAutoBattle) {
-                if (fight.IsBoi && !fight.IsWaitingForNextTurn) {
-                    if (fight.Result != null) {
-                        // Result содержит HTML-форму (или ссылку) для отправки действия боя.
-                        _submitAction.postValue(fight.Result);
-                        Log.d(TAG, BG_TRACE_PREFIX + " processFightHtml: submit posted, len=" + fight.Result.length());
-                    }
-                }
+            if (!fight.IsValid) {
+                Log.d(TAG, BG_TRACE_PREFIX + " processFightHtml: skip, parsed fight invalid");
+                return;
             }
+
+            if (!shouldAutoBattle) {
+                return;
+            }
+
+            if (!fight.IsBoi) {
+                Log.d(TAG, BG_TRACE_PREFIX + " processFightHtml: skip, IsBoi=false");
+                return;
+            }
+            if (fight.IsWaitingForNextTurn) {
+                Log.d(TAG, BG_TRACE_PREFIX + " processFightHtml: skip, waiting for next turn");
+                return;
+            }
+            if (fight.Result == null) {
+                Log.d(TAG, BG_TRACE_PREFIX + " processFightHtml: skip, fight result is null");
+                return;
+            }
+
+            _submitAction.postValue(fight.Result);
+            Log.d(TAG, BG_TRACE_PREFIX + " processFightHtml: submit posted, len=" + fight.Result.length());
         }).start();
     }
 
@@ -76,23 +103,43 @@ public class FightViewModel extends ViewModel {
     // Однократный авто-ход: не включает постоянный авто-бой.
     public void autoTurnOnce(final String html) {
         if (html == null) return;
+        if (!containsFightMarkers(html)) {
+            Log.d(TAG, BG_TRACE_PREFIX + " autoTurnOnce: skip, no fight markers");
+            return;
+        }
+        // Одиночный автоход тоже считается "живым" боевым пульсом:
+        // нужен, чтобы foreground-service не терял бой на кратких переходах между кадрами.
+        long fightPulseNow = System.currentTimeMillis();
+        AppVars.LastFightPulseAtMs = fightPulseNow;
+        AppVars.LastBoiTimer = new java.util.Date(fightPulseNow);
         if (AppVars.IsFightCaptchaDialogVisible) {
             Log.d(TAG, BG_TRACE_PREFIX + " autoTurnOnce: skip, captcha dialog visible");
             return;
         }
+
         Log.d(TAG, BG_TRACE_PREFIX + " autoTurnOnce: htmlLen=" + html.length());
 
         new Thread(() -> {
             LezFight fight = new LezFight(html);
-            if (!fight.IsValid) return;
-
-            if (fight.IsBoi && !fight.IsWaitingForNextTurn) {
-                if (fight.Result != null) {
-                    // Одноразовое действие боя.
-                    _submitAction.postValue(fight.Result);
-                    Log.d(TAG, BG_TRACE_PREFIX + " autoTurnOnce: submit posted, len=" + fight.Result.length());
-                }
+            if (!fight.IsValid) {
+                Log.d(TAG, BG_TRACE_PREFIX + " autoTurnOnce: skip, parsed fight invalid");
+                return;
             }
+            if (!fight.IsBoi) {
+                Log.d(TAG, BG_TRACE_PREFIX + " autoTurnOnce: skip, IsBoi=false");
+                return;
+            }
+            if (fight.IsWaitingForNextTurn) {
+                Log.d(TAG, BG_TRACE_PREFIX + " autoTurnOnce: skip, waiting for next turn");
+                return;
+            }
+            if (fight.Result == null) {
+                Log.d(TAG, BG_TRACE_PREFIX + " autoTurnOnce: skip, fight result is null");
+                return;
+            }
+
+            _submitAction.postValue(fight.Result);
+            Log.d(TAG, BG_TRACE_PREFIX + " autoTurnOnce: submit posted, len=" + fight.Result.length());
         }).start();
     }
 
@@ -109,7 +156,7 @@ public class FightViewModel extends ViewModel {
     public void autoSelect(final String html) {
         if (html == null) return;
         Log.d(TAG, BG_TRACE_PREFIX + " autoSelect: htmlLen=" + html.length());
-        
+
         new Thread(() -> {
             LezFight fight = new LezFight(html);
             if (fight.IsValid && fight.Result != null) {
@@ -125,5 +172,9 @@ public class FightViewModel extends ViewModel {
     public void onActionSubmitted() {
         _submitAction.setValue(null);
         Log.d(TAG, BG_TRACE_PREFIX + " onActionSubmitted: submit reset");
+    }
+
+    private boolean containsFightMarkers(String html) {
+        return html.contains("var fight_ty") || html.contains("magic_slots();");
     }
 }

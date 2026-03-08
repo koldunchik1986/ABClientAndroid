@@ -25,6 +25,7 @@ import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.webkit.CookieManager;
+import android.webkit.WebResourceError;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebResourceResponse;
 import android.webkit.WebSettings;
@@ -106,6 +107,10 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     private static final int CHAT_REFRESH_INITIAL_DELAY_MS = 1000;
     private static final int AUTO_SUBMIT_RETRY_DELAY_MS = 180;
     private static final int AUTO_SUBMIT_MAX_RETRY_COUNT = 3;
+    private static final int AUTO_TURN_NO_FIGHT_MAX_STREAK = 3;
+    private static final long AUTO_TURN_RECOVERY_COOLDOWN_MS = 2200L;
+    private static final long AUTO_TURN_NO_VCODE_WINDOW_MS = 15000L;
+    private static final int AUTO_TURN_NO_VCODE_MAX_RECOVERIES = 4;
     private static final long CAPTCHA_IMAGE_STABILIZE_DELAY_MS = 180L;
     private static final long CAPTCHA_NETWORK_FALLBACK_DELAY_MS = 900L;
     private static final int CAPTCHA_NOTIFICATION_ID = 6107;
@@ -113,6 +118,8 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     private static final long POST_RELOAD_GUARD_WINDOW_MS = 5000L;
     private static final int POST_RELOAD_GUARD_MAX_COUNT = 4;
     private static final long POST_RELOAD_GUARD_BLOCK_MS = 12000L;
+    private static final long MAINFRAME_TIMEOUT_RETRY_DELAY_MS = 1500L;
+    private static final long MAINFRAME_TIMEOUT_RETRY_DEDUP_MS = 12000L;
     public ActivityMainBinding binding;
     private Timer timer;
     private boolean isExiting = false;
@@ -152,6 +159,12 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     private int postReloadGuardCount = 0;
     private long postReloadGuardBlockUntilMs = 0L;
     private String postReloadGuardKey = "";
+    private long lastMainFrameTimeoutRetryAtMs = 0L;
+    private String lastMainFrameTimeoutRetryUrl = "";
+    private int autoTurnNoFightStreak = 0;
+    private long lastAutoTurnRecoveryAtMs = 0L;
+    private int autoTurnNoVCodeRecoveryCount = 0;
+    private long autoTurnNoVCodeWindowStartMs = 0L;
     private final ActivityResultLauncher<Intent> contactsActivityLauncher =
             registerForActivityResult(
                     new ActivityResultContracts.StartActivityForResult(),
@@ -441,11 +454,95 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                         com.google.gson.Gson gson = new com.google.gson.Gson();
                         String unquoted = gson.fromJson(html, String.class);
                         Log.d(TAG, "requestAutoTurn: html length=" + (unquoted != null ? unquoted.length() : 0));
-                        fightViewModel.autoTurnOnce(unquoted);
+                        String autoTurnHtml = unquoted;
+                        if (hasFightMarkers(unquoted)) {
+                            autoTurnNoFightStreak = 0;
+                        } else {
+                            String cachedFightHtml = AppVars.ContentMainPhp;
+                            if (hasFightMarkers(cachedFightHtml)) {
+                                autoTurnHtml = cachedFightHtml;
+                                autoTurnNoFightStreak = 0;
+                                Log.d(TAG, BG_TRACE_PREFIX + " requestAutoTurn: fallback to cached fight html, len="
+                                        + cachedFightHtml.length());
+                            } else {
+                                autoTurnNoFightStreak++;
+                                Log.d(TAG, BG_TRACE_PREFIX + " requestAutoTurn: no-fight html streak=" + autoTurnNoFightStreak);
+                                maybeRecoverFightFrameAfterNoFightHtml("no_markers");
+                            }
+                        }
+                        fightViewModel.autoTurnOnce(autoTurnHtml);
                     } else {
                         Log.d(TAG, "requestAutoTurn: html is null");
+                        String cachedFightHtml = AppVars.ContentMainPhp;
+                        if (hasFightMarkers(cachedFightHtml)) {
+                            autoTurnNoFightStreak = 0;
+                            Log.d(TAG, BG_TRACE_PREFIX + " requestAutoTurn: null html, fallback to cached fight html, len="
+                                    + cachedFightHtml.length());
+                            fightViewModel.autoTurnOnce(cachedFightHtml);
+                        } else {
+                            autoTurnNoFightStreak++;
+                            Log.d(TAG, BG_TRACE_PREFIX + " requestAutoTurn: no-fight html streak=" + autoTurnNoFightStreak + " (null)");
+                            maybeRecoverFightFrameAfterNoFightHtml("null_html");
+                        }
                     }
                 });
+    }
+
+    /**
+     * Автовосстановление fight-frame, если авто-тик подряд получает небоевой HTML.
+     *
+     * Зависимости:
+     * - `AppVars.Autoboi` / `Profile.LezDoAutoboi`: runtime-флаг активного авто-боя;
+     * - `AppVars.VCode`: добавляется в URL восстановления, если доступен;
+     * - `binding.appBarMain.contentMain.webView`: целевой WebView верхнего фрейма.
+     */
+    private void maybeRecoverFightFrameAfterNoFightHtml(String reason) {
+        if (!isAutoFightRuntimeEnabled()) {
+            autoTurnNoFightStreak = 0;
+            return;
+        }
+        if (autoTurnNoFightStreak < AUTO_TURN_NO_FIGHT_MAX_STREAK) {
+            return;
+        }
+        long now = System.currentTimeMillis();
+        if (now - lastAutoTurnRecoveryAtMs < AUTO_TURN_RECOVERY_COOLDOWN_MS) {
+            return;
+        }
+        if (binding == null || binding.appBarMain == null || binding.appBarMain.contentMain == null
+                || binding.appBarMain.contentMain.webView == null) {
+            return;
+        }
+
+        String resolvedVCode = resolveBestFightVCode();
+        if (resolvedVCode.isEmpty() && shouldThrottleNoVCodeRecovery(now)) {
+            String resetUrl = "http://neverlands.ru/main.php?r=" + now + "&ab_recover_reset=1";
+            lastAutoTurnRecoveryAtMs = now;
+            autoTurnNoFightStreak = 0;
+            Log.w(TAG, BG_TRACE_PREFIX + " requestAutoTurn: recover throttled (no vcode), reset -> " + resetUrl);
+            binding.appBarMain.contentMain.webView.loadUrl(resetUrl);
+            return;
+        }
+
+        // Восстановление fight-frame через probe-маркер; vcode добавляем из runtime/url/payload авто-удара.
+        String reloadUrl = "http://neverlands.ru/main.php?get_id=56&act=10&go=inf&ab_reload_probe=1";
+        if (!resolvedVCode.isEmpty()) {
+            reloadUrl += "&vcode=" + resolvedVCode;
+        }
+        reloadUrl += "&ts=" + now;
+
+        lastAutoTurnRecoveryAtMs = now;
+        autoTurnNoFightStreak = 0;
+        Log.w(TAG, BG_TRACE_PREFIX + " requestAutoTurn: recover fight frame (" + reason + ") -> " + reloadUrl);
+        binding.appBarMain.contentMain.webView.loadUrl(reloadUrl);
+    }
+
+    private boolean isAutoFightRuntimeEnabled() {
+        return AppVars.Autoboi == ru.neverlands.abclient.model.AutoboiState.AutoboiOn
+                || (AppVars.Profile != null && AppVars.Profile.LezDoAutoboi);
+    }
+
+    private boolean hasFightMarkers(String html) {
+        return html != null && (html.contains("var fight_ty") || html.contains("magic_slots();"));
     }
 
     /**
@@ -467,10 +564,38 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             return;
         }
 
+        // Фикс "1 ход и белый фрейм": сохраняем vcode из payload авто-удара до POST-фазы,
+        // чтобы последующий reload `go=inf` не уходил без vcode.
+        adoptVCodeFromAutoSubmitPayload(result);
+
         com.google.gson.Gson gson = new com.google.gson.Gson();
         String jsonArg = gson.toJson(result);
         String script = "(function(payload){"
                 + "try{"
+                + "var tryPayloadSubmit=function(raw){"
+                + "if(!raw){return false;}"
+                + "var ss=(''+raw).split('|');"
+                + "if(ss.length<9){return false;}"
+                + "var mk=function(name,val){var i=document.createElement('input');i.type='hidden';i.name=name;i.value=(val==null?'':val);return i;};"
+                + "var f=document.createElement('form');"
+                + "f.method='POST';"
+                + "f.action='main.php';"
+                + "f.style.display='none';"
+                + "f.appendChild(mk('post_id','7'));"
+                + "f.appendChild(mk('vcode',ss[0]));"
+                + "f.appendChild(mk('enemy',ss[1]));"
+                + "f.appendChild(mk('group',ss[2]));"
+                + "f.appendChild(mk('inf_bot',ss[3]));"
+                + "f.appendChild(mk('lev_bot',ss[4]));"
+                + "f.appendChild(mk('ftr',ss[5]));"
+                + "f.appendChild(mk('inu',ss[6]));"
+                + "f.appendChild(mk('inb',ss[7]));"
+                + "f.appendChild(mk('ina',ss[8]));"
+                + "(document.body||document.documentElement).appendChild(f);"
+                + "f.submit();"
+                + "return true;"
+                + "};"
+                + "if(tryPayloadSubmit(payload)){return 'ok_payload_submit';}"
                 + "if(typeof window.AutoSubmit==='function'){window.AutoSubmit(payload);return 'ok_autosubmit';}"
                 + "if(typeof AutoSubmit==='function'){AutoSubmit(payload);return 'ok_AutoSubmit';}"
                 + "if(document&&document.ff&&typeof document.ff.submit==='function'){document.ff.submit();return 'ok_ff_submit';}"
@@ -493,7 +618,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             boolean missing = status != null && status.contains("missing");
             if (missing && retriesLeft > 0) {
                 int nextRetriesLeft = retriesLeft - 1;
-                Log.d(TAG, BG_TRACE_PREFIX + " submitAutoBattleAction: AutoSubmit missing, retry left=" + nextRetriesLeft);
+                Log.d(TAG, BG_TRACE_PREFIX + " submitAutoBattleAction: submit path missing, retry left=" + nextRetriesLeft);
                 binding.appBarMain.contentMain.webView.postDelayed(
                         () -> submitAutoBattleActionToWebView(result, nextRetriesLeft),
                         AUTO_SUBMIT_RETRY_DELAY_MS
@@ -502,11 +627,170 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             }
 
             if (missing) {
-                Log.w(TAG, BG_TRACE_PREFIX + " submitAutoBattleAction: AutoSubmit still missing after retries");
+                Log.w(TAG, BG_TRACE_PREFIX + " submitAutoBattleAction: submit path still missing after retries");
             } else {
                 Log.d(TAG, BG_TRACE_PREFIX + " submitAutoBattleAction: status=" + status);
             }
         });
+    }
+
+    /**
+     * Возвращает лучший доступный vcode для восстановления боевого кадра.
+     *
+     * Источники (по приоритету):
+     * 1) `AppVars.VCode` (если уже известен runtime-цепочке),
+     * 2) `mainWebView.getUrl()` (актуальный URL верхнего фрейма),
+     * 3) `AppVars.url_main_top` (последний зафиксированный URL top-frame),
+     * 4) `AppVars.FightLink` (ссылка завершения/действия боя),
+     * 5) `AppVars.ContentMainPhp` (кеш последнего HTML с `fight_pm`).
+     *
+     * Зависимости:
+     * - `Uri.parse(...).getQueryParameter("vcode")`;
+     * - regex-парсинг `fight_pm` для html-кеша;
+     * - `AppVars` (VCode, url_main_top, FightLink, ContentMainPhp).
+     */
+    private String resolveBestFightVCode() {
+        String fromAppVars = safeTrim(AppVars.VCode);
+        if (!fromAppVars.isEmpty()) {
+            return fromAppVars;
+        }
+
+        String fromCurrentUrl = extractVCodeFromUrl(binding != null
+                && binding.appBarMain != null
+                && binding.appBarMain.contentMain != null
+                && binding.appBarMain.contentMain.webView != null
+                ? binding.appBarMain.contentMain.webView.getUrl()
+                : "");
+        if (!fromCurrentUrl.isEmpty()) {
+            AppVars.VCode = fromCurrentUrl;
+            Log.d(TAG, BG_TRACE_PREFIX + " resolveBestFightVCode: source=current_url");
+            return fromCurrentUrl;
+        }
+
+        String fromTopUrl = extractVCodeFromUrl(AppVars.url_main_top);
+        if (!fromTopUrl.isEmpty()) {
+            AppVars.VCode = fromTopUrl;
+            Log.d(TAG, BG_TRACE_PREFIX + " resolveBestFightVCode: source=top_url");
+            return fromTopUrl;
+        }
+
+        String fromFightLink = extractVCodeFromUrl(AppVars.FightLink);
+        if (!fromFightLink.isEmpty()) {
+            AppVars.VCode = fromFightLink;
+            Log.d(TAG, BG_TRACE_PREFIX + " resolveBestFightVCode: source=fight_link");
+            return fromFightLink;
+        }
+
+        String fromFightHtml = extractVCodeFromFightHtml(AppVars.ContentMainPhp);
+        if (!fromFightHtml.isEmpty()) {
+            AppVars.VCode = fromFightHtml;
+            Log.d(TAG, BG_TRACE_PREFIX + " resolveBestFightVCode: source=fight_html");
+            return fromFightHtml;
+        }
+
+        return "";
+    }
+
+    /**
+     * Анти-цикл для recovery без vcode.
+     *
+     * Если в коротком окне времени recovery вызывается многократно без vcode,
+     * останавливаем частый `ab_reload_probe` и даем один "reset" на полный `main.php`.
+     */
+    private boolean shouldThrottleNoVCodeRecovery(long now) {
+        if (autoTurnNoVCodeWindowStartMs == 0L
+                || (now - autoTurnNoVCodeWindowStartMs) > AUTO_TURN_NO_VCODE_WINDOW_MS) {
+            autoTurnNoVCodeWindowStartMs = now;
+            autoTurnNoVCodeRecoveryCount = 0;
+        }
+        autoTurnNoVCodeRecoveryCount++;
+        if (autoTurnNoVCodeRecoveryCount > AUTO_TURN_NO_VCODE_MAX_RECOVERIES) {
+            autoTurnNoVCodeWindowStartMs = now;
+            autoTurnNoVCodeRecoveryCount = 0;
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * Извлекает vcode из payload авто-удара (`vcode|enemy|group|...`) и синхронизирует `AppVars.VCode`.
+     *
+     * Зависимости:
+     * - `FightViewModel -> LezFight.BuildResult()` формирует payload с vcode первым токеном;
+     * - `schedulePostResponseReload(...)` и recovery-ветка используют `AppVars.VCode`.
+     */
+    private void adoptVCodeFromAutoSubmitPayload(String payload) {
+        String vcode = extractVCodeFromAutoSubmitPayload(payload);
+        if (vcode.isEmpty()) {
+            return;
+        }
+        if (!vcode.equals(AppVars.VCode)) {
+            AppVars.VCode = vcode;
+            Log.d(TAG, BG_TRACE_PREFIX + " adoptVCodeFromAutoSubmitPayload: vcode updated");
+        }
+    }
+
+    private String extractVCodeFromAutoSubmitPayload(String payload) {
+        if (payload == null || payload.isEmpty()) {
+            return "";
+        }
+        int delimiterPos = payload.indexOf('|');
+        String token = delimiterPos >= 0 ? payload.substring(0, delimiterPos) : payload;
+        token = safeTrim(token);
+        if (token.isEmpty()) {
+            return "";
+        }
+        if (!token.matches("[0-9a-fA-F]{6,32}")) {
+            return "";
+        }
+        return token;
+    }
+
+    private String extractVCodeFromUrl(String url) {
+        if (url == null || url.isEmpty()) {
+            return "";
+        }
+        try {
+            Uri uri = Uri.parse(url);
+            String vcode = safeTrim(uri != null ? uri.getQueryParameter("vcode") : "");
+            if (!vcode.isEmpty()) {
+                return vcode;
+            }
+        } catch (Exception ignored) {
+        }
+        int pos = url.toLowerCase(Locale.ROOT).indexOf("vcode=");
+        if (pos < 0) {
+            return "";
+        }
+        String tail = url.substring(pos + "vcode=".length());
+        int ampPos = tail.indexOf('&');
+        String raw = ampPos >= 0 ? tail.substring(0, ampPos) : tail;
+        return safeTrim(raw);
+    }
+
+    private String extractVCodeFromFightHtml(String html) {
+        if (html == null || html.isEmpty()) {
+            return "";
+        }
+        Matcher blockMatcher = Pattern
+                .compile("var\\s+fight_pm\\s*=\\s*\\[(.*?)\\]", Pattern.CASE_INSENSITIVE | Pattern.DOTALL)
+                .matcher(html);
+        if (!blockMatcher.find()) {
+            return "";
+        }
+        String block = blockMatcher.group(1);
+        Matcher tokenMatcher = Pattern.compile("\"([0-9a-fA-F]{6,32})\"").matcher(block);
+        while (tokenMatcher.find()) {
+            String candidate = safeTrim(tokenMatcher.group(1));
+            if (!candidate.isEmpty()) {
+                return candidate;
+            }
+        }
+        return "";
+    }
+
+    private String safeTrim(String value) {
+        return value == null ? "" : value.trim();
     }
 
     /**
@@ -2112,6 +2396,10 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         public void onPageFinished(WebView view, String url) {
             super.onPageFinished(view, url);
             AppLogger.write("Page loaded: " + url);
+            if (binding != null && binding.appBarMain != null && binding.appBarMain.contentMain != null
+                    && view == binding.appBarMain.contentMain.webView) {
+                AppVars.url_main_top = url != null ? url : "";
+            }
 
             if (chatPopupWebViews.contains(view)) {
                 chatPopupWebViews.remove(view);
@@ -2235,6 +2523,44 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             }
             
             return false;
+        }
+
+        @Override
+        public void onReceivedError(WebView view, WebResourceRequest request, WebResourceError error) {
+            super.onReceivedError(view, request, error);
+            String failingUrl = "";
+            boolean isMainFrame = true;
+            if (request != null) {
+                isMainFrame = request.isForMainFrame();
+                if (request.getUrl() != null) {
+                    failingUrl = request.getUrl().toString();
+                }
+            }
+            int errorCode = error != null ? error.getErrorCode() : Integer.MIN_VALUE;
+            String description = error != null && error.getDescription() != null
+                    ? error.getDescription().toString()
+                    : "";
+
+            Log.e(TAG, "onReceivedError: code=" + errorCode
+                    + ", mainFrame=" + isMainFrame
+                    + ", url=" + failingUrl
+                    + ", desc=" + description);
+
+            maybeRetryMainFrameTimeout(view, failingUrl, errorCode, description, isMainFrame);
+        }
+
+        @Override
+        public void onReceivedError(WebView view, int errorCode, String description, String failingUrl) {
+            super.onReceivedError(view, errorCode, description, failingUrl);
+            String safeUrl = failingUrl == null ? "" : failingUrl;
+            String safeDescription = description == null ? "" : description;
+
+            Log.e(TAG, "onReceivedError(legacy): code=" + errorCode
+                    + ", url=" + safeUrl
+                    + ", desc=" + safeDescription);
+
+            // На старом колбэке Android не даёт флаг mainFrame; для совместимости считаем этот вызов главным.
+            maybeRetryMainFrameTimeout(view, safeUrl, errorCode, safeDescription, true);
         }
 
 
@@ -2478,6 +2804,83 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         postReloadGuardBlockUntilMs = 0L;
         postReloadGuardKey = "";
         Log.d(TAG, "POST_RELOAD_GUARD: reset, reason=" + reason);
+    }
+
+    /**
+     * Перезапускает загрузку main-frame при сетевом timeout (ERR_CONNECTION_TIMED_OUT) с anti-loop guard.
+     *
+     * Зависимости:
+     * - callback-и `WebViewClient.onReceivedError(...)` (API23+ и legacy),
+     * - `lastMainFrameTimeoutRetryUrl/AtMs` для дедупликации повторов,
+     * - URL-хост Neverlands (`neverlands.ru`) как единственная зона автоповтора.
+     */
+    private void maybeRetryMainFrameTimeout(WebView view,
+                                            String failingUrl,
+                                            int errorCode,
+                                            String description,
+                                            boolean isMainFrame) {
+        if (view == null || !isMainFrame) {
+            return;
+        }
+        if (failingUrl == null || failingUrl.isEmpty()) {
+            return;
+        }
+        if (!isNeverlandsHostUrl(failingUrl)) {
+            return;
+        }
+        if (!isTimeoutError(errorCode, description)) {
+            return;
+        }
+
+        long now = System.currentTimeMillis();
+        if (failingUrl.equals(lastMainFrameTimeoutRetryUrl)
+                && (now - lastMainFrameTimeoutRetryAtMs) < MAINFRAME_TIMEOUT_RETRY_DEDUP_MS) {
+            Log.w(TAG, "onReceivedError: timeout retry skipped by dedup, url=" + failingUrl);
+            return;
+        }
+
+        lastMainFrameTimeoutRetryUrl = failingUrl;
+        lastMainFrameTimeoutRetryAtMs = now;
+        Log.w(TAG, "onReceivedError: timeout on main frame, retry in "
+                + MAINFRAME_TIMEOUT_RETRY_DELAY_MS + "ms, url=" + failingUrl);
+
+        view.postDelayed(() -> {
+            if (isFinishing() || (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR1 && isDestroyed())) {
+                return;
+            }
+            view.loadUrl(failingUrl);
+        }, MAINFRAME_TIMEOUT_RETRY_DELAY_MS);
+    }
+
+    /**
+     * Проверяет, относится ли URL к игровому хосту Neverlands.
+     */
+    private boolean isNeverlandsHostUrl(String url) {
+        try {
+            Uri uri = Uri.parse(url);
+            String host = uri != null && uri.getHost() != null
+                    ? uri.getHost().toLowerCase(Locale.ROOT)
+                    : "";
+            return "neverlands.ru".equals(host) || host.endsWith(".neverlands.ru");
+        } catch (Exception ignored) {
+            return false;
+        }
+    }
+
+    /**
+     * Унифицированная проверка timeout-ошибки для разных Android/WebView callback-форматов.
+     */
+    private boolean isTimeoutError(int errorCode, String description) {
+        if (errorCode == WebViewClient.ERROR_TIMEOUT) {
+            return true;
+        }
+        if (description == null || description.isEmpty()) {
+            return false;
+        }
+        String lower = description.toLowerCase(Locale.ROOT);
+        return lower.contains("err_connection_timed_out")
+                || lower.contains("connection timed out")
+                || lower.contains("timed out");
     }
 
     private WebView createChatPopupWebView() {

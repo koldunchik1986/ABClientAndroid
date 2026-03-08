@@ -89,6 +89,20 @@ public class AppVars {
     public static String LastBoiTravm = "";
     public static String LastBoiUron = "";
     public static Date LastBoiTimer = new Date();
+    /**
+     * Временная метка последнего подтверждённого "пульса боя" (ms).
+     *
+     * Назначение:
+     * - не зависит от UI-таймера кнопки хода (`LastBoiTimer`) и используется только для фоновой автоматики;
+     * - позволяет foreground-service понимать, что бой был активен совсем недавно даже при кратком переходе
+     *   на промежуточный `main.php` без `fight_ty`.
+     *
+     * Зависимости:
+     * - обновляется в `FightViewModel.processFightHtml(...)`/`autoTurnOnce(...)` при наличии маркеров боя;
+     * - может обновляться в `MainPhp.mainPhpFight(...)` при активной боевой фазе (`fight.IsBoi`);
+     * - читается в `AutoModeForegroundService.isFightSessionLikelyActive(...)`.
+     */
+    public static volatile long LastFightPulseAtMs = 0L;
     public static long IdleTimer = 0;
     public static long LastMainPhp = 0;
     public static Date NextCheckNoConnection;

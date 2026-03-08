@@ -3119,6 +3119,12 @@ public class MainPhp {
             android.util.Log.d(TAG, "mainPhpFight: fight.IsValid=false, returning original HTML");
             return html;
         }
+        // Фоновый "пульс боя" для AutoModeForegroundService:
+        // когда LezFight подтверждает активную фазу (IsBoi=true), фиксируем метку времени.
+        // Это помогает пережить переходные кадры без fight_ty (например, краткий main.php после submit).
+        if (fight.IsBoi) {
+            AppVars.LastFightPulseAtMs = System.currentTimeMillis();
+        }
 
         // Унифицированный флаг "бой завершён":
         // - IsBoi=false: мы уже не в активной фазе ударов,

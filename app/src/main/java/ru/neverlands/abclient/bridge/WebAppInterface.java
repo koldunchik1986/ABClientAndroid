@@ -18,6 +18,7 @@ import java.net.URLEncoder;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.zip.GZIPInputStream;
 
@@ -37,6 +38,8 @@ import ru.neverlands.abclient.utils.Russian;
  */
 public class WebAppInterface {
     private static final String BG_TRACE_PREFIX = "[BG_TRACE]";
+    private static volatile long lastNeverTimerLogAtMs = 0L;
+    private static volatile long lastNeverTimerLoggedValueMs = Long.MIN_VALUE;
     Context mContext;
 
     /** Конструктор, инициализирующий контекст. */
@@ -107,7 +110,23 @@ public class WebAppInterface {
         if (msLeft < 0L) {
             msLeft = 0L;
         }
-        AppVars.NeverTimer = System.currentTimeMillis() + msLeft;
+        long nowMs = System.currentTimeMillis();
+        long dueAtMs = nowMs + msLeft;
+        AppVars.NeverTimer = dueAtMs;
+
+        // Debug-трасса countdown из map.js (throttle: по дельте/времени/последним секундам).
+        long prevLogAt = lastNeverTimerLogAtMs;
+        long prevLoggedValue = lastNeverTimerLoggedValueMs;
+        boolean shouldLog = prevLoggedValue == Long.MIN_VALUE
+                || Math.abs(prevLoggedValue - msLeft) >= 5000L
+                || (nowMs - prevLogAt) >= 10000L
+                || msLeft <= 5000L;
+        if (shouldLog) {
+            lastNeverTimerLogAtMs = nowMs;
+            lastNeverTimerLoggedValueMs = msLeft;
+            Log.d("WebAppInterface", "SetNeverTimer: msLeft=" + msLeft
+                    + " (" + (msLeft / 1000L) + "s), dueInMs=" + Math.max(0L, dueAtMs - nowMs));
+        }
     }
 
     /**
@@ -1088,6 +1107,11 @@ public class WebAppInterface {
         AppVars.mainActivity.get().runOnUiThread(() -> {
             switch (frameName) {
                 case "main_top":
+                    if (shouldSuppressMainTopReloadDuringAutoFight(finalUrl)) {
+                        Log.d("WebAppInterface", "loadFrame: suppressed main_top reload during active auto-fight -> " + finalUrl);
+                        return;
+                    }
+                    AppVars.url_main_top = finalUrl;
                     AppVars.mainActivity.get().binding.appBarMain.contentMain.webView.loadUrl(finalUrl);
                     break;
                 case "ch_list":
@@ -1106,10 +1130,39 @@ public class WebAppInterface {
                     break;
                 default:
                     // Load in the main webview by default
+                    AppVars.url_main_top = finalUrl;
                     AppVars.mainActivity.get().binding.appBarMain.contentMain.webView.loadUrl(finalUrl);
                     break;
             }
         });
+    }
+
+    private boolean shouldSuppressMainTopReloadDuringAutoFight(String finalUrl) {
+        if (finalUrl == null) {
+            return false;
+        }
+
+        String lowerUrl = finalUrl.toLowerCase(Locale.ROOT);
+        boolean targetIsPlainMain = "http://neverlands.ru/main.php".equals(lowerUrl);
+        if (!targetIsPlainMain) {
+            return false;
+        }
+
+        boolean autoFightEnabled = AppVars.Autoboi == AutoboiState.AutoboiOn
+                || (AppVars.Profile != null && AppVars.Profile.LezDoAutoboi);
+        if (!autoFightEnabled) {
+            return false;
+        }
+
+        String contentMainPhp = AppVars.ContentMainPhp;
+        boolean hasFightHtml = contentMainPhp != null
+                && (contentMainPhp.contains("var fight_ty") || contentMainPhp.contains("magic_slots();"));
+        String fightLink = AppVars.FightLink;
+        boolean hasFightLink = fightLink != null && fightLink.contains("get_id=61&act=");
+        boolean recentFightPulse = AppVars.LastFightPulseAtMs > 0L
+                && (System.currentTimeMillis() - AppVars.LastFightPulseAtMs) <= 15000L;
+
+        return hasFightHtml || hasFightLink || recentFightPulse;
     }
 
     /**

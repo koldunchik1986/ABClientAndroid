@@ -7,6 +7,7 @@ import android.app.PendingIntent;
 import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
+import android.net.Uri;
 import android.net.wifi.WifiManager;
 import android.os.Build;
 import android.os.Handler;
@@ -18,6 +19,10 @@ import android.util.Log;
 import androidx.annotation.Nullable;
 import androidx.core.app.NotificationCompat;
 import androidx.core.content.ContextCompat;
+
+import java.util.Locale;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import ru.neverlands.abclient.MainActivity;
 import ru.neverlands.abclient.R;
@@ -49,6 +54,7 @@ public class AutoModeForegroundService extends Service {
     private static final long ROOM_REFRESH_MIN_INTERVAL_MS = 1000L;
     private static final long FIGHT_FRAME_RECOVERY_COOLDOWN_MS = 5_000L;
     private static final long CHAT_REFRESH_STALE_GRACE_MS = 3_000L;
+    private static final long FIGHT_PULSE_GRACE_MS = 12_000L;
 
     private static final String ACTION_SYNC = "ru.neverlands.abclient.action.AUTO_BG_SYNC";
 
@@ -303,24 +309,43 @@ public class AutoModeForegroundService extends Service {
     }
 
     private boolean isFightSessionLikelyActive(MainActivity activity) {
+        // 1) Самый надёжный сигнал: в кеше main.php есть боевые маркеры.
         String mainHtml = AppVars.ContentMainPhp;
         if (mainHtml != null && (mainHtml.contains("var fight_ty") || mainHtml.contains("magic_slots();"))) {
             return true;
         }
 
+        // 2) Прямой сигнал окончания/боевого action-link.
+        String fightLink = AppVars.FightLink;
+        if (fightLink != null && fightLink.contains("get_id=61&act=")) {
+            return true;
+        }
+
+        // 3) "Боевой пульс" за последние N секунд.
+        // Нужен для переходных кадров, где URL/HTML кратко теряют fight-маркеры.
+        long pulseAtMs = AppVars.LastFightPulseAtMs;
+        boolean recentFightPulse = pulseAtMs > 0L
+                && (System.currentTimeMillis() - pulseAtMs) <= FIGHT_PULSE_GRACE_MS;
+        if (!recentFightPulse) {
+            return false;
+        }
+
+        // 4) URL сами по себе ненадёжны (go=inf может вернуть небоевой html), но в сочетании с recent pulse
+        // дают устойчивое определение активного боя.
         if (activity != null && activity.getMainWebView() != null) {
             String currentMainUrl = activity.getMainWebView().getUrl();
             if (currentMainUrl != null && currentMainUrl.contains("get_id=56&act=10&go=inf")) {
                 return true;
             }
         }
-
         String topUrl = AppVars.url_main_top;
         if (topUrl != null && topUrl.contains("get_id=56&act=10&go=inf")) {
             return true;
         }
-        String fightLink = AppVars.FightLink;
-        return fightLink != null && fightLink.contains("get_id=61&act=");
+
+        // fallback: если только что был подтверждённый бой, ещё несколько секунд считаем сессию активной
+        // и даём requestAutoTurn шанс вернуть настоящий fight-frame.
+        return true;
     }
 
     /**
@@ -341,11 +366,95 @@ public class AutoModeForegroundService extends Service {
      */
     private String buildFightFrameReloadUrl() {
         String reloadUrl = "http://neverlands.ru/main.php?get_id=56&act=10&go=inf";
-        if (AppVars.VCode != null && !AppVars.VCode.isEmpty()) {
-            reloadUrl += "&vcode=" + AppVars.VCode;
+        String vcode = resolveBestFightVCode();
+        if (!vcode.isEmpty()) {
+            reloadUrl += "&vcode=" + vcode;
         }
         reloadUrl += "&ts=" + System.currentTimeMillis();
         return reloadUrl;
+    }
+
+    /**
+     * Локальный resolve vcode для recovery-URL foreground-сервиса.
+     *
+     * Зависимости:
+     * - runtime `AppVars.VCode`;
+     * - `AppVars.url_main_top` / `AppVars.FightLink` (если vcode есть в query);
+     * - `AppVars.ContentMainPhp` (парсинг `fight_pm`, если URL-параметра нет).
+     */
+    private String resolveBestFightVCode() {
+        String fromAppVars = safeTrim(AppVars.VCode);
+        if (!fromAppVars.isEmpty()) {
+            return fromAppVars;
+        }
+
+        String fromTopUrl = extractVCodeFromUrl(AppVars.url_main_top);
+        if (!fromTopUrl.isEmpty()) {
+            AppVars.VCode = fromTopUrl;
+            return fromTopUrl;
+        }
+
+        String fromFightLink = extractVCodeFromUrl(AppVars.FightLink);
+        if (!fromFightLink.isEmpty()) {
+            AppVars.VCode = fromFightLink;
+            return fromFightLink;
+        }
+
+        String fromFightHtml = extractVCodeFromFightHtml(AppVars.ContentMainPhp);
+        if (!fromFightHtml.isEmpty()) {
+            AppVars.VCode = fromFightHtml;
+            return fromFightHtml;
+        }
+
+        return "";
+    }
+
+    private String extractVCodeFromUrl(String url) {
+        if (url == null || url.isEmpty()) {
+            return "";
+        }
+        try {
+            Uri uri = Uri.parse(url);
+            String vcode = safeTrim(uri != null ? uri.getQueryParameter("vcode") : "");
+            if (!vcode.isEmpty()) {
+                return vcode;
+            }
+        } catch (Exception ignored) {
+        }
+
+        int pos = url.toLowerCase(Locale.ROOT).indexOf("vcode=");
+        if (pos < 0) {
+            return "";
+        }
+        String tail = url.substring(pos + "vcode=".length());
+        int ampPos = tail.indexOf('&');
+        String raw = ampPos >= 0 ? tail.substring(0, ampPos) : tail;
+        return safeTrim(raw);
+    }
+
+    private String extractVCodeFromFightHtml(String html) {
+        if (html == null || html.isEmpty()) {
+            return "";
+        }
+        Matcher blockMatcher = Pattern
+                .compile("var\\s+fight_pm\\s*=\\s*\\[(.*?)\\]", Pattern.CASE_INSENSITIVE | Pattern.DOTALL)
+                .matcher(html);
+        if (!blockMatcher.find()) {
+            return "";
+        }
+        String block = blockMatcher.group(1);
+        Matcher tokenMatcher = Pattern.compile("\"([0-9a-fA-F]{6,32})\"").matcher(block);
+        while (tokenMatcher.find()) {
+            String candidate = safeTrim(tokenMatcher.group(1));
+            if (!candidate.isEmpty()) {
+                return candidate;
+            }
+        }
+        return "";
+    }
+
+    private String safeTrim(String value) {
+        return value == null ? "" : value.trim();
     }
 
     @SuppressWarnings("deprecation")
