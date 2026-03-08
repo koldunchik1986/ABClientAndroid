@@ -113,17 +113,8 @@ public class AutoFunctionsManager {
                         AppVars.mainActivity.get().getMainWebView().loadUrl(reloadUrl);
                         // страховочный повтор через ~1.2с, если первый кадр ещё был ручным
                         // Страховочный повтор через ~1.2с: нужен, если первый кадр был "ручным".
-                        final String secondReload = reloadUrl;
-                        final boolean autoFishEnabledNow = isAutoFishEnabled();
-                        if (!autoFishEnabledNow) {
-                            new android.os.Handler(android.os.Looper.getMainLooper())
-                                    .postDelayed(() -> {
-                                        Log.d(TAG, "setAutoFightEnabled: second reload fight frame " + secondReload);
-                                        AppVars.mainActivity.get().getMainWebView().loadUrl(secondReload);
-                                    }, 1200);
-                        } else {
-                            Log.d(TAG, "setAutoFightEnabled: skip second reload while auto fish is enabled");
-                        }
+                        // Удален second reload: в некоторых сессиях он провоцировал лишние перезагрузки
+                        // верхнего фрейма и мешал нормальной навигации после боя.
                     } catch (Exception e) {
                         Log.e(TAG, "setAutoFightEnabled: failed to trigger auto turn", e);
                     }

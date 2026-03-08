@@ -107,10 +107,6 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     private static final int CHAT_REFRESH_INITIAL_DELAY_MS = 1000;
     private static final int AUTO_SUBMIT_RETRY_DELAY_MS = 180;
     private static final int AUTO_SUBMIT_MAX_RETRY_COUNT = 3;
-    private static final int AUTO_TURN_NO_FIGHT_MAX_STREAK = 3;
-    private static final long AUTO_TURN_RECOVERY_COOLDOWN_MS = 2200L;
-    private static final long AUTO_TURN_NO_VCODE_WINDOW_MS = 15000L;
-    private static final int AUTO_TURN_NO_VCODE_MAX_RECOVERIES = 4;
     private static final long CAPTCHA_IMAGE_STABILIZE_DELAY_MS = 180L;
     private static final long CAPTCHA_NETWORK_FALLBACK_DELAY_MS = 900L;
     private static final int CAPTCHA_NOTIFICATION_ID = 6107;
@@ -161,10 +157,6 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     private String postReloadGuardKey = "";
     private long lastMainFrameTimeoutRetryAtMs = 0L;
     private String lastMainFrameTimeoutRetryUrl = "";
-    private int autoTurnNoFightStreak = 0;
-    private long lastAutoTurnRecoveryAtMs = 0L;
-    private int autoTurnNoVCodeRecoveryCount = 0;
-    private long autoTurnNoVCodeWindowStartMs = 0L;
     private final ActivityResultLauncher<Intent> contactsActivityLauncher =
             registerForActivityResult(
                     new ActivityResultContracts.StartActivityForResult(),
@@ -456,18 +448,14 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                         Log.d(TAG, "requestAutoTurn: html length=" + (unquoted != null ? unquoted.length() : 0));
                         String autoTurnHtml = unquoted;
                         if (hasFightMarkers(unquoted)) {
-                            autoTurnNoFightStreak = 0;
                         } else {
                             String cachedFightHtml = AppVars.ContentMainPhp;
                             if (hasFightMarkers(cachedFightHtml)) {
                                 autoTurnHtml = cachedFightHtml;
-                                autoTurnNoFightStreak = 0;
                                 Log.d(TAG, BG_TRACE_PREFIX + " requestAutoTurn: fallback to cached fight html, len="
                                         + cachedFightHtml.length());
                             } else {
-                                autoTurnNoFightStreak++;
-                                Log.d(TAG, BG_TRACE_PREFIX + " requestAutoTurn: no-fight html streak=" + autoTurnNoFightStreak);
-                                maybeRecoverFightFrameAfterNoFightHtml("no_markers");
+                                Log.d(TAG, BG_TRACE_PREFIX + " requestAutoTurn: no fight markers in current/cached html");
                             }
                         }
                         fightViewModel.autoTurnOnce(autoTurnHtml);
@@ -475,14 +463,11 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                         Log.d(TAG, "requestAutoTurn: html is null");
                         String cachedFightHtml = AppVars.ContentMainPhp;
                         if (hasFightMarkers(cachedFightHtml)) {
-                            autoTurnNoFightStreak = 0;
                             Log.d(TAG, BG_TRACE_PREFIX + " requestAutoTurn: null html, fallback to cached fight html, len="
                                     + cachedFightHtml.length());
                             fightViewModel.autoTurnOnce(cachedFightHtml);
                         } else {
-                            autoTurnNoFightStreak++;
-                            Log.d(TAG, BG_TRACE_PREFIX + " requestAutoTurn: no-fight html streak=" + autoTurnNoFightStreak + " (null)");
-                            maybeRecoverFightFrameAfterNoFightHtml("null_html");
+                            Log.d(TAG, BG_TRACE_PREFIX + " requestAutoTurn: html is null and cached html has no fight markers");
                         }
                     }
                 });
@@ -496,50 +481,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
      * - `AppVars.VCode`: добавляется в URL восстановления, если доступен;
      * - `binding.appBarMain.contentMain.webView`: целевой WebView верхнего фрейма.
      */
-    private void maybeRecoverFightFrameAfterNoFightHtml(String reason) {
-        if (!isAutoFightRuntimeEnabled()) {
-            autoTurnNoFightStreak = 0;
-            return;
-        }
-        if (autoTurnNoFightStreak < AUTO_TURN_NO_FIGHT_MAX_STREAK) {
-            return;
-        }
-        long now = System.currentTimeMillis();
-        if (now - lastAutoTurnRecoveryAtMs < AUTO_TURN_RECOVERY_COOLDOWN_MS) {
-            return;
-        }
-        if (binding == null || binding.appBarMain == null || binding.appBarMain.contentMain == null
-                || binding.appBarMain.contentMain.webView == null) {
-            return;
-        }
 
-        String resolvedVCode = resolveBestFightVCode();
-        if (resolvedVCode.isEmpty() && shouldThrottleNoVCodeRecovery(now)) {
-            String resetUrl = "http://neverlands.ru/main.php?r=" + now + "&ab_recover_reset=1";
-            lastAutoTurnRecoveryAtMs = now;
-            autoTurnNoFightStreak = 0;
-            Log.w(TAG, BG_TRACE_PREFIX + " requestAutoTurn: recover throttled (no vcode), reset -> " + resetUrl);
-            binding.appBarMain.contentMain.webView.loadUrl(resetUrl);
-            return;
-        }
-
-        // Восстановление fight-frame через probe-маркер; vcode добавляем из runtime/url/payload авто-удара.
-        String reloadUrl = "http://neverlands.ru/main.php?get_id=56&act=10&go=inf&ab_reload_probe=1";
-        if (!resolvedVCode.isEmpty()) {
-            reloadUrl += "&vcode=" + resolvedVCode;
-        }
-        reloadUrl += "&ts=" + now;
-
-        lastAutoTurnRecoveryAtMs = now;
-        autoTurnNoFightStreak = 0;
-        Log.w(TAG, BG_TRACE_PREFIX + " requestAutoTurn: recover fight frame (" + reason + ") -> " + reloadUrl);
-        binding.appBarMain.contentMain.webView.loadUrl(reloadUrl);
-    }
-
-    private boolean isAutoFightRuntimeEnabled() {
-        return AppVars.Autoboi == ru.neverlands.abclient.model.AutoboiState.AutoboiOn
-                || (AppVars.Profile != null && AppVars.Profile.LezDoAutoboi);
-    }
 
     private boolean hasFightMarkers(String html) {
         return html != null && (html.contains("var fight_ty") || html.contains("magic_slots();"));
@@ -635,84 +577,6 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     }
 
     /**
-     * Возвращает лучший доступный vcode для восстановления боевого кадра.
-     *
-     * Источники (по приоритету):
-     * 1) `AppVars.VCode` (если уже известен runtime-цепочке),
-     * 2) `mainWebView.getUrl()` (актуальный URL верхнего фрейма),
-     * 3) `AppVars.url_main_top` (последний зафиксированный URL top-frame),
-     * 4) `AppVars.FightLink` (ссылка завершения/действия боя),
-     * 5) `AppVars.ContentMainPhp` (кеш последнего HTML с `fight_pm`).
-     *
-     * Зависимости:
-     * - `Uri.parse(...).getQueryParameter("vcode")`;
-     * - regex-парсинг `fight_pm` для html-кеша;
-     * - `AppVars` (VCode, url_main_top, FightLink, ContentMainPhp).
-     */
-    private String resolveBestFightVCode() {
-        String fromAppVars = safeTrim(AppVars.VCode);
-        if (!fromAppVars.isEmpty()) {
-            return fromAppVars;
-        }
-
-        String fromCurrentUrl = extractVCodeFromUrl(binding != null
-                && binding.appBarMain != null
-                && binding.appBarMain.contentMain != null
-                && binding.appBarMain.contentMain.webView != null
-                ? binding.appBarMain.contentMain.webView.getUrl()
-                : "");
-        if (!fromCurrentUrl.isEmpty()) {
-            AppVars.VCode = fromCurrentUrl;
-            Log.d(TAG, BG_TRACE_PREFIX + " resolveBestFightVCode: source=current_url");
-            return fromCurrentUrl;
-        }
-
-        String fromTopUrl = extractVCodeFromUrl(AppVars.url_main_top);
-        if (!fromTopUrl.isEmpty()) {
-            AppVars.VCode = fromTopUrl;
-            Log.d(TAG, BG_TRACE_PREFIX + " resolveBestFightVCode: source=top_url");
-            return fromTopUrl;
-        }
-
-        String fromFightLink = extractVCodeFromUrl(AppVars.FightLink);
-        if (!fromFightLink.isEmpty()) {
-            AppVars.VCode = fromFightLink;
-            Log.d(TAG, BG_TRACE_PREFIX + " resolveBestFightVCode: source=fight_link");
-            return fromFightLink;
-        }
-
-        String fromFightHtml = extractVCodeFromFightHtml(AppVars.ContentMainPhp);
-        if (!fromFightHtml.isEmpty()) {
-            AppVars.VCode = fromFightHtml;
-            Log.d(TAG, BG_TRACE_PREFIX + " resolveBestFightVCode: source=fight_html");
-            return fromFightHtml;
-        }
-
-        return "";
-    }
-
-    /**
-     * Анти-цикл для recovery без vcode.
-     *
-     * Если в коротком окне времени recovery вызывается многократно без vcode,
-     * останавливаем частый `ab_reload_probe` и даем один "reset" на полный `main.php`.
-     */
-    private boolean shouldThrottleNoVCodeRecovery(long now) {
-        if (autoTurnNoVCodeWindowStartMs == 0L
-                || (now - autoTurnNoVCodeWindowStartMs) > AUTO_TURN_NO_VCODE_WINDOW_MS) {
-            autoTurnNoVCodeWindowStartMs = now;
-            autoTurnNoVCodeRecoveryCount = 0;
-        }
-        autoTurnNoVCodeRecoveryCount++;
-        if (autoTurnNoVCodeRecoveryCount > AUTO_TURN_NO_VCODE_MAX_RECOVERIES) {
-            autoTurnNoVCodeWindowStartMs = now;
-            autoTurnNoVCodeRecoveryCount = 0;
-            return true;
-        }
-        return false;
-    }
-
-    /**
      * Извлекает vcode из payload авто-удара (`vcode|enemy|group|...`) и синхронизирует `AppVars.VCode`.
      *
      * Зависимости:
@@ -736,7 +600,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         }
         int delimiterPos = payload.indexOf('|');
         String token = delimiterPos >= 0 ? payload.substring(0, delimiterPos) : payload;
-        token = safeTrim(token);
+        token = token == null ? "" : token.trim();
         if (token.isEmpty()) {
             return "";
         }
@@ -746,52 +610,8 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         return token;
     }
 
-    private String extractVCodeFromUrl(String url) {
-        if (url == null || url.isEmpty()) {
-            return "";
-        }
-        try {
-            Uri uri = Uri.parse(url);
-            String vcode = safeTrim(uri != null ? uri.getQueryParameter("vcode") : "");
-            if (!vcode.isEmpty()) {
-                return vcode;
-            }
-        } catch (Exception ignored) {
-        }
-        int pos = url.toLowerCase(Locale.ROOT).indexOf("vcode=");
-        if (pos < 0) {
-            return "";
-        }
-        String tail = url.substring(pos + "vcode=".length());
-        int ampPos = tail.indexOf('&');
-        String raw = ampPos >= 0 ? tail.substring(0, ampPos) : tail;
-        return safeTrim(raw);
-    }
 
-    private String extractVCodeFromFightHtml(String html) {
-        if (html == null || html.isEmpty()) {
-            return "";
-        }
-        Matcher blockMatcher = Pattern
-                .compile("var\\s+fight_pm\\s*=\\s*\\[(.*?)\\]", Pattern.CASE_INSENSITIVE | Pattern.DOTALL)
-                .matcher(html);
-        if (!blockMatcher.find()) {
-            return "";
-        }
-        String block = blockMatcher.group(1);
-        Matcher tokenMatcher = Pattern.compile("\"([0-9a-fA-F]{6,32})\"").matcher(block);
-        while (tokenMatcher.find()) {
-            String candidate = safeTrim(tokenMatcher.group(1));
-            if (!candidate.isEmpty()) {
-                return candidate;
-            }
-        }
-        return "";
-    }
 
-    private String safeTrim(String value) {
-        return value == null ? "" : value.trim();
-    }
 
     /**
      * Открыть URL в новой вспомогательной вкладке.
