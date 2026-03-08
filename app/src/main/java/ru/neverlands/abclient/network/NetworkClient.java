@@ -9,6 +9,7 @@ import android.util.Log;
 import okhttp3.JavaNetCookieJar;
 import okhttp3.OkHttpClient;
 import ru.neverlands.abclient.proxy.ProxyRuntimeManager;
+import ru.neverlands.abclient.utils.RuntimeNetTrace;
 
 public class NetworkClient {
     private static final String TAG = "NetworkClient";
@@ -35,6 +36,7 @@ public class NetworkClient {
             if (proxy != null) {
                 builder.proxy(proxy);
                 Log.i(TAG, "PROXY_BINDING: OkHttp proxy enabled");
+                RuntimeNetTrace.push("OKHTTP", "proxy enabled");
             } else {
                 if (ProxyRuntimeManager.isStrictProxyRequiredForCurrentProfile()) {
                     // Жесткий anti-leak: при включенном прокси запрещаем direct egress и даем
@@ -42,8 +44,10 @@ public class NetworkClient {
                     Proxy blockedProxy = new Proxy(Proxy.Type.HTTP, new InetSocketAddress("127.0.0.1", 1));
                     builder.proxy(blockedProxy);
                     Log.e(TAG, "PROXY_FAIL: strict proxy enabled but runtime proxy is null; direct egress blocked");
+                    RuntimeNetTrace.push("PROXY_FAIL", "strict=1 okHttp direct blocked");
                 } else {
                     Log.w(TAG, "PROXY_BINDING: OkHttp proxy is null, using direct client");
+                    RuntimeNetTrace.push("OKHTTP", "direct mode");
                 }
             }
 

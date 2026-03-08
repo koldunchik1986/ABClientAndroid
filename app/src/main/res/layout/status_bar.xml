@@ -17,7 +17,7 @@
         android:maxLines="1"
         android:textColor="@color/white"
         android:textSize="12sp"
-        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintBottom_toTopOf="@+id/network_debug_text_view"
         app:layout_constraintEnd_toStartOf="@+id/traffic_text_view"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent"
@@ -30,7 +30,7 @@
         android:layout_marginEnd="4dp"
         android:textColor="@color/white"
         android:textSize="12sp"
-        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintBottom_toTopOf="@+id/network_debug_text_view"
         app:layout_constraintEnd_toStartOf="@+id/server_time_text_view"
         app:layout_constraintTop_toTopOf="parent"
         tools:text="0" />
@@ -42,7 +42,7 @@
         android:layout_marginEnd="4dp"
         android:textColor="@color/white"
         android:textSize="12sp"
-        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintBottom_toTopOf="@+id/network_debug_text_view"
         app:layout_constraintEnd_toStartOf="@+id/clock_text_view"
         app:layout_constraintTop_toTopOf="parent"
         tools:text="25.09.2025 07:34:20" />
@@ -54,9 +54,26 @@
         android:layout_marginEnd="4dp"
         android:textColor="@color/white"
         android:textSize="12sp"
-        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintBottom_toTopOf="@+id/network_debug_text_view"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintTop_toTopOf="parent"
         tools:text="07:34:20" />
+
+    <TextView
+        android:id="@+id/network_debug_text_view"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="4dp"
+        android:layout_marginTop="2dp"
+        android:layout_marginEnd="4dp"
+        android:ellipsize="end"
+        android:maxLines="1"
+        android:textColor="@color/white"
+        android:textSize="10sp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/status_text_view"
+        tools:text="NET: idle" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

@@ -19,6 +19,8 @@ import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+import ru.neverlands.abclient.utils.RuntimeNetTrace;
+
 /**
  * Локальный HTTP proxy-сервер (loopback), который повторяет базовый runtime-подход ПК версии:
  * весь трафик приложения идет через localhost, а дальше отправляется либо напрямую (DIRECT),
@@ -190,6 +192,8 @@ final class LocalHttpProxyServer {
             Log.d(TAG, "PROXY_SESSION: method=" + request.method
                     + ", uri=" + request.uriToken
                     + ", bodyBytes=" + (request.body == null ? 0 : request.body.length));
+            RuntimeNetTrace.push("PROXY_REQ",
+                    request.method + " " + trimForTrace(request.uriToken));
 
             if ("CONNECT".equalsIgnoreCase(request.method)) {
                 writeSimpleError(clientOut, 501, "Not Implemented", "CONNECT is not supported");
@@ -200,6 +204,8 @@ final class LocalHttpProxyServer {
             Log.d(TAG, "PROXY_SESSION: route origin=" + route.originHost + ":" + route.originPort
                     + ", connect=" + route.connectHost + ":" + route.connectPort
                     + ", target=" + route.requestTarget);
+            RuntimeNetTrace.push("PROXY_ROUTE",
+                    route.originHost + ":" + route.originPort + " -> " + route.connectHost + ":" + route.connectPort);
             sessionTarget = route.originHost + ":" + route.originPort;
             long copiedBytes = forwardRequest(route, request, clientOut);
             long elapsed = Math.max(0L, System.currentTimeMillis() - startedAtMs);
@@ -207,6 +213,9 @@ final class LocalHttpProxyServer {
                     + " mode=" + (upstreamSettings.enabled ? "UPSTREAM" : "DIRECT")
                     + " bytesOut=" + copiedBytes
                     + " latencyMs=" + elapsed);
+            RuntimeNetTrace.push("PROXY_DONE",
+                    "mode=" + (upstreamSettings.enabled ? "UP" : "DIR")
+                            + " bytes=" + copiedBytes + " ms=" + elapsed + " target=" + sessionTarget);
         } catch (Exception e) {
             ProxyLogDeduper.warn(
                     TAG,
@@ -215,12 +224,23 @@ final class LocalHttpProxyServer {
                     e,
                     LOG_DEDUP_WINDOW_MS
             );
+            RuntimeNetTrace.push("PROXY_FAIL", e.getClass().getSimpleName() + " target=" + sessionTarget);
             try {
                 OutputStream fallbackOut = client.getOutputStream();
                 writeSimpleError(fallbackOut, 502, "Bad Gateway", "Proxy forwarding error");
             } catch (Throwable ignored) {
             }
         }
+    }
+
+    private static String trimForTrace(String value) {
+        if (value == null) {
+            return "";
+        }
+        if (value.length() <= 80) {
+            return value;
+        }
+        return value.substring(0, 77) + "...";
     }
 
     private long forwardRequest(ResolvedRoute route, HttpRequest request, OutputStream clientOut) throws IOException {

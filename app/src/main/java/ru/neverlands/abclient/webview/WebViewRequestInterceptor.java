@@ -24,6 +24,7 @@ import java.util.zip.GZIPInputStream;
 import ru.neverlands.abclient.postfilter.Filter;
 import ru.neverlands.abclient.proxy.CookiesManager;
 import ru.neverlands.abclient.proxy.ProxyRuntimeManager;
+import ru.neverlands.abclient.utils.RuntimeNetTrace;
 
 public class WebViewRequestInterceptor {
     private static final String TAG = "WebViewInterceptor";
@@ -237,11 +238,18 @@ public class WebViewRequestInterceptor {
             java.net.Proxy activeProxy = ProxyRuntimeManager.getActiveJavaProxyOrNull();
             if (activeProxy == null && ProxyRuntimeManager.isStrictProxyRequiredForCurrentProfile()) {
                 Log.e(TAG, "PROXY_FAIL: strict proxy enabled and runtime proxy unavailable, blocking direct WebView request: " + urlString);
+                RuntimeNetTrace.push("PROXY_FAIL", "BLOCK direct webview strict=1 url=" + trimUrlForTrace(urlString));
                 return buildStrictProxyBlockedResponse();
+            }
+            if (isPinfoOrForumUrl(urlString)) {
+                String routeMode = activeProxy != null ? "local-proxy" : "direct";
+                Log.i(TAG, "PROXY_ROUTE: internal page via " + routeMode + ", url=" + urlString);
+                RuntimeNetTrace.push("NAV", "internal pinfo/forum via " + routeMode + " url=" + trimUrlForTrace(urlString));
             }
             Log.d(TAG, "PROXY_BINDING: interceptor openConnection via "
                     + (activeProxy != null ? "local proxy" : "direct")
                     + ", url=" + urlString);
+            RuntimeNetTrace.push("HTTP_OPEN", (activeProxy != null ? "proxy" : "direct") + " " + trimUrlForTrace(urlString));
             HttpURLConnection connection = activeProxy != null
                     ? (HttpURLConnection) url.openConnection(activeProxy)
                     : (HttpURLConnection) url.openConnection();
@@ -285,6 +293,7 @@ public class WebViewRequestInterceptor {
 
             int code = connection.getResponseCode();
             Log.d(TAG, "Response code: " + code + " for " + urlString);
+            RuntimeNetTrace.push("HTTP_CODE", code + " " + trimUrlForTrace(urlString));
 
             // Read response body, handling gzip if server sends it despite identity request
             String contentEncoding = connection.getContentEncoding();
@@ -363,11 +372,13 @@ public class WebViewRequestInterceptor {
                 java.net.Proxy secondProxy = ProxyRuntimeManager.getActiveJavaProxyOrNull();
                 if (secondProxy == null && ProxyRuntimeManager.isStrictProxyRequiredForCurrentProfile()) {
                     Log.e(TAG, "PROXY_FAIL: strict proxy enabled and runtime proxy unavailable, blocking direct WebView retry: " + urlString);
+                    RuntimeNetTrace.push("PROXY_FAIL", "BLOCK retry direct strict=1 url=" + trimUrlForTrace(urlString));
                     return buildStrictProxyBlockedResponse();
                 }
                 Log.d(TAG, "PROXY_BINDING: interceptor retry openConnection via "
                         + (secondProxy != null ? "local proxy" : "direct")
                         + ", url=" + urlString);
+                RuntimeNetTrace.push("HTTP_RETRY", (secondProxy != null ? "proxy" : "direct") + " " + trimUrlForTrace(urlString));
                 HttpURLConnection second = secondProxy != null
                         ? (HttpURLConnection) url.openConnection(secondProxy)
                         : (HttpURLConnection) url.openConnection();
@@ -462,6 +473,7 @@ public class WebViewRequestInterceptor {
             return response;
         } catch (Exception e) {
             Log.e(TAG, "Intercept failed: " + request.getUrl(), e);
+            RuntimeNetTrace.push("HTTP_FAIL", trimUrlForTrace(String.valueOf(request.getUrl())) + " " + e.getClass().getSimpleName());
             if (ProxyRuntimeManager.isStrictProxyRequiredForCurrentProfile()) {
                 return buildStrictProxyBlockedResponse();
             }
@@ -483,6 +495,27 @@ public class WebViewRequestInterceptor {
                 "utf-8",
                 new ByteArrayInputStream("proxy runtime unavailable".getBytes(Charset.forName("UTF-8")))
         );
+    }
+
+    private static boolean isPinfoOrForumUrl(String url) {
+        if (url == null) {
+            return false;
+        }
+        String lower = url.toLowerCase(Locale.ROOT);
+        return lower.contains("pinfo.php")
+                || lower.contains("/forum")
+                || lower.contains("forum.php")
+                || lower.contains("forums.php");
+    }
+
+    private static String trimUrlForTrace(String url) {
+        if (url == null) {
+            return "";
+        }
+        if (url.length() <= 90) {
+            return url;
+        }
+        return url.substring(0, 87) + "...";
     }
 
     /**

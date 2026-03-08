@@ -91,6 +91,7 @@ import ru.neverlands.abclient.proxy.ProxyRuntimeManager;
 import ru.neverlands.abclient.utils.AppLogger;
 import ru.neverlands.abclient.utils.AppVars;
 import ru.neverlands.abclient.utils.Chat;
+import ru.neverlands.abclient.utils.RuntimeNetTrace;
 import ru.neverlands.abclient.utils.Russian;
 import ru.neverlands.abclient.webview.WebViewRequestInterceptor;
 import ru.neverlands.abclient.service.AutoModeForegroundService;
@@ -2177,6 +2178,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             now = now - AppVars.Profile.ServDiff;
         }
         binding.appBarMain.contentMain.statusBar.clockTextView.setText(sdf.format(new Date(now)));
+        binding.appBarMain.contentMain.statusBar.networkDebugTextView.setText(RuntimeNetTrace.snapshotForUi());
     }
     
     public void updateServerTime(Date serverDateTime) {
