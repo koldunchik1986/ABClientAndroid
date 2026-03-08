@@ -3913,6 +3913,24 @@ public class MainPhp {
     }
 
     /**
+     * Внешняя точка входа для анонса нового боя из путей, которые обходят mainPhpFight NEW-FIGHT ветку
+     * (например, JS-bridge -> FightViewModel).
+     *
+     * Зависимости:
+     * - {@link #notifyNewFight(LezFight)}: локальный чат-анонс "Нападение".
+     * - {@link UnderAttackManager#parseAsync(String)}: серверный announce по настройке LezSay.
+     */
+    public static void notifyNewFightFromExternalSource(LezFight fight, String html) {
+        if (fight == null) {
+            return;
+        }
+        notifyNewFight(fight);
+        if (html != null && !html.isEmpty()) {
+            UnderAttackManager.parseAsync(html);
+        }
+    }
+
+    /**
      * Публикует чат-уведомление об остановке автобоя с причинами.
      *
      * Зависимости:

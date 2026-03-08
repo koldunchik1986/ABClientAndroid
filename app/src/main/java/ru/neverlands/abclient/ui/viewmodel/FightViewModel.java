@@ -7,6 +7,7 @@ import android.util.Log;
 
 import ru.neverlands.abclient.lez.LezFight;
 import ru.neverlands.abclient.model.AutoboiState;
+import ru.neverlands.abclient.postfilter.MainPhp;
 import ru.neverlands.abclient.utils.AppVars;
 
 /**
@@ -73,6 +74,8 @@ public class FightViewModel extends ViewModel {
                 return;
             }
 
+            announceNewFightIfNeeded(fight, html);
+
             if (!shouldAutoBattle) {
                 return;
             }
@@ -125,6 +128,9 @@ public class FightViewModel extends ViewModel {
                 Log.d(TAG, BG_TRACE_PREFIX + " autoTurnOnce: skip, parsed fight invalid");
                 return;
             }
+
+            announceNewFightIfNeeded(fight, html);
+
             if (!fight.IsBoi) {
                 Log.d(TAG, BG_TRACE_PREFIX + " autoTurnOnce: skip, IsBoi=false");
                 return;
@@ -176,5 +182,42 @@ public class FightViewModel extends ViewModel {
 
     private boolean containsFightMarkers(String html) {
         return html.contains("var fight_ty") || html.contains("magic_slots();");
+    }
+
+    /**
+     * Резервный анонс старта нового боя для JS-bridge пути.
+     *
+     * Почему нужен:
+     * - в части сценариев `mainPhpFight: NEW FIGHT detected` не срабатывает,
+     *   потому что кадр проходит через `WebAppInterface.processFightHtml(...)` и дальше FightViewModel;
+     * - из-за этого не приходило локальное сообщение "Нападение" в чат.
+     *
+     * Зависимости:
+     * - `AppVars.LastBoiLog`: дедупликация по log-id боя;
+     * - `LezFight.updateLastBoiFromLogs()`: наполняет состав противников для текста уведомления;
+     * - `MainPhp.notifyNewFightFromExternalSource(...)`: публикация локального анонса + UnderAttack announce.
+     */
+    private void announceNewFightIfNeeded(LezFight fight, String html) {
+        if (fight == null || !fight.IsBoi || fight.LogBoi == null || fight.LogBoi.isEmpty()) {
+            return;
+        }
+
+        synchronized (FightViewModel.class) {
+            if (fight.LogBoi.equals(AppVars.LastBoiLog)) {
+                return;
+            }
+            String prevLog = AppVars.LastBoiLog;
+            AppVars.LastBoiLog = fight.LogBoi;
+            AppVars.AutoboiReadyCompletedLog = "";
+            Log.d(TAG, BG_TRACE_PREFIX + " announceNewFightIfNeeded: LogBoi changed "
+                    + prevLog + " -> " + fight.LogBoi);
+        }
+
+        try {
+            fight.updateLastBoiFromLogs();
+        } catch (Exception ignored) {
+        }
+
+        MainPhp.notifyNewFightFromExternalSource(fight, html);
     }
 }
