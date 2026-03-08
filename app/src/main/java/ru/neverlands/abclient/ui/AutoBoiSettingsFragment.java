@@ -110,6 +110,23 @@ public class AutoBoiSettingsFragment extends DialogFragment {
         });
     }
 
+    /**
+     * Централизованно сохраняет все вкладки настроек авто-боя в текущий профиль.
+     *
+     * Последовательность:
+     * 1) Сохраняет вкладку "Общие" (флаги автоповедения и пороги).
+     * 2) Сохраняет выбранную группу из вкладок "Ротация" и "Останов".
+     * 3) Выполняет legacy-fallback для задержки удара:
+     *    текущее `group.HitDelaySec` дублируется в `profile.LezHitDelaySec`,
+     *    чтобы старые части парсера/профиля не теряли значение.
+     * 4) Сортирует группы по приоритету, синхронизирует runtime-флаги Fury и пишет профиль на диск.
+     *
+     * Зависимости:
+     * - `SettingsPagerAdapter` (`getGeneral/getRotation/getStop`),
+     * - `UserConfig` (`LezGroups`, `LezDoFury`, `LezHitDelaySec`, `save(...)`),
+     * - `AppVars` (`DoFury`, `AutoFuryCheckScroll`, `AutoFuryArmedScroll`, `AutoFuryHand`, `AutoFuryHandD`),
+     * - `Collections.sort(...)` для приоритетного порядка групп (как в C# логике выбора первой подходящей группы).
+     */
     private void saveAllSettings(SettingsPagerAdapter adapter) {
         UserConfig profile = AppVars.Profile;
         if (profile == null) return;
@@ -124,6 +141,9 @@ public class AutoBoiSettingsFragment extends DialogFragment {
                 && selectedGroupIndex >= 0
                 && selectedGroupIndex < profile.LezGroups.size()) {
             rotation.saveGroup(profile.LezGroups.get(selectedGroupIndex));
+            // Legacy-fallback для старых профилей/парсеров:
+            // дублируем текущее групповое значение в глобальный autoboi@hitDelaySec.
+            profile.LezHitDelaySec = Math.max(0, profile.LezGroups.get(selectedGroupIndex).HitDelaySec);
         }
 
         StopTabFragment stop = adapter.getStop();
@@ -209,10 +229,8 @@ public class AutoBoiSettingsFragment extends DialogFragment {
     public static class GeneralTabFragment extends Fragment {
         private CheckBox checkDoAutoboi, checkDoWaitHp, checkDoWaitMa,
                 checkDoDrinkHp, checkDoDrinkMa, checkDoWinTimeout;
-        private Button btnSetHitDelaySec;
         private SeekBar seekWaitHp, seekWaitMa, seekDrinkHp, seekDrinkMa;
-        private TextView tvWaitHp, tvWaitMa, tvDrinkHp, tvDrinkMa, tvHitDelaySecValue;
-        private int pendingHitDelaySec = 0;
+        private TextView tvWaitHp, tvWaitMa, tvDrinkHp, tvDrinkMa;
 
         @Nullable
         @Override
@@ -237,14 +255,11 @@ public class AutoBoiSettingsFragment extends DialogFragment {
             tvWaitMa = v.findViewById(R.id.tvWaitMa);
             tvDrinkHp = v.findViewById(R.id.tvDrinkHp);
             tvDrinkMa = v.findViewById(R.id.tvDrinkMa);
-            tvHitDelaySecValue = v.findViewById(R.id.tvHitDelaySecValue);
-            btnSetHitDelaySec = v.findViewById(R.id.btnSetHitDelaySec);
 
             setupSeekBar(seekWaitHp, tvWaitHp, "%");
             setupSeekBar(seekWaitMa, tvWaitMa, "%");
             setupSeekBar(seekDrinkHp, tvDrinkHp, "%");
             setupSeekBar(seekDrinkMa, tvDrinkMa, "%");
-            btnSetHitDelaySec.setOnClickListener(btn -> showHitDelayInputDialog());
 
             loadSettings();
         }
@@ -276,77 +291,12 @@ public class AutoBoiSettingsFragment extends DialogFragment {
             seekDrinkMa.setProgress(p.LezDrinkMa);
             tvDrinkMa.setText(p.LezDrinkMa + "%");
             checkDoWinTimeout.setChecked(p.LezDoWinTimeout);
-            pendingHitDelaySec = normalizeHitDelaySec(p.LezHitDelaySec);
-            updateHitDelayLabel(pendingHitDelaySec);
-        }
-
-        /**
-         * Окно ввода настройки "Задержка ударов" в секундах.
-         *
-         * Зависимости:
-         * - хранение значения в `AppVars.Profile.LezHitDelaySec`,
-         * - отображение текущего значения в `tvHitDelaySecValue`,
-         * - фактическое применение значения в `LezFight.BuildFrame()`.
-         *
-         * Формат:
-         * - `0` = legacy случайная задержка 1-2 сек;
-         * - `N > 0` = фиксированная пауза `N` секунд между автоударами.
-         */
-        private void showHitDelayInputDialog() {
-            if (getContext() == null) {
-                return;
-            }
-
-            final UserConfig profile = AppVars.Profile;
-            final int currentDelaySec = profile != null ? Math.max(0, profile.LezHitDelaySec) : 0;
-
-            final EditText input = new EditText(getContext());
-            input.setInputType(InputType.TYPE_CLASS_NUMBER);
-            input.setHint("0 = случайно (1-2 сек)");
-            input.setText(String.valueOf(currentDelaySec));
-            input.setSelection(input.getText().length());
-
-            new AlertDialog.Builder(requireContext())
-                    .setTitle("Задержка ударов")
-                    .setMessage("Введите задержку между ударами в секундах.\n0 = случайная (1-2 сек).")
-                    .setView(input)
-                    .setPositiveButton("ОК", (dialog, which) -> {
-                        int value;
-                        try {
-                            value = Integer.parseInt(input.getText().toString().trim());
-                        } catch (Exception ignored) {
-                            value = currentDelaySec;
-                        }
-                        value = normalizeHitDelaySec(value);
-                        pendingHitDelaySec = value;
-                        updateHitDelayLabel(value);
-                    })
-                    .setNegativeButton("Отмена", null)
-                    .show();
-        }
-
-        private static int normalizeHitDelaySec(int value) {
-            if (value < 0) {
-                return 0;
-            }
-            return Math.min(value, 300);
-        }
-
-        private void updateHitDelayLabel(int delaySec) {
-            if (tvHitDelaySecValue == null) {
-                return;
-            }
-            if (delaySec <= 0) {
-                tvHitDelaySecValue.setText("Задержка ударов: случайная (1-2 сек)");
-            } else {
-                tvHitDelaySecValue.setText("Задержка ударов: " + delaySec + " сек");
-            }
         }
 
         void saveSettings(UserConfig p) {
             // Важно для ViewPager2: если вкладка ещё не открывалась пользователем,
             // onViewCreated() мог не выполниться и поля останутся null.
-            // В этом случае просто пропускаем сохранение этой вкладки без крэша.
+            // В этом случае просто пропускаем сохранение этой вкладки без краша.
             if (checkDoAutoboi == null
                     || checkDoWaitHp == null || checkDoWaitMa == null
                     || checkDoDrinkHp == null || checkDoDrinkMa == null || checkDoWinTimeout == null
@@ -363,11 +313,10 @@ public class AutoBoiSettingsFragment extends DialogFragment {
             p.LezDrinkHp = seekDrinkHp.getProgress();
             p.LezDrinkMa = seekDrinkMa.getProgress();
             p.LezDoWinTimeout = checkDoWinTimeout.isChecked();
-            p.LezHitDelaySec = normalizeHitDelaySec(pendingHitDelaySec);
         }
     }
 
-    // ─────────────────────────── Вкладка 2: Группы ──────────────────────────────
+    // --------------------------- Вкладка 2: Группы ---------------------------
 
     public static class GroupsTabFragment extends Fragment {
         private RecyclerView recyclerGroups;
@@ -583,6 +532,9 @@ public class AutoBoiSettingsFragment extends DialogFragment {
                 checkDoMagHits, checkDoMagBlocks, checkDoHits, checkDoBlocks, checkDoMiscAbils;
         private SeekBar seekRestoreHp, seekRestoreMa, seekMagHits;
         private TextView tvRestoreHp, tvRestoreMa, tvMagHits;
+        private TextView tvGroupHitDelaySecValue;
+        private Button btnSetGroupHitDelaySec;
+        private int pendingGroupHitDelaySec = 0;
         // Локальные списки ID для вкладки "Ротация".
         // В базовом сценарии равны LezSpellCollection.Hits/Blocks/... (как в C#),
         // но для Misc могут расширяться fallback-элементами с сервера (новые ID).
@@ -618,6 +570,8 @@ public class AutoBoiSettingsFragment extends DialogFragment {
             tvRestoreHp = v.findViewById(R.id.tvRestoreHp);
             tvRestoreMa = v.findViewById(R.id.tvRestoreMa);
             tvMagHits = v.findViewById(R.id.tvMagHits);
+            tvGroupHitDelaySecValue = v.findViewById(R.id.tvGroupHitDelaySecValue);
+            btnSetGroupHitDelaySec = v.findViewById(R.id.btnSetGroupHitDelaySec);
 
             setupSeekBar(seekRestoreHp, tvRestoreHp, "%");
             setupSeekBar(seekRestoreMa, tvRestoreMa, "%");
@@ -629,6 +583,9 @@ public class AutoBoiSettingsFragment extends DialogFragment {
 
             v.findViewById(R.id.btnFullHp).setOnClickListener(btn -> { seekRestoreHp.setProgress(100); tvRestoreHp.setText("100%"); });
             v.findViewById(R.id.btnFullMa).setOnClickListener(btn -> { seekRestoreMa.setProgress(100); tvRestoreMa.setText("100%"); });
+            if (btnSetGroupHitDelaySec != null) {
+                btnSetGroupHitDelaySec.setOnClickListener(btn -> showGroupHitDelayInputDialog());
+            }
 
             // Инициализация списков заклинаний
             LezSpellCollection.init(requireContext());
@@ -805,6 +762,92 @@ public class AutoBoiSettingsFragment extends DialogFragment {
             });
         }
 
+        /**
+         * Нормализует ввод задержки удара для текущей группы.
+         *
+         * Правила:
+         * - значения < 0 обрезаются до 0;
+         * - верхняя граница ограничена 300 сек, чтобы исключить невалидные/ошибочные большие значения.
+         *
+         * Зависимости:
+         * - вызывается в `showGroupHitDelayInputDialog(...)`,
+         * - вызывается в `loadGroup()` при чтении из `LezBotsGroup.HitDelaySec`,
+         * - вызывается в `saveGroup(...)` перед записью в профиль.
+         */
+        private static int normalizeHitDelaySec(int value) {
+            if (value < 0) {
+                return 0;
+            }
+            return Math.min(value, 300);
+        }
+
+        /**
+         * Обновляет текстовую индикацию задержки удара в UI вкладки "Ротация".
+         *
+         * Формат:
+         * - `0` -> "случайная (1-2 сек)" (legacy-режим);
+         * - `N > 0` -> "N сек" (фиксированная задержка).
+         *
+         * Зависимости:
+         * - `tvGroupHitDelaySecValue` из `tab_autoboi_rotation.xml`,
+         * - используется после загрузки группы (`loadGroup`) и после ручного ввода (`showGroupHitDelayInputDialog`).
+         */
+        private void updateGroupHitDelayLabel(int delaySec) {
+            if (tvGroupHitDelaySecValue == null) {
+                return;
+            }
+            if (delaySec <= 0) {
+                tvGroupHitDelaySecValue.setText("Задержка ударов: случайная (1-2 сек)");
+            } else {
+                tvGroupHitDelaySecValue.setText("Задержка ударов: " + delaySec + " сек");
+            }
+        }
+
+        /**
+         * Показывает диалог ввода "Задержки ударов" для выбранной группы противников.
+         *
+         * Поведение:
+         * - вводится целое число секунд;
+         * - значение нормализуется через `normalizeHitDelaySec(...)`;
+         * - результат сохраняется во временное поле `pendingGroupHitDelaySec` и сразу отражается в UI.
+         *
+         * Важно:
+         * - фактическая запись в `LezBotsGroup.HitDelaySec` выполняется в `saveGroup(...)` при нажатии "Сохранить".
+         *
+         * Зависимости:
+         * - `AlertDialog` + `EditText` (Android UI),
+         * - `pendingGroupHitDelaySec`,
+         * - `updateGroupHitDelayLabel(...)`.
+         */
+        private void showGroupHitDelayInputDialog() {
+            if (getContext() == null) {
+                return;
+            }
+            final int currentDelaySec = normalizeHitDelaySec(pendingGroupHitDelaySec);
+            final EditText input = new EditText(getContext());
+            input.setInputType(InputType.TYPE_CLASS_NUMBER);
+            input.setHint("0 = случайно (1-2 сек)");
+            input.setText(String.valueOf(currentDelaySec));
+            input.setSelection(input.getText().length());
+
+            new AlertDialog.Builder(requireContext())
+                    .setTitle("Задержка ударов (группа)")
+                    .setMessage("Введите задержку между ударами в секундах для текущей группы.\n0 = случайная (1-2 сек).")
+                    .setView(input)
+                    .setPositiveButton("ОК", (dialog, which) -> {
+                        int value;
+                        try {
+                            value = Integer.parseInt(input.getText().toString().trim());
+                        } catch (Exception ignored) {
+                            value = currentDelaySec;
+                        }
+                        pendingGroupHitDelaySec = normalizeHitDelaySec(value);
+                        updateGroupHitDelayLabel(pendingGroupHitDelaySec);
+                    })
+                    .setNegativeButton("Отмена", null)
+                    .show();
+        }
+
         void setSelectedGroupIndex(int index) {
             selectedGroupIdx = Math.max(0, index);
             if (getView() != null) {
@@ -812,6 +855,20 @@ public class AutoBoiSettingsFragment extends DialogFragment {
             }
         }
 
+        /**
+         * Загружает в UI параметры текущей выбранной группы ротации.
+         *
+         * Что заполняет:
+         * - боевые флаги (Fury/магия/удары/блоки/прочее),
+         * - пороги восстановления,
+         * - выбранные списки заклинаний,
+         * - пер-групповую задержку удара (`HitDelaySec`).
+         *
+         * Зависимости:
+         * - `AppVars.Profile.LezGroups`,
+         * - адаптеры списков заклинаний (`spells*Adapter`),
+         * - `normalizeHitDelaySec(...)` и `updateGroupHitDelayLabel(...)`.
+         */
         private void loadGroup() {
             UserConfig p = AppVars.Profile;
             if (p == null || p.LezGroups == null || p.LezGroups.isEmpty()) return;
@@ -833,6 +890,8 @@ public class AutoBoiSettingsFragment extends DialogFragment {
             checkDoHits.setChecked(g.DoHits);
             checkDoBlocks.setChecked(g.DoBlocks);
             checkDoMiscAbils.setChecked(g.DoMiscAbils);
+            pendingGroupHitDelaySec = normalizeHitDelaySec(g.HitDelaySec);
+            updateGroupHitDelayLabel(pendingGroupHitDelaySec);
             if (spellsHitsAdapter != null) spellsHitsAdapter.setChecked(g.SpellsHits);
             if (spellsBlocksAdapter != null) spellsBlocksAdapter.setChecked(g.SpellsBlocks);
             if (spellsRestoreHpAdapter != null) spellsRestoreHpAdapter.setChecked(g.SpellsRestoreHp);
@@ -840,6 +899,22 @@ public class AutoBoiSettingsFragment extends DialogFragment {
             if (spellsMiscAdapter != null) spellsMiscAdapter.setChecked(g.SpellsMisc);
         }
 
+        /**
+         * Считывает текущие значения UI вкладки "Ротация" и сохраняет их в заданную группу.
+         *
+         * Что сохраняет:
+         * - все флаги ротации и пороги,
+         * - выбранные наборы заклинаний по категориям,
+         * - пер-групповую задержку удара (`g.HitDelaySec`).
+         *
+         * Защита:
+         * - если view вкладки не создано (ленивая инициализация ViewPager2), метод завершается без NPE.
+         *
+         * Зависимости:
+         * - `LezBotsGroup` (модель группы),
+         * - адаптеры `SpellListAdapter`,
+         * - `pendingGroupHitDelaySec` + `normalizeHitDelaySec(...)`.
+         */
         void saveGroup(LezBotsGroup g) {
             // Защита от NPE при "Сохранить" без открытия вкладки "Ротация".
             // Зависимость: жизненный цикл ViewPager2 (fragment view создаётся лениво).
@@ -862,6 +937,7 @@ public class AutoBoiSettingsFragment extends DialogFragment {
             g.DoHits = checkDoHits.isChecked();
             g.DoBlocks = checkDoBlocks.isChecked();
             g.DoMiscAbils = checkDoMiscAbils.isChecked();
+            g.HitDelaySec = normalizeHitDelaySec(pendingGroupHitDelaySec);
             if (spellsHitsAdapter != null) g.SpellsHits = spellsHitsAdapter.getChecked();
             if (spellsBlocksAdapter != null) g.SpellsBlocks = spellsBlocksAdapter.getChecked();
             if (spellsRestoreHpAdapter != null) g.SpellsRestoreHp = spellsRestoreHpAdapter.getChecked();
@@ -1137,3 +1213,4 @@ public class AutoBoiSettingsFragment extends DialogFragment {
         }
     }
 }
+

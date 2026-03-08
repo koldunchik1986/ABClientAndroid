@@ -1655,7 +1655,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
      *   а не теряем ход.
      *
      * Зависимости:
-     * - `AppVars.Profile.LezHitDelaySec` (настройка из AutoBoi -> "Общие"),
+     * - `AppVars.CurrentAutoBattleHitDelaySec` (задержка активной группы из вкладки "Ротация"),
      * - `submitAutoBattleActionToWebView(...)` (реальная отправка POST в бой),
      * - `lastAutoBattleSubmitAtMs` (дедуп/троттлинг по времени).
      */
@@ -1693,7 +1693,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
 
         autoBattleDelayHandler.postDelayed(pendingAutoBattleSubmitRunnable, waitMs);
         Log.d(TAG, BG_TRACE_PREFIX + " autoBattleDelay: queued, waitMs="
-                + waitMs + ", configuredSec=" + Math.max(0, AppVars.Profile != null ? AppVars.Profile.LezHitDelaySec : 0));
+                + waitMs + ", configuredSec=" + Math.max(0, AppVars.CurrentAutoBattleHitDelaySec));
     }
 
     private void submitAutoBattleNow(String payload) {
@@ -1705,10 +1705,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     }
 
     private long getAutoBattleSubmitWaitMs() {
-        int delaySec = 0;
-        if (AppVars.Profile != null) {
-            delaySec = Math.max(0, AppVars.Profile.LezHitDelaySec);
-        }
+        int delaySec = Math.max(0, AppVars.CurrentAutoBattleHitDelaySec);
         if (delaySec <= 0) {
             return 0L;
         }

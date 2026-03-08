@@ -172,9 +172,10 @@ public class UserConfig {
      * Задержка автоудара в секундах (доп. настройка "Задержка ударов").
      *
      * Зависимости:
-     * - настраивается в `AutoBoiSettingsFragment.GeneralTabFragment`,
-     * - сериализуется в `<autoboi hitDelaySec="...">`,
-     * - применяется в `LezFight.BuildFrame()` как пауза перед submit хода.
+     * Legacy-глобальный fallback:
+     * - сохраняется в `<autoboi hitDelaySec="...">` для обратной совместимости профилей;
+     * - если в `group@hitDelaySec` нет значения, используется как дефолт для группы;
+     * - приоритет в бою у пер-группового `LezBotsGroup.HitDelaySec`.
      *
      * Значение `0` = legacy-режим (старый случайный интервал 1.0-2.0 сек).
      */
@@ -322,6 +323,13 @@ public class UserConfig {
                         g.DoHits = parseBoolAttr(parser, "doHits", g.DoHits);
                         g.DoBlocks = parseBoolAttr(parser, "doBlocks", g.DoBlocks);
                         g.DoMiscAbils = parseBoolAttr(parser, "doMiscAbils", g.DoMiscAbils);
+                        // Пер-групповая задержка удара:
+                        // - новый профиль: `group@hitDelaySec`;
+                        // - старый профиль: fallback на legacy `autoboi@hitDelaySec`.
+                        g.HitDelaySec = parseIntAttr(parser, "hitDelaySec", this.LezHitDelaySec);
+                        if (g.HitDelaySec < 0) {
+                            g.HitDelaySec = 0;
+                        }
                         // Обратная совместимость со старыми профилями:
                         // если в `group` отсутствует атрибут `doFury`, берём legacy-флаг из `<autoboi fury=...>`.
                         //
@@ -553,6 +561,7 @@ public class UserConfig {
                     serializer.attribute(null, "doHits", String.valueOf(g.DoHits));
                     serializer.attribute(null, "doBlocks", String.valueOf(g.DoBlocks));
                     serializer.attribute(null, "doMiscAbils", String.valueOf(g.DoMiscAbils));
+                    serializer.attribute(null, "hitDelaySec", String.valueOf(Math.max(0, g.HitDelaySec)));
                     serializer.attribute(null, "doFury", String.valueOf(g.DoFury));
                     serializer.attribute(null, "doStopNow", String.valueOf(g.DoStopNow));
                     serializer.attribute(null, "doStopLowHp", String.valueOf(g.DoStopLowHp));

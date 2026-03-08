@@ -23,6 +23,19 @@ public class LezBotsGroup implements Serializable, Cloneable, Comparable<LezBots
     public boolean DoBlocks;
     public boolean DoMiscAbils;
     /**
+     * Пер-групповая задержка между автоударами в секундах.
+     *
+     * Значение:
+     * - `0` = legacy-режим (случайная задержка 1-2 сек);
+     * - `N > 0` = фиксированная пауза `N` секунд для этой группы.
+     *
+     * Зависимости:
+     * - `AutoBoiSettingsFragment.RotationTabFragment` (редактирование),
+     * - `UserConfig` (`group@hitDelaySec`),
+     * - `LezFight` и `MainActivity` (фактическое применение в бою).
+     */
+    public int HitDelaySec;
+    /**
      * Пер-групповой флаг режима "Снежок/Ярость (первый удар свитком)".
      *
      * Назначение:
@@ -72,6 +85,7 @@ public class LezBotsGroup implements Serializable, Cloneable, Comparable<LezBots
         DoHits = true;
         DoBlocks = true;
         DoMiscAbils = true;
+        HitDelaySec = 0;
         DoFury = false;
 
         DoStopNow = false;

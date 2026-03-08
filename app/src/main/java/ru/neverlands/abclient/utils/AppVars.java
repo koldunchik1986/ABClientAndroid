@@ -38,6 +38,15 @@ public class AppVars {
      */
     public static boolean DoFury = false;
     /**
+     * Текущая задержка автоудара (сек) для активной группы противника в бою.
+     *
+     * Зависимости:
+     * - выставляется в `LezFight.SelectFoeGroup()` из `FoeGroup.HitDelaySec`;
+     * - используется в `MainActivity.getAutoBattleSubmitWaitMs()` для отложенной отправки хода;
+     * - синхронизирована с delay в `LezFight.BuildFrame()`.
+     */
+    public static volatile int CurrentAutoBattleHitDelaySec = 0;
+    /**
      * FuryAutoWear: требуется проверка, надет ли целевой свиток перед боем.
      * Аналогично `AutoSkinCheckKnife`, но для режима `DoFury`.
      */

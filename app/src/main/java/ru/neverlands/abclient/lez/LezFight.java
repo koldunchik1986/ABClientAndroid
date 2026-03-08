@@ -407,6 +407,7 @@ public class LezFight {
         _foeGroupId = 0;
         if (AppVars.Profile == null) {
             FoeGroup = new LezBotsGroup(1, 0);
+            AppVars.CurrentAutoBattleHitDelaySec = 0;
             return;
         }
         for (LezBotsGroup group : AppVars.Profile.LezGroups) {
@@ -429,6 +430,7 @@ public class LezFight {
         }
         if (FoeGroup == null) FoeGroup = new LezBotsGroup(1, 0);
         AppVars.DoFury = FoeGroup.DoFury;
+        AppVars.CurrentAutoBattleHitDelaySec = Math.max(0, FoeGroup.HitDelaySec);
     }
 
     private int ZMag(LezBotsGroup group, int code) {
@@ -788,12 +790,13 @@ public class LezFight {
         // Анти-детект/анти-ddos: держим интервал удара в диапазоне 1.0–2.0с.
         // Это ближе к поведению ПК-клиента по темпу, но без "мгновенного" спама запросов.
         // Настройка задержки между автоударами:
-        // - если в профиле задано `LezHitDelaySec > 0`, используем фиксированную паузу;
-        // - иначе сохраняем legacy-поведение (случайно 1.0-2.0с).
+        // - приоритет у пер-группового `FoeGroup.HitDelaySec`;
+        // - если он 0, сохраняем legacy-поведение (случайно 1.0-2.0с).
         // Зависимости:
-        // - значение приходит из UI (AutoBoiSettingsFragment -> "Задержка ударов"),
-        // - хранится/сохраняется в UserConfig (`autoboi@hitDelaySec`).
-        int configuredDelaySec = (AppVars.Profile != null) ? Math.max(0, AppVars.Profile.LezHitDelaySec) : 0;
+        // - значение приходит из UI вкладки "Ротация" (по активной группе),
+        // - хранится/сохраняется в UserConfig (`group@hitDelaySec`).
+        int configuredDelaySec = (FoeGroup != null) ? Math.max(0, FoeGroup.HitDelaySec) : 0;
+        AppVars.CurrentAutoBattleHitDelaySec = configuredDelaySec;
         int delay = configuredDelaySec > 0
                 ? configuredDelaySec * 1000
                 : (1000 + _random.nextInt(1001)); // 1.0–2.0s
