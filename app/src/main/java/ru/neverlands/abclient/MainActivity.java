@@ -966,6 +966,26 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
      * @param captchaUrl URL изображения капчи ({@code /modules/code/code.php?...}).
      * @param finishUrl URL завершения боя ({@code main.php?get_id=61&act=7...}).
      */
+    /**
+     * Основной UI-контур ввода боевой/рыбацкой капчи.
+     *
+     * Правила работы:
+     * - один активный диалог на один challenge (captchaUrl + finishUrl);
+     * - при новом challenge старый диалог закрывается и открывается заново;
+     * - обработчик кнопки "ОК" назначается в onShow до первого клика, чтобы не потерять submit;
+     * - ввод валидируется только как цифры 1..6 символов.
+     *
+     * Зависимости:
+     * - AppVars.IsFightCaptchaDialogVisible / ResumeAutoboiAfterCaptcha / FightLink / CodeAddress;
+     * - updateFightCaptchaSubmitButtonState() для UI-состояния кнопки;
+     * - appendOrReplaceCaptchaCode() для сборки URL submit;
+     * - buildFightCaptchaFinishKey() + AppVars.LastSubmittedFightCaptcha* для anti-duplicate;
+     * - submitCaptchaSolution() для отправки решения (бой/рыбалка);
+     * - loadCaptchaImageAsync() / startFightCaptchaAutoRefresh() для синхронизации картинки challenge.
+     *
+     * Важно:
+     * - setOnShowListener должен быть установлен до dialog.show(), иначе стиль/клик могут не примениться.
+     */
     private void showCaptchaDialog(String captchaUrl, String finishUrl) {
         Log.d(TAG, "showCaptchaDialog: " + captchaUrl + " -> " + finishUrl);
         if (activeFightCaptchaDialog != null && activeFightCaptchaDialog.isShowing()) {
@@ -999,7 +1019,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         android.widget.EditText input = new android.widget.EditText(this);
         input.setInputType(android.text.InputType.TYPE_CLASS_NUMBER);
         input.setFilters(new android.text.InputFilter[]{
-                new android.text.InputFilter.LengthFilter(5)
+                new android.text.InputFilter.LengthFilter(6)
         });
 
         android.widget.Button refreshButton = new android.widget.Button(this);
@@ -1039,28 +1059,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         AlertDialog dialog = new androidx.appcompat.app.AlertDialog.Builder(this)
                 .setTitle(captchaTitle)
                 .setView(layout)
-                .setPositiveButton("ОК", (d, which) -> {
-                    String code = input.getText().toString().trim();
-                    if (code.isEmpty()) return;
-                    captchaSubmitted[0] = true;
-                    if (AppVars.ResumeAutoboiAfterCaptcha
-                            && AppVars.Profile != null
-                            && AppVars.Profile.LezDoAutoboi) {
-                        AppVars.Autoboi = ru.neverlands.abclient.model.AutoboiState.AutoboiOn;
-                        Log.d(TAG, "showCaptchaDialog: restoring autoboi after captcha submit");
-                    }
-                    AppVars.ResumeAutoboiAfterCaptcha = false;
-                    String submitUrl = appendOrReplaceCaptchaCode(finishUrl, code);
-                    if (!isFishCaptcha) {
-                        AppVars.LastSubmittedFightCaptchaFinishKey = buildFightCaptchaFinishKey(submitUrl);
-                        AppVars.LastSubmittedFightCaptchaAtMs = System.currentTimeMillis();
-                        // Сбрасываем текущие captcha-маркеры, чтобы stale-значения не триггерили повторный popup.
-                        AppVars.FightLink = "";
-                        AppVars.CodeAddress = "";
-                    }
-                    Log.d(TAG, "showCaptchaDialog: submitting " + submitUrl);
-                    submitCaptchaSolution(submitUrl, isFishCaptcha);
-                })
+                .setPositiveButton("ОК", null)
                 .setNegativeButton("Отмена", (d, which) -> AppVars.ResumeAutoboiAfterCaptcha = false)
                 .create();
 
@@ -1085,12 +1084,51 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         activeFightCaptchaUrl = captchaUrl == null ? "" : captchaUrl;
         activeFightFinishUrl = finishUrl == null ? "" : finishUrl;
         activeFightCaptchaInput = input;
-        dialog.show();
 
         dialog.setOnShowListener(d -> {
             android.widget.Button positiveButton = dialog.getButton(AlertDialog.BUTTON_POSITIVE);
             if (positiveButton != null) {
-                positiveButton.setEnabled(false);
+                int primaryColor = ContextCompat.getColor(this, R.color.purple_500);
+                int textColor = ContextCompat.getColor(this, R.color.white);
+                positiveButton.setBackgroundColor(primaryColor);
+                positiveButton.setBackgroundTintList(android.content.res.ColorStateList.valueOf(primaryColor));
+                positiveButton.setTextColor(textColor);
+                positiveButton.setEnabled(true);
+                positiveButton.setOnClickListener(v -> {
+                    String code = input.getText().toString().trim();
+                    Log.d(TAG, "showCaptchaDialog: ok clicked, codeLen=" + code.length());
+                    if (code.isEmpty()) {
+                        input.setError("Введите код");
+                        input.requestFocus();
+                        return;
+                    }
+                    if (!code.matches("\\d{1,6}")) {
+                        input.setError("Код должен содержать только цифры");
+                        input.requestFocus();
+                        return;
+                    }
+
+                    captchaSubmitted[0] = true;
+                    if (AppVars.ResumeAutoboiAfterCaptcha
+                            && AppVars.Profile != null
+                            && AppVars.Profile.LezDoAutoboi) {
+                        AppVars.Autoboi = ru.neverlands.abclient.model.AutoboiState.AutoboiOn;
+                        Log.d(TAG, "showCaptchaDialog: restoring autoboi after captcha submit");
+                    }
+                    AppVars.ResumeAutoboiAfterCaptcha = false;
+
+                    String submitUrl = appendOrReplaceCaptchaCode(finishUrl, code);
+                    if (!isFishCaptcha) {
+                        AppVars.LastSubmittedFightCaptchaFinishKey = buildFightCaptchaFinishKey(submitUrl);
+                        AppVars.LastSubmittedFightCaptchaAtMs = System.currentTimeMillis();
+                        // Сбрасываем текущие captcha-маркеры, чтобы stale-значения не триггерили повторный popup.
+                        AppVars.FightLink = "";
+                        AppVars.CodeAddress = "";
+                    }
+                    Log.d(TAG, "showCaptchaDialog: submitting " + submitUrl);
+                    submitCaptchaSolution(submitUrl, isFishCaptcha);
+                    dialog.dismiss();
+                });
             }
             input.addTextChangedListener(new android.text.TextWatcher() {
                 @Override
@@ -1106,6 +1144,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             });
             updateFightCaptchaSubmitButtonState();
         });
+        dialog.show();
 
         activeFightCaptchaImageAtMs = 0L;
         activeFightCaptchaImageHash = 0;
@@ -1244,6 +1283,19 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
      * Формирует URL завершения боя с корректным параметром {@code code=} для капчи.
      * Меняется только query-параметр {@code code}; параметр {@code vcode} не затрагивается.
      */
+    /**
+     * Формирует итоговый URL submit капчи без изменения бизнес-логики остальных параметров.
+     *
+     * Что делает:
+     * - заменяет существующий query-параметр code=...;
+     * - если code отсутствует, добавляет его первым параметром query;
+     * - сохраняет все остальные параметры (включая vcode/min/max/sum/ftype);
+     * - сохраняет фрагмент #... если он присутствовал.
+     *
+     * Зависимости:
+     * - Uri.encode(...) для безопасной передачи пользовательского ввода;
+     * - вызывается из showCaptchaDialog() перед submitCaptchaSolution().
+     */
     private String appendOrReplaceCaptchaCode(String finishUrl, String code) {
         String submitUrl = finishUrl == null ? "" : finishUrl;
         String encodedCode = Uri.encode(code == null ? "" : code);
@@ -1284,6 +1336,19 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
      * - `AutoModeForegroundService.maybeShowFightCaptchaDialog(...)` сравнивает тот же ключ,
      *   чтобы не поднимать повторно идентичный challenge после уже отправленного submit.
      */
+    /**
+     * Нормализует finish-link в детерминированный ключ для дедупликации повторных popup.
+     *
+     * Правила:
+     * - относительный URL приводится к абсолютному http://neverlands.ru/...;
+     * - конкретный code=<digits> заменяется на code=????;
+     * - ключ должен быть одинаковым для одного и того же challenge, независимо от введённого кода.
+     *
+     * Зависимости:
+     * - AppVars.LastSubmittedFightCaptchaFinishKey;
+     * - AutoModeForegroundService.maybeShowFightCaptchaDialog(...), где этот ключ сравнивается
+     *   с текущим pending finish-link.
+     */
     private String buildFightCaptchaFinishKey(String finishUrl) {
         String normalized = finishUrl == null ? "" : finishUrl.trim();
         if (normalized.isEmpty()) {
@@ -1307,6 +1372,18 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
      * - `binding.appBarMain.contentMain.webView`: основной игровой WebView;
      * - `submitFishCaptchaViaAjaxOrFallback(...)`: fish captcha (`fish_ajax.php?act=2`) через Ajax;
      * - `WebView.loadUrl(...)`: fallback и штатный submit для боя (`main.php?get_id=61&act=7...`).
+     */
+    /**
+     * Отправляет решение капчи в правильный серверный поток.
+     *
+     * Ветки:
+     * - isFishCaptcha=true: отправка через submitFishCaptchaViaAjaxOrFallback(...), чтобы сохранить JS-flow рыбалки;
+     * - isFishCaptcha=false: прямой переход mainWebView.loadUrl(submitUrl) для боевого act=7.
+     *
+     * Зависимости:
+     * - binding.appBarMain.contentMain.webView;
+     * - submitFishCaptchaViaAjaxOrFallback(...);
+     * - логи showCaptchaDialog: submitting ... для трассировки отправки.
      */
     private void submitCaptchaSolution(String submitUrl, boolean isFishCaptcha) {
         if (binding == null || binding.appBarMain == null || binding.appBarMain.contentMain == null) {
@@ -1703,6 +1780,19 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
      * - код должен быть числом 0..99999;
      * - кнопка активируется только когда есть валидный код и зафиксированная картинка капчи.
      */
+    /**
+     * Обновляет визуальное состояние кнопки подтверждения в капча-диалоге.
+     *
+     * Текущая стратегия:
+     * - кнопка не блокируется жёстко из-за race/focus-сценариев;
+     * - фактическая валидация выполняется в OnClick кнопки "ОК";
+     * - здесь остаётся диагностика: validCode/imageReady/btnEnabled.
+     *
+     * Зависимости:
+     * - activeFightCaptchaDialog / activeFightCaptchaInput;
+     * - activeFightCaptchaImageAtMs / activeFightCaptchaImageHash;
+     * - AppVars.LastFightCaptchaImageBytes / LastFightCaptchaImageUrl.
+     */
     private void updateFightCaptchaSubmitButtonState() {
         AlertDialog dialog = activeFightCaptchaDialog;
         if (dialog == null || !dialog.isShowing()) {
@@ -1714,17 +1804,19 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         }
         android.widget.EditText input = activeFightCaptchaInput;
         String value = input == null ? "" : input.getText().toString().trim();
-        boolean validCode = false;
-        if (!value.isEmpty() && value.length() <= 5) {
-            try {
-                int numeric = Integer.parseInt(value);
-                validCode = numeric >= 0 && numeric <= 99999;
-            } catch (NumberFormatException ignored) {
-                validCode = false;
-            }
-        }
-        boolean imageReady = activeFightCaptchaImageAtMs > 0L && activeFightCaptchaImageHash != 0;
-        btn.setEnabled(validCode && imageReady);
+        boolean validCode = !value.isEmpty() && value.length() <= 6 && value.matches("\\d{1,6}");
+        boolean hasCapturedImage = AppVars.LastFightCaptchaImageBytes != null
+                && AppVars.LastFightCaptchaImageBytes.length > 0
+                && isSameCaptchaUrl(activeFightCaptchaUrl, AppVars.LastFightCaptchaImageUrl);
+        boolean imageReady = (activeFightCaptchaImageAtMs > 0L && activeFightCaptchaImageHash != 0)
+                || hasCapturedImage;
+        // Не блокируем кнопку полностью: валидация и удержание диалога делается в onClick.
+        // Это устраняет кейс, когда из-за race/фокуса кнопка остаётся неактивной.
+        btn.setEnabled(true);
+        Log.d(TAG, "updateFightCaptchaSubmitButtonState: codeLen=" + value.length()
+                + ", validCode=" + validCode
+                + ", imageReady=" + imageReady
+                + ", btnEnabled=" + btn.isEnabled());
     }
 
     /**

@@ -66,6 +66,7 @@ public class MainPhp {
     private static volatile String lastCaptchaRejectKey = "";
     private static volatile long lastCaptchaRejectAtMs = 0L;
     private static volatile String lastFightResultBroadcastKey = "";
+    private static volatile String lastFightSummaryBroadcastKey = "";
     private static volatile String lastAutoSkinProbeFightLog = "";
     private static volatile String lastFinishLoopKey = "";
     private static volatile int lastFinishLoopRepeatCount = 0;
@@ -319,9 +320,14 @@ public class MainPhp {
      *
      * Порядок источников (от более приоритетного к fallback):
      * 1) прямой `img src` в HTML (`extractCaptchaUrl`),
-     * 2) последний перехваченный URL из interceptor (`AppVars.LastFightCaptchaImageUrl`) с TTL,
+     * 2) token из `var fexp[4]` (`extractCaptchaUrlFromFexp`) — это данные текущего fight-frame,
      * 3) `AppVars.CodeAddress` (получен из `LezFight.ParseNonFight`, аналог C# `CodeAddress`),
-     * 4) token из `var fexp[4]` (`extractCaptchaUrlFromFexp`).
+     * 4) последний перехваченный URL из interceptor (`AppVars.LastFightCaptchaImageUrl`) с TTL
+     *    только как fallback, когда локальные маркеры текущего боя отсутствуют.
+     *
+     * Важно:
+     * - перехваченный URL может относиться к предыдущему challenge (race при фоновых refresh),
+     *   поэтому он не должен перебивать `fexp[4]`/`CodeAddress`, если они уже известны.
      *
      * Зависимости:
      * - `LezFight.BuildFightLink(...)`,
@@ -334,27 +340,6 @@ public class MainPhp {
             return captchaUrl;
         }
 
-        String fallbackUrl = AppVars.LastFightCaptchaImageUrl;
-        long fallbackAt = AppVars.LastFightCaptchaImageAtMs;
-        if (fallbackUrl != null && !fallbackUrl.isEmpty() && fallbackAt > 0L) {
-            long age = System.currentTimeMillis() - fallbackAt;
-            if (age >= 0 && age <= CAPTCHA_FALLBACK_TTL_MS) {
-                if (AppVars.CodeAddress != null
-                        && !AppVars.CodeAddress.isEmpty()
-                        && !fallbackUrl.equals(AppVars.CodeAddress)) {
-                    android.util.Log.d(TAG, "resolveFightCaptchaUrl: prefer interceptor url over CodeAddress, ageMs="
-                            + age + ", codeAddress=" + AppVars.CodeAddress + ", captured=" + fallbackUrl);
-                } else {
-                    android.util.Log.d(TAG, "resolveFightCaptchaUrl: use fallback from interceptor, ageMs=" + age);
-                }
-                return fallbackUrl;
-            }
-        }
-
-        if (AppVars.CodeAddress != null && !AppVars.CodeAddress.isEmpty()) {
-            return AppVars.CodeAddress;
-        }
-
         // В части ответов сервера img src с code.php отсутствует в HTML,
         // но token капчи есть в var fexp[4] (как в fight_v10.js: code.php?'+fexp[4]).
         String captchaUrlFromFexp = extractCaptchaUrlFromFexp(html);
@@ -362,6 +347,21 @@ public class MainPhp {
             android.util.Log.d(TAG, "resolveFightCaptchaUrl: built from fexp[4]: " + captchaUrlFromFexp);
             return captchaUrlFromFexp;
         }
+
+        if (AppVars.CodeAddress != null && !AppVars.CodeAddress.isEmpty()) {
+            return AppVars.CodeAddress;
+        }
+
+        String fallbackUrl = AppVars.LastFightCaptchaImageUrl;
+        long fallbackAt = AppVars.LastFightCaptchaImageAtMs;
+        if (fallbackUrl != null && !fallbackUrl.isEmpty() && fallbackAt > 0L) {
+            long age = System.currentTimeMillis() - fallbackAt;
+            if (age >= 0 && age <= CAPTCHA_FALLBACK_TTL_MS) {
+                android.util.Log.d(TAG, "resolveFightCaptchaUrl: use fallback from interceptor, ageMs=" + age);
+                return fallbackUrl;
+            }
+        }
+
         return null;
     }
 
@@ -1965,7 +1965,8 @@ public class MainPhp {
         }
 
         if (!deltaForChat.isEmpty()) {
-            String message = "<font color=#006600><b>Результат разделки:</b></font> "
+            String message = buildServerChatTimeHtml()
+                    + "<font color=#006600><b>Результат разделки:</b></font> "
                     + String.join(", ", deltaForChat);
             if (AppVars.getContext() != null) {
                 Intent intent = new Intent(AppVars.ACTION_ADD_CHAT_MESSAGE);
@@ -2233,6 +2234,19 @@ public class MainPhp {
         boolean isFightFrame = html.contains("magic_slots();");
         boolean isFightTopFrame = html.contains("var fight_ty");
         boolean isFightFinishAddress = address != null && address.contains("get_id=61") && address.contains("act=7");
+        // Важно: fallback-публикацию итога боя для act=7 делаем РАНЬШЕ AutoSkin/FastAction/AutoFish-веток.
+        // Иначе ранний return (например, редирект в инвентарь после боя) срежет системную сводку
+        // "Бой против ... завершен ... Нанесено ... Получено опыта ...".
+        //
+        // Зависимости:
+        // - registerFightEndByLogId(...): дедуп учёта боя в статистике;
+        // - publishFightResultFromLogsIfNeeded(...): "Победа/добыча";
+        // - publishFightSummaryFromFinishHtmlIfNeeded(...): системная строка с уроном и опытом.
+        if (isFightFinishAddress) {
+            registerFightEndByLogId(AppVars.LastBoiLog, "fight_finish_url_early");
+            publishFightResultFromLogsIfNeeded(html, address, AppVars.LastBoiLog);
+            publishFightSummaryFromFinishHtmlIfNeeded(html, AppVars.LastBoiLog);
+        }
         maybeMarkAutoSkinKnifeRecheck();
         boolean closedFightInterfereError = htmlLower.contains("ошибка при использовании. нельзя вмешаться в закрытый бой");
         if (closedFightInterfereError && AppVars.AutoAttackToolId != 0 && AppVars.FastNick != null && !AppVars.FastNick.isEmpty()) {
@@ -2502,14 +2516,6 @@ public class MainPhp {
         // Обработка страницы боя
         // magic_slots() — признак страницы боя (fight frame)
         // var fight_ty — признак верхнего фрейма с данными о противнике
-
-        // Fallback-подсчёт завершённого поединка по URL завершения боя.
-        // Нужен для случаев, когда сервер сразу переводит на `act=7` без повторного кадра `fight_ty`,
-        // и обычный путь `mainPhpFight(...)->registerFightEnd(...)` не успевает сработать.
-        if (isFightFinishAddress) {
-            registerFightEndByLogId(AppVars.LastBoiLog, "fight_finish_url");
-            publishFightResultFromLogsIfNeeded(html, address, AppVars.LastBoiLog);
-        }
 
         if (isFightFrame || isFightTopFrame) {
             android.util.Log.d(TAG, "=== FIGHT FRAME DETECTED ==="
@@ -3906,15 +3912,7 @@ public class MainPhp {
                 ? AppVars.LastBoiSostav
                 : (fight.FoeName + " [" + fight.FoeLevel + "]");
 
-        // Временная метка "Нападение" должна быть в серверном времени (как в C#).
-        // Используем ServDiff, вычисленный из but.php (hour/min/sec).
-        long serverMs = System.currentTimeMillis();
-        if (AppVars.Profile != null && AppVars.Profile.ServDiff != Long.MIN_VALUE) {
-            serverMs = serverMs - AppVars.Profile.ServDiff;
-        }
-        Date serverTime = new Date(serverMs);
-        String timeStr = new SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(serverTime);
-        String timeHtml = "<font class=chattime>&nbsp;" + timeStr + "&nbsp;</font> ";
+        String timeHtml = buildServerChatTimeHtml();
 
         String message = "Нападение: " + foes + foeType;
 
@@ -3930,6 +3928,27 @@ public class MainPhp {
         Intent msgIntent = new Intent(AppVars.ACTION_ADD_CHAT_MESSAGE);
         msgIntent.putExtra("message", messageHtml);
         LocalBroadcastManager.getInstance(AppVars.getContext()).sendBroadcast(msgIntent);
+    }
+
+    /**
+     * Формирует timestamp в серверной шкале времени для HTML-сообщений чата.
+     *
+     * Зависимости:
+     * - {@link AppVars.Profile#ServDiff}: смещение локального времени относительно сервера;
+     * - единый формат `chattime` используется в уведомлениях автобоя/авто-охоты.
+     *
+     * Назначение:
+     * - унифицировать время в сообщениях "Нападение"/"Результат разделки",
+     *   чтобы по чату видно было, на каком этапе (до или после нападения) остановился цикл.
+     */
+    private static String buildServerChatTimeHtml() {
+        long serverMs = System.currentTimeMillis();
+        if (AppVars.Profile != null && AppVars.Profile.ServDiff != Long.MIN_VALUE) {
+            serverMs = serverMs - AppVars.Profile.ServDiff;
+        }
+        Date serverTime = new Date(serverMs);
+        String timeStr = new SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(serverTime);
+        return "<font class=chattime>&nbsp;" + timeStr + "&nbsp;</font> ";
     }
 
     /**
@@ -4009,6 +4028,122 @@ public class MainPhp {
         Intent msgIntent = new Intent(AppVars.ACTION_ADD_CHAT_MESSAGE);
         msgIntent.putExtra("message", "<font color=#cc0000><b>" + message + "</b></font>");
         LocalBroadcastManager.getInstance(AppVars.getContext()).sendBroadcast(msgIntent);
+    }
+
+    /**
+     * Публикует системную сводку завершённого боя в чат из верхнего фрейма (`act=7`) как fallback.
+     *
+     * Зачем:
+     * - в фоне нижний чат может не прислать строку "Поединок завершён", из которой
+     *   {@link ru.neverlands.abclient.utils.ChatFilter} обычно собирает итоговое сообщение;
+     * - из-за этого пользователь не видит ключевую сводку "Бой против ... завершен ... урон ... опыт".
+     *
+     * Зависимости:
+     * - `AppVars.LastBoi*` (log/sostav/travm/uron), заполненные в боевом потоке;
+     * - {@link #extractBattleXpFromHtml(String)} для чтения боевого XP из HTML `act=7`;
+     * - {@link LocalBroadcastManager} + `ACTION_ADD_CHAT_MESSAGE` для публикации в чат UI;
+     * - {@link #buildServerChatTimeHtml()} для серверного timestamp.
+     *
+     * Дедупликация:
+     * - сообщение публикуется один раз на связку `logId|damage|xp`, чтобы не спамить
+     *   при повторных перезагрузках `main.php?get_id=61&act=7...`.
+     */
+    private static void publishFightSummaryFromFinishHtmlIfNeeded(String html, String logIdHint) {
+        if (AppVars.getContext() == null) return;
+
+        String logId = (logIdHint == null || logIdHint.isEmpty()) ? AppVars.LastBoiLog : logIdHint;
+        if (logId == null || logId.isEmpty()) {
+            return;
+        }
+        String foes = AppVars.LastBoiSostav == null ? "" : AppVars.LastBoiSostav.trim();
+        if (foes.isEmpty()) {
+            return;
+        }
+
+        String travm = AppVars.LastBoiTravm == null ? "" : AppVars.LastBoiTravm;
+        String damage = (AppVars.LastBoiUron == null || AppVars.LastBoiUron.trim().isEmpty())
+                ? "0"
+                : AppVars.LastBoiUron.trim();
+        String battleXp = extractBattleXpFromHtml(html);
+
+        String dedupKey = logId + "|" + damage + "|" + battleXp;
+        if (dedupKey.equals(lastFightSummaryBroadcastKey)) {
+            return;
+        }
+        lastFightSummaryBroadcastKey = dedupKey;
+
+        if (!battleXp.isEmpty()) {
+            try {
+                ru.neverlands.abclient.utils.ChatStats.addXp(Long.parseLong(battleXp));
+            } catch (NumberFormatException ignored) {
+                // Битое значение XP не должно ломать публикацию сводки боя.
+            }
+        }
+
+        StringBuilder message = new StringBuilder();
+        message.append(buildServerChatTimeHtml())
+                .append("<font color=#000000><b>Бой")
+                .append(travm)
+                .append(" против ")
+                .append(foes)
+                .append(" завершен (<a href=http://www.neverlands.ru/logs.fcg?fid=")
+                .append(logId)
+                .append(" onclick=\"window.open(this.href);\">лог</a> боя). Нанесено урона: ")
+                .append("<FONT color=#339900><b>")
+                .append(damage)
+                .append("</b></FONT>");
+
+        if (!battleXp.isEmpty()) {
+            message.append(". Полученно боевого опыта: <b><font color=#CC0000>")
+                    .append(battleXp)
+                    .append("</font></b>");
+        }
+        message.append(".</b></font>");
+
+        Intent msgIntent = new Intent(AppVars.ACTION_ADD_CHAT_MESSAGE);
+        msgIntent.putExtra("message", message.toString());
+        LocalBroadcastManager.getInstance(AppVars.getContext()).sendBroadcast(msgIntent);
+
+        android.util.Log.d(TAG, "publishFightSummaryFromFinishHtmlIfNeeded: logId=" + logId
+                + ", damage=" + damage + ", battleXp=" + battleXp + ", foes=" + foes);
+    }
+
+    /**
+     * Извлекает числовое значение боевого опыта из HTML страницы завершения боя.
+     *
+     * Зависимости:
+     * - использует тот же маркер, что и `ChatFilter`: блок
+     *   "Получено <font color=#CC0000>боевого</font> опыта: ...".
+     *
+     * @param html HTML ответа `main.php?get_id=61&act=7...`.
+     * @return строка с XP (только цифры) либо пустая строка, если XP не найден.
+     */
+    private static String extractBattleXpFromHtml(String html) {
+        if (html == null || html.isEmpty()) {
+            return "";
+        }
+
+        String xp = HelperStrings.subString(
+                html,
+                "Получено <font color=#CC0000>боевого</font> опыта: <b><font color=#CC0000>",
+                "</font></b>.");
+        if (xp != null && !xp.trim().isEmpty()) {
+            String normalized = xp.replaceAll("[^0-9]", "");
+            return normalized == null ? "" : normalized.trim();
+        }
+
+        try {
+            java.util.regex.Matcher matcher = java.util.regex.Pattern.compile(
+                    "боевого</font>\\s*опыта:\\s*<b><font[^>]*>(\\d+)</font></b>",
+                    java.util.regex.Pattern.CASE_INSENSITIVE
+            ).matcher(html);
+            if (matcher.find()) {
+                String value = matcher.group(1);
+                return value == null ? "" : value.trim();
+            }
+        } catch (Exception ignored) {
+        }
+        return "";
     }
 
     /**

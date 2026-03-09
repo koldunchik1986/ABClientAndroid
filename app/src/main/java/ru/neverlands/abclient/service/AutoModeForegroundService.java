@@ -20,12 +20,16 @@ import androidx.core.app.NotificationCompat;
 import androidx.core.content.ContextCompat;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.Locale;
 
 import ru.neverlands.abclient.MainActivity;
 import ru.neverlands.abclient.R;
 import ru.neverlands.abclient.manager.AutoFunctionsManager;
 import ru.neverlands.abclient.model.AutoboiState;
 import ru.neverlands.abclient.utils.AppVars;
+import ru.neverlands.abclient.utils.RuntimeNetTrace;
 
 /**
  * Foreground-service для поддержания авто-контуров при заблокированном экране.
@@ -45,6 +49,7 @@ public class AutoModeForegroundService extends Service {
 
     private static final String CHANNEL_ID = "auto_mode_background";
     private static final int NOTIFICATION_ID = 6201;
+    private static final long NOTIFICATION_MIN_UPDATE_MS = 800L;
     private static final long TICK_INTERVAL_MS = 1000L;
     private static final long NO_ACTIVITY_STOP_TIMEOUT_MS = 60_000L;
     private static final long AUTO_TURN_MIN_INTERVAL_MS = 1000L;
@@ -56,7 +61,21 @@ public class AutoModeForegroundService extends Service {
     private static final long FIGHT_ANNOUNCE_GRACE_MS = 25_000L;
     private static final long FORCE_FIGHT_SYNC_MIN_INTERVAL_MS = 2_500L;
     private static final long AUTO_FIGHT_FINISH_MIN_INTERVAL_MS = 1_500L;
-    private static final long FIGHT_CAPTCHA_BROADCAST_DEDUP_MS = 2_000L;
+    /**
+     * Минимальный интервал между одинаковыми broadcast-запросами на показ боевой капчи.
+     *
+     * Назначение:
+     * - гасит "переоткрытие" одного и того же popup при повторных тиках сервиса;
+     * - работает как первый слой антидребезга до проверки submit-key.
+     */
+    private static final long FIGHT_CAPTCHA_BROADCAST_DEDUP_MS = 8_000L;
+    /**
+     * Временное окно защиты после отправки code=... для того же finish-key.
+     *
+     * Назначение:
+     * - не показывать повторно тот же challenge сразу после submit;
+     * - дать серверу время прислать новое состояние кадра боя.
+     */
     private static final long FIGHT_CAPTCHA_SUBMIT_GUARD_TTL_MS = 20_000L;
 
     private static final String ACTION_SYNC = "ru.neverlands.abclient.action.AUTO_BG_SYNC";
@@ -74,6 +93,10 @@ public class AutoModeForegroundService extends Service {
     private long lastForceFightSyncAtMs = 0L;
     private long lastFightCaptchaBroadcastAtMs = 0L;
     private String lastFightCaptchaBroadcastKey = "";
+    private long lastNotificationUpdateAtMs = 0L;
+    private String lastNotificationContentText = "";
+    private long lastClientActionAtMs = 0L;
+    private String lastClientAction = "ожидание";
 
     /**
      * Создает "асинхронный" main handler (API 28+), чтобы tick loop сервиса
@@ -131,6 +154,7 @@ public class AutoModeForegroundService extends Service {
     public void onCreate() {
         super.onCreate();
         createNotificationChannelIfNeeded();
+        markClientAction("Сервис запущен");
         startForeground(NOTIFICATION_ID, buildNotification("Авто-режим работает в фоне"));
         ensureLocks();
         Log.d(TAG, BG_TRACE_PREFIX + " onCreate: foreground started");
@@ -203,6 +227,8 @@ public class AutoModeForegroundService extends Service {
             }
             long noActivityForMs = now - lastMainActivitySeenAtMs;
             Log.d(TAG, BG_TRACE_PREFIX + " tick: mainActivity=null, noActivityForMs=" + noActivityForMs);
+            markClientAction("UI недоступен: " + (noActivityForMs / 1000) + "с");
+            refreshForegroundNotification(false, false, false, false);
             if (noActivityForMs >= NO_ACTIVITY_STOP_TIMEOUT_MS) {
                 Log.d(TAG, BG_TRACE_PREFIX + " tick: stopSelf (no activity for too long)");
                 stopSelf();
@@ -233,6 +259,7 @@ public class AutoModeForegroundService extends Service {
                         + ", walkersPollIntervalSec=" + walkersPollIntervalSec
                         + ", fightLikelyActive=" + fightLikelyActive
                         + ", uiForegroundInteractive=" + uiForegroundInteractive);
+                refreshForegroundNotification(autoFightEnabled, locationTrackingEnabled, captchaDialogVisible, false);
 
                 ensureChatRefreshAlive(activity, tickNow);
 
@@ -264,13 +291,16 @@ public class AutoModeForegroundService extends Service {
                         if (activity.getMainWebView() != null) {
                             Log.d(TAG, BG_TRACE_PREFIX + " uiTick: dispatch fight finish link: " + pendingFightFinishLink);
                             activity.getMainWebView().loadUrl(pendingFightFinishLink);
+                            markClientAction("Завершение боя: act=7");
                             lastAutoFightFinishDispatchAtMs = tickNow;
                             lastAutoFightFinishLink = pendingFightFinishLink;
                         } else {
                             Log.w(TAG, BG_TRACE_PREFIX + " uiTick: skip fight finish dispatch, mainWebView=null");
+                            markClientAction("Пропуск act=7: webView=null");
                         }
                         // Чистим ссылку после попытки отправки, чтобы не дублировать в следующем тике.
                         AppVars.FightLink = "";
+                        refreshForegroundNotification(autoFightEnabled, locationTrackingEnabled, captchaDialogVisible, true);
                         return;
                     } else {
                         Log.d(TAG, BG_TRACE_PREFIX + " uiTick: fight finish dispatch throttled, remainingMs="
@@ -289,6 +319,7 @@ public class AutoModeForegroundService extends Service {
                 // - AppVars.ACTION_SHOW_CAPTCHA + LocalBroadcastManager: открытие popup в MainActivity;
                 // - AppVars.IsFightCaptchaDialogVisible: единый стоп-флаг для service/FightViewModel/MainPhp.
                 if (maybeShowFightCaptchaDialog(activity, autoFightEnabled, captchaDialogVisible, pendingFightFinishLink, tickNow)) {
+                    refreshForegroundNotification(autoFightEnabled, locationTrackingEnabled, true, true);
                     return;
                 }
                 if (autoFightEnabled && !captchaDialogVisible && !uiForegroundInteractive) {
@@ -298,6 +329,7 @@ public class AutoModeForegroundService extends Service {
                 if (locationTrackingEnabled) {
                     if (tickNow - lastRoomUsersTickAtMs >= roomTickIntervalMs) {
                         activity.requestRoomUsersRefreshSoon();
+                        markClientAction("Слежение: обновление локации");
                         lastRoomUsersTickAtMs = tickNow;
                     } else {
                         Log.d(TAG, BG_TRACE_PREFIX + " uiTick: room refresh throttled, remainingMs="
@@ -310,6 +342,8 @@ public class AutoModeForegroundService extends Service {
                             && !hasFightMarkers(AppVars.ContentMainPhp)
                             && pendingFightFinishLink.isEmpty()) {
                         Log.d(TAG, BG_TRACE_PREFIX + " uiTick: skip autoTurn/probe in interactive foreground (no fight markers)");
+                        markClientAction("Пауза авто-хода: активный UI");
+                        refreshForegroundNotification(autoFightEnabled, locationTrackingEnabled, captchaDialogVisible, false);
                         return;
                     }
                     // Background-safe polling: do auto-turn/probe even when fightLikelyActive=false.
@@ -322,6 +356,7 @@ public class AutoModeForegroundService extends Service {
                             Log.d(TAG, BG_TRACE_PREFIX + " uiTick: autoTurn idle probe");
                         }
                         activity.requestAutoTurnBackgroundAware();
+                        markClientAction(fightLikelyActive ? "Авто-ход: запрос шага" : "Авто-ход: idle-probe");
                         lastAutoTurnTickAtMs = tickNow;
                     } else {
                         Log.d(TAG, BG_TRACE_PREFIX + " uiTick: autoTurn throttled, remainingMs="
@@ -330,7 +365,9 @@ public class AutoModeForegroundService extends Service {
                     }
                 } else if (autoFightEnabled && captchaDialogVisible) {
                     Log.d(TAG, BG_TRACE_PREFIX + " uiTick: skip autoTurn, captcha dialog visible");
+                    markClientAction("Ожидание ввода капчи");
                 }
+                refreshForegroundNotification(autoFightEnabled, locationTrackingEnabled, captchaDialogVisible, false);
             } catch (Exception e) {
                 Log.e(TAG, BG_TRACE_PREFIX + " uiTick: failed", e);
             }
@@ -360,6 +397,7 @@ public class AutoModeForegroundService extends Service {
             if (tickNow - lastForcedChatRefreshAtMs >= forceCooldownMs) {
                 Log.d(TAG, BG_TRACE_PREFIX + " uiTick: chat refresh bootstrap");
                 activity.requestChatRefreshNow();
+                markClientAction("Чат: bootstrap refresh");
                 lastForcedChatRefreshAtMs = tickNow;
             }
             return;
@@ -376,6 +414,7 @@ public class AutoModeForegroundService extends Service {
         Log.w(TAG, BG_TRACE_PREFIX + " uiTick: chat refresh watchdog, staleForMs=" + staleForMs
                 + ", refreshIntervalMs=" + refreshIntervalMs);
         activity.requestChatRefreshNow();
+        markClientAction("Чат: watchdog refresh");
         lastForcedChatRefreshAtMs = tickNow;
     }
 
@@ -446,6 +485,7 @@ public class AutoModeForegroundService extends Service {
         String syncUrl = "http://neverlands.ru/main.php?r=" + tickNow + "&ab_force_fight_sync=1";
         activity.getMainWebView().loadUrl(syncUrl);
         lastForceFightSyncAtMs = tickNow;
+        markClientAction("Синхронизация fight-frame");
         Log.d(TAG, BG_TRACE_PREFIX + " uiTick: force fight-frame sync after attack announce, url=" + syncUrl);
     }
 
@@ -467,6 +507,17 @@ public class AutoModeForegroundService extends Service {
      * Зависимости:
      * - формат серверного URL завершения боя `main.php?get_id=61&act=7...`;
      * - placeholder `code=????`, который приходит до ввода капчи.
+     */
+    /**
+     * Проверяет, что finish-link относится к завершению боя с обязательной капчей.
+     *
+     * Критерии:
+     * - get_id=61 и act=7 (боевое завершение);
+     * - placeholder code=???? (код ещё не введён вручную).
+     *
+     * Зависимости:
+     * - AppVars.FightLink, сформированный боевым парсером;
+     * - maybeShowFightCaptchaDialog(...), где это условие запускает popup-flow.
      */
     private boolean isFightCaptchaFinishLink(String url) {
         if (url == null || url.isEmpty()) {
@@ -493,6 +544,22 @@ public class AutoModeForegroundService extends Service {
      *
      * @return true, если состояние капчи обработано и этот тик должен прекратить авто-действия.
      */
+    /**
+     * Центральная оркестрация показа боевой капчи из фонового сервиса.
+     *
+     * Правила:
+     * - не показывать popup, если уже открыт dialog;
+     * - не показывать popup повторно для того же finish-key после успешного submit,
+     *   пока сервер не пришлёт новый challenge (по тайм-метке перехваченной картинки);
+     * - отправлять ACTION_SHOW_CAPTCHA только после дедупликации по key+time.
+     *
+     * Зависимости:
+     * - AppVars.FightLink / CodeAddress / LastSubmittedFightCaptcha* / LastFightCaptchaImageAtMs;
+     * - MainActivity.broadcastReceiver -> MainActivity.showCaptchaDialog(...);
+     * - normalizeNeverlandsUrl(...) и buildFightCaptchaFinishKey(...) для унификации сравнения.
+     *
+     * @return true, если тик должен завершиться в режиме ожидания ручного ввода капчи.
+     */
     private boolean maybeShowFightCaptchaDialog(
             MainActivity activity,
             boolean autoFightEnabled,
@@ -515,11 +582,28 @@ public class AutoModeForegroundService extends Service {
             long submittedAtMs = AppVars.LastSubmittedFightCaptchaAtMs;
             long submittedAgeMs = submittedAtMs > 0L ? (tickNow - submittedAtMs) : Long.MAX_VALUE;
             boolean sameAsSubmitted = pendingFightKey.equals(lastSubmittedKey);
-            if (sameAsSubmitted && submittedAgeMs >= 0L && submittedAgeMs < FIGHT_CAPTCHA_SUBMIT_GUARD_TTL_MS) {
-                Log.d(TAG, BG_TRACE_PREFIX + " uiTick: skip duplicate fight captcha after submit, ageMs=" + submittedAgeMs);
+            long lastCapturedCaptchaAtMs = AppVars.LastFightCaptchaImageAtMs;
+
+            // После успешного submit сервер может ещё какое-то время держать stale fight-link/code=???? в рантайме.
+            // Если ключ тот же, а новой капчи (по времени перехваченной картинки) после submit не было,
+            // повторно popup не показываем вообще, пока сервер не пришлёт новый challenge.
+            if (sameAsSubmitted && submittedAtMs > 0L
+                    && lastCapturedCaptchaAtMs > 0L
+                    && lastCapturedCaptchaAtMs <= submittedAtMs) {
+                Log.d(TAG, BG_TRACE_PREFIX + " uiTick: skip stale fight captcha after submit,"
+                        + " ageMs=" + submittedAgeMs
+                        + ", lastCaptchaAtMs=" + lastCapturedCaptchaAtMs
+                        + ", submittedAtMs=" + submittedAtMs);
+                markClientAction("Ожидание нового challenge капчи");
                 return true;
             }
-            if (submittedAgeMs >= FIGHT_CAPTCHA_SUBMIT_GUARD_TTL_MS) {
+
+            if (sameAsSubmitted && submittedAgeMs >= 0L && submittedAgeMs < FIGHT_CAPTCHA_SUBMIT_GUARD_TTL_MS) {
+                Log.d(TAG, BG_TRACE_PREFIX + " uiTick: skip duplicate fight captcha after submit, ageMs=" + submittedAgeMs);
+                markClientAction("Капча: anti-duplicate guard");
+                return true;
+            }
+            if (!sameAsSubmitted && submittedAgeMs >= FIGHT_CAPTCHA_SUBMIT_GUARD_TTL_MS) {
                 AppVars.LastSubmittedFightCaptchaFinishKey = "";
                 AppVars.LastSubmittedFightCaptchaAtMs = 0L;
             }
@@ -528,6 +612,7 @@ public class AutoModeForegroundService extends Service {
         String captchaUrl = normalizeNeverlandsUrl(AppVars.CodeAddress);
         if (captchaUrl.isEmpty()) {
             Log.w(TAG, BG_TRACE_PREFIX + " uiTick: fight captcha required but captcha url is empty");
+            markClientAction("Капча: нет URL challenge");
             return true;
         }
 
@@ -535,6 +620,7 @@ public class AutoModeForegroundService extends Service {
         if (key.equals(lastFightCaptchaBroadcastKey)
                 && (tickNow - lastFightCaptchaBroadcastAtMs) < FIGHT_CAPTCHA_BROADCAST_DEDUP_MS) {
             AppVars.IsFightCaptchaDialogVisible = true;
+            markClientAction("Капча: ожидание ввода");
             return true;
         }
 
@@ -547,12 +633,25 @@ public class AutoModeForegroundService extends Service {
         intent.putExtra("captchaUrl", captchaUrl);
         intent.putExtra("finishUrl", pendingFightFinishLink);
         LocalBroadcastManager.getInstance(getApplicationContext()).sendBroadcast(intent);
+        markClientAction("Капча: показ popup");
         Log.d(TAG, BG_TRACE_PREFIX + " uiTick: fight captcha popup requested, finishUrl=" + pendingFightFinishLink);
         return true;
     }
 
     /**
      * Нормализация относительных neverlands-ссылок до абсолютного URL.
+     */
+    /**
+     * Нормализует игровую ссылку в абсолютный URL neverlands.
+     *
+     * Что делает:
+     * - trim + проверка пустых значений;
+     * - относительные пути переводит в http://neverlands.ru/...;
+     * - абсолютные http/https оставляет без изменений.
+     *
+     * Зависимости:
+     * - buildFightCaptchaFinishKey(...);
+     * - maybeShowFightCaptchaDialog(...), где нормализуется CodeAddress.
      */
     private String normalizeNeverlandsUrl(String url) {
         if (url == null) {
@@ -573,6 +672,18 @@ public class AutoModeForegroundService extends Service {
 
     /**
      * Нормализует finish-link для сравнения с уже отправленным submit (`code` приводится к `????`).
+     */
+    /**
+     * Строит нормализованный ключ finish-link для сравнения challenge между тиками.
+     *
+     * Принцип:
+     * - URL нормализуется до абсолютного вида;
+     * - значение code=... унифицируется до code=????;
+     * - одинаковый challenge всегда даёт одинаковый ключ.
+     *
+     * Зависимости:
+     * - AppVars.LastSubmittedFightCaptchaFinishKey;
+     * - maybeShowFightCaptchaDialog(...), где ключ используется в anti-loop логике.
      */
     private String buildFightCaptchaFinishKey(String finishUrl) {
         String normalized = normalizeNeverlandsUrl(finishUrl);
@@ -635,6 +746,68 @@ public class AutoModeForegroundService extends Service {
         wifiLock = null;
     }
 
+    /**
+     * Фиксирует последнее действие фонового клиента для показа в уведомлении и отладки.
+     *
+     * Зависимости:
+     * - runBackgroundTick()/maybeShowFightCaptchaDialog()/maybeForceFightFrameSync() как источники событий;
+     * - refreshForegroundNotification(...) как потребитель строки.
+     */
+    private void markClientAction(String action) {
+        if (action == null) {
+            return;
+        }
+        String sanitized = action.replace('\n', ' ').replace('\r', ' ').trim();
+        if (sanitized.isEmpty()) {
+            return;
+        }
+        if (sanitized.length() > 96) {
+            sanitized = sanitized.substring(0, 93) + "...";
+        }
+        lastClientAction = sanitized;
+        lastClientActionAtMs = System.currentTimeMillis();
+    }
+
+    /**
+     * Обновляет foreground-уведомление состоянием авто-режима и последним действием клиента.
+     *
+     * Зависимости:
+     * - markClientAction(...) -> lastClientAction/lastClientActionAtMs;
+     * - RuntimeNetTrace.snapshotForUi() для расширенного debug-текста;
+     * - NotificationManager.notify(...) для live-обновления уже поднятого foreground уведомления.
+     */
+    private void refreshForegroundNotification(
+            boolean autoFightEnabled,
+            boolean locationTrackingEnabled,
+            boolean captchaDialogVisible,
+            boolean force
+    ) {
+        long now = System.currentTimeMillis();
+        String actionTs = lastClientActionAtMs > 0L
+                ? new SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(new Date(lastClientActionAtMs))
+                : "--:--:--";
+        String contentText = "Бой:" + (autoFightEnabled ? "ON" : "OFF")
+                + " Локация:" + (locationTrackingEnabled ? "ON" : "OFF")
+                + " Капча:" + (captchaDialogVisible ? "да" : "нет")
+                + " | " + actionTs + " " + lastClientAction;
+
+        if (!force) {
+            boolean tooFrequent = (now - lastNotificationUpdateAtMs) < NOTIFICATION_MIN_UPDATE_MS;
+            if (tooFrequent && contentText.equals(lastNotificationContentText)) {
+                return;
+            }
+        }
+
+        NotificationManager notificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+        if (notificationManager == null) {
+            return;
+        }
+
+        notificationManager.notify(NOTIFICATION_ID, buildNotification(contentText));
+        lastNotificationContentText = contentText;
+        lastNotificationUpdateAtMs = now;
+    }
+
     private void createNotificationChannelIfNeeded() {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) {
             return;
@@ -667,6 +840,8 @@ public class AutoModeForegroundService extends Service {
                 .setSmallIcon(R.drawable.ic_notification)
                 .setContentTitle("ABClient: фоновый авто-режим")
                 .setContentText(contentText)
+                .setStyle(new NotificationCompat.BigTextStyle().bigText(
+                        contentText + "\nNET: " + RuntimeNetTrace.snapshotForUi()))
                 .setOngoing(true)
                 .setSilent(true)
                 .setPriority(NotificationCompat.PRIORITY_LOW)
