@@ -575,19 +575,23 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         final String probeReason = reason;
         new Thread(() -> {
             try {
-                String probeHtml = loadFightProbeHtmlViaHttp();
+                FightProbeResult probeResult = loadFightProbeHtmlViaHttp();
+                String probeHtml = probeResult.html;
                 if (probeHtml == null || probeHtml.isEmpty()) {
                     Log.w(TAG, BG_TRACE_PREFIX + " requestAutoTurn: server probe empty, reason=" + probeReason);
                     return;
                 }
                 runOnUiThread(() -> {
                     Log.d(TAG, BG_TRACE_PREFIX + " requestAutoTurn: server probe htmlLen=" + probeHtml.length()
+                            + ", hasFightMarkers=" + probeResult.hasFightMarkers
+                            + ", probeUrl=" + probeResult.url
                             + ", reason=" + probeReason);
-                    if (hasFightMarkers(probeHtml)) {
+                    if (probeResult.hasFightMarkers) {
                         AppVars.ContentMainPhp = probeHtml;
                         fightViewModel.autoTurnOnce(probeHtml);
                     } else {
-                        Log.d(TAG, BG_TRACE_PREFIX + " requestAutoTurn: server probe has no fight markers");
+                        Log.d(TAG, BG_TRACE_PREFIX + " requestAutoTurn: server probe has no fight markers, probeUrl="
+                                + probeResult.url);
                     }
                 });
             } catch (Exception e) {
@@ -612,11 +616,41 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
      * - `CookieManager` + `CookiesManager.obtain(...)` для cookie-header;
      * - `Russian.getString(...)` для декодирования windows-1251 ответа сервера.
      */
-    private String loadFightProbeHtmlViaHttp() {
+    private FightProbeResult loadFightProbeHtmlViaHttp() {
+        long nonce = System.currentTimeMillis();
+        List<String> probeUrls = Arrays.asList(
+                "http://neverlands.ru/main.php?ab_bg_probe=1&r=" + nonce,
+                "http://neverlands.ru/main.php?get_id=56&act=10&go=inf&ab_bg_probe=1&r=" + nonce
+        );
+
+        String firstNonEmptyHtml = null;
+        String firstNonEmptyUrl = "";
+        for (String probeUrl : probeUrls) {
+            String probeHtml = loadFightProbeHtmlViaHttp(probeUrl);
+            boolean hasMarkers = hasFightMarkers(probeHtml);
+            Log.d(TAG, BG_TRACE_PREFIX + " requestAutoTurn: probe attempt url=" + probeUrl
+                    + ", htmlLen=" + (probeHtml == null ? 0 : probeHtml.length())
+                    + ", hasFightMarkers=" + hasMarkers);
+
+            if (probeHtml != null && !probeHtml.isEmpty() && firstNonEmptyHtml == null) {
+                firstNonEmptyHtml = probeHtml;
+                firstNonEmptyUrl = probeUrl;
+            }
+            if (hasMarkers) {
+                return new FightProbeResult(probeUrl, probeHtml, true);
+            }
+        }
+
+        if (firstNonEmptyHtml != null) {
+            return new FightProbeResult(firstNonEmptyUrl, firstNonEmptyHtml, false);
+        }
+        return new FightProbeResult("", null, false);
+    }
+
+    private String loadFightProbeHtmlViaHttp(String probeUrl) {
         HttpURLConnection connection = null;
         InputStream inputStream = null;
         ByteArrayOutputStream outputStream = null;
-        String probeUrl = "http://neverlands.ru/main.php?get_id=56&act=10&go=inf&ab_bg_probe=1&r=" + System.currentTimeMillis();
         try {
             URL url = new URL(probeUrl);
             java.net.Proxy activeProxy = ProxyRuntimeManager.getActiveJavaProxyOrNull();
@@ -655,7 +689,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
 
             int responseCode = connection.getResponseCode();
             if (responseCode < 200 || responseCode >= 300) {
-                Log.w(TAG, BG_TRACE_PREFIX + " requestAutoTurn: fight probe HTTP " + responseCode);
+                Log.w(TAG, BG_TRACE_PREFIX + " requestAutoTurn: fight probe HTTP " + responseCode + ", probeUrl=" + probeUrl);
                 return null;
             }
 
@@ -687,6 +721,18 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             if (connection != null) {
                 connection.disconnect();
             }
+        }
+    }
+
+    private static final class FightProbeResult {
+        final String url;
+        final String html;
+        final boolean hasFightMarkers;
+
+        FightProbeResult(String url, String html, boolean hasFightMarkers) {
+            this.url = url == null ? "" : url;
+            this.html = html;
+            this.hasFightMarkers = hasFightMarkers;
         }
     }
 
