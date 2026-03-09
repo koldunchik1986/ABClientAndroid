@@ -493,11 +493,11 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                             } else {
                                 Log.d(TAG, BG_TRACE_PREFIX + " requestAutoTurn: no fight markers in current/cached html");
                                 if (allowServerProbeFallback) {
-                                    if (isAutoTurnServerProbeAllowedNow()) {
-                                        requestAutoTurnFromServerProbe("no_fight_markers_current_and_cached");
-                                    } else {
-                                        Log.d(TAG, BG_TRACE_PREFIX + " requestAutoTurn: skip server probe in foreground UI");
+                                    boolean probeAllowedByUiState = isAutoTurnServerProbeAllowedNow();
+                                    if (!probeAllowedByUiState) {
+                                        Log.d(TAG, BG_TRACE_PREFIX + " requestAutoTurn: forcing server probe from background-aware path");
                                     }
+                                    requestAutoTurnFromServerProbe("no_fight_markers_current_and_cached");
                                 }
                             }
                         }
@@ -512,11 +512,11 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                         } else {
                             Log.d(TAG, BG_TRACE_PREFIX + " requestAutoTurn: html is null and cached html has no fight markers");
                             if (allowServerProbeFallback) {
-                                if (isAutoTurnServerProbeAllowedNow()) {
-                                    requestAutoTurnFromServerProbe("null_html_and_no_cached_markers");
-                                } else {
-                                    Log.d(TAG, BG_TRACE_PREFIX + " requestAutoTurn: skip null-html server probe in foreground UI");
+                                boolean probeAllowedByUiState = isAutoTurnServerProbeAllowedNow();
+                                if (!probeAllowedByUiState) {
+                                    Log.d(TAG, BG_TRACE_PREFIX + " requestAutoTurn: forcing null-html server probe from background-aware path");
                                 }
+                                requestAutoTurnFromServerProbe("null_html_and_no_cached_markers");
                             }
                         }
                     }
