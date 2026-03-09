@@ -153,6 +153,14 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     private long activeFightCaptchaLoadSeq = 0L;
     private String activeFightCaptchaUrl = "";
     private String activeFightFinishUrl = "";
+    /**
+     * Текущее поле ввода кода в активном popup капчи.
+     *
+     * Зависимости:
+     * - {@link #showCaptchaDialog(String, String)} назначает ссылку на актуальный EditText;
+     * - {@link #updateFightCaptchaSubmitButtonState()} читает введённый код и управляет кнопкой "ОК";
+     * - в onDismiss ссылка сбрасывается, чтобы не держать stale-ссылку на старый View.
+     */
     private android.widget.EditText activeFightCaptchaInput;
     private boolean replacingFightCaptchaDialog = false;
     private boolean appBroadcastReceiverRegistered = false;
@@ -747,6 +755,17 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
      */
 
 
+    /**
+     * Быстрая эвристика «это боевой HTML или нет».
+     *
+     * Зависимости:
+     * - вызывается в recovery-логике авто-боя перед принудительной перезагрузкой fight-frame;
+     * - опирается на серверные маркеры `var fight_ty` и `magic_slots()`,
+     *   которые присутствуют в боевом кадре neverlands.
+     *
+     * @param html HTML верхнего фрейма.
+     * @return {@code true}, если страница похожа на активный бой.
+     */
     private boolean hasFightMarkers(String html) {
         return html != null && (html.contains("var fight_ty") || html.contains("magic_slots();"));
     }
@@ -776,6 +795,10 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
 
         com.google.gson.Gson gson = new com.google.gson.Gson();
         String jsonArg = gson.toJson(result);
+        // JS-submit с fallback:
+        // 1) пытаемся отправить payload через скрытую POST-форму;
+        // 2) если DOM не готов (часто в фоне/при перезагрузке кадра), возвращаем missing/error без падения;
+        // 3) Java-слой повторяет попытку с задержкой, пока WebView восстановит submit-контур.
         String script = "(function(payload){"
                 + "try{"
                 + "var tryPayloadSubmit=function(raw){"
@@ -823,6 +846,8 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                 status = rawStatus;
             }
 
+            // error считаем recoverable как и missing:
+            // в фоне WebView может временно не иметь готового DOM для appendChild/submit.
             boolean missing = status != null && (status.contains("missing") || status.contains("error"));
             if (missing && retriesLeft > 0) {
                 int nextRetriesLeft = retriesLeft - 1;
@@ -861,6 +886,20 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         }
     }
 
+    /**
+     * Выделяет `vcode` из сериализованного payload авто-удара.
+     *
+     * Формат payload:
+     * - `vcode|enemy|group|inf_bot|lev_bot|ftr|inu|inb|ina`.
+     *
+     * Зависимости:
+     * - используется в {@link #adoptVCodeFromAutoSubmitPayload(String)};
+     * - валидирует токен регулярным шаблоном hex, чтобы не перетирать `AppVars.VCode`
+     *   случайными значениями из неполного/битого payload.
+     *
+     * @param payload строка payload из `BuildResult`.
+     * @return валидный vcode или пустая строка.
+     */
     private String extractVCodeFromAutoSubmitPayload(String payload) {
         if (payload == null || payload.isEmpty()) {
             return "";
@@ -1497,6 +1536,18 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         }, CAPTCHA_NETWORK_FALLBACK_DELAY_MS);
     }
 
+    /**
+     * Мягко обновляет изображение капчи из последнего перехваченного байтового кэша.
+     *
+     * Зависимости:
+     * - источник данных: `AppVars.LastFightCaptchaImage*` (обновляется перехватчиком сети);
+     * - вызывается сразу после показа popup и до сетевого fallback-запроса,
+     *   чтобы быстрее показать пользователю актуальную картинку без дополнительного RTT.
+     *
+     * Ограничения:
+     * - применяет обновление только если URL совпадает с текущим challenge;
+     * - игнорирует устаревшие байты (полученные до показа текущего диалога).
+     */
     private void tryRefreshCaptchaImageFromLatest(android.widget.ImageView imageView, long dialogShownAtMs, String initialCaptchaUrl) {
         if (activeFightCaptchaDialog == null || !activeFightCaptchaDialog.isShowing()) {
             return;
@@ -1548,6 +1599,13 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         fightCaptchaHandler.postDelayed(fightCaptchaRefreshRunnable, 200);
     }
 
+    /**
+     * Останавливает таймер автообновления изображения капчи.
+     *
+     * Зависимости:
+     * - парный метод к {@link #startFightCaptchaAutoRefresh(android.widget.ImageView, android.widget.ProgressBar, String)};
+     * - вызывается при закрытии popup и при «lock» первой стабильной картинки challenge.
+     */
     private void stopFightCaptchaAutoRefresh() {
         if (fightCaptchaRefreshRunnable != null) {
             fightCaptchaHandler.removeCallbacks(fightCaptchaRefreshRunnable);
@@ -1620,8 +1678,9 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             activeFightCaptchaImageAtMs = latestAtMs;
         }
         activeFightCaptchaImageHash = latestHash;
-        // Стабилизируем challenge в текущем popup: после первой отрисовки не перерисовываем
-        // автоматически, чтобы пользователь вводил код именно с зафиксированной картинки.
+        // Стабилизируем challenge в текущем popup: после первой успешной отрисовки
+        // блокируем авто-перерисовку, чтобы пользователь вводил код по той же картинке,
+        // которую реально видит в диалоге.
         if (previousHash == 0) {
             activeFightCaptchaImageLocked = true;
             stopFightCaptchaAutoRefresh();
@@ -1632,6 +1691,18 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         return true;
     }
 
+    /**
+     * Управляет доступностью кнопки «ОК» в popup капчи.
+     *
+     * Зависимости:
+     * - поля состояния текущего challenge: `activeFightCaptchaImageAtMs`, `activeFightCaptchaImageHash`;
+     * - пользовательский ввод: `activeFightCaptchaInput`;
+     * - вызывается после каждого обновления картинки и после изменения текста ввода.
+     *
+     * Правило валидации:
+     * - код должен быть числом 0..99999;
+     * - кнопка активируется только когда есть валидный код и зафиксированная картинка капчи.
+     */
     private void updateFightCaptchaSubmitButtonState() {
         AlertDialog dialog = activeFightCaptchaDialog;
         if (dialog == null || !dialog.isShowing()) {
@@ -1656,6 +1727,14 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         btn.setEnabled(validCode && imageReady);
     }
 
+    /**
+     * Сравнивает два URL капчи после нормализации host/protocol.
+     *
+     * Зависимости:
+     * - {@link #normalizeCaptchaUrlForCompare(String)};
+     * - используется в логике защиты от «устаревшей» капчи, когда байты/диалог относятся
+     *   к разным challenge.
+     */
     private boolean isSameCaptchaUrl(String firstUrl, String secondUrl) {
         if (firstUrl == null || firstUrl.isEmpty() || secondUrl == null || secondUrl.isEmpty()) {
             return false;
@@ -1709,6 +1788,14 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         }
     }
 
+    /**
+     * Нормализует URL завершения боя для безопасного сравнения challenge.
+     *
+     * Зависимости:
+     * - используется в {@link #isSameFightFinishUrl(String, String)};
+     * - выравнивает `https -> http` и `www.neverlands.ru -> neverlands.ru`,
+     *   чтобы различия транспортного уровня не ломали детекцию «тот же бой/новый бой».
+     */
     private String normalizeFightFinishUrlForCompare(String rawUrl) {
         if (rawUrl == null || rawUrl.isEmpty()) {
             return "";

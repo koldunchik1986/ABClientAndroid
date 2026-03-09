@@ -293,6 +293,15 @@ public class AuthManager {
     /**
      * Разрешает fallback host только при proxy-режиме и только для ошибок,
      * где реальный смысл есть в повторе auth-flow на альтернативном host.
+     *
+     * Зависимости:
+     * - состояние proxy runtime: {@link ProxyRuntimeManager#isRunning()};
+     * - тип результата: {@link AuthResult#isSuccess()}, {@link AuthResult#isCaptchaRequired()};
+     * - HTTP-код берется из текста ошибки через {@link #extractLastHttpCode(String)}.
+     *
+     * Правило:
+     * - fallback допустим только для сетевых/маршрутизаторных кодов,
+     *   где смена host (`www <-> non-www`) реально может изменить ответ.
      */
     private boolean shouldRetryWithAlternateHost(AuthResult result) {
         if (!ProxyRuntimeManager.isRunning() || result == null || result.isSuccess() || result.isCaptchaRequired()) {
@@ -312,6 +321,13 @@ public class AuthManager {
 
     /**
      * Извлекает последний HTTP-код из текста ошибки (если есть).
+     *
+     * Зависимости:
+     * - {@link #LAST_HTTP_CODE_PATTERN} (`(\d{3})(?!.*\d)`);
+     * - используется только для принятия решения о proxy host-fallback.
+     *
+     * @param message текст ошибки (например: "Ошибка финализации сессии: 405").
+     * @return HTTP-код или `-1`, если код не обнаружен/не распарсен.
      */
     private int extractLastHttpCode(String message) {
         if (message == null || message.isEmpty()) {
@@ -344,6 +360,13 @@ public class AuthManager {
 
     /**
      * Возвращает альтернативный host для fallback-попытки.
+     *
+     * Зависимости:
+     * - вызывается из `authorize(...)` и `authorizeWithCaptcha(...)` только после
+     *   положительного решения `shouldRetryWithAlternateHost(...)`.
+     *
+     * @param currentBaseUrl текущий host первой попытки.
+     * @return зеркальный host (`www` <-> `non-www`) для второй попытки auth-flow.
      */
     private String resolveAlternateAuthBaseUrl(String currentBaseUrl) {
         if (currentBaseUrl != null && currentBaseUrl.contains("://www.neverlands.ru")) {
