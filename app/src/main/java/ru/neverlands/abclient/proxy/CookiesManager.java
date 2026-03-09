@@ -21,7 +21,18 @@ public class CookiesManager {
             return "";
         }
         try {
-            return CookieManager.getInstance().getCookie(normalizeHost(host));
+            String normalized = normalizeHost(host);
+            CookieManager manager = CookieManager.getInstance();
+            String cookie = manager.getCookie(toCookieUrl(normalized));
+            if (cookie != null && !cookie.isEmpty()) {
+                return cookie;
+            }
+            if ("neverlands.ru".equals(normalized)) {
+                cookie = manager.getCookie("http://www.neverlands.ru/");
+            } else if ("www.neverlands.ru".equals(normalized)) {
+                cookie = manager.getCookie("http://neverlands.ru/");
+            }
+            return cookie == null ? "" : cookie;
         } catch (Throwable t) {
             android.util.Log.e("CookiesManager", "obtain: CookieManager unavailable", t);
             return "";
@@ -38,7 +49,14 @@ public class CookiesManager {
             return;
         }
         try {
-            CookieManager.getInstance().setCookie(normalizeHost(host), cookieHeader);
+            String normalized = normalizeHost(host);
+            CookieManager manager = CookieManager.getInstance();
+            manager.setCookie(toCookieUrl(normalized), cookieHeader);
+            if ("neverlands.ru".equals(normalized)) {
+                manager.setCookie("http://www.neverlands.ru/", cookieHeader);
+            } else if ("www.neverlands.ru".equals(normalized)) {
+                manager.setCookie("http://neverlands.ru/", cookieHeader);
+            }
         } catch (Throwable t) {
             android.util.Log.e("CookiesManager", "assign: CookieManager unavailable", t);
         }
@@ -104,5 +122,12 @@ public class CookiesManager {
             return "neverlands.ru";
         }
         return h;
+    }
+
+    private static String toCookieUrl(String host) {
+        if (host == null || host.isEmpty()) {
+            return "http://neverlands.ru/";
+        }
+        return "http://" + host + "/";
     }
 }

@@ -22,6 +22,7 @@ public class Filter {
         if (address == null || address.isEmpty() || array == null) {
             return array;
         }
+        address = normalizeNeverlandsHost(address);
 
         // JS‑фильтры (подмены/инъекции скриптов).
         if (address.contains(".js")) {
@@ -236,5 +237,19 @@ public class Filter {
         String html = Russian.getString(array);
         html = removeDoctype(html);
         return Russian.getBytes(html);
+    }
+
+    private static String normalizeNeverlandsHost(String address) {
+        if (address == null || address.isEmpty()) {
+            return address;
+        }
+        final String wwwPrefix = "http://www.neverlands.ru/";
+        if (address.startsWith(wwwPrefix)) {
+            return "http://neverlands.ru/" + address.substring(wwwPrefix.length());
+        }
+        if ("http://www.neverlands.ru".equals(address)) {
+            return "http://neverlands.ru";
+        }
+        return address;
     }
 }

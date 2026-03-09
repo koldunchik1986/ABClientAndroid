@@ -264,7 +264,7 @@ final class LocalHttpProxyServer {
                 if (!absoluteWithPortTarget.equals(route.requestTarget)) {
                     Log.w(TAG, "PROXY_UPSTREAM_RETRY: 405 on absolute-form POST /game.php, retry absolute-form with explicit port");
                     ResponseHead retryHead = forwardSingleRetry(route, request, absoluteWithPortTarget, retryAttempt++);
-                    if (retryHead != null && retryHead.statusCode != 405) {
+                    if (isAcceptableRetryResponse(retryHead)) {
                         clientOut.write(retryHead.rawBytes);
                         long retryBodyBytes = copyStream(retryInputForLastRetry, clientOut);
                         cleanupRetrySocket();
@@ -277,7 +277,7 @@ final class LocalHttpProxyServer {
                 if (!originFormTarget.equals(route.requestTarget) && !originFormTarget.equals(absoluteWithPortTarget)) {
                     Log.w(TAG, "PROXY_UPSTREAM_RETRY: 405 persists, retry origin-form POST target=" + originFormTarget);
                     ResponseHead retryHead = forwardSingleRetry(route, request, originFormTarget, retryAttempt++);
-                    if (retryHead != null && retryHead.statusCode != 405) {
+                    if (isAcceptableRetryResponse(retryHead)) {
                         clientOut.write(retryHead.rawBytes);
                         long retryBodyBytes = copyStream(retryInputForLastRetry, clientOut);
                         cleanupRetrySocket();
@@ -294,6 +294,21 @@ final class LocalHttpProxyServer {
                 return responseHead.rawBytes.length + bodyBytes;
             }
         }
+    }
+
+    /**
+     * Проверяет, можно ли принять retry-ответ как финальный.
+     *
+     * Зависимости:
+     * - используется только в auth-fallback ветке `POST /game.php`;
+     * - к финальному ответу допускаются только коды < 400 (успех/редирект).
+     *
+     * Почему:
+     * - коды `400/403/5xx` означают, что retry-путь не сработал и нужно пробовать следующий fallback
+     *   (например CONNECT-туннель), а не отдавать ошибку клиенту раньше времени.
+     */
+    private boolean isAcceptableRetryResponse(ResponseHead head) {
+        return head != null && head.statusCode > 0 && head.statusCode < 400;
     }
 
     private Socket retrySocketRef;
@@ -566,13 +581,28 @@ final class LocalHttpProxyServer {
         if (!"POST".equalsIgnoreCase(request.method)) {
             return false;
         }
-        if (!"neverlands.ru".equalsIgnoreCase(route.originHost)) {
+        if (!isNeverlandsAuthHost(route.originHost)) {
             return false;
         }
         if (route.originPath == null || !route.originPath.startsWith("/game.php")) {
             return false;
         }
         return route.requestTarget != null && route.requestTarget.startsWith("http://");
+    }
+
+    /**
+     * Проверяет, что хост относится к auth-зоне Neverlands (`neverlands.ru` или `www.neverlands.ru`).
+     *
+     * Зависимости:
+     * - используется только fallback-веткой 405 для `POST /game.php`;
+     * - нужен для 1:1 совместимости с C#-логикой, где auth часто идёт через `www`.
+     */
+    private boolean isNeverlandsAuthHost(String host) {
+        if (host == null || host.isEmpty()) {
+            return false;
+        }
+        String lower = host.toLowerCase(Locale.ROOT);
+        return "neverlands.ru".equals(lower) || "www.neverlands.ru".equals(lower);
     }
 
     private int parseStatusCode(String statusLine) {

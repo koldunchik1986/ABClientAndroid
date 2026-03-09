@@ -24,6 +24,7 @@ import java.util.zip.GZIPInputStream;
 import ru.neverlands.abclient.postfilter.Filter;
 import ru.neverlands.abclient.proxy.CookiesManager;
 import ru.neverlands.abclient.proxy.ProxyRuntimeManager;
+import ru.neverlands.abclient.utils.AppVars;
 import ru.neverlands.abclient.utils.RuntimeNetTrace;
 
 public class WebViewRequestInterceptor {
@@ -269,26 +270,53 @@ public class WebViewRequestInterceptor {
             connection.setRequestProperty("Accept-Encoding", "identity");
 
             // Cookies: prefer WebView CookieManager (has actual session cookies)
-            String wvCookie = CookieManager.getInstance().getCookie(urlString);
+            String wvCookie = getCookieWithHostFallback(urlString, url.getHost());
+            String effectiveCookie = null;
             if (wvCookie != null && !wvCookie.isEmpty()) {
                 connection.setRequestProperty("Cookie", wvCookie);
+                effectiveCookie = wvCookie;
             } else {
                 String cookie = CookiesManager.obtain(url.getHost());
                 if (cookie != null && !cookie.isEmpty()) {
                     connection.setRequestProperty("Cookie", cookie);
+                    effectiveCookie = cookie;
                 }
             }
 
             // Forward original request headers (Referer, etc.)
             java.util.Map<String, String> reqHeaders = request.getRequestHeaders();
+            String reqUserAgent = null;
+            String reqReferer = null;
             if (reqHeaders != null) {
                 for (java.util.Map.Entry<String, String> entry : reqHeaders.entrySet()) {
                     String key = entry.getKey();
+                    String value = entry.getValue();
+                    if (key != null) {
+                        if ("User-Agent".equalsIgnoreCase(key)) {
+                            reqUserAgent = value;
+                        } else if ("Referer".equalsIgnoreCase(key)) {
+                            reqReferer = value;
+                        }
+                    }
                     // Don't override Cookie or Accept-Encoding we already set
                     if (!"Cookie".equalsIgnoreCase(key) && !"Accept-Encoding".equalsIgnoreCase(key)) {
-                        connection.setRequestProperty(key, entry.getValue());
+                        connection.setRequestProperty(key, value);
                     }
                 }
+            }
+            if (reqUserAgent == null || reqUserAgent.isEmpty()) {
+                reqUserAgent = AppVars.BROWSER_USER_AGENT;
+                connection.setRequestProperty("User-Agent", reqUserAgent);
+            }
+            if (isChatEndpoint(urlString) && (reqReferer == null || reqReferer.isEmpty())) {
+                reqReferer = "http://neverlands.ru/main.php";
+                connection.setRequestProperty("Referer", reqReferer);
+            }
+            if (isChatEndpoint(urlString)) {
+                Log.d(TAG, "CHAT_REQ_HEADERS: url=" + urlString
+                        + ", ua=" + (reqUserAgent == null ? "" : reqUserAgent)
+                        + ", referer=" + (reqReferer == null ? "" : reqReferer)
+                        + ", cookieSummary=" + summarizeCookieHeader(effectiveCookie));
             }
 
             int code = connection.getResponseCode();
@@ -388,7 +416,7 @@ public class WebViewRequestInterceptor {
                 second.setConnectTimeout(12_000);
                 second.setReadTimeout(20_000);
                 second.setRequestProperty("Accept-Encoding", "identity");
-                String cookie2 = CookieManager.getInstance().getCookie(urlString);
+                String cookie2 = getCookieWithHostFallback(urlString, url.getHost());
                 if (cookie2 == null || cookie2.isEmpty()) {
                     cookie2 = CookiesManager.obtain(url.getHost());
                 }
@@ -516,6 +544,126 @@ public class WebViewRequestInterceptor {
             return url;
         }
         return url.substring(0, 87) + "...";
+    }
+
+    private static boolean isChatEndpoint(String url) {
+        if (url == null || url.isEmpty()) {
+            return false;
+        }
+        String lower = url.toLowerCase(Locale.ROOT);
+        return lower.contains("/ch.php?")
+                || lower.contains("/ch/msg.php")
+                || lower.contains("/ch/but.php");
+    }
+
+    private static boolean hasSessionCookieTokens(String cookieHeader) {
+        if (cookieHeader == null || cookieHeader.isEmpty()) {
+            return false;
+        }
+        String lower = cookieHeader.toLowerCase(Locale.ROOT);
+        return lower.contains("phpsessid=")
+                || lower.contains("neverpuid=")
+                || lower.contains("neverhash=")
+                || lower.contains("nevercode=");
+    }
+
+    private static String mergeCookieHeaders(String primary, String secondary) {
+        java.util.LinkedHashMap<String, String> byName = new java.util.LinkedHashMap<>();
+        addCookiesByName(byName, primary);
+        addCookiesByName(byName, secondary);
+        if (byName.isEmpty()) {
+            return "";
+        }
+        StringBuilder out = new StringBuilder();
+        for (Map.Entry<String, String> entry : byName.entrySet()) {
+            if (out.length() > 0) {
+                out.append("; ");
+            }
+            out.append(entry.getKey()).append("=").append(entry.getValue());
+        }
+        return out.toString();
+    }
+
+    private static void addCookiesByName(Map<String, String> target, String cookieHeader) {
+        if (cookieHeader == null || cookieHeader.isEmpty()) {
+            return;
+        }
+        String[] parts = cookieHeader.split(";");
+        for (String rawPart : parts) {
+            if (rawPart == null) {
+                continue;
+            }
+            String part = rawPart.trim();
+            if (part.isEmpty()) {
+                continue;
+            }
+            int eq = part.indexOf('=');
+            if (eq <= 0) {
+                continue;
+            }
+            String name = part.substring(0, eq).trim();
+            String value = part.substring(eq + 1).trim();
+            if (!name.isEmpty()) {
+                target.put(name, value);
+            }
+        }
+    }
+
+    private static String summarizeCookieHeader(String cookieHeader) {
+        if (cookieHeader == null || cookieHeader.isEmpty()) {
+            return "empty";
+        }
+        java.util.ArrayList<String> names = new java.util.ArrayList<>();
+        String[] parts = cookieHeader.split(";");
+        for (String rawPart : parts) {
+            if (rawPart == null) {
+                continue;
+            }
+            String part = rawPart.trim();
+            if (part.isEmpty()) {
+                continue;
+            }
+            int eq = part.indexOf('=');
+            if (eq <= 0) {
+                continue;
+            }
+            String name = part.substring(0, eq).trim();
+            if (!name.isEmpty()) {
+                names.add(name);
+            }
+        }
+        return "count=" + names.size() + ", names=" + names;
+    }
+
+    /**
+     * Возвращает cookie для текущего URL и делает fallback между www/non-www host.
+     * Это устраняет рассинхрон сессии, когда auth прошел на одном host, а chat/frame
+     * запрашивается на sibling-host.
+     */
+    private static String getCookieWithHostFallback(String urlString, String host) {
+        CookieManager manager = CookieManager.getInstance();
+        String cookie = manager.getCookie(urlString);
+        String lowerHost = host == null ? "" : host.toLowerCase(Locale.ROOT);
+        String siblingCookie = null;
+        if ("neverlands.ru".equals(lowerHost)) {
+            siblingCookie = manager.getCookie("http://www.neverlands.ru/");
+        } else if ("www.neverlands.ru".equals(lowerHost)) {
+            siblingCookie = manager.getCookie("http://neverlands.ru/");
+        }
+
+        if (cookie == null || cookie.isEmpty()) {
+            return siblingCookie;
+        }
+        if (siblingCookie == null || siblingCookie.isEmpty()) {
+            return cookie;
+        }
+
+        boolean cookieHasSession = hasSessionCookieTokens(cookie);
+        boolean siblingHasSession = hasSessionCookieTokens(siblingCookie);
+        if (!cookieHasSession && siblingHasSession) {
+            return mergeCookieHeaders(siblingCookie, cookie);
+        }
+        return mergeCookieHeaders(cookie, siblingCookie);
     }
 
     /**

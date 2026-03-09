@@ -1,15 +1,18 @@
 package ru.neverlands.abclient;
 
-import android.os.Build;
-
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 
-import java.io.IOException;
 import java.net.HttpCookie;
 import java.nio.charset.Charset;
+import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
+import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import okhttp3.FormBody;
 import okhttp3.HttpUrl;
@@ -24,31 +27,87 @@ import ru.neverlands.abclient.utils.AppVars;
 import ru.neverlands.abclient.utils.DebugLogger;
 
 public class AuthManager {
+    private static final Pattern LAST_HTTP_CODE_PATTERN = Pattern.compile("(\\d{3})(?!.*\\d)");
 
     /**
-     * Полный цикл авторизации без капчи.
-     *
-     * Этапы:
-     * 1) GET стартовой страницы для инициализации сессионных cookies,
-     * 2) POST на {@code game.php} с логином/паролем,
-     * 3) GET {@code main.php} для финализации входа.
-     *
-     * При обнаружении формы капчи возвращает специальный {@link AuthResult}
-     * с параметрами капчи, не считая вход успешным.
+     * Полный auth-flow без капчи.
      *
      * Зависимости:
-     * - {@link NetworkClient} (общий OkHttpClient + cookie store),
-     * - {@link AppVars#BROWSER_USER_AGENT} (единый браузерный User-Agent),
-     * - {@link Jsoup} (парсинг HTML формы капчи),
-     * - {@link DebugLogger} (диагностика сетевого процесса).
+     * - {@link NetworkClient}: общий OkHttp-клиент и cookie-store.
+     * - {@link ProxyRuntimeManager}: определение proxy-режима и выбор базового host.
+     * - {@link Jsoup}: детекция captcha/auth_form по HTML-ответу.
+     * - {@link DebugLogger}: детальная трассировка шагов авторизации.
      *
-     * @param username логин персонажа.
-     * @param password пароль персонажа.
-     * @return результат авторизации (успех / ошибка / требование капчи).
+     * Поведение:
+     * - выполняет основной 3-шаговый сценарий через {@link #authorizeInternal(String, String, String)};
+     * - если включен proxy и получена HTTP-ошибка уровня host-маршрута, выполняет один fallback
+     *   на альтернативный host (`www <-> non-www`) после очистки cookies.
      */
     public AuthResult authorize(String username, String password) {
         DebugLogger.log("AuthManager: Starting synchronous authorization for user: " + username);
-        final String authBaseUrl = resolveAuthBaseUrl();
+        final String primaryBaseUrl = resolveAuthBaseUrl();
+        try {
+            AuthResult primary = authorizeInternal(username, password, primaryBaseUrl);
+            if (!shouldRetryWithAlternateHost(primary)) {
+                return primary;
+            }
+
+            String alternateBaseUrl = resolveAlternateAuthBaseUrl(primaryBaseUrl);
+            DebugLogger.log(
+                    "AuthManager: proxy fallback for authorize, primary=" + primaryBaseUrl
+                            + ", alternate=" + alternateBaseUrl
+                            + ", reason=" + (primary == null ? "" : primary.getErrorMessage())
+            );
+            NetworkClient.clearCookies();
+            return authorizeInternal(username, password, alternateBaseUrl);
+        } finally {
+            DebugLogger.close();
+        }
+    }
+
+    /**
+     * Продолжение auth-flow при captcha.
+     *
+     * Зависимости:
+     * - {@link NetworkClient}: HTTP-запросы и cookie-store.
+     * - {@link ProxyRuntimeManager}: fallback host в proxy-режиме.
+     * - {@link Jsoup}: повторная проверка captcha (ошибка verify).
+     * - {@link DebugLogger}: журналирование этапов и причины отказа.
+     */
+    public AuthResult authorizeWithCaptcha(String username, String password, String vcode, String verify) {
+        DebugLogger.log("AuthManager: Starting authorization with captcha for user: " + username);
+        final String primaryBaseUrl = resolveAuthBaseUrl();
+        try {
+            AuthResult primary = authorizeWithCaptchaInternal(username, password, vcode, verify, primaryBaseUrl);
+            if (!shouldRetryWithAlternateHost(primary)) {
+                return primary;
+            }
+
+            String alternateBaseUrl = resolveAlternateAuthBaseUrl(primaryBaseUrl);
+            DebugLogger.log(
+                    "AuthManager: proxy fallback for authorizeWithCaptcha, primary=" + primaryBaseUrl
+                            + ", alternate=" + alternateBaseUrl
+                            + ", reason=" + (primary == null ? "" : primary.getErrorMessage())
+            );
+            NetworkClient.clearCookies();
+            return authorizeWithCaptchaInternal(username, password, vcode, verify, alternateBaseUrl);
+        } finally {
+            DebugLogger.close();
+        }
+    }
+
+    /**
+     * Внутренний 3-шаговый auth-flow:
+     * 1) GET "/" для первичных cookies/watermark.
+     * 2) POST "/game.php" с player_nick/player_password (windows-1251).
+     * 3) GET "/main.php" для финализации сессии.
+     *
+     * Важные зависимости:
+     * - windows-1251 для формы логина (совместимость с сервером neverlands).
+     * - Referer/Origin завязаны на конкретный host authBaseUrl.
+     * - {@link #collectNeverlandsCookies(java.net.CookieManager)} собирает итоговый cookie-набор.
+     */
+    private AuthResult authorizeInternal(String username, String password, String authBaseUrl) {
         final String refererRoot = authBaseUrl + "/";
         final String gameUrl = authBaseUrl + "/game.php";
         final String mainUrl = authBaseUrl + "/main.php";
@@ -57,7 +116,6 @@ public class AuthManager {
         java.net.CookieManager cookieManager = NetworkClient.getCookieManager();
 
         try {
-            // Step 1: Initial GET request
             Request initialRequest = new Request.Builder()
                     .url(refererRoot)
                     .header("User-Agent", AppVars.BROWSER_USER_AGENT)
@@ -65,15 +123,14 @@ public class AuthManager {
                     .header("Accept-Language", "ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7")
                     .build();
 
-            DebugLogger.log("AuthManager: 1. Initial GET request\n" + initialRequest.toString());
+            DebugLogger.log("AuthManager: 1. Initial GET request\n" + initialRequest);
             try (Response initialResponse = client.newCall(initialRequest).execute()) {
-                DebugLogger.log("AuthManager: 1. Initial GET response\n" + initialResponse.toString());
+                DebugLogger.log("AuthManager: 1. Initial GET response\n" + initialResponse);
                 if (!initialResponse.isSuccessful()) {
                     return new AuthResult("Ошибка получения начальной страницы: " + initialResponse.code());
                 }
             }
 
-            // Step 2: Login POST request
             RequestBody formBody = new FormBody.Builder(Charset.forName("windows-1251"))
                     .add("player_nick", username)
                     .add("player_password", password)
@@ -87,9 +144,9 @@ public class AuthManager {
                     .post(formBody)
                     .build();
 
-            DebugLogger.log("AuthManager: 2. Login POST request\n" + loginRequest.toString());
+            DebugLogger.log("AuthManager: 2. Login POST request\n" + loginRequest);
             try (Response loginResponse = client.newCall(loginRequest).execute()) {
-                DebugLogger.log("AuthManager: 2. Login POST response\n" + loginResponse.toString());
+                DebugLogger.log("AuthManager: 2. Login POST response\n" + loginResponse);
                 if (!loginResponse.isSuccessful()) {
                     return new AuthResult("Ошибка авторизации: " + loginResponse.code());
                 }
@@ -97,15 +154,13 @@ public class AuthManager {
                 String loginResponseBody = loginResponse.body().string();
                 Document doc = Jsoup.parse(loginResponseBody);
 
-                // Check for captcha
                 Element captchaImg = doc.selectFirst("img[src*='nl_reg_code.php']");
-                Element vcode_el = doc.selectFirst("input[name=vcode]");
-
-                if (captchaImg != null && vcode_el != null) {
+                Element vcodeEl = doc.selectFirst("input[name=vcode]");
+                if (captchaImg != null && vcodeEl != null) {
                     String captchaUrl = captchaImg.attr("abs:src");
-                    String vcode = vcode_el.val();
-                    DebugLogger.log("AuthManager: Captcha detected. URL: " + captchaUrl + ", vcode: " + vcode);
-                    return new AuthResult(captchaUrl, vcode);
+                    String captchaVcode = vcodeEl.val();
+                    DebugLogger.log("AuthManager: Captcha detected. URL: " + captchaUrl + ", vcode: " + captchaVcode);
+                    return new AuthResult(captchaUrl, captchaVcode);
                 }
 
                 if (loginResponseBody.contains("auth_form")) {
@@ -115,63 +170,50 @@ public class AuthManager {
             DebugLogger.log("AuthManager: 2. Login POST SUCCESS.");
 
             try {
-                Thread.sleep(500);
+                Thread.sleep(500L);
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
             }
 
-            // Step 3: Final GET to main.php
             Request mainRequest = new Request.Builder()
                     .url(mainUrl)
                     .header("User-Agent", AppVars.BROWSER_USER_AGENT)
                     .header("Referer", gameUrl)
                     .build();
 
-            DebugLogger.log("AuthManager: 3. Final GET request\n" + mainRequest.toString());
+            DebugLogger.log("AuthManager: 3. Final GET request\n" + mainRequest);
             try (Response mainResponse = client.newCall(mainRequest).execute()) {
-                DebugLogger.log("AuthManager: 3. Final GET response\n" + mainResponse.toString());
+                DebugLogger.log("AuthManager: 3. Final GET response\n" + mainResponse);
                 if (!mainResponse.isSuccessful()) {
                     return new AuthResult("Ошибка финализации сессии: " + mainResponse.code());
                 }
             }
 
-            // All steps successful
             DebugLogger.log("AuthManager: Full Authorization SUCCESS.");
-            List<HttpCookie> cookies = cookieManager.getCookieStore().get(HttpUrl.get("http://neverlands.ru/").uri());
-
+            List<HttpCookie> cookies = collectNeverlandsCookies(cookieManager);
             return new AuthResult(cookies);
-
         } catch (Exception e) {
             DebugLogger.log("AuthManager: Authorization FAILED: " + e.getMessage());
             return new AuthResult(e.getMessage());
-        } finally {
-            DebugLogger.close();
         }
     }
 
     /**
-     * Продолжение авторизации при требовании капчи.
-     *
-     * Этапы:
-     * 1) POST на {@code game.php} с параметрами {@code vcode} и введённым {@code verify},
-     * 2) повторная проверка на наличие новой капчи (ошибка ввода),
-     * 3) GET {@code main.php} для финализации сессии при успешной проверке.
+     * Внутренний captcha-flow:
+     * 1) POST "/game.php" с vcode/verify + credentials.
+     * 2) при повторной captcha возвращает новый captchaUrl/vcode.
+     * 3) GET "/main.php" для завершения сессии.
      *
      * Зависимости:
-     * - {@link NetworkClient} и его cookie store,
-     * - {@link AppVars#BROWSER_USER_AGENT},
-     * - {@link Jsoup} для разбора повторной капчи,
-     * - {@link DebugLogger} для трассировки.
-     *
-     * @param username логин персонажа.
-     * @param password пароль персонажа.
-     * @param vcode серверный идентификатор капчи.
-     * @param verify код, введённый пользователем с картинки.
-     * @return результат авторизации (успех / ошибка / повторная капча).
+     * - charset windows-1251;
+     * - тот же host authBaseUrl, что был выбран на старте auth;
+     * - итоговые cookies извлекаются через {@link #collectNeverlandsCookies(java.net.CookieManager)}.
      */
-    public AuthResult authorizeWithCaptcha(String username, String password, String vcode, String verify) {
-        DebugLogger.log("AuthManager: Starting authorization with captcha for user: " + username);
-        final String authBaseUrl = resolveAuthBaseUrl();
+    private AuthResult authorizeWithCaptchaInternal(String username,
+                                                    String password,
+                                                    String vcode,
+                                                    String verify,
+                                                    String authBaseUrl) {
         final String gameUrl = authBaseUrl + "/game.php";
         final String mainUrl = authBaseUrl + "/main.php";
 
@@ -194,9 +236,9 @@ public class AuthManager {
                     .post(formBody)
                     .build();
 
-            DebugLogger.log("AuthManager: 2. Captcha Login POST request\n" + loginRequest.toString());
+            DebugLogger.log("AuthManager: 2. Captcha Login POST request\n" + loginRequest);
             try (Response loginResponse = client.newCall(loginRequest).execute()) {
-                DebugLogger.log("AuthManager: 2. Captcha Login POST response\n" + loginResponse.toString());
+                DebugLogger.log("AuthManager: 2. Captcha Login POST response\n" + loginResponse);
                 if (!loginResponse.isSuccessful()) {
                     return new AuthResult("Ошибка авторизации с капчей: " + loginResponse.code());
                 }
@@ -204,13 +246,11 @@ public class AuthManager {
                 String loginResponseBody = loginResponse.body().string();
                 Document doc = Jsoup.parse(loginResponseBody);
 
-                // Check for captcha again (in case of wrong captcha)
                 Element captchaImg = doc.selectFirst("img[src*='nl_reg_code.php']");
-                Element vcode_el = doc.selectFirst("input[name=vcode]");
-
-                if (captchaImg != null && vcode_el != null) {
+                Element vcodeEl = doc.selectFirst("input[name=vcode]");
+                if (captchaImg != null && vcodeEl != null) {
                     String captchaUrl = captchaImg.attr("abs:src");
-                    String newVcode = vcode_el.val();
+                    String newVcode = vcodeEl.val();
                     DebugLogger.log("AuthManager: Captcha detected again. URL: " + captchaUrl + ", vcode: " + newVcode);
                     return new AuthResult(captchaUrl, newVcode);
                 }
@@ -222,53 +262,148 @@ public class AuthManager {
             DebugLogger.log("AuthManager: 2. Captcha Login POST SUCCESS.");
 
             try {
-                Thread.sleep(500);
+                Thread.sleep(500L);
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
             }
 
-            // Step 3: Final GET to main.php
             Request mainRequest = new Request.Builder()
                     .url(mainUrl)
                     .header("User-Agent", AppVars.BROWSER_USER_AGENT)
                     .header("Referer", gameUrl)
                     .build();
 
-            DebugLogger.log("AuthManager: 3. Final GET request\n" + mainRequest.toString());
+            DebugLogger.log("AuthManager: 3. Final GET request\n" + mainRequest);
             try (Response mainResponse = client.newCall(mainRequest).execute()) {
-                DebugLogger.log("AuthManager: 3. Final GET response\n" + mainResponse.toString());
+                DebugLogger.log("AuthManager: 3. Final GET response\n" + mainResponse);
                 if (!mainResponse.isSuccessful()) {
                     return new AuthResult("Ошибка финализации сессии: " + mainResponse.code());
                 }
             }
 
-            // All steps successful
             DebugLogger.log("AuthManager: Full Authorization SUCCESS.");
-            List<HttpCookie> cookies = cookieManager.getCookieStore().get(HttpUrl.get("http://neverlands.ru/").uri());
-
-
-
+            List<HttpCookie> cookies = collectNeverlandsCookies(cookieManager);
             return new AuthResult(cookies);
-
         } catch (Exception e) {
             DebugLogger.log("AuthManager: Authorization FAILED: " + e.getMessage());
             return new AuthResult(e.getMessage());
-        } finally {
-            DebugLogger.close();
         }
     }
 
     /**
-     * Выбирает базовый URL auth-потока.
+     * Разрешает fallback host только при proxy-режиме и только для ошибок,
+     * где реальный смысл есть в повторе auth-flow на альтернативном host.
+     */
+    private boolean shouldRetryWithAlternateHost(AuthResult result) {
+        if (!ProxyRuntimeManager.isRunning() || result == null || result.isSuccess() || result.isCaptchaRequired()) {
+            return false;
+        }
+        int code = extractLastHttpCode(result.getErrorMessage());
+        return code == 400
+                || code == 403
+                || code == 405
+                || code == 407
+                || code == 429
+                || code == 500
+                || code == 502
+                || code == 503
+                || code == 504;
+    }
+
+    /**
+     * Извлекает последний HTTP-код из текста ошибки (если есть).
+     */
+    private int extractLastHttpCode(String message) {
+        if (message == null || message.isEmpty()) {
+            return -1;
+        }
+        Matcher matcher = LAST_HTTP_CODE_PATTERN.matcher(message);
+        if (!matcher.find()) {
+            return -1;
+        }
+        try {
+            return Integer.parseInt(matcher.group(1));
+        } catch (NumberFormatException ignored) {
+            return -1;
+        }
+    }
+
+    /**
+     * Выбирает базовый host для auth-flow.
      *
      * Зависимости:
-     * - в proxy-режиме повторяем поведение ПК-версии (host `www.neverlands.ru`);
-     * - в direct-режиме сохраняем текущий Android-host (`neverlands.ru`).
+     * - proxy-режим: `http://www.neverlands.ru`
+     * - direct-режим: `http://neverlands.ru`
      */
     private String resolveAuthBaseUrl() {
-        final boolean proxyActive = ProxyRuntimeManager.isRunning();
-        final String baseUrl = proxyActive ? "http://www.neverlands.ru" : "http://neverlands.ru";
+        boolean proxyActive = ProxyRuntimeManager.isRunning();
+        String baseUrl = proxyActive ? "http://www.neverlands.ru" : "http://neverlands.ru";
         DebugLogger.log("AuthManager: authBaseUrl=" + baseUrl + ", proxyActive=" + proxyActive);
         return baseUrl;
+    }
+
+    /**
+     * Возвращает альтернативный host для fallback-попытки.
+     */
+    private String resolveAlternateAuthBaseUrl(String currentBaseUrl) {
+        if (currentBaseUrl != null && currentBaseUrl.contains("://www.neverlands.ru")) {
+            return "http://neverlands.ru";
+        }
+        return "http://www.neverlands.ru";
+    }
+
+    /**
+     * Собирает итоговый cookie-набор neverlands после успешной авторизации.
+     *
+     * Зависимости:
+     * - основной источник: весь CookieStore (host-only + *.neverlands.ru);
+     * - fallback-источник: явные URI `neverlands.ru` и `www.neverlands.ru`.
+     */
+    private List<HttpCookie> collectNeverlandsCookies(java.net.CookieManager cookieManager) {
+        List<HttpCookie> source = cookieManager.getCookieStore().getCookies();
+        List<HttpCookie> result = new ArrayList<>();
+        Set<String> dedup = new HashSet<>();
+
+        for (HttpCookie cookie : source) {
+            if (cookie == null) {
+                continue;
+            }
+            String domain = cookie.getDomain();
+            String lowerDomain = domain == null ? "" : domain.toLowerCase(Locale.ROOT);
+            boolean hostCookie = lowerDomain.isEmpty();
+            boolean neverlandsDomain = lowerDomain.contains("neverlands.ru");
+            if (!hostCookie && !neverlandsDomain) {
+                continue;
+            }
+
+            String path = cookie.getPath() == null ? "/" : cookie.getPath();
+            String key = cookie.getName() + "|" + lowerDomain + "|" + path;
+            if (dedup.add(key)) {
+                result.add(cookie);
+            }
+        }
+
+        if (result.isEmpty()) {
+            List<HttpCookie> fallback = cookieManager.getCookieStore().get(HttpUrl.get("http://neverlands.ru/").uri());
+            if (fallback != null) {
+                result.addAll(fallback);
+            }
+            if (result.isEmpty()) {
+                List<HttpCookie> fallbackWww = cookieManager.getCookieStore().get(HttpUrl.get("http://www.neverlands.ru/").uri());
+                if (fallbackWww != null) {
+                    result.addAll(fallbackWww);
+                }
+            }
+        }
+
+        StringBuilder names = new StringBuilder();
+        for (HttpCookie cookie : result) {
+            if (names.length() > 0) {
+                names.append(", ");
+            }
+            names.append(cookie.getName());
+        }
+        DebugLogger.log("AuthManager: collected cookies count=" + result.size() + " names=[" + names + "]");
+        return result;
     }
 }

@@ -1767,6 +1767,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             }
         }
 
+        CookieManager cookieManager = CookieManager.getInstance();
         if (AppVars.lastCookies != null && !AppVars.lastCookies.isEmpty()) {
             java.util.List<java.net.HttpCookie> filteredCookies = new java.util.ArrayList<>();
             java.util.Set<String> names = new java.util.HashSet<>();
@@ -1778,18 +1779,164 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                 }
             }
 
-            CookieManager cookieManager = CookieManager.getInstance();
-            String url = "http://neverlands.ru";
+            String urlNeverlands = "http://neverlands.ru/";
+            String urlWwwNeverlands = "http://www.neverlands.ru/";
             for (java.net.HttpCookie cookie : filteredCookies) {
-                String cookieString = cookie.getName() + "=" + cookie.getValue() + "; domain=" + cookie.getDomain();
-                cookieManager.setCookie(url, cookieString);
+                StringBuilder cookieValue = new StringBuilder()
+                        .append(cookie.getName())
+                        .append("=")
+                        .append(cookie.getValue() == null ? "" : cookie.getValue())
+                        .append("; Path=/");
+                if (cookie.getSecure()) {
+                    cookieValue.append("; Secure");
+                }
+                cookieManager.setCookie(urlNeverlands, cookieValue.toString());
+                cookieManager.setCookie(urlWwwNeverlands, cookieValue.toString());
             }
             cookieManager.flush();
+            Log.d(TAG, "AUTH_COOKIE_SYNC: applied lastCookies names=" + names);
             AppVars.lastCookies = null;
         }
+        syncSessionCookiesAcrossHosts(cookieManager, "after_lastCookies_apply");
     }
 
     // Первичная загрузка основных и чат-фреймов.
+    /**
+     * Синхронизирует cookie между `neverlands.ru` и `www.neverlands.ru`.
+     *
+     * Назначение:
+     * - после auth-flow через один host устранить рассинхрон host-only cookie;
+     * - гарантировать валидную сессию для room/chat-фреймов.
+     *
+     * Зависимости:
+     * - CookieManager: общее WebView-хранилище cookie.
+     * - hasSessionCookieTokens(...): проверка наличия сессионных токенов.
+     * - mirrorCookieHeaderToHost(...): перенос cookie-пар в host без сессии.
+     */
+    private void syncSessionCookiesAcrossHosts(CookieManager manager, String stage) {
+        if (manager == null) {
+            return;
+        }
+        final String neverUrl = "http://neverlands.ru/";
+        final String wwwUrl = "http://www.neverlands.ru/";
+        String neverCookie = manager.getCookie(neverUrl);
+        String wwwCookie = manager.getCookie(wwwUrl);
+
+        boolean neverHasSession = hasSessionCookieTokens(neverCookie);
+        boolean wwwHasSession = hasSessionCookieTokens(wwwCookie);
+        Log.d(TAG, "AUTH_COOKIE_SYNC[" + stage + "]: never=" + summarizeCookieHeaderNames(neverCookie)
+                + ", www=" + summarizeCookieHeaderNames(wwwCookie));
+
+        boolean changed = false;
+        if (!neverHasSession && wwwHasSession) {
+            changed |= mirrorCookieHeaderToHost(manager, wwwCookie, neverUrl);
+        } else if (!wwwHasSession && neverHasSession) {
+            changed |= mirrorCookieHeaderToHost(manager, neverCookie, wwwUrl);
+        }
+
+        if (changed) {
+            manager.flush();
+            String neverAfter = manager.getCookie(neverUrl);
+            String wwwAfter = manager.getCookie(wwwUrl);
+            Log.d(TAG, "AUTH_COOKIE_SYNC[" + stage + "]: mirrored never=" + summarizeCookieHeaderNames(neverAfter)
+                    + ", www=" + summarizeCookieHeaderNames(wwwAfter));
+        }
+    }
+
+    /**
+     * Копирует `name=value` cookie-пары из source-header в target-host.
+     *
+     * Важно:
+     * - cookie-атрибуты (`Path`, `Domain`, `Expires`, ...) не копируются;
+     * - переносится только полезная сессионная часть.
+     */
+    private boolean mirrorCookieHeaderToHost(CookieManager manager, String sourceHeader, String targetUrl) {
+        if (sourceHeader == null || sourceHeader.isEmpty() || targetUrl == null || targetUrl.isEmpty()) {
+            return false;
+        }
+        boolean changed = false;
+        String[] parts = sourceHeader.split(";");
+        for (String rawPart : parts) {
+            if (rawPart == null) {
+                continue;
+            }
+            String part = rawPart.trim();
+            if (part.isEmpty()) {
+                continue;
+            }
+            int eq = part.indexOf('=');
+            if (eq <= 0) {
+                continue;
+            }
+            String name = part.substring(0, eq).trim();
+            if (name.isEmpty() || isCookieAttributeName(name)) {
+                continue;
+            }
+            String value = part.substring(eq + 1).trim();
+            manager.setCookie(targetUrl, name + "=" + value + "; Path=/");
+            changed = true;
+        }
+        return changed;
+    }
+
+    /**
+     * Проверяет, содержит ли cookie-header признаки валидной игровой сессии.
+     */
+    private boolean hasSessionCookieTokens(String cookieHeader) {
+        if (cookieHeader == null || cookieHeader.isEmpty()) {
+            return false;
+        }
+        String lower = cookieHeader.toLowerCase(Locale.ROOT);
+        return lower.contains("phpsessid=")
+                || lower.contains("nevercode=")
+                || lower.contains("neverhash=")
+                || lower.contains("neverpuid=")
+                || lower.contains("watermark=");
+    }
+
+    /**
+     * Формирует краткую сводку cookie (`count + names`) для AUTH_COOKIE_SYNC логов.
+     */
+    private String summarizeCookieHeaderNames(String cookieHeader) {
+        if (cookieHeader == null || cookieHeader.isEmpty()) {
+            return "empty";
+        }
+        ArrayList<String> names = new ArrayList<>();
+        String[] parts = cookieHeader.split(";");
+        for (String rawPart : parts) {
+            if (rawPart == null) {
+                continue;
+            }
+            String part = rawPart.trim();
+            if (part.isEmpty()) {
+                continue;
+            }
+            int eq = part.indexOf('=');
+            if (eq <= 0) {
+                continue;
+            }
+            String name = part.substring(0, eq).trim();
+            if (!name.isEmpty() && !isCookieAttributeName(name)) {
+                names.add(name);
+            }
+        }
+        return "count=" + names.size() + ", names=" + names;
+    }
+
+    /**
+     * Возвращает `true`, если token является cookie-атрибутом, а не именем cookie.
+     */
+    private boolean isCookieAttributeName(String name) {
+        String lower = name == null ? "" : name.toLowerCase(Locale.ROOT);
+        return "path".equals(lower)
+                || "domain".equals(lower)
+                || "expires".equals(lower)
+                || "max-age".equals(lower)
+                || "secure".equals(lower)
+                || "httponly".equals(lower)
+                || "samesite".equals(lower);
+    }
+
     private void loadInitialUrls() {
         WebView webView = binding.appBarMain.contentMain.webView;
         WebView chatMsgWebView = binding.appBarMain.contentMain.chatMsgWebview;
