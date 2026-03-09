@@ -153,6 +153,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     private long activeFightCaptchaLoadSeq = 0L;
     private String activeFightCaptchaUrl = "";
     private String activeFightFinishUrl = "";
+    private android.widget.EditText activeFightCaptchaInput;
     private boolean replacingFightCaptchaDialog = false;
     private boolean appBroadcastReceiverRegistered = false;
     private boolean screenStateReceiverRegistered = false;
@@ -781,6 +782,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                 + "if(!raw){return false;}"
                 + "var ss=(''+raw).split('|');"
                 + "if(ss.length<9){return false;}"
+                + "if(!document||typeof document.createElement!=='function'){return false;}"
                 + "var mk=function(name,val){var i=document.createElement('input');i.type='hidden';i.name=name;i.value=(val==null?'':val);return i;};"
                 + "var f=document.createElement('form');"
                 + "f.method='POST';"
@@ -796,7 +798,8 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                 + "f.appendChild(mk('inu',ss[6]));"
                 + "f.appendChild(mk('inb',ss[7]));"
                 + "f.appendChild(mk('ina',ss[8]));"
-                + "(document.body||document.documentElement).appendChild(f);"
+                + "var host=(document.body||document.documentElement||((document.getElementsByTagName&&document.getElementsByTagName('html'))?document.getElementsByTagName('html')[0]:null));"
+                + "if(host&&typeof host.appendChild==='function'){host.appendChild(f);}"
                 + "f.submit();"
                 + "return true;"
                 + "};"
@@ -820,10 +823,11 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                 status = rawStatus;
             }
 
-            boolean missing = status != null && status.contains("missing");
+            boolean missing = status != null && (status.contains("missing") || status.contains("error"));
             if (missing && retriesLeft > 0) {
                 int nextRetriesLeft = retriesLeft - 1;
-                Log.d(TAG, BG_TRACE_PREFIX + " submitAutoBattleAction: submit path missing, retry left=" + nextRetriesLeft);
+                Log.d(TAG, BG_TRACE_PREFIX + " submitAutoBattleAction: submit path unstable (" + status
+                        + "), retry left=" + nextRetriesLeft);
                 binding.appBarMain.contentMain.webView.postDelayed(
                         () -> submitAutoBattleActionToWebView(result, nextRetriesLeft),
                         AUTO_SUBMIT_RETRY_DELAY_MS
@@ -832,7 +836,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             }
 
             if (missing) {
-                Log.w(TAG, BG_TRACE_PREFIX + " submitAutoBattleAction: submit path still missing after retries");
+                Log.w(TAG, BG_TRACE_PREFIX + " submitAutoBattleAction: submit path still unstable after retries, status=" + status);
             } else {
                 Log.d(TAG, BG_TRACE_PREFIX + " submitAutoBattleAction: status=" + status);
             }
@@ -1029,6 +1033,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             activeFightCaptchaDialog = null;
             activeFightCaptchaUrl = "";
             activeFightFinishUrl = "";
+            activeFightCaptchaInput = null;
             activeFightCaptchaImageLocked = false;
             activeFightCaptchaLoadSeq++;
             if (replacingFightCaptchaDialog) {
@@ -1040,6 +1045,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         activeFightCaptchaDialog = dialog;
         activeFightCaptchaUrl = captchaUrl == null ? "" : captchaUrl;
         activeFightFinishUrl = finishUrl == null ? "" : finishUrl;
+        activeFightCaptchaInput = input;
         dialog.show();
 
         dialog.setOnShowListener(d -> {
@@ -1056,22 +1062,10 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
 
                 @Override
                 public void afterTextChanged(android.text.Editable s) {
-                    String value = s == null ? "" : s.toString().trim();
-                    boolean enabled = false;
-                    if (!value.isEmpty() && value.length() <= 5) {
-                        try {
-                            int numeric = Integer.parseInt(value);
-                            enabled = numeric >= 0 && numeric <= 99999;
-                        } catch (NumberFormatException ignored) {
-                            enabled = false;
-                        }
-                    }
-                    android.widget.Button btn = dialog.getButton(AlertDialog.BUTTON_POSITIVE);
-                    if (btn != null) {
-                        btn.setEnabled(enabled);
-                    }
+                    updateFightCaptchaSubmitButtonState();
                 }
             });
+            updateFightCaptchaSubmitButtonState();
         });
 
         activeFightCaptchaImageAtMs = 0L;
@@ -1490,6 +1484,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                         AppVars.LastFightCaptchaImageBytes = captchaBytes;
                         AppVars.LastFightCaptchaImageUrl = captchaUrl;
                         AppVars.LastFightCaptchaImageAtMs = now;
+                        updateFightCaptchaSubmitButtonState();
                     } else {
                         Log.w(TAG, "loadCaptchaImageAsync: bitmap decode failed, url=" + captchaUrl
                                 + ", bytes=" + (captchaBytes != null ? captchaBytes.length : 0));
@@ -1627,13 +1622,38 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         activeFightCaptchaImageHash = latestHash;
         // Стабилизируем challenge в текущем popup: после первой отрисовки не перерисовываем
         // автоматически, чтобы пользователь вводил код именно с зафиксированной картинки.
-        if (!forceUpdate && previousHash == 0) {
+        if (previousHash == 0) {
             activeFightCaptchaImageLocked = true;
             stopFightCaptchaAutoRefresh();
         }
+        updateFightCaptchaSubmitButtonState();
         Log.d(TAG, "updateCaptchaImageFromCaptured: image updated, bytes=" + latestBytes.length
                 + ", atMs=" + latestAtMs + ", url=" + latestUrl);
         return true;
+    }
+
+    private void updateFightCaptchaSubmitButtonState() {
+        AlertDialog dialog = activeFightCaptchaDialog;
+        if (dialog == null || !dialog.isShowing()) {
+            return;
+        }
+        android.widget.Button btn = dialog.getButton(AlertDialog.BUTTON_POSITIVE);
+        if (btn == null) {
+            return;
+        }
+        android.widget.EditText input = activeFightCaptchaInput;
+        String value = input == null ? "" : input.getText().toString().trim();
+        boolean validCode = false;
+        if (!value.isEmpty() && value.length() <= 5) {
+            try {
+                int numeric = Integer.parseInt(value);
+                validCode = numeric >= 0 && numeric <= 99999;
+            } catch (NumberFormatException ignored) {
+                validCode = false;
+            }
+        }
+        boolean imageReady = activeFightCaptchaImageAtMs > 0L && activeFightCaptchaImageHash != 0;
+        btn.setEnabled(validCode && imageReady);
     }
 
     private boolean isSameCaptchaUrl(String firstUrl, String secondUrl) {
