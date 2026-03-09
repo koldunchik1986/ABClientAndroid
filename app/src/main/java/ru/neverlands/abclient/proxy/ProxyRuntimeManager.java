@@ -36,6 +36,7 @@ public final class ProxyRuntimeManager {
     private static int activePort = -1;
     private static String activeSignature = "";
     private static String lastStartError = "";
+    private static boolean strictProxyRequired = false;
 
     private ProxyRuntimeManager() {
     }
@@ -54,12 +55,14 @@ public final class ProxyRuntimeManager {
     public static boolean ensureStarted(Context context, UserConfig profile) {
         synchronized (LOCK) {
             lastStartError = "";
+            strictProxyRequired = isStrictProxyRequired(profile);
             String signature = buildSignature(profile);
             Log.i(TAG, "PROXY_BOOT: ensureStarted, doProxy="
                     + (profile != null && profile.DoProxy)
                     + ", useProxy=" + (profile != null && profile.UseProxy)
                     + ", proxyAddress=" + (profile == null ? "" : safeLower(profile.ProxyAddress))
-                    + ", running=" + (proxyServer != null && activePort > 0));
+                    + ", running=" + (proxyServer != null && activePort > 0)
+                    + ", strictRequired=" + strictProxyRequired);
             if (proxyServer != null && activePort > 0 && signature.equals(activeSignature)) {
                 Log.i(TAG, "PROXY_BOOT: reuse active runtime, port=" + activePort);
                 return true;
@@ -194,7 +197,7 @@ public final class ProxyRuntimeManager {
      */
     public static boolean isStrictProxyRequiredForCurrentProfile() {
         synchronized (LOCK) {
-            return isStrictProxyRequired(AppVars.Profile);
+            return strictProxyRequired || isStrictProxyRequired(AppVars.Profile);
         }
     }
 
@@ -229,6 +232,7 @@ public final class ProxyRuntimeManager {
         activePort = -1;
         activeUpstream = ProxyUpstreamSettings.disabled();
         activeSignature = "";
+        strictProxyRequired = false;
 
         if (clearWebViewProxy) {
             try {

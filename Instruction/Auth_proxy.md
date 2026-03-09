@@ -70,6 +70,7 @@
 3. Basic Proxy-Authorization в `windows-1251` (как в ПК-версии C#).
 4. Синхронизация cookie между `neverlands.ru` и `www.neverlands.ru` после применения `lastCookies`.
 5. Строгий запрет direct egress при включенном proxy (`DoProxy/UseProxy`), чтобы не утекал реальный IP.
+6. `strictProxyRequired` фиксируется в `ProxyRuntimeManager.ensureStarted(...)` сразу при старте auth-flow, а не только после `AppVars.Profile = profile` (иначе до успешного логина возможен direct-fallback при аварии runtime).
 
 ## 6. Какие фиксы убраны как лишние
 
