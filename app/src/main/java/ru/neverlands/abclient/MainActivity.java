@@ -930,6 +930,13 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                     }
                     AppVars.ResumeAutoboiAfterCaptcha = false;
                     String submitUrl = appendOrReplaceCaptchaCode(finishUrl, code);
+                    if (!isFishCaptcha) {
+                        AppVars.LastSubmittedFightCaptchaFinishKey = buildFightCaptchaFinishKey(submitUrl);
+                        AppVars.LastSubmittedFightCaptchaAtMs = System.currentTimeMillis();
+                        // Сбрасываем текущие captcha-маркеры, чтобы stale-значения не триггерили повторный popup.
+                        AppVars.FightLink = "";
+                        AppVars.CodeAddress = "";
+                    }
                     Log.d(TAG, "showCaptchaDialog: submitting " + submitUrl);
                     submitCaptchaSolution(submitUrl, isFishCaptcha);
                 })
@@ -1155,6 +1162,31 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             }
         }
         return submitUrl + fragment;
+    }
+
+    /**
+     * Нормализует finish-link для анти-дубля popup:
+     * - приводит относительный URL к `http://neverlands.ru/...`,
+     * - заменяет конкретный `code=12345` на единый `code=????`.
+     *
+     * Зависимости:
+     * - `AutoModeForegroundService.maybeShowFightCaptchaDialog(...)` сравнивает тот же ключ,
+     *   чтобы не поднимать повторно идентичный challenge после уже отправленного submit.
+     */
+    private String buildFightCaptchaFinishKey(String finishUrl) {
+        String normalized = finishUrl == null ? "" : finishUrl.trim();
+        if (normalized.isEmpty()) {
+            return "";
+        }
+        if (!normalized.startsWith("http://") && !normalized.startsWith("https://")) {
+            if (normalized.startsWith("/")) {
+                normalized = "http://neverlands.ru" + normalized;
+            } else {
+                normalized = "http://neverlands.ru/" + normalized;
+            }
+        }
+        normalized = normalized.replaceFirst("([?&])code=[^&]*", "$1code=????");
+        return normalized;
     }
 
     /**

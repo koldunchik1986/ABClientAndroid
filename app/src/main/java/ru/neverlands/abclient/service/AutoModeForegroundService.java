@@ -54,6 +54,7 @@ public class AutoModeForegroundService extends Service {
     private static final long FIGHT_PULSE_GRACE_MS = 12_000L;
     private static final long AUTO_FIGHT_FINISH_MIN_INTERVAL_MS = 1_500L;
     private static final long FIGHT_CAPTCHA_BROADCAST_DEDUP_MS = 2_000L;
+    private static final long FIGHT_CAPTCHA_SUBMIT_GUARD_TTL_MS = 20_000L;
 
     private static final String ACTION_SYNC = "ru.neverlands.abclient.action.AUTO_BG_SYNC";
 
@@ -440,6 +441,24 @@ public class AutoModeForegroundService extends Service {
             return false;
         }
 
+        String pendingFightKey = buildFightCaptchaFinishKey(pendingFightFinishLink);
+        if (!pendingFightKey.isEmpty()) {
+            String lastSubmittedKey = AppVars.LastSubmittedFightCaptchaFinishKey == null
+                    ? ""
+                    : AppVars.LastSubmittedFightCaptchaFinishKey;
+            long submittedAtMs = AppVars.LastSubmittedFightCaptchaAtMs;
+            long submittedAgeMs = submittedAtMs > 0L ? (tickNow - submittedAtMs) : Long.MAX_VALUE;
+            boolean sameAsSubmitted = pendingFightKey.equals(lastSubmittedKey);
+            if (sameAsSubmitted && submittedAgeMs >= 0L && submittedAgeMs < FIGHT_CAPTCHA_SUBMIT_GUARD_TTL_MS) {
+                Log.d(TAG, BG_TRACE_PREFIX + " uiTick: skip duplicate fight captcha after submit, ageMs=" + submittedAgeMs);
+                return true;
+            }
+            if (submittedAgeMs >= FIGHT_CAPTCHA_SUBMIT_GUARD_TTL_MS) {
+                AppVars.LastSubmittedFightCaptchaFinishKey = "";
+                AppVars.LastSubmittedFightCaptchaAtMs = 0L;
+            }
+        }
+
         String captchaUrl = normalizeNeverlandsUrl(AppVars.CodeAddress);
         if (captchaUrl.isEmpty()) {
             Log.w(TAG, BG_TRACE_PREFIX + " uiTick: fight captcha required but captcha url is empty");
@@ -484,6 +503,17 @@ public class AutoModeForegroundService extends Service {
             return "http://neverlands.ru" + normalized;
         }
         return "http://neverlands.ru/" + normalized;
+    }
+
+    /**
+     * Нормализует finish-link для сравнения с уже отправленным submit (`code` приводится к `????`).
+     */
+    private String buildFightCaptchaFinishKey(String finishUrl) {
+        String normalized = normalizeNeverlandsUrl(finishUrl);
+        if (normalized.isEmpty()) {
+            return "";
+        }
+        return normalized.replaceFirst("([?&])code=[^&]*", "$1code=????");
     }
 
     @SuppressWarnings("deprecation")

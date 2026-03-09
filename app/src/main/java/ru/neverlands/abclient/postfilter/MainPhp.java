@@ -3334,6 +3334,16 @@ public class MainPhp {
                 // чтобы MainActivity после submit кода вернул `AutoboiOn`.
             if (decision == FinishFlowDecision.CAPTCHA_REQUIRED) {
                 android.util.Log.d(TAG, "mainPhpFight: CAPTCHA required, stopping autoboi and showing dialog: " + captchaUrl);
+                boolean fromCaptchaSubmit = address != null
+                        && address.contains("get_id=61")
+                        && address.contains("act=7")
+                        && address.contains("code=");
+                if (fromCaptchaSubmit) {
+                    // Сервер снова требует капчу после submit: снимаем anti-duplicate guard
+                    // для того же finish-key и разрешаем повторный показ popup.
+                    AppVars.LastSubmittedFightCaptchaFinishKey = "";
+                    AppVars.LastSubmittedFightCaptchaAtMs = 0L;
+                }
                 AppVars.ResumeAutoboiAfterCaptcha = true;
                 AppVars.Autoboi = AutoboiState.AutoboiOff;
                 AppVars.ContentMainPhp = html;
@@ -3405,6 +3415,8 @@ public class MainPhp {
                     String submittedVcode = getUrlParam(address, "vcode");
                     android.util.Log.d(TAG, "mainPhpFight: captcha submit still requires challenge, code="
                             + submittedCode + ", vcode=" + submittedVcode);
+                    AppVars.LastSubmittedFightCaptchaFinishKey = "";
+                    AppVars.LastSubmittedFightCaptchaAtMs = 0L;
                     notifyCaptchaRejectedOnce(submittedCode, submittedVcode);
                 }
                 showFightCaptchaDialogOnce(manualCaptchaUrl, finishLink, fight.LogBoi);

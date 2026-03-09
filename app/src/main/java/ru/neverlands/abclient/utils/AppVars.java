@@ -76,6 +76,25 @@ public class AppVars {
     public static volatile byte[] LastFightCaptchaImageBytes = null;
     // Флаг "диалог капчи завершения боя сейчас открыт/показывается".
     public static volatile boolean IsFightCaptchaDialogVisible = false;
+    /**
+     * Ключ последней отправки боевой капчи (finish-link с нормализованным `code=????`).
+     *
+     * Назначение:
+     * - защитить от повторного popup того же challenge, когда после submit
+     *   в рантайме остается stale `FightLink` из старого fight-frame.
+     *
+     * Зависимости:
+     * - выставляется в `MainActivity.showCaptchaDialog(...)` при нажатии "ОК";
+     * - читается в `AutoModeForegroundService.maybeShowFightCaptchaDialog(...)`;
+     * - сбрасывается в `MainPhp.mainPhpFight(...)`, если сервер снова требует капчу
+     *   после уже отправленного `code=...` (ошибка/новый challenge).
+     */
+    public static volatile String LastSubmittedFightCaptchaFinishKey = "";
+    /**
+     * Время последней отправки боевой капчи (ms).
+     * Используется вместе с `LastSubmittedFightCaptchaFinishKey` для TTL анти-дубля.
+     */
+    public static volatile long LastSubmittedFightCaptchaAtMs = 0L;
     // Флаг восстановления авто-боя после ручного ввода капчи завершения боя.
     // Цепочка зависимостей:
     // 1) MainPhp.mainPhpFight(...) выставляет true, когда капча пришла при AutoboiOn.
