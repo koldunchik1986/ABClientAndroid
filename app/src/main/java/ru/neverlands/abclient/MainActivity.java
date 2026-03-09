@@ -2143,7 +2143,48 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         registerScreenStateReceiverIfNeeded();
         startRoomUsersPolling();
         logBackgroundState("onResume");
+        restorePendingFightCaptchaDialogIfNeeded();
         AutoModeForegroundService.syncServiceState(this, "onResume");
+    }
+
+    /**
+     * Восстанавливает popup боевой капчи после возврата в приложение,
+     * если challenge уже зафиксирован в AppVars, но диалог еще не отображается.
+     *
+     * Когда нужно:
+     * - captcha-state мог быть выставлен в фоне сервисом/парсером;
+     * - пользователь вернулся в Activity, а окно капчи не было показано.
+     *
+     * Зависимости:
+     * - `AppVars.IsFightCaptchaDialogVisible`: флаг ожидания ручного ввода капчи;
+     * - `AppVars.FightLink`: finish-link (`get_id=61&act=7&code=????...`);
+     * - `AppVars.CodeAddress`: URL картинки капчи (`/modules/code/code.php?...`);
+     * - `showCaptchaDialog(...)`: единый UI-контур ввода и submit кода.
+     */
+    private void restorePendingFightCaptchaDialogIfNeeded() {
+        if (!AppVars.IsFightCaptchaDialogVisible) {
+            return;
+        }
+        if (activeFightCaptchaDialog != null && activeFightCaptchaDialog.isShowing()) {
+            return;
+        }
+
+        String finishUrl = AppVars.FightLink;
+        if (finishUrl == null
+                || !finishUrl.contains("get_id=61")
+                || !finishUrl.contains("act=7")
+                || !finishUrl.contains("code=????")) {
+            return;
+        }
+
+        String captchaUrl = AppVars.CodeAddress;
+        if (captchaUrl == null || captchaUrl.isEmpty()) {
+            Log.w(TAG, "restorePendingFightCaptchaDialogIfNeeded: captcha url is empty");
+            return;
+        }
+
+        Log.d(TAG, "restorePendingFightCaptchaDialogIfNeeded: restoring pending fight captcha dialog");
+        showCaptchaDialog(captchaUrl, finishUrl);
     }
 
     // Отписка от LocalBroadcast событий (во избежание утечек).
