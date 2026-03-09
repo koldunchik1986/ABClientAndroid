@@ -170,6 +170,8 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     private final Object autoTurnServerProbeLock = new Object();
     private volatile boolean autoTurnServerProbeInFlight = false;
     private volatile long lastAutoTurnServerProbeAtMs = 0L;
+    // true между onResume/onPause; используется для отключения server-probe в активном UI.
+    private volatile boolean isActivityResumedState = false;
     private final ActivityResultLauncher<Intent> contactsActivityLauncher =
             registerForActivityResult(
                     new ActivityResultContracts.StartActivityForResult(),
@@ -491,7 +493,11 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                             } else {
                                 Log.d(TAG, BG_TRACE_PREFIX + " requestAutoTurn: no fight markers in current/cached html");
                                 if (allowServerProbeFallback) {
-                                    requestAutoTurnFromServerProbe("no_fight_markers_current_and_cached");
+                                    if (isAutoTurnServerProbeAllowedNow()) {
+                                        requestAutoTurnFromServerProbe("no_fight_markers_current_and_cached");
+                                    } else {
+                                        Log.d(TAG, BG_TRACE_PREFIX + " requestAutoTurn: skip server probe in foreground UI");
+                                    }
                                 }
                             }
                         }
@@ -506,11 +512,37 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                         } else {
                             Log.d(TAG, BG_TRACE_PREFIX + " requestAutoTurn: html is null and cached html has no fight markers");
                             if (allowServerProbeFallback) {
-                                requestAutoTurnFromServerProbe("null_html_and_no_cached_markers");
+                                if (isAutoTurnServerProbeAllowedNow()) {
+                                    requestAutoTurnFromServerProbe("null_html_and_no_cached_markers");
+                                } else {
+                                    Log.d(TAG, BG_TRACE_PREFIX + " requestAutoTurn: skip null-html server probe in foreground UI");
+                                }
                             }
                         }
                     }
                 });
+    }
+
+    /**
+     * Разрешает server probe только в background-контуре (пользователь не в активном UI).
+     *
+     * Зависимости:
+     * - `isActivityResumedState` (lifecycle onResume/onPause),
+     * - `PowerManager.isInteractive()` (доп. проверка lockscreen/погашенного экрана).
+     */
+    private boolean isAutoTurnServerProbeAllowedNow() {
+        if (!isActivityResumedState) {
+            return true;
+        }
+        try {
+            PowerManager powerManager = (PowerManager) getSystemService(Context.POWER_SERVICE);
+            if (powerManager != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT_WATCH) {
+                return !powerManager.isInteractive();
+            }
+        } catch (Exception e) {
+            Log.w(TAG, BG_TRACE_PREFIX + " isAutoTurnServerProbeAllowedNow: fallback by resumed-state", e);
+        }
+        return false;
     }
 
     /**
@@ -2171,6 +2203,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     @Override
     protected void onResume() {
         super.onResume();
+        isActivityResumedState = true;
         registerAppBroadcastReceiverIfNeeded();
         registerScreenStateReceiverIfNeeded();
         startRoomUsersPolling();
@@ -2223,6 +2256,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     @Override
     protected void onPause() {
         super.onPause();
+        isActivityResumedState = false;
         boolean keepBackgroundLoops = shouldKeepBackgroundLoops();
         logBackgroundState("onPause_keep=" + keepBackgroundLoops);
         if (keepBackgroundLoops) {
@@ -2292,6 +2326,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     @Override
     protected void onDestroy() {
         ru.neverlands.abclient.utils.DebugLogger.log("MainActivity: onDestroy() called.");
+        isActivityResumedState = false;
         logBackgroundState("onDestroy_enter");
         stopTimer();
         stopChatRefresh();

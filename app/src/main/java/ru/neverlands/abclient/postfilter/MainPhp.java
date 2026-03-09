@@ -40,7 +40,7 @@ public class MainPhp {
     private static final int AUTO_FINISH_MIN_DELAY_MS = 1000;
     private static final int AUTO_FINISH_EXTRA_DELAY_MS = 700;
     private static final long AUTO_DRINK_TRIGGER_COOLDOWN_MS = 2500L;
-    private static final long CAPTCHA_FALLBACK_TTL_MS = 30000L;
+    private static final long CAPTCHA_FALLBACK_TTL_MS = 5000L;
     private static final long AUTO_SKIN_KNIFE_RECHECK_INTERVAL_MS = 60_000L;
     private static final int AUTO_FISH_WEAR_LOOP_MAX_REPEATS = 12;
     private static final long AUTO_FISH_WEAR_LOOP_WINDOW_MS = 20_000L;
@@ -318,10 +318,10 @@ public class MainPhp {
      * Вычисляет актуальный URL боевой капчи для текущего шага завершения боя.
      *
      * Порядок источников (от более приоритетного к fallback):
-     * 1) `AppVars.CodeAddress` (получен из `LezFight.ParseNonFight`, аналог C# `CodeAddress`),
-     * 2) прямой `img src` в HTML (`extractCaptchaUrl`),
-     * 3) token из `var fexp[4]` (`extractCaptchaUrlFromFexp`),
-     * 4) последний перехваченный URL из interceptor (`AppVars.LastFightCaptchaImageUrl`) с TTL.
+     * 1) прямой `img src` в HTML (`extractCaptchaUrl`),
+     * 2) последний перехваченный URL из interceptor (`AppVars.LastFightCaptchaImageUrl`) с TTL,
+     * 3) `AppVars.CodeAddress` (получен из `LezFight.ParseNonFight`, аналог C# `CodeAddress`),
+     * 4) token из `var fexp[4]` (`extractCaptchaUrlFromFexp`).
      *
      * Зависимости:
      * - `LezFight.BuildFightLink(...)`,
@@ -329,13 +329,30 @@ public class MainPhp {
      * - используется в auto/manual ветках `mainPhpFight(...)`.
      */
     private static String resolveFightCaptchaUrl(String html) {
-        if (AppVars.CodeAddress != null && !AppVars.CodeAddress.isEmpty()) {
-            return AppVars.CodeAddress;
-        }
-
         String captchaUrl = extractCaptchaUrl(html);
         if (captchaUrl != null && !captchaUrl.isEmpty()) {
             return captchaUrl;
+        }
+
+        String fallbackUrl = AppVars.LastFightCaptchaImageUrl;
+        long fallbackAt = AppVars.LastFightCaptchaImageAtMs;
+        if (fallbackUrl != null && !fallbackUrl.isEmpty() && fallbackAt > 0L) {
+            long age = System.currentTimeMillis() - fallbackAt;
+            if (age >= 0 && age <= CAPTCHA_FALLBACK_TTL_MS) {
+                if (AppVars.CodeAddress != null
+                        && !AppVars.CodeAddress.isEmpty()
+                        && !fallbackUrl.equals(AppVars.CodeAddress)) {
+                    android.util.Log.d(TAG, "resolveFightCaptchaUrl: prefer interceptor url over CodeAddress, ageMs="
+                            + age + ", codeAddress=" + AppVars.CodeAddress + ", captured=" + fallbackUrl);
+                } else {
+                    android.util.Log.d(TAG, "resolveFightCaptchaUrl: use fallback from interceptor, ageMs=" + age);
+                }
+                return fallbackUrl;
+            }
+        }
+
+        if (AppVars.CodeAddress != null && !AppVars.CodeAddress.isEmpty()) {
+            return AppVars.CodeAddress;
         }
 
         // В части ответов сервера img src с code.php отсутствует в HTML,
@@ -344,16 +361,6 @@ public class MainPhp {
         if (captchaUrlFromFexp != null && !captchaUrlFromFexp.isEmpty()) {
             android.util.Log.d(TAG, "resolveFightCaptchaUrl: built from fexp[4]: " + captchaUrlFromFexp);
             return captchaUrlFromFexp;
-        }
-
-        String fallbackUrl = AppVars.LastFightCaptchaImageUrl;
-        long fallbackAt = AppVars.LastFightCaptchaImageAtMs;
-        if (fallbackUrl != null && !fallbackUrl.isEmpty() && fallbackAt > 0L) {
-            long age = System.currentTimeMillis() - fallbackAt;
-            if (age >= 0 && age <= CAPTCHA_FALLBACK_TTL_MS) {
-                android.util.Log.d(TAG, "resolveFightCaptchaUrl: use fallback from interceptor, ageMs=" + age);
-                return fallbackUrl;
-            }
         }
         return null;
     }
