@@ -1831,6 +1831,10 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                 case AppVars.ACTION_ADD_CHAT_MESSAGE:
                     String message = intent.getStringExtra("message");
                     if (message != null) {
+                        if (message.contains("Нападение") || message.contains("НАПАДЕНИЕ")) {
+                            AppVars.LastFightAnnounceAtMs = System.currentTimeMillis();
+                            Log.d(TAG, BG_TRACE_PREFIX + " ACTION_ADD_CHAT_MESSAGE: attack announce pulse");
+                        }
                         Chat.addMessageToChat(message);
                     }
                     break;
@@ -2637,6 +2641,30 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
      */
     public boolean isChatRefreshEnabled() {
         return chatFyo != 2;
+    }
+
+    /**
+     * Признак активного интерактивного foreground UI.
+     *
+     * Зависимости:
+     * - `isActivityResumedState` (onResume/onPause),
+     * - `PowerManager.isInteractive()` (экран не погашен/не lockscreen),
+     * - `hasWindowFocus()` (Activity действительно в фокусе пользователя).
+     */
+    public boolean isUiForegroundInteractive() {
+        if (!isActivityResumedState) {
+            return false;
+        }
+        boolean interactive = true;
+        try {
+            PowerManager powerManager = (PowerManager) getSystemService(Context.POWER_SERVICE);
+            if (powerManager != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT_WATCH) {
+                interactive = powerManager.isInteractive();
+            }
+        } catch (Exception e) {
+            Log.w(TAG, BG_TRACE_PREFIX + " isUiForegroundInteractive: fallback by resumed-state", e);
+        }
+        return interactive && hasWindowFocus();
     }
 
     // Режимы чата: 0-все, 1-только личные, 2-не показывать.

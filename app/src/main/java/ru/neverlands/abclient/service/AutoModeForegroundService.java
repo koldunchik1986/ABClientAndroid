@@ -52,6 +52,9 @@ public class AutoModeForegroundService extends Service {
     private static final long ROOM_REFRESH_MIN_INTERVAL_MS = 1000L;
     private static final long CHAT_REFRESH_STALE_GRACE_MS = 3_000L;
     private static final long FIGHT_PULSE_GRACE_MS = 12_000L;
+    private static final long FIGHT_FINISH_PULSE_GRACE_MS = 3_500L;
+    private static final long FIGHT_ANNOUNCE_GRACE_MS = 25_000L;
+    private static final long FORCE_FIGHT_SYNC_MIN_INTERVAL_MS = 2_500L;
     private static final long AUTO_FIGHT_FINISH_MIN_INTERVAL_MS = 1_500L;
     private static final long FIGHT_CAPTCHA_BROADCAST_DEDUP_MS = 2_000L;
     private static final long FIGHT_CAPTCHA_SUBMIT_GUARD_TTL_MS = 20_000L;
@@ -68,6 +71,7 @@ public class AutoModeForegroundService extends Service {
     private long lastForcedChatRefreshAtMs = 0L;
     private long lastAutoFightFinishDispatchAtMs = 0L;
     private String lastAutoFightFinishLink = "";
+    private long lastForceFightSyncAtMs = 0L;
     private long lastFightCaptchaBroadcastAtMs = 0L;
     private String lastFightCaptchaBroadcastKey = "";
 
@@ -222,11 +226,13 @@ public class AutoModeForegroundService extends Service {
                 long tickNow = System.currentTimeMillis();
 
                 boolean fightLikelyActive = isFightSessionLikelyActive(activity);
+                boolean uiForegroundInteractive = activity.isUiForegroundInteractive();
                 Log.d(TAG, BG_TRACE_PREFIX + " uiTick: locationTracking=" + locationTrackingEnabled
                         + ", autoFight=" + autoFightEnabled
                         + ", captchaDialogVisible=" + captchaDialogVisible
                         + ", walkersPollIntervalSec=" + walkersPollIntervalSec
-                        + ", fightLikelyActive=" + fightLikelyActive);
+                        + ", fightLikelyActive=" + fightLikelyActive
+                        + ", uiForegroundInteractive=" + uiForegroundInteractive);
 
                 ensureChatRefreshAlive(activity, tickNow);
 
@@ -239,9 +245,18 @@ public class AutoModeForegroundService extends Service {
                 // - MainActivity.getMainWebView().loadUrl(...): фактическая отправка act=7;
                 // - anti-loop guard: lastAutoFightFinishDispatchAtMs + lastAutoFightFinishLink.
                 String pendingFightFinishLink = normalizeNeverlandsUrl(AppVars.FightLink);
+                boolean staleReadyFinishLink = isReadyFightFinishLink(pendingFightFinishLink)
+                        && !isFightFinishDispatchContextValid(tickNow);
+                if (staleReadyFinishLink) {
+                    Log.d(TAG, BG_TRACE_PREFIX + " uiTick: drop stale fight finish link (no active fight context): "
+                            + pendingFightFinishLink);
+                    AppVars.FightLink = "";
+                    pendingFightFinishLink = "";
+                }
                 boolean canDispatchFightFinish = autoFightEnabled
                         && !captchaDialogVisible
-                        && isReadyFightFinishLink(pendingFightFinishLink);
+                        && isReadyFightFinishLink(pendingFightFinishLink)
+                        && isFightFinishDispatchContextValid(tickNow);
                 if (canDispatchFightFinish) {
                     long sinceLastFinishDispatch = tickNow - lastAutoFightFinishDispatchAtMs;
                     boolean sameAsLastFinish = pendingFightFinishLink.equals(lastAutoFightFinishLink);
@@ -276,6 +291,9 @@ public class AutoModeForegroundService extends Service {
                 if (maybeShowFightCaptchaDialog(activity, autoFightEnabled, captchaDialogVisible, pendingFightFinishLink, tickNow)) {
                     return;
                 }
+                if (autoFightEnabled && !captchaDialogVisible && !uiForegroundInteractive) {
+                    maybeForceFightFrameSync(activity, tickNow, pendingFightFinishLink);
+                }
 
                 if (locationTrackingEnabled) {
                     if (tickNow - lastRoomUsersTickAtMs >= roomTickIntervalMs) {
@@ -288,6 +306,12 @@ public class AutoModeForegroundService extends Service {
                 }
 
                 if (autoFightEnabled && !captchaDialogVisible) {
+                    if (uiForegroundInteractive
+                            && !hasFightMarkers(AppVars.ContentMainPhp)
+                            && pendingFightFinishLink.isEmpty()) {
+                        Log.d(TAG, BG_TRACE_PREFIX + " uiTick: skip autoTurn/probe in interactive foreground (no fight markers)");
+                        return;
+                    }
                     // Background-safe polling: do auto-turn/probe even when fightLikelyActive=false.
                     long minIntervalMs = fightLikelyActive
                             ? AUTO_TURN_MIN_INTERVAL_MS
@@ -358,7 +382,7 @@ public class AutoModeForegroundService extends Service {
     private boolean isFightSessionLikelyActive(MainActivity activity) {
         // 1) Самый надежный сигнал: в кеше main.php есть боевые маркеры.
         String mainHtml = AppVars.ContentMainPhp;
-        if (mainHtml != null && (mainHtml.contains("var fight_ty") || mainHtml.contains("magic_slots();"))) {
+        if (hasFightMarkers(mainHtml)) {
             return true;
         }
 
@@ -381,6 +405,48 @@ public class AutoModeForegroundService extends Service {
         }
 
         return false;
+    }
+
+    private boolean hasFightMarkers(String html) {
+        return html != null && (html.contains("var fight_ty") || html.contains("magic_slots();"));
+    }
+
+    private boolean isFightFinishDispatchContextValid(long tickNow) {
+        if (hasFightMarkers(AppVars.ContentMainPhp)) {
+            return true;
+        }
+        long pulseAtMs = AppVars.LastFightPulseAtMs;
+        return pulseAtMs > 0L
+                && (tickNow - pulseAtMs) >= 0L
+                && (tickNow - pulseAtMs) <= FIGHT_FINISH_PULSE_GRACE_MS;
+    }
+
+    /**
+     * Форсирует мягкую синхронизацию верхнего фрейма в фоне после анонса "Нападение",
+     * когда бой еще не отразился в текущем HTML.
+     */
+    private void maybeForceFightFrameSync(MainActivity activity, long tickNow, String pendingFightFinishLink) {
+        if (activity == null || activity.getMainWebView() == null) {
+            return;
+        }
+        if (isReadyFightFinishLink(pendingFightFinishLink) || isFightCaptchaFinishLink(pendingFightFinishLink)) {
+            return;
+        }
+        if (hasFightMarkers(AppVars.ContentMainPhp)) {
+            return;
+        }
+        long announceAtMs = AppVars.LastFightAnnounceAtMs;
+        if (announceAtMs <= 0L || (tickNow - announceAtMs) > FIGHT_ANNOUNCE_GRACE_MS) {
+            return;
+        }
+        if ((tickNow - lastForceFightSyncAtMs) < FORCE_FIGHT_SYNC_MIN_INTERVAL_MS) {
+            return;
+        }
+
+        String syncUrl = "http://neverlands.ru/main.php?r=" + tickNow + "&ab_force_fight_sync=1";
+        activity.getMainWebView().loadUrl(syncUrl);
+        lastForceFightSyncAtMs = tickNow;
+        Log.d(TAG, BG_TRACE_PREFIX + " uiTick: force fight-frame sync after attack announce, url=" + syncUrl);
     }
 
     /**

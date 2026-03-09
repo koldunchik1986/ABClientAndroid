@@ -3925,6 +3925,7 @@ public class MainPhp {
                 foeType;
 
         android.util.Log.d(TAG, "notifyNewFight: " + message);
+        AppVars.LastFightAnnounceAtMs = System.currentTimeMillis();
 
         Intent msgIntent = new Intent(AppVars.ACTION_ADD_CHAT_MESSAGE);
         msgIntent.putExtra("message", messageHtml);

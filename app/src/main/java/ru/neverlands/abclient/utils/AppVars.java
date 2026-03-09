@@ -131,6 +131,19 @@ public class AppVars {
      * - читается в `AutoModeForegroundService.isFightSessionLikelyActive(...)`.
      */
     public static volatile long LastFightPulseAtMs = 0L;
+    /**
+     * Временная метка последнего чатово/локального анонса "Нападение" (ms).
+     *
+     * Нужна foreground-service как ранний сигнал:
+     * - бой может начаться между кадрами и до появления `fight_ty` в верхнем фрейме;
+     * - по этому сигналу сервис может форсировать синхронизацию `main.php?r=...` в фоне.
+     *
+     * Зависимости:
+     * - обновляется в MainPhp.notifyNewFight(...);
+     * - обновляется в MainActivity.broadcastReceiver при ACTION_ADD_CHAT_MESSAGE с текстом "Нападение";
+     * - читается в AutoModeForegroundService.maybeForceFightFrameSync(...).
+     */
+    public static volatile long LastFightAnnounceAtMs = 0L;
     public static long IdleTimer = 0;
     public static long LastMainPhp = 0;
     public static Date NextCheckNoConnection;
