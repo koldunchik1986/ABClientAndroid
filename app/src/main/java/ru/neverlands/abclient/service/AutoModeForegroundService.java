@@ -27,16 +27,16 @@ import ru.neverlands.abclient.model.AutoboiState;
 import ru.neverlands.abclient.utils.AppVars;
 
 /**
- * Foreground-service для поддержания авто-контуров при заблокированном экране.
+ * Foreground-service РґР»СЏ РїРѕРґРґРµСЂР¶Р°РЅРёСЏ Р°РІС‚Рѕ-РєРѕРЅС‚СѓСЂРѕРІ РїСЂРё Р·Р°Р±Р»РѕРєРёСЂРѕРІР°РЅРЅРѕРј СЌРєСЂР°РЅРµ.
  *
- * Задачи:
- * - держать процесс в foreground режиме во время активного авто-режима,
- * - удерживать CPU/Wi‑Fi (через WakeLock/WifiLock) только пока нужен авто-режим,
- * - периодически пинговать UI-контур (room polling + auto-turn) через MainActivity, если Activity жива.
+ * Р—Р°РґР°С‡Рё:
+ * - РґРµСЂР¶Р°С‚СЊ РїСЂРѕС†РµСЃСЃ РІ foreground СЂРµР¶РёРјРµ РІРѕ РІСЂРµРјСЏ Р°РєС‚РёРІРЅРѕРіРѕ Р°РІС‚Рѕ-СЂРµР¶РёРјР°,
+ * - СѓРґРµСЂР¶РёРІР°С‚СЊ CPU/WiвЂ‘Fi (С‡РµСЂРµР· WakeLock/WifiLock) С‚РѕР»СЊРєРѕ РїРѕРєР° РЅСѓР¶РµРЅ Р°РІС‚Рѕ-СЂРµР¶РёРј,
+ * - РїРµСЂРёРѕРґРёС‡РµСЃРєРё РїРёРЅРіРѕРІР°С‚СЊ UI-РєРѕРЅС‚СѓСЂ (room polling + auto-turn) С‡РµСЂРµР· MainActivity, РµСЃР»Рё Activity Р¶РёРІР°.
  *
- * Ограничения текущей архитектуры:
- * - боевой pipeline всё ещё опирается на WebView/Activity,
- * - если Activity уничтожена системой, сервис не может полностью заменить WebView-контур.
+ * РћРіСЂР°РЅРёС‡РµРЅРёСЏ С‚РµРєСѓС‰РµР№ Р°СЂС…РёС‚РµРєС‚СѓСЂС‹:
+ * - Р±РѕРµРІРѕР№ pipeline РІСЃС‘ РµС‰С‘ РѕРїРёСЂР°РµС‚СЃСЏ РЅР° WebView/Activity,
+ * - РµСЃР»Рё Activity СѓРЅРёС‡С‚РѕР¶РµРЅР° СЃРёСЃС‚РµРјРѕР№, СЃРµСЂРІРёСЃ РЅРµ РјРѕР¶РµС‚ РїРѕР»РЅРѕСЃС‚СЊСЋ Р·Р°РјРµРЅРёС‚СЊ WebView-РєРѕРЅС‚СѓСЂ.
  */
 public class AutoModeForegroundService extends Service {
     private static final String TAG = "AutoModeFgService";
@@ -47,6 +47,7 @@ public class AutoModeForegroundService extends Service {
     private static final long TICK_INTERVAL_MS = 1000L;
     private static final long NO_ACTIVITY_STOP_TIMEOUT_MS = 60_000L;
     private static final long AUTO_TURN_MIN_INTERVAL_MS = 1000L;
+    private static final long AUTO_TURN_IDLE_PROBE_INTERVAL_MS = 2_000L;
     private static final long ROOM_REFRESH_MIN_INTERVAL_MS = 1000L;
     private static final long CHAT_REFRESH_STALE_GRACE_MS = 3_000L;
     private static final long FIGHT_PULSE_GRACE_MS = 12_000L;
@@ -66,8 +67,8 @@ public class AutoModeForegroundService extends Service {
     private String lastAutoFightFinishLink = "";
 
     /**
-     * Создает "асинхронный" main handler (API 28+), чтобы tick loop сервиса
-     * не зависел от sync barrier UI-pipeline при lockscreen/background.
+     * РЎРѕР·РґР°РµС‚ "Р°СЃРёРЅС…СЂРѕРЅРЅС‹Р№" main handler (API 28+), С‡С‚РѕР±С‹ tick loop СЃРµСЂРІРёСЃР°
+     * РЅРµ Р·Р°РІРёСЃРµР» РѕС‚ sync barrier UI-pipeline РїСЂРё lockscreen/background.
      */
     private static Handler createMainHandler() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
@@ -77,7 +78,7 @@ public class AutoModeForegroundService extends Service {
     }
 
     /**
-     * Синхронизирует состояние сервиса с текущими авто-флагами.
+     * РЎРёРЅС…СЂРѕРЅРёР·РёСЂСѓРµС‚ СЃРѕСЃС‚РѕСЏРЅРёРµ СЃРµСЂРІРёСЃР° СЃ С‚РµРєСѓС‰РёРјРё Р°РІС‚Рѕ-С„Р»Р°РіР°РјРё.
      */
     public static void syncServiceState(Context context, String reason) {
         if (context == null) {
@@ -97,11 +98,11 @@ public class AutoModeForegroundService extends Service {
     }
 
     /**
-     * Единая проверка: нужен ли фоновый режим.
+     * Р•РґРёРЅР°СЏ РїСЂРѕРІРµСЂРєР°: РЅСѓР¶РµРЅ Р»Рё С„РѕРЅРѕРІС‹Р№ СЂРµР¶РёРј.
      *
-     * Включаем сервис, если:
-     * - активен Авто-Бой, или
-     * - активно Авто-Нападение + включено Слежение за локацией.
+     * Р’РєР»СЋС‡Р°РµРј СЃРµСЂРІРёСЃ, РµСЃР»Рё:
+     * - Р°РєС‚РёРІРµРЅ РђРІС‚Рѕ-Р‘РѕР№, РёР»Рё
+     * - Р°РєС‚РёРІРЅРѕ РђРІС‚Рѕ-РќР°РїР°РґРµРЅРёРµ + РІРєР»СЋС‡РµРЅРѕ РЎР»РµР¶РµРЅРёРµ Р·Р° Р»РѕРєР°С†РёРµР№.
      */
     public static boolean shouldRunInBackground(Context context) {
         try {
@@ -121,7 +122,7 @@ public class AutoModeForegroundService extends Service {
     public void onCreate() {
         super.onCreate();
         createNotificationChannelIfNeeded();
-        startForeground(NOTIFICATION_ID, buildNotification("Авто-режим работает в фоне"));
+        startForeground(NOTIFICATION_ID, buildNotification("РђРІС‚Рѕ-СЂРµР¶РёРј СЂР°Р±РѕС‚Р°РµС‚ РІ С„РѕРЅРµ"));
         ensureLocks();
         Log.d(TAG, BG_TRACE_PREFIX + " onCreate: foreground started");
     }
@@ -224,13 +225,13 @@ public class AutoModeForegroundService extends Service {
 
                 ensureChatRefreshAlive(activity, tickNow);
 
-                // Приоритетная отправка ссылки "Завершить бой" (act=7), если она уже готова.
-                // Без этого цикл может зависать: autoTurn крутится по одному и тому же fight-frame,
-                // LezFight собирает AppVars.FightLink, но сам URL завершения никогда не открывается.
+                // РџСЂРёРѕСЂРёС‚РµС‚РЅР°СЏ РѕС‚РїСЂР°РІРєР° СЃСЃС‹Р»РєРё "Р—Р°РІРµСЂС€РёС‚СЊ Р±РѕР№" (act=7), РµСЃР»Рё РѕРЅР° СѓР¶Рµ РіРѕС‚РѕРІР°.
+                // Р‘РµР· СЌС‚РѕРіРѕ С†РёРєР» РјРѕР¶РµС‚ Р·Р°РІРёСЃР°С‚СЊ: autoTurn РєСЂСѓС‚РёС‚СЃСЏ РїРѕ РѕРґРЅРѕРјСѓ Рё С‚РѕРјСѓ Р¶Рµ fight-frame,
+                // LezFight СЃРѕР±РёСЂР°РµС‚ AppVars.FightLink, РЅРѕ СЃР°Рј URL Р·Р°РІРµСЂС€РµРЅРёСЏ РЅРёРєРѕРіРґР° РЅРµ РѕС‚РєСЂС‹РІР°РµС‚СЃСЏ.
                 //
-                // Зависимости:
-                // - AppVars.FightLink: формируется в LezFight.ParseNonFight()/BuildFightLink(...);
-                // - MainActivity.getMainWebView().loadUrl(...): фактическая отправка act=7;
+                // Р—Р°РІРёСЃРёРјРѕСЃС‚Рё:
+                // - AppVars.FightLink: С„РѕСЂРјРёСЂСѓРµС‚СЃСЏ РІ LezFight.ParseNonFight()/BuildFightLink(...);
+                // - MainActivity.getMainWebView().loadUrl(...): С„Р°РєС‚РёС‡РµСЃРєР°СЏ РѕС‚РїСЂР°РІРєР° act=7;
                 // - anti-loop guard: lastAutoFightFinishDispatchAtMs + lastAutoFightFinishLink.
                 String pendingFightFinishLink = normalizeNeverlandsUrl(AppVars.FightLink);
                 boolean canDispatchFightFinish = autoFightEnabled
@@ -248,7 +249,7 @@ public class AutoModeForegroundService extends Service {
                         } else {
                             Log.w(TAG, BG_TRACE_PREFIX + " uiTick: skip fight finish dispatch, mainWebView=null");
                         }
-                        // Чистим ссылку после попытки отправки, чтобы не дублировать в следующем тике.
+                        // Р§РёСЃС‚РёРј СЃСЃС‹Р»РєСѓ РїРѕСЃР»Рµ РїРѕРїС‹С‚РєРё РѕС‚РїСЂР°РІРєРё, С‡С‚РѕР±С‹ РЅРµ РґСѓР±Р»РёСЂРѕРІР°С‚СЊ РІ СЃР»РµРґСѓСЋС‰РµРј С‚РёРєРµ.
                         AppVars.FightLink = "";
                         return;
                     } else {
@@ -267,15 +268,22 @@ public class AutoModeForegroundService extends Service {
                     }
                 }
 
-                if (autoFightEnabled && fightLikelyActive && !captchaDialogVisible) {
-                    // Recovery после renderer restart/срыва навигации:
-                    // если бой активен по AppVars, но top frame ушёл с fight.frame,
-                    // форсируем возврат на боевой URL c cooldown.                    if (tickNow - lastAutoTurnTickAtMs >= AUTO_TURN_MIN_INTERVAL_MS) {
-                        activity.requestAutoTurn();
+                if (autoFightEnabled && !captchaDialogVisible) {
+                    // Background-safe polling: do auto-turn/probe even when fightLikelyActive=false.
+                    long minIntervalMs = fightLikelyActive
+                            ? AUTO_TURN_MIN_INTERVAL_MS
+                            : AUTO_TURN_IDLE_PROBE_INTERVAL_MS;
+                    long sinceLastAutoTurnMs = tickNow - lastAutoTurnTickAtMs;
+                    if (sinceLastAutoTurnMs >= minIntervalMs) {
+                        if (!fightLikelyActive) {
+                            Log.d(TAG, BG_TRACE_PREFIX + " uiTick: autoTurn idle probe");
+                        }
+                        activity.requestAutoTurnBackgroundAware();
                         lastAutoTurnTickAtMs = tickNow;
                     } else {
                         Log.d(TAG, BG_TRACE_PREFIX + " uiTick: autoTurn throttled, remainingMs="
-                                + (AUTO_TURN_MIN_INTERVAL_MS - (tickNow - lastAutoTurnTickAtMs)));
+                                + (minIntervalMs - sinceLastAutoTurnMs)
+                                + ", fightLikelyActive=" + fightLikelyActive);
                     }
                 } else if (autoFightEnabled && captchaDialogVisible) {
                     Log.d(TAG, BG_TRACE_PREFIX + " uiTick: skip autoTurn, captcha dialog visible");
@@ -288,8 +296,8 @@ public class AutoModeForegroundService extends Service {
 
     /**
      * Watchdog chat polling:
-     * если периодический `ch.php?show=1` в Activity "замолчал" в фоне,
-     * сервис форсирует разовый refresh, чтобы не пропускать входящие события боя.
+     * РµСЃР»Рё РїРµСЂРёРѕРґРёС‡РµСЃРєРёР№ `ch.php?show=1` РІ Activity "Р·Р°РјРѕР»С‡Р°Р»" РІ С„РѕРЅРµ,
+     * СЃРµСЂРІРёСЃ С„РѕСЂСЃРёСЂСѓРµС‚ СЂР°Р·РѕРІС‹Р№ refresh, С‡С‚РѕР±С‹ РЅРµ РїСЂРѕРїСѓСЃРєР°С‚СЊ РІС…РѕРґСЏС‰РёРµ СЃРѕР±С‹С‚РёСЏ Р±РѕСЏ.
      */
     private void ensureChatRefreshAlive(MainActivity activity, long tickNow) {
         if (activity == null) {
@@ -304,7 +312,7 @@ public class AutoModeForegroundService extends Service {
         long lastChatRefreshAtMs = activity.getLastChatRefreshAtMs();
         long forceCooldownMs = Math.max(1_000L, refreshIntervalMs);
 
-        // Начальный bootstrap: если Activity еще не делала ни одного poll-запроса.
+        // РќР°С‡Р°Р»СЊРЅС‹Р№ bootstrap: РµСЃР»Рё Activity РµС‰Рµ РЅРµ РґРµР»Р°Р»Р° РЅРё РѕРґРЅРѕРіРѕ poll-Р·Р°РїСЂРѕСЃР°.
         if (lastChatRefreshAtMs <= 0L) {
             if (tickNow - lastForcedChatRefreshAtMs >= forceCooldownMs) {
                 Log.d(TAG, BG_TRACE_PREFIX + " uiTick: chat refresh bootstrap");
@@ -329,37 +337,27 @@ public class AutoModeForegroundService extends Service {
     }
 
     private boolean isFightSessionLikelyActive(MainActivity activity) {
-        // 1) Самый надёжный сигнал: в кеше main.php есть боевые маркеры.
+        // 1) РЎР°РјС‹Р№ РЅР°РґС‘Р¶РЅС‹Р№ СЃРёРіРЅР°Р»: РІ РєРµС€Рµ main.php РµСЃС‚СЊ Р±РѕРµРІС‹Рµ РјР°СЂРєРµСЂС‹.
         String mainHtml = AppVars.ContentMainPhp;
         if (mainHtml != null && (mainHtml.contains("var fight_ty") || mainHtml.contains("magic_slots();"))) {
             return true;
         }
 
-        // 2) Прямой сигнал окончания/боевого action-link.
+        // 2) РџСЂСЏРјРѕР№ СЃРёРіРЅР°Р» РѕРєРѕРЅС‡Р°РЅРёСЏ/Р±РѕРµРІРѕРіРѕ action-link.
         String fightLink = AppVars.FightLink;
         if (fightLink != null && fightLink.contains("get_id=61&act=")) {
             return true;
         }
 
-        // 3) "Боевой пульс" за последние N секунд.
-        // Нужен для переходных кадров, где URL/HTML кратко теряют fight-маркеры.
+        // 3) "Р‘РѕРµРІРѕР№ РїСѓР»СЊСЃ" Р·Р° РїРѕСЃР»РµРґРЅРёРµ N СЃРµРєСѓРЅРґ.
+        // РќСѓР¶РµРЅ РґР»СЏ РїРµСЂРµС…РѕРґРЅС‹С… РєР°РґСЂРѕРІ, РіРґРµ URL/HTML РєСЂР°С‚РєРѕ С‚РµСЂСЏСЋС‚ fight-РјР°СЂРєРµСЂС‹.
         long pulseAtMs = AppVars.LastFightPulseAtMs;
         boolean recentFightPulse = pulseAtMs > 0L
                 && (System.currentTimeMillis() - pulseAtMs) <= FIGHT_PULSE_GRACE_MS;
-        if (!recentFightPulse) {
-            return false;
-        }
-
-        // 4) URL сами по себе ненадёжны (go=inf может вернуть небоевой html), но в сочетании с recent pulse
-        // дают устойчивое определение активного боя.
-        if (activity != null && activity.getMainWebView() != null) {
-            String currentMainUrl = activity.getMainWebView().getUrl();
-            if (currentMainUrl != null && currentMainUrl.contains("get_id=56&act=10&go=inf")) {
-                return true;
-            }
-        }
-        String topUrl = AppVars.url_main_top;
-        if (topUrl != null && topUrl.contains("get_id=56&act=10&go=inf")) {
+        // Р Р°РЅРµРµ Р·РґРµСЃСЊ Р±С‹Р»Р° РґРѕРїРѕР»РЅРёС‚РµР»СЊРЅР°СЏ Р¶С‘СЃС‚РєР°СЏ РїСЂРѕРІРµСЂРєР° URL (go=inf),
+        // РёР·-Р·Р° РєРѕС‚РѕСЂРѕР№ РІ С„РѕРЅРµ fightLikelyActive С‡Р°СЃС‚Рѕ РѕСЃС‚Р°РІР°Р»СЃСЏ false РґР°Р¶Рµ РїСЂРё Р¶РёРІРѕРј Р±РѕРµРІРѕРј pulse.
+        // Р”Р»СЏ lockscreen/background РґРѕСЃС‚Р°С‚РѕС‡РЅРѕ СЃР°РјРѕРіРѕ СЃРІРµР¶РµРіРѕ pulse вЂ” РѕРЅ РѕР±РЅРѕРІР»СЏРµС‚СЃСЏ С‚РѕР»СЊРєРѕ Р±РѕРµРІС‹Рј HTML.
+        if (recentFightPulse) {
             return true;
         }
 
@@ -367,7 +365,7 @@ public class AutoModeForegroundService extends Service {
     }
 
     /**
-     * Готовая ссылка завершения боя (act=7) без placeholder капчи.
+     * Р“РѕС‚РѕРІР°СЏ СЃСЃС‹Р»РєР° Р·Р°РІРµСЂС€РµРЅРёСЏ Р±РѕСЏ (act=7) Р±РµР· placeholder РєР°РїС‡Рё.
      */
     private boolean isReadyFightFinishLink(String url) {
         if (url == null || url.isEmpty()) {
@@ -379,7 +377,7 @@ public class AutoModeForegroundService extends Service {
     }
 
     /**
-     * Нормализация относительных neverlands-ссылок до абсолютного URL.
+     * РќРѕСЂРјР°Р»РёР·Р°С†РёСЏ РѕС‚РЅРѕСЃРёС‚РµР»СЊРЅС‹С… neverlands-СЃСЃС‹Р»РѕРє РґРѕ Р°Р±СЃРѕР»СЋС‚РЅРѕРіРѕ URL.
      */
     private String normalizeNeverlandsUrl(String url) {
         if (url == null) {
@@ -461,10 +459,10 @@ public class AutoModeForegroundService extends Service {
         }
         NotificationChannel channel = new NotificationChannel(
                 CHANNEL_ID,
-                "Фоновый авто-режим",
+                "Р¤РѕРЅРѕРІС‹Р№ Р°РІС‚Рѕ-СЂРµР¶РёРј",
                 NotificationManager.IMPORTANCE_LOW
         );
-        channel.setDescription("Поддерживает авто-режимы при заблокированном экране");
+        channel.setDescription("РџРѕРґРґРµСЂР¶РёРІР°РµС‚ Р°РІС‚Рѕ-СЂРµР¶РёРјС‹ РїСЂРё Р·Р°Р±Р»РѕРєРёСЂРѕРІР°РЅРЅРѕРј СЌРєСЂР°РЅРµ");
         channel.setShowBadge(false);
         notificationManager.createNotificationChannel(channel);
     }
@@ -481,7 +479,7 @@ public class AutoModeForegroundService extends Service {
 
         return new NotificationCompat.Builder(this, CHANNEL_ID)
                 .setSmallIcon(R.drawable.ic_notification)
-                .setContentTitle("ABClient: фоновый авто-режим")
+                .setContentTitle("ABClient: С„РѕРЅРѕРІС‹Р№ Р°РІС‚Рѕ-СЂРµР¶РёРј")
                 .setContentText(contentText)
                 .setOngoing(true)
                 .setSilent(true)

@@ -97,6 +97,7 @@ import ru.neverlands.abclient.webview.WebViewRequestInterceptor;
 import ru.neverlands.abclient.service.AutoModeForegroundService;
 
 import androidx.lifecycle.ViewModelProvider;
+import androidx.lifecycle.Observer;
 import ru.neverlands.abclient.ui.viewmodel.FightViewModel;
 import ru.neverlands.abclient.ui.QuickButtonsPanel;
 
@@ -118,6 +119,8 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     private static final long POST_RELOAD_GUARD_BLOCK_MS = 12000L;
     private static final long MAINFRAME_TIMEOUT_RETRY_DELAY_MS = 1500L;
     private static final long MAINFRAME_TIMEOUT_RETRY_DEDUP_MS = 12000L;
+    private static final long AUTO_TURN_SERVER_PROBE_MIN_INTERVAL_MS = 1200L;
+    private static final int AUTO_TURN_SERVER_PROBE_TIMEOUT_MS = 12000;
     public ActivityMainBinding binding;
     private Timer timer;
     private boolean isExiting = false;
@@ -163,6 +166,10 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     private final Handler autoBattleDelayHandler = createMainHandler();
     private Runnable pendingAutoBattleSubmitRunnable;
     private String pendingAutoBattleSubmitPayload = "";
+    private Observer<String> fightSubmitObserver;
+    private final Object autoTurnServerProbeLock = new Object();
+    private volatile boolean autoTurnServerProbeInFlight = false;
+    private volatile long lastAutoTurnServerProbeAtMs = 0L;
     private final ActivityResultLauncher<Intent> contactsActivityLauncher =
             registerForActivityResult(
                     new ActivityResultContracts.StartActivityForResult(),
@@ -439,6 +446,27 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
 
     // Автоход: забираем HTML боя и формируем одно действие.
     public void requestAutoTurn() {
+        requestAutoTurnInternal(false);
+    }
+
+    /**
+     * Фоновый авто-ход с server-fallback.
+     *
+     * Сценарий:
+     * - foreground путь остается прежним: берем HTML из main WebView;
+     * - если маркеров боя нет (типично для background-throttling Chromium),
+     *   вызывается server probe и бой парсится по ответу сервера.
+     *
+     * Зависимости:
+     * - `requestAutoTurnInternal(...)`: общая оркестрация цепочки;
+     * - `requestAutoTurnFromServerProbe(...)`: сетевой fallback;
+     * - `FightViewModel.autoTurnOnce(...)`: фактический разбор/формирование хода.
+     */
+    public void requestAutoTurnBackgroundAware() {
+        requestAutoTurnInternal(true);
+    }
+
+    private void requestAutoTurnInternal(boolean allowServerProbeFallback) {
         if (AppVars.IsFightCaptchaDialogVisible) {
             Log.d(TAG, BG_TRACE_PREFIX + " requestAutoTurn: skip, captcha dialog visible");
             return;
@@ -462,6 +490,9 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                                         + cachedFightHtml.length());
                             } else {
                                 Log.d(TAG, BG_TRACE_PREFIX + " requestAutoTurn: no fight markers in current/cached html");
+                                if (allowServerProbeFallback) {
+                                    requestAutoTurnFromServerProbe("no_fight_markers_current_and_cached");
+                                }
                             }
                         }
                         fightViewModel.autoTurnOnce(autoTurnHtml);
@@ -474,9 +505,157 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                             fightViewModel.autoTurnOnce(cachedFightHtml);
                         } else {
                             Log.d(TAG, BG_TRACE_PREFIX + " requestAutoTurn: html is null and cached html has no fight markers");
+                            if (allowServerProbeFallback) {
+                                requestAutoTurnFromServerProbe("null_html_and_no_cached_markers");
+                            }
                         }
                     }
                 });
+    }
+
+    /**
+     * Выполняет server probe боя с анти-спам guard:
+     * - троттлит частоту probe,
+     * - не запускает параллельные probe,
+     * - при валидном fight HTML передает его в `FightViewModel.autoTurnOnce(...)`.
+     *
+     * Зависимости:
+     * - `AUTO_TURN_SERVER_PROBE_MIN_INTERVAL_MS`, `autoTurnServerProbeInFlight`;
+     * - `loadFightProbeHtmlViaHttp()` как источник серверного HTML;
+     * - `hasFightMarkers(...)` и `AppVars.ContentMainPhp` для синхронизации контекста.
+     */
+    private void requestAutoTurnFromServerProbe(String reason) {
+        long now = System.currentTimeMillis();
+        if (now - lastAutoTurnServerProbeAtMs < AUTO_TURN_SERVER_PROBE_MIN_INTERVAL_MS) {
+            Log.d(TAG, BG_TRACE_PREFIX + " requestAutoTurn: server probe throttled, reason=" + reason
+                    + ", remainingMs=" + (AUTO_TURN_SERVER_PROBE_MIN_INTERVAL_MS - (now - lastAutoTurnServerProbeAtMs)));
+            return;
+        }
+        synchronized (autoTurnServerProbeLock) {
+            if (autoTurnServerProbeInFlight) {
+                Log.d(TAG, BG_TRACE_PREFIX + " requestAutoTurn: server probe skipped, in-flight, reason=" + reason);
+                return;
+            }
+            autoTurnServerProbeInFlight = true;
+            lastAutoTurnServerProbeAtMs = now;
+        }
+
+        final String probeReason = reason;
+        new Thread(() -> {
+            try {
+                String probeHtml = loadFightProbeHtmlViaHttp();
+                if (probeHtml == null || probeHtml.isEmpty()) {
+                    Log.w(TAG, BG_TRACE_PREFIX + " requestAutoTurn: server probe empty, reason=" + probeReason);
+                    return;
+                }
+                runOnUiThread(() -> {
+                    Log.d(TAG, BG_TRACE_PREFIX + " requestAutoTurn: server probe htmlLen=" + probeHtml.length()
+                            + ", reason=" + probeReason);
+                    if (hasFightMarkers(probeHtml)) {
+                        AppVars.ContentMainPhp = probeHtml;
+                        fightViewModel.autoTurnOnce(probeHtml);
+                    } else {
+                        Log.d(TAG, BG_TRACE_PREFIX + " requestAutoTurn: server probe has no fight markers");
+                    }
+                });
+            } catch (Exception e) {
+                Log.e(TAG, BG_TRACE_PREFIX + " requestAutoTurn: server probe failed, reason=" + probeReason, e);
+            } finally {
+                synchronized (autoTurnServerProbeLock) {
+                    autoTurnServerProbeInFlight = false;
+                }
+            }
+        }, "auto-turn-server-probe").start();
+    }
+
+    /**
+     * Загружает `main.php?get_id=56&act=10&go=inf` напрямую по HTTP как server probe боя.
+     *
+     * Требования безопасности:
+     * - при `strict proxy` и неактивном proxy runtime запрос блокируется (anti-leak реального IP);
+     * - в запрос передаются browser UA и cookie текущей игровой сессии.
+     *
+     * Зависимости:
+     * - `ProxyRuntimeManager.getActiveJavaProxyOrNull()` / `isStrictProxyRequiredForCurrentProfile()`;
+     * - `CookieManager` + `CookiesManager.obtain(...)` для cookie-header;
+     * - `Russian.getString(...)` для декодирования windows-1251 ответа сервера.
+     */
+    private String loadFightProbeHtmlViaHttp() {
+        HttpURLConnection connection = null;
+        InputStream inputStream = null;
+        ByteArrayOutputStream outputStream = null;
+        String probeUrl = "http://neverlands.ru/main.php?get_id=56&act=10&go=inf&ab_bg_probe=1&r=" + System.currentTimeMillis();
+        try {
+            URL url = new URL(probeUrl);
+            java.net.Proxy activeProxy = ProxyRuntimeManager.getActiveJavaProxyOrNull();
+            if (activeProxy == null && ProxyRuntimeManager.isStrictProxyRequiredForCurrentProfile()) {
+                Log.e(TAG, "PROXY_FAIL: strict proxy enabled and runtime proxy unavailable, blocking direct fight probe");
+                return null;
+            }
+
+            connection = activeProxy != null
+                    ? (HttpURLConnection) url.openConnection(activeProxy)
+                    : (HttpURLConnection) url.openConnection();
+            connection.setRequestMethod("GET");
+            connection.setConnectTimeout(AUTO_TURN_SERVER_PROBE_TIMEOUT_MS);
+            connection.setReadTimeout(AUTO_TURN_SERVER_PROBE_TIMEOUT_MS);
+            connection.setUseCaches(false);
+            connection.setRequestProperty("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8");
+            connection.setRequestProperty("Accept-Encoding", "identity");
+            connection.setRequestProperty("Accept-Language", "ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7");
+            connection.setRequestProperty("Cache-Control", "no-cache");
+            connection.setRequestProperty("Pragma", "no-cache");
+            connection.setRequestProperty("Referer", "http://neverlands.ru/main.php");
+            connection.setRequestProperty("User-Agent", AppVars.BROWSER_USER_AGENT);
+
+            String cookie = CookieManager.getInstance().getCookie(probeUrl);
+            if (cookie == null || cookie.isEmpty()) {
+                cookie = CookieManager.getInstance().getCookie("http://neverlands.ru/");
+            }
+            if ((cookie == null || cookie.isEmpty()) && url.getHost() != null) {
+                cookie = CookiesManager.obtain(url.getHost());
+            }
+            if (cookie != null && !cookie.isEmpty()) {
+                connection.setRequestProperty("Cookie", cookie);
+            } else {
+                Log.w(TAG, BG_TRACE_PREFIX + " requestAutoTurn: fight probe cookie is empty");
+            }
+
+            int responseCode = connection.getResponseCode();
+            if (responseCode < 200 || responseCode >= 300) {
+                Log.w(TAG, BG_TRACE_PREFIX + " requestAutoTurn: fight probe HTTP " + responseCode);
+                return null;
+            }
+
+            inputStream = connection.getInputStream();
+            outputStream = new ByteArrayOutputStream();
+            byte[] buffer = new byte[4096];
+            int read;
+            while ((read = inputStream.read(buffer)) != -1) {
+                outputStream.write(buffer, 0, read);
+            }
+            byte[] data = outputStream.toByteArray();
+            return data.length > 0 ? Russian.getString(data) : null;
+        } catch (Exception e) {
+            Log.e(TAG, BG_TRACE_PREFIX + " requestAutoTurn: fight probe request failed: " + probeUrl, e);
+            return null;
+        } finally {
+            if (inputStream != null) {
+                try {
+                    inputStream.close();
+                } catch (IOException ignored) {
+                }
+            }
+            if (outputStream != null) {
+                try {
+                    outputStream.close();
+                } catch (IOException ignored) {
+                }
+            }
+            if (connection != null) {
+                connection.disconnect();
+            }
+        }
     }
 
     /**
@@ -1649,12 +1828,19 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
 
         // Подписка на действия автободя: результат -> AutoSubmit() в WebView.
         fightViewModel = new ViewModelProvider(this).get(FightViewModel.class);
-        fightViewModel.getSubmitAction().observe(this, result -> {
+        if (fightSubmitObserver != null) {
+            fightViewModel.getSubmitAction().removeObserver(fightSubmitObserver);
+        }
+        fightSubmitObserver = result -> {
             if (result != null) {
                 enqueueAutoBattleSubmit(result);
                 fightViewModel.onActionSubmitted();
             }
-        });
+        };
+        // observeForever нужен, чтобы submit авто-удара не задерживался до onResume,
+        // когда бой начался в фоне/при блокировке экрана.
+        // Observer обязательно снимаем в onDestroy.
+        fightViewModel.getSubmitAction().observeForever(fightSubmitObserver);
 
         AppVars.NextCheckNoConnection = new Date(System.currentTimeMillis());
         startTimer();
@@ -2038,6 +2224,10 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         stopChatRefresh();
         stopRoomUsersPolling();
         clearPendingAutoBattleSubmit();
+        if (fightViewModel != null && fightSubmitObserver != null) {
+            fightViewModel.getSubmitAction().removeObserver(fightSubmitObserver);
+            fightSubmitObserver = null;
+        }
         unregisterAppBroadcastReceiverIfNeeded();
         unregisterScreenStateReceiverIfNeeded();
         RoomManager.stopTracing();
