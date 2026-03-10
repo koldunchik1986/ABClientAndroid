@@ -285,6 +285,7 @@ public class AutoModeForegroundService extends Service {
                 }
                 boolean canDispatchFightFinish = autoFightEnabled
                         && !captchaDialogVisible
+                        && !uiForegroundInteractive
                         && isReadyFightFinishLink(pendingFightFinishLink)
                         && isFightFinishDispatchContextValid(tickNow);
                 if (canDispatchFightFinish) {

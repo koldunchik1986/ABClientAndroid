@@ -3118,18 +3118,18 @@ public class MainPhp {
                 return html;
             }
             if (decision == FinishFlowDecision.DIRECT_FINISH_LINK) {
-                boolean isSt7Finish = fightLink != null
+                boolean isFastCleanFinish = fightLink != null
                         && fightLink.contains("get_id=61")
                         && fightLink.contains("act=5")
-                        && fightLink.contains("st=7");
-                int minDelayMs = isSt7Finish ? AUTO_FINISH_ST7_MIN_DELAY_MS : AUTO_FINISH_MIN_DELAY_MS;
-                int extraDelayMs = isSt7Finish ? AUTO_FINISH_ST7_EXTRA_DELAY_MS : AUTO_FINISH_EXTRA_DELAY_MS;
+                        && (fightLink.contains("st=6") || fightLink.contains("st=7"));
+                int minDelayMs = isFastCleanFinish ? AUTO_FINISH_ST7_MIN_DELAY_MS : AUTO_FINISH_MIN_DELAY_MS;
+                int extraDelayMs = isFastCleanFinish ? AUTO_FINISH_ST7_EXTRA_DELAY_MS : AUTO_FINISH_EXTRA_DELAY_MS;
                 long now = System.currentTimeMillis();
                 long sinceLast = now - lastAutoFinishRedirectAtMs;
                 if (sinceLast >= 0 && sinceLast < minDelayMs) {
                     int waitMs = (int) (minDelayMs - sinceLast) + 80;
                     android.util.Log.d(TAG, "mainPhpFight: throttling finish redirect, waitMs=" + waitMs
-                            + ", st7FastPath=" + isSt7Finish);
+                            + ", cleanFastPath=" + isFastCleanFinish);
                     return buildWaitForTurnAutoRefreshHtml(address, waitMs);
                 }
                 int redirectDelay = minDelayMs + RANDOM.nextInt(extraDelayMs + 1);
@@ -4068,17 +4068,23 @@ public class MainPhp {
             if (invList.size() > 1 && AppVars.Profile != null && AppVars.Profile.DoInvPack) {
                 for (int indexFirst = 0; indexFirst < invList.size() - 1; indexFirst++) {
                     for (int indexSecond = indexFirst + 1; indexSecond < invList.size(); indexSecond++) {
-                        if (invList.get(indexFirst).compareTo(invList.get(indexSecond)) != 0) {
+                        InvEntry firstEntry = invList.get(indexFirst);
+                        InvEntry secondEntry = invList.get(indexSecond);
+                        if (firstEntry.compareTo(secondEntry) != 0) {
                             continue;
                         }
-                        if (invList.get(indexFirst).compareDolg(invList.get(indexSecond)) > 0) {
+                        if (firstEntry.compareDolg(secondEntry) > 0) {
                             try {
-                                invList.set(indexFirst, (InvEntry) invList.get(indexSecond).clone());
+                                InvEntry selectedEntry = (InvEntry) secondEntry.clone();
+                                selectedEntry.absorb(firstEntry);
+                                invList.set(indexFirst, selectedEntry);
                             } catch (CloneNotSupportedException ignore) {
-                                invList.set(indexFirst, invList.get(indexSecond));
+                                secondEntry.absorb(firstEntry);
+                                invList.set(indexFirst, secondEntry);
                             }
+                        } else {
+                            firstEntry.absorb(secondEntry);
                         }
-                        invList.get(indexFirst).inc();
                         invList.remove(indexSecond);
                         indexSecond--;
                     }

@@ -43,6 +43,9 @@ public class InvEntry implements Cloneable, Comparable<InvEntry> {
     private int countButton;
     private int dolgOne;
     private int dolgTwo;
+    private int totalDolgOne;
+    private int totalDolgTwo;
+    private boolean hasDolg;
     private boolean expirible;
     private boolean expired;
 
@@ -213,6 +216,11 @@ public class InvEntry implements Cloneable, Comparable<InvEntry> {
      */
     private void parseDurability(String sourceHtml) {
         Dolg = safe(HelperStrings.subString(sourceHtml, "Долговечность: <b>", "</b>"));
+        hasDolg = false;
+        totalDolgOne = 0;
+        totalDolgTwo = 0;
+        dolgOne = 0;
+        dolgTwo = 0;
         if (Dolg.isEmpty()) {
             return;
         }
@@ -230,6 +238,9 @@ public class InvEntry implements Cloneable, Comparable<InvEntry> {
         } catch (NumberFormatException ignore) {
             dolgTwo = 0;
         }
+        hasDolg = true;
+        totalDolgOne = dolgOne;
+        totalDolgTwo = dolgTwo;
     }
 
     /**
@@ -281,38 +292,28 @@ public class InvEntry implements Cloneable, Comparable<InvEntry> {
      *   даже если у них одинаковое имя.
      */
     private String extractComparableProperties(String sourceHtml) {
-        String lower = sourceHtml.toLowerCase(Locale.ROOT);
-        int weaponChPos = lower.indexOf("<font class=weaponch>");
+        String basePattern = "</td><td bgcolor=#FCFAF3><img src=http://image.neverlands.ru/1x1.gif width=5 height=1></td><td bgcolor=#B9A05C><img src=http://image.neverlands.ru/1x1.gif width=1 height=1></td><td bgcolor=#FCFAF3><img src=http://image.neverlands.ru/1x1.gif width=5 height=1></td><td bgcolor=#FCFAF3 width=50%><font class=weaponch>";
+        String prefix = String.format(
+                Locale.ROOT,
+                "<font color=#000000>требования</font></div></td></tr><tr><td bgcolor=#FCFAF3><img src=http://image.neverlands.ru/1x1.gif width=5 height=1></td><td bgcolor=#FCFAF3 width=50%%><font class=nickname><b> %s</b><br><font class=weaponch>",
+                safe(Name));
+        String prop = HelperStrings.subString(
+                sourceHtml,
+                prefix,
+                "<br></td><td bgcolor=#FCFAF3><img src=http://image.neverlands.ru/1x1.gif width=5 height=1></td></tr></table>");
+        if (prop != null && !prop.isEmpty()) {
+            String[] csharpParts = splitByDelimiters(prop, new String[]{"<br>", basePattern});
+            String comparable = buildComparableProperties(csharpParts, 1);
+            if (!comparable.isEmpty()) {
+                return comparable;
+            }
+        }
+        int weaponChPos = indexOfIgnoreCase(sourceHtml, "<font class=weaponch>");
         if (weaponChPos == -1) {
             return "";
         }
-        String tail = sourceHtml.substring(weaponChPos);
-        String[] lines = tail.split("<br>");
-        StringBuilder sb = new StringBuilder();
-        for (String line : lines) {
-            if (line == null) {
-                continue;
-            }
-            String trimmed = line.trim();
-            if (trimmed.isEmpty()) {
-                continue;
-            }
-            String low = trimmed.toLowerCase(Locale.ROOT);
-            if (low.contains("цена: <b>") || low.contains("материал: <b>")) {
-                continue;
-            }
-            boolean packByDolg = AppVars.Profile != null && AppVars.Profile.DoInvPackDolg;
-            if (packByDolg && low.contains("долговечность: <b>")) {
-                // C# parity (`DoInvPackDolg=true`): убираем долговечность из ключа сравнения,
-                // чтобы одинаковые предметы с разным x/y могли объединяться в одну пачку.
-                continue;
-            }
-            if (sb.length() > 0) {
-                sb.append('|');
-            }
-            sb.append(trimmed);
-        }
-        return sb.toString();
+        String[] fallbackParts = sourceHtml.substring(weaponChPos).split("<br>");
+        return buildComparableProperties(fallbackParts, 0);
     }
 
     /**
@@ -323,6 +324,27 @@ public class InvEntry implements Cloneable, Comparable<InvEntry> {
      */
     public void inc() {
         Count++;
+        if (hasDolg) {
+            totalDolgOne += dolgOne;
+            totalDolgTwo += dolgTwo;
+        }
+    }
+
+    /**
+     * Объединяет текущую запись с дубликатом при упаковке инвентаря.
+     *
+     * Зависимости:
+     * - вызывается из `MainPhp.mainPhpInv` в момент дедупликации;
+     * - суммирует `Count` и агрегированную долговечность группы.
+     */
+    public void absorb(InvEntry other) {
+        if (other == null) {
+            return;
+        }
+        Count += Math.max(1, other.Count);
+        totalDolgOne += Math.max(0, other.totalDolgOne);
+        totalDolgTwo += Math.max(0, other.totalDolgTwo);
+        hasDolg = hasDolg || other.hasDolg;
     }
 
     /**
@@ -418,6 +440,9 @@ public class InvEntry implements Cloneable, Comparable<InvEntry> {
         if (Count <= 1) {
             return work;
         }
+        if (hasDolg && totalDolgTwo > 0) {
+            work = replaceDurabilityValue(work, totalDolgOne + "/" + totalDolgTwo);
+        }
         int posName = indexOfIgnoreCase(work, "<font class=nickname><b> ");
         if (posName != -1) {
             int posEnd = indexOfIgnoreCase(work, "</b>", posName);
@@ -445,6 +470,14 @@ public class InvEntry implements Cloneable, Comparable<InvEntry> {
             return result;
         }
         result = safe(Image).compareTo(safe(other.Image));
+        if (result != 0) {
+            return result;
+        }
+        result = Boolean.compare(isArt, other.isArt);
+        if (result != 0) {
+            return result;
+        }
+        result = Boolean.compare(isUniq, other.isUniq);
         if (result != 0) {
             return result;
         }
@@ -542,5 +575,87 @@ public class InvEntry implements Cloneable, Comparable<InvEntry> {
         }
         int safeFrom = Math.min(Math.max(fromIndex, 0), source.length());
         return source.toLowerCase(Locale.ROOT).lastIndexOf(needle.toLowerCase(Locale.ROOT), safeFrom);
+    }
+
+    private String buildComparableProperties(String[] parts, int startIndex) {
+        if (parts == null || parts.length == 0) {
+            return "";
+        }
+        StringBuilder sb = new StringBuilder();
+        boolean packByDolg = AppVars.Profile != null && AppVars.Profile.DoInvPackDolg;
+        for (int index = Math.max(0, startIndex); index < parts.length; index++) {
+            String line = parts[index];
+            if (line == null) {
+                continue;
+            }
+            String trimmed = line.trim();
+            if (trimmed.isEmpty()) {
+                continue;
+            }
+            String low = trimmed.toLowerCase(Locale.ROOT);
+            if (low.contains("цена: <b>") || low.contains("материал: <b>")) {
+                continue;
+            }
+            if (packByDolg && low.contains("долговечность: <b>")) {
+                continue;
+            }
+            if (sb.length() > 0) {
+                sb.append('|');
+            }
+            sb.append(trimmed);
+        }
+        return sb.toString();
+    }
+
+    private static String[] splitByDelimiters(String source, String[] delimiters) {
+        if (source == null) {
+            return new String[0];
+        }
+        if (delimiters == null || delimiters.length == 0) {
+            return new String[]{source};
+        }
+        java.util.List<String> result = new java.util.ArrayList<>();
+        int cursor = 0;
+        while (cursor <= source.length()) {
+            int bestIndex = -1;
+            int bestLen = -1;
+            for (String delimiter : delimiters) {
+                if (delimiter == null || delimiter.isEmpty()) {
+                    continue;
+                }
+                int pos = source.indexOf(delimiter, cursor);
+                if (pos == -1) {
+                    continue;
+                }
+                if (bestIndex == -1 || pos < bestIndex) {
+                    bestIndex = pos;
+                    bestLen = delimiter.length();
+                }
+            }
+            if (bestIndex == -1) {
+                result.add(source.substring(cursor));
+                break;
+            }
+            result.add(source.substring(cursor, bestIndex));
+            cursor = bestIndex + bestLen;
+        }
+        return result.toArray(new String[0]);
+    }
+
+    private static String replaceDurabilityValue(String source, String durabilityValue) {
+        if (source == null || source.isEmpty() || durabilityValue == null || durabilityValue.isEmpty()) {
+            return source;
+        }
+        final String marker = "Долговечность: <b>";
+        int markerPos = indexOfIgnoreCase(source, marker);
+        if (markerPos == -1) {
+            return source;
+        }
+        int valueStart = markerPos + marker.length();
+        int valueEnd = indexOfIgnoreCase(source, "</b>", valueStart);
+        if (valueEnd == -1 || valueEnd <= valueStart) {
+            return source;
+        }
+        return source.substring(0, valueStart) + durabilityValue + source.substring(valueEnd);
     }
 }
