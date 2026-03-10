@@ -2241,7 +2241,7 @@ public class MainPhp {
         // Зависимости:
         // - registerFightEndByLogId(...): дедуп учёта боя в статистике;
         // - publishFightResultFromLogsIfNeeded(...): "Победа/добыча";
-        // - publishFightSummaryFromFinishHtmlIfNeeded(...): системная строка с уроном и опытом.
+        // - publishFightSummaryFromFinishHtmlIfNeeded(...): fallback через единый ChatFilter-пайплайн.
         if (isFightFinishAddress) {
             registerFightEndByLogId(AppVars.LastBoiLog, "fight_finish_url_early");
             publishFightResultFromLogsIfNeeded(html, address, AppVars.LastBoiLog);
@@ -4031,81 +4031,62 @@ public class MainPhp {
     }
 
     /**
-     * Публикует системную сводку завершённого боя в чат из верхнего фрейма (`act=7`) как fallback.
+     * Публикует fallback-сводку завершённого боя через единый пайплайн ChatFilter.
      *
      * Зачем:
-     * - в фоне нижний чат может не прислать строку "Поединок завершён", из которой
-     *   {@link ru.neverlands.abclient.utils.ChatFilter} обычно собирает итоговое сообщение;
-     * - из-за этого пользователь не видит ключевую сводку "Бой против ... завершен ... урон ... опыт".
+     * - не дублировать форматирование системной строки в MainPhp;
+     * - использовать уже существующую логику ChatFilter (подмена "Поединок завершён" на
+     *   полноценную сводку, дедуп боя по LastBoiEndLog, учёт XP/лога).
      *
      * Зависимости:
-     * - `AppVars.LastBoi*` (log/sostav/travm/uron), заполненные в боевом потоке;
-     * - {@link #extractBattleXpFromHtml(String)} для чтения боевого XP из HTML `act=7`;
-     * - {@link LocalBroadcastManager} + `ACTION_ADD_CHAT_MESSAGE` для публикации в чат UI;
-     * - {@link #buildServerChatTimeHtml()} для серверного timestamp.
+     * - AppVars.LastBoi* (log/sostav/travm/uron), собранные в боевом потоке;
+     * - {@link #extractBattleXpFromHtml(String)} для добавления XP в synthetic chat-line;
+     * - {@link ru.neverlands.abclient.utils.ChatFilter#filter(String)} как единая точка парсинга;
+     * - {@link LocalBroadcastManager} + ACTION_ADD_CHAT_MESSAGE для вывода уже обработанной строки в UI.
      *
      * Дедупликация:
-     * - сообщение публикуется один раз на связку `logId|damage|xp`, чтобы не спамить
-     *   при повторных перезагрузках `main.php?get_id=61&act=7...`.
+     * - fallback выполняется один раз на связку logId|xp для act=7-перезагрузок.
      */
     private static void publishFightSummaryFromFinishHtmlIfNeeded(String html, String logIdHint) {
         if (AppVars.getContext() == null) return;
 
         String logId = (logIdHint == null || logIdHint.isEmpty()) ? AppVars.LastBoiLog : logIdHint;
-        if (logId == null || logId.isEmpty()) {
-            return;
-        }
+        if (logId == null || logId.isEmpty()) return;
+
         String foes = AppVars.LastBoiSostav == null ? "" : AppVars.LastBoiSostav.trim();
-        if (foes.isEmpty()) {
-            return;
-        }
+        if (foes.isEmpty()) return;
 
-        String travm = AppVars.LastBoiTravm == null ? "" : AppVars.LastBoiTravm;
-        String damage = (AppVars.LastBoiUron == null || AppVars.LastBoiUron.trim().isEmpty())
-                ? "0"
-                : AppVars.LastBoiUron.trim();
         String battleXp = extractBattleXpFromHtml(html);
-
-        String dedupKey = logId + "|" + damage + "|" + battleXp;
-        if (dedupKey.equals(lastFightSummaryBroadcastKey)) {
-            return;
-        }
+        String dedupKey = logId + "|" + battleXp;
+        if (dedupKey.equals(lastFightSummaryBroadcastKey)) return;
         lastFightSummaryBroadcastKey = dedupKey;
 
+        StringBuilder synthetic = new StringBuilder();
+        synthetic.append(buildServerChatTimeHtml())
+                .append("<font color=000000><B><font color=#CC0000>Внимание!</font> Системная информация.</B></font> Поединок завершён.");
         if (!battleXp.isEmpty()) {
-            try {
-                ru.neverlands.abclient.utils.ChatStats.addXp(Long.parseLong(battleXp));
-            } catch (NumberFormatException ignored) {
-                // Битое значение XP не должно ломать публикацию сводки боя.
-            }
-        }
-
-        StringBuilder message = new StringBuilder();
-        message.append(buildServerChatTimeHtml())
-                .append("<font color=#000000><b>Бой")
-                .append(travm)
-                .append(" против ")
-                .append(foes)
-                .append(" завершен (<a href=http://www.neverlands.ru/logs.fcg?fid=")
-                .append(logId)
-                .append(" onclick=\"window.open(this.href);\">лог</a> боя). Нанесено урона: ")
-                .append("<FONT color=#339900><b>")
-                .append(damage)
-                .append("</b></FONT>");
-
-        if (!battleXp.isEmpty()) {
-            message.append(". Полученно боевого опыта: <b><font color=#CC0000>")
+            synthetic.append(" Получено <font color=#CC0000>боевого</font> опыта: <b><font color=#CC0000>")
                     .append(battleXp)
-                    .append("</font></b>");
+                    .append("</font></b>.");
         }
-        message.append(".</b></font>");
+
+        String filteredMessage;
+        try {
+            filteredMessage = ru.neverlands.abclient.utils.ChatFilter.filter(synthetic.toString());
+        } catch (Exception e) {
+            android.util.Log.e(TAG, "publishFightSummaryFromFinishHtmlIfNeeded: ChatFilter failed", e);
+            filteredMessage = synthetic.toString();
+        }
+        if (filteredMessage == null || filteredMessage.isEmpty()) {
+            filteredMessage = synthetic.toString();
+        }
 
         Intent msgIntent = new Intent(AppVars.ACTION_ADD_CHAT_MESSAGE);
-        msgIntent.putExtra("message", message.toString());
+        msgIntent.putExtra("message", filteredMessage);
         LocalBroadcastManager.getInstance(AppVars.getContext()).sendBroadcast(msgIntent);
 
-        android.util.Log.d(TAG, "publishFightSummaryFromFinishHtmlIfNeeded: logId=" + logId
-                + ", damage=" + damage + ", battleXp=" + battleXp + ", foes=" + foes);
+        android.util.Log.d(TAG, "publishFightSummaryFromFinishHtmlIfNeeded: viaChatFilter logId=" + logId
+                + ", battleXp=" + battleXp + ", foes=" + foes);
     }
 
     /**
