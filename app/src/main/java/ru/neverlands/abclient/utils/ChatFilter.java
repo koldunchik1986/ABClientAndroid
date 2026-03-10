@@ -60,14 +60,15 @@ public class ChatFilter {
             }
         }
 
-        if (result.toLowerCase(Locale.ROOT).contains("системная информация.</b></font> поединок завершён.")) {
+        if (result.toLowerCase(Locale.ROOT).contains("<font color=#000000><b>системная информация.</b></font> поединок завершён.")) {
             if (!AppVars.LastBoiLog.isEmpty()
                     && !AppVars.LastBoiSostav.isEmpty()
                     && !AppVars.LastBoiTravm.isEmpty()
                     && !AppVars.LastBoiUron.isEmpty()) {
+                String lastBoiTravm = AppVars.LastBoiTravm == null ? "" : AppVars.LastBoiTravm;
                 String newLog =
                         "Бой" +
-                                AppVars.LastBoiTravm +
+                                lastBoiTravm +
                                 " против " +
                                 AppVars.LastBoiSostav +
                                 " завершен (<a href=http://www.neverlands.ru/logs.fcg?fid=" +

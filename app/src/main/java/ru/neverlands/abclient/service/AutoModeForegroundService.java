@@ -29,6 +29,7 @@ import ru.neverlands.abclient.R;
 import ru.neverlands.abclient.manager.AutoFunctionsManager;
 import ru.neverlands.abclient.model.AutoboiState;
 import ru.neverlands.abclient.utils.AppVars;
+import ru.neverlands.abclient.utils.Chat;
 import ru.neverlands.abclient.utils.RuntimeNetTrace;
 
 /**
@@ -904,13 +905,32 @@ public class AutoModeForegroundService extends Service {
                 .setContentTitle("ABClient: фоновый авто-режим")
                 .setContentText(contentText)
                 .setStyle(new NotificationCompat.BigTextStyle().bigText(
-                        contentText + "\nNET: " + RuntimeNetTrace.snapshotForUi()))
+                        buildNotificationBigText(contentText)))
                 .setOngoing(true)
                 .setSilent(true)
                 .setPriority(NotificationCompat.PRIORITY_LOW)
                 .setCategory(NotificationCompat.CATEGORY_SERVICE)
                 .setContentIntent(pendingIntent)
                 .build();
+    }
+
+    /**
+     * Формирует расширенный текст уведомления:
+     * базовая строка + сетевой runtime + полная версия последнего системного сообщения чата.
+     */
+    private String buildNotificationBigText(String contentText) {
+        StringBuilder sb = new StringBuilder(contentText);
+        sb.append("\nNET: ").append(RuntimeNetTrace.snapshotForUi());
+
+        String system = Chat.getLastSystemChatMessage();
+        if (system != null && !system.trim().isEmpty()) {
+            String full = system.trim();
+            if (full.length() > 320) {
+                full = full.substring(0, 317) + "...";
+            }
+            sb.append("\nSYS_FULL: ").append(full);
+        }
+        return sb.toString();
     }
 }
 

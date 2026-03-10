@@ -1,10 +1,8 @@
 package ru.neverlands.abclient.postfilter;
-
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
-
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
@@ -14,11 +12,8 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Random;
 import java.text.SimpleDateFormat;
-
 import android.content.Intent;
-
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
-
 import ru.neverlands.abclient.lez.LezFight;
 import ru.neverlands.abclient.model.AutoboiState;
 import ru.neverlands.abclient.model.InvComparer;
@@ -32,7 +27,6 @@ import ru.neverlands.abclient.utils.AppVars;
 import ru.neverlands.abclient.utils.HelperStrings;
 import ru.neverlands.abclient.utils.HtmlUtils;
 import ru.neverlands.abclient.utils.Russian;
-
 // Главный пост‑фильтр main.php: бой, инвентарь, быстрые действия, системные сообщения.
 public class MainPhp {
     private static final String TAG = "MainPhp";
@@ -72,12 +66,6 @@ public class MainPhp {
     private static volatile String lastFightResultLootBroadcastKey = "";
     private static volatile String lastFightSummaryBroadcastKey = "";
     private static volatile String lastAutoSkinProbeFightLog = "";
-    private static volatile String lastFinishLoopKey = "";
-    private static volatile int lastFinishLoopRepeatCount = 0;
-    private static volatile long lastFinishLoopAtMs = 0L;
-    private static volatile String lastFendAutoSubmitKey = "";
-    private static volatile long lastFendAutoSubmitAtMs = 0L;
-
     /**
      * Явное дерево решений для обработки завершения боя.
      *
@@ -98,7 +86,6 @@ public class MainPhp {
         CAPTCHA_REQUIRED,
         KEEP_ORIGINAL_HTML
     }
-
     /**
      * Лёгкая DTO-запись предмета инвентаря для wear-логики (порт `GetInvList` + `InvEntry.WearLink` из C#).
      */
@@ -106,7 +93,6 @@ public class MainPhp {
         String name;
         String wearLink;
     }
-
     /**
      * Снимок значений из `ins_HP(curh,maxh,curm,maxm,hp_int,ma_int)`.
      * Используется для:
@@ -121,7 +107,6 @@ public class MainPhp {
         double intHp;
         double intMa;
     }
-
     /**
      * Лёгкий снимок сигналов страницы завершения боя для диагностики и детекции циклов.
      *
@@ -139,7 +124,6 @@ public class MainPhp {
         String challengeHash = "";
         String fexpCaptchaToken = "";
     }
-
     /**
      * Генерирует HTML-заглушку "ожидаем ход противника" с авто-обновлением страницы.
      *
@@ -161,7 +145,6 @@ public class MainPhp {
                 "setTimeout(function(){ window.location = '" + safeUrl + "'; }, " + safeDelay + ");" +
                 "</script></body></html>";
     }
-
     /**
      * Возвращает сохранённое состояние переключателя Auto-Fight из AutoFunctionsManager.
      * Если manager/context недоступен, используется fallback на флаг профиля.
@@ -178,7 +161,6 @@ public class MainPhp {
             return AppVars.Profile != null && AppVars.Profile.LezDoAutoboi;
         }
     }
-
     /**
      * Самовосстановление runtime-рассинхронизации, когда сохранённый Auto-Fight включён,
      * а AppVars.Autoboi выключен.
@@ -195,17 +177,14 @@ public class MainPhp {
         if (!isAutoFightEnabledByPreference()) {
             return;
         }
-
         boolean captchaExpected = fightCaptchaUrl != null && !fightCaptchaUrl.isEmpty();
         if (captchaExpected || AppVars.IsFightCaptchaDialogVisible || AppVars.ResumeAutoboiAfterCaptcha) {
             android.util.Log.d(TAG, "recoverAutoboiRuntimeStateIfNeeded: skip (captcha flow active)");
             return;
         }
-
         AppVars.Autoboi = AutoboiState.AutoboiOn;
         android.util.Log.w(TAG, "recoverAutoboiRuntimeStateIfNeeded: restored AppVars.Autoboi -> AutoboiOn");
     }
-
     /**
      * Форматирует секунды в `HH:mm:ss` для UI ожидания лечения.
      */
@@ -216,7 +195,6 @@ public class MainPhp {
         long s = total % 60L;
         return String.format(Locale.US, "%02d:%02d:%02d", h, m, s);
     }
-
     /**
      * Генерирует HTML статуса ожидания лечения после боя.
      *
@@ -245,7 +223,6 @@ public class MainPhp {
         int maGoal = (doWaitMa && maxMa > 0) ? (int) Math.ceil(maxMa * (waitMaPercent / 100.0)) : maxMa;
         int hpPercent = maxHp > 0 ? (int) Math.round((curHp * 100.0) / maxHp) : 0;
         int maPercent = maxMa > 0 ? (int) Math.round((curMa * 100.0) / maxMa) : 0;
-
         String hpTargetText = doWaitHp
                 ? ("HP ≥ " + waitHpPercent + "% (" + hpGoal + "/" + maxHp + ")")
                 : "HP: ожидание выключено";
@@ -253,7 +230,6 @@ public class MainPhp {
                 ? ("MA ≥ " + waitMaPercent + "% (" + maGoal + "/" + maxMa + ")")
                 : "MA: ожидание выключено";
         String hpMaLine = "(" + curHp + "/" + maxHp + " + " + curMa + "/" + maxMa + ")";
-
         return HtmlUtils.GENERATED_PAGE_MARKER +
                 "<html><head><meta http-equiv=\"Content-Type\" content=\"text/html; charset=windows-1251\">" +
                 "<title>ABClient</title></head>" +
@@ -273,7 +249,6 @@ public class MainPhp {
                 "setTimeout(function(){window.location='" + safeUrl + "';}," + safeDelay + ");" +
                 "</script></body></html>";
     }
-
     /**
      * Строит HTML с отложенным redirect для завершения боя.
      *
@@ -300,7 +275,6 @@ public class MainPhp {
                 "}," + safeDelay + ");" +
                 "</script></body></html>";
     }
-
     /**
      * Строит промежуточную HTML-страницу удержания при активном диалоге капчи.
      *
@@ -318,7 +292,6 @@ public class MainPhp {
                 "Введите код во всплывающем окне." +
                 "</body></html>";
     }
-
     /**
      * Вычисляет актуальный URL боевой капчи для текущего шага завершения боя.
      *
@@ -343,7 +316,6 @@ public class MainPhp {
         if (captchaUrl != null && !captchaUrl.isEmpty()) {
             return captchaUrl;
         }
-
         // В части ответов сервера img src с code.php отсутствует в HTML,
         // но token капчи есть в var fexp[4] (как в fight_v10.js: code.php?'+fexp[4]).
         String captchaUrlFromFexp = extractCaptchaUrlFromFexp(html);
@@ -351,11 +323,9 @@ public class MainPhp {
             android.util.Log.d(TAG, "resolveFightCaptchaUrl: built from fexp[4]: " + captchaUrlFromFexp);
             return captchaUrlFromFexp;
         }
-
         if (AppVars.CodeAddress != null && !AppVars.CodeAddress.isEmpty()) {
             return AppVars.CodeAddress;
         }
-
         String fallbackUrl = AppVars.LastFightCaptchaImageUrl;
         long fallbackAt = AppVars.LastFightCaptchaImageAtMs;
         if (fallbackUrl != null && !fallbackUrl.isEmpty() && fallbackAt > 0L) {
@@ -365,10 +335,8 @@ public class MainPhp {
                 return fallbackUrl;
             }
         }
-
         return null;
     }
-
     /**
      * Собирает URL капчи из массива `fexp` (элемент `fexp[4]`).
      *
@@ -399,7 +367,6 @@ public class MainPhp {
             return null;
         }
     }
-
     /**
      * Восстанавливает ссылку завершения боя (`get_id=61&act=7`) напрямую из HTML.
      *
@@ -410,7 +377,6 @@ public class MainPhp {
         if (html == null || html.isEmpty()) {
             return null;
         }
-
         // 1) Прямой линк в HTML/JS.
         String directLink = findMainPhpLinkByQueryParts(html, "get_id=61", "act=7", "fexp=");
         if (directLink != null && !directLink.isEmpty()) {
@@ -419,18 +385,15 @@ public class MainPhp {
             }
             return normalizeNeverlandsMainLink(directLink);
         }
-
         // 2) Сборка по `var fexp = [...]` (аналог LezFight.BuildFightLink).
         String rawFexp = HelperStrings.subString(html, "var fexp = [", "];");
         if (rawFexp == null || rawFexp.isEmpty()) {
             return null;
         }
-
         List<String> fexp = splitJsTopLevelCsv(rawFexp);
         if (fexp.size() < 14) {
             return null;
         }
-
         String fexp0 = trimJsToken(fexp.get(0));
         String fexp1 = trimJsToken(fexp.get(1));
         String fexp3 = trimJsToken(fexp.get(3));
@@ -441,11 +404,9 @@ public class MainPhp {
         String fexp11 = trimJsToken(fexp.get(11));
         String fexp12 = trimJsToken(fexp.get(12));
         String fexp13 = trimJsToken(fexp.get(13));
-
         if (fexp0.isEmpty() || fexp1.isEmpty() || fexp3.isEmpty() || fexp5.isEmpty()) {
             return null;
         }
-
         String finishLink = (withCaptchaPlaceholder
                 ? "main.php?code=????&get_id=61&act=7&fexp="
                 : "main.php?get_id=61&act=7&fexp=") + fexp0
@@ -458,6 +419,44 @@ public class MainPhp {
                 + "&sum1=" + fexp12
                 + "&sum2=" + fexp13
                 + "&ftype=" + fexp5;
+        return normalizeNeverlandsMainLink(finishLink);
+    }
+
+    /**
+     * Восстанавливает "голую" ссылку завершения боя (без captcha/FEND),
+     * которую сервер отдает как переход вида:
+     * `main.php?get_id=61&act=5&st=6&vcode=...`.
+     *
+     * Источники:
+     * - прямой URL в HTML/JS (`findMainPhpLinkByQueryParts(...)`);
+     * - fallback через `var fexp = [...]`, где `fexp[3]` содержит vcode.
+     */
+    private static String extractFightCleanFinishLinkFromHtml(String html) {
+        if (html == null || html.isEmpty()) {
+            return null;
+        }
+
+        // 1) Прямой линк из HTML/JS.
+        String directLink = findMainPhpLinkByQueryParts(html, "get_id=61", "act=5", "st=6", "vcode=");
+        if (directLink != null && !directLink.isEmpty()) {
+            return normalizeNeverlandsMainLink(directLink);
+        }
+
+        // 2) Fallback: собираем URL из fexp[3] (vcode), если прямой ссылки нет.
+        String rawFexp = HelperStrings.subString(html, "var fexp = [", "];");
+        if (rawFexp == null || rawFexp.isEmpty()) {
+            return null;
+        }
+        List<String> fexp = splitJsTopLevelCsv(rawFexp);
+        if (fexp.size() < 4) {
+            return null;
+        }
+        String vcode = trimJsToken(fexp.get(3));
+        if (vcode == null || vcode.isEmpty() || "0".equals(vcode)) {
+            return null;
+        }
+
+        String finishLink = "main.php?get_id=61&act=5&st=6&vcode=" + vcode;
         return normalizeNeverlandsMainLink(finishLink);
     }
 
@@ -476,7 +475,6 @@ public class MainPhp {
             if (form == null) {
                 return null;
             }
-
             Element codeInput = form.selectFirst("input[name=code]");
             if (codeInput != null) {
                 String codeValue = codeInput.hasAttr("value") ? codeInput.attr("value").trim() : "";
@@ -485,7 +483,6 @@ public class MainPhp {
                     return null;
                 }
             }
-
             String action = form.hasAttr("action") ? form.attr("action").trim() : "";
             if (action.isEmpty()) {
                 action = "main.php";
@@ -494,12 +491,10 @@ public class MainPhp {
             if (!"get".equals(method) && !"post".equals(method)) {
                 method = "post";
             }
-
             Elements fields = form.select("input[name], select[name], textarea[name]");
             if (fields.isEmpty()) {
                 return null;
             }
-
             StringBuilder sb = new StringBuilder();
             sb.append(HtmlUtils.GENERATED_PAGE_MARKER);
             sb.append("<html><head><meta http-equiv=\"Content-Type\" content=\"text/html; charset=windows-1251\">");
@@ -510,14 +505,12 @@ public class MainPhp {
                     .append("\" method=\"")
                     .append(method)
                     .append("\">");
-
             for (Element field : fields) {
                 String tag = field.tagName().toLowerCase(Locale.ROOT);
                 String name = field.hasAttr("name") ? field.attr("name") : "";
                 if (name.isEmpty()) {
                     continue;
                 }
-
                 String value = "";
                 if ("input".equals(tag)) {
                     String type = field.hasAttr("type") ? field.attr("type").toLowerCase(Locale.ROOT) : "text";
@@ -535,14 +528,12 @@ public class MainPhp {
                     }
                     value = selected != null ? selected.attr("value") : "";
                 }
-
                 sb.append("<input type=\"hidden\" name=\"")
                         .append(escapeHtmlAttr(name))
                         .append("\" value=\"")
                         .append(escapeHtmlAttr(value))
                         .append("\">");
             }
-
             sb.append("</form>");
             sb.append("<script language=\"JavaScript\">");
             sb.append("setTimeout(function(){var f=document.getElementById('ab_finish_form'); if(f){f.submit();}}, 350);");
@@ -553,7 +544,6 @@ public class MainPhp {
             return null;
         }
     }
-
     /**
      * Извлекает компактные маркеры завершения боя из сырого HTML.
      *
@@ -593,10 +583,8 @@ public class MainPhp {
                     }
                 }
             }
-
             markers.hasFkeyScript = html.contains("js/fkey.js") || html.contains("d.FEND.code.value");
             markers.hasCaptchaImage = html.contains("/modules/code/code.php");
-
             String rawFightTy = HelperStrings.subString(html, "var fight_ty = [", "];");
             if (rawFightTy != null && !rawFightTy.isEmpty()) {
                 List<String> fightTy = splitJsTopLevelCsv(rawFightTy);
@@ -604,7 +592,6 @@ public class MainPhp {
                     markers.challengeHash = trimJsToken(fightTy.get(5));
                 }
             }
-
             String rawFexp = HelperStrings.subString(html, "var fexp = [", "];");
             if (rawFexp != null && !rawFexp.isEmpty()) {
                 List<String> fexp = splitJsTopLevelCsv(rawFexp);
@@ -617,70 +604,6 @@ public class MainPhp {
         }
         return markers;
     }
-
-    /**
-     * Строит стабильный ключ для детекции циклов завершения боя.
-     *
-     * Зависимости:
-     * - {@link LezFight#LogBoi}, чтобы привязать ключ к текущему логу боя.
-     * - Разобранный challenge hash из {@link FightFinishPageMarkers#challengeHash}.
-     *
-     * Формат: {@code <LogBoi>|<challengeHash>}.
-     */
-    private static String buildFinishLoopKey(LezFight fight, FightFinishPageMarkers markers) {
-        String log = (fight != null && fight.LogBoi != null) ? fight.LogBoi : "";
-        String challenge = (markers != null && markers.challengeHash != null) ? markers.challengeHash : "";
-        return log + "|" + challenge;
-    }
-
-    /**
-     * Регистрирует текущий ключ цикла завершения и возвращает счётчик повторов в окне времени.
-     *
-     * Зависимости:
-     * - Статические поля: {@code lastFinishLoopKey}, {@code lastFinishLoopRepeatCount}, {@code lastFinishLoopAtMs}.
-     * - Окно времени: 20 секунд для повторов одного и того же ключа.
-     *
-     * Назначение:
-     * - Детектировать повторяющиеся post-fight кадры и предотвращать тихие бесконечные циклы redirect/submit.
-     */
-    private static int registerFinishLoopKey(String key) {
-        long now = System.currentTimeMillis();
-        if (key == null) {
-            key = "";
-        }
-        if (!key.isEmpty() && key.equals(lastFinishLoopKey) && (now - lastFinishLoopAtMs) <= 20000L) {
-            lastFinishLoopRepeatCount++;
-        } else {
-            lastFinishLoopKey = key;
-            lastFinishLoopRepeatCount = 1;
-        }
-        lastFinishLoopAtMs = now;
-        return lastFinishLoopRepeatCount;
-    }
-
-    /**
-     * Дедуплицирует повторные попытки FEND auto-submit для одного и того же ключа цикла.
-     *
-     * Зависимости:
-     * - Статические поля: {@code lastFendAutoSubmitKey}, {@code lastFendAutoSubmitAtMs}.
-     * - Окно времени: 3.5 секунды (несколько почти одновременных callback/кадров).
-     *
-     * Возвращает:
-     * - {@code true}, если submit для этого ключа уже выполнялся недавно.
-     */
-    private static boolean isRepeatedFendSubmit(String finishLoopKey) {
-        long now = System.currentTimeMillis();
-        if (finishLoopKey == null || finishLoopKey.isEmpty()) {
-            finishLoopKey = "no_key";
-        }
-        if (finishLoopKey.equals(lastFendAutoSubmitKey) && (now - lastFendAutoSubmitAtMs) <= 3500L) {
-            return true;
-        }
-        lastFendAutoSubmitKey = finishLoopKey;
-        lastFendAutoSubmitAtMs = now;
-        return false;
-    }
-
     /**
      * Пишет одну структурированную диагностическую запись для выбранной ветви завершения боя.
      *
@@ -699,7 +622,6 @@ public class MainPhp {
                                               String fightLink,
                                               String captchaUrl,
                                               FightFinishPageMarkers markers,
-                                              int loopRepeats,
                                               String reason) {
         String logBoi = (fight != null && fight.LogBoi != null) ? fight.LogBoi : "";
         String challenge = (markers != null && markers.challengeHash != null) ? markers.challengeHash : "";
@@ -711,11 +633,9 @@ public class MainPhp {
         String fendAction = (markers != null && markers.fendAction != null) ? markers.fendAction : "";
         String fexpToken = (markers != null && markers.fexpCaptchaToken != null) ? markers.fexpCaptchaToken : "";
         String tokenState = fexpToken.isEmpty() ? "empty" : ("len=" + fexpToken.length());
-
         android.util.Log.d(TAG, "mainPhpFight finishFlow:"
                 + " decision=" + decision
                 + ", reason=" + reason
-                + ", loopRepeats=" + loopRepeats
                 + ", LogBoi=" + logBoi
                 + ", challengeHash=" + challenge
                 + ", hasFEND=" + hasFend
@@ -729,7 +649,6 @@ public class MainPhp {
                 + ", captchaUrl=" + (captchaUrl == null ? "" : captchaUrl)
                 + ", address=" + (address == null ? "" : address));
     }
-
     /**
      * Экранирует строку для безопасной подстановки в HTML-атрибут.
      *
@@ -749,7 +668,6 @@ public class MainPhp {
                 .replace("<", "&lt;")
                 .replace(">", "&gt;");
     }
-
     /**
      * Порт `MainPhpInsHp.cs` (C# -> Android).
      * Извлекает `hp_int`/`ma_int` из `ins_HP(...)` и обновляет
@@ -759,17 +677,14 @@ public class MainPhp {
         try {
             InsHpSnapshot snapshot = parseInsHpSnapshot(html);
             if (snapshot == null) return;
-
             // Порт 1:1 из C# MainPhpInsHp.cs: par[4] -> IntHP, par[5] -> IntMA.
             if (snapshot.intHp > 0d) AppVars.PersIntHP = snapshot.intHp;
             if (snapshot.intMa > 0d) AppVars.PersIntMA = snapshot.intMa;
-
             android.util.Log.d(TAG, "mainPhpInsHp: parsed hpInt=" + AppVars.PersIntHP + ", maInt=" + AppVars.PersIntMA);
         } catch (Exception e) {
             android.util.Log.e(TAG, "mainPhpInsHp error", e);
         }
     }
-
     /**
      * Парсит снимок из вызова `ins_HP(...)`: cur/max HP, cur/max MA, hp_int/ma_int.
      * Возвращает `null`, если вызов не найден или формат невалиден.
@@ -778,7 +693,6 @@ public class MainPhp {
         if (html == null || html.isEmpty()) {
             return null;
         }
-
         String htmlLower = html.toLowerCase(Locale.ROOT);
         int start = htmlLower.indexOf("ins_hp(");
         if (start == -1) {
@@ -789,14 +703,12 @@ public class MainPhp {
         if (end == -1 || end <= start) {
             return null;
         }
-
         String args = html.substring(start, end);
         String[] parts = args.split(",");
         if (parts.length != 6) {
             android.util.Log.d(TAG, "parseInsHpSnapshot: unexpected args count=" + parts.length + ", raw=" + args);
             return null;
         }
-
         Double curHpRaw = tryParseDoubleInvariant(parts[0]);
         Double maxHpRaw = tryParseDoubleInvariant(parts[1]);
         Double curMaRaw = tryParseDoubleInvariant(parts[2]);
@@ -807,7 +719,6 @@ public class MainPhp {
                 || intHpRaw == null || intMaRaw == null) {
             return null;
         }
-
         InsHpSnapshot snapshot = new InsHpSnapshot();
         snapshot.curHp = (int) Math.round(curHpRaw);
         snapshot.maxHp = (int) Math.round(maxHpRaw);
@@ -817,7 +728,6 @@ public class MainPhp {
         snapshot.intMa = intMaRaw;
         return snapshot;
     }
-
     /**
      * Авто-питьё "Эликсира Восстановления" по данным верхнего фрейма (`ins_HP(...)`).
      *
@@ -861,16 +771,13 @@ public class MainPhp {
             android.util.Log.d(TAG, "AUTO_DRINK_TRACE skip: captcha dialog visible");
             return;
         }
-
         InsHpSnapshot snapshot = parseInsHpSnapshot(html);
         if (snapshot == null || (snapshot.maxHp <= 0 && snapshot.maxMa <= 0)) {
             android.util.Log.d(TAG, "AUTO_DRINK_TRACE skip: ins_HP snapshot missing or invalid");
             return;
         }
-
         double hpPercent = snapshot.maxHp > 0 ? (snapshot.curHp * 100.0 / snapshot.maxHp) : 0.0;
         double maPercent = snapshot.maxMa > 0 ? (snapshot.curMa * 100.0 / snapshot.maxMa) : 0.0;
-
         boolean hpBelow = AppVars.Profile.LezDoDrinkHp
                 && snapshot.maxHp > 0
                 && hpPercent < AppVars.Profile.LezDrinkHp;
@@ -885,7 +792,6 @@ public class MainPhp {
                     + " (enabled=" + AppVars.Profile.LezDoDrinkMa + "), address=" + address);
             return;
         }
-
         long now = System.currentTimeMillis();
         long sinceLastTrigger = now - lastAutoDrinkTriggerAtMs;
         if (sinceLastTrigger >= 0 && sinceLastTrigger < AUTO_DRINK_TRIGGER_COOLDOWN_MS) {
@@ -893,7 +799,6 @@ public class MainPhp {
                     + ", hpBelow=" + hpBelow + ", maBelow=" + maBelow);
             return;
         }
-
         lastAutoDrinkTriggerAtMs = now;
         android.util.Log.d(TAG, "AUTO_DRINK_TRACE trigger restore elixir: hp="
                 + snapshot.curHp + "/" + snapshot.maxHp + " (" + String.format(Locale.US, "%.1f", hpPercent) + "%)"
@@ -903,7 +808,6 @@ public class MainPhp {
                 + ", address=" + address);
         FastActionManager.fastAttackMomentRestoreElixir();
     }
-
     /**
      * Invariant-парсинг числа (аналог NumberStyles.Any + InvariantCulture в C#).
      * Допускает кавычки вокруг значения.
@@ -927,7 +831,6 @@ public class MainPhp {
             return null;
         }
     }
-
     /**
      * Порт блока чтения умений из C# `MainPhp.cs`:
      * - при наличии блока "Охота ... [N]" обновляет `AppVars.SkinUm`;
@@ -941,12 +844,10 @@ public class MainPhp {
         if (html == null || html.isEmpty()) {
             return;
         }
-
         String skinSkill = HelperStrings.subString(
                 html,
                 "Охота</td><td bgcolor=#FCFAF3><font class=proce><font color=#555555><div align=center>[",
                 "]");
-
         if (skinSkill == null || skinSkill.isEmpty()) {
             // Fallback-парсинг на случай косметических изменений HTML.
             java.util.regex.Matcher matcher = java.util.regex.Pattern
@@ -956,7 +857,6 @@ public class MainPhp {
                 skinSkill = matcher.group(1);
             }
         }
-
         if (skinSkill != null && !skinSkill.isEmpty()) {
             try {
                 int skinUm = Integer.parseInt(skinSkill.trim());
@@ -969,7 +869,6 @@ public class MainPhp {
                         sb.append(" (+").append(skinUm - AppVars.SkinUm).append(")");
                     }
                     AppVars.SkinUm = skinUm;
-
                     if (isAutoSkinEnabledByPreference() && AppVars.getContext() != null) {
                         Intent msgIntent = new Intent(AppVars.ACTION_ADD_CHAT_MESSAGE);
                         msgIntent.putExtra("message", sb.toString());
@@ -982,7 +881,6 @@ public class MainPhp {
             }
             return;
         }
-
         // Защитный сброс от зацикливания: мы уже на странице mselect=1,
         // но сервер не выдал ожидаемый блок навыка.
         if (AppVars.AutoSkinCheckUm && address != null && address.contains("mselect=1")) {
@@ -990,7 +888,6 @@ public class MainPhp {
             android.util.Log.w(TAG, "AUTO_SKIN_TRACE mselect=1 without skill block, forced AutoSkinCheckUm=false");
         }
     }
-
     /**
      * Определяет, включена ли Авто-Охота (C# `Profile.SkinAuto` / `buttonAutoSkin`).
      */
@@ -1007,7 +904,6 @@ public class MainPhp {
         }
         return false;
     }
-
     /**
      * Определяет, включена ли Авто-Рыбалка в профиле/настройках.
      */
@@ -1024,7 +920,6 @@ public class MainPhp {
         }
         return false;
     }
-
     /**
      * Чтение умения "Рыбалка" на странице `mselect=1` (C# parity для `AutoFishCheckUm`).
      */
@@ -1062,7 +957,6 @@ public class MainPhp {
             android.util.Log.w(TAG, "AUTO_FISH_TRACE mselect=1 without Рыбалка block, forced AutoFishCheckUm=false");
         }
     }
-
     /**
      * Определяет, включен ли режим "Снежок/Ярость (первый удар на осаде)".
      *
@@ -1085,7 +979,6 @@ public class MainPhp {
         }
         return AppVars.DoFury;
     }
-
     /**
      * Периодическая (раз в минуту) установка флага проверки ножа,
      * аналог `FormMainTicks.cs`: `AutoSkinLastChecked` -> `AutoSkinCheckKnife = true`.
@@ -1102,7 +995,6 @@ public class MainPhp {
             android.util.Log.d(TAG, "AUTO_SKIN_TRACE periodic knife recheck requested");
         }
     }
-
     /**
      * Порт `MainPhpRaz.cs`: проверка `fight_ty[9]` и автопереход на разделку.
      */
@@ -1116,7 +1008,6 @@ public class MainPhp {
             }
             return null;
         }
-
         List<String> fightTy = splitJsTopLevelCsv(strFightTy);
         if (fightTy.size() <= 9) {
             String fallbackRazLink = extractRazLinkFromHtml(html);
@@ -1126,7 +1017,6 @@ public class MainPhp {
             }
             return null;
         }
-
         String fightTyNine = fightTy.get(9);
         if (fightTyNine == null) {
             String fallbackRazLink = extractRazLinkFromHtml(html);
@@ -1136,7 +1026,6 @@ public class MainPhp {
             }
             return null;
         }
-
         String trimmed = fightTyNine.trim();
         if (!trimmed.startsWith("[") || !trimmed.endsWith("]")) {
             String fallbackRazLink = extractRazLinkFromHtml(html);
@@ -1146,7 +1035,6 @@ public class MainPhp {
             }
             return null;
         }
-
         String inner = trimmed.substring(1, trimmed.length() - 1);
         List<String> razParams = splitJsTopLevelCsv(inner);
         if (razParams.size() <= 5) {
@@ -1157,18 +1045,15 @@ public class MainPhp {
             }
             return null;
         }
-
         String type = trimJsToken(razParams.get(0));
         String p = trimJsToken(razParams.get(1));
         String uid = trimJsToken(razParams.get(2));
         String s = trimJsToken(razParams.get(3));
         String m = trimJsToken(razParams.get(4));
         String vcode = trimJsToken(razParams.get(5));
-
         if (type.isEmpty() || uid.isEmpty() || vcode.isEmpty()) {
             return null;
         }
-
         String razLink = "http://neverlands.ru/main.php?get_id=17&type=" + type
                 + "&p=" + p
                 + "&uid=" + uid
@@ -1178,7 +1063,6 @@ public class MainPhp {
         android.util.Log.d(TAG, "AUTO_SKIN_TRACE mainPhpRaz: redirect to " + razLink);
         return buildRedirectHtml("Разделка", razLink);
     }
-
     /**
      * Порт `MainPhpFindPerc` из C# (`MainPhpDrink.cs`).
      */
@@ -1192,7 +1076,6 @@ public class MainPhp {
         }
         return findMainPhpLinkByQueryParts(html, "get_id=17");
     }
-
     /**
      * Нормализует ссылку `main.php` для auto-redirect:
      * - приводит хост к `http://neverlands.ru` без `www`;
@@ -1203,13 +1086,10 @@ public class MainPhp {
         if (link == null || link.trim().isEmpty()) {
             return "http://neverlands.ru/main.php";
         }
-
         String normalized = link.trim().replace("&amp;", "&");
-
         while (normalized.startsWith("../")) {
             normalized = normalized.substring(3);
         }
-
         if (normalized.startsWith("//neverlands.ru/")) {
             normalized = "http:" + normalized;
         } else if (normalized.startsWith("/main.php")) {
@@ -1219,13 +1099,11 @@ public class MainPhp {
         } else if (normalized.startsWith("?")) {
             normalized = "http://neverlands.ru/main.php" + normalized;
         }
-
         normalized = normalized.replace("https://www.neverlands.ru/", "http://neverlands.ru/");
         normalized = normalized.replace("http://www.neverlands.ru/", "http://neverlands.ru/");
         normalized = normalized.replace("https://neverlands.ru/", "http://neverlands.ru/");
         return normalized;
     }
-
     /**
      * Универсальный fallback-поиск ссылки `main.php?...` по набору query-маркеров.
      * Возвращает первую подходящую ссылку в нормализованном виде.
@@ -1234,7 +1112,6 @@ public class MainPhp {
         if (html == null || html.isEmpty()) {
             return null;
         }
-
         String source = html.replace("&amp;", "&");
         java.util.regex.Pattern pattern = java.util.regex.Pattern.compile(
                 "(?:https?://(?:www\\.)?neverlands\\.ru/|\\.\\./|/)?main\\.php\\?[^'\"\\s<]+",
@@ -1264,7 +1141,6 @@ public class MainPhp {
         }
         return null;
     }
-
     /**
      * Добавляет/дополняет query-параметры фильтра инвентаря (`&im=...&wca=...`) к найденной ссылке.
      * Если ссылка указывает на `go=inf`, переводит её на `go=inv`.
@@ -1277,12 +1153,10 @@ public class MainPhp {
         if (filter == null || filter.isEmpty()) {
             return normalized;
         }
-
         String filterNormalized = filter.startsWith("&") ? filter.substring(1) : filter;
         if (filterNormalized.isEmpty()) {
             return normalized;
         }
-
         String[] queryParts = filterNormalized.split("&");
         String result = normalized;
         for (String part : queryParts) {
@@ -1303,7 +1177,6 @@ public class MainPhp {
         }
         return result;
     }
-
     /**
      * Устанавливает query-параметр в URL:
      * - если параметр уже есть, заменяет его значение;
@@ -1319,7 +1192,6 @@ public class MainPhp {
         if (queryStart == -1) {
             return url + "?" + keyWithEq + safeValue;
         }
-
         int from = queryStart + 1;
         while (from < url.length()) {
             int amp = url.indexOf('&', from);
@@ -1333,10 +1205,8 @@ public class MainPhp {
             }
             from = amp + 1;
         }
-
         return url + "&" + keyWithEq + safeValue;
     }
-
     /**
      * Проверяет, что текущий адрес уже находится в разделе инвентаря (`go=inv`).
      * Используется как fallback-маркер, когда HTML-шаблон инвентаря может отличаться.
@@ -1348,7 +1218,6 @@ public class MainPhp {
         String normalizedAddress = normalizeNeverlandsMainLink(address).toLowerCase(Locale.ROOT);
         return normalizedAddress.contains("main.php") && normalizedAddress.contains("go=inv");
     }
-
     /**
      * Проверяет, что адрес инвентаря уже содержит все параметры из требуемого фильтра
      * с совпадающими значениями (`im`, `wca` и т.д.).
@@ -1361,12 +1230,10 @@ public class MainPhp {
         if (filter == null || filter.isEmpty()) {
             return true;
         }
-
         String filterNormalized = filter.startsWith("&") ? filter.substring(1) : filter;
         if (filterNormalized.isEmpty()) {
             return true;
         }
-
         String[] queryParts = filterNormalized.split("&");
         for (String part : queryParts) {
             if (part == null || part.isEmpty()) {
@@ -1382,7 +1249,6 @@ public class MainPhp {
         }
         return true;
     }
-
     /**
      * Возвращает значение query-параметра из URL или null, если параметр отсутствует.
      */
@@ -1410,7 +1276,6 @@ public class MainPhp {
         }
         return null;
     }
-
     /**
      * Ищет и строит redirect на страницу персонажа ({@code go=inf}) через {@code vcode}.
      *
@@ -1428,7 +1293,6 @@ public class MainPhp {
             String link = "main.php?get_id=56&act=10&go=inf&vcode=" + vcode;
             return buildRedirectHtml("Переключение на персонаж", link);
         }
-
         String patternEnter = "[\"inf\",\"Ваш персонаж\",\"";
         int posPatternEnter = html.indexOf(patternEnter);
         if (posPatternEnter == -1) {
@@ -1439,7 +1303,6 @@ public class MainPhp {
             }
             return null;
         }
-
         posPatternEnter += patternEnter.length();
         int posEnd = html.indexOf('"', posPatternEnter);
         if (posEnd == -1) {
@@ -1450,7 +1313,6 @@ public class MainPhp {
             }
             return null;
         }
-
         String jsonVcode = html.substring(posPatternEnter, posEnd);
         if (jsonVcode == null || jsonVcode.isEmpty()) {
             String fallbackLink = findMainPhpLinkByQueryParts(html, "get_id=56", "act=10", "go=inf", "vcode=");
@@ -1463,7 +1325,6 @@ public class MainPhp {
         String link = "main.php?get_id=56&act=10&go=inf&vcode=" + jsonVcode;
         return buildRedirectHtml("Переключение на персонаж", link);
     }
-
     /**
      * Порт `MainPhpFindFlora` из ПК-версии (`MainPhpDrink.cs`):
      * автоматический переход на "природу/карту" через кнопку "Вернуться".
@@ -1481,18 +1342,15 @@ public class MainPhp {
         if (html == null || html.isEmpty()) {
             return null;
         }
-
         // C# parity: если "Причал" DISABLED, автопереход на природу не нужен.
         if (containsIgnoreCase(html, "<input type=button class=lbutdis value=\"Причал\" disabled>")) {
             return null;
         }
-
         final String returnMarker = "value=\"Вернуться\">";
         int posReturn = html.toLowerCase(Locale.ROOT).indexOf(returnMarker.toLowerCase(Locale.ROOT));
         if (posReturn == -1) {
             return null;
         }
-
         final String onClickPrefix = "onclick=\"location='";
         int posOnClick = html.toLowerCase(Locale.ROOT).lastIndexOf(
                 onClickPrefix.toLowerCase(Locale.ROOT),
@@ -1501,21 +1359,17 @@ public class MainPhp {
         if (posOnClick == -1) {
             return null;
         }
-
         int linkStart = posOnClick + onClickPrefix.length();
         int linkEnd = html.indexOf('\'', linkStart);
         if (linkEnd == -1 || linkEnd <= linkStart) {
             return null;
         }
-
         String link = html.substring(linkStart, linkEnd);
         if (link.isEmpty()) {
             return null;
         }
-
         return buildRedirectHtml("Переключение на природу", link);
     }
-
     /**
      * C# parity (`MainPhpFindFish`): на карте вставляет вызов `Fish('<vcode>')` после `view_map();`.
      */
@@ -1546,7 +1400,6 @@ public class MainPhp {
         posScript += patternViewMap.length();
         return html.substring(0, posScript) + callFish + html.substring(posScript);
     }
-
     /**
      * Порт `MainPhpIsPerc` из C# (`MainPhpDrink.cs`).
      */
@@ -1554,7 +1407,6 @@ public class MainPhp {
         String lower = html.toLowerCase(Locale.ROOT);
         return lower.contains("input type=button class=lbut value=\"умения\"");
     }
-
     /**
      * Порт `MainPhpArmedKinfe` из C# (`MainPhpWear.cs`).
      */
@@ -1565,7 +1417,6 @@ public class MainPhp {
         }
         return parsedDressed.IsWearKnife();
     }
-
     /**
      * Порт `MainPhpWearKnife` из C# (`MainPhpWear.cs`).
      */
@@ -1574,7 +1425,6 @@ public class MainPhp {
         if (!dressed.Valid) {
             return null;
         }
-
         boolean isWear = dressed.IsWearKnife();
         if (!isWear) {
             List<WearInvEntry> invList = getWearInvList(html);
@@ -1592,11 +1442,9 @@ public class MainPhp {
                 }
             }
         }
-
         AppVars.AutoSkinArmedKnife = false;
         return null;
     }
-
     /**
      * C# parity: проверка, нужно ли переодевать снасти авто-рыбалки.
      */
@@ -1612,7 +1460,6 @@ public class MainPhp {
         boolean isWear2 = parsedDressed.IsWear2();
         return !isWear2 && AppVars.Profile != null && AppVars.Profile.FishAutoWear;
     }
-
     /**
      * C# parity: авто-надевание снастей в обе руки (`MainPhpWearUd`).
      */
@@ -1622,7 +1469,6 @@ public class MainPhp {
             return null;
         }
         List<WearInvEntry> invList = getWearInvList(html);
-
         boolean isWear1 = ud.IsWear1();
         if (!isWear1 && AppVars.Profile.FishAutoWear) {
             for (WearInvEntry thing : invList) {
@@ -1638,7 +1484,6 @@ public class MainPhp {
             disableAutoFish("Не найден предмет для первой руки");
             return null;
         }
-
         boolean isWear2 = ud.IsWear2();
         if (!isWear2 && AppVars.Profile.FishAutoWear) {
             for (WearInvEntry thing : invList) {
@@ -1650,7 +1495,6 @@ public class MainPhp {
                     matches = containsIgnoreCase(thing.name, AppVars.Profile.FishHandTwo);
                 }
                 if (!matches) continue;
-
                 if ((ud.Empty1 || ud.Empty2) || !ud.InRightSlot) {
                     return buildRedirectHtml("Одеваем снасть во вторую руку", thing.wearLink);
                 }
@@ -1660,11 +1504,9 @@ public class MainPhp {
                 }
             }
         }
-
         AppVars.AutoFishWearUd = false;
         return null;
     }
-
     /**
      * Формирует ключ текущего состояния проверки снастей авто-рыбалки.
      *
@@ -1687,7 +1529,6 @@ public class MainPhp {
         String h2 = AppVars.AutoFishHand2 == null ? "" : AppVars.AutoFishHand2;
         return cfg1 + "|" + cfg2 + "|" + h1 + "|" + h2;
     }
-
     /**
      * Обновляет счётчик повторов для anti-loop guard авто-рыбалки.
      *
@@ -1703,7 +1544,6 @@ public class MainPhp {
         boolean sameKey = stateKey.equals(AppVars.AutoFishWearLoopKey);
         boolean inWindow = AppVars.AutoFishWearLoopStamp > 0L
                 && (now - AppVars.AutoFishWearLoopStamp) <= AUTO_FISH_WEAR_LOOP_WINDOW_MS;
-
         if (sameKey && inWindow) {
             AppVars.AutoFishWearLoopCount++;
         } else {
@@ -1711,10 +1551,8 @@ public class MainPhp {
             AppVars.AutoFishWearLoopCount = 1;
         }
         AppVars.AutoFishWearLoopStamp = now;
-
         return AppVars.AutoFishWearLoopCount >= AUTO_FISH_WEAR_LOOP_MAX_REPEATS;
     }
-
     /**
      * Сбрасывает anti-loop runtime-состояние авто-рыбалки.
      *
@@ -1727,7 +1565,6 @@ public class MainPhp {
         AppVars.AutoFishWearLoopCount = 0;
         AppVars.AutoFishWearLoopStamp = 0L;
     }
-
     private static void disableAutoFish(String reason) {
         resetAutoFishWearLoopGuard();
         android.util.Log.w(TAG, "AUTO_FISH_TRACE disable auto fish: " + reason);
@@ -1749,7 +1586,6 @@ public class MainPhp {
             LocalBroadcastManager.getInstance(AppVars.getContext()).sendBroadcast(msgIntent);
         }
     }
-
     private static String extractInputValue(String html, String name) {
         if (html == null || html.isEmpty() || name == null || name.isEmpty()) return "";
         java.util.regex.Matcher m = java.util.regex.Pattern
@@ -1763,7 +1599,6 @@ public class MainPhp {
                 .matcher(html);
         return m.find() ? m.group(1) : "";
     }
-
     private static int pickFishPrimId(String html) {
         if (AppVars.Profile == null) return -1;
         List<Integer> candidates = new ArrayList<>();
@@ -1778,7 +1613,6 @@ public class MainPhp {
         Collections.shuffle(candidates, RANDOM);
         return candidates.get(0);
     }
-
     /**
      * C# parity: подготовка шага рыбалки на странице выбора приманки (`MainPhpAutoFishPrepare`).
      */
@@ -1790,13 +1624,11 @@ public class MainPhp {
         if (!lower.contains("name=primid") || !lower.contains("name=get_id")) {
             return null;
         }
-
         AppVars.CodeAddress = "";
         String codeAddress = extractCaptchaUrl(html);
         if (codeAddress != null && !codeAddress.isEmpty()) {
             AppVars.CodeAddress = codeAddress;
         }
-
         String getid = extractInputValue(html, "get_id");
         String act = extractInputValue(html, "act");
         String vcode = extractInputValue(html, "vcode");
@@ -1804,18 +1636,15 @@ public class MainPhp {
         if (getid.isEmpty() || act.isEmpty() || vcode.isEmpty() || lakeid.isEmpty()) {
             return null;
         }
-
         String massa = HelperStrings.subString(html, "<b>Масса Вашего инвентаря: ", "</b>");
         if (massa != null && !massa.isEmpty()) {
             AppVars.AutoFishMassa = massa;
         }
-
         int primid = pickFishPrimId(html);
         if (primid <= 0) {
             disableAutoFish("Нет доступной приманки по настройкам");
             return null;
         }
-
         AppVars.AutoFishLikeId = String.valueOf(primid);
         AppVars.AutoFishLikeVal = "";
         String marker = "name=primid value=" + primid;
@@ -1826,20 +1655,17 @@ public class MainPhp {
                 html = html.substring(0, insertPos) + "checked " + html.substring(insertPos);
             }
         }
-
         AppVars.FightLink = "http://neverlands.ru/main.php?get_id=" + getid
                 + "&lakeid=" + lakeid
                 + "&act=" + act
                 + "&primid=" + primid
                 + (AppVars.CodeAddress == null || AppVars.CodeAddress.isEmpty() ? "" : "&code=????")
                 + "&vcode=" + vcode;
-
         android.util.Log.d(TAG, "AUTO_FISH_TRACE prepared FightLink=" + AppVars.FightLink
                 + ", captcha=" + (AppVars.CodeAddress != null && !AppVars.CodeAddress.isEmpty())
                 + ", primid=" + primid);
         return html;
     }
-
     /**
      * Проверка, надет ли целевой свиток режима осады (`Свиток Удар Ярости`/`Снежок`).
      */
@@ -1850,7 +1676,6 @@ public class MainPhp {
         }
         return parsedDressed.IsWearFuryScroll();
     }
-
     /**
      * Поиск и надевание свитка режима осады в инвентаре (`wca=28`).
      *
@@ -1861,7 +1686,6 @@ public class MainPhp {
         if (!dressed.Valid) {
             return null;
         }
-
         boolean isWear = dressed.IsWearFuryScroll();
         if (!isWear) {
             List<WearInvEntry> invList = getWearInvList(html);
@@ -1879,11 +1703,9 @@ public class MainPhp {
                 }
             }
         }
-
         AppVars.AutoFuryArmedScroll = false;
         return null;
     }
-
     /**
      * Порт `MainPhpGetSkinRes` из C# (`MainPhpWear.cs`).
      */
@@ -1896,14 +1718,12 @@ public class MainPhp {
             // В этом случае пробуем парсить весь HTML по шаблону ресурсных строк.
             pos = 0;
         }
-
         StringBuilder sb = new StringBuilder();
         List<String> deltaForChat = new ArrayList<>();
         Map<String, Double> deltaForStatsKg = new LinkedHashMap<>();
         boolean baselineFill = AppVars.SkinRes.isEmpty();
         int parsedResources = 0;
         int diffResources = 0;
-
         if (anchorFound) {
             pos += patternStartRes.length();
         }
@@ -1913,7 +1733,6 @@ public class MainPhp {
             if (pos == -1) {
                 break;
             }
-
             pos += patternStartTr.length();
             final String patternEndTr = "</tr>";
             int posEnd = html.indexOf(patternEndTr, pos);
@@ -1921,7 +1740,6 @@ public class MainPhp {
                 break;
             }
             posEnd += patternEndTr.length();
-
             String htmlEntry = html.substring(pos, posEnd);
             String valString = HelperStrings.subString(htmlEntry, " width=15% class=travma align=center>", "</td>");
             Double val = tryParseDoubleInvariant(valString);
@@ -1964,10 +1782,8 @@ public class MainPhp {
                     }
                 }
             }
-
             pos = posEnd;
         }
-
         if (!deltaForChat.isEmpty()) {
             String message = buildServerChatTimeHtml()
                     + "<font color=#006600><b>Результат разделки:</b></font> "
@@ -1981,26 +1797,22 @@ public class MainPhp {
         if (!deltaForStatsKg.isEmpty()) {
             ru.neverlands.abclient.utils.ChatStats.addResourceDeltaKg(deltaForStatsKg);
         }
-
         android.util.Log.d(TAG, "AUTO_SKIN_TRACE mainPhpGetSkinRes: anchorFound=" + anchorFound
                 + ", baselineFill=" + baselineFill
                 + ", parsedResources=" + parsedResources
                 + ", diffResources=" + diffResources
                 + ", deltaMapSize=" + deltaForStatsKg.size());
     }
-
     /**
      * Порт `GetInvList` из C# (`MainPhpWear.cs`) для поиска `WearLink`.
      */
     private static List<WearInvEntry> getWearInvList(String html) {
         List<WearInvEntry> invList = new ArrayList<>();
-
         final String patternStartInv = "</b></font></td></tr>";
         int pos = html.indexOf(patternStartInv);
         if (pos == -1) {
             return invList;
         }
-
         pos += patternStartInv.length();
         while (true) {
             final String patternStartTr = "<tr><td bgcolor=#F5F5F5>";
@@ -2008,7 +1820,6 @@ public class MainPhp {
                     || !html.substring(pos, pos + patternStartTr.length()).startsWith(patternStartTr)) {
                 break;
             }
-
             final String patternEndTrLong = "<td bgcolor=#FCFAF3><img src=http://image.neverlands.ru/1x1.gif width=5 height=1></td></tr></table></td></tr></table></td></tr>";
             int posEnd = html.indexOf(patternEndTrLong, pos);
             if (posEnd == -1) {
@@ -2021,7 +1832,6 @@ public class MainPhp {
             } else {
                 posEnd += patternEndTrLong.length();
             }
-
             String htmlEntry = html.substring(pos, posEnd);
             WearInvEntry entry = parseWearInvEntry(htmlEntry);
             if (entry != null) {
@@ -2031,7 +1841,6 @@ public class MainPhp {
         }
         return invList;
     }
-
     /**
      * Парсит одну запись предмета инвентаря для wear-логики.
      *
@@ -2063,7 +1872,6 @@ public class MainPhp {
         entry.wearLink = wearLink == null ? "" : wearLink;
         return entry;
     }
-
     /**
      * Делит JS-список значений по верхнеуровневым запятым.
      *
@@ -2079,12 +1887,10 @@ public class MainPhp {
         if (source == null || source.isEmpty()) {
             return result;
         }
-
         int depthSquare = 0;
         int depthRound = 0;
         char quote = 0;
         StringBuilder current = new StringBuilder();
-
         for (int index = 0; index < source.length(); index++) {
             char currentChar = source.charAt(index);
             if (quote != 0) {
@@ -2094,7 +1900,6 @@ public class MainPhp {
                 }
                 continue;
             }
-
             if (currentChar == '\'' || currentChar == '"') {
                 quote = currentChar;
                 current.append(currentChar);
@@ -2130,7 +1935,6 @@ public class MainPhp {
         result.add(current.toString().trim());
         return result;
     }
-
     /**
      * Нормализует JS-токен: trim + снятие внешних кавычек.
      *
@@ -2151,7 +1955,6 @@ public class MainPhp {
         }
         return trimmed.trim();
     }
-
     /**
      * Центральный post-filter обработчик ответов {@code main.php}.
      *
@@ -2172,7 +1975,6 @@ public class MainPhp {
         AppVars.IdleTimer = System.currentTimeMillis();
         AppVars.LastMainPhp = System.currentTimeMillis();
         AppVars.ContentMainPhp = null;
-
         String html = Russian.getString(array);
         String originalHtml = html;
         android.util.Log.d(TAG, "HTML length after getString: " + html.length());
@@ -2182,13 +1984,11 @@ public class MainPhp {
         // обновляем интервалы восстановления HP/MA из `ins_HP(...)` до основной логики,
         // чтобы расчёт `Restoring` выполнялся по актуальным `hp_int/ma_int`.
         mainPhpInsHp(html);
-
         // Извлечение vcode - полезная логика из новой версии
         String vcode = HelperStrings.subString(html, "'main.php?get_id=56&act=10&go=inf&vcode=", "'");
         if (vcode != null) {
             AppVars.VCode = vcode;
         }
-
         // Системное сообщение (аналог MainPhp.cs строки 207-223).
         // Паттерн: <font class=nickname><font color=#cc0000><b>ТЕКСТ<br><br></b></font></font>
         // Диагностика: ищем cc0000 в HTML чтобы понять реальный паттерн сервера
@@ -2227,7 +2027,6 @@ public class MainPhp {
             msgIntent.putExtra("message", "<font color=#cc0000><b>" + sysMessage + "</b></font>");
             LocalBroadcastManager.getInstance(AppVars.getContext()).sendBroadcast(msgIntent);
         }
-
         // Аналог C# MainPhp.cs: если авто-нападение уткнулось в закрытый бой,
         // добавляем цель во временный blacklist и отменяем fast-цикл.
         // Зависимости:
@@ -2249,7 +2048,7 @@ public class MainPhp {
         if (isFightFinishAddress) {
             registerFightEndByLogId(AppVars.LastBoiLog, "fight_finish_url_early");
             publishFightResultFromLogsIfNeeded(html, address, AppVars.LastBoiLog);
-            publishFightSummaryFromFinishHtmlIfNeeded(html, AppVars.LastBoiLog);
+            publishFightSummaryFromFinishHtmlIfNeeded(html, address, AppVars.LastBoiLog);
         }
         maybeMarkAutoSkinKnifeRecheck();
         boolean closedFightInterfereError = htmlLower.contains("ошибка при использовании. нельзя вмешаться в закрытый бой");
@@ -2265,11 +2064,9 @@ public class MainPhp {
             }
             FastActionManager.fastCancel("closed-fight-interfere-error");
         }
-
         // Проверка автопитья после получения верхнего фрейма персонажа.
         // При совпадении условий запускает единый fast-action "Эликсир Восстановления".
         tryTriggerAutoDrinkRestoreElixir(address, html, isFightFrame, isFightTopFrame);
-
         // Обработка быстрых действий (портировано из MainPhp.cs строки 1429-1619)
         // В C# FastAction обрабатывается ВНУТРИ MainPhp, а не в отдельном менеджере.
         // Алгоритм: MainPhpFindInv → BuildRedirect на инвентарь → MainPhpIsInv → MainPhpFast → BuildRedirect на категорию
@@ -2279,13 +2076,11 @@ public class MainPhp {
                 return fastResult;
             }
         }
-
         // Чтение умения "Охота" (C# parity) до оркестрации AutoSkin,
         // чтобы `AutoSkinCheckUm` корректно сбрасывался на `mselect=1`.
         mainPhpProcessSkills(html, address);
         // Чтение умения "Рыбалка" (C# parity) до оркестрации AutoFish.
         mainPhpProcessFishSkills(html, address);
-
         // Оркестрация Авто-Рыбалки (C# MainPhp.cs + MainPhpWear.cs + MainPhpFish.cs):
         // 1) при необходимости читаем умение Рыбалка (mselect=1);
         // 2) проверяем/переодеваем снасти в обеих руках;
@@ -2308,7 +2103,6 @@ public class MainPhp {
                         return Russian.getBytes(buildRedirectHtml("Переключение на умения персонажа", "main.php?mselect=1"));
                     }
                 }
-
                 if (AppVars.AutoFishCheckUd) {
                     String perchtml = mainPhpFindPerc(html);
                     if (perchtml != null && !perchtml.isEmpty()) {
@@ -2331,7 +2125,6 @@ public class MainPhp {
                         android.util.Log.d(TAG, "AUTO_FISH_TRACE gear check result: mustWear=" + AppVars.AutoFishWearUd);
                     }
                 }
-
                 if (AppVars.AutoFishWearUd) {
                     String invHtml = mainPhpFindInvWithFallback(html, "&im=0&wca=4", address);
                     if (invHtml != null && !invHtml.isEmpty()) {
@@ -2351,7 +2144,6 @@ public class MainPhp {
                         }
                     }
                 }
-
                 // C# parity (`MainPhpFindFlora`): если мы не на карте и есть кнопка "Вернуться",
                 // автоматически возвращаемся на природу перед поиском кнопки "Рыбалка".
                 String floraHtml = mainPhpFindFlora(html);
@@ -2359,14 +2151,12 @@ public class MainPhp {
                     android.util.Log.d(TAG, "AUTO_FISH_TRACE redirect to nature/map via return button");
                     return Russian.getBytes(floraHtml);
                 }
-
                 // C# parity: на карте автоматически нажимаем "Рыбалка", чтобы открыть форму выбора приманки.
                 String fishMapHtml = mainPhpFindFish(html);
                 if (fishMapHtml != null && !fishMapHtml.isEmpty()) {
                     android.util.Log.d(TAG, "AUTO_FISH_TRACE inject Fish(vcode) into map frame");
                     return Russian.getBytes(fishMapHtml);
                 }
-
                 String fishPreparedHtml = mainPhpAutoFishPrepare(html);
                 if (fishPreparedHtml != null) {
                     html = fishPreparedHtml;
@@ -2390,7 +2180,6 @@ public class MainPhp {
                 }
             }
         }
-
         // Оркестрация режима "Снежок/Ярость" (buttonFury из C#) + авто-надевание свитка:
         // 1) проверка надетого свитка на странице персонажа;
         // 2) авто-переход в инвентарь свитков (`im=0&wca=28`);
@@ -2404,7 +2193,6 @@ public class MainPhp {
                         android.util.Log.d(TAG, "AUTO_FURY_TRACE redirect to character page for scroll check");
                         return Russian.getBytes(perchtml);
                     }
-
                     AppVars.AutoFuryArmedScroll = false;
                     if (mainPhpIsPerc(html)) {
                         AppVars.AutoFuryArmedScroll = mainPhpArmedFuryScroll(html);
@@ -2413,14 +2201,12 @@ public class MainPhp {
                                 + ", hand=" + AppVars.AutoFuryHand);
                     }
                 }
-
                 if (!AppVars.AutoFuryArmedScroll) {
                     String invHtml = mainPhpFindInvWithFallback(html, "&im=0&wca=28", address);
                     if (invHtml != null && !invHtml.isEmpty()) {
                         android.util.Log.d(TAG, "AUTO_FURY_TRACE redirect to scroll inventory (&im=0&wca=28)");
                         return Russian.getBytes(invHtml);
                     }
-
                     if (mainPhpIsInv(html) || isInventoryAddress(address)) {
                         invHtml = mainPhpWearFuryScroll(html);
                         if (invHtml == null || invHtml.isEmpty()) {
@@ -2436,7 +2222,6 @@ public class MainPhp {
                 }
             }
         }
-
         // Авто-разделка (MainPhpRaz.cs): если в текущем боевом кадре доступна кнопка "Разделать",
         // выполняем редирект на действие разделки до стандартной боевой обработки.
         if (isAutoSkinEnabledByPreference()) {
@@ -2445,7 +2230,6 @@ public class MainPhp {
                 return Russian.getBytes(razHtml);
             }
         }
-
         // Оркестрация AutoSkin из C# MainPhp.cs (MainPhpWear.cs + TInvUd.cs):
         // 1) проверка/чтение умения "Охота";
         // 2) считывание охотничьих ресурсов;
@@ -2465,7 +2249,6 @@ public class MainPhp {
                         return Russian.getBytes(buildRedirectHtml("Переключение на умения персонажа", "main.php?mselect=1"));
                     }
                 }
-
                 if (AppVars.AutoSkinCheckRes) {
                     String invHtml = mainPhpFindInvWithFallback(html, "&im=5", address);
                     if (invHtml != null && !invHtml.isEmpty()) {
@@ -2478,14 +2261,12 @@ public class MainPhp {
                         mainPhpGetSkinRes(html);
                     }
                 }
-
                 if (AppVars.AutoSkinCheckKnife) {
                     String perchtml = mainPhpFindPerc(html);
                     if (perchtml != null && !perchtml.isEmpty()) {
                         android.util.Log.d(TAG, "AUTO_SKIN_TRACE redirect to character page for knife check");
                         return Russian.getBytes(perchtml);
                     }
-
                     AppVars.AutoSkinArmedKnife = false;
                     if (mainPhpIsPerc(html)) {
                         AppVars.AutoSkinArmedKnife = mainPhpArmedKnife(html);
@@ -2493,14 +2274,12 @@ public class MainPhp {
                         android.util.Log.d(TAG, "AUTO_SKIN_TRACE knife check result: armed=" + AppVars.AutoSkinArmedKnife);
                     }
                 }
-
                 if (!AppVars.AutoSkinArmedKnife) {
                     String invHtml = mainPhpFindInvWithFallback(html, "&im=0&wca=4", address);
                     if (invHtml != null && !invHtml.isEmpty()) {
                         android.util.Log.d(TAG, "AUTO_SKIN_TRACE redirect to items inventory (&im=0&wca=4)");
                         return Russian.getBytes(invHtml);
                     }
-
                     if (mainPhpIsInv(html) || isInventoryAddress(address)) {
                         invHtml = mainPhpWearKnife(html);
                         if (invHtml == null || invHtml.isEmpty()) {
@@ -2516,11 +2295,9 @@ public class MainPhp {
                 }
             }
         }
-
         // Обработка страницы боя
         // magic_slots() — признак страницы боя (fight frame)
         // var fight_ty — признак верхнего фрейма с данными о противнике
-
         if (isFightFrame || isFightTopFrame) {
             android.util.Log.d(TAG, "=== FIGHT FRAME DETECTED ==="
                     + " isFightFrame=" + isFightFrame
@@ -2534,18 +2311,14 @@ public class MainPhp {
             // Preserve original fight HTML for manual mode (avoid losing images after auto frame)
             AppVars.ContentMainPhp = originalHtml;
         }
-
         // Обработка инвентаря, основанная на стабильной версии из app_work
         if (html.contains("/invent/0.gif")) {
             html = mainPhpInv(html);
         }
-
         if (html.contains("var map = [[")) {
             html = MapAjax.process(html);
         }
-
         // ... other placeholders ...
-
         if (!(isFightFrame || isFightTopFrame)) {
             AppVars.ContentMainPhp = html;
         }
@@ -2554,7 +2327,6 @@ public class MainPhp {
         android.util.Log.d(TAG, "Result first 200: " + html.substring(0, Math.min(200, html.length())));
         return result;
     }
-
     /**
      * Обработка FastAction внутри MainPhp (аналог C# MainPhp.cs строки 1429-1619).
      *
@@ -2569,16 +2341,13 @@ public class MainPhp {
      */
     private static byte[] processMainPhpFast(String address, String html) {
         if (!AppVars.FastNeed || AppVars.FastId == null) return null;
-
         String fastId = AppVars.FastId;
         android.util.Log.d(TAG, "processMainPhpFast: FastId=" + fastId + ", address=" + address);
-
         // NeverTimer — cooldown (аналог DateTime.Now > AppVars.NeverTimer в C#)
         if (AppVars.NeverTimer > 0 && System.currentTimeMillis() < AppVars.NeverTimer) {
             android.util.Log.d(TAG, "processMainPhpFast: NeverTimer ещё не истёк, пропускаем");
             return null;
         }
-
         // --- Особый случай: get_id=43 — это страница применения эликсира/предмета.
         // Сервер уже применил действие (по GET-запросу), поэтому FastNeed нужно сбросить.
         // Иначе мы будем бесконечно перезапускать процесс.
@@ -2587,7 +2356,6 @@ public class MainPhp {
             FastActionManager.fastCancel("fast-get_id=43-action-already-applied");
             return null;
         }
-
         // Если fast-атака уже привела нас в бой (fight frame), дальнейший поиск инвентаря
         // становится бессмысленным и только мешает автобою.
         // Сценарий:
@@ -2603,20 +2371,17 @@ public class MainPhp {
             FastActionManager.fastCancel("entered-fight-frame-attack-fastid");
             return null;
         }
-
         // Определяем нужный фильтр категории
         String filter = getInventoryFilter(fastId);
         if (filter == null) {
             android.util.Log.w(TAG, "processMainPhpFast: неизвестный FastId=" + fastId);
             return null;
         }
-
         android.util.Log.d(TAG, "processMainPhpFast: filter=" + filter
                 + ", isInv=" + mainPhpIsInv(html)
                 + ", isInvByAddress=" + isInventoryAddress(address)
                 + ", w28_form=" + html.contains("w28_form(")
                 + ", magicreform=" + html.contains("magicreform("));
-
         // --- Особый случай: Тотем НЕ требует инвентаря ---
         // В C# тотем ищет ["fig","Напасть","vcode"] на основной странице.
         // mainPhpFindFlora делает redirect на основную страницу, если нужно.
@@ -2631,18 +2396,15 @@ public class MainPhp {
             FastActionManager.fastCancel("inventory-fast-item-not-found");
             return null;
         }
-
         // 1. Если мы НЕ на инвентаре — ищем ссылку на инвентарь с фильтром
         String invRedirect = mainPhpFindInvWithFallback(html, filter, address);
         if (invRedirect != null) {
             android.util.Log.d(TAG, "processMainPhpFast: redirect на инвентарь: " + invRedirect);
             return Russian.getBytes(invRedirect);
         }
-
         // 2. Если мы НА инвентаре — проверяем категорию и ищем предмет
         if (mainPhpIsInv(html) || isInventoryAddress(address)) {
             String filterClean = filter.startsWith("&") ? filter.substring(1) : filter;
-
             // 2a. Сначала проверяем, на правильной ли мы вкладке категории.
             // Если address не содержит нужный фильтр (wca=28/wca=27),
             // перенаправляем на нужную категорию ПЕРЕД поиском предмета.
@@ -2654,7 +2416,6 @@ public class MainPhp {
                 return Filter.buildRedirect("Переключение на нужную категорию",
                         "main.php?" + filterClean);
             }
-
             // 2b. Мы на правильной вкладке — ищем предмет
             String fastHtml = FastActionManager.processMainPhp(html);
             if (fastHtml != null) {
@@ -2662,26 +2423,22 @@ public class MainPhp {
                 android.util.Log.d(TAG, "processMainPhpFast: УСПЕХ, предмет найден");
                 return Russian.getBytes(fastHtml);
             }
-
             // 3. Мы на правильной вкладке, предмет не найден — отмена
             android.util.Log.w(TAG, "processMainPhpFast: предмет не найден на правильной вкладке ("
                     + filterClean + "), отмена");
             FastActionManager.fastCancel("inventory-fast-unsupported-context");
             return null;
         }
-
         // Мы не на инвентаре и MainPhpFindInv не нашла ссылку — вероятно, нужен обычный reload
         android.util.Log.d(TAG, "processMainPhpFast: не на инвентаре, MainPhpFindInv не нашла ссылку");
         return null;
     }
-
     /**
      * Проверяет, что HTML относится к боевому фрейму (верхний/основной бой).
      */
     private static boolean isFightFrameHtml(String html) {
         return html != null && (html.contains("var fight_ty") || html.contains("magic_slots();"));
     }
-
     /**
      * Технический URL-пробник, который AutoFight использует для форс-обновления fight.frame:
      * `main.php?get_id=56&act=10&go=inf&ts=...`.
@@ -2698,7 +2455,6 @@ public class MainPhp {
                 && lower.contains("ab_reload_probe=1")
                 && lower.contains("ts=");
     }
-
     /**
      * FastId, запускающие нападение/вход в бой (а не бафы/зелья).
      * Для них при входе в бой fast-цикл должен завершаться.
@@ -2718,7 +2474,6 @@ public class MainPhp {
                 return false;
         }
     }
-
     /**
      * Определяет фильтр инвентаря по FastId.
      * Аналог switch в C# MainPhp.cs строки 1436-1534
@@ -2727,9 +2482,7 @@ public class MainPhp {
      */
     private static String getInventoryFilter(String fastId) {
         if (fastId == null) return null;
-
         String normalizedFastId = normalizeFastId(fastId);
-
         switch (normalizedFastId) {
             // Свитки и нападалки → wca=28
             case "i_svi_001.gif":
@@ -2746,7 +2499,6 @@ public class MainPhp {
             case "i_w28_27.gif":
             case "i_w28_86.gif":
                 return "&im=0&wca=28";
-
             // Зелья → wca=27
             case "Яд":
             case "Зелье Сильной Спины":
@@ -2789,22 +2541,18 @@ public class MainPhp {
             case "Зелье Соколиный взор":
             case "Секретное Зелье":
                 return "&im=0&wca=27";
-
             // Эликсиры → im=6
             case "Эликсир Блаженства":
             case "Эликсир Мгновенного Исцеления":
             case "Эликсир Восстановления":
                 return "&im=6";
-
             // Телепорт остров
             case "Телепорт (Остров Туротор)":
                 return "&im=0&wca=28";
-
             // Тотем — НЕ требует инвентаря, работает с основной страницы
             // Возвращаем специальный маркер, processMainPhpFast обрабатывает его отдельно
             case "Тотем":
                 return "TOTEM";
-
             default:
                 // Дополнительная нормализация для Android-порта:
                 // в настройках/контактах название может прийти с отличиями по регистру
@@ -2819,7 +2567,6 @@ public class MainPhp {
                 return null;
         }
     }
-
     /**
      * Нормализует FastId перед сопоставлением:
      * - заменяет неразрывные пробелы на обычные;
@@ -2836,7 +2583,6 @@ public class MainPhp {
                 .trim();
         return normalized.replaceAll("\\s{2,}", " ");
     }
-
     /**
      * Проверка вхождения подстроки без учёта регистра.
      *
@@ -2850,7 +2596,6 @@ public class MainPhp {
         if (value == null || token == null) return false;
         return value.toLowerCase(Locale.ROOT).contains(token.toLowerCase(Locale.ROOT));
     }
-
     /**
      * Проверяет, что мы на странице инвентаря (аналог MainPhpIsInv в MainPhpDrink.cs:221-224).
      * Инвентарь содержит ссылку <a href="?im=0"><img...
@@ -2858,7 +2603,6 @@ public class MainPhp {
     private static boolean mainPhpIsInv(String html) {
         return html.contains("<a href=\"?im=0\"><img") || html.contains("<a href=?im=0><img");
     }
-
     /**
      * Ищет ссылку на инвентарь в текущем HTML и генерирует redirect.
      * Портировано из MainPhpDrink.cs — MainPhpFindInv (строки 86-219).
@@ -2878,13 +2622,11 @@ public class MainPhp {
         if (mainPhpIsInv(html)) {
             return null;
         }
-
         // Стратегия 1: view_arena() — арена
         if (html.contains("view_arena()")) {
             String result = mainPhpFindInvArena(html, filter);
             if (result != null) return result;
         }
-
         // Стратегия 2: view_moor/taverna/magic_sch/library/teleport — здания
         if (html.contains("view_moor()") || html.contains("view_taverna()")
                 || html.contains("view_magic_sch()") || html.contains("view_library()")
@@ -2892,13 +2634,11 @@ public class MainPhp {
             String result = mainPhpFindInvBuilding(html, filter);
             if (result != null) return result;
         }
-
         // Стратегия 3: Кнопка "Инвентарь" с onclick
         if (html.contains("Инвентарь") || html.contains("\u0418\u043D\u0432\u0435\u043D\u0442\u0430\u0440\u044C")) {
             String result = mainPhpFindInvOld(html, filter);
             if (result != null) return result;
         }
-
         // Стратегия 4: JSON ["inv","Инвентарь","vcode"...]
         String patternEnter = "[\"inv\",\"Инвентарь\",\"";
         int pos = html.indexOf(patternEnter);
@@ -2916,17 +2656,14 @@ public class MainPhp {
                 return buildRedirectHtml("Переключение на инвентарь", link);
             }
         }
-
         // Стратегия 5: Кнопка "Вернуться" → main.php (для случая когда мы внутри инвентаря, но на другой странице)
         if (html.contains("value=\"Вернуться\">") || html.contains("value=\"\u0412\u0435\u0440\u043D\u0443\u0442\u044C\u0441\u044F\">")) {
             if (html.contains("onclick=\"location='../main.php'\"") || html.contains("onclick=\"location='main.php'\"")) {
                 return buildRedirectHtml("Переключение на инвентарь", "main.php");
             }
         }
-
         return null;
     }
-
     /**
      * Стратегия поиска инвентаря на арене (view_arena).
      * Аналог MainPhpDrink.cs строки 99-130
@@ -2936,7 +2673,6 @@ public class MainPhp {
         if (inventoryAddressMatchesFilter(address, filter)) {
             return null;
         }
-
         // Если уже на go=inv, но фильтр не совпадает, синхронизируем адрес с нужными параметрами.
         if (isInventoryAddress(address)) {
             String normalizedAddress = normalizeNeverlandsMainLink(address);
@@ -2947,12 +2683,10 @@ public class MainPhp {
             }
             return null;
         }
-
         String redirectHtml = mainPhpFindInv(html, filter);
         if (redirectHtml != null) {
             return redirectHtml;
         }
-
         String fallbackInvLink = findMainPhpLinkByQueryParts(html, "get_id=56", "act=10", "go=inv", "vcode=");
         if (fallbackInvLink == null) {
             fallbackInvLink = findMainPhpLinkByQueryParts(html, "get_id=56", "act=10", "go=inf", "vcode=");
@@ -2960,12 +2694,10 @@ public class MainPhp {
         if (fallbackInvLink == null) {
             return null;
         }
-
         String filteredLink = applyInventoryFilterToLink(fallbackInvLink, filter);
         android.util.Log.d(TAG, "AUTO_FALLBACK_TRACE mainPhpFindInv: regex fallback -> " + filteredLink);
         return buildRedirectHtml("Переключение на инвентарь", filteredLink);
     }
-
     /**
      * Поиск ссылки инвентаря в шаблоне арены ({@code view_arena} + {@code var vcode=[...]}).
      *
@@ -2980,22 +2712,17 @@ public class MainPhp {
         String patternArena = "var vcode = [";
         int pos = html.indexOf(patternArena);
         if (pos == -1) return null;
-
         pos += patternArena.length();
         int posEnd = html.indexOf(']', pos);
         if (posEnd == -1) return null;
-
         String vcodeargs = html.substring(pos, posEnd);
         String[] pvcode = vcodeargs.split(",");
         if (pvcode.length < 2) return null;
-
         String avcode = pvcode[1].replace("\"", "").trim();
         if (avcode.isEmpty()) return null;
-
         String link = "main.php?get_id=56&act=10&go=inv&vcode=" + avcode + filter;
         return buildRedirectHtml("Переключение на инвентарь", link);
     }
-
     /**
      * Стратегия поиска инвентаря в зданиях (view_moor, view_taverna и т.д.).
      * Аналог MainPhpDrink.cs строки 142-180
@@ -3004,25 +2731,20 @@ public class MainPhp {
         String patternArena = "var vcode = [";
         int pos = html.indexOf(patternArena);
         if (pos == -1) return null;
-
         pos += patternArena.length();
         // Ищем второй vcode в формате [1,"hash"]
         String pattern2 = ",[1,\"";
         pos = html.indexOf(pattern2, pos);
         if (pos == -1) return null;
-
         pos += pattern2.length();
         int posEnd = html.indexOf("]", pos);
         if (posEnd == -1) return null;
-
         // vcode заканчивается перед последней кавычкой и скобкой
         String avcode = html.substring(pos, posEnd - 1);
         if (avcode.isEmpty()) return null;
-
         String link = "main.php?get_id=56&act=10&go=inv&vcode=" + avcode + filter;
         return buildRedirectHtml("Переключение на инвентарь", link);
     }
-
     /**
      * Ищет кнопку "Инвентарь" с onclick (аналог MainPhpFindInvOld в MainPhpDrink.cs:33-84).
      */
@@ -3034,7 +2756,6 @@ public class MainPhp {
             s1 = "value=\"\u0418\u043D\u0432\u0435\u043D\u0442\u0430\u0440\u044C\">";
             p1 = html.indexOf(s1);
         }
-
         if (p1 != -1) {
             String onclick = "onclick=\"location='";
             int p2 = html.lastIndexOf(onclick, p1);
@@ -3047,7 +2768,6 @@ public class MainPhp {
                 }
             }
         }
-
         // Вариант 2: class=lbut value="Инвентарь"
         String s1x = "class=lbut value=\"Инвентарь\"";
         int p1x = html.indexOf(s1x);
@@ -3055,7 +2775,6 @@ public class MainPhp {
             s1x = "class=lbut value=\"\u0418\u043D\u0432\u0435\u043D\u0442\u0430\u0440\u044C\"";
             p1x = html.indexOf(s1x);
         }
-
         if (p1x != -1) {
             String onclick = "onclick=\"location='";
             int p2 = html.indexOf(onclick, p1x);
@@ -3068,10 +2787,8 @@ public class MainPhp {
                 }
             }
         }
-
         return null;
     }
-
     /**
      * Генерирует HTML-страницу с JavaScript redirect (String-версия buildRedirect).
      * Аналог BuildRedirect в Filter.cs:280-291
@@ -3084,14 +2801,12 @@ public class MainPhp {
                 description +
                 "<script language=\"JavaScript\">window.location = \"" + normalizedLink + "\";</script></body></html>";
     }
-
     /**
      * Обработка страницы боя (портирование MainPhpFight.cs).
      * Анализирует HTML боя, генерирует авто-ход если автобой включен.
      */
     private static String mainPhpFight(String address, String html) {
         android.util.Log.d(TAG, "mainPhpFight: address=" + address + ", htmlLen=" + html.length());
-
         // --- Логирование переменных верхнего фрейма (fight_ty, param_en, slots_en) ---
         logFightVariable(html, "fight_ty");
         logFightVariable(html, "param_en");
@@ -3099,7 +2814,6 @@ public class MainPhp {
         logFightVariable(html, "param_my");
         logFightVariable(html, "slots_my");
         logFightVariable(html, "LogBoi");
-
         // --- Парсинг боя с помощью LezFight ---
         LezFight fight = new LezFight(html);
         // Снимок ins_HP(...) для UI ожидания лечения (Restoring).
@@ -3131,7 +2845,6 @@ public class MainPhp {
                 + " IsLowMa=" + fight.IsLowMa
                 + " DoExit=" + fight.DoExit
                 + " LogBoi=" + fight.LogBoi);
-
         if (!fight.IsValid) {
             android.util.Log.d(TAG, "mainPhpFight: fight.IsValid=false, returning original HTML");
             return html;
@@ -3142,7 +2855,6 @@ public class MainPhp {
         if (fight.IsBoi) {
             AppVars.LastFightPulseAtMs = System.currentTimeMillis();
         }
-
         // Унифицированный флаг "бой завершён":
         // - IsBoi=false: мы уже не в активной фазе ударов,
         // - IsWaitingForNextTurn=false: это не ожидание ответа противника.
@@ -3156,18 +2868,15 @@ public class MainPhp {
         }
         String fightCaptchaUrl = fightEnded ? resolveFightCaptchaUrl(html) : null;
         recoverAutoboiRuntimeStateIfNeeded(fightEnded, fightCaptchaUrl);
-
         // Синхронизация Timeout/Restoring как в C# MainPhpFight.cs.
         if (fightEnded && AppVars.Profile != null && AppVars.Profile.LezDoAutoboi) {
             long now = System.currentTimeMillis();
-
             if (AppVars.Autoboi == AutoboiState.Timeout) {
                 AppVars.AutoboiReadyAtMs = 0L;
                 AppVars.AutoboiReadyLog = "";
                 AppVars.Autoboi = AutoboiState.AutoboiOn;
                 android.util.Log.d(TAG, "mainPhpFight: Timeout finished on fight end -> AutoboiOn");
             }
-
             if (AppVars.Autoboi == AutoboiState.Restoring) {
                 boolean logChanged = fight.LogBoi != null && !fight.LogBoi.equals(AppVars.AutoboiReadyLog);
                 boolean timerReady = AppVars.AutoboiReadyAtMs > 0L && now >= AppVars.AutoboiReadyAtMs;
@@ -3202,7 +2911,6 @@ public class MainPhp {
                 AppVars.Autoboi = AutoboiState.AutoboiOn;
                 android.util.Log.d(TAG, "mainPhpFight: restoring finished -> AutoboiOn");
             }
-
             if (AppVars.Autoboi == AutoboiState.AutoboiOn) {
                 boolean restoreAlreadyCompletedForCurrentLog =
                         fight.LogBoi != null
@@ -3244,7 +2952,6 @@ public class MainPhp {
                 AppVars.AutoboiReadyLog = "";
             }
         }
-
         // Этап 2: Уведомление о нападении при смене LogBoi
         // Аналог ParseFightLog + TrayBalloon в C# (MainPhp.cs)
         if (fight.IsBoi && fight.LogBoi != null && !fight.LogBoi.isEmpty()
@@ -3252,6 +2959,7 @@ public class MainPhp {
             android.util.Log.d(TAG, "mainPhpFight: NEW FIGHT detected! LogBoi changed: "
                     + AppVars.LastBoiLog + " -> " + fight.LogBoi);
             AppVars.LastBoiLog = fight.LogBoi;
+            AppVars.LastBoiUron = "";
             lastAutoSkinProbeFightLog = "";
             AppVars.AutoboiReadyCompletedLog = "";
             fight.updateLastBoiFromLogs();
@@ -3259,7 +2967,6 @@ public class MainPhp {
             // C# аналог UnderAttack.Parse(html): анонс в чат с учётом LezSay (Chat/Clan/Pair/No).
             UnderAttackManager.parseAsync(html);
         }
-
         // Перед авто-завершением боя (act=7) проверяем разделку ещё раз.
         // Это страхует кейсы, когда данные разделки не были доступны на ранней стадии обработки.
         if (fightEnded && isAutoSkinEnabledByPreference()) {
@@ -3270,7 +2977,6 @@ public class MainPhp {
                     android.util.Log.d(TAG, "AUTO_SKIN_TRACE mainPhpFight: fight ended, run raz before finish");
                     return razHtml;
                 }
-
                 // Если бой шел через go=inf и fight_ty[9] оказался пустым, делаем один probe полного main.php.
                 // Это повторяет поведение ПК-клиента, где после submit обрабатывается обычный main.php кадр,
                 // из которого приходит заполненный массив параметров разделки.
@@ -3285,7 +2991,6 @@ public class MainPhp {
                 }
             }
         }
-
         // Ветка завершения боя в AutoBoi:
         // - зависит от AppVars.Profile.LezDoAutoboi и AppVars.Autoboi==AutoboiOn,
         // - использует AppVars.FightLink, который формируется в LezFight.BuildFightLink(),
@@ -3294,11 +2999,9 @@ public class MainPhp {
                 && AppVars.Profile != null && AppVars.Profile.LezDoAutoboi
                 && AppVars.Autoboi == AutoboiState.AutoboiOn) {
             android.util.Log.d(TAG, "mainPhpFight: FIGHT ENDED with autoboi ON - processing finish");
-
             String captchaUrl = fightCaptchaUrl;
             boolean needCaptcha = captchaUrl != null && !captchaUrl.isEmpty();
             String fightLink = AppVars.FightLink;
-
             // Fallback: если LezFight не успел собрать ссылку завершения, достаём её из текущего HTML.
             if (fightLink == null || fightLink.isEmpty()) {
                 String recoveredFightLink = extractFightFinishLinkFromHtml(html, needCaptcha);
@@ -3308,15 +3011,20 @@ public class MainPhp {
                     android.util.Log.d(TAG, "mainPhpFight: recovered finish link from html: " + recoveredFightLink);
                 }
             }
-
+            // Отдельная ветка "голой" кнопки завершения (без captcha/FEND):
+            // браузерный эталон: GET main.php?get_id=61&act=5&st=6&vcode=...
+            if ((fightLink == null || fightLink.isEmpty()) && !needCaptcha) {
+                String cleanFinishLink = extractFightCleanFinishLinkFromHtml(html);
+                if (cleanFinishLink != null && !cleanFinishLink.isEmpty()) {
+                    fightLink = cleanFinishLink;
+                    AppVars.FightLink = cleanFinishLink;
+                    android.util.Log.d(TAG, "mainPhpFight: recovered CLEAN finish link from html: " + cleanFinishLink);
+                }
+            }
             FightFinishPageMarkers markers = inspectFightFinishPageMarkers(html);
-            String finishLoopKey = buildFinishLoopKey(fight, markers);
-            int loopRepeats = registerFinishLoopKey(finishLoopKey);
-
             FinishFlowDecision decision;
             String decisionReason;
             String finishFormSubmitHtml = null;
-
             if (needCaptcha) {
                 decision = FinishFlowDecision.CAPTCHA_REQUIRED;
                 decisionReason = "captcha_url_detected";
@@ -3343,9 +3051,7 @@ public class MainPhp {
                     decisionReason = "fight_link_missing_and_fend_not_ready";
                 }
             }
-
-            logFinishFlowDecision(decision, fight, address, fightLink, captchaUrl, markers, loopRepeats, decisionReason);
-
+            logFinishFlowDecision(decision, fight, address, fightLink, captchaUrl, markers, decisionReason);
                 // Важно: фикс восстановления AutoBoi после ручной капчи.
                 // Если капча пришла в режиме AutoboiOn, запоминаем это состояние,
                 // чтобы MainActivity после submit кода вернул `AutoboiOn`.
@@ -3367,7 +3073,6 @@ public class MainPhp {
                 showFightCaptchaDialogOnce(captchaUrl, fightLink, fight.LogBoi);
                 return html;
             }
-
             if (decision == FinishFlowDecision.DIRECT_FINISH_LINK) {
                 long now = System.currentTimeMillis();
                 long sinceLast = now - lastAutoFinishRedirectAtMs;
@@ -3376,40 +3081,29 @@ public class MainPhp {
                     android.util.Log.d(TAG, "mainPhpFight: throttling finish redirect, waitMs=" + waitMs);
                     return buildWaitForTurnAutoRefreshHtml(address, waitMs);
                 }
-
                 int redirectDelay = AUTO_FINISH_MIN_DELAY_MS + RANDOM.nextInt(AUTO_FINISH_EXTRA_DELAY_MS + 1);
                 if (redirectDelay >= 0) {
                     lastAutoFinishRedirectAtMs = now;
                     AppVars.FightLink = "";
                     return buildDelayedRedirectHtml("Завершение боя", fightLink, redirectDelay);
                 }
-
                 AppVars.FightLink = "";
                 return Russian.getString(Filter.buildRedirect(" ", fightLink));
             }
-
             if (decision == FinishFlowDecision.FEND_AUTOSUBMIT_ALLOWED && finishFormSubmitHtml != null) {
-                if (isRepeatedFendSubmit(finishLoopKey)) {
-                    android.util.Log.d(TAG, "mainPhpFight: skip repeated FEND auto-submit, key=" + finishLoopKey);
-                    AppVars.FightLink = "";
-                    AppVars.ContentMainPhp = html;
-                    return html;
-                }
                 android.util.Log.d(TAG, "mainPhpFight: FightLink missing, auto-submit FEND form");
                 AppVars.FightLink = "";
                 return finishFormSubmitHtml;
             }
-
-            if (loopRepeats >= 3) {
-                android.util.Log.w(TAG, "mainPhpFight: possible finish loop detected, key=" + finishLoopKey
-                        + ", repeats=" + loopRepeats);
-            }
+            // Специальный post-fight кейс: сервер держит состояние завершения (fight_ty[4]=6),
+            // но ещё не отдал ни FightLink, ни FEND.
+            // Если оставить "как есть", кадр может зависнуть и не дожидаться появления "голой" кнопки завершения.
+            // Поэтому делаем контролируемый re-poll верхнего фрейма до появления валидного finish-path.
             android.util.Log.d(TAG, "mainPhpFight: FightLink missing and FEND not parsed, keep original fight HTML");
             AppVars.FightLink = "";
             AppVars.ContentMainPhp = html;
             return html;
         }
-
         // Ветка ручного режима:
         // если сервер вернул капчу на странице завершения боя, показываем тот же popup,
         // что и в AutoBoi, но без попытки автоматического нажатия "Завершить".
@@ -3441,28 +3135,23 @@ public class MainPhp {
                 return html;
             }
         }
-
         // Проверяем, ждём ли мы хода противника - нужно auto-refresh
         if (fight.IsWaitingForNextTurn) {
             android.util.Log.d(TAG, "mainPhpFight: waiting for opponent turn (foe HP=" + fight.FoeCurrentHp + ")");
-
             boolean shouldAutoRefresh = AppVars.AutoRefresh;
             if (!shouldAutoRefresh && AppVars.Profile != null && AppVars.Profile.LezDoAutoboi
                     && AppVars.Autoboi == AutoboiState.AutoboiOn) {
                 // Для AutoBoi нужно продолжать обновлять фрейм, иначе после 1 удара остановимся на ходе противника.
                 shouldAutoRefresh = true;
             }
-
             if (shouldAutoRefresh) {
                 int delay = 1200 + RANDOM.nextInt(900); // 1200-2100ms
                 android.util.Log.d(TAG, "mainPhpFight: auto-refresh waiting enabled, reloading after " + delay + "ms: " + address);
                 return buildWaitForTurnAutoRefreshHtml(address, delay);
             }
-
             android.util.Log.d(TAG, "mainPhpFight: AutoRefresh disabled, returning original content");
             return AppVars.ContentMainPhp != null ? AppVars.ContentMainPhp : html;
         }
-
         // Проверяем, включен ли автобой в профиле
         if (AppVars.Profile != null && AppVars.Profile.LezDoAutoboi) {
             android.util.Log.d(TAG, "mainPhpFight: LezDoAutoboi enabled, Autoboi state=" + AppVars.Autoboi);
@@ -3511,7 +3200,6 @@ public class MainPhp {
                 android.util.Log.d(TAG, "mainPhpFight: autoboi disabled, keeping original fight frame for manual finish");
             }
         }
-
         // Логируем ключевые признаки страницы боя для диагностики
         android.util.Log.d(TAG, "mainPhpFight flags:"
                 + " magic_slots=" + html.contains("magic_slots();")
@@ -3521,12 +3209,10 @@ public class MainPhp {
                 + " document.ff=" + html.contains("document.ff")
                 + " autosubmit=" + html.contains("document.ff.submit")
         );
-
         // Аналог C# версии - возвращаем AppVars.ContentMainPhp (оригинальный HTML)
         // а не изменённый html, чтобы избежать белого фрейма
         return AppVars.ContentMainPhp != null ? AppVars.ContentMainPhp : html;
     }
-
     /**
      * Извлекает URL капчи завершения боя из HTML.
      *
@@ -3576,7 +3262,6 @@ public class MainPhp {
         }
         return null;
     }
-
     /**
      * Инициирует показ popup-капчи завершения боя через LocalBroadcast.
      *
@@ -3597,12 +3282,10 @@ public class MainPhp {
             return;
         }
         long now = System.currentTimeMillis();
-
         String normalizedFinishUrl = finishUrl;
         if (!normalizedFinishUrl.startsWith("http")) {
             normalizedFinishUrl = "http://neverlands.ru/" + normalizedFinishUrl.replaceFirst("^/+", "");
         }
-
         String fightExp = getUrlParam(normalizedFinishUrl, "fexp");
         String finishVcode = getUrlParam(normalizedFinishUrl, "vcode");
         String normalizedCaptchaUrl = captchaUrl.replaceFirst("^https://", "http://");
@@ -3634,20 +3317,17 @@ public class MainPhp {
         }
         lastFightCaptchaDialogKey = key;
         lastFightCaptchaDialogAtMs = now;
-
         if (AppVars.getContext() == null) {
             android.util.Log.w(TAG, "showFightCaptchaDialogOnce: context is null, skip dialog");
             AppVars.IsFightCaptchaDialogVisible = false;
             return;
         }
-
         AppVars.IsFightCaptchaDialogVisible = true;
         Intent intent = new Intent(AppVars.ACTION_SHOW_CAPTCHA);
         intent.putExtra("captchaUrl", captchaUrl);
         intent.putExtra("finishUrl", normalizedFinishUrl);
         LocalBroadcastManager.getInstance(AppVars.getContext()).sendBroadcast(intent);
     }
-
     /**
      * Инициирует показ captcha-диалога для авто-рыбалки (fish action `get_id=55&act=4`) с дедупликацией.
      *
@@ -3661,26 +3341,22 @@ public class MainPhp {
             return;
         }
         long now = System.currentTimeMillis();
-
         String normalizedFinishUrl = finishUrl;
         if (!normalizedFinishUrl.startsWith("http")) {
             normalizedFinishUrl = "http://neverlands.ru/" + normalizedFinishUrl.replaceFirst("^/+", "");
         }
         String normalizedCaptchaUrl = captchaUrl.replaceFirst("^https://", "http://");
         String key = normalizedFinishUrl + "|" + normalizedCaptchaUrl;
-
         if (key.equals(lastFishCaptchaDialogKey) && (now - lastFishCaptchaDialogAtMs) < 3000L) {
             android.util.Log.d(TAG, "showFishCaptchaDialogOnce: duplicate key, skip");
             return;
         }
         lastFishCaptchaDialogKey = key;
         lastFishCaptchaDialogAtMs = now;
-
         if (AppVars.getContext() == null) {
             android.util.Log.w(TAG, "showFishCaptchaDialogOnce: context is null, skip");
             return;
         }
-
         AppVars.ResumeAutoboiAfterCaptcha = false;
         AppVars.IsFightCaptchaDialogVisible = true;
         Intent intent = new Intent(AppVars.ACTION_SHOW_CAPTCHA);
@@ -3688,7 +3364,6 @@ public class MainPhp {
         intent.putExtra("finishUrl", normalizedFinishUrl);
         LocalBroadcastManager.getInstance(AppVars.getContext()).sendBroadcast(intent);
     }
-
     /**
      * Обработка страницы завершения боя (get_id=61&act=7).
      * Автоматически нажимает кнопку "Завершить" - аналог PC версии.
@@ -3753,7 +3428,6 @@ public class MainPhp {
         android.util.Log.d(TAG, "mainPhpFightEnd: no fexp in URL, returning original HTML");
         return html;
     }
-
     /**
      * Извлекает параметр из URL.
      */
@@ -3772,7 +3446,6 @@ public class MainPhp {
         }
         return "";
     }
-
     /**
      * Отправляет уведомление в чат об остановке боя.
      */
@@ -3788,12 +3461,10 @@ public class MainPhp {
         if (html == null || html.isEmpty() || !html.contains("var logs = ")) {
             return;
         }
-
         String logsBlock = HelperStrings.subString(html, "var logs = ", ";");
         if (logsBlock == null || logsBlock.isEmpty()) {
             return;
         }
-
         String winnerNick = "";
         java.util.regex.Matcher winnerMatcher = java.util.regex.Pattern.compile(
                 "\"<B>Победа за</B>\",\\[1,2,\\\"([^\\\"]+)\\\""
@@ -3802,7 +3473,6 @@ public class MainPhp {
             String winnerRaw = winnerMatcher.group(1);
             winnerNick = winnerRaw == null ? "" : winnerRaw.trim();
         }
-
         boolean isSkinResult = address != null && address.contains("get_id=17");
         boolean skinSkillRaised = false;
         List<String> lootItems = new ArrayList<>();
@@ -3830,11 +3500,9 @@ public class MainPhp {
                 lootItems.add(lootName);
             }
         }
-
         if ((winnerNick == null || winnerNick.isEmpty()) && lootItems.isEmpty()) {
             return;
         }
-
         String logId = (logIdHint == null || logIdHint.isEmpty()) ? AppVars.LastBoiLog : logIdHint;
         if (logId == null) {
             logId = "";
@@ -3850,7 +3518,6 @@ public class MainPhp {
                 && !winnerDedupKey.equals(lastFightResultWinnerBroadcastKey);
         boolean shouldSendLoot = !lootItems.isEmpty()
                 && !lootDedupKey.equals(lastFightResultLootBroadcastKey);
-
         if (!shouldSendWinner && !shouldSendLoot) {
             android.util.Log.d(TAG, "publishFightResultFromLogsIfNeeded: skip duplicate"
                     + ", logId=" + logId
@@ -3859,7 +3526,6 @@ public class MainPhp {
                     + ", source=" + address);
             return;
         }
-
         if (AppVars.getContext() != null) {
             if (shouldSendWinner) {
                 Intent victoryIntent = new Intent(AppVars.ACTION_ADD_CHAT_MESSAGE);
@@ -3882,7 +3548,6 @@ public class MainPhp {
                 lastFightResultLootBroadcastKey = lootDedupKey;
             }
         }
-
         if (isSkinResult && shouldSendLoot) {
             AppVars.AutoSkinCheckRes = true;
             if (skinSkillRaised) {
@@ -3892,16 +3557,13 @@ public class MainPhp {
                     + "queue AutoSkinCheckRes=true, AutoSkinCheckUm=" + AppVars.AutoSkinCheckUm
                     + ", lootCount=" + lootItems.size());
         }
-
         if (!isSkinResult && shouldSendLoot) {
             ru.neverlands.abclient.utils.ChatStats.addLoot("", lootItems);
         }
-
         android.util.Log.d(TAG, "publishFightResultFromLogsIfNeeded: winner=" + winnerNick
                 + ", lootCount=" + lootItems.size()
                 + ", source=" + address);
     }
-
     /**
      * Публикует чат-уведомление о начале боя.
      *
@@ -3915,7 +3577,6 @@ public class MainPhp {
      */
     private static void notifyNewFight(LezFight fight) {
         if (AppVars.getContext() == null) return;
-
         // Определяем тип противника по имени и ftype
         String foeType;
         boolean isDangerous = fight.IsDangerousFoe();
@@ -3926,29 +3587,22 @@ public class MainPhp {
         } else {
             foeType = "";
         }
-
         String foes = (AppVars.LastBoiSostav != null && !AppVars.LastBoiSostav.isEmpty())
                 ? AppVars.LastBoiSostav
                 : (fight.FoeName + " [" + fight.FoeLevel + "]");
-
         String timeHtml = buildServerChatTimeHtml();
-
         String message = "Нападение: " + foes + foeType;
-
         String messageHtml =
                 timeHtml +
                 "<b><font color=#cc0000>Нападение:</font></b> " +
                 "<font color=#004bbb>" + foes + "</font>" +
                 foeType;
-
         android.util.Log.d(TAG, "notifyNewFight: " + message);
         AppVars.LastFightAnnounceAtMs = System.currentTimeMillis();
-
         Intent msgIntent = new Intent(AppVars.ACTION_ADD_CHAT_MESSAGE);
         msgIntent.putExtra("message", messageHtml);
         LocalBroadcastManager.getInstance(AppVars.getContext()).sendBroadcast(msgIntent);
     }
-
     /**
      * Формирует timestamp в серверной шкале времени для HTML-сообщений чата.
      *
@@ -3969,7 +3623,6 @@ public class MainPhp {
         String timeStr = new SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(serverTime);
         return "<font class=chattime>&nbsp;" + timeStr + "&nbsp;</font> ";
     }
-
     /**
      * Внешняя точка входа для анонса нового боя из путей, которые обходят mainPhpFight NEW-FIGHT ветку
      * (например, JS-bridge -> FightViewModel).
@@ -3987,7 +3640,6 @@ public class MainPhp {
             UnderAttackManager.parseAsync(html);
         }
     }
-
     /**
      * Публикует чат-уведомление об остановке автобоя с причинами.
      *
@@ -4019,7 +3671,6 @@ public class MainPhp {
         msgIntent.putExtra("message", "<font color=#cc0000><b>" + message + "</b></font>");
         LocalBroadcastManager.getInstance(AppVars.getContext()).sendBroadcast(msgIntent);
     }
-
     /**
      * Публикует уведомление "капча отклонена" с дедупликацией по паре code/vcode.
      *
@@ -4032,7 +3683,6 @@ public class MainPhp {
      */
     private static void notifyCaptchaRejectedOnce(String submittedCode, String submittedVcode) {
         if (AppVars.getContext() == null) return;
-
         String code = submittedCode == null ? "" : submittedCode;
         String vcode = submittedVcode == null ? "" : submittedVcode;
         String key = code + "|" + vcode;
@@ -4042,13 +3692,11 @@ public class MainPhp {
         }
         lastCaptchaRejectKey = key;
         lastCaptchaRejectAtMs = now;
-
         String message = "Капча не принята сервером. Введите код заново.";
         Intent msgIntent = new Intent(AppVars.ACTION_ADD_CHAT_MESSAGE);
         msgIntent.putExtra("message", "<font color=#cc0000><b>" + message + "</b></font>");
         LocalBroadcastManager.getInstance(AppVars.getContext()).sendBroadcast(msgIntent);
     }
-
     /**
      * Публикует fallback-сводку завершённого боя через единый пайплайн ChatFilter.
      *
@@ -4066,29 +3714,52 @@ public class MainPhp {
      * Дедупликация:
      * - fallback выполняется один раз на связку logId|xp для act=7-перезагрузок.
      */
-    private static void publishFightSummaryFromFinishHtmlIfNeeded(String html, String logIdHint) {
+    private static void publishFightSummaryFromFinishHtmlIfNeeded(String html, String address, String logIdHint) {
         if (AppVars.getContext() == null) return;
-
         String logId = (logIdHint == null || logIdHint.isEmpty()) ? AppVars.LastBoiLog : logIdHint;
         if (logId == null || logId.isEmpty()) return;
-
         String foes = AppVars.LastBoiSostav == null ? "" : AppVars.LastBoiSostav.trim();
         if (foes.isEmpty()) return;
-
+        primeLastBoiDamageFromFinishHtmlIfNeeded(html, logId);
         String battleXp = extractBattleXpFromHtml(html);
+        boolean uiForegroundInteractive = false;
+        try {
+            ru.neverlands.abclient.MainActivity activity =
+                    AppVars.mainActivity != null ? AppVars.mainActivity.get() : null;
+            uiForegroundInteractive = activity != null && activity.isUiForegroundInteractive();
+        } catch (Exception ignore) {
+        }
+        // Поведение, близкое к C#:
+        // - если сервер ожидает опыт за бой (fexp>0), в foreground ждём системную chat-строку и не шлём fallback без XP;
+        // - если fexp=0 (опыт не положен), fallback обязателен, иначе пользователь не увидит завершение боя.
+        //
+        // Зависимости:
+        // - fexp читаем из текущего URL завершения (`act=7`) через getUrlParam(...),
+        // - uiForegroundInteractive берём из MainActivity.isUiForegroundInteractive().
+        int fexp = 0;
+        try {
+            String fexpRaw = address == null ? "" : getUrlParam(address, "fexp");
+            fexp = Integer.parseInt(fexpRaw == null || fexpRaw.isEmpty() ? "0" : fexpRaw);
+        } catch (Exception ignore) {
+            fexp = 0;
+        }
+        boolean expectXpByFexp = fexp > 0;
+        if (battleXp.isEmpty() && expectXpByFexp && uiForegroundInteractive) {
+            android.util.Log.d(TAG, "publishFightSummaryFromFinishHtmlIfNeeded: skip foreground fallback without XP"
+                    + ", logId=" + logId + ", foes=" + foes + ", fexp=" + fexp);
+            return;
+        }
         String dedupKey = logId + "|" + battleXp;
         if (dedupKey.equals(lastFightSummaryBroadcastKey)) return;
         lastFightSummaryBroadcastKey = dedupKey;
-
         StringBuilder synthetic = new StringBuilder();
         synthetic.append(buildServerChatTimeHtml())
-                .append("<font color=000000><B><font color=#CC0000>Внимание!</font> Системная информация.</B></font> Поединок завершён.");
+                .append("<font color=#000000><b>Системная информация.</b></font> Поединок завершён.");
         if (!battleXp.isEmpty()) {
             synthetic.append(" Получено <font color=#CC0000>боевого</font> опыта: <b><font color=#CC0000>")
                     .append(battleXp)
                     .append("</font></b>.");
         }
-
         String filteredMessage;
         try {
             filteredMessage = ru.neverlands.abclient.utils.ChatFilter.filter(synthetic.toString());
@@ -4099,15 +3770,12 @@ public class MainPhp {
         if (filteredMessage == null || filteredMessage.isEmpty()) {
             filteredMessage = synthetic.toString();
         }
-
         Intent msgIntent = new Intent(AppVars.ACTION_ADD_CHAT_MESSAGE);
         msgIntent.putExtra("message", filteredMessage);
         LocalBroadcastManager.getInstance(AppVars.getContext()).sendBroadcast(msgIntent);
-
         android.util.Log.d(TAG, "publishFightSummaryFromFinishHtmlIfNeeded: viaChatFilter logId=" + logId
-                + ", battleXp=" + battleXp + ", foes=" + foes);
+                + ", battleXp=" + battleXp + ", foes=" + foes + ", damage=" + AppVars.LastBoiUron);
     }
-
     /**
      * Извлекает числовое значение боевого опыта из HTML страницы завершения боя.
      *
@@ -4118,11 +3786,64 @@ public class MainPhp {
      * @param html HTML ответа `main.php?get_id=61&act=7...`.
      * @return строка с XP (только цифры) либо пустая строка, если XP не найден.
      */
+    /**
+     * Точечный добор LastBoiUron из текущего finish-HTML (`act=7`) до публикации fallback-системки.
+     *
+     * Нужен для кейса "быстрый бой 1x1", когда fallback-сводка публикуется раньше,
+     * чем стандартный боевой парсер успевает обновить `AppVars.LastBoiUron`.
+     */
+    private static void primeLastBoiDamageFromFinishHtmlIfNeeded(String html, String logId) {
+        if (html == null || html.isEmpty() || logId == null || logId.isEmpty()) {
+            return;
+        }
+        String currentDamage = AppVars.LastBoiUron == null ? "" : AppVars.LastBoiUron.trim();
+        if (!currentDamage.isEmpty()) {
+            return;
+        }
+        String[] list = extractJsArrayTokens(html, "var list = [[");
+        if (list == null || list.length <= 10) {
+            android.util.Log.d(TAG, "primeLastBoiDamageFromFinishHtmlIfNeeded: list missing, logId=" + logId);
+            return;
+        }
+        int damage = 0;
+        for (int idx = 6; idx <= 10; idx++) {
+            damage += parseIntFromJsToken(list[idx], 0);
+        }
+        AppVars.LastBoiUron = String.valueOf(Math.max(0, damage));
+        android.util.Log.d(TAG, "primeLastBoiDamageFromFinishHtmlIfNeeded: logId=" + logId
+                + ", damage=" + AppVars.LastBoiUron);
+    }
+    /**
+     * Извлекает CSV-токены JS-массива до первого закрывающего `]`.
+     */
+    private static String[] extractJsArrayTokens(String html, String prefix) {
+        if (html == null || html.isEmpty() || prefix == null || prefix.isEmpty()) {
+            return null;
+        }
+        String args = HelperStrings.subString(html, prefix, "]");
+        if (args == null || args.isEmpty()) {
+            return null;
+        }
+        return args.split(",");
+    }
+    /**
+     * Безопасный parseInt для токена JS-массива с очисткой кавычек и пробелов.
+     */
+    private static int parseIntFromJsToken(String token, int fallback) {
+        try {
+            String normalized = token == null ? "" : token.replace("\"", "").trim();
+            if (normalized.isEmpty()) {
+                return fallback;
+            }
+            return Integer.parseInt(normalized);
+        } catch (Exception ignored) {
+            return fallback;
+        }
+    }
     private static String extractBattleXpFromHtml(String html) {
         if (html == null || html.isEmpty()) {
             return "";
         }
-
         String xp = HelperStrings.subString(
                 html,
                 "Получено <font color=#CC0000>боевого</font> опыта: <b><font color=#CC0000>",
@@ -4131,7 +3852,6 @@ public class MainPhp {
             String normalized = xp.replaceAll("[^0-9]", "");
             return normalized == null ? "" : normalized.trim();
         }
-
         try {
             java.util.regex.Matcher matcher = java.util.regex.Pattern.compile(
                     "боевого</font>\\s*опыта:\\s*<b><font[^>]*>(\\d+)</font></b>",
@@ -4145,7 +3865,6 @@ public class MainPhp {
         }
         return "";
     }
-
     /**
      * Обёртка регистрации завершения боя по текущему log-id.
      *
@@ -4159,7 +3878,6 @@ public class MainPhp {
         String logId = fight != null ? fight.LogBoi : "";
         registerFightEndByLogId(logId, "fight_frame");
     }
-
     /**
      * Унифицированный учёт завершённого боя в статистике.
      * Дедуп по `AppVars.LastBoiEndLog`, чтобы не считать один и тот же бой повторно
@@ -4175,7 +3893,6 @@ public class MainPhp {
             android.util.Log.d(TAG, "registerFightEnd: skip duplicate, source=" + source + ", LogBoi=" + logId);
         }
     }
-
     /**
      * Логирует JavaScript-переменную из HTML боя.
      * Ищет паттерн: var NAME = [...] или var NAME = "..."
@@ -4193,7 +3910,6 @@ public class MainPhp {
         String value = html.substring(idx, end).trim();
         android.util.Log.d(TAG, "logFightVar: " + varName + " = " + value);
     }
-
     /**
      * Обрабатывает HTML инвентаря: парсинг, упаковка, сортировка и вставка bulk-кнопок.
      *
@@ -4220,11 +3936,9 @@ public class MainPhp {
             if (inventoryContainer == null) {
                 return html;
             }
-
             // Ищем все таблицы внутри контейнера, которые могут быть предметами
             Elements tables = inventoryContainer.select("table");
             List<InvEntry> invList = new ArrayList<>();
-
             for (Element table : tables) {
                 // Предмет в инвентаре обычно имеет картинку из /weapon/ или /invent/
                 String tableHtml = table.html();
@@ -4240,11 +3954,9 @@ public class MainPhp {
                     }
                 }
             }
-
             if (invList.isEmpty()) {
                 return html;
             }
-
             // Логика группировки (упаковки) предметов
             if (AppVars.Profile != null && AppVars.Profile.DoInvPack) {
                 for (int i = 0; i < invList.size() - 1; i++) {
@@ -4260,21 +3972,17 @@ public class MainPhp {
                     }
                 }
             }
-
             // Добавляем кастомные кнопки
             for (InvEntry entry : invList) {
                 entry.addBulkSell();
                 entry.addBulkDelete();
             }
-
             // Логика сортировки
             if (AppVars.Profile != null && AppVars.Profile.DoInvSort) {
                 Collections.sort(invList, new InvComparer());
             }
-
             // Сохраняем в AppVars для доступа из других компонентов
             AppVars.InvList = new ArrayList<>(invList);
-
             // Пересобираем HTML инвентаря
             StringBuilder newHtml = new StringBuilder();
             newHtml.append("<tr><td align=center bgcolor=#f5f5f5>");
@@ -4282,7 +3990,6 @@ public class MainPhp {
                 newHtml.append(entry.build());
             }
             newHtml.append("</td></tr>");
-
             // Заменяем содержимое контейнера инвентаря
             inventoryContainer.parent().parent().html(newHtml.toString());
             

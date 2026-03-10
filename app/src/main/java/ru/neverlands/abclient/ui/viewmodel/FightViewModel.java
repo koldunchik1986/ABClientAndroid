@@ -54,12 +54,31 @@ public class FightViewModel extends ViewModel {
         if (captchaDialogVisible) {
             autoBattleRuntimeEnabled = false;
         }
+        boolean uiForegroundInteractive = false;
+        try {
+            if (AppVars.mainActivity != null && AppVars.mainActivity.get() != null) {
+                uiForegroundInteractive = AppVars.mainActivity.get().isUiForegroundInteractive();
+            }
+        } catch (Exception ignored) {
+        }
+
+        // Корневой фикс "первый удар до отображения FightFrame":
+        // JS-bridge путь (`extract_fight_state.js -> processFightHtml`) срабатывает сразу после загрузки сырого
+        // боевого HTML и может отправить удар раньше, чем пользователь увидит боевой кадр.
+        // В интерактивном foreground этот путь переводим в "signal-only" режим:
+        // - оставляем parse/pulse/анонс "Нападение";
+        // - блокируем auto-submit именно здесь;
+        // - фактический удар остаётся за обычным боевым циклом (fight.Frame / requestAutoTurn).
+        if (uiForegroundInteractive) {
+            autoBattleRuntimeEnabled = false;
+        }
 
         Log.d(TAG, BG_TRACE_PREFIX + " processFightHtml: htmlLen=" + html.length()
                 + ", autoBattleUiEnabled=" + autoBattleUiEnabled
                 + ", autoBattleRuntimeEnabled=" + autoBattleRuntimeEnabled
                 + ", captchaDialogVisible=" + captchaDialogVisible
-                + ", appVarsAutoboi=" + AppVars.Autoboi);
+                + ", appVarsAutoboi=" + AppVars.Autoboi
+                + ", uiForegroundInteractive=" + uiForegroundInteractive);
 
         final boolean shouldAutoBattle = autoBattleRuntimeEnabled;
 
@@ -218,6 +237,7 @@ public class FightViewModel extends ViewModel {
             }
             String prevLog = AppVars.LastBoiLog;
             AppVars.LastBoiLog = fight.LogBoi;
+            AppVars.LastBoiUron = "";
             AppVars.AutoboiReadyCompletedLog = "";
             Log.d(TAG, BG_TRACE_PREFIX + " announceNewFightIfNeeded: LogBoi changed "
                     + prevLog + " -> " + fight.LogBoi);

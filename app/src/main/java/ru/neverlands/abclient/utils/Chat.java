@@ -22,6 +22,8 @@ public class Chat {
     private static boolean critical = false;
     private static long lastAnswerTime = 0;
     private static String chatLogFileName;
+    private static volatile String lastSystemChatMessage = "";
+    private static volatile long lastSystemChatMessageAtMs = 0L;
     // Лог чата — один файл в день: YYYYMMDD_chat.html
     // Используется для формирования имени файла в addStringToChat/getCurrentLogPath.
     private static final SimpleDateFormat LOG_TS_FORMAT = new SimpleDateFormat("yyyyMMdd", Locale.US);
@@ -32,6 +34,61 @@ public class Chat {
             attemptSendAutoAnswer();
         }
     };
+
+    /**
+     * Возвращает последнее системное сообщение из чата (очищенное от HTML, обрезанное по длине).
+     *
+     * Зависимости:
+     * - обновляется в addStringToChat(...) и addMessageToChat(...), где проходит весь чатовый поток;
+     * - используется в AutoModeForegroundService для расширения foreground-уведомления.
+     */
+    public static String getLastSystemChatMessage() {
+        return lastSystemChatMessage;
+    }
+
+    /**
+     * Временная метка последнего обновления системного сообщения чата.
+     *
+     * Зависимости:
+     * - выставляется вместе с getLastSystemChatMessage() внутри captureSystemChatMessage(...);
+     * - используется в AutoModeForegroundService для отображения времени сообщения.
+     */
+    public static long getLastSystemChatMessageAtMs() {
+        return lastSystemChatMessageAtMs;
+    }
+
+    /**
+     * Выделяет системные сообщения ("Системная информация") и сохраняет краткую строку для UI-статуса.
+     * Логика не влияет на боевой/чатовый pipeline: только дополнительный канал состояния.
+     */
+    private static void captureSystemChatMessage(String message) {
+        if (message == null || message.isEmpty()) {
+            return;
+        }
+        String lower = message.toLowerCase(Locale.ROOT);
+        if (!lower.contains("системная информация")) {
+            return;
+        }
+
+        String normalized = message
+                .replaceAll("(?is)<[^>]+>", " ")
+                .replace("&nbsp;", " ")
+                .replace("&quot;", "\"")
+                .replace("&amp;", "&")
+                .replace("&lt;", "<")
+                .replace("&gt;", ">")
+                .replaceAll("\\s+", " ")
+                .trim();
+        if (normalized.isEmpty()) {
+            return;
+        }
+        if (normalized.length() > 220) {
+            normalized = normalized.substring(0, 217) + "...";
+        }
+
+        lastSystemChatMessage = normalized;
+        lastSystemChatMessageAtMs = System.currentTimeMillis();
+    }
 
     // Вызывается после добавления сообщений в чат (JS add_msg).
     // Снимает критическое состояние и планирует автоответы.
@@ -136,8 +193,9 @@ public class Chat {
         Log.i(TAG, "addMessageToChat: " + message);
         try {
             MainActivity activity = AppVars.mainActivity != null ? AppVars.mainActivity.get() : null;
-            if (activity == null) return;
             String safe = message == null ? "" : message;
+            captureSystemChatMessage(safe);
+            if (activity == null) return;
             com.google.gson.Gson gson = new com.google.gson.Gson();
             String json = gson.toJson(safe);
             activity.runOnUiThread(() -> {
@@ -155,6 +213,7 @@ public class Chat {
 
     public static void addStringToChat(String message) {
         if (message == null || message.isEmpty()) return;
+        captureSystemChatMessage(message);
         // Логируем чат только если включено хранение логов.
         if (AppVars.Profile == null || !AppVars.Profile.ChatKeepLog) return;
         if (AppVars.getContext() == null) return;
