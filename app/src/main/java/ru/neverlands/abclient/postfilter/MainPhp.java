@@ -1254,7 +1254,18 @@ public class MainPhp {
             return false;
         }
         String normalizedAddress = normalizeNeverlandsMainLink(address).toLowerCase(Locale.ROOT);
-        return normalizedAddress.contains("main.php") && normalizedAddress.contains("go=inv");
+        if (!normalizedAddress.contains("main.php")) {
+            return false;
+        }
+        if (normalizedAddress.contains("go=inv")) {
+            return true;
+        }
+        // C# parity: категории инвентаря часто приходят как main.php?wca=... или main.php?im=...
+        // (включая переходы через "Вернуться"/useaction), без явного go=inv.
+        return normalizedAddress.contains("?wca=")
+                || normalizedAddress.contains("&wca=")
+                || normalizedAddress.contains("?im=")
+                || normalizedAddress.contains("&im=");
     }
     /**
      * Проверяет, что адрес инвентаря уже содержит все параметры из требуемого фильтра
@@ -2936,8 +2947,13 @@ public class MainPhp {
         }
         String fightCaptchaUrl = fightEnded ? resolveFightCaptchaUrl(html) : null;
         recoverAutoboiRuntimeStateIfNeeded(fightEnded, fightCaptchaUrl);
+        final boolean autoFightEnabledByPreference = isAutoFightEnabledByPreference();
+        final boolean waitHpEnabled = AppVars.Profile != null && AppVars.Profile.LezDoWaitHp;
+        final int waitHpPercent = AppVars.Profile != null ? AppVars.Profile.LezWaitHp : 100;
+        final boolean waitMaEnabled = AppVars.Profile != null && AppVars.Profile.LezDoWaitMa;
+        final int waitMaPercent = AppVars.Profile != null ? AppVars.Profile.LezWaitMa : 100;
         // Синхронизация Timeout/Restoring как в C# MainPhpFight.cs.
-        if (fightEnded && AppVars.Profile != null && AppVars.Profile.LezDoAutoboi) {
+        if (fightEnded && autoFightEnabledByPreference) {
             long now = System.currentTimeMillis();
             if (AppVars.Autoboi == AutoboiState.Timeout) {
                 AppVars.AutoboiReadyAtMs = 0L;
@@ -2964,10 +2980,10 @@ public class MainPhp {
                             maxHp,
                             curMa,
                             maxMa,
-                            AppVars.Profile.LezDoWaitHp,
-                            AppVars.Profile.LezWaitHp,
-                            AppVars.Profile.LezDoWaitMa,
-                            AppVars.Profile.LezWaitMa
+                            waitHpEnabled,
+                            waitHpPercent,
+                            waitMaEnabled,
+                            waitMaPercent
                     );
                 }
                 if (!logChanged && timerReady && fight.LogBoi != null && !fight.LogBoi.isEmpty()) {
@@ -3007,10 +3023,10 @@ public class MainPhp {
                                 maxHp,
                                 curMa,
                                 maxMa,
-                                AppVars.Profile.LezDoWaitHp,
-                                AppVars.Profile.LezWaitHp,
-                                AppVars.Profile.LezDoWaitMa,
-                                AppVars.Profile.LezWaitMa
+                                waitHpEnabled,
+                                waitHpPercent,
+                                waitMaEnabled,
+                                waitMaPercent
                         );
                     }
                 } else {
@@ -3064,7 +3080,7 @@ public class MainPhp {
         // - использует AppVars.FightLink, который формируется в LezFight.BuildFightLink(),
         // - при капче вызывает showFightCaptchaDialogOnce(...) и НЕ делает auto-submit.
         if (fightEnded
-                && AppVars.Profile != null && AppVars.Profile.LezDoAutoboi
+                && autoFightEnabledByPreference
                 && AppVars.Autoboi == AutoboiState.AutoboiOn) {
             android.util.Log.d(TAG, "mainPhpFight: FIGHT ENDED with autoboi ON - processing finish");
             String captchaUrl = fightCaptchaUrl;
@@ -3218,7 +3234,7 @@ public class MainPhp {
         if (fight.IsWaitingForNextTurn) {
             android.util.Log.d(TAG, "mainPhpFight: waiting for opponent turn (foe HP=" + fight.FoeCurrentHp + ")");
             boolean shouldAutoRefresh = AppVars.AutoRefresh;
-            if (!shouldAutoRefresh && AppVars.Profile != null && AppVars.Profile.LezDoAutoboi
+            if (!shouldAutoRefresh && autoFightEnabledByPreference
                     && AppVars.Autoboi == AutoboiState.AutoboiOn) {
                 // Для AutoBoi нужно продолжать обновлять фрейм, иначе после 1 удара остановимся на ходе противника.
                 shouldAutoRefresh = true;
@@ -3232,7 +3248,7 @@ public class MainPhp {
             return AppVars.ContentMainPhp != null ? AppVars.ContentMainPhp : html;
         }
         // Проверяем, включен ли автобой в профиле
-        if (AppVars.Profile != null && AppVars.Profile.LezDoAutoboi) {
+        if (autoFightEnabledByPreference) {
             android.util.Log.d(TAG, "mainPhpFight: LezDoAutoboi enabled, Autoboi state=" + AppVars.Autoboi);
             
             // Проверяем состояние автобоя
