@@ -2641,7 +2641,35 @@ public class MainPhp {
      * Инвентарь содержит ссылку <a href="?im=0"><img...
      */
     private static boolean mainPhpIsInv(String html) {
-        return html.contains("<a href=\"?im=0\"><img") || html.contains("<a href=?im=0><img");
+        if (html == null || html.isEmpty()) {
+            return false;
+        }
+        if (html.contains("<a href=\"?im=0\"><img") || html.contains("<a href=?im=0><img")) {
+            return true;
+        }
+        return hasInventoryRows(html);
+    }
+
+    /**
+     * Структурный fallback-детект инвентаря для кейсов, где URL/табы `?im=0` отсутствуют
+     * (например, переходы через `Вернуться` или `wca=...&useaction=...`).
+     *
+     * Нужен для C#-паритета: в ПК версии упаковка/сортировка применяется по факту HTML списка предметов.
+     */
+    private static boolean hasInventoryRows(String html) {
+        int invHeaderPos = html.indexOf("</b></font></td></tr>");
+        if (invHeaderPos == -1) {
+            return false;
+        }
+        int firstRowPos = html.indexOf("<tr><td bgcolor=#F5F5F5>", invHeaderPos);
+        if (firstRowPos == -1) {
+            return false;
+        }
+        boolean hasNickname = containsIgnoreCase(html, "<font class=nickname><b>");
+        boolean hasWearOrSell = containsIgnoreCase(html, "value=\"Надеть\"")
+                || containsIgnoreCase(html, "value=\"Продать")
+                || containsIgnoreCase(html, "image.neverlands.ru/del.gif");
+        return hasNickname && hasWearOrSell;
     }
     /**
      * Ищет ссылку на инвентарь в текущем HTML и генерирует redirect.
