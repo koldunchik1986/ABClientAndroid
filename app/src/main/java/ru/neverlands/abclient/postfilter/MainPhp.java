@@ -436,20 +436,16 @@ public class MainPhp {
             return null;
         }
 
-        // 1) Прямой линк из HTML/JS.
+        // 1) Direct link from HTML/JS, keep server st (6 or 7).
         String directLink = findMainPhpLinkByQueryParts(html, "get_id=61", "act=5", "st=6", "vcode=");
         if (directLink == null || directLink.isEmpty()) {
-            // Сервер иногда отдаёт промежуточный st=7; для clean-end нужен st=6.
             directLink = findMainPhpLinkByQueryParts(html, "get_id=61", "act=5", "st=7", "vcode=");
-            if (directLink != null && !directLink.isEmpty()) {
-                directLink = setOrAppendQueryParam(directLink, "st", "6");
-            }
         }
         if (directLink != null && !directLink.isEmpty()) {
             return normalizeNeverlandsMainLink(directLink);
         }
 
-        // 2) Короткий onclick-вариант ?get_id=61&act=5&st=6|7&vcode=...
+        // 2) Compact onclick variant ?get_id=61&act=5&st=6|7&vcode=...
         String source = html.replace("&amp;", "&");
         java.util.regex.Pattern compactPattern = java.util.regex.Pattern.compile(
                 "(?:\\?|&|\\b)get_id=61&act=5&st=([67])&vcode=([A-Za-z0-9]+)",
@@ -458,12 +454,16 @@ public class MainPhp {
         if (compactMatcher.find()) {
             String compactVcode = compactMatcher.group(2);
             if (compactVcode != null && !compactVcode.isEmpty()) {
-                return normalizeNeverlandsMainLink("main.php?get_id=61&act=5&st=6&vcode=" + compactVcode);
+                String compactSt = compactMatcher.group(1);
+                if (compactSt == null || compactSt.isEmpty()) {
+                    compactSt = "6";
+                }
+                return normalizeNeverlandsMainLink("main.php?get_id=61&act=5&st=" + compactSt + "&vcode=" + compactVcode);
             }
         }
 
-        // 2) Fallback: собираем URL из fexp[3] (vcode), если прямой ссылки нет.
-        String rawFexp = HelperStrings.subString(html, "var fexp = [", "];");
+        // 3) Fallback via fexp[3] (vcode), st inferred from fight_ty[4].
+        String rawFexp = HelperStrings.subString(html, "var fexp = [", "];" );
         if (rawFexp == null || rawFexp.isEmpty()) {
             return null;
         }
@@ -476,15 +476,29 @@ public class MainPhp {
             return null;
         }
 
-        String finishLink = "main.php?get_id=61&act=5&st=6&vcode=" + vcode;
+        String finishSt = resolveFightFinishStateForAct5(html);
+        String finishLink = "main.php?get_id=61&act=5&st=" + finishSt + "&vcode=" + vcode;
         return normalizeNeverlandsMainLink(finishLink);
     }
 
     /**
-     * Строит HTML-обёртку с авто-submit для серверной формы завершения (`FEND`).
-     * Используется, когда прямой ссылка-завершение боя отсутствует, но форма на странице есть.
-     * Капчу не обходит: если `code` обязателен и пустой, возвращает null.
+     * Returns st for act=5 from fight_ty[4]. Fallback is "6".
      */
+    private static String resolveFightFinishStateForAct5(String html) {
+        String rawFightTy = HelperStrings.subString(html, "var fight_ty = [", "];" );
+        if (rawFightTy == null || rawFightTy.isEmpty()) {
+            return "6";
+        }
+        List<String> fightTy = splitJsTopLevelCsv(rawFightTy);
+        if (fightTy.size() <= 4) {
+            return "6";
+        }
+        String st = trimJsToken(fightTy.get(4));
+        if ("6".equals(st) || "7".equals(st)) {
+            return st;
+        }
+        return "6";
+    }
     private static String buildFightEndFormSubmitHtml(String html) {
         if (html == null || html.isEmpty()) {
             return null;
@@ -3045,19 +3059,7 @@ public class MainPhp {
                             + cleanFinishLink + (replacedPrevious ? " (override previous fightLink)" : ""));
                 }
             }
-                        // Защита от зацикливания: если в runtime уже лежит st=7, принудительно переводим на st=6.
-            if (!needCaptcha && fightLink != null
-                    && fightLink.contains("get_id=61")
-                    && fightLink.contains("act=5")
-                    && fightLink.contains("st=7")) {
-                String normalizedSt6 = setOrAppendQueryParam(fightLink, "st", "6");
-                if (normalizedSt6 != null && !normalizedSt6.isEmpty() && !normalizedSt6.equals(fightLink)) {
-                    fightLink = normalizedSt6;
-                    AppVars.FightLink = normalizedSt6;
-                    android.util.Log.d(TAG, "mainPhpFight: normalize finish st=7 -> st=6: " + normalizedSt6);
-                }
-            }
-FightFinishPageMarkers markers = inspectFightFinishPageMarkers(html);
+            FightFinishPageMarkers markers = inspectFightFinishPageMarkers(html);
             FinishFlowDecision decision;
             String decisionReason;
             String finishFormSubmitHtml = null;
