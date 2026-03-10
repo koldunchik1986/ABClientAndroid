@@ -2349,8 +2349,10 @@ public class MainPhp {
             // Preserve original fight HTML for manual mode (avoid losing images after auto frame)
             AppVars.ContentMainPhp = originalHtml;
         }
-        // Обработка инвентаря, основанная на стабильной версии из app_work
-        if (html.contains("/invent/0.gif")) {
+        // Обработка инвентаря выполняется ТОЛЬКО на странице инвентаря.
+        // Важно: не запускать на страницах боя (`act=7`) и прочих `main.php`,
+        // иначе можно сломать finish-flow и схлопнуть HTML по чужим шаблонам.
+        if (mainPhpIsInv(html) || isInventoryAddress(address)) {
             html = mainPhpInv(html);
         }
         if (html.contains("var map = [[")) {
@@ -4003,11 +4005,7 @@ public class MainPhp {
                 }
 
                 String htmlEntry = html.substring(pos, posEnd);
-                Element rowElement = parseInventoryRowFromHtmlEntry(htmlEntry);
-                if (rowElement == null) {
-                    return html;
-                }
-                InvEntry invEntry = new InvEntry(rowElement);
+                InvEntry invEntry = new InvEntry(htmlEntry);
 
                 boolean isBulkDropMatch = !AppVars.BulkDropThing.isEmpty()
                         && !AppVars.BulkDropPrice.isEmpty()
@@ -4046,6 +4044,16 @@ public class MainPhp {
                     + ", doPack=" + doPack
                     + ", doPackDolg=" + doPackDolg
                     + ", doSort=" + doSort);
+            int sampleLimit = Math.min(5, invList.size());
+            for (int sampleIndex = 0; sampleIndex < sampleLimit; sampleIndex++) {
+                InvEntry sample = invList.get(sampleIndex);
+                android.util.Log.d(TAG, "INV_GROUP_TRACE sample[" + sampleIndex + "]"
+                        + " name=" + (sample.Name == null ? "" : sample.Name)
+                        + ", image=" + (sample.Image == null ? "" : sample.Image)
+                        + ", dolg=" + (sample.Dolg == null ? "" : sample.Dolg)
+                        + ", pss=" + (sample.PssThing == null ? "" : sample.PssThing)
+                        + ", drop=" + (sample.DropThing == null ? "" : sample.DropThing));
+            }
 
             if (!AppVars.BulkDropThing.isEmpty()) {
                 sendInventoryChatMessage("Выбрасывание пачки <b>&laquo;" + AppVars.BulkDropThing + "&raquo;</b> завершено.");
@@ -4108,20 +4116,6 @@ public class MainPhp {
             ru.neverlands.abclient.utils.DebugLogger.log("Error during mainPhpInv processing: \n" + sw);
             return html;
         }
-    }
-
-    /**
-     * Преобразует HTML одной записи инвентаря в `<tr>`-элемент для конструктора {@link InvEntry}.
-     *
-     * Зависимости:
-     * - {@link Jsoup#parseBodyFragment(String)} для устойчивого парсинга фрагмента таблицы.
-     */
-    private static Element parseInventoryRowFromHtmlEntry(String htmlEntry) {
-        if (htmlEntry == null || htmlEntry.isEmpty()) {
-            return null;
-        }
-        Document doc = Jsoup.parseBodyFragment("<table><tbody>" + htmlEntry + "</tbody></table>");
-        return doc.selectFirst("tr");
     }
 
     /**

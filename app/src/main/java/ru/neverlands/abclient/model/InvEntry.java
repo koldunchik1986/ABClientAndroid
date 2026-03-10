@@ -53,11 +53,26 @@ public class InvEntry implements Cloneable, Comparable<InvEntry> {
      * - входной {@link Element} должен представлять одну запись `<tr>...</tr>` инвентаря;
      * - фактический разбор выполняется методом {@link #parseEntryHtml(String)}.
      */
-    public InvEntry(Element row) {
-        this.html = row == null ? "" : row.outerHtml();
+    /**
+     * Основной конструктор записи инвентаря из сырого HTML фрагмента.
+     *
+     * Зависимости:
+     * - на вход должен приходить полный кусок `<tr>...</tr>` одной записи инвентаря,
+     *   как он получен из `MainPhp.mainPhpInv`.
+     */
+    public InvEntry(String rawHtmlEntry) {
+        this.html = rawHtmlEntry == null ? "" : rawHtmlEntry;
         this.rawHtml = this.html;
         this.Count = 1;
         parseEntryHtml(this.html);
+    }
+
+    /**
+     * Совместимый конструктор из Jsoup-элемента.
+     * Используется как fallback в старых путях, но основной поток должен передавать сырой HTML.
+     */
+    public InvEntry(Element row) {
+        this(row == null ? "" : row.outerHtml());
     }
 
     /**
