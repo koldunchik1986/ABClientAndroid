@@ -1260,6 +1260,9 @@ public class MainPhp {
         if (normalizedAddress.contains("go=inv")) {
             return true;
         }
+        if (normalizedAddress.contains("useaction=clan-action")) {
+            return true;
+        }
         // C# parity: категории инвентаря часто приходят как main.php?wca=... или main.php?im=...
         // (включая переходы через "Вернуться"/useaction), без явного go=inv.
         return normalizedAddress.contains("?wca=")
@@ -2668,11 +2671,7 @@ public class MainPhp {
      * Нужен для C#-паритета: в ПК версии упаковка/сортировка применяется по факту HTML списка предметов.
      */
     private static boolean hasInventoryRows(String html) {
-        int invHeaderPos = html.indexOf("</b></font></td></tr>");
-        if (invHeaderPos == -1) {
-            return false;
-        }
-        int firstRowPos = html.indexOf("<tr><td bgcolor=#F5F5F5>", invHeaderPos);
+        int firstRowPos = html.indexOf("<tr><td bgcolor=#F5F5F5>");
         if (firstRowPos == -1) {
             return false;
         }
@@ -2948,12 +2947,14 @@ public class MainPhp {
         String fightCaptchaUrl = fightEnded ? resolveFightCaptchaUrl(html) : null;
         recoverAutoboiRuntimeStateIfNeeded(fightEnded, fightCaptchaUrl);
         final boolean autoFightEnabledByPreference = isAutoFightEnabledByPreference();
+        final boolean autoFightEnabled = autoFightEnabledByPreference
+                || AppVars.Autoboi == AutoboiState.AutoboiOn;
         final boolean waitHpEnabled = AppVars.Profile != null && AppVars.Profile.LezDoWaitHp;
         final int waitHpPercent = AppVars.Profile != null ? AppVars.Profile.LezWaitHp : 100;
         final boolean waitMaEnabled = AppVars.Profile != null && AppVars.Profile.LezDoWaitMa;
         final int waitMaPercent = AppVars.Profile != null ? AppVars.Profile.LezWaitMa : 100;
         // Синхронизация Timeout/Restoring как в C# MainPhpFight.cs.
-        if (fightEnded && autoFightEnabledByPreference) {
+        if (fightEnded && autoFightEnabled) {
             long now = System.currentTimeMillis();
             if (AppVars.Autoboi == AutoboiState.Timeout) {
                 AppVars.AutoboiReadyAtMs = 0L;
@@ -3080,7 +3081,7 @@ public class MainPhp {
         // - использует AppVars.FightLink, который формируется в LezFight.BuildFightLink(),
         // - при капче вызывает showFightCaptchaDialogOnce(...) и НЕ делает auto-submit.
         if (fightEnded
-                && autoFightEnabledByPreference
+                && autoFightEnabled
                 && AppVars.Autoboi == AutoboiState.AutoboiOn) {
             android.util.Log.d(TAG, "mainPhpFight: FIGHT ENDED with autoboi ON - processing finish");
             String captchaUrl = fightCaptchaUrl;
@@ -3234,7 +3235,7 @@ public class MainPhp {
         if (fight.IsWaitingForNextTurn) {
             android.util.Log.d(TAG, "mainPhpFight: waiting for opponent turn (foe HP=" + fight.FoeCurrentHp + ")");
             boolean shouldAutoRefresh = AppVars.AutoRefresh;
-            if (!shouldAutoRefresh && autoFightEnabledByPreference
+            if (!shouldAutoRefresh && autoFightEnabled
                     && AppVars.Autoboi == AutoboiState.AutoboiOn) {
                 // Для AutoBoi нужно продолжать обновлять фрейм, иначе после 1 удара остановимся на ходе противника.
                 shouldAutoRefresh = true;
@@ -3248,7 +3249,7 @@ public class MainPhp {
             return AppVars.ContentMainPhp != null ? AppVars.ContentMainPhp : html;
         }
         // Проверяем, включен ли автобой в профиле
-        if (autoFightEnabledByPreference) {
+        if (autoFightEnabled) {
             android.util.Log.d(TAG, "mainPhpFight: LezDoAutoboi enabled, Autoboi state=" + AppVars.Autoboi);
             
             // Проверяем состояние автобоя
@@ -3290,7 +3291,9 @@ public class MainPhp {
                 android.util.Log.d(TAG, "mainPhpFight: Autoboi state is " + AppVars.Autoboi + ", not AutoboiOn");
             }
         } else {
-            android.util.Log.d(TAG, "mainPhpFight: LezDoAutoboi disabled or Profile is null");
+            android.util.Log.d(TAG, "mainPhpFight: auto-fight disabled for this frame"
+                    + " pref=" + autoFightEnabledByPreference
+                    + ", runtimeState=" + AppVars.Autoboi);
             if (!fight.IsBoi) {
                 android.util.Log.d(TAG, "mainPhpFight: autoboi disabled, keeping original fight frame for manual finish");
             }
@@ -4021,11 +4024,17 @@ public class MainPhp {
         try {
             final String patternStartInv = "</b></font></td></tr>";
             int pos = html.indexOf(patternStartInv);
+            int posStartInv;
             if (pos == -1) {
-                return html;
+                pos = html.indexOf("<tr><td bgcolor=#F5F5F5>");
+                if (pos == -1) {
+                    return html;
+                }
+                posStartInv = pos;
+            } else {
+                pos += patternStartInv.length();
+                posStartInv = pos;
             }
-            pos += patternStartInv.length();
-            int posStartInv = pos;
 
             List<InvEntry> invList = new ArrayList<>();
             while (true) {
