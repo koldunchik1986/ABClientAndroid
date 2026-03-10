@@ -438,8 +438,28 @@ public class MainPhp {
 
         // 1) Прямой линк из HTML/JS.
         String directLink = findMainPhpLinkByQueryParts(html, "get_id=61", "act=5", "st=6", "vcode=");
+        if (directLink == null || directLink.isEmpty()) {
+            // Сервер иногда отдаёт промежуточный st=7; для clean-end нужен st=6.
+            directLink = findMainPhpLinkByQueryParts(html, "get_id=61", "act=5", "st=7", "vcode=");
+            if (directLink != null && !directLink.isEmpty()) {
+                directLink = setOrAppendQueryParam(directLink, "st", "6");
+            }
+        }
         if (directLink != null && !directLink.isEmpty()) {
             return normalizeNeverlandsMainLink(directLink);
+        }
+
+        // 2) Короткий onclick-вариант ?get_id=61&act=5&st=6|7&vcode=...
+        String source = html.replace("&amp;", "&");
+        java.util.regex.Pattern compactPattern = java.util.regex.Pattern.compile(
+                "(?:\\?|&|\\b)get_id=61&act=5&st=([67])&vcode=([A-Za-z0-9]+)",
+                java.util.regex.Pattern.CASE_INSENSITIVE);
+        java.util.regex.Matcher compactMatcher = compactPattern.matcher(source);
+        if (compactMatcher.find()) {
+            String compactVcode = compactMatcher.group(2);
+            if (compactVcode != null && !compactVcode.isEmpty()) {
+                return normalizeNeverlandsMainLink("main.php?get_id=61&act=5&st=6&vcode=" + compactVcode);
+            }
         }
 
         // 2) Fallback: собираем URL из fexp[3] (vcode), если прямой ссылки нет.
@@ -3013,15 +3033,31 @@ public class MainPhp {
             }
             // Отдельная ветка "голой" кнопки завершения (без captcha/FEND):
             // браузерный эталон: GET main.php?get_id=61&act=5&st=6&vcode=...
-            if ((fightLink == null || fightLink.isEmpty()) && !needCaptcha) {
+            if (!needCaptcha) {
                 String cleanFinishLink = extractFightCleanFinishLinkFromHtml(html);
                 if (cleanFinishLink != null && !cleanFinishLink.isEmpty()) {
+                    boolean replacedPrevious = fightLink != null
+                            && !fightLink.isEmpty()
+                            && !cleanFinishLink.equals(fightLink);
                     fightLink = cleanFinishLink;
                     AppVars.FightLink = cleanFinishLink;
-                    android.util.Log.d(TAG, "mainPhpFight: recovered CLEAN finish link from html: " + cleanFinishLink);
+                    android.util.Log.d(TAG, "mainPhpFight: recovered CLEAN finish link from html: "
+                            + cleanFinishLink + (replacedPrevious ? " (override previous fightLink)" : ""));
                 }
             }
-            FightFinishPageMarkers markers = inspectFightFinishPageMarkers(html);
+                        // Защита от зацикливания: если в runtime уже лежит st=7, принудительно переводим на st=6.
+            if (!needCaptcha && fightLink != null
+                    && fightLink.contains("get_id=61")
+                    && fightLink.contains("act=5")
+                    && fightLink.contains("st=7")) {
+                String normalizedSt6 = setOrAppendQueryParam(fightLink, "st", "6");
+                if (normalizedSt6 != null && !normalizedSt6.isEmpty() && !normalizedSt6.equals(fightLink)) {
+                    fightLink = normalizedSt6;
+                    AppVars.FightLink = normalizedSt6;
+                    android.util.Log.d(TAG, "mainPhpFight: normalize finish st=7 -> st=6: " + normalizedSt6);
+                }
+            }
+FightFinishPageMarkers markers = inspectFightFinishPageMarkers(html);
             FinishFlowDecision decision;
             String decisionReason;
             String finishFormSubmitHtml = null;
