@@ -65,7 +65,11 @@ public class MainPhp {
     private static volatile long lastFishCaptchaDialogAtMs = 0L;
     private static volatile String lastCaptchaRejectKey = "";
     private static volatile long lastCaptchaRejectAtMs = 0L;
-    private static volatile String lastFightResultBroadcastKey = "";
+    // Дедуп публикации результата боя:
+    // - победа: один раз на LogBoi, чтобы повторные act=7/vcode не спамили "Победа за ...";
+    // - лут: один раз на (LogBoi + тип + список), чтобы не терять сообщение о добыче и не дублировать его.
+    private static volatile String lastFightResultWinnerBroadcastKey = "";
+    private static volatile String lastFightResultLootBroadcastKey = "";
     private static volatile String lastFightSummaryBroadcastKey = "";
     private static volatile String lastAutoSkinProbeFightLog = "";
     private static volatile String lastFinishLoopKey = "";
@@ -3831,28 +3835,42 @@ public class MainPhp {
             return;
         }
 
+        String logId = (logIdHint == null || logIdHint.isEmpty()) ? AppVars.LastBoiLog : logIdHint;
+        if (logId == null) {
+            logId = "";
+        }
         String lootPrefix = isSkinResult
                 ? "Результат разделки"
                 : "Результат обыска бота";
-        String dedupKey = (logIdHint == null ? "" : logIdHint)
-                + "|" + winnerNick
-                + "|" + lootPrefix
-                + "|" + String.join(",", lootItems);
-        if (dedupKey.equals(lastFightResultBroadcastKey)) {
+        String lootLine = String.join(",", lootItems);
+        String winnerDedupKey = logId.isEmpty() ? ("nol|" + winnerNick) : logId;
+        String lootDedupKey = (logId.isEmpty() ? "nol" : logId) + "|" + lootPrefix + "|" + lootLine;
+        boolean shouldSendWinner = winnerNick != null
+                && !winnerNick.isEmpty()
+                && !winnerDedupKey.equals(lastFightResultWinnerBroadcastKey);
+        boolean shouldSendLoot = !lootItems.isEmpty()
+                && !lootDedupKey.equals(lastFightResultLootBroadcastKey);
+
+        if (!shouldSendWinner && !shouldSendLoot) {
+            android.util.Log.d(TAG, "publishFightResultFromLogsIfNeeded: skip duplicate"
+                    + ", logId=" + logId
+                    + ", winnerKey=" + winnerDedupKey
+                    + ", lootKey=" + lootDedupKey
+                    + ", source=" + address);
             return;
         }
-        lastFightResultBroadcastKey = dedupKey;
 
         if (AppVars.getContext() != null) {
-            if (winnerNick != null && !winnerNick.isEmpty()) {
+            if (shouldSendWinner) {
                 Intent victoryIntent = new Intent(AppVars.ACTION_ADD_CHAT_MESSAGE);
                 victoryIntent.putExtra(
                         "message",
                         "<font color=#009933><b>Победа за " + winnerNick + ".</b></font>"
                 );
                 LocalBroadcastManager.getInstance(AppVars.getContext()).sendBroadcast(victoryIntent);
+                lastFightResultWinnerBroadcastKey = winnerDedupKey;
             }
-            if (!lootItems.isEmpty()) {
+            if (shouldSendLoot) {
                 if (!isSkinResult) {
                     Intent lootIntent = new Intent(AppVars.ACTION_ADD_CHAT_MESSAGE);
                     lootIntent.putExtra(
@@ -3861,10 +3879,11 @@ public class MainPhp {
                     );
                     LocalBroadcastManager.getInstance(AppVars.getContext()).sendBroadcast(lootIntent);
                 }
+                lastFightResultLootBroadcastKey = lootDedupKey;
             }
         }
 
-        if (isSkinResult && !lootItems.isEmpty()) {
+        if (isSkinResult && shouldSendLoot) {
             AppVars.AutoSkinCheckRes = true;
             if (skinSkillRaised) {
                 AppVars.AutoSkinCheckUm = true;
@@ -3874,7 +3893,7 @@ public class MainPhp {
                     + ", lootCount=" + lootItems.size());
         }
 
-        if (!isSkinResult && !lootItems.isEmpty()) {
+        if (!isSkinResult && shouldSendLoot) {
             ru.neverlands.abclient.utils.ChatStats.addLoot("", lootItems);
         }
 
