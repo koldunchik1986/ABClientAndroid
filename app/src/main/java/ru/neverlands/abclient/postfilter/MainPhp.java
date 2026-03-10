@@ -4038,6 +4038,15 @@ public class MainPhp {
                 pos = posEnd;
             }
 
+            int parsedCount = invList.size();
+            boolean doPack = AppVars.Profile != null && AppVars.Profile.DoInvPack;
+            boolean doPackDolg = AppVars.Profile != null && AppVars.Profile.DoInvPackDolg;
+            boolean doSort = AppVars.Profile != null && AppVars.Profile.DoInvSort;
+            android.util.Log.d(TAG, "INV_GROUP_TRACE parsed=" + parsedCount
+                    + ", doPack=" + doPack
+                    + ", doPackDolg=" + doPackDolg
+                    + ", doSort=" + doSort);
+
             if (!AppVars.BulkDropThing.isEmpty()) {
                 sendInventoryChatMessage("Выбрасывание пачки <b>&laquo;" + AppVars.BulkDropThing + "&raquo;</b> завершено.");
                 AppVars.BulkDropThing = "";
@@ -4068,6 +4077,9 @@ public class MainPhp {
                 }
             }
 
+            android.util.Log.d(TAG, "INV_GROUP_TRACE afterPack=" + invList.size()
+                    + ", packed=" + Math.max(0, parsedCount - invList.size()));
+
             for (InvEntry entry : invList) {
                 entry.addBulkSell();
                 entry.addBulkDelete();
@@ -4076,6 +4088,8 @@ public class MainPhp {
             if (AppVars.Profile != null && AppVars.Profile.DoInvSort) {
                 invList.sort(new InvComparer());
             }
+
+            android.util.Log.d(TAG, "INV_GROUP_TRACE afterSort=" + invList.size());
 
             AppVars.InvList = new ArrayList<>(invList);
 

@@ -286,6 +286,12 @@ public class InvEntry implements Cloneable, Comparable<InvEntry> {
             if (low.contains("цена: <b>") || low.contains("материал: <b>")) {
                 continue;
             }
+            boolean packByDolg = AppVars.Profile != null && AppVars.Profile.DoInvPackDolg;
+            if (packByDolg && low.contains("долговечность: <b>")) {
+                // C# parity (`DoInvPackDolg=true`): убираем долговечность из ключа сравнения,
+                // чтобы одинаковые предметы с разным x/y могли объединяться в одну пачку.
+                continue;
+            }
             if (sb.length() > 0) {
                 sb.append('|');
             }
@@ -441,6 +447,13 @@ public class InvEntry implements Cloneable, Comparable<InvEntry> {
         if (result != 0) {
             return result;
         }
+        boolean packByDolg = AppVars.Profile != null && AppVars.Profile.DoInvPackDolg;
+        if (!packByDolg) {
+            result = safe(Dolg).compareTo(safe(other.Dolg));
+            if (result != 0) {
+                return result;
+            }
+        }
         return safe(properties).compareTo(safe(other.properties));
     }
 
@@ -516,4 +529,3 @@ public class InvEntry implements Cloneable, Comparable<InvEntry> {
         return source.toLowerCase(Locale.ROOT).lastIndexOf(needle.toLowerCase(Locale.ROOT), safeFrom);
     }
 }
-

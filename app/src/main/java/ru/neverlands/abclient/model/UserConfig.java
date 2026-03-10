@@ -73,6 +73,15 @@ public class UserConfig {
     public boolean DoButtonSell = true;
     public boolean DoButtonDrop = true;
     public boolean DoInvPack = true;
+    /**
+     * Управляет упаковкой предметов с разной долговечностью.
+     *
+     * C# parity (`DoInvPackDolg`):
+     * - `true`: при группировке долговечность не входит в ключ одинаковости,
+     *   пачка формируется по прочим свойствам, а representative выбирается через `CompareDolg`.
+     * - `false`: долговечность участвует в ключе, предметы с разным `x/y` не объединяются.
+     */
+    public boolean DoInvPackDolg = true;
     public boolean DoInvSort = true;
     public String TorgTabl = "";
 
@@ -265,6 +274,13 @@ public class UserConfig {
                         this.ChatKeepLog = Boolean.parseBoolean(parser.getAttributeValue(null, "keepLog"));
                         this.DoAutoAnswer = Boolean.parseBoolean(parser.getAttributeValue(null, "autoAnswer"));
                         this.DoChatLevels = Boolean.parseBoolean(parser.getAttributeValue(null, "chatLevels"));
+                    } else if ("inventory".equalsIgnoreCase(tagName)) {
+                        // Параметры инвентаря (bulk-кнопки / упаковка / сортировка).
+                        this.DoButtonSell = parseBoolAttr(parser, "buttonSell", this.DoButtonSell);
+                        this.DoButtonDrop = parseBoolAttr(parser, "buttonDrop", this.DoButtonDrop);
+                        this.DoInvPack = parseBoolAttr(parser, "pack", this.DoInvPack);
+                        this.DoInvPackDolg = parseBoolAttr(parser, "packDolg", this.DoInvPackDolg);
+                        this.DoInvSort = parseBoolAttr(parser, "sort", this.DoInvSort);
                     } else if ("proxy".equalsIgnoreCase(tagName)) {
                         boolean proxyActive = parseBoolAttr(parser, "active", this.DoProxy || this.UseProxy);
                         String proxyAddress = getAttributeValueIgnoreCase(parser, "address");
@@ -300,6 +316,16 @@ public class UserConfig {
                         String value = parseNodeText(parser, this.ProxyPassword);
                         this.ProxyPassword = value == null ? "" : value.trim();
                         legacyProxyNodesParsed = true;
+                    } else if ("DoButtonSell".equalsIgnoreCase(tagName)) {
+                        this.DoButtonSell = parseBoolNodeText(parser, this.DoButtonSell);
+                    } else if ("DoButtonDrop".equalsIgnoreCase(tagName)) {
+                        this.DoButtonDrop = parseBoolNodeText(parser, this.DoButtonDrop);
+                    } else if ("DoInvPack".equalsIgnoreCase(tagName)) {
+                        this.DoInvPack = parseBoolNodeText(parser, this.DoInvPack);
+                    } else if ("DoInvPackDolg".equalsIgnoreCase(tagName)) {
+                        this.DoInvPackDolg = parseBoolNodeText(parser, this.DoInvPackDolg);
+                    } else if ("DoInvSort".equalsIgnoreCase(tagName)) {
+                        this.DoInvSort = parseBoolNodeText(parser, this.DoInvSort);
                     } else if ("autoboi".equals(tagName)) {
                         this.LezDoAutoboi = Boolean.parseBoolean(parser.getAttributeValue(null, "enabled"));
                         this.LezDoFury = parseBoolAttr(parser, "fury", this.LezDoFury);
@@ -535,6 +561,15 @@ public class UserConfig {
             serializer.attribute(null, "autoAnswer", String.valueOf(this.DoAutoAnswer));
             serializer.attribute(null, "chatLevels", String.valueOf(this.DoChatLevels));
             serializer.endTag(null, "chat");
+
+            // Настройки инвентаря (группировка/сортировка/массовые кнопки).
+            serializer.startTag(null, "inventory");
+            serializer.attribute(null, "buttonSell", String.valueOf(this.DoButtonSell));
+            serializer.attribute(null, "buttonDrop", String.valueOf(this.DoButtonDrop));
+            serializer.attribute(null, "pack", String.valueOf(this.DoInvPack));
+            serializer.attribute(null, "packDolg", String.valueOf(this.DoInvPackDolg));
+            serializer.attribute(null, "sort", String.valueOf(this.DoInvSort));
+            serializer.endTag(null, "inventory");
 
             // Сохранение настроек быстрых действий
             serializer.startTag(null, "fastactions");
