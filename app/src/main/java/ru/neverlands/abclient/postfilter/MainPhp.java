@@ -33,6 +33,10 @@ public class MainPhp {
     private static final Random RANDOM = new Random();
     private static final int AUTO_FINISH_MIN_DELAY_MS = 1000;
     private static final int AUTO_FINISH_EXTRA_DELAY_MS = 700;
+    // Для finish-состояния st=7 сервер часто требует несколько быстрых подтверждений подряд.
+    // Держим отдельный короткий polling-интервал, чтобы не ждать по 1-2 секунды между попытками.
+    private static final int AUTO_FINISH_ST7_MIN_DELAY_MS = 220;
+    private static final int AUTO_FINISH_ST7_EXTRA_DELAY_MS = 220;
     private static final long AUTO_DRINK_TRIGGER_COOLDOWN_MS = 2500L;
     private static final long CAPTCHA_FALLBACK_TTL_MS = 5000L;
     private static final long AUTO_SKIN_KNIFE_RECHECK_INTERVAL_MS = 60_000L;
@@ -3112,14 +3116,21 @@ public class MainPhp {
                 return html;
             }
             if (decision == FinishFlowDecision.DIRECT_FINISH_LINK) {
+                boolean isSt7Finish = fightLink != null
+                        && fightLink.contains("get_id=61")
+                        && fightLink.contains("act=5")
+                        && fightLink.contains("st=7");
+                int minDelayMs = isSt7Finish ? AUTO_FINISH_ST7_MIN_DELAY_MS : AUTO_FINISH_MIN_DELAY_MS;
+                int extraDelayMs = isSt7Finish ? AUTO_FINISH_ST7_EXTRA_DELAY_MS : AUTO_FINISH_EXTRA_DELAY_MS;
                 long now = System.currentTimeMillis();
                 long sinceLast = now - lastAutoFinishRedirectAtMs;
-                if (sinceLast >= 0 && sinceLast < AUTO_FINISH_MIN_DELAY_MS) {
-                    int waitMs = (int) (AUTO_FINISH_MIN_DELAY_MS - sinceLast) + 120;
-                    android.util.Log.d(TAG, "mainPhpFight: throttling finish redirect, waitMs=" + waitMs);
+                if (sinceLast >= 0 && sinceLast < minDelayMs) {
+                    int waitMs = (int) (minDelayMs - sinceLast) + 80;
+                    android.util.Log.d(TAG, "mainPhpFight: throttling finish redirect, waitMs=" + waitMs
+                            + ", st7FastPath=" + isSt7Finish);
                     return buildWaitForTurnAutoRefreshHtml(address, waitMs);
                 }
-                int redirectDelay = AUTO_FINISH_MIN_DELAY_MS + RANDOM.nextInt(AUTO_FINISH_EXTRA_DELAY_MS + 1);
+                int redirectDelay = minDelayMs + RANDOM.nextInt(extraDelayMs + 1);
                 if (redirectDelay >= 0) {
                     lastAutoFinishRedirectAtMs = now;
                     AppVars.FightLink = "";
