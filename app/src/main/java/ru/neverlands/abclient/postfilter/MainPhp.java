@@ -3960,96 +3960,169 @@ public class MainPhp {
         android.util.Log.d(TAG, "logFightVar: " + varName + " = " + value);
     }
     /**
-     * Обрабатывает HTML инвентаря: парсинг, упаковка, сортировка и вставка bulk-кнопок.
+     * Порт C# `MainPhpInv`: парсинг инвентаря, упаковка дублей, сортировка и bulk-кнопки.
      *
      * Зависимости:
-     * - {@link Jsoup} для извлечения контейнера инвентаря и строк предметов.
-     * - {@link InvEntry}, {@link InvComparer} для агрегации/сортировки.
-     * - Профильные флаги {@link AppVars#Profile}: {@code DoInvPack}, {@code DoInvSort}.
-     * - {@link AppVars#InvList} как общий кэш текущего инвентаря.
+     * - строковые паттерны инвентаря из ПК-версии (`<tr><td bgcolor=#F5F5F5>`, long/short end-pattern);
+     * - {@link InvEntry} как парсер одной записи и носитель compare/build-логики;
+     * - профильные флаги {@code DoInvPack}/{@code DoInvSort};
+     * - runtime-поля {@link AppVars}: `BulkDropThing`, `BulkSellThing`, `BulkSellSum`, `InvList`.
      *
      * Назначение:
-     * - Сохранить поведение ПК-версии по упаковке/сортировке предметов и добавить mass-action кнопки.
+     * - воспроизвести C#-поведение группировки одинаковых предметов при открытии инвентаря и категорий.
      */
     private static String mainPhpInv(String html) {
         try {
-            Document doc = Jsoup.parse(html);
-            
-            // Ищем контейнер с инвентарем. Используем более гибкий селектор.
-            Elements inventoryContainers = doc.select("td[background*='i_bg_2.gif']");
-            if (inventoryContainers.isEmpty()) {
-                return html; // Не нашли инвентарь, ничего не делаем
-            }
-            
-            Element inventoryContainer = inventoryContainers.first();
-            if (inventoryContainer == null) {
+            final String patternStartInv = "</b></font></td></tr>";
+            int pos = html.indexOf(patternStartInv);
+            if (pos == -1) {
                 return html;
             }
-            // Ищем все таблицы внутри контейнера, которые могут быть предметами
-            Elements tables = inventoryContainer.select("table");
+            pos += patternStartInv.length();
+            int posStartInv = pos;
+
             List<InvEntry> invList = new ArrayList<>();
-            for (Element table : tables) {
-                // Предмет в инвентаре обычно имеет картинку из /weapon/ или /invent/
-                String tableHtml = table.html();
-                if (tableHtml.contains("/weapon/") || tableHtml.contains("/invent/")) {
-                    // В оригинальном коде брался parent().parent().parent(), 
-                    // что соответствует строке таблицы инвентаря.
-                    Element row = table;
-                    while (row != null && !row.tagName().equals("tr")) {
-                        row = row.parent();
-                    }
-                    if (row != null) {
-                        invList.add(new InvEntry(row));
-                    }
+            while (true) {
+                final String patternStartTr = "<tr><td bgcolor=#F5F5F5>";
+                if (pos + patternStartTr.length() > html.length()
+                        || !html.regionMatches(true, pos, patternStartTr, 0, patternStartTr.length())) {
+                    break;
                 }
+
+                final String patternEndTrLong = "<td bgcolor=#FCFAF3><img src=http://image.neverlands.ru/1x1.gif width=5 height=1></td></tr></table></td></tr></table></td></tr>";
+                int posEnd = html.indexOf(patternEndTrLong, pos);
+                if (posEnd == -1) {
+                    final String patternEndTrShort = "<img src=http://image.neverlands.ru/1x1.gif width=1 height=5></td></tr></table></td></tr>";
+                    posEnd = html.indexOf(patternEndTrShort, pos);
+                    if (posEnd == -1) {
+                        return html;
+                    }
+                    posEnd += patternEndTrShort.length();
+                } else {
+                    posEnd += patternEndTrLong.length();
+                }
+
+                String htmlEntry = html.substring(pos, posEnd);
+                Element rowElement = parseInventoryRowFromHtmlEntry(htmlEntry);
+                if (rowElement == null) {
+                    return html;
+                }
+                InvEntry invEntry = new InvEntry(rowElement);
+
+                boolean isBulkDropMatch = !AppVars.BulkDropThing.isEmpty()
+                        && !AppVars.BulkDropPrice.isEmpty()
+                        && AppVars.BulkDropThing.equalsIgnoreCase(invEntry.DropThing == null ? "" : invEntry.DropThing)
+                        && AppVars.BulkDropPrice.equals(invEntry.DropPrice == null ? "" : invEntry.DropPrice);
+
+                if (invEntry.isExpired() || isBulkDropMatch) {
+                    String dropThing = invEntry.DropThing == null ? "" : invEntry.DropThing;
+                    String redirectMessage = "Выбрасывание предмета <b>&laquo;" + dropThing + "&raquo;</b>...";
+                    return buildRedirectHtml(redirectMessage, invEntry.DropLink == null ? "" : invEntry.DropLink);
+                }
+
+                boolean isBulkSellMatch = invEntry.PssLink != null
+                        && !invEntry.PssLink.isEmpty()
+                        && !AppVars.BulkSellThing.isEmpty()
+                        && invEntry.PssThing != null
+                        && AppVars.BulkSellThing.equals(invEntry.PssThing)
+                        && AppVars.BulkSellPrice == invEntry.PssPrice;
+
+                if (isBulkSellMatch) {
+                    AppVars.BulkSellSum += AppVars.BulkSellPrice;
+                    String messageSell = "Продажа предмета <b>&laquo;" + invEntry.PssThing
+                            + "&raquo;</b>. Выручка " + AppVars.BulkSellSum + " NV...";
+                    return buildRedirectHtml(messageSell, invEntry.PssLink);
+                }
+
+                invList.add(invEntry);
+                pos = posEnd;
             }
-            if (invList.isEmpty()) {
-                return html;
+
+            if (!AppVars.BulkDropThing.isEmpty()) {
+                sendInventoryChatMessage("Выбрасывание пачки <b>&laquo;" + AppVars.BulkDropThing + "&raquo;</b> завершено.");
+                AppVars.BulkDropThing = "";
             }
-            // Логика группировки (упаковки) предметов
-            if (AppVars.Profile != null && AppVars.Profile.DoInvPack) {
-                for (int i = 0; i < invList.size() - 1; i++) {
-                    for (int j = i + 1; j < invList.size(); j++) {
-                        if (invList.get(i).compareTo(invList.get(j)) == 0) {
-                            if (invList.get(i).compareDolg(invList.get(j)) > 0) {
-                                invList.set(i, invList.get(j));
-                            }
-                            invList.get(i).inc();
-                            invList.remove(j);
-                            j--;
+            if (!AppVars.BulkSellThing.isEmpty()) {
+                sendInventoryChatMessage("Продажа пачки <b>&laquo;" + AppVars.BulkSellThing
+                        + "&raquo;</b> завершена. Выручка составила <b>" + AppVars.BulkSellSum + "</b> NV.");
+                AppVars.BulkSellThing = "";
+            }
+
+            if (invList.size() > 1 && AppVars.Profile != null && AppVars.Profile.DoInvPack) {
+                for (int indexFirst = 0; indexFirst < invList.size() - 1; indexFirst++) {
+                    for (int indexSecond = indexFirst + 1; indexSecond < invList.size(); indexSecond++) {
+                        if (invList.get(indexFirst).compareTo(invList.get(indexSecond)) != 0) {
+                            continue;
                         }
+                        if (invList.get(indexFirst).compareDolg(invList.get(indexSecond)) > 0) {
+                            try {
+                                invList.set(indexFirst, (InvEntry) invList.get(indexSecond).clone());
+                            } catch (CloneNotSupportedException ignore) {
+                                invList.set(indexFirst, invList.get(indexSecond));
+                            }
+                        }
+                        invList.get(indexFirst).inc();
+                        invList.remove(indexSecond);
+                        indexSecond--;
                     }
                 }
             }
-            // Добавляем кастомные кнопки
+
             for (InvEntry entry : invList) {
                 entry.addBulkSell();
                 entry.addBulkDelete();
             }
-            // Логика сортировки
+
             if (AppVars.Profile != null && AppVars.Profile.DoInvSort) {
-                Collections.sort(invList, new InvComparer());
+                invList.sort(new InvComparer());
             }
-            // Сохраняем в AppVars для доступа из других компонентов
+
             AppVars.InvList = new ArrayList<>(invList);
-            // Пересобираем HTML инвентаря
-            StringBuilder newHtml = new StringBuilder();
-            newHtml.append("<tr><td align=center bgcolor=#f5f5f5>");
+
+            StringBuilder sb = new StringBuilder();
             for (InvEntry entry : invList) {
-                newHtml.append(entry.build());
+                sb.append(entry.build());
             }
-            newHtml.append("</td></tr>");
-            // Заменяем содержимое контейнера инвентаря
-            inventoryContainer.parent().parent().html(newHtml.toString());
-            
-            return doc.outerHtml();
+
+            StringBuilder rebuilt = new StringBuilder(html.substring(0, posStartInv));
+            rebuilt.append(sb);
+            rebuilt.append(html.substring(pos));
+            return rebuilt.toString();
         } catch (Exception e) {
-            // В случае любой ошибки парсинга, возвращаем исходный HTML, чтобы не уронить приложение
             java.io.StringWriter sw = new java.io.StringWriter();
             e.printStackTrace(new java.io.PrintWriter(sw));
-            String exceptionAsString = sw.toString();
-            ru.neverlands.abclient.utils.DebugLogger.log("Error during mainPhpInv processing: \n" + exceptionAsString);
+            ru.neverlands.abclient.utils.DebugLogger.log("Error during mainPhpInv processing: \n" + sw);
             return html;
         }
+    }
+
+    /**
+     * Преобразует HTML одной записи инвентаря в `<tr>`-элемент для конструктора {@link InvEntry}.
+     *
+     * Зависимости:
+     * - {@link Jsoup#parseBodyFragment(String)} для устойчивого парсинга фрагмента таблицы.
+     */
+    private static Element parseInventoryRowFromHtmlEntry(String htmlEntry) {
+        if (htmlEntry == null || htmlEntry.isEmpty()) {
+            return null;
+        }
+        Document doc = Jsoup.parseBodyFragment("<table><tbody>" + htmlEntry + "</tbody></table>");
+        return doc.selectFirst("tr");
+    }
+
+    /**
+     * Публикует системную строку по операциям инвентаря в основной чат.
+     *
+     * Зависимости:
+     * - {@link LocalBroadcastManager};
+     * - action {@link AppVars#ACTION_ADD_CHAT_MESSAGE}.
+     */
+    private static void sendInventoryChatMessage(String messageHtml) {
+        if (AppVars.getContext() == null || messageHtml == null || messageHtml.isEmpty()) {
+            return;
+        }
+        Intent intent = new Intent(AppVars.ACTION_ADD_CHAT_MESSAGE);
+        intent.putExtra("message", messageHtml);
+        LocalBroadcastManager.getInstance(AppVars.getContext()).sendBroadcast(intent);
     }
 }

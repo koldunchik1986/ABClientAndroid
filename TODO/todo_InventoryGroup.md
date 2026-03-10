@@ -13,15 +13,16 @@
 | --- | --- | --- |
 | `ABClient/InvEntry.cs` | Модель одного предмета + сравнение/пачки/массовые кнопки | `[x]` Проанализирован |
 | `ABClient/PostFilter/MainPhpInv.cs` | Парсинг блока инвентаря, группировка, сортировка, пересборка HTML | `[x]` Проанализирован |
-| `ABClient/y.cs` | Запрошенный файл | `[-]` Не найден в репозитории |
+
+Примечание: `y.cs` — опечатка в формулировке задачи, в план работ не включается.
 
 ## Текущая Android-реализация (факт по коду)
 
 | Файл | Что уже есть | Статус |
 | --- | --- | --- |
-| `app/src/main/java/ru/neverlands/abclient/postfilter/MainPhp.java` (`mainPhpInv`) | Есть ветка парсинга/группировки/сортировки, вызывается из main.php-пайплайна | `[~]` Частично |
-| `app/src/main/java/ru/neverlands/abclient/model/InvEntry.java` | Есть базовый парсер предмета, `inc`, `build`, bulk-кнопки | `[~]` Частично |
-| `app/src/main/java/ru/neverlands/abclient/model/InvComparer.java` | Есть только упрощенный compare по `Name` | `[ ]` Не 1:1 |
+| `app/src/main/java/ru/neverlands/abclient/postfilter/MainPhp.java` (`mainPhpInv`) | Переведен на C#-подобный алгоритм сканирования/группировки/bulk-flow | `[x]` Реализовано |
+| `app/src/main/java/ru/neverlands/abclient/model/InvEntry.java` | Портированы ключевые блоки парсинга, compare/build, массовые кнопки | `[~]` Частично (близко к 1:1) |
+| `app/src/main/java/ru/neverlands/abclient/model/InvComparer.java` | Делегирует сортировку в `InvEntry.compareTo` (как в C#) | `[x]` Реализовано |
 | `app/src/main/java/ru/neverlands/abclient/postfilter/InvEntry.java` | Дублирующий класс с `TODO` в bulk-методах, не используется в `MainPhp` | `[-]` Технический долг |
 
 ## Diff C# -> Android (сделано/не сделано)
@@ -30,16 +31,15 @@
 - [x] Есть профильные флаги `DoInvPack` / `DoInvSort` / `DoButtonSell` / `DoButtonDrop`.
 - [x] Есть базовое объединение одинаковых предметов и пересборка HTML.
 - [ ] Нет полного 1:1 парсинга `InvEntry.cs` (срок годности, точная матрица свойств, уровень, число кнопок, точные sell/drop ссылки и т.д.).
-- [ ] `compareTo/compareDolg` в Android упрощены относительно C# (критерии сравнения неэквивалентны).
+- [x] `compareTo/compareDolg` в Android приведены к C#-подобным критериям (имя/img/expiry/level/buttons/properties + парсинг `x/y`).
 - [ ] Нет parity-поведения `DoInvPackDolg` из C#.
-- [ ] `InvComparer.java` остается заглушкой (`TODO`), не повторяет C# сортировку.
+- [x] `InvComparer.java` больше не заглушка, сортировка повторяет C#-идею через `compareTo`.
 - [ ] В проекте есть дублирование двух `InvEntry` (model/postfilter), что повышает риск регрессий.
 
 ## План следующего этапа (после согласования)
 
 1. [ ] Зафиксировать единый рабочий класс `InvEntry` (без дублей).
 2. [ ] Довести парсинг предмета до 1:1 с `ABClient/InvEntry.cs`.
-3. [ ] Перенести точную C#-логику сравнения/группировки (`CompareTo`, `CompareDolg`, `InvComparer`).
+3. [x] Перенести точную C#-логику сравнения/группировки (`CompareTo`, `CompareDolg`, `InvComparer`).
 4. [ ] Проверить работу на категориях инвентаря (`im`/`wca`) и на обычной кнопке `Инвентарь`.
 5. [ ] Добавить runtime-логи для диагностики: до/после группировки, ключи сравнения, итоговый размер пачек.
-

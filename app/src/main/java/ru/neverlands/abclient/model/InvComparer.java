@@ -2,15 +2,21 @@ package ru.neverlands.abclient.model;
 
 import java.util.Comparator;
 
-// C# Port of InvComparer.cs
+/**
+ * Компаратор записей инвентаря.
+ *
+ * Порт C# `InvComparer`:
+ * - полностью делегирует порядок методу {@link InvEntry#compareTo(InvEntry)}.
+ *
+ * Зависимости:
+ * - корректность сортировки определяется логикой {@link InvEntry#compareTo(InvEntry)}.
+ */
 public class InvComparer implements Comparator<InvEntry> {
     @Override
     public int compare(InvEntry x, InvEntry y) {
-        // TODO: Port the full comparison logic from C#.
-        // For now, a simple name comparison will do as a placeholder.
-        if (x == null || y == null) {
-            return 0;
-        }
-        return x.Name.compareTo(y.Name);
+        if (x == y) return 0;
+        if (x == null) return 1;
+        if (y == null) return -1;
+        return x.compareTo(y);
     }
 }
