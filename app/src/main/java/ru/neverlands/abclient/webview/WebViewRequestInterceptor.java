@@ -132,6 +132,34 @@ public class WebViewRequestInterceptor {
     }
 
     /**
+     * Нормализует URL капчи для сравнения challenge между разными источниками
+     * (WebView request, AppVars.CodeAddress, cached URL).
+     */
+    private static String normalizeCaptchaUrl(String rawUrl) {
+        if (rawUrl == null || rawUrl.isEmpty()) {
+            return "";
+        }
+        String normalized = rawUrl.replaceFirst("^https://", "http://");
+        normalized = normalized.replaceFirst("^http://www\\.neverlands\\.ru", "http://neverlands.ru");
+        int fragmentIndex = normalized.indexOf('#');
+        if (fragmentIndex >= 0) {
+            normalized = normalized.substring(0, fragmentIndex);
+        }
+        return normalized;
+    }
+
+    /**
+     * Безопасно сравнивает два URL капчи после нормализации.
+     */
+    private static boolean isSameCaptchaUrl(String firstUrl, String secondUrl) {
+        String firstNormalized = normalizeCaptchaUrl(firstUrl);
+        String secondNormalized = normalizeCaptchaUrl(secondUrl);
+        return !firstNormalized.isEmpty()
+                && !secondNormalized.isEmpty()
+                && firstNormalized.equals(secondNormalized);
+    }
+
+    /**
      * Главная точка перехвата HTTP GET-запросов WebView для neverlands.ru.
      *
      * Зависимости:
@@ -183,6 +211,30 @@ public class WebViewRequestInterceptor {
 
             if (urlString.contains("/modules/code/code.php")
                     && ru.neverlands.abclient.utils.AppVars.IsFightCaptchaDialogVisible) {
+                String expectedCaptchaUrl = normalizeCaptchaUrl(ru.neverlands.abclient.utils.AppVars.CodeAddress);
+                String requestedCaptchaUrl = normalizeCaptchaUrl(urlString);
+                if (!expectedCaptchaUrl.isEmpty()
+                        && !requestedCaptchaUrl.isEmpty()
+                        && !requestedCaptchaUrl.equals(expectedCaptchaUrl)) {
+                    byte[] expectedCaptchaBytes = ru.neverlands.abclient.utils.AppVars.LastFightCaptchaImageBytes;
+                    String cachedCaptchaUrl = ru.neverlands.abclient.utils.AppVars.LastFightCaptchaImageUrl;
+                    if (expectedCaptchaBytes != null
+                            && expectedCaptchaBytes.length > 0
+                            && isSameCaptchaUrl(expectedCaptchaUrl, cachedCaptchaUrl)) {
+                        Log.d(TAG, "Fight captcha guard: blocked foreign challenge request, requested="
+                                + urlString + ", expected=" + expectedCaptchaUrl
+                                + ", serving expected bytes=" + expectedCaptchaBytes.length);
+                        return new WebResourceResponse(
+                                "image/png",
+                                null,
+                                new ByteArrayInputStream(expectedCaptchaBytes)
+                        );
+                    }
+                    Log.d(TAG, "Fight captcha guard: blocked foreign challenge request without expected bytes, requested="
+                            + urlString + ", expected=" + expectedCaptchaUrl);
+                    return new WebResourceResponse("text/plain", "utf-8", new ByteArrayInputStream(new byte[0]));
+                }
+
                 byte[] cachedCaptchaBytes = ru.neverlands.abclient.utils.AppVars.LastFightCaptchaImageBytes;
                 String cachedCaptchaUrl = ru.neverlands.abclient.utils.AppVars.LastFightCaptchaImageUrl;
                 long cachedCaptchaAtMs = ru.neverlands.abclient.utils.AppVars.LastFightCaptchaImageAtMs;

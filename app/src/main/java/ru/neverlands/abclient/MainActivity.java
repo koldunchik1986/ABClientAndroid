@@ -80,6 +80,7 @@ import java.util.regex.Pattern;
 import java.util.zip.GZIPInputStream;
 
 import ru.neverlands.abclient.bridge.WebAppInterface;
+import ru.neverlands.abclient.lez.LezFight;
 import ru.neverlands.abclient.manager.AutoFunctionsManager;
 import ru.neverlands.abclient.manager.ContactsManager;
 import ru.neverlands.abclient.databinding.ActivityMainBinding;
@@ -496,9 +497,21 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                         } else {
                             String cachedFightHtml = AppVars.ContentMainPhp;
                             if (hasFightMarkers(cachedFightHtml)) {
-                                autoTurnHtml = cachedFightHtml;
-                                Log.d(TAG, BG_TRACE_PREFIX + " requestAutoTurn: fallback to cached fight html, len="
-                                        + cachedFightHtml.length());
+                                if (isActiveFightContext(cachedFightHtml)) {
+                                    autoTurnHtml = cachedFightHtml;
+                                    Log.d(TAG, BG_TRACE_PREFIX + " requestAutoTurn: fallback to cached active fight html, len="
+                                            + cachedFightHtml.length());
+                                } else {
+                                    Log.d(TAG, BG_TRACE_PREFIX + " requestAutoTurn: cached fight html is stale (inactive), drop and probe");
+                                    AppVars.ContentMainPhp = "";
+                                    if (allowServerProbeFallback) {
+                                        boolean probeAllowedByUiState = isAutoTurnServerProbeAllowedNow();
+                                        if (!probeAllowedByUiState) {
+                                            Log.d(TAG, BG_TRACE_PREFIX + " requestAutoTurn: forcing server probe after stale cached fight html");
+                                        }
+                                        requestAutoTurnFromServerProbe("cached_fight_html_inactive");
+                                    }
+                                }
                             } else {
                                 Log.d(TAG, BG_TRACE_PREFIX + " requestAutoTurn: no fight markers in current/cached html");
                                 if (allowServerProbeFallback) {
@@ -515,9 +528,21 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                         Log.d(TAG, "requestAutoTurn: html is null");
                         String cachedFightHtml = AppVars.ContentMainPhp;
                         if (hasFightMarkers(cachedFightHtml)) {
-                            Log.d(TAG, BG_TRACE_PREFIX + " requestAutoTurn: null html, fallback to cached fight html, len="
-                                    + cachedFightHtml.length());
-                            fightViewModel.autoTurnOnce(cachedFightHtml);
+                            if (isActiveFightContext(cachedFightHtml)) {
+                                Log.d(TAG, BG_TRACE_PREFIX + " requestAutoTurn: null html, fallback to cached active fight html, len="
+                                        + cachedFightHtml.length());
+                                fightViewModel.autoTurnOnce(cachedFightHtml);
+                            } else {
+                                Log.d(TAG, BG_TRACE_PREFIX + " requestAutoTurn: null html with stale cached fight html, drop and probe");
+                                AppVars.ContentMainPhp = "";
+                                if (allowServerProbeFallback) {
+                                    boolean probeAllowedByUiState = isAutoTurnServerProbeAllowedNow();
+                                    if (!probeAllowedByUiState) {
+                                        Log.d(TAG, BG_TRACE_PREFIX + " requestAutoTurn: forcing null-html server probe after stale cached fight html");
+                                    }
+                                    requestAutoTurnFromServerProbe("null_html_stale_cached_fight_html");
+                                }
+                            }
                         } else {
                             Log.d(TAG, BG_TRACE_PREFIX + " requestAutoTurn: html is null and cached html has no fight markers");
                             if (allowServerProbeFallback) {
@@ -768,6 +793,25 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
      */
     private boolean hasFightMarkers(String html) {
         return html != null && (html.contains("var fight_ty") || html.contains("magic_slots();"));
+    }
+
+    /**
+     * Определяет, что fight HTML действительно относится к активному бою, а не к stale-кадру после завершения.
+     *
+     * Нужен для фонового `requestAutoTurn(...)`: без этой проверки сервис мог зациклиться на старом `fight_ty`,
+     * где маркеры боя есть, но `IsBoi=false` и реальный ход уже невозможен.
+     */
+    private boolean isActiveFightContext(String html) {
+        if (!hasFightMarkers(html)) {
+            return false;
+        }
+        try {
+            LezFight fight = new LezFight(html);
+            return fight.IsValid && fight.IsBoi;
+        } catch (Exception e) {
+            Log.w(TAG, BG_TRACE_PREFIX + " isActiveFightContext: parse failed, treat as inactive", e);
+            return false;
+        }
     }
 
     /**
@@ -1083,6 +1127,9 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         activeFightCaptchaDialog = dialog;
         activeFightCaptchaUrl = captchaUrl == null ? "" : captchaUrl;
         activeFightFinishUrl = finishUrl == null ? "" : finishUrl;
+        // Фиксируем ожидаемый challenge для interceptor-guard: пока открыт popup,
+        // внешние code.php-URL (другой challenge) не должны подменять текущую капчу.
+        AppVars.CodeAddress = activeFightCaptchaUrl;
         activeFightCaptchaInput = input;
 
         dialog.setOnShowListener(d -> {

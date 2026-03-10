@@ -46,10 +46,6 @@ public class FightViewModel extends ViewModel {
         // Фикс "залипания после 1-го хода":
         // как только получили HTML с боевыми маркерами, обновляем отдельный pulse для фонового сервиса.
         // Это не заменяет LastBoiTimer (UI-таймер кнопки хода), а дополняет его для isFightSessionLikelyActive(...).
-        long fightPulseNow = System.currentTimeMillis();
-        AppVars.LastFightPulseAtMs = fightPulseNow;
-        AppVars.LastBoiTimer = new java.util.Date(fightPulseNow);
-
         boolean autoBattleUiEnabled = Boolean.TRUE.equals(_isAutoBattleActive.getValue());
         boolean captchaDialogVisible = AppVars.IsFightCaptchaDialogVisible;
         boolean autoBattleRuntimeEnabled = autoBattleUiEnabled
@@ -73,6 +69,7 @@ public class FightViewModel extends ViewModel {
                 Log.d(TAG, BG_TRACE_PREFIX + " processFightHtml: skip, parsed fight invalid");
                 return;
             }
+            updateFightPulseIfNeeded(fight);
 
             announceNewFightIfNeeded(fight, html);
 
@@ -112,9 +109,6 @@ public class FightViewModel extends ViewModel {
         }
         // Одиночный автоход тоже считается "живым" боевым пульсом:
         // нужен, чтобы foreground-service не терял бой на кратких переходах между кадрами.
-        long fightPulseNow = System.currentTimeMillis();
-        AppVars.LastFightPulseAtMs = fightPulseNow;
-        AppVars.LastBoiTimer = new java.util.Date(fightPulseNow);
         if (AppVars.IsFightCaptchaDialogVisible) {
             Log.d(TAG, BG_TRACE_PREFIX + " autoTurnOnce: skip, captcha dialog visible");
             return;
@@ -128,6 +122,7 @@ public class FightViewModel extends ViewModel {
                 Log.d(TAG, BG_TRACE_PREFIX + " autoTurnOnce: skip, parsed fight invalid");
                 return;
             }
+            updateFightPulseIfNeeded(fight);
 
             announceNewFightIfNeeded(fight, html);
 
@@ -178,6 +173,21 @@ public class FightViewModel extends ViewModel {
     public void onActionSubmitted() {
         _submitAction.setValue(null);
         Log.d(TAG, BG_TRACE_PREFIX + " onActionSubmitted: submit reset");
+    }
+
+    /**
+     * Обновляет боевой pulse только при активном бою (`IsBoi=true`).
+     *
+     * Это защищает фоновые эвристики от stale `fight_ty`: завершённый бой больше не продлевает
+     * `LastFightPulseAtMs`, из-за чего AutoModeForegroundService не застревает в ложном состоянии "бой активен".
+     */
+    private void updateFightPulseIfNeeded(LezFight fight) {
+        if (fight == null || !fight.IsValid || !fight.IsBoi) {
+            return;
+        }
+        long fightPulseNow = System.currentTimeMillis();
+        AppVars.LastFightPulseAtMs = fightPulseNow;
+        AppVars.LastBoiTimer = new java.util.Date(fightPulseNow);
     }
 
     private boolean containsFightMarkers(String html) {

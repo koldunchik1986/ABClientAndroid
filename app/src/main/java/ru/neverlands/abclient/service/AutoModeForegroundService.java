@@ -54,6 +54,7 @@ public class AutoModeForegroundService extends Service {
     private static final long NO_ACTIVITY_STOP_TIMEOUT_MS = 60_000L;
     private static final long AUTO_TURN_MIN_INTERVAL_MS = 1000L;
     private static final long AUTO_TURN_IDLE_PROBE_INTERVAL_MS = 2_000L;
+    private static final long POST_FIGHT_PIPELINE_MIN_INTERVAL_MS = 1_500L;
     private static final long ROOM_REFRESH_MIN_INTERVAL_MS = 1000L;
     private static final long CHAT_REFRESH_STALE_GRACE_MS = 3_000L;
     private static final long FIGHT_PULSE_GRACE_MS = 12_000L;
@@ -88,6 +89,7 @@ public class AutoModeForegroundService extends Service {
     private long lastRoomUsersTickAtMs = 0L;
     private long lastAutoTurnTickAtMs = 0L;
     private long lastForcedChatRefreshAtMs = 0L;
+    private long lastPostFightPipelineTickAtMs = 0L;
     private long lastAutoFightFinishDispatchAtMs = 0L;
     private String lastAutoFightFinishLink = "";
     private long lastForceFightSyncAtMs = 0L;
@@ -326,6 +328,33 @@ public class AutoModeForegroundService extends Service {
                     maybeForceFightFrameSync(activity, tickNow, pendingFightFinishLink);
                 }
 
+                // Когда после боя висят отложенные post-fight задачи (разделка/проверка инвентаря/fast-flow),
+                // приоритетно двигаем именно pipeline main.php вместо autoTurn idle-probe.
+                // Иначе цикл server-probe "нет маркеров боя" может бесконечно оттеснять обработку ресурсов.
+                if (!uiForegroundInteractive && !captchaDialogVisible && hasPendingBackgroundPipelineTasks()) {
+                    long sinceLastPipelineTick = tickNow - lastPostFightPipelineTickAtMs;
+                    if (sinceLastPipelineTick >= POST_FIGHT_PIPELINE_MIN_INTERVAL_MS) {
+                        if (activity.getMainWebView() != null) {
+                            String pipelineUrl = "http://neverlands.ru/main.php?r=" + tickNow + "&ab_bg_pipeline=1";
+                            activity.getMainWebView().loadUrl(pipelineUrl);
+                            lastPostFightPipelineTickAtMs = tickNow;
+                            String pendingReason = buildPendingBackgroundPipelineReason();
+                            markClientAction("Фоновый pipeline: " + pendingReason);
+                            Log.d(TAG, BG_TRACE_PREFIX + " uiTick: run pending pipeline, reason=" + pendingReason
+                                    + ", url=" + pipelineUrl);
+                        } else {
+                            markClientAction("Пропуск pipeline: webView=null");
+                            Log.w(TAG, BG_TRACE_PREFIX + " uiTick: skip pending pipeline, mainWebView=null");
+                        }
+                    } else {
+                        Log.d(TAG, BG_TRACE_PREFIX + " uiTick: pending pipeline throttled, remainingMs="
+                                + (POST_FIGHT_PIPELINE_MIN_INTERVAL_MS - sinceLastPipelineTick)
+                                + ", reason=" + buildPendingBackgroundPipelineReason());
+                    }
+                    refreshForegroundNotification(autoFightEnabled, locationTrackingEnabled, captchaDialogVisible, false);
+                    return;
+                }
+
                 if (locationTrackingEnabled) {
                     if (tickNow - lastRoomUsersTickAtMs >= roomTickIntervalMs) {
                         activity.requestRoomUsersRefreshSoon();
@@ -416,6 +445,40 @@ public class AutoModeForegroundService extends Service {
         activity.requestChatRefreshNow();
         markClientAction("Чат: watchdog refresh");
         lastForcedChatRefreshAtMs = tickNow;
+    }
+
+    /**
+     * Проверяет, есть ли в рантайме отложенные задачи post-fight pipeline,
+     * которые требуют реальной навигации по main.php (инвентарь/ресурсы/fast-action),
+     * а не только server-probe авто-боя.
+     */
+    private boolean hasPendingBackgroundPipelineTasks() {
+        return AppVars.AutoSkinCheckRes
+                || AppVars.AutoSkinCheckUm
+                || AppVars.AutoSkinCheckKnife
+                || AppVars.FastNeed
+                || AppVars.AutoFishCheckUm
+                || AppVars.AutoFishCheckUd
+                || AppVars.AutoFishWearUd;
+    }
+
+    /**
+     * Короткая строка причин для логов/уведомления: какие именно pending-флаги держат pipeline.
+     */
+    private String buildPendingBackgroundPipelineReason() {
+        StringBuilder sb = new StringBuilder();
+        if (AppVars.AutoSkinCheckRes) sb.append("SkinRes,");
+        if (AppVars.AutoSkinCheckUm) sb.append("SkinUm,");
+        if (AppVars.AutoSkinCheckKnife) sb.append("SkinKnife,");
+        if (AppVars.FastNeed) sb.append("FastNeed,");
+        if (AppVars.AutoFishCheckUm) sb.append("FishUm,");
+        if (AppVars.AutoFishCheckUd) sb.append("FishUd,");
+        if (AppVars.AutoFishWearUd) sb.append("FishWear,");
+        if (sb.length() == 0) {
+            return "none";
+        }
+        sb.setLength(sb.length() - 1);
+        return sb.toString();
     }
 
     private boolean isFightSessionLikelyActive(MainActivity activity) {
