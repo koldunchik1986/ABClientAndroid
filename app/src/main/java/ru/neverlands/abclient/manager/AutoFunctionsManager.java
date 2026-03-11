@@ -76,6 +76,21 @@ public class AutoFunctionsManager {
      * - Синхронизирует AppVars.Autoboi и Profile.LezDoAutoboi.
      * - При включении форсирует переход в fight.frame, как в ПК-версии.
      */
+    // Подробное описание (актуально для Android-порта 1:1):
+    // Назначение:
+    // - включает/выключает runtime авто-боя;
+    // - синхронизирует состояние между профилем, AppVars и фоновым сервисом;
+    // - при включении выполняет bootstrap боевого фрейма (ab_reload_probe), чтобы цикл удара стартовал без ручного клика.
+    //
+    // Зависимости:
+    // - AppVars.Profile.LezDoAutoboi: источник/приемник постоянного флага;
+    // - AppVars.Autoboi / AutoboiState: runtime флаг для боевого пайплайна;
+    // - AppVars.DoFury и AutoFury*: подготовка опции "Ярость/Снежок";
+    // - syncBackgroundService(...): запуск/остановка AutoModeForegroundService;
+    // - AppVars.mainActivity.get().getMainWebView().loadUrl(...): фактический bootstrap fight.frame.
+    //
+    // Почему это важно:
+    // - без bootstrap после включения флаг мог быть ON, но авто-ход не стартовал до ручного переключения.
     public void setAutoFightEnabled(boolean enabled) {
         prefs.edit().putBoolean(KEY_PREFIX + "auto_fight", enabled).apply();
         // Глобальный флаг боевого режима для ядра клиента.
@@ -244,6 +259,17 @@ public class AutoFunctionsManager {
      *   авто-цепочка не стартует до ручного перехода в "Ваш персонаж";
      * - метод переиспользует существующие точки входа (`setAuto*Enabled`) без дублирования логики.
      */
+    // Подробное описание:
+    // Назначение:
+    // - после успешного логина восстанавливает сохраненные авто-режимы в runtime.
+    // Алгоритм:
+    // - если включена авто-рыбалка, приоритетно запускается ее полная цепочка;
+    // - иначе мягко восстанавливается runtime авто-боя через restoreAutoFightRuntimeAfterLogin(...).
+    //
+    // Зависимости:
+    // - SharedPreferences: сохраненные флаги AutoFish/AutoFight;
+    // - setAutoFishEnabled(true): полная инициализация рыбалки;
+    // - restoreAutoFightRuntimeAfterLogin(...): мягкое восстановление боевого контура.
     public void restorePersistentAutoModesAfterLogin() {
         boolean autoFish = isAutoFishEnabled();
         boolean autoFight = isAutoFightEnabled();
@@ -276,6 +302,22 @@ public class AutoFunctionsManager {
      * - `syncBackgroundService(...)` для синхронизации foreground-service;
      * - `AutoModeForegroundService.shouldRunInBackground(...)`, который читает это runtime-состояние.
      */
+    // Подробное описание:
+    // Назначение:
+    // - восстановить runtime авто-боя после логина без лишнего переключения UI-кнопки.
+    // Что делает:
+    // - выставляет AppVars.Autoboi/DoFury в соответствии с профилем;
+    // - синхронизирует фоновый сервис;
+    // - если авто-бой включен, делает одноразовый bootstrap reload fight.frame (ab_reload_probe).
+    //
+    // Зависимости:
+    // - AppVars.Profile.hasAnyLezFuryGroup();
+    // - syncBackgroundService(...);
+    // - AppVars.mainActivity -> getMainWebView().loadUrl(...).
+    //
+    // Причина фикса:
+    // - устраняет сценарий, когда после логина авто-бой "ON", но первый бой не стартует
+    //   до ручного OFF/ON переключения.
     private void restoreAutoFightRuntimeAfterLogin(boolean autoFightEnabledByProfile) {
         AppVars.Autoboi = autoFightEnabledByProfile ? AutoboiState.AutoboiOn : AutoboiState.AutoboiOff;
 
@@ -292,6 +334,9 @@ public class AutoFunctionsManager {
         Log.d(TAG, "restoreAutoFightRuntimeAfterLogin: runtime autoboi=" + AppVars.Autoboi
                 + ", profileAutoFight=" + autoFightEnabledByProfile);
 
+        // Bootstrap после restore:
+        // - запускается только при включенном авто-бое в профиле;
+        // - не меняет сам флаг, а только инициирует загрузку боевого кадра для старта цикла.
         if (autoFightEnabledByProfile && AppVars.mainActivity != null && AppVars.mainActivity.get() != null) {
             AppVars.mainActivity.get().runOnUiThread(() -> {
                 try {

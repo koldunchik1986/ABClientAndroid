@@ -386,6 +386,19 @@ public class AutoModeForegroundService extends Service {
                     }
                 }
 
+                // Подробное описание guard-блока авто-хода:
+                // Назначение:
+                // - в активном foreground UI не дергать лишние probe/autoTurn, когда действительно нет признаков боя.
+                //
+                // Ключевая деталь текущего фикса:
+                // - условие skip применяется только при !fightLikelyActive.
+                // - если бой уже вероятно активен (fightLikelyActive=true), skip не срабатывает,
+                //   и сервис продолжает requestAutoTurnBackgroundAware(), чтобы не было "залипания" после логина.
+                //
+                // Зависимости:
+                // - hasFightMarkers(AppVars.ContentMainPhp): маркеры боя в текущем html-кэше;
+                // - pendingFightFinishLink: наличие этапа завершения/капчи;
+                // - fightLikelyActive: агрегированная эвристика активности боя.
                 if (autoFightEnabled && !captchaDialogVisible) {
                     if ((uiForegroundInteractive || uiForegroundLikely)
                             && !fightLikelyActive
