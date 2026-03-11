@@ -1120,11 +1120,13 @@ public class QuickButtonsPanel {
         long xp = ChatStats.getTotalXp();
         long fights = ChatStats.getTotalFights();
         long totalNv = ChatStats.getTotalNv();
+        long statsElapsedMs = ChatStats.getStatsElapsedMs();
         double totalResourcesKg = ChatStats.getTotalResourceKg();
         java.util.Map<String, Double> resourceKgByType = ChatStats.getResourceKgByType();
         java.util.Map<String, Long> itemCountByName = ChatStats.getItemCountByName();
 
         StringBuilder sb = new StringBuilder();
+        sb.append("Статистика за: ").append(formatStatsDuration(statsElapsedMs)).append("\n");
         sb.append("Опыт: ").append(xp).append("\n");
         sb.append("Поединки: ").append(fights).append("\n");
         sb.append("Денежные средства (NV): ").append(totalNv).append("\n");
@@ -1146,6 +1148,16 @@ public class QuickButtonsPanel {
         }
 
         return sb.toString().trim();
+    }
+
+    // Формат длительности окна статистики в виде hh:mm:ss.
+    // Зависимости: используется только buildStatsText() для строки "Статистика за: ...".
+    private String formatStatsDuration(long elapsedMs) {
+        long totalSeconds = Math.max(0L, elapsedMs / 1000L);
+        long hours = totalSeconds / 3600L;
+        long minutes = (totalSeconds % 3600L) / 60L;
+        long seconds = totalSeconds % 60L;
+        return String.format(java.util.Locale.US, "%02d:%02d:%02d", hours, minutes, seconds);
     }
 
     // Формат массы ресурсов для статистики (всегда 2 знака после запятой).

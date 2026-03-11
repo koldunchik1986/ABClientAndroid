@@ -43,6 +43,9 @@ public class ChatStats {
             "^(.+?)\\s*\\((\\d+(?:[\\.,]\\d+)?)\\s*[кК][гГ]\\)$");
     private static long totalXp = 0;
     private static long totalFights = 0;
+    // Временная точка старта окна статистики (epoch milliseconds).
+    // Устанавливается при первом создании дневной статистики и при ручном сбросе.
+    private static long statsStartAtMs = 0L;
     /**
      * Накопленная за текущую дату сумма денежного дропа (NV).
      *
@@ -153,6 +156,25 @@ public class ChatStats {
     }
 
     /**
+     * Возвращает длительность текущего окна статистики в миллисекундах.
+     *
+     * Логика:
+     * - отсчёт начинается с {@link #statsStartAtMs};
+     * - при сбросе статистики ({@link #reset()}) стартовая точка переносится на "сейчас";
+     * - значение никогда не возвращается отрицательным.
+     */
+    public static synchronized long getStatsElapsedMs() {
+        ensureLoaded();
+        long now = System.currentTimeMillis();
+        if (statsStartAtMs <= 0L || statsStartAtMs > now) {
+            statsStartAtMs = now;
+            saveInternal();
+            return 0L;
+        }
+        return now - statsStartAtMs;
+    }
+
+    /**
      * Добавляет лут в статистику за текущий день.
      *
      * Приоритет разбора (как единый конвейер):
@@ -252,6 +274,7 @@ public class ChatStats {
     // Сброс статистики — очищаем данные и сохраняем пустое состояние.
     public static synchronized void reset() {
         ensureLoaded();
+        statsStartAtMs = System.currentTimeMillis();
         totalXp = 0;
         totalFights = 0;
         totalNv = 0;
@@ -285,6 +308,8 @@ public class ChatStats {
      * - `LOOT=` (legacy, используется для миграции старых данных).
      */
     private static void loadFromFile(String date) {
+        long now = System.currentTimeMillis();
+        statsStartAtMs = now;
         totalXp = 0;
         totalFights = 0;
         totalNv = 0;
@@ -304,6 +329,11 @@ public class ChatStats {
                     totalXp = parseLongSafe(line.substring(3));
                 } else if (line.startsWith("FIGHTS=")) {
                     totalFights = parseLongSafe(line.substring(7));
+                } else if (line.startsWith("START_MS=")) {
+                    long value = parseLongSafe(line.substring(9));
+                    if (value > 0L) {
+                        statsStartAtMs = value;
+                    }
                 } else if (line.startsWith("NV=")) {
                     totalNv = parseLongSafe(line.substring(3));
                 } else if (line.startsWith("KG_TOTAL=")) {
@@ -370,6 +400,10 @@ public class ChatStats {
         if (statFile == null) return;
         StringBuilder sb = new StringBuilder();
         sb.append("DATE=").append(currentDate).append("\n");
+        if (statsStartAtMs <= 0L) {
+            statsStartAtMs = System.currentTimeMillis();
+        }
+        sb.append("START_MS=").append(statsStartAtMs).append("\n");
         sb.append("XP=").append(totalXp).append("\n");
         sb.append("FIGHTS=").append(totalFights).append("\n");
         sb.append("NV=").append(totalNv).append("\n");
