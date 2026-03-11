@@ -21,8 +21,10 @@ import java.util.regex.Pattern;
 
 public class ChatStats {
     private static final String TAG = "ChatStats";
-    // Статистика хранится отдельным файлом на день: Logs/YYYYMMDD_stat.txt
+    // Формат даты для служебных полей статистики (RESET_DATE/DATE).
     private static final SimpleDateFormat STAT_DATE_FORMAT = new SimpleDateFormat("yyyyMMdd", Locale.US);
+    // Персистентный файл статистики текущего профиля (без автосброса по датам).
+    private static final String STAT_FILE_SUFFIX = "_stat.txt";
     /**
      * Шаблон денежного дропа в формате игры: "22 NV", "1 234 NV".
      *
@@ -44,8 +46,10 @@ public class ChatStats {
     private static long totalXp = 0;
     private static long totalFights = 0;
     // Временная точка старта окна статистики (epoch milliseconds).
-    // Устанавливается при первом создании дневной статистики и при ручном сбросе.
+    // Устанавливается при первом создании статистики и при ручном/автоматическом сбросе.
     private static long statsStartAtMs = 0L;
+    // Дата (yyyyMMdd), от которой считается текущая сессия статистики.
+    private static String statsResetDateYmd = "";
     /**
      * Накопленная за текущую дату сумма денежного дропа (NV).
      *
@@ -86,9 +90,9 @@ public class ChatStats {
      */
     private static final Map<String, Long> itemCountByName = new LinkedHashMap<>();
     private static final List<String> lootLog = new ArrayList<>();
-    // Состояние загрузки/кеша статистики за текущую дату.
+    // Состояние загрузки/кеша статистики.
     private static boolean loaded = false;
-    private static String loadedDate = null;
+    private static String loadedProfileKey = null;
     private static File statFile = null;
 
     // Увеличение опыта — сразу сохраняем в файл.
@@ -109,7 +113,7 @@ public class ChatStats {
     public static synchronized void addFight() {
         ensureLoaded();
         totalFights++;
-        Log.d(TAG, "addFight: totalFights=" + totalFights + ", date=" + loadedDate);
+        Log.d(TAG, "addFight: totalFights=" + totalFights + ", resetDate=" + statsResetDateYmd);
         saveInternal();
     }
 
@@ -274,55 +278,46 @@ public class ChatStats {
     // Сброс статистики — очищаем данные и сохраняем пустое состояние.
     public static synchronized void reset() {
         ensureLoaded();
-        statsStartAtMs = System.currentTimeMillis();
-        totalXp = 0;
-        totalFights = 0;
-        totalNv = 0;
-        totalResourceKg = 0;
-        resourceKgByType.clear();
-        itemCountByName.clear();
-        lootLog.clear();
+        resetStateLocked(System.currentTimeMillis(), getCurrentDateYmd());
         saveInternal();
     }
 
-    // Гарантирует загрузку статистики для текущей даты.
+    // Гарантирует загрузку статистики для текущего профиля.
     private static void ensureLoaded() {
         if (AppVars.getContext() == null) {
             return;
         }
-        String currentDate = STAT_DATE_FORMAT.format(new Date());
-        if (!loaded || !currentDate.equals(loadedDate)) {
-            loadedDate = currentDate;
-            loadFromFile(currentDate);
+        String profileKey = getCurrentProfileStatsKey();
+        if (!loaded || loadedProfileKey == null || !loadedProfileKey.equals(profileKey)) {
+            loadedProfileKey = profileKey;
+            loadFromFile();
             loaded = true;
         }
+        maybeApplyMidnightResetLocked();
     }
 
     /**
-     * Загружает статистику из файла `Logs/YYYYMMDD_stat.txt`.
+     * Загружает статистику из персистентного файла профиля `Logs/<profile>_stat.txt`.
      *
      * Поддерживаемые ключи:
-     * - `XP=`, `FIGHTS=`, `NV=`,
+     * - `START_MS=`, `RESET_DATE=`, `XP=`, `FIGHTS=`, `NV=`,
      * - `KG_TOTAL=`, `KG_ITEM=`,
      * - `ITEM_COUNT=` (новый формат поштучной статистики),
      * - `LOOT=` (legacy, используется для миграции старых данных).
      */
-    private static void loadFromFile(String date) {
-        long now = System.currentTimeMillis();
-        statsStartAtMs = now;
-        totalXp = 0;
-        totalFights = 0;
-        totalNv = 0;
-        totalResourceKg = 0;
-        resourceKgByType.clear();
-        itemCountByName.clear();
-        lootLog.clear();
-        statFile = resolveStatFile(date);
-        if (statFile == null || !statFile.exists()) {
+    private static void loadFromFile() {
+        String currentDate = getCurrentDateYmd();
+        resetStateLocked(System.currentTimeMillis(), currentDate);
+        statFile = resolveStatFile();
+        File sourceFile = statFile;
+        if ((sourceFile == null || !sourceFile.exists())) {
+            sourceFile = resolveLegacyDailyStatFile(currentDate);
+        }
+        if (sourceFile == null || !sourceFile.exists()) {
             return;
         }
         try (BufferedReader reader = new BufferedReader(
-                new InputStreamReader(new FileInputStream(statFile), StandardCharsets.UTF_8))) {
+                new InputStreamReader(new FileInputStream(sourceFile), StandardCharsets.UTF_8))) {
             String line;
             while ((line = reader.readLine()) != null) {
                 if (line.startsWith("XP=")) {
@@ -333,6 +328,11 @@ public class ChatStats {
                     long value = parseLongSafe(line.substring(9));
                     if (value > 0L) {
                         statsStartAtMs = value;
+                    }
+                } else if (line.startsWith("RESET_DATE=")) {
+                    String value = line.substring(11).trim();
+                    if (!value.isEmpty()) {
+                        statsResetDateYmd = value;
                     }
                 } else if (line.startsWith("NV=")) {
                     totalNv = parseLongSafe(line.substring(3));
@@ -377,10 +377,18 @@ public class ChatStats {
         } catch (Exception e) {
             Log.e(TAG, "loadFromFile failed", e);
         }
+        if (statsResetDateYmd == null || statsResetDateYmd.isEmpty()) {
+            statsResetDateYmd = currentDate;
+        }
+        // Миграция legacy-дневного файла в новый профильный файл.
+        if (statFile != null && sourceFile != null && !statFile.equals(sourceFile)) {
+            Log.i(TAG, "loadFromFile: migrate legacy daily stats -> profile stats file");
+            saveInternal();
+        }
     }
 
     /**
-     * Сохраняет статистику в файл `Logs/YYYYMMDD_stat.txt`.
+     * Сохраняет статистику в персистентный файл профиля `Logs/<profile>_stat.txt`.
      *
      * Зависимости:
      * - вызывается после каждого изменения счётчиков (xp/fights/nv/kg/items);
@@ -389,13 +397,9 @@ public class ChatStats {
      */
     private static void saveInternal() {
         if (AppVars.getContext() == null) return;
-        String currentDate = STAT_DATE_FORMAT.format(new Date());
-        if (!currentDate.equals(loadedDate)) {
-            loadedDate = currentDate;
-            loadFromFile(currentDate);
-        }
+        String currentDate = getCurrentDateYmd();
         if (statFile == null) {
-            statFile = resolveStatFile(currentDate);
+            statFile = resolveStatFile();
         }
         if (statFile == null) return;
         StringBuilder sb = new StringBuilder();
@@ -403,7 +407,11 @@ public class ChatStats {
         if (statsStartAtMs <= 0L) {
             statsStartAtMs = System.currentTimeMillis();
         }
+        if (statsResetDateYmd == null || statsResetDateYmd.isEmpty()) {
+            statsResetDateYmd = currentDate;
+        }
         sb.append("START_MS=").append(statsStartAtMs).append("\n");
+        sb.append("RESET_DATE=").append(statsResetDateYmd).append("\n");
         sb.append("XP=").append(totalXp).append("\n");
         sb.append("FIGHTS=").append(totalFights).append("\n");
         sb.append("NV=").append(totalNv).append("\n");
@@ -424,15 +432,77 @@ public class ChatStats {
         }
     }
 
-    // Определяет путь Logs/YYYYMMDD_stat.txt.
-    private static File resolveStatFile(String date) {
+    // Определяет путь Logs/<profile>_stat.txt.
+    private static File resolveStatFile() {
         File baseLogs = AppVars.getLogsDir();
         if (baseLogs == null && AppVars.getContext() != null) {
             baseLogs = new File(AppVars.getContext().getFilesDir(), "Logs");
         }
         if (baseLogs == null) return null;
         if (!baseLogs.exists()) baseLogs.mkdirs();
-        return new File(baseLogs, date + "_stat.txt");
+        String profileKey = getCurrentProfileStatsKey();
+        return new File(baseLogs, profileKey + STAT_FILE_SUFFIX);
+    }
+
+    // Legacy fallback: старый дневной путь Logs/YYYYMMDD_stat.txt.
+    private static File resolveLegacyDailyStatFile(String dateYmd) {
+        File baseLogs = AppVars.getLogsDir();
+        if (baseLogs == null && AppVars.getContext() != null) {
+            baseLogs = new File(AppVars.getContext().getFilesDir(), "Logs");
+        }
+        if (baseLogs == null) return null;
+        if (!baseLogs.exists()) baseLogs.mkdirs();
+        return new File(baseLogs, dateYmd + "_stat.txt");
+    }
+
+    // Унифицированная очистка/инициализация состояния счётчиков.
+    private static void resetStateLocked(long startMs, String resetDateYmd) {
+        statsStartAtMs = startMs;
+        statsResetDateYmd = resetDateYmd;
+        totalXp = 0;
+        totalFights = 0;
+        totalNv = 0;
+        totalResourceKg = 0;
+        resourceKgByType.clear();
+        itemCountByName.clear();
+        lootLog.clear();
+    }
+
+    private static String getCurrentDateYmd() {
+        return STAT_DATE_FORMAT.format(new Date());
+    }
+
+    private static boolean isMidnightResetEnabled() {
+        return AppVars.Profile != null && AppVars.Profile.StatsResetAtMidnight;
+    }
+
+    // Проверка дневного автосброса (если включен в профиле).
+    private static void maybeApplyMidnightResetLocked() {
+        String currentDate = getCurrentDateYmd();
+        if (statsResetDateYmd == null || statsResetDateYmd.isEmpty()) {
+            statsResetDateYmd = currentDate;
+            saveInternal();
+            return;
+        }
+        if (!isMidnightResetEnabled()) {
+            return;
+        }
+        if (!currentDate.equals(statsResetDateYmd)) {
+            Log.i(TAG, "maybeApplyMidnightResetLocked: reset by midnight, from="
+                    + statsResetDateYmd + " to=" + currentDate);
+            resetStateLocked(System.currentTimeMillis(), currentDate);
+            saveInternal();
+        }
+    }
+
+    private static String getCurrentProfileStatsKey() {
+        if (AppVars.Profile != null && AppVars.Profile.UserNick != null) {
+            String nick = AppVars.Profile.UserNick.trim();
+            if (!nick.isEmpty()) {
+                return nick.replaceAll("[^A-Za-z0-9._-]", "_");
+            }
+        }
+        return "default";
     }
 
     // Безопасный парсинг long из строки.

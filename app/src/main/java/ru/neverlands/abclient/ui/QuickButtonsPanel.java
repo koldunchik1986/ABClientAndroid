@@ -1009,6 +1009,16 @@ public class QuickButtonsPanel {
                 LinearLayout.LayoutParams.WRAP_CONTENT
             ));
 
+            CheckBox resetAtMidnight = new CheckBox(context);
+            resetAtMidnight.setText("Сбрасывать статистику в полночь");
+            resetAtMidnight.setChecked(AppVars.Profile != null && AppVars.Profile.StatsResetAtMidnight);
+            LinearLayout.LayoutParams resetAtMidnightParams = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            );
+            resetAtMidnightParams.topMargin = dpToPx(8);
+            root.addView(resetAtMidnight, resetAtMidnightParams);
+
             LinearLayout actions = new LinearLayout(context);
             actions.setOrientation(LinearLayout.HORIZONTAL);
             actions.setGravity(Gravity.END);
@@ -1053,6 +1063,15 @@ public class QuickButtonsPanel {
                 ChatStats.reset();
                 statsText.setText(buildStatsText());
                 Toast.makeText(context, "Статистика сброшена", Toast.LENGTH_SHORT).show();
+            });
+
+            resetAtMidnight.setOnCheckedChangeListener((buttonView, isChecked) -> {
+                if (AppVars.Profile != null && AppVars.Profile.StatsResetAtMidnight != isChecked) {
+                    AppVars.Profile.StatsResetAtMidnight = isChecked;
+                    AppVars.Profile.save(context);
+                }
+                // Перерисовываем окно сразу: если включили флаг и день уже сменился — статистика сбросится.
+                statsText.setText(buildStatsText());
             });
 
             copyButton.setOnClickListener(v -> {
@@ -1112,7 +1131,7 @@ public class QuickButtonsPanel {
      * - Предметы по названиям (`ChatStats.getItemCountByName()`), в формате "Название: N шт.".
      *
      * Зависимости:
-     * - `ChatStats` хранит и восстанавливает дневную статистику из `Logs/YYYYMMDD_stat.txt`;
+     * - `ChatStats` хранит и восстанавливает статистику профиля из `Logs/<profile>_stat.txt`;
      * - порядок предметов/ресурсов определяется порядком накопления в `LinkedHashMap` внутри `ChatStats`;
      * - значение этого метода используется и для текста окна, и для копирования в буфер.
      */

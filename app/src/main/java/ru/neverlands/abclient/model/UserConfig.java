@@ -161,6 +161,15 @@ public class UserConfig {
     public boolean ChatKeepLog = true;
     public boolean DoAutoAnswer = false;
     public boolean DoChatLevels = false;
+    /**
+     * Сбрасывать статистику в полночь.
+     *
+     * Зависимости:
+     * - читает `ChatStats` при проверке дневного автосброса;
+     * - настраивается из UI окна статистики (QuickButtonsPanel);
+     * - сохраняется/загружается в атрибуте `chat@statsResetAtMidnight`.
+     */
+    public boolean StatsResetAtMidnight = false;
     // Разница между локальным временем и временем сервера (мс). Аналог ServDiff в C#.
     // Используется для корректного отображения "серверных" часов в чате и событиях.
     public long ServDiff = Long.MIN_VALUE;
@@ -274,6 +283,7 @@ public class UserConfig {
                         this.ChatKeepLog = Boolean.parseBoolean(parser.getAttributeValue(null, "keepLog"));
                         this.DoAutoAnswer = Boolean.parseBoolean(parser.getAttributeValue(null, "autoAnswer"));
                         this.DoChatLevels = Boolean.parseBoolean(parser.getAttributeValue(null, "chatLevels"));
+                        this.StatsResetAtMidnight = parseBoolAttr(parser, "statsResetAtMidnight", this.StatsResetAtMidnight);
                     } else if ("inventory".equalsIgnoreCase(tagName)) {
                         // Параметры инвентаря (bulk-кнопки / упаковка / сортировка).
                         this.DoButtonSell = parseBoolAttr(parser, "buttonSell", this.DoButtonSell);
@@ -560,6 +570,7 @@ public class UserConfig {
             serializer.attribute(null, "keepLog", String.valueOf(this.ChatKeepLog));
             serializer.attribute(null, "autoAnswer", String.valueOf(this.DoAutoAnswer));
             serializer.attribute(null, "chatLevels", String.valueOf(this.DoChatLevels));
+            serializer.attribute(null, "statsResetAtMidnight", String.valueOf(this.StatsResetAtMidnight));
             serializer.endTag(null, "chat");
 
             // Настройки инвентаря (группировка/сортировка/массовые кнопки).
