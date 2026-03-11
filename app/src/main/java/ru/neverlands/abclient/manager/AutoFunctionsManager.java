@@ -39,6 +39,7 @@ public class AutoFunctionsManager {
         AppVars.AutoAttackToolId = getAutoAttackToolId();
         AppVars.DoShowWalkers = isLocationTrackingEnabled();
         syncAutoSkinWithProfileIfPresent();
+        syncAutoFightWithProfileIfPresent();
     }
     
     public static synchronized AutoFunctionsManager getInstance(Context context) {
@@ -52,6 +53,15 @@ public class AutoFunctionsManager {
     
     // Текущее состояние авто-боя.
     public boolean isAutoFightEnabled() {
+        if (AppVars.Profile != null) {
+            boolean profileValue = AppVars.Profile.LezDoAutoboi;
+            boolean prefValue = prefs.getBoolean(KEY_PREFIX + "auto_fight", profileValue);
+            if (prefValue != profileValue) {
+                prefs.edit().putBoolean(KEY_PREFIX + "auto_fight", profileValue).apply();
+                Log.d(TAG, "isAutoFightEnabled: sync pref from profile LezDoAutoboi=" + profileValue);
+            }
+            return profileValue;
+        }
         return prefs.getBoolean(KEY_PREFIX + "auto_fight", false);
     }
     
@@ -243,9 +253,24 @@ public class AutoFunctionsManager {
             return;
         }
 
-        if (autoFight) {
-            setAutoFightEnabled(true);
+        restoreAutoFightRuntimeAfterLogin(autoFight);
+    }
+
+    private void restoreAutoFightRuntimeAfterLogin(boolean autoFightEnabledByProfile) {
+        AppVars.Autoboi = autoFightEnabledByProfile ? AutoboiState.AutoboiOn : AutoboiState.AutoboiOff;
+
+        boolean furyEnabledByProfile = AppVars.Profile != null && AppVars.Profile.hasAnyLezFuryGroup();
+        AppVars.DoFury = furyEnabledByProfile;
+        if (autoFightEnabledByProfile && furyEnabledByProfile) {
+            AppVars.AutoFuryCheckScroll = true;
+            AppVars.AutoFuryArmedScroll = false;
+            AppVars.AutoFuryHand = "";
+            AppVars.AutoFuryHandD = "";
         }
+
+        syncBackgroundService("restoreAutoFightRuntimeAfterLogin(" + autoFightEnabledByProfile + ")");
+        Log.d(TAG, "restoreAutoFightRuntimeAfterLogin: runtime autoboi=" + AppVars.Autoboi
+                + ", profileAutoFight=" + autoFightEnabledByProfile);
     }
     
     // === AUTO_BAIT (Авто-Приманка) ===
@@ -406,6 +431,16 @@ public class AutoFunctionsManager {
         prefs.edit().putBoolean(KEY_AUTO_SKIN, profileValue).apply();
         applyAutoSkinRuntimeFlags(profileValue, "constructor_sync");
         Log.d(TAG, "syncAutoSkinWithProfileIfPresent: SkinAuto=" + profileValue);
+    }
+
+    private void syncAutoFightWithProfileIfPresent() {
+        if (AppVars.Profile == null) {
+            return;
+        }
+        boolean profileValue = AppVars.Profile.LezDoAutoboi;
+        prefs.edit().putBoolean(KEY_PREFIX + "auto_fight", profileValue).apply();
+        AppVars.Autoboi = profileValue ? AutoboiState.AutoboiOn : AutoboiState.AutoboiOff;
+        Log.d(TAG, "syncAutoFightWithProfileIfPresent: LezDoAutoboi=" + profileValue);
     }
     
     // === AUTO_ATTACK (Авто-Нападение) ===
