@@ -285,7 +285,6 @@ public class AutoModeForegroundService extends Service {
                 }
                 boolean canDispatchFightFinish = autoFightEnabled
                         && !captchaDialogVisible
-                        && !uiForegroundInteractive
                         && isReadyFightFinishLink(pendingFightFinishLink)
                         && isFightFinishDispatchContextValid(tickNow);
                 if (canDispatchFightFinish) {
@@ -326,7 +325,7 @@ public class AutoModeForegroundService extends Service {
                     refreshForegroundNotification(autoFightEnabled, locationTrackingEnabled, true, true);
                     return;
                 }
-                if (autoFightEnabled && !captchaDialogVisible && !uiForegroundInteractive) {
+                if (autoFightEnabled && !captchaDialogVisible) {
                     maybeForceFightFrameSync(activity, tickNow, pendingFightFinishLink);
                 }
 

@@ -1260,7 +1260,13 @@ public class MainPhp {
         if (normalizedAddress.contains("go=inv")) {
             return true;
         }
+        if (normalizedAddress.contains("?wfo=") || normalizedAddress.contains("&wfo=")) {
+            return true;
+        }
         if (normalizedAddress.contains("useaction=clan-action")) {
+            return true;
+        }
+        if (normalizedAddress.contains("useaction=addon-action") && normalizedAddress.contains("addid=")) {
             return true;
         }
         // C# parity: категории инвентаря часто приходят как main.php?wca=... или main.php?im=...
@@ -2089,6 +2095,9 @@ public class MainPhp {
         boolean isFightFrame = html.contains("magic_slots();");
         boolean isFightTopFrame = html.contains("var fight_ty");
         boolean isFightFinishAddress = address != null && address.contains("get_id=61") && address.contains("act=7");
+        boolean isFightFinishAddressForInv = address != null
+                && address.contains("get_id=61")
+                && (address.contains("act=7") || address.contains("act=5"));
         // Важно: fallback-публикацию итога боя для act=7 делаем РАНЬШЕ AutoSkin/FastAction/AutoFish-веток.
         // Иначе ранний return (например, редирект в инвентарь после боя) срежет системную сводку
         // "Бой против ... завершен ... Нанесено ... Получено опыта ...".
@@ -2287,7 +2296,16 @@ public class MainPhp {
         // 2) считывание охотничьих ресурсов;
         // 3) проверка надетого ножа;
         // 4) авто-надевание ножа через инвентарь.
-        if (!isFightFrame && !isFightTopFrame && isAutoSkinEnabledByPreference()) {
+        boolean suspendAutoSkinForFinishFlow = isFightFinishAddressForInv;
+        boolean suspendAutoSkinForInventoryReload = isLikelyInventoryReloadSnapshot(address, html);
+        if (suspendAutoSkinForFinishFlow || suspendAutoSkinForInventoryReload) {
+            android.util.Log.d(TAG, "AUTO_SKIN_TRACE suspended: finishFlow=" + suspendAutoSkinForFinishFlow
+                    + ", inventoryReload=" + suspendAutoSkinForInventoryReload
+                    + ", address=" + address);
+        }
+        if (!isFightFrame && !isFightTopFrame && isAutoSkinEnabledByPreference()
+                && !suspendAutoSkinForFinishFlow
+                && !suspendAutoSkinForInventoryReload) {
             long nowMs = System.currentTimeMillis();
             if (AppVars.NeverTimer <= 0L || nowMs > AppVars.NeverTimer) {
                 if (AppVars.AutoSkinCheckUm) {
@@ -2366,7 +2384,9 @@ public class MainPhp {
         // Обработка инвентаря выполняется ТОЛЬКО на странице инвентаря.
         // Важно: не запускать на страницах боя (`act=7`) и прочих `main.php`,
         // иначе можно сломать finish-flow и схлопнуть HTML по чужим шаблонам.
-        if (mainPhpIsInv(html) || isInventoryAddress(address)) {
+        boolean finishResponseStillFight = isFightFinishAddressForInv && isFightFrameHtml(html);
+        if (!finishResponseStillFight
+                && (mainPhpIsInv(html) || hasInventoryRows(html) || isInventoryAddress(address))) {
             html = mainPhpInv(html);
         }
         if (html.contains("var map = [[")) {
@@ -2679,7 +2699,28 @@ public class MainPhp {
         boolean hasWearOrSell = containsIgnoreCase(html, "value=\"Надеть\"")
                 || containsIgnoreCase(html, "value=\"Продать")
                 || containsIgnoreCase(html, "image.neverlands.ru/del.gif");
-        return hasNickname && hasWearOrSell;
+        boolean hasInventoryTabs = containsIgnoreCase(html, "<a href=\"?im=")
+                || containsIgnoreCase(html, "<a href=?im=")
+                || containsIgnoreCase(html, "main.php?im=");
+        boolean hasItemActions = containsIgnoreCase(html, "get_id=57")
+                || containsIgnoreCase(html, "get_id=58")
+                || containsIgnoreCase(html, "if(top.deletetrue('")
+                || containsIgnoreCase(html, "image.neverlands.ru/del.gif");
+        return (hasNickname && hasWearOrSell) || hasInventoryTabs || hasItemActions;
+    }
+
+    private static boolean isLikelyInventoryReloadSnapshot(String address, String html) {
+        if (address == null || html == null || html.isEmpty()) {
+            return false;
+        }
+        String normalizedAddress = normalizeNeverlandsMainLink(address).toLowerCase(Locale.ROOT);
+        if (!normalizedAddress.contains("main.php?r=")) {
+            return false;
+        }
+        if (isFightFrameHtml(html)) {
+            return false;
+        }
+        return mainPhpIsInv(html) || hasInventoryRows(html);
     }
     /**
      * Ищет ссылку на инвентарь в текущем HTML и генерирует redirect.
