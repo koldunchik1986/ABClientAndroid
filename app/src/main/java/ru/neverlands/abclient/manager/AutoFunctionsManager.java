@@ -235,7 +235,8 @@ public class AutoFunctionsManager {
      * Зависимости:
      * - SharedPreferences (`isAutoFishEnabled()/isAutoFightEnabled()`) как источник сохранённых флагов;
      * - `setAutoFishEnabled(true)` для полной C#-цепочки AutoFish (инициализация runtime + bootstrap-навигация в `go=inf`);
-     * - `setAutoFightEnabled(true)` как fallback, если включён только AutoFight;
+     * - `restoreAutoFightRuntimeAfterLogin(...)` для мягкого восстановления только runtime AutoFight
+     *   (без лишнего reload верхнего фрейма и без принудительного запроса авто-удара);
      * - `AppVars.mainActivity`/`MainActivity.getMainWebView()` внутри указанных методов для фактического старта потока.
      *
      * Почему нужен метод:

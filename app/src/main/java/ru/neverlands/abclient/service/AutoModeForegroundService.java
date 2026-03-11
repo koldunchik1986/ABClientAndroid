@@ -601,13 +601,6 @@ public class AutoModeForegroundService extends Service {
     }
 
     /**
-     * Возвращает true, если finish-link требует ручного ввода капчи (`code=????`).
-     *
-     * Зависимости:
-     * - формат серверного URL завершения боя `main.php?get_id=61&act=7...`;
-     * - placeholder `code=????`, который приходит до ввода капчи.
-     */
-    /**
      * Проверяет, что finish-link относится к завершению боя с обязательной капчей.
      *
      * Критерии:
@@ -627,22 +620,6 @@ public class AutoModeForegroundService extends Service {
                 && url.contains("code=????");
     }
 
-    /**
-     * Пытается открыть popup боевой капчи и вернуть service в "wait mode" до ручного ввода.
-     *
-     * Что делает:
-     * - детектит состояние `FightLink` с placeholder-капчей;
-     * - дедуплицирует повторные broadcast-события для одного challenge;
-     * - отправляет локальный broadcast `ACTION_SHOW_CAPTCHA` в MainActivity;
-     * - поднимает `IsFightCaptchaDialogVisible`, чтобы остановить авто-ходы/авто-submit.
-     *
-     * Зависимости:
-     * - MainActivity.broadcastReceiver (принимает `ACTION_SHOW_CAPTCHA`);
-     * - MainActivity.showCaptchaDialog(...) (фактический popup и submit code);
-     * - AppVars.ResumeAutoboiAfterCaptcha (возврат автобоя после успешного ввода).
-     *
-     * @return true, если состояние капчи обработано и этот тик должен прекратить авто-действия.
-     */
     /**
      * Центральная оркестрация показа боевой капчи из фонового сервиса.
      *
@@ -738,9 +715,6 @@ public class AutoModeForegroundService extends Service {
     }
 
     /**
-     * Нормализация относительных neverlands-ссылок до абсолютного URL.
-     */
-    /**
      * Нормализует игровую ссылку в абсолютный URL neverlands.
      *
      * Что делает:
@@ -769,9 +743,6 @@ public class AutoModeForegroundService extends Service {
         return "http://neverlands.ru/" + normalized;
     }
 
-    /**
-     * Нормализует finish-link для сравнения с уже отправленным submit (`code` приводится к `????`).
-     */
     /**
      * Строит нормализованный ключ finish-link для сравнения challenge между тиками.
      *
