@@ -2326,14 +2326,17 @@ public class MainPhp {
         // 4) авто-надевание ножа через инвентарь.
         boolean suspendAutoSkinForFinishFlow = isFightFinishAddressForInv;
         boolean suspendAutoSkinForInventoryReload = isLikelyInventoryReloadSnapshot(address, html);
-        if (suspendAutoSkinForFinishFlow || suspendAutoSkinForInventoryReload) {
+        boolean suspendAutoSkinForGeneratedTransition = isGeneratedTransitionPage(address, html);
+        if (suspendAutoSkinForFinishFlow || suspendAutoSkinForInventoryReload || suspendAutoSkinForGeneratedTransition) {
             android.util.Log.d(TAG, "AUTO_SKIN_TRACE suspended: finishFlow=" + suspendAutoSkinForFinishFlow
                     + ", inventoryReload=" + suspendAutoSkinForInventoryReload
+                    + ", generatedTransition=" + suspendAutoSkinForGeneratedTransition
                     + ", address=" + address);
         }
         if (!isFightFrame && !isFightTopFrame && isAutoSkinEnabledByPreference()
                 && !suspendAutoSkinForFinishFlow
-                && !suspendAutoSkinForInventoryReload) {
+                && !suspendAutoSkinForInventoryReload
+                && !suspendAutoSkinForGeneratedTransition) {
             long nowMs = System.currentTimeMillis();
             if (AppVars.NeverTimer <= 0L || nowMs > AppVars.NeverTimer) {
                 if (AppVars.AutoSkinCheckUm) {
@@ -2749,6 +2752,21 @@ public class MainPhp {
             return false;
         }
         return mainPhpIsInv(html) || hasInventoryRows(html);
+    }
+
+    /**
+     * Returns true for intermediate generated transition pages, where AutoSkin must not
+     * start a new redirect step. This prevents redirect races and manual-link hijacking
+     * on first login (especially around useaction=addon-action hops).
+     */
+    private static boolean isGeneratedTransitionPage(String address, String html) {
+        if (address != null && !address.isEmpty()) {
+            String normalizedAddress = normalizeNeverlandsMainLink(address).toLowerCase(Locale.ROOT);
+            if (normalizedAddress.contains("useaction=addon-action")) {
+                return true;
+            }
+        }
+        return html != null && html.contains(HtmlUtils.GENERATED_PAGE_MARKER);
     }
     /**
      * Ищет ссылку на инвентарь в текущем HTML и генерирует redirect.
