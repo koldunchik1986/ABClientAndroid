@@ -2416,8 +2416,14 @@ public class MainPhp {
         // Важно: не запускать на страницах боя (`act=7`) и прочих `main.php`,
         // иначе можно сломать finish-flow и схлопнуть HTML по чужим шаблонам.
         boolean finishResponseStillFight = isFightFinishAddressForInv && isFightFrameHtml(html);
+        boolean invByTemplate = mainPhpIsInv(html);
+        boolean invByRows = hasInventoryRows(html);
+        boolean invByAddress = isInventoryAddress(address);
         if (!finishResponseStillFight
-                && (mainPhpIsInv(html) || hasInventoryRows(html) || isInventoryAddress(address))) {
+                && (invByTemplate || invByRows || invByAddress)) {
+            if (!invByTemplate && !invByAddress && invByRows) {
+                android.util.Log.d(TAG, "INV_TRACE structural fallback matched: address=" + address);
+            }
             html = mainPhpInv(html);
         }
         if (html.contains("var map = [[")) {
@@ -2737,7 +2743,10 @@ public class MainPhp {
                 || containsIgnoreCase(html, "get_id=58")
                 || containsIgnoreCase(html, "if(top.deletetrue('")
                 || containsIgnoreCase(html, "image.neverlands.ru/del.gif");
-        return (hasNickname && hasWearOrSell) || hasInventoryTabs || hasItemActions;
+        // Important: a plain "inventory tab exists" signal is too broad for non-inventory pages
+        // (character/return/map can still contain menu links). Require stronger evidence.
+        return (hasNickname && hasWearOrSell && (hasInventoryTabs || hasItemActions))
+                || (hasInventoryTabs && hasItemActions);
     }
 
     private static boolean isLikelyInventoryReloadSnapshot(String address, String html) {
