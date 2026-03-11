@@ -273,7 +273,8 @@ public class AutoFunctionsManager {
      * Зависимости:
      * - `AppVars.Profile` (источник `LezDoAutoboi` и `hasAnyLezFuryGroup()`);
      * - `AutoboiState` и боевые runtime-флаги `AutoFury*`;
-     * - `syncBackgroundService(...)` для синхронизации foreground-service.
+     * - `syncBackgroundService(...)` для синхронизации foreground-service;
+     * - `AutoModeForegroundService.shouldRunInBackground(...)`, который читает это runtime-состояние.
      */
     private void restoreAutoFightRuntimeAfterLogin(boolean autoFightEnabledByProfile) {
         AppVars.Autoboi = autoFightEnabledByProfile ? AutoboiState.AutoboiOn : AutoboiState.AutoboiOff;

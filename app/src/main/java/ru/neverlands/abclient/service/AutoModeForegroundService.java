@@ -230,6 +230,7 @@ public class AutoModeForegroundService extends Service {
      * - поддерживает room/chat polling в фоне;
      * - исполняет боевой pipeline: завершение боя, капча, синхронизация fight-frame, авто-удар;
      * - применяет anti-loop/anti-spam guard по времени и ключам состояния.
+     * - фиксирует последнее действие в уведомлении через `markClientAction(...)`.
      *
      * Зависимости:
      * - `AutoFunctionsManager` (флаги авто-режимов и интервалы polling);
