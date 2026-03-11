@@ -149,6 +149,34 @@ public class MainPhp {
                 "setTimeout(function(){ window.location = '" + safeUrl + "'; }, " + safeDelay + ");" +
                 "</script></body></html>";
     }
+
+    /**
+     * Добавляет auto-refresh прямо в текущий боевой HTML, не подменяя кадр служебной страницей ожидания.
+     *
+     * Зависимости:
+     * - используется из {@link #mainPhpFight(String, String)} только для стадии ожидания хода противника;
+     * - сохраняет серверный `FightFrame` на экране, чтобы отображение боя не переключалось на упрощённую страницу;
+     * - если HTML не содержит закрывающих тегов, fallback идёт в {@link #buildWaitForTurnAutoRefreshHtml(String, int)}.
+     */
+    private static String buildInPlaceFightAutoRefreshHtml(String html, String reloadUrl, int delayMs) {
+        if (html == null || html.isEmpty()) {
+            return buildWaitForTurnAutoRefreshHtml(reloadUrl, delayMs);
+        }
+        String safeUrl = (reloadUrl != null && !reloadUrl.isEmpty()) ? reloadUrl : "main.php";
+        int safeDelay = Math.max(300, delayMs);
+        String script = "<script language=\"JavaScript\">"
+                + "setTimeout(function(){ window.location = '" + safeUrl + "'; }, " + safeDelay + ");"
+                + "</script>";
+        int bodyClose = html.lastIndexOf("</body>");
+        if (bodyClose >= 0) {
+            return html.substring(0, bodyClose) + script + html.substring(bodyClose);
+        }
+        int htmlClose = html.lastIndexOf("</html>");
+        if (htmlClose >= 0) {
+            return html.substring(0, htmlClose) + script + html.substring(htmlClose);
+        }
+        return buildWaitForTurnAutoRefreshHtml(reloadUrl, delayMs);
+    }
     /**
      * Возвращает сохранённое состояние переключателя Auto-Fight из AutoFunctionsManager.
      * Если manager/context недоступен, используется fallback на флаг профиля.
@@ -3204,21 +3232,8 @@ public class MainPhp {
                 return html;
             }
             if (decision == FinishFlowDecision.DIRECT_FINISH_LINK) {
-                boolean isFastCleanFinish = fightLink != null
-                        && fightLink.contains("get_id=61")
-                        && fightLink.contains("act=5")
-                        && (fightLink.contains("st=6") || fightLink.contains("st=7"));
-                int minDelayMs = isFastCleanFinish ? AUTO_FINISH_ST7_MIN_DELAY_MS : AUTO_FINISH_MIN_DELAY_MS;
-                int extraDelayMs = isFastCleanFinish ? AUTO_FINISH_ST7_EXTRA_DELAY_MS : AUTO_FINISH_EXTRA_DELAY_MS;
                 long now = System.currentTimeMillis();
-                long sinceLast = now - lastAutoFinishRedirectAtMs;
-                if (sinceLast >= 0 && sinceLast < minDelayMs) {
-                    int waitMs = (int) (minDelayMs - sinceLast) + 80;
-                    android.util.Log.d(TAG, "mainPhpFight: throttling finish redirect, waitMs=" + waitMs
-                            + ", cleanFastPath=" + isFastCleanFinish);
-                    return buildWaitForTurnAutoRefreshHtml(address, waitMs);
-                }
-                int redirectDelay = minDelayMs + RANDOM.nextInt(extraDelayMs + 1);
+                int redirectDelay = AUTO_FINISH_MIN_DELAY_MS + RANDOM.nextInt(AUTO_FINISH_EXTRA_DELAY_MS + 1);
                 if (redirectDelay >= 0) {
                     lastAutoFinishRedirectAtMs = now;
                     AppVars.FightLink = "";
@@ -3284,7 +3299,7 @@ public class MainPhp {
             if (shouldAutoRefresh) {
                 int delay = 1200 + RANDOM.nextInt(900); // 1200-2100ms
                 android.util.Log.d(TAG, "mainPhpFight: auto-refresh waiting enabled, reloading after " + delay + "ms: " + address);
-                return buildWaitForTurnAutoRefreshHtml(address, delay);
+                return buildInPlaceFightAutoRefreshHtml(html, address, delay);
             }
             android.util.Log.d(TAG, "mainPhpFight: AutoRefresh disabled, returning original content");
             return AppVars.ContentMainPhp != null ? AppVars.ContentMainPhp : html;
