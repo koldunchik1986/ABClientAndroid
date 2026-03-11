@@ -291,6 +291,28 @@ public class AutoFunctionsManager {
         syncBackgroundService("restoreAutoFightRuntimeAfterLogin(" + autoFightEnabledByProfile + ")");
         Log.d(TAG, "restoreAutoFightRuntimeAfterLogin: runtime autoboi=" + AppVars.Autoboi
                 + ", profileAutoFight=" + autoFightEnabledByProfile);
+
+        if (autoFightEnabledByProfile && AppVars.mainActivity != null && AppVars.mainActivity.get() != null) {
+            AppVars.mainActivity.get().runOnUiThread(() -> {
+                try {
+                    if (AppVars.mainActivity.get() == null || AppVars.mainActivity.get().getMainWebView() == null) {
+                        return;
+                    }
+                    AppVars.ContentMainPhp = null;
+                    AppVars.LastBoiTimer = new java.util.Date();
+                    Log.d(TAG, "restoreAutoFightRuntimeAfterLogin: forcing frame reload bootstrap");
+                    String reloadUrl = "http://neverlands.ru/main.php?get_id=56&act=10&go=inf&ab_reload_probe=1";
+                    if (AppVars.VCode != null && !AppVars.VCode.isEmpty()) {
+                        reloadUrl += "&vcode=" + AppVars.VCode;
+                    }
+                    reloadUrl += "&ts=" + System.currentTimeMillis();
+                    Log.d(TAG, "restoreAutoFightRuntimeAfterLogin: reload fight frame " + reloadUrl);
+                    AppVars.mainActivity.get().getMainWebView().loadUrl(reloadUrl);
+                } catch (Exception e) {
+                    Log.e(TAG, "restoreAutoFightRuntimeAfterLogin: failed to reload fight frame", e);
+                }
+            });
+        }
     }
     
     // === AUTO_BAIT (Авто-Приманка) ===

@@ -388,6 +388,7 @@ public class AutoModeForegroundService extends Service {
 
                 if (autoFightEnabled && !captchaDialogVisible) {
                     if ((uiForegroundInteractive || uiForegroundLikely)
+                            && !fightLikelyActive
                             && !hasFightMarkers(AppVars.ContentMainPhp)
                             && pendingFightFinishLink.isEmpty()) {
                         Log.d(TAG, BG_TRACE_PREFIX + " uiTick: skip autoTurn/probe in foreground-likely UI (no fight markers)");
