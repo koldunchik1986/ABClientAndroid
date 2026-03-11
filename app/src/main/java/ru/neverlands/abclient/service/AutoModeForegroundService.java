@@ -221,6 +221,22 @@ public class AutoModeForegroundService extends Service {
         }
     }
 
+    /**
+     * Главный тик фонового авто-режима.
+     *
+     * Что делает на каждом проходе:
+     * - проверяет доступность `MainActivity`; при длительном отсутствии корректно останавливает сервис;
+     * - синхронизирует флаги авто-режимов и обновляет foreground-уведомление;
+     * - поддерживает room/chat polling в фоне;
+     * - исполняет боевой pipeline: завершение боя, капча, синхронизация fight-frame, авто-удар;
+     * - применяет anti-loop/anti-spam guard по времени и ключам состояния.
+     *
+     * Зависимости:
+     * - `AutoFunctionsManager` (флаги авто-режимов и интервалы polling);
+     * - `MainActivity` (`getMainWebView()`, `requestAutoTurnBackgroundAware()`, lifecycle-флаги);
+     * - `AppVars` (FightLink/CodeAddress/LastFightPulseAtMs/IsFightCaptchaDialogVisible и др.);
+     * - локальные guard-таймеры сервиса (`last*AtMs`).
+     */
     private void runBackgroundTick() {
         MainActivity activity = (AppVars.mainActivity != null) ? AppVars.mainActivity.get() : null;
         long now = System.currentTimeMillis();
@@ -529,6 +545,23 @@ public class AutoModeForegroundService extends Service {
     /**
      * Форсирует мягкую синхронизацию верхнего фрейма в фоне после анонса "Нападение",
      * когда бой еще не отразился в текущем HTML.
+     */
+    /**
+     * Форсирует мягкую синхронизацию верхнего фрейма после анонса нападения.
+     *
+     * Используется только как восстановление контекста:
+     * - когда бой на сервере уже стартовал, но текущий HTML ещё не содержит fight-маркеры;
+     * - когда не готов `finish-link` и не требуется ввод капчи.
+     *
+     * Защиты от лишних перезагрузок:
+     * - временное окно по `LastFightAnnounceAtMs`;
+     * - троттлинг `FORCE_FIGHT_SYNC_MIN_INTERVAL_MS`;
+     * - выход без действия при наличии активного боевого HTML или готового `act=7` URL.
+     *
+     * Зависимости:
+     * - `MainActivity.getMainWebView().loadUrl(...)`;
+     * - `AppVars.LastFightAnnounceAtMs`, `AppVars.ContentMainPhp`, `AppVars.FightLink`;
+     * - `isReadyFightFinishLink(...)`, `isFightCaptchaFinishLink(...)`.
      */
     private void maybeForceFightFrameSync(MainActivity activity, long tickNow, String pendingFightFinishLink) {
         if (activity == null || activity.getMainWebView() == null) {
