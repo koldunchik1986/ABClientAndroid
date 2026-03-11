@@ -55,9 +55,11 @@ public class FightViewModel extends ViewModel {
             autoBattleRuntimeEnabled = false;
         }
         boolean uiForegroundInteractive = false;
+        boolean uiForegroundLikely = false;
         try {
             if (AppVars.mainActivity != null && AppVars.mainActivity.get() != null) {
                 uiForegroundInteractive = AppVars.mainActivity.get().isUiForegroundInteractive();
+                uiForegroundLikely = AppVars.mainActivity.get().isUiForegroundLikely();
             }
         } catch (Exception ignored) {
         }
@@ -69,7 +71,7 @@ public class FightViewModel extends ViewModel {
         // - оставляем parse/pulse/анонс "Нападение";
         // - блокируем auto-submit именно здесь;
         // - фактический удар остаётся за обычным боевым циклом (fight.Frame / requestAutoTurn).
-        if (uiForegroundInteractive) {
+        if (uiForegroundInteractive || uiForegroundLikely) {
             autoBattleRuntimeEnabled = false;
         }
 
@@ -78,7 +80,8 @@ public class FightViewModel extends ViewModel {
                 + ", autoBattleRuntimeEnabled=" + autoBattleRuntimeEnabled
                 + ", captchaDialogVisible=" + captchaDialogVisible
                 + ", appVarsAutoboi=" + AppVars.Autoboi
-                + ", uiForegroundInteractive=" + uiForegroundInteractive);
+                + ", uiForegroundInteractive=" + uiForegroundInteractive
+                + ", uiForegroundLikely=" + uiForegroundLikely);
 
         final boolean shouldAutoBattle = autoBattleRuntimeEnabled;
 

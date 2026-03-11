@@ -102,7 +102,7 @@ public class AutoFunctionsManager {
                         AppVars.ContentMainPhp = null;
                         AppVars.LastBoiTimer = new java.util.Date();
                         // Запрашиваем авто-удар (логика автохода в MainActivity).
-                        AppVars.mainActivity.get().requestAutoTurn();
+                        Log.d(TAG, "setAutoFightEnabled: immediate requestAutoTurn disabled, forcing frame reload only");
                         // Прямая перезагрузка боевого фрейма, с vcode если он есть.
                         String reloadUrl = "http://neverlands.ru/main.php?get_id=56&act=10&go=inf&ab_reload_probe=1";
                         if (AppVars.VCode != null && !AppVars.VCode.isEmpty()) {

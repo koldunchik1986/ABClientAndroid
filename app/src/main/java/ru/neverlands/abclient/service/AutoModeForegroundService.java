@@ -256,12 +256,14 @@ public class AutoModeForegroundService extends Service {
 
                 boolean fightLikelyActive = isFightSessionLikelyActive(activity);
                 boolean uiForegroundInteractive = activity.isUiForegroundInteractive();
+                boolean uiForegroundLikely = activity.isUiForegroundLikely();
                 Log.d(TAG, BG_TRACE_PREFIX + " uiTick: locationTracking=" + locationTrackingEnabled
                         + ", autoFight=" + autoFightEnabled
                         + ", captchaDialogVisible=" + captchaDialogVisible
                         + ", walkersPollIntervalSec=" + walkersPollIntervalSec
                         + ", fightLikelyActive=" + fightLikelyActive
-                        + ", uiForegroundInteractive=" + uiForegroundInteractive);
+                        + ", uiForegroundInteractive=" + uiForegroundInteractive
+                        + ", uiForegroundLikely=" + uiForegroundLikely);
                 refreshForegroundNotification(autoFightEnabled, locationTrackingEnabled, captchaDialogVisible, false);
 
                 ensureChatRefreshAlive(activity, tickNow);
@@ -325,14 +327,14 @@ public class AutoModeForegroundService extends Service {
                     refreshForegroundNotification(autoFightEnabled, locationTrackingEnabled, true, true);
                     return;
                 }
-                if (autoFightEnabled && !captchaDialogVisible) {
+                if (autoFightEnabled && !captchaDialogVisible && !uiForegroundLikely) {
                     maybeForceFightFrameSync(activity, tickNow, pendingFightFinishLink);
                 }
 
                 // Когда после боя висят отложенные post-fight задачи (разделка/проверка инвентаря/fast-flow),
                 // приоритетно двигаем именно pipeline main.php вместо autoTurn idle-probe.
                 // Иначе цикл server-probe "нет маркеров боя" может бесконечно оттеснять обработку ресурсов.
-                if (!uiForegroundInteractive && !captchaDialogVisible && hasPendingBackgroundPipelineTasks()) {
+                if (!uiForegroundLikely && !captchaDialogVisible && hasPendingBackgroundPipelineTasks()) {
                     long sinceLastPipelineTick = tickNow - lastPostFightPipelineTickAtMs;
                     if (sinceLastPipelineTick >= POST_FIGHT_PIPELINE_MIN_INTERVAL_MS) {
                         if (activity.getMainWebView() != null) {
@@ -368,10 +370,10 @@ public class AutoModeForegroundService extends Service {
                 }
 
                 if (autoFightEnabled && !captchaDialogVisible) {
-                    if (uiForegroundInteractive
+                    if ((uiForegroundInteractive || uiForegroundLikely)
                             && !hasFightMarkers(AppVars.ContentMainPhp)
                             && pendingFightFinishLink.isEmpty()) {
-                        Log.d(TAG, BG_TRACE_PREFIX + " uiTick: skip autoTurn/probe in interactive foreground (no fight markers)");
+                        Log.d(TAG, BG_TRACE_PREFIX + " uiTick: skip autoTurn/probe in foreground-likely UI (no fight markers)");
                         markClientAction("Пауза авто-хода: активный UI");
                         refreshForegroundNotification(autoFightEnabled, locationTrackingEnabled, captchaDialogVisible, false);
                         return;

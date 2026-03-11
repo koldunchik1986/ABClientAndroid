@@ -121,6 +121,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     private static final long MAINFRAME_TIMEOUT_RETRY_DELAY_MS = 1500L;
     private static final long MAINFRAME_TIMEOUT_RETRY_DEDUP_MS = 12000L;
     private static final long AUTO_TURN_SERVER_PROBE_MIN_INTERVAL_MS = 1200L;
+    private static final long AUTO_TURN_FIRST_FRAME_RENDER_GUARD_MS = 420L;
     private static final int AUTO_TURN_SERVER_PROBE_TIMEOUT_MS = 12000;
     public ActivityMainBinding binding;
     private Timer timer;
@@ -483,6 +484,9 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             Log.d(TAG, BG_TRACE_PREFIX + " requestAutoTurn: skip, captcha dialog visible");
             return;
         }
+        if (shouldDeferAutoTurnForFirstFrameRender()) {
+            return;
+        }
         Log.d(TAG, BG_TRACE_PREFIX + " requestAutoTurn: start");
         Log.d(TAG, "requestAutoTurn: grabbing current HTML for auto-turn");
         binding.appBarMain.contentMain.webView.evaluateJavascript(
@@ -555,6 +559,40 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                         }
                     }
                 });
+    }
+
+    /**
+     * Защищает первый боевой кадр от "слишком раннего" авто-удара в активном UI.
+     *
+     * Проблема:
+     * - при старте нового боя (особенно 1 противник с убийством за 1 ход) авто-цикл мог отправить ход
+     *   в первые десятки миллисекунд после announce, пока fight-frame ещё не успел визуально отрисоваться.
+     *
+     * Решение:
+     * - если бой только что анонсирован и UI вероятно в foreground, даём короткое окно на рендер первого кадра;
+     * - в фоне/на lockscreen задержка не применяется.
+     */
+    private boolean shouldDeferAutoTurnForFirstFrameRender() {
+        boolean autoFightRuntimeEnabled = AppVars.Autoboi == ru.neverlands.abclient.model.AutoboiState.AutoboiOn
+                || (AppVars.Profile != null && AppVars.Profile.LezDoAutoboi);
+        if (!autoFightRuntimeEnabled) {
+            return false;
+        }
+        if (!isUiForegroundLikely()) {
+            return false;
+        }
+        long announceAtMs = AppVars.LastFightAnnounceAtMs;
+        if (announceAtMs <= 0L) {
+            return false;
+        }
+        long sinceAnnounceMs = System.currentTimeMillis() - announceAtMs;
+        if (sinceAnnounceMs < 0L || sinceAnnounceMs >= AUTO_TURN_FIRST_FRAME_RENDER_GUARD_MS) {
+            return false;
+        }
+        Log.d(TAG, BG_TRACE_PREFIX + " requestAutoTurn: defer first turn for frame render, remainingMs="
+                + (AUTO_TURN_FIRST_FRAME_RENDER_GUARD_MS - sinceAnnounceMs)
+                + ", sinceAnnounceMs=" + sinceAnnounceMs);
+        return true;
     }
 
     /**
@@ -2911,6 +2949,27 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             Log.w(TAG, BG_TRACE_PREFIX + " isUiForegroundInteractive: fallback by resumed-state", e);
         }
         return interactive && hasWindowFocus();
+    }
+
+    /**
+     * Более мягкий признак активного foreground UI без требования `windowFocus`.
+     *
+     * Нужен для устранения гонки при старте/возврате Activity, когда `hasWindowFocus()` ещё `false`,
+     * но приложение уже на экране и фоновые авто-действия запускать рано.
+     */
+    public boolean isUiForegroundLikely() {
+        if (!isActivityResumedState) {
+            return false;
+        }
+        try {
+            PowerManager powerManager = (PowerManager) getSystemService(Context.POWER_SERVICE);
+            if (powerManager != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT_WATCH) {
+                return powerManager.isInteractive();
+            }
+        } catch (Exception e) {
+            Log.w(TAG, BG_TRACE_PREFIX + " isUiForegroundLikely: fallback by resumed-state", e);
+        }
+        return true;
     }
 
     // Режимы чата: 0-все, 1-только личные, 2-не показывать.
