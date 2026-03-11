@@ -256,6 +256,24 @@ public class AutoFunctionsManager {
         restoreAutoFightRuntimeAfterLogin(autoFight);
     }
 
+    /**
+     * Восстанавливает только runtime-часть авто-боя после логина, без форсированной навигации и reload кадра.
+     *
+     * Зачем выделен отдельный метод:
+     * - после входа флаг может быть уже включён в профиле, но повторный вызов `setAutoFightEnabled(true)`
+     *   может дергать лишние `loadUrl(...)` и ломать пользовательскую навигацию;
+     * - здесь выполняется только безопасная синхронизация боевых runtime-флагов (AppVars + фон-сервис).
+     *
+     * Что обновляет:
+     * - `AppVars.Autoboi` из профильного флага;
+     * - `AppVars.DoFury` и runtime-подготовку свитка ярости (если в профиле есть fury-группы);
+     * - состояние фонового сервиса через `syncBackgroundService(...)`.
+     *
+     * Зависимости:
+     * - `AppVars.Profile` (источник `LezDoAutoboi` и `hasAnyLezFuryGroup()`);
+     * - `AutoboiState` и боевые runtime-флаги `AutoFury*`;
+     * - `syncBackgroundService(...)` для синхронизации foreground-service.
+     */
     private void restoreAutoFightRuntimeAfterLogin(boolean autoFightEnabledByProfile) {
         AppVars.Autoboi = autoFightEnabledByProfile ? AutoboiState.AutoboiOn : AutoboiState.AutoboiOff;
 
@@ -433,6 +451,23 @@ public class AutoFunctionsManager {
         Log.d(TAG, "syncAutoSkinWithProfileIfPresent: SkinAuto=" + profileValue);
     }
 
+    /**
+     * Первичная синхронизация авто-боя из профиля при создании менеджера.
+     *
+     * Назначение:
+     * - сделать профиль (`Profile.LezDoAutoboi`) источником истины сразу после запуска процесса;
+     * - выровнять persisted-значение в SharedPreferences с профилем;
+     * - обновить runtime-флаг `AppVars.Autoboi`, чтобы боевой контур видел актуальное состояние.
+     *
+     * Важно:
+     * - метод не запускает навигацию, не инициирует авто-удар и не форсирует fight-frame;
+     * - используется только для "тихой" синхронизации состояния.
+     *
+     * Зависимости:
+     * - `AppVars.Profile` (поле `LezDoAutoboi`);
+     * - `SharedPreferences` (`KEY_PREFIX + "auto_fight"`);
+     * - `AppVars.Autoboi` / `AutoboiState`.
+     */
     private void syncAutoFightWithProfileIfPresent() {
         if (AppVars.Profile == null) {
             return;

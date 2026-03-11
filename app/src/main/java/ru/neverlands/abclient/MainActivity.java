@@ -479,6 +479,27 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         requestAutoTurnInternal(true);
     }
 
+    /**
+     * Внутренний оркестратор одного шага авто-удара.
+     *
+     * Сценарий выполнения:
+     * - читает HTML из текущего main WebView;
+     * - если в нём есть маркеры боя — передаёт HTML в `fightViewModel.autoTurnOnce(...)`;
+     * - если маркеров нет, пробует использовать `AppVars.ContentMainPhp` как кэш последнего боевого кадра;
+     * - если кэш пустой/устаревший и разрешён fallback, запускает server-probe
+     *   (`requestAutoTurnFromServerProbe(...)`) для получения актуального бой-HTML напрямую с сервера.
+     *
+     * Защитные условия:
+     * - не выполняется, пока открыт popup боевой капчи (`IsFightCaptchaDialogVisible`);
+     * - в foreground-UI может кратко отложить самый первый удар (`shouldDeferAutoTurnForFirstFrameRender()`),
+     *   чтобы кадр боя успел отрисоваться до submit.
+     *
+     * Зависимости:
+     * - `fightViewModel.autoTurnOnce(...)` — фактический парсер/submit шага;
+     * - `hasFightMarkers(...)`, `isActiveFightContext(...)` — валидация контекста кадра;
+     * - `AppVars.ContentMainPhp` — кэш последнего сервера бой-HTML;
+     * - `requestAutoTurnFromServerProbe(...)` — fallback-источник HTML в background throttling-сценарии.
+     */
     private void requestAutoTurnInternal(boolean allowServerProbeFallback) {
         if (AppVars.IsFightCaptchaDialogVisible) {
             Log.d(TAG, BG_TRACE_PREFIX + " requestAutoTurn: skip, captcha dialog visible");
