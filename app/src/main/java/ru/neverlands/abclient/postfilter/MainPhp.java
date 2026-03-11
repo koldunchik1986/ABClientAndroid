@@ -3,6 +3,7 @@ import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
+import java.net.URI;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
@@ -825,6 +826,12 @@ public class MainPhp {
         if (isFightFrame || isFightTopFrame) {
             return;
         }
+        // Важный guard: автопитьё запускаем только после получения "полного" main.php от сервера
+        // (без get_id/act/query), чтобы не конкурировать с post-fight цепочкой завершения боя.
+        if (!isServerPlainMainAddress(address)) {
+            android.util.Log.d(TAG, "AUTO_DRINK_TRACE skip: wait plain main.php, address=" + address);
+            return;
+        }
         if (AppVars.FastNeed) {
             android.util.Log.d(TAG, "AUTO_DRINK_TRACE skip: FastNeed active, fastId=" + AppVars.FastId);
             return;
@@ -873,6 +880,43 @@ public class MainPhp {
                 + ", hpEnabled=" + AppVars.Profile.LezDoDrinkHp + ", maEnabled=" + AppVars.Profile.LezDoDrinkMa
                 + ", address=" + address);
         FastActionManager.fastAttackMomentRestoreElixir();
+    }
+
+    /**
+     * Проверяет, что адрес соответствует "чистому" серверному main.php:
+     * - путь `/main.php`;
+     * - без query-параметров;
+     * - хост `neverlands.ru` или `www.neverlands.ru`.
+     *
+     * Нужен для post-fight сценария: fast-запросы на эликсир нельзя запускать на `get_id=61&act=7`,
+     * иначе они могут быть вытеснены повторной отправкой finish-link.
+     */
+    private static boolean isServerPlainMainAddress(String address) {
+        if (address == null || address.trim().isEmpty()) {
+            return false;
+        }
+        String normalized = address.trim();
+        if ("main.php".equalsIgnoreCase(normalized)) {
+            return true;
+        }
+        try {
+            URI uri = new URI(normalized);
+            String host = uri.getHost();
+            String path = uri.getPath();
+            String query = uri.getRawQuery();
+            boolean hostOk = host == null
+                    || "neverlands.ru".equalsIgnoreCase(host)
+                    || "www.neverlands.ru".equalsIgnoreCase(host);
+            boolean pathOk = path != null && "/main.php".equalsIgnoreCase(path);
+            boolean queryEmpty = query == null || query.isEmpty();
+            return hostOk && pathOk && queryEmpty;
+        } catch (Exception ignored) {
+            String lower = normalized.toLowerCase(Locale.ROOT);
+            return "http://neverlands.ru/main.php".equals(lower)
+                    || "http://www.neverlands.ru/main.php".equals(lower)
+                    || "https://neverlands.ru/main.php".equals(lower)
+                    || "https://www.neverlands.ru/main.php".equals(lower);
+        }
     }
     /**
      * Invariant-парсинг числа (аналог NumberStyles.Any + InvariantCulture в C#).
