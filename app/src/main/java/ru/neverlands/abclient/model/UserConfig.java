@@ -87,10 +87,32 @@ public class UserConfig {
 
     // --- Поля из SettingsActivity и других мест --- //
     public boolean DoPromptExit = true;
+    /**
+     * Показывать предупреждение о перегрузе рюкзака в map.js (`checkShowOverWarning` в C# UI).
+     */
+    public boolean ShowOverWarning = false;
     public boolean DoHttpLog = false;
     public boolean DoTexLog = false;
     public boolean ShowPerformance = false;
     public boolean DoProxy = false;
+    /**
+     * Выводить результаты разделки в чат (C# `RazdChatReport`).
+     */
+    public boolean RazdChatReport = false;
+    /**
+     * Автопитье блажа по усталости (C# `DoAutoDrinkBlaz`).
+     */
+    public boolean DoAutoDrinkBlaz = false;
+    /**
+     * Порог усталости для автопитья блажа (C# `AutoDrinkBlazTied`).
+     */
+    public int AutoDrinkBlazTied = 84;
+    /**
+     * Порядок поиска блажа (C# `AutoDrinkBlazOrder`):
+     * 0 - ищем зелье, потом эликсир
+     * 1 - ищем эликсир, потом зелье
+     */
+    public int AutoDrinkBlazOrder = 0;
     public boolean AutoFish = false;
     /**
      * Авто-надевание удочек (C# `FishAutoWear`).
@@ -340,6 +362,11 @@ public class UserConfig {
                         this.DoInvPackDolg = parseBoolNodeText(parser, this.DoInvPackDolg);
                     } else if ("DoInvSort".equalsIgnoreCase(tagName)) {
                         this.DoInvSort = parseBoolNodeText(parser, this.DoInvSort);
+                    } else if ("showoverwarning".equalsIgnoreCase(tagName)) {
+                        // C# parity: <showoverwarning>true|false</showoverwarning>
+                        this.ShowOverWarning = parseBoolNodeText(parser, this.ShowOverWarning);
+                    } else if ("RazdChatReport".equalsIgnoreCase(tagName)) {
+                        this.RazdChatReport = parseBoolNodeText(parser, this.RazdChatReport);
                     } else if ("autoboi".equals(tagName)) {
                         this.LezDoAutoboi = Boolean.parseBoolean(parser.getAttributeValue(null, "enabled"));
                         this.LezDoFury = parseBoolAttr(parser, "fury", this.LezDoFury);
@@ -479,7 +506,7 @@ public class UserConfig {
                         this.doShowFastAttackZas = Boolean.parseBoolean(parser.getAttributeValue(null, "zas"));
                         this.doShowFastAttackTotem = Boolean.parseBoolean(parser.getAttributeValue(null, "totem"));
                         this.doShowFastAttackPortal = Boolean.parseBoolean(parser.getAttributeValue(null, "portal"));
-                    } else if ("autofish".equalsIgnoreCase(tagName)) {
+                    } else if ("autofish".equalsIgnoreCase(tagName) || "fish".equalsIgnoreCase(tagName)) {
                         // C# parity (`ConstTagFish = "autofish"`): читаем рыболовные параметры профиля.
                         this.AutoFish = parseBoolAttr(parser, "auto", this.AutoFish);
                         this.FishTiedHigh = parseIntAttr(parser, "tiedhigh", this.FishTiedHigh);
@@ -500,6 +527,20 @@ public class UserConfig {
                         this.FishMaxLevelBots = parseIntAttr(parser, "maxlevelbots", this.FishMaxLevelBots);
                         this.FishChatReport = parseBoolAttr(parser, "chatreport", this.FishChatReport);
                         this.FishChatReportColor = parseBoolAttr(parser, "chatreportcolor", this.FishChatReportColor);
+                        this.RazdChatReport = parseBoolAttr(parser, "razdchatreport", this.RazdChatReport);
+                    } else if ("autodrinkblaz".equalsIgnoreCase(tagName)) {
+                        this.DoAutoDrinkBlaz = parseBoolAttr(parser, "do", this.DoAutoDrinkBlaz);
+                        this.AutoDrinkBlazTied = parseIntAttr(parser, "tied", this.AutoDrinkBlazTied);
+                    } else if ("autodrinkblazorder".equalsIgnoreCase(tagName)) {
+                        String value = parseNodeText(parser, String.valueOf(this.AutoDrinkBlazOrder));
+                        try {
+                            this.AutoDrinkBlazOrder = Integer.parseInt(value);
+                        } catch (Exception ignore) {
+                            this.AutoDrinkBlazOrder = 0;
+                        }
+                        if (this.AutoDrinkBlazOrder < 0 || this.AutoDrinkBlazOrder > 1) {
+                            this.AutoDrinkBlazOrder = 0;
+                        }
                     }
                 }
                 eventType = parser.next();
@@ -586,6 +627,9 @@ public class UserConfig {
             serializer.attribute(null, "packDolg", String.valueOf(this.DoInvPackDolg));
             serializer.attribute(null, "sort", String.valueOf(this.DoInvSort));
             serializer.endTag(null, "inventory");
+            serializer.startTag(null, "showoverwarning");
+            serializer.text(String.valueOf(this.ShowOverWarning));
+            serializer.endTag(null, "showoverwarning");
 
             // Сохранение настроек быстрых действий
             serializer.startTag(null, "fastactions");
@@ -621,7 +665,17 @@ public class UserConfig {
             serializer.attribute(null, "maxlevelbots", String.valueOf(this.FishMaxLevelBots));
             serializer.attribute(null, "chatreport", String.valueOf(this.FishChatReport));
             serializer.attribute(null, "chatreportcolor", String.valueOf(this.FishChatReportColor));
+            serializer.attribute(null, "razdchatreport", String.valueOf(this.RazdChatReport));
             serializer.endTag(null, "autofish");
+
+            serializer.startTag(null, "autodrinkblaz");
+            serializer.attribute(null, "do", String.valueOf(this.DoAutoDrinkBlaz));
+            serializer.attribute(null, "tied", String.valueOf(this.AutoDrinkBlazTied));
+            serializer.endTag(null, "autodrinkblaz");
+
+            serializer.startTag(null, "autodrinkblazorder");
+            serializer.text(String.valueOf(this.AutoDrinkBlazOrder));
+            serializer.endTag(null, "autodrinkblazorder");
 
             // Сохранение настроек AutoBoi (аналог UserConfigVars.cs / FormSettingsAb.cs)
             serializer.startTag(null, "autoboi");

@@ -6,6 +6,8 @@ import android.view.MenuItem;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.ActionBar;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.preference.EditTextPreference;
+import androidx.preference.ListPreference;
 import androidx.preference.Preference;
 import androidx.preference.PreferenceFragmentCompat;
 import androidx.preference.SwitchPreferenceCompat;
@@ -76,6 +78,122 @@ public class SettingsActivity extends AppCompatActivity {
             }
             
             // Настройка HTTP-логирования
+            SwitchPreferenceCompat showOverWarningPref = findPreference("show_over_warning");
+            if (showOverWarningPref != null && AppVars.Profile != null) {
+                showOverWarningPref.setChecked(AppVars.Profile.ShowOverWarning);
+                showOverWarningPref.setOnPreferenceChangeListener((preference, newValue) -> {
+                    boolean value = (Boolean) newValue;
+                    AppVars.Profile.ShowOverWarning = value;
+                    AppVars.Profile.save(requireContext());
+                    return true;
+                });
+            }
+
+            SwitchPreferenceCompat razdChatReportPref = findPreference("show_razd_chat_report");
+            if (razdChatReportPref != null && AppVars.Profile != null) {
+                razdChatReportPref.setChecked(AppVars.Profile.RazdChatReport);
+                razdChatReportPref.setOnPreferenceChangeListener((preference, newValue) -> {
+                    boolean value = (Boolean) newValue;
+                    AppVars.Profile.RazdChatReport = value;
+                    AppVars.Profile.save(requireContext());
+                    return true;
+                });
+            }
+
+            SwitchPreferenceCompat doAutoDrinkBlazPref = findPreference("do_auto_drink_blaz");
+            if (doAutoDrinkBlazPref != null && AppVars.Profile != null) {
+                doAutoDrinkBlazPref.setChecked(AppVars.Profile.DoAutoDrinkBlaz);
+                doAutoDrinkBlazPref.setOnPreferenceChangeListener((preference, newValue) -> {
+                    boolean value = (Boolean) newValue;
+                    AppVars.Profile.DoAutoDrinkBlaz = value;
+                    AppVars.Profile.save(requireContext());
+                    return true;
+                });
+            }
+
+            EditTextPreference autoDrinkBlazTiedPref = findPreference("auto_drink_blaz_tied");
+            if (autoDrinkBlazTiedPref != null && AppVars.Profile != null) {
+                autoDrinkBlazTiedPref.setText(String.valueOf(AppVars.Profile.AutoDrinkBlazTied));
+                autoDrinkBlazTiedPref.setSummary(String.valueOf(AppVars.Profile.AutoDrinkBlazTied));
+                autoDrinkBlazTiedPref.setOnPreferenceChangeListener((preference, newValue) -> {
+                    String valueRaw = String.valueOf(newValue).trim();
+                    int value;
+                    try {
+                        value = Integer.parseInt(valueRaw);
+                    } catch (Exception ignore) {
+                        value = 84;
+                    }
+                    if (value < 0) value = 0;
+                    if (value > 100) value = 100;
+                    AppVars.Profile.AutoDrinkBlazTied = value;
+                    AppVars.Profile.save(requireContext());
+                    autoDrinkBlazTiedPref.setText(String.valueOf(value));
+                    preference.setSummary(String.valueOf(value));
+                    return false;
+                });
+            }
+
+            ListPreference autoDrinkBlazOrderPref = findPreference("auto_drink_blaz_order");
+            if (autoDrinkBlazOrderPref != null && AppVars.Profile != null) {
+                String current = String.valueOf(Math.max(0, Math.min(1, AppVars.Profile.AutoDrinkBlazOrder)));
+                autoDrinkBlazOrderPref.setValue(current);
+                int idx = autoDrinkBlazOrderPref.findIndexOfValue(current);
+                if (idx >= 0 && autoDrinkBlazOrderPref.getEntries() != null && idx < autoDrinkBlazOrderPref.getEntries().length) {
+                    autoDrinkBlazOrderPref.setSummary(autoDrinkBlazOrderPref.getEntries()[idx]);
+                }
+                autoDrinkBlazOrderPref.setOnPreferenceChangeListener((preference, newValue) -> {
+                    String valueRaw = String.valueOf(newValue);
+                    int value;
+                    try {
+                        value = Integer.parseInt(valueRaw);
+                    } catch (Exception ignore) {
+                        value = 0;
+                    }
+                    if (value < 0 || value > 1) value = 0;
+                    AppVars.Profile.AutoDrinkBlazOrder = value;
+                    AppVars.Profile.save(requireContext());
+                    int valueIndex = autoDrinkBlazOrderPref.findIndexOfValue(String.valueOf(value));
+                    if (valueIndex >= 0 && autoDrinkBlazOrderPref.getEntries() != null
+                            && valueIndex < autoDrinkBlazOrderPref.getEntries().length) {
+                        preference.setSummary(autoDrinkBlazOrderPref.getEntries()[valueIndex]);
+                    }
+                    return true;
+                });
+            }
+
+            SwitchPreferenceCompat doInvPackPref = findPreference("do_inv_pack");
+            if (doInvPackPref != null && AppVars.Profile != null) {
+                doInvPackPref.setChecked(AppVars.Profile.DoInvPack);
+                doInvPackPref.setOnPreferenceChangeListener((preference, newValue) -> {
+                    boolean value = (Boolean) newValue;
+                    AppVars.Profile.DoInvPack = value;
+                    AppVars.Profile.save(requireContext());
+                    return true;
+                });
+            }
+
+            SwitchPreferenceCompat doInvPackDolgPref = findPreference("do_inv_pack_dolg");
+            if (doInvPackDolgPref != null && AppVars.Profile != null) {
+                doInvPackDolgPref.setChecked(AppVars.Profile.DoInvPackDolg);
+                doInvPackDolgPref.setOnPreferenceChangeListener((preference, newValue) -> {
+                    boolean value = (Boolean) newValue;
+                    AppVars.Profile.DoInvPackDolg = value;
+                    AppVars.Profile.save(requireContext());
+                    return true;
+                });
+            }
+
+            SwitchPreferenceCompat doInvSortPref = findPreference("do_inv_sort");
+            if (doInvSortPref != null && AppVars.Profile != null) {
+                doInvSortPref.setChecked(AppVars.Profile.DoInvSort);
+                doInvSortPref.setOnPreferenceChangeListener((preference, newValue) -> {
+                    boolean value = (Boolean) newValue;
+                    AppVars.Profile.DoInvSort = value;
+                    AppVars.Profile.save(requireContext());
+                    return true;
+                });
+            }
+
             SwitchPreferenceCompat doHttpLogPref = findPreference("do_http_log");
             if (doHttpLogPref != null && AppVars.Profile != null) {
                 doHttpLogPref.setChecked(AppVars.Profile.DoHttpLog);

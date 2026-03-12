@@ -8,6 +8,52 @@
             app:defaultValue="true" />
 
         <SwitchPreferenceCompat
+            app:key="show_over_warning"
+            app:title="Показывать сообщение о перегрузе"
+            app:summary="Если выключено, сообщение о перегрузе рюкзака скрывается"
+            app:defaultValue="false" />
+
+        <SwitchPreferenceCompat
+            app:key="show_razd_chat_report"
+            app:title="Выводить результаты разделки в чат"
+            app:defaultValue="false" />
+
+        <SwitchPreferenceCompat
+            app:key="do_auto_drink_blaz"
+            app:title="Пить блаж, если усталость"
+            app:defaultValue="false" />
+
+        <EditTextPreference
+            app:key="auto_drink_blaz_tied"
+            app:title="Порог усталости для блажа"
+            app:summary="84"
+            app:dependency="do_auto_drink_blaz"
+            app:useSimpleSummaryProvider="false" />
+
+        <ListPreference
+            app:key="auto_drink_blaz_order"
+            app:title="Порядок поиска блажа"
+            app:entries="@array/auto_drink_blaz_order_entries"
+            app:entryValues="@array/auto_drink_blaz_order_values"
+            app:dependency="do_auto_drink_blaz"
+            app:defaultValue="0" />
+
+        <SwitchPreferenceCompat
+            app:key="do_inv_pack"
+            app:title="Объединять одинаковые предметы"
+            app:defaultValue="true" />
+
+        <SwitchPreferenceCompat
+            app:key="do_inv_pack_dolg"
+            app:title="Даже с разной долговечностью"
+            app:defaultValue="true" />
+
+        <SwitchPreferenceCompat
+            app:key="do_inv_sort"
+            app:title="Сортировать в алфавитном порядке"
+            app:defaultValue="true" />
+
+        <SwitchPreferenceCompat
             app:key="do_http_log"
             app:title="HTTP-логирование"
             app:summary="Логирование HTTP-запросов и ответов"

@@ -2657,6 +2657,16 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             }
 
             @Override
+            public boolean onJsAlert(WebView view, String url, String message, android.webkit.JsResult result) {
+                return super.onJsAlert(view, url, message, result);
+            }
+
+            @Override
+            public boolean onJsConfirm(WebView view, String url, String message, android.webkit.JsResult result) {
+                return super.onJsConfirm(view, url, message, result);
+            }
+
+            @Override
             public boolean onCreateWindow(WebView view, boolean isDialog, boolean isUserGesture, android.os.Message resultMsg) {
                 // Для чата: target="ch_refr" создаёт новое окно — нужен новый WebView (не навигированный),
                 // иначе Chromium падает с "New WebView for popup window must not have been previously navigated".
@@ -2670,13 +2680,12 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                     return true;
                 }
                 // Перехват window.open() теперь выполняется через JavaScript (см. onPageFinished)
-                // Здесь ничего не делаем - просто возвращаем false
+                // Здесь ничего не делаем — просто возвращаем false
                 resultMsg.sendToTarget();
                 return false;
             }
         });
     }
-
     // Освобождаем таймеры/вебвью и менеджеры при уничтожении Activity.
     @Override
     protected void onDestroy() {

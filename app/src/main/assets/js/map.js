@@ -581,7 +581,7 @@ function TimerStart(secgo, mrinit) {
 }
 
 function MessBoxDiv(mess) {
-    if (mess.indexOf('') != -1) {
+    if (mess.indexOf('Рюкзак') != -1) {
         if (!window.external.ShowOverWarning()) {
             return;
         }

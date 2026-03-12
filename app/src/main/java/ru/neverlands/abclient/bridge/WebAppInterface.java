@@ -92,6 +92,15 @@ public class WebAppInterface {
     }
 
     /**
+     * C# parity (`ScriptManager.ShowOverWarning`):
+     * map.js спрашивает, нужно ли показывать окно предупреждения о перегрузе.
+     */
+    @JavascriptInterface
+    public boolean ShowOverWarning() {
+        return AppVars.Profile != null && AppVars.Profile.ShowOverWarning;
+    }
+
+    /**
      * C# parity: map.js передаёт текущую массу инвентаря перед забросом.
      */
     @JavascriptInterface
