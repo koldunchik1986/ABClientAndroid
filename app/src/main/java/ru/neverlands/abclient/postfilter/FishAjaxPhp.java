@@ -36,6 +36,10 @@ public final class FishAjaxPhp {
     private static final long FISH_AUTORELOAD_SAFETY_MS = 350L;
     private static final long FISH_CYCLE_RETRY_DELAY_MS = 12_000L;
     private static final int FISH_CYCLE_MAX_ATTEMPTS = 4;
+    private static final int FISH_ACT1_ERR_RECOVERY_THRESHOLD = 2;
+    private static final long FISH_BOOTSTRAP_DEDUP_MS = 4000L;
+    private static final long FISH_FIGHT_GUARD_DELAY_MS = 1500L;
+    private static final long FISH_FIGHT_PULSE_GUARD_MS = 7000L;
     private static final long FISH_NO_CAPTCHA_FALLBACK_DELAY_MS = 1200L;
     private static final long FISH_NO_CAPTCHA_FALLBACK_DEDUP_MS = 2500L;
     private static volatile String lastFishCaptchaDialogKey = "";
@@ -45,6 +49,9 @@ public final class FishAjaxPhp {
     private static volatile long lastFishAct1AtMs = 0L;
     private static volatile long lastFishAct2AtMs = 0L;
     private static volatile long lastFishCycleToken = 0L;
+    private static volatile long lastFishAct1ErrAtMs = 0L;
+    private static volatile int consecutiveFishAct1ErrCount = 0;
+    private static volatile long lastFishBootstrapAtMs = 0L;
     private static volatile String lastFishNoCaptchaFallbackKey = "";
     private static volatile long lastFishNoCaptchaFallbackAtMs = 0L;
 
@@ -168,7 +175,9 @@ public final class FishAjaxPhp {
             return;
         }
         if (html != null && "ERR".equalsIgnoreCase(html.trim())) {
-            Log.d(TAG, "AUTO_FISH_TRACE act1 temporary ERR, will retry by cycle guard, address=" + address);
+            int errCount = registerAct1ErrAndMaybeRecover("act1_err");
+            Log.d(TAG, "AUTO_FISH_TRACE act1 temporary ERR, will retry by cycle guard, errCount="
+                    + errCount + ", address=" + address);
             return;
         }
 
@@ -197,6 +206,7 @@ public final class FishAjaxPhp {
             Log.w(TAG, "AUTO_FISH_TRACE act1 skip: empty vcode");
             return;
         }
+        resetAct1ErrRecoveryState();
         // Маркируем успешный старт только после валидного parse + vcode.
         // Это защищает от ложного "confirmed" при ответах вида ERR.
         lastFishAct1AtMs = System.currentTimeMillis();
@@ -448,6 +458,12 @@ public final class FishAjaxPhp {
 
             long nowMs = System.currentTimeMillis();
             long timerGateMs = AppVars.NeverTimer;
+            if (isFightLikelyActiveForFishCycle()) {
+                Log.d(TAG, "AUTO_FISH_TRACE cycle gate by fight markers, wait="
+                        + FISH_FIGHT_GUARD_DELAY_MS + "ms, attempt=" + attempt + ", token=" + cycleToken);
+                webView.postDelayed(() -> kickFishCycleAttempt(cycleToken, attempt), FISH_FIGHT_GUARD_DELAY_MS);
+                return;
+            }
             if (timerGateMs > nowMs + 250L) {
                 long waitMs = Math.max(300L, timerGateMs - nowMs + FISH_AUTORELOAD_SAFETY_MS);
                 Log.d(TAG, "AUTO_FISH_TRACE cycle gate by NeverTimer, wait=" + waitMs
@@ -499,12 +515,91 @@ public final class FishAjaxPhp {
                 }
                 if (attempt >= FISH_CYCLE_MAX_ATTEMPTS) {
                     Log.w(TAG, "AUTO_FISH_TRACE cycle kick exhausted attempts=" + attempt + ", token=" + cycleToken);
+                    requestAutoFishBootstrap("cycle_exhausted");
                     return;
                 }
                 Log.d(TAG, "AUTO_FISH_TRACE cycle kick retry " + (attempt + 1) + "/" + FISH_CYCLE_MAX_ATTEMPTS);
                 kickFishCycleAttempt(cycleToken, attempt + 1);
             }, FISH_CYCLE_RETRY_DELAY_MS);
         });
+    }
+
+    /**
+     * Регистрирует серию ERR-ответов act=1 и запускает безопасный recovery-bootstrap,
+     * если подряд пришло несколько ошибок.
+     */
+    private static int registerAct1ErrAndMaybeRecover(String reason) {
+        long nowMs = System.currentTimeMillis();
+        if (nowMs - lastFishAct1ErrAtMs > 60_000L) {
+            consecutiveFishAct1ErrCount = 0;
+        }
+        lastFishAct1ErrAtMs = nowMs;
+        consecutiveFishAct1ErrCount++;
+        if (consecutiveFishAct1ErrCount >= FISH_ACT1_ERR_RECOVERY_THRESHOLD) {
+            requestAutoFishBootstrap(reason + "_x" + consecutiveFishAct1ErrCount);
+        }
+        return consecutiveFishAct1ErrCount;
+    }
+
+    /**
+     * Сбрасывает счетчик ERR-ответов после валидного act=1.
+     */
+    private static void resetAct1ErrRecoveryState() {
+        consecutiveFishAct1ErrCount = 0;
+        lastFishAct1ErrAtMs = 0L;
+    }
+
+    /**
+     * Принудительно перезапускает fish-цепочку через main.php?go=inf.
+     * Используется как recovery после серии ERR/stale-vcode.
+     */
+    private static void requestAutoFishBootstrap(String reason) {
+        if (!isAutoFishEnabled()) {
+            return;
+        }
+        long nowMs = System.currentTimeMillis();
+        if (nowMs - lastFishBootstrapAtMs < FISH_BOOTSTRAP_DEDUP_MS) {
+            return;
+        }
+        lastFishBootstrapAtMs = nowMs;
+
+        MainActivity activity = (AppVars.mainActivity == null) ? null : AppVars.mainActivity.get();
+        if (activity == null) {
+            return;
+        }
+        String safeReason = (reason == null) ? "unknown" : reason.replaceAll("[^a-zA-Z0-9_\\-]", "_");
+        activity.runOnUiThread(() -> {
+            WebView webView = activity.getMainWebView();
+            if (webView == null) {
+                return;
+            }
+            StringBuilder url = new StringBuilder("http://neverlands.ru/main.php?get_id=56&act=10&go=inf&af_bootstrap=1&af_recover=1");
+            if (AppVars.VCode != null && !AppVars.VCode.isEmpty()) {
+                url.append("&vcode=").append(AppVars.VCode);
+            }
+            url.append("&reason=").append(safeReason);
+            url.append("&ts=").append(System.currentTimeMillis());
+            Log.d(TAG, "AUTO_FISH_TRACE recovery bootstrap: " + url);
+            webView.loadUrl(url.toString());
+        });
+    }
+
+    /**
+     * Короткий guard: не стартуем fish-cycle, пока в рантайме видны свежие маркеры активного боя.
+     */
+    private static boolean isFightLikelyActiveForFishCycle() {
+        if (AppVars.IsFightCaptchaDialogVisible) {
+            return true;
+        }
+        long nowMs = System.currentTimeMillis();
+        if (AppVars.LastFightPulseAtMs > 0L && (nowMs - AppVars.LastFightPulseAtMs) < FISH_FIGHT_PULSE_GUARD_MS) {
+            return true;
+        }
+        String html = AppVars.ContentMainPhp;
+        if (html == null || html.isEmpty()) {
+            return false;
+        }
+        return html.contains("var fight_ty") || html.contains("magic_slots();");
     }
 
     /**
