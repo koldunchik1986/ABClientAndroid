@@ -122,6 +122,13 @@ public final class FishAjaxPhp {
         }
 
         String lowerAddress = address == null ? "" : address.toLowerCase(Locale.ROOT);
+        if (lowerAddress.contains("act=2") && containsFishWrongProtectionCode(lower)) {
+            int errCount = registerAct1ErrAndMaybeRecover("wrong_code_protection");
+            Log.w(TAG, "AUTO_FISH_TRACE act2 returned wrong protection code, errCount=" + errCount
+                    + ", address=" + address);
+            requestAutoFishBootstrap("wrong_code_protection");
+            return array;
+        }
         if (lowerAddress.contains(FISH_AJAX_ACT1)) {
             processFishAct1(address, html);
             return array;
@@ -600,6 +607,19 @@ public final class FishAjaxPhp {
             return false;
         }
         return html.contains("var fight_ty") || html.contains("magic_slots();");
+    }
+
+    /**
+     * Серверный маркер ошибки: act=2 отклонен из-за неверного/устаревшего challenge-кода.
+     * Для no-captcha режима это сигнал к перезапуску fish-bootstrap и получению нового vcode.
+     */
+    private static boolean containsFishWrongProtectionCode(String lowerHtml) {
+        if (lowerHtml == null || lowerHtml.isEmpty()) {
+            return false;
+        }
+        return lowerHtml.contains("неверный код защиты")
+                || lowerHtml.contains("код защиты введен неверно")
+                || lowerHtml.contains("неправильный код защиты");
     }
 
     /**
