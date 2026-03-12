@@ -40,6 +40,9 @@ public class MainPhp {
     private static final int AUTO_FINISH_ST7_EXTRA_DELAY_MS = 220;
     private static final long AUTO_DRINK_TRIGGER_COOLDOWN_MS = 2500L;
     private static final long AUTO_FISH_BLAZ_TRIGGER_COOLDOWN_MS = 8000L;
+    // Серверный таймаут после шага "Пить" в рыбалке: выдерживаем ~62 сек перед следующим шагом.
+    private static final long AUTO_FISH_DRINK_SERVER_COOLDOWN_MS = 62_000L;
+    private static final int AUTO_FISH_DRINK_POLL_DELAY_MS = 1500;
     private static final long CAPTCHA_FALLBACK_TTL_MS = 5000L;
     private static final long AUTO_SKIN_KNIFE_RECHECK_INTERVAL_MS = 60_000L;
     private static final int AUTO_FISH_WEAR_LOOP_MAX_REPEATS = 12;
@@ -59,6 +62,7 @@ public class MainPhp {
     private static volatile long lastAutoFinishRedirectAtMs = 0L;
     private static volatile long lastAutoDrinkTriggerAtMs = 0L;
     private static volatile long lastAutoFishBlazTriggerAtMs = 0L;
+    private static volatile long lastAutoFishDrinkTriggerAtMs = 0L;
     // Защита от повторного показа одного и того же диалога капчи завершения боя.
     private static volatile String lastFightCaptchaDialogKey = "";
     private static volatile long lastFightCaptchaDialogAtMs = 0L;
@@ -1626,6 +1630,19 @@ public class MainPhp {
         if (AppVars.Profile == null || html == null || html.isEmpty()) {
             return null;
         }
+        long now = System.currentTimeMillis();
+        if (AppVars.AutoFishDrinkOnce) {
+            long elapsed = now - lastAutoFishDrinkTriggerAtMs;
+            if (elapsed >= 0 && elapsed < AUTO_FISH_DRINK_SERVER_COOLDOWN_MS) {
+                long remainingMs = AUTO_FISH_DRINK_SERVER_COOLDOWN_MS - elapsed;
+                android.util.Log.d(TAG, "AUTO_FISH_TRACE drink cooldown active: elapsedMs="
+                        + elapsed + ", remainingMs=" + remainingMs);
+                return buildAutoFishDrinkCooldownHtml(remainingMs);
+            }
+            android.util.Log.d(TAG, "AUTO_FISH_TRACE drink cooldown elapsed: elapsedMs="
+                    + elapsed + ", recheck tied");
+            AppVars.AutoFishDrinkOnce = false;
+        }
         mainPhpUpdateTied(html);
 
         int tied = Math.max(0, AppVars.Tied);
@@ -1639,7 +1656,6 @@ public class MainPhp {
         }
 
         if (AppVars.Profile.FishDrinkBliss) {
-            long now = System.currentTimeMillis();
             if (AppVars.FastNeed) {
                 android.util.Log.d(TAG, "AUTO_FISH_TRACE tied=" + tied + " > " + tiedHigh
                         + ", wait bliss: FastNeed=true");
@@ -1652,6 +1668,7 @@ public class MainPhp {
                 return buildRedirectHtml("Авторыбалка: ожидание эликсира", "main.php");
             }
             lastAutoFishBlazTriggerAtMs = now;
+            lastAutoFishDrinkTriggerAtMs = now;
             AppVars.AutoFishDrinkOnce = true;
             android.util.Log.d(TAG, "AUTO_FISH_TRACE tied=" + tied + " > " + tiedHigh
                     + ", trigger bliss elixir");
@@ -1661,6 +1678,7 @@ public class MainPhp {
 
         String drinkHtml = mainPhpFindDrink(html);
         if (drinkHtml != null && !drinkHtml.isEmpty()) {
+            lastAutoFishDrinkTriggerAtMs = now;
             AppVars.AutoFishDrinkOnce = true;
             android.util.Log.d(TAG, "AUTO_FISH_TRACE tied=" + tied + " > " + tiedHigh
                     + ", inject Drink(vcode)");
@@ -1674,6 +1692,23 @@ public class MainPhp {
             return floraHtml;
         }
         return null;
+    }
+
+    /**
+     * Генерирует "мягкое" ожидание завершения серверного таймаута после шага "Пить".
+     * Не спамит повторными глотками и возвращает цикл на main.php после небольшой паузы.
+     */
+    private static String buildAutoFishDrinkCooldownHtml(long remainingMs) {
+        long safeRemaining = Math.max(0L, remainingMs);
+        int delayMs = (int) Math.max(900L, Math.min((long) AUTO_FISH_DRINK_POLL_DELAY_MS, safeRemaining));
+        long seconds = (safeRemaining + 999L) / 1000L;
+        return HtmlUtils.GENERATED_PAGE_MARKER
+                + "<html><head><meta http-equiv=\"Content-Type\" content=\"text/html; charset=windows-1251\">"
+                + "<title>ABClient</title></head><body>"
+                + "Авторыбалка: глоток в работе, ожидание " + seconds + " с..."
+                + "<script language=\"JavaScript\">"
+                + "setTimeout(function(){ window.location = 'main.php'; }, " + delayMs + ");"
+                + "</script></body></html>";
     }
 
     private static boolean mainPhpIsPerc(String html) {
