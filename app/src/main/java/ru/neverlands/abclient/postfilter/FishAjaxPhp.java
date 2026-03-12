@@ -844,8 +844,12 @@ public final class FishAjaxPhp {
     }
 
     private static String getFishTimestamp() {
+        long serverMs = System.currentTimeMillis();
+        if (AppVars.Profile != null && AppVars.Profile.ServDiff != Long.MIN_VALUE) {
+            serverMs = serverMs - AppVars.Profile.ServDiff;
+        }
         synchronized (FISH_TIME_FORMAT) {
-            return FISH_TIME_FORMAT.format(new Date());
+            return FISH_TIME_FORMAT.format(new Date(serverMs));
         }
     }
 

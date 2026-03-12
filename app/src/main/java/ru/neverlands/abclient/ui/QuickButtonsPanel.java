@@ -1153,7 +1153,6 @@ public class QuickButtonsPanel {
         sb.append("Поединки: ").append(fights).append("\n");
         sb.append("Денежные средства (NV): ").append(totalNv).append("\n");
         sb.append("Доход рыбалки: ").append(formatNv(totalFishNv)).append(" NV\n");
-        sb.append("Ресурсы (кг): ").append(formatKg(totalResourcesKg)).append("\n\n");
 
         if (!fishCountByType.isEmpty()) {
             sb.append("Рыба (шт.):\n");
@@ -1162,6 +1161,8 @@ public class QuickButtonsPanel {
             }
             sb.append("\n");
         }
+
+        sb.append("Ресурсы (кг): ").append(formatKg(totalResourcesKg)).append("\n\n");
 
         if (!resourceKgByType.isEmpty()) {
             sb.append("Ресурсы по типам:\n");
