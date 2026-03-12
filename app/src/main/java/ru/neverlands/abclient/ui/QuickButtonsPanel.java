@@ -1127,6 +1127,7 @@ public class QuickButtonsPanel {
      * - Опыт (`ChatStats.getTotalXp()`),
      * - Поединки (`ChatStats.getTotalFights()`),
      * - Денежные средства (`ChatStats.getTotalNv()`),
+     * - Доход рыбалки (`ChatStats.getTotalFishNv()`) и рыба по типам (`ChatStats.getFishCountByType()`),
      * - Ресурсы (`ChatStats.getTotalResourceKg()` и `ChatStats.getResourceKgByType()`),
      * - Предметы по названиям (`ChatStats.getItemCountByName()`), в формате "Название: N шт.".
      *
@@ -1140,8 +1141,10 @@ public class QuickButtonsPanel {
         long fights = ChatStats.getTotalFights();
         long totalNv = ChatStats.getTotalNv();
         long statsElapsedMs = ChatStats.getStatsElapsedMs();
+        double totalFishNv = ChatStats.getTotalFishNv();
         double totalResourcesKg = ChatStats.getTotalResourceKg();
         java.util.Map<String, Double> resourceKgByType = ChatStats.getResourceKgByType();
+        java.util.Map<String, Long> fishCountByType = ChatStats.getFishCountByType();
         java.util.Map<String, Long> itemCountByName = ChatStats.getItemCountByName();
 
         StringBuilder sb = new StringBuilder();
@@ -1149,7 +1152,16 @@ public class QuickButtonsPanel {
         sb.append("Опыт: ").append(xp).append("\n");
         sb.append("Поединки: ").append(fights).append("\n");
         sb.append("Денежные средства (NV): ").append(totalNv).append("\n");
+        sb.append("Доход рыбалки: ").append(formatNv(totalFishNv)).append(" NV\n");
         sb.append("Ресурсы (кг): ").append(formatKg(totalResourcesKg)).append("\n\n");
+
+        if (!fishCountByType.isEmpty()) {
+            sb.append("Рыба (шт.):\n");
+            for (java.util.Map.Entry<String, Long> entry : fishCountByType.entrySet()) {
+                sb.append("• ").append(entry.getKey()).append(": ").append(entry.getValue()).append(" шт.\n");
+            }
+            sb.append("\n");
+        }
 
         if (!resourceKgByType.isEmpty()) {
             sb.append("Ресурсы по типам:\n");
@@ -1177,6 +1189,11 @@ public class QuickButtonsPanel {
         long minutes = (totalSeconds % 3600L) / 60L;
         long seconds = totalSeconds % 60L;
         return String.format(java.util.Locale.US, "%02d:%02d:%02d", hours, minutes, seconds);
+    }
+
+    // Формат NV-значений (доход/потери) с двумя знаками после запятой.
+    private String formatNv(double value) {
+        return String.format(java.util.Locale.US, "%.2f", value);
     }
 
     // Формат массы ресурсов для статистики (всегда 2 знака после запятой).

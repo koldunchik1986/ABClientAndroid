@@ -7,6 +7,8 @@ import android.webkit.WebView;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 
 import java.util.ArrayList;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
@@ -20,6 +22,7 @@ import ru.neverlands.abclient.model.Prims;
 import ru.neverlands.abclient.model.UserConfig;
 import ru.neverlands.abclient.utils.AppVars;
 import ru.neverlands.abclient.utils.Chat;
+import ru.neverlands.abclient.utils.ChatStats;
 import ru.neverlands.abclient.utils.HelperStrings;
 import ru.neverlands.abclient.utils.Russian;
 
@@ -49,6 +52,7 @@ public final class FishAjaxPhp {
     private static final Map<String, Double> FISH_MASS = new LinkedHashMap<>();
     private static final Map<String, BaitInfo> BAIT_INFO = new LinkedHashMap<>();
     private static final Pattern FISH_COOLDOWN_PATTERN = Pattern.compile("@\\[0,\\[2,(\\d+)\\]\\]@");
+    private static final SimpleDateFormat FISH_TIME_FORMAT = new SimpleDateFormat("HH:mm:ss", Locale.US);
 
     static {
         putFish("Карась", 4.32, 2.0);
@@ -720,6 +724,7 @@ public final class FishAjaxPhp {
                 bait == null ? "" : bait.name,
                 baitRemainingAfter,
                 cooldownSec);
+        ChatStats.addFishCatch(fishName, fishLoot, totalBalance);
         maybeWriteFishChat(fishName, fishLoot, fishCatch, fishUmUp, cooldownSec);
         return report;
     }
@@ -768,7 +773,8 @@ public final class FishAjaxPhp {
         sb.append("<b>").append(fishName).append("</b> [<b>")
                 .append(fishLoot).append('/').append(fishCatch).append("</b>]. ");
         if (AppVars.Profile != null && AppVars.Profile.FishUm > 0) {
-            sb.append("Умелка: <b>").append(AppVars.Profile.FishUm).append("</b>");
+            sb.append("<br><b>").append(getFishTimestamp()).append("</b> Умелка: <b>")
+                    .append(AppVars.Profile.FishUm).append("</b>");
             if (fishUmUp) {
                 sb.append(" <font color=#008800><b>(+1)</b></font>");
             }
@@ -808,6 +814,7 @@ public final class FishAjaxPhp {
             return;
         }
         StringBuilder sb = new StringBuilder();
+        sb.append(getFishTimestamp()).append(" ");
         if (AppVars.Profile.FishChatReportColor) {
             sb.append("Умелка <b>").append(AppVars.Profile.FishUm).append("</b>. ");
         } else {
@@ -834,6 +841,12 @@ public final class FishAjaxPhp {
             sb.append(" Умение \"Рыбалка\" ").append(AppVars.Profile.FishChatReportColor ? "<b>повысилось на 1</b>!" : "повысилось на 1!");
         }
         pushChatMessage(sb.toString());
+    }
+
+    private static String getFishTimestamp() {
+        synchronized (FISH_TIME_FORMAT) {
+            return FISH_TIME_FORMAT.format(new Date());
+        }
     }
 
     /**

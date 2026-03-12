@@ -69,6 +69,8 @@ public class ChatStats {
      * - сохраняется в статистический файл как `KG_TOTAL=...` и восстанавливается в {@link #loadFromFile(String)}.
      */
     private static double totalResourceKg = 0;
+    // Финансовый результат рыбалки за текущую сессию статистики (NV).
+    private static double totalFishNv = 0d;
     /**
      * Накопление ресурсного дропа по типам (например: "Клык" -> 12.40 кг).
      *
@@ -89,6 +91,8 @@ public class ChatStats {
      * - сохраняется как `ITEM_COUNT=<name>\t<count>` и восстанавливается в {@link #loadFromFile(String)}.
      */
     private static final Map<String, Long> itemCountByName = new LinkedHashMap<>();
+    // Количество пойманной рыбы по типам: "тип рыбы" -> "шт.".
+    private static final Map<String, Long> fishCountByType = new LinkedHashMap<>();
     private static final List<String> lootLog = new ArrayList<>();
     // Состояние загрузки/кеша статистики.
     private static boolean loaded = false;
@@ -157,6 +161,31 @@ public class ChatStats {
     public static synchronized Map<String, Long> getItemCountByName() {
         ensureLoaded();
         return Collections.unmodifiableMap(new LinkedHashMap<>(itemCountByName));
+    }
+
+    // Суммарный результат рыбалки в NV за текущую сессию статистики.
+    public static synchronized double getTotalFishNv() {
+        ensureLoaded();
+        return totalFishNv;
+    }
+
+    // Количество пойманной рыбы по типам.
+    public static synchronized Map<String, Long> getFishCountByType() {
+        ensureLoaded();
+        return Collections.unmodifiableMap(new LinkedHashMap<>(fishCountByType));
+    }
+
+    // Добавление шага рыбалки в статистику (доход + количество рыбы по типу).
+    public static synchronized void addFishCatch(String fishName, int fishCount, double incomeNv) {
+        ensureLoaded();
+        totalFishNv += incomeNv;
+        String normalizedFishName = fishName == null ? "" : fishName.trim();
+        if (!normalizedFishName.isEmpty() && fishCount > 0) {
+            long current = fishCountByType.containsKey(normalizedFishName)
+                    ? fishCountByType.get(normalizedFishName) : 0L;
+            fishCountByType.put(normalizedFishName, current + fishCount);
+        }
+        saveInternal();
     }
 
     /**
@@ -336,6 +365,8 @@ public class ChatStats {
                     }
                 } else if (line.startsWith("NV=")) {
                     totalNv = parseLongSafe(line.substring(3));
+                } else if (line.startsWith("FISH_NV=")) {
+                    totalFishNv = parseDoubleSafe(line.substring(8));
                 } else if (line.startsWith("KG_TOTAL=")) {
                     totalResourceKg = parseDoubleSafe(line.substring(9));
                 } else if (line.startsWith("KG_ITEM=")) {
@@ -356,6 +387,16 @@ public class ChatStats {
                         long count = parseLongSafe(value.substring(splitPos + 1));
                         if (!itemName.isEmpty() && count > 0L) {
                             itemCountByName.put(itemName, count);
+                        }
+                    }
+                } else if (line.startsWith("FISH_ITEM=")) {
+                    String value = line.substring(10);
+                    int splitPos = value.lastIndexOf('\t');
+                    if (splitPos > 0 && splitPos < value.length() - 1) {
+                        String fishName = value.substring(0, splitPos).trim();
+                        long count = parseLongSafe(value.substring(splitPos + 1));
+                        if (!fishName.isEmpty() && count > 0L) {
+                            fishCountByType.put(fishName, count);
                         }
                     }
                 } else if (line.startsWith("LOOT=")) {
@@ -415,12 +456,16 @@ public class ChatStats {
         sb.append("XP=").append(totalXp).append("\n");
         sb.append("FIGHTS=").append(totalFights).append("\n");
         sb.append("NV=").append(totalNv).append("\n");
+        sb.append("FISH_NV=").append(totalFishNv).append("\n");
         sb.append("KG_TOTAL=").append(totalResourceKg).append("\n");
         for (Map.Entry<String, Double> entry : resourceKgByType.entrySet()) {
             sb.append("KG_ITEM=").append(entry.getKey()).append("\t").append(entry.getValue()).append("\n");
         }
         for (Map.Entry<String, Long> entry : itemCountByName.entrySet()) {
             sb.append("ITEM_COUNT=").append(entry.getKey()).append("\t").append(entry.getValue()).append("\n");
+        }
+        for (Map.Entry<String, Long> entry : fishCountByType.entrySet()) {
+            sb.append("FISH_ITEM=").append(entry.getKey()).append("\t").append(entry.getValue()).append("\n");
         }
         for (String loot : lootLog) {
             sb.append("LOOT=").append(loot).append("\n");
@@ -463,8 +508,10 @@ public class ChatStats {
         totalFights = 0;
         totalNv = 0;
         totalResourceKg = 0;
+        totalFishNv = 0d;
         resourceKgByType.clear();
         itemCountByName.clear();
+        fishCountByType.clear();
         lootLog.clear();
     }
 
