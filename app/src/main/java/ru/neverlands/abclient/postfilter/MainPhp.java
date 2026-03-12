@@ -2092,6 +2092,12 @@ public class MainPhp {
             }
             pos = posEnd;
         }
+        // Вывод результата разделки в чат зависит от профильного флага `RazdChatReport`.
+        //
+        // Зависимости:
+        // - `UserConfig.RazdChatReport` (load/save в XML профиля, C# parity);
+        // - `SettingsActivity` / `root_preferences.xml` (чекбокс "Показывать результат разделки в чат");
+        // - `ChatStats` обновляется отдельно и не зависит от этого флага.
         if (!deltaForChat.isEmpty() && AppVars.Profile != null && AppVars.Profile.RazdChatReport) {
             String message = buildServerChatTimeHtml()
                     + "<font color=#006600><b>Результат разделки:</b></font> "

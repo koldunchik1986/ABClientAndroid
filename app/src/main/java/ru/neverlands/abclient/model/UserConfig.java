@@ -366,6 +366,10 @@ public class UserConfig {
                         // C# parity: <showoverwarning>true|false</showoverwarning>
                         this.ShowOverWarning = parseBoolNodeText(parser, this.ShowOverWarning);
                     } else if ("RazdChatReport".equalsIgnoreCase(tagName)) {
+                        // Legacy-совместимость:
+                        // в части старых профилей C# флаг мог храниться отдельным узлом.
+                        // Если далее в XML встретится `autofish@razdchatreport`, это значение
+                        // будет корректно уточнено при разборе секции рыбалки.
                         this.RazdChatReport = parseBoolNodeText(parser, this.RazdChatReport);
                     } else if ("autoboi".equals(tagName)) {
                         this.LezDoAutoboi = Boolean.parseBoolean(parser.getAttributeValue(null, "enabled"));
@@ -508,6 +512,11 @@ public class UserConfig {
                         this.doShowFastAttackPortal = Boolean.parseBoolean(parser.getAttributeValue(null, "portal"));
                     } else if ("autofish".equalsIgnoreCase(tagName) || "fish".equalsIgnoreCase(tagName)) {
                         // C# parity (`ConstTagFish = "autofish"`): читаем рыболовные параметры профиля.
+                        //
+                        // Зависимости:
+                        // - UI общих настроек (`SettingsActivity`, `root_preferences.xml`);
+                        // - runtime-логика авто-рыбалки в postfilter;
+                        // - обратная совместимость со старыми профилями (`fish` вместо `autofish`).
                         this.AutoFish = parseBoolAttr(parser, "auto", this.AutoFish);
                         this.FishTiedHigh = parseIntAttr(parser, "tiedhigh", this.FishTiedHigh);
                         this.FishTiedZero = parseBoolAttr(parser, "tiedzero", this.FishTiedZero);
@@ -527,11 +536,22 @@ public class UserConfig {
                         this.FishMaxLevelBots = parseIntAttr(parser, "maxlevelbots", this.FishMaxLevelBots);
                         this.FishChatReport = parseBoolAttr(parser, "chatreport", this.FishChatReport);
                         this.FishChatReportColor = parseBoolAttr(parser, "chatreportcolor", this.FishChatReportColor);
+                        // C# parity: `razdchatreport` хранится в блоке рыбалки профиля.
+                        // Этот флаг затем используется в авто-охоте (`MainPhp`) для решения,
+                        // нужно ли отправлять в чат строку "Результат разделки".
                         this.RazdChatReport = parseBoolAttr(parser, "razdchatreport", this.RazdChatReport);
                     } else if ("autodrinkblaz".equalsIgnoreCase(tagName)) {
+                        // C# parity (`<autodrinkblaz do tied>`): флаг + порог.
+                        //
+                        // Зависимости:
+                        // - UI: `do_auto_drink_blaz`, `auto_drink_blaz_tied`;
+                        // - runtime-ветки авто-режимов, где проверяется усталость;
+                        // - сериализация в `save(...)`, чтобы настройки переживали перезапуск.
                         this.DoAutoDrinkBlaz = parseBoolAttr(parser, "do", this.DoAutoDrinkBlaz);
                         this.AutoDrinkBlazTied = parseIntAttr(parser, "tied", this.AutoDrinkBlazTied);
                     } else if ("autodrinkblazorder".equalsIgnoreCase(tagName)) {
+                        // C# parity: порядок поиска типа блажа хранится отдельным узлом.
+                        // Допускаются только значения 0/1; при битом значении откатываемся к 0.
                         String value = parseNodeText(parser, String.valueOf(this.AutoDrinkBlazOrder));
                         try {
                             this.AutoDrinkBlazOrder = Integer.parseInt(value);
@@ -665,14 +685,27 @@ public class UserConfig {
             serializer.attribute(null, "maxlevelbots", String.valueOf(this.FishMaxLevelBots));
             serializer.attribute(null, "chatreport", String.valueOf(this.FishChatReport));
             serializer.attribute(null, "chatreportcolor", String.valueOf(this.FishChatReportColor));
+            // C# parity (`ConstAttibuteRazdChatReport`): признак вывода результата разделки в чат.
+            //
+            // Зависимости:
+            // - читается в `load(...)` из `autofish@razdchatreport`;
+            // - используется в `MainPhp.mainPhpGetSkinRes` при отправке системного сообщения.
             serializer.attribute(null, "razdchatreport", String.valueOf(this.RazdChatReport));
             serializer.endTag(null, "autofish");
 
+            // C# parity (`<autodrinkblaz do tied>`): флаг и порог автопитья блажа.
+            //
+            // Зависимости:
+            // - управляются из `SettingsActivity` (общие настройки);
+            // - читаются при старте профиля и участвуют в runtime-решении авто-режимов.
             serializer.startTag(null, "autodrinkblaz");
             serializer.attribute(null, "do", String.valueOf(this.DoAutoDrinkBlaz));
             serializer.attribute(null, "tied", String.valueOf(this.AutoDrinkBlazTied));
             serializer.endTag(null, "autodrinkblaz");
 
+            // C# parity (`autodrinkblazorder`): порядок поиска
+            // (0: сначала зелье, потом эликсир; 1: сначала эликсир, потом зелье).
+            // Сохраняем отдельным узлом для 1:1-совместимости с форматом ПК-профиля.
             serializer.startTag(null, "autodrinkblazorder");
             serializer.text(String.valueOf(this.AutoDrinkBlazOrder));
             serializer.endTag(null, "autodrinkblazorder");

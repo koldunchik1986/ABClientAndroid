@@ -89,6 +89,13 @@ public class SettingsActivity extends AppCompatActivity {
                 });
             }
 
+            // Настройка C#-флага `RazdChatReport` (UI: checkboxRazdChatReport).
+            //
+            // Зависимости:
+            // - ключ `show_razd_chat_report` в `root_preferences.xml`;
+            // - поле профиля `UserConfig.RazdChatReport` (load/save XML профиля);
+            // - ветка `MainPhp.mainPhpGetSkinRes`, где этот флаг управляет отправкой
+            //   системного сообщения "Результат разделки" в чат.
             SwitchPreferenceCompat razdChatReportPref = findPreference("show_razd_chat_report");
             if (razdChatReportPref != null && AppVars.Profile != null) {
                 razdChatReportPref.setChecked(AppVars.Profile.RazdChatReport);
@@ -100,6 +107,13 @@ public class SettingsActivity extends AppCompatActivity {
                 });
             }
 
+            // Главный флаг авто-питья блажа по усталости (C# `DoAutoDrinkBlaz`).
+            //
+            // Зависимости:
+            // - ключ `do_auto_drink_blaz` в `root_preferences.xml`;
+            // - поле `UserConfig.DoAutoDrinkBlaz` и XML-тег `<autodrinkblaz do="...">`;
+            // - runtime-ветка авто-рыбалки/общей логики, где проверяется разрешение
+            //   на автоматическое употребление блажа.
             SwitchPreferenceCompat doAutoDrinkBlazPref = findPreference("do_auto_drink_blaz");
             if (doAutoDrinkBlazPref != null && AppVars.Profile != null) {
                 doAutoDrinkBlazPref.setChecked(AppVars.Profile.DoAutoDrinkBlaz);
@@ -111,6 +125,16 @@ public class SettingsActivity extends AppCompatActivity {
                 });
             }
 
+            // Порог усталости для авто-питья блажа (C# `AutoDrinkBlazTied`).
+            //
+            // Зависимости:
+            // - ключ `auto_drink_blaz_tied` (зависимый от `do_auto_drink_blaz`);
+            // - поле `UserConfig.AutoDrinkBlazTied`;
+            // - сериализация в `<autodrinkblaz tied="...">`.
+            //
+            // Правило валидации:
+            // - принимаем только диапазон 0..100, иначе приводим к границам;
+            // - при нечисловом вводе откатываемся к C#-совместимому дефолту 84.
             EditTextPreference autoDrinkBlazTiedPref = findPreference("auto_drink_blaz_tied");
             if (autoDrinkBlazTiedPref != null && AppVars.Profile != null) {
                 autoDrinkBlazTiedPref.setText(String.valueOf(AppVars.Profile.AutoDrinkBlazTied));
@@ -133,6 +157,16 @@ public class SettingsActivity extends AppCompatActivity {
                 });
             }
 
+            // Порядок поиска типа блажа (C# `AutoDrinkBlazOrder`).
+            //
+            // Зависимости:
+            // - ключ `auto_drink_blaz_order` + массивы `auto_drink_blaz_order_*`;
+            // - поле `UserConfig.AutoDrinkBlazOrder`;
+            // - XML-тег `<autodrinkblazorder>` при сохранении профиля.
+            //
+            // Допустимые значения:
+            // - 0: сначала зелье, затем эликсир;
+            // - 1: сначала эликсир, затем зелье.
             ListPreference autoDrinkBlazOrderPref = findPreference("auto_drink_blaz_order");
             if (autoDrinkBlazOrderPref != null && AppVars.Profile != null) {
                 String current = String.valueOf(Math.max(0, Math.min(1, AppVars.Profile.AutoDrinkBlazOrder)));
@@ -161,6 +195,12 @@ public class SettingsActivity extends AppCompatActivity {
                 });
             }
 
+            // Флаг группировки одинаковых предметов в инвентаре (C# `DoInvPack`).
+            //
+            // Зависимости:
+            // - ключ `do_inv_pack` в общих настройках;
+            // - поле `UserConfig.DoInvPack`;
+            // - postfilter-логика группировки инвентаря в `MainPhp`.
             SwitchPreferenceCompat doInvPackPref = findPreference("do_inv_pack");
             if (doInvPackPref != null && AppVars.Profile != null) {
                 doInvPackPref.setChecked(AppVars.Profile.DoInvPack);
@@ -172,6 +212,12 @@ public class SettingsActivity extends AppCompatActivity {
                 });
             }
 
+            // Режим группировки с учетом/без учета долговечности (C# `DoInvPackDolg`).
+            //
+            // Зависимости:
+            // - ключ `do_inv_pack_dolg`;
+            // - поле `UserConfig.DoInvPackDolg`;
+            // - алгоритм ключа группировки и суммирования долговечности в инвентарном парсере.
             SwitchPreferenceCompat doInvPackDolgPref = findPreference("do_inv_pack_dolg");
             if (doInvPackDolgPref != null && AppVars.Profile != null) {
                 doInvPackDolgPref.setChecked(AppVars.Profile.DoInvPackDolg);
@@ -183,6 +229,12 @@ public class SettingsActivity extends AppCompatActivity {
                 });
             }
 
+            // Флаг сортировки/нормализации вывода инвентаря (C# `DoInvSort`).
+            //
+            // Зависимости:
+            // - ключ `do_inv_sort`;
+            // - поле `UserConfig.DoInvSort`;
+            // - порядок отображения сгруппированных записей в postfilter-ветке инвентаря.
             SwitchPreferenceCompat doInvSortPref = findPreference("do_inv_sort");
             if (doInvSortPref != null && AppVars.Profile != null) {
                 doInvSortPref.setChecked(AppVars.Profile.DoInvSort);
