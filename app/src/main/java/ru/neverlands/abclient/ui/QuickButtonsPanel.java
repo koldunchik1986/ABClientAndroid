@@ -720,6 +720,11 @@ public class QuickButtonsPanel {
         tiedZero.setChecked(AppVars.Profile.FishTiedZero);
         root.addView(tiedZero);
 
+        CheckBox fishDrinkBliss = new CheckBox(context);
+        fishDrinkBliss.setText("Пить Эликсир Блаженства, если усталка больше порога");
+        fishDrinkBliss.setChecked(AppVars.Profile.FishDrinkBliss);
+        root.addView(fishDrinkBliss);
+
         CheckBox stopOverWeight = new CheckBox(context);
         stopOverWeight.setText("Прекращать рыбалку при перегрузе");
         stopOverWeight.setChecked(AppVars.Profile.FishStopOverWeight);
@@ -766,6 +771,7 @@ public class QuickButtonsPanel {
                     }
                     AppVars.Profile.FishTiedHigh = Math.max(0, Math.min(99, tiedHigh));
                     AppVars.Profile.FishTiedZero = tiedZero.isChecked();
+                    AppVars.Profile.FishDrinkBliss = fishDrinkBliss.isChecked();
                     AppVars.Profile.FishStopOverWeight = stopOverWeight.isChecked();
                     AppVars.Profile.FishChatReport = fishChatReport.isChecked();
                     AppVars.Profile.FishChatReportColor = fishChatReportColor.isChecked();

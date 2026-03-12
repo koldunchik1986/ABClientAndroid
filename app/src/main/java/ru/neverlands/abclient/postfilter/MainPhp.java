@@ -39,6 +39,7 @@ public class MainPhp {
     private static final int AUTO_FINISH_ST7_MIN_DELAY_MS = 220;
     private static final int AUTO_FINISH_ST7_EXTRA_DELAY_MS = 220;
     private static final long AUTO_DRINK_TRIGGER_COOLDOWN_MS = 2500L;
+    private static final long AUTO_FISH_BLAZ_TRIGGER_COOLDOWN_MS = 8000L;
     private static final long CAPTCHA_FALLBACK_TTL_MS = 5000L;
     private static final long AUTO_SKIN_KNIFE_RECHECK_INTERVAL_MS = 60_000L;
     private static final int AUTO_FISH_WEAR_LOOP_MAX_REPEATS = 12;
@@ -57,6 +58,7 @@ public class MainPhp {
     };
     private static volatile long lastAutoFinishRedirectAtMs = 0L;
     private static volatile long lastAutoDrinkTriggerAtMs = 0L;
+    private static volatile long lastAutoFishBlazTriggerAtMs = 0L;
     // Защита от повторного показа одного и того же диалога капчи завершения боя.
     private static volatile String lastFightCaptchaDialogKey = "";
     private static volatile long lastFightCaptchaDialogAtMs = 0L;
@@ -1533,6 +1535,147 @@ public class MainPhp {
     /**
      * Порт `MainPhpIsPerc` из C# (`MainPhpDrink.cs`).
      */
+    /**
+     * Обновляет runtime-значение усталости (`AppVars.Tied`) из текущего HTML верхнего фрейма.
+     */
+    private static void mainPhpUpdateTied(String html) {
+        Integer tiedValue = parseMainPhpTiedValue(html);
+        if (tiedValue == null) {
+            return;
+        }
+        int normalized = Math.max(0, Math.min(100, tiedValue));
+        if (AppVars.Tied != normalized) {
+            android.util.Log.d(TAG, "AUTO_FISH_TRACE tied update: old=" + AppVars.Tied + ", new=" + normalized);
+        }
+        AppVars.Tied = normalized;
+        if (AppVars.AutoFishDrink && normalized <= 0) {
+            AppVars.AutoFishDrink = false;
+            android.util.Log.d(TAG, "AUTO_FISH_TRACE tied reached zero -> stop drink-to-zero mode");
+        }
+    }
+
+    /**
+     * Пытается извлечь процент усталости из блока "Усталость: ...".
+     */
+    private static Integer parseMainPhpTiedValue(String html) {
+        if (html == null || html.isEmpty()) {
+            return null;
+        }
+        try {
+            java.util.regex.Matcher m = java.util.regex.Pattern
+                    .compile("(?is)Усталость:</td><td[^>]*>.*?<b>\\s*(\\d{1,3})\\s*</b>")
+                    .matcher(html);
+            if (m.find()) {
+                return Integer.parseInt(m.group(1));
+            }
+            m = java.util.regex.Pattern
+                    .compile("(?is)Усталость[^0-9]{0,80}(\\d{1,3})\\s*%")
+                    .matcher(html);
+            if (m.find()) {
+                return Integer.parseInt(m.group(1));
+            }
+            m = java.util.regex.Pattern
+                    .compile("(?is)Усталость[^0-9]{0,80}(\\d{1,3})")
+                    .matcher(html);
+            if (m.find()) {
+                return Integer.parseInt(m.group(1));
+            }
+        } catch (Exception e) {
+            android.util.Log.w(TAG, "AUTO_FISH_TRACE tied parse failed", e);
+        }
+        return null;
+    }
+
+    /**
+     * C# parity (`MainPhpFindDrink`): на карте вставляет вызов `Drink('<vcode>')` после `view_map();`.
+     */
+    private static String mainPhpFindDrink(String html) {
+        if (html == null || html.isEmpty()) {
+            return null;
+        }
+        String pattern = "[\"dri\",\"Пить\",\"";
+        int posPattern = html.indexOf(pattern);
+        if (posPattern == -1) {
+            return null;
+        }
+        posPattern += pattern.length();
+        int posEnd = html.indexOf('"', posPattern);
+        if (posEnd == -1) {
+            return null;
+        }
+        String vcode = html.substring(posPattern, posEnd);
+        if (vcode.isEmpty()) {
+            return null;
+        }
+        String callDrink = "Drink('" + vcode + "');";
+        String patternViewMap = "view_map();";
+        int posScript = html.indexOf(patternViewMap);
+        if (posScript == -1) {
+            return null;
+        }
+        posScript += patternViewMap.length();
+        return html.substring(0, posScript) + callDrink + html.substring(posScript);
+    }
+
+    /**
+     * Шаг контроля усталости авто-рыбалки:
+     * - если усталость выше порога, выполняет "Пить" (или "Эликсир Блаженства" по настройке),
+     * - иначе возвращает null и цикл продолжает обычный шаг "Рыбалка".
+     */
+    private static String mainPhpAutoFishFatigueStep(String html) {
+        if (AppVars.Profile == null || html == null || html.isEmpty()) {
+            return null;
+        }
+        mainPhpUpdateTied(html);
+
+        int tied = Math.max(0, AppVars.Tied);
+        int tiedHigh = Math.max(0, Math.min(99, AppVars.Profile.FishTiedHigh));
+        if (!AppVars.AutoFishDrink) {
+            AppVars.AutoFishDrink = tied > tiedHigh && AppVars.Profile.FishTiedZero;
+        }
+        boolean needDrinkStep = tied > tiedHigh || AppVars.AutoFishDrink;
+        if (!needDrinkStep) {
+            return null;
+        }
+
+        if (AppVars.Profile.FishDrinkBliss) {
+            long now = System.currentTimeMillis();
+            if (AppVars.FastNeed) {
+                android.util.Log.d(TAG, "AUTO_FISH_TRACE tied=" + tied + " > " + tiedHigh
+                        + ", wait bliss: FastNeed=true");
+                return buildRedirectHtml("Авторыбалка: ожидание эликсира", "main.php");
+            }
+            long sinceLast = now - lastAutoFishBlazTriggerAtMs;
+            if (sinceLast >= 0 && sinceLast < AUTO_FISH_BLAZ_TRIGGER_COOLDOWN_MS) {
+                android.util.Log.d(TAG, "AUTO_FISH_TRACE tied=" + tied + " > " + tiedHigh
+                        + ", bliss cooldown " + sinceLast + "ms");
+                return buildRedirectHtml("Авторыбалка: ожидание эликсира", "main.php");
+            }
+            lastAutoFishBlazTriggerAtMs = now;
+            AppVars.AutoFishDrinkOnce = true;
+            android.util.Log.d(TAG, "AUTO_FISH_TRACE tied=" + tied + " > " + tiedHigh
+                    + ", trigger bliss elixir");
+            FastActionManager.fastAttackBlazElixir();
+            return buildRedirectHtml("Авторыбалка: Эликсир Блаженства", "main.php");
+        }
+
+        String drinkHtml = mainPhpFindDrink(html);
+        if (drinkHtml != null && !drinkHtml.isEmpty()) {
+            AppVars.AutoFishDrinkOnce = true;
+            android.util.Log.d(TAG, "AUTO_FISH_TRACE tied=" + tied + " > " + tiedHigh
+                    + ", inject Drink(vcode)");
+            return drinkHtml;
+        }
+
+        String floraHtml = mainPhpFindFlora(html);
+        if (floraHtml != null && !floraHtml.isEmpty()) {
+            android.util.Log.d(TAG, "AUTO_FISH_TRACE tied=" + tied + " > " + tiedHigh
+                    + ", redirect to map for Drink");
+            return floraHtml;
+        }
+        return null;
+    }
+
     private static boolean mainPhpIsPerc(String html) {
         String lower = html.toLowerCase(Locale.ROOT);
         return lower.contains("input type=button class=lbut value=\"умения\"");
@@ -2225,6 +2368,11 @@ public class MainPhp {
         if (!isFightFrame && !isFightTopFrame && !autoFightReloadProbeAddress && isAutoFishEnabledByPreference()) {
             long nowMs = System.currentTimeMillis();
             if (AppVars.NeverTimer <= 0L || nowMs > AppVars.NeverTimer) {
+                String fishFatigueHtml = mainPhpAutoFishFatigueStep(html);
+                if (fishFatigueHtml != null && !fishFatigueHtml.isEmpty()) {
+                    android.util.Log.d(TAG, "AUTO_FISH_TRACE fatigue step executed");
+                    return Russian.getBytes(fishFatigueHtml);
+                }
                 if (AppVars.AutoFishCheckUm) {
                     String phtml = mainPhpFindPerc(html);
                     if (phtml != null && !phtml.isEmpty()) {

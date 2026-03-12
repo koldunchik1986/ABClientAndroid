@@ -127,6 +127,10 @@ public class UserConfig {
      */
     public boolean FishTiedZero = false;
     /**
+     * В авто-рыбалке вместо шага "Пить" использовать "Эликсир Блаженства", если усталость выше порога.
+     */
+    public boolean FishDrinkBliss = false;
+    /**
      * Остановка авто-рыбалки при перевесе (C# `FishStopOverWeight`).
      */
     public boolean FishStopOverWeight = true;
@@ -480,6 +484,7 @@ public class UserConfig {
                         this.AutoFish = parseBoolAttr(parser, "auto", this.AutoFish);
                         this.FishTiedHigh = parseIntAttr(parser, "tiedhigh", this.FishTiedHigh);
                         this.FishTiedZero = parseBoolAttr(parser, "tiedzero", this.FishTiedZero);
+                        this.FishDrinkBliss = parseBoolAttr(parser, "drinkbliss", this.FishDrinkBliss);
                         this.FishStopOverWeight = parseBoolAttr(parser, "stopoverw", this.FishStopOverWeight);
                         this.FishAutoWear = parseBoolAttr(parser, "autowear", this.FishAutoWear);
                         String fishHandOne = getAttributeValueIgnoreCase(parser, "hand1");
@@ -606,6 +611,7 @@ public class UserConfig {
             serializer.attribute(null, "auto", String.valueOf(this.AutoFish));
             serializer.attribute(null, "tiedhigh", String.valueOf(this.FishTiedHigh));
             serializer.attribute(null, "tiedzero", String.valueOf(this.FishTiedZero));
+            serializer.attribute(null, "drinkbliss", String.valueOf(this.FishDrinkBliss));
             serializer.attribute(null, "stopoverw", String.valueOf(this.FishStopOverWeight));
             serializer.attribute(null, "autowear", String.valueOf(this.FishAutoWear));
             serializer.attribute(null, "hand1", this.FishHandOne != null ? this.FishHandOne : "Любая удочка");
