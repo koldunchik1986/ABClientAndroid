@@ -19,11 +19,17 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.appcompat.app.AlertDialog;
+import androidx.core.content.ContextCompat;
 
 import com.bumptech.glide.Glide;
 
 import java.net.URLEncoder;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import ru.neverlands.abclient.R;
 import ru.neverlands.abclient.adapter.FunctionListAdapter;
@@ -52,6 +58,15 @@ public class QuickButtonsPanel {
     private static final int BUTTONS_PER_ROW = 10;
     private static final int TOTAL_BUTTONS = 20;
     private static final int REQUEST_CODE_CONTACTS = 1002;
+    private static final int NAV_CATEGORY_FAVORITES = 1;
+    private static final int NAV_CATEGORY_CITY_VILLAGE = 2;
+    private static final int NAV_CATEGORY_CITY_FORPOST = 3;
+    private static final int NAV_CATEGORY_CITY_OKTAL = 4;
+    private static final int NAV_CATEGORY_OBJECTS = 5;
+    private static final int NAV_CATEGORY_TELEPORTS = 6;
+    private static final Pattern NAV_CELL_PATTERN = Pattern.compile("(\\d+-\\d+)");
+    private static final String NAV_CITY_SUBCATEGORY_ENTRY_DELIMITER = ";";
+    private static final String NAV_CITY_SUBCATEGORY_VALUE_DELIMITER = "|";
     private static final String[] FISH_HAND_OPTIONS = new String[] {
             "Нет",
             "Любая удочка",
@@ -97,6 +112,20 @@ public class QuickButtonsPanel {
 
     public interface OnQuickActionListener {
         void onQuickAction(QuickActionType actionType);
+    }
+
+    private interface OnNavigatorCellPicked {
+        void onCellPicked(String cellNum);
+    }
+
+    private static final class CitySubcategory {
+        final String name;
+        final String[] cells;
+
+        CitySubcategory(String name, String[] cells) {
+            this.name = name;
+            this.cells = cells;
+        }
     }
 
     // Конструктор: связывает панель с менеджером кнопок, автофункциями и табами.
@@ -1263,7 +1292,6 @@ public class QuickButtonsPanel {
         }
 
         int pad = dpToPx(16);
-
         LinearLayout root = new LinearLayout(context);
         root.setOrientation(LinearLayout.VERTICAL);
         root.setPadding(pad, pad, pad, 0);
@@ -1279,16 +1307,14 @@ public class QuickButtonsPanel {
         root.addView(locLabel);
 
         android.widget.AutoCompleteTextView destInput = new android.widget.AutoCompleteTextView(context);
-        destInput.setHint("Номер ячейки (напр. 8-259)");
+        destInput.setHint("Номер клетки (напр. 8-259)");
         destInput.setSingleLine();
         destInput.setThreshold(1);
-        if (ExtMap.Cells != null && !ExtMap.Cells.isEmpty()) {
-            String[] cellKeys = ExtMap.Cells.keySet().toArray(new String[0]);
-            java.util.Arrays.sort(cellKeys);
-            ArrayAdapter<String> acAdapter = new ArrayAdapter<>(context,
-                    android.R.layout.simple_dropdown_item_1line, cellKeys);
-            destInput.setAdapter(acAdapter);
-        }
+        destInput.setAdapter(new ArrayAdapter<>(
+                context,
+                android.R.layout.simple_dropdown_item_1line,
+                buildNavigatorAutocompleteValues()
+        ));
         root.addView(destInput);
 
         CheckBox allowTeleCb = new CheckBox(context);
@@ -1296,33 +1322,13 @@ public class QuickButtonsPanel {
         allowTeleCb.setChecked(AppVars.Profile == null || AppVars.Profile.NavigatorAllowTeleports);
         root.addView(allowTeleCb);
 
-        LinearLayout favBtns = new LinearLayout(context);
-        favBtns.setOrientation(LinearLayout.HORIZONTAL);
-        android.widget.Button addFavBtn = new android.widget.Button(context);
-        addFavBtn.setText("+ Избранное");
-        addFavBtn.setTextSize(12);
-        android.widget.Button clearFavBtn = new android.widget.Button(context);
-        clearFavBtn.setText("Очистить изб.");
-        clearFavBtn.setTextSize(12);
-        LinearLayout.LayoutParams half = new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f);
-        favBtns.addView(addFavBtn, half);
-        favBtns.addView(clearFavBtn, half);
-        root.addView(favBtns);
-
         ScrollView scroll = new ScrollView(context);
         scroll.setLayoutParams(new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT, dpToPx(220)));
+                LinearLayout.LayoutParams.MATCH_PARENT, dpToPx(260)));
         LinearLayout listLayout = new LinearLayout(context);
         listLayout.setOrientation(LinearLayout.VERTICAL);
         listLayout.setPadding(0, dpToPx(4), 0, dpToPx(8));
-
-        addNavGroup(listLayout, "Избранные", navFavCells(), destInput);
-        addNavGroup(listLayout, "Форпост", new String[]{"8-259", "8-294"}, destInput);
-        addNavGroup(listLayout, "Деревня", new String[]{"8-197"}, destInput);
-        addNavGroup(listLayout, "Октал", new String[]{"12-428", "12-494", "12-521"}, destInput);
-        addNavGroup(listLayout, "Объекты", new String[]{"8-227", "2-482", "9-494", "26-430"}, destInput);
-        addNavGroup(listLayout, "Телепорты", navTelepCells(), destInput);
-
+        renderNavigatorCategories(listLayout, destInput);
         scroll.addView(listLayout);
         root.addView(scroll);
 
@@ -1336,42 +1342,12 @@ public class QuickButtonsPanel {
         allowTeleCb.setOnCheckedChangeListener((cb, checked) -> {
             if (AppVars.Profile != null) {
                 AppVars.Profile.NavigatorAllowTeleports = checked;
-            }
-        });
-
-        addFavBtn.setOnClickListener(v -> {
-            String cell = destInput.getText().toString().trim();
-            if (!cell.isEmpty() && AppVars.Profile != null) {
-                AppVars.Profile.addFavLocation(cell);
-                Toast.makeText(context, "Добавлено в избранное: " + cell, Toast.LENGTH_SHORT).show();
-                listLayout.removeAllViews();
-                addNavGroup(listLayout, "Избранные", navFavCells(), destInput);
-                addNavGroup(listLayout, "Форпост", new String[]{"8-259", "8-294"}, destInput);
-                addNavGroup(listLayout, "Деревня", new String[]{"8-197"}, destInput);
-                addNavGroup(listLayout, "Октал", new String[]{"12-428", "12-494", "12-521"}, destInput);
-                addNavGroup(listLayout, "Объекты", new String[]{"8-227", "2-482", "9-494", "26-430"}, destInput);
-                addNavGroup(listLayout, "Телепорты", navTelepCells(), destInput);
-            } else {
-                Toast.makeText(context, "Введите номер ячейки", Toast.LENGTH_SHORT).show();
-            }
-        });
-
-        clearFavBtn.setOnClickListener(v -> {
-            if (AppVars.Profile != null) {
-                AppVars.Profile.clearFavLocations();
-                Toast.makeText(context, "Избранное очищено", Toast.LENGTH_SHORT).show();
-                listLayout.removeAllViews();
-                addNavGroup(listLayout, "Избранные", navFavCells(), destInput);
-                addNavGroup(listLayout, "Форпост", new String[]{"8-259", "8-294"}, destInput);
-                addNavGroup(listLayout, "Деревня", new String[]{"8-197"}, destInput);
-                addNavGroup(listLayout, "Октал", new String[]{"12-428", "12-494", "12-521"}, destInput);
-                addNavGroup(listLayout, "Объекты", new String[]{"8-227", "2-482", "9-494", "26-430"}, destInput);
-                addNavGroup(listLayout, "Телепорты", navTelepCells(), destInput);
+                AppVars.Profile.save(context);
             }
         });
 
         dialog.setOnShowListener(d -> dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
-            String cell = destInput.getText().toString().trim();
+            String cell = resolveCellNumber(destInput.getText().toString());
             if (cell.isEmpty()) {
                 Toast.makeText(context, "Введите пункт назначения", Toast.LENGTH_SHORT).show();
                 return;
@@ -1385,45 +1361,612 @@ public class QuickButtonsPanel {
         dialog.show();
     }
 
-    // Добавляет группу назначений в список навигатора.
-    private void addNavGroup(LinearLayout parent, String groupName, String[] cells, EditText destInput) {
-        if (cells == null || cells.length == 0) return;
+    private void renderNavigatorCategories(LinearLayout parent, EditText destInput) {
+        parent.removeAllViews();
+        addNavigatorLeafCategory(parent, "Избранное", NAV_CATEGORY_FAVORITES, navFavCells(), 0, destInput);
 
-        TextView header = new TextView(context);
-        header.setText(groupName);
-        header.setTypeface(null, android.graphics.Typeface.BOLD);
-        header.setTextColor(0xFF005500);
-        header.setPadding(0, dpToPx(6), 0, dpToPx(2));
-        parent.addView(header);
+        addNavigatorSectionHeader(parent, "Города", 0,
+                () -> showAddCitySubcategoryDialog(() -> renderNavigatorCategories(parent, destInput)));
+        for (CitySubcategory citySubcategory : getCitySubcategories()) {
+            addNavigatorCityLeafCategory(parent, citySubcategory, dpToPx(10), destInput);
+        }
+
+        addNavigatorLeafCategory(parent, "Объекты", NAV_CATEGORY_OBJECTS, navObjectCells(), 0, destInput);
+        addNavigatorLeafCategory(parent, "Телепорты", NAV_CATEGORY_TELEPORTS, navTelepCells(), 0, destInput);
+    }
+
+    private void addNavigatorSectionHeader(LinearLayout parent, String title, int leftPaddingPx, Runnable onAddSubcategory) {
+        LinearLayout headerRow = new LinearLayout(context);
+        headerRow.setOrientation(LinearLayout.HORIZONTAL);
+        headerRow.setGravity(Gravity.CENTER_VERTICAL);
+        headerRow.setBackgroundColor(ContextCompat.getColor(context, R.color.ab_autoboi_group_selected_bg));
+        headerRow.setPadding(leftPaddingPx + dpToPx(10), dpToPx(8), dpToPx(6), dpToPx(8));
+
+        TextView titleView = new TextView(context);
+        titleView.setText(title);
+        titleView.setTypeface(null, android.graphics.Typeface.BOLD);
+        titleView.setTextColor(ContextCompat.getColor(context, R.color.ab_autoboi_text_primary));
+
+        LinearLayout.LayoutParams titleLp = new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f);
+        headerRow.addView(titleView, titleLp);
+
+        if (onAddSubcategory != null) {
+            ImageButton addBtn = buildNavigatorIconButton(android.R.drawable.ic_input_add, 0xFF2E7D32);
+            addBtn.setContentDescription("add_subcategory_" + title);
+            addBtn.setOnClickListener(v -> onAddSubcategory.run());
+            headerRow.addView(addBtn);
+        }
+
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT
+        );
+        lp.topMargin = dpToPx(6);
+        parent.addView(headerRow, lp);
+    }
+
+    private void addNavigatorLeafCategory(
+            LinearLayout parent,
+            String title,
+            int categoryId,
+            String[] cells,
+            int leftPaddingPx,
+            EditText destInput
+    ) {
+        LinearLayout headerRow = new LinearLayout(context);
+        headerRow.setOrientation(LinearLayout.HORIZONTAL);
+        headerRow.setGravity(Gravity.CENTER_VERTICAL);
+        headerRow.setBackgroundColor(ContextCompat.getColor(context, R.color.ab_autoboi_group_selected_bg));
+        headerRow.setPadding(leftPaddingPx + dpToPx(10), dpToPx(8), dpToPx(6), dpToPx(8));
+        LinearLayout.LayoutParams headerLp = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT
+        );
+        headerLp.topMargin = dpToPx(6);
+
+        TextView titleView = new TextView(context);
+        titleView.setText(title);
+        titleView.setTypeface(null, android.graphics.Typeface.BOLD);
+        titleView.setTextColor(ContextCompat.getColor(context, R.color.ab_autoboi_text_primary));
+
+        ImageButton addBtn = buildNavigatorIconButton(android.R.drawable.ic_input_add, 0xFF2E7D32);
+        addBtn.setContentDescription("add_cell_" + categoryId);
+        addBtn.setOnClickListener(v ->
+                showNavigatorAddCellDialog(title, cell -> addCellToCategory(categoryId, cell), () -> renderNavigatorCategories(parent, destInput)));
+
+        LinearLayout.LayoutParams titleLp = new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f);
+        headerRow.addView(titleView, titleLp);
+        headerRow.addView(addBtn);
+        parent.addView(headerRow, headerLp);
+
+        renderNavigatorCells(parent, leftPaddingPx, sortAndNormalizeCells(cells), destInput, cellNum -> {
+            removeCellFromCategory(categoryId, cellNum);
+            renderNavigatorCategories(parent, destInput);
+        });
+    }
+
+    private void addNavigatorCityLeafCategory(
+            LinearLayout parent,
+            CitySubcategory subcategory,
+            int leftPaddingPx,
+            EditText destInput
+    ) {
+        LinearLayout headerRow = new LinearLayout(context);
+        headerRow.setOrientation(LinearLayout.HORIZONTAL);
+        headerRow.setGravity(Gravity.CENTER_VERTICAL);
+        headerRow.setBackgroundColor(ContextCompat.getColor(context, R.color.ab_autoboi_group_selected_bg));
+        headerRow.setPadding(leftPaddingPx + dpToPx(10), dpToPx(8), dpToPx(6), dpToPx(8));
+        LinearLayout.LayoutParams headerLp = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT
+        );
+        headerLp.topMargin = dpToPx(6);
+
+        TextView titleView = new TextView(context);
+        titleView.setText(subcategory.name);
+        titleView.setTypeface(null, android.graphics.Typeface.BOLD);
+        titleView.setTextColor(ContextCompat.getColor(context, R.color.ab_autoboi_text_primary));
+
+        ImageButton addBtn = buildNavigatorIconButton(android.R.drawable.ic_input_add, 0xFF2E7D32);
+        addBtn.setContentDescription("add_cell_city_" + subcategory.name);
+        addBtn.setOnClickListener(v ->
+                showNavigatorAddCellDialog(subcategory.name, cell -> addCellToCitySubcategory(subcategory.name, cell), () -> renderNavigatorCategories(parent, destInput)));
+
+        ImageButton removeSubcategoryBtn = buildNavigatorIconButton(android.R.drawable.ic_delete, 0xFFC62828);
+        removeSubcategoryBtn.setContentDescription("remove_subcategory_city_" + subcategory.name);
+        removeSubcategoryBtn.setOnClickListener(v -> {
+            removeCitySubcategory(subcategory.name);
+            renderNavigatorCategories(parent, destInput);
+            Toast.makeText(context, "Удалена подкатегория: " + subcategory.name, Toast.LENGTH_SHORT).show();
+        });
+
+        LinearLayout.LayoutParams titleLp = new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f);
+        headerRow.addView(titleView, titleLp);
+        headerRow.addView(addBtn);
+        headerRow.addView(removeSubcategoryBtn);
+        parent.addView(headerRow, headerLp);
+
+        renderNavigatorCells(parent, leftPaddingPx, sortAndNormalizeCells(subcategory.cells), destInput, cellNum -> {
+            removeCellFromCitySubcategory(subcategory.name, cellNum);
+            renderNavigatorCategories(parent, destInput);
+        });
+    }
+
+    private void renderNavigatorCells(
+            LinearLayout parent,
+            int leftPaddingPx,
+            String[] cells,
+            EditText destInput,
+            OnNavigatorCellPicked onRemoveCell
+    ) {
+        if (cells == null || cells.length == 0) {
+            TextView empty = new TextView(context);
+            empty.setText("Пусто");
+            empty.setTextColor(0xFF777777);
+            empty.setPadding(leftPaddingPx + dpToPx(14), dpToPx(4), dpToPx(10), dpToPx(4));
+            parent.addView(empty);
+            return;
+        }
 
         for (String cellNum : cells) {
-            Cell cell = ExtMap.Cells != null ? ExtMap.Cells.get(cellNum) : null;
-            String tooltip = (cell != null && cell.Tooltip != null && !cell.Tooltip.isEmpty()) ? cell.Tooltip : "";
-            String label = cellNum + (tooltip.isEmpty() ? "" : " — " + tooltip);
+            LinearLayout row = new LinearLayout(context);
+            row.setOrientation(LinearLayout.HORIZONTAL);
+            row.setGravity(Gravity.CENTER_VERTICAL);
+            row.setPadding(leftPaddingPx + dpToPx(14), dpToPx(4), dpToPx(2), dpToPx(4));
+
             TextView item = new TextView(context);
-            item.setText(label);
+            item.setText(buildNavigatorCellLabel(cellNum));
             item.setTextColor(0xFF0000AA);
-            item.setPadding(dpToPx(8), dpToPx(2), 0, dpToPx(2));
             item.setOnClickListener(v -> destInput.setText(cellNum));
-            parent.addView(item);
+
+            ImageButton removeBtn = buildNavigatorIconButton(android.R.drawable.ic_delete, 0xFFC62828);
+            removeBtn.setContentDescription("remove_cell_" + cellNum);
+            removeBtn.setOnClickListener(v -> {
+                onRemoveCell.onCellPicked(cellNum);
+                Toast.makeText(context, "Удалено: " + cellNum, Toast.LENGTH_SHORT).show();
+            });
+
+            LinearLayout.LayoutParams itemLp = new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f);
+            row.addView(item, itemLp);
+            row.addView(removeBtn);
+            parent.addView(row);
         }
     }
 
-    // Возвращает массив избранных ячеек из профиля.
-    private String[] navFavCells() {
-        if (AppVars.Profile == null || AppVars.Profile.FavLocations == null) return new String[0];
-        return AppVars.Profile.FavLocations;
+    private ImageButton buildNavigatorIconButton(int drawableRes, int tintColor) {
+        ImageButton btn = new ImageButton(context);
+        btn.setImageResource(drawableRes);
+        btn.setColorFilter(tintColor);
+        btn.setBackgroundResource(android.R.color.transparent);
+        btn.setPadding(dpToPx(4), dpToPx(4), dpToPx(4), dpToPx(4));
+        return btn;
     }
 
-    // Возвращает массив ячеек телепортов из ExtMap, отсортированный по номеру.
+    private void showNavigatorAddCellDialog(String categoryTitle, OnNavigatorCellPicked onCellPicked, Runnable onChanged) {
+        final android.widget.AutoCompleteTextView input = new android.widget.AutoCompleteTextView(context);
+        input.setHint("Клетка (напр. 8-259)");
+        input.setSingleLine();
+        input.setThreshold(1);
+        input.setAdapter(new ArrayAdapter<>(
+                context,
+                android.R.layout.simple_dropdown_item_1line,
+                buildNavigatorAutocompleteValues()
+        ));
+
+        new AlertDialog.Builder(context)
+                .setTitle("Добавить в: " + categoryTitle)
+                .setView(input)
+                .setPositiveButton("Добавить", (d, w) -> {
+                    String cell = resolveCellNumber(input.getText().toString());
+                    if (cell.isEmpty()) {
+                        Toast.makeText(context, "Неверный формат клетки", Toast.LENGTH_SHORT).show();
+                        return;
+                    }
+                    if (ExtMap.Cells == null || !ExtMap.Cells.containsKey(cell)) {
+                        Toast.makeText(context, "Клетка не найдена в map.xml", Toast.LENGTH_SHORT).show();
+                        return;
+                    }
+                    onCellPicked.onCellPicked(cell);
+                    if (onChanged != null) {
+                        onChanged.run();
+                    }
+                    Toast.makeText(context, "Добавлено: " + cell, Toast.LENGTH_SHORT).show();
+                })
+                .setNegativeButton("Отмена", null)
+                .show();
+    }
+
+    private void showAddCitySubcategoryDialog(Runnable onChanged) {
+        final EditText input = new EditText(context);
+        input.setHint("Название подкатегории");
+        input.setSingleLine();
+
+        new AlertDialog.Builder(context)
+                .setTitle("Новая подкатегория (Города)")
+                .setView(input)
+                .setPositiveButton("Создать", (d, w) -> {
+                    String name = sanitizeCitySubcategoryName(input.getText().toString());
+                    if (name.isEmpty()) {
+                        Toast.makeText(context, "Введите название подкатегории", Toast.LENGTH_SHORT).show();
+                        return;
+                    }
+                    if (!addCitySubcategory(name)) {
+                        Toast.makeText(context, "Подкатегория уже существует", Toast.LENGTH_SHORT).show();
+                        return;
+                    }
+                    if (onChanged != null) {
+                        onChanged.run();
+                    }
+                    Toast.makeText(context, "Создана подкатегория: " + name, Toast.LENGTH_SHORT).show();
+                })
+                .setNegativeButton("Отмена", null)
+                .show();
+    }
+    private String[] buildNavigatorAutocompleteValues() {
+        if (ExtMap.Cells == null || ExtMap.Cells.isEmpty()) {
+            return new String[0];
+        }
+        ArrayList<String> values = new ArrayList<>();
+        ArrayList<String> keys = new ArrayList<>(ExtMap.Cells.keySet());
+        java.util.Collections.sort(keys);
+        for (String cellNum : keys) {
+            values.add(buildNavigatorCellLabel(cellNum));
+        }
+        return values.toArray(new String[0]);
+    }
+
+    private String buildNavigatorCellLabel(String cellNum) {
+        if (cellNum == null || cellNum.trim().isEmpty()) {
+            return "";
+        }
+        String normalized = cellNum.trim();
+        Cell cell = ExtMap.Cells != null ? ExtMap.Cells.get(normalized) : null;
+        String name = cell != null && cell.Name != null ? cell.Name.trim() : "";
+        String tooltip = cell != null && cell.Tooltip != null ? cell.Tooltip.trim() : "";
+        if (name.isEmpty() && ExtMap.Teleports != null && ExtMap.Teleports.containsKey(normalized)) {
+            name = ExtMap.Teleports.get(normalized);
+        }
+        if (name.isEmpty() && tooltip.isEmpty()) {
+            return normalized;
+        }
+        if (tooltip.isEmpty()) {
+            return normalized + " — " + name;
+        }
+        if (name.isEmpty() || name.equalsIgnoreCase(tooltip)) {
+            return normalized + " — " + tooltip;
+        }
+        return normalized + " — " + name + " (" + tooltip + ")";
+    }
+
+    private String resolveCellNumber(String rawValue) {
+        if (rawValue == null) {
+            return "";
+        }
+        String raw = rawValue.trim();
+        if (raw.isEmpty()) {
+            return "";
+        }
+        Matcher matcher = NAV_CELL_PATTERN.matcher(raw);
+        if (matcher.find()) {
+            return matcher.group(1);
+        }
+        return "";
+    }
+
+    private String[] sortAndNormalizeCells(String[] input) {
+        LinkedHashSet<String> set = new LinkedHashSet<>();
+        if (input != null) {
+            for (String item : input) {
+                String cell = resolveCellNumber(item);
+                if (!cell.isEmpty()) {
+                    set.add(cell);
+                }
+            }
+        }
+        String[] result = set.toArray(new String[0]);
+        Arrays.sort(result);
+        return result;
+    }
+
+    private void addCellToCategory(int categoryId, String cellNum) {
+        if (AppVars.Profile == null) {
+            return;
+        }
+        String[] updated = appendCellToArray(getCategoryCells(categoryId), cellNum);
+        applyCategoryCells(categoryId, updated);
+        AppVars.Profile.save(context);
+    }
+
+    private void removeCellFromCategory(int categoryId, String cellNum) {
+        if (AppVars.Profile == null) {
+            return;
+        }
+        String[] updated = removeCellFromArray(getCategoryCells(categoryId), cellNum);
+        applyCategoryCells(categoryId, updated);
+        AppVars.Profile.save(context);
+    }
+
+    private String[] appendCellToArray(String[] source, String cellNum) {
+        LinkedHashSet<String> set = new LinkedHashSet<>();
+        if (source != null) {
+            for (String item : source) {
+                String cell = resolveCellNumber(item);
+                if (!cell.isEmpty()) {
+                    set.add(cell);
+                }
+            }
+        }
+        String normalized = resolveCellNumber(cellNum);
+        if (!normalized.isEmpty()) {
+            set.add(normalized);
+        }
+        return set.toArray(new String[0]);
+    }
+
+    private String[] removeCellFromArray(String[] source, String cellNum) {
+        String normalized = resolveCellNumber(cellNum);
+        ArrayList<String> result = new ArrayList<>();
+        if (source != null) {
+            for (String item : source) {
+                String cell = resolveCellNumber(item);
+                if (!cell.isEmpty() && !cell.equals(normalized)) {
+                    result.add(cell);
+                }
+            }
+        }
+        return result.toArray(new String[0]);
+    }
+
+    private String[] getCategoryCells(int categoryId) {
+        if (AppVars.Profile == null) {
+            return new String[0];
+        }
+        switch (categoryId) {
+            case NAV_CATEGORY_FAVORITES:
+                return navFavCells();
+            case NAV_CATEGORY_CITY_VILLAGE:
+                return navCityVillageCells();
+            case NAV_CATEGORY_CITY_FORPOST:
+                return navCityForpostCells();
+            case NAV_CATEGORY_CITY_OKTAL:
+                return navCityOktalCells();
+            case NAV_CATEGORY_OBJECTS:
+                return navObjectCells();
+            case NAV_CATEGORY_TELEPORTS:
+                return navTelepCells();
+            default:
+                return new String[0];
+        }
+    }
+
+    private void applyCategoryCells(int categoryId, String[] cells) {
+        if (AppVars.Profile == null) {
+            return;
+        }
+        switch (categoryId) {
+            case NAV_CATEGORY_FAVORITES:
+                AppVars.Profile.FavLocations = sortAndNormalizeCells(cells);
+                break;
+            case NAV_CATEGORY_CITY_VILLAGE:
+                AppVars.Profile.setNavCityVillageLocations(cells);
+                break;
+            case NAV_CATEGORY_CITY_FORPOST:
+                AppVars.Profile.setNavCityForpostLocations(cells);
+                break;
+            case NAV_CATEGORY_CITY_OKTAL:
+                AppVars.Profile.setNavCityOktalLocations(cells);
+                break;
+            case NAV_CATEGORY_OBJECTS:
+                AppVars.Profile.setNavObjectLocations(cells);
+                break;
+            case NAV_CATEGORY_TELEPORTS:
+                AppVars.Profile.setNavTeleportLocations(cells);
+                break;
+            default:
+                break;
+        }
+    }
+
+    private String[] navFavCells() {
+        if (AppVars.Profile == null || AppVars.Profile.FavLocations == null) return new String[0];
+        return sortAndNormalizeCells(AppVars.Profile.FavLocations);
+    }
+
+    private String[] navCityVillageCells() {
+        if (AppVars.Profile == null || AppVars.Profile.NavCityVillageLocations == null) return new String[] {"8-197"};
+        return sortAndNormalizeCells(AppVars.Profile.NavCityVillageLocations);
+    }
+
+    private String[] navCityForpostCells() {
+        if (AppVars.Profile == null || AppVars.Profile.NavCityForpostLocations == null) return new String[] {"8-259", "8-294"};
+        return sortAndNormalizeCells(AppVars.Profile.NavCityForpostLocations);
+    }
+
+    private String[] navCityOktalCells() {
+        if (AppVars.Profile == null || AppVars.Profile.NavCityOktalLocations == null) return new String[] {"12-428", "12-494", "12-521"};
+        return sortAndNormalizeCells(AppVars.Profile.NavCityOktalLocations);
+    }
+
+    private String[] navObjectCells() {
+        if (AppVars.Profile == null || AppVars.Profile.NavObjectLocations == null) return new String[] {"8-227", "2-482", "9-494", "26-430"};
+        return sortAndNormalizeCells(AppVars.Profile.NavObjectLocations);
+    }
+
     private String[] navTelepCells() {
+        if (AppVars.Profile != null
+                && AppVars.Profile.NavTeleportLocations != null
+                && AppVars.Profile.NavTeleportLocations.length > 0) {
+            return sortAndNormalizeCells(AppVars.Profile.NavTeleportLocations);
+        }
         if (ExtMap.Teleports == null || ExtMap.Teleports.isEmpty()) return new String[0];
         String[] keys = ExtMap.Teleports.keySet().toArray(new String[0]);
-        java.util.Arrays.sort(keys);
+        Arrays.sort(keys);
         return keys;
     }
 
-    // Диалог ввода ника и переход в pinfo.
+    private List<CitySubcategory> getCitySubcategories() {
+        if (AppVars.Profile == null) {
+            return buildDefaultCitySubcategories();
+        }
+        List<CitySubcategory> parsed = parseCitySubcategories(AppVars.Profile.NavCitySubcategories);
+        if (parsed.isEmpty()) {
+            return buildDefaultCitySubcategories();
+        }
+        return parsed;
+    }
+
+    private List<CitySubcategory> buildDefaultCitySubcategories() {
+        ArrayList<CitySubcategory> defaults = new ArrayList<>();
+        defaults.add(new CitySubcategory("Деревня", navCityVillageCells()));
+        defaults.add(new CitySubcategory("Форпост", navCityForpostCells()));
+        defaults.add(new CitySubcategory("Октал", navCityOktalCells()));
+        return defaults;
+    }
+
+    private List<CitySubcategory> parseCitySubcategories(String raw) {
+        ArrayList<CitySubcategory> result = new ArrayList<>();
+        if (raw == null || raw.trim().isEmpty()) {
+            return result;
+        }
+        String[] entries = raw.split(Pattern.quote(NAV_CITY_SUBCATEGORY_ENTRY_DELIMITER));
+        for (String entry : entries) {
+            if (entry == null || entry.trim().isEmpty()) {
+                continue;
+            }
+            String[] pair = entry.split(Pattern.quote(NAV_CITY_SUBCATEGORY_VALUE_DELIMITER), 2);
+            String name = sanitizeCitySubcategoryName(pair[0]);
+            if (name.isEmpty()) {
+                continue;
+            }
+            String[] cells = new String[0];
+            if (pair.length > 1 && pair[1] != null && !pair[1].trim().isEmpty()) {
+                cells = sortAndNormalizeCells(pair[1].split(","));
+            }
+            result.add(new CitySubcategory(name, cells));
+        }
+        return result;
+    }
+
+    private String encodeCitySubcategories(List<CitySubcategory> subcategories) {
+        if (subcategories == null || subcategories.isEmpty()) {
+            return "";
+        }
+        StringBuilder sb = new StringBuilder();
+        for (CitySubcategory subcategory : subcategories) {
+            if (subcategory == null) {
+                continue;
+            }
+            String name = sanitizeCitySubcategoryName(subcategory.name);
+            if (name.isEmpty()) {
+                continue;
+            }
+            String[] cells = sortAndNormalizeCells(subcategory.cells);
+            if (sb.length() > 0) {
+                sb.append(NAV_CITY_SUBCATEGORY_ENTRY_DELIMITER);
+            }
+            sb.append(name).append(NAV_CITY_SUBCATEGORY_VALUE_DELIMITER);
+            for (int i = 0; i < cells.length; i++) {
+                if (i > 0) {
+                    sb.append(',');
+                }
+                sb.append(cells[i]);
+            }
+        }
+        return sb.toString();
+    }
+
+    private String sanitizeCitySubcategoryName(String name) {
+        if (name == null) {
+            return "";
+        }
+        String sanitized = name
+                .replace(NAV_CITY_SUBCATEGORY_ENTRY_DELIMITER, " ")
+                .replace(NAV_CITY_SUBCATEGORY_VALUE_DELIMITER, " ")
+                .replace(",", " ")
+                .trim();
+        while (sanitized.contains("  ")) {
+            sanitized = sanitized.replace("  ", " ");
+        }
+        return sanitized;
+    }
+
+    private int findCitySubcategoryIndex(List<CitySubcategory> subcategories, String name) {
+        if (subcategories == null || subcategories.isEmpty()) {
+            return -1;
+        }
+        for (int i = 0; i < subcategories.size(); i++) {
+            CitySubcategory subcategory = subcategories.get(i);
+            if (subcategory != null && subcategory.name != null
+                    && subcategory.name.equalsIgnoreCase(name)) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    private boolean addCitySubcategory(String name) {
+        if (AppVars.Profile == null) {
+            return false;
+        }
+        String normalizedName = sanitizeCitySubcategoryName(name);
+        if (normalizedName.isEmpty()) {
+            return false;
+        }
+        List<CitySubcategory> subcategories = getCitySubcategories();
+        if (findCitySubcategoryIndex(subcategories, normalizedName) >= 0) {
+            return false;
+        }
+        subcategories.add(new CitySubcategory(normalizedName, new String[0]));
+        saveCitySubcategories(subcategories);
+        return true;
+    }
+
+    private void removeCitySubcategory(String name) {
+        if (AppVars.Profile == null) {
+            return;
+        }
+        List<CitySubcategory> subcategories = getCitySubcategories();
+        int index = findCitySubcategoryIndex(subcategories, name);
+        if (index < 0) {
+            return;
+        }
+        subcategories.remove(index);
+        saveCitySubcategories(subcategories);
+    }
+
+    private void addCellToCitySubcategory(String subcategoryName, String cellNum) {
+        if (AppVars.Profile == null) {
+            return;
+        }
+        List<CitySubcategory> subcategories = getCitySubcategories();
+        int index = findCitySubcategoryIndex(subcategories, subcategoryName);
+        if (index < 0) {
+            return;
+        }
+        CitySubcategory existing = subcategories.get(index);
+        subcategories.set(index, new CitySubcategory(existing.name, appendCellToArray(existing.cells, cellNum)));
+        saveCitySubcategories(subcategories);
+    }
+
+    private void removeCellFromCitySubcategory(String subcategoryName, String cellNum) {
+        if (AppVars.Profile == null) {
+            return;
+        }
+        List<CitySubcategory> subcategories = getCitySubcategories();
+        int index = findCitySubcategoryIndex(subcategories, subcategoryName);
+        if (index < 0) {
+            return;
+        }
+        CitySubcategory existing = subcategories.get(index);
+        subcategories.set(index, new CitySubcategory(existing.name, removeCellFromArray(existing.cells, cellNum)));
+        saveCitySubcategories(subcategories);
+    }
+
+    private void saveCitySubcategories(List<CitySubcategory> subcategories) {
+        if (AppVars.Profile == null) {
+            return;
+        }
+        AppVars.Profile.NavCitySubcategories = encodeCitySubcategories(subcategories);
+        AppVars.Profile.save(context);
+    }
+
     private void openPinfo() {
         View dialogView = View.inflate(context, R.layout.dialog_input_nick, null);
         android.widget.EditText editText = dialogView.findViewById(R.id.input_nick);

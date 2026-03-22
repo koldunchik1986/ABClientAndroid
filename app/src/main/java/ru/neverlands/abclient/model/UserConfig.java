@@ -14,6 +14,7 @@ import java.io.InputStream;
 import org.xmlpull.v1.XmlSerializer;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.SortedMap;
@@ -184,6 +185,12 @@ public class UserConfig {
     public String MapLocation = "";
     public boolean NavigatorAllowTeleports = true;
     public String[] FavLocations = new String[0];
+    public String[] NavCityVillageLocations = new String[] {"8-197"};
+    public String[] NavCityForpostLocations = new String[] {"8-259", "8-294"};
+    public String[] NavCityOktalLocations = new String[] {"12-428", "12-494", "12-521"};
+    public String NavCitySubcategories = "";
+    public String[] NavObjectLocations = new String[] {"8-227", "2-482", "9-494", "26-430"};
+    public String[] NavTeleportLocations = new String[0];
 
     public void addFavLocation(String loc) {
         if (loc == null || loc.trim().isEmpty()) return;
@@ -196,6 +203,26 @@ public class UserConfig {
 
     public void clearFavLocations() {
         FavLocations = new String[0];
+    }
+
+    public void setNavCityVillageLocations(String[] values) {
+        NavCityVillageLocations = sanitizeLocations(values, new String[] {"8-197"});
+    }
+
+    public void setNavCityForpostLocations(String[] values) {
+        NavCityForpostLocations = sanitizeLocations(values, new String[] {"8-259", "8-294"});
+    }
+
+    public void setNavCityOktalLocations(String[] values) {
+        NavCityOktalLocations = sanitizeLocations(values, new String[] {"12-428", "12-494", "12-521"});
+    }
+
+    public void setNavObjectLocations(String[] values) {
+        NavObjectLocations = sanitizeLocations(values, new String[] {"8-227", "2-482", "9-494", "26-430"});
+    }
+
+    public void setNavTeleportLocations(String[] values) {
+        NavTeleportLocations = sanitizeLocations(values, new String[0]);
     }
 
     public int ChatHeight = 115;
@@ -580,6 +607,15 @@ public class UserConfig {
                         }
                     } else if ("navigator".equalsIgnoreCase(tagName)) {
                         this.NavigatorAllowTeleports = parseBoolAttr(parser, "allowteleports", this.NavigatorAllowTeleports);
+                        this.setNavCityVillageLocations(parseLocationsAttr(parser, "village", this.NavCityVillageLocations));
+                        this.setNavCityForpostLocations(parseLocationsAttr(parser, "forpost", this.NavCityForpostLocations));
+                        this.setNavCityOktalLocations(parseLocationsAttr(parser, "oktal", this.NavCityOktalLocations));
+                        String citySubcategories = getAttributeValueIgnoreCase(parser, "citysubcategories");
+                        if (citySubcategories != null) {
+                            this.NavCitySubcategories = citySubcategories.trim();
+                        }
+                        this.setNavObjectLocations(parseLocationsAttr(parser, "objects", this.NavObjectLocations));
+                        this.setNavTeleportLocations(parseLocationsAttr(parser, "teleports", this.NavTeleportLocations));
                     } else if ("favlocation".equalsIgnoreCase(tagName)) {
                         String loc = parseNodeText(parser, null);
                         if (loc != null && !loc.trim().isEmpty()) {
@@ -801,6 +837,12 @@ public class UserConfig {
 
             serializer.startTag(null, "navigator");
             serializer.attribute(null, "allowteleports", String.valueOf(this.NavigatorAllowTeleports));
+            serializer.attribute(null, "village", locationsToCsv(this.NavCityVillageLocations));
+            serializer.attribute(null, "forpost", locationsToCsv(this.NavCityForpostLocations));
+            serializer.attribute(null, "oktal", locationsToCsv(this.NavCityOktalLocations));
+            serializer.attribute(null, "citysubcategories", this.NavCitySubcategories != null ? this.NavCitySubcategories : "");
+            serializer.attribute(null, "objects", locationsToCsv(this.NavObjectLocations));
+            serializer.attribute(null, "teleports", locationsToCsv(this.NavTeleportLocations));
             serializer.endTag(null, "navigator");
             serializer.startTag(null, "favlocations");
             if (this.FavLocations != null) {
@@ -907,6 +949,68 @@ public class UserConfig {
             try { result[i] = Integer.parseInt(parts[i].trim()); } catch (NumberFormatException e) { result[i] = 0; }
         }
         return result;
+    }
+
+    private static String[] parseLocationsAttr(XmlPullParser parser, String attr, String[] currentValue) {
+        String raw = getAttributeValueIgnoreCase(parser, attr);
+        if (raw == null) {
+            return currentValue != null ? currentValue : new String[0];
+        }
+        return sanitizeLocations(splitLocationsCsv(raw), currentValue);
+    }
+
+    private static String[] splitLocationsCsv(String csv) {
+        if (csv == null || csv.trim().isEmpty()) {
+            return new String[0];
+        }
+        return csv.split("[,;\\s]+");
+    }
+
+    private static String[] sanitizeLocations(String[] values, String[] defaults) {
+        LinkedHashSet<String> unique = new LinkedHashSet<>();
+        if (values != null) {
+            for (String value : values) {
+                String normalized = normalizeLocation(value);
+                if (!normalized.isEmpty()) {
+                    unique.add(normalized);
+                }
+            }
+        }
+        if (unique.isEmpty() && defaults != null) {
+            for (String value : defaults) {
+                String normalized = normalizeLocation(value);
+                if (!normalized.isEmpty()) {
+                    unique.add(normalized);
+                }
+            }
+        }
+        return unique.toArray(new String[0]);
+    }
+
+    private static String normalizeLocation(String value) {
+        if (value == null) {
+            return "";
+        }
+        String normalized = value.trim().replace('_', '-');
+        if (normalized.matches("\\d+-\\d+")) {
+            return normalized;
+        }
+        return "";
+    }
+
+    private static String locationsToCsv(String[] values) {
+        String[] normalized = sanitizeLocations(values, new String[0]);
+        if (normalized.length == 0) {
+            return "";
+        }
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < normalized.length; i++) {
+            if (i > 0) {
+                sb.append(',');
+            }
+            sb.append(normalized[i]);
+        }
+        return sb.toString();
     }
 
     private static String getAttributeValueIgnoreCase(XmlPullParser parser, String attr) {
