@@ -123,6 +123,8 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     private static final long AUTO_TURN_SERVER_PROBE_MIN_INTERVAL_MS = 1200L;
     private static final long AUTO_TURN_FIRST_FRAME_RENDER_GUARD_MS = 420L;
     private static final int AUTO_TURN_SERVER_PROBE_TIMEOUT_MS = 12000;
+    private static final long SERVER_TIMER_TICK_MARGIN_MS = 300L;
+    private static final long SERVER_TIMER_TICK_DEDUP_MS = 4000L;
     public ActivityMainBinding binding;
     private Timer timer;
     private boolean isExiting = false;
@@ -173,6 +175,8 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     private String postReloadGuardKey = "";
     private long lastMainFrameTimeoutRetryAtMs = 0L;
     private String lastMainFrameTimeoutRetryUrl = "";
+    private long lastServerTimerDrivenReloadAtMs = 0L;
+    private long lastServerTimerDrivenReloadDueAtMs = Long.MIN_VALUE;
     private long lastAutoBattleSubmitAtMs = 0L;
     private final Handler autoBattleDelayHandler = createMainHandler();
     private Runnable pendingAutoBattleSubmitRunnable;
@@ -2857,6 +2861,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                 runOnUiThread(() -> {
                     updateClock();
                     checkConnection();
+                    checkServerTimerDrivenActions();
                 });
             }
         }, 0, 1000);
@@ -3068,6 +3073,75 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             AppVars.NextCheckNoConnection = new Date(System.currentTimeMillis() + 5 * 60 * 1000);
             binding.appBarMain.contentMain.webView.loadUrl("http://neverlands.ru/main.php");
         }
+    }
+
+    private void checkServerTimerDrivenActions() {
+        long dueAt = AppVars.NeverTimer;
+        if (dueAt <= 0L) {
+            return;
+        }
+
+        long now = System.currentTimeMillis();
+        if (now + SERVER_TIMER_TICK_MARGIN_MS < dueAt) {
+            return;
+        }
+
+        if (dueAt == lastServerTimerDrivenReloadDueAtMs
+                && (now - lastServerTimerDrivenReloadAtMs) < SERVER_TIMER_TICK_DEDUP_MS) {
+            return;
+        }
+
+        AutoFunctionsManager autoFunctionsManager = AutoFunctionsManager.getInstance(this);
+        boolean autoMoving = AppVars.AutoMoving;
+        boolean autoFish = autoFunctionsManager.isAutoFishEnabled();
+        if (!autoMoving && !autoFish) {
+            return;
+        }
+        if (AppVars.IsFightCaptchaDialogVisible) {
+            return;
+        }
+
+        String contentMainPhp = AppVars.ContentMainPhp;
+        boolean hasFightHtml = contentMainPhp != null
+                && (contentMainPhp.contains("var fight_ty") || contentMainPhp.contains("magic_slots();"));
+        if (hasFightHtml) {
+            return;
+        }
+
+        if (binding == null || binding.appBarMain == null || binding.appBarMain.contentMain == null
+                || binding.appBarMain.contentMain.webView == null) {
+            return;
+        }
+
+        String currentUrl = "";
+        try {
+            String value = binding.appBarMain.contentMain.webView.getUrl();
+            currentUrl = value == null ? "" : value;
+        } catch (Exception ignored) {
+            currentUrl = "";
+        }
+
+        String reloadUrl;
+        if (autoMoving) {
+            reloadUrl = "http://neverlands.ru/main.php?get_id=56&act=10&go=inf&ab_nav_tick=1&r=" + now;
+        } else {
+            reloadUrl = "http://neverlands.ru/main.php?get_id=56&act=10&go=inf&af_tick=1&r=" + now;
+            if (AppVars.VCode != null && !AppVars.VCode.isEmpty()) {
+                reloadUrl += "&vcode=" + AppVars.VCode;
+            }
+        }
+
+        lastServerTimerDrivenReloadAtMs = now;
+        lastServerTimerDrivenReloadDueAtMs = dueAt;
+        // Локальный anti-loop guard до получения следующего server cooldown.
+        AppVars.NeverTimer = now + 1500L;
+
+        Log.d(TAG, "SERVER_TIMER_TICK reload: autoMoving=" + autoMoving
+                + ", autoFish=" + autoFish
+                + ", dueAt=" + dueAt
+                + ", currentUrl=" + currentUrl
+                + ", reloadUrl=" + reloadUrl);
+        binding.appBarMain.contentMain.webView.loadUrl(reloadUrl);
     }
     
     public void addAddressToStatusString(String address) {

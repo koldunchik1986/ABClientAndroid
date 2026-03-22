@@ -59,10 +59,12 @@ public class MainPhp {
             ru.neverlands.abclient.model.Prims.Morm,
             ru.neverlands.abclient.model.Prims.HiFlight
     };
+    private static final long WTIME_SYNC_LOG_GUARD_MS = 1500L;
     private static volatile long lastAutoFinishRedirectAtMs = 0L;
     private static volatile long lastAutoDrinkTriggerAtMs = 0L;
     private static volatile long lastAutoFishBlazTriggerAtMs = 0L;
     private static volatile long lastAutoFishDrinkTriggerAtMs = 0L;
+    private static volatile long lastWtimeSyncLogAtMs = 0L;
     // Защита от повторного показа одного и того же диалога капчи завершения боя.
     private static volatile String lastFightCaptchaDialogKey = "";
     private static volatile long lastFightCaptchaDialogAtMs = 0L;
@@ -1126,6 +1128,113 @@ public class MainPhp {
             html = html.substring(0, poswt) + statusHtml + html.substring(poswt);
         }
         return html;
+    }
+
+    private static int parseUnsignedIntFrom(String text, int fromIndex) {
+        if (text == null || fromIndex < 0 || fromIndex >= text.length()) {
+            return -1;
+        }
+        int i = fromIndex;
+        while (i < text.length()) {
+            char c = text.charAt(i);
+            if (c >= '0' && c <= '9') {
+                break;
+            }
+            if (c == '\n' || c == '\r' || c == ';' || c == '<') {
+                return -1;
+            }
+            i++;
+        }
+        if (i >= text.length()) {
+            return -1;
+        }
+        int start = i;
+        while (i < text.length()) {
+            char c = text.charAt(i);
+            if (c < '0' || c > '9') {
+                break;
+            }
+            i++;
+        }
+        if (i <= start) {
+            return -1;
+        }
+        try {
+            return Integer.parseInt(text.substring(start, i));
+        } catch (Exception ignored) {
+            return -1;
+        }
+    }
+
+    private static int extractWtimeTimeoutSeconds(String html) {
+        if (html == null || html.isEmpty()) {
+            return 0;
+        }
+        String lower = html.toLowerCase(Locale.ROOT);
+
+        int tdSecIdx = lower.indexOf("id=tdsec");
+        if (tdSecIdx < 0) tdSecIdx = lower.indexOf("id=\"tdsec\"");
+        if (tdSecIdx < 0) tdSecIdx = lower.indexOf("id='tdsec'");
+        if (tdSecIdx >= 0) {
+            int gt = lower.indexOf('>', tdSecIdx);
+            if (gt >= 0) {
+                int sec = parseUnsignedIntFrom(lower, gt + 1);
+                if (sec > 0 && sec < 86400) {
+                    return sec;
+                }
+            }
+        }
+
+        int leftIdx = lower.indexOf("time_left_sec");
+        if (leftIdx >= 0) {
+            int eq = lower.indexOf('=', leftIdx);
+            if (eq >= 0) {
+                int value = parseUnsignedIntFrom(lower, eq + 1);
+                if (value > 0) {
+                    if (value > 1000) {
+                        return (int) Math.ceil(value / 1000.0d);
+                    }
+                    return value;
+                }
+            }
+        }
+
+        int secGoIdx = lower.indexOf("secgo");
+        if (secGoIdx >= 0) {
+            int eq = lower.indexOf('=', secGoIdx);
+            if (eq >= 0) {
+                int sec = parseUnsignedIntFrom(lower, eq + 1);
+                if (sec > 0 && sec < 86400) {
+                    return sec;
+                }
+            }
+        }
+
+        return 0;
+    }
+
+    private static void syncNeverTimerFromWtime(String html, String address) {
+        int timeoutSec = extractWtimeTimeoutSeconds(html);
+        if (timeoutSec <= 0) {
+            return;
+        }
+
+        long now = System.currentTimeMillis();
+        long dueAt = now + timeoutSec * 1000L;
+        long prev = AppVars.NeverTimer;
+        long prevDelta = prev - now;
+        long newDelta = timeoutSec * 1000L;
+        boolean updated = prev <= now || Math.abs(prevDelta - newDelta) > 1500L;
+        if (updated) {
+            AppVars.NeverTimer = dueAt;
+        }
+
+        if (updated || (now - lastWtimeSyncLogAtMs) >= WTIME_SYNC_LOG_GUARD_MS) {
+            lastWtimeSyncLogAtMs = now;
+            android.util.Log.d(TAG, "SERVER_TIMER_TRACE wtime sync: timeoutSec=" + timeoutSec
+                    + ", updated=" + updated + ", address=" + address
+                    + ", dueInMs=" + Math.max(0L, AppVars.NeverTimer - now));
+        }
     }
 
     private static String mainPhpRaz(String html) {
@@ -2362,6 +2471,16 @@ public class MainPhp {
         // - `FastActionManager.fastCancel()` (сброс текущего fast-состояния),
         // - `AppVars.FastNick` (цель текущего fast-действия).
         String htmlLower = html.toLowerCase(Locale.ROOT);
+        if (htmlLower.contains("id=wtime")
+                || htmlLower.contains("id=\"wtime\"")
+                || htmlLower.contains("id='wtime'")
+                || htmlLower.contains("id=tdsec")
+                || htmlLower.contains("id=\"tdsec\"")
+                || htmlLower.contains("id='tdsec'")
+                || htmlLower.contains("time_left_sec")
+                || htmlLower.contains("secgo")) {
+            syncNeverTimerFromWtime(html, address);
+        }
         boolean isFightFrame = html.contains("magic_slots();");
         boolean isFightTopFrame = html.contains("var fight_ty");
         boolean isFightFinishAddress = address != null && address.contains("get_id=61") && address.contains("act=7");
