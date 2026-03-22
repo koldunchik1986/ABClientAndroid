@@ -68,7 +68,7 @@ function view_build_bottom() {
 
 function view_map() {
     view_build_top();
-    d.write('<table cellpadding=0 cellspacing=0 border=0 width=100%><tr><td bgcolor=#FFFFFF align=center><div style="position: absolute; text-align: center; overflow: hidden; width: ' + abcmapwidth + 'px; height: ' + abcmapheight + 'px;" id="world_cont"></div><div style="width: ' + abcmapwidth + 'px; height: ' + abcmapheight + 'px; text-align: left;" id="world_cont2"></div></td></tr></table>');
+    d.write('<table cellpadding=0 cellspacing=0 border=0 width=100%><tr><td bgcolor=#FFFFFF align=center><div style="position: absolute; text-align: center; overflow: hidden; width: ' + abcmapwidth + 'px; height: ' + abcmapheight + 'px; margin:0 auto;" id="world_cont"></div><div style="width: ' + abcmapwidth + 'px; height: ' + abcmapheight + 'px; text-align: left; margin:0 auto;" id="world_cont2"></div></td></tr></table>');
     createMapText();
 
     for (var i = 0; i < map[1].length; i++) {
@@ -167,6 +167,10 @@ function showMap(x, y) {
         d.getElementById('world_cont').appendChild(world);
     }
     world.innerHTML = '';
+    cur_margin_top = 0;
+    cur_margin_left = 0;
+    world.style.marginTop = '0px';
+    world.style.marginLeft = '0px';
     table = d.createElement('TABLE');
     world.appendChild(table);
     tbody = d.createElement('TBODY');

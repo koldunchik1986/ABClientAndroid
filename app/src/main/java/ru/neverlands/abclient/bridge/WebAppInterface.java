@@ -26,10 +26,13 @@ import ru.neverlands.abclient.MainActivity;
 import ru.neverlands.abclient.manager.AutoFunctionsManager;
 import ru.neverlands.abclient.manager.ContactsManager;
 import ru.neverlands.abclient.model.AutoboiState;
+import ru.neverlands.abclient.model.Cell;
+import ru.neverlands.abclient.model.Position;
 import ru.neverlands.abclient.model.Prims;
 import ru.neverlands.abclient.proxy.CookiesManager;
 import ru.neverlands.abclient.proxy.ProxyRuntimeManager;
 import ru.neverlands.abclient.utils.AppVars;
+import ru.neverlands.abclient.utils.ExtMap;
 import ru.neverlands.abclient.utils.Russian;
 
 /**
@@ -199,6 +202,259 @@ public class WebAppInterface {
         int halfH = Math.max(1, (mapBigHeight - 1) / 2);
         logMapBridgeValue("GetMapScale", mapBigWidth, mapBigHeight, scale, halfW, halfH);
         return scale;
+    }
+
+    /**
+     * C# parity (`ScriptManager.DoHideMiniMap`): скрытие миникарты во время движения.
+     *
+     * В текущем Android-профиле отдельная настройка миникарты не портирована, поэтому
+     * возвращаем `false` (миникарта не скрывается).
+     */
+    @JavascriptInterface
+    public boolean DoHideMiniMap() {
+        return false;
+    }
+
+    /**
+     * C# parity (`ScriptManager.UsersOnline`): HTML-вставка "кто онлайн" в верхней панели карты.
+     *
+     * В Android-порте отдельная строка `UsersOnline` не ведётся, поэтому возвращаем пустую вставку.
+     */
+    @JavascriptInterface
+    public String UsersOnline() {
+        return "";
+    }
+
+    private void ensureExtMapInitialized() {
+        try {
+            if (mContext != null) {
+                ExtMap.init(mContext);
+            }
+        } catch (Exception e) {
+            Log.e("WebAppInterface", "ensureExtMapInitialized failed", e);
+        }
+    }
+
+    /**
+     * C# parity (`ScriptManager.IsCellExists`): проверка, что клетка доступна в справочнике карты.
+     */
+    @JavascriptInterface
+    public boolean IsCellExists(int x, int y) {
+        ensureExtMapInitialized();
+        String pos = ExtMap.makePosition(x, y);
+        Position p = ExtMap.Location.get(pos);
+        return p != null && p.RegNum != null && ExtMap.Cells.containsKey(p.RegNum);
+    }
+
+    /**
+     * C# parity (`ScriptManager.GenMoveLink`): генерация назначения для MoveTo.
+     *
+     * Для карты это `regnum` клетки (например `8-259`).
+     */
+    @JavascriptInterface
+    public String GenMoveLink(int x, int y) {
+        ensureExtMapInitialized();
+        String pos = ExtMap.makePosition(x, y);
+        Position p = ExtMap.Location.get(pos);
+        if (p == null || p.RegNum == null) {
+            return "";
+        }
+        return p.RegNum;
+    }
+
+    /**
+     * C# parity (`ScriptManager.MoveTo`): запуск навигации к клетке назначения.
+     *
+     * Зависимости:
+     * - `AutoFunctionsManager.startAutoMoving(dest)` — старт маршрута;
+     * - `MainPhp/MapAjax` — выполнение переходов по серверным ответам.
+     */
+    @JavascriptInterface
+    public void MoveTo(String dest) {
+        if (dest == null) {
+            return;
+        }
+        String safeDest = dest.trim();
+        if (safeDest.isEmpty()) {
+            return;
+        }
+        ensureExtMapInitialized();
+        if (!ExtMap.Cells.containsKey(safeDest)) {
+            Log.w("WebAppInterface", "MoveTo: unknown destination " + safeDest);
+            return;
+        }
+        try {
+            AutoFunctionsManager.getInstance(mContext).startAutoMoving(safeDest);
+            Log.d("WebAppInterface", "MoveTo: startAutoMoving " + safeDest);
+        } catch (Exception e) {
+            Log.e("WebAppInterface", "MoveTo failed for " + safeDest, e);
+        }
+    }
+
+    private static String escapeHtml(String value) {
+        if (value == null) return "";
+        return value
+                .replace("&", "&amp;")
+                .replace("<", "&lt;")
+                .replace(">", "&gt;")
+                .replace("\"", "&quot;")
+                .replace("'", "&#39;");
+    }
+
+    private static String shortLabel(Cell cell) {
+        if (cell == null) {
+            return "";
+        }
+        String base = cell.Tooltip != null && !cell.Tooltip.isEmpty() ? cell.Tooltip : cell.Name;
+        if (base == null) {
+            return "";
+        }
+        int comma = base.indexOf(',');
+        if (comma >= 0 && comma + 1 < base.length()) {
+            return base.substring(comma + 1).trim();
+        }
+        return base.trim();
+    }
+
+    private static String hexColorCost(int cost) {
+        if (cost <= 20) return "#66CC66";
+        if (cost <= 30) return "#C3C35A";
+        if (cost <= 40) return "#D9A24D";
+        if (cost <= 60) return "#E07A5F";
+        return "#CC6666";
+    }
+
+    private static boolean isRegnumInCurrentPath(String regNum) {
+        if (!AppVars.AutoMoving || AppVars.AutoMovingMapPath == null || regNum == null) {
+            return false;
+        }
+        String[] path = AppVars.AutoMovingMapPath.path;
+        if (path == null || path.length == 0) {
+            return false;
+        }
+        for (String p : path) {
+            if (regNum.equals(p)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * C# parity (`ScriptManager.CellDivText`): HTML-оверлей клетки на карте.
+     *
+     * Возвращает компактную подпись (номер, название, спец-метки) и подсветку:
+     * - красная рамка для текущей клетки/шага движения;
+     * - красная рамка для клеток текущего маршрута AutoMoving.
+     */
+    @JavascriptInterface
+    public String CellDivText(int x, int y, int scale, String link, boolean showmove, boolean isframe) {
+        ensureExtMapInitialized();
+        String pos = ExtMap.makePosition(x, y);
+        Position p = ExtMap.Location.get(pos);
+        if (p == null || p.RegNum == null) {
+            return "";
+        }
+        Cell cell = ExtMap.Cells.get(p.RegNum);
+        if (cell == null) {
+            return "";
+        }
+
+        boolean highlight = showmove || isframe || isRegnumInCurrentPath(p.RegNum);
+        String border = highlight ? "border:1px solid red;" : "";
+        String idAttr = showmove ? "id=\"movingcell\" " : "";
+
+        StringBuilder sb = new StringBuilder();
+        sb.append("<div ").append(idAttr)
+                .append("style=\"position:relative; left:2px; top:2px; width:90px; height:90px; ")
+                .append(border)
+                .append(" padding:2px; text-shadow:1px 1px 1px, -1px -1px 1px, -1px 1px 1px, 1px -1px 1px; ")
+                .append("font-family:Tahoma; font-size:9px; font-weight:bold; text-decoration:none;\">");
+        sb.append("<span style=\"font-size:11px; color:")
+                .append(hexColorCost(cell.Cost))
+                .append("\">")
+                .append(escapeHtml(p.RegNum))
+                .append("</span>");
+        String shortLabel = shortLabel(cell);
+        if (!shortLabel.isEmpty()) {
+            sb.append("<br><span style=\"color:#C0C0C0\">")
+                    .append(escapeHtml(shortLabel))
+                    .append("</span>");
+        }
+        if (cell.HasFish) {
+            sb.append("<br><span style=\"color:#33CCFF\">Рыба</span>");
+        } else if (cell.HasWater) {
+            sb.append("<br><span style=\"color:#33CCFF\">Вода</span>");
+        }
+        if (cell.MaxBotLevel > 0) {
+            sb.append("<br><span style=\"color:#88BBDD\">Боты до ")
+                    .append(cell.MaxBotLevel)
+                    .append("</span>");
+        }
+        if (cell.HerbGroup != null && !cell.HerbGroup.isEmpty() && !"0".equals(cell.HerbGroup)) {
+            sb.append("<br><span style=\"color:#999999\">Травы ")
+                    .append(escapeHtml(cell.HerbGroup))
+                    .append("</span>");
+        }
+        sb.append("</div>");
+        return sb.toString();
+    }
+
+    /**
+     * C# parity (`ScriptManager.CellAltText`): tooltip клетки.
+     */
+    @JavascriptInterface
+    public String CellAltText(int x, int y, int scale) {
+        ensureExtMapInitialized();
+        String pos = ExtMap.makePosition(x, y);
+        Position p = ExtMap.Location.get(pos);
+        if (p == null || p.RegNum == null) {
+            return "";
+        }
+        Cell cell = ExtMap.Cells.get(p.RegNum);
+        if (cell == null) {
+            return "";
+        }
+        String tooltip = cell.Tooltip != null && !cell.Tooltip.isEmpty() ? cell.Tooltip : cell.Name;
+        return tooltip == null ? "" : tooltip;
+    }
+
+    /**
+     * C# parity (`FormMain.MapText`): текст-подсказка над картой.
+     */
+    @JavascriptInterface
+    public String MapText() {
+        if (AppVars.AutoMoving && AppVars.AutoMovingJumps > 0) {
+            String destination = AppVars.AutoMovingDestinaton == null ? "?" : escapeHtml(AppVars.AutoMovingDestinaton);
+            return "Пункт назначения: <font color=#FFFF00>" + destination + "</font>"
+                    + "<br>Еще переходов: <font color=#FFFF00>" + AppVars.AutoMovingJumps + "</font>";
+        }
+        return "Перемещаемся на соседнюю клетку...";
+    }
+
+    /**
+     * C# parity (`FormMain.HerbsList`): приём списка доступных трав из map.js.
+     *
+     * Пока используется как трассировка для отладки и совместимости.
+     */
+    @JavascriptInterface
+    public String HerbsList(String list) {
+        if (list != null && !list.isEmpty()) {
+            Log.d("WebAppInterface", "HerbsList: " + list);
+        }
+        return "";
+    }
+
+    /**
+     * C# parity (`FormMain.TraceCut`): сигнал выбора травы в map.js.
+     *
+     * Сейчас сохраняем диагностику; функционал авто-среза обрабатывается в map/ajax потоке.
+     */
+    @JavascriptInterface
+    public void TraceCut(String herb) {
+        if (herb != null && !herb.isEmpty()) {
+            Log.d("WebAppInterface", "TraceCut: " + herb);
+        }
     }
 
     /**

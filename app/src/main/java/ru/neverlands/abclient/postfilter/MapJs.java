@@ -3,7 +3,10 @@ package ru.neverlands.abclient.postfilter;
 import android.content.Context;
 import android.util.Log;
 
+import java.io.ByteArrayOutputStream;
+import java.io.InputStream;
 import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -79,7 +82,7 @@ public class MapJs {
                     + "  } catch (_ab_e) {}\n"
                     + "  return defVal;\n"
                     + "}\n"
-                    + "function __abReloadChList(url){\n"
+                    + "window.__abReloadChList = function(url){\n"
                     + "  try {\n"
                     + "    if (window.parent && window.parent.frames && window.parent.frames['ch_list']) {\n"
                     + "      window.parent.frames['ch_list'].location = url;\n"
@@ -91,7 +94,7 @@ public class MapJs {
                     + "      __ab.loadFrame('ch_list', url);\n"
                     + "    }\n"
                     + "  } catch (_ab_e4) {}\n"
-                    + "}\n"
+                    + "};\n"
                     + "window.external = {\n"
                     + "  GetHalfMapWidth: function(){ return parseInt(__abCall('GetHalfMapWidth', [], 4), 10) || 4; },\n"
                     + "  GetHalfMapHeight: function(){ return parseInt(__abCall('GetHalfMapHeight', [], 3), 10) || 3; },\n"
@@ -109,8 +112,8 @@ public class MapJs {
                     + "  CellDivText: function(x,y,scale,link,showmove,isframe){ return String(__abCall('CellDivText', [x,y,scale,link,showmove,isframe], '')); },\n"
                     + "  DoHideMiniMap: function(){ return !!__abCall('DoHideMiniMap', [], false); },\n"
                     + "  MapText: function(){ return String(__abCall('MapText', [], '')); },\n"
-                    + "  HerbsList: function(){ return String(__abCall('HerbsList', [], '')); },\n"
-                    + "  TraceCut: function(a,b,c,d,e){ return __abCall('TraceCut', [a,b,c,d,e], null); },\n"
+                    + "  HerbsList: function(list){ return String(__abCall('HerbsList', [String(list)], '')); },\n"
+                    + "  TraceCut: function(herb){ return __abCall('TraceCut', [String(herb)], null); },\n"
                     + "  SetNeverTimer: function(ms){ return __abCall('SetNeverTimer', [ms], null); },\n"
                     + "  SetAutoFishMassa: function(v){ return __abCall('SetAutoFishMassa', [v], null); },\n"
                     + "  CheckPri: function(name,myst){ return String(__abCall('CheckPri', [name,myst], '')); },\n"
@@ -132,7 +135,8 @@ public class MapJs {
         }
 
         String serverJs = new String(array, WINDOWS_1251);
-        String js = serverJs;
+        String js = loadBaseMapJs(context, serverJs);
+        boolean useAssetBase = !serverJs.equals(js);
 
         String rawWidthDecl = extractVarDecl(js, DECL_WIDTH_PATTERN);
         String rawHeightDecl = extractVarDecl(js, DECL_HEIGHT_PATTERN);
@@ -150,7 +154,7 @@ public class MapJs {
         String fishPatched = dimPatched.replace(FISH_NO_CAPTCHA_CONDITION_OLD, FISH_NO_CAPTCHA_CONDITION_NEW);
         String chatReloadSafePatched = fishPatched.replaceAll(
                 "parent\\.frames\\[\"ch_list\"\\]\\.location\\s*=\\s*\"/ch\\.php\\?lo=1\"\\s*;",
-                "__abReloadChList('/ch.php?lo=1');");
+                "window.__abReloadChList('/ch.php?lo=1');");
         String patchedWidthDecl = extractVarDecl(fishPatched, DECL_WIDTH_PATTERN);
         String patchedHeightDecl = extractVarDecl(fishPatched, DECL_HEIGHT_PATTERN);
         String patchedScaleDecl = extractScaleDecl(fishPatched);
@@ -163,7 +167,8 @@ public class MapJs {
             runtimePatchAppended = true;
         }
 
-        Log.d(TAG, "process: raw(width=" + rawWidthDecl + ",height=" + rawHeightDecl + ",scale=" + rawScaleDecl
+        Log.d(TAG, "process: source=" + (useAssetBase ? "assets/js/map.js" : "server")
+                + ", raw(width=" + rawWidthDecl + ",height=" + rawHeightDecl + ",scale=" + rawScaleDecl
                 + ",width1Count=" + rawWidthOneCount + ",height1Count=" + rawHeightOneCount + ")"
                 + ", patched(width=" + patchedWidthDecl + ",height=" + patchedHeightDecl + ",scale=" + patchedScaleDecl + ")"
                 + ", dimPatch=" + (!dimPatched.equals(js))
@@ -173,6 +178,32 @@ public class MapJs {
                 + ", runtimePatchAppended=" + runtimePatchAppended);
 
         return patched.getBytes(WINDOWS_1251);
+    }
+
+    private static String loadBaseMapJs(Context context, String fallbackJs) {
+        if (context == null) {
+            return fallbackJs;
+        }
+        try (InputStream in = context.getAssets().open("js/map.js");
+             ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
+            byte[] buffer = new byte[4096];
+            int read;
+            while ((read = in.read(buffer)) != -1) {
+                baos.write(buffer, 0, read);
+            }
+            String assetJs = baos.toString(StandardCharsets.UTF_8.name());
+            if (assetJs == null || assetJs.trim().isEmpty()) {
+                return fallbackJs;
+            }
+            // На случай BOM в файле ассета.
+            if (!assetJs.isEmpty() && assetJs.charAt(0) == '\uFEFF') {
+                assetJs = assetJs.substring(1);
+            }
+            return assetJs;
+        } catch (Exception e) {
+            Log.w(TAG, "process: failed to load assets/js/map.js, fallback to server js", e);
+            return fallbackJs;
+        }
     }
 
     private static String extractVarDecl(String source, Pattern pattern) {
