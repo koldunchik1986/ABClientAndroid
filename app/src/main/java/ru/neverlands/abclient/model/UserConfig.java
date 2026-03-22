@@ -92,6 +92,30 @@ public class UserConfig {
      * Показывать предупреждение о перегрузе рюкзака в map.js (`checkShowOverWarning` в C# UI).
      */
     public boolean ShowOverWarning = false;
+    /**
+     * Ширина большой карты (в клетках).
+     *
+     * C# parity:
+     * - `MapBigWidth` из `UserConfig`;
+     * - используется bridge-методом `GetHalfMapWidth()` как `(MapBigWidth - 1) / 2`.
+     */
+    public int MapBigWidth = 9;
+    /**
+     * Высота большой карты (в клетках).
+     *
+     * C# parity:
+     * - `MapBigHeight` из `UserConfig`;
+     * - используется bridge-методом `GetHalfMapHeight()` как `(MapBigHeight - 1) / 2`.
+     */
+    public int MapBigHeight = 7;
+    /**
+     * Масштаб большой карты в процентах.
+     *
+     * Зависимости:
+     * - `WebAppInterface.GetMapScale()` -> `map.js`;
+     * - UI общих настроек (`SettingsActivity`, ключ `map_scale_percent`).
+     */
+    public int MapBigScale = 75;
     public boolean DoHttpLog = false;
     public boolean DoTexLog = false;
     public boolean ShowPerformance = false;
@@ -415,6 +439,14 @@ public class UserConfig {
                         this.DoInvPack = parseBoolAttr(parser, "pack", this.DoInvPack);
                         this.DoInvPackDolg = parseBoolAttr(parser, "packDolg", this.DoInvPackDolg);
                         this.DoInvSort = parseBoolAttr(parser, "sort", this.DoInvSort);
+                    } else if ("mapset".equalsIgnoreCase(tagName) || "map".equalsIgnoreCase(tagName)) {
+                        this.MapBigWidth = parseIntAttr(parser, "bigwidth", this.MapBigWidth);
+                        this.MapBigHeight = parseIntAttr(parser, "bigheight", this.MapBigHeight);
+                        this.MapBigScale = parseIntAttr(parser, "bigscale", this.MapBigScale);
+                        if (this.MapBigWidth < 3) this.MapBigWidth = 3;
+                        if (this.MapBigHeight < 3) this.MapBigHeight = 3;
+                        if (this.MapBigScale < 50) this.MapBigScale = 50;
+                        if (this.MapBigScale > 100) this.MapBigScale = 100;
                     } else if ("proxy".equalsIgnoreCase(tagName)) {
                         boolean proxyActive = parseBoolAttr(parser, "active", this.DoProxy || this.UseProxy);
                         String proxyAddress = getAttributeValueIgnoreCase(parser, "address");
@@ -755,6 +787,11 @@ public class UserConfig {
             serializer.attribute(null, "chatLevels", String.valueOf(this.DoChatLevels));
             serializer.attribute(null, "statsResetAtMidnight", String.valueOf(this.StatsResetAtMidnight));
             serializer.endTag(null, "chat");
+            serializer.startTag(null, "mapset");
+            serializer.attribute(null, "bigwidth", String.valueOf(this.MapBigWidth));
+            serializer.attribute(null, "bigheight", String.valueOf(this.MapBigHeight));
+            serializer.attribute(null, "bigscale", String.valueOf(this.MapBigScale));
+            serializer.endTag(null, "mapset");
 
             // Настройки инвентаря (группировка/сортировка/массовые кнопки).
             serializer.startTag(null, "inventory");

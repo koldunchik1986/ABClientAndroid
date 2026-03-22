@@ -89,6 +89,41 @@ public class SettingsActivity extends AppCompatActivity {
                 });
             }
 
+            ListPreference mapScalePref = findPreference("map_scale_percent");
+            if (mapScalePref != null && AppVars.Profile != null) {
+                int currentScale = AppVars.Profile.MapBigScale;
+                if (currentScale < 50) currentScale = 50;
+                if (currentScale > 100) currentScale = 100;
+                if (!(currentScale == 50 || currentScale == 60 || currentScale == 70
+                        || currentScale == 80 || currentScale == 90 || currentScale == 100)) {
+                    currentScale = (currentScale <= 75) ? 70 : 80;
+                    AppVars.Profile.MapBigScale = currentScale;
+                    AppVars.Profile.save(requireContext());
+                }
+                String currentScaleStr = String.valueOf(currentScale);
+                mapScalePref.setValue(currentScaleStr);
+                mapScalePref.setSummaryProvider(preference -> {
+                    if (!(preference instanceof ListPreference)) {
+                        return "";
+                    }
+                    CharSequence entry = ((ListPreference) preference).getEntry();
+                    return entry == null ? "" : entry;
+                });
+                mapScalePref.setOnPreferenceChangeListener((preference, newValue) -> {
+                    int value;
+                    try {
+                        value = Integer.parseInt(String.valueOf(newValue));
+                    } catch (Exception ignore) {
+                        value = 80;
+                    }
+                    if (value < 50) value = 50;
+                    if (value > 100) value = 100;
+                    AppVars.Profile.MapBigScale = value;
+                    AppVars.Profile.save(requireContext());
+                    return true;
+                });
+            }
+
             // Настройка C#-флага `RazdChatReport` (UI: checkboxRazdChatReport).
             //
             // Зависимости:

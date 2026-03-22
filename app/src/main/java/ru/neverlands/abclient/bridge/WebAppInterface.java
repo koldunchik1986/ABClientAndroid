@@ -42,8 +42,13 @@ public class WebAppInterface {
     private static final String MAIN_TOP_TRACE_PREFIX = "[MAIN_TOP_TRACE]";
     private static final long MAIN_TOP_FIGHT_PULSE_GUARD_MS = 15000L;
     private static final long MAIN_TOP_CLIENT_RELOAD_GUARD_MS = 2500L;
+    private static final long MAP_BRIDGE_LOG_THROTTLE_MS = 1500L;
     private static volatile long lastNeverTimerLogAtMs = 0L;
     private static volatile long lastNeverTimerLoggedValueMs = Long.MIN_VALUE;
+    private static volatile long lastMapBridgeLogAtMs = 0L;
+    private static volatile String lastMapBridgeSignature = "";
+    private static volatile long lastMapRuntimeTraceAtMs = 0L;
+    private static volatile String lastMapRuntimeTrace = "";
     private static volatile long lastClientMainTopReloadAtMs = 0L;
     private static volatile String lastClientMainTopReloadSource = "";
     private static volatile String lastClientMainTopReloadPayload = "";
@@ -57,6 +62,23 @@ public class WebAppInterface {
     private MainActivity getMainActivityOrNull() {
         if (AppVars.mainActivity == null) return null;
         return AppVars.mainActivity.get();
+    }
+
+    private void logMapBridgeValue(String source, int mapBigWidth, int mapBigHeight, int mapBigScale, int halfW, int halfH) {
+        long nowMs = System.currentTimeMillis();
+        String signature = source
+                + "|w=" + mapBigWidth
+                + "|h=" + mapBigHeight
+                + "|s=" + mapBigScale
+                + "|half=" + halfW + "x" + halfH;
+        boolean shouldLog = !signature.equals(lastMapBridgeSignature)
+                || (nowMs - lastMapBridgeLogAtMs) >= MAP_BRIDGE_LOG_THROTTLE_MS;
+        if (!shouldLog) {
+            return;
+        }
+        lastMapBridgeLogAtMs = nowMs;
+        lastMapBridgeSignature = signature;
+        Log.d("WebAppInterface", "MAP_BRIDGE " + signature);
     }
 
     /** Показывает всплывающее сообщение (Toast) из веб-страницы. */
@@ -108,6 +130,100 @@ public class WebAppInterface {
     @JavascriptInterface
     public boolean ShowOverWarning() {
         return AppVars.Profile != null && AppVars.Profile.ShowOverWarning;
+    }
+
+    /**
+     * C# parity (`ScriptManager.GetHalfMapWidth`): half-width большой карты в ячейках.
+     *
+     * Зависимости:
+     * - `UserConfig.MapBigWidth` (полная ширина карты);
+     * - JS `map.js`, где размер окна карты строится через `GetHalfMapWidth()`.
+     *
+     * Примечание:
+     * - значение принудительно ограничено минимумом 1, чтобы не допустить нулевую/отрицательную ширину.
+     */
+    @JavascriptInterface
+    public int GetHalfMapWidth() {
+        int mapBigWidth = (AppVars.Profile != null) ? AppVars.Profile.MapBigWidth : 9;
+        int mapBigHeight = (AppVars.Profile != null) ? AppVars.Profile.MapBigHeight : 7;
+        int mapBigScale = (AppVars.Profile != null) ? AppVars.Profile.MapBigScale : 75;
+        int half = (mapBigWidth - 1) / 2;
+        int halfW = Math.max(1, half);
+        int halfH = Math.max(1, (mapBigHeight - 1) / 2);
+        logMapBridgeValue("GetHalfMapWidth", mapBigWidth, mapBigHeight, mapBigScale, halfW, halfH);
+        return halfW;
+    }
+
+    /**
+     * C# parity (`ScriptManager.GetHalfMapHeight`): half-height большой карты в ячейках.
+     *
+     * Зависимости:
+     * - `UserConfig.MapBigHeight` (полная высота карты);
+     * - JS `map.js`, где размер окна карты строится через `GetHalfMapHeight()`.
+     *
+     * Примечание:
+     * - значение принудительно ограничено минимумом 1, чтобы не допустить нулевую/отрицательную высоту.
+     */
+    @JavascriptInterface
+    public int GetHalfMapHeight() {
+        int mapBigWidth = (AppVars.Profile != null) ? AppVars.Profile.MapBigWidth : 9;
+        int mapBigHeight = (AppVars.Profile != null) ? AppVars.Profile.MapBigHeight : 7;
+        int mapBigScale = (AppVars.Profile != null) ? AppVars.Profile.MapBigScale : 75;
+        int half = (mapBigHeight - 1) / 2;
+        int halfH = Math.max(1, half);
+        int halfW = Math.max(1, (mapBigWidth - 1) / 2);
+        logMapBridgeValue("GetHalfMapHeight", mapBigWidth, mapBigHeight, mapBigScale, halfW, halfH);
+        return halfH;
+    }
+
+    /**
+     * C# parity (`ScriptManager.GetMapScale`): масштаб большой карты в процентах.
+     *
+     * Зависимости:
+     * - `UserConfig.MapBigScale`;
+     * - настройки "Общие" (`SettingsActivity` + `root_preferences.xml`);
+     * - JS `map.js`, где `scale` используется для размера тайлов.
+     *
+     * Ограничение диапазона:
+     * - поддерживаем 50..100 (в рамках Android UI-настроек);
+     * - fallback 75 для профилей без параметра.
+     */
+    @JavascriptInterface
+    public int GetMapScale() {
+        int mapBigWidth = (AppVars.Profile != null) ? AppVars.Profile.MapBigWidth : 9;
+        int mapBigHeight = (AppVars.Profile != null) ? AppVars.Profile.MapBigHeight : 7;
+        int scale = (AppVars.Profile != null) ? AppVars.Profile.MapBigScale : 75;
+        if (scale < 50) scale = 50;
+        if (scale > 100) scale = 100;
+        int halfW = Math.max(1, (mapBigWidth - 1) / 2);
+        int halfH = Math.max(1, (mapBigHeight - 1) / 2);
+        logMapBridgeValue("GetMapScale", mapBigWidth, mapBigHeight, scale, halfW, halfH);
+        return scale;
+    }
+
+    /**
+     * Runtime-трассировка состояния карты из map.js.
+     *
+     * Назначение:
+     * - диагностировать расхождения 3x3 vs 9x7;
+     * - видеть фактические width/height/scale в момент рендера и после redraw.
+     *
+     * Зависимости:
+     * - вызывается из патча `MAP_DIM_RUNTIME_GUARD_PATCH` в `MapJs`;
+     * - логируется в Logcat тегом `WebAppInterface`.
+     */
+    @JavascriptInterface
+    public void TraceMapRuntime(String payload) {
+        String safePayload = payload == null ? "" : payload.trim();
+        long nowMs = System.currentTimeMillis();
+        boolean shouldLog = !safePayload.equals(lastMapRuntimeTrace)
+                || (nowMs - lastMapRuntimeTraceAtMs) >= MAP_BRIDGE_LOG_THROTTLE_MS;
+        if (!shouldLog) {
+            return;
+        }
+        lastMapRuntimeTraceAtMs = nowMs;
+        lastMapRuntimeTrace = safePayload;
+        Log.d("WebAppInterface", "MAP_RUNTIME " + safePayload);
     }
 
     /**
@@ -1233,6 +1349,8 @@ public class WebAppInterface {
 
         d.autoFightEnabled = AppVars.Autoboi == AutoboiState.AutoboiOn
                 || (AppVars.Profile != null && AppVars.Profile.LezDoAutoboi);
+        MainActivity activity = getMainActivityOrNull();
+        d.uiForegroundInteractive = activity != null && activity.isUiForegroundInteractive();
 
         String contentMainPhp = AppVars.ContentMainPhp;
         d.hasFightHtml = contentMainPhp != null
@@ -1263,9 +1381,11 @@ public class WebAppInterface {
             return d;
         }
 
-        if (d.autoFightEnabled && (d.hasFightHtml || d.hasFightLink || d.recentFightPulse)) {
+        if (d.autoFightEnabled
+                && !d.uiForegroundInteractive
+                && (d.hasFightHtml || d.hasFightLink || d.recentFightPulse)) {
             d.suppress = true;
-            d.suppressReason = "suppress_active_autofight_plain_main";
+            d.suppressReason = "suppress_autofight_plain_main_background";
             return d;
         }
 
@@ -1290,6 +1410,7 @@ public class WebAppInterface {
                 + ", goInf=" + d.targetIsGoInf
                 + ", fightFinish=" + d.targetIsFightFinish
                 + ", autoFight=" + d.autoFightEnabled
+                + ", uiForegroundInteractive=" + d.uiForegroundInteractive
                 + ", hasFightHtml=" + d.hasFightHtml
                 + ", hasFightLink=" + d.hasFightLink
                 + ", recentFightPulse=" + d.recentFightPulse
@@ -1309,6 +1430,7 @@ public class WebAppInterface {
         boolean targetIsGoInf;
         boolean targetIsFightFinish;
         boolean autoFightEnabled;
+        boolean uiForegroundInteractive;
         boolean hasFightHtml;
         boolean hasFightLink;
         boolean recentFightPulse;

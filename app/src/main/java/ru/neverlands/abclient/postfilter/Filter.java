@@ -33,7 +33,7 @@ public class Filter {
                 return HpJs.process(array);
             }
             if (address.contains("/js/map.js")) {
-                return MapJs.process(array);
+                return MapJs.process(context, array);
             }
             if (address.endsWith("/arena.js")) {
                 return ArenaJs.process();

@@ -13,6 +13,14 @@
             app:summary="Если выключено, сообщение о перегрузе рюкзака скрывается"
             app:defaultValue="false" />
 
+        <ListPreference
+            app:key="map_scale_percent"
+            app:title="Масштаб карты"
+            app:summary="Текущий масштаб отображения карты"
+            app:entries="@array/map_scale_entries"
+            app:entryValues="@array/map_scale_values"
+            app:defaultValue="80" />
+
         <SwitchPreferenceCompat
             app:key="show_razd_chat_report"
             app:title="Выводить результаты разделки в чат"
