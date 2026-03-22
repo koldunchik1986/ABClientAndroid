@@ -3,6 +3,7 @@ package ru.neverlands.abclient.ui;
 import android.content.Context;
 import android.content.res.AssetManager;
 import android.view.Gravity;
+import android.view.View;
 import android.widget.ArrayAdapter;
 import android.widget.CheckBox;
 import android.widget.EditText;
@@ -36,6 +37,21 @@ import ru.neverlands.abclient.manager.AutoFunctionsManager;
 import ru.neverlands.abclient.utils.AppVars;
 import ru.neverlands.abclient.utils.ExtMap;
 
+/**
+ * Навигатор клиента.
+ *
+ * Назначение:
+ * - отображает диалог "Навигатор" с вкладками;
+ * - запускает/останавливает автомаршрут через AutoFunctionsManager;
+ * - хранит редактируемые списки клеток в профиле;
+ * - строит индекс карты (боты/травы/рыбалка) из map.xml для вкладок с автозаполнением.
+ *
+ * Ключевые зависимости:
+ * - {@link AutoFunctionsManager}: запуск и остановка авто-переходов;
+ * - {@link AppVars}: текущее состояние автомаршрута и профиль пользователя;
+ * - {@link ExtMap}: справочник клеток и телепортов для валидации/подсказок;
+ * - {@link TabLayout}: вкладки "Локации / Боты / Травы / Рыбалка".
+ */
 public class Navigator {
     private static final int TAB_LOCATIONS = 0;
     private static final int TAB_BOTS = 1;
@@ -59,10 +75,32 @@ public class Navigator {
 
     private NavigatorMapIndex mapIndexCache;
 
+    /**
+     * Универсальный callback выбора/удаления клетки.
+     *
+     * Зависимости:
+     * - используется в UI-обработчиках добавления/удаления;
+     * - позволяет переиспользовать один рендерер строк для разных категорий.
+     */
     private interface OnCellPicked {
         void onCellPicked(String cellNum);
     }
 
+    /**
+     * Callback построения контента внутри раскрываемой категории.
+     */
+    private interface SectionContentBuilder {
+        void build(LinearLayout container);
+    }
+
+    /**
+     * Локальная модель подкатегории в секции "Города".
+     *
+     * Зависимости:
+     * - сериализуется в строку профиля через encodeCitySubcategories(...);
+     * - восстанавливается из профиля через parseCitySubcategories(...);
+     * - используется при рендере и редактировании клеток подкатегории.
+     */
     private static final class CitySubcategory {
         final String name;
         final String[] cells;
@@ -73,18 +111,48 @@ public class Navigator {
         }
     }
 
+    /**
+     * Кэш индексированных данных карты.
+     *
+     * Структуры:
+     * - botGroups: бот -> диапазон уровней -> клетки;
+     * - herbGroups: номер группы трав -> клетки;
+     * - fishGroups: тип рыбалки/водоема -> клетки.
+     *
+     * Источник данных: assets/map.xml (метод buildNavigatorMapIndex()).
+     */
     private static final class NavigatorMapIndex {
         final Map<String, Map<String, LinkedHashSet<String>>> botGroups = new LinkedHashMap<>();
         final Map<String, LinkedHashSet<String>> herbGroups = new LinkedHashMap<>();
         final Map<String, LinkedHashSet<String>> fishGroups = new LinkedHashMap<>();
     }
 
+    /**
+     * Инициализация навигатора.
+     *
+     * @param context Android context для UI, ресурсов и сохранения профиля
+     * @param autoFunctionsManager менеджер авто-функций (старт/стоп движения)
+     * @param onStateChanged callback синхронизации UI быстрых кнопок после смены состояния
+     */
     public Navigator(Context context, AutoFunctionsManager autoFunctionsManager, Runnable onStateChanged) {
         this.context = context;
         this.autoFunctionsManager = autoFunctionsManager;
         this.onStateChanged = onStateChanged;
     }
 
+    /**
+     * Основная точка входа: показывает окно навигатора.
+     *
+     * Алгоритм:
+     * 1) Если автомаршрут уже активен, показывает окно остановки.
+     * 2) Иначе собирает диалог с полем назначения, чекбоксом телепортов и вкладками.
+     * 3) На "Начать" валидирует клетку и запускает AutoMoving.
+     *
+     * Зависимости:
+     * - {@link AppVars#AutoMoving}, {@link AppVars#AutoMovingDestinaton};
+     * - {@link ExtMap#init(Context)} для подсказок и валидации клеток;
+     * - {@link AppVars.Profile#NavigatorAllowTeleports} для чекбокса телепортов.
+     */
     public void showDialog() {
         if (AppVars.AutoMoving) {
             String dest = AppVars.AutoMovingDestinaton != null ? AppVars.AutoMovingDestinaton : "?";
@@ -152,7 +220,8 @@ public class Navigator {
         root.addView(scroll);
 
         final int[] selectedTab = new int[] { TAB_LOCATIONS };
-        Runnable rerender = () -> renderTabContent(listLayout, destInput, selectedTab[0]);
+        final Map<String, Boolean> expandedStates = new LinkedHashMap<>();
+        Runnable rerender = () -> renderTabContent(listLayout, destInput, selectedTab[0], expandedStates);
         rerender.run();
 
         tabLayout.addOnTabSelectedListener(new TabLayout.OnTabSelectedListener() {
@@ -202,36 +271,90 @@ public class Navigator {
         dialog.show();
     }
 
-    private void renderTabContent(LinearLayout parent, EditText destInput, int tabIndex) {
+    /**
+     * Роутер рендера вкладок.
+     *
+     * Зависимости:
+     * - TAB_* константы;
+     * - специализированные методы renderLocationTab/renderBotTab/renderHerbTab/renderFishTab.
+     */
+    private void renderTabContent(LinearLayout parent,
+                                  EditText destInput,
+                                  int tabIndex,
+                                  Map<String, Boolean> expandedStates) {
         if (tabIndex == TAB_BOTS) {
-            renderBotTab(parent, destInput);
+            renderBotTab(parent, destInput, expandedStates);
             return;
         }
         if (tabIndex == TAB_HERBS) {
-            renderHerbTab(parent, destInput);
+            renderHerbTab(parent, destInput, expandedStates);
             return;
         }
         if (tabIndex == TAB_FISH) {
-            renderFishTab(parent, destInput);
+            renderFishTab(parent, destInput, expandedStates);
             return;
         }
-        renderLocationTab(parent, destInput, () -> renderTabContent(parent, destInput, TAB_LOCATIONS));
+        renderLocationTab(parent, destInput, () -> renderTabContent(parent, destInput, TAB_LOCATIONS, expandedStates), expandedStates);
     }
 
-    private void renderLocationTab(LinearLayout parent, EditText destInput, Runnable rerender) {
+    /**
+     * Рендер вкладки "Локации" (редактируемая пользователем).
+     *
+     * Состав:
+     * - Избранное;
+     * - Города (подкатегории, редактируются пользователем);
+     * - Объекты;
+     * - Телепорты.
+     *
+     * Зависимости:
+     * - данные профиля AppVars.Profile;
+     * - addLeafCategory/addCitySubcategory/renderCells;
+     * - повторный рендер через rerender после изменений.
+     */
+    private void renderLocationTab(LinearLayout parent,
+                                   EditText destInput,
+                                   Runnable rerender,
+                                   Map<String, Boolean> expandedStates) {
         parent.removeAllViews();
-        addLeafCategory(parent, "Избранное", NAV_CATEGORY_FAVORITES, navFavCells(), 0, destInput, rerender);
+        addCollapsibleSection(
+                parent,
+                "tab_loc:favorites",
+                "Избранное",
+                0,
+                () -> showAddCitySubcategoryDialog(rerender),
+                expandedStates,
+                content -> {
+                    for (CitySubcategory subcategory : getCitySubcategories()) {
+                        addCitySubcategory(content, subcategory, dpToPx(10), destInput, rerender, expandedStates);
+                    }
+                });
 
-        addSectionHeader(parent, "Города", 0, () -> showAddCitySubcategoryDialog(rerender));
-        for (CitySubcategory citySubcategory : getCitySubcategories()) {
-            addCitySubcategory(parent, citySubcategory, dpToPx(10), destInput, rerender);
-        }
+        addCollapsibleSection(
+                parent,
+                "tab_loc:cities",
+                "Города",
+                0,
+                null,
+                expandedStates,
+                content -> renderCells(content, dpToPx(10), navCityAllCells(), destInput, null));
 
-        addLeafCategory(parent, "Объекты", NAV_CATEGORY_OBJECTS, navObjectCells(), 0, destInput, rerender);
-        addLeafCategory(parent, "Телепорты", NAV_CATEGORY_TELEPORTS, navTelepCells(), 0, destInput, rerender);
+        addLeafCategory(parent, "Объекты", NAV_CATEGORY_OBJECTS, navObjectCells(), 0, destInput, rerender, expandedStates, "tab_loc:objects");
+        addLeafCategory(parent, "Телепорты", NAV_CATEGORY_TELEPORTS, navTelepCells(), 0, destInput, rerender, expandedStates, "tab_loc:teleports");
     }
 
-    private void renderBotTab(LinearLayout parent, EditText destInput) {
+    /**
+     * Рендер вкладки "Боты" (данные только из map.xml).
+     *
+     * Группировка:
+     * - категория: имя бота;
+     * - подкатегория: диапазон уровней min-max;
+     * - элементы: клетки появления.
+     *
+     * Зависимости:
+     * - getNavigatorMapIndex();
+     * - compareLevelRanges(...) для сортировки диапазонов уровней.
+     */
+    private void renderBotTab(LinearLayout parent, EditText destInput, Map<String, Boolean> expandedStates) {
         parent.removeAllViews();
         NavigatorMapIndex index = getNavigatorMapIndex();
         if (index.botGroups.isEmpty()) {
@@ -243,20 +366,46 @@ public class Navigator {
         Collections.sort(botNames, String.CASE_INSENSITIVE_ORDER);
 
         for (String botName : botNames) {
-            addSectionHeader(parent, botName, 0, null);
-            Map<String, LinkedHashSet<String>> levels = index.botGroups.get(botName);
-            ArrayList<String> levelRanges = new ArrayList<>(levels.keySet());
-            levelRanges.sort(this::compareLevelRanges);
+            addCollapsibleSection(
+                    parent,
+                    "tab_bots:" + botName.toLowerCase(),
+                    botName,
+                    0,
+                    null,
+                    expandedStates,
+                    content -> {
+                        Map<String, LinkedHashSet<String>> levels = index.botGroups.get(botName);
+                        ArrayList<String> levelRanges = new ArrayList<>(levels.keySet());
+                        levelRanges.sort(this::compareLevelRanges);
 
-            for (String range : levelRanges) {
-                addSubHeader(parent, "Уровень " + range, dpToPx(10));
-                String[] cells = sortAndNormalizeCells(levels.get(range).toArray(new String[0]));
-                renderCells(parent, dpToPx(10), cells, destInput, null);
-            }
+                        for (String range : levelRanges) {
+                            addCollapsibleSubSection(
+                                    content,
+                                    "tab_bots:" + botName.toLowerCase() + ":lvl:" + range,
+                                    "Уровень " + range,
+                                    dpToPx(10),
+                                    expandedStates,
+                                    subContent -> {
+                                        String[] cells = sortAndNormalizeCells(levels.get(range).toArray(new String[0]));
+                                        renderCells(subContent, dpToPx(10), cells, destInput, null);
+                                    });
+                        }
+                    });
         }
     }
 
-    private void renderHerbTab(LinearLayout parent, EditText destInput) {
+    /**
+     * Рендер вкладки "Травы" (данные из map.xml по herbGroup).
+     *
+     * Группировка:
+     * - категория: номер herbGroup;
+     * - элементы: клетки этой группы.
+     *
+     * Зависимости:
+     * - getNavigatorMapIndex();
+     * - sortAndNormalizeCells(...) для стабильного вывода.
+     */
+    private void renderHerbTab(LinearLayout parent, EditText destInput, Map<String, Boolean> expandedStates) {
         parent.removeAllViews();
         NavigatorMapIndex index = getNavigatorMapIndex();
         if (index.herbGroups.isEmpty()) {
@@ -268,13 +417,32 @@ public class Navigator {
         groups.sort((a, b) -> Integer.compare(parseIntSafe(a, Integer.MAX_VALUE), parseIntSafe(b, Integer.MAX_VALUE)));
 
         for (String group : groups) {
-            addSectionHeader(parent, "Травы №" + group, 0, null);
-            String[] cells = sortAndNormalizeCells(index.herbGroups.get(group).toArray(new String[0]));
-            renderCells(parent, 0, cells, destInput, null);
+            addCollapsibleSection(
+                    parent,
+                    "tab_herbs:" + group,
+                    "Травы №" + group,
+                    0,
+                    null,
+                    expandedStates,
+                    content -> {
+                        String[] cells = sortAndNormalizeCells(index.herbGroups.get(group).toArray(new String[0]));
+                        renderCells(content, 0, cells, destInput, null);
+                    });
         }
     }
 
-    private void renderFishTab(LinearLayout parent, EditText destInput) {
+    /**
+     * Рендер вкладки "Рыбалка" (данные из map.xml по hasWater=True).
+     *
+     * Группировка:
+     * - категория: тип рыбалки/метка водной клетки (deriveFishCategory);
+     * - элементы: клетки с водой.
+     *
+     * Зависимости:
+     * - getNavigatorMapIndex();
+     * - deriveFishCategory(...) для ключа группы.
+     */
+    private void renderFishTab(LinearLayout parent, EditText destInput, Map<String, Boolean> expandedStates) {
         parent.removeAllViews();
         NavigatorMapIndex index = getNavigatorMapIndex();
         if (index.fishGroups.isEmpty()) {
@@ -286,13 +454,36 @@ public class Navigator {
         Collections.sort(fishTypes, String.CASE_INSENSITIVE_ORDER);
 
         for (String fishType : fishTypes) {
-            addSectionHeader(parent, fishType, 0, null);
-            String[] cells = sortAndNormalizeCells(index.fishGroups.get(fishType).toArray(new String[0]));
-            renderCells(parent, 0, cells, destInput, null);
+            addCollapsibleSection(
+                    parent,
+                    "tab_fish:" + fishType.toLowerCase(),
+                    fishType,
+                    0,
+                    null,
+                    expandedStates,
+                    content -> {
+                        String[] cells = sortAndNormalizeCells(index.fishGroups.get(fishType).toArray(new String[0]));
+                        renderCells(content, 0, cells, destInput, null);
+                    });
         }
     }
 
-    private void addSectionHeader(LinearLayout parent, String title, int leftPaddingPx, Runnable onAddClick) {
+    /**
+     * Добавляет сворачиваемую категорию:
+     * - заголовок с опциональной кнопкой "+" и стрелкой в конце;
+     * - контейнер контента, который скрывается/показывается по клику.
+     *
+     * Важное поведение:
+     * - по умолчанию категория свернута;
+     * - состояние запоминается в expandedStates на время жизни диалога.
+     */
+    private void addCollapsibleSection(LinearLayout parent,
+                                       String stateKey,
+                                       String title,
+                                       int leftPaddingPx,
+                                       Runnable onAddClick,
+                                       Map<String, Boolean> expandedStates,
+                                       SectionContentBuilder contentBuilder) {
         LinearLayout headerRow = new LinearLayout(context);
         headerRow.setOrientation(LinearLayout.HORIZONTAL);
         headerRow.setGravity(Gravity.CENTER_VERTICAL);
@@ -302,7 +493,8 @@ public class Navigator {
         TextView titleView = new TextView(context);
         titleView.setText(title);
         titleView.setTypeface(null, android.graphics.Typeface.BOLD);
-        titleView.setTextColor(ContextCompat.getColor(context, R.color.ab_autoboi_text_primary));
+        // Категории выделяем красным, чтобы визуально отличались от подкатегорий.
+        titleView.setTextColor(0xFFC62828);
         LinearLayout.LayoutParams titleLp = new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f);
         headerRow.addView(titleView, titleLp);
 
@@ -312,11 +504,91 @@ public class Navigator {
             headerRow.addView(addBtn);
         }
 
+        TextView arrow = new TextView(context);
+        arrow.setTextSize(14f);
+        arrow.setTextColor(ContextCompat.getColor(context, R.color.ab_autoboi_text_primary));
+        arrow.setPadding(dpToPx(6), 0, dpToPx(4), 0);
+        headerRow.addView(arrow);
+
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
         lp.topMargin = dpToPx(6);
         parent.addView(headerRow, lp);
+
+        LinearLayout contentContainer = new LinearLayout(context);
+        contentContainer.setOrientation(LinearLayout.VERTICAL);
+        parent.addView(contentContainer);
+        contentBuilder.build(contentContainer);
+
+        boolean expanded = expandedStates.getOrDefault(stateKey, false);
+        applyCategoryExpanded(contentContainer, arrow, expanded);
+        headerRow.setOnClickListener(v -> {
+            boolean nextExpanded = contentContainer.getVisibility() != View.VISIBLE;
+            expandedStates.put(stateKey, nextExpanded);
+            applyCategoryExpanded(contentContainer, arrow, nextExpanded);
+        });
     }
 
+    /**
+     * Применяет визуальное состояние раскрытия категории.
+     */
+    private void applyCategoryExpanded(LinearLayout contentContainer, TextView arrow, boolean expanded) {
+        contentContainer.setVisibility(expanded ? View.VISIBLE : View.GONE);
+        arrow.setText(expanded ? "▲" : "▼");
+    }
+
+    /**
+     * Добавляет сворачиваемую подкатегорию (например, диапазон уровня внутри категории "Боты").
+     *
+     * Отличие от addCollapsibleSection(...):
+     * - без кнопки "+";
+     * - с дополнительным отступом слева, чтобы визуально быть вложенным уровнем.
+     */
+    private void addCollapsibleSubSection(LinearLayout parent,
+                                          String stateKey,
+                                          String title,
+                                          int leftPaddingPx,
+                                          Map<String, Boolean> expandedStates,
+                                          SectionContentBuilder contentBuilder) {
+        LinearLayout headerRow = new LinearLayout(context);
+        headerRow.setOrientation(LinearLayout.HORIZONTAL);
+        headerRow.setGravity(Gravity.CENTER_VERTICAL);
+        headerRow.setBackgroundColor(ContextCompat.getColor(context, R.color.ab_autoboi_group_selected_bg));
+        headerRow.setPadding(leftPaddingPx + dpToPx(10), dpToPx(6), dpToPx(6), dpToPx(6));
+
+        TextView titleView = new TextView(context);
+        titleView.setText(title);
+        titleView.setTypeface(null, android.graphics.Typeface.BOLD);
+        titleView.setTextColor(ContextCompat.getColor(context, R.color.ab_autoboi_text_primary));
+        LinearLayout.LayoutParams titleLp = new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f);
+        headerRow.addView(titleView, titleLp);
+
+        TextView arrow = new TextView(context);
+        arrow.setTextSize(14f);
+        arrow.setTextColor(ContextCompat.getColor(context, R.color.ab_autoboi_text_primary));
+        arrow.setPadding(dpToPx(6), 0, dpToPx(4), 0);
+        headerRow.addView(arrow);
+
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+        lp.topMargin = dpToPx(4);
+        parent.addView(headerRow, lp);
+
+        LinearLayout contentContainer = new LinearLayout(context);
+        contentContainer.setOrientation(LinearLayout.VERTICAL);
+        parent.addView(contentContainer);
+        contentBuilder.build(contentContainer);
+
+        boolean expanded = expandedStates.getOrDefault(stateKey, false);
+        applyCategoryExpanded(contentContainer, arrow, expanded);
+        headerRow.setOnClickListener(v -> {
+            boolean nextExpanded = contentContainer.getVisibility() != View.VISIBLE;
+            expandedStates.put(stateKey, nextExpanded);
+            applyCategoryExpanded(contentContainer, arrow, nextExpanded);
+        });
+    }
+
+    /**
+     * Добавляет подзаголовок внутри категории (например, диапазон уровней бота).
+     */
     private void addSubHeader(LinearLayout parent, String title, int leftPaddingPx) {
         TextView tv = new TextView(context);
         tv.setText(title);
@@ -326,34 +598,52 @@ public class Navigator {
         parent.addView(tv);
     }
 
-    private void addLeafCategory(LinearLayout parent, String title, int categoryId, String[] cells, int leftPaddingPx, EditText destInput, Runnable rerender) {
-        LinearLayout headerRow = new LinearLayout(context);
-        headerRow.setOrientation(LinearLayout.HORIZONTAL);
-        headerRow.setGravity(Gravity.CENTER_VERTICAL);
-        headerRow.setBackgroundColor(ContextCompat.getColor(context, R.color.ab_autoboi_group_selected_bg));
-        headerRow.setPadding(leftPaddingPx + dpToPx(10), dpToPx(8), dpToPx(6), dpToPx(8));
-        LinearLayout.LayoutParams headerLp = new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
-        headerLp.topMargin = dpToPx(6);
-
-        TextView titleView = new TextView(context);
-        titleView.setText(title);
-        titleView.setTypeface(null, android.graphics.Typeface.BOLD);
-        titleView.setTextColor(ContextCompat.getColor(context, R.color.ab_autoboi_text_primary));
-
-        ImageButton addBtn = buildIconButton(android.R.drawable.ic_input_add, 0xFF2E7D32);
-        addBtn.setOnClickListener(v -> showAddCellDialog(title, cell -> addCellToCategory(categoryId, cell), rerender));
-
-        LinearLayout.LayoutParams titleLp = new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f);
-        headerRow.addView(titleView, titleLp);
-        headerRow.addView(addBtn);
-        parent.addView(headerRow, headerLp);
-
-        renderCells(parent, leftPaddingPx, sortAndNormalizeCells(cells), destInput, cellNum -> {
-            removeCellFromCategory(categoryId, cellNum);
-            if (rerender != null) rerender.run();
-        });
+    /**
+     * Добавляет редактируемую "листовую" категорию (без подкатегорий):
+     * заголовок + кнопка добавления + список клеток с удалением.
+     *
+     * Зависимости:
+     * - showAddCellDialog(...) -> addCellToCategory(...);
+     * - renderCells(...) -> removeCellFromCategory(...);
+     * - rerender для немедленного обновления UI после правок.
+     */
+    private void addLeafCategory(LinearLayout parent,
+                                 String title,
+                                 int categoryId,
+                                 String[] cells,
+                                 int leftPaddingPx,
+                                 EditText destInput,
+                                 Runnable rerender,
+                                 Map<String, Boolean> expandedStates,
+                                 String stateKey) {
+        addCollapsibleSection(
+                parent,
+                stateKey,
+                title,
+                leftPaddingPx,
+                () -> showAddCellDialog(title, cell -> addCellToCategory(categoryId, cell), rerender),
+                expandedStates,
+                content -> renderCells(content, leftPaddingPx, sortAndNormalizeCells(cells), destInput, cellNum -> {
+                    removeCellFromCategory(categoryId, cellNum);
+                    if (rerender != null) rerender.run();
+                }));
     }
-    private void addCitySubcategory(LinearLayout parent, CitySubcategory subcategory, int leftPaddingPx, EditText destInput, Runnable rerender) {
+    /**
+     * Добавляет редактируемую подкатегорию в блоке "Города":
+     * - "+" для добавления клетки;
+     * - "-" для удаления всей подкатегории;
+     * - список клеток подкатегории с удалением отдельных элементов.
+     *
+     * Зависимости:
+     * - addCellToCitySubcategory/removeCitySubcategory/removeCellFromCitySubcategory;
+     * - профиль AppVars.Profile (сериализация/сохранение).
+     */
+    private void addCitySubcategory(LinearLayout parent,
+                                    CitySubcategory subcategory,
+                                    int leftPaddingPx,
+                                    EditText destInput,
+                                    Runnable rerender,
+                                    Map<String, Boolean> expandedStates) {
         LinearLayout headerRow = new LinearLayout(context);
         headerRow.setOrientation(LinearLayout.HORIZONTAL);
         headerRow.setGravity(Gravity.CENTER_VERTICAL);
@@ -381,14 +671,42 @@ public class Navigator {
         headerRow.addView(titleView, titleLp);
         headerRow.addView(addBtn);
         headerRow.addView(removeBtn);
+        TextView arrow = new TextView(context);
+        arrow.setTextSize(14f);
+        arrow.setTextColor(ContextCompat.getColor(context, R.color.ab_autoboi_text_primary));
+        arrow.setPadding(dpToPx(6), 0, dpToPx(4), 0);
+        headerRow.addView(arrow);
         parent.addView(headerRow, headerLp);
 
-        renderCells(parent, leftPaddingPx, sortAndNormalizeCells(subcategory.cells), destInput, cellNum -> {
+        LinearLayout contentContainer = new LinearLayout(context);
+        contentContainer.setOrientation(LinearLayout.VERTICAL);
+        parent.addView(contentContainer);
+        renderCells(contentContainer, leftPaddingPx, sortAndNormalizeCells(subcategory.cells), destInput, cellNum -> {
             removeCellFromCitySubcategory(subcategory.name, cellNum);
             if (rerender != null) rerender.run();
         });
+
+        String stateKey = "tab_loc:city_sub:" + subcategory.name.toLowerCase();
+        boolean expanded = expandedStates.getOrDefault(stateKey, false);
+        applyCategoryExpanded(contentContainer, arrow, expanded);
+        headerRow.setOnClickListener(v -> {
+            boolean nextExpanded = contentContainer.getVisibility() != View.VISIBLE;
+            expandedStates.put(stateKey, nextExpanded);
+            applyCategoryExpanded(contentContainer, arrow, nextExpanded);
+        });
     }
 
+    /**
+     * Рендер строк клеток.
+     *
+     * Поведение:
+     * - клик по строке подставляет клетку в поле назначения;
+     * - при наличии onRemoveCell добавляет кнопку удаления "-" для строки.
+     *
+     * Зависимости:
+     * - buildCellLabel(...) для отображения "cell - name";
+     * - resolveCellNumber(...) и профильные операции удаления в callback.
+     */
     private void renderCells(LinearLayout parent, int leftPaddingPx, String[] cells, EditText destInput, OnCellPicked onRemoveCell) {
         if (cells == null || cells.length == 0) {
             addEmptyHint(parent, "Пусто");
@@ -420,6 +738,9 @@ public class Navigator {
         }
     }
 
+    /**
+     * Показывает служебную строку-подсказку ("Пусто"/"Нет данных...").
+     */
     private void addEmptyHint(LinearLayout parent, String message) {
         TextView empty = new TextView(context);
         empty.setText(message);
@@ -428,6 +749,9 @@ public class Navigator {
         parent.addView(empty);
     }
 
+    /**
+     * Фабрика мини-кнопок действий (плюс/минус) в заголовках и строках.
+     */
     private ImageButton buildIconButton(int drawableRes, int tintColor) {
         ImageButton btn = new ImageButton(context);
         btn.setImageResource(drawableRes);
@@ -437,6 +761,17 @@ public class Navigator {
         return btn;
     }
 
+    /**
+     * Диалог добавления клетки в выбранную категорию/подкатегорию.
+     *
+     * Валидация:
+     * - извлекается формат region-number;
+     * - проверяется существование клетки в ExtMap.
+     *
+     * Зависимости:
+     * - buildAutocompleteValues(...), resolveCellNumber(...), ExtMap.Cells;
+     * - onCellPicked передает выбранную клетку в слой сохранения.
+     */
     private void showAddCellDialog(String categoryTitle, OnCellPicked onCellPicked, Runnable onChanged) {
         android.widget.AutoCompleteTextView input = new android.widget.AutoCompleteTextView(context);
         input.setHint("Клетка (напр. 8-259)");
@@ -465,13 +800,20 @@ public class Navigator {
                 .show();
     }
 
+    /**
+     * Диалог создания новой подкатегории в секции "Города".
+     *
+     * Зависимости:
+     * - sanitizeCitySubcategoryName(...), addCitySubcategory(...);
+     * - saveCitySubcategories(...) через addCitySubcategory(...).
+     */
     private void showAddCitySubcategoryDialog(Runnable onChanged) {
         EditText input = new EditText(context);
         input.setHint("Название подкатегории");
         input.setSingleLine(true);
 
         new AlertDialog.Builder(context)
-                .setTitle("Новая подкатегория: Города")
+                .setTitle("Новая категория: Избранное")
                 .setView(input)
                 .setPositiveButton("Добавить", (d, w) -> {
                     String name = sanitizeCitySubcategoryName(input.getText().toString());
@@ -490,6 +832,11 @@ public class Navigator {
                 .show();
     }
 
+    /**
+     * Формирует список автоподсказок для ввода клетки:
+     * - источник: ExtMap.Cells;
+     * - формат: "region-number - имя клетки".
+     */
     private String[] buildAutocompleteValues() {
         if (ExtMap.Cells == null || ExtMap.Cells.isEmpty()) return new String[0];
         ArrayList<String> values = new ArrayList<>();
@@ -498,6 +845,9 @@ public class Navigator {
         return values.toArray(new String[0]);
     }
 
+    /**
+     * Возвращает display-метку клетки в формате "cell - name/tooltip".
+     */
     private String buildCellLabel(String cellNum) {
         if (cellNum == null) return "";
         ru.neverlands.abclient.model.Cell c = ExtMap.Cells != null ? ExtMap.Cells.get(cellNum) : null;
@@ -509,12 +859,24 @@ public class Navigator {
         return suffix.isEmpty() ? cellNum : (cellNum + " - " + suffix);
     }
 
+    /**
+     * Универсально извлекает cellNumber из произвольной строки.
+     *
+     * Пример:
+     * - "8-259" -> "8-259"
+     * - "8-259 - Форпост" -> "8-259"
+     */
     private String resolveCellNumber(String raw) {
         if (raw == null) return "";
         Matcher m = CELL_PATTERN.matcher(raw.trim());
         return m.find() ? m.group(1) : "";
     }
 
+    /**
+     * Нормализует и сортирует массив клеток:
+     * - удаляет мусор/дубликаты;
+     * - оставляет только валидный формат region-number.
+     */
     private String[] sortAndNormalizeCells(String[] source) {
         if (source == null || source.length == 0) return new String[0];
         LinkedHashSet<String> normalized = new LinkedHashSet<>();
@@ -527,6 +889,9 @@ public class Navigator {
         return arr;
     }
 
+    /**
+     * Добавляет клетку в массив с учетом нормализации и дедупликации.
+     */
     private String[] appendCellToArray(String[] source, String cellNum) {
         String normalized = resolveCellNumber(cellNum);
         if (normalized.isEmpty()) return source == null ? new String[0] : source;
@@ -541,6 +906,9 @@ public class Navigator {
         return sortAndNormalizeCells(set.toArray(new String[0]));
     }
 
+    /**
+     * Удаляет клетку из массива по нормализованному идентификатору.
+     */
     private String[] removeCellFromArray(String[] source, String cellNum) {
         String normalized = resolveCellNumber(cellNum);
         ArrayList<String> result = new ArrayList<>();
@@ -553,18 +921,34 @@ public class Navigator {
         return result.toArray(new String[0]);
     }
 
+    /**
+     * Добавляет клетку в одну из базовых категорий навигатора профиля.
+     *
+     * Зависимости:
+     * - getCategoryCells/applyCategoryCells;
+     * - AppVars.Profile.save(context) для персистентности.
+     */
     private void addCellToCategory(int categoryId, String cellNum) {
         if (AppVars.Profile == null) return;
         applyCategoryCells(categoryId, appendCellToArray(getCategoryCells(categoryId), cellNum));
         AppVars.Profile.save(context);
     }
 
+    /**
+     * Удаляет клетку из базовой категории навигатора профиля.
+     */
     private void removeCellFromCategory(int categoryId, String cellNum) {
         if (AppVars.Profile == null) return;
         applyCategoryCells(categoryId, removeCellFromArray(getCategoryCells(categoryId), cellNum));
         AppVars.Profile.save(context);
     }
 
+    /**
+     * Читает клетки базовой категории из профиля.
+     *
+     * Важно:
+     * - часть категорий имеет дефолтные значения, если в профиле пусто.
+     */
     private String[] getCategoryCells(int categoryId) {
         if (AppVars.Profile == null) return new String[0];
         switch (categoryId) {
@@ -578,6 +962,13 @@ public class Navigator {
         }
     }
 
+    /**
+     * Применяет обновленный список клеток в выбранную категорию профиля.
+     *
+     * Зависимости:
+     * - методы UserConfig setNav*Locations(...);
+     * - sortAndNormalizeCells(...) для согласованного формата.
+     */
     private void applyCategoryCells(int categoryId, String[] cells) {
         if (AppVars.Profile == null) return;
         switch (categoryId) {
@@ -591,31 +982,59 @@ public class Navigator {
         }
     }
 
+    /**
+     * Избранные клетки (пользовательская категория).
+     */
     private String[] navFavCells() {
         if (AppVars.Profile == null || AppVars.Profile.FavLocations == null) return new String[0];
         return sortAndNormalizeCells(AppVars.Profile.FavLocations);
     }
 
+    /**
+     * Дефолт/значения профиля для подкатегории "Деревня".
+     */
     private String[] navCityVillageCells() {
         if (AppVars.Profile == null || AppVars.Profile.NavCityVillageLocations == null) return new String[] {"8-197"};
         return sortAndNormalizeCells(AppVars.Profile.NavCityVillageLocations);
     }
 
+    /**
+     * Дефолт/значения профиля для подкатегории "Форпост".
+     */
     private String[] navCityForpostCells() {
         if (AppVars.Profile == null || AppVars.Profile.NavCityForpostLocations == null) return new String[] {"8-259", "8-294"};
         return sortAndNormalizeCells(AppVars.Profile.NavCityForpostLocations);
     }
 
+    /**
+     * Дефолт/значения профиля для подкатегории "Октал".
+     */
     private String[] navCityOktalCells() {
         if (AppVars.Profile == null || AppVars.Profile.NavCityOktalLocations == null) return new String[] {"12-428", "12-494", "12-521"};
         return sortAndNormalizeCells(AppVars.Profile.NavCityOktalLocations);
     }
 
+    private String[] navCityAllCells() {
+        LinkedHashSet<String> set = new LinkedHashSet<>();
+        for (String c : navCityVillageCells()) set.add(c);
+        for (String c : navCityForpostCells()) set.add(c);
+        for (String c : navCityOktalCells()) set.add(c);
+        return sortAndNormalizeCells(set.toArray(new String[0]));
+    }
+
+    /**
+     * Дефолт/значения профиля для категории "Объекты".
+     */
     private String[] navObjectCells() {
         if (AppVars.Profile == null || AppVars.Profile.NavObjectLocations == null) return new String[] {"8-227", "2-482", "9-494", "26-430"};
         return sortAndNormalizeCells(AppVars.Profile.NavObjectLocations);
     }
 
+    /**
+     * Список телепортов:
+     * - сначала профиль;
+     * - если пусто, fallback на ExtMap.Teleports.
+     */
     private String[] navTelepCells() {
         if (AppVars.Profile != null && AppVars.Profile.NavTeleportLocations != null && AppVars.Profile.NavTeleportLocations.length > 0) {
             return sortAndNormalizeCells(AppVars.Profile.NavTeleportLocations);
@@ -626,20 +1045,32 @@ public class Navigator {
         return keys;
     }
 
+    /**
+     * Возвращает список подкатегорий секции "Города":
+     * - из профиля, если есть;
+     * - иначе дефолтные подкатегории.
+     */
     private List<CitySubcategory> getCitySubcategories() {
         if (AppVars.Profile == null) return buildDefaultCitySubcategories();
         List<CitySubcategory> parsed = parseCitySubcategories(AppVars.Profile.NavCitySubcategories);
         return parsed.isEmpty() ? buildDefaultCitySubcategories() : parsed;
     }
 
+    /**
+     * Дефолтный набор подкатегорий для "Города".
+     */
     private List<CitySubcategory> buildDefaultCitySubcategories() {
         ArrayList<CitySubcategory> defaults = new ArrayList<>();
-        defaults.add(new CitySubcategory("Деревня", navCityVillageCells()));
-        defaults.add(new CitySubcategory("Форпост", navCityForpostCells()));
-        defaults.add(new CitySubcategory("Октал", navCityOktalCells()));
+        defaults.add(new CitySubcategory("Избранное", navFavCells()));
         return defaults;
     }
 
+    /**
+     * Парсит строку профиля NavCitySubcategories в список моделей.
+     *
+     * Формат:
+     * - "Имя|8-259,8-294;Другая|12-428".
+     */
     private List<CitySubcategory> parseCitySubcategories(String raw) {
         ArrayList<CitySubcategory> result = new ArrayList<>();
         if (raw == null || raw.trim().isEmpty()) return result;
@@ -656,6 +1087,9 @@ public class Navigator {
         return result;
     }
 
+    /**
+     * Санитизирует имя подкатегории от служебных разделителей формата.
+     */
     private String sanitizeCitySubcategoryName(String name) {
         if (name == null) return "";
         String sanitized = name.replace(CITY_SUBCATEGORY_ENTRY_DELIMITER, " ")
@@ -665,6 +1099,9 @@ public class Navigator {
         return sanitized;
     }
 
+    /**
+     * Ищет индекс подкатегории по имени (без учета регистра).
+     */
     private int findCitySubcategoryIndex(List<CitySubcategory> list, String name) {
         for (int i = 0; i < list.size(); i++) {
             CitySubcategory s = list.get(i);
@@ -673,6 +1110,9 @@ public class Navigator {
         return -1;
     }
 
+    /**
+     * Сериализует список подкатегорий в строковый формат профиля.
+     */
     private String encodeCitySubcategories(List<CitySubcategory> subcategories) {
         if (subcategories == null || subcategories.isEmpty()) return "";
         StringBuilder sb = new StringBuilder();
@@ -691,6 +1131,11 @@ public class Navigator {
         return sb.toString();
     }
 
+    /**
+     * Добавляет новую подкатегорию "Города" в профиль.
+     *
+     * @return true если добавлено; false если имя пустое/дубликат/нет профиля
+     */
     private boolean addCitySubcategory(String name) {
         if (AppVars.Profile == null) return false;
         String normalizedName = sanitizeCitySubcategoryName(name);
@@ -702,6 +1147,9 @@ public class Navigator {
         return true;
     }
 
+    /**
+     * Удаляет подкатегорию "Города" по имени.
+     */
     private void removeCitySubcategory(String name) {
         if (AppVars.Profile == null) return;
         List<CitySubcategory> subcategories = getCitySubcategories();
@@ -711,6 +1159,9 @@ public class Navigator {
         saveCitySubcategories(subcategories);
     }
 
+    /**
+     * Добавляет клетку в конкретную подкатегорию "Города".
+     */
     private void addCellToCitySubcategory(String subcategoryName, String cellNum) {
         if (AppVars.Profile == null) return;
         List<CitySubcategory> subcategories = getCitySubcategories();
@@ -721,6 +1172,9 @@ public class Navigator {
         saveCitySubcategories(subcategories);
     }
 
+    /**
+     * Удаляет клетку из конкретной подкатегории "Города".
+     */
     private void removeCellFromCitySubcategory(String subcategoryName, String cellNum) {
         if (AppVars.Profile == null) return;
         List<CitySubcategory> subcategories = getCitySubcategories();
@@ -731,18 +1185,50 @@ public class Navigator {
         saveCitySubcategories(subcategories);
     }
 
+    /**
+     * Сохраняет текущее состояние подкатегорий "Города" в профиль.
+     */
     private void saveCitySubcategories(List<CitySubcategory> subcategories) {
         if (AppVars.Profile == null) return;
         AppVars.Profile.NavCitySubcategories = encodeCitySubcategories(subcategories);
+        AppVars.Profile.FavLocations = flattenCells(subcategories);
         AppVars.Profile.save(context);
     }
 
+    private String[] flattenCells(List<CitySubcategory> subcategories) {
+        LinkedHashSet<String> set = new LinkedHashSet<>();
+        if (subcategories != null) {
+            for (CitySubcategory sub : subcategories) {
+                if (sub == null || sub.cells == null) continue;
+                for (String cell : sub.cells) {
+                    String normalized = resolveCellNumber(cell);
+                    if (!normalized.isEmpty()) set.add(normalized);
+                }
+            }
+        }
+        return sortAndNormalizeCells(set.toArray(new String[0]));
+    }
+
+    /**
+     * Ленивая инициализация кэша индекса map.xml.
+     */
     private NavigatorMapIndex getNavigatorMapIndex() {
         if (mapIndexCache != null) return mapIndexCache;
         mapIndexCache = buildNavigatorMapIndex();
         return mapIndexCache;
     }
 
+    /**
+     * Строит индекс карты из assets/map.xml для вкладок:
+     * - Боты: по тегам bots (name/minLevel/maxLevel);
+     * - Травы: по атрибуту herbGroup;
+     * - Рыбалка: по hasWater=True.
+     *
+     * Зависимости:
+     * - XmlPullParser;
+     * - deriveFishCategory(...) для ключа вкладки "Рыбалка";
+     * - resolveCellNumber(...) для нормализации ключей клеток.
+     */
     private NavigatorMapIndex buildNavigatorMapIndex() {
         NavigatorMapIndex index = new NavigatorMapIndex();
         AssetManager assets = context.getAssets();
@@ -805,12 +1291,18 @@ public class Navigator {
         return index;
     }
 
+    /**
+     * Формирует человекочитаемый ключ категории рыбалки.
+     */
     private String deriveFishCategory(String name, String tooltip) {
         if (name != null && !name.trim().isEmpty()) return "Рыба: " + name.trim();
         if (tooltip != null && !tooltip.trim().isEmpty()) return "Рыба: " + tooltip.trim();
         return "Рыба: Без названия";
     }
 
+    /**
+     * Компаратор диапазонов уровней в формате "min-max".
+     */
     private int compareLevelRanges(String left, String right) {
         String[] l = left.split("-");
         String[] r = right.split("-");
@@ -823,14 +1315,23 @@ public class Navigator {
         return left.compareToIgnoreCase(right);
     }
 
+    /**
+     * Безопасный парсинг int с fallback-значением.
+     */
     private int parseIntSafe(String value, int fallback) {
         try { return Integer.parseInt(value); } catch (Exception e) { return fallback; }
     }
 
+    /**
+     * Null-safe trim.
+     */
     private String safeTrim(String value) {
         return value == null ? "" : value.trim();
     }
 
+    /**
+     * Перевод dp в px.
+     */
     private int dpToPx(int dp) {
         return Math.round(dp * context.getResources().getDisplayMetrics().density);
     }
