@@ -153,6 +153,15 @@ public class Filter {
             return Russian.getBytes(html);
         }
 
+        if (address.contains("teleport_ajax.php")) {
+            String html = Russian.getString(array);
+            String telepResult = TeleportAjax.process(html);
+            if (telepResult != null) {
+                return Russian.getBytes(telepResult);
+            }
+            return Russian.getBytes(html);
+        }
+
         if (address.contains("map_act_ajax.php")) {
             return MapActAjaxPhp.process(array);
         }
@@ -178,6 +187,13 @@ public class Filter {
         }
 
         return array;
+    }
+
+    public static String buildRedirectString(String description, String link) {
+        return ru.neverlands.abclient.utils.HtmlUtils.GENERATED_PAGE_MARKER +
+               "<html><head><meta http-equiv=\"Content-Type\" content=\"text/html; charset=windows-1251\"><title>ABClient</title></head><body>" +
+               description +
+               "<script language=\"JavaScript\">if(typeof AndroidBridge !== 'undefined' && AndroidBridge.redirectToUrl){ AndroidBridge.redirectToUrl(\"" + link + "\"); } else { window.location = \"" + link + "\"; }</script></body></html>";
     }
 
     public static byte[] buildRedirect(String description, String link) {

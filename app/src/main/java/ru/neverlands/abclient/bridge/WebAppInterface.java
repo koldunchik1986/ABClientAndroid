@@ -224,17 +224,27 @@ public class WebAppInterface {
     }
 
     /**
-     * C# parity: уведомление о перегрузе массы во время рыбалки.
+     * C# parity (`FormMainCross.FishOverload`):
+     * вызывается из map.js при перегрузе инвентаря во время рыбалки.
+     *
+     * Поведение (1:1 с C#):
+     * - Если {@code FishStopOverWeight = false} — просто возвращаемся, ничего не делаем;
+     * - Если {@code FishStopOverWeight = true} — останавливаем авто-рыбалку.
      *
      * Зависимости:
-     * - `mContext` для показа системного `Toast`;
-     * - вызывается из JS (`window.external.FishOverload()`) при состоянии overweight.
-     *
-     * Метод только уведомляет пользователя, логику авто-функций не изменяет.
+     * - {@link ru.neverlands.abclient.model.UserConfig#FishStopOverWeight};
+     * - {@link AutoFunctionsManager#setAutoFishEnabled(boolean)} — останавливает авто-рыбалку.
      */
     @JavascriptInterface
     public void FishOverload() {
-        Toast.makeText(mContext, "Перегруз: рыбалка может остановиться", Toast.LENGTH_SHORT).show();
+        if (AppVars.Profile == null || !AppVars.Profile.FishStopOverWeight) {
+            return;
+        }
+        try {
+            AutoFunctionsManager.getInstance(mContext).setAutoFishEnabled(false);
+        } catch (Exception e) {
+            android.util.Log.e("WebAppInterface", "FishOverload: stopAutoFish failed", e);
+        }
     }
 
     /**

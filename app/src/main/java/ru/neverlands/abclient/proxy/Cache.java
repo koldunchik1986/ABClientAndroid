@@ -56,16 +56,16 @@ public class Cache {
      * @return данные или null, если данных нет или требуется обновление
      */
     public static byte[] get(String url, boolean cacheRefresh) {
-        if (url == null || url.isEmpty() || cacheRefresh) {
+        if (url == null || url.isEmpty()) {
             return null;
         }
-        
+
         String key = getKey(url);
 
         synchronized (lock) {
             byte[] data = memCache.get(key);
             if (data == null) {
-                data = getDisk(key);
+                data = getDisk(key, cacheRefresh);
                 if (data != null) {
                     memCache.put(key, data);
                 }
@@ -108,10 +108,14 @@ public class Cache {
     /**
      * Получение данных с диска
      * @param key ключ
+     * @param cacheRefresh если true — не читать с диска (только MemCache)
      * @return данные или null при ошибке
      */
-    private static byte[] getDisk(String key) {
-        if (key == null || key.isEmpty()) {
+    private static byte[] getDisk(String key, boolean cacheRefresh) {
+        if (key == null || key.isEmpty() || cacheRefresh) {
+            return null;
+        }
+        if (key.contains(".js")) {
             return null;
         }
         

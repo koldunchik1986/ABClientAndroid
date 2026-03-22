@@ -167,7 +167,7 @@ public class AppVars {
      * - NeverApi/getInfo (опрос API и логов),
      * - MainActivity/downloadCaptchaImageBytes (загрузка изображения капчи).
      */
-    public static final String BROWSER_USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36";
+    public static final String BROWSER_USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36";
 
     public static byte[] lastMainPhpResponse;
     public static byte[] lastChatMsgResponse;
@@ -277,6 +277,11 @@ public class AppVars {
     public static String Chat = "";
     public static String MovingTime = "";
     public static boolean AutoMoving = false;
+    public static String AutoMovingDestinaton = null;
+    public static ru.neverlands.abclient.utils.MapPath AutoMovingMapPath = null;
+    public static String AutoMovingNextJump = null;
+    public static int AutoMovingJumps = 0;
+    public static ru.neverlands.abclient.model.CityGateType AutoMovingCityGate = ru.neverlands.abclient.model.CityGateType.None;
     public static WeakReference<MainActivity> mainActivity;
 
     public static java.util.Map<String, String> myCharsOld = new java.util.LinkedHashMap<>();
@@ -330,6 +335,7 @@ public class AppVars {
         AppVars.context = context;
         assetManager = context.getAssets();
         ru.neverlands.abclient.model.LezSpellCollection.init(context);
+        ExtMap.init(context);
         logsDir = context.getExternalFilesDir("Logs");
         if (logsDir != null && !logsDir.exists()) {
             logsDir.mkdirs();

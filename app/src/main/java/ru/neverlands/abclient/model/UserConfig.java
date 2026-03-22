@@ -181,6 +181,23 @@ public class UserConfig {
     public boolean TorgActive = false;
     public boolean DoGuamod = false;
 
+    public String MapLocation = "";
+    public boolean NavigatorAllowTeleports = true;
+    public String[] FavLocations = new String[0];
+
+    public void addFavLocation(String loc) {
+        if (loc == null || loc.trim().isEmpty()) return;
+        String trimmed = loc.trim();
+        String[] arr = new String[FavLocations.length + 1];
+        System.arraycopy(FavLocations, 0, arr, 0, FavLocations.length);
+        arr[FavLocations.length] = trimmed;
+        FavLocations = arr;
+    }
+
+    public void clearFavLocations() {
+        FavLocations = new String[0];
+    }
+
     public int ChatHeight = 115;
     public int ChatDelay = 10;
     public int ChatMode = 0;
@@ -561,6 +578,16 @@ public class UserConfig {
                         if (this.AutoDrinkBlazOrder < 0 || this.AutoDrinkBlazOrder > 1) {
                             this.AutoDrinkBlazOrder = 0;
                         }
+                    } else if ("navigator".equalsIgnoreCase(tagName)) {
+                        this.NavigatorAllowTeleports = parseBoolAttr(parser, "allowteleports", this.NavigatorAllowTeleports);
+                    } else if ("favlocation".equalsIgnoreCase(tagName)) {
+                        String loc = parseNodeText(parser, null);
+                        if (loc != null && !loc.trim().isEmpty()) {
+                            String[] arr = new String[this.FavLocations.length + 1];
+                            System.arraycopy(this.FavLocations, 0, arr, 0, this.FavLocations.length);
+                            arr[this.FavLocations.length] = loc.trim();
+                            this.FavLocations = arr;
+                        }
                     }
                 }
                 eventType = parser.next();
@@ -771,6 +798,21 @@ public class UserConfig {
                 }
             }
             serializer.endTag(null, "lezgroups");
+
+            serializer.startTag(null, "navigator");
+            serializer.attribute(null, "allowteleports", String.valueOf(this.NavigatorAllowTeleports));
+            serializer.endTag(null, "navigator");
+            serializer.startTag(null, "favlocations");
+            if (this.FavLocations != null) {
+                for (String loc : this.FavLocations) {
+                    if (loc != null && !loc.isEmpty()) {
+                        serializer.startTag(null, "favlocation");
+                        serializer.text(loc);
+                        serializer.endTag(null, "favlocation");
+                    }
+                }
+            }
+            serializer.endTag(null, "favlocations");
 
             serializer.endTag(null, "profile");
             serializer.endDocument();

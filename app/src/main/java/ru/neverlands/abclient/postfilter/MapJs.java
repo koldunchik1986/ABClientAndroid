@@ -37,10 +37,16 @@ public class MapJs {
 
     /**
      * JS-prelude со стабами функций, которые должны существовать до выполнения server-side `map.js`.
-     * Важно: это no-op определения, они не вмешиваются в логику, а только предотвращают `ReferenceError`.
+     *
+     * Включает:
+     * - алиас {@code window.external = window.AndroidBridge} — гарантирует, что все вызовы
+     *   {@code window.external.ShowOverWarning()}, {@code window.external.IsAutoFish()} и т.д.
+     *   доступны даже если map.js грузится до {@code onPageFinished} основного фрейма;
+     * - no-op стабы функций, предотвращающие {@code ReferenceError} при инициализации скрипта.
      */
     private static final String MAP_JS_SAFE_PRELUDE =
             ABCLIENT_MAP_STUB_MARKER + "\n" +
+            "if (typeof window.AndroidBridge !== 'undefined') { window.external = window.AndroidBridge; }\n" +
             "if (typeof window.ins_HP !== 'function') { window.ins_HP = function() {}; }\n" +
             "if (typeof window.cha_HP !== 'function') { window.cha_HP = function() {}; }\n" +
             "if (typeof window.slots_inv !== 'function') { window.slots_inv = function() {}; }\n";

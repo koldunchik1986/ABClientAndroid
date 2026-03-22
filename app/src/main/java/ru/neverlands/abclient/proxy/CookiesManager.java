@@ -3,6 +3,8 @@ package ru.neverlands.abclient.proxy;
 import android.webkit.CookieManager;
 import android.webkit.ValueCallback;
 
+import ru.neverlands.abclient.utils.AppVars;
+
 /**
  * Менеджер куки.
  * Аналог CookiesManager.cs в оригинальном приложении.
@@ -50,6 +52,25 @@ public class CookiesManager {
         }
         try {
             String normalized = normalizeHost(host);
+
+            if ("www.neverlands.ru".equals(normalized) || "neverlands.ru".equals(normalized)) {
+                if (cookieHeader.toLowerCase().startsWith("nevernick=")) {
+                    String encodedNick = cookieHeader.substring("NeverNick=".length());
+                    int semiPos = encodedNick.indexOf(';');
+                    if (semiPos != -1) encodedNick = encodedNick.substring(0, semiPos);
+                    try {
+                        String nick = java.net.URLDecoder.decode(encodedNick, "windows-1251");
+                        if (AppVars.Profile != null && !nick.isEmpty()) {
+                            if (!nick.equalsIgnoreCase(AppVars.Profile.UserNick)) {
+                                android.util.Log.e("CookiesManager", "NeverNick mismatch: expected="
+                                        + AppVars.Profile.UserNick + ", got=" + nick);
+                            }
+                            AppVars.Profile.UserNick = nick;
+                        }
+                    } catch (Exception ignored) {}
+                }
+            }
+
             CookieManager manager = CookieManager.getInstance();
             manager.setCookie(toCookieUrl(normalized), cookieHeader);
             if ("neverlands.ru".equals(normalized)) {
@@ -119,7 +140,7 @@ public class CookiesManager {
         // Логика нормализации из старой версии сохранена на всякий случай.
         String h = host.trim().toLowerCase();
         if (h.equals("forum.neverlands.ru")) {
-            return "neverlands.ru";
+            return "www.neverlands.ru";
         }
         return h;
     }

@@ -37,8 +37,10 @@ import ru.neverlands.abclient.manager.ContactsManager;
 import ru.neverlands.abclient.manager.FastActionManager;
 import ru.neverlands.abclient.manager.TabManager;
 import ru.neverlands.abclient.manager.AutoFunctionsManager;
+import ru.neverlands.abclient.model.Cell;
 import ru.neverlands.abclient.utils.AppVars;
 import ru.neverlands.abclient.utils.ChatStats;
+import ru.neverlands.abclient.utils.ExtMap;
 import androidx.fragment.app.FragmentActivity;
 
 /**
@@ -479,9 +481,7 @@ public class QuickButtonsPanel {
                 loadAndUpdateButtons();
                 break;
             case AUTO_MOVING:
-                autoFunctionsManager.toggleAutoMoving();
-                Toast.makeText(context, autoFunctionsManager.isAutoMovingEnabled() ? "Авто-Движение ВКЛ" : "Авто-Движение ВЫКЛ", Toast.LENGTH_SHORT).show();
-                loadAndUpdateButtons();
+                showNavigatorDialog();
                 break;
             case AUTO_CUT:
                 autoFunctionsManager.toggleAutoCut();
@@ -622,6 +622,18 @@ public class QuickButtonsPanel {
                     .setItems(new CharSequence[]{"Интервал опроса локации", "Удалить кнопку"}, (dialog, which) -> {
                         if (which == 0) {
                             showWalkersPollIntervalSelector();
+                        } else {
+                            showRemoveConfirmation(position);
+                        }
+                    })
+                    .setNegativeButton("Отмена", null)
+                    .show();
+        } else if (button.getActionType() == QuickActionType.AUTO_MOVING) {
+            new AlertDialog.Builder(context)
+                    .setTitle("Навигатор")
+                    .setItems(new CharSequence[]{"Запустить / выбрать пункт назначения", "Удалить кнопку"}, (dialog, which) -> {
+                        if (which == 0) {
+                            showNavigatorDialog();
                         } else {
                             showRemoveConfirmation(position);
                         }
@@ -1212,6 +1224,203 @@ public class QuickButtonsPanel {
     // Утилита для перевода dp -> px.
     private int dpToPx(int dp) {
         return Math.round(dp * context.getResources().getDisplayMetrics().density);
+    }
+
+    /**
+     * Диалог навигатора — порт FormNavigator.cs.
+     *
+     * Поведение:
+     * - Если AutoMoving уже включён → предлагает остановить навигацию.
+     * - Если выключен → открывает выбор пункта назначения:
+     *   список Избранных, стандартных локаций, телепортов;
+     *   поле ввода ячейки вручную; чекбокс "Разрешить телепорты";
+     *   кнопки «Добавить в избранное» и «Очистить избранное».
+     *
+     * Зависимости:
+     * - {@link AppVars#AutoMoving}, {@link AppVars#AutoMovingDestinaton} — текущее состояние навигации;
+     * - {@link AppVars#Profile#MapLocation} — текущая позиция игрока;
+     * - {@link AppVars#Profile#NavigatorAllowTeleports} — флаг разрешения телепортов;
+     * - {@link AppVars#Profile#FavLocations} — массив избранных ячеек;
+     * - {@link ExtMap#Cells} — справочник ячеек (название/tooltip) из extmap.txt;
+     * - {@link ExtMap#Teleports} — справочник телепортов из extmap.txt;
+     * - {@link AutoFunctionsManager#startAutoMoving(String)} — запуск навигации;
+     * - {@link AutoFunctionsManager#stopAutoMoving()} — остановка навигации.
+     */
+    private void showNavigatorDialog() {
+        if (AppVars.AutoMoving) {
+            String dest = AppVars.AutoMovingDestinaton != null ? AppVars.AutoMovingDestinaton : "?";
+            new AlertDialog.Builder(context)
+                    .setTitle("Навигатор")
+                    .setMessage("Навигатор активен. Пункт назначения: " + dest + "\nОстановить?")
+                    .setPositiveButton("Остановить", (d, w) -> {
+                        autoFunctionsManager.stopAutoMoving();
+                        Toast.makeText(context, "Навигатор остановлен", Toast.LENGTH_SHORT).show();
+                        loadAndUpdateButtons();
+                    })
+                    .setNegativeButton("Отмена", null)
+                    .show();
+            return;
+        }
+
+        int pad = dpToPx(16);
+
+        LinearLayout root = new LinearLayout(context);
+        root.setOrientation(LinearLayout.VERTICAL);
+        root.setPadding(pad, pad, pad, 0);
+
+        String currentLoc = (AppVars.Profile != null
+                && AppVars.Profile.MapLocation != null
+                && !AppVars.Profile.MapLocation.isEmpty())
+                ? AppVars.Profile.MapLocation : "неизвестно";
+
+        TextView locLabel = new TextView(context);
+        locLabel.setText("Текущая позиция: " + currentLoc);
+        locLabel.setTextColor(0xFF666666);
+        root.addView(locLabel);
+
+        android.widget.AutoCompleteTextView destInput = new android.widget.AutoCompleteTextView(context);
+        destInput.setHint("Номер ячейки (напр. 8-259)");
+        destInput.setSingleLine();
+        destInput.setThreshold(1);
+        if (ExtMap.Cells != null && !ExtMap.Cells.isEmpty()) {
+            String[] cellKeys = ExtMap.Cells.keySet().toArray(new String[0]);
+            java.util.Arrays.sort(cellKeys);
+            ArrayAdapter<String> acAdapter = new ArrayAdapter<>(context,
+                    android.R.layout.simple_dropdown_item_1line, cellKeys);
+            destInput.setAdapter(acAdapter);
+        }
+        root.addView(destInput);
+
+        CheckBox allowTeleCb = new CheckBox(context);
+        allowTeleCb.setText("Разрешить телепорты");
+        allowTeleCb.setChecked(AppVars.Profile == null || AppVars.Profile.NavigatorAllowTeleports);
+        root.addView(allowTeleCb);
+
+        LinearLayout favBtns = new LinearLayout(context);
+        favBtns.setOrientation(LinearLayout.HORIZONTAL);
+        android.widget.Button addFavBtn = new android.widget.Button(context);
+        addFavBtn.setText("+ Избранное");
+        addFavBtn.setTextSize(12);
+        android.widget.Button clearFavBtn = new android.widget.Button(context);
+        clearFavBtn.setText("Очистить изб.");
+        clearFavBtn.setTextSize(12);
+        LinearLayout.LayoutParams half = new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f);
+        favBtns.addView(addFavBtn, half);
+        favBtns.addView(clearFavBtn, half);
+        root.addView(favBtns);
+
+        ScrollView scroll = new ScrollView(context);
+        scroll.setLayoutParams(new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, dpToPx(220)));
+        LinearLayout listLayout = new LinearLayout(context);
+        listLayout.setOrientation(LinearLayout.VERTICAL);
+        listLayout.setPadding(0, dpToPx(4), 0, dpToPx(8));
+
+        addNavGroup(listLayout, "Избранные", navFavCells(), destInput);
+        addNavGroup(listLayout, "Форпост", new String[]{"8-259", "8-294"}, destInput);
+        addNavGroup(listLayout, "Деревня", new String[]{"8-197"}, destInput);
+        addNavGroup(listLayout, "Октал", new String[]{"12-428", "12-494", "12-521"}, destInput);
+        addNavGroup(listLayout, "Объекты", new String[]{"8-227", "2-482", "9-494", "26-430"}, destInput);
+        addNavGroup(listLayout, "Телепорты", navTelepCells(), destInput);
+
+        scroll.addView(listLayout);
+        root.addView(scroll);
+
+        AlertDialog dialog = new AlertDialog.Builder(context)
+                .setTitle("Навигатор")
+                .setView(root)
+                .setPositiveButton("Начать", null)
+                .setNegativeButton("Отмена", null)
+                .create();
+
+        allowTeleCb.setOnCheckedChangeListener((cb, checked) -> {
+            if (AppVars.Profile != null) {
+                AppVars.Profile.NavigatorAllowTeleports = checked;
+            }
+        });
+
+        addFavBtn.setOnClickListener(v -> {
+            String cell = destInput.getText().toString().trim();
+            if (!cell.isEmpty() && AppVars.Profile != null) {
+                AppVars.Profile.addFavLocation(cell);
+                Toast.makeText(context, "Добавлено в избранное: " + cell, Toast.LENGTH_SHORT).show();
+                listLayout.removeAllViews();
+                addNavGroup(listLayout, "Избранные", navFavCells(), destInput);
+                addNavGroup(listLayout, "Форпост", new String[]{"8-259", "8-294"}, destInput);
+                addNavGroup(listLayout, "Деревня", new String[]{"8-197"}, destInput);
+                addNavGroup(listLayout, "Октал", new String[]{"12-428", "12-494", "12-521"}, destInput);
+                addNavGroup(listLayout, "Объекты", new String[]{"8-227", "2-482", "9-494", "26-430"}, destInput);
+                addNavGroup(listLayout, "Телепорты", navTelepCells(), destInput);
+            } else {
+                Toast.makeText(context, "Введите номер ячейки", Toast.LENGTH_SHORT).show();
+            }
+        });
+
+        clearFavBtn.setOnClickListener(v -> {
+            if (AppVars.Profile != null) {
+                AppVars.Profile.clearFavLocations();
+                Toast.makeText(context, "Избранное очищено", Toast.LENGTH_SHORT).show();
+                listLayout.removeAllViews();
+                addNavGroup(listLayout, "Избранные", navFavCells(), destInput);
+                addNavGroup(listLayout, "Форпост", new String[]{"8-259", "8-294"}, destInput);
+                addNavGroup(listLayout, "Деревня", new String[]{"8-197"}, destInput);
+                addNavGroup(listLayout, "Октал", new String[]{"12-428", "12-494", "12-521"}, destInput);
+                addNavGroup(listLayout, "Объекты", new String[]{"8-227", "2-482", "9-494", "26-430"}, destInput);
+                addNavGroup(listLayout, "Телепорты", navTelepCells(), destInput);
+            }
+        });
+
+        dialog.setOnShowListener(d -> dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
+            String cell = destInput.getText().toString().trim();
+            if (cell.isEmpty()) {
+                Toast.makeText(context, "Введите пункт назначения", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            autoFunctionsManager.startAutoMoving(cell);
+            Toast.makeText(context, "Навигатор запущен → " + cell, Toast.LENGTH_SHORT).show();
+            loadAndUpdateButtons();
+            dialog.dismiss();
+        }));
+
+        dialog.show();
+    }
+
+    // Добавляет группу назначений в список навигатора.
+    private void addNavGroup(LinearLayout parent, String groupName, String[] cells, EditText destInput) {
+        if (cells == null || cells.length == 0) return;
+
+        TextView header = new TextView(context);
+        header.setText(groupName);
+        header.setTypeface(null, android.graphics.Typeface.BOLD);
+        header.setTextColor(0xFF005500);
+        header.setPadding(0, dpToPx(6), 0, dpToPx(2));
+        parent.addView(header);
+
+        for (String cellNum : cells) {
+            Cell cell = ExtMap.Cells != null ? ExtMap.Cells.get(cellNum) : null;
+            String tooltip = (cell != null && cell.Tooltip != null && !cell.Tooltip.isEmpty()) ? cell.Tooltip : "";
+            String label = cellNum + (tooltip.isEmpty() ? "" : " — " + tooltip);
+            TextView item = new TextView(context);
+            item.setText(label);
+            item.setTextColor(0xFF0000AA);
+            item.setPadding(dpToPx(8), dpToPx(2), 0, dpToPx(2));
+            item.setOnClickListener(v -> destInput.setText(cellNum));
+            parent.addView(item);
+        }
+    }
+
+    // Возвращает массив избранных ячеек из профиля.
+    private String[] navFavCells() {
+        if (AppVars.Profile == null || AppVars.Profile.FavLocations == null) return new String[0];
+        return AppVars.Profile.FavLocations;
+    }
+
+    // Возвращает массив ячеек телепортов из ExtMap, отсортированный по номеру.
+    private String[] navTelepCells() {
+        if (ExtMap.Teleports == null || ExtMap.Teleports.isEmpty()) return new String[0];
+        String[] keys = ExtMap.Teleports.keySet().toArray(new String[0]);
+        java.util.Arrays.sort(keys);
+        return keys;
     }
 
     // Диалог ввода ника и переход в pinfo.

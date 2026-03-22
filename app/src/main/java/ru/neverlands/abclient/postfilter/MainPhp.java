@@ -1111,9 +1111,23 @@ public class MainPhp {
             android.util.Log.d(TAG, "AUTO_SKIN_TRACE periodic knife recheck requested");
         }
     }
-    /**
-     * Порт `MainPhpRaz.cs`: проверка `fight_ty[9]` и автопереход на разделку.
-     */
+    private static String mainPhpWtime(String html) {
+        html = html.replace("id=wtime></div>", "id=wtime><i>\u0412\u044b\u043f\u043e\u043b\u043d\u044f\u0435\u0442\u0441\u044f \u0434\u0435\u0439\u0441\u0442\u0432\u0438\u0435...</i></div>");
+        String staticScriptEnd = "</SCRIPT>";
+        int poswt = html.toLowerCase(java.util.Locale.ROOT).lastIndexOf(staticScriptEnd.toLowerCase());
+        if (poswt != -1) {
+            poswt += staticScriptEnd.length();
+        }
+        if (poswt != -1 && AppVars.AutoMoving && AppVars.AutoMovingJumps > 0) {
+            String statusHtml = "<font class=nickname><div align=center style=\"color: #660066;\"><i>"
+                    + "\u041f\u0443\u043d\u043a\u0442 \u043d\u0430\u0437\u043d\u0430\u0447\u0435\u043d\u0438\u044f: <b>" + AppVars.AutoMovingDestinaton + "</b><br>"
+                    + "\u0415\u0449\u0435 \u043f\u0435\u0440\u0435\u0445\u043e\u0434\u043e\u0432: <b>" + AppVars.AutoMovingJumps + "</b>"
+                    + "</i></div></font>";
+            html = html.substring(0, poswt) + statusHtml + html.substring(poswt);
+        }
+        return html;
+    }
+
     private static String mainPhpRaz(String html) {
         String strFightTy = HelperStrings.subString(html, "var fight_ty = [", "];");
         if (strFightTy == null || strFightTy.isEmpty()) {
@@ -2659,10 +2673,26 @@ public class MainPhp {
             }
             html = mainPhpInv(html);
         }
+        if (AppVars.AutoMoving && html.contains(" id=wtime>")) {
+            html = mainPhpWtime(html);
+            AppVars.ContentMainPhp = html;
+            return Russian.getBytes(html);
+        }
+        if (AppVars.AutoMoving) {
+            String cityNavHtml = MainPhpCityNavigation.process(html);
+            if (cityNavHtml != null && !cityNavHtml.isEmpty()) {
+                return Russian.getBytes(cityNavHtml);
+            }
+            if (html.contains("var telep = ")) {
+                String telepHtml = TeleportAjax.process(html);
+                if (telepHtml != null && !telepHtml.isEmpty()) {
+                    return Russian.getBytes(telepHtml);
+                }
+            }
+        }
         if (html.contains("var map = [[")) {
             html = MapAjax.process(html);
         }
-        // ... other placeholders ...
         if (!(isFightFrame || isFightTopFrame)) {
             AppVars.ContentMainPhp = html;
         }

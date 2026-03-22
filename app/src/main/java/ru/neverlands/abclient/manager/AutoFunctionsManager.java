@@ -8,6 +8,7 @@ import ru.neverlands.abclient.model.AutoboiState;
 import ru.neverlands.abclient.model.QuickActionType;
 import ru.neverlands.abclient.service.AutoModeForegroundService;
 import ru.neverlands.abclient.utils.AppVars;
+import ru.neverlands.abclient.utils.MapPath;
 
 /**
  * Менеджер автоматических функций (авто-бой, авто-рыбалка и т.д.).
@@ -832,23 +833,64 @@ public class AutoFunctionsManager {
         Log.d(TAG, "setAutoDrinkEnabled: " + enabled);
     }
     
-    // === AUTO_MOVING (Авто-Движение) ===
-    
-    // Авто-движение: состояние.
+    // === AUTO_MOVING (Авто-Движение / Навигатор) ===
+    //
+    // Авто-движение — это не авто-функция с постоянным включением, а навигационное
+    // runtime-состояние (C# AppVars.AutoMoving). Хранится только в AppVars, не в SharedPreferences.
+    // Запуск и остановка: startAutoMoving(destination) / stopAutoMoving().
+
+    // Возвращает true, если навигатор активен (рейс к пункту назначения в процессе).
     public boolean isAutoMovingEnabled() {
-        return prefs.getBoolean(KEY_PREFIX + "auto_moving", false);
+        return AppVars.AutoMoving;
     }
-    
-    // Переключение авто-движения.
-    public void toggleAutoMoving() {
-        boolean newState = !isAutoMovingEnabled();
-        setAutoMovingEnabled(newState);
-    }
-    
-    // Включение/выключение авто-движения.
+
+    // Непосредственное включение/выключение флага навигатора (без выбора маршрута).
+    // Для полноценного запуска используйте startAutoMoving(destination).
     public void setAutoMovingEnabled(boolean enabled) {
-        prefs.edit().putBoolean(KEY_PREFIX + "auto_moving", enabled).apply();
+        AppVars.AutoMoving = enabled;
         Log.d(TAG, "setAutoMovingEnabled: " + enabled);
+    }
+
+    // Переключение флага навигатора (оставлен для совместимости; лучше использовать
+    // startAutoMoving / stopAutoMoving для полного управления маршрутом).
+    public void toggleAutoMoving() {
+        setAutoMovingEnabled(!AppVars.AutoMoving);
+    }
+
+    // Запуск навигатора к указанному пункту назначения.
+    public void startAutoMoving(String destination) {
+        if (destination == null || destination.isEmpty()) {
+            Log.w(TAG, "startAutoMoving: destination is empty");
+            return;
+        }
+        AppVars.AutoMovingDestinaton = destination;
+        AppVars.AutoMovingNextJump = null;
+        AppVars.AutoMovingJumps = 0;
+        AppVars.AutoMovingCityGate = ru.neverlands.abclient.model.CityGateType.None;
+        String mapLocation = (AppVars.Profile != null) ? AppVars.Profile.MapLocation : null;
+        if (mapLocation != null && !mapLocation.isEmpty()) {
+            MapPath path = new MapPath(mapLocation, java.util.Collections.singletonList(destination));
+            AppVars.AutoMovingMapPath = path;
+            AppVars.AutoMovingNextJump = path.nextJump;
+            AppVars.AutoMovingJumps = path.jumps;
+            AppVars.AutoMovingCityGate = path.cityGate;
+            Log.d(TAG, "startAutoMoving: destination=" + destination + " pathExists=" + path.pathExists + " jumps=" + path.jumps);
+        } else {
+            AppVars.AutoMovingMapPath = null;
+            Log.d(TAG, "startAutoMoving: destination=" + destination + " (MapLocation unknown, path will be built lazily)");
+        }
+        AppVars.AutoMoving = true;
+    }
+
+    // Остановка навигатора.
+    public void stopAutoMoving() {
+        AppVars.AutoMoving = false;
+        AppVars.AutoMovingDestinaton = null;
+        AppVars.AutoMovingMapPath = null;
+        AppVars.AutoMovingNextJump = null;
+        AppVars.AutoMovingJumps = 0;
+        AppVars.AutoMovingCityGate = ru.neverlands.abclient.model.CityGateType.None;
+        Log.d(TAG, "stopAutoMoving");
     }
     
     // === AUTO_CUT (Авто-Травник) ===

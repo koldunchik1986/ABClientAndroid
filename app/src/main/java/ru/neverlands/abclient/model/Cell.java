@@ -14,7 +14,6 @@ public class Cell {
     public String Updated;
     public String NameUpdated;
     public String CostUpdated;
-    public List<Object> Bots = new ArrayList<>(); // Using Object for now for MapBot
-
-    // TODO: Add methods like AddMapBot, etc.
+    public List<Object> Bots = new ArrayList<>();
+    public int MaxBotLevel = 0;
 }

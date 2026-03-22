@@ -1,26 +1,78 @@
 package ru.neverlands.abclient.utils;
 
+import ru.neverlands.abclient.model.Cell;
+import ru.neverlands.abclient.utils.ExtMap;
+
 public class MapPathNode implements Comparable<MapPathNode> {
     public String[] cellNumbers;
-    public String cellNumber;
-    public int cost;
+    public int[] costs;
     public boolean hasTeleport;
     public int botLevel;
+    public int jumps;
 
-    public MapPathNode(String cellNumber) {
-        this.cellNumber = cellNumber;
-        this.cellNumbers = new String[]{cellNumber};
-        // TODO: Initialize other fields
+    public String getCellNumber() {
+        return cellNumbers == null || cellNumbers.length == 0 ? null : cellNumbers[cellNumbers.length - 1];
     }
 
-    public MapPathNode AddCell(String newCellNumber, boolean isCity, boolean isTeleport) {
-        // TODO: Port logic from MapPathNode.cs
-        return null;
+    public int getCost() {
+        return costs == null || costs.length == 0 ? 0 : costs[costs.length - 1];
+    }
+
+    private MapPathNode() {}
+
+    public MapPathNode(String sourceCellNumber) {
+        cellNumbers = new String[]{sourceCellNumber};
+        hasTeleport = false;
+        botLevel = 0;
+        jumps = 0;
+        Cell cell = ExtMap.Cells.get(sourceCellNumber);
+        if (cell == null) {
+            costs = new int[]{0};
+            return;
+        }
+        costs = new int[]{0};
+        botLevel = cell.MaxBotLevel;
+    }
+
+    public MapPathNode addCell(String cellNumber, boolean isGate, boolean isTeleport) {
+        for (String cn : cellNumbers) {
+            if (cn.equals(cellNumber)) return null;
+        }
+        int cost = getCost();
+        int newJumps = jumps;
+        if (!isGate && !isTeleport) {
+            Cell currentCell = ExtMap.Cells.get(getCellNumber());
+            if (currentCell == null) return null;
+            cost += currentCell.Cost;
+            newJumps++;
+        }
+        boolean newHasTeleport = hasTeleport || isTeleport;
+        Cell cell = ExtMap.Cells.get(cellNumber);
+        if (cell == null) return null;
+        int maxBotLevel = Math.max(botLevel, cell.MaxBotLevel);
+
+        MapPathNode node = new MapPathNode();
+        node.cellNumbers = new String[cellNumbers.length + 1];
+        node.costs = new int[costs.length + 1];
+        System.arraycopy(cellNumbers, 0, node.cellNumbers, 0, cellNumbers.length);
+        System.arraycopy(costs, 0, node.costs, 0, costs.length);
+        node.cellNumbers[cellNumbers.length] = cellNumber;
+        node.costs[costs.length] = cost;
+        node.hasTeleport = newHasTeleport;
+        node.botLevel = maxBotLevel;
+        node.jumps = newJumps;
+        return node;
     }
 
     @Override
     public int compareTo(MapPathNode other) {
-        // TODO: Port comparison logic
-        return 0;
+        int result = Integer.compare(getCost(), other.getCost());
+        if (result != 0) return result;
+        result = Integer.compare(cellNumbers.length, other.cellNumbers.length);
+        if (result != 0) return result;
+        result = Integer.compare(botLevel, other.botLevel);
+        if (result != 0) return result;
+        result = Boolean.compare(hasTeleport, other.hasTeleport);
+        return result;
     }
 }
