@@ -117,6 +117,54 @@ public class MapJs {
                     + "}\n"
                     + "})();\n";
 
+    // Enforce map dimensions deterministically on every render cycle.
+    private static final String MAP_DIM_RUNTIME_GUARD_PATCH =
+            "/*ABCLIENT_MAP_DIM_GUARD*/\n"
+                    + "(function(){\n"
+                    + "if (window.__ab_map_dim_guard_applied) return;\n"
+                    + "window.__ab_map_dim_guard_applied = true;\n"
+                    + "function __ab_apply_dims(){\n"
+                    + "  try {\n"
+                    + "    width = 4;\n"
+                    + "    height = 3;\n"
+                    + "    scale = 75;\n"
+                    + "    abcmapwidth = (((width * 2) + 1) * scale) + (width * 2) + 2;\n"
+                    + "    abcmapheight = (((height * 2) + 1) * scale) + (height * 2) + 2;\n"
+                    + "  } catch (_ab_dim_e) {}\n"
+                    + "}\n"
+                    + "function __ab_wrap(name){\n"
+                    + "  try {\n"
+                    + "    var fn = window[name];\n"
+                    + "    if (typeof fn !== 'function' || fn.__ab_dim_wrapped) return false;\n"
+                    + "    var wrapped = function(){\n"
+                    + "      __ab_apply_dims();\n"
+                    + "      return fn.apply(this, arguments);\n"
+                    + "    };\n"
+                    + "    wrapped.__ab_dim_wrapped = true;\n"
+                    + "    window[name] = wrapped;\n"
+                    + "    return true;\n"
+                    + "  } catch (_ab_wrap_e) {\n"
+                    + "    return false;\n"
+                    + "  }\n"
+                    + "}\n"
+                    + "__ab_apply_dims();\n"
+                    + "try {\n"
+                    + "  if (window.console && typeof window.console.log === 'function') {\n"
+                    + "    window.console.log('AB_MAP_DIM_GUARD init w=' + width + ', h=' + height + ', s=' + scale);\n"
+                    + "  }\n"
+                    + "} catch (_ab_log_e) {}\n"
+                    + "var __ab_try = 0;\n"
+                    + "var __ab_iid = setInterval(function(){\n"
+                    + "  __ab_try++;\n"
+                    + "  __ab_apply_dims();\n"
+                    + "  var okView = __ab_wrap('view_map');\n"
+                    + "  var okShow = __ab_wrap('showMap');\n"
+                    + "  if ((okView && okShow) || __ab_try > 40) {\n"
+                    + "    clearInterval(__ab_iid);\n"
+                    + "  }\n"
+                    + "}, 100);\n"
+                    + "})();\n";
+
     /**
      * Базовый prelude:
      * - ставит alias `window.external = window.AndroidBridge`;
@@ -124,10 +172,45 @@ public class MapJs {
      */
     private static final String MAP_JS_SAFE_PRELUDE =
             ABCLIENT_MAP_STUB_MARKER + "\n"
-                    + "if (typeof window.AndroidBridge !== 'undefined') { window.external = window.AndroidBridge; }\n"
+                    + "(function(){\n"
+                    + "var __ab = (typeof window.AndroidBridge !== 'undefined') ? window.AndroidBridge : null;\n"
+                    + "function __abCall(name,args,defVal){\n"
+                    + "  try {\n"
+                    + "    if (__ab && typeof __ab[name] === 'function') {\n"
+                    + "      var v = __ab[name].apply(__ab, args || []);\n"
+                    + "      return (typeof v === 'undefined' || v === null) ? defVal : v;\n"
+                    + "    }\n"
+                    + "  } catch (_ab_e) {}\n"
+                    + "  return defVal;\n"
+                    + "}\n"
+                    + "window.external = {\n"
+                    + "  GetHalfMapWidth: function(){ return 4; },\n"
+                    + "  GetHalfMapHeight: function(){ return 3; },\n"
+                    + "  GetMapScale: function(){ return 75; },\n"
+                    + "  UsersOnline: function(){ return String(__abCall('UsersOnline', [], '')); },\n"
+                    + "  DoHerbAutoCut: function(){ return !!__abCall('DoHerbAutoCut', [], false); },\n"
+                    + "  IsCellExists: function(x,y){ return !!__abCall('IsCellExists', [x,y], true); },\n"
+                    + "  CellAltText: function(x,y,scale){ return String(__abCall('CellAltText', [x,y,scale], '')); },\n"
+                    + "  GenMoveLink: function(x,y){ return String(__abCall('GenMoveLink', [x,y], '')); },\n"
+                    + "  MoveTo: function(dest){ return __abCall('MoveTo', [dest], null); },\n"
+                    + "  CellDivText: function(x,y,scale,link,showmove,isframe){ return String(__abCall('CellDivText', [x,y,scale,link,showmove,isframe], '')); },\n"
+                    + "  DoHideMiniMap: function(){ return !!__abCall('DoHideMiniMap', [], false); },\n"
+                    + "  MapText: function(){ return String(__abCall('MapText', [], '')); },\n"
+                    + "  HerbsList: function(){ return String(__abCall('HerbsList', [], '')); },\n"
+                    + "  TraceCut: function(a,b,c,d,e){ return __abCall('TraceCut', [a,b,c,d,e], null); },\n"
+                    + "  SetNeverTimer: function(ms){ return __abCall('SetNeverTimer', [ms], null); },\n"
+                    + "  SetAutoFishMassa: function(v){ return __abCall('SetAutoFishMassa', [v], null); },\n"
+                    + "  CheckPri: function(name,myst){ return String(__abCall('CheckPri', [name,myst], '')); },\n"
+                    + "  InsertGuaDiv: function(code){ return String(__abCall('InsertGuaDiv', [code], '')); },\n"
+                    + "  FishOverload: function(){ return __abCall('FishOverload', [], null); },\n"
+                    + "  IsAutoFish: function(){ return !!__abCall('IsAutoFish', [], false); },\n"
+                    + "  SetFishNoCaptchaReady: function(){ return __abCall('SetFishNoCaptchaReady', [], null); },\n"
+                    + "  ShowOverWarning: function(){ return !!__abCall('ShowOverWarning', [], false); }\n"
+                    + "};\n"
                     + "if (typeof window.ins_HP !== 'function') { window.ins_HP = function() {}; }\n"
                     + "if (typeof window.cha_HP !== 'function') { window.cha_HP = function() {}; }\n"
-                    + "if (typeof window.slots_inv !== 'function') { window.slots_inv = function() {}; }\n";
+                    + "if (typeof window.slots_inv !== 'function') { window.slots_inv = function() {}; }\n"
+                    + "})();\n";
 
     public static byte[] process(byte[] array) {
         if (array == null || array.length == 0) {
@@ -144,7 +227,12 @@ public class MapJs {
         String patched = MAP_JS_SAFE_PRELUDE + fishPatched;
         boolean runtimePatchAppended = false;
         if (!patched.contains(ABCLIENT_MAP_RUNTIME_PATCH_MARKER)) {
-            patched += "\n" + OVERLOAD_RUNTIME_PATCH + "\n" + TIMER_RUNTIME_FALLBACK_PATCH;
+            patched += "\n"
+                    + OVERLOAD_RUNTIME_PATCH
+                    + "\n"
+                    + TIMER_RUNTIME_FALLBACK_PATCH
+                    + "\n"
+                    + MAP_DIM_RUNTIME_GUARD_PATCH;
             runtimePatchAppended = true;
         }
 

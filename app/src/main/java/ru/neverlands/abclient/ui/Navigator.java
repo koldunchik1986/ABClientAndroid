@@ -64,6 +64,7 @@ public class Navigator {
     private static final int NAV_CATEGORY_CITY_OKTAL = 4;
     private static final int NAV_CATEGORY_OBJECTS = 5;
     private static final int NAV_CATEGORY_TELEPORTS = 6;
+    private static final int NAV_CATEGORY_CITIES_ALL = 7;
 
     private static final String CITY_SUBCATEGORY_ENTRY_DELIMITER = ";";
     private static final String CITY_SUBCATEGORY_VALUE_DELIMITER = "|";
@@ -329,14 +330,7 @@ public class Navigator {
                     }
                 });
 
-        addCollapsibleSection(
-                parent,
-                "tab_loc:cities",
-                "Города",
-                0,
-                null,
-                expandedStates,
-                content -> renderCells(content, dpToPx(10), navCityAllCells(), destInput, null));
+        addLeafCategory(parent, "\u0413\u043e\u0440\u043e\u0434\u0430", NAV_CATEGORY_CITIES_ALL, navCityAllCells(), 0, destInput, rerender, expandedStates, "tab_loc:cities");
 
         addLeafCategory(parent, "Объекты", NAV_CATEGORY_OBJECTS, navObjectCells(), 0, destInput, rerender, expandedStates, "tab_loc:objects");
         addLeafCategory(parent, "Телепорты", NAV_CATEGORY_TELEPORTS, navTelepCells(), 0, destInput, rerender, expandedStates, "tab_loc:teleports");
@@ -958,6 +952,7 @@ public class Navigator {
             case NAV_CATEGORY_CITY_OKTAL: return navCityOktalCells();
             case NAV_CATEGORY_OBJECTS: return navObjectCells();
             case NAV_CATEGORY_TELEPORTS: return navTelepCells();
+            case NAV_CATEGORY_CITIES_ALL: return navCityAllCells();
             default: return new String[0];
         }
     }
@@ -978,6 +973,12 @@ public class Navigator {
             case NAV_CATEGORY_CITY_OKTAL: AppVars.Profile.setNavCityOktalLocations(cells); break;
             case NAV_CATEGORY_OBJECTS: AppVars.Profile.setNavObjectLocations(cells); break;
             case NAV_CATEGORY_TELEPORTS: AppVars.Profile.setNavTeleportLocations(cells); break;
+            case NAV_CATEGORY_CITIES_ALL:
+                String[] normalizedCities = sortAndNormalizeCells(cells);
+                AppVars.Profile.NavCityVillageLocations = normalizedCities.clone();
+                AppVars.Profile.NavCityForpostLocations = normalizedCities.clone();
+                AppVars.Profile.NavCityOktalLocations = normalizedCities.clone();
+                break;
             default: break;
         }
     }
