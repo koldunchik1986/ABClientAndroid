@@ -4,6 +4,7 @@ import android.content.Context;
 import android.content.SharedPreferences;
 import android.util.Log;
 
+import ru.neverlands.abclient.MainActivity;
 import ru.neverlands.abclient.model.AutoboiState;
 import ru.neverlands.abclient.model.QuickActionType;
 import ru.neverlands.abclient.service.AutoModeForegroundService;
@@ -833,9 +834,9 @@ public class AutoFunctionsManager {
         Log.d(TAG, "setAutoDrinkEnabled: " + enabled);
     }
     
-    // === AUTO_MOVING (Авто-Движение / Навигатор) ===
+    // === AUTO_MOVING (Навигатор) ===
     //
-    // Авто-движение — это не авто-функция с постоянным включением, а навигационное
+    // Навигатор — это не авто-функция с постоянным включением, а навигационное
     // runtime-состояние (C# AppVars.AutoMoving). Хранится только в AppVars, не в SharedPreferences.
     // Запуск и остановка: startAutoMoving(destination) / stopAutoMoving().
 
@@ -880,6 +881,7 @@ public class AutoFunctionsManager {
             Log.d(TAG, "startAutoMoving: destination=" + destination + " (MapLocation unknown, path will be built lazily)");
         }
         AppVars.AutoMoving = true;
+        triggerAutoMovingBootstrapNavigation();
     }
 
     // Остановка навигатора.
@@ -891,6 +893,40 @@ public class AutoFunctionsManager {
         AppVars.AutoMovingJumps = 0;
         AppVars.AutoMovingCityGate = ru.neverlands.abclient.model.CityGateType.None;
         Log.d(TAG, "stopAutoMoving");
+    }
+
+    /**
+     * Стартовый "пульс" навигатора:
+     * сразу после включения принудительно грузим `main.php?go=inf`, чтобы postfilter-цепочка
+     * (`MainPhp` -> `MainPhpCityNavigation`/`MapAjax`) начала первый шаг без ручного клика.
+     *
+     * Зависимости:
+     * - `AppVars.mainActivity` + основной WebView верхнего фрейма;
+     * - runtime-флаг `AppVars.AutoMoving`;
+     * - postfilter-навигация в `MainPhp`/`MapAjax`/`TeleportAjax`.
+     */
+    private void triggerAutoMovingBootstrapNavigation() {
+        MainActivity activity = AppVars.mainActivity != null ? AppVars.mainActivity.get() : null;
+        if (activity == null) {
+            Log.d(TAG, "startAutoMoving: bootstrap skipped (activity is null)");
+            return;
+        }
+        activity.runOnUiThread(() -> {
+            try {
+                if (activity.binding == null || activity.binding.appBarMain == null
+                        || activity.binding.appBarMain.contentMain == null
+                        || activity.binding.appBarMain.contentMain.webView == null) {
+                    Log.d(TAG, "startAutoMoving: bootstrap skipped (webView is null)");
+                    return;
+                }
+                String url = "http://neverlands.ru/main.php?get_id=56&act=10&go=inf&ab_nav_bootstrap=1&r="
+                        + System.currentTimeMillis();
+                activity.binding.appBarMain.contentMain.webView.loadUrl(url);
+                Log.d(TAG, "startAutoMoving: bootstrap navigation to " + url);
+            } catch (Exception e) {
+                Log.e(TAG, "startAutoMoving: bootstrap navigation failed", e);
+            }
+        });
     }
     
     // === AUTO_CUT (Авто-Травник) ===

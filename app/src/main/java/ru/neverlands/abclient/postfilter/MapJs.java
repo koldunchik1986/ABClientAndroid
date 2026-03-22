@@ -1,64 +1,83 @@
 package ru.neverlands.abclient.postfilter;
 
+import android.util.Log;
+
 import java.nio.charset.Charset;
 
 /**
- * Пост-фильтр для `js/map.js`.
- *
- * Назначение:
- * - гарантировать наличие базовых JS-функций, которые серверный `map.js` вызывает в верхнем фрейме;
- * - предотвратить падение скрипта на старте (`ReferenceError: ins_HP is not defined`),
- *   из-за которого верхний фрейм остаётся белым.
+ * Постфильтр для server-side {@code js/map.js}.
  *
  * Зависимости:
- * - вызывается маршрутизатором {@link Filter#process(android.content.Context, String, byte[])};
- * - применяется только для ответов `.../js/map.js` (включая вариант с query-параметрами `?v=...`);
- * - не меняет игровую логику `map.js`, только добавляет безопасный prelude с no-op stubs.
+ * - вызывается из {@link Filter#process(android.content.Context, String, byte[])};
+ * - использует bridge-методы {@code AndroidBridge/window.external} из {@code WebAppInterface}.
  */
 public class MapJs {
-    private static final String ABCLIENT_MAP_STUB_MARKER = "/*ABCLIENT_MAP_STUBS*/";
+    private static final String TAG = "MapJs";
     private static final Charset WINDOWS_1251 = Charset.forName("windows-1251");
-    /**
-     * C#-паритет для no-captcha рыбалки:
-     * сервер может прислать маркер капчи как пустую строку ("") или строку "00000".
-     *
-     * В оригинальном `map.js` автозаброс без капчи запускается только по условию `!ingr[1]`,
-     * из-за чего кейс `ingr[1] == "00000"` не попадает в auto-flow и `act=2` не отправляется.
-     *
-     * Зависимости:
-     * - server payload `fish_ajax.php?act=1` (`ingr[1]` = captcha-token);
-     * - bridge `window.external.IsAutoFish()` / `SetFishNoCaptchaReady()`;
-     * - `FishAjaxPhp.processFishAct1(...)`, где "00000" уже трактуется как "капча не требуется".
-     */
+
+    // Маркеры, чтобы не дублировать патчи при повторной обработке.
+    private static final String ABCLIENT_MAP_STUB_MARKER = "/*ABCLIENT_MAP_STUBS*/";
+    private static final String ABCLIENT_MAP_RUNTIME_PATCH_MARKER = "/*ABCLIENT_MAP_RUNTIME_PATCHES*/";
+
+    // C# parity для no-captcha в авто-рыбалке.
     private static final String FISH_NO_CAPTCHA_CONDITION_OLD =
             "if (!ingr[1] && window.external.IsAutoFish()) {";
     private static final String FISH_NO_CAPTCHA_CONDITION_NEW =
             "if ((!ingr[1] || ingr[1] == '00000') && window.external.IsAutoFish()) {";
 
-    /**
-     * JS-prelude со стабами функций, которые должны существовать до выполнения server-side `map.js`.
-     *
-     * Включает:
-     * - алиас {@code window.external = window.AndroidBridge} — гарантирует, что все вызовы
-     *   {@code window.external.ShowOverWarning()}, {@code window.external.IsAutoFish()} и т.д.
-     *   доступны даже если map.js грузится до {@code onPageFinished} основного фрейма;
-     * - no-op стабы функций, предотвращающие {@code ReferenceError} при инициализации скрипта.
-     */
-    private static final String MAP_JS_SAFE_PRELUDE =
-            ABCLIENT_MAP_STUB_MARKER + "\n" +
-            "if (typeof window.AndroidBridge !== 'undefined') { window.external = window.AndroidBridge; }\n" +
-            "if (typeof window.ins_HP !== 'function') { window.ins_HP = function() {}; }\n" +
-            "if (typeof window.cha_HP !== 'function') { window.cha_HP = function() {}; }\n" +
-            "if (typeof window.slots_inv !== 'function') { window.slots_inv = function() {}; }\n";
+    // Патч окончания timerst: если активен Навигатор, после таймера продолжаем через go=inf.
+    private static final String TIMER_FINISH_LOCATION_OLD =
+            "location = 'http://neverlands.ru/main.php';";
+    private static final String TIMER_FINISH_LOCATION_OLD_COMPACT =
+            "location='http://neverlands.ru/main.php';";
+    private static final String TIMER_FINISH_LOCATION_OLD_WINDOW =
+            "window.location='http://neverlands.ru/main.php';";
+    private static final String TIMER_FINISH_LOCATION_OLD_WINDOW_SPACED =
+            "window.location = 'http://neverlands.ru/main.php';";
+    private static final String TIMER_FINISH_LOCATION_NEW =
+            "if (window.external && window.external.IsAutoMoving && window.external.IsAutoMoving()) {"
+                    + "location = 'http://neverlands.ru/main.php?get_id=56&act=10&go=inf&ab_nav_tick=1&r=' + Math.random();"
+                    + "} else {"
+                    + "location = 'http://neverlands.ru/main.php';"
+                    + "}";
+
+    // Дополнительный runtime-патч для suppress popup "перегруз рюкзака".
+    // Используем unicode escapes, чтобы не зависеть от кодировки исходника.
+    private static final String OVERLOAD_RUNTIME_PATCH =
+            ABCLIENT_MAP_RUNTIME_PATCH_MARKER + "\n"
+                    + "(function(){\n"
+                    + "if (window.__ab_overload_patch_applied) return;\n"
+                    + "window.__ab_overload_patch_applied = true;\n"
+                    + "if (typeof window.MessBoxDiv !== 'function') return;\n"
+                    + "var __ab_oldMessBoxDiv = window.MessBoxDiv;\n"
+                    + "window.MessBoxDiv = function(mess){\n"
+                    + "  try {\n"
+                    + "    var __ab_msg = (mess == null ? '' : String(mess)).toLowerCase();\n"
+                    + "    var __ab_overload = __ab_msg.indexOf('\\u0440\\u044e\\u043a\\u0437\\u0430\\u043a') !== -1\n"
+                    + "      || __ab_msg.indexOf('\\u0437\\u0430\\u043c\\u0435\\u0434\\u043b\\u0435\\u043d') !== -1\n"
+                    + "      || __ab_msg.indexOf('\\u0442\\u044f\\u0436\\u0435\\u043b') !== -1;\n"
+                    + "    var __ab_canCheck = window.external && typeof window.external.ShowOverWarning === 'function';\n"
+                    + "    if (__ab_overload && __ab_canCheck && !window.external.ShowOverWarning()) {\n"
+                    + "      try { if (typeof window.external.FishOverload === 'function') { window.external.FishOverload(); } } catch (_ab_e1) {}\n"
+                    + "      return;\n"
+                    + "    }\n"
+                    + "  } catch (_ab_e2) {}\n"
+                    + "  return __ab_oldMessBoxDiv.apply(this, arguments);\n"
+                    + "};\n"
+                    + "})();\n";
 
     /**
-     * Возвращает `map.js` с добавленным prelude-стабом.
-     *
-     * Зависимости и контракт:
-     * - вход: сырые байты JS из сетевого ответа (`windows-1251`/ASCII-совместимый контент);
-     * - выход: те же байты + prelude в начале файла;
-     * - повторно prelude не добавляется (по маркеру `ABCLIENT_MAP_STUB_MARKER`).
+     * Базовый prelude:
+     * - ставит alias {@code window.external = window.AndroidBridge};
+     * - добавляет no-op stubs для функций, которые map.js вызывает до полной инициализации.
      */
+    private static final String MAP_JS_SAFE_PRELUDE =
+            ABCLIENT_MAP_STUB_MARKER + "\n"
+                    + "if (typeof window.AndroidBridge !== 'undefined') { window.external = window.AndroidBridge; }\n"
+                    + "if (typeof window.ins_HP !== 'function') { window.ins_HP = function() {}; }\n"
+                    + "if (typeof window.cha_HP !== 'function') { window.cha_HP = function() {}; }\n"
+                    + "if (typeof window.slots_inv !== 'function') { window.slots_inv = function() {}; }\n";
+
     public static byte[] process(byte[] array) {
         if (array == null || array.length == 0) {
             return array;
@@ -69,9 +88,23 @@ public class MapJs {
             return array;
         }
 
-        // Нормализуем no-captcha условие авто-рыбалки: учитываем пустой токен и "00000".
-        String normalizedFishNoCaptcha = js.replace(FISH_NO_CAPTCHA_CONDITION_OLD, FISH_NO_CAPTCHA_CONDITION_NEW);
-        String patched = MAP_JS_SAFE_PRELUDE + normalizedFishNoCaptcha;
+        String fishPatched = js.replace(FISH_NO_CAPTCHA_CONDITION_OLD, FISH_NO_CAPTCHA_CONDITION_NEW);
+        String timerPatched = fishPatched
+                .replace(TIMER_FINISH_LOCATION_OLD, TIMER_FINISH_LOCATION_NEW)
+                .replace(TIMER_FINISH_LOCATION_OLD_COMPACT, TIMER_FINISH_LOCATION_NEW)
+                .replace(TIMER_FINISH_LOCATION_OLD_WINDOW, TIMER_FINISH_LOCATION_NEW)
+                .replace(TIMER_FINISH_LOCATION_OLD_WINDOW_SPACED, TIMER_FINISH_LOCATION_NEW);
+
+        String patched = MAP_JS_SAFE_PRELUDE + timerPatched;
+        if (!patched.contains(ABCLIENT_MAP_RUNTIME_PATCH_MARKER)) {
+            patched += "\n" + OVERLOAD_RUNTIME_PATCH;
+        }
+
+        if (!fishPatched.equals(js) || !timerPatched.equals(fishPatched)) {
+            Log.d(TAG, "process: fishPatch=" + (!fishPatched.equals(js))
+                    + ", navTimerPatch=" + (!timerPatched.equals(fishPatched)));
+        }
+
         return patched.getBytes(WINDOWS_1251);
     }
 }

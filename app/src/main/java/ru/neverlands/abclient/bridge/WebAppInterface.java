@@ -92,6 +92,16 @@ public class WebAppInterface {
     }
 
     /**
+     * C# parity: map.js может проверить, активен ли сейчас Навигатор.
+     * Используется в patched timerst, чтобы после завершения server timer
+     * продолжать цикл переходов через go=inf без ручного клика.
+     */
+    @JavascriptInterface
+    public boolean IsAutoMoving() {
+        return AppVars.AutoMoving;
+    }
+
+    /**
      * C# parity (`ScriptManager.ShowOverWarning`):
      * map.js спрашивает, нужно ли показывать окно предупреждения о перегрузе.
      */
