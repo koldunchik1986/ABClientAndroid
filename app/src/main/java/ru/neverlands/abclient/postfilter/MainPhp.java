@@ -1632,6 +1632,41 @@ public class MainPhp {
     /**
      * C# parity (`MainPhpFindFish`): на карте вставляет вызов `Fish('<vcode>')` после `view_map();`.
      */
+    private static String mainPhpFindMapReturnForAutoMoving(String html) {
+        if (html == null || html.isEmpty()) {
+            return null;
+        }
+
+        String mapLink = findMainPhpLinkByQueryParts(html, "get_id=56", "act=10", "go=ret", "vcode=");
+        if (mapLink == null) {
+            mapLink = findMainPhpLinkByQueryParts(html, "get_id=56", "act=10", "go=ret");
+        }
+
+        if (mapLink == null) {
+            final String returnMarker = "value=\"Вернуться\">";
+            int posReturn = html.toLowerCase(Locale.ROOT).indexOf(returnMarker.toLowerCase(Locale.ROOT));
+            if (posReturn != -1) {
+                final String onClickPrefix = "onclick=\"location='";
+                int posOnClick = html.toLowerCase(Locale.ROOT).lastIndexOf(
+                        onClickPrefix.toLowerCase(Locale.ROOT),
+                        posReturn
+                );
+                if (posOnClick != -1) {
+                    int linkStart = posOnClick + onClickPrefix.length();
+                    int linkEnd = html.indexOf('\'', linkStart);
+                    if (linkEnd > linkStart) {
+                        mapLink = normalizeNeverlandsMainLink(html.substring(linkStart, linkEnd));
+                    }
+                }
+            }
+        }
+
+        if (mapLink == null || mapLink.isEmpty()) {
+            return null;
+        }
+        return buildRedirectHtml("Навигатор: переход на карту", mapLink);
+    }
+
     private static String mainPhpFindFish(String html) {
         if (html == null || html.isEmpty()) {
             return null;
@@ -2806,6 +2841,13 @@ public class MainPhp {
                 String telepHtml = TeleportAjax.process(html);
                 if (telepHtml != null && !telepHtml.isEmpty()) {
                     return Russian.getBytes(telepHtml);
+                }
+            }
+            if (!html.contains("var map = [[")) {
+                String mapReturnHtml = mainPhpFindMapReturnForAutoMoving(html);
+                if (mapReturnHtml != null && !mapReturnHtml.isEmpty()) {
+                    android.util.Log.d(TAG, "AUTO_MOVING_TRACE: redirect to map from " + address);
+                    return Russian.getBytes(mapReturnHtml);
                 }
             }
         }
