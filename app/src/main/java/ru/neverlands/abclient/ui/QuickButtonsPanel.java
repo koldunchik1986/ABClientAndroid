@@ -186,6 +186,11 @@ public class QuickButtonsPanel {
         }
     }
 
+    // Принудительное обновление визуального состояния быстрых кнопок по runtime-флагам автофункций.
+    public void refreshActionStates() {
+        loadAndUpdateButtons();
+    }
+
     // Обновляем иконку/подпись/состояние одной кнопки.
     private void updateButtonAppearance(int position, QuickButton button) {
         Log.d(TAG, "updateButtonAppearance: position=" + position + ", button=" + (button != null ? button.getActionType() : "null"));

@@ -68,7 +68,7 @@ function view_build_bottom() {
 
 function view_map() {
     view_build_top();
-    d.write('<table cellpadding=0 cellspacing=0 border=0 width=100%><tr><td bgcolor=#FFFFFF align=center><div style="position: absolute; text-align: center; overflow: hidden; width: ' + abcmapwidth + 'px; height: ' + abcmapheight + 'px; margin:0 auto;" id="world_cont"></div><div style="width: ' + abcmapwidth + 'px; height: ' + abcmapheight + 'px; text-align: left; margin:0 auto;" id="world_cont2"></div></td></tr></table>');
+    d.write('<table cellpadding=0 cellspacing=0 border=0 width=100%><tr><td bgcolor=#FFFFFF align=center><div id="world_host" style="position:relative; width:' + abcmapwidth + 'px; height:' + abcmapheight + 'px; margin:0 auto;"><div style="position:absolute; left:0; top:0; text-align:center; overflow:hidden; width:' + abcmapwidth + 'px; height:' + abcmapheight + 'px;" id="world_cont"></div><div style="position:absolute; left:0; top:0; width:' + abcmapwidth + 'px; height:' + abcmapheight + 'px; text-align:left;" id="world_cont2"></div></div></td></tr></table>');
     createMapText();
 
     for (var i = 0; i < map[1].length; i++) {

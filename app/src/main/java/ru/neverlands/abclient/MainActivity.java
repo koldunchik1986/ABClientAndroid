@@ -177,6 +177,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     private String lastMainFrameTimeoutRetryUrl = "";
     private long lastServerTimerDrivenReloadAtMs = 0L;
     private long lastServerTimerDrivenReloadDueAtMs = Long.MIN_VALUE;
+    private boolean lastQuickPanelAutoMovingState = false;
     private long lastAutoBattleSubmitAtMs = 0L;
     private final Handler autoBattleDelayHandler = createMainHandler();
     private Runnable pendingAutoBattleSubmitRunnable;
@@ -2244,6 +2245,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                     .show(getSupportFragmentManager(), "QuickActions");
             }
         });
+        lastQuickPanelAutoMovingState = AppVars.AutoMoving;
         
         // Первичная загрузка main.php + чат-фреймов.
         loadInitialUrls();
@@ -2862,6 +2864,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                     updateClock();
                     checkConnection();
                     checkServerTimerDrivenActions();
+                    syncQuickButtonsRuntimeState();
                 });
             }
         }, 0, 1000);
@@ -3142,6 +3145,19 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                 + ", currentUrl=" + currentUrl
                 + ", reloadUrl=" + reloadUrl);
         binding.appBarMain.contentMain.webView.loadUrl(reloadUrl);
+    }
+
+    private void syncQuickButtonsRuntimeState() {
+        if (quickButtonsPanel == null) {
+            return;
+        }
+        boolean autoMovingNow = AppVars.AutoMoving;
+        if (autoMovingNow == lastQuickPanelAutoMovingState) {
+            return;
+        }
+        lastQuickPanelAutoMovingState = autoMovingNow;
+        quickButtonsPanel.refreshActionStates();
+        Log.d(TAG, "QUICK_UI_SYNC: AutoMoving changed -> refresh quick buttons, state=" + autoMovingNow);
     }
     
     public void addAddressToStatusString(String address) {

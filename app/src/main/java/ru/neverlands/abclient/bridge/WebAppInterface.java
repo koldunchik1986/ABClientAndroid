@@ -360,16 +360,32 @@ public class WebAppInterface {
             return "";
         }
 
+        int tileSize = Math.max(24, scale);
+        int borderSizePx = Math.max(1, Math.round(tileSize * 0.015f));
+        int paddingPx = Math.max(1, Math.round(tileSize * 0.03f));
         boolean highlight = showmove || isframe || isRegnumInCurrentPath(p.RegNum);
-        String border = highlight ? "border:1px solid red;" : "";
+        String border = highlight ? "border:" + borderSizePx + "px solid red;" : "";
         String idAttr = showmove ? "id=\"movingcell\" " : "";
 
         StringBuilder sb = new StringBuilder();
         sb.append("<div ").append(idAttr)
-                .append("style=\"position:relative; left:2px; top:2px; width:90px; height:90px; ")
+                .append("style=\"position:relative; width:")
+                .append(tileSize)
+                .append("px; height:")
+                .append(tileSize)
+                .append("px; box-sizing:border-box; overflow:hidden; ")
                 .append(border)
-                .append(" padding:2px; text-shadow:none; ")
-                .append("font-family:Tahoma; font-size:9px; line-height:1.15; font-weight:bold; text-decoration:none;\">");
+                .append(" text-shadow:none; font-family:Tahoma; font-size:9px; line-height:1.15; font-weight:bold; text-decoration:none;\">");
+        if (isframe) {
+            sb.append("<img src=\"http://image.neverlands.ru/map/nl_cursor.png\" style=\"position:absolute;left:0;top:0;width:")
+                    .append(tileSize)
+                    .append("px;height:")
+                    .append(tileSize)
+                    .append("px;pointer-events:none;z-index:1;\"/>");
+        }
+        sb.append("<div style=\"position:relative;z-index:2;padding:")
+                .append(paddingPx)
+                .append("px;box-sizing:border-box;width:100%;height:100%;\">");
         sb.append("<span style=\"font-size:11px; color:")
                 .append(hexColorCost(cell.Cost))
                 .append("\">")
@@ -396,7 +412,7 @@ public class WebAppInterface {
                     .append(escapeHtml(cell.HerbGroup))
                     .append("</span>");
         }
-        sb.append("</div>");
+        sb.append("</div></div>");
         return sb.toString();
     }
 
