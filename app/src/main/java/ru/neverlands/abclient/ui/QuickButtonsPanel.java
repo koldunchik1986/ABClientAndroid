@@ -58,13 +58,19 @@ public class QuickButtonsPanel {
     private static final int BUTTONS_PER_ROW = 10;
     private static final int TOTAL_BUTTONS = 20;
     private static final int REQUEST_CODE_CONTACTS = 1002;
+    // Идентификаторы "плоских" категорий навигатора.
+    // Используются в add/remove-потоке (UI -> applyCategoryCells -> UserConfig -> save()).
     private static final int NAV_CATEGORY_FAVORITES = 1;
     private static final int NAV_CATEGORY_CITY_VILLAGE = 2;
     private static final int NAV_CATEGORY_CITY_FORPOST = 3;
     private static final int NAV_CATEGORY_CITY_OKTAL = 4;
     private static final int NAV_CATEGORY_OBJECTS = 5;
     private static final int NAV_CATEGORY_TELEPORTS = 6;
+    // Базовый шаблон извлечения "region-number" из строки выбора клетки.
+    // Нужен для универсального ввода: поддерживаются и "8-259", и "8-259 - Название".
     private static final Pattern NAV_CELL_PATTERN = Pattern.compile("(\\d+-\\d+)");
+    // Формат сериализации динамических подкатегорий Города в профиле:
+    // "Имя|8-259,8-294;Другая|12-428".
     private static final String NAV_CITY_SUBCATEGORY_ENTRY_DELIMITER = ";";
     private static final String NAV_CITY_SUBCATEGORY_VALUE_DELIMITER = "|";
     private static final String[] FISH_HAND_OPTIONS = new String[] {
@@ -114,10 +120,30 @@ public class QuickButtonsPanel {
         void onQuickAction(QuickActionType actionType);
     }
 
+    /**
+     * Универсальный callback для операций выбора/удаления клетки.
+     *
+     * Зависимости:
+     * - используется в showNavigatorAddCellDialog(...) для передачи выбранной клетки наружу;
+     * - используется в renderNavigatorCells(...) как callback удаления по кнопке "-";
+     * - позволяет не дублировать однотипный код add/remove между категориями и подкатегориями.
+     */
     private interface OnNavigatorCellPicked {
         void onCellPicked(String cellNum);
     }
 
+    /**
+     * Локальная модель одной динамической подкатегории в секции "Города".
+     *
+     * Поля:
+     * - name: пользовательское имя подкатегории;
+     * - cells: список клеток "region-number" для этой подкатегории.
+     *
+     * Зависимости:
+     * - формируется из строки профиля через parseCitySubcategories(...);
+     * - используется при отрисовке (addNavigatorCityLeafCategory);
+     * - сохраняется обратно через encodeCitySubcategories(...).
+     */
     private static final class CitySubcategory {
         final String name;
         final String[] cells;
@@ -1361,6 +1387,19 @@ public class QuickButtonsPanel {
         dialog.show();
     }
 
+    /**
+     * Полная перерисовка дерева категорий навигатора в диалоге.
+     *
+     * Поведение:
+     * - очищает контейнер;
+     * - рисует фиксированные разделы (Избранное, Города, Объекты, Телепорты);
+     * - для "Города" дополнительно рендерит динамические подкатегории профиля.
+     *
+     * Зависимости:
+     * - данные профиля: AppVars.Profile + UserConfig.*;
+     * - источники карт: ExtMap.Cells / ExtMap.Teleports;
+     * - UI-коллбеки add/remove вызывают повторный renderNavigatorCategories(...).
+     */
     private void renderNavigatorCategories(LinearLayout parent, EditText destInput) {
         parent.removeAllViews();
         addNavigatorLeafCategory(parent, "Избранное", NAV_CATEGORY_FAVORITES, navFavCells(), 0, destInput);
@@ -1375,6 +1414,13 @@ public class QuickButtonsPanel {
         addNavigatorLeafCategory(parent, "Телепорты", NAV_CATEGORY_TELEPORTS, navTelepCells(), 0, destInput);
     }
 
+    /**
+     * Рисует заголовок секции (например, "Города") с кнопкой "+" для добавления подкатегории.
+     *
+     * Зависимости:
+     * - визуальный стиль: R.color.ab_autoboi_group_selected_bg / ab_autoboi_text_primary;
+     * - onAddSubcategory запускает диалог создания подкатегории и затем ререндер.
+     */
     private void addNavigatorSectionHeader(LinearLayout parent, String title, int leftPaddingPx, Runnable onAddSubcategory) {
         LinearLayout headerRow = new LinearLayout(context);
         headerRow.setOrientation(LinearLayout.HORIZONTAL);
@@ -1404,6 +1450,16 @@ public class QuickButtonsPanel {
         parent.addView(headerRow, lp);
     }
 
+    /**
+     * Рисует обычную (не динамическую) категорию:
+     * - заголовок с кнопкой "+" для добавления клетки;
+     * - список клеток с кнопками "-" удаления.
+     *
+     * Зависимости:
+     * - categoryId определяет маршрут сохранения через applyCategoryCells(...);
+     * - showNavigatorAddCellDialog(...) валидирует клетку по map.xml;
+     * - renderNavigatorCells(...) обеспечивает единый рендер ячеек.
+     */
     private void addNavigatorLeafCategory(
             LinearLayout parent,
             String title,
@@ -1443,6 +1499,14 @@ public class QuickButtonsPanel {
         });
     }
 
+    /**
+     * Рисует динамическую подкатегорию внутри секции "Города".
+     *
+     * Отличия от обычной категории:
+     * - имеет кнопку "+" (добавить клетку в эту подкатегорию);
+     * - имеет кнопку удаления самой подкатегории;
+     * - изменяет данные через addCellToCitySubcategory/removeCitySubcategory(...).
+     */
     private void addNavigatorCityLeafCategory(
             LinearLayout parent,
             CitySubcategory subcategory,
@@ -1489,6 +1553,14 @@ public class QuickButtonsPanel {
         });
     }
 
+    /**
+     * Общий рендер списка клеток для категории/подкатегории.
+     *
+     * Зависимости:
+     * - buildNavigatorCellLabel(...) формирует отображение из ExtMap;
+     * - OnNavigatorCellPicked onRemoveCell инкапсулирует конкретную стратегию удаления;
+     * - destInput синхронизируется кликом по строке клетки.
+     */
     private void renderNavigatorCells(
             LinearLayout parent,
             int leftPaddingPx,
@@ -1530,6 +1602,13 @@ public class QuickButtonsPanel {
         }
     }
 
+    /**
+     * Создает стандартизированную иконку-кнопку для действий в навигаторе.
+     *
+     * Зависимости:
+     * - используется для кнопок "+" и "-" на заголовках/строках;
+     * - единая точка настройки отступов и прозрачного фона.
+     */
     private ImageButton buildNavigatorIconButton(int drawableRes, int tintColor) {
         ImageButton btn = new ImageButton(context);
         btn.setImageResource(drawableRes);
@@ -1539,6 +1618,18 @@ public class QuickButtonsPanel {
         return btn;
     }
 
+    /**
+     * Диалог добавления клетки в выбранную категорию/подкатегорию.
+     *
+     * Гарантии:
+     * - парсит и нормализует ввод через resolveCellNumber(...);
+     * - принимает только клетки, существующие в ExtMap.Cells (данные map.xml);
+     * - после успешного добавления вызывает onChanged для обновления UI.
+     *
+     * Зависимости:
+     * - onCellPicked реализует место назначения (категория или подкатегория);
+     * - buildNavigatorAutocompleteValues() дает подсказки полного формата.
+     */
     private void showNavigatorAddCellDialog(String categoryTitle, OnNavigatorCellPicked onCellPicked, Runnable onChanged) {
         final android.widget.AutoCompleteTextView input = new android.widget.AutoCompleteTextView(context);
         input.setHint("Клетка (напр. 8-259)");
@@ -1573,6 +1664,14 @@ public class QuickButtonsPanel {
                 .show();
     }
 
+    /**
+     * Диалог создания новой подкатегории в секции "Города".
+     *
+     * Зависимости:
+     * - sanitizeCitySubcategoryName(...) очищает имя;
+     * - addCitySubcategory(...) проверяет уникальность и сохраняет в профиль;
+     * - onChanged инициирует повторный рендер дерева категорий.
+     */
     private void showAddCitySubcategoryDialog(Runnable onChanged) {
         final EditText input = new EditText(context);
         input.setHint("Название подкатегории");
@@ -1599,6 +1698,16 @@ public class QuickButtonsPanel {
                 .setNegativeButton("Отмена", null)
                 .show();
     }
+    /**
+     * Формирует элементы автодополнения для ввода клетки.
+     *
+     * Формат элемента:
+     * - "<cellNum> - <name/tooltip>" (через buildNavigatorCellLabel).
+     *
+     * Зависимости:
+     * - ExtMap.Cells должен быть инициализирован;
+     * - сортировка по ключу клетки для стабильного порядка в UI.
+     */
     private String[] buildNavigatorAutocompleteValues() {
         if (ExtMap.Cells == null || ExtMap.Cells.isEmpty()) {
             return new String[0];
@@ -1612,6 +1721,12 @@ public class QuickButtonsPanel {
         return values.toArray(new String[0]);
     }
 
+    /**
+     * Строит человекочитаемую подпись клетки из map.xml/extmap:
+     * - номер клетки;
+     * - name/tooltip;
+     * - fallback на название телепорта из ExtMap.Teleports.
+     */
     private String buildNavigatorCellLabel(String cellNum) {
         if (cellNum == null || cellNum.trim().isEmpty()) {
             return "";
@@ -1635,6 +1750,14 @@ public class QuickButtonsPanel {
         return normalized + " — " + name + " (" + tooltip + ")";
     }
 
+    /**
+     * Извлекает canonical-номер клетки "N-NNN" из произвольной строки.
+     *
+     * Примеры поддерживаемого ввода:
+     * - "8-259"
+     * - "8-259 - Форпост"
+     * - "Клетка 8-259 (что угодно)".
+     */
     private String resolveCellNumber(String rawValue) {
         if (rawValue == null) {
             return "";
@@ -1650,6 +1773,12 @@ public class QuickButtonsPanel {
         return "";
     }
 
+    /**
+     * Нормализует массив клеток:
+     * - фильтрует невалидные значения;
+     * - удаляет дубликаты;
+     * - сортирует по строковому номеру клетки.
+     */
     private String[] sortAndNormalizeCells(String[] input) {
         LinkedHashSet<String> set = new LinkedHashSet<>();
         if (input != null) {
@@ -1665,6 +1794,13 @@ public class QuickButtonsPanel {
         return result;
     }
 
+    /**
+     * Добавляет клетку в фиксированную категорию и сохраняет профиль.
+     *
+     * Зависимости:
+     * - getCategoryCells(...) / applyCategoryCells(...);
+     * - UserConfig.save(context) для персистентности.
+     */
     private void addCellToCategory(int categoryId, String cellNum) {
         if (AppVars.Profile == null) {
             return;
@@ -1674,6 +1810,9 @@ public class QuickButtonsPanel {
         AppVars.Profile.save(context);
     }
 
+    /**
+     * Удаляет клетку из фиксированной категории и сохраняет профиль.
+     */
     private void removeCellFromCategory(int categoryId, String cellNum) {
         if (AppVars.Profile == null) {
             return;
@@ -1683,6 +1822,9 @@ public class QuickButtonsPanel {
         AppVars.Profile.save(context);
     }
 
+    /**
+     * Добавляет клетку в массив без дублей (set-like поведение).
+     */
     private String[] appendCellToArray(String[] source, String cellNum) {
         LinkedHashSet<String> set = new LinkedHashSet<>();
         if (source != null) {
@@ -1700,6 +1842,9 @@ public class QuickButtonsPanel {
         return set.toArray(new String[0]);
     }
 
+    /**
+     * Удаляет конкретную клетку из массива.
+     */
     private String[] removeCellFromArray(String[] source, String cellNum) {
         String normalized = resolveCellNumber(cellNum);
         ArrayList<String> result = new ArrayList<>();
@@ -1714,6 +1859,12 @@ public class QuickButtonsPanel {
         return result.toArray(new String[0]);
     }
 
+    /**
+     * Возвращает текущий список клеток фиксированной категории.
+     *
+     * Примечание:
+     * - динамические подкатегории Города обрабатываются отдельно.
+     */
     private String[] getCategoryCells(int categoryId) {
         if (AppVars.Profile == null) {
             return new String[0];
@@ -1736,6 +1887,12 @@ public class QuickButtonsPanel {
         }
     }
 
+    /**
+     * Применяет новый список клеток к фиксированной категории профиля.
+     *
+     * Зависимости:
+     * - UserConfig setter-методы (внутри нормализация формата).
+     */
     private void applyCategoryCells(int categoryId, String[] cells) {
         if (AppVars.Profile == null) {
             return;
@@ -1764,31 +1921,51 @@ public class QuickButtonsPanel {
         }
     }
 
+    /**
+     * Возвращает нормализованный список Избранного.
+     */
     private String[] navFavCells() {
         if (AppVars.Profile == null || AppVars.Profile.FavLocations == null) return new String[0];
         return sortAndNormalizeCells(AppVars.Profile.FavLocations);
     }
 
+    /**
+     * Возвращает нормализованный список клеток Деревни.
+     */
     private String[] navCityVillageCells() {
         if (AppVars.Profile == null || AppVars.Profile.NavCityVillageLocations == null) return new String[] {"8-197"};
         return sortAndNormalizeCells(AppVars.Profile.NavCityVillageLocations);
     }
 
+    /**
+     * Возвращает нормализованный список клеток Форпоста.
+     */
     private String[] navCityForpostCells() {
         if (AppVars.Profile == null || AppVars.Profile.NavCityForpostLocations == null) return new String[] {"8-259", "8-294"};
         return sortAndNormalizeCells(AppVars.Profile.NavCityForpostLocations);
     }
 
+    /**
+     * Возвращает нормализованный список клеток Октала.
+     */
     private String[] navCityOktalCells() {
         if (AppVars.Profile == null || AppVars.Profile.NavCityOktalLocations == null) return new String[] {"12-428", "12-494", "12-521"};
         return sortAndNormalizeCells(AppVars.Profile.NavCityOktalLocations);
     }
 
+    /**
+     * Возвращает нормализованный список клеток Объектов.
+     */
     private String[] navObjectCells() {
         if (AppVars.Profile == null || AppVars.Profile.NavObjectLocations == null) return new String[] {"8-227", "2-482", "9-494", "26-430"};
         return sortAndNormalizeCells(AppVars.Profile.NavObjectLocations);
     }
 
+    /**
+     * Возвращает список Телепортов:
+     * - сначала пользовательский (если сохранен в профиле),
+     * - иначе дефолт из ExtMap.Teleports.
+     */
     private String[] navTelepCells() {
         if (AppVars.Profile != null
                 && AppVars.Profile.NavTeleportLocations != null
@@ -1801,6 +1978,13 @@ public class QuickButtonsPanel {
         return keys;
     }
 
+    /**
+     * Возвращает список динамических подкатегорий Города.
+     *
+     * Источник:
+     * - UserConfig.NavCitySubcategories;
+     * - fallback на дефолтные подкатегории, если строка пуста/битая.
+     */
     private List<CitySubcategory> getCitySubcategories() {
         if (AppVars.Profile == null) {
             return buildDefaultCitySubcategories();
@@ -1812,6 +1996,9 @@ public class QuickButtonsPanel {
         return parsed;
     }
 
+    /**
+     * Формирует дефолтные подкатегории Города из legacy-списков профиля.
+     */
     private List<CitySubcategory> buildDefaultCitySubcategories() {
         ArrayList<CitySubcategory> defaults = new ArrayList<>();
         defaults.add(new CitySubcategory("Деревня", navCityVillageCells()));
@@ -1820,6 +2007,12 @@ public class QuickButtonsPanel {
         return defaults;
     }
 
+    /**
+     * Парсит строку профиля citysubcategories в список объектов подкатегорий.
+     *
+     * Формат строки:
+     * - "Имя|8-259,8-294;Имя2|12-428".
+     */
     private List<CitySubcategory> parseCitySubcategories(String raw) {
         ArrayList<CitySubcategory> result = new ArrayList<>();
         if (raw == null || raw.trim().isEmpty()) {
@@ -1844,6 +2037,13 @@ public class QuickButtonsPanel {
         return result;
     }
 
+    /**
+     * Сериализует список подкатегорий Города в строку профиля.
+     *
+     * Зависимости:
+     * - sanitizeCitySubcategoryName(...) и sortAndNormalizeCells(...),
+     *   чтобы в файл профиля попадали только валидные данные.
+     */
     private String encodeCitySubcategories(List<CitySubcategory> subcategories) {
         if (subcategories == null || subcategories.isEmpty()) {
             return "";
@@ -1872,6 +2072,9 @@ public class QuickButtonsPanel {
         return sb.toString();
     }
 
+    /**
+     * Очищает имя подкатегории от служебных разделителей формата сериализации.
+     */
     private String sanitizeCitySubcategoryName(String name) {
         if (name == null) {
             return "";
@@ -1887,6 +2090,9 @@ public class QuickButtonsPanel {
         return sanitized;
     }
 
+    /**
+     * Ищет индекс подкатегории по имени (без учета регистра).
+     */
     private int findCitySubcategoryIndex(List<CitySubcategory> subcategories, String name) {
         if (subcategories == null || subcategories.isEmpty()) {
             return -1;
@@ -1901,6 +2107,13 @@ public class QuickButtonsPanel {
         return -1;
     }
 
+    /**
+     * Добавляет новую подкатегорию Города (если еще не существует).
+     *
+     * Возврат:
+     * - true: создано;
+     * - false: некорректное имя/дубликат/нет профиля.
+     */
     private boolean addCitySubcategory(String name) {
         if (AppVars.Profile == null) {
             return false;
@@ -1918,6 +2131,9 @@ public class QuickButtonsPanel {
         return true;
     }
 
+    /**
+     * Удаляет подкатегорию Города по имени.
+     */
     private void removeCitySubcategory(String name) {
         if (AppVars.Profile == null) {
             return;
@@ -1931,6 +2147,9 @@ public class QuickButtonsPanel {
         saveCitySubcategories(subcategories);
     }
 
+    /**
+     * Добавляет клетку в выбранную подкатегорию Города.
+     */
     private void addCellToCitySubcategory(String subcategoryName, String cellNum) {
         if (AppVars.Profile == null) {
             return;
@@ -1945,6 +2164,9 @@ public class QuickButtonsPanel {
         saveCitySubcategories(subcategories);
     }
 
+    /**
+     * Удаляет клетку из выбранной подкатегории Города.
+     */
     private void removeCellFromCitySubcategory(String subcategoryName, String cellNum) {
         if (AppVars.Profile == null) {
             return;
@@ -1959,6 +2181,13 @@ public class QuickButtonsPanel {
         saveCitySubcategories(subcategories);
     }
 
+    /**
+     * Сохраняет динамические подкатегории Города в профиль и на диск.
+     *
+     * Зависимости:
+     * - UserConfig.NavCitySubcategories (строковая сериализация),
+     * - UserConfig.save(context) для мгновенной персистентности.
+     */
     private void saveCitySubcategories(List<CitySubcategory> subcategories) {
         if (AppVars.Profile == null) {
             return;

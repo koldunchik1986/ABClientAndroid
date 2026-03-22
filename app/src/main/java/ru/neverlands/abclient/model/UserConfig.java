@@ -182,16 +182,48 @@ public class UserConfig {
     public boolean TorgActive = false;
     public boolean DoGuamod = false;
 
+    /**
+     * Текущая клетка персонажа (region-number), обновляется рантаймом из main.php.
+     * Используется навигатором и авто-переходами.
+     */
     public String MapLocation = "";
+    /**
+     * Разрешение использовать телепорты при построении маршрута навигатором.
+     */
     public boolean NavigatorAllowTeleports = true;
+    /**
+     * Список избранных клеток навигатора.
+     */
     public String[] FavLocations = new String[0];
+    /**
+     * Legacy-списки "Города" (совместимость со старыми профилями/кодом).
+     */
     public String[] NavCityVillageLocations = new String[] {"8-197"};
     public String[] NavCityForpostLocations = new String[] {"8-259", "8-294"};
     public String[] NavCityOktalLocations = new String[] {"12-428", "12-494", "12-521"};
+    /**
+     * Динамические подкатегории "Города" (строковый сериализованный формат).
+     * Формат значения:
+     * - "Имя|8-259,8-294;Имя2|12-428".
+     *
+     * Зависимости:
+     * - парсится/сохраняется в QuickButtonsPanel;
+     * - хранится в navigator@citysubcategories в профиле.
+     */
     public String NavCitySubcategories = "";
+    /**
+     * Категория "Объекты" навигатора.
+     */
     public String[] NavObjectLocations = new String[] {"8-227", "2-482", "9-494", "26-430"};
+    /**
+     * Кастомный список телепортов навигатора.
+     */
     public String[] NavTeleportLocations = new String[0];
 
+    /**
+     * Добавляет одну клетку в избранное без дополнительной нормализации формата.
+     * Нормализация выполняется на уровне UI-слоя навигатора.
+     */
     public void addFavLocation(String loc) {
         if (loc == null || loc.trim().isEmpty()) return;
         String trimmed = loc.trim();
@@ -201,26 +233,48 @@ public class UserConfig {
         FavLocations = arr;
     }
 
+    /**
+     * Полностью очищает избранное навигатора.
+     */
     public void clearFavLocations() {
         FavLocations = new String[0];
     }
 
+    /**
+     * Устанавливает список клеток подкатегории "Деревня".
+     *
+     * Зависимости:
+     * - sanitizeLocations(...) фильтрует формат и дубляжи;
+     * - fallback на дефолт при пустом наборе (совместимость со старыми профилями).
+     */
     public void setNavCityVillageLocations(String[] values) {
         NavCityVillageLocations = sanitizeLocations(values, new String[] {"8-197"});
     }
 
+    /**
+     * Устанавливает список клеток подкатегории "Форпост".
+     */
     public void setNavCityForpostLocations(String[] values) {
         NavCityForpostLocations = sanitizeLocations(values, new String[] {"8-259", "8-294"});
     }
 
+    /**
+     * Устанавливает список клеток подкатегории "Октал".
+     */
     public void setNavCityOktalLocations(String[] values) {
         NavCityOktalLocations = sanitizeLocations(values, new String[] {"12-428", "12-494", "12-521"});
     }
 
+    /**
+     * Устанавливает список клеток категории "Объекты".
+     */
     public void setNavObjectLocations(String[] values) {
         NavObjectLocations = sanitizeLocations(values, new String[] {"8-227", "2-482", "9-494", "26-430"});
     }
 
+    /**
+     * Устанавливает список клеток категории "Телепорты".
+     */
     public void setNavTeleportLocations(String[] values) {
         NavTeleportLocations = sanitizeLocations(values, new String[0]);
     }
