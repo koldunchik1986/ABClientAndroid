@@ -12,6 +12,9 @@ import androidx.preference.Preference;
 import androidx.preference.PreferenceFragmentCompat;
 import androidx.preference.SwitchPreferenceCompat;
 
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
 import ru.neverlands.abclient.utils.AppVars;
 
 /**
@@ -50,6 +53,48 @@ public class SettingsActivity extends AppCompatActivity {
      * Фрагмент настроек.
      */
     public static class SettingsFragment extends PreferenceFragmentCompat {
+        private static final int MAP_SIZE_MIN = 3;
+        private static final int MAP_SIZE_MAX = 31;
+        private static final Pattern MAP_SIZE_PATTERN =
+                Pattern.compile("\\s*(\\d+)\\s*[xX*\\u0445\\u0425]\\s*(\\d+)\\s*");
+
+        private static int normalizeMapSizeValue(int value) {
+            if (value < MAP_SIZE_MIN) value = MAP_SIZE_MIN;
+            if (value > MAP_SIZE_MAX) value = MAP_SIZE_MAX;
+            if ((value & 1) == 0) value -= 1;
+            if (value < MAP_SIZE_MIN) value = MAP_SIZE_MIN;
+            return value;
+        }
+
+        private static int[] parseMapSizeOrFallback(String raw, int fallbackWidth, int fallbackHeight) {
+            int width = normalizeMapSizeValue(fallbackWidth);
+            int height = normalizeMapSizeValue(fallbackHeight);
+            if (raw == null) {
+                return new int[] { width, height };
+            }
+            Matcher matcher = MAP_SIZE_PATTERN.matcher(raw);
+            if (!matcher.matches()) {
+                return new int[] { width, height };
+            }
+            try {
+                int parsedWidth = Integer.parseInt(matcher.group(1));
+                int parsedHeight = Integer.parseInt(matcher.group(2));
+                return new int[] {
+                        normalizeMapSizeValue(parsedWidth),
+                        normalizeMapSizeValue(parsedHeight)
+                };
+            } catch (Exception ignore) {
+                return new int[] { width, height };
+            }
+        }
+
+        private static String formatMapSizeValue(int width, int height) {
+            return width + "*" + height;
+        }
+
+        private static String buildMapSizeSummary(int width, int height) {
+            return "Текущий размер: " + formatMapSizeValue(width, height) + " (нечетные 3..31)";
+        }
         @Override
         public void onCreatePreferences(Bundle savedInstanceState, String rootKey) {
             setPreferencesFromResource(R.xml.root_preferences, rootKey);
@@ -131,6 +176,35 @@ public class SettingsActivity extends AppCompatActivity {
             // - поле профиля `UserConfig.RazdChatReport` (load/save XML профиля);
             // - ветка `MainPhp.mainPhpGetSkinRes`, где этот флаг управляет отправкой
             //   системного сообщения "Результат разделки" в чат.
+            EditTextPreference mapSizePref = findPreference("map_size_cells");
+            if (mapSizePref != null && AppVars.Profile != null) {
+                int normalizedWidth = normalizeMapSizeValue(AppVars.Profile.MapBigWidth);
+                int normalizedHeight = normalizeMapSizeValue(AppVars.Profile.MapBigHeight);
+                if (normalizedWidth != AppVars.Profile.MapBigWidth || normalizedHeight != AppVars.Profile.MapBigHeight) {
+                    AppVars.Profile.MapBigWidth = normalizedWidth;
+                    AppVars.Profile.MapBigHeight = normalizedHeight;
+                    AppVars.Profile.save(requireContext());
+                }
+                String currentMapSize = formatMapSizeValue(normalizedWidth, normalizedHeight);
+                mapSizePref.setText(currentMapSize);
+                mapSizePref.setSummary(buildMapSizeSummary(normalizedWidth, normalizedHeight));
+                mapSizePref.setOnBindEditTextListener(editText -> editText.setSingleLine(true));
+                mapSizePref.setOnPreferenceChangeListener((preference, newValue) -> {
+                    int[] parsed = parseMapSizeOrFallback(
+                            String.valueOf(newValue),
+                            AppVars.Profile.MapBigWidth,
+                            AppVars.Profile.MapBigHeight
+                    );
+                    AppVars.Profile.MapBigWidth = parsed[0];
+                    AppVars.Profile.MapBigHeight = parsed[1];
+                    AppVars.Profile.save(requireContext());
+                    String normalized = formatMapSizeValue(parsed[0], parsed[1]);
+                    mapSizePref.setText(normalized);
+                    preference.setSummary(buildMapSizeSummary(parsed[0], parsed[1]));
+                    return false;
+                });
+            }
+
             SwitchPreferenceCompat razdChatReportPref = findPreference("show_razd_chat_report");
             if (razdChatReportPref != null && AppVars.Profile != null) {
                 razdChatReportPref.setChecked(AppVars.Profile.RazdChatReport);
