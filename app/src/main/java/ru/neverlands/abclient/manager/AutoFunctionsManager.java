@@ -919,8 +919,18 @@ public class AutoFunctionsManager {
                     Log.d(TAG, "startAutoMoving: bootstrap skipped (webView is null)");
                     return;
                 }
-                String url = "http://neverlands.ru/main.php?get_id=56&act=10&go=inf&ab_nav_bootstrap=1&r="
-                        + System.currentTimeMillis();
+                String vcode = AppVars.VCode != null ? AppVars.VCode.trim() : "";
+                String url;
+                if (!vcode.isEmpty()) {
+                    url = "http://neverlands.ru/main.php?get_id=56&act=10&go=ret&vcode="
+                            + vcode
+                            + "&ab_nav_bootstrap=1&r="
+                            + System.currentTimeMillis();
+                } else {
+                    // Fallback: если vcode еще не извлечен, запускаем старый bootstrap через go=inf.
+                    url = "http://neverlands.ru/main.php?get_id=56&act=10&go=inf&ab_nav_bootstrap=1&r="
+                            + System.currentTimeMillis();
+                }
                 activity.binding.appBarMain.contentMain.webView.loadUrl(url);
                 Log.d(TAG, "startAutoMoving: bootstrap navigation to " + url);
             } catch (Exception e) {

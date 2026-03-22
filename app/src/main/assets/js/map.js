@@ -689,7 +689,7 @@ function moveMapTo(x, y, ps) {
     gox = x;
     goy = y;
     gop = ps;
-    AjaxGet('map_ajax.php?act=1&x=' + x + '&y=' + y + '&gti=' + map[0][2] + '&vcode=' + avail[x + '_' + y] + '&r=' + Math.random());
+    AjaxGet('map_ajax.php?act=1&mx=' + x + '&my=' + y + '&gti=' + map[0][2] + '&vcode=' + avail[x + '_' + y] + '&r=' + Math.random());
     return true;
 }
 

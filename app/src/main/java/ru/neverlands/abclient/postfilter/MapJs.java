@@ -155,12 +155,19 @@ public class MapJs {
         String chatReloadSafePatched = fishPatched.replaceAll(
                 "parent\\.frames\\[\"ch_list\"\\]\\.location\\s*=\\s*\"/ch\\.php\\?lo=1\"\\s*;",
                 "window.__abReloadChList('/ch.php?lo=1');");
+        // C# parity (ABClient/map.js): map_ajax шаг отправляется параметрами mx/my, а не x/y.
+        // Это критично: сервер на x/y может отвечать "ERR", из-за чего навигатор строит путь, но не двигается.
+        String moveParamsPatched = chatReloadSafePatched.replaceAll(
+                "map_ajax\\.php\\?act=1&x='\\s*\\+\\s*x\\s*\\+\\s*'&y='\\s*\\+\\s*y\\s*\\+\\s*'&gti=",
+                "map_ajax.php?act=1&mx=' + x + '&my=' + y + '&gti=");
         String patchedWidthDecl = extractVarDecl(fishPatched, DECL_WIDTH_PATTERN);
         String patchedHeightDecl = extractVarDecl(fishPatched, DECL_HEIGHT_PATTERN);
         String patchedScaleDecl = extractScaleDecl(fishPatched);
-        int getMapScaleCallCount = countMatches(chatReloadSafePatched, "GetMapScale\\s*\\(");
+        int getMapScaleCallCount = countMatches(moveParamsPatched, "GetMapScale\\s*\\(");
+        int mapAjaxMxCount = countMatches(moveParamsPatched, "map_ajax\\.php\\?act=1&mx=");
+        int mapAjaxXCount = countMatches(moveParamsPatched, "map_ajax\\.php\\?act=1&x=");
 
-        String patched = MAP_JS_SAFE_PRELUDE + chatReloadSafePatched;
+        String patched = MAP_JS_SAFE_PRELUDE + moveParamsPatched;
         boolean runtimePatchAppended = false;
         if (!patched.contains(ABCLIENT_MAP_RUNTIME_PATCH_MARKER)) {
             patched += "\n" + OVERLOAD_RUNTIME_PATCH;
@@ -174,6 +181,9 @@ public class MapJs {
                 + ", dimPatch=" + (!dimPatched.equals(js))
                 + ", fishPatch=" + (!fishPatched.equals(dimPatched))
                 + ", chatReloadSafePatch=" + (!chatReloadSafePatched.equals(fishPatched))
+                + ", moveParamsPatch=" + (!moveParamsPatched.equals(chatReloadSafePatched))
+                + ", mapAjaxMxCount=" + mapAjaxMxCount
+                + ", mapAjaxXCount=" + mapAjaxXCount
                 + ", getMapScaleCalls=" + getMapScaleCallCount
                 + ", runtimePatchAppended=" + runtimePatchAppended);
 

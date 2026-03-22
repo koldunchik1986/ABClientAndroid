@@ -1637,9 +1637,20 @@ public class MainPhp {
             return null;
         }
 
+        String retVcode = mainPhpExtractMenuVcode(html, "ret");
+
         String mapLink = findMainPhpLinkByQueryParts(html, "get_id=56", "act=10", "go=ret", "vcode=");
         if (mapLink == null) {
             mapLink = findMainPhpLinkByQueryParts(html, "get_id=56", "act=10", "go=ret");
+        }
+        if ((mapLink == null || mapLink.isEmpty()) && retVcode != null && !retVcode.isEmpty()) {
+            mapLink = normalizeNeverlandsMainLink("main.php?get_id=56&act=10&go=ret&vcode=" + retVcode);
+        }
+        if (mapLink == null) {
+            String infLink = findMainPhpLinkByQueryParts(html, "get_id=56", "act=10", "go=inf", "vcode=");
+            if (infLink != null && !infLink.isEmpty()) {
+                mapLink = normalizeNeverlandsMainLink(infLink.replace("go=inf", "go=ret"));
+            }
         }
 
         if (mapLink == null) {
@@ -1656,6 +1667,13 @@ public class MainPhp {
                     int linkEnd = html.indexOf('\'', linkStart);
                     if (linkEnd > linkStart) {
                         mapLink = normalizeNeverlandsMainLink(html.substring(linkStart, linkEnd));
+                        if (retVcode != null && !retVcode.isEmpty()) {
+                            mapLink = normalizeNeverlandsMainLink("main.php?get_id=56&act=10&go=ret&vcode=" + retVcode);
+                        } else if (mapLink.contains("go=inf")) {
+                            mapLink = normalizeNeverlandsMainLink(mapLink.replace("go=inf", "go=ret"));
+                        } else if (mapLink.endsWith("/main.php") || mapLink.endsWith("/main.php?")) {
+                            mapLink = normalizeNeverlandsMainLink("main.php?get_id=56&act=10&go=ret");
+                        }
                     }
                 }
             }
@@ -1665,6 +1683,26 @@ public class MainPhp {
             return null;
         }
         return buildRedirectHtml("Навигатор: переход на карту", mapLink);
+    }
+
+    private static String mainPhpExtractMenuVcode(String html, String menuKey) {
+        if (html == null || html.isEmpty() || menuKey == null || menuKey.isEmpty()) {
+            return null;
+        }
+        try {
+            java.util.regex.Pattern p = java.util.regex.Pattern.compile(
+                    "\\[\\s*\"" + java.util.regex.Pattern.quote(menuKey) + "\"\\s*,\\s*\"[^\"]*\"\\s*,\\s*\"([^\"]+)\"",
+                    java.util.regex.Pattern.CASE_INSENSITIVE);
+            java.util.regex.Matcher m = p.matcher(html);
+            if (m.find()) {
+                String vcode = m.group(1);
+                if (vcode != null && !vcode.isEmpty()) {
+                    return vcode;
+                }
+            }
+        } catch (Exception ignored) {
+        }
+        return null;
     }
 
     private static String mainPhpFindFish(String html) {
@@ -2848,6 +2886,15 @@ public class MainPhp {
                 if (mapReturnHtml != null && !mapReturnHtml.isEmpty()) {
                     android.util.Log.d(TAG, "AUTO_MOVING_TRACE: redirect to map from " + address);
                     return Russian.getBytes(mapReturnHtml);
+                }
+                if (address != null && address.contains("ab_nav_bootstrap=1")) {
+                    String bootstrapRetLink = "main.php?get_id=56&act=10&go=ret";
+                    if (AppVars.VCode != null && !AppVars.VCode.trim().isEmpty()) {
+                        bootstrapRetLink += "&vcode=" + AppVars.VCode.trim();
+                    }
+                    android.util.Log.d(TAG, "AUTO_MOVING_TRACE: bootstrap fallback to map, address="
+                            + address + ", link=" + bootstrapRetLink);
+                    return Russian.getBytes(buildRedirectHtml("Navigator bootstrap: go=ret", bootstrapRetLink));
                 }
             }
         }
