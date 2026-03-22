@@ -368,8 +368,8 @@ public class WebAppInterface {
         sb.append("<div ").append(idAttr)
                 .append("style=\"position:relative; left:2px; top:2px; width:90px; height:90px; ")
                 .append(border)
-                .append(" padding:2px; text-shadow:1px 1px 1px, -1px -1px 1px, -1px 1px 1px, 1px -1px 1px; ")
-                .append("font-family:Tahoma; font-size:9px; font-weight:bold; text-decoration:none;\">");
+                .append(" padding:2px; text-shadow:none; ")
+                .append("font-family:Tahoma; font-size:9px; line-height:1.15; font-weight:bold; text-decoration:none;\">");
         sb.append("<span style=\"font-size:11px; color:")
                 .append(hexColorCost(cell.Cost))
                 .append("\">")
