@@ -369,7 +369,7 @@ public class QuickButtonsPanel {
             case AUTO_DRINK:
                 return R.drawable.ic_add;
             case AUTO_MOVING:
-                return R.drawable.ic_add;
+                return R.drawable.ic_globe;
             case AUTO_CUT:
                 return R.drawable.ic_add;
             case AUTO_REFRESH:
@@ -1476,4 +1476,3 @@ public class QuickButtonsPanel {
         loadAndUpdateButtons();
     }
 }
-

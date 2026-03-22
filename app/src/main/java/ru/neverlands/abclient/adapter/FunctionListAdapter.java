@@ -195,7 +195,7 @@ public class FunctionListAdapter extends BaseAdapter {
             case AUTO_DRINK:
                 return R.drawable.ic_add;
             case AUTO_MOVING:
-                return R.drawable.ic_add;
+                return R.drawable.ic_globe;
             case AUTO_REFRESH:
                 return R.drawable.ic_refresh;
             default:

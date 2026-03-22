@@ -5,11 +5,15 @@ import android.util.Log;
 import java.nio.charset.Charset;
 
 /**
- * Постфильтр для server-side {@code js/map.js}.
+ * Постфильтр для server-side `js/map.js`.
  *
  * Зависимости:
  * - вызывается из {@link Filter#process(android.content.Context, String, byte[])};
- * - использует bridge-методы {@code AndroidBridge/window.external} из {@code WebAppInterface}.
+ * - использует bridge-методы `AndroidBridge/window.external` из `WebAppInterface`.
+ *
+ * Важно:
+ * - синхронизация серверного таймера теперь делается из `main.php` (`wtime/tdsec/secgo`);
+ * - старые nav timer-патчи в `map.js` удалены как лишние.
  */
 public class MapJs {
     private static final String TAG = "MapJs";
@@ -25,71 +29,8 @@ public class MapJs {
     private static final String FISH_NO_CAPTCHA_CONDITION_NEW =
             "if ((!ingr[1] || ingr[1] == '00000') && window.external.IsAutoFish()) {";
 
-    // Патч окончания timerst: если активен Навигатор, после таймера продолжаем через go=inf.
-    private static final String TIMER_FINISH_LOCATION_OLD =
-            "location = 'http://neverlands.ru/main.php';";
-    private static final String TIMER_FINISH_LOCATION_OLD_COMPACT =
-            "location='http://neverlands.ru/main.php';";
-    private static final String TIMER_FINISH_LOCATION_OLD_WWW =
-            "location = 'http://www.neverlands.ru/main.php';";
-    private static final String TIMER_FINISH_LOCATION_OLD_WWW_COMPACT =
-            "location='http://www.neverlands.ru/main.php';";
-    private static final String TIMER_FINISH_LOCATION_OLD_WINDOW =
-            "window.location='http://neverlands.ru/main.php';";
-    private static final String TIMER_FINISH_LOCATION_OLD_WINDOW_SPACED =
-            "window.location = 'http://neverlands.ru/main.php';";
-    private static final String TIMER_FINISH_LOCATION_OLD_WINDOW_WWW =
-            "window.location='http://www.neverlands.ru/main.php';";
-    private static final String TIMER_FINISH_LOCATION_OLD_WINDOW_WWW_SPACED =
-            "window.location = 'http://www.neverlands.ru/main.php';";
-    private static final String TIMER_FINISH_LOCATION_NEW =
-            "if (window.external && window.external.IsAutoMoving && window.external.IsAutoMoving()) {"
-                    + "location = 'http://neverlands.ru/main.php?get_id=56&act=10&go=inf&ab_nav_tick=1&r=' + Math.random();"
-                    + "} else {"
-                    + "location = 'http://neverlands.ru/main.php';"
-                    + "}";
-
-    // Runtime-hook для timerst: даже если строковый replace не совпал, при окончании таймера
-    // гарантированно посылаем навигационный tick в go=inf при активном Навигаторе.
-    private static final String NAV_TIMER_RUNTIME_PATCH =
-            "/*ABCLIENT_NAV_TIMER_RUNTIME_PATCH*/\n"
-                    + "(function(){\n"
-                    + "if (window.__ab_nav_timer_patch_applied) return;\n"
-                    + "window.__ab_nav_timer_patch_applied = true;\n"
-                    + "function __ab_nav_tick(){\n"
-                    + "  try{\n"
-                    + "    if(window.external && window.external.IsAutoMoving && window.external.IsAutoMoving()){\n"
-                    + "      location='http://neverlands.ru/main.php?get_id=56&act=10&go=inf&ab_nav_tick=1&r='+Math.random();\n"
-                    + "    }\n"
-                    + "  }catch(_ab_nav_e){}\n"
-                    + "}\n"
-                    + "function __ab_wrap_timerst(){\n"
-                    + "  if(typeof window.timerst!=='function') return false;\n"
-                    + "  if(window.timerst.__ab_wrapped) return true;\n"
-                    + "  var __ab_old=window.timerst;\n"
-                    + "  var __ab_new=function(lp){\n"
-                    + "    var __ab_ret=__ab_old.apply(this, arguments);\n"
-                    + "    try{\n"
-                    + "      var __ab_left=(typeof window.time_left_sec!=='undefined')?parseInt(window.time_left_sec,10):1;\n"
-                    + "      if(!isNaN(__ab_left) && __ab_left<=0){ __ab_nav_tick(); }\n"
-                    + "    }catch(_ab_nav_e2){}\n"
-                    + "    return __ab_ret;\n"
-                    + "  };\n"
-                    + "  __ab_new.__ab_wrapped=true;\n"
-                    + "  window.timerst=__ab_new;\n"
-                    + "  return true;\n"
-                    + "}\n"
-                    + "if(!__ab_wrap_timerst()){\n"
-                    + "  var __ab_retry=0;\n"
-                    + "  var __ab_iid=setInterval(function(){\n"
-                    + "    __ab_retry++;\n"
-                    + "    if(__ab_wrap_timerst()||__ab_retry>24){ clearInterval(__ab_iid); }\n"
-                    + "  },250);\n"
-                    + "}\n"
-                    + "})();\n";
-
-    // Дополнительный runtime-патч для suppress popup "перегруз рюкзака".
-    // Используем unicode escapes, чтобы не зависеть от кодировки исходника.
+    // Runtime-патч suppress popup "перегруз рюкзака".
+    // Unicode escapes используются, чтобы не зависеть от кодировки исходного map.js.
     private static final String OVERLOAD_RUNTIME_PATCH =
             ABCLIENT_MAP_RUNTIME_PATCH_MARKER + "\n"
                     + "(function(){\n"
@@ -113,9 +54,72 @@ public class MapJs {
                     + "};\n"
                     + "})();\n";
 
+    // Fallback для случаев, когда в main.php нет wtime/tdsec/secgo и серверный таймер живет только в map.js.
+    // Тогда после окончания timerst форсируем один runtime-tick:
+    // - Навигатор: go=inf&ab_nav_tick=1
+    // - Авто-рыбалка: go=inf&af_tick=1 (+vcode, если доступен в JS-контексте)
+    private static final String TIMER_RUNTIME_FALLBACK_PATCH =
+            "/*ABCLIENT_TIMER_RUNTIME_FALLBACK*/\n"
+                    + "(function(){\n"
+                    + "if (window.__ab_timer_fallback_applied) return;\n"
+                    + "window.__ab_timer_fallback_applied = true;\n"
+                    + "var __ab_last_fire = 0;\n"
+                    + "function __ab_fire_tick(){\n"
+                    + "  var __ab_now = Date.now ? Date.now() : (new Date()).getTime();\n"
+                    + "  if ((__ab_now - __ab_last_fire) < 1200) return;\n"
+                    + "  __ab_last_fire = __ab_now;\n"
+                    + "  try {\n"
+                    + "    if (window.external && window.external.IsAutoMoving && window.external.IsAutoMoving()) {\n"
+                    + "      location = 'http://neverlands.ru/main.php?get_id=56&act=10&go=inf&ab_nav_tick=1&r=' + Math.random();\n"
+                    + "      return;\n"
+                    + "    }\n"
+                    + "    if (window.external && window.external.IsAutoFish && window.external.IsAutoFish()) {\n"
+                    + "      var __ab_url = 'http://neverlands.ru/main.php?get_id=56&act=10&go=inf&af_tick=1&r=' + Math.random();\n"
+                    + "      try {\n"
+                    + "        if (typeof window.vcode === 'string' && window.vcode.length > 0) {\n"
+                    + "          __ab_url += '&vcode=' + encodeURIComponent(window.vcode);\n"
+                    + "        }\n"
+                    + "      } catch (_ab_vcode_e) {}\n"
+                    + "      location = __ab_url;\n"
+                    + "    }\n"
+                    + "  } catch (_ab_fire_e) {}\n"
+                    + "}\n"
+                    + "function __ab_left_sec(){\n"
+                    + "  try {\n"
+                    + "    if (typeof window.time_left_sec !== 'undefined') {\n"
+                    + "      var __ab_left = parseInt(window.time_left_sec, 10);\n"
+                    + "      if (!isNaN(__ab_left)) return __ab_left;\n"
+                    + "    }\n"
+                    + "  } catch (_ab_left_e) {}\n"
+                    + "  return 1;\n"
+                    + "}\n"
+                    + "function __ab_wrap_timerst(){\n"
+                    + "  if (typeof window.timerst !== 'function') return false;\n"
+                    + "  if (window.timerst.__ab_wrapped) return true;\n"
+                    + "  var __ab_old = window.timerst;\n"
+                    + "  var __ab_new = function(lp){\n"
+                    + "    var __ab_ret = __ab_old.apply(this, arguments);\n"
+                    + "    try {\n"
+                    + "      if (__ab_left_sec() <= 0) __ab_fire_tick();\n"
+                    + "    } catch (_ab_timer_e) {}\n"
+                    + "    return __ab_ret;\n"
+                    + "  };\n"
+                    + "  __ab_new.__ab_wrapped = true;\n"
+                    + "  window.timerst = __ab_new;\n"
+                    + "  return true;\n"
+                    + "}\n"
+                    + "if (!__ab_wrap_timerst()) {\n"
+                    + "  var __ab_retry = 0;\n"
+                    + "  var __ab_iid = setInterval(function(){\n"
+                    + "    __ab_retry++;\n"
+                    + "    if (__ab_wrap_timerst() || __ab_retry > 24) { clearInterval(__ab_iid); }\n"
+                    + "  }, 250);\n"
+                    + "}\n"
+                    + "})();\n";
+
     /**
      * Базовый prelude:
-     * - ставит alias {@code window.external = window.AndroidBridge};
+     * - ставит alias `window.external = window.AndroidBridge`;
      * - добавляет no-op stubs для функций, которые map.js вызывает до полной инициализации.
      */
     private static final String MAP_JS_SAFE_PRELUDE =
@@ -136,25 +140,15 @@ public class MapJs {
         }
 
         String fishPatched = js.replace(FISH_NO_CAPTCHA_CONDITION_OLD, FISH_NO_CAPTCHA_CONDITION_NEW);
-        String timerPatched = fishPatched
-                .replace(TIMER_FINISH_LOCATION_OLD, TIMER_FINISH_LOCATION_NEW)
-                .replace(TIMER_FINISH_LOCATION_OLD_COMPACT, TIMER_FINISH_LOCATION_NEW)
-                .replace(TIMER_FINISH_LOCATION_OLD_WWW, TIMER_FINISH_LOCATION_NEW)
-                .replace(TIMER_FINISH_LOCATION_OLD_WWW_COMPACT, TIMER_FINISH_LOCATION_NEW)
-                .replace(TIMER_FINISH_LOCATION_OLD_WINDOW, TIMER_FINISH_LOCATION_NEW)
-                .replace(TIMER_FINISH_LOCATION_OLD_WINDOW_SPACED, TIMER_FINISH_LOCATION_NEW)
-                .replace(TIMER_FINISH_LOCATION_OLD_WINDOW_WWW, TIMER_FINISH_LOCATION_NEW)
-                .replace(TIMER_FINISH_LOCATION_OLD_WINDOW_WWW_SPACED, TIMER_FINISH_LOCATION_NEW);
 
-        String patched = MAP_JS_SAFE_PRELUDE + timerPatched;
+        String patched = MAP_JS_SAFE_PRELUDE + fishPatched;
         boolean runtimePatchAppended = false;
         if (!patched.contains(ABCLIENT_MAP_RUNTIME_PATCH_MARKER)) {
-            patched += "\n" + OVERLOAD_RUNTIME_PATCH + "\n" + NAV_TIMER_RUNTIME_PATCH;
+            patched += "\n" + OVERLOAD_RUNTIME_PATCH + "\n" + TIMER_RUNTIME_FALLBACK_PATCH;
             runtimePatchAppended = true;
         }
 
         Log.d(TAG, "process: fishPatch=" + (!fishPatched.equals(js))
-                + ", navTimerPatch=" + (!timerPatched.equals(fishPatched))
                 + ", runtimePatchAppended=" + runtimePatchAppended);
 
         return patched.getBytes(WINDOWS_1251);
