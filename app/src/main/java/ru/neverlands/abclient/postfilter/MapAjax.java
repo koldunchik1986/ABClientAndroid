@@ -24,9 +24,12 @@ public class MapAjax {
     private static final int AUTO_MOVING_TIED_STEP_COST = 2;
     private static final int AUTO_DRINK_BLAZ_NEAR_THRESHOLD_DELTA = 6;
     private static final long AUTO_DRINK_BLAZ_PINFO_SYNC_COOLDOWN_MS = 20_000L;
+    private static final long AUTO_DRINK_BLAZ_STARTUP_SYNC_RETRY_COOLDOWN_MS = 10_000L;
     private static final long AUTO_DRINK_BLAZ_TRIGGER_COOLDOWN_MS = 2_500L;
     private static volatile long lastAutoDrinkBlazPinfoSyncAtMs = 0L;
+    private static volatile long lastAutoDrinkBlazStartupSyncAttemptAtMs = 0L;
     private static volatile long lastAutoDrinkBlazTriggerAtMs = 0L;
+    private static volatile boolean autoDrinkBlazStartupSyncDone = false;
 
     public static String process(String html) {
         if (AppVars.FastNeed && AppVars.FastPauseNonCombatAutoFunctions) {
@@ -35,6 +38,11 @@ public class MapAjax {
                         + ", fastId=" + AppVars.FastId);
             }
             return html;
+        }
+
+        if (!AppVars.AutoMoving || !AppVars.DoSearchBox) {
+            autoDrinkBlazStartupSyncDone = false;
+            lastAutoDrinkBlazStartupSyncAttemptAtMs = 0L;
         }
 
         if (isMapAjaxErrResponse(html) && AppVars.AutoMoving) {
@@ -106,7 +114,8 @@ public class MapAjax {
             markSearchBoxVisited(regNum);
             if (regNum != null && !regNum.isEmpty() && (AppVars.AutoMoving || AppVars.AutoDrinkBlazPending)) {
                 if (AppVars.AutoMoving) {
-                onAutoMovingCellObserved(previousMapLocation, regNum);
+                    maybeSyncVitalsFromPinfoAtSearchBoxStartup(regNum);
+                    onAutoMovingCellObserved(previousMapLocation, regNum);
                 }
                 String autoDrinkRedirect = maybeTriggerAutoDrinkBlazOnThreshold(regNum);
                 if (autoDrinkRedirect != null && !autoDrinkRedirect.isEmpty()) {
@@ -337,6 +346,35 @@ public class MapAjax {
                 || lower.contains("\u0432\u044b \u0443\u0441\u0442\u0430\u043b\u0438");
     }
 
+    private static void maybeSyncVitalsFromPinfoAtSearchBoxStartup(String currentRegNum) {
+        if (!AppVars.AutoMoving || !AppVars.DoSearchBox || autoDrinkBlazStartupSyncDone) {
+            return;
+        }
+        if (AppVars.Profile == null) {
+            return;
+        }
+        String nick = AppVars.Profile.UserNick;
+        if (nick == null || nick.trim().isEmpty()) {
+            return;
+        }
+        long now = System.currentTimeMillis();
+        if ((now - lastAutoDrinkBlazStartupSyncAttemptAtMs) < AUTO_DRINK_BLAZ_STARTUP_SYNC_RETRY_COOLDOWN_MS) {
+            return;
+        }
+        lastAutoDrinkBlazStartupSyncAttemptAtMs = now;
+
+        int threshold = clampPercent(AppVars.Profile.AutoDrinkBlazTied);
+        NeverApi.PinfoVitals vitals = NeverApi.getPinfoVitalsFromPinfo(nick);
+        if (vitals == null) {
+            logAutoBlazDecision("startup", "skip_sync_failed", clampPercent(AppVars.Tied), threshold, "reg=" + currentRegNum);
+            return;
+        }
+
+        applyPinfoVitals(vitals, currentRegNum, threshold, true);
+        autoDrinkBlazStartupSyncDone = true;
+        logAutoBlazDecision("startup", "synced", clampPercent(AppVars.Tied), threshold, "reg=" + currentRegNum);
+    }
+
     private static void onAutoMovingCellObserved(String previousRegNum, String currentRegNum) {
         if (previousRegNum == null || previousRegNum.isEmpty()) {
             return;
@@ -375,27 +413,54 @@ public class MapAjax {
         if (nick == null || nick.trim().isEmpty()) {
             return;
         }
-        Integer synced = NeverApi.getCurrentTiedFromPinfo(nick);
-        if (synced == null) {
+        NeverApi.PinfoVitals synced = NeverApi.getPinfoVitalsFromPinfo(nick);
+        if (synced == null || synced.curTire == null) {
             logAutoBlazDecision("sync", "skip_sync_failed", tied, threshold, "reg=" + currentRegNum);
             return;
         }
         lastAutoDrinkBlazPinfoSyncAtMs = now;
-        int normalized = clampPercent(synced);
-        showFatigueSyncToast("\u0421\u0438\u043D\u0445\u0440\u043E\u043D\u0438\u0437\u0430\u0446\u0438\u044F \u0443\u0441\u0442\u0430\u043B\u043E\u0441\u0442\u0438: " + normalized + "%");
-        if (AppVars.Tied != normalized) {
-            Log.d(TAG, "AUTO_BLAZ_TRACE tied sync from pinfo: old=" + AppVars.Tied
-                    + ", new=" + normalized
-                    + ", reg=" + currentRegNum
-                    + ", threshold=" + threshold);
-            AppVars.Tied = normalized;
+        int oldTied = clampPercent(AppVars.Tied);
+        applyPinfoVitals(synced, currentRegNum, threshold, false);
+        int normalized = clampPercent(AppVars.Tied);
+        if (oldTied != normalized) {
             logAutoBlazDecision("sync", "synced_changed", normalized, threshold, "reg=" + currentRegNum);
         } else {
-            Log.d(TAG, "AUTO_BLAZ_TRACE tied sync from pinfo: unchanged=" + normalized
-                    + ", reg=" + currentRegNum
-                    + ", threshold=" + threshold);
             logAutoBlazDecision("sync", "synced_unchanged", normalized, threshold, "reg=" + currentRegNum);
         }
+    }
+
+    private static void applyPinfoVitals(NeverApi.PinfoVitals vitals, String currentRegNum, int threshold, boolean startupSync) {
+        if (vitals == null) {
+            return;
+        }
+
+        int oldTied = clampPercent(AppVars.Tied);
+        int newTied = oldTied;
+        if (vitals.curTire != null) {
+            newTied = clampPercent(vitals.curTire);
+            AppVars.Tied = newTied;
+            showFatigueSyncToast("\u0421\u0438\u043D\u0445\u0440\u0430\u043D\u0438\u0437\u0430\u0446\u0438\u044F \u041F\u0435\u0440\u0441\u043E\u043D\u0430\u0436\u0430: " + newTied + "%");
+        }
+
+        if (vitals.curHp != null) {
+            AppVars.CurHP = Math.max(0, vitals.curHp);
+        }
+        if (vitals.maxHp != null) {
+            AppVars.MaxHP = Math.max(0, vitals.maxHp);
+        }
+        if (vitals.curMa != null) {
+            AppVars.CurMA = Math.max(0, vitals.curMa);
+        }
+        if (vitals.maxMa != null) {
+            AppVars.MaxMA = Math.max(0, vitals.maxMa);
+        }
+
+        String syncType = startupSync ? "startup" : "near_threshold";
+        Log.d(TAG, "AUTO_BLAZ_TRACE pinfo sync (" + syncType + "): tied=" + oldTied + "->" + newTied
+                + ", hp=" + AppVars.CurHP + "/" + AppVars.MaxHP
+                + ", ma=" + AppVars.CurMA + "/" + AppVars.MaxMA
+                + ", reg=" + currentRegNum
+                + ", threshold=" + threshold);
     }
 
     private static String maybeTriggerAutoDrinkBlazOnThreshold(String currentRegNum) {

@@ -33,6 +33,28 @@ public class NeverApi {
     // Кэш nick → userId (аналог NameToId в C#)
     private static final Map<String, String> nameToId = new HashMap<>();
 
+    /**
+     * Снимок vitals из pinfo.cgi:
+     * - HP: curHp/maxHp
+     * - MA: curMa/maxMa
+     * - усталость: curTire (0..100)
+     */
+    public static final class PinfoVitals {
+        public final Integer curHp;
+        public final Integer maxHp;
+        public final Integer curMa;
+        public final Integer maxMa;
+        public final Integer curTire;
+
+        public PinfoVitals(Integer curHp, Integer maxHp, Integer curMa, Integer maxMa, Integer curTire) {
+            this.curHp = curHp;
+            this.maxHp = maxHp;
+            this.curMa = curMa;
+            this.maxMa = maxMa;
+            this.curTire = curTire;
+        }
+    }
+
     // -----------------------------------------------------------------------
     // Публичный API
     // -----------------------------------------------------------------------
@@ -117,21 +139,35 @@ public class NeverApi {
      * если значение не удалось извлечь.
      */
     public static Integer getCurrentTiedFromPinfo(String nick) {
+        PinfoVitals vitals = getPinfoVitalsFromPinfo(nick);
+        if (vitals == null) {
+            return null;
+        }
+        return vitals.curTire;
+    }
+
+    /**
+     * Полная синхронизация vitals через pinfo.cgi.
+     */
+    public static PinfoVitals getPinfoVitalsFromPinfo(String nick) {
         if (nick == null || nick.trim().isEmpty()) {
             return null;
         }
         try {
             String encoded = URLEncoder.encode(nick.trim(), "windows-1251");
             String html = getInfo("http://neverlands.ru/pinfo.cgi?" + encoded);
-            Integer tied = parseCurrentTiedFromPinfoHtml(html);
-            if (tied != null) {
-                android.util.Log.d(TAG, "AUTO_BLAZ_TRACE pinfo tied sync: nick=" + nick + ", tied=" + tied);
+            PinfoVitals vitals = parsePinfoVitalsFromPinfoHtml(html);
+            if (vitals != null) {
+                android.util.Log.d(TAG, "AUTO_BLAZ_TRACE pinfo vitals sync: nick=" + nick
+                        + ", hp=" + safeInt(vitals.curHp) + "/" + safeInt(vitals.maxHp)
+                        + ", ma=" + safeInt(vitals.curMa) + "/" + safeInt(vitals.maxMa)
+                        + ", tied=" + safeInt(vitals.curTire));
             } else {
-                android.util.Log.w(TAG, "AUTO_BLAZ_TRACE pinfo tied sync failed: value not found for nick=" + nick);
+                android.util.Log.w(TAG, "AUTO_BLAZ_TRACE pinfo vitals sync failed: value not found for nick=" + nick);
             }
-            return tied;
+            return vitals;
         } catch (Exception e) {
-            android.util.Log.w(TAG, "AUTO_BLAZ_TRACE pinfo tied sync error for nick=" + nick, e);
+            android.util.Log.w(TAG, "AUTO_BLAZ_TRACE pinfo vitals sync error for nick=" + nick, e);
             return null;
         }
     }
@@ -165,6 +201,68 @@ public class NeverApi {
             android.util.Log.w(TAG, "AUTO_BLAZ_TRACE parseCurrentTiedFromPinfoHtml failed", e);
         }
         return null;
+    }
+
+    private static PinfoVitals parsePinfoVitalsFromPinfoHtml(String html) {
+        if (html == null || html.isEmpty()) {
+            return null;
+        }
+        try {
+            Integer curHp = null;
+            Integer maxHp = null;
+            Integer curMa = null;
+            Integer maxMa = null;
+            Integer curTire = null;
+
+            Matcher hpmpMatcher = Pattern.compile("(?is)\\bhpmp\\b\\s*=\\s*\\[(.*?)\\]").matcher(html);
+            if (hpmpMatcher.find()) {
+                String[] hpmp = hpmpMatcher.group(1).split(",");
+                if (hpmp.length >= 5) {
+                    curHp = parseIntToken(hpmp[0]);
+                    maxHp = parseIntToken(hpmp[1]);
+                    curMa = parseIntToken(hpmp[2]);
+                    maxMa = parseIntToken(hpmp[3]);
+                    Integer maxTire = parseIntToken(hpmp[4]);
+                    if (maxTire != null) {
+                        curTire = clampPercent(100 - maxTire);
+                    }
+                }
+            }
+
+            if (curTire == null) {
+                Integer fallbackTied = parseCurrentTiedFromPinfoHtml(html);
+                if (fallbackTied != null) {
+                    curTire = clampPercent(fallbackTied);
+                }
+            }
+
+            if (curHp == null && maxHp == null && curMa == null && maxMa == null && curTire == null) {
+                return null;
+            }
+            return new PinfoVitals(curHp, maxHp, curMa, maxMa, curTire);
+        } catch (Exception e) {
+            android.util.Log.w(TAG, "AUTO_BLAZ_TRACE parsePinfoVitalsFromPinfoHtml failed", e);
+            return null;
+        }
+    }
+
+    private static Integer parseIntToken(String token) {
+        if (token == null || token.isEmpty()) {
+            return null;
+        }
+        Matcher digits = Pattern.compile("(\\d{1,6})").matcher(token);
+        if (!digits.find()) {
+            return null;
+        }
+        try {
+            return Integer.parseInt(digits.group(1));
+        } catch (Exception ignored) {
+            return null;
+        }
+    }
+
+    private static String safeInt(Integer value) {
+        return value == null ? "?" : String.valueOf(value);
     }
 
     private static int clampPercent(int value) {

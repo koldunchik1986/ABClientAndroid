@@ -243,6 +243,12 @@ public class AppVars {
      * Используется в авто-рыбалке для решения: делать заброс или сначала выполнить шаг "Пить".
      */
     public static int Tied = 0;
+    // Runtime-снимок текущих HP/MA из pinfo/hpmp.
+    // Используется для стартовой синхронизации в авто-режимах.
+    public static int CurHP = 0;
+    public static int MaxHP = 0;
+    public static int CurMA = 0;
+    public static int MaxMA = 0;
     /**
      * Анти-зацикливание авто-рыбалки: ключ последней попытки проверки/переодевания снастей.
      * Используется в MainPhp, чтобы остановить бесконечный цикл `inf -> inv -> wear -> inf`.

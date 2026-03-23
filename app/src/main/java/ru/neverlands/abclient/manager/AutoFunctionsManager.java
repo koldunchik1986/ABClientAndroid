@@ -3,6 +3,7 @@ package ru.neverlands.abclient.manager;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.util.Log;
+import android.widget.Toast;
 
 import ru.neverlands.abclient.MainActivity;
 import ru.neverlands.abclient.model.AutoboiState;
@@ -19,6 +20,8 @@ import ru.neverlands.abclient.utils.MapPath;
 public class AutoFunctionsManager {
     private static final String TAG = "AutoFunctionsManager";
     private static final String BG_TRACE_PREFIX = "[BG_TRACE]";
+    private static final String CHARACTER_SYNC_LABEL = "\u0421\u0438\u043D\u0445\u0440\u0430\u043D\u0438\u0437\u0430\u0446\u0438\u044F \u041F\u0435\u0440\u0441\u043E\u043D\u0430\u0436\u0430";
+    private static final long CHARACTER_SYNC_LOGIN_COOLDOWN_MS = 15_000L;
     private static final String PREFS_NAME = "auto_functions_prefs";
     private static final String KEY_PREFIX = "auto_function_";
     private static final String KEY_AUTO_SKIN = KEY_PREFIX + "auto_skin";
@@ -33,6 +36,7 @@ public class AutoFunctionsManager {
     private static AutoFunctionsManager instance;
     private final Context context;
     private final SharedPreferences prefs;
+    private volatile long lastCharacterSyncRequestedAtMs = 0L;
     
     // SharedPreferences фиксируют состояние автозадач между перезапусками.
     private AutoFunctionsManager(Context context) {
@@ -283,6 +287,8 @@ public class AutoFunctionsManager {
                 + ", autoFight=" + autoFight
                 + ", autoTreasure=" + autoTreasure);
 
+        requestCharacterSyncAfterLogin();
+
         if (autoFish) {
             setAutoFishEnabled(true);
             return;
@@ -333,6 +339,76 @@ public class AutoFunctionsManager {
     // Причина фикса:
     // - устраняет сценарий, когда после логина авто-бой "ON", но первый бой не стартует
     //   до ручного OFF/ON переключения.
+    private void requestCharacterSyncAfterLogin() {
+        if (AppVars.Profile == null) {
+            return;
+        }
+        final String nick = AppVars.Profile.UserNick != null ? AppVars.Profile.UserNick.trim() : "";
+        if (nick.isEmpty()) {
+            return;
+        }
+
+        long now = System.currentTimeMillis();
+        if ((now - lastCharacterSyncRequestedAtMs) < CHARACTER_SYNC_LOGIN_COOLDOWN_MS) {
+            Log.d(TAG, "AUTO_BLAZ_TRACE: skip " + CHARACTER_SYNC_LABEL + " (cooldown)");
+            return;
+        }
+        lastCharacterSyncRequestedAtMs = now;
+
+        Thread syncThread = new Thread(() -> {
+            NeverApi.PinfoVitals vitals = NeverApi.getPinfoVitalsFromPinfo(nick);
+            if (vitals == null) {
+                Log.w(TAG, "AUTO_BLAZ_TRACE: " + CHARACTER_SYNC_LABEL + " failed (no vitals), nick=" + nick);
+                return;
+            }
+
+            if (vitals.curTire != null) {
+                AppVars.Tied = clampPercent(vitals.curTire);
+            }
+            if (vitals.curHp != null) {
+                AppVars.CurHP = Math.max(0, vitals.curHp);
+            }
+            if (vitals.maxHp != null) {
+                AppVars.MaxHP = Math.max(0, vitals.maxHp);
+            }
+            if (vitals.curMa != null) {
+                AppVars.CurMA = Math.max(0, vitals.curMa);
+            }
+            if (vitals.maxMa != null) {
+                AppVars.MaxMA = Math.max(0, vitals.maxMa);
+            }
+
+            Log.i(TAG, "AUTO_BLAZ_TRACE: " + CHARACTER_SYNC_LABEL
+                    + " after login, tied=" + AppVars.Tied
+                    + ", hp=" + AppVars.CurHP + "/" + AppVars.MaxHP
+                    + ", ma=" + AppVars.CurMA + "/" + AppVars.MaxMA
+                    + ", nick=" + nick);
+            showCharacterSyncToast();
+        }, "CharacterSyncAfterLogin");
+        syncThread.setDaemon(true);
+        syncThread.start();
+    }
+
+    private void showCharacterSyncToast() {
+        try {
+            MainActivity activity = AppVars.mainActivity != null ? AppVars.mainActivity.get() : null;
+            if (activity == null) {
+                return;
+            }
+            activity.runOnUiThread(() -> Toast.makeText(
+                    activity,
+                    CHARACTER_SYNC_LABEL + ": " + AppVars.Tied + "%",
+                    Toast.LENGTH_SHORT
+            ).show());
+        } catch (Exception e) {
+            Log.w(TAG, "showCharacterSyncToast failed", e);
+        }
+    }
+
+    private static int clampPercent(int value) {
+        return Math.max(0, Math.min(100, value));
+    }
+
     private void restoreAutoFightRuntimeAfterLogin(boolean autoFightEnabledByProfile) {
         AppVars.Autoboi = autoFightEnabledByProfile ? AutoboiState.AutoboiOn : AutoboiState.AutoboiOff;
 
