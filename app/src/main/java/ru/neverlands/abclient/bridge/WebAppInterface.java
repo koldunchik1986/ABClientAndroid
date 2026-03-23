@@ -537,6 +537,17 @@ public class WebAppInterface {
      *
      * Пока используется как трассировка для отладки и совместимости.
      */
+    /**
+     * Runtime-синхронизация усталости из map.js/hpmp.js.
+     */
+    @JavascriptInterface
+    public void SetCurrentTied(int curTire) {
+        int normalized = Math.max(0, Math.min(100, curTire));
+        if (AppVars.Tied != normalized) {
+            Log.d("WebAppInterface", "SetCurrentTied: old=" + AppVars.Tied + ", new=" + normalized);
+            AppVars.Tied = normalized;
+        }
+    }
     @JavascriptInterface
     public String HerbsList(String list) {
         if (list != null && !list.isEmpty()) {

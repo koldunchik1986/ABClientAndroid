@@ -1837,16 +1837,23 @@ public class MainPhp {
             return null;
         }
         try {
+            // Формат hpmp в runtime может отличаться (кавычки/лишние поля/пробелы),
+            // поэтому берём массив целиком и читаем 5-й элемент через общий JS-token parser.
             java.util.regex.Matcher hpmpMatcher = java.util.regex.Pattern
-                    .compile("(?is)\\bhpmp\\b\\s*=\\s*\\[\\s*[^\\]]*?,\\s*[^\\]]*?,\\s*[^\\]]*?,\\s*[^\\]]*?,\\s*(\\d{1,3})\\s*\\]")
+                    .compile("(?is)\\bhpmp\\b\\s*=\\s*\\[(.*?)\\]")
                     .matcher(html);
             if (hpmpMatcher.find()) {
-                int maxTire = Integer.parseInt(hpmpMatcher.group(1));
-                return Math.max(0, Math.min(100, 100 - maxTire));
+                List<String> hpmp = splitJsTopLevelCsv(hpmpMatcher.group(1));
+                if (hpmp.size() >= 5) {
+                    int maxTire = parseIntFromJsToken(hpmp.get(4), Integer.MIN_VALUE);
+                    if (maxTire != Integer.MIN_VALUE) {
+                        return Math.max(0, Math.min(100, 100 - maxTire));
+                    }
+                }
             }
 
             java.util.regex.Matcher maxTireMatcher = java.util.regex.Pattern
-                    .compile("(?is)\\bmaxTire\\b\\s*[:=]\\s*(\\d{1,3})")
+                    .compile("(?is)[\"']?maxTire[\"']?\\s*[:=]\\s*[\"']?(\\d{1,3})[\"']?")
                     .matcher(html);
             if (maxTireMatcher.find()) {
                 int maxTire = Integer.parseInt(maxTireMatcher.group(1));

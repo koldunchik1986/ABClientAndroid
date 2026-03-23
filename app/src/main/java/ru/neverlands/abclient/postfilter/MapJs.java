@@ -122,11 +122,36 @@ public class MapJs {
                     + "  IsAutoFish: function(){ return !!__abCall('IsAutoFish', [], false); },\n"
                     + "  SetFishNoCaptchaReady: function(){ return __abCall('SetFishNoCaptchaReady', [], null); },\n"
                     + "  ShowOverWarning: function(){ return !!__abCall('ShowOverWarning', [], false); },\n"
+                    + "  SetCurrentTied: function(v){ return __abCall('SetCurrentTied', [v], null); },\n"
                     + "  TraceMapRuntime: function(msg){ return __abCall('TraceMapRuntime', [String(msg)], null); }\n"
                     + "};\n"
                     + "if (typeof window.ins_HP !== 'function') { window.ins_HP = function() {}; }\n"
                     + "if (typeof window.cha_HP !== 'function') { window.cha_HP = function() {}; }\n"
                     + "if (typeof window.slots_inv !== 'function') { window.slots_inv = function() {}; }\n"
+                    + "})();\n";
+
+    // Runtime-синхронизация текущей усталости в AppVars.Tied из JS-массива hpmp[4] (остаток усталости).
+    // curTire = 100 - hpmp[4].
+    private static final String TIED_RUNTIME_PATCH =
+            "/*ABCLIENT_MAP_RUNTIME_PATCH_TIED*/\n"
+                    + "(function(){\n"
+                    + "if (window.__ab_tied_patch_applied) return;\n"
+                    + "window.__ab_tied_patch_applied = true;\n"
+                    + "function __abPushTied(){\n"
+                    + "  try {\n"
+                    + "    if (!window.external || typeof window.external.SetCurrentTied !== 'function') return;\n"
+                    + "    if (typeof hpmp === 'undefined' || !hpmp || hpmp.length < 5) return;\n"
+                    + "    var __abMaxTire = parseInt(hpmp[4], 10);\n"
+                    + "    if (isNaN(__abMaxTire)) return;\n"
+                    + "    var __abCurTire = 100 - __abMaxTire;\n"
+                    + "    if (__abCurTire < 0) __abCurTire = 0;\n"
+                    + "    if (__abCurTire > 100) __abCurTire = 100;\n"
+                    + "    window.external.SetCurrentTied(__abCurTire);\n"
+                    + "  } catch (_ab_e_tied) {}\n"
+                    + "}\n"
+                    + "window.__abPushTied = __abPushTied;\n"
+                    + "setInterval(__abPushTied, 1000);\n"
+                    + "__abPushTied();\n"
                     + "})();\n";
 
     public static byte[] process(Context context, byte[] array) {
@@ -172,6 +197,9 @@ public class MapJs {
         if (!patched.contains(ABCLIENT_MAP_RUNTIME_PATCH_MARKER)) {
             patched += "\n" + OVERLOAD_RUNTIME_PATCH;
             runtimePatchAppended = true;
+        }
+        if (!patched.contains("/*ABCLIENT_MAP_RUNTIME_PATCH_TIED*/")) {
+            patched += "\n" + TIED_RUNTIME_PATCH;
         }
 
         Log.d(TAG, "process: source=" + (useAssetBase ? "assets/js/map.js" : "server")

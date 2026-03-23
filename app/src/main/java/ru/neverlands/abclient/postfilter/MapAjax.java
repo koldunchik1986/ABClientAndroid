@@ -8,6 +8,7 @@ import java.util.Locale;
 import java.util.Set;
 
 import ru.neverlands.abclient.manager.FastActionManager;
+import ru.neverlands.abclient.manager.NeverApi;
 import ru.neverlands.abclient.model.Position;
 import ru.neverlands.abclient.utils.AppVars;
 import ru.neverlands.abclient.utils.ExtMap;
@@ -17,6 +18,12 @@ import android.util.Log;
 public class MapAjax {
     private static final String TAG = "MapAjax";
     private static final long SEARCH_BOX_VISITED_TTL_MS = 24L * 60L * 60L * 1000L;
+    private static final int AUTO_MOVING_TIED_STEP_COST = 2;
+    private static final int AUTO_DRINK_BLAZ_NEAR_THRESHOLD_DELTA = 6;
+    private static final long AUTO_DRINK_BLAZ_PINFO_SYNC_COOLDOWN_MS = 20_000L;
+    private static final long AUTO_DRINK_BLAZ_TRIGGER_COOLDOWN_MS = 2_500L;
+    private static volatile long lastAutoDrinkBlazPinfoSyncAtMs = 0L;
+    private static volatile long lastAutoDrinkBlazTriggerAtMs = 0L;
 
     public static String process(String html) {
         if (AppVars.FastNeed && AppVars.FastPauseNonCombatAutoFunctions) {
@@ -74,6 +81,8 @@ public class MapAjax {
         int posVarMap = html.indexOf(patternVarMap);
         if (posVarMap == -1) return html;
 
+        String previousMapLocation = AppVars.Profile != null ? AppVars.Profile.MapLocation : null;
+
         posVarMap += patternVarMap.length();
         int posComma = html.indexOf(',', posVarMap);
         if (posComma == -1) return html;
@@ -92,6 +101,13 @@ public class MapAjax {
                 AppVars.Profile.MapLocation = regNum;
             }
             markSearchBoxVisited(regNum);
+            if (AppVars.AutoMoving && regNum != null && !regNum.isEmpty()) {
+                onAutoMovingCellObserved(previousMapLocation, regNum);
+                String autoDrinkRedirect = maybeTriggerAutoDrinkBlazOnThreshold(regNum);
+                if (autoDrinkRedirect != null && !autoDrinkRedirect.isEmpty()) {
+                    return autoDrinkRedirect;
+                }
+            }
         }
 
         posComma = posNextComma + 1;
@@ -314,5 +330,101 @@ public class MapAjax {
         return lower.contains("\u0441\u043b\u0438\u0448\u043a\u043e\u043c \u0443\u0441\u0442\u0430\u043b")
                 || lower.contains("\u043e\u0442\u0434\u043e\u0445\u043d\u0438\u0442\u0435")
                 || lower.contains("\u0432\u044b \u0443\u0441\u0442\u0430\u043b\u0438");
+    }
+
+    private static void onAutoMovingCellObserved(String previousRegNum, String currentRegNum) {
+        if (previousRegNum == null || previousRegNum.isEmpty()) {
+            return;
+        }
+        if (previousRegNum.equals(currentRegNum)) {
+            return;
+        }
+        int oldTied = clampPercent(AppVars.Tied);
+        int newTied = clampPercent(oldTied + AUTO_MOVING_TIED_STEP_COST);
+        if (newTied != oldTied) {
+            AppVars.Tied = newTied;
+            Log.d(TAG, "AUTO_BLAZ_TRACE tied +step: old=" + oldTied
+                    + ", new=" + newTied
+                    + ", stepCost=" + AUTO_MOVING_TIED_STEP_COST
+                    + ", from=" + previousRegNum
+                    + ", to=" + currentRegNum);
+        }
+        maybeSyncTiedFromPinfoIfNearThreshold(currentRegNum);
+    }
+
+    private static void maybeSyncTiedFromPinfoIfNearThreshold(String currentRegNum) {
+        if (AppVars.Profile == null || !AppVars.Profile.DoAutoDrinkBlaz) {
+            return;
+        }
+        int threshold = clampPercent(AppVars.Profile.AutoDrinkBlazTied);
+        int tied = clampPercent(AppVars.Tied);
+        int syncBorder = Math.max(0, threshold - AUTO_DRINK_BLAZ_NEAR_THRESHOLD_DELTA);
+        if (tied < syncBorder) {
+            return;
+        }
+        long now = System.currentTimeMillis();
+        if ((now - lastAutoDrinkBlazPinfoSyncAtMs) < AUTO_DRINK_BLAZ_PINFO_SYNC_COOLDOWN_MS) {
+            return;
+        }
+        String nick = AppVars.Profile.UserNick;
+        if (nick == null || nick.trim().isEmpty()) {
+            return;
+        }
+        Integer synced = NeverApi.getCurrentTiedFromPinfo(nick);
+        if (synced == null) {
+            return;
+        }
+        lastAutoDrinkBlazPinfoSyncAtMs = now;
+        int normalized = clampPercent(synced);
+        if (AppVars.Tied != normalized) {
+            Log.d(TAG, "AUTO_BLAZ_TRACE tied sync from pinfo: old=" + AppVars.Tied
+                    + ", new=" + normalized
+                    + ", reg=" + currentRegNum
+                    + ", threshold=" + threshold);
+            AppVars.Tied = normalized;
+        } else {
+            Log.d(TAG, "AUTO_BLAZ_TRACE tied sync from pinfo: unchanged=" + normalized
+                    + ", reg=" + currentRegNum
+                    + ", threshold=" + threshold);
+        }
+    }
+
+    private static String maybeTriggerAutoDrinkBlazOnThreshold(String currentRegNum) {
+        if (AppVars.Profile == null || !AppVars.Profile.DoAutoDrinkBlaz) {
+            return null;
+        }
+        if (AppVars.FastNeed) {
+            return null;
+        }
+        maybeSyncTiedFromPinfoIfNearThreshold(currentRegNum);
+        int threshold = clampPercent(AppVars.Profile.AutoDrinkBlazTied);
+        int tied = clampPercent(AppVars.Tied);
+        if (tied < threshold) {
+            return null;
+        }
+        long now = System.currentTimeMillis();
+        if ((now - lastAutoDrinkBlazTriggerAtMs) < AUTO_DRINK_BLAZ_TRIGGER_COOLDOWN_MS) {
+            return null;
+        }
+        lastAutoDrinkBlazTriggerAtMs = now;
+
+        AppVars.AutoMoving = false;
+        AppVars.AutoMovingMapPath = null;
+        AppVars.AutoMovingNextJump = null;
+        AppVars.AutoMovingJumps = 0;
+        AppVars.AutoMovingCityGate = ru.neverlands.abclient.model.CityGateType.None;
+
+        Log.i(TAG, "AUTO_BLAZ_TRACE threshold reached in map_ajax: tied=" + tied
+                + ", threshold=" + threshold
+                + ", reg=" + currentRegNum
+                + ", trigger fast bliss");
+        FastActionManager.fastAttackBlazElixir();
+        return Filter.buildRedirectString(
+                "\u041D\u0430\u0432\u0438\u0433\u0430\u0442\u043E\u0440: \u0430\u0432\u0442\u043E\u043F\u0438\u0442\u044C\u0435 \u0431\u043B\u0430\u0436\u0430",
+                "main.php?ab_nav_tired=1");
+    }
+
+    private static int clampPercent(int value) {
+        return Math.max(0, Math.min(100, value));
     }
 }

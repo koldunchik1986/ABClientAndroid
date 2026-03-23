@@ -10,6 +10,8 @@ import java.net.URLEncoder;
 import java.nio.charset.Charset;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import ru.neverlands.abclient.utils.AppVars;
 import ru.neverlands.abclient.proxy.ProxyRuntimeManager;
@@ -106,6 +108,67 @@ public class NeverApi {
      */
     public static String getFlog(String flog) {
         return getInfo("http://neverlands.ru/logs.fcg?fid=" + flog);
+    }
+
+    /**
+     * Текущая усталость персонажа через pinfo.cgi.
+     *
+     * Возвращает проценты текущей усталости (curTire, 0..100) или null,
+     * если значение не удалось извлечь.
+     */
+    public static Integer getCurrentTiedFromPinfo(String nick) {
+        if (nick == null || nick.trim().isEmpty()) {
+            return null;
+        }
+        try {
+            String encoded = URLEncoder.encode(nick.trim(), "windows-1251");
+            String html = getInfo("http://neverlands.ru/pinfo.cgi?" + encoded);
+            Integer tied = parseCurrentTiedFromPinfoHtml(html);
+            if (tied != null) {
+                android.util.Log.d(TAG, "AUTO_BLAZ_TRACE pinfo tied sync: nick=" + nick + ", tied=" + tied);
+            } else {
+                android.util.Log.w(TAG, "AUTO_BLAZ_TRACE pinfo tied sync failed: value not found for nick=" + nick);
+            }
+            return tied;
+        } catch (Exception e) {
+            android.util.Log.w(TAG, "AUTO_BLAZ_TRACE pinfo tied sync error for nick=" + nick, e);
+            return null;
+        }
+    }
+
+    private static Integer parseCurrentTiedFromPinfoHtml(String html) {
+        if (html == null || html.isEmpty()) {
+            return null;
+        }
+        try {
+            // 1) Предпочтительно: hpmp = [curHp, maxHp, curMa, maxMa, maxTire]
+            Matcher hpmpMatcher = Pattern.compile("(?is)\\bhpmp\\b\\s*=\\s*\\[(.*?)\\]").matcher(html);
+            if (hpmpMatcher.find()) {
+                String[] hpmp = hpmpMatcher.group(1).split(",");
+                if (hpmp.length >= 5) {
+                    Matcher maxTireDigits = Pattern.compile("(\\d{1,3})").matcher(hpmp[4]);
+                    if (maxTireDigits.find()) {
+                        int maxTire = Integer.parseInt(maxTireDigits.group(1));
+                        return clampPercent(100 - maxTire);
+                    }
+                }
+            }
+
+            // 2) Fallback: текст "Усталость ... NN%"
+            Matcher textMatcher = Pattern
+                    .compile("(?is)\\u0423\\u0441\\u0442\\u0430\\u043B\\u043E\\u0441\\u0442\\u044C[^\\d]{0,64}(\\d{1,3})\\s*%")
+                    .matcher(html);
+            if (textMatcher.find()) {
+                return clampPercent(Integer.parseInt(textMatcher.group(1)));
+            }
+        } catch (Exception e) {
+            android.util.Log.w(TAG, "AUTO_BLAZ_TRACE parseCurrentTiedFromPinfoHtml failed", e);
+        }
+        return null;
+    }
+
+    private static int clampPercent(int value) {
+        return Math.max(0, Math.min(100, value));
     }
 
     // -----------------------------------------------------------------------
