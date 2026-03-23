@@ -155,7 +155,7 @@ public class FunctionListAdapter extends BaseAdapter {
             case AUTO_MOVING:
                 return null;
             case AUTO_TREASURE:
-                return "http://image.neverlands.ru/achievement/75/a_75_10.gif";
+                return "http://image.neverlands.ru/achievement/9/a_9_10.gif";
             case AUTO_CUT:
                 return null;
             case AUTO_REFRESH:

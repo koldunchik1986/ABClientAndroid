@@ -72,6 +72,10 @@ public class MainPhp {
     private static volatile long lastAutoFishDrinkTriggerAtMs = 0L;
     private static volatile long lastWtimeSyncLogAtMs = 0L;
     private static volatile long lastAutoDrinkBlazTriggerAtMs = 0L;
+    // One-shot post-fight marker:
+    // after finish-link redirect to plain main.php we allow auto-drink check on ближайших страницах
+    // персонажа/инвентаря (go=inf/go=inv/im=*), если "чистый" main.php не попал в Filter.process().
+    private static volatile boolean autoDrinkPostFightSyncPending = false;
     // Защита от повторного показа одного и того же диалога капчи завершения боя.
     private static volatile String lastFightCaptchaDialogKey = "";
     private static volatile long lastFightCaptchaDialogAtMs = 0L;
@@ -841,11 +845,18 @@ public class MainPhp {
         if (isFightFrame || isFightTopFrame) {
             return;
         }
-        // Важный guard: автопитьё запускаем только после получения "полного" main.php от сервера
-        // (без get_id/act/query), чтобы не конкурировать с post-fight цепочкой завершения боя.
-        if (!isServerPlainMainAddress(address)) {
+        // Важный guard: автопитьё обычно запускаем только на "чистом" main.php.
+        // Но для post-fight сценария есть fallback: если plain main.php не попал в postfilter,
+        // разрешаем одноразовую проверку на ближайшем go=inf/go=inv/im=* кадре.
+        boolean isPlainMain = isServerPlainMainAddress(address);
+        boolean allowPostFightFollowup = autoDrinkPostFightSyncPending
+                && isPostFightAutoDrinkFollowupAddress(address);
+        if (!isPlainMain && !allowPostFightFollowup) {
             android.util.Log.d(TAG, "AUTO_DRINK_TRACE skip: wait plain main.php, address=" + address);
             return;
+        }
+        if (allowPostFightFollowup) {
+            android.util.Log.d(TAG, "AUTO_DRINK_TRACE allow post-fight follow-up address=" + address);
         }
         if (AppVars.FastNeed) {
             android.util.Log.d(TAG, "AUTO_DRINK_TRACE skip: FastNeed active, fastId=" + AppVars.FastId);
@@ -864,6 +875,8 @@ public class MainPhp {
             android.util.Log.d(TAG, "AUTO_DRINK_TRACE skip: ins_HP snapshot missing or invalid");
             return;
         }
+        // Как только получили валидный снимок после finish-link синхронизации — считаем one-shot выполненным.
+        autoDrinkPostFightSyncPending = false;
         double hpPercent = snapshot.maxHp > 0 ? (snapshot.curHp * 100.0 / snapshot.maxHp) : 0.0;
         double maPercent = snapshot.maxMa > 0 ? (snapshot.curMa * 100.0 / snapshot.maxMa) : 0.0;
         boolean hpBelow = AppVars.Profile.LezDoDrinkHp
@@ -895,6 +908,16 @@ public class MainPhp {
                 + ", hpEnabled=" + AppVars.Profile.LezDoDrinkHp + ", maEnabled=" + AppVars.Profile.LezDoDrinkMa
                 + ", address=" + address);
         FastActionManager.fastAttackMomentRestoreElixir();
+    }
+
+    private static boolean isPostFightAutoDrinkFollowupAddress(String address) {
+        if (address == null || address.trim().isEmpty()) {
+            return false;
+        }
+        String lower = address.trim().toLowerCase(Locale.ROOT);
+        return lower.contains("main.php?get_id=56&act=10&go=inf")
+                || lower.contains("main.php?get_id=56&act=10&go=inv")
+                || lower.contains("main.php?im=");
     }
 
     /**
@@ -2740,6 +2763,7 @@ public class MainPhp {
                 && (AppVars.Profile.LezDoDrinkHp || AppVars.Profile.LezDoDrinkMa)
                 && !AppVars.FastNeed
                 && !AppVars.IsFightCaptchaDialogVisible) {
+            autoDrinkPostFightSyncPending = true;
             android.util.Log.d(TAG, "AUTO_DRINK_TRACE post-fight redirect to plain main.php, address=" + address);
             return Russian.getBytes(buildRedirectHtml("Автопитьё: синхронизация после боя", "main.php"));
         }
@@ -3057,13 +3081,47 @@ public class MainPhp {
         // C# parity (`DoSearchBox && !AutoMoving && DateTime.Now > NeverTimer`):
         // запускаем обход карты в поиске следующей "непосещенной" клетки.
         if (!isNonCombatAutoPausedByFastAction() && !isFightFrame && !isFightTopFrame && AppVars.DoSearchBox && !AppVars.AutoMoving) {
+            String currentMapLocation = AppVars.Profile != null ? AppVars.Profile.MapLocation : null;
+            boolean hasMapPayload = html.contains("var map = [[");
+            boolean bootstrapFromReload = address != null && address.contains("ab_search_box_bootstrap=1");
+            boolean needMapBootstrap = !hasMapPayload
+                    && (bootstrapFromReload || currentMapLocation == null || currentMapLocation.isEmpty());
+            if (needMapBootstrap) {
+                String mapReturnHtml = mainPhpFindMapReturnForAutoMoving(html);
+                if (mapReturnHtml != null && !mapReturnHtml.isEmpty()) {
+                    android.util.Log.d(TAG, "AUTO_SEARCH_BOX_TRACE bootstrap map via return-link, address=" + address
+                            + ", mapLocation=" + currentMapLocation);
+                    return Russian.getBytes(mapReturnHtml);
+                }
+                boolean isInfAddress = address != null && address.contains("get_id=56&act=10&go=inf");
+                if (!isInfAddress) {
+                    String personHtml = mainPhpFindPerc(html);
+                    if (personHtml != null && !personHtml.isEmpty()) {
+                        android.util.Log.d(TAG, "AUTO_SEARCH_BOX_TRACE bootstrap person page before map, address="
+                                + address + ", mapLocation=" + currentMapLocation);
+                        return Russian.getBytes(personHtml);
+                    }
+                }
+                if (bootstrapFromReload) {
+                    String bootstrapRetLink = "main.php?get_id=56&act=10&go=ret";
+                    if (AppVars.VCode != null && !AppVars.VCode.trim().isEmpty()) {
+                        bootstrapRetLink += "&vcode=" + AppVars.VCode.trim();
+                    }
+                    android.util.Log.d(TAG, "AUTO_SEARCH_BOX_TRACE bootstrap fallback go=ret, address="
+                            + address + ", mapLocation=" + currentMapLocation + ", link=" + bootstrapRetLink);
+                    return Russian.getBytes(buildRedirectHtml("SearchBox bootstrap: go=ret", bootstrapRetLink));
+                }
+            }
             long nowMs = System.currentTimeMillis();
             if (AppVars.NeverTimer <= 0L || nowMs > AppVars.NeverTimer) {
-                String nextDest = MapAjax.findNextDestForBox(AppVars.Profile != null ? AppVars.Profile.MapLocation : null);
+                String nextDest = MapAjax.findNextDestForBox(currentMapLocation);
                 if (nextDest != null && !nextDest.isEmpty()) {
                     startAutoSearchBoxMoving(nextDest);
                     android.util.Log.d(TAG, "AUTO_SEARCH_BOX_TRACE start moving to " + nextDest
                             + ", address=" + address);
+                } else {
+                    android.util.Log.d(TAG, "AUTO_SEARCH_BOX_TRACE no destination yet, mapLocation="
+                            + currentMapLocation + ", address=" + address + ", hasMapPayload=" + hasMapPayload);
                 }
             }
         }
