@@ -395,9 +395,13 @@ public class AutoFunctionsManager {
             if (activity == null) {
                 return;
             }
+            final String message = CHARACTER_SYNC_LABEL
+                    + ": HP: " + AppVars.CurHP + "/" + AppVars.MaxHP
+                    + "; MA: " + AppVars.CurMA + "/" + AppVars.MaxMA
+                    + "; \u0423\u0441\u0442\u0430\u043B\u043E\u0441\u0442\u044C: " + AppVars.Tied;
             activity.runOnUiThread(() -> Toast.makeText(
                     activity,
-                    CHARACTER_SYNC_LABEL + ": " + AppVars.Tied + "%",
+                    message,
                     Toast.LENGTH_SHORT
             ).show());
         } catch (Exception e) {

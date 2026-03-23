@@ -439,7 +439,12 @@ public class MapAjax {
         if (vitals.curTire != null) {
             newTied = clampPercent(vitals.curTire);
             AppVars.Tied = newTied;
-            showFatigueSyncToast("\u0421\u0438\u043D\u0445\u0440\u0430\u043D\u0438\u0437\u0430\u0446\u0438\u044F \u041F\u0435\u0440\u0441\u043E\u043D\u0430\u0436\u0430: " + newTied + "%");
+            showFatigueSyncToast(
+                    "\u0421\u0438\u043D\u0445\u0440\u0430\u043D\u0438\u0437\u0430\u0446\u0438\u044F \u041F\u0435\u0440\u0441\u043E\u043D\u0430\u0436\u0430"
+                            + ": HP: " + AppVars.CurHP + "/" + AppVars.MaxHP
+                            + "; MA: " + AppVars.CurMA + "/" + AppVars.MaxMA
+                            + "; \u0423\u0441\u0442\u0430\u043B\u043E\u0441\u0442\u044C: " + newTied
+            );
         }
 
         if (vitals.curHp != null) {
