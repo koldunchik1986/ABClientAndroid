@@ -21,11 +21,10 @@
             app:entryValues="@array/map_scale_values"
             app:defaultValue="80" />
 
-        <EditTextPreference
+        <Preference
             app:key="map_size_cells"
             app:title="Размер карты"
-            app:summary="Формат: Ширина*Высота (например 9*7)"
-            app:useSimpleSummaryProvider="false" />
+            app:summary="Формат: Ширина*Высота (например 9*7)" />
 
         <SwitchPreferenceCompat
             app:key="show_razd_chat_report"

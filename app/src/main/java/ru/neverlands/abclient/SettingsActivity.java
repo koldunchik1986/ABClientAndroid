@@ -1,19 +1,21 @@
 package ru.neverlands.abclient;
 
 import android.os.Bundle;
+import android.text.InputType;
 import android.view.MenuItem;
+import android.widget.EditText;
+import android.widget.LinearLayout;
+import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.ActionBar;
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.preference.EditTextPreference;
 import androidx.preference.ListPreference;
 import androidx.preference.Preference;
 import androidx.preference.PreferenceFragmentCompat;
 import androidx.preference.SwitchPreferenceCompat;
-
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 import ru.neverlands.abclient.utils.AppVars;
 
@@ -55,8 +57,6 @@ public class SettingsActivity extends AppCompatActivity {
     public static class SettingsFragment extends PreferenceFragmentCompat {
         private static final int MAP_SIZE_MIN = 3;
         private static final int MAP_SIZE_MAX = 31;
-        private static final Pattern MAP_SIZE_PATTERN =
-                Pattern.compile("\\s*(\\d+)\\s*[xX*\\u0445\\u0425]\\s*(\\d+)\\s*");
 
         private static int normalizeMapSizeValue(int value) {
             if (value < MAP_SIZE_MIN) value = MAP_SIZE_MIN;
@@ -66,25 +66,15 @@ public class SettingsActivity extends AppCompatActivity {
             return value;
         }
 
-        private static int[] parseMapSizeOrFallback(String raw, int fallbackWidth, int fallbackHeight) {
-            int width = normalizeMapSizeValue(fallbackWidth);
-            int height = normalizeMapSizeValue(fallbackHeight);
+        private static int parseMapSizeComponent(String raw, int fallback) {
+            int safeFallback = normalizeMapSizeValue(fallback);
             if (raw == null) {
-                return new int[] { width, height };
-            }
-            Matcher matcher = MAP_SIZE_PATTERN.matcher(raw);
-            if (!matcher.matches()) {
-                return new int[] { width, height };
+                return safeFallback;
             }
             try {
-                int parsedWidth = Integer.parseInt(matcher.group(1));
-                int parsedHeight = Integer.parseInt(matcher.group(2));
-                return new int[] {
-                        normalizeMapSizeValue(parsedWidth),
-                        normalizeMapSizeValue(parsedHeight)
-                };
+                return normalizeMapSizeValue(Integer.parseInt(raw.trim()));
             } catch (Exception ignore) {
-                return new int[] { width, height };
+                return safeFallback;
             }
         }
 
@@ -176,7 +166,7 @@ public class SettingsActivity extends AppCompatActivity {
             // - поле профиля `UserConfig.RazdChatReport` (load/save XML профиля);
             // - ветка `MainPhp.mainPhpGetSkinRes`, где этот флаг управляет отправкой
             //   системного сообщения "Результат разделки" в чат.
-            EditTextPreference mapSizePref = findPreference("map_size_cells");
+            Preference mapSizePref = findPreference("map_size_cells");
             if (mapSizePref != null && AppVars.Profile != null) {
                 int normalizedWidth = normalizeMapSizeValue(AppVars.Profile.MapBigWidth);
                 int normalizedHeight = normalizeMapSizeValue(AppVars.Profile.MapBigHeight);
@@ -185,23 +175,48 @@ public class SettingsActivity extends AppCompatActivity {
                     AppVars.Profile.MapBigHeight = normalizedHeight;
                     AppVars.Profile.save(requireContext());
                 }
-                String currentMapSize = formatMapSizeValue(normalizedWidth, normalizedHeight);
-                mapSizePref.setText(currentMapSize);
                 mapSizePref.setSummary(buildMapSizeSummary(normalizedWidth, normalizedHeight));
-                mapSizePref.setOnBindEditTextListener(editText -> editText.setSingleLine(true));
-                mapSizePref.setOnPreferenceChangeListener((preference, newValue) -> {
-                    int[] parsed = parseMapSizeOrFallback(
-                            String.valueOf(newValue),
-                            AppVars.Profile.MapBigWidth,
-                            AppVars.Profile.MapBigHeight
-                    );
-                    AppVars.Profile.MapBigWidth = parsed[0];
-                    AppVars.Profile.MapBigHeight = parsed[1];
-                    AppVars.Profile.save(requireContext());
-                    String normalized = formatMapSizeValue(parsed[0], parsed[1]);
-                    mapSizePref.setText(normalized);
-                    preference.setSummary(buildMapSizeSummary(parsed[0], parsed[1]));
-                    return false;
+                mapSizePref.setOnPreferenceClickListener(preference -> {
+                    LinearLayout row = new LinearLayout(requireContext());
+                    row.setOrientation(LinearLayout.HORIZONTAL);
+                    int pad = (int) (16 * requireContext().getResources().getDisplayMetrics().density);
+                    row.setPadding(pad, pad, pad, 0);
+
+                    EditText xInput = new EditText(requireContext());
+                    xInput.setInputType(InputType.TYPE_CLASS_NUMBER);
+                    xInput.setSingleLine(true);
+                    xInput.setText(String.valueOf(AppVars.Profile.MapBigWidth));
+                    xInput.setSelection(xInput.getText().length());
+                    LinearLayout.LayoutParams xParams = new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f);
+                    row.addView(xInput, xParams);
+
+                    TextView sep = new TextView(requireContext());
+                    sep.setText("  X  ");
+                    sep.setTextSize(18f);
+                    row.addView(sep, new LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT));
+
+                    EditText yInput = new EditText(requireContext());
+                    yInput.setInputType(InputType.TYPE_CLASS_NUMBER);
+                    yInput.setSingleLine(true);
+                    yInput.setText(String.valueOf(AppVars.Profile.MapBigHeight));
+                    yInput.setSelection(yInput.getText().length());
+                    LinearLayout.LayoutParams yParams = new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f);
+                    row.addView(yInput, yParams);
+
+                    new AlertDialog.Builder(requireContext())
+                            .setTitle("Размер карты")
+                            .setView(row)
+                            .setPositiveButton("Сохранить", (dialog, which) -> {
+                                int width = parseMapSizeComponent(xInput.getText().toString(), AppVars.Profile.MapBigWidth);
+                                int height = parseMapSizeComponent(yInput.getText().toString(), AppVars.Profile.MapBigHeight);
+                                AppVars.Profile.MapBigWidth = width;
+                                AppVars.Profile.MapBigHeight = height;
+                                AppVars.Profile.save(requireContext());
+                                preference.setSummary(buildMapSizeSummary(width, height));
+                            })
+                            .setNegativeButton("Отмена", null)
+                            .show();
+                    return true;
                 });
             }
 

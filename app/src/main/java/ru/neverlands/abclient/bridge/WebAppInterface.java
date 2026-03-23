@@ -332,8 +332,21 @@ public class WebAppInterface {
         if (path == null || path.length == 0) {
             return false;
         }
-        for (String p : path) {
-            if (regNum.equals(p)) {
+        int startIndex = 0;
+        String currentLocation = (AppVars.Profile != null) ? AppVars.Profile.MapLocation : null;
+        if (currentLocation != null && !currentLocation.isEmpty()) {
+            for (int i = 0; i < path.length; i++) {
+                if (currentLocation.equals(path[i])) {
+                    startIndex = i + 1;
+                    break;
+                }
+            }
+        }
+        if (startIndex >= path.length) {
+            return false;
+        }
+        for (int i = startIndex; i < path.length; i++) {
+            if (regNum.equals(path[i])) {
                 return true;
             }
         }
