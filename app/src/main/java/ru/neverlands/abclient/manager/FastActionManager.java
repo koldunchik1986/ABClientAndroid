@@ -31,6 +31,94 @@ public class FastActionManager {
             "<html><head><meta http-equiv=\"Content-Type\" " +
             "content=\"text/html; charset=windows-1251\"></head><body>";
 
+    /**
+     * Снимок runtime-состояния небоевых авто-конвейеров на момент старта FastAction.
+     *
+     * Зачем нужен:
+     * - при выполнении FastAction часть небоевых авто-веток ставится на паузу флагом
+     *   `AppVars.FastPauseNonCombatAutoFunctions`;
+     * - отдельные ветки могли сбрасывать runtime-навигацию (AutoMoving*), после чего
+     *   маршрут/поиск клада не продолжался автоматически;
+     * - snapshot позволяет детерминированно вернуть рабочий runtime-контекст после fastCancel.
+     *
+     * Важно:
+     * - `Авто-Бой` сюда не входит и не паузится;
+     * - это именно runtime-слой (не постоянные настройки профиля).
+     */
+    private static final class FastAutoSyncSnapshot {
+        boolean autoMoving;
+        String autoMovingDestination;
+        ru.neverlands.abclient.utils.MapPath autoMovingMapPath;
+        String autoMovingNextJump;
+        int autoMovingJumps;
+        ru.neverlands.abclient.model.CityGateType autoMovingCityGate;
+        boolean autoDrinkBlazPending;
+        long capturedAtMs;
+    }
+
+    private static volatile FastAutoSyncSnapshot fastAutoSyncSnapshot = null;
+
+    /**
+     * Фиксирует текущий runtime-контекст небоевых авто-функций до запуска FastAction.
+     *
+     * Условия:
+     * - снимаем snapshot только для верхнего fast-контура (`FastNeed=false` до старта),
+     *   чтобы вложенные/повторные fastStart не перетирали исходное состояние.
+     */
+    private static void captureNonCombatAutoSnapshotBeforeFast(String reason) {
+        FastAutoSyncSnapshot snapshot = new FastAutoSyncSnapshot();
+        snapshot.autoMoving = AppVars.AutoMoving;
+        snapshot.autoMovingDestination = AppVars.AutoMovingDestinaton;
+        snapshot.autoMovingMapPath = AppVars.AutoMovingMapPath;
+        snapshot.autoMovingNextJump = AppVars.AutoMovingNextJump;
+        snapshot.autoMovingJumps = AppVars.AutoMovingJumps;
+        snapshot.autoMovingCityGate = AppVars.AutoMovingCityGate;
+        snapshot.autoDrinkBlazPending = AppVars.AutoDrinkBlazPending;
+        snapshot.capturedAtMs = System.currentTimeMillis();
+        fastAutoSyncSnapshot = snapshot;
+        Log.d(TAG, "FAST_SYNC_TRACE capture: reason=" + reason
+                + ", autoMoving=" + snapshot.autoMoving
+                + ", destination=" + snapshot.autoMovingDestination
+                + ", jumps=" + snapshot.autoMovingJumps
+                + ", blazPending=" + snapshot.autoDrinkBlazPending);
+    }
+
+    /**
+     * Восстанавливает runtime-контекст после завершения FastAction.
+     *
+     * Правила восстановления:
+     * - маршрут AutoMoving возвращается только если был активен до fast и пользователь
+     *   не выключил `DoSearchBox` в процессе;
+     * - `AutoDrinkBlazPending` возвращается в исходное значение;
+     * - snapshot одноразовый и очищается сразу после попытки restore.
+     */
+    private static void restoreNonCombatAutoSnapshotAfterFast(String reason) {
+        FastAutoSyncSnapshot snapshot = fastAutoSyncSnapshot;
+        fastAutoSyncSnapshot = null;
+        if (snapshot == null) {
+            return;
+        }
+
+        if (snapshot.autoMoving && !AppVars.AutoMoving && AppVars.DoSearchBox) {
+            AppVars.AutoMoving = true;
+            AppVars.AutoMovingDestinaton = snapshot.autoMovingDestination;
+            AppVars.AutoMovingMapPath = snapshot.autoMovingMapPath;
+            AppVars.AutoMovingNextJump = snapshot.autoMovingNextJump;
+            AppVars.AutoMovingJumps = snapshot.autoMovingJumps;
+            AppVars.AutoMovingCityGate = snapshot.autoMovingCityGate;
+            Log.d(TAG, "FAST_SYNC_TRACE restore AutoMoving: reason=" + reason
+                    + ", destination=" + AppVars.AutoMovingDestinaton
+                    + ", jumps=" + AppVars.AutoMovingJumps);
+        }
+
+        AppVars.AutoDrinkBlazPending = snapshot.autoDrinkBlazPending;
+        Log.d(TAG, "FAST_SYNC_TRACE restore done: reason=" + reason
+                + ", autoMovingNow=" + AppVars.AutoMoving
+                + ", doSearchBoxNow=" + AppVars.DoSearchBox
+                + ", blazPendingNow=" + AppVars.AutoDrinkBlazPending
+                + ", snapshotAgeMs=" + (System.currentTimeMillis() - snapshot.capturedAtMs));
+    }
+
     // --- Часть 1: Управление (из FormMainFast.cs) ---
 
     /**
@@ -47,6 +135,9 @@ public class FastActionManager {
         String prevFastId = AppVars.FastId;
         String prevFastNick = AppVars.FastNick;
         boolean prevPauseNonCombatAuto = AppVars.FastPauseNonCombatAutoFunctions;
+        if (!prevFastNeed) {
+            captureNonCombatAutoSnapshotBeforeFast("fastStart:" + id);
+        }
         // Глобальные флаги, которые считывает MainPhp.process() при обработке main.php.
         AppVars.FastNeed = true;
         AppVars.FastId = id;
@@ -110,6 +201,7 @@ public class FastActionManager {
                 + ", oldPauseNonCombatAuto=" + oldPauseNonCombatAuto
                 + ", newPauseNonCombatAuto=" + AppVars.FastPauseNonCombatAutoFunctions
                 + ", returnToMapPending=" + AppVars.FastReturnToMapPending);
+        restoreNonCombatAutoSnapshotAfterFast("fastCancel:" + reason);
     }
 
     /**

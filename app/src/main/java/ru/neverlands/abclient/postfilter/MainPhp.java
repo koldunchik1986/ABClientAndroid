@@ -2056,18 +2056,6 @@ public class MainPhp {
             return null;
         }
 
-        // На время FastAction по блажу снимаем активный автопереход:
-        // DoSearchBox остаётся включённым и после завершения fast-набора
-        // навигация снова стартует штатно через C# parity-ветку (DoSearchBox && !AutoMoving).
-        if (AppVars.AutoMoving) {
-            AppVars.AutoMoving = false;
-            AppVars.AutoMovingMapPath = null;
-            AppVars.AutoMovingNextJump = null;
-            AppVars.AutoMovingJumps = 0;
-            AppVars.AutoMovingCityGate = ru.neverlands.abclient.model.CityGateType.None;
-            android.util.Log.d(TAG, "AUTO_BLAZ_TRACE pause AutoMoving before fast bliss action");
-        }
-
         lastAutoDrinkBlazTriggerAtMs = now;
         android.util.Log.d(TAG, "AUTO_BLAZ_TRACE trigger quick action: " + BLISS_ELIXIR_NAME
                 + ", tied=" + tied + ", threshold=" + tiedThreshold);
