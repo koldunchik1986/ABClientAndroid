@@ -533,7 +533,7 @@ public class WebAppInterface {
     public String MapText() {
         if (AppVars.AutoMoving && AppVars.AutoMovingJumps > 0) {
             String destination = AppVars.AutoMovingDestinaton == null ? "?" : escapeHtml(AppVars.AutoMovingDestinaton);
-            int curTire = Math.max(0, Math.min(100, AppVars.Tied));
+            int curTire = CharacterVitalsManager.snapshot().tied;
             return "<font color=#FF3333>Пункт назначения:</font> <font color=#FFFF00>" + destination + "</font>"
                     + "<br><font color=#FF3333>Еще переходов:</font> <font color=#FFFF00>" + AppVars.AutoMovingJumps + "</font>"
                     + "<br><font color=#FF3333>Текущая Усталость:</font> <font color=#FFFF00>" + curTire + "</font>";

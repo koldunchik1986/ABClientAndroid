@@ -1158,7 +1158,7 @@ public class MainPhp {
             poswt += staticScriptEnd.length();
         }
         if (poswt != -1 && AppVars.AutoMoving && AppVars.AutoMovingJumps > 0) {
-            int curTire = Math.max(0, Math.min(100, AppVars.Tied));
+            int curTire = CharacterVitalsManager.snapshot().tied;
             String statusHtml = "<font class=nickname><div align=center style=\"color: #660066;\"><i>"
                     + "\u041f\u0443\u043d\u043a\u0442 \u043d\u0430\u0437\u043d\u0430\u0447\u0435\u043d\u0438\u044f: <b>" + AppVars.AutoMovingDestinaton + "</b><br>"
                     + "\u0415\u0449\u0435 \u043f\u0435\u0440\u0435\u0445\u043e\u0434\u043e\u0432: <b>" + AppVars.AutoMovingJumps + "</b><br>"
@@ -1951,7 +1951,7 @@ public class MainPhp {
         }
         mainPhpUpdateTied(html);
 
-        int tied = Math.max(0, AppVars.Tied);
+        int tied = CharacterVitalsManager.snapshot().tied;
         int tiedHigh = Math.max(0, Math.min(99, AppVars.Profile.FishTiedHigh));
         if (!AppVars.AutoFishDrink) {
             AppVars.AutoFishDrink = tied > tiedHigh && AppVars.Profile.FishTiedZero;
@@ -2016,7 +2016,7 @@ public class MainPhp {
             return null;
         }
 
-        int tied = Math.max(0, Math.min(100, AppVars.Tied));
+        int tied = CharacterVitalsManager.snapshot().tied;
         int tiedThreshold = Math.max(0, Math.min(100, AppVars.Profile.AutoDrinkBlazTied));
         if (tied < tiedThreshold) {
             return null;
