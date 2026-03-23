@@ -3410,16 +3410,26 @@ public class MainPhp {
             return false;
         }
         boolean hasNickname = containsIgnoreCase(html, "<font class=nickname><b>");
+        // Для вкладок эликсиров/зелий нет "Надеть/Продать", но есть действия использования.
+        boolean hasUseAction = containsIgnoreCase(html, "value=\"Использовать\"")
+                || containsIgnoreCase(html, "confirm('Использовать ")
+                || containsIgnoreCase(html, "get_id=43")
+                || containsIgnoreCase(html, "magicreform(")
+                || containsIgnoreCase(html, "w28_form(");
         boolean hasWearOrSell = containsIgnoreCase(html, "value=\"Надеть\"")
                 || containsIgnoreCase(html, "value=\"Продать")
-                || containsIgnoreCase(html, "image.neverlands.ru/del.gif");
+                || containsIgnoreCase(html, "image.neverlands.ru/del.gif")
+                || hasUseAction;
         boolean hasInventoryTabs = containsIgnoreCase(html, "<a href=\"?im=")
                 || containsIgnoreCase(html, "<a href=?im=")
                 || containsIgnoreCase(html, "main.php?im=");
         boolean hasItemActions = containsIgnoreCase(html, "get_id=57")
                 || containsIgnoreCase(html, "get_id=58")
                 || containsIgnoreCase(html, "if(top.deletetrue('")
-                || containsIgnoreCase(html, "image.neverlands.ru/del.gif");
+                || containsIgnoreCase(html, "image.neverlands.ru/del.gif")
+                || containsIgnoreCase(html, "get_id=43")
+                || containsIgnoreCase(html, "magicreform(")
+                || containsIgnoreCase(html, "w28_form(");
         // Important: a plain "inventory tab exists" signal is too broad for non-inventory pages
         // (character/return/map can still contain menu links). Require stronger evidence.
         return (hasNickname && hasWearOrSell && (hasInventoryTabs || hasItemActions))

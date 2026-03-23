@@ -116,6 +116,15 @@ public class UserConfig {
      * - UI общих настроек (`SettingsActivity`, ключ `map_scale_percent`).
      */
     public int MapBigScale = 75;
+    /**
+     * Размер шрифта подписи клетки карты (`CellDivText`) в пикселях.
+     *
+     * Зависимости:
+     * - `WebAppInterface.CellDivText(...)` — фактический рендер текста поверх тайла;
+     * - `SettingsActivity` (ключ `map_font_size`) — изменение значения из UI;
+     * - профиль (`mapset@cellfontsize`) — сохранение между перезапусками.
+     */
+    public int MapCellFontSize = 9;
     public boolean DoHttpLog = false;
     public boolean DoTexLog = false;
     public boolean ShowPerformance = false;
@@ -451,10 +460,13 @@ public class UserConfig {
                         this.MapBigWidth = parseIntAttr(parser, "bigwidth", this.MapBigWidth);
                         this.MapBigHeight = parseIntAttr(parser, "bigheight", this.MapBigHeight);
                         this.MapBigScale = parseIntAttr(parser, "bigscale", this.MapBigScale);
+                        this.MapCellFontSize = parseIntAttr(parser, "cellfontsize", this.MapCellFontSize);
                         if (this.MapBigWidth < 3) this.MapBigWidth = 3;
                         if (this.MapBigHeight < 3) this.MapBigHeight = 3;
                         if (this.MapBigScale < 50) this.MapBigScale = 50;
                         if (this.MapBigScale > 100) this.MapBigScale = 100;
+                        if (this.MapCellFontSize < 6) this.MapCellFontSize = 6;
+                        if (this.MapCellFontSize > 24) this.MapCellFontSize = 24;
                     } else if ("proxy".equalsIgnoreCase(tagName)) {
                         boolean proxyActive = parseBoolAttr(parser, "active", this.DoProxy || this.UseProxy);
                         String proxyAddress = getAttributeValueIgnoreCase(parser, "address");
@@ -801,6 +813,7 @@ public class UserConfig {
             serializer.attribute(null, "bigwidth", String.valueOf(this.MapBigWidth));
             serializer.attribute(null, "bigheight", String.valueOf(this.MapBigHeight));
             serializer.attribute(null, "bigscale", String.valueOf(this.MapBigScale));
+            serializer.attribute(null, "cellfontsize", String.valueOf(this.MapCellFontSize));
             serializer.endTag(null, "mapset");
 
             // Настройки инвентаря (группировка/сортировка/массовые кнопки).

@@ -65,6 +65,8 @@ public class SettingsActivity extends AppCompatActivity {
     public static class SettingsFragment extends PreferenceFragmentCompat {
         private static final int MAP_SIZE_MIN = 3;
         private static final int MAP_SIZE_MAX = 31;
+        private static final int MAP_FONT_SIZE_MIN = 6;
+        private static final int MAP_FONT_SIZE_MAX = 24;
         private static final String[] FISH_HAND_OPTIONS = new String[]{
                 "Нет",
                 "Любая удочка",
@@ -127,6 +129,28 @@ public class SettingsActivity extends AppCompatActivity {
 
         private static String buildMapSizeSummary(int width, int height) {
             return "Текущий размер: " + formatMapSizeValue(width, height) + " (нечетные 3..31)";
+        }
+
+        private static int normalizeMapFontSizeValue(int value) {
+            if (value < MAP_FONT_SIZE_MIN) return MAP_FONT_SIZE_MIN;
+            if (value > MAP_FONT_SIZE_MAX) return MAP_FONT_SIZE_MAX;
+            return value;
+        }
+
+        private static int parseMapFontSizeValue(String raw, int fallback) {
+            int safeFallback = normalizeMapFontSizeValue(fallback);
+            if (raw == null) {
+                return safeFallback;
+            }
+            try {
+                return normalizeMapFontSizeValue(Integer.parseInt(raw.trim()));
+            } catch (Exception ignore) {
+                return safeFallback;
+            }
+        }
+
+        private static String buildMapFontSizeSummary(int sizePx) {
+            return "Текущий размер: " + sizePx + " px";
         }
         @Override
         public void onCreatePreferences(Bundle savedInstanceState, String rootKey) {
@@ -210,6 +234,39 @@ public class SettingsActivity extends AppCompatActivity {
                     if (value > 100) value = 100;
                     AppVars.Profile.MapBigScale = value;
                     AppVars.Profile.save(requireContext());
+                    return true;
+                });
+            }
+
+            Preference mapFontSizePref = findPreference("map_font_size");
+            if (mapFontSizePref != null && AppVars.Profile != null) {
+                int currentFontSize = normalizeMapFontSizeValue(AppVars.Profile.MapCellFontSize);
+                if (currentFontSize != AppVars.Profile.MapCellFontSize) {
+                    AppVars.Profile.MapCellFontSize = currentFontSize;
+                    AppVars.Profile.save(requireContext());
+                }
+                mapFontSizePref.setSummary(buildMapFontSizeSummary(currentFontSize));
+                mapFontSizePref.setOnPreferenceClickListener(preference -> {
+                    EditText fontInput = new EditText(requireContext());
+                    fontInput.setInputType(InputType.TYPE_CLASS_NUMBER);
+                    fontInput.setSingleLine(true);
+                    fontInput.setText(String.valueOf(AppVars.Profile.MapCellFontSize));
+                    fontInput.setSelection(fontInput.getText().length());
+
+                    new AlertDialog.Builder(requireContext())
+                            .setTitle("Размер шрифта карты")
+                            .setView(fontInput)
+                            .setPositiveButton("Сохранить", (dialog, which) -> {
+                                int value = parseMapFontSizeValue(
+                                        fontInput.getText() != null ? fontInput.getText().toString() : null,
+                                        AppVars.Profile.MapCellFontSize
+                                );
+                                AppVars.Profile.MapCellFontSize = value;
+                                AppVars.Profile.save(requireContext());
+                                preference.setSummary(buildMapFontSizeSummary(value));
+                            })
+                            .setNegativeButton("Отмена", null)
+                            .show();
                     return true;
                 });
             }

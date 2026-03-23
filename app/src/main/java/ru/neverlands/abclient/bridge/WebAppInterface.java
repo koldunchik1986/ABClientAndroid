@@ -429,6 +429,10 @@ public class WebAppInterface {
         int tileSize = Math.max(24, scale);
         int borderSizePx = Math.max(1, Math.round(tileSize * 0.015f));
         int paddingPx = Math.max(1, Math.round(tileSize * 0.03f));
+        int fontSizePx = (AppVars.Profile != null) ? AppVars.Profile.MapCellFontSize : 9;
+        if (fontSizePx < 6) fontSizePx = 6;
+        if (fontSizePx > 24) fontSizePx = 24;
+        int regNumFontSizePx = Math.min(28, fontSizePx + 2);
         boolean highlight = showmove || isframe || isRegnumInCurrentPath(p.RegNum);
         String border = highlight ? "border:" + borderSizePx + "px solid red;" : "";
         String idAttr = showmove ? "id=\"movingcell\" " : "";
@@ -441,7 +445,9 @@ public class WebAppInterface {
                 .append(tileSize)
                 .append("px; box-sizing:border-box; overflow:hidden; ")
                 .append(border)
-                .append(" text-shadow:none; font-family:Tahoma; font-size:9px; line-height:1.15; font-weight:bold; text-decoration:none;\">");
+                .append(" text-shadow:none; font-family:Tahoma; font-size:")
+                .append(fontSizePx)
+                .append("px; line-height:1.15; font-weight:bold; text-decoration:none;\">");
         if (isframe) {
             sb.append("<img src=\"http://image.neverlands.ru/map/nl_cursor.png\" style=\"position:absolute;left:0;top:0;width:")
                     .append(tileSize)
@@ -452,7 +458,9 @@ public class WebAppInterface {
         sb.append("<div style=\"position:relative;z-index:2;padding:")
                 .append(paddingPx)
                 .append("px;box-sizing:border-box;width:100%;height:100%;\">");
-        sb.append("<span style=\"font-size:11px; color:")
+        sb.append("<span style=\"font-size:")
+                .append(regNumFontSizePx)
+                .append("px; color:")
                 .append(hexColorCost(cell.Cost))
                 .append("\">")
                 .append(escapeHtml(p.RegNum))
@@ -525,9 +533,9 @@ public class WebAppInterface {
         if (AppVars.AutoMoving && AppVars.AutoMovingJumps > 0) {
             String destination = AppVars.AutoMovingDestinaton == null ? "?" : escapeHtml(AppVars.AutoMovingDestinaton);
             int curTire = Math.max(0, Math.min(100, AppVars.Tied));
-            return "Пункт назначения: <font color=#FFFF00>" + destination + "</font>"
-                    + "<br>Еще переходов: <font color=#FFFF00>" + AppVars.AutoMovingJumps + "</font>"
-                    + "<br>Текущая Усталость: <font color=#FFFF00>" + curTire + "</font>";
+            return "<font color=#FF3333>Пункт назначения:</font> <font color=#FFFF00>" + destination + "</font>"
+                    + "<br><font color=#FF3333>Еще переходов:</font> <font color=#FFFF00>" + AppVars.AutoMovingJumps + "</font>"
+                    + "<br><font color=#FF3333>Текущая Усталость:</font> <font color=#FFFF00>" + curTire + "</font>";
         }
         return "Перемещаемся на соседнюю клетку...";
     }

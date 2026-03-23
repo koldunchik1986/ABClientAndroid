@@ -40,6 +40,11 @@
             app:entryValues="@array/map_scale_values"
             app:defaultValue="80" />
 
+        <Preference
+            app:key="map_font_size"
+            app:title="Размер шрифта карты"
+            app:summary="Текущий размер шрифта CellDivText" />
+
         <SwitchPreferenceCompat
             app:key="do_stop_on_dig"
             app:title="Останавливаться на кладе"
