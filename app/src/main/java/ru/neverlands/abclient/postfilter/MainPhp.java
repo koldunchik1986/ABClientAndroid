@@ -1128,9 +1128,11 @@ public class MainPhp {
             poswt += staticScriptEnd.length();
         }
         if (poswt != -1 && AppVars.AutoMoving && AppVars.AutoMovingJumps > 0) {
+            int curTire = Math.max(0, Math.min(100, AppVars.Tied));
             String statusHtml = "<font class=nickname><div align=center style=\"color: #660066;\"><i>"
                     + "\u041f\u0443\u043d\u043a\u0442 \u043d\u0430\u0437\u043d\u0430\u0447\u0435\u043d\u0438\u044f: <b>" + AppVars.AutoMovingDestinaton + "</b><br>"
-                    + "\u0415\u0449\u0435 \u043f\u0435\u0440\u0435\u0445\u043e\u0434\u043e\u0432: <b>" + AppVars.AutoMovingJumps + "</b>"
+                    + "\u0415\u0449\u0435 \u043f\u0435\u0440\u0435\u0445\u043e\u0434\u043e\u0432: <b>" + AppVars.AutoMovingJumps + "</b><br>"
+                    + "\u0422\u0435\u043a\u0443\u0449\u0430\u044f \u0423\u0441\u0442\u0430\u043b\u043e\u0441\u0442\u044c: <b>" + curTire + "</b>"
                     + (AppVars.DoSearchBox ? "<br>\u0418\u0449\u0435\u043c \u043a\u043b\u0430\u0434..." : "")
                     + "</i></div></font>";
             html = html.substring(0, poswt) + statusHtml + html.substring(poswt);

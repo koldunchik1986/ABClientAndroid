@@ -524,8 +524,10 @@ public class WebAppInterface {
     public String MapText() {
         if (AppVars.AutoMoving && AppVars.AutoMovingJumps > 0) {
             String destination = AppVars.AutoMovingDestinaton == null ? "?" : escapeHtml(AppVars.AutoMovingDestinaton);
+            int curTire = Math.max(0, Math.min(100, AppVars.Tied));
             return "Пункт назначения: <font color=#FFFF00>" + destination + "</font>"
-                    + "<br>Еще переходов: <font color=#FFFF00>" + AppVars.AutoMovingJumps + "</font>";
+                    + "<br>Еще переходов: <font color=#FFFF00>" + AppVars.AutoMovingJumps + "</font>"
+                    + "<br>Текущая Усталость: <font color=#FFFF00>" + curTire + "</font>";
         }
         return "Перемещаемся на соседнюю клетку...";
     }
