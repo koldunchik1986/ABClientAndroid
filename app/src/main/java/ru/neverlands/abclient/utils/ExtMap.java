@@ -332,6 +332,8 @@ public class ExtMap {
      * - `ExtMap.Cells` — источник/цель текущего названия для `CellDivText`;
      * - `pendingLabelUpdates` — буфер отложенной записи в `abcells.xml`;
      * - `persistVisitedToExternalFile(...)` — единый атомарный персист `visited + label`.
+     * - `WebAppInterface.shortLabel(...)` — рендер карты берёт сначала `Tooltip`, затем `Name`,
+     *   поэтому метод также синхронизирует `Tooltip` через `syncTooltipLabel(...)`.
      *
      * @param regNum номер клетки (`8-330` и т.п.)
      * @param serverLabel имя клетки, полученное из ответа `/ch.php`
@@ -535,6 +537,16 @@ public class ExtMap {
         }
     }
 
+    /**
+     * Нормализует подпись клетки для корректного сравнения строк из разных источников:
+     * - убирает NBSP (`\u00A0`),
+     * - схлопывает повторные пробелы,
+     * - обрезает пробелы по краям.
+     *
+     * Важно:
+     * - эта нормализация используется в цепочке `syncCellLabelFromServer(...)` и `syncTooltipLabel(...)`;
+     * - эквивалентная логика должна сохраняться в `RoomManager.normalizeCellLabel(...)`.
+     */
     private static String normalizeCellLabel(String label) {
         if (label == null) {
             return "";
@@ -542,6 +554,20 @@ public class ExtMap {
         return label.replace('\u00A0', ' ').replaceAll("\\s+", " ").trim();
     }
 
+    /**
+     * Синхронизирует `Tooltip` клетки с новым названием, чтобы карта не показывала устаревший текст.
+     *
+     * Почему это важно:
+     * - в рендере карты приоритет у `Tooltip` (см. `WebAppInterface.shortLabel(...)`);
+     * - если обновить только `Name`, пользователь может продолжать видеть старую подпись.
+     *
+     * Алгоритм обновления:
+     * 1) Если tooltip пустой — подставляем `newLabel`.
+     * 2) Если tooltip целиком равен старому имени — полностью заменяем на `newLabel`.
+     * 3) Если tooltip имеет форму `prefix, oldLabel` — заменяем только suffix после запятой.
+     * 4) Иначе пытаемся точечную замену `oldLabel` внутри строки.
+     * 5) Если ни одно правило не подошло — оставляем tooltip без изменений.
+     */
     private static String syncTooltipLabel(String tooltip, String oldLabel, String newLabel) {
         if (newLabel == null || newLabel.isEmpty()) {
             return tooltip;

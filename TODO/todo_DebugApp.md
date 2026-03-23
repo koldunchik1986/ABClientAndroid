@@ -75,3 +75,12 @@ ull/некорректный HTML в критическом состоянии).
 - `adb logcat -c`
 - `adb logcat -v time --pid $(adb shell pidof ru.neverlands.abclient) > Logs/logcat_runtime.txt`
 - `rg -n "MainPhp|LezFight|WebViewInterceptor|JS_CONSOLE|post_id=7|Autoboi" Logs/logcat_runtime.txt -S`
+
+- [x] **Проблема:** При обновлении названия клетки карты подпись иногда применялась к предыдущей клетке (цепочка `normalizeCellLabel` / `syncCellLabelFromServer` / `syncCellNameFromRoomHtml`).
+  - **Симптомы:** В движении (`AutoMoving`) `CellDivText` мог показывать имя не той клетки, т.к. рендер берёт приоритетно `cell.Tooltip`, а sync работал с отложенным именем без жёсткой привязки к `regNum`.
+  - **Гипотеза:** Deferred-синхронизация в `RoomManager` сохраняла только имя (`pendingRoomLocationName`) и могла применяться к любому подтверждённому `regNum` в `onMapLocationConfirmed(...)`; дополнительно fallback на `currentReg` при `AutoMoving` повышал риск записи в «предыдущую» клетку.
+  - **План решения:**
+    - [x] Привязать deferred-значение имени к целевому `regNum`.
+    - [x] Применять deferred-обновление только при совпадении `confirmedReg == pendingTargetReg`.
+    - [x] Убрать fallback на `currentReg` в `resolveCellRegNumForRoomName(...)`, когда `AutoMoving=true` и нет надёжного совпадения.
+    - [x] Проверить сборку `:app:compileDebugJavaWithJavac`.

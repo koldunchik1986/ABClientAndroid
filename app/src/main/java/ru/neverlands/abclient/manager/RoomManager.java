@@ -34,6 +34,7 @@ public class RoomManager {
     private static final Map<String, Long> autoAttackBlackList = new ConcurrentHashMap<>();
     private static final long PENDING_ROOM_LABEL_TTL_MS = 20_000L;
     private static volatile String pendingRoomLocationName;
+    private static volatile String pendingRoomLocationTargetRegNum;
     private static volatile long pendingRoomLocationNameAtMs;
 
     // Обработчик списка игроков комнаты (`ch.php?lo=1`).
@@ -163,41 +164,82 @@ public class RoomManager {
         if (isEmpty(serverLocationName)) {
             return;
         }
-        cachePendingRoomLocationName(serverLocationName);
 
         String regNum = resolveCellRegNumForRoomName(serverLocationName);
         if (isEmpty(regNum)) {
+            String pendingTargetReg = AppVars.AutoMoving ? normalizeRegNum(AppVars.AutoMovingNextJump) : null;
+            cachePendingRoomLocationName(serverLocationName, pendingTargetReg);
             Log.d(TAG, "MAP_NAME_SYNC_TRACE: defer room label sync, currentReg="
                     + (AppVars.Profile != null ? AppVars.Profile.MapLocation : null)
                     + ", nextJump=" + AppVars.AutoMovingNextJump
+                    + ", pendingReg=" + pendingTargetReg
                     + ", serverName=" + serverLocationName);
             return;
         }
 
-        boolean changed = applyCellNameSyncAndNotify(regNum, serverLocationName);
-        if (changed || isSameAsPendingRoomLocationName(serverLocationName)) {
-            clearPendingRoomLocationName();
-        }
+        applyCellNameSyncAndNotify(regNum, serverLocationName);
+        clearPendingRoomLocationName();
     }
 
+    /**
+     * Применяет отложенную синхронизацию имени клетки после подтверждения реальной позиции на карте.
+     *
+     * Зачем нужен метод:
+     * - `ch.php` (где берётся `placename`) и `map_ajax` (где подтверждается `regNum`) приходят асинхронно;
+     * - когда `syncCellNameFromRoomHtml(...)` не смог безопасно выбрать клетку, имя сохраняется как pending;
+     * - этот метод завершает синхронизацию только после фактического подтверждения клетки.
+     *
+     * Правила применения pending:
+     * - если pending привязан к конкретному `targetRegNum`, обновление разрешено только при полном совпадении;
+     * - если `targetRegNum` не задан, используется текущее подтверждение `regNum`;
+     * - после успешного применения или подтверждения "без изменений" pending очищается.
+     *
+     * Зависимости:
+     * - `MapAjax.process(...)` — источник подтверждённого `regNum` (вызов этого метода);
+     * - `ExtMap.Cells` — проверка существования клетки;
+     * - `applyCellNameSyncAndNotify(...)` — запись имени и уведомление в чат;
+     * - `getPendingRoomLocationIfFresh()` — защита от устаревшего pending по TTL.
+     */
     public static void onMapLocationConfirmed(Context context, String regNum) {
         if (context == null || isEmpty(regNum)) {
             return;
         }
-        String pendingName = getPendingRoomLocationNameIfFresh();
-        if (isEmpty(pendingName)) {
+        PendingRoomLabel pendingLabel = getPendingRoomLocationIfFresh();
+        if (pendingLabel == null || isEmpty(pendingLabel.locationName)) {
             return;
         }
         String normalizedReg = regNum.trim();
         if (!ExtMap.Cells.containsKey(normalizedReg)) {
             return;
         }
-        boolean changed = applyCellNameSyncAndNotify(normalizedReg, pendingName);
-        if (changed || isSameAsPendingRoomLocationName(pendingName)) {
+        if (!isEmpty(pendingLabel.targetRegNum) && !pendingLabel.targetRegNum.equals(normalizedReg)) {
+            Log.d(TAG, "MAP_NAME_SYNC_TRACE: keep deferred room label sync, pendingReg="
+                    + pendingLabel.targetRegNum
+                    + ", confirmedReg=" + normalizedReg
+                    + ", serverName=" + pendingLabel.locationName);
+            return;
+        }
+        boolean changed = applyCellNameSyncAndNotify(normalizedReg, pendingLabel.locationName);
+        if (changed || isSameAsPendingRoomLocationName(pendingLabel.locationName)) {
             clearPendingRoomLocationName();
         }
     }
 
+    /**
+     * Атомарно применяет обновление названия клетки и формирует уведомление для пользователя.
+     *
+     * Что делает:
+     * - вызывает `ExtMap.syncCellLabelFromServer(...)` для обновления runtime + `abcells.xml`;
+     * - при реальном изменении отправляет в чат сообщение о замене старого названия на новое;
+     * - пишет технический trace в logcat (`MAP_NAME_SYNC_TRACE`).
+     *
+     * Зависимости:
+     * - `ExtMap.syncCellLabelFromServer(...)` — источник истины по факту изменения;
+     * - `FastActionManager.writeChatMsg(...)` — UI-уведомление;
+     * - `escapeHtml(...)` — безопасная вставка текста в HTML сообщения.
+     *
+     * @return `true`, если произошло реальное изменение; иначе `false`.
+     */
     private static boolean applyCellNameSyncAndNotify(String regNum, String serverLocationName) {
         String oldLabel = ExtMap.syncCellLabelFromServer(regNum, serverLocationName);
         if (isEmpty(oldLabel)) {
@@ -215,6 +257,17 @@ public class RoomManager {
         return true;
     }
 
+    /**
+     * Пытается однозначно определить `regNum`, для которого нужно применить имя из room HTML.
+     *
+     * Правило выбора:
+     * 1) Если серверное имя совпадает с текущей клеткой (`Profile.MapLocation`) — берём текущую клетку.
+     * 2) Иначе, если совпадает с `AutoMovingNextJump` — берём следующую клетку маршрута.
+     * 3) Если `AutoMoving=true` и совпадений нет — возвращаем `null` (только deferred, без рискованного fallback).
+     * 4) В обычном режиме (без авто-движения) fallback на текущую клетку допустим.
+     *
+     * Такой порядок предотвращает запись имени в "предыдущую" клетку во время перехода.
+     */
     private static String resolveCellRegNumForRoomName(String serverLocationName) {
         if (AppVars.Profile == null) {
             return null;
@@ -243,12 +296,12 @@ public class RoomManager {
                 if (!normalizedServer.isEmpty() && normalizedServer.equals(nextLabel)) {
                     return nextReg;
                 }
-                if (AppVars.AutoMoving && !nextReg.equals(currentReg)) {
-                    return null;
-                }
             }
         }
 
+        if (AppVars.AutoMoving) {
+            return null;
+        }
         return currentReg;
     }
 
@@ -257,6 +310,16 @@ public class RoomManager {
         return cell != null ? cell.Name : null;
     }
 
+    /**
+     * Нормализует отображаемое название клетки для корректных сравнений:
+     * - заменяет NBSP на обычный пробел;
+     * - схлопывает повторные пробелы;
+     * - убирает пробелы по краям.
+     *
+     * Важно:
+     * - логика должна быть эквивалентна нормализации в `ExtMap.normalizeCellLabel(...)`,
+     *   чтобы одно и то же имя одинаково сравнивалось в `RoomManager` и `ExtMap`.
+     */
     private static String normalizeCellLabel(String value) {
         if (value == null) {
             return "";
@@ -264,24 +327,37 @@ public class RoomManager {
         return value.replace('\u00A0', ' ').replaceAll("\\s+", " ").trim();
     }
 
-    private static synchronized void cachePendingRoomLocationName(String locationName) {
+    /**
+     * Сохраняет отложенное имя локации из room HTML до подтверждения фактической клетки на карте.
+     *
+     * @param locationName имя из `<font class=placename>`
+     * @param targetRegNum ожидаемый `regNum` (обычно `AutoMovingNextJump`), может быть `null`
+     */
+    private static synchronized void cachePendingRoomLocationName(String locationName, String targetRegNum) {
         pendingRoomLocationName = locationName;
+        pendingRoomLocationTargetRegNum = normalizeRegNum(targetRegNum);
         pendingRoomLocationNameAtMs = System.currentTimeMillis();
     }
 
-    private static synchronized String getPendingRoomLocationNameIfFresh() {
+    /**
+     * Возвращает pending-имя, если оно ещё актуально по TTL.
+     * При протухании автоматически очищает pending-состояние.
+     */
+    private static synchronized PendingRoomLabel getPendingRoomLocationIfFresh() {
         if (isEmpty(pendingRoomLocationName)) {
             return null;
         }
         long age = System.currentTimeMillis() - pendingRoomLocationNameAtMs;
         if (age > PENDING_ROOM_LABEL_TTL_MS) {
-            pendingRoomLocationName = null;
-            pendingRoomLocationNameAtMs = 0L;
+            clearPendingRoomLocationName();
             return null;
         }
-        return pendingRoomLocationName;
+        return new PendingRoomLabel(pendingRoomLocationName, pendingRoomLocationTargetRegNum);
     }
 
+    /**
+     * Проверяет, что переданное имя совпадает с текущим pending-именем по нормализованной форме.
+     */
     private static synchronized boolean isSameAsPendingRoomLocationName(String locationName) {
         if (isEmpty(locationName) || isEmpty(pendingRoomLocationName)) {
             return false;
@@ -289,9 +365,40 @@ public class RoomManager {
         return normalizeCellLabel(locationName).equals(normalizeCellLabel(pendingRoomLocationName));
     }
 
+    /**
+     * Полностью очищает deferred-состояние синхронизации имени клетки.
+     */
     private static synchronized void clearPendingRoomLocationName() {
         pendingRoomLocationName = null;
+        pendingRoomLocationTargetRegNum = null;
         pendingRoomLocationNameAtMs = 0L;
+    }
+
+    /**
+     * Нормализует `regNum` для безопасного хранения в pending-состоянии.
+     * Пустая строка приводится к `null`.
+     */
+    private static String normalizeRegNum(String regNum) {
+        if (regNum == null) {
+            return null;
+        }
+        String normalized = regNum.trim();
+        return normalized.isEmpty() ? null : normalized;
+    }
+
+    /**
+     * DTO для хранения pending-данных синхронизации:
+     * - `locationName` — имя локации из room HTML;
+     * - `targetRegNum` — ожидаемый `regNum`, к которому можно применить это имя.
+     */
+    private static final class PendingRoomLabel {
+        final String locationName;
+        final String targetRegNum;
+
+        PendingRoomLabel(String locationName, String targetRegNum) {
+            this.locationName = locationName;
+            this.targetRegNum = targetRegNum;
+        }
     }
 
     /**
