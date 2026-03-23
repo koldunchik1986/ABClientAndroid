@@ -2726,6 +2726,23 @@ public class MainPhp {
             }
             FastActionManager.fastCancel("closed-fight-interfere-error");
         }
+        // Пост-боевой синхро-переход на "чистый" main.php для автопитья.
+        // В некоторых потоках после act=7 следующий кадр process(...) на plain main.php не приходит сразу,
+        // и tryTriggerAutoDrinkRestoreElixir(...) остаётся в режиме "wait plain main.php".
+        // Делаем один явный переход, чтобы получить полноценный серверный кадр с ins_HP(...) и
+        // уже на нём принять решение по порогам HP/MA (без запуска FastAction на act=7 странице).
+        if (isFightFinishAddress
+                && !isFightFrame
+                && !isFightTopFrame
+                && !isServerPlainMainAddress(address)
+                && isAutoFightEnabledByPreference()
+                && AppVars.Profile != null
+                && (AppVars.Profile.LezDoDrinkHp || AppVars.Profile.LezDoDrinkMa)
+                && !AppVars.FastNeed
+                && !AppVars.IsFightCaptchaDialogVisible) {
+            android.util.Log.d(TAG, "AUTO_DRINK_TRACE post-fight redirect to plain main.php, address=" + address);
+            return Russian.getBytes(buildRedirectHtml("Автопитьё: синхронизация после боя", "main.php"));
+        }
         // Проверка автопитья после получения верхнего фрейма персонажа.
         // При совпадении условий запускает единый fast-action "Эликсир Восстановления".
         tryTriggerAutoDrinkRestoreElixir(address, html, isFightFrame, isFightTopFrame);
