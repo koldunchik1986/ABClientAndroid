@@ -2738,6 +2738,21 @@ public class MainPhp {
                 return fastResult;
             }
         }
+        // One-shot post-fast resume:
+        // after any FastAction completion, force "Return" to map from non-map pages.
+        if (!isNonCombatAutoPausedByFastAction()
+                && !isFightFrame
+                && !isFightTopFrame
+                && AppVars.FastReturnToMapPending
+                && !AppVars.FastNeed
+                && !html.contains("var map = [[")) {
+            String mapReturnHtml = mainPhpFindMapReturnForAutoMoving(html);
+            if (mapReturnHtml != null && !mapReturnHtml.isEmpty()) {
+                AppVars.FastReturnToMapPending = false;
+                android.util.Log.d(TAG, "FAST_ACTION_TRACE force return-to-map after fast action, address=" + address);
+                return Russian.getBytes(mapReturnHtml);
+            }
+        }
         // Чтение умения "Охота" (C# parity) до оркестрации AutoSkin,
         // чтобы `AutoSkinCheckUm` корректно сбрасывался на `mselect=1`.
         if (!isNonCombatAutoPausedByFastAction()) {
@@ -3070,6 +3085,10 @@ public class MainPhp {
             }
         }
         if (html.contains("var map = [[")) {
+            if (AppVars.FastReturnToMapPending) {
+                AppVars.FastReturnToMapPending = false;
+                android.util.Log.d(TAG, "FAST_ACTION_TRACE map reached, clear return-to-map pending flag");
+            }
             html = MapAjax.process(html);
         }
         if (!(isFightFrame || isFightTopFrame)) {

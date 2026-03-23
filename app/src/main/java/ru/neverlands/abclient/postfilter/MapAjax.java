@@ -104,8 +104,10 @@ public class MapAjax {
                 AppVars.Profile.MapLocation = regNum;
             }
             markSearchBoxVisited(regNum);
-            if (AppVars.AutoMoving && regNum != null && !regNum.isEmpty()) {
+            if (regNum != null && !regNum.isEmpty() && (AppVars.AutoMoving || AppVars.AutoDrinkBlazPending)) {
+                if (AppVars.AutoMoving) {
                 onAutoMovingCellObserved(previousMapLocation, regNum);
+                }
                 String autoDrinkRedirect = maybeTriggerAutoDrinkBlazOnThreshold(regNum);
                 if (autoDrinkRedirect != null && !autoDrinkRedirect.isEmpty()) {
                     return autoDrinkRedirect;
@@ -398,6 +400,7 @@ public class MapAjax {
 
     private static String maybeTriggerAutoDrinkBlazOnThreshold(String currentRegNum) {
         if (AppVars.Profile == null || !AppVars.Profile.DoAutoDrinkBlaz) {
+            AppVars.AutoDrinkBlazPending = false;
             logAutoBlazDecision("decision", "skip_profile_disabled", clampPercent(AppVars.Tied), 0, "reg=" + currentRegNum);
             return null;
         }
@@ -409,17 +412,41 @@ public class MapAjax {
         }
         maybeSyncTiedFromPinfoIfNearThreshold(currentRegNum);
         int tied = clampPercent(AppVars.Tied);
-        if (tied < threshold) {
+        if (!AppVars.AutoDrinkBlazPending && tied < threshold) {
             logAutoBlazDecision("decision", "skip_below_threshold", tied, threshold, "reg=" + currentRegNum);
             return null;
         }
+
         long now = System.currentTimeMillis();
+        long neverTimer = AppVars.NeverTimer;
+        if (neverTimer > 0L && now < neverTimer) {
+            AppVars.AutoDrinkBlazPending = true;
+            if (AppVars.AutoMoving) {
+                AppVars.AutoMoving = false;
+                AppVars.AutoMovingMapPath = null;
+                AppVars.AutoMovingNextJump = null;
+                AppVars.AutoMovingJumps = 0;
+                AppVars.AutoMovingCityGate = ru.neverlands.abclient.model.CityGateType.None;
+            }
+            logAutoBlazDecision("decision", "defer_wait_never_timer", tied, threshold,
+                    "reg=" + currentRegNum + ", waitMs=" + (neverTimer - now));
+            return Filter.buildRedirectString(
+                    "Навигатор: ожидание шага перед автопитьем блажа",
+                    "main.php?ab_nav_blaz_wait=1");
+        }
+
+        if (tied < threshold) {
+            AppVars.AutoDrinkBlazPending = false;
+            logAutoBlazDecision("decision", "skip_below_threshold_after_wait", tied, threshold, "reg=" + currentRegNum);
+            return null;
+        }
         if ((now - lastAutoDrinkBlazTriggerAtMs) < AUTO_DRINK_BLAZ_TRIGGER_COOLDOWN_MS) {
             logAutoBlazDecision("decision", "skip_trigger_cooldown", tied, threshold,
                     "reg=" + currentRegNum + ", cooldownMs=" + (now - lastAutoDrinkBlazTriggerAtMs));
             return null;
         }
         lastAutoDrinkBlazTriggerAtMs = now;
+        AppVars.AutoDrinkBlazPending = false;
 
         AppVars.AutoMoving = false;
         AppVars.AutoMovingMapPath = null;

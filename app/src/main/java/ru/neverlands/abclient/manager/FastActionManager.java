@@ -53,6 +53,7 @@ public class FastActionManager {
         AppVars.FastNick = nick;
         AppVars.FastCount = count;
         AppVars.FastPauseNonCombatAutoFunctions = true;
+        AppVars.FastReturnToMapPending = true;
         Log.d(TAG, "fastStart: id=" + id + ", nick=" + nick + ", count=" + count);
         Log.d(TAG, "[AA_TRACE] fastStart state: prevFastNeed=" + prevFastNeed
                 + ", prevFastId=" + prevFastId
@@ -107,7 +108,8 @@ public class FastActionManager {
                 + ", oldFastNick=" + oldFastNick
                 + ", oldFastCount=" + oldFastCount
                 + ", oldPauseNonCombatAuto=" + oldPauseNonCombatAuto
-                + ", newPauseNonCombatAuto=" + AppVars.FastPauseNonCombatAutoFunctions);
+                + ", newPauseNonCombatAuto=" + AppVars.FastPauseNonCombatAutoFunctions
+                + ", returnToMapPending=" + AppVars.FastReturnToMapPending);
     }
 
     /**

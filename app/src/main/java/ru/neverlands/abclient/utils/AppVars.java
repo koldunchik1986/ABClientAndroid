@@ -305,10 +305,15 @@ public class AppVars {
     // Runtime pause for non-combat auto pipelines while any FastAction is active.
     // Important: Autoboi/fight logic must continue working and is not paused by this flag.
     public static volatile boolean FastPauseNonCombatAutoFunctions = false;
+    // One-shot marker: after FastAction completion we should return to map ("go=ret").
+    public static volatile boolean FastReturnToMapPending = false;
     public static volatile boolean FastWaitEndOfBoiActive = false;
     public static volatile boolean FastWaitEndOfBoiCancel = false;
     public static volatile boolean FastNeedAbilDarkTeleport = false;
     public static volatile boolean FastNeedAbilDarkFog = false;
+    // Deferred auto-bliss trigger from MapAjax:
+    // threshold reached while step cooldown is active (NeverTimer > now).
+    public static volatile boolean AutoDrinkBlazPending = false;
     /**
      * Инструмент авто-нападения (аналог `AppVars.AutoAttackToolId` из C#).
      *
