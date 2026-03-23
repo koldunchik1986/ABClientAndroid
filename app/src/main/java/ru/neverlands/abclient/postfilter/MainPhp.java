@@ -4041,6 +4041,9 @@ public class MainPhp {
                     AppVars.LastSubmittedFightCaptchaFinishKey = "";
                     AppVars.LastSubmittedFightCaptchaAtMs = 0L;
                 }
+                // Если на момент challenge был активен Авто-Клад (DoSearchBox/AutoMoving),
+                // после успешного ввода капчи нужно сделать bootstrap и вернуть цикл поиска.
+                AppVars.ResumeSearchBoxAfterCaptcha = AppVars.DoSearchBox || AppVars.AutoMoving;
                 AppVars.ResumeAutoboiAfterCaptcha = true;
                 AppVars.Autoboi = AutoboiState.AutoboiOff;
                 AppVars.ContentMainPhp = html;

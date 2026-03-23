@@ -1168,10 +1168,16 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                 .setTitle(captchaTitle)
                 .setView(layout)
                 .setPositiveButton("ОК", null)
-                .setNegativeButton("Отмена", (d, which) -> AppVars.ResumeAutoboiAfterCaptcha = false)
+                .setNegativeButton("Отмена", (d, which) -> {
+                    AppVars.ResumeAutoboiAfterCaptcha = false;
+                    AppVars.ResumeSearchBoxAfterCaptcha = false;
+                })
                 .create();
 
-        dialog.setOnCancelListener(d -> AppVars.ResumeAutoboiAfterCaptcha = false);
+        dialog.setOnCancelListener(d -> {
+            AppVars.ResumeAutoboiAfterCaptcha = false;
+            AppVars.ResumeSearchBoxAfterCaptcha = false;
+        });
         dialog.setOnDismissListener(d -> {
             stopFightCaptchaAutoRefresh();
             AppVars.IsFightCaptchaDialogVisible = false;
@@ -1186,6 +1192,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                 replacingFightCaptchaDialog = false;
             } else if (!captchaSubmitted[0]) {
                 AppVars.ResumeAutoboiAfterCaptcha = false;
+                AppVars.ResumeSearchBoxAfterCaptcha = false;
             }
         });
         activeFightCaptchaDialog = dialog;
@@ -1227,6 +1234,8 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                         Log.d(TAG, "showCaptchaDialog: restoring autoboi after captcha submit");
                     }
                     AppVars.ResumeAutoboiAfterCaptcha = false;
+                    boolean resumeSearchBox = AppVars.ResumeSearchBoxAfterCaptcha;
+                    AppVars.ResumeSearchBoxAfterCaptcha = false;
 
                     String submitUrl = appendOrReplaceCaptchaCode(finishUrl, code);
                     if (!isFishCaptcha) {
@@ -1238,6 +1247,27 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                     }
                     Log.d(TAG, "showCaptchaDialog: submitting " + submitUrl);
                     submitCaptchaSolution(submitUrl, isFishCaptcha);
+                    if (!isFishCaptcha && resumeSearchBox && AppVars.DoSearchBox && !AppVars.AutoMoving) {
+                        Log.d(TAG, "showCaptchaDialog: bootstrap auto treasure after captcha submit");
+                        WebView targetWebView = null;
+                        if (binding != null
+                                && binding.appBarMain != null
+                                && binding.appBarMain.contentMain != null) {
+                            targetWebView = binding.appBarMain.contentMain.webView;
+                        }
+                        if (targetWebView != null) {
+                            WebView finalTargetWebView = targetWebView;
+                            finalTargetWebView.postDelayed(() -> {
+                                try {
+                                    finalTargetWebView.loadUrl("http://neverlands.ru/main.php?ab_search_box_bootstrap=1");
+                                } catch (Exception e) {
+                                    Log.e(TAG, "showCaptchaDialog: auto treasure bootstrap failed", e);
+                                }
+                            }, 450L);
+                        } else {
+                            Log.w(TAG, "showCaptchaDialog: skip auto treasure bootstrap, webView is null");
+                        }
+                    }
                     dialog.dismiss();
                 });
             }

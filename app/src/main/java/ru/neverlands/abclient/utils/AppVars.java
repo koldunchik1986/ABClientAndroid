@@ -101,6 +101,15 @@ public class AppVars {
     // 2) MainActivity.showCaptchaDialog(...) после успешного submit возвращает AutoboiOn.
     // 3) При отмене/закрытии диалога флаг сбрасывается в false (без авто-восстановления).
     public static volatile boolean ResumeAutoboiAfterCaptcha = false;
+    // Флаг восстановления Auto Search Box (Авто-Клад) после ручного ввода боевой капчи.
+    //
+    // Зависимости:
+    // 1) MainPhp.mainPhpFight(...) фиксирует состояние DoSearchBox/AutoMoving на момент
+    //    появления challenge и выставляет true, если Auto-Клад должен продолжиться.
+    // 2) MainActivity.showCaptchaDialog(...) после успешного submit делает bootstrap main.php
+    //    (ab_search_box_bootstrap=1), чтобы DoSearchBox продолжил маршрут без ручного действия.
+    // 3) При отмене/закрытии диалога флаг сбрасывается в false.
+    public static volatile boolean ResumeSearchBoxAfterCaptcha = false;
     // Аналог Pers.IntHP / Pers.IntMA из C# (секунды полного восстановления HP/MA).
     // По умолчанию совпадает с C#: IntHP=2000, IntMA=9000.
     public static double PersIntHP = 2000.0;
