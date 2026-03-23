@@ -277,6 +277,10 @@ public class AppVars {
     public static String Chat = "";
     public static String MovingTime = "";
     public static boolean AutoMoving = false;
+    // C# parity: флаг menuitemDoSearchBox ("Ходим, ищем клад").
+    public static boolean DoSearchBox = false;
+    // C# parity (Map.AbcCells[reg].Visited): runtime-маркер времени последнего посещения клетки.
+    public static final java.util.Map<String, Long> SearchBoxVisited = new java.util.concurrent.ConcurrentHashMap<>();
     public static String AutoMovingDestinaton = null;
     public static ru.neverlands.abclient.utils.MapPath AutoMovingMapPath = null;
     public static String AutoMovingNextJump = null;

@@ -21,6 +21,7 @@ public class AutoFunctionsManager {
     private static final String PREFS_NAME = "auto_functions_prefs";
     private static final String KEY_PREFIX = "auto_function_";
     private static final String KEY_AUTO_SKIN = KEY_PREFIX + "auto_skin";
+    private static final String KEY_AUTO_TREASURE = KEY_PREFIX + "auto_treasure";
     private static final String KEY_AUTO_ATTACK_LEGACY = KEY_PREFIX + "auto_attack";
     private static final String KEY_AUTO_ATTACK_TOOL_ID = KEY_PREFIX + "auto_attack_tool_id";
     private static final String KEY_AUTO_ATTACK_LAST_NON_ZERO_TOOL_ID = KEY_PREFIX + "auto_attack_last_non_zero_tool_id";
@@ -42,6 +43,7 @@ public class AutoFunctionsManager {
         AppVars.DoShowWalkers = isLocationTrackingEnabled();
         syncAutoSkinWithProfileIfPresent();
         syncAutoFightWithProfileIfPresent();
+        syncAutoTreasureWithProfileIfPresent();
     }
     
     public static synchronized AutoFunctionsManager getInstance(Context context) {
@@ -275,11 +277,19 @@ public class AutoFunctionsManager {
     public void restorePersistentAutoModesAfterLogin() {
         boolean autoFish = isAutoFishEnabled();
         boolean autoFight = isAutoFightEnabled();
-        Log.d(TAG, "restorePersistentAutoModesAfterLogin: autoFish=" + autoFish + ", autoFight=" + autoFight);
+        boolean autoTreasure = isAutoTreasureEnabled();
+        Log.d(TAG, "restorePersistentAutoModesAfterLogin: autoFish=" + autoFish
+                + ", autoFight=" + autoFight
+                + ", autoTreasure=" + autoTreasure);
 
         if (autoFish) {
             setAutoFishEnabled(true);
             return;
+        }
+
+        AppVars.DoSearchBox = autoTreasure;
+        if (!autoTreasure) {
+            AppVars.SearchBoxVisited.clear();
         }
 
         restoreAutoFightRuntimeAfterLogin(autoFight);
@@ -547,6 +557,20 @@ public class AutoFunctionsManager {
         prefs.edit().putBoolean(KEY_PREFIX + "auto_fight", profileValue).apply();
         AppVars.Autoboi = profileValue ? AutoboiState.AutoboiOn : AutoboiState.AutoboiOff;
         Log.d(TAG, "syncAutoFightWithProfileIfPresent: LezDoAutoboi=" + profileValue);
+    }
+
+    /**
+     * Первичная синхронизация "Авто-Клад" из профиля.
+     * Источник истины: `Profile.AutoDig` (C# parity для menuitemDoSearchBox).
+     */
+    private void syncAutoTreasureWithProfileIfPresent() {
+        if (AppVars.Profile == null) {
+            return;
+        }
+        boolean profileValue = AppVars.Profile.AutoDig;
+        prefs.edit().putBoolean(KEY_AUTO_TREASURE, profileValue).apply();
+        AppVars.DoSearchBox = profileValue;
+        Log.d(TAG, "syncAutoTreasureWithProfileIfPresent: AutoDig=" + profileValue);
     }
     
     // === AUTO_ATTACK (Авто-Нападение) ===
@@ -833,6 +857,64 @@ public class AutoFunctionsManager {
         prefs.edit().putBoolean(KEY_PREFIX + "auto_drink", enabled).apply();
         Log.d(TAG, "setAutoDrinkEnabled: " + enabled);
     }
+
+    // === AUTO_TREASURE (Авто-Клад / DoSearchBox) ===
+
+    // Возвращает текущее состояние "Авто-Клад".
+    public boolean isAutoTreasureEnabled() {
+        if (AppVars.Profile != null) {
+            boolean profileValue = AppVars.Profile.AutoDig;
+            boolean prefValue = prefs.getBoolean(KEY_AUTO_TREASURE, profileValue);
+            if (prefValue != profileValue) {
+                prefs.edit().putBoolean(KEY_AUTO_TREASURE, profileValue).apply();
+            }
+            AppVars.DoSearchBox = profileValue;
+            return profileValue;
+        }
+        boolean enabled = prefs.getBoolean(KEY_AUTO_TREASURE, false);
+        AppVars.DoSearchBox = enabled;
+        return enabled;
+    }
+
+    // Переключение "Авто-Клад".
+    public void toggleAutoTreasure() {
+        setAutoTreasureEnabled(!isAutoTreasureEnabled());
+    }
+
+    /**
+     * Включение/выключение "Авто-Клад".
+     * C# parity: menuitemDoSearchBox -> AppVars.DoSearchBox + ReloadMainFrame().
+     */
+    public void setAutoTreasureEnabled(boolean enabled) {
+        prefs.edit().putBoolean(KEY_AUTO_TREASURE, enabled).apply();
+        AppVars.DoSearchBox = enabled;
+
+        if (AppVars.Profile != null && AppVars.Profile.AutoDig != enabled) {
+            AppVars.Profile.AutoDig = enabled;
+            AppVars.Profile.save(context);
+        }
+
+        if (!enabled) {
+            AppVars.SearchBoxVisited.clear();
+        }
+
+        Log.d(TAG, "setAutoTreasureEnabled: " + enabled);
+        if (enabled && AppVars.mainActivity != null && AppVars.mainActivity.get() != null) {
+            AppVars.mainActivity.get().runOnUiThread(() -> {
+                try {
+                    if (AppVars.mainActivity.get() == null || AppVars.mainActivity.get().getMainWebView() == null) {
+                        return;
+                    }
+                    String reloadUrl = "http://neverlands.ru/main.php?ab_search_box_bootstrap=1&r="
+                            + System.currentTimeMillis();
+                    AppVars.mainActivity.get().getMainWebView().loadUrl(reloadUrl);
+                    Log.d(TAG, "setAutoTreasureEnabled: bootstrap reload " + reloadUrl);
+                } catch (Exception e) {
+                    Log.e(TAG, "setAutoTreasureEnabled: bootstrap reload failed", e);
+                }
+            });
+        }
+    }
     
     // === AUTO_MOVING (Навигатор) ===
     //
@@ -1017,6 +1099,7 @@ public class AutoFunctionsManager {
             case AUTO_CURE: return isAutoCureEnabled();
             case AUTO_DRINK: return isAutoDrinkEnabled();
             case AUTO_MOVING: return isAutoMovingEnabled();
+            case AUTO_TREASURE: return isAutoTreasureEnabled();
             case AUTO_CUT: return isAutoCutEnabled();
             case AUTO_REFRESH: return isAutoRefreshEnabled();
             default: return false;
@@ -1041,6 +1124,7 @@ public class AutoFunctionsManager {
             case AUTO_CURE: toggleAutoCure(); break;
             case AUTO_DRINK: toggleAutoDrink(); break;
             case AUTO_MOVING: toggleAutoMoving(); break;
+            case AUTO_TREASURE: toggleAutoTreasure(); break;
             case AUTO_CUT: toggleAutoCut(); break;
             case AUTO_REFRESH: toggleAutoRefresh(); break;
             default: break;
@@ -1064,6 +1148,7 @@ public class AutoFunctionsManager {
         setAutoCureEnabled(false);
         setAutoDrinkEnabled(false);
         setAutoMovingEnabled(false);
+        setAutoTreasureEnabled(false);
         setAutoCutEnabled(false);
         setAutoRefreshEnabled(false);
     }

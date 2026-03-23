@@ -282,6 +282,8 @@ public class QuickButtonsPanel {
                 return null;
             case AUTO_MOVING:
                 return null;
+            case AUTO_TREASURE:
+                return "http://image.neverlands.ru/achievement/75/a_75_10.gif";
             case AUTO_CUT:
                 return null;
             case AUTO_REFRESH:
@@ -346,6 +348,7 @@ public class QuickButtonsPanel {
             case AUTO_CURE:
             case AUTO_DRINK:
             case AUTO_MOVING:
+            case AUTO_TREASURE:
             case AUTO_CUT:
             case AUTO_REFRESH:
                 return true;
@@ -382,6 +385,8 @@ public class QuickButtonsPanel {
             case AUTO_DRINK:
                 return R.drawable.ic_add;
             case AUTO_MOVING:
+                return R.drawable.ic_globe;
+            case AUTO_TREASURE:
                 return R.drawable.ic_globe;
             case AUTO_CUT:
                 return R.drawable.ic_add;
@@ -495,6 +500,11 @@ public class QuickButtonsPanel {
                 break;
             case AUTO_MOVING:
                 showNavigatorDialog();
+                break;
+            case AUTO_TREASURE:
+                autoFunctionsManager.toggleAutoTreasure();
+                Toast.makeText(context, autoFunctionsManager.isAutoTreasureEnabled() ? "Авто-Клад ВКЛ" : "Авто-Клад ВЫКЛ", Toast.LENGTH_SHORT).show();
+                loadAndUpdateButtons();
                 break;
             case AUTO_CUT:
                 autoFunctionsManager.toggleAutoCut();

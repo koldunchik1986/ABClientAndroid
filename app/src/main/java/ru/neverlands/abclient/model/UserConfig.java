@@ -202,6 +202,14 @@ public class UserConfig {
     public boolean AutoMine = false;
     public boolean AutoTree = false;
     public boolean AutoDig = false;
+    /**
+     * Останавливать авто-поиск клада при появлении на клетке кнопки "Копать".
+     *
+     * C# parity:
+     * - `UserConfig.DoStopOnDig` (`checkDoStopOnDig` в FormSettingsGeneral).
+     * - runtime-проверка в `PostFilter/MainPhp.cs` по маркеру `["dig","Копать",`.
+     */
+    public boolean DoStopOnDig = true;
     public boolean AutoTorg = false;
     public boolean TorgActive = false;
     public boolean DoGuamod = false;
@@ -495,6 +503,8 @@ public class UserConfig {
                     } else if ("showoverwarning".equalsIgnoreCase(tagName)) {
                         // C# parity: <showoverwarning>true|false</showoverwarning>
                         this.ShowOverWarning = parseBoolNodeText(parser, this.ShowOverWarning);
+                    } else if ("dostopondig".equalsIgnoreCase(tagName)) {
+                        this.DoStopOnDig = parseBoolNodeText(parser, this.DoStopOnDig);
                     } else if ("RazdChatReport".equalsIgnoreCase(tagName)) {
                         // Legacy-совместимость:
                         // в части старых профилей C# флаг мог храниться отдельным узлом.
@@ -863,6 +873,10 @@ public class UserConfig {
             serializer.startTag(null, "autodrinkblazorder");
             serializer.text(String.valueOf(this.AutoDrinkBlazOrder));
             serializer.endTag(null, "autodrinkblazorder");
+
+            serializer.startTag(null, "dostopondig");
+            serializer.text(String.valueOf(this.DoStopOnDig));
+            serializer.endTag(null, "dostopondig");
 
             // Сохранение настроек AutoBoi (аналог UserConfigVars.cs / FormSettingsAb.cs)
             serializer.startTag(null, "autoboi");

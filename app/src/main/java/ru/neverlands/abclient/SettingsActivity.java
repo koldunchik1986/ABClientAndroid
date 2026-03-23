@@ -167,6 +167,18 @@ public class SettingsActivity extends AppCompatActivity {
                 });
             }
 
+            // C# parity (`checkDoStopOnDig`): остановка Авто-Клада при появлении кнопки "Копать".
+            SwitchPreferenceCompat doStopOnDigPref = findPreference("do_stop_on_dig");
+            if (doStopOnDigPref != null && AppVars.Profile != null) {
+                doStopOnDigPref.setChecked(AppVars.Profile.DoStopOnDig);
+                doStopOnDigPref.setOnPreferenceChangeListener((preference, newValue) -> {
+                    boolean value = (Boolean) newValue;
+                    AppVars.Profile.DoStopOnDig = value;
+                    AppVars.Profile.save(requireContext());
+                    return true;
+                });
+            }
+
             ListPreference mapScalePref = findPreference("map_scale_percent");
             if (mapScalePref != null && AppVars.Profile != null) {
                 int currentScale = AppVars.Profile.MapBigScale;

@@ -1,7 +1,10 @@
 package ru.neverlands.abclient.postfilter;
 
+import java.util.ArrayDeque;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import ru.neverlands.abclient.model.Position;
 import ru.neverlands.abclient.utils.AppVars;
@@ -11,6 +14,7 @@ import android.util.Log;
 
 public class MapAjax {
     private static final String TAG = "MapAjax";
+    private static final long SEARCH_BOX_VISITED_TTL_MS = 24L * 60L * 60L * 1000L;
 
     public static String process(String html) {
         final String patternVarMap = "var map = [[";
@@ -34,6 +38,7 @@ public class MapAjax {
             if (AppVars.Profile != null) {
                 AppVars.Profile.MapLocation = regNum;
             }
+            markSearchBoxVisited(regNum);
         }
 
         posComma = posNextComma + 1;
@@ -74,13 +79,32 @@ public class MapAjax {
         String mapLocation = AppVars.Profile != null ? AppVars.Profile.MapLocation : null;
         if (mapLocation == null) return html;
 
+        if (AppVars.AutoMovingDestinaton == null || AppVars.AutoMovingDestinaton.isEmpty()) {
+            Log.w(TAG, "AUTO_MOVING_TRACE: destination is empty while AutoMoving=true");
+            return html;
+        }
+
         if (mapLocation.equals(AppVars.AutoMovingDestinaton)) {
-            AppVars.AutoMoving = false;
+            if (!AppVars.DoSearchBox) {
+                AppVars.AutoMoving = false;
+                AppVars.AutoMovingMapPath = null;
+                AppVars.AutoMovingNextJump = null;
+                AppVars.AutoMovingJumps = 0;
+                android.util.Log.i(TAG, "AutoMoving: destination reached at " + mapLocation);
+                return html;
+            }
+
+            String nextSearchDestination = findNextDestForBox(mapLocation);
+            if (nextSearchDestination == null || nextSearchDestination.isEmpty()) {
+                Log.i(TAG, "AUTO_SEARCH_BOX_TRACE: no next destination from " + mapLocation);
+                return html;
+            }
+
+            AppVars.AutoMovingDestinaton = nextSearchDestination;
             AppVars.AutoMovingMapPath = null;
             AppVars.AutoMovingNextJump = null;
             AppVars.AutoMovingJumps = 0;
-            android.util.Log.i(TAG, "AutoMoving: destination reached at " + mapLocation);
-            return html;
+            Log.i(TAG, "AUTO_SEARCH_BOX_TRACE: rotate destination to " + nextSearchDestination);
         }
 
         if (AppVars.AutoMovingMapPath == null || !AppVars.AutoMovingMapPath.canUseExistingPath(mapLocation, AppVars.AutoMovingDestinaton)) {
@@ -120,6 +144,93 @@ public class MapAjax {
         }
 
         return html;
+    }
+
+    /**
+     * C# parity (`FormMainNavigator.FindNextDestForBox`):
+     * находит ближайшую клетку, которую не посещали >= 1 суток.
+     */
+    public static String findNextDestForBox(String sourceLocation) {
+        String source = sourceLocation;
+        if ((source == null || source.isEmpty()) && AppVars.Profile != null) {
+            source = AppVars.Profile.MapLocation;
+        }
+        if (source == null || source.isEmpty() || !ExtMap.Cells.containsKey(source)) {
+            return null;
+        }
+
+        int[] idx = new int[] {0, 0, -1, 1, -1, 1, -1, 1};
+        int[] idy = new int[] {-1, 1, 0, 0, -1, -1, 1, 1};
+
+        Set<String> visited = new HashSet<>();
+        ArrayDeque<String> frontier = new ArrayDeque<>();
+        visited.add(source);
+        frontier.add(source);
+
+        long nowMs = System.currentTimeMillis();
+        while (!frontier.isEmpty()) {
+            int batch = frontier.size();
+            for (int k = 0; k < batch; k++) {
+                String current = frontier.poll();
+                if (current == null || current.isEmpty()) {
+                    continue;
+                }
+                for (int i = 0; i < idx.length; i++) {
+                    String next = moveMapCell(current, idx[i], idy[i]);
+                    if (next == null || next.isEmpty() || visited.contains(next)) {
+                        continue;
+                    }
+                    visited.add(next);
+                    frontier.add(next);
+
+                    if (isSearchBoxCandidate(next, nowMs)) {
+                        return next;
+                    }
+                }
+            }
+        }
+        return null;
+    }
+
+    private static boolean isSearchBoxCandidate(String regNum, long nowMs) {
+        Long visitedAt = AppVars.SearchBoxVisited.get(regNum);
+        if (visitedAt == null || visitedAt <= 0L) {
+            return true;
+        }
+        return (nowMs - visitedAt) >= SEARCH_BOX_VISITED_TTL_MS;
+    }
+
+    private static String moveMapCell(String regNum, int dx, int dy) {
+        String location = ExtMap.InvLocation.get(regNum);
+        if (location == null || location.isEmpty()) {
+            return null;
+        }
+        String[] parts = location.split("[/_]");
+        if (parts.length < 2) {
+            return null;
+        }
+        int y;
+        int x;
+        try {
+            y = Integer.parseInt(parts[0]);
+            x = Integer.parseInt(parts[1]);
+        } catch (NumberFormatException e) {
+            return null;
+        }
+
+        String position = ExtMap.makePosition(x + dx, y + dy);
+        Position pos = ExtMap.Location.get(position);
+        if (pos == null || pos.RegNum == null || pos.RegNum.isEmpty()) {
+            return null;
+        }
+        return ExtMap.Cells.containsKey(pos.RegNum) ? pos.RegNum : null;
+    }
+
+    private static void markSearchBoxVisited(String regNum) {
+        if (regNum == null || regNum.isEmpty()) {
+            return;
+        }
+        AppVars.SearchBoxVisited.put(regNum, System.currentTimeMillis());
     }
 
     private static String mainPhpFindEnter(String html) {

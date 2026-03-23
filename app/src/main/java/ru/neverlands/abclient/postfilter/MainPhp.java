@@ -14,6 +14,9 @@ import java.util.Map;
 import java.util.Random;
 import java.text.SimpleDateFormat;
 import android.content.Intent;
+import android.media.Ringtone;
+import android.media.RingtoneManager;
+import android.net.Uri;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 import ru.neverlands.abclient.lez.LezFight;
 import ru.neverlands.abclient.model.AutoboiState;
@@ -47,6 +50,7 @@ public class MainPhp {
     private static final long AUTO_SKIN_KNIFE_RECHECK_INTERVAL_MS = 60_000L;
     private static final int AUTO_FISH_WEAR_LOOP_MAX_REPEATS = 12;
     private static final long AUTO_FISH_WEAR_LOOP_WINDOW_MS = 20_000L;
+    private static final String DIG_BUTTON_MARKER = "[\"dig\",\"Копать\",";
     private static final int[] FISH_PRIM_IDS = new int[]{38, 39, 40, 41, 42, 43, 44, 45, 46};
     private static final int[] FISH_PRIM_FLAGS = new int[]{
             ru.neverlands.abclient.model.Prims.Bread,
@@ -1124,10 +1128,36 @@ public class MainPhp {
             String statusHtml = "<font class=nickname><div align=center style=\"color: #660066;\"><i>"
                     + "\u041f\u0443\u043d\u043a\u0442 \u043d\u0430\u0437\u043d\u0430\u0447\u0435\u043d\u0438\u044f: <b>" + AppVars.AutoMovingDestinaton + "</b><br>"
                     + "\u0415\u0449\u0435 \u043f\u0435\u0440\u0435\u0445\u043e\u0434\u043e\u0432: <b>" + AppVars.AutoMovingJumps + "</b>"
+                    + (AppVars.DoSearchBox ? "<br>\u0418\u0449\u0435\u043c \u043a\u043b\u0430\u0434..." : "")
                     + "</i></div></font>";
             html = html.substring(0, poswt) + statusHtml + html.substring(poswt);
         }
         return html;
+    }
+
+    /**
+     * Запускает авто-переход к целевой клетке для режима "Авто-Клад" (DoSearchBox).
+     */
+    private static void startAutoSearchBoxMoving(String destination) {
+        if (destination == null || destination.isEmpty()) {
+            return;
+        }
+        AppVars.AutoMoving = true;
+        AppVars.AutoMovingDestinaton = destination;
+        AppVars.AutoMovingMapPath = null;
+        AppVars.AutoMovingNextJump = null;
+        AppVars.AutoMovingJumps = 0;
+        AppVars.AutoMovingCityGate = ru.neverlands.abclient.model.CityGateType.None;
+
+        String mapLocation = (AppVars.Profile != null) ? AppVars.Profile.MapLocation : null;
+        if (mapLocation != null && !mapLocation.isEmpty()) {
+            ru.neverlands.abclient.utils.MapPath path =
+                    new ru.neverlands.abclient.utils.MapPath(mapLocation, Collections.singletonList(destination));
+            AppVars.AutoMovingMapPath = path;
+            AppVars.AutoMovingNextJump = path.nextJump;
+            AppVars.AutoMovingJumps = path.jumps;
+            AppVars.AutoMovingCityGate = path.cityGate;
+        }
     }
 
     private static int parseUnsignedIntFrom(String text, int fromIndex) {
@@ -2851,6 +2881,9 @@ public class MainPhp {
             // Preserve original fight HTML for manual mode (avoid losing images after auto frame)
             AppVars.ContentMainPhp = originalHtml;
         }
+        if (!isFightFrame && !isFightTopFrame) {
+            maybeStopAutoTreasureOnDig(html);
+        }
         // Обработка инвентаря выполняется ТОЛЬКО на странице инвентаря.
         // Важно: не запускать на страницах боя (`act=7`) и прочих `main.php`,
         // иначе можно сломать finish-flow и схлопнуть HTML по чужим шаблонам.
@@ -2865,6 +2898,21 @@ public class MainPhp {
             }
             html = mainPhpInv(html);
         }
+
+        // C# parity (`DoSearchBox && !AutoMoving && DateTime.Now > NeverTimer`):
+        // запускаем обход карты в поиске следующей "непосещенной" клетки.
+        if (!isFightFrame && !isFightTopFrame && AppVars.DoSearchBox && !AppVars.AutoMoving) {
+            long nowMs = System.currentTimeMillis();
+            if (AppVars.NeverTimer <= 0L || nowMs > AppVars.NeverTimer) {
+                String nextDest = MapAjax.findNextDestForBox(AppVars.Profile != null ? AppVars.Profile.MapLocation : null);
+                if (nextDest != null && !nextDest.isEmpty()) {
+                    startAutoSearchBoxMoving(nextDest);
+                    android.util.Log.d(TAG, "AUTO_SEARCH_BOX_TRACE start moving to " + nextDest
+                            + ", address=" + address);
+                }
+            }
+        }
+
         if (AppVars.AutoMoving && html.contains(" id=wtime>")) {
             html = mainPhpWtime(html);
             AppVars.ContentMainPhp = html;
@@ -4738,6 +4786,103 @@ public class MainPhp {
      * - {@link LocalBroadcastManager};
      * - action {@link AppVars#ACTION_ADD_CHAT_MESSAGE}.
      */
+    /**
+     * C# parity (`AppVars.Profile.DoStopOnDig`):
+     * при появлении кнопки "Копать" останавливает Авто-Клад и сообщает пользователю.
+     */
+    private static void maybeStopAutoTreasureOnDig(String html) {
+        if (html == null || html.isEmpty() || AppVars.Profile == null || !AppVars.Profile.DoStopOnDig) {
+            return;
+        }
+        if (!html.contains(DIG_BUTTON_MARKER)) {
+            return;
+        }
+
+        boolean autoTreasureActive = AppVars.DoSearchBox || AppVars.AutoMoving || AppVars.Profile.AutoDig;
+        if (!autoTreasureActive) {
+            return;
+        }
+
+        // Полная остановка текущего маршрута (аналог C# UpdateNavigatorOff).
+        AppVars.AutoMoving = false;
+        AppVars.AutoMovingDestinaton = null;
+        AppVars.AutoMovingMapPath = null;
+        AppVars.AutoMovingNextJump = null;
+        AppVars.AutoMovingJumps = 0;
+        AppVars.AutoMovingCityGate = ru.neverlands.abclient.model.CityGateType.None;
+
+        boolean disabledViaManager = false;
+        try {
+            android.content.Context context = AppVars.getContext();
+            if (context != null) {
+                AutoFunctionsManager.getInstance(context).setAutoTreasureEnabled(false);
+                disabledViaManager = true;
+            }
+        } catch (Exception e) {
+            android.util.Log.w(TAG, "AUTO_SEARCH_BOX_TRACE stop on dig: manager disable failed", e);
+        }
+
+        if (!disabledViaManager) {
+            AppVars.DoSearchBox = false;
+            if (AppVars.Profile != null) {
+                AppVars.Profile.AutoDig = false;
+                try {
+                    android.content.Context context = AppVars.getContext();
+                    if (context != null) {
+                        AppVars.Profile.save(context);
+                    }
+                } catch (Exception saveEx) {
+                    android.util.Log.w(TAG, "AUTO_SEARCH_BOX_TRACE stop on dig: profile save failed", saveEx);
+                }
+            }
+            AppVars.SearchBoxVisited.clear();
+        }
+
+        notifyTreasureFoundOnCurrentCell();
+        playTreasureFoundSignal();
+        android.util.Log.d(TAG, "AUTO_SEARCH_BOX_TRACE treasure marker detected -> stop auto treasure");
+    }
+
+    /**
+     * Публикует системное сообщение в чат о том, что на текущей клетке найден клад.
+     */
+    private static void notifyTreasureFoundOnCurrentCell() {
+        if (AppVars.getContext() == null) {
+            return;
+        }
+        String messageHtml = buildServerChatTimeHtml()
+                + "<font color=#cc0000><b>На текущей клетке обнаружен клад!</b></font>";
+        Intent intent = new Intent(AppVars.ACTION_ADD_CHAT_MESSAGE);
+        intent.putExtra("message", messageHtml);
+        LocalBroadcastManager.getInstance(AppVars.getContext()).sendBroadcast(intent);
+    }
+
+    /**
+     * Подаёт звуковой сигнал при обнаружении клада.
+     * Используется как Android-аналог C# `EventSounds.PlayAlarm()`.
+     */
+    private static void playTreasureFoundSignal() {
+        android.content.Context context = AppVars.getContext();
+        if (context == null) {
+            return;
+        }
+        try {
+            Uri alarmUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM);
+            if (alarmUri == null) {
+                alarmUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION);
+            }
+            if (alarmUri == null) {
+                return;
+            }
+            Ringtone ringtone = RingtoneManager.getRingtone(context, alarmUri);
+            if (ringtone != null) {
+                ringtone.play();
+            }
+        } catch (Exception e) {
+            android.util.Log.w(TAG, "AUTO_SEARCH_BOX_TRACE play alarm failed", e);
+        }
+    }
+
     private static void sendInventoryChatMessage(String messageHtml) {
         if (AppVars.getContext() == null || messageHtml == null || messageHtml.isEmpty()) {
             return;

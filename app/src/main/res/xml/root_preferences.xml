@@ -41,6 +41,12 @@
             app:defaultValue="80" />
 
         <SwitchPreferenceCompat
+            app:key="do_stop_on_dig"
+            app:title="Останавливаться на кладе"
+            app:summary="Если появляется кнопка «Копать», Авто-Клад останавливается и подается сигнал"
+            app:defaultValue="true" />
+
+        <SwitchPreferenceCompat
             app:key="do_auto_drink_blaz"
             app:title="Пить блаж, если усталость"
             app:defaultValue="false" />

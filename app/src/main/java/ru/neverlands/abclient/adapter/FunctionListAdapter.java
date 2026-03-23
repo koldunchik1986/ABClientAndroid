@@ -153,6 +153,8 @@ public class FunctionListAdapter extends BaseAdapter {
                 return null;
             case AUTO_MOVING:
                 return null;
+            case AUTO_TREASURE:
+                return "http://image.neverlands.ru/achievement/75/a_75_10.gif";
             case AUTO_CUT:
                 return null;
             case AUTO_REFRESH:
@@ -195,6 +197,8 @@ public class FunctionListAdapter extends BaseAdapter {
             case AUTO_DRINK:
                 return R.drawable.ic_add;
             case AUTO_MOVING:
+                return R.drawable.ic_globe;
+            case AUTO_TREASURE:
                 return R.drawable.ic_globe;
             case AUTO_REFRESH:
                 return R.drawable.ic_refresh;

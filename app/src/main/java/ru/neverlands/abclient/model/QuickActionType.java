@@ -18,6 +18,7 @@ public enum QuickActionType {
     AUTO_CURE("Авто-Лечение", "auto_cure"),
     AUTO_DRINK("Авто-Питье", "auto_drink"),
     AUTO_MOVING("Навигатор", "auto_moving"),
+    AUTO_TREASURE("Авто-Клад", "auto_treasure"),
     AUTO_CUT("Авто-Травник", "auto_cut"),
     AUTO_REFRESH("Авто-Обновление", "auto_refresh"),
     AUTO_SKIN("Авто-Охота", "auto_skin"),
