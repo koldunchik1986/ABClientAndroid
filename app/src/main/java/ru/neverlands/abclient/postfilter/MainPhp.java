@@ -51,7 +51,6 @@ public class MainPhp {
     private static final long AUTO_SKIN_KNIFE_RECHECK_INTERVAL_MS = 60_000L;
     private static final int AUTO_FISH_WEAR_LOOP_MAX_REPEATS = 12;
     private static final long AUTO_FISH_WEAR_LOOP_WINDOW_MS = 20_000L;
-    private static final String BLISS_POTION_NAME = "\u0417\u0435\u043B\u044C\u0435 \u0411\u043B\u0430\u0436\u0435\u043D\u0441\u0442\u0432\u0430";
     private static final String BLISS_ELIXIR_NAME = "\u042D\u043B\u0438\u043A\u0441\u0438\u0440 \u0411\u043B\u0430\u0436\u0435\u043D\u0441\u0442\u0432\u0430";
     private static final String DIG_BUTTON_MARKER = "[\"dig\",\"Копать\",";
     private static final int[] FISH_PRIM_IDS = new int[]{38, 39, 40, 41, 42, 43, 44, 45, 46};
@@ -1450,6 +1449,12 @@ public class MainPhp {
         }
         return result;
     }
+
+    // Global runtime pause for non-combat auto pipelines while FastAction is active.
+    // Autoboi/fight flow must continue and therefore is not controlled by this helper.
+    private static boolean isNonCombatAutoPausedByFastAction() {
+        return AppVars.FastNeed && AppVars.FastPauseNonCombatAutoFunctions;
+    }
     /**
      * Устанавливает query-параметр в URL:
      * - если параметр уже есть, заменяет его значение;
@@ -1962,9 +1967,6 @@ public class MainPhp {
         if (!AppVars.Profile.DoAutoDrinkBlaz) {
             return null;
         }
-        if (AppVars.FastNeed) {
-            return null;
-        }
         if (AppVars.IsFightCaptchaDialogVisible) {
             return null;
         }
@@ -1980,163 +1982,28 @@ public class MainPhp {
             return null;
         }
 
-        long sinceLastTrigger = now - lastAutoDrinkBlazTriggerAtMs;
-        if (sinceLastTrigger >= 0L && sinceLastTrigger < 1000L) {
-            return null;
-        }
-
-        int order = AppVars.Profile.AutoDrinkBlazOrder == 1 ? 1 : 0;
-        String firstFilter = order == 0 ? "&im=0&wca=27" : "&im=6";
-        String secondFilter = order == 0 ? "&im=6" : "&im=0&wca=27";
-        String firstLabel = order == 0
-                ? "\u0437\u0435\u043B\u044C\u044F"
-                : "\u044D\u043B\u0438\u043A\u0441\u0438\u0440\u044B";
-        String secondLabel = order == 0
-                ? "\u044D\u043B\u0438\u043A\u0441\u0438\u0440\u044B"
-                : "\u0437\u0435\u043B\u044C\u044F";
-
-        if (!mainPhpIsInv(html) && !isInventoryAddress(address)) {
-            String invHtml = mainPhpFindInvWithFallback(html, firstFilter, address);
-            if (invHtml != null && !invHtml.isEmpty()) {
-                android.util.Log.d(TAG, "AUTO_BLAZ_TRACE tied high -> open inventory first="
-                        + firstFilter + ", tied=" + tied + ", threshold=" + tiedThreshold);
-                return invHtml;
-            }
-            if (AppVars.VCode != null && !AppVars.VCode.trim().isEmpty()) {
-                String fallbackInvLink = "main.php?get_id=56&act=10&go=inv&vcode="
-                        + AppVars.VCode.trim() + firstFilter;
-                android.util.Log.w(TAG, "AUTO_BLAZ_TRACE inventory link not found in html, fallback via AppVars.VCode: "
-                        + fallbackInvLink);
+        if (AppVars.FastNeed) {
+            // Если уже выполняется fast-action по блажу, не запускаем параллельный поток.
+            if (BLISS_ELIXIR_NAME.equals(AppVars.FastId)) {
                 return buildRedirectHtml(
-                        "\u041F\u0435\u0440\u0435\u0445\u043E\u0434 \u0432 \u0438\u043D\u0432\u0435\u043D\u0442\u0430\u0440\u044C \u0434\u043B\u044F \u0431\u043B\u0430\u0436\u0430",
-                        fallbackInvLink);
+                        "\u0410\u0432\u0442\u043E\u043F\u0438\u0442\u044C\u0435 \u0431\u043B\u0430\u0436\u0430: \u043E\u0436\u0438\u0434\u0430\u043D\u0438\u0435 \u0432\u044B\u043F\u043E\u043B\u043D\u0435\u043D\u0438\u044F",
+                        "main.php");
             }
             return null;
         }
 
-        boolean onFirstCategory = inventoryAddressMatchesFilter(address, firstFilter);
-        boolean onSecondCategory = inventoryAddressMatchesFilter(address, secondFilter);
-        if (!onFirstCategory && !onSecondCategory) {
-            android.util.Log.d(TAG, "AUTO_BLAZ_TRACE inventory page without expected filter, switch to " + firstFilter);
-            return buildRedirectHtml(
-                    "\u041F\u0435\u0440\u0435\u043A\u043B\u044E\u0447\u0435\u043D\u0438\u0435 \u043D\u0430 " + firstLabel,
-                    "main.php?" + firstFilter.substring(1));
-        }
-
-        String useHtml = mainPhpDrinkBlazPotOrElixir(html, order);
-        if (useHtml != null && !useHtml.isEmpty()) {
-            lastAutoDrinkBlazTriggerAtMs = now;
-            AppVars.Tied = 0;
-            android.util.Log.d(TAG, "AUTO_BLAZ_TRACE consume bliss, order=" + order);
-            return useHtml;
-        }
-
-        if (onFirstCategory) {
-            android.util.Log.d(TAG, "AUTO_BLAZ_TRACE bliss not found on first category, switch to " + secondFilter);
-            return buildRedirectHtml(
-                    "\u041F\u0435\u0440\u0435\u043A\u043B\u044E\u0447\u0435\u043D\u0438\u0435 \u043D\u0430 " + secondLabel,
-                    "main.php?" + secondFilter.substring(1));
-        }
-
-        android.util.Log.w(TAG, "AUTO_BLAZ_TRACE bliss potion/elixir not found, disable option");
-        disableAutoDrinkBlaz();
-        return null;
-    }
-
-    private static String mainPhpDrinkBlazPotOrElixir(String html, int order) {
-        int[] scanOrder = order == 1 ? new int[]{1, 0} : new int[]{0, 1};
-        for (int mode : scanOrder) {
-            String result = mode == 0
-                    ? mainPhpUseBlissPotionFromInventory(html)
-                    : mainPhpUseBlissElixirFromInventory(html);
-            if (result != null && !result.isEmpty()) {
-                return result;
-            }
-        }
-        return null;
-    }
-
-    private static String mainPhpUseBlissPotionFromInventory(String html) {
-        if (html == null || html.isEmpty()) {
-            return null;
-        }
-        java.util.regex.Matcher matcher = java.util.regex.Pattern
-                .compile("(?is)magicreform\\s*\\(\\s*'([^']+)'\\s*,\\s*'[^']*'\\s*,\\s*'([^']+)'\\s*,\\s*'([^']+)'\\s*\\)")
-                .matcher(html);
-        while (matcher.find()) {
-            String uid = matcher.group(1);
-            String potionName = matcher.group(2);
-            String vcode = matcher.group(3);
-            if (!containsIgnoreCase(potionName, BLISS_POTION_NAME)) {
-                continue;
-            }
-            String ownNick = AppVars.Profile != null && AppVars.Profile.UserNick != null
-                    ? AppVars.Profile.UserNick
-                    : "";
-            return buildMagicReformSubmitHtml(uid, vcode, ownNick, BLISS_POTION_NAME);
-        }
-        return null;
-    }
-
-    private static String mainPhpUseBlissElixirFromInventory(String html) {
-        if (html == null || html.isEmpty()) {
+        long sinceLastTrigger = now - lastAutoDrinkBlazTriggerAtMs;
+        if (sinceLastTrigger >= 0L && sinceLastTrigger < 2500L) {
             return null;
         }
 
-        java.util.regex.Matcher linkMatcher = java.util.regex.Pattern
-                .compile("(?is)main\\.php\\?get_id=43&act=107[^'\"\\s<]+")
-                .matcher(html);
-        while (linkMatcher.find()) {
-            String link = linkMatcher.group();
-            int contextStart = Math.max(0, linkMatcher.start() - 240);
-            int contextEnd = Math.min(html.length(), linkMatcher.end() + 240);
-            String context = html.substring(contextStart, contextEnd);
-            if (!containsIgnoreCase(context, BLISS_ELIXIR_NAME)) {
-                continue;
-            }
-            return buildRedirectHtml(
-                    "\u0418\u0441\u043F\u043E\u043B\u044C\u0437\u0443\u0435\u043C " + BLISS_ELIXIR_NAME + "...",
-                    link);
-        }
-        return null;
-    }
-
-    private static String buildMagicReformSubmitHtml(String uid, String vcode, String targetNick, String itemName) {
-        String safeUid = uid == null ? "" : uid.trim();
-        String safeVcode = vcode == null ? "" : vcode.trim();
-        String safeNick = targetNick == null ? "" : targetNick;
-        String safeItemName = itemName == null || itemName.isEmpty() ? "item" : itemName;
-        if (safeUid.isEmpty() || safeVcode.isEmpty()) {
-            return null;
-        }
-        return HtmlUtils.GENERATED_PAGE_MARKER
-                + "<html><head><meta http-equiv=\"Content-Type\" content=\"text/html; charset=windows-1251\">"
-                + "<title>ABClient</title></head><body>"
-                + "\u0418\u0441\u043F\u043E\u043B\u044C\u0437\u0443\u0435\u043C " + escapeHtmlAttr(safeItemName) + "..."
-                + "<form action=main.php method=POST name=ff>"
-                + "<input name=magicrestart type=hidden value=\"1\">"
-                + "<input name=magicreuid type=hidden value=\"" + escapeHtmlAttr(safeUid) + "\">"
-                + "<input name=vcode type=hidden value=\"" + escapeHtmlAttr(safeVcode) + "\">"
-                + "<input name=post_id type=hidden value=\"46\">"
-                + "<input name=fornickname type=hidden value=\"" + escapeHtmlAttr(safeNick) + "\">"
-                + "</form><script language=\"JavaScript\">document.ff.submit();</script></body></html>";
-    }
-
-    private static void disableAutoDrinkBlaz() {
-        if (AppVars.Profile != null) {
-            AppVars.Profile.DoAutoDrinkBlaz = false;
-            android.content.Context context = AppVars.getContext();
-            if (context != null) {
-                AppVars.Profile.save(context);
-            }
-        }
-        if (AppVars.getContext() != null) {
-            Intent msgIntent = new Intent(AppVars.ACTION_ADD_CHAT_MESSAGE);
-            msgIntent.putExtra(
-                    "message",
-                    "<font color=#cc0000><b>\u041D\u0438 \u0437\u0435\u043B\u044C\u0435 \u043D\u0438 \u044D\u043B\u0438\u043A\u0441\u0438\u0440 \u0431\u043B\u0430\u0436\u0435\u043D\u0441\u0442\u0432\u0430 \u043D\u0435 \u043D\u0430\u0439\u0434\u0435\u043D\u044B. \u0410\u0432\u0442\u043E\u043F\u0438\u0442\u044C\u0435 \u0431\u043B\u0430\u0436\u0430 \u043E\u0442\u043A\u043B\u044E\u0447\u0435\u043D\u043E.</b></font>");
-            LocalBroadcastManager.getInstance(AppVars.getContext()).sendBroadcast(msgIntent);
-        }
+        lastAutoDrinkBlazTriggerAtMs = now;
+        android.util.Log.d(TAG, "AUTO_BLAZ_TRACE trigger quick action: " + BLISS_ELIXIR_NAME
+                + ", tied=" + tied + ", threshold=" + tiedThreshold);
+        FastActionManager.fastAttackBlazElixir();
+        return buildRedirectHtml(
+                "\u0410\u0432\u0442\u043E\u043F\u0438\u0442\u044C\u0435 \u0431\u043B\u0430\u0436\u0430: " + BLISS_ELIXIR_NAME,
+                "main.php");
     }
 
     /**
@@ -2852,13 +2719,17 @@ public class MainPhp {
         }
         // Чтение умения "Охота" (C# parity) до оркестрации AutoSkin,
         // чтобы `AutoSkinCheckUm` корректно сбрасывался на `mselect=1`.
-        mainPhpProcessSkills(html, address);
+        if (!isNonCombatAutoPausedByFastAction()) {
+            mainPhpProcessSkills(html, address);
+        }
         // Чтение умения "Рыбалка" (C# parity) до оркестрации AutoFish.
-        mainPhpProcessFishSkills(html, address);
+        if (!isNonCombatAutoPausedByFastAction()) {
+            mainPhpProcessFishSkills(html, address);
+        }
 
         // C# parity: DoAutoDrinkBlaz.
         // Порядок вызова: до AutoFish/AutoSearchBox, чтобы при высокой усталости сначала обнулить ее.
-        if (!isFightFrame && !isFightTopFrame) {
+        if (!isNonCombatAutoPausedByFastAction() && !isFightFrame && !isFightTopFrame) {
             String autoDrinkBlazHtml = mainPhpAutoDrinkBlazStep(address, html);
             if (autoDrinkBlazHtml != null && !autoDrinkBlazHtml.isEmpty()) {
                 return Russian.getBytes(autoDrinkBlazHtml);
@@ -2872,7 +2743,8 @@ public class MainPhp {
         if (autoFightReloadProbeAddress && isAutoFishEnabledByPreference()) {
             android.util.Log.d(TAG, "AUTO_FISH_TRACE skip: auto-fight reload probe address=" + address);
         }
-        if (!isFightFrame && !isFightTopFrame && !autoFightReloadProbeAddress && isAutoFishEnabledByPreference()) {
+        if (!isNonCombatAutoPausedByFastAction() && !isFightFrame && !isFightTopFrame
+                && !autoFightReloadProbeAddress && isAutoFishEnabledByPreference()) {
             long nowMs = System.currentTimeMillis();
             if (AppVars.NeverTimer <= 0L || nowMs > AppVars.NeverTimer) {
                 String fishFatigueHtml = mainPhpAutoFishFatigueStep(html);
@@ -2972,7 +2844,7 @@ public class MainPhp {
         // 1) проверка надетого свитка на странице персонажа;
         // 2) авто-переход в инвентарь свитков (`im=0&wca=28`);
         // 3) авто-нажатие wear-link (`get_id=57&uid=...&s=1&vcode=...`).
-        if (!isFightFrame && !isFightTopFrame && isAutoFuryEnabledByPreference()) {
+        if (!isNonCombatAutoPausedByFastAction() && !isFightFrame && !isFightTopFrame && isAutoFuryEnabledByPreference()) {
             long nowMs = System.currentTimeMillis();
             if (AppVars.NeverTimer <= 0L || nowMs > AppVars.NeverTimer) {
                 if (AppVars.AutoFuryCheckScroll) {
@@ -3012,7 +2884,7 @@ public class MainPhp {
         }
         // Авто-разделка (MainPhpRaz.cs): если в текущем боевом кадре доступна кнопка "Разделать",
         // выполняем редирект на действие разделки до стандартной боевой обработки.
-        if (isAutoSkinEnabledByPreference()) {
+        if (!isNonCombatAutoPausedByFastAction() && isAutoSkinEnabledByPreference()) {
             String razHtml = mainPhpRaz(html);
             if (razHtml != null) {
                 return Russian.getBytes(razHtml);
@@ -3032,7 +2904,7 @@ public class MainPhp {
                     + ", generatedTransition=" + suspendAutoSkinForGeneratedTransition
                     + ", address=" + address);
         }
-        if (!isFightFrame && !isFightTopFrame && isAutoSkinEnabledByPreference()
+        if (!isNonCombatAutoPausedByFastAction() && !isFightFrame && !isFightTopFrame && isAutoSkinEnabledByPreference()
                 && !suspendAutoSkinForFinishFlow
                 && !suspendAutoSkinForInventoryReload
                 && !suspendAutoSkinForGeneratedTransition) {
@@ -3131,7 +3003,7 @@ public class MainPhp {
 
         // C# parity (`DoSearchBox && !AutoMoving && DateTime.Now > NeverTimer`):
         // запускаем обход карты в поиске следующей "непосещенной" клетки.
-        if (!isFightFrame && !isFightTopFrame && AppVars.DoSearchBox && !AppVars.AutoMoving) {
+        if (!isNonCombatAutoPausedByFastAction() && !isFightFrame && !isFightTopFrame && AppVars.DoSearchBox && !AppVars.AutoMoving) {
             long nowMs = System.currentTimeMillis();
             if (AppVars.NeverTimer <= 0L || nowMs > AppVars.NeverTimer) {
                 String nextDest = MapAjax.findNextDestForBox(AppVars.Profile != null ? AppVars.Profile.MapLocation : null);
@@ -3143,12 +3015,12 @@ public class MainPhp {
             }
         }
 
-        if (AppVars.AutoMoving && html.contains(" id=wtime>")) {
+        if (!isNonCombatAutoPausedByFastAction() && AppVars.AutoMoving && html.contains(" id=wtime>")) {
             html = mainPhpWtime(html);
             AppVars.ContentMainPhp = html;
             return Russian.getBytes(html);
         }
-        if (AppVars.AutoMoving) {
+        if (!isNonCombatAutoPausedByFastAction() && AppVars.AutoMoving) {
             String cityNavHtml = MainPhpCityNavigation.process(html);
             if (cityNavHtml != null && !cityNavHtml.isEmpty()) {
                 return Russian.getBytes(cityNavHtml);

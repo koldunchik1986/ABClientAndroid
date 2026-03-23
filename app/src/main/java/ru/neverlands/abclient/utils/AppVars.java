@@ -302,6 +302,9 @@ public class AppVars {
     public static volatile String FastId = null;
     public static volatile String FastNick = null;
     public static volatile int FastCount = 0;
+    // Runtime pause for non-combat auto pipelines while any FastAction is active.
+    // Important: Autoboi/fight logic must continue working and is not paused by this flag.
+    public static volatile boolean FastPauseNonCombatAutoFunctions = false;
     public static volatile boolean FastWaitEndOfBoiActive = false;
     public static volatile boolean FastWaitEndOfBoiCancel = false;
     public static volatile boolean FastNeedAbilDarkTeleport = false;

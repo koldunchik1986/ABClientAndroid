@@ -46,18 +46,22 @@ public class FastActionManager {
         boolean prevFastNeed = AppVars.FastNeed;
         String prevFastId = AppVars.FastId;
         String prevFastNick = AppVars.FastNick;
+        boolean prevPauseNonCombatAuto = AppVars.FastPauseNonCombatAutoFunctions;
         // Глобальные флаги, которые считывает MainPhp.process() при обработке main.php.
         AppVars.FastNeed = true;
         AppVars.FastId = id;
         AppVars.FastNick = nick;
         AppVars.FastCount = count;
+        AppVars.FastPauseNonCombatAutoFunctions = true;
         Log.d(TAG, "fastStart: id=" + id + ", nick=" + nick + ", count=" + count);
         Log.d(TAG, "[AA_TRACE] fastStart state: prevFastNeed=" + prevFastNeed
                 + ", prevFastId=" + prevFastId
                 + ", prevFastNick=" + prevFastNick
+                + ", prevPauseNonCombatAuto=" + prevPauseNonCombatAuto
                 + ", newFastNeed=" + AppVars.FastNeed
                 + ", newFastId=" + AppVars.FastId
-                + ", newFastNick=" + AppVars.FastNick);
+                + ", newFastNick=" + AppVars.FastNick
+                + ", newPauseNonCombatAuto=" + AppVars.FastPauseNonCombatAutoFunctions);
         // Запускаем цепочку через reload main.php (как в ПК версии).
         reloadMainFrame();
     }
@@ -82,11 +86,13 @@ public class FastActionManager {
         String oldFastId = AppVars.FastId;
         String oldFastNick = AppVars.FastNick;
         int oldFastCount = AppVars.FastCount;
+        boolean oldPauseNonCombatAuto = AppVars.FastPauseNonCombatAutoFunctions;
         // Полный сброс параметров быстрого действия.
         AppVars.FastNeed = false;
         AppVars.FastNick = null;
         AppVars.FastId = null;
         AppVars.FastCount = 0;
+        AppVars.FastPauseNonCombatAutoFunctions = false;
         AppVars.FastNeedAbilDarkTeleport = false;
         AppVars.FastNeedAbilDarkFog = false;
 
@@ -99,7 +105,9 @@ public class FastActionManager {
                 + ", oldFastNeed=" + oldFastNeed
                 + ", oldFastId=" + oldFastId
                 + ", oldFastNick=" + oldFastNick
-                + ", oldFastCount=" + oldFastCount);
+                + ", oldFastCount=" + oldFastCount
+                + ", oldPauseNonCombatAuto=" + oldPauseNonCombatAuto
+                + ", newPauseNonCombatAuto=" + AppVars.FastPauseNonCombatAutoFunctions);
     }
 
     /**
@@ -557,7 +565,7 @@ public class FastActionManager {
             // Действие выполнено, уменьшаем счётчик
             AppVars.FastCount--;
             if (AppVars.FastCount <= 0) {
-                AppVars.FastNeed = false;
+                fastCancel("fast-action-finished");
             }
             Log.d(TAG, "processMainPhp: УСПЕХ для FastId=" + fastId + ", resultLen=" + result.length());
             Log.d(TAG, "processMainPhp: generated HTML: " + (result.length() > 300 ? result.substring(0, 300) : result));

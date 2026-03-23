@@ -18,6 +18,14 @@ public class MapAjax {
     private static final long SEARCH_BOX_VISITED_TTL_MS = 24L * 60L * 60L * 1000L;
 
     public static String process(String html) {
+        if (AppVars.FastNeed && AppVars.FastPauseNonCombatAutoFunctions) {
+            if (AppVars.AutoMoving || AppVars.DoSearchBox) {
+                Log.d(TAG, "AUTO_FAST_PAUSE_TRACE: skip map auto processing while fast action is active"
+                        + ", fastId=" + AppVars.FastId);
+            }
+            return html;
+        }
+
         if (isMapAjaxErrResponse(html) && AppVars.AutoMoving) {
             AppVars.AutoMovingMapPath = null;
             AppVars.AutoMovingNextJump = null;
