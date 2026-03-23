@@ -96,10 +96,20 @@ public class FastActionManager {
         FastAutoSyncSnapshot snapshot = fastAutoSyncSnapshot;
         fastAutoSyncSnapshot = null;
         if (snapshot == null) {
+            Log.d(TAG, "FAST_SYNC_TRACE restore skipped: reason=" + reason + ", snapshot is null");
             return;
         }
 
-        if (snapshot.autoMoving && !AppVars.AutoMoving && AppVars.DoSearchBox) {
+        if (!snapshot.autoMoving) {
+            Log.d(TAG, "FAST_SYNC_TRACE restore skipped: reason=" + reason
+                    + ", snapshot.autoMoving=false");
+        } else if (AppVars.AutoMoving) {
+            Log.d(TAG, "FAST_SYNC_TRACE restore skipped: reason=" + reason
+                    + ", autoMoving already active");
+        } else if (!AppVars.DoSearchBox) {
+            Log.d(TAG, "FAST_SYNC_TRACE restore skipped: reason=" + reason
+                    + ", DoSearchBox disabled by user");
+        } else {
             AppVars.AutoMoving = true;
             AppVars.AutoMovingDestinaton = snapshot.autoMovingDestination;
             AppVars.AutoMovingMapPath = snapshot.autoMovingMapPath;
