@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Set;
 
+import ru.neverlands.abclient.manager.FastActionManager;
 import ru.neverlands.abclient.model.Position;
 import ru.neverlands.abclient.utils.AppVars;
 import ru.neverlands.abclient.utils.ExtMap;
@@ -49,6 +50,19 @@ public class MapAjax {
                 AppVars.AutoMovingMapPath = null;
                 AppVars.AutoMovingNextJump = null;
                 AppVars.AutoMovingJumps = 0;
+                // Критичный фикс: запускаем FastAction сразу в точке "too tired",
+                // не дожидаясь отдельного plain main.php (который может не прийти без ручного reload).
+                int tiedThreshold = Math.max(0, Math.min(100, AppVars.Profile.AutoDrinkBlazTied));
+                if (!AppVars.FastNeed && AppVars.Tied >= tiedThreshold) {
+                    Log.i(TAG, "AUTO_SEARCH_BOX_TRACE: trigger bliss fast action from map_ajax too-tired"
+                            + ", tied=" + AppVars.Tied + ", threshold=" + tiedThreshold);
+                    FastActionManager.fastAttackBlazElixir();
+                } else {
+                    Log.d(TAG, "AUTO_SEARCH_BOX_TRACE: skip bliss fast action at too-tired"
+                            + ", fastNeed=" + AppVars.FastNeed
+                            + ", tied=" + AppVars.Tied
+                            + ", threshold=" + tiedThreshold);
+                }
                 Log.i(TAG, "AUTO_SEARCH_BOX_TRACE: too tired, auto moving paused, redirect to main.php for auto bliss");
             }
             return Filter.buildRedirectString(
