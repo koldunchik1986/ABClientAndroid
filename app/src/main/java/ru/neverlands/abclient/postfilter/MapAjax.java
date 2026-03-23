@@ -7,6 +7,9 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Set;
 
+import android.os.Handler;
+import android.os.Looper;
+import android.widget.Toast;
 import ru.neverlands.abclient.manager.FastActionManager;
 import ru.neverlands.abclient.manager.NeverApi;
 import ru.neverlands.abclient.model.Position;
@@ -372,38 +375,48 @@ public class MapAjax {
         }
         Integer synced = NeverApi.getCurrentTiedFromPinfo(nick);
         if (synced == null) {
+            logAutoBlazDecision("sync", "skip_sync_failed", tied, threshold, "reg=" + currentRegNum);
             return;
         }
         lastAutoDrinkBlazPinfoSyncAtMs = now;
         int normalized = clampPercent(synced);
+        showFatigueSyncToast("\u0421\u0438\u043D\u0445\u0440\u043E\u043D\u0438\u0437\u0430\u0446\u0438\u044F \u0443\u0441\u0442\u0430\u043B\u043E\u0441\u0442\u0438: " + normalized + "%");
         if (AppVars.Tied != normalized) {
             Log.d(TAG, "AUTO_BLAZ_TRACE tied sync from pinfo: old=" + AppVars.Tied
                     + ", new=" + normalized
                     + ", reg=" + currentRegNum
                     + ", threshold=" + threshold);
             AppVars.Tied = normalized;
+            logAutoBlazDecision("sync", "synced_changed", normalized, threshold, "reg=" + currentRegNum);
         } else {
             Log.d(TAG, "AUTO_BLAZ_TRACE tied sync from pinfo: unchanged=" + normalized
                     + ", reg=" + currentRegNum
                     + ", threshold=" + threshold);
+            logAutoBlazDecision("sync", "synced_unchanged", normalized, threshold, "reg=" + currentRegNum);
         }
     }
 
     private static String maybeTriggerAutoDrinkBlazOnThreshold(String currentRegNum) {
         if (AppVars.Profile == null || !AppVars.Profile.DoAutoDrinkBlaz) {
+            logAutoBlazDecision("decision", "skip_profile_disabled", clampPercent(AppVars.Tied), 0, "reg=" + currentRegNum);
             return null;
         }
+        int threshold = clampPercent(AppVars.Profile.AutoDrinkBlazTied);
+        int tiedBeforeSync = clampPercent(AppVars.Tied);
         if (AppVars.FastNeed) {
+            logAutoBlazDecision("decision", "skip_fast_need", tiedBeforeSync, threshold, "reg=" + currentRegNum + ", fastId=" + AppVars.FastId);
             return null;
         }
         maybeSyncTiedFromPinfoIfNearThreshold(currentRegNum);
-        int threshold = clampPercent(AppVars.Profile.AutoDrinkBlazTied);
         int tied = clampPercent(AppVars.Tied);
         if (tied < threshold) {
+            logAutoBlazDecision("decision", "skip_below_threshold", tied, threshold, "reg=" + currentRegNum);
             return null;
         }
         long now = System.currentTimeMillis();
         if ((now - lastAutoDrinkBlazTriggerAtMs) < AUTO_DRINK_BLAZ_TRIGGER_COOLDOWN_MS) {
+            logAutoBlazDecision("decision", "skip_trigger_cooldown", tied, threshold,
+                    "reg=" + currentRegNum + ", cooldownMs=" + (now - lastAutoDrinkBlazTriggerAtMs));
             return null;
         }
         lastAutoDrinkBlazTriggerAtMs = now;
@@ -418,10 +431,29 @@ public class MapAjax {
                 + ", threshold=" + threshold
                 + ", reg=" + currentRegNum
                 + ", trigger fast bliss");
+        logAutoBlazDecision("decision", "trigger_fast_bliss", tied, threshold, "reg=" + currentRegNum);
         FastActionManager.fastAttackBlazElixir();
         return Filter.buildRedirectString(
                 "\u041D\u0430\u0432\u0438\u0433\u0430\u0442\u043E\u0440: \u0430\u0432\u0442\u043E\u043F\u0438\u0442\u044C\u0435 \u0431\u043B\u0430\u0436\u0430",
                 "main.php?ab_nav_tired=1");
+    }
+
+    private static void logAutoBlazDecision(String stage, String action, int tied, int threshold, String details) {
+        String suffix = (details == null || details.isEmpty()) ? "" : (", " + details);
+        Log.d(TAG, "AUTO_BLAZ_DECISION: stage=" + stage
+                + ", action=" + action
+                + ", tied=" + tied
+                + ", threshold=" + threshold
+                + suffix);
+    }
+
+    private static void showFatigueSyncToast(String text) {
+        final android.content.Context context = AppVars.getContext();
+        if (context == null) {
+            return;
+        }
+        new Handler(Looper.getMainLooper()).post(() ->
+                Toast.makeText(context, text, Toast.LENGTH_SHORT).show());
     }
 
     private static int clampPercent(int value) {
