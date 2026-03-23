@@ -1997,6 +1997,18 @@ public class MainPhp {
             return null;
         }
 
+        // На время FastAction по блажу снимаем активный автопереход:
+        // DoSearchBox остаётся включённым и после завершения fast-набора
+        // навигация снова стартует штатно через C# parity-ветку (DoSearchBox && !AutoMoving).
+        if (AppVars.AutoMoving) {
+            AppVars.AutoMoving = false;
+            AppVars.AutoMovingMapPath = null;
+            AppVars.AutoMovingNextJump = null;
+            AppVars.AutoMovingJumps = 0;
+            AppVars.AutoMovingCityGate = ru.neverlands.abclient.model.CityGateType.None;
+            android.util.Log.d(TAG, "AUTO_BLAZ_TRACE pause AutoMoving before fast bliss action");
+        }
+
         lastAutoDrinkBlazTriggerAtMs = now;
         android.util.Log.d(TAG, "AUTO_BLAZ_TRACE trigger quick action: " + BLISS_ELIXIR_NAME
                 + ", tied=" + tied + ", threshold=" + tiedThreshold);
@@ -3076,8 +3088,9 @@ public class MainPhp {
         String fastId = AppVars.FastId;
         android.util.Log.d(TAG, "processMainPhpFast: FastId=" + fastId + ", address=" + address);
         // NeverTimer — cooldown (аналог DateTime.Now > AppVars.NeverTimer в C#)
-        if (AppVars.NeverTimer > 0 && System.currentTimeMillis() < AppVars.NeverTimer) {
-            android.util.Log.d(TAG, "processMainPhpFast: NeverTimer ещё не истёк, пропускаем");
+        boolean requireNeverTimerForFast = isAttackFastId(fastId);
+        if (requireNeverTimerForFast && AppVars.NeverTimer > 0 && System.currentTimeMillis() < AppVars.NeverTimer) {
+            android.util.Log.d(TAG, "processMainPhpFast: NeverTimer ещё не истёк, пропускаем (attack-fast)");
             return null;
         }
         // --- Особый случай: get_id=43 — это страница применения эликсира/предмета.
@@ -3154,6 +3167,13 @@ public class MainPhp {
                 // Предмет найден! processMainPhp уже обработал FastCount
                 android.util.Log.d(TAG, "processMainPhpFast: УСПЕХ, предмет найден");
                 return Russian.getBytes(fastHtml);
+            }
+            // На части ответов go=inv сервер возвращает переходный HTML без формы предмета
+            // (mainPhpIsInv=false), хотя адрес уже указывает на нужную вкладку.
+            // В этом состоянии не отменяем FastAction — ждём следующий полноценный кадр.
+            if (!mainPhpIsInv(html)) {
+                android.util.Log.d(TAG, "processMainPhpFast: inventory transitional HTML, keep fast active");
+                return null;
             }
             // 3. Мы на правильной вкладке, предмет не найден — отмена
             android.util.Log.w(TAG, "processMainPhpFast: предмет не найден на правильной вкладке ("
@@ -4938,7 +4958,8 @@ public class MainPhp {
                 }
             }
             ExtMap.flushVisitedToDisk();
-            AppVars.SearchBoxVisited.clear();
+            android.util.Log.d(TAG, "AUTO_SEARCH_BOX_TRACE stop on dig: keep visited cache, entries="
+                    + AppVars.SearchBoxVisited.size());
         }
 
         notifyTreasureFoundOnCurrentCell();

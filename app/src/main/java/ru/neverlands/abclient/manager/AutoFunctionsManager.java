@@ -291,7 +291,8 @@ public class AutoFunctionsManager {
         AppVars.DoSearchBox = autoTreasure;
         if (!autoTreasure) {
             ExtMap.flushVisitedToDisk();
-            AppVars.SearchBoxVisited.clear();
+            Log.d(TAG, "restorePersistentAutoModesAfterLogin: keep visited cache, entries="
+                    + AppVars.SearchBoxVisited.size());
         }
 
         restoreAutoFightRuntimeAfterLogin(autoFight);
@@ -898,7 +899,8 @@ public class AutoFunctionsManager {
 
         if (!enabled) {
             ExtMap.flushVisitedToDisk();
-            AppVars.SearchBoxVisited.clear();
+            Log.d(TAG, "setAutoTreasureEnabled: keep visited cache on disable, entries="
+                    + AppVars.SearchBoxVisited.size());
         }
 
         Log.d(TAG, "setAutoTreasureEnabled: " + enabled);

@@ -43,10 +43,13 @@ public class MapAjax {
                 AppVars.AutoMovingJumps = 0;
                 Log.w(TAG, "AUTO_SEARCH_BOX_TRACE: too tired, auto moving stopped (DoAutoDrinkBlaz=false)");
             } else {
+                // На время автопитья блажа останавливаем автопереходы,
+                // чтобы исключить зацикливание ab_nav_tired и гонку с FastAction.
+                AppVars.AutoMoving = false;
                 AppVars.AutoMovingMapPath = null;
                 AppVars.AutoMovingNextJump = null;
                 AppVars.AutoMovingJumps = 0;
-                Log.i(TAG, "AUTO_SEARCH_BOX_TRACE: too tired, redirect to main.php for auto bliss");
+                Log.i(TAG, "AUTO_SEARCH_BOX_TRACE: too tired, auto moving paused, redirect to main.php for auto bliss");
             }
             return Filter.buildRedirectString(
                     "\u041D\u0430\u0432\u0438\u0433\u0430\u0442\u043E\u0440: \u0443\u0441\u0442\u0430\u043B\u043E\u0441\u0442\u044C",
