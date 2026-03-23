@@ -18,6 +18,8 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import ru.neverlands.abclient.MainActivity;
+import ru.neverlands.abclient.model.Cell;
+import ru.neverlands.abclient.utils.ExtMap;
 import ru.neverlands.abclient.utils.Russian;
 import ru.neverlands.abclient.utils.AppVars;
 import ru.neverlands.abclient.utils.EventSounds;
@@ -30,10 +32,14 @@ public class RoomManager {
     // Временный чёрный список целей авто-нападения (аналог C# `RoomManager.BlackList`).
     // Ключ: ник в нижнем регистре, значение: время добавления в список (мс).
     private static final Map<String, Long> autoAttackBlackList = new ConcurrentHashMap<>();
+    private static final long PENDING_ROOM_LABEL_TTL_MS = 20_000L;
+    private static volatile String pendingRoomLocationName;
+    private static volatile long pendingRoomLocationNameAtMs;
 
     // Обработчик списка игроков комнаты (`ch.php?lo=1`).
     // Метод `process(...)` содержит портированную логику разбора списка комнаты.
     public static String process(Context context, String html) {
+        syncCellNameFromRoomHtml(context, html);
         Log.d(TAG, BG_TRACE_PREFIX + " process: htmlLen=" + (html == null ? 0 : html.length())
                 + ", contextNull=" + (context == null)
                 + ", doShowWalkers=" + AppVars.DoShowWalkers);
@@ -134,6 +140,158 @@ public class RoomManager {
                     + ", fastNick=" + AppVars.FastNick);
         }
         return html;
+    }
+
+    /**
+     * Синхронизация имени клетки (`CellDivText`) по фактическому названию из `/ch.php?lo=1`.
+     *
+     * Зависимости:
+     * - `extractLocationName(...)` — извлечение серверного названия локации;
+     * - `AppVars.Profile.MapLocation` — текущий `regnum` клетки;
+     * - `ExtMap.syncCellLabelFromServer(...)` — обновление runtime + `abcells.xml`;
+     * - `FastActionManager.writeChatMsg(...)` — уведомление в чат о замене названия.
+     *
+     * Поведение:
+     * - если названия отличаются, заменяет label в рабочем `abcells.xml` и пишет сообщение:
+     *   `Клетка №X - "Старое" заменено на Клетка №X - "Новое"`.
+     */
+    private static void syncCellNameFromRoomHtml(Context context, String html) {
+        if (context == null || isEmpty(html) || AppVars.Profile == null) {
+            return;
+        }
+        String serverLocationName = extractLocationName(html);
+        if (isEmpty(serverLocationName)) {
+            return;
+        }
+        cachePendingRoomLocationName(serverLocationName);
+
+        String regNum = resolveCellRegNumForRoomName(serverLocationName);
+        if (isEmpty(regNum)) {
+            Log.d(TAG, "MAP_NAME_SYNC_TRACE: defer room label sync, currentReg="
+                    + (AppVars.Profile != null ? AppVars.Profile.MapLocation : null)
+                    + ", nextJump=" + AppVars.AutoMovingNextJump
+                    + ", serverName=" + serverLocationName);
+            return;
+        }
+
+        boolean changed = applyCellNameSyncAndNotify(regNum, serverLocationName);
+        if (changed || isSameAsPendingRoomLocationName(serverLocationName)) {
+            clearPendingRoomLocationName();
+        }
+    }
+
+    public static void onMapLocationConfirmed(Context context, String regNum) {
+        if (context == null || isEmpty(regNum)) {
+            return;
+        }
+        String pendingName = getPendingRoomLocationNameIfFresh();
+        if (isEmpty(pendingName)) {
+            return;
+        }
+        String normalizedReg = regNum.trim();
+        if (!ExtMap.Cells.containsKey(normalizedReg)) {
+            return;
+        }
+        boolean changed = applyCellNameSyncAndNotify(normalizedReg, pendingName);
+        if (changed || isSameAsPendingRoomLocationName(pendingName)) {
+            clearPendingRoomLocationName();
+        }
+    }
+
+    private static boolean applyCellNameSyncAndNotify(String regNum, String serverLocationName) {
+        String oldLabel = ExtMap.syncCellLabelFromServer(regNum, serverLocationName);
+        if (isEmpty(oldLabel)) {
+            return false;
+        }
+
+        String safeOld = escapeHtml(oldLabel);
+        String safeNew = escapeHtml(serverLocationName);
+        FastActionManager.writeChatMsg(
+                "<font color=#5D7C91><b>[Карта]</b></font> "
+                        + "Клетка №" + regNum + " - \"" + safeOld + "\" заменено на "
+                        + "Клетка №" + regNum + " - \"" + safeNew + "\""
+        );
+        Log.d(TAG, "MAP_NAME_SYNC_TRACE: reg=" + regNum + ", old=" + oldLabel + ", new=" + serverLocationName);
+        return true;
+    }
+
+    private static String resolveCellRegNumForRoomName(String serverLocationName) {
+        if (AppVars.Profile == null) {
+            return null;
+        }
+
+        String currentReg = AppVars.Profile.MapLocation;
+        if (isEmpty(currentReg)) {
+            return null;
+        }
+        currentReg = currentReg.trim();
+        if (!ExtMap.Cells.containsKey(currentReg)) {
+            return null;
+        }
+
+        String normalizedServer = normalizeCellLabel(serverLocationName);
+        String currentLabel = normalizeCellLabel(getCellName(currentReg));
+        if (!normalizedServer.isEmpty() && normalizedServer.equals(currentLabel)) {
+            return currentReg;
+        }
+
+        String nextReg = AppVars.AutoMovingNextJump;
+        if (!isEmpty(nextReg)) {
+            nextReg = nextReg.trim();
+            if (ExtMap.Cells.containsKey(nextReg)) {
+                String nextLabel = normalizeCellLabel(getCellName(nextReg));
+                if (!normalizedServer.isEmpty() && normalizedServer.equals(nextLabel)) {
+                    return nextReg;
+                }
+                if (AppVars.AutoMoving && !nextReg.equals(currentReg)) {
+                    return null;
+                }
+            }
+        }
+
+        return currentReg;
+    }
+
+    private static String getCellName(String regNum) {
+        Cell cell = ExtMap.Cells.get(regNum);
+        return cell != null ? cell.Name : null;
+    }
+
+    private static String normalizeCellLabel(String value) {
+        if (value == null) {
+            return "";
+        }
+        return value.replace('\u00A0', ' ').replaceAll("\\s+", " ").trim();
+    }
+
+    private static synchronized void cachePendingRoomLocationName(String locationName) {
+        pendingRoomLocationName = locationName;
+        pendingRoomLocationNameAtMs = System.currentTimeMillis();
+    }
+
+    private static synchronized String getPendingRoomLocationNameIfFresh() {
+        if (isEmpty(pendingRoomLocationName)) {
+            return null;
+        }
+        long age = System.currentTimeMillis() - pendingRoomLocationNameAtMs;
+        if (age > PENDING_ROOM_LABEL_TTL_MS) {
+            pendingRoomLocationName = null;
+            pendingRoomLocationNameAtMs = 0L;
+            return null;
+        }
+        return pendingRoomLocationName;
+    }
+
+    private static synchronized boolean isSameAsPendingRoomLocationName(String locationName) {
+        if (isEmpty(locationName) || isEmpty(pendingRoomLocationName)) {
+            return false;
+        }
+        return normalizeCellLabel(locationName).equals(normalizeCellLabel(pendingRoomLocationName));
+    }
+
+    private static synchronized void clearPendingRoomLocationName() {
+        pendingRoomLocationName = null;
+        pendingRoomLocationNameAtMs = 0L;
     }
 
     /**
@@ -487,6 +645,17 @@ public class RoomManager {
             return matcher.group(1).trim();
         }
         return "";
+    }
+
+    private static String escapeHtml(String value) {
+        if (value == null) {
+            return "";
+        }
+        return value
+                .replace("&", "&amp;")
+                .replace("<", "&lt;")
+                .replace(">", "&gt;")
+                .replace("\"", "&quot;");
     }
 
     /**

@@ -44,6 +44,15 @@ public class ExtMap {
     private static long lastVisitedPersistAtMs = 0L;
     private static boolean visitedPersistPending = false;
     private static String lastVisitedPersistRegNum = "";
+    /**
+     * Отложенные обновления названий клеток (`label`) для персиста в `abcells.xml`.
+     *
+     * Зависимости:
+     * - заполняется из {@link #syncCellLabelFromServer(String, String)};
+     * - сбрасывается в том же цикле персиста, что и `visited` (`persistVisitedToExternalFile(...)`);
+     * - используется как "грязный буфер" на случай временной ошибки записи файла.
+     */
+    private static final Map<String, String> pendingLabelUpdates = new HashMap<>();
 
     public static synchronized void init(Context context) {
         if (initialized) return;
@@ -311,6 +320,68 @@ public class ExtMap {
         persistVisitedIfNeeded(true);
     }
 
+    /**
+     * Синхронизирует отображаемое имя клетки с серверным именем из `/ch.php`.
+     *
+     * Что делает:
+     * 1) Нормализует `regNum` и `serverLabel`;
+     * 2) Сравнивает текущее имя клетки в runtime (`ExtMap.Cells`) с серверным;
+     * 3) При отличии обновляет runtime и персистит `label` в рабочий `abcells.xml`.
+     *
+     * Зависимости:
+     * - `ExtMap.Cells` — источник/цель текущего названия для `CellDivText`;
+     * - `pendingLabelUpdates` — буфер отложенной записи в `abcells.xml`;
+     * - `persistVisitedToExternalFile(...)` — единый атомарный персист `visited + label`.
+     *
+     * @param regNum номер клетки (`8-330` и т.п.)
+     * @param serverLabel имя клетки, полученное из ответа `/ch.php`
+     * @return предыдущее название клетки, если было реальное изменение; иначе `null`
+     */
+    public static synchronized String syncCellLabelFromServer(String regNum, String serverLabel) {
+        if (regNum == null || serverLabel == null) {
+            return null;
+        }
+        String normalizedReg = regNum.trim();
+        if (normalizedReg.isEmpty()) {
+            return null;
+        }
+        String normalizedServerLabel = normalizeCellLabel(serverLabel);
+        if (normalizedServerLabel.isEmpty()) {
+            return null;
+        }
+
+        Cell cell = Cells.get(normalizedReg);
+        if (cell == null) {
+            return null;
+        }
+
+        String oldLabel = normalizeCellLabel(cell.Name);
+        if (normalizedServerLabel.equals(oldLabel)) {
+            return null;
+        }
+
+        cell.Name = normalizedServerLabel;
+        cell.Tooltip = syncTooltipLabel(cell.Tooltip, oldLabel, normalizedServerLabel);
+        pendingLabelUpdates.put(normalizedReg, normalizedServerLabel);
+
+        Context context = appContext != null ? appContext : AppVars.getContext();
+        if (context == null) {
+            return null;
+        }
+        boolean persisted = persistVisitedToExternalFile(context);
+        if (persisted) {
+            pendingLabelUpdates.remove(normalizedReg);
+            visitedPersistPending = false;
+            lastVisitedPersistAtMs = System.currentTimeMillis();
+            android.util.Log.d(TAG, "persistLabel: saved, reg=" + normalizedReg
+                    + ", old=" + oldLabel + ", new=" + normalizedServerLabel);
+        } else {
+            android.util.Log.w(TAG, "persistLabel: write failed, reg=" + normalizedReg
+                    + ", old=" + oldLabel + ", new=" + normalizedServerLabel);
+        }
+        return oldLabel;
+    }
+
     private static void persistVisitedIfNeeded(boolean force) {
         if (!visitedPersistPending) {
             return;
@@ -381,6 +452,8 @@ public class ExtMap {
                     }
 
                     boolean hasVisitedAttr = false;
+                    boolean hasLabelAttr = false;
+                    String pendingLabel = regnum != null ? pendingLabelUpdates.get(regnum) : null;
                     for (int i = 0; i < attrCount; i++) {
                         String attrNamespace = parser.getAttributeNamespace(i);
                         if (attrNamespace != null && attrNamespace.isEmpty()) {
@@ -394,6 +467,11 @@ public class ExtMap {
                             if (visitedMs != null && visitedMs > 0L) {
                                 attrValue = formatVisitedForAbc(visitedMs);
                             }
+                        } else if ("label".equalsIgnoreCase(attrName)) {
+                            hasLabelAttr = true;
+                            if (pendingLabel != null && !pendingLabel.isEmpty()) {
+                                attrValue = pendingLabel;
+                            }
                         }
                         serializer.attribute(attrNamespace, attrName, attrValue != null ? attrValue : "");
                     }
@@ -403,6 +481,9 @@ public class ExtMap {
                         if (visitedMs != null && visitedMs > 0L) {
                             serializer.attribute(null, "visited", formatVisitedForAbc(visitedMs));
                         }
+                    }
+                    if ("cell".equalsIgnoreCase(tag) && !hasLabelAttr && pendingLabel != null && !pendingLabel.isEmpty()) {
+                        serializer.attribute(null, "label", pendingLabel);
                     }
                 } else if (event == XmlPullParser.END_TAG) {
                     String tag = parser.getName();
@@ -452,6 +533,46 @@ public class ExtMap {
         synchronized (ABC_VISITED_OUTPUT_FORMAT) {
             return ABC_VISITED_OUTPUT_FORMAT.format(new Date(visitedMs));
         }
+    }
+
+    private static String normalizeCellLabel(String label) {
+        if (label == null) {
+            return "";
+        }
+        return label.replace('\u00A0', ' ').replaceAll("\\s+", " ").trim();
+    }
+
+    private static String syncTooltipLabel(String tooltip, String oldLabel, String newLabel) {
+        if (newLabel == null || newLabel.isEmpty()) {
+            return tooltip;
+        }
+        if (tooltip == null || tooltip.trim().isEmpty()) {
+            return newLabel;
+        }
+
+        String normalizedOld = normalizeCellLabel(oldLabel);
+        if (normalizedOld.isEmpty()) {
+            return tooltip;
+        }
+
+        String normalizedTooltip = normalizeCellLabel(tooltip);
+        if (normalizedTooltip.equals(normalizedOld)) {
+            return newLabel;
+        }
+
+        int comma = tooltip.indexOf(',');
+        if (comma >= 0 && comma + 1 < tooltip.length()) {
+            String prefix = tooltip.substring(0, comma + 1);
+            String suffix = tooltip.substring(comma + 1);
+            if (normalizeCellLabel(suffix).equals(normalizedOld)) {
+                return prefix + " " + newLabel;
+            }
+        }
+
+        if (tooltip.contains(oldLabel)) {
+            return tooltip.replace(oldLabel, newLabel);
+        }
+        return tooltip;
     }
 
     private static void copyAssetToFile(Context context, String assetName, File outputFile) throws Exception {

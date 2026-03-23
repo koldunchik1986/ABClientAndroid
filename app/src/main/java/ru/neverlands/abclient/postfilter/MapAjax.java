@@ -13,6 +13,7 @@ import android.widget.Toast;
 import ru.neverlands.abclient.manager.CharacterVitalsManager;
 import ru.neverlands.abclient.manager.FastActionManager;
 import ru.neverlands.abclient.manager.NeverApi;
+import ru.neverlands.abclient.manager.RoomManager;
 import ru.neverlands.abclient.model.Position;
 import ru.neverlands.abclient.utils.AppVars;
 import ru.neverlands.abclient.utils.ExtMap;
@@ -114,6 +115,7 @@ public class MapAjax {
             if (AppVars.Profile != null) {
                 AppVars.Profile.MapLocation = regNum;
             }
+            RoomManager.onMapLocationConfirmed(AppVars.getContext(), regNum);
             markSearchBoxVisited(regNum);
             if (regNum != null && !regNum.isEmpty() && (AppVars.AutoMoving || AppVars.AutoDrinkBlazPending)) {
                 if (AppVars.AutoMoving) {
