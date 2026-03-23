@@ -3,9 +3,15 @@ package ru.neverlands.abclient;
 import android.os.Bundle;
 import android.text.InputType;
 import android.view.MenuItem;
+import android.view.Gravity;
+import android.widget.ArrayAdapter;
+import android.widget.CheckBox;
 import android.widget.EditText;
 import android.widget.LinearLayout;
+import android.widget.ScrollView;
+import android.widget.Spinner;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.ActionBar;
@@ -17,6 +23,8 @@ import androidx.preference.Preference;
 import androidx.preference.PreferenceFragmentCompat;
 import androidx.preference.SwitchPreferenceCompat;
 
+import ru.neverlands.abclient.model.Prims;
+import ru.neverlands.abclient.ui.AutoBoiSettingsFragment;
 import ru.neverlands.abclient.utils.AppVars;
 
 /**
@@ -57,6 +65,41 @@ public class SettingsActivity extends AppCompatActivity {
     public static class SettingsFragment extends PreferenceFragmentCompat {
         private static final int MAP_SIZE_MIN = 3;
         private static final int MAP_SIZE_MAX = 31;
+        private static final String[] FISH_HAND_OPTIONS = new String[]{
+                "Нет",
+                "Любая удочка",
+                "Ореховая Удочка",
+                "Ивовая Удочка",
+                "Бамбуковая Удочка",
+                "Бамбуковая 2-х коленная Удочка",
+                "Бамбуковая 3-х коленная Удочка",
+                "Телескопическая Удочка",
+                "Телескопическая Облегченная Удочка",
+                "Телескопический Спиннинг",
+                "Сачок"
+        };
+        private static final String[] FISH_PRIM_LABELS = new String[]{
+                "Хлеб",
+                "Червяк",
+                "Крупный червяк",
+                "Опарыш",
+                "Мотыль",
+                "Блесна",
+                "Донка",
+                "Мормышка",
+                "Заговоренная блесна"
+        };
+        private static final int[] FISH_PRIM_FLAGS = new int[]{
+                Prims.Bread,
+                Prims.Worm,
+                Prims.BigWorm,
+                Prims.Stink,
+                Prims.Fly,
+                Prims.Light,
+                Prims.Donka,
+                Prims.Morm,
+                Prims.HiFlight
+        };
 
         private static int normalizeMapSizeValue(int value) {
             if (value < MAP_SIZE_MIN) value = MAP_SIZE_MIN;
@@ -405,140 +448,14 @@ public class SettingsActivity extends AppCompatActivity {
                 });
             }
             
-            // Настройка использования прокси
-            SwitchPreferenceCompat doProxyPref = findPreference("do_proxy");
-            if (doProxyPref != null && AppVars.Profile != null) {
-                doProxyPref.setChecked(AppVars.Profile.DoProxy);
-                doProxyPref.setOnPreferenceChangeListener((preference, newValue) -> {
-                    boolean value = (Boolean) newValue;
-                    AppVars.Profile.DoProxy = value;
-                    AppVars.Profile.save(requireContext());
-                    return true;
-                });
-            }
-            
-            // Настройка адреса прокси
-            Preference proxyAddressPref = findPreference("proxy_address");
-            if (proxyAddressPref != null && AppVars.Profile != null) {
-                proxyAddressPref.setSummary(AppVars.Profile.ProxyAddress);
-                proxyAddressPref.setOnPreferenceChangeListener((preference, newValue) -> {
-                    String value = (String) newValue;
-                    AppVars.Profile.ProxyAddress = value;
-                    AppVars.Profile.save(requireContext());
-                    preference.setSummary(value);
-                    return true;
-                });
-            }
-            
-            // Настройка имени пользователя прокси
-            Preference proxyUsernamePref = findPreference("proxy_username");
-            if (proxyUsernamePref != null && AppVars.Profile != null) {
-                proxyUsernamePref.setSummary(AppVars.Profile.ProxyUserName);
-                proxyUsernamePref.setOnPreferenceChangeListener((preference, newValue) -> {
-                    String value = (String) newValue;
-                    AppVars.Profile.ProxyUserName = value;
-                    AppVars.Profile.save(requireContext());
-                    preference.setSummary(value);
-                    return true;
-                });
-            }
-            
-            // Настройка пароля прокси
-            Preference proxyPasswordPref = findPreference("proxy_password");
-            if (proxyPasswordPref != null && AppVars.Profile != null) {
-                proxyPasswordPref.setSummary(AppVars.Profile.ProxyPassword.isEmpty() ? "" : "********");
-                proxyPasswordPref.setOnPreferenceChangeListener((preference, newValue) -> {
-                    String value = (String) newValue;
-                    AppVars.Profile.ProxyPassword = value;
-                    AppVars.Profile.save(requireContext());
-                    preference.setSummary(value.isEmpty() ? "" : "********");
-                    return true;
-                });
-            }
-            
-            // Настройка автоматической рыбалки
-            SwitchPreferenceCompat autoFishPref = findPreference("auto_fish");
-            if (autoFishPref != null && AppVars.Profile != null) {
-                autoFishPref.setChecked(AppVars.Profile.AutoFish);
-                autoFishPref.setOnPreferenceChangeListener((preference, newValue) -> {
-                    boolean value = (Boolean) newValue;
-                    AppVars.Profile.AutoFish = value;
-                    AppVars.Profile.save(requireContext());
-                    return true;
-                });
-            }
-            
-            // Настройка автоматического сбора трав
-            SwitchPreferenceCompat autoHerbPref = findPreference("auto_herb");
-            if (autoHerbPref != null && AppVars.Profile != null) {
-                autoHerbPref.setChecked(AppVars.Profile.AutoHerb);
-                autoHerbPref.setOnPreferenceChangeListener((preference, newValue) -> {
-                    boolean value = (Boolean) newValue;
-                    AppVars.Profile.AutoHerb = value;
-                    AppVars.Profile.save(requireContext());
-                    return true;
-                });
-            }
-            
-            // Настройка автоматической добычи руды
-            SwitchPreferenceCompat autoMinePref = findPreference("auto_mine");
-            if (autoMinePref != null && AppVars.Profile != null) {
-                autoMinePref.setChecked(AppVars.Profile.AutoMine);
-                autoMinePref.setOnPreferenceChangeListener((preference, newValue) -> {
-                    boolean value = (Boolean) newValue;
-                    AppVars.Profile.AutoMine = value;
-                    AppVars.Profile.save(requireContext());
-                    return true;
-                });
-            }
-            
-            // Настройка автоматической рубки деревьев
-            SwitchPreferenceCompat autoTreePref = findPreference("auto_tree");
-            if (autoTreePref != null && AppVars.Profile != null) {
-                autoTreePref.setChecked(AppVars.Profile.AutoTree);
-                autoTreePref.setOnPreferenceChangeListener((preference, newValue) -> {
-                    boolean value = (Boolean) newValue;
-                    AppVars.Profile.AutoTree = value;
-                    AppVars.Profile.save(requireContext());
-                    return true;
-                });
-            }
-            
-            // Настройка автоматического копания
-            SwitchPreferenceCompat autoDigPref = findPreference("auto_dig");
-            if (autoDigPref != null && AppVars.Profile != null) {
-                autoDigPref.setChecked(AppVars.Profile.AutoDig);
-                autoDigPref.setOnPreferenceChangeListener((preference, newValue) -> {
-                    boolean value = (Boolean) newValue;
-                    AppVars.Profile.AutoDig = value;
-                    AppVars.Profile.save(requireContext());
-                    return true;
-                });
-            }
-            
-            // Настройка автоматической торговли
-            SwitchPreferenceCompat autoTorgPref = findPreference("auto_torg");
-            if (autoTorgPref != null && AppVars.Profile != null) {
-                autoTorgPref.setChecked(AppVars.Profile.AutoTorg);
-                autoTorgPref.setOnPreferenceChangeListener((preference, newValue) -> {
-                    boolean value = (Boolean) newValue;
-                    AppVars.Profile.AutoTorg = value;
-                    AppVars.Profile.save(requireContext());
-                    return true;
-                });
-            }
-            
-            // Настройка активности торговли
-            SwitchPreferenceCompat torgActivePref = findPreference("torg_active");
-            if (torgActivePref != null && AppVars.Profile != null) {
-                torgActivePref.setChecked(AppVars.Profile.TorgActive);
-                torgActivePref.setOnPreferenceChangeListener((preference, newValue) -> {
-                    boolean value = (Boolean) newValue;
-                    AppVars.Profile.TorgActive = value;
-                    AppVars.Profile.save(requireContext());
-                    return true;
-                });
-            }
+            // Раздел "Автоматизация": только кнопки-переходы в окна настроек (без переключателей).
+            bindAutomationSettingsEntry("auto_fight_settings", this::openAutoBoiSettingsDialog);
+            bindAutomationSettingsEntry("auto_fish_settings", this::showAutoFishSettingsDialog);
+            bindAutomationSettingsEntry("auto_herb_settings", this::showAutoFunctionsSettingsDialog);
+            bindAutomationSettingsEntry("auto_mine_settings", this::showAutoFunctionsSettingsDialog);
+            bindAutomationSettingsEntry("auto_tree_settings", this::showAutoFunctionsSettingsDialog);
+            bindAutomationSettingsEntry("auto_dig_settings", this::showAutoFunctionsSettingsDialog);
+            bindAutomationSettingsEntry("auto_torg_settings", this::showAutoFunctionsSettingsDialog);
             
             // Настройка обновления кэша
             SwitchPreferenceCompat cacheRefreshPref = findPreference("cache_refresh");
@@ -568,6 +485,186 @@ public class SettingsActivity extends AppCompatActivity {
                     return true;
                 });
             }
+        }
+
+        private void bindAutomationSettingsEntry(String key, Runnable action) {
+            Preference pref = findPreference(key);
+            if (pref != null) {
+                pref.setOnPreferenceClickListener(preference -> {
+                    action.run();
+                    return true;
+                });
+            }
+        }
+
+        private void openAutoBoiSettingsDialog() {
+            AutoBoiSettingsFragment fragment = new AutoBoiSettingsFragment();
+            fragment.show(getParentFragmentManager(), "autoboi_settings_from_general");
+        }
+
+        private void showAutoFunctionsSettingsDialog() {
+            Toast.makeText(
+                    requireContext(),
+                    "Настройки этой авто-функции откроются в следующем этапе.",
+                    Toast.LENGTH_SHORT
+            ).show();
+        }
+
+        private void showAutoFishSettingsDialog() {
+            if (AppVars.Profile == null) {
+                Toast.makeText(requireContext(), "Профиль не загружен", Toast.LENGTH_SHORT).show();
+                return;
+            }
+
+            final int pad = (int) (requireContext().getResources().getDisplayMetrics().density * 12);
+            ScrollView scroll = new ScrollView(requireContext());
+            LinearLayout root = new LinearLayout(requireContext());
+            root.setOrientation(LinearLayout.VERTICAL);
+            root.setPadding(pad, pad, pad, pad);
+            scroll.addView(root);
+
+            CheckBox autoWear = new CheckBox(requireContext());
+            autoWear.setText("Автонадевание снастей");
+            autoWear.setChecked(AppVars.Profile.FishAutoWear);
+            root.addView(autoWear);
+
+            TextView hand1Title = new TextView(requireContext());
+            hand1Title.setText("Рука 1");
+            hand1Title.setPadding(0, pad, 0, 0);
+            root.addView(hand1Title);
+
+            Spinner hand1Spinner = new Spinner(requireContext());
+            ArrayAdapter<String> handAdapter = new ArrayAdapter<>(
+                    requireContext(),
+                    android.R.layout.simple_spinner_item,
+                    FISH_HAND_OPTIONS
+            );
+            handAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+            hand1Spinner.setAdapter(handAdapter);
+            int hand1Index = indexOfFishHand(AppVars.Profile.FishHandOne);
+            hand1Spinner.setSelection(hand1Index >= 0 ? hand1Index : 1);
+            root.addView(hand1Spinner);
+
+            TextView hand2Title = new TextView(requireContext());
+            hand2Title.setText("Рука 2");
+            hand2Title.setPadding(0, pad, 0, 0);
+            root.addView(hand2Title);
+
+            Spinner hand2Spinner = new Spinner(requireContext());
+            hand2Spinner.setAdapter(handAdapter);
+            int hand2Index = indexOfFishHand(AppVars.Profile.FishHandTwo);
+            hand2Spinner.setSelection(hand2Index >= 0 ? hand2Index : 0);
+            root.addView(hand2Spinner);
+
+            TextView autoDrinkTitle = new TextView(requireContext());
+            autoDrinkTitle.setText("Автопитье");
+            autoDrinkTitle.setPadding(0, pad, 0, 0);
+            root.addView(autoDrinkTitle);
+
+            LinearLayout tiedRow = new LinearLayout(requireContext());
+            tiedRow.setOrientation(LinearLayout.HORIZONTAL);
+            tiedRow.setGravity(Gravity.CENTER_VERTICAL);
+            TextView tiedLabel = new TextView(requireContext());
+            tiedLabel.setText("Глоток, если усталка больше");
+            tiedRow.addView(tiedLabel);
+            EditText tiedHighInput = new EditText(requireContext());
+            tiedHighInput.setInputType(InputType.TYPE_CLASS_NUMBER);
+            tiedHighInput.setText(String.valueOf(Math.max(0, Math.min(99, AppVars.Profile.FishTiedHigh))));
+            LinearLayout.LayoutParams tiedParams = new LinearLayout.LayoutParams(
+                    (int) (requireContext().getResources().getDisplayMetrics().density * 56),
+                    LinearLayout.LayoutParams.WRAP_CONTENT
+            );
+            tiedParams.leftMargin = (int) (requireContext().getResources().getDisplayMetrics().density * 8);
+            tiedHighInput.setLayoutParams(tiedParams);
+            tiedRow.addView(tiedHighInput);
+            root.addView(tiedRow);
+
+            CheckBox tiedZero = new CheckBox(requireContext());
+            tiedZero.setText("Пить до нуля усталости");
+            tiedZero.setChecked(AppVars.Profile.FishTiedZero);
+            root.addView(tiedZero);
+
+            CheckBox fishDrinkBliss = new CheckBox(requireContext());
+            fishDrinkBliss.setText("Пить Эликсир Блаженства, если усталка больше порога");
+            fishDrinkBliss.setChecked(AppVars.Profile.FishDrinkBliss);
+            root.addView(fishDrinkBliss);
+
+            CheckBox stopOverWeight = new CheckBox(requireContext());
+            stopOverWeight.setText("Прекращать рыбалку при перегрузе");
+            stopOverWeight.setChecked(AppVars.Profile.FishStopOverWeight);
+            root.addView(stopOverWeight);
+
+            CheckBox fishChatReport = new CheckBox(requireContext());
+            fishChatReport.setText("Выводить результаты лова в чат");
+            fishChatReport.setChecked(AppVars.Profile.FishChatReport);
+            root.addView(fishChatReport);
+
+            CheckBox fishChatReportColor = new CheckBox(requireContext());
+            fishChatReportColor.setText("Выводить результаты лова в приват");
+            fishChatReportColor.setChecked(AppVars.Profile.FishChatReportColor);
+            root.addView(fishChatReportColor);
+
+            TextView primsTitle = new TextView(requireContext());
+            primsTitle.setText("Приманки");
+            primsTitle.setPadding(0, pad, 0, 0);
+            root.addView(primsTitle);
+
+            final CheckBox[] primChecks = new CheckBox[FISH_PRIM_FLAGS.length];
+            for (int i = 0; i < FISH_PRIM_FLAGS.length; i++) {
+                CheckBox cb = new CheckBox(requireContext());
+                cb.setText(FISH_PRIM_LABELS[i]);
+                cb.setChecked((AppVars.Profile.FishEnabledPrims & FISH_PRIM_FLAGS[i]) != 0);
+                primChecks[i] = cb;
+                root.addView(cb);
+            }
+
+            new AlertDialog.Builder(requireContext())
+                    .setTitle("Настройки авто-рыбалки")
+                    .setView(scroll)
+                    .setPositiveButton("Сохранить", (dialog, which) -> {
+                        AppVars.Profile.FishAutoWear = autoWear.isChecked();
+                        AppVars.Profile.FishHandOne = FISH_HAND_OPTIONS[Math.max(0, hand1Spinner.getSelectedItemPosition())];
+                        AppVars.Profile.FishHandTwo = FISH_HAND_OPTIONS[Math.max(0, hand2Spinner.getSelectedItemPosition())];
+                        int tiedHigh = AppVars.Profile.FishTiedHigh;
+                        try {
+                            String value = tiedHighInput.getText() == null ? "" : tiedHighInput.getText().toString().trim();
+                            if (!value.isEmpty()) {
+                                tiedHigh = Integer.parseInt(value);
+                            }
+                        } catch (Exception ignored) {
+                        }
+                        AppVars.Profile.FishTiedHigh = Math.max(0, Math.min(99, tiedHigh));
+                        AppVars.Profile.FishTiedZero = tiedZero.isChecked();
+                        AppVars.Profile.FishDrinkBliss = fishDrinkBliss.isChecked();
+                        AppVars.Profile.FishStopOverWeight = stopOverWeight.isChecked();
+                        AppVars.Profile.FishChatReport = fishChatReport.isChecked();
+                        AppVars.Profile.FishChatReportColor = fishChatReportColor.isChecked();
+
+                        int mask = 0;
+                        for (int i = 0; i < FISH_PRIM_FLAGS.length; i++) {
+                            if (primChecks[i].isChecked()) {
+                                mask |= FISH_PRIM_FLAGS[i];
+                            }
+                        }
+                        if (mask == 0) {
+                            mask = Prims.DEFAULT_ALL;
+                        }
+                        AppVars.Profile.FishEnabledPrims = mask;
+                        AppVars.Profile.save(requireContext());
+                        Toast.makeText(requireContext(), "Настройки авто-рыбалки сохранены", Toast.LENGTH_SHORT).show();
+                    })
+                    .setNegativeButton("Отмена", null)
+                    .show();
+        }
+
+        private int indexOfFishHand(String value) {
+            if (value == null) return -1;
+            for (int i = 0; i < FISH_HAND_OPTIONS.length; i++) {
+                if (FISH_HAND_OPTIONS[i].equalsIgnoreCase(value)) {
+                    return i;
+                }
+            }
+            return -1;
         }
     }
 }

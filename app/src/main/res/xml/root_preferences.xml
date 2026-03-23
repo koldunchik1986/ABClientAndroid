@@ -13,6 +13,25 @@
             app:summary="Если выключено, сообщение о перегрузе рюкзака скрывается"
             app:defaultValue="false" />
 
+        <SwitchPreferenceCompat
+            app:key="cache_refresh"
+            app:title="Обновлять кэш"
+            app:summary="Всегда обновлять кэш при запросах"
+            app:defaultValue="false" />
+
+        <Preference
+            app:key="clear_cache"
+            app:title="Очистить кэш"
+            app:summary="Удаление всех кэшированных данных" />
+    </PreferenceCategory>
+
+    <PreferenceCategory app:title="Карта">
+
+        <Preference
+            app:key="map_size_cells"
+            app:title="Размер карты"
+            app:summary="Формат: Ширина*Высота (например 9*7)" />
+
         <ListPreference
             app:key="map_scale_percent"
             app:title="Масштаб карты"
@@ -20,16 +39,6 @@
             app:entries="@array/map_scale_entries"
             app:entryValues="@array/map_scale_values"
             app:defaultValue="80" />
-
-        <Preference
-            app:key="map_size_cells"
-            app:title="Размер карты"
-            app:summary="Формат: Ширина*Высота (например 9*7)" />
-
-        <SwitchPreferenceCompat
-            app:key="show_razd_chat_report"
-            app:title="Выводить результаты разделки в чат"
-            app:defaultValue="false" />
 
         <SwitchPreferenceCompat
             app:key="do_auto_drink_blaz"
@@ -50,6 +59,9 @@
             app:entryValues="@array/auto_drink_blaz_order_values"
             app:dependency="do_auto_drink_blaz"
             app:defaultValue="0" />
+    </PreferenceCategory>
+
+    <PreferenceCategory app:title="Инвентарь">
 
         <SwitchPreferenceCompat
             app:key="do_inv_pack"
@@ -65,6 +77,9 @@
             app:key="do_inv_sort"
             app:title="Сортировать в алфавитном порядке"
             app:defaultValue="true" />
+    </PreferenceCategory>
+
+    <PreferenceCategory app:title="Разработка">
 
         <SwitchPreferenceCompat
             app:key="do_http_log"
@@ -84,94 +99,55 @@
             app:summary="Отображение информации о производительности"
             app:defaultValue="false" />
 
-        <SwitchPreferenceCompat
-            app:key="cache_refresh"
-            app:title="Обновлять кэш"
-            app:summary="Всегда обновлять кэш при запросах"
-            app:defaultValue="false" />
-
-        <Preference
-            app:key="clear_cache"
-            app:title="Очистить кэш"
-            app:summary="Удаление всех кэшированных данных" />
-
         <Preference
             app:key="clear_logs"
             app:title="Очистить логи"
             app:summary="Удаление всех файлов логов" />
-
-    </PreferenceCategory>
-
-    <PreferenceCategory app:title="Настройки прокси">
-
-        <SwitchPreferenceCompat
-            app:key="do_proxy"
-            app:title="Использовать прокси"
-            app:summary="Использование внешнего прокси-сервера"
-            app:defaultValue="false" />
-
-        <EditTextPreference
-            app:key="proxy_address"
-            app:title="Адрес прокси"
-            app:summary="Формат: host:port"
-            app:dependency="do_proxy" />
-
-        <EditTextPreference
-            app:key="proxy_username"
-            app:title="Имя пользователя прокси"
-            app:dependency="do_proxy" />
-
-        <EditTextPreference
-            app:key="proxy_password"
-            app:title="Пароль прокси"
-            app:dependency="do_proxy"
-             />
-
     </PreferenceCategory>
 
     <PreferenceCategory app:title="Автоматизация">
 
-        <SwitchPreferenceCompat
-            app:key="auto_fish"
+        <Preference
+            app:key="auto_fight_settings"
+            app:title="Автоматический бой"
+            app:icon="@drawable/ic_settings_gear"
+            app:summary="Открыть настройки авто-боя" />
+
+        <Preference
+            app:key="auto_fish_settings"
             app:title="Автоматическая рыбалка"
-            app:summary="Автоматический лов рыбы"
-            app:defaultValue="false" />
+            app:icon="@drawable/ic_settings_gear"
+            app:summary="Открыть настройки авто-рыбалки" />
 
-        <SwitchPreferenceCompat
-            app:key="auto_herb"
+        <Preference
+            app:key="auto_herb_settings"
             app:title="Автоматический сбор трав"
-            app:summary="Автоматический сбор трав"
-            app:defaultValue="false" />
+            app:icon="@drawable/ic_settings_gear"
+            app:summary="Открыть настройки авто-сбора трав" />
 
-        <SwitchPreferenceCompat
-            app:key="auto_mine"
+        <Preference
+            app:key="auto_mine_settings"
             app:title="Автоматическая добыча руды"
-            app:summary="Автоматическая добыча руды"
-            app:defaultValue="false" />
+            app:icon="@drawable/ic_settings_gear"
+            app:summary="Открыть настройки авто-добычи руды" />
 
-        <SwitchPreferenceCompat
-            app:key="auto_tree"
+        <Preference
+            app:key="auto_tree_settings"
             app:title="Автоматическая рубка деревьев"
-            app:summary="Автоматическая рубка деревьев"
-            app:defaultValue="false" />
+            app:icon="@drawable/ic_settings_gear"
+            app:summary="Открыть настройки авто-рубки деревьев" />
 
-        <SwitchPreferenceCompat
-            app:key="auto_dig"
-            app:title="Автоматическое копание"
-            app:summary="Автоматическое копание"
-            app:defaultValue="false" />
+        <Preference
+            app:key="auto_dig_settings"
+            app:title="Автоматический поиск Клада"
+            app:icon="@drawable/ic_settings_gear"
+            app:summary="Открыть настройки поиска клада" />
 
-        <SwitchPreferenceCompat
-            app:key="auto_torg"
+        <Preference
+            app:key="auto_torg_settings"
             app:title="Автоматическая торговля"
-            app:summary="Автоматическая торговля"
-            app:defaultValue="false" />
-
-        <SwitchPreferenceCompat
-            app:key="torg_active"
-            app:title="Активность торговли"
-            app:summary="Активность торговли"
-            app:defaultValue="false" />
+            app:icon="@drawable/ic_settings_gear"
+            app:summary="Открыть настройки авто-торговли" />
 
     </PreferenceCategory>
 
