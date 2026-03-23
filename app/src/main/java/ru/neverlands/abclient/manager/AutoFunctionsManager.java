@@ -305,40 +305,25 @@ public class AutoFunctionsManager {
     }
 
     /**
-     * Восстанавливает только runtime-часть авто-боя после логина, без форсированной навигации и reload кадра.
+     * Выполняет первичную "Синхронизацию Персонажа" после успешного логина.
      *
-     * Зачем выделен отдельный метод:
-     * - после входа флаг может быть уже включён в профиле, но повторный вызов `setAutoFightEnabled(true)`
-     *   может дергать лишние `loadUrl(...)` и ломать пользовательскую навигацию;
-     * - здесь выполняется только безопасная синхронизация боевых runtime-флагов (AppVars + фон-сервис).
-     *
-     * Что обновляет:
-     * - `AppVars.Autoboi` из профильного флага;
-     * - `AppVars.DoFury` и runtime-подготовку свитка ярости (если в профиле есть fury-группы);
-     * - состояние фонового сервиса через `syncBackgroundService(...)`.
+     * Что делает:
+     * - берет nickname из текущего профиля;
+     * - по cooldown не допускает частого повторного вызова;
+     * - в отдельном daemon-потоке запрашивает `pinfo.cgi`;
+     * - обновляет единый runtime-снимок через {@link CharacterVitalsManager#updateFromPinfo(NeverApi.PinfoVitals, String)};
+     * - показывает toast с текущими HP/MA/усталостью.
      *
      * Зависимости:
-     * - `AppVars.Profile` (источник `LezDoAutoboi` и `hasAnyLezFuryGroup()`);
-     * - `AutoboiState` и боевые runtime-флаги `AutoFury*`;
-     * - `syncBackgroundService(...)` для синхронизации foreground-service;
-     * - `AutoModeForegroundService.shouldRunInBackground(...)`, который читает это runtime-состояние.
+     * - `AppVars.Profile.UserNick` — источник ника для pinfo-запроса;
+     * - {@link NeverApi#getPinfoVitalsFromPinfo(String)} — источник серверных значений;
+     * - {@link CharacterVitalsManager} — единая точка записи/чтения vitals;
+     * - {@link #showCharacterSyncToast()} — визуальное подтверждение успешной синхронизации.
+     *
+     * Примечание:
+     * - метод не переключает никакие авто-функции и не меняет навигацию;
+     * - метод только синхронизирует параметры персонажа.
      */
-    // Подробное описание:
-    // Назначение:
-    // - восстановить runtime авто-боя после логина без лишнего переключения UI-кнопки.
-    // Что делает:
-    // - выставляет AppVars.Autoboi/DoFury в соответствии с профилем;
-    // - синхронизирует фоновый сервис;
-    // - если авто-бой включен, делает одноразовый bootstrap reload fight.frame (ab_reload_probe).
-    //
-    // Зависимости:
-    // - AppVars.Profile.hasAnyLezFuryGroup();
-    // - syncBackgroundService(...);
-    // - AppVars.mainActivity -> getMainWebView().loadUrl(...).
-    //
-    // Причина фикса:
-    // - устраняет сценарий, когда после логина авто-бой "ON", но первый бой не стартует
-    //   до ручного OFF/ON переключения.
     private void requestCharacterSyncAfterLogin() {
         if (AppVars.Profile == null) {
             return;
@@ -378,6 +363,18 @@ public class AutoFunctionsManager {
         syncThread.start();
     }
 
+    /**
+     * Показывает короткое UI-сообщение с текущим snapshot параметров персонажа.
+     *
+     * Формат:
+     * - `Синхронизация Персонажа: HP cur/max; MA cur/max; Усталость: tied`.
+     *
+     * Зависимости:
+     * - `AppVars.mainActivity` для доступа к UI-потоку;
+     * - {@link CharacterVitalsManager#snapshot()} — источник актуальных значений;
+     * - {@link CharacterVitalsManager#buildSyncMessage(String, CharacterVitalsManager.Snapshot)}
+     *   — единый формат сообщения.
+     */
     private void showCharacterSyncToast() {
         try {
             MainActivity activity = AppVars.mainActivity != null ? AppVars.mainActivity.get() : null;

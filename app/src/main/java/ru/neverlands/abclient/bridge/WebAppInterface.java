@@ -527,7 +527,16 @@ public class WebAppInterface {
     }
 
     /**
-     * C# parity (`FormMain.MapText`): текст-подсказка над картой.
+     * C# parity (`FormMain.MapText`): формирует текст-подсказку над картой.
+     *
+     * Что отображает:
+     * - пункт назначения;
+     * - оставшееся количество шагов;
+     * - текущую усталость персонажа.
+     *
+     * Зависимости:
+     * - `AppVars.AutoMoving*` (состояние навигации);
+     * - `CharacterVitalsManager.snapshot().tied` (единый источник усталости).
      */
     @JavascriptInterface
     public String MapText() {
@@ -548,6 +557,15 @@ public class WebAppInterface {
      */
     /**
      * Runtime-синхронизация усталости из map.js/hpmp.js.
+     *
+     * Что делает:
+     * - принимает значение `curTire` из JS;
+     * - записывает его через `CharacterVitalsManager.updateTied(...)`;
+     * - логирует только фактическое изменение значения.
+     *
+     * Зависимости:
+     * - JS-слой карты (`SetCurrentTied(...)` вызов из map.js);
+     * - `CharacterVitalsManager` как единая точка обновления vitals.
      */
     @JavascriptInterface
     public void SetCurrentTied(int curTire) {
@@ -1609,6 +1627,13 @@ public class WebAppInterface {
         // TODO: Set AppVars and trigger refresh
     }
 
+    /**
+     * Принимает из hp.js снимок HP/MA и интервалов регена, затем пишет его в единый vitals-менеджер.
+     *
+     * Зависимости:
+     * - JS-слой верхнего фрейма (`showHpMaTimers(...)`);
+     * - `CharacterVitalsManager.updateFromHpJs(...)`.
+     */
     @JavascriptInterface
     public void showHpMaTimers(String s, float curHP, int maxHP, float intHP, float curMA, int maxMA, float intMA) {
         CharacterVitalsManager.Snapshot snapshot = CharacterVitalsManager.updateFromHpJs(

@@ -756,9 +756,18 @@ public class MainPhp {
                 .replace(">", "&gt;");
     }
     /**
-     * Порт `MainPhpInsHp.cs` (C# -> Android).
-     * Извлекает `hp_int`/`ma_int` из `ins_HP(...)` и обновляет
-     * `AppVars.PersIntHP`/`AppVars.PersIntMA`.
+     * Порт `MainPhpInsHp.cs` (C# -> Android): синхронизация vitals из `ins_HP(...)`.
+     *
+     * Что делает:
+     * - парсит снимок `ins_HP(curHp,maxHp,curMa,maxMa,intHp,intMa)`;
+     * - передает значения в единый менеджер `CharacterVitalsManager`;
+     * - фиксирует trace-лог с интервалами регена.
+     *
+     * Зависимости:
+     * - {@link #parseInsHpSnapshot(String)} — извлечение аргументов из HTML;
+     * - {@link CharacterVitalsManager#updateFromInsHpSnapshot(int, int, int, int, double, double, String)} —
+     *   централизованная запись HP/MA/интервалов;
+     * - боевые подсистемы (например, LezFight), которые читают PersIntHP/PersIntMA для расчета восстановления.
      */
     private static void mainPhpInsHp(String html) {
         try {
@@ -1807,7 +1816,17 @@ public class MainPhp {
      * Порт `MainPhpIsPerc` из C# (`MainPhpDrink.cs`).
      */
     /**
-     * Обновляет runtime-значение усталости (`AppVars.Tied`) из текущего HTML верхнего фрейма.
+     * Обновляет runtime-усталость из текущего HTML верхнего фрейма.
+     *
+     * Что делает:
+     * - извлекает усталость из hpmp/табличного блока (`parseMainPhpTiedValue`);
+     * - обновляет значение через `CharacterVitalsManager.updateTied(...)`;
+     * - если усталость стала 0, снимает режим `AutoFishDrink`.
+     *
+     * Зависимости:
+     * - {@link #parseMainPhpTiedValue(String)} — источник значения усталости;
+     * - {@link CharacterVitalsManager#updateTied(int, String)} — единая точка записи;
+     * - авто-рыбалка (`AppVars.AutoFishDrink`) — завершение режима "пить до нуля".
      */
     private static void mainPhpUpdateTied(String html) {
         Integer tiedValue = parseMainPhpTiedValue(html);

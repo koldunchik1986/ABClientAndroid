@@ -349,6 +349,23 @@ public class MapAjax {
                 || lower.contains("\u0432\u044b \u0443\u0441\u0442\u0430\u043b\u0438");
     }
 
+    /**
+     * Стартовая синхронизация параметров персонажа для режима "Авто-Клад/Навигатор".
+     *
+     * Когда вызывается:
+     * - только в активном `AutoMoving + DoSearchBox`;
+     * - один раз на старте цикла (с retry-cooldown при неудаче).
+     *
+     * Что делает:
+     * - запрашивает `pinfo.cgi` по нику профиля;
+     * - обновляет единый витал-снимок через {@link #applyPinfoVitals(NeverApi.PinfoVitals, String, int, boolean)};
+     * - фиксирует факт стартовой синхронизации для текущего цикла.
+     *
+     * Зависимости:
+     * - `AppVars.Profile.UserNick`;
+     * - `NeverApi.getPinfoVitalsFromPinfo(...)`;
+     * - `CharacterVitalsManager` (единая запись vitals).
+     */
     private static void maybeSyncVitalsFromPinfoAtSearchBoxStartup(String currentRegNum) {
         if (!AppVars.AutoMoving || !AppVars.DoSearchBox || autoDrinkBlazStartupSyncDone) {
             return;
@@ -384,6 +401,18 @@ public class MapAjax {
         logAutoBlazDecision("startup", "synced", CharacterVitalsManager.snapshot().tied, threshold, "reg=" + currentRegNum);
     }
 
+    /**
+     * Обрабатывает факт перехода на новую клетку в авто-навигации.
+     *
+     * Что делает:
+     * - увеличивает усталость на шаг (`AUTO_MOVING_TIED_STEP_COST`) через единый менеджер;
+     * - пишет trace-лог изменения усталости;
+     * - при подходе к порогу запускает синхронизацию усталости из pinfo.
+     *
+     * Зависимости:
+     * - `CharacterVitalsManager.increaseTied(...)`;
+     * - `maybeSyncTiedFromPinfoIfNearThreshold(...)`.
+     */
     private static void onAutoMovingCellObserved(String previousRegNum, String currentRegNum) {
         if (previousRegNum == null || previousRegNum.isEmpty()) {
             return;
@@ -407,6 +436,20 @@ public class MapAjax {
         maybeSyncTiedFromPinfoIfNearThreshold(currentRegNum);
     }
 
+    /**
+     * Near-threshold синхронизация усталости из pinfo перед автопитьем блажа.
+     *
+     * Что делает:
+     * - проверяет, что усталость близко к порогу (`threshold - delta`);
+     * - по cooldown запрашивает pinfo;
+     * - обновляет vitals через {@link #applyPinfoVitals(NeverApi.PinfoVitals, String, int, boolean)};
+     * - логирует, изменилось ли значение усталости после синхронизации.
+     *
+     * Зависимости:
+     * - профильные настройки `DoAutoDrinkBlaz` / `AutoDrinkBlazTied`;
+     * - `CharacterVitalsManager.snapshot()`;
+     * - `NeverApi.getPinfoVitalsFromPinfo(...)`.
+     */
     private static void maybeSyncTiedFromPinfoIfNearThreshold(String currentRegNum) {
         if (AppVars.Profile == null || !AppVars.Profile.DoAutoDrinkBlaz) {
             return;
@@ -441,6 +484,20 @@ public class MapAjax {
         }
     }
 
+    /**
+     * Применяет значения pinfo к единой витал-системе и (опционально) показывает toast синхронизации.
+     *
+     * Что делает:
+     * - читает snapshot "до";
+     * - обновляет HP/MA/усталость через `CharacterVitalsManager.updateFromPinfo(...)`;
+     * - при наличии `curTire` показывает сообщение "Синхронизация Персонажа";
+     * - пишет подробный trace с изменениями.
+     *
+     * Зависимости:
+     * - `CharacterVitalsManager` (update + snapshot + buildSyncMessage);
+     * - `showFatigueSyncToast(...)` для UI-уведомления;
+     * - вызывается из startup-sync и near-threshold-sync.
+     */
     private static void applyPinfoVitals(NeverApi.PinfoVitals vitals, String currentRegNum, int threshold, boolean startupSync) {
         if (vitals == null) {
             return;
@@ -465,6 +522,25 @@ public class MapAjax {
                 + ", threshold=" + threshold);
     }
 
+    /**
+     * Принимает решение о запуске автопитья блажа по текущей усталости.
+     *
+     * Алгоритм:
+     * - проверяет профильные флаги и порог;
+     * - учитывает блокировки (`FastNeed`, server never-timer, trigger cooldown);
+     * - при необходимости ставит pending и откладывает действие;
+     * - при достижении условий запускает `FastActionManager.fastAttackBlazElixir()`.
+     *
+     * Возвращает:
+     * - HTML-редирект в `main.php` с диагностическим маркером, если нужен переход;
+     * - `null`, если действий не требуется.
+     *
+     * Зависимости:
+     * - `CharacterVitalsManager.snapshot().tied`;
+     * - `maybeSyncTiedFromPinfoIfNearThreshold(...)`;
+     * - `FastActionManager.fastAttackBlazElixir()`;
+     * - `Filter.buildRedirectString(...)`.
+     */
     private static String maybeTriggerAutoDrinkBlazOnThreshold(String currentRegNum) {
         if (AppVars.Profile == null || !AppVars.Profile.DoAutoDrinkBlaz) {
             AppVars.AutoDrinkBlazPending = false;

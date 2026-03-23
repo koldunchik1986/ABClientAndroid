@@ -32,14 +32,23 @@ public final class CharacterVitalsManager {
     }
 
     public static final class Snapshot {
+        /** Текущее HP персонажа. */
         public final int curHp;
+        /** Максимальное HP персонажа. */
         public final int maxHp;
+        /** Текущее MA персонажа. */
         public final int curMa;
+        /** Максимальное MA персонажа. */
         public final int maxMa;
+        /** Текущая усталость (0..100). */
         public final int tied;
+        /** Интервал восстановления HP (мс) из ins_HP/hp.js. */
         public final double intHp;
+        /** Интервал восстановления MA (мс) из ins_HP/hp.js. */
         public final double intMa;
+        /** Момент последнего обновления snapshot (System.currentTimeMillis). */
         public final long updatedAtMs;
+        /** Источник последнего обновления (тег метода/модуля). */
         public final String source;
 
         private Snapshot(int curHp, int maxHp, int curMa, int maxMa, int tied,
@@ -56,12 +65,36 @@ public final class CharacterVitalsManager {
         }
     }
 
+    /**
+     * Возвращает атомарный снимок параметров персонажа.
+     *
+     * Зависимости:
+     * - runtime-хранилище AppVars (CurHP/MaxHP/CurMA/MaxMA/Tied/PersIntHP/PersIntMA);
+     * - внутренний lock {@link #LOCK} для консистентного чтения.
+     *
+     * Использование:
+     * - UI-слой (toast/статусы/подписи);
+     * - принятие решений в авто-функциях без повторного парсинга.
+     */
     public static Snapshot snapshot() {
         synchronized (LOCK) {
             return snapshotLocked();
         }
     }
 
+    /**
+     * Централизованно обновляет усталость персонажа.
+     *
+     * Что делает:
+     * - нормализует входное значение в диапазон 0..100;
+     * - пишет новое значение в AppVars.Tied;
+     * - фиксирует источник обновления и timestamp.
+     *
+     * Зависимости:
+     * - map.js bridge (`WebAppInterface.SetCurrentTied`);
+     * - парсер main.php (`MainPhp.mainPhpUpdateTied`);
+     * - map_ajax too-tired ветка (`MapAjax.process`).
+     */
     public static Snapshot updateTied(int tied, String source) {
         synchronized (LOCK) {
             int normalized = clampPercent(tied);
@@ -74,6 +107,13 @@ public final class CharacterVitalsManager {
         }
     }
 
+    /**
+     * Увеличивает усталость на шаг (обычно +2 за переход по карте) с нормализацией 0..100.
+     *
+     * Зависимости:
+     * - авто-переходы карты/навигации (`MapAjax.onAutoMovingCellObserved`);
+     * - пороговые проверки автопитья блажа.
+     */
     public static Snapshot increaseTied(int delta, String source) {
         synchronized (LOCK) {
             int normalized = clampPercent(AppVars.Tied + delta);
@@ -87,6 +127,19 @@ public final class CharacterVitalsManager {
         }
     }
 
+    /**
+     * Обновляет текущие/максимальные HP и MA одной транзакцией.
+     *
+     * Что важно:
+     * - значения приводятся к неотрицательным;
+     * - текущие HP/MA не могут превышать max;
+     * - после обновления возвращается единый snapshot.
+     *
+     * Зависимости:
+     * - pinfo-синхронизация;
+     * - bridge hp.js;
+     * - postfilter main.php.
+     */
     public static Snapshot updateHpMa(int curHp, int maxHp, int curMa, int maxMa, String source) {
         synchronized (LOCK) {
             int normMaxHp = Math.max(0, maxHp);
@@ -122,6 +175,17 @@ public final class CharacterVitalsManager {
         }
     }
 
+    /**
+     * Обновляет интервалы регенерации HP/MA из JS/ins_HP.
+     *
+     * Правило:
+     * - записываются только положительные интервалы;
+     * - нулевые/отрицательные значения игнорируются как невалидные.
+     *
+     * Зависимости:
+     * - `LezFight` (использует PersIntHP/PersIntMA для расчета таймингов восстановления);
+     * - `HpJs` / `MainPhp`.
+     */
     public static Snapshot updateRegenIntervals(double intHp, double intMa, String source) {
         synchronized (LOCK) {
             boolean changed = false;
@@ -142,6 +206,13 @@ public final class CharacterVitalsManager {
         }
     }
 
+    /**
+     * Обновление из полного снимка `ins_HP(cur,max,cur,max,intHp,intMa)`.
+     *
+     * Зависимости:
+     * - `MainPhp.parseInsHpSnapshot(...)`;
+     * - бизнес-логика восстановления в бою и после боя (через PersInt* и HP/MA).
+     */
     public static Snapshot updateFromInsHpSnapshot(int curHp, int maxHp, int curMa, int maxMa,
                                                    double intHp, double intMa, String source) {
         synchronized (LOCK) {
@@ -156,6 +227,16 @@ public final class CharacterVitalsManager {
         }
     }
 
+    /**
+     * Обновление из JS-bridge `showHpMaTimers(...)`.
+     *
+     * Особенность:
+     * - curHp/curMa приходят float и нормализуются через округление до int.
+     *
+     * Зависимости:
+     * - `WebAppInterface.showHpMaTimers(...)`;
+     * - JS-код hp.js в верхнем фрейме.
+     */
     public static Snapshot updateFromHpJs(float curHp, int maxHp, float curMa, int maxMa,
                                           float intHp, float intMa, String source) {
         synchronized (LOCK) {
@@ -170,6 +251,19 @@ public final class CharacterVitalsManager {
         }
     }
 
+    /**
+     * Обновляет vitals из ответа `pinfo.cgi`.
+     *
+     * Что делает:
+     * - применяет усталость, если `curTire` присутствует;
+     * - частично обновляет HP/MA (если сервер вернул хотя бы одно из полей);
+     * - не сбрасывает существующие значения отсутствующими полями.
+     *
+     * Зависимости:
+     * - `NeverApi.getPinfoVitalsFromPinfo(...)`;
+     * - авто-синхронизация персонажа после логина;
+     * - near-threshold синхронизация усталости в навигаторе/авто-кладе.
+     */
     public static Snapshot updateFromPinfo(NeverApi.PinfoVitals vitals, String source) {
         synchronized (LOCK) {
             if (vitals == null) {
@@ -194,6 +288,16 @@ public final class CharacterVitalsManager {
         }
     }
 
+    /**
+     * Формирует единый человекочитаемый текст состояния персонажа.
+     *
+     * Формат:
+     * - `prefix: HP cur/max; MA cur/max; Усталость: tied`
+     *
+     * Использование:
+     * - toast-уведомления синхронизации;
+     * - унифицированные сообщения в модулях, где раньше была ручная склейка строки.
+     */
     public static String buildSyncMessage(String prefix, Snapshot snapshot) {
         String label = (prefix == null || prefix.isEmpty()) ? "Синхронизация Персонажа" : prefix;
         Snapshot s = snapshot != null ? snapshot : snapshot();
@@ -250,4 +354,3 @@ public final class CharacterVitalsManager {
         return Math.max(0, Math.min(100, value));
     }
 }
-
