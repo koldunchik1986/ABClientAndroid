@@ -6,7 +6,11 @@ import android.content.res.AssetManager;
 import org.xmlpull.v1.XmlPullParser;
 import org.xmlpull.v1.XmlPullParserFactory;
 
+import java.io.File;
+import java.io.FileInputStream;
 import java.io.InputStream;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
@@ -15,6 +19,14 @@ import ru.neverlands.abclient.model.Cell;
 import ru.neverlands.abclient.model.Position;
 
 public class ExtMap {
+    private static final String TAG = "ExtMap";
+    private static final SimpleDateFormat[] ABC_VISITED_FORMATS = new SimpleDateFormat[] {
+            new SimpleDateFormat("M/d/yyyy h:mm:ss a", Locale.US),
+            new SimpleDateFormat("MM/dd/yyyy hh:mm:ss a", Locale.US),
+            new SimpleDateFormat("dd.MM.yyyy HH:mm:ss", Locale.US),
+            new SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US)
+    };
+
     public static final Map<String, Position> Location = new HashMap<>();
     public static final Map<String, String> InvLocation = new HashMap<>();
     public static final Map<String, Cell> Cells = new HashMap<>();
@@ -144,7 +156,29 @@ public class ExtMap {
         AssetManager assets = context.getAssets();
         Map<String, Integer> abcCosts = new HashMap<>();
         Map<String, String> abcLabels = new HashMap<>();
-        try (InputStream in = assets.open("abcells.xml")) {
+        int loadedVisitedCount = 0;
+        InputStream input = null;
+        String source = "assets";
+        try {
+            File externalFile = null;
+            if (context.getExternalFilesDir(null) != null) {
+                externalFile = new File(context.getExternalFilesDir(null), "abcells.xml");
+            }
+            if (externalFile != null && externalFile.exists()) {
+                input = new FileInputStream(externalFile);
+                source = externalFile.getAbsolutePath();
+            } else {
+                input = assets.open("abcells.xml");
+            }
+        } catch (Exception openError) {
+            android.util.Log.e(TAG, "loadAbcMap source open error: " + openError.getMessage());
+        }
+
+        if (input == null) {
+            return;
+        }
+
+        try (InputStream in = input) {
             XmlPullParserFactory factory = XmlPullParserFactory.newInstance();
             factory.setNamespaceAware(false);
             XmlPullParser parser = factory.newPullParser();
@@ -157,6 +191,12 @@ public class ExtMap {
                         regnum = regnum.trim();
                         String label = parser.getAttributeValue(null, "label");
                         abcLabels.put(regnum, label != null ? label : "");
+                        String visited = parser.getAttributeValue(null, "visited");
+                        long visitedMs = parseAbcVisitedMs(visited);
+                        if (visitedMs > 0L) {
+                            AppVars.SearchBoxVisited.put(regnum, visitedMs);
+                            loadedVisitedCount++;
+                        }
                         String costStr = parser.getAttributeValue(null, "cost");
                         int cost = 0;
                         if (costStr != null) {
@@ -173,8 +213,11 @@ public class ExtMap {
                 }
                 event = parser.next();
             }
+            android.util.Log.d(TAG, "loadAbcMap: source=" + source
+                    + ", cells=" + abcCosts.size()
+                    + ", visitedLoaded=" + loadedVisitedCount);
         } catch (Exception e) {
-            android.util.Log.e("ExtMap", "loadAbcMap error: " + e.getMessage());
+            android.util.Log.e(TAG, "loadAbcMap error: " + e.getMessage());
         }
 
         for (String regnum : new java.util.ArrayList<>(Cells.keySet())) {
@@ -198,6 +241,31 @@ public class ExtMap {
                 Cells.put(regnum, cell);
             }
         }
+    }
+
+    private static long parseAbcVisitedMs(String rawValue) {
+        if (rawValue == null) {
+            return 0L;
+        }
+        String value = rawValue.trim();
+        if (value.isEmpty()) {
+            return 0L;
+        }
+        if ("1/1/0001 12:00:00 AM".equals(value)
+                || "01.01.0001 00:00:00".equals(value)
+                || "0001-01-01 00:00:00".equals(value)) {
+            return 0L;
+        }
+        for (SimpleDateFormat format : ABC_VISITED_FORMATS) {
+            try {
+                Date parsed = format.parse(value);
+                if (parsed != null) {
+                    return parsed.getTime();
+                }
+            } catch (Exception ignored) {
+            }
+        }
+        return 0L;
     }
 
     private static void loadTeleports(Context context) {

@@ -221,10 +221,11 @@ public class QuickButtonsPanel {
     private void loadIconForAction(ImageButton button, QuickActionType type, boolean isEnabled) {
         String iconUrl = getIconUrlForAction(type);
         if (iconUrl != null) {
+            int fallbackIcon = getIconForAction(type, isEnabled);
             Glide.with(context)
                 .load(iconUrl)
-                .placeholder(R.drawable.ic_add)
-                .error(getIconForAction(type, isEnabled))
+                .placeholder(fallbackIcon)
+                .error(fallbackIcon)
                 .into(button);
         } else {
             button.setImageResource(getIconForAction(type, isEnabled));
@@ -387,7 +388,7 @@ public class QuickButtonsPanel {
             case AUTO_MOVING:
                 return R.drawable.ic_globe;
             case AUTO_TREASURE:
-                return R.drawable.ic_globe;
+                return R.drawable.ic_auto_detect;
             case AUTO_CUT:
                 return R.drawable.ic_add;
             case AUTO_REFRESH:

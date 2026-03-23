@@ -17,6 +17,7 @@ import java.net.URLDecoder;
 import java.net.URLEncoder;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -324,6 +325,58 @@ public class WebAppInterface {
         return "#CC6666";
     }
 
+    private static long toServerClockMs(long localMs) {
+        if (AppVars.Profile != null && AppVars.Profile.ServDiff != Long.MIN_VALUE) {
+            return localMs - AppVars.Profile.ServDiff;
+        }
+        return localMs;
+    }
+
+    private static long nowServerClockMs() {
+        return toServerClockMs(System.currentTimeMillis());
+    }
+
+    private static int interpolateColorComponent(int start, int end, double fraction) {
+        double clamped = Math.max(0.0d, Math.min(1.0d, fraction));
+        return (int) Math.round((start * (1.0d - clamped)) + (end * clamped));
+    }
+
+    private static String hexColorVisited(double hours) {
+        int startR;
+        int startG;
+        int startB;
+        int endR;
+        int endG;
+        int endB;
+        double fraction;
+
+        // C# parity (`Map.ColorVisited`): LightGreen -> Yellow -> Red в пределах первых 6 часов.
+        if (hours < 0.0d) {
+            startR = endR = 0x90;
+            startG = endG = 0xEE;
+            startB = endB = 0x90;
+            fraction = 0.0d;
+        } else if (hours < 1.0d) {
+            startR = 0x90; startG = 0xEE; startB = 0x90;
+            endR = 0xFF; endG = 0xFF; endB = 0x00;
+            fraction = hours;
+        } else if (hours < 6.0d) {
+            startR = 0xFF; startG = 0xFF; startB = 0x00;
+            endR = 0xFF; endG = 0x00; endB = 0x00;
+            fraction = (hours - 1.0d) / 5.0d;
+        } else {
+            startR = endR = 0xFF;
+            startG = endG = 0x00;
+            startB = endB = 0x00;
+            fraction = 0.0d;
+        }
+
+        int r = interpolateColorComponent(startR, endR, fraction);
+        int g = interpolateColorComponent(startG, endG, fraction);
+        int b = interpolateColorComponent(startB, endB, fraction);
+        return String.format(Locale.US, "#%02X%02X%02X", r, g, b);
+    }
+
     private static boolean isRegnumInCurrentPath(String regNum) {
         if (!AppVars.AutoMoving || AppVars.AutoMovingMapPath == null || regNum == null) {
             return false;
@@ -424,6 +477,22 @@ public class WebAppInterface {
             sb.append("<br><span style=\"color:#999999\">Травы ")
                     .append(escapeHtml(cell.HerbGroup))
                     .append("</span>");
+        }
+        Long visitedAtMs = AppVars.SearchBoxVisited.get(p.RegNum);
+        if (visitedAtMs != null && visitedAtMs > 0L) {
+            long visitedServerMs = toServerClockMs(visitedAtMs);
+            long spanMs = Math.max(0L, nowServerClockMs() - visitedServerMs);
+            if (spanMs < (24L * 60L * 60L * 1000L)) {
+                double spanHours = (double) spanMs / (60.0d * 60.0d * 1000.0d);
+                String visitedColor = hexColorVisited(spanHours);
+                String visitedTime = new java.text.SimpleDateFormat("HH:mm", Locale.getDefault())
+                        .format(new Date(visitedServerMs));
+                sb.append("<br><span style=\"color:")
+                        .append(visitedColor)
+                        .append("\">")
+                        .append(escapeHtml(visitedTime))
+                        .append("</span>");
+            }
         }
         sb.append("</div></div>");
         return sb.toString();

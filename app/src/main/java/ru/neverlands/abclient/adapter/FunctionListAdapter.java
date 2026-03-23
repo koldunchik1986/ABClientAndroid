@@ -104,10 +104,11 @@ public class FunctionListAdapter extends BaseAdapter {
         
         String iconUrl = getIconUrlForAction(type);
         if (iconUrl != null) {
+            int fallbackRes = getLocalIconForAction(type);
             Glide.with(context)
                 .load(iconUrl)
-                .placeholder(R.drawable.ic_add)
-                .error(R.drawable.ic_add)
+                .placeholder(fallbackRes)
+                .error(fallbackRes)
                 .into(holder.iconView);
         } else {
             holder.iconView.setImageResource(getLocalIconForAction(type));
@@ -199,7 +200,7 @@ public class FunctionListAdapter extends BaseAdapter {
             case AUTO_MOVING:
                 return R.drawable.ic_globe;
             case AUTO_TREASURE:
-                return R.drawable.ic_globe;
+                return R.drawable.ic_auto_detect;
             case AUTO_REFRESH:
                 return R.drawable.ic_refresh;
             default:
