@@ -3200,8 +3200,16 @@ public class MainPhp {
             // (mainPhpIsInv=false), хотя адрес уже указывает на нужную вкладку.
             // В этом состоянии не отменяем FastAction — ждём следующий полноценный кадр.
             if (!mainPhpIsInv(html)) {
-                android.util.Log.d(TAG, "processMainPhpFast: inventory transitional HTML, keep fast active");
-                return null;
+                String retryLink = address;
+                if (retryLink == null || retryLink.isEmpty()) {
+                    retryLink = "main.php?" + filterClean;
+                }
+                String lowerRetry = retryLink.toLowerCase(Locale.ROOT);
+                if (!lowerRetry.contains("ab_fast_inv_retry=")) {
+                    retryLink += (retryLink.contains("?") ? "&" : "?") + "ab_fast_inv_retry=1";
+                }
+                android.util.Log.d(TAG, "processMainPhpFast: inventory transitional HTML, retry inventory page: " + retryLink);
+                return Filter.buildRedirect("Ожидание загрузки инвентаря", retryLink);
             }
             // 3. Мы на правильной вкладке, предмет не найден — отмена
             android.util.Log.w(TAG, "processMainPhpFast: предмет не найден на правильной вкладке ("
