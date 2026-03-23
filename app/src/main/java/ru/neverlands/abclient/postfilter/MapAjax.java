@@ -4,6 +4,7 @@ import java.util.ArrayDeque;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Set;
 
 import ru.neverlands.abclient.model.Position;
@@ -17,6 +18,33 @@ public class MapAjax {
     private static final long SEARCH_BOX_VISITED_TTL_MS = 24L * 60L * 60L * 1000L;
 
     public static String process(String html) {
+        if (isMapAjaxErrResponse(html) && AppVars.AutoMoving) {
+            AppVars.AutoMovingMapPath = null;
+            AppVars.AutoMovingNextJump = null;
+            AppVars.AutoMovingJumps = 0;
+            Log.w(TAG, "AUTO_SEARCH_BOX_TRACE: map_ajax returned ERR during automove, redirect to main.php");
+            return Filter.buildRedirectString("\u041D\u0430\u0432\u0438\u0433\u0430\u0442\u043E\u0440: \u0432\u043E\u0441\u0441\u0442\u0430\u043D\u043E\u0432\u043B\u0435\u043D\u0438\u0435", "main.php?ab_nav_recover=1");
+        }
+
+        if (containsTooTiredMessage(html) && AppVars.AutoMoving) {
+            AppVars.Tied = 100;
+            if (AppVars.Profile == null || !AppVars.Profile.DoAutoDrinkBlaz) {
+                AppVars.AutoMoving = false;
+                AppVars.AutoMovingMapPath = null;
+                AppVars.AutoMovingNextJump = null;
+                AppVars.AutoMovingJumps = 0;
+                Log.w(TAG, "AUTO_SEARCH_BOX_TRACE: too tired, auto moving stopped (DoAutoDrinkBlaz=false)");
+            } else {
+                AppVars.AutoMovingMapPath = null;
+                AppVars.AutoMovingNextJump = null;
+                AppVars.AutoMovingJumps = 0;
+                Log.i(TAG, "AUTO_SEARCH_BOX_TRACE: too tired, redirect to main.php for auto bliss");
+            }
+            return Filter.buildRedirectString(
+                    "\u041D\u0430\u0432\u0438\u0433\u0430\u0442\u043E\u0440: \u0443\u0441\u0442\u0430\u043B\u043E\u0441\u0442\u044C",
+                    "main.php?ab_nav_tired=1");
+        }
+
         final String patternVarMap = "var map = [[";
         int posVarMap = html.indexOf(patternVarMap);
         if (posVarMap == -1) return html;
@@ -230,7 +258,7 @@ public class MapAjax {
         if (regNum == null || regNum.isEmpty()) {
             return;
         }
-        AppVars.SearchBoxVisited.put(regNum, System.currentTimeMillis());
+        ExtMap.markCellVisited(regNum);
     }
 
     private static String mainPhpFindEnter(String html) {
@@ -243,5 +271,23 @@ public class MapAjax {
         String vcode = html.substring(pos, posEnd);
         String link = "main.php?get_id=56&act=10&go=dep&vcode=" + vcode;
         return Filter.buildRedirectString("\u0412\u0445\u043e\u0434", link);
+    }
+
+    private static boolean isMapAjaxErrResponse(String html) {
+        if (html == null) {
+            return false;
+        }
+        String trimmed = html.trim();
+        return "ERR".equalsIgnoreCase(trimmed);
+    }
+
+    private static boolean containsTooTiredMessage(String html) {
+        if (html == null || html.isEmpty()) {
+            return false;
+        }
+        String lower = html.toLowerCase(Locale.ROOT);
+        return lower.contains("\u0441\u043b\u0438\u0448\u043a\u043e\u043c \u0443\u0441\u0442\u0430\u043b")
+                || lower.contains("\u043e\u0442\u0434\u043e\u0445\u043d\u0438\u0442\u0435")
+                || lower.contains("\u0432\u044b \u0443\u0441\u0442\u0430\u043b\u0438");
     }
 }

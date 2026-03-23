@@ -5,9 +5,11 @@ import android.content.res.AssetManager;
 
 import org.xmlpull.v1.XmlPullParser;
 import org.xmlpull.v1.XmlPullParserFactory;
+import org.xmlpull.v1.XmlSerializer;
 
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.InputStream;
 import java.text.SimpleDateFormat;
 import java.util.Date;
@@ -26,6 +28,10 @@ public class ExtMap {
             new SimpleDateFormat("dd.MM.yyyy HH:mm:ss", Locale.US),
             new SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US)
     };
+    private static final SimpleDateFormat ABC_VISITED_OUTPUT_FORMAT =
+            new SimpleDateFormat("M/d/yyyy h:mm:ss a", Locale.US);
+    private static final String ABC_VISITED_ZERO = "1/1/0001 12:00:00 AM";
+    private static final long VISITED_PERSIST_THROTTLE_MS = 1500L;
 
     public static final Map<String, Position> Location = new HashMap<>();
     public static final Map<String, String> InvLocation = new HashMap<>();
@@ -34,10 +40,15 @@ public class ExtMap {
     public static final Map<String, String> MovableCells = new HashMap<>();
 
     private static boolean initialized = false;
+    private static Context appContext;
+    private static long lastVisitedPersistAtMs = 0L;
+    private static boolean visitedPersistPending = false;
+    private static String lastVisitedPersistRegNum = "";
 
     public static synchronized void init(Context context) {
         if (initialized) return;
         initialized = true;
+        appContext = context.getApplicationContext();
         buildRegions();
         loadMap(context);
         loadAbcMap(context);
@@ -157,6 +168,7 @@ public class ExtMap {
         Map<String, Integer> abcCosts = new HashMap<>();
         Map<String, String> abcLabels = new HashMap<>();
         int loadedVisitedCount = 0;
+        AppVars.SearchBoxVisited.clear();
         InputStream input = null;
         String source = "assets";
         try {
@@ -266,6 +278,196 @@ public class ExtMap {
             }
         }
         return 0L;
+    }
+
+    /**
+     * Регистрирует посещение клетки в runtime-кэше и персистит обновлённые `visited` в рабочий
+     * `abcells.xml` (external files), чтобы метки времени переживали перезапуск приложения.
+     *
+     * Зависимости:
+     * - {@link AppVars#SearchBoxVisited} — источник runtime-значений `regnum -> timestamp`.
+     * - `getExternalFilesDir()/abcells.xml` — рабочий файл карты (не assets).
+     * - throttle `VISITED_PERSIST_THROTTLE_MS` — защита от избыточной записи на каждом тике.
+     */
+    public static synchronized void markCellVisited(String regNum) {
+        if (regNum == null) {
+            return;
+        }
+        String normalized = regNum.trim();
+        if (normalized.isEmpty()) {
+            return;
+        }
+        AppVars.SearchBoxVisited.put(normalized, System.currentTimeMillis());
+        visitedPersistPending = true;
+        lastVisitedPersistRegNum = normalized;
+        persistVisitedIfNeeded(false);
+    }
+
+    /**
+     * Принудительно сбрасывает отложенные изменения `visited` в `abcells.xml`.
+     * Можно вызывать при выключении авто-режимов/закрытии экрана, чтобы не терять хвост.
+     */
+    public static synchronized void flushVisitedToDisk() {
+        persistVisitedIfNeeded(true);
+    }
+
+    private static void persistVisitedIfNeeded(boolean force) {
+        if (!visitedPersistPending) {
+            return;
+        }
+        Context context = appContext != null ? appContext : AppVars.getContext();
+        if (context == null) {
+            return;
+        }
+        long now = System.currentTimeMillis();
+        if (!force && (now - lastVisitedPersistAtMs) < VISITED_PERSIST_THROTTLE_MS) {
+            return;
+        }
+        boolean ok = persistVisitedToExternalFile(context);
+        if (ok) {
+            visitedPersistPending = false;
+            lastVisitedPersistAtMs = now;
+            android.util.Log.d(TAG, "persistVisited: saved, entries=" + AppVars.SearchBoxVisited.size()
+                    + ", last=" + lastVisitedPersistRegNum);
+        }
+    }
+
+    private static boolean persistVisitedToExternalFile(Context context) {
+        File externalDir = context.getExternalFilesDir(null);
+        if (externalDir == null) {
+            android.util.Log.w(TAG, "persistVisited: external dir unavailable");
+            return false;
+        }
+        File targetFile = new File(externalDir, "abcells.xml");
+        if (!targetFile.exists()) {
+            try {
+                copyAssetToFile(context, "abcells.xml", targetFile);
+            } catch (Exception e) {
+                android.util.Log.e(TAG, "persistVisited: cannot create target abcells.xml", e);
+                return false;
+            }
+        }
+        File tmpFile = new File(externalDir, "abcells.xml.tmp");
+        try (InputStream in = new FileInputStream(targetFile);
+             FileOutputStream out = new FileOutputStream(tmpFile, false)) {
+            XmlPullParserFactory factory = XmlPullParserFactory.newInstance();
+            factory.setNamespaceAware(false);
+            XmlPullParser parser = factory.newPullParser();
+            parser.setInput(in, null);
+
+            XmlSerializer serializer = factory.newSerializer();
+            serializer.setOutput(out, "UTF-8");
+            serializer.startDocument("UTF-8", true);
+
+            int event = parser.getEventType();
+            while (event != XmlPullParser.END_DOCUMENT) {
+                if (event == XmlPullParser.START_TAG) {
+                    String tag = parser.getName();
+                    String namespace = parser.getNamespace();
+                    if (namespace != null && namespace.isEmpty()) {
+                        namespace = null;
+                    }
+                    serializer.startTag(namespace, tag);
+
+                    int attrCount = parser.getAttributeCount();
+                    String regnum = null;
+                    for (int i = 0; i < attrCount; i++) {
+                        String attrName = parser.getAttributeName(i);
+                        if ("regnum".equalsIgnoreCase(attrName)) {
+                            String value = parser.getAttributeValue(i);
+                            regnum = value != null ? value.trim() : null;
+                            break;
+                        }
+                    }
+
+                    boolean hasVisitedAttr = false;
+                    for (int i = 0; i < attrCount; i++) {
+                        String attrNamespace = parser.getAttributeNamespace(i);
+                        if (attrNamespace != null && attrNamespace.isEmpty()) {
+                            attrNamespace = null;
+                        }
+                        String attrName = parser.getAttributeName(i);
+                        String attrValue = parser.getAttributeValue(i);
+                        if ("visited".equalsIgnoreCase(attrName)) {
+                            hasVisitedAttr = true;
+                            Long visitedMs = regnum != null ? AppVars.SearchBoxVisited.get(regnum) : null;
+                            if (visitedMs != null && visitedMs > 0L) {
+                                attrValue = formatVisitedForAbc(visitedMs);
+                            }
+                        }
+                        serializer.attribute(attrNamespace, attrName, attrValue != null ? attrValue : "");
+                    }
+
+                    if ("cell".equalsIgnoreCase(tag) && !hasVisitedAttr && regnum != null) {
+                        Long visitedMs = AppVars.SearchBoxVisited.get(regnum);
+                        if (visitedMs != null && visitedMs > 0L) {
+                            serializer.attribute(null, "visited", formatVisitedForAbc(visitedMs));
+                        }
+                    }
+                } else if (event == XmlPullParser.END_TAG) {
+                    String tag = parser.getName();
+                    String namespace = parser.getNamespace();
+                    if (namespace != null && namespace.isEmpty()) {
+                        namespace = null;
+                    }
+                    serializer.endTag(namespace, tag);
+                } else if (event == XmlPullParser.TEXT) {
+                    serializer.text(parser.getText());
+                }
+                event = parser.next();
+            }
+            serializer.endDocument();
+            serializer.flush();
+        } catch (Exception e) {
+            android.util.Log.e(TAG, "persistVisited: write failed", e);
+            //noinspection ResultOfMethodCallIgnored
+            tmpFile.delete();
+            return false;
+        }
+
+        try {
+            if (targetFile.exists() && !targetFile.delete()) {
+                android.util.Log.w(TAG, "persistVisited: cannot delete old abcells.xml");
+                return false;
+            }
+            if (!tmpFile.renameTo(targetFile)) {
+                try (InputStream in = new FileInputStream(tmpFile);
+                     FileOutputStream out = new FileOutputStream(targetFile, false)) {
+                    copyStream(in, out);
+                }
+                //noinspection ResultOfMethodCallIgnored
+                tmpFile.delete();
+            }
+            return true;
+        } catch (Exception e) {
+            android.util.Log.e(TAG, "persistVisited: replace failed", e);
+            return false;
+        }
+    }
+
+    private static String formatVisitedForAbc(long visitedMs) {
+        if (visitedMs <= 0L) {
+            return ABC_VISITED_ZERO;
+        }
+        synchronized (ABC_VISITED_OUTPUT_FORMAT) {
+            return ABC_VISITED_OUTPUT_FORMAT.format(new Date(visitedMs));
+        }
+    }
+
+    private static void copyAssetToFile(Context context, String assetName, File outputFile) throws Exception {
+        try (InputStream in = context.getAssets().open(assetName);
+             FileOutputStream out = new FileOutputStream(outputFile, false)) {
+            copyStream(in, out);
+        }
+    }
+
+    private static void copyStream(InputStream in, FileOutputStream out) throws Exception {
+        byte[] buffer = new byte[8192];
+        int read;
+        while ((read = in.read(buffer)) != -1) {
+            out.write(buffer, 0, read);
+        }
+        out.flush();
     }
 
     private static void loadTeleports(Context context) {

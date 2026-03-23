@@ -28,6 +28,7 @@ import ru.neverlands.abclient.manager.FastActionManager;
 import ru.neverlands.abclient.manager.RoomManager;
 import ru.neverlands.abclient.manager.UnderAttackManager;
 import ru.neverlands.abclient.utils.AppVars;
+import ru.neverlands.abclient.utils.ExtMap;
 import ru.neverlands.abclient.utils.HelperStrings;
 import ru.neverlands.abclient.utils.HtmlUtils;
 import ru.neverlands.abclient.utils.Russian;
@@ -50,6 +51,8 @@ public class MainPhp {
     private static final long AUTO_SKIN_KNIFE_RECHECK_INTERVAL_MS = 60_000L;
     private static final int AUTO_FISH_WEAR_LOOP_MAX_REPEATS = 12;
     private static final long AUTO_FISH_WEAR_LOOP_WINDOW_MS = 20_000L;
+    private static final String BLISS_POTION_NAME = "\u0417\u0435\u043B\u044C\u0435 \u0411\u043B\u0430\u0436\u0435\u043D\u0441\u0442\u0432\u0430";
+    private static final String BLISS_ELIXIR_NAME = "\u042D\u043B\u0438\u043A\u0441\u0438\u0440 \u0411\u043B\u0430\u0436\u0435\u043D\u0441\u0442\u0432\u0430";
     private static final String DIG_BUTTON_MARKER = "[\"dig\",\"Копать\",";
     private static final int[] FISH_PRIM_IDS = new int[]{38, 39, 40, 41, 42, 43, 44, 45, 46};
     private static final int[] FISH_PRIM_FLAGS = new int[]{
@@ -69,6 +72,7 @@ public class MainPhp {
     private static volatile long lastAutoFishBlazTriggerAtMs = 0L;
     private static volatile long lastAutoFishDrinkTriggerAtMs = 0L;
     private static volatile long lastWtimeSyncLogAtMs = 0L;
+    private static volatile long lastAutoDrinkBlazTriggerAtMs = 0L;
     // Защита от повторного показа одного и того же диалога капчи завершения боя.
     private static volatile String lastFightCaptchaDialogKey = "";
     private static volatile long lastFightCaptchaDialogAtMs = 0L;
@@ -1792,26 +1796,57 @@ public class MainPhp {
             return null;
         }
         try {
+            Integer tiedFromHpmp = parseMainPhpTiedFromHpmp(html);
+            if (tiedFromHpmp != null) {
+                return tiedFromHpmp;
+            }
+
             java.util.regex.Matcher m = java.util.regex.Pattern
-                    .compile("(?is)Усталость:</td><td[^>]*>.*?<b>\\s*(\\d{1,3})\\s*</b>")
+                    .compile("(?is)\u0423\u0441\u0442\u0430\u043b\u043e\u0441\u0442\u044c\\s*:</td><td[^>]*>.*?<b>\\s*(\\d{1,3})\\s*</b>")
                     .matcher(html);
             if (m.find()) {
                 return Integer.parseInt(m.group(1));
             }
             m = java.util.regex.Pattern
-                    .compile("(?is)Усталость[^0-9]{0,80}(\\d{1,3})\\s*%")
+                    .compile("(?is)\u0423\u0441\u0442\u0430\u043b\u043e\u0441\u0442\u044c[^0-9]{0,80}(\\d{1,3})\\s*%")
                     .matcher(html);
             if (m.find()) {
                 return Integer.parseInt(m.group(1));
             }
             m = java.util.regex.Pattern
-                    .compile("(?is)Усталость[^0-9]{0,80}(\\d{1,3})")
+                    .compile("(?is)\u0423\u0441\u0442\u0430\u043b\u043e\u0441\u0442\u044c[^0-9]{0,80}(\\d{1,3})")
                     .matcher(html);
             if (m.find()) {
                 return Integer.parseInt(m.group(1));
             }
         } catch (Exception e) {
             android.util.Log.w(TAG, "AUTO_FISH_TRACE tied parse failed", e);
+        }
+        return null;
+    }
+
+    private static Integer parseMainPhpTiedFromHpmp(String html) {
+        if (html == null || html.isEmpty()) {
+            return null;
+        }
+        try {
+            java.util.regex.Matcher hpmpMatcher = java.util.regex.Pattern
+                    .compile("(?is)\\bhpmp\\b\\s*=\\s*\\[\\s*[^\\]]*?,\\s*[^\\]]*?,\\s*[^\\]]*?,\\s*[^\\]]*?,\\s*(\\d{1,3})\\s*\\]")
+                    .matcher(html);
+            if (hpmpMatcher.find()) {
+                int maxTire = Integer.parseInt(hpmpMatcher.group(1));
+                return Math.max(0, Math.min(100, 100 - maxTire));
+            }
+
+            java.util.regex.Matcher maxTireMatcher = java.util.regex.Pattern
+                    .compile("(?is)\\bmaxTire\\b\\s*[:=]\\s*(\\d{1,3})")
+                    .matcher(html);
+            if (maxTireMatcher.find()) {
+                int maxTire = Integer.parseInt(maxTireMatcher.group(1));
+                return Math.max(0, Math.min(100, 100 - maxTire));
+            }
+        } catch (Exception e) {
+            android.util.Log.w(TAG, "AUTO_FISH_TRACE hpmp tied parse failed", e);
         }
         return null;
     }
@@ -1918,6 +1953,190 @@ public class MainPhp {
             return floraHtml;
         }
         return null;
+    }
+
+    private static String mainPhpAutoDrinkBlazStep(String address, String html) {
+        if (AppVars.Profile == null || html == null || html.isEmpty()) {
+            return null;
+        }
+        if (!AppVars.Profile.DoAutoDrinkBlaz) {
+            return null;
+        }
+        if (AppVars.FastNeed) {
+            return null;
+        }
+        if (AppVars.IsFightCaptchaDialogVisible) {
+            return null;
+        }
+
+        long now = System.currentTimeMillis();
+        if (AppVars.NeverTimer > 0L && now <= AppVars.NeverTimer) {
+            return null;
+        }
+
+        int tied = Math.max(0, Math.min(100, AppVars.Tied));
+        int tiedThreshold = Math.max(0, Math.min(100, AppVars.Profile.AutoDrinkBlazTied));
+        if (tied < tiedThreshold) {
+            return null;
+        }
+
+        long sinceLastTrigger = now - lastAutoDrinkBlazTriggerAtMs;
+        if (sinceLastTrigger >= 0L && sinceLastTrigger < 1000L) {
+            return null;
+        }
+
+        int order = AppVars.Profile.AutoDrinkBlazOrder == 1 ? 1 : 0;
+        String firstFilter = order == 0 ? "&im=0&wca=27" : "&im=6";
+        String secondFilter = order == 0 ? "&im=6" : "&im=0&wca=27";
+        String firstLabel = order == 0
+                ? "\u0437\u0435\u043B\u044C\u044F"
+                : "\u044D\u043B\u0438\u043A\u0441\u0438\u0440\u044B";
+        String secondLabel = order == 0
+                ? "\u044D\u043B\u0438\u043A\u0441\u0438\u0440\u044B"
+                : "\u0437\u0435\u043B\u044C\u044F";
+
+        if (!mainPhpIsInv(html) && !isInventoryAddress(address)) {
+            String invHtml = mainPhpFindInvWithFallback(html, firstFilter, address);
+            if (invHtml != null && !invHtml.isEmpty()) {
+                android.util.Log.d(TAG, "AUTO_BLAZ_TRACE tied high -> open inventory first="
+                        + firstFilter + ", tied=" + tied + ", threshold=" + tiedThreshold);
+                return invHtml;
+            }
+            if (AppVars.VCode != null && !AppVars.VCode.trim().isEmpty()) {
+                String fallbackInvLink = "main.php?get_id=56&act=10&go=inv&vcode="
+                        + AppVars.VCode.trim() + firstFilter;
+                android.util.Log.w(TAG, "AUTO_BLAZ_TRACE inventory link not found in html, fallback via AppVars.VCode: "
+                        + fallbackInvLink);
+                return buildRedirectHtml(
+                        "\u041F\u0435\u0440\u0435\u0445\u043E\u0434 \u0432 \u0438\u043D\u0432\u0435\u043D\u0442\u0430\u0440\u044C \u0434\u043B\u044F \u0431\u043B\u0430\u0436\u0430",
+                        fallbackInvLink);
+            }
+            return null;
+        }
+
+        boolean onFirstCategory = inventoryAddressMatchesFilter(address, firstFilter);
+        boolean onSecondCategory = inventoryAddressMatchesFilter(address, secondFilter);
+        if (!onFirstCategory && !onSecondCategory) {
+            android.util.Log.d(TAG, "AUTO_BLAZ_TRACE inventory page without expected filter, switch to " + firstFilter);
+            return buildRedirectHtml(
+                    "\u041F\u0435\u0440\u0435\u043A\u043B\u044E\u0447\u0435\u043D\u0438\u0435 \u043D\u0430 " + firstLabel,
+                    "main.php?" + firstFilter.substring(1));
+        }
+
+        String useHtml = mainPhpDrinkBlazPotOrElixir(html, order);
+        if (useHtml != null && !useHtml.isEmpty()) {
+            lastAutoDrinkBlazTriggerAtMs = now;
+            AppVars.Tied = 0;
+            android.util.Log.d(TAG, "AUTO_BLAZ_TRACE consume bliss, order=" + order);
+            return useHtml;
+        }
+
+        if (onFirstCategory) {
+            android.util.Log.d(TAG, "AUTO_BLAZ_TRACE bliss not found on first category, switch to " + secondFilter);
+            return buildRedirectHtml(
+                    "\u041F\u0435\u0440\u0435\u043A\u043B\u044E\u0447\u0435\u043D\u0438\u0435 \u043D\u0430 " + secondLabel,
+                    "main.php?" + secondFilter.substring(1));
+        }
+
+        android.util.Log.w(TAG, "AUTO_BLAZ_TRACE bliss potion/elixir not found, disable option");
+        disableAutoDrinkBlaz();
+        return null;
+    }
+
+    private static String mainPhpDrinkBlazPotOrElixir(String html, int order) {
+        int[] scanOrder = order == 1 ? new int[]{1, 0} : new int[]{0, 1};
+        for (int mode : scanOrder) {
+            String result = mode == 0
+                    ? mainPhpUseBlissPotionFromInventory(html)
+                    : mainPhpUseBlissElixirFromInventory(html);
+            if (result != null && !result.isEmpty()) {
+                return result;
+            }
+        }
+        return null;
+    }
+
+    private static String mainPhpUseBlissPotionFromInventory(String html) {
+        if (html == null || html.isEmpty()) {
+            return null;
+        }
+        java.util.regex.Matcher matcher = java.util.regex.Pattern
+                .compile("(?is)magicreform\\s*\\(\\s*'([^']+)'\\s*,\\s*'[^']*'\\s*,\\s*'([^']+)'\\s*,\\s*'([^']+)'\\s*\\)")
+                .matcher(html);
+        while (matcher.find()) {
+            String uid = matcher.group(1);
+            String potionName = matcher.group(2);
+            String vcode = matcher.group(3);
+            if (!containsIgnoreCase(potionName, BLISS_POTION_NAME)) {
+                continue;
+            }
+            String ownNick = AppVars.Profile != null && AppVars.Profile.UserNick != null
+                    ? AppVars.Profile.UserNick
+                    : "";
+            return buildMagicReformSubmitHtml(uid, vcode, ownNick, BLISS_POTION_NAME);
+        }
+        return null;
+    }
+
+    private static String mainPhpUseBlissElixirFromInventory(String html) {
+        if (html == null || html.isEmpty()) {
+            return null;
+        }
+
+        java.util.regex.Matcher linkMatcher = java.util.regex.Pattern
+                .compile("(?is)main\\.php\\?get_id=43&act=107[^'\"\\s<]+")
+                .matcher(html);
+        while (linkMatcher.find()) {
+            String link = linkMatcher.group();
+            int contextStart = Math.max(0, linkMatcher.start() - 240);
+            int contextEnd = Math.min(html.length(), linkMatcher.end() + 240);
+            String context = html.substring(contextStart, contextEnd);
+            if (!containsIgnoreCase(context, BLISS_ELIXIR_NAME)) {
+                continue;
+            }
+            return buildRedirectHtml(
+                    "\u0418\u0441\u043F\u043E\u043B\u044C\u0437\u0443\u0435\u043C " + BLISS_ELIXIR_NAME + "...",
+                    link);
+        }
+        return null;
+    }
+
+    private static String buildMagicReformSubmitHtml(String uid, String vcode, String targetNick, String itemName) {
+        String safeUid = uid == null ? "" : uid.trim();
+        String safeVcode = vcode == null ? "" : vcode.trim();
+        String safeNick = targetNick == null ? "" : targetNick;
+        String safeItemName = itemName == null || itemName.isEmpty() ? "item" : itemName;
+        if (safeUid.isEmpty() || safeVcode.isEmpty()) {
+            return null;
+        }
+        return HtmlUtils.GENERATED_PAGE_MARKER
+                + "<html><head><meta http-equiv=\"Content-Type\" content=\"text/html; charset=windows-1251\">"
+                + "<title>ABClient</title></head><body>"
+                + "\u0418\u0441\u043F\u043E\u043B\u044C\u0437\u0443\u0435\u043C " + escapeHtmlAttr(safeItemName) + "..."
+                + "<form action=main.php method=POST name=ff>"
+                + "<input name=magicrestart type=hidden value=\"1\">"
+                + "<input name=magicreuid type=hidden value=\"" + escapeHtmlAttr(safeUid) + "\">"
+                + "<input name=vcode type=hidden value=\"" + escapeHtmlAttr(safeVcode) + "\">"
+                + "<input name=post_id type=hidden value=\"46\">"
+                + "<input name=fornickname type=hidden value=\"" + escapeHtmlAttr(safeNick) + "\">"
+                + "</form><script language=\"JavaScript\">document.ff.submit();</script></body></html>";
+    }
+
+    private static void disableAutoDrinkBlaz() {
+        if (AppVars.Profile != null) {
+            AppVars.Profile.DoAutoDrinkBlaz = false;
+            android.content.Context context = AppVars.getContext();
+            if (context != null) {
+                AppVars.Profile.save(context);
+            }
+        }
+        if (AppVars.getContext() != null) {
+            Intent msgIntent = new Intent(AppVars.ACTION_ADD_CHAT_MESSAGE);
+            msgIntent.putExtra(
+                    "message",
+                    "<font color=#cc0000><b>\u041D\u0438 \u0437\u0435\u043B\u044C\u0435 \u043D\u0438 \u044D\u043B\u0438\u043A\u0441\u0438\u0440 \u0431\u043B\u0430\u0436\u0435\u043D\u0441\u0442\u0432\u0430 \u043D\u0435 \u043D\u0430\u0439\u0434\u0435\u043D\u044B. \u0410\u0432\u0442\u043E\u043F\u0438\u0442\u044C\u0435 \u0431\u043B\u0430\u0436\u0430 \u043E\u0442\u043A\u043B\u044E\u0447\u0435\u043D\u043E.</b></font>");
+            LocalBroadcastManager.getInstance(AppVars.getContext()).sendBroadcast(msgIntent);
+        }
     }
 
     /**
@@ -2524,6 +2743,8 @@ public class MainPhp {
         // обновляем интервалы восстановления HP/MA из `ins_HP(...)` до основной логики,
         // чтобы расчёт `Restoring` выполнялся по актуальным `hp_int/ma_int`.
         mainPhpInsHp(html);
+        // Обновляем runtime-усталость на каждом ответе main.php.
+        mainPhpUpdateTied(html);
         // Извлечение vcode - полезная логика из новой версии
         String vcode = HelperStrings.subString(html, "'main.php?get_id=56&act=10&go=inf&vcode=", "'");
         if (vcode != null) {
@@ -2634,6 +2855,15 @@ public class MainPhp {
         mainPhpProcessSkills(html, address);
         // Чтение умения "Рыбалка" (C# parity) до оркестрации AutoFish.
         mainPhpProcessFishSkills(html, address);
+
+        // C# parity: DoAutoDrinkBlaz.
+        // Порядок вызова: до AutoFish/AutoSearchBox, чтобы при высокой усталости сначала обнулить ее.
+        if (!isFightFrame && !isFightTopFrame) {
+            String autoDrinkBlazHtml = mainPhpAutoDrinkBlazStep(address, html);
+            if (autoDrinkBlazHtml != null && !autoDrinkBlazHtml.isEmpty()) {
+                return Russian.getBytes(autoDrinkBlazHtml);
+            }
+        }
         // Оркестрация Авто-Рыбалки (C# MainPhp.cs + MainPhpWear.cs + MainPhpFish.cs):
         // 1) при необходимости читаем умение Рыбалка (mselect=1);
         // 2) проверяем/переодеваем снасти в обеих руках;
@@ -4835,6 +5065,7 @@ public class MainPhp {
                     android.util.Log.w(TAG, "AUTO_SEARCH_BOX_TRACE stop on dig: profile save failed", saveEx);
                 }
             }
+            ExtMap.flushVisitedToDisk();
             AppVars.SearchBoxVisited.clear();
         }
 

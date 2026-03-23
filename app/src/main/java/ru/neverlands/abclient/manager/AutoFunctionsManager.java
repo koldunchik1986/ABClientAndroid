@@ -9,6 +9,7 @@ import ru.neverlands.abclient.model.AutoboiState;
 import ru.neverlands.abclient.model.QuickActionType;
 import ru.neverlands.abclient.service.AutoModeForegroundService;
 import ru.neverlands.abclient.utils.AppVars;
+import ru.neverlands.abclient.utils.ExtMap;
 import ru.neverlands.abclient.utils.MapPath;
 
 /**
@@ -289,6 +290,7 @@ public class AutoFunctionsManager {
 
         AppVars.DoSearchBox = autoTreasure;
         if (!autoTreasure) {
+            ExtMap.flushVisitedToDisk();
             AppVars.SearchBoxVisited.clear();
         }
 
@@ -895,6 +897,7 @@ public class AutoFunctionsManager {
         }
 
         if (!enabled) {
+            ExtMap.flushVisitedToDisk();
             AppVars.SearchBoxVisited.clear();
         }
 
