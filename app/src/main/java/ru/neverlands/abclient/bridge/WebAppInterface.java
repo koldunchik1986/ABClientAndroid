@@ -25,6 +25,7 @@ import java.util.zip.GZIPInputStream;
 
 import ru.neverlands.abclient.MainActivity;
 import ru.neverlands.abclient.manager.AutoFunctionsManager;
+import ru.neverlands.abclient.manager.CharacterVitalsManager;
 import ru.neverlands.abclient.manager.ContactsManager;
 import ru.neverlands.abclient.model.AutoboiState;
 import ru.neverlands.abclient.model.Cell;
@@ -550,10 +551,10 @@ public class WebAppInterface {
      */
     @JavascriptInterface
     public void SetCurrentTied(int curTire) {
-        int normalized = Math.max(0, Math.min(100, curTire));
-        if (AppVars.Tied != normalized) {
-            Log.d("WebAppInterface", "SetCurrentTied: old=" + AppVars.Tied + ", new=" + normalized);
-            AppVars.Tied = normalized;
+        CharacterVitalsManager.Snapshot before = CharacterVitalsManager.snapshot();
+        CharacterVitalsManager.Snapshot after = CharacterVitalsManager.updateTied(curTire, "WebAppInterface.SetCurrentTied");
+        if (before.tied != after.tied) {
+            Log.d("WebAppInterface", "SetCurrentTied: old=" + before.tied + ", new=" + after.tied);
         }
     }
     @JavascriptInterface
@@ -1610,15 +1611,11 @@ public class WebAppInterface {
 
     @JavascriptInterface
     public void showHpMaTimers(String s, float curHP, int maxHP, float intHP, float curMA, int maxMA, float intMA) {
-        if (intHP > 0f) {
-            AppVars.PersIntHP = intHP;
-        }
-        if (intMA > 0f) {
-            AppVars.PersIntMA = intMA;
-        }
-        Log.d("WebAppInterface", "showHpMaTimers: hp=" + curHP + "/" + maxHP
-                + " ma=" + curMA + "/" + maxMA
-                + " intHP=" + intHP + " intMA=" + intMA);
+        CharacterVitalsManager.Snapshot snapshot = CharacterVitalsManager.updateFromHpJs(
+                curHP, maxHP, curMA, maxMA, intHP, intMA, "WebAppInterface.showHpMaTimers");
+        Log.d("WebAppInterface", "showHpMaTimers: hp=" + snapshot.curHp + "/" + snapshot.maxHp
+                + " ma=" + snapshot.curMa + "/" + snapshot.maxMa
+                + " intHP=" + snapshot.intHp + " intMA=" + snapshot.intMa);
     }
 
     @JavascriptInterface

@@ -362,26 +362,15 @@ public class AutoFunctionsManager {
                 return;
             }
 
-            if (vitals.curTire != null) {
-                AppVars.Tied = clampPercent(vitals.curTire);
-            }
-            if (vitals.curHp != null) {
-                AppVars.CurHP = Math.max(0, vitals.curHp);
-            }
-            if (vitals.maxHp != null) {
-                AppVars.MaxHP = Math.max(0, vitals.maxHp);
-            }
-            if (vitals.curMa != null) {
-                AppVars.CurMA = Math.max(0, vitals.curMa);
-            }
-            if (vitals.maxMa != null) {
-                AppVars.MaxMA = Math.max(0, vitals.maxMa);
-            }
+            CharacterVitalsManager.Snapshot snapshot = CharacterVitalsManager.updateFromPinfo(
+                    vitals,
+                    "AutoFunctionsManager.requestCharacterSyncAfterLogin"
+            );
 
             Log.i(TAG, "AUTO_BLAZ_TRACE: " + CHARACTER_SYNC_LABEL
-                    + " after login, tied=" + AppVars.Tied
-                    + ", hp=" + AppVars.CurHP + "/" + AppVars.MaxHP
-                    + ", ma=" + AppVars.CurMA + "/" + AppVars.MaxMA
+                    + " after login, tied=" + snapshot.tied
+                    + ", hp=" + snapshot.curHp + "/" + snapshot.maxHp
+                    + ", ma=" + snapshot.curMa + "/" + snapshot.maxMa
                     + ", nick=" + nick);
             showCharacterSyncToast();
         }, "CharacterSyncAfterLogin");
@@ -395,10 +384,8 @@ public class AutoFunctionsManager {
             if (activity == null) {
                 return;
             }
-            final String message = CHARACTER_SYNC_LABEL
-                    + ": HP: " + AppVars.CurHP + "/" + AppVars.MaxHP
-                    + "; MA: " + AppVars.CurMA + "/" + AppVars.MaxMA
-                    + "; \u0423\u0441\u0442\u0430\u043B\u043E\u0441\u0442\u044C: " + AppVars.Tied;
+            CharacterVitalsManager.Snapshot snapshot = CharacterVitalsManager.snapshot();
+            final String message = CharacterVitalsManager.buildSyncMessage(CHARACTER_SYNC_LABEL, snapshot);
             activity.runOnUiThread(() -> Toast.makeText(
                     activity,
                     message,
@@ -407,10 +394,6 @@ public class AutoFunctionsManager {
         } catch (Exception e) {
             Log.w(TAG, "showCharacterSyncToast failed", e);
         }
-    }
-
-    private static int clampPercent(int value) {
-        return Math.max(0, Math.min(100, value));
     }
 
     private void restoreAutoFightRuntimeAfterLogin(boolean autoFightEnabledByProfile) {

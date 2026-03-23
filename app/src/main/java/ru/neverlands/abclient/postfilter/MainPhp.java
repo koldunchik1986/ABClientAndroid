@@ -24,6 +24,7 @@ import ru.neverlands.abclient.model.InvComparer;
 import ru.neverlands.abclient.model.InvEntry;
 import ru.neverlands.abclient.model.ParsedDressed;
 import ru.neverlands.abclient.manager.AutoFunctionsManager;
+import ru.neverlands.abclient.manager.CharacterVitalsManager;
 import ru.neverlands.abclient.manager.FastActionManager;
 import ru.neverlands.abclient.manager.RoomManager;
 import ru.neverlands.abclient.manager.UnderAttackManager;
@@ -763,10 +764,16 @@ public class MainPhp {
         try {
             InsHpSnapshot snapshot = parseInsHpSnapshot(html);
             if (snapshot == null) return;
-            // Порт 1:1 из C# MainPhpInsHp.cs: par[4] -> IntHP, par[5] -> IntMA.
-            if (snapshot.intHp > 0d) AppVars.PersIntHP = snapshot.intHp;
-            if (snapshot.intMa > 0d) AppVars.PersIntMA = snapshot.intMa;
-            android.util.Log.d(TAG, "mainPhpInsHp: parsed hpInt=" + AppVars.PersIntHP + ", maInt=" + AppVars.PersIntMA);
+            CharacterVitalsManager.Snapshot vitals = CharacterVitalsManager.updateFromInsHpSnapshot(
+                    snapshot.curHp,
+                    snapshot.maxHp,
+                    snapshot.curMa,
+                    snapshot.maxMa,
+                    snapshot.intHp,
+                    snapshot.intMa,
+                    "MainPhp.mainPhpInsHp"
+            );
+            android.util.Log.d(TAG, "mainPhpInsHp: parsed hpInt=" + vitals.intHp + ", maInt=" + vitals.intMa);
         } catch (Exception e) {
             android.util.Log.e(TAG, "mainPhpInsHp error", e);
         }
@@ -1808,11 +1815,12 @@ public class MainPhp {
             return;
         }
         int normalized = Math.max(0, Math.min(100, tiedValue));
-        if (AppVars.Tied != normalized) {
-            android.util.Log.d(TAG, "AUTO_FISH_TRACE tied update: old=" + AppVars.Tied + ", new=" + normalized);
+        CharacterVitalsManager.Snapshot before = CharacterVitalsManager.snapshot();
+        if (before.tied != normalized) {
+            android.util.Log.d(TAG, "AUTO_FISH_TRACE tied update: old=" + before.tied + ", new=" + normalized);
         }
-        AppVars.Tied = normalized;
-        if (AppVars.AutoFishDrink && normalized <= 0) {
+        CharacterVitalsManager.Snapshot after = CharacterVitalsManager.updateTied(normalized, "MainPhp.mainPhpUpdateTied");
+        if (AppVars.AutoFishDrink && after.tied <= 0) {
             AppVars.AutoFishDrink = false;
             android.util.Log.d(TAG, "AUTO_FISH_TRACE tied reached zero -> stop drink-to-zero mode");
         }

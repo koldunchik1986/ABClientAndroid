@@ -10,6 +10,7 @@ import java.util.Set;
 import android.os.Handler;
 import android.os.Looper;
 import android.widget.Toast;
+import ru.neverlands.abclient.manager.CharacterVitalsManager;
 import ru.neverlands.abclient.manager.FastActionManager;
 import ru.neverlands.abclient.manager.NeverApi;
 import ru.neverlands.abclient.model.Position;
@@ -54,7 +55,9 @@ public class MapAjax {
         }
 
         if (containsTooTiredMessage(html) && AppVars.AutoMoving) {
-            AppVars.Tied = 100;
+            CharacterVitalsManager.Snapshot tooTiredVitals =
+                    CharacterVitalsManager.updateTied(100, "MapAjax.process.tooTired");
+            int tiedNow = tooTiredVitals.tied;
             if (AppVars.Profile == null || !AppVars.Profile.DoAutoDrinkBlaz) {
                 AppVars.AutoMoving = false;
                 AppVars.AutoMovingMapPath = null;
@@ -71,14 +74,14 @@ public class MapAjax {
                 // Критичный фикс: запускаем FastAction сразу в точке "too tired",
                 // не дожидаясь отдельного plain main.php (который может не прийти без ручного reload).
                 int tiedThreshold = Math.max(0, Math.min(100, AppVars.Profile.AutoDrinkBlazTied));
-                if (!AppVars.FastNeed && AppVars.Tied >= tiedThreshold) {
+                if (!AppVars.FastNeed && tiedNow >= tiedThreshold) {
                     Log.i(TAG, "AUTO_SEARCH_BOX_TRACE: trigger bliss fast action from map_ajax too-tired"
-                            + ", tied=" + AppVars.Tied + ", threshold=" + tiedThreshold);
+                            + ", tied=" + tiedNow + ", threshold=" + tiedThreshold);
                     FastActionManager.fastAttackBlazElixir();
                 } else {
                     Log.d(TAG, "AUTO_SEARCH_BOX_TRACE: skip bliss fast action at too-tired"
                             + ", fastNeed=" + AppVars.FastNeed
-                            + ", tied=" + AppVars.Tied
+                            + ", tied=" + tiedNow
                             + ", threshold=" + tiedThreshold);
                 }
                 Log.i(TAG, "AUTO_SEARCH_BOX_TRACE: too tired, auto moving paused, redirect to main.php for auto bliss");
@@ -366,13 +369,19 @@ public class MapAjax {
         int threshold = clampPercent(AppVars.Profile.AutoDrinkBlazTied);
         NeverApi.PinfoVitals vitals = NeverApi.getPinfoVitalsFromPinfo(nick);
         if (vitals == null) {
-            logAutoBlazDecision("startup", "skip_sync_failed", clampPercent(AppVars.Tied), threshold, "reg=" + currentRegNum);
+            logAutoBlazDecision(
+                    "startup",
+                    "skip_sync_failed",
+                    CharacterVitalsManager.snapshot().tied,
+                    threshold,
+                    "reg=" + currentRegNum
+            );
             return;
         }
 
         applyPinfoVitals(vitals, currentRegNum, threshold, true);
         autoDrinkBlazStartupSyncDone = true;
-        logAutoBlazDecision("startup", "synced", clampPercent(AppVars.Tied), threshold, "reg=" + currentRegNum);
+        logAutoBlazDecision("startup", "synced", CharacterVitalsManager.snapshot().tied, threshold, "reg=" + currentRegNum);
     }
 
     private static void onAutoMovingCellObserved(String previousRegNum, String currentRegNum) {
@@ -382,10 +391,13 @@ public class MapAjax {
         if (previousRegNum.equals(currentRegNum)) {
             return;
         }
-        int oldTied = clampPercent(AppVars.Tied);
-        int newTied = clampPercent(oldTied + AUTO_MOVING_TIED_STEP_COST);
+        int oldTied = CharacterVitalsManager.snapshot().tied;
+        CharacterVitalsManager.Snapshot stepped = CharacterVitalsManager.increaseTied(
+                AUTO_MOVING_TIED_STEP_COST,
+                "MapAjax.onAutoMovingCellObserved.step"
+        );
+        int newTied = stepped.tied;
         if (newTied != oldTied) {
-            AppVars.Tied = newTied;
             Log.d(TAG, "AUTO_BLAZ_TRACE tied +step: old=" + oldTied
                     + ", new=" + newTied
                     + ", stepCost=" + AUTO_MOVING_TIED_STEP_COST
@@ -400,7 +412,7 @@ public class MapAjax {
             return;
         }
         int threshold = clampPercent(AppVars.Profile.AutoDrinkBlazTied);
-        int tied = clampPercent(AppVars.Tied);
+        int tied = CharacterVitalsManager.snapshot().tied;
         int syncBorder = Math.max(0, threshold - AUTO_DRINK_BLAZ_NEAR_THRESHOLD_DELTA);
         if (tied < syncBorder) {
             return;
@@ -419,9 +431,9 @@ public class MapAjax {
             return;
         }
         lastAutoDrinkBlazPinfoSyncAtMs = now;
-        int oldTied = clampPercent(AppVars.Tied);
+        int oldTied = CharacterVitalsManager.snapshot().tied;
         applyPinfoVitals(synced, currentRegNum, threshold, false);
-        int normalized = clampPercent(AppVars.Tied);
+        int normalized = CharacterVitalsManager.snapshot().tied;
         if (oldTied != normalized) {
             logAutoBlazDecision("sync", "synced_changed", normalized, threshold, "reg=" + currentRegNum);
         } else {
@@ -434,36 +446,21 @@ public class MapAjax {
             return;
         }
 
-        int oldTied = clampPercent(AppVars.Tied);
-        int newTied = oldTied;
+        CharacterVitalsManager.Snapshot before = CharacterVitalsManager.snapshot();
+        CharacterVitalsManager.Snapshot after = CharacterVitalsManager.updateFromPinfo(
+                vitals,
+                startupSync ? "MapAjax.applyPinfoVitals.startup" : "MapAjax.applyPinfoVitals.nearThreshold"
+        );
         if (vitals.curTire != null) {
-            newTied = clampPercent(vitals.curTire);
-            AppVars.Tied = newTied;
             showFatigueSyncToast(
-                    "\u0421\u0438\u043D\u0445\u0440\u0430\u043D\u0438\u0437\u0430\u0446\u0438\u044F \u041F\u0435\u0440\u0441\u043E\u043D\u0430\u0436\u0430"
-                            + ": HP: " + AppVars.CurHP + "/" + AppVars.MaxHP
-                            + "; MA: " + AppVars.CurMA + "/" + AppVars.MaxMA
-                            + "; \u0423\u0441\u0442\u0430\u043B\u043E\u0441\u0442\u044C: " + newTied
+                    CharacterVitalsManager.buildSyncMessage("\u0421\u0438\u043D\u0445\u0440\u0430\u043D\u0438\u0437\u0430\u0446\u0438\u044F \u041F\u0435\u0440\u0441\u043E\u043D\u0430\u0436\u0430", after)
             );
         }
 
-        if (vitals.curHp != null) {
-            AppVars.CurHP = Math.max(0, vitals.curHp);
-        }
-        if (vitals.maxHp != null) {
-            AppVars.MaxHP = Math.max(0, vitals.maxHp);
-        }
-        if (vitals.curMa != null) {
-            AppVars.CurMA = Math.max(0, vitals.curMa);
-        }
-        if (vitals.maxMa != null) {
-            AppVars.MaxMA = Math.max(0, vitals.maxMa);
-        }
-
         String syncType = startupSync ? "startup" : "near_threshold";
-        Log.d(TAG, "AUTO_BLAZ_TRACE pinfo sync (" + syncType + "): tied=" + oldTied + "->" + newTied
-                + ", hp=" + AppVars.CurHP + "/" + AppVars.MaxHP
-                + ", ma=" + AppVars.CurMA + "/" + AppVars.MaxMA
+        Log.d(TAG, "AUTO_BLAZ_TRACE pinfo sync (" + syncType + "): tied=" + before.tied + "->" + after.tied
+                + ", hp=" + after.curHp + "/" + after.maxHp
+                + ", ma=" + after.curMa + "/" + after.maxMa
                 + ", reg=" + currentRegNum
                 + ", threshold=" + threshold);
     }
@@ -471,17 +468,17 @@ public class MapAjax {
     private static String maybeTriggerAutoDrinkBlazOnThreshold(String currentRegNum) {
         if (AppVars.Profile == null || !AppVars.Profile.DoAutoDrinkBlaz) {
             AppVars.AutoDrinkBlazPending = false;
-            logAutoBlazDecision("decision", "skip_profile_disabled", clampPercent(AppVars.Tied), 0, "reg=" + currentRegNum);
+            logAutoBlazDecision("decision", "skip_profile_disabled", CharacterVitalsManager.snapshot().tied, 0, "reg=" + currentRegNum);
             return null;
         }
         int threshold = clampPercent(AppVars.Profile.AutoDrinkBlazTied);
-        int tiedBeforeSync = clampPercent(AppVars.Tied);
+        int tiedBeforeSync = CharacterVitalsManager.snapshot().tied;
         if (AppVars.FastNeed) {
             logAutoBlazDecision("decision", "skip_fast_need", tiedBeforeSync, threshold, "reg=" + currentRegNum + ", fastId=" + AppVars.FastId);
             return null;
         }
         maybeSyncTiedFromPinfoIfNearThreshold(currentRegNum);
-        int tied = clampPercent(AppVars.Tied);
+        int tied = CharacterVitalsManager.snapshot().tied;
         if (!AppVars.AutoDrinkBlazPending && tied < threshold) {
             logAutoBlazDecision("decision", "skip_below_threshold", tied, threshold, "reg=" + currentRegNum);
             return null;
