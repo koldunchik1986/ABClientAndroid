@@ -196,7 +196,7 @@ function showMap(x, y) {
                 img.width = scale;
                 img.height = scale;
                 img.id = 'img_' + dx + '_' + dy;
-                img.style.cursor = 'hand';
+                img.style.cursor = 'pointer';
                 img.alt = window.external.CellAltText(dx, dy, scale);
                 img.onclick = function (dx, dy) { return function () { window.external.MoveTo(window.external.GenMoveLink(dx, dy)); } }(dx, dy);
                 div.appendChild(img);
@@ -204,10 +204,13 @@ function showMap(x, y) {
                 divtext.style.position = 'absolute';
                 divtext.style.top = 0;
                 divtext.style.left = 0;
+                divtext.style.width = scale + 'px';
+                divtext.style.height = scale + 'px';
+                divtext.style.cursor = 'pointer';
                 divtext.id = 'divtext_' + dx + '_' + dy;
                 var isframe = (current_x == dx) && (current_y == dy);
                 divtext.innerHTML = window.external.CellDivText(dx, dy, scale, img.onclick, false, isframe);
-                divtext.onClick = img.onclick;
+                divtext.onclick = img.onclick;
                 div.appendChild(divtext);
                 td.appendChild(div);
                 tr.appendChild(td);
@@ -284,7 +287,14 @@ function MapReInit(obj) {
             dx = current_x + j;
             dy = current_y + i;
 
-            img.onclick = function (dx, dy) { return function () { window.external.MoveTo(window.external.GenMoveLink(dx, dy)); } }(dx, dy);
+            if (imgid) {
+                imgid.onclick = function (dx, dy) { return function () { window.external.MoveTo(window.external.GenMoveLink(dx, dy)); } }(dx, dy);
+                var divid = d.getElementById('divtext_' + dx + '_' + dy);
+                if (divid) {
+                    divid.onclick = imgid.onclick;
+                    divid.style.cursor = 'pointer';
+                }
+            }
         }
     }
 }
@@ -722,16 +732,20 @@ function loadMap(dir) {
                     img.width = scale;
                     img.height = scale;
                     img.id = 'img_' + i + '_' + loaded_bottom;
-                    img.style.cursor = 'hand';
-                    img.onclick = window.external.GenMoveLink(i, loaded_bottom);
+                    img.style.cursor = 'pointer';
+                    img.onclick = function (dx, dy) { return function () { window.external.MoveTo(window.external.GenMoveLink(dx, dy)); } }(i, loaded_bottom);
                     img.alt = window.external.CellAltText(i, loaded_bottom, scale);
                     div.appendChild(img);
                     divtext = d.createElement('DIV');
                     divtext.style.position = 'absolute';
                     divtext.style.top = 0;
                     divtext.style.left = 0;
+                    divtext.style.width = scale + 'px';
+                    divtext.style.height = scale + 'px';
+                    divtext.style.cursor = 'pointer';
                     divtext.id = 'divtext_' + i + '_' + loaded_bottom;
                     divtext.innerHTML = window.external.CellDivText(i, loaded_bottom, scale, img.onclick, false, false);
+                    divtext.onclick = img.onclick;
                     div.appendChild(divtext);
                     td.appendChild(div);
                     tr.appendChild(td);
@@ -768,16 +782,20 @@ function loadMap(dir) {
                     img.width = scale;
                     img.height = scale;
                     img.id = 'img_' + i + '_' + loaded_top;
-                    img.style.cursor = 'hand';
-                    img.onclick = window.external.GenMoveLink(i, loaded_top);
+                    img.style.cursor = 'pointer';
+                    img.onclick = function (dx, dy) { return function () { window.external.MoveTo(window.external.GenMoveLink(dx, dy)); } }(i, loaded_top);
                     img.alt = window.external.CellAltText(i, loaded_top, scale);
                     div.appendChild(img);
                     divtext = d.createElement('DIV');
                     divtext.style.position = 'absolute';
                     divtext.style.top = 0;
                     divtext.style.left = 0;
+                    divtext.style.width = scale + 'px';
+                    divtext.style.height = scale + 'px';
+                    divtext.style.cursor = 'pointer';
                     divtext.id = 'divtext_' + i + '_' + loaded_top;
                     divtext.innerHTML = window.external.CellDivText(i, loaded_top, scale, img.onclick, false, false);
+                    divtext.onclick = img.onclick;
                     div.appendChild(divtext);
                     td.appendChild(div);
                     tr.appendChild(td);
@@ -813,16 +831,20 @@ function loadMap(dir) {
                     img.width = scale;
                     img.height = scale;
                     img.id = 'img_' + loaded_right + '_' + i;
-                    img.style.cursor = 'hand';
-                    img.onclick = window.external.GenMoveLink(loaded_right, i);
+                    img.style.cursor = 'pointer';
+                    img.onclick = function (dx, dy) { return function () { window.external.MoveTo(window.external.GenMoveLink(dx, dy)); } }(loaded_right, i);
                     img.alt = window.external.CellAltText(loaded_right, i, scale);
                     div.appendChild(img);
                     divtext = d.createElement('DIV');
                     divtext.style.position = 'absolute';
                     divtext.style.top = 0;
                     divtext.style.left = 0;
+                    divtext.style.width = scale + 'px';
+                    divtext.style.height = scale + 'px';
+                    divtext.style.cursor = 'pointer';
                     divtext.id = 'divtext_' + loaded_right + '_' + i;
                     divtext.innerHTML = window.external.CellDivText(loaded_right, i, scale, img.onclick, false, false);
+                    divtext.onclick = img.onclick;
                     div.appendChild(divtext);
                     td.appendChild(div);
                     tr.appendChild(td);
@@ -857,16 +879,20 @@ function loadMap(dir) {
                     img.width = scale;
                     img.height = scale;
                     img.id = 'img_' + loaded_left + '_' + i;
-                    img.style.cursor = 'hand';
-                    img.onclick = window.external.GenMoveLink(loaded_left, i);
+                    img.style.cursor = 'pointer';
+                    img.onclick = function (dx, dy) { return function () { window.external.MoveTo(window.external.GenMoveLink(dx, dy)); } }(loaded_left, i);
                     img.alt = window.external.CellAltText(loaded_left, i, scale);
                     div.appendChild(img);
                     divtext = d.createElement('DIV');
                     divtext.style.position = 'absolute';
                     divtext.style.top = 0;
                     divtext.style.left = 0;
+                    divtext.style.width = scale + 'px';
+                    divtext.style.height = scale + 'px';
+                    divtext.style.cursor = 'pointer';
                     divtext.id = 'divtext_' + loaded_left + '_' + i;
                     divtext.innerHTML = window.external.CellDivText(loaded_left, i, scale, img.onclick, false, false);
+                    divtext.onclick = img.onclick;
                     div.appendChild(divtext);
                     td.appendChild(div);
                     tr.insertBefore(td, tr.firstChild);
