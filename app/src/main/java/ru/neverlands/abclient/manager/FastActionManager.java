@@ -222,6 +222,17 @@ public class FastActionManager {
         return nick.replace("<i>", "").replace("</i>", "").trim();
     }
 
+    /**
+     * Возвращает ник текущего персонажа для self-use действий,
+     * где нужно явно подставить собственного персонажа.
+     */
+    private static String getProfileNickOrEmpty() {
+        if (AppVars.Profile == null || AppVars.Profile.UserNick == null) {
+            return "";
+        }
+        return AppVars.Profile.UserNick.trim();
+    }
+
     // --- Методы быстрых атак (из FormMainFast.cs) ---
     // Каждый метод устанавливает weapon (=FastId) и вызывает fastStart
 
@@ -372,26 +383,25 @@ public class FastActionManager {
 
     /** Остров телепорт (аналог FormMain.FastAttackIslandPot) — на себя */
     public static void fastAttackIslandPot() {
-        String ownNick = AppVars.Profile != null ? AppVars.Profile.UserNick : "";
-        fastStart("Телепорт (Остров Туротор)", ownNick != null ? ownNick : "");
+        fastStart("Телепорт (Остров Туротор)", getProfileNickOrEmpty());
     }
 
     /** Эликсир Блаженства (аналог FormMain.FastAttackBlazElixir) — на себя */
     public static void fastAttackBlazElixir() {
-        String ownNick = AppVars.Profile != null ? AppVars.Profile.UserNick : "";
-        fastStart("Эликсир Блаженства", ownNick != null ? ownNick : "");
+        // Эликсиры с вкладки im=6 применяются GET-ссылкой без поля nickname.
+        fastStart("Эликсир Блаженства", "");
     }
 
     /** Эликсир Мгновенного Исцеления (аналог FormMain.FastAttackMomentCureElixir) — на себя */
     public static void fastAttackMomentCureElixir() {
-        String ownNick = AppVars.Profile != null ? AppVars.Profile.UserNick : "";
-        fastStart("Эликсир Мгновенного Исцеления", ownNick != null ? ownNick : "");
+        // Эликсиры с вкладки im=6 применяются GET-ссылкой без поля nickname.
+        fastStart("Эликсир Мгновенного Исцеления", "");
     }
 
     /** Эликсир Восстановления (аналог FormMain.FastAttackMomentRestoreElixir) — на себя */
     public static void fastAttackMomentRestoreElixir() {
-        String ownNick = AppVars.Profile != null ? AppVars.Profile.UserNick : "";
-        fastStart("Эликсир Восстановления", ownNick != null ? ownNick : "");
+        // Эликсиры с вкладки im=6 применяются GET-ссылкой без поля nickname.
+        fastStart("Эликсир Восстановления", "");
     }
 
     // --- Часть 1b: FastAttackAsync — фоновый поток ожидания окончания боя ---

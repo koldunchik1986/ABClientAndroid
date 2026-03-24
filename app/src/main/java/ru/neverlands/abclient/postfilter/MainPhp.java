@@ -798,6 +798,20 @@ public class MainPhp {
             return null;
         }
         String htmlLower = html.toLowerCase(Locale.ROOT);
+        // C# parity (MainPhpDrinkHpMa.cs):
+        // 1) first try `var inshp = [curHp,maxHp,curMa,maxMa,intHp,intMa];`
+        // 2) fallback to `ins_HP(curHp,maxHp,curMa,maxMa,intHp,intMa);`
+        int varPos = htmlLower.indexOf("var inshp");
+        if (varPos != -1) {
+            int bracketStart = html.indexOf('[', varPos);
+            int bracketEnd = html.indexOf("];", bracketStart);
+            if (bracketStart != -1 && bracketEnd != -1 && bracketEnd > bracketStart) {
+                InsHpSnapshot fromVar = parseInsHpSnapshotArgs(html.substring(bracketStart + 1, bracketEnd));
+                if (fromVar != null) {
+                    return fromVar;
+                }
+            }
+        }
         int start = htmlLower.indexOf("ins_hp(");
         if (start == -1) {
             return null;
@@ -807,7 +821,13 @@ public class MainPhp {
         if (end == -1 || end <= start) {
             return null;
         }
-        String args = html.substring(start, end);
+        return parseInsHpSnapshotArgs(html.substring(start, end));
+    }
+
+    private static InsHpSnapshot parseInsHpSnapshotArgs(String args) {
+        if (args == null || args.isEmpty()) {
+            return null;
+        }
         String[] parts = args.split(",");
         if (parts.length != 6) {
             android.util.Log.d(TAG, "parseInsHpSnapshot: unexpected args count=" + parts.length + ", raw=" + args);
@@ -863,14 +883,15 @@ public class MainPhp {
         if (isFightFrame || isFightTopFrame) {
             return;
         }
-        // Важный guard: автопитьё обычно запускаем только на "чистом" main.php.
-        // Но для post-fight сценария есть fallback: если plain main.php не попал в postfilter,
-        // разрешаем одноразовую проверку на ближайшем go=inf/go=inv/im=* кадре.
-        boolean isPlainMain = isServerPlainMainAddress(address);
+        // C# parity: проверяем автопитьё на любом небоевом кадре, где есть валидный inshp/ins_HP snapshot.
+        // Для post-fight fallback разрешаем отдельный путь через unified vitals, если в текущем HTML snapshot нет.
+        InsHpSnapshot pageSnapshot = parseInsHpSnapshot(html);
+        boolean hasPageSnapshot = pageSnapshot != null
+                && (pageSnapshot.maxHp > 0 || pageSnapshot.maxMa > 0);
         boolean allowPostFightFollowup = autoDrinkPostFightSyncPending
                 && isPostFightAutoDrinkFollowupAddress(address);
-        if (!isPlainMain && !allowPostFightFollowup) {
-            android.util.Log.d(TAG, "AUTO_DRINK_TRACE skip: wait plain main.php, address=" + address);
+        if (!hasPageSnapshot && !allowPostFightFollowup) {
+            android.util.Log.d(TAG, "AUTO_DRINK_TRACE skip: no inshp snapshot on page, address=" + address);
             return;
         }
         if (allowPostFightFollowup) {
@@ -888,9 +909,9 @@ public class MainPhp {
             android.util.Log.d(TAG, "AUTO_DRINK_TRACE skip: captcha dialog visible");
             return;
         }
-        InsHpSnapshot snapshot = parseInsHpSnapshot(html);
-        String snapshotSource = "ins_HP";
-        if (snapshot == null || (snapshot.maxHp <= 0 && snapshot.maxMa <= 0)) {
+        InsHpSnapshot snapshot = pageSnapshot;
+        String snapshotSource = "ins_HP/page";
+        if (!hasPageSnapshot) {
             CharacterVitalsManager.Snapshot vitals = CharacterVitalsManager.snapshot();
             if (vitals.maxHp > 0 || vitals.maxMa > 0) {
                 InsHpSnapshot fallback = new InsHpSnapshot();
