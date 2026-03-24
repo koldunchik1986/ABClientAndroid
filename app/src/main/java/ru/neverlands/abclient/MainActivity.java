@@ -123,6 +123,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     private static final long MAINFRAME_TIMEOUT_RETRY_DEDUP_MS = 12000L;
     private static final long AUTO_TURN_SERVER_PROBE_MIN_INTERVAL_MS = 1200L;
     private static final long AUTO_TURN_FIRST_FRAME_RENDER_GUARD_MS = 420L;
+    private static final long AUTO_TURN_MANUAL_NAV_SUPPRESS_MS = 4500L;
     private static final int AUTO_TURN_SERVER_PROBE_TIMEOUT_MS = 12000;
     private static final long SERVER_TIMER_TICK_MARGIN_MS = 300L;
     private static final long SERVER_TIMER_TICK_DEDUP_MS = 4000L;
@@ -196,6 +197,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     private final Object autoTurnServerProbeLock = new Object();
     private volatile boolean autoTurnServerProbeInFlight = false;
     private volatile long lastAutoTurnServerProbeAtMs = 0L;
+    private volatile long autoTurnManualNavSuppressUntilMs = 0L;
     // true между onResume/onPause; используется для отключения server-probe в активном UI.
     private volatile boolean isActivityResumedState = false;
     private final ActivityResultLauncher<Intent> contactsActivityLauncher =
@@ -664,8 +666,34 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
      * - `loadFightProbeHtmlViaHttp()` как источник серверного HTML;
      * - `hasFightMarkers(...)` и `AppVars.ContentMainPhp` для синхронизации контекста.
      */
+    private static boolean isManualGoInfNavigationUrl(String lowerUrl) {
+        if (lowerUrl == null || lowerUrl.isEmpty()) {
+            return false;
+        }
+        if (!lowerUrl.contains("main.php?get_id=56&act=10&go=inf")) {
+            return false;
+        }
+        return !lowerUrl.contains("ab_") && !lowerUrl.contains("af_");
+    }
+
+    private void suppressAutoTurnServerProbeForManualNavigation(String url) {
+        long now = System.currentTimeMillis();
+        long suppressUntil = now + AUTO_TURN_MANUAL_NAV_SUPPRESS_MS;
+        if (suppressUntil > autoTurnManualNavSuppressUntilMs) {
+            autoTurnManualNavSuppressUntilMs = suppressUntil;
+        }
+        Log.d(TAG, BG_TRACE_PREFIX + " requestAutoTurn: suppress server probe after manual go=inf navigation"
+                + ", suppressMs=" + AUTO_TURN_MANUAL_NAV_SUPPRESS_MS
+                + ", url=" + url);
+    }
+
     private void requestAutoTurnFromServerProbe(String reason) {
         long now = System.currentTimeMillis();
+        if (now < autoTurnManualNavSuppressUntilMs) {
+            Log.d(TAG, BG_TRACE_PREFIX + " requestAutoTurn: server probe suppressed by manual go=inf navigation, reason="
+                    + reason + ", remainingMs=" + (autoTurnManualNavSuppressUntilMs - now));
+            return;
+        }
         if (now - lastAutoTurnServerProbeAtMs < AUTO_TURN_SERVER_PROBE_MIN_INTERVAL_MS) {
             Log.d(TAG, BG_TRACE_PREFIX + " requestAutoTurn: server probe throttled, reason=" + reason
                     + ", remainingMs=" + (AUTO_TURN_SERVER_PROBE_MIN_INTERVAL_MS - (now - lastAutoTurnServerProbeAtMs)));
@@ -3503,6 +3531,15 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             boolean isNeverlandsHost = "neverlands.ru".equals(host) || host.endsWith(".neverlands.ru");
             boolean isForumHost = "forum.neverlands.ru".equals(host);
             String lowerUrl = url.toLowerCase(Locale.ROOT);
+            boolean isMainGameWebView = binding != null
+                    && binding.appBarMain != null
+                    && binding.appBarMain.contentMain != null
+                    && view == binding.appBarMain.contentMain.webView;
+            boolean isUserGesture = request != null && request.hasGesture();
+
+            if (isMainGameWebView && isNeverlandsHost && isUserGesture && isManualGoInfNavigationUrl(lowerUrl)) {
+                suppressAutoTurnServerProbeForManualNavigation(url);
+            }
 
             boolean isChatWebView = (binding != null
                     && binding.appBarMain != null

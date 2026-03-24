@@ -26,6 +26,7 @@ import ru.neverlands.abclient.model.ParsedDressed;
 import ru.neverlands.abclient.manager.AutoFunctionsManager;
 import ru.neverlands.abclient.manager.CharacterVitalsManager;
 import ru.neverlands.abclient.manager.FastActionManager;
+import ru.neverlands.abclient.manager.NeverApi;
 import ru.neverlands.abclient.manager.RoomManager;
 import ru.neverlands.abclient.manager.UnderAttackManager;
 import ru.neverlands.abclient.utils.AppVars;
@@ -909,9 +910,20 @@ public class MainPhp {
             android.util.Log.d(TAG, "AUTO_DRINK_TRACE skip: captcha dialog visible");
             return;
         }
-        InsHpSnapshot snapshot = pageSnapshot;
-        String snapshotSource = "ins_HP/page";
-        if (!hasPageSnapshot) {
+        InsHpSnapshot snapshot = null;
+        String snapshotSource = "";
+        if (allowPostFightFollowup) {
+            InsHpSnapshot pinfoSnapshot = tryBuildAutoDrinkSnapshotFromPinfo();
+            if (pinfoSnapshot != null) {
+                snapshot = pinfoSnapshot;
+                snapshotSource = "pinfo/post-fight";
+            }
+        }
+        if (snapshot == null) {
+            snapshot = pageSnapshot;
+            snapshotSource = "ins_HP/page";
+        }
+        if (snapshot == null || (snapshot.maxHp <= 0 && snapshot.maxMa <= 0)) {
             CharacterVitalsManager.Snapshot vitals = CharacterVitalsManager.snapshot();
             if (vitals.maxHp > 0 || vitals.maxMa > 0) {
                 InsHpSnapshot fallback = new InsHpSnapshot();
@@ -971,6 +983,57 @@ public class MainPhp {
                 + ", address=" + address
                 + ", snapshotSource=" + snapshotSource);
         FastActionManager.fastAttackMomentRestoreElixir();
+    }
+
+    /**
+     * One-shot post-fight синхронизация HP/MA через pinfo.
+     *
+     * Нужна как страховка на кейс, когда `ins_HP(...)` на первом небоевом кадре
+     * остаётся со старыми значениями и не отражает фактическое состояние после боя.
+     */
+    private static InsHpSnapshot tryBuildAutoDrinkSnapshotFromPinfo() {
+        if (AppVars.Profile == null) {
+            return null;
+        }
+        String nick = AppVars.Profile.UserNick != null ? AppVars.Profile.UserNick.trim() : "";
+        if (nick.isEmpty()) {
+            android.util.Log.d(TAG, "AUTO_DRINK_TRACE pinfo skip: empty nick");
+            return null;
+        }
+        NeverApi.PinfoVitals vitals = NeverApi.getPinfoVitalsFromPinfo(nick);
+        if (vitals == null) {
+            android.util.Log.d(TAG, "AUTO_DRINK_TRACE pinfo skip: request failed");
+            return null;
+        }
+        boolean hasHpMa = vitals.curHp != null
+                || vitals.maxHp != null
+                || vitals.curMa != null
+                || vitals.maxMa != null;
+        if (!hasHpMa) {
+            android.util.Log.d(TAG, "AUTO_DRINK_TRACE pinfo skip: hp/ma not present");
+            return null;
+        }
+        CharacterVitalsManager.Snapshot synced = CharacterVitalsManager.updateFromPinfo(
+                vitals,
+                "MainPhp.tryTriggerAutoDrinkRestoreElixir.postFightPinfo"
+        );
+        if (synced.maxHp <= 0 && synced.maxMa <= 0) {
+            android.util.Log.d(TAG, "AUTO_DRINK_TRACE pinfo skip: synced snapshot empty");
+            return null;
+        }
+        InsHpSnapshot snapshot = new InsHpSnapshot();
+        snapshot.curHp = synced.curHp;
+        snapshot.maxHp = synced.maxHp;
+        snapshot.curMa = synced.curMa;
+        snapshot.maxMa = synced.maxMa;
+        snapshot.intHp = synced.intHp;
+        snapshot.intMa = synced.intMa;
+        android.util.Log.d(TAG, "AUTO_DRINK_TRACE post-fight pinfo snapshot: hp="
+                + snapshot.curHp + "/" + snapshot.maxHp
+                + ", ma=" + snapshot.curMa + "/" + snapshot.maxMa
+                + ", tied=" + synced.tied
+                + ", source=" + synced.source);
+        return snapshot;
     }
 
     private static boolean isPostFightAutoDrinkFollowupAddress(String address) {
@@ -3142,6 +3205,7 @@ public class MainPhp {
 
         // C# parity (`DoSearchBox && !AutoMoving && DateTime.Now > NeverTimer`):
         // запускаем обход карты в поиске следующей "непосещенной" клетки.
+        boolean autoSearchRetryAfterMapSync = false;
         if (!isNonCombatAutoPausedByFastAction() && !isFightFrame && !isFightTopFrame && AppVars.DoSearchBox && !AppVars.AutoMoving) {
             String currentMapLocation = AppVars.Profile != null ? AppVars.Profile.MapLocation : null;
             boolean hasMapPayload = html.contains("var map = [[");
@@ -3184,6 +3248,9 @@ public class MainPhp {
                 } else {
                     android.util.Log.d(TAG, "AUTO_SEARCH_BOX_TRACE no destination yet, mapLocation="
                             + currentMapLocation + ", address=" + address + ", hasMapPayload=" + hasMapPayload);
+                    if (hasMapPayload && (currentMapLocation == null || currentMapLocation.isEmpty())) {
+                        autoSearchRetryAfterMapSync = true;
+                    }
                 }
             }
         }
@@ -3227,6 +3294,24 @@ public class MainPhp {
                 android.util.Log.d(TAG, "FAST_ACTION_TRACE map reached, clear return-to-map pending flag");
             }
             html = MapAjax.process(html);
+            if (autoSearchRetryAfterMapSync
+                    && !isNonCombatAutoPausedByFastAction()
+                    && AppVars.DoSearchBox
+                    && !AppVars.AutoMoving) {
+                String refreshedMapLocation = AppVars.Profile != null ? AppVars.Profile.MapLocation : null;
+                long retryNowMs = System.currentTimeMillis();
+                if (AppVars.NeverTimer <= 0L || retryNowMs > AppVars.NeverTimer) {
+                    String retryDest = MapAjax.findNextDestForBox(refreshedMapLocation);
+                    if (retryDest != null && !retryDest.isEmpty()) {
+                        startAutoSearchBoxMoving(retryDest);
+                        android.util.Log.d(TAG, "AUTO_SEARCH_BOX_TRACE retry-after-map-sync start moving to "
+                                + retryDest + ", mapLocation=" + refreshedMapLocation + ", address=" + address);
+                    } else {
+                        android.util.Log.d(TAG, "AUTO_SEARCH_BOX_TRACE retry-after-map-sync still no destination, mapLocation="
+                                + refreshedMapLocation + ", address=" + address);
+                    }
+                }
+            }
         }
         if (!(isFightFrame || isFightTopFrame)) {
             AppVars.ContentMainPhp = html;

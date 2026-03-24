@@ -1643,6 +1643,15 @@ public class WebAppInterface {
                 + " intHP=" + snapshot.intHp + " intMA=" + snapshot.intMa);
     }
 
+    /**
+     * C#-совместимый алиас имени bridge-метода для /js/hp.js.
+     * Серверный скрипт зовёт `window.external.ShowHpMaTimers(...)` (PascalCase).
+     */
+    @JavascriptInterface
+    public void ShowHpMaTimers(String s, float curHP, int maxHP, float intHP, float curMA, int maxMA, float intMA) {
+        showHpMaTimers(s, curHP, maxHP, intHP, curMA, maxMA, intMA);
+    }
+
     @JavascriptInterface
     public void startBulkOldSell(String name, String price) {
         // TODO: Pass this data to a ViewModel
