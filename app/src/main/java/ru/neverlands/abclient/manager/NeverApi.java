@@ -51,15 +51,23 @@ public class NeverApi {
         public final Integer maxMa;
         public final Integer curTire;
         public final int[] poisonAndWounds;
+        // 0=no wounds, 1=light, 2=medium, 3=heavy, 4=battle
+        public final Integer topWoundType;
 
         public PinfoVitals(Integer curHp, Integer maxHp, Integer curMa, Integer maxMa, Integer curTire,
                            int[] poisonAndWounds) {
+            this(curHp, maxHp, curMa, maxMa, curTire, poisonAndWounds, null);
+        }
+
+        public PinfoVitals(Integer curHp, Integer maxHp, Integer curMa, Integer maxMa, Integer curTire,
+                           int[] poisonAndWounds, Integer topWoundType) {
             this.curHp = curHp;
             this.maxHp = maxHp;
             this.curMa = curMa;
             this.maxMa = maxMa;
             this.curTire = curTire;
             this.poisonAndWounds = normalizePoisonAndWounds(poisonAndWounds);
+            this.topWoundType = normalizeTopWoundType(topWoundType);
         }
     }
 
@@ -170,7 +178,8 @@ public class NeverApi {
                         + ", hp=" + safeInt(vitals.curHp) + "/" + safeInt(vitals.maxHp)
                         + ", ma=" + safeInt(vitals.curMa) + "/" + safeInt(vitals.maxMa)
                         + ", tied=" + safeInt(vitals.curTire)
-                        + ", pw=" + safePoisonAndWounds(vitals.poisonAndWounds));
+                        + ", pw=" + safePoisonAndWounds(vitals.poisonAndWounds)
+                        + ", topWound=" + safeWoundType(vitals.topWoundType));
             } else {
                 android.util.Log.w(TAG, "AUTO_BLAZ_TRACE pinfo vitals sync failed: value not found for nick=" + nick);
             }
@@ -223,6 +232,7 @@ public class NeverApi {
             Integer maxMa = null;
             Integer curTire = null;
             int[] poisonAndWounds = parsePoisonAndWoundsFromPinfoEff(html);
+            Integer topWoundType = parseTopWoundTypeFromPinfoEff(html);
 
             Matcher hpmpMatcher = Pattern.compile("(?is)\\bhpmp\\b\\s*=\\s*\\[(.*?)\\]").matcher(html);
             if (hpmpMatcher.find()) {
@@ -247,10 +257,10 @@ public class NeverApi {
             }
 
             if (curHp == null && maxHp == null && curMa == null && maxMa == null
-                    && curTire == null && poisonAndWounds == null) {
+                    && curTire == null && poisonAndWounds == null && topWoundType == null) {
                 return null;
             }
-            return new PinfoVitals(curHp, maxHp, curMa, maxMa, curTire, poisonAndWounds);
+            return new PinfoVitals(curHp, maxHp, curMa, maxMa, curTire, poisonAndWounds, topWoundType);
         } catch (Exception e) {
             android.util.Log.w(TAG, "AUTO_BLAZ_TRACE parsePinfoVitalsFromPinfoHtml failed", e);
             return null;
@@ -305,6 +315,68 @@ public class NeverApi {
         }
     }
 
+    /**
+     * Returns top wound type from pinfo `var eff`:
+     * 4=battle, 3=heavy, 2=medium, 1=light, 0=no wounds.
+     * Returns null if `eff` block is absent.
+     */
+    private static Integer parseTopWoundTypeFromPinfoEff(String html) {
+        try {
+            Matcher effMatcher = Pattern.compile("(?is)\\bvar\\s+eff\\s*=\\s*(\\[[\\s\\S]*?\\]);").matcher(html);
+            if (!effMatcher.find()) {
+                return null;
+            }
+            String effPayload = effMatcher.group(1);
+            boolean hasBattle = false;
+            boolean hasHeavy = false;
+            boolean hasMedium = false;
+            boolean hasLight = false;
+
+            Matcher codeMatcher = Pattern.compile("\\[(\\d{1,3})\\s*,").matcher(effPayload);
+            while (codeMatcher.find()) {
+                int code;
+                try {
+                    code = Integer.parseInt(codeMatcher.group(1));
+                } catch (Exception ignored) {
+                    continue;
+                }
+                switch (code) {
+                    case 1:
+                        hasBattle = true;
+                        break;
+                    case 2:
+                        hasHeavy = true;
+                        break;
+                    case 3:
+                        hasMedium = true;
+                        break;
+                    case 4:
+                        hasLight = true;
+                        break;
+                    default:
+                        break;
+                }
+            }
+
+            if (hasBattle) {
+                return 4;
+            }
+            if (hasHeavy) {
+                return 3;
+            }
+            if (hasMedium) {
+                return 2;
+            }
+            if (hasLight) {
+                return 1;
+            }
+            return 0;
+        } catch (Exception e) {
+            android.util.Log.w(TAG, "AUTO_BLAZ_TRACE parseTopWoundTypeFromPinfoEff failed", e);
+            return null;
+        }
+    }
+
     private static Integer parseIntToken(String token) {
         if (token == null || token.isEmpty()) {
             return null;
@@ -322,6 +394,20 @@ public class NeverApi {
 
     private static String safeInt(Integer value) {
         return value == null ? "?" : String.valueOf(value);
+    }
+
+    private static Integer normalizeTopWoundType(Integer woundType) {
+        if (woundType == null) {
+            return null;
+        }
+        int normalized = woundType;
+        if (normalized < 0) {
+            normalized = 0;
+        }
+        if (normalized > 4) {
+            normalized = 4;
+        }
+        return normalized;
     }
 
     private static int[] normalizePoisonAndWounds(int[] poisonAndWounds) {
@@ -344,6 +430,10 @@ public class NeverApi {
                 + "," + poisonAndWounds[LIGHT_WOUND_INDEX]
                 + "," + poisonAndWounds[MEDIUM_WOUND_INDEX]
                 + "," + poisonAndWounds[HEAVY_WOUND_INDEX] + "]";
+    }
+
+    private static String safeWoundType(Integer woundType) {
+        return woundType == null ? "n/a" : String.valueOf(woundType);
     }
 
     private static int clampPercent(int value) {

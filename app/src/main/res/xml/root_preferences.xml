@@ -72,6 +72,42 @@
             app:defaultValue="0" />
     </PreferenceCategory>
 
+    <PreferenceCategory app:title="Лечение">
+
+        <SwitchPreferenceCompat
+            app:key="auto_cure_use_self_elixir"
+            app:title="Лечить свои травмы Эликсиром"
+            app:summary="Сначала пробовать «Эликсир Мгновенного Исцеления», затем fallback на аптечки"
+            app:defaultValue="false" />
+
+        <SwitchPreferenceCompat
+            app:key="auto_cure_elixir_light"
+            app:title="Легкие травмы"
+            app:summary="Разрешить эликсир для легких травм"
+            app:dependency="auto_cure_use_self_elixir"
+            app:defaultValue="true" />
+
+        <SwitchPreferenceCompat
+            app:key="auto_cure_elixir_medium"
+            app:title="Средние травмы"
+            app:summary="Разрешить эликсир для средних травм"
+            app:dependency="auto_cure_use_self_elixir"
+            app:defaultValue="true" />
+
+        <SwitchPreferenceCompat
+            app:key="auto_cure_elixir_heavy"
+            app:title="Тяжелые травмы"
+            app:summary="Разрешить эликсир для тяжелых травм"
+            app:dependency="auto_cure_use_self_elixir"
+            app:defaultValue="true" />
+
+        <Preference
+            app:key="auto_cure_battle_info"
+            app:title="Боевая травма"
+            app:summary="Лечится только Боевой аптечкой (эликсир не применяется)"
+            app:selectable="false" />
+    </PreferenceCategory>
+
     <PreferenceCategory app:title="Инвентарь">
 
         <SwitchPreferenceCompat

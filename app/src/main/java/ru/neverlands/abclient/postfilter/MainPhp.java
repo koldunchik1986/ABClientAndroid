@@ -18,6 +18,7 @@ import android.media.Ringtone;
 import android.media.RingtoneManager;
 import android.net.Uri;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
+import androidx.preference.PreferenceManager;
 import ru.neverlands.abclient.lez.LezFight;
 import ru.neverlands.abclient.model.AutoboiState;
 import ru.neverlands.abclient.model.InvComparer;
@@ -55,6 +56,11 @@ public class MainPhp {
     private static final long AUTO_FISH_WEAR_LOOP_WINDOW_MS = 20_000L;
     private static final String BLISS_ELIXIR_NAME = "\u042D\u043B\u0438\u043A\u0441\u0438\u0440 \u0411\u043B\u0430\u0436\u0435\u043D\u0441\u0442\u0432\u0430";
     private static final String AUTO_CURE_POISON_POTION_NAME = "Зелье Лечения Отравлений";
+    private static final String AUTO_CURE_SELF_ELIXIR_NAME = "Эликсир Мгновенного Исцеления";
+    private static final String PREF_AUTO_CURE_USE_SELF_ELIXIR = "auto_cure_use_self_elixir";
+    private static final String PREF_AUTO_CURE_ELIXIR_LIGHT = "auto_cure_elixir_light";
+    private static final String PREF_AUTO_CURE_ELIXIR_MEDIUM = "auto_cure_elixir_medium";
+    private static final String PREF_AUTO_CURE_ELIXIR_HEAVY = "auto_cure_elixir_heavy";
     private static final String MAP_HEAVY_INJURY_POPUP_MARKER = "Вы не можете перемещаться! У Вас тяж";
     private static final int POISON_INDEX = 0;
     private static final int LIGHT_WOUND_INDEX = 1;
@@ -1220,6 +1226,57 @@ public class MainPhp {
             return false;
         }
     }
+
+    /**
+     * Включен ли режим "свои травмы лечить Эликсиром Мгновенного Исцеления" в общих настройках.
+     */
+    private static boolean isAutoCureSelfElixirEnabledByPreference() {
+        return getDefaultPreferenceBoolean(PREF_AUTO_CURE_USE_SELF_ELIXIR, false);
+    }
+
+    /**
+     * Разрешено ли лечение конкретного типа небоевой травмы через эликсир.
+     *
+     * `cureTravm` parity:
+     * - "1" = легкая травма
+     * - "2" = средняя травма
+     * - "3" = тяжелая травма
+     * - "4" = боевая травма (эликсир не применяется, только боевая аптечка)
+     */
+    private static boolean isAutoCureSelfElixirEnabledForWound(String cureTravm) {
+        if (!isAutoCureSelfElixirEnabledByPreference()) {
+            return false;
+        }
+        if (cureTravm == null || cureTravm.isEmpty()) {
+            return false;
+        }
+        switch (cureTravm) {
+            case "1":
+                return getDefaultPreferenceBoolean(PREF_AUTO_CURE_ELIXIR_LIGHT, true);
+            case "2":
+                return getDefaultPreferenceBoolean(PREF_AUTO_CURE_ELIXIR_MEDIUM, true);
+            case "3":
+                return getDefaultPreferenceBoolean(PREF_AUTO_CURE_ELIXIR_HEAVY, true);
+            default:
+                return false;
+        }
+    }
+
+    /**
+     * Читает флаг из default SharedPreferences (`SettingsActivity` / `root_preferences.xml`).
+     */
+    private static boolean getDefaultPreferenceBoolean(String key, boolean fallback) {
+        try {
+            android.content.Context context = AppVars.getContext();
+            if (context == null || key == null || key.isEmpty()) {
+                return fallback;
+            }
+            return PreferenceManager.getDefaultSharedPreferences(context).getBoolean(key, fallback);
+        } catch (Exception e) {
+            android.util.Log.w(TAG, "getDefaultPreferenceBoolean failed: key=" + key, e);
+            return fallback;
+        }
+    }
     /**
      * Чтение умения "Рыбалка" на странице `mselect=1` (C# parity для `AutoFishCheckUm`).
      */
@@ -2227,6 +2284,84 @@ public class MainPhp {
     }
 
     /**
+     * Выполняет внешний запрос лечения (`AppVars.CureNeed`) через аптечки (`wca=85`, doctorform).
+     *
+     * Источники запроса:
+     * - RoomManager авто-скан (`self -> friends -> neutrals`);
+     * - ручной запрос (C#-аналог контекстного меню травм).
+     */
+    private static String mainPhpExternalRequestedCureStep(String address, String html) {
+        if (!AppVars.CureNeed) {
+            return null;
+        }
+        if (!isAutoCureEnabledByPreference()) {
+            clearExternalCureRequest("auto-cure-disabled");
+            return null;
+        }
+
+        String targetNick = AppVars.CureNick == null ? "" : AppVars.CureNick.trim();
+        String cureTravm = AppVars.CureTravm == null ? "" : AppVars.CureTravm.trim();
+        if (targetNick.isEmpty() || cureTravm.isEmpty()) {
+            clearExternalCureRequest("empty-target-or-type");
+            return null;
+        }
+        if (!("1".equals(cureTravm) || "2".equals(cureTravm) || "3".equals(cureTravm) || "4".equals(cureTravm))) {
+            clearExternalCureRequest("invalid-wound-type");
+            return null;
+        }
+
+        String invHtml = mainPhpFindInvWithFallback(html, "&im=0&wca=85", address);
+        if (invHtml != null && !invHtml.isEmpty()) {
+            return invHtml;
+        }
+        if (!(mainPhpIsInv(html) || isInventoryAddress(address))) {
+            return null;
+        }
+        if (!mainPhpIsInv(html)) {
+            return null;
+        }
+        if (!inventoryAddressMatchesFilter(address, "&im=0&wca=85")) {
+            return buildRedirectHtml("Переключение на аптечки", "main.php?im=0&wca=85");
+        }
+
+        String cureHtml = mainPhpBuildWoundCureForm(html, cureTravm, targetNick);
+        if (cureHtml == null || cureHtml.isEmpty()) {
+            sendInventoryChatMessage(buildServerChatTimeHtml()
+                    + "<font color=#FF0000>Подходящая аптечка не найдена! Действие отменено.</font>");
+            clearExternalCureRequest("doctorform-not-found");
+            return null;
+        }
+
+        String woundLabel;
+        switch (cureTravm) {
+            case "1":
+                woundLabel = "легкая";
+                break;
+            case "2":
+                woundLabel = "средняя";
+                break;
+            case "3":
+                woundLabel = "тяжелая";
+                break;
+            default:
+                woundLabel = "боевая";
+                break;
+        }
+        String safeNick = targetNick.replace("<", "&lt;").replace(">", "&gt;");
+        sendInventoryChatMessage(buildServerChatTimeHtml()
+                + "<font color=#004bbb>Лечим " + safeNick + " (" + woundLabel + " травма)...</font>");
+        clearExternalCureRequest("submitted");
+        return cureHtml;
+    }
+
+    private static void clearExternalCureRequest(String reason) {
+        AppVars.CureNeed = false;
+        AppVars.CureNick = "";
+        AppVars.CureTravm = "";
+        android.util.Log.d(TAG, "AUTO_CURE_TRACE clear external request: reason=" + reason);
+    }
+
+    /**
      * C# parity (`MainPhp.cs` + `MainPhpAutoCure.cs` + `MainPhpCure.cs`):
      * 1) яд (`wca=27`, magicreform);
      * 2) небоевые травмы (`wca=85`, doctorform).
@@ -2286,20 +2421,6 @@ public class MainPhp {
             return poisonCureHtml;
         }
 
-        String invHtml = mainPhpFindInvWithFallback(html, "&im=0&wca=85", address);
-        if (invHtml != null && !invHtml.isEmpty()) {
-            return invHtml;
-        }
-        if (!(mainPhpIsInv(html) || isInventoryAddress(address))) {
-            return null;
-        }
-        if (!mainPhpIsInv(html)) {
-            return null;
-        }
-        if (!inventoryAddressMatchesFilter(address, "&im=0&wca=85")) {
-            return buildRedirectHtml("Переключение на аптечки", "main.php?im=0&wca=85");
-        }
-
         String cureTravm;
         int woundIndex;
         String woundLabel;
@@ -2315,6 +2436,30 @@ public class MainPhp {
             cureTravm = "3";
             woundIndex = HEAVY_WOUND_INDEX;
             woundLabel = "тяжелую";
+        }
+
+        // Опциональный приоритет self-лечения эликсиром (Настройки -> Лечение).
+        // Важно: касается только лечения себя и только небоевых травм (1/2/3).
+        // Для боевой травмы (4) эликсир не применяется.
+        if (isAutoCureSelfElixirEnabledForWound(cureTravm)) {
+            String selfElixirCureHtml = mainPhpTrySelfWoundCureByElixir(address, html, woundLabel);
+            if (selfElixirCureHtml != null && !selfElixirCureHtml.isEmpty()) {
+                return selfElixirCureHtml;
+            }
+        }
+
+        String invHtml = mainPhpFindInvWithFallback(html, "&im=0&wca=85", address);
+        if (invHtml != null && !invHtml.isEmpty()) {
+            return invHtml;
+        }
+        if (!(mainPhpIsInv(html) || isInventoryAddress(address))) {
+            return null;
+        }
+        if (!mainPhpIsInv(html)) {
+            return null;
+        }
+        if (!inventoryAddressMatchesFilter(address, "&im=0&wca=85")) {
+            return buildRedirectHtml("Переключение на аптечки", "main.php?im=0&wca=85");
         }
 
         String woundCureHtml = mainPhpBuildWoundCureForm(html, cureTravm, nick);
@@ -2377,6 +2522,79 @@ public class MainPhp {
                 + "<input name=post_id type=hidden value=\"46\">"
                 + "<input name=fornickname type=hidden value=\"" + selfNick + "\">"
                 + "</form><script language=\"JavaScript\">document.ff.submit();</script></body></html>";
+    }
+
+    /**
+     * Пытается вылечить свою травму "Эликсиром Мгновенного Исцеления" (вкладка `im=6`).
+     *
+     * Алгоритм:
+     * - идем в инвентарь эликсиров;
+     * - если confirm-ссылка на эликсир присутствует, выполняем GET-redirect;
+     * - если эликсир отсутствует, возвращаем `null` и даем fallback на обычные аптечки (`wca=85`).
+     */
+    private static String mainPhpTrySelfWoundCureByElixir(String address, String html, String woundLabel) {
+        String invHtml = mainPhpFindInvWithFallback(html, "&im=6", address);
+        if (invHtml != null && !invHtml.isEmpty()) {
+            return invHtml;
+        }
+        if (!(mainPhpIsInv(html) || isInventoryAddress(address))) {
+            return null;
+        }
+        if (!mainPhpIsInv(html)) {
+            return null;
+        }
+        if (!inventoryAddressMatchesFilter(address, "&im=6")) {
+            return buildRedirectHtml("Переключение на эликсиры", "main.php?im=6");
+        }
+
+        String cureHtml = mainPhpBuildSelfWoundCureElixirRedirect(html);
+        if (cureHtml == null || cureHtml.isEmpty()) {
+            return null;
+        }
+
+        sendInventoryChatMessage(buildServerChatTimeHtml()
+                + "<font color=#004bbb>Лечим свою " + woundLabel + " травму "
+                + AUTO_CURE_SELF_ELIXIR_NAME + "...</font>");
+        return cureHtml;
+    }
+
+    /**
+     * Формирует auto-redirect на GET-ссылку применения `Эликсир Мгновенного Исцеления`.
+     *
+     * Browser parity (`HealthElik.har`):
+     * - используется confirm-блок `Использовать <...> сейчас?`;
+     * - nickname не передается (self-use).
+     */
+    private static String mainPhpBuildSelfWoundCureElixirRedirect(String html) {
+        if (html == null || html.isEmpty()) {
+            return null;
+        }
+        String prompt = "Использовать " + AUTO_CURE_SELF_ELIXIR_NAME + " сейчас?";
+        int promptPos = html.toLowerCase(Locale.ROOT).indexOf(prompt.toLowerCase(Locale.ROOT));
+        if (promptPos == -1) {
+            return null;
+        }
+
+        int linkStart = html.indexOf("='", promptPos);
+        if (linkStart == -1) {
+            return null;
+        }
+        linkStart += 2;
+        int linkEnd = html.indexOf("'", linkStart);
+        if (linkEnd == -1) {
+            return null;
+        }
+        String link = html.substring(linkStart, linkEnd).trim();
+        if (link.isEmpty()) {
+            return null;
+        }
+
+        return HtmlUtils.GENERATED_PAGE_MARKER
+                + "<html><head><meta http-equiv=\"Content-Type\" content=\"text/html; charset=windows-1251\">"
+                + "<title>ABClient</title></head><body>"
+                + "Используем " + AUTO_CURE_SELF_ELIXIR_NAME + "..."
+                + "<script language=\"JavaScript\">window.location = \"" + link + "\";</script>"
+                + "</body></html>";
     }
 
     private static String mainPhpBuildWoundCureForm(String html, String cureTravm, String targetNick) {
@@ -3202,6 +3420,17 @@ public class MainPhp {
         // Проверка автопитья после получения верхнего фрейма персонажа.
         // При совпадении условий запускает единый fast-action "Эликсир Восстановления".
         tryTriggerAutoDrinkRestoreElixir(address, html, isFightFrame, isFightTopFrame);
+        // C# parity (`AppVars.CureNeed/CureNick/CureTravm`):
+        // внешний запрос лечения (self/friend/neutral) из RoomManager/UI.
+        if (!isNonCombatAutoPausedByFastAction()
+                && !isFightFrame
+                && !isFightTopFrame
+                && !AppVars.FastNeed) {
+            String requestedCureHtml = mainPhpExternalRequestedCureStep(address, html);
+            if (requestedCureHtml != null && !requestedCureHtml.isEmpty()) {
+                return Russian.getBytes(requestedCureHtml);
+            }
+        }
         // C# parity: AutoCure (яд/небоевые травмы) выполняется в main.php-потоке
         // до fast-ветки, если нет активного fast-action и нет боевого кадра.
         if (!isNonCombatAutoPausedByFastAction()
