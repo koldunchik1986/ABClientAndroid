@@ -741,7 +741,8 @@ public class FastActionManager {
         if (isElixirFastId(fastId) && elixirRemainingAfterUse != null) {
             elixirRemainSuffix = " Остаток: <b><font color=#01A9DB>" + elixirRemainingAfterUse + "</font></b>";
         }
-        return "<font color=#336699>Запрос отправлен: <b>" + displayName + "</b>" + target + "." + elixirRemainSuffix + "</font>";
+        return buildServerChatTimeHtml()
+                + "<font color=#336699>Запрос отправлен: <b>" + displayName + "</b>" + target + "." + elixirRemainSuffix + "</font>";
     }
 
     /**
@@ -796,8 +797,13 @@ public class FastActionManager {
                 + ", remaining=" + elixirRemainingAfterUse
                 + ", estimateMs=" + estimateMs
                 + ", hhmm=" + hhmm);
-        return "<font color=#336699>Авто-Клад: Блаженства примерно хватит на <b><font color=#01A9DB>"
+        return buildServerChatTimeHtml()
+                + "<font color=#336699>Авто-Клад: Блаженства примерно хватит на <b><font color=#01A9DB>"
                 + hhmm + "</font></b> времени.</font>";
+    }
+
+    private static String buildServerChatTimeHtml() {
+        return MainPhp.buildServerChatTimeHtmlExternal();
     }
 
     private static boolean isAutoTreasureActiveNow() {

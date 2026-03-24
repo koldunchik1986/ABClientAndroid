@@ -4684,6 +4684,16 @@ public class MainPhp {
         String timeStr = new SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(serverTime);
         return "<font class=chattime>&nbsp;" + timeStr + "&nbsp;</font> ";
     }
+
+    /**
+     * Внешний доступ к стандартному чат-таймштампу в серверной шкале времени.
+     *
+     * Используется менеджерами вне `postfilter` (например, FastActionManager),
+     * чтобы все системные сообщения имели единый формат времени.
+     */
+    public static String buildServerChatTimeHtmlExternal() {
+        return buildServerChatTimeHtml();
+    }
     /**
      * Внешняя точка входа для анонса нового боя из путей, которые обходят mainPhpFight NEW-FIGHT ветку
      * (например, JS-bridge -> FightViewModel).
