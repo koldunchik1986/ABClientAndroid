@@ -424,6 +424,13 @@ public class UserConfig {
                         this.UserPassword = parser.getAttributeValue(null, "password");
                         String isEncryptedStr = parser.getAttributeValue(null, "isEncrypted");
                         this.isEncrypted = "true".equalsIgnoreCase(isEncryptedStr);
+                        this.UserAutoLogon = parseBoolAttr(parser, "autologon", this.UserAutoLogon);
+                        long parsedLastLogin = parseLongAttr(parser, "lastlogon", 0L);
+                        // Fallback для старых Android-профилей без `user@lastlogon`.
+                        if (parsedLastLogin <= 0L) {
+                            parsedLastLogin = profileFile.lastModified();
+                        }
+                        this.LastLogin = parsedLastLogin;
                     } else if ("contactentry".equals(tagName)) {
                         String name = parser.getAttributeValue(null, "name");
                         String classIdStr = parser.getAttributeValue(null, "classid");
@@ -766,7 +773,8 @@ public class UserConfig {
         if (!profilesDir.exists()) {
             profilesDir.mkdirs();
         }
-        File profileFile = new File(profilesDir, this.UserNick + ".profile");
+        String profileFileBaseName = resolveProfileFileBaseName();
+        File profileFile = new File(profilesDir, profileFileBaseName + ".profile");
         try (FileOutputStream fos = new FileOutputStream(profileFile)) {
             XmlSerializer serializer = Xml.newSerializer();
             serializer.setOutput(fos, "UTF-8");
@@ -778,6 +786,8 @@ public class UserConfig {
             serializer.attribute(null, "name", this.UserNick);
             serializer.attribute(null, "password", this.UserPassword);
             serializer.attribute(null, "isEncrypted", String.valueOf(this.isEncrypted));
+            serializer.attribute(null, "autologon", String.valueOf(this.UserAutoLogon));
+            serializer.attribute(null, "lastlogon", String.valueOf(this.LastLogin));
             serializer.endTag(null, "user");
 
             // C# parity: сериализуем proxy-тег профиля в формате
@@ -988,10 +998,23 @@ public class UserConfig {
     public void delete(Context context) {
         File profilesDir = context.getExternalFilesDir("profiles");
         if (profilesDir == null) return;
-        File profileFile = new File(profilesDir, this.UserNick + ".profile");
+        String profileFileBaseName = resolveProfileFileBaseName();
+        File profileFile = new File(profilesDir, profileFileBaseName + ".profile");
         if (profileFile.exists()) {
             profileFile.delete();
         }
+    }
+
+    private String resolveProfileFileBaseName() {
+        String candidate = id != null ? id.trim() : "";
+        if (candidate.isEmpty()) {
+            candidate = UserNick != null ? UserNick.trim() : "";
+        }
+        if (candidate.isEmpty()) {
+            candidate = "profile_" + System.currentTimeMillis();
+        }
+        this.id = candidate;
+        return candidate;
     }
 
     /**
@@ -1009,6 +1032,12 @@ public class UserConfig {
         String val = getAttributeValueIgnoreCase(parser, attr);
         if (val == null || val.isEmpty()) return defaultVal;
         try { return Integer.parseInt(val); } catch (NumberFormatException e) { return defaultVal; }
+    }
+
+    private static long parseLongAttr(XmlPullParser parser, String attr, long defaultVal) {
+        String val = getAttributeValueIgnoreCase(parser, attr);
+        if (val == null || val.isEmpty()) return defaultVal;
+        try { return Long.parseLong(val); } catch (NumberFormatException e) { return defaultVal; }
     }
 
     /**

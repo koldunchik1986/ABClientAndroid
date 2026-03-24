@@ -22,7 +22,7 @@
     <string name="login_button">Войти</string>
     <string name="login_username">Имя пользователя</string>
     <string name="login_password">Пароль</string>
-    <string name="login_remember">Запомнить меня</string>
+    <string name="login_remember">Запомнить пароль</string>
     <string name="login_error">Ошибка авторизации</string>
     <string name="login_edit_profile">Редактировать</string>
     <string name="login_add_profile">Добавить</string>

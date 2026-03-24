@@ -7,10 +7,10 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.text.TextUtils;
 import android.webkit.CookieManager;
 import android.view.LayoutInflater;
 import android.view.View;
-import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.EditText;
 import android.widget.ImageView;
@@ -49,6 +49,8 @@ public class LoginActivity extends AppCompatActivity {
     private static final long COOKIE_WARMUP_DELAY_MS = 250L;
     private static final int AUTH_MAX_RETRY_ATTEMPTS = 1;
     private static final long AUTH_RETRY_DELAY_MS = 1200L;
+    private static final String LOGIN_UI_PREFS = "login_ui_state";
+    private static final String KEY_LAST_PROFILE_ID = "last_profile_id";
     /**
      * При длительном полном сетевом timeout авто-retry только удваивает время ожидания входа.
      * Поэтому для "длинных" таймаутов повтор не выполняем.
@@ -174,41 +176,77 @@ public class LoginActivity extends AppCompatActivity {
             profiles.add(selectedProfile);
         } else {
             // Ищем последний использованный профиль
-            UserConfig lastUsed = profiles.get(0);
-            for (UserConfig profile : profiles) {
-                if (profile.LastLogin > lastUsed.LastLogin) {
-                    lastUsed = profile;
+            String persistedProfileId = getSharedPreferences(LOGIN_UI_PREFS, MODE_PRIVATE)
+                    .getString(KEY_LAST_PROFILE_ID, "");
+            UserConfig persistedProfile = findProfileById(persistedProfileId);
+            if (persistedProfile != null) {
+                selectedProfile = persistedProfile;
+            } else {
+                UserConfig lastUsed = profiles.get(0);
+                for (UserConfig profile : profiles) {
+                    if (profile.LastLogin > lastUsed.LastLogin) {
+                        lastUsed = profile;
+                    }
                 }
+                selectedProfile = lastUsed;
             }
-            selectedProfile = lastUsed;
         }
 
         ArrayAdapter<UserConfig> adapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_item, profiles);
         adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         binding.profileSpinner.setAdapter(adapter);
 
-        int selection = profiles.indexOf(selectedProfile);
-        if (selection != -1) {
-            binding.profileSpinner.setSelection(selection);
+        // Для AutoCompleteTextView выбранный профиль выставляется через текст,
+        // а не через индекс (setSelection у TextView управляет позицией курсора).
+        if (selectedProfile != null) {
+            binding.profileSpinner.setText(selectedProfile.toString(), false);
+            applySelectedProfile(selectedProfile);
         }
 
-        binding.profileSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
-            @Override
-            public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+        binding.profileSpinner.setOnItemClickListener((parent, view, position, id) -> {
+            if (position >= 0 && position < profiles.size()) {
                 selectedProfile = profiles.get(position);
-                if (selectedProfile.isEncrypted) {
-                    binding.passwordInputLayout.setHint("Пароль шифрования");
-                    binding.passwordEditText.setText(""); // Очищаем поле при смене на шифрованный профиль
-                } else {
-                    binding.passwordInputLayout.setHint("Пароль");
-                    binding.passwordEditText.setText(selectedProfile.UserPassword);
-                }
-            }
-
-            @Override
-            public void onNothingSelected(AdapterView<?> parent) {
+                applySelectedProfile(selectedProfile);
             }
         });
+    }
+
+    private void applySelectedProfile(UserConfig profile) {
+        if (profile == null) return;
+
+        if (profile.isEncrypted) {
+            binding.passwordInputLayout.setHint("Пароль шифрования");
+            binding.passwordEditText.setText("");
+            binding.rememberCheckBox.setChecked(false);
+            return;
+        }
+
+        binding.passwordInputLayout.setHint("Пароль");
+        String savedPassword = profile.UserPassword != null ? profile.UserPassword : "";
+        binding.passwordEditText.setText(savedPassword);
+        binding.rememberCheckBox.setChecked(profile.UserAutoLogon && !TextUtils.isEmpty(savedPassword));
+    }
+
+    private UserConfig findProfileById(String profileId) {
+        if (TextUtils.isEmpty(profileId) || profiles == null || profiles.isEmpty()) {
+            return null;
+        }
+        for (UserConfig profile : profiles) {
+            if (profile != null && profileId.equals(profile.id)) {
+                return profile;
+            }
+        }
+        return null;
+    }
+
+    private void persistLastProfileId(UserConfig profile) {
+        if (profile == null || TextUtils.isEmpty(profile.id)) {
+            return;
+        }
+        getSharedPreferences(LOGIN_UI_PREFS, MODE_PRIVATE)
+                .edit()
+                .putString(KEY_LAST_PROFILE_ID, profile.id)
+                .apply();
     }
 
     private void openProfileActivity(UserConfig profile) {
@@ -237,6 +275,9 @@ public class LoginActivity extends AppCompatActivity {
         binding.loginButton.setEnabled(false);
 
         final UserConfig profileToLogin = selectedProfile;
+        if (!profileToLogin.isEncrypted) {
+            profileToLogin.UserAutoLogon = binding.rememberCheckBox.isChecked();
+        }
         String gamePassword;
 
         if (profileToLogin.isEncrypted) {
@@ -477,14 +518,16 @@ public class LoginActivity extends AppCompatActivity {
     private void onLoginSuccess(List<HttpCookie> cookies, String gamePassword, UserConfig profileToLogin) {
         // Сохраняем куки для последующей передачи в WebView
         AppVars.lastCookies = cookies;
+        profileToLogin.LastLogin = currentDotNetTicks();
 
         // Пароль сохраняется только после успешного входа
-        if (!profileToLogin.isEncrypted && binding.rememberCheckBox.isChecked()) {
+        if (!profileToLogin.isEncrypted && profileToLogin.UserAutoLogon) {
             profileToLogin.UserPassword = gamePassword;
         } else if (!profileToLogin.isEncrypted) {
             profileToLogin.UserPassword = "";
         }
         profileToLogin.save(LoginActivity.this);
+        persistLastProfileId(profileToLogin);
 
         // Устанавливаем глобальный профиль для сессии
         AppVars.Profile = profileToLogin;
@@ -552,6 +595,11 @@ public class LoginActivity extends AppCompatActivity {
                 }
             });
         }, 500);
+    }
+
+    private static long currentDotNetTicks() {
+        long unixEpochMs = System.currentTimeMillis();
+        return (unixEpochMs + 62135596800000L) * 10_000L;
     }
 
     private void showCaptchaDialog(String username, String gamePassword, String captchaUrl, String vcode, UserConfig profileToLogin) {
