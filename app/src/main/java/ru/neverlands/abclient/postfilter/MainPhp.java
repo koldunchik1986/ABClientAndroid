@@ -4972,6 +4972,24 @@ public class MainPhp {
         android.util.Log.d(TAG, "logFightVar: " + varName + " = " + value);
     }
     /**
+     * Синхронизирует runtime-кэш инвентаря (`AppVars.InvList`) по сырому HTML страницы инвентаря.
+     *
+     * Важно:
+     * - работает в cache-only режиме: не выполняет redirect/drop/sell и не пишет служебные сообщения в чат;
+     * - используется fast-контуром (например, эликсиры `im=6`), когда кэш нужен сразу в текущем кадре.
+     */
+    public static void syncInventoryCacheFromHtml(String html) {
+        if (html == null || html.isEmpty()) {
+            return;
+        }
+        try {
+            mainPhpInv(html, true);
+        } catch (Exception e) {
+            android.util.Log.w(TAG, "syncInventoryCacheFromHtml: failed", e);
+        }
+    }
+
+    /**
      * Порт C# `MainPhpInv`: парсинг инвентаря, упаковка дублей, сортировка и bulk-кнопки.
      *
      * Зависимости:
@@ -4984,6 +5002,17 @@ public class MainPhp {
      * - воспроизвести C#-поведение группировки одинаковых предметов при открытии инвентаря и категорий.
      */
     private static String mainPhpInv(String html) {
+        return mainPhpInv(html, false);
+    }
+
+    /**
+     * Внутренняя реализация `mainPhpInv` с поддержкой cache-only режима.
+     *
+     * @param cacheOnlyMode
+     * true  - обновляем только `AppVars.InvList`, без redirect/bulk/chat и без модификации HTML.
+     * false - полный режим как в C# (группировка, bulk-кнопки, служебные действия).
+     */
+    private static String mainPhpInv(String html, boolean cacheOnlyMode) {
         try {
             final String patternStartInv = "</b></font></td></tr>";
             int pos = html.indexOf(patternStartInv);
@@ -5023,29 +5052,31 @@ public class MainPhp {
                 String htmlEntry = html.substring(pos, posEnd);
                 InvEntry invEntry = new InvEntry(htmlEntry);
 
-                boolean isBulkDropMatch = !AppVars.BulkDropThing.isEmpty()
-                        && !AppVars.BulkDropPrice.isEmpty()
-                        && AppVars.BulkDropThing.equalsIgnoreCase(invEntry.DropThing == null ? "" : invEntry.DropThing)
-                        && AppVars.BulkDropPrice.equals(invEntry.DropPrice == null ? "" : invEntry.DropPrice);
+                if (!cacheOnlyMode) {
+                    boolean isBulkDropMatch = !AppVars.BulkDropThing.isEmpty()
+                            && !AppVars.BulkDropPrice.isEmpty()
+                            && AppVars.BulkDropThing.equalsIgnoreCase(invEntry.DropThing == null ? "" : invEntry.DropThing)
+                            && AppVars.BulkDropPrice.equals(invEntry.DropPrice == null ? "" : invEntry.DropPrice);
 
-                if (invEntry.isExpired() || isBulkDropMatch) {
-                    String dropThing = invEntry.DropThing == null ? "" : invEntry.DropThing;
-                    String redirectMessage = "Выбрасывание предмета <b>&laquo;" + dropThing + "&raquo;</b>...";
-                    return buildRedirectHtml(redirectMessage, invEntry.DropLink == null ? "" : invEntry.DropLink);
-                }
+                    if (invEntry.isExpired() || isBulkDropMatch) {
+                        String dropThing = invEntry.DropThing == null ? "" : invEntry.DropThing;
+                        String redirectMessage = "Выбрасывание предмета <b>&laquo;" + dropThing + "&raquo;</b>...";
+                        return buildRedirectHtml(redirectMessage, invEntry.DropLink == null ? "" : invEntry.DropLink);
+                    }
 
-                boolean isBulkSellMatch = invEntry.PssLink != null
-                        && !invEntry.PssLink.isEmpty()
-                        && !AppVars.BulkSellThing.isEmpty()
-                        && invEntry.PssThing != null
-                        && AppVars.BulkSellThing.equals(invEntry.PssThing)
-                        && AppVars.BulkSellPrice == invEntry.PssPrice;
+                    boolean isBulkSellMatch = invEntry.PssLink != null
+                            && !invEntry.PssLink.isEmpty()
+                            && !AppVars.BulkSellThing.isEmpty()
+                            && invEntry.PssThing != null
+                            && AppVars.BulkSellThing.equals(invEntry.PssThing)
+                            && AppVars.BulkSellPrice == invEntry.PssPrice;
 
-                if (isBulkSellMatch) {
-                    AppVars.BulkSellSum += AppVars.BulkSellPrice;
-                    String messageSell = "Продажа предмета <b>&laquo;" + invEntry.PssThing
-                            + "&raquo;</b>. Выручка " + AppVars.BulkSellSum + " NV...";
-                    return buildRedirectHtml(messageSell, invEntry.PssLink);
+                    if (isBulkSellMatch) {
+                        AppVars.BulkSellSum += AppVars.BulkSellPrice;
+                        String messageSell = "Продажа предмета <b>&laquo;" + invEntry.PssThing
+                                + "&raquo;</b>. Выручка " + AppVars.BulkSellSum + " NV...";
+                        return buildRedirectHtml(messageSell, invEntry.PssLink);
+                    }
                 }
 
                 invList.add(invEntry);
@@ -5071,14 +5102,16 @@ public class MainPhp {
                         + ", drop=" + (sample.DropThing == null ? "" : sample.DropThing));
             }
 
-            if (!AppVars.BulkDropThing.isEmpty()) {
-                sendInventoryChatMessage("Выбрасывание пачки <b>&laquo;" + AppVars.BulkDropThing + "&raquo;</b> завершено.");
-                AppVars.BulkDropThing = "";
-            }
-            if (!AppVars.BulkSellThing.isEmpty()) {
-                sendInventoryChatMessage("Продажа пачки <b>&laquo;" + AppVars.BulkSellThing
-                        + "&raquo;</b> завершена. Выручка составила <b>" + AppVars.BulkSellSum + "</b> NV.");
-                AppVars.BulkSellThing = "";
+            if (!cacheOnlyMode) {
+                if (!AppVars.BulkDropThing.isEmpty()) {
+                    sendInventoryChatMessage("Выбрасывание пачки <b>&laquo;" + AppVars.BulkDropThing + "&raquo;</b> завершено.");
+                    AppVars.BulkDropThing = "";
+                }
+                if (!AppVars.BulkSellThing.isEmpty()) {
+                    sendInventoryChatMessage("Продажа пачки <b>&laquo;" + AppVars.BulkSellThing
+                            + "&raquo;</b> завершена. Выручка составила <b>" + AppVars.BulkSellSum + "</b> NV.");
+                    AppVars.BulkSellThing = "";
+                }
             }
 
             if (invList.size() > 1 && AppVars.Profile != null && AppVars.Profile.DoInvPack) {
@@ -5110,9 +5143,11 @@ public class MainPhp {
             android.util.Log.d(TAG, "INV_GROUP_TRACE afterPack=" + invList.size()
                     + ", packed=" + Math.max(0, parsedCount - invList.size()));
 
-            for (InvEntry entry : invList) {
-                entry.addBulkSell();
-                entry.addBulkDelete();
+            if (!cacheOnlyMode) {
+                for (InvEntry entry : invList) {
+                    entry.addBulkSell();
+                    entry.addBulkDelete();
+                }
             }
 
             if (AppVars.Profile != null && AppVars.Profile.DoInvSort) {
@@ -5122,6 +5157,10 @@ public class MainPhp {
             android.util.Log.d(TAG, "INV_GROUP_TRACE afterSort=" + invList.size());
 
             AppVars.InvList = new ArrayList<>(invList);
+            if (cacheOnlyMode) {
+                android.util.Log.d(TAG, "INV_GROUP_TRACE cache-only sync done: entries=" + invList.size());
+                return html;
+            }
 
             StringBuilder sb = new StringBuilder();
             for (InvEntry entry : invList) {

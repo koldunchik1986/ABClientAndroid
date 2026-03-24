@@ -6,6 +6,7 @@ import android.util.Log;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 
 import ru.neverlands.abclient.model.InvEntry;
+import ru.neverlands.abclient.postfilter.MainPhp;
 import ru.neverlands.abclient.utils.AppVars;
 import ru.neverlands.abclient.utils.HtmlUtils;
 import ru.neverlands.abclient.utils.HelperStrings;
@@ -679,7 +680,7 @@ public class FastActionManager {
             if (shouldEmitFastResultMessage(AppVars.FastCount)) {
                 Integer elixirRemainingAfterUse = null;
                 if (isElixirFastId(fastId)) {
-                    elixirRemainingAfterUse = resolveElixirRemainingFromInventoryCache(fastId);
+                    elixirRemainingAfterUse = resolveElixirRemainingFromInventoryCache(fastId, html);
                 }
                 writeChatMsg(buildFastResultMessage(fastId, AppVars.FastNick, elixirRemainingAfterUse));
             }
@@ -754,8 +755,27 @@ public class FastActionManager {
      * Используем существующий модуль инвентаря (`AppVars.InvList`), чтобы не дублировать
      * разбор HTML в FastActionManager и учитывать текущие настройки группировки.
      */
-    private static Integer resolveElixirRemainingFromInventoryCache(String elixirName) {
-        if (elixirName == null || elixirName.isEmpty() || AppVars.InvList == null || AppVars.InvList.isEmpty()) {
+    private static Integer resolveElixirRemainingFromInventoryCache(String elixirName, String inventoryHtml) {
+        if (elixirName == null || elixirName.isEmpty()) {
+            return null;
+        }
+
+        // При fast-использовании эликсиров InvList может быть уже заполнен, но устаревшим снимком.
+        // Поэтому сначала всегда пробуем обновить кэш из текущего HTML страницы im=6.
+        trySyncInventoryCacheFromHtml(inventoryHtml, "pre-read");
+
+        Integer fromCache = resolveElixirRemainingFromCacheEntries(elixirName);
+        if (fromCache != null) {
+            return fromCache;
+        }
+
+        // Если текущий снимок не дал результата, пробуем повторно (fallback) и читаем кэш ещё раз.
+        trySyncInventoryCacheFromHtml(inventoryHtml, "cache-miss");
+        return resolveElixirRemainingFromCacheEntries(elixirName);
+    }
+
+    private static Integer resolveElixirRemainingFromCacheEntries(String elixirName) {
+        if (AppVars.InvList == null || AppVars.InvList.isEmpty()) {
             return null;
         }
 
@@ -790,6 +810,19 @@ public class FastActionManager {
                 + ", totalCurrent=" + totalCurrent
                 + ", source=AppVars.InvList");
         return totalCurrent;
+    }
+
+    private static void trySyncInventoryCacheFromHtml(String inventoryHtml, String reason) {
+        if (inventoryHtml == null || inventoryHtml.isEmpty()) {
+            return;
+        }
+        if (!inventoryHtml.contains("<tr><td bgcolor=#F5F5F5>")
+                && !inventoryHtml.contains("Долговечность: <b>")) {
+            return;
+        }
+        MainPhp.syncInventoryCacheFromHtml(inventoryHtml);
+        int syncedSize = AppVars.InvList == null ? 0 : AppVars.InvList.size();
+        Log.d(TAG, "ELIXIR_REMAIN_TRACE sync-cache: reason=" + reason + ", syncedSize=" + syncedSize);
     }
 
     /**
