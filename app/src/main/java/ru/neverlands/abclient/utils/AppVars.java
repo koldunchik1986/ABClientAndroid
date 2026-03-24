@@ -326,6 +326,19 @@ public class AppVars {
     public static String myWalkers2 = "";
     public static boolean DoShowWalkers = true;
 
+    // C# parity (`AppVars.Cure*`):
+    // Request pipeline for targeted wound cure (self/friend/neutral) through doctorform.
+    // Flow:
+    // 1) request is scheduled by RoomManager (or manual UI analog),
+    // 2) MainPhp consumes it in non-combat flow and submits аптечку form,
+    // 3) flags are reset after submit/failure.
+    public static volatile boolean CureNeed = false;
+    public static volatile String CureNick = "";
+    // "1"=легкая, "2"=средняя, "3"=тяжелая, "4"=боевая.
+    public static volatile String CureTravm = "";
+    public static volatile String CureNickDone = "";
+    public static volatile String CureNickBoi = "";
+
     // Fast Attack variables (портировано из AppVars.cs — FormMainFast.cs)
     public static volatile boolean FastNeed = false;
     public static volatile String FastId = null;

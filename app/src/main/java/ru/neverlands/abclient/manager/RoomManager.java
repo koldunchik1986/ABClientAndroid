@@ -8,10 +8,12 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.regex.Matcher;
@@ -19,6 +21,7 @@ import java.util.regex.Pattern;
 
 import ru.neverlands.abclient.MainActivity;
 import ru.neverlands.abclient.model.Cell;
+import ru.neverlands.abclient.model.Contact;
 import ru.neverlands.abclient.utils.ExtMap;
 import ru.neverlands.abclient.utils.Russian;
 import ru.neverlands.abclient.utils.AppVars;
@@ -29,13 +32,47 @@ public class RoomManager {
     private static final String BG_TRACE_PREFIX = "[BG_TRACE]";
     private static final long AUTO_ATTACK_BLACKLIST_MS = 10_000L;
     private static final String AA_TRACE_PREFIX = "[AA_TRACE]";
+    private static final String AUTO_CURE_TRACE_PREFIX = "[AUTO_CURE_TRACE]";
+    private static final int CONTACT_CLASS_NEUTRAL = 0;
+    private static final int CONTACT_CLASS_ENEMY = 1;
+    private static final int CONTACT_CLASS_FRIEND = 2;
+    private static final long AUTO_CURE_ROOM_SCAN_INTERVAL_MS = 12_000L;
+    private static final long AUTO_CURE_ROOM_PINFO_CACHE_TTL_MS = 30_000L;
     // Временный чёрный список целей авто-нападения (аналог C# `RoomManager.BlackList`).
     // Ключ: ник в нижнем регистре, значение: время добавления в список (мс).
     private static final Map<String, Long> autoAttackBlackList = new ConcurrentHashMap<>();
+    // Кэш последнего результата pinfo-проверки травм для ников комнаты.
+    private static final Map<String, CachedRoomPinfoState> autoCureRoomPinfoCache = new ConcurrentHashMap<>();
+    private static volatile boolean autoCureRoomScanInProgress = false;
+    private static volatile long lastAutoCureRoomScanAtMs = 0L;
     private static final long PENDING_ROOM_LABEL_TTL_MS = 20_000L;
     private static volatile String pendingRoomLocationName;
     private static volatile String pendingRoomLocationTargetRegNum;
     private static volatile long pendingRoomLocationNameAtMs;
+
+    private static final class CachedRoomPinfoState {
+        final int woundType;
+        final long capturedAtMs;
+
+        CachedRoomPinfoState(int woundType, long capturedAtMs) {
+            this.woundType = woundType;
+            this.capturedAtMs = capturedAtMs;
+        }
+    }
+
+    private static final class AutoCureTarget {
+        final String nick;
+        final int woundType;
+        final int classId;
+        final boolean self;
+
+        AutoCureTarget(String nick, int woundType, int classId, boolean self) {
+            this.nick = nick;
+            this.woundType = woundType;
+            this.classId = classId;
+            this.self = self;
+        }
+    }
 
     // Обработчик списка игроков комнаты (`ch.php?lo=1`).
     // Метод `process(...)` содержит портированную логику разбора списка комнаты.
@@ -55,6 +92,11 @@ public class RoomManager {
                 + ", fastNick=" + AppVars.FastNick
                 + ", fightActive=" + fightActive
                 + ", fightLink=" + AppVars.FightLink);
+
+        // C# parity extension:
+        // отдельный контур авто-лечения по персонажам в текущей клетке
+        // с приоритетом self -> friends -> neutrals (enemies skipped).
+        maybeScheduleRoomAutoCure(context, filterResult, fightActive);
 
         // Авто-нападение по списку комнаты (аналог ветки `RoomManager.Process -> EnemyAttack` в C#).
         // Зависимости:
@@ -1038,6 +1080,17 @@ public class RoomManager {
                 }
 
                 String nick = extractNick(rawEntry);
+                if (!nick.isEmpty()) {
+                    result.roomNicks.add(stripItalic(nick));
+                    int injuryTypeHint = parseRoomInjuryTypeHint(rawEntry);
+                    if (injuryTypeHint > 0) {
+                        String nickKey = normalizeNickKey(nick);
+                        Integer previousHint = result.injuryTypeHints.get(nickKey);
+                        if (previousHint == null || injuryTypeHint > previousHint) {
+                            result.injuryTypeHints.put(nickKey, injuryTypeHint);
+                        }
+                    }
+                }
                 if (!nick.isEmpty() && isEnemyContact(nick)) {
                     enemyAttack.add(nick);
                     Log.d(TAG, AA_TRACE_PREFIX + " enemy detected in room: " + buildEnemyTrace(nick));
@@ -1145,6 +1198,284 @@ public class RoomManager {
         }
     }
 
+    private static boolean isAutoCureEnabled(Context context) {
+        try {
+            return AutoFunctionsManager.getInstance(context).isAutoCureEnabled();
+        } catch (Exception e) {
+            Log.w(TAG, "isAutoCureEnabled failed", e);
+            return false;
+        }
+    }
+
+    private static void maybeScheduleRoomAutoCure(Context context,
+                                                  FilterProcRoomResult filterResult,
+                                                  boolean fightActive) {
+        if (context == null || filterResult == null || AppVars.Profile == null) {
+            return;
+        }
+        if (!isAutoCureEnabled(context)) {
+            return;
+        }
+        if (isEmpty(AppVars.Profile.UserNick) || AppVars.FastNeed || AppVars.CureNeed || fightActive) {
+            return;
+        }
+        long now = System.currentTimeMillis();
+        if (autoCureRoomScanInProgress || (now - lastAutoCureRoomScanAtMs) < AUTO_CURE_ROOM_SCAN_INTERVAL_MS) {
+            return;
+        }
+
+        final List<String> roomNicksSnapshot = new ArrayList<>(filterResult.roomNicks);
+        final Map<String, Integer> injuryHintsSnapshot = new LinkedHashMap<>(filterResult.injuryTypeHints);
+        if (roomNicksSnapshot.isEmpty() && injuryHintsSnapshot.isEmpty()) {
+            return;
+        }
+
+        synchronized (RoomManager.class) {
+            long nowSync = System.currentTimeMillis();
+            if (autoCureRoomScanInProgress || (nowSync - lastAutoCureRoomScanAtMs) < AUTO_CURE_ROOM_SCAN_INTERVAL_MS) {
+                return;
+            }
+            autoCureRoomScanInProgress = true;
+            lastAutoCureRoomScanAtMs = nowSync;
+        }
+
+        Thread worker = new Thread(() -> {
+            try {
+                AutoCureTarget target = selectRoomAutoCureTarget(roomNicksSnapshot, injuryHintsSnapshot);
+                if (target != null) {
+                    enqueueRoomAutoCureTarget(target);
+                }
+            } catch (Exception e) {
+                Log.w(TAG, AUTO_CURE_TRACE_PREFIX + " room scan failed", e);
+            } finally {
+                autoCureRoomScanInProgress = false;
+            }
+        }, "RoomAutoCureScan");
+        worker.setDaemon(true);
+        worker.start();
+    }
+
+    private static AutoCureTarget selectRoomAutoCureTarget(List<String> roomNicks,
+                                                            Map<String, Integer> injuryHints) {
+        String selfNick = stripItalic(AppVars.Profile.UserNick);
+        if (!isEmpty(selfNick)) {
+            AutoCureTarget selfTarget = buildAutoCureTarget(selfNick, CONTACT_CLASS_NEUTRAL, true, injuryHints);
+            if (selfTarget != null) {
+                return selfTarget;
+            }
+        }
+
+        Set<String> seen = new HashSet<>();
+        if (!isEmpty(selfNick)) {
+            seen.add(normalizeNickKey(selfNick));
+        }
+        List<String> friendNicks = new ArrayList<>();
+        List<String> neutralNicks = new ArrayList<>();
+        for (String nickRaw : roomNicks) {
+            String nick = stripItalic(nickRaw);
+            if (isEmpty(nick)) {
+                continue;
+            }
+            String key = normalizeNickKey(nick);
+            if (isEmpty(key) || seen.contains(key)) {
+                continue;
+            }
+            seen.add(key);
+            int classId = resolveClassIdForNick(nick);
+            if (classId == CONTACT_CLASS_ENEMY) {
+                continue;
+            }
+            if (classId == CONTACT_CLASS_FRIEND) {
+                friendNicks.add(nick);
+            } else {
+                neutralNicks.add(nick);
+            }
+        }
+
+        for (String friendNick : friendNicks) {
+            AutoCureTarget target = buildAutoCureTarget(friendNick, CONTACT_CLASS_FRIEND, false, injuryHints);
+            if (target != null) {
+                return target;
+            }
+        }
+        for (String neutralNick : neutralNicks) {
+            AutoCureTarget target = buildAutoCureTarget(neutralNick, CONTACT_CLASS_NEUTRAL, false, injuryHints);
+            if (target != null) {
+                return target;
+            }
+        }
+        return null;
+    }
+
+    private static AutoCureTarget buildAutoCureTarget(String nick,
+                                                      int classId,
+                                                      boolean self,
+                                                      Map<String, Integer> injuryHints) {
+        String cleanNick = stripItalic(nick);
+        if (isEmpty(cleanNick)) {
+            return null;
+        }
+        int hintedType = 0;
+        if (injuryHints != null) {
+            Integer value = injuryHints.get(normalizeNickKey(cleanNick));
+            hintedType = value == null ? 0 : value;
+        }
+        int woundType = resolveRoomWoundType(cleanNick, hintedType, self);
+        if (woundType <= 0) {
+            return null;
+        }
+        return new AutoCureTarget(cleanNick, woundType, classId, self);
+    }
+
+    private static int resolveRoomWoundType(String nick, int hintedType, boolean self) {
+        if (hintedType == 4) {
+            return 4;
+        }
+        int woundType = resolveWoundTypeFromPinfoCached(nick);
+        if (woundType <= 0 && self) {
+            woundType = resolveWoundTypeFromSelfSnapshot();
+        }
+        if (woundType <= 0 && hintedType >= 1 && hintedType <= 3) {
+            woundType = hintedType;
+        }
+        return woundType;
+    }
+
+    private static int resolveWoundTypeFromPinfoCached(String nick) {
+        String key = normalizeNickKey(nick);
+        if (isEmpty(key)) {
+            return 0;
+        }
+        long now = System.currentTimeMillis();
+        CachedRoomPinfoState cached = autoCureRoomPinfoCache.get(key);
+        if (cached != null && (now - cached.capturedAtMs) < AUTO_CURE_ROOM_PINFO_CACHE_TTL_MS) {
+            return cached.woundType;
+        }
+
+        int woundType = 0;
+        try {
+            NeverApi.PinfoVitals vitals = NeverApi.getPinfoVitalsFromPinfo(nick);
+            if (vitals != null) {
+                if (vitals.topWoundType != null && vitals.topWoundType > 0) {
+                    // `var eff` contains full wound type, including battle wound (code=1).
+                    woundType = vitals.topWoundType;
+                } else {
+                    // Fallback for backward compatibility with poison+non-battle counters.
+                    woundType = resolveWoundTypeFromPoisonAndWounds(vitals.poisonAndWounds);
+                }
+            }
+        } catch (Exception e) {
+            Log.w(TAG, AUTO_CURE_TRACE_PREFIX + " pinfo read failed for " + nick, e);
+        }
+
+        autoCureRoomPinfoCache.put(key, new CachedRoomPinfoState(woundType, now));
+        return woundType;
+    }
+
+    private static int resolveWoundTypeFromSelfSnapshot() {
+        CharacterVitalsManager.Snapshot snapshot = CharacterVitalsManager.snapshot();
+        if (snapshot.lightWoundCount > 0) {
+            return 1;
+        }
+        if (snapshot.mediumWoundCount > 0) {
+            return 2;
+        }
+        if (snapshot.heavyWoundCount > 0) {
+            return 3;
+        }
+        return 0;
+    }
+
+    private static int resolveWoundTypeFromPoisonAndWounds(int[] poisonAndWounds) {
+        if (poisonAndWounds == null || poisonAndWounds.length < 4) {
+            return 0;
+        }
+        if (poisonAndWounds[1] > 0) {
+            return 1;
+        }
+        if (poisonAndWounds[2] > 0) {
+            return 2;
+        }
+        if (poisonAndWounds[3] > 0) {
+            return 3;
+        }
+        return 0;
+    }
+
+    private static int resolveClassIdForNick(String nick) {
+        int classId = parseClassIdSafe(ContactsManager.getClassIdOfContact(nick));
+        if (classId != CONTACT_CLASS_NEUTRAL) {
+            return classId;
+        }
+        String cleanNick = stripItalic(nick);
+        List<Contact> contacts = ContactsManager.getContactsFromCache();
+        for (Contact contact : contacts) {
+            if (contact == null || isEmpty(contact.nick)) {
+                continue;
+            }
+            if (contact.nick.equalsIgnoreCase(cleanNick)) {
+                return contact.classId;
+            }
+        }
+        return CONTACT_CLASS_NEUTRAL;
+    }
+
+    private static int parseClassIdSafe(String value) {
+        if (isEmpty(value)) {
+            return CONTACT_CLASS_NEUTRAL;
+        }
+        try {
+            return Integer.parseInt(value.trim());
+        } catch (Exception ignored) {
+            return CONTACT_CLASS_NEUTRAL;
+        }
+    }
+
+    private static void enqueueRoomAutoCureTarget(AutoCureTarget target) {
+        if (target == null || isEmpty(target.nick)) {
+            return;
+        }
+        if (AppVars.CureNeed || AppVars.FastNeed) {
+            return;
+        }
+        AppVars.CureNeed = true;
+        AppVars.CureNick = target.nick;
+        AppVars.CureTravm = String.valueOf(target.woundType);
+        AppVars.CureNickDone = "";
+        AppVars.CureNickBoi = "";
+
+        String safeNick = target.nick.replace("<", "&lt;").replace(">", "&gt;");
+        String safeTarget = target.self ? "себя" : ("<b>" + safeNick + "</b>");
+        String scope = target.self ? "self" : (target.classId == CONTACT_CLASS_FRIEND ? "friend" : "neutral");
+        FastActionManager.writeChatMsg("<font color=#5D7C91><b>[Автолечение]</b></font> "
+                + "Найдена " + getWoundLabelByType(target.woundType) + " травма у " + safeTarget
+                + ", запускаем лечение...");
+        Log.d(TAG, AUTO_CURE_TRACE_PREFIX + " queued target: nick=" + target.nick
+                + ", woundType=" + target.woundType
+                + ", class=" + target.classId
+                + ", scope=" + scope);
+
+        MainActivity activity = AppVars.mainActivity == null ? null : AppVars.mainActivity.get();
+        if (activity != null) {
+            activity.requestMainFrameReloadFromAutomation("room-auto-cure:" + scope + ":" + target.nick);
+        }
+    }
+
+    private static String getWoundLabelByType(int woundType) {
+        switch (woundType) {
+            case 1:
+                return "легкая";
+            case 2:
+                return "средняя";
+            case 3:
+                return "тяжелая";
+            case 4:
+                return "боевая";
+            default:
+                return "неизвестная";
+        }
+    }
+
     private static String pickEnemyForAutoAttack(List<String> candidates) {
         if (candidates == null || candidates.isEmpty()) {
             return null;
@@ -1179,7 +1510,7 @@ public class RoomManager {
 
     private static boolean isEnemyContact(String nick) {
         try {
-            return Integer.parseInt(ContactsManager.getClassIdOfContact(nick)) == 1;
+            return Integer.parseInt(ContactsManager.getClassIdOfContact(nick)) == CONTACT_CLASS_ENEMY;
         } catch (Exception ignored) {
             return false;
         }
@@ -1194,6 +1525,34 @@ public class RoomManager {
             return "";
         }
         return stripItalic(parts[1]);
+    }
+
+    private static int parseRoomInjuryTypeHint(String chatListEntry) {
+        if (isEmpty(chatListEntry)) {
+            return 0;
+        }
+        String[] parts = chatListEntry.split(":");
+        if (parts.length <= 6) {
+            return 0;
+        }
+        String injuryText = parts[6];
+        if (isEmpty(injuryText) || "0".equals(injuryText)) {
+            return 0;
+        }
+        String lower = injuryText.toLowerCase(Locale.ROOT);
+        if (lower.contains("боевая")) {
+            return 4;
+        }
+        if (lower.contains("тяж")) {
+            return 3;
+        }
+        if (lower.contains("сред")) {
+            return 2;
+        }
+        if (lower.contains("лег")) {
+            return 1;
+        }
+        return 0;
     }
 
     private static String normalizeChatUserEntry(String rawEntry) {
@@ -1283,5 +1642,7 @@ public class RoomManager {
         String html;
         String chatListU;
         List<String> enemyCandidates = new ArrayList<>();
+        List<String> roomNicks = new ArrayList<>();
+        Map<String, Integer> injuryTypeHints = new LinkedHashMap<>();
     }
 }

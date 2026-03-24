@@ -3180,6 +3180,33 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         }
     }
 
+    /**
+     * Запрашивает безопасную перезагрузку main-frame из фоновой автоматики.
+     *
+     * Используется, когда внешний модуль (например, RoomManager) поставил в очередь действие,
+     * которое исполняется в `MainPhp.process(...)` и требует ближайшего non-combat тика.
+     */
+    public void requestMainFrameReloadFromAutomation(String reason) {
+        runOnUiThread(() -> {
+            try {
+                if (binding == null || binding.appBarMain == null || binding.appBarMain.contentMain == null
+                        || binding.appBarMain.contentMain.webView == null) {
+                    return;
+                }
+                long now = System.currentTimeMillis();
+                String reloadUrl = "http://neverlands.ru/main.php?get_id=56&act=10&go=inf&ab_auto=1&r=" + now;
+                if (AppVars.VCode != null && !AppVars.VCode.isEmpty()) {
+                    reloadUrl += "&vcode=" + AppVars.VCode;
+                }
+                Log.d(TAG, "AUTO_CURE_TRACE requestMainFrameReloadFromAutomation: reason=" + reason
+                        + ", url=" + reloadUrl);
+                binding.appBarMain.contentMain.webView.loadUrl(reloadUrl);
+            } catch (Exception e) {
+                Log.w(TAG, "AUTO_CURE_TRACE requestMainFrameReloadFromAutomation failed: reason=" + reason, e);
+            }
+        });
+    }
+
     private void checkServerTimerDrivenActions() {
         long dueAt = AppVars.NeverTimer;
         if (dueAt <= 0L) {
