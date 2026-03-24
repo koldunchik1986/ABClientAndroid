@@ -237,6 +237,8 @@ public class MapAjax {
     /**
      * C# parity (`FormMainNavigator.FindNextDestForBox`):
      * находит ближайшую клетку, которую не посещали >= 1 суток.
+     * Если таких клеток нет, выбирает клетку с самым старым маркером посещения
+     * (fallback-циклирование по уже пройденным клеткам).
      */
     public static String findNextDestForBox(String sourceLocation) {
         String source = sourceLocation;
@@ -256,6 +258,8 @@ public class MapAjax {
         frontier.add(source);
 
         long nowMs = System.currentTimeMillis();
+        String oldestVisitedFallback = null;
+        long oldestVisitedAtMs = Long.MAX_VALUE;
         while (!frontier.isEmpty()) {
             int batch = frontier.size();
             for (int k = 0; k < batch; k++) {
@@ -274,8 +278,22 @@ public class MapAjax {
                     if (isSearchBoxCandidate(next, nowMs)) {
                         return next;
                     }
+                    Long visitedAt = AppVars.SearchBoxVisited.get(next);
+                    if (visitedAt != null
+                            && visitedAt > 0L
+                            && !next.equals(source)
+                            && visitedAt < oldestVisitedAtMs) {
+                        oldestVisitedAtMs = visitedAt;
+                        oldestVisitedFallback = next;
+                    }
                 }
             }
+        }
+        if (oldestVisitedFallback != null && !oldestVisitedFallback.isEmpty()) {
+            long ageMs = Math.max(0L, nowMs - oldestVisitedAtMs);
+            Log.d(TAG, "AUTO_SEARCH_BOX_TRACE: fallback oldest-visited destination="
+                    + oldestVisitedFallback + ", ageMs=" + ageMs);
+            return oldestVisitedFallback;
         }
         return null;
     }
