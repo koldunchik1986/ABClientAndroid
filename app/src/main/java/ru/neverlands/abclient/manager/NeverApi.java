@@ -29,6 +29,10 @@ public class NeverApi {
 
     private static final String TAG = "NeverApi";
     private static final int TIMEOUT_MS = 10000;
+    private static final int POISON_INDEX = 0;
+    private static final int LIGHT_WOUND_INDEX = 1;
+    private static final int MEDIUM_WOUND_INDEX = 2;
+    private static final int HEAVY_WOUND_INDEX = 3;
 
     // Кэш nick → userId (аналог NameToId в C#)
     private static final Map<String, String> nameToId = new HashMap<>();
@@ -38,6 +42,7 @@ public class NeverApi {
      * - HP: curHp/maxHp
      * - MA: curMa/maxMa
      * - усталость: curTire (0..100)
+     * - отравление/травмы: poisonAndWounds ([яд, легк, сред, тяж])
      */
     public static final class PinfoVitals {
         public final Integer curHp;
@@ -45,13 +50,16 @@ public class NeverApi {
         public final Integer curMa;
         public final Integer maxMa;
         public final Integer curTire;
+        public final int[] poisonAndWounds;
 
-        public PinfoVitals(Integer curHp, Integer maxHp, Integer curMa, Integer maxMa, Integer curTire) {
+        public PinfoVitals(Integer curHp, Integer maxHp, Integer curMa, Integer maxMa, Integer curTire,
+                           int[] poisonAndWounds) {
             this.curHp = curHp;
             this.maxHp = maxHp;
             this.curMa = curMa;
             this.maxMa = maxMa;
             this.curTire = curTire;
+            this.poisonAndWounds = normalizePoisonAndWounds(poisonAndWounds);
         }
     }
 
@@ -161,7 +169,8 @@ public class NeverApi {
                 android.util.Log.d(TAG, "AUTO_BLAZ_TRACE pinfo vitals sync: nick=" + nick
                         + ", hp=" + safeInt(vitals.curHp) + "/" + safeInt(vitals.maxHp)
                         + ", ma=" + safeInt(vitals.curMa) + "/" + safeInt(vitals.maxMa)
-                        + ", tied=" + safeInt(vitals.curTire));
+                        + ", tied=" + safeInt(vitals.curTire)
+                        + ", pw=" + safePoisonAndWounds(vitals.poisonAndWounds));
             } else {
                 android.util.Log.w(TAG, "AUTO_BLAZ_TRACE pinfo vitals sync failed: value not found for nick=" + nick);
             }
@@ -213,6 +222,7 @@ public class NeverApi {
             Integer curMa = null;
             Integer maxMa = null;
             Integer curTire = null;
+            int[] poisonAndWounds = parsePoisonAndWoundsFromPinfoEff(html);
 
             Matcher hpmpMatcher = Pattern.compile("(?is)\\bhpmp\\b\\s*=\\s*\\[(.*?)\\]").matcher(html);
             if (hpmpMatcher.find()) {
@@ -236,12 +246,61 @@ public class NeverApi {
                 }
             }
 
-            if (curHp == null && maxHp == null && curMa == null && maxMa == null && curTire == null) {
+            if (curHp == null && maxHp == null && curMa == null && maxMa == null
+                    && curTire == null && poisonAndWounds == null) {
                 return null;
             }
-            return new PinfoVitals(curHp, maxHp, curMa, maxMa, curTire);
+            return new PinfoVitals(curHp, maxHp, curMa, maxMa, curTire, poisonAndWounds);
         } catch (Exception e) {
             android.util.Log.w(TAG, "AUTO_BLAZ_TRACE parsePinfoVitalsFromPinfoHtml failed", e);
+            return null;
+        }
+    }
+
+    /**
+     * Парсит `var eff = [[code,'name'], ...];` из pinfo и возвращает
+     * runtime-массив [яд, легк, сред, тяж] (C# parity `PoisonAndWounds`).
+     *
+     * Важно:
+     * - если блок `eff` отсутствует, возвращается `null` (не перезатираем текущее runtime-состояние);
+     * - если блок есть, но релевантных эффектов нет, возвращается `[0,0,0,0]`.
+     */
+    private static int[] parsePoisonAndWoundsFromPinfoEff(String html) {
+        try {
+            Matcher effMatcher = Pattern.compile("(?is)\\bvar\\s+eff\\s*=\\s*(\\[[\\s\\S]*?\\]);").matcher(html);
+            if (!effMatcher.find()) {
+                return null;
+            }
+            String effPayload = effMatcher.group(1);
+            int[] poisonAndWounds = new int[] {0, 0, 0, 0};
+            Matcher codeMatcher = Pattern.compile("\\[(\\d{1,3})\\s*,").matcher(effPayload);
+            while (codeMatcher.find()) {
+                int code;
+                try {
+                    code = Integer.parseInt(codeMatcher.group(1));
+                } catch (Exception ignored) {
+                    continue;
+                }
+                switch (code) {
+                    case 24:
+                        poisonAndWounds[POISON_INDEX]++;
+                        break;
+                    case 4:
+                        poisonAndWounds[LIGHT_WOUND_INDEX]++;
+                        break;
+                    case 3:
+                        poisonAndWounds[MEDIUM_WOUND_INDEX]++;
+                        break;
+                    case 2:
+                        poisonAndWounds[HEAVY_WOUND_INDEX]++;
+                        break;
+                    default:
+                        break;
+                }
+            }
+            return poisonAndWounds;
+        } catch (Exception e) {
+            android.util.Log.w(TAG, "AUTO_BLAZ_TRACE parsePoisonAndWoundsFromPinfoEff failed", e);
             return null;
         }
     }
@@ -263,6 +322,28 @@ public class NeverApi {
 
     private static String safeInt(Integer value) {
         return value == null ? "?" : String.valueOf(value);
+    }
+
+    private static int[] normalizePoisonAndWounds(int[] poisonAndWounds) {
+        if (poisonAndWounds == null || poisonAndWounds.length < 4) {
+            return null;
+        }
+        return new int[] {
+                Math.max(0, poisonAndWounds[POISON_INDEX]),
+                Math.max(0, poisonAndWounds[LIGHT_WOUND_INDEX]),
+                Math.max(0, poisonAndWounds[MEDIUM_WOUND_INDEX]),
+                Math.max(0, poisonAndWounds[HEAVY_WOUND_INDEX])
+        };
+    }
+
+    private static String safePoisonAndWounds(int[] poisonAndWounds) {
+        if (poisonAndWounds == null || poisonAndWounds.length < 4) {
+            return "n/a";
+        }
+        return "[" + poisonAndWounds[POISON_INDEX]
+                + "," + poisonAndWounds[LIGHT_WOUND_INDEX]
+                + "," + poisonAndWounds[MEDIUM_WOUND_INDEX]
+                + "," + poisonAndWounds[HEAVY_WOUND_INDEX] + "]";
     }
 
     private static int clampPercent(int value) {

@@ -54,6 +54,12 @@ public class MainPhp {
     private static final int AUTO_FISH_WEAR_LOOP_MAX_REPEATS = 12;
     private static final long AUTO_FISH_WEAR_LOOP_WINDOW_MS = 20_000L;
     private static final String BLISS_ELIXIR_NAME = "\u042D\u043B\u0438\u043A\u0441\u0438\u0440 \u0411\u043B\u0430\u0436\u0435\u043D\u0441\u0442\u0432\u0430";
+    private static final String AUTO_CURE_POISON_POTION_NAME = "Зелье Лечения Отравлений";
+    private static final String MAP_HEAVY_INJURY_POPUP_MARKER = "Вы не можете перемещаться! У Вас тяж";
+    private static final int POISON_INDEX = 0;
+    private static final int LIGHT_WOUND_INDEX = 1;
+    private static final int MEDIUM_WOUND_INDEX = 2;
+    private static final int HEAVY_WOUND_INDEX = 3;
     private static final String DIG_BUTTON_MARKER = "[\"dig\",\"Копать\",";
     private static final int FAST_INV_TRANSITION_MAX_RETRIES = 6;
     private static final String FAST_INV_RETRY_PARAM = "ab_fast_inv_retry";
@@ -76,6 +82,7 @@ public class MainPhp {
     private static volatile long lastAutoFishDrinkTriggerAtMs = 0L;
     private static volatile long lastWtimeSyncLogAtMs = 0L;
     private static volatile long lastAutoDrinkBlazTriggerAtMs = 0L;
+    private static volatile long lastMapHeavyInjurySyncAtMs = 0L;
     // One-shot post-fight marker:
     // after finish-link redirect to plain main.php we allow auto-drink check on ближайших страницах
     // персонажа/инвентаря (go=inf/go=inv/im=*), если "чистый" main.php не попал в Filter.process().
@@ -1194,6 +1201,25 @@ public class MainPhp {
         }
         return false;
     }
+
+    /**
+     * Определяет, включено ли Авто-Лечение.
+     *
+     * Источник:
+     * - переключатель `AUTO_CURE` в `AutoFunctionsManager` (SharedPreferences).
+     */
+    private static boolean isAutoCureEnabledByPreference() {
+        try {
+            android.content.Context context = AppVars.getContext();
+            if (context == null) {
+                return false;
+            }
+            return AutoFunctionsManager.getInstance(context).isAutoCureEnabled();
+        } catch (Exception e) {
+            android.util.Log.w(TAG, "isAutoCureEnabledByPreference: fallback=false", e);
+            return false;
+        }
+    }
     /**
      * Чтение умения "Рыбалка" на странице `mselect=1` (C# parity для `AutoFishCheckUm`).
      */
@@ -2176,6 +2202,286 @@ public class MainPhp {
     }
 
     /**
+     * Fallback-синхронизация тяжелой травмы по server popup в map-HTML:
+     * "Вы не можете перемещаться! У Вас тяжёлая травма."
+     */
+    private static void syncInjuriesFromMapHeavyPopup(String html) {
+        if (html == null || html.isEmpty()) {
+            return;
+        }
+        String lower = html.toLowerCase(Locale.ROOT);
+        if (!lower.contains(MAP_HEAVY_INJURY_POPUP_MARKER.toLowerCase(Locale.ROOT))
+                || !lower.contains("травм")) {
+            return;
+        }
+        long now = System.currentTimeMillis();
+        if ((now - lastMapHeavyInjurySyncAtMs) < 1200L) {
+            return;
+        }
+        lastMapHeavyInjurySyncAtMs = now;
+        CharacterVitalsManager.Snapshot snapshot = CharacterVitalsManager.ensureHeavyWoundPresent(
+                "MainPhp.syncInjuriesFromMapHeavyPopup");
+        android.util.Log.d(TAG, "AUTO_CURE_TRACE map popup heavy injury sync: pw=["
+                + snapshot.poisonCount + "," + snapshot.lightWoundCount + ","
+                + snapshot.mediumWoundCount + "," + snapshot.heavyWoundCount + "]");
+    }
+
+    /**
+     * C# parity (`MainPhp.cs` + `MainPhpAutoCure.cs` + `MainPhpCure.cs`):
+     * 1) яд (`wca=27`, magicreform);
+     * 2) небоевые травмы (`wca=85`, doctorform).
+     */
+    private static String mainPhpAutoCureStep(String address, String html) {
+        if (html == null || html.isEmpty()
+                || AppVars.Profile == null
+                || !isAutoCureEnabledByPreference()) {
+            return null;
+        }
+        String nick = AppVars.Profile.UserNick == null ? "" : AppVars.Profile.UserNick.trim();
+        if (nick.isEmpty()) {
+            return null;
+        }
+        long now = System.currentTimeMillis();
+        if (AppVars.NeverTimer > 0L && now <= AppVars.NeverTimer) {
+            return null;
+        }
+
+        CharacterVitalsManager.Snapshot snapshot = CharacterVitalsManager.snapshot();
+        int poison = snapshot.poisonCount;
+        int light = snapshot.lightWoundCount;
+        int medium = snapshot.mediumWoundCount;
+        int heavy = snapshot.heavyWoundCount;
+        if (poison <= 0 && light <= 0 && medium <= 0 && heavy <= 0) {
+            return null;
+        }
+
+        if (poison > 0) {
+            String invHtml = mainPhpFindInvWithFallback(html, "&im=0&wca=27", address);
+            if (invHtml != null && !invHtml.isEmpty()) {
+                return invHtml;
+            }
+            if (!(mainPhpIsInv(html) || isInventoryAddress(address))) {
+                return null;
+            }
+            if (!mainPhpIsInv(html)) {
+                return null;
+            }
+            if (!inventoryAddressMatchesFilter(address, "&im=0&wca=27")) {
+                return buildRedirectHtml("Переключение на зелья", "main.php?im=0&wca=27");
+            }
+
+            String poisonCureHtml = mainPhpBuildPoisonCureForm(html, nick);
+            if (poisonCureHtml == null || poisonCureHtml.isEmpty()) {
+                disableAutoCureAndNotify(
+                        "У вас отравление и нет зелья лечения отравлений! Автолечение отключено. Не забудьте включить его обратно.",
+                        true,
+                        false
+                );
+                return null;
+            }
+
+            CharacterVitalsManager.decrementPoisonOrWound(POISON_INDEX, "MainPhp.mainPhpAutoCureStep.poisonUsed");
+            sendInventoryChatMessage(buildServerChatTimeHtml()
+                    + "<font color=#004bbb>Лечим свое отравление...</font>");
+            return poisonCureHtml;
+        }
+
+        String invHtml = mainPhpFindInvWithFallback(html, "&im=0&wca=85", address);
+        if (invHtml != null && !invHtml.isEmpty()) {
+            return invHtml;
+        }
+        if (!(mainPhpIsInv(html) || isInventoryAddress(address))) {
+            return null;
+        }
+        if (!mainPhpIsInv(html)) {
+            return null;
+        }
+        if (!inventoryAddressMatchesFilter(address, "&im=0&wca=85")) {
+            return buildRedirectHtml("Переключение на аптечки", "main.php?im=0&wca=85");
+        }
+
+        String cureTravm;
+        int woundIndex;
+        String woundLabel;
+        if (light > 0) {
+            cureTravm = "1";
+            woundIndex = LIGHT_WOUND_INDEX;
+            woundLabel = "легкую";
+        } else if (medium > 0) {
+            cureTravm = "2";
+            woundIndex = MEDIUM_WOUND_INDEX;
+            woundLabel = "среднюю";
+        } else {
+            cureTravm = "3";
+            woundIndex = HEAVY_WOUND_INDEX;
+            woundLabel = "тяжелую";
+        }
+
+        String woundCureHtml = mainPhpBuildWoundCureForm(html, cureTravm, nick);
+        if (woundCureHtml == null || woundCureHtml.isEmpty()) {
+            disableAutoCureAndNotify(
+                    "У вас травма, но нет возможности ее вылечить! Автолечение отключено. Не забудьте включить его обратно.",
+                    false,
+                    true
+            );
+            return null;
+        }
+
+        CharacterVitalsManager.decrementPoisonOrWound(woundIndex, "MainPhp.mainPhpAutoCureStep.woundUsed");
+        sendInventoryChatMessage(buildServerChatTimeHtml()
+                + "<font color=#004bbb>Лечим свою " + woundLabel + " травму...</font>");
+        return woundCureHtml;
+    }
+
+    private static String mainPhpBuildPoisonCureForm(String html, String selfNick) {
+        if (html == null || html.isEmpty() || selfNick == null || selfNick.isEmpty()) {
+            return null;
+        }
+        String namePotion = "'" + AUTO_CURE_POISON_POTION_NAME + "'";
+        String htmlLower = html.toLowerCase(Locale.ROOT);
+        int p0 = htmlLower.indexOf(namePotion.toLowerCase(Locale.ROOT));
+        if (p0 == -1) {
+            return null;
+        }
+        int ps = html.lastIndexOf('<', p0);
+        if (ps == -1) {
+            return null;
+        }
+        ps++;
+        int pe = html.indexOf('>', p0);
+        if (pe == -1) {
+            return null;
+        }
+        String chunk = html.substring(ps, pe);
+        if (!containsIgnoreCase(chunk, "magicreform(")) {
+            return null;
+        }
+        String args = HelperStrings.subString(chunk, "magicreform('", "')");
+        if (args == null || args.isEmpty()) {
+            return null;
+        }
+        String[] arg = args.split("'");
+        if (arg.length < 7) {
+            return null;
+        }
+        String wuid = arg[0];
+        String wmcode = arg[6];
+        return HtmlUtils.GENERATED_PAGE_MARKER
+                + "<html><head><meta http-equiv=\"Content-Type\" content=\"text/html; charset=windows-1251\">"
+                + "<title>ABClient</title></head><body>"
+                + "Используем " + AUTO_CURE_POISON_POTION_NAME + " на себя..."
+                + "<form action=\"http://neverlands.ru/main.php\" method=POST name=ff>"
+                + "<input name=magicrestart type=hidden value=\"1\">"
+                + "<input name=magicreuid type=hidden value=\"" + wuid + "\">"
+                + "<input name=vcode type=hidden value=\"" + wmcode + "\">"
+                + "<input name=post_id type=hidden value=\"46\">"
+                + "<input name=fornickname type=hidden value=\"" + selfNick + "\">"
+                + "</form><script language=\"JavaScript\">document.ff.submit();</script></body></html>";
+    }
+
+    private static String mainPhpBuildWoundCureForm(String html, String cureTravm, String targetNick) {
+        if (html == null || html.isEmpty()
+                || cureTravm == null || cureTravm.isEmpty()
+                || targetNick == null || targetNick.isEmpty()) {
+            return null;
+        }
+        String dtypeNeed;
+        switch (cureTravm) {
+            case "1":
+                dtypeNeed = "0";
+                break;
+            case "2":
+                dtypeNeed = "1";
+                break;
+            case "3":
+                dtypeNeed = "2";
+                break;
+            case "4":
+                dtypeNeed = "4";
+                break;
+            default:
+                return null;
+        }
+
+        String htmlLower = html.toLowerCase(Locale.ROOT);
+        String patternDoctorForm = "doctorform(";
+        int p1 = 0;
+        while (p1 != -1) {
+            p1 = htmlLower.indexOf(patternDoctorForm, p1);
+            if (p1 == -1) {
+                break;
+            }
+            int argsStart = p1 + patternDoctorForm.length();
+            int p2 = html.indexOf(")", argsStart);
+            if (p2 == -1) {
+                break;
+            }
+            String args = html.substring(argsStart, p2);
+            p1 = p2 + 1;
+            if (args.isEmpty()) {
+                continue;
+            }
+            String[] arg = args.split(",");
+            if (arg.length < 5) {
+                continue;
+            }
+
+            String duid = trimJsToken(arg[0]);
+            String vcode = trimJsToken(arg[1]);
+            String dprice = trimJsToken(arg[2]);
+            String dtype = trimJsToken(arg[3]);
+            String dcurs = trimJsToken(arg[4]);
+            if (!dtypeNeed.equalsIgnoreCase(dtype)) {
+                continue;
+            }
+
+            return HtmlUtils.GENERATED_PAGE_MARKER
+                    + "<html><head><meta http-equiv=\"Content-Type\" content=\"text/html; charset=windows-1251\">"
+                    + "<title>ABClient</title></head><body>"
+                    + "Используем аптечку на " + targetNick + "..."
+                    + "<form action=\"http://neverlands.ru/main.php\" method=POST name=ff>"
+                    + "<input name=dtype type=hidden value=\"" + dtype + "\">"
+                    + "<input name=addid type=hidden value=\"2\">"
+                    + "<input name=post_id type=hidden value=\"3\">"
+                    + "<input name=dprice type=hidden value=\"" + dprice + "\">"
+                    + "<input name=dcurs type=hidden value=\"" + dcurs + "\">"
+                    + "<input name=duid type=hidden value=\"" + duid + "\">"
+                    + "<input name=vcode type=hidden value=\"" + vcode + "\">"
+                    + "<input name=fnick type=hidden value=\"" + targetNick + "\">"
+                    + "</form><script language=\"JavaScript\">document.ff.submit();</script></body></html>";
+        }
+        return null;
+    }
+
+    private static void disableAutoCureAndNotify(String message, boolean clearPoison, boolean clearWounds) {
+        CharacterVitalsManager.Snapshot snapshot = CharacterVitalsManager.snapshot();
+        int[] current = new int[] {
+                snapshot.poisonCount,
+                snapshot.lightWoundCount,
+                snapshot.mediumWoundCount,
+                snapshot.heavyWoundCount
+        };
+        if (clearPoison) {
+            current[POISON_INDEX] = 0;
+        }
+        if (clearWounds) {
+            current[LIGHT_WOUND_INDEX] = 0;
+            current[MEDIUM_WOUND_INDEX] = 0;
+            current[HEAVY_WOUND_INDEX] = 0;
+        }
+        CharacterVitalsManager.updatePoisonAndWounds(current, "MainPhp.disableAutoCureAndNotify");
+        try {
+            android.content.Context context = AppVars.getContext();
+            if (context != null) {
+                AutoFunctionsManager.getInstance(context).setAutoCureEnabled(false);
+            }
+        } catch (Exception e) {
+            android.util.Log.w(TAG, "AUTO_CURE_TRACE disable failed", e);
+        }
+        sendInventoryChatMessage(buildServerChatTimeHtml() + "<font color=#FF0000>" + message + "</font>");
+    }
+
+    /**
      * Генерирует "мягкое" ожидание завершения серверного таймаута после шага "Пить".
      * Не спамит повторными глотками и возвращает цикл на main.php после небольшой паузы.
      */
@@ -2824,6 +3130,7 @@ public class MainPhp {
             msgIntent.putExtra("message", "<font color=#cc0000><b>" + sysMessage + "</b></font>");
             LocalBroadcastManager.getInstance(AppVars.getContext()).sendBroadcast(msgIntent);
         }
+        syncInjuriesFromMapHeavyPopup(html);
         // Аналог C# MainPhp.cs: если авто-нападение уткнулось в закрытый бой,
         // добавляем цель во временный blacklist и отменяем fast-цикл.
         // Зависимости:
@@ -2895,6 +3202,17 @@ public class MainPhp {
         // Проверка автопитья после получения верхнего фрейма персонажа.
         // При совпадении условий запускает единый fast-action "Эликсир Восстановления".
         tryTriggerAutoDrinkRestoreElixir(address, html, isFightFrame, isFightTopFrame);
+        // C# parity: AutoCure (яд/небоевые травмы) выполняется в main.php-потоке
+        // до fast-ветки, если нет активного fast-action и нет боевого кадра.
+        if (!isNonCombatAutoPausedByFastAction()
+                && !isFightFrame
+                && !isFightTopFrame
+                && !AppVars.FastNeed) {
+            String autoCureHtml = mainPhpAutoCureStep(address, html);
+            if (autoCureHtml != null && !autoCureHtml.isEmpty()) {
+                return Russian.getBytes(autoCureHtml);
+            }
+        }
         // Обработка быстрых действий (портировано из MainPhp.cs строки 1429-1619)
         // В C# FastAction обрабатывается ВНУТРИ MainPhp, а не в отдельном менеджере.
         // Алгоритм: MainPhpFindInv → BuildRedirect на инвентарь → MainPhpIsInv → MainPhpFast → BuildRedirect на категорию

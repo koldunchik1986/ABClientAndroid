@@ -23,6 +23,10 @@ import ru.neverlands.abclient.utils.AppVars;
 public final class CharacterVitalsManager {
     private static final String TAG = "CharacterVitalsManager";
     private static final Object LOCK = new Object();
+    private static final int POISON_INDEX = 0;
+    private static final int LIGHT_WOUND_INDEX = 1;
+    private static final int MEDIUM_WOUND_INDEX = 2;
+    private static final int HEAVY_WOUND_INDEX = 3;
 
     private static volatile long lastUpdatedAtMs = 0L;
     private static volatile String lastSource = "init";
@@ -46,13 +50,23 @@ public final class CharacterVitalsManager {
         public final double intHp;
         /** Интервал восстановления MA (мс) из ins_HP/hp.js. */
         public final double intMa;
+        /** Количество эффектов "Яд". */
+        public final int poisonCount;
+        /** Количество легких травм. */
+        public final int lightWoundCount;
+        /** Количество средних травм. */
+        public final int mediumWoundCount;
+        /** Количество тяжелых травм. */
+        public final int heavyWoundCount;
         /** Момент последнего обновления snapshot (System.currentTimeMillis). */
         public final long updatedAtMs;
         /** Источник последнего обновления (тег метода/модуля). */
         public final String source;
 
         private Snapshot(int curHp, int maxHp, int curMa, int maxMa, int tied,
-                         double intHp, double intMa, long updatedAtMs, String source) {
+                         double intHp, double intMa,
+                         int poisonCount, int lightWoundCount, int mediumWoundCount, int heavyWoundCount,
+                         long updatedAtMs, String source) {
             this.curHp = curHp;
             this.maxHp = maxHp;
             this.curMa = curMa;
@@ -60,6 +74,10 @@ public final class CharacterVitalsManager {
             this.tied = tied;
             this.intHp = intHp;
             this.intMa = intMa;
+            this.poisonCount = poisonCount;
+            this.lightWoundCount = lightWoundCount;
+            this.mediumWoundCount = mediumWoundCount;
+            this.heavyWoundCount = heavyWoundCount;
             this.updatedAtMs = updatedAtMs;
             this.source = source;
         }
@@ -207,6 +225,55 @@ public final class CharacterVitalsManager {
     }
 
     /**
+     * Централизованно обновляет runtime-снимок отравления/травм.
+     *
+     * Формат массива (C# parity `PoisonAndWounds`):
+     * - `[0]` яд, `[1]` легкие, `[2]` средние, `[3]` тяжелые.
+     */
+    public static Snapshot updatePoisonAndWounds(int[] poisonAndWounds, String source) {
+        synchronized (LOCK) {
+            applyPoisonAndWoundsLocked(poisonAndWounds);
+            touchLocked(source);
+            return snapshotLocked();
+        }
+    }
+
+    /**
+     * Уменьшает счётчик одного типа эффекта (яд/травма) на 1 с защитой от отрицательных значений.
+     */
+    public static Snapshot decrementPoisonOrWound(int index, String source) {
+        synchronized (LOCK) {
+            if (index < POISON_INDEX || index > HEAVY_WOUND_INDEX) {
+                touchLocked(source);
+                return snapshotLocked();
+            }
+            int[] current = normalizePoisonAndWounds(AppVars.PoisonAndWounds);
+            if (current[index] > 0) {
+                current[index]--;
+                applyPoisonAndWoundsLocked(current);
+            }
+            touchLocked(source);
+            return snapshotLocked();
+        }
+    }
+
+    /**
+     * Гарантирует наличие хотя бы одной тяжелой травмы в runtime-состоянии.
+     * Используется как fallback при server popup "У Вас тяжёлая травма".
+     */
+    public static Snapshot ensureHeavyWoundPresent(String source) {
+        synchronized (LOCK) {
+            int[] current = normalizePoisonAndWounds(AppVars.PoisonAndWounds);
+            if (current[HEAVY_WOUND_INDEX] <= 0) {
+                current[HEAVY_WOUND_INDEX] = 1;
+                applyPoisonAndWoundsLocked(current);
+            }
+            touchLocked(source);
+            return snapshotLocked();
+        }
+    }
+
+    /**
      * Обновление из полного снимка `ins_HP(cur,max,cur,max,intHp,intMa)`.
      *
      * Зависимости:
@@ -280,10 +347,15 @@ public final class CharacterVitalsManager {
                 int maxMa = vitals.maxMa != null ? vitals.maxMa : AppVars.MaxMA;
                 updateHpMaLocked(curHp, maxHp, curMa, maxMa);
             }
+            if (vitals.poisonAndWounds != null) {
+                applyPoisonAndWoundsLocked(vitals.poisonAndWounds);
+            }
             touchLocked(source);
             Log.d(TAG, "VITALS_TRACE from pinfo: hp=" + AppVars.CurHP + "/" + AppVars.MaxHP
                     + ", ma=" + AppVars.CurMA + "/" + AppVars.MaxMA
-                    + ", tied=" + AppVars.Tied + ", source=" + source);
+                    + ", tied=" + AppVars.Tied
+                    + ", pw=" + poisonAndWoundsToLog(AppVars.PoisonAndWounds)
+                    + ", source=" + source);
             return snapshotLocked();
         }
     }
@@ -329,6 +401,35 @@ public final class CharacterVitalsManager {
         }
     }
 
+    private static void applyPoisonAndWoundsLocked(int[] poisonAndWounds) {
+        int[] normalized = normalizePoisonAndWounds(poisonAndWounds);
+        if (normalized == null) {
+            return;
+        }
+        AppVars.PoisonAndWounds = normalized;
+        Log.d(TAG, "VITALS_TRACE poisonAndWounds: " + poisonAndWoundsToLog(normalized));
+    }
+
+    private static int[] normalizePoisonAndWounds(int[] poisonAndWounds) {
+        if (poisonAndWounds == null || poisonAndWounds.length < 4) {
+            return new int[] {0, 0, 0, 0};
+        }
+        return new int[] {
+                Math.max(0, poisonAndWounds[POISON_INDEX]),
+                Math.max(0, poisonAndWounds[LIGHT_WOUND_INDEX]),
+                Math.max(0, poisonAndWounds[MEDIUM_WOUND_INDEX]),
+                Math.max(0, poisonAndWounds[HEAVY_WOUND_INDEX])
+        };
+    }
+
+    private static String poisonAndWoundsToLog(int[] poisonAndWounds) {
+        int[] normalized = normalizePoisonAndWounds(poisonAndWounds);
+        return "[" + normalized[POISON_INDEX]
+                + "," + normalized[LIGHT_WOUND_INDEX]
+                + "," + normalized[MEDIUM_WOUND_INDEX]
+                + "," + normalized[HEAVY_WOUND_INDEX] + "]";
+    }
+
     private static void touchLocked(String source) {
         lastUpdatedAtMs = System.currentTimeMillis();
         if (source != null && !source.isEmpty()) {
@@ -337,6 +438,7 @@ public final class CharacterVitalsManager {
     }
 
     private static Snapshot snapshotLocked() {
+        int[] poisonAndWounds = normalizePoisonAndWounds(AppVars.PoisonAndWounds);
         return new Snapshot(
                 AppVars.CurHP,
                 AppVars.MaxHP,
@@ -345,6 +447,10 @@ public final class CharacterVitalsManager {
                 clampPercent(AppVars.Tied),
                 AppVars.PersIntHP,
                 AppVars.PersIntMA,
+                poisonAndWounds[POISON_INDEX],
+                poisonAndWounds[LIGHT_WOUND_INDEX],
+                poisonAndWounds[MEDIUM_WOUND_INDEX],
+                poisonAndWounds[HEAVY_WOUND_INDEX],
                 lastUpdatedAtMs,
                 lastSource
         );
