@@ -889,9 +889,31 @@ public class MainPhp {
             return;
         }
         InsHpSnapshot snapshot = parseInsHpSnapshot(html);
+        String snapshotSource = "ins_HP";
         if (snapshot == null || (snapshot.maxHp <= 0 && snapshot.maxMa <= 0)) {
-            android.util.Log.d(TAG, "AUTO_DRINK_TRACE skip: ins_HP snapshot missing or invalid");
-            return;
+            CharacterVitalsManager.Snapshot vitals = CharacterVitalsManager.snapshot();
+            if (vitals.maxHp > 0 || vitals.maxMa > 0) {
+                InsHpSnapshot fallback = new InsHpSnapshot();
+                fallback.curHp = vitals.curHp;
+                fallback.maxHp = vitals.maxHp;
+                fallback.curMa = vitals.curMa;
+                fallback.maxMa = vitals.maxMa;
+                fallback.intHp = vitals.intHp;
+                fallback.intMa = vitals.intMa;
+                snapshot = fallback;
+                long ageMs = vitals.updatedAtMs > 0L
+                        ? Math.max(0L, System.currentTimeMillis() - vitals.updatedAtMs)
+                        : -1L;
+                snapshotSource = "CharacterVitalsManager(" + vitals.source + ")";
+                android.util.Log.d(TAG, "AUTO_DRINK_TRACE fallback snapshot: hp="
+                        + snapshot.curHp + "/" + snapshot.maxHp
+                        + ", ma=" + snapshot.curMa + "/" + snapshot.maxMa
+                        + ", ageMs=" + ageMs
+                        + ", source=" + vitals.source);
+            } else {
+                android.util.Log.d(TAG, "AUTO_DRINK_TRACE skip: ins_HP snapshot missing or invalid, vitals empty");
+                return;
+            }
         }
         // Как только получили валидный снимок после finish-link синхронизации — считаем one-shot выполненным.
         autoDrinkPostFightSyncPending = false;
@@ -908,7 +930,8 @@ public class MainPhp {
                     + String.format(Locale.US, "%.1f", hpPercent) + "%/" + AppVars.Profile.LezDrinkHp
                     + " (enabled=" + AppVars.Profile.LezDoDrinkHp + "), ma="
                     + String.format(Locale.US, "%.1f", maPercent) + "%/" + AppVars.Profile.LezDrinkMa
-                    + " (enabled=" + AppVars.Profile.LezDoDrinkMa + "), address=" + address);
+                    + " (enabled=" + AppVars.Profile.LezDoDrinkMa + "), address=" + address
+                    + ", snapshotSource=" + snapshotSource);
             return;
         }
         long now = System.currentTimeMillis();
@@ -924,7 +947,8 @@ public class MainPhp {
                 + ", ma=" + snapshot.curMa + "/" + snapshot.maxMa + " (" + String.format(Locale.US, "%.1f", maPercent) + "%)"
                 + ", hpThreshold=" + AppVars.Profile.LezDrinkHp + ", maThreshold=" + AppVars.Profile.LezDrinkMa
                 + ", hpEnabled=" + AppVars.Profile.LezDoDrinkHp + ", maEnabled=" + AppVars.Profile.LezDoDrinkMa
-                + ", address=" + address);
+                + ", address=" + address
+                + ", snapshotSource=" + snapshotSource);
         FastActionManager.fastAttackMomentRestoreElixir();
     }
 
