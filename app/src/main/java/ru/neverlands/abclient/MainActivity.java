@@ -2,6 +2,7 @@ package ru.neverlands.abclient;
 
 import android.Manifest;
 import android.annotation.SuppressLint;
+import android.app.KeyguardManager;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
@@ -327,6 +328,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         boolean isInteractive = true;
         boolean isDeviceIdleMode = false;
         boolean batteryOptimized = false;
+        boolean deviceLocked = false;
         try {
             PowerManager powerManager = (PowerManager) getSystemService(Context.POWER_SERVICE);
             if (powerManager != null) {
@@ -338,12 +340,14 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                     batteryOptimized = !powerManager.isIgnoringBatteryOptimizations(getPackageName());
                 }
             }
+            deviceLocked = isDeviceLocked();
         } catch (Exception e) {
             Log.w(TAG, BG_TRACE_PREFIX + " " + stage + ": failed to read power state", e);
         }
 
         Log.d(TAG, BG_TRACE_PREFIX + " " + stage
                 + ": interactive=" + isInteractive
+                + ", deviceLocked=" + deviceLocked
                 + ", idleMode=" + isDeviceIdleMode
                 + ", batteryOptimized=" + batteryOptimized
                 + ", autoFight=" + autoFightEnabled
@@ -642,6 +646,9 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
      */
     private boolean isAutoTurnServerProbeAllowedNow() {
         if (!isActivityResumedState) {
+            return true;
+        }
+        if (isDeviceLocked()) {
             return true;
         }
         try {
@@ -2189,6 +2196,9 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             }
             String action = intent.getAction();
             Log.d(TAG, BG_TRACE_PREFIX + " screenStateReceiver: action=" + action);
+            if (Intent.ACTION_SCREEN_OFF.equals(action)) {
+                isActivityResumedState = false;
+            }
             logBackgroundState("screen_event_" + action);
             AutoModeForegroundService.syncServiceState(context, "screen_event_" + action);
 
@@ -3051,6 +3061,9 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         if (!isActivityResumedState) {
             return false;
         }
+        if (isDeviceLocked()) {
+            return false;
+        }
         boolean interactive = true;
         try {
             PowerManager powerManager = (PowerManager) getSystemService(Context.POWER_SERVICE);
@@ -3073,6 +3086,9 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         if (!isActivityResumedState) {
             return false;
         }
+        if (isDeviceLocked()) {
+            return false;
+        }
         try {
             PowerManager powerManager = (PowerManager) getSystemService(Context.POWER_SERVICE);
             if (powerManager != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT_WATCH) {
@@ -3082,6 +3098,22 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             Log.w(TAG, BG_TRACE_PREFIX + " isUiForegroundLikely: fallback by resumed-state", e);
         }
         return true;
+    }
+
+    private boolean isDeviceLocked() {
+        try {
+            KeyguardManager keyguardManager = (KeyguardManager) getSystemService(Context.KEYGUARD_SERVICE);
+            if (keyguardManager == null) {
+                return false;
+            }
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                return keyguardManager.isDeviceLocked();
+            }
+            return keyguardManager.isKeyguardLocked();
+        } catch (Exception e) {
+            Log.w(TAG, BG_TRACE_PREFIX + " isDeviceLocked: fallback false", e);
+            return false;
+        }
     }
 
     // Режимы чата: 0-все, 1-только личные, 2-не показывать.
