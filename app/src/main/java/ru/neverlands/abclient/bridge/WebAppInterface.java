@@ -1875,12 +1875,5 @@ public class WebAppInterface {
             intent.putExtra("url", finalUrl);
             androidx.localbroadcastmanager.content.LocalBroadcastManager.getInstance(mContext).sendBroadcast(intent);
         }
-
-        // Дополнительно — прямой вызов, если активити доступна (страховка от пропуска broadcast)
-        MainActivity activity = getMainActivityOrNull();
-        if (activity != null) {
-            final String toLoad = finalUrl;
-            activity.runOnUiThread(() -> activity.getMainWebView().loadUrl(toLoad));
-        }
     }
 }

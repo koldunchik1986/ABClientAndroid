@@ -125,6 +125,9 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     private static final int AUTO_TURN_SERVER_PROBE_TIMEOUT_MS = 12000;
     private static final long SERVER_TIMER_TICK_MARGIN_MS = 300L;
     private static final long SERVER_TIMER_TICK_DEDUP_MS = 4000L;
+    private static final long NAV_TICK_NETWORK_BACKOFF_MS = 8000L;
+    private static final long NAV_TICK_ERROR_BURST_WINDOW_MS = 6000L;
+    private static final int NAV_TICK_ERROR_BURST_THRESHOLD = 2;
     public ActivityMainBinding binding;
     private Timer timer;
     private boolean isExiting = false;
@@ -177,6 +180,9 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     private String lastMainFrameTimeoutRetryUrl = "";
     private long lastServerTimerDrivenReloadAtMs = 0L;
     private long lastServerTimerDrivenReloadDueAtMs = Long.MIN_VALUE;
+    private long navTickNetworkBackoffUntilMs = 0L;
+    private long navTickErrorBurstWindowStartMs = 0L;
+    private int navTickErrorBurstCount = 0;
     private boolean lastQuickPanelAutoMovingState = false;
     private long lastAutoBattleSubmitAtMs = 0L;
     private final Handler autoBattleDelayHandler = createMainHandler();
@@ -3123,6 +3129,11 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                 && (now - lastServerTimerDrivenReloadAtMs) < SERVER_TIMER_TICK_DEDUP_MS) {
             return;
         }
+        if (now < navTickNetworkBackoffUntilMs) {
+            Log.d(TAG, "SERVER_TIMER_TICK backoff active: waitMs=" + (navTickNetworkBackoffUntilMs - now)
+                    + ", dueAt=" + dueAt);
+            return;
+        }
 
         AutoFunctionsManager autoFunctionsManager = AutoFunctionsManager.getInstance(this);
         boolean autoMoving = AppVars.AutoMoving;
@@ -3316,6 +3327,9 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             if (binding != null && binding.appBarMain != null && binding.appBarMain.contentMain != null
                     && view == binding.appBarMain.contentMain.webView) {
                 AppVars.url_main_top = url != null ? url : "";
+                if (isNeverlandsHostUrl(url)) {
+                    resetNavTickNetworkBackoff("main_frame_loaded");
+                }
             }
 
             if (chatPopupWebViews.contains(view)) {
@@ -3745,7 +3759,10 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         if (!isNeverlandsHostUrl(failingUrl)) {
             return;
         }
-        if (!isTimeoutError(errorCode, description)) {
+        if (isTransientNetworkDropError(errorCode, description)) {
+            onMainFrameTransientNetworkError(failingUrl, errorCode, description);
+        }
+        if (!isRetryableMainFrameError(errorCode, description)) {
             return;
         }
 
@@ -3753,14 +3770,14 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         long now = System.currentTimeMillis();
         if (failingUrl.equals(lastMainFrameTimeoutRetryUrl)
                 && (now - lastMainFrameTimeoutRetryAtMs) < MAINFRAME_TIMEOUT_RETRY_DEDUP_MS) {
-            Log.w(TAG, "onReceivedError: timeout retry skipped by dedup, url=" + failingUrl
+            Log.w(TAG, "onReceivedError: network retry skipped by dedup, url=" + failingUrl
                     + ", context={" + timeoutContext + "}");
             return;
         }
 
         lastMainFrameTimeoutRetryUrl = failingUrl;
         lastMainFrameTimeoutRetryAtMs = now;
-        Log.w(TAG, "onReceivedError: timeout on main frame, retry in "
+        Log.w(TAG, "onReceivedError: transient main-frame error, retry in "
                 + MAINFRAME_TIMEOUT_RETRY_DELAY_MS + "ms, url=" + failingUrl
                 + ", context={" + timeoutContext + "}");
 
@@ -3770,6 +3787,72 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             }
             view.loadUrl(failingUrl);
         }, MAINFRAME_TIMEOUT_RETRY_DELAY_MS);
+    }
+
+    private void onMainFrameTransientNetworkError(String failingUrl, int errorCode, String description) {
+        boolean autoFishEnabled = false;
+        try {
+            autoFishEnabled = AutoFunctionsManager.getInstance(this).isAutoFishEnabled();
+        } catch (Exception ignored) {
+            autoFishEnabled = false;
+        }
+        if (!AppVars.AutoMoving && !autoFishEnabled) {
+            return;
+        }
+
+        long now = System.currentTimeMillis();
+        if (navTickErrorBurstWindowStartMs <= 0L
+                || (now - navTickErrorBurstWindowStartMs) > NAV_TICK_ERROR_BURST_WINDOW_MS) {
+            navTickErrorBurstWindowStartMs = now;
+            navTickErrorBurstCount = 0;
+        }
+        navTickErrorBurstCount++;
+
+        if (navTickErrorBurstCount >= NAV_TICK_ERROR_BURST_THRESHOLD) {
+            long newBackoffUntil = now + NAV_TICK_NETWORK_BACKOFF_MS;
+            if (newBackoffUntil > navTickNetworkBackoffUntilMs) {
+                navTickNetworkBackoffUntilMs = newBackoffUntil;
+            }
+        }
+
+        Log.w(TAG, "SERVER_TIMER_TICK network failure: url=" + failingUrl
+                + ", code=" + errorCode
+                + ", desc=" + description
+                + ", burstCount=" + navTickErrorBurstCount
+                + ", backoffRemainMs=" + Math.max(0L, navTickNetworkBackoffUntilMs - now));
+    }
+
+    private void resetNavTickNetworkBackoff(String reason) {
+        if (navTickNetworkBackoffUntilMs == 0L
+                && navTickErrorBurstWindowStartMs == 0L
+                && navTickErrorBurstCount == 0) {
+            return;
+        }
+        navTickNetworkBackoffUntilMs = 0L;
+        navTickErrorBurstWindowStartMs = 0L;
+        navTickErrorBurstCount = 0;
+        Log.d(TAG, "SERVER_TIMER_TICK backoff reset: reason=" + reason);
+    }
+
+    private boolean isTransientNetworkDropError(int errorCode, String description) {
+        if (errorCode == WebViewClient.ERROR_TIMEOUT
+                || errorCode == WebViewClient.ERROR_CONNECT
+                || errorCode == WebViewClient.ERROR_IO
+                || errorCode == WebViewClient.ERROR_HOST_LOOKUP) {
+            return true;
+        }
+        if (description == null || description.isEmpty()) {
+            return false;
+        }
+        String lower = description.toLowerCase(Locale.ROOT);
+        return lower.contains("err_empty_response")
+                || lower.contains("unexpected end of stream")
+                || lower.contains("econnrefused")
+                || lower.contains("err_connection_refused")
+                || lower.contains("err_connection_closed")
+                || lower.contains("connection reset")
+                || lower.contains("failed to connect")
+                || lower.contains("connection aborted");
     }
 
     /**
@@ -3847,8 +3930,11 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     /**
      * Унифицированная проверка timeout-ошибки для разных Android/WebView callback-форматов.
      */
-    private boolean isTimeoutError(int errorCode, String description) {
+    private boolean isRetryableMainFrameError(int errorCode, String description) {
         if (errorCode == WebViewClient.ERROR_TIMEOUT) {
+            return true;
+        }
+        if (isTransientNetworkDropError(errorCode, description)) {
             return true;
         }
         if (description == null || description.isEmpty()) {

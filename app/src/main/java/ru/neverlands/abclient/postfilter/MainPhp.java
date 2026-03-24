@@ -54,6 +54,8 @@ public class MainPhp {
     private static final long AUTO_FISH_WEAR_LOOP_WINDOW_MS = 20_000L;
     private static final String BLISS_ELIXIR_NAME = "\u042D\u043B\u0438\u043A\u0441\u0438\u0440 \u0411\u043B\u0430\u0436\u0435\u043D\u0441\u0442\u0432\u0430";
     private static final String DIG_BUTTON_MARKER = "[\"dig\",\"Копать\",";
+    private static final int FAST_INV_TRANSITION_MAX_RETRIES = 6;
+    private static final String FAST_INV_RETRY_PARAM = "ab_fast_inv_retry";
     private static final int[] FISH_PRIM_IDS = new int[]{38, 39, 40, 41, 42, 43, 44, 45, 46};
     private static final int[] FISH_PRIM_FLAGS = new int[]{
             ru.neverlands.abclient.model.Prims.Bread,
@@ -3294,12 +3296,21 @@ public class MainPhp {
                 if (retryLink == null || retryLink.isEmpty()) {
                     retryLink = "main.php?" + filterClean;
                 }
-                String lowerRetry = retryLink.toLowerCase(Locale.ROOT);
-                if (!lowerRetry.contains("ab_fast_inv_retry=")) {
-                    retryLink += (retryLink.contains("?") ? "&" : "?") + "ab_fast_inv_retry=1";
+                int currentRetry = parseUrlParamInt(retryLink, FAST_INV_RETRY_PARAM, 0);
+                if (currentRetry >= FAST_INV_TRANSITION_MAX_RETRIES) {
+                    String fallbackInvUrl = "main.php?" + filterClean;
+                    android.util.Log.w(TAG, "processMainPhpFast: inventory transitional HTML retry limit reached ("
+                            + currentRetry + "/" + FAST_INV_TRANSITION_MAX_RETRIES
+                            + "), cancel fast action and force inventory reload: " + fallbackInvUrl);
+                    FastActionManager.fastCancel("inventory-fast-transition-timeout");
+                    return Filter.buildRedirect("Инвентарь загружается слишком долго, сбрасываем fast-действие", fallbackInvUrl);
                 }
-                android.util.Log.d(TAG, "processMainPhpFast: inventory transitional HTML, retry inventory page: " + retryLink);
-                return Filter.buildRedirect("Ожидание загрузки инвентаря", retryLink);
+                int nextRetry = currentRetry + 1;
+                retryLink = appendOrReplaceUrlParam(retryLink, FAST_INV_RETRY_PARAM, String.valueOf(nextRetry));
+                android.util.Log.d(TAG, "processMainPhpFast: inventory transitional HTML, retry="
+                        + nextRetry + "/" + FAST_INV_TRANSITION_MAX_RETRIES + ", url=" + retryLink);
+                return Filter.buildRedirect("Ожидание загрузки инвентаря (" + nextRetry
+                        + "/" + FAST_INV_TRANSITION_MAX_RETRIES + ")", retryLink);
             }
             // 3. Мы на правильной вкладке, предмет не найден — отмена
             android.util.Log.w(TAG, "processMainPhpFast: предмет не найден на правильной вкладке ("
@@ -4406,6 +4417,49 @@ public class MainPhp {
             android.util.Log.e(TAG, "getUrlParam error: " + paramName, e);
         }
         return "";
+    }
+
+    /**
+     * Безопасный parseInt параметра URL с fallback-значением.
+     */
+    private static int parseUrlParamInt(String url, String paramName, int fallback) {
+        try {
+            if (url == null || url.isEmpty()) {
+                return fallback;
+            }
+            String raw = getUrlParam(url, paramName);
+            if (raw == null || raw.isEmpty()) {
+                return fallback;
+            }
+            return Integer.parseInt(raw.trim());
+        } catch (Exception ignored) {
+            return fallback;
+        }
+    }
+
+    /**
+     * Добавляет URL-параметр или заменяет его значение, если параметр уже присутствует.
+     */
+    private static String appendOrReplaceUrlParam(String url, String paramName, String paramValue) {
+        if (url == null || url.isEmpty()) {
+            return paramName + "=" + paramValue;
+        }
+
+        String search = paramName + "=";
+        int idx = url.indexOf(search);
+        while (idx >= 0) {
+            boolean hasBoundary = idx == 0 || url.charAt(idx - 1) == '?' || url.charAt(idx - 1) == '&';
+            if (hasBoundary) {
+                int valueStart = idx + search.length();
+                int valueEnd = url.indexOf("&", valueStart);
+                if (valueEnd < 0) {
+                    valueEnd = url.length();
+                }
+                return url.substring(0, valueStart) + paramValue + url.substring(valueEnd);
+            }
+            idx = url.indexOf(search, idx + search.length());
+        }
+        return url + (url.contains("?") ? "&" : "?") + paramName + "=" + paramValue;
     }
     /**
      * Отправляет уведомление в чат об остановке боя.
