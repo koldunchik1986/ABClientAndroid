@@ -3360,6 +3360,7 @@ public class MainPhp {
             // 3. Мы на правильной вкладке, предмет не найден — отмена
             android.util.Log.w(TAG, "processMainPhpFast: предмет не найден на правильной вкладке ("
                     + filterClean + "), отмена");
+            sendInventoryChatMessage(buildFastItemNotFoundMessage(fastId));
             FastActionManager.fastCancel("inventory-fast-unsupported-context");
             return null;
         }
@@ -5252,5 +5253,20 @@ public class MainPhp {
         Intent intent = new Intent(AppVars.ACTION_ADD_CHAT_MESSAGE);
         intent.putExtra("message", messageHtml);
         LocalBroadcastManager.getInstance(AppVars.getContext()).sendBroadcast(intent);
+    }
+
+    /**
+     * Формирует системное сообщение об отмене fast-действия при отсутствии предмета.
+     * Для эликсиров сохраняем явную формулировку по запросу: "Эликсир ... не найден, действие отменено.".
+     */
+    private static String buildFastItemNotFoundMessage(String fastId) {
+        String safeFastId = fastId == null ? "" : fastId.trim();
+        if (safeFastId.startsWith("Эликсир ")) {
+            return "<font color=#FF0000>" + safeFastId + " не найден, действие отменено.</font>";
+        }
+        if (safeFastId.isEmpty()) {
+            return "<font color=#FF0000>Предмет не найден, действие отменено.</font>";
+        }
+        return "<font color=#FF0000>" + safeFastId + " в инвентаре не найден, действие отменено.</font>";
     }
 }

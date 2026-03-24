@@ -5,6 +5,7 @@ import android.util.Log;
 
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 
+import ru.neverlands.abclient.model.InvEntry;
 import ru.neverlands.abclient.utils.AppVars;
 import ru.neverlands.abclient.utils.HtmlUtils;
 import ru.neverlands.abclient.utils.HelperStrings;
@@ -24,6 +25,11 @@ import ru.neverlands.abclient.utils.HelperStrings;
  */
 public class FastActionManager {
     private static final String TAG = "FastActionManager";
+    private static final String INVENTORY_ROW_START = "<tr><td bgcolor=#F5F5F5>";
+    private static final String INVENTORY_ROW_END_LONG =
+            "<td bgcolor=#FCFAF3><img src=http://image.neverlands.ru/1x1.gif width=5 height=1></td></tr></table></td></tr></table></td></tr>";
+    private static final String INVENTORY_ROW_END_SHORT =
+            "<img src=http://image.neverlands.ru/1x1.gif width=1 height=5></td></tr></table></td></tr>";
 
     // Стандартная HTML-шапка для генерируемых страниц (аналог HelperErrors.Head() в C#).
     // Содержит GENERATED_PAGE_MARKER чтобы injectJsFix НЕ добавлял стубы в эти страницы.
@@ -658,9 +664,12 @@ public class FastActionManager {
                 break;
         }
 
-        // Тотем и островной телепорт не используют инвентарь — не делаем fallback навигацию.
+        // Тотем/островной телепорт/эликсиры не используют fallback-навигацию по findTargetLink:
+        // - для эликсиров навигацию по вкладкам уже ведет MainPhp.processMainPhpFast (im=6),
+        // - дополнительный fallback здесь может создавать цикл переходов при отсутствии предмета.
         boolean noInventoryFallback = "Тотем".equals(fastId)
-                || "Телепорт (Остров Туротор)".equals(fastId);
+                || "Телепорт (Остров Туротор)".equals(fastId)
+                || isElixirFastId(fastId);
 
         if (result == null && !noInventoryFallback && html.contains("get_id=56")) {
             Log.d(TAG, "processMainPhp: Предмет не найден, но мы в get_id=56. Ищем ссылку на нужный раздел.");
@@ -673,7 +682,11 @@ public class FastActionManager {
 
         if (result != null) {
             if (shouldEmitFastResultMessage(AppVars.FastCount)) {
-                writeChatMsg(buildFastResultMessage(fastId, AppVars.FastNick));
+                Integer elixirRemainingAfterUse = null;
+                if (isElixirFastId(fastId)) {
+                    elixirRemainingAfterUse = resolveElixirRemainingAfterUse(html, fastId);
+                }
+                writeChatMsg(buildFastResultMessage(fastId, AppVars.FastNick, elixirRemainingAfterUse));
             }
 
             // Действие выполнено, уменьшаем счётчик
@@ -715,10 +728,116 @@ public class FastActionManager {
      * - `writeChatMsg(...)` — отправка через LocalBroadcast в чат,
      * - `resolveFastDisplayName(...)` — преобразование внутренних FastId в человекочитаемый текст.
      */
-    private static String buildFastResultMessage(String fastId, String fastNick) {
+    private static String buildFastResultMessage(String fastId, String fastNick, Integer elixirRemainingAfterUse) {
         String displayName = resolveFastDisplayName(fastId);
         String target = (fastNick == null || fastNick.trim().isEmpty()) ? "" : " на <b>" + fastNick.trim() + "</b>";
-        return "<font color=#336699>Запрос отправлен: <b>" + displayName + "</b>" + target + ".</font>";
+        String elixirRemainSuffix = "";
+        if (isElixirFastId(fastId) && elixirRemainingAfterUse != null) {
+            elixirRemainSuffix = " Остаток: <b><font color=#01A9DB>" + elixirRemainingAfterUse + "</font></b>";
+        }
+        return "<font color=#336699>Запрос отправлен: <b>" + displayName + "</b>" + target + "." + elixirRemainSuffix + "</font>";
+    }
+
+    /**
+     * Проверяет, что FastId относится к эликсирам вкладки `im=6`.
+     */
+    private static boolean isElixirFastId(String fastId) {
+        if (fastId == null) return false;
+        switch (fastId) {
+            case "Эликсир Блаженства":
+            case "Эликсир Мгновенного Исцеления":
+            case "Эликсир Восстановления":
+                return true;
+            default:
+                return false;
+        }
+    }
+
+    /**
+     * Считает текущий остаток суммарной долговечности эликсира.
+     *
+     * Правило:
+     * - в инвентаре суммируем текущую долговечность всех записей данного эликсира;
+     * - в чат выводим именно текущий остаток (пример: `195/200` -> "Остаток: 195").
+     */
+    private static Integer resolveElixirRemainingAfterUse(String html, String elixirName) {
+        if (html == null || html.isEmpty() || elixirName == null || elixirName.isEmpty()) {
+            return null;
+        }
+
+        int pos = html.indexOf(INVENTORY_ROW_START);
+        if (pos == -1) {
+            return null;
+        }
+
+        int totalCurrent = 0;
+        int matchedEntries = 0;
+
+        while (true) {
+            if (pos + INVENTORY_ROW_START.length() > html.length()
+                    || !html.regionMatches(true, pos, INVENTORY_ROW_START, 0, INVENTORY_ROW_START.length())) {
+                break;
+            }
+
+            int posEnd = html.indexOf(INVENTORY_ROW_END_LONG, pos);
+            if (posEnd == -1) {
+                posEnd = html.indexOf(INVENTORY_ROW_END_SHORT, pos);
+                if (posEnd == -1) {
+                    break;
+                }
+                posEnd += INVENTORY_ROW_END_SHORT.length();
+            } else {
+                posEnd += INVENTORY_ROW_END_LONG.length();
+            }
+
+            if (posEnd <= pos || posEnd > html.length()) {
+                break;
+            }
+
+            String htmlEntry = html.substring(pos, posEnd);
+            InvEntry entry = new InvEntry(htmlEntry);
+            if (entry.Name != null && entry.Name.trim().equalsIgnoreCase(elixirName.trim())) {
+                int currentDolg = parseCurrentDurability(entry.Dolg);
+                if (currentDolg >= 0) {
+                    totalCurrent += currentDolg;
+                    matchedEntries++;
+                }
+            }
+
+            pos = posEnd;
+        }
+
+        if (matchedEntries <= 0) {
+            return null;
+        }
+
+        Log.d(TAG, "ELIXIR_REMAIN_TRACE: name=" + elixirName
+                + ", matchedEntries=" + matchedEntries
+                + ", totalCurrent=" + totalCurrent
+                + ", remaining=" + totalCurrent);
+        return totalCurrent;
+    }
+
+    /**
+     * Парсит текущую долговечность из строки вида `x/y`.
+     */
+    private static int parseCurrentDurability(String durability) {
+        if (durability == null || durability.isEmpty()) {
+            return -1;
+        }
+        int slashPos = durability.indexOf('/');
+        if (slashPos <= 0) {
+            return -1;
+        }
+        String currentPart = durability.substring(0, slashPos).trim();
+        if (currentPart.isEmpty()) {
+            return -1;
+        }
+        try {
+            return Integer.parseInt(currentPart);
+        } catch (NumberFormatException ignored) {
+            return -1;
+        }
     }
 
     /**
