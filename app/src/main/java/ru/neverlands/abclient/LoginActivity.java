@@ -51,6 +51,7 @@ public class LoginActivity extends AppCompatActivity {
     private static final long AUTH_RETRY_DELAY_MS = 1200L;
     private static final String LOGIN_UI_PREFS = "login_ui_state";
     private static final String KEY_LAST_PROFILE_ID = "last_profile_id";
+    private static final String KEY_ENCRYPTED_LOGIN_PASSWORD_PREFIX = "encrypted_login_password_";
     /**
      * При длительном полном сетевом timeout авто-retry только удваивает время ожидания входа.
      * Поэтому для "длинных" таймаутов повтор не выполняем.
@@ -121,6 +122,7 @@ public class LoginActivity extends AppCompatActivity {
                 .setTitle("Удаление профиля")
                 .setMessage("Вы уверены, что хотите удалить профиль '" + selectedProfile.UserNick + "'? Это действие необратимо.")
                 .setPositiveButton("Удалить", (dialog, which) -> {
+                    clearSavedEncryptedLoginPassword(selectedProfile);
                     selectedProfile.delete(this);
                     Toast.makeText(this, "Профиль '" + selectedProfile.UserNick + "' удален", Toast.LENGTH_SHORT).show();
                     loadProfiles(); // Перезагружаем список профилей
@@ -203,6 +205,16 @@ public class LoginActivity extends AppCompatActivity {
             applySelectedProfile(selectedProfile);
         }
 
+        android.util.Log.i(
+                "LoginActivity",
+                "LOGIN_UI: profilesLoaded=" + profiles.size()
+                        + ", selectedId=" + (selectedProfile == null ? "" : selectedProfile.id)
+                        + ", selectedNick=" + (selectedProfile == null ? "" : selectedProfile.UserNick)
+                        + ", encrypted=" + (selectedProfile != null && selectedProfile.isEncrypted)
+                        + ", autoLogon=" + (selectedProfile != null && selectedProfile.UserAutoLogon)
+                        + ", savedPasswordLen=" + safeLen(selectedProfile == null ? null : selectedProfile.UserPassword)
+        );
+
         binding.profileSpinner.setOnItemClickListener((parent, view, position, id) -> {
             if (position >= 0 && position < profiles.size()) {
                 selectedProfile = profiles.get(position);
@@ -216,8 +228,16 @@ public class LoginActivity extends AppCompatActivity {
 
         if (profile.isEncrypted) {
             binding.passwordInputLayout.setHint("Пароль шифрования");
-            binding.passwordEditText.setText("");
-            binding.rememberCheckBox.setChecked(false);
+            String savedEncryptionPassword = getSavedEncryptedLoginPassword(profile);
+            binding.passwordEditText.setText(savedEncryptionPassword);
+            binding.rememberCheckBox.setChecked(!TextUtils.isEmpty(savedEncryptionPassword));
+            android.util.Log.i(
+                    "LoginActivity",
+                    "LOGIN_UI: applySelectedProfile id=" + profile.id
+                            + ", encrypted=true"
+                            + ", autoLogon=" + binding.rememberCheckBox.isChecked()
+                            + ", savedPasswordLen=" + safeLen(savedEncryptionPassword)
+            );
             return;
         }
 
@@ -225,6 +245,13 @@ public class LoginActivity extends AppCompatActivity {
         String savedPassword = profile.UserPassword != null ? profile.UserPassword : "";
         binding.passwordEditText.setText(savedPassword);
         binding.rememberCheckBox.setChecked(profile.UserAutoLogon && !TextUtils.isEmpty(savedPassword));
+        android.util.Log.i(
+                "LoginActivity",
+                "LOGIN_UI: applySelectedProfile id=" + profile.id
+                        + ", encrypted=false"
+                        + ", autoLogon=" + profile.UserAutoLogon
+                        + ", savedPasswordLen=" + safeLen(savedPassword)
+        );
     }
 
     private UserConfig findProfileById(String profileId) {
@@ -247,6 +274,89 @@ public class LoginActivity extends AppCompatActivity {
                 .edit()
                 .putString(KEY_LAST_PROFILE_ID, profile.id)
                 .apply();
+    }
+
+    private void clearSavedEncryptedLoginPassword(UserConfig profile) {
+        if (profile == null || TextUtils.isEmpty(profile.id)) {
+            return;
+        }
+        getSharedPreferences(LOGIN_UI_PREFS, MODE_PRIVATE)
+                .edit()
+                .remove(KEY_ENCRYPTED_LOGIN_PASSWORD_PREFIX + profile.id)
+                .apply();
+    }
+
+    private String getSavedEncryptedLoginPassword(UserConfig profile) {
+        if (profile == null || !profile.isEncrypted || TextUtils.isEmpty(profile.id)) {
+            return "";
+        }
+        return getSharedPreferences(LOGIN_UI_PREFS, MODE_PRIVATE)
+                .getString(KEY_ENCRYPTED_LOGIN_PASSWORD_PREFIX + profile.id, "");
+    }
+
+    /**
+     * Stores/clears encryption password for encrypted profiles on login screen.
+     * This value is kept outside of profile XML because profile.UserPassword stores
+     * encrypted game password payload, not the encryption key entered on login screen.
+     */
+    private void persistEncryptedLoginPasswordSnapshot(UserConfig profile,
+                                                       String encryptionPassword,
+                                                       boolean rememberChecked,
+                                                       String stage) {
+        if (profile == null || !profile.isEncrypted || TextUtils.isEmpty(profile.id)) {
+            return;
+        }
+        String normalizedPassword = encryptionPassword == null ? "" : encryptionPassword;
+        String valueToStore = rememberChecked ? normalizedPassword : "";
+        String key = KEY_ENCRYPTED_LOGIN_PASSWORD_PREFIX + profile.id;
+        String previousValue = getSharedPreferences(LOGIN_UI_PREFS, MODE_PRIVATE)
+                .getString(key, "");
+        boolean changed = !TextUtils.equals(previousValue, valueToStore);
+        getSharedPreferences(LOGIN_UI_PREFS, MODE_PRIVATE)
+                .edit()
+                .putString(key, valueToStore)
+                .apply();
+        persistLastProfileId(profile);
+        android.util.Log.i(
+                "LoginActivity",
+                "LOGIN_UI: persistEncryptedRemember stage=" + stage
+                        + ", profileId=" + profile.id
+                        + ", rememberChecked=" + rememberChecked
+                        + ", savedPasswordLen=" + safeLen(valueToStore)
+                        + ", changed=" + changed
+        );
+    }
+
+    /**
+     * Синхронно фиксирует состояние "Запомнить пароль" для выбранного профиля.
+     *
+     * Важно:
+     * - используется до auth-flow (stage=login_click) и после успешного входа (stage=login_success),
+     *   чтобы пароль не терялся при переходе LoginActivity -> MainActivity -> Logout -> LoginActivity;
+     * - для шифрованных профилей не применяется.
+     */
+    private void persistRememberPasswordSnapshot(UserConfig profile, String plainPassword, String stage) {
+        if (profile == null || profile.isEncrypted) {
+            return;
+        }
+        String normalizedPassword = plainPassword == null ? "" : plainPassword;
+        String valueToStore = profile.UserAutoLogon ? normalizedPassword : "";
+        boolean changed = !TextUtils.equals(profile.UserPassword, valueToStore);
+        profile.UserPassword = valueToStore;
+        profile.save(LoginActivity.this);
+        persistLastProfileId(profile);
+        android.util.Log.i(
+                "LoginActivity",
+                "LOGIN_UI: persistRemember stage=" + stage
+                        + ", profileId=" + profile.id
+                        + ", autoLogon=" + profile.UserAutoLogon
+                        + ", savedPasswordLen=" + safeLen(profile.UserPassword)
+                        + ", changed=" + changed
+        );
+    }
+
+    private static int safeLen(String value) {
+        return value == null ? 0 : value.length();
     }
 
     private void openProfileActivity(UserConfig profile) {
@@ -277,7 +387,22 @@ public class LoginActivity extends AppCompatActivity {
         final UserConfig profileToLogin = selectedProfile;
         if (!profileToLogin.isEncrypted) {
             profileToLogin.UserAutoLogon = binding.rememberCheckBox.isChecked();
+            persistRememberPasswordSnapshot(profileToLogin, passwordOrKey, "login_click");
+        } else {
+            persistEncryptedLoginPasswordSnapshot(
+                    profileToLogin,
+                    passwordOrKey,
+                    binding.rememberCheckBox.isChecked(),
+                    "login_click"
+            );
         }
+        android.util.Log.i(
+                "LoginActivity",
+                "LOGIN_UI: loginClick profileId=" + profileToLogin.id
+                        + ", encrypted=" + profileToLogin.isEncrypted
+                        + ", rememberChecked=" + binding.rememberCheckBox.isChecked()
+                        + ", inputPasswordLen=" + safeLen(passwordOrKey)
+        );
         String gamePassword;
 
         if (profileToLogin.isEncrypted) {
@@ -520,14 +645,13 @@ public class LoginActivity extends AppCompatActivity {
         AppVars.lastCookies = cookies;
         profileToLogin.LastLogin = currentDotNetTicks();
 
-        // Пароль сохраняется только после успешного входа
-        if (!profileToLogin.isEncrypted && profileToLogin.UserAutoLogon) {
-            profileToLogin.UserPassword = gamePassword;
-        } else if (!profileToLogin.isEncrypted) {
-            profileToLogin.UserPassword = "";
+        // Дополнительно фиксируем состояние remember/password после успешного входа.
+        if (!profileToLogin.isEncrypted) {
+            persistRememberPasswordSnapshot(profileToLogin, gamePassword, "login_success");
+        } else {
+            profileToLogin.save(LoginActivity.this);
+            persistLastProfileId(profileToLogin);
         }
-        profileToLogin.save(LoginActivity.this);
-        persistLastProfileId(profileToLogin);
 
         // Устанавливаем глобальный профиль для сессии
         AppVars.Profile = profileToLogin;

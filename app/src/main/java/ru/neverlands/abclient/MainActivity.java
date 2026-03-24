@@ -87,6 +87,7 @@ import ru.neverlands.abclient.databinding.ActivityMainBinding;
 import ru.neverlands.abclient.manager.TabManager;
 import ru.neverlands.abclient.manager.RoomManager;
 import ru.neverlands.abclient.model.UserConfig;
+import ru.neverlands.abclient.network.NetworkClient;
 import ru.neverlands.abclient.proxy.CookiesManager;
 import ru.neverlands.abclient.proxy.ProxyRuntimeManager;
 import ru.neverlands.abclient.utils.AppLogger;
@@ -128,6 +129,9 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     private static final long NAV_TICK_NETWORK_BACKOFF_MS = 8000L;
     private static final long NAV_TICK_ERROR_BURST_WINDOW_MS = 6000L;
     private static final int NAV_TICK_ERROR_BURST_THRESHOLD = 2;
+    private static final String LOGOUT_URL = "http://neverlands.ru/exit.php";
+    private static final String LOGOUT_REFERER = "http://neverlands.ru/game.php";
+    private static final int LOGOUT_HTTP_TIMEOUT_MS = 10000;
     public ActivityMainBinding binding;
     private Timer timer;
     private boolean isExiting = false;
@@ -2883,6 +2887,8 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         } else if (id == R.id.nav_logs) {
             Intent intent = new Intent(this, LogsActivity.class);
             startActivity(intent);
+        } else if (id == R.id.nav_logout) {
+            performLogoutToLogin();
         }
         
         DrawerLayout drawer = binding.drawerLayout;
@@ -3236,6 +3242,107 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                 })
                 .setNegativeButton("Нет", null)
                 .show();
+    }
+
+    /**
+     * Выполняет серверный logout и переводит приложение на экран входа.
+     *
+     * Поток:
+     * - best-effort `GET /exit.php` с cookie текущей сессии;
+     * - очистка локальной сессии (WebView + OkHttp cookie jar);
+     * - переход в LoginActivity с очисткой back stack.
+     */
+    private void performLogoutToLogin() {
+        if (isExiting) {
+            return;
+        }
+        Log.i(TAG, "LOGOUT_FLOW: started from navigation drawer");
+        new Thread(() -> {
+            performLogoutRequestBestEffort();
+            runOnUiThread(this::finalizeLogoutAndOpenLogin);
+        }, "logout-flow").start();
+    }
+
+    /**
+     * Серверный выход: `GET http://neverlands.ru/exit.php` с Referer как в браузере.
+     */
+    private void performLogoutRequestBestEffort() {
+        HttpURLConnection connection = null;
+        try {
+            URL url = new URL(LOGOUT_URL);
+            Proxy activeProxy = ProxyRuntimeManager.getActiveJavaProxyOrNull();
+            if (activeProxy == null && ProxyRuntimeManager.isStrictProxyRequiredForCurrentProfile()) {
+                Log.e(TAG, "PROXY_FAIL: strict proxy enabled and runtime proxy unavailable, skip server logout request");
+                return;
+            }
+
+            connection = activeProxy != null
+                    ? (HttpURLConnection) url.openConnection(activeProxy)
+                    : (HttpURLConnection) url.openConnection();
+            connection.setRequestMethod("GET");
+            connection.setConnectTimeout(LOGOUT_HTTP_TIMEOUT_MS);
+            connection.setReadTimeout(LOGOUT_HTTP_TIMEOUT_MS);
+            connection.setUseCaches(false);
+            connection.setInstanceFollowRedirects(false);
+            connection.setRequestProperty("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8");
+            connection.setRequestProperty("Accept-Encoding", "identity");
+            connection.setRequestProperty("Accept-Language", "ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7");
+            connection.setRequestProperty("Cache-Control", "no-cache");
+            connection.setRequestProperty("Pragma", "no-cache");
+            connection.setRequestProperty("Referer", LOGOUT_REFERER);
+            connection.setRequestProperty("User-Agent", AppVars.BROWSER_USER_AGENT);
+
+            String cookie = CookieManager.getInstance().getCookie(LOGOUT_URL);
+            if (cookie == null || cookie.isEmpty()) {
+                cookie = CookieManager.getInstance().getCookie("http://neverlands.ru/");
+            }
+            if ((cookie == null || cookie.isEmpty()) && url.getHost() != null) {
+                cookie = CookiesManager.obtain(url.getHost());
+            }
+            if (cookie != null && !cookie.isEmpty()) {
+                connection.setRequestProperty("Cookie", cookie);
+            } else {
+                Log.w(TAG, "LOGOUT_FLOW: cookie is empty for server logout request");
+            }
+
+            int responseCode = connection.getResponseCode();
+            String location = connection.getHeaderField("Location");
+            Log.i(TAG, "LOGOUT_FLOW: exit.php responseCode=" + responseCode
+                    + ", location=" + (location == null ? "" : location));
+        } catch (Exception e) {
+            Log.w(TAG, "LOGOUT_FLOW: server logout request failed", e);
+        } finally {
+            if (connection != null) {
+                connection.disconnect();
+            }
+        }
+    }
+
+    /**
+     * Локальная очистка и возврат на LoginActivity.
+     */
+    private void finalizeLogoutAndOpenLogin() {
+        if (isFinishing() || isDestroyed()) {
+            return;
+        }
+        isExiting = true;
+        AppVars.lastCookies = null;
+        NetworkClient.clearCookies();
+        CookiesManager.clear();
+        try {
+            CookieManager manager = CookieManager.getInstance();
+            manager.removeSessionCookies(null);
+            manager.removeAllCookies(null);
+            manager.flush();
+        } catch (Throwable t) {
+            Log.w(TAG, "LOGOUT_FLOW: WebView cookie cleanup failed", t);
+        }
+
+        AutoModeForegroundService.syncServiceState(this, "logout_to_login");
+        Intent intent = new Intent(this, LoginActivity.class);
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+        startActivity(intent);
+        finish();
     }
 
     public void updateRoom(List<RoomManager.MenuItem> pvList, String travmText, List<RoomManager.MenuItem> travmList) {

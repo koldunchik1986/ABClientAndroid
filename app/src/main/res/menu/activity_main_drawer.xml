@@ -46,6 +46,10 @@
                 android:id="@+id/nav_logs"
                 android:icon="@android:drawable/ic_menu_agenda"
                 android:title="Логи" />
+            <item
+                android:id="@+id/nav_logout"
+                android:icon="@drawable/ic_door_exit"
+                android:title="@string/menu_logout" />
         </menu>
     </item>
 </menu>
