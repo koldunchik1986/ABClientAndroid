@@ -5,6 +5,8 @@ import android.util.Log;
 
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 
+import java.util.Locale;
+
 import ru.neverlands.abclient.model.InvEntry;
 import ru.neverlands.abclient.postfilter.MainPhp;
 import ru.neverlands.abclient.utils.AppVars;
@@ -26,6 +28,9 @@ import ru.neverlands.abclient.utils.HelperStrings;
  */
 public class FastActionManager {
     private static final String TAG = "FastActionManager";
+    private static final String FAST_ID_BLISS_ELIXIR = "Эликсир Блаженства";
+    private static volatile long lastBlissUseAtMs = 0L;
+    private static volatile long prevBlissUseAtMs = 0L;
 
     // Стандартная HTML-шапка для генерируемых страниц (аналог HelperErrors.Head() в C#).
     // Содержит GENERATED_PAGE_MARKER чтобы injectJsFix НЕ добавлял стубы в эти страницы.
@@ -677,12 +682,17 @@ public class FastActionManager {
         }
 
         if (result != null) {
+            rememberBlissUseTimestamp(fastId);
             if (shouldEmitFastResultMessage(AppVars.FastCount)) {
                 Integer elixirRemainingAfterUse = null;
                 if (isElixirFastId(fastId)) {
                     elixirRemainingAfterUse = resolveElixirRemainingFromInventoryCache(fastId, html);
                 }
                 writeChatMsg(buildFastResultMessage(fastId, AppVars.FastNick, elixirRemainingAfterUse));
+                String autoTreasureEtaMessage = buildAutoTreasureBlissEtaMessage(fastId, elixirRemainingAfterUse);
+                if (autoTreasureEtaMessage != null) {
+                    writeChatMsg(autoTreasureEtaMessage);
+                }
             }
 
             // Действие выполнено, уменьшаем счётчик
@@ -740,13 +750,67 @@ public class FastActionManager {
     private static boolean isElixirFastId(String fastId) {
         if (fastId == null) return false;
         switch (fastId) {
-            case "Эликсир Блаженства":
+            case FAST_ID_BLISS_ELIXIR:
             case "Эликсир Мгновенного Исцеления":
             case "Эликсир Восстановления":
                 return true;
             default:
                 return false;
         }
+    }
+
+    private static boolean isBlissElixirFastId(String fastId) {
+        return FAST_ID_BLISS_ELIXIR.equals(fastId);
+    }
+
+    private static void rememberBlissUseTimestamp(String fastId) {
+        if (!isBlissElixirFastId(fastId)) {
+            return;
+        }
+        long nowMs = System.currentTimeMillis();
+        if (lastBlissUseAtMs > 0L) {
+            prevBlissUseAtMs = lastBlissUseAtMs;
+        }
+        lastBlissUseAtMs = nowMs;
+        Log.d(TAG, "AUTO_BLAZ_ETA_TRACE remember use: prev=" + prevBlissUseAtMs + ", last=" + lastBlissUseAtMs);
+    }
+
+    private static String buildAutoTreasureBlissEtaMessage(String fastId, Integer elixirRemainingAfterUse) {
+        if (!isBlissElixirFastId(fastId) || !isAutoTreasureActiveNow()) {
+            return null;
+        }
+        if (elixirRemainingAfterUse == null || elixirRemainingAfterUse <= 0) {
+            return null;
+        }
+        if (prevBlissUseAtMs <= 0L || lastBlissUseAtMs <= prevBlissUseAtMs) {
+            return null;
+        }
+
+        long intervalMs = lastBlissUseAtMs - prevBlissUseAtMs;
+        if (intervalMs < 1_000L) {
+            return null;
+        }
+        long estimateMs = intervalMs * (long) elixirRemainingAfterUse;
+        String hhmm = formatDurationHhMm(estimateMs);
+        Log.d(TAG, "AUTO_BLAZ_ETA_TRACE estimate: intervalMs=" + intervalMs
+                + ", remaining=" + elixirRemainingAfterUse
+                + ", estimateMs=" + estimateMs
+                + ", hhmm=" + hhmm);
+        return "<font color=#336699>Авто-Клад: Блаженства примерно хватит на <b><font color=#01A9DB>"
+                + hhmm + "</font></b> времени.</font>";
+    }
+
+    private static boolean isAutoTreasureActiveNow() {
+        return AppVars.DoSearchBox
+                || AppVars.AutoMoving
+                || (AppVars.Profile != null && AppVars.Profile.AutoDig);
+    }
+
+    private static String formatDurationHhMm(long durationMs) {
+        long totalMinutes = Math.max(1L, Math.round(durationMs / 60000.0d));
+        long hours = totalMinutes / 60L;
+        long minutes = totalMinutes % 60L;
+        return String.format(Locale.US, "%02d:%02d", hours, minutes);
     }
 
     /**
