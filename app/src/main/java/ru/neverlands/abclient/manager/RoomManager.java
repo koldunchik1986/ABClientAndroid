@@ -469,6 +469,7 @@ public class RoomManager {
         if (isEmpty(locationNow)) {
             return;
         }
+        String currentCellRegNum = resolveCurrentCellRegNumForWalkers(locationNow);
 
         Map<String, String> charsNow = parseVisibleCharsMap(html);
         int visibleChars = charsNow.size();
@@ -476,6 +477,7 @@ public class RoomManager {
         AppVars.myNevids = resolveNevidsCount(html, visibleChars);
         Log.d(TAG, AA_TRACE_PREFIX + " FilterGetWalkers: loc=" + locationNow
                 + ", coord=" + extractRoomCoordKey(AppVars.url_ch_list)
+                + ", regNum=" + currentCellRegNum
                 + ", visibleChars=" + visibleChars
                 + ", locationCharsFromServer=" + locationCharsFromServer
                 + ", nevids=" + AppVars.myNevids);
@@ -535,10 +537,10 @@ public class RoomManager {
 
                 AppVars.myWalkers1 = !isEmpty(revealFromNevidMsg)
                         ? revealFromNevidMsg
-                        : buildWalkersMessage(comeChars, diffNevids, true);
+                        : buildWalkersMessage(comeChars, diffNevids, true, currentCellRegNum);
                 AppVars.myWalkers2 = !isEmpty(hideToNevidMsg)
                         ? hideToNevidMsg
-                        : buildWalkersMessage(leftChars, diffNevids, false);
+                        : buildWalkersMessage(leftChars, diffNevids, false, currentCellRegNum);
             }
         }
 
@@ -620,9 +622,13 @@ public class RoomManager {
      * @param chars карта персонажей, участвующих в конкретном событии
      * @param diffNevids разница `currentNevids - previousNevids`
      * @param incoming true для входа, false для выхода
+     * @param currentCellRegNum номер текущей клетки (`regNum`) для дописки в конце сообщения
      * @return готовая строка для чата; пустая строка, если событие нечего публиковать
      */
-    private static String buildWalkersMessage(Map<String, String> chars, int diffNevids, boolean incoming) {
+    private static String buildWalkersMessage(Map<String, String> chars,
+                                              int diffNevids,
+                                              boolean incoming,
+                                              String currentCellRegNum) {
         StringBuilder sb = new StringBuilder();
         int count = 0;
 
@@ -665,8 +671,29 @@ public class RoomManager {
             } else {
                 sb.append(count > 1 ? " покидают локацию" : " покидает локацию");
             }
+            if (!isEmpty(currentCellRegNum)) {
+                sb.append(" (клетка ").append(escapeHtml(currentCellRegNum)).append(")");
+            }
         }
         return sb.toString();
+    }
+
+    /**
+     * Определяет актуальный `regNum` для room-сообщений трекинга локации.
+     *
+     * Приоритет:
+     * 1) однозначное сопоставление `placename` -> `regNum` через `resolveCellRegNumForRoomName(...)`;
+     * 2) fallback на `Profile.MapLocation`.
+     */
+    private static String resolveCurrentCellRegNumForWalkers(String locationNow) {
+        String resolvedByRoomName = resolveCellRegNumForRoomName(locationNow);
+        if (!isEmpty(resolvedByRoomName)) {
+            return resolvedByRoomName.trim();
+        }
+        if (AppVars.Profile == null || isEmpty(AppVars.Profile.MapLocation)) {
+            return "";
+        }
+        return AppVars.Profile.MapLocation.trim();
     }
 
     /**
