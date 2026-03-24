@@ -25,11 +25,6 @@ import ru.neverlands.abclient.utils.HelperStrings;
  */
 public class FastActionManager {
     private static final String TAG = "FastActionManager";
-    private static final String INVENTORY_ROW_START = "<tr><td bgcolor=#F5F5F5>";
-    private static final String INVENTORY_ROW_END_LONG =
-            "<td bgcolor=#FCFAF3><img src=http://image.neverlands.ru/1x1.gif width=5 height=1></td></tr></table></td></tr></table></td></tr>";
-    private static final String INVENTORY_ROW_END_SHORT =
-            "<img src=http://image.neverlands.ru/1x1.gif width=1 height=5></td></tr></table></td></tr>";
 
     // Стандартная HTML-шапка для генерируемых страниц (аналог HelperErrors.Head() в C#).
     // Содержит GENERATED_PAGE_MARKER чтобы injectJsFix НЕ добавлял стубы в эти страницы.
@@ -684,7 +679,7 @@ public class FastActionManager {
             if (shouldEmitFastResultMessage(AppVars.FastCount)) {
                 Integer elixirRemainingAfterUse = null;
                 if (isElixirFastId(fastId)) {
-                    elixirRemainingAfterUse = resolveElixirRemainingAfterUse(html, fastId);
+                    elixirRemainingAfterUse = resolveElixirRemainingFromInventoryCache(fastId);
                 }
                 writeChatMsg(buildFastResultMessage(fastId, AppVars.FastNick, elixirRemainingAfterUse));
             }
@@ -754,57 +749,36 @@ public class FastActionManager {
     }
 
     /**
-     * Считает текущий остаток суммарной долговечности эликсира.
+     * Возвращает текущий суммарный остаток долговечности по эликсиру из готового кеша инвентаря.
      *
-     * Правило:
-     * - в инвентаре суммируем текущую долговечность всех записей данного эликсира;
-     * - в чат выводим именно текущий остаток (пример: `195/200` -> "Остаток: 195").
+     * Используем существующий модуль инвентаря (`AppVars.InvList`), чтобы не дублировать
+     * разбор HTML в FastActionManager и учитывать текущие настройки группировки.
      */
-    private static Integer resolveElixirRemainingAfterUse(String html, String elixirName) {
-        if (html == null || html.isEmpty() || elixirName == null || elixirName.isEmpty()) {
-            return null;
-        }
-
-        int pos = html.indexOf(INVENTORY_ROW_START);
-        if (pos == -1) {
+    private static Integer resolveElixirRemainingFromInventoryCache(String elixirName) {
+        if (elixirName == null || elixirName.isEmpty() || AppVars.InvList == null || AppVars.InvList.isEmpty()) {
             return null;
         }
 
         int totalCurrent = 0;
         int matchedEntries = 0;
+        String normalizedName = elixirName.trim();
 
-        while (true) {
-            if (pos + INVENTORY_ROW_START.length() > html.length()
-                    || !html.regionMatches(true, pos, INVENTORY_ROW_START, 0, INVENTORY_ROW_START.length())) {
-                break;
+        for (InvEntry entry : AppVars.InvList) {
+            if (entry == null || entry.Name == null) {
+                continue;
+            }
+            if (!entry.Name.trim().equalsIgnoreCase(normalizedName)) {
+                continue;
             }
 
-            int posEnd = html.indexOf(INVENTORY_ROW_END_LONG, pos);
-            if (posEnd == -1) {
-                posEnd = html.indexOf(INVENTORY_ROW_END_SHORT, pos);
-                if (posEnd == -1) {
-                    break;
-                }
-                posEnd += INVENTORY_ROW_END_SHORT.length();
-            } else {
-                posEnd += INVENTORY_ROW_END_LONG.length();
+            // build() уже учитывает группировку и итоговую долговечность (например, 195/200).
+            String builtEntryHtml = entry.build();
+            String builtDolg = HelperStrings.subString(builtEntryHtml, "Долговечность: <b>", "</b>");
+            int currentDolg = parseCurrentDurability(builtDolg);
+            if (currentDolg >= 0) {
+                totalCurrent += currentDolg;
+                matchedEntries++;
             }
-
-            if (posEnd <= pos || posEnd > html.length()) {
-                break;
-            }
-
-            String htmlEntry = html.substring(pos, posEnd);
-            InvEntry entry = new InvEntry(htmlEntry);
-            if (entry.Name != null && entry.Name.trim().equalsIgnoreCase(elixirName.trim())) {
-                int currentDolg = parseCurrentDurability(entry.Dolg);
-                if (currentDolg >= 0) {
-                    totalCurrent += currentDolg;
-                    matchedEntries++;
-                }
-            }
-
-            pos = posEnd;
         }
 
         if (matchedEntries <= 0) {
@@ -814,7 +788,7 @@ public class FastActionManager {
         Log.d(TAG, "ELIXIR_REMAIN_TRACE: name=" + elixirName
                 + ", matchedEntries=" + matchedEntries
                 + ", totalCurrent=" + totalCurrent
-                + ", remaining=" + totalCurrent);
+                + ", source=AppVars.InvList");
         return totalCurrent;
     }
 
