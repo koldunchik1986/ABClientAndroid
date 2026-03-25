@@ -1225,6 +1225,7 @@ public class AutoFunctionsManager {
             AppVars.AutoTreasureDigPendingInventory = false;
             AppVars.AutoTreasureShovelReady = false;
             AppVars.AutoTreasureShovelReadyOption = "";
+            AppVars.TreasureDigPauseNonCombatAutoFunctions = false;
             Log.d(TAG, "setAutoTreasureEnabled: keep visited cache on disable, entries="
                     + AppVars.SearchBoxVisited.size());
         }

@@ -66,6 +66,8 @@ public class MainPhp {
     // Для быстрых действий по эликсирам даем расширенное окно ретраев, чтобы не падать в ложный timeout.
     private static final int FAST_INV_TRANSITION_MAX_RETRIES = 12;
     private static final String FAST_INV_RETRY_PARAM = "ab_fast_inv_retry";
+    private static final int AUTO_TREASURE_SHOVEL_PREP_MAX_RETRIES = 8;
+    private static final String AUTO_TREASURE_SHOVEL_PREP_RETRY_PARAM = "ab_tdig_inv_retry";
     private static final int[] FISH_PRIM_IDS = new int[]{38, 39, 40, 41, 42, 43, 44, 45, 46};
     private static final int[] FISH_PRIM_FLAGS = new int[]{
             ru.neverlands.abclient.model.Prims.Bread,
@@ -1723,7 +1725,8 @@ public class MainPhp {
     // Global runtime pause for non-combat auto pipelines while FastAction is active.
     // Autoboi/fight flow must continue and therefore is not controlled by this helper.
     private static boolean isNonCombatAutoPausedByFastAction() {
-        return AppVars.FastNeed && AppVars.FastPauseNonCombatAutoFunctions;
+        return (AppVars.FastNeed && AppVars.FastPauseNonCombatAutoFunctions)
+                || AppVars.TreasureDigPauseNonCombatAutoFunctions;
     }
 
     // Runtime pause for non-combat auto pipelines while external auto-cure request is active.
@@ -6233,6 +6236,9 @@ public class MainPhp {
             }
         } else if (!autoTreasureActive || !autoDigEnabled) {
             AppVars.AutoTreasureDigPendingInventory = false;
+            AppVars.AutoTreasureShovelReady = false;
+            AppVars.AutoTreasureShovelReadyOption = "";
+            AppVars.TreasureDigPauseNonCombatAutoFunctions = false;
         }
 
         if (AppVars.Profile == null || !AppVars.Profile.DoStopOnDig || !digMarkerDetected || !autoTreasureActive) {
@@ -6274,8 +6280,12 @@ public class MainPhp {
             ExtMap.flushVisitedToDisk();
             android.util.Log.d(TAG, "AUTO_SEARCH_BOX_TRACE stop on dig: keep visited cache, entries="
                     + AppVars.SearchBoxVisited.size());
+            AppVars.AutoTreasureDigPendingInventory = false;
+            AppVars.AutoTreasureShovelReady = false;
+            AppVars.AutoTreasureShovelReadyOption = "";
         }
 
+        AppVars.TreasureDigPauseNonCombatAutoFunctions = false;
         notifyTreasureFoundOnCurrentCell();
         playTreasureFoundSignal();
         android.util.Log.d(TAG, "AUTO_SEARCH_BOX_TRACE treasure marker detected -> stop auto treasure");
@@ -6293,6 +6303,9 @@ public class MainPhp {
         if (!selectedShovelOption.equalsIgnoreCase(AppVars.AutoTreasureShovelReadyOption)) {
             AppVars.AutoTreasureShovelReady = false;
             AppVars.AutoTreasureShovelReadyOption = "";
+            if (!AppVars.AutoTreasureDigPendingInventory) {
+                AppVars.TreasureDigPauseNonCombatAutoFunctions = false;
+            }
         }
 
         if (AppVars.AutoTreasureDigPendingInventory) {
@@ -6303,6 +6316,9 @@ public class MainPhp {
         }
 
         if (!digMarkerDetected) {
+            if (!AppVars.AutoTreasureDigPendingInventory) {
+                AppVars.TreasureDigPauseNonCombatAutoFunctions = false;
+            }
             return null;
         }
 
@@ -6312,12 +6328,14 @@ public class MainPhp {
         boolean needWearShovel = !AutoFunctionsManager.TREASURE_SHOVEL_NONE.equalsIgnoreCase(selectedShovelOption);
         if (needWearShovel && !AppVars.AutoTreasureShovelReady) {
             AppVars.AutoTreasureDigPendingInventory = true;
+            AppVars.TreasureDigPauseNonCombatAutoFunctions = true;
             android.util.Log.d(TAG, "AUTO_SEARCH_BOX_TRACE dig flow: open shovel inventory");
             return buildAutoTreasureDigOpenInventoryRedirect();
         }
 
         AppVars.AutoTreasureDigPendingInventory = false;
         String digClickHtml = buildAutoTreasureDigClickHtml(html);
+        AppVars.TreasureDigPauseNonCombatAutoFunctions = false;
         if (digClickHtml != null) {
             android.util.Log.d(TAG, "AUTO_SEARCH_BOX_TRACE dig flow: click \"Копать\" by button");
         }
@@ -6325,6 +6343,7 @@ public class MainPhp {
     }
 
     private static String continueAutoTreasureDigPreparation(String html, String address, String selectedShovelOption) {
+        AppVars.TreasureDigPauseNonCombatAutoFunctions = true;
         boolean inventoryContext = mainPhpIsInv(html) || isInventoryAddress(address);
         if (!inventoryContext) {
             android.util.Log.d(TAG, "AUTO_SEARCH_BOX_TRACE dig flow: route to inventory (shovels)");
@@ -6334,6 +6353,26 @@ public class MainPhp {
         if (!inventoryAddressMatchesFilter(address, "&im=0&wca=3")) {
             android.util.Log.d(TAG, "AUTO_SEARCH_BOX_TRACE dig flow: switch inventory filter to wca=3");
             return buildAutoTreasureDigOpenInventoryRedirect();
+        }
+
+        if (!hasInventoryRows(html)) {
+            int currentRetry = parseUrlParamInt(address, AUTO_TREASURE_SHOVEL_PREP_RETRY_PARAM, 0);
+            if (currentRetry < AUTO_TREASURE_SHOVEL_PREP_MAX_RETRIES) {
+                int nextRetry = currentRetry + 1;
+                String retryUrl = "main.php?im=0&wca=3";
+                if (address != null && !address.isEmpty() && isInventoryAddress(address)) {
+                    retryUrl = normalizeNeverlandsMainLink(address);
+                }
+                retryUrl = appendOrReplaceUrlParam(retryUrl,
+                        AUTO_TREASURE_SHOVEL_PREP_RETRY_PARAM,
+                        String.valueOf(nextRetry));
+                android.util.Log.d(TAG, "AUTO_SEARCH_BOX_TRACE dig flow: inventory transitional html, retry="
+                        + nextRetry + "/" + AUTO_TREASURE_SHOVEL_PREP_MAX_RETRIES + ", url=" + retryUrl);
+                return buildRedirectHtml("Авто-Клад: ожидание загрузки инвентаря лопат ("
+                        + nextRetry + "/" + AUTO_TREASURE_SHOVEL_PREP_MAX_RETRIES + ")", retryUrl);
+            }
+            android.util.Log.w(TAG, "AUTO_SEARCH_BOX_TRACE dig flow: inventory transitional retry limit reached ("
+                    + currentRetry + "/" + AUTO_TREASURE_SHOVEL_PREP_MAX_RETRIES + ")");
         }
 
         if (AutoFunctionsManager.TREASURE_SHOVEL_NONE.equalsIgnoreCase(selectedShovelOption)) {
@@ -6353,10 +6392,13 @@ public class MainPhp {
             return buildRedirectHtml("Авто-Клад: одеваем лопату", wearLink);
         }
 
-        markAutoTreasureShovelReady(selectedShovelOption);
+        AppVars.AutoTreasureDigPendingInventory = false;
+        AppVars.AutoTreasureShovelReady = false;
+        AppVars.AutoTreasureShovelReadyOption = "";
+        AppVars.TreasureDigPauseNonCombatAutoFunctions = false;
         sendInventoryChatMessage(buildServerChatTimeHtml()
-                + "<font color=#FF0000>Авто-Клад: лопата не найдена, копаем без переодевания.</font>");
-        android.util.Log.w(TAG, "AUTO_SEARCH_BOX_TRACE dig flow: shovel not found, continue without wear");
+                + "<font color=#FF0000>\u0410\u0432\u0442\u043e-\u041a\u043b\u0430\u0434: \u043b\u043e\u043f\u0430\u0442\u0430 \u043d\u0435 \u043d\u0430\u0439\u0434\u0435\u043d\u0430, \u043a\u043e\u043f\u043a\u0430 \u043e\u0442\u043c\u0435\u043d\u0435\u043d\u0430.</font>");
+        android.util.Log.w(TAG, "AUTO_SEARCH_BOX_TRACE dig flow: shovel not found, dig cancelled");
         return buildAutoTreasureDigReturnToMapHtml(html);
     }
 

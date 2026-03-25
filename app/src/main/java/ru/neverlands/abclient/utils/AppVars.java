@@ -321,6 +321,9 @@ public class AppVars {
     public static volatile boolean AutoTreasureShovelReady = false;
     // Последний тип лопаты, для которого выставлен AutoTreasureShovelReady.
     public static volatile String AutoTreasureShovelReadyOption = "";
+    // Runtime-пауза небоевых авто-функций на этапе подготовки автокопки (экипировка лопаты).
+    // Авто-бой не должен зависеть от этого флага.
+    public static volatile boolean TreasureDigPauseNonCombatAutoFunctions = false;
     public static WeakReference<MainActivity> mainActivity;
 
     public static java.util.Map<String, String> myCharsOld = new java.util.LinkedHashMap<>();

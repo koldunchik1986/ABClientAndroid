@@ -43,6 +43,13 @@ public class MapAjax {
             return html;
         }
 
+        if (AppVars.TreasureDigPauseNonCombatAutoFunctions) {
+            if (AppVars.AutoMoving || AppVars.DoSearchBox) {
+                Log.d(TAG, "AUTO_SEARCH_BOX_TRACE: skip map auto processing while treasure dig preparation is active");
+            }
+            return html;
+        }
+
         if (!AppVars.AutoMoving || !AppVars.DoSearchBox) {
             autoDrinkBlazStartupSyncDone = false;
             lastAutoDrinkBlazStartupSyncAttemptAtMs = 0L;
