@@ -2350,6 +2350,12 @@ public class MainPhp {
         String safeNick = targetNick.replace("<", "&lt;").replace(">", "&gt;");
         sendInventoryChatMessage(buildServerChatTimeHtml()
                 + "<font color=#004bbb>Лечим " + safeNick + " (" + woundLabel + " травма)...</font>");
+
+        // Prevent stale self-wound state after doctorform submit:
+        // without this, AutoCure may keep seeing old runtime counters and re-trigger self-elixir loop.
+        decrementSelfWoundCounterIfNeeded(targetNick, cureTravm,
+                "MainPhp.mainPhpExternalRequestedCureStep.submitted");
+
         clearExternalCureRequest("submitted");
         return cureHtml;
     }
@@ -2444,6 +2450,8 @@ public class MainPhp {
         if (isAutoCureSelfElixirEnabledForWound(cureTravm)) {
             String selfElixirCureHtml = mainPhpTrySelfWoundCureByElixir(address, html, woundLabel);
             if (selfElixirCureHtml != null && !selfElixirCureHtml.isEmpty()) {
+                CharacterVitalsManager.decrementPoisonOrWound(woundIndex,
+                        "MainPhp.mainPhpAutoCureStep.selfElixirUsed");
                 return selfElixirCureHtml;
             }
         }
@@ -2669,6 +2677,42 @@ public class MainPhp {
                     + "</form><script language=\"JavaScript\">document.ff.submit();</script></body></html>";
         }
         return null;
+    }
+
+    private static void decrementSelfWoundCounterIfNeeded(String targetNick, String cureTravm, String source) {
+        if (!isSelfNick(targetNick)) {
+            return;
+        }
+        int woundIndex = woundIndexFromTravm(cureTravm);
+        if (woundIndex < 0) {
+            return;
+        }
+        CharacterVitalsManager.decrementPoisonOrWound(woundIndex, source);
+    }
+
+    private static boolean isSelfNick(String nick) {
+        if (nick == null || nick.trim().isEmpty() || AppVars.Profile == null
+                || AppVars.Profile.UserNick == null || AppVars.Profile.UserNick.trim().isEmpty()) {
+            return false;
+        }
+        return nick.trim().equalsIgnoreCase(AppVars.Profile.UserNick.trim());
+    }
+
+    private static int woundIndexFromTravm(String cureTravm) {
+        if (cureTravm == null || cureTravm.trim().isEmpty()) {
+            return -1;
+        }
+        switch (cureTravm.trim()) {
+            case "1":
+                return LIGHT_WOUND_INDEX;
+            case "2":
+                return MEDIUM_WOUND_INDEX;
+            case "3":
+                return HEAVY_WOUND_INDEX;
+            default:
+                // "4" (battle wound) is not represented in PoisonAndWounds runtime counters.
+                return -1;
+        }
     }
 
     private static void disableAutoCureAndNotify(String message, boolean clearPoison, boolean clearWounds) {
