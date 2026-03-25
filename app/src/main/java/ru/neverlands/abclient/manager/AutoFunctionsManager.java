@@ -352,10 +352,11 @@ public class AutoFunctionsManager {
     }
 
     private void requestCharacterSyncForAutoFunctionEnable(String functionName) {
+        boolean showToast = "auto_cure".equals(functionName);
         requestCharacterSync("auto-enable:" + functionName,
                 "AutoFunctionsManager.requestCharacterSyncForAutoFunctionEnable(" + functionName + ")",
                 CHARACTER_SYNC_AUTO_ENABLE_COOLDOWN_MS,
-                false);
+                showToast);
     }
 
     private void requestCharacterSync(String reason, String source, long cooldownMs, boolean showToast) {

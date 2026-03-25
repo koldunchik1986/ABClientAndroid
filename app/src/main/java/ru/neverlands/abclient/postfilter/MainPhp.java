@@ -2342,10 +2342,17 @@ public class MainPhp {
         if (isSelfNick(targetNick) && isAutoCureSelfElixirEnabledForWound(cureTravm)) {
             String selfElixirCureHtml = mainPhpTrySelfWoundCureByElixir(address, html, woundLabel);
             if (selfElixirCureHtml != null && !selfElixirCureHtml.isEmpty()) {
-                decrementSelfWoundCounterIfNeeded(targetNick, cureTravm,
-                        "MainPhp.mainPhpExternalRequestedCureStep.selfElixirUsed");
-                RoomManager.onAutoCureSubmitted(targetNick, cureTravm);
-                clearExternalCureRequest("submitted-self-elixir");
+                if (!isSelfWoundElixirNavigationOnlyResult(selfElixirCureHtml)) {
+                    decrementSelfWoundCounterIfNeeded(targetNick, cureTravm,
+                            "MainPhp.mainPhpExternalRequestedCureStep.selfElixirUsed");
+                    RoomManager.onAutoCureSubmitted(targetNick, cureTravm);
+                    clearExternalCureRequest("submitted-self-elixir");
+                    android.util.Log.d(TAG, "AUTO_CURE_TRACE self elixir submitted: nick="
+                            + targetNick + ", travm=" + cureTravm);
+                } else {
+                    android.util.Log.d(TAG, "AUTO_CURE_TRACE self elixir navigation step: nick="
+                            + targetNick + ", travm=" + cureTravm);
+                }
                 return selfElixirCureHtml;
             }
         }
@@ -2479,8 +2486,15 @@ public class MainPhp {
         if (isAutoCureSelfElixirEnabledForWound(cureTravm)) {
             String selfElixirCureHtml = mainPhpTrySelfWoundCureByElixir(address, html, woundLabel);
             if (selfElixirCureHtml != null && !selfElixirCureHtml.isEmpty()) {
-                CharacterVitalsManager.decrementPoisonOrWound(woundIndex,
-                        "MainPhp.mainPhpAutoCureStep.selfElixirUsed");
+                if (!isSelfWoundElixirNavigationOnlyResult(selfElixirCureHtml)) {
+                    CharacterVitalsManager.decrementPoisonOrWound(woundIndex,
+                            "MainPhp.mainPhpAutoCureStep.selfElixirUsed");
+                    android.util.Log.d(TAG, "AUTO_CURE_TRACE self elixir submitted (self): travm="
+                            + cureTravm + ", index=" + woundIndex);
+                } else {
+                    android.util.Log.d(TAG, "AUTO_CURE_TRACE self elixir navigation step (self): travm="
+                            + cureTravm);
+                }
                 return selfElixirCureHtml;
             }
         }
@@ -2593,6 +2607,22 @@ public class MainPhp {
                 + "<font color=#004bbb>Лечим свою " + woundLabel + " травму "
                 + AUTO_CURE_SELF_ELIXIR_NAME + "...</font>");
         return cureHtml;
+    }
+
+    /**
+     * Проверяет, что результат self-cure эликсира является только шагом навигации (переход на инвентарь),
+     * а не реальным submit/использованием эликсира.
+     */
+    private static boolean isSelfWoundElixirNavigationOnlyResult(String html) {
+        if (html == null || html.isEmpty()) {
+            return false;
+        }
+        String lower = html.toLowerCase(Locale.ROOT);
+        if (!lower.contains(HtmlUtils.GENERATED_PAGE_MARKER.toLowerCase(Locale.ROOT))) {
+            return false;
+        }
+        return lower.contains("переключение на инвентарь")
+                || lower.contains("переключение на эликсиры");
     }
 
     /**
