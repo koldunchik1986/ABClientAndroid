@@ -206,6 +206,12 @@ public class RoomManager {
         if (isEmpty(serverLocationName)) {
             return;
         }
+        if (!isNatureMapContextForCellRename()) {
+            clearPendingRoomLocationName();
+            Log.d(TAG, "MAP_NAME_SYNC_TRACE: skip room label sync outside nature map, topUrl="
+                    + AppVars.url_main_top + ", serverName=" + serverLocationName);
+            return;
+        }
 
         String regNum = resolveCellRegNumForRoomName(serverLocationName);
         if (isEmpty(regNum)) {
@@ -221,6 +227,30 @@ public class RoomManager {
 
         applyCellNameSyncAndNotify(regNum, serverLocationName);
         clearPendingRoomLocationName();
+    }
+
+    /**
+     * Защита от ложной синхронизации названий карты по `ch.php?lo=1` в городских комнатах.
+     *
+     * Условие "мы на природе":
+     * - верхний фрейм сейчас в карте (`get_id=56&act=10&go=ret`) ИЛИ в HTML есть map-пейлоад `var map = [[`;
+     * - текущий `MapLocation` указывает на известную клетку `ExtMap.Cells`.
+     */
+    private static boolean isNatureMapContextForCellRename() {
+        if (AppVars.Profile == null) {
+            return false;
+        }
+        String normalizedReg = normalizeRegNum(AppVars.Profile.MapLocation);
+        if (isEmpty(normalizedReg) || !ExtMap.Cells.containsKey(normalizedReg)) {
+            return false;
+        }
+
+        String topUrl = AppVars.url_main_top == null ? "" : AppVars.url_main_top.toLowerCase(Locale.ROOT);
+        boolean mapByTopUrl = topUrl.contains("get_id=56")
+                && topUrl.contains("act=10")
+                && topUrl.contains("go=ret");
+        boolean mapByMainHtml = !isEmpty(AppVars.ContentMainPhp) && AppVars.ContentMainPhp.contains("var map = [[");
+        return mapByTopUrl || mapByMainHtml;
     }
 
     /**
