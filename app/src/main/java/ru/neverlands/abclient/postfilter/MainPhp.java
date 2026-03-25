@@ -79,6 +79,19 @@ public class MainPhp {
             ru.neverlands.abclient.model.Prims.HiFlight
     };
     private static final long WTIME_SYNC_LOG_GUARD_MS = 1500L;
+    /**
+     * Окно подтверждения завершения боя на probe-кадрах авто-боя.
+     *
+     * Правило:
+     * - если кадр пришёл с `ab_reload_probe`/`ab_bg_probe` и выглядит как завершение,
+     *   клиент не делает мгновенный `DIRECT_FINISH_LINK`, а требует повторного подтверждения
+     *   тем же кандидатом (по LogBoi или ссылке завершения) в пределах этого окна.
+     *
+     * Зависимости:
+     * - `isAutoFightProbeFinishConfirmed(...)`;
+     * - `buildAutoFightProbeFinishCandidateKey(...)`;
+     * - ветка выбора `FinishFlowDecision` в `mainPhpFight(...)`.
+     */
     private static final long AUTO_FIGHT_PROBE_FINISH_CONFIRM_WINDOW_MS = 4500L;
     private static volatile long lastAutoFinishRedirectAtMs = 0L;
     private static volatile long lastAutoDrinkTriggerAtMs = 0L;
@@ -105,6 +118,13 @@ public class MainPhp {
     private static volatile String lastFightResultLootBroadcastKey = "";
     private static volatile String lastFightSummaryBroadcastKey = "";
     private static volatile String lastAutoSkinProbeFightLog = "";
+    /**
+     * Последний кандидат завершения боя, зафиксированный на probe-кадре.
+     *
+     * Используется как защита от ложного финиша на переходном кадре:
+     * - сначала фиксируется кандидат;
+     * - на следующем probe-кадре с тем же кандидатом разрешается завершение.
+     */
     private static volatile String lastAutoFightProbeFinishCandidateKey = "";
     private static volatile long lastAutoFightProbeFinishCandidateAtMs = 0L;
     /**
@@ -4197,7 +4217,13 @@ public class MainPhp {
                 && lower.contains("ab_reload_probe=1")
                 && lower.contains("ts=");
     }
-
+    /**
+     * Признак фонового probe-запроса авто-боя (`ab_bg_probe=1`).
+     *
+     * Назначение:
+     * - отделить технические перезагрузки боевого контекста от обычной навигации;
+     * - применять более осторожные правила завершения боя на таких кадрах.
+     */
     private static boolean isAutoFightBackgroundProbeAddress(String address) {
         if (address == null || address.isEmpty()) {
             return false;
@@ -4205,11 +4231,26 @@ public class MainPhp {
         String lower = address.toLowerCase(Locale.ROOT);
         return lower.contains("main.php") && lower.contains("ab_bg_probe=1");
     }
-
+    /**
+     * Единая проверка: текущий адрес относится к probe-потоку авто-боя.
+     *
+     * Зависимости:
+     * - `isAutoFightReloadProbeAddress(...)`;
+     * - `isAutoFightBackgroundProbeAddress(...)`.
+     */
     private static boolean isAutoFightProbeAddress(String address) {
         return isAutoFightReloadProbeAddress(address) || isAutoFightBackgroundProbeAddress(address);
     }
-
+    /**
+     * Строит стабильный ключ кандидата завершения боя.
+     *
+     * Правило приоритета:
+     * 1) `LogBoi`, если доступен;
+     * 2) нормализованная `fightLink`;
+     * 3) `unknown`.
+     *
+     * Ключ используется для подтверждения финиша на probe-кадрах.
+     */
     private static String buildAutoFightProbeFinishCandidateKey(String logBoi, String fightLink) {
         String log = logBoi == null ? "" : logBoi.trim();
         if (!log.isEmpty()) {
@@ -4221,12 +4262,30 @@ public class MainPhp {
         }
         return "unknown";
     }
-
+    /**
+     * Сбрасывает состояние подтверждения probe-финиша.
+     *
+     * Вызывается:
+     * - при возврате в активную фазу боя (`IsBoi=true`);
+     * - при переходе в ветки, где подтверждение больше не требуется
+     *   (например, явная капча или валидный direct-finish вне probe).
+     */
     private static void clearAutoFightProbeFinishCandidate() {
         lastAutoFightProbeFinishCandidateKey = "";
         lastAutoFightProbeFinishCandidateAtMs = 0L;
     }
-
+    /**
+     * Подтверждает завершение боя на probe-кадре по правилу "два совпадения подряд".
+     *
+     * Логика:
+     * - первый вызов только фиксирует кандидата и возвращает `false`;
+     * - второй вызов с тем же кандидатом в пределах `AUTO_FIGHT_PROBE_FINISH_CONFIRM_WINDOW_MS`
+     *   возвращает `true` и сбрасывает состояние.
+     *
+     * Назначение:
+     * - убрать ложные остановки авто-боя на переходных кадрах, где `fight_ty` уже неактивен,
+     *   но реальное завершение ещё не подтверждено серверным потоком.
+     */
     private static boolean isAutoFightProbeFinishConfirmed(String logBoi, String fightLink) {
         String candidateKey = buildAutoFightProbeFinishCandidateKey(logBoi, fightLink);
         long now = System.currentTimeMillis();
@@ -4715,6 +4774,17 @@ public class MainPhp {
             AppVars.LastFightPulseAtMs = System.currentTimeMillis();
             clearAutoFightProbeFinishCandidate();
         }
+        // Детектор переходного "ложного финиша" на техническом probe-кадре.
+        //
+        // Когда:
+        // - адрес относится к `ab_reload_probe` или `ab_bg_probe`,
+        // - `LezFight` уже не видит активную фазу (`IsBoi=false`, `IsWaitingForNextTurn=false`),
+        // - но в HTML ещё присутствует боевой контекст (`fkey.js`) без признаков реального финального шага
+        //   (нет FEND/code/captcha).
+        //
+        // Правило:
+        // - такой кадр не должен немедленно переводить поток в `fightEnded=true`,
+        //   иначе авто-бой может остановиться после одного удара.
         final boolean autoFightProbeAddress = isAutoFightProbeAddress(address);
         final FightFinishPageMarkers finishMarkers = inspectFightFinishPageMarkers(html);
         final String resolvedFightCaptchaUrl = resolveFightCaptchaUrl(html);
@@ -4927,6 +4997,10 @@ public class MainPhp {
                 if (normalizedCaptchaFinish != null && !normalizedCaptchaFinish.isEmpty()) {
                     fightLink = normalizedCaptchaFinish;
                 }
+            // Для probe-адресов включаем "двухшаговое" подтверждение direct-finish.
+            //
+            // Это исключает сценарий, когда единичный переходный кадр внезапно содержит finishLink
+            // и обрывает основной цикл авто-боя, хотя бой фактически продолжается.
             } else if (autoFightProbeAddress
                     && fightLink != null
                     && !fightLink.isEmpty()
