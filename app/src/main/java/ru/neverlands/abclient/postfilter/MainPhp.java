@@ -2651,7 +2651,13 @@ public class MainPhp {
 
         sendInventoryChatMessage(buildServerChatTimeHtml()
                 + "<font color=#004bbb>Лечим свою " + woundLabel + " травму "
-                + AUTO_CURE_SELF_ELIXIR_NAME + "...</font>");
+                + AUTO_CURE_SELF_ELIXIR_NAME + "..."
+                + FastActionManager.buildElixirRemainingSuffixForMessage(
+                        AUTO_CURE_SELF_ELIXIR_NAME,
+                        html,
+                        -1
+                )
+                + "</font>");
         return cureHtml;
     }
 

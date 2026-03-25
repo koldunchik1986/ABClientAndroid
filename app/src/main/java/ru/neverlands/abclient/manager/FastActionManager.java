@@ -746,6 +746,37 @@ public class FastActionManager {
     }
 
     /**
+     * Возвращает HTML-суффикс вида ` Остаток: N` для сообщений об использовании эликсиров.
+     *
+     * Назначение:
+     * - единый формат для разных контуров (`FastActionManager`, `MainPhp`), чтобы не дублировать
+     *   парсинг остатка и верстку цветного суффикса в нескольких местах.
+     *
+     * Правила:
+     * - при `adjustAfterUse = -1` можно показать прогноз "после текущего использования", если сообщение
+     *   формируется до фактического server-submit;
+     * - при `adjustAfterUse = 0` используется текущий снимок остатка из кеша инвентаря;
+     * - если остаток определить нельзя, возвращается пустая строка.
+     *
+     * Зависимости:
+     * - {@link #resolveElixirRemainingFromInventoryCache(String, String)} — источник остатка;
+     * - `AppVars.InvList` / `MainPhp.syncInventoryCacheFromHtml(...)` — фактический источник данных инвентаря.
+     */
+    public static String buildElixirRemainingSuffixForMessage(String elixirName,
+                                                              String inventoryHtml,
+                                                              int adjustAfterUse) {
+        Integer remaining = resolveElixirRemainingFromInventoryCache(elixirName, inventoryHtml);
+        if (remaining == null) {
+            return "";
+        }
+        int adjusted = remaining + adjustAfterUse;
+        if (adjusted < 0) {
+            adjusted = 0;
+        }
+        return " Остаток: <b><font color=#01A9DB>" + adjusted + "</font></b>";
+    }
+
+    /**
      * Проверяет, что FastId относится к эликсирам вкладки `im=6`.
      */
     private static boolean isElixirFastId(String fastId) {
