@@ -10,6 +10,7 @@ import java.util.Set;
 import android.os.Handler;
 import android.os.Looper;
 import android.widget.Toast;
+import ru.neverlands.abclient.manager.AutoFunctionsManager;
 import ru.neverlands.abclient.manager.CharacterVitalsManager;
 import ru.neverlands.abclient.manager.FastActionManager;
 import ru.neverlands.abclient.manager.NeverApi;
@@ -264,6 +265,11 @@ public class MapAjax {
             return null;
         }
 
+        String fixedModeDestination = findFixedTreasureCellDestination(source);
+        if (fixedModeDestination != null && !fixedModeDestination.isEmpty()) {
+            return fixedModeDestination;
+        }
+
         int[] idx = new int[] {0, 0, -1, 1, -1, 1, -1, 1};
         int[] idy = new int[] {-1, 1, 0, 0, -1, -1, 1, 1};
 
@@ -309,6 +315,41 @@ public class MapAjax {
             Log.d(TAG, "AUTO_SEARCH_BOX_TRACE: fallback oldest-visited destination="
                     + oldestVisitedFallback + ", ageMs=" + ageMs);
             return oldestVisitedFallback;
+        }
+        return null;
+    }
+
+    private static String findFixedTreasureCellDestination(String sourceRegNum) {
+        try {
+            if (AppVars.getContext() == null) {
+                return null;
+            }
+            AutoFunctionsManager manager = AutoFunctionsManager.getInstance(AppVars.getContext());
+            if (!manager.isAutoTreasureFixedCellConfigured()) {
+                return null;
+            }
+            String fixedRegNum = manager.getAutoTreasureFixedCellRegNum();
+            if (fixedRegNum == null || fixedRegNum.isEmpty() || !ExtMap.Cells.containsKey(fixedRegNum)) {
+                return null;
+            }
+            if (!fixedRegNum.equals(sourceRegNum)) {
+                Log.d(TAG, "AUTO_SEARCH_BOX_TRACE fixed-cell: move to target " + fixedRegNum + " from " + sourceRegNum);
+                return fixedRegNum;
+            }
+
+            int[] idx = new int[] {0, 0, -1, 1, -1, 1, -1, 1};
+            int[] idy = new int[] {-1, 1, 0, 0, -1, -1, 1, 1};
+            for (int i = 0; i < idx.length; i++) {
+                String neighbor = moveMapCell(fixedRegNum, idx[i], idy[i]);
+                if (neighbor == null || neighbor.isEmpty() || neighbor.equals(fixedRegNum)) {
+                    continue;
+                }
+                Log.d(TAG, "AUTO_SEARCH_BOX_TRACE fixed-cell: no dig marker yet, hop to neighbor "
+                        + neighbor + " and return to " + fixedRegNum);
+                return neighbor;
+            }
+        } catch (Exception e) {
+            Log.w(TAG, "AUTO_SEARCH_BOX_TRACE fixed-cell destination failed", e);
         }
         return null;
     }

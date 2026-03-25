@@ -93,6 +93,20 @@ public class QuickButtonsPanel {
             Prims.Morm,
             Prims.HiFlight
     };
+    private static final String[] TREASURE_SHOVEL_LABELS = new String[] {
+            "Не переодевать лопату",
+            "Любая лопата",
+            "Лопата кладоискателя",
+            "Походная лопатка",
+            "Лопата археолога"
+    };
+    private static final String[] TREASURE_SHOVEL_VALUES = new String[] {
+            AutoFunctionsManager.TREASURE_SHOVEL_NONE,
+            AutoFunctionsManager.TREASURE_SHOVEL_ANY,
+            AutoFunctionsManager.TREASURE_SHOVEL_SEEKER,
+            AutoFunctionsManager.TREASURE_SHOVEL_TRAVEL,
+            AutoFunctionsManager.TREASURE_SHOVEL_ARCHAEOLOGIST
+    };
     
     private final Context context;
     private final QuickButtonsManager buttonsManager;
@@ -664,6 +678,18 @@ public class QuickButtonsPanel {
                     })
                     .setNegativeButton("Отмена", null)
                     .show();
+        } else if (button.getActionType() == QuickActionType.AUTO_TREASURE) {
+            new AlertDialog.Builder(context)
+                    .setTitle("Авто-Клад")
+                    .setItems(new CharSequence[]{"Настройки авто-клада", "Удалить кнопку"}, (dialog, which) -> {
+                        if (which == 0) {
+                            showAutoTreasureSettingsDialog();
+                        } else {
+                            showRemoveConfirmation(position);
+                        }
+                    })
+                    .setNegativeButton("Отмена", null)
+                    .show();
         } else if (button.getActionType() == QuickActionType.AUTO_MOVING) {
             new AlertDialog.Builder(context)
                     .setTitle("Навигатор")
@@ -679,6 +705,75 @@ public class QuickButtonsPanel {
         } else {
             showRemoveConfirmation(position);
         }
+    }
+
+    private void showAutoTreasureSettingsDialog() {
+        final int pad = (int) (context.getResources().getDisplayMetrics().density * 12);
+        ScrollView scroll = new ScrollView(context);
+        LinearLayout root = new LinearLayout(context);
+        root.setOrientation(LinearLayout.VERTICAL);
+        root.setPadding(pad, pad, pad, pad);
+        scroll.addView(root);
+
+        CheckBox useDig = new CheckBox(context);
+        useDig.setText("Выкапывать клад при появлении кнопки \"Копать\"");
+        useDig.setChecked(autoFunctionsManager.isAutoTreasureDigEnabled());
+        root.addView(useDig);
+
+        TextView shovelTitle = new TextView(context);
+        shovelTitle.setText("Лопата в руку перед копкой");
+        shovelTitle.setPadding(0, pad, 0, 0);
+        root.addView(shovelTitle);
+
+        Spinner shovelSpinner = new Spinner(context);
+        ArrayAdapter<String> shovelAdapter = new ArrayAdapter<>(
+                context,
+                android.R.layout.simple_spinner_item,
+                TREASURE_SHOVEL_LABELS
+        );
+        shovelAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        shovelSpinner.setAdapter(shovelAdapter);
+        int shovelIndex = indexOfTreasureShovel(autoFunctionsManager.getAutoTreasureShovelOption());
+        shovelSpinner.setSelection(shovelIndex >= 0 ? shovelIndex : 1);
+        root.addView(shovelSpinner);
+
+        CheckBox fixedCellEnabled = new CheckBox(context);
+        fixedCellEnabled.setText("Клад точно здесь");
+        fixedCellEnabled.setChecked(autoFunctionsManager.isAutoTreasureFixedCellEnabled());
+        fixedCellEnabled.setPadding(0, pad, 0, 0);
+        root.addView(fixedCellEnabled);
+
+        EditText fixedCellInput = new EditText(context);
+        fixedCellInput.setHint("Например: 12-494");
+        fixedCellInput.setInputType(InputType.TYPE_CLASS_TEXT);
+        fixedCellInput.setText(autoFunctionsManager.getAutoTreasureFixedCellRegNum());
+        root.addView(fixedCellInput);
+
+        Runnable syncControls = () -> {
+            boolean digEnabled = useDig.isChecked();
+            shovelTitle.setEnabled(digEnabled);
+            shovelSpinner.setEnabled(digEnabled);
+            boolean fixedEnabled = fixedCellEnabled.isChecked();
+            fixedCellInput.setEnabled(fixedEnabled);
+        };
+        useDig.setOnCheckedChangeListener((buttonView, isChecked) -> syncControls.run());
+        fixedCellEnabled.setOnCheckedChangeListener((buttonView, isChecked) -> syncControls.run());
+        syncControls.run();
+
+        new AlertDialog.Builder(context)
+                .setTitle("Настройки Авто-Клада")
+                .setView(scroll)
+                .setPositiveButton("Сохранить", (dialog, which) -> {
+                    autoFunctionsManager.setAutoTreasureDigEnabled(useDig.isChecked());
+                    int selectedIndex = Math.max(0, Math.min(TREASURE_SHOVEL_VALUES.length - 1, shovelSpinner.getSelectedItemPosition()));
+                    autoFunctionsManager.setAutoTreasureShovelOption(TREASURE_SHOVEL_VALUES[selectedIndex]);
+                    autoFunctionsManager.setAutoTreasureFixedCellEnabled(fixedCellEnabled.isChecked());
+                    String fixedRegNum = fixedCellInput.getText() == null ? "" : fixedCellInput.getText().toString();
+                    autoFunctionsManager.setAutoTreasureFixedCellRegNum(fixedRegNum);
+                    Toast.makeText(context, "Настройки авто-клада сохранены", Toast.LENGTH_SHORT).show();
+                })
+                .setNegativeButton("Отмена", null)
+                .show();
     }
 
     private void showAutoCureSettingsDialog() {
@@ -1008,6 +1103,19 @@ public class QuickButtonsPanel {
         if (value == null) return -1;
         for (int i = 0; i < FISH_HAND_OPTIONS.length; i++) {
             if (FISH_HAND_OPTIONS[i].equalsIgnoreCase(value)) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    private int indexOfTreasureShovel(String value) {
+        if (value == null) {
+            return -1;
+        }
+        String needle = value.trim();
+        for (int i = 0; i < TREASURE_SHOVEL_VALUES.length; i++) {
+            if (TREASURE_SHOVEL_VALUES[i].equalsIgnoreCase(needle)) {
                 return i;
             }
         }

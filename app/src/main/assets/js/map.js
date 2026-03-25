@@ -123,6 +123,7 @@ function ButClick(id) {
         case 'fig': fight_map(bavail[id][0]); break;
         case 'dep': goloc = 'main.php?get_id=56&act=10&go=dep&vcode=' + bavail[id][0]; break;
         case 'dri': Drink(bavail[id][0]); break;
+        case 'dig': Digg(bavail[id][0]); break;
         case 'que': QActive(bavail[id][0]); break;
     }
 
@@ -713,6 +714,10 @@ function Fish(code) {
 
 function Drink(code) {
     AjaxGet('map_act_ajax.php?act=1&vcode=' + code + '&sm=' + (map[1].length ? 1 : 0) + '&r=' + Math.random());
+}
+
+function Digg(code) {
+    AjaxGet('map_act_ajax.php?act=2&vcode=' + code + '&sm=' + (map[1].length ? 1 : 0) + '&r=' + Math.random());
 }
 
 function loadMap(dir) {

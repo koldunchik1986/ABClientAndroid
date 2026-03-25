@@ -315,6 +315,12 @@ public class AppVars {
     public static String AutoMovingNextJump = null;
     public static int AutoMovingJumps = 0;
     public static ru.neverlands.abclient.model.CityGateType AutoMovingCityGate = ru.neverlands.abclient.model.CityGateType.None;
+    // Runtime-state автокопки клада: этап экипировки лопаты в инвентаре.
+    public static volatile boolean AutoTreasureDigPendingInventory = false;
+    // Runtime-метка, что выбранная в настройках лопата уже подготовлена в руке для копки.
+    public static volatile boolean AutoTreasureShovelReady = false;
+    // Последний тип лопаты, для которого выставлен AutoTreasureShovelReady.
+    public static volatile String AutoTreasureShovelReadyOption = "";
     public static WeakReference<MainActivity> mainActivity;
 
     public static java.util.Map<String, String> myCharsOld = new java.util.LinkedHashMap<>();

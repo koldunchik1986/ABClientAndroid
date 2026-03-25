@@ -46,6 +46,15 @@ public class AutoFunctionsManager {
     private static final String PREF_AUTO_CURE_ELIXIR_LIGHT = "auto_cure_elixir_light";
     private static final String PREF_AUTO_CURE_ELIXIR_MEDIUM = "auto_cure_elixir_medium";
     private static final String PREF_AUTO_CURE_ELIXIR_HEAVY = "auto_cure_elixir_heavy";
+    private static final String PREF_AUTO_TREASURE_USE_DIG = "auto_treasure_use_dig";
+    private static final String PREF_AUTO_TREASURE_SHOVEL = "auto_treasure_shovel";
+    private static final String PREF_AUTO_TREASURE_FIXED_CELL_ENABLED = "auto_treasure_fixed_cell_enabled";
+    private static final String PREF_AUTO_TREASURE_FIXED_CELL = "auto_treasure_fixed_cell";
+    public static final String TREASURE_SHOVEL_NONE = "Нет";
+    public static final String TREASURE_SHOVEL_ANY = "Любая лопата";
+    public static final String TREASURE_SHOVEL_SEEKER = "Лопата кладоискателя";
+    public static final String TREASURE_SHOVEL_TRAVEL = "Походная лопатка";
+    public static final String TREASURE_SHOVEL_ARCHAEOLOGIST = "Лопата археолога";
     
     private static AutoFunctionsManager instance;
     private final Context context;
@@ -1020,6 +1029,24 @@ public class AutoFunctionsManager {
         }
     }
 
+    private String getDefaultString(String key, String fallback) {
+        try {
+            String value = defaultPrefs().getString(key, fallback);
+            return value == null ? fallback : value;
+        } catch (Exception e) {
+            Log.w(TAG, "getDefaultString failed: key=" + key, e);
+            return fallback;
+        }
+    }
+
+    private void putDefaultString(String key, String value) {
+        try {
+            defaultPrefs().edit().putString(key, value).apply();
+        } catch (Exception e) {
+            Log.w(TAG, "putDefaultString failed: key=" + key + ", value=" + value, e);
+        }
+    }
+
     // Какие типы травм лечить (по умолчанию: все включены).
     public boolean isAutoCureWoundLightEnabled() {
         return getDefaultBoolean(PREF_AUTO_CURE_WOUND_LIGHT, true);
@@ -1195,6 +1222,9 @@ public class AutoFunctionsManager {
 
         if (!enabled) {
             ExtMap.flushVisitedToDisk();
+            AppVars.AutoTreasureDigPendingInventory = false;
+            AppVars.AutoTreasureShovelReady = false;
+            AppVars.AutoTreasureShovelReadyOption = "";
             Log.d(TAG, "setAutoTreasureEnabled: keep visited cache on disable, entries="
                     + AppVars.SearchBoxVisited.size());
         }
@@ -1218,6 +1248,57 @@ public class AutoFunctionsManager {
                 }
             });
         }
+    }
+
+    public boolean isAutoTreasureDigEnabled() {
+        return getDefaultBoolean(PREF_AUTO_TREASURE_USE_DIG, false);
+    }
+
+    public void setAutoTreasureDigEnabled(boolean enabled) {
+        putDefaultBoolean(PREF_AUTO_TREASURE_USE_DIG, enabled);
+    }
+
+    public String getAutoTreasureShovelOption() {
+        String option = getDefaultString(PREF_AUTO_TREASURE_SHOVEL, TREASURE_SHOVEL_ANY).trim();
+        return option.isEmpty() ? TREASURE_SHOVEL_ANY : option;
+    }
+
+    public void setAutoTreasureShovelOption(String option) {
+        String normalized = option == null ? "" : option.trim();
+        if (normalized.isEmpty()) {
+            normalized = TREASURE_SHOVEL_ANY;
+        }
+        putDefaultString(PREF_AUTO_TREASURE_SHOVEL, normalized);
+    }
+
+    public boolean isAutoTreasureFixedCellEnabled() {
+        return getDefaultBoolean(PREF_AUTO_TREASURE_FIXED_CELL_ENABLED, false);
+    }
+
+    public void setAutoTreasureFixedCellEnabled(boolean enabled) {
+        putDefaultBoolean(PREF_AUTO_TREASURE_FIXED_CELL_ENABLED, enabled);
+    }
+
+    public String getAutoTreasureFixedCellRegNum() {
+        return normalizeRegNum(getDefaultString(PREF_AUTO_TREASURE_FIXED_CELL, ""));
+    }
+
+    public void setAutoTreasureFixedCellRegNum(String regNum) {
+        putDefaultString(PREF_AUTO_TREASURE_FIXED_CELL, normalizeRegNum(regNum));
+    }
+
+    public boolean isAutoTreasureFixedCellConfigured() {
+        return isAutoTreasureFixedCellEnabled() && !getAutoTreasureFixedCellRegNum().isEmpty();
+    }
+
+    private String normalizeRegNum(String value) {
+        if (value == null) {
+            return "";
+        }
+        return value
+                .replace('\u00A0', ' ')
+                .trim()
+                .replaceAll("\\s+", "");
     }
     
     // === AUTO_MOVING (Навигатор) ===

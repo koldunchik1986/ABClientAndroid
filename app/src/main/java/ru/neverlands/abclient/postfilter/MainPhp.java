@@ -3956,7 +3956,12 @@ public class MainPhp {
             AppVars.ContentMainPhp = originalHtml;
         }
         if (!isFightFrame && !isFightTopFrame) {
-            maybeStopAutoTreasureOnDig(html);
+            String autoTreasureDigHtml = maybeStopAutoTreasureOnDig(html, address);
+            if (autoTreasureDigHtml != null) {
+                html = autoTreasureDigHtml;
+                AppVars.ContentMainPhp = html;
+                return Russian.getBytes(html);
+            }
         }
         // Обработка инвентаря выполняется ТОЛЬКО на странице инвентаря.
         // Важно: не запускать на страницах боя (`act=7`) и прочих `main.php`,
@@ -6200,17 +6205,38 @@ public class MainPhp {
      * C# parity (`AppVars.Profile.DoStopOnDig`):
      * при появлении кнопки "Копать" останавливает Авто-Клад и сообщает пользователю.
      */
-    private static void maybeStopAutoTreasureOnDig(String html) {
-        if (html == null || html.isEmpty() || AppVars.Profile == null || !AppVars.Profile.DoStopOnDig) {
-            return;
-        }
-        if (!html.contains(DIG_BUTTON_MARKER)) {
-            return;
+    private static String maybeStopAutoTreasureOnDig(String html, String address) {
+        if (html == null || html.isEmpty()) {
+            return null;
         }
 
-        boolean autoTreasureActive = AppVars.DoSearchBox || AppVars.AutoMoving || AppVars.Profile.AutoDig;
-        if (!autoTreasureActive) {
-            return;
+        boolean digMarkerDetected = html.contains(DIG_BUTTON_MARKER);
+        boolean autoTreasureActive = AppVars.DoSearchBox
+                || AppVars.AutoMoving
+                || (AppVars.Profile != null && AppVars.Profile.AutoDig);
+
+        AutoFunctionsManager autoManager = null;
+        try {
+            android.content.Context context = AppVars.getContext();
+            if (context != null) {
+                autoManager = AutoFunctionsManager.getInstance(context);
+            }
+        } catch (Exception e) {
+            android.util.Log.w(TAG, "AUTO_SEARCH_BOX_TRACE dig flow: manager init failed", e);
+        }
+
+        boolean autoDigEnabled = autoManager != null && autoManager.isAutoTreasureDigEnabled();
+        if (autoTreasureActive && autoDigEnabled) {
+            String digFlowHtml = maybeHandleAutoTreasureDigFlow(html, address, autoManager, digMarkerDetected);
+            if (digFlowHtml != null) {
+                return digFlowHtml;
+            }
+        } else if (!autoTreasureActive || !autoDigEnabled) {
+            AppVars.AutoTreasureDigPendingInventory = false;
+        }
+
+        if (AppVars.Profile == null || !AppVars.Profile.DoStopOnDig || !digMarkerDetected || !autoTreasureActive) {
+            return null;
         }
 
         // Полная остановка текущего маршрута (аналог C# UpdateNavigatorOff).
@@ -6253,6 +6279,187 @@ public class MainPhp {
         notifyTreasureFoundOnCurrentCell();
         playTreasureFoundSignal();
         android.util.Log.d(TAG, "AUTO_SEARCH_BOX_TRACE treasure marker detected -> stop auto treasure");
+        return null;
+    }
+
+    private static String maybeHandleAutoTreasureDigFlow(String html,
+                                                         String address,
+                                                         AutoFunctionsManager autoManager,
+                                                         boolean digMarkerDetected) {
+        if (autoManager == null) {
+            return null;
+        }
+        String selectedShovelOption = normalizeTreasureShovelOption(autoManager.getAutoTreasureShovelOption());
+        if (!selectedShovelOption.equalsIgnoreCase(AppVars.AutoTreasureShovelReadyOption)) {
+            AppVars.AutoTreasureShovelReady = false;
+            AppVars.AutoTreasureShovelReadyOption = "";
+        }
+
+        if (AppVars.AutoTreasureDigPendingInventory) {
+            String prepareHtml = continueAutoTreasureDigPreparation(html, address, selectedShovelOption);
+            if (prepareHtml != null) {
+                return prepareHtml;
+            }
+        }
+
+        if (!digMarkerDetected) {
+            return null;
+        }
+
+        notifyTreasureFoundOnCurrentCell();
+        playTreasureFoundSignal();
+
+        boolean needWearShovel = !AutoFunctionsManager.TREASURE_SHOVEL_NONE.equalsIgnoreCase(selectedShovelOption);
+        if (needWearShovel && !AppVars.AutoTreasureShovelReady) {
+            AppVars.AutoTreasureDigPendingInventory = true;
+            android.util.Log.d(TAG, "AUTO_SEARCH_BOX_TRACE dig flow: open shovel inventory");
+            return buildAutoTreasureDigOpenInventoryRedirect();
+        }
+
+        AppVars.AutoTreasureDigPendingInventory = false;
+        String digClickHtml = buildAutoTreasureDigClickHtml(html);
+        if (digClickHtml != null) {
+            android.util.Log.d(TAG, "AUTO_SEARCH_BOX_TRACE dig flow: click \"Копать\" by button");
+        }
+        return digClickHtml;
+    }
+
+    private static String continueAutoTreasureDigPreparation(String html, String address, String selectedShovelOption) {
+        boolean inventoryContext = mainPhpIsInv(html) || isInventoryAddress(address);
+        if (!inventoryContext) {
+            android.util.Log.d(TAG, "AUTO_SEARCH_BOX_TRACE dig flow: route to inventory (shovels)");
+            return buildAutoTreasureDigOpenInventoryRedirect();
+        }
+
+        if (!inventoryAddressMatchesFilter(address, "&im=0&wca=3")) {
+            android.util.Log.d(TAG, "AUTO_SEARCH_BOX_TRACE dig flow: switch inventory filter to wca=3");
+            return buildAutoTreasureDigOpenInventoryRedirect();
+        }
+
+        if (AutoFunctionsManager.TREASURE_SHOVEL_NONE.equalsIgnoreCase(selectedShovelOption)) {
+            markAutoTreasureShovelReady(selectedShovelOption);
+            return buildAutoTreasureDigReturnToMapHtml(html);
+        }
+
+        if (isTreasureShovelEquipped(html, selectedShovelOption)) {
+            markAutoTreasureShovelReady(selectedShovelOption);
+            android.util.Log.d(TAG, "AUTO_SEARCH_BOX_TRACE dig flow: shovel already equipped");
+            return buildAutoTreasureDigReturnToMapHtml(html);
+        }
+
+        String wearLink = resolveTreasureShovelWearLink(html, selectedShovelOption);
+        if (wearLink != null && !wearLink.isEmpty()) {
+            android.util.Log.d(TAG, "AUTO_SEARCH_BOX_TRACE dig flow: wear shovel link=" + wearLink);
+            return buildRedirectHtml("Авто-Клад: одеваем лопату", wearLink);
+        }
+
+        markAutoTreasureShovelReady(selectedShovelOption);
+        sendInventoryChatMessage(buildServerChatTimeHtml()
+                + "<font color=#FF0000>Авто-Клад: лопата не найдена, копаем без переодевания.</font>");
+        android.util.Log.w(TAG, "AUTO_SEARCH_BOX_TRACE dig flow: shovel not found, continue without wear");
+        return buildAutoTreasureDigReturnToMapHtml(html);
+    }
+
+    private static void markAutoTreasureShovelReady(String selectedShovelOption) {
+        AppVars.AutoTreasureDigPendingInventory = false;
+        AppVars.AutoTreasureShovelReady = true;
+        AppVars.AutoTreasureShovelReadyOption = selectedShovelOption == null ? "" : selectedShovelOption;
+    }
+
+    private static String buildAutoTreasureDigOpenInventoryRedirect() {
+        return buildRedirectHtml("Авто-Клад: инвентарь лопат", "main.php?im=0&wca=3");
+    }
+
+    private static String buildAutoTreasureDigReturnToMapHtml(String html) {
+        String mapReturnHtml = mainPhpFindMapReturnForAutoMoving(html);
+        if (mapReturnHtml != null && !mapReturnHtml.isEmpty()) {
+            return mapReturnHtml;
+        }
+        String link = "main.php?get_id=56&act=10&go=ret";
+        if (AppVars.VCode != null && !AppVars.VCode.trim().isEmpty()) {
+            link += "&vcode=" + AppVars.VCode.trim();
+        }
+        return buildRedirectHtml("Авто-Клад: возврат на природу", link);
+    }
+
+    private static String buildAutoTreasureDigClickHtml(String html) {
+        if (html == null || html.isEmpty() || !html.contains(DIG_BUTTON_MARKER)) {
+            return null;
+        }
+        String script = "<script language=\"JavaScript\">"
+                + "setTimeout(function(){"
+                + "try{"
+                + "if(window.__abAutoTreasureDigClicked){return;}"
+                + "window.__abAutoTreasureDigClicked=true;"
+                + "if(typeof ButClick==='function' && document.getElementById('dig')){ButClick('dig');return;}"
+                + "var digBtn=document.getElementById('dig');"
+                + "if(digBtn && typeof digBtn.click==='function'){digBtn.click();}"
+                + "}catch(e){}"
+                + "},180);"
+                + "</script>";
+        int bodyEnd = html.toLowerCase(Locale.ROOT).lastIndexOf("</body>");
+        if (bodyEnd != -1) {
+            return html.substring(0, bodyEnd) + script + html.substring(bodyEnd);
+        }
+        return html + script;
+    }
+
+    private static String resolveTreasureShovelWearLink(String html, String selectedShovelOption) {
+        List<WearInvEntry> invList = getWearInvList(html);
+        for (WearInvEntry thing : invList) {
+            if (thing == null || thing.name == null || thing.wearLink == null || thing.wearLink.isEmpty()) {
+                continue;
+            }
+            if (isTreasureShovelOptionMatches(thing.name, selectedShovelOption)) {
+                return thing.wearLink;
+            }
+        }
+        return null;
+    }
+
+    private static boolean isTreasureShovelEquipped(String html, String selectedShovelOption) {
+        ParsedDressed dressed = new ParsedDressed(html);
+        if (!dressed.Valid) {
+            return false;
+        }
+        return isTreasureShovelOptionMatches(dressed.Hand1, selectedShovelOption)
+                || isTreasureShovelOptionMatches(dressed.Hand2, selectedShovelOption);
+    }
+
+    private static boolean isTreasureShovelOptionMatches(String itemName, String selectedShovelOption) {
+        if (itemName == null || itemName.trim().isEmpty()) {
+            return false;
+        }
+        if (AutoFunctionsManager.TREASURE_SHOVEL_ANY.equalsIgnoreCase(selectedShovelOption)) {
+            return isTreasureShovelName(itemName);
+        }
+        return containsIgnoreCase(itemName, selectedShovelOption);
+    }
+
+    private static boolean isTreasureShovelName(String itemName) {
+        return containsIgnoreCase(itemName, AutoFunctionsManager.TREASURE_SHOVEL_SEEKER)
+                || containsIgnoreCase(itemName, AutoFunctionsManager.TREASURE_SHOVEL_TRAVEL)
+                || containsIgnoreCase(itemName, AutoFunctionsManager.TREASURE_SHOVEL_ARCHAEOLOGIST);
+    }
+
+    private static String normalizeTreasureShovelOption(String option) {
+        if (option == null || option.trim().isEmpty()) {
+            return AutoFunctionsManager.TREASURE_SHOVEL_ANY;
+        }
+        String value = option.trim();
+        if (AutoFunctionsManager.TREASURE_SHOVEL_NONE.equalsIgnoreCase(value)) {
+            return AutoFunctionsManager.TREASURE_SHOVEL_NONE;
+        }
+        if (AutoFunctionsManager.TREASURE_SHOVEL_SEEKER.equalsIgnoreCase(value)) {
+            return AutoFunctionsManager.TREASURE_SHOVEL_SEEKER;
+        }
+        if (AutoFunctionsManager.TREASURE_SHOVEL_TRAVEL.equalsIgnoreCase(value)) {
+            return AutoFunctionsManager.TREASURE_SHOVEL_TRAVEL;
+        }
+        if (AutoFunctionsManager.TREASURE_SHOVEL_ARCHAEOLOGIST.equalsIgnoreCase(value)) {
+            return AutoFunctionsManager.TREASURE_SHOVEL_ARCHAEOLOGIST;
+        }
+        return AutoFunctionsManager.TREASURE_SHOVEL_ANY;
     }
 
     /**
