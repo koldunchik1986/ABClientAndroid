@@ -652,6 +652,18 @@ public class QuickButtonsPanel {
                     })
                     .setNegativeButton("Отмена", null)
                     .show();
+        } else if (button.getActionType() == QuickActionType.AUTO_CURE) {
+            new AlertDialog.Builder(context)
+                    .setTitle("Авто-Лечение")
+                    .setItems(new CharSequence[]{"Настройки авто-лечения", "Удалить кнопку"}, (dialog, which) -> {
+                        if (which == 0) {
+                            showAutoCureSettingsDialog();
+                        } else {
+                            showRemoveConfirmation(position);
+                        }
+                    })
+                    .setNegativeButton("Отмена", null)
+                    .show();
         } else if (button.getActionType() == QuickActionType.AUTO_MOVING) {
             new AlertDialog.Builder(context)
                     .setTitle("Навигатор")
@@ -667,6 +679,111 @@ public class QuickButtonsPanel {
         } else {
             showRemoveConfirmation(position);
         }
+    }
+
+    private void showAutoCureSettingsDialog() {
+        final int pad = (int) (context.getResources().getDisplayMetrics().density * 12);
+        ScrollView scroll = new ScrollView(context);
+        LinearLayout root = new LinearLayout(context);
+        root.setOrientation(LinearLayout.VERTICAL);
+        root.setPadding(pad, pad, pad, pad);
+        scroll.addView(root);
+
+        TextView woundsTitle = new TextView(context);
+        woundsTitle.setText("Выбор травм для лечения");
+        root.addView(woundsTitle);
+
+        CheckBox woundLight = new CheckBox(context);
+        woundLight.setText("Легкая");
+        woundLight.setChecked(autoFunctionsManager.isAutoCureWoundLightEnabled());
+        root.addView(woundLight);
+
+        CheckBox woundMedium = new CheckBox(context);
+        woundMedium.setText("Средняя");
+        woundMedium.setChecked(autoFunctionsManager.isAutoCureWoundMediumEnabled());
+        root.addView(woundMedium);
+
+        CheckBox woundHeavy = new CheckBox(context);
+        woundHeavy.setText("Тяжелая");
+        woundHeavy.setChecked(autoFunctionsManager.isAutoCureWoundHeavyEnabled());
+        root.addView(woundHeavy);
+
+        CheckBox woundBattle = new CheckBox(context);
+        woundBattle.setText("Боевая");
+        woundBattle.setChecked(autoFunctionsManager.isAutoCureWoundBattleEnabled());
+        root.addView(woundBattle);
+
+        TextView targetsTitle = new TextView(context);
+        targetsTitle.setText("Выбор типа игроков для лечения");
+        targetsTitle.setPadding(0, pad, 0, 0);
+        root.addView(targetsTitle);
+
+        CheckBox targetFriends = new CheckBox(context);
+        targetFriends.setText("Друзья");
+        targetFriends.setChecked(autoFunctionsManager.isAutoCureTargetFriendsEnabled());
+        root.addView(targetFriends);
+
+        CheckBox targetNeutrals = new CheckBox(context);
+        targetNeutrals.setText("Нейтралы");
+        targetNeutrals.setChecked(autoFunctionsManager.isAutoCureTargetNeutralsEnabled());
+        root.addView(targetNeutrals);
+
+        TextView elixirTitle = new TextView(context);
+        elixirTitle.setText("Лечение себя Эликсиром Мгновенного Исцеления");
+        elixirTitle.setPadding(0, pad, 0, 0);
+        root.addView(elixirTitle);
+
+        CheckBox useSelfElixir = new CheckBox(context);
+        useSelfElixir.setText("Использовать эликсир для лечения своих травм");
+        useSelfElixir.setChecked(autoFunctionsManager.isAutoCureUseSelfElixirEnabled());
+        root.addView(useSelfElixir);
+
+        CheckBox elixirLight = new CheckBox(context);
+        elixirLight.setText("Эликсир для легких травм");
+        elixirLight.setChecked(autoFunctionsManager.isAutoCureSelfElixirLightEnabled());
+        root.addView(elixirLight);
+
+        CheckBox elixirMedium = new CheckBox(context);
+        elixirMedium.setText("Эликсир для средних травм");
+        elixirMedium.setChecked(autoFunctionsManager.isAutoCureSelfElixirMediumEnabled());
+        root.addView(elixirMedium);
+
+        CheckBox elixirHeavy = new CheckBox(context);
+        elixirHeavy.setText("Эликсир для тяжелых травм");
+        elixirHeavy.setChecked(autoFunctionsManager.isAutoCureSelfElixirHeavyEnabled());
+        root.addView(elixirHeavy);
+
+        TextView elixirBattleInfo = new TextView(context);
+        elixirBattleInfo.setText("Боевая травма лечится только Боевой аптечкой.");
+        root.addView(elixirBattleInfo);
+
+        Runnable syncElixirControls = () -> {
+            boolean enabled = useSelfElixir.isChecked();
+            elixirLight.setEnabled(enabled);
+            elixirMedium.setEnabled(enabled);
+            elixirHeavy.setEnabled(enabled);
+        };
+        useSelfElixir.setOnCheckedChangeListener((buttonView, isChecked) -> syncElixirControls.run());
+        syncElixirControls.run();
+
+        new AlertDialog.Builder(context)
+                .setTitle("Настройки Авто-Лечения")
+                .setView(scroll)
+                .setPositiveButton("Сохранить", (dialog, which) -> {
+                    autoFunctionsManager.setAutoCureWoundLightEnabled(woundLight.isChecked());
+                    autoFunctionsManager.setAutoCureWoundMediumEnabled(woundMedium.isChecked());
+                    autoFunctionsManager.setAutoCureWoundHeavyEnabled(woundHeavy.isChecked());
+                    autoFunctionsManager.setAutoCureWoundBattleEnabled(woundBattle.isChecked());
+                    autoFunctionsManager.setAutoCureTargetFriendsEnabled(targetFriends.isChecked());
+                    autoFunctionsManager.setAutoCureTargetNeutralsEnabled(targetNeutrals.isChecked());
+                    autoFunctionsManager.setAutoCureUseSelfElixirEnabled(useSelfElixir.isChecked());
+                    autoFunctionsManager.setAutoCureSelfElixirLightEnabled(elixirLight.isChecked());
+                    autoFunctionsManager.setAutoCureSelfElixirMediumEnabled(elixirMedium.isChecked());
+                    autoFunctionsManager.setAutoCureSelfElixirHeavyEnabled(elixirHeavy.isChecked());
+                    Toast.makeText(context, "Настройки авто-лечения сохранены", Toast.LENGTH_SHORT).show();
+                })
+                .setNegativeButton("Отмена", null)
+                .show();
     }
 
     /**

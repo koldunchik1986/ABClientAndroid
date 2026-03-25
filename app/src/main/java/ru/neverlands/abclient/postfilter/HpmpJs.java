@@ -24,7 +24,22 @@ public class HpmpJs {
     public static byte[] process() {
         StringBuilder sb = new StringBuilder(2048);
         sb.append("var interv;");
+        sb.append("function __abNum(v,d){var n=parseFloat(v);return isNaN(n)?d:n;}");
+        sb.append("function __abNormInshp(){");
+        sb.append("if(typeof inshp==='undefined'||!inshp) inshp=[0,1,0,7,2000,9000];");
+        sb.append("inshp[0]=__abNum(inshp[0],0);");
+        sb.append("inshp[1]=__abNum(inshp[1],1);");
+        sb.append("inshp[2]=__abNum(inshp[2],0);");
+        sb.append("inshp[3]=__abNum(inshp[3],7);");
+        sb.append("inshp[4]=__abNum(inshp[4],2000);");
+        sb.append("inshp[5]=__abNum(inshp[5],9000);");
+        sb.append("if(inshp[1]<1) inshp[1]=1;");
+        sb.append("if(inshp[3]<7) inshp[3]=7;");
+        sb.append("if(inshp[4]<1) inshp[4]=1;");
+        sb.append("if(inshp[5]<1) inshp[5]=1;");
+        sb.append("}");
         sb.append("function ins_HP(){");
+        sb.append("__abNormInshp();");
         sb.append("interv = setInterval(\"cha_HP()\",1000);");
         sb.append("if(inshp[0] < 0) inshp[0] = 0;");
         sb.append("if(inshp[3] < 7) inshp[3] = 7;");
@@ -43,6 +58,7 @@ public class HpmpJs {
         sb.append("return time.join(':');");
         sb.append("}");
         sb.append("function cha_HP(){");
+        sb.append("__abNormInshp();");
         sb.append("if(inshp[0] < 0) inshp[0] = 0;");
         sb.append("if(inshp[0] > inshp[1]) inshp[0] = inshp[1];");
         sb.append("if(inshp[2] > inshp[3]) inshp[2] = inshp[3];");

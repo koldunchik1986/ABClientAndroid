@@ -5,6 +5,8 @@ import android.content.SharedPreferences;
 import android.util.Log;
 import android.widget.Toast;
 
+import androidx.preference.PreferenceManager;
+
 import ru.neverlands.abclient.MainActivity;
 import ru.neverlands.abclient.model.AutoboiState;
 import ru.neverlands.abclient.model.QuickActionType;
@@ -32,6 +34,17 @@ public class AutoFunctionsManager {
     private static final String KEY_LOCATION_TRACKING = KEY_PREFIX + "location_tracking";
     private static final String KEY_WALKERS_POLL_INTERVAL_SEC = KEY_PREFIX + "walkers_poll_interval_sec";
     private static final int WALKERS_POLL_INTERVAL_DEFAULT_SEC = 1;
+    // Настройки Авто-Лечения (UI long-press + MainPhp/RoomManager используют общий набор ключей).
+    private static final String PREF_AUTO_CURE_WOUND_LIGHT = "auto_cure_wound_light";
+    private static final String PREF_AUTO_CURE_WOUND_MEDIUM = "auto_cure_wound_medium";
+    private static final String PREF_AUTO_CURE_WOUND_HEAVY = "auto_cure_wound_heavy";
+    private static final String PREF_AUTO_CURE_WOUND_BATTLE = "auto_cure_wound_battle";
+    private static final String PREF_AUTO_CURE_TARGET_FRIENDS = "auto_cure_target_friends";
+    private static final String PREF_AUTO_CURE_TARGET_NEUTRALS = "auto_cure_target_neutrals";
+    private static final String PREF_AUTO_CURE_USE_SELF_ELIXIR = "auto_cure_use_self_elixir";
+    private static final String PREF_AUTO_CURE_ELIXIR_LIGHT = "auto_cure_elixir_light";
+    private static final String PREF_AUTO_CURE_ELIXIR_MEDIUM = "auto_cure_elixir_medium";
+    private static final String PREF_AUTO_CURE_ELIXIR_HEAVY = "auto_cure_elixir_heavy";
     
     private static AutoFunctionsManager instance;
     private final Context context;
@@ -900,6 +913,142 @@ public class AutoFunctionsManager {
     public void setAutoCureEnabled(boolean enabled) {
         prefs.edit().putBoolean(KEY_PREFIX + "auto_cure", enabled).apply();
         Log.d(TAG, "setAutoCureEnabled: " + enabled);
+    }
+
+    private SharedPreferences defaultPrefs() {
+        return PreferenceManager.getDefaultSharedPreferences(context);
+    }
+
+    private boolean getDefaultBoolean(String key, boolean fallback) {
+        try {
+            return defaultPrefs().getBoolean(key, fallback);
+        } catch (Exception e) {
+            Log.w(TAG, "getDefaultBoolean failed: key=" + key, e);
+            return fallback;
+        }
+    }
+
+    private void putDefaultBoolean(String key, boolean value) {
+        try {
+            defaultPrefs().edit().putBoolean(key, value).apply();
+        } catch (Exception e) {
+            Log.w(TAG, "putDefaultBoolean failed: key=" + key + ", value=" + value, e);
+        }
+    }
+
+    // Какие типы травм лечить (по умолчанию: все включены).
+    public boolean isAutoCureWoundLightEnabled() {
+        return getDefaultBoolean(PREF_AUTO_CURE_WOUND_LIGHT, true);
+    }
+
+    public void setAutoCureWoundLightEnabled(boolean enabled) {
+        putDefaultBoolean(PREF_AUTO_CURE_WOUND_LIGHT, enabled);
+    }
+
+    public boolean isAutoCureWoundMediumEnabled() {
+        return getDefaultBoolean(PREF_AUTO_CURE_WOUND_MEDIUM, true);
+    }
+
+    public void setAutoCureWoundMediumEnabled(boolean enabled) {
+        putDefaultBoolean(PREF_AUTO_CURE_WOUND_MEDIUM, enabled);
+    }
+
+    public boolean isAutoCureWoundHeavyEnabled() {
+        return getDefaultBoolean(PREF_AUTO_CURE_WOUND_HEAVY, true);
+    }
+
+    public void setAutoCureWoundHeavyEnabled(boolean enabled) {
+        putDefaultBoolean(PREF_AUTO_CURE_WOUND_HEAVY, enabled);
+    }
+
+    public boolean isAutoCureWoundBattleEnabled() {
+        return getDefaultBoolean(PREF_AUTO_CURE_WOUND_BATTLE, true);
+    }
+
+    public void setAutoCureWoundBattleEnabled(boolean enabled) {
+        putDefaultBoolean(PREF_AUTO_CURE_WOUND_BATTLE, enabled);
+    }
+
+    public boolean isAutoCureWoundTypeEnabled(int woundType) {
+        switch (woundType) {
+            case 1:
+                return isAutoCureWoundLightEnabled();
+            case 2:
+                return isAutoCureWoundMediumEnabled();
+            case 3:
+                return isAutoCureWoundHeavyEnabled();
+            case 4:
+                return isAutoCureWoundBattleEnabled();
+            default:
+                return false;
+        }
+    }
+
+    // Какие цели лечить в комнате (self лечится отдельно и всегда приоритетно).
+    public boolean isAutoCureTargetFriendsEnabled() {
+        return getDefaultBoolean(PREF_AUTO_CURE_TARGET_FRIENDS, true);
+    }
+
+    public void setAutoCureTargetFriendsEnabled(boolean enabled) {
+        putDefaultBoolean(PREF_AUTO_CURE_TARGET_FRIENDS, enabled);
+    }
+
+    public boolean isAutoCureTargetNeutralsEnabled() {
+        return getDefaultBoolean(PREF_AUTO_CURE_TARGET_NEUTRALS, true);
+    }
+
+    public void setAutoCureTargetNeutralsEnabled(boolean enabled) {
+        putDefaultBoolean(PREF_AUTO_CURE_TARGET_NEUTRALS, enabled);
+    }
+
+    // Настройки self-лечения эликсиром.
+    public boolean isAutoCureUseSelfElixirEnabled() {
+        return getDefaultBoolean(PREF_AUTO_CURE_USE_SELF_ELIXIR, false);
+    }
+
+    public void setAutoCureUseSelfElixirEnabled(boolean enabled) {
+        putDefaultBoolean(PREF_AUTO_CURE_USE_SELF_ELIXIR, enabled);
+    }
+
+    public boolean isAutoCureSelfElixirLightEnabled() {
+        return getDefaultBoolean(PREF_AUTO_CURE_ELIXIR_LIGHT, true);
+    }
+
+    public void setAutoCureSelfElixirLightEnabled(boolean enabled) {
+        putDefaultBoolean(PREF_AUTO_CURE_ELIXIR_LIGHT, enabled);
+    }
+
+    public boolean isAutoCureSelfElixirMediumEnabled() {
+        return getDefaultBoolean(PREF_AUTO_CURE_ELIXIR_MEDIUM, true);
+    }
+
+    public void setAutoCureSelfElixirMediumEnabled(boolean enabled) {
+        putDefaultBoolean(PREF_AUTO_CURE_ELIXIR_MEDIUM, enabled);
+    }
+
+    public boolean isAutoCureSelfElixirHeavyEnabled() {
+        return getDefaultBoolean(PREF_AUTO_CURE_ELIXIR_HEAVY, true);
+    }
+
+    public void setAutoCureSelfElixirHeavyEnabled(boolean enabled) {
+        putDefaultBoolean(PREF_AUTO_CURE_ELIXIR_HEAVY, enabled);
+    }
+
+    public boolean isAutoCureSelfElixirEnabledForWound(int woundType) {
+        if (!isAutoCureUseSelfElixirEnabled()) {
+            return false;
+        }
+        switch (woundType) {
+            case 1:
+                return isAutoCureSelfElixirLightEnabled();
+            case 2:
+                return isAutoCureSelfElixirMediumEnabled();
+            case 3:
+                return isAutoCureSelfElixirHeavyEnabled();
+            default:
+                // Боевую травму лечим только аптечкой.
+                return false;
+        }
     }
     
     // === AUTO_DRINK (Авто-Питье) ===

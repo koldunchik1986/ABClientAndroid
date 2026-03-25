@@ -18,7 +18,6 @@ import android.media.Ringtone;
 import android.media.RingtoneManager;
 import android.net.Uri;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
-import androidx.preference.PreferenceManager;
 import ru.neverlands.abclient.lez.LezFight;
 import ru.neverlands.abclient.model.AutoboiState;
 import ru.neverlands.abclient.model.InvComparer;
@@ -57,10 +56,6 @@ public class MainPhp {
     private static final String BLISS_ELIXIR_NAME = "\u042D\u043B\u0438\u043A\u0441\u0438\u0440 \u0411\u043B\u0430\u0436\u0435\u043D\u0441\u0442\u0432\u0430";
     private static final String AUTO_CURE_POISON_POTION_NAME = "Зелье Лечения Отравлений";
     private static final String AUTO_CURE_SELF_ELIXIR_NAME = "Эликсир Мгновенного Исцеления";
-    private static final String PREF_AUTO_CURE_USE_SELF_ELIXIR = "auto_cure_use_self_elixir";
-    private static final String PREF_AUTO_CURE_ELIXIR_LIGHT = "auto_cure_elixir_light";
-    private static final String PREF_AUTO_CURE_ELIXIR_MEDIUM = "auto_cure_elixir_medium";
-    private static final String PREF_AUTO_CURE_ELIXIR_HEAVY = "auto_cure_elixir_heavy";
     private static final String MAP_HEAVY_INJURY_POPUP_MARKER = "Вы не можете перемещаться! У Вас тяж";
     private static final int POISON_INDEX = 0;
     private static final int LIGHT_WOUND_INDEX = 1;
@@ -1227,11 +1222,17 @@ public class MainPhp {
         }
     }
 
-    /**
-     * Включен ли режим "свои травмы лечить Эликсиром Мгновенного Исцеления" в общих настройках.
-     */
-    private static boolean isAutoCureSelfElixirEnabledByPreference() {
-        return getDefaultPreferenceBoolean(PREF_AUTO_CURE_USE_SELF_ELIXIR, false);
+    private static AutoFunctionsManager getAutoFunctionsManagerSafe() {
+        try {
+            android.content.Context context = AppVars.getContext();
+            if (context == null) {
+                return null;
+            }
+            return AutoFunctionsManager.getInstance(context);
+        } catch (Exception e) {
+            android.util.Log.w(TAG, "getAutoFunctionsManagerSafe failed", e);
+            return null;
+        }
     }
 
     /**
@@ -1244,37 +1245,35 @@ public class MainPhp {
      * - "4" = боевая травма (эликсир не применяется, только боевая аптечка)
      */
     private static boolean isAutoCureSelfElixirEnabledForWound(String cureTravm) {
-        if (!isAutoCureSelfElixirEnabledByPreference()) {
+        int woundType = parseCureTravmType(cureTravm);
+        if (woundType <= 0) {
             return false;
         }
-        if (cureTravm == null || cureTravm.isEmpty()) {
-            return false;
-        }
-        switch (cureTravm) {
-            case "1":
-                return getDefaultPreferenceBoolean(PREF_AUTO_CURE_ELIXIR_LIGHT, true);
-            case "2":
-                return getDefaultPreferenceBoolean(PREF_AUTO_CURE_ELIXIR_MEDIUM, true);
-            case "3":
-                return getDefaultPreferenceBoolean(PREF_AUTO_CURE_ELIXIR_HEAVY, true);
-            default:
-                return false;
-        }
+        AutoFunctionsManager manager = getAutoFunctionsManagerSafe();
+        return manager != null && manager.isAutoCureSelfElixirEnabledForWound(woundType);
     }
 
     /**
-     * Читает флаг из default SharedPreferences (`SettingsActivity` / `root_preferences.xml`).
+     * Разрешено ли лечить указанный тип травмы в Авто-Лечении.
      */
-    private static boolean getDefaultPreferenceBoolean(String key, boolean fallback) {
+    private static boolean isAutoCureWoundTypeEnabledForTravm(String cureTravm) {
+        int woundType = parseCureTravmType(cureTravm);
+        if (woundType <= 0) {
+            return false;
+        }
+        AutoFunctionsManager manager = getAutoFunctionsManagerSafe();
+        return manager == null || manager.isAutoCureWoundTypeEnabled(woundType);
+    }
+
+    private static int parseCureTravmType(String cureTravm) {
+        if (cureTravm == null || cureTravm.trim().isEmpty()) {
+            return 0;
+        }
         try {
-            android.content.Context context = AppVars.getContext();
-            if (context == null || key == null || key.isEmpty()) {
-                return fallback;
-            }
-            return PreferenceManager.getDefaultSharedPreferences(context).getBoolean(key, fallback);
-        } catch (Exception e) {
-            android.util.Log.w(TAG, "getDefaultPreferenceBoolean failed: key=" + key, e);
-            return fallback;
+            int value = Integer.parseInt(cureTravm.trim());
+            return (value >= 1 && value <= 4) ? value : 0;
+        } catch (Exception ignored) {
+            return 0;
         }
     }
     /**
@@ -2309,6 +2308,10 @@ public class MainPhp {
             clearExternalCureRequest("invalid-wound-type");
             return null;
         }
+        if (!isAutoCureWoundTypeEnabledForTravm(cureTravm)) {
+            clearExternalCureRequest("wound-type-disabled");
+            return null;
+        }
 
         String invHtml = mainPhpFindInvWithFallback(html, "&im=0&wca=85", address);
         if (invHtml != null && !invHtml.isEmpty()) {
@@ -2430,18 +2433,20 @@ public class MainPhp {
         String cureTravm;
         int woundIndex;
         String woundLabel;
-        if (light > 0) {
+        if (light > 0 && isAutoCureWoundTypeEnabledForTravm("1")) {
             cureTravm = "1";
             woundIndex = LIGHT_WOUND_INDEX;
             woundLabel = "легкую";
-        } else if (medium > 0) {
+        } else if (medium > 0 && isAutoCureWoundTypeEnabledForTravm("2")) {
             cureTravm = "2";
             woundIndex = MEDIUM_WOUND_INDEX;
             woundLabel = "среднюю";
-        } else {
+        } else if (heavy > 0 && isAutoCureWoundTypeEnabledForTravm("3")) {
             cureTravm = "3";
             woundIndex = HEAVY_WOUND_INDEX;
             woundLabel = "тяжелую";
+        } else {
+            return null;
         }
 
         // Опциональный приоритет self-лечения эликсиром (Настройки -> Лечение).

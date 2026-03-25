@@ -1212,6 +1212,34 @@ public class RoomManager {
         }
     }
 
+    private static AutoFunctionsManager getAutoFunctionsManagerSafe() {
+        try {
+            Context context = AppVars.getContext();
+            if (context == null) {
+                return null;
+            }
+            return AutoFunctionsManager.getInstance(context);
+        } catch (Exception e) {
+            Log.w(TAG, "getAutoFunctionsManagerSafe failed", e);
+            return null;
+        }
+    }
+
+    private static boolean isAutoCureTargetFriendsEnabled() {
+        AutoFunctionsManager manager = getAutoFunctionsManagerSafe();
+        return manager == null || manager.isAutoCureTargetFriendsEnabled();
+    }
+
+    private static boolean isAutoCureTargetNeutralsEnabled() {
+        AutoFunctionsManager manager = getAutoFunctionsManagerSafe();
+        return manager == null || manager.isAutoCureTargetNeutralsEnabled();
+    }
+
+    private static boolean isAutoCureWoundTypeEnabled(int woundType) {
+        AutoFunctionsManager manager = getAutoFunctionsManagerSafe();
+        return manager == null || manager.isAutoCureWoundTypeEnabled(woundType);
+    }
+
     private static void maybeScheduleRoomAutoCure(Context context,
                                                   FilterProcRoomResult filterResult,
                                                   boolean fightActive) {
@@ -1262,6 +1290,9 @@ public class RoomManager {
 
     private static AutoCureTarget selectRoomAutoCureTarget(List<String> roomNicks,
                                                             Map<String, Integer> injuryHints) {
+        boolean allowFriends = isAutoCureTargetFriendsEnabled();
+        boolean allowNeutrals = isAutoCureTargetNeutralsEnabled();
+
         String selfNick = stripItalic(AppVars.Profile.UserNick);
         if (!isEmpty(selfNick)) {
             AutoCureTarget selfTarget = buildAutoCureTarget(selfNick, CONTACT_CLASS_NEUTRAL, true, injuryHints);
@@ -1297,16 +1328,20 @@ public class RoomManager {
             }
         }
 
-        for (String friendNick : friendNicks) {
-            AutoCureTarget target = buildAutoCureTarget(friendNick, CONTACT_CLASS_FRIEND, false, injuryHints);
-            if (target != null) {
-                return target;
+        if (allowFriends) {
+            for (String friendNick : friendNicks) {
+                AutoCureTarget target = buildAutoCureTarget(friendNick, CONTACT_CLASS_FRIEND, false, injuryHints);
+                if (target != null) {
+                    return target;
+                }
             }
         }
-        for (String neutralNick : neutralNicks) {
-            AutoCureTarget target = buildAutoCureTarget(neutralNick, CONTACT_CLASS_NEUTRAL, false, injuryHints);
-            if (target != null) {
-                return target;
+        if (allowNeutrals) {
+            for (String neutralNick : neutralNicks) {
+                AutoCureTarget target = buildAutoCureTarget(neutralNick, CONTACT_CLASS_NEUTRAL, false, injuryHints);
+                if (target != null) {
+                    return target;
+                }
             }
         }
         return null;
@@ -1327,6 +1362,9 @@ public class RoomManager {
         }
         int woundType = resolveRoomWoundType(cleanNick, hintedType, self);
         if (woundType <= 0) {
+            return null;
+        }
+        if (!isAutoCureWoundTypeEnabled(woundType)) {
             return null;
         }
         return new AutoCureTarget(cleanNick, woundType, classId, self);
