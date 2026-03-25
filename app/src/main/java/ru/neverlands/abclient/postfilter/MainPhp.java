@@ -3851,12 +3851,17 @@ public class MainPhp {
             }
         }
 
-        if (!isNonCombatAutoPausedByFastAction() && AppVars.AutoMoving && html.contains(" id=wtime>")) {
+        if (!isNonCombatAutoPausedByFastAction()
+                && !AppVars.AutoDrinkBlazPending
+                && AppVars.AutoMoving
+                && html.contains(" id=wtime>")) {
             html = mainPhpWtime(html);
             AppVars.ContentMainPhp = html;
             return Russian.getBytes(html);
         }
-        if (!isNonCombatAutoPausedByFastAction() && AppVars.AutoMoving) {
+        if (!isNonCombatAutoPausedByFastAction()
+                && !AppVars.AutoDrinkBlazPending
+                && AppVars.AutoMoving) {
             String cityNavHtml = MainPhpCityNavigation.process(html);
             if (cityNavHtml != null && !cityNavHtml.isEmpty()) {
                 return Russian.getBytes(cityNavHtml);

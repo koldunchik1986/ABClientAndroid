@@ -60,18 +60,11 @@ public class MapAjax {
                     CharacterVitalsManager.updateTied(100, "MapAjax.process.tooTired");
             int tiedNow = tooTiredVitals.tied;
             if (AppVars.Profile == null || !AppVars.Profile.DoAutoDrinkBlaz) {
-                AppVars.AutoMoving = false;
-                AppVars.AutoMovingMapPath = null;
-                AppVars.AutoMovingNextJump = null;
-                AppVars.AutoMovingJumps = 0;
+                // Состояние маршрута не сбрасываем: fast-пауза уже блокирует шаги.
                 Log.w(TAG, "AUTO_SEARCH_BOX_TRACE: too tired, auto moving stopped (DoAutoDrinkBlaz=false)");
             } else {
                 // На время автопитья блажа останавливаем автопереходы,
                 // чтобы исключить зацикливание ab_nav_tired и гонку с FastAction.
-                AppVars.AutoMoving = false;
-                AppVars.AutoMovingMapPath = null;
-                AppVars.AutoMovingNextJump = null;
-                AppVars.AutoMovingJumps = 0;
                 // Критичный фикс: запускаем FastAction сразу в точке "too tired",
                 // не дожидаясь отдельного plain main.php (который может не прийти без ручного reload).
                 int tiedThreshold = Math.max(0, Math.min(100, AppVars.Profile.AutoDrinkBlazTied));
@@ -160,6 +153,14 @@ public class MapAjax {
                 if (posOpenBracket == -1) break;
                 posOpenBracket++;
             }
+        }
+
+        // При отложенном автопитье блажа временно не делаем шаги маршрута,
+        // но сохраняем AutoMoving-контекст для последующего продолжения.
+        if (AppVars.AutoDrinkBlazPending) {
+            Log.d(TAG, "AUTO_BLAZ_DECISION: stage=pause, action=skip_move_while_pending, reg="
+                    + (AppVars.Profile != null ? AppVars.Profile.MapLocation : "?"));
+            return html;
         }
 
         if (!AppVars.AutoMoving) return html;
@@ -584,13 +585,6 @@ public class MapAjax {
         long neverTimer = AppVars.NeverTimer;
         if (neverTimer > 0L && now < neverTimer) {
             AppVars.AutoDrinkBlazPending = true;
-            if (AppVars.AutoMoving) {
-                AppVars.AutoMoving = false;
-                AppVars.AutoMovingMapPath = null;
-                AppVars.AutoMovingNextJump = null;
-                AppVars.AutoMovingJumps = 0;
-                AppVars.AutoMovingCityGate = ru.neverlands.abclient.model.CityGateType.None;
-            }
             logAutoBlazDecision("decision", "defer_wait_never_timer", tied, threshold,
                     "reg=" + currentRegNum + ", waitMs=" + (neverTimer - now));
             return Filter.buildRedirectString(
@@ -610,12 +604,6 @@ public class MapAjax {
         }
         lastAutoDrinkBlazTriggerAtMs = now;
         AppVars.AutoDrinkBlazPending = false;
-
-        AppVars.AutoMoving = false;
-        AppVars.AutoMovingMapPath = null;
-        AppVars.AutoMovingNextJump = null;
-        AppVars.AutoMovingJumps = 0;
-        AppVars.AutoMovingCityGate = ru.neverlands.abclient.model.CityGateType.None;
 
         Log.i(TAG, "AUTO_BLAZ_TRACE threshold reached in map_ajax: tied=" + tied
                 + ", threshold=" + threshold
