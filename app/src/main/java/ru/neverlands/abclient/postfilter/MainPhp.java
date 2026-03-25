@@ -6330,7 +6330,7 @@ public class MainPhp {
             AppVars.AutoTreasureDigPendingInventory = true;
             AppVars.TreasureDigPauseNonCombatAutoFunctions = true;
             android.util.Log.d(TAG, "AUTO_SEARCH_BOX_TRACE dig flow: open shovel inventory");
-            return buildAutoTreasureDigOpenInventoryRedirect();
+            return buildAutoTreasureDigOpenInventoryRedirect(html, address);
         }
 
         AppVars.AutoTreasureDigPendingInventory = false;
@@ -6347,12 +6347,12 @@ public class MainPhp {
         boolean inventoryContext = mainPhpIsInv(html) || isInventoryAddress(address);
         if (!inventoryContext) {
             android.util.Log.d(TAG, "AUTO_SEARCH_BOX_TRACE dig flow: route to inventory (shovels)");
-            return buildAutoTreasureDigOpenInventoryRedirect();
+            return buildAutoTreasureDigOpenInventoryRedirect(html, address);
         }
 
         if (!inventoryAddressMatchesFilter(address, "&im=0&wca=3")) {
             android.util.Log.d(TAG, "AUTO_SEARCH_BOX_TRACE dig flow: switch inventory filter to wca=3");
-            return buildAutoTreasureDigOpenInventoryRedirect();
+            return buildAutoTreasureDigOpenInventoryRedirect(html, address);
         }
 
         if (!hasInventoryRows(html)) {
@@ -6408,8 +6408,12 @@ public class MainPhp {
         AppVars.AutoTreasureShovelReadyOption = selectedShovelOption == null ? "" : selectedShovelOption;
     }
 
-    private static String buildAutoTreasureDigOpenInventoryRedirect() {
-        return buildRedirectHtml("Авто-Клад: инвентарь лопат", "main.php?im=0&wca=3");
+    private static String buildAutoTreasureDigOpenInventoryRedirect(String html, String address) {
+        String fallbackRedirect = mainPhpFindInvWithFallback(html, "&im=0&wca=3", address);
+        if (fallbackRedirect != null && !fallbackRedirect.isEmpty()) {
+            return fallbackRedirect;
+        }
+        return buildRedirectHtml("\u0410\u0432\u0442\u043e-\u041a\u043b\u0430\u0434: \u0438\u043d\u0432\u0435\u043d\u0442\u0430\u0440\u044c \u043b\u043e\u043f\u0430\u0442", "main.php?im=0&wca=3");
     }
 
     private static String buildAutoTreasureDigReturnToMapHtml(String html) {

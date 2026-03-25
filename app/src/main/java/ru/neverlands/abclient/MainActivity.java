@@ -3234,6 +3234,12 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         if (!autoMoving && !autoFish) {
             return;
         }
+        if (AppVars.TreasureDigPauseNonCombatAutoFunctions) {
+            Log.d(TAG, "SERVER_TIMER_TICK skip: treasure dig preparation pause is active"
+                    + ", autoMoving=" + autoMoving
+                    + ", dueAt=" + dueAt);
+            return;
+        }
         if (AppVars.IsFightCaptchaDialogVisible) {
             return;
         }
