@@ -60,7 +60,11 @@ public class MapAjax {
                     CharacterVitalsManager.updateTied(100, "MapAjax.process.tooTired");
             int tiedNow = tooTiredVitals.tied;
             if (AppVars.Profile == null || !AppVars.Profile.DoAutoDrinkBlaz) {
-                // Состояние маршрута не сбрасываем: fast-пауза уже блокирует шаги.
+                // Без автопитья блажа маршрут останавливаем сразу, чтобы не зациклиться на "усталости".
+                AppVars.AutoMoving = false;
+                AppVars.AutoMovingMapPath = null;
+                AppVars.AutoMovingNextJump = null;
+                AppVars.AutoMovingJumps = 0;
                 Log.w(TAG, "AUTO_SEARCH_BOX_TRACE: too tired, auto moving stopped (DoAutoDrinkBlaz=false)");
             } else {
                 // На время автопитья блажа останавливаем автопереходы,
