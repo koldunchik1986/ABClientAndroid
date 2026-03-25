@@ -1448,6 +1448,15 @@ public class RoomManager {
         try {
             NeverApi.PinfoVitals vitals = NeverApi.getPinfoVitalsFromPinfo(nick);
             if (vitals != null) {
+                // Важно для авто-лечения себя:
+                // RoomManager регулярно читает pinfo в фоне, но до этого не синхронизировал
+                // общий runtime-снимок vitals. Из-за этого AutoCure мог не видеть новые травмы
+                // до ручного toggle "Автолечение" (который делал отдельный sync).
+                if (isSelfNick(nick)) {
+                    CharacterVitalsManager.updateFromPinfo(
+                            vitals,
+                            "RoomManager.fetchWoundTypeFromPinfo(self)");
+                }
                 if (vitals.topWoundType != null && vitals.topWoundType > 0) {
                     // `var eff` contains full wound type, including battle wound.
                     woundType = vitals.topWoundType;

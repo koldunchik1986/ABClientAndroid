@@ -2267,6 +2267,8 @@ public class MainPhp {
 
         long now = System.currentTimeMillis();
         if (AppVars.NeverTimer > 0L && now <= AppVars.NeverTimer) {
+            android.util.Log.d(TAG, "AUTO_BLAZ_TRACE skipped by NeverTimer: dueInMs="
+                    + Math.max(0L, AppVars.NeverTimer - now) + ", address=" + address);
             return null;
         }
 
@@ -2502,6 +2504,8 @@ public class MainPhp {
         }
         long now = System.currentTimeMillis();
         if (AppVars.NeverTimer > 0L && now <= AppVars.NeverTimer) {
+            android.util.Log.d(TAG, "AUTO_CURE_TRACE skipped by NeverTimer: dueInMs="
+                    + Math.max(0L, AppVars.NeverTimer - now) + ", address=" + address);
             return null;
         }
 
@@ -2561,6 +2565,12 @@ public class MainPhp {
             woundIndex = HEAVY_WOUND_INDEX;
             woundLabel = "тяжелую";
         } else {
+            if (light > 0 || medium > 0 || heavy > 0) {
+                android.util.Log.d(TAG, "AUTO_CURE_TRACE self wounds present but disabled by settings: "
+                        + "light=" + light + "(enabled=" + isAutoCureWoundTypeEnabledForSelfByAnyMethod("1") + "), "
+                        + "medium=" + medium + "(enabled=" + isAutoCureWoundTypeEnabledForSelfByAnyMethod("2") + "), "
+                        + "heavy=" + heavy + "(enabled=" + isAutoCureWoundTypeEnabledForSelfByAnyMethod("3") + ")");
+            }
             return null;
         }
 
@@ -2573,6 +2583,7 @@ public class MainPhp {
                 if (!isSelfWoundElixirNavigationOnlyResult(selfElixirCureHtml)) {
                     CharacterVitalsManager.decrementPoisonOrWound(woundIndex,
                             "MainPhp.mainPhpAutoCureStep.selfElixirUsed");
+                    RoomManager.onAutoCureSubmitted(nick, cureTravm);
                     android.util.Log.d(TAG, "AUTO_CURE_TRACE self elixir submitted (self): travm="
                             + cureTravm + ", index=" + woundIndex);
                 } else {
@@ -2613,6 +2624,7 @@ public class MainPhp {
         }
 
         CharacterVitalsManager.decrementPoisonOrWound(woundIndex, "MainPhp.mainPhpAutoCureStep.woundUsed");
+        RoomManager.onAutoCureSubmitted(nick, cureTravm);
         sendInventoryChatMessage(buildServerChatTimeHtml()
                 + "<font color=#004bbb>Лечим свою " + woundLabel + " травму...</font>");
         return woundCureHtml;
