@@ -1635,12 +1635,15 @@ public class WebAppInterface {
      * - `CharacterVitalsManager.updateFromHpJs(...)`.
      */
     @JavascriptInterface
-    public void showHpMaTimers(String s, float curHP, int maxHP, float intHP, float curMA, int maxMA, float intMA) {
+    public String showHpMaTimers(String s, float curHP, int maxHP, float intHP, float curMA, int maxMA, float intMA) {
         CharacterVitalsManager.Snapshot snapshot = CharacterVitalsManager.updateFromHpJs(
                 curHP, maxHP, curMA, maxMA, intHP, intMA, "WebAppInterface.showHpMaTimers");
         Log.d("WebAppInterface", "showHpMaTimers: hp=" + snapshot.curHp + "/" + snapshot.maxHp
                 + " ma=" + snapshot.curMa + "/" + snapshot.maxMa
                 + " intHP=" + snapshot.intHp + " intMA=" + snapshot.intMa);
+        return buildHpMaTimersHtml(
+                snapshot.curHp, snapshot.maxHp, snapshot.intHp,
+                snapshot.curMa, snapshot.maxMa, snapshot.intMa);
     }
 
     /**
@@ -1648,8 +1651,52 @@ public class WebAppInterface {
      * Серверный скрипт зовёт `window.external.ShowHpMaTimers(...)` (PascalCase).
      */
     @JavascriptInterface
-    public void ShowHpMaTimers(String s, float curHP, int maxHP, float intHP, float curMA, int maxMA, float intMA) {
-        showHpMaTimers(s, curHP, maxHP, intHP, curMA, maxMA, intMA);
+    public String ShowHpMaTimers(String s, float curHP, int maxHP, float intHP, float curMA, int maxMA, float intMA) {
+        return showHpMaTimers(s, curHP, maxHP, intHP, curMA, maxMA, intMA);
+    }
+
+    private static String buildHpMaTimersHtml(int curHp, int maxHp, double intHp, int curMa, int maxMa, double intMa) {
+        StringBuilder sb = new StringBuilder("<FONT class=hpfont>: ");
+        sb.append("[<font color=#bb0000>")
+                .append("<b>").append(curHp).append("</b>/")
+                .append("<b>").append(maxHp).append("</b>");
+
+        int hpSeconds = calculateRecoverySeconds(curHp, maxHp, intHp);
+        if (hpSeconds > 0) {
+            sb.append(" (<b>").append(formatHms(hpSeconds)).append("</b>)");
+        }
+        sb.append("</font>]");
+
+        sb.append(" | ");
+
+        sb.append("[<font color=#336699>")
+                .append("<b>").append(curMa).append("</b>/")
+                .append("<b>").append(maxMa).append("</b>");
+        int maSeconds = calculateRecoverySeconds(curMa, maxMa, intMa);
+        if (maSeconds > 0) {
+            sb.append(" (<b>").append(formatHms(maSeconds)).append("</b>)");
+        }
+        sb.append("</font>]</font>");
+        return sb.toString();
+    }
+
+    private static int calculateRecoverySeconds(int cur, int max, double interval) {
+        if (max <= 0 || interval <= 0d || cur >= max) {
+            return 0;
+        }
+        double raw = ((double) (max - cur) * interval) / (double) max;
+        long rounded = Math.round(raw);
+        if (rounded <= 0L) {
+            return 0;
+        }
+        return (int) Math.min(Integer.MAX_VALUE, rounded);
+    }
+
+    private static String formatHms(int seconds) {
+        int hours = seconds / 3600;
+        int minutes = (seconds / 60) % 60;
+        int sec = seconds % 60;
+        return String.format(Locale.US, "%02d:%02d:%02d", hours, minutes, sec);
     }
 
     @JavascriptInterface
