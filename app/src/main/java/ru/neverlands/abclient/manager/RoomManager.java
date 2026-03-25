@@ -1271,6 +1271,11 @@ public class RoomManager {
         return manager == null || manager.isAutoCureWoundTypeEnabled(woundType);
     }
 
+    private static boolean isAutoCureSelfElixirEnabledForWound(int woundType) {
+        AutoFunctionsManager manager = getAutoFunctionsManagerSafe();
+        return manager != null && manager.isAutoCureSelfElixirEnabledForWound(woundType);
+    }
+
     private static void maybeScheduleRoomAutoCure(Context context,
                                                   FilterProcRoomResult filterResult,
                                                   boolean fightActive) {
@@ -1396,7 +1401,14 @@ public class RoomManager {
             return null;
         }
         if (!isAutoCureWoundTypeEnabled(woundType)) {
-            return null;
+            // Для self допускаем цель, если тип травмы включен именно в ветке self-эликсира.
+            // Так self-лечение не зависит от чекбоксов аптечек по типам травм.
+            if (!(self
+                    && woundType >= 1
+                    && woundType <= 3
+                    && isAutoCureSelfElixirEnabledForWound(woundType))) {
+                return null;
+            }
         }
         return new AutoCureTarget(cleanNick, woundType, classId, self);
     }

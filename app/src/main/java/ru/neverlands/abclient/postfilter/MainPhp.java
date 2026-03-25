@@ -1290,6 +1290,18 @@ public class MainPhp {
         return manager == null || manager.isAutoCureWoundTypeEnabled(woundType);
     }
 
+    /**
+     * Проверяет, что тип травмы разрешен к лечению для self-цели хотя бы одним методом:
+     * - обычной аптечкой (чекбокс типа травмы);
+     * - self-эликсиром (чекбокс "Эликсир Мгновенного Исцеления" для конкретного типа).
+     */
+    private static boolean isAutoCureWoundTypeEnabledForSelfByAnyMethod(String cureTravm) {
+        if (isAutoCureWoundTypeEnabledForTravm(cureTravm)) {
+            return true;
+        }
+        return isAutoCureSelfElixirEnabledForWound(cureTravm);
+    }
+
     private static int parseCureTravmType(String cureTravm) {
         if (cureTravm == null || cureTravm.trim().isEmpty()) {
             return 0;
@@ -2353,7 +2365,13 @@ public class MainPhp {
             clearExternalCureRequest("invalid-wound-type");
             return null;
         }
-        if (!isAutoCureWoundTypeEnabledForTravm(cureTravm)) {
+        boolean selfTarget = isSelfNick(targetNick);
+        if (selfTarget) {
+            if (!isAutoCureWoundTypeEnabledForSelfByAnyMethod(cureTravm)) {
+                clearExternalCureRequest("wound-type-disabled");
+                return null;
+            }
+        } else if (!isAutoCureWoundTypeEnabledForTravm(cureTravm)) {
             clearExternalCureRequest("wound-type-disabled");
             return null;
         }
@@ -2376,7 +2394,7 @@ public class MainPhp {
 
         // Внешний запрос лечения себя (RoomManager self-priority): сначала пробуем эликсир,
         // если для типа травмы он разрешен в настройках.
-        if (isSelfNick(targetNick) && isAutoCureSelfElixirEnabledForWound(cureTravm)) {
+        if (selfTarget && isAutoCureSelfElixirEnabledForWound(cureTravm)) {
             String selfElixirCureHtml = mainPhpTrySelfWoundCureByElixir(address, html, woundLabel);
             if (selfElixirCureHtml != null && !selfElixirCureHtml.isEmpty()) {
                 if (!isSelfWoundElixirNavigationOnlyResult(selfElixirCureHtml)) {
@@ -2392,6 +2410,12 @@ public class MainPhp {
                 }
                 return selfElixirCureHtml;
             }
+        }
+
+        // Если у self-цели тип травмы разрешен только через эликсир, fallback на аптечки запрещен.
+        if (selfTarget && !isAutoCureWoundTypeEnabledForTravm(cureTravm)) {
+            clearExternalCureRequest("self-elixir-only-no-medkit-fallback");
+            return null;
         }
 
         String invHtml = mainPhpFindInvWithFallback(html, "&im=0&wca=85", address);
@@ -2524,15 +2548,15 @@ public class MainPhp {
         String cureTravm;
         int woundIndex;
         String woundLabel;
-        if (light > 0 && isAutoCureWoundTypeEnabledForTravm("1")) {
+        if (light > 0 && isAutoCureWoundTypeEnabledForSelfByAnyMethod("1")) {
             cureTravm = "1";
             woundIndex = LIGHT_WOUND_INDEX;
             woundLabel = "легкую";
-        } else if (medium > 0 && isAutoCureWoundTypeEnabledForTravm("2")) {
+        } else if (medium > 0 && isAutoCureWoundTypeEnabledForSelfByAnyMethod("2")) {
             cureTravm = "2";
             woundIndex = MEDIUM_WOUND_INDEX;
             woundLabel = "среднюю";
-        } else if (heavy > 0 && isAutoCureWoundTypeEnabledForTravm("3")) {
+        } else if (heavy > 0 && isAutoCureWoundTypeEnabledForSelfByAnyMethod("3")) {
             cureTravm = "3";
             woundIndex = HEAVY_WOUND_INDEX;
             woundLabel = "тяжелую";
@@ -2557,6 +2581,11 @@ public class MainPhp {
                 }
                 return selfElixirCureHtml;
             }
+        }
+
+        // Если для self выбран "только эликсир", в эту ветку аптечек не падаем.
+        if (!isAutoCureWoundTypeEnabledForTravm(cureTravm)) {
+            return null;
         }
 
         String invHtml = mainPhpFindInvWithFallback(html, "&im=0&wca=85", address);
