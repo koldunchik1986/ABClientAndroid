@@ -67,22 +67,16 @@ public class MapAjax {
                 AppVars.AutoMovingJumps = 0;
                 Log.w(TAG, "AUTO_SEARCH_BOX_TRACE: too tired, auto moving stopped (DoAutoDrinkBlaz=false)");
             } else {
-                // На время автопитья блажа останавливаем автопереходы,
-                // чтобы исключить зацикливание ab_nav_tired и гонку с FastAction.
-                // Критичный фикс: запускаем FastAction сразу в точке "too tired",
-                // не дожидаясь отдельного plain main.php (который может не прийти без ручного reload).
-                int tiedThreshold = Math.max(0, Math.min(100, AppVars.Profile.AutoDrinkBlazTied));
-                if (!AppVars.FastNeed && tiedNow >= tiedThreshold) {
-                    Log.i(TAG, "AUTO_SEARCH_BOX_TRACE: trigger bliss fast action from map_ajax too-tired"
-                            + ", tied=" + tiedNow + ", threshold=" + tiedThreshold);
-                    FastActionManager.fastAttackBlazElixir();
-                } else {
-                    Log.d(TAG, "AUTO_SEARCH_BOX_TRACE: skip bliss fast action at too-tired"
-                            + ", fastNeed=" + AppVars.FastNeed
-                            + ", tied=" + tiedNow
-                            + ", threshold=" + tiedThreshold);
+                String currentRegNum = (AppVars.Profile != null) ? AppVars.Profile.MapLocation : null;
+                String autoDrinkRedirect = maybeTriggerAutoDrinkBlazOnThreshold(currentRegNum);
+                if (autoDrinkRedirect != null) {
+                    Log.i(TAG, "AUTO_SEARCH_BOX_TRACE: too tired, auto moving paused, redirect to main.php for auto bliss");
+                    return autoDrinkRedirect;
                 }
-                Log.i(TAG, "AUTO_SEARCH_BOX_TRACE: too tired, auto moving paused, redirect to main.php for auto bliss");
+                int tiedThreshold = Math.max(0, Math.min(100, AppVars.Profile.AutoDrinkBlazTied));
+                Log.d(TAG, "AUTO_SEARCH_BOX_TRACE: too tired, auto bliss gate skipped"
+                        + ", tied=" + tiedNow + ", threshold=" + tiedThreshold
+                        + ", fastNeed=" + AppVars.FastNeed);
             }
             return Filter.buildRedirectString(
                     "\u041D\u0430\u0432\u0438\u0433\u0430\u0442\u043E\u0440: \u0443\u0441\u0442\u0430\u043B\u043E\u0441\u0442\u044C",

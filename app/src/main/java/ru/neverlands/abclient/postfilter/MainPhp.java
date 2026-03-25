@@ -62,7 +62,9 @@ public class MainPhp {
     private static final int MEDIUM_WOUND_INDEX = 2;
     private static final int HEAVY_WOUND_INDEX = 3;
     private static final String DIG_BUTTON_MARKER = "[\"dig\",\"Копать\",";
-    private static final int FAST_INV_TRANSITION_MAX_RETRIES = 6;
+    // На части серверных ответов вкладка инвентаря отдается промежуточным шаблоном (без содержимого предметов).
+    // Для быстрых действий по эликсирам даем расширенное окно ретраев, чтобы не падать в ложный timeout.
+    private static final int FAST_INV_TRANSITION_MAX_RETRIES = 12;
     private static final String FAST_INV_RETRY_PARAM = "ab_fast_inv_retry";
     private static final int[] FISH_PRIM_IDS = new int[]{38, 39, 40, 41, 42, 43, 44, 45, 46};
     private static final int[] FISH_PRIM_FLAGS = new int[]{
