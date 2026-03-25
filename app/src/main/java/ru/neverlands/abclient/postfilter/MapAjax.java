@@ -55,7 +55,7 @@ public class MapAjax {
             return Filter.buildRedirectString("\u041D\u0430\u0432\u0438\u0433\u0430\u0442\u043E\u0440: \u0432\u043E\u0441\u0441\u0442\u0430\u043D\u043E\u0432\u043B\u0435\u043D\u0438\u0435", "main.php?ab_nav_recover=1");
         }
 
-        if (containsTooTiredMessage(html) && AppVars.AutoMoving) {
+        if (containsTooTiredMessage(html) && AppVars.AutoMoving && !AppVars.CurePauseNonCombatAutoFunctions) {
             CharacterVitalsManager.Snapshot tooTiredVitals =
                     CharacterVitalsManager.updateTied(100, "MapAjax.process.tooTired");
             int tiedNow = tooTiredVitals.tied;
@@ -108,7 +108,10 @@ public class MapAjax {
             }
             RoomManager.onMapLocationConfirmed(AppVars.getContext(), regNum);
             markSearchBoxVisited(regNum);
-            if (regNum != null && !regNum.isEmpty() && (AppVars.AutoMoving || AppVars.AutoDrinkBlazPending)) {
+            if (regNum != null
+                    && !regNum.isEmpty()
+                    && (AppVars.AutoMoving || AppVars.AutoDrinkBlazPending)
+                    && !AppVars.CurePauseNonCombatAutoFunctions) {
                 if (AppVars.AutoMoving) {
                     maybeSyncVitalsFromPinfoAtSearchBoxStartup(regNum);
                     onAutoMovingCellObserved(previousMapLocation, regNum);
@@ -151,6 +154,19 @@ public class MapAjax {
                 if (posOpenBracket == -1) break;
                 posOpenBracket++;
             }
+        }
+
+        // Пауза небоевых авто-функций на время внешнего авто-лечения.
+        // Во время doctorform-конвейера не выполняем шаги автоклада и не запускаем
+        // сопутствующие авто-ветки по карте (усталость/автопитье блажа).
+        if (AppVars.CurePauseNonCombatAutoFunctions) {
+            if (AppVars.AutoMoving || AppVars.DoSearchBox) {
+                Log.d(TAG, "AUTO_CURE_TRACE: skip map auto processing while cure pipeline is active"
+                        + ", cureNeed=" + AppVars.CureNeed
+                        + ", cureNick=" + AppVars.CureNick
+                        + ", cureTravm=" + AppVars.CureTravm);
+            }
+            return html;
         }
 
         // При отложенном автопитье блажа временно не делаем шаги маршрута,

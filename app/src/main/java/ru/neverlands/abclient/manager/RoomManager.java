@@ -38,6 +38,7 @@ public class RoomManager {
     private static final int CONTACT_CLASS_FRIEND = 2;
     private static final long AUTO_CURE_ROOM_SCAN_INTERVAL_MS = 12_000L;
     private static final long AUTO_CURE_ROOM_PINFO_CACHE_TTL_MS = 30_000L;
+    private static final long AUTO_CURE_POST_SUBMIT_VERIFY_DELAY_MS = 1_500L;
     // Временный чёрный список целей авто-нападения (аналог C# `RoomManager.BlackList`).
     // Ключ: ник в нижнем регистре, значение: время добавления в список (мс).
     private static final Map<String, Long> autoAttackBlackList = new ConcurrentHashMap<>();
@@ -1425,12 +1426,18 @@ public class RoomManager {
             return cached.woundType;
         }
 
+        int woundType = fetchWoundTypeFromPinfo(nick);
+        autoCureRoomPinfoCache.put(key, new CachedRoomPinfoState(woundType, now));
+        return woundType;
+    }
+
+    private static int fetchWoundTypeFromPinfo(String nick) {
         int woundType = 0;
         try {
             NeverApi.PinfoVitals vitals = NeverApi.getPinfoVitalsFromPinfo(nick);
             if (vitals != null) {
                 if (vitals.topWoundType != null && vitals.topWoundType > 0) {
-                    // `var eff` contains full wound type, including battle wound (code=1).
+                    // `var eff` contains full wound type, including battle wound.
                     woundType = vitals.topWoundType;
                 } else {
                     // Fallback for backward compatibility with poison+non-battle counters.
@@ -1440,9 +1447,42 @@ public class RoomManager {
         } catch (Exception e) {
             Log.w(TAG, AUTO_CURE_TRACE_PREFIX + " pinfo read failed for " + nick, e);
         }
-
-        autoCureRoomPinfoCache.put(key, new CachedRoomPinfoState(woundType, now));
         return woundType;
+    }
+
+    /**
+     * Вызывается после submit лечения (`doctorform`) для целевого персонажа.
+     *
+     * Делает две вещи:
+     * 1) сразу сбрасывает pinfo-cache цели в "без травмы", чтобы не было мгновенного ре-queue;
+     * 2) через короткую задержку перечитывает `pinfo` и обновляет cache фактическим состоянием.
+     */
+    public static void onAutoCureSubmitted(String nick, String cureTravm) {
+        String cleanNick = stripItalic(nick);
+        String key = normalizeNickKey(cleanNick);
+        if (isEmpty(key)) {
+            return;
+        }
+
+        long now = System.currentTimeMillis();
+        autoCureRoomPinfoCache.put(key, new CachedRoomPinfoState(0, now));
+        Log.d(TAG, AUTO_CURE_TRACE_PREFIX + " post-submit verify scheduled: nick=" + cleanNick
+                + ", travm=" + cureTravm);
+
+        Thread worker = new Thread(() -> {
+            try {
+                Thread.sleep(AUTO_CURE_POST_SUBMIT_VERIFY_DELAY_MS);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                return;
+            }
+            int actualWoundType = fetchWoundTypeFromPinfo(cleanNick);
+            autoCureRoomPinfoCache.put(key, new CachedRoomPinfoState(actualWoundType, System.currentTimeMillis()));
+            Log.d(TAG, AUTO_CURE_TRACE_PREFIX + " post-submit verify result: nick=" + cleanNick
+                    + ", woundType=" + actualWoundType + ", travm=" + cureTravm);
+        }, "RoomAutoCureVerify");
+        worker.setDaemon(true);
+        worker.start();
     }
 
     private static int resolveWoundTypeFromSelfSnapshot() {
@@ -1516,6 +1556,9 @@ public class RoomManager {
         AppVars.CureTravm = String.valueOf(target.woundType);
         AppVars.CureNickDone = "";
         AppVars.CureNickBoi = "";
+        if (AppVars.DoSearchBox || AppVars.AutoMoving) {
+            AppVars.CurePauseNonCombatAutoFunctions = true;
+        }
 
         String safeNick = target.nick.replace("<", "&lt;").replace(">", "&gt;");
         String safeTarget = target.self ? "себя" : ("<b>" + safeNick + "</b>");
@@ -1526,7 +1569,8 @@ public class RoomManager {
         Log.d(TAG, AUTO_CURE_TRACE_PREFIX + " queued target: nick=" + target.nick
                 + ", woundType=" + target.woundType
                 + ", class=" + target.classId
-                + ", scope=" + scope);
+                + ", scope=" + scope
+                + ", pauseNonCombat=" + AppVars.CurePauseNonCombatAutoFunctions);
 
         MainActivity activity = AppVars.mainActivity == null ? null : AppVars.mainActivity.get();
         if (activity != null) {

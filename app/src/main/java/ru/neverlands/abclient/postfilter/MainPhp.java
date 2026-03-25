@@ -1690,6 +1690,12 @@ public class MainPhp {
     private static boolean isNonCombatAutoPausedByFastAction() {
         return AppVars.FastNeed && AppVars.FastPauseNonCombatAutoFunctions;
     }
+
+    // Runtime pause for non-combat auto pipelines while external auto-cure request is active.
+    // Used to prevent AutoSearch/AutoMoving overlap with doctorform processing.
+    private static boolean isNonCombatAutoPausedByCureAction() {
+        return AppVars.CurePauseNonCombatAutoFunctions;
+    }
     /**
      * Устанавливает query-параметр в URL:
      * - если параметр уже есть, заменяет его значение;
@@ -2360,6 +2366,7 @@ public class MainPhp {
         // without this, AutoCure may keep seeing old runtime counters and re-trigger self-elixir loop.
         decrementSelfWoundCounterIfNeeded(targetNick, cureTravm,
                 "MainPhp.mainPhpExternalRequestedCureStep.submitted");
+        RoomManager.onAutoCureSubmitted(targetNick, cureTravm);
 
         clearExternalCureRequest("submitted");
         return cureHtml;
@@ -2369,6 +2376,7 @@ public class MainPhp {
         AppVars.CureNeed = false;
         AppVars.CureNick = "";
         AppVars.CureTravm = "";
+        AppVars.CurePauseNonCombatAutoFunctions = false;
         android.util.Log.d(TAG, "AUTO_CURE_TRACE clear external request: reason=" + reason);
     }
 
@@ -3804,7 +3812,12 @@ public class MainPhp {
         // C# parity (`DoSearchBox && !AutoMoving && DateTime.Now > NeverTimer`):
         // запускаем обход карты в поиске следующей "непосещенной" клетки.
         boolean autoSearchRetryAfterMapSync = false;
-        if (!isNonCombatAutoPausedByFastAction() && !isFightFrame && !isFightTopFrame && AppVars.DoSearchBox && !AppVars.AutoMoving) {
+        if (!isNonCombatAutoPausedByFastAction()
+                && !isNonCombatAutoPausedByCureAction()
+                && !isFightFrame
+                && !isFightTopFrame
+                && AppVars.DoSearchBox
+                && !AppVars.AutoMoving) {
             String currentMapLocation = AppVars.Profile != null ? AppVars.Profile.MapLocation : null;
             boolean hasMapPayload = html.contains("var map = [[");
             boolean bootstrapFromReload = address != null && address.contains("ab_search_box_bootstrap=1");
@@ -3854,6 +3867,7 @@ public class MainPhp {
         }
 
         if (!isNonCombatAutoPausedByFastAction()
+                && !isNonCombatAutoPausedByCureAction()
                 && !AppVars.AutoDrinkBlazPending
                 && AppVars.AutoMoving
                 && html.contains(" id=wtime>")) {
@@ -3862,6 +3876,7 @@ public class MainPhp {
             return Russian.getBytes(html);
         }
         if (!isNonCombatAutoPausedByFastAction()
+                && !isNonCombatAutoPausedByCureAction()
                 && !AppVars.AutoDrinkBlazPending
                 && AppVars.AutoMoving) {
             String cityNavHtml = MainPhpCityNavigation.process(html);
@@ -3899,6 +3914,7 @@ public class MainPhp {
             html = MapAjax.process(html);
             if (autoSearchRetryAfterMapSync
                     && !isNonCombatAutoPausedByFastAction()
+                    && !isNonCombatAutoPausedByCureAction()
                     && AppVars.DoSearchBox
                     && !AppVars.AutoMoving) {
                 String refreshedMapLocation = AppVars.Profile != null ? AppVars.Profile.MapLocation : null;

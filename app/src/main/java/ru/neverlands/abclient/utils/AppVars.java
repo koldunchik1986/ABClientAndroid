@@ -338,6 +338,9 @@ public class AppVars {
     public static volatile String CureTravm = "";
     public static volatile String CureNickDone = "";
     public static volatile String CureNickBoi = "";
+    // Runtime pause for non-combat auto pipelines while external auto-cure request is being processed.
+    // Needed to avoid AutoMoving/AutoSearch overlap with doctorform flow.
+    public static volatile boolean CurePauseNonCombatAutoFunctions = false;
 
     // Fast Attack variables (портировано из AppVars.cs — FormMainFast.cs)
     public static volatile boolean FastNeed = false;
