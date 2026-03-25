@@ -351,6 +351,21 @@ public class AutoFunctionsManager {
                 true);
     }
 
+    /**
+     * Запускает синхронизацию параметров персонажа при включении авто-функции.
+     *
+     * Правила вызова:
+     * - вызывать только в переходе `enabled=false -> enabled=true`;
+     * - использовать короткий cooldown (`CHARACTER_SYNC_AUTO_ENABLE_COOLDOWN_MS`), чтобы не спамить `pinfo.cgi`
+     *   при каскадном включении зависимых режимов;
+     * - toast показывать только для `auto_cure`, чтобы пользователь явно видел, что лечение стартует
+     *   по свежим данным.
+     *
+     * Зависимости:
+     * - {@link #requestCharacterSync(String, String, long, boolean)} — общий исполнитель;
+     * - `functionName` — диагностическая метка в `reason/source` для logcat-трассировки;
+     * - `CharacterVitalsManager` обновляется внутри общего исполнителя.
+     */
     private void requestCharacterSyncForAutoFunctionEnable(String functionName) {
         boolean showToast = "auto_cure".equals(functionName);
         requestCharacterSync("auto-enable:" + functionName,
@@ -359,6 +374,27 @@ public class AutoFunctionsManager {
                 showToast);
     }
 
+    /**
+     * Унифицированный запуск server-sync персонажа через `pinfo.cgi`.
+     *
+     * Алгоритм:
+     * 1) проверяет наличие активного профиля и валидного nick;
+     * 2) применяет анти-спам cooldown;
+     * 3) в daemon-потоке читает pinfo через {@link NeverApi#getPinfoVitalsFromPinfo(String)};
+     * 4) обновляет runtime-снимок vitals через
+     *    {@link CharacterVitalsManager#updateFromPinfo(NeverApi.PinfoVitals, String)};
+     * 5) пишет расширенный trace в logcat; опционально показывает toast.
+     *
+     * Правила:
+     * - метод не меняет состояние авто-функций и не запускает навигацию;
+     * - метод отвечает только за актуализацию параметров персонажа;
+     * - `reason/source` обязательно передавать заполненными для корректной диагностики.
+     *
+     * @param reason краткая причина синхронизации (для логов и имени потока)
+     * @param source источник обновления, записывается в `CharacterVitalsManager.lastSource`
+     * @param cooldownMs минимальный интервал между повторами sync
+     * @param showToast показывать ли UI-подтверждение пользователю
+     */
     private void requestCharacterSync(String reason, String source, long cooldownMs, boolean showToast) {
         if (AppVars.Profile == null) {
             return;

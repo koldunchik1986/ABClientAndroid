@@ -2291,11 +2291,25 @@ public class MainPhp {
     }
 
     /**
-     * Выполняет внешний запрос лечения (`AppVars.CureNeed`) через аптечки (`wca=85`, doctorform).
+     * Выполняет внешний запрос лечения (`AppVars.CureNeed`) из RoomManager/UI.
      *
      * Источники запроса:
      * - RoomManager авто-скан (`self -> friends -> neutrals`);
      * - ручной запрос (C#-аналог контекстного меню травм).
+     *
+     * Правила выполнения:
+     * - сначала валидирует флаги/данные (`CureNeed`, nick, travm, включено ли Авто-лечение);
+     * - для self-цели при разрешении в настройках сначала пробует
+     *   `Эликсир Мгновенного Исцеления` (вкладка `im=6`);
+     * - если эликсир не применён, выполняет fallback на аптечки (`im=0&wca=85`, `doctorform`);
+     * - запрос считается завершённым только после реального submit-действия
+     *   (не на шаге навигационного редиректа в инвентарь).
+     *
+     * Зависимости:
+     * - `AppVars.CureNeed/CureNick/CureTravm/CurePauseNonCombatAutoFunctions`;
+     * - `AutoFunctionsManager` (проверка настроек типов травм и self-elixir);
+     * - `RoomManager.onAutoCureSubmitted(...)` (пост-проверка после лечения);
+     * - `CharacterVitalsManager` (локальная коррекция runtime-счётчиков после submit).
      */
     private static String mainPhpExternalRequestedCureStep(String address, String html) {
         if (!AppVars.CureNeed) {
@@ -2393,6 +2407,16 @@ public class MainPhp {
         return cureHtml;
     }
 
+    /**
+     * Полностью очищает состояние внешнего запроса лечения.
+     *
+     * Что сбрасывает:
+     * - `CureNeed`, `CureNick`, `CureTravm`;
+     * - паузу небоевых авто-функций `CurePauseNonCombatAutoFunctions`.
+     *
+     * Правило:
+     * - вызывать на всех финальных ветках (успех/ошибка/отмена), чтобы не оставлять "залипший" запрос.
+     */
     private static void clearExternalCureRequest(String reason) {
         AppVars.CureNeed = false;
         AppVars.CureNick = "";
@@ -2405,6 +2429,19 @@ public class MainPhp {
      * C# parity (`MainPhp.cs` + `MainPhpAutoCure.cs` + `MainPhpCure.cs`):
      * 1) яд (`wca=27`, magicreform);
      * 2) небоевые травмы (`wca=85`, doctorform).
+     *
+     * Правила:
+     * - работает только в non-combat шаге `main.php`;
+     * - использует единый runtime-снимок `CharacterVitalsManager.snapshot()`;
+     * - соблюдает настройки типов травм из `AutoFunctionsManager`;
+     * - для self-травм может приоритетно применять эликсир (если включено);
+     * - декремент runtime-счётчиков делается только после фактического submit лечения
+     *   (не на шаге редиректа в нужную вкладку инвентаря).
+     *
+     * Зависимости:
+     * - `mainPhpFindInvWithFallback(...)`, `mainPhpBuildPoisonCureForm(...)`, `mainPhpBuildWoundCureForm(...)`;
+     * - `CharacterVitalsManager` (чтение/коррекция состояния травм);
+     * - `AppVars.NeverTimer` (ограничение по серверному таймеру).
      */
     private static String mainPhpAutoCureStep(String address, String html) {
         if (html == null || html.isEmpty()
@@ -2582,6 +2619,15 @@ public class MainPhp {
      * - идем в инвентарь эликсиров;
      * - если confirm-ссылка на эликсир присутствует, выполняем GET-redirect;
      * - если эликсир отсутствует, возвращаем `null` и даем fallback на обычные аптечки (`wca=85`).
+     *
+     * Правила:
+     * - метод только формирует следующий HTML-шаг (редирект/submit), без прямого изменения счётчиков травм;
+     * - изменение `PoisonAndWounds` выполняется выше по стеку только после подтверждённого submit.
+     *
+     * Зависимости:
+     * - `mainPhpFindInvWithFallback(...)` и `inventoryAddressMatchesFilter(...)` для маршрутизации в `im=6`;
+     * - `mainPhpBuildSelfWoundCureElixirRedirect(...)` для построения action-страницы;
+     * - `sendInventoryChatMessage(...)` для системного сообщения в чат.
      */
     private static String mainPhpTrySelfWoundCureByElixir(String address, String html, String woundLabel) {
         String invHtml = mainPhpFindInvWithFallback(html, "&im=6", address);
@@ -2612,6 +2658,10 @@ public class MainPhp {
     /**
      * Проверяет, что результат self-cure эликсира является только шагом навигации (переход на инвентарь),
      * а не реальным submit/использованием эликсира.
+     *
+     * Правило:
+     * - если это navigation-only шаг, счётчики травм и внешние cure-флаги не трогаем;
+     * - если это не navigation-only (реальный submit), разрешено завершать cure-ветку и корректировать runtime.
      */
     private static boolean isSelfWoundElixirNavigationOnlyResult(String html) {
         if (html == null || html.isEmpty()) {
