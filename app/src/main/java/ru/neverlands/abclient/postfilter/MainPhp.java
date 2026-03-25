@@ -79,6 +79,7 @@ public class MainPhp {
             ru.neverlands.abclient.model.Prims.HiFlight
     };
     private static final long WTIME_SYNC_LOG_GUARD_MS = 1500L;
+    private static final long AUTO_FIGHT_PROBE_FINISH_CONFIRM_WINDOW_MS = 4500L;
     private static volatile long lastAutoFinishRedirectAtMs = 0L;
     private static volatile long lastAutoDrinkTriggerAtMs = 0L;
     private static volatile long lastAutoFishBlazTriggerAtMs = 0L;
@@ -104,6 +105,8 @@ public class MainPhp {
     private static volatile String lastFightResultLootBroadcastKey = "";
     private static volatile String lastFightSummaryBroadcastKey = "";
     private static volatile String lastAutoSkinProbeFightLog = "";
+    private static volatile String lastAutoFightProbeFinishCandidateKey = "";
+    private static volatile long lastAutoFightProbeFinishCandidateAtMs = 0L;
     /**
      * Явное дерево решений для обработки завершения боя.
      *
@@ -4194,6 +4197,50 @@ public class MainPhp {
                 && lower.contains("ab_reload_probe=1")
                 && lower.contains("ts=");
     }
+
+    private static boolean isAutoFightBackgroundProbeAddress(String address) {
+        if (address == null || address.isEmpty()) {
+            return false;
+        }
+        String lower = address.toLowerCase(Locale.ROOT);
+        return lower.contains("main.php") && lower.contains("ab_bg_probe=1");
+    }
+
+    private static boolean isAutoFightProbeAddress(String address) {
+        return isAutoFightReloadProbeAddress(address) || isAutoFightBackgroundProbeAddress(address);
+    }
+
+    private static String buildAutoFightProbeFinishCandidateKey(String logBoi, String fightLink) {
+        String log = logBoi == null ? "" : logBoi.trim();
+        if (!log.isEmpty()) {
+            return "log:" + log;
+        }
+        String link = fightLink == null ? "" : normalizeNeverlandsMainLink(fightLink);
+        if (link != null && !link.isEmpty()) {
+            return "link:" + link;
+        }
+        return "unknown";
+    }
+
+    private static void clearAutoFightProbeFinishCandidate() {
+        lastAutoFightProbeFinishCandidateKey = "";
+        lastAutoFightProbeFinishCandidateAtMs = 0L;
+    }
+
+    private static boolean isAutoFightProbeFinishConfirmed(String logBoi, String fightLink) {
+        String candidateKey = buildAutoFightProbeFinishCandidateKey(logBoi, fightLink);
+        long now = System.currentTimeMillis();
+        boolean confirmed = !candidateKey.isEmpty()
+                && candidateKey.equals(lastAutoFightProbeFinishCandidateKey)
+                && (now - lastAutoFightProbeFinishCandidateAtMs) <= AUTO_FIGHT_PROBE_FINISH_CONFIRM_WINDOW_MS;
+        if (confirmed) {
+            clearAutoFightProbeFinishCandidate();
+            return true;
+        }
+        lastAutoFightProbeFinishCandidateKey = candidateKey;
+        lastAutoFightProbeFinishCandidateAtMs = now;
+        return false;
+    }
     /**
      * FastId, запускающие нападение/вход в бой (а не бафы/зелья).
      * Для них при входе в бой fast-цикл должен завершаться.
@@ -4666,6 +4713,24 @@ public class MainPhp {
         // Это помогает пережить переходные кадры без fight_ty (например, краткий main.php после submit).
         if (fight.IsBoi) {
             AppVars.LastFightPulseAtMs = System.currentTimeMillis();
+            clearAutoFightProbeFinishCandidate();
+        }
+        final boolean autoFightProbeAddress = isAutoFightProbeAddress(address);
+        final FightFinishPageMarkers finishMarkers = inspectFightFinishPageMarkers(html);
+        final String resolvedFightCaptchaUrl = resolveFightCaptchaUrl(html);
+        final boolean isProbeTransitionalInactiveFrame = autoFightProbeAddress
+                && !fight.IsBoi
+                && !fight.IsWaitingForNextTurn
+                && (resolvedFightCaptchaUrl == null || resolvedFightCaptchaUrl.isEmpty())
+                && !finishMarkers.hasFendForm
+                && !finishMarkers.hasCodeInput
+                && !finishMarkers.hasCaptchaImage
+                && finishMarkers.hasFkeyScript
+                && isFightFrameHtml(html);
+        if (isProbeTransitionalInactiveFrame) {
+            android.util.Log.d(TAG, "mainPhpFight: probe transitional inactive frame detected, postpone finish flow"
+                    + ", address=" + address
+                    + ", logBoi=" + fight.LogBoi);
         }
         // Унифицированный флаг "бой завершён":
         // - IsBoi=false: мы уже не в активной фазе ударов,
@@ -4673,12 +4738,12 @@ public class MainPhp {
         // Используется сразу в двух потоках:
         // 1) AutoBoi-поток (автозавершение/капча),
         // 2) ручной поток (показ капчи без авто-нажатия).
-        boolean fightEnded = !fight.IsBoi && !fight.IsWaitingForNextTurn;
+        boolean fightEnded = !fight.IsBoi && !fight.IsWaitingForNextTurn && !isProbeTransitionalInactiveFrame;
         if (fightEnded) {
             registerFightEnd(fight);
             publishFightResultFromLogsIfNeeded(html, address, fight.LogBoi);
         }
-        String fightCaptchaUrl = fightEnded ? resolveFightCaptchaUrl(html) : null;
+        String fightCaptchaUrl = fightEnded ? resolvedFightCaptchaUrl : null;
         recoverAutoboiRuntimeStateIfNeeded(fightEnded, fightCaptchaUrl);
         final boolean autoFightEnabledByPreference = isAutoFightEnabledByPreference();
         final boolean autoFightEnabled = autoFightEnabledByPreference
@@ -4844,11 +4909,12 @@ public class MainPhp {
                             + cleanFinishLink + (replacedPrevious ? " (override previous fightLink)" : ""));
                 }
             }
-            FightFinishPageMarkers markers = inspectFightFinishPageMarkers(html);
+            FightFinishPageMarkers markers = finishMarkers;
             FinishFlowDecision decision;
             String decisionReason;
             String finishFormSubmitHtml = null;
             if (needCaptcha) {
+                clearAutoFightProbeFinishCandidate();
                 decision = FinishFlowDecision.CAPTCHA_REQUIRED;
                 decisionReason = "captcha_url_detected";
                 if (fightLink == null || fightLink.isEmpty()) {
@@ -4861,10 +4927,25 @@ public class MainPhp {
                 if (normalizedCaptchaFinish != null && !normalizedCaptchaFinish.isEmpty()) {
                     fightLink = normalizedCaptchaFinish;
                 }
+            } else if (autoFightProbeAddress
+                    && fightLink != null
+                    && !fightLink.isEmpty()
+                    && !fightLink.contains("????")
+                    && !isAutoFightProbeFinishConfirmed(fight.LogBoi, fightLink)) {
+                decision = FinishFlowDecision.KEEP_ORIGINAL_HTML;
+                decisionReason = "probe_finish_needs_confirmation";
+                android.util.Log.d(TAG, "mainPhpFight: defer direct finish on probe frame, waiting confirmation"
+                        + ", address=" + address
+                        + ", logBoi=" + fight.LogBoi
+                        + ", fightLink=" + fightLink);
             } else if (fightLink != null && !fightLink.isEmpty() && !fightLink.contains("????")) {
+                clearAutoFightProbeFinishCandidate();
                 decision = FinishFlowDecision.DIRECT_FINISH_LINK;
                 decisionReason = "fight_link_ready";
             } else {
+                if (!autoFightProbeAddress) {
+                    clearAutoFightProbeFinishCandidate();
+                }
                 finishFormSubmitHtml = buildFightEndFormSubmitHtml(html);
                 if (finishFormSubmitHtml != null) {
                     decision = FinishFlowDecision.FEND_AUTOSUBMIT_ALLOWED;
