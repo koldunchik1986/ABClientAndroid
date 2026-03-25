@@ -39,7 +39,7 @@ public class MapJs {
     private static final String FISH_NO_CAPTCHA_CONDITION_NEW =
             "if ((!ingr[1] || ingr[1] == '00000') && window.external.IsAutoFish()) {";
 
-    // Runtime-патч suppress popup "перегруз рюкзака".
+    // Runtime-патч: любые server popup из map.js отправляются в чат и не рисуются как overlay-окна.
     // Unicode escapes используются, чтобы не зависеть от кодировки исходного map.js.
     private static final String OVERLOAD_RUNTIME_PATCH =
             ABCLIENT_MAP_RUNTIME_PATCH_MARKER + "\n"
@@ -48,7 +48,25 @@ public class MapJs {
                     + "window.__ab_overload_patch_applied = true;\n"
                     + "if (typeof window.MessBoxDiv !== 'function') return;\n"
                     + "var __ab_oldMessBoxDiv = window.MessBoxDiv;\n"
+                    + "try {\n"
+                    + "  var __ab_style_id = 'ab_server_popup_hide';\n"
+                    + "  if (!document.getElementById(__ab_style_id)) {\n"
+                    + "    var __ab_style = document.createElement('style');\n"
+                    + "    __ab_style.id = __ab_style_id;\n"
+                    + "    __ab_style.type = 'text/css';\n"
+                    + "    __ab_style.textContent = '#static_window,#darker,#uni{display:none !important;}';\n"
+                    + "    (document.head || document.documentElement).appendChild(__ab_style);\n"
+                    + "  }\n"
+                    + "} catch (_ab_e_style) {}\n"
+                    + "function __abForwardPopup(mess){\n"
+                    + "  try {\n"
+                    + "    if (window.external && typeof window.external.PostServerPopupToChat === 'function') {\n"
+                    + "      window.external.PostServerPopupToChat(mess == null ? '' : String(mess));\n"
+                    + "    }\n"
+                    + "  } catch (_ab_e0) {}\n"
+                    + "}\n"
                     + "window.MessBoxDiv = function(mess){\n"
+                    + "  __abForwardPopup(mess);\n"
                     + "  try {\n"
                     + "    var __ab_msg = (mess == null ? '' : String(mess)).toLowerCase();\n"
                     + "    var __ab_overload = __ab_msg.indexOf('\\u0440\\u044e\\u043a\\u0437\\u0430\\u043a') !== -1\n"
@@ -60,7 +78,7 @@ public class MapJs {
                     + "      return;\n"
                     + "    }\n"
                     + "  } catch (_ab_e2) {}\n"
-                    + "  return __ab_oldMessBoxDiv.apply(this, arguments);\n"
+                    + "  return;\n"
                     + "};\n"
                     + "})();\n";
 
@@ -123,6 +141,7 @@ public class MapJs {
                     + "  SetFishNoCaptchaReady: function(){ return __abCall('SetFishNoCaptchaReady', [], null); },\n"
                     + "  ShowOverWarning: function(){ return !!__abCall('ShowOverWarning', [], false); },\n"
                     + "  SetCurrentTied: function(v){ return __abCall('SetCurrentTied', [v], null); },\n"
+                    + "  PostServerPopupToChat: function(message){ return __abCall('PostServerPopupToChat', [String(message)], null); },\n"
                     + "  TraceMapRuntime: function(msg){ return __abCall('TraceMapRuntime', [String(msg)], null); }\n"
                     + "};\n"
                     + "if (typeof window.ins_HP !== 'function') { window.ins_HP = function() {}; }\n"
@@ -185,14 +204,17 @@ public class MapJs {
         String moveParamsPatched = chatReloadSafePatched.replaceAll(
                 "map_ajax\\.php\\?act=1&x='\\s*\\+\\s*x\\s*\\+\\s*'&y='\\s*\\+\\s*y\\s*\\+\\s*'&gti=",
                 "map_ajax.php?act=1&mx=' + x + '&my=' + y + '&gti=");
+        String popupSyncPatched = moveParamsPatched.replace(
+                "if (!messb[0]) {",
+                "if (!messb[0]) { try { if (window.external && typeof window.external.PostServerPopupToChat === 'function') { window.external.PostServerPopupToChat('Сервер прислал интерактивное окно действия.'); } } catch (_ab_e_popup) {}");
         String patchedWidthDecl = extractVarDecl(fishPatched, DECL_WIDTH_PATTERN);
         String patchedHeightDecl = extractVarDecl(fishPatched, DECL_HEIGHT_PATTERN);
         String patchedScaleDecl = extractScaleDecl(fishPatched);
-        int getMapScaleCallCount = countMatches(moveParamsPatched, "GetMapScale\\s*\\(");
-        int mapAjaxMxCount = countMatches(moveParamsPatched, "map_ajax\\.php\\?act=1&mx=");
-        int mapAjaxXCount = countMatches(moveParamsPatched, "map_ajax\\.php\\?act=1&x=");
+        int getMapScaleCallCount = countMatches(popupSyncPatched, "GetMapScale\\s*\\(");
+        int mapAjaxMxCount = countMatches(popupSyncPatched, "map_ajax\\.php\\?act=1&mx=");
+        int mapAjaxXCount = countMatches(popupSyncPatched, "map_ajax\\.php\\?act=1&x=");
 
-        String patched = MAP_JS_SAFE_PRELUDE + moveParamsPatched;
+        String patched = MAP_JS_SAFE_PRELUDE + popupSyncPatched;
         boolean runtimePatchAppended = false;
         if (!patched.contains(ABCLIENT_MAP_RUNTIME_PATCH_MARKER)) {
             patched += "\n" + OVERLOAD_RUNTIME_PATCH;
@@ -210,6 +232,7 @@ public class MapJs {
                 + ", fishPatch=" + (!fishPatched.equals(dimPatched))
                 + ", chatReloadSafePatch=" + (!chatReloadSafePatched.equals(fishPatched))
                 + ", moveParamsPatch=" + (!moveParamsPatched.equals(chatReloadSafePatched))
+                + ", popupSyncPatch=" + (!popupSyncPatched.equals(moveParamsPatched))
                 + ", mapAjaxMxCount=" + mapAjaxMxCount
                 + ", mapAjaxXCount=" + mapAjaxXCount
                 + ", getMapScaleCalls=" + getMapScaleCallCount

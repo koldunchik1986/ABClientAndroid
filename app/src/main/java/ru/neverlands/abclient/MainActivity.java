@@ -2732,6 +2732,29 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
 
         webView.setWebViewClient(client);
         webView.setWebChromeClient(new WebChromeClient() {
+            private String escapeHtml(String value) {
+                if (value == null) return "";
+                return value
+                        .replace("&", "&amp;")
+                        .replace("<", "&lt;")
+                        .replace(">", "&gt;")
+                        .replace("\"", "&quot;")
+                        .replace("'", "&#39;");
+            }
+
+            private void forwardServerPopupToChat(String kind, String message) {
+                String normalized = message == null ? "" : message.replace('\u00A0', ' ').replaceAll("\\s+", " ").trim();
+                if (normalized.isEmpty()) {
+                    return;
+                }
+                String payload = ru.neverlands.abclient.postfilter.MainPhp.buildServerChatTimeHtmlExternal()
+                        + "<font color=#333399><b>Сервер (" + escapeHtml(kind) + "):</b></font> "
+                        + escapeHtml(normalized);
+                Intent intent = new Intent(AppVars.ACTION_ADD_CHAT_MESSAGE);
+                intent.putExtra("message", payload);
+                LocalBroadcastManager.getInstance(MainActivity.this).sendBroadcast(intent);
+            }
+
             @Override
             public boolean onConsoleMessage(ConsoleMessage consoleMessage) {
                 Log.e("JS_CONSOLE", consoleMessage.message() + " -- From line "
@@ -2742,12 +2765,16 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
 
             @Override
             public boolean onJsAlert(WebView view, String url, String message, android.webkit.JsResult result) {
-                return super.onJsAlert(view, url, message, result);
+                forwardServerPopupToChat("alert", message);
+                result.confirm();
+                return true;
             }
 
             @Override
             public boolean onJsConfirm(WebView view, String url, String message, android.webkit.JsResult result) {
-                return super.onJsConfirm(view, url, message, result);
+                forwardServerPopupToChat("confirm", message);
+                result.confirm();
+                return true;
             }
 
             @Override

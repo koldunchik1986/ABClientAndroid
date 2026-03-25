@@ -2,6 +2,8 @@ package ru.neverlands.abclient.bridge;
 
 import android.content.Context;
 import android.content.Intent;
+import android.os.Build;
+import android.text.Html;
 import android.util.Log;
 import android.webkit.CookieManager;
 import android.webkit.JavascriptInterface;
@@ -31,6 +33,7 @@ import ru.neverlands.abclient.model.AutoboiState;
 import ru.neverlands.abclient.model.Cell;
 import ru.neverlands.abclient.model.Position;
 import ru.neverlands.abclient.model.Prims;
+import ru.neverlands.abclient.postfilter.MainPhp;
 import ru.neverlands.abclient.proxy.CookiesManager;
 import ru.neverlands.abclient.proxy.ProxyRuntimeManager;
 import ru.neverlands.abclient.utils.AppVars;
@@ -48,12 +51,15 @@ public class WebAppInterface {
     private static final long MAIN_TOP_FIGHT_PULSE_GUARD_MS = 15000L;
     private static final long MAIN_TOP_CLIENT_RELOAD_GUARD_MS = 2500L;
     private static final long MAP_BRIDGE_LOG_THROTTLE_MS = 1500L;
+    private static final long SERVER_POPUP_DEDUP_MS = 1500L;
     private static volatile long lastNeverTimerLogAtMs = 0L;
     private static volatile long lastNeverTimerLoggedValueMs = Long.MIN_VALUE;
     private static volatile long lastMapBridgeLogAtMs = 0L;
     private static volatile String lastMapBridgeSignature = "";
     private static volatile long lastMapRuntimeTraceAtMs = 0L;
     private static volatile String lastMapRuntimeTrace = "";
+    private static volatile long lastServerPopupAtMs = 0L;
+    private static volatile String lastServerPopupText = "";
     private static volatile long lastClientMainTopReloadAtMs = 0L;
     private static volatile String lastClientMainTopReloadSource = "";
     private static volatile String lastClientMainTopReloadPayload = "";
@@ -90,6 +96,58 @@ public class WebAppInterface {
     @JavascriptInterface
     public void showToast(String toast) {
         Toast.makeText(mContext, toast, Toast.LENGTH_SHORT).show();
+    }
+
+    /**
+     * Единый канал: серверные popup из JS карты отправляются в чат и не показываются overlay-окном.
+     */
+    @JavascriptInterface
+    public void PostServerPopupToChat(String popupMessageHtml) {
+        if (mContext == null) {
+            return;
+        }
+        String normalizedText = normalizeServerPopupMessage(popupMessageHtml);
+        if (normalizedText.isEmpty()) {
+            return;
+        }
+        long nowMs = System.currentTimeMillis();
+        if (normalizedText.equals(lastServerPopupText) && (nowMs - lastServerPopupAtMs) < SERVER_POPUP_DEDUP_MS) {
+            return;
+        }
+        lastServerPopupText = normalizedText;
+        lastServerPopupAtMs = nowMs;
+
+        String messageHtml = MainPhp.buildServerChatTimeHtmlExternal()
+                + "<font color=#333399><b>Сервер:</b></font> "
+                + escapeHtml(normalizedText);
+        Intent intent = new Intent(AppVars.ACTION_ADD_CHAT_MESSAGE);
+        intent.putExtra("message", messageHtml);
+        androidx.localbroadcastmanager.content.LocalBroadcastManager.getInstance(mContext).sendBroadcast(intent);
+    }
+
+    private static String normalizeServerPopupMessage(String popupMessageHtml) {
+        if (popupMessageHtml == null) {
+            return "";
+        }
+        String text = popupMessageHtml.replace('\u00A0', ' ').trim();
+        if (text.isEmpty()) {
+            return "";
+        }
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                text = Html.fromHtml(text, Html.FROM_HTML_MODE_LEGACY).toString();
+            } else {
+                //noinspection deprecation
+                text = Html.fromHtml(text).toString();
+            }
+        } catch (Exception ignored) {
+            // Если HTML невалидный, отправим исходный текст после trim.
+        }
+        text = text.replace('\u00A0', ' ').replaceAll("\\s+", " ").trim();
+        if (text.length() > 700) {
+            text = text.substring(0, 700) + "...";
+        }
+        return text;
     }
 
     /**

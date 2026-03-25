@@ -6515,8 +6515,17 @@ public class MainPhp {
         if (AppVars.getContext() == null) {
             return;
         }
+        String mapLocation = (AppVars.Profile != null && AppVars.Profile.MapLocation != null)
+                ? AppVars.Profile.MapLocation.trim() : "";
+        String cellSuffix = "";
+        if (!mapLocation.isEmpty()) {
+            cellSuffix = " <font color=#003399>на клетке № <b>"
+                    + escapeHtmlAttr(mapLocation)
+                    + "</b></font>";
+        }
         String messageHtml = buildServerChatTimeHtml()
-                + "<font color=#cc0000><b>На текущей клетке обнаружен клад!</b></font>";
+                + "<font color=#cc0000><b>На текущей клетке обнаружен клад!</b></font>"
+                + cellSuffix;
         Intent intent = new Intent(AppVars.ACTION_ADD_CHAT_MESSAGE);
         intent.putExtra("message", messageHtml);
         LocalBroadcastManager.getInstance(AppVars.getContext()).sendBroadcast(intent);
