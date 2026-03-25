@@ -999,19 +999,24 @@ public class RoomManager {
 
         String inj = "";
         if (strArray.length > 6 && !strArray[6].equals("0")) {
-            inj = "<img src=http://image.neverlands.ru/chat/tr4.gif border=0 width=15 height=12 alt=\"" +
-                  strArray[6] +
-                  "\" align=absmiddle>";
-
+            String injuryIcon = "tr4";
             if (strArray[6].contains("боевая")) {
+                injuryIcon = "tr4";
                 strArray[1] = "<font color=\"#666600\">" + strArray[1] + "</font>";
             } else if (strArray[6].contains("тяжелая")) {
+                injuryIcon = "tr3";
                 strArray[1] = "<font color=\"#c10000\">" + strArray[1] + "</font>";
             } else if (strArray[6].contains("средняя")) {
+                injuryIcon = "tr2";
                 strArray[1] = "<font color=\"#e94c69\">" + strArray[1] + "</font>";
             } else if (strArray[6].contains("легкая")) {
+                injuryIcon = "tr1";
                 strArray[1] = "<font color=\"#ef7f94\">" + strArray[1] + "</font>";
             }
+            inj = "<img src=http://image.neverlands.ru/chat/" + injuryIcon
+                    + ".gif border=0 width=15 height=12 alt=\""
+                    + strArray[6]
+                    + "\" align=absmiddle>";
         }
 
         String psg = "";
@@ -1054,9 +1059,9 @@ public class RoomManager {
             "]</font><a href=\"http://neverlands.ru/pinfo.cgi?" +
             nnSec +
             "\" onclick=\"window.open(this.href);\"><img src=http://image.neverlands.ru/chat/info.gif width=11 height=12 border=0 align=absmiddle></a>" +
+            inj +
             sleeps +
-            ign +
-            inj;
+            ign;
     }
 
     // Парсит JS-массив ChatListU и формирует HTML списка игроков.
