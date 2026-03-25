@@ -2321,6 +2321,35 @@ public class MainPhp {
             return null;
         }
 
+        final String woundLabel;
+        switch (cureTravm) {
+            case "1":
+                woundLabel = "легкая";
+                break;
+            case "2":
+                woundLabel = "средняя";
+                break;
+            case "3":
+                woundLabel = "тяжелая";
+                break;
+            default:
+                woundLabel = "боевая";
+                break;
+        }
+
+        // Внешний запрос лечения себя (RoomManager self-priority): сначала пробуем эликсир,
+        // если для типа травмы он разрешен в настройках.
+        if (isSelfNick(targetNick) && isAutoCureSelfElixirEnabledForWound(cureTravm)) {
+            String selfElixirCureHtml = mainPhpTrySelfWoundCureByElixir(address, html, woundLabel);
+            if (selfElixirCureHtml != null && !selfElixirCureHtml.isEmpty()) {
+                decrementSelfWoundCounterIfNeeded(targetNick, cureTravm,
+                        "MainPhp.mainPhpExternalRequestedCureStep.selfElixirUsed");
+                RoomManager.onAutoCureSubmitted(targetNick, cureTravm);
+                clearExternalCureRequest("submitted-self-elixir");
+                return selfElixirCureHtml;
+            }
+        }
+
         String invHtml = mainPhpFindInvWithFallback(html, "&im=0&wca=85", address);
         if (invHtml != null && !invHtml.isEmpty()) {
             return invHtml;
@@ -2343,21 +2372,6 @@ public class MainPhp {
             return null;
         }
 
-        String woundLabel;
-        switch (cureTravm) {
-            case "1":
-                woundLabel = "легкая";
-                break;
-            case "2":
-                woundLabel = "средняя";
-                break;
-            case "3":
-                woundLabel = "тяжелая";
-                break;
-            default:
-                woundLabel = "боевая";
-                break;
-        }
         String safeNick = targetNick.replace("<", "&lt;").replace(">", "&gt;");
         sendInventoryChatMessage(buildServerChatTimeHtml()
                 + "<font color=#004bbb>Лечим " + safeNick + " (" + woundLabel + " травма)...</font>");

@@ -24,6 +24,7 @@ public class AutoFunctionsManager {
     private static final String BG_TRACE_PREFIX = "[BG_TRACE]";
     private static final String CHARACTER_SYNC_LABEL = "\u0421\u0438\u043D\u0445\u0440\u0430\u043D\u0438\u0437\u0430\u0446\u0438\u044F \u041F\u0435\u0440\u0441\u043E\u043D\u0430\u0436\u0430";
     private static final long CHARACTER_SYNC_LOGIN_COOLDOWN_MS = 15_000L;
+    private static final long CHARACTER_SYNC_AUTO_ENABLE_COOLDOWN_MS = 1_500L;
     private static final String PREFS_NAME = "auto_functions_prefs";
     private static final String KEY_PREFIX = "auto_function_";
     private static final String KEY_AUTO_SKIN = KEY_PREFIX + "auto_skin";
@@ -137,6 +138,9 @@ public class AutoFunctionsManager {
 
         Log.d(TAG, "setAutoFightEnabled: " + enabled);
         syncBackgroundService("setAutoFightEnabled(" + enabled + ")");
+        if (enabled) {
+            requestCharacterSyncForAutoFunctionEnable("auto_fight");
+        }
 
         // При включении делаем форсированную загрузку боевого кадра (fight.frame).
         if (enabled) {
@@ -264,6 +268,9 @@ public class AutoFunctionsManager {
             });
         }
         Log.d(TAG, "setAutoFishEnabled: " + enabled);
+        if (enabled) {
+            requestCharacterSyncForAutoFunctionEnable("auto_fish");
+        }
     }
 
     /**
@@ -338,6 +345,20 @@ public class AutoFunctionsManager {
      * - метод только синхронизирует параметры персонажа.
      */
     private void requestCharacterSyncAfterLogin() {
+        requestCharacterSync("after-login",
+                "AutoFunctionsManager.requestCharacterSyncAfterLogin",
+                CHARACTER_SYNC_LOGIN_COOLDOWN_MS,
+                true);
+    }
+
+    private void requestCharacterSyncForAutoFunctionEnable(String functionName) {
+        requestCharacterSync("auto-enable:" + functionName,
+                "AutoFunctionsManager.requestCharacterSyncForAutoFunctionEnable(" + functionName + ")",
+                CHARACTER_SYNC_AUTO_ENABLE_COOLDOWN_MS,
+                false);
+    }
+
+    private void requestCharacterSync(String reason, String source, long cooldownMs, boolean showToast) {
         if (AppVars.Profile == null) {
             return;
         }
@@ -347,8 +368,9 @@ public class AutoFunctionsManager {
         }
 
         long now = System.currentTimeMillis();
-        if ((now - lastCharacterSyncRequestedAtMs) < CHARACTER_SYNC_LOGIN_COOLDOWN_MS) {
-            Log.d(TAG, "AUTO_BLAZ_TRACE: skip " + CHARACTER_SYNC_LABEL + " (cooldown)");
+        if ((now - lastCharacterSyncRequestedAtMs) < cooldownMs) {
+            Log.d(TAG, "AUTO_BLAZ_TRACE: skip " + CHARACTER_SYNC_LABEL
+                    + " (cooldown), reason=" + reason + ", cooldownMs=" + cooldownMs);
             return;
         }
         lastCharacterSyncRequestedAtMs = now;
@@ -356,22 +378,22 @@ public class AutoFunctionsManager {
         Thread syncThread = new Thread(() -> {
             NeverApi.PinfoVitals vitals = NeverApi.getPinfoVitalsFromPinfo(nick);
             if (vitals == null) {
-                Log.w(TAG, "AUTO_BLAZ_TRACE: " + CHARACTER_SYNC_LABEL + " failed (no vitals), nick=" + nick);
+                Log.w(TAG, "AUTO_BLAZ_TRACE: " + CHARACTER_SYNC_LABEL
+                        + " failed (no vitals), nick=" + nick + ", reason=" + reason);
                 return;
             }
 
-            CharacterVitalsManager.Snapshot snapshot = CharacterVitalsManager.updateFromPinfo(
-                    vitals,
-                    "AutoFunctionsManager.requestCharacterSyncAfterLogin"
-            );
-
+            CharacterVitalsManager.Snapshot snapshot = CharacterVitalsManager.updateFromPinfo(vitals, source);
             Log.i(TAG, "AUTO_BLAZ_TRACE: " + CHARACTER_SYNC_LABEL
-                    + " after login, tied=" + snapshot.tied
+                    + ", reason=" + reason
+                    + ", tied=" + snapshot.tied
                     + ", hp=" + snapshot.curHp + "/" + snapshot.maxHp
                     + ", ma=" + snapshot.curMa + "/" + snapshot.maxMa
                     + ", nick=" + nick);
-            showCharacterSyncToast();
-        }, "CharacterSyncAfterLogin");
+            if (showToast) {
+                showCharacterSyncToast();
+            }
+        }, "CharacterSync_" + reason.replace(':', '_').replace('(', '_').replace(')', '_'));
         syncThread.setDaemon(true);
         syncThread.start();
     }
@@ -485,6 +507,9 @@ public class AutoFunctionsManager {
         }
         prefs.edit().putBoolean(KEY_PREFIX + "auto_bait", enabled).apply();
         Log.d(TAG, "setAutoBaitEnabled: " + enabled);
+        if (enabled) {
+            requestCharacterSyncForAutoFunctionEnable("auto_bait");
+        }
     }
     
     // === AUTO_SKIN (Авто-Охота) ===
@@ -545,6 +570,9 @@ public class AutoFunctionsManager {
             AppVars.Profile.save(context);
         }
         Log.d(TAG, "setAutoSkinEnabled: " + enabled);
+        if (enabled) {
+            requestCharacterSyncForAutoFunctionEnable("auto_skin");
+        }
     }
 
     /**
@@ -677,6 +705,9 @@ public class AutoFunctionsManager {
         // Аналог ПК-логики: авто-нападение работает вместе со "Слежением за локацией".
         // Поэтому при включении AUTO_ATTACK автоматически поднимаем LOCATION_TRACKING.
         Log.d(TAG, "setAutoAttackEnabled(wrapper): " + enabled + ", toolId=" + getAutoAttackToolId());
+        if (enabled && getAutoAttackToolId() > 0) {
+            requestCharacterSyncForAutoFunctionEnable("auto_attack");
+        }
     }
 
     /**
@@ -715,6 +746,7 @@ public class AutoFunctionsManager {
             if (!isLocationTrackingEnabled()) {
                 setLocationTrackingEnabled(true);
             }
+            requestCharacterSyncForAutoFunctionEnable("auto_attack_tool_" + safeToolId);
         }
         Log.d(TAG, "setAutoAttackToolId: " + safeToolId);
         syncBackgroundService("setAutoAttackToolId(" + safeToolId + ")");
@@ -772,6 +804,9 @@ public class AutoFunctionsManager {
     public void setAutoInvisibleEnabled(boolean enabled) {
         prefs.edit().putBoolean(KEY_PREFIX + "auto_invisible", enabled).apply();
         Log.d(TAG, "setAutoInvisibleEnabled: " + enabled);
+        if (enabled) {
+            requestCharacterSyncForAutoFunctionEnable("auto_invisible");
+        }
     }
     
     // === LOCATION_TRACKING (Слежение за локацией) ===
@@ -813,6 +848,9 @@ public class AutoFunctionsManager {
                     Log.w(TAG, "setLocationTrackingEnabled: room users refresh trigger failed", e);
                 }
             });
+        }
+        if (enabled) {
+            requestCharacterSyncForAutoFunctionEnable("location_tracking");
         }
     }
 
@@ -875,6 +913,9 @@ public class AutoFunctionsManager {
     public void setAutoDetectEnabled(boolean enabled) {
         prefs.edit().putBoolean(KEY_PREFIX + "auto_detect", enabled).apply();
         Log.d(TAG, "setAutoDetectEnabled: " + enabled);
+        if (enabled) {
+            requestCharacterSyncForAutoFunctionEnable("auto_detect");
+        }
     }
     
     // === AUTO_SUMMON (Авто-Тотем) ===
@@ -894,6 +935,9 @@ public class AutoFunctionsManager {
     public void setAutoSummonEnabled(boolean enabled) {
         prefs.edit().putBoolean(KEY_PREFIX + "auto_summon", enabled).apply();
         Log.d(TAG, "setAutoSummonEnabled: " + enabled);
+        if (enabled) {
+            requestCharacterSyncForAutoFunctionEnable("auto_summon");
+        }
     }
     
     // === AUTO_CURE (Авто-Лечение - DoAutoCure) ===
@@ -913,6 +957,9 @@ public class AutoFunctionsManager {
     public void setAutoCureEnabled(boolean enabled) {
         prefs.edit().putBoolean(KEY_PREFIX + "auto_cure", enabled).apply();
         Log.d(TAG, "setAutoCureEnabled: " + enabled);
+        if (enabled) {
+            requestCharacterSyncForAutoFunctionEnable("auto_cure");
+        }
     }
 
     private SharedPreferences defaultPrefs() {
@@ -1068,6 +1115,9 @@ public class AutoFunctionsManager {
     public void setAutoDrinkEnabled(boolean enabled) {
         prefs.edit().putBoolean(KEY_PREFIX + "auto_drink", enabled).apply();
         Log.d(TAG, "setAutoDrinkEnabled: " + enabled);
+        if (enabled) {
+            requestCharacterSyncForAutoFunctionEnable("auto_drink");
+        }
     }
 
     // === AUTO_TREASURE (Авто-Клад / DoSearchBox) ===
@@ -1113,6 +1163,9 @@ public class AutoFunctionsManager {
         }
 
         Log.d(TAG, "setAutoTreasureEnabled: " + enabled);
+        if (enabled) {
+            requestCharacterSyncForAutoFunctionEnable("auto_treasure");
+        }
         if (enabled && AppVars.mainActivity != null && AppVars.mainActivity.get() != null) {
             AppVars.mainActivity.get().runOnUiThread(() -> {
                 try {
@@ -1146,6 +1199,9 @@ public class AutoFunctionsManager {
     public void setAutoMovingEnabled(boolean enabled) {
         AppVars.AutoMoving = enabled;
         Log.d(TAG, "setAutoMovingEnabled: " + enabled);
+        if (enabled) {
+            requestCharacterSyncForAutoFunctionEnable("auto_moving");
+        }
     }
 
     // Переключение флага навигатора (оставлен для совместимости; лучше использовать
@@ -1177,6 +1233,7 @@ public class AutoFunctionsManager {
             Log.d(TAG, "startAutoMoving: destination=" + destination + " (MapLocation unknown, path will be built lazily)");
         }
         AppVars.AutoMoving = true;
+        requestCharacterSyncForAutoFunctionEnable("auto_moving_start");
         triggerAutoMovingBootstrapNavigation();
     }
 
@@ -1272,6 +1329,9 @@ public class AutoFunctionsManager {
         }
         prefs.edit().putBoolean(KEY_PREFIX + "auto_cut", enabled).apply();
         Log.d(TAG, "setAutoCutEnabled: " + enabled);
+        if (enabled) {
+            requestCharacterSyncForAutoFunctionEnable("auto_cut");
+        }
     }
     
     // === AUTO_REFRESH (Авто-Обновление) ===
@@ -1291,6 +1351,9 @@ public class AutoFunctionsManager {
     public void setAutoRefreshEnabled(boolean enabled) {
         prefs.edit().putBoolean(KEY_PREFIX + "auto_refresh", enabled).apply();
         Log.d(TAG, "setAutoRefreshEnabled: " + enabled);
+        if (enabled) {
+            requestCharacterSyncForAutoFunctionEnable("auto_refresh");
+        }
     }
     
     // === Универсальные методы ===
