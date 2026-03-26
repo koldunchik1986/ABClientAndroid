@@ -8,10 +8,12 @@ import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 import java.util.Locale;
 
 import ru.neverlands.abclient.model.InvEntry;
+import ru.neverlands.abclient.postfilter.Filter;
 import ru.neverlands.abclient.postfilter.MainPhp;
 import ru.neverlands.abclient.utils.AppVars;
 import ru.neverlands.abclient.utils.HtmlUtils;
 import ru.neverlands.abclient.utils.HelperStrings;
+import ru.neverlands.abclient.utils.Russian;
 
 /**
  * Менеджер быстрых действий (портирование FormMainFast.cs + PostFilter/MainPhpFast.cs).
@@ -31,6 +33,33 @@ public class FastActionManager {
     private static final String FAST_ID_BLISS_ELIXIR = "Эликсир Блаженства";
     private static volatile long lastBlissUseAtMs = 0L;
     private static volatile long prevBlissUseAtMs = 0L;
+    private static final int FAST_INV_TRANSITION_MAX_RETRIES = 12;
+    private static final String FAST_INV_RETRY_PARAM = "ab_fast_inv_retry";
+
+    /**
+     * Bridge для fast-ветки postfilter, выполняющей навигацию по инвентарю.
+     *
+     * Назначение:
+     * - хранить FastAction-логику в `FastActionManager`, не раздувая `MainPhp`;
+     * - использовать существующие helper-методы `MainPhp` без дублирования алгоритмов.
+     *
+     * Правило:
+     * - бизнес-решения fast-ветки (retry/cancel/успех) принимает `FastActionManager`;
+     * - инфраструктурные функции страницы/URL предоставляет host.
+     */
+    public interface MainPhpFastHost {
+        boolean isAttackFastId(String fastId);
+        String getInventoryFilter(String fastId);
+        boolean isFightFrameHtml(String html);
+        String mainPhpFindInvWithFallback(String html, String filter, String address);
+        boolean mainPhpIsInv(String html);
+        boolean isInventoryAddress(String address);
+        boolean inventoryAddressMatchesFilter(String address, String filter);
+        int parseUrlParamInt(String url, String paramName, int fallback);
+        String appendOrReplaceUrlParam(String url, String paramName, String paramValue);
+        String buildFastItemNotFoundMessage(String fastId);
+        void sendInventoryChatMessage(String messageHtml);
+    }
 
     // Стандартная HTML-шапка для генерируемых страниц (аналог HelperErrors.Head() в C#).
     // Содержит GENERATED_PAGE_MARKER чтобы injectJsFix НЕ добавлял стубы в эти страницы.
@@ -523,6 +552,123 @@ public class FastActionManager {
      * Отменяет ожидание боя (аналог FastCancelSafe в C#).
      * Вызывается из UI при нажатии кнопки отмены.
      */
+    /**
+     * Выполняет fast-конвейер MainPhp-уровня (переход в инвентарь → нужная вкладка → применение предмета).
+     *
+     * Это прямой перенос логики `MainPhp.processMainPhpFast(...)` в `FastActionManager`:
+     * - без изменения алгоритма;
+     * - с теми же условиями отмены/ретраев/детектов;
+     * - с делегированием инфраструктурных helper'ов через `MainPhpFastHost`.
+     *
+     * Зависимости:
+     * - `AppVars.FastNeed/FastId/FastNick/NeverTimer/FastCount`;
+     * - `processMainPhp(...)` — low-level парсер конкретного fast-предмета;
+     * - `Filter.buildRedirect(...)` и `Russian.getBytes(...)` — возврат HTML в WebView.
+     *
+     * @return `byte[]` с HTML-ответом postfilter или `null`, если fast-ветка не обработана.
+     */
+    public static byte[] processMainPhpFast(String address, String html, MainPhpFastHost host) {
+        if (host == null || !AppVars.FastNeed || AppVars.FastId == null) return null;
+        String fastId = AppVars.FastId;
+        Log.d(TAG, "processMainPhpFast: FastId=" + fastId + ", address=" + address);
+
+        boolean requireNeverTimerForFast = host.isAttackFastId(fastId);
+        if (requireNeverTimerForFast && AppVars.NeverTimer > 0 && System.currentTimeMillis() < AppVars.NeverTimer) {
+            Log.d(TAG, "processMainPhpFast: NeverTimer ещё не истёк, пропускаем (attack-fast)");
+            return null;
+        }
+
+        if (address != null && address.contains("get_id=43")) {
+            Log.d(TAG, "processMainPhpFast: get_id=43 — действие уже выполнено, сбрасываем FastNeed");
+            fastCancel("fast-get_id=43-action-already-applied");
+            return null;
+        }
+
+        if (host.isFightFrameHtml(html)
+                && address != null
+                && address.contains("get_id=56&act=10&go=inf")
+                && host.isAttackFastId(fastId)) {
+            Log.d(TAG, "processMainPhpFast: вошли в бой с FastId=" + fastId
+                    + ", сбрасываем FastNeed чтобы не блокировать авто-удары");
+            fastCancel("entered-fight-frame-attack-fastid");
+            return null;
+        }
+
+        String filter = host.getInventoryFilter(fastId);
+        if (filter == null) {
+            Log.w(TAG, "processMainPhpFast: неизвестный FastId=" + fastId);
+            return null;
+        }
+        Log.d(TAG, "processMainPhpFast: filter=" + filter
+                + ", isInv=" + host.mainPhpIsInv(html)
+                + ", isInvByAddress=" + host.isInventoryAddress(address)
+                + ", w28_form=" + (html != null && html.contains("w28_form("))
+                + ", magicreform=" + (html != null && html.contains("magicreform(")));
+
+        if ("TOTEM".equals(filter)) {
+            Log.d(TAG, "processMainPhpFast: тотем — без навигации на инвентарь");
+            String fastHtml = processMainPhp(html);
+            if (fastHtml != null) {
+                Log.d(TAG, "processMainPhpFast: УСПЕХ, тотем найден");
+                return Russian.getBytes(fastHtml);
+            }
+            Log.w(TAG, "processMainPhpFast: тотем не найден, отмена");
+            fastCancel("inventory-fast-item-not-found");
+            return null;
+        }
+
+        String invRedirect = host.mainPhpFindInvWithFallback(html, filter, address);
+        if (invRedirect != null) {
+            Log.d(TAG, "processMainPhpFast: redirect на инвентарь: " + invRedirect);
+            return Russian.getBytes(invRedirect);
+        }
+
+        if (host.mainPhpIsInv(html) || host.isInventoryAddress(address)) {
+            String filterClean = filter.startsWith("&") ? filter.substring(1) : filter;
+            if (!host.inventoryAddressMatchesFilter(address, filter)) {
+                Log.d(TAG, "processMainPhpFast: на инвентаре, но не на нужной категории ("
+                        + filterClean + "), переключаем");
+                return Filter.buildRedirect("Переключение на нужную категорию", "main.php?" + filterClean);
+            }
+
+            String fastHtml = processMainPhp(html);
+            if (fastHtml != null) {
+                Log.d(TAG, "processMainPhpFast: УСПЕХ, предмет найден");
+                return Russian.getBytes(fastHtml);
+            }
+
+            if (!host.mainPhpIsInv(html)) {
+                String retryLink = address;
+                if (retryLink == null || retryLink.isEmpty()) {
+                    retryLink = "main.php?" + filterClean;
+                }
+                int currentRetry = host.parseUrlParamInt(retryLink, FAST_INV_RETRY_PARAM, 0);
+                if (currentRetry >= FAST_INV_TRANSITION_MAX_RETRIES) {
+                    String fallbackInvUrl = "main.php?" + filterClean;
+                    Log.w(TAG, "processMainPhpFast: inventory transitional HTML retry limit reached ("
+                            + currentRetry + "/" + FAST_INV_TRANSITION_MAX_RETRIES
+                            + "), cancel fast action and force inventory reload: " + fallbackInvUrl);
+                    fastCancel("inventory-fast-transition-timeout");
+                    return Filter.buildRedirect("Инвентарь загружается слишком долго, сбрасываем fast-действие", fallbackInvUrl);
+                }
+                int nextRetry = currentRetry + 1;
+                retryLink = host.appendOrReplaceUrlParam(retryLink, FAST_INV_RETRY_PARAM, String.valueOf(nextRetry));
+                Log.d(TAG, "processMainPhpFast: inventory transitional HTML, retry="
+                        + nextRetry + "/" + FAST_INV_TRANSITION_MAX_RETRIES + ", url=" + retryLink);
+                return Filter.buildRedirect("Ожидание загрузки инвентаря (" + nextRetry
+                        + "/" + FAST_INV_TRANSITION_MAX_RETRIES + ")", retryLink);
+            }
+
+            Log.w(TAG, "processMainPhpFast: предмет не найден на правильной вкладке (" + filterClean + "), отмена");
+            host.sendInventoryChatMessage(host.buildFastItemNotFoundMessage(fastId));
+            fastCancel("inventory-fast-unsupported-context");
+            return null;
+        }
+
+        Log.d(TAG, "processMainPhpFast: не на инвентаре, MainPhpFindInv не нашла ссылку");
+        return null;
+    }
+
     public static void cancelWaitFight() {
         if (AppVars.FastWaitEndOfBoiActive) {
             AppVars.FastWaitEndOfBoiCancel = true;

@@ -60,8 +60,6 @@ public class MainPhp {
     private static final int HEAVY_WOUND_INDEX = 3;
     // На части серверных ответов вкладка инвентаря отдается промежуточным шаблоном (без содержимого предметов).
     // Для быстрых действий по эликсирам даем расширенное окно ретраев, чтобы не падать в ложный timeout.
-    private static final int FAST_INV_TRANSITION_MAX_RETRIES = 12;
-    private static final String FAST_INV_RETRY_PARAM = "ab_fast_inv_retry";
     private static final int[] FISH_PRIM_IDS = new int[]{38, 39, 40, 41, 42, 43, 44, 45, 46};
     private static final int[] FISH_PRIM_FLAGS = new int[]{
             ru.neverlands.abclient.model.Prims.Bread,
@@ -305,6 +303,67 @@ public class MainPhp {
      * Это позволяет держать бизнес-логику Auto-Клада в отдельном файле без дублирования
      * уже существующих служебных методов (редиректы, инвентарь, чат-сообщения).
      */
+    /**
+     * FastAction host bridge for delegating MainPhp infrastructure helpers
+     * into {@link FastActionManager#processMainPhpFast(String, String, FastActionManager.MainPhpFastHost)}.
+     */
+    private static final FastActionManager.MainPhpFastHost FAST_ACTION_HOST = new FastActionManager.MainPhpFastHost() {
+        @Override
+        public boolean isAttackFastId(String fastId) {
+            return MainPhp.isAttackFastId(fastId);
+        }
+
+        @Override
+        public String getInventoryFilter(String fastId) {
+            return MainPhp.getInventoryFilter(fastId);
+        }
+
+        @Override
+        public boolean isFightFrameHtml(String html) {
+            return MainPhp.isFightFrameHtml(html);
+        }
+
+        @Override
+        public String mainPhpFindInvWithFallback(String html, String filter, String address) {
+            return MainPhp.mainPhpFindInvWithFallback(html, filter, address);
+        }
+
+        @Override
+        public boolean mainPhpIsInv(String html) {
+            return MainPhp.mainPhpIsInv(html);
+        }
+
+        @Override
+        public boolean isInventoryAddress(String address) {
+            return MainPhp.isInventoryAddress(address);
+        }
+
+        @Override
+        public boolean inventoryAddressMatchesFilter(String address, String filter) {
+            return MainPhp.inventoryAddressMatchesFilter(address, filter);
+        }
+
+        @Override
+        public int parseUrlParamInt(String url, String paramName, int fallback) {
+            return MainPhp.parseUrlParamInt(url, paramName, fallback);
+        }
+
+        @Override
+        public String appendOrReplaceUrlParam(String url, String paramName, String paramValue) {
+            return MainPhp.appendOrReplaceUrlParam(url, paramName, paramValue);
+        }
+
+        @Override
+        public String buildFastItemNotFoundMessage(String fastId) {
+            return MainPhp.buildFastItemNotFoundMessage(fastId);
+        }
+
+        @Override
+        public void sendInventoryChatMessage(String messageHtml) {
+            MainPhp.sendInventoryChatMessage(messageHtml);
+        }
+    };
+
     private static final TreasureDig.Host TREASURE_DIG_HOST = new TreasureDig.Host() {
         @Override
         public String mainPhpFindInvWithFallback(String html, String filter, String address) {
@@ -3548,7 +3607,8 @@ public class MainPhp {
      * Зависимости:
      * - {@link Russian#getString(byte[])} и {@link Russian#getBytes(String)} для конвертации кодировок.
      * - Ключевые ветви: бой ({@link #mainPhpFight(String, String)}), инвентарь ({@link #mainPhpInv(String)}),
-     *   разделка ({@link #mainPhpRaz(String)}), fast-действия ({@link #processMainPhpFast(String, String)}).
+     *   разделка ({@link #mainPhpRaz(String)}), fast-действия
+     *   ({@link FastActionManager#processMainPhpFast(String, String, FastActionManager.MainPhpFastHost)}).
      * - Глобальное состояние в {@link AppVars} (таймеры, флаги автобоя, ссылки, статистика).
      * - Бродкасты в UI через {@link LocalBroadcastManager} и {@code AppVars.ACTION_*}.
      *
@@ -3714,7 +3774,7 @@ public class MainPhp {
         // В C# FastAction обрабатывается ВНУТРИ MainPhp, а не в отдельном менеджере.
         // Алгоритм: MainPhpFindInv → BuildRedirect на инвентарь → MainPhpIsInv → MainPhpFast → BuildRedirect на категорию
         if (AppVars.FastNeed) {
-            byte[] fastResult = processMainPhpFast(address, html);
+            byte[] fastResult = FastActionManager.processMainPhpFast(address, html, FAST_ACTION_HOST);
             if (fastResult != null) {
                 return fastResult;
             }
@@ -4177,128 +4237,8 @@ public class MainPhp {
      * @return byte[] с результатом (HTML redirect или форма), или null если FastAction не обработан
      */
     private static byte[] processMainPhpFast(String address, String html) {
-        if (!AppVars.FastNeed || AppVars.FastId == null) return null;
-        String fastId = AppVars.FastId;
-        android.util.Log.d(TAG, "processMainPhpFast: FastId=" + fastId + ", address=" + address);
-        // NeverTimer — cooldown (аналог DateTime.Now > AppVars.NeverTimer в C#)
-        boolean requireNeverTimerForFast = isAttackFastId(fastId);
-        if (requireNeverTimerForFast && AppVars.NeverTimer > 0 && System.currentTimeMillis() < AppVars.NeverTimer) {
-            android.util.Log.d(TAG, "processMainPhpFast: NeverTimer ещё не истёк, пропускаем (attack-fast)");
-            return null;
-        }
-        // --- Особый случай: get_id=43 — это страница применения эликсира/предмета.
-        // Сервер уже применил действие (по GET-запросу), поэтому FastNeed нужно сбросить.
-        // Иначе мы будем бесконечно перезапускать процесс.
-        if (address.contains("get_id=43")) {
-            android.util.Log.d(TAG, "processMainPhpFast: get_id=43 — действие уже выполнено, сбрасываем FastNeed");
-            FastActionManager.fastCancel("fast-get_id=43-action-already-applied");
-            return null;
-        }
-        // Если fast-атака уже привела нас в бой (fight frame), дальнейший поиск инвентаря
-        // становится бессмысленным и только мешает автобою.
-        // Сценарий:
-        // 1) Авто-нападение стартует из комнаты -> FastNeed=true.
-        // 2) Сервер переводит в fight.frame.
-        // 3) Мы продолжаем крутить processMainPhpFast на каждом обновлении боя.
-        // В C# после входа в бой fast-цикл для нападалки фактически завершён.
-        if (isFightFrameHtml(html)
-                && address.contains("get_id=56&act=10&go=inf")
-                && isAttackFastId(fastId)) {
-            android.util.Log.d(TAG, "processMainPhpFast: вошли в бой с FastId=" + fastId
-                    + ", сбрасываем FastNeed чтобы не блокировать авто-удары");
-            FastActionManager.fastCancel("entered-fight-frame-attack-fastid");
-            return null;
-        }
-        // Определяем нужный фильтр категории
-        String filter = getInventoryFilter(fastId);
-        if (filter == null) {
-            android.util.Log.w(TAG, "processMainPhpFast: неизвестный FastId=" + fastId);
-            return null;
-        }
-        android.util.Log.d(TAG, "processMainPhpFast: filter=" + filter
-                + ", isInv=" + mainPhpIsInv(html)
-                + ", isInvByAddress=" + isInventoryAddress(address)
-                + ", w28_form=" + html.contains("w28_form(")
-                + ", magicreform=" + html.contains("magicreform("));
-        // --- Особый случай: Тотем НЕ требует инвентаря ---
-        // В C# тотем ищет ["fig","Напасть","vcode"] на основной странице.
-        // mainPhpFindFlora делает redirect на основную страницу, если нужно.
-        if ("TOTEM".equals(filter)) {
-            android.util.Log.d(TAG, "processMainPhpFast: тотем — без навигации на инвентарь");
-            String fastHtml = FastActionManager.processMainPhp(html);
-            if (fastHtml != null) {
-                android.util.Log.d(TAG, "processMainPhpFast: УСПЕХ, тотем найден");
-                return Russian.getBytes(fastHtml);
-            }
-            android.util.Log.w(TAG, "processMainPhpFast: тотем не найден, отмена");
-            FastActionManager.fastCancel("inventory-fast-item-not-found");
-            return null;
-        }
-        // 1. Если мы НЕ на инвентаре — ищем ссылку на инвентарь с фильтром
-        String invRedirect = mainPhpFindInvWithFallback(html, filter, address);
-        if (invRedirect != null) {
-            android.util.Log.d(TAG, "processMainPhpFast: redirect на инвентарь: " + invRedirect);
-            return Russian.getBytes(invRedirect);
-        }
-        // 2. Если мы НА инвентаре — проверяем категорию и ищем предмет
-        if (mainPhpIsInv(html) || isInventoryAddress(address)) {
-            String filterClean = filter.startsWith("&") ? filter.substring(1) : filter;
-            // 2a. Сначала проверяем, на правильной ли мы вкладке категории.
-            // Если address не содержит нужный фильтр (wca=28/wca=27),
-            // перенаправляем на нужную категорию ПЕРЕД поиском предмета.
-            // Это критично при 500+ предметах в инвентаре — поиск по всему
-            // HTML (695KB) вместо отфильтрованной страницы (28KB) слишком медленный.
-            if (!inventoryAddressMatchesFilter(address, filter)) {
-                android.util.Log.d(TAG, "processMainPhpFast: на инвентаре, но не на нужной категории ("
-                        + filterClean + "), переключаем");
-                return Filter.buildRedirect("Переключение на нужную категорию",
-                        "main.php?" + filterClean);
-            }
-            // 2b. Мы на правильной вкладке — ищем предмет
-            String fastHtml = FastActionManager.processMainPhp(html);
-            if (fastHtml != null) {
-                // Предмет найден! processMainPhp уже обработал FastCount
-                android.util.Log.d(TAG, "processMainPhpFast: УСПЕХ, предмет найден");
-                return Russian.getBytes(fastHtml);
-            }
-            // На части ответов go=inv сервер возвращает переходный HTML без формы предмета
-            // (mainPhpIsInv=false), хотя адрес уже указывает на нужную вкладку.
-            // В этом состоянии не отменяем FastAction — ждём следующий полноценный кадр.
-            if (!mainPhpIsInv(html)) {
-                String retryLink = address;
-                if (retryLink == null || retryLink.isEmpty()) {
-                    retryLink = "main.php?" + filterClean;
-                }
-                int currentRetry = parseUrlParamInt(retryLink, FAST_INV_RETRY_PARAM, 0);
-                if (currentRetry >= FAST_INV_TRANSITION_MAX_RETRIES) {
-                    String fallbackInvUrl = "main.php?" + filterClean;
-                    android.util.Log.w(TAG, "processMainPhpFast: inventory transitional HTML retry limit reached ("
-                            + currentRetry + "/" + FAST_INV_TRANSITION_MAX_RETRIES
-                            + "), cancel fast action and force inventory reload: " + fallbackInvUrl);
-                    FastActionManager.fastCancel("inventory-fast-transition-timeout");
-                    return Filter.buildRedirect("Инвентарь загружается слишком долго, сбрасываем fast-действие", fallbackInvUrl);
-                }
-                int nextRetry = currentRetry + 1;
-                retryLink = appendOrReplaceUrlParam(retryLink, FAST_INV_RETRY_PARAM, String.valueOf(nextRetry));
-                android.util.Log.d(TAG, "processMainPhpFast: inventory transitional HTML, retry="
-                        + nextRetry + "/" + FAST_INV_TRANSITION_MAX_RETRIES + ", url=" + retryLink);
-                return Filter.buildRedirect("Ожидание загрузки инвентаря (" + nextRetry
-                        + "/" + FAST_INV_TRANSITION_MAX_RETRIES + ")", retryLink);
-            }
-            // 3. Мы на правильной вкладке, предмет не найден — отмена
-            android.util.Log.w(TAG, "processMainPhpFast: предмет не найден на правильной вкладке ("
-                    + filterClean + "), отмена");
-            sendInventoryChatMessage(buildFastItemNotFoundMessage(fastId));
-            FastActionManager.fastCancel("inventory-fast-unsupported-context");
-            return null;
-        }
-        // Мы не на инвентаре и MainPhpFindInv не нашла ссылку — вероятно, нужен обычный reload
-        android.util.Log.d(TAG, "processMainPhpFast: не на инвентаре, MainPhpFindInv не нашла ссылку");
-        return null;
+        return FastActionManager.processMainPhpFast(address, html, FAST_ACTION_HOST);
     }
-    /**
-     * Проверяет, что HTML относится к боевому фрейму (верхний/основной бой).
-     */
     private static boolean isFightFrameHtml(String html) {
         return html != null && (html.contains("var fight_ty") || html.contains("magic_slots();"));
     }

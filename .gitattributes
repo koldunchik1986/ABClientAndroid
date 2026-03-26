@@ -1,2 +1,7 @@
 # Auto detect text files and perform LF normalization
 * text=auto
+@"
+*.java text working-tree-encoding=UTF-8
+*.xml text working-tree-encoding=UTF-8
+*.gradle text working-tree-encoding=UTF-8
+"@ | Out-File -FilePath ".gitattributes" -Encoding UTF8 -NoNewline
