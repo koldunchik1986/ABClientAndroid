@@ -14,9 +14,6 @@ import java.util.Map;
 import java.util.Random;
 import java.text.SimpleDateFormat;
 import android.content.Intent;
-import android.media.Ringtone;
-import android.media.RingtoneManager;
-import android.net.Uri;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 import ru.neverlands.abclient.lez.LezFight;
 import ru.neverlands.abclient.model.AutoboiState;
@@ -61,13 +58,10 @@ public class MainPhp {
     private static final int LIGHT_WOUND_INDEX = 1;
     private static final int MEDIUM_WOUND_INDEX = 2;
     private static final int HEAVY_WOUND_INDEX = 3;
-    private static final String DIG_BUTTON_MARKER = "[\"dig\",\"Копать\",";
     // На части серверных ответов вкладка инвентаря отдается промежуточным шаблоном (без содержимого предметов).
     // Для быстрых действий по эликсирам даем расширенное окно ретраев, чтобы не падать в ложный timeout.
     private static final int FAST_INV_TRANSITION_MAX_RETRIES = 12;
     private static final String FAST_INV_RETRY_PARAM = "ab_fast_inv_retry";
-    private static final int AUTO_TREASURE_SHOVEL_PREP_MAX_RETRIES = 8;
-    private static final String AUTO_TREASURE_SHOVEL_PREP_RETRY_PARAM = "ab_tdig_inv_retry";
     private static final int[] FISH_PRIM_IDS = new int[]{38, 39, 40, 41, 42, 43, 44, 45, 46};
     private static final int[] FISH_PRIM_FLAGS = new int[]{
             ru.neverlands.abclient.model.Prims.Bread,
@@ -129,6 +123,94 @@ public class MainPhp {
      */
     private static volatile String lastAutoFightProbeFinishCandidateKey = "";
     private static volatile long lastAutoFightProbeFinishCandidateAtMs = 0L;
+    /**
+     * Bridge-адаптер инфраструктурных helper-методов MainPhp для модуля {@link TreasureDig}.
+     *
+     * Это позволяет держать бизнес-логику Auto-Клада в отдельном файле без дублирования
+     * уже существующих служебных методов (редиректы, инвентарь, чат-сообщения).
+     */
+    private static final TreasureDig.Host TREASURE_DIG_HOST = new TreasureDig.Host() {
+        @Override
+        public String mainPhpFindInvWithFallback(String html, String filter, String address) {
+            return MainPhp.mainPhpFindInvWithFallback(html, filter, address);
+        }
+
+        @Override
+        public String mainPhpFindMapReturnForAutoMoving(String html) {
+            return MainPhp.mainPhpFindMapReturnForAutoMoving(html);
+        }
+
+        @Override
+        public boolean mainPhpIsInv(String html) {
+            return MainPhp.mainPhpIsInv(html);
+        }
+
+        @Override
+        public boolean isInventoryAddress(String address) {
+            return MainPhp.isInventoryAddress(address);
+        }
+
+        @Override
+        public boolean inventoryAddressMatchesFilter(String address, String filter) {
+            return MainPhp.inventoryAddressMatchesFilter(address, filter);
+        }
+
+        @Override
+        public boolean hasInventoryRows(String html) {
+            return MainPhp.hasInventoryRows(html);
+        }
+
+        @Override
+        public int parseUrlParamInt(String url, String paramName, int fallback) {
+            return MainPhp.parseUrlParamInt(url, paramName, fallback);
+        }
+
+        @Override
+        public String normalizeNeverlandsMainLink(String link) {
+            return MainPhp.normalizeNeverlandsMainLink(link);
+        }
+
+        @Override
+        public String appendOrReplaceUrlParam(String url, String paramName, String paramValue) {
+            return MainPhp.appendOrReplaceUrlParam(url, paramName, paramValue);
+        }
+
+        @Override
+        public String buildRedirectHtml(String description, String link) {
+            return MainPhp.buildRedirectHtml(description, link);
+        }
+
+        @Override
+        public void sendInventoryChatMessage(String messageHtml) {
+            MainPhp.sendInventoryChatMessage(messageHtml);
+        }
+
+        @Override
+        public String buildServerChatTimeHtml() {
+            return MainPhp.buildServerChatTimeHtml();
+        }
+
+        @Override
+        public String escapeHtmlAttr(String value) {
+            return MainPhp.escapeHtmlAttr(value);
+        }
+
+        @Override
+        public List<TreasureDig.WearInvEntry> getWearInvList(String html) {
+            List<WearInvEntry> source = MainPhp.getWearInvList(html);
+            if (source == null || source.isEmpty()) {
+                return Collections.emptyList();
+            }
+            List<TreasureDig.WearInvEntry> mapped = new ArrayList<>(source.size());
+            for (WearInvEntry entry : source) {
+                if (entry == null) {
+                    continue;
+                }
+                mapped.add(new TreasureDig.WearInvEntry(entry.name, entry.wearLink));
+            }
+            return mapped;
+        }
+    };
     /**
      * Явное дерево решений для обработки завершения боя.
      *
@@ -3959,7 +4041,7 @@ public class MainPhp {
             AppVars.ContentMainPhp = originalHtml;
         }
         if (!isFightFrame && !isFightTopFrame) {
-            String autoTreasureDigHtml = maybeStopAutoTreasureOnDig(html, address);
+            String autoTreasureDigHtml = TreasureDig.maybeStopAutoTreasureOnDig(html, address, TREASURE_DIG_HOST);
             if (autoTreasureDigHtml != null) {
                 html = autoTreasureDigHtml;
                 AppVars.ContentMainPhp = html;
@@ -6204,359 +6286,6 @@ public class MainPhp {
      * - {@link LocalBroadcastManager};
      * - action {@link AppVars#ACTION_ADD_CHAT_MESSAGE}.
      */
-    /**
-     * C# parity (`AppVars.Profile.DoStopOnDig`):
-     * при появлении кнопки "Копать" останавливает Авто-Клад и сообщает пользователю.
-     */
-    private static String maybeStopAutoTreasureOnDig(String html, String address) {
-        if (html == null || html.isEmpty()) {
-            return null;
-        }
-
-        boolean digMarkerDetected = html.contains(DIG_BUTTON_MARKER);
-        boolean autoTreasureActive = AppVars.DoSearchBox
-                || AppVars.AutoMoving
-                || (AppVars.Profile != null && AppVars.Profile.AutoDig);
-
-        AutoFunctionsManager autoManager = null;
-        try {
-            android.content.Context context = AppVars.getContext();
-            if (context != null) {
-                autoManager = AutoFunctionsManager.getInstance(context);
-            }
-        } catch (Exception e) {
-            android.util.Log.w(TAG, "AUTO_SEARCH_BOX_TRACE dig flow: manager init failed", e);
-        }
-
-        boolean autoDigEnabled = autoManager != null && autoManager.isAutoTreasureDigEnabled();
-        if (autoTreasureActive && autoDigEnabled) {
-            String digFlowHtml = maybeHandleAutoTreasureDigFlow(html, address, autoManager, digMarkerDetected);
-            if (digFlowHtml != null) {
-                return digFlowHtml;
-            }
-        } else if (!autoTreasureActive || !autoDigEnabled) {
-            AppVars.AutoTreasureDigPendingInventory = false;
-            AppVars.AutoTreasureShovelReady = false;
-            AppVars.AutoTreasureShovelReadyOption = "";
-            AppVars.TreasureDigPauseNonCombatAutoFunctions = false;
-        }
-
-        if (AppVars.Profile == null || !AppVars.Profile.DoStopOnDig || !digMarkerDetected || !autoTreasureActive) {
-            return null;
-        }
-
-        // Полная остановка текущего маршрута (аналог C# UpdateNavigatorOff).
-        AppVars.AutoMoving = false;
-        AppVars.AutoMovingDestinaton = null;
-        AppVars.AutoMovingMapPath = null;
-        AppVars.AutoMovingNextJump = null;
-        AppVars.AutoMovingJumps = 0;
-        AppVars.AutoMovingCityGate = ru.neverlands.abclient.model.CityGateType.None;
-
-        boolean disabledViaManager = false;
-        try {
-            android.content.Context context = AppVars.getContext();
-            if (context != null) {
-                AutoFunctionsManager.getInstance(context).setAutoTreasureEnabled(false);
-                disabledViaManager = true;
-            }
-        } catch (Exception e) {
-            android.util.Log.w(TAG, "AUTO_SEARCH_BOX_TRACE stop on dig: manager disable failed", e);
-        }
-
-        if (!disabledViaManager) {
-            AppVars.DoSearchBox = false;
-            if (AppVars.Profile != null) {
-                AppVars.Profile.AutoDig = false;
-                try {
-                    android.content.Context context = AppVars.getContext();
-                    if (context != null) {
-                        AppVars.Profile.save(context);
-                    }
-                } catch (Exception saveEx) {
-                    android.util.Log.w(TAG, "AUTO_SEARCH_BOX_TRACE stop on dig: profile save failed", saveEx);
-                }
-            }
-            ExtMap.flushVisitedToDisk();
-            android.util.Log.d(TAG, "AUTO_SEARCH_BOX_TRACE stop on dig: keep visited cache, entries="
-                    + AppVars.SearchBoxVisited.size());
-            AppVars.AutoTreasureDigPendingInventory = false;
-            AppVars.AutoTreasureShovelReady = false;
-            AppVars.AutoTreasureShovelReadyOption = "";
-        }
-
-        AppVars.TreasureDigPauseNonCombatAutoFunctions = false;
-        notifyTreasureFoundOnCurrentCell();
-        playTreasureFoundSignal();
-        android.util.Log.d(TAG, "AUTO_SEARCH_BOX_TRACE treasure marker detected -> stop auto treasure");
-        return null;
-    }
-
-    private static String maybeHandleAutoTreasureDigFlow(String html,
-                                                         String address,
-                                                         AutoFunctionsManager autoManager,
-                                                         boolean digMarkerDetected) {
-        if (autoManager == null) {
-            return null;
-        }
-        String selectedShovelOption = normalizeTreasureShovelOption(autoManager.getAutoTreasureShovelOption());
-        if (!selectedShovelOption.equalsIgnoreCase(AppVars.AutoTreasureShovelReadyOption)) {
-            AppVars.AutoTreasureShovelReady = false;
-            AppVars.AutoTreasureShovelReadyOption = "";
-            if (!AppVars.AutoTreasureDigPendingInventory) {
-                AppVars.TreasureDigPauseNonCombatAutoFunctions = false;
-            }
-        }
-
-        if (AppVars.AutoTreasureDigPendingInventory) {
-            String prepareHtml = continueAutoTreasureDigPreparation(html, address, selectedShovelOption);
-            if (prepareHtml != null) {
-                return prepareHtml;
-            }
-        }
-
-        if (!digMarkerDetected) {
-            if (!AppVars.AutoTreasureDigPendingInventory) {
-                AppVars.TreasureDigPauseNonCombatAutoFunctions = false;
-            }
-            return null;
-        }
-
-        notifyTreasureFoundOnCurrentCell();
-        playTreasureFoundSignal();
-
-        boolean needWearShovel = !AutoFunctionsManager.TREASURE_SHOVEL_NONE.equalsIgnoreCase(selectedShovelOption);
-        if (needWearShovel && !AppVars.AutoTreasureShovelReady) {
-            AppVars.AutoTreasureDigPendingInventory = true;
-            AppVars.TreasureDigPauseNonCombatAutoFunctions = true;
-            android.util.Log.d(TAG, "AUTO_SEARCH_BOX_TRACE dig flow: open shovel inventory");
-            return buildAutoTreasureDigOpenInventoryRedirect(html, address);
-        }
-
-        AppVars.AutoTreasureDigPendingInventory = false;
-        String digClickHtml = buildAutoTreasureDigClickHtml(html);
-        AppVars.TreasureDigPauseNonCombatAutoFunctions = false;
-        if (digClickHtml != null) {
-            android.util.Log.d(TAG, "AUTO_SEARCH_BOX_TRACE dig flow: click \"Копать\" by button");
-        }
-        return digClickHtml;
-    }
-
-    private static String continueAutoTreasureDigPreparation(String html, String address, String selectedShovelOption) {
-        AppVars.TreasureDigPauseNonCombatAutoFunctions = true;
-        boolean inventoryContext = mainPhpIsInv(html) || isInventoryAddress(address);
-        if (!inventoryContext) {
-            android.util.Log.d(TAG, "AUTO_SEARCH_BOX_TRACE dig flow: route to inventory (shovels)");
-            return buildAutoTreasureDigOpenInventoryRedirect(html, address);
-        }
-
-        if (!inventoryAddressMatchesFilter(address, "&im=0&wca=3")) {
-            android.util.Log.d(TAG, "AUTO_SEARCH_BOX_TRACE dig flow: switch inventory filter to wca=3");
-            return buildAutoTreasureDigOpenInventoryRedirect(html, address);
-        }
-
-        if (!hasInventoryRows(html)) {
-            int currentRetry = parseUrlParamInt(address, AUTO_TREASURE_SHOVEL_PREP_RETRY_PARAM, 0);
-            if (currentRetry < AUTO_TREASURE_SHOVEL_PREP_MAX_RETRIES) {
-                int nextRetry = currentRetry + 1;
-                String retryUrl = "main.php?im=0&wca=3";
-                if (address != null && !address.isEmpty() && isInventoryAddress(address)) {
-                    retryUrl = normalizeNeverlandsMainLink(address);
-                }
-                retryUrl = appendOrReplaceUrlParam(retryUrl,
-                        AUTO_TREASURE_SHOVEL_PREP_RETRY_PARAM,
-                        String.valueOf(nextRetry));
-                android.util.Log.d(TAG, "AUTO_SEARCH_BOX_TRACE dig flow: inventory transitional html, retry="
-                        + nextRetry + "/" + AUTO_TREASURE_SHOVEL_PREP_MAX_RETRIES + ", url=" + retryUrl);
-                return buildRedirectHtml("Авто-Клад: ожидание загрузки инвентаря лопат ("
-                        + nextRetry + "/" + AUTO_TREASURE_SHOVEL_PREP_MAX_RETRIES + ")", retryUrl);
-            }
-            android.util.Log.w(TAG, "AUTO_SEARCH_BOX_TRACE dig flow: inventory transitional retry limit reached ("
-                    + currentRetry + "/" + AUTO_TREASURE_SHOVEL_PREP_MAX_RETRIES + ")");
-        }
-
-        if (AutoFunctionsManager.TREASURE_SHOVEL_NONE.equalsIgnoreCase(selectedShovelOption)) {
-            markAutoTreasureShovelReady(selectedShovelOption);
-            return buildAutoTreasureDigReturnToMapHtml(html);
-        }
-
-        if (isTreasureShovelEquipped(html, selectedShovelOption)) {
-            markAutoTreasureShovelReady(selectedShovelOption);
-            android.util.Log.d(TAG, "AUTO_SEARCH_BOX_TRACE dig flow: shovel already equipped");
-            return buildAutoTreasureDigReturnToMapHtml(html);
-        }
-
-        String wearLink = resolveTreasureShovelWearLink(html, selectedShovelOption);
-        if (wearLink != null && !wearLink.isEmpty()) {
-            android.util.Log.d(TAG, "AUTO_SEARCH_BOX_TRACE dig flow: wear shovel link=" + wearLink);
-            return buildRedirectHtml("Авто-Клад: одеваем лопату", wearLink);
-        }
-
-        AppVars.AutoTreasureDigPendingInventory = false;
-        AppVars.AutoTreasureShovelReady = false;
-        AppVars.AutoTreasureShovelReadyOption = "";
-        AppVars.TreasureDigPauseNonCombatAutoFunctions = false;
-        sendInventoryChatMessage(buildServerChatTimeHtml()
-                + "<font color=#FF0000>\u0410\u0432\u0442\u043e-\u041a\u043b\u0430\u0434: \u043b\u043e\u043f\u0430\u0442\u0430 \u043d\u0435 \u043d\u0430\u0439\u0434\u0435\u043d\u0430, \u043a\u043e\u043f\u043a\u0430 \u043e\u0442\u043c\u0435\u043d\u0435\u043d\u0430.</font>");
-        android.util.Log.w(TAG, "AUTO_SEARCH_BOX_TRACE dig flow: shovel not found, dig cancelled");
-        return buildAutoTreasureDigReturnToMapHtml(html);
-    }
-
-    private static void markAutoTreasureShovelReady(String selectedShovelOption) {
-        AppVars.AutoTreasureDigPendingInventory = false;
-        AppVars.AutoTreasureShovelReady = true;
-        AppVars.AutoTreasureShovelReadyOption = selectedShovelOption == null ? "" : selectedShovelOption;
-    }
-
-    private static String buildAutoTreasureDigOpenInventoryRedirect(String html, String address) {
-        String fallbackRedirect = mainPhpFindInvWithFallback(html, "&im=0&wca=3", address);
-        if (fallbackRedirect != null && !fallbackRedirect.isEmpty()) {
-            return fallbackRedirect;
-        }
-        return buildRedirectHtml("\u0410\u0432\u0442\u043e-\u041a\u043b\u0430\u0434: \u0438\u043d\u0432\u0435\u043d\u0442\u0430\u0440\u044c \u043b\u043e\u043f\u0430\u0442", "main.php?im=0&wca=3");
-    }
-
-    private static String buildAutoTreasureDigReturnToMapHtml(String html) {
-        String mapReturnHtml = mainPhpFindMapReturnForAutoMoving(html);
-        if (mapReturnHtml != null && !mapReturnHtml.isEmpty()) {
-            return mapReturnHtml;
-        }
-        String link = "main.php?get_id=56&act=10&go=ret";
-        if (AppVars.VCode != null && !AppVars.VCode.trim().isEmpty()) {
-            link += "&vcode=" + AppVars.VCode.trim();
-        }
-        return buildRedirectHtml("Авто-Клад: возврат на природу", link);
-    }
-
-    private static String buildAutoTreasureDigClickHtml(String html) {
-        if (html == null || html.isEmpty() || !html.contains(DIG_BUTTON_MARKER)) {
-            return null;
-        }
-        String script = "<script language=\"JavaScript\">"
-                + "setTimeout(function(){"
-                + "try{"
-                + "if(window.__abAutoTreasureDigClicked){return;}"
-                + "window.__abAutoTreasureDigClicked=true;"
-                + "if(typeof ButClick==='function' && document.getElementById('dig')){ButClick('dig');return;}"
-                + "var digBtn=document.getElementById('dig');"
-                + "if(digBtn && typeof digBtn.click==='function'){digBtn.click();}"
-                + "}catch(e){}"
-                + "},180);"
-                + "</script>";
-        int bodyEnd = html.toLowerCase(Locale.ROOT).lastIndexOf("</body>");
-        if (bodyEnd != -1) {
-            return html.substring(0, bodyEnd) + script + html.substring(bodyEnd);
-        }
-        return html + script;
-    }
-
-    private static String resolveTreasureShovelWearLink(String html, String selectedShovelOption) {
-        List<WearInvEntry> invList = getWearInvList(html);
-        for (WearInvEntry thing : invList) {
-            if (thing == null || thing.name == null || thing.wearLink == null || thing.wearLink.isEmpty()) {
-                continue;
-            }
-            if (isTreasureShovelOptionMatches(thing.name, selectedShovelOption)) {
-                return thing.wearLink;
-            }
-        }
-        return null;
-    }
-
-    private static boolean isTreasureShovelEquipped(String html, String selectedShovelOption) {
-        ParsedDressed dressed = new ParsedDressed(html);
-        if (!dressed.Valid) {
-            return false;
-        }
-        return isTreasureShovelOptionMatches(dressed.Hand1, selectedShovelOption)
-                || isTreasureShovelOptionMatches(dressed.Hand2, selectedShovelOption);
-    }
-
-    private static boolean isTreasureShovelOptionMatches(String itemName, String selectedShovelOption) {
-        if (itemName == null || itemName.trim().isEmpty()) {
-            return false;
-        }
-        if (AutoFunctionsManager.TREASURE_SHOVEL_ANY.equalsIgnoreCase(selectedShovelOption)) {
-            return isTreasureShovelName(itemName);
-        }
-        return containsIgnoreCase(itemName, selectedShovelOption);
-    }
-
-    private static boolean isTreasureShovelName(String itemName) {
-        return containsIgnoreCase(itemName, AutoFunctionsManager.TREASURE_SHOVEL_SEEKER)
-                || containsIgnoreCase(itemName, AutoFunctionsManager.TREASURE_SHOVEL_TRAVEL)
-                || containsIgnoreCase(itemName, AutoFunctionsManager.TREASURE_SHOVEL_ARCHAEOLOGIST);
-    }
-
-    private static String normalizeTreasureShovelOption(String option) {
-        if (option == null || option.trim().isEmpty()) {
-            return AutoFunctionsManager.TREASURE_SHOVEL_ANY;
-        }
-        String value = option.trim();
-        if (AutoFunctionsManager.TREASURE_SHOVEL_NONE.equalsIgnoreCase(value)) {
-            return AutoFunctionsManager.TREASURE_SHOVEL_NONE;
-        }
-        if (AutoFunctionsManager.TREASURE_SHOVEL_SEEKER.equalsIgnoreCase(value)) {
-            return AutoFunctionsManager.TREASURE_SHOVEL_SEEKER;
-        }
-        if (AutoFunctionsManager.TREASURE_SHOVEL_TRAVEL.equalsIgnoreCase(value)) {
-            return AutoFunctionsManager.TREASURE_SHOVEL_TRAVEL;
-        }
-        if (AutoFunctionsManager.TREASURE_SHOVEL_ARCHAEOLOGIST.equalsIgnoreCase(value)) {
-            return AutoFunctionsManager.TREASURE_SHOVEL_ARCHAEOLOGIST;
-        }
-        return AutoFunctionsManager.TREASURE_SHOVEL_ANY;
-    }
-
-    /**
-     * Публикует системное сообщение в чат о том, что на текущей клетке найден клад.
-     */
-    private static void notifyTreasureFoundOnCurrentCell() {
-        if (AppVars.getContext() == null) {
-            return;
-        }
-        String mapLocation = (AppVars.Profile != null && AppVars.Profile.MapLocation != null)
-                ? AppVars.Profile.MapLocation.trim() : "";
-        String cellSuffix = "";
-        if (!mapLocation.isEmpty()) {
-            cellSuffix = " <font color=#003399>на клетке № <b>"
-                    + escapeHtmlAttr(mapLocation)
-                    + "</b></font>";
-        }
-        String messageHtml = buildServerChatTimeHtml()
-                + "<font color=#cc0000><b>На текущей клетке обнаружен клад!</b></font>"
-                + cellSuffix;
-        Intent intent = new Intent(AppVars.ACTION_ADD_CHAT_MESSAGE);
-        intent.putExtra("message", messageHtml);
-        LocalBroadcastManager.getInstance(AppVars.getContext()).sendBroadcast(intent);
-    }
-
-    /**
-     * Подаёт звуковой сигнал при обнаружении клада.
-     * Используется как Android-аналог C# `EventSounds.PlayAlarm()`.
-     */
-    private static void playTreasureFoundSignal() {
-        android.content.Context context = AppVars.getContext();
-        if (context == null) {
-            return;
-        }
-        try {
-            Uri alarmUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM);
-            if (alarmUri == null) {
-                alarmUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION);
-            }
-            if (alarmUri == null) {
-                return;
-            }
-            Ringtone ringtone = RingtoneManager.getRingtone(context, alarmUri);
-            if (ringtone != null) {
-                ringtone.play();
-            }
-        } catch (Exception e) {
-            android.util.Log.w(TAG, "AUTO_SEARCH_BOX_TRACE play alarm failed", e);
-        }
-    }
-
     private static void sendInventoryChatMessage(String messageHtml) {
         if (AppVars.getContext() == null || messageHtml == null || messageHtml.isEmpty()) {
             return;
