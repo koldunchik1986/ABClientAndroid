@@ -496,6 +496,19 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
      * - `requestAutoTurnFromServerProbe(...)`: сетевой fallback;
      * - `FightViewModel.autoTurnOnce(...)`: фактический разбор/формирование хода.
      */
+    /**
+     * Запуск одного шага авто-боя в «фонобезопасном» режиме.
+     *
+     * Правила выполнения:
+     * - используется тот же оркестратор, что и в обычном авто-ходе, но с разрешением server-probe;
+     * - если WebView не отдал актуальный бой, разрешается прямой HTTP-запрос к серверу для получения кадра боя;
+     * - логика отправки удара остается централизованной в FightViewModel.
+     *
+     * Зависимости:
+     * - {@link #requestAutoTurnInternal(boolean)} — основной сценарий с fallback-ветками;
+     * - {@link #requestAutoTurnFromServerProbe(String)} — сетевое восстановление бой-контекста;
+     * - {@link FightViewModel#autoTurnOnce(String)} — формирование/отправка действия.
+     */
     public void requestAutoTurnBackgroundAware() {
         requestAutoTurnInternal(true);
     }
@@ -520,6 +533,23 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
      * - `hasFightMarkers(...)`, `isActiveFightContext(...)` — валидация контекста кадра;
      * - `AppVars.ContentMainPhp` — кэш последнего сервера бой-HTML;
      * - `requestAutoTurnFromServerProbe(...)` — fallback-источник HTML в background throttling-сценарии.
+     */
+    /**
+     * Оркестратор одного тика авто-боя.
+     *
+     * Правила и защита от зацикливания:
+     * - при активном popup капчи бой не обрабатывается;
+     * - при свежем announce в foreground первый тик может быть отложен для корректной отрисовки кадра;
+     * - если в текущем HTML есть маркеры боя, но контекст неактивен (stale `fight_ty`, `IsBoi=false`),
+     *   выполняется восстановление: активный cache -> server-probe;
+     * - если уже есть pending-ссылка завершения боя (`act=7`), лишний server-probe не запускается;
+     * - при полном отсутствии маркеров в текущем HTML используется cache, затем server-probe.
+     *
+     * Зависимости:
+     * - {@link #hasFightMarkers(String)}, {@link #isActiveFightContext(String)} — валидация бой-контекста;
+     * - {@link #hasPendingAct7FightLink(String)} — защита от лишнего probe во время завершения боя;
+     * - {@link #requestAutoTurnFromServerProbe(String)} — восстановление бой-HTML;
+     * - {@link FightViewModel#autoTurnOnce(String)} — отправка шага.
      */
     private void requestAutoTurnInternal(boolean allowServerProbeFallback) {
         if (AppVars.IsFightCaptchaDialogVisible) {
@@ -704,6 +734,16 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
      * - `loadFightProbeHtmlViaHttp()` как источник серверного HTML;
      * - `hasFightMarkers(...)` и `AppVars.ContentMainPhp` для синхронизации контекста.
      */
+    /**
+     * Проверяет, что URL относится к ручной навигации `go=inf` без внутренних служебных маркеров.
+     *
+     * Правило:
+     * - ручные переходы пользователя временно подавляют server-probe,
+     *   чтобы авто-бой не перебивал явную навигацию.
+     *
+     * Зависимости:
+     * - используется в логике подавления probe через {@link #suppressAutoTurnServerProbeForManualNavigation(String)}.
+     */
     private static boolean isManualGoInfNavigationUrl(String lowerUrl) {
         if (lowerUrl == null || lowerUrl.isEmpty()) {
             return false;
@@ -714,6 +754,17 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         return !lowerUrl.contains("ab_") && !lowerUrl.contains("af_");
     }
 
+    /**
+     * Включает временное окно подавления server-probe после ручной навигации.
+     *
+     * Правила:
+     * - окно подавления задается константой `AUTO_TURN_MANUAL_NAV_SUPPRESS_MS`;
+     * - повторный вызов продлевает suppress-window только вперед.
+     *
+     * Зависимости:
+     * - состояние хранится в `autoTurnManualNavSuppressUntilMs`;
+     * - учитывается в {@link #requestAutoTurnFromServerProbe(String)}.
+     */
     private void suppressAutoTurnServerProbeForManualNavigation(String url) {
         long now = System.currentTimeMillis();
         long suppressUntil = now + AUTO_TURN_MANUAL_NAV_SUPPRESS_MS;
@@ -725,6 +776,21 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                 + ", url=" + url);
     }
 
+    /**
+     * Выполняет server-probe для получения актуального бой-HTML напрямую с сервера.
+     *
+     * Правила:
+     * - соблюдает suppress-window ручной навигации;
+     * - троттлит частоту запросов (`AUTO_TURN_SERVER_PROBE_MIN_INTERVAL_MS`);
+     * - предотвращает параллельные probe (`autoTurnServerProbeInFlight`);
+     * - в UI-потоке передает результат в FightViewModel только при наличии маркеров боя.
+     *
+     * Зависимости:
+     * - {@link #loadFightProbeHtmlViaHttp()} — источник HTML;
+     * - {@link #hasFightMarkers(String)} — первичная валидация;
+     * - {@link FightViewModel#autoTurnOnce(String)} — шаг авто-боя;
+     * - `AppVars.ContentMainPhp` — cache последнего бой-кадра.
+     */
     private void requestAutoTurnFromServerProbe(String reason) {
         long now = System.currentTimeMillis();
         if (now < autoTurnManualNavSuppressUntilMs) {
@@ -790,6 +856,18 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
      * - `CookieManager` + `CookiesManager.obtain(...)` для cookie-header;
      * - `Russian.getString(...)` для декодирования windows-1251 ответа сервера.
      */
+    /**
+     * Пробует получить бой-HTML по набору server-probe URL.
+     *
+     * Правила:
+     * - выполняет несколько попыток с разными URL;
+     * - сразу возвращает результат при первом HTML с маркерами боя;
+     * - если маркеры не найдены, возвращает первый непустой HTML как диагностический fallback.
+     *
+     * Зависимости:
+     * - {@link #loadFightProbeHtmlViaHttp(String)} — низкоуровневая загрузка;
+     * - {@link #hasFightMarkers(String)} — оценка результата.
+     */
     private FightProbeResult loadFightProbeHtmlViaHttp() {
         long nonce = System.currentTimeMillis();
         List<String> probeUrls = Arrays.asList(
@@ -821,6 +899,19 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         return new FightProbeResult("", null, false);
     }
 
+    /**
+     * Низкоуровневая HTTP-загрузка HTML для server-probe.
+     *
+     * Правила:
+     * - при strict-proxy и неактивном runtime-proxy запрос блокируется (anti-leak);
+     * - используется браузерный User-Agent и cookie текущей игровой сессии;
+     * - ответ декодируется в соответствии с серверной кодировкой.
+     *
+     * Зависимости:
+     * - `ProxyRuntimeManager`, `CookiesManager`, `CookieManager`;
+     * - `AppVars.BROWSER_USER_AGENT`;
+     * - `Russian.getString(...)` для декодирования ответа.
+     */
     private String loadFightProbeHtmlViaHttp(String probeUrl) {
         HttpURLConnection connection = null;
         InputStream inputStream = null;
@@ -931,10 +1022,30 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
      * @param html HTML верхнего фрейма.
      * @return {@code true}, если страница похожа на активный бой.
      */
+    /**
+     * Быстрая эвристика «похоже на бой».
+     *
+     * Правила:
+     * - проверяются только серверные маркеры бой-кадра (`var fight_ty`, `magic_slots();`);
+     * - метод не подтверждает активность боя, только факт «бой-подобного» HTML.
+     *
+     * Зависимости:
+     * - используется в авто-ходе, server-probe и валидации fallback-контекста.
+     */
     private boolean hasFightMarkers(String html) {
         return html != null && (html.contains("var fight_ty") || html.contains("magic_slots();"));
     }
 
+    /**
+     * Проверяет наличие pending-ссылки завершения боя (`act=7`) в `FightLink`.
+     *
+     * Правила:
+     * - если ссылка завершения уже готова, лишний server-probe не запускается;
+     * - проверка делается без изменения состояния.
+     *
+     * Зависимости:
+     * - используется в {@link #requestAutoTurnInternal(boolean)} для anti-loop сценария.
+     */
     private boolean hasPendingAct7FightLink(String fightLink) {
         if (fightLink == null || fightLink.isEmpty()) {
             return false;
@@ -948,6 +1059,18 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
      *
      * Нужен для фонового `requestAutoTurn(...)`: без этой проверки сервис мог зациклиться на старом `fight_ty`,
      * где маркеры боя есть, но `IsBoi=false` и реальный ход уже невозможен.
+     */
+    /**
+     * Подтверждает, что HTML относится к активному бою, а не к stale-состоянию.
+     *
+     * Правила:
+     * - сначала проверяются бой-маркеры;
+     * - затем выполняется парсинг через `LezFight` и проверка `IsValid && IsBoi`;
+     * - ошибки парсинга трактуются как неактивный контекст (safe fallback).
+     *
+     * Зависимости:
+     * - {@link #hasFightMarkers(String)};
+     * - {@link LezFight} как источник фактического состояния `IsBoi`.
      */
     private boolean isActiveFightContext(String html) {
         if (!hasFightMarkers(html)) {
