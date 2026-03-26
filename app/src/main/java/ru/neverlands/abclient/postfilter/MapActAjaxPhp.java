@@ -6,6 +6,7 @@ import android.util.Log;
 import java.util.Locale;
 
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
+import ru.neverlands.abclient.manager.AutoFunctionsManager;
 import ru.neverlands.abclient.utils.AppVars;
 import ru.neverlands.abclient.utils.Russian;
 
@@ -45,6 +46,9 @@ public class MapActAjaxPhp {
             if (isTreasureDigResultMessage(resoMessage)) {
                 postTreasureDigResultToChat(resoMessage);
             }
+            if (isTreasureDigCompletedMessage(resoMessage)) {
+                disableFixedTreasureCellAfterDig();
+            }
         } catch (Exception e) {
             Log.w(TAG, "AUTO_SEARCH_BOX_TRACE dig flow: map_act parse failed", e);
         }
@@ -76,6 +80,22 @@ public class MapActAjaxPhp {
                 || lower.contains("\u043f\u0440\u0435\u0434\u043c\u0435\u0442:");
     }
 
+    /**
+     * Признак финального результата копки.
+     * Нужен отдельно от {@link #isTreasureDigResultMessage(String)}, чтобы
+     * не сбрасывать режим "Клад точно здесь" на промежуточных сообщениях.
+     */
+    private static boolean isTreasureDigCompletedMessage(String message) {
+        if (message == null || message.isEmpty()) {
+            return false;
+        }
+        String lower = message.toLowerCase(Locale.ROOT);
+        return lower.contains("\u0432\u044b \u0432\u044b\u043a\u043e\u043f\u0430\u043b\u0438")
+                || lower.contains("\u0432\u044b \u043e\u0442\u043a\u043e\u043f\u0430\u043b\u0438")
+                || lower.contains("\u043d\u0438\u0447\u0435\u0433\u043e \u043d\u0435 \u043d\u0430\u0448\u043b\u0438")
+                || lower.contains("\u043f\u0440\u0435\u0434\u043c\u0435\u0442:");
+    }
+
     private static void postTreasureDigResultToChat(String rawMessage) {
         if (rawMessage == null) {
             return;
@@ -103,6 +123,37 @@ public class MapActAjaxPhp {
         intent.putExtra("message", messageHtml);
         LocalBroadcastManager.getInstance(AppVars.getContext()).sendBroadcast(intent);
         Log.d(TAG, "AUTO_SEARCH_BOX_TRACE dig result message posted to chat");
+    }
+
+    /**
+     * После подтвержденной выкопки отключаем режим "Клад точно здесь":
+     * - сбрасываем флаг fixed-cell;
+     * - очищаем номер клетки;
+     * - оставляем Авто-Клад включенным, чтобы продолжился обычный поиск.
+     */
+    private static void disableFixedTreasureCellAfterDig() {
+        if (AppVars.getContext() == null) {
+            return;
+        }
+        try {
+            AutoFunctionsManager manager = AutoFunctionsManager.getInstance(AppVars.getContext());
+            if (!manager.isAutoTreasureFixedCellConfigured()) {
+                return;
+            }
+            String prevFixedRegNum = manager.getAutoTreasureFixedCellRegNum();
+            manager.setAutoTreasureFixedCellEnabled(false);
+            manager.setAutoTreasureFixedCellRegNum("");
+
+            String messageHtml = MainPhp.buildServerChatTimeHtmlExternal()
+                    + "<font color=#336699>Авто-Клад: режим \"Клад точно здесь\" отключен после выкопки"
+                    + " (клетка № " + prevFixedRegNum + "). Поиск нового клада продолжен.</font>";
+            Intent intent = new Intent(AppVars.ACTION_ADD_CHAT_MESSAGE);
+            intent.putExtra("message", messageHtml);
+            LocalBroadcastManager.getInstance(AppVars.getContext()).sendBroadcast(intent);
+            Log.i(TAG, "AUTO_SEARCH_BOX_TRACE fixed-cell cleared after dig result: " + prevFixedRegNum);
+        } catch (Exception e) {
+            Log.w(TAG, "AUTO_SEARCH_BOX_TRACE fixed-cell clear failed", e);
+        }
     }
 
     private static String extractFirstResoMessage(String html) {
