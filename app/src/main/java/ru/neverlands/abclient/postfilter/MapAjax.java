@@ -103,7 +103,7 @@ public class MapAjax {
                         + ", fastNeed=" + AppVars.FastNeed);
             }
             return Filter.buildRedirectString(
-                    "\u041D\u0430\u0432\u0438\u0433\u0430\u0442\u043E\u0440: \u0443\u0441\u0442\u0430\u043B\u043E\u0441\u0442\u044C",
+                    "",
                     "main.php?ab_nav_tired=1");
         }
 
@@ -666,7 +666,7 @@ public class MapAjax {
             logAutoBlazDecision("decision", "defer_wait_never_timer", tied, threshold,
                     "reg=" + currentRegNum + ", waitMs=" + (neverTimer - now));
             return Filter.buildRedirectString(
-                    "Навигатор: ожидание шага перед автопитьем блажа",
+                    "",
                     "main.php?ab_nav_blaz_wait=1");
         }
 
