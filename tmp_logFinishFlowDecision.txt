@@ -1,0 +1,42 @@
+﻿    private static void logFinishFlowDecision(FinishFlowDecision decision,
+                                              LezFight fight,
+                                              String address,
+                                              String fightLink,
+                                              String captchaUrl,
+                                              FightFinishPageMarkers markers,
+                                              String reason) {
+        String logBoi = (fight != null && fight.LogBoi != null) ? fight.LogBoi : "";
+        String challenge = (markers != null && markers.challengeHash != null) ? markers.challengeHash : "";
+        String codeState = (markers != null && markers.codeState != null) ? markers.codeState : "none";
+        boolean hasFend = markers != null && markers.hasFendForm;
+        boolean hasCodeInput = markers != null && markers.hasCodeInput;
+        boolean hasFkey = markers != null && markers.hasFkeyScript;
+        boolean hasCaptchaImage = markers != null && markers.hasCaptchaImage;
+        String fendAction = (markers != null && markers.fendAction != null) ? markers.fendAction : "";
+        String fexpToken = (markers != null && markers.fexpCaptchaToken != null) ? markers.fexpCaptchaToken : "";
+        String tokenState = fexpToken.isEmpty() ? "empty" : ("len=" + fexpToken.length());
+        android.util.Log.d(TAG, "mainPhpFight finishFlow:"
+                + " decision=" + decision
+                + ", reason=" + reason
+                + ", LogBoi=" + logBoi
+                + ", challengeHash=" + challenge
+                + ", hasFEND=" + hasFend
+                + ", hasCodeInput=" + hasCodeInput
+                + ", codeState=" + codeState
+                + ", hasFkeyJs=" + hasFkey
+                + ", hasCaptchaImage=" + hasCaptchaImage
+                + ", fexpCaptchaToken=" + tokenState
+                + ", fendAction=" + fendAction
+                + ", fightLink=" + (fightLink == null ? "" : fightLink)
+                + ", captchaUrl=" + (captchaUrl == null ? "" : captchaUrl)
+                + ", address=" + (address == null ? "" : address));
+    }
+    /**
+     * Экранирует строку для безопасной подстановки в HTML-атрибут.
+     *
+     * Зависимости:
+     * - Используется при построении динамических HTML-форм (например, auto-submit для FEND).
+     *
+     * Назначение:
+     * - Исключить ломание разметки из-за спецсимволов ({@code & " < >}) в значениях input-полей.
+     */

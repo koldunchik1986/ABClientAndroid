@@ -1,0 +1,60 @@
+﻿    private static FightFinishPageMarkers inspectFightFinishPageMarkers(String html) {
+        FightFinishPageMarkers markers = new FightFinishPageMarkers();
+        if (html == null || html.isEmpty()) {
+            return markers;
+        }
+        try {
+            Document doc = Jsoup.parse(html);
+            Element fend = doc.selectFirst("form[name=FEND], form#FEND, form[action*=main.php]");
+            if (fend != null) {
+                markers.hasFendForm = true;
+                String action = fend.hasAttr("action") ? fend.attr("action").trim() : "";
+                if (!action.isEmpty()) {
+                    markers.fendAction = action;
+                }
+                Element codeInput = fend.selectFirst("input[name=code]");
+                if (codeInput != null) {
+                    markers.hasCodeInput = true;
+                    String code = codeInput.hasAttr("value") ? codeInput.attr("value").trim() : "";
+                    if (code.isEmpty()) {
+                        markers.codeState = "empty";
+                    } else if ("????".equals(code)) {
+                        markers.codeState = "placeholder";
+                    } else {
+                        markers.codeState = "filled";
+                    }
+                }
+            }
+            markers.hasFkeyScript = html.contains("js/fkey.js") || html.contains("d.FEND.code.value");
+            markers.hasCaptchaImage = html.contains("/modules/code/code.php");
+            String rawFightTy = HelperStrings.subString(html, "var fight_ty = [", "];");
+            if (rawFightTy != null && !rawFightTy.isEmpty()) {
+                List<String> fightTy = splitJsTopLevelCsv(rawFightTy);
+                if (fightTy.size() > 5) {
+                    markers.challengeHash = trimJsToken(fightTy.get(5));
+                }
+            }
+            String rawFexp = HelperStrings.subString(html, "var fexp = [", "];");
+            if (rawFexp != null && !rawFexp.isEmpty()) {
+                List<String> fexp = splitJsTopLevelCsv(rawFexp);
+                if (fexp.size() > 4) {
+                    markers.fexpCaptchaToken = trimJsToken(fexp.get(4));
+                }
+            }
+        } catch (Exception e) {
+            android.util.Log.e(TAG, "inspectFightFinishPageMarkers error", e);
+        }
+        return markers;
+    }
+    /**
+     * Пишет одну структурированную диагностическую запись для выбранной ветви завершения боя.
+     *
+     * Зависимости:
+     * - Решение из {@link FinishFlowDecision}.
+     * - Разобранные маркеры страницы из {@link FightFinishPageMarkers}.
+     * - Runtime-контекст из {@link LezFight}, адрес запроса, ссылки, URL капчи.
+     *
+     * Примечания:
+     * - Этот логгер намеренно подробный и является основным источником
+     *   постмортем-анализа поведения finish/captcha в runtime-логах.
+     */

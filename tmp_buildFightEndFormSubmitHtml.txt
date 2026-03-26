@@ -1,0 +1,91 @@
+﻿    private static String buildFightEndFormSubmitHtml(String html) {
+        if (html == null || html.isEmpty()) {
+            return null;
+        }
+        try {
+            Document doc = Jsoup.parse(html);
+            Element form = doc.selectFirst("form[name=FEND], form#FEND, form[action*=main.php]");
+            if (form == null) {
+                return null;
+            }
+            Element codeInput = form.selectFirst("input[name=code]");
+            if (codeInput != null) {
+                String codeValue = codeInput.hasAttr("value") ? codeInput.attr("value").trim() : "";
+                if (codeValue.isEmpty() || "????".equals(codeValue)) {
+                    android.util.Log.d(TAG, "buildFightEndFormSubmitHtml: code required, skip auto-submit");
+                    return null;
+                }
+            }
+            String action = form.hasAttr("action") ? form.attr("action").trim() : "";
+            if (action.isEmpty()) {
+                action = "main.php";
+            }
+            String method = form.hasAttr("method") ? form.attr("method").trim().toLowerCase(Locale.ROOT) : "post";
+            if (!"get".equals(method) && !"post".equals(method)) {
+                method = "post";
+            }
+            Elements fields = form.select("input[name], select[name], textarea[name]");
+            if (fields.isEmpty()) {
+                return null;
+            }
+            StringBuilder sb = new StringBuilder();
+            sb.append(HtmlUtils.GENERATED_PAGE_MARKER);
+            sb.append("<html><head><meta http-equiv=\"Content-Type\" content=\"text/html; charset=windows-1251\">");
+            sb.append("<title>ABClient</title></head><body>");
+            sb.append("Завершение боя...<br>");
+            sb.append("<form id=\"ab_finish_form\" action=\"")
+                    .append(escapeHtmlAttr(action))
+                    .append("\" method=\"")
+                    .append(method)
+                    .append("\">");
+            for (Element field : fields) {
+                String tag = field.tagName().toLowerCase(Locale.ROOT);
+                String name = field.hasAttr("name") ? field.attr("name") : "";
+                if (name.isEmpty()) {
+                    continue;
+                }
+                String value = "";
+                if ("input".equals(tag)) {
+                    String type = field.hasAttr("type") ? field.attr("type").toLowerCase(Locale.ROOT) : "text";
+                    if ("submit".equals(type) || "button".equals(type) || "reset".equals(type)
+                            || "image".equals(type) || "file".equals(type)) {
+                        continue;
+                    }
+                    value = field.hasAttr("value") ? field.attr("value") : "";
+                } else if ("textarea".equals(tag)) {
+                    value = field.text();
+                } else if ("select".equals(tag)) {
+                    Element selected = field.selectFirst("option[selected]");
+                    if (selected == null) {
+                        selected = field.selectFirst("option");
+                    }
+                    value = selected != null ? selected.attr("value") : "";
+                }
+                sb.append("<input type=\"hidden\" name=\"")
+                        .append(escapeHtmlAttr(name))
+                        .append("\" value=\"")
+                        .append(escapeHtmlAttr(value))
+                        .append("\">");
+            }
+            sb.append("</form>");
+            sb.append("<script language=\"JavaScript\">");
+            sb.append("setTimeout(function(){var f=document.getElementById('ab_finish_form'); if(f){f.submit();}}, 350);");
+            sb.append("</script></body></html>");
+            return sb.toString();
+        } catch (Exception e) {
+            android.util.Log.e(TAG, "buildFightEndFormSubmitHtml error", e);
+            return null;
+        }
+    }
+    /**
+     * Извлекает компактные маркеры завершения боя из сырого HTML.
+     *
+     * Зависимости:
+     * - Селекторы Jsoup для {@code form[name=FEND]} и {@code input[name=code]}.
+     * - {@link HelperStrings#subString(String, String, String)} + {@link #splitJsTopLevelCsv(String)}
+     *   для массивов {@code fight_ty} / {@code fexp}.
+     *
+     * Результат:
+     * - Флаги наличия FEND/code/fkey/картинки капчи.
+     * - Опциональные challenge hash и captcha token для диагностики/дедупликации.
+     */
