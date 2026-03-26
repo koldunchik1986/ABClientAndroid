@@ -400,7 +400,7 @@ public class AutoModeForegroundService extends Service {
                 // - pendingFightFinishLink: наличие этапа завершения/капчи;
                 // - fightLikelyActive: агрегированная эвристика активности боя.
                 if (autoFightEnabled && !captchaDialogVisible) {
-                    boolean mapAutomationActive = AppVars.AutoMoving && AppVars.DoSearchBox;
+                    boolean mapAutomationActive = AppVars.AutoMoving;
                     if (mapAutomationActive
                             && !fightLikelyActive
                             && !hasFightMarkers(AppVars.ContentMainPhp)

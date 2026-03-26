@@ -814,7 +814,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
      * - если уже есть маркеры боя/finish-link, probe не подавляется.
      */
     private boolean shouldSkipAutoTurnServerProbeForMapAutomation() {
-        if (!(AppVars.AutoMoving && AppVars.DoSearchBox)) {
+        if (!AppVars.AutoMoving) {
             return false;
         }
         if (AppVars.IsFightCaptchaDialogVisible) {
