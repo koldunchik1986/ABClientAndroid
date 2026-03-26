@@ -583,6 +583,23 @@ public class FastActionManager {
         // Сервер уже применил действие (по GET-запросу), поэтому FastNeed нужно сбросить.
         // Иначе мы будем бесконечно перезапускать процесс.
         if (address != null && address.contains("get_id=43")) {
+            if (FAST_ID_BLISS_ELIXIR.equals(fastId)) {
+                Log.d(TAG, "processMainPhpFast: get_id=43 — подтверждён Эликсир Блаженства");
+                rememberBlissUseTimestamp(fastId);
+                if (shouldEmitFastResultMessage(AppVars.FastCount)) {
+                    Integer elixirRemainingAfterUse = resolveElixirRemainingFromInventoryCache(fastId, html);
+                    writeChatMsg(buildFastResultMessage(fastId, AppVars.FastNick, elixirRemainingAfterUse));
+                    String autoTreasureEtaMessage = buildAutoTreasureBlissEtaMessage(fastId, elixirRemainingAfterUse);
+                    if (autoTreasureEtaMessage != null) {
+                        writeChatMsg(autoTreasureEtaMessage);
+                    }
+                }
+                AppVars.FastCount--;
+                if (AppVars.FastCount <= 0) {
+                    fastCancel("fast-get_id=43-action-applied");
+                }
+                return null;
+            }
             Log.d(TAG, "processMainPhpFast: get_id=43 — действие уже выполнено, сбрасываем FastNeed");
             fastCancel("fast-get_id=43-action-already-applied");
             return null;
@@ -855,23 +872,28 @@ public class FastActionManager {
         }
 
         if (result != null) {
-            rememberBlissUseTimestamp(fastId);
-            if (shouldEmitFastResultMessage(AppVars.FastCount)) {
-                Integer elixirRemainingAfterUse = null;
-                if (isElixirFastId(fastId)) {
-                    elixirRemainingAfterUse = resolveElixirRemainingFromInventoryCache(fastId, html);
+            boolean deferBlissChatUntilGetId43 = FAST_ID_BLISS_ELIXIR.equals(fastId);
+            if (!deferBlissChatUntilGetId43) {
+                rememberBlissUseTimestamp(fastId);
+                if (shouldEmitFastResultMessage(AppVars.FastCount)) {
+                    Integer elixirRemainingAfterUse = null;
+                    if (isElixirFastId(fastId)) {
+                        elixirRemainingAfterUse = resolveElixirRemainingFromInventoryCache(fastId, html);
+                    }
+                    writeChatMsg(buildFastResultMessage(fastId, AppVars.FastNick, elixirRemainingAfterUse));
+                    String autoTreasureEtaMessage = buildAutoTreasureBlissEtaMessage(fastId, elixirRemainingAfterUse);
+                    if (autoTreasureEtaMessage != null) {
+                        writeChatMsg(autoTreasureEtaMessage);
+                    }
                 }
-                writeChatMsg(buildFastResultMessage(fastId, AppVars.FastNick, elixirRemainingAfterUse));
-                String autoTreasureEtaMessage = buildAutoTreasureBlissEtaMessage(fastId, elixirRemainingAfterUse);
-                if (autoTreasureEtaMessage != null) {
-                    writeChatMsg(autoTreasureEtaMessage);
-                }
-            }
 
-            // Действие выполнено, уменьшаем счётчик
-            AppVars.FastCount--;
-            if (AppVars.FastCount <= 0) {
-                fastCancel("fast-action-finished");
+                // Действие выполнено, уменьшаем счётчик
+                AppVars.FastCount--;
+                if (AppVars.FastCount <= 0) {
+                    fastCancel("fast-action-finished");
+                }
+            } else {
+                Log.d(TAG, "processMainPhp: Эликсир Блаженства отправлен, ждём get_id=43 для подтверждения/сообщения");
             }
             Log.d(TAG, "processMainPhp: УСПЕХ для FastId=" + fastId + ", resultLen=" + result.length());
             Log.d(TAG, "processMainPhp: generated HTML: " + (result.length() > 300 ? result.substring(0, 300) : result));
