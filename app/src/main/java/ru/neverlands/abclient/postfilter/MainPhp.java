@@ -4239,6 +4239,9 @@ public class MainPhp {
     private static byte[] processMainPhpFast(String address, String html) {
         return FastActionManager.processMainPhpFast(address, html, FAST_ACTION_HOST);
     }
+    /**
+     * Проверяет, что HTML относится к боевому фрейму (верхний/основной бой).
+     */
     private static boolean isFightFrameHtml(String html) {
         return html != null && (html.contains("var fight_ty") || html.contains("magic_slots();"));
     }

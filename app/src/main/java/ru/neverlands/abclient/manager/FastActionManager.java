@@ -518,7 +518,7 @@ public class FastActionManager {
             }
         }
 
-        // 3. Очищаем флаги
+        // Завершаем цикл ожидания окончания боя.
         AppVars.FastWaitEndOfBoiActive = false;
 
         if (AppVars.FastWaitEndOfBoiCancel) {
@@ -572,18 +572,29 @@ public class FastActionManager {
         String fastId = AppVars.FastId;
         Log.d(TAG, "processMainPhpFast: FastId=" + fastId + ", address=" + address);
 
+        // NeverTimer — cooldown (аналог DateTime.Now > AppVars.NeverTimer в C#)
         boolean requireNeverTimerForFast = host.isAttackFastId(fastId);
         if (requireNeverTimerForFast && AppVars.NeverTimer > 0 && System.currentTimeMillis() < AppVars.NeverTimer) {
             Log.d(TAG, "processMainPhpFast: NeverTimer ещё не истёк, пропускаем (attack-fast)");
             return null;
         }
 
+        // --- Особый случай: get_id=43 — это страница применения эликсира/предмета.
+        // Сервер уже применил действие (по GET-запросу), поэтому FastNeed нужно сбросить.
+        // Иначе мы будем бесконечно перезапускать процесс.
         if (address != null && address.contains("get_id=43")) {
             Log.d(TAG, "processMainPhpFast: get_id=43 — действие уже выполнено, сбрасываем FastNeed");
             fastCancel("fast-get_id=43-action-already-applied");
             return null;
         }
 
+        // Если fast-атака уже привела нас в бой (fight frame), дальнейший поиск инвентаря
+        // становится бессмысленным и только мешает автобою.
+        // Сценарий:
+        // 1) Авто-нападение стартует из комнаты -> FastNeed=true.
+        // 2) Сервер переводит в fight.frame.
+        // 3) Мы продолжаем крутить processMainPhpFast на каждом обновлении боя.
+        // В C# после входа в бой fast-цикл для нападалки фактически завершён.
         if (host.isFightFrameHtml(html)
                 && address != null
                 && address.contains("get_id=56&act=10&go=inf")
@@ -605,6 +616,9 @@ public class FastActionManager {
                 + ", w28_form=" + (html != null && html.contains("w28_form("))
                 + ", magicreform=" + (html != null && html.contains("magicreform(")));
 
+        // --- Особый случай: Тотем НЕ требует инвентаря ---
+        // В C# тотем ищет ["fig","Напасть","vcode"] на основной странице.
+        // mainPhpFindFlora делает redirect на основную страницу, если нужно.
         if ("TOTEM".equals(filter)) {
             Log.d(TAG, "processMainPhpFast: тотем — без навигации на инвентарь");
             String fastHtml = processMainPhp(html);
@@ -617,26 +631,37 @@ public class FastActionManager {
             return null;
         }
 
+        // 1. Если мы НЕ на инвентаре — ищем ссылку на инвентарь с фильтром
         String invRedirect = host.mainPhpFindInvWithFallback(html, filter, address);
         if (invRedirect != null) {
             Log.d(TAG, "processMainPhpFast: redirect на инвентарь: " + invRedirect);
             return Russian.getBytes(invRedirect);
         }
 
+        // 2. Если мы НА инвентаре — проверяем категорию и ищем предмет
         if (host.mainPhpIsInv(html) || host.isInventoryAddress(address)) {
             String filterClean = filter.startsWith("&") ? filter.substring(1) : filter;
+            // 2a. Сначала проверяем, на правильной ли мы вкладке категории.
+            // Если address не содержит нужный фильтр (wca=28/wca=27),
+            // перенаправляем на нужную категорию ПЕРЕД поиском предмета.
+            // Это критично при 500+ предметах в инвентаре — поиск по всему
+            // HTML (695KB) вместо отфильтрованной страницы (28KB) слишком медленный.
             if (!host.inventoryAddressMatchesFilter(address, filter)) {
                 Log.d(TAG, "processMainPhpFast: на инвентаре, но не на нужной категории ("
                         + filterClean + "), переключаем");
                 return Filter.buildRedirect("Переключение на нужную категорию", "main.php?" + filterClean);
             }
 
+            // 2b. Мы на правильной вкладке — ищем предмет
             String fastHtml = processMainPhp(html);
             if (fastHtml != null) {
                 Log.d(TAG, "processMainPhpFast: УСПЕХ, предмет найден");
                 return Russian.getBytes(fastHtml);
             }
 
+            // На части ответов go=inv сервер возвращает переходный HTML без формы предмета
+            // (mainPhpIsInv=false), хотя адрес уже указывает на нужную вкладку.
+            // В этом состоянии не отменяем FastAction — ждём следующий полноценный кадр.
             if (!host.mainPhpIsInv(html)) {
                 String retryLink = address;
                 if (retryLink == null || retryLink.isEmpty()) {
@@ -660,11 +685,13 @@ public class FastActionManager {
             }
 
             Log.w(TAG, "processMainPhpFast: предмет не найден на правильной вкладке (" + filterClean + "), отмена");
+            // 3. Мы на правильной вкладке, предмет не найден — отмена
             host.sendInventoryChatMessage(host.buildFastItemNotFoundMessage(fastId));
             fastCancel("inventory-fast-unsupported-context");
             return null;
         }
 
+        // Мы не на инвентаре и MainPhpFindInv не нашла ссылку — вероятно, нужен обычный reload
         Log.d(TAG, "processMainPhpFast: не на инвентаре, MainPhpFindInv не нашла ссылку");
         return null;
     }
