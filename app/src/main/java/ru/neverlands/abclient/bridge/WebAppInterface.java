@@ -117,6 +117,10 @@ public class WebAppInterface {
         lastServerPopupText = normalizedText;
         lastServerPopupAtMs = nowMs;
 
+        // Синхронизируем критичные авто-сценарии (например, тяжелая травма -> pause + auto-cure),
+        // используя тот же текст popup, который отправляем в чат.
+        MainPhp.onServerPopupMessage(normalizedText);
+
         String messageHtml = MainPhp.buildServerChatTimeHtmlExternal()
                 + "<font color=#333399><b>Сервер:</b></font> "
                 + escapeHtml(normalizedText);

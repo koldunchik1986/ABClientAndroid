@@ -2411,12 +2411,33 @@ public class MainPhp {
      * "Вы не можете перемещаться! У Вас тяжёлая травма."
      */
     private static void syncInjuriesFromMapHeavyPopup(String html) {
-        if (html == null || html.isEmpty()) {
-            return;
-        }
-        String lower = html.toLowerCase(Locale.ROOT);
-        if (!lower.contains(MAP_HEAVY_INJURY_POPUP_MARKER.toLowerCase(Locale.ROOT))
-                || !lower.contains("травм")) {
+        handleHeavyInjurySignal(html, "map_html");
+    }
+
+    /**
+     * Единая точка обработки server popup из JS bridge (MapJs -> WebAppInterface):
+     * - синхронизирует runtime-состояние травм;
+     * - при включенном авто-лечении ставит небоевые авто-функции на паузу
+     *   и ставит self-лечение тяжелой травмы в приоритет.
+     */
+    public static void onServerPopupMessage(String popupText) {
+        handleHeavyInjurySignal(popupText, "bridge_popup");
+    }
+
+    /**
+     * Общий обработчик сигнала тяжелой травмы.
+     *
+     * Источники:
+     * - map-HTML (`syncInjuriesFromMapHeavyPopup(...)`);
+     * - server popup из bridge (`onServerPopupMessage(...)`).
+     *
+     * Правила:
+     * - дедуп по времени (anti-spam);
+     * - обновление runtime-снимка травм через CharacterVitalsManager;
+     * - при включенном авто-лечении: pause non-combat + self CureNeed(3).
+     */
+    private static void handleHeavyInjurySignal(String text, String sourceTag) {
+        if (!isHeavyInjurySignalText(text)) {
             return;
         }
         long now = System.currentTimeMillis();
@@ -2425,10 +2446,67 @@ public class MainPhp {
         }
         lastMapHeavyInjurySyncAtMs = now;
         CharacterVitalsManager.Snapshot snapshot = CharacterVitalsManager.ensureHeavyWoundPresent(
-                "MainPhp.syncInjuriesFromMapHeavyPopup");
-        android.util.Log.d(TAG, "AUTO_CURE_TRACE map popup heavy injury sync: pw=["
+                "MainPhp.handleHeavyInjurySignal." + sourceTag);
+        queueSelfHeavyInjuryCureIfNeeded(sourceTag);
+        android.util.Log.d(TAG, "AUTO_CURE_TRACE heavy injury signal(" + sourceTag + "): pw=["
                 + snapshot.poisonCount + "," + snapshot.lightWoundCount + ","
                 + snapshot.mediumWoundCount + "," + snapshot.heavyWoundCount + "]");
+    }
+
+    /**
+     * Детектор server-сообщения о тяжелой травме.
+     *
+     * Учитывает вариации:
+     * - "тяжёлая"/"тяжелая";
+     * - возможные HTML-вставки/дополнительный текст.
+     */
+    private static boolean isHeavyInjurySignalText(String text) {
+        if (text == null || text.isEmpty()) {
+            return false;
+        }
+        String lower = text.toLowerCase(Locale.ROOT).replace('ё', 'е');
+        boolean hasMoveBlock = lower.contains("не можете перемещ")
+                || lower.contains("не можите перемещ");
+        boolean hasHeavyWound = lower.contains("тяж")
+                && lower.contains("травм");
+        if (hasMoveBlock && hasHeavyWound) {
+            return true;
+        }
+        String marker = MAP_HEAVY_INJURY_POPUP_MARKER.toLowerCase(Locale.ROOT).replace('ё', 'е');
+        return lower.contains(marker) && hasHeavyWound;
+    }
+
+    /**
+     * Ставит self-лечение тяжелой травмы в приоритет после сигнала server popup.
+     *
+     * Поведение:
+     * - не делает ничего, если авто-лечение выключено;
+     * - включает pause non-combat;
+     * - формирует self-запрос CureNeed/CureNick/CureTravm=3.
+     */
+    private static void queueSelfHeavyInjuryCureIfNeeded(String sourceTag) {
+        if (!isAutoCureEnabledByPreference()) {
+            android.util.Log.d(TAG, "AUTO_CURE_TRACE heavy injury signal ignored: auto-cure disabled, source=" + sourceTag);
+            return;
+        }
+        if (AppVars.Profile == null || AppVars.Profile.UserNick == null) {
+            android.util.Log.d(TAG, "AUTO_CURE_TRACE heavy injury signal ignored: empty self nick, source=" + sourceTag);
+            return;
+        }
+        String selfNick = AppVars.Profile.UserNick.trim();
+        if (selfNick.isEmpty()) {
+            android.util.Log.d(TAG, "AUTO_CURE_TRACE heavy injury signal ignored: blank self nick, source=" + sourceTag);
+            return;
+        }
+
+        AppVars.CurePauseNonCombatAutoFunctions = true;
+        AppVars.CureNeed = true;
+        AppVars.CureNick = selfNick;
+        AppVars.CureTravm = "3";
+        AppVars.CureNickDone = "";
+        AppVars.CureNickBoi = "";
+        android.util.Log.d(TAG, "AUTO_CURE_TRACE heavy injury queued self cure: nick="
+                + selfNick + ", travm=3, source=" + sourceTag);
     }
 
     /**

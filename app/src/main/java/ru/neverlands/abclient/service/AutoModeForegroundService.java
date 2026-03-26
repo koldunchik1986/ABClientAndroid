@@ -400,10 +400,12 @@ public class AutoModeForegroundService extends Service {
                 // - pendingFightFinishLink: наличие этапа завершения/капчи;
                 // - fightLikelyActive: агрегированная эвристика активности боя.
                 if (autoFightEnabled && !captchaDialogVisible) {
+                    long sinceLastAutoTurnMs = tickNow - lastAutoTurnTickAtMs;
                     if ((uiForegroundInteractive || uiForegroundLikely)
                             && !fightLikelyActive
                             && !hasFightMarkers(AppVars.ContentMainPhp)
-                            && pendingFightFinishLink.isEmpty()) {
+                            && pendingFightFinishLink.isEmpty()
+                            && sinceLastAutoTurnMs < AUTO_TURN_IDLE_PROBE_INTERVAL_MS) {
                         Log.d(TAG, BG_TRACE_PREFIX + " uiTick: skip autoTurn/probe in foreground-likely UI (no fight markers)");
                         markClientAction("Пауза авто-хода: активный UI");
                         refreshForegroundNotification(autoFightEnabled, locationTrackingEnabled, captchaDialogVisible, false);
@@ -413,7 +415,6 @@ public class AutoModeForegroundService extends Service {
                     long minIntervalMs = fightLikelyActive
                             ? AUTO_TURN_MIN_INTERVAL_MS
                             : AUTO_TURN_IDLE_PROBE_INTERVAL_MS;
-                    long sinceLastAutoTurnMs = tickNow - lastAutoTurnTickAtMs;
                     if (sinceLastAutoTurnMs >= minIntervalMs) {
                         if (!fightLikelyActive) {
                             Log.d(TAG, BG_TRACE_PREFIX + " uiTick: autoTurn idle probe");
@@ -954,4 +955,3 @@ public class AutoModeForegroundService extends Service {
         return sb.toString();
     }
 }
-
