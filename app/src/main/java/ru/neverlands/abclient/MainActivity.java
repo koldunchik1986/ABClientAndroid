@@ -744,14 +744,40 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
      * Зависимости:
      * - используется в логике подавления probe через {@link #suppressAutoTurnServerProbeForManualNavigation(String)}.
      */
-    private static boolean isManualGoInfNavigationUrl(String lowerUrl) {
+    private static boolean isManualMainNavigationUrl(String lowerUrl) {
         if (lowerUrl == null || lowerUrl.isEmpty()) {
             return false;
         }
-        if (!lowerUrl.contains("main.php?get_id=56&act=10&go=inf")) {
+        if (!lowerUrl.contains("main.php")) {
             return false;
         }
-        return !lowerUrl.contains("ab_") && !lowerUrl.contains("af_");
+        if (lowerUrl.contains("ab_bg_probe=1")) {
+            return false;
+        }
+        if (lowerUrl.contains("ab_") || lowerUrl.contains("af_")) {
+            return false;
+        }
+        if (lowerUrl.contains("post_id=7")) {
+            return false;
+        }
+        if (lowerUrl.contains("get_id=61") && lowerUrl.contains("act=7")) {
+            return false;
+        }
+        return lowerUrl.contains("get_id=")
+                || lowerUrl.contains("?im=")
+                || lowerUrl.contains("&im=")
+                || lowerUrl.contains("?wca=")
+                || lowerUrl.contains("&wca=")
+                || lowerUrl.contains("?wsi=")
+                || lowerUrl.contains("&wsi=")
+                || lowerUrl.contains("?wfo=")
+                || lowerUrl.contains("&wfo=")
+                || lowerUrl.contains("?go=inv")
+                || lowerUrl.contains("&go=inv")
+                || lowerUrl.contains("?go=inf")
+                || lowerUrl.contains("&go=inf")
+                || lowerUrl.contains("?go=ret")
+                || lowerUrl.contains("&go=ret");
     }
 
     /**
@@ -771,7 +797,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         if (suppressUntil > autoTurnManualNavSuppressUntilMs) {
             autoTurnManualNavSuppressUntilMs = suppressUntil;
         }
-        Log.d(TAG, BG_TRACE_PREFIX + " requestAutoTurn: suppress server probe after manual go=inf navigation"
+        Log.d(TAG, BG_TRACE_PREFIX + " requestAutoTurn: suppress server probe after manual main navigation"
                 + ", suppressMs=" + AUTO_TURN_MANUAL_NAV_SUPPRESS_MS
                 + ", url=" + url);
     }
@@ -794,7 +820,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     private void requestAutoTurnFromServerProbe(String reason) {
         long now = System.currentTimeMillis();
         if (now < autoTurnManualNavSuppressUntilMs) {
-            Log.d(TAG, BG_TRACE_PREFIX + " requestAutoTurn: server probe suppressed by manual go=inf navigation, reason="
+            Log.d(TAG, BG_TRACE_PREFIX + " requestAutoTurn: server probe suppressed by manual main navigation, reason="
                     + reason + ", remainingMs=" + (autoTurnManualNavSuppressUntilMs - now));
             return;
         }
@@ -3838,9 +3864,8 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                     && binding.appBarMain != null
                     && binding.appBarMain.contentMain != null
                     && view == binding.appBarMain.contentMain.webView;
-            boolean isUserGesture = request != null && request.hasGesture();
 
-            if (isMainGameWebView && isNeverlandsHost && isUserGesture && isManualGoInfNavigationUrl(lowerUrl)) {
+            if (isMainGameWebView && isNeverlandsHost && isManualMainNavigationUrl(lowerUrl)) {
                 suppressAutoTurnServerProbeForManualNavigation(url);
             }
 
