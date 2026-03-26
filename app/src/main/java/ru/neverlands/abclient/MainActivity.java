@@ -115,8 +115,6 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     private static final int AUTO_SUBMIT_MAX_RETRY_COUNT = 3;
     private static final long CAPTCHA_IMAGE_STABILIZE_DELAY_MS = 180L;
     private static final long CAPTCHA_NETWORK_FALLBACK_DELAY_MS = 900L;
-    private static final long CAPTCHA_CHALLENGE_SWITCH_MIN_INTERVAL_MS = 450L;
-    private static final long CAPTCHA_CHALLENGE_FRESH_WINDOW_MS = 15000L;
     private static final int CAPTCHA_NOTIFICATION_ID = 6107;
     private static final String CAPTCHA_NOTIFICATION_CHANNEL_ID = "captcha_alerts";
     private static final long POST_RELOAD_GUARD_WINDOW_MS = 5000L;
@@ -166,7 +164,6 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     private int activeFightCaptchaImageHash = 0;
     private boolean activeFightCaptchaImageLocked = false;
     private long activeFightCaptchaLoadSeq = 0L;
-    private long lastFightCaptchaChallengeSwitchAtMs = 0L;
     private String activeFightCaptchaUrl = "";
     private String activeFightFinishUrl = "";
     /**
@@ -2060,8 +2057,54 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
 
         String latestUrl = AppVars.LastFightCaptchaImageUrl;
         if (!isSameCaptchaUrl(expectedCaptchaUrl, latestUrl)) {
-            if (trySwitchCaptchaDialogToLatestChallenge(expectedCaptchaUrl)) {
-                return false;
+            boolean canTrySwitch = activeFightCaptchaDialog != null
+                    && activeFightCaptchaDialog.isShowing()
+                    && !replacingFightCaptchaDialog
+                    && activeFightFinishUrl != null
+                    && activeFightFinishUrl.contains("get_id=61")
+                    && activeFightFinishUrl.contains("act=7")
+                    && activeFightFinishUrl.contains("code=????");
+            if (canTrySwitch) {
+                long latestAtMs = AppVars.LastFightCaptchaImageAtMs;
+                long challengeAgeMs = latestAtMs > 0L
+                        ? (System.currentTimeMillis() - latestAtMs)
+                        : Long.MAX_VALUE;
+                if (challengeAgeMs >= CAPTCHA_IMAGE_STABILIZE_DELAY_MS && challengeAgeMs < 15000L) {
+                    String latestCaptchaUrl = latestUrl == null ? "" : latestUrl.trim();
+                    if (!latestCaptchaUrl.isEmpty() && !latestCaptchaUrl.startsWith("http")) {
+                        if (latestCaptchaUrl.startsWith("/")) {
+                            latestCaptchaUrl = "http://neverlands.ru" + latestCaptchaUrl;
+                        } else {
+                            latestCaptchaUrl = "http://neverlands.ru/" + latestCaptchaUrl;
+                        }
+                    }
+
+                    String candidateFinishUrl = AppVars.FightLink == null ? "" : AppVars.FightLink.trim();
+                    if (!candidateFinishUrl.isEmpty() && !candidateFinishUrl.startsWith("http")) {
+                        if (candidateFinishUrl.startsWith("/")) {
+                            candidateFinishUrl = "http://neverlands.ru" + candidateFinishUrl;
+                        } else {
+                            candidateFinishUrl = "http://neverlands.ru/" + candidateFinishUrl;
+                        }
+                    }
+                    boolean candidateIsFightFinish = candidateFinishUrl.contains("get_id=61")
+                            && candidateFinishUrl.contains("act=7")
+                            && candidateFinishUrl.contains("code=????");
+                    if (!candidateIsFightFinish) {
+                        candidateFinishUrl = activeFightFinishUrl;
+                    }
+
+                    boolean captchaChanged = !isSameCaptchaUrl(activeFightCaptchaUrl, latestCaptchaUrl);
+                    boolean finishChanged = !isSameFightFinishUrl(activeFightFinishUrl, candidateFinishUrl);
+                    if ((captchaChanged || finishChanged) && !latestCaptchaUrl.isEmpty()) {
+                        Log.d(TAG, "updateCaptchaImageFromCaptured: switch to latest challenge, expected="
+                                + expectedCaptchaUrl + ", latest=" + latestCaptchaUrl
+                                + ", finishChanged=" + finishChanged
+                                + ", challengeAgeMs=" + challengeAgeMs);
+                        showCaptchaDialog(latestCaptchaUrl, candidateFinishUrl);
+                        return false;
+                    }
+                }
             }
             if (forceUpdate) {
                 progressBar.setVisibility(View.VISIBLE);
@@ -2120,87 +2163,6 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         Log.d(TAG, "updateCaptchaImageFromCaptured: image updated, bytes=" + latestBytes.length
                 + ", atMs=" + latestAtMs + ", url=" + latestUrl);
         return true;
-    }
-
-    /**
-     * Когда popup уже открыт, но interceptor принес байты другой (более новой) капчи,
-     * мягко переключает диалог на новый challenge (captchaUrl + finishUrl), чтобы не
-     * застревать на устаревшей паре URL.
-     */
-    private boolean trySwitchCaptchaDialogToLatestChallenge(String expectedCaptchaUrl) {
-        if (activeFightCaptchaDialog == null || !activeFightCaptchaDialog.isShowing()) {
-            return false;
-        }
-        if (replacingFightCaptchaDialog) {
-            return true;
-        }
-        if (!isFightCaptchaFinishUrl(activeFightFinishUrl)) {
-            return false;
-        }
-
-        String latestCaptchaUrl = normalizeNeverlandsAbsoluteUrl(AppVars.LastFightCaptchaImageUrl);
-        if (latestCaptchaUrl.isEmpty() || isSameCaptchaUrl(expectedCaptchaUrl, latestCaptchaUrl)) {
-            return false;
-        }
-
-        long latestAtMs = AppVars.LastFightCaptchaImageAtMs;
-        long now = System.currentTimeMillis();
-        long captchaAgeMs = latestAtMs > 0L ? (now - latestAtMs) : Long.MAX_VALUE;
-        if (captchaAgeMs < 0L || captchaAgeMs > CAPTCHA_CHALLENGE_FRESH_WINDOW_MS) {
-            return false;
-        }
-        if ((now - lastFightCaptchaChallengeSwitchAtMs) < CAPTCHA_CHALLENGE_SWITCH_MIN_INTERVAL_MS) {
-            return false;
-        }
-
-        String candidateFinishUrl = normalizeNeverlandsAbsoluteUrl(AppVars.FightLink);
-        if (!isFightCaptchaFinishUrl(candidateFinishUrl)) {
-            candidateFinishUrl = activeFightFinishUrl;
-        }
-        if (!isFightCaptchaFinishUrl(candidateFinishUrl)) {
-            return false;
-        }
-
-        boolean captchaChanged = !isSameCaptchaUrl(activeFightCaptchaUrl, latestCaptchaUrl);
-        boolean finishChanged = !isSameFightFinishUrl(activeFightFinishUrl, candidateFinishUrl);
-        if (!captchaChanged && !finishChanged) {
-            return false;
-        }
-
-        lastFightCaptchaChallengeSwitchAtMs = now;
-        Log.d(TAG, "trySwitchCaptchaDialogToLatestChallenge: switch dialog to latest challenge"
-                + ", expected=" + expectedCaptchaUrl
-                + ", latest=" + latestCaptchaUrl
-                + ", finishChanged=" + finishChanged
-                + ", captchaAgeMs=" + captchaAgeMs);
-        showCaptchaDialog(latestCaptchaUrl, candidateFinishUrl);
-        return true;
-    }
-
-    private boolean isFightCaptchaFinishUrl(String finishUrl) {
-        if (finishUrl == null || finishUrl.isEmpty()) {
-            return false;
-        }
-        return finishUrl.contains("get_id=61")
-                && finishUrl.contains("act=7")
-                && finishUrl.contains("code=????");
-    }
-
-    private String normalizeNeverlandsAbsoluteUrl(String rawUrl) {
-        if (rawUrl == null) {
-            return "";
-        }
-        String normalized = rawUrl.trim();
-        if (normalized.isEmpty()) {
-            return "";
-        }
-        if (normalized.startsWith("http://") || normalized.startsWith("https://")) {
-            return normalized;
-        }
-        if (normalized.startsWith("/")) {
-            return "http://neverlands.ru" + normalized;
-        }
-        return "http://neverlands.ru/" + normalized;
     }
 
     /**

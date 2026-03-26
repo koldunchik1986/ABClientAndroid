@@ -2301,6 +2301,11 @@ public class MainPhp {
         if (!AppVars.Profile.DoAutoDrinkBlaz) {
             return null;
         }
+        // Во время AutoMoving/Auto-Клад авто-питьё блажа обрабатывается в MapAjax (single source of truth),
+        // чтобы не запускать второй параллельный контур из MainPhp и не зациклить fast-ветку.
+        if (AppVars.AutoMoving) {
+            return null;
+        }
         if (AppVars.IsFightCaptchaDialogVisible) {
             return null;
         }
@@ -4134,6 +4139,16 @@ public class MainPhp {
                         startAutoSearchBoxMoving(retryDest);
                         android.util.Log.d(TAG, "AUTO_SEARCH_BOX_TRACE retry-after-map-sync start moving to "
                                 + retryDest + ", mapLocation=" + refreshedMapLocation + ", address=" + address);
+                        String navVcode = (AppVars.VCode == null) ? "" : AppVars.VCode.trim();
+                        String bootstrapLink;
+                        if (!navVcode.isEmpty()) {
+                            bootstrapLink = "main.php?get_id=56&act=10&go=ret&vcode="
+                                    + navVcode + "&ab_nav_bootstrap=1&r=" + System.currentTimeMillis();
+                        } else {
+                            bootstrapLink = "main.php?get_id=56&act=10&go=inf&ab_nav_bootstrap=1&r="
+                                    + System.currentTimeMillis();
+                        }
+                        return Russian.getBytes(buildRedirectHtml("SearchBox retry bootstrap", bootstrapLink));
                     } else {
                         android.util.Log.d(TAG, "AUTO_SEARCH_BOX_TRACE retry-after-map-sync still no destination, mapLocation="
                                 + refreshedMapLocation + ", address=" + address);

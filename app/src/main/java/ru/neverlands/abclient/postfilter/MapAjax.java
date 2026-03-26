@@ -28,7 +28,8 @@ public class MapAjax {
     private static final int AUTO_DRINK_BLAZ_NEAR_THRESHOLD_DELTA = 6;
     private static final long AUTO_DRINK_BLAZ_PINFO_SYNC_COOLDOWN_MS = 20_000L;
     private static final long AUTO_DRINK_BLAZ_STARTUP_SYNC_RETRY_COOLDOWN_MS = 10_000L;
-    private static final long AUTO_DRINK_BLAZ_TRIGGER_COOLDOWN_MS = 2_500L;
+    private static final long AUTO_DRINK_BLAZ_TRIGGER_COOLDOWN_MS = 6_000L;
+    private static final long AUTO_DRINK_BLAZ_POST_TRIGGER_STICKY_MS = 8_000L;
     private static volatile long lastAutoDrinkBlazPinfoSyncAtMs = 0L;
     private static volatile long lastAutoDrinkBlazStartupSyncAttemptAtMs = 0L;
     private static volatile long lastAutoDrinkBlazTriggerAtMs = 0L;
@@ -64,8 +65,24 @@ public class MapAjax {
         }
 
         if (containsTooTiredMessage(html) && AppVars.AutoMoving && !AppVars.CurePauseNonCombatAutoFunctions) {
-            CharacterVitalsManager.Snapshot tooTiredVitals =
-                    CharacterVitalsManager.updateTied(100, "MapAjax.process.tooTired");
+            int tiedThreshold = (AppVars.Profile == null)
+                    ? 100
+                    : Math.max(0, Math.min(100, AppVars.Profile.AutoDrinkBlazTied));
+            CharacterVitalsManager.Snapshot currentVitals = CharacterVitalsManager.snapshot();
+            long now = System.currentTimeMillis();
+            long sinceTrigger = now - lastAutoDrinkBlazTriggerAtMs;
+            boolean keepNearThresholdValue = currentVitals.tied >= tiedThreshold
+                    && currentVitals.tied < 100
+                    && sinceTrigger >= 0L
+                    && sinceTrigger < AUTO_DRINK_BLAZ_POST_TRIGGER_STICKY_MS;
+            CharacterVitalsManager.Snapshot tooTiredVitals = keepNearThresholdValue
+                    ? currentVitals
+                    : CharacterVitalsManager.updateTied(100, "MapAjax.process.tooTired");
+            if (keepNearThresholdValue) {
+                Log.d(TAG, "AUTO_BLAZ_TRACE keep tied from pinfo after trigger: tied="
+                        + currentVitals.tied + ", threshold=" + tiedThreshold
+                        + ", sinceTriggerMs=" + sinceTrigger);
+            }
             int tiedNow = tooTiredVitals.tied;
             if (AppVars.Profile == null || !AppVars.Profile.DoAutoDrinkBlaz) {
                 // Без автопитья блажа маршрут останавливаем сразу, чтобы не зациклиться на "усталости".
@@ -81,7 +98,6 @@ public class MapAjax {
                     Log.i(TAG, "AUTO_SEARCH_BOX_TRACE: too tired, auto moving paused, redirect to main.php for auto bliss");
                     return autoDrinkRedirect;
                 }
-                int tiedThreshold = Math.max(0, Math.min(100, AppVars.Profile.AutoDrinkBlazTied));
                 Log.d(TAG, "AUTO_SEARCH_BOX_TRACE: too tired, auto bliss gate skipped"
                         + ", tied=" + tiedNow + ", threshold=" + tiedThreshold
                         + ", fastNeed=" + AppVars.FastNeed);
