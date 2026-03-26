@@ -540,6 +540,37 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                         Log.d(TAG, "requestAutoTurn: html length=" + (unquoted != null ? unquoted.length() : 0));
                         String autoTurnHtml = unquoted;
                         if (hasFightMarkers(unquoted)) {
+                            if (allowServerProbeFallback) {
+                                boolean currentActiveFight = isActiveFightContext(unquoted);
+                                if (!currentActiveFight) {
+                                    Log.d(TAG, BG_TRACE_PREFIX + " requestAutoTurn: current html has stale fight markers, inactive context"
+                                            + ", fightLink=" + AppVars.FightLink);
+
+                                    String cachedFightHtml = AppVars.ContentMainPhp;
+                                    boolean cachedHasMarkers = hasFightMarkers(cachedFightHtml);
+                                    boolean cachedActiveFight = cachedHasMarkers && isActiveFightContext(cachedFightHtml);
+                                    if (cachedActiveFight) {
+                                        autoTurnHtml = cachedFightHtml;
+                                        Log.d(TAG, BG_TRACE_PREFIX + " requestAutoTurn: fallback to cached active fight html after inactive current html, len="
+                                                + cachedFightHtml.length());
+                                    } else {
+                                        if (cachedHasMarkers) {
+                                            AppVars.ContentMainPhp = "";
+                                            Log.d(TAG, BG_TRACE_PREFIX + " requestAutoTurn: drop stale cached fight html after inactive current html");
+                                        }
+
+                                        if (!hasPendingAct7FightLink(AppVars.FightLink)) {
+                                            boolean probeAllowedByUiState = isAutoTurnServerProbeAllowedNow();
+                                            if (!probeAllowedByUiState) {
+                                                Log.d(TAG, BG_TRACE_PREFIX + " requestAutoTurn: forcing server probe after inactive current fight html");
+                                            }
+                                            requestAutoTurnFromServerProbe("current_fight_html_inactive");
+                                        } else {
+                                            Log.d(TAG, BG_TRACE_PREFIX + " requestAutoTurn: skip server probe, pending act=7 finish link present");
+                                        }
+                                    }
+                                }
+                            }
                         } else {
                             String cachedFightHtml = AppVars.ContentMainPhp;
                             if (hasFightMarkers(cachedFightHtml)) {
@@ -902,6 +933,14 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
      */
     private boolean hasFightMarkers(String html) {
         return html != null && (html.contains("var fight_ty") || html.contains("magic_slots();"));
+    }
+
+    private boolean hasPendingAct7FightLink(String fightLink) {
+        if (fightLink == null || fightLink.isEmpty()) {
+            return false;
+        }
+        String lower = fightLink.toLowerCase(Locale.ROOT);
+        return lower.contains("get_id=61") && lower.contains("act=7");
     }
 
     /**
