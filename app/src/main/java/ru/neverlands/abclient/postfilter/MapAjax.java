@@ -7,9 +7,11 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Set;
 
+import android.content.Intent;
 import android.os.Handler;
 import android.os.Looper;
 import android.widget.Toast;
+import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 import ru.neverlands.abclient.manager.AutoFunctionsManager;
 import ru.neverlands.abclient.manager.CharacterVitalsManager;
 import ru.neverlands.abclient.manager.FastActionManager;
@@ -34,6 +36,7 @@ public class MapAjax {
     private static volatile long lastAutoDrinkBlazStartupSyncAttemptAtMs = 0L;
     private static volatile long lastAutoDrinkBlazTriggerAtMs = 0L;
     private static volatile boolean autoDrinkBlazStartupSyncDone = false;
+    private static volatile long lastAutoTreasureReasonChatAtMs = 0L;
 
     public static String process(String html) {
         if (AppVars.FastNeed && AppVars.FastPauseNonCombatAutoFunctions) {
@@ -60,6 +63,10 @@ public class MapAjax {
             AppVars.AutoMovingMapPath = null;
             AppVars.AutoMovingNextJump = null;
             AppVars.AutoMovingJumps = 0;
+            long now = System.currentTimeMillis();
+            if (AppVars.NeverTimer < now + 900L) {
+                AppVars.NeverTimer = now + 900L;
+            }
             Log.w(TAG, "AUTO_SEARCH_BOX_TRACE: map_ajax returned ERR during automove, redirect to main.php");
             return Filter.buildRedirectString("\u041D\u0430\u0432\u0438\u0433\u0430\u0442\u043E\u0440: \u0432\u043E\u0441\u0441\u0442\u0430\u043D\u043E\u0432\u043B\u0435\u043D\u0438\u0435", "main.php?ab_nav_recover=1");
         }
@@ -90,6 +97,9 @@ public class MapAjax {
                 AppVars.AutoMovingMapPath = null;
                 AppVars.AutoMovingNextJump = null;
                 AppVars.AutoMovingJumps = 0;
+                postAutoTreasureReasonToChat("Авто-Клад остановлен: усталость " + tiedNow
+                        + "%, порог " + tiedThreshold
+                        + "%. Включите «Пить блаж, если усталость» или снизьте усталость вручную.");
                 Log.w(TAG, "AUTO_SEARCH_BOX_TRACE: too tired, auto moving stopped (DoAutoDrinkBlaz=false)");
             } else {
                 String currentRegNum = (AppVars.Profile != null) ? AppVars.Profile.MapLocation : null;
@@ -710,6 +720,27 @@ public class MapAjax {
         }
         new Handler(Looper.getMainLooper()).post(() ->
                 Toast.makeText(context, text, Toast.LENGTH_SHORT).show());
+    }
+
+    private static void postAutoTreasureReasonToChat(String reason) {
+        if (reason == null || reason.isEmpty()) {
+            return;
+        }
+        android.content.Context context = AppVars.getContext();
+        if (context == null) {
+            return;
+        }
+        long now = System.currentTimeMillis();
+        if ((now - lastAutoTreasureReasonChatAtMs) < 2500L) {
+            return;
+        }
+        lastAutoTreasureReasonChatAtMs = now;
+
+        String messageHtml = MainPhp.buildServerChatTimeHtmlExternal()
+                + "<font color=#cc0000><b>" + reason + "</b></font>";
+        Intent intent = new Intent(AppVars.ACTION_ADD_CHAT_MESSAGE);
+        intent.putExtra("message", messageHtml);
+        LocalBroadcastManager.getInstance(context).sendBroadcast(intent);
     }
 
     private static int clampPercent(int value) {

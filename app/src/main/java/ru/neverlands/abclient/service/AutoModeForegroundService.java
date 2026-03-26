@@ -400,6 +400,16 @@ public class AutoModeForegroundService extends Service {
                 // - pendingFightFinishLink: наличие этапа завершения/капчи;
                 // - fightLikelyActive: агрегированная эвристика активности боя.
                 if (autoFightEnabled && !captchaDialogVisible) {
+                    boolean mapAutomationActive = AppVars.AutoMoving && AppVars.DoSearchBox;
+                    if (mapAutomationActive
+                            && !fightLikelyActive
+                            && !hasFightMarkers(AppVars.ContentMainPhp)
+                            && pendingFightFinishLink.isEmpty()) {
+                        Log.d(TAG, BG_TRACE_PREFIX + " uiTick: skip autoTurn/probe while map automation active");
+                        markClientAction("Пауза авто-хода: активен Авто-Клад");
+                        refreshForegroundNotification(autoFightEnabled, locationTrackingEnabled, captchaDialogVisible, false);
+                        return;
+                    }
                     long sinceLastAutoTurnMs = tickNow - lastAutoTurnTickAtMs;
                     if ((uiForegroundInteractive || uiForegroundLikely)
                             && !fightLikelyActive

@@ -136,7 +136,7 @@ public class UserConfig {
     /**
      * Автопитье блажа по усталости (C# `DoAutoDrinkBlaz`).
      */
-    public boolean DoAutoDrinkBlaz = false;
+    public boolean DoAutoDrinkBlaz = true;
     /**
      * Порог усталости для автопитья блажа (C# `AutoDrinkBlazTied`).
      */

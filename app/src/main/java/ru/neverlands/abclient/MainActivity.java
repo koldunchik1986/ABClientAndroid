@@ -803,6 +803,30 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     }
 
     /**
+     * Во время активной навигации Авто-Клада не запускаем idle server-probe авто-боя.
+     *
+     * Причина:
+     * - в этом режиме `requestAutoTurn` не должен генерировать лишние `ab_bg_probe`,
+     *   т.к. они создают конкурентную сетевую нагрузку (особенно через proxy) и мешают map-циклу.
+     *
+     * Ограничение:
+     * - блокируем только idle-probe без признаков боя;
+     * - если уже есть маркеры боя/finish-link, probe не подавляется.
+     */
+    private boolean shouldSkipAutoTurnServerProbeForMapAutomation() {
+        if (!(AppVars.AutoMoving && AppVars.DoSearchBox)) {
+            return false;
+        }
+        if (AppVars.IsFightCaptchaDialogVisible) {
+            return false;
+        }
+        if (hasFightMarkers(AppVars.ContentMainPhp)) {
+            return false;
+        }
+        return !hasPendingAct7FightLink(AppVars.FightLink);
+    }
+
+    /**
      * Выполняет server-probe для получения актуального бой-HTML напрямую с сервера.
      *
      * Правила:
@@ -819,6 +843,11 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
      */
     private void requestAutoTurnFromServerProbe(String reason) {
         long now = System.currentTimeMillis();
+        if (shouldSkipAutoTurnServerProbeForMapAutomation()) {
+            Log.d(TAG, BG_TRACE_PREFIX + " requestAutoTurn: server probe suppressed during map automation, reason="
+                    + reason + ", autoMoving=" + AppVars.AutoMoving + ", doSearchBox=" + AppVars.DoSearchBox);
+            return;
+        }
         if (now < autoTurnManualNavSuppressUntilMs) {
             Log.d(TAG, BG_TRACE_PREFIX + " requestAutoTurn: server probe suppressed by manual main navigation, reason="
                     + reason + ", remainingMs=" + (autoTurnManualNavSuppressUntilMs - now));
