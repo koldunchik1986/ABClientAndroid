@@ -341,7 +341,7 @@ final class CompasAuto {
             return;
         }
         if (normalizedRoomNicks.contains(targetNick.toLowerCase(Locale.ROOT))) {
-            String foundRegNum = getCurrentMapLocationRegNum();
+            String foundRegNum = resolveFoundRegNumForMessage();
             if (!foundRegNum.isEmpty()) {
                 finishAutoCompassFound(foundRegNum);
                 return;
@@ -549,7 +549,7 @@ final class CompasAuto {
         }
 
         if (isTargetPresentInLatestRoom(targetNick)) {
-            finishAutoCompassFound(currentRegNum);
+            finishAutoCompassFound(resolveFoundRegNumForMessage());
             return;
         }
 
@@ -606,7 +606,7 @@ final class CompasAuto {
                 return;
             }
             if (isTargetPresentInLatestRoom(targetNick)) {
-                finishAutoCompassFound(currentRegNum);
+                finishAutoCompassFound(resolveFoundRegNumForMessage());
                 return;
             }
         }
@@ -755,6 +755,27 @@ final class CompasAuto {
         return value.isEmpty() ? "" : value;
     }
 
+    private String resolveFoundRegNumForMessage() {
+        String mapRegNum = getCurrentMapLocationRegNum();
+        String destination;
+        long destinationSetAtMs;
+        long roomUpdatedAtMs;
+        synchronized (autoCompassLock) {
+            destination = autoCompassCurrentDestination;
+            destinationSetAtMs = autoCompassDestinationSetAtMs;
+            roomUpdatedAtMs = autoCompassLastRoomUpdateAtMs;
+        }
+        boolean canUseDestination = !isEmpty(destination)
+                && !AppVars.AutoMoving
+                && roomUpdatedAtMs >= destinationSetAtMs;
+        if (canUseDestination && (isEmpty(mapRegNum) || !mapRegNum.equals(destination))) {
+            Log.d(TAG, "AUTO_COMPASS_TRACE found regnum overridden by destination: map="
+                    + mapRegNum + ", destination=" + destination);
+            return destination;
+        }
+        return mapRegNum;
+    }
+
     private boolean shouldAutoCompassHuntAllCells() {
         return isAutoCompassHuntMode() && !autoCompassManualSingleRun;
     }
@@ -769,14 +790,36 @@ final class CompasAuto {
 
     private void finishAutoCompassFound(String regNum) {
         String safeReg = regNum == null ? "" : regNum.trim();
-        String message = safeReg.isEmpty()
-                ? "Компас: игрок найден."
-                : "Компас: Игрок найден на клетке №" + safeReg + ".";
-        stopAutoCompassWithReason(message, false);
+        String targetNick = getAutoCompassTargetNick();
+        String targetHtml = RoomManager.buildRoomUserHtmlByNick(targetNick);
+        StringBuilder htmlBuilder = new StringBuilder();
+        htmlBuilder.append("<font color=#5D7C91><b>[Компас]</b></font> ");
+        if (safeReg.isEmpty()) {
+            htmlBuilder.append("Игрок найден.");
+        } else {
+            htmlBuilder.append("Игрок найден на клетке №").append(escapeHtml(safeReg)).append(".");
+        }
+        if (!isEmpty(targetHtml)) {
+            htmlBuilder.append(" ").append(targetHtml);
+        } else if (!isEmpty(targetNick)) {
+            htmlBuilder.append(" Цель: ").append(escapeHtml(targetNick)).append(".");
+        }
+        stopAutoCompassWithHtmlReason(htmlBuilder.toString(), false);
     }
 
     private void stopAutoCompassWithReason(String message, boolean keepEnabledWhenManualStop) {
         writeCompassChat(message);
+        stopAutoCompassCore(keepEnabledWhenManualStop);
+    }
+
+    private void stopAutoCompassWithHtmlReason(String htmlMessage, boolean keepEnabledWhenManualStop) {
+        if (!isEmpty(htmlMessage)) {
+            FastActionManager.writeChatMsg(htmlMessage);
+        }
+        stopAutoCompassCore(keepEnabledWhenManualStop);
+    }
+
+    private void stopAutoCompassCore(boolean keepEnabledWhenManualStop) {
         autoCompassManualSingleRun = false;
         if (!keepEnabledWhenManualStop) {
             setAutoCompassEnabled(false);
@@ -818,12 +861,14 @@ final class CompasAuto {
 
     private void writeCompassMoveChat(String nextDestination, String targetNick, List<String> candidatesSnapshot) {
         StringBuilder htmlBuilder = new StringBuilder();
+        String targetHtml = RoomManager.buildRoomUserHtmlByNick(targetNick);
         htmlBuilder.append("<font color=#5D7C91><b>[Компас]</b></font> ");
-        htmlBuilder.append("Двигаемся к клетке №")
-                .append(escapeHtml(nextDestination))
-                .append(" (Цель: ")
-                .append(escapeHtml(targetNick))
-                .append("). ");
+        htmlBuilder.append("Двигаемся к клетке №").append(escapeHtml(nextDestination)).append(" ");
+        if (!isEmpty(targetHtml)) {
+            htmlBuilder.append("(Цель: ").append(targetHtml).append("). ");
+        } else {
+            htmlBuilder.append("(Цель: ").append(escapeHtml(targetNick)).append("). ");
+        }
         htmlBuilder.append("Возможные клетки: ")
                 .append(formatCompassCellsLinks(candidatesSnapshot));
         FastActionManager.writeChatMsg(htmlBuilder.toString());

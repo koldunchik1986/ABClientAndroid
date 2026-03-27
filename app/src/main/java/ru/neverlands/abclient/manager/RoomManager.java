@@ -39,6 +39,9 @@ public class RoomManager {
     private static final long AUTO_CURE_ROOM_SCAN_INTERVAL_MS = 12_000L;
     private static final long AUTO_CURE_ROOM_PINFO_CACHE_TTL_MS = 30_000L;
     private static final long AUTO_CURE_POST_SUBMIT_VERIFY_DELAY_MS = 1_500L;
+    // Последние raw-элементы ChatListU по нику (lowercase), чтобы другие модули
+    // (например, Auto-Компас) могли рендерить ник/иконки/уровень/травмы 1:1 как room-list.
+    private static final Map<String, String> lastRoomChatEntryByNick = new ConcurrentHashMap<>();
     // Временный чёрный список целей авто-нападения (аналог C# `RoomManager.BlackList`).
     // Ключ: ник в нижнем регистре, значение: время добавления в список (мс).
     private static final Map<String, Long> autoAttackBlackList = new ConcurrentHashMap<>();
@@ -1124,6 +1127,30 @@ public class RoomManager {
             ign;
     }
 
+    /**
+     * Возвращает HTML-представление игрока (private/info/ник/уровень/травма) 1:1 как в room-list.
+     * Источник: последний успешно распарсенный `ChatListU` из `ch.php?lo=1`.
+     */
+    public static String buildRoomUserHtmlByNick(String nick) {
+        if (isEmpty(nick)) {
+            return "";
+        }
+        String key = normalizeNickKey(stripItalic(nick));
+        if (isEmpty(key)) {
+            return "";
+        }
+        String rawEntry = lastRoomChatEntryByNick.get(key);
+        if (isEmpty(rawEntry)) {
+            return "";
+        }
+        try {
+            return HtmlChar(rawEntry);
+        } catch (Exception e) {
+            Log.w(TAG, "buildRoomUserHtmlByNick: failed, nick=" + nick + ", rawEntry=" + rawEntry, e);
+            return "";
+        }
+    }
+
     // Парсит JS-массив ChatListU и формирует HTML списка игроков.
     private static FilterProcRoomResult FilterProcRoom(String html) {
         FilterProcRoomResult result = new FilterProcRoomResult();
@@ -1138,6 +1165,7 @@ public class RoomManager {
             StringBuilder sb = new StringBuilder();
             StringBuilder chatListUBuilder = new StringBuilder();
             List<String> enemyAttack = new ArrayList<>();
+            Map<String, String> latestRoomEntries = new LinkedHashMap<>();
             for (int i = 0; i < par.length; i++) {
                 String rawEntry = normalizeChatUserEntry(par[i]);
                 if (rawEntry.isEmpty()) {
@@ -1147,9 +1175,12 @@ public class RoomManager {
                 String nick = extractNick(rawEntry);
                 if (!nick.isEmpty()) {
                     result.roomNicks.add(stripItalic(nick));
+                    String nickKey = normalizeNickKey(nick);
+                    if (!isEmpty(nickKey)) {
+                        latestRoomEntries.put(nickKey, rawEntry);
+                    }
                     int injuryTypeHint = parseRoomInjuryTypeHint(rawEntry);
                     if (injuryTypeHint > 0) {
-                        String nickKey = normalizeNickKey(nick);
                         Integer previousHint = result.injuryTypeHints.get(nickKey);
                         if (previousHint == null || injuryTypeHint > previousHint) {
                             result.injuryTypeHints.put(nickKey, injuryTypeHint);
@@ -1176,6 +1207,8 @@ public class RoomManager {
             result.chatListU = chatListUBuilder.toString();
             result.enemyCandidates = enemyAttack;
             result.enemyAttack = pickEnemyForAutoAttack(enemyAttack);
+            lastRoomChatEntryByNick.clear();
+            lastRoomChatEntryByNick.putAll(latestRoomEntries);
             Log.d(TAG, "FilterProcRoom: chars=" + result.numCharsInRoom
                     + ", enemies=" + enemyAttack.size()
                     + ", enemyAttack=" + result.enemyAttack);
