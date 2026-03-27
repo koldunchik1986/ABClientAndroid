@@ -1343,7 +1343,7 @@ public class FastActionManager {
                     "<input name=wsubid type=hidden value=\"" + wsubid + "\">" +
                     "<input name=wsolid type=hidden value=\"" + wsolid + "\">" +
                     "<input name=pnick type=hidden value=\"" + AppVars.FastNick + "\">" +
-                    "<input name=agree type=hidden value=\"Выполнить\">" +
+                    "<input name=agree type=hidden value=\"" + ("27".equals(wsubid) ? "Помочь" : "Выполнить") + "\">" +
                     "</form>" +
                     buildSubmitScript();
         }
