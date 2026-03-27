@@ -137,20 +137,35 @@ public class MapActAjaxPhp {
         }
         try {
             AutoFunctionsManager manager = AutoFunctionsManager.getInstance(AppVars.getContext());
-            if (!manager.isAutoTreasureFixedCellConfigured()) {
-                return;
-            }
-            String prevFixedRegNum = manager.getAutoTreasureFixedCellRegNum();
-            manager.setAutoTreasureFixedCellEnabled(false);
-            manager.setAutoTreasureFixedCellRegNum("");
+            boolean fixedCellWasConfigured = manager.isAutoTreasureFixedCellConfigured();
+            if (fixedCellWasConfigured) {
+                String prevFixedRegNum = manager.getAutoTreasureFixedCellRegNum();
+                manager.setAutoTreasureFixedCellEnabled(false);
+                manager.setAutoTreasureFixedCellRegNum("");
 
-            String messageHtml = MainPhp.buildServerChatTimeHtmlExternal()
-                    + "<font color=#336699>Авто-Клад: режим \"Клад точно здесь\" отключен после выкопки"
-                    + " (клетка № " + prevFixedRegNum + "). Поиск нового клада продолжен.</font>";
-            Intent intent = new Intent(AppVars.ACTION_ADD_CHAT_MESSAGE);
-            intent.putExtra("message", messageHtml);
-            LocalBroadcastManager.getInstance(AppVars.getContext()).sendBroadcast(intent);
-            Log.i(TAG, "AUTO_SEARCH_BOX_TRACE fixed-cell cleared after dig result: " + prevFixedRegNum);
+                String messageHtml = MainPhp.buildServerChatTimeHtmlExternal()
+                        + "<font color=#336699>Авто-Клад: режим \"Клад точно здесь\" отключен после выкопки"
+                        + " (клетка № " + prevFixedRegNum + "). Поиск нового клада продолжен.</font>";
+                Intent intent = new Intent(AppVars.ACTION_ADD_CHAT_MESSAGE);
+                intent.putExtra("message", messageHtml);
+                LocalBroadcastManager.getInstance(AppVars.getContext()).sendBroadcast(intent);
+                Log.i(TAG, "AUTO_SEARCH_BOX_TRACE fixed-cell cleared after dig result: " + prevFixedRegNum);
+            }
+
+            boolean autoTreasureEnabled = manager.isAutoTreasureEnabled() || AppVars.DoSearchBox;
+            if (autoTreasureEnabled && !AppVars.AutoMoving && !AppVars.TreasureDigPauseNonCombatAutoFunctions) {
+                String currentRegNum = (AppVars.Profile != null) ? AppVars.Profile.MapLocation : null;
+                String nextDestination = MapAjax.findNextDestForBox(currentRegNum);
+                if (nextDestination != null && !nextDestination.isEmpty()) {
+                    manager.startAutoMoving(nextDestination);
+                    Log.i(TAG, "AUTO_SEARCH_BOX_TRACE dig complete -> resume auto treasure, next="
+                            + nextDestination + ", from=" + currentRegNum
+                            + ", fixedCellWasConfigured=" + fixedCellWasConfigured);
+                } else {
+                    Log.w(TAG, "AUTO_SEARCH_BOX_TRACE dig complete -> no next destination, from="
+                            + currentRegNum + ", fixedCellWasConfigured=" + fixedCellWasConfigured);
+                }
+            }
         } catch (Exception e) {
             Log.w(TAG, "AUTO_SEARCH_BOX_TRACE fixed-cell clear failed", e);
         }
@@ -160,7 +175,8 @@ public class MapActAjaxPhp {
         if (html == null || html.isEmpty()) {
             return null;
         }
-        int resoPos = html.indexOf("RESO@[");
+        String lowerHtml = html.toLowerCase(Locale.ROOT);
+        int resoPos = lowerHtml.indexOf("reso@[");
         if (resoPos == -1) {
             return null;
         }
