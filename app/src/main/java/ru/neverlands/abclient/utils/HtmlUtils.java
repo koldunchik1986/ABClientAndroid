@@ -39,6 +39,7 @@ public final class HtmlUtils {
                 "if (typeof window.chatlist_build !== 'function') { window.chatlist_build = function() {}; }" +
                 "if (typeof window.__abEnsureNode !== 'function') { window.__abEnsureNode = function(id, tag) { try { var n = document.getElementById(id); if (n) return n; var el = document.createElement(tag || 'div'); el.id = id; el.style.display = 'none'; el.style.visibility = 'hidden'; (document.body || document.documentElement).appendChild(el); return el; } catch(e) { return { innerHTML: '', value: '', style: {} }; } }; }" +
                 "window.__abEnsureNode('transfer', 'div');" +
+                "window.__abEnsureNode('complect', 'div');" +
                 "window.__abEnsureNode('hbar', 'span');" +
                 "if (!document._abclientOrigGetElementById) { document._abclientOrigGetElementById = document.getElementById.bind(document); document.getElementById = function(id) { var el = document._abclientOrigGetElementById(id); if (el) return el; if (!id) return null; try { var dummy = document.createElement('span'); dummy.id = id; dummy.style.display = 'none'; (document.body || document.documentElement).appendChild(dummy); return dummy; } catch(e) { return null; } }; }" +
                 // В некоторых страницах (и при отсутствии frames) скрипты делают get_by_id(...).innerHTML.

@@ -431,8 +431,7 @@ public class AutoModeForegroundService extends Service {
                     if ((uiForegroundInteractive || uiForegroundLikely)
                             && !fightLikelyActive
                             && !hasFightMarkers(AppVars.ContentMainPhp)
-                            && pendingFightFinishLink.isEmpty()
-                            && sinceLastAutoTurnMs < AUTO_TURN_IDLE_PROBE_INTERVAL_MS) {
+                            && pendingFightFinishLink.isEmpty()) {
                         Log.d(TAG, BG_TRACE_PREFIX + " uiTick: skip autoTurn/probe in foreground-likely UI (no fight markers)");
                         markClientAction("Пауза авто-хода: активный UI");
                         refreshForegroundNotification(autoFightEnabled, locationTrackingEnabled, captchaDialogVisible, false);
