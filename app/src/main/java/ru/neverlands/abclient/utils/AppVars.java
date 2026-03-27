@@ -365,6 +365,9 @@ public class AppVars {
     public static volatile boolean FastWaitEndOfBoiCancel = false;
     public static volatile boolean FastNeedAbilDarkTeleport = false;
     public static volatile boolean FastNeedAbilDarkFog = false;
+    // Имя комплекта для отложенного надевания через main.php (паритет с AppVars.WearComplect в C#).
+    // Устанавливается таймерами и другими авто-сценариями, где переодевание выполняется вне UI-контекста.
+    public static volatile String WearComplect = "";
     // Deferred auto-bliss trigger from MapAjax:
     // threshold reached while step cooldown is active (NeverTimer > now).
     public static volatile boolean AutoDrinkBlazPending = false;

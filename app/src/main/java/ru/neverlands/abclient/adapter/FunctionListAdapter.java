@@ -197,6 +197,8 @@ public class FunctionListAdapter extends BaseAdapter {
                 return R.drawable.ic_add;
             case OPEN_STATS:
                 return R.drawable.ic_info;
+            case TIMERS:
+                return R.drawable.ic_timer;
             case REFRESH_CONTACTS:
                 return R.drawable.ic_refresh;
             case AUTO_DRINK:

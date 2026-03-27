@@ -62,8 +62,8 @@
 | `Program.cs` | Точка входа | `[+]` ABClientApplication.java |
 | `AppConsts.cs` | Константы | `[~]` Частично (AppConsts.java) |
 | `AppVars.cs` | Глобальное состояние | `[~]` Частично (AppVars.java) |
-| `AppTimer.cs` | Кастомный таймер | `[ ]` Не реализован |
-| `AppTimerManager.cs` | Менеджер таймеров | `[ ]` Не реализован |
+| `AppTimer.cs` | Кастомный таймер | `[~]` Частично реализован (`AppTimer.java`, формат `ToString`) |
+| `AppTimerManager.cs` | Менеджер таймеров | `[~]` Частично реализован (`AppTimerManager.java`, UI/выполнение таймеров) |
 | `AutoAnswerMachine.cs` | Автоответчик | `[ ]` Не реализован |
 | `AutoboiState.cs` | Enum состояний автобоя | `[+]` AutoboiState.java |
 | **Авто-Функции (FastAction)** | LezFight, FastActionManager, AutoFunctionsManager | `[~]` Частично (LezFight ✅, FastActionManager ✅, AutoFunctionsManager ⚠️ заглушки) |

@@ -83,6 +83,7 @@ import java.util.zip.GZIPInputStream;
 import ru.neverlands.abclient.bridge.WebAppInterface;
 import ru.neverlands.abclient.lez.LezFight;
 import ru.neverlands.abclient.manager.AutoFunctionsManager;
+import ru.neverlands.abclient.manager.AppTimerManager;
 import ru.neverlands.abclient.manager.ContactsManager;
 import ru.neverlands.abclient.databinding.ActivityMainBinding;
 import ru.neverlands.abclient.manager.TabManager;
@@ -3293,6 +3294,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                     checkConnection();
                     checkServerTimerDrivenActions();
                     syncQuickButtonsRuntimeState();
+                    AppTimerManager.getInstance(MainActivity.this).processDueTimers();
                 });
             }
         }, 0, 1000);

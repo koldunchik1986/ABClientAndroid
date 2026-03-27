@@ -4,6 +4,7 @@ import android.content.ClipData;
 import android.content.ClipboardManager;
 import android.content.Context;
 import android.content.Intent;
+import android.text.TextUtils;
 import android.text.InputType;
 import android.util.Log;
 import android.view.Gravity;
@@ -14,6 +15,8 @@ import android.widget.CheckBox;
 import android.widget.EditText;
 import android.widget.ImageButton;
 import android.widget.LinearLayout;
+import android.widget.RadioButton;
+import android.widget.RadioGroup;
 import android.widget.ScrollView;
 import android.widget.Spinner;
 import android.widget.TextView;
@@ -35,9 +38,11 @@ import java.util.regex.Pattern;
 import ru.neverlands.abclient.R;
 import ru.neverlands.abclient.adapter.FunctionListAdapter;
 import ru.neverlands.abclient.manager.QuickButtonsManager;
+import ru.neverlands.abclient.manager.AppTimerManager;
 import ru.neverlands.abclient.model.Prims;
 import ru.neverlands.abclient.model.QuickActionType;
 import ru.neverlands.abclient.model.QuickButton;
+import ru.neverlands.abclient.model.AppTimer;
 import ru.neverlands.abclient.ContactsActivity;
 import ru.neverlands.abclient.LogsActivity;
 import ru.neverlands.abclient.manager.ContactsManager;
@@ -108,10 +113,57 @@ public class QuickButtonsPanel {
             AutoFunctionsManager.TREASURE_SHOVEL_TRAVEL,
             AutoFunctionsManager.TREASURE_SHOVEL_ARCHAEOLOGIST
     };
+    /**
+     * Список зелий из `FormNewTimer.Designer.cs` (ПК-версия), без изменений состава/порядка.
+     * Индекс `0` = "Не пить, просто таймер" (служебный пункт для валидации UI).
+     */
+    private static final String[] TIMER_POTION_OPTIONS = new String[]{
+            "Не пить, просто таймер",
+            "Зелье Метаболизма",
+            "Зелье Блаженства",
+            "Зелье Сильной Спины",
+            "Зелье Просветления",
+            "Зелье Сокрушительных Ударов",
+            "Зелье Стойкости",
+            "Зелье Недосягаемости",
+            "Зелье Точного Попадания",
+            "Зелье Ловких Ударов",
+            "Зелье Мужества",
+            "Зелье Жизни",
+            "Зелье Лечения",
+            "Зелье Восстановления Маны",
+            "Зелье Энергии",
+            "Зелье Удачи",
+            "Зелье Силы",
+            "Зелье Ловкости",
+            "Зелье Гения",
+            "Зелье Боевой Славы",
+            "Зелье Невидимости",
+            "Зелье Секрет Волшебника",
+            "Зелье Медитации",
+            "Зелье Иммунитета",
+            "Яд",
+            "Зелье Лечения Отравлений",
+            "Зелье Огненного Ореола",
+            "Зелье Колкости",
+            "Зелье Загрубелой Кожи",
+            "Зелье Панциря",
+            "Зелье Человек-гора",
+            "Зелье Скорости",
+            "Жажда Жизни",
+            "Ментальная Жажда",
+            "Зелье подвижности",
+            "Ярость Берсерка",
+            "Зелье Хрупкости",
+            "Зелье Мифриловый Стержень",
+            "Зелье Соколиный взор",
+            "Секретное Зелье"
+    };
     
     private final Context context;
     private final QuickButtonsManager buttonsManager;
     private final AutoFunctionsManager autoFunctionsManager;
+    private final AppTimerManager appTimerManager;
     private final Navigator navigator;
     private final ImageButton[] buttons = new ImageButton[TOTAL_BUTTONS];
     private final TabManager tabManager;
@@ -127,6 +179,7 @@ public class QuickButtonsPanel {
         this.actionListener = listener;
         this.buttonsManager = QuickButtonsManager.getInstance(context);
         this.autoFunctionsManager = AutoFunctionsManager.getInstance(context);
+        this.appTimerManager = AppTimerManager.getInstance(context);
         this.navigator = new Navigator(context, this.autoFunctionsManager, this::loadAndUpdateButtons);
         this.tabManager = tabManager;
         
@@ -316,6 +369,8 @@ public class QuickButtonsPanel {
                 return null;
             case OPEN_STATS:
                 return null;
+            case TIMERS:
+                return null;
             case REFRESH_CONTACTS:
                 return null;
             case QUICK_SELF_RASS:
@@ -426,6 +481,8 @@ public class QuickButtonsPanel {
                 return R.drawable.ic_add;
             case OPEN_STATS:
                 return R.drawable.ic_info;
+            case TIMERS:
+                return R.drawable.ic_timer;
             case REFRESH_CONTACTS:
                 return R.drawable.ic_refresh;
             case QUICK_SELF_RASS:
@@ -563,6 +620,9 @@ public class QuickButtonsPanel {
                 break;
             case OPEN_STATS:
                 openStats();
+                break;
+            case TIMERS:
+                showTimersDialog();
                 break;
             case REFRESH_CONTACTS:
                 refreshContacts();
@@ -778,6 +838,20 @@ public class QuickButtonsPanel {
                     .setItems(new CharSequence[]{"Запустить / выбрать пункт назначения", "Удалить кнопку"}, (dialog, which) -> {
                         if (which == 0) {
                             showNavigatorDialog();
+                        } else {
+                            showRemoveConfirmation(position);
+                        }
+                    })
+                    .setNegativeButton("Отмена", null)
+                    .show();
+        } else if (button.getActionType() == QuickActionType.TIMERS) {
+            new AlertDialog.Builder(context)
+                    .setTitle("Таймеры")
+                    .setItems(new CharSequence[]{"Открыть список таймеров", "Настройки таймеров", "Удалить кнопку"}, (dialog, which) -> {
+                        if (which == 0) {
+                            showTimersDialog();
+                        } else if (which == 1) {
+                            showTimersSettingsDialog();
                         } else {
                             showRemoveConfirmation(position);
                         }
@@ -1624,6 +1698,482 @@ public class QuickButtonsPanel {
     }
 
     // Открыть окно статистики боя/лута.
+    /**
+     * Настройки таймеров (long-press для QuickButton «Таймеры»).
+     *
+     * Сейчас в настройках хранится флаг звукового сигнала при срабатывании
+     * (аналог `checkDoPlayTimer` из ПК-клиента).
+     */
+    private void showTimersSettingsDialog() {
+        CheckBox soundEnabled = new CheckBox(context);
+        soundEnabled.setText("Сигнал при срабатывании таймера");
+        soundEnabled.setChecked(appTimerManager.isTimerSoundEnabled());
+
+        int pad = dpToPx(16);
+        LinearLayout root = new LinearLayout(context);
+        root.setOrientation(LinearLayout.VERTICAL);
+        root.setPadding(pad, pad, pad, pad);
+        root.addView(soundEnabled);
+
+        new AlertDialog.Builder(context)
+                .setTitle("Настройки таймеров")
+                .setView(root)
+                .setPositiveButton("Сохранить", (dialog, which) -> {
+                    appTimerManager.setTimerSoundEnabled(soundEnabled.isChecked());
+                    Toast.makeText(context, "Настройки таймеров сохранены", Toast.LENGTH_SHORT).show();
+                })
+                .setNegativeButton("Отмена", null)
+                .show();
+    }
+
+    /**
+     * Окно списка активных таймеров (аналог dropdown `toolStripStatusLabel1/dropdownTimers`).
+     *
+     * Поведение:
+     * - по клику выбирается строка таймера;
+     * - у выбранной строки показываются мини-кнопки «Изменить»/«Удалить»;
+     * - снизу всегда доступны «Отмена» и «Добавить» (фиолетовая).
+     */
+    private void showTimersDialog() {
+        final int pad = dpToPx(12);
+
+        LinearLayout root = new LinearLayout(context);
+        root.setOrientation(LinearLayout.VERTICAL);
+        root.setPadding(pad, pad, pad, pad);
+
+        TextView header = new TextView(context);
+        header.setText("Активные таймеры");
+        root.addView(header);
+
+        ScrollView scrollView = new ScrollView(context);
+        LinearLayout listContainer = new LinearLayout(context);
+        listContainer.setOrientation(LinearLayout.VERTICAL);
+        scrollView.addView(listContainer);
+        LinearLayout.LayoutParams listParams = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                0,
+                1f
+        );
+        listParams.topMargin = dpToPx(8);
+        root.addView(scrollView, listParams);
+
+        LinearLayout bottom = new LinearLayout(context);
+        bottom.setOrientation(LinearLayout.HORIZONTAL);
+        bottom.setGravity(Gravity.END);
+        LinearLayout.LayoutParams bottomParams = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+        );
+        bottomParams.topMargin = dpToPx(8);
+        root.addView(bottom, bottomParams);
+
+        Button cancelButton = new Button(context);
+        cancelButton.setText("Отмена");
+        cancelButton.setAllCaps(false);
+        bottom.addView(cancelButton);
+
+        Button addButton = new Button(context);
+        addButton.setText("Добавить");
+        addButton.setAllCaps(false);
+        addButton.setTextColor(ContextCompat.getColor(context, R.color.white));
+        addButton.setBackgroundColor(ContextCompat.getColor(context, R.color.purple_500));
+        LinearLayout.LayoutParams addParams = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+        );
+        addParams.leftMargin = dpToPx(8);
+        bottom.addView(addButton, addParams);
+
+        AlertDialog dialog = new AlertDialog.Builder(context)
+                .setTitle("Таймеры")
+                .setView(root)
+                .create();
+
+        final int[] selectedTimerId = new int[]{-1};
+        final Runnable[] rerenderRef = new Runnable[1];
+        rerenderRef[0] = () -> {
+            listContainer.removeAllViews();
+            List<AppTimer> timers = appTimerManager.getTimers();
+            if (timers.isEmpty()) {
+                TextView empty = new TextView(context);
+                empty.setText("Нет активных таймеров");
+                empty.setPadding(0, dpToPx(8), 0, dpToPx(8));
+                listContainer.addView(empty);
+                selectedTimerId[0] = -1;
+                return;
+            }
+
+            for (AppTimer timer : timers) {
+                final int timerId = timer.id;
+                final boolean selected = timerId == selectedTimerId[0];
+
+                LinearLayout row = new LinearLayout(context);
+                row.setOrientation(LinearLayout.HORIZONTAL);
+                row.setGravity(Gravity.CENTER_VERTICAL);
+                row.setPadding(dpToPx(8), dpToPx(8), dpToPx(8), dpToPx(8));
+                row.setClickable(true);
+                row.setFocusable(true);
+                row.setBackgroundColor(selected ? 0x334B2D90 : 0x00000000);
+
+                TextView timerText = new TextView(context);
+                timerText.setText(timer.toString());
+                timerText.setLayoutParams(new LinearLayout.LayoutParams(
+                        0,
+                        LinearLayout.LayoutParams.WRAP_CONTENT,
+                        1f
+                ));
+                row.addView(timerText);
+
+                ImageButton editButton = new ImageButton(context);
+                editButton.setImageResource(android.R.drawable.ic_menu_edit);
+                editButton.setBackgroundResource(android.R.color.transparent);
+                editButton.setContentDescription("Изменить");
+                editButton.setVisibility(selected ? View.VISIBLE : View.GONE);
+                row.addView(editButton);
+
+                ImageButton deleteButton = new ImageButton(context);
+                deleteButton.setImageResource(android.R.drawable.ic_menu_delete);
+                deleteButton.setBackgroundResource(android.R.color.transparent);
+                deleteButton.setContentDescription("Удалить");
+                deleteButton.setVisibility(selected ? View.VISIBLE : View.GONE);
+                row.addView(deleteButton);
+
+                row.setOnClickListener(view -> {
+                    selectedTimerId[0] = timerId;
+                    rerenderRef[0].run();
+                });
+
+                editButton.setOnClickListener(view -> showTimerEditorDialog(timer.copy(), () -> {
+                    selectedTimerId[0] = timerId;
+                    rerenderRef[0].run();
+                }));
+
+                deleteButton.setOnClickListener(view -> new AlertDialog.Builder(context)
+                        .setTitle("Удаление таймера")
+                        .setMessage("Удалить таймер?")
+                        .setPositiveButton("Удалить", (deleteDialog, which) -> {
+                            appTimerManager.removeTimerById(timerId);
+                            selectedTimerId[0] = -1;
+                            rerenderRef[0].run();
+                        })
+                        .setNegativeButton("Отмена", null)
+                        .show());
+
+                listContainer.addView(row);
+            }
+        };
+
+        cancelButton.setOnClickListener(view -> dialog.dismiss());
+        addButton.setOnClickListener(view -> showTimerEditorDialog(null, () -> {
+            selectedTimerId[0] = -1;
+            rerenderRef[0].run();
+        }));
+
+        dialog.setOnShowListener(dialogInterface -> rerenderRef[0].run());
+        dialog.show();
+    }
+
+    /**
+     * Форма создания/редактирования таймера (порт `FormNewTimer.cs`).
+     *
+     * Доступные действия:
+     * - «Просто таймер»;
+     * - «Пьём зелье по таймеру»;
+     * - «Перемещаемся по таймеру»;
+     * - «Одеваем комплект».
+     */
+    private void showTimerEditorDialog(AppTimer existingTimer, Runnable onSaved) {
+        final boolean isEdit = existingTimer != null;
+        final int pad = dpToPx(12);
+
+        ScrollView scroll = new ScrollView(context);
+        LinearLayout root = new LinearLayout(context);
+        root.setOrientation(LinearLayout.VERTICAL);
+        root.setPadding(pad, pad, pad, pad);
+        scroll.addView(root);
+
+        TextView nameLabel = new TextView(context);
+        nameLabel.setText("Имя таймера");
+        root.addView(nameLabel);
+
+        EditText nameInput = new EditText(context);
+        nameInput.setSingleLine(true);
+        nameInput.setText(isEdit ? existingTimer.description : "");
+        root.addView(nameInput);
+
+        TextView delayLabel = new TextView(context);
+        delayLabel.setPadding(0, pad, 0, 0);
+        delayLabel.setText("Сработает через");
+        root.addView(delayLabel);
+
+        LinearLayout delayRow = new LinearLayout(context);
+        delayRow.setOrientation(LinearLayout.HORIZONTAL);
+        delayRow.setGravity(Gravity.CENTER_VERTICAL);
+        root.addView(delayRow);
+
+        EditText hourInput = new EditText(context);
+        hourInput.setInputType(InputType.TYPE_CLASS_NUMBER);
+        hourInput.setSingleLine(true);
+        hourInput.setHint("часы");
+        LinearLayout.LayoutParams hourParams = new LinearLayout.LayoutParams(dpToPx(80), LinearLayout.LayoutParams.WRAP_CONTENT);
+        delayRow.addView(hourInput, hourParams);
+
+        EditText minuteInput = new EditText(context);
+        minuteInput.setInputType(InputType.TYPE_CLASS_NUMBER);
+        minuteInput.setSingleLine(true);
+        minuteInput.setHint("мин");
+        LinearLayout.LayoutParams minuteParams = new LinearLayout.LayoutParams(dpToPx(80), LinearLayout.LayoutParams.WRAP_CONTENT);
+        minuteParams.leftMargin = dpToPx(8);
+        delayRow.addView(minuteInput, minuteParams);
+
+        RadioGroup modeGroup = new RadioGroup(context);
+        modeGroup.setOrientation(LinearLayout.VERTICAL);
+        modeGroup.setPadding(0, pad, 0, 0);
+        root.addView(modeGroup);
+
+        RadioButton modeNone = new RadioButton(context);
+        modeNone.setText("Просто таймер");
+        modeGroup.addView(modeNone);
+
+        RadioButton modePotion = new RadioButton(context);
+        modePotion.setText("Пьем зелье по таймеру");
+        modeGroup.addView(modePotion);
+
+        RadioButton modeDestination = new RadioButton(context);
+        modeDestination.setText("Перемещаемся по таймеру");
+        modeGroup.addView(modeDestination);
+
+        RadioButton modeComplect = new RadioButton(context);
+        modeComplect.setText("Одеваем комплект");
+        modeGroup.addView(modeComplect);
+
+        TextView potionTitle = new TextView(context);
+        potionTitle.setPadding(0, pad, 0, 0);
+        potionTitle.setText("Название зелья (из инвентаря)");
+        root.addView(potionTitle);
+
+        Spinner potionSpinner = new Spinner(context);
+        ArrayAdapter<String> potionAdapter = new ArrayAdapter<>(
+                context,
+                android.R.layout.simple_spinner_item,
+                TIMER_POTION_OPTIONS
+        );
+        potionAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        potionSpinner.setAdapter(potionAdapter);
+        root.addView(potionSpinner);
+
+        LinearLayout drinkRow = new LinearLayout(context);
+        drinkRow.setOrientation(LinearLayout.HORIZONTAL);
+        drinkRow.setGravity(Gravity.CENTER_VERTICAL);
+        TextView drinkLabel = new TextView(context);
+        drinkLabel.setText("Делать глотков");
+        drinkRow.addView(drinkLabel);
+
+        EditText drinkCountInput = new EditText(context);
+        drinkCountInput.setInputType(InputType.TYPE_CLASS_NUMBER);
+        drinkCountInput.setSingleLine(true);
+        drinkCountInput.setText("1");
+        LinearLayout.LayoutParams drinkCountParams = new LinearLayout.LayoutParams(dpToPx(64), LinearLayout.LayoutParams.WRAP_CONTENT);
+        drinkCountParams.leftMargin = dpToPx(8);
+        drinkRow.addView(drinkCountInput, drinkCountParams);
+        root.addView(drinkRow);
+
+        CheckBox recurCheck = new CheckBox(context);
+        recurCheck.setText("Циклическое питье");
+        root.addView(recurCheck);
+
+        TextView destinationTitle = new TextView(context);
+        destinationTitle.setPadding(0, pad, 0, 0);
+        destinationTitle.setText("Клетка назначения");
+        root.addView(destinationTitle);
+
+        EditText destinationInput = new EditText(context);
+        destinationInput.setSingleLine(true);
+        destinationInput.setHint("Например: 12-345");
+        root.addView(destinationInput);
+
+        TextView complectTitle = new TextView(context);
+        complectTitle.setPadding(0, pad, 0, 0);
+        complectTitle.setText("Название комплекта");
+        root.addView(complectTitle);
+
+        EditText complectInput = new EditText(context);
+        complectInput.setSingleLine(true);
+        root.addView(complectInput);
+
+        Runnable syncModeControls = () -> {
+            boolean isPotion = modePotion.isChecked();
+            boolean isDestination = modeDestination.isChecked();
+            boolean isComplect = modeComplect.isChecked();
+
+            potionTitle.setEnabled(isPotion);
+            potionSpinner.setEnabled(isPotion);
+            drinkRow.setEnabled(isPotion);
+            drinkLabel.setEnabled(isPotion);
+            drinkCountInput.setEnabled(isPotion);
+            recurCheck.setEnabled(isPotion);
+
+            destinationTitle.setEnabled(isDestination);
+            destinationInput.setEnabled(isDestination);
+
+            complectTitle.setEnabled(isComplect);
+            complectInput.setEnabled(isComplect);
+        };
+
+        modeGroup.setOnCheckedChangeListener((group, checkedId) -> syncModeControls.run());
+
+        int delayMinutes = 60;
+        if (isEdit) {
+            long deltaMs = Math.max(0L, existingTimer.triggerTime - System.currentTimeMillis());
+            delayMinutes = (int) Math.max(0L, deltaMs / 60_000L);
+        }
+        int delayHours = delayMinutes / 60;
+        int delayMinPart = delayMinutes % 60;
+        hourInput.setText(String.valueOf(delayHours));
+        minuteInput.setText(String.valueOf(delayMinPart));
+
+        if (isEdit) {
+            if (!TextUtils.isEmpty(existingTimer.potion)) {
+                modePotion.setChecked(true);
+                int potionIndex = findPotionOptionIndex(existingTimer.potion);
+                potionSpinner.setSelection(Math.max(0, potionIndex));
+                drinkCountInput.setText(String.valueOf(Math.max(1, existingTimer.drinkCount)));
+                recurCheck.setChecked(existingTimer.isRecur);
+            } else if (!TextUtils.isEmpty(existingTimer.destination)) {
+                modeDestination.setChecked(true);
+                destinationInput.setText(existingTimer.destination);
+            } else if (!TextUtils.isEmpty(existingTimer.complect)) {
+                modeComplect.setChecked(true);
+                complectInput.setText(existingTimer.complect);
+            } else {
+                modeNone.setChecked(true);
+            }
+        } else {
+            modeNone.setChecked(true);
+        }
+
+        syncModeControls.run();
+
+        AlertDialog dialog = new AlertDialog.Builder(context)
+                .setTitle(isEdit ? "Изменить таймер" : "Новый таймер")
+                .setView(scroll)
+                .setPositiveButton("Сохранить", null)
+                .setNegativeButton("Отмена", null)
+                .create();
+
+        dialog.setOnShowListener(dialogInterface -> {
+            Button saveButton = dialog.getButton(AlertDialog.BUTTON_POSITIVE);
+            if (saveButton == null) {
+                return;
+            }
+            saveButton.setOnClickListener(view -> {
+                int hours = parseIntInRange(hourInput.getText() == null ? "" : hourInput.getText().toString(), 0, 999, 0);
+                int minutes = parseIntInRange(minuteInput.getText() == null ? "" : minuteInput.getText().toString(), 0, 59, 0);
+                int triggerMinutes = (hours * 60) + minutes;
+
+                AppTimer timer = isEdit ? existingTimer.copy() : new AppTimer();
+                timer.triggerTime = System.currentTimeMillis() + (triggerMinutes * 60_000L);
+                timer.description = nameInput.getText() == null ? "" : nameInput.getText().toString().trim();
+                timer.potion = "";
+                timer.destination = "";
+                timer.complect = "";
+                timer.drinkCount = 0;
+                timer.isRecur = false;
+                timer.everyMinutes = 0;
+
+                if (modePotion.isChecked()) {
+                    int potionIndex = potionSpinner.getSelectedItemPosition();
+                    if (potionIndex <= 0 || potionIndex >= TIMER_POTION_OPTIONS.length) {
+                        Toast.makeText(context, "Выберите зелье", Toast.LENGTH_SHORT).show();
+                        return;
+                    }
+                    timer.potion = TIMER_POTION_OPTIONS[potionIndex];
+                    timer.drinkCount = parseIntInRange(
+                            drinkCountInput.getText() == null ? "" : drinkCountInput.getText().toString(),
+                            1,
+                            999,
+                            1
+                    );
+                    timer.isRecur = recurCheck.isChecked();
+                    if (timer.isRecur) {
+                        timer.everyMinutes = triggerMinutes;
+                    }
+                    if (TextUtils.isEmpty(timer.description)) {
+                        timer.description = "Выпьем " + timer.potion;
+                    }
+                } else if (modeDestination.isChecked()) {
+                    timer.destination = destinationInput.getText() == null ? "" : destinationInput.getText().toString().trim();
+                    if (TextUtils.isEmpty(timer.destination)) {
+                        Toast.makeText(context, "Укажите клетку назначения", Toast.LENGTH_SHORT).show();
+                        return;
+                    }
+                    if (TextUtils.isEmpty(timer.description)) {
+                        timer.description = "Идем на " + timer.destination;
+                    }
+                } else if (modeComplect.isChecked()) {
+                    timer.complect = complectInput.getText() == null ? "" : complectInput.getText().toString().trim();
+                    if (TextUtils.isEmpty(timer.complect)) {
+                        Toast.makeText(context, "Укажите название комплекта", Toast.LENGTH_SHORT).show();
+                        return;
+                    }
+                    if (TextUtils.isEmpty(timer.description)) {
+                        timer.description = "Одеваем комплект " + timer.complect;
+                    }
+                }
+
+                if (isEdit) {
+                    if (!appTimerManager.updateTimer(existingTimer.id, timer)) {
+                        Toast.makeText(context, "Не удалось изменить таймер", Toast.LENGTH_SHORT).show();
+                        return;
+                    }
+                } else {
+                    AppTimer added = appTimerManager.addAppTimer(timer);
+                    if (added == null) {
+                        Toast.makeText(context, "Таймер не добавлен (время уже прошло)", Toast.LENGTH_SHORT).show();
+                        return;
+                    }
+                }
+
+                if (onSaved != null) {
+                    onSaved.run();
+                }
+                dialog.dismiss();
+            });
+        });
+
+        dialog.show();
+    }
+
+    private int findPotionOptionIndex(String potionName) {
+        if (TextUtils.isEmpty(potionName)) {
+            return 0;
+        }
+        for (int index = 0; index < TIMER_POTION_OPTIONS.length; index++) {
+            if (potionName.equalsIgnoreCase(TIMER_POTION_OPTIONS[index])) {
+                return index;
+            }
+        }
+        return 0;
+    }
+
+    private int parseIntInRange(String raw, int min, int max, int fallback) {
+        int value = fallback;
+        try {
+            String safeValue = raw == null ? "" : raw.trim();
+            if (!safeValue.isEmpty()) {
+                value = Integer.parseInt(safeValue);
+            }
+        } catch (Exception ignored) {
+        }
+        if (value < min) {
+            return min;
+        }
+        if (value > max) {
+            return max;
+        }
+        return value;
+    }
+
     private void openStats() {
         // Основная реализация: кастомный диалог с иконками и действиями.
         boolean useNewStatsDialog = true;

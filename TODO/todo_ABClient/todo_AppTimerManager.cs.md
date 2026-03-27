@@ -52,3 +52,10 @@
     - [ ] `public synchronized void removeTimerLastAdded()`: Реализует логику поиска и удаления таймера с максимальным `Id`.
 
 - [ ] **Обновить `todo_ABClient.md`**, отметив `AppTimerManager.cs` как проанализированный.
+
+## Статус реализации (2026-03-27)
+
+- [x] Создан Android-файл `app/src/main/java/ru/neverlands/abclient/manager/AppTimerManager.java`.
+- [x] Реализованы методы хранения/добавления/удаления/обновления/поиска таймеров.
+- [x] Реализовано выполнение due-таймеров (зелье / перемещение / комплект / простой таймер).
+- [x] Добавлено сохранение таймеров по профилю в `SharedPreferences`.

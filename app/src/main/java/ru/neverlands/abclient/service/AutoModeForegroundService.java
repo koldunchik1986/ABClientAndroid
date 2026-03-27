@@ -27,6 +27,7 @@ import java.util.Locale;
 import ru.neverlands.abclient.MainActivity;
 import ru.neverlands.abclient.R;
 import ru.neverlands.abclient.manager.AutoFunctionsManager;
+import ru.neverlands.abclient.manager.AppTimerManager;
 import ru.neverlands.abclient.model.AutoboiState;
 import ru.neverlands.abclient.utils.AppVars;
 import ru.neverlands.abclient.utils.Chat;
@@ -299,6 +300,7 @@ public class AutoModeForegroundService extends Service {
                 if (autoBossEnabled) {
                     autoFunctionsManager.tickAutoBoss();
                 }
+                AppTimerManager.getInstance(activity).processDueTimers();
 
                 // Приоритетная отправка ссылки "Завершить бой" (act=7), если она уже готова.
                 // Без этого цикл может зависать: autoTurn крутится по одному и тому же fight-frame,

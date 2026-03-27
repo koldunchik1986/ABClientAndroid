@@ -50,3 +50,9 @@
     - [ ] Использовать `String.format()` для форматирования строки, аналогично `sb.AppendFormat`.
 
 - [ ] **Обновить `todo_ABClient.md`**, отметив `AppTimer.cs` как проанализированный.
+
+## Статус реализации (2026-03-27)
+
+- [x] Создан Android-файл `app/src/main/java/ru/neverlands/abclient/model/AppTimer.java`.
+- [x] Поля и структура данных портированы из C# 1:1.
+- [x] Формат `toString()` перенесён с логикой `isHerb`/`(*)`/`[count]`.
