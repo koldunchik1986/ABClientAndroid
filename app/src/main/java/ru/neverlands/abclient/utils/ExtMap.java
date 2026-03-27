@@ -32,6 +32,8 @@ public class ExtMap {
             new SimpleDateFormat("M/d/yyyy h:mm:ss a", Locale.US);
     private static final String ABC_VISITED_ZERO = "1/1/0001 12:00:00 AM";
     private static final long VISITED_PERSIST_THROTTLE_MS = 1500L;
+    private static final String MAP_XML_ASSET_NAME = "map.xml";
+    private static final String MAP_XML_RUNTIME_FILE_NAME = "map.xml";
 
     public static final Map<String, Position> Location = new HashMap<>();
     public static final Map<String, String> InvLocation = new HashMap<>();
@@ -62,6 +64,70 @@ public class ExtMap {
      *    где region ещё не был явно проставлен в исходном XML.
      */
     private static final Map<String, String> regionNameByRegionId = new HashMap<>();
+
+    /**
+     * Возвращает путь к рабочему runtime-файлу карты (`.../files/map.xml`).
+     *
+     * Зависимости:
+     * - `Context.getExternalFilesDir(null)` — корневая writable-директория профиля приложения;
+     * - `MAP_XML_RUNTIME_FILE_NAME` — единая константа имени runtime-карты.
+     */
+    private static File getRuntimeMapFile(Context context) {
+        if (context == null) {
+            return null;
+        }
+        File externalDir = context.getExternalFilesDir(null);
+        if (externalDir == null) {
+            return null;
+        }
+        return new File(externalDir, MAP_XML_RUNTIME_FILE_NAME);
+    }
+
+    /**
+     * Гарантирует наличие runtime `map.xml`:
+     * - если файла нет, копирует шаблон из assets (`map.xml`);
+     * - если файл уже есть, оставляет как есть.
+     *
+     * Зависимости:
+     * - `copyAssetToFile(...)` — атомарное копирование шаблона карты;
+     * - `MAP_XML_ASSET_NAME` — источник шаблона в assets.
+     */
+    private static File ensureRuntimeMapFile(Context context) {
+        File runtimeFile = getRuntimeMapFile(context);
+        if (runtimeFile == null) {
+            return null;
+        }
+        if (!runtimeFile.exists()) {
+            try {
+                copyAssetToFile(context, MAP_XML_ASSET_NAME, runtimeFile);
+                android.util.Log.d(TAG, "runtimeMap: created from asset template, file=" + runtimeFile.getAbsolutePath());
+            } catch (Exception e) {
+                android.util.Log.e(TAG, "runtimeMap: cannot create runtime map from template", e);
+                return null;
+            }
+        }
+        return runtimeFile;
+    }
+
+    /**
+     * Открывает входной поток карты для чтения:
+     * 1) приоритет — writable runtime `.../files/map.xml`,
+     * 2) fallback — assets `map.xml`.
+     *
+     * Важно:
+     * - метод не кэширует stream; вызывающий код обязан закрыть поток;
+     * - используется как единая точка входа для `ExtMap.loadMap(...)` и UI-индексов (`Navigator`).
+     */
+    public static InputStream openRuntimeMapInputStream(Context context) throws Exception {
+        File runtimeFile = ensureRuntimeMapFile(context);
+        if (runtimeFile != null && runtimeFile.exists()) {
+            return new FileInputStream(runtimeFile);
+        }
+        if (context == null) {
+            throw new IllegalStateException("Context is null for map input stream");
+        }
+        return context.getAssets().open(MAP_XML_ASSET_NAME);
+    }
 
     public static synchronized void init(Context context) {
         if (initialized) return;
@@ -200,50 +266,70 @@ public class ExtMap {
     }
 
     private static void loadMap(Context context) {
-        AssetManager assets = context.getAssets();
-        try (InputStream in = assets.open("map.xml")) {
-            XmlPullParserFactory factory = XmlPullParserFactory.newInstance();
-            factory.setNamespaceAware(false);
-            XmlPullParser parser = factory.newPullParser();
-            parser.setInput(in, "UTF-8");
-            int event = parser.getEventType();
-            while (event != XmlPullParser.END_DOCUMENT) {
-                if (event == XmlPullParser.START_TAG) {
-                    String tag = parser.getName();
-                    if ("cell".equalsIgnoreCase(tag)) {
-                        String cellNumber = parser.getAttributeValue(null, "cellNumber");
-                        if (cellNumber != null) {
-                            cellNumber = cellNumber.trim();
-                            Cell cell = new Cell();
-                            cell.CellNumber = cellNumber;
-                            String costStr = parser.getAttributeValue(null, "cost");
-                            if (costStr != null) {
-                                try { cell.Cost = Integer.parseInt(costStr.trim()); } catch (NumberFormatException ignored) {}
-                            }
-                            String hasFish = parser.getAttributeValue(null, "hasFish");
-                            cell.HasFish = "true".equalsIgnoreCase(hasFish);
-                            String hasWater = parser.getAttributeValue(null, "hasWater");
-                            cell.HasWater = "true".equalsIgnoreCase(hasWater);
-                            String herbGroup = parser.getAttributeValue(null, "herbGroup");
-                            cell.HerbGroup = herbGroup != null ? herbGroup.trim() : "";
-                            String name = parser.getAttributeValue(null, "name");
-                            cell.Name = name != null ? name.trim() : "";
-                            String tooltip = parser.getAttributeValue(null, "tooltip");
-                            cell.Tooltip = tooltip != null ? tooltip.trim() : "";
-                            String region = parser.getAttributeValue(null, "region");
-                            cell.Region = region != null ? normalizeRegionLabel(region) : "";
-                            Cells.put(cellNumber, cell);
-                            if (!cell.Region.isEmpty()) {
-                                rememberRegionMapping(cellNumber, cell.Region);
-                            }
+        Cells.clear();
+        regionNameByRegionId.clear();
+        String source = "assets/" + MAP_XML_ASSET_NAME;
+        File runtimeFile = getRuntimeMapFile(context);
+        if (runtimeFile != null && runtimeFile.exists()) {
+            source = runtimeFile.getAbsolutePath();
+        }
+        try (InputStream in = openRuntimeMapInputStream(context)) {
+            int parsed = parseMapXml(in);
+            android.util.Log.d(TAG, "loadMap: source=" + source + ", parsedCells=" + parsed);
+        } catch (Exception e) {
+            android.util.Log.w(TAG, "loadMap: runtime source failed, fallback to assets template", e);
+            try (InputStream in = context.getAssets().open(MAP_XML_ASSET_NAME)) {
+                int parsed = parseMapXml(in);
+                android.util.Log.d(TAG, "loadMap: fallback source=assets/" + MAP_XML_ASSET_NAME + ", parsedCells=" + parsed);
+            } catch (Exception fallbackError) {
+                android.util.Log.e(TAG, "loadMap error: fallback parse failed", fallbackError);
+            }
+        }
+    }
+
+    private static int parseMapXml(InputStream inputStream) throws Exception {
+        int parsedCells = 0;
+        XmlPullParserFactory factory = XmlPullParserFactory.newInstance();
+        factory.setNamespaceAware(false);
+        XmlPullParser parser = factory.newPullParser();
+        parser.setInput(inputStream, "UTF-8");
+        int event = parser.getEventType();
+        while (event != XmlPullParser.END_DOCUMENT) {
+            if (event == XmlPullParser.START_TAG) {
+                String tag = parser.getName();
+                if ("cell".equalsIgnoreCase(tag)) {
+                    String cellNumber = parser.getAttributeValue(null, "cellNumber");
+                    if (cellNumber != null) {
+                        cellNumber = cellNumber.trim();
+                        Cell cell = new Cell();
+                        cell.CellNumber = cellNumber;
+                        String costStr = parser.getAttributeValue(null, "cost");
+                        if (costStr != null) {
+                            try { cell.Cost = Integer.parseInt(costStr.trim()); } catch (NumberFormatException ignored) {}
                         }
+                        String hasFish = parser.getAttributeValue(null, "hasFish");
+                        cell.HasFish = "true".equalsIgnoreCase(hasFish);
+                        String hasWater = parser.getAttributeValue(null, "hasWater");
+                        cell.HasWater = "true".equalsIgnoreCase(hasWater);
+                        String herbGroup = parser.getAttributeValue(null, "herbGroup");
+                        cell.HerbGroup = herbGroup != null ? herbGroup.trim() : "";
+                        String name = parser.getAttributeValue(null, "name");
+                        cell.Name = name != null ? name.trim() : "";
+                        String tooltip = parser.getAttributeValue(null, "tooltip");
+                        cell.Tooltip = tooltip != null ? tooltip.trim() : "";
+                        String region = parser.getAttributeValue(null, "region");
+                        cell.Region = region != null ? normalizeRegionLabel(region) : "";
+                        Cells.put(cellNumber, cell);
+                        if (!cell.Region.isEmpty()) {
+                            rememberRegionMapping(cellNumber, cell.Region);
+                        }
+                        parsedCells++;
                     }
                 }
-                event = parser.next();
             }
-        } catch (Exception e) {
-            android.util.Log.e("ExtMap", "loadMap error: " + e.getMessage());
+            event = parser.next();
         }
+        return parsedCells;
     }
 
     private static void loadAbcMap(Context context) {
@@ -464,6 +550,7 @@ public class ExtMap {
             pendingLabelUpdates.remove(normalizedReg);
             visitedPersistPending = false;
             lastVisitedPersistAtMs = System.currentTimeMillis();
+            persistRuntimeMapCellMeta(context, normalizedReg, normalizedServerLabel, resolveRegionLabelForRegNum(normalizedReg));
             android.util.Log.d(TAG, "persistLabel: saved, reg=" + normalizedReg
                     + ", old=" + oldLabel + ", new=" + normalizedServerLabel);
         } else {
@@ -520,6 +607,7 @@ public class ExtMap {
                 if (persisted) {
                     visitedPersistPending = false;
                     lastVisitedPersistAtMs = System.currentTimeMillis();
+                    persistRuntimeMapCellMeta(context, normalizedReg, "", resolveRegionLabelForRegNum(normalizedReg));
                 }
             }
         }
@@ -677,6 +765,165 @@ public class ExtMap {
             return true;
         } catch (Exception e) {
             android.util.Log.e(TAG, "persistVisited: replace failed", e);
+            return false;
+        }
+    }
+
+    /**
+     * Персистит обновлённые `name`/`region` в runtime `map.xml`.
+     *
+     * Назначение:
+     * - переводит `map.xml` из "read-only assets" в рабочий runtime-шаблон, который клиент может
+     *   дополнять в режиме проверки/пересоздания карты;
+     * - сохраняет регион и фактическое название клетки прямо в основном источнике карты.
+     *
+     * Зависимости:
+     * - `ensureRuntimeMapFile(...)` — создаёт writable map.xml из шаблона assets при первом запуске;
+     * - `syncCellLabelFromServer(...)`/`syncCellMetaFromPinfo(...)` — вызывающие ветки;
+     * - `Cell.cellNumber` в XML — идентификатор целевой клетки.
+     */
+    private static boolean persistRuntimeMapCellMeta(Context context,
+                                                     String regNum,
+                                                     String label,
+                                                     String region) {
+        if (context == null || regNum == null) {
+            return false;
+        }
+        String normalizedReg = regNum.trim();
+        if (normalizedReg.isEmpty()) {
+            return false;
+        }
+        String normalizedLabel = normalizeCellLabel(label);
+        String normalizedRegion = normalizeRegionLabel(region);
+        if (normalizedLabel.isEmpty() && normalizedRegion.isEmpty()) {
+            return false;
+        }
+
+        File targetFile = ensureRuntimeMapFile(context);
+        if (targetFile == null || !targetFile.exists()) {
+            return false;
+        }
+        File parentDir = targetFile.getParentFile();
+        if (parentDir == null) {
+            return false;
+        }
+        File tmpFile = new File(parentDir, targetFile.getName() + ".tmp");
+
+        boolean changed = false;
+        try (InputStream in = new FileInputStream(targetFile);
+             FileOutputStream out = new FileOutputStream(tmpFile, false)) {
+            XmlPullParserFactory factory = XmlPullParserFactory.newInstance();
+            factory.setNamespaceAware(false);
+            XmlPullParser parser = factory.newPullParser();
+            parser.setInput(in, null);
+
+            XmlSerializer serializer = factory.newSerializer();
+            serializer.setOutput(out, "UTF-8");
+            serializer.startDocument("UTF-8", true);
+
+            int event = parser.getEventType();
+            while (event != XmlPullParser.END_DOCUMENT) {
+                if (event == XmlPullParser.START_TAG) {
+                    String tag = parser.getName();
+                    String namespace = parser.getNamespace();
+                    if (namespace != null && namespace.isEmpty()) {
+                        namespace = null;
+                    }
+                    serializer.startTag(namespace, tag);
+
+                    int attrCount = parser.getAttributeCount();
+                    String cellNumber = null;
+                    for (int i = 0; i < attrCount; i++) {
+                        if ("cellNumber".equalsIgnoreCase(parser.getAttributeName(i))) {
+                            String rawValue = parser.getAttributeValue(i);
+                            cellNumber = rawValue != null ? rawValue.trim() : "";
+                            break;
+                        }
+                    }
+
+                    boolean isTargetCell = "cell".equalsIgnoreCase(tag) && normalizedReg.equals(cellNumber);
+                    boolean hasNameAttr = false;
+                    boolean hasRegionAttr = false;
+                    for (int i = 0; i < attrCount; i++) {
+                        String attrNamespace = parser.getAttributeNamespace(i);
+                        if (attrNamespace != null && attrNamespace.isEmpty()) {
+                            attrNamespace = null;
+                        }
+                        String attrName = parser.getAttributeName(i);
+                        String attrValue = parser.getAttributeValue(i);
+
+                        if (isTargetCell && "name".equalsIgnoreCase(attrName)) {
+                            hasNameAttr = true;
+                            if (!normalizedLabel.isEmpty() && !normalizedLabel.equals(normalizeCellLabel(attrValue))) {
+                                attrValue = normalizedLabel;
+                                changed = true;
+                            }
+                        } else if (isTargetCell && "region".equalsIgnoreCase(attrName)) {
+                            hasRegionAttr = true;
+                            if (!normalizedRegion.isEmpty() && !normalizedRegion.equals(normalizeRegionLabel(attrValue))) {
+                                attrValue = normalizedRegion;
+                                changed = true;
+                            }
+                        }
+
+                        serializer.attribute(attrNamespace, attrName, attrValue != null ? attrValue : "");
+                    }
+
+                    if (isTargetCell && !hasNameAttr && !normalizedLabel.isEmpty()) {
+                        serializer.attribute(null, "name", normalizedLabel);
+                        changed = true;
+                    }
+                    if (isTargetCell && !hasRegionAttr && !normalizedRegion.isEmpty()) {
+                        serializer.attribute(null, "region", normalizedRegion);
+                        changed = true;
+                    }
+                } else if (event == XmlPullParser.END_TAG) {
+                    String tag = parser.getName();
+                    String namespace = parser.getNamespace();
+                    if (namespace != null && namespace.isEmpty()) {
+                        namespace = null;
+                    }
+                    serializer.endTag(namespace, tag);
+                } else if (event == XmlPullParser.TEXT) {
+                    serializer.text(parser.getText());
+                }
+                event = parser.next();
+            }
+            serializer.endDocument();
+            serializer.flush();
+        } catch (Exception e) {
+            android.util.Log.e(TAG, "persistRuntimeMapCellMeta: write failed, reg=" + normalizedReg, e);
+            //noinspection ResultOfMethodCallIgnored
+            tmpFile.delete();
+            return false;
+        }
+
+        if (!changed) {
+            //noinspection ResultOfMethodCallIgnored
+            tmpFile.delete();
+            return false;
+        }
+
+        try {
+            if (targetFile.exists() && !targetFile.delete()) {
+                android.util.Log.w(TAG, "persistRuntimeMapCellMeta: cannot delete old runtime map");
+                //noinspection ResultOfMethodCallIgnored
+                tmpFile.delete();
+                return false;
+            }
+            if (!tmpFile.renameTo(targetFile)) {
+                try (InputStream in = new FileInputStream(tmpFile);
+                     FileOutputStream out = new FileOutputStream(targetFile, false)) {
+                    copyStream(in, out);
+                }
+                //noinspection ResultOfMethodCallIgnored
+                tmpFile.delete();
+            }
+            android.util.Log.d(TAG, "persistRuntimeMapCellMeta: saved reg=" + normalizedReg
+                    + ", name=" + normalizedLabel + ", region=" + normalizedRegion);
+            return true;
+        } catch (Exception e) {
+            android.util.Log.e(TAG, "persistRuntimeMapCellMeta: replace failed", e);
             return false;
         }
     }

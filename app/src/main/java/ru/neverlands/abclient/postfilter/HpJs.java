@@ -20,7 +20,7 @@ public class HpJs {
     private static final String TARGET_EXPRESSION =
             "s.substring(0, s.lastIndexOf(':')+1) + \"[<font color=#bb0000><b>\" + Math.round(curHP)+\"</b>/<b>\"+maxHP+\"</b></font> | <font color=#336699><b>\"+Math.round(curMA)+\"</b>/<b>\"+maxMA+\"</b></font>]\"";
     private static final String BRIDGE_EXPRESSION =
-            "window.external.ShowHpMaTimers(s,curHP,maxHP,intHP,curMA,maxMA,intMA)";
+            "(function(){var __ab=(window.AndroidBridge&&typeof window.AndroidBridge.ShowHpMaTimers==='function')?window.AndroidBridge:(window.external&&typeof window.external.ShowHpMaTimers==='function'?window.external:null);return __ab?__ab.ShowHpMaTimers(s,curHP,maxHP,intHP,curMA,maxMA,intMA):(s.substring(0, s.lastIndexOf(':')+1) + \"[<font color=#bb0000><b>\" + Math.round(curHP)+\"</b>/<b>\"+maxHP+\"</b></font> | <font color=#336699><b>\"+Math.round(curMA)+\"</b>/<b>\"+maxMA+\"</b></font>]\");})()";
 
     private HpJs() {
         // Utility class.

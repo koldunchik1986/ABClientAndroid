@@ -1,7 +1,6 @@
 package ru.neverlands.abclient.ui;
 
 import android.content.Context;
-import android.content.res.AssetManager;
 import android.view.Gravity;
 import android.view.View;
 import android.widget.ArrayAdapter;
@@ -120,7 +119,7 @@ public class Navigator {
      * - herbGroups: номер группы трав -> клетки;
      * - fishGroups: тип рыбалки/водоема -> клетки.
      *
-     * Источник данных: assets/map.xml (метод buildNavigatorMapIndex()).
+     * Источник данных: runtime map.xml (метод buildNavigatorMapIndex()).
      */
     private static final class NavigatorMapIndex {
         final Map<String, Map<String, LinkedHashSet<String>>> botGroups = new LinkedHashMap<>();
@@ -1220,7 +1219,7 @@ public class Navigator {
     }
 
     /**
-     * Строит индекс карты из assets/map.xml для вкладок:
+     * Строит индекс карты из runtime `map.xml` (шаблон из assets + дополняемые данные) для вкладок:
      * - Боты: по тегам bots (name/minLevel/maxLevel);
      * - Травы: по атрибуту herbGroup;
      * - Рыбалка: по hasWater=True.
@@ -1232,8 +1231,7 @@ public class Navigator {
      */
     private NavigatorMapIndex buildNavigatorMapIndex() {
         NavigatorMapIndex index = new NavigatorMapIndex();
-        AssetManager assets = context.getAssets();
-        try (InputStream in = assets.open("map.xml")) {
+        try (InputStream in = ExtMap.openRuntimeMapInputStream(context)) {
             XmlPullParserFactory factory = XmlPullParserFactory.newInstance();
             factory.setNamespaceAware(false);
             XmlPullParser parser = factory.newPullParser();
