@@ -98,6 +98,16 @@ final class CompasAuto {
                 owner.stopAutoMoving();
             }
             owner.requestCharacterSyncForAutoFunctionEnableInternal("auto_compass");
+            MainActivity activity = AppVars.mainActivity != null ? AppVars.mainActivity.get() : null;
+            if (activity != null) {
+                activity.runOnUiThread(() -> {
+                    try {
+                        activity.requestRoomUsersRefreshSoon();
+                    } catch (Exception e) {
+                        Log.w(TAG, "AUTO_COMPASS_TRACE initial room refresh failed", e);
+                    }
+                });
+            }
             autoCompassLastTickAtMs = 0L;
             tickAutoCompass(true);
         } else {
@@ -117,6 +127,7 @@ final class CompasAuto {
         }
         Log.d(TAG, "setAutoCompassEnabled: " + enabled);
         owner.syncBackgroundServiceInternal("setAutoCompassEnabled(" + enabled + ")");
+        owner.requestQuickButtonsRefreshInternal("setAutoCompassEnabled(" + enabled + ")");
     }
 
     String getAutoCompassTargetNick() {
@@ -272,6 +283,7 @@ final class CompasAuto {
         String normalizedSource = normalizeStartSource(source, "manual");
         Log.d(TAG, "AUTO_COMPASS_TRACE start: mode=manual_one_shot, source="
                 + normalizedSource + ", target=" + normalized);
+        writeCompassStartTrace("manual_one_shot", normalizedSource, normalized);
         setAutoCompassTargetNick(normalized);
         autoCompassManualSingleRun = true;
         setAutoCompassEnabled(true);
@@ -290,6 +302,7 @@ final class CompasAuto {
         String normalizedSource = normalizeStartSource(source, "settings");
         Log.d(TAG, "AUTO_COMPASS_TRACE start: mode=full_hunt, source="
                 + normalizedSource + ", target=" + normalized);
+        writeCompassStartTrace("full_hunt", normalizedSource, normalized);
         String currentTarget = getAutoCompassTargetNick();
         if (!normalized.equalsIgnoreCase(currentTarget)) {
             setAutoCompassTargetNick(normalized);
@@ -520,7 +533,18 @@ final class CompasAuto {
         }
         String currentRegNum = getCurrentMapLocationRegNum();
         if (currentRegNum.isEmpty()) {
-            stopAutoCompassWithReason("Компас: текущая клетка неизвестна, дождитесь обновления карты.", true);
+            owner.requestCharacterSyncForAutoFunctionEnableInternal("auto_compass_wait_map_location");
+            MainActivity activity = AppVars.mainActivity != null ? AppVars.mainActivity.get() : null;
+            if (activity != null) {
+                activity.runOnUiThread(() -> {
+                    try {
+                        activity.requestRoomUsersRefreshSoon();
+                    } catch (Exception e) {
+                        Log.w(TAG, "AUTO_COMPASS_TRACE room refresh failed while waiting map location", e);
+                    }
+                });
+            }
+            Log.d(TAG, "AUTO_COMPASS_TRACE waiting map location: target=" + targetNick);
             return;
         }
 
@@ -771,6 +795,7 @@ final class CompasAuto {
                 owner.stopAutoMoving();
             }
             owner.syncBackgroundServiceInternal("autoCompassStopReason");
+            owner.requestQuickButtonsRefreshInternal("autoCompassStopReason");
         }
     }
 
@@ -780,6 +805,15 @@ final class CompasAuto {
         }
         String html = "<font color=#5D7C91><b>[Компас]</b></font> " + escapeHtml(message);
         FastActionManager.writeChatMsg(html);
+    }
+
+    private void writeCompassStartTrace(String mode, String source, String targetNick) {
+        String safeMode = mode == null ? "" : mode.trim();
+        String safeSource = source == null ? "" : source.trim();
+        String safeTarget = targetNick == null ? "" : targetNick.trim();
+        writeCompassChat("Старт: режим=" + safeMode
+                + ", источник=" + safeSource
+                + ", цель=" + safeTarget + ".");
     }
 
     private void writeCompassMoveChat(String nextDestination, String targetNick, List<String> candidatesSnapshot) {

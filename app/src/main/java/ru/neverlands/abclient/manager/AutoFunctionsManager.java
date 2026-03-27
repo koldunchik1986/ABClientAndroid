@@ -1089,6 +1089,18 @@ public class AutoFunctionsManager {
         syncBackgroundService(reason);
     }
 
+    void requestQuickButtonsRefreshInternal(String reason) {
+        try {
+            MainActivity activity = AppVars.mainActivity != null ? AppVars.mainActivity.get() : null;
+            if (activity == null) {
+                return;
+            }
+            activity.runOnUiThread(() -> activity.refreshQuickButtonsPanelState(reason));
+        } catch (Exception e) {
+            Log.w(TAG, "requestQuickButtonsRefreshInternal failed, reason=" + reason, e);
+        }
+    }
+
     private void syncBackgroundService(String reason) {
         try {
             AutoModeForegroundService.syncServiceState(context, reason);
@@ -1403,6 +1415,9 @@ public class AutoFunctionsManager {
             AppVars.AutoTreasureShovelReady = false;
             AppVars.AutoTreasureShovelReadyOption = "";
             AppVars.TreasureDigPauseNonCombatAutoFunctions = false;
+            if (AppVars.AutoMoving) {
+                stopAutoMoving();
+            }
             Log.d(TAG, "setAutoTreasureEnabled: keep visited cache on disable, entries="
                     + AppVars.SearchBoxVisited.size());
         }

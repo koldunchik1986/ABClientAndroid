@@ -40,7 +40,7 @@ public class MapActAjaxPhp {
                 AppVars.AutoTreasureShovelReady = false;
                 AppVars.AutoTreasureShovelReadyOption = "";
                 AppVars.AutoTreasureDigPendingInventory = true;
-                AppVars.TreasureDigPauseNonCombatAutoFunctions = true;
+                TreasureDig.applyTreasurePauseAndStopNavigator("map_act_need_shovel_popup");
                 Log.w(TAG, "AUTO_SEARCH_BOX_TRACE dig flow: server requires shovel, retry equip");
             }
             if (isTreasureDigResultMessage(resoMessage)) {

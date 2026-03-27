@@ -3647,6 +3647,14 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         quickButtonsPanel.refreshActionStates();
         Log.d(TAG, "QUICK_UI_SYNC: AutoMoving changed -> refresh quick buttons, state=" + autoMovingNow);
     }
+
+    public void refreshQuickButtonsPanelState(String reason) {
+        if (quickButtonsPanel == null) {
+            return;
+        }
+        quickButtonsPanel.refreshActionStates();
+        Log.d(TAG, "QUICK_UI_SYNC: refresh requested, reason=" + reason);
+    }
     
     public void addAddressToStatusString(String address) {
         binding.appBarMain.contentMain.statusBar.statusTextView.setText(address);

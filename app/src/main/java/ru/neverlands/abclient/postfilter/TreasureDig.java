@@ -202,7 +202,7 @@ public final class TreasureDig {
         boolean needWearShovel = !AutoFunctionsManager.TREASURE_SHOVEL_NONE.equalsIgnoreCase(selectedShovelOption);
         if (needWearShovel && !AppVars.AutoTreasureShovelReady) {
             AppVars.AutoTreasureDigPendingInventory = true;
-            AppVars.TreasureDigPauseNonCombatAutoFunctions = true;
+            applyTreasurePauseAndStopNavigator("dig_flow_need_wear_shovel");
             android.util.Log.d(TAG, "AUTO_SEARCH_BOX_TRACE dig flow: open shovel inventory");
             return buildAutoTreasureDigOpenInventoryRedirect(html, address, host);
         }
@@ -220,7 +220,7 @@ public final class TreasureDig {
                                                              String address,
                                                              String selectedShovelOption,
                                                              Host host) {
-        AppVars.TreasureDigPauseNonCombatAutoFunctions = true;
+        applyTreasurePauseAndStopNavigator("dig_flow_prepare_inventory");
         boolean inventoryContext = host.mainPhpIsInv(html) || host.isInventoryAddress(address);
         if (!inventoryContext) {
             android.util.Log.d(TAG, "AUTO_SEARCH_BOX_TRACE dig flow: route to inventory (shovels)");
@@ -284,6 +284,30 @@ public final class TreasureDig {
         AppVars.AutoTreasureDigPendingInventory = false;
         AppVars.AutoTreasureShovelReady = true;
         AppVars.AutoTreasureShovelReadyOption = selectedShovelOption == null ? "" : selectedShovelOption;
+    }
+
+    public static void applyTreasurePauseAndStopNavigator(String reason) {
+        AppVars.TreasureDigPauseNonCombatAutoFunctions = true;
+        if (!AppVars.AutoMoving) {
+            return;
+        }
+        try {
+            android.content.Context context = AppVars.getContext();
+            if (context != null) {
+                AutoFunctionsManager.getInstance(context).stopAutoMoving();
+                android.util.Log.d(TAG, "AUTO_SEARCH_BOX_TRACE pause enabled: navigator stopped, reason=" + reason);
+                return;
+            }
+        } catch (Exception e) {
+            android.util.Log.w(TAG, "AUTO_SEARCH_BOX_TRACE pause enabled: manager stop failed, reason=" + reason, e);
+        }
+        AppVars.AutoMoving = false;
+        AppVars.AutoMovingDestinaton = null;
+        AppVars.AutoMovingMapPath = null;
+        AppVars.AutoMovingNextJump = null;
+        AppVars.AutoMovingJumps = 0;
+        AppVars.AutoMovingCityGate = ru.neverlands.abclient.model.CityGateType.None;
+        android.util.Log.d(TAG, "AUTO_SEARCH_BOX_TRACE pause enabled: fallback navigator reset, reason=" + reason);
     }
 
     private static String buildAutoTreasureDigOpenInventoryRedirect(String html, String address, Host host) {
