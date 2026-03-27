@@ -1155,6 +1155,17 @@ public class AutoFunctionsManager {
             return;
         }
         if (snapshot == null || isEmpty(snapshot.locationName)) {
+            NeverApi.PinfoCompassSnapshot previousSnapshot;
+            synchronized (autoCompassLock) {
+                previousSnapshot = autoCompassLastSnapshot;
+            }
+            // Кратковременный сбой pinfo (например HTTP 536): не стопаем авто-компас,
+            // если ранее уже был валидный снимок цели.
+            if (previousSnapshot != null && !isEmpty(previousSnapshot.locationName)) {
+                Log.d(TAG, "AUTO_COMPASS_TRACE snapshot unavailable, keep last location="
+                        + previousSnapshot.locationName + ", target=" + targetNick);
+                return;
+            }
             stopAutoCompassWithReason("Компас: цель недоступна или pinfo не отвечает.", true);
             return;
         }

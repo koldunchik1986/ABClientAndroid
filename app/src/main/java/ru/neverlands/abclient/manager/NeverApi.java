@@ -113,7 +113,7 @@ public class NeverApi {
             if (nameToId.containsKey(nick)) return nameToId.get(nick);
         }
         try {
-            String encoded = URLEncoder.encode(nick, "windows-1251");
+            String encoded = encodeNeverlandsQueryTail(nick);
             String data = getInfo("http://www.neverlands.ru/modules/api/getid.cgi?" + encoded);
             if (data == null || data.isEmpty()) return null;
             String[] parts = data.split("\\|");
@@ -198,7 +198,7 @@ public class NeverApi {
             return null;
         }
         try {
-            String encoded = URLEncoder.encode(nick.trim(), "windows-1251");
+            String encoded = encodeNeverlandsQueryTail(nick.trim());
             String html = getInfo("http://neverlands.ru/pinfo.cgi?" + encoded);
             PinfoVitals vitals = parsePinfoVitalsFromPinfoHtml(html);
             if (vitals != null) {
@@ -228,7 +228,7 @@ public class NeverApi {
         }
         try {
             String normalizedNick = nick.trim();
-            String encoded = URLEncoder.encode(normalizedNick, "windows-1251");
+            String encoded = encodeNeverlandsQueryTail(normalizedNick);
             String html = getInfo("http://neverlands.ru/pinfo.cgi?" + encoded);
             PinfoCompassSnapshot snapshot = parsePinfoCompassSnapshotFromHtml(normalizedNick, html);
             if (snapshot != null) {
@@ -277,6 +277,18 @@ public class NeverApi {
         return null;
     }
 
+    /**
+     * Кодирует ник в формат "query tail" для URL вида `...pinfo.cgi?<nick>` / `...getid.cgi?<nick>`.
+     *
+     * Важный нюанс сервера Neverlands:
+     * - пробел в хвосте query должен быть `%20`, а не `+`;
+     * - при `+` сервер периодически возвращает HTTP 536 (воспроизводится на никах с пробелами).
+     */
+    private static String encodeNeverlandsQueryTail(String value) throws Exception {
+        String encoded = URLEncoder.encode(value, "windows-1251");
+        return encoded.replace("+", "%20");
+    }
+
     private static PinfoCompassSnapshot parsePinfoCompassSnapshotFromHtml(String nick, String html) {
         if (html == null || html.isEmpty()) {
             return null;
@@ -302,34 +314,163 @@ public class NeverApi {
         if (html == null || html.isEmpty()) {
             return null;
         }
-        Matcher tupleMatcher = Pattern
-                .compile("(?is)\\bvar\\s+parameters\\s*=\\s*\\[\\s*\\[(.*?)\\]\\s*,")
-                .matcher(html);
-        if (!tupleMatcher.find()) {
+        String firstTuple = extractFirstParametersTuple(html);
+        if (firstTuple == null || firstTuple.isEmpty()) {
             return null;
         }
-        String firstTuple = tupleMatcher.group(1);
-        List<String> quotedTokens = parseSingleQuotedJsTokens(firstTuple);
-        if (quotedTokens.size() <= 5) {
+        List<String> tupleElements = parseTopLevelJsArrayElements(firstTuple);
+        // В оригинальном JS местоположение — 6-е поле (index 5) в parameters[0].
+        if (tupleElements.size() <= 5) {
             return null;
         }
-        String location = quotedTokens.get(5);
+        String location = unwrapJsString(tupleElements.get(5));
         if (location == null) {
             return null;
         }
-        return location.replace("\\'", "'").replace("\\\\", "\\").trim();
+        return location.trim();
     }
 
-    private static List<String> parseSingleQuotedJsTokens(String source) {
+    /**
+     * Извлекает содержимое первого кортежа `parameters[0]` из блока:
+     * `var parameters = [[...], [...], ...];`
+     *
+     * Важно: здесь нельзя использовать простой regex с `.*?`, потому что в
+     * строковом поле location встречаются `[` и `]` (например, название замка),
+     * и regex обрывает кортеж раньше времени.
+     */
+    private static String extractFirstParametersTuple(String html) {
+        Matcher parametersMatcher = Pattern.compile("(?is)\\bvar\\s+parameters\\s*=\\s*\\[").matcher(html);
+        if (!parametersMatcher.find()) {
+            return null;
+        }
+
+        int outerArrayOpen = parametersMatcher.end() - 1;
+        int tupleOpen = -1;
+        boolean inSingleQuote = false;
+        boolean escaped = false;
+        for (int index = outerArrayOpen + 1; index < html.length(); index++) {
+            char ch = html.charAt(index);
+            if (escaped) {
+                escaped = false;
+                continue;
+            }
+            if (ch == '\\') {
+                escaped = true;
+                continue;
+            }
+            if (ch == '\'') {
+                inSingleQuote = !inSingleQuote;
+                continue;
+            }
+            if (inSingleQuote) {
+                continue;
+            }
+            if (ch == '[') {
+                tupleOpen = index;
+                break;
+            }
+            if (!Character.isWhitespace(ch)) {
+                return null;
+            }
+        }
+        if (tupleOpen < 0) {
+            return null;
+        }
+
+        int depth = 1;
+        inSingleQuote = false;
+        escaped = false;
+        for (int index = tupleOpen + 1; index < html.length(); index++) {
+            char ch = html.charAt(index);
+            if (escaped) {
+                escaped = false;
+                continue;
+            }
+            if (ch == '\\') {
+                escaped = true;
+                continue;
+            }
+            if (ch == '\'') {
+                inSingleQuote = !inSingleQuote;
+                continue;
+            }
+            if (inSingleQuote) {
+                continue;
+            }
+            if (ch == '[') {
+                depth++;
+            } else if (ch == ']') {
+                depth--;
+                if (depth == 0) {
+                    return html.substring(tupleOpen + 1, index);
+                }
+            }
+        }
+        return null;
+    }
+
+    private static List<String> parseTopLevelJsArrayElements(String source) {
         ArrayList<String> result = new ArrayList<>();
         if (source == null || source.isEmpty()) {
             return result;
         }
-        Matcher tokenMatcher = Pattern.compile("'((?:\\\\.|[^'\\\\])*)'").matcher(source);
-        while (tokenMatcher.find()) {
-            result.add(tokenMatcher.group(1));
+        StringBuilder token = new StringBuilder();
+        boolean inSingleQuote = false;
+        boolean escaped = false;
+        int bracketDepth = 0;
+
+        for (int i = 0; i < source.length(); i++) {
+            char ch = source.charAt(i);
+            if (escaped) {
+                token.append(ch);
+                escaped = false;
+                continue;
+            }
+            if (ch == '\\') {
+                token.append(ch);
+                escaped = true;
+                continue;
+            }
+            if (ch == '\'') {
+                token.append(ch);
+                inSingleQuote = !inSingleQuote;
+                continue;
+            }
+            if (!inSingleQuote) {
+                if (ch == '[') {
+                    bracketDepth++;
+                    token.append(ch);
+                    continue;
+                }
+                if (ch == ']' && bracketDepth > 0) {
+                    bracketDepth--;
+                    token.append(ch);
+                    continue;
+                }
+                if (ch == ',' && bracketDepth == 0) {
+                    result.add(token.toString().trim());
+                    token.setLength(0);
+                    continue;
+                }
+            }
+            token.append(ch);
+        }
+
+        if (token.length() > 0) {
+            result.add(token.toString().trim());
         }
         return result;
+    }
+
+    private static String unwrapJsString(String raw) {
+        if (raw == null) {
+            return null;
+        }
+        String value = raw.trim();
+        if (value.length() >= 2 && value.startsWith("'") && value.endsWith("'")) {
+            value = value.substring(1, value.length() - 1);
+        }
+        return value.replace("\\'", "'").replace("\\\\", "\\");
     }
 
     private static PinfoVitals parsePinfoVitalsFromPinfoHtml(String html) {
@@ -601,7 +742,13 @@ public class NeverApi {
 
             int code = conn.getResponseCode();
             if (code != 200) {
-                android.util.Log.w(TAG, "getInfo: HTTP " + code + " for " + urlString);
+                boolean retryable536 = (code == 536) && shouldRetryNeverApiRequest(urlString);
+                android.util.Log.w(TAG, "getInfo: HTTP " + code + " for " + urlString
+                        + (retryable536 ? " (retry)" : ""));
+                if (retryable536) {
+                    sleepRetryQuietly(220L);
+                    return getInfoRetryOnce(urlString);
+                }
                 return null;
             }
 
@@ -620,6 +767,71 @@ public class NeverApi {
             return null;
         } finally {
             if (conn != null) conn.disconnect();
+        }
+    }
+
+    /**
+     * Повторный единичный запрос для кратковременных сбоев pinfo/getid (HTTP 536).
+     * Без рекурсии, чтобы не зациклиться при постоянной ошибке сервера.
+     */
+    private static String getInfoRetryOnce(String urlString) {
+        HttpURLConnection conn = null;
+        try {
+            URL url = new URL(urlString);
+            java.net.Proxy activeProxy = ProxyRuntimeManager.getActiveJavaProxyOrNull();
+            if (activeProxy == null && ProxyRuntimeManager.isStrictProxyRequiredForCurrentProfile()) {
+                android.util.Log.e(TAG, "PROXY_FAIL: strict proxy enabled and runtime proxy unavailable, blocking direct NeverApi retry: " + urlString);
+                return null;
+            }
+
+            conn = activeProxy != null
+                    ? (HttpURLConnection) url.openConnection(activeProxy)
+                    : (HttpURLConnection) url.openConnection();
+            conn.setConnectTimeout(TIMEOUT_MS);
+            conn.setReadTimeout(TIMEOUT_MS);
+            conn.setRequestMethod("GET");
+
+            String cookie = CookieManager.getInstance().getCookie(urlString);
+            if (cookie != null && !cookie.isEmpty()) {
+                conn.setRequestProperty("Cookie", cookie);
+            }
+            conn.setRequestProperty("User-Agent", AppVars.BROWSER_USER_AGENT);
+
+            int code = conn.getResponseCode();
+            if (code != 200) {
+                android.util.Log.w(TAG, "getInfoRetryOnce: HTTP " + code + " for " + urlString);
+                return null;
+            }
+
+            java.io.InputStream is = conn.getInputStream();
+            java.io.ByteArrayOutputStream baos = new java.io.ByteArrayOutputStream();
+            byte[] buf = new byte[4096];
+            int n;
+            while ((n = is.read(buf)) != -1) baos.write(buf, 0, n);
+            is.close();
+            return Russian.getString(baos.toByteArray());
+        } catch (Exception e) {
+            android.util.Log.w(TAG, "getInfoRetryOnce failed: " + urlString, e);
+            return null;
+        } finally {
+            if (conn != null) conn.disconnect();
+        }
+    }
+
+    private static boolean shouldRetryNeverApiRequest(String urlString) {
+        if (urlString == null) {
+            return false;
+        }
+        String lower = urlString.toLowerCase();
+        return lower.contains("/pinfo.cgi?")
+                || lower.contains("/modules/api/getid.cgi?");
+    }
+
+    private static void sleepRetryQuietly(long millis) {
+        try {
+            Thread.sleep(millis);
+        } catch (InterruptedException ignored) {
+            Thread.currentThread().interrupt();
         }
     }
 
