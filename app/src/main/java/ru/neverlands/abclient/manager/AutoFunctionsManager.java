@@ -1326,7 +1326,7 @@ public class AutoFunctionsManager {
         }
         if (!nextDestination.equals(AppVars.AutoMovingDestinaton) || !AppVars.AutoMoving) {
             startAutoMoving(nextDestination);
-            writeCompassChat("Компас: двигаемся к клетке №" + nextDestination + " (цель: " + escapeHtml(targetNick) + ").");
+            writeCompassMoveChat(nextDestination, targetNick, candidatesSnapshot);
         }
     }
 
@@ -1467,6 +1467,19 @@ public class AutoFunctionsManager {
         FastActionManager.writeChatMsg(html);
     }
 
+    private void writeCompassMoveChat(String nextDestination, String targetNick, List<String> candidatesSnapshot) {
+        StringBuilder htmlBuilder = new StringBuilder();
+        htmlBuilder.append("<font color=#5D7C91><b>[Компас]</b></font> ");
+        htmlBuilder.append("Двигаемся к клетке №")
+                .append(escapeHtml(nextDestination))
+                .append(" (Цель: ")
+                .append(escapeHtml(targetNick))
+                .append("). ");
+        htmlBuilder.append("Возможные клетки: ")
+                .append(formatCompassCellsLinks(candidatesSnapshot));
+        FastActionManager.writeChatMsg(htmlBuilder.toString());
+    }
+
     private String normalizeCompassNick(String value) {
         if (value == null) {
             return "";
@@ -1544,6 +1557,38 @@ public class AutoFunctionsManager {
             builder.append(values.get(i));
         }
         return builder.toString();
+    }
+
+    private String formatCompassCellsLinks(List<String> regNums) {
+        if (regNums == null || regNums.isEmpty()) {
+            return "<font color=#999999>нет</font>";
+        }
+        StringBuilder builder = new StringBuilder();
+        boolean first = true;
+        for (String regNum : regNums) {
+            if (regNum == null) {
+                continue;
+            }
+            String value = regNum.trim();
+            if (value.isEmpty()) {
+                continue;
+            }
+            if (!first) {
+                builder.append(", ");
+            }
+            String safeValue = escapeHtml(value);
+            if (value.matches("\\d{1,4}-\\d{1,5}")) {
+                builder.append("<a style='text-decoration:none' href='http://")
+                        .append(safeValue)
+                        .append("'><b>")
+                        .append(safeValue)
+                        .append("</b></a>");
+            } else {
+                builder.append(safeValue);
+            }
+            first = false;
+        }
+        return builder.length() == 0 ? "<font color=#999999>нет</font>" : builder.toString();
     }
 
     private String escapeHtml(String value) {
