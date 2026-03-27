@@ -142,6 +142,8 @@ public class FunctionListAdapter extends BaseAdapter {
                 return "http://image.neverlands.ru/achievement/13/a_13_10.gif";
             case AUTO_COMPASS:
                 return null;
+            case AUTO_BOSS:
+                return "http://image.neverlands.ru/weapon/i_w28_27.gif";
             case AUTO_INVISIBLE:
                 return "http://image.neverlands.ru/weapon/i_w27_53.gif";
             case LOCATION_TRACKING:
@@ -202,6 +204,8 @@ public class FunctionListAdapter extends BaseAdapter {
             case AUTO_MOVING:
                 return R.drawable.ic_globe;
             case AUTO_COMPASS:
+                return R.drawable.ic_compas;
+            case AUTO_BOSS:
                 return R.drawable.ic_compas;
             case AUTO_TREASURE:
                 return R.drawable.ic_auto_detect;

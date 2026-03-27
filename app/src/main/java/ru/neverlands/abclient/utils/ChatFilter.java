@@ -7,6 +7,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import ru.neverlands.abclient.manager.ChatUserList;
+import ru.neverlands.abclient.manager.AutoFunctionsManager;
 import ru.neverlands.abclient.model.ChatUser;
 
 public class ChatFilter {
@@ -183,6 +184,14 @@ public class ChatFilter {
                         " onclick=\"window.open(this.href);\">лог</a> боя";
             }
             result = result.substring(0, pos1) + msg + result.substring(pos2 + 3);
+        }
+
+        try {
+            if (AppVars.getContext() != null) {
+                AutoFunctionsManager.getInstance(AppVars.getContext()).onIncomingChatMessage(result);
+            }
+        } catch (Exception e) {
+            android.util.Log.w("ChatFilter", "AUTO_BOSS_TRACE chat hook failed", e);
         }
 
         Chat.addStringToChat(result);

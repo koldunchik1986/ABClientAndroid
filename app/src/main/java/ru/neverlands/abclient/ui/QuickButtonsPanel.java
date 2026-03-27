@@ -286,6 +286,8 @@ public class QuickButtonsPanel {
                 return "http://image.neverlands.ru/achievement/13/a_13_10.gif";
             case AUTO_COMPASS:
                 return null;
+            case AUTO_BOSS:
+                return "http://image.neverlands.ru/weapon/i_w28_27.gif";
             case AUTO_INVISIBLE:
                 return "http://image.neverlands.ru/weapon/i_w27_53.gif";
             case LOCATION_TRACKING:
@@ -360,6 +362,7 @@ public class QuickButtonsPanel {
             case AUTO_SKIN:
             case AUTO_ATTACK:
             case AUTO_COMPASS:
+            case AUTO_BOSS:
             case AUTO_INVISIBLE:
             case LOCATION_TRACKING:
             case AUTO_DETECT:
@@ -392,6 +395,8 @@ public class QuickButtonsPanel {
             case AUTO_ATTACK:
                 return R.drawable.ic_auto_attack;
             case AUTO_COMPASS:
+                return R.drawable.ic_compas;
+            case AUTO_BOSS:
                 return R.drawable.ic_compas;
             case AUTO_INVISIBLE:
                 return R.drawable.ic_auto_invisible;
@@ -487,6 +492,11 @@ public class QuickButtonsPanel {
             case AUTO_COMPASS:
                 autoFunctionsManager.toggleAutoCompass();
                 Toast.makeText(context, autoFunctionsManager.isAutoCompassEnabled() ? "Авто-Компас ВКЛ" : "Авто-Компас ВЫКЛ", Toast.LENGTH_SHORT).show();
+                loadAndUpdateButtons();
+                break;
+            case AUTO_BOSS:
+                autoFunctionsManager.toggleAutoBoss();
+                Toast.makeText(context, autoFunctionsManager.isAutoBossEnabled() ? "Авто-Боссы ВКЛ" : "Авто-Боссы ВЫКЛ", Toast.LENGTH_SHORT).show();
                 loadAndUpdateButtons();
                 break;
             case AUTO_INVISIBLE:
@@ -659,6 +669,18 @@ public class QuickButtonsPanel {
                     .setItems(new CharSequence[]{"Настройки авто-компаса", "Удалить кнопку"}, (dialog, which) -> {
                         if (which == 0) {
                             showAutoCompassSettingsDialog();
+                        } else {
+                            showRemoveConfirmation(position);
+                        }
+                    })
+                    .setNegativeButton("Отмена", null)
+                    .show();
+        } else if (button.getActionType() == QuickActionType.AUTO_BOSS) {
+            new AlertDialog.Builder(context)
+                    .setTitle("Авто-Боссы")
+                    .setItems(new CharSequence[]{"Настройки Авто-Боссов", "Удалить кнопку"}, (dialog, which) -> {
+                        if (which == 0) {
+                            showAutoBossSettingsDialog();
                         } else {
                             showRemoveConfirmation(position);
                         }
@@ -1404,6 +1426,107 @@ public class QuickButtonsPanel {
             searchTargetButton.setTextColor(ContextCompat.getColor(context, R.color.white));
             searchTargetButton.setBackgroundColor(ContextCompat.getColor(context, R.color.purple_500));
         }
+    }
+
+    /**
+     * Окно настроек для авто-функции «Авто-Боссы».
+     *
+     * Назначение:
+     * - управляет параметрами сценария BossAuto без дублирования логики в UI-слое;
+     * - сохраняет только пользовательские настройки (опрос/таймауты/вопрос цели), а исполнение остаётся в BossAuto.
+     *
+     * Зависимости:
+     * - `AutoFunctionsManager` предоставляет/сохраняет значения (`get/setAutoBoss*`);
+     * - фактическое выполнение сценария (поиск цели, свиток, возврат) выполняется в `BossAuto.java`;
+     * - ограничения диапазонов валидируются в `BossAuto` (UI передаёт «сырые» числа).
+     */
+    private void showAutoBossSettingsDialog() {
+        final int pad = (int) (context.getResources().getDisplayMetrics().density * 12);
+
+        ScrollView scroll = new ScrollView(context);
+        LinearLayout root = new LinearLayout(context);
+        root.setOrientation(LinearLayout.VERTICAL);
+        root.setPadding(pad, pad, pad, pad);
+        scroll.addView(root);
+
+        CheckBox askTargetCheck = new CheckBox(context);
+        askTargetCheck.setText("Писать цели в чат: %<nick> Подскажи на какой клетке Босс?");
+        askTargetCheck.setChecked(autoFunctionsManager.isAutoBossAskTargetEnabled());
+        root.addView(askTargetCheck);
+
+        TextView waitScrollLabel = new TextView(context);
+        waitScrollLabel.setPadding(0, pad, 0, 0);
+        waitScrollLabel.setText("Ожидание перед свитком, сек (1..10)");
+        root.addView(waitScrollLabel);
+
+        EditText waitScrollInput = new EditText(context);
+        waitScrollInput.setInputType(InputType.TYPE_CLASS_NUMBER);
+        waitScrollInput.setSingleLine(true);
+        waitScrollInput.setText(String.valueOf(autoFunctionsManager.getAutoBossWaitBeforeScrollSec()));
+        root.addView(waitScrollInput);
+
+        TextView searchTimeoutLabel = new TextView(context);
+        searchTimeoutLabel.setPadding(0, pad, 0, 0);
+        searchTimeoutLabel.setText("Таймаут поиска цели, сек (60..1200)");
+        root.addView(searchTimeoutLabel);
+
+        EditText searchTimeoutInput = new EditText(context);
+        searchTimeoutInput.setInputType(InputType.TYPE_CLASS_NUMBER);
+        searchTimeoutInput.setSingleLine(true);
+        searchTimeoutInput.setText(String.valueOf(autoFunctionsManager.getAutoBossSearchTimeoutSec()));
+        root.addView(searchTimeoutInput);
+
+        TextView waitFightLabel = new TextView(context);
+        waitFightLabel.setPadding(0, pad, 0, 0);
+        waitFightLabel.setText("Таймаут ожидания старта боя, сек (10..120)");
+        root.addView(waitFightLabel);
+
+        EditText waitFightInput = new EditText(context);
+        waitFightInput.setInputType(InputType.TYPE_CLASS_NUMBER);
+        waitFightInput.setSingleLine(true);
+        waitFightInput.setText(String.valueOf(autoFunctionsManager.getAutoBossWaitFightTimeoutSec()));
+        root.addView(waitFightInput);
+
+        new AlertDialog.Builder(context)
+                .setTitle("Настройки Авто-Боссов")
+                .setView(scroll)
+                .setPositiveButton("Сохранить", (dialog, which) -> {
+                    int waitScrollSec = autoFunctionsManager.getAutoBossWaitBeforeScrollSec();
+                    int searchTimeoutSec = autoFunctionsManager.getAutoBossSearchTimeoutSec();
+                    int waitFightTimeoutSec = autoFunctionsManager.getAutoBossWaitFightTimeoutSec();
+
+                    try {
+                        String value = waitScrollInput.getText() == null ? "" : waitScrollInput.getText().toString().trim();
+                        if (!value.isEmpty()) {
+                            waitScrollSec = Integer.parseInt(value);
+                        }
+                    } catch (Exception ignored) {
+                    }
+
+                    try {
+                        String value = searchTimeoutInput.getText() == null ? "" : searchTimeoutInput.getText().toString().trim();
+                        if (!value.isEmpty()) {
+                            searchTimeoutSec = Integer.parseInt(value);
+                        }
+                    } catch (Exception ignored) {
+                    }
+
+                    try {
+                        String value = waitFightInput.getText() == null ? "" : waitFightInput.getText().toString().trim();
+                        if (!value.isEmpty()) {
+                            waitFightTimeoutSec = Integer.parseInt(value);
+                        }
+                    } catch (Exception ignored) {
+                    }
+
+                    autoFunctionsManager.setAutoBossAskTargetEnabled(askTargetCheck.isChecked());
+                    autoFunctionsManager.setAutoBossWaitBeforeScrollSec(waitScrollSec);
+                    autoFunctionsManager.setAutoBossSearchTimeoutSec(searchTimeoutSec);
+                    autoFunctionsManager.setAutoBossWaitFightTimeoutSec(waitFightTimeoutSec);
+                    Toast.makeText(context, "Настройки Авто-Боссов сохранены", Toast.LENGTH_SHORT).show();
+                })
+                .setNegativeButton("Отмена", null)
+                .show();
     }
 
     private void showFunctionSelector(int position) {

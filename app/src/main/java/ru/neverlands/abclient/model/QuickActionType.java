@@ -12,6 +12,7 @@ public enum QuickActionType {
     AUTO_BAIT("Авто-Приманка", "auto_bait"),
     AUTO_ATTACK("Авто-Нападение", "auto_attack"),
     AUTO_COMPASS("Авто-Компас", "auto_compass"),
+    AUTO_BOSS("Авто-Боссы", "auto_boss"),
     AUTO_INVISIBLE("Авто-Невид", "auto_invisible"),
     LOCATION_TRACKING("Слежение за локацией", "location_tracking"),
     AUTO_DETECT("Авто-Обнаружение", "auto_detect"),

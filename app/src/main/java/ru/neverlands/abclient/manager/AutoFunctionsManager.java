@@ -67,6 +67,7 @@ public class AutoFunctionsManager {
     private final Context context;
     private final SharedPreferences prefs;
     private final CompasAuto compasAuto;
+    private final BossAuto bossAuto;
     private volatile long lastCharacterSyncRequestedAtMs = 0L;
     
     // SharedPreferences фиксируют состояние автозадач между перезапусками.
@@ -74,6 +75,7 @@ public class AutoFunctionsManager {
         this.context = context.getApplicationContext();
         this.prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
         this.compasAuto = new CompasAuto(this.context, this.prefs, this);
+        this.bossAuto = new BossAuto(this.context, this.prefs, this);
         // Поднимаем runtime-состояние выбранного инструмента авто-нападения из постоянного хранилища.
         migrateLegacyAutoAttackFlagIfNeeded();
         AppVars.AutoAttackToolId = getAutoAttackToolId();
@@ -1078,6 +1080,61 @@ public class AutoFunctionsManager {
 
     public void onRoomUsersUpdated(List<String> roomNicks, String roomLocationName) {
         compasAuto.onRoomUsersUpdated(roomNicks, roomLocationName);
+        bossAuto.onRoomUsersUpdated(roomNicks, roomLocationName);
+    }
+
+    // === AUTO_BOSS (Авто-Боссы) ===
+
+    public boolean isAutoBossEnabled() {
+        return bossAuto.isAutoBossEnabled();
+    }
+
+    public void toggleAutoBoss() {
+        bossAuto.toggleAutoBoss();
+    }
+
+    public void setAutoBossEnabled(boolean enabled) {
+        bossAuto.setAutoBossEnabled(enabled);
+    }
+
+    public void onIncomingChatMessage(String messageHtml) {
+        bossAuto.onIncomingChatMessage(messageHtml);
+    }
+
+    public void tickAutoBoss() {
+        bossAuto.tickAutoBoss();
+    }
+
+    public boolean isAutoBossAskTargetEnabled() {
+        return bossAuto.isAutoBossAskTargetEnabled();
+    }
+
+    public void setAutoBossAskTargetEnabled(boolean enabled) {
+        bossAuto.setAutoBossAskTargetEnabled(enabled);
+    }
+
+    public int getAutoBossWaitBeforeScrollSec() {
+        return bossAuto.getAutoBossWaitBeforeScrollSec();
+    }
+
+    public void setAutoBossWaitBeforeScrollSec(int sec) {
+        bossAuto.setAutoBossWaitBeforeScrollSec(sec);
+    }
+
+    public int getAutoBossSearchTimeoutSec() {
+        return bossAuto.getAutoBossSearchTimeoutSec();
+    }
+
+    public void setAutoBossSearchTimeoutSec(int sec) {
+        bossAuto.setAutoBossSearchTimeoutSec(sec);
+    }
+
+    public int getAutoBossWaitFightTimeoutSec() {
+        return bossAuto.getAutoBossWaitFightTimeoutSec();
+    }
+
+    public void setAutoBossWaitFightTimeoutSec(int sec) {
+        bossAuto.setAutoBossWaitFightTimeoutSec(sec);
     }
     // Внутренние точки расширения для вынесенных модулей (например, `CompasAuto`).
     // Оставляем package-private доступ, чтобы не раскрывать их наружу API менеджера.
@@ -1681,6 +1738,7 @@ public class AutoFunctionsManager {
             case AUTO_SKIN: return isAutoSkinEnabled();
             case AUTO_ATTACK: return isAutoAttackEnabled();
             case AUTO_COMPASS: return isAutoCompassEnabled();
+            case AUTO_BOSS: return isAutoBossEnabled();
             case AUTO_INVISIBLE: return isAutoInvisibleEnabled();
             case LOCATION_TRACKING: return isLocationTrackingEnabled();
             case AUTO_DETECT: return isAutoDetectEnabled();
@@ -1707,6 +1765,7 @@ public class AutoFunctionsManager {
             case AUTO_SKIN: toggleAutoSkin(); break;
             case AUTO_ATTACK: toggleAutoAttack(); break;
             case AUTO_COMPASS: toggleAutoCompass(); break;
+            case AUTO_BOSS: toggleAutoBoss(); break;
             case AUTO_INVISIBLE: toggleAutoInvisible(); break;
             case LOCATION_TRACKING: toggleLocationTracking(); break;
             case AUTO_DETECT: toggleAutoDetect(); break;
@@ -1732,6 +1791,7 @@ public class AutoFunctionsManager {
         setAutoSkinEnabled(false);
         setAutoAttackEnabled(false);
         setAutoCompassEnabled(false);
+        setAutoBossEnabled(false);
         setAutoInvisibleEnabled(false);
         setLocationTrackingEnabled(false);
         setAutoDetectEnabled(false);
