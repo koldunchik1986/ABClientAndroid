@@ -215,7 +215,21 @@ public final class TreasureDig {
         }
         return digClickHtml;
     }
-
+    /**
+     * Продолжает этап подготовки к копке, когда сервер потребовал лопату.
+     *
+     * Последовательность:
+     * 1) ставим паузу небоевых auto-функций и останавливаем текущий маршрут;
+     * 2) гарантируем, что открыта вкладка инвентаря `im=0&wca=3` (лопаты);
+     * 3) проверяем, уже ли одета нужная лопата;
+     * 4) если нет — ищем ссылку "Надеть" и выполняем редирект;
+     * 5) при переходных кадрах делаем ограниченный retry, чтобы не получить ложную отмену.
+     *
+     * Зависимости:
+     * - {@link Host} для инфраструктуры MainPhp (редиректы, разбор инвентаря, URL-параметры);
+     * - {@link AutoFunctionsManager} для настроек типа лопаты;
+     * - {@link AppVars} для runtime-флагов этапа подготовки.
+     */
     private static String continueAutoTreasureDigPreparation(String html,
                                                              String address,
                                                              String selectedShovelOption,
@@ -270,12 +284,33 @@ public final class TreasureDig {
             return host.buildRedirectHtml("Авто-Клад: одеваем лопату", wearLink);
         }
 
+        // Переходный кадр: список предметов уже есть, но ссылка "Надеть" ещё не распарсилась.
+        // Делаем bounded-retry на той же вкладке, чтобы исключить ложное "лопата не найдена".
+        int currentRetryWearLink = host.parseUrlParamInt(address, AUTO_TREASURE_SHOVEL_PREP_RETRY_PARAM, 0);
+        if (currentRetryWearLink < AUTO_TREASURE_SHOVEL_PREP_MAX_RETRIES) {
+            int nextRetry = currentRetryWearLink + 1;
+            String retryUrl = "main.php?im=0&wca=3";
+            if (address != null && !address.isEmpty() && host.isInventoryAddress(address)) {
+                retryUrl = host.normalizeNeverlandsMainLink(address);
+            }
+            retryUrl = host.appendOrReplaceUrlParam(
+                    retryUrl,
+                    AUTO_TREASURE_SHOVEL_PREP_RETRY_PARAM,
+                    String.valueOf(nextRetry));
+            android.util.Log.d(TAG, "AUTO_SEARCH_BOX_TRACE dig flow: shovel wear-link not found yet, retry="
+                    + nextRetry + "/" + AUTO_TREASURE_SHOVEL_PREP_MAX_RETRIES + ", url=" + retryUrl);
+            return host.buildRedirectHtml("Авто-Клад: ожидание доступности лопаты ("
+                    + nextRetry + "/" + AUTO_TREASURE_SHOVEL_PREP_MAX_RETRIES + ")", retryUrl);
+        }
+
+        android.util.Log.w(TAG, "AUTO_SEARCH_BOX_TRACE dig flow: shovel wear-link retry limit reached ("
+                + currentRetryWearLink + "/" + AUTO_TREASURE_SHOVEL_PREP_MAX_RETRIES + ")");
         AppVars.AutoTreasureDigPendingInventory = false;
         AppVars.AutoTreasureShovelReady = false;
         AppVars.AutoTreasureShovelReadyOption = "";
         AppVars.TreasureDigPauseNonCombatAutoFunctions = false;
         host.sendInventoryChatMessage(host.buildServerChatTimeHtml()
-                + "<font color=#FF0000>\u0410\u0432\u0442\u043e-\u041a\u043b\u0430\u0434: \u043b\u043e\u043f\u0430\u0442\u0430 \u043d\u0435 \u043d\u0430\u0439\u0434\u0435\u043d\u0430, \u043a\u043e\u043f\u043a\u0430 \u043e\u0442\u043c\u0435\u043d\u0435\u043d\u0430.</font>");
+                + "<font color=#FF0000>Авто-Клад: лопата не найдена, копка отменена.</font>");
         android.util.Log.w(TAG, "AUTO_SEARCH_BOX_TRACE dig flow: shovel not found, dig cancelled");
         return buildAutoTreasureDigReturnToMapHtml(html, host);
     }

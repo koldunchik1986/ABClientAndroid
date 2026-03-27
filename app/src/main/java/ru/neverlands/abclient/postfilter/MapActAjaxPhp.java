@@ -10,6 +10,21 @@ import ru.neverlands.abclient.manager.AutoFunctionsManager;
 import ru.neverlands.abclient.utils.AppVars;
 import ru.neverlands.abclient.utils.Russian;
 
+/**
+ * PostFilter для ответов `map_act_ajax.php`.
+ *
+ * Назначение:
+ * - разбирать popup/`RESO@[...]`-сообщения после действий на карте;
+ * - публиковать результат копки в чат;
+ * - обрабатывать сценарий "нужна лопата";
+ * - после завершения копки корректно снять fixed-cell режим и возобновить авто-поиск.
+ *
+ * Зависимости:
+ * - {@link AppVars}: runtime-флаги Auto-Клада и контекст приложения;
+ * - {@link TreasureDig}: пауза/остановка навигации на этапе подготовки к копке;
+ * - {@link AutoFunctionsManager}: управление fixed-cell и автодвижением;
+ * - {@link MapAjax}: выбор следующей клетки для продолжения поиска.
+ */
 public class MapActAjaxPhp {
     private static final String TAG = "MapActAjaxPhp";
     private static final String NEED_SHOVEL_MARKER = "\u043d\u0443\u0436\u043d\u0430 \u043b\u043e\u043f\u0430\u0442\u0430";
@@ -19,6 +34,17 @@ public class MapActAjaxPhp {
     private static volatile String lastDigResultMessage = "";
     private static volatile long lastDigResultAtMs = 0L;
 
+    /**
+     * Основная точка входа фильтра `map_act_ajax.php`.
+     *
+     * Поток обработки:
+     * 1) декодируем ответ сервера;
+     * 2) проверяем, что активен Auto-Клад;
+     * 3) извлекаем первую `RESO`-строку;
+     * 4) при необходимости лопаты переводим копку в этап экипировки;
+     * 5) публикуем результат копки в чат;
+     * 6) по финальному результату копки снимаем fixed-cell и возобновляем маршрут поиска.
+     */
     public static byte[] process(byte[] array) {
         if (array == null || array.length == 0) {
             return array;
@@ -34,6 +60,7 @@ public class MapActAjaxPhp {
             if (!autoTreasureActive) {
                 return array;
             }
+
             String resoMessage = extractFirstResoMessage(html);
             String sourceForNeedShovel = (resoMessage != null && !resoMessage.isEmpty()) ? resoMessage : html;
             if (containsNeedShovelPopup(sourceForNeedShovel)) {
@@ -82,8 +109,8 @@ public class MapActAjaxPhp {
 
     /**
      * Признак финального результата копки.
-     * Нужен отдельно от {@link #isTreasureDigResultMessage(String)}, чтобы
-     * не сбрасывать режим "Клад точно здесь" на промежуточных сообщениях.
+     * Отдельно от {@link #isTreasureDigResultMessage(String)}, чтобы не сбрасывать
+     * fixed-cell режим на промежуточных сообщениях.
      */
     private static boolean isTreasureDigCompletedMessage(String message) {
         if (message == null || message.isEmpty()) {
@@ -96,6 +123,10 @@ public class MapActAjaxPhp {
                 || lower.contains("\u043f\u0440\u0435\u0434\u043c\u0435\u0442:");
     }
 
+    /**
+     * Публикует результат копки в чат с дедупликацией по короткому окну,
+     * чтобы не дублировать одинаковые RESO-сообщения.
+     */
     private static void postTreasureDigResultToChat(String rawMessage) {
         if (rawMessage == null) {
             return;
@@ -126,10 +157,12 @@ public class MapActAjaxPhp {
     }
 
     /**
-     * После подтвержденной выкопки отключаем режим "Клад точно здесь":
-     * - сбрасываем флаг fixed-cell;
-     * - очищаем номер клетки;
-     * - оставляем Авто-Клад включенным, чтобы продолжился обычный поиск.
+     * Завершение цикла копки:
+     * - отключаем режим "Клад точно здесь" (fixed-cell), если он был включён;
+     * - оставляем Auto-Клад включённым;
+     * - если навигация остановлена на этапе копки, запускаем следующий маршрут.
+     *
+     * Важно: логика копки не меняется, здесь только оркестрация post-dig состояния.
      */
     private static void disableFixedTreasureCellAfterDig() {
         if (AppVars.getContext() == null) {
@@ -171,6 +204,14 @@ public class MapActAjaxPhp {
         }
     }
 
+    /**
+     * Извлекает первую строку из server-макроса `RESO@[...]`.
+     *
+     * Особенности:
+     * - поиск case-insensitive (`reso@[`), т.к. сервер может менять регистр;
+     * - поддержка escaped-последовательностей (`\\n`, `\\uXXXX` и т.д.);
+     * - возвращает только первую строку сообщения.
+     */
     private static String extractFirstResoMessage(String html) {
         if (html == null || html.isEmpty()) {
             return null;
