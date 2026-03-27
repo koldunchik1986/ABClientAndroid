@@ -10,6 +10,7 @@ public class Cell {
     public boolean HasWater;
     public String HerbGroup;
     public String Name;
+    public String Region;
     public String Tooltip;
     public String Updated;
     public String NameUpdated;

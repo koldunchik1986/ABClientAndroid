@@ -125,6 +125,14 @@ public class UserConfig {
      * - профиль (`mapset@cellfontsize`) — сохранение между перезапусками.
      */
     public int MapCellFontSize = 9;
+    /**
+     * Включает синхронизацию названий/региона клетки карты по данным ch.php + pinfo.
+     *
+     * Назначение:
+     * - управляет модулем переименования клетки по фактическому названию комнаты;
+     * - разрешает фоновую подпитку Region из pinfo для ускорения точного поиска в Авто-Компасе.
+     */
+    public boolean MapRebuildFromPinfo = true;
     public boolean DoHttpLog = false;
     public boolean DoTexLog = false;
     public boolean ShowPerformance = false;
@@ -468,6 +476,7 @@ public class UserConfig {
                         this.MapBigHeight = parseIntAttr(parser, "bigheight", this.MapBigHeight);
                         this.MapBigScale = parseIntAttr(parser, "bigscale", this.MapBigScale);
                         this.MapCellFontSize = parseIntAttr(parser, "cellfontsize", this.MapCellFontSize);
+                        this.MapRebuildFromPinfo = parseBoolAttr(parser, "rebuildfrompinfo", this.MapRebuildFromPinfo);
                         if (this.MapBigWidth < 3) this.MapBigWidth = 3;
                         if (this.MapBigHeight < 3) this.MapBigHeight = 3;
                         if (this.MapBigScale < 50) this.MapBigScale = 50;
@@ -824,6 +833,7 @@ public class UserConfig {
             serializer.attribute(null, "bigheight", String.valueOf(this.MapBigHeight));
             serializer.attribute(null, "bigscale", String.valueOf(this.MapBigScale));
             serializer.attribute(null, "cellfontsize", String.valueOf(this.MapCellFontSize));
+            serializer.attribute(null, "rebuildfrompinfo", String.valueOf(this.MapRebuildFromPinfo));
             serializer.endTag(null, "mapset");
 
             // Настройки инвентаря (группировка/сортировка/массовые кнопки).

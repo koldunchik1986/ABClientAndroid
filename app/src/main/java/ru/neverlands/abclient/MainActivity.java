@@ -586,6 +586,12 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                                         autoTurnHtml = cachedFightHtml;
                                         Log.d(TAG, BG_TRACE_PREFIX + " requestAutoTurn: fallback to cached active fight html after inactive current html, len="
                                                 + cachedFightHtml.length());
+                                        if (!hasPendingAct7FightLink(AppVars.FightLink)) {
+                                            long sinceLastProbeMs = System.currentTimeMillis() - lastAutoTurnServerProbeAtMs;
+                                            if (sinceLastProbeMs >= AUTO_TURN_SERVER_PROBE_MIN_INTERVAL_MS * 4L) {
+                                                requestAutoTurnFromServerProbe("cached_active_fight_html_keepalive_after_inactive_current");
+                                            }
+                                        }
                                     } else {
                                         if (cachedHasMarkers) {
                                             AppVars.ContentMainPhp = "";
@@ -611,6 +617,12 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                                     autoTurnHtml = cachedFightHtml;
                                     Log.d(TAG, BG_TRACE_PREFIX + " requestAutoTurn: fallback to cached active fight html, len="
                                             + cachedFightHtml.length());
+                                    if (allowServerProbeFallback && !hasPendingAct7FightLink(AppVars.FightLink)) {
+                                        long sinceLastProbeMs = System.currentTimeMillis() - lastAutoTurnServerProbeAtMs;
+                                        if (sinceLastProbeMs >= AUTO_TURN_SERVER_PROBE_MIN_INTERVAL_MS * 4L) {
+                                            requestAutoTurnFromServerProbe("cached_active_fight_html_keepalive");
+                                        }
+                                    }
                                 } else {
                                     Log.d(TAG, BG_TRACE_PREFIX + " requestAutoTurn: cached fight html is stale (inactive), drop and probe");
                                     AppVars.ContentMainPhp = "";

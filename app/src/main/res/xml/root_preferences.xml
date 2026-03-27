@@ -46,6 +46,12 @@
             app:summary="Текущий размер шрифта CellDivText" />
 
         <SwitchPreferenceCompat
+            app:key="map_rebuild_from_pinfo"
+            app:title="Пересоздавать карту из инфы (pinfo)"
+            app:summary="Синхронизировать название/регион клетки по ch.php и pinfo"
+            app:defaultValue="true" />
+
+        <SwitchPreferenceCompat
             app:key="do_stop_on_dig"
             app:title="Останавливаться на кладе"
             app:summary="Если появляется кнопка «Копать», Авто-Клад останавливается и подается сигнал"

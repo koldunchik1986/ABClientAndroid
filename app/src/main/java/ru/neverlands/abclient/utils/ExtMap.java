@@ -53,6 +53,15 @@ public class ExtMap {
      * - используется как "грязный буфер" на случай временной ошибки записи файла.
      */
     private static final Map<String, String> pendingLabelUpdates = new HashMap<>();
+    /**
+     * Runtime-индекс "id региона -> текстовое имя региона" из pinfo/карты.
+     *
+     * Нужен для двух задач:
+     * 1) быстрый region-aware поиск одинаковых названий клеток в Авто-Компасе;
+     * 2) дозапись атрибута `region` в `abcells.xml` даже для клеток,
+     *    где region ещё не был явно проставлен в исходном XML.
+     */
+    private static final Map<String, String> regionNameByRegionId = new HashMap<>();
 
     public static synchronized void init(Context context) {
         if (initialized) return;
@@ -70,6 +79,66 @@ public class ExtMap {
 
     public static String makeRegNum(String region, int number) {
         return region + "-" + String.format(Locale.US, "%03d", number);
+    }
+
+    private static String extractRegionId(String regNum) {
+        if (regNum == null) {
+            return "";
+        }
+        String value = regNum.trim();
+        if (value.isEmpty()) {
+            return "";
+        }
+        int dash = value.indexOf('-');
+        if (dash <= 0) {
+            return "";
+        }
+        return value.substring(0, dash).trim();
+    }
+
+    private static String normalizeRegionLabel(String label) {
+        if (label == null) {
+            return "";
+        }
+        return label.replace('\u00A0', ' ').replaceAll("\\s+", " ").trim();
+    }
+
+    private static void rememberRegionMapping(String regNum, String regionLabel) {
+        String normalizedRegion = normalizeRegionLabel(regionLabel);
+        if (normalizedRegion.isEmpty()) {
+            return;
+        }
+        String regionId = extractRegionId(regNum);
+        if (regionId.isEmpty()) {
+            return;
+        }
+        regionNameByRegionId.put(regionId, normalizedRegion);
+        Cell cell = Cells.get(regNum);
+        if (cell != null) {
+            cell.Region = normalizedRegion;
+        }
+    }
+
+    public static synchronized String resolveRegionLabelForRegNum(String regNum) {
+        if (regNum == null) {
+            return "";
+        }
+        String normalizedReg = regNum.trim();
+        if (normalizedReg.isEmpty()) {
+            return "";
+        }
+        Cell cell = Cells.get(normalizedReg);
+        if (cell != null) {
+            String fromCell = normalizeRegionLabel(cell.Region);
+            if (!fromCell.isEmpty()) {
+                return fromCell;
+            }
+        }
+        String regionId = extractRegionId(normalizedReg);
+        if (regionId.isEmpty()) {
+            return "";
+        }
+        return normalizeRegionLabel(regionNameByRegionId.get(regionId));
     }
 
     private static void buildRegions() {
@@ -161,7 +230,12 @@ public class ExtMap {
                             cell.Name = name != null ? name.trim() : "";
                             String tooltip = parser.getAttributeValue(null, "tooltip");
                             cell.Tooltip = tooltip != null ? tooltip.trim() : "";
+                            String region = parser.getAttributeValue(null, "region");
+                            cell.Region = region != null ? normalizeRegionLabel(region) : "";
                             Cells.put(cellNumber, cell);
+                            if (!cell.Region.isEmpty()) {
+                                rememberRegionMapping(cellNumber, cell.Region);
+                            }
                         }
                     }
                 }
@@ -176,6 +250,7 @@ public class ExtMap {
         AssetManager assets = context.getAssets();
         Map<String, Integer> abcCosts = new HashMap<>();
         Map<String, String> abcLabels = new HashMap<>();
+        Map<String, String> abcRegions = new HashMap<>();
         int loadedVisitedCount = 0;
         AppVars.SearchBoxVisited.clear();
         InputStream input = null;
@@ -212,6 +287,11 @@ public class ExtMap {
                         regnum = regnum.trim();
                         String label = parser.getAttributeValue(null, "label");
                         abcLabels.put(regnum, label != null ? label : "");
+                        String region = parser.getAttributeValue(null, "region");
+                        String normalizedRegion = normalizeRegionLabel(region);
+                        if (!normalizedRegion.isEmpty()) {
+                            abcRegions.put(regnum, normalizedRegion);
+                        }
                         String visited = parser.getAttributeValue(null, "visited");
                         long visitedMs = parseAbcVisitedMs(visited);
                         if (visitedMs > 0L) {
@@ -254,12 +334,21 @@ public class ExtMap {
                 if (abcLabels.containsKey(regnum)) {
                     Cells.get(regnum).Name = abcLabels.get(regnum);
                 }
+                String region = abcRegions.get(regnum);
+                if (!normalizeRegionLabel(region).isEmpty()) {
+                    Cells.get(regnum).Region = normalizeRegionLabel(region);
+                    rememberRegionMapping(regnum, region);
+                }
             } else {
                 Cell cell = new Cell();
                 cell.CellNumber = regnum;
                 cell.Cost = cost;
                 cell.Name = abcLabels.containsKey(regnum) ? abcLabels.get(regnum) : "";
+                cell.Region = normalizeRegionLabel(abcRegions.get(regnum));
                 Cells.put(regnum, cell);
+                if (!cell.Region.isEmpty()) {
+                    rememberRegionMapping(regnum, cell.Region);
+                }
             }
         }
     }
@@ -384,6 +473,60 @@ public class ExtMap {
         return oldLabel;
     }
 
+    /**
+     * Синхронизирует мета-данные клетки из собственного pinfo:
+     * - `region` (текстовый регион из `parameters[0][5]`);
+     * - `label` (имя клетки внутри квадратных скобок).
+     *
+     * Метод расширяет существующий конвейер, не создавая дубликаты логики:
+     * - обновление label делается через `syncCellLabelFromServer(...)`;
+     * - персист выполняется тем же `persistVisitedToExternalFile(...)`,
+     *   который уже поддерживает атомарную запись `abcells.xml`.
+     *
+     * @return `true`, если изменился region и/или label.
+     */
+    public static synchronized boolean syncCellMetaFromPinfo(String regNum,
+                                                             String pinfoRegion,
+                                                             String pinfoCellName) {
+        if (regNum == null) {
+            return false;
+        }
+        String normalizedReg = regNum.trim();
+        if (normalizedReg.isEmpty() || !Cells.containsKey(normalizedReg)) {
+            return false;
+        }
+
+        boolean regionChanged = false;
+        String normalizedRegion = normalizeRegionLabel(pinfoRegion);
+        if (!normalizedRegion.isEmpty()) {
+            String oldRegion = resolveRegionLabelForRegNum(normalizedReg);
+            if (!normalizedRegion.equals(normalizeRegionLabel(oldRegion))) {
+                rememberRegionMapping(normalizedReg, normalizedRegion);
+                regionChanged = true;
+            }
+        }
+
+        boolean labelChanged = false;
+        String normalizedCellName = normalizeCellLabel(pinfoCellName);
+        if (!normalizedCellName.isEmpty()) {
+            String oldLabel = syncCellLabelFromServer(normalizedReg, normalizedCellName);
+            labelChanged = oldLabel != null;
+        }
+
+        if (regionChanged && !labelChanged) {
+            Context context = appContext != null ? appContext : AppVars.getContext();
+            if (context != null) {
+                boolean persisted = persistVisitedToExternalFile(context);
+                if (persisted) {
+                    visitedPersistPending = false;
+                    lastVisitedPersistAtMs = System.currentTimeMillis();
+                }
+            }
+        }
+
+        return regionChanged || labelChanged;
+    }
+
     private static void persistVisitedIfNeeded(boolean force) {
         if (!visitedPersistPending) {
             return;
@@ -455,7 +598,9 @@ public class ExtMap {
 
                     boolean hasVisitedAttr = false;
                     boolean hasLabelAttr = false;
+                    boolean hasRegionAttr = false;
                     String pendingLabel = regnum != null ? pendingLabelUpdates.get(regnum) : null;
+                    String resolvedRegion = regnum != null ? resolveRegionLabelForRegNum(regnum) : "";
                     for (int i = 0; i < attrCount; i++) {
                         String attrNamespace = parser.getAttributeNamespace(i);
                         if (attrNamespace != null && attrNamespace.isEmpty()) {
@@ -474,6 +619,11 @@ public class ExtMap {
                             if (pendingLabel != null && !pendingLabel.isEmpty()) {
                                 attrValue = pendingLabel;
                             }
+                        } else if ("region".equalsIgnoreCase(attrName)) {
+                            hasRegionAttr = true;
+                            if (!resolvedRegion.isEmpty()) {
+                                attrValue = resolvedRegion;
+                            }
                         }
                         serializer.attribute(attrNamespace, attrName, attrValue != null ? attrValue : "");
                     }
@@ -486,6 +636,9 @@ public class ExtMap {
                     }
                     if ("cell".equalsIgnoreCase(tag) && !hasLabelAttr && pendingLabel != null && !pendingLabel.isEmpty()) {
                         serializer.attribute(null, "label", pendingLabel);
+                    }
+                    if ("cell".equalsIgnoreCase(tag) && !hasRegionAttr && !resolvedRegion.isEmpty()) {
+                        serializer.attribute(null, "region", resolvedRegion);
                     }
                 } else if (event == XmlPullParser.END_TAG) {
                     String tag = parser.getName();

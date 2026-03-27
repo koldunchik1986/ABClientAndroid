@@ -240,7 +240,7 @@ final class CompasAuto {
             );
         }
 
-        List<String> resolvedCandidates = buildCompassCandidates(locationName);
+        List<String> resolvedCandidates = buildCompassCandidates(locationName, locationRegion);
         if (resolvedCandidates.isEmpty()) {
             String label = locationRegion.isEmpty() ? locationName : (locationRegion + " [" + locationName + "]");
             return new AutoFunctionsManager.CompassLocationResolveResult(
@@ -504,7 +504,7 @@ final class CompasAuto {
         }
 
         if (shouldRebuildCandidates) {
-            List<String> resolvedCandidates = buildCompassCandidates(locationName);
+            List<String> resolvedCandidates = buildCompassCandidates(locationName, locationRegion);
             if (resolvedCandidates.isEmpty()) {
                 String label = locationRegion.isEmpty() ? locationName : (locationRegion + " [" + locationName + "]");
                 stopAutoCompassWithReason("Компас: не найдено клеток для локации \"" + label + "\".", true);
@@ -668,7 +668,7 @@ final class CompasAuto {
         }
     }
 
-    private List<String> buildCompassCandidates(String locationName) {
+    private List<String> buildCompassCandidates(String locationName, String locationRegion) {
         List<String> manualCells = normalizeCompassRegNumList(parseCompassRegNumList(getAutoCompassManualCellsCsv()));
         if (!manualCells.isEmpty()) {
             return manualCells;
@@ -678,19 +678,34 @@ final class CompasAuto {
         if (normalizedTarget.isEmpty()) {
             return Collections.emptyList();
         }
+        String normalizedTargetRegion = normalizeCompassLabel(locationRegion);
         LinkedHashSet<String> exactByName = new LinkedHashSet<>();
         LinkedHashSet<String> fallbackByTooltip = new LinkedHashSet<>();
+        LinkedHashSet<String> regionMatched = new LinkedHashSet<>();
         for (CellEntry entry : collectCellEntries()) {
             String normalizedName = normalizeCompassLabel(entry.name);
             if (normalizedTarget.equals(normalizedName)) {
                 exactByName.add(entry.regNum);
+                if (!normalizedTargetRegion.isEmpty()
+                        && normalizedTargetRegion.equals(normalizeCompassLabel(entry.region))) {
+                    regionMatched.add(entry.regNum);
+                }
                 continue;
             }
             String normalizedTooltip = normalizeCompassLabel(entry.tooltip);
             if (normalizedTarget.equals(normalizedTooltip)) {
                 fallbackByTooltip.add(entry.regNum);
+                if (!normalizedTargetRegion.isEmpty()
+                        && normalizedTargetRegion.equals(normalizeCompassLabel(entry.region))) {
+                    regionMatched.add(entry.regNum);
+                }
             }
         }
+
+        if (!regionMatched.isEmpty()) {
+            return normalizeCompassRegNumList(new ArrayList<>(regionMatched));
+        }
+
         ArrayList<String> result = new ArrayList<>(exactByName.size() + fallbackByTooltip.size());
         result.addAll(exactByName);
         for (String regNum : fallbackByTooltip) {
@@ -707,7 +722,12 @@ final class CompasAuto {
             if (mapEntry.getValue() == null) {
                 continue;
             }
-            entries.add(new CellEntry(mapEntry.getKey(), mapEntry.getValue().Name, mapEntry.getValue().Tooltip));
+            String regNum = mapEntry.getKey();
+            entries.add(new CellEntry(
+                    regNum,
+                    mapEntry.getValue().Name,
+                    mapEntry.getValue().Tooltip,
+                    ExtMap.resolveRegionLabelForRegNum(regNum)));
         }
         entries.sort((left, right) -> left.regNum.compareTo(right.regNum));
         return entries;
@@ -1074,11 +1094,13 @@ final class CompasAuto {
         final String regNum;
         final String name;
         final String tooltip;
+        final String region;
 
-        CellEntry(String regNum, String name, String tooltip) {
+        CellEntry(String regNum, String name, String tooltip, String region) {
             this.regNum = regNum == null ? "" : regNum.trim();
             this.name = name == null ? "" : name;
             this.tooltip = tooltip == null ? "" : tooltip;
+            this.region = region == null ? "" : region;
         }
     }
 }

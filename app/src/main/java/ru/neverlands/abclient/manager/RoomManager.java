@@ -39,6 +39,7 @@ public class RoomManager {
     private static final long AUTO_CURE_ROOM_SCAN_INTERVAL_MS = 12_000L;
     private static final long AUTO_CURE_ROOM_PINFO_CACHE_TTL_MS = 30_000L;
     private static final long AUTO_CURE_POST_SUBMIT_VERIFY_DELAY_MS = 1_500L;
+    private static final long MAP_PINFO_SYNC_COOLDOWN_MS = 15_000L;
     // Последние raw-элементы ChatListU по нику (lowercase), чтобы другие модули
     // (например, Auto-Компас) могли рендерить ник/иконки/уровень/травмы 1:1 как room-list.
     private static final Map<String, String> lastRoomChatEntryByNick = new ConcurrentHashMap<>();
@@ -53,6 +54,8 @@ public class RoomManager {
     private static volatile String pendingRoomLocationName;
     private static volatile String pendingRoomLocationTargetRegNum;
     private static volatile long pendingRoomLocationNameAtMs;
+    private static volatile long lastMapPinfoSyncAtMs = 0L;
+    private static volatile boolean mapPinfoSyncInFlight = false;
 
     private static final class CachedRoomPinfoState {
         final int woundType;
@@ -82,6 +85,7 @@ public class RoomManager {
     // Метод `process(...)` содержит портированную логику разбора списка комнаты.
     public static String process(Context context, String html) {
         syncCellNameFromRoomHtml(context, html);
+        maybeSyncCellMetaFromOwnPinfo(context);
         Log.d(TAG, BG_TRACE_PREFIX + " process: htmlLen=" + (html == null ? 0 : html.length())
                 + ", contextNull=" + (context == null)
                 + ", doShowWalkers=" + AppVars.DoShowWalkers);
@@ -216,6 +220,10 @@ public class RoomManager {
         if (context == null || isEmpty(html) || AppVars.Profile == null) {
             return;
         }
+        if (!isMapRebuildFromPinfoEnabled()) {
+            clearPendingRoomLocationName();
+            return;
+        }
         String serverLocationName = extractLocationName(html);
         if (isEmpty(serverLocationName)) {
             return;
@@ -264,6 +272,68 @@ public class RoomManager {
 
         applyCellNameSyncAndNotify(regNum, serverLocationName);
         clearPendingRoomLocationName();
+    }
+
+    private static boolean isMapRebuildFromPinfoEnabled() {
+        return AppVars.Profile != null && AppVars.Profile.MapRebuildFromPinfo;
+    }
+
+    private static void maybeSyncCellMetaFromOwnPinfo(Context context) {
+        if (context == null || AppVars.Profile == null || !isMapRebuildFromPinfoEnabled()) {
+            return;
+        }
+        if (!isNatureMapContextForCellRename()) {
+            return;
+        }
+        String mapRegNum = normalizeRegNum(AppVars.Profile.MapLocation);
+        if (isEmpty(mapRegNum) || !ExtMap.Cells.containsKey(mapRegNum)) {
+            return;
+        }
+        String ownNick = AppVars.Profile.UserNick;
+        if (isEmpty(ownNick)) {
+            return;
+        }
+
+        long now = System.currentTimeMillis();
+        if (mapPinfoSyncInFlight || (now - lastMapPinfoSyncAtMs) < MAP_PINFO_SYNC_COOLDOWN_MS) {
+            return;
+        }
+        mapPinfoSyncInFlight = true;
+        final String requestRegNum = mapRegNum;
+        final String requestNick = ownNick.trim();
+
+        new Thread(() -> {
+            try {
+                NeverApi.PinfoCompassSnapshot snapshot = NeverApi.getPinfoCompassSnapshot(requestNick);
+                if (snapshot == null || snapshot.offlineOrInvisible) {
+                    return;
+                }
+                String locationName = snapshot.locationName == null ? "" : snapshot.locationName.trim();
+                String locationRegion = snapshot.locationRegion == null ? "" : snapshot.locationRegion.trim();
+                if (isEmpty(locationName) && isEmpty(locationRegion)) {
+                    return;
+                }
+
+                String liveRegNum = null;
+                if (AppVars.Profile != null) {
+                    liveRegNum = normalizeRegNum(AppVars.Profile.MapLocation);
+                }
+                if (isEmpty(liveRegNum) || !requestRegNum.equals(liveRegNum)) {
+                    return;
+                }
+
+                boolean changed = ExtMap.syncCellMetaFromPinfo(requestRegNum, locationRegion, locationName);
+                if (changed) {
+                    Log.d(TAG, "MAP_NAME_SYNC_TRACE: pinfo meta sync applied, reg=" + requestRegNum
+                            + ", region=" + locationRegion + ", cell=" + locationName);
+                }
+            } catch (Exception e) {
+                Log.w(TAG, "MAP_NAME_SYNC_TRACE: pinfo meta sync failed", e);
+            } finally {
+                lastMapPinfoSyncAtMs = System.currentTimeMillis();
+                mapPinfoSyncInFlight = false;
+            }
+        }, "map-pinfo-sync").start();
     }
 
     /**

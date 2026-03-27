@@ -278,6 +278,17 @@ public class SettingsActivity extends AppCompatActivity {
             // - поле профиля `UserConfig.RazdChatReport` (load/save XML профиля);
             // - ветка `MainPhp.mainPhpGetSkinRes`, где этот флаг управляет отправкой
             //   системного сообщения "Результат разделки" в чат.
+            SwitchPreferenceCompat mapRebuildFromPinfoPref = findPreference("map_rebuild_from_pinfo");
+            if (mapRebuildFromPinfoPref != null && AppVars.Profile != null) {
+                mapRebuildFromPinfoPref.setChecked(AppVars.Profile.MapRebuildFromPinfo);
+                mapRebuildFromPinfoPref.setOnPreferenceChangeListener((preference, newValue) -> {
+                    boolean value = (Boolean) newValue;
+                    AppVars.Profile.MapRebuildFromPinfo = value;
+                    AppVars.Profile.save(requireContext());
+                    return true;
+                });
+            }
+
             Preference mapSizePref = findPreference("map_size_cells");
             if (mapSizePref != null && AppVars.Profile != null) {
                 int normalizedWidth = normalizeMapSizeValue(AppVars.Profile.MapBigWidth);
