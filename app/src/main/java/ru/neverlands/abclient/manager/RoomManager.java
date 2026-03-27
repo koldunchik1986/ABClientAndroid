@@ -57,6 +57,7 @@ public class RoomManager {
     private static volatile long lastMapPinfoSyncAtMs = 0L;
     private static volatile boolean mapPinfoSyncInFlight = false;
     private static volatile String lastOwnPinfoRegion = "";
+    private static volatile String lastOwnPinfoCellName = "";
 
     private static final class CachedRoomPinfoState {
         final int woundType;
@@ -328,6 +329,9 @@ public class RoomManager {
                 if (!isEmpty(locationRegion)) {
                     lastOwnPinfoRegion = locationRegion;
                 }
+                if (!isEmpty(locationName)) {
+                    lastOwnPinfoCellName = locationName;
+                }
 
                 String liveRegNum = null;
                 if (AppVars.Profile != null) {
@@ -435,20 +439,61 @@ public class RoomManager {
      * @return `true`, если произошло реальное изменение; иначе `false`.
      */
     private static boolean applyCellNameSyncAndNotify(String regNum, String serverLocationName) {
-        String oldLabel = ExtMap.syncCellLabelFromServer(regNum, serverLocationName);
-        if (isEmpty(oldLabel)) {
+        String normalizedReg = normalizeRegNum(regNum);
+        String normalizedServer = normalizeCellLabel(serverLocationName);
+        if (isEmpty(normalizedReg) || isEmpty(normalizedServer)) {
+            return false;
+        }
+        String oldLabel = normalizeCellLabel(getCellName(normalizedReg));
+        String ownPinfoRegionHint = resolveOwnPinfoRegionForCell(normalizedReg, normalizedServer);
+
+        // Region-aware синхронизация карты:
+        // - если есть валидная подсказка региона из pinfo (`parameters[0][5]`),
+        //   обновляем и `Cell.Name`, и `Cell.Region` одним вызовом;
+        // - иначе оставляем существующий путь (синхронизация только названия).
+        if (!isEmpty(ownPinfoRegionHint)) {
+            ExtMap.syncCellMetaFromPinfo(normalizedReg, ownPinfoRegionHint, normalizedServer);
+            Log.d(TAG, "MAP_NAME_SYNC_TRACE: apply with pinfo region, reg=" + normalizedReg
+                    + ", region=" + ownPinfoRegionHint + ", name=" + normalizedServer);
+        } else {
+            ExtMap.syncCellLabelFromServer(normalizedReg, normalizedServer);
+        }
+
+        if (isEmpty(oldLabel) || oldLabel.equals(normalizedServer)) {
             return false;
         }
 
         String safeOld = escapeHtml(oldLabel);
-        String safeNew = escapeHtml(serverLocationName);
+        String safeNew = escapeHtml(normalizedServer);
         FastActionManager.writeChatMsg(
                 "<font color=#5D7C91><b>[Карта]</b></font> "
-                        + "Клетка №" + regNum + " - \"" + safeOld + "\" заменено на "
-                        + "Клетка №" + regNum + " - \"" + safeNew + "\""
+                        + "Клетка №" + normalizedReg + " - \"" + safeOld + "\" заменено на "
+                        + "Клетка №" + normalizedReg + " - \"" + safeNew + "\""
         );
-        Log.d(TAG, "MAP_NAME_SYNC_TRACE: reg=" + regNum + ", old=" + oldLabel + ", new=" + serverLocationName);
+        Log.d(TAG, "MAP_NAME_SYNC_TRACE: reg=" + normalizedReg + ", old=" + oldLabel + ", new=" + normalizedServer);
         return true;
+    }
+
+    /**
+     * Возвращает region-подсказку из собственного pinfo только когда она согласована с клеткой:
+     * - `regNum` должен совпадать с текущей клеткой профиля;
+     * - `CellName` из pinfo должен совпадать с серверным названием из room (`placename`).
+     *
+     * Такой guard не даёт применять устаревший region после перехода между клетками.
+     */
+    private static String resolveOwnPinfoRegionForCell(String regNum, String serverCellName) {
+        if (isEmpty(regNum) || isEmpty(serverCellName) || AppVars.Profile == null) {
+            return "";
+        }
+        String currentReg = normalizeRegNum(AppVars.Profile.MapLocation);
+        if (isEmpty(currentReg) || !currentReg.equals(regNum)) {
+            return "";
+        }
+        String cachedCell = normalizeCellLabel(lastOwnPinfoCellName);
+        if (isEmpty(cachedCell) || !cachedCell.equals(serverCellName)) {
+            return "";
+        }
+        return lastOwnPinfoRegion == null ? "" : lastOwnPinfoRegion.trim();
     }
 
     /**
