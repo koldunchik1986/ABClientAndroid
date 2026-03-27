@@ -13,6 +13,9 @@ import androidx.annotation.NonNull;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 
+import java.net.URLDecoder;
+
+import ru.neverlands.abclient.manager.AutoFunctionsManager;
 import ru.neverlands.abclient.model.Contact;
 import ru.neverlands.abclient.utils.AppVars;
 
@@ -51,7 +54,22 @@ public class PinfoActivity extends AppCompatActivity {
     private void extractNickFromUrl(String url) {
         try {
             Uri uri = Uri.parse(url);
-            this.nick = uri.getQuery(); // In pinfo.cgi?nick, the query is the nick
+            String query = uri.getQuery();
+            if (query == null) {
+                this.nick = null;
+                return;
+            }
+            String candidate = query;
+            int ampIndex = candidate.indexOf('&');
+            if (ampIndex >= 0) {
+                candidate = candidate.substring(0, ampIndex);
+            }
+            int equalIndex = candidate.indexOf('=');
+            if (equalIndex >= 0 && equalIndex < candidate.length() - 1) {
+                candidate = candidate.substring(equalIndex + 1);
+            }
+            candidate = URLDecoder.decode(candidate, "windows-1251").trim();
+            this.nick = candidate.isEmpty() ? null : candidate;
         } catch (Exception e) {
             this.nick = null;
         }
@@ -72,7 +90,6 @@ public class PinfoActivity extends AppCompatActivity {
         }
 
         if (id == R.id.action_pinfo_private) {
-            // TODO: Implement private message logic
             Toast.makeText(this, "Приват для " + nick, Toast.LENGTH_SHORT).show();
             return true;
         } else if (id == R.id.action_pinfo_add_contact) {
@@ -81,11 +98,17 @@ public class PinfoActivity extends AppCompatActivity {
                 new AlertDialog.Builder(this)
                         .setTitle("Добавить контакт: " + nick)
                         .setItems(items, (dialog, which) -> {
-                            int classId = 0;
+                            int classId;
                             switch (which) {
-                                case 0: classId = 1; break; // Foe
-                                case 1: classId = 2; break; // Friend
-                                case 2: classId = 0; break; // Neutral
+                                case 0:
+                                    classId = 1;
+                                    break;
+                                case 1:
+                                    classId = 2;
+                                    break;
+                                default:
+                                    classId = 0;
+                                    break;
                             }
                             Contact contact = new Contact();
                             contact.nick = nick;
@@ -98,15 +121,14 @@ public class PinfoActivity extends AppCompatActivity {
             }
             return true;
         } else if (id == R.id.action_pinfo_add_clan) {
-            // TODO: Implement add clan logic
             Toast.makeText(this, "Добавить клан игрока " + nick, Toast.LENGTH_SHORT).show();
             return true;
         } else if (id == R.id.action_pinfo_compas) {
-            // TODO: Implement compas logic
-            Toast.makeText(this, "Компас для " + nick, Toast.LENGTH_SHORT).show();
+            AutoFunctionsManager.getInstance(this).startManualCompassSearch(nick);
+            Toast.makeText(this, "Компас: поиск " + nick, Toast.LENGTH_SHORT).show();
             return true;
         } else if (id == android.R.id.home) {
-            finish(); // Handle Up button
+            finish();
             return true;
         }
 

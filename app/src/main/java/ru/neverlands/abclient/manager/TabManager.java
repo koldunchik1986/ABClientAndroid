@@ -248,10 +248,14 @@ public class TabManager {
         ImageButton btn1 = actionBar.findViewById(R.id.action_button_1);
         ImageButton btn2 = actionBar.findViewById(R.id.action_button_2);
         ImageButton btn3 = actionBar.findViewById(R.id.action_button_3);
+        ImageButton btn4 = actionBar.findViewById(R.id.action_button_4);
 
         btn1.setVisibility(View.VISIBLE);
         btn2.setVisibility(View.VISIBLE);
         btn3.setVisibility(View.VISIBLE);
+        if (btn4 != null) {
+            btn4.setVisibility(View.VISIBLE);
+        }
 
         switch (tabInfo.tabType) {
             case FORUM:
@@ -282,6 +286,9 @@ public class TabManager {
                         copyToClipboard(tabInfo.url);
                     }
                 });
+                if (btn4 != null) {
+                    btn4.setVisibility(View.GONE);
+                }
                 break;
 
             case PINFO:
@@ -298,10 +305,16 @@ public class TabManager {
                     addToContacts(tabInfo.title);
                 });
 
-                btn3.setImageResource(R.drawable.ic_close);
+                btn3.setImageResource(R.drawable.ic_location);
                 btn3.setOnClickListener(v -> {
-                    closeCurrentTab();
+                    startCompassFromPinfoTab(tabInfo);
                 });
+                if (btn4 != null) {
+                    btn4.setImageResource(R.drawable.ic_close);
+                    btn4.setOnClickListener(v -> {
+                        closeCurrentTab();
+                    });
+                }
                 break;
 
             case OTHER:
@@ -309,10 +322,19 @@ public class TabManager {
                 // Для других вкладок - только кнопка закрытия
                 btn1.setVisibility(View.GONE);
                 btn2.setVisibility(View.GONE);
-                btn3.setImageResource(R.drawable.ic_close);
-                btn3.setOnClickListener(v -> {
-                    closeCurrentTab();
-                });
+                btn3.setVisibility(View.GONE);
+                if (btn4 != null) {
+                    btn4.setImageResource(R.drawable.ic_close);
+                    btn4.setOnClickListener(v -> {
+                        closeCurrentTab();
+                    });
+                } else {
+                    btn3.setVisibility(View.VISIBLE);
+                    btn3.setImageResource(R.drawable.ic_close);
+                    btn3.setOnClickListener(v -> {
+                        closeCurrentTab();
+                    });
+                }
                 break;
         }
     }
@@ -321,6 +343,49 @@ public class TabManager {
      * Скопировать текст в буфер обмена.
      */
     // Скопировать URL/текст в буфер.
+    private void startCompassFromPinfoTab(TabInfo tabInfo) {
+        String nick = resolvePinfoNick(tabInfo);
+        if (nick == null || nick.trim().isEmpty()) {
+            Toast.makeText(context, "Не удалось определить ник для Компаса", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        AutoFunctionsManager.getInstance(context).startManualCompassSearch(nick.trim());
+        Toast.makeText(context, "Компас: поиск " + nick, Toast.LENGTH_SHORT).show();
+    }
+
+    private String resolvePinfoNick(TabInfo tabInfo) {
+        if (tabInfo == null) {
+            return null;
+        }
+        String title = tabInfo.title == null ? "" : tabInfo.title.trim();
+        if (!title.isEmpty() && !"PINFO".equalsIgnoreCase(title)) {
+            return title;
+        }
+        String url = tabInfo.url == null ? "" : tabInfo.url;
+        if (url.isEmpty()) {
+            return null;
+        }
+        try {
+            Uri uri = Uri.parse(url);
+            String query = uri.getQuery();
+            if (query != null && !query.trim().isEmpty()) {
+                return URLDecoder.decode(query, "windows-1251").trim();
+            }
+            int index = url.toLowerCase(Locale.ROOT).indexOf("pinfo.cgi?");
+            if (index >= 0) {
+                String encodedNick = url.substring(index + "pinfo.cgi?".length());
+                int amp = encodedNick.indexOf('&');
+                if (amp >= 0) {
+                    encodedNick = encodedNick.substring(0, amp);
+                }
+                return URLDecoder.decode(encodedNick, "windows-1251").trim();
+            }
+        } catch (Exception e) {
+            Log.w(TAG, "resolvePinfoNick failed: url=" + tabInfo.url, e);
+        }
+        return null;
+    }
+
     private void copyToClipboard(String text) {
         ClipboardManager clipboard = (ClipboardManager) context.getSystemService(Context.CLIPBOARD_SERVICE);
         ClipData clip = ClipData.newPlainText("URL", text);

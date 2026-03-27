@@ -11,6 +11,7 @@ public enum QuickActionType {
     AUTO_FISH("Авто-Рыбалка", "auto_fish"),
     AUTO_BAIT("Авто-Приманка", "auto_bait"),
     AUTO_ATTACK("Авто-Нападение", "auto_attack"),
+    AUTO_COMPASS("Авто-Компас", "auto_compass"),
     AUTO_INVISIBLE("Авто-Невид", "auto_invisible"),
     LOCATION_TRACKING("Слежение за локацией", "location_tracking"),
     AUTO_DETECT("Авто-Обнаружение", "auto_detect"),
@@ -22,14 +23,14 @@ public enum QuickActionType {
     AUTO_CUT("Авто-Травник", "auto_cut"),
     AUTO_REFRESH("Авто-Обновление", "auto_refresh"),
     AUTO_SKIN("Авто-Охота", "auto_skin"),
-    
+
     // Дополнительные действия
     OPEN_CONTACTS("Открыть контакты", "open_contacts"),
     OPEN_PINFO("Открыть PINFO", "open_pinfo"),
     OPEN_LOGS("Открыть Логи", "open_logs"),
     OPEN_STATS("Статистика", "open_stats"),
     REFRESH_CONTACTS("Обновить контакты", "refresh_contacts"),
-    
+
     // Быстрые действия на себя
     QUICK_SELF_RASS("Рассеять невид", "quick_self_rass", "selfRass"),
     QUICK_OPEN_NEVID("Обнаружение", "quick_open_nevid", "openNevid"),
@@ -39,7 +40,7 @@ public enum QuickActionType {
     QUICK_ELIXIR_BLAZ("Эликсир Блаженства", "quick_elixir_blaz", "elixirBlaz"),
     QUICK_ELIXIR_CURE("Эликсир Исцеления", "quick_elixir_cure", "elixirCure"),
     QUICK_ELIXIR_RESTORE("Эликсир Восстановления", "quick_elixir_restore", "elixirRestore"),
-    
+
     // Пустая кнопка
     NONE("Пустая", "none", null);
 

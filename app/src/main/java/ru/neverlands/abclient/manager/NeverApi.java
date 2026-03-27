@@ -8,7 +8,9 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 import java.net.URLEncoder;
 import java.nio.charset.Charset;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -68,6 +70,32 @@ public class NeverApi {
             this.curTire = curTire;
             this.poisonAndWounds = normalizePoisonAndWounds(poisonAndWounds);
             this.topWoundType = normalizeTopWoundType(topWoundType);
+        }
+    }
+
+    /**
+     * Снимок PINFO для контура "Компас/Авто-компас".
+     * Содержит только то, что нужно для цикла поиска:
+     * - ник цели,
+     * - текст местоположения (parameters[0][5]),
+     * - текущую усталость (0..100),
+     * - серверное время получения снимка.
+     */
+    public static final class PinfoCompassSnapshot {
+        public final String nick;
+        public final String locationName;
+        public final Integer curTire;
+        public final long capturedAtMs;
+
+        public PinfoCompassSnapshot(String nick, String locationName, Integer curTire, long capturedAtMs) {
+            this.nick = nick == null ? "" : nick.trim();
+            this.locationName = locationName == null ? "" : locationName.trim();
+            this.curTire = curTire;
+            this.capturedAtMs = capturedAtMs;
+        }
+
+        public boolean isValid() {
+            return !locationName.isEmpty();
         }
     }
 
@@ -190,6 +218,34 @@ public class NeverApi {
         }
     }
 
+    /**
+     * Снимок pinfo для компаса (ник + местоположение + усталость).
+     * Используется в AutoCompass-цикле на каждом шаге опроса.
+     */
+    public static PinfoCompassSnapshot getPinfoCompassSnapshot(String nick) {
+        if (nick == null || nick.trim().isEmpty()) {
+            return null;
+        }
+        try {
+            String normalizedNick = nick.trim();
+            String encoded = URLEncoder.encode(normalizedNick, "windows-1251");
+            String html = getInfo("http://neverlands.ru/pinfo.cgi?" + encoded);
+            PinfoCompassSnapshot snapshot = parsePinfoCompassSnapshotFromHtml(normalizedNick, html);
+            if (snapshot != null) {
+                android.util.Log.d(TAG, "AUTO_COMPASS_TRACE snapshot: nick=" + snapshot.nick
+                        + ", location=" + snapshot.locationName
+                        + ", tied=" + safeInt(snapshot.curTire)
+                        + ", capturedAt=" + snapshot.capturedAtMs);
+            } else {
+                android.util.Log.w(TAG, "AUTO_COMPASS_TRACE snapshot: parse failed for nick=" + normalizedNick);
+            }
+            return snapshot;
+        } catch (Exception e) {
+            android.util.Log.w(TAG, "AUTO_COMPASS_TRACE snapshot: request failed for nick=" + nick, e);
+            return null;
+        }
+    }
+
     private static Integer parseCurrentTiedFromPinfoHtml(String html) {
         if (html == null || html.isEmpty()) {
             return null;
@@ -219,6 +275,61 @@ public class NeverApi {
             android.util.Log.w(TAG, "AUTO_BLAZ_TRACE parseCurrentTiedFromPinfoHtml failed", e);
         }
         return null;
+    }
+
+    private static PinfoCompassSnapshot parsePinfoCompassSnapshotFromHtml(String nick, String html) {
+        if (html == null || html.isEmpty()) {
+            return null;
+        }
+        try {
+            String location = parsePinfoLocationFromParameters(html);
+            Integer tied = parseCurrentTiedFromPinfoHtml(html);
+            if ((location == null || location.trim().isEmpty()) && tied == null) {
+                return null;
+            }
+            return new PinfoCompassSnapshot(nick, location, tied, System.currentTimeMillis());
+        } catch (Exception e) {
+            android.util.Log.w(TAG, "AUTO_COMPASS_TRACE parsePinfoCompassSnapshotFromHtml failed", e);
+            return null;
+        }
+    }
+
+    /**
+     * Достаёт `parameters[0][5]` из pinfo:
+     * var parameters = [[...,'Локация',...], [...], [...]];
+     */
+    private static String parsePinfoLocationFromParameters(String html) {
+        if (html == null || html.isEmpty()) {
+            return null;
+        }
+        Matcher tupleMatcher = Pattern
+                .compile("(?is)\\bvar\\s+parameters\\s*=\\s*\\[\\s*\\[(.*?)\\]\\s*,")
+                .matcher(html);
+        if (!tupleMatcher.find()) {
+            return null;
+        }
+        String firstTuple = tupleMatcher.group(1);
+        List<String> quotedTokens = parseSingleQuotedJsTokens(firstTuple);
+        if (quotedTokens.size() <= 5) {
+            return null;
+        }
+        String location = quotedTokens.get(5);
+        if (location == null) {
+            return null;
+        }
+        return location.replace("\\'", "'").replace("\\\\", "\\").trim();
+    }
+
+    private static List<String> parseSingleQuotedJsTokens(String source) {
+        ArrayList<String> result = new ArrayList<>();
+        if (source == null || source.isEmpty()) {
+            return result;
+        }
+        Matcher tokenMatcher = Pattern.compile("'((?:\\\\.|[^'\\\\])*)'").matcher(source);
+        while (tokenMatcher.find()) {
+            result.add(tokenMatcher.group(1));
+        }
+        return result;
     }
 
     private static PinfoVitals parsePinfoVitalsFromPinfoHtml(String html) {

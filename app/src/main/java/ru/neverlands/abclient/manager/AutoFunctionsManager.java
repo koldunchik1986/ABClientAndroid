@@ -7,6 +7,13 @@ import android.widget.Toast;
 
 import androidx.preference.PreferenceManager;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Locale;
+import java.util.Set;
+
 import ru.neverlands.abclient.MainActivity;
 import ru.neverlands.abclient.model.AutoboiState;
 import ru.neverlands.abclient.model.QuickActionType;
@@ -33,8 +40,18 @@ public class AutoFunctionsManager {
     private static final String KEY_AUTO_ATTACK_TOOL_ID = KEY_PREFIX + "auto_attack_tool_id";
     private static final String KEY_AUTO_ATTACK_LAST_NON_ZERO_TOOL_ID = KEY_PREFIX + "auto_attack_last_non_zero_tool_id";
     private static final String KEY_LOCATION_TRACKING = KEY_PREFIX + "location_tracking";
+    private static final String KEY_AUTO_COMPASS = KEY_PREFIX + "auto_compass";
     private static final String KEY_WALKERS_POLL_INTERVAL_SEC = KEY_PREFIX + "walkers_poll_interval_sec";
     private static final int WALKERS_POLL_INTERVAL_DEFAULT_SEC = 1;
+    private static final String PREF_AUTO_COMPASS_TARGET_NICK = "auto_compass_target_nick";
+    private static final String PREF_AUTO_COMPASS_HUNT_MODE = "auto_compass_hunt_mode";
+    private static final String PREF_AUTO_COMPASS_POLL_INTERVAL_SEC = "auto_compass_poll_interval_sec";
+    private static final String PREF_AUTO_COMPASS_LAST_LOCATION = "auto_compass_last_location";
+    private static final String PREF_AUTO_COMPASS_CELLS_CSV = "auto_compass_cells_csv";
+    private static final String PREF_AUTO_COMPASS_MANUAL_CELLS_CSV = "auto_compass_manual_cells_csv";
+    private static final int AUTO_COMPASS_POLL_DEFAULT_SEC = 2;
+    private static final int AUTO_COMPASS_POLL_MIN_SEC = 1;
+    private static final int AUTO_COMPASS_POLL_MAX_SEC = 5;
     // Настройки Авто-Лечения (UI long-press + MainPhp/RoomManager используют общий набор ключей).
     private static final String PREF_AUTO_CURE_WOUND_LIGHT = "auto_cure_wound_light";
     private static final String PREF_AUTO_CURE_WOUND_MEDIUM = "auto_cure_wound_medium";
@@ -60,6 +77,16 @@ public class AutoFunctionsManager {
     private final Context context;
     private final SharedPreferences prefs;
     private volatile long lastCharacterSyncRequestedAtMs = 0L;
+    private final Object autoCompassLock = new Object();
+    private final ArrayList<String> autoCompassCandidateCells = new ArrayList<>();
+    private final LinkedHashSet<String> autoCompassCheckedCells = new LinkedHashSet<>();
+    private final LinkedHashSet<String> autoCompassLastRoomNicks = new LinkedHashSet<>();
+    private volatile long autoCompassLastTickAtMs = 0L;
+    private volatile long autoCompassLastRoomUpdateAtMs = 0L;
+    private volatile boolean autoCompassPinfoInFlight = false;
+    private volatile String autoCompassCurrentDestination = "";
+    private volatile boolean autoCompassManualSingleRun = false;
+    private volatile NeverApi.PinfoCompassSnapshot autoCompassLastSnapshot = null;
     
     // SharedPreferences фиксируют состояние автозадач между перезапусками.
     private AutoFunctionsManager(Context context) {
@@ -933,6 +960,588 @@ public class AutoFunctionsManager {
         }
     }
 
+    // === AUTO_COMPASS (Компас/Авто-компас) ===
+
+    // Авто-компас: текущее состояние.
+    public boolean isAutoCompassEnabled() {
+        return prefs.getBoolean(KEY_AUTO_COMPASS, false);
+    }
+
+    // Переключение авто-компаса.
+    public void toggleAutoCompass() {
+        setAutoCompassEnabled(!isAutoCompassEnabled());
+    }
+
+    // Включение/выключение авто-компаса.
+    public void setAutoCompassEnabled(boolean enabled) {
+        prefs.edit().putBoolean(KEY_AUTO_COMPASS, enabled).apply();
+        if (enabled) {
+            if (!isLocationTrackingEnabled()) {
+                setLocationTrackingEnabled(true);
+            }
+            if (isAutoTreasureEnabled()) {
+                setAutoTreasureEnabled(false);
+            }
+            if (AppVars.AutoMoving && !isAutoCompassMovingNow()) {
+                stopAutoMoving();
+            }
+            requestCharacterSyncForAutoFunctionEnable("auto_compass");
+            autoCompassLastTickAtMs = 0L;
+            tickAutoCompass(true);
+        } else {
+            boolean shouldStopMoving = AppVars.AutoMoving && isAutoCompassMovingNow();
+            autoCompassPinfoInFlight = false;
+            autoCompassManualSingleRun = false;
+            synchronized (autoCompassLock) {
+                autoCompassCurrentDestination = "";
+                autoCompassCandidateCells.clear();
+                autoCompassCheckedCells.clear();
+            }
+            if (shouldStopMoving) {
+                stopAutoMoving();
+            }
+        }
+        Log.d(TAG, "setAutoCompassEnabled: " + enabled);
+        syncBackgroundService("setAutoCompassEnabled(" + enabled + ")");
+    }
+
+    public String getAutoCompassTargetNick() {
+        return normalizeCompassNick(getDefaultString(PREF_AUTO_COMPASS_TARGET_NICK, ""));
+    }
+
+    public void setAutoCompassTargetNick(String nick) {
+        String normalized = normalizeCompassNick(nick);
+        putDefaultString(PREF_AUTO_COMPASS_TARGET_NICK, normalized);
+        synchronized (autoCompassLock) {
+            autoCompassCurrentDestination = "";
+            autoCompassCandidateCells.clear();
+            autoCompassCheckedCells.clear();
+            autoCompassLastSnapshot = null;
+        }
+        if (isAutoCompassEnabled()) {
+            autoCompassLastTickAtMs = 0L;
+            tickAutoCompass(true);
+        }
+    }
+
+    public boolean isAutoCompassHuntMode() {
+        return getDefaultBoolean(PREF_AUTO_COMPASS_HUNT_MODE, true);
+    }
+
+    public void setAutoCompassHuntMode(boolean enabled) {
+        putDefaultBoolean(PREF_AUTO_COMPASS_HUNT_MODE, enabled);
+    }
+
+    public int getAutoCompassPollIntervalSec() {
+        int value = getDefaultInt(PREF_AUTO_COMPASS_POLL_INTERVAL_SEC, AUTO_COMPASS_POLL_DEFAULT_SEC);
+        return normalizeAutoCompassPollIntervalSec(value);
+    }
+
+    public void setAutoCompassPollIntervalSec(int sec) {
+        int safe = normalizeAutoCompassPollIntervalSec(sec);
+        putDefaultInt(PREF_AUTO_COMPASS_POLL_INTERVAL_SEC, safe);
+    }
+
+    public String getAutoCompassLastLocationLabel() {
+        return getDefaultString(PREF_AUTO_COMPASS_LAST_LOCATION, "");
+    }
+
+    public String getAutoCompassCellsCsv() {
+        return getDefaultString(PREF_AUTO_COMPASS_CELLS_CSV, "");
+    }
+
+    public String getAutoCompassManualCellsCsv() {
+        return getDefaultString(PREF_AUTO_COMPASS_MANUAL_CELLS_CSV, "");
+    }
+
+    public void setAutoCompassManualCellsCsv(String csv) {
+        List<String> normalized = normalizeCompassRegNumList(parseCompassRegNumList(csv));
+        putDefaultString(PREF_AUTO_COMPASS_MANUAL_CELLS_CSV, joinCompassRegNums(normalized));
+        synchronized (autoCompassLock) {
+            autoCompassCurrentDestination = "";
+            autoCompassCandidateCells.clear();
+            autoCompassCheckedCells.clear();
+        }
+        if (isAutoCompassEnabled()) {
+            autoCompassLastTickAtMs = 0L;
+            tickAutoCompass(true);
+        }
+    }
+
+    public void startManualCompassSearch(String nick) {
+        String normalized = normalizeCompassNick(nick);
+        if (normalized.isEmpty()) {
+            writeCompassChat("Компас: не удалось определить ник цели.");
+            return;
+        }
+        setAutoCompassTargetNick(normalized);
+        autoCompassManualSingleRun = true;
+        setAutoCompassEnabled(true);
+    }
+
+    public void tickAutoCompass() {
+        tickAutoCompass(false);
+    }
+
+    public void onRoomUsersUpdated(List<String> roomNicks, String roomLocationName) {
+        LinkedHashSet<String> normalizedRoomNicks = new LinkedHashSet<>();
+        if (roomNicks != null) {
+            for (String nick : roomNicks) {
+                String normalized = normalizeCompassNick(nick).toLowerCase(Locale.ROOT);
+                if (!normalized.isEmpty()) {
+                    normalizedRoomNicks.add(normalized);
+                }
+            }
+        }
+        synchronized (autoCompassLock) {
+            autoCompassLastRoomNicks.clear();
+            autoCompassLastRoomNicks.addAll(normalizedRoomNicks);
+            autoCompassLastRoomUpdateAtMs = System.currentTimeMillis();
+        }
+        if (!isAutoCompassEnabled()) {
+            return;
+        }
+        String targetNick = getAutoCompassTargetNick();
+        if (targetNick.isEmpty()) {
+            return;
+        }
+        if (normalizedRoomNicks.contains(targetNick.toLowerCase(Locale.ROOT))) {
+            String foundRegNum = getCurrentMapLocationRegNum();
+            if (!foundRegNum.isEmpty()) {
+                finishAutoCompassFound(foundRegNum);
+                return;
+            }
+        }
+        if (roomLocationName != null && !roomLocationName.trim().isEmpty()) {
+            putDefaultString(PREF_AUTO_COMPASS_LAST_LOCATION, roomLocationName.trim());
+        }
+    }
+
+    private void tickAutoCompass(boolean forceNow) {
+        if (!isAutoCompassEnabled()) {
+            return;
+        }
+        long now = System.currentTimeMillis();
+        long minIntervalMs = Math.max(1_000L, getAutoCompassPollIntervalSec() * 1000L);
+        if (!forceNow && (now - autoCompassLastTickAtMs) < minIntervalMs) {
+            return;
+        }
+        autoCompassLastTickAtMs = now;
+
+        final String targetNick = getAutoCompassTargetNick();
+        if (targetNick.isEmpty()) {
+            stopAutoCompassWithReason("Компас: укажите цель поиска.", true);
+            return;
+        }
+        if (autoCompassPinfoInFlight) {
+            return;
+        }
+        autoCompassPinfoInFlight = true;
+        new Thread(() -> {
+            NeverApi.PinfoCompassSnapshot snapshot = null;
+            try {
+                snapshot = NeverApi.getPinfoCompassSnapshot(targetNick);
+            } catch (Exception e) {
+                Log.w(TAG, "tickAutoCompass: failed to fetch pinfo snapshot for " + targetNick, e);
+            } finally {
+                autoCompassPinfoInFlight = false;
+            }
+            applyAutoCompassSnapshot(targetNick, snapshot);
+        }, "auto-compass-pinfo").start();
+    }
+
+    private void applyAutoCompassSnapshot(String targetNick, NeverApi.PinfoCompassSnapshot snapshot) {
+        if (!isAutoCompassEnabled()) {
+            return;
+        }
+        if (snapshot == null || isEmpty(snapshot.locationName)) {
+            stopAutoCompassWithReason("Компас: цель недоступна или pinfo не отвечает.", true);
+            return;
+        }
+
+        String locationName = snapshot.locationName.trim();
+        String normalizedLocation = normalizeCompassLabel(locationName);
+        if (normalizedLocation.isEmpty()) {
+            stopAutoCompassWithReason("Компас: не удалось определить локацию цели.", true);
+            return;
+        }
+        putDefaultString(PREF_AUTO_COMPASS_LAST_LOCATION, locationName);
+
+        boolean shouldRebuildCandidates;
+        synchronized (autoCompassLock) {
+            NeverApi.PinfoCompassSnapshot previousSnapshot = autoCompassLastSnapshot;
+            boolean locationChanged = previousSnapshot == null
+                    || !normalizeCompassLabel(previousSnapshot.locationName).equals(normalizedLocation);
+            boolean tiredChanged = previousSnapshot == null
+                    || (snapshot.curTire != null && !snapshot.curTire.equals(previousSnapshot.curTire));
+            shouldRebuildCandidates = autoCompassCandidateCells.isEmpty()
+                    || locationChanged
+                    || (locationChanged && tiredChanged);
+            autoCompassLastSnapshot = snapshot;
+        }
+
+        if (shouldRebuildCandidates) {
+            List<String> resolvedCandidates = buildCompassCandidates(locationName);
+            if (resolvedCandidates.isEmpty()) {
+                stopAutoCompassWithReason("Компас: не найдено клеток для локации \"" + locationName + "\".", true);
+                return;
+            }
+            synchronized (autoCompassLock) {
+                autoCompassCandidateCells.clear();
+                autoCompassCandidateCells.addAll(resolvedCandidates);
+                autoCompassCheckedCells.clear();
+                autoCompassCurrentDestination = "";
+            }
+            putDefaultString(PREF_AUTO_COMPASS_CELLS_CSV, joinCompassRegNums(resolvedCandidates));
+            Log.d(TAG, "AUTO_COMPASS_TRACE candidates rebuilt: location=" + locationName
+                    + ", count=" + resolvedCandidates.size()
+                    + ", cells=" + joinCompassRegNums(resolvedCandidates));
+        }
+
+        continueAutoCompassNavigation(targetNick);
+    }
+
+    private void continueAutoCompassNavigation(String targetNick) {
+        if (!isAutoCompassEnabled()) {
+            return;
+        }
+        String currentRegNum = getCurrentMapLocationRegNum();
+        if (currentRegNum.isEmpty()) {
+            stopAutoCompassWithReason("Компас: текущая клетка неизвестна, дождитесь обновления карты.", true);
+            return;
+        }
+
+        if (isTargetPresentInLatestRoom(targetNick)) {
+            finishAutoCompassFound(currentRegNum);
+            return;
+        }
+
+        List<String> candidatesSnapshot;
+        Set<String> checkedSnapshot;
+        String currentDestination;
+        synchronized (autoCompassLock) {
+            candidatesSnapshot = new ArrayList<>(autoCompassCandidateCells);
+            checkedSnapshot = new LinkedHashSet<>(autoCompassCheckedCells);
+            currentDestination = autoCompassCurrentDestination;
+        }
+        if (candidatesSnapshot.isEmpty()) {
+            stopAutoCompassWithReason("Компас: список клеток пуст, поиск остановлен.", true);
+            return;
+        }
+
+        boolean huntAll = shouldAutoCompassHuntAllCells();
+        if (!currentDestination.isEmpty()
+                && currentRegNum.equals(currentDestination)
+                && !AppVars.AutoMoving) {
+            synchronized (autoCompassLock) {
+                autoCompassCheckedCells.add(currentDestination);
+                autoCompassCurrentDestination = "";
+            }
+            if (!huntAll) {
+                stopAutoCompassWithReason("Компас: цель не найдена на ближайшей клетке.", true);
+                return;
+            }
+            if (isTargetPresentInLatestRoom(targetNick)) {
+                finishAutoCompassFound(currentRegNum);
+                return;
+            }
+        }
+
+        if (!currentDestination.isEmpty()
+                && AppVars.AutoMoving
+                && currentDestination.equals(AppVars.AutoMovingDestinaton)) {
+            return;
+        }
+
+        String nextDestination = "";
+        for (int attempt = 0; attempt < 3; attempt++) {
+            List<String> pending = new ArrayList<>();
+            for (String regNum : candidatesSnapshot) {
+                if (!checkedSnapshot.contains(regNum)) {
+                    pending.add(regNum);
+                }
+            }
+            if (pending.isEmpty()) {
+                stopAutoCompassWithReason("Компас: цель не найдена, все клетки проверены.", true);
+                return;
+            }
+            nextDestination = chooseNearestCompassCell(currentRegNum, pending);
+            if (nextDestination.isEmpty()) {
+                stopAutoCompassWithReason("Компас: не удалось выбрать следующую клетку.", true);
+                return;
+            }
+            if (!nextDestination.equals(currentRegNum)) {
+                break;
+            }
+            checkedSnapshot.add(nextDestination);
+            synchronized (autoCompassLock) {
+                autoCompassCheckedCells.add(nextDestination);
+            }
+            if (!huntAll) {
+                stopAutoCompassWithReason("Компас: цель не найдена на ближайшей клетке.", true);
+                return;
+            }
+            nextDestination = "";
+        }
+
+        if (nextDestination.isEmpty()) {
+            return;
+        }
+
+        if (AppVars.DoSearchBox && isAutoTreasureEnabled()) {
+            setAutoTreasureEnabled(false);
+        }
+        if (AppVars.AutoMoving && !nextDestination.equals(AppVars.AutoMovingDestinaton)) {
+            stopAutoMoving();
+        }
+        synchronized (autoCompassLock) {
+            autoCompassCurrentDestination = nextDestination;
+        }
+        if (!nextDestination.equals(AppVars.AutoMovingDestinaton) || !AppVars.AutoMoving) {
+            startAutoMoving(nextDestination);
+            writeCompassChat("Компас: двигаемся к клетке №" + nextDestination + " (цель: " + escapeHtml(targetNick) + ").");
+        }
+    }
+
+    private List<String> buildCompassCandidates(String locationName) {
+        List<String> manualCells = normalizeCompassRegNumList(parseCompassRegNumList(getAutoCompassManualCellsCsv()));
+        if (!manualCells.isEmpty()) {
+            return manualCells;
+        }
+
+        String normalizedTarget = normalizeCompassLabel(locationName);
+        if (normalizedTarget.isEmpty()) {
+            return Collections.emptyList();
+        }
+        LinkedHashSet<String> exactByName = new LinkedHashSet<>();
+        LinkedHashSet<String> fallbackByTooltip = new LinkedHashSet<>();
+        for (CellEntry entry : collectCellEntries()) {
+            String normalizedName = normalizeCompassLabel(entry.name);
+            if (normalizedTarget.equals(normalizedName)) {
+                exactByName.add(entry.regNum);
+                continue;
+            }
+            String normalizedTooltip = normalizeCompassLabel(entry.tooltip);
+            if (normalizedTarget.equals(normalizedTooltip)) {
+                fallbackByTooltip.add(entry.regNum);
+            }
+        }
+        ArrayList<String> result = new ArrayList<>(exactByName.size() + fallbackByTooltip.size());
+        result.addAll(exactByName);
+        for (String regNum : fallbackByTooltip) {
+            if (!exactByName.contains(regNum)) {
+                result.add(regNum);
+            }
+        }
+        return normalizeCompassRegNumList(result);
+    }
+
+    private List<CellEntry> collectCellEntries() {
+        ArrayList<CellEntry> entries = new ArrayList<>();
+        for (java.util.Map.Entry<String, ru.neverlands.abclient.model.Cell> mapEntry : ExtMap.Cells.entrySet()) {
+            if (mapEntry.getValue() == null) {
+                continue;
+            }
+            entries.add(new CellEntry(mapEntry.getKey(), mapEntry.getValue().Name, mapEntry.getValue().Tooltip));
+        }
+        entries.sort((left, right) -> left.regNum.compareTo(right.regNum));
+        return entries;
+    }
+
+    private String chooseNearestCompassCell(String currentRegNum, List<String> candidates) {
+        if (candidates == null || candidates.isEmpty()) {
+            return "";
+        }
+        if (currentRegNum != null && candidates.contains(currentRegNum)) {
+            return currentRegNum;
+        }
+        if (currentRegNum == null || currentRegNum.isEmpty()) {
+            return candidates.get(0);
+        }
+        try {
+            MapPath path = new MapPath(currentRegNum, candidates);
+            if (path.pathExists && path.destination != null && !path.destination.trim().isEmpty()) {
+                return path.destination.trim();
+            }
+        } catch (Exception e) {
+            Log.w(TAG, "chooseNearestCompassCell: path build failed, current=" + currentRegNum, e);
+        }
+        return candidates.get(0);
+    }
+
+    private boolean isTargetPresentInLatestRoom(String targetNick) {
+        if (targetNick == null || targetNick.trim().isEmpty()) {
+            return false;
+        }
+        String key = targetNick.trim().toLowerCase(Locale.ROOT);
+        synchronized (autoCompassLock) {
+            if (System.currentTimeMillis() - autoCompassLastRoomUpdateAtMs > 20_000L) {
+                return false;
+            }
+            return autoCompassLastRoomNicks.contains(key);
+        }
+    }
+
+    private String getCurrentMapLocationRegNum() {
+        if (AppVars.Profile == null || AppVars.Profile.MapLocation == null) {
+            return "";
+        }
+        String value = AppVars.Profile.MapLocation.trim();
+        return value.isEmpty() ? "" : value;
+    }
+
+    private boolean shouldAutoCompassHuntAllCells() {
+        return isAutoCompassHuntMode() && !autoCompassManualSingleRun;
+    }
+
+    private boolean isAutoCompassMovingNow() {
+        String destination = autoCompassCurrentDestination;
+        return destination != null
+                && !destination.isEmpty()
+                && AppVars.AutoMoving
+                && destination.equals(AppVars.AutoMovingDestinaton);
+    }
+
+    private void finishAutoCompassFound(String regNum) {
+        String safeReg = regNum == null ? "" : regNum.trim();
+        String message = safeReg.isEmpty()
+                ? "Компас: игрок найден."
+                : "Компас: Игрок найден на клетке №" + safeReg + ".";
+        stopAutoCompassWithReason(message, false);
+    }
+
+    private void stopAutoCompassWithReason(String message, boolean keepEnabledWhenManualStop) {
+        writeCompassChat(message);
+        autoCompassManualSingleRun = false;
+        if (!keepEnabledWhenManualStop) {
+            setAutoCompassEnabled(false);
+            return;
+        }
+        if (isAutoCompassEnabled()) {
+            boolean shouldStopMoving = AppVars.AutoMoving && isAutoCompassMovingNow();
+            prefs.edit().putBoolean(KEY_AUTO_COMPASS, false).apply();
+            synchronized (autoCompassLock) {
+                autoCompassCurrentDestination = "";
+                autoCompassCandidateCells.clear();
+                autoCompassCheckedCells.clear();
+            }
+            if (shouldStopMoving) {
+                stopAutoMoving();
+            }
+            syncBackgroundService("autoCompassStopReason");
+        }
+    }
+
+    private void writeCompassChat(String message) {
+        if (message == null || message.trim().isEmpty()) {
+            return;
+        }
+        String html = "<font color=#5D7C91><b>[Компас]</b></font> " + escapeHtml(message);
+        FastActionManager.writeChatMsg(html);
+    }
+
+    private String normalizeCompassNick(String value) {
+        if (value == null) {
+            return "";
+        }
+        return value.replace('\u00A0', ' ').replaceAll("\\s+", " ").trim();
+    }
+
+    private String normalizeCompassLabel(String value) {
+        if (value == null) {
+            return "";
+        }
+        return value.replace('\u00A0', ' ').replaceAll("\\s+", " ").trim().toLowerCase(Locale.ROOT);
+    }
+
+    private int normalizeAutoCompassPollIntervalSec(int sec) {
+        if (sec < AUTO_COMPASS_POLL_MIN_SEC) {
+            return AUTO_COMPASS_POLL_MIN_SEC;
+        }
+        if (sec > AUTO_COMPASS_POLL_MAX_SEC) {
+            return AUTO_COMPASS_POLL_MAX_SEC;
+        }
+        if (sec == 1 || sec == 2 || sec == 5) {
+            return sec;
+        }
+        return AUTO_COMPASS_POLL_DEFAULT_SEC;
+    }
+
+    private List<String> parseCompassRegNumList(String csv) {
+        if (csv == null || csv.trim().isEmpty()) {
+            return Collections.emptyList();
+        }
+        String[] tokens = csv.split("[,;\\s]+");
+        ArrayList<String> result = new ArrayList<>();
+        for (String token : tokens) {
+            if (token == null) {
+                continue;
+            }
+            String value = token.trim();
+            if (!value.isEmpty()) {
+                result.add(value);
+            }
+        }
+        return result;
+    }
+
+    private List<String> normalizeCompassRegNumList(List<String> values) {
+        if (values == null || values.isEmpty()) {
+            return Collections.emptyList();
+        }
+        LinkedHashSet<String> unique = new LinkedHashSet<>();
+        for (String value : values) {
+            if (value == null) {
+                continue;
+            }
+            String normalized = value.trim();
+            if (normalized.isEmpty()) {
+                continue;
+            }
+            if (ExtMap.Cells.containsKey(normalized)) {
+                unique.add(normalized);
+            }
+        }
+        return new ArrayList<>(unique);
+    }
+
+    private String joinCompassRegNums(List<String> values) {
+        if (values == null || values.isEmpty()) {
+            return "";
+        }
+        StringBuilder builder = new StringBuilder();
+        for (int i = 0; i < values.size(); i++) {
+            if (i > 0) {
+                builder.append(", ");
+            }
+            builder.append(values.get(i));
+        }
+        return builder.toString();
+    }
+
+    private String escapeHtml(String value) {
+        if (value == null) {
+            return "";
+        }
+        return value
+                .replace("&", "&amp;")
+                .replace("<", "&lt;")
+                .replace(">", "&gt;")
+                .replace("\"", "&quot;");
+    }
+
+    private static final class CellEntry {
+        final String regNum;
+        final String name;
+        final String tooltip;
+
+        CellEntry(String regNum, String name, String tooltip) {
+            this.regNum = regNum == null ? "" : regNum.trim();
+            this.name = name == null ? "" : name;
+            this.tooltip = tooltip == null ? "" : tooltip;
+        }
+    }
+
     private void syncBackgroundService(String reason) {
         try {
             AutoModeForegroundService.syncServiceState(context, reason);
@@ -1045,6 +1654,27 @@ public class AutoFunctionsManager {
         } catch (Exception e) {
             Log.w(TAG, "putDefaultString failed: key=" + key + ", value=" + value, e);
         }
+    }
+
+    private int getDefaultInt(String key, int fallback) {
+        try {
+            return defaultPrefs().getInt(key, fallback);
+        } catch (Exception e) {
+            Log.w(TAG, "getDefaultInt failed: key=" + key, e);
+            return fallback;
+        }
+    }
+
+    private void putDefaultInt(String key, int value) {
+        try {
+            defaultPrefs().edit().putInt(key, value).apply();
+        } catch (Exception e) {
+            Log.w(TAG, "putDefaultInt failed: key=" + key + ", value=" + value, e);
+        }
+    }
+
+    private boolean isEmpty(String value) {
+        return value == null || value.trim().isEmpty();
     }
 
     // Какие типы травм лечить (по умолчанию: все включены).
@@ -1488,6 +2118,7 @@ public class AutoFunctionsManager {
             case AUTO_BAIT: return isAutoBaitEnabled();
             case AUTO_SKIN: return isAutoSkinEnabled();
             case AUTO_ATTACK: return isAutoAttackEnabled();
+            case AUTO_COMPASS: return isAutoCompassEnabled();
             case AUTO_INVISIBLE: return isAutoInvisibleEnabled();
             case LOCATION_TRACKING: return isLocationTrackingEnabled();
             case AUTO_DETECT: return isAutoDetectEnabled();
@@ -1513,6 +2144,7 @@ public class AutoFunctionsManager {
             case AUTO_BAIT: toggleAutoBait(); break;
             case AUTO_SKIN: toggleAutoSkin(); break;
             case AUTO_ATTACK: toggleAutoAttack(); break;
+            case AUTO_COMPASS: toggleAutoCompass(); break;
             case AUTO_INVISIBLE: toggleAutoInvisible(); break;
             case LOCATION_TRACKING: toggleLocationTracking(); break;
             case AUTO_DETECT: toggleAutoDetect(); break;
@@ -1537,6 +2169,7 @@ public class AutoFunctionsManager {
         setAutoBaitEnabled(false);
         setAutoSkinEnabled(false);
         setAutoAttackEnabled(false);
+        setAutoCompassEnabled(false);
         setAutoInvisibleEnabled(false);
         setLocationTrackingEnabled(false);
         setAutoDetectEnabled(false);

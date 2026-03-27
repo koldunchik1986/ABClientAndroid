@@ -146,7 +146,8 @@ public class AutoModeForegroundService extends Service {
                     || AppVars.Autoboi == AutoboiState.AutoboiOn;
             boolean autoAttackEnabled = autoFunctionsManager.isAutoAttackEnabled();
             boolean locationTrackingEnabled = autoFunctionsManager.isLocationTrackingEnabled();
-            return autoFightEnabled || (autoAttackEnabled && locationTrackingEnabled);
+            boolean autoCompassEnabled = autoFunctionsManager.isAutoCompassEnabled();
+            return autoFightEnabled || (autoAttackEnabled && locationTrackingEnabled) || autoCompassEnabled;
         } catch (Exception e) {
             Log.w(TAG, BG_TRACE_PREFIX + " shouldRunInBackground: fallback by AppVars.Autoboi", e);
             return AppVars.Autoboi == AutoboiState.AutoboiOn;
@@ -261,6 +262,7 @@ public class AutoModeForegroundService extends Service {
             try {
                 AutoFunctionsManager autoFunctionsManager = AutoFunctionsManager.getInstance(activity);
                 boolean locationTrackingEnabled = autoFunctionsManager.isLocationTrackingEnabled();
+                boolean autoCompassEnabled = autoFunctionsManager.isAutoCompassEnabled();
                 boolean autoFightEnabled = autoFunctionsManager.isAutoFightEnabled()
                         || AppVars.Autoboi == AutoboiState.AutoboiOn;
                 boolean captchaDialogVisible = AppVars.IsFightCaptchaDialogVisible;
@@ -275,6 +277,7 @@ public class AutoModeForegroundService extends Service {
                 boolean uiForegroundInteractive = activity.isUiForegroundInteractive();
                 boolean uiForegroundLikely = activity.isUiForegroundLikely();
                 Log.d(TAG, BG_TRACE_PREFIX + " uiTick: locationTracking=" + locationTrackingEnabled
+                        + ", autoCompass=" + autoCompassEnabled
                         + ", autoFight=" + autoFightEnabled
                         + ", captchaDialogVisible=" + captchaDialogVisible
                         + ", walkersPollIntervalSec=" + walkersPollIntervalSec
@@ -284,6 +287,9 @@ public class AutoModeForegroundService extends Service {
                 refreshForegroundNotification(autoFightEnabled, locationTrackingEnabled, captchaDialogVisible, false);
 
                 ensureChatRefreshAlive(activity, tickNow);
+                if (autoCompassEnabled) {
+                    autoFunctionsManager.tickAutoCompass();
+                }
 
                 // Приоритетная отправка ссылки "Завершить бой" (act=7), если она уже готова.
                 // Без этого цикл может зависать: autoTurn крутится по одному и тому же fight-frame,

@@ -83,6 +83,16 @@ public class RoomManager {
                 + ", contextNull=" + (context == null)
                 + ", doShowWalkers=" + AppVars.DoShowWalkers);
         FilterProcRoomResult filterResult = FilterProcRoom(html);
+        if (context != null) {
+            try {
+                AutoFunctionsManager.getInstance(context).onRoomUsersUpdated(
+                        filterResult.roomNicks,
+                        extractLocationName(html)
+                );
+            } catch (Exception e) {
+                Log.w(TAG, "AUTO_COMPASS_TRACE room update hook failed", e);
+            }
+        }
         FilterGetWalkers(html, filterResult);
         boolean fightActive = isFightSessionActive();
         Log.d(TAG, AA_TRACE_PREFIX + " room tick: chars=" + filterResult.numCharsInRoom

@@ -283,6 +283,8 @@ public class QuickButtonsPanel {
                 return "http://image.neverlands.ru/achievement/70/a_70_10.gif";
             case AUTO_ATTACK:
                 return "http://image.neverlands.ru/achievement/13/a_13_10.gif";
+            case AUTO_COMPASS:
+                return "http://image.neverlands.ru/signs/compass.gif";
             case AUTO_INVISIBLE:
                 return "http://image.neverlands.ru/weapon/i_w27_53.gif";
             case LOCATION_TRACKING:
@@ -356,6 +358,7 @@ public class QuickButtonsPanel {
             case AUTO_BAIT:
             case AUTO_SKIN:
             case AUTO_ATTACK:
+            case AUTO_COMPASS:
             case AUTO_INVISIBLE:
             case LOCATION_TRACKING:
             case AUTO_DETECT:
@@ -387,6 +390,8 @@ public class QuickButtonsPanel {
                 return R.drawable.ic_lez_fight;
             case AUTO_ATTACK:
                 return R.drawable.ic_auto_attack;
+            case AUTO_COMPASS:
+                return R.drawable.ic_location;
             case AUTO_INVISIBLE:
                 return R.drawable.ic_auto_invisible;
             case LOCATION_TRACKING:
@@ -477,6 +482,11 @@ public class QuickButtonsPanel {
                 break;
             case AUTO_ATTACK:
                 showAutoAttackToolSelector();
+                break;
+            case AUTO_COMPASS:
+                autoFunctionsManager.toggleAutoCompass();
+                Toast.makeText(context, autoFunctionsManager.isAutoCompassEnabled() ? "Авто-Компас ВКЛ" : "Авто-Компас ВЫКЛ", Toast.LENGTH_SHORT).show();
+                loadAndUpdateButtons();
                 break;
             case AUTO_INVISIBLE:
                 autoFunctionsManager.toggleAutoInvisible();
@@ -636,6 +646,18 @@ public class QuickButtonsPanel {
                     .setItems(new CharSequence[]{"Выбрать инструмент", "Удалить кнопку"}, (dialog, which) -> {
                         if (which == 0) {
                             showAutoAttackToolSelector();
+                        } else {
+                            showRemoveConfirmation(position);
+                        }
+                    })
+                    .setNegativeButton("Отмена", null)
+                    .show();
+        } else if (button.getActionType() == QuickActionType.AUTO_COMPASS) {
+            new AlertDialog.Builder(context)
+                    .setTitle("Авто-Компас")
+                    .setItems(new CharSequence[]{"Настройки авто-компаса", "Удалить кнопку"}, (dialog, which) -> {
+                        if (which == 0) {
+                            showAutoCompassSettingsDialog();
                         } else {
                             showRemoveConfirmation(position);
                         }
@@ -1197,6 +1219,106 @@ public class QuickButtonsPanel {
                     autoFunctionsManager.setWalkersPollIntervalSec(sec);
                     Toast.makeText(context, "Интервал опроса: " + sec + " сек", Toast.LENGTH_SHORT).show();
                     dialog.dismiss();
+                })
+                .setNegativeButton("Отмена", null)
+                .show();
+    }
+
+    private void showAutoCompassSettingsDialog() {
+        final int pad = (int) (context.getResources().getDisplayMetrics().density * 12);
+
+        ScrollView scroll = new ScrollView(context);
+        LinearLayout root = new LinearLayout(context);
+        root.setOrientation(LinearLayout.VERTICAL);
+        root.setPadding(pad, pad, pad, pad);
+        scroll.addView(root);
+
+        TextView targetLabel = new TextView(context);
+        targetLabel.setText("Целевой ник");
+        root.addView(targetLabel);
+
+        EditText targetInput = new EditText(context);
+        targetInput.setHint("Nickname");
+        targetInput.setSingleLine(true);
+        targetInput.setText(autoFunctionsManager.getAutoCompassTargetNick());
+        root.addView(targetInput);
+
+        TextView locationLabel = new TextView(context);
+        locationLabel.setPadding(0, pad, 0, 0);
+        locationLabel.setText("Текущая локация цели");
+        root.addView(locationLabel);
+
+        TextView locationValue = new TextView(context);
+        String locationText = autoFunctionsManager.getAutoCompassLastLocationLabel();
+        locationValue.setText(locationText == null || locationText.trim().isEmpty() ? "—" : locationText);
+        root.addView(locationValue);
+
+        TextView cellsLabel = new TextView(context);
+        cellsLabel.setPadding(0, pad, 0, 0);
+        cellsLabel.setText("Клетки поиска (автозаполненные или ручные)");
+        root.addView(cellsLabel);
+
+        String manualCellsCsv = autoFunctionsManager.getAutoCompassManualCellsCsv();
+        String autoCellsCsv = autoFunctionsManager.getAutoCompassCellsCsv();
+        boolean useAutoFilledCells = (manualCellsCsv == null || manualCellsCsv.trim().isEmpty())
+                && autoCellsCsv != null
+                && !autoCellsCsv.trim().isEmpty();
+
+        EditText cellsInput = new EditText(context);
+        cellsInput.setHint("Например: 8-321, 8-322, 8-323");
+        cellsInput.setMinLines(2);
+        cellsInput.setText(useAutoFilledCells ? autoCellsCsv : manualCellsCsv);
+        root.addView(cellsInput);
+
+        CheckBox huntAllCheck = new CheckBox(context);
+        huntAllCheck.setPadding(0, pad, 0, 0);
+        huntAllCheck.setText("Ходим ловим по клеткам");
+        huntAllCheck.setChecked(autoFunctionsManager.isAutoCompassHuntMode());
+        root.addView(huntAllCheck);
+
+        TextView intervalLabel = new TextView(context);
+        intervalLabel.setPadding(0, pad, 0, 0);
+        intervalLabel.setText("Интервал опроса pinfo");
+        root.addView(intervalLabel);
+
+        final int[] intervalValues = new int[]{1, 2, 5};
+        final String[] intervalLabels = new String[]{"1 сек", "2 сек", "5 сек"};
+        Spinner intervalSpinner = new Spinner(context);
+        ArrayAdapter<String> intervalAdapter = new ArrayAdapter<>(context, android.R.layout.simple_spinner_item, intervalLabels);
+        intervalAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        intervalSpinner.setAdapter(intervalAdapter);
+        int currentInterval = autoFunctionsManager.getAutoCompassPollIntervalSec();
+        int selectedIntervalIndex = 1;
+        for (int index = 0; index < intervalValues.length; index++) {
+            if (intervalValues[index] == currentInterval) {
+                selectedIntervalIndex = index;
+                break;
+            }
+        }
+        intervalSpinner.setSelection(selectedIntervalIndex);
+        root.addView(intervalSpinner);
+
+        new AlertDialog.Builder(context)
+                .setTitle("Настройки Авто-Компас")
+                .setView(scroll)
+                .setPositiveButton("Сохранить", (dialog, which) -> {
+                    String targetNick = targetInput.getText() == null ? "" : targetInput.getText().toString();
+                    autoFunctionsManager.setAutoCompassTargetNick(targetNick);
+                    String cellsText = cellsInput.getText() == null ? "" : cellsInput.getText().toString();
+                    if (useAutoFilledCells && cellsText.trim().equals(autoCellsCsv == null ? "" : autoCellsCsv.trim())) {
+                        autoFunctionsManager.setAutoCompassManualCellsCsv("");
+                    } else {
+                        autoFunctionsManager.setAutoCompassManualCellsCsv(cellsText);
+                    }
+                    autoFunctionsManager.setAutoCompassHuntMode(huntAllCheck.isChecked());
+                    int intervalSec = intervalValues[Math.max(0, Math.min(intervalValues.length - 1, intervalSpinner.getSelectedItemPosition()))];
+                    autoFunctionsManager.setAutoCompassPollIntervalSec(intervalSec);
+                    Toast.makeText(context, "Настройки авто-компаса сохранены", Toast.LENGTH_SHORT).show();
+                })
+                .setNeutralButton("Компас", (dialog, which) -> {
+                    String targetNick = targetInput.getText() == null ? "" : targetInput.getText().toString();
+                    autoFunctionsManager.startManualCompassSearch(targetNick);
+                    loadAndUpdateButtons();
                 })
                 .setNegativeButton("Отмена", null)
                 .show();

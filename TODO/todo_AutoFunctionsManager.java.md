@@ -1,200 +1,58 @@
-# Инструкция по AutoFunctionsManager
+# Инструкция по `AutoFunctionsManager`
 
 ## Назначение файла
+`AutoFunctionsManager` — единая точка управления авто-функциями Android-клиента:
+- хранение и чтение флагов/настроек авто-режимов;
+- переключение режимов из `QuickButtonsPanel`;
+- синхронизация с background-контуром;
+- запуск внутренних циклов (auto-attack, walkers, auto-compass и др.).
 
-Класс `AutoFunctionsManager` предназначен для управления автоматическими функциями (автобой, авторыбалка, автоохота и т.д.), которые вызываются из QuickButtonsPanel.
+## Базовый статус портирования
+- [x] Базовый менеджер авто-функций реализован.
+- [x] Интеграция с `QuickActionType` и `QuickButtonsPanel` выполнена.
+- [x] Интеграция с `AutoModeForegroundService` выполнена.
 
-## Анализ существующего кода
-
-### QuickButtonsPanel - что уже есть
-
-В `QuickButtonsPanel.java` уже есть:
-- Enum `QuickActionType` с типами автофункций
-- Метод `executeAction(int position)` обрабатывает нажатия
-- Для автофункций показывается только Toast (строки 270-301)
-
-### Текущая реализация (только Toast):
-```java
-case AUTO_FIGHT:
-    Toast.makeText(context, "Авто-Бой", Toast.LENGTH_SHORT).show();
-    break;
-case AUTO_FISH:
-    Toast.makeText(context, "Авто-Рыбалка", Toast.LENGTH_SHORT).show();
-    break;
-case LEZ_FIGHT:
-    Toast.makeText(context, "Авто-Охота", Toast.LENGTH_SHORT).show();
-    break;
-// ... и т.д.
-```
-
-## Что нужно реализовать
-
-### AutoFunctionsManager - структура
-
-```java
-package ru.neverlands.abclient.manager;
-
-public class AutoFunctionsManager {
-    private static final String TAG = "AutoFunctionsManager";
-    private static AutoFunctionsManager instance;
-    
-    // Состояния автофункций
-    private boolean autoFightEnabled = false;
-    private boolean autoRecallEnabled = false;
-    private boolean lezFightEnabled = false;
-    private boolean autoAttackEnabled = false;
-    private boolean autoInvisibleEnabled = false;
-    private boolean locationTrackingEnabled = false;
-    private boolean autoDetectEnabled = false;
-    private boolean autoSummonEnabled = false;
-    private boolean autoCureEnabled = false;
-    
-    // Методы управления
-    public static synchronized AutoFunctionsManager getInstance(Context context)
-    public void toggleAutoFight()
-    public void startAutoFight()
-    public void stopAutoFight()
-    public boolean isAutoFightEnabled()
-    
-    // ... аналогично для других функций
-}
-```
-
-### Методы FastActionManager которые можно использовать
-
-Из `FastActionManager.java`:
-- `fastAttack(String nick)` - атака по нику
-- `fastAttackAsync(String weapon, String nick)` - асинхронная атака
-
-### Интеграция с QuickButtonsPanel
-
-В `QuickButtonsPanel.executeAction()` заменить:
-```java
-// БЫЛО:
-case AUTO_FIGHT:
-    Toast.makeText(context, "Автобой", Toast.LENGTH_SHORT).show();
-    break;
-
-// СТАТЬ:
-case AUTO_FIGHT:
-    AutoFunctionsManager.getInstance(context).toggleAutoFight();
-    break;
-```
-
-## План реализации
-
-1. [x] Создать класс `AutoFunctionsManager.java`
-2. [x] Реализовать методы toggle/start/stop для каждой автофункции
-3. [x] Обновить `QuickButtonsPanel.java` - добавить вызовы
-4. [x] Добавить иконки для автофункций (два состояния: вкл/выкл)
-5. [x] Реализовать визуальный индикатор состояния (вкл/выкл)
-
-## Иконки для автофункций
-
-Каждая автофункция должна иметь две иконки:
-- **Выключено** (по умолчанию): серый/контурный вариант
-- **Включено**: цветной/залитый вариант
-
-### Требуемые иконки
-
-| Функция | Иконка выкл | Иконка вкл |
-|---------|-------------|------------|
-| AUTO_FIGHT | ic_auto_fight_off.xml | ic_auto_fight_on.xml |
-| AUTO_FISH | ic_auto_recall_off.xml | ic_auto_recall_on.xml |
-| LEZ_FIGHT | ic_lez_fight_off.xml | ic_lez_fight_on.xml |
-| AUTO_ATTACK | ic_auto_attack_off.xml | ic_auto_attack_on.xml |
-| AUTO_INVISIBLE | ic_auto_invisible_off.xml | ic_auto_invisible_on.xml |
-| LOCATION_TRACKING | ic_location_tracking_off.xml | ic_location_tracking_on.xml |
-| AUTO_DETECT | ic_auto_detect_off.xml | ic_auto_detect_on.xml |
-| AUTO_SUMMON | ic_auto_summon_off.xml | ic_auto_summon_on.xml |
-| AUTO_CURE | ic_auto_cure_off.xml | ic_auto_cure_on.xml |
-
-### Интеграция иконок в QuickButtonsPanel
-
-```java
-// В методе getIconForAction() добавить учет состояния:
-private int getIconForAction(QuickActionType type, boolean isEnabled) {
-    switch (type) {
-        case AUTO_FIGHT:
-            return isEnabled ? R.drawable.ic_auto_fight_on : R.drawable.ic_auto_fight_off;
-        // ...
-    }
-}
-
-// В методе updateButtonAppearance() передавать состояние:
-boolean isEnabled = AutoFunctionsManager.getInstance(context).isAutoFightEnabled();
-updateButtonAppearance(position, button, isEnabled);
-```
-
-## Особенности реализации
-
-### Авто-Бой (AUTO_FIGHT)
-Требует взаимодействия с WebView для отправки команд на сервер.
-См. `ABClient\PostFilter\FightJs.cs` для понимания логики.
-
-### Авто-Рыбалка (AUTO_RECALL)
-См. `ABClient\PostFilter\Recall.cs`
-
-### Авто-Охота (LEZ_FIGHT)
-См. `ABClient\Lez\LezFight.cs`
-
-### Автонападение (AUTO_ATTACK)
-См. `ABClient\PostFilter\AutoAttack.cs`
-
-### Авто-Невид (AUTO_INVISIBLE)
-См. `ABClient\PostFilter\Invisible.cs`
-
-### Слежение за локацией (LOCATION_TRACKING)
-См. `ABClient\PostFilter\LocationTracking.cs`
-
-### АвтоОбнаружение (AUTO_DETECT)
-См. `ABClient\PostFilter\Detect.cs`
-
-### АвтоПризыв (AUTO_SUMMON)
-См. `ABClient\PostFilter\Summon.cs`
-
-### Авто-Лечение (AUTO_CURE)
-См. `ABClient\PostFilter\MainPhpAutoCure.cs`
-
-## Зависимости
-
-- `android.content.Context`
-- `android.webkit.WebView` - для отправки команд
-- `ru.neverlands.abclient.manager.FastActionManager`
-- `ru.neverlands.abclient.model.QuickActionType`
-- `ru.neverlands.abclient.model.AutoboiState` - состояния автобоя
-- `ru.neverlands.abclient.lez.LezFight` - логика автоохоты/автобоя
-
-## Существующая инфраструктура
-
-### AutoboiState (уже реализовано в Android)
-```java
-public enum AutoboiState {
-    AutoboiOff,    // Выключено
-    AutoboiOn,     // Автобой включен
-    Restoring,     // Восстановление
-    Timeout,       // Ожидание таймаута
-    Guamod         // Распознавание капчи
-}
-```
-
-### AppVars содержит
-```java
-public static AutoboiState Autoboi = AutoboiState.AutoboiOff;
-```
-
-### LezFight (уже реализовано в Android)
-Класс для логики ведения боя.
-
-### Таймер в MainActivity (уже есть)
-Запускается в `startTimer()`, выполняется каждую секунду. Можно использовать для проверки условий автофункций.
-# Обновление 2026-03-02 (buttonWalkers parity)
-
-- [x] `AUTO_ATTACK` переведён на C#-семантику: состояние вычисляется только по `AutoAttackToolId != 0`.
-- [x] Добавлена миграция legacy `auto_attack=true` -> `toolId=1`, если ранее `toolId` отсутствовал.
+## Обновление 2026-03-02 (buttonWalkers parity)
+- [x] `AUTO_ATTACK` переведён на C#-семантику: активность определяется только `AutoAttackToolId != 0`.
+- [x] Добавлена миграция legacy `auto_attack=true` -> `toolId=1` (если `toolId` отсутствовал).
 - [x] `setAutoAttackEnabled(boolean)` оставлен как compatibility-wrapper (`0` / `lastNonZeroToolId`).
-- [x] `setAutoAttackToolId(int)` теперь при `toolId != 0` автоматически включает `LOCATION_TRACKING`.
+- [x] `setAutoAttackToolId(int)` при `toolId != 0` автоматически включает `LOCATION_TRACKING`.
 - [x] `LOCATION_TRACKING` синхронизируется с runtime `AppVars.DoShowWalkers`.
 - [x] Добавлены настройки интервала walkers polling:
-  - `auto_function_walkers_poll_interval_sec`
-  - whitelist: `1/2/5/10`, default: `1`.
+  - [x] ключ `auto_function_walkers_poll_interval_sec`,
+  - [x] whitelist `1/2/5/10`,
+  - [x] default `1`.
+
+## Обновление 2026-03-27 (AUTO_COMPASS)
+- [x] Добавлена авто-функция `AUTO_COMPASS`.
+- [x] Добавлены публичные методы:
+  - [x] `isAutoCompassEnabled() / setAutoCompassEnabled(...) / toggleAutoCompass()`;
+  - [x] `setAutoCompassTargetNick(...) / getAutoCompassTargetNick()`;
+  - [x] `setAutoCompassHuntMode(...) / isAutoCompassHuntMode()`;
+  - [x] `setAutoCompassPollIntervalSec(...) / getAutoCompassPollIntervalSec()`;
+  - [x] `setAutoCompassManualCellsCsv(...) / getAutoCompassManualCellsCsv()`;
+  - [x] `startManualCompassSearch(...)`;
+  - [x] `tickAutoCompass()` и `onRoomUsersUpdated(...)`.
+- [x] Реализован runtime-контур:
+  - [x] pinfo polling по цели;
+  - [x] резолв клеток по `ExtMap.Cells` (`Name`, затем `Tooltip`);
+  - [x] выбор ближайшей клетки через `MapPath`;
+  - [x] переход через существующий `startAutoMoving(...)`;
+  - [x] stop/reason сообщения в чат.
+- [x] `AUTO_COMPASS` добавлен в `isFunctionEnabled(...)`, `toggleFunction(...)`, `disableAll()`.
+- [x] Синхронизация с background-контуром включена.
+
+## Связанные файлы
+- `app/src/main/java/ru/neverlands/abclient/manager/AutoFunctionsManager.java`
+- `app/src/main/java/ru/neverlands/abclient/manager/NeverApi.java`
+- `app/src/main/java/ru/neverlands/abclient/manager/RoomManager.java`
+- `app/src/main/java/ru/neverlands/abclient/service/AutoModeForegroundService.java`
+- `app/src/main/java/ru/neverlands/abclient/ui/QuickButtonsPanel.java`
+- `app/src/main/java/ru/neverlands/abclient/manager/TabManager.java`
+- `app/src/main/java/ru/neverlands/abclient/PinfoActivity.java`
+
+## Открытые пункты
+- [ ] Прогон runtime-приёмки по логам устройства:
+  - [ ] стабильность long-run цикла авто-компаса;
+  - [ ] перестроение маршрута при смене локации цели;
+  - [ ] отсутствие конфликтов с `AutoTreasure` и ручной навигацией.
