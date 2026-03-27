@@ -444,34 +444,66 @@ public class RoomManager {
         if (isEmpty(normalizedReg) || isEmpty(normalizedServer)) {
             return false;
         }
+        String oldRegion = normalizeCellLabel(ExtMap.resolveRegionLabelForRegNum(normalizedReg));
         String oldLabel = normalizeCellLabel(getCellName(normalizedReg));
         String ownPinfoRegionHint = resolveOwnPinfoRegionForCell(normalizedReg, normalizedServer);
+        boolean metaChanged;
 
         // Region-aware синхронизация карты:
         // - если есть валидная подсказка региона из pinfo (`parameters[0][5]`),
         //   обновляем и `Cell.Name`, и `Cell.Region` одним вызовом;
         // - иначе оставляем существующий путь (синхронизация только названия).
         if (!isEmpty(ownPinfoRegionHint)) {
-            ExtMap.syncCellMetaFromPinfo(normalizedReg, ownPinfoRegionHint, normalizedServer);
+            metaChanged = ExtMap.syncCellMetaFromPinfo(normalizedReg, ownPinfoRegionHint, normalizedServer);
             Log.d(TAG, "MAP_NAME_SYNC_TRACE: apply with pinfo region, reg=" + normalizedReg
                     + ", region=" + ownPinfoRegionHint + ", name=" + normalizedServer);
         } else {
-            ExtMap.syncCellLabelFromServer(normalizedReg, normalizedServer);
+            String oldLabelFromSync = ExtMap.syncCellLabelFromServer(normalizedReg, normalizedServer);
+            metaChanged = oldLabelFromSync != null;
         }
 
-        if (isEmpty(oldLabel) || oldLabel.equals(normalizedServer)) {
+        if (!metaChanged) {
             return false;
         }
 
-        String safeOld = escapeHtml(oldLabel);
-        String safeNew = escapeHtml(normalizedServer);
+        String newLabel = normalizeCellLabel(getCellName(normalizedReg));
+        if (isEmpty(newLabel)) {
+            newLabel = normalizedServer;
+        }
+        String newRegion = normalizeCellLabel(ExtMap.resolveRegionLabelForRegNum(normalizedReg));
+        boolean nameChanged = !normalizeCellLabel(oldLabel).equals(normalizeCellLabel(newLabel));
+        boolean regionChanged = !normalizeCellLabel(oldRegion).equals(normalizeCellLabel(newRegion));
+        if (!nameChanged && !regionChanged) {
+            return false;
+        }
+
+        String oldMeta = formatMapCellMetaForChat(oldRegion, oldLabel);
+        String newMeta = formatMapCellMetaForChat(newRegion, newLabel);
+        String safeOld = escapeHtml(oldMeta);
+        String safeNew = escapeHtml(newMeta);
         FastActionManager.writeChatMsg(
                 "<font color=#5D7C91><b>[Карта]</b></font> "
                         + "Клетка №" + normalizedReg + " - \"" + safeOld + "\" заменено на "
                         + "Клетка №" + normalizedReg + " - \"" + safeNew + "\""
         );
-        Log.d(TAG, "MAP_NAME_SYNC_TRACE: reg=" + normalizedReg + ", old=" + oldLabel + ", new=" + normalizedServer);
+        Log.d(TAG, "MAP_NAME_SYNC_TRACE: reg=" + normalizedReg
+                + ", oldMeta=" + oldMeta
+                + ", newMeta=" + newMeta
+                + ", nameChanged=" + nameChanged
+                + ", regionChanged=" + regionChanged);
         return true;
+    }
+
+    private static String formatMapCellMetaForChat(String region, String cellName) {
+        String normalizedRegion = normalizeCellLabel(region);
+        String normalizedCell = normalizeCellLabel(cellName);
+        if (!isEmpty(normalizedRegion) && !isEmpty(normalizedCell)) {
+            return normalizedRegion + " [" + normalizedCell + "]";
+        }
+        if (!isEmpty(normalizedCell)) {
+            return normalizedCell;
+        }
+        return normalizedRegion;
     }
 
     /**

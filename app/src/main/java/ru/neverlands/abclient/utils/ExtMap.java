@@ -34,6 +34,8 @@ public class ExtMap {
     private static final long VISITED_PERSIST_THROTTLE_MS = 1500L;
     private static final String MAP_XML_ASSET_NAME = "map.xml";
     private static final String MAP_XML_RUNTIME_FILE_NAME = "map.xml";
+    // Формат даты в runtime `map.xml` совпадает с историческим шаблоном карты.
+    private static final String MAP_META_UPDATED_PATTERN = "dd.MM.yyyy HH:mm:ss";
 
     public static final Map<String, Position> Location = new HashMap<>();
     public static final Map<String, String> InvLocation = new HashMap<>();
@@ -586,8 +588,12 @@ public class ExtMap {
         boolean regionChanged = false;
         String normalizedRegion = normalizeRegionLabel(pinfoRegion);
         if (!normalizedRegion.isEmpty()) {
-            String oldRegion = resolveRegionLabelForRegNum(normalizedReg);
-            if (!normalizedRegion.equals(normalizeRegionLabel(oldRegion))) {
+            Cell currentCell = Cells.get(normalizedReg);
+            String oldRegionOnCell = normalizeRegionLabel(currentCell != null ? currentCell.Region : "");
+            // Важно: сравниваем именно с region текущей клетки, а не с region-id cache.
+            // Иначе при совпадении регионов по id (`3-XXX`) поле `region` может не попасть
+            // в runtime map.xml для конкретной клетки, хотя в кэше регион уже известен.
+            if (!normalizedRegion.equals(oldRegionOnCell)) {
                 rememberRegionMapping(normalizedReg, normalizedRegion);
                 regionChanged = true;
             }
@@ -808,6 +814,8 @@ public class ExtMap {
             return false;
         }
         File tmpFile = new File(parentDir, targetFile.getName() + ".tmp");
+        final String metaUpdatedTs = new SimpleDateFormat(MAP_META_UPDATED_PATTERN, Locale.US)
+                .format(new Date());
 
         boolean changed = false;
         try (InputStream in = new FileInputStream(targetFile);
@@ -844,6 +852,35 @@ public class ExtMap {
                     boolean isTargetCell = "cell".equalsIgnoreCase(tag) && normalizedReg.equals(cellNumber);
                     boolean hasNameAttr = false;
                     boolean hasRegionAttr = false;
+                    boolean hasUpdatedAttr = false;
+                    boolean hasNameUpdatedAttr = false;
+                    String currentNameAttr = "";
+                    String currentRegionAttr = "";
+                    if (isTargetCell) {
+                        for (int i = 0; i < attrCount; i++) {
+                            String attrName = parser.getAttributeName(i);
+                            String attrValue = parser.getAttributeValue(i);
+                            if ("name".equalsIgnoreCase(attrName)) {
+                                hasNameAttr = true;
+                                currentNameAttr = normalizeCellLabel(attrValue);
+                            } else if ("region".equalsIgnoreCase(attrName)) {
+                                hasRegionAttr = true;
+                                currentRegionAttr = normalizeRegionLabel(attrValue);
+                            } else if ("updated".equalsIgnoreCase(attrName)) {
+                                hasUpdatedAttr = true;
+                            } else if ("nameUpdated".equalsIgnoreCase(attrName)) {
+                                hasNameUpdatedAttr = true;
+                            }
+                        }
+                    }
+                    boolean shouldUpdateName = isTargetCell
+                            && !normalizedLabel.isEmpty()
+                            && (!hasNameAttr || !normalizedLabel.equals(currentNameAttr));
+                    boolean shouldUpdateRegion = isTargetCell
+                            && !normalizedRegion.isEmpty()
+                            && (!hasRegionAttr || !normalizedRegion.equals(currentRegionAttr));
+                    boolean metaChangedForTarget = shouldUpdateName || shouldUpdateRegion;
+
                     for (int i = 0; i < attrCount; i++) {
                         String attrNamespace = parser.getAttributeNamespace(i);
                         if (attrNamespace != null && attrNamespace.isEmpty()) {
@@ -852,18 +889,14 @@ public class ExtMap {
                         String attrName = parser.getAttributeName(i);
                         String attrValue = parser.getAttributeValue(i);
 
-                        if (isTargetCell && "name".equalsIgnoreCase(attrName)) {
-                            hasNameAttr = true;
-                            if (!normalizedLabel.isEmpty() && !normalizedLabel.equals(normalizeCellLabel(attrValue))) {
-                                attrValue = normalizedLabel;
-                                changed = true;
-                            }
-                        } else if (isTargetCell && "region".equalsIgnoreCase(attrName)) {
-                            hasRegionAttr = true;
-                            if (!normalizedRegion.isEmpty() && !normalizedRegion.equals(normalizeRegionLabel(attrValue))) {
-                                attrValue = normalizedRegion;
-                                changed = true;
-                            }
+                        if (isTargetCell && "name".equalsIgnoreCase(attrName) && shouldUpdateName) {
+                            attrValue = normalizedLabel;
+                        } else if (isTargetCell && "region".equalsIgnoreCase(attrName) && shouldUpdateRegion) {
+                            attrValue = normalizedRegion;
+                        } else if (isTargetCell && metaChangedForTarget
+                                && ("updated".equalsIgnoreCase(attrName) || "nameUpdated".equalsIgnoreCase(attrName))) {
+                            // При изменении `name/region` обязательно поднимаем timestamp мета-обновления.
+                            attrValue = metaUpdatedTs;
                         }
 
                         serializer.attribute(attrNamespace, attrName, attrValue != null ? attrValue : "");
@@ -871,10 +904,17 @@ public class ExtMap {
 
                     if (isTargetCell && !hasNameAttr && !normalizedLabel.isEmpty()) {
                         serializer.attribute(null, "name", normalizedLabel);
-                        changed = true;
                     }
                     if (isTargetCell && !hasRegionAttr && !normalizedRegion.isEmpty()) {
                         serializer.attribute(null, "region", normalizedRegion);
+                    }
+                    if (isTargetCell && metaChangedForTarget) {
+                        if (!hasUpdatedAttr) {
+                            serializer.attribute(null, "updated", metaUpdatedTs);
+                        }
+                        if (!hasNameUpdatedAttr) {
+                            serializer.attribute(null, "nameUpdated", metaUpdatedTs);
+                        }
                         changed = true;
                     }
                 } else if (event == XmlPullParser.END_TAG) {
