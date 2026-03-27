@@ -1226,6 +1226,25 @@ public class QuickButtonsPanel {
                 .show();
     }
 
+    /**
+     * Окно настроек "Авто-Компас" (long-press на QuickButton).
+     *
+     * Назначение:
+     * - редактирует целевой ник и режим поиска по клеткам;
+     * - выполняет ручный resolve локации цели через pinfo;
+     * - сохраняет ручной CSV клеток (с приоритетом над авто-заполнением);
+     * - запускает полный цикл "ПОИСК ЦЕЛИ" (hunt-all, как в C#-подобном сценарии).
+     *
+     * Зависимости:
+     * - `AutoFunctionsManager.resolveAutoCompassLocation(...)` — одноразовый pinfo-resolve;
+     * - `AutoFunctionsManager.startSettingsCompassTargetSearch(...)` — запуск полного автопоиска;
+     * - `AutoFunctionsManager.setAutoCompass*` — сохранение runtime/prefs параметров;
+     * - `R.color.purple_500` / `R.color.white` — единый визуальный стиль project UI.
+     *
+     * Важно для отладки:
+     * - авто-заполненные клетки не затирают ручной ввод пользователя;
+     * - при успешном resolve обновляется только "предзаполнение", а не принудительный manual override.
+     */
     private void showAutoCompassSettingsDialog() {
         final int pad = (int) (context.getResources().getDisplayMetrics().density * 12);
 
@@ -1284,6 +1303,8 @@ public class QuickButtonsPanel {
         cellsInput.setText(useAutoFilledCells ? autoCellsCsvRef[0] : manualCellsCsv);
         root.addView(cellsInput);
 
+        // Одноразовый запрос pinfo из окна настроек:
+        // обновляет "Текущую локацию цели" и список возможных клеток без старта авто-движения.
         resolveLocationButton.setOnClickListener(v -> {
             String targetNick = targetInput.getText() == null ? "" : targetInput.getText().toString().trim();
             if (targetNick.isEmpty()) {
@@ -1350,6 +1371,8 @@ public class QuickButtonsPanel {
         intervalSpinner.setSelection(selectedIntervalIndex);
         root.addView(intervalSpinner);
 
+        // Кнопка "ПОИСК ЦЕЛИ" запускает именно полный цикл авто-компаса (hunt-all),
+        // а не разовый шаг на ближайшую клетку.
         AlertDialog dialog = new AlertDialog.Builder(context)
                 .setTitle("Настройки Авто-Компас")
                 .setView(scroll)
@@ -1382,6 +1405,7 @@ public class QuickButtonsPanel {
             searchTargetButton.setBackgroundColor(ContextCompat.getColor(context, R.color.purple_500));
         }
     }
+
     private void showFunctionSelector(int position) {
         View dialogView = View.inflate(context, R.layout.dialog_select_function, null);
         android.widget.ListView listView = dialogView.findViewById(R.id.functions_list);

@@ -35,16 +35,29 @@ public class NeverApi {
     private static final int LIGHT_WOUND_INDEX = 1;
     private static final int MEDIUM_WOUND_INDEX = 2;
     private static final int HEAVY_WOUND_INDEX = 3;
+    // Локальный HTTP-статус последнего sync-запроса внутри текущего потока.
+    // Используется как транспорт статуса из getInfo(...) в вызывающий код без изменения сигнатур.
     private static final ThreadLocal<Integer> lastHttpStatusCode = ThreadLocal.withInitial(() -> 0);
+    // Последний HTTP-статус именно для pinfo-запроса компаса.
+    // Читается в AutoFunctionsManager для адаптивного backoff (535/536).
     private static volatile int lastCompassPinfoHttpStatus = 0;
 
     // Кэш nick → userId (аналог NameToId в C#)
     private static final Map<String, String> nameToId = new HashMap<>();
 
+    /**
+     * @return последний HTTP-код pinfo-запроса компаса.
+     * 0 = нет данных, 200 = успешный парсинг, 535/536 = server-side rate-limit/anti-bot throttling,
+     * -1 = локальная ошибка запроса до получения валидного кода.
+     */
     public static int getLastCompassPinfoHttpStatus() {
         return lastCompassPinfoHttpStatus;
     }
 
+    /**
+     * Утилита для быстрых проверок "ограничил ли сервер pinfo".
+     * Используется в AutoCompass-контуре для мягкого backoff вместо немедленного stop.
+     */
     public static boolean wasLastCompassPinfoRateLimited() {
         int code = lastCompassPinfoHttpStatus;
         return code == 535 || code == 536;
@@ -244,7 +257,19 @@ public class NeverApi {
 
     /**
      * Снимок pinfo для компаса (ник + местоположение + усталость).
-     * Используется в AutoCompass-цикле на каждом шаге опроса.
+     *
+     * Назначение:
+     * - единая точка, где AutoCompass получает "состояние цели" для принятия решений;
+     * - параллельно фиксирует HTTP-статус, который нужен для адаптивного интервала опроса.
+     *
+     * Зависимости:
+     * - `encodeNeverlandsQueryTail(...)` — корректный query-tail в windows-1251 + `%20` вместо `+`;
+     * - `getInfo(...)` — транспорт HTTP с anti-detect User-Agent и общим timeout;
+     * - `parsePinfoCompassSnapshotFromHtml(...)` — извлечение region/location/tired из JS `var parameters`.
+     *
+     * Контракт статусов:
+     * - при успешном parse выставляется 200, если код не был установлен явно;
+     * - при сетевой/парсинг-ошибке сохраняется последний код (или -1 как fallback).
      */
     public static PinfoCompassSnapshot getPinfoCompassSnapshot(String nick) {
         if (nick == null || nick.trim().isEmpty()) {

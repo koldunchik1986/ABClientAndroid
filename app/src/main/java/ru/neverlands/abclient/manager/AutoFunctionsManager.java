@@ -86,7 +86,10 @@ public class AutoFunctionsManager {
     private final LinkedHashSet<String> autoCompassCheckedCells = new LinkedHashSet<>();
     private final LinkedHashSet<String> autoCompassLastRoomNicks = new LinkedHashSet<>();
     private volatile long autoCompassLastTickAtMs = 0L;
+    // Текущий рабочий интервал pinfo-опроса для авто-компаса.
+    // Может динамически увеличиваться при HTTP 535/536 и возвращаться к базовому после успеха.
     private volatile int autoCompassAdaptivePollSec = AUTO_COMPASS_POLL_DEFAULT_SEC;
+    // Анти-спам защита сообщений в чат о backoff, чтобы не засыпать чат повторяющимися уведомлениями.
     private volatile long autoCompassLastRateLimitNoticeAtMs = 0L;
     private volatile int autoCompassLastRateLimitNoticeSec = 0;
     private volatile long autoCompassLastRoomUpdateAtMs = 0L;
@@ -1234,10 +1237,21 @@ public class AutoFunctionsManager {
     }
 
     /**
-     * Запуск полного цикла "Авто-компас" из окна настроек:
-     * - не ограничиваемся ближайшей клеткой,
-     * - включаем hunt-all режим,
-     * - если цель та же самая, не сбрасываем уже подготовленные snapshot/клетки.
+     * Запуск полного цикла "Авто-компас" из окна настроек.
+     *
+     * Назначение:
+     * - используется кнопкой `ПОИСК ЦЕЛИ` в `QuickButtonsPanel`;
+     * - переводит контур в режим полного обхода клеток (hunt-all);
+     * - не делает "разовый шаг", а запускает постоянный цикл tick + навигации.
+     *
+     * Зависимости:
+     * - `setAutoCompassTargetNick(...)` — фиксирует цель;
+     * - `setAutoCompassHuntMode(true)` — разрешает проход по всем кандидатам;
+     * - `setAutoCompassEnabled(true)` — стартует runtime-контур.
+     *
+     * Важно:
+     * - если целевой ник не изменился, snapshot/кандидаты не сбрасываются.
+     *   Это исключает лишний "холодный старт" между повторными нажатиями из настроек.
      */
     public void startSettingsCompassTargetSearch(String nick) {
         String normalized = normalizeCompassNick(nick);
@@ -1258,14 +1272,32 @@ public class AutoFunctionsManager {
         setAutoCompassEnabled(true);
     }
 
+    /**
+     * Публичный вход в цикл авто-компаса (вызывается из foreground-service/таймера).
+     * Делегирует в внутренний метод с `forceNow=false`.
+     */
     public void tickAutoCompass() {
         tickAutoCompass(false);
     }
 
+    /**
+     * Базовый (целевой) интервал опроса pinfo.
+     * Берем максимум из:
+     * - пользовательского интервала авто-компаса,
+     * - интервала "Слежения за локацией" (walkers),
+     * чтобы не опрашивать pinfo чаще уже принятого сетевого ритма клиента.
+     */
     private int getAutoCompassBasePollIntervalSec() {
         return Math.max(getAutoCompassPollIntervalSec(), getWalkersPollIntervalSec());
     }
 
+    /**
+     * Эффективный интервал опроса pinfo с учетом адаптивного backoff.
+     *
+     * Правило:
+     * - никогда не ниже base-значения;
+     * - при временных перегрузках/лимитах сервера может быть выше base.
+     */
     private int getAutoCompassEffectivePollIntervalSec() {
         int base = getAutoCompassBasePollIntervalSec();
         int adaptive = autoCompassAdaptivePollSec;
@@ -1276,6 +1308,16 @@ public class AutoFunctionsManager {
         return adaptive;
     }
 
+    /**
+     * Обрабатывает HTTP-лимиты (535/536) для pinfo:
+     * - пошагово увеличивает интервал опроса на 1 сек (до верхней границы);
+     * - пишет ограниченное (throttle) уведомление в чат;
+     * - сохраняет новый интервал в runtime для следующих tick.
+     *
+     * Зависимости:
+     * - статус берется из `NeverApi.getLastCompassPinfoHttpStatus()`;
+     * - чат-уведомления идут через `writeCompassChat(...)`.
+     */
     private void onAutoCompassRateLimitError(int statusCode) {
         int base = getAutoCompassBasePollIntervalSec();
         int current = Math.max(base, autoCompassAdaptivePollSec);
@@ -1302,6 +1344,13 @@ public class AutoFunctionsManager {
         }
     }
 
+    /**
+     * Сбрасывает адаптивный backoff после успешного ответа pinfo.
+     *
+     * Поведение:
+     * - возвращает интервал к базовому;
+     * - пишет в чат уведомление о восстановлении только если интервал реально был увеличен.
+     */
     private void onAutoCompassRequestSuccess() {
         int base = getAutoCompassBasePollIntervalSec();
         if (autoCompassAdaptivePollSec != base) {
@@ -1349,6 +1398,18 @@ public class AutoFunctionsManager {
         }
     }
 
+    /**
+     * Внутренний шаг цикла авто-компаса.
+     *
+     * Последовательность:
+     * 1) проверка флагов и ограничение частоты (effective interval),
+     * 2) защита от параллельных pinfo-запросов (`autoCompassPinfoInFlight`),
+     * 3) асинхронный запрос snapshot через `NeverApi.getPinfoCompassSnapshot(...)`,
+     * 4) передача результата в `applyAutoCompassSnapshot(...)`.
+     *
+     * `forceNow=true` используется в точках, где нужно обойти interval-гейт
+     * (например, сразу после явного пользовательского действия).
+     */
     private void tickAutoCompass(boolean forceNow) {
         if (!isAutoCompassEnabled()) {
             return;
@@ -1382,6 +1443,22 @@ public class AutoFunctionsManager {
         }, "auto-compass-pinfo").start();
     }
 
+    /**
+     * Применяет очередной snapshot pinfo в runtime-состояние авто-компаса.
+     *
+     * Ключевые ветки:
+     * - snapshot == null + HTTP 535/536:
+     *   увеличиваем polling interval, но не рвем поиск, если есть предыдущий валидный snapshot;
+     * - offline/invisible:
+     *   останавливаем поиск с понятной причиной;
+     * - валидный snapshot:
+     *   синхронизируем last location/region, перестраиваем кандидатов при изменениях и продолжаем навигацию.
+     *
+     * Зависимости:
+     * - `NeverApi.getLastCompassPinfoHttpStatus()` / `wasLastCompassPinfoRateLimited()`;
+     * - `buildCompassCandidates(...)` для построения клеток;
+     * - `continueAutoCompassNavigation(...)` для фактического движения/проверки комнаты.
+     */
     private void applyAutoCompassSnapshot(String targetNick, NeverApi.PinfoCompassSnapshot snapshot) {
         if (!isAutoCompassEnabled()) {
             return;
@@ -1475,6 +1552,20 @@ public class AutoFunctionsManager {
         continueAutoCompassNavigation(targetNick);
     }
 
+    /**
+     * Продолжает/управляет навигацией авто-компаса по списку кандидатов.
+     *
+     * Алгоритм:
+     * - если цель уже в текущем room-list -> фиксируем "найдено";
+     * - если прибытие в destination было, но room-list еще не обновлен:
+     *   запрашиваем refresh и ждем grace-period;
+     * - выбираем следующую ближайшую клетку через `MapPath`;
+     * - стартуем AutoMoving и логируем список возможных клеток.
+     *
+     * Совместимость:
+     * - при конфликте с авто-кладом/другим moving-контуром деликатно останавливает конфликтный режим,
+     *   чтобы не было гонки за `AppVars.AutoMovingDestinaton`.
+     */
     private void continueAutoCompassNavigation(String targetNick) {
         if (!isAutoCompassEnabled()) {
             return;
