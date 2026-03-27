@@ -9,6 +9,7 @@ import java.util.Locale;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import ru.neverlands.abclient.MainActivity;
 import ru.neverlands.abclient.postfilter.MainPhp;
 import ru.neverlands.abclient.utils.AppVars;
 import ru.neverlands.abclient.utils.Chat;
@@ -48,6 +49,8 @@ final class BossAuto {
     private static final int DEFAULT_WAIT_FIGHT_TIMEOUT_SEC = 25;
     private static final long RETURN_TIMEOUT_MS = 2 * 60 * 1000L;
     private static final long EVENT_DEDUP_WINDOW_MS = 20_000L;
+    private static final int TARGET_CHAT_ASK_MAX_ATTEMPTS = 5;
+    private static final long TARGET_CHAT_ASK_RETRY_MS = 1_500L;
 
     private final SharedPreferences prefs;
     private final AutoFunctionsManager owner;
@@ -62,6 +65,8 @@ final class BossAuto {
     private long actionDueAtMs = 0L;
     private long protectionSentAtMs = 0L;
     private int protectionAttempts = 0;
+    private int targetAskAttempts = 0;
+    private long targetAskNextAttemptAtMs = 0L;
     private String lastEventKey = "";
     private long lastEventAtMs = 0L;
 
@@ -213,6 +218,7 @@ final class BossAuto {
 
         switch (currentStage) {
             case SEARCHING_TARGET:
+                maybeRetryAskTarget(now);
                 if (now - stageStart >= getSearchTimeoutMs()) {
                     stopAndRestore("search_timeout", true);
                 }
@@ -300,14 +306,22 @@ final class BossAuto {
             actionDueAtMs = 0L;
             protectionSentAtMs = 0L;
             protectionAttempts = 0;
+            targetAskAttempts = 0;
+            targetAskNextAttemptAtMs = 0L;
         }
 
+        String locationLabel = resolveTargetLocationLabel(normalizedTarget);
         String targetHtml = RoomManager.buildUnifiedChatNickHtml(normalizedTarget);
+        String locationPrefix = isEmpty(locationLabel) ? "" : " [" + escapeHtml(locationLabel) + "]";
         writeBossChat("Событие: Монстр \"" + event.bossName + "\" напал на игрока "
                 + (isEmpty(targetHtml) ? escapeHtml(normalizedTarget) : targetHtml)
-                + ". Запускаем поиск цели.");
+                + locationPrefix + ". Запускаем поиск цели.");
         if (isAutoBossAskTargetEnabled()) {
-            Chat.sendMessageToServer("%<" + normalizedTarget + "> Подскажи на какой клетке Босс?");
+            synchronized (lock) {
+                targetAskAttempts = 0;
+                targetAskNextAttemptAtMs = now;
+            }
+            maybeRetryAskTarget(now);
         }
         owner.startSettingsCompassTargetSearch(normalizedTarget, "auto_boss_event");
     }
@@ -449,6 +463,8 @@ final class BossAuto {
             actionDueAtMs = 0L;
             protectionSentAtMs = 0L;
             protectionAttempts = 0;
+            targetAskAttempts = 0;
+            targetAskNextAttemptAtMs = 0L;
         }
         if (owner.isAutoCompassEnabled()) {
             owner.setAutoCompassEnabled(false);
@@ -566,6 +582,71 @@ final class BossAuto {
             raw = raw.substring(1);
         }
         return normalizeNick(raw);
+    }
+
+    private String resolveTargetLocationLabel(String targetNick) {
+        if (isEmpty(targetNick)) {
+            return "";
+        }
+        try {
+            AutoFunctionsManager.CompassLocationResolveResult resolved = owner.resolveAutoCompassLocation(targetNick);
+            if (resolved != null && resolved.success && !isEmpty(resolved.locationLabel)) {
+                return resolved.locationLabel;
+            }
+        } catch (Exception e) {
+            Log.w(TAG, TRACE_PREFIX + " resolveTargetLocationLabel failed: target=" + targetNick, e);
+        }
+        return owner.getAutoCompassLastLocationLabel();
+    }
+
+    private void maybeRetryAskTarget(long now) {
+        String target;
+        int attempts;
+        long nextAttemptAt;
+        BossStage currentStage;
+        synchronized (lock) {
+            currentStage = stage;
+            target = targetNick;
+            attempts = targetAskAttempts;
+            nextAttemptAt = targetAskNextAttemptAtMs;
+        }
+        if (currentStage != BossStage.SEARCHING_TARGET || isEmpty(target)) {
+            return;
+        }
+        if (attempts >= TARGET_CHAT_ASK_MAX_ATTEMPTS || nextAttemptAt <= 0L || now < nextAttemptAt) {
+            return;
+        }
+
+        if (!isChatSendReady()) {
+            synchronized (lock) {
+                targetAskAttempts = attempts + 1;
+                if (targetAskAttempts >= TARGET_CHAT_ASK_MAX_ATTEMPTS) {
+                    targetAskNextAttemptAtMs = 0L;
+                } else {
+                    targetAskNextAttemptAtMs = now + TARGET_CHAT_ASK_RETRY_MS;
+                }
+            }
+            Log.d(TAG, TRACE_PREFIX + " ask target delayed: chat frame not ready, target=" + target
+                    + ", attempt=" + (attempts + 1));
+            return;
+        }
+
+        String message = "%<" + target + "> Подскажи на какой клетке Босс?";
+        Chat.sendMessageToServer(message);
+        synchronized (lock) {
+            targetAskAttempts = TARGET_CHAT_ASK_MAX_ATTEMPTS;
+            targetAskNextAttemptAtMs = 0L;
+        }
+        Log.d(TAG, TRACE_PREFIX + " ask target sent: target=" + target + ", message=" + message);
+    }
+
+    private boolean isChatSendReady() {
+        MainActivity activity = AppVars.mainActivity != null ? AppVars.mainActivity.get() : null;
+        return activity != null
+                && activity.binding != null
+                && activity.binding.appBarMain != null
+                && activity.binding.appBarMain.contentMain != null
+                && activity.binding.appBarMain.contentMain.chatButtonsWebview != null;
     }
 
     private String extractCellRegNum(String plainText) {

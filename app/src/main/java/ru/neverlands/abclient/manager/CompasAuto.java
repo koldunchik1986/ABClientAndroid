@@ -885,6 +885,10 @@ final class CompasAuto {
         } else {
             htmlBuilder.append(escapeHtml(safeTarget));
         }
+        String locationLabel = getAutoCompassLastLocationLabel();
+        if (!isEmpty(locationLabel)) {
+            htmlBuilder.append(", локация=[").append(escapeHtml(locationLabel)).append("]");
+        }
         htmlBuilder.append(".");
         FastActionManager.writeChatMsg(htmlBuilder.toString());
     }

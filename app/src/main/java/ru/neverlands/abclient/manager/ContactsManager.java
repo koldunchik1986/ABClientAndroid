@@ -315,6 +315,19 @@ public class ContactsManager {
     }
 
     /**
+     * Возвращает уровень контакта из кэша contacts.xml.
+     * Используется как fallback-источник для единого рендера ника в чате,
+     * когда игрока нет в текущем room-list (`ChatListU`).
+     */
+    public static int getLevelOfContact(String name) {
+        Contact contact = contactsCache.get(name);
+        if (contact == null) {
+            return 0;
+        }
+        return Math.max(0, contact.playerLevel);
+    }
+
+    /**
      * Возвращает `toolId` для контакта (аналог C# `ContactsManager.GetToolIdOfContact`).
      *
      * Зависимости:

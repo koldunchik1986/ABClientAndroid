@@ -39,7 +39,7 @@ public class RoomManager {
     private static final long AUTO_CURE_ROOM_SCAN_INTERVAL_MS = 12_000L;
     private static final long AUTO_CURE_ROOM_PINFO_CACHE_TTL_MS = 30_000L;
     private static final long AUTO_CURE_POST_SUBMIT_VERIFY_DELAY_MS = 1_500L;
-    private static final long MAP_PINFO_SYNC_COOLDOWN_MS = 15_000L;
+    private static final long MAP_PINFO_SYNC_COOLDOWN_MS = 3_000L;
     // Последние raw-элементы ChatListU по нику (lowercase), чтобы другие модули
     // (например, Auto-Компас) могли рендерить ник/иконки/уровень/травмы 1:1 как room-list.
     private static final Map<String, String> lastRoomChatEntryByNick = new ConcurrentHashMap<>();
@@ -56,6 +56,7 @@ public class RoomManager {
     private static volatile long pendingRoomLocationNameAtMs;
     private static volatile long lastMapPinfoSyncAtMs = 0L;
     private static volatile boolean mapPinfoSyncInFlight = false;
+    private static volatile String lastOwnPinfoRegion = "";
 
     private static final class CachedRoomPinfoState {
         final int woundType;
@@ -294,6 +295,17 @@ public class RoomManager {
             return;
         }
 
+        // Быстрый проход: если регион уже известен из последнего pinfo,
+        // применяем его к текущей клетке без нового сетевого запроса.
+        String cachedRegion = lastOwnPinfoRegion == null ? "" : lastOwnPinfoRegion.trim();
+        if (!isEmpty(cachedRegion)) {
+            boolean changedFromCache = ExtMap.syncCellMetaFromPinfo(mapRegNum, cachedRegion, "");
+            if (changedFromCache) {
+                Log.d(TAG, "MAP_NAME_SYNC_TRACE: pinfo region cached sync applied, reg=" + mapRegNum
+                        + ", region=" + cachedRegion);
+            }
+        }
+
         long now = System.currentTimeMillis();
         if (mapPinfoSyncInFlight || (now - lastMapPinfoSyncAtMs) < MAP_PINFO_SYNC_COOLDOWN_MS) {
             return;
@@ -312,6 +324,9 @@ public class RoomManager {
                 String locationRegion = snapshot.locationRegion == null ? "" : snapshot.locationRegion.trim();
                 if (isEmpty(locationName) && isEmpty(locationRegion)) {
                     return;
+                }
+                if (!isEmpty(locationRegion)) {
+                    lastOwnPinfoRegion = locationRegion;
                 }
 
                 String liveRegNum = null;
@@ -355,7 +370,7 @@ public class RoomManager {
         String topUrl = AppVars.url_main_top == null ? "" : AppVars.url_main_top.toLowerCase(Locale.ROOT);
         boolean mapByTopUrl = topUrl.contains("get_id=56")
                 && topUrl.contains("act=10")
-                && topUrl.contains("go=ret");
+                && (topUrl.contains("go=ret") || topUrl.contains("go=inf"));
         boolean mapByMainHtml = !isEmpty(AppVars.ContentMainPhp) && AppVars.ContentMainPhp.contains("var map = [[");
         return mapByTopUrl || mapByMainHtml;
     }
@@ -1262,11 +1277,18 @@ public class RoomManager {
 
         String escapedNick = escapeHtml(cleanNick);
         String nickForJs = escapeJsSingleQuoted(cleanNick);
+        int contactLevel = ContactsManager.getLevelOfContact(cleanNick);
+        String levelHtml = contactLevel > 0
+                ? " [<font class=nickname color=\"" + color + "\">" + contactLevel + "</font>]"
+                : "";
         return "<a href=\"#\" onclick=\"top.say_private('" + nickForJs
                 + "');\"><img src=http://image.neverlands.ru/chat/private.gif width=11 height=12 border=0 align=absmiddle></a>&nbsp;"
                 + "<a class=\"activenick\" href=\"#\" onclick=\"top.say_to('" + nickForJs
                 + "');\"><font class=nickname color=\"" + color + "\"><b>"
-                + escapedNick + "</b></font></a>";
+                + escapedNick + "</b></font></a>"
+                + levelHtml
+                + "<a href=\"http://neverlands.ru/pinfo.cgi?" + escapedNick
+                + "\" onclick=\"window.open(this.href);\"><img src=http://image.neverlands.ru/chat/info.gif width=11 height=12 border=0 align=absmiddle></a>";
     }
 
     // Парсит JS-массив ChatListU и формирует HTML списка игроков.
