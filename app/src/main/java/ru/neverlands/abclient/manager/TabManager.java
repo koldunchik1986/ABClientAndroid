@@ -349,8 +349,9 @@ public class TabManager {
             Toast.makeText(context, "Не удалось определить ник для Компаса", Toast.LENGTH_SHORT).show();
             return;
         }
-        AutoFunctionsManager.getInstance(context).startManualCompassSearch(nick.trim());
-        Toast.makeText(context, "Компас: поиск " + nick, Toast.LENGTH_SHORT).show();
+        AutoFunctionsManager.getInstance(context)
+                .startSettingsCompassTargetSearch(nick.trim(), "pinfo_tab_compas_button");
+        Toast.makeText(context, "Компас: автопоиск " + nick, Toast.LENGTH_SHORT).show();
     }
 
     private String resolvePinfoNick(TabInfo tabInfo) {

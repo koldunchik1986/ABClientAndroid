@@ -124,8 +124,9 @@ public class PinfoActivity extends AppCompatActivity {
             Toast.makeText(this, "Добавить клан игрока " + nick, Toast.LENGTH_SHORT).show();
             return true;
         } else if (id == R.id.action_pinfo_compas) {
-            AutoFunctionsManager.getInstance(this).startManualCompassSearch(nick);
-            Toast.makeText(this, "Компас: поиск " + nick, Toast.LENGTH_SHORT).show();
+            AutoFunctionsManager.getInstance(this)
+                    .startSettingsCompassTargetSearch(nick, "pinfo_menu_compas");
+            Toast.makeText(this, "Компас: автопоиск " + nick, Toast.LENGTH_SHORT).show();
             return true;
         } else if (id == android.R.id.home) {
             finish();
