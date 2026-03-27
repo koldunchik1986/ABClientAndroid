@@ -35,6 +35,47 @@ public class FastActionManager {
     private static volatile long prevBlissUseAtMs = 0L;
     private static final int FAST_INV_TRANSITION_MAX_RETRIES = 12;
     private static final String FAST_INV_RETRY_PARAM = "ab_fast_inv_retry";
+    private static final int TELEPORT_DESTINATION_MIN_ID = 1;
+    private static final int TELEPORT_DESTINATION_MAX_ID = 12;
+    private static final int TELEPORT_DESTINATION_DEFAULT_ID = 1;
+    private static final String TELEPORT_DESTINATION_DEFAULT_NAME = "\u0413\u043E\u0440\u043E\u0434 \u0424\u043E\u0440\u043F\u043E\u0441\u0442";
+    private static final int[] TELEPORT_DESTINATION_IDS = new int[] {
+            1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12
+    };
+    private static final String[] TELEPORT_DESTINATION_NAMES = new String[] {
+            "\u0413\u043E\u0440\u043E\u0434 \u0424\u043E\u0440\u043F\u043E\u0441\u0442",
+            "\u0413\u043E\u0440\u043E\u0434 \u041E\u043A\u0442\u0430\u043B",
+            "\u0414\u0435\u0440\u0435\u0432\u043D\u044F \u041F\u043E\u0434\u0433\u043E\u0440\u043D\u0430\u044F",
+            "\u041E\u043A\u0440\u0435\u0441\u0442\u043D\u043E\u0441\u0442\u044C \u0424\u0435\u0439\u0434\u0430\u043D\u0430, \u0422\u0435\u043B\u0435\u043F\u043E\u0440\u0442",
+            "\u041E\u043A\u0440\u0435\u0441\u0442\u043D\u043E\u0441\u0442\u044C \u041E\u043A\u0442\u0430\u043B\u0430, \u0422\u0435\u043B\u0435\u043F\u043E\u0440\u0442",
+            "\u041E\u043A\u0440\u0435\u0441\u0442\u043D\u043E\u0441\u0442\u0438 \u042D\u0440\u0438\u043D\u0433\u0440\u0430\u0434\u0430, \u0422\u0435\u043B\u0435\u043F\u043E\u0440\u0442",
+            "\u041E\u043A\u0440\u0435\u0441\u0442\u043D\u043E\u0441\u0442\u044C \u0424\u043E\u0440\u043F\u043E\u0441\u0442\u0430, \u0422\u0435\u043B\u0435\u043F\u043E\u0440\u0442",
+            "\u041F\u0443\u0441\u0442\u044B\u043D\u044F \u0421\u0430\u043C\u0443\u043C-\u0411\u0435\u0439\u0442, \u0422\u0435\u043B\u0435\u043F\u043E\u0440\u0442",
+            "\u0421\u0435\u0432\u0435\u0440\u0441\u043A\u0438\u0439 \u0422\u0440\u0430\u043A\u0442, \u0422\u0435\u043B\u0435\u043F\u043E\u0440\u0442",
+            "\u0412\u043E\u0441\u0442\u043E\u0447\u043D\u044B\u0435 \u041B\u0435\u0441\u0430, \u0422\u0435\u043B\u0435\u043F\u043E\u0440\u0442",
+            "\u041E\u043A\u0440\u0435\u0441\u0442\u043D\u043E\u0441\u0442\u0438 \u041A\u0435\u043D\u0434\u0436\u0438\u0438, \u0422\u0435\u043B\u0435\u043F\u043E\u0440\u0442",
+            "\u0423\u0449\u0435\u043B\u044C\u0435 \u042D\u043B\u044C-\u0422\u044D\u0440, \u0422\u0435\u043B\u0435\u043F\u043E\u0440\u0442"
+    };
+    private static volatile int selectedTeleportDestinationId = TELEPORT_DESTINATION_DEFAULT_ID;
+    private static volatile String selectedTeleportDestinationName = TELEPORT_DESTINATION_DEFAULT_NAME;
+
+    public static final class TeleportDestination {
+        private final int id;
+        private final String name;
+
+        public TeleportDestination(int id, String name) {
+            this.id = id;
+            this.name = name == null ? "" : name;
+        }
+
+        public int getId() {
+            return id;
+        }
+
+        public String getName() {
+            return name;
+        }
+    }
 
     /**
      * Bridge для fast-ветки postfilter, выполняющей навигацию по инвентарю.
@@ -400,6 +441,58 @@ public class FastActionManager {
     /** Телепорт (аналог FormMain.FastAttackTeleport) — wsubid=22, post_id=25 */
     public static void fastAttackTeleport(String nick) {
         fastStart("i_w28_22.gif", stripItalic(nick));
+    }
+
+    /**
+     * Start teleport using selected destination id/name from quick UI.
+     */
+    public static void fastAttackTeleportToDestination(int destinationId, String destinationName) {
+        int safeId = sanitizeTeleportDestinationId(destinationId);
+        selectedTeleportDestinationId = safeId;
+        selectedTeleportDestinationName = resolveTeleportDestinationName(safeId, destinationName);
+        fastStart("i_w28_22.gif", "");
+    }
+
+    public static TeleportDestination[] getTeleportDestinations() {
+        TeleportDestination[] items = new TeleportDestination[TELEPORT_DESTINATION_IDS.length];
+        for (int i = 0; i < TELEPORT_DESTINATION_IDS.length; i++) {
+            items[i] = new TeleportDestination(TELEPORT_DESTINATION_IDS[i], TELEPORT_DESTINATION_NAMES[i]);
+        }
+        return items;
+    }
+
+    public static int getTeleportDestinationId() {
+        return selectedTeleportDestinationId;
+    }
+
+    public static String getTeleportDestinationName() {
+        return selectedTeleportDestinationName;
+    }
+
+    private static int sanitizeTeleportDestinationId(int destinationId) {
+        if (destinationId < TELEPORT_DESTINATION_MIN_ID || destinationId > TELEPORT_DESTINATION_MAX_ID) {
+            return TELEPORT_DESTINATION_DEFAULT_ID;
+        }
+        return destinationId;
+    }
+
+    private static String resolveTeleportDestinationName(int destinationId, String fallbackName) {
+        int index = destinationId - 1;
+        if (index >= 0 && index < TELEPORT_DESTINATION_NAMES.length) {
+            return TELEPORT_DESTINATION_NAMES[index];
+        }
+        if (fallbackName != null && !fallbackName.trim().isEmpty()) {
+            return fallbackName.trim();
+        }
+        return TELEPORT_DESTINATION_DEFAULT_NAME;
+    }
+
+    private static String escapeHtml(String value) {
+        if (value == null || value.isEmpty()) return "";
+        return value.replace("&", "&amp;")
+                .replace("<", "&lt;")
+                .replace(">", "&gt;")
+                .replace("\"", "&quot;");
     }
 
     /** Саморассеивание (аналог FormMain.FastAttackSelfRass) — wsubid=23, без pnick */
@@ -930,6 +1023,12 @@ public class FastActionManager {
      * - `resolveFastDisplayName(...)` — преобразование внутренних FastId в человекочитаемый текст.
      */
     private static String buildFastResultMessage(String fastId, String fastNick, Integer elixirRemainingAfterUse) {
+        if ("i_w28_22.gif".equals(fastId)) {
+            return buildServerChatTimeHtml()
+                    + "<font color=#336699>\u0422\u0435\u043B\u043F\u043E\u0440\u0442: \u0412\u044B\u043F\u043E\u043B\u043D\u0435\u043D\u043E \u0442\u0435\u043B\u0435\u043F\u043E\u0440\u0442\u0438\u0440\u043E\u0432\u0430\u043D\u0438\u0435 \u0432 <b>"
+                    + escapeHtml(resolveTeleportDestinationName(selectedTeleportDestinationId, selectedTeleportDestinationName))
+                    + "</b>.</font>";
+        }
         String displayName = resolveFastDisplayName(fastId);
         String target = (fastNick == null || fastNick.trim().isEmpty()) ? "" : " на <b>" + fastNick.trim() + "</b>";
         String elixirRemainSuffix = "";
@@ -1564,7 +1663,9 @@ public class FastActionManager {
             if (!wsubid.equals("22")) continue;
 
             // Случайный пункт назначения (1-12), аналог Dice.Make(12) + 1 в C#
-            int wtelid = (int)(Math.random() * 12) + 1;
+            int wtelid = sanitizeTeleportDestinationId(selectedTeleportDestinationId);
+            selectedTeleportDestinationId = wtelid;
+            selectedTeleportDestinationName = resolveTeleportDestinationName(wtelid, selectedTeleportDestinationName);
 
             return HTML_HEAD +
                     "Используем телепорт..." +
@@ -1575,7 +1676,7 @@ public class FastActionManager {
                     "<input name=wsubid type=hidden value=\"" + wsubid + "\">" +
                     "<input name=wsolid type=hidden value=\"" + wsolid + "\">" +
                     "<input name=wtelid type=hidden value=\"" + wtelid + "\">" +
-                    "<input name=agree type=hidden value=\"Выполнить\">" +
+                    "<input name=agree type=hidden value=\"\u041F\u0440\u0438\u043C\u0435\u043D\u0438\u0442\u044C\">" +
                     "</form>" +
                     buildSubmitScript();
         }

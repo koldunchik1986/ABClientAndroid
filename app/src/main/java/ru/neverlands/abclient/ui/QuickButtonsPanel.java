@@ -574,7 +574,7 @@ public class QuickButtonsPanel {
                 executeQuickAction("openNevid", "Обнаружение");
                 break;
             case QUICK_TELEPORT:
-                executeQuickAction("teleport", "Телепорт");
+                showTeleportQuickActionDialog();
                 break;
             case QUICK_ISLAND:
                 executeQuickAction("island", "Остров");
@@ -609,7 +609,7 @@ public class QuickButtonsPanel {
                 FastActionManager.fastAttackOpenNevid();
                 break;
             case "teleport":
-                FastActionManager.fastAttackTeleport("");
+                showTeleportQuickActionDialog();
                 break;
             case "island":
                 FastActionManager.fastAttackIslandPot();
@@ -632,6 +632,43 @@ public class QuickButtonsPanel {
     }
 
     // Лонг-клик по кнопке: меню настроек или удаление.
+    /**
+     * Диалог выбора пункта назначения для QuickButton «Телепорт».
+     * Источник данных — FastActionManager.getTeleportDestinations(), далее запускается fast-цепочка с выбранным wtelid.
+     */
+    private void showTeleportQuickActionDialog() {
+        FastActionManager.TeleportDestination[] destinations = FastActionManager.getTeleportDestinations();
+        if (destinations == null || destinations.length == 0) {
+            Toast.makeText(context, "Телепорт: список локаций пуст", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        String[] labels = new String[destinations.length];
+        int selectedIndex = 0;
+        int selectedId = FastActionManager.getTeleportDestinationId();
+        for (int i = 0; i < destinations.length; i++) {
+            FastActionManager.TeleportDestination destination = destinations[i];
+            labels[i] = destination.getName();
+            if (destination.getId() == selectedId) {
+                selectedIndex = i;
+            }
+        }
+
+        new AlertDialog.Builder(context)
+                .setTitle("Телепорт: выберите локацию")
+                .setSingleChoiceItems(labels, selectedIndex, (dialog, which) -> {
+                    if (which < 0 || which >= destinations.length) {
+                        return;
+                    }
+                    FastActionManager.TeleportDestination destination = destinations[which];
+                    FastActionManager.fastAttackTeleportToDestination(destination.getId(), destination.getName());
+                    Toast.makeText(context, "Телепорт: " + destination.getName(), Toast.LENGTH_SHORT).show();
+                    dialog.dismiss();
+                })
+                .setNegativeButton("Отмена", null)
+                .show();
+    }
+
     private void showButtonOptions(int position) {
         QuickButton button = buttonsManager.getButton(position);
 
