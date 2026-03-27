@@ -783,10 +783,10 @@ public class QuickButtonsPanel {
         fixedCellEnabled.setOnCheckedChangeListener((buttonView, isChecked) -> syncControls.run());
         syncControls.run();
 
-        new AlertDialog.Builder(context)
+        AlertDialog dialog = new AlertDialog.Builder(context)
                 .setTitle("Настройки Авто-Клада")
                 .setView(scroll)
-                .setPositiveButton("Сохранить", (dialog, which) -> {
+                .setPositiveButton("Сохранить", (d, which) -> {
                     autoFunctionsManager.setAutoTreasureDigEnabled(useDig.isChecked());
                     int selectedIndex = Math.max(0, Math.min(TREASURE_SHOVEL_VALUES.length - 1, shovelSpinner.getSelectedItemPosition()));
                     autoFunctionsManager.setAutoTreasureShovelOption(TREASURE_SHOVEL_VALUES[selectedIndex]);
@@ -797,6 +797,7 @@ public class QuickButtonsPanel {
                 })
                 .setNegativeButton("Отмена", null)
                 .show();
+
     }
 
     private void showAutoCureSettingsDialog() {
@@ -884,10 +885,10 @@ public class QuickButtonsPanel {
         useSelfElixir.setOnCheckedChangeListener((buttonView, isChecked) -> syncElixirControls.run());
         syncElixirControls.run();
 
-        new AlertDialog.Builder(context)
+        AlertDialog dialog = new AlertDialog.Builder(context)
                 .setTitle("Настройки Авто-Лечения")
                 .setView(scroll)
-                .setPositiveButton("Сохранить", (dialog, which) -> {
+                .setPositiveButton("Сохранить", (d, which) -> {
                     autoFunctionsManager.setAutoCureWoundLightEnabled(woundLight.isChecked());
                     autoFunctionsManager.setAutoCureWoundMediumEnabled(woundMedium.isChecked());
                     autoFunctionsManager.setAutoCureWoundHeavyEnabled(woundHeavy.isChecked());
@@ -1349,10 +1350,10 @@ public class QuickButtonsPanel {
         intervalSpinner.setSelection(selectedIntervalIndex);
         root.addView(intervalSpinner);
 
-        new AlertDialog.Builder(context)
+        AlertDialog dialog = new AlertDialog.Builder(context)
                 .setTitle("Настройки Авто-Компас")
                 .setView(scroll)
-                .setPositiveButton("Сохранить", (dialog, which) -> {
+                .setPositiveButton("Сохранить", (d, which) -> {
                     String targetNick = targetInput.getText() == null ? "" : targetInput.getText().toString();
                     autoFunctionsManager.setAutoCompassTargetNick(targetNick);
                     String cellsText = cellsInput.getText() == null ? "" : cellsInput.getText().toString();
@@ -1366,15 +1367,21 @@ public class QuickButtonsPanel {
                     autoFunctionsManager.setAutoCompassPollIntervalSec(intervalSec);
                     Toast.makeText(context, "Настройки авто-компаса сохранены", Toast.LENGTH_SHORT).show();
                 })
-                .setNeutralButton("Компас", (dialog, which) -> {
+                .setNeutralButton("ПОИСК ЦЕЛИ", (d, which) -> {
                     String targetNick = targetInput.getText() == null ? "" : targetInput.getText().toString();
-                    autoFunctionsManager.startManualCompassSearch(targetNick);
+                    autoFunctionsManager.startSettingsCompassTargetSearch(targetNick);
                     loadAndUpdateButtons();
                 })
                 .setNegativeButton("Отмена", null)
                 .show();
-    }
 
+        Button searchTargetButton = dialog.getButton(AlertDialog.BUTTON_NEUTRAL);
+        if (searchTargetButton != null) {
+            searchTargetButton.setAllCaps(false);
+            searchTargetButton.setTextColor(ContextCompat.getColor(context, R.color.white));
+            searchTargetButton.setBackgroundColor(ContextCompat.getColor(context, R.color.purple_500));
+        }
+    }
     private void showFunctionSelector(int position) {
         View dialogView = View.inflate(context, R.layout.dialog_select_function, null);
         android.widget.ListView listView = dialogView.findViewById(R.id.functions_list);

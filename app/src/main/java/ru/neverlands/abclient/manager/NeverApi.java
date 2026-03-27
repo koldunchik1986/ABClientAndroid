@@ -35,9 +35,20 @@ public class NeverApi {
     private static final int LIGHT_WOUND_INDEX = 1;
     private static final int MEDIUM_WOUND_INDEX = 2;
     private static final int HEAVY_WOUND_INDEX = 3;
+    private static final ThreadLocal<Integer> lastHttpStatusCode = ThreadLocal.withInitial(() -> 0);
+    private static volatile int lastCompassPinfoHttpStatus = 0;
 
     // Кэш nick → userId (аналог NameToId в C#)
     private static final Map<String, String> nameToId = new HashMap<>();
+
+    public static int getLastCompassPinfoHttpStatus() {
+        return lastCompassPinfoHttpStatus;
+    }
+
+    public static boolean wasLastCompassPinfoRateLimited() {
+        int code = lastCompassPinfoHttpStatus;
+        return code == 535 || code == 536;
+    }
 
     /**
      * Снимок vitals из pinfo.cgi:
@@ -239,12 +250,20 @@ public class NeverApi {
         if (nick == null || nick.trim().isEmpty()) {
             return null;
         }
+        lastCompassPinfoHttpStatus = 0;
         try {
             String normalizedNick = nick.trim();
             String encoded = encodeNeverlandsQueryTail(normalizedNick);
             String html = getInfo("http://neverlands.ru/pinfo.cgi?" + encoded);
+            int lastStatus = lastHttpStatusCode.get() == null ? 0 : lastHttpStatusCode.get();
+            if (lastStatus != 0) {
+                lastCompassPinfoHttpStatus = lastStatus;
+            }
             PinfoCompassSnapshot snapshot = parsePinfoCompassSnapshotFromHtml(normalizedNick, html);
             if (snapshot != null) {
+                if (lastCompassPinfoHttpStatus == 0) {
+                    lastCompassPinfoHttpStatus = 200;
+                }
                 android.util.Log.d(TAG, "AUTO_COMPASS_TRACE snapshot: nick=" + snapshot.nick
                         + ", locationRaw=" + snapshot.locationRaw
                         + ", region=" + snapshot.locationRegion
@@ -257,6 +276,9 @@ public class NeverApi {
             }
             return snapshot;
         } catch (Exception e) {
+            if (lastCompassPinfoHttpStatus == 0) {
+                lastCompassPinfoHttpStatus = -1;
+            }
             android.util.Log.w(TAG, "AUTO_COMPASS_TRACE snapshot: request failed for nick=" + nick, e);
             return null;
         }
@@ -793,6 +815,7 @@ public class NeverApi {
     static String getInfo(String urlString) {
         HttpURLConnection conn = null;
         try {
+            lastHttpStatusCode.set(0);
             URL url = new URL(urlString);
             java.net.Proxy activeProxy = ProxyRuntimeManager.getActiveJavaProxyOrNull();
             if (activeProxy == null && ProxyRuntimeManager.isStrictProxyRequiredForCurrentProfile()) {
@@ -817,6 +840,7 @@ public class NeverApi {
             conn.setRequestProperty("User-Agent", AppVars.BROWSER_USER_AGENT);
 
             int code = conn.getResponseCode();
+            lastHttpStatusCode.set(code);
             if (code != 200) {
                 boolean retryable536 = (code == 536) && shouldRetryNeverApiRequest(urlString);
                 android.util.Log.w(TAG, "getInfo: HTTP " + code + " for " + urlString
@@ -839,6 +863,7 @@ public class NeverApi {
             return Russian.getString(baos.toByteArray());
 
         } catch (Exception e) {
+            lastHttpStatusCode.set(-1);
             android.util.Log.w(TAG, "getInfo failed: " + urlString, e);
             return null;
         } finally {
@@ -853,6 +878,7 @@ public class NeverApi {
     private static String getInfoRetryOnce(String urlString) {
         HttpURLConnection conn = null;
         try {
+            lastHttpStatusCode.set(0);
             URL url = new URL(urlString);
             java.net.Proxy activeProxy = ProxyRuntimeManager.getActiveJavaProxyOrNull();
             if (activeProxy == null && ProxyRuntimeManager.isStrictProxyRequiredForCurrentProfile()) {
@@ -874,6 +900,7 @@ public class NeverApi {
             conn.setRequestProperty("User-Agent", AppVars.BROWSER_USER_AGENT);
 
             int code = conn.getResponseCode();
+            lastHttpStatusCode.set(code);
             if (code != 200) {
                 android.util.Log.w(TAG, "getInfoRetryOnce: HTTP " + code + " for " + urlString);
                 return null;
@@ -887,6 +914,7 @@ public class NeverApi {
             is.close();
             return Russian.getString(baos.toByteArray());
         } catch (Exception e) {
+            lastHttpStatusCode.set(-1);
             android.util.Log.w(TAG, "getInfoRetryOnce failed: " + urlString, e);
             return null;
         } finally {

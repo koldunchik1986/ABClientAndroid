@@ -53,6 +53,8 @@ public class AutoFunctionsManager {
     private static final int AUTO_COMPASS_POLL_DEFAULT_SEC = 2;
     private static final int AUTO_COMPASS_POLL_MIN_SEC = 1;
     private static final int AUTO_COMPASS_POLL_MAX_SEC = 5;
+    private static final int AUTO_COMPASS_POLL_BACKOFF_STEP_SEC = 1;
+    private static final int AUTO_COMPASS_POLL_BACKOFF_MAX_EXTRA_SEC = 5;
     private static final long AUTO_COMPASS_ROOM_REFRESH_GRACE_MS = 8_000L;
     // Настройки Авто-Лечения (UI long-press + MainPhp/RoomManager используют общий набор ключей).
     private static final String PREF_AUTO_CURE_WOUND_LIGHT = "auto_cure_wound_light";
@@ -84,6 +86,7 @@ public class AutoFunctionsManager {
     private final LinkedHashSet<String> autoCompassCheckedCells = new LinkedHashSet<>();
     private final LinkedHashSet<String> autoCompassLastRoomNicks = new LinkedHashSet<>();
     private volatile long autoCompassLastTickAtMs = 0L;
+    private volatile int autoCompassAdaptivePollSec = AUTO_COMPASS_POLL_DEFAULT_SEC;
     private volatile long autoCompassLastRoomUpdateAtMs = 0L;
     private volatile boolean autoCompassPinfoInFlight = false;
     private volatile String autoCompassCurrentDestination = "";
@@ -979,6 +982,7 @@ public class AutoFunctionsManager {
     public void setAutoCompassEnabled(boolean enabled) {
         prefs.edit().putBoolean(KEY_AUTO_COMPASS, enabled).apply();
         if (enabled) {
+            autoCompassAdaptivePollSec = getAutoCompassBasePollIntervalSec();
             if (!isLocationTrackingEnabled()) {
                 setLocationTrackingEnabled(true);
             }
@@ -995,6 +999,7 @@ public class AutoFunctionsManager {
             boolean shouldStopMoving = AppVars.AutoMoving && isAutoCompassMovingNow();
             autoCompassPinfoInFlight = false;
             autoCompassManualSingleRun = false;
+            autoCompassAdaptivePollSec = getAutoCompassBasePollIntervalSec();
             synchronized (autoCompassLock) {
                 autoCompassCurrentDestination = "";
                 autoCompassDestinationSetAtMs = 0L;
@@ -1045,6 +1050,7 @@ public class AutoFunctionsManager {
     public void setAutoCompassPollIntervalSec(int sec) {
         int safe = normalizeAutoCompassPollIntervalSec(sec);
         putDefaultInt(PREF_AUTO_COMPASS_POLL_INTERVAL_SEC, safe);
+        autoCompassAdaptivePollSec = Math.max(autoCompassAdaptivePollSec, getAutoCompassBasePollIntervalSec());
     }
 
     public String getAutoCompassLastLocationLabel() {
@@ -1123,6 +1129,9 @@ public class AutoFunctionsManager {
             snapshot = NeverApi.getPinfoCompassSnapshot(normalized);
         } catch (Exception e) {
             Log.w(TAG, "resolveAutoCompassLocation: pinfo request failed, nick=" + normalized, e);
+            if (NeverApi.wasLastCompassPinfoRateLimited()) {
+                onAutoCompassRateLimitError(NeverApi.getLastCompassPinfoHttpStatus());
+            }
             return new CompassLocationResolveResult(
                     false,
                     normalized,
@@ -1133,6 +1142,9 @@ public class AutoFunctionsManager {
         }
 
         if (snapshot == null) {
+            if (NeverApi.wasLastCompassPinfoRateLimited()) {
+                onAutoCompassRateLimitError(NeverApi.getLastCompassPinfoHttpStatus());
+            }
             return new CompassLocationResolveResult(
                     false,
                     normalized,
@@ -1141,6 +1153,7 @@ public class AutoFunctionsManager {
                     "Компас: pinfo не отвечает."
             );
         }
+        onAutoCompassRequestSuccess();
         if (snapshot.offlineOrInvisible) {
             return new CompassLocationResolveResult(
                     false,
@@ -1197,6 +1210,7 @@ public class AutoFunctionsManager {
         Log.d(TAG, "AUTO_COMPASS_TRACE manual resolve: target=" + normalized
                 + ", location=" + locationLabel
                 + ", candidates=" + cellsCsv);
+        onAutoCompassRequestSuccess();
         return new CompassLocationResolveResult(
                 true,
                 normalized,
@@ -1217,8 +1231,70 @@ public class AutoFunctionsManager {
         setAutoCompassEnabled(true);
     }
 
+    /**
+     * Запуск полного цикла "Авто-компас" из окна настроек:
+     * - не ограничиваемся ближайшей клеткой,
+     * - включаем hunt-all режим,
+     * - если цель та же самая, не сбрасываем уже подготовленные snapshot/клетки.
+     */
+    public void startSettingsCompassTargetSearch(String nick) {
+        String normalized = normalizeCompassNick(nick);
+        if (normalized.isEmpty()) {
+            writeCompassChat("Компас: укажите ник цели.");
+            return;
+        }
+
+        String currentTarget = getAutoCompassTargetNick();
+        if (!normalized.equalsIgnoreCase(currentTarget)) {
+            setAutoCompassTargetNick(normalized);
+        } else {
+            putDefaultString(PREF_AUTO_COMPASS_TARGET_NICK, normalized);
+        }
+
+        autoCompassManualSingleRun = false;
+        setAutoCompassHuntMode(true);
+        setAutoCompassEnabled(true);
+    }
+
     public void tickAutoCompass() {
         tickAutoCompass(false);
+    }
+
+    private int getAutoCompassBasePollIntervalSec() {
+        return Math.max(getAutoCompassPollIntervalSec(), getWalkersPollIntervalSec());
+    }
+
+    private int getAutoCompassEffectivePollIntervalSec() {
+        int base = getAutoCompassBasePollIntervalSec();
+        int adaptive = autoCompassAdaptivePollSec;
+        if (adaptive < base) {
+            autoCompassAdaptivePollSec = base;
+            return base;
+        }
+        return adaptive;
+    }
+
+    private void onAutoCompassRateLimitError(int statusCode) {
+        int base = getAutoCompassBasePollIntervalSec();
+        int current = Math.max(base, autoCompassAdaptivePollSec);
+        int maxAllowed = base + AUTO_COMPASS_POLL_BACKOFF_MAX_EXTRA_SEC;
+        int bumped = Math.min(maxAllowed, current + AUTO_COMPASS_POLL_BACKOFF_STEP_SEC);
+        if (bumped != current) {
+            autoCompassAdaptivePollSec = bumped;
+            Log.w(TAG, "AUTO_COMPASS_TRACE adaptive poll backoff: status=" + statusCode
+                    + ", baseSec=" + base
+                    + ", oldSec=" + current
+                    + ", newSec=" + bumped);
+        }
+    }
+
+    private void onAutoCompassRequestSuccess() {
+        int base = getAutoCompassBasePollIntervalSec();
+        if (autoCompassAdaptivePollSec != base) {
+            Log.d(TAG, "AUTO_COMPASS_TRACE adaptive poll reset: oldSec="
+                    + autoCompassAdaptivePollSec + ", baseSec=" + base);
+        }
+        autoCompassAdaptivePollSec = base;
     }
 
     public void onRoomUsersUpdated(List<String> roomNicks, String roomLocationName) {
@@ -1260,7 +1336,7 @@ public class AutoFunctionsManager {
             return;
         }
         long now = System.currentTimeMillis();
-        long minIntervalMs = Math.max(1_000L, getAutoCompassPollIntervalSec() * 1000L);
+        long minIntervalMs = Math.max(1_000L, getAutoCompassEffectivePollIntervalSec() * 1000L);
         if (!forceNow && (now - autoCompassLastTickAtMs) < minIntervalMs) {
             return;
         }
@@ -1293,6 +1369,11 @@ public class AutoFunctionsManager {
             return;
         }
         if (snapshot == null) {
+            int pinfoStatus = NeverApi.getLastCompassPinfoHttpStatus();
+            boolean rateLimited = (pinfoStatus == 535 || pinfoStatus == 536);
+            if (rateLimited) {
+                onAutoCompassRateLimitError(pinfoStatus);
+            }
             NeverApi.PinfoCompassSnapshot previousSnapshot;
             synchronized (autoCompassLock) {
                 previousSnapshot = autoCompassLastSnapshot;
@@ -1302,6 +1383,15 @@ public class AutoFunctionsManager {
             if (previousSnapshot != null && !isEmpty(previousSnapshot.locationName)) {
                 Log.d(TAG, "AUTO_COMPASS_TRACE snapshot unavailable, keep last location="
                         + previousSnapshot.locationName + ", target=" + targetNick);
+                // Не стопаем контур из-за временного сбоя pinfo (например, HTTP 536).
+                // Если у нас уже есть рабочий snapshot/клетки — продолжаем навигацию по ним.
+                continueAutoCompassNavigation(targetNick);
+                return;
+            }
+            if (rateLimited) {
+                Log.w(TAG, "AUTO_COMPASS_TRACE snapshot unavailable because rate-limit status="
+                        + pinfoStatus + ", keep waiting with adaptive interval="
+                        + getAutoCompassEffectivePollIntervalSec() + "s");
                 return;
             }
             stopAutoCompassWithReason("Компас: цель недоступна или pinfo не отвечает.", true);
@@ -1313,6 +1403,7 @@ public class AutoFunctionsManager {
             return;
         }
 
+        onAutoCompassRequestSuccess();
         String locationName = snapshot.locationName.trim();
         String locationRegion = snapshot.locationRegion == null ? "" : snapshot.locationRegion.trim();
         String normalizedLocation = normalizeCompassLabel(locationName);
