@@ -87,6 +87,8 @@ public class AutoFunctionsManager {
     private final LinkedHashSet<String> autoCompassLastRoomNicks = new LinkedHashSet<>();
     private volatile long autoCompassLastTickAtMs = 0L;
     private volatile int autoCompassAdaptivePollSec = AUTO_COMPASS_POLL_DEFAULT_SEC;
+    private volatile long autoCompassLastRateLimitNoticeAtMs = 0L;
+    private volatile int autoCompassLastRateLimitNoticeSec = 0;
     private volatile long autoCompassLastRoomUpdateAtMs = 0L;
     private volatile boolean autoCompassPinfoInFlight = false;
     private volatile String autoCompassCurrentDestination = "";
@@ -1279,8 +1281,20 @@ public class AutoFunctionsManager {
         int current = Math.max(base, autoCompassAdaptivePollSec);
         int maxAllowed = base + AUTO_COMPASS_POLL_BACKOFF_MAX_EXTRA_SEC;
         int bumped = Math.min(maxAllowed, current + AUTO_COMPASS_POLL_BACKOFF_STEP_SEC);
+        autoCompassAdaptivePollSec = bumped;
+
+        long now = System.currentTimeMillis();
+        boolean intervalChanged = bumped != current;
+        boolean notifyByTimeout = (now - autoCompassLastRateLimitNoticeAtMs) >= 15_000L;
+        boolean notifyByInterval = intervalChanged || autoCompassLastRateLimitNoticeSec != bumped;
+        if (notifyByTimeout || notifyByInterval) {
+            autoCompassLastRateLimitNoticeAtMs = now;
+            autoCompassLastRateLimitNoticeSec = bumped;
+            writeCompassChat("Компас: сервер ограничил pinfo (HTTP " + statusCode
+                    + "), интервал опроса увеличен до " + bumped + "с.");
+        }
+
         if (bumped != current) {
-            autoCompassAdaptivePollSec = bumped;
             Log.w(TAG, "AUTO_COMPASS_TRACE adaptive poll backoff: status=" + statusCode
                     + ", baseSec=" + base
                     + ", oldSec=" + current
@@ -1291,10 +1305,14 @@ public class AutoFunctionsManager {
     private void onAutoCompassRequestSuccess() {
         int base = getAutoCompassBasePollIntervalSec();
         if (autoCompassAdaptivePollSec != base) {
+            int oldSec = autoCompassAdaptivePollSec;
             Log.d(TAG, "AUTO_COMPASS_TRACE adaptive poll reset: oldSec="
                     + autoCompassAdaptivePollSec + ", baseSec=" + base);
+            writeCompassChat("Компас: связь восстановлена, интервал опроса возвращен к "
+                    + base + "с (было " + oldSec + "с).");
         }
         autoCompassAdaptivePollSec = base;
+        autoCompassLastRateLimitNoticeSec = 0;
     }
 
     public void onRoomUsersUpdated(List<String> roomNicks, String roomLocationName) {
