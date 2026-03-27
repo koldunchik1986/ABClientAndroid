@@ -224,14 +224,37 @@ public class RoomManager {
             return;
         }
 
-        String regNum = resolveCellRegNumForRoomName(serverLocationName);
+        String currentReg = normalizeRegNum(AppVars.Profile.MapLocation);
+        String regNum = normalizeRegNum(resolveCellRegNumForRoomName(serverLocationName));
         if (isEmpty(regNum)) {
-            String pendingTargetReg = AppVars.AutoMoving ? normalizeRegNum(AppVars.AutoMovingNextJump) : null;
+            // Вне движения не применяем "неуверенное" имя из room, чтобы не переименовать
+            // текущую клетку именем соседней при рассинхроне ответов.
+            if (!AppVars.AutoMoving) {
+                clearPendingRoomLocationName();
+                Log.d(TAG, "MAP_NAME_SYNC_TRACE: skip unresolved room label sync in idle mode, currentReg="
+                        + currentReg + ", serverName=" + serverLocationName);
+                return;
+            }
+            String pendingTargetReg = normalizeRegNum(AppVars.AutoMovingNextJump);
             cachePendingRoomLocationName(serverLocationName, pendingTargetReg);
-            Log.d(TAG, "MAP_NAME_SYNC_TRACE: defer room label sync, currentReg="
-                    + (AppVars.Profile != null ? AppVars.Profile.MapLocation : null)
+            Log.d(TAG, "MAP_NAME_SYNC_TRACE: defer room label sync (moving), currentReg="
+                    + currentReg
                     + ", nextJump=" + AppVars.AutoMovingNextJump
                     + ", pendingReg=" + pendingTargetReg
+                    + ", serverName=" + serverLocationName);
+            return;
+        }
+
+        // Прямое применение допускаем только когда room-имя однозначно связано с текущей клеткой
+        // и в этот момент нет активного движения по карте.
+        boolean canApplyImmediately = !AppVars.AutoMoving
+                && !isEmpty(currentReg)
+                && currentReg.equals(regNum);
+        if (!canApplyImmediately) {
+            cachePendingRoomLocationName(serverLocationName, regNum);
+            Log.d(TAG, "MAP_NAME_SYNC_TRACE: defer room label sync, currentReg=" + currentReg
+                    + ", resolvedReg=" + regNum
+                    + ", autoMoving=" + AppVars.AutoMoving
                     + ", serverName=" + serverLocationName);
             return;
         }
@@ -346,8 +369,7 @@ public class RoomManager {
      * Правило выбора:
      * 1) Если серверное имя совпадает с текущей клеткой (`Profile.MapLocation`) — берём текущую клетку.
      * 2) Иначе, если совпадает с `AutoMovingNextJump` — берём следующую клетку маршрута.
-     * 3) Если `AutoMoving=true` и совпадений нет — возвращаем `null` (только deferred, без рискованного fallback).
-     * 4) В обычном режиме (без авто-движения) fallback на текущую клетку допустим.
+     * 3) Если совпадений нет — возвращаем `null` (только deferred, без рискованного fallback).
      *
      * Такой порядок предотвращает запись имени в "предыдущую" клетку во время перехода.
      */
@@ -382,10 +404,7 @@ public class RoomManager {
             }
         }
 
-        if (AppVars.AutoMoving) {
-            return null;
-        }
-        return currentReg;
+        return null;
     }
 
     private static String getCellName(String regNum) {

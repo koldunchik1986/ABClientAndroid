@@ -305,7 +305,7 @@ public class TabManager {
                     addToContacts(tabInfo.title);
                 });
 
-                btn3.setImageResource(R.drawable.ic_location);
+                btn3.setImageResource(R.drawable.ic_compas);
                 btn3.setOnClickListener(v -> {
                     startCompassFromPinfoTab(tabInfo);
                 });

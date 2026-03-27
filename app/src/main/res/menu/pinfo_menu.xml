@@ -19,7 +19,8 @@
 
     <item
         android:id="@+id/action_pinfo_compas"
+        android:icon="@drawable/ic_compas"
         android:title="Компас"
-        app:showAsAction="never" />
+        app:showAsAction="ifRoom" />
 
 </menu>

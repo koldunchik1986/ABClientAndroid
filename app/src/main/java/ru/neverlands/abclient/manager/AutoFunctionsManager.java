@@ -53,6 +53,7 @@ public class AutoFunctionsManager {
     private static final int AUTO_COMPASS_POLL_DEFAULT_SEC = 2;
     private static final int AUTO_COMPASS_POLL_MIN_SEC = 1;
     private static final int AUTO_COMPASS_POLL_MAX_SEC = 5;
+    private static final long AUTO_COMPASS_ROOM_REFRESH_GRACE_MS = 8_000L;
     // Настройки Авто-Лечения (UI long-press + MainPhp/RoomManager используют общий набор ключей).
     private static final String PREF_AUTO_CURE_WOUND_LIGHT = "auto_cure_wound_light";
     private static final String PREF_AUTO_CURE_WOUND_MEDIUM = "auto_cure_wound_medium";
@@ -86,6 +87,7 @@ public class AutoFunctionsManager {
     private volatile long autoCompassLastRoomUpdateAtMs = 0L;
     private volatile boolean autoCompassPinfoInFlight = false;
     private volatile String autoCompassCurrentDestination = "";
+    private volatile long autoCompassDestinationSetAtMs = 0L;
     private volatile boolean autoCompassManualSingleRun = false;
     private volatile NeverApi.PinfoCompassSnapshot autoCompassLastSnapshot = null;
     
@@ -995,6 +997,7 @@ public class AutoFunctionsManager {
             autoCompassManualSingleRun = false;
             synchronized (autoCompassLock) {
                 autoCompassCurrentDestination = "";
+                autoCompassDestinationSetAtMs = 0L;
                 autoCompassCandidateCells.clear();
                 autoCompassCheckedCells.clear();
             }
@@ -1015,6 +1018,7 @@ public class AutoFunctionsManager {
         putDefaultString(PREF_AUTO_COMPASS_TARGET_NICK, normalized);
         synchronized (autoCompassLock) {
             autoCompassCurrentDestination = "";
+            autoCompassDestinationSetAtMs = 0L;
             autoCompassCandidateCells.clear();
             autoCompassCheckedCells.clear();
             autoCompassLastSnapshot = null;
@@ -1060,6 +1064,7 @@ public class AutoFunctionsManager {
         putDefaultString(PREF_AUTO_COMPASS_MANUAL_CELLS_CSV, joinCompassRegNums(normalized));
         synchronized (autoCompassLock) {
             autoCompassCurrentDestination = "";
+            autoCompassDestinationSetAtMs = 0L;
             autoCompassCandidateCells.clear();
             autoCompassCheckedCells.clear();
         }
@@ -1217,6 +1222,7 @@ public class AutoFunctionsManager {
                 autoCompassCandidateCells.addAll(resolvedCandidates);
                 autoCompassCheckedCells.clear();
                 autoCompassCurrentDestination = "";
+                autoCompassDestinationSetAtMs = 0L;
             }
             putDefaultString(PREF_AUTO_COMPASS_CELLS_CSV, joinCompassRegNums(resolvedCandidates));
             Log.d(TAG, "AUTO_COMPASS_TRACE candidates rebuilt: region=" + locationRegion
@@ -1246,10 +1252,12 @@ public class AutoFunctionsManager {
         List<String> candidatesSnapshot;
         Set<String> checkedSnapshot;
         String currentDestination;
+        long currentDestinationSetAtMs;
         synchronized (autoCompassLock) {
             candidatesSnapshot = new ArrayList<>(autoCompassCandidateCells);
             checkedSnapshot = new LinkedHashSet<>(autoCompassCheckedCells);
             currentDestination = autoCompassCurrentDestination;
+            currentDestinationSetAtMs = autoCompassDestinationSetAtMs;
         }
         if (candidatesSnapshot.isEmpty()) {
             stopAutoCompassWithReason("Компас: список клеток пуст, поиск остановлен.", true);
@@ -1260,9 +1268,34 @@ public class AutoFunctionsManager {
         if (!currentDestination.isEmpty()
                 && currentRegNum.equals(currentDestination)
                 && !AppVars.AutoMoving) {
+            boolean hasFreshRoomAfterArrival;
+            synchronized (autoCompassLock) {
+                hasFreshRoomAfterArrival = autoCompassLastRoomUpdateAtMs >= currentDestinationSetAtMs;
+            }
+            if (!hasFreshRoomAfterArrival) {
+                ru.neverlands.abclient.MainActivity activity = AppVars.mainActivity != null ? AppVars.mainActivity.get() : null;
+                if (activity != null) {
+                    activity.runOnUiThread(() -> {
+                        try {
+                            activity.requestRoomUsersRefreshSoon();
+                        } catch (Exception e) {
+                            Log.w(TAG, "AUTO_COMPASS_TRACE request room refresh failed after arrival", e);
+                        }
+                    });
+                }
+                long waitMs = System.currentTimeMillis() - currentDestinationSetAtMs;
+                if (waitMs < AUTO_COMPASS_ROOM_REFRESH_GRACE_MS) {
+                    Log.d(TAG, "AUTO_COMPASS_TRACE waiting room refresh after arrival: destination="
+                            + currentDestination + ", waitedMs=" + waitMs);
+                    return;
+                }
+                Log.w(TAG, "AUTO_COMPASS_TRACE room refresh timeout after arrival: destination="
+                        + currentDestination + ", waitedMs=" + waitMs);
+            }
             synchronized (autoCompassLock) {
                 autoCompassCheckedCells.add(currentDestination);
                 autoCompassCurrentDestination = "";
+                autoCompassDestinationSetAtMs = 0L;
             }
             if (!huntAll) {
                 stopAutoCompassWithReason("Компас: цель не найдена на ближайшей клетке.", true);
@@ -1323,6 +1356,7 @@ public class AutoFunctionsManager {
         }
         synchronized (autoCompassLock) {
             autoCompassCurrentDestination = nextDestination;
+            autoCompassDestinationSetAtMs = System.currentTimeMillis();
         }
         if (!nextDestination.equals(AppVars.AutoMovingDestinaton) || !AppVars.AutoMoving) {
             startAutoMoving(nextDestination);
@@ -1449,6 +1483,7 @@ public class AutoFunctionsManager {
             prefs.edit().putBoolean(KEY_AUTO_COMPASS, false).apply();
             synchronized (autoCompassLock) {
                 autoCompassCurrentDestination = "";
+                autoCompassDestinationSetAtMs = 0L;
                 autoCompassCandidateCells.clear();
                 autoCompassCheckedCells.clear();
             }
@@ -1578,7 +1613,7 @@ public class AutoFunctionsManager {
             }
             String safeValue = escapeHtml(value);
             if (value.matches("\\d{1,4}-\\d{1,5}")) {
-                builder.append("<a style='text-decoration:none' href='http://")
+                builder.append("<a style='text-decoration:none' href='abmove://")
                         .append(safeValue)
                         .append("'><b>")
                         .append(safeValue)

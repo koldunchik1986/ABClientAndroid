@@ -284,7 +284,7 @@ public class QuickButtonsPanel {
             case AUTO_ATTACK:
                 return "http://image.neverlands.ru/achievement/13/a_13_10.gif";
             case AUTO_COMPASS:
-                return "http://image.neverlands.ru/signs/compass.gif";
+                return null;
             case AUTO_INVISIBLE:
                 return "http://image.neverlands.ru/weapon/i_w27_53.gif";
             case LOCATION_TRACKING:
@@ -391,7 +391,7 @@ public class QuickButtonsPanel {
             case AUTO_ATTACK:
                 return R.drawable.ic_auto_attack;
             case AUTO_COMPASS:
-                return R.drawable.ic_location;
+                return R.drawable.ic_compas;
             case AUTO_INVISIBLE:
                 return R.drawable.ic_auto_invisible;
             case LOCATION_TRACKING:

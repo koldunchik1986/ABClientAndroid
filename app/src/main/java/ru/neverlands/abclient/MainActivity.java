@@ -118,6 +118,8 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     private static final int CAPTCHA_NOTIFICATION_ID = 6107;
     private static final String CAPTCHA_NOTIFICATION_CHANNEL_ID = "captcha_alerts";
     private static final long POST_RELOAD_GUARD_WINDOW_MS = 5000L;
+    private static final Pattern COMPASS_CELL_URL_PATTERN =
+            Pattern.compile("^https?://(\\d{1,4}-\\d{1,5})(?:[/?#].*)?$", Pattern.CASE_INSENSITIVE);
     private static final int POST_RELOAD_GUARD_MAX_COUNT = 4;
     private static final long POST_RELOAD_GUARD_BLOCK_MS = 12000L;
     private static final long MAINFRAME_TIMEOUT_RETRY_DELAY_MS = 1500L;
@@ -778,6 +780,59 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                 || lowerUrl.contains("&go=inf")
                 || lowerUrl.contains("?go=ret")
                 || lowerUrl.contains("&go=ret");
+    }
+
+    /**
+     * Извлекает номер клетки из "кликабельной" ссылки компаса.
+     *
+     * Поддерживаемые форматы:
+     * - `abmove://3-378` (основной формат для новых сообщений),
+     * - `abcell://3-378` (совместимость),
+     * - `http://3-378` / `https://3-378` (совместимость со старыми сообщениями).
+     */
+    @NonNull
+    private String extractCompassCellRegNumFromUrl(String url) {
+        if (url == null) {
+            return "";
+        }
+        String trimmed = url.trim();
+        if (trimmed.isEmpty()) {
+            return "";
+        }
+
+        try {
+            Uri uri = Uri.parse(trimmed);
+            String scheme = uri != null ? uri.getScheme() : null;
+            if ("abmove".equalsIgnoreCase(scheme) || "abcell".equalsIgnoreCase(scheme)) {
+                String host = uri.getHost();
+                if (host != null && !host.trim().isEmpty()) {
+                    return normalizeCompassCellRegNum(host);
+                }
+                String path = uri.getPath();
+                if (path != null && !path.trim().isEmpty()) {
+                    return normalizeCompassCellRegNum(path.replace("/", ""));
+                }
+            }
+        } catch (Exception ignored) {
+        }
+
+        Matcher matcher = COMPASS_CELL_URL_PATTERN.matcher(trimmed);
+        if (matcher.matches()) {
+            return normalizeCompassCellRegNum(matcher.group(1));
+        }
+        return "";
+    }
+
+    @NonNull
+    private String normalizeCompassCellRegNum(String value) {
+        if (value == null) {
+            return "";
+        }
+        String normalized = value.trim().replace('\u00A0', ' ');
+        if (normalized.matches("\\d{1,4}-\\d{1,5}")) {
+            return normalized;
+        }
+        return "";
     }
 
     /**
@@ -3876,6 +3931,22 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             
             if (url == null) {
                 return false;
+            }
+
+            String compassCellRegNum = extractCompassCellRegNumFromUrl(url);
+            if (!compassCellRegNum.isEmpty()) {
+                try {
+                    AutoFunctionsManager autoFunctionsManager = AutoFunctionsManager.getInstance(MainActivity.this);
+                    if (autoFunctionsManager.isAutoCompassEnabled()) {
+                        autoFunctionsManager.setAutoCompassEnabled(false);
+                    }
+                    autoFunctionsManager.startAutoMoving(compassCellRegNum);
+                    Log.d(TAG, "shouldOverrideUrlLoading: compass cell link -> startAutoMoving "
+                            + compassCellRegNum + ", sourceUrl=" + url);
+                } catch (Exception e) {
+                    Log.e(TAG, "shouldOverrideUrlLoading: failed to start navigation from compass link: " + url, e);
+                }
+                return true;
             }
 
             String host = "";
