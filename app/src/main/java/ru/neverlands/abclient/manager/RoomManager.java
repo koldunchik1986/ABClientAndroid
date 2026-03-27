@@ -299,7 +299,7 @@ public class RoomManager {
         // Быстрый проход: если регион уже известен из последнего pinfo,
         // применяем его к текущей клетке без нового сетевого запроса.
         String cachedRegion = lastOwnPinfoRegion == null ? "" : lastOwnPinfoRegion.trim();
-        if (!isEmpty(cachedRegion)) {
+        if (!isEmpty(cachedRegion) && isCachedPinfoAlignedWithCurrentCell(mapRegNum)) {
             String oldRegion = normalizeCellLabel(getCellRegionDirect(mapRegNum));
             String oldName = normalizeCellLabel(getCellName(mapRegNum));
             boolean changedFromCache = ExtMap.syncCellMetaFromPinfo(mapRegNum, cachedRegion, "");
@@ -309,6 +309,11 @@ public class RoomManager {
                         + ", region=" + cachedRegion
                         + ", notified=" + notified);
             }
+        } else if (!isEmpty(cachedRegion)) {
+            Log.d(TAG, "MAP_NAME_SYNC_TRACE: skip cached pinfo region sync (not aligned), reg=" + mapRegNum
+                    + ", cachedRegion=" + cachedRegion
+                    + ", cachedCell=" + normalizeCellLabel(lastOwnPinfoCellName)
+                    + ", currentCell=" + normalizeCellLabel(getCellName(mapRegNum)));
         }
 
         long now = System.currentTimeMillis();
@@ -330,12 +335,6 @@ public class RoomManager {
                 if (isEmpty(locationName) && isEmpty(locationRegion)) {
                     return;
                 }
-                if (!isEmpty(locationRegion)) {
-                    lastOwnPinfoRegion = locationRegion;
-                }
-                if (!isEmpty(locationName)) {
-                    lastOwnPinfoCellName = locationName;
-                }
 
                 String liveRegNum = null;
                 if (AppVars.Profile != null) {
@@ -345,14 +344,30 @@ public class RoomManager {
                     return;
                 }
 
+                boolean canApplyName = canApplyPinfoNameToCurrentCell(requestRegNum, locationName);
+                if (!isEmpty(locationRegion) && canApplyName) {
+                    lastOwnPinfoRegion = locationRegion;
+                }
+                if (!isEmpty(locationName) && canApplyName) {
+                    lastOwnPinfoCellName = locationName;
+                }
+
                 String oldRegion = normalizeCellLabel(getCellRegionDirect(requestRegNum));
                 String oldName = normalizeCellLabel(getCellName(requestRegNum));
-                boolean changed = ExtMap.syncCellMetaFromPinfo(requestRegNum, locationRegion, locationName);
+                String effectiveCellName = canApplyName ? locationName : "";
+                boolean changed = ExtMap.syncCellMetaFromPinfo(requestRegNum, locationRegion, effectiveCellName);
                 if (changed) {
                     boolean notified = notifyMapMetaSyncIfChanged(requestRegNum, oldRegion, oldName);
                     Log.d(TAG, "MAP_NAME_SYNC_TRACE: pinfo meta sync applied, reg=" + requestRegNum
-                            + ", region=" + locationRegion + ", cell=" + locationName
+                            + ", region=" + locationRegion + ", cell=" + effectiveCellName
+                            + ", sourceCell=" + locationName
+                            + ", canApplyName=" + canApplyName
                             + ", notified=" + notified);
+                } else if (!canApplyName && !isEmpty(locationName)) {
+                    Log.d(TAG, "MAP_NAME_SYNC_TRACE: skip pinfo name sync for current reg, reg=" + requestRegNum
+                            + ", pinfoCell=" + locationName
+                            + ", currentCell=" + normalizeCellLabel(getCellName(requestRegNum))
+                            + ", nextReg=" + normalizeRegNum(AppVars.AutoMovingNextJump));
                 }
             } catch (Exception e) {
                 Log.w(TAG, "MAP_NAME_SYNC_TRACE: pinfo meta sync failed", e);
@@ -538,6 +553,57 @@ public class RoomManager {
             return "";
         }
         return lastOwnPinfoRegion == null ? "" : lastOwnPinfoRegion.trim();
+    }
+
+    /**
+     * Проверяет, что последний pinfo-snapshot относится к текущей клетке, а не к "следующему шагу".
+     *
+     * Используется для защиты от гонки при навигации:
+     * сервер/`pinfo` и `map_ajax` могут приходить с небольшим сдвигом, и без этой проверки
+     * region/name могут применяться к предыдущей клетке.
+     */
+    private static boolean isCachedPinfoAlignedWithCurrentCell(String regNum) {
+        if (isEmpty(regNum)) {
+            return false;
+        }
+        String cachedCell = normalizeCellLabel(lastOwnPinfoCellName);
+        if (isEmpty(cachedCell)) {
+            return false;
+        }
+        String currentCell = normalizeCellLabel(getCellName(regNum));
+        return !isEmpty(currentCell) && cachedCell.equals(currentCell);
+    }
+
+    /**
+     * Можно ли применять `locationName` из pinfo к текущему `regNum`.
+     *
+     * Правило:
+     * - если имя pinfo совпадает с текущей клеткой — можно;
+     * - если совпадает со следующей клеткой маршрута (`AutoMovingNextJump`) — нельзя (это опережающий кадр);
+     * - в остальных неочевидных случаях в движении не применяем имя (только region),
+     *   чтобы не переименовать текущую клетку именем соседней.
+     */
+    private static boolean canApplyPinfoNameToCurrentCell(String regNum, String pinfoCellName) {
+        if (isEmpty(regNum) || isEmpty(pinfoCellName)) {
+            return false;
+        }
+        String normalizedPinfoCell = normalizeCellLabel(pinfoCellName);
+        if (isEmpty(normalizedPinfoCell)) {
+            return false;
+        }
+        String currentCell = normalizeCellLabel(getCellName(regNum));
+        if (!isEmpty(currentCell) && normalizedPinfoCell.equals(currentCell)) {
+            return true;
+        }
+
+        String nextReg = normalizeRegNum(AppVars.AutoMovingNextJump);
+        if (!isEmpty(nextReg) && !nextReg.equals(regNum)) {
+            String nextCell = normalizeCellLabel(getCellName(nextReg));
+            if (!isEmpty(nextCell) && normalizedPinfoCell.equals(nextCell)) {
+                return false;
+            }
+        }
+        return !AppVars.AutoMoving;
     }
 
     /**
