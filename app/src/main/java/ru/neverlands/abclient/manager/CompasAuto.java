@@ -791,7 +791,7 @@ final class CompasAuto {
     private void finishAutoCompassFound(String regNum) {
         String safeReg = regNum == null ? "" : regNum.trim();
         String targetNick = getAutoCompassTargetNick();
-        String targetHtml = RoomManager.buildRoomUserHtmlByNick(targetNick);
+        String targetHtml = RoomManager.buildUnifiedChatNickHtml(targetNick);
         StringBuilder htmlBuilder = new StringBuilder();
         htmlBuilder.append("<font color=#5D7C91><b>[Компас]</b></font> ");
         if (safeReg.isEmpty()) {
@@ -854,14 +854,24 @@ final class CompasAuto {
         String safeMode = mode == null ? "" : mode.trim();
         String safeSource = source == null ? "" : source.trim();
         String safeTarget = targetNick == null ? "" : targetNick.trim();
-        writeCompassChat("Старт: режим=" + safeMode
-                + ", источник=" + safeSource
-                + ", цель=" + safeTarget + ".");
+        String targetHtml = RoomManager.buildUnifiedChatNickHtml(safeTarget);
+        StringBuilder htmlBuilder = new StringBuilder();
+        htmlBuilder.append("<font color=#5D7C91><b>[Компас]</b></font> ");
+        htmlBuilder.append("Старт: режим=").append(escapeHtml(safeMode))
+                .append(", источник=").append(escapeHtml(safeSource))
+                .append(", цель=");
+        if (!isEmpty(targetHtml)) {
+            htmlBuilder.append(targetHtml);
+        } else {
+            htmlBuilder.append(escapeHtml(safeTarget));
+        }
+        htmlBuilder.append(".");
+        FastActionManager.writeChatMsg(htmlBuilder.toString());
     }
 
     private void writeCompassMoveChat(String nextDestination, String targetNick, List<String> candidatesSnapshot) {
         StringBuilder htmlBuilder = new StringBuilder();
-        String targetHtml = RoomManager.buildRoomUserHtmlByNick(targetNick);
+        String targetHtml = RoomManager.buildUnifiedChatNickHtml(targetNick);
         htmlBuilder.append("<font color=#5D7C91><b>[Компас]</b></font> ");
         htmlBuilder.append("Двигаемся к клетке №").append(escapeHtml(nextDestination)).append(" ");
         if (!isEmpty(targetHtml)) {

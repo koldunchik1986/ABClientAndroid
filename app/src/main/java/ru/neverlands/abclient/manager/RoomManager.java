@@ -897,6 +897,15 @@ public class RoomManager {
                 .replace("\"", "&quot;");
     }
 
+    private static String escapeJsSingleQuoted(String value) {
+        if (value == null) {
+            return "";
+        }
+        return value
+                .replace("\\", "\\\\")
+                .replace("'", "\\'");
+    }
+
     /**
      * Вычисляет текущее число невидимок на клетке.
      *
@@ -1149,6 +1158,45 @@ public class RoomManager {
             Log.w(TAG, "buildRoomUserHtmlByNick: failed, nick=" + nick + ", rawEntry=" + rawEntry, e);
             return "";
         }
+    }
+
+    /**
+     * Единый формат ника для сообщений в чате.
+     *
+     * Приоритет:
+     * 1) room-list рендер 1:1 (`HtmlChar`) по последнему `ChatListU`;
+     * 2) fallback рендер (private + кликабельный ник) с цветом по classId:
+     *    враг=красный, друг=зелёный, нейтрал=обычный.
+     */
+    public static String buildUnifiedChatNickHtml(String nick) {
+        if (isEmpty(nick)) {
+            return "";
+        }
+        String cleanNick = stripItalic(nick).trim();
+        if (isEmpty(cleanNick)) {
+            return "";
+        }
+
+        String roomHtml = buildRoomUserHtmlByNick(cleanNick);
+        if (!isEmpty(roomHtml)) {
+            return roomHtml;
+        }
+
+        int classId = parseClassIdSafe(ContactsManager.getClassIdOfContact(cleanNick));
+        String color = "#000000";
+        if (classId == CONTACT_CLASS_ENEMY) {
+            color = "#FF0000";
+        } else if (classId == CONTACT_CLASS_FRIEND) {
+            color = "#008000";
+        }
+
+        String escapedNick = escapeHtml(cleanNick);
+        String nickForJs = escapeJsSingleQuoted(cleanNick);
+        return "<a href=\"#\" onclick=\"top.say_private('" + nickForJs
+                + "');\"><img src=http://image.neverlands.ru/chat/private.gif width=11 height=12 border=0 align=absmiddle></a>&nbsp;"
+                + "<a class=\"activenick\" href=\"#\" onclick=\"top.say_to('" + nickForJs
+                + "');\"><font class=nickname color=\"" + color + "\"><b>"
+                + escapedNick + "</b></font></a>";
     }
 
     // Парсит JS-массив ChatListU и формирует HTML списка игроков.
