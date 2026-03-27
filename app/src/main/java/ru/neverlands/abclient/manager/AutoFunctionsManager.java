@@ -47,6 +47,7 @@ public class AutoFunctionsManager {
     private static final String PREF_AUTO_COMPASS_HUNT_MODE = "auto_compass_hunt_mode";
     private static final String PREF_AUTO_COMPASS_POLL_INTERVAL_SEC = "auto_compass_poll_interval_sec";
     private static final String PREF_AUTO_COMPASS_LAST_LOCATION = "auto_compass_last_location";
+    private static final String PREF_AUTO_COMPASS_LAST_REGION = "auto_compass_last_region";
     private static final String PREF_AUTO_COMPASS_CELLS_CSV = "auto_compass_cells_csv";
     private static final String PREF_AUTO_COMPASS_MANUAL_CELLS_CSV = "auto_compass_manual_cells_csv";
     private static final int AUTO_COMPASS_POLL_DEFAULT_SEC = 2;
@@ -1154,7 +1155,7 @@ public class AutoFunctionsManager {
         if (!isAutoCompassEnabled()) {
             return;
         }
-        if (snapshot == null || isEmpty(snapshot.locationName)) {
+        if (snapshot == null) {
             NeverApi.PinfoCompassSnapshot previousSnapshot;
             synchronized (autoCompassLock) {
                 previousSnapshot = autoCompassLastSnapshot;
@@ -1170,31 +1171,45 @@ public class AutoFunctionsManager {
             return;
         }
 
+        if (snapshot.offlineOrInvisible) {
+            stopAutoCompassWithReason("Компас: персонаж офлайн или в невидимости.", true);
+            return;
+        }
+
         String locationName = snapshot.locationName.trim();
+        String locationRegion = snapshot.locationRegion == null ? "" : snapshot.locationRegion.trim();
         String normalizedLocation = normalizeCompassLabel(locationName);
+        String normalizedRegion = normalizeCompassLabel(locationRegion);
         if (normalizedLocation.isEmpty()) {
             stopAutoCompassWithReason("Компас: не удалось определить локацию цели.", true);
             return;
         }
         putDefaultString(PREF_AUTO_COMPASS_LAST_LOCATION, locationName);
+        if (!locationRegion.isEmpty()) {
+            putDefaultString(PREF_AUTO_COMPASS_LAST_REGION, locationRegion);
+        }
 
         boolean shouldRebuildCandidates;
         synchronized (autoCompassLock) {
             NeverApi.PinfoCompassSnapshot previousSnapshot = autoCompassLastSnapshot;
             boolean locationChanged = previousSnapshot == null
                     || !normalizeCompassLabel(previousSnapshot.locationName).equals(normalizedLocation);
+            boolean regionChanged = previousSnapshot == null
+                    || !normalizeCompassLabel(previousSnapshot.locationRegion).equals(normalizedRegion);
             boolean tiredChanged = previousSnapshot == null
                     || (snapshot.curTire != null && !snapshot.curTire.equals(previousSnapshot.curTire));
             shouldRebuildCandidates = autoCompassCandidateCells.isEmpty()
                     || locationChanged
-                    || (locationChanged && tiredChanged);
+                    || regionChanged
+                    || ((locationChanged || regionChanged) && tiredChanged);
             autoCompassLastSnapshot = snapshot;
         }
 
         if (shouldRebuildCandidates) {
             List<String> resolvedCandidates = buildCompassCandidates(locationName);
             if (resolvedCandidates.isEmpty()) {
-                stopAutoCompassWithReason("Компас: не найдено клеток для локации \"" + locationName + "\".", true);
+                String label = locationRegion.isEmpty() ? locationName : (locationRegion + " [" + locationName + "]");
+                stopAutoCompassWithReason("Компас: не найдено клеток для локации \"" + label + "\".", true);
                 return;
             }
             synchronized (autoCompassLock) {
@@ -1204,7 +1219,8 @@ public class AutoFunctionsManager {
                 autoCompassCurrentDestination = "";
             }
             putDefaultString(PREF_AUTO_COMPASS_CELLS_CSV, joinCompassRegNums(resolvedCandidates));
-            Log.d(TAG, "AUTO_COMPASS_TRACE candidates rebuilt: location=" + locationName
+            Log.d(TAG, "AUTO_COMPASS_TRACE candidates rebuilt: region=" + locationRegion
+                    + ", location=" + locationName
                     + ", count=" + resolvedCandidates.size()
                     + ", cells=" + joinCompassRegNums(resolvedCandidates));
         }

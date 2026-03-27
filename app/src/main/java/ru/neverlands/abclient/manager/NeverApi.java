@@ -83,13 +83,26 @@ public class NeverApi {
      */
     public static final class PinfoCompassSnapshot {
         public final String nick;
+        public final String locationRaw;
+        public final String locationRegion;
         public final String locationName;
+        public final boolean offlineOrInvisible;
         public final Integer curTire;
         public final long capturedAtMs;
 
-        public PinfoCompassSnapshot(String nick, String locationName, Integer curTire, long capturedAtMs) {
+        public PinfoCompassSnapshot(
+                String nick,
+                String locationRaw,
+                String locationRegion,
+                String locationName,
+                boolean offlineOrInvisible,
+                Integer curTire,
+                long capturedAtMs) {
             this.nick = nick == null ? "" : nick.trim();
+            this.locationRaw = locationRaw == null ? "" : locationRaw.trim();
+            this.locationRegion = locationRegion == null ? "" : locationRegion.trim();
             this.locationName = locationName == null ? "" : locationName.trim();
+            this.offlineOrInvisible = offlineOrInvisible;
             this.curTire = curTire;
             this.capturedAtMs = capturedAtMs;
         }
@@ -233,7 +246,10 @@ public class NeverApi {
             PinfoCompassSnapshot snapshot = parsePinfoCompassSnapshotFromHtml(normalizedNick, html);
             if (snapshot != null) {
                 android.util.Log.d(TAG, "AUTO_COMPASS_TRACE snapshot: nick=" + snapshot.nick
+                        + ", locationRaw=" + snapshot.locationRaw
+                        + ", region=" + snapshot.locationRegion
                         + ", location=" + snapshot.locationName
+                        + ", offlineOrInvisible=" + snapshot.offlineOrInvisible
                         + ", tied=" + safeInt(snapshot.curTire)
                         + ", capturedAt=" + snapshot.capturedAtMs);
             } else {
@@ -294,16 +310,76 @@ public class NeverApi {
             return null;
         }
         try {
-            String location = parsePinfoLocationFromParameters(html);
+            String locationRaw = parsePinfoLocationFromParameters(html);
+            String[] locationParts = splitPinfoLocationToRegionAndCell(locationRaw);
+            String locationRegion = locationParts[0];
+            String locationName = locationParts[1];
+            Boolean onlineFlag = parsePinfoOnlineFlagFromParameters(html);
+            boolean offlineOrInvisible = (onlineFlag != null && !onlineFlag)
+                    || (locationName == null || locationName.trim().isEmpty());
             Integer tied = parseCurrentTiedFromPinfoHtml(html);
-            if ((location == null || location.trim().isEmpty()) && tied == null) {
+            if ((locationRaw == null || locationRaw.trim().isEmpty()) && tied == null && onlineFlag == null) {
                 return null;
             }
-            return new PinfoCompassSnapshot(nick, location, tied, System.currentTimeMillis());
+            return new PinfoCompassSnapshot(
+                    nick,
+                    locationRaw,
+                    locationRegion,
+                    locationName,
+                    offlineOrInvisible,
+                    tied,
+                    System.currentTimeMillis());
         } catch (Exception e) {
             android.util.Log.w(TAG, "AUTO_COMPASS_TRACE parsePinfoCompassSnapshotFromHtml failed", e);
             return null;
         }
+    }
+
+    private static Boolean parsePinfoOnlineFlagFromParameters(String html) {
+        if (html == null || html.isEmpty()) {
+            return null;
+        }
+        String firstTuple = extractFirstParametersTuple(html);
+        if (firstTuple == null || firstTuple.isEmpty()) {
+            return null;
+        }
+        List<String> tupleElements = parseTopLevelJsArrayElements(firstTuple);
+        if (tupleElements.size() <= 6) {
+            return null;
+        }
+        Integer onlineFlag = parseIntToken(tupleElements.get(6));
+        if (onlineFlag == null) {
+            return null;
+        }
+        return onlineFlag > 0;
+    }
+
+    /**
+     * Формат pinfo-локации: "Region [CellName]".
+     * Для поиска по карте сейчас используем именно CellName (внутри скобок),
+     * а Region только сохраняем/логируем для будущей точной привязки.
+     */
+    private static String[] splitPinfoLocationToRegionAndCell(String locationRaw) {
+        String[] result = new String[] {"", ""};
+        if (locationRaw == null) {
+            return result;
+        }
+        String value = locationRaw.trim();
+        if (value.isEmpty()) {
+            return result;
+        }
+        int bracketOpen = value.indexOf('[');
+        int bracketClose = value.lastIndexOf(']');
+        if (bracketOpen >= 0 && bracketClose > bracketOpen) {
+            result[0] = value.substring(0, bracketOpen).trim();
+            result[1] = value.substring(bracketOpen + 1, bracketClose).trim();
+            if (result[1].isEmpty()) {
+                result[1] = value;
+            }
+            return result;
+        }
+        result[1] = value;
+        return result;
     }
 
     /**
