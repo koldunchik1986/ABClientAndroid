@@ -300,10 +300,14 @@ public class RoomManager {
         // применяем его к текущей клетке без нового сетевого запроса.
         String cachedRegion = lastOwnPinfoRegion == null ? "" : lastOwnPinfoRegion.trim();
         if (!isEmpty(cachedRegion)) {
+            String oldRegion = normalizeCellLabel(getCellRegionDirect(mapRegNum));
+            String oldName = normalizeCellLabel(getCellName(mapRegNum));
             boolean changedFromCache = ExtMap.syncCellMetaFromPinfo(mapRegNum, cachedRegion, "");
             if (changedFromCache) {
+                boolean notified = notifyMapMetaSyncIfChanged(mapRegNum, oldRegion, oldName);
                 Log.d(TAG, "MAP_NAME_SYNC_TRACE: pinfo region cached sync applied, reg=" + mapRegNum
-                        + ", region=" + cachedRegion);
+                        + ", region=" + cachedRegion
+                        + ", notified=" + notified);
             }
         }
 
@@ -341,10 +345,14 @@ public class RoomManager {
                     return;
                 }
 
+                String oldRegion = normalizeCellLabel(getCellRegionDirect(requestRegNum));
+                String oldName = normalizeCellLabel(getCellName(requestRegNum));
                 boolean changed = ExtMap.syncCellMetaFromPinfo(requestRegNum, locationRegion, locationName);
                 if (changed) {
+                    boolean notified = notifyMapMetaSyncIfChanged(requestRegNum, oldRegion, oldName);
                     Log.d(TAG, "MAP_NAME_SYNC_TRACE: pinfo meta sync applied, reg=" + requestRegNum
-                            + ", region=" + locationRegion + ", cell=" + locationName);
+                            + ", region=" + locationRegion + ", cell=" + locationName
+                            + ", notified=" + notified);
                 }
             } catch (Exception e) {
                 Log.w(TAG, "MAP_NAME_SYNC_TRACE: pinfo meta sync failed", e);
@@ -444,7 +452,7 @@ public class RoomManager {
         if (isEmpty(normalizedReg) || isEmpty(normalizedServer)) {
             return false;
         }
-        String oldRegion = normalizeCellLabel(ExtMap.resolveRegionLabelForRegNum(normalizedReg));
+        String oldRegion = normalizeCellLabel(getCellRegionDirect(normalizedReg));
         String oldLabel = normalizeCellLabel(getCellName(normalizedReg));
         String ownPinfoRegionHint = resolveOwnPinfoRegionForCell(normalizedReg, normalizedServer);
         boolean metaChanged;
@@ -465,12 +473,16 @@ public class RoomManager {
         if (!metaChanged) {
             return false;
         }
+        return notifyMapMetaSyncIfChanged(normalizedReg, oldRegion, oldLabel);
+    }
 
-        String newLabel = normalizeCellLabel(getCellName(normalizedReg));
-        if (isEmpty(newLabel)) {
-            newLabel = normalizedServer;
+    private static boolean notifyMapMetaSyncIfChanged(String regNum, String oldRegion, String oldLabel) {
+        String normalizedReg = normalizeRegNum(regNum);
+        if (isEmpty(normalizedReg)) {
+            return false;
         }
-        String newRegion = normalizeCellLabel(ExtMap.resolveRegionLabelForRegNum(normalizedReg));
+        String newLabel = normalizeCellLabel(getCellName(normalizedReg));
+        String newRegion = normalizeCellLabel(getCellRegionDirect(normalizedReg));
         boolean nameChanged = !normalizeCellLabel(oldLabel).equals(normalizeCellLabel(newLabel));
         boolean regionChanged = !normalizeCellLabel(oldRegion).equals(normalizeCellLabel(newRegion));
         if (!nameChanged && !regionChanged) {
@@ -575,6 +587,11 @@ public class RoomManager {
     private static String getCellName(String regNum) {
         Cell cell = ExtMap.Cells.get(regNum);
         return cell != null ? cell.Name : null;
+    }
+
+    private static String getCellRegionDirect(String regNum) {
+        Cell cell = ExtMap.Cells.get(regNum);
+        return cell != null ? cell.Region : null;
     }
 
     /**
