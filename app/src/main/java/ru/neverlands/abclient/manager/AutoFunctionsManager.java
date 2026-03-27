@@ -1074,6 +1074,138 @@ public class AutoFunctionsManager {
         }
     }
 
+    /**
+     * Результат ручного поиска локации цели из окна настроек "Авто-компас".
+     * Нужен для сценария, когда пользователь вводит ник и хочет только обновить
+     * "Текущую локацию цели" + список возможных клеток, без запуска движения.
+     */
+    public static final class CompassLocationResolveResult {
+        public final boolean success;
+        public final String targetNick;
+        public final String locationLabel;
+        public final String cellsCsv;
+        public final String message;
+
+        public CompassLocationResolveResult(
+                boolean success,
+                String targetNick,
+                String locationLabel,
+                String cellsCsv,
+                String message) {
+            this.success = success;
+            this.targetNick = targetNick == null ? "" : targetNick.trim();
+            this.locationLabel = locationLabel == null ? "" : locationLabel.trim();
+            this.cellsCsv = cellsCsv == null ? "" : cellsCsv.trim();
+            this.message = message == null ? "" : message.trim();
+        }
+    }
+
+    /**
+     * Ручной refresh цели для "Авто-компас":
+     * 1) делает pinfo-запрос,
+     * 2) обновляет сохраненные поля (ник/локация/клетки),
+     * 3) возвращает данные для немедленного обновления UI диалога.
+     */
+    public CompassLocationResolveResult resolveAutoCompassLocation(String nick) {
+        String normalized = normalizeCompassNick(nick);
+        if (normalized.isEmpty()) {
+            return new CompassLocationResolveResult(
+                    false,
+                    "",
+                    "",
+                    "",
+                    "Компас: укажите ник цели."
+            );
+        }
+
+        NeverApi.PinfoCompassSnapshot snapshot;
+        try {
+            snapshot = NeverApi.getPinfoCompassSnapshot(normalized);
+        } catch (Exception e) {
+            Log.w(TAG, "resolveAutoCompassLocation: pinfo request failed, nick=" + normalized, e);
+            return new CompassLocationResolveResult(
+                    false,
+                    normalized,
+                    "",
+                    "",
+                    "Компас: pinfo не отвечает."
+            );
+        }
+
+        if (snapshot == null) {
+            return new CompassLocationResolveResult(
+                    false,
+                    normalized,
+                    "",
+                    "",
+                    "Компас: pinfo не отвечает."
+            );
+        }
+        if (snapshot.offlineOrInvisible) {
+            return new CompassLocationResolveResult(
+                    false,
+                    normalized,
+                    "",
+                    "",
+                    "Компас: персонаж офлайн или в невидимости."
+            );
+        }
+
+        String locationName = snapshot.locationName == null ? "" : snapshot.locationName.trim();
+        String locationRegion = snapshot.locationRegion == null ? "" : snapshot.locationRegion.trim();
+        if (normalizeCompassLabel(locationName).isEmpty()) {
+            return new CompassLocationResolveResult(
+                    false,
+                    normalized,
+                    "",
+                    "",
+                    "Компас: не удалось определить локацию цели."
+            );
+        }
+
+        List<String> resolvedCandidates = buildCompassCandidates(locationName);
+        if (resolvedCandidates.isEmpty()) {
+            String label = locationRegion.isEmpty() ? locationName : (locationRegion + " [" + locationName + "]");
+            return new CompassLocationResolveResult(
+                    false,
+                    normalized,
+                    label,
+                    "",
+                    "Компас: не найдено клеток для локации \"" + label + "\"."
+            );
+        }
+
+        String cellsCsv = joinCompassRegNums(resolvedCandidates);
+        String locationLabel = locationRegion.isEmpty() ? locationName : (locationRegion + " [" + locationName + "]");
+
+        putDefaultString(PREF_AUTO_COMPASS_TARGET_NICK, normalized);
+        putDefaultString(PREF_AUTO_COMPASS_LAST_LOCATION, locationName);
+        if (!locationRegion.isEmpty()) {
+            putDefaultString(PREF_AUTO_COMPASS_LAST_REGION, locationRegion);
+        }
+        putDefaultString(PREF_AUTO_COMPASS_CELLS_CSV, cellsCsv);
+
+        synchronized (autoCompassLock) {
+            autoCompassLastSnapshot = snapshot;
+            autoCompassCurrentDestination = "";
+            autoCompassDestinationSetAtMs = 0L;
+            autoCompassCandidateCells.clear();
+            autoCompassCandidateCells.addAll(resolvedCandidates);
+            autoCompassCheckedCells.clear();
+        }
+
+        Log.d(TAG, "AUTO_COMPASS_TRACE manual resolve: target=" + normalized
+                + ", location=" + locationLabel
+                + ", candidates=" + cellsCsv);
+        return new CompassLocationResolveResult(
+                true,
+                normalized,
+                locationLabel,
+                cellsCsv,
+                "Компас: локация обновлена."
+        );
+    }
+
     public void startManualCompassSearch(String nick) {
         String normalized = normalizeCompassNick(nick);
         if (normalized.isEmpty()) {

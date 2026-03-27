@@ -9,6 +9,7 @@ import android.util.Log;
 import android.view.Gravity;
 import android.view.View;
 import android.widget.ArrayAdapter;
+import android.widget.Button;
 import android.widget.CheckBox;
 import android.widget.EditText;
 import android.widget.ImageButton;
@@ -1243,6 +1244,18 @@ public class QuickButtonsPanel {
         targetInput.setText(autoFunctionsManager.getAutoCompassTargetNick());
         root.addView(targetInput);
 
+        Button resolveLocationButton = new Button(context);
+        resolveLocationButton.setText("Поиск локации игрока");
+        resolveLocationButton.setAllCaps(false);
+        resolveLocationButton.setTextColor(ContextCompat.getColor(context, R.color.white));
+        resolveLocationButton.setBackgroundColor(ContextCompat.getColor(context, R.color.purple_500));
+        LinearLayout.LayoutParams resolveButtonParams = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+        );
+        resolveButtonParams.topMargin = dpToPx(8);
+        root.addView(resolveLocationButton, resolveButtonParams);
+
         TextView locationLabel = new TextView(context);
         locationLabel.setPadding(0, pad, 0, 0);
         locationLabel.setText("Текущая локация цели");
@@ -1260,15 +1273,53 @@ public class QuickButtonsPanel {
 
         String manualCellsCsv = autoFunctionsManager.getAutoCompassManualCellsCsv();
         String autoCellsCsv = autoFunctionsManager.getAutoCompassCellsCsv();
+        final String[] autoCellsCsvRef = new String[]{autoCellsCsv == null ? "" : autoCellsCsv.trim()};
         boolean useAutoFilledCells = (manualCellsCsv == null || manualCellsCsv.trim().isEmpty())
-                && autoCellsCsv != null
-                && !autoCellsCsv.trim().isEmpty();
+                && !autoCellsCsvRef[0].isEmpty();
 
         EditText cellsInput = new EditText(context);
         cellsInput.setHint("Например: 8-321, 8-322, 8-323");
         cellsInput.setMinLines(2);
-        cellsInput.setText(useAutoFilledCells ? autoCellsCsv : manualCellsCsv);
+        cellsInput.setText(useAutoFilledCells ? autoCellsCsvRef[0] : manualCellsCsv);
         root.addView(cellsInput);
+
+        resolveLocationButton.setOnClickListener(v -> {
+            String targetNick = targetInput.getText() == null ? "" : targetInput.getText().toString().trim();
+            if (targetNick.isEmpty()) {
+                Toast.makeText(context, "Укажите ник цели для поиска", Toast.LENGTH_SHORT).show();
+                return;
+            }
+
+            resolveLocationButton.setEnabled(false);
+            resolveLocationButton.setText("Поиск...");
+            new Thread(() -> {
+                AutoFunctionsManager.CompassLocationResolveResult result =
+                        autoFunctionsManager.resolveAutoCompassLocation(targetNick);
+                targetInput.post(() -> {
+                    resolveLocationButton.setEnabled(true);
+                    resolveLocationButton.setText("Поиск локации игрока");
+                    if (!result.success) {
+                        if (!result.locationLabel.isEmpty()) {
+                            locationValue.setText(result.locationLabel);
+                        }
+                        Toast.makeText(context, result.message, Toast.LENGTH_SHORT).show();
+                        return;
+                    }
+
+                    targetInput.setText(result.targetNick);
+                    targetInput.setSelection(result.targetNick.length());
+                    locationValue.setText(result.locationLabel.isEmpty() ? "—" : result.locationLabel);
+
+                    String previousAutoCells = autoCellsCsvRef[0];
+                    String currentCells = cellsInput.getText() == null ? "" : cellsInput.getText().toString().trim();
+                    autoCellsCsvRef[0] = result.cellsCsv == null ? "" : result.cellsCsv.trim();
+                    if (currentCells.isEmpty() || currentCells.equals(previousAutoCells)) {
+                        cellsInput.setText(autoCellsCsvRef[0]);
+                    }
+                    Toast.makeText(context, "Локация и клетки обновлены", Toast.LENGTH_SHORT).show();
+                });
+            }, "auto-compass-resolve").start();
+        });
 
         CheckBox huntAllCheck = new CheckBox(context);
         huntAllCheck.setPadding(0, pad, 0, 0);
@@ -1305,7 +1356,7 @@ public class QuickButtonsPanel {
                     String targetNick = targetInput.getText() == null ? "" : targetInput.getText().toString();
                     autoFunctionsManager.setAutoCompassTargetNick(targetNick);
                     String cellsText = cellsInput.getText() == null ? "" : cellsInput.getText().toString();
-                    if (useAutoFilledCells && cellsText.trim().equals(autoCellsCsv == null ? "" : autoCellsCsv.trim())) {
+                    if (cellsText.trim().equals(autoCellsCsvRef[0])) {
                         autoFunctionsManager.setAutoCompassManualCellsCsv("");
                     } else {
                         autoFunctionsManager.setAutoCompassManualCellsCsv(cellsText);
