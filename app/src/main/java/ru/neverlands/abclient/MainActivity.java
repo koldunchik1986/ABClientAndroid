@@ -871,6 +871,38 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     }
 
     /**
+     * Проверяет, что main WebView сейчас находится на «ручной» странице интерфейса.
+     *
+     * Назначение:
+     * - использовать существующий классификатор {@link #isManualMainNavigationUrl(String)}
+     *   не только в shouldOverrideUrlLoading, но и в защите фонового auto-turn probe;
+     * - не давать idle-probe перебивать действия пользователя на страницах вида
+     *   `main.php?useaction=...`, `main.php?wca=...`, `main.php?get_id=...`.
+     *
+     * Зависимости:
+     * - `binding.appBarMain.contentMain.webView.getUrl()` как источник текущего URL верхнего фрейма;
+     * - `isManualMainNavigationUrl(...)` как единая точка правил классификации ручной навигации.
+     */
+    private boolean isManualMainNavigationContextActive() {
+        try {
+            if (binding == null
+                    || binding.appBarMain == null
+                    || binding.appBarMain.contentMain == null
+                    || binding.appBarMain.contentMain.webView == null) {
+                return false;
+            }
+            String currentUrl = binding.appBarMain.contentMain.webView.getUrl();
+            if (currentUrl == null || currentUrl.isEmpty()) {
+                return false;
+            }
+            return isManualMainNavigationUrl(currentUrl.toLowerCase(Locale.ROOT));
+        } catch (Exception e) {
+            Log.w(TAG, BG_TRACE_PREFIX + " requestAutoTurn: failed to inspect manual navigation context", e);
+            return false;
+        }
+    }
+
+    /**
      * Во время активной навигации Авто-Клада не запускаем idle server-probe авто-боя.
      *
      * Причина:
@@ -914,6 +946,14 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         if (shouldSkipAutoTurnServerProbeForMapAutomation()) {
             Log.d(TAG, BG_TRACE_PREFIX + " requestAutoTurn: server probe suppressed during map automation, reason="
                     + reason + ", autoMoving=" + AppVars.AutoMoving + ", doSearchBox=" + AppVars.DoSearchBox);
+            return;
+        }
+        if (!isAutoTurnServerProbeAllowedNow()
+                && isManualMainNavigationContextActive()
+                && !hasFightMarkers(AppVars.ContentMainPhp)
+                && !hasPendingAct7FightLink(AppVars.FightLink)) {
+            Log.d(TAG, BG_TRACE_PREFIX + " requestAutoTurn: server probe suppressed in active UI manual context, reason="
+                    + reason);
             return;
         }
         if (now < autoTurnManualNavSuppressUntilMs) {
