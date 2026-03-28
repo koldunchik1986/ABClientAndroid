@@ -15,6 +15,8 @@ import java.util.Locale;
 import java.util.TimeZone;
 
 import ru.neverlands.abclient.repository.ApiRepository;
+import ru.neverlands.abclient.proxy.ProxyRuntimeManager;
+import ru.neverlands.abclient.utils.AppVars;
 
 /**
  * Единый менеджер данных кланов/клановых войн.
@@ -146,6 +148,9 @@ public final class ClanWarsManager {
      * Используется и в Контактах, и в модуле Кланы.
      */
     public void syncClanListAsync(ApiRepository.ApiCallback<String> callback) {
+        if (!ensureProxyReadyForBackgroundSync(callback)) {
+            return;
+        }
         File destinationFile = getClansFile();
         ApiRepository.downloadFile(CLANS_URL, destinationFile, new ApiRepository.ApiCallback<String>() {
             @Override
@@ -170,6 +175,9 @@ public final class ClanWarsManager {
      * Sync текущих войн из wars.cgi + обновление in-memory кеша.
      */
     public void syncWarsAsync(ApiRepository.ApiCallback<List<WarEntry>> callback) {
+        if (!ensureProxyReadyForBackgroundSync(callback)) {
+            return;
+        }
         File destinationFile = getWarsFile();
         ApiRepository.downloadFile(WARS_URL, destinationFile, new ApiRepository.ApiCallback<String>() {
             @Override
@@ -390,5 +398,38 @@ public final class ClanWarsManager {
 
     private String safeTrim(String value) {
         return value == null ? "" : value.trim();
+    }
+
+    /**
+     * Проверяет готовность proxy runtime для фоновых HTTP-запросов (Кланы/Войны).
+     *
+     * Назначение:
+     * - при включенном строгом прокси (`DoProxy/UseProxy`) не допускать direct egress;
+     * - перед sync принудительно поднимать runtime (как в основных игровых запросах).
+     *
+     * Поведение:
+     * - если прокси не обязателен — сразу `true`;
+     * - если обязателен и не поднялся — отдаём понятную ошибку в callback и пишем trace.
+     */
+    private boolean ensureProxyReadyForBackgroundSync(ApiRepository.ApiCallback<?> callback) {
+        boolean strictProxyRequired = ProxyRuntimeManager.isStrictProxyRequiredForCurrentProfile();
+        if (!strictProxyRequired) {
+            return true;
+        }
+
+        boolean proxyReady = ProxyRuntimeManager.ensureStarted(appContext, AppVars.Profile);
+        if (proxyReady) {
+            return true;
+        }
+
+        String reason = ProxyRuntimeManager.getLastStartError();
+        if (reason == null || reason.trim().isEmpty()) {
+            reason = "proxy runtime is not ready";
+        }
+        Log.w(TAG, TRACE_PREFIX + " sync blocked: " + reason);
+        if (callback != null) {
+            callback.onFailure("Proxy runtime error: " + reason);
+        }
+        return false;
     }
 }

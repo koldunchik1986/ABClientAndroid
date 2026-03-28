@@ -1,5 +1,7 @@
 package ru.neverlands.abclient.repository;
 
+import android.content.Context;
+
 import androidx.annotation.NonNull;
 
 import java.io.IOException;
@@ -16,6 +18,7 @@ import okio.BufferedSource;
 import okio.Okio;
 import ru.neverlands.abclient.model.Contact;
 import ru.neverlands.abclient.network.NetworkClient;
+import ru.neverlands.abclient.proxy.ProxyRuntimeManager;
 import ru.neverlands.abclient.utils.AppVars;
 import ru.neverlands.abclient.utils.CustomDebugLogger;
 
@@ -35,6 +38,37 @@ public class ApiRepository {
         return NetworkClient.getInstance();
     }
 
+    private static boolean ensureProxyReadyForRequest(String tracePrefix, ApiCallback<?> callback) {
+        boolean strictProxyRequired = ProxyRuntimeManager.isStrictProxyRequiredForCurrentProfile();
+        if (!strictProxyRequired) {
+            return true;
+        }
+
+        java.net.Proxy activeProxy = ProxyRuntimeManager.getActiveJavaProxyOrNull();
+        if (activeProxy != null) {
+            CustomDebugLogger.log(tracePrefix + "_PROXY_READY: strict=true, started=false, active=true");
+            return true;
+        }
+
+        Context context = AppVars.getContext();
+        boolean started = context != null && ProxyRuntimeManager.ensureStarted(context, AppVars.Profile);
+        java.net.Proxy activeAfterStart = ProxyRuntimeManager.getActiveJavaProxyOrNull();
+        boolean ready = started && activeAfterStart != null;
+        CustomDebugLogger.log(tracePrefix + "_PROXY_READY: strict=true, started=" + started + ", active=" + (activeAfterStart != null));
+        if (ready) {
+            return true;
+        }
+
+        String reason = ProxyRuntimeManager.getLastStartError();
+        if (reason == null || reason.trim().isEmpty()) {
+            reason = "proxy runtime is not ready";
+        }
+        if (callback != null) {
+            callback.onFailure("Proxy runtime error: " + reason);
+        }
+        return false;
+    }
+
     /**
      * Универсальный интерфейс колбэка для асинхронной обработки результатов API-запросов.
      * @param <T> Тип ожидаемого успешного результата.
@@ -51,6 +85,9 @@ public class ApiRepository {
      */
     public static void getPlayerId(String nick, ApiCallback<String> callback) {
         try {
+            if (!ensureProxyReadyForRequest("CONTACTS_GET_ID", callback)) {
+                return;
+            }
             // Кодирование ника в windows-1251 и замена пробелов на %20 для корректного URL.
             String encodedNick = URLEncoder.encode(nick, "windows-1251");
             encodedNick = encodedNick.replace("+", "%20");
@@ -109,6 +146,10 @@ public class ApiRepository {
      */
     public static void getPlayerInfo(String playerId, ApiCallback<Contact> callback) {
         try {
+            if (!ensureProxyReadyForRequest("CONTACTS_GET_INFO", callback)) {
+                return;
+            }
+
             String url = "http://neverlands.ru/modules/api/info.cgi?playerid=" + playerId + "&info=1";
             Request request = new Request.Builder()
                     .url(url)
@@ -205,19 +246,33 @@ public class ApiRepository {
      */
     public static void downloadFile(String url, File destinationFile, ApiCallback<String> callback) {
         try {
+            if (!ensureProxyReadyForRequest("DOWNLOAD_FILE", callback)) {
+                return;
+            }
+
             Request request = new Request.Builder()
                     .url(url)
+                    .header("User-Agent", AppVars.BROWSER_USER_AGENT)
+                    .header("Referer", "http://neverlands.ru/main.php")
                     .build();
+
+            CustomDebugLogger.log("DOWNLOAD_FILE_URL: " + request.url());
+            CustomDebugLogger.log("DOWNLOAD_FILE_PROXY_REQUIRED: "
+                    + ProxyRuntimeManager.isStrictProxyRequiredForCurrentProfile()
+                    + ", PROXY_ACTIVE=" + (ProxyRuntimeManager.getActiveJavaProxyOrNull() != null));
 
             getClient().newCall(request).enqueue(new Callback() {
                 @Override
                 public void onFailure(@NonNull Call call, @NonNull IOException e) {
+                    CustomDebugLogger.log("DOWNLOAD_FILE_ERROR: " + e.getMessage());
                     callback.onFailure(e.getMessage() != null ? e.getMessage() : "Unknown network error");
                 }
 
                 @Override
                 public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
                     if (!response.isSuccessful() || response.body() == null) {
+                        CustomDebugLogger.log("DOWNLOAD_FILE_HTTP_ERROR: code=" + response.code()
+                                + ", url=" + url);
                         callback.onFailure("Server error or empty response: " + response.code());
                         return;
                     }
