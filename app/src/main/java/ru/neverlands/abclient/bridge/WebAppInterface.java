@@ -528,6 +528,19 @@ public class WebAppInterface {
                 .append("\">")
                 .append(escapeHtml(p.RegNum))
                 .append("</span>");
+        if (cell.MaxBotLevel > 0) {
+            int botMinLevel = cell.MinBotLevel > 0 ? cell.MinBotLevel : cell.MaxBotLevel;
+            int botMaxLevel = Math.max(botMinLevel, cell.MaxBotLevel);
+            int botFontSize = Math.max(8, fontSizePx - 1);
+            sb.append(" <span style=\"font-size:")
+                    .append(botFontSize)
+                    .append("px; color:#88BBDD\">Боты ")
+                    .append(botMinLevel);
+            if (botMaxLevel > botMinLevel) {
+                sb.append("-").append(botMaxLevel);
+            }
+            sb.append("</span>");
+        }
         String shortLabel = shortLabel(cell);
         if (!shortLabel.isEmpty()) {
             sb.append("<br><span style=\"color:#C0C0C0\">")
@@ -538,11 +551,6 @@ public class WebAppInterface {
             sb.append("<br><span style=\"color:#33CCFF\">Рыба</span>");
         } else if (cell.HasWater) {
             sb.append("<br><span style=\"color:#33CCFF\">Вода</span>");
-        }
-        if (cell.MaxBotLevel > 0) {
-            sb.append("<br><span style=\"color:#88BBDD\">Боты до ")
-                    .append(cell.MaxBotLevel)
-                    .append("</span>");
         }
         if (cell.HerbGroup != null && !cell.HerbGroup.isEmpty() && !"0".equals(cell.HerbGroup)) {
             sb.append("<br><span style=\"color:#999999\">Травы ")

@@ -300,30 +300,11 @@ public class ExtMap {
             if (event == XmlPullParser.START_TAG) {
                 String tag = parser.getName();
                 if ("cell".equalsIgnoreCase(tag)) {
-                    String cellNumber = parser.getAttributeValue(null, "cellNumber");
-                    if (cellNumber != null) {
-                        cellNumber = cellNumber.trim();
-                        Cell cell = new Cell();
-                        cell.CellNumber = cellNumber;
-                        String costStr = parser.getAttributeValue(null, "cost");
-                        if (costStr != null) {
-                            try { cell.Cost = Integer.parseInt(costStr.trim()); } catch (NumberFormatException ignored) {}
-                        }
-                        String hasFish = parser.getAttributeValue(null, "hasFish");
-                        cell.HasFish = "true".equalsIgnoreCase(hasFish);
-                        String hasWater = parser.getAttributeValue(null, "hasWater");
-                        cell.HasWater = "true".equalsIgnoreCase(hasWater);
-                        String herbGroup = parser.getAttributeValue(null, "herbGroup");
-                        cell.HerbGroup = herbGroup != null ? herbGroup.trim() : "";
-                        String name = parser.getAttributeValue(null, "name");
-                        cell.Name = name != null ? name.trim() : "";
-                        String tooltip = parser.getAttributeValue(null, "tooltip");
-                        cell.Tooltip = tooltip != null ? tooltip.trim() : "";
-                        String region = parser.getAttributeValue(null, "region");
-                        cell.Region = region != null ? normalizeRegionLabel(region) : "";
-                        Cells.put(cellNumber, cell);
+                    Cell cell = parseCellNode(parser);
+                    if (cell != null) {
+                        Cells.put(cell.CellNumber, cell);
                         if (!cell.Region.isEmpty()) {
-                            rememberRegionMapping(cellNumber, cell.Region);
+                            rememberRegionMapping(cell.CellNumber, cell.Region);
                         }
                         parsedCells++;
                     }
@@ -332,6 +313,85 @@ public class ExtMap {
             event = parser.next();
         }
         return parsedCells;
+    }
+
+    private static Cell parseCellNode(XmlPullParser parser) throws Exception {
+        String cellNumber = parser.getAttributeValue(null, "cellNumber");
+        if (cellNumber == null) {
+            return null;
+        }
+        String normalizedCellNumber = cellNumber.trim();
+        if (normalizedCellNumber.isEmpty()) {
+            return null;
+        }
+
+        Cell cell = new Cell();
+        cell.CellNumber = normalizedCellNumber;
+        String costStr = parser.getAttributeValue(null, "cost");
+        if (costStr != null) {
+            try { cell.Cost = Integer.parseInt(costStr.trim()); } catch (NumberFormatException ignored) {}
+        }
+        String hasFish = parser.getAttributeValue(null, "hasFish");
+        cell.HasFish = "true".equalsIgnoreCase(hasFish);
+        String hasWater = parser.getAttributeValue(null, "hasWater");
+        cell.HasWater = "true".equalsIgnoreCase(hasWater);
+        String herbGroup = parser.getAttributeValue(null, "herbGroup");
+        cell.HerbGroup = herbGroup != null ? herbGroup.trim() : "";
+        String name = parser.getAttributeValue(null, "name");
+        cell.Name = name != null ? name.trim() : "";
+        String tooltip = parser.getAttributeValue(null, "tooltip");
+        cell.Tooltip = tooltip != null ? tooltip.trim() : "";
+        String region = parser.getAttributeValue(null, "region");
+        cell.Region = region != null ? normalizeRegionLabel(region) : "";
+
+        int startDepth = parser.getDepth();
+        int innerEvent = parser.next();
+        while (!(innerEvent == XmlPullParser.END_TAG
+                && parser.getDepth() == startDepth
+                && "cell".equalsIgnoreCase(parser.getName()))) {
+            if (innerEvent == XmlPullParser.END_DOCUMENT) {
+                break;
+            }
+            if (innerEvent == XmlPullParser.START_TAG && "bots".equalsIgnoreCase(parser.getName())) {
+                int minLevel = parsePositiveInt(parser.getAttributeValue(null, "minLevel"));
+                int maxLevel = parsePositiveInt(parser.getAttributeValue(null, "maxLevel"));
+                if (minLevel > 0) {
+                    if (cell.MinBotLevel == 0 || minLevel < cell.MinBotLevel) {
+                        cell.MinBotLevel = minLevel;
+                    }
+                    if (cell.MaxBotLevel == 0 || minLevel > cell.MaxBotLevel) {
+                        cell.MaxBotLevel = minLevel;
+                    }
+                }
+                if (maxLevel > 0) {
+                    if (cell.MaxBotLevel == 0 || maxLevel > cell.MaxBotLevel) {
+                        cell.MaxBotLevel = maxLevel;
+                    }
+                    if (cell.MinBotLevel == 0) {
+                        cell.MinBotLevel = maxLevel;
+                    }
+                }
+            }
+            innerEvent = parser.next();
+        }
+        if (cell.MinBotLevel > 0 && cell.MaxBotLevel > 0 && cell.MinBotLevel > cell.MaxBotLevel) {
+            int swap = cell.MinBotLevel;
+            cell.MinBotLevel = cell.MaxBotLevel;
+            cell.MaxBotLevel = swap;
+        }
+        return cell;
+    }
+
+    private static int parsePositiveInt(String value) {
+        if (value == null) {
+            return 0;
+        }
+        try {
+            int parsed = Integer.parseInt(value.trim());
+            return Math.max(0, parsed);
+        } catch (Exception ignored) {
+            return 0;
+        }
     }
 
     private static void loadAbcMap(Context context) {

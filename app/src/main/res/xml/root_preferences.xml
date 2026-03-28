@@ -53,7 +53,7 @@
 
         <EditTextPreference
             app:key="map_cell_check_timeout_ms"
-            app:title="Таймаут проверки клетки (мс)"
+            app:title="Задержка между шагами (мс)"
             app:summary="450"
             app:dependency="map_rebuild_from_pinfo"
             app:useSimpleSummaryProvider="false" />

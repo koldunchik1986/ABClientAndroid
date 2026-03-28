@@ -772,7 +772,7 @@ public class MapAjax {
         long remainingMs = timeoutMs - elapsedMs;
         if ((now - lastMapCellCheckDelayLogAtMs) >= 350L) {
             lastMapCellCheckDelayLogAtMs = now;
-            Log.d(TAG, "MAP_NAME_SYNC_TRACE: hold next auto-step for cell verification"
+            Log.d(TAG, "MAP_NAME_SYNC_TRACE: hold next auto-step (configured step delay)"
                     + ", reg=" + currentRegNum
                     + ", remainingMs=" + remainingMs
                     + ", timeoutMs=" + timeoutMs);

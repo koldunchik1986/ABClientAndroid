@@ -16,5 +16,6 @@ public class Cell {
     public String NameUpdated;
     public String CostUpdated;
     public List<Object> Bots = new ArrayList<>();
+    public int MinBotLevel = 0;
     public int MaxBotLevel = 0;
 }

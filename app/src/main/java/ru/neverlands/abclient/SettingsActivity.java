@@ -171,7 +171,7 @@ public class SettingsActivity extends AppCompatActivity {
         }
 
         private static String buildMapCellCheckTimeoutSummary(int timeoutMs) {
-            return "Текущий таймаут: " + timeoutMs + " мс";
+            return "Текущая задержка между шагами: " + timeoutMs + " мс";
         }
 
         @Override
@@ -303,7 +303,7 @@ public class SettingsActivity extends AppCompatActivity {
             SwitchPreferenceCompat mapRebuildFromPinfoPref = findPreference("map_rebuild_from_pinfo");
             if (mapRebuildFromPinfoPref != null && AppVars.Profile != null) {
                 mapRebuildFromPinfoPref.setChecked(AppVars.Profile.MapRebuildFromPinfo);
-                mapRebuildFromPinfoPref.setSummary("Синхронизировать название/регион клетки по ch.php и pinfo (может замедлять авто-навигацию)");
+                mapRebuildFromPinfoPref.setSummary("Синхронизировать название/регион клетки по ch.php и pinfo (может замедлять авто-навигацию; использует задержку (мс) между шагами)");
                 mapRebuildFromPinfoPref.setOnPreferenceChangeListener((preference, newValue) -> {
                     boolean value = (Boolean) newValue;
                     AppVars.Profile.MapRebuildFromPinfo = value;
