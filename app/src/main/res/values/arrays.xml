@@ -17,6 +17,8 @@
         <item>80%</item>
         <item>90%</item>
         <item>100%</item>
+        <item>125%</item>
+        <item>150%</item>
     </string-array>
 
     <string-array name="map_scale_values">
@@ -26,5 +28,7 @@
         <item>80</item>
         <item>90</item>
         <item>100</item>
+        <item>125</item>
+        <item>150</item>
     </string-array>
 </resources>

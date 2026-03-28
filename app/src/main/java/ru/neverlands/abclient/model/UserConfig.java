@@ -487,7 +487,7 @@ public class UserConfig {
                         if (this.MapBigWidth < 3) this.MapBigWidth = 3;
                         if (this.MapBigHeight < 3) this.MapBigHeight = 3;
                         if (this.MapBigScale < 50) this.MapBigScale = 50;
-                        if (this.MapBigScale > 100) this.MapBigScale = 100;
+                        if (this.MapBigScale > 150) this.MapBigScale = 150;
                         if (this.MapCellFontSize < 6) this.MapCellFontSize = 6;
                         if (this.MapCellFontSize > 24) this.MapCellFontSize = 24;
                         if (this.MapCellCheckTimeoutMs < 0) this.MapCellCheckTimeoutMs = 0;

@@ -229,10 +229,11 @@ public class SettingsActivity extends AppCompatActivity {
             if (mapScalePref != null && AppVars.Profile != null) {
                 int currentScale = AppVars.Profile.MapBigScale;
                 if (currentScale < 50) currentScale = 50;
-                if (currentScale > 100) currentScale = 100;
+                if (currentScale > 150) currentScale = 150;
                 if (!(currentScale == 50 || currentScale == 60 || currentScale == 70
-                        || currentScale == 80 || currentScale == 90 || currentScale == 100)) {
-                    currentScale = (currentScale <= 75) ? 70 : 80;
+                        || currentScale == 80 || currentScale == 90 || currentScale == 100
+                        || currentScale == 125 || currentScale == 150)) {
+                    currentScale = (currentScale <= 75) ? 70 : (currentScale <= 112 ? 100 : 125);
                     AppVars.Profile.MapBigScale = currentScale;
                     AppVars.Profile.save(requireContext());
                 }
@@ -253,7 +254,7 @@ public class SettingsActivity extends AppCompatActivity {
                         value = 80;
                     }
                     if (value < 50) value = 50;
-                    if (value > 100) value = 100;
+                    if (value > 150) value = 150;
                     AppVars.Profile.MapBigScale = value;
                     AppVars.Profile.save(requireContext());
                     return true;

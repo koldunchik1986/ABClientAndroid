@@ -261,7 +261,7 @@ public class WebAppInterface {
         int mapBigHeight = (AppVars.Profile != null) ? AppVars.Profile.MapBigHeight : 7;
         int scale = (AppVars.Profile != null) ? AppVars.Profile.MapBigScale : 75;
         if (scale < 50) scale = 50;
-        if (scale > 100) scale = 100;
+        if (scale > 150) scale = 150;
         int halfW = Math.max(1, (mapBigWidth - 1) / 2);
         int halfH = Math.max(1, (mapBigHeight - 1) / 2);
         logMapBridgeValue("GetMapScale", mapBigWidth, mapBigHeight, scale, halfW, halfH);

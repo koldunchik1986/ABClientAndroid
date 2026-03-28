@@ -118,7 +118,7 @@ public class MapJs {
                     + "  GetHalfMapHeight: function(){ return parseInt(__abCall('GetHalfMapHeight', [], 3), 10) || 3; },\n"
                     + "  GetMapScale: function(){\n"
                     + "    var __ab_scale = parseInt(__abCall('GetMapScale', [], 75), 10);\n"
-                    + "    if (isNaN(__ab_scale) || __ab_scale < 50 || __ab_scale > 100) __ab_scale = 75;\n"
+                    + "    if (isNaN(__ab_scale) || __ab_scale < 50 || __ab_scale > 150) __ab_scale = 75;\n"
                     + "    return __ab_scale;\n"
                     + "  },\n"
                     + "  UsersOnline: function(){ return String(__abCall('UsersOnline', [], '')); },\n"
