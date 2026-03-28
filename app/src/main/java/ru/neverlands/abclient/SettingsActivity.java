@@ -152,6 +152,28 @@ public class SettingsActivity extends AppCompatActivity {
         private static String buildMapFontSizeSummary(int sizePx) {
             return "Текущий размер: " + sizePx + " px";
         }
+        private static int normalizeMapCellCheckTimeoutMs(int value) {
+            if (value < 0) return 0;
+            if (value > 5000) return 5000;
+            return value;
+        }
+
+        private static int parseMapCellCheckTimeoutMs(String raw, int fallback) {
+            int safeFallback = normalizeMapCellCheckTimeoutMs(fallback);
+            if (raw == null) {
+                return safeFallback;
+            }
+            try {
+                return normalizeMapCellCheckTimeoutMs(Integer.parseInt(raw.trim()));
+            } catch (Exception ignore) {
+                return safeFallback;
+            }
+        }
+
+        private static String buildMapCellCheckTimeoutSummary(int timeoutMs) {
+            return "Текущий таймаут: " + timeoutMs + " мс";
+        }
+
         @Override
         public void onCreatePreferences(Bundle savedInstanceState, String rootKey) {
             setPreferencesFromResource(R.xml.root_preferences, rootKey);
@@ -281,11 +303,31 @@ public class SettingsActivity extends AppCompatActivity {
             SwitchPreferenceCompat mapRebuildFromPinfoPref = findPreference("map_rebuild_from_pinfo");
             if (mapRebuildFromPinfoPref != null && AppVars.Profile != null) {
                 mapRebuildFromPinfoPref.setChecked(AppVars.Profile.MapRebuildFromPinfo);
+                mapRebuildFromPinfoPref.setSummary("Синхронизировать название/регион клетки по ch.php и pinfo (может замедлять авто-навигацию)");
                 mapRebuildFromPinfoPref.setOnPreferenceChangeListener((preference, newValue) -> {
                     boolean value = (Boolean) newValue;
                     AppVars.Profile.MapRebuildFromPinfo = value;
                     AppVars.Profile.save(requireContext());
                     return true;
+                });
+            }
+
+            EditTextPreference mapCellCheckTimeoutPref = findPreference("map_cell_check_timeout_ms");
+            if (mapCellCheckTimeoutPref != null && AppVars.Profile != null) {
+                int currentTimeout = normalizeMapCellCheckTimeoutMs(AppVars.Profile.MapCellCheckTimeoutMs);
+                if (currentTimeout != AppVars.Profile.MapCellCheckTimeoutMs) {
+                    AppVars.Profile.MapCellCheckTimeoutMs = currentTimeout;
+                    AppVars.Profile.save(requireContext());
+                }
+                mapCellCheckTimeoutPref.setText(String.valueOf(currentTimeout));
+                mapCellCheckTimeoutPref.setSummary(buildMapCellCheckTimeoutSummary(currentTimeout));
+                mapCellCheckTimeoutPref.setOnPreferenceChangeListener((preference, newValue) -> {
+                    int timeoutMs = parseMapCellCheckTimeoutMs(String.valueOf(newValue), AppVars.Profile.MapCellCheckTimeoutMs);
+                    AppVars.Profile.MapCellCheckTimeoutMs = timeoutMs;
+                    AppVars.Profile.save(requireContext());
+                    mapCellCheckTimeoutPref.setText(String.valueOf(timeoutMs));
+                    preference.setSummary(buildMapCellCheckTimeoutSummary(timeoutMs));
+                    return false;
                 });
             }
 

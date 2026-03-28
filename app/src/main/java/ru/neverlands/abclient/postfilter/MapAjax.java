@@ -28,6 +28,8 @@ public class MapAjax {
     private static final long SEARCH_BOX_VISITED_TTL_MS = 24L * 60L * 60L * 1000L;
     private static final int AUTO_MOVING_TIED_STEP_COST = 2;
     private static final int AUTO_DRINK_BLAZ_NEAR_THRESHOLD_DELTA = 6;
+    private static final int MAP_CELL_CHECK_TIMEOUT_MIN_MS = 0;
+    private static final int MAP_CELL_CHECK_TIMEOUT_MAX_MS = 5000;
     private static final long AUTO_DRINK_BLAZ_PINFO_SYNC_COOLDOWN_MS = 20_000L;
     private static final long AUTO_DRINK_BLAZ_STARTUP_SYNC_RETRY_COOLDOWN_MS = 10_000L;
     private static final long AUTO_DRINK_BLAZ_TRIGGER_COOLDOWN_MS = 6_000L;
@@ -35,6 +37,8 @@ public class MapAjax {
     private static volatile long lastAutoDrinkBlazPinfoSyncAtMs = 0L;
     private static volatile long lastAutoDrinkBlazStartupSyncAttemptAtMs = 0L;
     private static volatile long lastAutoDrinkBlazTriggerAtMs = 0L;
+    private static volatile long lastAutoMovingCellObservedAtMs = 0L;
+    private static volatile long lastMapCellCheckDelayLogAtMs = 0L;
     private static volatile boolean autoDrinkBlazStartupSyncDone = false;
     private static volatile long lastAutoTreasureReasonChatAtMs = 0L;
 
@@ -57,6 +61,9 @@ public class MapAjax {
         if (!AppVars.AutoMoving || !AppVars.DoSearchBox) {
             autoDrinkBlazStartupSyncDone = false;
             lastAutoDrinkBlazStartupSyncAttemptAtMs = 0L;
+        }
+        if (!AppVars.AutoMoving) {
+            lastAutoMovingCellObservedAtMs = 0L;
         }
 
         if (isMapAjaxErrResponse(html) && AppVars.AutoMoving) {
@@ -242,6 +249,10 @@ public class MapAjax {
             AppVars.AutoMovingNextJump = null;
             AppVars.AutoMovingJumps = 0;
             Log.i(TAG, "AUTO_SEARCH_BOX_TRACE: rotate destination to " + nextSearchDestination);
+        }
+
+        if (shouldDelayAutoMovingStep(mapLocation)) {
+            return html;
         }
 
         if (AppVars.AutoMovingMapPath == null || !AppVars.AutoMovingMapPath.canUseExistingPath(mapLocation, AppVars.AutoMovingDestinaton)) {
@@ -529,6 +540,7 @@ public class MapAjax {
         if (previousRegNum.equals(currentRegNum)) {
             return;
         }
+        lastAutoMovingCellObservedAtMs = System.currentTimeMillis();
         int oldTied = CharacterVitalsManager.snapshot().tied;
         CharacterVitalsManager.Snapshot stepped = CharacterVitalsManager.increaseTied(
                 AUTO_MOVING_TIED_STEP_COST,
@@ -741,6 +753,45 @@ public class MapAjax {
         Intent intent = new Intent(AppVars.ACTION_ADD_CHAT_MESSAGE);
         intent.putExtra("message", messageHtml);
         LocalBroadcastManager.getInstance(context).sendBroadcast(intent);
+    }
+
+    private static boolean shouldDelayAutoMovingStep(String currentRegNum) {
+        int timeoutMs = resolveMapCellCheckTimeoutMs();
+        if (timeoutMs <= 0) {
+            return false;
+        }
+        long observedAt = lastAutoMovingCellObservedAtMs;
+        if (observedAt <= 0L) {
+            return false;
+        }
+        long now = System.currentTimeMillis();
+        long elapsedMs = now - observedAt;
+        if (elapsedMs >= timeoutMs) {
+            return false;
+        }
+        long remainingMs = timeoutMs - elapsedMs;
+        if ((now - lastMapCellCheckDelayLogAtMs) >= 350L) {
+            lastMapCellCheckDelayLogAtMs = now;
+            Log.d(TAG, "MAP_NAME_SYNC_TRACE: hold next auto-step for cell verification"
+                    + ", reg=" + currentRegNum
+                    + ", remainingMs=" + remainingMs
+                    + ", timeoutMs=" + timeoutMs);
+        }
+        return true;
+    }
+
+    private static int resolveMapCellCheckTimeoutMs() {
+        if (AppVars.Profile == null || !AppVars.Profile.MapRebuildFromPinfo) {
+            return 0;
+        }
+        int raw = AppVars.Profile.MapCellCheckTimeoutMs;
+        if (raw < MAP_CELL_CHECK_TIMEOUT_MIN_MS) {
+            return MAP_CELL_CHECK_TIMEOUT_MIN_MS;
+        }
+        if (raw > MAP_CELL_CHECK_TIMEOUT_MAX_MS) {
+            return MAP_CELL_CHECK_TIMEOUT_MAX_MS;
+        }
+        return raw;
     }
 
     private static int clampPercent(int value) {

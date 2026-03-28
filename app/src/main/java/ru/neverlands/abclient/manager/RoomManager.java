@@ -299,7 +299,7 @@ public class RoomManager {
         // Быстрый проход: если регион уже известен из последнего pinfo,
         // применяем его к текущей клетке без нового сетевого запроса.
         String cachedRegion = lastOwnPinfoRegion == null ? "" : lastOwnPinfoRegion.trim();
-        if (!isEmpty(cachedRegion) && isCachedPinfoAlignedWithCurrentCell(mapRegNum)) {
+        if (!isEmpty(cachedRegion) && isCachedPinfoAlignedWithCurrentCell(mapRegNum, cachedRegion)) {
             String oldRegion = normalizeCellLabel(getCellRegionDirect(mapRegNum));
             String oldName = normalizeCellLabel(getCellName(mapRegNum));
             boolean changedFromCache = ExtMap.syncCellMetaFromPinfo(mapRegNum, cachedRegion, "");
@@ -344,8 +344,10 @@ public class RoomManager {
                     return;
                 }
 
-                boolean canApplyName = canApplyPinfoNameToCurrentCell(requestRegNum, locationName);
-                if (!isEmpty(locationRegion) && canApplyName) {
+                boolean canApplyName = canApplyPinfoNameToCurrentCell(requestRegNum, locationName, locationRegion);
+                boolean canApplyRegion = canApplyPinfoRegionToCurrentCell(requestRegNum, locationRegion)
+                        && (canApplyName || !AppVars.AutoMoving);
+                if (!isEmpty(locationRegion) && canApplyRegion) {
                     lastOwnPinfoRegion = locationRegion;
                 }
                 if (!isEmpty(locationName) && canApplyName) {
@@ -354,20 +356,28 @@ public class RoomManager {
 
                 String oldRegion = normalizeCellLabel(getCellRegionDirect(requestRegNum));
                 String oldName = normalizeCellLabel(getCellName(requestRegNum));
+                String effectiveRegion = canApplyRegion ? locationRegion : "";
                 String effectiveCellName = canApplyName ? locationName : "";
-                boolean changed = ExtMap.syncCellMetaFromPinfo(requestRegNum, locationRegion, effectiveCellName);
+                boolean changed = ExtMap.syncCellMetaFromPinfo(requestRegNum, effectiveRegion, effectiveCellName);
                 if (changed) {
                     boolean notified = notifyMapMetaSyncIfChanged(requestRegNum, oldRegion, oldName);
                     Log.d(TAG, "MAP_NAME_SYNC_TRACE: pinfo meta sync applied, reg=" + requestRegNum
-                            + ", region=" + locationRegion + ", cell=" + effectiveCellName
+                            + ", region=" + effectiveRegion + ", cell=" + effectiveCellName
+                            + ", sourceRegion=" + locationRegion
                             + ", sourceCell=" + locationName
                             + ", canApplyName=" + canApplyName
+                            + ", canApplyRegion=" + canApplyRegion
                             + ", notified=" + notified);
-                } else if (!canApplyName && !isEmpty(locationName)) {
-                    Log.d(TAG, "MAP_NAME_SYNC_TRACE: skip pinfo name sync for current reg, reg=" + requestRegNum
+                } else if ((!canApplyName && !isEmpty(locationName))
+                        || (!canApplyRegion && !isEmpty(locationRegion))) {
+                    Log.d(TAG, "MAP_NAME_SYNC_TRACE: skip pinfo meta sync for current reg, reg=" + requestRegNum
                             + ", pinfoCell=" + locationName
+                            + ", pinfoRegion=" + locationRegion
                             + ", currentCell=" + normalizeCellLabel(getCellName(requestRegNum))
-                            + ", nextReg=" + normalizeRegNum(AppVars.AutoMovingNextJump));
+                            + ", currentRegion=" + normalizeCellLabel(getCellRegionDirect(requestRegNum))
+                            + ", nextReg=" + normalizeRegNum(AppVars.AutoMovingNextJump)
+                            + ", canApplyName=" + canApplyName
+                            + ", canApplyRegion=" + canApplyRegion);
                 }
             } catch (Exception e) {
                 Log.w(TAG, "MAP_NAME_SYNC_TRACE: pinfo meta sync failed", e);
@@ -562,8 +572,11 @@ public class RoomManager {
      * сервер/`pinfo` и `map_ajax` могут приходить с небольшим сдвигом, и без этой проверки
      * region/name могут применяться к предыдущей клетке.
      */
-    private static boolean isCachedPinfoAlignedWithCurrentCell(String regNum) {
+    private static boolean isCachedPinfoAlignedWithCurrentCell(String regNum, String cachedRegion) {
         if (isEmpty(regNum)) {
+            return false;
+        }
+        if (!canApplyPinfoRegionToCurrentCell(regNum, cachedRegion)) {
             return false;
         }
         String cachedCell = normalizeCellLabel(lastOwnPinfoCellName);
@@ -583,8 +596,11 @@ public class RoomManager {
      * - в остальных неочевидных случаях в движении не применяем имя (только region),
      *   чтобы не переименовать текущую клетку именем соседней.
      */
-    private static boolean canApplyPinfoNameToCurrentCell(String regNum, String pinfoCellName) {
+    private static boolean canApplyPinfoNameToCurrentCell(String regNum, String pinfoCellName, String pinfoRegion) {
         if (isEmpty(regNum) || isEmpty(pinfoCellName)) {
+            return false;
+        }
+        if (!isEmpty(pinfoRegion) && !canApplyPinfoRegionToCurrentCell(regNum, pinfoRegion)) {
             return false;
         }
         String normalizedPinfoCell = normalizeCellLabel(pinfoCellName);
@@ -602,6 +618,33 @@ public class RoomManager {
             if (!isEmpty(nextCell) && normalizedPinfoCell.equals(nextCell)) {
                 return false;
             }
+        }
+        return !AppVars.AutoMoving;
+    }
+
+    /**
+     * Проверяет совместимость региона из pinfo с текущей клеткой.
+     *
+     * Правило:
+     * - если у клетки region ещё не известен — разрешаем применение;
+     * - если region совпадает — разрешаем;
+     * - если region отличается и идёт движение — блокируем (защита от "дёргания карты");
+     * - если region отличается в idle — разрешаем как корректирующее обновление.
+     */
+    private static boolean canApplyPinfoRegionToCurrentCell(String regNum, String pinfoRegion) {
+        if (isEmpty(regNum) || isEmpty(pinfoRegion)) {
+            return false;
+        }
+        String normalizedPinfoRegion = normalizeCellLabel(pinfoRegion);
+        if (isEmpty(normalizedPinfoRegion)) {
+            return false;
+        }
+        String currentRegion = normalizeCellLabel(getCellRegionDirect(regNum));
+        if (isEmpty(currentRegion)) {
+            return true;
+        }
+        if (normalizedPinfoRegion.equals(currentRegion)) {
+            return true;
         }
         return !AppVars.AutoMoving;
     }

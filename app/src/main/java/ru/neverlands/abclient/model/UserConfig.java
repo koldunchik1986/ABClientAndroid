@@ -133,6 +133,12 @@ public class UserConfig {
      * - разрешает фоновую подпитку Region из pinfo для ускорения точного поиска в Авто-Компасе.
      */
     public boolean MapRebuildFromPinfo = true;
+    /**
+     * Дополнительный таймаут проверки клетки после перехода (мс).
+     * Применяется только при включенном `MapRebuildFromPinfo`.
+     * Диапазон: 0..5000.
+     */
+    public int MapCellCheckTimeoutMs = 450;
     public boolean DoHttpLog = false;
     public boolean DoTexLog = false;
     public boolean ShowPerformance = false;
@@ -477,12 +483,15 @@ public class UserConfig {
                         this.MapBigScale = parseIntAttr(parser, "bigscale", this.MapBigScale);
                         this.MapCellFontSize = parseIntAttr(parser, "cellfontsize", this.MapCellFontSize);
                         this.MapRebuildFromPinfo = parseBoolAttr(parser, "rebuildfrompinfo", this.MapRebuildFromPinfo);
+                        this.MapCellCheckTimeoutMs = parseIntAttr(parser, "cellchecktimeoutms", this.MapCellCheckTimeoutMs);
                         if (this.MapBigWidth < 3) this.MapBigWidth = 3;
                         if (this.MapBigHeight < 3) this.MapBigHeight = 3;
                         if (this.MapBigScale < 50) this.MapBigScale = 50;
                         if (this.MapBigScale > 100) this.MapBigScale = 100;
                         if (this.MapCellFontSize < 6) this.MapCellFontSize = 6;
                         if (this.MapCellFontSize > 24) this.MapCellFontSize = 24;
+                        if (this.MapCellCheckTimeoutMs < 0) this.MapCellCheckTimeoutMs = 0;
+                        if (this.MapCellCheckTimeoutMs > 5000) this.MapCellCheckTimeoutMs = 5000;
                     } else if ("proxy".equalsIgnoreCase(tagName)) {
                         boolean proxyActive = parseBoolAttr(parser, "active", this.DoProxy || this.UseProxy);
                         String proxyAddress = getAttributeValueIgnoreCase(parser, "address");
@@ -834,6 +843,7 @@ public class UserConfig {
             serializer.attribute(null, "bigscale", String.valueOf(this.MapBigScale));
             serializer.attribute(null, "cellfontsize", String.valueOf(this.MapCellFontSize));
             serializer.attribute(null, "rebuildfrompinfo", String.valueOf(this.MapRebuildFromPinfo));
+            serializer.attribute(null, "cellchecktimeoutms", String.valueOf(this.MapCellCheckTimeoutMs));
             serializer.endTag(null, "mapset");
 
             // Настройки инвентаря (группировка/сортировка/массовые кнопки).
