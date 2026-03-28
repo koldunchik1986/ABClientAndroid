@@ -110,6 +110,9 @@ public class NeverApi {
         public final String locationRaw;
         public final String locationRegion;
         public final String locationName;
+        public final String clanToken;
+        public final String fightFid;
+        public final Integer level;
         public final boolean offlineOrInvisible;
         public final Integer curTire;
         public final long capturedAtMs;
@@ -119,6 +122,9 @@ public class NeverApi {
                 String locationRaw,
                 String locationRegion,
                 String locationName,
+                String clanToken,
+                String fightFid,
+                Integer level,
                 boolean offlineOrInvisible,
                 Integer curTire,
                 long capturedAtMs) {
@@ -126,6 +132,9 @@ public class NeverApi {
             this.locationRaw = locationRaw == null ? "" : locationRaw.trim();
             this.locationRegion = locationRegion == null ? "" : locationRegion.trim();
             this.locationName = locationName == null ? "" : locationName.trim();
+            this.clanToken = clanToken == null ? "" : clanToken.trim();
+            this.fightFid = normalizeFightFid(fightFid);
+            this.level = level;
             this.offlineOrInvisible = offlineOrInvisible;
             this.curTire = curTire;
             this.capturedAtMs = capturedAtMs;
@@ -293,6 +302,9 @@ public class NeverApi {
                         + ", locationRaw=" + snapshot.locationRaw
                         + ", region=" + snapshot.locationRegion
                         + ", location=" + snapshot.locationName
+                        + ", clanToken=" + snapshot.clanToken
+                        + ", fightFid=" + snapshot.fightFid
+                        + ", level=" + safeInt(snapshot.level)
                         + ", offlineOrInvisible=" + snapshot.offlineOrInvisible
                         + ", tied=" + safeInt(snapshot.curTire)
                         + ", capturedAt=" + snapshot.capturedAtMs);
@@ -357,15 +369,24 @@ public class NeverApi {
             return null;
         }
         try {
-            String locationRaw = parsePinfoLocationFromParameters(html);
+            List<String> tupleElements = parsePinfoFirstTupleElements(html);
+            String locationRaw = parsePinfoLocationFromParameters(tupleElements);
             String[] locationParts = splitPinfoLocationToRegionAndCell(locationRaw);
             String locationRegion = locationParts[0];
             String locationName = locationParts[1];
-            Boolean onlineFlag = parsePinfoOnlineFlagFromParameters(html);
+            Boolean onlineFlag = parsePinfoOnlineFlagFromParameters(tupleElements);
+            String clanToken = parsePinfoClanTokenFromParameters(tupleElements);
+            String fightFid = parsePinfoFightFidFromParameters(tupleElements);
+            Integer level = parsePinfoLevelFromParameters(tupleElements);
             boolean offlineOrInvisible = (onlineFlag != null && !onlineFlag)
                     || (locationName == null || locationName.trim().isEmpty());
             Integer tied = parseCurrentTiedFromPinfoHtml(html);
-            if ((locationRaw == null || locationRaw.trim().isEmpty()) && tied == null && onlineFlag == null) {
+            if ((locationRaw == null || locationRaw.trim().isEmpty())
+                    && tied == null
+                    && onlineFlag == null
+                    && isEmpty(clanToken)
+                    && isEmpty(fightFid)
+                    && level == null) {
                 return null;
             }
             return new PinfoCompassSnapshot(
@@ -373,6 +394,9 @@ public class NeverApi {
                     locationRaw,
                     locationRegion,
                     locationName,
+                    clanToken,
+                    fightFid,
+                    level,
                     offlineOrInvisible,
                     tied,
                     System.currentTimeMillis());
@@ -383,14 +407,13 @@ public class NeverApi {
     }
 
     private static Boolean parsePinfoOnlineFlagFromParameters(String html) {
-        if (html == null || html.isEmpty()) {
+        return parsePinfoOnlineFlagFromParameters(parsePinfoFirstTupleElements(html));
+    }
+
+    private static Boolean parsePinfoOnlineFlagFromParameters(List<String> tupleElements) {
+        if (tupleElements == null || tupleElements.isEmpty()) {
             return null;
         }
-        String firstTuple = extractFirstParametersTuple(html);
-        if (firstTuple == null || firstTuple.isEmpty()) {
-            return null;
-        }
-        List<String> tupleElements = parseTopLevelJsArrayElements(firstTuple);
         if (tupleElements.size() <= 6) {
             return null;
         }
@@ -399,6 +422,86 @@ public class NeverApi {
             return null;
         }
         return onlineFlag > 0;
+    }
+
+    private static String parsePinfoClanTokenFromParameters(List<String> tupleElements) {
+        if (tupleElements == null || tupleElements.size() <= 2) {
+            return "";
+        }
+        String token = unwrapJsString(tupleElements.get(2));
+        return token == null ? "" : token.trim();
+    }
+
+    private static String parsePinfoFightFidFromParameters(List<String> tupleElements) {
+        if (tupleElements == null || tupleElements.size() <= 7) {
+            return "";
+        }
+        String fid = unwrapJsString(tupleElements.get(7));
+        return normalizeFightFid(fid);
+    }
+
+    private static Integer parsePinfoLevelFromParameters(List<String> tupleElements) {
+        if (tupleElements == null || tupleElements.size() <= 1) {
+            return null;
+        }
+        Integer level = parseIntToken(tupleElements.get(1));
+        if (level == null || level < 0) {
+            return null;
+        }
+        return level;
+    }
+
+    private static String normalizeFightFid(String value) {
+        if (value == null) {
+            return "";
+        }
+        String text = value.trim();
+        if (text.isEmpty() || "0".equals(text) || "null".equalsIgnoreCase(text)) {
+            return "";
+        }
+        Matcher digits = Pattern.compile("(\\d{1,16})").matcher(text);
+        if (digits.find()) {
+            return digits.group(1);
+        }
+        return text;
+    }
+
+    private static List<String> parsePinfoFirstTupleElements(String html) {
+        if (html == null || html.isEmpty()) {
+            return null;
+        }
+        String firstTuple = extractFirstParametersTuple(html);
+        if (firstTuple == null || firstTuple.isEmpty()) {
+            return null;
+        }
+        return parseTopLevelJsArrayElements(firstTuple);
+    }
+
+    private static boolean isEmpty(String value) {
+        return value == null || value.trim().isEmpty();
+    }
+
+    /**
+     * Достаёт `parameters[0][5]` из pinfo:
+     * var parameters = [[...,'Локация',...], [...], [...]];
+     */
+    private static String parsePinfoLocationFromParameters(String html) {
+        return parsePinfoLocationFromParameters(parsePinfoFirstTupleElements(html));
+    }
+
+    private static String parsePinfoLocationFromParameters(List<String> tupleElements) {
+        if (tupleElements == null || tupleElements.isEmpty()) {
+            return null;
+        }
+        // В оригинальном JS местоположение — 6-е поле (index 5) в parameters[0].
+        if (tupleElements.size() <= 5) {
+            return null;
+        }
+        String location = unwrapJsString(tupleElements.get(5));
+        if (location == null) {
+            return null;
+        }
+        return location.trim();
     }
 
     /**
@@ -427,30 +530,6 @@ public class NeverApi {
         }
         result[1] = value;
         return result;
-    }
-
-    /**
-     * Достаёт `parameters[0][5]` из pinfo:
-     * var parameters = [[...,'Локация',...], [...], [...]];
-     */
-    private static String parsePinfoLocationFromParameters(String html) {
-        if (html == null || html.isEmpty()) {
-            return null;
-        }
-        String firstTuple = extractFirstParametersTuple(html);
-        if (firstTuple == null || firstTuple.isEmpty()) {
-            return null;
-        }
-        List<String> tupleElements = parseTopLevelJsArrayElements(firstTuple);
-        // В оригинальном JS местоположение — 6-е поле (index 5) в parameters[0].
-        if (tupleElements.size() <= 5) {
-            return null;
-        }
-        String location = unwrapJsString(tupleElements.get(5));
-        if (location == null) {
-            return null;
-        }
-        return location.trim();
     }
 
     /**

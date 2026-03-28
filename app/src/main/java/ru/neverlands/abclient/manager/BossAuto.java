@@ -4,6 +4,7 @@ import android.content.Context;
 import android.content.SharedPreferences;
 import android.util.Log;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.regex.Matcher;
@@ -32,6 +33,7 @@ final class BossAuto {
     private static final String TRACE_PREFIX = "AUTO_BOSS_TRACE";
     private static final String KEY_AUTO_BOSS = "auto_function_auto_boss";
     private static final String PREF_AUTO_BOSS_ASK_TARGET = "auto_boss_ask_target";
+    private static final String PREF_AUTO_BOSS_BD_MODE = "auto_boss_bd_mode";
     private static final String PREF_AUTO_BOSS_WAIT_SCROLL_SEC = "auto_boss_wait_scroll_sec";
     private static final String PREF_AUTO_BOSS_SEARCH_TIMEOUT_SEC = "auto_boss_search_timeout_sec";
     private static final String PREF_AUTO_BOSS_WAIT_FIGHT_TIMEOUT_SEC = "auto_boss_wait_fight_timeout_sec";
@@ -43,6 +45,8 @@ final class BossAuto {
     private static final Pattern SPAN_NICK_PATTERN = Pattern.compile(
             "<SPAN[^>]+(?:title|alt)=\"([^\"]+)\"",
             Pattern.CASE_INSENSITIVE);
+    private static final Pattern FIGHT_ALLY_PATTERN = Pattern.compile(
+            "([A-Za-zА-Яа-яЁё0-9_\\-]+)\\s*\\[(\\d{1,9})\\s*/\\s*(\\d{1,9})\\]");
 
     private static final int DEFAULT_SEARCH_TIMEOUT_SEC = 6 * 60;
     private static final int DEFAULT_WAIT_BEFORE_SCROLL_SEC = 2;
@@ -69,6 +73,11 @@ final class BossAuto {
     private long targetAskNextAttemptAtMs = 0L;
     private String lastEventKey = "";
     private long lastEventAtMs = 0L;
+    private String bossFightFid = "";
+    private String bossFightLink = "";
+    private int bossFightFidMissingTicks = 0;
+    private String bossTargetClanToken = "";
+    private String bossSelfClanToken = "";
 
     private enum BossStage {
         IDLE,
@@ -113,6 +122,18 @@ final class BossAuto {
         BossEvent(String bossName, String targetNick) {
             this.bossName = bossName;
             this.targetNick = targetNick;
+        }
+    }
+
+    private static final class FightAllyState {
+        final String nick;
+        final int curHp;
+        final int maxHp;
+
+        FightAllyState(String nick, int curHp, int maxHp) {
+            this.nick = nick;
+            this.curHp = curHp;
+            this.maxHp = maxHp;
         }
     }
 
@@ -218,6 +239,9 @@ final class BossAuto {
 
         switch (currentStage) {
             case SEARCHING_TARGET:
+                if (!monitorTargetFightStateDuringSearch()) {
+                    return;
+                }
                 maybeRetryAskTarget(now);
                 if (now - stageStart >= getSearchTimeoutMs()) {
                     stopAndRestore("search_timeout", true);
@@ -293,14 +317,38 @@ final class BossAuto {
             stopAndRestore("replace_by_new_event", true);
         }
 
+        NeverApi.PinfoCompassSnapshot targetSnapshot = safeGetPinfoSnapshot(normalizedTarget);
+        NeverApi.PinfoCompassSnapshot selfSnapshot = safeGetPinfoSnapshot(resolveSelfNick());
+        String targetClanToken = normalizeClanToken(targetSnapshot == null ? "" : targetSnapshot.clanToken);
+        String selfClanToken = normalizeClanToken(selfSnapshot == null ? "" : selfSnapshot.clanToken);
+
+        if (isAutoBossBdModeEnabled()) {
+            if (isEmpty(selfClanToken)) {
+                writeBossChat("Продолжаем поиск цели не учитывая БД режим (наш статус позволяет вмешаться).");
+            } else if (!isEmpty(targetClanToken) && !selfClanToken.equalsIgnoreCase(targetClanToken)) {
+                String deniedTargetHtml = buildTargetNickHtml(normalizedTarget, targetSnapshot);
+                writeBossChat("Действие отменено — БД режим не позволяет нам защитить " + deniedTargetHtml + ".");
+                Log.d(TAG, TRACE_PREFIX + " bd mode denied target: target=" + normalizedTarget
+                        + ", targetClan=" + targetClanToken + ", selfClan=" + selfClanToken);
+                return;
+            }
+        }
+
         BossScenarioSnapshot newSnapshot = captureSnapshot();
         pauseNonCombatFunctions();
+        String initialFightFid = resolveFightFidReliable(normalizedTarget, targetSnapshot);
+        String initialFightLink = buildFightLogLink(initialFightFid);
 
         synchronized (lock) {
             snapshot = newSnapshot;
             targetNick = normalizedTarget;
             bossName = safeTrim(event.bossName);
             originRegNum = currentMapRegNum();
+            bossFightFid = initialFightFid;
+            bossFightLink = initialFightLink;
+            bossFightFidMissingTicks = 0;
+            bossTargetClanToken = targetClanToken;
+            bossSelfClanToken = selfClanToken;
             stage = BossStage.SEARCHING_TARGET;
             stageStartedAtMs = now;
             actionDueAtMs = 0L;
@@ -310,12 +358,12 @@ final class BossAuto {
             targetAskNextAttemptAtMs = 0L;
         }
 
-        String locationLabel = resolveTargetLocationLabel(normalizedTarget);
-        String targetHtml = RoomManager.buildUnifiedChatNickHtml(normalizedTarget);
+        String locationLabel = resolveTargetLocationLabel(normalizedTarget, targetSnapshot);
+        String targetHtml = buildTargetNickHtml(normalizedTarget, targetSnapshot);
         String locationPrefix = isEmpty(locationLabel) ? "" : " [" + escapeHtml(locationLabel) + "]";
-        writeBossChat("Событие: Монстр \"" + event.bossName + "\" напал на игрока "
-                + (isEmpty(targetHtml) ? escapeHtml(normalizedTarget) : targetHtml)
-                + locationPrefix + ". Запускаем поиск цели.");
+        writeBossChat("Событие: Монстр \"" + escapeHtml(event.bossName) + "\" напал на игрока "
+                + targetHtml + ". Цель " + targetHtml + " в " + buildFightWordHtml(initialFightLink)
+                + ". Запускаем поиск цели." + locationPrefix);
         if (isAutoBossAskTargetEnabled()) {
             synchronized (lock) {
                 targetAskAttempts = 0;
@@ -365,10 +413,9 @@ final class BossAuto {
         if (AppVars.AutoMoving) {
             owner.stopAutoMoving();
         }
-        String targetHtml = RoomManager.buildUnifiedChatNickHtml(targetNick);
+        String targetHtml = buildTargetNickHtml(targetNick, null);
         writeBossChat("Цель найдена (" + source + "): "
-                + (isEmpty(targetHtml) ? escapeHtml(targetNick) : targetHtml)
-                + ". Готовим «Свиток Защиты».");
+                + targetHtml + ". Готовим «Свиток Защиты».");
     }
 
     private void sendProtectionScroll() {
@@ -378,29 +425,39 @@ final class BossAuto {
                 return;
             }
             target = targetNick;
-            protectionAttempts++;
-            protectionSentAtMs = System.currentTimeMillis();
-            stage = BossStage.WAIT_FIGHT_START;
-            stageStartedAtMs = protectionSentAtMs;
         }
         if (isEmpty(target)) {
             stopAndRestore("empty_target_before_scroll", true);
             return;
         }
-        String targetHtml = RoomManager.buildUnifiedChatNickHtml(target);
+
+        String castTarget = resolveProtectionTargetNick(target);
+        if (isEmpty(castTarget)) {
+            stopAndRestore("no_alive_protection_target", true);
+            return;
+        }
+
+        long sentAt = System.currentTimeMillis();
+        synchronized (lock) {
+            if (stage != BossStage.TARGET_FOUND_WAIT_SCROLL && stage != BossStage.WAIT_FIGHT_START) {
+                return;
+            }
+            protectionAttempts++;
+            protectionSentAtMs = sentAt;
+            stage = BossStage.WAIT_FIGHT_START;
+            stageStartedAtMs = sentAt;
+        }
+
+        String targetHtml = buildTargetNickHtml(castTarget, null);
         StringBuilder builder = new StringBuilder();
         builder.append(MainPhp.buildServerChatTimeHtmlExternal());
         builder.append("<font color=#7E57C2><b>[Авто-Боссы]</b></font> ");
         builder.append("Используем «Свиток Защиты» на ");
-        if (!isEmpty(targetHtml)) {
-            builder.append(targetHtml);
-        } else {
-            builder.append(escapeHtml(target));
-        }
+        builder.append(targetHtml);
         builder.append(".");
         FastActionManager.writeChatMsg(builder.toString());
-        FastActionManager.fastAttackZas(target);
-        Log.d(TAG, TRACE_PREFIX + " protection scroll sent: target=" + target
+        FastActionManager.fastAttackZas(castTarget);
+        Log.d(TAG, TRACE_PREFIX + " protection scroll sent: target=" + castTarget
                 + ", attempts=" + protectionAttempts);
     }
 
@@ -465,6 +522,11 @@ final class BossAuto {
             protectionAttempts = 0;
             targetAskAttempts = 0;
             targetAskNextAttemptAtMs = 0L;
+            bossFightFid = "";
+            bossFightLink = "";
+            bossFightFidMissingTicks = 0;
+            bossTargetClanToken = "";
+            bossSelfClanToken = "";
         }
         if (owner.isAutoCompassEnabled()) {
             owner.setAutoCompassEnabled(false);
@@ -473,9 +535,9 @@ final class BossAuto {
             restoreSnapshot(snapshotToRestore);
         }
         if (!isEmpty(oldTarget)) {
-            String targetHtml = RoomManager.buildUnifiedChatNickHtml(oldTarget);
+            String targetHtml = buildTargetNickHtml(oldTarget, null);
             writeBossChat("Сценарий завершен (" + reason + ") для цели "
-                    + (isEmpty(targetHtml) ? escapeHtml(oldTarget) : targetHtml) + ".");
+                    + targetHtml + ".");
         } else {
             writeBossChat("Сценарий завершен (" + reason + ").");
         }
@@ -584,7 +646,13 @@ final class BossAuto {
         return normalizeNick(raw);
     }
 
-    private String resolveTargetLocationLabel(String targetNick) {
+    private String resolveTargetLocationLabel(String targetNick, NeverApi.PinfoCompassSnapshot snapshot) {
+        if (snapshot != null && !isEmpty(snapshot.locationName)) {
+            if (!isEmpty(snapshot.locationRegion)) {
+                return snapshot.locationRegion + " [" + snapshot.locationName + "]";
+            }
+            return snapshot.locationName;
+        }
         if (isEmpty(targetNick)) {
             return "";
         }
@@ -597,6 +665,121 @@ final class BossAuto {
             Log.w(TAG, TRACE_PREFIX + " resolveTargetLocationLabel failed: target=" + targetNick, e);
         }
         return owner.getAutoCompassLastLocationLabel();
+    }
+
+    private NeverApi.PinfoCompassSnapshot safeGetPinfoSnapshot(String nick) {
+        if (isEmpty(nick)) {
+            return null;
+        }
+        try {
+            return NeverApi.getPinfoCompassSnapshot(nick);
+        } catch (Exception e) {
+            Log.w(TAG, TRACE_PREFIX + " snapshot request failed: nick=" + nick, e);
+            return null;
+        }
+    }
+
+    private String resolveFightFidReliable(String targetNick, NeverApi.PinfoCompassSnapshot snapshot) {
+        String fromSnapshot = normalizeFightFid(snapshot == null ? "" : snapshot.fightFid);
+        if (!isEmpty(fromSnapshot)) {
+            return fromSnapshot;
+        }
+        if (isEmpty(targetNick)) {
+            return "";
+        }
+        try {
+            NeverApi.UserInfo info = NeverApi.getAll(targetNick);
+            return normalizeFightFid(info == null ? "" : info.fightLog);
+        } catch (Exception e) {
+            Log.w(TAG, TRACE_PREFIX + " failed to resolve fight fid via getAll: target=" + targetNick, e);
+            return "";
+        }
+    }
+
+    private String resolveSelfNick() {
+        if (AppVars.Profile == null || AppVars.Profile.UserNick == null) {
+            return "";
+        }
+        return normalizeNick(AppVars.Profile.UserNick);
+    }
+
+    private String normalizeClanToken(String value) {
+        if (value == null) {
+            return "";
+        }
+        return value.replace('\u00A0', ' ').trim();
+    }
+
+    private String normalizeFightFid(String value) {
+        if (value == null) {
+            return "";
+        }
+        String text = value.trim();
+        if (text.isEmpty() || "0".equals(text) || "null".equalsIgnoreCase(text)) {
+            return "";
+        }
+        Matcher digits = Pattern.compile("(\\d{1,16})").matcher(text);
+        return digits.find() ? digits.group(1) : text;
+    }
+
+    private String buildFightLogLink(String fid) {
+        String safeFid = normalizeFightFid(fid);
+        if (isEmpty(safeFid)) {
+            return "";
+        }
+        return "http://neverlands.ru/logs.fcg?fid=" + safeFid;
+    }
+
+    private String buildFightWordHtml(String fightLink) {
+        if (isEmpty(fightLink)) {
+            return "бою";
+        }
+        return "<a href=" + escapeHtml(fightLink) + ">бою</a>";
+    }
+    private String getCurrentFightWordHtml() {
+        String link;
+        synchronized (lock) {
+            link = bossFightLink;
+        }
+        return buildFightWordHtml(link);
+    }
+
+    private String buildTargetNickHtml(String nick, NeverApi.PinfoCompassSnapshot snapshot) {
+        String cleanNick = normalizeNick(nick);
+        if (isEmpty(cleanNick)) {
+            return "";
+        }
+        String rendered = RoomManager.buildUnifiedChatNickHtml(cleanNick);
+        if (!isEmpty(rendered)) {
+            return rendered;
+        }
+        NeverApi.PinfoCompassSnapshot resolvedSnapshot = snapshot != null ? snapshot : safeGetPinfoSnapshot(cleanNick);
+        int level = 0;
+        if (resolvedSnapshot != null && resolvedSnapshot.level != null && resolvedSnapshot.level > 0) {
+            level = resolvedSnapshot.level;
+        } else {
+            level = ContactsManager.getLevelOfContact(cleanNick);
+        }
+        int classId = parseClassIdSafe(ContactsManager.getClassIdOfContact(cleanNick));
+        String color = "#000000";
+        if (classId == 1) {
+            color = "#FF0000";
+        } else if (classId == 2) {
+            color = "#008000";
+        }
+        String escapedNick = escapeHtml(cleanNick);
+        String nickForJs = escapeJsSingleQuoted(cleanNick);
+        String levelHtml = level > 0
+                ? " [<font class=nickname color=\"" + color + "\">" + level + "</font>]"
+                : "";
+        return "<a href=\"#\" onclick=\"top.say_private('" + nickForJs
+                + "');\"><img src=http://image.neverlands.ru/chat/private.gif width=11 height=12 border=0 align=absmiddle></a>&nbsp;"
+                + "<a class=\"activenick\" href=\"#\" onclick=\"top.say_to('" + nickForJs
+                + "');\"><font class=nickname color=\"" + color + "\"><b>"
+                + escapedNick + "</b></font></a>"
+                + levelHtml
+                + "<a href=\"http://neverlands.ru/pinfo.cgi?" + escapedNick
+                + "\" onclick=\"window.open(this.href);\"><img src=http://image.neverlands.ru/chat/info.gif width=11 height=12 border=0 align=absmiddle></a>";
     }
 
     private void maybeRetryAskTarget(long now) {
@@ -638,6 +821,179 @@ final class BossAuto {
             targetAskNextAttemptAtMs = 0L;
         }
         Log.d(TAG, TRACE_PREFIX + " ask target sent: target=" + target + ", message=" + message);
+    }
+
+    private boolean monitorTargetFightStateDuringSearch() {
+        String target;
+        synchronized (lock) {
+            if (stage != BossStage.SEARCHING_TARGET) {
+                return false;
+            }
+            target = targetNick;
+        }
+        if (isEmpty(target)) {
+            return true;
+        }
+
+        NeverApi.PinfoCompassSnapshot snapshot = safeGetPinfoSnapshot(target);
+        if (snapshot == null) {
+            return true;
+        }
+
+        String latestFid = normalizeFightFid(snapshot.fightFid);
+        int missingTicks = 0;
+        synchronized (lock) {
+            if (stage != BossStage.SEARCHING_TARGET) {
+                return false;
+            }
+            if (!isEmpty(latestFid)) {
+                bossFightFid = latestFid;
+                bossFightLink = buildFightLogLink(latestFid);
+                bossFightFidMissingTicks = 0;
+            } else {
+                bossFightFidMissingTicks++;
+                missingTicks = bossFightFidMissingTicks;
+            }
+        }
+        if (!isEmpty(latestFid)) {
+            return true;
+        }
+        if (missingTicks <= 1) {
+            Log.d(TAG, TRACE_PREFIX + " target fight fid missing, wait grace tick: target=" + target);
+            return true;
+        }
+
+        writeBossChat("Действие отменено, цель уже не в " + getCurrentFightWordHtml() + ".");
+        stopAndRestore("target_left_fight", true);
+        return false;
+    }
+
+    private String resolveProtectionTargetNick(String initialTarget) {
+        String target = normalizeNick(initialTarget);
+        if (isEmpty(target)) {
+            return "";
+        }
+
+        String fid;
+        synchronized (lock) {
+            fid = bossFightFid;
+        }
+        if (isEmpty(fid)) {
+            NeverApi.PinfoCompassSnapshot snapshot = safeGetPinfoSnapshot(target);
+            if (snapshot != null) {
+                fid = normalizeFightFid(snapshot.fightFid);
+                if (!isEmpty(fid)) {
+                    synchronized (lock) {
+                        bossFightFid = fid;
+                        bossFightLink = buildFightLogLink(fid);
+                        bossFightFidMissingTicks = 0;
+                    }
+                }
+            }
+        }
+
+        if (isEmpty(fid)) {
+            return target;
+        }
+
+        String flogHtml;
+        try {
+            flogHtml = NeverApi.getFlog(fid);
+        } catch (Exception e) {
+            Log.w(TAG, TRACE_PREFIX + " failed to load flog for fid=" + fid, e);
+            return target;
+        }
+        if (isEmpty(flogHtml)) {
+            return target;
+        }
+        if (flogHtml.contains("var off = 1;")) {
+            writeBossChat("Действие отменено, цель уже не в " + buildFightWordHtml(buildFightLogLink(fid)) + ".");
+            return "";
+        }
+
+        List<FightAllyState> allies = parseFightAlliesFromLog(flogHtml);
+        if (allies.isEmpty()) {
+            return target;
+        }
+
+        FightAllyState initialState = null;
+        FightAllyState firstAlive = null;
+        String normalizedTarget = normalizeNick(target);
+        for (FightAllyState ally : allies) {
+            if (normalizeNick(ally.nick).equalsIgnoreCase(normalizedTarget)) {
+                initialState = ally;
+            }
+            if (firstAlive == null && ally.curHp > 0) {
+                firstAlive = ally;
+            }
+        }
+
+        if (initialState != null && initialState.curHp > 0) {
+            return initialState.nick;
+        }
+        if (firstAlive == null) {
+            writeBossChat("Действие отменено — в бою не найдено живых союзников для защиты.");
+            return "";
+        }
+        if (initialState != null && initialState.curHp <= 0) {
+            String aliveHtml = buildTargetNickHtml(firstAlive.nick, null);
+            writeBossChat("Исходная цель мертва, применяем Свиток Защиты на " + aliveHtml + ".");
+        }
+        return firstAlive.nick;
+    }
+
+    private List<FightAllyState> parseFightAlliesFromLog(String flogHtml) {
+        ArrayList<FightAllyState> result = new ArrayList<>();
+        if (isEmpty(flogHtml)) {
+            return result;
+        }
+        String plain = toPlainText(flogHtml);
+        if (isEmpty(plain)) {
+            return result;
+        }
+        String lower = plain.toLowerCase(Locale.ROOT);
+        int startIndex = lower.indexOf("участники боя");
+        if (startIndex < 0) {
+            startIndex = 0;
+        }
+        int againstIndex = lower.indexOf(" против ", startIndex);
+        String alliesPart = againstIndex > startIndex
+                ? plain.substring(startIndex, againstIndex)
+                : plain;
+
+        Matcher matcher = FIGHT_ALLY_PATTERN.matcher(alliesPart);
+        while (matcher.find()) {
+            String nick = normalizeNick(matcher.group(1));
+            int curHp = parseIntSafe(matcher.group(2));
+            int maxHp = parseIntSafe(matcher.group(3));
+            if (isEmpty(nick) || maxHp <= 0) {
+                continue;
+            }
+            result.add(new FightAllyState(nick, curHp, maxHp));
+        }
+        return result;
+    }
+
+    private int parseIntSafe(String value) {
+        if (isEmpty(value)) {
+            return 0;
+        }
+        try {
+            return Integer.parseInt(value.trim());
+        } catch (Exception ignored) {
+            return 0;
+        }
+    }
+
+    private int parseClassIdSafe(String value) {
+        if (isEmpty(value)) {
+            return 0;
+        }
+        try {
+            return Integer.parseInt(value.trim());
+        } catch (Exception ignored) {
+            return 0;
+        }
     }
 
     private boolean isChatSendReady() {
@@ -730,6 +1086,17 @@ final class BossAuto {
                 .replace("\"", "&quot;");
     }
 
+    private String escapeJsSingleQuoted(String value) {
+        if (value == null) {
+            return "";
+        }
+        return value
+                .replace("\\", "\\\\")
+                .replace("'", "\\'")
+                .replace("\r", "")
+                .replace("\n", "");
+    }
+
     private void writeBossChat(String message) {
         if (isEmpty(message)) {
             return;
@@ -745,6 +1112,14 @@ final class BossAuto {
 
     void setAutoBossAskTargetEnabled(boolean enabled) {
         prefs.edit().putBoolean(PREF_AUTO_BOSS_ASK_TARGET, enabled).apply();
+    }
+
+    boolean isAutoBossBdModeEnabled() {
+        return prefs.getBoolean(PREF_AUTO_BOSS_BD_MODE, false);
+    }
+
+    void setAutoBossBdModeEnabled(boolean enabled) {
+        prefs.edit().putBoolean(PREF_AUTO_BOSS_BD_MODE, enabled).apply();
     }
 
     int getAutoBossWaitBeforeScrollSec() {

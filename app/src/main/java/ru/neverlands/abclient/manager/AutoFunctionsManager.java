@@ -1113,6 +1113,14 @@ public class AutoFunctionsManager {
         bossAuto.setAutoBossAskTargetEnabled(enabled);
     }
 
+    public boolean isAutoBossBdModeEnabled() {
+        return bossAuto.isAutoBossBdModeEnabled();
+    }
+
+    public void setAutoBossBdModeEnabled(boolean enabled) {
+        bossAuto.setAutoBossBdModeEnabled(enabled);
+    }
+
     public int getAutoBossWaitBeforeScrollSec() {
         return bossAuto.getAutoBossWaitBeforeScrollSec();
     }

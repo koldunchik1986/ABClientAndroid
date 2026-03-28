@@ -340,7 +340,7 @@ public class QuickButtonsPanel {
             case AUTO_COMPASS:
                 return null;
             case AUTO_BOSS:
-                return null;
+                return "http://image.neverlands.ru/achievement/23/a_23_10.gif";
             case AUTO_INVISIBLE:
                 return "http://image.neverlands.ru/weapon/i_w27_53.gif";
             case LOCATION_TRACKING:
@@ -452,7 +452,7 @@ public class QuickButtonsPanel {
             case AUTO_COMPASS:
                 return R.drawable.ic_compas;
             case AUTO_BOSS:
-                return R.drawable.ic_boss;
+                return R.drawable.ic_compas;
             case AUTO_INVISIBLE:
                 return R.drawable.ic_auto_invisible;
             case LOCATION_TRACKING:
@@ -1565,6 +1565,11 @@ public class QuickButtonsPanel {
         askTargetCheck.setChecked(autoFunctionsManager.isAutoBossAskTargetEnabled());
         root.addView(askTargetCheck);
 
+        CheckBox bdModeCheck = new CheckBox(context);
+        bdModeCheck.setText("БД режим (защищать только сокланов и персонажей без клана)");
+        bdModeCheck.setChecked(autoFunctionsManager.isAutoBossBdModeEnabled());
+        root.addView(bdModeCheck);
+
         TextView waitScrollLabel = new TextView(context);
         waitScrollLabel.setPadding(0, pad, 0, 0);
         waitScrollLabel.setText("Ожидание перед свитком, сек (1..10)");
@@ -1631,6 +1636,7 @@ public class QuickButtonsPanel {
                     }
 
                     autoFunctionsManager.setAutoBossAskTargetEnabled(askTargetCheck.isChecked());
+                    autoFunctionsManager.setAutoBossBdModeEnabled(bdModeCheck.isChecked());
                     autoFunctionsManager.setAutoBossWaitBeforeScrollSec(waitScrollSec);
                     autoFunctionsManager.setAutoBossSearchTimeoutSec(searchTimeoutSec);
                     autoFunctionsManager.setAutoBossWaitFightTimeoutSec(waitFightTimeoutSec);
