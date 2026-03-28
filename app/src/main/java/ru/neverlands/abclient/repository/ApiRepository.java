@@ -7,7 +7,11 @@ import androidx.annotation.NonNull;
 
 import java.io.IOException;
 import java.io.File;
+import java.net.URL;
 import java.net.URLEncoder;
+import java.util.LinkedHashMap;
+import java.util.Locale;
+import java.util.Map;
 
 import okhttp3.Call;
 import okhttp3.Callback;
@@ -19,6 +23,7 @@ import okio.BufferedSource;
 import okio.Okio;
 import ru.neverlands.abclient.model.Contact;
 import ru.neverlands.abclient.network.NetworkClient;
+import ru.neverlands.abclient.proxy.CookiesManager;
 import ru.neverlands.abclient.proxy.ProxyRuntimeManager;
 import ru.neverlands.abclient.utils.AppVars;
 import ru.neverlands.abclient.utils.CustomDebugLogger;
@@ -40,18 +45,80 @@ public class ApiRepository {
     }
 
     private static Request buildSessionAwareGetRequest(String url) {
+        String host = extractHost(url);
+        String cookie = buildBestEffortCookieHeader(url, host);
+
         Request.Builder builder = new Request.Builder()
                 .url(url)
                 .header("User-Agent", AppVars.BROWSER_USER_AGENT)
-                .header("Referer", "http://neverlands.ru/main.php");
-        String cookie = CookieManager.getInstance().getCookie(url);
+                .header("Referer", "http://neverlands.ru/main.php")
+                .header("Accept", "*/*");
         if (cookie != null && !cookie.trim().isEmpty()) {
             builder.header("Cookie", cookie);
             CustomDebugLogger.log("SESSION_COOKIE_APPLIED: url=" + url + ", bytes=" + cookie.length());
+            android.util.Log.d("ApiRepository", "SESSION_COOKIE_APPLIED: host=" + host + ", bytes=" + cookie.length());
         } else {
             CustomDebugLogger.log("SESSION_COOKIE_APPLIED: url=" + url + ", bytes=0");
+            android.util.Log.w("ApiRepository", "SESSION_COOKIE_APPLIED: host=" + host + ", bytes=0");
         }
         return builder.build();
+    }
+
+    private static String extractHost(String url) {
+        try {
+            URL parsed = new URL(url);
+            return parsed.getHost() == null ? "" : parsed.getHost().toLowerCase(Locale.ROOT);
+        } catch (Exception ignored) {
+            return "";
+        }
+    }
+
+    private static String buildBestEffortCookieHeader(String url, String host) {
+        LinkedHashMap<String, String> cookieByName = new LinkedHashMap<>();
+        addCookiePairs(cookieByName, CookiesManager.obtain(host));
+        addCookiePairs(cookieByName, CookiesManager.obtain("neverlands.ru"));
+        addCookiePairs(cookieByName, CookiesManager.obtain("www.neverlands.ru"));
+        try {
+            addCookiePairs(cookieByName, CookieManager.getInstance().getCookie(url));
+            addCookiePairs(cookieByName, CookieManager.getInstance().getCookie("http://neverlands.ru/"));
+            addCookiePairs(cookieByName, CookieManager.getInstance().getCookie("http://www.neverlands.ru/"));
+            addCookiePairs(cookieByName, CookieManager.getInstance().getCookie("http://neverlands.ru/main.php"));
+        } catch (Throwable ignored) {
+        }
+        if (cookieByName.isEmpty()) {
+            return "";
+        }
+        StringBuilder header = new StringBuilder();
+        for (Map.Entry<String, String> pair : cookieByName.entrySet()) {
+            if (header.length() > 0) {
+                header.append("; ");
+            }
+            header.append(pair.getKey()).append("=").append(pair.getValue());
+        }
+        return header.toString();
+    }
+
+    private static void addCookiePairs(Map<String, String> out, String cookieHeader) {
+        if (cookieHeader == null || cookieHeader.trim().isEmpty()) {
+            return;
+        }
+        String[] pairs = cookieHeader.split(";");
+        for (String rawPair : pairs) {
+            String pair = rawPair == null ? "" : rawPair.trim();
+            if (pair.isEmpty()) {
+                continue;
+            }
+            int delimiter = pair.indexOf('=');
+            if (delimiter <= 0) {
+                continue;
+            }
+            String name = pair.substring(0, delimiter).trim();
+            String value = pair.substring(delimiter + 1).trim();
+            if (name.isEmpty()) {
+                continue;
+            }
+            out.put(name, value);
+        }
     }
 
     private static boolean ensureProxyReadyForRequest(String tracePrefix, ApiCallback<?> callback) {
