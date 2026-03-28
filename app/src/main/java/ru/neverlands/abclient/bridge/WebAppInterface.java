@@ -532,7 +532,7 @@ public class WebAppInterface {
             int botMinLevel = cell.MinBotLevel > 0 ? cell.MinBotLevel : cell.MaxBotLevel;
             int botMaxLevel = Math.max(botMinLevel, cell.MaxBotLevel);
             int botFontSize = Math.max(8, fontSizePx - 1);
-            sb.append(" <span style=\"font-size:")
+            sb.append("<br><span style=\"font-size:")
                     .append(botFontSize)
                     .append("px; color:#88BBDD\">Боты ")
                     .append(botMinLevel);
