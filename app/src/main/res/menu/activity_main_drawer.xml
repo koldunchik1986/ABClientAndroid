@@ -39,6 +39,10 @@
                 android:icon="@android:drawable/ic_menu_myplaces"
                 android:title="Контакты" />
             <item
+                android:id="@+id/nav_clans"
+                android:icon="@android:drawable/ic_menu_manage"
+                android:title="Кланы" />
+            <item
                 android:id="@+id/nav_settings"
                 android:icon="@android:drawable/ic_menu_preferences"
                 android:title="@string/menu_settings" />

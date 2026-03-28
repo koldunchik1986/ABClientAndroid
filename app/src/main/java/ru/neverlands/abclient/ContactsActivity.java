@@ -27,6 +27,7 @@ import java.util.List;
 import java.util.Map;
 
 import ru.neverlands.abclient.adapter.ContactsAdapter;
+import ru.neverlands.abclient.manager.ClanWarsManager;
 import ru.neverlands.abclient.manager.ContactsManager;
 import ru.neverlands.abclient.model.Contact;
 import ru.neverlands.abclient.repository.ApiRepository;
@@ -140,11 +141,7 @@ public class ContactsActivity extends AppCompatActivity implements ContactsAdapt
      * Зависимости: ApiRepository.downloadFile, parseAndCacheClanInfo.
      */
     private void downloadClanList() {
-        String url = "http://service.neverlands.ru/info/clans.txt";
-        File infoDir = new File(getExternalFilesDir(null), "info");
-        File destinationFile = new File(infoDir, "clans.txt");
-
-        ApiRepository.downloadFile(url, destinationFile, new ApiRepository.ApiCallback<String>() {
+        ClanWarsManager.getInstance(this).syncClanListAsync(new ApiRepository.ApiCallback<String>() {
             @Override
             public void onSuccess(String filePath) {
                 runOnUiThread(() -> Toast.makeText(ContactsActivity.this, "Список кланов обновлен", Toast.LENGTH_SHORT).show());

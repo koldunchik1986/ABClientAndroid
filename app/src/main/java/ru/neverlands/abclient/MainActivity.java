@@ -3323,6 +3323,9 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         } else if (id == R.id.nav_contacts) {
             Intent intent = new Intent(this, ContactsActivity.class);
             contactsActivityLauncher.launch(intent);
+        } else if (id == R.id.nav_clans) {
+            Intent intent = new Intent(this, ClansActivity.class);
+            startActivity(intent);
         } else if (id == R.id.nav_logs) {
             Intent intent = new Intent(this, LogsActivity.class);
             startActivity(intent);

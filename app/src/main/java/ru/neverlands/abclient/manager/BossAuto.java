@@ -56,6 +56,7 @@ final class BossAuto {
     private static final int TARGET_CHAT_ASK_MAX_ATTEMPTS = 5;
     private static final long TARGET_CHAT_ASK_RETRY_MS = 1_500L;
 
+    private final Context appContext;
     private final SharedPreferences prefs;
     private final AutoFunctionsManager owner;
 
@@ -138,6 +139,7 @@ final class BossAuto {
     }
 
     BossAuto(Context context, SharedPreferences prefs, AutoFunctionsManager owner) {
+        this.appContext = context.getApplicationContext();
         this.prefs = prefs;
         this.owner = owner;
     }
@@ -332,6 +334,17 @@ final class BossAuto {
                         + ", targetClan=" + targetClanToken + ", selfClan=" + selfClanToken);
                 return;
             }
+        }
+
+        if (isAutoBossBdModeEnabled()
+                && !isEmpty(targetClanToken)
+                && ClanWarsManager.getInstance(appContext).isClanTokenInCurrentWars(targetClanToken)) {
+            String deniedTargetHtml = buildTargetNickHtml(normalizedTarget, targetSnapshot);
+            writeBossChat("Действие отменено — цель " + deniedTargetHtml
+                    + " состоит в клане, участвующем в текущей клановой войне.");
+            Log.d(TAG, TRACE_PREFIX + " bd mode denied by wars list: target=" + normalizedTarget
+                    + ", targetClan=" + targetClanToken);
+            return;
         }
 
         BossScenarioSnapshot newSnapshot = captureSnapshot();

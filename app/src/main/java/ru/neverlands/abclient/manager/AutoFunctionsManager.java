@@ -17,6 +17,7 @@ import java.util.Set;
 import ru.neverlands.abclient.MainActivity;
 import ru.neverlands.abclient.model.AutoboiState;
 import ru.neverlands.abclient.model.QuickActionType;
+import ru.neverlands.abclient.repository.ApiRepository;
 import ru.neverlands.abclient.service.AutoModeForegroundService;
 import ru.neverlands.abclient.utils.AppVars;
 import ru.neverlands.abclient.utils.ExtMap;
@@ -328,6 +329,7 @@ public class AutoFunctionsManager {
                 + ", autoTreasure=" + autoTreasure);
 
         requestCharacterSyncAfterLogin();
+        requestClanWarsSyncAfterLogin();
 
         if (autoFish) {
             setAutoFishEnabled(true);
@@ -369,6 +371,40 @@ public class AutoFunctionsManager {
                 "AutoFunctionsManager.requestCharacterSyncAfterLogin",
                 CHARACTER_SYNC_LOGIN_COOLDOWN_MS,
                 true);
+    }
+
+    /**
+     * Неблокирующий post-login sync текущих клановых войн (`wars.cgi`).
+     *
+     * Назначение:
+     * - заранее прогреть кэш войн для `BossAuto` (БД-режим) без сетевого вызова в момент события;
+     * - синхронизировать данные для экрана `Кланы -> Текущие войны`.
+     *
+     * Правила:
+     * - метод не влияет на процесс логина и не переключает авто-функции;
+     * - любые ошибки только логируются (мягкий отказ).
+     *
+     * Зависимости:
+     * - `ClanWarsManager.syncWarsAsync(...)` — загрузка/парсинг `http://neverlands.ru/modules/api/wars.cgi`;
+     * - внутренний in-memory/file cache `ClanWarsManager` для дальнейшего чтения `BossAuto` и `ClansActivity`.
+     */
+    private void requestClanWarsSyncAfterLogin() {
+        try {
+            ClanWarsManager.getInstance(context).syncWarsAsync(new ApiRepository.ApiCallback<List<ClanWarsManager.WarEntry>>() {
+                @Override
+                public void onSuccess(List<ClanWarsManager.WarEntry> result) {
+                    int size = result == null ? 0 : result.size();
+                    Log.i(TAG, "AUTO_BOSS_TRACE: post-login wars sync ok, rows=" + size);
+                }
+
+                @Override
+                public void onFailure(String message) {
+                    Log.w(TAG, "AUTO_BOSS_TRACE: post-login wars sync failed: " + message);
+                }
+            });
+        } catch (Exception e) {
+            Log.w(TAG, "AUTO_BOSS_TRACE: post-login wars sync exception", e);
+        }
     }
 
     /**

@@ -50,3 +50,16 @@
   - [x] если исходная цель мертва — каст на первого живого союзника;
   - [x] если живых союзников нет — отмена сценария с причиной.
 - [x] Проверка компиляции: `:app:compileDebugJavaWithJavac` (успешно).
+
+## Обновление 2026-03-28: модуль «Кланы» + wars.cgi в БД-режиме Auto-Босс
+- [x] Добавлен единый менеджер `ClanWarsManager`:
+  - [x] sync `clans.txt` через общий слой (переиспользуется из `ContactsActivity` и `ClansActivity`);
+  - [x] sync `wars.cgi` + in-memory/file cache (`files/info/wars_cache.txt`);
+  - [x] API `isClanTokenInCurrentWars(...)` для проверки БД-режима.
+- [x] Добавлен экран `ClansActivity` с вкладками:
+  - [x] «Кланы» (кнопка «Синхронизировать состояние кланов»);
+  - [x] «Текущие войны» (табличный вывод, формат дат `dd.MM.yyyy HH:mm:ss`, зона `Europe/Kiev`).
+- [x] Добавлен пункт бокового меню `Кланы` и переход из `MainActivity`.
+- [x] Добавлен post-login sync `wars.cgi` в `AutoFunctionsManager` (мягко, без блокировки логина).
+- [x] Расширен БД-режим `BossAuto`:
+  - [x] если `targetClanToken` входит в wars-cache — сценарий отменяется с сообщением в чат.
