@@ -1,6 +1,7 @@
 package ru.neverlands.abclient.repository;
 
 import android.content.Context;
+import android.webkit.CookieManager;
 
 import androidx.annotation.NonNull;
 
@@ -36,6 +37,21 @@ public class ApiRepository {
      */
     private static OkHttpClient getClient() {
         return NetworkClient.getInstance();
+    }
+
+    private static Request buildSessionAwareGetRequest(String url) {
+        Request.Builder builder = new Request.Builder()
+                .url(url)
+                .header("User-Agent", AppVars.BROWSER_USER_AGENT)
+                .header("Referer", "http://neverlands.ru/main.php");
+        String cookie = CookieManager.getInstance().getCookie(url);
+        if (cookie != null && !cookie.trim().isEmpty()) {
+            builder.header("Cookie", cookie);
+            CustomDebugLogger.log("SESSION_COOKIE_APPLIED: url=" + url + ", bytes=" + cookie.length());
+        } else {
+            CustomDebugLogger.log("SESSION_COOKIE_APPLIED: url=" + url + ", bytes=0");
+        }
+        return builder.build();
     }
 
     private static boolean ensureProxyReadyForRequest(String tracePrefix, ApiCallback<?> callback) {
@@ -93,11 +109,7 @@ public class ApiRepository {
             encodedNick = encodedNick.replace("+", "%20");
             String url = "http://neverlands.ru/modules/api/getid.cgi?" + encodedNick;
 
-            Request request = new Request.Builder()
-                    .url(url)
-                    .header("User-Agent", AppVars.BROWSER_USER_AGENT)
-                    .header("Referer", "http://neverlands.ru/main.php")
-                    .build();
+            Request request = buildSessionAwareGetRequest(url);
 
             CustomDebugLogger.log("REQUEST_URL: " + request.url());
             CustomDebugLogger.log("REQUEST_HEADERS: " + request.headers().toString());
@@ -151,11 +163,7 @@ public class ApiRepository {
             }
 
             String url = "http://neverlands.ru/modules/api/info.cgi?playerid=" + playerId + "&info=1";
-            Request request = new Request.Builder()
-                    .url(url)
-                    .header("User-Agent", AppVars.BROWSER_USER_AGENT)
-                    .header("Referer", "http://neverlands.ru/main.php")
-                    .build();
+            Request request = buildSessionAwareGetRequest(url);
 
             CustomDebugLogger.log("REQUEST_URL: " + request.url());
             CustomDebugLogger.log("REQUEST_HEADERS: " + request.headers().toString());
@@ -250,11 +258,7 @@ public class ApiRepository {
                 return;
             }
 
-            Request request = new Request.Builder()
-                    .url(url)
-                    .header("User-Agent", AppVars.BROWSER_USER_AGENT)
-                    .header("Referer", "http://neverlands.ru/main.php")
-                    .build();
+            Request request = buildSessionAwareGetRequest(url);
 
             CustomDebugLogger.log("DOWNLOAD_FILE_URL: " + request.url());
             CustomDebugLogger.log("DOWNLOAD_FILE_PROXY_REQUIRED: "

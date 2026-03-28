@@ -428,7 +428,7 @@ public class ContactsManager {
                     updateContactsRecursive(context, contacts, index + 1, onComplete);
                 }
             });
-        }, 500); // Задержка 500 мс перед каждым запросом
+        }, 1200); // Задержка между info.cgi-запросами (anti-rate-limit 535/536)
     }
 
     // --- Вспомогательные методы для работы с XML ---

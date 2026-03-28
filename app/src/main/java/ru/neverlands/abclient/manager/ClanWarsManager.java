@@ -1,6 +1,8 @@
 package ru.neverlands.abclient.manager;
 
 import android.content.Context;
+import android.os.Handler;
+import android.os.Looper;
 import android.util.Log;
 
 import java.io.BufferedReader;
@@ -35,7 +37,9 @@ public final class ClanWarsManager {
 
     private static final String INFO_DIR = "info";
     private static final String CLANS_FILE_NAME = "clans.txt";
-    private static final String WARS_FILE_NAME = "wars_cache.txt";
+    private static final String WARS_FILE_NAME = "wars.txt";
+    private static final int WARS_SYNC_MAX_ATTEMPTS = 3;
+    private static final long WARS_SYNC_RETRY_DELAY_BASE_MS = 1_000L;
 
     private static final String DATE_PATTERN = "dd.MM.yyyy HH:mm:ss";
     private static final TimeZone KIEV_TIME_ZONE = TimeZone.getTimeZone("Europe/Kiev");
@@ -43,9 +47,12 @@ public final class ClanWarsManager {
     private static volatile ClanWarsManager instance;
 
     private final Context appContext;
+    private final Handler mainHandler = new Handler(Looper.getMainLooper());
     private final Object lock = new Object();
     private final ArrayList<WarEntry> cachedWars = new ArrayList<>();
+    private final ArrayList<ApiRepository.ApiCallback<List<WarEntry>>> pendingWarsSyncCallbacks = new ArrayList<>();
     private long lastWarsSyncAtMs = 0L;
+    private boolean warsSyncInProgress = false;
 
     public static final class WarEntry {
         public final String clanTokenX;
@@ -178,8 +185,24 @@ public final class ClanWarsManager {
         if (!ensureProxyReadyForBackgroundSync(callback)) {
             return;
         }
+        synchronized (lock) {
+            if (callback != null) {
+                pendingWarsSyncCallbacks.add(callback);
+            }
+            if (warsSyncInProgress) {
+                Log.d(TAG, TRACE_PREFIX + " wars sync join in-flight request");
+                return;
+            }
+            warsSyncInProgress = true;
+        }
+
         File destinationFile = getWarsFile();
-        ApiRepository.downloadFile(WARS_URL, destinationFile, new ApiRepository.ApiCallback<String>() {
+        syncWarsAttempt(destinationFile, 1);
+    }
+
+    private void syncWarsAttempt(File destinationFile, int attempt) {
+        String requestUrl = WARS_URL + (WARS_URL.contains("?") ? "&" : "?") + "_ts=" + System.currentTimeMillis();
+        ApiRepository.downloadFile(requestUrl, destinationFile, new ApiRepository.ApiCallback<String>() {
             @Override
             public void onSuccess(String result) {
                 List<WarEntry> parsed = parseWarsFromFile(destinationFile);
@@ -188,20 +211,64 @@ public final class ClanWarsManager {
                     cachedWars.addAll(parsed);
                     lastWarsSyncAtMs = System.currentTimeMillis();
                 }
-                Log.i(TAG, TRACE_PREFIX + " wars sync ok: rows=" + parsed.size());
-                if (callback != null) {
-                    callback.onSuccess(new ArrayList<>(parsed));
-                }
+                Log.i(TAG, TRACE_PREFIX + " wars sync ok: rows=" + parsed.size() + ", attempt=" + attempt);
+                finishWarsSyncSuccess(parsed);
             }
 
             @Override
             public void onFailure(String message) {
-                Log.w(TAG, TRACE_PREFIX + " wars sync failed: " + message);
-                if (callback != null) {
-                    callback.onFailure(message);
+                boolean retryable = isWarsRateLimitFailure(message);
+                if (retryable && attempt < WARS_SYNC_MAX_ATTEMPTS) {
+                    long retryDelayMs = WARS_SYNC_RETRY_DELAY_BASE_MS * attempt;
+                    Log.w(TAG, TRACE_PREFIX + " wars sync retry: attempt=" + attempt
+                            + "/" + WARS_SYNC_MAX_ATTEMPTS + ", delayMs=" + retryDelayMs
+                            + ", reason=" + message);
+                    mainHandler.postDelayed(() -> syncWarsAttempt(destinationFile, attempt + 1), retryDelayMs);
+                    return;
                 }
+                Log.w(TAG, TRACE_PREFIX + " wars sync failed: attempt=" + attempt + ", reason=" + message);
+                finishWarsSyncFailure(message);
             }
         });
+    }
+
+    private void finishWarsSyncSuccess(List<WarEntry> parsed) {
+        ArrayList<ApiRepository.ApiCallback<List<WarEntry>>> callbacks = new ArrayList<>();
+        synchronized (lock) {
+            callbacks.addAll(pendingWarsSyncCallbacks);
+            pendingWarsSyncCallbacks.clear();
+            warsSyncInProgress = false;
+        }
+        for (ApiRepository.ApiCallback<List<WarEntry>> callback : callbacks) {
+            if (callback != null) {
+                callback.onSuccess(new ArrayList<>(parsed));
+            }
+        }
+    }
+
+    private void finishWarsSyncFailure(String message) {
+        ArrayList<ApiRepository.ApiCallback<List<WarEntry>>> callbacks = new ArrayList<>();
+        synchronized (lock) {
+            callbacks.addAll(pendingWarsSyncCallbacks);
+            pendingWarsSyncCallbacks.clear();
+            warsSyncInProgress = false;
+        }
+        for (ApiRepository.ApiCallback<List<WarEntry>> callback : callbacks) {
+            if (callback != null) {
+                callback.onFailure(message);
+            }
+        }
+    }
+
+    private boolean isWarsRateLimitFailure(String message) {
+        if (message == null) {
+            return false;
+        }
+        String normalized = message.toLowerCase(Locale.ROOT);
+        return normalized.contains(" 535")
+                || normalized.contains(" 536")
+                || normalized.contains("server error or empty response: 535")
+                || normalized.contains("server error or empty response: 536");
     }
 
     public List<WarEntry> getCachedWars() {
