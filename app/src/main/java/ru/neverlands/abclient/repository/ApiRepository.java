@@ -46,13 +46,16 @@ public class ApiRepository {
 
     private static Request buildSessionAwareGetRequest(String url) {
         String host = extractHost(url);
-        String cookie = buildBestEffortCookieHeader(url, host);
+        boolean isPublicApi = isPublicApiRequest(url);
+        String cookie = isPublicApi ? "" : buildBestEffortCookieHeader(url, host);
 
         Request.Builder builder = new Request.Builder()
                 .url(url)
                 .header("User-Agent", AppVars.BROWSER_USER_AGENT)
-                .header("Referer", "http://neverlands.ru/main.php")
                 .header("Accept", "*/*");
+        if (!isPublicApi) {
+            builder.header("Referer", "http://neverlands.ru/main.php");
+        }
         if (cookie != null && !cookie.trim().isEmpty()) {
             builder.header("Cookie", cookie);
             CustomDebugLogger.log("SESSION_COOKIE_APPLIED: url=" + url + ", bytes=" + cookie.length());
@@ -62,6 +65,15 @@ public class ApiRepository {
             android.util.Log.w("ApiRepository", "SESSION_COOKIE_APPLIED: host=" + host + ", bytes=0");
         }
         return builder.build();
+    }
+
+    private static boolean isPublicApiRequest(String url) {
+        if (url == null) {
+            return false;
+        }
+        String lower = url.toLowerCase(Locale.ROOT);
+        return lower.contains("/modules/api/")
+                || lower.contains("service.neverlands.ru/info/clans.txt");
     }
 
     private static String extractHost(String url) {
@@ -174,7 +186,7 @@ public class ApiRepository {
             // Кодирование ника в windows-1251 и замена пробелов на %20 для корректного URL.
             String encodedNick = URLEncoder.encode(nick, "windows-1251");
             encodedNick = encodedNick.replace("+", "%20");
-            String url = "http://neverlands.ru/modules/api/getid.cgi?" + encodedNick;
+            String url = "http://www.neverlands.ru/modules/api/getid.cgi?" + encodedNick;
 
             Request request = buildSessionAwareGetRequest(url);
 
@@ -229,7 +241,8 @@ public class ApiRepository {
                 return;
             }
 
-            String url = "http://neverlands.ru/modules/api/info.cgi?playerid=" + playerId + "&info=1";
+            String url = "http://www.neverlands.ru/modules/api/info.cgi?playerid="
+                    + playerId + "&info=1&hmu=1&effects=1&slots=1";
             Request request = buildSessionAwareGetRequest(url);
 
             CustomDebugLogger.log("REQUEST_URL: " + request.url());
@@ -279,28 +292,54 @@ public class ApiRepository {
      * @return Заполненный объект Contact.
      */
     private static Contact parseContactInfo(String playerId, String response) {
-        String[] parts = response.split("\\|");
-        if (parts.length < 16) {
-            throw new IllegalArgumentException("Invalid info.cgi response format");
-        }
-
         Contact contact = new Contact();
         contact.playerID = playerId;
-        contact.nick = parts[1];
-        contact.playerLevel = Integer.parseInt(parts[2]);
-        contact.inclination = Integer.parseInt(parts[3]);
-        contact.clanNumber = parts[4];
-        contact.clanIco = parts[5];
-        contact.clanName = parts[6];
-        contact.clanStatus = parts[7];
-        contact.gender = Integer.parseInt(parts[8]);
-        contact.blockStatus = Integer.parseInt(parts[9]);
-        contact.jailStatus = Integer.parseInt(parts[10]);
-        contact.muteSeconds = Integer.parseInt(parts[11]);
-        contact.muteForumSeconds = Integer.parseInt(parts[12]);
-        contact.onlineStatus = Integer.parseInt(parts[13]);
-        contact.geoLocation = parts[14];
-        contact.warLogNumber = parts[15];
+        if (response == null || response.trim().isEmpty()) {
+            throw new IllegalArgumentException("Empty info.cgi response");
+        }
+
+        String[] rows = response.trim().split("\\r?\\n");
+        if (rows.length >= 3 && rows[2].startsWith("3|")) {
+            String[] parts = rows[2].substring(2).split("\\|", -1);
+            if (parts.length < 15) {
+                throw new IllegalArgumentException("Invalid multiline info.cgi response format");
+            }
+            contact.nick = parts[0];
+            contact.playerLevel = parseIntSafe(parts[1], 0);
+            contact.inclination = parseIntSafe(parts[2], 0);
+            contact.clanNumber = parts[3];
+            contact.clanIco = parts[4];
+            contact.clanName = parts[5];
+            contact.clanStatus = parts[6];
+            contact.gender = parseIntSafe(parts[7], 0);
+            contact.blockStatus = parseIntSafe(parts[8], 0);
+            contact.jailStatus = parseIntSafe(parts[9], 0);
+            contact.muteSeconds = parseIntSafe(parts[10], 0);
+            contact.muteForumSeconds = parseIntSafe(parts[11], 0);
+            contact.onlineStatus = parseIntSafe(parts[12], 0);
+            contact.geoLocation = parts[13];
+            contact.warLogNumber = parts[14];
+        } else {
+            String[] parts = response.split("\\|");
+            if (parts.length < 16) {
+                throw new IllegalArgumentException("Invalid singleline info.cgi response format");
+            }
+            contact.nick = parts[1];
+            contact.playerLevel = parseIntSafe(parts[2], 0);
+            contact.inclination = parseIntSafe(parts[3], 0);
+            contact.clanNumber = parts[4];
+            contact.clanIco = parts[5];
+            contact.clanName = parts[6];
+            contact.clanStatus = parts[7];
+            contact.gender = parseIntSafe(parts[8], 0);
+            contact.blockStatus = parseIntSafe(parts[9], 0);
+            contact.jailStatus = parseIntSafe(parts[10], 0);
+            contact.muteSeconds = parseIntSafe(parts[11], 0);
+            contact.muteForumSeconds = parseIntSafe(parts[12], 0);
+            contact.onlineStatus = parseIntSafe(parts[13], 0);
+            contact.geoLocation = parts[14];
+            contact.warLogNumber = parts[15];
+        }
 
         // Преобразование цифрового ID склонности в текстовое название
         switch (contact.inclination) {
@@ -311,6 +350,17 @@ public class ApiRepository {
             default: contact.inclinationName = "0"; break;
         }
         return contact;
+    }
+
+    private static int parseIntSafe(String value, int fallback) {
+        if (value == null) {
+            return fallback;
+        }
+        try {
+            return Integer.parseInt(value.trim());
+        } catch (Exception ignored) {
+            return fallback;
+        }
     }
 
     /**

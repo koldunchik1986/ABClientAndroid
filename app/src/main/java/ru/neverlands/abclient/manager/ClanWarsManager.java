@@ -33,7 +33,7 @@ public final class ClanWarsManager {
     private static final String TRACE_PREFIX = "CLAN_WARS_TRACE";
 
     private static final String CLANS_URL = "http://service.neverlands.ru/info/clans.txt";
-    private static final String WARS_URL = "http://neverlands.ru/modules/api/wars.cgi";
+    private static final String WARS_URL = "http://www.neverlands.ru/modules/api/wars.cgi";
 
     private static final String INFO_DIR = "info";
     private static final String CLANS_FILE_NAME = "clans.txt";
