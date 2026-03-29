@@ -1157,6 +1157,14 @@ public class AutoFunctionsManager {
         bossAuto.setAutoBossBdModeEnabled(enabled);
     }
 
+    public boolean isAutoBossTrackCurrentWarsEnabled() {
+        return bossAuto.isAutoBossTrackCurrentWarsEnabled();
+    }
+
+    public void setAutoBossTrackCurrentWarsEnabled(boolean enabled) {
+        bossAuto.setAutoBossTrackCurrentWarsEnabled(enabled);
+    }
+
     public int getAutoBossWaitBeforeScrollSec() {
         return bossAuto.getAutoBossWaitBeforeScrollSec();
     }

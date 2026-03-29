@@ -34,6 +34,7 @@ final class BossAuto {
     private static final String KEY_AUTO_BOSS = "auto_function_auto_boss";
     private static final String PREF_AUTO_BOSS_ASK_TARGET = "auto_boss_ask_target";
     private static final String PREF_AUTO_BOSS_BD_MODE = "auto_boss_bd_mode";
+    private static final String PREF_AUTO_BOSS_TRACK_CURRENT_WARS = "auto_boss_track_current_wars";
     private static final String PREF_AUTO_BOSS_WAIT_SCROLL_SEC = "auto_boss_wait_scroll_sec";
     private static final String PREF_AUTO_BOSS_SEARCH_TIMEOUT_SEC = "auto_boss_search_timeout_sec";
     private static final String PREF_AUTO_BOSS_WAIT_FIGHT_TIMEOUT_SEC = "auto_boss_wait_fight_timeout_sec";
@@ -323,8 +324,16 @@ final class BossAuto {
         NeverApi.PinfoCompassSnapshot selfSnapshot = safeGetPinfoSnapshot(resolveSelfNick());
         String targetClanToken = normalizeClanToken(targetSnapshot == null ? "" : targetSnapshot.clanToken);
         String selfClanToken = normalizeClanToken(selfSnapshot == null ? "" : selfSnapshot.clanToken);
+        boolean bdModeEnabled = isAutoBossBdModeEnabled();
+        boolean trackCurrentWarsEnabled = isAutoBossTrackCurrentWarsEnabled();
 
-        if (isAutoBossBdModeEnabled()) {
+        Log.d(TAG, TRACE_PREFIX + " clan filters: target=" + normalizedTarget
+                + ", bdMode=" + bdModeEnabled
+                + ", trackCurrentWars=" + trackCurrentWarsEnabled
+                + ", targetClan=" + targetClanToken
+                + ", selfClan=" + selfClanToken);
+
+        if (bdModeEnabled) {
             if (isEmpty(selfClanToken)) {
                 writeBossChat("Продолжаем поиск цели не учитывая БД режим (наш статус позволяет вмешаться).");
             } else if (!isEmpty(targetClanToken) && !selfClanToken.equalsIgnoreCase(targetClanToken)) {
@@ -336,15 +345,21 @@ final class BossAuto {
             }
         }
 
-        if (isAutoBossBdModeEnabled()
+        if (trackCurrentWarsEnabled
                 && !isEmpty(targetClanToken)
                 && ClanWarsManager.getInstance(appContext).isClanTokenInCurrentWars(targetClanToken)) {
             String deniedTargetHtml = buildTargetNickHtml(normalizedTarget, targetSnapshot);
             writeBossChat("Действие отменено — цель " + deniedTargetHtml
                     + " состоит в клане, участвующем в текущей клановой войне.");
-            Log.d(TAG, TRACE_PREFIX + " bd mode denied by wars list: target=" + normalizedTarget
+            Log.d(TAG, TRACE_PREFIX + " wars filter denied by wars list: target=" + normalizedTarget
                     + ", targetClan=" + targetClanToken);
             return;
+        }
+        if (trackCurrentWarsEnabled) {
+            Log.d(TAG, TRACE_PREFIX + " wars filter passed: target=" + normalizedTarget
+                    + ", targetClan=" + targetClanToken);
+        } else {
+            Log.d(TAG, TRACE_PREFIX + " wars filter disabled by settings: target=" + normalizedTarget);
         }
 
         BossScenarioSnapshot newSnapshot = captureSnapshot();
@@ -1133,6 +1148,20 @@ final class BossAuto {
 
     void setAutoBossBdModeEnabled(boolean enabled) {
         prefs.edit().putBoolean(PREF_AUTO_BOSS_BD_MODE, enabled).apply();
+    }
+
+    /**
+     * Проверка по текущим клановым войнам (`wars.cgi`).
+     * Если включено, Авто-Босс не пытается защищать цель,
+     * чьё `targetClanToken` присутствует в списке текущих войн.
+     * Настройка независима от БД-режима.
+     */
+    boolean isAutoBossTrackCurrentWarsEnabled() {
+        return prefs.getBoolean(PREF_AUTO_BOSS_TRACK_CURRENT_WARS, true);
+    }
+
+    void setAutoBossTrackCurrentWarsEnabled(boolean enabled) {
+        prefs.edit().putBoolean(PREF_AUTO_BOSS_TRACK_CURRENT_WARS, enabled).apply();
     }
 
     int getAutoBossWaitBeforeScrollSec() {

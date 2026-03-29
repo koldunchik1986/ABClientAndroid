@@ -1570,6 +1570,11 @@ public class QuickButtonsPanel {
         bdModeCheck.setChecked(autoFunctionsManager.isAutoBossBdModeEnabled());
         root.addView(bdModeCheck);
 
+        CheckBox trackWarsCheck = new CheckBox(context);
+        trackWarsCheck.setText("Следить за Текущими войнами (не защищать цели из кланов в списке войн)");
+        trackWarsCheck.setChecked(autoFunctionsManager.isAutoBossTrackCurrentWarsEnabled());
+        root.addView(trackWarsCheck);
+
         TextView waitScrollLabel = new TextView(context);
         waitScrollLabel.setPadding(0, pad, 0, 0);
         waitScrollLabel.setText("Ожидание перед свитком, сек (1..10)");
@@ -1637,6 +1642,7 @@ public class QuickButtonsPanel {
 
                     autoFunctionsManager.setAutoBossAskTargetEnabled(askTargetCheck.isChecked());
                     autoFunctionsManager.setAutoBossBdModeEnabled(bdModeCheck.isChecked());
+                    autoFunctionsManager.setAutoBossTrackCurrentWarsEnabled(trackWarsCheck.isChecked());
                     autoFunctionsManager.setAutoBossWaitBeforeScrollSec(waitScrollSec);
                     autoFunctionsManager.setAutoBossSearchTimeoutSec(searchTimeoutSec);
                     autoFunctionsManager.setAutoBossWaitFightTimeoutSec(waitFightTimeoutSec);
