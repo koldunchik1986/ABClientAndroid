@@ -38,7 +38,7 @@
                 android:id="@+id/tableWars"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:stretchColumns="2,3" />
+                android:stretchColumns="1,2" />
 
         </ScrollView>
 

@@ -2,6 +2,7 @@ package ru.neverlands.abclient;
 
 import android.graphics.Typeface;
 import android.os.Bundle;
+import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.MenuItem;
 import android.view.View;
@@ -59,13 +60,32 @@ public class ClansActivity extends AppCompatActivity {
         ViewPager2 viewPager = findViewById(R.id.viewPager);
         viewPager.setAdapter(new ClansPagerAdapter(this));
 
-        new TabLayoutMediator(tabLayout, viewPager, (tab, position) -> {
-            if (position == 0) {
-                tab.setText("Кланы");
-            } else {
-                tab.setText("Текущие войны");
+        TabLayoutMediator mediator = new TabLayoutMediator(tabLayout, viewPager, (tab, position) -> {
+            TextView tabText = new TextView(this);
+            tabText.setText(position == 0 ? "Кланы" : "Текущие войны");
+            tabText.setPadding(dpTab(14), dpTab(8), dpTab(14), dpTab(8));
+            tabText.setTypeface(Typeface.DEFAULT_BOLD);
+            tabText.setTextColor(0xFFFFFFFF);
+            tab.setCustomView(tabText);
+        });
+        mediator.attach();
+        updateTabSelectionBackgrounds(tabLayout);
+        tabLayout.addOnTabSelectedListener(new TabLayout.OnTabSelectedListener() {
+            @Override
+            public void onTabSelected(TabLayout.Tab tab) {
+                styleTab(tab, true);
             }
-        }).attach();
+
+            @Override
+            public void onTabUnselected(TabLayout.Tab tab) {
+                styleTab(tab, false);
+            }
+
+            @Override
+            public void onTabReselected(TabLayout.Tab tab) {
+                styleTab(tab, true);
+            }
+        });
     }
 
     @Override
@@ -75,6 +95,26 @@ public class ClansActivity extends AppCompatActivity {
             return true;
         }
         return super.onOptionsItemSelected(item);
+    }
+
+    private void updateTabSelectionBackgrounds(TabLayout tabLayout) {
+        for (int index = 0; index < tabLayout.getTabCount(); index++) {
+            TabLayout.Tab tab = tabLayout.getTabAt(index);
+            styleTab(tab, index == tabLayout.getSelectedTabPosition());
+        }
+    }
+
+    private void styleTab(@Nullable TabLayout.Tab tab, boolean selected) {
+        if (tab == null || tab.getCustomView() == null) {
+            return;
+        }
+        View customView = tab.getCustomView();
+        customView.setBackgroundColor(selected ? 0xCC7E57C2 : 0x00000000);
+    }
+
+    private int dpTab(int value) {
+        float density = getResources().getDisplayMetrics().density;
+        return (int) (value * density);
     }
 
     private static class ClansPagerAdapter extends FragmentStateAdapter {
@@ -199,6 +239,7 @@ public class ClansActivity extends AppCompatActivity {
             super.onViewCreated(view, savedInstanceState);
             btnRefreshWars = view.findViewById(R.id.btnRefreshWars);
             tvWarsStatus = view.findViewById(R.id.tvWarsStatus);
+            tvWarsStatus.setTextColor(0xFFFFFFFF);
             tableWars = view.findViewById(R.id.tableWars);
 
             btnRefreshWars.setOnClickListener(v -> refreshWars(true));
@@ -265,41 +306,46 @@ public class ClansActivity extends AppCompatActivity {
             }
             tableWars.removeAllViews();
             tableWars.addView(createHeaderRow());
-            for (ClanWarsManager.WarTableRow row : rows) {
-                tableWars.addView(createDataRow(row));
+            for (int index = 0; index < rows.size(); index++) {
+                tableWars.addView(createDataRow(rows.get(index)));
+                if (index < rows.size() - 1) {
+                    tableWars.addView(createDividerRow());
+                }
             }
         }
 
         private TableRow createHeaderRow() {
             TableRow row = new TableRow(requireContext());
-            row.setBackgroundColor(0xFFE0E0E0);
-            row.addView(createHeaderCell("Дата Начала", dp(160)));
-            row.addView(createHeaderCell("Агрессор", dp(300)));
-            row.addView(createHeaderCell("Счёт1", dp(70)));
-            row.addView(createHeaderCell("Счёт2", dp(70)));
-            row.addView(createHeaderCell("Противник", dp(300)));
-            row.addView(createHeaderCell("Конец", dp(160)));
+            row.setBackgroundColor(0xFF7E57C2);
+            row.addView(createHeaderCell("Дата", dp(126)));
+            row.addView(createHeaderCell("Агрессор/Противник", dp(190)));
+            row.addView(createHeaderCell("Счёт", dp(130)));
             return row;
         }
 
         private TableRow createDataRow(ClanWarsManager.WarTableRow data) {
             TableRow row = new TableRow(requireContext());
-            row.addView(createTextCell(data.startText, dp(160), true));
-            row.addView(createPartyCell(
+
+            int score1 = parseIntSafe(data.score1Text);
+            int score2 = parseIntSafe(data.score2Text);
+            int aggressorColor = resolveWarPartyColor(score1, score2, true);
+            int opponentColor = resolveWarPartyColor(score1, score2, false);
+
+            String dateCell = safeText(data.startText)
+                    + "\n-\n" + safeText(data.endText);
+            row.addView(createTextCell(dateCell, dp(126), true));
+            row.addView(createPartiesCell(
                     data.aggressorInclinationIconUrl,
                     data.aggressorClanIconUrl,
                     data.aggressorText,
-                    dp(300)
-            ));
-            row.addView(createTextCell(data.score1Text, dp(70), false));
-            row.addView(createTextCell(data.score2Text, dp(70), false));
-            row.addView(createPartyCell(
+                    aggressorColor,
                     data.opponentInclinationIconUrl,
                     data.opponentClanIconUrl,
                     data.opponentText,
-                    dp(300)
+                    opponentColor,
+                    dp(190)
             ));
-            row.addView(createTextCell(data.endText, dp(160), true));
+            row.addView(createScoreCell(data.score1Text, data.score2Text, aggressorColor, opponentColor, dp(130)));
             return row;
         }
 
@@ -310,6 +356,7 @@ public class ClansActivity extends AppCompatActivity {
             tv.setPadding(dp(8), dp(8), dp(8), dp(8));
             tv.setTypeface(Typeface.DEFAULT_BOLD);
             tv.setTextSize(13f);
+            tv.setTextColor(0xFFFFFFFF);
             tv.setText(text);
             return tv;
         }
@@ -322,16 +369,38 @@ public class ClansActivity extends AppCompatActivity {
             tv.setTextSize(13f);
             tv.setText(safeText(text));
             tv.setTypeface(Typeface.DEFAULT);
+            tv.setSingleLine(false);
+            tv.setGravity(leftAlign ? Gravity.START : Gravity.CENTER_HORIZONTAL);
             tv.setTextAlignment(leftAlign ? View.TEXT_ALIGNMENT_TEXT_START : View.TEXT_ALIGNMENT_CENTER);
             return tv;
         }
 
-        private View createPartyCell(String inclinationIcon, String clanIcon, String text, int widthPx) {
+        private View createPartiesCell(
+                String aggressorInclinationIcon,
+                String aggressorClanIcon,
+                String aggressorText,
+                int aggressorColor,
+                String opponentInclinationIcon,
+                String opponentClanIcon,
+                String opponentText,
+                int opponentColor,
+                int widthPx) {
             android.widget.LinearLayout root = new android.widget.LinearLayout(requireContext());
-            root.setOrientation(android.widget.LinearLayout.HORIZONTAL);
+            root.setOrientation(android.widget.LinearLayout.VERTICAL);
             TableRow.LayoutParams rowLp = new TableRow.LayoutParams(widthPx, ViewGroup.LayoutParams.WRAP_CONTENT);
             root.setLayoutParams(rowLp);
             root.setPadding(dp(8), dp(6), dp(8), dp(6));
+
+            root.addView(createPartyLine(aggressorInclinationIcon, aggressorClanIcon, aggressorText, aggressorColor));
+            root.addView(createSeparatorLine("обьявил войну"));
+            root.addView(createPartyLine(opponentInclinationIcon, opponentClanIcon, opponentText, opponentColor));
+            return root;
+        }
+
+        private View createPartyLine(String inclinationIcon, String clanIcon, String text, int textColor) {
+            android.widget.LinearLayout root = new android.widget.LinearLayout(requireContext());
+            root.setOrientation(android.widget.LinearLayout.HORIZONTAL);
+            root.setGravity(Gravity.CENTER_VERTICAL);
 
             ImageView inclView = new ImageView(requireContext());
             android.widget.LinearLayout.LayoutParams iconLp = new android.widget.LinearLayout.LayoutParams(dp(15), dp(12));
@@ -357,8 +426,91 @@ public class ClansActivity extends AppCompatActivity {
             tv.setLayoutParams(textLp);
             tv.setText(safeText(text));
             tv.setTextSize(13f);
+            tv.setTextColor(textColor);
+            tv.setGravity(Gravity.START | Gravity.CENTER_VERTICAL);
+            tv.setTextAlignment(View.TEXT_ALIGNMENT_TEXT_START);
             root.addView(tv);
             return root;
+        }
+
+        private View createSeparatorLine(String text) {
+            TextView tv = new TextView(requireContext());
+            tv.setText(safeText(text));
+            tv.setTextSize(12f);
+            tv.setTypeface(Typeface.DEFAULT_BOLD);
+            tv.setGravity(Gravity.START);
+            tv.setTextAlignment(View.TEXT_ALIGNMENT_TEXT_START);
+            android.widget.LinearLayout.LayoutParams lp = new android.widget.LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+            lp.topMargin = dp(2);
+            lp.bottomMargin = dp(2);
+            tv.setLayoutParams(lp);
+            return tv;
+        }
+
+        private View createScoreCell(String score1Text, String score2Text, int score1Color, int score2Color, int widthPx) {
+            android.widget.LinearLayout root = new android.widget.LinearLayout(requireContext());
+            root.setOrientation(android.widget.LinearLayout.VERTICAL);
+            TableRow.LayoutParams rowLp = new TableRow.LayoutParams(widthPx, ViewGroup.LayoutParams.WRAP_CONTENT);
+            root.setLayoutParams(rowLp);
+            root.setPadding(dp(8), dp(6), dp(8), dp(6));
+
+            TextView score1View = new TextView(requireContext());
+            score1View.setText(safeText(score1Text));
+            score1View.setTextSize(13f);
+            score1View.setTypeface(Typeface.DEFAULT_BOLD);
+            score1View.setTextColor(score1Color);
+            score1View.setGravity(Gravity.CENTER_HORIZONTAL);
+            score1View.setTextAlignment(View.TEXT_ALIGNMENT_CENTER);
+            root.addView(score1View);
+
+            root.addView(createSeparatorLine("-"));
+
+            TextView score2View = new TextView(requireContext());
+            score2View.setText(safeText(score2Text));
+            score2View.setTextSize(13f);
+            score2View.setTypeface(Typeface.DEFAULT_BOLD);
+            score2View.setTextColor(score2Color);
+            score2View.setGravity(Gravity.CENTER_HORIZONTAL);
+            score2View.setTextAlignment(View.TEXT_ALIGNMENT_CENTER);
+            root.addView(score2View);
+
+            return root;
+        }
+
+        private int parseIntSafe(String value) {
+            if (isEmpty(value)) {
+                return 0;
+            }
+            try {
+                return Integer.parseInt(value.trim());
+            } catch (Exception ignored) {
+                return 0;
+            }
+        }
+
+        private int resolveWarPartyColor(int score1, int score2, boolean aggressor) {
+            if (score1 > score2) {
+                return aggressor ? 0xFF2E7D32 : 0xFFC62828;
+            }
+            if (score1 < score2) {
+                return aggressor ? 0xFFC62828 : 0xFF2E7D32;
+            }
+            return 0xFFFFFFFF;
+        }
+
+        private View createDividerRow() {
+            TableRow dividerRow = new TableRow(requireContext());
+            TextView divider = new TextView(requireContext());
+            divider.setBackgroundColor(0x337E57C2);
+            TableRow.LayoutParams lp = new TableRow.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    dp(1)
+            );
+            lp.span = 3;
+            divider.setLayoutParams(lp);
+            dividerRow.addView(divider);
+            return dividerRow;
         }
 
         private int dp(int value) {
