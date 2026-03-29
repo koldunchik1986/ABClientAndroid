@@ -418,13 +418,46 @@ public class MapAjax {
                     + ", visitedDeltaMs=" + (selected.visitedAtMs - baseDestination.visitedAtMs)
                     + ", visitedAgeMs=" + selected.visitedAgeMs
                     + ", then return to base=" + baseDestination.regNum);
-            postAutoTreasureRouteRebuildToChat("Тщательный обход", selected.regNum);
+            if (shouldPostThoroughDetourChat(source, baseDestination.regNum, selected.regNum)) {
+                postAutoTreasureRouteRebuildToChat("Тщательный обход", selected.regNum);
+            } else {
+                Log.d(TAG, "AUTO_SEARCH_BOX_TRACE thorough-neighbor: route-chat skipped (detour is on normal path)"
+                        + ", source=" + source
+                        + ", base=" + baseDestination.regNum
+                        + ", detour=" + selected.regNum);
+            }
             return selected.regNum;
         }
 
         Log.d(TAG, "AUTO_SEARCH_BOX_TRACE thorough-neighbor: no detour candidates, use base="
                 + baseDestination.regNum);
         return baseDestination.regNum;
+    }
+
+    /**
+     * Пишем уведомление о "Дообходе" только если detour-клетка не была бы следующим
+     * шагом обычного маршрута к базовой цели без режима "Тщательный обход".
+     */
+    private static boolean shouldPostThoroughDetourChat(String sourceRegNum, String baseRegNum, String detourRegNum) {
+        if (sourceRegNum == null || sourceRegNum.isEmpty()
+                || baseRegNum == null || baseRegNum.isEmpty()
+                || detourRegNum == null || detourRegNum.isEmpty()) {
+            return false;
+        }
+        if (detourRegNum.equals(baseRegNum)) {
+            return false;
+        }
+        try {
+            MapPath normalPath = new MapPath(sourceRegNum, Collections.singletonList(baseRegNum));
+            if (!normalPath.pathExists) {
+                return true;
+            }
+            String normalNext = normalPath.nextJump;
+            return normalNext == null || normalNext.isEmpty() || !detourRegNum.equals(normalNext);
+        } catch (Exception e) {
+            Log.w(TAG, "AUTO_SEARCH_BOX_TRACE thorough-neighbor: compare with normal path failed", e);
+            return true;
+        }
     }
 
     /**
@@ -1332,7 +1365,7 @@ public class MapAjax {
         String messageHtml = MainPhp.buildServerChatTimeHtmlExternal()
                 + "<font color=#6f42c1><b>Авто-Клад: Перестраиваю обход согласно \""
                 + escapeHtml(settingName)
-                + "\": Дообход клетки: "
+                + "\": Дообход №"
                 + escapeHtml(detourRegNum)
                 + "</b></font>";
         Intent intent = new Intent(AppVars.ACTION_ADD_CHAT_MESSAGE);
