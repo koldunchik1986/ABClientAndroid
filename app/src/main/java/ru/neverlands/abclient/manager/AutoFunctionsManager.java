@@ -1165,6 +1165,14 @@ public class AutoFunctionsManager {
         bossAuto.setAutoBossTrackCurrentWarsEnabled(enabled);
     }
 
+    public boolean isAutoBossClanNotifyEnabled() {
+        return bossAuto.isAutoBossClanNotifyEnabled();
+    }
+
+    public void setAutoBossClanNotifyEnabled(boolean enabled) {
+        bossAuto.setAutoBossClanNotifyEnabled(enabled);
+    }
+
     public int getAutoBossWaitBeforeScrollSec() {
         return bossAuto.getAutoBossWaitBeforeScrollSec();
     }

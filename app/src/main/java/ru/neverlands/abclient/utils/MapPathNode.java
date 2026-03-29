@@ -1,6 +1,7 @@
 package ru.neverlands.abclient.utils;
 
 import ru.neverlands.abclient.model.Cell;
+import ru.neverlands.abclient.utils.AppVars;
 import ru.neverlands.abclient.utils.ExtMap;
 
 public class MapPathNode implements Comparable<MapPathNode> {
@@ -72,7 +73,28 @@ public class MapPathNode implements Comparable<MapPathNode> {
         if (result != 0) return result;
         result = Integer.compare(botLevel, other.botLevel);
         if (result != 0) return result;
+        result = Long.compare(getVisitedPriorityKey(), other.getVisitedPriorityKey());
+        if (result != 0) return result;
         result = Boolean.compare(hasTeleport, other.hasTeleport);
         return result;
+    }
+
+    /**
+     * Ключ приоритета по `visited` ближайшей соседней клетки маршрута.
+     *
+     * Логика:
+     * - используется именно первая соседняя клетка (индекс 1), т.к. она определяет "ближайший шаг";
+     * - отсутствующая метка `visited` трактуется как самая старая (максимальный приоритет);
+     * - более старый timestamp => выше приоритет в compareTo (меньший ключ).
+     */
+    private long getVisitedPriorityKey() {
+        if (cellNumbers == null || cellNumbers.length < 2) {
+            return Long.MAX_VALUE;
+        }
+        Long visited = AppVars.SearchBoxVisited.get(cellNumbers[1]);
+        if (visited == null || visited <= 0L) {
+            return Long.MIN_VALUE;
+        }
+        return visited;
     }
 }

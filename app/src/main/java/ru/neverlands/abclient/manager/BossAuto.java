@@ -48,6 +48,7 @@ final class BossAuto {
     private static final String PREF_AUTO_BOSS_ASK_TARGET = "auto_boss_ask_target";
     private static final String PREF_AUTO_BOSS_BD_MODE = "auto_boss_bd_mode";
     private static final String PREF_AUTO_BOSS_TRACK_CURRENT_WARS = "auto_boss_track_current_wars";
+    private static final String PREF_AUTO_BOSS_CLAN_NOTIFY = "auto_boss_clan_notify";
     private static final String PREF_AUTO_BOSS_WAIT_SCROLL_SEC = "auto_boss_wait_scroll_sec";
     private static final String PREF_AUTO_BOSS_SEARCH_TIMEOUT_SEC = "auto_boss_search_timeout_sec";
     private static final String PREF_AUTO_BOSS_WAIT_FIGHT_TIMEOUT_SEC = "auto_boss_wait_fight_timeout_sec";
@@ -419,6 +420,7 @@ final class BossAuto {
         writeBossChat("Событие: Монстр \"" + escapeHtml(event.bossName) + "\" напал на игрока "
                 + targetHtml + ". Цель " + targetHtml + " в " + buildFightWordHtml(initialFightLink)
                 + ". Запускаем поиск цели." + locationPrefix);
+        sendClanBossEventMessageIfNeeded(event.bossName, normalizedTarget, selfClanToken);
         if (isAutoBossAskTargetEnabled()) {
             synchronized (lock) {
                 targetAskAttempts = 0;
@@ -468,6 +470,7 @@ final class BossAuto {
         if (AppVars.AutoMoving) {
             owner.stopAutoMoving();
         }
+        sendClanBossFoundMessageIfNeeded();
         String targetHtml = buildTargetNickHtml(targetNick, null);
         writeBossChat("Цель найдена (" + source + "): "
                 + targetHtml + ". Готовим «Свиток Защиты».");
@@ -1233,6 +1236,82 @@ final class BossAuto {
         );
     }
 
+    /**
+     * Отправляет клановое уведомление о старте события Босса, если включена соответствующая опция.
+     * Если наш профиль вне клана, вместо отправки в клан-чат пишет локальное уведомление.
+     */
+    private void sendClanBossEventMessageIfNeeded(String bossName, String targetNick, String selfClanToken) {
+        if (!isAutoBossClanNotifyEnabled()) {
+            return;
+        }
+        if (isEmpty(normalizeClanToken(selfClanToken))) {
+            writeBossChat("Мы вне клана. Сообщение отменено.");
+            return;
+        }
+
+        String normalizedTarget = normalizeNick(targetNick);
+        String cellsCsv = "";
+        try {
+            AutoFunctionsManager.CompassLocationResolveResult resolved = owner.resolveAutoCompassLocation(normalizedTarget);
+            if (resolved != null && resolved.success) {
+                cellsCsv = safeTrim(resolved.cellsCsv);
+            }
+        } catch (Exception e) {
+            Log.w(TAG, TRACE_PREFIX + " clan notify resolve failed: target=" + normalizedTarget, e);
+        }
+        if (isEmpty(cellsCsv)) {
+            cellsCsv = safeTrim(owner.getAutoCompassCellsCsv());
+        }
+        if (isEmpty(cellsCsv)) {
+            cellsCsv = "не определены";
+        }
+
+        String safeBossName = safeTrim(bossName);
+        if (isEmpty(safeBossName)) {
+            safeBossName = "Босс";
+        }
+        String message = "%clan% '" + safeBossName + "' напал на '" + normalizedTarget
+                + "'. Возможные клетки: " + cellsCsv;
+        Chat.sendMessageToServer(message);
+        Log.d(TAG, TRACE_PREFIX + " clan notify event sent: target=" + normalizedTarget + ", cells=" + cellsCsv);
+    }
+
+    /**
+     * Отправляет клановое уведомление о точной клетке Босса после обнаружения цели в комнате.
+     * Если наш профиль вне клана, вместо отправки в клан-чат пишет локальное уведомление.
+     */
+    private void sendClanBossFoundMessageIfNeeded() {
+        if (!isAutoBossClanNotifyEnabled()) {
+            return;
+        }
+        String selfClanToken;
+        String localBossName;
+        synchronized (lock) {
+            selfClanToken = bossSelfClanToken;
+            localBossName = bossName;
+        }
+        if (isEmpty(normalizeClanToken(selfClanToken))) {
+            writeBossChat("Мы вне клана. Сообщение отменено.");
+            return;
+        }
+
+        String exactRegNum = currentMapRegNum();
+        if (isEmpty(exactRegNum) && !isEmpty(AppVars.AutoMovingDestinaton)) {
+            exactRegNum = safeTrim(AppVars.AutoMovingDestinaton);
+        }
+        if (isEmpty(exactRegNum)) {
+            exactRegNum = "?";
+        }
+
+        String safeBossName = safeTrim(localBossName);
+        if (isEmpty(safeBossName)) {
+            safeBossName = "Босс";
+        }
+        String message = "%clan% Босс '" + safeBossName + "' на клетке: " + exactRegNum;
+        Chat.sendMessageToServer(message);
+        Log.d(TAG, TRACE_PREFIX + " clan notify found sent: cell=" + exactRegNum);
+    }
+
     boolean isAutoBossAskTargetEnabled() {
         return prefs.getBoolean(PREF_AUTO_BOSS_ASK_TARGET, true);
     }
@@ -1267,6 +1346,14 @@ final class BossAuto {
 
     void setAutoBossTrackCurrentWarsEnabled(boolean enabled) {
         prefs.edit().putBoolean(PREF_AUTO_BOSS_TRACK_CURRENT_WARS, enabled).apply();
+    }
+
+    boolean isAutoBossClanNotifyEnabled() {
+        return prefs.getBoolean(PREF_AUTO_BOSS_CLAN_NOTIFY, false);
+    }
+
+    void setAutoBossClanNotifyEnabled(boolean enabled) {
+        prefs.edit().putBoolean(PREF_AUTO_BOSS_CLAN_NOTIFY, enabled).apply();
     }
 
     int getAutoBossWaitBeforeScrollSec() {

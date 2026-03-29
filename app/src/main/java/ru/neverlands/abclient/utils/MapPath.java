@@ -4,7 +4,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Random;
 
 import ru.neverlands.abclient.model.Cell;
 import ru.neverlands.abclient.model.CityGateType;
@@ -29,8 +28,6 @@ public class MapPath {
         "11-396","11-397","11-398","11-426","11-427","11-428",
         "11-456","11-457","11-458","11-487","11-488"
     };
-
-    private static final Random DICE = new Random();
 
     private final Map<String, MapPathNode> matrix = new HashMap<>();
     private final Map<String, Object> destinations = new HashMap<>();
@@ -123,13 +120,16 @@ public class MapPath {
 
         if (bestPathes.isEmpty()) return;
 
-        int index = DICE.nextInt(bestPathes.size());
+        MapPathNode selected = chooseDeterministicBestPath(bestPathes);
+        if (selected == null) {
+            return;
+        }
         pathExists = true;
-        path = bestPathes.get(index).cellNumbers;
-        destination = bestPathes.get(index).getCellNumber();
-        cost = bestPathes.get(index).getCost();
-        hasTeleport = bestPathes.get(index).hasTeleport;
-        botLevel = bestPathes.get(index).botLevel;
+        path = selected.cellNumbers;
+        destination = selected.getCellNumber();
+        cost = selected.getCost();
+        hasTeleport = selected.hasTeleport;
+        botLevel = selected.botLevel;
         isIslandRequired = flag;
         canUseExistingPath(sourceCellNumber, destination);
     }
@@ -161,6 +161,55 @@ public class MapPath {
                 }
             }
         }
+    }
+
+    /**
+     * Детерминированный выбор лучшего пути из набора равнозначных кандидатов.
+     *
+     * Правила:
+     * 1) основной приоритет — `MapPathNode.compareTo` (включая visited tie-break);
+     * 2) при полном равенстве — лексикографический порядок полного пути, чтобы исключить random.
+     */
+    private MapPathNode chooseDeterministicBestPath(List<MapPathNode> candidates) {
+        if (candidates == null || candidates.isEmpty()) {
+            return null;
+        }
+        MapPathNode best = candidates.get(0);
+        String bestKey = buildPathKey(best);
+        for (int i = 1; i < candidates.size(); i++) {
+            MapPathNode current = candidates.get(i);
+            if (current == null) {
+                continue;
+            }
+            int cmp = current.compareTo(best);
+            if (cmp < 0) {
+                best = current;
+                bestKey = buildPathKey(best);
+                continue;
+            }
+            if (cmp == 0) {
+                String currentKey = buildPathKey(current);
+                if (currentKey.compareTo(bestKey) < 0) {
+                    best = current;
+                    bestKey = currentKey;
+                }
+            }
+        }
+        return best;
+    }
+
+    private String buildPathKey(MapPathNode node) {
+        if (node == null || node.cellNumbers == null || node.cellNumbers.length == 0) {
+            return "";
+        }
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < node.cellNumbers.length; i++) {
+            if (i > 0) {
+                sb.append('|');
+            }
+            sb.append(node.cellNumbers[i] == null ? "" : node.cellNumbers[i]);
+        }
+        return sb.toString();
     }
 
     public boolean canUseExistingPath(String source, String dest) {
