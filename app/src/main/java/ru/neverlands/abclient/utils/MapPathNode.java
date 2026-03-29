@@ -71,9 +71,13 @@ public class MapPathNode implements Comparable<MapPathNode> {
      * Порядок критериев:
      * 1) итоговая стоимость пути;
      * 2) длина пути (количество клеток);
-     * 3) максимальный уровень ботов по маршруту;
-     * 4) приоритет `visited` ближайшего шага;
+     * 3) приоритет `visited` ближайшего шага;
+     * 4) максимальный уровень ботов по маршруту;
      * 5) наличие телепорта (как самый поздний tie-break).
+     *
+     * Примечание:
+     * - `visited` поднят выше `botLevel`, чтобы при равных по цене/длине маршрутах
+     *   гарантированно выбирать более "старую" (или ещё не отмеченную) соседнюю клетку.
      */
     @Override
     public int compareTo(MapPathNode other) {
@@ -81,9 +85,9 @@ public class MapPathNode implements Comparable<MapPathNode> {
         if (result != 0) return result;
         result = Integer.compare(cellNumbers.length, other.cellNumbers.length);
         if (result != 0) return result;
-        result = Integer.compare(botLevel, other.botLevel);
-        if (result != 0) return result;
         result = Long.compare(getVisitedPriorityKey(), other.getVisitedPriorityKey());
+        if (result != 0) return result;
+        result = Integer.compare(botLevel, other.botLevel);
         if (result != 0) return result;
         result = Boolean.compare(hasTeleport, other.hasTeleport);
         return result;
