@@ -28,6 +28,19 @@ import ru.neverlands.abclient.utils.Chat;
  * - не дублировать существующие конвейеры (Auto-Компас, FastAction, Navigator),
  *   а только оркестрировать их через AutoFunctionsManager.
  */
+/**
+ * Оркестратор сценария «Авто-Боссы».
+ *
+ * Задача модуля:
+ * - отследить событие нападения босса из системного чата;
+ * - передать поиск цели в существующий контур Auto-Компас;
+ * - после нахождения цели применить «Свиток Защиты» через FastAction;
+ * - после завершения сценария вернуть исходные настройки авто-функций.
+ *
+ * Важный инвариант:
+ * - здесь нет дублирования логики навигатора/компаса/fast-action;
+ *   используются только вызовы уже существующих менеджеров.
+ */
 final class BossAuto {
     private static final String TAG = "AutoFunctionsManager";
     private static final String TRACE_PREFIX = "AUTO_BOSS_TRACE";
@@ -93,6 +106,10 @@ final class BossAuto {
     /**
      * Снимок авто-функций, которые ставятся на паузу во время сценария Авто-Боссов.
      * Авто-Бой/Авто-Лечение сюда не входят: они не паузятся.
+     */
+    /**
+     * Снимок исходного состояния авто-функций на момент старта сценария.
+     * Нужен для корректного восстановления после завершения поиска/боя.
      */
     private static final class BossScenarioSnapshot {
         boolean autoFishEnabled;
@@ -287,6 +304,16 @@ final class BossAuto {
         }
     }
 
+    /**
+     * Обрабатывает триггер события «Босс напал на игрока».
+     *
+     * Основные шаги:
+     * - выполняет anti-dup по событию;
+     * - применяет фильтры БД-режима и «Следить за текущими войнами»;
+     * - фиксирует ссылку на бой цели ({@code fid});
+     * - ставит несовместимые авто-функции на паузу;
+     * - запускает поиск цели через Auto-Компас.
+     */
     private void handleBossEvent(BossEvent event) {
         String normalizedTarget = normalizeNick(event.targetNick);
         if (isEmpty(normalizedTarget)) {
@@ -489,6 +516,10 @@ final class BossAuto {
                 + ", attempts=" + protectionAttempts);
     }
 
+    /**
+     * Запускает возврат на исходную клетку либо сразу завершает сценарий,
+     * если персонаж уже на исходной клетке.
+     */
     private void startReturnOrRestore(String reason) {
         String origin;
         synchronized (lock) {
@@ -531,6 +562,12 @@ final class BossAuto {
         }
     }
 
+    /**
+     * Единая точка завершения сценария Авто-Босса.
+     *
+     * Здесь очищается внутреннее состояние и, при необходимости,
+     * восстанавливается снимок ранее активных авто-функций.
+     */
     private void stopAndRestore(String reason, boolean restoreSnapshot) {
         BossScenarioSnapshot snapshotToRestore = null;
         String oldTarget;
@@ -572,6 +609,9 @@ final class BossAuto {
         Log.d(TAG, TRACE_PREFIX + " scenario stopped: reason=" + reason);
     }
 
+    /**
+     * Сохраняет текущие флаги и параметры авто-функций перед стартом сценария.
+     */
     private BossScenarioSnapshot captureSnapshot() {
         BossScenarioSnapshot snapshot = new BossScenarioSnapshot();
         snapshot.autoFishEnabled = owner.isAutoFishEnabled();
@@ -597,6 +637,12 @@ final class BossAuto {
         return snapshot;
     }
 
+    /**
+     * Ставит на паузу авто-функции, которые могут конфликтовать с поиском/маршрутом Авто-Босса.
+     *
+     * Важно:
+     * - Авто-Бой и Авто-Лечение здесь не выключаются специально.
+     */
     private void pauseNonCombatFunctions() {
         owner.setAutoFishEnabled(false);
         owner.setAutoBaitEnabled(false);
@@ -614,6 +660,11 @@ final class BossAuto {
         owner.setAutoRefreshEnabled(false);
     }
 
+    /**
+     * Восстанавливает исходные состояния авто-функций после сценария.
+     * Все переключения делаются только через AutoFunctionsManager, чтобы
+     * не дублировать side-effects и существующие guard-ветки.
+     */
     private void restoreSnapshot(BossScenarioSnapshot snapshot) {
         // Восстанавливаем в том же модуле и через те же setter-ы, чтобы не плодить дубль-логики.
         owner.setAutoFishEnabled(snapshot.autoFishEnabled);
@@ -695,6 +746,10 @@ final class BossAuto {
         return owner.getAutoCompassLastLocationLabel();
     }
 
+    /**
+     * Безопасное чтение pinfo-снимка.
+     * Ошибки сети логируются, но не прерывают state-machine сценария.
+     */
     private NeverApi.PinfoCompassSnapshot safeGetPinfoSnapshot(String nick) {
         if (isEmpty(nick)) {
             return null;
@@ -707,6 +762,13 @@ final class BossAuto {
         }
     }
 
+    /**
+     * Возвращает максимально надёжный {@code fid} боя цели.
+     *
+     * Источники по приоритету:
+     * 1) уже полученный pinfo snapshot;
+     * 2) fallback через NeverApi.getAll(targetNick).
+     */
     private String resolveFightFidReliable(String targetNick, NeverApi.PinfoCompassSnapshot snapshot) {
         String fromSnapshot = normalizeFightFid(snapshot == null ? "" : snapshot.fightFid);
         if (!isEmpty(fromSnapshot)) {
@@ -772,6 +834,13 @@ final class BossAuto {
         return buildFightWordHtml(link);
     }
 
+    /**
+     * Единый рендер ника для сообщений Авто-Босса.
+     *
+     * Приоритет:
+     * 1) готовый рендер из {@link RoomManager#buildUnifiedChatNickHtml(String)};
+     * 2) fallback-сборка по данным pinfo/контактов (если room-рендер недоступен).
+     */
     private String buildTargetNickHtml(String nick, NeverApi.PinfoCompassSnapshot snapshot) {
         String cleanNick = normalizeNick(nick);
         if (isEmpty(cleanNick)) {
@@ -810,6 +879,14 @@ final class BossAuto {
                 + "\" onclick=\"window.open(this.href);\"><img src=http://image.neverlands.ru/chat/info.gif width=11 height=12 border=0 align=absmiddle></a>";
     }
 
+    /**
+     * Повторяет вопрос цели в чат о текущей клетке.
+     *
+     * Ограничения:
+     * - не более {@code TARGET_CHAT_ASK_MAX_ATTEMPTS};
+     * - соблюдается пауза {@code TARGET_CHAT_ASK_RETRY_MS};
+     * - отправка выполняется только когда chat-frame готов.
+     */
     private void maybeRetryAskTarget(long now) {
         String target;
         int attempts;
@@ -851,6 +928,14 @@ final class BossAuto {
         Log.d(TAG, TRACE_PREFIX + " ask target sent: target=" + target + ", message=" + message);
     }
 
+    /**
+     * Во время поиска контролирует, что цель всё ещё находится в бою.
+     *
+     * Логика:
+     * - если {@code fightFid} присутствует — обновляем кэш ссылки на бой;
+     * - если {@code fightFid} временно пропал — даём 1 grace-тик;
+     * - если отсутствует второй тик подряд — отменяем сценарий.
+     */
     private boolean monitorTargetFightStateDuringSearch() {
         String target;
         synchronized (lock) {
@@ -896,6 +981,16 @@ final class BossAuto {
         return false;
     }
 
+    /**
+     * Определяет, на кого применять «Свиток Защиты».
+     *
+     * Приоритет:
+     * 1) исходная цель, если она жива;
+     * 2) первый живой союзник из того же боя (fallback).
+     *
+     * Если живых союзников не осталось, возвращается пустая строка
+     * и сценарий должен быть завершён вызывающей стороной.
+     */
     private String resolveProtectionTargetNick(String initialTarget) {
         String target = normalizeNick(initialTarget);
         if (isEmpty(target)) {
@@ -970,6 +1065,10 @@ final class BossAuto {
         return firstAlive.nick;
     }
 
+    /**
+     * Парсит союзную часть лога боя и извлекает состояния участников.
+     * Используется fallback-логикой выбора живой цели для защиты.
+     */
     private List<FightAllyState> parseFightAlliesFromLog(String flogHtml) {
         ArrayList<FightAllyState> result = new ArrayList<>();
         if (isEmpty(flogHtml)) {
@@ -1155,6 +1254,12 @@ final class BossAuto {
      * Если включено, Авто-Босс не пытается защищать цель,
      * чьё `targetClanToken` присутствует в списке текущих войн.
      * Настройка независима от БД-режима.
+     */
+    /**
+     * Флаг «Следить за текущими войнами».
+     *
+     * При включении цель отклоняется, если её clanToken присутствует
+     * в кэше текущих войн, полученном из {@code wars.cgi}.
      */
     boolean isAutoBossTrackCurrentWarsEnabled() {
         return prefs.getBoolean(PREF_AUTO_BOSS_TRACK_CURRENT_WARS, true);
