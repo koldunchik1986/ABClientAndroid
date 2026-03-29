@@ -911,6 +911,12 @@ public class QuickButtonsPanel {
         thoroughNeighborCheck.setPadding(0, pad, 0, 0);
         root.addView(thoroughNeighborCheck);
 
+        CheckBox smartGeneration = new CheckBox(context);
+        smartGeneration.setText("Умная система генерации");
+        smartGeneration.setChecked(autoFunctionsManager.isAutoTreasureSmartGenerationEnabled());
+        smartGeneration.setPadding(0, pad, 0, 0);
+        root.addView(smartGeneration);
+
         Runnable syncControls = () -> {
             boolean digEnabled = useDig.isChecked();
             shovelTitle.setEnabled(digEnabled);
@@ -933,6 +939,7 @@ public class QuickButtonsPanel {
                     String fixedRegNum = fixedCellInput.getText() == null ? "" : fixedCellInput.getText().toString();
                     autoFunctionsManager.setAutoTreasureFixedCellRegNum(fixedRegNum);
                     autoFunctionsManager.setAutoTreasureThoroughNeighborCheckEnabled(thoroughNeighborCheck.isChecked());
+                    autoFunctionsManager.setAutoTreasureSmartGenerationEnabled(smartGeneration.isChecked());
                     Toast.makeText(context, "Настройки авто-клада сохранены", Toast.LENGTH_SHORT).show();
                 })
                 .setNegativeButton("Отмена", null)

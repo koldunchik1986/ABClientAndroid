@@ -60,6 +60,7 @@ public class AutoFunctionsManager {
     private static final String PREF_AUTO_TREASURE_FIXED_CELL = "auto_treasure_fixed_cell";
     private static final String PREF_AUTO_TREASURE_THOROUGH_NEIGHBOR_CHECK =
             "auto_treasure_thorough_neighbor_check";
+    private static final String PREF_AUTO_TREASURE_SMART_GENERATION = "auto_treasure_smart_generation";
     public static final String TREASURE_SHOVEL_NONE = "Нет";
     public static final String TREASURE_SHOVEL_ANY = "Любая лопата";
     public static final String TREASURE_SHOVEL_SEEKER = "Лопата кладоискателя";
@@ -1631,6 +1632,23 @@ public class AutoFunctionsManager {
 
     public void setAutoTreasureThoroughNeighborCheckEnabled(boolean enabled) {
         putDefaultBoolean(PREF_AUTO_TREASURE_THOROUGH_NEIGHBOR_CHECK, enabled);
+    }
+
+    /**
+     * "Умная система генерации" для Авто-Клада.
+     *
+     * Зависимости:
+     * - `MapAjax.findNextDestForBox(...)` использует настройку, чтобы не делать повторные
+     *   проходы по недавно проверенным клеткам (анти-спам по Блажу) и включать отложенный
+     *   возврат к уже посещённым клеткам.
+     * - Хранение в default SharedPreferences, чтобы настройка была доступна и из UI, и из postfilter.
+     */
+    public boolean isAutoTreasureSmartGenerationEnabled() {
+        return getDefaultBoolean(PREF_AUTO_TREASURE_SMART_GENERATION, false);
+    }
+
+    public void setAutoTreasureSmartGenerationEnabled(boolean enabled) {
+        putDefaultBoolean(PREF_AUTO_TREASURE_SMART_GENERATION, enabled);
     }
 
     private String normalizeRegNum(String value) {

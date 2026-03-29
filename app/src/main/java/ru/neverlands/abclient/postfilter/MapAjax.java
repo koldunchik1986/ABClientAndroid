@@ -30,6 +30,7 @@ public class MapAjax {
     private static final int SEARCH_BOX_THOROUGH_MANHATTAN_RADIUS = 3;
     private static final int SEARCH_BOX_THOROUGH_MAX_STEPS = 5;
     private static final long SEARCH_BOX_THOROUGH_MAX_NEWER_DELTA_MS = 12L * 60L * 60L * 1000L;
+    private static final long SEARCH_BOX_SMART_RECHECK_MIN_AGE_MS = 170L * 60L * 1000L; // 2ч + 50м
     private static final int AUTO_MOVING_TIED_STEP_COST = 2;
     private static final int AUTO_DRINK_BLAZ_NEAR_THRESHOLD_DELTA = 6;
     private static final int MAP_CELL_CHECK_TIMEOUT_MIN_MS = 0;
@@ -377,6 +378,7 @@ public class MapAjax {
     }
 
     private static SearchBoxDestination findBaseSearchBoxDestination(String source, long nowMs) {
+        boolean smartGenerationEnabled = isAutoTreasureSmartGenerationEnabled();
         int[] idx = new int[] {0, 0, -1, 1, -1, 1, -1, 1};
         int[] idy = new int[] {-1, 1, 0, 0, -1, -1, 1, 1};
 
@@ -424,8 +426,17 @@ public class MapAjax {
 
         if (oldestVisitedFallback != null && !oldestVisitedFallback.isEmpty()) {
             long ageMs = Math.max(0L, nowMs - oldestVisitedAtMs);
+            if (smartGenerationEnabled && ageMs < SEARCH_BOX_SMART_RECHECK_MIN_AGE_MS) {
+                long waitMs = SEARCH_BOX_SMART_RECHECK_MIN_AGE_MS - ageMs;
+                Log.d(TAG, "AUTO_SEARCH_BOX_TRACE smart-generation: skip recent fallback=" + oldestVisitedFallback
+                        + ", ageMs=" + ageMs
+                        + ", minAgeMs=" + SEARCH_BOX_SMART_RECHECK_MIN_AGE_MS
+                        + ", waitMs=" + waitMs);
+                return null;
+            }
             Log.d(TAG, "AUTO_SEARCH_BOX_TRACE: fallback oldest-visited destination="
-                    + oldestVisitedFallback + ", ageMs=" + ageMs);
+                    + oldestVisitedFallback + ", ageMs=" + ageMs
+                    + (smartGenerationEnabled ? ", smart=true" : ", smart=false"));
             return new SearchBoxDestination(oldestVisitedFallback, oldestVisitedAtMs, oldestVisitedDistance);
         }
         return null;
@@ -565,6 +576,19 @@ public class MapAjax {
                     .isAutoTreasureThoroughNeighborCheckEnabled();
         } catch (Exception e) {
             Log.w(TAG, "AUTO_SEARCH_BOX_TRACE thorough-neighbor: read setting failed", e);
+            return false;
+        }
+    }
+
+    private static boolean isAutoTreasureSmartGenerationEnabled() {
+        try {
+            if (AppVars.getContext() == null) {
+                return false;
+            }
+            return AutoFunctionsManager.getInstance(AppVars.getContext())
+                    .isAutoTreasureSmartGenerationEnabled();
+        } catch (Exception e) {
+            Log.w(TAG, "AUTO_SEARCH_BOX_TRACE smart-generation: read setting failed", e);
             return false;
         }
     }
