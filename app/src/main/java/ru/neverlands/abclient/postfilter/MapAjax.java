@@ -1363,9 +1363,9 @@ public class MapAjax {
         lastAutoTreasureRouteChatKey = key;
 
         String messageHtml = MainPhp.buildServerChatTimeHtmlExternal()
-                + "<font color=#6f42c1><b>Авто-Клад: Перестраиваю обход согласно \""
+                + "<font color=#6f42c1><b>Авто-Клад:\""
                 + escapeHtml(settingName)
-                + "\": Дообход №"
+                + "\": Дообход клетки № "
                 + escapeHtml(detourRegNum)
                 + "</b></font>";
         Intent intent = new Intent(AppVars.ACTION_ADD_CHAT_MESSAGE);
