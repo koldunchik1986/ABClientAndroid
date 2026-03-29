@@ -29,7 +29,9 @@ public class MapAjax {
     private static final long SEARCH_BOX_VISITED_TTL_MS = 24L * 60L * 60L * 1000L;
     // Параметры режима "Тщательная проверка соседних клеток" в Auto-Кладе.
     // Используются при detour-поиске рядом с текущей позицией.
-    private static final int SEARCH_BOX_THOROUGH_MANHATTAN_RADIUS = 3;
+    private static final int SEARCH_BOX_THOROUGH_MANHATTAN_RADIUS_MIN = 1;
+    private static final int SEARCH_BOX_THOROUGH_MANHATTAN_RADIUS_MAX = 3;
+    private static final int SEARCH_BOX_THOROUGH_MANHATTAN_RADIUS_DEFAULT = 3;
     private static final int SEARCH_BOX_THOROUGH_MAX_STEPS = 5;
     private static final long SEARCH_BOX_THOROUGH_MAX_NEWER_DELTA_MS = 12L * 60L * 60L * 1000L;
     private static final long SEARCH_BOX_SMART_RECHECK_MIN_AGE_MS = 170L * 60L * 1000L; // 2ч + 50м
@@ -485,7 +487,7 @@ public class MapAjax {
      *
      * Кандидат принимается только если одновременно:
      * - путь до него <= `SEARCH_BOX_THOROUGH_MAX_STEPS`,
-     * - он в манхэттен-радиусе <= `SEARCH_BOX_THOROUGH_MANHATTAN_RADIUS`,
+     * - он в манхэттен-радиусе <= текущего значения настройки "Радиус соседних клеток (Манхэттен)",
      * - у него есть visited-маркер,
      * - он новее базовой цели, но не старше лимита `SEARCH_BOX_THOROUGH_MAX_NEWER_DELTA_MS`.
      *
@@ -495,6 +497,8 @@ public class MapAjax {
             String source,
             SearchBoxDestination baseDestination) {
         SearchBoxNeighborDebugStats stats = new SearchBoxNeighborDebugStats();
+        int thoroughRadius = resolveAutoTreasureThoroughNeighborRadius();
+        stats.configuredManhattanRadius = thoroughRadius;
         int[] sourceCoords = getCellCoordinates(source);
         if (sourceCoords == null || baseDestination == null || baseDestination.visitedAtMs <= 0L) {
             stats.skippedByNoSourceCoordsOrBase++;
@@ -551,7 +555,7 @@ public class MapAjax {
                     continue;
                 }
                 int manhattanDistance = Math.abs(nextCoords[0] - sourceCoords[0]) + Math.abs(nextCoords[1] - sourceCoords[1]);
-                if (manhattanDistance > SEARCH_BOX_THOROUGH_MANHATTAN_RADIUS) {
+                if (manhattanDistance > thoroughRadius) {
                     stats.skippedByManhattanRadius++;
                     continue;
                 }
@@ -630,6 +634,7 @@ public class MapAjax {
             return "{}";
         }
         return "{discovered=" + stats.discoveredNeighbors
+                + ",radius=" + stats.configuredManhattanRadius
                 + ",accepted=" + stats.acceptedCandidates
                 + ",skipInvalidNeighbor=" + stats.skippedByInvalidNeighbor
                 + ",skipAlreadySeen=" + stats.skippedByAlreadySeen
@@ -688,6 +693,36 @@ public class MapAjax {
         }
     }
 
+    private static int resolveAutoTreasureThoroughNeighborRadius() {
+        try {
+            if (AppVars.getContext() == null) {
+                return SEARCH_BOX_THOROUGH_MANHATTAN_RADIUS_DEFAULT;
+            }
+            int configuredRadius = AutoFunctionsManager.getInstance(AppVars.getContext())
+                    .getAutoTreasureThoroughNeighborRadius();
+            return Math.max(
+                    SEARCH_BOX_THOROUGH_MANHATTAN_RADIUS_MIN,
+                    Math.min(SEARCH_BOX_THOROUGH_MANHATTAN_RADIUS_MAX, configuredRadius)
+            );
+        } catch (Exception e) {
+            Log.w(TAG, "AUTO_SEARCH_BOX_TRACE thorough-neighbor: read radius failed", e);
+            return SEARCH_BOX_THOROUGH_MANHATTAN_RADIUS_DEFAULT;
+        }
+    }
+
+    private static boolean isAutoTreasureDetourChatEnabled() {
+        try {
+            if (AppVars.getContext() == null) {
+                return false;
+            }
+            return AutoFunctionsManager.getInstance(AppVars.getContext())
+                    .isAutoTreasureDetourChatEnabled();
+        } catch (Exception e) {
+            Log.w(TAG, "AUTO_SEARCH_BOX_TRACE detour-chat: read setting failed", e);
+            return false;
+        }
+    }
+
     private static final class SearchNode {
         final String regNum;
         final int distanceSteps;
@@ -729,6 +764,7 @@ public class MapAjax {
      * Выводятся в `AUTO_SEARCH_BOX_TRACE ... stats={...}`.
      */
     private static final class SearchBoxNeighborDebugStats {
+        int configuredManhattanRadius;
         int discoveredNeighbors;
         int acceptedCandidates;
         int skippedByInvalidNeighbor;
@@ -1191,6 +1227,9 @@ public class MapAjax {
      */
     private static void postAutoTreasureRouteRebuildToChat(String settingName, String detourRegNum) {
         if (settingName == null || settingName.isEmpty() || detourRegNum == null || detourRegNum.isEmpty()) {
+            return;
+        }
+        if (!isAutoTreasureDetourChatEnabled()) {
             return;
         }
         android.content.Context context = AppVars.getContext();

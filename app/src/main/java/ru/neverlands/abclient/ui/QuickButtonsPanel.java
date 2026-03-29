@@ -909,11 +909,34 @@ public class QuickButtonsPanel {
         // - только UI-слой (чекбокс);
         // - реальная маршрутизация выполняется в `MapAjax.findNextDestForBox(...)`;
         // - значение хранится в `AutoFunctionsManager` (default preferences).
+        TextView detourTitle = new TextView(context);
+        detourTitle.setText("Дообход");
+        detourTitle.setPadding(0, pad, 0, 0);
+        detourTitle.setTypeface(detourTitle.getTypeface(), android.graphics.Typeface.BOLD);
+        root.addView(detourTitle);
+
         CheckBox thoroughNeighborCheck = new CheckBox(context);
         thoroughNeighborCheck.setText("Тщательная проверка соседних клеток (Расходуем больше Блажа — для проверки соседних клеток)");
         thoroughNeighborCheck.setChecked(autoFunctionsManager.isAutoTreasureThoroughNeighborCheckEnabled());
-        thoroughNeighborCheck.setPadding(0, pad, 0, 0);
+        thoroughNeighborCheck.setPadding(0, (int) (pad * 0.6f), 0, 0);
         root.addView(thoroughNeighborCheck);
+
+        TextView thoroughRadiusTitle = new TextView(context);
+        thoroughRadiusTitle.setText("Радиус соседних клеток (Манхэттен):");
+        thoroughRadiusTitle.setPadding(pad, (int) (pad * 0.35f), 0, 0);
+        root.addView(thoroughRadiusTitle);
+
+        Spinner thoroughRadiusSpinner = new Spinner(context);
+        ArrayAdapter<String> thoroughRadiusAdapter = new ArrayAdapter<>(
+                context,
+                android.R.layout.simple_spinner_item,
+                new String[]{"1", "2", "3"}
+        );
+        thoroughRadiusAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        thoroughRadiusSpinner.setAdapter(thoroughRadiusAdapter);
+        int storedRadius = autoFunctionsManager.getAutoTreasureThoroughNeighborRadius();
+        thoroughRadiusSpinner.setSelection(Math.max(0, Math.min(2, storedRadius - 1)));
+        root.addView(thoroughRadiusSpinner);
 
         // Настройка "Умная генерация":
         // - при включении `MapAjax` избегает повторного захода в слишком "свежие" уже
@@ -922,8 +945,14 @@ public class QuickButtonsPanel {
         CheckBox smartGeneration = new CheckBox(context);
         smartGeneration.setText("Умная система генерации (без повтора свежих клеток)");
         smartGeneration.setChecked(autoFunctionsManager.isAutoTreasureSmartGenerationEnabled());
-        smartGeneration.setPadding(0, pad, 0, 0);
+        smartGeneration.setPadding(0, (int) (pad * 0.6f), 0, 0);
         root.addView(smartGeneration);
+
+        CheckBox detourChat = new CheckBox(context);
+        detourChat.setText("Выводить результаты Дообхода в чат");
+        detourChat.setChecked(autoFunctionsManager.isAutoTreasureDetourChatEnabled());
+        detourChat.setPadding(0, (int) (pad * 0.6f), 0, 0);
+        root.addView(detourChat);
 
         Runnable syncControls = () -> {
             boolean digEnabled = useDig.isChecked();
@@ -931,9 +960,13 @@ public class QuickButtonsPanel {
             shovelSpinner.setEnabled(digEnabled);
             boolean fixedEnabled = fixedCellEnabled.isChecked();
             fixedCellInput.setEnabled(fixedEnabled);
+            boolean thoroughEnabled = thoroughNeighborCheck.isChecked();
+            thoroughRadiusTitle.setEnabled(thoroughEnabled);
+            thoroughRadiusSpinner.setEnabled(thoroughEnabled);
         };
         useDig.setOnCheckedChangeListener((buttonView, isChecked) -> syncControls.run());
         fixedCellEnabled.setOnCheckedChangeListener((buttonView, isChecked) -> syncControls.run());
+        thoroughNeighborCheck.setOnCheckedChangeListener((buttonView, isChecked) -> syncControls.run());
         syncControls.run();
 
         AlertDialog dialog = new AlertDialog.Builder(context)
@@ -950,7 +983,11 @@ public class QuickButtonsPanel {
                     // Логика обработки включается на стороне postfilter (`MapAjax`), без
                     // дублирования маршрутизатора в UI.
                     autoFunctionsManager.setAutoTreasureThoroughNeighborCheckEnabled(thoroughNeighborCheck.isChecked());
+                    autoFunctionsManager.setAutoTreasureThoroughNeighborRadius(
+                            thoroughRadiusSpinner.getSelectedItemPosition() + 1
+                    );
                     autoFunctionsManager.setAutoTreasureSmartGenerationEnabled(smartGeneration.isChecked());
+                    autoFunctionsManager.setAutoTreasureDetourChatEnabled(detourChat.isChecked());
                     Toast.makeText(context, "Настройки авто-клада сохранены", Toast.LENGTH_SHORT).show();
                 })
                 .setNegativeButton("Отмена", null)
