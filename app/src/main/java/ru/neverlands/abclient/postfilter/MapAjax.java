@@ -529,6 +529,12 @@ public class MapAjax {
             stats.skippedByNoSourceCoordsOrBase++;
             return new SearchBoxNeighborScanResult(Collections.emptyList(), stats);
         }
+        int[] baseCoords = getCellCoordinates(baseDestination.regNum);
+        int sourceToBaseManhattan = -1;
+        if (baseCoords != null) {
+            sourceToBaseManhattan = Math.abs(sourceCoords[0] - baseCoords[0])
+                    + Math.abs(sourceCoords[1] - baseCoords[1]);
+        }
 
         int[] idx = new int[] {0, 0, -1, 1, -1, 1, -1, 1};
         int[] idy = new int[] {-1, 1, 0, 0, -1, -1, 1, 1};
@@ -583,6 +589,14 @@ public class MapAjax {
                 if (manhattanDistance > thoroughRadius) {
                     stats.skippedByManhattanRadius++;
                     continue;
+                }
+                if (sourceToBaseManhattan >= 0) {
+                    int nextToBaseManhattan = Math.abs(nextCoords[0] - baseCoords[0])
+                            + Math.abs(nextCoords[1] - baseCoords[1]);
+                    if (nextToBaseManhattan > sourceToBaseManhattan) {
+                        stats.skippedByAwayFromBase++;
+                        continue;
+                    }
                 }
 
                 Long visitedAt = AppVars.SearchBoxVisited.get(next);
@@ -674,6 +688,7 @@ public class MapAjax {
                 + ",skipBase=" + stats.skippedByBaseCell
                 + ",skipNoCoords=" + stats.skippedByMissingCoords
                 + ",skipManhattan=" + stats.skippedByManhattanRadius
+                + ",skipAwayFromBase=" + stats.skippedByAwayFromBase
                 + ",skipNoVisited=" + stats.skippedByNoVisitedMarker
                 + ",skipTooFresh=" + stats.skippedByVisitedAgeTooFresh
                 + ",skipDeltaNotNewer=" + stats.skippedByVisitedDeltaNotNewer
@@ -828,6 +843,7 @@ public class MapAjax {
         int skippedByBaseCell;
         int skippedByMissingCoords;
         int skippedByManhattanRadius;
+        int skippedByAwayFromBase;
         int skippedByNoVisitedMarker;
         int skippedByVisitedAgeTooFresh;
         int skippedByVisitedDeltaNotNewer;
