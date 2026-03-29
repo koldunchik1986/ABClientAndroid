@@ -438,6 +438,7 @@ public class ClansActivity extends AppCompatActivity {
             tv.setText(safeText(text));
             tv.setTextSize(12f);
             tv.setTypeface(Typeface.DEFAULT_BOLD);
+            tv.setTextColor(0xFFFFFFFF);
             tv.setGravity(Gravity.START);
             tv.setTextAlignment(View.TEXT_ALIGNMENT_TEXT_START);
             android.widget.LinearLayout.LayoutParams lp = new android.widget.LinearLayout.LayoutParams(
