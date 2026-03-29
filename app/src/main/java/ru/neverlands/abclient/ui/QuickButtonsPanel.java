@@ -905,12 +905,20 @@ public class QuickButtonsPanel {
         fixedCellInput.setText(autoFunctionsManager.getAutoTreasureFixedCellRegNum());
         root.addView(fixedCellInput);
 
+        // Настройка "Тщательный обход":
+        // - только UI-слой (чекбокс);
+        // - реальная маршрутизация выполняется в `MapAjax.findNextDestForBox(...)`;
+        // - значение хранится в `AutoFunctionsManager` (default preferences).
         CheckBox thoroughNeighborCheck = new CheckBox(context);
         thoroughNeighborCheck.setText("Тщательная проверка соседних клеток (Расходуем больше Блажа — для проверки соседних клеток)");
         thoroughNeighborCheck.setChecked(autoFunctionsManager.isAutoTreasureThoroughNeighborCheckEnabled());
         thoroughNeighborCheck.setPadding(0, pad, 0, 0);
         root.addView(thoroughNeighborCheck);
 
+        // Настройка "Умная генерация":
+        // - при включении `MapAjax` избегает повторного захода в слишком "свежие" уже
+        //   проверенные клетки (по маркеру visited);
+        // - по умолчанию выключена.
         CheckBox smartGeneration = new CheckBox(context);
         smartGeneration.setText("Умная система генерации (без повтора свежих клеток)");
         smartGeneration.setChecked(autoFunctionsManager.isAutoTreasureSmartGenerationEnabled());
@@ -938,6 +946,9 @@ public class QuickButtonsPanel {
                     autoFunctionsManager.setAutoTreasureFixedCellEnabled(fixedCellEnabled.isChecked());
                     String fixedRegNum = fixedCellInput.getText() == null ? "" : fixedCellInput.getText().toString();
                     autoFunctionsManager.setAutoTreasureFixedCellRegNum(fixedRegNum);
+                    // Сохраняем доп. режимы Auto-Клада в общий manager.
+                    // Логика обработки включается на стороне postfilter (`MapAjax`), без
+                    // дублирования маршрутизатора в UI.
                     autoFunctionsManager.setAutoTreasureThoroughNeighborCheckEnabled(thoroughNeighborCheck.isChecked());
                     autoFunctionsManager.setAutoTreasureSmartGenerationEnabled(smartGeneration.isChecked());
                     Toast.makeText(context, "Настройки авто-клада сохранены", Toast.LENGTH_SHORT).show();

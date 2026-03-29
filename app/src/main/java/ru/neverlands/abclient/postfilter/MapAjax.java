@@ -27,6 +27,8 @@ import android.util.Log;
 public class MapAjax {
     private static final String TAG = "MapAjax";
     private static final long SEARCH_BOX_VISITED_TTL_MS = 24L * 60L * 60L * 1000L;
+    // Параметры режима "Тщательная проверка соседних клеток" в Auto-Кладе.
+    // Используются при detour-поиске рядом с текущей позицией.
     private static final int SEARCH_BOX_THOROUGH_MANHATTAN_RADIUS = 3;
     private static final int SEARCH_BOX_THOROUGH_MAX_STEPS = 5;
     private static final long SEARCH_BOX_THOROUGH_MAX_NEWER_DELTA_MS = 12L * 60L * 60L * 1000L;
@@ -42,6 +44,10 @@ public class MapAjax {
     private static final long MAP_AJAX_ERR_RESET_WINDOW_MS = 3_000L;
     private static final int MAP_AJAX_SOFT_RETRY_LIMIT = 1;
     private static final long MAP_AJAX_SOFT_RETRY_DELAY_MS = 350L;
+    // Ограничители сообщений "перестраиваю обход" в чат, чтобы не заспамить пользователя
+    // при быстрых перепланировках маршрута.
+    private static final long AUTO_TREASURE_ROUTE_CHAT_COOLDOWN_MS = 2_000L;
+    private static final long AUTO_TREASURE_ROUTE_CHAT_DUPLICATE_SUPPRESS_MS = 15_000L;
     private static volatile long lastAutoDrinkBlazPinfoSyncAtMs = 0L;
     private static volatile long lastAutoDrinkBlazStartupSyncAttemptAtMs = 0L;
     private static volatile long lastAutoDrinkBlazTriggerAtMs = 0L;
@@ -51,6 +57,9 @@ public class MapAjax {
     private static volatile int consecutiveMapAjaxErrCount = 0;
     private static volatile boolean autoDrinkBlazStartupSyncDone = false;
     private static volatile long lastAutoTreasureReasonChatAtMs = 0L;
+    private static volatile long lastAutoTreasureRouteChatAtMs = 0L;
+    private static volatile long lastAutoTreasureRouteChatKeyAtMs = 0L;
+    private static volatile String lastAutoTreasureRouteChatKey = "";
 
     public static String process(String html) {
         if (AppVars.FastNeed && AppVars.FastPauseNonCombatAutoFunctions) {
@@ -327,6 +336,20 @@ public class MapAjax {
      * Если таких клеток нет, выбирает клетку с самым старым маркером посещения
      * (fallback-циклирование по уже пройденным клеткам).
      */
+    /**
+     * Главная точка выбора следующей клетки для Auto-Клада.
+     *
+     * Контур выбора:
+     * 1) fixed-cell режим (если включён) имеет приоритет;
+     * 2) базовая цель через `findBaseSearchBoxDestination(...)`;
+     * 3) при включённом `Тщательном обходе` — попытка detour рядом с текущей клеткой;
+     * 4) если detour нет — используем базовую цель.
+     *
+     * Зависимости:
+     * - `AutoFunctionsManager` (флаги smart/thorough),
+     * - `AppVars.SearchBoxVisited` (visited-маркеры),
+     * - `MainPhp.buildServerChatTimeHtmlExternal()` + broadcast в чат (уведомления о перестроении).
+     */
     public static String findNextDestForBox(String sourceLocation) {
         String source = sourceLocation;
         if ((source == null || source.isEmpty()) && AppVars.Profile != null) {
@@ -357,18 +380,21 @@ public class MapAjax {
             return baseDestination.regNum;
         }
 
-        List<SearchBoxNeighborCandidate> candidates = findThoroughNeighborCandidates(source, baseDestination);
+        SearchBoxNeighborScanResult scanResult = findThoroughNeighborCandidates(source, baseDestination);
+        List<SearchBoxNeighborCandidate> candidates = scanResult.candidates;
         Log.d(TAG, "AUTO_SEARCH_BOX_TRACE thorough-neighbor: source=" + source
                 + ", base=" + baseDestination.regNum
                 + ", baseVisitedAt=" + baseDestination.visitedAtMs
                 + ", baseDistance=" + baseDestination.distanceSteps
-                + ", candidates=" + formatThoroughNeighborCandidates(candidates, baseDestination.visitedAtMs));
+                + ", candidates=" + formatThoroughNeighborCandidates(candidates, baseDestination.visitedAtMs)
+                + ", stats=" + formatThoroughNeighborStats(scanResult.stats));
         if (!candidates.isEmpty()) {
             SearchBoxNeighborCandidate selected = candidates.get(0);
             Log.d(TAG, "AUTO_SEARCH_BOX_TRACE thorough-neighbor: select detour="
                     + selected.regNum + ", pathLen=" + selected.distanceSteps
                     + ", visitedDeltaMs=" + (selected.visitedAtMs - baseDestination.visitedAtMs)
                     + ", then return to base=" + baseDestination.regNum);
+            postAutoTreasureRouteRebuildToChat("Тщательный обход", selected.regNum);
             return selected.regNum;
         }
 
@@ -377,6 +403,17 @@ public class MapAjax {
         return baseDestination.regNum;
     }
 
+    /**
+     * Возвращает базовую цель Auto-Клада без detour.
+     *
+     * Приоритет:
+     * - сначала непосещённые/просроченные клетки (TTL-модель),
+     * - затем fallback: самая "старая" visited-клетка.
+     *
+     * Для `Умной системы генерации`:
+     * - fallback-клетка дополнительно проверяется по минимальному возрасту visited;
+     * - если клетка слишком "свежая", метод возвращает `null` и маршрут не перестраивается.
+     */
     private static SearchBoxDestination findBaseSearchBoxDestination(String source, long nowMs) {
         boolean smartGenerationEnabled = isAutoTreasureSmartGenerationEnabled();
         int[] idx = new int[] {0, 0, -1, 1, -1, 1, -1, 1};
@@ -432,6 +469,7 @@ public class MapAjax {
                         + ", ageMs=" + ageMs
                         + ", minAgeMs=" + SEARCH_BOX_SMART_RECHECK_MIN_AGE_MS
                         + ", waitMs=" + waitMs);
+                postAutoTreasureRouteRebuildToChat("Умная генерация", oldestVisitedFallback);
                 return null;
             }
             Log.d(TAG, "AUTO_SEARCH_BOX_TRACE: fallback oldest-visited destination="
@@ -442,12 +480,25 @@ public class MapAjax {
         return null;
     }
 
-    private static List<SearchBoxNeighborCandidate> findThoroughNeighborCandidates(
+    /**
+     * Сканирует соседние клетки для режима "Тщательный обход".
+     *
+     * Кандидат принимается только если одновременно:
+     * - путь до него <= `SEARCH_BOX_THOROUGH_MAX_STEPS`,
+     * - он в манхэттен-радиусе <= `SEARCH_BOX_THOROUGH_MANHATTAN_RADIUS`,
+     * - у него есть visited-маркер,
+     * - он новее базовой цели, но не старше лимита `SEARCH_BOX_THOROUGH_MAX_NEWER_DELTA_MS`.
+     *
+     * Метод также возвращает статистику отбраковки для debug-аналитики в logcat.
+     */
+    private static SearchBoxNeighborScanResult findThoroughNeighborCandidates(
             String source,
             SearchBoxDestination baseDestination) {
+        SearchBoxNeighborDebugStats stats = new SearchBoxNeighborDebugStats();
         int[] sourceCoords = getCellCoordinates(source);
         if (sourceCoords == null || baseDestination == null || baseDestination.visitedAtMs <= 0L) {
-            return Collections.emptyList();
+            stats.skippedByNoSourceCoordsOrBase++;
+            return new SearchBoxNeighborScanResult(Collections.emptyList(), stats);
         }
 
         int[] idx = new int[] {0, 0, -1, 1, -1, 1, -1, 1};
@@ -470,40 +521,59 @@ public class MapAjax {
 
             for (int i = 0; i < idx.length; i++) {
                 String next = moveMapCell(current.regNum, idx[i], idy[i]);
-                if (next == null || next.isEmpty() || visited.contains(next)) {
+                if (next == null || next.isEmpty()) {
+                    stats.skippedByInvalidNeighbor++;
+                    continue;
+                }
+                if (visited.contains(next)) {
+                    stats.skippedByAlreadySeen++;
                     continue;
                 }
 
                 int nextDistance = current.distanceSteps + 1;
                 visited.add(next);
                 frontier.add(new SearchNode(next, nextDistance));
+                stats.discoveredNeighbors++;
 
                 if (nextDistance > SEARCH_BOX_THOROUGH_MAX_STEPS
-                        || next.equals(source)
-                        || next.equals(baseDestination.regNum)) {
+                        || next.equals(source)) {
+                    stats.skippedByPathLimitOrSource++;
+                    continue;
+                }
+                if (next.equals(baseDestination.regNum)) {
+                    stats.skippedByBaseCell++;
                     continue;
                 }
 
                 int[] nextCoords = getCellCoordinates(next);
                 if (nextCoords == null) {
+                    stats.skippedByMissingCoords++;
                     continue;
                 }
                 int manhattanDistance = Math.abs(nextCoords[0] - sourceCoords[0]) + Math.abs(nextCoords[1] - sourceCoords[1]);
                 if (manhattanDistance > SEARCH_BOX_THOROUGH_MANHATTAN_RADIUS) {
+                    stats.skippedByManhattanRadius++;
                     continue;
                 }
 
                 Long visitedAt = AppVars.SearchBoxVisited.get(next);
                 if (visitedAt == null || visitedAt <= 0L) {
+                    stats.skippedByNoVisitedMarker++;
                     continue;
                 }
 
                 long visitedDelta = visitedAt - baseDestination.visitedAtMs;
-                if (visitedDelta <= 0L || visitedDelta > SEARCH_BOX_THOROUGH_MAX_NEWER_DELTA_MS) {
+                if (visitedDelta <= 0L) {
+                    stats.skippedByVisitedDeltaNotNewer++;
+                    continue;
+                }
+                if (visitedDelta > SEARCH_BOX_THOROUGH_MAX_NEWER_DELTA_MS) {
+                    stats.skippedByVisitedDeltaTooLarge++;
                     continue;
                 }
 
                 candidates.add(new SearchBoxNeighborCandidate(next, visitedAt, nextDistance, manhattanDistance));
+                stats.acceptedCandidates++;
             }
         }
 
@@ -519,7 +589,7 @@ public class MapAjax {
             }
             return left.regNum.compareToIgnoreCase(right.regNum);
         });
-        return candidates;
+        return new SearchBoxNeighborScanResult(candidates, stats);
     }
 
     private static String formatThoroughNeighborCandidates(List<SearchBoxNeighborCandidate> candidates, long baseVisitedAtMs) {
@@ -547,6 +617,31 @@ public class MapAjax {
         }
         sb.append("]");
         return sb.toString();
+    }
+
+    /**
+     * Формирует плоскую строку `stats={...}` для логов `AUTO_SEARCH_BOX_TRACE`.
+     *
+     * Задача формата — дать быстрый ответ "почему клетка не попала в detour":
+     * по ключам `skip*` видно причину отбраковки без дополнительного дебага.
+     */
+    private static String formatThoroughNeighborStats(SearchBoxNeighborDebugStats stats) {
+        if (stats == null) {
+            return "{}";
+        }
+        return "{discovered=" + stats.discoveredNeighbors
+                + ",accepted=" + stats.acceptedCandidates
+                + ",skipInvalidNeighbor=" + stats.skippedByInvalidNeighbor
+                + ",skipAlreadySeen=" + stats.skippedByAlreadySeen
+                + ",skipPathOrSource=" + stats.skippedByPathLimitOrSource
+                + ",skipBase=" + stats.skippedByBaseCell
+                + ",skipNoCoords=" + stats.skippedByMissingCoords
+                + ",skipManhattan=" + stats.skippedByManhattanRadius
+                + ",skipNoVisited=" + stats.skippedByNoVisitedMarker
+                + ",skipDeltaNotNewer=" + stats.skippedByVisitedDeltaNotNewer
+                + ",skipDeltaTooLarge=" + stats.skippedByVisitedDeltaTooLarge
+                + ",skipNoSourceOrBase=" + stats.skippedByNoSourceCoordsOrBase
+                + "}";
     }
 
     private static int[] getCellCoordinates(String regNum) {
@@ -626,6 +721,40 @@ public class MapAjax {
             this.visitedAtMs = visitedAtMs;
             this.distanceSteps = distanceSteps;
             this.manhattanDistance = manhattanDistance;
+        }
+    }
+
+    /**
+     * Диагностические счётчики причин отбраковки detour-кандидатов.
+     * Выводятся в `AUTO_SEARCH_BOX_TRACE ... stats={...}`.
+     */
+    private static final class SearchBoxNeighborDebugStats {
+        int discoveredNeighbors;
+        int acceptedCandidates;
+        int skippedByInvalidNeighbor;
+        int skippedByAlreadySeen;
+        int skippedByPathLimitOrSource;
+        int skippedByBaseCell;
+        int skippedByMissingCoords;
+        int skippedByManhattanRadius;
+        int skippedByNoVisitedMarker;
+        int skippedByVisitedDeltaNotNewer;
+        int skippedByVisitedDeltaTooLarge;
+        int skippedByNoSourceCoordsOrBase;
+    }
+
+    /**
+     * Результат сканирования соседей:
+     * - `candidates` — отфильтрованные detour-клетки (после сортировки),
+     * - `stats` — сводка причин отбраковки.
+     */
+    private static final class SearchBoxNeighborScanResult {
+        final List<SearchBoxNeighborCandidate> candidates;
+        final SearchBoxNeighborDebugStats stats;
+
+        SearchBoxNeighborScanResult(List<SearchBoxNeighborCandidate> candidates, SearchBoxNeighborDebugStats stats) {
+            this.candidates = candidates;
+            this.stats = stats;
         }
     }
 
@@ -1047,6 +1176,63 @@ public class MapAjax {
         Intent intent = new Intent(AppVars.ACTION_ADD_CHAT_MESSAGE);
         intent.putExtra("message", messageHtml);
         LocalBroadcastManager.getInstance(context).sendBroadcast(intent);
+    }
+
+    /**
+     * Пишет системное уведомление в чат о перестроении обхода Auto-Клада.
+     *
+     * Использование:
+     * - "Тщательный обход": выбран detour-кандидат;
+     * - "Умная генерация": fallback-клетка отложена до достижения минимального возраста.
+     *
+     * Защита от дублей:
+     * - общий cooldown между сообщениями;
+     * - suppress одинаковой пары `настройка|клетка` на коротком окне.
+     */
+    private static void postAutoTreasureRouteRebuildToChat(String settingName, String detourRegNum) {
+        if (settingName == null || settingName.isEmpty() || detourRegNum == null || detourRegNum.isEmpty()) {
+            return;
+        }
+        android.content.Context context = AppVars.getContext();
+        if (context == null) {
+            return;
+        }
+
+        long now = System.currentTimeMillis();
+        if ((now - lastAutoTreasureRouteChatAtMs) < AUTO_TREASURE_ROUTE_CHAT_COOLDOWN_MS) {
+            return;
+        }
+        String key = settingName + "|" + detourRegNum;
+        if (key.equals(lastAutoTreasureRouteChatKey)
+                && (now - lastAutoTreasureRouteChatKeyAtMs) < AUTO_TREASURE_ROUTE_CHAT_DUPLICATE_SUPPRESS_MS) {
+            return;
+        }
+        lastAutoTreasureRouteChatAtMs = now;
+        lastAutoTreasureRouteChatKeyAtMs = now;
+        lastAutoTreasureRouteChatKey = key;
+
+        String messageHtml = MainPhp.buildServerChatTimeHtmlExternal()
+                + "<font color=#6f42c1><b>Авто-Клад: Перестраиваю обход согласно \""
+                + escapeHtml(settingName)
+                + "\": Дообход клетки: "
+                + escapeHtml(detourRegNum)
+                + "</b></font>";
+        Intent intent = new Intent(AppVars.ACTION_ADD_CHAT_MESSAGE);
+        intent.putExtra("message", messageHtml);
+        LocalBroadcastManager.getInstance(context).sendBroadcast(intent);
+    }
+
+    // Экранирует текст для безопасной вставки в HTML-сообщение чата.
+    private static String escapeHtml(String value) {
+        if (value == null || value.isEmpty()) {
+            return "";
+        }
+        return value
+                .replace("&", "&amp;")
+                .replace("<", "&lt;")
+                .replace(">", "&gt;")
+                .replace("\"", "&quot;")
+                .replace("'", "&#39;");
     }
 
     private static boolean shouldDelayAutoMovingStep(String currentRegNum) {

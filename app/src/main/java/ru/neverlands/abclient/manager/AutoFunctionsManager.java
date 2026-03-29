@@ -58,9 +58,20 @@ public class AutoFunctionsManager {
     private static final String PREF_AUTO_TREASURE_SHOVEL = "auto_treasure_shovel";
     private static final String PREF_AUTO_TREASURE_FIXED_CELL_ENABLED = "auto_treasure_fixed_cell_enabled";
     private static final String PREF_AUTO_TREASURE_FIXED_CELL = "auto_treasure_fixed_cell";
+    // Доп. флаги поведения Auto-Клада (хранятся в default SharedPreferences, чтобы
+    // postfilter-контур `MapAjax` мог читать те же значения без дублирования состояния):
+    // - THOROUGH_NEIGHBOR_CHECK: дообход соседних клеток перед базовой "старой" целью.
+    // - SMART_GENERATION: защита от повторных проверок слишком "свежих" клеток.
     private static final String PREF_AUTO_TREASURE_THOROUGH_NEIGHBOR_CHECK =
             "auto_treasure_thorough_neighbor_check";
     private static final String PREF_AUTO_TREASURE_SMART_GENERATION = "auto_treasure_smart_generation";
+    private static final String PREF_AUTO_TREASURE_THOROUGH_NEIGHBOR_RADIUS =
+            "auto_treasure_thorough_neighbor_radius";
+    private static final String PREF_AUTO_TREASURE_DETOUR_CHAT_ENABLED =
+            "auto_treasure_detour_chat_enabled";
+    private static final int AUTO_TREASURE_THOROUGH_RADIUS_MIN = 1;
+    private static final int AUTO_TREASURE_THOROUGH_RADIUS_MAX = 3;
+    private static final int AUTO_TREASURE_THOROUGH_RADIUS_DEFAULT = 3;
     public static final String TREASURE_SHOVEL_NONE = "Нет";
     public static final String TREASURE_SHOVEL_ANY = "Любая лопата";
     public static final String TREASURE_SHOVEL_SEEKER = "Лопата кладоискателя";
@@ -1630,6 +1641,15 @@ public class AutoFunctionsManager {
         return getDefaultBoolean(PREF_AUTO_TREASURE_THOROUGH_NEIGHBOR_CHECK, false);
     }
 
+    /**
+     * Сохраняет флаг "Тщательная проверка соседних клеток" для Auto-Клада.
+     *
+     * Зависимости:
+     * - `QuickButtonsPanel.showAutoTreasureSettingsDialog()` — запись значения из UI.
+     * - `MapAjax.findNextDestForBox(...)` — чтение значения и выбор detour-клеток.
+     * - `PreferenceManager.getDefaultSharedPreferences(...)` — единое хранилище с другими
+     *   настройками карты/автофункций.
+     */
     public void setAutoTreasureThoroughNeighborCheckEnabled(boolean enabled) {
         putDefaultBoolean(PREF_AUTO_TREASURE_THOROUGH_NEIGHBOR_CHECK, enabled);
     }
@@ -1647,8 +1667,70 @@ public class AutoFunctionsManager {
         return getDefaultBoolean(PREF_AUTO_TREASURE_SMART_GENERATION, false);
     }
 
+    /**
+     * Сохраняет флаг "Умная система генерации" для Auto-Клада.
+     *
+     * Зависимости:
+     * - `QuickButtonsPanel.showAutoTreasureSettingsDialog()` — запись флага из чекбокса.
+     * - `MapAjax.findBaseSearchBoxDestination(...)` — фильтрация fallback-целей по возрасту
+     *   метки посещения (анти-повтор свежих клеток).
+     */
     public void setAutoTreasureSmartGenerationEnabled(boolean enabled) {
         putDefaultBoolean(PREF_AUTO_TREASURE_SMART_GENERATION, enabled);
+    }
+
+    /**
+     * Радиус "Дообхода" для Auto-Клада (манхэттен-радиус от текущей клетки).
+     *
+     * Допустимый диапазон:
+     * - минимум: 1;
+     * - максимум: 3.
+     *
+     * Зависимости:
+     * - `QuickButtonsPanel.showAutoTreasureSettingsDialog()` задаёт значение из UI;
+     * - `MapAjax.findThoroughNeighborCandidates(...)` читает это значение при отборе соседних клеток.
+     */
+    public int getAutoTreasureThoroughNeighborRadius() {
+        int value = getDefaultInt(
+                PREF_AUTO_TREASURE_THOROUGH_NEIGHBOR_RADIUS,
+                AUTO_TREASURE_THOROUGH_RADIUS_DEFAULT
+        );
+        return Math.max(
+                AUTO_TREASURE_THOROUGH_RADIUS_MIN,
+                Math.min(AUTO_TREASURE_THOROUGH_RADIUS_MAX, value)
+        );
+    }
+
+    /**
+     * Сохраняет радиус "Дообхода" (манхэттен) для Auto-Клада.
+     *
+     * Валидация:
+     * - любое входное значение принудительно ограничивается диапазоном [1..3].
+     */
+    public void setAutoTreasureThoroughNeighborRadius(int radius) {
+        int normalized = Math.max(
+                AUTO_TREASURE_THOROUGH_RADIUS_MIN,
+                Math.min(AUTO_TREASURE_THOROUGH_RADIUS_MAX, radius)
+        );
+        putDefaultInt(PREF_AUTO_TREASURE_THOROUGH_NEIGHBOR_RADIUS, normalized);
+    }
+
+    /**
+     * Флаг вывода в чат сообщений о перестроении маршрута дообхода.
+     *
+     * Зависимости:
+     * - `QuickButtonsPanel.showAutoTreasureSettingsDialog()` — настройка чекбокса;
+     * - `MapAjax.postAutoTreasureRouteRebuildToChat(...)` — фактический вывод системного сообщения.
+     */
+    public boolean isAutoTreasureDetourChatEnabled() {
+        return getDefaultBoolean(PREF_AUTO_TREASURE_DETOUR_CHAT_ENABLED, false);
+    }
+
+    /**
+     * Сохраняет флаг вывода в чат сообщений о перестроении маршрута дообхода.
+     */
+    public void setAutoTreasureDetourChatEnabled(boolean enabled) {
+        putDefaultBoolean(PREF_AUTO_TREASURE_DETOUR_CHAT_ENABLED, enabled);
     }
 
     private String normalizeRegNum(String value) {
