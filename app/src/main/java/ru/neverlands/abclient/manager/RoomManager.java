@@ -392,8 +392,15 @@ public class RoomManager {
      * Защита от ложной синхронизации названий карты по `ch.php?lo=1` в городских комнатах.
      *
      * Условие "мы на природе":
-     * - верхний фрейм сейчас в карте (`get_id=56&act=10&go=ret`) ИЛИ в HTML есть map-пейлоад `var map = [[`;
+     * - верхний фрейм сейчас в карте (`get_id=56&act=10&go=ret/inf`) ИЛИ в HTML есть map-пейлоад `var map = [[`
+     *   при условии, что URL верхнего фрейма не указывает на городской экран (`go=build`);
      * - текущий `MapLocation` указывает на известную клетку `ExtMap.Cells`.
+     *
+     * Почему так:
+     * - после телепорта в город `AppVars.ContentMainPhp` может кратковременно хранить старый map-пейлоад
+     *   от "природы", и один только `var map = [[` даёт ложноположительный контекст;
+     * - если в этот момент применить pinfo (`Октал [Рынок]`) к полевой клетке, получаем неверное
+     *   переименование карты (как в логах с 4-507).
      */
     private static boolean isNatureMapContextForCellRename() {
         if (AppVars.Profile == null) {
@@ -404,12 +411,62 @@ public class RoomManager {
             return false;
         }
 
-        String topUrl = AppVars.url_main_top == null ? "" : AppVars.url_main_top.toLowerCase(Locale.ROOT);
-        boolean mapByTopUrl = topUrl.contains("get_id=56")
-                && topUrl.contains("act=10")
-                && (topUrl.contains("go=ret") || topUrl.contains("go=inf"));
-        boolean mapByMainHtml = !isEmpty(AppVars.ContentMainPhp) && AppVars.ContentMainPhp.contains("var map = [[");
+        String topUrlLower = AppVars.url_main_top == null ? "" : AppVars.url_main_top.toLowerCase(Locale.ROOT);
+        boolean mapByTopUrl = topUrlLower.contains("get_id=56")
+                && topUrlLower.contains("act=10")
+                && (topUrlLower.contains("go=ret") || topUrlLower.contains("go=inf"));
+
+        // Городские экраны (`go=build`) должны жёстко блокировать map-rename.
+        if (isCityMainFrameByUrl(topUrlLower)) {
+            return false;
+        }
+
+        // Fallback по HTML разрешаем только когда URL верхнего фрейма пустой/неизвестный
+        // либо уже явно map-контекст (`go=ret/inf`).
+        boolean allowMapHtmlFallback = isEmpty(topUrlLower) || mapByTopUrl;
+        boolean mapByMainHtml = allowMapHtmlFallback
+                && hasNatureMapPayload(AppVars.ContentMainPhp)
+                && !isCityMainFrameByHtml(AppVars.ContentMainPhp);
         return mapByTopUrl || mapByMainHtml;
+    }
+
+    /**
+     * Признак городского top-frame по URL.
+     *
+     * Зависимости:
+     * - `MainPhpCityNavigation`: маршрутизация в городе использует `go=build` и city-screen HTML.
+     * - `RoomManager.isNatureMapContextForCellRename()`: этот хелпер — фильтр ложного "природного"
+     *   контекста при телепортах/переходах по городу.
+     */
+    private static boolean isCityMainFrameByUrl(String topUrlLower) {
+        if (isEmpty(topUrlLower)) {
+            return false;
+        }
+        return topUrlLower.contains("go=build");
+    }
+
+    /**
+     * Признак "природной" карты по HTML main.php.
+     */
+    private static boolean hasNatureMapPayload(String html) {
+        return !isEmpty(html) && html.contains("var map = [[");
+    }
+
+    /**
+     * Признак городского main.php по HTML (fallback, когда URL ещё не обновился).
+     *
+     * Берём маркеры из `MainPhpCityNavigation`:
+     * - `USEMAP="#links"` + набор `<area shape=...>`;
+     * - фон/ресурсы городских экранов (`/cities/`).
+     */
+    private static boolean isCityMainFrameByHtml(String html) {
+        if (isEmpty(html)) {
+            return false;
+        }
+        String lower = html.toLowerCase(Locale.ROOT);
+        boolean hasCityUseMap = lower.contains("usemap=\"#links\"") && lower.contains("<area shape=");
+        boolean hasCityAssets = lower.contains("/cities/");
+        return hasCityUseMap || hasCityAssets;
     }
 
     /**
