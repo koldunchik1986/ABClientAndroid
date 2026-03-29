@@ -912,7 +912,7 @@ public class QuickButtonsPanel {
         root.addView(thoroughNeighborCheck);
 
         CheckBox smartGeneration = new CheckBox(context);
-        smartGeneration.setText("Умная система генерации");
+        smartGeneration.setText("Умная система генерации (без повтора свежих клеток)");
         smartGeneration.setChecked(autoFunctionsManager.isAutoTreasureSmartGenerationEnabled());
         smartGeneration.setPadding(0, pad, 0, 0);
         root.addView(smartGeneration);
