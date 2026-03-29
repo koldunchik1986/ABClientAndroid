@@ -1409,6 +1409,27 @@ final class BossAuto {
         prefs.edit().putBoolean(PREF_AUTO_BOSS_CLAN_NOTIFY, enabled).apply();
     }
 
+    /**
+     * Признак активного сценария поиска/входа в бой, в котором нежелательны
+     * фоновые переименования карты по pinfo и искусственные задержки шага карты.
+     *
+     * Используется как runtime-guard для:
+     * - `RoomManager` (пауза `MapRebuildFromPinfo`);
+     * - `MapAjax` (пауза `MapCellCheckTimeout` при активном Авто-Боссе).
+     */
+    boolean shouldPauseMapRebuildFromPinfo() {
+        if (!isAutoBossEnabled()) {
+            return false;
+        }
+        BossStage currentStage;
+        synchronized (lock) {
+            currentStage = stage;
+        }
+        return currentStage == BossStage.SEARCHING_TARGET
+                || currentStage == BossStage.TARGET_FOUND_WAIT_SCROLL
+                || currentStage == BossStage.WAIT_FIGHT_START;
+    }
+
     int getAutoBossWaitBeforeScrollSec() {
         int value = prefs.getInt(PREF_AUTO_BOSS_WAIT_SCROLL_SEC, DEFAULT_WAIT_BEFORE_SCROLL_SEC);
         if (value < 1) return 1;

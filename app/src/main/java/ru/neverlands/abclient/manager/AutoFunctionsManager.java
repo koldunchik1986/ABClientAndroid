@@ -1224,6 +1224,14 @@ public class AutoFunctionsManager {
     public void setAutoBossWaitFightTimeoutSec(int sec) {
         bossAuto.setAutoBossWaitFightTimeoutSec(sec);
     }
+
+    /**
+     * Runtime-флаг: нужно ли временно приостановить map-rebuild по pinfo
+     * (и связанные задержки карты), пока Авто-Босс ищет цель/заходит в бой.
+     */
+    public boolean shouldPauseMapRebuildFromPinfoByAutoBoss() {
+        return bossAuto.shouldPauseMapRebuildFromPinfo();
+    }
     // Внутренние точки расширения для вынесенных модулей (например, `CompasAuto`).
     // Оставляем package-private доступ, чтобы не раскрывать их наружу API менеджера.
     void requestCharacterSyncForAutoFunctionEnableInternal(String functionName) {

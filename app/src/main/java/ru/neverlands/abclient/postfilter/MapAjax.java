@@ -1229,7 +1229,14 @@ public class MapAjax {
         if (settingName == null || settingName.isEmpty() || detourRegNum == null || detourRegNum.isEmpty()) {
             return;
         }
+        if (!AppVars.DoSearchBox) {
+            Log.d(TAG, "AUTO_SEARCH_BOX_TRACE route-chat skipped: DoSearchBox=false"
+                    + ", setting=" + settingName + ", cell=" + detourRegNum);
+            return;
+        }
         if (!isAutoTreasureDetourChatEnabled()) {
+            Log.d(TAG, "AUTO_SEARCH_BOX_TRACE route-chat skipped by setting"
+                    + ", setting=" + settingName + ", cell=" + detourRegNum);
             return;
         }
         android.content.Context context = AppVars.getContext();
@@ -1302,6 +1309,16 @@ public class MapAjax {
     private static int resolveMapCellCheckTimeoutMs() {
         if (AppVars.Profile == null || !AppVars.Profile.MapRebuildFromPinfo) {
             return 0;
+        }
+        try {
+            if (AppVars.getContext() != null
+                    && AutoFunctionsManager.getInstance(AppVars.getContext())
+                    .shouldPauseMapRebuildFromPinfoByAutoBoss()) {
+                Log.d(TAG, "MAP_NAME_SYNC_TRACE: skip map step delay (Auto-Boss active search stage)");
+                return 0;
+            }
+        } catch (Exception e) {
+            Log.w(TAG, "MAP_NAME_SYNC_TRACE: map step delay pause check failed", e);
         }
         int raw = AppVars.Profile.MapCellCheckTimeoutMs;
         if (raw < MAP_CELL_CHECK_TIMEOUT_MIN_MS) {

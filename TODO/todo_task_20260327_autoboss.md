@@ -82,3 +82,8 @@
 - [x] При обнаружении цели:
   - [x] если персонаж в клане — отправка в `%clan%` сообщения с точной клеткой;
   - [x] если персонаж вне клана — локальное уведомление «Мы вне клана. Сообщение отменено.»
+## Обновление 2026-03-30: пауза map-rebuild по pinfo во время поиска Босса
+- [x] В `BossAuto` добавлен runtime-флаг `shouldPauseMapRebuildFromPinfo()` для стадий поиска/входа в бой.
+- [x] В `AutoFunctionsManager` добавлен фасад `shouldPauseMapRebuildFromPinfoByAutoBoss()`.
+- [x] В `RoomManager` map-rebuild (`MapRebuildFromPinfo`) теперь временно отключается, пока активен поиск Босса.
+- [x] В `MapAjax` отключается задержка шага карты (`MapCellCheckTimeoutMs`) во время активного поиска Босса.

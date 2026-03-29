@@ -277,7 +277,25 @@ public class RoomManager {
     }
 
     private static boolean isMapRebuildFromPinfoEnabled() {
-        return AppVars.Profile != null && AppVars.Profile.MapRebuildFromPinfo;
+        if (AppVars.Profile == null || !AppVars.Profile.MapRebuildFromPinfo) {
+            return false;
+        }
+        try {
+            Context context = AppVars.getContext();
+            if (context == null) {
+                return true;
+            }
+            boolean pausedByAutoBoss = AutoFunctionsManager
+                    .getInstance(context)
+                    .shouldPauseMapRebuildFromPinfoByAutoBoss();
+            if (pausedByAutoBoss) {
+                Log.d(TAG, "MAP_NAME_SYNC_TRACE: map-rebuild paused by Auto-Boss active search stage");
+                return false;
+            }
+        } catch (Exception e) {
+            Log.w(TAG, "MAP_NAME_SYNC_TRACE: map-rebuild pause check failed", e);
+        }
+        return true;
     }
 
     private static void maybeSyncCellMetaFromOwnPinfo(Context context) {
