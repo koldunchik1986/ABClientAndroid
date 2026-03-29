@@ -291,6 +291,23 @@ public class MapAjax {
             AppVars.AutoMovingJumps = 0;
             Log.i(TAG, "AUTO_SEARCH_BOX_TRACE: rotate destination to " + nextSearchDestination);
         }
+        else if (AppVars.DoSearchBox && isAutoTreasureThoroughNeighborCheckEnabled()) {
+            // Для режима "Тщательный обход" переоцениваем цель на каждом шаге.
+            // Это устраняет сценарий, когда маршрут уже проложен далеко вперёд,
+            // и detour-логика включается только после достижения старой цели.
+            String stepSearchDestination = findNextDestForBox(mapLocation);
+            if (stepSearchDestination != null
+                    && !stepSearchDestination.isEmpty()
+                    && !stepSearchDestination.equals(AppVars.AutoMovingDestinaton)) {
+                Log.i(TAG, "AUTO_SEARCH_BOX_TRACE: step re-evaluate destination "
+                        + AppVars.AutoMovingDestinaton + " -> " + stepSearchDestination
+                        + " (source=" + mapLocation + ")");
+                AppVars.AutoMovingDestinaton = stepSearchDestination;
+                AppVars.AutoMovingMapPath = null;
+                AppVars.AutoMovingNextJump = null;
+                AppVars.AutoMovingJumps = 0;
+            }
+        }
 
         if (shouldDelayAutoMovingStep(mapLocation)) {
             return html;
