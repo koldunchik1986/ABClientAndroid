@@ -58,6 +58,8 @@ public class AutoFunctionsManager {
     private static final String PREF_AUTO_TREASURE_SHOVEL = "auto_treasure_shovel";
     private static final String PREF_AUTO_TREASURE_FIXED_CELL_ENABLED = "auto_treasure_fixed_cell_enabled";
     private static final String PREF_AUTO_TREASURE_FIXED_CELL = "auto_treasure_fixed_cell";
+    private static final String PREF_AUTO_TREASURE_THOROUGH_NEIGHBOR_CHECK =
+            "auto_treasure_thorough_neighbor_check";
     public static final String TREASURE_SHOVEL_NONE = "Нет";
     public static final String TREASURE_SHOVEL_ANY = "Любая лопата";
     public static final String TREASURE_SHOVEL_SEEKER = "Лопата кладоискателя";
@@ -1613,6 +1615,22 @@ public class AutoFunctionsManager {
 
     public boolean isAutoTreasureFixedCellConfigured() {
         return isAutoTreasureFixedCellEnabled() && !getAutoTreasureFixedCellRegNum().isEmpty();
+    }
+
+    /**
+     * Доп. режим "Авто-Клад": тщательная проверка соседних клеток.
+     *
+     * Зависимости:
+     * - `MapAjax.findNextDestForBox(...)` читает это значение и встраивает detour-логику
+     *   поверх базового выбора "самой старой" клетки.
+     * - Настройка хранится в default SharedPreferences, как и остальные параметры Auto-Клада.
+     */
+    public boolean isAutoTreasureThoroughNeighborCheckEnabled() {
+        return getDefaultBoolean(PREF_AUTO_TREASURE_THOROUGH_NEIGHBOR_CHECK, false);
+    }
+
+    public void setAutoTreasureThoroughNeighborCheckEnabled(boolean enabled) {
+        putDefaultBoolean(PREF_AUTO_TREASURE_THOROUGH_NEIGHBOR_CHECK, enabled);
     }
 
     private String normalizeRegNum(String value) {

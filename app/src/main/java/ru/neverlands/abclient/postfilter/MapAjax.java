@@ -1,6 +1,7 @@
 package ru.neverlands.abclient.postfilter;
 
 import java.util.ArrayDeque;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
@@ -26,6 +27,9 @@ import android.util.Log;
 public class MapAjax {
     private static final String TAG = "MapAjax";
     private static final long SEARCH_BOX_VISITED_TTL_MS = 24L * 60L * 60L * 1000L;
+    private static final int SEARCH_BOX_THOROUGH_MANHATTAN_RADIUS = 3;
+    private static final int SEARCH_BOX_THOROUGH_MAX_STEPS = 5;
+    private static final long SEARCH_BOX_THOROUGH_MAX_NEWER_DELTA_MS = 12L * 60L * 60L * 1000L;
     private static final int AUTO_MOVING_TIED_STEP_COST = 2;
     private static final int AUTO_DRINK_BLAZ_NEAR_THRESHOLD_DELTA = 6;
     private static final int MAP_CELL_CHECK_TIMEOUT_MIN_MS = 0;
@@ -336,53 +340,269 @@ public class MapAjax {
             return fixedModeDestination;
         }
 
+        long nowMs = System.currentTimeMillis();
+        SearchBoxDestination baseDestination = findBaseSearchBoxDestination(source, nowMs);
+        if (baseDestination == null || baseDestination.regNum == null || baseDestination.regNum.isEmpty()) {
+            return null;
+        }
+
+        if (!isAutoTreasureThoroughNeighborCheckEnabled()) {
+            return baseDestination.regNum;
+        }
+
+        if (baseDestination.visitedAtMs <= 0L) {
+            Log.d(TAG, "AUTO_SEARCH_BOX_TRACE thorough-neighbor: skip (base has no visited), base="
+                    + baseDestination.regNum);
+            return baseDestination.regNum;
+        }
+
+        List<SearchBoxNeighborCandidate> candidates = findThoroughNeighborCandidates(source, baseDestination);
+        Log.d(TAG, "AUTO_SEARCH_BOX_TRACE thorough-neighbor: source=" + source
+                + ", base=" + baseDestination.regNum
+                + ", baseVisitedAt=" + baseDestination.visitedAtMs
+                + ", baseDistance=" + baseDestination.distanceSteps
+                + ", candidates=" + formatThoroughNeighborCandidates(candidates, baseDestination.visitedAtMs));
+        if (!candidates.isEmpty()) {
+            SearchBoxNeighborCandidate selected = candidates.get(0);
+            Log.d(TAG, "AUTO_SEARCH_BOX_TRACE thorough-neighbor: select detour="
+                    + selected.regNum + ", pathLen=" + selected.distanceSteps
+                    + ", visitedDeltaMs=" + (selected.visitedAtMs - baseDestination.visitedAtMs)
+                    + ", then return to base=" + baseDestination.regNum);
+            return selected.regNum;
+        }
+
+        Log.d(TAG, "AUTO_SEARCH_BOX_TRACE thorough-neighbor: no detour candidates, use base="
+                + baseDestination.regNum);
+        return baseDestination.regNum;
+    }
+
+    private static SearchBoxDestination findBaseSearchBoxDestination(String source, long nowMs) {
         int[] idx = new int[] {0, 0, -1, 1, -1, 1, -1, 1};
         int[] idy = new int[] {-1, 1, 0, 0, -1, -1, 1, 1};
 
         Set<String> visited = new HashSet<>();
-        ArrayDeque<String> frontier = new ArrayDeque<>();
+        ArrayDeque<SearchNode> frontier = new ArrayDeque<>();
         visited.add(source);
-        frontier.add(source);
+        frontier.add(new SearchNode(source, 0));
 
-        long nowMs = System.currentTimeMillis();
         String oldestVisitedFallback = null;
         long oldestVisitedAtMs = Long.MAX_VALUE;
+        int oldestVisitedDistance = Integer.MAX_VALUE;
+
         while (!frontier.isEmpty()) {
-            int batch = frontier.size();
-            for (int k = 0; k < batch; k++) {
-                String current = frontier.poll();
-                if (current == null || current.isEmpty()) {
+            SearchNode current = frontier.poll();
+            if (current == null || current.regNum == null || current.regNum.isEmpty()) {
+                continue;
+            }
+            for (int i = 0; i < idx.length; i++) {
+                String next = moveMapCell(current.regNum, idx[i], idy[i]);
+                if (next == null || next.isEmpty() || visited.contains(next)) {
                     continue;
                 }
-                for (int i = 0; i < idx.length; i++) {
-                    String next = moveMapCell(current, idx[i], idy[i]);
-                    if (next == null || next.isEmpty() || visited.contains(next)) {
-                        continue;
-                    }
-                    visited.add(next);
-                    frontier.add(next);
+                int nextDistance = current.distanceSteps + 1;
+                visited.add(next);
+                frontier.add(new SearchNode(next, nextDistance));
 
-                    if (isSearchBoxCandidate(next, nowMs)) {
-                        return next;
-                    }
+                if (isSearchBoxCandidate(next, nowMs)) {
                     Long visitedAt = AppVars.SearchBoxVisited.get(next);
-                    if (visitedAt != null
-                            && visitedAt > 0L
-                            && !next.equals(source)
-                            && visitedAt < oldestVisitedAtMs) {
-                        oldestVisitedAtMs = visitedAt;
-                        oldestVisitedFallback = next;
-                    }
+                    long visitedAtMs = visitedAt == null ? -1L : visitedAt;
+                    return new SearchBoxDestination(next, visitedAtMs, nextDistance);
+                }
+
+                Long visitedAt = AppVars.SearchBoxVisited.get(next);
+                if (visitedAt != null
+                        && visitedAt > 0L
+                        && !next.equals(source)
+                        && (visitedAt < oldestVisitedAtMs
+                        || (visitedAt.equals(oldestVisitedAtMs) && nextDistance < oldestVisitedDistance))) {
+                    oldestVisitedAtMs = visitedAt;
+                    oldestVisitedFallback = next;
+                    oldestVisitedDistance = nextDistance;
                 }
             }
         }
+
         if (oldestVisitedFallback != null && !oldestVisitedFallback.isEmpty()) {
             long ageMs = Math.max(0L, nowMs - oldestVisitedAtMs);
             Log.d(TAG, "AUTO_SEARCH_BOX_TRACE: fallback oldest-visited destination="
                     + oldestVisitedFallback + ", ageMs=" + ageMs);
-            return oldestVisitedFallback;
+            return new SearchBoxDestination(oldestVisitedFallback, oldestVisitedAtMs, oldestVisitedDistance);
         }
         return null;
+    }
+
+    private static List<SearchBoxNeighborCandidate> findThoroughNeighborCandidates(
+            String source,
+            SearchBoxDestination baseDestination) {
+        int[] sourceCoords = getCellCoordinates(source);
+        if (sourceCoords == null || baseDestination == null || baseDestination.visitedAtMs <= 0L) {
+            return Collections.emptyList();
+        }
+
+        int[] idx = new int[] {0, 0, -1, 1, -1, 1, -1, 1};
+        int[] idy = new int[] {-1, 1, 0, 0, -1, -1, 1, 1};
+
+        Set<String> visited = new HashSet<>();
+        ArrayDeque<SearchNode> frontier = new ArrayDeque<>();
+        List<SearchBoxNeighborCandidate> candidates = new ArrayList<>();
+        visited.add(source);
+        frontier.add(new SearchNode(source, 0));
+
+        while (!frontier.isEmpty()) {
+            SearchNode current = frontier.poll();
+            if (current == null || current.regNum == null || current.regNum.isEmpty()) {
+                continue;
+            }
+            if (current.distanceSteps >= SEARCH_BOX_THOROUGH_MAX_STEPS) {
+                continue;
+            }
+
+            for (int i = 0; i < idx.length; i++) {
+                String next = moveMapCell(current.regNum, idx[i], idy[i]);
+                if (next == null || next.isEmpty() || visited.contains(next)) {
+                    continue;
+                }
+
+                int nextDistance = current.distanceSteps + 1;
+                visited.add(next);
+                frontier.add(new SearchNode(next, nextDistance));
+
+                if (nextDistance > SEARCH_BOX_THOROUGH_MAX_STEPS
+                        || next.equals(source)
+                        || next.equals(baseDestination.regNum)) {
+                    continue;
+                }
+
+                int[] nextCoords = getCellCoordinates(next);
+                if (nextCoords == null) {
+                    continue;
+                }
+                int manhattanDistance = Math.abs(nextCoords[0] - sourceCoords[0]) + Math.abs(nextCoords[1] - sourceCoords[1]);
+                if (manhattanDistance > SEARCH_BOX_THOROUGH_MANHATTAN_RADIUS) {
+                    continue;
+                }
+
+                Long visitedAt = AppVars.SearchBoxVisited.get(next);
+                if (visitedAt == null || visitedAt <= 0L) {
+                    continue;
+                }
+
+                long visitedDelta = visitedAt - baseDestination.visitedAtMs;
+                if (visitedDelta <= 0L || visitedDelta > SEARCH_BOX_THOROUGH_MAX_NEWER_DELTA_MS) {
+                    continue;
+                }
+
+                candidates.add(new SearchBoxNeighborCandidate(next, visitedAt, nextDistance, manhattanDistance));
+            }
+        }
+
+        candidates.sort((left, right) -> {
+            if (left.distanceSteps != right.distanceSteps) {
+                return Integer.compare(left.distanceSteps, right.distanceSteps);
+            }
+            if (left.visitedAtMs != right.visitedAtMs) {
+                return Long.compare(left.visitedAtMs, right.visitedAtMs);
+            }
+            if (left.manhattanDistance != right.manhattanDistance) {
+                return Integer.compare(left.manhattanDistance, right.manhattanDistance);
+            }
+            return left.regNum.compareToIgnoreCase(right.regNum);
+        });
+        return candidates;
+    }
+
+    private static String formatThoroughNeighborCandidates(List<SearchBoxNeighborCandidate> candidates, long baseVisitedAtMs) {
+        if (candidates == null || candidates.isEmpty()) {
+            return "[]";
+        }
+        int maxItems = Math.min(candidates.size(), 8);
+        StringBuilder sb = new StringBuilder("[");
+        for (int i = 0; i < maxItems; i++) {
+            SearchBoxNeighborCandidate candidate = candidates.get(i);
+            if (candidate == null) {
+                continue;
+            }
+            if (sb.length() > 1) {
+                sb.append(", ");
+            }
+            sb.append(candidate.regNum)
+                    .append("(path=").append(candidate.distanceSteps)
+                    .append(",manh=").append(candidate.manhattanDistance)
+                    .append(",deltaMs=").append(Math.max(0L, candidate.visitedAtMs - baseVisitedAtMs))
+                    .append(")");
+        }
+        if (candidates.size() > maxItems) {
+            sb.append(", ... +").append(candidates.size() - maxItems);
+        }
+        sb.append("]");
+        return sb.toString();
+    }
+
+    private static int[] getCellCoordinates(String regNum) {
+        String location = ExtMap.InvLocation.get(regNum);
+        if (location == null || location.isEmpty()) {
+            return null;
+        }
+        String[] parts = location.split("[/_]");
+        if (parts.length < 2) {
+            return null;
+        }
+        try {
+            int y = Integer.parseInt(parts[0]);
+            int x = Integer.parseInt(parts[1]);
+            return new int[] {x, y};
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
+
+    private static boolean isAutoTreasureThoroughNeighborCheckEnabled() {
+        try {
+            if (AppVars.getContext() == null) {
+                return false;
+            }
+            return AutoFunctionsManager.getInstance(AppVars.getContext())
+                    .isAutoTreasureThoroughNeighborCheckEnabled();
+        } catch (Exception e) {
+            Log.w(TAG, "AUTO_SEARCH_BOX_TRACE thorough-neighbor: read setting failed", e);
+            return false;
+        }
+    }
+
+    private static final class SearchNode {
+        final String regNum;
+        final int distanceSteps;
+
+        SearchNode(String regNum, int distanceSteps) {
+            this.regNum = regNum;
+            this.distanceSteps = distanceSteps;
+        }
+    }
+
+    private static final class SearchBoxDestination {
+        final String regNum;
+        final long visitedAtMs;
+        final int distanceSteps;
+
+        SearchBoxDestination(String regNum, long visitedAtMs, int distanceSteps) {
+            this.regNum = regNum;
+            this.visitedAtMs = visitedAtMs;
+            this.distanceSteps = distanceSteps;
+        }
+    }
+
+    private static final class SearchBoxNeighborCandidate {
+        final String regNum;
+        final long visitedAtMs;
+        final int distanceSteps;
+        final int manhattanDistance;
+
+        SearchBoxNeighborCandidate(String regNum, long visitedAtMs, int distanceSteps, int manhattanDistance) {
+            this.regNum = regNum;
+            this.visitedAtMs = visitedAtMs;
+            this.distanceSteps = distanceSteps;
+            this.manhattanDistance = manhattanDistance;
+        }
     }
 
     private static String findFixedTreasureCellDestination(String sourceRegNum) {

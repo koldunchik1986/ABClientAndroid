@@ -905,6 +905,12 @@ public class QuickButtonsPanel {
         fixedCellInput.setText(autoFunctionsManager.getAutoTreasureFixedCellRegNum());
         root.addView(fixedCellInput);
 
+        CheckBox thoroughNeighborCheck = new CheckBox(context);
+        thoroughNeighborCheck.setText("Тщательная проверка соседних клеток (Расходуем больше Блажа — для проверки соседних клеток)");
+        thoroughNeighborCheck.setChecked(autoFunctionsManager.isAutoTreasureThoroughNeighborCheckEnabled());
+        thoroughNeighborCheck.setPadding(0, pad, 0, 0);
+        root.addView(thoroughNeighborCheck);
+
         Runnable syncControls = () -> {
             boolean digEnabled = useDig.isChecked();
             shovelTitle.setEnabled(digEnabled);
@@ -926,6 +932,7 @@ public class QuickButtonsPanel {
                     autoFunctionsManager.setAutoTreasureFixedCellEnabled(fixedCellEnabled.isChecked());
                     String fixedRegNum = fixedCellInput.getText() == null ? "" : fixedCellInput.getText().toString();
                     autoFunctionsManager.setAutoTreasureFixedCellRegNum(fixedRegNum);
+                    autoFunctionsManager.setAutoTreasureThoroughNeighborCheckEnabled(thoroughNeighborCheck.isChecked());
                     Toast.makeText(context, "Настройки авто-клада сохранены", Toast.LENGTH_SHORT).show();
                 })
                 .setNegativeButton("Отмена", null)
