@@ -67,11 +67,16 @@ public class AutoFunctionsManager {
     private static final String PREF_AUTO_TREASURE_SMART_GENERATION = "auto_treasure_smart_generation";
     private static final String PREF_AUTO_TREASURE_THOROUGH_NEIGHBOR_RADIUS =
             "auto_treasure_thorough_neighbor_radius";
+    private static final String PREF_AUTO_TREASURE_THOROUGH_NEIGHBOR_MIN_AGE_MINUTES =
+            "auto_treasure_thorough_neighbor_min_age_minutes";
     private static final String PREF_AUTO_TREASURE_DETOUR_CHAT_ENABLED =
             "auto_treasure_detour_chat_enabled";
     private static final int AUTO_TREASURE_THOROUGH_RADIUS_MIN = 1;
     private static final int AUTO_TREASURE_THOROUGH_RADIUS_MAX = 3;
     private static final int AUTO_TREASURE_THOROUGH_RADIUS_DEFAULT = 3;
+    private static final int AUTO_TREASURE_THOROUGH_MIN_AGE_MINUTES_MIN = 1;
+    private static final int AUTO_TREASURE_THOROUGH_MIN_AGE_MINUTES_MAX = 24 * 60;
+    private static final int AUTO_TREASURE_THOROUGH_MIN_AGE_MINUTES_DEFAULT = 30;
     public static final String TREASURE_SHOVEL_NONE = "Нет";
     public static final String TREASURE_SHOVEL_ANY = "Любая лопата";
     public static final String TREASURE_SHOVEL_SEEKER = "Лопата кладоискателя";
@@ -1721,6 +1726,33 @@ public class AutoFunctionsManager {
                 Math.min(AUTO_TREASURE_THOROUGH_RADIUS_MAX, radius)
         );
         putDefaultInt(PREF_AUTO_TREASURE_THOROUGH_NEIGHBOR_RADIUS, normalized);
+    }
+
+    /**
+     * Минимальный возраст visited-маркера (в минутах) для detour-кандидатов "Тщательного обхода".
+     * Кандидат с возрастом меньше этого порога исключается из дообхода.
+     */
+    public int getAutoTreasureThoroughNeighborMinAgeMinutes() {
+        int value = getDefaultInt(
+                PREF_AUTO_TREASURE_THOROUGH_NEIGHBOR_MIN_AGE_MINUTES,
+                AUTO_TREASURE_THOROUGH_MIN_AGE_MINUTES_DEFAULT
+        );
+        return Math.max(
+                AUTO_TREASURE_THOROUGH_MIN_AGE_MINUTES_MIN,
+                Math.min(AUTO_TREASURE_THOROUGH_MIN_AGE_MINUTES_MAX, value)
+        );
+    }
+
+    /**
+     * Сохраняет минимальный возраст visited-маркера (в минутах) для detour-кандидатов.
+     * Любое входное значение принудительно нормализуется в диапазон [1..1440].
+     */
+    public void setAutoTreasureThoroughNeighborMinAgeMinutes(int minutes) {
+        int normalized = Math.max(
+                AUTO_TREASURE_THOROUGH_MIN_AGE_MINUTES_MIN,
+                Math.min(AUTO_TREASURE_THOROUGH_MIN_AGE_MINUTES_MAX, minutes)
+        );
+        putDefaultInt(PREF_AUTO_TREASURE_THOROUGH_NEIGHBOR_MIN_AGE_MINUTES, normalized);
     }
 
     /**

@@ -938,6 +938,20 @@ public class QuickButtonsPanel {
         thoroughRadiusSpinner.setSelection(Math.max(0, Math.min(2, storedRadius - 1)));
         root.addView(thoroughRadiusSpinner);
 
+        TextView thoroughMinAgeTitle = new TextView(context);
+        thoroughMinAgeTitle.setText("Минимальный возраст соседней клетки (мин):");
+        thoroughMinAgeTitle.setPadding(pad, (int) (pad * 0.35f), 0, 0);
+        root.addView(thoroughMinAgeTitle);
+
+        EditText thoroughMinAgeInput = new EditText(context);
+        thoroughMinAgeInput.setInputType(InputType.TYPE_CLASS_NUMBER);
+        thoroughMinAgeInput.setSingleLine(true);
+        thoroughMinAgeInput.setHint("30");
+        thoroughMinAgeInput.setText(String.valueOf(
+                autoFunctionsManager.getAutoTreasureThoroughNeighborMinAgeMinutes()
+        ));
+        root.addView(thoroughMinAgeInput);
+
         // Настройка "Умная генерация":
         // - при включении `MapAjax` избегает повторного захода в слишком "свежие" уже
         //   проверенные клетки (по маркеру visited);
@@ -963,6 +977,8 @@ public class QuickButtonsPanel {
             boolean thoroughEnabled = thoroughNeighborCheck.isChecked();
             thoroughRadiusTitle.setEnabled(thoroughEnabled);
             thoroughRadiusSpinner.setEnabled(thoroughEnabled);
+            thoroughMinAgeTitle.setEnabled(thoroughEnabled);
+            thoroughMinAgeInput.setEnabled(thoroughEnabled);
         };
         useDig.setOnCheckedChangeListener((buttonView, isChecked) -> syncControls.run());
         fixedCellEnabled.setOnCheckedChangeListener((buttonView, isChecked) -> syncControls.run());
@@ -986,6 +1002,17 @@ public class QuickButtonsPanel {
                     autoFunctionsManager.setAutoTreasureThoroughNeighborRadius(
                             thoroughRadiusSpinner.getSelectedItemPosition() + 1
                     );
+                    int thoroughMinAgeMinutes = autoFunctionsManager.getAutoTreasureThoroughNeighborMinAgeMinutes();
+                    String thoroughMinAgeRaw = thoroughMinAgeInput.getText() == null
+                            ? ""
+                            : thoroughMinAgeInput.getText().toString().trim();
+                    if (!thoroughMinAgeRaw.isEmpty()) {
+                        try {
+                            thoroughMinAgeMinutes = Integer.parseInt(thoroughMinAgeRaw);
+                        } catch (NumberFormatException ignored) {
+                        }
+                    }
+                    autoFunctionsManager.setAutoTreasureThoroughNeighborMinAgeMinutes(thoroughMinAgeMinutes);
                     autoFunctionsManager.setAutoTreasureSmartGenerationEnabled(smartGeneration.isChecked());
                     autoFunctionsManager.setAutoTreasureDetourChatEnabled(detourChat.isChecked());
                     Toast.makeText(context, "Настройки авто-клада сохранены", Toast.LENGTH_SHORT).show();

@@ -34,6 +34,9 @@ public class MapAjax {
     private static final int SEARCH_BOX_THOROUGH_MANHATTAN_RADIUS_DEFAULT = 3;
     private static final int SEARCH_BOX_THOROUGH_MAX_STEPS = 5;
     private static final long SEARCH_BOX_THOROUGH_MAX_NEWER_DELTA_MS = 12L * 60L * 60L * 1000L;
+    private static final int SEARCH_BOX_THOROUGH_MIN_AGE_MINUTES_MIN = 1;
+    private static final int SEARCH_BOX_THOROUGH_MIN_AGE_MINUTES_MAX = 24 * 60;
+    private static final int SEARCH_BOX_THOROUGH_MIN_AGE_MINUTES_DEFAULT = 30;
     private static final long SEARCH_BOX_SMART_RECHECK_MIN_AGE_MS = 170L * 60L * 1000L; // 2ч + 50м
     private static final int AUTO_MOVING_TIED_STEP_COST = 2;
     private static final int AUTO_DRINK_BLAZ_NEAR_THRESHOLD_DELTA = 6;
@@ -382,12 +385,13 @@ public class MapAjax {
             return baseDestination.regNum;
         }
 
-        SearchBoxNeighborScanResult scanResult = findThoroughNeighborCandidates(source, baseDestination);
+        SearchBoxNeighborScanResult scanResult = findThoroughNeighborCandidates(source, baseDestination, nowMs);
         List<SearchBoxNeighborCandidate> candidates = scanResult.candidates;
         Log.d(TAG, "AUTO_SEARCH_BOX_TRACE thorough-neighbor: source=" + source
                 + ", base=" + baseDestination.regNum
                 + ", baseVisitedAt=" + baseDestination.visitedAtMs
                 + ", baseDistance=" + baseDestination.distanceSteps
+                + ", minAgeMs=" + scanResult.stats.configuredMinAgeMs
                 + ", candidates=" + formatThoroughNeighborCandidates(candidates, baseDestination.visitedAtMs)
                 + ", stats=" + formatThoroughNeighborStats(scanResult.stats));
         if (!candidates.isEmpty()) {
@@ -395,6 +399,7 @@ public class MapAjax {
             Log.d(TAG, "AUTO_SEARCH_BOX_TRACE thorough-neighbor: select detour="
                     + selected.regNum + ", pathLen=" + selected.distanceSteps
                     + ", visitedDeltaMs=" + (selected.visitedAtMs - baseDestination.visitedAtMs)
+                    + ", visitedAgeMs=" + selected.visitedAgeMs
                     + ", then return to base=" + baseDestination.regNum);
             postAutoTreasureRouteRebuildToChat("Тщательный обход", selected.regNum);
             return selected.regNum;
@@ -495,10 +500,13 @@ public class MapAjax {
      */
     private static SearchBoxNeighborScanResult findThoroughNeighborCandidates(
             String source,
-            SearchBoxDestination baseDestination) {
+            SearchBoxDestination baseDestination,
+            long nowMs) {
         SearchBoxNeighborDebugStats stats = new SearchBoxNeighborDebugStats();
         int thoroughRadius = resolveAutoTreasureThoroughNeighborRadius();
+        long minAgeMs = resolveAutoTreasureThoroughNeighborMinAgeMs();
         stats.configuredManhattanRadius = thoroughRadius;
+        stats.configuredMinAgeMs = minAgeMs;
         int[] sourceCoords = getCellCoordinates(source);
         if (sourceCoords == null || baseDestination == null || baseDestination.visitedAtMs <= 0L) {
             stats.skippedByNoSourceCoordsOrBase++;
@@ -566,6 +574,12 @@ public class MapAjax {
                     continue;
                 }
 
+                long visitedAgeMs = Math.max(0L, nowMs - visitedAt);
+                if (visitedAgeMs < minAgeMs) {
+                    stats.skippedByVisitedAgeTooFresh++;
+                    continue;
+                }
+
                 long visitedDelta = visitedAt - baseDestination.visitedAtMs;
                 if (visitedDelta <= 0L) {
                     stats.skippedByVisitedDeltaNotNewer++;
@@ -576,7 +590,7 @@ public class MapAjax {
                     continue;
                 }
 
-                candidates.add(new SearchBoxNeighborCandidate(next, visitedAt, nextDistance, manhattanDistance));
+                candidates.add(new SearchBoxNeighborCandidate(next, visitedAt, visitedAgeMs, nextDistance, manhattanDistance));
                 stats.acceptedCandidates++;
             }
         }
@@ -614,6 +628,7 @@ public class MapAjax {
                     .append("(path=").append(candidate.distanceSteps)
                     .append(",manh=").append(candidate.manhattanDistance)
                     .append(",deltaMs=").append(Math.max(0L, candidate.visitedAtMs - baseVisitedAtMs))
+                    .append(",ageMs=").append(Math.max(0L, candidate.visitedAgeMs))
                     .append(")");
         }
         if (candidates.size() > maxItems) {
@@ -643,9 +658,11 @@ public class MapAjax {
                 + ",skipNoCoords=" + stats.skippedByMissingCoords
                 + ",skipManhattan=" + stats.skippedByManhattanRadius
                 + ",skipNoVisited=" + stats.skippedByNoVisitedMarker
+                + ",skipTooFresh=" + stats.skippedByVisitedAgeTooFresh
                 + ",skipDeltaNotNewer=" + stats.skippedByVisitedDeltaNotNewer
                 + ",skipDeltaTooLarge=" + stats.skippedByVisitedDeltaTooLarge
                 + ",skipNoSourceOrBase=" + stats.skippedByNoSourceCoordsOrBase
+                + ",minAgeMs=" + stats.configuredMinAgeMs
                 + "}";
     }
 
@@ -710,6 +727,24 @@ public class MapAjax {
         }
     }
 
+    private static long resolveAutoTreasureThoroughNeighborMinAgeMs() {
+        try {
+            if (AppVars.getContext() == null) {
+                return SEARCH_BOX_THOROUGH_MIN_AGE_MINUTES_DEFAULT * 60_000L;
+            }
+            int configuredMinutes = AutoFunctionsManager.getInstance(AppVars.getContext())
+                    .getAutoTreasureThoroughNeighborMinAgeMinutes();
+            int normalizedMinutes = Math.max(
+                    SEARCH_BOX_THOROUGH_MIN_AGE_MINUTES_MIN,
+                    Math.min(SEARCH_BOX_THOROUGH_MIN_AGE_MINUTES_MAX, configuredMinutes)
+            );
+            return normalizedMinutes * 60_000L;
+        } catch (Exception e) {
+            Log.w(TAG, "AUTO_SEARCH_BOX_TRACE thorough-neighbor: read min-age failed", e);
+            return SEARCH_BOX_THOROUGH_MIN_AGE_MINUTES_DEFAULT * 60_000L;
+        }
+    }
+
     private static boolean isAutoTreasureDetourChatEnabled() {
         try {
             if (AppVars.getContext() == null) {
@@ -748,12 +783,14 @@ public class MapAjax {
     private static final class SearchBoxNeighborCandidate {
         final String regNum;
         final long visitedAtMs;
+        final long visitedAgeMs;
         final int distanceSteps;
         final int manhattanDistance;
 
-        SearchBoxNeighborCandidate(String regNum, long visitedAtMs, int distanceSteps, int manhattanDistance) {
+        SearchBoxNeighborCandidate(String regNum, long visitedAtMs, long visitedAgeMs, int distanceSteps, int manhattanDistance) {
             this.regNum = regNum;
             this.visitedAtMs = visitedAtMs;
+            this.visitedAgeMs = visitedAgeMs;
             this.distanceSteps = distanceSteps;
             this.manhattanDistance = manhattanDistance;
         }
@@ -765,6 +802,7 @@ public class MapAjax {
      */
     private static final class SearchBoxNeighborDebugStats {
         int configuredManhattanRadius;
+        long configuredMinAgeMs;
         int discoveredNeighbors;
         int acceptedCandidates;
         int skippedByInvalidNeighbor;
@@ -774,6 +812,7 @@ public class MapAjax {
         int skippedByMissingCoords;
         int skippedByManhattanRadius;
         int skippedByNoVisitedMarker;
+        int skippedByVisitedAgeTooFresh;
         int skippedByVisitedDeltaNotNewer;
         int skippedByVisitedDeltaTooLarge;
         int skippedByNoSourceCoordsOrBase;
