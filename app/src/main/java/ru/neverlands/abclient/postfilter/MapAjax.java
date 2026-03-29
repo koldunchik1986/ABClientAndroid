@@ -34,11 +34,16 @@ public class MapAjax {
     private static final long AUTO_DRINK_BLAZ_STARTUP_SYNC_RETRY_COOLDOWN_MS = 10_000L;
     private static final long AUTO_DRINK_BLAZ_TRIGGER_COOLDOWN_MS = 6_000L;
     private static final long AUTO_DRINK_BLAZ_POST_TRIGGER_STICKY_MS = 8_000L;
+    private static final long MAP_AJAX_ERR_RESET_WINDOW_MS = 3_000L;
+    private static final int MAP_AJAX_SOFT_RETRY_LIMIT = 1;
+    private static final long MAP_AJAX_SOFT_RETRY_DELAY_MS = 350L;
     private static volatile long lastAutoDrinkBlazPinfoSyncAtMs = 0L;
     private static volatile long lastAutoDrinkBlazStartupSyncAttemptAtMs = 0L;
     private static volatile long lastAutoDrinkBlazTriggerAtMs = 0L;
     private static volatile long lastAutoMovingCellObservedAtMs = 0L;
     private static volatile long lastMapCellCheckDelayLogAtMs = 0L;
+    private static volatile long lastMapAjaxErrAtMs = 0L;
+    private static volatile int consecutiveMapAjaxErrCount = 0;
     private static volatile boolean autoDrinkBlazStartupSyncDone = false;
     private static volatile long lastAutoTreasureReasonChatAtMs = 0L;
 
@@ -64,17 +69,34 @@ public class MapAjax {
         }
         if (!AppVars.AutoMoving) {
             lastAutoMovingCellObservedAtMs = 0L;
+            resetMapAjaxErrCounter("automove_disabled");
+        } else if (isMapAjaxGoResponse(html)) {
+            resetMapAjaxErrCounter("map_ajax_go");
         }
 
         if (isMapAjaxErrResponse(html) && AppVars.AutoMoving) {
+            long now = System.currentTimeMillis();
+            int errCount = registerMapAjaxErr(now);
+            if (errCount <= MAP_AJAX_SOFT_RETRY_LIMIT) {
+                if (AppVars.NeverTimer < now + MAP_AJAX_SOFT_RETRY_DELAY_MS) {
+                    AppVars.NeverTimer = now + MAP_AJAX_SOFT_RETRY_DELAY_MS;
+                }
+                Log.w(TAG, "AUTO_SEARCH_BOX_TRACE: map_ajax returned ERR during automove, soft retry"
+                        + ", errCount=" + errCount
+                        + ", delayMs=" + MAP_AJAX_SOFT_RETRY_DELAY_MS);
+                return Filter.buildRedirectString(
+                        "",
+                        "main.php?get_id=56&act=10&go=ret&ab_nav_err_retry=" + errCount);
+            }
+
             AppVars.AutoMovingMapPath = null;
             AppVars.AutoMovingNextJump = null;
             AppVars.AutoMovingJumps = 0;
-            long now = System.currentTimeMillis();
             if (AppVars.NeverTimer < now + 900L) {
                 AppVars.NeverTimer = now + 900L;
             }
             Log.w(TAG, "AUTO_SEARCH_BOX_TRACE: map_ajax returned ERR during automove, redirect to main.php");
+            resetMapAjaxErrCounter("hard_recover");
             return Filter.buildRedirectString("\u041D\u0430\u0432\u0438\u0433\u0430\u0442\u043E\u0440: \u0432\u043E\u0441\u0441\u0442\u0430\u043D\u043E\u0432\u043B\u0435\u043D\u0438\u0435", "main.php?ab_nav_recover=1");
         }
 
@@ -457,6 +479,34 @@ public class MapAjax {
         }
         String trimmed = html.trim();
         return "ERR".equalsIgnoreCase(trimmed);
+    }
+
+    private static boolean isMapAjaxGoResponse(String html) {
+        if (html == null) {
+            return false;
+        }
+        String trimmed = html.trim();
+        return trimmed.startsWith("GO@");
+    }
+
+    private static int registerMapAjaxErr(long nowMs) {
+        long delta = nowMs - lastMapAjaxErrAtMs;
+        if (delta < 0L || delta > MAP_AJAX_ERR_RESET_WINDOW_MS) {
+            consecutiveMapAjaxErrCount = 0;
+        }
+        consecutiveMapAjaxErrCount++;
+        lastMapAjaxErrAtMs = nowMs;
+        return consecutiveMapAjaxErrCount;
+    }
+
+    private static void resetMapAjaxErrCounter(String reason) {
+        if (consecutiveMapAjaxErrCount == 0 && lastMapAjaxErrAtMs == 0L) {
+            return;
+        }
+        Log.d(TAG, "AUTO_SEARCH_BOX_TRACE: reset map_ajax ERR counter, reason=" + reason
+                + ", prevCount=" + consecutiveMapAjaxErrCount);
+        consecutiveMapAjaxErrCount = 0;
+        lastMapAjaxErrAtMs = 0L;
     }
 
     private static boolean containsTooTiredMessage(String html) {
