@@ -319,7 +319,7 @@ public class ClansActivity extends AppCompatActivity {
             row.setBackgroundColor(0xFF7E57C2);
             row.addView(createHeaderCell("Дата", dp(126)));
             row.addView(createHeaderCell("Агрессор/Противник", dp(190)));
-            row.addView(createHeaderCell("Счёт", dp(130)));
+            row.addView(createHeaderCell("Счёт", dp(70)));
             return row;
         }
 
