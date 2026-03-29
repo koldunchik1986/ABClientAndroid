@@ -65,6 +65,16 @@ public class MapPathNode implements Comparable<MapPathNode> {
         return node;
     }
 
+    /**
+     * Сравнение кандидатов пути по приоритетам навигатора.
+     *
+     * Порядок критериев:
+     * 1) итоговая стоимость пути;
+     * 2) длина пути (количество клеток);
+     * 3) максимальный уровень ботов по маршруту;
+     * 4) приоритет `visited` ближайшего шага;
+     * 5) наличие телепорта (как самый поздний tie-break).
+     */
     @Override
     public int compareTo(MapPathNode other) {
         int result = Integer.compare(getCost(), other.getCost());

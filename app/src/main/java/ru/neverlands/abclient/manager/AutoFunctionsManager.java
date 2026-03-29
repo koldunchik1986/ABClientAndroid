@@ -1121,6 +1121,9 @@ public class AutoFunctionsManager {
 
     // === AUTO_BOSS (Авто-Боссы) ===
 
+    // === AUTO_BOSS (Авто-Боссы) ===
+    // Публичный фасад: UI и сервисы вызывают методы этого блока, а детальная
+    // state-machine логика остаётся инкапсулированной в BossAuto.
     public boolean isAutoBossEnabled() {
         return bossAuto.isAutoBossEnabled();
     }
@@ -1165,10 +1168,21 @@ public class AutoFunctionsManager {
         bossAuto.setAutoBossTrackCurrentWarsEnabled(enabled);
     }
 
+    /**
+     * Флаг отправки клан-уведомлений в сценарии Авто-Босса.
+     *
+     * Зависимости:
+     * - источник истины: BossAuto (SharedPreferences + runtime-проверки);
+     * - потребители: QuickButtonsPanel и runtime-ветки BossAuto.
+     */
     public boolean isAutoBossClanNotifyEnabled() {
         return bossAuto.isAutoBossClanNotifyEnabled();
     }
 
+    /**
+     * Сохраняет настройку клан-уведомлений для Авто-Босса.
+     * Важно: метод только меняет конфиг, но сам сообщения в чат не отправляет.
+     */
     public void setAutoBossClanNotifyEnabled(boolean enabled) {
         bossAuto.setAutoBossClanNotifyEnabled(enabled);
     }

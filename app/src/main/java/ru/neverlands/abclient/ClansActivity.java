@@ -97,6 +97,13 @@ public class ClansActivity extends AppCompatActivity {
         return super.onOptionsItemSelected(item);
     }
 
+    /**
+     * Принудительно применяет стиль вкладок после attach TabLayoutMediator.
+     *
+     * Зачем нужен отдельный проход:
+     * - `TabLayout` не всегда сразу применяет кастомный фон для initial selected tab;
+     * - этот метод синхронизирует визуальное состояние с текущим selected индексом.
+     */
     private void updateTabSelectionBackgrounds(TabLayout tabLayout) {
         for (int index = 0; index < tabLayout.getTabCount(); index++) {
             TabLayout.Tab tab = tabLayout.getTabAt(index);
@@ -104,6 +111,11 @@ public class ClansActivity extends AppCompatActivity {
         }
     }
 
+    /**
+     * Стилизация одной вкладки:
+     * - выбранная вкладка: фиолетовый полупрозрачный фон;
+     * - невыбранная вкладка: прозрачный фон.
+     */
     private void styleTab(@Nullable TabLayout.Tab tab, boolean selected) {
         if (tab == null || tab.getCustomView() == null) {
             return;
@@ -323,6 +335,14 @@ public class ClansActivity extends AppCompatActivity {
             return row;
         }
 
+        /**
+         * Формирует одну строку таблицы «Текущие войны» в 3-колоночном формате:
+         * - Дата (старт/конец);
+         * - Агрессор/Противник (две строки + разделитель);
+         * - Счёт (две строки + разделитель).
+         *
+         * Цвета сторон вычисляются через `resolveWarPartyColor(...)`.
+         */
         private TableRow createDataRow(ClanWarsManager.WarTableRow data) {
             TableRow row = new TableRow(requireContext());
 
@@ -375,6 +395,12 @@ public class ClansActivity extends AppCompatActivity {
             return tv;
         }
 
+        /**
+         * Ячейка «Агрессор/Противник»:
+         * - рендерит иконки склонности + клана;
+         * - отображает клановые названия;
+         * - вставляет текстовый разделитель между сторонами войны.
+         */
         private View createPartiesCell(
                 String aggressorInclinationIcon,
                 String aggressorClanIcon,
@@ -449,6 +475,14 @@ public class ClansActivity extends AppCompatActivity {
             return tv;
         }
 
+        /**
+         * Ячейка «Счёт» в формате:
+         * - score1
+         * - "-"
+         * - score2
+         *
+         * Цвета score1/score2 синхронизированы с цветами соответствующих сторон войны.
+         */
         private View createScoreCell(String score1Text, String score2Text, int score1Color, int score2Color, int widthPx) {
             android.widget.LinearLayout root = new android.widget.LinearLayout(requireContext());
             root.setOrientation(android.widget.LinearLayout.VERTICAL);
@@ -490,6 +524,14 @@ public class ClansActivity extends AppCompatActivity {
             }
         }
 
+        /**
+         * Вычисляет цвет стороны по текущему счёту.
+         *
+         * Правило:
+         * - лидирующая сторона: зелёный;
+         * - отстающая сторона: красный;
+         * - равный/неопределённый счёт: белый (нейтральный).
+         */
         private int resolveWarPartyColor(int score1, int score2, boolean aggressor) {
             if (score1 > score2) {
                 return aggressor ? 0xFF2E7D32 : 0xFFC62828;

@@ -181,6 +181,14 @@ public final class ClanWarsManager {
     /**
      * Sync текущих войн из wars.cgi + обновление in-memory кеша.
      */
+    /**
+     * Асинхронная синхронизация `wars.cgi` с дедупликацией параллельных запросов.
+     *
+     * Поведение:
+     * - если sync уже выполняется, новый callback добавляется в очередь ожидания;
+     * - фактический сетевой вызов один, после завершения результат рассылается всем;
+     * - успех обновляет in-memory кэш + timestamp последней синхронизации.
+     */
     public void syncWarsAsync(ApiRepository.ApiCallback<List<WarEntry>> callback) {
         if (!ensureProxyReadyForBackgroundSync(callback)) {
             return;
@@ -200,6 +208,10 @@ public final class ClanWarsManager {
         syncWarsAttempt(destinationFile, 1);
     }
 
+    /**
+     * Одна попытка загрузки wars-файла с мягким retry для rate-limit/536.
+     * Используется внутренним контуром `syncWarsAsync(...)`.
+     */
     private void syncWarsAttempt(File destinationFile, int attempt) {
         String requestUrl = WARS_URL + (WARS_URL.contains("?") ? "&" : "?") + "_ts=" + System.currentTimeMillis();
         ApiRepository.downloadFile(requestUrl, destinationFile, new ApiRepository.ApiCallback<String>() {
@@ -260,6 +272,9 @@ public final class ClanWarsManager {
         }
     }
 
+    /**
+     * Определяет ошибки сервера, которые считаются временными и подлежат retry.
+     */
     private boolean isWarsRateLimitFailure(String message) {
         if (message == null) {
             return false;
@@ -271,6 +286,10 @@ public final class ClanWarsManager {
                 || normalized.contains("server error or empty response: 536");
     }
 
+    /**
+     * Возвращает снимок кэша войн.
+     * Если кэш ещё пустой — лениво подтягивает данные из `info/wars.txt`.
+     */
     public List<WarEntry> getCachedWars() {
         synchronized (lock) {
             if (cachedWars.isEmpty()) {
@@ -329,6 +348,13 @@ public final class ClanWarsManager {
         return rows;
     }
 
+    /**
+     * Парсит локальный файл войн в формате `wars.cgi`.
+     *
+     * Важно:
+     * - файл читается в `windows-1251`, т.к. этот endpoint отдаёт legacy-кодировку;
+     * - на выходе clanToken нормализуется к формату `NNN.gif` (lowercase).
+     */
     private List<WarEntry> parseWarsFromFile(File file) {
         ArrayList<WarEntry> parsed = new ArrayList<>();
         if (file == null || !file.exists()) {

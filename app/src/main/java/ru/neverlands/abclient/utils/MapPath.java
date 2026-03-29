@@ -34,6 +34,16 @@ public class MapPath {
     private final List<MapPathNode> bestPathes = new ArrayList<>();
     private boolean added;
 
+    /**
+     * Построение пути между текущей клеткой и набором целевых клеток.
+     *
+     * Особенности текущей реализации:
+     * - поддерживаются обычные шаги, городские ворота и телепорты;
+     * - среди равнозначных кандидатов используется детерминированный выбор
+     *   (без random), чтобы навигация была повторяемой;
+     * - для tie-break используется `MapPathNode.compareTo`, где уже учтён
+     *   приоритет более «старой» ближайшей `visited` клетки.
+     */
     public MapPath(String sourceCellNumber, List<String> destinationCellNumberList) {
         pathExists = false;
         if (destinationCellNumberList == null) return;
@@ -198,6 +208,10 @@ public class MapPath {
         return best;
     }
 
+    /**
+     * Строит стабильный ключ полного маршрута для финального tie-break.
+     * Применяется только когда `compareTo` дал полное равенство кандидатов.
+     */
     private String buildPathKey(MapPathNode node) {
         if (node == null || node.cellNumbers == null || node.cellNumbers.length == 0) {
             return "";

@@ -41,6 +41,19 @@ import ru.neverlands.abclient.utils.Chat;
  * - здесь нет дублирования логики навигатора/компаса/fast-action;
  *   используются только вызовы уже существующих менеджеров.
  */
+/**
+ * Оркестратор сценария «Авто-Боссы».
+ *
+ * Что делает модуль:
+ * - получает системные события о боссах из чата;
+ * - запускает поиск цели через уже существующий Auto-Компас;
+ * - после нахождения цели выполняет FastAction «Свиток Защиты»;
+ * - по завершению возвращает исходные состояния авто-функций.
+ *
+ * Важный инвариант реализации:
+ * - здесь нет дублирования логики навигатора/fast-action;
+ * - модуль только координирует вызовы через AutoFunctionsManager.
+ */
 final class BossAuto {
     private static final String TAG = "AutoFunctionsManager";
     private static final String TRACE_PREFIX = "AUTO_BOSS_TRACE";
@@ -111,6 +124,13 @@ final class BossAuto {
     /**
      * Снимок исходного состояния авто-функций на момент старта сценария.
      * Нужен для корректного восстановления после завершения поиска/боя.
+     */
+    /**
+     * Снимок пользовательских авто-настроек на момент старта сценария.
+     *
+     * Нужен для корректного restore после завершения «Авто-Босса».
+     * В снимок не включаются Auto-Бой и Auto-Лечение — эти режимы
+     * по проектным правилам не ставятся на паузу.
      */
     private static final class BossScenarioSnapshot {
         boolean autoFishEnabled;
@@ -1240,6 +1260,17 @@ final class BossAuto {
      * Отправляет клановое уведомление о старте события Босса, если включена соответствующая опция.
      * Если наш профиль вне клана, вместо отправки в клан-чат пишет локальное уведомление.
      */
+    /**
+     * Отправка клан-уведомления о старте события босса.
+     *
+     * Зависимости:
+     * - `resolveAutoCompassLocation(...)` для списка возможных клеток;
+     * - `Chat.sendMessageToServer(...)` для отправки в `%clan%`;
+     * - проверка наличия клана выполняется по `selfClanToken` из pinfo.
+     *
+     * Если персонаж вне клана, клан-сообщение не отправляется:
+     * в локальный чат пишется причина отмены.
+     */
     private void sendClanBossEventMessageIfNeeded(String bossName, String targetNick, String selfClanToken) {
         if (!isAutoBossClanNotifyEnabled()) {
             return;
@@ -1279,6 +1310,13 @@ final class BossAuto {
     /**
      * Отправляет клановое уведомление о точной клетке Босса после обнаружения цели в комнате.
      * Если наш профиль вне клана, вместо отправки в клан-чат пишет локальное уведомление.
+     */
+    /**
+     * Отправка клан-уведомления с точной клеткой после обнаружения цели.
+     *
+     * Источник клетки:
+     * - основной: `currentMapRegNum()`;
+     * - fallback: `AppVars.AutoMovingDestinaton`, если карта ещё не синхронизирована.
      */
     private void sendClanBossFoundMessageIfNeeded() {
         if (!isAutoBossClanNotifyEnabled()) {
@@ -1340,6 +1378,12 @@ final class BossAuto {
      * При включении цель отклоняется, если её clanToken присутствует
      * в кэше текущих войн, полученном из {@code wars.cgi}.
      */
+    /**
+     * Флаг «Следить за текущими войнами».
+     *
+     * Когда включён, `BossAuto` отфильтровывает цель, если её `targetClanToken`
+     * присутствует в кэше `ClanWarsManager` (данные `wars.cgi`).
+     */
     boolean isAutoBossTrackCurrentWarsEnabled() {
         return prefs.getBoolean(PREF_AUTO_BOSS_TRACK_CURRENT_WARS, true);
     }
@@ -1348,10 +1392,19 @@ final class BossAuto {
         prefs.edit().putBoolean(PREF_AUTO_BOSS_TRACK_CURRENT_WARS, enabled).apply();
     }
 
+    /**
+     * Флаг отправки служебных сообщений в клан-чат для сценария «Авто-Босс».
+     */
     boolean isAutoBossClanNotifyEnabled() {
         return prefs.getBoolean(PREF_AUTO_BOSS_CLAN_NOTIFY, false);
     }
 
+    /**
+     * Сохранение флага клан-уведомлений.
+     * Используется UI-настройками, а фактическая отправка выполняется в
+     * {@link #sendClanBossEventMessageIfNeeded(String, String, String)} и
+     * {@link #sendClanBossFoundMessageIfNeeded()}.
+     */
     void setAutoBossClanNotifyEnabled(boolean enabled) {
         prefs.edit().putBoolean(PREF_AUTO_BOSS_CLAN_NOTIFY, enabled).apply();
     }

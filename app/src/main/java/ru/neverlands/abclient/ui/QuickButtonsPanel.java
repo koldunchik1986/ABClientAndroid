@@ -1551,6 +1551,14 @@ public class QuickButtonsPanel {
      * - фактическое выполнение сценария (поиск цели, свиток, возврат) выполняется в `BossAuto.java`;
      * - ограничения диапазонов валидируются в `BossAuto` (UI передаёт «сырые» числа).
      */
+    /**
+     * Диалог настроек «Авто-Боссы».
+     *
+     * Важные зависимости:
+     * - значения читаются/сохраняются через `AutoFunctionsManager`;
+     * - диапазоны для таймаутов валидируются в `BossAuto`;
+     * - UI-слой не выполняет бизнес-логику сценария, только обновляет конфиг.
+     */
     private void showAutoBossSettingsDialog() {
         final int pad = (int) (context.getResources().getDisplayMetrics().density * 12);
 
@@ -1575,6 +1583,8 @@ public class QuickButtonsPanel {
         trackWarsCheck.setChecked(autoFunctionsManager.isAutoBossTrackCurrentWarsEnabled());
         root.addView(trackWarsCheck);
 
+        // Отдельная настройка клан-оповещений:
+        // уведомлять клан-чат о событии босса и о найденной точной клетке.
         CheckBox clanNotifyCheck = new CheckBox(context);
         clanNotifyCheck.setText("Писать в клан-чат о Боссе и найденной клетке");
         clanNotifyCheck.setChecked(autoFunctionsManager.isAutoBossClanNotifyEnabled());
