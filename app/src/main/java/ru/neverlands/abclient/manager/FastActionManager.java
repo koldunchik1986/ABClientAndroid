@@ -796,6 +796,7 @@ public class FastActionManager {
 
             Log.w(TAG, "processMainPhpFast: предмет не найден на правильной вкладке (" + filterClean + "), отмена");
             // 3. Мы на правильной вкладке, предмет не найден — отмена
+            disableAutoDrinkBlazIfBlissNotFound(fastId);
             host.sendInventoryChatMessage(host.buildFastItemNotFoundMessage(fastId));
             fastCancel("inventory-fast-unsupported-context");
             return null;
@@ -804,6 +805,35 @@ public class FastActionManager {
         // Мы не на инвентаре и MainPhpFindInv не нашла ссылку — вероятно, нужен обычный reload
         Log.d(TAG, "processMainPhpFast: не на инвентаре, MainPhpFindInv не нашла ссылку");
         return null;
+    }
+
+    /**
+     * Если не найден именно Эликсир Блаженства, отключает профильный автотриггер
+     * "Пить блаж, если усталость" и сбрасывает runtime-пендинг.
+     *
+     * Это предотвращает повторные циклы автопитья при отсутствии блажа в инвентаре.
+     */
+    private static void disableAutoDrinkBlazIfBlissNotFound(String fastId) {
+        if (fastId == null || !FAST_ID_BLISS_ELIXIR.equals(fastId)) {
+            return;
+        }
+        if (AppVars.Profile == null) {
+            return;
+        }
+        if (!AppVars.Profile.DoAutoDrinkBlaz && !AppVars.AutoDrinkBlazPending) {
+            return;
+        }
+
+        AppVars.Profile.DoAutoDrinkBlaz = false;
+        AppVars.AutoDrinkBlazPending = false;
+        try {
+            if (AppVars.getContext() != null) {
+                AppVars.Profile.save(AppVars.getContext());
+            }
+        } catch (Exception e) {
+            Log.w(TAG, "AUTO_DRINK_BLAZ_TRACE: save profile failed after bliss not found", e);
+        }
+        Log.w(TAG, "AUTO_DRINK_BLAZ_TRACE: bliss not found -> DoAutoDrinkBlaz=false, pending=false");
     }
 
     public static void cancelWaitFight() {
