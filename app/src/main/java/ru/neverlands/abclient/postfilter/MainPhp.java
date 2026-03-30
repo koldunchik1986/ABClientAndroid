@@ -3508,7 +3508,9 @@ public class MainPhp {
         // - `UserConfig.RazdChatReport` (load/save в XML профиля, C# parity);
         // - `SettingsActivity` / `root_preferences.xml` (чекбокс "Показывать результат разделки в чат");
         // - `ChatStats` обновляется отдельно и не зависит от этого флага.
-        if (!deltaForChat.isEmpty() && AppVars.Profile != null && AppVars.Profile.RazdChatReport) {
+        if (!deltaForChat.isEmpty()) {
+            boolean canReportToChat = AppVars.Profile != null && AppVars.Profile.RazdChatReport;
+            if (canReportToChat) {
             String message = buildServerChatTimeHtml()
                     + "<font color=#006600><b>Результат разделки:</b></font> "
                     + String.join(", ", deltaForChat);
@@ -3516,6 +3518,10 @@ public class MainPhp {
                 Intent intent = new Intent(AppVars.ACTION_ADD_CHAT_MESSAGE);
                 intent.putExtra("message", message);
                 LocalBroadcastManager.getInstance(AppVars.getContext()).sendBroadcast(intent);
+            }
+            } else {
+                android.util.Log.d(TAG, "AUTO_SKIN_TRACE mainPhpGetSkinRes: chat skipped, RazdChatReport=false"
+                        + ", deltaCount=" + deltaForChat.size());
             }
         }
         if (!deltaForStatsKg.isEmpty()) {

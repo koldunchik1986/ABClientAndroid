@@ -14,6 +14,12 @@
             app:defaultValue="false" />
 
         <SwitchPreferenceCompat
+            app:key="show_razd_chat_report"
+            app:title="Показывать результат разделки в чат"
+            app:summary="Сообщение &quot;Результат разделки&quot; при срабатывании Авто-Охоты"
+            app:defaultValue="false" />
+
+        <SwitchPreferenceCompat
             app:key="cache_refresh"
             app:title="Обновлять кэш"
             app:summary="Всегда обновлять кэш при запросах"
