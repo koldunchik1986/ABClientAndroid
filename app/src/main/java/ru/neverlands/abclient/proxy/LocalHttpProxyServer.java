@@ -19,6 +19,8 @@ import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+import ru.neverlands.abclient.utils.AppVars;
+import ru.neverlands.abclient.utils.FileLogger;
 import ru.neverlands.abclient.utils.RuntimeNetTrace;
 
 /**
@@ -190,6 +192,7 @@ final class LocalHttpProxyServer {
                 writeSimpleError(clientOut, 400, "Bad Request", "Invalid proxy request");
                 return;
             }
+            logPoolProxyRequest(request);
             Log.d(TAG, "PROXY_SESSION: method=" + request.method
                     + ", uri=" + request.uriToken
                     + ", bodyBytes=" + (request.body == null ? 0 : request.body.length));
@@ -219,6 +222,9 @@ final class LocalHttpProxyServer {
                     "mode=" + (upstreamSettings.enabled ? "UP" : "DIR")
                             + " bytes=" + copiedBytes + " ms=" + elapsed + " target=" + sessionTarget);
         } catch (Exception e) {
+            if (isPoolProxyLoggingEnabled()) {
+                FileLogger.proxyPoolError("SESSION_FAIL target=" + sessionTarget, e);
+            }
             ProxyLogDeduper.warn(
                     TAG,
                     "session_failed:" + sessionTarget,
@@ -562,6 +568,16 @@ final class LocalHttpProxyServer {
                 + ", statusLine=" + head.statusLine);
         RuntimeNetTrace.push("PROXY_RESP",
                 "mode=" + mode + " code=" + head.statusCode + " target=" + trimForTrace(requestTarget));
+        if (isPoolProxyLoggingEnabled()) {
+            FileLogger.proxyPool("RESP"
+                    + " mode=" + mode
+                    + " attempt=" + attempt
+                    + " method=" + safeValue(request.method)
+                    + " target=" + safeValue(requestTarget)
+                    + " status=" + head.statusCode
+                    + " server=" + safeValue(head.serverHeader)
+                    + " statusLine=" + safeValue(head.statusLine));
+        }
     }
 
     /**
@@ -618,6 +634,40 @@ final class LocalHttpProxyServer {
         } catch (NumberFormatException ignored) {
             return -1;
         }
+    }
+
+    private void logPoolProxyRequest(HttpRequest request) {
+        if (!isPoolProxyLoggingEnabled() || request == null) {
+            return;
+        }
+        int bodyLength = request.body == null ? 0 : request.body.length;
+        String host = "";
+        if (request.headers != null) {
+            host = safeValue(request.headers.get("Host"));
+            if (host.isEmpty()) {
+                host = safeValue(request.headers.get("host"));
+            }
+        }
+        FileLogger.proxyPool("REQ"
+                + " method=" + safeValue(request.method)
+                + " uri=" + safeValue(request.uriToken)
+                + " host=" + host
+                + " bodyBytes=" + bodyLength);
+    }
+
+    private boolean isPoolProxyLoggingEnabled() {
+        return AppVars.Profile != null && AppVars.Profile.RecordProxyPoolLog;
+    }
+
+    private static String safeValue(String value) {
+        if (value == null) {
+            return "";
+        }
+        String normalized = value.replace('\r', ' ').replace('\n', ' ').trim();
+        if (normalized.length() > 400) {
+            return normalized.substring(0, 400) + "...";
+        }
+        return normalized;
     }
 
     private ResolvedRoute resolveRoute(HttpRequest request) {

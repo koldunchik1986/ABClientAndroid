@@ -135,6 +135,12 @@
             app:summary="Потоковая запись logcat текущего процесса в файлы по 10 минут"
             app:defaultValue="false" />
 
+        <SwitchPreferenceCompat
+            app:key="record_proxy_pool_log"
+            app:title="Записывать proxy GET/POST в Logs/pool/"
+            app:summary="Локальный proxy: запросы/ответы с временной привязкой в файлы *_proxy.txt (сегменты по 10 минут)"
+            app:defaultValue="false" />
+
         <Preference
             app:key="clear_logs"
             app:title="Очистить логи"

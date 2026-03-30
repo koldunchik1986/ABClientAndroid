@@ -142,6 +142,7 @@ public class UserConfig {
     public boolean DoHttpLog = false;
     public boolean DoTexLog = false;
     public boolean RecordLogcatToFile = false;
+    public boolean RecordProxyPoolLog = false;
     public boolean ShowPerformance = false;
     public boolean DoProxy = false;
     /**
@@ -543,6 +544,8 @@ public class UserConfig {
                         this.ShowOverWarning = parseBoolNodeText(parser, this.ShowOverWarning);
                     } else if ("recordlogcattofile".equalsIgnoreCase(tagName)) {
                         this.RecordLogcatToFile = parseBoolNodeText(parser, this.RecordLogcatToFile);
+                    } else if ("recordproxypoollog".equalsIgnoreCase(tagName)) {
+                        this.RecordProxyPoolLog = parseBoolNodeText(parser, this.RecordProxyPoolLog);
                     } else if ("dostopondig".equalsIgnoreCase(tagName)) {
                         this.DoStopOnDig = parseBoolNodeText(parser, this.DoStopOnDig);
                     } else if ("RazdChatReport".equalsIgnoreCase(tagName)) {
@@ -863,6 +866,9 @@ public class UserConfig {
             serializer.startTag(null, "recordlogcattofile");
             serializer.text(String.valueOf(this.RecordLogcatToFile));
             serializer.endTag(null, "recordlogcattofile");
+            serializer.startTag(null, "recordproxypoollog");
+            serializer.text(String.valueOf(this.RecordProxyPoolLog));
+            serializer.endTag(null, "recordproxypoollog");
 
             // Сохранение настроек быстрых действий
             serializer.startTag(null, "fastactions");

@@ -574,6 +574,19 @@ public class SettingsActivity extends AppCompatActivity {
                     return true;
                 });
             }
+
+            // Запись proxy post/get трассы в files/Logs/pool/*.txt.
+            // Формат файлов: *_proxy.txt, сегментация по 10 минут.
+            SwitchPreferenceCompat recordProxyPoolLogPref = findPreference("record_proxy_pool_log");
+            if (recordProxyPoolLogPref != null && AppVars.Profile != null) {
+                recordProxyPoolLogPref.setChecked(AppVars.Profile.RecordProxyPoolLog);
+                recordProxyPoolLogPref.setOnPreferenceChangeListener((preference, newValue) -> {
+                    boolean value = (Boolean) newValue;
+                    AppVars.Profile.RecordProxyPoolLog = value;
+                    AppVars.Profile.save(requireContext());
+                    return true;
+                });
+            }
             
             // Настройка показа производительности
             SwitchPreferenceCompat showPerformancePref = findPreference("show_performance");
