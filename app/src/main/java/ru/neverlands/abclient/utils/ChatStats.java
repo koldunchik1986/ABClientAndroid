@@ -339,7 +339,10 @@ public class ChatStats {
         resetStateLocked(System.currentTimeMillis(), currentDate);
         statFile = resolveStatFile();
         File sourceFile = statFile;
-        if ((sourceFile == null || !sourceFile.exists())) {
+        if (sourceFile == null || !sourceFile.exists()) {
+            sourceFile = resolveLegacyProfileStatFile();
+        }
+        if (sourceFile == null || !sourceFile.exists()) {
             sourceFile = resolveLegacyDailyStatFile(currentDate);
         }
         if (sourceFile == null || !sourceFile.exists()) {
@@ -439,8 +442,9 @@ public class ChatStats {
     private static void saveInternal() {
         if (AppVars.getContext() == null) return;
         String currentDate = getCurrentDateYmd();
-        if (statFile == null) {
-            statFile = resolveStatFile();
+        File resolvedDayStatFile = resolveStatFile();
+        if (resolvedDayStatFile != null) {
+            statFile = resolvedDayStatFile;
         }
         if (statFile == null) return;
         StringBuilder sb = new StringBuilder();
@@ -479,6 +483,19 @@ public class ChatStats {
 
     // Определяет путь Logs/<profile>_stat.txt.
     private static File resolveStatFile() {
+        File baseLogs = AppVars.getLogsDir();
+        if (baseLogs == null && AppVars.getContext() != null) {
+            baseLogs = new File(AppVars.getContext().getFilesDir(), "Logs");
+        }
+        if (baseLogs == null) return null;
+        if (!baseLogs.exists()) baseLogs.mkdirs();
+        String safeNick = getCurrentProfileLogDirName();
+        File userDir = new File(baseLogs, safeNick);
+        if (!userDir.exists()) userDir.mkdirs();
+        return new File(userDir, getCurrentDateYmd() + STAT_FILE_SUFFIX);
+    }
+
+    private static File resolveLegacyProfileStatFile() {
         File baseLogs = AppVars.getLogsDir();
         if (baseLogs == null && AppVars.getContext() != null) {
             baseLogs = new File(AppVars.getContext().getFilesDir(), "Logs");
@@ -550,6 +567,17 @@ public class ChatStats {
             }
         }
         return "default";
+    }
+
+    private static String getCurrentProfileLogDirName() {
+        String nick = "unknown";
+        if (AppVars.Profile != null && AppVars.Profile.UserNick != null) {
+            String candidate = AppVars.Profile.UserNick.trim();
+            if (!candidate.isEmpty()) {
+                nick = candidate;
+            }
+        }
+        return nick.replaceAll("[/\\\\:*?\"<>|]", "_");
     }
 
     // Безопасный парсинг long из строки.
