@@ -95,6 +95,7 @@ import ru.neverlands.abclient.proxy.ProxyRuntimeManager;
 import ru.neverlands.abclient.utils.AppLogger;
 import ru.neverlands.abclient.utils.AppVars;
 import ru.neverlands.abclient.utils.Chat;
+import ru.neverlands.abclient.utils.FileLogger;
 import ru.neverlands.abclient.utils.RuntimeNetTrace;
 import ru.neverlands.abclient.utils.Russian;
 import ru.neverlands.abclient.webview.WebViewRequestInterceptor;
@@ -3424,13 +3425,16 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             chatRefrWebView.loadUrl(url);
         } catch (Throwable t) {
             Log.e(TAG, BG_TRACE_PREFIX + " requestChatRefresh loadUrl failed", t);
+            FileLogger.error("chat_poll", "requestChatRefresh loadUrl failed, url=" + url, t);
             ensureChatRefrWebViewReady();
             if (chatRefrWebView != null) {
                 try {
                     chatRefrWebView.loadUrl(url);
                     Log.w(TAG, BG_TRACE_PREFIX + " requestChatRefresh: retry after WebView rebind");
+                    FileLogger.warn("chat_poll", "requestChatRefresh retry after WebView rebind, url=" + url);
                 } catch (Throwable retryError) {
                     Log.e(TAG, BG_TRACE_PREFIX + " requestChatRefresh retry failed", retryError);
+                    FileLogger.error("chat_poll", "requestChatRefresh retry failed, url=" + url, retryError);
                 }
             }
         }

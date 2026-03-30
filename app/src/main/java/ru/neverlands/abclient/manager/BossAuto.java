@@ -14,6 +14,7 @@ import ru.neverlands.abclient.MainActivity;
 import ru.neverlands.abclient.postfilter.MainPhp;
 import ru.neverlands.abclient.utils.AppVars;
 import ru.neverlands.abclient.utils.Chat;
+import ru.neverlands.abclient.utils.FileLogger;
 
 /**
  * Модуль авто-функции «Авто-Боссы».
@@ -1351,6 +1352,7 @@ final class BossAuto {
         if (isEmpty(message)) {
             return;
         }
+        FileLogger.trace("auto_boss", message);
         FastActionManager.writeChatMsg(
                 MainPhp.buildServerChatTimeHtmlExternal()
                         + "<font color=#7E57C2><b>[Авто-Боссы]</b></font> "

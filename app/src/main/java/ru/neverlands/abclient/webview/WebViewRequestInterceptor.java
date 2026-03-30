@@ -25,6 +25,7 @@ import ru.neverlands.abclient.postfilter.Filter;
 import ru.neverlands.abclient.proxy.CookiesManager;
 import ru.neverlands.abclient.proxy.ProxyRuntimeManager;
 import ru.neverlands.abclient.utils.AppVars;
+import ru.neverlands.abclient.utils.FileLogger;
 import ru.neverlands.abclient.utils.RuntimeNetTrace;
 
 public class WebViewRequestInterceptor {
@@ -371,12 +372,14 @@ public class WebViewRequestInterceptor {
             if (isChatEndpoint(urlString)) {
                 String neverChatCookie = getCookieValueByName(effectiveCookie, "NeverChat");
                 String neverFuncCookie = getCookieValueByName(effectiveCookie, "NeverFunc");
-                Log.d(TAG, "CHAT_REQ_HEADERS: url=" + urlString
+                String chatReqMessage = "CHAT_REQ_HEADERS: url=" + urlString
                         + ", ua=" + (reqUserAgent == null ? "" : reqUserAgent)
                         + ", referer=" + (reqReferer == null ? "" : reqReferer)
                         + ", cookieSummary=" + summarizeCookieHeader(effectiveCookie)
                         + ", neverChat=" + (neverChatCookie.isEmpty() ? "<empty>" : neverChatCookie)
-                        + ", neverFunc=" + (neverFuncCookie.isEmpty() ? "<empty>" : neverFuncCookie));
+                        + ", neverFunc=" + (neverFuncCookie.isEmpty() ? "<empty>" : neverFuncCookie);
+                Log.d(TAG, chatReqMessage);
+                FileLogger.trace("chat_poll", chatReqMessage);
             }
 
             int code = connection.getResponseCode();
@@ -440,7 +443,9 @@ public class WebViewRequestInterceptor {
                 if (urlString.contains("ch.php") && urlString.contains("show=1")) {
                     String setNeverChat = getSetCookieValueByName(setCookies, "NeverChat");
                     if (!setNeverChat.isEmpty()) {
-                        Log.d(TAG, "CHAT_SET_COOKIE: NeverChat=" + setNeverChat + " for " + urlString);
+                        String cookieMessage = "CHAT_SET_COOKIE: NeverChat=" + setNeverChat + " for " + urlString;
+                        Log.d(TAG, cookieMessage);
+                        FileLogger.trace("chat_poll", cookieMessage);
                     }
                 }
             }
@@ -556,12 +561,14 @@ public class WebViewRequestInterceptor {
                     }
                 }
                 boolean setLmidOnly = hasLmid && !hasAdd && bytes.length <= 80;
-                Log.d(TAG, "ch_refr response markers: add_msg=" + hasAdd
+                String responseMarkerMessage = "ch_refr response markers: add_msg=" + hasAdd
                         + ", set_lmid=" + hasLmid
                         + ", raw_lmid=" + (rawLmid.isEmpty() ? "<none>" : rawLmid)
                         + ", processed_lmid=" + (processedLmid.isEmpty() ? "<none>" : processedLmid)
                         + ", set_lmid_only=" + setLmidOnly
-                        + ", raw_bytes=" + bytes.length);
+                        + ", raw_bytes=" + bytes.length;
+                Log.d(TAG, responseMarkerMessage);
+                FileLogger.trace("chat_poll", responseMarkerMessage);
             }
 
             WebResourceResponse response = new WebResourceResponse(
@@ -578,6 +585,7 @@ public class WebViewRequestInterceptor {
             return response;
         } catch (Exception e) {
             Log.e(TAG, "Intercept failed: " + request.getUrl(), e);
+            FileLogger.error("chat_poll", "intercept_failed url=" + request.getUrl(), e);
             RuntimeNetTrace.push("HTTP_FAIL", "url=" + trimUrlForTrace(String.valueOf(request.getUrl())) + " error=" + e.getClass().getSimpleName());
             if (ProxyRuntimeManager.isStrictProxyRequiredForCurrentProfile()) {
                 return buildStrictProxyBlockedResponse();

@@ -21,6 +21,7 @@ import ru.neverlands.abclient.manager.RoomManager;
 import ru.neverlands.abclient.model.Position;
 import ru.neverlands.abclient.utils.AppVars;
 import ru.neverlands.abclient.utils.ExtMap;
+import ru.neverlands.abclient.utils.FileLogger;
 import ru.neverlands.abclient.utils.MapPath;
 import android.util.Log;
 
@@ -1329,6 +1330,7 @@ public class MapAjax {
         Intent intent = new Intent(AppVars.ACTION_ADD_CHAT_MESSAGE);
         intent.putExtra("message", messageHtml);
         LocalBroadcastManager.getInstance(context).sendBroadcast(intent);
+        FileLogger.warn("auto_treasure", "reason=" + reason);
     }
 
     /**
@@ -1384,6 +1386,7 @@ public class MapAjax {
         Intent intent = new Intent(AppVars.ACTION_ADD_CHAT_MESSAGE);
         intent.putExtra("message", messageHtml);
         LocalBroadcastManager.getInstance(context).sendBroadcast(intent);
+        FileLogger.trace("auto_treasure", "route_rebuild setting=" + settingName + ", detour=" + detourRegNum);
     }
 
     // Экранирует текст для безопасной вставки в HTML-сообщение чата.
