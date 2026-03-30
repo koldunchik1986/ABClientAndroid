@@ -383,6 +383,9 @@ final class BossAuto {
                 + ", trackCurrentWars=" + trackCurrentWarsEnabled
                 + ", targetClan=" + targetClanToken
                 + ", selfClan=" + selfClanToken);
+        // Клан-оповещение о самом событии отправляем сразу после распознавания события.
+        // Это не зависит от последующих фильтров BD/wars.
+        sendClanBossEventMessageIfNeeded(event.bossName, normalizedTarget, selfClanToken);
 
         if (bdModeEnabled) {
             if (isEmpty(selfClanToken)) {
@@ -443,7 +446,6 @@ final class BossAuto {
         writeBossChat("Событие: Монстр \"" + escapeHtml(event.bossName) + "\" напал на игрока "
                 + targetHtml + ". Цель " + targetHtml + " в " + buildFightWordHtml(initialFightLink)
                 + ". Запускаем поиск цели." + locationPrefix);
-        sendClanBossEventMessageIfNeeded(event.bossName, normalizedTarget, selfClanToken);
         if (isAutoBossAskTargetEnabled()) {
             synchronized (lock) {
                 targetAskAttempts = 0;
@@ -1322,9 +1324,11 @@ final class BossAuto {
      */
     private void sendClanBossEventMessageIfNeeded(String bossName, String targetNick, String selfClanToken) {
         if (!isAutoBossClanNotifyEnabled()) {
+            Log.d(TAG, TRACE_PREFIX + " clan notify event skipped: disabled by settings");
             return;
         }
         if (isEmpty(normalizeClanToken(selfClanToken))) {
+            Log.d(TAG, TRACE_PREFIX + " clan notify event skipped: self clan token is empty");
             writeBossChat("Мы вне клана. Сообщение отменено.");
             return;
         }
@@ -1369,6 +1373,7 @@ final class BossAuto {
      */
     private void sendClanBossFoundMessageIfNeeded() {
         if (!isAutoBossClanNotifyEnabled()) {
+            Log.d(TAG, TRACE_PREFIX + " clan notify found skipped: disabled by settings");
             return;
         }
         String selfClanToken;
@@ -1378,6 +1383,7 @@ final class BossAuto {
             localBossName = bossName;
         }
         if (isEmpty(normalizeClanToken(selfClanToken))) {
+            Log.d(TAG, TRACE_PREFIX + " clan notify found skipped: self clan token is empty");
             writeBossChat("Мы вне клана. Сообщение отменено.");
             return;
         }
@@ -1456,6 +1462,7 @@ final class BossAuto {
      */
     void setAutoBossClanNotifyEnabled(boolean enabled) {
         prefs.edit().putBoolean(PREF_AUTO_BOSS_CLAN_NOTIFY, enabled).apply();
+        Log.d(TAG, TRACE_PREFIX + " setAutoBossClanNotifyEnabled=" + enabled);
     }
 
     /**
