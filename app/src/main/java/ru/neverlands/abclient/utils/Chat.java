@@ -154,12 +154,19 @@ public class Chat {
         String safe = message == null ? "" : message;
         com.google.gson.Gson gson = new com.google.gson.Gson();
         String json = gson.toJson(safe);
+        Log.d(TAG, "sendChatMessage request: len=" + safe.length()
+                + ", clanPrefix=" + safe.startsWith("%clan%")
+                + ", privatePrefix=" + safe.startsWith("%<")
+                + ", pairPrefix=" + safe.startsWith("%pair%"));
         activity.runOnUiThread(() -> {
             if (activity.binding != null && activity.binding.appBarMain != null
                     && activity.binding.appBarMain.contentMain != null
                     && activity.binding.appBarMain.contentMain.chatButtonsWebview != null) {
                 String js = "if(document.FBT&&document.FBT.text){document.FBT.text.value=" + json + ";document.FBT.submit();}";
                 activity.binding.appBarMain.contentMain.chatButtonsWebview.evaluateJavascript(js, null);
+                Log.d(TAG, "sendChatMessage evaluateJavascript: submitted");
+            } else {
+                Log.w(TAG, "sendChatMessage dropped: chatButtonsWebview is not ready");
             }
         });
     }
@@ -182,10 +189,15 @@ public class Chat {
             Log.w(TAG, "sendMessageToServer: activity is null, skip");
             return;
         }
+        String trimmed = message.trim();
+        Log.d(TAG, "sendMessageToServer: len=" + trimmed.length()
+                + ", clanPrefix=" + trimmed.startsWith("%clan%")
+                + ", privatePrefix=" + trimmed.startsWith("%<")
+                + ", pairPrefix=" + trimmed.startsWith("%pair%"));
         long now = System.currentTimeMillis();
         lastChanged = now;
         lastAnswerTime = now;
-        sendChatMessage(activity, message.trim());
+        sendChatMessage(activity, trimmed);
     }
 
     // Вставка сообщения в окно чата (chatMsgWebview) через add_msg JS.

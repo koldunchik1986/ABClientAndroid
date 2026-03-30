@@ -1380,7 +1380,7 @@ final class BossAuto {
         }
         if (isEmpty(normalizeClanToken(selfClanToken))) {
             Log.d(TAG, TRACE_PREFIX + " clan notify event skipped: self clan token is empty");
-            writeBossChat("Мы вне клана. Сообщение отменено.");
+            writeBossChat("Отправка в клан-чат невозможна: отсутствует значок клана (selfClanToken пустой).");
             return;
         }
 
@@ -1407,8 +1407,14 @@ final class BossAuto {
         }
         String message = "%clan% '" + safeBossName + "' напал на '" + normalizedTarget
                 + "'. Возможные клетки: " + cellsCsv;
+        boolean chatReady = isChatSendReady();
+        if (!chatReady) {
+            Log.w(TAG, TRACE_PREFIX + " clan notify event send requested while chat is not ready: target="
+                    + normalizedTarget + ", cells=" + cellsCsv);
+        }
         Chat.sendMessageToServer(message);
-        Log.d(TAG, TRACE_PREFIX + " clan notify event sent: target=" + normalizedTarget + ", cells=" + cellsCsv);
+        Log.d(TAG, TRACE_PREFIX + " clan notify event sent: target=" + normalizedTarget + ", cells=" + cellsCsv
+                + ", chatReady=" + chatReady);
     }
 
     /**
@@ -1435,7 +1441,7 @@ final class BossAuto {
         }
         if (isEmpty(normalizeClanToken(selfClanToken))) {
             Log.d(TAG, TRACE_PREFIX + " clan notify found skipped: self clan token is empty");
-            writeBossChat("Мы вне клана. Сообщение отменено.");
+            writeBossChat("Отправка в клан-чат невозможна: отсутствует значок клана (selfClanToken пустой).");
             return;
         }
 
@@ -1452,8 +1458,12 @@ final class BossAuto {
             safeBossName = "Босс";
         }
         String message = "%clan% Босс '" + safeBossName + "' на клетке: " + exactRegNum;
+        boolean chatReady = isChatSendReady();
+        if (!chatReady) {
+            Log.w(TAG, TRACE_PREFIX + " clan notify found send requested while chat is not ready: cell=" + exactRegNum);
+        }
         Chat.sendMessageToServer(message);
-        Log.d(TAG, TRACE_PREFIX + " clan notify found sent: cell=" + exactRegNum);
+        Log.d(TAG, TRACE_PREFIX + " clan notify found sent: cell=" + exactRegNum + ", chatReady=" + chatReady);
     }
 
     boolean isAutoBossAskTargetEnabled() {
