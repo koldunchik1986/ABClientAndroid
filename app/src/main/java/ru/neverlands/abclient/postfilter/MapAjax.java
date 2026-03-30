@@ -53,6 +53,17 @@ public class MapAjax {
     // при быстрых перепланировках маршрута.
     private static final long AUTO_TREASURE_ROUTE_CHAT_COOLDOWN_MS = 2_000L;
     private static final long AUTO_TREASURE_ROUTE_CHAT_DUPLICATE_SUPPRESS_MS = 15_000L;
+    /**
+     * Маркер локального сообщения Auto-Клада.
+     *
+     * Зависимости:
+     * - добавляется в уведомления `postAutoTreasureReasonToChat(...)` и
+     *   `postAutoTreasureRouteRebuildToChat(...)`;
+     * - удаляется в `ChatFilter.filter(...)` до вывода в чат;
+     * - используется как guard, чтобы локальные строки не попадали в серверные chat-hooks
+     *   (например, в сценарий Авто-Босса).
+     */
+    private static final String LOCAL_CHAT_MARKER = "<!--AB_LOCAL_CHAT-->";
     private static volatile long lastAutoDrinkBlazPinfoSyncAtMs = 0L;
     private static volatile long lastAutoDrinkBlazStartupSyncAttemptAtMs = 0L;
     private static volatile long lastAutoDrinkBlazTriggerAtMs = 0L;
@@ -1312,7 +1323,8 @@ public class MapAjax {
         }
         lastAutoTreasureReasonChatAtMs = now;
 
-        String messageHtml = MainPhp.buildServerChatTimeHtmlExternal()
+        String messageHtml = LOCAL_CHAT_MARKER
+                + MainPhp.buildServerChatTimeHtmlExternal()
                 + "<font color=#cc0000><b>" + reason + "</b></font>";
         Intent intent = new Intent(AppVars.ACTION_ADD_CHAT_MESSAGE);
         intent.putExtra("message", messageHtml);
@@ -1362,7 +1374,8 @@ public class MapAjax {
         lastAutoTreasureRouteChatKeyAtMs = now;
         lastAutoTreasureRouteChatKey = key;
 
-        String messageHtml = MainPhp.buildServerChatTimeHtmlExternal()
+        String messageHtml = LOCAL_CHAT_MARKER
+                + MainPhp.buildServerChatTimeHtmlExternal()
                 + "<font color=#6f42c1><b>Авто-Клад:\""
                 + escapeHtml(settingName)
                 + "\": Дообход клетки № "

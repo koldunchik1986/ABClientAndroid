@@ -20,6 +20,13 @@ public class ChatFilter {
     public static String filter(String message) {
         if (message == null) return "";
         String result = message;
+        // Локальные уведомления клиента (не серверный chat payload) помечаем специальным маркером.
+        // Такие строки можно отображать в UI/логе, но нельзя пускать в server-hooks (Авто-Босс и др.),
+        // чтобы они не влияли на парсинг событий из реального ответа `ch.php?show=1`.
+        boolean isLocalSyntheticMessage = result.contains("<!--AB_LOCAL_CHAT-->");
+        if (isLocalSyntheticMessage) {
+            result = result.replace("<!--AB_LOCAL_CHAT-->", "");
+        }
 
         // Парсинг боевого опыта и накопление статистики (аналог C# ChatFilter).
         String xpStr = HelperStrings.subString(
@@ -186,12 +193,14 @@ public class ChatFilter {
             result = result.substring(0, pos1) + msg + result.substring(pos2 + 3);
         }
 
-        try {
-            if (AppVars.getContext() != null) {
-                AutoFunctionsManager.getInstance(AppVars.getContext()).onIncomingChatMessage(result);
+        if (!isLocalSyntheticMessage) {
+            try {
+                if (AppVars.getContext() != null) {
+                    AutoFunctionsManager.getInstance(AppVars.getContext()).onIncomingChatMessage(result);
+                }
+            } catch (Exception e) {
+                android.util.Log.w("ChatFilter", "AUTO_BOSS_TRACE chat hook failed", e);
             }
-        } catch (Exception e) {
-            android.util.Log.w("ChatFilter", "AUTO_BOSS_TRACE chat hook failed", e);
         }
 
         Chat.addStringToChat(result);

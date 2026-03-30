@@ -77,6 +77,10 @@ public class WebViewRequestInterceptor {
             "@\\[0,\\[(\\d+),(\\d+)\\]\\]",
             Pattern.CASE_INSENSITIVE
     );
+    private static final Pattern CHAT_SET_LMID_PATTERN = Pattern.compile(
+            "set_lmid\\s*\\(\\s*(\\d+)\\s*\\)",
+            Pattern.CASE_INSENSITIVE
+    );
 
     /**
      * Определяет, нужно ли перехватывать данный URL.
@@ -365,10 +369,14 @@ public class WebViewRequestInterceptor {
                 connection.setRequestProperty("Referer", reqReferer);
             }
             if (isChatEndpoint(urlString)) {
+                String neverChatCookie = getCookieValueByName(effectiveCookie, "NeverChat");
+                String neverFuncCookie = getCookieValueByName(effectiveCookie, "NeverFunc");
                 Log.d(TAG, "CHAT_REQ_HEADERS: url=" + urlString
                         + ", ua=" + (reqUserAgent == null ? "" : reqUserAgent)
                         + ", referer=" + (reqReferer == null ? "" : reqReferer)
-                        + ", cookieSummary=" + summarizeCookieHeader(effectiveCookie));
+                        + ", cookieSummary=" + summarizeCookieHeader(effectiveCookie)
+                        + ", neverChat=" + (neverChatCookie.isEmpty() ? "<empty>" : neverChatCookie)
+                        + ", neverFunc=" + (neverFuncCookie.isEmpty() ? "<empty>" : neverFuncCookie));
             }
 
             int code = connection.getResponseCode();
@@ -429,6 +437,12 @@ public class WebViewRequestInterceptor {
                     CookieManager.getInstance().setCookie(url.getProtocol() + "://" + url.getHost(), sc);
                 }
                 CookieManager.getInstance().flush();
+                if (urlString.contains("ch.php") && urlString.contains("show=1")) {
+                    String setNeverChat = getSetCookieValueByName(setCookies, "NeverChat");
+                    if (!setNeverChat.isEmpty()) {
+                        Log.d(TAG, "CHAT_SET_COOKIE: NeverChat=" + setNeverChat + " for " + urlString);
+                    }
+                }
             }
 
             connection.disconnect();
@@ -528,15 +542,26 @@ public class WebViewRequestInterceptor {
             if (urlString.contains("ch.php") && urlString.contains("show=1")) {
                 boolean hasAdd = processedPreview.contains("add_msg");
                 boolean hasLmid = processedPreview.contains("set_lmid");
+                String rawLmid = extractSetLmidValue(preview);
+                String processedLmid = extractSetLmidValue(processedPreview);
                 if (!hasAdd || !hasLmid) {
                     String full = processedPreview;
                     if (processed.length > 0 && processed.length < 20000) {
                         full = new String(processed, Charset.forName("windows-1251"));
                         hasAdd = full.contains("add_msg");
                         hasLmid = full.contains("set_lmid");
+                        if (processedLmid.isEmpty()) {
+                            processedLmid = extractSetLmidValue(full);
+                        }
                     }
                 }
-                Log.d(TAG, "ch_refr response markers: add_msg=" + hasAdd + ", set_lmid=" + hasLmid);
+                boolean setLmidOnly = hasLmid && !hasAdd && bytes.length <= 80;
+                Log.d(TAG, "ch_refr response markers: add_msg=" + hasAdd
+                        + ", set_lmid=" + hasLmid
+                        + ", raw_lmid=" + (rawLmid.isEmpty() ? "<none>" : rawLmid)
+                        + ", processed_lmid=" + (processedLmid.isEmpty() ? "<none>" : processedLmid)
+                        + ", set_lmid_only=" + setLmidOnly
+                        + ", raw_bytes=" + bytes.length);
             }
 
             WebResourceResponse response = new WebResourceResponse(
@@ -685,6 +710,66 @@ public class WebViewRequestInterceptor {
             }
         }
         return "count=" + names.size() + ", names=" + names;
+    }
+
+    private static String getCookieValueByName(String cookieHeader, String cookieName) {
+        if (cookieHeader == null || cookieHeader.isEmpty() || cookieName == null || cookieName.isEmpty()) {
+            return "";
+        }
+        String[] parts = cookieHeader.split(";");
+        for (String rawPart : parts) {
+            if (rawPart == null) {
+                continue;
+            }
+            String part = rawPart.trim();
+            if (part.isEmpty()) {
+                continue;
+            }
+            int eq = part.indexOf('=');
+            if (eq <= 0) {
+                continue;
+            }
+            String name = part.substring(0, eq).trim();
+            if (!cookieName.equalsIgnoreCase(name)) {
+                continue;
+            }
+            return part.substring(eq + 1).trim();
+        }
+        return "";
+    }
+
+    private static String getSetCookieValueByName(List<String> setCookies, String cookieName) {
+        if (setCookies == null || setCookies.isEmpty() || cookieName == null || cookieName.isEmpty()) {
+            return "";
+        }
+        for (String setCookie : setCookies) {
+            if (setCookie == null || setCookie.isEmpty()) {
+                continue;
+            }
+            int semi = setCookie.indexOf(';');
+            String firstPart = semi >= 0 ? setCookie.substring(0, semi) : setCookie;
+            int eq = firstPart.indexOf('=');
+            if (eq <= 0) {
+                continue;
+            }
+            String name = firstPart.substring(0, eq).trim();
+            if (!cookieName.equalsIgnoreCase(name)) {
+                continue;
+            }
+            return firstPart.substring(eq + 1).trim();
+        }
+        return "";
+    }
+
+    private static String extractSetLmidValue(String body) {
+        if (body == null || body.isEmpty()) {
+            return "";
+        }
+        Matcher matcher = CHAT_SET_LMID_PATTERN.matcher(body);
+        if (!matcher.find()) {
+            return "";
+        }
+        return matcher.group(1);
     }
 
     /**
