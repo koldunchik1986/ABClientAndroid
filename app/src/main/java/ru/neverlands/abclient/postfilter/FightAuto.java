@@ -366,6 +366,17 @@ public final class FightAuto {
             host.notifyNewFight(fight);
             UnderAttackManager.parseAsync(html);
         }
+        if (fightEnded
+                && host.isAutoSkinEnabledByPreference()
+                && address != null
+                && address.contains("get_id=17")) {
+            // Fallback C#-семантики AutoSkin:
+            // после кадра get_id=17 (разделка) в любом случае планируем проверку ресурсов.
+            // Это покрывает кейсы, когда var logs не содержит [8,...], но разделка сервером уже применена.
+            AppVars.AutoSkinCheckRes = true;
+            android.util.Log.d(TAG, "AUTO_SKIN_TRACE processFight: queue AutoSkinCheckRes=true after get_id=17"
+                    + ", logBoi=" + fight.LogBoi);
+        }
         if (fightEnded && host.isAutoSkinEnabledByPreference()) {
             boolean alreadyOnRazAddress = address != null && address.contains("get_id=17");
             if (!alreadyOnRazAddress) {
@@ -375,12 +386,18 @@ public final class FightAuto {
                     return razHtml;
                 }
                 boolean infAddress = address != null && address.contains("get_id=56&act=10&go=inf");
+                boolean finishAddress = address != null && address.contains("get_id=61&act=5");
+                boolean runtimeMainAddress = address != null
+                        && address.contains("main.php?r=")
+                        && !host.isAutoFightProbeAddress(address);
+                boolean probeCandidateAddress = infAddress || finishAddress || runtimeMainAddress;
                 boolean hasFightLog = fight.LogBoi != null && !fight.LogBoi.isEmpty();
                 boolean probeNotDoneForFight = hasFightLog && !fight.LogBoi.equals(lastAutoSkinProbeFightLog);
-                if (infAddress && probeNotDoneForFight) {
+                if (probeCandidateAddress && probeNotDoneForFight) {
                     lastAutoSkinProbeFightLog = fight.LogBoi;
                     String probeUrl = "http://neverlands.ru/main.php?r=" + System.currentTimeMillis();
-                    android.util.Log.d(TAG, "AUTO_SKIN_TRACE processFight: raz probe redirect to " + probeUrl);
+                    android.util.Log.d(TAG, "AUTO_SKIN_TRACE processFight: raz probe redirect to " + probeUrl
+                            + ", sourceAddress=" + address);
                     return host.buildDelayedRedirectHtml("Проверка разделки", probeUrl, 260);
                 }
             }

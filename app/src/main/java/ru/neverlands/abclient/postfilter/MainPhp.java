@@ -1639,50 +1639,52 @@ public class MainPhp {
     }
 
     private static String mainPhpRaz(String html) {
-        String strFightTy = HelperStrings.subString(html, "var fight_ty = [", "];");
-        if (strFightTy == null || strFightTy.isEmpty()) {
-            String fallbackRazLink = extractRazLinkFromHtml(html);
-            if (fallbackRazLink != null) {
-                android.util.Log.d(TAG, "AUTO_SKIN_TRACE mainPhpRaz: fallback link redirect to " + fallbackRazLink);
-                return buildRedirectHtml("Разделка", fallbackRazLink);
+        if (html == null || html.isEmpty()) {
+            return null;
+        }
+
+        java.util.regex.Matcher matcher = java.util.regex.Pattern.compile(
+                "var\\s+fight_ty\\s*=\\s*\\[(.*?)\\];",
+                java.util.regex.Pattern.CASE_INSENSITIVE | java.util.regex.Pattern.DOTALL
+        ).matcher(html);
+        int variantIndex = 0;
+        while (matcher.find()) {
+            variantIndex++;
+            String strFightTy = matcher.group(1);
+            String razLink = buildRazLinkFromFightTyPayload(strFightTy);
+            if (razLink != null) {
+                android.util.Log.d(TAG, "AUTO_SKIN_TRACE mainPhpRaz: redirect via fight_ty[" + variantIndex + "] to " + razLink);
+                return buildRedirectHtml("Разделка", razLink);
             }
+        }
+
+        String fallbackRazLink = extractRazLinkFromHtml(html);
+        if (fallbackRazLink != null) {
+            android.util.Log.d(TAG, "AUTO_SKIN_TRACE mainPhpRaz: fallback link redirect to " + fallbackRazLink);
+            return buildRedirectHtml("Разделка", fallbackRazLink);
+        }
+        return null;
+    }
+
+    private static String buildRazLinkFromFightTyPayload(String strFightTy) {
+        if (strFightTy == null || strFightTy.isEmpty()) {
             return null;
         }
         List<String> fightTy = splitJsTopLevelCsv(strFightTy);
         if (fightTy.size() <= 9) {
-            String fallbackRazLink = extractRazLinkFromHtml(html);
-            if (fallbackRazLink != null) {
-                android.util.Log.d(TAG, "AUTO_SKIN_TRACE mainPhpRaz: fallback link redirect to " + fallbackRazLink);
-                return buildRedirectHtml("Разделка", fallbackRazLink);
-            }
             return null;
         }
         String fightTyNine = fightTy.get(9);
         if (fightTyNine == null) {
-            String fallbackRazLink = extractRazLinkFromHtml(html);
-            if (fallbackRazLink != null) {
-                android.util.Log.d(TAG, "AUTO_SKIN_TRACE mainPhpRaz: fallback link redirect to " + fallbackRazLink);
-                return buildRedirectHtml("Разделка", fallbackRazLink);
-            }
             return null;
         }
         String trimmed = fightTyNine.trim();
         if (!trimmed.startsWith("[") || !trimmed.endsWith("]")) {
-            String fallbackRazLink = extractRazLinkFromHtml(html);
-            if (fallbackRazLink != null) {
-                android.util.Log.d(TAG, "AUTO_SKIN_TRACE mainPhpRaz: fallback link redirect to " + fallbackRazLink);
-                return buildRedirectHtml("Разделка", fallbackRazLink);
-            }
             return null;
         }
         String inner = trimmed.substring(1, trimmed.length() - 1);
         List<String> razParams = splitJsTopLevelCsv(inner);
         if (razParams.size() <= 5) {
-            String fallbackRazLink = extractRazLinkFromHtml(html);
-            if (fallbackRazLink != null) {
-                android.util.Log.d(TAG, "AUTO_SKIN_TRACE mainPhpRaz: fallback link redirect to " + fallbackRazLink);
-                return buildRedirectHtml("Разделка", fallbackRazLink);
-            }
             return null;
         }
         String type = trimJsToken(razParams.get(0));
@@ -1694,14 +1696,12 @@ public class MainPhp {
         if (type.isEmpty() || uid.isEmpty() || vcode.isEmpty()) {
             return null;
         }
-        String razLink = "http://neverlands.ru/main.php?get_id=17&type=" + type
+        return "http://neverlands.ru/main.php?get_id=17&type=" + type
                 + "&p=" + p
                 + "&uid=" + uid
                 + "&s=" + s
                 + "&m=" + m
                 + "&vcode=" + vcode;
-        android.util.Log.d(TAG, "AUTO_SKIN_TRACE mainPhpRaz: redirect to " + razLink);
-        return buildRedirectHtml("Разделка", razLink);
     }
     /**
      * Порт `MainPhpFindPerc` из C# (`MainPhpDrink.cs`).
@@ -5162,14 +5162,17 @@ public class MainPhp {
         boolean skinSkillRaised = false;
         List<String> lootItems = new ArrayList<>();
         java.util.regex.Matcher lootMatcher = java.util.regex.Pattern.compile(
-                "\\[8,\\d+,\\\"([^\\\"]+)\\\",(\\d+)\\]"
+                "\\[\\s*8\\s*,\\s*\\d+\\s*,\\s*(?:\\\"([^\\\"]+)\\\"|'([^']+)')\\s*,\\s*(\\d+)\\s*\\]"
         ).matcher(logsBlock);
         while (lootMatcher.find()) {
             String lootNameRaw = lootMatcher.group(1);
+            if (lootNameRaw == null || lootNameRaw.isEmpty()) {
+                lootNameRaw = lootMatcher.group(2);
+            }
             if (lootNameRaw == null) {
                 continue;
             }
-            String skillRaiseRaw = lootMatcher.group(2);
+            String skillRaiseRaw = lootMatcher.group(3);
             String lootName = lootNameRaw.trim();
             if (lootName.isEmpty()) {
                 continue;
@@ -5233,14 +5236,18 @@ public class MainPhp {
                 lastFightResultLootBroadcastKey = lootDedupKey;
             }
         }
-        if (isSkinResult && shouldSendLoot) {
+        if (isSkinResult && isAutoSkinEnabledByPreference()) {
+            // C# parity/fallback: после запроса get_id=17 всегда перечитываем ресурсы из инвентаря.
+            // Даже если var logs не содержит [8,...], сервер мог применить разделку в этом же кадре.
             AppVars.AutoSkinCheckRes = true;
             if (skinSkillRaised) {
                 AppVars.AutoSkinCheckUm = true;
             }
             android.util.Log.d(TAG, "AUTO_SKIN_TRACE publishFightResultFromLogsIfNeeded: "
                     + "queue AutoSkinCheckRes=true, AutoSkinCheckUm=" + AppVars.AutoSkinCheckUm
-                    + ", lootCount=" + lootItems.size());
+                    + ", lootCount=" + lootItems.size()
+                    + ", shouldSendLoot=" + shouldSendLoot
+                    + ", source=" + address);
         }
         if (!isSkinResult && shouldSendLoot) {
             ru.neverlands.abclient.utils.ChatStats.addLoot("", lootItems);

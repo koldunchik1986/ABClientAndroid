@@ -41,19 +41,6 @@ import ru.neverlands.abclient.utils.Chat;
  * - здесь нет дублирования логики навигатора/компаса/fast-action;
  *   используются только вызовы уже существующих менеджеров.
  */
-/**
- * Оркестратор сценария «Авто-Боссы».
- *
- * Что делает модуль:
- * - получает системные события о боссах из чата;
- * - запускает поиск цели через уже существующий Auto-Компас;
- * - после нахождения цели выполняет FastAction «Свиток Защиты»;
- * - по завершению возвращает исходные состояния авто-функций.
- *
- * Важный инвариант реализации:
- * - здесь нет дублирования логики навигатора/fast-action;
- * - модуль только координирует вызовы через AutoFunctionsManager.
- */
 final class BossAuto {
     private static final String TAG = "AutoFunctionsManager";
     private static final String TRACE_PREFIX = "AUTO_BOSS_TRACE";
@@ -61,7 +48,6 @@ final class BossAuto {
     private static final String PREF_AUTO_BOSS_ASK_TARGET = "auto_boss_ask_target";
     private static final String PREF_AUTO_BOSS_BD_MODE = "auto_boss_bd_mode";
     private static final String PREF_AUTO_BOSS_TRACK_CURRENT_WARS = "auto_boss_track_current_wars";
-    private static final String PREF_AUTO_BOSS_CLAN_NOTIFY = "auto_boss_clan_notify";
     private static final String PREF_AUTO_BOSS_WAIT_SCROLL_SEC = "auto_boss_wait_scroll_sec";
     private static final String PREF_AUTO_BOSS_SEARCH_TIMEOUT_SEC = "auto_boss_search_timeout_sec";
     private static final String PREF_AUTO_BOSS_WAIT_FIGHT_TIMEOUT_SEC = "auto_boss_wait_fight_timeout_sec";
@@ -69,9 +55,6 @@ final class BossAuto {
     private static final Pattern BOSS_EVENT_PATTERN = Pattern.compile(
             "внимание!\\s*случайное событие!\\s*монстр\\s*[\"«]?([^\"»]+)[\"»]?\\s*напал на игрока\\s+([a-zа-я0-9_\\-]+)\\.",
             Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CASE);
-    // Расширенный парсер события Босса: допускает ники со спецсимволами и не завязан на узкий класс символов.
-    private static final Pattern BOSS_EVENT_PATTERN_FLEX = Pattern.compile(
-            "(?iu)(?:\\d{1,2}/\\d{1,2}/\\d{2,4}\\s+\\d{1,2}:\\d{2}:\\d{2}\\s+)?(?:внимание!\\s*случайное\\s+событие!\\s*)?монстр\\s*[\"«]?([^\"»]+)[\"»]?\\s*напал\\s+на\\s+игрока\\s+([^\\s<>]+?)\\s*\\.?");
     private static final Pattern CELL_PATTERN = Pattern.compile("\\b\\d{1,4}-\\d{1,5}\\b");
     private static final Pattern SPAN_NICK_PATTERN = Pattern.compile(
             "<SPAN[^>]+(?:title|alt)=\"([^\"]+)\"",
@@ -127,13 +110,6 @@ final class BossAuto {
     /**
      * Снимок исходного состояния авто-функций на момент старта сценария.
      * Нужен для корректного восстановления после завершения поиска/боя.
-     */
-    /**
-     * Снимок пользовательских авто-настроек на момент старта сценария.
-     *
-     * Нужен для корректного restore после завершения «Авто-Босса».
-     * В снимок не включаются Auto-Бой и Auto-Лечение — эти режимы
-     * по проектным правилам не ставятся на паузу.
      */
     private static final class BossScenarioSnapshot {
         boolean autoFishEnabled;
@@ -443,7 +419,6 @@ final class BossAuto {
         writeBossChat("Событие: Монстр \"" + escapeHtml(event.bossName) + "\" напал на игрока "
                 + targetHtml + ". Цель " + targetHtml + " в " + buildFightWordHtml(initialFightLink)
                 + ". Запускаем поиск цели." + locationPrefix);
-        sendClanBossEventMessageIfNeeded(event.bossName, normalizedTarget, selfClanToken);
         if (isAutoBossAskTargetEnabled()) {
             synchronized (lock) {
                 targetAskAttempts = 0;
@@ -493,7 +468,6 @@ final class BossAuto {
         if (AppVars.AutoMoving) {
             owner.stopAutoMoving();
         }
-        sendClanBossFoundMessageIfNeeded();
         String targetHtml = buildTargetNickHtml(targetNick, null);
         writeBossChat("Цель найдена (" + source + "): "
                 + targetHtml + ". Готовим «Свиток Защиты».");
@@ -724,40 +698,16 @@ final class BossAuto {
         if (isEmpty(plain)) {
             return null;
         }
-        Matcher matcher = BOSS_EVENT_PATTERN_FLEX.matcher(plain);
+        Matcher matcher = BOSS_EVENT_PATTERN.matcher(plain);
         if (!matcher.find()) {
-            String lower = plain.toLowerCase(Locale.ROOT);
-            boolean bossLikeMessage = lower.contains("случайное событие")
-                    || (lower.contains("монстр") && lower.contains("напал на игрока"));
-            if (bossLikeMessage) {
-                String snippet = plain.length() > 280 ? plain.substring(0, 280) + "..." : plain;
-                Log.d(TAG, TRACE_PREFIX + " parse miss boss-event: " + snippet);
-            }
             return null;
         }
         String boss = safeTrim(matcher.group(1));
-        String target = normalizeBossTargetNick(matcher.group(2));
+        String target = normalizeNick(matcher.group(2));
         if (isEmpty(target)) {
             return null;
         }
         return new BossEvent(boss, target);
-    }
-
-    /**
-     * Нормализация ника цели из системного сообщения о Боссе.
-     * Удаляет служебную пунктуацию в хвосте и оставляет исходные спецсимволы ника.
-     */
-    private String normalizeBossTargetNick(String rawNick) {
-        String value = normalizeNick(rawNick);
-        while (!value.isEmpty()) {
-            char tail = value.charAt(value.length() - 1);
-            if (tail == '.' || tail == ',' || tail == ':' || tail == ';') {
-                value = value.substring(0, value.length() - 1).trim();
-                continue;
-            }
-            break;
-        }
-        return normalizeNick(value);
     }
 
     private String extractSenderNick(String messageHtml) {
@@ -1283,100 +1233,6 @@ final class BossAuto {
         );
     }
 
-    /**
-     * Отправляет клановое уведомление о старте события Босса, если включена соответствующая опция.
-     * Если наш профиль вне клана, вместо отправки в клан-чат пишет локальное уведомление.
-     */
-    /**
-     * Отправка клан-уведомления о старте события босса.
-     *
-     * Зависимости:
-     * - `resolveAutoCompassLocation(...)` для списка возможных клеток;
-     * - `Chat.sendMessageToServer(...)` для отправки в `%clan%`;
-     * - проверка наличия клана выполняется по `selfClanToken` из pinfo.
-     *
-     * Если персонаж вне клана, клан-сообщение не отправляется:
-     * в локальный чат пишется причина отмены.
-     */
-    private void sendClanBossEventMessageIfNeeded(String bossName, String targetNick, String selfClanToken) {
-        if (!isAutoBossClanNotifyEnabled()) {
-            return;
-        }
-        if (isEmpty(normalizeClanToken(selfClanToken))) {
-            writeBossChat("Мы вне клана. Сообщение отменено.");
-            return;
-        }
-
-        String normalizedTarget = normalizeNick(targetNick);
-        String cellsCsv = "";
-        try {
-            AutoFunctionsManager.CompassLocationResolveResult resolved = owner.resolveAutoCompassLocation(normalizedTarget);
-            if (resolved != null && resolved.success) {
-                cellsCsv = safeTrim(resolved.cellsCsv);
-            }
-        } catch (Exception e) {
-            Log.w(TAG, TRACE_PREFIX + " clan notify resolve failed: target=" + normalizedTarget, e);
-        }
-        if (isEmpty(cellsCsv)) {
-            cellsCsv = safeTrim(owner.getAutoCompassCellsCsv());
-        }
-        if (isEmpty(cellsCsv)) {
-            cellsCsv = "не определены";
-        }
-
-        String safeBossName = safeTrim(bossName);
-        if (isEmpty(safeBossName)) {
-            safeBossName = "Босс";
-        }
-        String message = "%clan% '" + safeBossName + "' напал на '" + normalizedTarget
-                + "'. Возможные клетки: " + cellsCsv;
-        Chat.sendMessageToServer(message);
-        Log.d(TAG, TRACE_PREFIX + " clan notify event sent: target=" + normalizedTarget + ", cells=" + cellsCsv);
-    }
-
-    /**
-     * Отправляет клановое уведомление о точной клетке Босса после обнаружения цели в комнате.
-     * Если наш профиль вне клана, вместо отправки в клан-чат пишет локальное уведомление.
-     */
-    /**
-     * Отправка клан-уведомления с точной клеткой после обнаружения цели.
-     *
-     * Источник клетки:
-     * - основной: `currentMapRegNum()`;
-     * - fallback: `AppVars.AutoMovingDestinaton`, если карта ещё не синхронизирована.
-     */
-    private void sendClanBossFoundMessageIfNeeded() {
-        if (!isAutoBossClanNotifyEnabled()) {
-            return;
-        }
-        String selfClanToken;
-        String localBossName;
-        synchronized (lock) {
-            selfClanToken = bossSelfClanToken;
-            localBossName = bossName;
-        }
-        if (isEmpty(normalizeClanToken(selfClanToken))) {
-            writeBossChat("Мы вне клана. Сообщение отменено.");
-            return;
-        }
-
-        String exactRegNum = currentMapRegNum();
-        if (isEmpty(exactRegNum) && !isEmpty(AppVars.AutoMovingDestinaton)) {
-            exactRegNum = safeTrim(AppVars.AutoMovingDestinaton);
-        }
-        if (isEmpty(exactRegNum)) {
-            exactRegNum = "?";
-        }
-
-        String safeBossName = safeTrim(localBossName);
-        if (isEmpty(safeBossName)) {
-            safeBossName = "Босс";
-        }
-        String message = "%clan% Босс '" + safeBossName + "' на клетке: " + exactRegNum;
-        Chat.sendMessageToServer(message);
-        Log.d(TAG, TRACE_PREFIX + " clan notify found sent: cell=" + exactRegNum);
-    }
-
     boolean isAutoBossAskTargetEnabled() {
         return prefs.getBoolean(PREF_AUTO_BOSS_ASK_TARGET, true);
     }
@@ -1405,56 +1261,12 @@ final class BossAuto {
      * При включении цель отклоняется, если её clanToken присутствует
      * в кэше текущих войн, полученном из {@code wars.cgi}.
      */
-    /**
-     * Флаг «Следить за текущими войнами».
-     *
-     * Когда включён, `BossAuto` отфильтровывает цель, если её `targetClanToken`
-     * присутствует в кэше `ClanWarsManager` (данные `wars.cgi`).
-     */
     boolean isAutoBossTrackCurrentWarsEnabled() {
         return prefs.getBoolean(PREF_AUTO_BOSS_TRACK_CURRENT_WARS, true);
     }
 
     void setAutoBossTrackCurrentWarsEnabled(boolean enabled) {
         prefs.edit().putBoolean(PREF_AUTO_BOSS_TRACK_CURRENT_WARS, enabled).apply();
-    }
-
-    /**
-     * Флаг отправки служебных сообщений в клан-чат для сценария «Авто-Босс».
-     */
-    boolean isAutoBossClanNotifyEnabled() {
-        return prefs.getBoolean(PREF_AUTO_BOSS_CLAN_NOTIFY, false);
-    }
-
-    /**
-     * Сохранение флага клан-уведомлений.
-     * Используется UI-настройками, а фактическая отправка выполняется в
-     * {@link #sendClanBossEventMessageIfNeeded(String, String, String)} и
-     * {@link #sendClanBossFoundMessageIfNeeded()}.
-     */
-    void setAutoBossClanNotifyEnabled(boolean enabled) {
-        prefs.edit().putBoolean(PREF_AUTO_BOSS_CLAN_NOTIFY, enabled).apply();
-    }
-
-    /**
-     * Признак активного сценария поиска/входа в бой, в котором нежелательны
-     * фоновые переименования карты по pinfo и искусственные задержки шага карты.
-     *
-     * Используется как runtime-guard для:
-     * - `RoomManager` (пауза `MapRebuildFromPinfo`);
-     * - `MapAjax` (пауза `MapCellCheckTimeout` при активном Авто-Боссе).
-     */
-    boolean shouldPauseMapRebuildFromPinfo() {
-        if (!isAutoBossEnabled()) {
-            return false;
-        }
-        BossStage currentStage;
-        synchronized (lock) {
-            currentStage = stage;
-        }
-        return currentStage == BossStage.SEARCHING_TARGET
-                || currentStage == BossStage.TARGET_FOUND_WAIT_SCROLL
-                || currentStage == BossStage.WAIT_FIGHT_START;
     }
 
     int getAutoBossWaitBeforeScrollSec() {
