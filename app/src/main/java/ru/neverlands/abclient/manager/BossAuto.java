@@ -736,10 +736,32 @@ final class BossAuto {
             return null;
         }
         String boss = safeTrim(matcher.group(1));
-        String target = normalizeBossTargetNick(matcher.group(2));
+        String rawTarget = safeTrim(matcher.group(2));
+        // FIX: BOSS_EVENT_PATTERN_FLEX исторически использовал lazy-захват ника цели.
+        // На коротких никах вроде "VV" это могло дать "V". Здесь аккуратно
+        // расширяем захват до фактического конца токена в исходном plain-тексте,
+        // не меняя остальную цепочку парсинга.
+        int targetStart = matcher.start(2);
+        int targetEnd = matcher.end(2);
+        if (targetStart >= 0 && targetEnd > targetStart && targetEnd < plain.length()) {
+            int scan = targetEnd;
+            while (scan < plain.length()) {
+                char ch = plain.charAt(scan);
+                if (Character.isWhitespace(ch) || ch == '<' || ch == '>' || ch == '.' || ch == ',' || ch == ':' || ch == ';') {
+                    break;
+                }
+                scan++;
+            }
+            if (scan > targetEnd) {
+                rawTarget = plain.substring(targetStart, scan);
+            }
+        }
+        String target = normalizeBossTargetNick(rawTarget);
         if (isEmpty(target)) {
             return null;
         }
+        Log.d(TAG, TRACE_PREFIX + " parse boss-event: rawTarget=" + rawTarget
+                + ", normalizedTarget=" + target + ", boss=" + boss);
         return new BossEvent(boss, target);
     }
 
