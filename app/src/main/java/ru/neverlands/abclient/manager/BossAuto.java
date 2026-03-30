@@ -62,6 +62,7 @@ final class BossAuto {
     private static final String PREF_AUTO_BOSS_BD_MODE = "auto_boss_bd_mode";
     private static final String PREF_AUTO_BOSS_TRACK_CURRENT_WARS = "auto_boss_track_current_wars";
     private static final String PREF_AUTO_BOSS_CLAN_NOTIFY = "auto_boss_clan_notify";
+    private static final String PREF_AUTO_BOSS_SELF_CLAN_TOKEN_CACHE = "auto_boss_self_clan_token_cache";
     private static final String PREF_AUTO_BOSS_WAIT_SCROLL_SEC = "auto_boss_wait_scroll_sec";
     private static final String PREF_AUTO_BOSS_SEARCH_TIMEOUT_SEC = "auto_boss_search_timeout_sec";
     private static final String PREF_AUTO_BOSS_WAIT_FIGHT_TIMEOUT_SEC = "auto_boss_wait_fight_timeout_sec";
@@ -71,7 +72,7 @@ final class BossAuto {
             Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CASE);
     // Расширенный парсер события Босса: допускает ники со спецсимволами и не завязан на узкий класс символов.
     private static final Pattern BOSS_EVENT_PATTERN_FLEX = Pattern.compile(
-            "(?iu)(?:\\d{1,2}/\\d{1,2}/\\d{2,4}\\s+\\d{1,2}:\\d{2}:\\d{2}\\s+)?(?:внимание!\\s*случайное\\s+событие!\\s*)?монстр\\s*[\"«]?([^\"»]+)[\"»]?\\s*напал\\s+на\\s+игрока\\s+([^\\s<>]+?)\\s*\\.?");
+            "(?iu)(?:\\d{1,2}/\\d{1,2}/\\d{2,4}\\s+\\d{1,2}:\\d{2}:\\d{2}\\s+)?(?:внимание!\\s*случайное\\s+событие!\\s*)?монстр\\s*[\"«]?([^\"»]+)[\"»]?\\s*напал\\s+на\\s+игрока\\s+(.+?)\\s*(?:\\.|$)");
     private static final Pattern CELL_PATTERN = Pattern.compile("\\b\\d{1,4}-\\d{1,5}\\b");
     private static final Pattern SPAN_NICK_PATTERN = Pattern.compile(
             "<SPAN[^>]+(?:title|alt)=\"([^\"]+)\"",
@@ -110,6 +111,7 @@ final class BossAuto {
     private int bossFightFidMissingTicks = 0;
     private String bossTargetClanToken = "";
     private String bossSelfClanToken = "";
+    private String cachedSelfClanToken = "";
 
     private enum BossStage {
         IDLE,
@@ -184,6 +186,9 @@ final class BossAuto {
         this.appContext = context.getApplicationContext();
         this.prefs = prefs;
         this.owner = owner;
+        this.cachedSelfClanToken = normalizeClanToken(
+                prefs.getString(PREF_AUTO_BOSS_SELF_CLAN_TOKEN_CACHE, "")
+        );
     }
 
     boolean isAutoBossEnabled() {
@@ -374,7 +379,7 @@ final class BossAuto {
         NeverApi.PinfoCompassSnapshot targetSnapshot = safeGetPinfoSnapshot(normalizedTarget);
         NeverApi.PinfoCompassSnapshot selfSnapshot = safeGetPinfoSnapshot(resolveSelfNick());
         String targetClanToken = normalizeClanToken(targetSnapshot == null ? "" : targetSnapshot.clanToken);
-        String selfClanToken = normalizeClanToken(selfSnapshot == null ? "" : selfSnapshot.clanToken);
+        String selfClanToken = resolveSelfClanTokenWithFallback(selfSnapshot);
         boolean bdModeEnabled = isAutoBossBdModeEnabled();
         boolean trackCurrentWarsEnabled = isAutoBossTrackCurrentWarsEnabled();
 
@@ -386,13 +391,23 @@ final class BossAuto {
         // Клан-оповещение о самом событии отправляем сразу после распознавания события.
         // Это не зависит от последующих фильтров BD/wars.
         sendClanBossEventMessageIfNeeded(event.bossName, normalizedTarget, selfClanToken);
+        String initialFightFid = resolveFightFidReliable(normalizedTarget, targetSnapshot);
+        String initialFightLink = buildFightLogLink(initialFightFid);
+        String locationLabel = resolveTargetLocationLabel(normalizedTarget, targetSnapshot);
+        String targetHtml = buildTargetNickHtml(normalizedTarget, targetSnapshot);
+        String locationPrefix = isEmpty(locationLabel) ? "" : " [" + escapeHtml(locationLabel) + "]";
+        writeBossChat("Событие. Монстр \"" + escapeHtml(event.bossName) + "\" напал на игрока "
+                + targetHtml + ". Цель " + targetHtml + " в " + buildFightWordHtml(initialFightLink) + "."
+                + locationPrefix);
 
         if (bdModeEnabled) {
             if (isEmpty(selfClanToken)) {
                 writeBossChat("Продолжаем поиск цели не учитывая БД режим (наш статус позволяет вмешаться).");
             } else if (!isEmpty(targetClanToken) && !selfClanToken.equalsIgnoreCase(targetClanToken)) {
                 String deniedTargetHtml = buildTargetNickHtml(normalizedTarget, targetSnapshot);
-                writeBossChat("Действие отменено — БД режим не позволяет нам защитить " + deniedTargetHtml + ".");
+                askTargetOnceIfEnabled(normalizedTarget);
+                writeBossChat("Движение к цели остановлено — БД режим не позволяет нам защитить "
+                        + deniedTargetHtml + ".");
                 Log.d(TAG, TRACE_PREFIX + " bd mode denied target: target=" + normalizedTarget
                         + ", targetClan=" + targetClanToken + ", selfClan=" + selfClanToken);
                 return;
@@ -403,7 +418,8 @@ final class BossAuto {
                 && !isEmpty(targetClanToken)
                 && ClanWarsManager.getInstance(appContext).isClanTokenInCurrentWars(targetClanToken)) {
             String deniedTargetHtml = buildTargetNickHtml(normalizedTarget, targetSnapshot);
-            writeBossChat("Действие отменено — цель " + deniedTargetHtml
+            askTargetOnceIfEnabled(normalizedTarget);
+            writeBossChat("Движение к цели остановлено — цель " + deniedTargetHtml
                     + " состоит в клане, участвующем в текущей клановой войне.");
             Log.d(TAG, TRACE_PREFIX + " wars filter denied by wars list: target=" + normalizedTarget
                     + ", targetClan=" + targetClanToken);
@@ -418,8 +434,6 @@ final class BossAuto {
 
         BossScenarioSnapshot newSnapshot = captureSnapshot();
         pauseNonCombatFunctions();
-        String initialFightFid = resolveFightFidReliable(normalizedTarget, targetSnapshot);
-        String initialFightLink = buildFightLogLink(initialFightFid);
 
         synchronized (lock) {
             snapshot = newSnapshot;
@@ -440,12 +454,7 @@ final class BossAuto {
             targetAskNextAttemptAtMs = 0L;
         }
 
-        String locationLabel = resolveTargetLocationLabel(normalizedTarget, targetSnapshot);
-        String targetHtml = buildTargetNickHtml(normalizedTarget, targetSnapshot);
-        String locationPrefix = isEmpty(locationLabel) ? "" : " [" + escapeHtml(locationLabel) + "]";
-        writeBossChat("Событие: Монстр \"" + escapeHtml(event.bossName) + "\" напал на игрока "
-                + targetHtml + ". Цель " + targetHtml + " в " + buildFightWordHtml(initialFightLink)
-                + ". Запускаем поиск цели." + locationPrefix);
+        writeBossChat("Запускаем поиск цели.");
         if (isAutoBossAskTargetEnabled()) {
             synchronized (lock) {
                 targetAskAttempts = 0;
@@ -739,25 +748,6 @@ final class BossAuto {
         }
         String boss = safeTrim(matcher.group(1));
         String rawTarget = safeTrim(matcher.group(2));
-        // FIX: BOSS_EVENT_PATTERN_FLEX исторически использовал lazy-захват ника цели.
-        // На коротких никах вроде "VV" это могло дать "V". Здесь аккуратно
-        // расширяем захват до фактического конца токена в исходном plain-тексте,
-        // не меняя остальную цепочку парсинга.
-        int targetStart = matcher.start(2);
-        int targetEnd = matcher.end(2);
-        if (targetStart >= 0 && targetEnd > targetStart && targetEnd < plain.length()) {
-            int scan = targetEnd;
-            while (scan < plain.length()) {
-                char ch = plain.charAt(scan);
-                if (Character.isWhitespace(ch) || ch == '<' || ch == '>' || ch == '.' || ch == ',' || ch == ':' || ch == ';') {
-                    break;
-                }
-                scan++;
-            }
-            if (scan > targetEnd) {
-                rawTarget = plain.substring(targetStart, scan);
-            }
-        }
         String target = normalizeBossTargetNick(rawTarget);
         if (isEmpty(target)) {
             return null;
@@ -872,6 +862,45 @@ final class BossAuto {
             return "";
         }
         return value.replace('\u00A0', ' ').trim();
+    }
+
+    /**
+     * Возвращает clanToken нашего профиля с fallback на кэш.
+     *
+     * Зачем нужен fallback:
+     * - `pinfo` иногда кратковременно недоступен/непарсится в момент события Босса;
+     * - без fallback клан-уведомления `%clan%` ошибочно пропускаются как "вне клана".
+     *
+     * Правило:
+     * - если live-token получен, обновляем runtime+prefs кэш;
+     * - если live-token пустой, используем последний валидный кэш.
+     */
+    private String resolveSelfClanTokenWithFallback(NeverApi.PinfoCompassSnapshot selfSnapshot) {
+        String liveToken = normalizeClanToken(selfSnapshot == null ? "" : selfSnapshot.clanToken);
+        if (!isEmpty(liveToken)) {
+            if (!liveToken.equals(cachedSelfClanToken)) {
+                cachedSelfClanToken = liveToken;
+                prefs.edit().putString(PREF_AUTO_BOSS_SELF_CLAN_TOKEN_CACHE, liveToken).apply();
+                Log.d(TAG, TRACE_PREFIX + " self clan token cache update: " + liveToken);
+            }
+            return liveToken;
+        }
+
+        String cached = normalizeClanToken(cachedSelfClanToken);
+        if (!isEmpty(cached)) {
+            Log.d(TAG, TRACE_PREFIX + " self clan token fallback from runtime cache: " + cached);
+            return cached;
+        }
+
+        String persistentCache = normalizeClanToken(
+                prefs.getString(PREF_AUTO_BOSS_SELF_CLAN_TOKEN_CACHE, "")
+        );
+        if (!isEmpty(persistentCache)) {
+            cachedSelfClanToken = persistentCache;
+            Log.d(TAG, TRACE_PREFIX + " self clan token fallback from prefs cache: " + persistentCache);
+            return persistentCache;
+        }
+        return "";
     }
 
     private String normalizeFightFid(String value) {
@@ -1000,6 +1029,26 @@ final class BossAuto {
             targetAskNextAttemptAtMs = 0L;
         }
         Log.d(TAG, TRACE_PREFIX + " ask target sent: target=" + target + ", message=" + message);
+    }
+
+    /**
+     * Однократно задаёт цели вопрос о клетке без запуска SEARCHING-цикла.
+     *
+     * Используется в ветках, где движение к цели заблокировано фильтрами (БД/войны),
+     * но уведомить цель в приват всё равно нужно.
+     */
+    private void askTargetOnceIfEnabled(String target) {
+        String normalizedTarget = normalizeNick(target);
+        if (!isAutoBossAskTargetEnabled() || isEmpty(normalizedTarget)) {
+            return;
+        }
+        if (!isChatSendReady()) {
+            Log.d(TAG, TRACE_PREFIX + " ask target skipped (single): chat frame not ready, target=" + normalizedTarget);
+            return;
+        }
+        String message = "%<" + normalizedTarget + "> Подскажи на какой клетке Босс?";
+        Chat.sendMessageToServer(message);
+        Log.d(TAG, TRACE_PREFIX + " ask target sent (single): target=" + normalizedTarget + ", message=" + message);
     }
 
     /**
@@ -1303,7 +1352,9 @@ final class BossAuto {
             return;
         }
         FastActionManager.writeChatMsg(
-                "<font color=#7E57C2><b>[Авто-Боссы]</b></font> " + message
+                MainPhp.buildServerChatTimeHtmlExternal()
+                        + "<font color=#7E57C2><b>[Авто-Боссы]</b></font> "
+                        + message
         );
     }
 

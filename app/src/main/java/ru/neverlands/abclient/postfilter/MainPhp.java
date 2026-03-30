@@ -4065,6 +4065,28 @@ public class MainPhp {
                     + ", generatedTransition=" + suspendAutoSkinForGeneratedTransition
                     + ", address=" + address);
         }
+        // Точечный фикс регрессии после разделки:
+        // в переходном кадре `main.php?r=...` (inventoryReload=true) оркестратор AutoSkin
+        // приостановлен, но именно в этом кадре сервер часто уже отдаёт обновлённые ресурсы.
+        // Если ждём только следующий "чистый" кадр, результат разделки может не попасть в чат.
+        //
+        // Зависимости:
+        // - `AppVars.AutoSkinCheckRes` выставляется после `get_id=17` (см. publishFightResultFromLogsIfNeeded);
+        // - `mainPhpGetSkinRes(...)` обновляет статистику и (при RazdChatReport=true) шлёт сообщение в чат;
+        // - `mainPhpIsInv(...)` / `inventoryAddressMatchesFilter(..., "&im=5")` подтверждают, что HTML уже инвентарь ресурсов.
+        if (!isNonCombatAutoPausedByFastAction()
+                && !isFightFrame
+                && !isFightTopFrame
+                && isAutoSkinEnabledByPreference()
+                && !suspendAutoSkinForFinishFlow
+                && !suspendAutoSkinForGeneratedTransition
+                && suspendAutoSkinForInventoryReload
+                && AppVars.AutoSkinCheckRes
+                && (mainPhpIsInv(html) || inventoryAddressMatchesFilter(address, "&im=5"))) {
+            AppVars.AutoSkinCheckRes = false;
+            android.util.Log.d(TAG, "AUTO_SKIN_TRACE inventoryReload fallback: read skin resources in transition snapshot");
+            mainPhpGetSkinRes(html);
+        }
         if (!isNonCombatAutoPausedByFastAction() && !isFightFrame && !isFightTopFrame && isAutoSkinEnabledByPreference()
                 && !suspendAutoSkinForFinishFlow
                 && !suspendAutoSkinForInventoryReload
