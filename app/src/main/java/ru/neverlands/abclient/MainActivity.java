@@ -96,6 +96,7 @@ import ru.neverlands.abclient.utils.AppLogger;
 import ru.neverlands.abclient.utils.AppVars;
 import ru.neverlands.abclient.utils.Chat;
 import ru.neverlands.abclient.utils.FileLogger;
+import ru.neverlands.abclient.utils.LogcatFileRecorder;
 import ru.neverlands.abclient.utils.RuntimeNetTrace;
 import ru.neverlands.abclient.utils.Russian;
 import ru.neverlands.abclient.webview.WebViewRequestInterceptor;
@@ -2646,6 +2647,9 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         requestPostNotificationsPermissionIfNeeded();
         ContactsManager.initialize(this);
         AppVars.mainActivity = new WeakReference<>(this);
+        if (AppVars.Profile != null) {
+            LogcatFileRecorder.setEnabled(this, AppVars.Profile.RecordLogcatToFile);
+        }
         Log.i(TAG, "ABCLIENT_ANDROID_BUILD=" + BUILD_MARKER);
         logBackgroundState("onCreate_afterInit");
         

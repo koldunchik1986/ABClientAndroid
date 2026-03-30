@@ -141,6 +141,7 @@ public class UserConfig {
     public int MapCellCheckTimeoutMs = 450;
     public boolean DoHttpLog = false;
     public boolean DoTexLog = false;
+    public boolean RecordLogcatToFile = false;
     public boolean ShowPerformance = false;
     public boolean DoProxy = false;
     /**
@@ -540,6 +541,8 @@ public class UserConfig {
                     } else if ("showoverwarning".equalsIgnoreCase(tagName)) {
                         // C# parity: <showoverwarning>true|false</showoverwarning>
                         this.ShowOverWarning = parseBoolNodeText(parser, this.ShowOverWarning);
+                    } else if ("recordlogcattofile".equalsIgnoreCase(tagName)) {
+                        this.RecordLogcatToFile = parseBoolNodeText(parser, this.RecordLogcatToFile);
                     } else if ("dostopondig".equalsIgnoreCase(tagName)) {
                         this.DoStopOnDig = parseBoolNodeText(parser, this.DoStopOnDig);
                     } else if ("RazdChatReport".equalsIgnoreCase(tagName)) {
@@ -857,6 +860,9 @@ public class UserConfig {
             serializer.startTag(null, "showoverwarning");
             serializer.text(String.valueOf(this.ShowOverWarning));
             serializer.endTag(null, "showoverwarning");
+            serializer.startTag(null, "recordlogcattofile");
+            serializer.text(String.valueOf(this.RecordLogcatToFile));
+            serializer.endTag(null, "recordlogcattofile");
 
             // Сохранение настроек быстрых действий
             serializer.startTag(null, "fastactions");

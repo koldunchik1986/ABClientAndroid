@@ -26,6 +26,7 @@ import androidx.preference.SwitchPreferenceCompat;
 import ru.neverlands.abclient.model.Prims;
 import ru.neverlands.abclient.ui.AutoBoiSettingsFragment;
 import ru.neverlands.abclient.utils.AppVars;
+import ru.neverlands.abclient.utils.LogcatFileRecorder;
 
 /**
  * Активность настроек приложения.
@@ -555,6 +556,21 @@ public class SettingsActivity extends AppCompatActivity {
                     boolean value = (Boolean) newValue;
                     AppVars.Profile.DoTexLog = value;
                     AppVars.Profile.save(requireContext());
+                    return true;
+                });
+            }
+
+            // Потоковая запись logcat текущего процесса в files/Logs/Logcat
+            // по 10-минутным сегментам. Используется для диагностики, когда
+            // системный буфер logcat переполняется.
+            SwitchPreferenceCompat recordLogcatToFilePref = findPreference("record_logcat_to_file");
+            if (recordLogcatToFilePref != null && AppVars.Profile != null) {
+                recordLogcatToFilePref.setChecked(AppVars.Profile.RecordLogcatToFile);
+                recordLogcatToFilePref.setOnPreferenceChangeListener((preference, newValue) -> {
+                    boolean value = (Boolean) newValue;
+                    AppVars.Profile.RecordLogcatToFile = value;
+                    AppVars.Profile.save(requireContext());
+                    LogcatFileRecorder.setEnabled(requireContext(), value);
                     return true;
                 });
             }

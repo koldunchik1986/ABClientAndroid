@@ -118,15 +118,42 @@ public class AppLogger {
      */
     public static void clearLogs() {
         File logsDir = new File(ABClientApplication.getAppContext().getFilesDir(), "logs");
+        clearDirectoryContent(logsDir);
+
+        File externalLogsDir = AppVars.getLogsDir();
+        clearDirectoryContent(externalLogsDir);
+    }
+
+    private static void clearDirectoryContent(File logsDir) {
+        if (logsDir == null) {
+            return;
+        }
         if (logsDir.exists()) {
             File[] files = logsDir.listFiles();
             if (files != null) {
                 for (File file : files) {
-                    if (!file.delete()) {
+                    if (!deleteRecursively(file)) {
                         android.util.Log.e(TAG, "Failed to delete log file: " + file.getName());
                     }
                 }
             }
         }
+    }
+
+    private static boolean deleteRecursively(File file) {
+        if (file == null || !file.exists()) {
+            return true;
+        }
+        if (file.isDirectory()) {
+            File[] children = file.listFiles();
+            if (children != null) {
+                for (File child : children) {
+                    if (!deleteRecursively(child)) {
+                        return false;
+                    }
+                }
+            }
+        }
+        return file.delete();
     }
 }
