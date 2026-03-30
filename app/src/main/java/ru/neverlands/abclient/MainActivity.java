@@ -3385,8 +3385,13 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         chatRefreshRunnable = new Runnable() {
             @Override
             public void run() {
-                requestChatRefresh();
-                chatRefreshHandler.postDelayed(this, chatRefreshSeconds * 1000L);
+                try {
+                    requestChatRefresh();
+                } catch (Throwable t) {
+                    Log.e(TAG, BG_TRACE_PREFIX + " requestChatRefresh runnable failed", t);
+                } finally {
+                    chatRefreshHandler.postDelayed(this, chatRefreshSeconds * 1000L);
+                }
             }
         };
         chatRefreshHandler.postDelayed(chatRefreshRunnable, CHAT_REFRESH_INITIAL_DELAY_MS);
@@ -3406,12 +3411,29 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     // Запрос обновления чата через скрытый chatRefrWebView.
     // Выполняем серверный poll чата через скрытый WebView (ch_refr).
     private void requestChatRefresh() {
-        if (chatRefrWebView == null) return;
+        ensureChatRefrWebViewReady();
+        if (chatRefrWebView == null) {
+            Log.w(TAG, BG_TRACE_PREFIX + " requestChatRefresh skipped: chatRefrWebView is null");
+            return;
+        }
         long ts = System.currentTimeMillis();
         lastChatRefreshAtMs = ts;
         String url = "http://neverlands.ru/ch.php?" + ts + "&show=1&fyo=" + chatFyo;
         Log.d(TAG, BG_TRACE_PREFIX + " requestChatRefresh: " + url);
-        chatRefrWebView.loadUrl(url);
+        try {
+            chatRefrWebView.loadUrl(url);
+        } catch (Throwable t) {
+            Log.e(TAG, BG_TRACE_PREFIX + " requestChatRefresh loadUrl failed", t);
+            ensureChatRefrWebViewReady();
+            if (chatRefrWebView != null) {
+                try {
+                    chatRefrWebView.loadUrl(url);
+                    Log.w(TAG, BG_TRACE_PREFIX + " requestChatRefresh: retry after WebView rebind");
+                } catch (Throwable retryError) {
+                    Log.e(TAG, BG_TRACE_PREFIX + " requestChatRefresh retry failed", retryError);
+                }
+            }
+        }
 
         // Поддерживаем room-list "живым" только при включенном "Слежении за локацией".
         // Это соответствует логике ПК-версии: polling комнаты привязан к LocationTracking.
@@ -3425,6 +3447,18 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     }
 
     // Немедленное обновление чата (из JS-моста).
+    private void ensureChatRefrWebViewReady() {
+        if (chatRefrWebView == null) {
+            chatRefrWebView = new WebView(this);
+            setupWebView(chatRefrWebView, new CustomWebViewClient());
+            chatRefrWebView.setVisibility(View.GONE);
+        }
+        if (binding != null && binding.getRoot() instanceof ViewGroup && chatRefrWebView.getParent() == null) {
+            ((ViewGroup) binding.getRoot()).addView(chatRefrWebView, new ViewGroup.LayoutParams(1, 1));
+            Log.d(TAG, BG_TRACE_PREFIX + " ensureChatRefrWebViewReady: attached hidden ch_refr view");
+        }
+    }
+
     public void requestChatRefreshNow() {
         requestChatRefresh();
     }

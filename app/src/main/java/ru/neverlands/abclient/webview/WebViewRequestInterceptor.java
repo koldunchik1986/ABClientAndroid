@@ -38,9 +38,6 @@ public class WebViewRequestInterceptor {
             "id\\s*=\\s*['\"]?serverTime['\"]?[^>]*>\\s*(\\d{1,2}):(\\d{2}):(\\d{2})\\s*<",
             Pattern.CASE_INSENSITIVE
     );
-    // Маркер событий Босса в ch_refr-ответе (для диагностики потока add_msg -> ChatFilter -> BossAuto).
-    private static final Pattern BOSS_CHAT_EVENT_PATTERN = Pattern.compile(
-            "(?iu)(?:внимание!\\s*случайное\\s+событие!\\s*)?монстр\\s*[\"«]?.+?[\"»]?\\s*напал\\s+на\\s+игрока\\s+[^\\.\\r\\n]+\\.?");
     /**
      * Детектирует наличие формы завершения {@code FEND} в HTML конца боя.
      * Зависимость: используется только в {@link #logCaptchaFlowMarkers(String, String, String)}.
@@ -540,16 +537,6 @@ public class WebViewRequestInterceptor {
                     }
                 }
                 Log.d(TAG, "ch_refr response markers: add_msg=" + hasAdd + ", set_lmid=" + hasLmid);
-
-                // Доп.диагностика Auto-Boss: видим ли в ch_refr самом событие нападения Босса.
-                Matcher bossMatcher = BOSS_CHAT_EVENT_PATTERN.matcher(processedPreview);
-                if (bossMatcher.find()) {
-                    String bossEvent = bossMatcher.group();
-                    if (bossEvent != null && bossEvent.length() > 320) {
-                        bossEvent = bossEvent.substring(0, 320) + "...";
-                    }
-                    Log.d(TAG, "AUTO_BOSS_TRACE ch_refr boss-event: " + bossEvent);
-                }
             }
 
             WebResourceResponse response = new WebResourceResponse(
