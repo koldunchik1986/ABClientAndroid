@@ -21,6 +21,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.zip.GZIPInputStream;
 
+import ru.neverlands.abclient.MainActivity;
 import ru.neverlands.abclient.postfilter.Filter;
 import ru.neverlands.abclient.proxy.CookiesManager;
 import ru.neverlands.abclient.proxy.ProxyRuntimeManager;
@@ -569,6 +570,7 @@ public class WebViewRequestInterceptor {
                         + ", raw_bytes=" + bytes.length;
                 Log.d(TAG, responseMarkerMessage);
                 FileLogger.trace("chat_poll", responseMarkerMessage);
+                notifyChatPollMetaToActivity(urlString, code, bytes.length, hasAdd, hasLmid);
             }
 
             WebResourceResponse response = new WebResourceResponse(
@@ -608,6 +610,32 @@ public class WebViewRequestInterceptor {
                 "utf-8",
                 new ByteArrayInputStream("proxy runtime unavailable".getBytes(Charset.forName("UTF-8")))
         );
+    }
+
+    /**
+     * Передает в `MainActivity` служебные метаданные каждого ответа `ch.php?show=1`.
+     *
+     * Зависимости:
+     * - источник: этот же `WebViewRequestInterceptor` (после анализа `add_msg/set_lmid`);
+     * - получатель: `MainActivity.onChatPollResponseMeta(...)`.
+     *
+     * Назначение:
+     * - дать Activity возможность выполнить recovery polling, если сервер вернул 535/546
+     *   или пустой body, не меняя основной цикл refresh.
+     */
+    private static void notifyChatPollMetaToActivity(String url, int httpCode, int rawBytes, boolean hasAddMsg, boolean hasSetLmid) {
+        try {
+            if (AppVars.mainActivity == null) {
+                return;
+            }
+            MainActivity activity = AppVars.mainActivity.get();
+            if (activity == null) {
+                return;
+            }
+            activity.onChatPollResponseMeta(httpCode, rawBytes, hasAddMsg, hasSetLmid, url);
+        } catch (Throwable ignored) {
+            // Диагностический callback не должен ломать сетевой pipeline.
+        }
     }
 
     private static boolean isPinfoOrForumUrl(String url) {

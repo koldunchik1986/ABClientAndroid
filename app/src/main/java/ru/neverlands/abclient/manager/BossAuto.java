@@ -88,6 +88,7 @@ final class BossAuto {
     private static final long EVENT_DEDUP_WINDOW_MS = 20_000L;
     private static final int TARGET_CHAT_ASK_MAX_ATTEMPTS = 5;
     private static final long TARGET_CHAT_ASK_RETRY_MS = 1_500L;
+    private static final long TARGET_FIGHT_POLL_INTERVAL_MS = 1_000L;
 
     private final Context appContext;
     private final SharedPreferences prefs;
@@ -110,6 +111,10 @@ final class BossAuto {
     private String bossFightFid = "";
     private String bossFightLink = "";
     private int bossFightFidMissingTicks = 0;
+    private long targetFightPollNextAtMs = 0L;
+    private boolean targetFightPollInFlight = false;
+    private String targetFightPollNick = "";
+    private boolean bossFightLostPending = false;
     private String bossTargetClanToken = "";
     private String bossSelfClanToken = "";
     private String cachedSelfClanToken = "";
@@ -444,6 +449,10 @@ final class BossAuto {
             bossFightFid = initialFightFid;
             bossFightLink = initialFightLink;
             bossFightFidMissingTicks = 0;
+            targetFightPollNextAtMs = 0L;
+            targetFightPollInFlight = false;
+            targetFightPollNick = "";
+            bossFightLostPending = false;
             bossTargetClanToken = targetClanToken;
             bossSelfClanToken = selfClanToken;
             stage = BossStage.SEARCHING_TARGET;
@@ -628,6 +637,10 @@ final class BossAuto {
             bossFightFid = "";
             bossFightLink = "";
             bossFightFidMissingTicks = 0;
+            targetFightPollNextAtMs = 0L;
+            targetFightPollInFlight = false;
+            targetFightPollNick = "";
+            bossFightLostPending = false;
             bossTargetClanToken = "";
             bossSelfClanToken = "";
         }
@@ -1072,31 +1085,13 @@ final class BossAuto {
             return true;
         }
 
-        NeverApi.PinfoCompassSnapshot snapshot = safeGetPinfoSnapshot(target);
-        if (snapshot == null) {
-            return true;
-        }
+        requestTargetFightPollIfNeeded(target);
 
-        String latestFid = normalizeFightFid(snapshot.fightFid);
-        int missingTicks = 0;
+        boolean fightLostPending;
         synchronized (lock) {
-            if (stage != BossStage.SEARCHING_TARGET) {
-                return false;
-            }
-            if (!isEmpty(latestFid)) {
-                bossFightFid = latestFid;
-                bossFightLink = buildFightLogLink(latestFid);
-                bossFightFidMissingTicks = 0;
-            } else {
-                bossFightFidMissingTicks++;
-                missingTicks = bossFightFidMissingTicks;
-            }
+            fightLostPending = bossFightLostPending;
         }
-        if (!isEmpty(latestFid)) {
-            return true;
-        }
-        if (missingTicks <= 1) {
-            Log.d(TAG, TRACE_PREFIX + " target fight fid missing, wait grace tick: target=" + target);
+        if (!fightLostPending) {
             return true;
         }
 
@@ -1115,6 +1110,87 @@ final class BossAuto {
      * Если живых союзников не осталось, возвращается пустая строка
      * и сценарий должен быть завершён вызывающей стороной.
      */
+    /**
+     * Асинхронный poll pinfo цели во время SEARCHING_TARGET.
+     *
+     * Важно: tick Auto-Boss запускается с UI-потока (через foreground-service -> runOnUiThread),
+     * поэтому сетевой вызов NeverApi.getPinfoCompassSnapshot(...) нельзя выполнять синхронно
+     * внутри tick. Иначе возникает NetworkOnMainThreadException и ломается цикл поиска.
+     */
+    private void requestTargetFightPollIfNeeded(String target) {
+        if (isEmpty(target)) {
+            return;
+        }
+        long now = System.currentTimeMillis();
+        final String targetSnapshot;
+        synchronized (lock) {
+            if (stage != BossStage.SEARCHING_TARGET) {
+                return;
+            }
+            if (targetFightPollInFlight || now < targetFightPollNextAtMs) {
+                return;
+            }
+            targetFightPollInFlight = true;
+            targetFightPollNextAtMs = now + TARGET_FIGHT_POLL_INTERVAL_MS;
+            targetFightPollNick = target;
+            targetSnapshot = target;
+        }
+
+        Thread worker = new Thread(() -> {
+            try {
+                NeverApi.PinfoCompassSnapshot snapshot = safeGetPinfoSnapshot(targetSnapshot);
+                applyTargetFightPollResult(targetSnapshot, snapshot);
+            } finally {
+                synchronized (lock) {
+                    targetFightPollInFlight = false;
+                }
+            }
+        }, "boss_target_fight_poll");
+        worker.setDaemon(true);
+        worker.start();
+    }
+
+    /**
+     * Применение результата асинхронного poll-а состояния боя цели.
+     *
+     * Логика соответствует прежнему синхронному варианту:
+     * - если fightFid есть -> обновляем кеш и сбрасываем grace;
+     * - если fightFid пропал -> первый тик grace, второй тик помечает отмену сценария.
+     *
+     * Сам stopAndRestore выполняется в monitorTargetFightStateDuringSearch (UI-tick),
+     * чтобы не разрывать существующий контур жизненного цикла.
+     */
+    private void applyTargetFightPollResult(String target, NeverApi.PinfoCompassSnapshot snapshot) {
+        if (isEmpty(target) || snapshot == null) {
+            return;
+        }
+        String latestFid = normalizeFightFid(snapshot.fightFid);
+        int missingTicks = 0;
+        synchronized (lock) {
+            if (stage != BossStage.SEARCHING_TARGET) {
+                return;
+            }
+            if (!normalizeNick(targetNick).equalsIgnoreCase(normalizeNick(target))) {
+                return;
+            }
+            if (!isEmpty(latestFid)) {
+                bossFightFid = latestFid;
+                bossFightLink = buildFightLogLink(latestFid);
+                bossFightFidMissingTicks = 0;
+                bossFightLostPending = false;
+            } else {
+                bossFightFidMissingTicks++;
+                missingTicks = bossFightFidMissingTicks;
+                if (missingTicks > 1) {
+                    bossFightLostPending = true;
+                }
+            }
+        }
+        if (isEmpty(latestFid) && missingTicks == 1) {
+            Log.d(TAG, TRACE_PREFIX + " target fight fid missing, wait grace tick: target=" + target);
+        }
+    }
+
     private String resolveProtectionTargetNick(String initialTarget) {
         String target = normalizeNick(initialTarget);
         if (isEmpty(target)) {

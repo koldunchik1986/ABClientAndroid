@@ -1803,7 +1803,20 @@ public class WebAppInterface {
                     AppVars.mainActivity.get().binding.appBarMain.contentMain.webView.loadUrl(finalUrl);
                     break;
                 case "ch_list":
-                    AppVars.mainActivity.get().binding.appBarMain.contentMain.chatUsersWebview.loadUrl(finalUrl);
+                    MainActivity mainActivity = getMainActivityOrNull();
+                    if (mainActivity == null || mainActivity.binding == null
+                            || mainActivity.binding.appBarMain == null
+                            || mainActivity.binding.appBarMain.contentMain == null
+                            || mainActivity.binding.appBarMain.contentMain.chatUsersWebview == null) {
+                        return;
+                    }
+                    // Все серверные попытки обновить `ch_list` проводим через единый guard MainActivity:
+                    // он уже содержит anti-spam/throttle и recovery-suppression при деградации chat-poll.
+                    if (finalUrl.contains("ch.php?lo=1")) {
+                        mainActivity.requestRoomUsersRefreshSoon();
+                    } else {
+                        mainActivity.binding.appBarMain.contentMain.chatUsersWebview.loadUrl(finalUrl);
+                    }
                     break;
                 case "ch_buttons":
                     AppVars.mainActivity.get().binding.appBarMain.contentMain.chatButtonsWebview.loadUrl(finalUrl);

@@ -114,6 +114,10 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     private static final int REQUEST_CODE_POST_NOTIFICATIONS = 1002;
     private static final int CHAT_REFRESH_DEFAULT_SECONDS = 12;
     private static final int CHAT_REFRESH_INITIAL_DELAY_MS = 1000;
+    private static final long CHAT_POLL_FAILURE_RETRY_BASE_MS = 1200L;
+    private static final long CHAT_POLL_FAILURE_RETRY_MAX_MS = 4000L;
+    private static final long CHAT_POLL_FAILURE_DEDUP_MS = 600L;
+    private static final long ROOM_USERS_SUPPRESS_AFTER_CHAT_FAIL_MS = 1800L;
     private static final int AUTO_SUBMIT_RETRY_DELAY_MS = 180;
     private static final int AUTO_SUBMIT_MAX_RETRY_COUNT = 3;
     private static final long CAPTCHA_IMAGE_STABILIZE_DELAY_MS = 180L;
@@ -161,6 +165,14 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     // Используется как анти-спам guard, когда авто-нападение включено.
     private long lastRoomUsersRefreshAtMs = 0L;
     private static final long ROOM_USERS_REFRESH_MIN_INTERVAL_MS = 1000L;
+    // Временное окно подавления `ch.php?lo=1` после деградации `ch.php?show=1`.
+    // Нужен, чтобы не "дожимать" сервер room-list запросами в момент, когда chat-poll
+    // уже вернул 535/546 или пустое тело.
+    private long roomUsersRefreshSuppressedUntilMs = 0L;
+    // Диагностические счетчики восстановления chat-poll.
+    private long lastChatPollFailureAtMs = 0L;
+    private int consecutiveChatPollFailures = 0;
+    private Runnable chatPollRecoveryRunnable;
     private boolean chatLatrus = false;
     private AlertDialog activeFightCaptchaDialog;
     private final Handler fightCaptchaHandler = createMainHandler();
@@ -291,6 +303,11 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         }
 
         long now = System.currentTimeMillis();
+        if (now < roomUsersRefreshSuppressedUntilMs) {
+            Log.d(TAG, BG_TRACE_PREFIX + " requestRoomUsersRefreshSoon: suppressed by chat-recovery, waitMs="
+                    + (roomUsersRefreshSuppressedUntilMs - now));
+            return;
+        }
         if (now - lastRoomUsersRefreshAtMs < ROOM_USERS_REFRESH_MIN_INTERVAL_MS) {
             Log.d(TAG, BG_TRACE_PREFIX + " requestRoomUsersRefreshSoon: throttled, deltaMs="
                     + (now - lastRoomUsersRefreshAtMs));
@@ -516,6 +533,93 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
      */
     public void requestAutoTurnBackgroundAware() {
         requestAutoTurnInternal(true);
+    }
+
+    /**
+     * Принимает метаданные ответа `ch.php?show=1` из перехватчика WebView.
+     *
+     * Зависимости:
+     * - источник вызова: `WebViewRequestInterceptor` (каждый `show=1` ответ);
+     * - управляет временным подавлением `requestRoomUsersRefreshSoon()` и планирует
+     *   ускоренный recovery-ретрай chat poll без перезапуска общего periodic runnable.
+     *
+     * Назначение:
+     * - уменьшить вероятность пропуска системных сообщений (например, событий Босса),
+     *   когда один poll-тик падает с HTTP 546/535 или пустым body.
+     */
+    public void onChatPollResponseMeta(int httpCode, int rawBytes, boolean hasAddMsg, boolean hasSetLmid, String url) {
+        if (Looper.myLooper() != Looper.getMainLooper()) {
+            runOnUiThread(() -> onChatPollResponseMeta(httpCode, rawBytes, hasAddMsg, hasSetLmid, url));
+            return;
+        }
+
+        boolean pollFailed = httpCode >= 535 || rawBytes <= 0;
+        long now = System.currentTimeMillis();
+
+        if (!pollFailed) {
+            if (consecutiveChatPollFailures > 0) {
+                Log.d(TAG, BG_TRACE_PREFIX + " chat-poll recovered: code=" + httpCode
+                        + ", bytes=" + rawBytes
+                        + ", hasAdd=" + hasAddMsg
+                        + ", hasSetLmid=" + hasSetLmid
+                        + ", failures=" + consecutiveChatPollFailures);
+                FileLogger.trace("chat_poll", "RECOVERED code=" + httpCode
+                        + ", bytes=" + rawBytes
+                        + ", failures=" + consecutiveChatPollFailures);
+            }
+            consecutiveChatPollFailures = 0;
+            lastChatPollFailureAtMs = 0L;
+            roomUsersRefreshSuppressedUntilMs = 0L;
+            if (chatPollRecoveryRunnable != null) {
+                chatRefreshHandler.removeCallbacks(chatPollRecoveryRunnable);
+                chatPollRecoveryRunnable = null;
+            }
+            return;
+        }
+
+        if (now - lastChatPollFailureAtMs < CHAT_POLL_FAILURE_DEDUP_MS) {
+            return;
+        }
+        lastChatPollFailureAtMs = now;
+        consecutiveChatPollFailures = Math.min(consecutiveChatPollFailures + 1, 10);
+
+        long retryDelayMs = Math.min(
+                CHAT_POLL_FAILURE_RETRY_MAX_MS,
+                CHAT_POLL_FAILURE_RETRY_BASE_MS + (consecutiveChatPollFailures - 1) * 400L
+        );
+        roomUsersRefreshSuppressedUntilMs = Math.max(
+                roomUsersRefreshSuppressedUntilMs,
+                now + ROOM_USERS_SUPPRESS_AFTER_CHAT_FAIL_MS
+        );
+
+        Log.w(TAG, BG_TRACE_PREFIX + " chat-poll degraded: code=" + httpCode
+                + ", bytes=" + rawBytes
+                + ", hasAdd=" + hasAddMsg
+                + ", hasSetLmid=" + hasSetLmid
+                + ", failures=" + consecutiveChatPollFailures
+                + ", retryInMs=" + retryDelayMs
+                + ", suppressRoomUntil=" + roomUsersRefreshSuppressedUntilMs
+                + ", url=" + url);
+        FileLogger.warn("chat_poll", "DEGRADED code=" + httpCode
+                + ", bytes=" + rawBytes
+                + ", hasAdd=" + hasAddMsg
+                + ", hasSetLmid=" + hasSetLmid
+                + ", failures=" + consecutiveChatPollFailures
+                + ", retryInMs=" + retryDelayMs
+                + ", suppressRoomUntil=" + roomUsersRefreshSuppressedUntilMs
+                + ", url=" + url);
+
+        if (chatPollRecoveryRunnable != null) {
+            chatRefreshHandler.removeCallbacks(chatPollRecoveryRunnable);
+        }
+        chatPollRecoveryRunnable = () -> {
+            if (isFinishing() || isDestroyed() || !isChatRefreshEnabled()) {
+                return;
+            }
+            Log.d(TAG, BG_TRACE_PREFIX + " chat-poll recovery retry: manual tick");
+            requestChatRefresh(false);
+        };
+        chatRefreshHandler.postDelayed(chatPollRecoveryRunnable, retryDelayMs);
     }
 
     /**
@@ -3416,6 +3520,10 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     // Запрос обновления чата через скрытый chatRefrWebView.
     // Выполняем серверный poll чата через скрытый WebView (ch_refr).
     private void requestChatRefresh() {
+        requestChatRefresh(true);
+    }
+
+    private void requestChatRefresh(boolean refreshRoomUsers) {
         ensureChatRefrWebViewReady();
         if (chatRefrWebView == null) {
             Log.w(TAG, BG_TRACE_PREFIX + " requestChatRefresh skipped: chatRefrWebView is null");
@@ -3446,7 +3554,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         // Поддерживаем room-list "живым" только при включенном "Слежении за локацией".
         // Это соответствует логике ПК-версии: polling комнаты привязан к LocationTracking.
         try {
-            if (AutoFunctionsManager.getInstance(this).isLocationTrackingEnabled()) {
+            if (refreshRoomUsers && AutoFunctionsManager.getInstance(this).isLocationTrackingEnabled()) {
                 requestRoomUsersRefreshSoon();
             }
         } catch (Exception e) {
