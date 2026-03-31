@@ -113,11 +113,14 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     private static final String BUILD_MARKER = "2026-02-27_01-34";
     private static final int REQUEST_CODE_POST_NOTIFICATIONS = 1002;
     private static final int CHAT_REFRESH_DEFAULT_SECONDS = 12;
+    private static final int CHAT_REFRESH_AUTO_BOSS_SECONDS = 3;
     private static final int CHAT_REFRESH_INITIAL_DELAY_MS = 1000;
     private static final long CHAT_POLL_FAILURE_RETRY_BASE_MS = 1200L;
     private static final long CHAT_POLL_FAILURE_RETRY_MAX_MS = 4000L;
+    private static final long CHAT_POLL_FAILURE_RETRY_BOSS_MS = 350L;
     private static final long CHAT_POLL_FAILURE_DEDUP_MS = 600L;
     private static final long ROOM_USERS_SUPPRESS_AFTER_CHAT_FAIL_MS = 1800L;
+    private static final long CHAT_ROOM_COLLISION_GUARD_MS = 700L;
     private static final int AUTO_SUBMIT_RETRY_DELAY_MS = 180;
     private static final int AUTO_SUBMIT_MAX_RETRY_COUNT = 3;
     private static final long CAPTCHA_IMAGE_STABILIZE_DELAY_MS = 180L;
@@ -587,6 +590,15 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                 CHAT_POLL_FAILURE_RETRY_MAX_MS,
                 CHAT_POLL_FAILURE_RETRY_BASE_MS + (consecutiveChatPollFailures - 1) * 400L
         );
+        boolean autoBossEnabled = false;
+        try {
+            autoBossEnabled = AutoFunctionsManager.getInstance(this).isAutoBossEnabled();
+            if (autoBossEnabled) {
+                retryDelayMs = Math.min(retryDelayMs, CHAT_POLL_FAILURE_RETRY_BOSS_MS);
+            }
+        } catch (Exception e) {
+            Log.w(TAG, BG_TRACE_PREFIX + " chat-poll degraded: failed to read autoBoss flag", e);
+        }
         roomUsersRefreshSuppressedUntilMs = Math.max(
                 roomUsersRefreshSuppressedUntilMs,
                 now + ROOM_USERS_SUPPRESS_AFTER_CHAT_FAIL_MS
@@ -598,6 +610,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                 + ", hasSetLmid=" + hasSetLmid
                 + ", failures=" + consecutiveChatPollFailures
                 + ", retryInMs=" + retryDelayMs
+                + ", autoBoss=" + autoBossEnabled
                 + ", suppressRoomUntil=" + roomUsersRefreshSuppressedUntilMs
                 + ", url=" + url);
         FileLogger.warn("chat_poll", "DEGRADED code=" + httpCode
@@ -606,6 +619,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                 + ", hasSetLmid=" + hasSetLmid
                 + ", failures=" + consecutiveChatPollFailures
                 + ", retryInMs=" + retryDelayMs
+                + ", autoBoss=" + autoBossEnabled
                 + ", suppressRoomUntil=" + roomUsersRefreshSuppressedUntilMs
                 + ", url=" + url);
 
@@ -3499,7 +3513,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                 } catch (Throwable t) {
                     Log.e(TAG, BG_TRACE_PREFIX + " requestChatRefresh runnable failed", t);
                 } finally {
-                    chatRefreshHandler.postDelayed(this, chatRefreshSeconds * 1000L);
+                    chatRefreshHandler.postDelayed(this, getEffectiveChatRefreshSeconds() * 1000L);
                 }
             }
         };
@@ -3529,7 +3543,18 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             Log.w(TAG, BG_TRACE_PREFIX + " requestChatRefresh skipped: chatRefrWebView is null");
             return;
         }
-        long ts = System.currentTimeMillis();
+        long now = System.currentTimeMillis();
+        long roomDeltaMs = now - lastRoomUsersRefreshAtMs;
+        if (roomDeltaMs >= 0 && roomDeltaMs < CHAT_ROOM_COLLISION_GUARD_MS) {
+            long waitMs = CHAT_ROOM_COLLISION_GUARD_MS - roomDeltaMs;
+            Log.d(TAG, BG_TRACE_PREFIX + " requestChatRefresh: defer by room-collision guard, waitMs="
+                    + waitMs + ", roomDeltaMs=" + roomDeltaMs);
+            FileLogger.trace("chat_poll", "defer show=1 by room-collision guard, waitMs=" + waitMs
+                    + ", roomDeltaMs=" + roomDeltaMs);
+            chatRefreshHandler.postDelayed(() -> requestChatRefresh(refreshRoomUsers), waitMs);
+            return;
+        }
+        long ts = now;
         lastChatRefreshAtMs = ts;
         String url = "http://neverlands.ru/ch.php?" + ts + "&show=1&fyo=" + chatFyo;
         Log.d(TAG, BG_TRACE_PREFIX + " requestChatRefresh: " + url);
@@ -3573,6 +3598,18 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             ((ViewGroup) binding.getRoot()).addView(chatRefrWebView, new ViewGroup.LayoutParams(1, 1));
             Log.d(TAG, BG_TRACE_PREFIX + " ensureChatRefrWebViewReady: attached hidden ch_refr view");
         }
+    }
+
+    private int getEffectiveChatRefreshSeconds() {
+        int effective = chatRefreshSeconds;
+        try {
+            if (AutoFunctionsManager.getInstance(this).isAutoBossEnabled()) {
+                effective = Math.min(effective, CHAT_REFRESH_AUTO_BOSS_SECONDS);
+            }
+        } catch (Exception e) {
+            Log.w(TAG, BG_TRACE_PREFIX + " getEffectiveChatRefreshSeconds: failed to read autoBoss flag", e);
+        }
+        return Math.max(1, effective);
     }
 
     public void requestChatRefreshNow() {
