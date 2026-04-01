@@ -38,6 +38,7 @@ import ru.neverlands.abclient.proxy.CookiesManager;
 import ru.neverlands.abclient.proxy.ProxyRuntimeManager;
 import ru.neverlands.abclient.utils.AppVars;
 import ru.neverlands.abclient.utils.ExtMap;
+import ru.neverlands.abclient.utils.FileLogger;
 import ru.neverlands.abclient.utils.Russian;
 
 /**
@@ -713,25 +714,36 @@ public class WebAppInterface {
      */
     @JavascriptInterface
     public void SetNeverTimer(long msLeft) {
-        if (msLeft < 0L) {
-            msLeft = 0L;
-        }
-        long nowMs = System.currentTimeMillis();
-        long dueAtMs = nowMs + msLeft;
-        AppVars.NeverTimer = dueAtMs;
+        long startMs = System.currentTimeMillis();
+        try {
+            if (msLeft < 0L) {
+                msLeft = 0L;
+            }
+            long nowMs = System.currentTimeMillis();
+            long dueAtMs = nowMs + msLeft;
+            AppVars.NeverTimer = dueAtMs;
 
-        // Debug-трасса countdown из map.js (throttle: по дельте/времени/последним секундам).
-        long prevLogAt = lastNeverTimerLogAtMs;
-        long prevLoggedValue = lastNeverTimerLoggedValueMs;
-        boolean shouldLog = prevLoggedValue == Long.MIN_VALUE
-                || Math.abs(prevLoggedValue - msLeft) >= 5000L
-                || (nowMs - prevLogAt) >= 10000L
-                || msLeft <= 5000L;
-        if (shouldLog) {
-            lastNeverTimerLogAtMs = nowMs;
-            lastNeverTimerLoggedValueMs = msLeft;
-            Log.d("WebAppInterface", "SetNeverTimer: msLeft=" + msLeft
-                    + " (" + (msLeft / 1000L) + "s), dueInMs=" + Math.max(0L, dueAtMs - nowMs));
+            // Debug-трасса countdown из map.js (throttle: по дельте/времени/последним секундам).
+            long prevLogAt = lastNeverTimerLogAtMs;
+            long prevLoggedValue = lastNeverTimerLoggedValueMs;
+            boolean shouldLog = prevLoggedValue == Long.MIN_VALUE
+                    || Math.abs(prevLoggedValue - msLeft) >= 5000L
+                    || (nowMs - prevLogAt) >= 10000L
+                    || msLeft <= 5000L;
+            if (shouldLog) {
+                lastNeverTimerLogAtMs = nowMs;
+                lastNeverTimerLoggedValueMs = msLeft;
+                Log.d("WebAppInterface", "SetNeverTimer: msLeft=" + msLeft
+                        + " (" + (msLeft / 1000L) + "s), dueInMs=" + Math.max(0L, dueAtMs - nowMs));
+            }
+        } catch (Exception e) {
+            Log.e("WebAppInterface", "SetNeverTimer ERROR", e);
+        } finally {
+            long elapsedMs = System.currentTimeMillis() - startMs;
+            if (elapsedMs > 100) {
+                Log.w("WebAppInterface", "SetNeverTimer SLOW: " + elapsedMs + "ms, possible deadlock");
+                FileLogger.warn("WebAppInterface", "SetNeverTimer SLOW: elapsed=" + elapsedMs + "ms");
+            }
         }
     }
 

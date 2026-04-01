@@ -26,12 +26,22 @@ public final class FileLogger {
         thread.setDaemon(true);
         return thread;
     });
+    
+    /**
+     * Отслеживание текущего 10-минутного сегмента для proxy-логов.
+     * Используется для переключения на новый файл при смене сегмента.
+     */
+    private static volatile String currentProxySegment = "";
 
     private FileLogger() {
     }
 
     public static void trace(String chain, String message) {
         write("TRACE", chain, message, null);
+    }
+
+    public static void log(String message) {
+        trace("FileLogger", message);
     }
 
     public static void warn(String chain, String message) {
@@ -121,8 +131,15 @@ public final class FileLogger {
                 return;
             }
             String segmentName = buildProxySegmentName(System.currentTimeMillis());
-            File targetFile = new File(poolDir, segmentName + "_proxy.txt");
+            
             synchronized (FILE_LOCK) {
+                // Проверка на переключение сегмента (каждые 10 минут)
+                if (!segmentName.equals(currentProxySegment)) {
+                    currentProxySegment = segmentName;
+                    Log.d(TAG, "Proxy segment switched to: " + segmentName);
+                }
+                
+                File targetFile = new File(poolDir, segmentName + "_proxy.txt");
                 rotateIfNeeded(targetFile);
                 try (FileOutputStream stream = new FileOutputStream(targetFile, true);
                      OutputStreamWriter writer = new OutputStreamWriter(stream, UTF8)) {
@@ -206,5 +223,54 @@ public final class FileLogger {
         int minute = Integer.parseInt(new SimpleDateFormat("mm", Locale.US).format(date));
         int bucket = (minute / 10) * 10;
         return hourPrefix + "_" + String.format(Locale.US, "%02d", bucket);
+    }
+
+    /**
+     * Clears all log files from the Logs directory.
+     */
+    public static void clearAllLogs() {
+        IO.execute(() -> {
+            try {
+                File logsRoot = resolveLogsRoot();
+                if (logsRoot == null || !logsRoot.exists()) {
+                    Log.w(TAG, "Logs root does not exist, nothing to clear");
+                    return;
+                }
+                
+                File[] allFiles = logsRoot.listFiles();
+                if (allFiles != null) {
+                    for (File file : allFiles) {
+                        if (file.isFile()) {
+                            if (file.delete()) {
+                                Log.d(TAG, "Deleted log file: " + file.getAbsolutePath());
+                            } else {
+                                Log.w(TAG, "Failed to delete log file: " + file.getAbsolutePath());
+                            }
+                        } else if (file.isDirectory()) {
+                            deleteRecursive(file);
+                        }
+                    }
+                    Log.i(TAG, "All logs cleared successfully");
+                } else {
+                    Log.w(TAG, "Failed to list files in logs directory");
+                }
+            } catch (Exception e) {
+                Log.e(TAG, "Error clearing all logs", e);
+            }
+        });
+    }
+
+    private static void deleteRecursive(File fileOrDirectory) {
+        if (fileOrDirectory.isDirectory()) {
+            File[] files = fileOrDirectory.listFiles();
+            if (files != null) {
+                for (File child : files) {
+                    deleteRecursive(child);
+                }
+            }
+        }
+        if (!fileOrDirectory.delete()) {
+            Log.w(TAG, "Failed to delete: " + fileOrDirectory.getAbsolutePath());
+        }
     }
 }

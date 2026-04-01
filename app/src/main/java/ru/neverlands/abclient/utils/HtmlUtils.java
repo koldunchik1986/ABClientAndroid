@@ -42,6 +42,10 @@ public final class HtmlUtils {
                 "window.__abEnsureNode('complect', 'div');" +
                 "window.__abEnsureNode('hbar', 'span');" +
                 "if (!document._abclientOrigGetElementById) { document._abclientOrigGetElementById = document.getElementById.bind(document); document.getElementById = function(id) { var el = document._abclientOrigGetElementById(id); if (el) return el; if (!id) return null; try { var dummy = document.createElement('span'); dummy.id = id; dummy.style.display = 'none'; (document.body || document.documentElement).appendChild(dummy); return dummy; } catch(e) { return null; } }; }" +
+                // КРИТИЧНО: Переопределяем document.all() для совместимости с IE-синтаксисом из старого кода
+                // Старый код использует document.all("transfer").innerHTML - это может вернуть null в WebView
+                // Гарантируем, что всегда возвращается валидный элемент с методом innerHTML
+                "if (typeof document.all !== 'function') { document.all = function(id) { var el = document.getElementById(id); if (el) return el; if (!id) return { innerHTML: '', value: '', style: {} }; try { var dummy = document.createElement('div'); dummy.id = id; dummy.style.display = 'none'; (document.body || document.documentElement).appendChild(dummy); return dummy; } catch(e) { return { innerHTML: '', value: '', style: {} }; } }; }" +
                 // В некоторых страницах (и при отсутствии frames) скрипты делают get_by_id(...).innerHTML.
                 // Чтобы не падать с TypeError на null, возвращаем dummy-элемент, если id не найден.
                 "window.get_by_id = function(id) { return document.getElementById(id) || { innerHTML: '', value: '', style: {} }; };" +

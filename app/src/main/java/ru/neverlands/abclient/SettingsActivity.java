@@ -26,6 +26,7 @@ import androidx.preference.SwitchPreferenceCompat;
 import ru.neverlands.abclient.model.Prims;
 import ru.neverlands.abclient.ui.AutoBoiSettingsFragment;
 import ru.neverlands.abclient.utils.AppVars;
+import ru.neverlands.abclient.utils.FileLogger;
 import ru.neverlands.abclient.utils.LogcatFileRecorder;
 
 /**
@@ -633,7 +634,7 @@ public class SettingsActivity extends AppCompatActivity {
             Preference clearLogsPref = findPreference("clear_logs");
             if (clearLogsPref != null) {
                 clearLogsPref.setOnPreferenceClickListener(preference -> {
-                    ru.neverlands.abclient.utils.AppLogger.clearLogs();
+                    FileLogger.clearAllLogs();
                     return true;
                 });
             }

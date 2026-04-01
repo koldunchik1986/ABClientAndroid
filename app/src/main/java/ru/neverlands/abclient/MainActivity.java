@@ -92,7 +92,7 @@ import ru.neverlands.abclient.model.UserConfig;
 import ru.neverlands.abclient.network.NetworkClient;
 import ru.neverlands.abclient.proxy.CookiesManager;
 import ru.neverlands.abclient.proxy.ProxyRuntimeManager;
-import ru.neverlands.abclient.utils.AppLogger;
+import ru.neverlands.abclient.utils.FileLogger;
 import ru.neverlands.abclient.utils.AppVars;
 import ru.neverlands.abclient.utils.Chat;
 import ru.neverlands.abclient.utils.FileLogger;
@@ -3150,6 +3150,20 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         registerScreenStateReceiverIfNeeded();
         startRoomUsersPolling();
         logBackgroundState("onResume");
+        
+        // КРИТИЧНО: Очищаем кэш озера при возобновлении приложения
+        // Если приложение было свёрнуто более 2 минут, vcode в кэше озера истеёк
+        // Нужно перезагрузить озеро при следующем цикле рыбалки
+        long timeInBackground = System.currentTimeMillis() - (isActivityResumedState ? 0 : 1000);
+        if (AppVars.ContentLakeHtmlLastUpdateAtMs > 0) {
+            long lakeAgeMs = System.currentTimeMillis() - AppVars.ContentLakeHtmlLastUpdateAtMs;
+            if (lakeAgeMs > 120_000) {  // озеро старше 2 минут
+                Log.d(TAG, "BG_TRACE onResume: clearing expired lake cache (age=" + lakeAgeMs + "ms)");
+                AppVars.ContentLakeHtml = "";
+                AppVars.ContentLakeHtmlLastUpdateAtMs = 0;
+            }
+        }
+        
         restorePendingFightCaptchaDialogIfNeeded();
         AutoModeForegroundService.syncServiceState(this, "onResume");
     }
@@ -3303,7 +3317,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     // Освобождаем таймеры/вебвью и менеджеры при уничтожении Activity.
     @Override
     protected void onDestroy() {
-        ru.neverlands.abclient.utils.DebugLogger.log("MainActivity: onDestroy() called.");
+        ru.neverlands.abclient.utils.FileLogger.log("MainActivity: onDestroy() called.");
         isActivityResumedState = false;
         logBackgroundState("onDestroy_enter");
         stopTimer();
@@ -3838,6 +3852,20 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                     + ", dueAt=" + dueAt);
             return;
         }
+        // Блокируем фоновый probe во время критической последовательности рыбалки (act=1→act=2).
+        // Без этой защиты фоновый main.php?go=inf перезагружает PHPSESSID и портит vcode.
+        if (AppVars.suppressBackgroundProbesDuringFishing) {
+            long timeSinceStartMs = System.currentTimeMillis() - AppVars.fishingSequenceStartAtMs;
+            if (timeSinceStartMs < 5000L) {  // 5-секундный timeout для безопасности
+                Log.d(TAG, "SERVER_TIMER_TICK skip: fishing sequence in progress (duration=" + timeSinceStartMs + "ms)"
+                        + ", dueAt=" + dueAt);
+                return;
+            } else {
+                // Timeout - очищаем флаг на случай, если act=2 не прошел
+                Log.w(TAG, "SERVER_TIMER_TICK TIMEOUT: clearing lost fishing suppression flag after " + timeSinceStartMs + "ms");
+                AppVars.suppressBackgroundProbesDuringFishing = false;
+            }
+        }
         if (AppVars.IsFightCaptchaDialogVisible) {
             return;
         }
@@ -3866,9 +3894,14 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         if (autoMoving) {
             reloadUrl = "http://neverlands.ru/main.php?get_id=56&act=10&go=inf&ab_nav_tick=1&r=" + now;
         } else {
-            reloadUrl = "http://neverlands.ru/main.php?get_id=56&act=10&go=inf&af_tick=1&r=" + now;
-            if (AppVars.VCode != null && !AppVars.VCode.isEmpty()) {
-                reloadUrl += "&vcode=" + AppVars.VCode;
+            // КРИТИЧНО: af_tick никогда не должен отправляться БЕЗ vcode!
+            // Если vcode пуст → происходит загрузка БЕЗ vcode → сервер обновляет PHPSESSID → старый vcode невалиден
+            if (AppVars.VCode == null || AppVars.VCode.isEmpty()) {
+                // Vcode пуст - нужна защита: загружаем озеро чтобы получить свежий vcode
+                reloadUrl = "http://neverlands.ru/main.php?get_id=56&act=10&go=ret&r=" + now;
+                Log.w(TAG, "SERVER_TIMER_TICK: VCode пуст при af_tick! Загружаем озеро для получения vcode.");
+            } else {
+                reloadUrl = "http://neverlands.ru/main.php?get_id=56&act=10&go=inf&af_tick=1&r=" + now + "&vcode=" + AppVars.VCode;
             }
         }
 
@@ -4129,7 +4162,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         @Override
         public void onPageFinished(WebView view, String url) {
             super.onPageFinished(view, url);
-            AppLogger.write("Page loaded: " + url);
+            FileLogger.log("Page loaded: " + url);
             if (binding != null && binding.appBarMain != null && binding.appBarMain.contentMain != null
                     && view == binding.appBarMain.contentMain.webView) {
                 AppVars.url_main_top = url != null ? url : "";

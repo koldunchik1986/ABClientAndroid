@@ -200,6 +200,13 @@ public class AppVars {
     public static boolean AutoFishCheckUd = false;
     public static boolean AutoFishWearUd = false;
     /**
+     * Флаг блокировки фоновых probe'ов (main.php?go=inf&af_tick=1) при активной рыбалке.
+     * Устанавливается в FishAjaxPhp.processFishAct1() и очищается после act=2.
+     * Предотвращает перезагрузку PHPSESSID между act=1 и act=2 запросами.
+     */
+    public static volatile boolean suppressBackgroundProbesDuringFishing = false;
+    public static volatile long fishingSequenceStartAtMs = 0L;
+    /**
      * AutoSkin: флаг "нужно перечитать умение охоты" (аналог C# `AutoSkinCheckUm`).
      * Используется оркестратором `MainPhp` для перехода на вкладку умений.
      */
@@ -293,6 +300,92 @@ public class AppVars {
      * C# parity: одноразовый флаг "Пить" после рыбацкого шага (`AutoFishDrinkOnce`).
      */
     public static boolean AutoFishDrinkOnce = false;
+    /**
+     * Текущий актуальный vcode для авто-рыбалки с капчей.
+     *
+     * Назначение:
+     * - синхронизирует vcode между `fish_ajax.php?act=1` и `fish_ajax.php?act=2`;
+     * - при покупке капчи сервер отправляет новый vcode в ответе модуля `modules/code/code.php`;
+     * - этот новый vcode должен быть парсирован и сохранён здесь перед отправкой `act=2`;
+     * - это предотвращает ошибку "неверный код защиты" при истечении TTL старого vcode.
+     *
+     * Зависимости:
+     * - обновляется в `FishAjaxPhp.processFishAct1()` из response payload;
+     * - обновляется в `WebViewRequestInterceptor` при перехвате ответа `modules/code/code.php`;
+     * - используется в `FishAjaxPhp` при построении finishUrl для капчи.
+     *
+     * Жизненный цикл:
+     * - инициализируется в `processFishAct1()` из `state.vcode`;
+     * - обновляется при платеже капчи (если сервер отправляет новый vcode);
+     * - очищается при остановке авто-рыбалки или при запуске нового цикла `act=1`.
+     */
+    public static volatile String FishCurrentVcode = "";
+
+    /**
+     * Кэш озера HTML для авто-рыбалки.
+     *
+     * Назначение:
+     * - хранит актуальный HTML озера (main.php?get_id=55) для парсинга vcode, lakeid, act, primid;
+     * - парсирование vcode ПРЯМО ИЗ озера, а НЕ из fish_ajax.php?act=1 ответа;
+     * - это предотвращает проблему истечения vcode через 5 минут (vcode свеженький каждый цикл);
+     * - на каждый цикл рыбалки озеро перезагружается и кэш обновляется.
+     *
+     * Жизненный цикл:
+     * - заполняется в MainPhp.filter() когда приходит main.php?get_id=55 БЕЗ параметра &act=;
+     * - используется в FishAjaxPhp.mainPhpAutoFishPrepareFromLakeAndroid() для парсинга vcode;
+     * - очищается при остановке авто-рыбалки или при переходе на другую страницу.
+     *
+     * ПК-архитектура: этот HTML занимает место Delphi-переменной озера, которая парсилась один раз
+     * при загрузке страницы и переиспользовалась для каждого цикла рыбалки.
+     */
+    public static String ContentLakeHtml = "";
+
+    /**
+     * Время последнего обновления ContentLakeHtml (timestamp в ms).
+     * Используется для проверки что озеро "свежее" перед отправкой act=1.
+     * Если (now - lastUpdate) > 120_000 ms, озеро перезагружается чтобы получить свежий vcode.
+     * Фиксирует проблему: после 5+ минут в фоне vcode истекает (ошибка "Неверный код защиты").
+     */
+    public static volatile long ContentLakeHtmlLastUpdateAtMs = 0;
+
+    /**
+     * ID текущего озера для авто-рыбалки (ЭТАП 2).
+     * Парсится из формы озера (lakeid), используется при построении act=1/act=2 запросов.
+     */
+    public static volatile int FishCurrentLakeid = -1;
+
+    /**
+     * Время (timestamp в ms) когда должна быть запущена следующая попытка авто-рыбалки (ЭТАП 2).
+     * Используется для планирования повторных попыток с exponential backoff.
+     */
+    public static volatile long NextFishingAttemptDueAtMs = 0L;
+
+    /**
+     * Флаг - озеро считается "испорченным" и нужна переперезагрузка.
+     * Устанавливается в true когда:
+     * - Получена ошибка "Неверный код защиты" (act=1 вернул ошибку vcode)
+     * - Произошел переход между контекстами (бой, pinfo, питьё, открытие других диалогов)
+     * Обрабатывается в executeFishingCycleCore() - озеро очищается и перезагружается.
+     */
+    public static volatile boolean FishLakeShouldBeRefreshed = false;
+
+    /**
+     * Флаг - принудительно запустить probe для рыбалки, несмотря на UI флаги.
+     * Устанавливается в true когда:
+     * - Закончился cooldown после питья эликсира
+     * - Нужно убедиться что рыбалка начнется, несмотря на то что пользователь смотрит на экран
+     * Проверяется в AutoModeFgService - если true, запуск probe игнорирует uiForegroundLikely
+     */
+    public static volatile boolean ProbeForceNeedAutofish = false;
+
+    /**
+     * Флаг для инициализации авто-боя при холодном старте приложения.
+     * Устанавливается в restorePersistentAutoModesAfterLogin когда autoFight был включен ранее.
+     * ForcedActionGuard использует этот флаг чтобы запустить первый probe несмотря на uiForegroundLikely=true.
+     * Очищается после первого вызова probe.
+     */
+    public static volatile boolean ProbeForceNeedAutoboi = false;
+
     public static String BulkSellOldScript = "";
     public static String BulkSellOldName = "";
     public static String BulkSellOldPrice = "";

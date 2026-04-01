@@ -31,7 +31,7 @@ import javax.xml.transform.stream.StreamResult;
 
 import ru.neverlands.abclient.model.Contact;
 import ru.neverlands.abclient.repository.ApiRepository;
-import ru.neverlands.abclient.utils.CustomDebugLogger;
+import ru.neverlands.abclient.utils.FileLogger;
 
 /**
  * Управляет всеми операциями, связанными с контактами:
@@ -237,7 +237,8 @@ public class ContactsManager {
      */
     // Добавление контакта: ник -> playerId -> подробная инфа -> сохранение в XML.
     public static void addContact(Context context, String nick, final ContactOperationCallback callback) {
-        CustomDebugLogger.initialize("add_contact_" + nick + ".txt");
+        // CustomDebugLogger.initialize removed - using FileLogger now
+        // FileLogger.log("add_contact_" + nick + ".txt");
         ApiRepository.getPlayerId(nick, new ApiRepository.ApiCallback<String>() {
             @Override
             public void onSuccess(String serverResponse) {

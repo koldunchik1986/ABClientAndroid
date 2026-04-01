@@ -29,8 +29,10 @@ import ru.neverlands.abclient.R;
 import ru.neverlands.abclient.manager.AutoFunctionsManager;
 import ru.neverlands.abclient.manager.AppTimerManager;
 import ru.neverlands.abclient.model.AutoboiState;
+import ru.neverlands.abclient.postfilter.FishAjaxPhp;
 import ru.neverlands.abclient.utils.AppVars;
 import ru.neverlands.abclient.utils.Chat;
+import ru.neverlands.abclient.utils.ForcedActionGuard;
 import ru.neverlands.abclient.utils.RuntimeNetTrace;
 
 /**
@@ -361,7 +363,8 @@ public class AutoModeForegroundService extends Service {
                     refreshForegroundNotification(autoFightEnabled, locationTrackingEnabled, true, true);
                     return;
                 }
-                if (autoFightEnabled && !captchaDialogVisible && !uiForegroundLikely) {
+                // Используем единый модуль для проверки: может ли автобой запуститься, несмотря на UI флаги
+                if (autoFightEnabled && !captchaDialogVisible && ForcedActionGuard.shouldForceAction("autoFight", uiForegroundLikely)) {
                     maybeForceFightFrameSync(activity, tickNow, pendingFightFinishLink);
                 }
 
@@ -428,15 +431,20 @@ public class AutoModeForegroundService extends Service {
                         return;
                     }
                     long sinceLastAutoTurnMs = tickNow - lastAutoTurnTickAtMs;
-                    if ((uiForegroundInteractive || uiForegroundLikely)
-                            && !fightLikelyActive
-                            && !hasFightMarkers(AppVars.ContentMainPhp)
-                            && pendingFightFinishLink.isEmpty()) {
-                        Log.d(TAG, BG_TRACE_PREFIX + " uiTick: skip autoTurn/probe in foreground-likely UI (no fight markers)");
+                    
+                    // Используем единый модуль для проверки: разрешена ли работа авто-функций несмотря на UI флаги
+                    if (!ForcedActionGuard.shouldForceActionAdvanced(
+                            "autoTurn",
+                            uiForegroundLikely || uiForegroundInteractive,
+                            fightLikelyActive,
+                            hasFightMarkers(AppVars.ContentMainPhp),
+                            !pendingFightFinishLink.isEmpty())) {
+                        Log.d(TAG, BG_TRACE_PREFIX + " uiTick: skip autoTurn/probe - blocked by UI or other conditions");
                         markClientAction("Пауза авто-хода: активный UI");
                         refreshForegroundNotification(autoFightEnabled, locationTrackingEnabled, captchaDialogVisible, false);
                         return;
                     }
+                    
                     // Background-safe polling: do auto-turn/probe even when fightLikelyActive=false.
                     long minIntervalMs = fightLikelyActive
                             ? AUTO_TURN_MIN_INTERVAL_MS

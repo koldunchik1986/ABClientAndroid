@@ -26,7 +26,7 @@ import ru.neverlands.abclient.network.NetworkClient;
 import ru.neverlands.abclient.proxy.CookiesManager;
 import ru.neverlands.abclient.proxy.ProxyRuntimeManager;
 import ru.neverlands.abclient.utils.AppVars;
-import ru.neverlands.abclient.utils.CustomDebugLogger;
+import ru.neverlands.abclient.utils.FileLogger;
 
 /**
  * Репозиторий для взаимодействия с внешним API игры.
@@ -58,10 +58,10 @@ public class ApiRepository {
         }
         if (cookie != null && !cookie.trim().isEmpty()) {
             builder.header("Cookie", cookie);
-            CustomDebugLogger.log("SESSION_COOKIE_APPLIED: url=" + url + ", bytes=" + cookie.length());
+            FileLogger.log("SESSION_COOKIE_APPLIED: url=" + url + ", bytes=" + cookie.length());
             android.util.Log.d("ApiRepository", "SESSION_COOKIE_APPLIED: host=" + host + ", bytes=" + cookie.length());
         } else {
-            CustomDebugLogger.log("SESSION_COOKIE_APPLIED: url=" + url + ", bytes=0");
+            FileLogger.log("SESSION_COOKIE_APPLIED: url=" + url + ", bytes=0");
             android.util.Log.w("ApiRepository", "SESSION_COOKIE_APPLIED: host=" + host + ", bytes=0");
         }
         return builder.build();
@@ -141,7 +141,7 @@ public class ApiRepository {
 
         java.net.Proxy activeProxy = ProxyRuntimeManager.getActiveJavaProxyOrNull();
         if (activeProxy != null) {
-            CustomDebugLogger.log(tracePrefix + "_PROXY_READY: strict=true, started=false, active=true");
+            FileLogger.log(tracePrefix + "_PROXY_READY: strict=true, started=false, active=true");
             return true;
         }
 
@@ -149,7 +149,7 @@ public class ApiRepository {
         boolean started = context != null && ProxyRuntimeManager.ensureStarted(context, AppVars.Profile);
         java.net.Proxy activeAfterStart = ProxyRuntimeManager.getActiveJavaProxyOrNull();
         boolean ready = started && activeAfterStart != null;
-        CustomDebugLogger.log(tracePrefix + "_PROXY_READY: strict=true, started=" + started + ", active=" + (activeAfterStart != null));
+        FileLogger.log(tracePrefix + "_PROXY_READY: strict=true, started=" + started + ", active=" + (activeAfterStart != null));
         if (ready) {
             return true;
         }
@@ -190,22 +190,22 @@ public class ApiRepository {
 
             Request request = buildSessionAwareGetRequest(url);
 
-            CustomDebugLogger.log("REQUEST_URL: " + request.url());
-            CustomDebugLogger.log("REQUEST_HEADERS: " + request.headers().toString());
+            FileLogger.log("REQUEST_URL: " + request.url());
+            FileLogger.log("REQUEST_HEADERS: " + request.headers().toString());
 
             // Асинхронный вызов
             getClient().newCall(request).enqueue(new Callback() {
                 @Override
                 public void onFailure(@NonNull Call call, @NonNull IOException e) {
-                    CustomDebugLogger.log("RESPONSE_ERROR: " + e.getMessage());
+                    FileLogger.log("RESPONSE_ERROR: " + e.getMessage());
                     callback.onFailure(e.getMessage() != null ? e.getMessage() : "Unknown network error");
                 }
 
                 @Override
                 public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
                     String responseBody = response.body() != null ? response.body().string() : "";
-                    CustomDebugLogger.log("RESPONSE_CODE: " + response.code());
-                    CustomDebugLogger.log("RESPONSE_BODY: " + responseBody);
+                    FileLogger.log("RESPONSE_CODE: " + response.code());
+                    FileLogger.log("RESPONSE_BODY: " + responseBody);
 
                     if (!response.isSuccessful()) {
                         callback.onFailure("Server error: " + response.code());
@@ -225,7 +225,7 @@ public class ApiRepository {
                 }
             });
         } catch (Exception e) {
-            CustomDebugLogger.log("REQUEST_PREPARATION_ERROR: " + e.getMessage());
+            FileLogger.log("REQUEST_PREPARATION_ERROR: " + e.getMessage());
             callback.onFailure(e.getMessage() != null ? e.getMessage() : "Error during getPlayerId");
         }
     }
@@ -245,21 +245,21 @@ public class ApiRepository {
                     + playerId + "&info=1&hmu=1&effects=1&slots=1";
             Request request = buildSessionAwareGetRequest(url);
 
-            CustomDebugLogger.log("REQUEST_URL: " + request.url());
-            CustomDebugLogger.log("REQUEST_HEADERS: " + request.headers().toString());
+            FileLogger.log("REQUEST_URL: " + request.url());
+            FileLogger.log("REQUEST_HEADERS: " + request.headers().toString());
 
             getClient().newCall(request).enqueue(new Callback() {
                 @Override
                 public void onFailure(@NonNull Call call, @NonNull IOException e) {
-                    CustomDebugLogger.log("RESPONSE_ERROR: " + e.getMessage());
+                    FileLogger.log("RESPONSE_ERROR: " + e.getMessage());
                     callback.onFailure(e.getMessage() != null ? e.getMessage() : "Unknown network error");
                 }
 
                 @Override
                 public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
                     String responseBody = response.body() != null ? response.body().string() : "";
-                    CustomDebugLogger.log("RESPONSE_CODE: " + response.code());
-                    CustomDebugLogger.log("RESPONSE_BODY: " + responseBody);
+                    FileLogger.log("RESPONSE_CODE: " + response.code());
+                    FileLogger.log("RESPONSE_BODY: " + responseBody);
 
                     if (!response.isSuccessful()) {
                         callback.onFailure("Server error: " + response.code());
@@ -280,7 +280,7 @@ public class ApiRepository {
                 }
             });
         } catch (Exception e) {
-            CustomDebugLogger.log("REQUEST_PREPARATION_ERROR: " + e.getMessage());
+            FileLogger.log("REQUEST_PREPARATION_ERROR: " + e.getMessage());
             callback.onFailure(e.getMessage() != null ? e.getMessage() : "Error during getPlayerInfo");
         }
     }
@@ -377,22 +377,22 @@ public class ApiRepository {
 
             Request request = buildSessionAwareGetRequest(url);
 
-            CustomDebugLogger.log("DOWNLOAD_FILE_URL: " + request.url());
-            CustomDebugLogger.log("DOWNLOAD_FILE_PROXY_REQUIRED: "
+            FileLogger.log("DOWNLOAD_FILE_URL: " + request.url());
+            FileLogger.log("DOWNLOAD_FILE_PROXY_REQUIRED: "
                     + ProxyRuntimeManager.isStrictProxyRequiredForCurrentProfile()
                     + ", PROXY_ACTIVE=" + (ProxyRuntimeManager.getActiveJavaProxyOrNull() != null));
 
             getClient().newCall(request).enqueue(new Callback() {
                 @Override
                 public void onFailure(@NonNull Call call, @NonNull IOException e) {
-                    CustomDebugLogger.log("DOWNLOAD_FILE_ERROR: " + e.getMessage());
+                    FileLogger.log("DOWNLOAD_FILE_ERROR: " + e.getMessage());
                     callback.onFailure(e.getMessage() != null ? e.getMessage() : "Unknown network error");
                 }
 
                 @Override
                 public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
                     if (!response.isSuccessful() || response.body() == null) {
-                        CustomDebugLogger.log("DOWNLOAD_FILE_HTTP_ERROR: code=" + response.code()
+                        FileLogger.log("DOWNLOAD_FILE_HTTP_ERROR: code=" + response.code()
                                 + ", url=" + url);
                         callback.onFailure("Server error or empty response: " + response.code());
                         return;

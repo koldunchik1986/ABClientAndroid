@@ -527,6 +527,12 @@ public class WebViewRequestInterceptor {
                 Log.d(TAG, "Filter.process returned " + processed.length + " bytes for " + urlString);
             }
 
+            // Парсим новый vcode из ответа модуля платежа капчи (modules/code/code.php)
+            // Это нужно для синхронизации vcode при авторыбалке после оплаты капчи
+            if (urlString.contains("modules/code/code.php") && AppVars.Profile != null && AppVars.Profile.AutoFish) {
+                updateFishCurrentVcodeFromPaymentModule(processed);
+            }
+
             // Get Content-Type (case-insensitive)
             String contentType = null;
             List<String> ctList = getHeaderIgnoreCase(headers, "Content-Type");
@@ -1392,5 +1398,60 @@ public class WebViewRequestInterceptor {
         }
         ru.neverlands.abclient.utils.AppVars.ServerDateTime = new Date(serverMs);
         Log.d(TAG, "Server time sync (" + source + "): diffMs=" + diffMs);
+    }
+
+    /**
+     * Синхронизирует текущий vcode авторыбалки из ответа модуля платежа капчи.
+     * 
+     * Зависимости:
+     * - Вызывается из {@link #intercept(WebResourceRequest)} при перехвате запроса
+     *   {@code modules/code/code.php} и когда авторыбалка включена.
+     * - AppVars.FishCurrentVcode: обновляется парсингом JSON-ответа модуля платежа.
+     * - Зависит от корректного JSON-форматирования ответа от сервера.
+     * 
+     * Назначение:
+     * - Актуализировать vcode в памяти клиента сразу после покупки капчи и получения
+     *   нового vcode от модуля платежа (modules/code/code.php: vcode->value).
+     * - Синхронизация гарантирует, что следующий запрос авторыбалки (GET /main.php?get_id=55&act=4&vcode=...)
+     *   отправится с корректным vcode.
+     * 
+     * Сигнатура и логика:
+     * - processed: byte[] ответа от модуля платежа (после фильтрации, но в оригинальной кодировке).
+     * - Парсим JSON-ответ {@code {"status":"ok","vcode":{"value":"...","...":"..."}}}.
+     * - Извлекаем значение {@code vcode.value}.
+     * - Если извлекли успешно → обновляем {@code AppVars.FishCurrentVcode}.
+     * - Ошибки парсинга логируем, но не ломают поток.
+     */
+    private static void updateFishCurrentVcodeFromPaymentModule(byte[] processed) {
+        if (processed == null || processed.length == 0) {
+            return;
+        }
+        try {
+            // Декодируем JSON из byte[] в String (используем windows-1251 как default для neverlands сервера).
+            String responseJson = new String(processed, "windows-1251");
+            Log.d(TAG, "Payment module response (first 500 chars): " + responseJson.substring(0, Math.min(500, responseJson.length())));
+            
+            // Простой парсинг JSON без JSONObject:
+            // Ищем "vcode":{"value":"XXXXX"...}
+            // или более общий паттерн: "vcode":\s*{\s*"value"\s*:\s*"([^"]+)"
+            Pattern vcodePattern = Pattern.compile("\"vcode\"\\s*:\\s*\\{\\s*\"value\"\\s*:\\s*\"([^\"]+)\"");
+            Matcher matcher = vcodePattern.matcher(responseJson);
+            
+            if (matcher.find()) {
+                String newVcode = matcher.group(1);
+                if (newVcode != null && !newVcode.isEmpty()) {
+                    Log.d(TAG, "Payment module: extracted vcode=" + newVcode);
+                    // Обновляем текущий vcode авторыбалки.
+                    // Это позволит следующему запросу авторыбалки использовать актуальный vcode.
+                    ru.neverlands.abclient.utils.AppVars.FishCurrentVcode = newVcode;
+                    Log.d(TAG, "Payment module: AppVars.FishCurrentVcode updated to " + newVcode);
+                    return;
+                }
+            }
+            
+            Log.w(TAG, "Payment module: could not extract vcode from response, responseJson=" + responseJson.substring(0, Math.min(200, responseJson.length())));
+        } catch (Exception e) {
+            Log.e(TAG, "updateFishCurrentVcodeFromPaymentModule failed", e);
+        }
     }
 }

@@ -24,6 +24,11 @@ public class Chat {
     private static String chatLogFileName;
     private static volatile String lastSystemChatMessage = "";
     private static volatile long lastSystemChatMessageAtMs = 0L;
+    // Очередь сообщений, ожидающих отправки при готовности ChatWebView
+    // Зависимость: используется в sendChatMessage для retry при недоступности WebView
+    private static final ConcurrentLinkedQueue<String> PENDING_MESSAGES = new ConcurrentLinkedQueue<>();
+    private static final long RETRY_DELAY_MS = 500L;
+    private static volatile boolean chatWebViewRetryScheduled = false;
     // Лог чата — один файл в день: YYYYMMDD_chat.html
     // Используется для формирования имени файла в addStringToChat/getCurrentLogPath.
     private static final SimpleDateFormat LOG_TS_FORMAT = new SimpleDateFormat("yyyyMMdd", Locale.US);
@@ -32,6 +37,12 @@ public class Chat {
         @Override
         public void run() {
             attemptSendAutoAnswer();
+        }
+    };
+    private static final Runnable RETRY_PENDING_MESSAGES_RUNNABLE = new Runnable() {
+        @Override
+        public void run() {
+            retryPendingMessages();
         }
     };
 
@@ -165,10 +176,64 @@ public class Chat {
                 String js = "if(document.FBT&&document.FBT.text){document.FBT.text.value=" + json + ";document.FBT.submit();}";
                 activity.binding.appBarMain.contentMain.chatButtonsWebview.evaluateJavascript(js, null);
                 Log.d(TAG, "sendChatMessage evaluateJavascript: submitted");
+                FileLogger.log("[Chat.sendChatMessage] Message delivered via WebView: " + safe.substring(0, Math.min(80, safe.length())));
+                // После успешной отправки, попытаться отправить ожидающие сообщения
+                if (!PENDING_MESSAGES.isEmpty()) {
+                    retryPendingMessages();
+                }
             } else {
-                Log.w(TAG, "sendChatMessage dropped: chatButtonsWebview is not ready");
+                Log.w(TAG, "sendChatMessage dropped: chatButtonsWebview is not ready, adding to retry queue");
+                FileLogger.log("[Chat.sendChatMessage] WebView not ready, queued: " + safe.substring(0, Math.min(80, safe.length())));
+                // Добавить сообщение в очередь для повторной попытки
+                PENDING_MESSAGES.offer(safe);
+                // Запланировать retry если ещё не запланирован
+                if (!chatWebViewRetryScheduled) {
+                    chatWebViewRetryScheduled = true;
+                    HANDLER.postDelayed(RETRY_PENDING_MESSAGES_RUNNABLE, RETRY_DELAY_MS);
+                }
             }
         });
+    }
+
+    /**
+     * Попыт отправить ожидающие сообщения из очереди.
+     * Вызывается либо после успешной отправки нового сообщения,
+     * либо по истечении RETRY_DELAY_MS.
+     * 
+     * Зависимости:
+     * - PENDING_MESSAGES: очередь ожидающих сообщений
+     * - sendChatMessage: рекурсивно отправляет каждое сообщение
+     */
+    private static void retryPendingMessages() {
+        MainActivity activity = AppVars.mainActivity != null ? AppVars.mainActivity.get() : null;
+        if (activity == null || PENDING_MESSAGES.isEmpty()) {
+            chatWebViewRetryScheduled = false;
+            return;
+        }
+        
+        if (activity.binding != null && activity.binding.appBarMain != null
+                && activity.binding.appBarMain.contentMain != null
+                && activity.binding.appBarMain.contentMain.chatButtonsWebview != null) {
+            // WebView готов - отправляем ожидающие сообщения
+            String message;
+            int sentCount = 0;
+            while ((message = PENDING_MESSAGES.poll()) != null && sentCount < 5) {
+                Log.d(TAG, "retryPendingMessages: sending from queue, remaining=" + PENDING_MESSAGES.size());
+                FileLogger.log("[Chat.retryPendingMessages] Retrying queued message (" + (sentCount + 1) + "): " + 
+                    message.substring(0, Math.min(80, message.length())));
+                sendChatMessage(activity, message);
+                sentCount++;
+            }
+            chatWebViewRetryScheduled = false;
+        } else {
+            // WebView всё ещё не готов - запланировать новый retry
+            Log.d(TAG, "retryPendingMessages: chatButtonsWebview still not ready, queued messages=" + PENDING_MESSAGES.size());
+            FileLogger.log("[Chat.retryPendingMessages] WebView still not ready, " + PENDING_MESSAGES.size() + " messages waiting");
+            if (!chatWebViewRetryScheduled) {
+                chatWebViewRetryScheduled = true;
+                HANDLER.postDelayed(RETRY_PENDING_MESSAGES_RUNNABLE, RETRY_DELAY_MS);
+            }
+        }
     }
 
     /**
@@ -187,6 +252,7 @@ public class Chat {
         MainActivity activity = AppVars.mainActivity != null ? AppVars.mainActivity.get() : null;
         if (activity == null) {
             Log.w(TAG, "sendMessageToServer: activity is null, skip");
+            FileLogger.log("[Chat.sendMessageToServer] FAILED: activity is null");
             return;
         }
         String trimmed = message.trim();
@@ -194,6 +260,7 @@ public class Chat {
                 + ", clanPrefix=" + trimmed.startsWith("%clan%")
                 + ", privatePrefix=" + trimmed.startsWith("%<")
                 + ", pairPrefix=" + trimmed.startsWith("%pair%"));
+        FileLogger.log("[Chat.sendMessageToServer] Sending: " + trimmed.substring(0, Math.min(100, trimmed.length())));
         long now = System.currentTimeMillis();
         lastChanged = now;
         lastAnswerTime = now;

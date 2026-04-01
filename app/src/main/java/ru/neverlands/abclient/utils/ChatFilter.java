@@ -9,6 +9,7 @@ import java.util.regex.Pattern;
 import ru.neverlands.abclient.manager.ChatUserList;
 import ru.neverlands.abclient.manager.AutoFunctionsManager;
 import ru.neverlands.abclient.model.ChatUser;
+import ru.neverlands.abclient.utils.FileLogger;
 
 public class ChatFilter {
     // Извлечение лута из строк вида «...», включая вес ресурса в формате "(x.xx кг)".
@@ -104,7 +105,7 @@ public class ChatFilter {
                     }
                 }
 
-                AppLogger.writeTexLog("Бой против " + AppVars.LastBoiSostav + " завершен (" + AppVars.LastBoiLog + ")");
+                FileLogger.log("TexLog: Бой против " + AppVars.LastBoiSostav + " завершен (" + AppVars.LastBoiLog + ")");
                 AppVars.LastBoiLog = "";
                 AppVars.LastBoiSostav = "";
             }

@@ -24,7 +24,7 @@ import ru.neverlands.abclient.model.AuthResult;
 import ru.neverlands.abclient.network.NetworkClient;
 import ru.neverlands.abclient.proxy.ProxyRuntimeManager;
 import ru.neverlands.abclient.utils.AppVars;
-import ru.neverlands.abclient.utils.DebugLogger;
+import ru.neverlands.abclient.utils.FileLogger;
 
 public class AuthManager {
     private static final Pattern LAST_HTTP_CODE_PATTERN = Pattern.compile("(\\d{3})(?!.*\\d)");
@@ -44,7 +44,7 @@ public class AuthManager {
      *   на альтернативный host (`www <-> non-www`) после очистки cookies.
      */
     public AuthResult authorize(String username, String password) {
-        DebugLogger.log("AuthManager: Starting synchronous authorization for user: " + username);
+        FileLogger.log("AuthManager: Starting synchronous authorization for user: " + username);
         final String primaryBaseUrl = resolveAuthBaseUrl();
         try {
             AuthResult primary = authorizeInternal(username, password, primaryBaseUrl);
@@ -53,7 +53,7 @@ public class AuthManager {
             }
 
             String alternateBaseUrl = resolveAlternateAuthBaseUrl(primaryBaseUrl);
-            DebugLogger.log(
+            FileLogger.log(
                     "AuthManager: proxy fallback for authorize, primary=" + primaryBaseUrl
                             + ", alternate=" + alternateBaseUrl
                             + ", reason=" + (primary == null ? "" : primary.getErrorMessage())
@@ -61,7 +61,7 @@ public class AuthManager {
             NetworkClient.clearCookies();
             return authorizeInternal(username, password, alternateBaseUrl);
         } finally {
-            DebugLogger.close();
+            // DebugLogger.close() removed - using FileLogger now
         }
     }
 
@@ -75,7 +75,7 @@ public class AuthManager {
      * - {@link DebugLogger}: журналирование этапов и причины отказа.
      */
     public AuthResult authorizeWithCaptcha(String username, String password, String vcode, String verify) {
-        DebugLogger.log("AuthManager: Starting authorization with captcha for user: " + username);
+        FileLogger.log("AuthManager: Starting authorization with captcha for user: " + username);
         final String primaryBaseUrl = resolveAuthBaseUrl();
         try {
             AuthResult primary = authorizeWithCaptchaInternal(username, password, vcode, verify, primaryBaseUrl);
@@ -84,7 +84,7 @@ public class AuthManager {
             }
 
             String alternateBaseUrl = resolveAlternateAuthBaseUrl(primaryBaseUrl);
-            DebugLogger.log(
+            FileLogger.log(
                     "AuthManager: proxy fallback for authorizeWithCaptcha, primary=" + primaryBaseUrl
                             + ", alternate=" + alternateBaseUrl
                             + ", reason=" + (primary == null ? "" : primary.getErrorMessage())
@@ -92,7 +92,7 @@ public class AuthManager {
             NetworkClient.clearCookies();
             return authorizeWithCaptchaInternal(username, password, vcode, verify, alternateBaseUrl);
         } finally {
-            DebugLogger.close();
+            // DebugLogger.close() removed - using FileLogger now
         }
     }
 
@@ -123,9 +123,9 @@ public class AuthManager {
                     .header("Accept-Language", "ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7")
                     .build();
 
-            DebugLogger.log("AuthManager: 1. Initial GET request\n" + initialRequest);
+            FileLogger.log("AuthManager: 1. Initial GET request\n" + initialRequest);
             try (Response initialResponse = client.newCall(initialRequest).execute()) {
-                DebugLogger.log("AuthManager: 1. Initial GET response\n" + initialResponse);
+                FileLogger.log("AuthManager: 1. Initial GET response\n" + initialResponse);
                 if (!initialResponse.isSuccessful()) {
                     return new AuthResult("Ошибка получения начальной страницы: " + initialResponse.code());
                 }
@@ -144,9 +144,9 @@ public class AuthManager {
                     .post(formBody)
                     .build();
 
-            DebugLogger.log("AuthManager: 2. Login POST request\n" + loginRequest);
+            FileLogger.log("AuthManager: 2. Login POST request\n" + loginRequest);
             try (Response loginResponse = client.newCall(loginRequest).execute()) {
-                DebugLogger.log("AuthManager: 2. Login POST response\n" + loginResponse);
+                FileLogger.log("AuthManager: 2. Login POST response\n" + loginResponse);
                 if (!loginResponse.isSuccessful()) {
                     return new AuthResult("Ошибка авторизации: " + loginResponse.code());
                 }
@@ -159,7 +159,7 @@ public class AuthManager {
                 if (captchaImg != null && vcodeEl != null) {
                     String captchaUrl = captchaImg.attr("abs:src");
                     String captchaVcode = vcodeEl.val();
-                    DebugLogger.log("AuthManager: Captcha detected. URL: " + captchaUrl + ", vcode: " + captchaVcode);
+                    FileLogger.log("AuthManager: Captcha detected. URL: " + captchaUrl + ", vcode: " + captchaVcode);
                     return new AuthResult(captchaUrl, captchaVcode);
                 }
 
@@ -167,7 +167,7 @@ public class AuthManager {
                     return new AuthResult("Ошибка авторизации: неверный логин или пароль.");
                 }
             }
-            DebugLogger.log("AuthManager: 2. Login POST SUCCESS.");
+            FileLogger.log("AuthManager: 2. Login POST SUCCESS.");
 
             try {
                 Thread.sleep(500L);
@@ -181,19 +181,19 @@ public class AuthManager {
                     .header("Referer", gameUrl)
                     .build();
 
-            DebugLogger.log("AuthManager: 3. Final GET request\n" + mainRequest);
+            FileLogger.log("AuthManager: 3. Final GET request\n" + mainRequest);
             try (Response mainResponse = client.newCall(mainRequest).execute()) {
-                DebugLogger.log("AuthManager: 3. Final GET response\n" + mainResponse);
+                FileLogger.log("AuthManager: 3. Final GET response\n" + mainResponse);
                 if (!mainResponse.isSuccessful()) {
                     return new AuthResult("Ошибка финализации сессии: " + mainResponse.code());
                 }
             }
 
-            DebugLogger.log("AuthManager: Full Authorization SUCCESS.");
+            FileLogger.log("AuthManager: Full Authorization SUCCESS.");
             List<HttpCookie> cookies = collectNeverlandsCookies(cookieManager);
             return new AuthResult(cookies);
         } catch (Exception e) {
-            DebugLogger.log("AuthManager: Authorization FAILED: " + e.getMessage());
+            FileLogger.log("AuthManager: Authorization FAILED: " + e.getMessage());
             return new AuthResult(e.getMessage());
         }
     }
@@ -236,9 +236,9 @@ public class AuthManager {
                     .post(formBody)
                     .build();
 
-            DebugLogger.log("AuthManager: 2. Captcha Login POST request\n" + loginRequest);
+            FileLogger.log("AuthManager: 2. Captcha Login POST request\n" + loginRequest);
             try (Response loginResponse = client.newCall(loginRequest).execute()) {
-                DebugLogger.log("AuthManager: 2. Captcha Login POST response\n" + loginResponse);
+                FileLogger.log("AuthManager: 2. Captcha Login POST response\n" + loginResponse);
                 if (!loginResponse.isSuccessful()) {
                     return new AuthResult("Ошибка авторизации с капчей: " + loginResponse.code());
                 }
@@ -251,7 +251,7 @@ public class AuthManager {
                 if (captchaImg != null && vcodeEl != null) {
                     String captchaUrl = captchaImg.attr("abs:src");
                     String newVcode = vcodeEl.val();
-                    DebugLogger.log("AuthManager: Captcha detected again. URL: " + captchaUrl + ", vcode: " + newVcode);
+                    FileLogger.log("AuthManager: Captcha detected again. URL: " + captchaUrl + ", vcode: " + newVcode);
                     return new AuthResult(captchaUrl, newVcode);
                 }
 
@@ -259,7 +259,7 @@ public class AuthManager {
                     return new AuthResult("Ошибка авторизации: неверный логин или пароль.");
                 }
             }
-            DebugLogger.log("AuthManager: 2. Captcha Login POST SUCCESS.");
+            FileLogger.log("AuthManager: 2. Captcha Login POST SUCCESS.");
 
             try {
                 Thread.sleep(500L);
@@ -273,19 +273,19 @@ public class AuthManager {
                     .header("Referer", gameUrl)
                     .build();
 
-            DebugLogger.log("AuthManager: 3. Final GET request\n" + mainRequest);
+            FileLogger.log("AuthManager: 3. Final GET request\n" + mainRequest);
             try (Response mainResponse = client.newCall(mainRequest).execute()) {
-                DebugLogger.log("AuthManager: 3. Final GET response\n" + mainResponse);
+                FileLogger.log("AuthManager: 3. Final GET response\n" + mainResponse);
                 if (!mainResponse.isSuccessful()) {
                     return new AuthResult("Ошибка финализации сессии: " + mainResponse.code());
                 }
             }
 
-            DebugLogger.log("AuthManager: Full Authorization SUCCESS.");
+            FileLogger.log("AuthManager: Full Authorization SUCCESS.");
             List<HttpCookie> cookies = collectNeverlandsCookies(cookieManager);
             return new AuthResult(cookies);
         } catch (Exception e) {
-            DebugLogger.log("AuthManager: Authorization FAILED: " + e.getMessage());
+            FileLogger.log("AuthManager: Authorization FAILED: " + e.getMessage());
             return new AuthResult(e.getMessage());
         }
     }
@@ -354,7 +354,7 @@ public class AuthManager {
     private String resolveAuthBaseUrl() {
         boolean proxyActive = ProxyRuntimeManager.isRunning();
         String baseUrl = proxyActive ? "http://www.neverlands.ru" : "http://neverlands.ru";
-        DebugLogger.log("AuthManager: authBaseUrl=" + baseUrl + ", proxyActive=" + proxyActive);
+        FileLogger.log("AuthManager: authBaseUrl=" + baseUrl + ", proxyActive=" + proxyActive);
         return baseUrl;
     }
 
@@ -426,7 +426,7 @@ public class AuthManager {
             }
             names.append(cookie.getName());
         }
-        DebugLogger.log("AuthManager: collected cookies count=" + result.size() + " names=[" + names + "]");
+        FileLogger.log("AuthManager: collected cookies count=" + result.size() + " names=[" + names + "]");
         return result;
     }
 }

@@ -556,6 +556,13 @@ public class AutoFunctionsManager {
         Log.d(TAG, "restoreAutoFightRuntimeAfterLogin: runtime autoboi=" + AppVars.Autoboi
                 + ", profileAutoFight=" + autoFightEnabledByProfile);
 
+        // Установить флаг для принудительного запуска авто-боя при холодном старте.
+        // Это нужно чтобы первый probe запустился несмотря на uiForegroundLikely=true.
+        if (autoFightEnabledByProfile) {
+            AppVars.ProbeForceNeedAutoboi = true;
+            Log.d(TAG, "restoreAutoFightRuntimeAfterLogin: set ProbeForceNeedAutoboi flag for cold start override");
+        }
+
         // Bootstrap после restore:
         // - запускается только при включенном авто-бое в профиле;
         // - не меняет сам флаг, а только инициирует загрузку боевого кадра для старта цикла.

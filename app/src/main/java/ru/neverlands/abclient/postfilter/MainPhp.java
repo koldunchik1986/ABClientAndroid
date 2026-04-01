@@ -2144,6 +2144,17 @@ public class MainPhp {
             return null;
         }
         posScript += patternViewMap.length();
+
+        // Кэшируем HTML озера для парсинга приманок (Android версия MainPhpFish.cs)
+        if (AppVars.ContentLakeHtml == null || AppVars.ContentLakeHtml.isEmpty()) {
+            String lakeForm = extractLakeFishFormHtml(html);
+            if (lakeForm != null && !lakeForm.isEmpty()) {
+                AppVars.ContentLakeHtml = lakeForm;
+                AppVars.ContentLakeHtmlLastUpdateAtMs = System.currentTimeMillis();
+                android.util.Log.d(TAG, "AUTO_FISH_TRACE cached ContentLakeHtml, length=" + lakeForm.length());
+            }
+        }
+
         return html.substring(0, posScript) + callFish + html.substring(posScript);
     }
     /**
@@ -2301,6 +2312,13 @@ public class MainPhp {
             android.util.Log.d(TAG, "AUTO_FISH_TRACE drink cooldown elapsed: elapsedMs="
                     + elapsed + ", recheck tied");
             AppVars.AutoFishDrinkOnce = false;
+            
+            // КРИТИЧНО: После окончания cooldown'а эликсира, нужно ПРИНУДИТЕЛЬНО запустить probe для рыбалки
+            // Иначе система может не начать ловить, если пользователь был на UI (uiForegroundLikely=true)
+            if (FishAjaxPhp.isAutoFishEnabled()) {
+                AppVars.ProbeForceNeedAutofish = true;
+                android.util.Log.d(TAG, "AUTO_FISH_TRACE drink cooldown finished, forcing autofish probe");
+            }
         }
         mainPhpUpdateTied(html);
 
@@ -3318,17 +3336,60 @@ public class MainPhp {
         return m.find() ? m.group(1) : "";
     }
     private static int pickFishPrimId(String html) {
-        if (AppVars.Profile == null) return -1;
+        if (AppVars.Profile == null || html == null || html.isEmpty()) {
+            return -1;
+        }
+        
+        String lower = html.toLowerCase(Locale.ROOT);
         List<Integer> candidates = new ArrayList<>();
+        
+        // Для каждой включенной приманки ищем её в HTML и проверяем остаток
         for (int i = 0; i < FISH_PRIM_IDS.length; i++) {
-            if ((AppVars.Profile.FishEnabledPrims & FISH_PRIM_FLAGS[i]) == 0) continue;
-            String probe = "name=primid value=" + FISH_PRIM_IDS[i];
-            if (html.toLowerCase(Locale.ROOT).contains(probe.toLowerCase(Locale.ROOT))) {
-                candidates.add(FISH_PRIM_IDS[i]);
+            if ((AppVars.Profile.FishEnabledPrims & FISH_PRIM_FLAGS[i]) == 0) {
+                continue; // Приманка не включена в профиле
+            }
+            
+            int primid = FISH_PRIM_IDS[i];
+            String probe = "name=primid value=" + primid;
+            int probePos = lower.indexOf(probe.toLowerCase(Locale.ROOT));
+            
+            if (probePos < 0) {
+                continue; // Приманка отсутствует в инвентаре
+            }
+            
+            // Пытаемся найти количество приманки после radio button
+            // Ищем следующее число в тегах <b>...</b> или просто числа
+            int countStart = probePos + probe.length();
+            String afterProbe = html.substring(countStart, Math.min(countStart + 200, html.length()));
+            
+            int count = -1;
+            // Ищем число в формате <b>123</b> или просто 123
+            java.util.regex.Pattern countPattern = java.util.regex.Pattern.compile("<b>(\\d+)</b>|\\b(\\d+)\\b");
+            java.util.regex.Matcher countMatcher = countPattern.matcher(afterProbe);
+            if (countMatcher.find()) {
+                String numStr = countMatcher.group(1) != null ? countMatcher.group(1) : countMatcher.group(2);
+                try {
+                    count = Integer.parseInt(numStr);
+                } catch (NumberFormatException e) {
+                    count = -1;
+                }
+            }
+            
+            // Добавляем приманку только если остаток > 4 (для безопасности)
+            if (count > 4) {
+                candidates.add(primid);
+            } else if (count < 0) {
+                // Если не смогли определить количество, всё равно добавляем (лучше использовать, чем не использовать)
+                candidates.add(primid);
             }
         }
-        if (candidates.isEmpty()) return -1;
-        Collections.shuffle(candidates, RANDOM);
+        
+        if (candidates.isEmpty()) {
+            return -1;
+        }
+        
+        // Берём первую подходящую (без перемешивания для стабильности)
+        // Или можно перемешать: Collections.shuffle(candidates, RANDOM);
         return candidates.get(0);
     }
     /**
@@ -5843,7 +5904,7 @@ public class MainPhp {
         } catch (Exception e) {
             java.io.StringWriter sw = new java.io.StringWriter();
             e.printStackTrace(new java.io.PrintWriter(sw));
-            ru.neverlands.abclient.utils.DebugLogger.log("Error during mainPhpInv processing: \n" + sw);
+            ru.neverlands.abclient.utils.FileLogger.log("Error during mainPhpInv processing: \n" + sw);
             return html;
         }
     }
@@ -5877,5 +5938,36 @@ public class MainPhp {
             return "<font color=#FF0000>Предмет не найден, действие отменено.</font>";
         }
         return "<font color=#FF0000>" + safeFastId + " в инвентаре не найден, действие отменено.</font>";
+    }
+
+    /**
+     * Извлекает HTML форму рыбалки (id="FISHF") из полной страницы озера.
+     * Аналог C#: MainPhpFish.cs, парсинг озера.
+     * 
+     * @param html Полный HTML озера
+     * @return HTML формы <form id="FISHF">...</form> или пустая строка
+     */
+    private static String extractLakeFishFormHtml(String html) {
+        if (html == null || html.isEmpty()) return "";
+        
+        String lowerHtml = html.toLowerCase(java.util.Locale.ROOT);
+        int posForm = lowerHtml.indexOf("id=\"fishf\"");
+        if (posForm == -1) {
+            posForm = lowerHtml.indexOf("id='fishf'");
+        }
+        if (posForm == -1) {
+            return "";
+        }
+        
+        // Найти начало <form>
+        int formStart = html.lastIndexOf("<form", posForm);
+        if (formStart == -1) return "";
+        
+        // Найти </form>
+        int formEnd = html.indexOf("</form>", formStart);
+        if (formEnd == -1) return "";
+        
+        formEnd += "</form>".length();
+        return html.substring(formStart, formEnd);
     }
 }

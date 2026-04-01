@@ -31,6 +31,17 @@ public final class TreasureDig {
     private static final String DIG_BUTTON_MARKER = "[\"dig\",\"Копать\",";
     private static final int AUTO_TREASURE_SHOVEL_PREP_MAX_RETRIES = 8;
     private static final String AUTO_TREASURE_SHOVEL_PREP_RETRY_PARAM = "ab_tdig_inv_retry";
+    
+    /**
+     * Счетчик глубины вложения для безопасного управления флагом {@link AppVars#TreasureDigPauseNonCombatAutoFunctions}.
+     * Гарантирует, что флаг не будет сброшен раньше времени при вложенных вызовах applyTreasurePauseAndStopNavigator().
+     * 
+     * Семантика:
+     * - depth > 0 => флаг должен быть true
+     * - depth == 0 => флаг должен быть false
+     * - depth никогда не становится отрицательным (защита от ошибок)
+     */
+    private static volatile int treasurePauseDepth = 0;
 
     /**
      * Упрощенная запись предмета инвентаря для wear-операции.
@@ -111,7 +122,7 @@ public final class TreasureDig {
             AppVars.AutoTreasureDigPendingInventory = false;
             AppVars.AutoTreasureShovelReady = false;
             AppVars.AutoTreasureShovelReadyOption = "";
-            AppVars.TreasureDigPauseNonCombatAutoFunctions = false;
+            releaseTreasurePause("dig_flow_inactive");
         }
 
         if (AppVars.Profile == null || !AppVars.Profile.DoStopOnDig || !digMarkerDetected || !autoTreasureActive) {
@@ -158,7 +169,7 @@ public final class TreasureDig {
             AppVars.AutoTreasureShovelReadyOption = "";
         }
 
-        AppVars.TreasureDigPauseNonCombatAutoFunctions = false;
+        releaseTreasurePause("treasure_found_on_cell");
         notifyTreasureFoundOnCurrentCell(host);
         playTreasureFoundSignal();
         android.util.Log.d(TAG, "AUTO_SEARCH_BOX_TRACE treasure marker detected -> stop auto treasure");
@@ -178,7 +189,7 @@ public final class TreasureDig {
             AppVars.AutoTreasureShovelReady = false;
             AppVars.AutoTreasureShovelReadyOption = "";
             if (!AppVars.AutoTreasureDigPendingInventory) {
-                AppVars.TreasureDigPauseNonCombatAutoFunctions = false;
+                releaseTreasurePause("dig_flow_shovel_changed");
             }
         }
 
@@ -191,7 +202,7 @@ public final class TreasureDig {
 
         if (!digMarkerDetected) {
             if (!AppVars.AutoTreasureDigPendingInventory) {
-                AppVars.TreasureDigPauseNonCombatAutoFunctions = false;
+                releaseTreasurePause("dig_flow_no_marker");
             }
             return null;
         }
@@ -209,7 +220,7 @@ public final class TreasureDig {
 
         AppVars.AutoTreasureDigPendingInventory = false;
         String digClickHtml = buildAutoTreasureDigClickHtml(html);
-        AppVars.TreasureDigPauseNonCombatAutoFunctions = false;
+        releaseTreasurePause("dig_flow_click_ready");
         if (digClickHtml != null) {
             android.util.Log.d(TAG, "AUTO_SEARCH_BOX_TRACE dig flow: click \"Копать\" by button");
         }
@@ -308,7 +319,7 @@ public final class TreasureDig {
         AppVars.AutoTreasureDigPendingInventory = false;
         AppVars.AutoTreasureShovelReady = false;
         AppVars.AutoTreasureShovelReadyOption = "";
-        AppVars.TreasureDigPauseNonCombatAutoFunctions = false;
+        releaseTreasurePause("dig_flow_shovel_not_found");
         host.sendInventoryChatMessage(host.buildServerChatTimeHtml()
                 + "<font color=#FF0000>Авто-Клад: лопата не найдена, копка отменена.</font>");
         android.util.Log.w(TAG, "AUTO_SEARCH_BOX_TRACE dig flow: shovel not found, dig cancelled");
@@ -322,7 +333,14 @@ public final class TreasureDig {
     }
 
     public static void applyTreasurePauseAndStopNavigator(String reason) {
-        AppVars.TreasureDigPauseNonCombatAutoFunctions = true;
+        // Инкрементируем счетчик глубины и устанавливаем флаг
+        synchronized (TreasureDig.class) {
+            treasurePauseDepth++;
+            AppVars.TreasureDigPauseNonCombatAutoFunctions = true;
+            android.util.Log.d(TAG, "AUTO_SEARCH_BOX_TRACE pause depth++ = " + treasurePauseDepth 
+                    + ", reason=" + reason);
+        }
+        
         if (!AppVars.AutoMoving) {
             return;
         }
@@ -343,6 +361,30 @@ public final class TreasureDig {
         AppVars.AutoMovingJumps = 0;
         AppVars.AutoMovingCityGate = ru.neverlands.abclient.model.CityGateType.None;
         android.util.Log.d(TAG, "AUTO_SEARCH_BOX_TRACE pause enabled: fallback navigator reset, reason=" + reason);
+    }
+
+    /**
+     * Безопасный сброс паузы с учетом глубины вложения.
+     * Гарантирует, что флаг останется true, пока есть активные вложенные вызовы applyTreasurePauseAndStopNavigator().
+     */
+    public static void releaseTreasurePause(String reason) {
+        synchronized (TreasureDig.class) {
+            if (treasurePauseDepth > 0) {
+                treasurePauseDepth--;
+            } else {
+                android.util.Log.w(TAG, "AUTO_SEARCH_BOX_TRACE pause depth already 0, ignoring release, reason=" + reason);
+                return;
+            }
+            
+            if (treasurePauseDepth <= 0) {
+                treasurePauseDepth = 0; // Защита от отрицательных значений
+                AppVars.TreasureDigPauseNonCombatAutoFunctions = false;
+                android.util.Log.d(TAG, "AUTO_SEARCH_BOX_TRACE pause depth-- = 0, RELEASED, reason=" + reason);
+            } else {
+                android.util.Log.d(TAG, "AUTO_SEARCH_BOX_TRACE pause depth-- = " + treasurePauseDepth 
+                        + ", still active, reason=" + reason);
+            }
+        }
     }
 
     private static String buildAutoTreasureDigOpenInventoryRedirect(String html, String address, Host host) {

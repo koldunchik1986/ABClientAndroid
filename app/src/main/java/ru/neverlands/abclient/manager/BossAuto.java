@@ -71,9 +71,14 @@ final class BossAuto {
     private static final Pattern BOSS_EVENT_PATTERN = Pattern.compile(
             "внимание!\\s*случайное событие!\\s*монстр\\s*[\"«]?([^\"»]+)[\"»]?\\s*напал на игрока\\s+([a-zа-я0-9_\\-]+)\\.",
             Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CASE);
-    // Расширенный парсер события Босса: допускает ники со спецсимволами и не завязан на узкий класс символов.
+    // ОСНОВНОЙ парсер события Босса: максимально гибкий, с поддержкой:
+    // - опциональной точки в конце
+    // - любых ников с буквами, цифрами, спецсимволами
+    // - формата со временем и без
+    // - вариантов: "напал", "напала", "напали"
+    // Зависимость: используется в parseBossEvent() для детекта события
     private static final Pattern BOSS_EVENT_PATTERN_FLEX = Pattern.compile(
-            "(?iu)(?:\\d{1,2}/\\d{1,2}/\\d{2,4}\\s+\\d{1,2}:\\d{2}:\\d{2}\\s+)?(?:внимание!\\s*случайное\\s+событие!\\s*)?монстр\\s*[\"«]?([^\"»]+)[\"»]?\\s*напал\\s+на\\s+игрока\\s+(.+?)\\s*(?:\\.|$)");
+            "(?iu)(?:\\d{1,2}/\\d{1,2}/\\d{2,4}\\s+\\d{1,2}:\\d{2}:\\d{2}\\s+)?(?:внимание!\\s*случайное\\s+событие!\\s*)?монстр\\s*[\"«]?([^\"»]+)[\"»]?\\s*(?:напал|напала|напали)\\s+на\\s+(?:игрока|игроков)?\\s*(.+?)\\s*(?:[.,:;]|$)");
     private static final Pattern CELL_PATTERN = Pattern.compile("\\b\\d{1,4}-\\d{1,5}\\b");
     private static final Pattern SPAN_NICK_PATTERN = Pattern.compile(
             "<SPAN[^>]+(?:title|alt)=\"([^\"]+)\"",
@@ -89,6 +94,11 @@ final class BossAuto {
     private static final int TARGET_CHAT_ASK_MAX_ATTEMPTS = 5;
     private static final long TARGET_CHAT_ASK_RETRY_MS = 1_500L;
     private static final long TARGET_FIGHT_POLL_INTERVAL_MS = 1_000L;
+    /**
+     * Максимальное количество тиков отсутствия fight FID перед признанием боя потерянным.
+     * Защита от бесконечного incrementing в случае потери соединения или ошибки сервера.
+     */
+    private static final int BOSS_FIGHT_FID_MISSING_MAX_TICKS = 10;
 
     private final Context appContext;
     private final SharedPreferences prefs;
@@ -224,6 +234,7 @@ final class BossAuto {
         }
         BossEvent event = parseBossEvent(messageHtml);
         if (event != null && isAutoBossEnabled()) {
+            FileLogger.log("[BossAuto.onIncomingChatMessage] Event detected: boss=" + event.bossName + ", target=" + event.targetNick);
             handleBossEvent(event);
         }
         if (!isAutoBossEnabled()) {
@@ -1180,6 +1191,10 @@ final class BossAuto {
                 bossFightLostPending = false;
             } else {
                 bossFightFidMissingTicks++;
+                // Ограничиваем счетчик максимальным значением для защиты от переполнения
+                if (bossFightFidMissingTicks > BOSS_FIGHT_FID_MISSING_MAX_TICKS) {
+                    bossFightFidMissingTicks = BOSS_FIGHT_FID_MISSING_MAX_TICKS;
+                }
                 missingTicks = bossFightFidMissingTicks;
                 if (missingTicks > 1) {
                     bossFightLostPending = true;
@@ -1487,10 +1502,13 @@ final class BossAuto {
                 + "'. Возможные клетки: " + cellsCsv;
         boolean chatReady = isChatSendReady();
         if (!chatReady) {
-            Log.w(TAG, TRACE_PREFIX + " clan notify event send requested while chat is not ready: target="
-                    + normalizedTarget + ", cells=" + cellsCsv);
+            Log.w(TAG, TRACE_PREFIX + " clan notify event CANCELED: chatButtonsWebview not ready, target="
+                    + normalizedTarget + ", cells=" + cellsCsv + ". Message will be retried by Chat.sendMessageToServer");
+            FileLogger.log("[BossAuto.sendClanBossEventMessageIfNeeded] WebView not ready, message queued for retry: " + message.substring(0, Math.min(100, message.length())));
+            writeBossChat("Клан-сообщение добавлено в очередь. Будет отправлено при подготовке чата.");
         }
         Chat.sendMessageToServer(message);
+        FileLogger.log("[BossAuto.sendClanBossEventMessageIfNeeded] Sent to Chat.sendMessageToServer: " + message.substring(0, Math.min(100, message.length())));
         Log.d(TAG, TRACE_PREFIX + " clan notify event sent: target=" + normalizedTarget + ", cells=" + cellsCsv
                 + ", chatReady=" + chatReady);
     }

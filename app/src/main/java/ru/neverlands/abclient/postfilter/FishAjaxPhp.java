@@ -126,7 +126,15 @@ public final class FishAjaxPhp {
             int errCount = registerAct1ErrAndMaybeRecover("wrong_code_protection");
             Log.w(TAG, "AUTO_FISH_TRACE act2 returned wrong protection code, errCount=" + errCount
                     + ", address=" + address);
-            requestAutoFishBootstrap("wrong_code_protection");
+            // КРИТИЧНО: vcode из озера невалиден - помечаем озеро как испорченное
+            // Следующий цикл перезагружает озеро и получает свежий vcode
+            AppVars.FishLakeShouldBeRefreshed = true;
+            // Вместо полного bootstrap, инициируем мягкий перезапуск цикла рыбалки
+            // (act=1 пересчитает vcode без перезагрузки main.php).
+            lastFishAct1AtMs = 0L;
+            AppVars.suppressBackgroundProbesDuringFishing = false;
+            resetAct1ErrRecoveryState();
+            requestSoftAutoFishRecovery("wrong_code_protection");
             return array;
         }
         if (lowerAddress.contains(FISH_AJAX_ACT1)) {
@@ -136,6 +144,8 @@ public final class FishAjaxPhp {
 
         if (lowerAddress.contains("act=2")) {
             lastFishAct2AtMs = System.currentTimeMillis();
+            // Очищаем флаг блокировки фоновых probe'ов после завершения act=2.
+            AppVars.suppressBackgroundProbesDuringFishing = false;
             syncFishCooldownAndScheduleNextCycle(html);
         }
 
@@ -214,9 +224,14 @@ public final class FishAjaxPhp {
             return;
         }
         resetAct1ErrRecoveryState();
+        // Збераем свежий vcode из act=1 response
         // Маркируем успешный старт только после валидного parse + vcode.
         // Это защищает от ложного "confirmed" при ответах вида ERR.
         lastFishAct1AtMs = System.currentTimeMillis();
+        // Блокируем фоновые probe'ы (main.php?go=inf&af_tick=1) на время критической последовательности act=1→act=2.
+        // Это предотвращает перезагрузку PHPSESSID сервером между действиями рыбалки.
+        AppVars.suppressBackgroundProbesDuringFishing = true;
+        AppVars.fishingSequenceStartAtMs = lastFishAct1AtMs;
 
         boolean captchaRequired = state.captchaToken != null
                 && !state.captchaToken.isEmpty()
@@ -228,16 +243,20 @@ public final class FishAjaxPhp {
             return;
         }
 
+        // при капче используем ТЕКУЩИЙ vcode (он обновляется при платеже)
+        String currentVcode = AppVars.FishCurrentVcode != null && !AppVars.FishCurrentVcode.isEmpty() 
+            ? AppVars.FishCurrentVcode 
+            : state.vcode;
         String submitUrl = "http://neverlands.ru/gameplay/ajax/fish_ajax.php?act=2"
                 + "&primid=" + selection.id
-                + "&vcode=" + state.vcode
+                + "&vcode=" + currentVcode
                 + "&code=????"
                 + "&r=" + System.currentTimeMillis();
         String captchaUrl = FISH_CAPTCHA_URL_PREFIX + state.captchaToken;
         showFishCaptchaDialogOnce(captchaUrl, submitUrl);
 
         Log.d(TAG, "AUTO_FISH_TRACE act1: captcha required, primid=" + selection.id
-                + ", vcode=" + state.vcode + ", captcha=" + captchaUrl);
+                + ", currentVcode=" + currentVcode + ", captcha=" + captchaUrl);
     }
 
     /**
@@ -320,7 +339,7 @@ public final class FishAjaxPhp {
     /**
      * Единая проверка состояния AutoFish (runtime-менеджер + fallback на профиль).
      */
-    private static boolean isAutoFishEnabled() {
+    public static boolean isAutoFishEnabled() {
         try {
             if (AppVars.getContext() != null) {
                 return AutoFunctionsManager.getInstance(AppVars.getContext()).isAutoFishEnabled();
@@ -554,6 +573,32 @@ public final class FishAjaxPhp {
     private static void resetAct1ErrRecoveryState() {
         consecutiveFishAct1ErrCount = 0;
         lastFishAct1ErrAtMs = 0L;
+    }
+
+    /**
+     * Мягкий перезапуск fish-цепочки (инициирует новый act=1 для обновления vcode).
+     * Используется при ошибке "неверный код защиты" - не требует полной перезагрузки main.php.
+     */
+    private static void requestSoftAutoFishRecovery(String reason) {
+        if (!isAutoFishEnabled()) {
+            return;
+        }
+        MainActivity activity = (AppVars.mainActivity == null) ? null : AppVars.mainActivity.get();
+        if (activity == null) {
+            return;
+        }
+        String safeReason = (reason == null) ? "unknown" : reason.replaceAll("[^a-zA-Z0-9_\\-]", "_");
+        activity.runOnUiThread(() -> {
+            WebView webView = activity.getMainWebView();
+            if (webView == null) {
+                return;
+            }
+            // Отправляем простой refresh игровой страницы для инициации нового act=1
+            // Это мягче, чем полный bootstrap через main.php?go=inf
+            String reloadUrl = "http://neverlands.ru/main.php?get_id=56&act=10&r=" + System.currentTimeMillis();
+            Log.d(TAG, "AUTO_FISH_TRACE soft recovery after " + safeReason + ": " + reloadUrl);
+            webView.loadUrl(reloadUrl);
+        });
     }
 
     /**
@@ -1183,4 +1228,443 @@ public final class FishAjaxPhp {
         String massMax = "";
         final List<FishBaitSelection> baits = new ArrayList<>();
     }
+
+    // ============================================================================
+    // ЭТАП 2: Интеграция цикла авто-рыбалки с озером (lake) для получения vcode
+    // ============================================================================
+
+    /**
+     * executeFishingCycleCore() - Главный оркестратор авто-рыбалки
+     *
+     * Полностью портирует логику MainPhpFish.cs + обработка озера из ПК-версии.
+     * Использует ОЗЕРО (ContentLakeHtml), а не act=1 response для получения vcode.
+     *
+     * Алгоритм:
+     * 1. Загружает озеро из AppVars.ContentLakeHtml
+     * 2. Парсит vcode, lakeid, доступные act из озера (mainPhpAutoFishPrepareFromLakeAndroid)
+     * 3. Выбирает приманку (selectBaitFromLakeHtmlAndroid)
+     * 4. Отправляет act=1 для проверки состояния (wounded, captcha)
+     * 5. Отправляет act=2 с vcode из озера (не из act=1!)
+     * 6. Обрабатывает результат и планирует следующий цикл
+     *
+     * Вызов: Из AutoFishForegroundService или enterFishingModeForeground() при старте авто-рыбалки
+     */
+    public static void executeFishingCycleCore() {
+        if (!isAutoFishEnabled()) {
+            Log.d(TAG, "AUTO_FISH_TRACE executeFishingCycleCore: AutoFish not enabled");
+            return;
+        }
+
+        // КРИТИЧНО: Если озеро считается испорченным (была ошибка vcode или смена контекста)
+        // - очищаем его и перезагружаем для свежего vcode
+        if (AppVars.FishLakeShouldBeRefreshed) {
+            Log.w(TAG, "AUTO_FISH_TRACE executeFishingCycleCore: lake marked as corrupted, refreshing...");
+            AppVars.FishLakeShouldBeRefreshed = false;
+            AppVars.ContentLakeHtml = "";
+            AppVars.ContentLakeHtmlLastUpdateAtMs = 0;
+            requestAutoFishBootstrap("lake_corrupted");
+            return;
+        }
+
+        // КРИТИЧНО: Проверяем возраст озера перед ловлей
+        // После 5+ минут в фоне vcode истекает (ошибка "Неверный код защиты")
+        // Если озеро кэшировано давно, перезагружаем его для свежего vcode
+        long lakeAgeMs = System.currentTimeMillis() - AppVars.ContentLakeHtmlLastUpdateAtMs;
+        if (lakeAgeMs > 120_000) {  // 120 сек = 2 минуты
+            Log.w(TAG, "AUTO_FISH_TRACE executeFishingCycleCore: lake cache too old (age=" + lakeAgeMs + "ms), requesting fresh lake");
+            AppVars.ContentLakeHtml = "";  // очищаем кэш
+            AppVars.ContentLakeHtmlLastUpdateAtMs = 0;
+            requestAutoFishBootstrap("lake_cache_expired");
+            return;
+        }
+
+        String lakeHtml = AppVars.ContentLakeHtml;
+        if (lakeHtml == null || lakeHtml.isEmpty()) {
+            Log.w(TAG, "AUTO_FISH_TRACE executeFishingCycleCore: lake HTML is empty, bootstrapping...");
+            requestAutoFishBootstrap("missing_lake_html");
+            return;
+        }
+
+        try {
+            // Парсим озеро один раз
+            LakeParseResult lakeResult = mainPhpAutoFishPrepareFromLakeAndroid(lakeHtml);
+            if (lakeResult == null || lakeResult.vcode.isEmpty() || lakeResult.lakeid <= 0) {
+                Log.w(TAG, "AUTO_FISH_TRACE executeFishingCycleCore: failed to parse lake, requesting bootstrap");
+                requestAutoFishBootstrap("lake_parse_fail");
+                return;
+            }
+
+            Log.d(TAG, "AUTO_FISH_TRACE executeFishingCycleCore: lake parsed, vcode="
+                    + (lakeResult.vcode.length() > 8 ? lakeResult.vcode.substring(0, 8) + "..." : lakeResult.vcode)
+                    + ", lakeid=" + lakeResult.lakeid);
+
+            // Выбраем приманку из озера
+            BaitSelectionResult baitResult = selectBaitFromLakeHtmlAndroid(lakeHtml);
+            if (baitResult == null || !baitResult.isAvailable) {
+                Log.w(TAG, "AUTO_FISH_TRACE executeFishingCycleCore: no available bait, reason="
+                        + (baitResult == null ? "null" : baitResult.reason));
+                disableAutoFish("Нет доступной приманки в озере: " + 
+                        (baitResult == null ? "parse fail" : baitResult.reason));
+                return;
+            }
+
+            Log.d(TAG, "AUTO_FISH_TRACE executeFishingCycleCore: bait selected, bait_id="
+                    + baitResult.bait_id + ", available_count=" + baitResult.available_count);
+
+            // Сохраняем vcode из озера в runtime для дальнейших act=2
+            AppVars.FishCurrentVcode = lakeResult.vcode;
+            AppVars.FishCurrentLakeid = lakeResult.lakeid;
+
+            // Готовимся к отправке act=1
+            lastFishAct1AtMs = System.currentTimeMillis();
+            AppVars.suppressBackgroundProbesDuringFishing = true;
+            AppVars.fishingSequenceStartAtMs = lastFishAct1AtMs;
+
+            // Отправляем act=1 через async запрос для проверки состояния рыболова
+            MainActivity activity = getMainActivityOrNull();
+            if (activity != null) {
+                activity.runOnUiThread(() -> sendFishAct1RequestWithLake(
+                        lakeResult.vcode,
+                        lakeResult.lakeid,
+                        baitResult.bait_id));
+            }
+
+        } catch (Exception e) {
+            Log.e(TAG, "AUTO_FISH_TRACE executeFishingCycleCore: exception", e);
+            requestAutoFishBootstrap("cycle_core_exception");
+        }
+    }
+
+    /**
+     * mainPhpAutoFishPrepareFromLakeAndroid() - Парсит озеро в структурированный результат
+     *
+     * Извлекает из HTML озера:
+     * - vcode: <input name="vcode" value="...">
+     * - lakeid: <input name="lakeid" value="...">
+     * - act_list: все доступные <input name="act" value="...">
+     *
+     * Возвращает LakeParseResult(vcode, lakeid, act_list_fields) или null при ошибке.
+     */
+    private static LakeParseResult mainPhpAutoFishPrepareFromLakeAndroid(String lakeHtml) {
+        if (lakeHtml == null || lakeHtml.isEmpty()) {
+            Log.d(TAG, "AUTO_FISH_TRACE mainPhpAutoFishPrepareFromLakeAndroid: null html");
+            return null;
+        }
+
+        try {
+            LakeParseResult result = new LakeParseResult();
+
+            // Парсим vcode
+            Pattern vcodePattern = Pattern.compile("<input[^>]*name=[\"']?vcode[\"']?[^>]*value=[\"']?([^\"'\\s>]+)");
+            Matcher vcodeMatcher = vcodePattern.matcher(lakeHtml);
+            if (vcodeMatcher.find()) {
+                result.vcode = vcodeMatcher.group(1).trim();
+            }
+
+            // Парсим lakeid
+            Pattern lakeidPattern = Pattern.compile("<input[^>]*name=[\"']?lakeid[\"']?[^>]*value=[\"']?([0-9]+)");
+            Matcher lakeidMatcher = lakeidPattern.matcher(lakeHtml);
+            if (lakeidMatcher.find()) {
+                result.lakeid = parseIntSafe(lakeidMatcher.group(1));
+            }
+
+            // Парсим все доступные act
+            Pattern actPattern = Pattern.compile("<input[^>]*name=[\"']?act[\"']?[^>]*value=[\"']?([^\"'\\s>]+)");
+            Matcher actMatcher = actPattern.matcher(lakeHtml);
+            while (actMatcher.find()) {
+                String actValue = actMatcher.group(1).trim();
+                if (!actValue.isEmpty()) {
+                    result.act_list_fields.add(actValue);
+                }
+            }
+
+            Log.d(TAG, "AUTO_FISH_TRACE mainPhpAutoFishPrepareFromLakeAndroid: "
+                    + "vcode=" + (result.vcode.length() > 8 ? result.vcode.substring(0, 8) + "..." : result.vcode)
+                    + ", lakeid=" + result.lakeid
+                    + ", act_list_size=" + result.act_list_fields.size());
+
+            return result;
+
+        } catch (Exception e) {
+            Log.e(TAG, "AUTO_FISH_TRACE mainPhpAutoFishPrepareFromLakeAndroid: parse exception", e);
+            return null;
+        }
+    }
+
+    /**
+     * selectBaitFromLakeHtmlAndroid() - Выбирает оптимальную приманку для рыбалки
+     *
+     * Правила выбора:
+     * 1. Считывает доступные приманки из озера (содержимое HTML)
+     * 2. Проверяет запас приманок в инвентаре (AppVars)
+     * 3. Выбирает приманку с максимальным количеством в наличии
+     * 4. Проверяет что озеро поддерживает эту приманку
+     * 5. Применяет ограничения профиля (FishEnabledPrims)
+     *
+     * Возвращает BaitSelectionResult(bait_id, available_count, isAvailable, reason)
+     */
+    private static BaitSelectionResult selectBaitFromLakeHtmlAndroid(String lakeHtml) {
+        if (lakeHtml == null || lakeHtml.isEmpty()) {
+            Log.d(TAG, "AUTO_FISH_TRACE selectBaitFromLakeHtmlAndroid: null html");
+            return new BaitSelectionResult(-1, 0, false, "empty_lake_html");
+        }
+
+        try {
+            // Парсим все приманки из озера
+            List<FishBaitInfo> availableBaits = new ArrayList<>();
+
+            // RegEx для извлечения приманок из HTML озера
+            // Ищем input элементы с именами типа "pribor_bait_38", "pribor_bait_39" и т.д.
+            Pattern baitPattern = Pattern.compile(
+                    "<input[^>]*name=[\"']?pribor_bait_(3[8-9]|4[0-6])[\"']?[^>]*value=[\"']?([0-9]+)",
+                    Pattern.CASE_INSENSITIVE);
+            Matcher baitMatcher = baitPattern.matcher(lakeHtml);
+
+            while (baitMatcher.find()) {
+                String baitId = baitMatcher.group(1).trim();
+                int baitsAvailableAtLake = parseIntSafe(baitMatcher.group(2));
+
+                if (baitsAvailableAtLake > 0 && isBaitEnabledInProfile(baitId)) {
+                    FishBaitInfo info = new FishBaitInfo();
+                    info.id = parseIntSafe(baitId);
+                    info.name = getBaitNameById(baitId);
+                    info.stock_count = baitsAvailableAtLake;
+                    availableBaits.add(info);
+
+                    Log.d(TAG, "AUTO_FISH_TRACE selectBaitFromLakeHtmlAndroid: found bait, id="
+                            + baitId + ", name=" + info.name + ", available=" + baitsAvailableAtLake);
+                }
+            }
+
+            if (availableBaits.isEmpty()) {
+                Log.w(TAG, "AUTO_FISH_TRACE selectBaitFromLakeHtmlAndroid: no available baits found");
+                return new BaitSelectionResult(-1, 0, false, "no_baits_in_lake");
+            }
+
+            // Выбираем приманку с максимальным запасом
+            FishBaitInfo selectedBait = availableBaits.get(0);
+            for (FishBaitInfo bait : availableBaits) {
+                if (bait.stock_count > selectedBait.stock_count) {
+                    selectedBait = bait;
+                }
+            }
+
+            Log.d(TAG, "AUTO_FISH_TRACE selectBaitFromLakeHtmlAndroid: selected bait, id="
+                    + selectedBait.id + ", name=" + selectedBait.name + ", stock=" + selectedBait.stock_count);
+
+            return new BaitSelectionResult(selectedBait.id, selectedBait.stock_count, true, "ok");
+
+        } catch (Exception e) {
+            Log.e(TAG, "AUTO_FISH_TRACE selectBaitFromLakeHtmlAndroid: exception", e);
+            return new BaitSelectionResult(-1, 0, false, "parse_exception: " + e.getMessage());
+        }
+    }
+
+    /**
+     * scheduleNextFishingCycleAttempt() - Планирует следующую попытку рыбалки
+     *
+     * Вычисляет задержку на основе результата последней попытки:
+     * - Успех (нет captcha): 5 минут
+     * - Ошибка исправляемая: exponential backoff (30s → 60s → 2m)
+     * - Captcha требуется: 10 минут
+     * - Критическая ошибка: 15 минут
+     *
+     * Использует Handler.postDelayed() для асинхронного планирования из UI-потока.
+     */
+    private static void scheduleNextFishingCycleAttempt(String lastResultStatus) {
+        if (!isAutoFishEnabled()) {
+            Log.d(TAG, "AUTO_FISH_TRACE scheduleNextFishingCycleAttempt: AutoFish disabled");
+            return;
+        }
+
+        MainActivity activity = getMainActivityOrNull();
+        if (activity == null) {
+            Log.w(TAG, "AUTO_FISH_TRACE scheduleNextFishingCycleAttempt: MainActivity not available");
+            return;
+        }
+
+        long delayMs;
+        if (lastResultStatus == null || lastResultStatus.isEmpty()) {
+            delayMs = 5 * 60 * 1000L; // 5 минут
+        } else if ("success".equalsIgnoreCase(lastResultStatus)) {
+            delayMs = 5 * 60 * 1000L; // 5 минут
+        } else if ("captcha_required".equalsIgnoreCase(lastResultStatus)) {
+            delayMs = 10 * 60 * 1000L; // 10 минут
+        } else if ("wrong_vcode".equalsIgnoreCase(lastResultStatus)) {
+            delayMs = 30 * 1000L; // 30 секунд
+        } else if ("err_recovery_1".equalsIgnoreCase(lastResultStatus)) {
+            delayMs = 30 * 1000L; // 30 секунд
+        } else if ("err_recovery_2".equalsIgnoreCase(lastResultStatus)) {
+            delayMs = 60 * 1000L; // 60 секунд
+        } else if ("critical_error".equalsIgnoreCase(lastResultStatus)) {
+            delayMs = 15 * 60 * 1000L; // 15 минут
+        } else {
+            delayMs = 5 * 60 * 1000L; // 5 минут по умолчанию
+        }
+
+        final long scheduledMs = System.currentTimeMillis() + delayMs;
+        AppVars.NextFishingAttemptDueAtMs = scheduledMs;
+
+        activity.runOnUiThread(() -> {
+            WebView webView = activity.getMainWebView();
+            if (webView == null) {
+                return;
+            }
+
+            Log.d(TAG, "AUTO_FISH_TRACE scheduleNextFishingCycleAttempt: scheduled in " + delayMs
+                    + "ms (status=" + lastResultStatus + ")");
+
+            webView.postDelayed(
+                    () -> {
+                        if (isAutoFishEnabled()) {
+                            Log.d(TAG, "AUTO_FISH_TRACE scheduled cycle attempt triggered");
+                            executeFishingCycleCore();
+                        }
+                    },
+                    delayMs);
+        });
+    }
+
+    /**
+     * sendFishAct1RequestWithLake() - Отправляет act=1 запрос с параметрами из озера
+     *
+     * Внутренний метод для асинхронной отправки act=1.
+     * При ответе вызывается processFishAct1() через стандартный пост-фильтр.
+     */
+    private static void sendFishAct1RequestWithLake(String vcode, int lakeid, int baitId) {
+        MainActivity activity = getMainActivityOrNull();
+        if (activity == null) {
+            Log.w(TAG, "AUTO_FISH_TRACE sendFishAct1RequestWithLake: MainActivity not available");
+            return;
+        }
+
+        try {
+            WebView webView = activity.getMainWebView();
+            if (webView == null) {
+                Log.w(TAG, "AUTO_FISH_TRACE sendFishAct1RequestWithLake: WebView not available");
+                return;
+            }
+
+            String url = "http://neverlands.ru/gameplay/ajax/fish_ajax.php?act=1&r=" + System.currentTimeMillis();
+            Log.d(TAG, "AUTO_FISH_TRACE sendFishAct1RequestWithLake: sending " + url);
+
+            webView.loadUrl(url);
+
+        } catch (Exception e) {
+            Log.e(TAG, "AUTO_FISH_TRACE sendFishAct1RequestWithLake: exception", e);
+            requestAutoFishBootstrap("act1_send_fail");
+        }
+    }
+
+    /**
+     * getMainActivityOrNull() - Безопасное получение MainActivity
+     *
+     * Предотвращает NPE при обращении к ActivityHolder/AppVars
+     * если MainActivity помогает разгрузить себя или приложение закрывается.
+     *
+     * Возвращает MainActivity или null.
+     */
+    private static MainActivity getMainActivityOrNull() {
+        try {
+            if (AppVars.mainActivity == null) {
+                return null;
+            }
+            MainActivity activity = AppVars.mainActivity.get();
+            if (activity == null || activity.isFinishing()) {
+                return null;
+            }
+            return activity;
+        } catch (Exception ignored) {
+            return null;
+        }
+    }
+
+    /**
+     * getBaitNameById() - Вспомогательный маппер server-id приманки на имя
+     *
+     * Используется при парсинге озера для читаемого логирования.
+     */
+    private static String getBaitNameById(String baitId) {
+        if (baitId == null) return "Unknown";
+        switch (baitId) {
+            case "38": return "Хлеб";
+            case "39": return "Червяк";
+            case "40": return "Крупный червяк";
+            case "41": return "Опарыш";
+            case "42": return "Мотыль";
+            case "43": return "Блесна";
+            case "44": return "Донка";
+            case "45": return "Мормышка";
+            case "46": return "Заговоренная блесна";
+            default: return "Приманка " + baitId;
+        }
+    }
+
+    // ============================================================================
+    // DTO классы для ЭТАП 2
+    // ============================================================================
+
+    /**
+     * LakeParseResult - Результат парсинга озера (lake HTML)
+     * 
+     * Содержит:
+     * - vcode: код валидации из <input name="vcode">
+     * - lakeid: ID озера
+     * - act_list_fields: список доступных action-ов для этого озера
+     */
+    private static final class LakeParseResult {
+        String vcode = "";
+        int lakeid = -1;
+        final List<String> act_list_fields = new ArrayList<>();
+    }
+
+    /**
+     * BaitSelectionResult - Результат выбора приманки для рыбалки
+     *
+     * Содержит:
+     * - bait_id: server-id приманки (38-46)
+     * - available_count: количество единиц приманки в озере
+     * - isAvailable: флаг, доступна ли приманка (прошла все проверки)
+     * - reason: текстовое объяснение при ошибке (для логирования)
+     */
+    private static final class BaitSelectionResult {
+        final int bait_id;
+        final int available_count;
+        final boolean isAvailable;
+        final String reason;
+
+        BaitSelectionResult(int bait_id, int available_count, boolean isAvailable, String reason) {
+            this.bait_id = bait_id;
+            this.available_count = available_count;
+            this.isAvailable = isAvailable;
+            this.reason = reason == null ? "" : reason;
+        }
+    }
+
+    /**
+     * FishBaitInfo - Информация о приманке при выборе
+     *
+     * Содержит:
+     * - id: server-id приманки
+     * - name: имя приманки (для логов)
+     * - stock_count: количество в озере
+     * - available_at_lakes: список озёр, где доступна (расширение для будущего)
+     */
+    private static final class FishBaitInfo {
+        int id = -1;
+        String name = "";
+        int stock_count = 0;
+        final List<Integer> available_at_lakes = new ArrayList<>();
+    }
+
+    // ============================================================================
+    // Конец ЭТАП 2 методов и DTO
+    // ============================================================================
+
+    // ============================================================================
+    // Конец ЭТАП 2 методов и DTO (вспомогательные методы используют уже
+    // существующие в коде: requestAutoFishBootstrap, disableAutoFish,
+    // isBaitEnabledInProfile, parseIntSafe, getMainActivityOrNull,
+    // sendFishAct1RequestWithLake, getBaitNameById)
+    // ============================================================================
 }
