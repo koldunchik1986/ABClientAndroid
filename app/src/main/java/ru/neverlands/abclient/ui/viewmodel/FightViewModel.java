@@ -5,10 +5,12 @@ import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.ViewModel;
 import android.util.Log;
 
+import ru.neverlands.abclient.MainActivity;
 import ru.neverlands.abclient.lez.LezFight;
 import ru.neverlands.abclient.model.AutoboiState;
 import ru.neverlands.abclient.postfilter.MainPhp;
 import ru.neverlands.abclient.utils.AppVars;
+import ru.neverlands.abclient.utils.FileLogger;
 
 /**
  * ViewModel для управления боем.
@@ -25,6 +27,21 @@ public class FightViewModel extends ViewModel {
     private final MutableLiveData<String> _submitAction = new MutableLiveData<>(null);
     public LiveData<String> submitAction = _submitAction;
 
+    // КРИТИЧНЫЙ ФИХ для "Авто-Бой не бьёт при перелогине/пересоздании активити":
+    // При пересоздании ViewModel (например, при relocation/relogin), восстанавливаем состояние из AppVars.
+    public FightViewModel() {
+        super();
+        // Синхронизируем UI-состояние с runtime-состоянием при создании.
+        boolean runtimeAutoboi = AppVars.Autoboi == AutoboiState.AutoboiOn 
+                || (AppVars.Profile != null && AppVars.Profile.LezDoAutoboi);
+        if (runtimeAutoboi) {
+            _isAutoBattleActive.setValue(true);
+            String msg = BG_TRACE_PREFIX + " FightViewModel constructor: restored UI state from AppVars.Autoboi=" + AppVars.Autoboi;
+            Log.d(TAG, msg);
+            FileLogger.trace(TAG, msg);
+        }
+    }
+
     // Экспорт LiveData для наблюдения в UI.
     public LiveData<Boolean> getIsAutoBattleActive() {
         return _isAutoBattleActive;
@@ -40,7 +57,9 @@ public class FightViewModel extends ViewModel {
     public void processFightHtml(final String html) {
         if (html == null) return;
         if (!containsFightMarkers(html)) {
-            Log.d(TAG, BG_TRACE_PREFIX + " processFightHtml: skip, no fight markers");
+            String msg = BG_TRACE_PREFIX + " processFightHtml: skip, no fight markers";
+            Log.d(TAG, msg);
+            FileLogger.trace(TAG, msg);
             return;
         }
         // Фикс "залипания после 1-го хода":
@@ -75,20 +94,40 @@ public class FightViewModel extends ViewModel {
             autoBattleRuntimeEnabled = false;
         }
 
-        Log.d(TAG, BG_TRACE_PREFIX + " processFightHtml: htmlLen=" + html.length()
+        String msg1 = BG_TRACE_PREFIX + " processFightHtml: htmlLen=" + html.length()
                 + ", autoBattleUiEnabled=" + autoBattleUiEnabled
                 + ", autoBattleRuntimeEnabled=" + autoBattleRuntimeEnabled
                 + ", captchaDialogVisible=" + captchaDialogVisible
                 + ", appVarsAutoboi=" + AppVars.Autoboi
                 + ", uiForegroundInteractive=" + uiForegroundInteractive
-                + ", uiForegroundLikely=" + uiForegroundLikely);
+                + ", uiForegroundLikely=" + uiForegroundLikely;
+        Log.d(TAG, msg1);
+        FileLogger.trace(TAG, msg1);
 
         final boolean shouldAutoBattle = autoBattleRuntimeEnabled;
+
+        // 🔥 CRITICAL FIX для холодного старта Авто-Боя:
+        // ОБЯЗАТЕЛЬНО парсим и обновляем LastFightPulseAtMs СИНХРОННО перед background потоком.
+        // Это гарантирует что AutoModeForegroundService увидит актуальный pulse и не заблокирует autoTurn.
+        // Иначе возникает race condition: service проверяет isFightSessionLikelyActive() до того как
+        // background поток сумеет обновить LastFightPulseAtMs, и первый ход блокируется.
+        LezFight syncFight = new LezFight(html);
+        if (syncFight.IsValid && syncFight.IsBoi) {
+            long fightPulseNow = System.currentTimeMillis();
+            AppVars.LastFightPulseAtMs = fightPulseNow;
+            AppVars.LastBoiTimer = new java.util.Date(fightPulseNow);
+            String pulseMsg = BG_TRACE_PREFIX + " processFightHtml: EARLY PULSE UPDATE (sync), lastPulse="
+                    + fightPulseNow + ", IsBoi=" + syncFight.IsBoi;
+            Log.d(TAG, pulseMsg);
+            FileLogger.trace(TAG, pulseMsg);
+        }
 
         new Thread(() -> {
             LezFight fight = new LezFight(html);
             if (!fight.IsValid) {
-                Log.d(TAG, BG_TRACE_PREFIX + " processFightHtml: skip, parsed fight invalid");
+                String msg = BG_TRACE_PREFIX + " processFightHtml: skip, parsed fight invalid";
+                Log.d(TAG, msg);
+                FileLogger.trace(TAG, msg);
                 return;
             }
             updateFightPulseIfNeeded(fight);
@@ -100,20 +139,30 @@ public class FightViewModel extends ViewModel {
             }
 
             if (!fight.IsBoi) {
-                Log.d(TAG, BG_TRACE_PREFIX + " processFightHtml: skip, IsBoi=false");
+                String msg = BG_TRACE_PREFIX + " processFightHtml: skip, IsBoi=false";
+                Log.d(TAG, msg);
+                FileLogger.trace(TAG, msg);
                 return;
             }
-            if (fight.IsWaitingForNextTurn) {
-                Log.d(TAG, BG_TRACE_PREFIX + " processFightHtml: skip, waiting for next turn");
+            // ⚠️ FIX для group=2+: Не блокировать обработку при IsWaitingForNextTurn в режиме autoboi
+            // Позволить FightAuto.processFight() обработать auto-refresh для следующего врага
+            if (fight.IsWaitingForNextTurn && AppVars.Autoboi != AutoboiState.AutoboiOn) {
+                String msg = BG_TRACE_PREFIX + " processFightHtml: skip, waiting for next turn (not in autoboi)";
+                Log.d(TAG, msg);
+                FileLogger.trace(TAG, msg);
                 return;
             }
             if (fight.Result == null) {
-                Log.d(TAG, BG_TRACE_PREFIX + " processFightHtml: skip, fight result is null");
+                String msg = BG_TRACE_PREFIX + " processFightHtml: skip, fight result is null";
+                Log.d(TAG, msg);
+                FileLogger.trace(TAG, msg);
                 return;
             }
 
             _submitAction.postValue(fight.Result);
-            Log.d(TAG, BG_TRACE_PREFIX + " processFightHtml: submit posted, len=" + fight.Result.length());
+            String msg2 = BG_TRACE_PREFIX + " processFightHtml: submit posted, len=" + fight.Result.length();
+            Log.d(TAG, msg2);
+            FileLogger.trace(TAG, msg2);
         }).start();
     }
 
@@ -126,22 +175,30 @@ public class FightViewModel extends ViewModel {
     public void autoTurnOnce(final String html) {
         if (html == null) return;
         if (!containsFightMarkers(html)) {
-            Log.d(TAG, BG_TRACE_PREFIX + " autoTurnOnce: skip, no fight markers");
+            String msg = BG_TRACE_PREFIX + " autoTurnOnce: skip, no fight markers";
+            Log.d(TAG, msg);
+            FileLogger.trace(TAG, msg);
             return;
         }
         // Одиночный автоход тоже считается "живым" боевым пульсом:
         // нужен, чтобы foreground-service не терял бой на кратких переходах между кадрами.
         if (AppVars.IsFightCaptchaDialogVisible) {
-            Log.d(TAG, BG_TRACE_PREFIX + " autoTurnOnce: skip, captcha dialog visible");
+            String msg = BG_TRACE_PREFIX + " autoTurnOnce: skip, captcha dialog visible";
+            Log.d(TAG, msg);
+            FileLogger.trace(TAG, msg);
             return;
         }
 
-        Log.d(TAG, BG_TRACE_PREFIX + " autoTurnOnce: htmlLen=" + html.length());
+        String msg3 = BG_TRACE_PREFIX + " autoTurnOnce: htmlLen=" + html.length();
+        Log.d(TAG, msg3);
+        FileLogger.trace(TAG, msg3);
 
         new Thread(() -> {
             LezFight fight = new LezFight(html);
             if (!fight.IsValid) {
-                Log.d(TAG, BG_TRACE_PREFIX + " autoTurnOnce: skip, parsed fight invalid");
+                String msg = BG_TRACE_PREFIX + " autoTurnOnce: skip, parsed fight invalid";
+                Log.d(TAG, msg);
+                FileLogger.trace(TAG, msg);
                 return;
             }
             updateFightPulseIfNeeded(fight);
@@ -149,20 +206,28 @@ public class FightViewModel extends ViewModel {
             announceNewFightIfNeeded(fight, html);
 
             if (!fight.IsBoi) {
-                Log.d(TAG, BG_TRACE_PREFIX + " autoTurnOnce: skip, IsBoi=false");
+                String msg = BG_TRACE_PREFIX + " autoTurnOnce: skip, IsBoi=false";
+                Log.d(TAG, msg);
+                FileLogger.trace(TAG, msg);
                 return;
             }
             if (fight.IsWaitingForNextTurn) {
-                Log.d(TAG, BG_TRACE_PREFIX + " autoTurnOnce: skip, waiting for next turn");
+                String msg = BG_TRACE_PREFIX + " autoTurnOnce: skip, waiting for next turn";
+                Log.d(TAG, msg);
+                FileLogger.trace(TAG, msg);
                 return;
             }
             if (fight.Result == null) {
-                Log.d(TAG, BG_TRACE_PREFIX + " autoTurnOnce: skip, fight result is null");
+                String msg = BG_TRACE_PREFIX + " autoTurnOnce: skip, fight result is null";
+                Log.d(TAG, msg);
+                FileLogger.trace(TAG, msg);
                 return;
             }
 
             _submitAction.postValue(fight.Result);
-            Log.d(TAG, BG_TRACE_PREFIX + " autoTurnOnce: submit posted, len=" + fight.Result.length());
+            String msg4 = BG_TRACE_PREFIX + " autoTurnOnce: submit posted, len=" + fight.Result.length();
+            Log.d(TAG, msg4);
+            FileLogger.trace(TAG, msg4);
         }).start();
     }
 
@@ -171,21 +236,40 @@ public class FightViewModel extends ViewModel {
     public void toggleAutoBattle() {
         boolean currentState = Boolean.TRUE.equals(_isAutoBattleActive.getValue());
         _isAutoBattleActive.setValue(!currentState);
-        Log.d(TAG, BG_TRACE_PREFIX + " toggleAutoBattle: " + currentState + " -> " + !currentState);
+        String msg = BG_TRACE_PREFIX + " toggleAutoBattle: " + currentState + " -> " + !currentState;
+        Log.d(TAG, msg);
+        FileLogger.trace(TAG, msg);
+    }
+
+    // КРИТИЧНЫЙ ФИХ для "Авто-Бой не бьёт при незапланированной атаке":
+    // Синхронизирует UI-состояние (_isAutoBattleActive) с runtime-состоянием (AppVars.Autoboi).
+    // Вызывается из AutoFunctionsManager.setAutoFightEnabled() после изменения AppVars.Autoboi.
+    public void setAutoBattleActive(boolean active) {
+        boolean currentState = Boolean.TRUE.equals(_isAutoBattleActive.getValue());
+        if (currentState != active) {
+            _isAutoBattleActive.setValue(active);
+            String msg = BG_TRACE_PREFIX + " setAutoBattleActive: " + currentState + " -> " + active + " (UI state sync)";
+            Log.d(TAG, msg);
+            FileLogger.trace(TAG, msg);
+        }
     }
 
     // Автовыбор: вычисляет комбинацию и отправляет результат.
     // Автовыбор: рассчитывает комбинации и сразу отдаёт действие на отправку.
     public void autoSelect(final String html) {
         if (html == null) return;
-        Log.d(TAG, BG_TRACE_PREFIX + " autoSelect: htmlLen=" + html.length());
+        String msg = BG_TRACE_PREFIX + " autoSelect: htmlLen=" + html.length();
+        Log.d(TAG, msg);
+        FileLogger.trace(TAG, msg);
 
         new Thread(() -> {
             LezFight fight = new LezFight(html);
             if (fight.IsValid && fight.Result != null) {
                 // При авто-выборе результат отправляется сразу.
                 _submitAction.postValue(fight.Result);
-                Log.d(TAG, BG_TRACE_PREFIX + " autoSelect: submit posted, len=" + fight.Result.length());
+                String msg2 = BG_TRACE_PREFIX + " autoSelect: submit posted, len=" + fight.Result.length();
+                Log.d(TAG, msg2);
+                FileLogger.trace(TAG, msg2);
             }
         }).start();
     }
@@ -194,7 +278,9 @@ public class FightViewModel extends ViewModel {
     // Сбрасываем событие после того, как UI отправил действие.
     public void onActionSubmitted() {
         _submitAction.setValue(null);
-        Log.d(TAG, BG_TRACE_PREFIX + " onActionSubmitted: submit reset");
+        String msg = BG_TRACE_PREFIX + " onActionSubmitted: submit reset";
+        Log.d(TAG, msg);
+        FileLogger.trace(TAG, msg);
     }
 
     /**
@@ -242,8 +328,10 @@ public class FightViewModel extends ViewModel {
             AppVars.LastBoiLog = fight.LogBoi;
             AppVars.LastBoiUron = "";
             AppVars.AutoboiReadyCompletedLog = "";
-            Log.d(TAG, BG_TRACE_PREFIX + " announceNewFightIfNeeded: LogBoi changed "
-                    + prevLog + " -> " + fight.LogBoi);
+            String msg = BG_TRACE_PREFIX + " announceNewFightIfNeeded: LogBoi changed "
+                    + prevLog + " -> " + fight.LogBoi;
+            Log.d(TAG, msg);
+            FileLogger.trace(TAG, msg);
         }
 
         try {
@@ -252,5 +340,64 @@ public class FightViewModel extends ViewModel {
         }
 
         MainPhp.notifyNewFightFromExternalSource(fight, html);
+
+        // 🆕 EVENT-DRIVEN: Немедленный запрос хода при анонсе нового боя
+        // Это предотвращает 24+ секундную задержку polling-цикла AutoModeForegroundService
+        tryTriggerImmediateAutoTurnOnAnnounce();
+    }
+
+    /**
+     * Попытка немедленно запросить ход при анонсе боя.
+     * Делегирует проверки и логику модульному обработчику FightAnnounceHandler.
+     */
+    private void tryTriggerImmediateAutoTurnOnAnnounce() {
+        String msg_entry = BG_TRACE_PREFIX + " tryTriggerImmediateAutoTurnOnAnnounce: ENTERED";
+        Log.d(TAG, msg_entry);
+        FileLogger.trace(TAG, msg_entry);
+
+        try {
+            // Проверяем, активен ли автобой вообще
+            boolean autoBattleUiEnabled = Boolean.TRUE.equals(_isAutoBattleActive.getValue());
+            boolean autoBattleEnabledViaVm = AppVars.Autoboi == AutoboiState.AutoboiOn
+                    || (AppVars.Profile != null && AppVars.Profile.LezDoAutoboi);
+
+            String msg_state = BG_TRACE_PREFIX + " tryTriggerImmediateAutoTurnOnAnnounce: autoBattleUiEnabled="
+                    + autoBattleUiEnabled + ", autoBattleEnabledViaVm=" + autoBattleEnabledViaVm;
+            Log.d(TAG, msg_state);
+            FileLogger.trace(TAG, msg_state);
+
+            if (!autoBattleUiEnabled && !autoBattleEnabledViaVm) {
+                String msg = BG_TRACE_PREFIX + " tryTriggerImmediateAutoTurnOnAnnounce: skip (autoboi disabled)";
+                Log.d(TAG, msg);
+                FileLogger.trace(TAG, msg);
+                return;
+            }
+
+            // ✅ Использовать модульный FightAnnounceHandler для всех проверок и call-back'а
+            boolean captchaVisible = AppVars.IsFightCaptchaDialogVisible;
+            ru.neverlands.abclient.utils.FightAnnounceHandler.onFightAnnounced(
+                    "auto-boi",  // fighterNickname
+                    captchaVisible,
+                    () -> {
+                        // Callback выполняется если все проверки в handler'е пройдены
+                        MainActivity activity = AppVars.mainActivity != null ? AppVars.mainActivity.get() : null;
+                        if (activity != null) {
+                            String msg = BG_TRACE_PREFIX + " FightAnnounceHandler approved -> calling requestImmediateAutoTurnOnFightAnnounce";
+                            Log.d(TAG, msg);
+                            FileLogger.trace(TAG, msg);
+                            activity.requestImmediateAutoTurnOnFightAnnounce();
+                        } else {
+                            String msg = BG_TRACE_PREFIX + " FightAnnounceHandler callback: MainActivity unavailable";
+                            Log.d(TAG, msg);
+                            FileLogger.trace(TAG, msg);
+                        }
+                    }
+            );
+            
+        } catch (Exception e) {
+            String msg = BG_TRACE_PREFIX + " tryTriggerImmediateAutoTurnOnAnnounce failed: " + e.getMessage();
+            Log.e(TAG, msg);
+            FileLogger.trace(TAG, msg);
+        }
     }
 }

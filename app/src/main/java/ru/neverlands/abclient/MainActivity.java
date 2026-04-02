@@ -539,6 +539,31 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     }
 
     /**
+     * Немедленный запрос хода при анонсе нового боя (event-driven).
+     * Используется FightViewModel для избежания 24+ секундной задержки polling-цикла.
+     *
+     * Вызывается только когда заведомо известно:
+     * - Бой объявлен (новый LogBoi получен)
+     * - Автобой активен (проверено в FightViewModel)
+     *
+     * Безопасность:
+     * - VCode получится из SessionManager (boевой HTML только что парсился)
+     * - requestAutoTurnInternal(false) как fallback, если MainActivity недоступна
+     */
+    public void requestImmediateAutoTurnOnFightAnnounce() {
+        if (AppVars.IsFightCaptchaDialogVisible) {
+            Log.d(TAG, BG_TRACE_PREFIX + " requestImmediateAutoTurnOnFightAnnounce: skip, captcha dialog visible");
+            return;
+        }
+
+        Log.d(TAG, BG_TRACE_PREFIX + " requestImmediateAutoTurnOnFightAnnounce: triggered by fight announcement");
+        FileLogger.trace(TAG, BG_TRACE_PREFIX + " requestImmediateAutoTurnOnFightAnnounce: immediate turn request on new fight");
+
+        // Используем фоновый механизм, т.к. в момент анонсации UI может быть неинтерактивным
+        requestAutoTurnBackgroundAware();
+    }
+
+    /**
      * Принимает метаданные ответа `ch.php?show=1` из перехватчика WebView.
      *
      * Зависимости:
@@ -691,6 +716,20 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                         com.google.gson.Gson gson = new com.google.gson.Gson();
                         String unquoted = gson.fromJson(html, String.class);
                         Log.d(TAG, "requestAutoTurn: html length=" + (unquoted != null ? unquoted.length() : 0));
+                        
+                        // Проверка на race condition при multi-enemy fight (09:55 issue):
+                        // Если HTML слишком мало (<1000 bytes), это означает что WebView еще loading
+                        // Добавляем задержку вместо skip чтобы дать WebView время завершить page load
+                        if (unquoted != null && unquoted.length() < 1000 && !hasFightMarkers(unquoted)) {
+                            String msg = "[FIGHT_RACE_CONDITION] html size too small (WebView loading), size=" + unquoted.length() 
+                                    + ". Deferring turn check 200ms";
+                            Log.w(TAG, BG_TRACE_PREFIX + " requestAutoTurn: " + msg);
+                            ru.neverlands.abclient.utils.FileLogger.trace("fight_auto", msg);
+                            // Откладываем проверку на 200ms чтобы дать WebView время завершить page load
+                            new Handler(Looper.getMainLooper()).postDelayed(this::requestAutoTurn, 200);
+                            return;
+                        }
+                        
                         String autoTurnHtml = unquoted;
                         if (hasFightMarkers(unquoted)) {
                             if (allowServerProbeFallback) {
@@ -3856,7 +3895,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         // Без этой защиты фоновый main.php?go=inf перезагружает PHPSESSID и портит vcode.
         if (AppVars.suppressBackgroundProbesDuringFishing) {
             long timeSinceStartMs = System.currentTimeMillis() - AppVars.fishingSequenceStartAtMs;
-            if (timeSinceStartMs < 5000L) {  // 5-секундный timeout для безопасности
+            if (timeSinceStartMs < 15000L) {  // 15-секундный timeout (увеличен для медленных сетей)
                 Log.d(TAG, "SERVER_TIMER_TICK skip: fishing sequence in progress (duration=" + timeSinceStartMs + "ms)"
                         + ", dueAt=" + dueAt);
                 return;
@@ -3896,7 +3935,12 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         } else {
             // КРИТИЧНО: af_tick никогда не должен отправляться БЕЗ vcode!
             // Если vcode пуст → происходит загрузка БЕЗ vcode → сервер обновляет PHPSESSID → старый vcode невалиден
-            if (AppVars.VCode == null || AppVars.VCode.isEmpty()) {
+            // ⚠️ ЗАЩИТА: при активной рыбалке не отправляем af_tick, даже если vcode есть
+            if (AppVars.suppressBackgroundProbesDuringFishing) {
+                // Рыбалка все еще идет - не отправляем af_tick, перезагружаем озеро для получения vcode
+                reloadUrl = "http://neverlands.ru/main.php?get_id=56&act=10&go=ret&r=" + now;
+                Log.w(TAG, "SERVER_TIMER_TICK: fishing still active! Reloading lake for fresh vcode instead of af_tick.");
+            } else if (AppVars.VCode == null || AppVars.VCode.isEmpty()) {
                 // Vcode пуст - нужна защита: загружаем озеро чтобы получить свежий vcode
                 reloadUrl = "http://neverlands.ru/main.php?get_id=56&act=10&go=ret&r=" + now;
                 Log.w(TAG, "SERVER_TIMER_TICK: VCode пуст при af_tick! Загружаем озеро для получения vcode.");
@@ -3937,6 +3981,14 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         }
         quickButtonsPanel.refreshActionStates();
         Log.d(TAG, "QUICK_UI_SYNC: refresh requested, reason=" + reason);
+    }
+    
+    public void invalidateQuickButtonsUI() {
+        if (quickButtonsPanel == null) {
+            return;
+        }
+        quickButtonsPanel.refreshActionStates();
+        Log.d(TAG, "QUICK_UI_SYNC: invalidateQuickButtonsUI called -> refresh");
     }
     
     public void addAddressToStatusString(String address) {

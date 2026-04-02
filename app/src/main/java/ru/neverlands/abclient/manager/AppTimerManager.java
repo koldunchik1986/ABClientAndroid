@@ -21,6 +21,8 @@ import java.util.Locale;
 
 import ru.neverlands.abclient.model.AppTimer;
 import ru.neverlands.abclient.utils.AppVars;
+import ru.neverlands.abclient.utils.FileLogger;
+import ru.neverlands.abclient.utils.SessionManager;
 
 /**
  * Менеджер пользовательских таймеров (порт `ABClient/AppTimerManager.cs` + часть `FormMainTimers.cs`).
@@ -46,12 +48,14 @@ public class AppTimerManager {
 
     private final Context appContext;
     private final SharedPreferences prefs;
+    private final AutoFunctionsManager autoFunctionsManager;
     private final List<AppTimer> listAppTimers = new ArrayList<>();
     private String loadedStorageKey = "";
 
     private AppTimerManager(Context context) {
         appContext = context.getApplicationContext();
         prefs = appContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+        autoFunctionsManager = AutoFunctionsManager.getInstance(appContext);
     }
 
     public static synchronized AppTimerManager getInstance(Context context) {
@@ -181,10 +185,92 @@ public class AppTimerManager {
 
         for (int index = 0; index < listAppTimers.size(); index++) {
             AppTimer timer = listAppTimers.get(index);
+            
+            // === 5-SECOND BUFFER BEFORE TIMER FIRES ===
+            // За 5 секунд до срабатывания таймера И если NeverTimer еще активен:
+            // - сохраняем состояние авто-функций
+            // - приостанавливаем все авто-функции кроме авто-боя
+            // Это позволяет пользователю спокойно открыть инвентарь и пить зелье.
+            long timeUntilFireMs = timer.triggerTime - nowMs;
+            if (timeUntilFireMs > 0 && timeUntilFireMs <= 5000 && nowMs < AppVars.NeverTimer) {
+                if (!AppVars.TimerPauseNonCombatAutoFunctions) {
+                    // Сохраняем текущее состояние всех авто-функций
+                    AutoFunctionsManager mgr = AutoFunctionsManager.getInstance(this.appContext);
+                    AppVars.TimerPauseAutoFishState = mgr.isAutoFishEnabled();
+                    AppVars.TimerPauseAutoSkinState = mgr.isAutoSkinEnabled();
+                    AppVars.TimerPauseAutoCutState = mgr.isAutoCutEnabled();
+                    AppVars.TimerPauseAutoBaitState = mgr.isAutoBaitEnabled();
+                    AppVars.TimerPauseAutoCompassState = mgr.isAutoCompassEnabled();
+                    AppVars.TimerPauseAutoAttackState = mgr.isAutoAttackEnabled();
+                    AppVars.TimerPauseAutoInvisibleState = mgr.isAutoInvisibleEnabled();
+                    
+                    // Выключаем все авто-функции кроме авто-боя
+                    if (AppVars.TimerPauseAutoFishState) {
+                        mgr.setAutoFishEnabled(false);
+                        Log.d(TAG, "[TIMER_PAUSE] Auto-Fishing paused for inventory access");
+                    }
+                    if (AppVars.TimerPauseAutoSkinState) {
+                        mgr.setAutoSkinEnabled(false);
+                        Log.d(TAG, "[TIMER_PAUSE] Auto-Hunting paused");
+                    }
+                    if (AppVars.TimerPauseAutoCutState) {
+                        mgr.setAutoCutEnabled(false);
+                        Log.d(TAG, "[TIMER_PAUSE] Auto-Herb paused");
+                    }
+                    if (AppVars.TimerPauseAutoBaitState) {
+                        mgr.setAutoBaitEnabled(false);
+                        Log.d(TAG, "[TIMER_PAUSE] Auto-Bait paused");
+                    }
+                    if (AppVars.TimerPauseAutoCompassState) {
+                        mgr.setAutoCompassEnabled(false);
+                        Log.d(TAG, "[TIMER_PAUSE] Auto-Compass paused");
+                    }
+                    if (AppVars.TimerPauseAutoAttackState) {
+                        mgr.setAutoAttackEnabled(false);
+                        Log.d(TAG, "[TIMER_PAUSE] Auto-Attack paused");
+                    }
+                    if (AppVars.TimerPauseAutoInvisibleState) {
+                        mgr.setAutoInvisibleEnabled(false);
+                        Log.d(TAG, "[TIMER_PAUSE] Auto-Invisible paused");
+                    }
+                    
+                    AppVars.TimerPauseNonCombatAutoFunctions = true;
+                    String msg = "[TIMER_PAUSE] Non-combat autos paused, timeUntilFire=" + timeUntilFireMs 
+                            + "ms, timerId=" + timer.id;
+                    Log.d(TAG, msg);
+                    FileLogger.trace("app_timer", msg);
+                }
+                continue;  // Не срабатываем еще, даем время на инвентарь
+            }
+            
             if (nowMs <= timer.triggerTime) {
                 continue;
             }
+            
+            // Проверяем NeverTimer (серверный cooldown: рыбалка, перемещение, и пр.)
+            // Если NeverTimer ещё активен, пропускаем таймер на этой итерации
+            if (nowMs < AppVars.NeverTimer) {
+                long deltaMs = AppVars.NeverTimer - nowMs;
+                String msg = "[TIMER_DEFER_NEVERTIMER] Дожидаемся NeverTimer, deltaMs=" + deltaMs 
+                        + ", timerId=" + timer.id;
+                Log.w(TAG, msg);
+                ru.neverlands.abclient.utils.FileLogger.trace("app_timer", msg);
+                // Не удаляем таймер, просто пропускаем это срабатывание
+                // Таймер срабатит на следующей итерации processDueTimers
+                continue;
+            }
+            
             if (AppVars.FastNeed) {
+                return;
+            }
+
+            if (!TextUtils.isEmpty(timer.enableAutoFunction)) {
+                executeEnableAutoFunctionTimerLocked(index, timer);
+                return;
+            }
+
+            if (!TextUtils.isEmpty(timer.disableAutoFunction)) {
+                executeDisableAutoFunctionTimerLocked(index, timer);
                 return;
             }
 
@@ -228,8 +314,11 @@ public class AppTimerManager {
         persistLocked();
 
         playTimerSignalIfEnabledLocked();
+        String msg = "[POTION_TIMER_FIRED] id=" + timer.id + ", potion='" + timer.potion + "', target=" + targetNick 
+                + ", drinkCount=" + drinkCount + ", isRecur=" + timer.isRecur;
+        Log.d(TAG, "executePotionTimer: " + msg);
+        ru.neverlands.abclient.utils.FileLogger.trace("app_timer", msg);
         FastActionManager.fastStart(timer.potion, targetNick, drinkCount);
-        Log.d(TAG, "processDueTimers: potion timer fired, id=" + timer.id + ", potion=" + timer.potion);
     }
 
     private void executeDestinationTimerLocked(int index, AppTimer timer) {
@@ -246,9 +335,115 @@ public class AppTimerManager {
         persistLocked();
 
         AppVars.WearComplect = timer.complect;
+        String msg = "COMPLECT_TIMER_FIRED_TRACE: id=" + timer.id + ", complect=\"" + timer.complect + "\"";
+        Log.d(TAG, msg);
+        FileLogger.trace(TAG, msg);
         playTimerSignalIfEnabledLocked();
-        reloadMainPhpInf();
-        Log.d(TAG, "processDueTimers: complect timer fired, id=" + timer.id + ", complect=" + timer.complect);
+        
+        // CRITICAL: Нужно перейти в ИНВЕНТАРЬ (go=inv), чтобы SessionManager получил VCode
+        // и MainPhp смог распарсить параметры комплекта из compl_view()
+        // Это согласно C# логике в MainPhp.cs, которая ждет MainPhpIsInv(html) перед надеванием
+        navigateToInventoryForComplectWear();
+    }
+    
+    /**
+     * Навигация в инвентарь для надевания комплекта.
+     * SessionManager получит свежий VCode с инвентаря, и затем MainPhp сможет парсить
+     * параметры комплекта из JavaScript функции compl_view().
+     */
+    private void navigateToInventoryForComplectWear() {
+        StringBuilder url = new StringBuilder("http://neverlands.ru/main.php?get_id=56&act=10&go=inv");
+        
+        // Получить свежий VCode через SessionManager согласно правилу 5
+        String vcode = SessionManager.getInstance().getValidVCodeForAction("complect_timer_inventory");
+        if (!TextUtils.isEmpty(vcode)) {
+            url.append("&vcode=").append(vcode);
+        } else {
+            Log.w(TAG, "COMPLECT_WEAR_TRACE: vcode not available, navigate to inventory anyway");
+            FileLogger.trace(TAG, "COMPLECT_WEAR_TRACE: vcode not available, navigate to inventory anyway");
+        }
+        
+        url.append("&ab_timer=1&r=").append(System.currentTimeMillis());
+        
+        String msg = "COMPLECT_WEAR_TRACE: navigating to inventory for complect wear, url=" + url.toString();
+        Log.d(TAG, msg);
+        FileLogger.trace(TAG, msg);
+
+        Intent intent = new Intent(AppVars.ACTION_WEBVIEW_LOAD_URL);
+        intent.putExtra("url", url.toString());
+        LocalBroadcastManager.getInstance(appContext).sendBroadcast(intent);
+    }
+
+    /**
+     * Срабатывание таймера для включения авто-функции.
+     */
+    private void executeEnableAutoFunctionTimerLocked(int index, AppTimer timer) {
+        listAppTimers.remove(index);
+        persistLocked();
+
+        String autoFunc = timer.enableAutoFunction;
+        String msg = "AUTO_FUNCTION_TIMER_FIRED: id=" + timer.id + ", action=ENABLE, function=\"" + autoFunc + "\"";
+        Log.d(TAG, msg);
+        FileLogger.trace(TAG, msg);
+        playTimerSignalIfEnabledLocked();
+
+        // Включение авто-функции через AutoFunctionsManager
+        if (!TextUtils.isEmpty(autoFunc) && autoFunctionsManager != null) {
+            if ("Авто-Бой".equals(autoFunc)) {
+                autoFunctionsManager.setAutoFightEnabled(true);
+                FileLogger.trace(TAG, "AUTO_FUNCTION_TIMER_FIRED: Авто-Бой ENABLED");
+            } else if ("Авто-Рыбалка".equals(autoFunc)) {
+                autoFunctionsManager.setAutoFishEnabled(true);
+                FileLogger.trace(TAG, "AUTO_FUNCTION_TIMER_FIRED: Авто-Рыбалка ENABLED");
+            } else if ("Авто-Питьё".equals(autoFunc)) {
+                autoFunctionsManager.setAutoDrinkEnabled(true);
+                FileLogger.trace(TAG, "AUTO_FUNCTION_TIMER_FIRED: Авто-Питьё ENABLED");
+            } else if ("Авто-Клад".equals(autoFunc)) {
+                autoFunctionsManager.setAutoTreasureEnabled(true);
+                FileLogger.trace(TAG, "AUTO_FUNCTION_TIMER_FIRED: Авто-Клад ENABLED");
+            }
+            
+            // Обновляем UI QuickButtons - должны изменить визуальный статус (обводка)
+            if (AppVars.mainActivity != null && AppVars.mainActivity.get() != null) {
+                AppVars.mainActivity.get().invalidateQuickButtonsUI();
+            }
+        }
+    }
+
+    /**
+     * Срабатывание таймера для отключения авто-функции.
+     */
+    private void executeDisableAutoFunctionTimerLocked(int index, AppTimer timer) {
+        listAppTimers.remove(index);
+        persistLocked();
+
+        String autoFunc = timer.disableAutoFunction;
+        String msg = "AUTO_FUNCTION_TIMER_FIRED: id=" + timer.id + ", action=DISABLE, function=\"" + autoFunc + "\"";
+        Log.d(TAG, msg);
+        FileLogger.trace(TAG, msg);
+        playTimerSignalIfEnabledLocked();
+
+        // Отключение авто-функции через AutoFunctionsManager
+        if (!TextUtils.isEmpty(autoFunc) && autoFunctionsManager != null) {
+            if ("Авто-Бой".equals(autoFunc)) {
+                autoFunctionsManager.setAutoFightEnabled(false);
+                FileLogger.trace(TAG, "AUTO_FUNCTION_TIMER_FIRED: Авто-Бой DISABLED");
+            } else if ("Авто-Рыбалка".equals(autoFunc)) {
+                autoFunctionsManager.setAutoFishEnabled(false);
+                FileLogger.trace(TAG, "AUTO_FUNCTION_TIMER_FIRED: Авто-Рыбалка DISABLED");
+            } else if ("Авто-Питьё".equals(autoFunc)) {
+                autoFunctionsManager.setAutoDrinkEnabled(false);
+                FileLogger.trace(TAG, "AUTO_FUNCTION_TIMER_FIRED: Авто-Питьё DISABLED");
+            } else if ("Авто-Клад".equals(autoFunc)) {
+                autoFunctionsManager.setAutoTreasureEnabled(false);
+                FileLogger.trace(TAG, "AUTO_FUNCTION_TIMER_FIRED: Авто-Клад DISABLED");
+            }
+            
+            // Обновляем UI QuickButtons - должны изменить визуальный статус (обводка)
+            if (AppVars.mainActivity != null && AppVars.mainActivity.get() != null) {
+                AppVars.mainActivity.get().invalidateQuickButtonsUI();
+            }
+        }
     }
 
     private AppTimer addAppTimerInternalLocked(AppTimer source) {
@@ -261,6 +456,8 @@ public class AppTimerManager {
         appTimer.potion = safe(appTimer.potion);
         appTimer.destination = safe(appTimer.destination);
         appTimer.complect = safe(appTimer.complect);
+        appTimer.enableAutoFunction = safe(appTimer.enableAutoFunction);
+        appTimer.disableAutoFunction = safe(appTimer.disableAutoFunction);
         if (appTimer.triggerTime < System.currentTimeMillis()) {
             return null;
         }
@@ -320,6 +517,8 @@ public class AppTimerManager {
                 timer.destination = item.optString("destination", "");
                 timer.complect = item.optString("complect", "");
                 timer.isHerb = item.optBoolean("isHerb", false);
+                timer.enableAutoFunction = item.optString("enableAutoFunction", "");
+                timer.disableAutoFunction = item.optString("disableAutoFunction", "");
                 if (timer.triggerTime <= 0L) {
                     continue;
                 }
@@ -347,6 +546,8 @@ public class AppTimerManager {
                 item.put("destination", safe(timer.destination));
                 item.put("complect", safe(timer.complect));
                 item.put("isHerb", timer.isHerb);
+                item.put("enableAutoFunction", safe(timer.enableAutoFunction));
+                item.put("disableAutoFunction", safe(timer.disableAutoFunction));
                 array.put(item);
             } catch (Exception error) {
                 Log.w(TAG, "persistLocked: failed to serialize timer id=" + timer.id, error);
@@ -370,9 +571,16 @@ public class AppTimerManager {
 
     private void reloadMainPhpInf() {
         StringBuilder url = new StringBuilder("http://neverlands.ru/main.php?get_id=56&act=10&go=inf");
-        if (!TextUtils.isEmpty(AppVars.VCode)) {
-            url.append("&vcode=").append(AppVars.VCode);
+        
+        // ОБЯЗАТЕЛЬНО: Получить VCode через SessionManager согласно правилу 5
+        String vcode = SessionManager.getInstance().getValidVCodeForAction("app_timer_reload");
+        if (!TextUtils.isEmpty(vcode)) {
+            url.append("&vcode=").append(vcode);
+        } else {
+            Log.w(TAG, "APP_TIMER_TRACE reloadMainPhpInf: vcode not available, reload without vcode");
+            FileLogger.trace(TAG, "APP_TIMER_TRACE reloadMainPhpInf: vcode not available, reload without vcode");
         }
+        
         url.append("&ab_timer=1&r=").append(System.currentTimeMillis());
 
         Intent intent = new Intent(AppVars.ACTION_WEBVIEW_LOAD_URL);

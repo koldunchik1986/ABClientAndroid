@@ -23,8 +23,10 @@ import ru.neverlands.abclient.model.UserConfig;
 import ru.neverlands.abclient.utils.AppVars;
 import ru.neverlands.abclient.utils.Chat;
 import ru.neverlands.abclient.utils.ChatStats;
+import ru.neverlands.abclient.utils.FileLogger;
 import ru.neverlands.abclient.utils.HelperStrings;
 import ru.neverlands.abclient.utils.Russian;
+import ru.neverlands.abclient.utils.SessionManager;
 
 // Пост-фильтр fish_ajax.php: считает отчет улова и синхронизирует runtime-флаги авто-рыбалки.
 public final class FishAjaxPhp {
@@ -224,9 +226,18 @@ public final class FishAjaxPhp {
             return;
         }
         resetAct1ErrRecoveryState();
-        // Збераем свежий vcode из act=1 response
+        // Получаем свежий vcode из act=1 response
         // Маркируем успешный старт только после валидного parse + vcode.
         // Это защищает от ложного "confirmed" при ответах вида ERR.
+        
+        // ✅ ОБЯЗАТЕЛЬНО: Кэшируем извлеченный vcode через SessionManager (правило 5)
+        // Это защищает от race condition где SERVER_TIMER_TICK видит пустой vcode
+        // и принудительно перезагружает main.php, теряя сессию
+        SessionManager.getInstance().parseVCodeFromHtml("vcode=" + state.vcode, "fish");
+        String msg_vcode = "AUTO_FISH_TRACE act1: vcode parsed through SessionManager, vcode=" + state.vcode;
+        Log.d(TAG, msg_vcode);
+        FileLogger.trace(TAG, msg_vcode);
+        
         lastFishAct1AtMs = System.currentTimeMillis();
         // Блокируем фоновые probe'ы (main.php?go=inf&af_tick=1) на время критической последовательности act=1→act=2.
         // Это предотвращает перезагрузку PHPSESSID сервером между действиями рыбалки.
@@ -243,10 +254,13 @@ public final class FishAjaxPhp {
             return;
         }
 
-        // при капче используем ТЕКУЩИЙ vcode (он обновляется при платеже)
-        String currentVcode = AppVars.FishCurrentVcode != null && !AppVars.FishCurrentVcode.isEmpty() 
-            ? AppVars.FishCurrentVcode 
-            : state.vcode;
+        // ✅ SessionManager: получаем валидный vcode для act=2 (в случае капчи)
+        String currentVcode = ru.neverlands.abclient.utils.SessionManager.getInstance()
+                .getValidVCodeForAction("fish_act2");
+        if (currentVcode == null || currentVcode.isEmpty()) {
+            Log.w(TAG, "⚠️ AUTO_FISH_TRACE act1: vcode not available from SessionManager, using fallback state.vcode");
+            currentVcode = state.vcode;  // fallback на переданное значение
+        }
         String submitUrl = "http://neverlands.ru/gameplay/ajax/fish_ajax.php?act=2"
                 + "&primid=" + selection.id
                 + "&vcode=" + currentVcode
@@ -325,11 +339,19 @@ public final class FishAjaxPhp {
                     if (jsOk) {
                         return;
                     }
+                    // Get fresh VCode from SessionManager for fallback request
+                    String freshVcode = SessionManager.getInstance().getValidVCodeForAction("fish_act2_fallback");
+                    if (freshVcode == null || freshVcode.isEmpty()) {
+                        Log.w(TAG, "AUTO_FISH_TRACE no-captcha fallback: no VCode available, skipping loadUrl");
+                        FileLogger.trace(TAG, "AUTO_FISH_TRACE no-captcha fallback: VCode null, skipping request");
+                        return;
+                    }
                     String url = "http://neverlands.ru/gameplay/ajax/fish_ajax.php?act=2"
                             + "&primid=" + safePrimid
-                            + "&vcode=" + safeVcode
+                            + "&vcode=" + freshVcode
                             + "&r=" + System.currentTimeMillis();
                     Log.d(TAG, "AUTO_FISH_TRACE no-captcha fallback loadUrl: " + url);
+                    FileLogger.trace(TAG, "AUTO_FISH_TRACE no-captcha fallback with freshVcode");
                     webView.loadUrl(url);
                 });
             }, FISH_NO_CAPTCHA_FALLBACK_DELAY_MS);
@@ -498,7 +520,12 @@ public final class FishAjaxPhp {
                 return;
             }
 
+            // ✅ Ранняя защита от race condition: установить флаг ДО отправки HTTP-запроса
+            // Это предотвратит SERVER_TIMER_TICK от перезагрузки main.php пока идет act=1
             long attemptStartedAtMs = System.currentTimeMillis();
+            AppVars.suppressBackgroundProbesDuringFishing = true;
+            AppVars.fishingSequenceStartAtMs = attemptStartedAtMs;
+            Log.d(TAG, "AUTO_FISH_TRACE early suppression enabled at cycle start, token=" + cycleToken);
             String jsKick = "(function(){"
                     + "try{"
                     + "  if(typeof ButClick==='function' && document.getElementById('fis')){ButClick('fis'); return 'open_fish_by_button';}"
@@ -522,7 +549,16 @@ public final class FishAjaxPhp {
                     return;
                 }
 
-                String reloadUrl = "http://neverlands.ru/main.php?af_cycle=1&r=" + System.currentTimeMillis();
+                // Get fresh VCode from SessionManager for cycle kick fallback
+                String freshVcode = SessionManager.getInstance().getValidVCodeForAction("fish_cycle_kick");
+                String reloadUrl;
+                if (freshVcode != null && !freshVcode.isEmpty()) {
+                    reloadUrl = "http://neverlands.ru/main.php?af_cycle=1&vcode=" + freshVcode + "&r=" + System.currentTimeMillis();
+                    FileLogger.trace(TAG, "AUTO_FISH_TRACE cycle kick fallback with VCode");
+                } else {
+                    reloadUrl = "http://neverlands.ru/main.php?af_cycle=1&r=" + System.currentTimeMillis();
+                    FileLogger.trace(TAG, "AUTO_FISH_TRACE cycle kick fallback WITHOUT VCode (null)");
+                }
                 Log.d(TAG, "AUTO_FISH_TRACE cycle kick fallback reload, attempt=" + attempt
                         + ", jsResult=" + value + ", url=" + reloadUrl);
                 webView.loadUrl(reloadUrl);
@@ -593,9 +629,18 @@ public final class FishAjaxPhp {
             if (webView == null) {
                 return;
             }
+            // Get fresh VCode from SessionManager for soft recovery
+            String freshVcode = SessionManager.getInstance().getValidVCodeForAction("fish_recovery");
             // Отправляем простой refresh игровой страницы для инициации нового act=1
             // Это мягче, чем полный bootstrap через main.php?go=inf
-            String reloadUrl = "http://neverlands.ru/main.php?get_id=56&act=10&r=" + System.currentTimeMillis();
+            String reloadUrl = "http://neverlands.ru/main.php?get_id=56&act=10";
+            if (freshVcode != null && !freshVcode.isEmpty()) {
+                reloadUrl += "&vcode=" + freshVcode;
+                FileLogger.trace(TAG, "AUTO_FISH_TRACE soft recovery with VCode");
+            } else {
+                FileLogger.trace(TAG, "AUTO_FISH_TRACE soft recovery WITHOUT VCode (null)");
+            }
+            reloadUrl += "&r=" + System.currentTimeMillis();
             Log.d(TAG, "AUTO_FISH_TRACE soft recovery after " + safeReason + ": " + reloadUrl);
             webView.loadUrl(reloadUrl);
         });
@@ -626,8 +671,13 @@ public final class FishAjaxPhp {
                 return;
             }
             StringBuilder url = new StringBuilder("http://neverlands.ru/main.php?get_id=56&act=10&go=inf&af_bootstrap=1&af_recover=1");
-            if (AppVars.VCode != null && !AppVars.VCode.isEmpty()) {
-                url.append("&vcode=").append(AppVars.VCode);
+            // ✅ SessionManager: получаем валидный vcode для recovery запроса
+            String vcode = ru.neverlands.abclient.utils.SessionManager.getInstance()
+                    .getValidVCodeForAction("fish_recovery");
+            if (vcode != null && !vcode.isEmpty()) {
+                url.append("&vcode=").append(vcode);
+            } else {
+                Log.w(TAG, "⚠️ AUTO_FISH_TRACE recovery bootstrap: vcode not available from SessionManager");
             }
             url.append("&reason=").append(safeReason);
             url.append("&ts=").append(System.currentTimeMillis());
@@ -1311,8 +1361,11 @@ public final class FishAjaxPhp {
             Log.d(TAG, "AUTO_FISH_TRACE executeFishingCycleCore: bait selected, bait_id="
                     + baitResult.bait_id + ", available_count=" + baitResult.available_count);
 
-            // Сохраняем vcode из озера в runtime для дальнейших act=2
-            AppVars.FishCurrentVcode = lakeResult.vcode;
+            // ⚠️ ВАЖНО: VCode больше НЕ кешируется локально в AppVars.FishCurrentVcode.
+            // Вместо этого используется SessionManager, который парсит свежий vcode из каждого
+            // HTML ответа сервера через WebViewRequestInterceptor. Это предотвращает потерю vcode
+            // при смене контекста и обновления PHPSESSID.
+            // Для каждого AJAX запроса мы вызываем SessionManager.getValidVCodeForAction("fish_act")
             AppVars.FishCurrentLakeid = lakeResult.lakeid;
 
             // Готовимся к отправке act=1

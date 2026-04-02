@@ -324,3 +324,117 @@
     *   **Выводы:** Какие умозаключения сделаны на основе полученного результата и какой следующий шаг.
 
 Это позволяет не "заменять проделанные работы" в основном файле, а иметь полную историю анализа и исправлений для последующего разбора. Основной файл `todo_DebugApp.md` при этом продолжает использоваться для общего плана и отслеживания статуса верхнеуровневых задач.
+
+---
+
+# Критичные правила VCode (Правила 4-10)
+
+4.  **Стабильность HTML-кнопок верхнего фрейма (анти-перебивка автологикой).**
+    *   **Описание:** Ручные клики по HTML-кнопкам должны срабатывать с первого раза и не перебиваться фоновыми автопроцессами.
+    *   **Инварианты JS-фиксов:** В `HtmlUtils.getJsFix()` должны оставаться совместимые заглушки DOM-элементов `transfer`, `complect`, `hbar`.
+    *   **Обязательное логирование:** Все изменения в HTML-обработке должны сопровождаться `FileLogger.trace()`.
+
+5.  **Управление VCode через SessionManager (обязательно для новых функций).**
+    *   **Описание:** `SessionManager` — единая система управления VCode с парсингом, кэшированием и валидацией.
+    *   **Правило для ВСЕХ новых функций:**
+        1. **ЗАПРЕЩЕНО** использовать `AppVars.VCode` напрямую
+        2. **ОБЯЗАТЕЛЬНО** использовать `SessionManager.getInstance().getValidVCodeForAction("action_name")`
+        3. **ОБЯЗАТЕЛЬНО** импортировать `SessionManager`
+        4. **ОБЯЗАТЕЛЬНО** проверить результат на null и добавить fallback
+    *   **Архитектурная основа:**
+        *   SessionManager парсит VCode на каждом HTML ответе
+        *   SessionContext — неизменяемый контейнер с версионированием
+        *   Thread-safe доступ через ReentrantReadWriteLock
+
+6.  **Обязательное файловое логирование критичных цепочек.**
+    *   **Правило:** Любые правки в критичных runtime-цепочках должны сопровождаться записью в файловый лог через `FileLogger`.
+    *   **Критичные цепочки:** чат/polling, авто-бой, авто-босс, авто-клад, fast-action, навигация, прокси/HTTP.
+    *   **UI-инвариант:** Переключатель в `Настройки → Разработка` должен управлять записью logcat в файлы.
+    *   **Антирегрессия:** Нельзя удалять существующее файловое логирование без эквивалентной замены.
+
+7.  **Управление состоянием FastNeed при быстрых действиях.**
+    *   **Описание:** `AppVars.FastNeed = true` блокирует другие автофункции до завершения fast-action.
+    *   **Правило:** **ОБЯЗАТЕЛЬНО затирать `FastNeed` после завершения цикла fast-action'а**, даже если асинхронно.
+    *   **Требование:** После окончания любого fast-action:
+        1. Проверить `AppVars.FastNeed == true`
+        2. Вызвать `FastActionManager.fastCancel("reason")`
+        3. Логировать через FileLogger перед затиранием FastNeed
+    *   **Типичные ошибки:** Забыть fastCancel в cooldown обработчике, забыть в callback'е асинхронного fast-action'а.
+
+8.  **Event-Driven архитектура для немедленного отклика на объявление боя (FIGHT_ANNOUNCE).**
+    *   **Описание:** Объявление боя инициирует немедленную отправку первого хода, вместо ожидания polling (24+ сек).
+    *   **Правило реализации:**
+        1. **ОБЯЗАТЕЛЬНО** вызывать `MainActivity.requestImmediateAutoTurnOnFightAnnounce()` при объявлении боя
+        2. **ОБЯЗАТЕЛЬНО** проверять `isCaptchaVisible()` перед отправкой
+        3. **ОБЯЗАТЕЛЬНО** использовать `ForcedActionGuard.shouldForceActionAdvanced()` для проверки гвард'а
+        4. **ОБЯЗАТЕЛЬНО** получать VCode через `SessionManager.getValidVCodeForAction("fight_turn")`
+        5. **ОБЯЗАТЕЛЬНО** логировать с `[BG_TRACE]` префиксом
+    *   **Требование к задержке:** Первый ход отправляется в течение **<100ms** от объявления боя.
+    *   **Файлы документации:**
+        *   [MainActivity_VCode_EventDriven.md](Instruction/MainActivity_VCode_EventDriven.md)
+        *   [FightAuto_VCode_Usage.md](Instruction/FightAuto_VCode_Usage.md)
+
+9.  **Порядок вызовов при инициализации боя (markFightInProgress раньше LezFight).**
+    *   **Описание:** Порядок инициализационных вызовов критичен для синхронизации VCode.
+    *   **КРИТИЧНЫЙ ПОРЯДОК:**
+        ```
+        1️⃣ SessionManager.getInstance().markFightInProgress()    ← ПЕРВОЙ!
+        2️⃣ LezFight fight = new LezFight(html)                  ← ВТОРОЙ
+        3️⃣ fight.buildFrame()                                    ← ТРЕТИЙ
+        4️⃣ submitFightTurn(fight)                                ← ЧЕТВЁРТЫЙ
+        ```
+    *   **Почему критично:** `markFightInProgress()` устанавливает флаг для FIGHT_FALLBACK_MODE (120 сек таймаут).
+    *   **Проверка покомбинату:**
+        *   Поиск `new LezFight(` — убедиться что `markFightInProgress()` вызвана ПЕРЕД
+        *   Логи должны показывать "markFightInProgress at T=5ms" перед "LezFight at T=10ms"
+
+10. **VCode кэширование и инвалидация в различных контекстах.**
+    *   **Описание:** VCode имеет разные timeout'ы: обычная (30s), бой (120s - FIGHT_FALLBACK_MODE), fast-action (до cooldown'а).
+    *   **Правило управления timeout'ами:**
+        1. **Обычные операции:** timeout = 30 сек
+        2. **Боевой контекст:** timeout = 120 сек (FIGHT_FALLBACK_MODE)
+        3. **Fast-action контекст:** timeout = до завершения cooldown'а (60-90 сек)
+        4. **После смены PHPSESSID:** VCode очищается явно через `clearFightContext()`
+    *   **Правило инвалидации:**
+        *   VCode > timeout считается невалидной и возвращает `null`
+        *   Явная инвалидация через `clearFightContext()` при завершении боя, смене сессии, logout
+        *   `ageMs()` атрибут отслеживает время парсинга в миллисекундах
+    *   **Правило fallback'а:**
+        *   Если `getValidVCodeForAction()` вернула `null`:
+            *   Перезагрузить основную страницу (`loadUrl("main.php")`)
+            *   Или отложить действие до следующего цикла
+            *   Или отправить запрос sans VCode (если допустимо)
+    *   **Файлы документации:**
+        *   [VCode_Mechanism_Analysis.md](Instruction/VCode_Mechanism_Analysis.md)
+        *   [VCode_Recovery_Guide.md](Instruction/VCode_Recovery_Guide.md)
+        *   [SessionManager_VCode.md](Instruction/SessionManager_VCode.md)
+
+---
+
+# Полная архитектура VCode (Быстрая справка)
+
+## Где найти инструкции
+
+| Файл | Для кого | Содержание |
+|------|----------|-----------|
+| `SessionManager_VCode.md` | Архитекторы, senior разработчики | Архитектура SessionManager, парсинг, кэширование, thread-safety |
+| `MainPhp_VCode_Usage.md` | Разработчики фоновых функций | Как использовать VCode в основной странице и fast-actions |
+| `FightAuto_VCode_Usage.md` | Разработчики боевой логики | Жизненный цикл VCode в боях, FIGHT_FALLBACK_MODE, порядок вызовов |
+| `FastActionManager_VCode_Usage.md` | Разработчики быстрых действий | VCode в быстрых действиях, управление FastNeed, cooldown'ы |
+| `MainActivity_VCode_EventDriven.md` | Разработчики фрейм-вьюв | Event-driven архитектура, немедленный отклик на бой (<100ms) |
+| `VCode_Mechanism_Analysis.md` | Отладчики VCode ошибок | Полный архитектурный анализ, критичные точки сбоев |
+| `VCode_Recovery_Guide.md` | QA, разработчики при багах | Диагностика и восстановление при всех типах VCode ошибок |
+
+## Три главных принципа
+
+1. **Всегда получайте VCode через SessionManager.getValidVCodeForAction()**
+   - Никогда не используйте AppVars.VCode напрямую
+   - Проверяйте результат на null
+
+2. **Всегда управляйте fast-action'ами правильно**
+   - Установить AppVars.FastNeed = true
+   - Обязательно очистить FastNeed после cooldown через fastCancel()
+
+3. **Всегда следуйте порядку вызовов в боях**
+   - markFightInProgress() → new LezFight() → buildFrame() → sendTurn()
+   - Это критично для FIGHT_FALLBACK_MODE

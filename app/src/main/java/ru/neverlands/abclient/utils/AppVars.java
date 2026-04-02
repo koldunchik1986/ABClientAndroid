@@ -454,6 +454,22 @@ public class AppVars {
     public static volatile boolean FastPauseNonCombatAutoFunctions = false;
     // One-shot marker: after FastAction completion we should return to map ("go=ret").
     public static volatile boolean FastReturnToMapPending = false;
+    
+    // === Система паузы авто-функций перед срабатыванием таймера зелья ===
+    // Runtime pause for non-combat auto pipelines while AppTimer is about to fire (within 5 sec buffer).
+    // Allows user to open inventory and drink potion without AutoFish/AutoSkin interference.
+    // Important: Autoboi/fight logic must continue working and is not paused by this flag.
+    public static volatile boolean TimerPauseNonCombatAutoFunctions = false;
+    
+    // Сохраненное состояние авто-функций перед паузой таймера.
+    // Используется для восстановления после исполнения таймера.
+    public static volatile boolean TimerPauseAutoFishState = false;
+    public static volatile boolean TimerPauseAutoSkinState = false;
+    public static volatile boolean TimerPauseAutoCutState = false;
+    public static volatile boolean TimerPauseAutoBaitState = false;
+    public static volatile boolean TimerPauseAutoCompassState = false;
+    public static volatile boolean TimerPauseAutoAttackState = false;
+    public static volatile boolean TimerPauseAutoInvisibleState = false;
     public static volatile boolean FastWaitEndOfBoiActive = false;
     public static volatile boolean FastWaitEndOfBoiCancel = false;
     public static volatile boolean FastNeedAbilDarkTeleport = false;

@@ -28,6 +28,7 @@ import ru.neverlands.abclient.proxy.ProxyRuntimeManager;
 import ru.neverlands.abclient.utils.AppVars;
 import ru.neverlands.abclient.utils.FileLogger;
 import ru.neverlands.abclient.utils.RuntimeNetTrace;
+import ru.neverlands.abclient.utils.SessionManager;
 
 public class WebViewRequestInterceptor {
     private static final String TAG = "WebViewInterceptor";
@@ -525,6 +526,18 @@ public class WebViewRequestInterceptor {
                 processed = bytes;
             } else {
                 Log.d(TAG, "Filter.process returned " + processed.length + " bytes for " + urlString);
+            }
+
+            // ============================================================================
+            // SessionManager: потреситель из каждого HTML ответа и сохранить в контекст
+            // ============================================================================
+            String source = determineSourceFromUrl(urlString);
+            try {
+                String htmlContent = new String(processed, Charset.forName("windows-1251"));
+                ru.neverlands.abclient.utils.SessionManager.getInstance()
+                        .parseVCodeFromHtml(htmlContent, source);
+            } catch (Exception e) {
+                Log.e(TAG, "Failed to parse VCode from HTML: " + e.getMessage());
             }
 
             // Парсим новый vcode из ответа модуля платежа капчи (modules/code/code.php)
@@ -1453,5 +1466,57 @@ public class WebViewRequestInterceptor {
         } catch (Exception e) {
             Log.e(TAG, "updateFishCurrentVcodeFromPaymentModule failed", e);
         }
+    }
+
+    /**
+     * Определить источник (context) для SessionManager на основе URL.
+     * Это помогает SessionManager понять, из какого модуля пришёл HTML ответ.
+     * 
+     * Примеры:
+     * - "main.php?get_id=60" → "main"
+     * - "pinfo.php?id=..." → "fish"  (if AutoFish context)
+     * - "main.php?act=..." (fight params) → "fight"
+     * - "ch.php?..." → "chat"
+     */
+    private static String determineSourceFromUrl(String urlString) {
+        if (urlString == null || urlString.isEmpty()) {
+            return "unknown";
+        }
+
+        String lower = urlString.toLowerCase(Locale.ROOT);
+
+        // Fight: акты 4-7 трубка боя (act=4/5/6/7)
+        if (lower.contains("act=4") || lower.contains("act=5") 
+                || lower.contains("act=6") || lower.contains("act=7")) {
+            return "fight";
+        }
+
+        // Fish: pinfo.php обычно rybalka/fishing
+        if (lower.contains("pinfo.php")) {
+            return "fish";
+        }
+
+        // Chat endpoints
+        if (lower.contains("ch.php") || lower.contains("/ch/but.php")) {
+            return "chat";
+        }
+
+        // Main: основной naveg и управления
+        if (lower.contains("main.php")) {
+            return "main";
+        }
+
+        // Payment/captcha
+        if (lower.contains("modules/code/code.php")) {
+            return "captcha";
+        }
+
+        // Forum
+        if (lower.contains("forum.neverlands.ru")) {
+            return "forum";
+        }
+
+        // Default
+        return "general";
     }
 }

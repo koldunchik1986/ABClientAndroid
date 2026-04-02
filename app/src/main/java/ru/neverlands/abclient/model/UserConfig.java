@@ -178,6 +178,12 @@ public class UserConfig {
      */
     public String FishHandTwo = "Нет";
     /**
+     * Сохраненный список комплектов персонажа (pipe-separated, например: "Набла|Огнь|Вода").
+     * Обновляется при загрузке инвентаря через `parseAndSaveComplectsFromInventory()`.
+     * Используется для заполнения dropdown'а в диалоге создания таймера комплекта.
+     */
+    public String SavedComplectsList = "";
+    /**
      * Битовая маска разрешенных приманок для авто-рыбалки (C# `FishEnabledPrims`/`Prims`).
      *
      * Зависимости:
@@ -714,6 +720,10 @@ public class UserConfig {
                         if (fishHandTwo != null) {
                             this.FishHandTwo = fishHandTwo.trim().isEmpty() ? "Нет" : fishHandTwo;
                         }
+                        String savedComplects = getAttributeValueIgnoreCase(parser, "saved_complects");
+                        if (savedComplects != null) {
+                            this.SavedComplectsList = savedComplects;
+                        }
                         this.FishEnabledPrims = parseIntAttr(parser, "enabledprims", this.FishEnabledPrims);
                         this.FishUm = parseIntAttr(parser, "um", this.FishUm);
                         this.FishMaxLevelBots = parseIntAttr(parser, "maxlevelbots", this.FishMaxLevelBots);
@@ -899,6 +909,7 @@ public class UserConfig {
             serializer.attribute(null, "autowear", String.valueOf(this.FishAutoWear));
             serializer.attribute(null, "hand1", this.FishHandOne != null ? this.FishHandOne : "Любая удочка");
             serializer.attribute(null, "hand2", this.FishHandTwo != null ? this.FishHandTwo : "Нет");
+            serializer.attribute(null, "saved_complects", this.SavedComplectsList != null ? this.SavedComplectsList : "");
             serializer.attribute(null, "enabledprims", String.valueOf(this.FishEnabledPrims));
             serializer.attribute(null, "um", String.valueOf(this.FishUm));
             serializer.attribute(null, "maxlevelbots", String.valueOf(this.FishMaxLevelBots));

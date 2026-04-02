@@ -81,15 +81,21 @@ public class MapAjax {
     public static String process(String html) {
         if (AppVars.FastNeed && AppVars.FastPauseNonCombatAutoFunctions) {
             if (AppVars.AutoMoving || AppVars.DoSearchBox) {
-                Log.d(TAG, "AUTO_FAST_PAUSE_TRACE: skip map auto processing while fast action is active"
-                        + ", fastId=" + AppVars.FastId);
+                String msg = "[MAPAJAX_TRACE_ENTRY] SKIP: fast action active, fastId='" + AppVars.FastId + "'"
+                        + ", FastNeed=" + AppVars.FastNeed
+                        + ", AutoMoving=" + AppVars.AutoMoving
+                        + ", DoSearchBox=" + AppVars.DoSearchBox;
+                Log.d(TAG, msg);
+                FileLogger.trace(TAG, msg);
             }
             return html;
         }
 
         if (AppVars.TreasureDigPauseNonCombatAutoFunctions) {
             if (AppVars.AutoMoving || AppVars.DoSearchBox) {
-                Log.d(TAG, "AUTO_SEARCH_BOX_TRACE: skip map auto processing while treasure dig preparation is active");
+                String msg = "[MAPAJAX_TRACE_ENTRY] SKIP: treasure dig preparation active";
+                Log.d(TAG, msg);
+                FileLogger.trace(TAG, msg);
             }
             return html;
         }
@@ -1029,8 +1035,10 @@ public class MapAjax {
         if (consecutiveMapAjaxErrCount == 0 && lastMapAjaxErrAtMs == 0L) {
             return;
         }
+        String msg = "[MAPAJAX_ERR_RESET] reason='" + reason + "', prevCount=" + consecutiveMapAjaxErrCount;
         Log.d(TAG, "AUTO_SEARCH_BOX_TRACE: reset map_ajax ERR counter, reason=" + reason
                 + ", prevCount=" + consecutiveMapAjaxErrCount);
+        FileLogger.trace(TAG, msg);
         consecutiveMapAjaxErrCount = 0;
         lastMapAjaxErrAtMs = 0L;
     }
@@ -1064,20 +1072,28 @@ public class MapAjax {
      */
     private static void maybeSyncVitalsFromPinfoAtSearchBoxStartup(String currentRegNum) {
         if (!AppVars.AutoMoving || !AppVars.DoSearchBox || autoDrinkBlazStartupSyncDone) {
+            FileLogger.trace(TAG, "[MAPAJAX_STARTUP_SYNC_SKIP] AutoMoving=" + AppVars.AutoMoving
+                    + ", DoSearchBox=" + AppVars.DoSearchBox
+                    + ", syncDone=" + autoDrinkBlazStartupSyncDone);
             return;
         }
         if (AppVars.Profile == null) {
+            FileLogger.trace(TAG, "[MAPAJAX_STARTUP_SYNC_PROFILE_NULL]");
             return;
         }
         String nick = AppVars.Profile.UserNick;
         if (nick == null || nick.trim().isEmpty()) {
+            FileLogger.trace(TAG, "[MAPAJAX_STARTUP_SYNC_NICK_EMPTY]");
             return;
         }
         long now = System.currentTimeMillis();
-        if ((now - lastAutoDrinkBlazStartupSyncAttemptAtMs) < AUTO_DRINK_BLAZ_STARTUP_SYNC_RETRY_COOLDOWN_MS) {
+        long elapsed = now - lastAutoDrinkBlazStartupSyncAttemptAtMs;
+        if (elapsed < AUTO_DRINK_BLAZ_STARTUP_SYNC_RETRY_COOLDOWN_MS) {
+            FileLogger.trace(TAG, "[MAPAJAX_STARTUP_SYNC_COOLDOWN] elapsed=" + elapsed + "ms < " + AUTO_DRINK_BLAZ_STARTUP_SYNC_RETRY_COOLDOWN_MS + "ms");
             return;
         }
         lastAutoDrinkBlazStartupSyncAttemptAtMs = now;
+        FileLogger.trace(TAG, "[MAPAJAX_STARTUP_SYNC_REQUEST] nick='" + nick + "', reg=" + currentRegNum);
 
         int threshold = clampPercent(AppVars.Profile.AutoDrinkBlazTied);
         NeverApi.PinfoVitals vitals = NeverApi.getPinfoVitalsFromPinfo(nick);
@@ -1111,9 +1127,13 @@ public class MapAjax {
      */
     private static void onAutoMovingCellObserved(String previousRegNum, String currentRegNum) {
         if (previousRegNum == null || previousRegNum.isEmpty()) {
+            String msg = "[MAPAJAX_AUTOMOVE_SKIP] previousRegNum is null or empty";
+            FileLogger.trace(TAG, msg);
             return;
         }
         if (previousRegNum.equals(currentRegNum)) {
+            String msg = "[MAPAJAX_AUTOMOVE_SAME] Same cell, no movement: " + currentRegNum;
+            FileLogger.trace(TAG, msg);
             return;
         }
         lastAutoMovingCellObservedAtMs = System.currentTimeMillis();
@@ -1123,12 +1143,19 @@ public class MapAjax {
                 "MapAjax.onAutoMovingCellObserved.step"
         );
         int newTied = stepped.tied;
+        String moveMsg = "[MAPAJAX_AUTOMOVE_CELL] Cell observed: from='" + previousRegNum
+                + "', to='" + currentRegNum
+                + "', tied: " + oldTied + "->" + newTied
+                + ", stepCost=" + AUTO_MOVING_TIED_STEP_COST;
         if (newTied != oldTied) {
             Log.d(TAG, "AUTO_BLAZ_TRACE tied +step: old=" + oldTied
                     + ", new=" + newTied
                     + ", stepCost=" + AUTO_MOVING_TIED_STEP_COST
                     + ", from=" + previousRegNum
                     + ", to=" + currentRegNum);
+            FileLogger.trace(TAG, moveMsg);
+        } else {
+            FileLogger.trace(TAG, moveMsg + " (tied unchanged)");
         }
         maybeSyncTiedFromPinfoIfNearThreshold(currentRegNum);
     }
@@ -1149,34 +1176,49 @@ public class MapAjax {
      */
     private static void maybeSyncTiedFromPinfoIfNearThreshold(String currentRegNum) {
         if (AppVars.Profile == null || !AppVars.Profile.DoAutoDrinkBlaz) {
+            FileLogger.trace(TAG, "[MAPAJAX_SYNC_SKIP] Profile disabled for auto-drink blaz");
             return;
         }
         int threshold = clampPercent(AppVars.Profile.AutoDrinkBlazTied);
         int tied = CharacterVitalsManager.snapshot().tied;
         int syncBorder = Math.max(0, threshold - AUTO_DRINK_BLAZ_NEAR_THRESHOLD_DELTA);
+        String checkMsg = "[MAPAJAX_SYNC_CHECK] tied=" + tied + ", threshold=" + threshold
+                + ", syncBorder=" + syncBorder + ", reg=" + currentRegNum;
         if (tied < syncBorder) {
+            FileLogger.trace(TAG, checkMsg + " -> SKIP: tied < syncBorder");
             return;
         }
+        FileLogger.trace(TAG, checkMsg + " -> CHECK: tied >= syncBorder");
         long now = System.currentTimeMillis();
-        if ((now - lastAutoDrinkBlazPinfoSyncAtMs) < AUTO_DRINK_BLAZ_PINFO_SYNC_COOLDOWN_MS) {
+        long lastSync = now - lastAutoDrinkBlazPinfoSyncAtMs;
+        if (lastSync < AUTO_DRINK_BLAZ_PINFO_SYNC_COOLDOWN_MS) {
+            FileLogger.trace(TAG, "[MAPAJAX_SYNC_COOLDOWN] lastSync=" + lastSync + "ms < " + AUTO_DRINK_BLAZ_PINFO_SYNC_COOLDOWN_MS + "ms");
             return;
         }
         String nick = AppVars.Profile.UserNick;
         if (nick == null || nick.trim().isEmpty()) {
+            FileLogger.trace(TAG, "[MAPAJAX_SYNC_NICK_EMPTY] nick is null or empty");
             return;
         }
+        FileLogger.trace(TAG, "[MAPAJAX_SYNC_REQUEST] Requesting pinfo from nick='" + nick + "'");
         NeverApi.PinfoVitals synced = NeverApi.getPinfoVitalsFromPinfo(nick);
         if (synced == null || synced.curTire == null) {
+            String failMsg = "[MAPAJAX_SYNC_FAILED] synced=" + (synced == null ? "null" : "notNull");
+            FileLogger.trace(TAG, failMsg);
             logAutoBlazDecision("sync", "skip_sync_failed", tied, threshold, "reg=" + currentRegNum);
             return;
         }
         lastAutoDrinkBlazPinfoSyncAtMs = now;
         int oldTied = CharacterVitalsManager.snapshot().tied;
+        FileLogger.trace(TAG, "[MAPAJAX_SYNC_APPLY_START] curTire=" + synced.curTire + ", nick=" + nick);
         applyPinfoVitals(synced, currentRegNum, threshold, false);
         int normalized = CharacterVitalsManager.snapshot().tied;
         if (oldTied != normalized) {
+            String changedMsg = "[MAPAJAX_SYNC_APPLY_CHANGED] tied: " + oldTied + " -> " + normalized;
+            FileLogger.trace(TAG, changedMsg);
             logAutoBlazDecision("sync", "synced_changed", normalized, threshold, "reg=" + currentRegNum);
         } else {
+            FileLogger.trace(TAG, "[MAPAJAX_SYNC_APPLY_UNCHANGED] tied remained " + oldTied);
             logAutoBlazDecision("sync", "synced_unchanged", normalized, threshold, "reg=" + currentRegNum);
         }
     }
@@ -1197,10 +1239,16 @@ public class MapAjax {
      */
     private static void applyPinfoVitals(NeverApi.PinfoVitals vitals, String currentRegNum, int threshold, boolean startupSync) {
         if (vitals == null) {
+            FileLogger.trace(TAG, "[MAPAJAX_APPLY_VITALS] vitals is null, skipping");
             return;
         }
 
         CharacterVitalsManager.Snapshot before = CharacterVitalsManager.snapshot();
+        String syncType = startupSync ? "startup" : "near_threshold";
+        String updateMsg = "[MAPAJAX_APPLY_VITALS_START] Type=" + syncType + ", reg=" + currentRegNum
+                + ", tied_before=" + before.tied + ", hp_before=" + before.curHp + "/" + before.maxHp;
+        FileLogger.trace(TAG, updateMsg);
+        
         CharacterVitalsManager.Snapshot after = CharacterVitalsManager.updateFromPinfo(
                 vitals,
                 startupSync ? "MapAjax.applyPinfoVitals.startup" : "MapAjax.applyPinfoVitals.nearThreshold"
@@ -1211,12 +1259,16 @@ public class MapAjax {
             );
         }
 
-        String syncType = startupSync ? "startup" : "near_threshold";
+        String resultMsg = "[MAPAJAX_APPLY_VITALS_END] tied: " + before.tied + " -> " + after.tied
+                + ", hp: " + before.curHp + "/" + before.maxHp + " -> " + after.curHp + "/" + after.maxHp
+                + ", ma: " + before.curMa + "/" + before.maxMa + " -> " + after.curMa + "/" + after.maxMa
+                + ", reg=" + currentRegNum + ", threshold=" + threshold;
         Log.d(TAG, "AUTO_BLAZ_TRACE pinfo sync (" + syncType + "): tied=" + before.tied + "->" + after.tied
                 + ", hp=" + after.curHp + "/" + after.maxHp
                 + ", ma=" + after.curMa + "/" + after.maxMa
                 + ", reg=" + currentRegNum
                 + ", threshold=" + threshold);
+        FileLogger.trace(TAG, resultMsg);
     }
 
     /**
@@ -1242,14 +1294,31 @@ public class MapAjax {
         if (AppVars.Profile == null || !AppVars.Profile.DoAutoDrinkBlaz) {
             AppVars.AutoDrinkBlazPending = false;
             logAutoBlazDecision("decision", "skip_profile_disabled", CharacterVitalsManager.snapshot().tied, 0, "reg=" + currentRegNum);
+            String disabledMsg = "[MAPAJAX_AUTO_BLAZ] Profile disabled for auto-drink blaz";
+            FileLogger.trace(TAG, disabledMsg);
             return null;
         }
         int threshold = clampPercent(AppVars.Profile.AutoDrinkBlazTied);
         int tiedBeforeSync = CharacterVitalsManager.snapshot().tied;
         if (AppVars.FastNeed) {
+            // === УСИЛЕННОЕ ЛОГИРОВАНИЕ ПРИ ПРОПУСКЕ ===
+            String skipMsg = "[MAPAJAX_SKIP_FASTNEED_TODAY] "
+                    + "tied=" + tiedBeforeSync
+                    + ", threshold=" + threshold
+                    + " | FastNeed=" + AppVars.FastNeed
+                    + ", FastId='" + AppVars.FastId + "'"
+                    + ", FastNick='" + AppVars.FastNick + "'"
+                    + ", FastCount=" + AppVars.FastCount
+                    + ", reg=" + currentRegNum
+                    + ", thread=" + Thread.currentThread().getId()
+                    + ", timestamp=" + System.currentTimeMillis();
+            Log.d(TAG, skipMsg);
+            FileLogger.trace(TAG, skipMsg);
             logAutoBlazDecision("decision", "skip_fast_need", tiedBeforeSync, threshold, "reg=" + currentRegNum + ", fastId=" + AppVars.FastId);
             return null;
         }
+        String entryMsg = "[MAPAJAX_AUTO_BLAZ_CHECK] tied=" + tiedBeforeSync + ", threshold=" + threshold + ", reg=" + currentRegNum;
+        FileLogger.trace(TAG, entryMsg);
         maybeSyncTiedFromPinfoIfNearThreshold(currentRegNum);
         int tied = CharacterVitalsManager.snapshot().tied;
         if (!AppVars.AutoDrinkBlazPending && tied < threshold) {
@@ -1281,12 +1350,16 @@ public class MapAjax {
         lastAutoDrinkBlazTriggerAtMs = now;
         AppVars.AutoDrinkBlazPending = false;
 
-        Log.i(TAG, "AUTO_BLAZ_TRACE threshold reached in map_ajax: tied=" + tied
+        String triggerMsg = "[MAPAJAX_BLAZ_TRIGGER] EXECUTE: tied=" + tied
                 + ", threshold=" + threshold
                 + ", reg=" + currentRegNum
-                + ", trigger fast bliss");
+                + ", calling FastActionManager.fastAttackBlazElixir()";
+        Log.i(TAG, triggerMsg);
+        FileLogger.trace(TAG, triggerMsg);
         logAutoBlazDecision("decision", "trigger_fast_bliss", tied, threshold, "reg=" + currentRegNum);
         FastActionManager.fastAttackBlazElixir();
+        String redirectMsg = "[MAPAJAX_BLAZ_TRIGGER] REDIRECT to main.php?ab_nav_tired=1 after fast bliss call";
+        FileLogger.trace(TAG, redirectMsg);
         return Filter.buildRedirectString(
                 "\u041D\u0430\u0432\u0438\u0433\u0430\u0442\u043E\u0440: \u0430\u0432\u0442\u043E\u043F\u0438\u0442\u044C\u0435 \u0431\u043B\u0430\u0436\u0430",
                 "main.php?ab_nav_tired=1");

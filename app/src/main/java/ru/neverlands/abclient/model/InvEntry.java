@@ -48,6 +48,7 @@ public class InvEntry implements Cloneable, Comparable<InvEntry> {
     private boolean hasDolg;
     private boolean expirible;
     private boolean expired;
+    private long expireMs = 0;  // Дата истечения в миллисекундах (0 если нет срока)
 
     /**
      * Создаёт запись предмета из HTML-узла строки инвентаря.
@@ -254,6 +255,7 @@ public class InvEntry implements Cloneable, Comparable<InvEntry> {
         if (exp == null || exp.isEmpty()) {
             expirible = false;
             expired = false;
+            expireMs = 0;
             return;
         }
         expirible = true;
@@ -273,7 +275,7 @@ public class InvEntry implements Cloneable, Comparable<InvEntry> {
                 calendar.set(java.util.Calendar.MINUTE, minute);
                 calendar.set(java.util.Calendar.SECOND, 0);
                 calendar.set(java.util.Calendar.MILLISECOND, 0);
-                long expireMs = calendar.getTimeInMillis() + 24L * 60L * 60L * 1000L;
+                expireMs = calendar.getTimeInMillis() + 24L * 60L * 60L * 1000L;  // Сохраняем дату истечения
                 java.util.Date serverDateTime = AppVars.ServerDateTime;
                 if (serverDateTime != null && serverDateTime.getTime() > expireMs) {
                     expired = true;
@@ -281,6 +283,7 @@ public class InvEntry implements Cloneable, Comparable<InvEntry> {
             }
         } catch (Exception ignore) {
             // Если формат даты неожиданно поменялся — просто не маркируем просрочку.
+            expireMs = 0;
         }
     }
 
@@ -352,6 +355,21 @@ public class InvEntry implements Cloneable, Comparable<InvEntry> {
      */
     public boolean isExpired() {
         return expirible && expired;
+    }
+
+    /**
+     * Возвращает дату истечения предмета в миллисекундах (система), или 0 если срока нет.
+     * Используется для приоритизации по сроку годности (меньше значение = скоро испортится).
+     */
+    public long getExpireMs() {
+        return expireMs;
+    }
+
+    /**
+     * Проверяет имеет ли предмет срок годности.
+     */
+    public boolean isExpirible() {
+        return expirible;
     }
 
     /**

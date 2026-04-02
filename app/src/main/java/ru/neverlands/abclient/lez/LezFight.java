@@ -16,6 +16,7 @@ import ru.neverlands.abclient.manager.UnderAttackManager;
 import ru.neverlands.abclient.model.*;
 import ru.neverlands.abclient.utils.AppVars;
 import ru.neverlands.abclient.utils.HelperStrings;
+import ru.neverlands.abclient.utils.SessionManager;
 
 /**
  * Логика ведения боя.
@@ -169,6 +170,14 @@ public class LezFight {
 
         if (paramen == null || slotsen == null || fightpm == null) return false;
 
+        // 🎯 КРИТИЧНОЕ: Пометить что бой начался ДО парсинга VCode!
+        // Это установит флаг в SessionManager для использования extended timeout (120 сек)
+        // Порядок вызовов:
+        // 1️⃣ SessionManager.markFightInProgress() ← установить режим боя
+        // 2️⃣ cacheFightVCode() ← кэшить VCode из fight_pm[4]
+        // 3️⃣ buildFrame() ← строить форму удара с VCode
+        SessionManager.getInstance().markFightInProgress();
+
         // Сохраняем данные для Frame
         _fightpm = fightpm;
         
@@ -180,6 +189,16 @@ public class LezFight {
             _vcode = Strip(fightpm[4]);
         } else {
             _vcode = "";
+        }
+        
+        // 🎯 КРИТИЧНОЕ ИСПРАВЛЕНИЕ: Явно кэшить VCode из fight_pm[4] в SessionManager!
+        // Это гарантирует что при отправке удара через JavaScript (спустя 1-2 сек),
+        // SessionManager использует СВЕЖИЙ VCode из fight_pm[4], а не устаревший контекст.
+        // Без этого: VCode имеет возраст 70+ сек и становится невалидным.
+        // Сценарий актуален для навигатора-индуцированных боев (после teleport скролла).
+        if (!_vcode.isEmpty()) {
+            SessionManager.getInstance().cacheFightVCode(_vcode, "fight_pm");
+            android.util.Log.d("LezFight", "✅ FIGHT_CACHE: cached vcode=" + _vcode.substring(0, 8) + "... from fight_pm[4]");
         }
         
         _levbot = Strip(paramen[5]);
@@ -898,8 +917,12 @@ public class LezFight {
         } else {
             // Обычный быстрый режим AutoBoi оставляем на go=inf для минимального трафика UI.
             fallbackReloadUrl = "main.php?get_id=56&act=10&go=inf";
-            if (AppVars.VCode != null && !AppVars.VCode.isEmpty()) {
-                fallbackReloadUrl += "&vcode=" + AppVars.VCode;
+            // ✅ SessionManager: получаем валидный vcode для fallback reload
+            String vcode = SessionManager.getInstance().getValidVCodeForAction("fight_fallback");
+            if (vcode != null && !vcode.isEmpty()) {
+                fallbackReloadUrl += "&vcode=" + vcode;
+            } else {
+                Log.w("LezFight", "⚠️ SessionManager: vcode not available for fight fallback reload");
             }
         }
 

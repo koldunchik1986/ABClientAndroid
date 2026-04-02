@@ -18,6 +18,8 @@ import ru.neverlands.abclient.MainActivity;
 import ru.neverlands.abclient.model.AutoboiState;
 import ru.neverlands.abclient.model.QuickActionType;
 import ru.neverlands.abclient.repository.ApiRepository;
+import ru.neverlands.abclient.utils.SessionManager;
+import ru.neverlands.abclient.utils.FileLogger;
 import ru.neverlands.abclient.service.AutoModeForegroundService;
 import ru.neverlands.abclient.utils.AppVars;
 import ru.neverlands.abclient.utils.ExtMap;
@@ -182,6 +184,13 @@ public class AutoFunctionsManager {
             requestCharacterSyncForAutoFunctionEnable("auto_fight");
         }
 
+        // КРИТИЧНЫЙ ФИХ: Синхронизируем FightViewModel UI-состояние с runtime-состоянием.
+        // Это необходимо для правильной работы автобоя при нежданной атаке во время навигации.
+        if (AppVars.mainActivity != null && AppVars.mainActivity.get() != null) {
+            AppVars.mainActivity.get().getFightViewModel().setAutoBattleActive(enabled);
+            Log.d(TAG, "setAutoFightEnabled: FightViewModel UI state synced to " + enabled);
+        }
+
         // При включении делаем форсированную загрузку боевого кадра (fight.frame).
         if (enabled) {
             // При включении автобоя дергаем авто-ход и форсируем загрузку боевого кадра, как в ПК версии.
@@ -196,8 +205,11 @@ public class AutoFunctionsManager {
                         Log.d(TAG, "setAutoFightEnabled: immediate requestAutoTurn disabled, forcing frame reload only");
                         // Прямая перезагрузка боевого фрейма, с vcode если он есть.
                         String reloadUrl = "http://neverlands.ru/main.php?get_id=56&act=10&go=inf&ab_reload_probe=1";
-                        if (AppVars.VCode != null && !AppVars.VCode.isEmpty()) {
-                            reloadUrl += "&vcode=" + AppVars.VCode;
+                        String freshVcode = SessionManager.getInstance().getValidVCodeForAction("autofight_reload");
+                        if (freshVcode != null && !freshVcode.isEmpty()) {
+                            reloadUrl += "&vcode=" + freshVcode;
+                        } else {
+                            FileLogger.trace(TAG, "setAutoFightEnabled: autofight_reload no vcode available");
                         }
                         reloadUrl += "&ts=" + System.currentTimeMillis();
                         Log.d(TAG, "setAutoFightEnabled: reload fight frame " + reloadUrl);
@@ -227,14 +239,16 @@ public class AutoFunctionsManager {
         setAutoFishEnabled(newState);
     }
     
-    // Включение авто-рыбалки включает авто-бой и отключает несовместимые режимы.
+    // Включение авто-рыбалки включает авто-бой (враги нападают в озере).
+    // Выключение авто-рыбалки не отключает авто-бой.
     public void setAutoFishEnabled(boolean enabled) {
         if (enabled) {
-            // При включении: если Авто-Бой выключен - включаем его
+            // При включении Авто-Рыбалки: если Авто-Бой выключен - включаем оба
             if (!isAutoFightEnabled()) {
                 setAutoFightEnabled(true);
                 Log.d(TAG, "setAutoFishEnabled: Авто-Бой также включен");
             }
+            
             // Эксклюзивные функции: выключаем Авто-Охоту, Авто-Травник, Авто-Приманку
             if (isAutoSkinEnabled()) {
                 setAutoSkinEnabled(false);
@@ -281,6 +295,10 @@ public class AutoFunctionsManager {
             AppVars.AutoFishWearLoopKey = "";
             AppVars.AutoFishWearLoopCount = 0;
             AppVars.AutoFishWearLoopStamp = 0L;
+            
+            // Очищаем NeverTimer, чтобы следующая попытка включить рыбалку не была заблокирована
+            // старым cooldown'ом.
+            AppVars.NeverTimer = 0L;
         }
         prefs.edit().putBoolean(KEY_PREFIX + "auto_fish", enabled).apply();
         if (AppVars.Profile != null) {
@@ -293,14 +311,17 @@ public class AutoFunctionsManager {
                     if (AppVars.mainActivity.get() == null || AppVars.mainActivity.get().getMainWebView() == null) {
                         return;
                     }
-                    // Форсируем вход в поток main.php, чтобы MainPhp сразу начал C#-цепочку
-                    // проверки персонажа/инвентаря без ручного клика "Ваш персонаж".
-                    String url = "http://neverlands.ru/main.php?get_id=56&act=10&go=inf&af_bootstrap=1";
-                    if (AppVars.VCode != null && !AppVars.VCode.isEmpty()) {
-                        url += "&vcode=" + AppVars.VCode;
+                    // Форсируем вход в озеро (go=10) для холодного старта рыбалки.
+                    // go=10: озеро (холодный старт), не go=inf (последнее состояние, может быть бой).
+                    String url = "http://neverlands.ru/main.php?get_id=56&act=10&go=10&af_bootstrap=1";
+                    String fishVcode = SessionManager.getInstance().getValidVCodeForAction("autofish_bootstrap");
+                    if (fishVcode != null && !fishVcode.isEmpty()) {
+                        url += "&vcode=" + fishVcode;
+                    } else {
+                        FileLogger.trace(TAG, "setAutoFishEnabled: autofish_bootstrap no vcode available");
                     }
                     url += "&ts=" + System.currentTimeMillis();
-                    Log.d(TAG, "setAutoFishEnabled: bootstrap navigation to " + url);
+                    Log.d(TAG, "setAutoFishEnabled: bootstrap navigation to LAKE (go=10), url=" + url);
                     AppVars.mainActivity.get().getMainWebView().loadUrl(url);
                 } catch (Exception e) {
                     Log.e(TAG, "setAutoFishEnabled: bootstrap navigation failed", e);
@@ -350,8 +371,13 @@ public class AutoFunctionsManager {
         requestCharacterSyncAfterLogin();
         requestClanWarsSyncAfterLogin();
 
+        // ⚠️ FIX: Рыбалка и бой работают параллельно в озере
+        // Враги нападают на рыбака - их нужно убивать чтобы продолжить рыбалку
         if (autoFish) {
+            Log.d(TAG, "restorePersistentAutoModesAfterLogin: starting autoFish + parallel autoFight for lake enemies");
             setAutoFishEnabled(true);
+            // ВАЖНО: не возвращаемся - запускаем также боевой контур для врагов озера
+            restoreAutoFightRuntimeAfterLogin(autoFight);
             return;
         }
 
@@ -576,8 +602,9 @@ public class AutoFunctionsManager {
                     AppVars.LastBoiTimer = new java.util.Date();
                     Log.d(TAG, "restoreAutoFightRuntimeAfterLogin: forcing frame reload bootstrap");
                     String reloadUrl = "http://neverlands.ru/main.php?get_id=56&act=10&go=inf&ab_reload_probe=1";
-                    if (AppVars.VCode != null && !AppVars.VCode.isEmpty()) {
-                        reloadUrl += "&vcode=" + AppVars.VCode;
+                    String loginRestoreVcode = SessionManager.getInstance().getValidVCodeForAction("autofight_restore_login");
+                    if (loginRestoreVcode != null && !loginRestoreVcode.isEmpty()) {
+                        reloadUrl += "&vcode=" + loginRestoreVcode;
                     }
                     reloadUrl += "&ts=" + System.currentTimeMillis();
                     Log.d(TAG, "restoreAutoFightRuntimeAfterLogin: reload fight frame " + reloadUrl);

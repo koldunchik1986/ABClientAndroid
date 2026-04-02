@@ -22,6 +22,8 @@ public class AppTimer {
     public String complect = "";
     public int id = 0;
     public boolean isHerb = false;
+    public String enableAutoFunction = "";  // Включить авто-функцию (напр. "Авто-Бой")
+    public String disableAutoFunction = ""; // Выключить авто-функцию
 
     public AppTimer() {
     }
@@ -38,6 +40,8 @@ public class AppTimer {
         result.complect = complect;
         result.id = id;
         result.isHerb = isHerb;
+        result.enableAutoFunction = enableAutoFunction;
+        result.disableAutoFunction = disableAutoFunction;
         return result;
     }
 

@@ -122,9 +122,10 @@ public final class ForcedActionGuard {
             }
         }
         
-        // Если идет бой - не влезаем
+        // 🆕 FIX: Если идет бой, ОБЯЗАТЕЛЬНО разрешаем autoTurn запросы
+        // Это обеспечивает непрерывные ходы во время активного боя
         if (fightLikelyActive) {
-            return false;
+            return true;
         }
         
         // Стандартная проверка с игнорированием UI foreground

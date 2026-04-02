@@ -11,6 +11,7 @@ import ru.neverlands.abclient.model.InvEntry;
 import ru.neverlands.abclient.postfilter.Filter;
 import ru.neverlands.abclient.postfilter.MainPhp;
 import ru.neverlands.abclient.utils.AppVars;
+import ru.neverlands.abclient.utils.FileLogger;
 import ru.neverlands.abclient.utils.HtmlUtils;
 import ru.neverlands.abclient.utils.HelperStrings;
 import ru.neverlands.abclient.utils.Russian;
@@ -232,6 +233,24 @@ public class FastActionManager {
         AppVars.FastCount = count;
         AppVars.FastPauseNonCombatAutoFunctions = true;
         AppVars.FastReturnToMapPending = true;
+        
+        // === УСИЛЕННОЕ ЛОГИРОВАНИЕ ДЛЯ ДИАГНОСТИКИ ===
+        FileLogger.trace(TAG, "[FAST_START_DIAGNOSTIC] СРАЗУ ПОСЛЕ УСТАНОВКИ: "
+                + "id='" + id + "'"
+                + ", nick='" + nick + "'"
+                + ", count=" + count
+                + " | AppVars.FastNeed=" + AppVars.FastNeed
+                + ", AppVars.FastId='" + AppVars.FastId + "'"
+                + ", AppVars.FastNick='" + AppVars.FastNick + "'"
+                + ", AppVars.FastCount=" + AppVars.FastCount
+                + ", thread=" + Thread.currentThread().getId()
+                + ", timestamp=" + System.currentTimeMillis());
+        
+        Log.i(TAG, "[FAST_START_DIAGNOSTIC] СРАЗУ ПОСЛЕ УСТАНОВКИ: "
+                + "id='" + id + "'"
+                + ", AppVars.FastId='" + AppVars.FastId + "'"
+                + ", FastNeed=" + AppVars.FastNeed);
+        
         Log.d(TAG, "fastStart: id=" + id + ", nick=" + nick + ", count=" + count);
         Log.d(TAG, "[AA_TRACE] fastStart state: prevFastNeed=" + prevFastNeed
                 + ", prevFastId=" + prevFastId
@@ -266,6 +285,15 @@ public class FastActionManager {
         String oldFastNick = AppVars.FastNick;
         int oldFastCount = AppVars.FastCount;
         boolean oldPauseNonCombatAuto = AppVars.FastPauseNonCombatAutoFunctions;
+        
+        // ✅ ЛОГИРОВАНИЕ ПЕРЕД СБРОСОМ
+        String beforeMsg = "[FASTCANCEL_STARTED] reason='" + reason + "'"
+                + ", oldFastNeed=" + oldFastNeed
+                + ", oldFastId='" + oldFastId + "'"
+                + ", oldFastNick='" + oldFastNick + "'";
+        Log.i(TAG, beforeMsg);
+        FileLogger.trace(TAG, beforeMsg);
+        
         // Полный сброс параметров быстрого действия.
         AppVars.FastNeed = false;
         AppVars.FastNick = null;
@@ -274,11 +302,72 @@ public class FastActionManager {
         AppVars.FastPauseNonCombatAutoFunctions = false;
         AppVars.FastNeedAbilDarkTeleport = false;
         AppVars.FastNeedAbilDarkFog = false;
+        
+        // ✅ ЛОГИРОВАНИЕ ПОСЛЕ СБРОСА
+        String afterMsg = "[FASTCANCEL_STATE_CLEARED] reason='" + reason + "'"
+                + ", FastNeed=" + AppVars.FastNeed
+                + ", FastId=" + AppVars.FastId
+                + ", FastNick=" + AppVars.FastNick;
+        FileLogger.trace(TAG, afterMsg);
 
         if (AppVars.FastWaitEndOfBoiActive) {
             // Если активен фон ожидания конца боя — запрашиваем отмену.
             AppVars.FastWaitEndOfBoiCancel = true;
         }
+        
+        // === Восстановление авто-функций из таймера паузы ===
+        // Если таймер был на паузе (за 5 сек до срабатывания), восстанавливаем состояние
+        if (AppVars.TimerPauseNonCombatAutoFunctions) {
+            try {
+                AutoFunctionsManager mgr = AutoFunctionsManager.getInstance(
+                        AppVars.mainActivity != null && AppVars.mainActivity.get() != null ? 
+                        AppVars.mainActivity.get() : null);
+                
+                if (mgr != null) {
+                    if (AppVars.TimerPauseAutoFishState && !mgr.isAutoFishEnabled()) {
+                        mgr.setAutoFishEnabled(true);
+                        Log.d(TAG, "[TIMER_RESTORE] Auto-Fishing restored");
+                    }
+                    if (AppVars.TimerPauseAutoSkinState && !mgr.isAutoSkinEnabled()) {
+                        mgr.setAutoSkinEnabled(true);
+                        Log.d(TAG, "[TIMER_RESTORE] Auto-Hunting restored");
+                    }
+                    if (AppVars.TimerPauseAutoCutState && !mgr.isAutoCutEnabled()) {
+                        mgr.setAutoCutEnabled(true);
+                        Log.d(TAG, "[TIMER_RESTORE] Auto-Herb restored");
+                    }
+                    if (AppVars.TimerPauseAutoBaitState && !mgr.isAutoBaitEnabled()) {
+                        mgr.setAutoBaitEnabled(true);
+                        Log.d(TAG, "[TIMER_RESTORE] Auto-Bait restored");
+                    }
+                    if (AppVars.TimerPauseAutoCompassState && !mgr.isAutoCompassEnabled()) {
+                        mgr.setAutoCompassEnabled(true);
+                        Log.d(TAG, "[TIMER_RESTORE] Auto-Compass restored");
+                    }
+                    if (AppVars.TimerPauseAutoAttackState && !mgr.isAutoAttackEnabled()) {
+                        mgr.setAutoAttackEnabled(true);
+                        Log.d(TAG, "[TIMER_RESTORE] Auto-Attack restored");
+                    }
+                    if (AppVars.TimerPauseAutoInvisibleState && !mgr.isAutoInvisibleEnabled()) {
+                        mgr.setAutoInvisibleEnabled(true);
+                        Log.d(TAG, "[TIMER_RESTORE] Auto-Invisible restored");
+                    }
+                }
+            } catch (Exception e) {
+                Log.e(TAG, "[TIMER_RESTORE] Error restoring auto functions", e);
+            }
+            
+            AppVars.TimerPauseNonCombatAutoFunctions = false;
+            AppVars.TimerPauseAutoFishState = false;
+            AppVars.TimerPauseAutoSkinState = false;
+            AppVars.TimerPauseAutoCutState = false;
+            AppVars.TimerPauseAutoBaitState = false;
+            AppVars.TimerPauseAutoCompassState = false;
+            AppVars.TimerPauseAutoAttackState = false;
+            AppVars.TimerPauseAutoInvisibleState = false;
+            FileLogger.trace("FastActionManager", "[TIMER_RESTORE] Non-combat autos restored after timer pause");
+        }
+        
         Log.d(TAG, "fastCancel");
         Log.d(TAG, "[AA_TRACE] fastCancel reason=" + reason
                 + ", oldFastNeed=" + oldFastNeed
@@ -661,7 +750,23 @@ public class FastActionManager {
      * @return `byte[]` с HTML-ответом postfilter или `null`, если fast-ветка не обработана.
      */
     public static byte[] processMainPhpFast(String address, String html, MainPhpFastHost host) {
-        if (host == null || !AppVars.FastNeed || AppVars.FastId == null) return null;
+        // === КРИТИЧНАЯ ДИАГНОСТИКА: Проверяем что получаем НА ВХОДЕ ===
+        FileLogger.trace(TAG, "[PROCESSMAINPHPFAST_ENTRY_DIAGNOSTIC] "
+                + "host=" + (host != null ? "NOT_NULL" : "NULL")
+                + ", FastNeed=" + AppVars.FastNeed
+                + ", FastId='" + AppVars.FastId + "'"
+                + ", FastNick='" + AppVars.FastNick + "'"
+                + ", FastCount=" + AppVars.FastCount
+                + ", address=" + address + ", timestamp=" + System.currentTimeMillis());
+        
+        Log.i(TAG, "[PROCESSMAINPHPFAST_ENTRY_DIAGNOSTIC] FastNeed=" + AppVars.FastNeed + ", FastId='" + AppVars.FastId + "'");
+        
+        if (host == null || !AppVars.FastNeed || AppVars.FastId == null) {
+            FileLogger.trace(TAG, "[PROCESSMAINPHPFAST_EARLY_EXIT] "
+                    + "host=" + (host != null) + ", FastNeed=" + AppVars.FastNeed + ", FastId=" + (AppVars.FastId != null));
+            return null;
+        }
+        
         String fastId = AppVars.FastId;
         Log.d(TAG, "processMainPhpFast: FastId=" + fastId + ", address=" + address);
 
@@ -1525,10 +1630,212 @@ public class FastActionManager {
     }
 
     /**
+     * Выбирает лучшее зелье по приоритетам:
+     * 1. "Превосходное Зелье ..." имеет приоритет над обычным "Зелье ..."
+     * 2. При наличии нескольких одного типа, выбирается то что скоро испортится
+     *    (с минимальным значением expireMs, т.е. ближайшей датой истечения)
+     * 
+     * Возвращает массив [wuid, wmcode, expires_ms] или null если не найдено
+     */
+    private static String[] selectBestPotionByExpiration(String html, String fastId) {
+        class PotionMatch {
+            String wuid;
+            String wmcode;
+            long expireMs = Long.MAX_VALUE;  // 0 или MAX если нет срока
+            boolean isExcellent;
+            
+            PotionMatch(String wuid, String wmcode, String exprStr, boolean isExcellent) {
+                this.wuid = wuid;
+                this.wmcode = wmcode;
+                this.isExcellent = isExcellent;
+                // Парсим срок годности из строки вида "Срок годности: ДД.MM.ГГГГ ЧЧ:ММ"
+                if (exprStr != null && !exprStr.isEmpty()) {
+                    try {
+                        String[] parts = exprStr.split("[. :]");
+                        if (parts.length >= 5) {
+                            int day = Integer.parseInt(parts[0]);
+                            int month = Integer.parseInt(parts[1]);
+                            int year = Integer.parseInt(parts[2]);
+                            int hour = Integer.parseInt(parts[3]);
+                            int minute = Integer.parseInt(parts[4]);
+                            java.util.Calendar cal = java.util.Calendar.getInstance();
+                            cal.set(java.util.Calendar.YEAR, year);
+                            cal.set(java.util.Calendar.MONTH, month - 1);
+                            cal.set(java.util.Calendar.DAY_OF_MONTH, day);
+                            cal.set(java.util.Calendar.HOUR_OF_DAY, hour);
+                            cal.set(java.util.Calendar.MINUTE, minute);
+                            cal.set(java.util.Calendar.SECOND, 0);
+                            this.expireMs = cal.getTimeInMillis() + 24L * 60L * 60L * 1000L;
+                        } else {
+                            this.expireMs = Long.MAX_VALUE;  // Нет срока
+                        }
+                    } catch (Exception e) {
+                        this.expireMs = Long.MAX_VALUE;
+                    }
+                } else {
+                    this.expireMs = Long.MAX_VALUE;
+                }
+            }
+        }
+        
+        java.util.List<PotionMatch> excellentPotions = new java.util.ArrayList<>();
+        java.util.List<PotionMatch> regularPotions = new java.util.ArrayList<>();
+        
+        // Ищем ВСЕ совпадения зелья в HTML
+        String excellentName = "Превосходное " + fastId;
+        
+        // Поиск "Превосходного" зелья
+        int pos = 0;
+        while (pos < html.length()) {
+            int idx = indexOfIgnoreCase(html, excellentName, pos);
+            if (idx == -1) break;
+            
+            // Ищем magicreform вызов для этого зелья
+            int start = html.lastIndexOf('<', idx);
+            int end = html.indexOf('>', idx);
+            if (start != -1 && end != -1) {
+                String chunk = html.substring(start + 1, end);
+                if (chunk.contains("magicreform(")) {
+                    String args = HelperStrings.subString(chunk, "magicreform('", "')");
+                    if (args != null && !args.isEmpty()) {
+                        String[] arg = args.split("'");
+                        if (arg.length >= 7) {
+                            // Ищем срок годности после этого зелья
+                            int expStart = html.indexOf("<font color=#cc0000>Срок годности: ", end);
+                            String expStr = null;
+                            if (expStart != -1 && expStart < end + 500) {  // Ищем в пределах ~500 chars после
+                                int expEnd = html.indexOf("</font>", expStart);
+                                if (expEnd != -1) {
+                                    expStr = html.substring(expStart + 36, expEnd);  // 36 = длина "<font color=#cc0000>Срок годности: "
+                                }
+                            }
+                            excellentPotions.add(new PotionMatch(arg[0], arg[6], expStr, true));
+                            String exprDesc = expStr != null ? expStr : "нет срока";
+                            String msg = "[POTION_FOUND_EXCELLENT] fastId='" + fastId + "', expire=" + exprDesc + ", wuid=" + arg[0];
+                            Log.d(TAG, "selectBestPotion: " + msg);
+                            ru.neverlands.abclient.utils.FileLogger.trace("fast_action_potion", msg);
+                        }
+                    }
+                }
+            }
+            pos = idx + excellentName.length();
+        }
+        
+        // Поиск обычного зелья (только если нет Превосходного)
+        if (excellentPotions.isEmpty()) {
+            pos = 0;
+            while (pos < html.length()) {
+                int idx = indexOfIgnoreCase(html, "'" + fastId + "'", pos);
+                if (idx == -1) {
+                    idx = indexOfIgnoreCase(html, fastId, pos);
+                    if (idx == -1) break;
+                }
+                
+                int start = html.lastIndexOf('<', idx);
+                int end = html.indexOf('>', idx);
+                if (start != -1 && end != -1) {
+                    String chunk = html.substring(start + 1, end);
+                    if (chunk.contains("magicreform(")) {
+                        String args = HelperStrings.subString(chunk, "magicreform('", "')");
+                        if (args != null && !args.isEmpty()) {
+                            String[] arg = args.split("'");
+                            if (arg.length >= 7) {
+                                // Ищем срок годности
+                                int expStart = html.indexOf("<font color=#cc0000>Срок годности: ", end);
+                                String expStr = null;
+                                if (expStart != -1 && expStart < end + 500) {
+                                    int expEnd = html.indexOf("</font>", expStart);
+                                    if (expEnd != -1) {
+                                        expStr = html.substring(expStart + 36, expEnd);
+                                    }
+                                }
+                                regularPotions.add(new PotionMatch(arg[0], arg[6], expStr, false));
+                                String exprDesc = expStr != null ? expStr : "нет срока";
+                                String msg = "[POTION_FOUND_REGULAR] fastId='" + fastId + "', expire=" + exprDesc + ", wuid=" + arg[0];
+                                Log.d(TAG, "selectBestPotion: " + msg);
+                                ru.neverlands.abclient.utils.FileLogger.trace("fast_action_potion", msg);
+                            }
+                        }
+                    }
+                }
+                pos = idx + fastId.length();
+            }
+        }
+        
+        // Выбираем лучшее зелье
+        java.util.List<PotionMatch> candidates = excellentPotions.isEmpty() ? regularPotions : excellentPotions;
+        if (candidates.isEmpty()) {
+            String msg = "[POTION_NOT_FOUND] fastId='" + fastId + "'";
+            Log.w(TAG, "selectBestPotion: " + msg);
+            ru.neverlands.abclient.utils.FileLogger.trace("fast_action_potion", msg);
+            return null;
+        }
+        
+        // Сортируем по сроку годности (меньше = скоро испортится, выбираем первым)
+        java.util.Collections.sort(candidates, (a, b) -> Long.compare(a.expireMs, b.expireMs));
+        PotionMatch best = candidates.get(0);
+        
+        String expDesc = best.expireMs == Long.MAX_VALUE ? "нет срока" : (best.expireMs + "ms");
+        String msg = "[POTION_SELECTED] fastId='" + fastId + "', type=" + (best.isExcellent ? "EXCELLENT" : "REGULAR")
+                + ", expire=" + expDesc + ", candidates=" + candidates.size() + ", wuid=" + best.wuid;
+        Log.d(TAG, "selectBestPotion: " + msg);
+        ru.neverlands.abclient.utils.FileLogger.trace("fast_action_potion", msg);
+        
+        return new String[] { best.wuid, best.wmcode };
+    }
+
+    /**
      * Парсер для зелий (magicreform) — аналог mainPhpFastPotion в C#.
      * Ищет magicreform('wuid','target','potionName','wmcode')
      */
     private static String mainPhpFastPotion(String html) {
+        String fastId = AppVars.FastId;
+        String msg = "[MAINPHP_FAST_POTION_START] fastId='" + fastId + "'";
+        Log.d(TAG, msg);
+        ru.neverlands.abclient.utils.FileLogger.trace("fast_action_potion", msg);
+
+        // Используем новый метод selectBestPotionByExpiration для выбора зелья с приоритетом:
+        // 1. "Превосходное Зелье" имеет приоритет над "Зелье"
+        // 2. Среди одного типа выбирается то что скоро испортится (ближайший срок)
+        String[] result = selectBestPotionByExpiration(html, fastId);
+        
+        if (result == null || result.length < 2) {
+            String notFoundMsg = "[POTION_NOT_FOUND_IN_MAINPHP] fastId='" + fastId + "'";
+            Log.w(TAG, "mainPhpFastPotion: " + notFoundMsg);
+            ru.neverlands.abclient.utils.FileLogger.trace("fast_action_potion", notFoundMsg);
+            return null;
+        }
+        
+        String wuid = result[0];
+        String wmcode = result[1];
+        
+        String foundMsg = "[POTION_FORM_PREPARED] wuid='" + wuid + "', wmcode='" + wmcode + "'";
+        Log.d(TAG, foundMsg);
+        ru.neverlands.abclient.utils.FileLogger.trace("fast_action_potion", foundMsg);
+
+        return HTML_HEAD +
+                "Используем " + AppVars.FastId + "..." +
+                "<form action=\"http://neverlands.ru/main.php\" method=POST name=ff>" +
+                "<input name=magicrestart type=hidden value=\"1\">" +
+                "<input name=magicreuid type=hidden value=\"" + wuid + "\">" +
+                "<input name=vcode type=hidden value=\"" + wmcode + "\">" +
+                "<input name=post_id type=hidden value=\"46\">" +
+                "<input name=fornickname type=hidden value=\"" + AppVars.FastNick + "\">" +
+                "<input name=agree type=hidden value=\"Применить\">" +
+                "</form>" +
+                buildSubmitScript();
+    }
+
+    /*
+     * СТАРАЯ РЕАЛИЗАЦИЯ (оставлена для reference):
+     * 
+     * Эта функция раньше просто находила ПЕРВОЕ совпадение зелья в HTML.
+     * Теперь она использует selectBestPotionByExpiration который:
+     * 1. Находит ВСЕ совпадения нужного зелья
+     * 2. Выбирает "Превосходное" если есть, иначе обычное
+     * 3. Среди выбранного типа выбирает то с ближайшим сроком истечения
+     * 
+    private static String mainPhpFastPotion_OLD(String html) {
         String fastId = AppVars.FastId;
         Log.d(TAG, "mainPhpFastPotion: ищем '" + fastId + "' в HTML (" + html.length() + " chars)");
 
@@ -1611,11 +1918,12 @@ public class FastActionManager {
                 "<input name=magicreuid type=hidden value=\"" + wuid + "\">" +
                 "<input name=vcode type=hidden value=\"" + wmcode + "\">" +
                 "<input name=post_id type=hidden value=\"46\">" +
-                "<input name=fornickname type=hidden value=\"" + AppVars.FastNick + "\">" +
-                "<input name=agree type=hidden value=\"Применить\">" +
+                "<input name=fnick type=hidden value=\"" + AppVars.FastNick + "\">" +
+                "<input name=agree type=hidden value=\"Выполнить\">" +
                 "</form>" +
                 buildSubmitScript();
     }
+    */
 
     /**
      * Парсер для свитков без pnick (саморассеивание, обнаружение).

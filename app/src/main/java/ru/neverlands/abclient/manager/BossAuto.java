@@ -10,6 +10,9 @@ import java.util.Locale;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import android.os.Handler;
+import android.os.Looper;
+
 import ru.neverlands.abclient.MainActivity;
 import ru.neverlands.abclient.postfilter.MainPhp;
 import ru.neverlands.abclient.utils.AppVars;
@@ -94,6 +97,18 @@ final class BossAuto {
     private static final int TARGET_CHAT_ASK_MAX_ATTEMPTS = 5;
     private static final long TARGET_CHAT_ASK_RETRY_MS = 1_500L;
     private static final long TARGET_FIGHT_POLL_INTERVAL_MS = 1_000L;
+    /**
+     * Задержка перед отправкой клан-сообщения о событии босса.
+     * Нужна для:
+     * 1. Предотвращения DDoS-блокировки сервером (много параллельных запросов)
+     * 2. Буферизации потока быстрых pinfo/compass запросов
+     */
+    private static final long CLAN_NOTIFY_DELAY_MS = 1000L;
+    /**
+     * Задержка между clan message и private message для ask target.
+     * Предотвращает отклонение обоих сообщений как DDoS.
+     */
+    private static final long CLAN_PRIVATE_MESSAGE_DELAY_MS = 500L;
     /**
      * Максимальное количество тиков отсутствия fight FID перед признанием боя потерянным.
      * Защита от бесконечного incrementing в случае потери соединения или ошибки сервера.
@@ -1048,12 +1063,17 @@ final class BossAuto {
         }
 
         String message = "%<" + target + "> Подскажи на какой клетке Босс?";
-        Chat.sendMessageToServer(message);
+        // Отправляем private message с задержкой 500ms после clan message
+        final String privateMsg = message;
+        new Handler(Looper.getMainLooper()).postDelayed(() -> {
+            Chat.sendMessageToServer(privateMsg);
+            Log.d(TAG, TRACE_PREFIX + " ask target sent (delayed): target=" + target + ", message=" + privateMsg);
+        }, CLAN_PRIVATE_MESSAGE_DELAY_MS);
         synchronized (lock) {
             targetAskAttempts = TARGET_CHAT_ASK_MAX_ATTEMPTS;
             targetAskNextAttemptAtMs = 0L;
         }
-        Log.d(TAG, TRACE_PREFIX + " ask target sent: target=" + target + ", message=" + message);
+        Log.d(TAG, TRACE_PREFIX + " ask target scheduled (500ms delay): target=" + target);
     }
 
     /**
@@ -1072,8 +1092,18 @@ final class BossAuto {
             return;
         }
         String message = "%<" + normalizedTarget + "> Подскажи на какой клетке Босс?";
-        Chat.sendMessageToServer(message);
-        Log.d(TAG, TRACE_PREFIX + " ask target sent (single): target=" + normalizedTarget + ", message=" + message);
+        // Отправляем private message с задержкой 500ms для DDoS protection
+        final String singleMsg = message;
+        final String finalNorm = normalizedTarget;
+        new Handler(Looper.getMainLooper()).postDelayed(() -> {
+            Chat.sendMessageToServer(singleMsg);
+            String traceMsg = "[BOSS_PRIVATE_MSG_SENT] Single ask, target=" + finalNorm;
+            FileLogger.trace("boss_auto", traceMsg);
+            Log.d(TAG, TRACE_PREFIX + " ask target sent (single, delayed): target=" + finalNorm + ", message=" + singleMsg);
+        }, CLAN_PRIVATE_MESSAGE_DELAY_MS);
+        String queueMsg = "[BOSS_PRIVATE_MSG_QUEUED] Single ask, target=" + normalizedTarget + ", delay=500ms";
+        FileLogger.trace("boss_auto", queueMsg);
+        Log.d(TAG, TRACE_PREFIX + " ask target queued (single, 500ms delay): target=" + normalizedTarget);
     }
 
     /**
@@ -1507,9 +1537,20 @@ final class BossAuto {
             FileLogger.log("[BossAuto.sendClanBossEventMessageIfNeeded] WebView not ready, message queued for retry: " + message.substring(0, Math.min(100, message.length())));
             writeBossChat("Клан-сообщение добавлено в очередь. Будет отправлено при подготовке чата.");
         }
-        Chat.sendMessageToServer(message);
-        FileLogger.log("[BossAuto.sendClanBossEventMessageIfNeeded] Sent to Chat.sendMessageToServer: " + message.substring(0, Math.min(100, message.length())));
-        Log.d(TAG, TRACE_PREFIX + " clan notify event sent: target=" + normalizedTarget + ", cells=" + cellsCsv
+        // Отправляем clan message с задержкой 1 сек для DDoS protection
+        // (буферизация потока pinfo + compass + других запросов)
+        final String clanMsg = message;
+        final String finalNorm = normalizedTarget;
+        new Handler(Looper.getMainLooper()).postDelayed(() -> {
+            Chat.sendMessageToServer(clanMsg);
+            String traceMsg = "[BOSS_CLAN_MSG_SENT] Delayed 1s, target=" + finalNorm + ", msg=" + clanMsg.substring(0, Math.min(80, clanMsg.length()));
+            FileLogger.trace("boss_auto", traceMsg);
+            FileLogger.log("[BossAuto.sendClanBossEventMessageIfNeeded] Sent to Chat.sendMessageToServer (after 1s delay): " + clanMsg.substring(0, Math.min(100, clanMsg.length())));
+            Log.d(TAG, TRACE_PREFIX + " clan notify event sent (delayed): target=" + finalNorm);
+        }, CLAN_NOTIFY_DELAY_MS);
+        String schedMsg = "[BOSS_CLAN_MSG_SCHEDULED] 1s delay, target=" + normalizedTarget + ", cells=" + cellsCsv + ", chatReady=" + chatReady;
+        FileLogger.trace("boss_auto", schedMsg);
+        Log.d(TAG, TRACE_PREFIX + " clan notify event scheduled (1s delay): target=" + normalizedTarget + ", cells=" + cellsCsv
                 + ", chatReady=" + chatReady);
     }
 

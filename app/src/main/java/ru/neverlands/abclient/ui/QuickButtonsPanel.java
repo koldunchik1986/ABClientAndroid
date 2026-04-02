@@ -53,6 +53,7 @@ import ru.neverlands.abclient.model.Cell;
 import ru.neverlands.abclient.utils.AppVars;
 import ru.neverlands.abclient.utils.ChatStats;
 import ru.neverlands.abclient.utils.ExtMap;
+import ru.neverlands.abclient.utils.FileLogger;
 import androidx.fragment.app.FragmentActivity;
 
 /**
@@ -75,6 +76,11 @@ public class QuickButtonsPanel {
             "Телескопическая Удочка",
             "Телескопическая Облегченная Удочка",
             "Телескопический Спиннинг",
+            "Сачок"
+    };
+    // Для первой руки: только Сачок или Нет (без удочек)
+    private static final String[] FISH_HAND_OPTIONS_FIRST = new String[] {
+            "Нет",
             "Сачок"
     };
     private static final String[] FISH_PRIM_LABELS = new String[] {
@@ -158,6 +164,15 @@ public class QuickButtonsPanel {
             "Зелье Мифриловый Стержень",
             "Зелье Соколиный взор",
             "Секретное Зелье"
+    };
+
+    // Список доступных авто-функций для включения/отключения по таймеру
+    private static final String[] AUTO_FUNCTIONS = new String[]{
+            "Авто-Бой",
+            "Авто-Рыбалка",
+            "Авто-Питьё",
+            "Авто-Клад",
+            "Авто-Босс"
     };
     
     private final Context context;
@@ -1168,11 +1183,12 @@ public class QuickButtonsPanel {
         root.addView(hand1Title);
 
         Spinner hand1Spinner = new Spinner(context);
-        ArrayAdapter<String> handAdapter = new ArrayAdapter<>(context, android.R.layout.simple_spinner_item, FISH_HAND_OPTIONS);
-        handAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-        hand1Spinner.setAdapter(handAdapter);
-        int hand1Index = indexOfFishHand(AppVars.Profile.FishHandOne);
-        hand1Spinner.setSelection(hand1Index >= 0 ? hand1Index : 1);
+        // Для первой руки: только Сачок или Нет
+        ArrayAdapter<String> hand1Adapter = new ArrayAdapter<>(context, android.R.layout.simple_spinner_item, FISH_HAND_OPTIONS_FIRST);
+        hand1Adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        hand1Spinner.setAdapter(hand1Adapter);
+        int hand1Index = indexOfFishHandFirst(AppVars.Profile.FishHandOne);
+        hand1Spinner.setSelection(hand1Index >= 0 ? hand1Index : 0);
         root.addView(hand1Spinner);
 
         TextView hand2Title = new TextView(context);
@@ -1181,7 +1197,10 @@ public class QuickButtonsPanel {
         root.addView(hand2Title);
 
         Spinner hand2Spinner = new Spinner(context);
-        hand2Spinner.setAdapter(handAdapter);
+        // Для второй руки: все варианты
+        ArrayAdapter<String> hand2Adapter = new ArrayAdapter<>(context, android.R.layout.simple_spinner_item, FISH_HAND_OPTIONS);
+        hand2Adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        hand2Spinner.setAdapter(hand2Adapter);
         int hand2Index = indexOfFishHand(AppVars.Profile.FishHandTwo);
         hand2Spinner.setSelection(hand2Index >= 0 ? hand2Index : 0);
         root.addView(hand2Spinner);
@@ -1253,7 +1272,7 @@ public class QuickButtonsPanel {
                 .setView(scroll)
                 .setPositiveButton("Сохранить", (dialog, which) -> {
                     AppVars.Profile.FishAutoWear = autoWear.isChecked();
-                    AppVars.Profile.FishHandOne = FISH_HAND_OPTIONS[Math.max(0, hand1Spinner.getSelectedItemPosition())];
+                    AppVars.Profile.FishHandOne = FISH_HAND_OPTIONS_FIRST[Math.max(0, hand1Spinner.getSelectedItemPosition())];
                     AppVars.Profile.FishHandTwo = FISH_HAND_OPTIONS[Math.max(0, hand2Spinner.getSelectedItemPosition())];
                     int tiedHigh = AppVars.Profile.FishTiedHigh;
                     try {
@@ -1291,26 +1310,43 @@ public class QuickButtonsPanel {
             return;
         }
         String current = firstHand ? AppVars.Profile.FishHandOne : AppVars.Profile.FishHandTwo;
-        int selectedIndex = indexOfFishHand(current);
-        if (selectedIndex < 0) selectedIndex = 0;
-        final int safeSelectedIndex = selectedIndex;
         String title = firstHand ? "Предмет в руке 1" : "Предмет в руке 2";
 
-        new AlertDialog.Builder(context)
-                .setTitle(title)
-                .setSingleChoiceItems(FISH_HAND_OPTIONS, safeSelectedIndex, (dialog, which) -> {
-                    if (firstHand) {
-                        AppVars.Profile.FishHandOne = FISH_HAND_OPTIONS[which];
-                    } else {
+        // Для первой руки: только Сачок и Нет
+        if (firstHand) {
+            int selectedIndex = indexOfFishHandFirst(current);
+            if (selectedIndex < 0) selectedIndex = 0;
+            final int safeSelectedIndex = selectedIndex;
+            
+            new AlertDialog.Builder(context)
+                    .setTitle(title)
+                    .setSingleChoiceItems(FISH_HAND_OPTIONS_FIRST, safeSelectedIndex, (dialog, which) -> {
+                        AppVars.Profile.FishHandOne = FISH_HAND_OPTIONS_FIRST[which];
+                        AppVars.Profile.save(context);
+                        Toast.makeText(context, title + ": " + FISH_HAND_OPTIONS_FIRST[which], Toast.LENGTH_SHORT).show();
+                        dialog.dismiss();
+                        showAutoFishSettingsDialog();
+                    })
+                    .setNegativeButton("Отмена", (dialog, which) -> showAutoFishSettingsDialog())
+                    .show();
+        } else {
+            // Для второй руки: все варианты удочек
+            int selectedIndex = indexOfFishHand(current);
+            if (selectedIndex < 0) selectedIndex = 0;
+            final int safeSelectedIndex = selectedIndex;
+            
+            new AlertDialog.Builder(context)
+                    .setTitle(title)
+                    .setSingleChoiceItems(FISH_HAND_OPTIONS, safeSelectedIndex, (dialog, which) -> {
                         AppVars.Profile.FishHandTwo = FISH_HAND_OPTIONS[which];
-                    }
-                    AppVars.Profile.save(context);
-                    Toast.makeText(context, title + ": " + FISH_HAND_OPTIONS[which], Toast.LENGTH_SHORT).show();
-                    dialog.dismiss();
-                    showAutoFishSettingsDialog();
-                })
-                .setNegativeButton("Отмена", (dialog, which) -> showAutoFishSettingsDialog())
-                .show();
+                        AppVars.Profile.save(context);
+                        Toast.makeText(context, title + ": " + FISH_HAND_OPTIONS[which], Toast.LENGTH_SHORT).show();
+                        dialog.dismiss();
+                        showAutoFishSettingsDialog();
+                    })
+                    .setNegativeButton("Отмена", (dialog, which) -> showAutoFishSettingsDialog())
+                    .show();
+        }
     }
 
     private void showFishPrimsSelector() {
@@ -1353,6 +1389,18 @@ public class QuickButtonsPanel {
             }
         }
         return -1;
+    }
+
+    private int indexOfFishHandFirst(String value) {
+        if (value == null) return -1;
+        // Ищем в массиве для первой руки (только Сачок и Нет)
+        for (int i = 0; i < FISH_HAND_OPTIONS_FIRST.length; i++) {
+            if (FISH_HAND_OPTIONS_FIRST[i].equalsIgnoreCase(value)) {
+                return i;
+            }
+        }
+        // Если значение не найдено (например, была удочка), возвращаем индекс "Нет"
+        return 0;
     }
 
     private int indexOfTreasureShovel(String value) {
@@ -2035,22 +2083,63 @@ public class QuickButtonsPanel {
         LinearLayout.LayoutParams hourParams = new LinearLayout.LayoutParams(dpToPx(80), LinearLayout.LayoutParams.WRAP_CONTENT);
         delayRow.addView(hourInput, hourParams);
 
+        TextView hourLabel = new TextView(context);
+        hourLabel.setText("час");
+        hourLabel.setPadding(dpToPx(4), 0, dpToPx(8), 0);
+        delayRow.addView(hourLabel);
+
         EditText minuteInput = new EditText(context);
         minuteInput.setInputType(InputType.TYPE_CLASS_NUMBER);
         minuteInput.setSingleLine(true);
         minuteInput.setHint("мин");
         LinearLayout.LayoutParams minuteParams = new LinearLayout.LayoutParams(dpToPx(80), LinearLayout.LayoutParams.WRAP_CONTENT);
-        minuteParams.leftMargin = dpToPx(8);
         delayRow.addView(minuteInput, minuteParams);
+
+        TextView minLabel = new TextView(context);
+        minLabel.setText("мин");
+        minLabel.setPadding(dpToPx(4), 0, 0, 0);
+        delayRow.addView(minLabel);
 
         RadioGroup modeGroup = new RadioGroup(context);
         modeGroup.setOrientation(LinearLayout.VERTICAL);
         modeGroup.setPadding(0, pad, 0, 0);
         root.addView(modeGroup);
 
-        RadioButton modeNone = new RadioButton(context);
-        modeNone.setText("Просто таймер");
-        modeGroup.addView(modeNone);
+        // ===== НОВЫЕ РЕЖИМЫ ТАЙМЕРОВ =====
+        RadioButton modeEnableAutoFunc = new RadioButton(context);
+        modeEnableAutoFunc.setText("Включить Авто-Функцию");
+        modeGroup.addView(modeEnableAutoFunc);
+
+        // Контейнер для режима "Включить Авто-Функцию"
+        LinearLayout enableAutoFuncContainer = new LinearLayout(context);
+        enableAutoFuncContainer.setOrientation(LinearLayout.HORIZONTAL);
+        enableAutoFuncContainer.setPadding(dpToPx(16), dpToPx(4), 0, 0);
+        enableAutoFuncContainer.setVisibility(View.GONE);
+        Spinner enableAutoFuncSpinner = new Spinner(context);
+        ArrayAdapter<String> enableAdapter = new ArrayAdapter<>(context, android.R.layout.simple_spinner_item, AUTO_FUNCTIONS);
+        enableAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        enableAutoFuncSpinner.setAdapter(enableAdapter);
+        LinearLayout.LayoutParams spinnerParams = new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f);
+        enableAutoFuncContainer.addView(enableAutoFuncSpinner, spinnerParams);
+        root.addView(enableAutoFuncContainer);
+
+        RadioButton modeDisableAutoFunc = new RadioButton(context);
+        modeDisableAutoFunc.setText("Выключить Авто-Функцию");
+        modeGroup.addView(modeDisableAutoFunc);
+
+        // Контейнер для режима "Выключить Авто-Функцию"
+        LinearLayout disableAutoFuncContainer = new LinearLayout(context);
+        disableAutoFuncContainer.setOrientation(LinearLayout.HORIZONTAL);
+        disableAutoFuncContainer.setPadding(dpToPx(16), dpToPx(4), 0, 0);
+        disableAutoFuncContainer.setVisibility(View.GONE);
+        Spinner disableAutoFuncSpinner = new Spinner(context);
+        ArrayAdapter<String> disableAdapter = new ArrayAdapter<>(context, android.R.layout.simple_spinner_item, AUTO_FUNCTIONS);
+        disableAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        disableAutoFuncSpinner.setAdapter(disableAdapter);
+        disableAutoFuncContainer.addView(disableAutoFuncSpinner, spinnerParams);
+        root.addView(disableAutoFuncContainer);
+
+        // ===== ТРАДИЦИОННЫЕ РЕЖИМЫ =====
 
         RadioButton modePotion = new RadioButton(context);
         modePotion.setText("Пьем зелье по таймеру");
@@ -2064,10 +2153,15 @@ public class QuickButtonsPanel {
         modeComplect.setText("Одеваем комплект");
         modeGroup.addView(modeComplect);
 
+        // ===== КОНТЕЙНЕР ДЛЯ РЕЖИМА "ЗЕЛЬЕ" =====
+        LinearLayout potionContainer = new LinearLayout(context);
+        potionContainer.setOrientation(LinearLayout.VERTICAL);
+        potionContainer.setVisibility(View.GONE);
+
         TextView potionTitle = new TextView(context);
         potionTitle.setPadding(0, pad, 0, 0);
         potionTitle.setText("Название зелья (из инвентаря)");
-        root.addView(potionTitle);
+        potionContainer.addView(potionTitle);
 
         Spinner potionSpinner = new Spinner(context);
         ArrayAdapter<String> potionAdapter = new ArrayAdapter<>(
@@ -2077,11 +2171,12 @@ public class QuickButtonsPanel {
         );
         potionAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         potionSpinner.setAdapter(potionAdapter);
-        root.addView(potionSpinner);
+        potionContainer.addView(potionSpinner);
 
         LinearLayout drinkRow = new LinearLayout(context);
         drinkRow.setOrientation(LinearLayout.HORIZONTAL);
         drinkRow.setGravity(Gravity.CENTER_VERTICAL);
+        drinkRow.setPadding(0, dpToPx(4), 0, 0);
         TextView drinkLabel = new TextView(context);
         drinkLabel.setText("Делать глотков");
         drinkRow.addView(drinkLabel);
@@ -2093,48 +2188,68 @@ public class QuickButtonsPanel {
         LinearLayout.LayoutParams drinkCountParams = new LinearLayout.LayoutParams(dpToPx(64), LinearLayout.LayoutParams.WRAP_CONTENT);
         drinkCountParams.leftMargin = dpToPx(8);
         drinkRow.addView(drinkCountInput, drinkCountParams);
-        root.addView(drinkRow);
+        potionContainer.addView(drinkRow);
 
         CheckBox recurCheck = new CheckBox(context);
         recurCheck.setText("Циклическое питье");
-        root.addView(recurCheck);
+        potionContainer.addView(recurCheck);
+
+        root.addView(potionContainer);
+
+        // ===== КОНТЕЙНЕР ДЛЯ РЕЖИМА "ПЕРЕМЕЩЕНИЕ" =====
+        LinearLayout destinationContainer = new LinearLayout(context);
+        destinationContainer.setOrientation(LinearLayout.VERTICAL);
+        destinationContainer.setVisibility(View.GONE);
 
         TextView destinationTitle = new TextView(context);
         destinationTitle.setPadding(0, pad, 0, 0);
         destinationTitle.setText("Клетка назначения");
-        root.addView(destinationTitle);
+        destinationContainer.addView(destinationTitle);
 
         EditText destinationInput = new EditText(context);
         destinationInput.setSingleLine(true);
         destinationInput.setHint("Например: 12-345");
-        root.addView(destinationInput);
+        destinationContainer.addView(destinationInput);
+
+        root.addView(destinationContainer);
+
+        // ===== КОНТЕЙНЕР ДЛЯ РЕЖИМА "КОМПЛЕКТ" =====
+        LinearLayout complectContainer = new LinearLayout(context);
+        complectContainer.setOrientation(LinearLayout.VERTICAL);
+        complectContainer.setVisibility(View.GONE);
 
         TextView complectTitle = new TextView(context);
         complectTitle.setPadding(0, pad, 0, 0);
         complectTitle.setText("Название комплекта");
-        root.addView(complectTitle);
+        complectContainer.addView(complectTitle);
 
-        EditText complectInput = new EditText(context);
-        complectInput.setSingleLine(true);
-        root.addView(complectInput);
+        // Получаем список сохраненных комплектов из профиля
+        String[] complectOptions = getComplectOptionsArray();
+        Spinner complectSpinner = new Spinner(context);
+        ArrayAdapter<String> complectAdapter = new ArrayAdapter<>(
+                context,
+                android.R.layout.simple_spinner_item,
+                complectOptions
+        );
+        complectAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        complectSpinner.setAdapter(complectAdapter);
+        complectContainer.addView(complectSpinner);
+
+        root.addView(complectContainer);
 
         Runnable syncModeControls = () -> {
+            boolean isEnable = modeEnableAutoFunc.isChecked();
+            boolean isDisable = modeDisableAutoFunc.isChecked();
             boolean isPotion = modePotion.isChecked();
             boolean isDestination = modeDestination.isChecked();
             boolean isComplect = modeComplect.isChecked();
 
-            potionTitle.setEnabled(isPotion);
-            potionSpinner.setEnabled(isPotion);
-            drinkRow.setEnabled(isPotion);
-            drinkLabel.setEnabled(isPotion);
-            drinkCountInput.setEnabled(isPotion);
-            recurCheck.setEnabled(isPotion);
-
-            destinationTitle.setEnabled(isDestination);
-            destinationInput.setEnabled(isDestination);
-
-            complectTitle.setEnabled(isComplect);
-            complectInput.setEnabled(isComplect);
+            // Управление видимостью контейнеров
+            enableAutoFuncContainer.setVisibility(isEnable ? View.VISIBLE : View.GONE);
+            disableAutoFuncContainer.setVisibility(isDisable ? View.VISIBLE : View.GONE);
+            potionContainer.setVisibility(isPotion ? View.VISIBLE : View.GONE);
+            destinationContainer.setVisibility(isDestination ? View.VISIBLE : View.GONE);
+            complectContainer.setVisibility(isComplect ? View.VISIBLE : View.GONE);
         };
 
         modeGroup.setOnCheckedChangeListener((group, checkedId) -> syncModeControls.run());
@@ -2150,7 +2265,23 @@ public class QuickButtonsPanel {
         minuteInput.setText(String.valueOf(delayMinPart));
 
         if (isEdit) {
-            if (!TextUtils.isEmpty(existingTimer.potion)) {
+            if (!TextUtils.isEmpty(existingTimer.enableAutoFunction)) {
+                modeEnableAutoFunc.setChecked(true);
+                for (int i = 0; i < AUTO_FUNCTIONS.length; i++) {
+                    if (AUTO_FUNCTIONS[i].equals(existingTimer.enableAutoFunction)) {
+                        enableAutoFuncSpinner.setSelection(i);
+                        break;
+                    }
+                }
+            } else if (!TextUtils.isEmpty(existingTimer.disableAutoFunction)) {
+                modeDisableAutoFunc.setChecked(true);
+                for (int i = 0; i < AUTO_FUNCTIONS.length; i++) {
+                    if (AUTO_FUNCTIONS[i].equals(existingTimer.disableAutoFunction)) {
+                        disableAutoFuncSpinner.setSelection(i);
+                        break;
+                    }
+                }
+            } else if (!TextUtils.isEmpty(existingTimer.potion)) {
                 modePotion.setChecked(true);
                 int potionIndex = findPotionOptionIndex(existingTimer.potion);
                 potionSpinner.setSelection(Math.max(0, potionIndex));
@@ -2161,12 +2292,12 @@ public class QuickButtonsPanel {
                 destinationInput.setText(existingTimer.destination);
             } else if (!TextUtils.isEmpty(existingTimer.complect)) {
                 modeComplect.setChecked(true);
-                complectInput.setText(existingTimer.complect);
-            } else {
-                modeNone.setChecked(true);
+                int complectIndex = findComplectOptionIndex(existingTimer.complect);
+                complectSpinner.setSelection(Math.max(0, complectIndex));
             }
         } else {
-            modeNone.setChecked(true);
+            // По умолчанию при создании нового таймера - выбрать первый режим
+            modeEnableAutoFunc.setChecked(true);
         }
 
         syncModeControls.run();
@@ -2174,7 +2305,7 @@ public class QuickButtonsPanel {
         AlertDialog dialog = new AlertDialog.Builder(context)
                 .setTitle(isEdit ? "Изменить таймер" : "Новый таймер")
                 .setView(scroll)
-                .setPositiveButton("Сохранить", null)
+                .setPositiveButton("ОК", null)
                 .setNegativeButton("Отмена", null)
                 .create();
 
@@ -2183,6 +2314,9 @@ public class QuickButtonsPanel {
             if (saveButton == null) {
                 return;
             }
+            // Фиолетовый фон для кнопки "ОК"
+            saveButton.setBackgroundColor(ContextCompat.getColor(context, R.color.purple_500));
+            saveButton.setTextColor(ContextCompat.getColor(context, R.color.white));
             saveButton.setOnClickListener(view -> {
                 int hours = parseIntInRange(hourInput.getText() == null ? "" : hourInput.getText().toString(), 0, 999, 0);
                 int minutes = parseIntInRange(minuteInput.getText() == null ? "" : minuteInput.getText().toString(), 0, 59, 0);
@@ -2194,11 +2328,35 @@ public class QuickButtonsPanel {
                 timer.potion = "";
                 timer.destination = "";
                 timer.complect = "";
+                timer.enableAutoFunction = "";
+                timer.disableAutoFunction = "";
                 timer.drinkCount = 0;
                 timer.isRecur = false;
                 timer.everyMinutes = 0;
 
-                if (modePotion.isChecked()) {
+                if (modeEnableAutoFunc.isChecked()) {
+                    int autoFuncIndex = enableAutoFuncSpinner.getSelectedItemPosition();
+                    if (autoFuncIndex < 0 || autoFuncIndex >= AUTO_FUNCTIONS.length) {
+                        Toast.makeText(context, "Выберите авто-функцию для включения", Toast.LENGTH_SHORT).show();
+                        return;
+                    }
+                    timer.enableAutoFunction = AUTO_FUNCTIONS[autoFuncIndex];
+                    if (TextUtils.isEmpty(timer.description)) {
+                        timer.description = "Включаем " + timer.enableAutoFunction;
+                    }
+                    FileLogger.trace(TAG, "Timer: ENABLE auto=" + timer.enableAutoFunction);
+                } else if (modeDisableAutoFunc.isChecked()) {
+                    int autoFuncIndex = disableAutoFuncSpinner.getSelectedItemPosition();
+                    if (autoFuncIndex < 0 || autoFuncIndex >= AUTO_FUNCTIONS.length) {
+                        Toast.makeText(context, "Выберите авто-функцию для отключения", Toast.LENGTH_SHORT).show();
+                        return;
+                    }
+                    timer.disableAutoFunction = AUTO_FUNCTIONS[autoFuncIndex];
+                    if (TextUtils.isEmpty(timer.description)) {
+                        timer.description = "Выключаем " + timer.disableAutoFunction;
+                    }
+                    FileLogger.trace(TAG, "Timer: DISABLE auto=" + timer.disableAutoFunction);
+                } else if (modePotion.isChecked()) {
                     int potionIndex = potionSpinner.getSelectedItemPosition();
                     if (potionIndex <= 0 || potionIndex >= TIMER_POTION_OPTIONS.length) {
                         Toast.makeText(context, "Выберите зелье", Toast.LENGTH_SHORT).show();
@@ -2228,11 +2386,15 @@ public class QuickButtonsPanel {
                         timer.description = "Идем на " + timer.destination;
                     }
                 } else if (modeComplect.isChecked()) {
-                    timer.complect = complectInput.getText() == null ? "" : complectInput.getText().toString().trim();
-                    if (TextUtils.isEmpty(timer.complect)) {
-                        Toast.makeText(context, "Укажите название комплекта", Toast.LENGTH_SHORT).show();
+                    int complectIndex = complectSpinner.getSelectedItemPosition();
+                    if (complectIndex <= 0 || complectIndex >= getComplectOptionsArray().length) {
+                        Toast.makeText(context, "Выберите комплект", Toast.LENGTH_SHORT).show();
                         return;
                     }
+                    timer.complect = getComplectOptionsArray()[complectIndex];
+                    String msg = "COMPLECT_TIMER_DIALOG_TRACE: selected index=" + complectIndex + ", complect=" + timer.complect;
+                    Log.d(TAG, msg);
+                    FileLogger.trace(TAG, msg);
                     if (TextUtils.isEmpty(timer.description)) {
                         timer.description = "Одеваем комплект " + timer.complect;
                     }
@@ -2267,6 +2429,38 @@ public class QuickButtonsPanel {
         }
         for (int index = 0; index < TIMER_POTION_OPTIONS.length; index++) {
             if (potionName.equalsIgnoreCase(TIMER_POTION_OPTIONS[index])) {
+                return index;
+            }
+        }
+        return 0;
+    }
+
+    /**
+     * Получает список доступных комплектов из профиля.
+     * Если комплектов нет, возвращает массив с одним пунктом "Комплектов не найдено".
+     */
+    private String[] getComplectOptionsArray() {
+        if (AppVars.Profile == null || TextUtils.isEmpty(AppVars.Profile.SavedComplectsList)) {
+            return new String[]{"Откройте инвентарь для обновления"};
+        }
+        String[] complects = AppVars.Profile.SavedComplectsList.split("\\|");
+        if (complects.length == 0) {
+            return new String[]{"Откройте инвентарь для обновления"};
+        }
+        return complects;
+    }
+
+    /**
+     * Находит индекс комплекта в списке.
+     * Если не найден, возвращает 0 (первый пункт).
+     */
+    private int findComplectOptionIndex(String complectName) {
+        if (TextUtils.isEmpty(complectName)) {
+            return 0;
+        }
+        String[] options = getComplectOptionsArray();
+        for (int index = 0; index < options.length; index++) {
+            if (complectName.equalsIgnoreCase(options[index])) {
                 return index;
             }
         }
