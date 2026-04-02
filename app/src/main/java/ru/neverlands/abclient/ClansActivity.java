@@ -36,6 +36,7 @@ import java.util.TimeZone;
 
 import ru.neverlands.abclient.manager.ClanWarsManager;
 import ru.neverlands.abclient.repository.ApiRepository;
+import ru.neverlands.abclient.utils.ParseUtils;
 
 /**
  * Экран "Кланы" с двумя вкладками:
@@ -346,8 +347,8 @@ public class ClansActivity extends AppCompatActivity {
         private TableRow createDataRow(ClanWarsManager.WarTableRow data) {
             TableRow row = new TableRow(requireContext());
 
-            int score1 = parseIntSafe(data.score1Text);
-            int score2 = parseIntSafe(data.score2Text);
+            int score1 = ParseUtils.parseIntSafe(data.score1Text);
+            int score2 = ParseUtils.parseIntSafe(data.score2Text);
             int aggressorColor = resolveWarPartyColor(score1, score2, true);
             int opponentColor = resolveWarPartyColor(score1, score2, false);
 
@@ -513,16 +514,7 @@ public class ClansActivity extends AppCompatActivity {
             return root;
         }
 
-        private int parseIntSafe(String value) {
-            if (isEmpty(value)) {
-                return 0;
-            }
-            try {
-                return Integer.parseInt(value.trim());
-            } catch (Exception ignored) {
-                return 0;
-            }
-        }
+
 
         /**
          * Вычисляет цвет стороны по текущему счёту.

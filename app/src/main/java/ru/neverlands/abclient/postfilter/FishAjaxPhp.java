@@ -25,6 +25,7 @@ import ru.neverlands.abclient.utils.Chat;
 import ru.neverlands.abclient.utils.ChatStats;
 import ru.neverlands.abclient.utils.FileLogger;
 import ru.neverlands.abclient.utils.HelperStrings;
+import ru.neverlands.abclient.utils.ParseUtils;
 import ru.neverlands.abclient.utils.Russian;
 import ru.neverlands.abclient.utils.SessionManager;
 
@@ -474,7 +475,7 @@ public final class FishAjaxPhp {
         if (!matcher.find()) {
             return 0;
         }
-        return parseIntSafe(matcher.group(1));
+        return ParseUtils.parseIntSafe(matcher.group(1));
     }
 
     /**
@@ -769,7 +770,7 @@ public final class FishAjaxPhp {
         while (baitMatcher.find()) {
             String id = baitMatcher.group(1);
             String name = baitMatcher.group(2);
-            int count = parseIntSafe(baitMatcher.group(3));
+            int count = ParseUtils.parseIntSafe(baitMatcher.group(3));
             state.baits.add(new FishBaitSelection(id, name, count));
         }
         return state;
@@ -882,8 +883,8 @@ public final class FishAjaxPhp {
         }
 
         String fishName = html.substring(p1 + 1, p2);
-        int fishCatch = parseIntSafe(HelperStrings.subString(html, "Клёв: ", " шт."));
-        int fishLoot = parseIntSafe(HelperStrings.subString(html, "Улов: ", " шт."));
+        int fishCatch = ParseUtils.parseIntSafe(HelperStrings.subString(html, "Клёв: ", " шт."));
+        int fishLoot = ParseUtils.parseIntSafe(HelperStrings.subString(html, "Улов: ", " шт."));
         if (html.toLowerCase(Locale.ROOT).contains("нет клёва")) {
             fishCatch = 0;
         }
@@ -902,7 +903,7 @@ public final class FishAjaxPhp {
         }
 
         BaitInfo bait = resolveBait();
-        int baitRemainingBefore = parseIntSafe(AppVars.AutoFishLikeVal);
+        int baitRemainingBefore = ParseUtils.parseIntSafe(AppVars.AutoFishLikeVal);
         int baitRemainingAfter = Math.max(0, baitRemainingBefore - fishCatch);
         if (baitRemainingBefore > 0) {
             AppVars.AutoFishLikeVal = String.valueOf(baitRemainingAfter);
@@ -1162,20 +1163,6 @@ public final class FishAjaxPhp {
      * - все разборы payload/отчётов (`act=1`, `act=2`, fish report);
      * - вызывается из `extractFishCooldownSec(...)`, `parseFishAct1State(...)`,
      *   `fishReport(...)` и др.
-     *
-     * Никогда не бросает исключение: при ошибке возвращает `0`.
-     */
-    private static int parseIntSafe(String value) {
-        if (value == null) {
-            return 0;
-        }
-        try {
-            return Integer.parseInt(value.trim().replaceAll("[^0-9\\-]", ""));
-        } catch (Exception ignored) {
-            return 0;
-        }
-    }
-
     /**
      * Возвращает значение из таблицы коэффициентов с fallback.
      */
@@ -1418,7 +1405,7 @@ public final class FishAjaxPhp {
             Pattern lakeidPattern = Pattern.compile("<input[^>]*name=[\"']?lakeid[\"']?[^>]*value=[\"']?([0-9]+)");
             Matcher lakeidMatcher = lakeidPattern.matcher(lakeHtml);
             if (lakeidMatcher.find()) {
-                result.lakeid = parseIntSafe(lakeidMatcher.group(1));
+                result.lakeid = ParseUtils.parseIntSafe(lakeidMatcher.group(1));
             }
 
             // Парсим все доступные act
@@ -1475,11 +1462,11 @@ public final class FishAjaxPhp {
 
             while (baitMatcher.find()) {
                 String baitId = baitMatcher.group(1).trim();
-                int baitsAvailableAtLake = parseIntSafe(baitMatcher.group(2));
+                int baitsAvailableAtLake = ParseUtils.parseIntSafe(baitMatcher.group(2));
 
                 if (baitsAvailableAtLake > 0 && isBaitEnabledInProfile(baitId)) {
                     FishBaitInfo info = new FishBaitInfo();
-                    info.id = parseIntSafe(baitId);
+                    info.id = ParseUtils.parseIntSafe(baitId);
                     info.name = getBaitNameById(baitId);
                     info.stock_count = baitsAvailableAtLake;
                     availableBaits.add(info);

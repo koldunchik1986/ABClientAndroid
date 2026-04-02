@@ -19,6 +19,7 @@ import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+// ParseUtils используется в одном пакете, но импортируем явно для ясности
 public class ChatStats {
     private static final String TAG = "ChatStats";
     // Формат даты для служебных полей статистики (RESET_DATE/DATE).
@@ -353,11 +354,11 @@ public class ChatStats {
             String line;
             while ((line = reader.readLine()) != null) {
                 if (line.startsWith("XP=")) {
-                    totalXp = parseLongSafe(line.substring(3));
+                    totalXp = ParseUtils.parseLongSafe(line.substring(3));
                 } else if (line.startsWith("FIGHTS=")) {
-                    totalFights = parseLongSafe(line.substring(7));
+                    totalFights = ParseUtils.parseLongSafe(line.substring(7));
                 } else if (line.startsWith("START_MS=")) {
-                    long value = parseLongSafe(line.substring(9));
+                    long value = ParseUtils.parseLongSafe(line.substring(9));
                     if (value > 0L) {
                         statsStartAtMs = value;
                     }
@@ -367,17 +368,17 @@ public class ChatStats {
                         statsResetDateYmd = value;
                     }
                 } else if (line.startsWith("NV=")) {
-                    totalNv = parseLongSafe(line.substring(3));
+                    totalNv = ParseUtils.parseLongSafe(line.substring(3));
                 } else if (line.startsWith("FISH_NV=")) {
-                    totalFishNv = parseDoubleSafe(line.substring(8));
+                    totalFishNv = ParseUtils.parseDoubleSafe(line.substring(8));
                 } else if (line.startsWith("KG_TOTAL=")) {
-                    totalResourceKg = parseDoubleSafe(line.substring(9));
+                    totalResourceKg = ParseUtils.parseDoubleSafe(line.substring(9));
                 } else if (line.startsWith("KG_ITEM=")) {
                     String value = line.substring(8);
                     int splitPos = value.lastIndexOf('\t');
                     if (splitPos > 0 && splitPos < value.length() - 1) {
                         String resourceName = value.substring(0, splitPos).trim();
-                        double kilograms = parseDoubleSafe(value.substring(splitPos + 1));
+                        double kilograms = ParseUtils.parseDoubleSafe(value.substring(splitPos + 1));
                         if (!resourceName.isEmpty() && kilograms > 0d) {
                             resourceKgByType.put(resourceName, kilograms);
                         }
@@ -387,7 +388,7 @@ public class ChatStats {
                     int splitPos = value.lastIndexOf('\t');
                     if (splitPos > 0 && splitPos < value.length() - 1) {
                         String itemName = value.substring(0, splitPos).trim();
-                        long count = parseLongSafe(value.substring(splitPos + 1));
+                        long count = ParseUtils.parseLongSafe(value.substring(splitPos + 1));
                         if (!itemName.isEmpty() && count > 0L) {
                             itemCountByName.put(itemName, count);
                         }
@@ -397,7 +398,7 @@ public class ChatStats {
                     int splitPos = value.lastIndexOf('\t');
                     if (splitPos > 0 && splitPos < value.length() - 1) {
                         String fishName = value.substring(0, splitPos).trim();
-                        long count = parseLongSafe(value.substring(splitPos + 1));
+                        long count = ParseUtils.parseLongSafe(value.substring(splitPos + 1));
                         if (!fishName.isEmpty() && count > 0L) {
                             fishCountByType.put(fishName, count);
                         }
@@ -580,28 +581,6 @@ public class ChatStats {
         return nick.replaceAll("[/\\\\:*?\"<>|]", "_");
     }
 
-    // Безопасный парсинг long из строки.
-    private static long parseLongSafe(String value) {
-        try {
-            return Long.parseLong(value.trim());
-        } catch (Exception ignored) {
-            return 0;
-        }
-    }
-
-    // Безопасный парсинг double из строки с поддержкой запятой и пробелов.
-    private static double parseDoubleSafe(String value) {
-        try {
-            String normalized = value == null ? "" : value.trim().replace(" ", "").replace(',', '.');
-            if (normalized.isEmpty()) {
-                return 0d;
-            }
-            return Double.parseDouble(normalized);
-        } catch (Exception ignored) {
-            return 0d;
-        }
-    }
-
     /**
      * Конвертирует legacy-строку `LOOT=` в имя предмета для новой поштучной статистики.
      *
@@ -651,7 +630,7 @@ public class ChatStats {
         if (amount == null || amount.isEmpty()) {
             return 0;
         }
-        return parseLongSafe(amount.replace(" ", ""));
+        return ParseUtils.parseLongSafe(amount.replace(" ", ""));
     }
 
     /**
@@ -673,7 +652,7 @@ public class ChatStats {
         if (resourceName == null || resourceName.trim().isEmpty()) {
             return null;
         }
-        double kilograms = parseDoubleSafe(kilogramsRaw);
+        double kilograms = ParseUtils.parseDoubleSafe(kilogramsRaw);
         if (kilograms <= 0d) {
             return null;
         }

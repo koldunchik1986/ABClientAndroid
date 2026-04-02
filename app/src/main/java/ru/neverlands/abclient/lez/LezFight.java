@@ -16,6 +16,7 @@ import ru.neverlands.abclient.manager.UnderAttackManager;
 import ru.neverlands.abclient.model.*;
 import ru.neverlands.abclient.utils.AppVars;
 import ru.neverlands.abclient.utils.HelperStrings;
+import ru.neverlands.abclient.utils.ParseUtils;
 import ru.neverlands.abclient.utils.SessionManager;
 
 /**
@@ -1262,19 +1263,13 @@ public class LezFight {
         }
         int damage = 0;
         for (int idx = 6; idx <= 10; idx++) {
-            damage += parseIntSafe(list[idx], 0);
+            damage += ParseUtils.parseIntSafe(list[idx], 0);
         }
         AppVars.LastBoiUron = String.valueOf(damage);
         lastDamageLogId = LogBoi;
     }
 
-    private int parseIntSafe(String value, int fallback) {
-        try {
-            return Integer.parseInt(Strip(value));
-        } catch (Exception ignored) {
-            return fallback;
-        }
-    }
+
     
     // Сбор ссылки "Завершить бой" из fexp (аналог C#).
     private void BuildFightLink(boolean withCaptchaPlaceholder) {

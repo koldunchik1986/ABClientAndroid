@@ -1454,10 +1454,11 @@ public class WebViewRequestInterceptor {
                 String newVcode = matcher.group(1);
                 if (newVcode != null && !newVcode.isEmpty()) {
                     Log.d(TAG, "Payment module: extracted vcode=" + newVcode);
-                    // Обновляем текущий vcode авторыбалки.
-                    // Это позволит следующему запросу авторыбалки использовать актуальный vcode.
-                    ru.neverlands.abclient.utils.AppVars.FishCurrentVcode = newVcode;
-                    Log.d(TAG, "Payment module: AppVars.FishCurrentVcode updated to " + newVcode);
+                    // ПРАВИЛЬНО: Обновляем VCode через SessionManager (RULE 5 compliance)
+                    // ЗАПРЕЩЕНО: AppVars.FishCurrentVcode = newVcode (RULE 5 VIOLATION)
+                    SessionManager.getInstance().parseVCodeFromHtml("vcode=" + newVcode, "fish_payment");
+                    Log.i(TAG, "[PAYMENT_VCODE] VCode from payment module parsed via SessionManager, vcode=" + newVcode);
+                    FileLogger.trace("payment", "[PAYMENT_VCODE] newVcode=" + newVcode);
                     return;
                 }
             }
