@@ -448,6 +448,16 @@ public class ChatStats {
             statFile = resolvedDayStatFile;
         }
         if (statFile == null) return;
+        StringBuilder sb = buildStatContent(currentDate);
+        try (FileOutputStream fos = new FileOutputStream(statFile, false)) {
+            fos.write(sb.toString().getBytes(StandardCharsets.UTF_8));
+        } catch (Exception e) {
+            Log.e(TAG, "saveInternal failed", e);
+        }
+    }
+
+    // Разбиение saveInternal: построение содержимого файла
+    private static StringBuilder buildStatContent(String currentDate) {
         StringBuilder sb = new StringBuilder();
         sb.append("DATE=").append(currentDate).append("\n");
         if (statsStartAtMs <= 0L) {
@@ -463,22 +473,34 @@ public class ChatStats {
         sb.append("NV=").append(totalNv).append("\n");
         sb.append("FISH_NV=").append(totalFishNv).append("\n");
         sb.append("KG_TOTAL=").append(totalResourceKg).append("\n");
+        appendResourceKgItems(sb);
+        appendItemCountEntries(sb);
+        appendFishCountEntries(sb);
+        appendLootLog(sb);
+        return sb;
+    }
+
+    private static void appendResourceKgItems(StringBuilder sb) {
         for (Map.Entry<String, Double> entry : resourceKgByType.entrySet()) {
             sb.append("KG_ITEM=").append(entry.getKey()).append("\t").append(entry.getValue()).append("\n");
         }
+    }
+
+    private static void appendItemCountEntries(StringBuilder sb) {
         for (Map.Entry<String, Long> entry : itemCountByName.entrySet()) {
             sb.append("ITEM_COUNT=").append(entry.getKey()).append("\t").append(entry.getValue()).append("\n");
         }
+    }
+
+    private static void appendFishCountEntries(StringBuilder sb) {
         for (Map.Entry<String, Long> entry : fishCountByType.entrySet()) {
             sb.append("FISH_ITEM=").append(entry.getKey()).append("\t").append(entry.getValue()).append("\n");
         }
+    }
+
+    private static void appendLootLog(StringBuilder sb) {
         for (String loot : lootLog) {
             sb.append("LOOT=").append(loot).append("\n");
-        }
-        try (FileOutputStream fos = new FileOutputStream(statFile, false)) {
-            fos.write(sb.toString().getBytes(StandardCharsets.UTF_8));
-        } catch (Exception e) {
-            Log.e(TAG, "saveInternal failed", e);
         }
     }
 

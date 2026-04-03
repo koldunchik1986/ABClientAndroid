@@ -756,8 +756,12 @@ public class AutoFunctionsManager {
         AppVars.mainActivity.get().runOnUiThread(() -> {
             try {
                 String reloadUrl = "http://neverlands.ru/main.php?get_id=56&act=10&go=inf";
-                if (AppVars.VCode != null && !AppVars.VCode.isEmpty()) {
-                    reloadUrl += "&vcode=" + AppVars.VCode;
+                String vcode = SessionManager.getInstance().getValidVCodeForAction("auto_skin_check");
+                if (vcode != null) {
+                    reloadUrl += "&vcode=" + vcode;
+                } else {
+                    Log.w(TAG, "[VCode_MISSING] getValidVCodeForAction returned null for auto_skin_check");
+                    FileLogger.trace("vcode_migration", "[VCode_MISSING] auto_skin_check");
                 }
                 reloadUrl += "&ts=" + System.currentTimeMillis();
                 Log.d(TAG, "triggerAutoSkinCharacterCheck: load " + reloadUrl);
@@ -1906,13 +1910,15 @@ public class AutoFunctionsManager {
                     Log.d(TAG, "startAutoMoving: bootstrap skipped (webView is null)");
                     return;
                 }
-                String vcode = AppVars.VCode != null ? AppVars.VCode.trim() : "";
+                String vcode = SessionManager.getInstance().getValidVCodeForAction("auto_nav_bootstrap");
                 String url;
-                if (!vcode.isEmpty()) {
+                if (vcode != null && !vcode.isEmpty()) {
                     url = "http://neverlands.ru/main.php?get_id=56&act=10&go=ret&vcode="
                             + vcode
                             + "&ab_nav_bootstrap=1&r="
                             + System.currentTimeMillis();
+                    Log.i(TAG, "[AUTO_NAV_BOOTSTRAP] VCode obtained from SessionManager, URL prepared");
+                    FileLogger.trace("vcode_migration", "[AUTO_NAV_BOOTSTRAP] VCode from SessionManager");
                 } else {
                     // Fallback: если vcode еще не извлечен, запускаем старый bootstrap через go=inf.
                     url = "http://neverlands.ru/main.php?get_id=56&act=10&go=inf&ab_nav_bootstrap=1&r="

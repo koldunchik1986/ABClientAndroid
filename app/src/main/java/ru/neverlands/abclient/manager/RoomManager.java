@@ -85,6 +85,11 @@ public class RoomManager {
 
     // Обработчик списка игроков комнаты (`ch.php?lo=1`).
     // Метод `process(...)` содержит портированную логику разбора списка комнаты.
+    // РЕШЕНИЕ для автоматического отображения списка игроков:
+    // 1) парсит ChatListU из HTML
+    // 2) генерирует на Java стороне HTML для каждого игрока (HtmlChar)
+    // 3) инжектирует сгенерированный HTML обратно в ответ сервера
+    // Это обход проблемы с ch_list.js, которая не может отобразить список в изолированном WebView.
     public static String process(Context context, String html) {
         syncCellNameFromRoomHtml(context, html);
         maybeSyncCellMetaFromOwnPinfo(context);
@@ -92,6 +97,9 @@ public class RoomManager {
                 + ", contextNull=" + (context == null)
                 + ", doShowWalkers=" + AppVars.DoShowWalkers);
         FilterProcRoomResult filterResult = FilterProcRoom(html);
+        // STEP 1: Инжектируем сгенерированный HTML список игроков в ответ
+        html = injectPlayerListHtmlIntoChatPhp(html, filterResult);
+        Log.d(TAG, BG_TRACE_PREFIX + " process: HTML injection complete, htmlLen=" + html.length());
         if (context != null) {
             try {
                 AutoFunctionsManager.getInstance(context).onRoomUsersUpdated(
@@ -1567,6 +1575,78 @@ public class RoomManager {
                 + levelHtml
                 + "<a href=\"http://neverlands.ru/pinfo.cgi?" + escapedNick
                 + "\" onclick=\"window.open(this.href);\"><img src=http://image.neverlands.ru/chat/info.gif width=11 height=12 border=0 align=absmiddle></a>";
+    }
+
+    /**
+     * Инжектирует сгенерированный Java-стороной HTML список игроков в ответ ch.php?lo=1.
+     * 
+     * Решение для Android WebView, где ch_list.js не может корректно работать 
+     * с объектом top.frames[], так как WebView это изолированная среда.
+     * 
+     * Алгоритм:
+     * 1) Если filterResult.html пусто (нет игроков) - возвращаем исходный HTML
+     * 2) Ищет в оригинальном HTML место для инжекции:
+     *    - ищет скрипт с ChatListU и место после него
+     *    - или ищет стандартное размещение списка (между маркерами if/for)
+     * 3) В это место вставляет контейнер DIV с ID для легкого нахождения в JS
+     * 4) Окружает сгенерированный HTML в правильные теги форматирования
+     * 5) Заменяет оригинальное содержимое на наше
+     */
+    private static String injectPlayerListHtmlIntoChatPhp(String html, FilterProcRoomResult filterResult) {
+        if (html == null || filterResult.html == null || filterResult.html.isEmpty()) {
+            return html;
+        }
+        
+        try {
+            // Обычно сервер возвращает HTML с JavaScript инициализацией ChatListU
+            // Наша задача - найти место, где функция chatlist_build была бы вызвана,
+            // и подставить туда готовый HTML
+            
+            // Ищем скрипт с ChatListU для определения позиции
+            Pattern chatListPattern = Pattern.compile("var\\s+ChatListU\\s*=\\s*new Array\\([^)]*\\);");
+            Matcher chatListMatcher = chatListPattern.matcher(html);
+            
+            if (chatListMatcher.find()) {
+                // Нашли скрипт с ChatListU
+                int chatListEndPos = chatListMatcher.end();
+                
+                //找ищем вызов chatlist_build() после ChatListU
+                Pattern buildPattern = Pattern.compile("chatlist_build\\s*\\([^)]*\\);");
+                Matcher buildMatcher = buildPattern.matcher(html);
+                buildMatcher.region(chatListEndPos, html.length());
+                
+                if (buildMatcher.find()) {
+                    // Нашли вызов chatlist_build() - заменяем его на наш контейнер
+                    String replacement = "<div id=\"_room_list_container\" style=\"display:block;\">" 
+                        + filterResult.html 
+                        + "</div>";
+                    html = html.substring(0, buildMatcher.start()) 
+                        + replacement 
+                        + html.substring(buildMatcher.end());
+                    
+                    Log.d(TAG, BG_TRACE_PREFIX + " injectPlayerListHtmlIntoChatPhp: injection success"
+                            + ", chars=" + filterResult.numCharsInRoom
+                            + ", htmlLen=" + html.length());
+                } else {
+                    // Вызов chatlist_build не найден - вставляем контейнер после ChatListU
+                    String replacement = "<div id=\"_room_list_container\" style=\"display:block;\">" 
+                        + filterResult.html 
+                        + "</div>";
+                    html = html.substring(0, chatListEndPos) 
+                        + replacement 
+                        + html.substring(chatListEndPos);
+                    
+                    Log.d(TAG, BG_TRACE_PREFIX + " injectPlayerListHtmlIntoChatPhp: no chatlist_build found, inserted after ChatListU");
+                }
+            } else {
+                // ChatListU не найден - это необычно, логируем
+                Log.w(TAG, BG_TRACE_PREFIX + " injectPlayerListHtmlIntoChatPhp: ChatListU pattern not found in html");
+            }
+        } catch (Exception e) {
+            Log.e(TAG, BG_TRACE_PREFIX + " injectPlayerListHtmlIntoChatPhp: error during injection", e);
+        }
+        
+        return html;
     }
 
     // Парсит JS-массив ChatListU и формирует HTML списка игроков.

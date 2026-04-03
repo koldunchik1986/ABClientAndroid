@@ -3,6 +3,7 @@ package ru.neverlands.abclient.postfilter;
 import android.media.Ringtone;
 import android.media.RingtoneManager;
 import android.net.Uri;
+import android.util.Log;
 
 import java.util.Collections;
 import java.util.List;
@@ -12,6 +13,8 @@ import ru.neverlands.abclient.manager.AutoFunctionsManager;
 import ru.neverlands.abclient.model.ParsedDressed;
 import ru.neverlands.abclient.utils.AppVars;
 import ru.neverlands.abclient.utils.ExtMap;
+import ru.neverlands.abclient.utils.FileLogger;
+import ru.neverlands.abclient.utils.SessionManager;
 
 /**
  * Модуль Auto-Клада (поиск/экипировка лопаты/копка), выделенный из {@link MainPhp}.
@@ -401,8 +404,12 @@ public final class TreasureDig {
             return mapReturnHtml;
         }
         String link = "main.php?get_id=56&act=10&go=ret";
-        if (AppVars.VCode != null && !AppVars.VCode.trim().isEmpty()) {
-            link += "&vcode=" + AppVars.VCode.trim();
+        String vcode = SessionManager.getInstance().getValidVCodeForAction("treasure_dig");
+        if (vcode != null) {
+            link += "&vcode=" + vcode;
+        } else {
+            Log.w(TAG, "[VCode_MISSING] getValidVCodeForAction returned null for treasure_dig");
+            FileLogger.trace("vcode_migration", "[VCode_MISSING] treasure_dig action, will retry");
         }
         return host.buildRedirectHtml("Авто-Клад: возврат на природу", link);
     }

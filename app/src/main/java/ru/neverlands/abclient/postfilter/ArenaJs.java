@@ -1,1 +1,0 @@
-package ru.neverlands.abclient.postfilter; public class ArenaJs { public static byte[] process() { return new byte[0]; } }

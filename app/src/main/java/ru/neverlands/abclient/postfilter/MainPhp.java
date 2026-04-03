@@ -565,6 +565,41 @@ public class MainPhp {
         Log.w(TAG, msg);
         FileLogger.warn(TAG, msg);
     }
+
+    /**
+     * Восстановление runtime-рассинхронизации авто-рыбалки, когда сохранённый Auto-Fish включён,
+     * но AppVars.Profile.AutoFish был выключен.
+     *
+     * Это обычно происходит когда:
+     * - Пользователь включил авто-рыбалку (установлен флаг в SharedPreferences)
+     * - Произойдёт редирект на персонаж (go=inf/go=10) или инвентарь
+     * - После возврата на природу (go=ret) флаг иногда не восстанавливается из-за race condition
+     *
+     * Функция проверяет: если авто-рыбалка включена в preferences и на природе,
+     * а Profile.AutoFish == false, то восстанавливаем флаг.
+     */
+    private static void recoverAutofishRuntimeStateIfNeeded(boolean onMapOrNature, String address) {
+        if (!onMapOrNature) {
+            return;
+        }
+        if (AppVars.Profile == null) {
+            return;
+        }
+        // Если авто-рыбалка уже включена в runtime, нечего восстанавливать
+        if (AppVars.Profile.AutoFish) {
+            return;
+        }
+        // Проверяем, включена ли авто-рыбалка в preferences
+        if (!isAutoFishEnabledByPreference()) {
+            return;
+        }
+        // Восстанавливаем флаг из-за рассинхронизации
+        AppVars.Profile.AutoFish = true;
+        String msg = "recoverAutofishRuntimeStateIfNeeded: restored AppVars.Profile.AutoFish -> true (was false, recovered from preferences)";
+        Log.w(TAG, msg);
+        FileLogger.warn(TAG, msg);
+    }
+
     /**
      * Форматирует секунды в `HH:mm:ss` для UI ожидания лечения.
      */
@@ -4254,6 +4289,13 @@ public class MainPhp {
             String msg_fishskip = "AUTO_FISH_TRACE skip: auto-fight reload probe address=";
             Log.d(TAG, msg_fishskip);
             FileLogger.trace(TAG, msg_fishskip);
+        }
+        
+        // Восстановление авто-рыбалки, если она была отключена во время переходов на персонаж/инвентарь
+        // и теперь мы вернулись на природу (go=ret или mainPhpFindFlora() вернула null).
+        boolean isOnMapOrNature = mainPhpFindFlora(html) == null; // null = уже на карте
+        if (isOnMapOrNature && isAutoFishEnabledByPreference()) {
+            recoverAutofishRuntimeStateIfNeeded(true, address);
         }
         
         // ДИАГНОСТИКА: Логирование всех условий блокировки рыбалки на холодном старте

@@ -15,6 +15,7 @@ import ru.neverlands.abclient.utils.FileLogger;
 import ru.neverlands.abclient.utils.HtmlUtils;
 import ru.neverlands.abclient.utils.HelperStrings;
 import ru.neverlands.abclient.utils.Russian;
+import ru.neverlands.abclient.utils.SessionManager;
 
 /**
  * Менеджер быстрых действий (портирование FormMainFast.cs + PostFilter/MainPhpFast.cs).
@@ -2214,8 +2215,12 @@ public class FastActionManager {
         // processMainPhpFast в MainPhp.process() найдёт vcode и сделает BuildRedirect на инвентарь.
         // ВАЖНО: main.php без параметров = frameset, его нельзя использовать!
         String url = "http://neverlands.ru/main.php?get_id=56&act=10&go=inf";
-        if (AppVars.VCode != null && !AppVars.VCode.isEmpty()) {
-            url += "&vcode=" + AppVars.VCode;
+        String vcode = SessionManager.getInstance().getValidVCodeForAction("fast_action_reload");
+        if (vcode != null) {
+            url += "&vcode=" + vcode;
+        } else {
+            Log.w(TAG, "[VCode_MISSING] getValidVCodeForAction returned null for fast_action_reload");
+            FileLogger.trace("vcode_migration", "[VCode_MISSING] fast_action_reload, will reload main.php");
         }
         Log.d(TAG, "reloadMainFrame: loading " + url);
 

@@ -98,6 +98,7 @@ import ru.neverlands.abclient.utils.Chat;
 import ru.neverlands.abclient.utils.FileLogger;
 import ru.neverlands.abclient.utils.LogcatFileRecorder;
 import ru.neverlands.abclient.utils.RuntimeNetTrace;
+import ru.neverlands.abclient.utils.SessionManager;
 import ru.neverlands.abclient.utils.Russian;
 import ru.neverlands.abclient.webview.WebViewRequestInterceptor;
 import ru.neverlands.abclient.service.AutoModeForegroundService;
@@ -149,7 +150,8 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     public ActivityMainBinding binding;
     private Timer timer;
     private boolean isExiting = false;
-    private boolean isRoomManagerStarted = false;
+    // DEPRECATED: RoomManager.startTracing() no longer needed after HTML injection fix
+    // private boolean isRoomManagerStarted = false;
     private FightViewModel fightViewModel;
     private TabManager tabManager;
     private QuickButtonsPanel quickButtonsPanel;
@@ -1523,10 +1525,10 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         if (vcode.isEmpty()) {
             return;
         }
-        if (!vcode.equals(AppVars.VCode)) {
-            AppVars.VCode = vcode;
-            Log.d(TAG, BG_TRACE_PREFIX + " adoptVCodeFromAutoSubmitPayload: vcode updated");
-        }
+        // RULE 5: Мигрирована на SessionManager
+        SessionManager.getInstance().parseVCodeFromHtml("vcode=" + vcode, "auto_submit_payload");
+        Log.i(TAG, BG_TRACE_PREFIX + "[VCODE_ADOPT] adoptVCodeFromAutoSubmitPayload: vcode updated via SessionManager");
+        FileLogger.trace("vcode", "[VCODE_ADOPT] auto_submit_payload vcode=" + vcode);
     }
 
     /**
@@ -2796,7 +2798,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        isRoomManagerStarted = false;
+        // DEPRECATED: isRoomManagerStarted removed - HTML injection handles player list display
         AppVars.init(this);
         registerAppBroadcastReceiverIfNeeded();
         registerScreenStateReceiverIfNeeded();
@@ -3369,7 +3371,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         }
         unregisterAppBroadcastReceiverIfNeeded();
         unregisterScreenStateReceiverIfNeeded();
-        RoomManager.stopTracing();
+        // DEPRECATED: RoomManager.stopTracing() removed - no longer needed
         AppVars.IsFightCaptchaDialogVisible = false;
         if (activeFightCaptchaDialog != null && activeFightCaptchaDialog.isShowing()) {
             activeFightCaptchaDialog.dismiss();
@@ -3846,8 +3848,10 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                 }
                 long now = System.currentTimeMillis();
                 String reloadUrl = "http://neverlands.ru/main.php?get_id=56&act=10&go=inf&ab_auto=1&r=" + now;
-                if (AppVars.VCode != null && !AppVars.VCode.isEmpty()) {
-                    reloadUrl += "&vcode=" + AppVars.VCode;
+                // RULE 5: VCode получается через SessionManager
+                String vcode = SessionManager.getInstance().getValidVCodeForAction("auto_cure_reload");
+                if (vcode != null && !vcode.isEmpty()) {
+                    reloadUrl += "&vcode=" + vcode;
                 }
                 Log.d(TAG, "AUTO_CURE_TRACE requestMainFrameReloadFromAutomation: reason=" + reason
                         + ", url=" + reloadUrl);
@@ -3940,12 +3944,16 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                 // Рыбалка все еще идет - не отправляем af_tick, перезагружаем озеро для получения vcode
                 reloadUrl = "http://neverlands.ru/main.php?get_id=56&act=10&go=ret&r=" + now;
                 Log.w(TAG, "SERVER_TIMER_TICK: fishing still active! Reloading lake for fresh vcode instead of af_tick.");
-            } else if (AppVars.VCode == null || AppVars.VCode.isEmpty()) {
-                // Vcode пуст - нужна защита: загружаем озеро чтобы получить свежий vcode
-                reloadUrl = "http://neverlands.ru/main.php?get_id=56&act=10&go=ret&r=" + now;
-                Log.w(TAG, "SERVER_TIMER_TICK: VCode пуст при af_tick! Загружаем озеро для получения vcode.");
             } else {
-                reloadUrl = "http://neverlands.ru/main.php?get_id=56&act=10&go=inf&af_tick=1&r=" + now + "&vcode=" + AppVars.VCode;
+                // RULE 5: VCode получается через SessionManager
+                String vcode = SessionManager.getInstance().getValidVCodeForAction("server_timer_tick_af_tick");
+                if (vcode == null || vcode.isEmpty()) {
+                    // Vcode пуст - нужна защита: загружаем озеро чтобы получить свежий vcode
+                    reloadUrl = "http://neverlands.ru/main.php?get_id=56&act=10&go=ret&r=" + now;
+                    Log.w(TAG, "SERVER_TIMER_TICK: VCode пуст при af_tick! Загружаем озеро для получения vcode.");
+                } else {
+                    reloadUrl = "http://neverlands.ru/main.php?get_id=56&act=10&go=inf&af_tick=1&r=" + now + "&vcode=" + vcode;
+                }
             }
         }
 
@@ -4427,11 +4435,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             } catch (IOException e) {
                 Log.e(TAG, "Failed to read extract_fight_state.js", e);
             }
-
-            if (!isRoomManagerStarted) {
-                ru.neverlands.abclient.manager.RoomManager.startTracing(MainActivity.this);
-                isRoomManagerStarted = true;
-            }
+            // DEPRECATED: RoomManager.startTracing() removed - HTML injection in Filter/RoomManager handles player list
         } else if (url.contains("ch.php")) {
             view.evaluateJavascript("javascript:(function() { var frameset = document.getElementsByTagName('frameset')[0]; if (frameset) { frameset.cols = '0, *'; } })()", null);
         }
@@ -4601,9 +4605,10 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                 reloadUrl = "http://neverlands.ru/main.php?r=" + System.currentTimeMillis();
             } else {
                 reloadUrl = "http://neverlands.ru/main.php?get_id=56&act=10&go=inf";
-                if (ru.neverlands.abclient.utils.AppVars.VCode != null
-                        && !ru.neverlands.abclient.utils.AppVars.VCode.isEmpty()) {
-                    reloadUrl += "&vcode=" + ru.neverlands.abclient.utils.AppVars.VCode;
+                // RULE 5: VCode получается через SessionManager
+                String vcode = SessionManager.getInstance().getValidVCodeForAction("autoskin_reload");
+                if (vcode != null && !vcode.isEmpty()) {
+                    reloadUrl += "&vcode=" + vcode;
                 }
             }
 

@@ -1,1 +1,0 @@
-package ru.neverlands.abclient.postfilter; public class TarenaJs { public static byte[] process(byte[] array) { return array; } }
