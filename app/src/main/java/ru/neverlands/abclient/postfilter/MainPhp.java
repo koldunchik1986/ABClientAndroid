@@ -4413,7 +4413,12 @@ public class MainPhp {
                         } else {
                             resetAutoFishWearLoopGuard();
                         }
-                        String msg_gearresult = "AUTO_FISH_TRACE gear check result: mustWear=";
+                        String msg_gearresult = "AUTO_FISH_TRACE gear check result: mustWear="
+                                + AppVars.AutoFishWearUd
+                                + ", hand1=" + AppVars.AutoFishHand1
+                                + ", hand1D=" + AppVars.AutoFishHand1D
+                                + ", hand2=" + AppVars.AutoFishHand2
+                                + ", hand2D=" + AppVars.AutoFishHand2D;
                         Log.d(TAG, msg_gearresult);
                         FileLogger.trace(TAG, msg_gearresult);
                     }

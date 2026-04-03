@@ -267,32 +267,11 @@ public final class FishAjaxPhp {
             return;  // Рыбалка остановлена
         }
 
-        // ✅ ПРАВИЛО 4 (AGENTS.MD): Проверка и автоматическое одевание удочки
-        // Если рука пуста или удочка сломана - ищем в инвентаре и одеваем новую
-        // ВАЖНО: передаём полный HTML из AppVars.ContentMainPhp, а не AJAX ответ!
-        // (AJAX ответ от fish_ajax.php?act=1 содержит только JSON без slots_inv)
-        if (checkAndWearRodIfNeeded(AppVars.ContentMainPhp)) {
-            String msg_wear = "⏳ AUTO_FISH_TRACE act1: Была произведена смена удочки, ожидаем нового ответа...";
-            Log.i(TAG, msg_wear);
-            FileLogger.trace(TAG, msg_wear);
-            return;  // Ждём нового ответа после одевания
-        }
-
-        // ✅ НОВОЕ: Проверка инвентаря перед act=2 (правило 4 - стабильность ручных действий)
-        // Если масса переполнена, НЕ отправляем act=2 (иначе сервер выбросит в бой)
-        BaitInfo selectedBaitInfo = resolveBait();
-        double baitMass = selectedBaitInfo != null ? selectedBaitInfo.massCost : 0.1; // fallback
-        
-        boolean isMassOkay = checkMassBeforeCasting(state.massCurrent, state.massMax, baitMass);
-        if (!isMassOkay) {
-            String msg_mass_reject = "AUTO_FISH_TRACE act1: ❌ Mass check failed, blocking act=2. " +
-                    "Current=" + state.massCurrent + "/" + state.massMax + 
-                    ", Bait mass=" + baitMass +
-                    ". Recommend rod replacement or stop fishing.";
-            Log.w(TAG, msg_mass_reject);
-            FileLogger.trace(TAG, msg_mass_reject);
-            return;
-        }
+        // C# parity: переодевание снастей выполняется только через MainPhp (AutoFishCheckUd/AutoFishWearUd).
+        // Здесь оставляем лишь разбор act=1 + выбор приманки + капча/act=2.
+        String parityRouteMsg = "AUTO_FISH_TRACE act1 parity route: gear/overweight checks delegated to MainPhp";
+        Log.d(TAG, parityRouteMsg);
+        FileLogger.trace(TAG, parityRouteMsg);
 
         boolean captchaRequired = state.captchaToken != null
                 && !state.captchaToken.isEmpty()
