@@ -677,7 +677,8 @@ public class MapAjax {
             }
         }
 
-        candidates.sort((left, right) -> {
+        // ✅ API 21 compatible sort (List#sort requires API 24)
+        Collections.sort(candidates, (left, right) -> {
             if (left.distanceSteps != right.distanceSteps) {
                 return Integer.compare(left.distanceSteps, right.distanceSteps);
             }

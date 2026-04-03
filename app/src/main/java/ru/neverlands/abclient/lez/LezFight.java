@@ -7,6 +7,7 @@ import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
 import java.util.Random;
@@ -1463,7 +1464,14 @@ public class LezFight {
             } else {
                 opponents = extractMembers(between);
                 if (!myNick.isEmpty()) {
-                    opponents.removeIf(m -> m != null && m.startsWith(myNick + "["));
+                    // ✅ API 21 compatible remove (removeIf requires API 24)
+                    Iterator<String> it = opponents.iterator();
+                    while (it.hasNext()) {
+                        String m = it.next();
+                        if (m != null && m.startsWith(myNick + "[")) {
+                            it.remove();
+                        }
+                    }
                 }
             }
 

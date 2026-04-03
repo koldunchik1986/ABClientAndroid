@@ -83,17 +83,18 @@ public class FightViewModel extends ViewModel {
         } catch (Exception ignored) {
         }
 
-        // Корневой фикс "первый удар до отображения FightFrame":
-        // JS-bridge путь (`extract_fight_state.js -> processFightHtml`) срабатывает сразу после загрузки сырого
-        // боевого HTML и может отправить удар раньше, чем пользователь увидит боевой кадр.
-        // В интерактивном foreground этот путь переводим в "signal-only" режим:
-        // - оставляем parse/pulse/анонс "Нападение";
-        // - блокируем auto-submit именно здесь;
-        // - фактический удар остаётся за обычным боевым циклом (fight.Frame / requestAutoTurn).
-        if (uiForegroundInteractive || uiForegroundLikely) {
-            autoBattleRuntimeEnabled = false;
-        }
-
+        // FIXME: REMOVED неправильная логика блокировки автобоя в foreground:
+        // Старая проверка `if (uiForegroundInteractive || uiForegroundLikely) { autoBattleRuntimeEnabled = false; }`
+        // ПОЛНОСТЬЮ отключала автобой, если пользователь смотрит на экран.
+        // Это вызывало баг: первый удар срабатывает, противник убивается, но следующий враг не получает удара.
+        // 
+        // Комментарий старой логики говорил "блокируем auto-submit в интерактивном foreground"
+        // (от JS-bridge пути `extract_fight_state.js`), но реально блокировалась ВСЕ обработка боя.
+        // 
+        // Правильное решение: отключать нужно ТОЛЬКО JS-bridge путь (первый ход), но НЕ основной цикл.
+        // Такое разделение требует рефакторинга архитектуры, поэтому пока убираем эту проверку полностью.
+        // Побочный эффект: первый ход может быть отправлен раньше рендера фрейма (но это меньшая проблема).
+        
         String msg1 = BG_TRACE_PREFIX + " processFightHtml: htmlLen=" + html.length()
                 + ", autoBattleUiEnabled=" + autoBattleUiEnabled
                 + ", autoBattleRuntimeEnabled=" + autoBattleRuntimeEnabled

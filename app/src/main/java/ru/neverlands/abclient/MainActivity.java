@@ -1947,7 +1947,15 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                 .setDefaults(NotificationCompat.DEFAULT_ALL)
                 .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
                 .setContentIntent(contentIntent);
-        NotificationManagerCompat.from(this).notify(CAPTCHA_NOTIFICATION_ID, builder.build());
+        // ✅ Permission check for Android 13+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS)
+                    == PackageManager.PERMISSION_GRANTED) {
+                NotificationManagerCompat.from(this).notify(CAPTCHA_NOTIFICATION_ID, builder.build());
+            }
+        } else {
+            NotificationManagerCompat.from(this).notify(CAPTCHA_NOTIFICATION_ID, builder.build());
+        }
     }
 
     /**
@@ -4390,10 +4398,15 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                     failingUrl = request.getUrl().toString();
                 }
             }
-            int errorCode = error != null ? error.getErrorCode() : Integer.MIN_VALUE;
-            String description = error != null && error.getDescription() != null
-                    ? error.getDescription().toString()
-                    : "";
+            // ✅ API 23 compatibility check for WebResourceError methods
+            int errorCode = Integer.MIN_VALUE;
+            String description = "";
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M && error != null) {
+                errorCode = error.getErrorCode();
+                if (error.getDescription() != null) {
+                    description = error.getDescription().toString();
+                }
+            }
 
             Log.e(TAG, "onReceivedError: code=" + errorCode
                     + ", mainFrame=" + isMainFrame

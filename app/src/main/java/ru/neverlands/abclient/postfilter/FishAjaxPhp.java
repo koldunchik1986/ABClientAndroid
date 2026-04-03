@@ -24,7 +24,9 @@ import ru.neverlands.abclient.utils.AppVars;
 import ru.neverlands.abclient.utils.Chat;
 import ru.neverlands.abclient.utils.ChatStats;
 import ru.neverlands.abclient.utils.FileLogger;
+import ru.neverlands.abclient.utils.GearParser;
 import ru.neverlands.abclient.utils.HelperStrings;
+import ru.neverlands.abclient.utils.InventoryParser;
 import ru.neverlands.abclient.utils.ParseUtils;
 import ru.neverlands.abclient.utils.Russian;
 import ru.neverlands.abclient.utils.SessionManager;
@@ -211,11 +213,22 @@ public final class FishAjaxPhp {
             AppVars.AutoFishMassa = state.massCurrent + "/" + state.massMax;
         }
 
+        String beforeSelectMsg = "AUTO_FISH_TRACE before selectAllowedBait: state has " + state.baits.size() + " baits";
+        Log.d(TAG, beforeSelectMsg);
+        FileLogger.trace(TAG, beforeSelectMsg);
+        
         FishBaitSelection selection = selectAllowedBait(state.baits);
         if (selection == null) {
+            String failMsg = "AUTO_FISH_TRACE act1: ❌ selectAllowedBait returned null, disabling auto-fish";
+            Log.e(TAG, failMsg);
+            FileLogger.trace(TAG, failMsg);
             disableAutoFish("Нет доступной приманки по настройкам");
             return;
         }
+
+        String selectedMsg = "AUTO_FISH_TRACE act1: ✅ bait selected id=" + selection.id + " name=" + selection.name + " count=" + selection.count;
+        Log.i(TAG, selectedMsg);
+        FileLogger.trace(TAG, selectedMsg);
 
         AppVars.AutoFishLikeId = selection.id;
         AppVars.AutoFishLikeVal = String.valueOf(selection.count);
@@ -244,6 +257,42 @@ public final class FishAjaxPhp {
         // Это предотвращает перезагрузку PHPSESSID сервером между действиями рыбалки.
         AppVars.suppressBackgroundProbesDuringFishing = true;
         AppVars.fishingSequenceStartAtMs = lastFishAct1AtMs;
+
+        // ✅ ПРАВИЛО 4 (AGENTS.MD): Проверка на сообщение сервера о перегрузе
+        // Сервер может отправить "<font color=#CC0000>Внимание! Возможен перегруз." если текущая масса критична
+        if (checkOverweightHtmlPattern(html)) {
+            String msg_overweight = "❌ AUTO_FISH_TRACE act1: Перегруз обнаружен в HTML, рыбалка остановлена";
+            Log.e(TAG, msg_overweight);
+            FileLogger.trace(TAG, msg_overweight);
+            return;  // Рыбалка остановлена
+        }
+
+        // ✅ ПРАВИЛО 4 (AGENTS.MD): Проверка и автоматическое одевание удочки
+        // Если рука пуста или удочка сломана - ищем в инвентаре и одеваем новую
+        // ВАЖНО: передаём полный HTML из AppVars.ContentMainPhp, а не AJAX ответ!
+        // (AJAX ответ от fish_ajax.php?act=1 содержит только JSON без slots_inv)
+        if (checkAndWearRodIfNeeded(AppVars.ContentMainPhp)) {
+            String msg_wear = "⏳ AUTO_FISH_TRACE act1: Была произведена смена удочки, ожидаем нового ответа...";
+            Log.i(TAG, msg_wear);
+            FileLogger.trace(TAG, msg_wear);
+            return;  // Ждём нового ответа после одевания
+        }
+
+        // ✅ НОВОЕ: Проверка инвентаря перед act=2 (правило 4 - стабильность ручных действий)
+        // Если масса переполнена, НЕ отправляем act=2 (иначе сервер выбросит в бой)
+        BaitInfo selectedBaitInfo = resolveBait();
+        double baitMass = selectedBaitInfo != null ? selectedBaitInfo.massCost : 0.1; // fallback
+        
+        boolean isMassOkay = checkMassBeforeCasting(state.massCurrent, state.massMax, baitMass);
+        if (!isMassOkay) {
+            String msg_mass_reject = "AUTO_FISH_TRACE act1: ❌ Mass check failed, blocking act=2. " +
+                    "Current=" + state.massCurrent + "/" + state.massMax + 
+                    ", Bait mass=" + baitMass +
+                    ". Recommend rod replacement or stop fishing.";
+            Log.w(TAG, msg_mass_reject);
+            FileLogger.trace(TAG, msg_mass_reject);
+            return;
+        }
 
         boolean captchaRequired = state.captchaToken != null
                 && !state.captchaToken.isEmpty()
@@ -739,16 +788,46 @@ public final class FishAjaxPhp {
      */
     private static FishAct1State parseFishAct1State(String html) {
         if (html == null || html.isEmpty()) {
+            String msg = "AUTO_FISH_TRACE parseFishAct1State: html is null or empty";
+            Log.w(TAG, msg);
+            FileLogger.trace(TAG, msg);
             return null;
         }
 
+        // Логируем первые 500 символов для диагностики
+        String htmlPreview = html.length() > 500 ? html.substring(0, 500) + "..." : html;
+        String msg1 = "AUTO_FISH_TRACE parseFishAct1State: input html=" + htmlPreview;
+        Log.d(TAG, msg1);
+        FileLogger.trace(TAG, msg1);
+
         String[] sections = html.split("@");
+        String msg2 = "AUTO_FISH_TRACE parseFishAct1State: split into " + sections.length + " sections";
+        Log.d(TAG, msg2);
+        FileLogger.trace(TAG, msg2);
+        
+        for (int i = 0; i < sections.length && i < 10; i++) {
+            String preview = sections[i].length() > 100 ? sections[i].substring(0, 100) + "..." : sections[i];
+            String sectionMsg = "AUTO_FISH_TRACE section[" + i + "]=" + preview;
+            Log.d(TAG, sectionMsg);
+            FileLogger.trace(TAG, sectionMsg);
+        }
+        
         if (sections.length < 6) {
+            String errMsg = "AUTO_FISH_TRACE parseFishAct1State: ❌ REJECTED expected 6+ sections, got " + sections.length;
+            Log.w(TAG, errMsg);
+            FileLogger.trace(TAG, errMsg);
             return null;
         }
 
         String payload = sections[5] == null ? "" : sections[5].trim();
+        String payloadMsg = "AUTO_FISH_TRACE parseFishAct1State: payload (section[5])=" + payload;
+        Log.d(TAG, payloadMsg);
+        FileLogger.trace(TAG, payloadMsg);
+        
         if (!payload.startsWith("[1,")) {
+            String errMsg2 = "AUTO_FISH_TRACE parseFishAct1State: ❌ REJECTED payload does not start with [1,";
+            Log.w(TAG, errMsg2);
+            FileLogger.trace(TAG, errMsg2);
             return null;
         }
 
@@ -756,6 +835,9 @@ public final class FishAjaxPhp {
                 "^\\[1,\\s*\"([^\"]*)\",\\s*\"([^\"]*)\",\\s*([^,\\]]+),\\s*([^,\\]]+)",
                 Pattern.DOTALL).matcher(payload);
         if (!header.find()) {
+            String errMsg3 = "AUTO_FISH_TRACE parseFishAct1State: ❌ REJECTED header regex failed";
+            Log.w(TAG, errMsg3);
+            FileLogger.trace(TAG, errMsg3);
             return null;
         }
 
@@ -765,6 +847,11 @@ public final class FishAjaxPhp {
         state.massCurrent = cleanNumeric(header.group(3));
         state.massMax = cleanNumeric(header.group(4));
 
+        String headerMsg = "AUTO_FISH_TRACE parseFishAct1State: ✅ APPROVED captcha=" + state.captchaToken 
+                + ", vcode=" + state.vcode + ", mass=" + state.massCurrent + "/" + state.massMax;
+        Log.d(TAG, headerMsg);
+        FileLogger.trace(TAG, headerMsg);
+
         Matcher baitMatcher = Pattern.compile("\\[(38|39|40|41|42|43|44|45|46),\\s*\"([^\"]+)\",\\s*(\\d+)\\]")
                 .matcher(payload);
         while (baitMatcher.find()) {
@@ -772,7 +859,14 @@ public final class FishAjaxPhp {
             String name = baitMatcher.group(2);
             int count = ParseUtils.parseIntSafe(baitMatcher.group(3));
             state.baits.add(new FishBaitSelection(id, name, count));
+            String baitMsg = "AUTO_FISH_TRACE parseFishAct1State: found bait id=" + id + ", name=" + name + ", count=" + count;
+            Log.d(TAG, baitMsg);
+            FileLogger.trace(TAG, baitMsg);
         }
+        
+        String finalMsg = "AUTO_FISH_TRACE parseFishAct1State: ✅ SUCCESS total baits=" + state.baits.size();
+        Log.d(TAG, finalMsg);
+        FileLogger.trace(TAG, finalMsg);
         return state;
     }
 
@@ -794,16 +888,47 @@ public final class FishAjaxPhp {
      */
     private static FishBaitSelection selectAllowedBait(List<FishBaitSelection> baits) {
         if (baits == null || baits.isEmpty() || AppVars.Profile == null) {
+            String msg = "AUTO_FISH_TRACE selectAllowedBait: ❌ REJECTED baits null/empty or Profile null";
+            Log.w(TAG, msg);
+            FileLogger.trace(TAG, msg);
             return null;
         }
+        
+        String baitListMsg = "AUTO_FISH_TRACE selectAllowedBait: checking " + baits.size() + " baits, profile mask=" + AppVars.Profile.FishEnabledPrims;
+        Log.d(TAG, baitListMsg);
+        FileLogger.trace(TAG, baitListMsg);
+        
         for (FishBaitSelection bait : baits) {
-            if (bait == null || bait.count <= 4) {
+            if (bait == null) {
+                String nullMsg = "AUTO_FISH_TRACE selectAllowedBait: ⚠️ bait is null, skipping";
+                Log.d(TAG, nullMsg);
+                FileLogger.trace(TAG, nullMsg);
                 continue;
             }
-            if (isBaitEnabledInProfile(bait.id)) {
+            
+            if (bait.count <= 4) {
+                String countMsg = "AUTO_FISH_TRACE selectAllowedBait: ❌ id=" + bait.id + " name=" + bait.name + " count=" + bait.count + " <= 4, skipping";
+                Log.d(TAG, countMsg);
+                FileLogger.trace(TAG, countMsg);
+                continue;
+            }
+            
+            boolean enabled = isBaitEnabledInProfile(bait.id);
+            String checkMsg = "AUTO_FISH_TRACE selectAllowedBait: checking id=" + bait.id + " name=" + bait.name + " count=" + bait.count + " enabled=" + enabled;
+            Log.d(TAG, checkMsg);
+            FileLogger.trace(TAG, checkMsg);
+            
+            if (enabled) {
+                String selectedMsg = "AUTO_FISH_TRACE selectAllowedBait: ✅ SELECTED id=" + bait.id + " name=" + bait.name + " count=" + bait.count;
+                Log.i(TAG, selectedMsg);
+                FileLogger.trace(TAG, selectedMsg);
                 return bait;
             }
         }
+        
+        String noSelectionMsg = "AUTO_FISH_TRACE selectAllowedBait: ❌ REJECTED no suitable bait found";
+        Log.w(TAG, noSelectionMsg);
+        FileLogger.trace(TAG, noSelectionMsg);
         return null;
     }
 
@@ -865,6 +990,79 @@ public final class FishAjaxPhp {
             return "";
         }
         return value.trim().replaceAll("[^0-9.,\\-]", "");
+    }
+
+    /**
+     * Проверяет, можно ли отправить наживку (act=2) без перегруза инвентаря.
+     * 
+     * Правило: если массу инвентаря после заброска может превысить 85% от максимума,
+     * отправка блокируется, и система должна инициировать смену удочки.
+     * 
+     * Пороги (адаптированы из C#):
+     * - WARNING: 85% (осторожная зона, предотвращает вброс в бой)
+     * - CRITICAL: 95% (абсолютный лимит)
+     * 
+     * @param massCurrent текущая масса инвентаря (строка, может быть "1225.02")
+     * @param massMax максимальная масса (строка, может быть "1405")
+     * @param baitMass масса выбранной наживки (факт из FishData)
+     * @return true = можно отправлять act=2; false = нужна смена удочки/остановка
+     */
+    private static boolean checkMassBeforeCasting(String massCurrent, String massMax, double baitMass) {
+        try {
+            // Парсим массовые значения
+            double currentMass = massCurrent.isEmpty() ? 0 : Double.parseDouble(massCurrent.replace(",", "."));
+            double maxMass = massMax.isEmpty() ? 1405 : Double.parseDouble(massMax.replace(",", "."));
+            
+            double newMassAfterCast = currentMass + baitMass;
+            double percentUsed = (newMassAfterCast / maxMass) * 100;
+            
+            // Пороги проверки
+            final double MASS_WARNING_THRESHOLD = 85.0;
+            final double MASS_CRITICAL_THRESHOLD = 95.0;
+            
+            FileLogger.trace(TAG, String.format(
+                "[FISH_MASS_CHECK] Current: %.2f, Max: %.2f, Bait: %.2f, " +
+                "Will be: %.2f (%.1f%%)",
+                currentMass, maxMass, baitMass, newMassAfterCast, percentUsed));
+            
+            if (percentUsed >= MASS_CRITICAL_THRESHOLD) {
+                // КРИТИЧЕСКИЙ уровень - инвентарь практически полный
+                Log.w(TAG, String.format(
+                    "❌ FISH_MASS_CRITICAL: %%.1f%% usage detected (%.2f/%.2f). " +
+                    "Bait cast blocked - would cause inventory overflow!",
+                    percentUsed, newMassAfterCast, maxMass));
+                FileLogger.trace(TAG, String.format(
+                    "[FISH_MASS_REJECT] CRITICAL: %.1f%% > 95%%. Blocking act=2. " +
+                    "Current=%.2f, +Bait=%.2f, Max=%.2f",
+                    percentUsed, currentMass, baitMass, maxMass));
+                return false;
+            }
+            
+            if (percentUsed >= MASS_WARNING_THRESHOLD) {
+                // ПРЕДУПРЕДИТЕЛЬНЫЙ уровень - велик шанс вброса в бой сервером
+                Log.w(TAG, String.format(
+                    "⚠️ FISH_MASS_WARNING: %.1f%% usage detected (%.2f/%.2f). " +
+                    "Approaching server overflow threshold - initiating rod replacement.",
+                    percentUsed, newMassAfterCast, maxMass));
+                FileLogger.trace(TAG, String.format(
+                    "[FISH_MASS_WARN] WARNING: %.1f%% in [85%%,95%%]. Blocking act=2. " +
+                    "Recommend rod replacement. Current=%.2f, +Bait=%.2f, Max=%.2f",
+                    percentUsed, currentMass, baitMass, maxMass));
+                return false;
+            }
+            
+            // Масса в норме
+            Log.d(TAG, String.format(
+                "✅ FISH_MASS_OK: %.1f%% usage (%.2f/%.2f). Bait cast permissible.",
+                percentUsed, newMassAfterCast, maxMass));
+            return true;
+            
+        } catch (NumberFormatException e) {
+            // Если не можем распарсить массу - позволяем заброс (fallback)
+            Log.w(TAG, "[FISH_MASS_CHECK] Parse error for mass values, allowing cast as fallback: " + e.getMessage());
+            FileLogger.trace(TAG, "[FISH_MASS_ERROR] " + e.getMessage());
+            return true;
+        }
     }
 
     /**
@@ -1707,4 +1905,304 @@ public final class FishAjaxPhp {
     // isBaitEnabledInProfile, parseIntSafe, getMainActivityOrNull,
     // sendFishAct1RequestWithLake, getBaitNameById)
     // ============================================================================
+
+    // ============================================================================
+    // Проверка целостности снаряжения для рыбалки (FishingGearCheck)
+    // ============================================================================
+
+    /**
+     * isFishingGearBroken() - Проверяет, сломана ли одна из удочек по долговечности.
+     * 
+     * Берёт СВЕЖИЕ slots из HTML и парсит реальную durability, а не использует старые AppVars.
+     * Удочка считается сломанной если текущая долговечность > 0.
+     * Вызывается только когда мы парсим HTML профиля (slots_inv).
+     */
+    public static boolean isFishingGearBroken(String html) {
+        if (html == null || html.isEmpty()) {
+            return false;
+        }
+        
+        // Парсим slots_inv из HTML профиля (как в ПК версии)
+        String slotsInv = HelperStrings.subString(html, "slots_inv(", ");");
+        if (slotsInv == null || slotsInv.isEmpty()) {
+            // Пробуем slots_pla если slots_inv не найден
+            slotsInv = HelperStrings.subString(html, "slots_pla(", ");");
+            if (slotsInv == null || slotsInv.isEmpty()) {
+                return false;
+            }
+        }
+        
+        // Парсим slots по запятым
+        String[] pslots = slotsInv.split(",");
+        if (pslots.length < 6) {
+            return false;
+        }
+        
+        // slmain = pslots[2] - основное снаряжение
+        String[] slmain = pslots[2].split("@");
+        if (slmain.length < 13) {
+            return false;
+        }
+        
+        // sldlg = pslots[5] - долговечность
+        String[] sldlg = pslots[5].split("@");
+        if (sldlg.length < 13) {
+            return false;
+        }
+        
+        // Проверяем Hand1 (левая рука / первая рука)
+        String[] slhand1 = slmain[2].split(":");
+        if (slhand1.length >= 2) {
+            String hand1Name = slhand1[1];
+            
+            // Если слот не пустой и это удочка/спиннинг
+            if (!hand1Name.toLowerCase().startsWith("слот")) {
+                String curDlg1 = sldlg[2]; // текущий долг для Hand1
+                if (isBrokenByCurrentDolg(curDlg1)) {
+                    String msg = "❌ [FISH_GEAR_CHECK_REJECTED] Hand1 (" + hand1Name + ") broken dolg=" + curDlg1;
+                    Log.w(TAG, msg);
+                    FileLogger.warn(TAG, msg);
+                    return true; // Одета сломанная удочка - переодеть
+                }
+            }
+        }
+        
+        // Проверяем Hand2 (правая рука / вторая рука)
+        String[] slhand2 = slmain[12].split(":");
+        if (slhand2.length >= 2) {
+            String hand2Name = slhand2[1];
+            
+            // Если слот не пустой и это удочка/спиннинг
+            if (!hand2Name.toLowerCase().startsWith("слот")) {
+                String curDlg2 = sldlg[12]; // текущий долг для Hand2
+                if (isBrokenByCurrentDolg(curDlg2)) {
+                    String msg = "❌ [FISH_GEAR_CHECK_REJECTED] Hand2 (" + hand2Name + ") broken dolg=" + curDlg2;
+                    Log.w(TAG, msg);
+                    FileLogger.warn(TAG, msg);
+                    return true; // Одета сломанная удочка - переодеть
+                }
+            }
+        }
+        
+        return false; // Обе руки в порядке или пусты
+    }
+    
+    /**
+     * isBrokenByCurrentDolg() - Проверяет текущий долг (только число перед '/').
+     * Долг = урон/износ. Если долг > 0 - предмет сломан.
+     * Примеры:
+     * - "0" → не сломан (долг=0)
+     * - "5" → СЛОМАН (долг > 0)
+     * - "15" → СЛОМАН (долг > 0)
+     */
+    private static boolean isBrokenByCurrentDolg(String dolgStr) {
+        if (dolgStr == null || dolgStr.isEmpty()) {
+            return false; // Нет долга = не сломано
+        }
+        
+        try {
+            int dolgValue = Integer.parseInt(dolgStr.trim());
+            boolean isBroken = dolgValue > 0; // Если долг > 0 - сломано
+            return isBroken;
+        } catch (NumberFormatException e) {
+            String msg = "⚠️ [FISH_GEAR_CHECK_ERROR] Failed to parse dolg=" + dolgStr;
+            Log.w(TAG, msg);
+            FileLogger.warn(TAG, msg);
+            return false;
+        }
+    }
+
+    /**
+     * ✅ ПРАВИЛО 4 (AGENTS.MD): Проверка на сообщение сервера о перегрузе.
+     * 
+     * Проверяет наличие в HTML ответа сообщения о перегрузе от сервера:
+     * "<font color=#CC0000>Внимание! Возможен перегруз."
+     * 
+     * Если найдена и в настройках включена опция FishStopOverWeight:
+     * - Останавливаем авторыбалку
+     * - Отправляем уведомление в чат
+     * - Логируем решение
+     * 
+     * @param html HTML ответ act=1
+     * @return true если перегруз обнаружен и рыбалка остановлена, false если можно продолжать
+     */
+    private static boolean checkOverweightHtmlPattern(String html) {
+        if (html == null || html.isEmpty()) {
+            return false;
+        }
+
+        // Проверяем паттерн серверного сообщения о перегрузе
+        final String OVERWEIGHT_PATTERN = "<font color=#CC0000>Внимание! Возможен перегруз.";
+        boolean hasOverweightMessage = html.contains(OVERWEIGHT_PATTERN);
+
+        if (!hasOverweightMessage) {
+            return false;  // Нет перегруза - продолжаем рыбалку
+        }
+
+        // Перегруз обнаружен в HTML ответе!
+        String msg = "⚠️ FISH_OVERWEIGHT: сервер отправил сообщение о перегрузе";
+        Log.w(TAG, msg);
+        FileLogger.trace(TAG, msg);
+
+        // Проверяем настройку FishStopOverWeight
+        boolean shouldStop = AppVars.Profile != null && AppVars.Profile.FishStopOverWeight;
+
+        if (shouldStop) {
+            // Останавливаем рыбалку по настройке
+            String stopMsg = "❌ FISH_STOP_OVERWEIGHT: Авто-рыбалка остановлена - из за перегруза массы (FishStopOverWeight=true)";
+            Log.e(TAG, stopMsg);
+            FileLogger.trace(TAG, stopMsg);
+
+            disableAutoFish("из за перегруза массы");
+            return true;  // Рыбалка остановлена
+        } else {
+            // Сервер сообщил о перегрузе, но настройка отключена
+            // Ожидаем автоматическую смену удочки при следующей попытке
+            String continueMsg = "⚠️ FISH_CONTINUE_ON_OVERWEIGHT: Перегруз обнаружен, но FishStopOverWeight=false, " +
+                    "ожидаем смены удочки при следующем цикле";
+            Log.i(TAG, continueMsg);
+            FileLogger.trace(TAG, continueMsg);
+            return false;  // Продолжаем - попробуем одеть новую удочку
+        }
+    }
+
+    /**
+     * Проверяет текущее состояние одежды (удочка в руке).
+     * Если удочка отсутствует или сломана - ищет и одевает новую из инвентаря.
+     *
+     * Парсит HTML:
+     * - GearParser для текущей одежды (Hand1, Hand2, Empty)
+     * - InventoryParser для предметов в инвентаре
+     *
+     * Эквивалент C# функции MainPhpWearUd из MainPhpWear.cs
+     *
+     * @param html HTML act=1 ответ (содержит slots_inv и инвентарь)
+     * @return true если была произведена смена удочки (требуется ожидание нового ответа),
+     *         false если удочка в порядке и можно продолжать рыбалку
+     */
+    private static boolean checkAndWearRodIfNeeded(String html) {
+        if (html == null || html.isEmpty()) {
+            return false;
+        }
+
+        try {
+            // Парсим текущую одежду
+            GearParser gear = new GearParser(html);
+            if (!gear.isValid) {
+                String msg = "⚠️ FISH_GEAR_PARSE_FAILED: could not parse current gear, skipping rod replacement";
+                Log.w(TAG, msg);
+                FileLogger.trace(TAG, msg);
+                return false;
+            }
+
+            String gearStatus = "FISH_GEAR_STATUS: " + gear.getStatusString();
+            Log.d(TAG, gearStatus);
+            FileLogger.trace(TAG, gearStatus);
+
+            // Проверяем настройку FishAutoWear - включено ли автооформление
+            boolean autoWearEnabled = AppVars.Profile != null && AppVars.Profile.FishAutoWear;
+            if (!autoWearEnabled) {
+                Log.d(TAG, "FISH_GEAR_AUTOWEAR_DISABLED: не будем одевать удочку (настройка отключена)");
+                return false;
+            }
+
+            // Проверяем есть ли удочка в руке 1
+            if (!gear.empty1 && gear.isRodWorn(1)) {
+                // Удочка есть в руке 1 и она не пуста
+                Log.d(TAG, "FISH_GEAR_OK_HAND1: удочка одета в руке 1");
+                return false;
+            }
+
+            // Рука 1 пуста или там не удочка - пытаемся одеть
+            String tryWearMsg = "FISH_GEAR_TRY_WEAR_HAND1: рука 1 пуста или требуется смена, ищем удочку в инвентаре";
+            Log.i(TAG, tryWearMsg);
+            FileLogger.trace(TAG, tryWearMsg);
+
+            // Парсим инвентарь
+            List<InventoryParser.InventoryItem> inventory = InventoryParser.parseInventory(html);
+            if (inventory.isEmpty()) {
+                String noInvMsg = "❌ FISH_NO_INVENTORY: инвентарь пуст или не спарсен, не можем одеть удочку";
+                Log.e(TAG, noInvMsg);
+                FileLogger.trace(TAG, noInvMsg);
+                disableAutoFish("нет удочки в инвентаре");
+                return true;  // Остановили рыбалку
+            }
+
+            // Ищем подходящую удочку в инвентаре
+            String rodPreference = AppVars.Profile.FishHandOne;
+            InventoryParser.InventoryItem rodToWear = InventoryParser.findSpecificRod(inventory, rodPreference);
+
+            if (rodToWear == null) {
+                String noRodMsg = "❌ FISH_NO_ROD_FOUND: удочка '" + rodPreference + "' не найдена в инвентаре";
+                Log.e(TAG, noRodMsg);
+                FileLogger.trace(TAG, noRodMsg);
+                disableAutoFish("нет нужной удочки в инвентаре");
+                return true;  // Остановили рыбалку
+            }
+
+            // Нашли удочку - одеваем её
+            String wearMsg = String.format(
+                "✅ FISH_WEAR_ROD: одеваем '%s' (dur=%s) по ссылке: %s",
+                rodToWear.name, rodToWear.durability, rodToWear.wearUrl
+            );
+            Log.i(TAG, wearMsg);
+            FileLogger.trace(TAG, wearMsg);
+
+            // Отправляем запрос на одевание
+            executeWearLink(rodToWear.wearUrl, rodToWear.name);
+            return true;  // Смена произведена, нужно ждать ответа сервера
+
+        } catch (Exception e) {
+            String errMsg = "⚠️ FISH_WEAR_ERROR: " + e.getMessage();
+            Log.w(TAG, errMsg, e);
+            FileLogger.trace(TAG, errMsg);
+            return false;
+        }
+    }
+
+    /**
+     * Отправляет HTTP GET запрос для одевания удочки.
+     * Ссылка имеет вид: "main.php?get_id=57&wid=27975541&vcode=..."
+     *
+     * @param wearUrl относительная ссылка из InventoryParser
+     * @param rodName название удочки (для логирования)
+     */
+    private static void executeWearLink(String wearUrl, String rodName) {
+        try {
+            if (AppVars.mainActivity == null || AppVars.mainActivity.get() == null) {
+                Log.w(TAG, "executeWearLink: mainActivity is null, cannot wear");
+                return;
+            }
+
+            MainActivity activity = AppVars.mainActivity.get();
+            if (activity == null) {
+                Log.w(TAG, "executeWearLink: activity reference invalid");
+                return;
+            }
+
+            android.webkit.WebView webView = activity.getMainWebView();
+            if (webView == null) {
+                Log.w(TAG, "executeWearLink: mainWebView is null");
+                return;
+            }
+
+            // Преобразуем относительный URL в абсолютный
+            String fullUrl = wearUrl.startsWith("http") ? wearUrl : "http://neverlands.ru/" + wearUrl;
+
+            String logMsg = String.format(
+                "FISH_WEAR_EXECUTE: loading URL to wear '%s': %s",
+                rodName, fullUrl
+            );
+            Log.d(TAG, logMsg);
+            FileLogger.trace(TAG, logMsg);
+
+            // Загружаем URL - это выполнит GET запрос и вернёт HTML с новым состоянием gear
+            webView.loadUrl(fullUrl);
+
+        } catch (Exception e) {
+            String errMsg = "⚠️ executeWearLink error: " + e.getMessage();
+            Log.w(TAG, errMsg, e);
+            FileLogger.trace(TAG, errMsg);
+        }
+    }
 }

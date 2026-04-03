@@ -1,0 +1,554 @@
+2026-04-03 20:30:08.733 [TRACE] REQ method=GET uri=http://neverlands.ru/ch.php?1775237408676&show=1&fyo=0 host=neverlands.ru bodyBytes=0
+2026-04-03 20:30:08.844 [TRACE] RESP mode=DIRECT attempt=1 method=GET target=/ch.php?1775237408676&show=1&fyo=0 status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:30:20.719 [TRACE] REQ method=GET uri=http://neverlands.ru/ch.php?1775237420681&show=1&fyo=0 host=neverlands.ru bodyBytes=0
+2026-04-03 20:30:20.828 [TRACE] RESP mode=DIRECT attempt=1 method=GET target=/ch.php?1775237420681&show=1&fyo=0 status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:30:25.603 [TRACE] REQ method=GET uri=http://neverlands.ru/main.php host=neverlands.ru bodyBytes=0
+2026-04-03 20:30:25.725 [TRACE] RESP mode=DIRECT attempt=1 method=GET target=/main.php status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:30:25.832 [TRACE] REQ method=GET uri=http://neverlands.ru/js/hpmp.js host=neverlands.ru bodyBytes=0
+2026-04-03 20:30:25.840 [TRACE] REQ method=GET uri=http://neverlands.ru/js/map.js?v=6 host=neverlands.ru bodyBytes=0
+2026-04-03 20:30:25.841 [TRACE] REQ method=GET uri=http://neverlands.ru/js/signs.js host=neverlands.ru bodyBytes=0
+2026-04-03 20:30:25.844 [TRACE] REQ method=GET uri=http://neverlands.ru/js/ajax.js host=neverlands.ru bodyBytes=0
+2026-04-03 20:30:25.845 [TRACE] REQ method=GET uri=http://neverlands.ru/js/quest.js host=neverlands.ru bodyBytes=0
+2026-04-03 20:30:25.852 [TRACE] REQ method=GET uri=http://neverlands.ru/js/t_v01.js host=neverlands.ru bodyBytes=0
+2026-04-03 20:30:25.913 [TRACE] RESP mode=DIRECT attempt=1 method=GET target=/js/hpmp.js status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:30:25.940 [TRACE] RESP mode=DIRECT attempt=1 method=GET target=/js/signs.js status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:30:25.941 [TRACE] RESP mode=DIRECT attempt=1 method=GET target=/js/quest.js status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:30:25.941 [TRACE] RESP mode=DIRECT attempt=1 method=GET target=/js/map.js?v=6 status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:30:25.944 [TRACE] RESP mode=DIRECT attempt=1 method=GET target=/js/ajax.js status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:30:25.947 [TRACE] RESP mode=DIRECT attempt=1 method=GET target=/js/t_v01.js status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:30:26.051 [TRACE] REQ method=GET uri=http://neverlands.ru/ch.php?lo=1&1775237426027&1775237426035 host=neverlands.ru bodyBytes=0
+2026-04-03 20:30:26.171 [TRACE] RESP mode=DIRECT attempt=1 method=GET target=/ch.php?lo=1&1775237426027&1775237426035 status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:30:26.374 [TRACE] REQ method=GET uri=http://neverlands.ru/ch/ch_list.js host=neverlands.ru bodyBytes=0
+2026-04-03 20:30:26.464 [TRACE] RESP mode=DIRECT attempt=1 method=GET target=/ch/ch_list.js status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:30:32.744 [TRACE] REQ method=GET uri=http://neverlands.ru/ch.php?1775237432685&show=1&fyo=0 host=neverlands.ru bodyBytes=0
+2026-04-03 20:30:32.870 [TRACE] RESP mode=DIRECT attempt=1 method=GET target=/ch.php?1775237432685&show=1&fyo=0 status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:30:44.751 [TRACE] REQ method=GET uri=http://neverlands.ru/ch.php?1775237444687&show=1&fyo=0 host=neverlands.ru bodyBytes=0
+2026-04-03 20:30:44.864 [TRACE] RESP mode=DIRECT attempt=1 method=GET target=/ch.php?1775237444687&show=1&fyo=0 status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:30:56.753 [TRACE] REQ method=GET uri=http://neverlands.ru/ch.php?1775237456694&show=1&fyo=0 host=neverlands.ru bodyBytes=0
+2026-04-03 20:30:56.869 [TRACE] RESP mode=DIRECT attempt=1 method=GET target=/ch.php?1775237456694&show=1&fyo=0 status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:31:08.740 [TRACE] REQ method=GET uri=http://neverlands.ru/ch.php?1775237468701&show=1&fyo=0 host=neverlands.ru bodyBytes=0
+2026-04-03 20:31:08.845 [TRACE] RESP mode=DIRECT attempt=1 method=GET target=/ch.php?1775237468701&show=1&fyo=0 status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:31:20.742 [TRACE] REQ method=GET uri=http://neverlands.ru/ch.php?1775237480705&show=1&fyo=0 host=neverlands.ru bodyBytes=0
+2026-04-03 20:31:20.842 [TRACE] RESP mode=DIRECT attempt=1 method=GET target=/ch.php?1775237480705&show=1&fyo=0 status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:31:20.949 [TRACE] REQ method=GET uri=http://neverlands.ru/main.php host=neverlands.ru bodyBytes=0
+2026-04-03 20:31:21.052 [TRACE] RESP mode=DIRECT attempt=1 method=GET target=/main.php status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:31:21.151 [TRACE] REQ method=GET uri=http://neverlands.ru/js/slots_v02.js host=neverlands.ru bodyBytes=0
+2026-04-03 20:31:21.153 [TRACE] REQ method=GET uri=http://neverlands.ru/js/fight_v10.js host=neverlands.ru bodyBytes=0
+2026-04-03 20:31:21.156 [TRACE] REQ method=GET uri=http://neverlands.ru/js/t_v01.js host=neverlands.ru bodyBytes=0
+2026-04-03 20:31:21.159 [TRACE] REQ method=GET uri=http://neverlands.ru/js/signs.js host=neverlands.ru bodyBytes=0
+2026-04-03 20:31:21.161 [TRACE] REQ method=GET uri=http://neverlands.ru/js/fl_v03.js host=neverlands.ru bodyBytes=0
+2026-04-03 20:31:21.161 [TRACE] REQ method=GET uri=http://neverlands.ru/js/fkey.js host=neverlands.ru bodyBytes=0
+2026-04-03 20:31:21.236 [TRACE] RESP mode=DIRECT attempt=1 method=GET target=/js/slots_v02.js status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:31:21.253 [TRACE] RESP mode=DIRECT attempt=1 method=GET target=/js/fight_v10.js status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:31:21.254 [TRACE] RESP mode=DIRECT attempt=1 method=GET target=/js/fkey.js status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:31:21.255 [TRACE] RESP mode=DIRECT attempt=1 method=GET target=/js/t_v01.js status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:31:21.263 [TRACE] RESP mode=DIRECT attempt=1 method=GET target=/js/signs.js status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:31:21.264 [TRACE] RESP mode=DIRECT attempt=1 method=GET target=/js/fl_v03.js status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:31:21.931 [TRACE] REQ method=POST uri=http://neverlands.ru/main.php host=neverlands.ru bodyBytes=132
+2026-04-03 20:31:22.022 [TRACE] REQ method=POST uri=http://neverlands.ru/main.php host=neverlands.ru bodyBytes=132
+2026-04-03 20:31:22.065 [TRACE] RESP mode=DIRECT attempt=1 method=POST target=/main.php status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:31:22.066 [ERROR] SESSION_FAIL target=neverlands.ru:80
+java.net.SocketException: Broken pipe
+	at java.net.SocketOutputStream.socketWrite0(Native Method)
+	at java.net.SocketOutputStream.socketWrite(SocketOutputStream.java:117)
+	at java.net.SocketOutputStream.write(SocketOutputStream.java:161)
+	at ru.neverlands.abclient.proxy.LocalHttpProxyServer.copyStream(LocalHttpProxyServer.java:853)
+	at ru.neverlands.abclient.proxy.LocalHttpProxyServer.forwardRequest(LocalHttpProxyServer.java:299)
+	at ru.neverlands.abclient.proxy.LocalHttpProxyServer.handleClient(LocalHttpProxyServer.java:215)
+	at ru.neverlands.abclient.proxy.LocalHttpProxyServer.lambda$acceptLoop$0$ru-neverlands-abclient-proxy-LocalHttpProxyServer(LocalHttpProxyServer.java:146)
+	at ru.neverlands.abclient.proxy.LocalHttpProxyServer$$ExternalSyntheticLambda0.run(Unknown Source:4)
+	at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1167)
+	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:641)
+	at java.lang.Thread.run(Thread.java:764)
+
+2026-04-03 20:31:22.122 [TRACE] RESP mode=DIRECT attempt=1 method=POST target=/main.php status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:31:22.193 [TRACE] REQ method=GET uri=http://neverlands.ru/js/t_v01.js host=neverlands.ru bodyBytes=0
+2026-04-03 20:31:22.201 [TRACE] REQ method=GET uri=http://neverlands.ru/js/fl_v03.js host=neverlands.ru bodyBytes=0
+2026-04-03 20:31:22.202 [TRACE] REQ method=GET uri=http://neverlands.ru/js/signs.js host=neverlands.ru bodyBytes=0
+2026-04-03 20:31:22.204 [TRACE] REQ method=GET uri=http://neverlands.ru/js/fkey.js host=neverlands.ru bodyBytes=0
+2026-04-03 20:31:22.205 [TRACE] REQ method=GET uri=http://neverlands.ru/js/slots_v02.js host=neverlands.ru bodyBytes=0
+2026-04-03 20:31:22.207 [TRACE] REQ method=GET uri=http://neverlands.ru/js/fight_v10.js host=neverlands.ru bodyBytes=0
+2026-04-03 20:31:22.290 [TRACE] RESP mode=DIRECT attempt=1 method=GET target=/js/fkey.js status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:31:22.300 [TRACE] RESP mode=DIRECT attempt=1 method=GET target=/js/slots_v02.js status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:31:22.304 [TRACE] RESP mode=DIRECT attempt=1 method=GET target=/js/signs.js status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:31:22.305 [TRACE] RESP mode=DIRECT attempt=1 method=GET target=/js/fl_v03.js status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:31:22.306 [TRACE] RESP mode=DIRECT attempt=1 method=GET target=/js/fight_v10.js status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:31:22.309 [TRACE] RESP mode=DIRECT attempt=1 method=GET target=/js/t_v01.js status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:31:22.326 [TRACE] REQ method=POST uri=http://neverlands.ru/main.php host=neverlands.ru bodyBytes=132
+2026-04-03 20:31:22.437 [TRACE] RESP mode=DIRECT attempt=1 method=POST target=/main.php status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:31:22.526 [TRACE] REQ method=GET uri=http://neverlands.ru/js/slots_v02.js host=neverlands.ru bodyBytes=0
+2026-04-03 20:31:22.528 [TRACE] REQ method=GET uri=http://neverlands.ru/js/fkey.js host=neverlands.ru bodyBytes=0
+2026-04-03 20:31:22.530 [TRACE] REQ method=GET uri=http://neverlands.ru/js/fl_v03.js host=neverlands.ru bodyBytes=0
+2026-04-03 20:31:22.531 [TRACE] REQ method=GET uri=http://neverlands.ru/js/t_v01.js host=neverlands.ru bodyBytes=0
+2026-04-03 20:31:22.532 [TRACE] REQ method=GET uri=http://neverlands.ru/js/signs.js host=neverlands.ru bodyBytes=0
+2026-04-03 20:31:22.533 [TRACE] REQ method=GET uri=http://neverlands.ru/js/fight_v10.js host=neverlands.ru bodyBytes=0
+2026-04-03 20:31:22.629 [TRACE] RESP mode=DIRECT attempt=1 method=GET target=/js/signs.js status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:31:22.630 [TRACE] RESP mode=DIRECT attempt=1 method=GET target=/js/fl_v03.js status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:31:22.633 [TRACE] RESP mode=DIRECT attempt=1 method=GET target=/js/slots_v02.js status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:31:22.640 [TRACE] RESP mode=DIRECT attempt=1 method=GET target=/js/fight_v10.js status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:31:22.643 [TRACE] RESP mode=DIRECT attempt=1 method=GET target=/js/t_v01.js status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:31:22.647 [TRACE] RESP mode=DIRECT attempt=1 method=GET target=/js/fkey.js status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:31:23.088 [TRACE] REQ method=POST uri=http://neverlands.ru/main.php host=neverlands.ru bodyBytes=128
+2026-04-03 20:31:23.174 [TRACE] REQ method=POST uri=http://neverlands.ru/main.php host=neverlands.ru bodyBytes=129
+2026-04-03 20:31:23.207 [TRACE] RESP mode=DIRECT attempt=1 method=POST target=/main.php status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:31:23.210 [ERROR] SESSION_FAIL target=neverlands.ru:80
+java.net.SocketException: Broken pipe
+	at java.net.SocketOutputStream.socketWrite0(Native Method)
+	at java.net.SocketOutputStream.socketWrite(SocketOutputStream.java:117)
+	at java.net.SocketOutputStream.write(SocketOutputStream.java:161)
+	at ru.neverlands.abclient.proxy.LocalHttpProxyServer.copyStream(LocalHttpProxyServer.java:853)
+	at ru.neverlands.abclient.proxy.LocalHttpProxyServer.forwardRequest(LocalHttpProxyServer.java:299)
+	at ru.neverlands.abclient.proxy.LocalHttpProxyServer.handleClient(LocalHttpProxyServer.java:215)
+	at ru.neverlands.abclient.proxy.LocalHttpProxyServer.lambda$acceptLoop$0$ru-neverlands-abclient-proxy-LocalHttpProxyServer(LocalHttpProxyServer.java:146)
+	at ru.neverlands.abclient.proxy.LocalHttpProxyServer$$ExternalSyntheticLambda0.run(Unknown Source:4)
+	at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1167)
+	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:641)
+	at java.lang.Thread.run(Thread.java:764)
+
+2026-04-03 20:31:23.270 [TRACE] RESP mode=DIRECT attempt=1 method=POST target=/main.php status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:31:23.325 [TRACE] REQ method=GET uri=http://neverlands.ru/js/t_v01.js host=neverlands.ru bodyBytes=0
+2026-04-03 20:31:23.344 [TRACE] REQ method=GET uri=http://neverlands.ru/js/slots_v02.js host=neverlands.ru bodyBytes=0
+2026-04-03 20:31:23.345 [TRACE] REQ method=GET uri=http://neverlands.ru/js/fl_v03.js host=neverlands.ru bodyBytes=0
+2026-04-03 20:31:23.345 [TRACE] REQ method=GET uri=http://neverlands.ru/js/fight_v10.js host=neverlands.ru bodyBytes=0
+2026-04-03 20:31:23.346 [TRACE] REQ method=GET uri=http://neverlands.ru/js/fkey.js host=neverlands.ru bodyBytes=0
+2026-04-03 20:31:23.346 [TRACE] REQ method=GET uri=http://neverlands.ru/js/signs.js host=neverlands.ru bodyBytes=0
+2026-04-03 20:31:23.408 [TRACE] RESP mode=DIRECT attempt=1 method=GET target=/js/t_v01.js status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:31:23.418 [TRACE] RESP mode=DIRECT attempt=1 method=GET target=/js/slots_v02.js status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:31:23.425 [TRACE] RESP mode=DIRECT attempt=1 method=GET target=/js/fkey.js status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:31:23.430 [TRACE] RESP mode=DIRECT attempt=1 method=GET target=/js/signs.js status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:31:23.431 [TRACE] RESP mode=DIRECT attempt=1 method=GET target=/js/fight_v10.js status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:31:23.434 [TRACE] RESP mode=DIRECT attempt=1 method=GET target=/js/fl_v03.js status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:31:23.438 [TRACE] REQ method=POST uri=http://neverlands.ru/main.php host=neverlands.ru bodyBytes=128
+2026-04-03 20:31:23.551 [TRACE] RESP mode=DIRECT attempt=1 method=POST target=/main.php status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:31:23.629 [TRACE] REQ method=GET uri=http://neverlands.ru/js/t_v01.js host=neverlands.ru bodyBytes=0
+2026-04-03 20:31:23.633 [TRACE] REQ method=GET uri=http://neverlands.ru/js/slots_v02.js host=neverlands.ru bodyBytes=0
+2026-04-03 20:31:23.633 [TRACE] REQ method=GET uri=http://neverlands.ru/js/signs.js host=neverlands.ru bodyBytes=0
+2026-04-03 20:31:23.637 [TRACE] REQ method=GET uri=http://neverlands.ru/js/fkey.js host=neverlands.ru bodyBytes=0
+2026-04-03 20:31:23.644 [TRACE] REQ method=GET uri=http://neverlands.ru/js/fl_v03.js host=neverlands.ru bodyBytes=0
+2026-04-03 20:31:23.648 [TRACE] REQ method=GET uri=http://neverlands.ru/js/fight_v10.js host=neverlands.ru bodyBytes=0
+2026-04-03 20:31:23.721 [TRACE] RESP mode=DIRECT attempt=1 method=GET target=/js/slots_v02.js status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:31:23.722 [TRACE] RESP mode=DIRECT attempt=1 method=GET target=/js/signs.js status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:31:23.724 [TRACE] RESP mode=DIRECT attempt=1 method=GET target=/js/t_v01.js status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:31:23.729 [TRACE] RESP mode=DIRECT attempt=1 method=GET target=/js/fkey.js status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:31:23.733 [TRACE] RESP mode=DIRECT attempt=1 method=GET target=/js/fight_v10.js status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:31:23.744 [TRACE] RESP mode=DIRECT attempt=1 method=GET target=/js/fl_v03.js status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:31:24.117 [TRACE] REQ method=POST uri=http://neverlands.ru/main.php host=neverlands.ru bodyBytes=128
+2026-04-03 20:31:24.230 [TRACE] REQ method=POST uri=http://neverlands.ru/main.php host=neverlands.ru bodyBytes=129
+2026-04-03 20:31:24.233 [TRACE] RESP mode=DIRECT attempt=1 method=POST target=/main.php status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:31:24.234 [ERROR] SESSION_FAIL target=neverlands.ru:80
+java.net.SocketException: Broken pipe
+	at java.net.SocketOutputStream.socketWrite0(Native Method)
+	at java.net.SocketOutputStream.socketWrite(SocketOutputStream.java:117)
+	at java.net.SocketOutputStream.write(SocketOutputStream.java:161)
+	at ru.neverlands.abclient.proxy.LocalHttpProxyServer.copyStream(LocalHttpProxyServer.java:853)
+	at ru.neverlands.abclient.proxy.LocalHttpProxyServer.forwardRequest(LocalHttpProxyServer.java:299)
+	at ru.neverlands.abclient.proxy.LocalHttpProxyServer.handleClient(LocalHttpProxyServer.java:215)
+	at ru.neverlands.abclient.proxy.LocalHttpProxyServer.lambda$acceptLoop$0$ru-neverlands-abclient-proxy-LocalHttpProxyServer(LocalHttpProxyServer.java:146)
+	at ru.neverlands.abclient.proxy.LocalHttpProxyServer$$ExternalSyntheticLambda0.run(Unknown Source:4)
+	at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1167)
+	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:641)
+	at java.lang.Thread.run(Thread.java:764)
+
+2026-04-03 20:31:24.329 [TRACE] RESP mode=DIRECT attempt=1 method=POST target=/main.php status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:31:24.396 [TRACE] REQ method=GET uri=http://neverlands.ru/js/t_v01.js host=neverlands.ru bodyBytes=0
+2026-04-03 20:31:24.396 [TRACE] REQ method=GET uri=http://neverlands.ru/js/signs.js host=neverlands.ru bodyBytes=0
+2026-04-03 20:31:24.397 [TRACE] REQ method=GET uri=http://neverlands.ru/js/fl_v03.js host=neverlands.ru bodyBytes=0
+2026-04-03 20:31:24.397 [TRACE] REQ method=GET uri=http://neverlands.ru/js/slots_v02.js host=neverlands.ru bodyBytes=0
+2026-04-03 20:31:24.400 [TRACE] REQ method=GET uri=http://neverlands.ru/js/fight_v10.js host=neverlands.ru bodyBytes=0
+2026-04-03 20:31:24.402 [TRACE] REQ method=GET uri=http://neverlands.ru/js/fkey.js host=neverlands.ru bodyBytes=0
+2026-04-03 20:31:24.476 [TRACE] RESP mode=DIRECT attempt=1 method=GET target=/js/signs.js status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:31:24.477 [TRACE] RESP mode=DIRECT attempt=1 method=GET target=/js/slots_v02.js status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:31:24.479 [TRACE] RESP mode=DIRECT attempt=1 method=GET target=/js/fl_v03.js status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:31:24.484 [TRACE] RESP mode=DIRECT attempt=1 method=GET target=/js/t_v01.js status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:31:24.486 [TRACE] RESP mode=DIRECT attempt=1 method=GET target=/js/fight_v10.js status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:31:24.497 [TRACE] RESP mode=DIRECT attempt=1 method=GET target=/js/fkey.js status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:31:24.518 [TRACE] REQ method=POST uri=http://neverlands.ru/main.php host=neverlands.ru bodyBytes=129
+2026-04-03 20:31:24.630 [TRACE] RESP mode=DIRECT attempt=1 method=POST target=/main.php status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:31:24.714 [TRACE] REQ method=GET uri=http://neverlands.ru/js/slots_v02.js host=neverlands.ru bodyBytes=0
+2026-04-03 20:31:24.716 [TRACE] REQ method=GET uri=http://neverlands.ru/js/signs.js host=neverlands.ru bodyBytes=0
+2026-04-03 20:31:24.718 [TRACE] REQ method=GET uri=http://neverlands.ru/js/fkey.js host=neverlands.ru bodyBytes=0
+2026-04-03 20:31:24.721 [TRACE] REQ method=GET uri=http://neverlands.ru/js/fl_v03.js host=neverlands.ru bodyBytes=0
+2026-04-03 20:31:24.722 [TRACE] REQ method=GET uri=http://neverlands.ru/js/t_v01.js host=neverlands.ru bodyBytes=0
+2026-04-03 20:31:24.724 [TRACE] REQ method=GET uri=http://neverlands.ru/js/fight_v10.js host=neverlands.ru bodyBytes=0
+2026-04-03 20:31:24.811 [TRACE] RESP mode=DIRECT attempt=1 method=GET target=/js/slots_v02.js status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:31:24.824 [TRACE] RESP mode=DIRECT attempt=1 method=GET target=/js/fkey.js status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:31:24.825 [TRACE] RESP mode=DIRECT attempt=1 method=GET target=/js/signs.js status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:31:24.827 [TRACE] RESP mode=DIRECT attempt=1 method=GET target=/js/fl_v03.js status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:31:24.832 [TRACE] RESP mode=DIRECT attempt=1 method=GET target=/js/fight_v10.js status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:31:24.835 [TRACE] RESP mode=DIRECT attempt=1 method=GET target=/js/t_v01.js status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:31:25.229 [TRACE] REQ method=POST uri=http://neverlands.ru/main.php host=neverlands.ru bodyBytes=130
+2026-04-03 20:31:25.359 [TRACE] RESP mode=DIRECT attempt=1 method=POST target=/main.php status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:31:25.440 [TRACE] REQ method=GET uri=http://neverlands.ru/js/t_v01.js host=neverlands.ru bodyBytes=0
+2026-04-03 20:31:25.444 [TRACE] REQ method=GET uri=http://neverlands.ru/js/fight_v10.js host=neverlands.ru bodyBytes=0
+2026-04-03 20:31:25.446 [TRACE] REQ method=GET uri=http://neverlands.ru/js/fl_v03.js host=neverlands.ru bodyBytes=0
+2026-04-03 20:31:25.447 [TRACE] REQ method=GET uri=http://neverlands.ru/js/slots_v02.js host=neverlands.ru bodyBytes=0
+2026-04-03 20:31:25.447 [TRACE] REQ method=GET uri=http://neverlands.ru/js/signs.js host=neverlands.ru bodyBytes=0
+2026-04-03 20:31:25.454 [TRACE] REQ method=GET uri=http://neverlands.ru/js/fkey.js host=neverlands.ru bodyBytes=0
+2026-04-03 20:31:25.531 [TRACE] RESP mode=DIRECT attempt=1 method=GET target=/js/fl_v03.js status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:31:25.537 [TRACE] RESP mode=DIRECT attempt=1 method=GET target=/js/t_v01.js status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:31:25.538 [TRACE] RESP mode=DIRECT attempt=1 method=GET target=/js/slots_v02.js status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:31:25.540 [TRACE] RESP mode=DIRECT attempt=1 method=GET target=/js/fight_v10.js status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:31:25.544 [TRACE] RESP mode=DIRECT attempt=1 method=GET target=/js/signs.js status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:31:25.551 [TRACE] RESP mode=DIRECT attempt=1 method=GET target=/js/fkey.js status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:31:26.960 [TRACE] REQ method=GET uri=http://neverlands.ru/main.php?get_id=61&act=7&fexp=2&fres=1&vcode=0e1ce0908055d5af9409beec379324de&min1=99&max1=0&min2=22&max2=22&sum1=0&sum2=22&ftype=4 host=neverlands.ru bodyBytes=0
+2026-04-03 20:31:27.085 [TRACE] RESP mode=DIRECT attempt=1 method=GET target=/main.php?get_id=61&act=7&fexp=2&fres=1&vcode=0e1ce0908055d5af9409beec379324de&min1=99&max1=0&min2=22&max2=22&sum1=0&sum2=22&ftype=4 status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:31:27.179 [TRACE] REQ method=GET uri=http://neverlands.ru/main.php host=neverlands.ru bodyBytes=0
+2026-04-03 20:31:27.274 [TRACE] RESP mode=DIRECT attempt=1 method=GET target=/main.php status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:31:27.384 [TRACE] REQ method=GET uri=http://neverlands.ru/js/map.js?v=6 host=neverlands.ru bodyBytes=0
+2026-04-03 20:31:27.385 [TRACE] REQ method=GET uri=http://neverlands.ru/js/signs.js host=neverlands.ru bodyBytes=0
+2026-04-03 20:31:27.388 [TRACE] REQ method=GET uri=http://neverlands.ru/js/t_v01.js host=neverlands.ru bodyBytes=0
+2026-04-03 20:31:27.389 [TRACE] REQ method=GET uri=http://neverlands.ru/js/quest.js host=neverlands.ru bodyBytes=0
+2026-04-03 20:31:27.391 [TRACE] REQ method=GET uri=http://neverlands.ru/js/ajax.js host=neverlands.ru bodyBytes=0
+2026-04-03 20:31:27.393 [TRACE] REQ method=GET uri=http://neverlands.ru/js/hpmp.js host=neverlands.ru bodyBytes=0
+2026-04-03 20:31:27.486 [TRACE] RESP mode=DIRECT attempt=1 method=GET target=/js/signs.js status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:31:27.488 [TRACE] RESP mode=DIRECT attempt=1 method=GET target=/js/ajax.js status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:31:27.493 [TRACE] RESP mode=DIRECT attempt=1 method=GET target=/js/map.js?v=6 status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:31:27.497 [TRACE] RESP mode=DIRECT attempt=1 method=GET target=/js/t_v01.js status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:31:27.502 [TRACE] RESP mode=DIRECT attempt=1 method=GET target=/js/quest.js status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:31:27.507 [TRACE] RESP mode=DIRECT attempt=1 method=GET target=/js/hpmp.js status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:31:27.627 [TRACE] REQ method=GET uri=http://neverlands.ru/ch.php?lo=1&1775237487595&1775237487601 host=neverlands.ru bodyBytes=0
+2026-04-03 20:31:27.704 [TRACE] RESP mode=DIRECT attempt=1 method=GET target=/ch.php?lo=1&1775237487595&1775237487601 status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:31:27.906 [TRACE] REQ method=GET uri=http://neverlands.ru/ch/ch_list.js host=neverlands.ru bodyBytes=0
+2026-04-03 20:31:27.992 [TRACE] RESP mode=DIRECT attempt=1 method=GET target=/ch/ch_list.js status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:31:32.755 [TRACE] REQ method=GET uri=http://neverlands.ru/ch.php?1775237492709&show=1&fyo=0 host=neverlands.ru bodyBytes=0
+2026-04-03 20:31:32.864 [TRACE] RESP mode=DIRECT attempt=1 method=GET target=/ch.php?1775237492709&show=1&fyo=0 status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:31:44.780 [TRACE] REQ method=GET uri=http://neverlands.ru/ch.php?1775237504714&show=1&fyo=0 host=neverlands.ru bodyBytes=0
+2026-04-03 20:31:44.879 [TRACE] RESP mode=DIRECT attempt=1 method=GET target=/ch.php?1775237504714&show=1&fyo=0 status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:31:56.756 [TRACE] REQ method=GET uri=http://neverlands.ru/ch.php?1775237516719&show=1&fyo=0 host=neverlands.ru bodyBytes=0
+2026-04-03 20:31:56.857 [TRACE] RESP mode=DIRECT attempt=1 method=GET target=/ch.php?1775237516719&show=1&fyo=0 status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:32:08.769 [TRACE] REQ method=GET uri=http://neverlands.ru/ch.php?1775237528723&show=1&fyo=0 host=neverlands.ru bodyBytes=0
+2026-04-03 20:32:08.855 [TRACE] RESP mode=DIRECT attempt=1 method=GET target=/ch.php?1775237528723&show=1&fyo=0 status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:32:20.791 [TRACE] REQ method=GET uri=http://neverlands.ru/ch.php?1775237540727&show=1&fyo=0 host=neverlands.ru bodyBytes=0
+2026-04-03 20:32:20.878 [TRACE] RESP mode=DIRECT attempt=1 method=GET target=/ch.php?1775237540727&show=1&fyo=0 status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:32:32.757 [TRACE] REQ method=GET uri=http://neverlands.ru/ch.php?1775237552734&show=1&fyo=0 host=neverlands.ru bodyBytes=0
+2026-04-03 20:32:32.850 [TRACE] RESP mode=DIRECT attempt=1 method=GET target=/ch.php?1775237552734&show=1&fyo=0 status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:32:44.792 [TRACE] REQ method=GET uri=http://neverlands.ru/ch.php?1775237564737&show=1&fyo=0 host=neverlands.ru bodyBytes=0
+2026-04-03 20:32:44.905 [TRACE] RESP mode=DIRECT attempt=1 method=GET target=/ch.php?1775237564737&show=1&fyo=0 status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:32:56.802 [TRACE] REQ method=GET uri=http://neverlands.ru/ch.php?1775237576743&show=1&fyo=0 host=neverlands.ru bodyBytes=0
+2026-04-03 20:32:56.899 [TRACE] RESP mode=DIRECT attempt=1 method=GET target=/ch.php?1775237576743&show=1&fyo=0 status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:33:08.816 [TRACE] REQ method=GET uri=http://neverlands.ru/ch.php?1775237588748&show=1&fyo=0 host=neverlands.ru bodyBytes=0
+2026-04-03 20:33:08.921 [TRACE] RESP mode=DIRECT attempt=1 method=GET target=/ch.php?1775237588748&show=1&fyo=0 status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:33:20.812 [TRACE] REQ method=GET uri=http://neverlands.ru/ch.php?1775237600757&show=1&fyo=0 host=neverlands.ru bodyBytes=0
+2026-04-03 20:33:20.913 [TRACE] RESP mode=DIRECT attempt=1 method=GET target=/ch.php?1775237600757&show=1&fyo=0 status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:33:32.834 [TRACE] REQ method=GET uri=http://neverlands.ru/ch.php?1775237612764&show=1&fyo=0 host=neverlands.ru bodyBytes=0
+2026-04-03 20:33:32.978 [TRACE] RESP mode=DIRECT attempt=1 method=GET target=/ch.php?1775237612764&show=1&fyo=0 status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:33:44.826 [TRACE] REQ method=GET uri=http://neverlands.ru/ch.php?1775237624774&show=1&fyo=0 host=neverlands.ru bodyBytes=0
+2026-04-03 20:33:44.952 [TRACE] RESP mode=DIRECT attempt=1 method=GET target=/ch.php?1775237624774&show=1&fyo=0 status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:33:56.833 [TRACE] REQ method=GET uri=http://neverlands.ru/ch.php?1775237636779&show=1&fyo=0 host=neverlands.ru bodyBytes=0
+2026-04-03 20:33:56.946 [TRACE] RESP mode=DIRECT attempt=1 method=GET target=/ch.php?1775237636779&show=1&fyo=0 status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:34:08.854 [TRACE] REQ method=GET uri=http://neverlands.ru/ch.php?1775237648784&show=1&fyo=0 host=neverlands.ru bodyBytes=0
+2026-04-03 20:34:08.943 [TRACE] RESP mode=DIRECT attempt=1 method=GET target=/ch.php?1775237648784&show=1&fyo=0 status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:34:20.859 [TRACE] REQ method=GET uri=http://neverlands.ru/ch.php?1775237660791&show=1&fyo=0 host=neverlands.ru bodyBytes=0
+2026-04-03 20:34:20.975 [TRACE] RESP mode=DIRECT attempt=1 method=GET target=/ch.php?1775237660791&show=1&fyo=0 status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:34:32.841 [TRACE] REQ method=GET uri=http://neverlands.ru/ch.php?1775237672795&show=1&fyo=0 host=neverlands.ru bodyBytes=0
+2026-04-03 20:34:32.944 [TRACE] RESP mode=DIRECT attempt=1 method=GET target=/ch.php?1775237672795&show=1&fyo=0 status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:34:44.869 [TRACE] REQ method=GET uri=http://neverlands.ru/ch.php?1775237684797&show=1&fyo=0 host=neverlands.ru bodyBytes=0
+2026-04-03 20:34:44.968 [TRACE] RESP mode=DIRECT attempt=1 method=GET target=/ch.php?1775237684797&show=1&fyo=0 status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:34:56.850 [TRACE] REQ method=GET uri=http://neverlands.ru/ch.php?1775237696802&show=1&fyo=0 host=neverlands.ru bodyBytes=0
+2026-04-03 20:34:56.958 [TRACE] RESP mode=DIRECT attempt=1 method=GET target=/ch.php?1775237696802&show=1&fyo=0 status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:35:08.897 [TRACE] REQ method=GET uri=http://neverlands.ru/ch.php?1775237708808&show=1&fyo=0 host=neverlands.ru bodyBytes=0
+2026-04-03 20:35:09.001 [TRACE] RESP mode=DIRECT attempt=1 method=GET target=/ch.php?1775237708808&show=1&fyo=0 status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:35:20.880 [TRACE] REQ method=GET uri=http://neverlands.ru/ch.php?1775237720819&show=1&fyo=0 host=neverlands.ru bodyBytes=0
+2026-04-03 20:35:20.982 [TRACE] RESP mode=DIRECT attempt=1 method=GET target=/ch.php?1775237720819&show=1&fyo=0 status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:35:32.887 [TRACE] REQ method=GET uri=http://neverlands.ru/ch.php?1775237732831&show=1&fyo=0 host=neverlands.ru bodyBytes=0
+2026-04-03 20:35:32.980 [TRACE] RESP mode=DIRECT attempt=1 method=GET target=/ch.php?1775237732831&show=1&fyo=0 status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:35:44.897 [TRACE] REQ method=GET uri=http://neverlands.ru/ch.php?1775237744837&show=1&fyo=0 host=neverlands.ru bodyBytes=0
+2026-04-03 20:35:45.004 [TRACE] RESP mode=DIRECT attempt=1 method=GET target=/ch.php?1775237744837&show=1&fyo=0 status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:35:56.879 [TRACE] REQ method=GET uri=http://neverlands.ru/ch.php?1775237756842&show=1&fyo=0 host=neverlands.ru bodyBytes=0
+2026-04-03 20:35:56.973 [TRACE] RESP mode=DIRECT attempt=1 method=GET target=/ch.php?1775237756842&show=1&fyo=0 status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:36:08.897 [TRACE] REQ method=GET uri=http://neverlands.ru/ch.php?1775237768846&show=1&fyo=0 host=neverlands.ru bodyBytes=0
+2026-04-03 20:36:09.018 [TRACE] RESP mode=DIRECT attempt=1 method=GET target=/ch.php?1775237768846&show=1&fyo=0 status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:36:20.891 [TRACE] REQ method=GET uri=http://neverlands.ru/ch.php?1775237780851&show=1&fyo=0 host=neverlands.ru bodyBytes=0
+2026-04-03 20:36:20.986 [TRACE] RESP mode=DIRECT attempt=1 method=GET target=/ch.php?1775237780851&show=1&fyo=0 status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:36:27.620 [TRACE] REQ method=GET uri=http://neverlands.ru/main.php host=neverlands.ru bodyBytes=0
+2026-04-03 20:36:27.724 [TRACE] RESP mode=DIRECT attempt=1 method=GET target=/main.php status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:36:27.821 [TRACE] REQ method=GET uri=http://neverlands.ru/js/map.js?v=6 host=neverlands.ru bodyBytes=0
+2026-04-03 20:36:27.829 [TRACE] REQ method=GET uri=http://neverlands.ru/js/quest.js host=neverlands.ru bodyBytes=0
+2026-04-03 20:36:27.839 [TRACE] REQ method=GET uri=http://neverlands.ru/js/hpmp.js host=neverlands.ru bodyBytes=0
+2026-04-03 20:36:27.840 [TRACE] REQ method=GET uri=http://neverlands.ru/js/ajax.js host=neverlands.ru bodyBytes=0
+2026-04-03 20:36:27.856 [TRACE] REQ method=GET uri=http://neverlands.ru/js/signs.js host=neverlands.ru bodyBytes=0
+2026-04-03 20:36:27.858 [TRACE] REQ method=GET uri=http://neverlands.ru/js/t_v01.js host=neverlands.ru bodyBytes=0
+2026-04-03 20:36:27.907 [TRACE] RESP mode=DIRECT attempt=1 method=GET target=/js/map.js?v=6 status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:36:27.910 [TRACE] RESP mode=DIRECT attempt=1 method=GET target=/js/quest.js status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:36:27.941 [TRACE] RESP mode=DIRECT attempt=1 method=GET target=/js/hpmp.js status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:36:27.942 [TRACE] RESP mode=DIRECT attempt=1 method=GET target=/js/signs.js status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:36:27.944 [TRACE] RESP mode=DIRECT attempt=1 method=GET target=/js/ajax.js status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:36:27.945 [TRACE] RESP mode=DIRECT attempt=1 method=GET target=/js/t_v01.js status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:36:28.057 [TRACE] REQ method=GET uri=http://neverlands.ru/ch.php?lo=1&1775237788030&1775237788036 host=neverlands.ru bodyBytes=0
+2026-04-03 20:36:28.141 [TRACE] RESP mode=DIRECT attempt=1 method=GET target=/ch.php?lo=1&1775237788030&1775237788036 status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:36:28.264 [TRACE] REQ method=GET uri=http://neverlands.ru/ch/ch_list.js host=neverlands.ru bodyBytes=0
+2026-04-03 20:36:28.456 [TRACE] RESP mode=DIRECT attempt=1 method=GET target=/ch/ch_list.js status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:36:32.906 [TRACE] REQ method=GET uri=http://neverlands.ru/ch.php?1775237792854&show=1&fyo=0 host=neverlands.ru bodyBytes=0
+2026-04-03 20:36:33.004 [TRACE] RESP mode=DIRECT attempt=1 method=GET target=/ch.php?1775237792854&show=1&fyo=0 status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:36:44.908 [TRACE] REQ method=GET uri=http://neverlands.ru/ch.php?1775237804861&show=1&fyo=0 host=neverlands.ru bodyBytes=0
+2026-04-03 20:36:45.010 [TRACE] RESP mode=DIRECT attempt=1 method=GET target=/ch.php?1775237804861&show=1&fyo=0 status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:36:56.914 [TRACE] REQ method=GET uri=http://neverlands.ru/ch.php?1775237816868&show=1&fyo=0 host=neverlands.ru bodyBytes=0
+2026-04-03 20:36:57.011 [TRACE] RESP mode=DIRECT attempt=1 method=GET target=/ch.php?1775237816868&show=1&fyo=0 status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:36:57.139 [TRACE] REQ method=GET uri=http://neverlands.ru/main.php host=neverlands.ru bodyBytes=0
+2026-04-03 20:36:57.246 [TRACE] RESP mode=DIRECT attempt=1 method=GET target=/main.php status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:36:57.348 [TRACE] REQ method=GET uri=http://neverlands.ru/js/signs.js host=neverlands.ru bodyBytes=0
+2026-04-03 20:36:57.351 [TRACE] REQ method=GET uri=http://neverlands.ru/js/t_v01.js host=neverlands.ru bodyBytes=0
+2026-04-03 20:36:57.355 [TRACE] REQ method=GET uri=http://neverlands.ru/js/fight_v10.js host=neverlands.ru bodyBytes=0
+2026-04-03 20:36:57.365 [TRACE] REQ method=GET uri=http://neverlands.ru/js/slots_v02.js host=neverlands.ru bodyBytes=0
+2026-04-03 20:36:57.365 [TRACE] REQ method=GET uri=http://neverlands.ru/js/fl_v03.js host=neverlands.ru bodyBytes=0
+2026-04-03 20:36:57.371 [TRACE] REQ method=GET uri=http://neverlands.ru/js/fkey.js host=neverlands.ru bodyBytes=0
+2026-04-03 20:36:57.449 [TRACE] RESP mode=DIRECT attempt=1 method=GET target=/js/fight_v10.js status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:36:57.450 [TRACE] RESP mode=DIRECT attempt=1 method=GET target=/js/t_v01.js status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:36:57.451 [TRACE] RESP mode=DIRECT attempt=1 method=GET target=/js/signs.js status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:36:57.461 [TRACE] RESP mode=DIRECT attempt=1 method=GET target=/js/fkey.js status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:36:57.469 [TRACE] RESP mode=DIRECT attempt=1 method=GET target=/js/slots_v02.js status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:36:57.477 [TRACE] RESP mode=DIRECT attempt=1 method=GET target=/js/fl_v03.js status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:36:58.153 [TRACE] REQ method=POST uri=http://neverlands.ru/main.php host=neverlands.ru bodyBytes=133
+2026-04-03 20:36:58.277 [TRACE] RESP mode=DIRECT attempt=1 method=POST target=/main.php status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:36:58.376 [TRACE] REQ method=GET uri=http://neverlands.ru/js/signs.js host=neverlands.ru bodyBytes=0
+2026-04-03 20:36:58.384 [TRACE] REQ method=GET uri=http://neverlands.ru/js/fl_v03.js host=neverlands.ru bodyBytes=0
+2026-04-03 20:36:58.384 [TRACE] REQ method=GET uri=http://neverlands.ru/js/fight_v10.js host=neverlands.ru bodyBytes=0
+2026-04-03 20:36:58.385 [TRACE] REQ method=GET uri=http://neverlands.ru/js/t_v01.js host=neverlands.ru bodyBytes=0
+2026-04-03 20:36:58.386 [TRACE] REQ method=GET uri=http://neverlands.ru/js/fkey.js host=neverlands.ru bodyBytes=0
+2026-04-03 20:36:58.387 [TRACE] REQ method=GET uri=http://neverlands.ru/js/slots_v02.js host=neverlands.ru bodyBytes=0
+2026-04-03 20:36:58.457 [TRACE] RESP mode=DIRECT attempt=1 method=GET target=/js/signs.js status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:36:58.468 [TRACE] RESP mode=DIRECT attempt=1 method=GET target=/js/slots_v02.js status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:36:58.469 [TRACE] RESP mode=DIRECT attempt=1 method=GET target=/js/fl_v03.js status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:36:58.479 [TRACE] RESP mode=DIRECT attempt=1 method=GET target=/js/t_v01.js status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:36:58.480 [TRACE] RESP mode=DIRECT attempt=1 method=GET target=/js/fight_v10.js status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:36:58.482 [TRACE] RESP mode=DIRECT attempt=1 method=GET target=/js/fkey.js status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:36:58.970 [TRACE] REQ method=POST uri=http://neverlands.ru/main.php host=neverlands.ru bodyBytes=128
+2026-04-03 20:36:59.125 [TRACE] RESP mode=DIRECT attempt=1 method=POST target=/main.php status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:36:59.202 [TRACE] REQ method=GET uri=http://neverlands.ru/js/t_v01.js host=neverlands.ru bodyBytes=0
+2026-04-03 20:36:59.203 [TRACE] REQ method=GET uri=http://neverlands.ru/js/fight_v10.js host=neverlands.ru bodyBytes=0
+2026-04-03 20:36:59.204 [TRACE] REQ method=GET uri=http://neverlands.ru/js/slots_v02.js host=neverlands.ru bodyBytes=0
+2026-04-03 20:36:59.207 [TRACE] REQ method=GET uri=http://neverlands.ru/js/signs.js host=neverlands.ru bodyBytes=0
+2026-04-03 20:36:59.210 [TRACE] REQ method=GET uri=http://neverlands.ru/js/fl_v03.js host=neverlands.ru bodyBytes=0
+2026-04-03 20:36:59.211 [TRACE] REQ method=GET uri=http://neverlands.ru/js/fkey.js host=neverlands.ru bodyBytes=0
+2026-04-03 20:36:59.295 [TRACE] RESP mode=DIRECT attempt=1 method=GET target=/js/slots_v02.js status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:36:59.297 [TRACE] RESP mode=DIRECT attempt=1 method=GET target=/js/signs.js status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:36:59.299 [TRACE] RESP mode=DIRECT attempt=1 method=GET target=/js/fight_v10.js status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:36:59.302 [TRACE] RESP mode=DIRECT attempt=1 method=GET target=/js/fl_v03.js status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:36:59.306 [TRACE] RESP mode=DIRECT attempt=1 method=GET target=/js/fkey.js status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:36:59.308 [TRACE] RESP mode=DIRECT attempt=1 method=GET target=/js/t_v01.js status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:36:59.785 [TRACE] REQ method=POST uri=http://neverlands.ru/main.php host=neverlands.ru bodyBytes=128
+2026-04-03 20:36:59.802 [TRACE] REQ method=POST uri=http://neverlands.ru/main.php host=neverlands.ru bodyBytes=128
+2026-04-03 20:36:59.923 [TRACE] RESP mode=DIRECT attempt=1 method=POST target=/main.php status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:36:59.997 [TRACE] REQ method=GET uri=http://neverlands.ru/js/fl_v03.js host=neverlands.ru bodyBytes=0
+2026-04-03 20:37:00.003 [TRACE] REQ method=GET uri=http://neverlands.ru/js/fight_v10.js host=neverlands.ru bodyBytes=0
+2026-04-03 20:37:00.008 [TRACE] REQ method=GET uri=http://neverlands.ru/js/signs.js host=neverlands.ru bodyBytes=0
+2026-04-03 20:37:00.009 [TRACE] REQ method=GET uri=http://neverlands.ru/js/t_v01.js host=neverlands.ru bodyBytes=0
+2026-04-03 20:37:00.010 [TRACE] REQ method=GET uri=http://neverlands.ru/js/slots_v02.js host=neverlands.ru bodyBytes=0
+2026-04-03 20:37:00.014 [TRACE] REQ method=GET uri=http://neverlands.ru/js/fkey.js host=neverlands.ru bodyBytes=0
+2026-04-03 20:37:00.059 [TRACE] RESP mode=DIRECT attempt=1 method=POST target=/main.php status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:37:00.061 [ERROR] SESSION_FAIL target=neverlands.ru:80
+java.net.SocketException: Broken pipe
+	at java.net.SocketOutputStream.socketWrite0(Native Method)
+	at java.net.SocketOutputStream.socketWrite(SocketOutputStream.java:117)
+	at java.net.SocketOutputStream.write(SocketOutputStream.java:161)
+	at ru.neverlands.abclient.proxy.LocalHttpProxyServer.copyStream(LocalHttpProxyServer.java:853)
+	at ru.neverlands.abclient.proxy.LocalHttpProxyServer.forwardRequest(LocalHttpProxyServer.java:299)
+	at ru.neverlands.abclient.proxy.LocalHttpProxyServer.handleClient(LocalHttpProxyServer.java:215)
+	at ru.neverlands.abclient.proxy.LocalHttpProxyServer.lambda$acceptLoop$0$ru-neverlands-abclient-proxy-LocalHttpProxyServer(LocalHttpProxyServer.java:146)
+	at ru.neverlands.abclient.proxy.LocalHttpProxyServer$$ExternalSyntheticLambda0.run(Unknown Source:4)
+	at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1167)
+	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:641)
+	at java.lang.Thread.run(Thread.java:764)
+
+2026-04-03 20:37:00.082 [TRACE] RESP mode=DIRECT attempt=1 method=GET target=/js/fl_v03.js status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:37:00.091 [TRACE] RESP mode=DIRECT attempt=1 method=GET target=/js/fight_v10.js status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:37:00.096 [TRACE] RESP mode=DIRECT attempt=1 method=GET target=/js/t_v01.js status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:37:00.097 [TRACE] RESP mode=DIRECT attempt=1 method=GET target=/js/signs.js status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:37:00.098 [TRACE] RESP mode=DIRECT attempt=1 method=GET target=/js/slots_v02.js status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:37:00.099 [TRACE] RESP mode=DIRECT attempt=1 method=GET target=/js/fkey.js status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:37:00.117 [TRACE] REQ method=POST uri=http://neverlands.ru/main.php host=neverlands.ru bodyBytes=128
+2026-04-03 20:37:00.216 [TRACE] RESP mode=DIRECT attempt=1 method=POST target=/main.php status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:37:00.298 [TRACE] REQ method=GET uri=http://neverlands.ru/js/fl_v03.js host=neverlands.ru bodyBytes=0
+2026-04-03 20:37:00.298 [TRACE] REQ method=GET uri=http://neverlands.ru/js/signs.js host=neverlands.ru bodyBytes=0
+2026-04-03 20:37:00.299 [TRACE] REQ method=GET uri=http://neverlands.ru/js/fight_v10.js host=neverlands.ru bodyBytes=0
+2026-04-03 20:37:00.302 [TRACE] REQ method=GET uri=http://neverlands.ru/js/slots_v02.js host=neverlands.ru bodyBytes=0
+2026-04-03 20:37:00.303 [TRACE] REQ method=GET uri=http://neverlands.ru/js/t_v01.js host=neverlands.ru bodyBytes=0
+2026-04-03 20:37:00.304 [TRACE] REQ method=GET uri=http://neverlands.ru/js/fkey.js host=neverlands.ru bodyBytes=0
+2026-04-03 20:37:00.389 [TRACE] RESP mode=DIRECT attempt=1 method=GET target=/js/t_v01.js status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:37:00.393 [TRACE] RESP mode=DIRECT attempt=1 method=GET target=/js/fkey.js status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:37:00.399 [TRACE] RESP mode=DIRECT attempt=1 method=GET target=/js/signs.js status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:37:00.406 [TRACE] RESP mode=DIRECT attempt=1 method=GET target=/js/fight_v10.js status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:37:00.415 [TRACE] RESP mode=DIRECT attempt=1 method=GET target=/js/slots_v02.js status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:37:00.417 [TRACE] RESP mode=DIRECT attempt=1 method=GET target=/js/fl_v03.js status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:37:00.714 [TRACE] REQ method=POST uri=http://neverlands.ru/main.php host=neverlands.ru bodyBytes=128
+2026-04-03 20:37:00.871 [TRACE] RESP mode=DIRECT attempt=1 method=POST target=/main.php status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:37:00.875 [TRACE] REQ method=POST uri=http://neverlands.ru/main.php host=neverlands.ru bodyBytes=128
+2026-04-03 20:37:00.876 [ERROR] SESSION_FAIL target=neverlands.ru:80
+java.net.SocketException: Broken pipe
+	at java.net.SocketOutputStream.socketWrite0(Native Method)
+	at java.net.SocketOutputStream.socketWrite(SocketOutputStream.java:117)
+	at java.net.SocketOutputStream.write(SocketOutputStream.java:161)
+	at ru.neverlands.abclient.proxy.LocalHttpProxyServer.copyStream(LocalHttpProxyServer.java:853)
+	at ru.neverlands.abclient.proxy.LocalHttpProxyServer.forwardRequest(LocalHttpProxyServer.java:299)
+	at ru.neverlands.abclient.proxy.LocalHttpProxyServer.handleClient(LocalHttpProxyServer.java:215)
+	at ru.neverlands.abclient.proxy.LocalHttpProxyServer.lambda$acceptLoop$0$ru-neverlands-abclient-proxy-LocalHttpProxyServer(LocalHttpProxyServer.java:146)
+	at ru.neverlands.abclient.proxy.LocalHttpProxyServer$$ExternalSyntheticLambda0.run(Unknown Source:4)
+	at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1167)
+	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:641)
+	at java.lang.Thread.run(Thread.java:764)
+
+2026-04-03 20:37:00.975 [TRACE] RESP mode=DIRECT attempt=1 method=POST target=/main.php status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:37:01.054 [TRACE] REQ method=GET uri=http://neverlands.ru/js/fight_v10.js host=neverlands.ru bodyBytes=0
+2026-04-03 20:37:01.056 [TRACE] REQ method=GET uri=http://neverlands.ru/js/slots_v02.js host=neverlands.ru bodyBytes=0
+2026-04-03 20:37:01.059 [TRACE] REQ method=GET uri=http://neverlands.ru/js/fl_v03.js host=neverlands.ru bodyBytes=0
+2026-04-03 20:37:01.061 [TRACE] REQ method=GET uri=http://neverlands.ru/js/fkey.js host=neverlands.ru bodyBytes=0
+2026-04-03 20:37:01.067 [TRACE] REQ method=GET uri=http://neverlands.ru/js/t_v01.js host=neverlands.ru bodyBytes=0
+2026-04-03 20:37:01.068 [TRACE] REQ method=GET uri=http://neverlands.ru/js/signs.js host=neverlands.ru bodyBytes=0
+2026-04-03 20:37:01.153 [TRACE] RESP mode=DIRECT attempt=1 method=GET target=/js/slots_v02.js status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:37:01.154 [TRACE] RESP mode=DIRECT attempt=1 method=GET target=/js/fkey.js status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:37:01.155 [TRACE] RESP mode=DIRECT attempt=1 method=GET target=/js/fl_v03.js status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:37:01.155 [TRACE] RESP mode=DIRECT attempt=1 method=GET target=/js/fight_v10.js status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:37:01.156 [TRACE] RESP mode=DIRECT attempt=1 method=GET target=/js/t_v01.js status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:37:01.158 [TRACE] RESP mode=DIRECT attempt=1 method=GET target=/js/signs.js status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:37:01.194 [TRACE] REQ method=POST uri=http://neverlands.ru/main.php host=neverlands.ru bodyBytes=128
+2026-04-03 20:37:01.303 [TRACE] RESP mode=DIRECT attempt=1 method=POST target=/main.php status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:37:01.397 [TRACE] REQ method=GET uri=http://neverlands.ru/js/t_v01.js host=neverlands.ru bodyBytes=0
+2026-04-03 20:37:01.403 [TRACE] REQ method=GET uri=http://neverlands.ru/js/slots_v02.js host=neverlands.ru bodyBytes=0
+2026-04-03 20:37:01.404 [TRACE] REQ method=GET uri=http://neverlands.ru/js/fl_v03.js host=neverlands.ru bodyBytes=0
+2026-04-03 20:37:01.408 [TRACE] REQ method=GET uri=http://neverlands.ru/js/signs.js host=neverlands.ru bodyBytes=0
+2026-04-03 20:37:01.416 [TRACE] REQ method=GET uri=http://neverlands.ru/js/fkey.js host=neverlands.ru bodyBytes=0
+2026-04-03 20:37:01.423 [TRACE] REQ method=GET uri=http://neverlands.ru/js/fight_v10.js host=neverlands.ru bodyBytes=0
+2026-04-03 20:37:01.471 [TRACE] RESP mode=DIRECT attempt=1 method=GET target=/js/t_v01.js status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:37:01.539 [TRACE] RESP mode=DIRECT attempt=1 method=GET target=/js/signs.js status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:37:01.540 [TRACE] RESP mode=DIRECT attempt=1 method=GET target=/js/fl_v03.js status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:37:01.542 [TRACE] RESP mode=DIRECT attempt=1 method=GET target=/js/slots_v02.js status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:37:01.558 [TRACE] RESP mode=DIRECT attempt=1 method=GET target=/js/fight_v10.js status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:37:01.561 [TRACE] RESP mode=DIRECT attempt=1 method=GET target=/js/fkey.js status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:37:01.971 [TRACE] REQ method=POST uri=http://neverlands.ru/main.php host=neverlands.ru bodyBytes=133
+2026-04-03 20:37:02.105 [TRACE] RESP mode=DIRECT attempt=1 method=POST target=/main.php status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:37:02.107 [ERROR] SESSION_FAIL target=neverlands.ru:80
+java.net.SocketException: Broken pipe
+	at java.net.SocketOutputStream.socketWrite0(Native Method)
+	at java.net.SocketOutputStream.socketWrite(SocketOutputStream.java:117)
+	at java.net.SocketOutputStream.write(SocketOutputStream.java:161)
+	at ru.neverlands.abclient.proxy.LocalHttpProxyServer.copyStream(LocalHttpProxyServer.java:853)
+	at ru.neverlands.abclient.proxy.LocalHttpProxyServer.forwardRequest(LocalHttpProxyServer.java:299)
+	at ru.neverlands.abclient.proxy.LocalHttpProxyServer.handleClient(LocalHttpProxyServer.java:215)
+	at ru.neverlands.abclient.proxy.LocalHttpProxyServer.lambda$acceptLoop$0$ru-neverlands-abclient-proxy-LocalHttpProxyServer(LocalHttpProxyServer.java:146)
+	at ru.neverlands.abclient.proxy.LocalHttpProxyServer$$ExternalSyntheticLambda0.run(Unknown Source:4)
+	at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1167)
+	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:641)
+	at java.lang.Thread.run(Thread.java:764)
+
+2026-04-03 20:37:02.122 [TRACE] REQ method=POST uri=http://neverlands.ru/main.php host=neverlands.ru bodyBytes=133
+2026-04-03 20:37:02.219 [TRACE] RESP mode=DIRECT attempt=1 method=POST target=/main.php status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:37:02.282 [TRACE] REQ method=GET uri=http://neverlands.ru/js/fl_v03.js host=neverlands.ru bodyBytes=0
+2026-04-03 20:37:02.287 [TRACE] REQ method=GET uri=http://neverlands.ru/js/slots_v02.js host=neverlands.ru bodyBytes=0
+2026-04-03 20:37:02.287 [TRACE] REQ method=GET uri=http://neverlands.ru/js/signs.js host=neverlands.ru bodyBytes=0
+2026-04-03 20:37:02.291 [TRACE] REQ method=GET uri=http://neverlands.ru/js/t_v01.js host=neverlands.ru bodyBytes=0
+2026-04-03 20:37:02.294 [TRACE] REQ method=GET uri=http://neverlands.ru/js/fkey.js host=neverlands.ru bodyBytes=0
+2026-04-03 20:37:02.295 [TRACE] REQ method=GET uri=http://neverlands.ru/js/fight_v10.js host=neverlands.ru bodyBytes=0
+2026-04-03 20:37:02.371 [TRACE] RESP mode=DIRECT attempt=1 method=GET target=/js/signs.js status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:37:02.373 [TRACE] RESP mode=DIRECT attempt=1 method=GET target=/js/fl_v03.js status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:37:02.375 [TRACE] RESP mode=DIRECT attempt=1 method=GET target=/js/t_v01.js status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:37:02.377 [TRACE] RESP mode=DIRECT attempt=1 method=GET target=/js/slots_v02.js status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:37:02.386 [TRACE] RESP mode=DIRECT attempt=1 method=GET target=/js/fight_v10.js status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:37:02.391 [TRACE] RESP mode=DIRECT attempt=1 method=GET target=/js/fkey.js status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:37:02.416 [TRACE] REQ method=POST uri=http://neverlands.ru/main.php host=neverlands.ru bodyBytes=133
+2026-04-03 20:37:02.446 [TRACE] REQ method=GET uri=http://neverlands.ru/main.php?ab_bg_probe=1&r=1775237822420 host=neverlands.ru bodyBytes=0
+2026-04-03 20:37:02.512 [TRACE] RESP mode=DIRECT attempt=1 method=POST target=/main.php status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:37:02.550 [TRACE] RESP mode=DIRECT attempt=1 method=GET target=/main.php?ab_bg_probe=1&r=1775237822420 status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:37:02.582 [TRACE] REQ method=GET uri=http://neverlands.ru/js/t_v01.js host=neverlands.ru bodyBytes=0
+2026-04-03 20:37:02.583 [TRACE] REQ method=GET uri=http://neverlands.ru/js/fight_v10.js host=neverlands.ru bodyBytes=0
+2026-04-03 20:37:02.587 [TRACE] REQ method=GET uri=http://neverlands.ru/js/signs.js host=neverlands.ru bodyBytes=0
+2026-04-03 20:37:02.592 [TRACE] REQ method=GET uri=http://neverlands.ru/js/slots_v02.js host=neverlands.ru bodyBytes=0
+2026-04-03 20:37:02.592 [TRACE] REQ method=GET uri=http://neverlands.ru/js/fl_v03.js host=neverlands.ru bodyBytes=0
+2026-04-03 20:37:02.596 [TRACE] REQ method=GET uri=http://neverlands.ru/js/fkey.js host=neverlands.ru bodyBytes=0
+2026-04-03 20:37:02.676 [TRACE] RESP mode=DIRECT attempt=1 method=GET target=/js/t_v01.js status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:37:02.689 [TRACE] RESP mode=DIRECT attempt=1 method=GET target=/js/fl_v03.js status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:37:02.693 [TRACE] RESP mode=DIRECT attempt=1 method=GET target=/js/fkey.js status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:37:02.695 [TRACE] RESP mode=DIRECT attempt=1 method=GET target=/js/signs.js status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:37:02.698 [TRACE] RESP mode=DIRECT attempt=1 method=GET target=/js/slots_v02.js status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:37:02.699 [TRACE] RESP mode=DIRECT attempt=1 method=GET target=/js/fight_v10.js status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:37:02.706 [TRACE] REQ method=POST uri=http://neverlands.ru/main.php host=neverlands.ru bodyBytes=128
+2026-04-03 20:37:02.899 [TRACE] RESP mode=DIRECT attempt=1 method=POST target=/main.php status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:37:03.008 [TRACE] REQ method=GET uri=http://neverlands.ru/js/t_v01.js host=neverlands.ru bodyBytes=0
+2026-04-03 20:37:03.009 [TRACE] REQ method=GET uri=http://neverlands.ru/js/signs.js host=neverlands.ru bodyBytes=0
+2026-04-03 20:37:03.010 [TRACE] REQ method=GET uri=http://neverlands.ru/js/fl_v03.js host=neverlands.ru bodyBytes=0
+2026-04-03 20:37:03.011 [TRACE] REQ method=GET uri=http://neverlands.ru/js/fight_v10.js host=neverlands.ru bodyBytes=0
+2026-04-03 20:37:03.011 [TRACE] REQ method=GET uri=http://neverlands.ru/js/slots_v02.js host=neverlands.ru bodyBytes=0
+2026-04-03 20:37:03.012 [TRACE] REQ method=GET uri=http://neverlands.ru/js/fkey.js host=neverlands.ru bodyBytes=0
+2026-04-03 20:37:03.110 [TRACE] RESP mode=DIRECT attempt=1 method=GET target=/js/fight_v10.js status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:37:03.113 [TRACE] RESP mode=DIRECT attempt=1 method=GET target=/js/slots_v02.js status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:37:03.119 [TRACE] RESP mode=DIRECT attempt=1 method=GET target=/js/fl_v03.js status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:37:03.122 [TRACE] RESP mode=DIRECT attempt=1 method=GET target=/js/signs.js status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:37:03.124 [TRACE] RESP mode=DIRECT attempt=1 method=GET target=/js/fkey.js status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:37:03.126 [TRACE] RESP mode=DIRECT attempt=1 method=GET target=/js/t_v01.js status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:37:03.685 [TRACE] REQ method=POST uri=http://neverlands.ru/main.php host=neverlands.ru bodyBytes=128
+2026-04-03 20:37:03.841 [TRACE] RESP mode=DIRECT attempt=1 method=POST target=/main.php status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:37:03.943 [TRACE] REQ method=GET uri=http://neverlands.ru/js/fkey.js host=neverlands.ru bodyBytes=0
+2026-04-03 20:37:03.946 [TRACE] REQ method=GET uri=http://neverlands.ru/js/slots_v02.js host=neverlands.ru bodyBytes=0
+2026-04-03 20:37:03.946 [TRACE] REQ method=GET uri=http://neverlands.ru/js/fight_v10.js host=neverlands.ru bodyBytes=0
+2026-04-03 20:37:03.947 [TRACE] REQ method=GET uri=http://neverlands.ru/js/fl_v03.js host=neverlands.ru bodyBytes=0
+2026-04-03 20:37:03.948 [TRACE] REQ method=GET uri=http://neverlands.ru/js/signs.js host=neverlands.ru bodyBytes=0
+2026-04-03 20:37:03.950 [TRACE] REQ method=GET uri=http://neverlands.ru/js/t_v01.js host=neverlands.ru bodyBytes=0
+2026-04-03 20:37:04.029 [TRACE] RESP mode=DIRECT attempt=1 method=GET target=/js/fight_v10.js status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:37:04.032 [TRACE] RESP mode=DIRECT attempt=1 method=GET target=/js/signs.js status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:37:04.033 [TRACE] RESP mode=DIRECT attempt=1 method=GET target=/js/fkey.js status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:37:04.043 [TRACE] RESP mode=DIRECT attempt=1 method=GET target=/js/fl_v03.js status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:37:04.048 [TRACE] RESP mode=DIRECT attempt=1 method=GET target=/js/slots_v02.js status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:37:04.053 [TRACE] RESP mode=DIRECT attempt=1 method=GET target=/js/t_v01.js status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:37:04.496 [TRACE] REQ method=POST uri=http://neverlands.ru/main.php host=neverlands.ru bodyBytes=130
+2026-04-03 20:37:04.634 [TRACE] RESP mode=DIRECT attempt=1 method=POST target=/main.php status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:37:04.708 [TRACE] REQ method=GET uri=http://neverlands.ru/js/slots_v02.js host=neverlands.ru bodyBytes=0
+2026-04-03 20:37:04.715 [TRACE] REQ method=GET uri=http://neverlands.ru/js/fkey.js host=neverlands.ru bodyBytes=0
+2026-04-03 20:37:04.716 [TRACE] REQ method=GET uri=http://neverlands.ru/js/t_v01.js host=neverlands.ru bodyBytes=0
+2026-04-03 20:37:04.716 [TRACE] REQ method=GET uri=http://neverlands.ru/js/fl_v03.js host=neverlands.ru bodyBytes=0
+2026-04-03 20:37:04.717 [TRACE] REQ method=GET uri=http://neverlands.ru/js/fight_v10.js host=neverlands.ru bodyBytes=0
+2026-04-03 20:37:04.717 [TRACE] REQ method=GET uri=http://neverlands.ru/js/signs.js host=neverlands.ru bodyBytes=0
+2026-04-03 20:37:04.786 [TRACE] RESP mode=DIRECT attempt=1 method=GET target=/js/slots_v02.js status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:37:04.793 [TRACE] RESP mode=DIRECT attempt=1 method=GET target=/js/signs.js status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:37:04.794 [TRACE] RESP mode=DIRECT attempt=1 method=GET target=/js/fl_v03.js status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:37:04.798 [TRACE] RESP mode=DIRECT attempt=1 method=GET target=/js/fight_v10.js status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:37:04.802 [TRACE] RESP mode=DIRECT attempt=1 method=GET target=/js/fkey.js status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:37:04.809 [TRACE] RESP mode=DIRECT attempt=1 method=GET target=/js/t_v01.js status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:37:05.540 [TRACE] REQ method=GET uri=http://neverlands.ru/main.php?get_id=61&act=7&fexp=38&fres=1&vcode=615d7c800d4c1854a9e21dd75d18d392&min1=99&max1=0&min2=22&max2=22&sum1=0&sum2=22&ftype=4 host=neverlands.ru bodyBytes=0
+2026-04-03 20:37:05.642 [TRACE] RESP mode=DIRECT attempt=1 method=GET target=/main.php?get_id=61&act=7&fexp=38&fres=1&vcode=615d7c800d4c1854a9e21dd75d18d392&min1=99&max1=0&min2=22&max2=22&sum1=0&sum2=22&ftype=4 status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:37:05.750 [TRACE] REQ method=GET uri=http://neverlands.ru/main.php host=neverlands.ru bodyBytes=0
+2026-04-03 20:37:05.861 [TRACE] RESP mode=DIRECT attempt=1 method=GET target=/main.php status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:37:05.951 [TRACE] REQ method=GET uri=http://neverlands.ru/js/signs.js host=neverlands.ru bodyBytes=0
+2026-04-03 20:37:05.963 [TRACE] REQ method=GET uri=http://neverlands.ru/js/map.js?v=6 host=neverlands.ru bodyBytes=0
+2026-04-03 20:37:05.967 [TRACE] REQ method=GET uri=http://neverlands.ru/js/ajax.js host=neverlands.ru bodyBytes=0
+2026-04-03 20:37:05.968 [TRACE] REQ method=GET uri=http://neverlands.ru/js/quest.js host=neverlands.ru bodyBytes=0
+2026-04-03 20:37:05.969 [TRACE] REQ method=GET uri=http://neverlands.ru/js/t_v01.js host=neverlands.ru bodyBytes=0
+2026-04-03 20:37:05.971 [TRACE] REQ method=GET uri=http://neverlands.ru/js/hpmp.js host=neverlands.ru bodyBytes=0
+2026-04-03 20:37:06.048 [TRACE] RESP mode=DIRECT attempt=1 method=GET target=/js/signs.js status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:37:06.058 [TRACE] RESP mode=DIRECT attempt=1 method=GET target=/js/t_v01.js status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:37:06.063 [TRACE] RESP mode=DIRECT attempt=1 method=GET target=/js/quest.js status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:37:06.069 [TRACE] RESP mode=DIRECT attempt=1 method=GET target=/js/ajax.js status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:37:06.075 [TRACE] RESP mode=DIRECT attempt=1 method=GET target=/js/hpmp.js status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:37:06.076 [TRACE] RESP mode=DIRECT attempt=1 method=GET target=/js/map.js?v=6 status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:37:06.162 [TRACE] REQ method=GET uri=http://neverlands.ru/ch.php?lo=1&1775237826132&1775237826139 host=neverlands.ru bodyBytes=0
+2026-04-03 20:37:06.254 [TRACE] RESP mode=DIRECT attempt=1 method=GET target=/ch.php?lo=1&1775237826132&1775237826139 status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:37:06.419 [TRACE] REQ method=GET uri=http://neverlands.ru/ch/ch_list.js host=neverlands.ru bodyBytes=0
+2026-04-03 20:37:06.509 [TRACE] RESP mode=DIRECT attempt=1 method=GET target=/ch/ch_list.js status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:37:08.915 [TRACE] REQ method=GET uri=http://neverlands.ru/ch.php?1775237828873&show=1&fyo=0 host=neverlands.ru bodyBytes=0
+2026-04-03 20:37:09.000 [TRACE] RESP mode=DIRECT attempt=1 method=GET target=/ch.php?1775237828873&show=1&fyo=0 status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:37:20.920 [TRACE] REQ method=GET uri=http://neverlands.ru/ch.php?1775237840878&show=1&fyo=0 host=neverlands.ru bodyBytes=0
+2026-04-03 20:37:21.020 [TRACE] RESP mode=DIRECT attempt=1 method=GET target=/ch.php?1775237840878&show=1&fyo=0 status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:37:32.939 [TRACE] REQ method=GET uri=http://neverlands.ru/ch.php?1775237852881&show=1&fyo=0 host=neverlands.ru bodyBytes=0
+2026-04-03 20:37:33.034 [TRACE] RESP mode=DIRECT attempt=1 method=GET target=/ch.php?1775237852881&show=1&fyo=0 status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:37:44.931 [TRACE] REQ method=GET uri=http://neverlands.ru/ch.php?1775237864887&show=1&fyo=0 host=neverlands.ru bodyBytes=0
+2026-04-03 20:37:45.020 [TRACE] RESP mode=DIRECT attempt=1 method=GET target=/ch.php?1775237864887&show=1&fyo=0 status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:37:56.948 [TRACE] REQ method=GET uri=http://neverlands.ru/ch.php?1775237876890&show=1&fyo=0 host=neverlands.ru bodyBytes=0
+2026-04-03 20:37:57.055 [TRACE] RESP mode=DIRECT attempt=1 method=GET target=/ch.php?1775237876890&show=1&fyo=0 status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:38:08.945 [TRACE] REQ method=GET uri=http://neverlands.ru/ch.php?1775237888894&show=1&fyo=0 host=neverlands.ru bodyBytes=0
+2026-04-03 20:38:09.079 [TRACE] RESP mode=DIRECT attempt=1 method=GET target=/ch.php?1775237888894&show=1&fyo=0 status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:38:20.946 [TRACE] REQ method=GET uri=http://neverlands.ru/ch.php?1775237900898&show=1&fyo=0 host=neverlands.ru bodyBytes=0
+2026-04-03 20:38:21.073 [TRACE] RESP mode=DIRECT attempt=1 method=GET target=/ch.php?1775237900898&show=1&fyo=0 status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:38:32.944 [TRACE] REQ method=GET uri=http://neverlands.ru/ch.php?1775237912901&show=1&fyo=0 host=neverlands.ru bodyBytes=0
+2026-04-03 20:38:33.032 [TRACE] RESP mode=DIRECT attempt=1 method=GET target=/ch.php?1775237912901&show=1&fyo=0 status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:38:44.955 [TRACE] REQ method=GET uri=http://neverlands.ru/ch.php?1775237924905&show=1&fyo=0 host=neverlands.ru bodyBytes=0
+2026-04-03 20:38:45.046 [TRACE] RESP mode=DIRECT attempt=1 method=GET target=/ch.php?1775237924905&show=1&fyo=0 status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:38:56.944 [TRACE] REQ method=GET uri=http://neverlands.ru/ch.php?1775237936908&show=1&fyo=0 host=neverlands.ru bodyBytes=0
+2026-04-03 20:38:57.043 [TRACE] RESP mode=DIRECT attempt=1 method=GET target=/ch.php?1775237936908&show=1&fyo=0 status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:39:08.970 [TRACE] REQ method=GET uri=http://neverlands.ru/ch.php?1775237948930&show=1&fyo=0 host=neverlands.ru bodyBytes=0
+2026-04-03 20:39:09.100 [TRACE] RESP mode=DIRECT attempt=1 method=GET target=/ch.php?1775237948930&show=1&fyo=0 status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:39:20.992 [TRACE] REQ method=GET uri=http://neverlands.ru/ch.php?1775237960933&show=1&fyo=0 host=neverlands.ru bodyBytes=0
+2026-04-03 20:39:21.148 [TRACE] RESP mode=DIRECT attempt=1 method=GET target=/ch.php?1775237960933&show=1&fyo=0 status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:39:32.986 [TRACE] REQ method=GET uri=http://neverlands.ru/ch.php?1775237972941&show=1&fyo=0 host=neverlands.ru bodyBytes=0
+2026-04-03 20:39:33.111 [TRACE] RESP mode=DIRECT attempt=1 method=GET target=/ch.php?1775237972941&show=1&fyo=0 status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:39:44.997 [TRACE] REQ method=GET uri=http://neverlands.ru/ch.php?1775237984946&show=1&fyo=0 host=neverlands.ru bodyBytes=0
+2026-04-03 20:39:45.116 [TRACE] RESP mode=DIRECT attempt=1 method=GET target=/ch.php?1775237984946&show=1&fyo=0 status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK
+2026-04-03 20:39:57.003 [TRACE] REQ method=GET uri=http://neverlands.ru/ch.php?1775237996948&show=1&fyo=0 host=neverlands.ru bodyBytes=0
+2026-04-03 20:39:57.115 [TRACE] RESP mode=DIRECT attempt=1 method=GET target=/ch.php?1775237996948&show=1&fyo=0 status=200 server=nginx/1.6.2 statusLine=HTTP/1.1 200 OK

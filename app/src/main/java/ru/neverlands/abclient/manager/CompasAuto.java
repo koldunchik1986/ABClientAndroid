@@ -729,7 +729,8 @@ final class CompasAuto {
                     mapEntry.getValue().Tooltip,
                     ExtMap.resolveRegionLabelForRegNum(regNum)));
         }
-        entries.sort((left, right) -> left.regNum.compareTo(right.regNum));
+        // ✅ API 21 compatible sort (ArrayList#sort requires API 24)
+        Collections.sort(entries, (left, right) -> left.regNum.compareTo(right.regNum));
         return entries;
     }
 

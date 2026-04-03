@@ -369,7 +369,8 @@ public class Navigator {
                     content -> {
                         Map<String, LinkedHashSet<String>> levels = index.botGroups.get(botName);
                         ArrayList<String> levelRanges = new ArrayList<>(levels.keySet());
-                        levelRanges.sort(this::compareLevelRanges);
+                        // ✅ API 21 compatible sort (ArrayList#sort requires API 24)
+                        Collections.sort(levelRanges, this::compareLevelRanges);
 
                         for (String range : levelRanges) {
                             addCollapsibleSubSection(
@@ -407,7 +408,8 @@ public class Navigator {
         }
 
         ArrayList<String> groups = new ArrayList<>(index.herbGroups.keySet());
-        groups.sort((a, b) -> Integer.compare(parseIntSafe(a, Integer.MAX_VALUE), parseIntSafe(b, Integer.MAX_VALUE)));
+        // ✅ API 21 compatible sort (ArrayList#sort requires API 24)
+        Collections.sort(groups, (a, b) -> Integer.compare(parseIntSafe(a, Integer.MAX_VALUE), parseIntSafe(b, Integer.MAX_VALUE)));
 
         for (String group : groups) {
             addCollapsibleSection(
@@ -512,7 +514,9 @@ public class Navigator {
         parent.addView(contentContainer);
         contentBuilder.build(contentContainer);
 
-        boolean expanded = expandedStates.getOrDefault(stateKey, false);
+        // ✅ API 21 compatible: getOrDefault requires API 24
+        Boolean expandedValue = expandedStates.get(stateKey);
+        boolean expanded = expandedValue != null ? expandedValue : false;
         applyCategoryExpanded(contentContainer, arrow, expanded);
         headerRow.setOnClickListener(v -> {
             boolean nextExpanded = contentContainer.getVisibility() != View.VISIBLE;
@@ -570,7 +574,9 @@ public class Navigator {
         parent.addView(contentContainer);
         contentBuilder.build(contentContainer);
 
-        boolean expanded = expandedStates.getOrDefault(stateKey, false);
+        // ✅ API 21 compatible: getOrDefault requires API 24
+        Boolean expandedValue = expandedStates.get(stateKey);
+        boolean expanded = expandedValue != null ? expandedValue : false;
         applyCategoryExpanded(contentContainer, arrow, expanded);
         headerRow.setOnClickListener(v -> {
             boolean nextExpanded = contentContainer.getVisibility() != View.VISIBLE;
@@ -680,7 +686,8 @@ public class Navigator {
         });
 
         String stateKey = "tab_loc:city_sub:" + subcategory.name.toLowerCase();
-        boolean expanded = expandedStates.getOrDefault(stateKey, false);
+        // ✅ API 21 compatible getOrDefault (Map#getOrDefault requires API 24)
+        boolean expanded = expandedStates.containsKey(stateKey) ? expandedStates.get(stateKey) : false;
         applyCategoryExpanded(contentContainer, arrow, expanded);
         headerRow.setOnClickListener(v -> {
             boolean nextExpanded = contentContainer.getVisibility() != View.VISIBLE;
@@ -1257,11 +1264,19 @@ public class Navigator {
                             for (String token : herbGroup.split("[,;]")) {
                                 String group = token.trim();
                                 if (group.isEmpty() || "0".equals(group)) continue;
-                                index.herbGroups.computeIfAbsent(group, k -> new LinkedHashSet<>()).add(currentCell);
+                                // ✅ API 21 compatible computeIfAbsent (Map#computeIfAbsent requires API 24)
+                                if (!index.herbGroups.containsKey(group)) {
+                                    index.herbGroups.put(group, new LinkedHashSet<>());
+                                }
+                                index.herbGroups.get(group).add(currentCell);
                             }
                             if (currentHasWater) {
                                 String fishKey = deriveFishCategory(currentName, currentTooltip);
-                                index.fishGroups.computeIfAbsent(fishKey, k -> new LinkedHashSet<>()).add(currentCell);
+                                // ✅ API 21 compatible computeIfAbsent
+                                if (!index.fishGroups.containsKey(fishKey)) {
+                                    index.fishGroups.put(fishKey, new LinkedHashSet<>());
+                                }
+                                index.fishGroups.get(fishKey).add(currentCell);
                             }
                         }
                     } else if ("bots".equalsIgnoreCase(tag) && currentCell != null && !currentCell.isEmpty()) {
@@ -1270,10 +1285,15 @@ public class Navigator {
                         String max = safeTrim(parser.getAttributeValue(null, "maxLevel"));
                         if (!botName.isEmpty()) {
                             String range = (min.isEmpty() ? "?" : min) + "-" + (max.isEmpty() ? "?" : max);
-                            index.botGroups
-                                    .computeIfAbsent(botName, k -> new LinkedHashMap<>())
-                                    .computeIfAbsent(range, k -> new LinkedHashSet<>())
-                                    .add(currentCell);
+                            // ✅ API 21 compatible computeIfAbsent chain
+                            if (!index.botGroups.containsKey(botName)) {
+                                index.botGroups.put(botName, new LinkedHashMap<>());
+                            }
+                            Map<String, LinkedHashSet<String>> botRanges = index.botGroups.get(botName);
+                            if (!botRanges.containsKey(range)) {
+                                botRanges.put(range, new LinkedHashSet<>());
+                            }
+                            botRanges.get(range).add(currentCell);
                         }
                     }
                 } else if (event == XmlPullParser.END_TAG && "cell".equalsIgnoreCase(parser.getName())) {

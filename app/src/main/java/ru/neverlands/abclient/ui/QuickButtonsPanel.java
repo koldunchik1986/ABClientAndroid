@@ -1178,7 +1178,7 @@ public class QuickButtonsPanel {
         root.addView(autoWear);
 
         TextView hand1Title = new TextView(context);
-        hand1Title.setText("???? 1");
+        hand1Title.setText("Рука 1");
         hand1Title.setPadding(0, pad, 0, 0);
         root.addView(hand1Title);
 
@@ -1192,7 +1192,7 @@ public class QuickButtonsPanel {
         root.addView(hand1Spinner);
 
         TextView hand2Title = new TextView(context);
-        hand2Title.setText("???? 2");
+        hand2Title.setText("Рука 2");
         hand2Title.setPadding(0, pad, 0, 0);
         root.addView(hand2Title);
 

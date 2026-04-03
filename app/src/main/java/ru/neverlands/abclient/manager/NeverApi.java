@@ -37,7 +37,13 @@ public class NeverApi {
     private static final int HEAVY_WOUND_INDEX = 3;
     // Локальный HTTP-статус последнего sync-запроса внутри текущего потока.
     // Используется как транспорт статуса из getInfo(...) в вызывающий код без изменения сигнатур.
-    private static final ThreadLocal<Integer> lastHttpStatusCode = ThreadLocal.withInitial(() -> 0);
+    // ✅ API 21 compatible ThreadLocal initialization (withInitial requires API 26)
+    private static final ThreadLocal<Integer> lastHttpStatusCode = new ThreadLocal<Integer>() {
+        @Override
+        protected Integer initialValue() {
+            return 0;
+        }
+    };
     // Последний HTTP-статус именно для pinfo-запроса компаса.
     // Читается в AutoFunctionsManager для адаптивного backoff (535/536).
     private static volatile int lastCompassPinfoHttpStatus = 0;

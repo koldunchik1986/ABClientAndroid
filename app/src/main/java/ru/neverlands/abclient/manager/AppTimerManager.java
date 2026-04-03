@@ -475,7 +475,8 @@ public class AppTimerManager {
 
     private void insertSortedLocked(AppTimer appTimer) {
         listAppTimers.add(appTimer);
-        Collections.sort(listAppTimers, Comparator.comparingLong(value -> value.triggerTime));
+        // ✅ API 21 compatible sort (comparingLong requires API 24)
+        Collections.sort(listAppTimers, (o1, o2) -> Long.compare(o1.triggerTime, o2.triggerTime));
     }
 
     private int findIndexByIdLocked(int timerId) {
@@ -524,7 +525,8 @@ public class AppTimerManager {
                 }
                 listAppTimers.add(timer);
             }
-            Collections.sort(listAppTimers, Comparator.comparingLong(value -> value.triggerTime));
+            // ✅ API 21 compatible sort (comparingLong requires API 24)
+            Collections.sort(listAppTimers, (o1, o2) -> Long.compare(o1.triggerTime, o2.triggerTime));
         } catch (Exception error) {
             Log.w(TAG, "ensureLoadedForCurrentProfileLocked: failed to parse timers json", error);
             listAppTimers.clear();
