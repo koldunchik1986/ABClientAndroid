@@ -1166,6 +1166,12 @@ public class FastActionManager {
                     + "</b>.</font>";
         }
         String displayName = resolveFastDisplayName(fastId);
+        if ("i_w28_27.gif".equals(fastId)) {
+            String safeTarget = (fastNick == null || fastNick.trim().isEmpty()) ? "цель" : escapeHtml(fastNick.trim());
+            return buildServerChatTimeHtml()
+                    + "<font color=#336699>Запрос отправлен: Используем <b>" + displayName
+                    + "</b> на <b>" + safeTarget + "</b>.</font>";
+        }
         String target = (fastNick == null || fastNick.trim().isEmpty()) ? "" : " на <b>" + fastNick.trim() + "</b>";
         String elixirRemainSuffix = "";
         if (isElixirFastId(fastId) && elixirRemainingAfterUse != null) {
@@ -1393,6 +1399,8 @@ public class FastActionManager {
                 return "Боевые";
             case "i_w28_26X.gif":
                 return "Закрытые боевые";
+            case "i_w28_27.gif":
+                return "Свиток Защиты";
             case "i_w28_86.gif":
                 return "Портал";
             case "i_svi_001.gif":

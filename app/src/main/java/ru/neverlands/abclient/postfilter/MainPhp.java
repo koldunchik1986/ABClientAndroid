@@ -4289,7 +4289,8 @@ public class MainPhp {
         if (!AppVars.FastNeed && (AppVars.AutoFishCheckUd || AppVars.AutoFishWearUd)) {
             boolean isInventoryPage = mainPhpIsInv(html) || isInventoryAddress(address);
             boolean isEliximInventory = address.contains("&im=6");  // эликсиры - был fast-action
-            if (isInventoryPage && !isEliximInventory && !inventoryAddressMatchesFilter(address, "&im=0&wca=4")) {
+            isEliximInventory = isEliximInventory || inventoryAddressMatchesFilter(address, "&im=6");
+            if (isInventoryPage && isEliximInventory && !inventoryAddressMatchesFilter(address, "&im=0&wca=4")) {
                 String msg_postfast = "⚠️ [AUTO_FISH_POST_FAST] post-fast-action: forcing switch to inventory im=0 for gear check (current=" + address + ")";
                 Log.w(TAG, msg_postfast);
                 FileLogger.warn(TAG, msg_postfast);

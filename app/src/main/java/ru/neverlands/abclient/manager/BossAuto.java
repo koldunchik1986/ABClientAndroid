@@ -347,7 +347,7 @@ final class BossAuto {
                         writeBossChat("Бой не стартовал, повторяем «Свиток Защиты».");
                         sendProtectionScroll();
                     } else {
-                        stopAndRestore("fight_not_started", true);
+                        startReturnOrRestore("fight_not_started");
                     }
                 }
                 break;
@@ -422,9 +422,9 @@ final class BossAuto {
                 + ", selfClan=" + selfClanToken);
         // Клан-оповещение о самом событии отправляем сразу после распознавания события.
         // Это не зависит от последующих фильтров BD/wars.
-        sendClanBossEventMessageIfNeeded(event.bossName, normalizedTarget, selfClanToken);
         String initialFightFid = resolveFightFidReliable(normalizedTarget, targetSnapshot);
         String initialFightLink = buildFightLogLink(initialFightFid);
+        sendClanBossEventMessageIfNeeded(event.bossName, normalizedTarget, selfClanToken, initialFightLink);
         String locationLabel = resolveTargetLocationLabel(normalizedTarget, targetSnapshot);
         String targetHtml = buildTargetNickHtml(normalizedTarget, targetSnapshot);
         String locationPrefix = isEmpty(locationLabel) ? "" : " [" + escapeHtml(locationLabel) + "]";
@@ -1496,7 +1496,7 @@ final class BossAuto {
      * Если персонаж вне клана, клан-сообщение не отправляется:
      * в локальный чат пишется причина отмены.
      */
-    private void sendClanBossEventMessageIfNeeded(String bossName, String targetNick, String selfClanToken) {
+    private void sendClanBossEventMessageIfNeeded(String bossName, String targetNick, String selfClanToken, String fightLink) {
         if (!isAutoBossClanNotifyEnabled()) {
             Log.d(TAG, TRACE_PREFIX + " clan notify event skipped: disabled by settings");
             return;
@@ -1528,8 +1528,10 @@ final class BossAuto {
         if (isEmpty(safeBossName)) {
             safeBossName = "Босс";
         }
-        String message = "%clan% '" + safeBossName + "' напал на '" + normalizedTarget
-                + "'. Возможные клетки: " + cellsCsv;
+        String safeFightLink = safeTrim(fightLink);
+        String fightPart = isEmpty(safeFightLink) ? "в бою" : "в " + buildFightWordHtml(safeFightLink);
+        String message = "%clan% \"" + safeBossName + "\" возможно на клетках: "
+                + cellsCsv + " " + fightPart + " с персонажем '" + normalizedTarget + "'.";
         boolean chatReady = isChatSendReady();
         if (!chatReady) {
             Log.w(TAG, TRACE_PREFIX + " clan notify event CANCELED: chatButtonsWebview not ready, target="
@@ -1655,7 +1657,7 @@ final class BossAuto {
     /**
      * Сохранение флага клан-уведомлений.
      * Используется UI-настройками, а фактическая отправка выполняется в
-     * {@link #sendClanBossEventMessageIfNeeded(String, String, String)} и
+     * {@link #sendClanBossEventMessageIfNeeded(String, String, String, String)} и
      * {@link #sendClanBossFoundMessageIfNeeded()}.
      */
     void setAutoBossClanNotifyEnabled(boolean enabled) {
