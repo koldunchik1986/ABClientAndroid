@@ -53,6 +53,8 @@ public class WebAppInterface {
     private static final long MAIN_TOP_CLIENT_RELOAD_GUARD_MS = 2500L;
     private static final long MAP_BRIDGE_LOG_THROTTLE_MS = 1500L;
     private static final long SERVER_POPUP_DEDUP_MS = 1500L;
+    private static final int CHAT_POST_MAX_ATTEMPTS = 3;
+    private static final long CHAT_POST_RETRY_BASE_DELAY_MS = 350L;
     private static volatile long lastNeverTimerLogAtMs = 0L;
     private static volatile long lastNeverTimerLoggedValueMs = Long.MIN_VALUE;
     private static volatile long lastMapBridgeLogAtMs = 0L;
@@ -1195,6 +1197,9 @@ public class WebAppInterface {
         new Thread(() -> {
             ChatPostResult result = postChatMessage(baseUrl, finalPayload);
             if (result == null) {
+                Log.w("WebAppInterface", "chatSubmit: POST result is null, fallback to chatRefrWebView.postUrl");
+                FileLogger.warn("chat_poll", "chatSubmit POST fallback to chatRefrWebView.postUrl, url=" + baseUrl
+                        + ", dataLen=" + finalPayload.length());
                 MainActivity fallbackActivity = getMainActivityOrNull();
                 if (fallbackActivity != null) {
                     fallbackActivity.runOnUiThread(() -> fallbackActivity.postChatRefrUrl(baseUrl, finalPayload));
@@ -1222,81 +1227,147 @@ public class WebAppInterface {
     private static class ChatPostResult {
         final List<String> messages = new ArrayList<>();
         String lmid;
+        int httpCode;
+        int rawBytes;
+        int attempt;
     }
 
     // POST в ch.php: возвращает кусок JS с add_msg/set_lmid, парсим вручную.
     private ChatPostResult postChatMessage(String url, String payload) {
-        HttpURLConnection connection = null;
         try {
             URL target = new URL(url);
             java.net.Proxy activeProxy = ProxyRuntimeManager.getActiveJavaProxyOrNull();
             if (activeProxy == null && ProxyRuntimeManager.isStrictProxyRequiredForCurrentProfile()) {
                 Log.e("WebAppInterface", "PROXY_FAIL: strict proxy enabled and runtime proxy unavailable, blocking direct chat POST: " + url);
+                FileLogger.warn("chat_poll", "chatSubmit POST blocked: strict proxy enabled and runtime proxy unavailable, url=" + url);
                 return null;
             }
             Log.d("WebAppInterface", "PROXY_BINDING: chat POST via "
                     + (activeProxy != null ? "local proxy" : "direct")
                     + ", url=" + url);
-            connection = activeProxy != null
-                    ? (HttpURLConnection) target.openConnection(activeProxy)
-                    : (HttpURLConnection) target.openConnection();
-            connection.setInstanceFollowRedirects(true);
-            connection.setRequestMethod("POST");
-            connection.setDoInput(true);
-            connection.setDoOutput(true);
-            connection.setRequestProperty("Content-Type", "application/x-www-form-urlencoded; charset=windows-1251");
-            connection.setRequestProperty("Accept-Encoding", "identity");
-
-            String wvCookie = CookieManager.getInstance().getCookie(url);
-            if (wvCookie != null && !wvCookie.isEmpty()) {
-                connection.setRequestProperty("Cookie", wvCookie);
-            } else {
-                String cookie = CookiesManager.obtain(target.getHost());
-                if (cookie != null && !cookie.isEmpty()) {
-                    connection.setRequestProperty("Cookie", cookie);
-                }
-            }
 
             byte[] body = Russian.getBytes(payload == null ? "" : payload);
-            connection.setRequestProperty("Content-Length", String.valueOf(body.length));
-            try (OutputStream os = connection.getOutputStream()) {
-                os.write(body);
-                os.flush();
-            }
+            for (int attempt = 1; attempt <= CHAT_POST_MAX_ATTEMPTS; attempt++) {
+                HttpURLConnection connection = null;
+                try {
+                    connection = activeProxy != null
+                            ? (HttpURLConnection) target.openConnection(activeProxy)
+                            : (HttpURLConnection) target.openConnection();
+                    connection.setInstanceFollowRedirects(true);
+                    connection.setRequestMethod("POST");
+                    connection.setDoInput(true);
+                    connection.setDoOutput(true);
+                    connection.setRequestProperty("Content-Type", "application/x-www-form-urlencoded; charset=windows-1251");
+                    connection.setRequestProperty("Accept-Encoding", "identity");
 
-            int code = connection.getResponseCode();
-            byte[] bytes;
-            try (InputStream responseStream = code >= 400 && connection.getErrorStream() != null
-                    ? connection.getErrorStream()
-                    : connection.getInputStream()) {
-                bytes = readAllBytes(responseStream);
-            }
+                    String wvCookie = CookieManager.getInstance().getCookie(url);
+                    if (wvCookie != null && !wvCookie.isEmpty()) {
+                        connection.setRequestProperty("Cookie", wvCookie);
+                    } else {
+                        String cookie = CookiesManager.obtain(target.getHost());
+                        if (cookie != null && !cookie.isEmpty()) {
+                            connection.setRequestProperty("Cookie", cookie);
+                        }
+                    }
 
-            String contentEncoding = connection.getContentEncoding();
-            if ("gzip".equalsIgnoreCase(contentEncoding) && bytes.length > 2
-                    && (bytes[0] & 0xff) == 0x1f && (bytes[1] & 0xff) == 0x8b) {
-                bytes = decompressGzip(bytes);
-            }
-            if (bytes.length > 2 && (bytes[0] & 0xff) == 0x1f && (bytes[1] & 0xff) == 0x8b) {
-                bytes = decompressGzip(bytes);
-            }
+                    connection.setRequestProperty("Content-Length", String.valueOf(body.length));
+                    try (OutputStream os = connection.getOutputStream()) {
+                        os.write(body);
+                        os.flush();
+                    }
 
-            Map<String, List<String>> headers = connection.getHeaderFields();
-            applySetCookies(target, headers);
+                    int code = connection.getResponseCode();
+                    byte[] bytes;
+                    try (InputStream responseStream = code >= 400 && connection.getErrorStream() != null
+                            ? connection.getErrorStream()
+                            : connection.getInputStream()) {
+                        bytes = readAllBytes(responseStream);
+                    }
 
-            String response = new String(bytes, Charset.forName("windows-1251"));
-            ChatPostResult result = parseChatPostResponse(response);
-            Log.d("WebAppInterface", "chatSubmit: response bytes=" + bytes.length
-                    + " addMsg=" + result.messages.size()
-                    + " lmid=" + (result.lmid == null ? "" : result.lmid));
-            return result;
+                    String contentEncoding = connection.getContentEncoding();
+                    if ("gzip".equalsIgnoreCase(contentEncoding) && bytes.length > 2
+                            && (bytes[0] & 0xff) == 0x1f && (bytes[1] & 0xff) == 0x8b) {
+                        bytes = decompressGzip(bytes);
+                    }
+                    if (bytes.length > 2 && (bytes[0] & 0xff) == 0x1f && (bytes[1] & 0xff) == 0x8b) {
+                        bytes = decompressGzip(bytes);
+                    }
+
+                    Map<String, List<String>> headers = connection.getHeaderFields();
+                    applySetCookies(target, headers);
+
+                    String response = new String(bytes, Charset.forName("windows-1251"));
+                    ChatPostResult result = parseChatPostResponse(response);
+                    result.httpCode = code;
+                    result.rawBytes = bytes.length;
+                    result.attempt = attempt;
+
+                    Log.d("WebAppInterface", "chatSubmit: attempt=" + attempt
+                            + ", code=" + code
+                            + ", response bytes=" + bytes.length
+                            + ", addMsg=" + result.messages.size()
+                            + ", lmid=" + (result.lmid == null ? "" : result.lmid));
+                    FileLogger.trace("chat_poll", "chatSubmit POST: attempt=" + attempt
+                            + ", code=" + code
+                            + ", bytes=" + bytes.length
+                            + ", addMsg=" + result.messages.size()
+                            + ", hasLmid=" + (result.lmid != null && !result.lmid.isEmpty()));
+
+                    boolean hasProtocolMarkers = !result.messages.isEmpty()
+                            || (result.lmid != null && !result.lmid.isEmpty());
+                    boolean retriable = isRetriableChatPostResponse(code, bytes.length, hasProtocolMarkers);
+                    if (retriable && attempt < CHAT_POST_MAX_ATTEMPTS) {
+                        long delayMs = CHAT_POST_RETRY_BASE_DELAY_MS * attempt;
+                        Log.w("WebAppInterface", "chatSubmit: transient POST failure, retry in "
+                                + delayMs + "ms (attempt " + attempt + "/" + CHAT_POST_MAX_ATTEMPTS
+                                + ", code=" + code + ", bytes=" + bytes.length + ")");
+                        FileLogger.warn("chat_poll", "chatSubmit POST transient failure, retryInMs=" + delayMs
+                                + ", attempt=" + attempt
+                                + ", code=" + code
+                                + ", bytes=" + bytes.length);
+                        sleepSilently(delayMs);
+                        continue;
+                    }
+                    if (retriable) {
+                        Log.e("WebAppInterface", "chatSubmit: POST failed after retries"
+                                + ", code=" + code + ", bytes=" + bytes.length);
+                        FileLogger.warn("chat_poll", "chatSubmit POST failed after retries, code=" + code
+                                + ", bytes=" + bytes.length);
+                        return null;
+                    }
+                    return result;
+                } finally {
+                    if (connection != null) {
+                        connection.disconnect();
+                    }
+                }
+            }
+            return null;
         } catch (Exception e) {
             Log.e("WebAppInterface", "chatSubmit: POST failed", e);
+            FileLogger.error("chat_poll", "chatSubmit POST exception, url=" + url, e);
             return null;
-        } finally {
-            if (connection != null) {
-                connection.disconnect();
-            }
+        }
+    }
+
+    private boolean isRetriableChatPostResponse(int httpCode, int rawBytes, boolean hasProtocolMarkers) {
+        if (httpCode == 535 || httpCode == 536 || httpCode == 546) {
+            return true;
+        }
+        if (httpCode >= 500) {
+            return true;
+        }
+        if (httpCode < 200 || httpCode >= 300) {
+            return false;
+        }
+        return rawBytes <= 0 || !hasProtocolMarkers;
+    }
+
+    private void sleepSilently(long delayMs) {
+        try {
+            Thread.sleep(delayMs);
+        } catch (InterruptedException ie) {
+            Thread.currentThread().interrupt();
         }
     }
 

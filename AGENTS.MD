@@ -499,27 +499,33 @@
         *   ✅ Логи: "markFightInProgress at T=5ms" ДО "LezFight at T=10ms"
         *   ✅ Нет поздних вызовов (T+700ms)
 
-10. **VCode кэширование и инвалидация в разных контекстах.**
-    *   **Суть:** VCode имеет разные timeout'ы: обычная (30s), бой (120s - FIGHT_FALLBACK_MODE), fast-action (до cooldown'а).
-    *   **Правило timeout'ов:**
-        1. **Обычные операции** (авто-рыбалка, навигация): timeout = 30 сек
-        2. **Боевой контекст** (`fightLikelyActive=true`): timeout = 120 сек (FIGHT_FALLBACK_MODE)
-        3. **Fast-action контекст** (`AppVars.FastNeed=true`): timeout = до завершения cooldown'а (60-90 сек)
-        4. **После смены PHPSESSID**: VCode очищается явно через `clearFightContext()`
-    *   **Правило инвалидации:**
-        *   VCode > timeout считается невалидной, возвращает `null`
-        *   Явная инвалидация через `clearFightContext()` при завершении боя, смене сессии, logout
-        *   `ageMs()` конроль: время с момента парсинга (миллисекунды)
-    *   **Правило fallback'а:**
-        *   Если `getValidVCodeForAction()` вернула `null`:
-            *   Перезагрузить основную страницу (`loadUrl("main.php")`)
-            *   Или отложить действие до следующего цикла
-            *   Или отправить запрос sans VCode (если допустимо)
-    *   **Чек-лист:**
-        *   ✅ `getValidVCodeForAction()` везде обрабатывает null результат
-        *   ✅ `ageMs()` логика: некритичные <120s, критичные <30s
-        *   ✅ `clearFightContext()` вызывается при завершении боя/смене сессии
-        *   ✅ Логи содержат ageMs при отправке критичных действий
+10. **VCode кэширование и инвалидация в разных контекстах (актуально по SessionManager).**
+    *   **Суть:** единый источник VCode — `SessionManager`. Он хранит `currentContext` (последний распарсенный VCode) и отдельный боевой fallback-кэш (`fightStartVCode`), чтобы не терять код защиты в бою.
+    *   **Как сейчас реально работает TTL (важно):**
+        1. **Дефолт для всех действий** через `getValidVCodeForAction(actionName)` = **300_000 ms (5 минут)**.
+        2. **Спец-режим только для `actionName="fight_fallback"`** = **120_000 ms** (`FIGHT_CONTEXT_TIMEOUT`).
+        3. При `fightInProgress=true` и наличии `fightStartVCode` SessionManager может вернуть боевой кэш, даже если `currentContext` пустой или устарел.
+        4. Fast-action НЕ имеет отдельного TTL внутри SessionManager: используется общий контракт (дефолт 5 минут), если не передан кастомный `maxAgeMs`.
+    *   **Обязательные правила использования:**
+        1. **Запрещено** читать/писать `AppVars.VCode` в новом коде.
+        2. Перед любым защищённым запросом брать код только через `SessionManager.getInstance().getValidVCodeForAction("action_name")`.
+        3. Если для конкретного действия нужен более жёсткий TTL — использовать перегрузку `getValidVCodeForAction("action_name", maxAgeMs)`.
+        4. Каждое новое место парсинга HTML, где потенциально есть vcode, должно вызывать `parseVCodeFromHtml(html, source)`.
+        5. Для боевых страниц при наличии `fight_pm[4]` использовать `cacheFightVCode(vcode, "fight")` (не ждать только асинхронный парсинг).
+    *   **Инвалидация и очистка (по текущей логике кода):**
+        1. `onInvalidProtectionCodeError(failingVCode, actionName)` очищает `currentContext`, если failing-код совпал с текущим.
+        2. `invalidateContext(reason)` — принудительная очистка `currentContext`.
+        3. `clearFightContext()` очищает только боевое состояние (`fightInProgress`, `fightStartTimeMs`, `fightStartVCode`) и возвращает обычный режим TTL; `currentContext` этим методом не обнуляется.
+        4. При явной смене сессии/логауте нужно вызывать **оба** шага: `invalidateContext(...)` + `clearFightContext()`.
+    *   **Fallback при `null` от SessionManager (обязательно в каждом месте вызова):**
+        *   Перезагрузить/обновить страницу контекста (`main.php` или профильный frame),
+        *   либо отложить действие до следующего цикла,
+        *   и обязательно залогировать причину пропуска (`NO_SESSION` / `STALE_SESSION` / `EMPTY_VCODE`).
+    *   **Чек-лист перед сдачей:**
+        *   ✅ Нет новых обращений к `AppVars.VCode` вне SessionManager.
+        *   ✅ В каждом защищённом действии обработан `null` от `getValidVCodeForAction(...)`.
+        *   ✅ Для боевого сценария есть корректные вызовы `markFightInProgress()` и `clearFightContext()`.
+        *   ✅ Логи содержат маркеры `VCODE_PARSED`, `VALID_VCODE`, `NO_SESSION`/`STALE_SESSION` и, при бое, `FIGHT_CACHE`.
 
 11. **Анти-дублирование фиксов + единый источник уведомлений.**
     *   **Перед любым новым фиксом обязательно** сделать поиск в текущем Android-коде по:

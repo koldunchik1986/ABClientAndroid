@@ -130,6 +130,7 @@ final class BossAuto {
      * 2. Буферизации потока быстрых pinfo/compass запросов
      */
     private static final long CLAN_NOTIFY_DELAY_MS = 1000L;
+    private static final int CLAN_EVENT_CHAT_MAX_LEN = 220;
     /**
      * Задержка между clan message и private message для ask target.
      * Предотвращает отклонение обоих сообщений как DDoS.
@@ -1602,8 +1603,7 @@ final class BossAuto {
         }
         String safeFightLink = safeTrim(fightLink);
         String fightPart = isEmpty(safeFightLink) ? "в бою" : "в " + buildFightWordHtml(safeFightLink);
-        String message = "%clan% \"" + safeBossName + "\" возможно на клетках: "
-                + cellsCsv + " " + fightPart + " с персонажем '" + normalizedTarget + "'.";
+        String message = buildClanBossEventMessage(safeBossName, cellsCsv, fightPart, normalizedTarget);
         boolean chatReady = isChatSendReady();
         if (!chatReady) {
             Log.w(TAG, TRACE_PREFIX + " clan notify event CANCELED: chatButtonsWebview not ready, target="
@@ -1611,6 +1611,8 @@ final class BossAuto {
             FileLogger.log("[BossAuto.sendClanBossEventMessageIfNeeded] WebView not ready, message queued for retry: " + message.substring(0, Math.min(100, message.length())));
             writeBossChat("Клан-сообщение добавлено в очередь. Будет отправлено при подготовке чата.");
         }
+        Log.d(TAG, TRACE_PREFIX + " clan notify event payload: len=" + message.length() + ", maxLen=" + CLAN_EVENT_CHAT_MAX_LEN);
+        FileLogger.trace(LOG_CHAIN, "[BOSS_CLAN_MSG_PAYLOAD] len=" + message.length() + ", maxLen=" + CLAN_EVENT_CHAT_MAX_LEN);
         // Отправляем clan message с задержкой 1 сек для DDoS protection
         // (буферизация потока pinfo + compass + других запросов)
         final String clanMsg = message;
@@ -1626,6 +1628,60 @@ final class BossAuto {
         FileLogger.trace("boss_auto", schedMsg);
         Log.d(TAG, TRACE_PREFIX + " clan notify event scheduled (1s delay): target=" + normalizedTarget + ", cells=" + cellsCsv
                 + ", chatReady=" + chatReady);
+    }
+
+    private String buildClanBossEventMessage(String bossName, String cellsCsv, String fightPart, String normalizedTarget) {
+        String prefix = "%clan% \"" + bossName + "\" возможно на клетках: ";
+        String suffix = " " + fightPart + " с персонажем '" + normalizedTarget + "'.";
+        String normalizedCells = safeTrim(cellsCsv).replaceAll("\\s+", " ");
+        if (isEmpty(normalizedCells)) {
+            normalizedCells = "не определены";
+        }
+
+        String full = prefix + normalizedCells + suffix;
+        if (full.length() <= CLAN_EVENT_CHAT_MAX_LEN) {
+            return full;
+        }
+
+        String[] cells = normalizedCells.split("\\s*,\\s*");
+        StringBuilder compact = new StringBuilder();
+        boolean truncated = false;
+        for (String cell : cells) {
+            String safeCell = safeTrim(cell);
+            if (safeCell.isEmpty()) {
+                continue;
+            }
+            String candidateCells = compact.length() == 0 ? safeCell : compact + ", " + safeCell;
+            String candidateMessage = prefix + candidateCells + "..." + suffix;
+            if (candidateMessage.length() > CLAN_EVENT_CHAT_MAX_LEN) {
+                truncated = true;
+                break;
+            }
+            if (compact.length() == 0) {
+                compact.append(safeCell);
+            } else {
+                compact.append(", ").append(safeCell);
+            }
+        }
+
+        if (compact.length() == 0) {
+            int allowedCellsLen = CLAN_EVENT_CHAT_MAX_LEN - prefix.length() - suffix.length() - 3;
+            if (allowedCellsLen <= 0) {
+                return (prefix + suffix).substring(0, Math.min(CLAN_EVENT_CHAT_MAX_LEN, (prefix + suffix).length()));
+            }
+            String shortCells = normalizedCells.substring(0, Math.min(allowedCellsLen, normalizedCells.length())).trim();
+            if (shortCells.isEmpty()) {
+                shortCells = "не определены";
+            }
+            truncated = shortCells.length() < normalizedCells.length();
+            String result = prefix + shortCells + (truncated ? "..." : "") + suffix;
+            FileLogger.trace(LOG_CHAIN, "[BOSS_CLAN_MSG_TRIM] fallback=true, truncated=" + truncated + ", len=" + result.length());
+            return result;
+        }
+
+        String result = prefix + compact + (truncated ? "..." : "") + suffix;
+        FileLogger.trace(LOG_CHAIN, "[BOSS_CLAN_MSG_TRIM] fallback=false, truncated=" + truncated + ", len=" + result.length());
+        return result;
     }
 
     /**

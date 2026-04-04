@@ -23,6 +23,7 @@ import ru.neverlands.abclient.MainActivity;
 import ru.neverlands.abclient.model.Cell;
 import ru.neverlands.abclient.model.Contact;
 import ru.neverlands.abclient.utils.ExtMap;
+import ru.neverlands.abclient.utils.FileLogger;
 import ru.neverlands.abclient.utils.Russian;
 import ru.neverlands.abclient.utils.AppVars;
 import ru.neverlands.abclient.utils.EventSounds;
@@ -1609,6 +1610,23 @@ public class RoomManager {
             if (chatListMatcher.find()) {
                 // Нашли скрипт с ChatListU
                 int chatListEndPos = chatListMatcher.end();
+                String roomListContainer = "<style id=\"_room_list_style\">"
+                        + "#_room_list_container{display:block;line-height:1.6;}"
+                        + "#_room_list_container .ab-room-row{display:block;margin:6px 0;}"
+                        + "#_room_list_container .ab-room-row img{height:48px !important;width:auto !important;vertical-align:middle;}"
+                        + "#_room_list_container .ab-room-row .nickname{font-size:120% !important;line-height:1.1 !important;}"
+                        + "#_room_list_container .ab-room-row a.activenick{font-size:120% !important;line-height:1.1 !important;}"
+                        + "#_room_list_container .ab-room-row .activenick b{font-size:120% !important;line-height:1.1 !important;}"
+                        + "</style>"
+                        + "<div id=\"_room_list_container\">"
+                        + filterResult.html
+                        + "</div>";
+                // ВАЖНО: ch.php?lo=1 содержит этот участок внутри <script>.
+                // Если вставить сюда сырой HTML (<div ...>), JS ломается на "Unexpected token '<'".
+                // Поэтому в script-контексте всегда вставляем через document.write('...').
+                String scriptSafeRoomListWrite = "document.write('"
+                        + escapeJsSingleQuoted(roomListContainer).replace("\r", "").replace("\n", "")
+                        + "');";
                 
                 //找ищем вызов chatlist_build() после ChatListU
                 Pattern buildPattern = Pattern.compile("chatlist_build\\s*\\([^)]*\\);");
@@ -1616,10 +1634,9 @@ public class RoomManager {
                 buildMatcher.region(chatListEndPos, html.length());
                 
                 if (buildMatcher.find()) {
-                    // Нашли вызов chatlist_build() - заменяем его на наш контейнер
-                    String replacement = "<div id=\"_room_list_container\" style=\"display:block;\">" 
-                        + filterResult.html 
-                        + "</div>";
+                    // Нашли вызов chatlist_build() в script-блоке.
+                    // Заменяем вызов на script-safe вставку HTML через document.write.
+                    String replacement = scriptSafeRoomListWrite;
                     html = html.substring(0, buildMatcher.start()) 
                         + replacement 
                         + html.substring(buildMatcher.end());
@@ -1627,16 +1644,33 @@ public class RoomManager {
                     Log.d(TAG, BG_TRACE_PREFIX + " injectPlayerListHtmlIntoChatPhp: injection success"
                             + ", chars=" + filterResult.numCharsInRoom
                             + ", htmlLen=" + html.length());
+                    FileLogger.trace("roommanager", "[ROOM_INJECT] mode=replace_chatlist_build"
+                            + ", chars=" + filterResult.numCharsInRoom
+                            + ", htmlLen=" + html.length());
                 } else {
-                    // Вызов chatlist_build не найден - вставляем контейнер после ChatListU
-                    String replacement = "<div id=\"_room_list_container\" style=\"display:block;\">" 
-                        + filterResult.html 
-                        + "</div>";
-                    html = html.substring(0, chatListEndPos) 
-                        + replacement 
-                        + html.substring(chatListEndPos);
+                    // Вызов chatlist_build не найден.
+                    // Предпочтительно вставлять уже ПОСЛЕ закрытия </script>, чтобы не ломать JS.
+                    int scriptClosePos = html.indexOf("</script>", chatListEndPos);
+                    if (scriptClosePos >= 0) {
+                        int insertPos = scriptClosePos + "</script>".length();
+                        html = html.substring(0, insertPos)
+                                + roomListContainer
+                                + html.substring(insertPos);
+                        FileLogger.trace("roommanager", "[ROOM_INJECT] mode=insert_after_script_close"
+                                + ", chars=" + filterResult.numCharsInRoom
+                                + ", htmlLen=" + html.length());
+                    } else {
+                        // Резерв: закрывающий script не найден, значит остаёмся в script-контексте.
+                        // Здесь допустима только JS-строка, а не сырой HTML.
+                        html = html.substring(0, chatListEndPos)
+                                + scriptSafeRoomListWrite
+                                + html.substring(chatListEndPos);
+                        FileLogger.trace("roommanager", "[ROOM_INJECT] mode=fallback_script_safe_write"
+                                + ", chars=" + filterResult.numCharsInRoom
+                                + ", htmlLen=" + html.length());
+                    }
                     
-                    Log.d(TAG, BG_TRACE_PREFIX + " injectPlayerListHtmlIntoChatPhp: no chatlist_build found, inserted after ChatListU");
+                    Log.d(TAG, BG_TRACE_PREFIX + " injectPlayerListHtmlIntoChatPhp: no chatlist_build found, applied safe fallback injection");
                 }
             } else {
                 // ChatListU не найден - это необычно, логируем
@@ -1691,7 +1725,9 @@ public class RoomManager {
                 }
 
                 try {
+                    sb.append("<div class=\"ab-room-row\">");
                     sb.append(HtmlChar(rawEntry));
+                    sb.append("</div>");
                 } catch (Exception htmlCharError) {
                     Log.w(TAG, "FilterProcRoom: skip malformed ChatListU entry: " + rawEntry, htmlCharError);
                     continue;
