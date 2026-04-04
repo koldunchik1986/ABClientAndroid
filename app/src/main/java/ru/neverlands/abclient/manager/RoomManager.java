@@ -41,6 +41,7 @@ public class RoomManager {
     private static final long AUTO_CURE_ROOM_PINFO_CACHE_TTL_MS = 30_000L;
     private static final long AUTO_CURE_POST_SUBMIT_VERIFY_DELAY_MS = 1_500L;
     private static final long MAP_PINFO_SYNC_COOLDOWN_MS = 3_000L;
+    private static final long ROOM_RENDER_CACHE_TTL_MS = 20_000L;
     // Последние raw-элементы ChatListU по нику (lowercase), чтобы другие модули
     // (например, Auto-Компас) могли рендерить ник/иконки/уровень/травмы 1:1 как room-list.
     private static final Map<String, String> lastRoomChatEntryByNick = new ConcurrentHashMap<>();
@@ -59,6 +60,8 @@ public class RoomManager {
     private static volatile boolean mapPinfoSyncInFlight = false;
     private static volatile String lastOwnPinfoRegion = "";
     private static volatile String lastOwnPinfoCellName = "";
+    private static volatile String lastStableRoomRenderHtml = "";
+    private static volatile long lastStableRoomRenderAtMs = 0L;
 
     private static final class CachedRoomPinfoState {
         final int woundType;
@@ -97,10 +100,20 @@ public class RoomManager {
         Log.d(TAG, BG_TRACE_PREFIX + " process: htmlLen=" + (html == null ? 0 : html.length())
                 + ", contextNull=" + (context == null)
                 + ", doShowWalkers=" + AppVars.DoShowWalkers);
+        if (isEmpty(html)) {
+            String cachedRoomHtml = getCachedRoomRenderHtml();
+            if (!isEmpty(cachedRoomHtml)) {
+                Log.d(TAG, BG_TRACE_PREFIX + " process: htmlLen=0 -> reuse cached room render, cacheAgeMs="
+                        + (System.currentTimeMillis() - lastStableRoomRenderAtMs));
+                FileLogger.trace("roommanager", "[ROOM_RENDER_CACHE] reuse cached render for empty html");
+                return cachedRoomHtml;
+            }
+        }
         FilterProcRoomResult filterResult = FilterProcRoom(html);
         // STEP 1: Инжектируем сгенерированный HTML список игроков в ответ
         html = injectPlayerListHtmlIntoChatPhp(html, filterResult);
         Log.d(TAG, BG_TRACE_PREFIX + " process: HTML injection complete, htmlLen=" + html.length());
+        rememberStableRoomRenderHtml(html, filterResult.numCharsInRoom);
         if (context != null) {
             try {
                 AutoFunctionsManager.getInstance(context).onRoomUsersUpdated(
@@ -1388,13 +1401,16 @@ public class RoomManager {
         String[] strArray = schar.split(":");
         String nnSec = strArray[1];
         String login = strArray[1];
-        int classId = Integer.parseInt(ContactsManager.getClassIdOfContact(login));
+        int classId = parseClassIdSafe(ContactsManager.getClassIdOfContact(login));
 
         String color = "#000000";
-        if (classId == 1) {
-            color = "#008000"; // Зелёный (союзник/нейтральная метка по classId).
-        } else if (classId == 2) {
-            color = "#FF0000"; // Красный (враждебная метка по classId).
+        if (classId == CONTACT_CLASS_FRIEND) {
+            color = "#0B610B"; // friend (desktop parity)
+        } else if (classId == CONTACT_CLASS_ENEMY) {
+            color = "#8A0808"; // enemy (desktop parity)
+        }
+        if (classId != CONTACT_CLASS_NEUTRAL) {
+            FileLogger.trace("roommanager", "[ROOM_COLOR] nick=" + login + ", classId=" + classId + ", color=" + color);
         }
 
         while (nnSec.contains("+")) {
@@ -1457,7 +1473,7 @@ public class RoomManager {
                 injuryIcon = "tr1";
                 strArray[1] = "<font color=\"#ef7f94\">" + strArray[1] + "</font>";
             }
-            inj = "<img src=http://image.neverlands.ru/chat/" + injuryIcon
+            inj = "<img class=\"ab-room-injury-icon\" src=http://image.neverlands.ru/chat/" + injuryIcon
                     + ".gif border=0 width=15 height=12 alt=\""
                     + strArray[6]
                     + "\" align=absmiddle>";
@@ -1494,13 +1510,13 @@ public class RoomManager {
             psg +
             align +
             ss +
-            "<a class=\"activenick\" href=\"#\" onclick=\"top.say_to('" +
+            "<a class=\"activenick\" style=\"color:" + color + " !important;\" href=\"#\" onclick=\"top.say_to('" +
             login +
-            "');\"><font class=nickname color=\"" + color + "\"><b>" +
+            "');\"><font class=nickname color=\"" + color + "\" style=\"color:" + color + " !important;\"><b style=\"color:" + color + " !important;\">" +
             strArray[1] +
-            "</b></a>[" +
+            "</b></font></a><span class=\"ab-room-level\" style=\"color:" + color + " !important;\">[" +
             strArray[2] +
-            "]</font><a href=\"http://neverlands.ru/pinfo.cgi?" +
+            "]</span><a href=\"http://neverlands.ru/pinfo.cgi?" +
             nnSec +
             "\" onclick=\"window.open(this.href);\"><img src=http://image.neverlands.ru/chat/info.gif width=11 height=12 border=0 align=absmiddle></a>" +
             inj +
@@ -1557,9 +1573,9 @@ public class RoomManager {
         int classId = parseClassIdSafe(ContactsManager.getClassIdOfContact(cleanNick));
         String color = "#000000";
         if (classId == CONTACT_CLASS_ENEMY) {
-            color = "#FF0000";
+            color = "#8A0808"; // enemy (desktop parity)
         } else if (classId == CONTACT_CLASS_FRIEND) {
-            color = "#008000";
+            color = "#0B610B"; // friend (desktop parity)
         }
 
         String escapedNick = escapeHtml(cleanNick);
@@ -1611,12 +1627,14 @@ public class RoomManager {
                 // Нашли скрипт с ChatListU
                 int chatListEndPos = chatListMatcher.end();
                 String roomListContainer = "<style id=\"_room_list_style\">"
-                        + "#_room_list_container{display:block;line-height:1.6;}"
-                        + "#_room_list_container .ab-room-row{display:block;margin:6px 0;}"
-                        + "#_room_list_container .ab-room-row img{height:48px !important;width:auto !important;vertical-align:middle;}"
-                        + "#_room_list_container .ab-room-row .nickname{font-size:120% !important;line-height:1.1 !important;}"
-                        + "#_room_list_container .ab-room-row a.activenick{font-size:120% !important;line-height:1.1 !important;}"
-                        + "#_room_list_container .ab-room-row .activenick b{font-size:120% !important;line-height:1.1 !important;}"
+                        + "#_room_list_container{display:block;line-height:1.4;}"
+                        + "#_room_list_container .ab-room-row{display:block;margin:4px 0;}"
+                        + "#_room_list_container .ab-room-row img{height:26px !important;width:auto !important;vertical-align:middle;}"
+                        + "#_room_list_container .ab-room-row img.ab-room-injury-icon{height:26px !important;width:auto !important;vertical-align:middle;}"
+                        + "#_room_list_container .ab-room-row .nickname{font-size:140% !important;line-height:1.1 !important;}"
+                        + "#_room_list_container .ab-room-row a.activenick{font-size:140% !important;line-height:1.1 !important;}"
+                        + "#_room_list_container .ab-room-row .activenick b{font-size:140% !important;line-height:1.1 !important;}"
+                        + "#_room_list_container .ab-room-row .ab-room-level{font-size:150% !important;line-height:1.1 !important;}"
                         + "</style>"
                         + "<div id=\"_room_list_container\">"
                         + filterResult.html
@@ -2359,6 +2377,25 @@ public class RoomManager {
         }
         sb.append("]");
         return sb.toString();
+    }
+
+    private static void rememberStableRoomRenderHtml(String html, int numCharsInRoom) {
+        if (isEmpty(html) || numCharsInRoom <= 0 || !html.contains("_room_list_container")) {
+            return;
+        }
+        lastStableRoomRenderHtml = html;
+        lastStableRoomRenderAtMs = System.currentTimeMillis();
+    }
+
+    private static String getCachedRoomRenderHtml() {
+        if (isEmpty(lastStableRoomRenderHtml) || lastStableRoomRenderAtMs <= 0L) {
+            return "";
+        }
+        long ageMs = System.currentTimeMillis() - lastStableRoomRenderAtMs;
+        if (ageMs > ROOM_RENDER_CACHE_TTL_MS) {
+            return "";
+        }
+        return lastStableRoomRenderHtml;
     }
 
     private static boolean isEmpty(String value) {
