@@ -123,13 +123,7 @@ public class WebAppInterface {
         // Синхронизируем критичные авто-сценарии (например, тяжелая травма -> pause + auto-cure),
         // используя тот же текст popup, который отправляем в чат.
         MainPhp.onServerPopupMessage(normalizedText);
-
-        String messageHtml = MainPhp.buildServerChatTimeHtmlExternal()
-                + "<font color=#333399><b>Сервер:</b></font> "
-                + escapeHtml(normalizedText);
-        Intent intent = new Intent(AppVars.ACTION_ADD_CHAT_MESSAGE);
-        intent.putExtra("message", messageHtml);
-        androidx.localbroadcastmanager.content.LocalBroadcastManager.getInstance(mContext).sendBroadcast(intent);
+        MainPhp.postServerNotificationToChat(normalizedText, "map_bridge_popup", "bridge://popup");
     }
 
     private static String normalizeServerPopupMessage(String popupMessageHtml) {

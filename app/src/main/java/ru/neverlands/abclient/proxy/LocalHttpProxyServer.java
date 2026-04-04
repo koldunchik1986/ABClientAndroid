@@ -2,6 +2,7 @@ package ru.neverlands.abclient.proxy;
 
 import android.util.Log;
 
+import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -12,13 +13,18 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.SocketException;
 import java.net.URI;
+import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.util.LinkedHashMap;
 import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.zip.GZIPInputStream;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
+import ru.neverlands.abclient.postfilter.MainPhp;
 import ru.neverlands.abclient.utils.AppVars;
 import ru.neverlands.abclient.utils.FileLogger;
 import ru.neverlands.abclient.utils.RuntimeNetTrace;
@@ -45,6 +51,7 @@ final class LocalHttpProxyServer {
     private static final int RESPONSE_HEADER_SIZE_LIMIT_BYTES = 64 * 1024;
     private static final int SOCKET_TIMEOUT_MS = 20_000;
     private static final int LOG_DEDUP_WINDOW_MS = 5_000;
+    private static final int SERVER_NOTICE_CAPTURE_MAX_BYTES = 96 * 1024;
 
     private final int startPort;
     private final ProxyRuntimeManager.ProxyUpstreamSettings upstreamSettings;
@@ -272,9 +279,14 @@ final class LocalHttpProxyServer {
                     ResponseHead retryHead = forwardSingleRetry(route, request, absoluteWithPortTarget, retryAttempt++);
                     if (isAcceptableRetryResponse(retryHead)) {
                         clientOut.write(retryHead.rawBytes);
-                        long retryBodyBytes = copyStream(retryInputForLastRetry, clientOut);
+                        CopyResult retryCopy = copyStreamWithCapture(
+                                retryInputForLastRetry,
+                                clientOut,
+                                SERVER_NOTICE_CAPTURE_MAX_BYTES
+                        );
+                        handleServerNoticeFromCapturedPayload(route, request, absoluteWithPortTarget, retryHead, retryCopy.capturedBytes);
                         cleanupRetrySocket();
-                        return retryHead.rawBytes.length + retryBodyBytes;
+                        return retryHead.rawBytes.length + retryCopy.totalBytes;
                     }
                     cleanupRetrySocket();
                 }
@@ -285,9 +297,14 @@ final class LocalHttpProxyServer {
                     ResponseHead retryHead = forwardSingleRetry(route, request, originFormTarget, retryAttempt++);
                     if (isAcceptableRetryResponse(retryHead)) {
                         clientOut.write(retryHead.rawBytes);
-                        long retryBodyBytes = copyStream(retryInputForLastRetry, clientOut);
+                        CopyResult retryCopy = copyStreamWithCapture(
+                                retryInputForLastRetry,
+                                clientOut,
+                                SERVER_NOTICE_CAPTURE_MAX_BYTES
+                        );
+                        handleServerNoticeFromCapturedPayload(route, request, originFormTarget, retryHead, retryCopy.capturedBytes);
                         cleanupRetrySocket();
-                        return retryHead.rawBytes.length + retryBodyBytes;
+                        return retryHead.rawBytes.length + retryCopy.totalBytes;
                     }
                     cleanupRetrySocket();
                 }
@@ -296,8 +313,9 @@ final class LocalHttpProxyServer {
                 return forwardViaUpstreamConnectTunnel(route, request, clientOut);
             } else {
                 clientOut.write(responseHead.rawBytes);
-                long bodyBytes = copyStream(remoteIn, clientOut);
-                return responseHead.rawBytes.length + bodyBytes;
+                CopyResult copyResult = copyStreamWithCapture(remoteIn, clientOut, SERVER_NOTICE_CAPTURE_MAX_BYTES);
+                handleServerNoticeFromCapturedPayload(route, request, route.requestTarget, responseHead, copyResult.capturedBytes);
+                return responseHead.rawBytes.length + copyResult.totalBytes;
             }
         }
     }
@@ -486,16 +504,18 @@ final class LocalHttpProxyServer {
 
             if (connectResponse.statusCode != 200) {
                 clientOut.write(connectResponse.rawBytes);
-                long connectBodyBytes = copyStream(tunnelIn, clientOut);
-                return connectResponse.rawBytes.length + connectBodyBytes;
+                CopyResult connectCopy = copyStreamWithCapture(tunnelIn, clientOut, SERVER_NOTICE_CAPTURE_MAX_BYTES);
+                handleServerNoticeFromCapturedPayload(route, request, route.requestTarget, connectResponse, connectCopy.capturedBytes);
+                return connectResponse.rawBytes.length + connectCopy.totalBytes;
             }
 
             writeRequest(tunnelOut, route, request, route.originPath, false);
             ResponseHead tunneledResponse = readResponseHead(tunnelIn);
             logProxyResponse(route, request, route.originPath, 2, tunneledResponse);
             clientOut.write(tunneledResponse.rawBytes);
-            long bodyBytes = copyStream(tunnelIn, clientOut);
-            return tunneledResponse.rawBytes.length + bodyBytes;
+            CopyResult tunneledCopy = copyStreamWithCapture(tunnelIn, clientOut, SERVER_NOTICE_CAPTURE_MAX_BYTES);
+            handleServerNoticeFromCapturedPayload(route, request, route.originPath, tunneledResponse, tunneledCopy.capturedBytes);
+            return tunneledResponse.rawBytes.length + tunneledCopy.totalBytes;
         }
     }
 
@@ -532,6 +552,7 @@ final class LocalHttpProxyServer {
         String statusLine = lines.length > 0 ? lines[0] : "";
         int statusCode = parseStatusCode(statusLine);
         String serverHeader = "";
+        String contentTypeHeader = "";
         for (int i = 1; i < lines.length; i++) {
             String line = lines[i];
             if (line == null || line.isEmpty()) {
@@ -542,12 +563,14 @@ final class LocalHttpProxyServer {
                 continue;
             }
             String key = line.substring(0, idx).trim();
+            String value = line.substring(idx + 1).trim();
             if ("server".equalsIgnoreCase(key)) {
-                serverHeader = line.substring(idx + 1).trim();
-                break;
+                serverHeader = value;
+            } else if ("content-type".equalsIgnoreCase(key)) {
+                contentTypeHeader = value;
             }
         }
-        return new ResponseHead(raw, statusLine, statusCode, serverHeader);
+        return new ResponseHead(raw, statusLine, statusCode, serverHeader, contentTypeHeader);
     }
 
     /**
@@ -845,16 +868,174 @@ final class LocalHttpProxyServer {
                 || "upgrade".equals(lowerKey);
     }
 
-    private long copyStream(InputStream source, OutputStream sink) throws IOException {
+    private CopyResult copyStreamWithCapture(InputStream source,
+                                             OutputStream sink,
+                                             int captureLimitBytes) throws IOException {
         byte[] buffer = new byte[8192];
         long total = 0L;
+        ByteArrayOutputStream capture = (captureLimitBytes > 0) ? new ByteArrayOutputStream() : null;
         int read;
         while ((read = source.read(buffer)) != -1) {
             sink.write(buffer, 0, read);
             total += read;
+            if (capture != null && capture.size() < captureLimitBytes) {
+                int remain = captureLimitBytes - capture.size();
+                int toWrite = Math.min(remain, read);
+                if (toWrite > 0) {
+                    capture.write(buffer, 0, toWrite);
+                }
+            }
         }
         sink.flush();
-        return total;
+        return new CopyResult(total, capture == null ? new byte[0] : capture.toByteArray());
+    }
+
+    private void handleServerNoticeFromCapturedPayload(ResolvedRoute route,
+                                                       HttpRequest request,
+                                                       String requestTarget,
+                                                       ResponseHead responseHead,
+                                                       byte[] capturedBodyBytes) {
+        try {
+            if (!shouldInspectServerNotice(route, request, responseHead, capturedBodyBytes)) {
+                return;
+            }
+            String noticeText = extractServerNoticeTextFromHtml(capturedBodyBytes);
+            if (noticeText.isEmpty()) {
+                return;
+            }
+            MainPhp.postServerNotificationToChat(
+                    noticeText,
+                    "proxy_post_response",
+                    requestTarget
+            );
+            String msg = "PROXY_NOTICE: method=" + request.method
+                    + ", target=" + requestTarget
+                    + ", text=" + safeValue(noticeText);
+            Log.d(TAG, msg);
+            FileLogger.trace("proxy_notice", msg);
+        } catch (Exception e) {
+            FileLogger.error("proxy_notice", "handleServerNoticeFromCapturedPayload failed", e);
+        }
+    }
+
+    private boolean shouldInspectServerNotice(ResolvedRoute route,
+                                              HttpRequest request,
+                                              ResponseHead responseHead,
+                                              byte[] capturedBodyBytes) {
+        if (route == null || request == null || responseHead == null || capturedBodyBytes == null) {
+            return false;
+        }
+        if (!"POST".equalsIgnoreCase(request.method)) {
+            return false;
+        }
+        if (responseHead.statusCode <= 0 || responseHead.statusCode >= 400) {
+            return false;
+        }
+        if (capturedBodyBytes.length == 0) {
+            return false;
+        }
+        String host = route.originHost == null ? "" : route.originHost.toLowerCase(Locale.ROOT);
+        if (!(host.equals("neverlands.ru") || host.equals("www.neverlands.ru"))) {
+            return false;
+        }
+        String contentType = responseHead.contentTypeHeader == null
+                ? ""
+                : responseHead.contentTypeHeader.toLowerCase(Locale.ROOT);
+        return contentType.isEmpty()
+                || contentType.contains("text/html")
+                || contentType.contains("application/xhtml");
+    }
+
+    private String extractServerNoticeTextFromHtml(byte[] bodyBytes) {
+        if (bodyBytes == null || bodyBytes.length == 0) {
+            return "";
+        }
+        String html = decodeHtmlBody(bodyBytes);
+        if (html.isEmpty()) {
+            return "";
+        }
+
+        Matcher boldRed = Pattern.compile(
+                "(?is)<font\\s+class\\s*=\\s*['\\\"]?nickname['\\\"]?[^>]*>\\s*<font[^>]*color\\s*=\\s*['\\\"]?#?cc0000['\\\"]?[^>]*>\\s*<b>(.*?)<br\\s*/?>\\s*<br\\s*/?>\\s*</b>\\s*</font>\\s*</font>")
+                .matcher(html);
+        if (boldRed.find()) {
+            return normalizeNoticeText(boldRed.group(1));
+        }
+
+        Matcher alert = Pattern.compile("(?is)alert\\s*\\(\\s*['\\\"](.*?)['\\\"]\\s*\\)")
+                .matcher(html);
+        if (alert.find()) {
+            return normalizeNoticeText(alert.group(1));
+        }
+
+        String normalizedHtml = normalizeNoticeText(html);
+        String lower = normalizedHtml.toLowerCase(Locale.ROOT);
+        if (lower.contains("\u043f\u043e\u0437\u0434\u0440\u0430\u0432\u043b\u044f")
+                && (lower.contains("\u0443\u0441\u043f\u0435\u0448")
+                || lower.contains("\u0432\u0441\u0451 \u0443\u0441\u043f\u0435\u0448"))) {
+            return "\u041f\u043e\u0437\u0434\u0440\u0430\u0432\u043b\u044f\u0435\u043c, \u0432\u0441\u0451 \u0443\u0441\u043f\u0435\u0448\u043d\u043e.";
+        }
+        if (lower.contains("поздравля") && lower.contains("успеш")) {
+            return "Поздравляем, всё успешно.";
+        }
+        return "";
+    }
+
+    private String decodeHtmlBody(byte[] bodyBytes) {
+        byte[] payload = maybeInflateGzipBody(bodyBytes);
+        try {
+            return new String(payload, Charset.forName("windows-1251"));
+        } catch (Exception ignored) {
+        }
+        try {
+            return new String(payload, StandardCharsets.UTF_8);
+        } catch (Exception ignored) {
+        }
+        return "";
+    }
+
+    private byte[] maybeInflateGzipBody(byte[] rawBody) {
+        if (rawBody == null || rawBody.length < 2) {
+            return rawBody == null ? new byte[0] : rawBody;
+        }
+        boolean gzipMagic = (rawBody[0] == (byte) 0x1F) && (rawBody[1] == (byte) 0x8B);
+        if (!gzipMagic) {
+            return rawBody;
+        }
+        try (ByteArrayInputStream in = new ByteArrayInputStream(rawBody);
+             GZIPInputStream gzipInputStream = new GZIPInputStream(in);
+             ByteArrayOutputStream out = new ByteArrayOutputStream()) {
+            byte[] buffer = new byte[4096];
+            int read;
+            while ((read = gzipInputStream.read(buffer)) != -1) {
+                out.write(buffer, 0, read);
+            }
+            return out.toByteArray();
+        } catch (Exception ignored) {
+            return rawBody;
+        }
+    }
+
+    private String normalizeNoticeText(String text) {
+        if (text == null) {
+            return "";
+        }
+        String normalized = text
+                .replace('\u00A0', ' ')
+                .replaceAll("(?i)<br\\s*/?>", " ")
+                .replaceAll("(?is)<[^>]+>", " ")
+                .replace("&nbsp;", " ")
+                .replace("&quot;", "\"")
+                .replace("&#39;", "'")
+                .replace("&lt;", "<")
+                .replace("&gt;", ">")
+                .replace("&amp;", "&")
+                .replaceAll("\\s+", " ")
+                .trim();
+        if (normalized.length() > 700) {
+            normalized = normalized.substring(0, 700) + "...";
+        }
+        return normalized;
     }
 
     private int parsePortSafe(String value, int fallback) {
@@ -930,17 +1111,33 @@ final class LocalHttpProxyServer {
         }
     }
 
+    private static final class CopyResult {
+        final long totalBytes;
+        final byte[] capturedBytes;
+
+        CopyResult(long totalBytes, byte[] capturedBytes) {
+            this.totalBytes = totalBytes;
+            this.capturedBytes = capturedBytes == null ? new byte[0] : capturedBytes;
+        }
+    }
+
     private static final class ResponseHead {
         final byte[] rawBytes;
         final String statusLine;
         final int statusCode;
         final String serverHeader;
+        final String contentTypeHeader;
 
-        ResponseHead(byte[] rawBytes, String statusLine, int statusCode, String serverHeader) {
+        ResponseHead(byte[] rawBytes,
+                     String statusLine,
+                     int statusCode,
+                     String serverHeader,
+                     String contentTypeHeader) {
             this.rawBytes = rawBytes;
             this.statusLine = statusLine == null ? "" : statusLine;
             this.statusCode = statusCode;
             this.serverHeader = serverHeader == null ? "" : serverHeader;
+            this.contentTypeHeader = contentTypeHeader == null ? "" : contentTypeHeader;
         }
     }
 }
