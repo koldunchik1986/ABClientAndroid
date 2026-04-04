@@ -306,8 +306,8 @@ public final class ClanWarsManager {
     }
 
     /**
-     * Проверка БД-режима Auto-Босс:
-     * true, если clanToken цели (`c174.gif`) входит в любой текущий war-entry.
+     * Проверка участия клана в текущих клановых войнах.
+     * Возвращает true, если clanToken (c174.gif) входит в любой актуальный war-entry.
      */
     public boolean isClanTokenInCurrentWars(String clanToken) {
         String normalizedToken = normalizeClanToken(clanToken);

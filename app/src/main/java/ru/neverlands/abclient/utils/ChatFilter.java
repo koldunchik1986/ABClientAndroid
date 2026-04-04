@@ -1,8 +1,10 @@
 package ru.neverlands.abclient.utils;
 
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 import java.util.Locale;
+import java.text.SimpleDateFormat;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -27,6 +29,9 @@ public class ChatFilter {
         boolean isLocalSyntheticMessage = result.contains("<!--AB_LOCAL_CHAT-->");
         if (isLocalSyntheticMessage) {
             result = result.replace("<!--AB_LOCAL_CHAT-->", "");
+        }
+        if (!isLocalSyntheticMessage && shouldAddServerTimestampPrefix(result)) {
+            result = buildServerChatTimeHtml() + result;
         }
 
         // Парсинг боевого опыта и накопление статистики (аналог C# ChatFilter).
@@ -206,6 +211,28 @@ public class ChatFilter {
 
         Chat.addStringToChat(result);
         return result;
+    }
+
+    private static boolean shouldAddServerTimestampPrefix(String message) {
+        if (message == null || message.isEmpty()) {
+            return false;
+        }
+        String lower = message.toLowerCase(Locale.ROOT);
+        if (lower.contains("class=chattime") || lower.contains("class=\"chattime\"")) {
+            return false;
+        }
+        boolean hasSystemSender = lower.contains("class=massm") || lower.contains("class=\"massm\"");
+        boolean hasNeverlandsSender = lower.contains("neverlands.ru");
+        return hasSystemSender && hasNeverlandsSender;
+    }
+
+    private static String buildServerChatTimeHtml() {
+        long serverMs = System.currentTimeMillis();
+        if (AppVars.Profile != null && AppVars.Profile.ServDiff != Long.MIN_VALUE) {
+            serverMs = serverMs - AppVars.Profile.ServDiff;
+        }
+        String timeStr = new SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(new Date(serverMs));
+        return "<font class=chattime>&nbsp;" + timeStr + "&nbsp;</font> ";
     }
 
     private static String extractSpanNick(String message) {

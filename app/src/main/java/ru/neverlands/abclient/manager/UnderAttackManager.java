@@ -116,7 +116,7 @@ public final class UnderAttackManager {
         }
 
         String channelPrefix = buildChannelPrefix(attackSayType);
-        String locationSuffix = buildLocationSuffix();
+        String locationSuffix = buildLocationSuffixByRegNum();
         String message;
         if (isMeAttacker) {
             message = channelPrefix + " я нападаю на перса «" + nick2 + "»"
@@ -160,6 +160,36 @@ public final class UnderAttackManager {
             return "";
         }
         return ", клетка " + location.trim();
+    }
+
+    private static String buildLocationSuffixByRegNum() {
+        String regNum = null;
+
+        if (AppVars.Profile != null && AppVars.Profile.MapLocation != null) {
+            String candidate = AppVars.Profile.MapLocation.trim();
+            if (candidate.matches("\\d{1,4}-\\d{1,5}")) {
+                regNum = candidate;
+            }
+        }
+
+        if ((regNum == null || regNum.isEmpty()) && AppVars.AutoMovingDestinaton != null) {
+            String candidate = AppVars.AutoMovingDestinaton.trim();
+            if (candidate.matches("\\d{1,4}-\\d{1,5}")) {
+                regNum = candidate;
+            }
+        }
+
+        if ((regNum == null || regNum.isEmpty()) && AppVars.myLocOld != null) {
+            String candidate = AppVars.myLocOld.trim();
+            if (candidate.matches("\\d{1,4}-\\d{1,5}")) {
+                regNum = candidate;
+            }
+        }
+
+        if (regNum == null || regNum.isEmpty()) {
+            return "";
+        }
+        return ", клетка № " + regNum;
     }
 
     private static String stripQuotes(String value) {

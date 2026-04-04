@@ -19,43 +19,43 @@ import ru.neverlands.abclient.utils.Chat;
 import ru.neverlands.abclient.utils.FileLogger;
 
 /**
- * Модуль авто-функции «Авто-Боссы».
+ * РњРѕРґСѓР»СЊ Р°РІС‚Рѕ-С„СѓРЅРєС†РёРё В«РђРІС‚Рѕ-Р‘РѕСЃСЃС‹В».
  *
- * Назначение:
- * - ловит системный анонс чата о нападении босса на игрока;
- * - запускает поиск цели через уже существующий контур Auto-Компас;
- * - после нахождения цели применяет FastAction «Свиток Защиты»;
- * - после завершения боя возвращает персонажа на исходную клетку и восстанавливает паузенные авто-функции.
+ * РќР°Р·РЅР°С‡РµРЅРёРµ:
+ * - Р»РѕРІРёС‚ СЃРёСЃС‚РµРјРЅС‹Р№ Р°РЅРѕРЅСЃ С‡Р°С‚Р° Рѕ РЅР°РїР°РґРµРЅРёРё Р±РѕСЃСЃР° РЅР° РёРіСЂРѕРєР°;
+ * - Р·Р°РїСѓСЃРєР°РµС‚ РїРѕРёСЃРє С†РµР»Рё С‡РµСЂРµР· СѓР¶Рµ СЃСѓС‰РµСЃС‚РІСѓСЋС‰РёР№ РєРѕРЅС‚СѓСЂ Auto-РљРѕРјРїР°СЃ;
+ * - РїРѕСЃР»Рµ РЅР°С…РѕР¶РґРµРЅРёСЏ С†РµР»Рё РїСЂРёРјРµРЅСЏРµС‚ FastAction В«РЎРІРёС‚РѕРє Р—Р°С‰РёС‚С‹В»;
+ * - РїРѕСЃР»Рµ Р·Р°РІРµСЂС€РµРЅРёСЏ Р±РѕСЏ РІРѕР·РІСЂР°С‰Р°РµС‚ РїРµСЂСЃРѕРЅР°Р¶Р° РЅР° РёСЃС…РѕРґРЅСѓСЋ РєР»РµС‚РєСѓ Рё РІРѕСЃСЃС‚Р°РЅР°РІР»РёРІР°РµС‚ РїР°СѓР·РµРЅРЅС‹Рµ Р°РІС‚Рѕ-С„СѓРЅРєС†РёРё.
  *
- * Ключевое правило реализации:
- * - не дублировать существующие конвейеры (Auto-Компас, FastAction, Navigator),
- *   а только оркестрировать их через AutoFunctionsManager.
+ * РљР»СЋС‡РµРІРѕРµ РїСЂР°РІРёР»Рѕ СЂРµР°Р»РёР·Р°С†РёРё:
+ * - РЅРµ РґСѓР±Р»РёСЂРѕРІР°С‚СЊ СЃСѓС‰РµСЃС‚РІСѓСЋС‰РёРµ РєРѕРЅРІРµР№РµСЂС‹ (Auto-РљРѕРјРїР°СЃ, FastAction, Navigator),
+ *   Р° С‚РѕР»СЊРєРѕ РѕСЂРєРµСЃС‚СЂРёСЂРѕРІР°С‚СЊ РёС… С‡РµСЂРµР· AutoFunctionsManager.
  */
 /**
- * Оркестратор сценария «Авто-Боссы».
+ * РћСЂРєРµСЃС‚СЂР°С‚РѕСЂ СЃС†РµРЅР°СЂРёСЏ В«РђРІС‚Рѕ-Р‘РѕСЃСЃС‹В».
  *
- * Задача модуля:
- * - отследить событие нападения босса из системного чата;
- * - передать поиск цели в существующий контур Auto-Компас;
- * - после нахождения цели применить «Свиток Защиты» через FastAction;
- * - после завершения сценария вернуть исходные настройки авто-функций.
+ * Р—Р°РґР°С‡Р° РјРѕРґСѓР»СЏ:
+ * - РѕС‚СЃР»РµРґРёС‚СЊ СЃРѕР±С‹С‚РёРµ РЅР°РїР°РґРµРЅРёСЏ Р±РѕСЃСЃР° РёР· СЃРёСЃС‚РµРјРЅРѕРіРѕ С‡Р°С‚Р°;
+ * - РїРµСЂРµРґР°С‚СЊ РїРѕРёСЃРє С†РµР»Рё РІ СЃСѓС‰РµСЃС‚РІСѓСЋС‰РёР№ РєРѕРЅС‚СѓСЂ Auto-РљРѕРјРїР°СЃ;
+ * - РїРѕСЃР»Рµ РЅР°С…РѕР¶РґРµРЅРёСЏ С†РµР»Рё РїСЂРёРјРµРЅРёС‚СЊ В«РЎРІРёС‚РѕРє Р—Р°С‰РёС‚С‹В» С‡РµСЂРµР· FastAction;
+ * - РїРѕСЃР»Рµ Р·Р°РІРµСЂС€РµРЅРёСЏ СЃС†РµРЅР°СЂРёСЏ РІРµСЂРЅСѓС‚СЊ РёСЃС…РѕРґРЅС‹Рµ РЅР°СЃС‚СЂРѕР№РєРё Р°РІС‚Рѕ-С„СѓРЅРєС†РёР№.
  *
- * Важный инвариант:
- * - здесь нет дублирования логики навигатора/компаса/fast-action;
- *   используются только вызовы уже существующих менеджеров.
+ * Р’Р°Р¶РЅС‹Р№ РёРЅРІР°СЂРёР°РЅС‚:
+ * - Р·РґРµСЃСЊ РЅРµС‚ РґСѓР±Р»РёСЂРѕРІР°РЅРёСЏ Р»РѕРіРёРєРё РЅР°РІРёРіР°С‚РѕСЂР°/РєРѕРјРїР°СЃР°/fast-action;
+ *   РёСЃРїРѕР»СЊР·СѓСЋС‚СЃСЏ С‚РѕР»СЊРєРѕ РІС‹Р·РѕРІС‹ СѓР¶Рµ СЃСѓС‰РµСЃС‚РІСѓСЋС‰РёС… РјРµРЅРµРґР¶РµСЂРѕРІ.
  */
 /**
- * Оркестратор сценария «Авто-Боссы».
+ * РћСЂРєРµСЃС‚СЂР°С‚РѕСЂ СЃС†РµРЅР°СЂРёСЏ В«РђРІС‚Рѕ-Р‘РѕСЃСЃС‹В».
  *
- * Что делает модуль:
- * - получает системные события о боссах из чата;
- * - запускает поиск цели через уже существующий Auto-Компас;
- * - после нахождения цели выполняет FastAction «Свиток Защиты»;
- * - по завершению возвращает исходные состояния авто-функций.
+ * Р§С‚Рѕ РґРµР»Р°РµС‚ РјРѕРґСѓР»СЊ:
+ * - РїРѕР»СѓС‡Р°РµС‚ СЃРёСЃС‚РµРјРЅС‹Рµ СЃРѕР±С‹С‚РёСЏ Рѕ Р±РѕСЃСЃР°С… РёР· С‡Р°С‚Р°;
+ * - Р·Р°РїСѓСЃРєР°РµС‚ РїРѕРёСЃРє С†РµР»Рё С‡РµСЂРµР· СѓР¶Рµ СЃСѓС‰РµСЃС‚РІСѓСЋС‰РёР№ Auto-РљРѕРјРїР°СЃ;
+ * - РїРѕСЃР»Рµ РЅР°С…РѕР¶РґРµРЅРёСЏ С†РµР»Рё РІС‹РїРѕР»РЅСЏРµС‚ FastAction В«РЎРІРёС‚РѕРє Р—Р°С‰РёС‚С‹В»;
+ * - РїРѕ Р·Р°РІРµСЂС€РµРЅРёСЋ РІРѕР·РІСЂР°С‰Р°РµС‚ РёСЃС…РѕРґРЅС‹Рµ СЃРѕСЃС‚РѕСЏРЅРёСЏ Р°РІС‚Рѕ-С„СѓРЅРєС†РёР№.
  *
- * Важный инвариант реализации:
- * - здесь нет дублирования логики навигатора/fast-action;
- * - модуль только координирует вызовы через AutoFunctionsManager.
+ * Р’Р°Р¶РЅС‹Р№ РёРЅРІР°СЂРёР°РЅС‚ СЂРµР°Р»РёР·Р°С†РёРё:
+ * - Р·РґРµСЃСЊ РЅРµС‚ РґСѓР±Р»РёСЂРѕРІР°РЅРёСЏ Р»РѕРіРёРєРё РЅР°РІРёРіР°С‚РѕСЂР°/fast-action;
+ * - РјРѕРґСѓР»СЊ С‚РѕР»СЊРєРѕ РєРѕРѕСЂРґРёРЅРёСЂСѓРµС‚ РІС‹Р·РѕРІС‹ С‡РµСЂРµР· AutoFunctionsManager.
  */
 final class BossAuto {
     private static final String TAG = "AutoFunctionsManager";
@@ -63,7 +63,6 @@ final class BossAuto {
     private static final String LOG_CHAIN = "boss_auto";
     private static final String KEY_AUTO_BOSS = "auto_function_auto_boss";
     private static final String PREF_AUTO_BOSS_ASK_TARGET = "auto_boss_ask_target";
-    private static final String PREF_AUTO_BOSS_BD_MODE = "auto_boss_bd_mode";
     private static final String PREF_AUTO_BOSS_TRACK_CURRENT_WARS = "auto_boss_track_current_wars";
     private static final String PREF_AUTO_BOSS_CLAN_NOTIFY = "auto_boss_clan_notify";
     private static final String PREF_AUTO_BOSS_SELF_CLAN_TOKEN_CACHE = "auto_boss_self_clan_token_cache";
@@ -73,27 +72,28 @@ final class BossAuto {
     private static final String LOCAL_CHAT_MARKER = "<!--AB_LOCAL_CHAT-->";
 
     private static final Pattern BOSS_EVENT_PATTERN = Pattern.compile(
-            "внимание!\\s*случайное событие!\\s*монстр\\s*[\"«]?([^\"»]+)[\"»]?\\s*напал на игрока\\s+([a-zа-я0-9_\\-]+)\\.",
+            "РІРЅРёРјР°РЅРёРµ!\\s*СЃР»СѓС‡Р°Р№РЅРѕРµ СЃРѕР±С‹С‚РёРµ!\\s*РјРѕРЅСЃС‚СЂ\\s*[\"В«]?([^\"В»]+)[\"В»]?\\s*РЅР°РїР°Р» РЅР° РёРіСЂРѕРєР°\\s+([a-zР°-СЏ0-9_\\-]+)\\.",
             Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CASE);
-    // ОСНОВНОЙ парсер события Босса: максимально гибкий, с поддержкой:
-    // - опциональной точки в конце
-    // - любых ников с буквами, цифрами, спецсимволами
-    // - формата со временем и без
-    // - вариантов: "напал", "напала", "напали"
-    // Зависимость: используется в parseBossEvent() для детекта события
+    // РћРЎРќРћР’РќРћР™ РїР°СЂСЃРµСЂ СЃРѕР±С‹С‚РёСЏ Р‘РѕСЃСЃР°: РјР°РєСЃРёРјР°Р»СЊРЅРѕ РіРёР±РєРёР№, СЃ РїРѕРґРґРµСЂР¶РєРѕР№:
+    // - РѕРїС†РёРѕРЅР°Р»СЊРЅРѕР№ С‚РѕС‡РєРё РІ РєРѕРЅС†Рµ
+    // - Р»СЋР±С‹С… РЅРёРєРѕРІ СЃ Р±СѓРєРІР°РјРё, С†РёС„СЂР°РјРё, СЃРїРµС†СЃРёРјРІРѕР»Р°РјРё
+    // - С„РѕСЂРјР°С‚Р° СЃРѕ РІСЂРµРјРµРЅРµРј Рё Р±РµР·
+    // - РІР°СЂРёР°РЅС‚РѕРІ: "РЅР°РїР°Р»", "РЅР°РїР°Р»Р°", "РЅР°РїР°Р»Рё"
+    // Р—Р°РІРёСЃРёРјРѕСЃС‚СЊ: РёСЃРїРѕР»СЊР·СѓРµС‚СЃСЏ РІ parseBossEvent() РґР»СЏ РґРµС‚РµРєС‚Р° СЃРѕР±С‹С‚РёСЏ
     private static final Pattern BOSS_EVENT_PATTERN_FLEX = Pattern.compile(
-            "(?iu)(?:\\d{1,2}/\\d{1,2}/\\d{2,4}\\s+\\d{1,2}:\\d{2}:\\d{2}\\s+)?(?:внимание!\\s*случайное\\s+событие!\\s*)?монстр\\s*[\"«]?([^\"»]+)[\"»]?\\s*(?:напал|напала|напали)\\s+на\\s+(?:игрока|игроков)?\\s*(.+?)\\s*(?:[.,:;]|$)");
+            "(?iu)(?:\\d{1,2}/\\d{1,2}/\\d{2,4}\\s+\\d{1,2}:\\d{2}:\\d{2}\\s+)?(?:РІРЅРёРјР°РЅРёРµ!\\s*СЃР»СѓС‡Р°Р№РЅРѕРµ\\s+СЃРѕР±С‹С‚РёРµ!\\s*)?РјРѕРЅСЃС‚СЂ\\s*[\"В«]?([^\"В»]+)[\"В»]?\\s*(?:РЅР°РїР°Р»|РЅР°РїР°Р»Р°|РЅР°РїР°Р»Рё)\\s+РЅР°\\s+(?:РёРіСЂРѕРєР°|РёРіСЂРѕРєРѕРІ)?\\s*(.+?)\\s*(?:[.,:;]|$)");
     private static final Pattern CELL_PATTERN = Pattern.compile("\\b\\d{1,4}-\\d{1,5}\\b");
+    private static final Pattern FIGHT_FID_IN_LINK_PATTERN = Pattern.compile("fid=([0-9]{1,16})", Pattern.CASE_INSENSITIVE);
     private static final Pattern SPAN_NICK_PATTERN = Pattern.compile(
             "<SPAN[^>]+(?:title|alt)=\"([^\"]+)\"",
             Pattern.CASE_INSENSITIVE);
     private static final Pattern FIGHT_ALLY_PATTERN = Pattern.compile(
-            "([A-Za-zА-Яа-яЁё0-9_\\-]+)\\s*\\[(\\d{1,9})\\s*/\\s*(\\d{1,9})\\]");
+            "([A-Za-zРђ-РЇР°-СЏРЃС‘0-9_\\-]+)\\s*\\[(\\d{1,9})\\s*/\\s*(\\d{1,9})\\]");
 
     /**
-     * Единый адаптер логирования BossAuto:
-     * - пишет в logcat (для LogcatFileRecorder),
-     * - дублирует в FileLogger (цепочка `boss_auto`).
+     * Р•РґРёРЅС‹Р№ Р°РґР°РїС‚РµСЂ Р»РѕРіРёСЂРѕРІР°РЅРёСЏ BossAuto:
+     * - РїРёС€РµС‚ РІ logcat (РґР»СЏ LogcatFileRecorder),
+     * - РґСѓР±Р»РёСЂСѓРµС‚ РІ FileLogger (С†РµРїРѕС‡РєР° `boss_auto`).
      */
     private static final class Log {
         private Log() {
@@ -124,21 +124,21 @@ final class BossAuto {
     private static final long TARGET_CHAT_ASK_RETRY_MS = 1_500L;
     private static final long TARGET_FIGHT_POLL_INTERVAL_MS = 1_000L;
     /**
-     * Задержка перед отправкой клан-сообщения о событии босса.
-     * Нужна для:
-     * 1. Предотвращения DDoS-блокировки сервером (много параллельных запросов)
-     * 2. Буферизации потока быстрых pinfo/compass запросов
+     * Р—Р°РґРµСЂР¶РєР° РїРµСЂРµРґ РѕС‚РїСЂР°РІРєРѕР№ РєР»Р°РЅ-СЃРѕРѕР±С‰РµРЅРёСЏ Рѕ СЃРѕР±С‹С‚РёРё Р±РѕСЃСЃР°.
+     * РќСѓР¶РЅР° РґР»СЏ:
+     * 1. РџСЂРµРґРѕС‚РІСЂР°С‰РµРЅРёСЏ DDoS-Р±Р»РѕРєРёСЂРѕРІРєРё СЃРµСЂРІРµСЂРѕРј (РјРЅРѕРіРѕ РїР°СЂР°Р»Р»РµР»СЊРЅС‹С… Р·Р°РїСЂРѕСЃРѕРІ)
+     * 2. Р‘СѓС„РµСЂРёР·Р°С†РёРё РїРѕС‚РѕРєР° Р±С‹СЃС‚СЂС‹С… pinfo/compass Р·Р°РїСЂРѕСЃРѕРІ
      */
     private static final long CLAN_NOTIFY_DELAY_MS = 1000L;
     private static final int CLAN_EVENT_CHAT_MAX_LEN = 220;
     /**
-     * Задержка между clan message и private message для ask target.
-     * Предотвращает отклонение обоих сообщений как DDoS.
+     * Р—Р°РґРµСЂР¶РєР° РјРµР¶РґСѓ clan message Рё private message РґР»СЏ ask target.
+     * РџСЂРµРґРѕС‚РІСЂР°С‰Р°РµС‚ РѕС‚РєР»РѕРЅРµРЅРёРµ РѕР±РѕРёС… СЃРѕРѕР±С‰РµРЅРёР№ РєР°Рє DDoS.
      */
     private static final long CLAN_PRIVATE_MESSAGE_DELAY_MS = 500L;
     /**
-     * Максимальное количество тиков отсутствия fight FID перед признанием боя потерянным.
-     * Защита от бесконечного incrementing в случае потери соединения или ошибки сервера.
+     * РњР°РєСЃРёРјР°Р»СЊРЅРѕРµ РєРѕР»РёС‡РµСЃС‚РІРѕ С‚РёРєРѕРІ РѕС‚СЃСѓС‚СЃС‚РІРёСЏ fight FID РїРµСЂРµРґ РїСЂРёР·РЅР°РЅРёРµРј Р±РѕСЏ РїРѕС‚РµСЂСЏРЅРЅС‹Рј.
+     * Р—Р°С‰РёС‚Р° РѕС‚ Р±РµСЃРєРѕРЅРµС‡РЅРѕРіРѕ incrementing РІ СЃР»СѓС‡Р°Рµ РїРѕС‚РµСЂРё СЃРѕРµРґРёРЅРµРЅРёСЏ РёР»Рё РѕС€РёР±РєРё СЃРµСЂРІРµСЂР°.
      */
     private static final int BOSS_FIGHT_FID_MISSING_MAX_TICKS = 10;
 
@@ -181,19 +181,19 @@ final class BossAuto {
     }
 
     /**
-     * Снимок авто-функций, которые ставятся на паузу во время сценария Авто-Боссов.
-     * Авто-Бой/Авто-Лечение сюда не входят: они не паузятся.
+     * РЎРЅРёРјРѕРє Р°РІС‚Рѕ-С„СѓРЅРєС†РёР№, РєРѕС‚РѕСЂС‹Рµ СЃС‚Р°РІСЏС‚СЃСЏ РЅР° РїР°СѓР·Сѓ РІРѕ РІСЂРµРјСЏ СЃС†РµРЅР°СЂРёСЏ РђРІС‚Рѕ-Р‘РѕСЃСЃРѕРІ.
+     * РђРІС‚Рѕ-Р‘РѕР№/РђРІС‚Рѕ-Р›РµС‡РµРЅРёРµ СЃСЋРґР° РЅРµ РІС…РѕРґСЏС‚: РѕРЅРё РЅРµ РїР°СѓР·СЏС‚СЃСЏ.
      */
     /**
-     * Снимок исходного состояния авто-функций на момент старта сценария.
-     * Нужен для корректного восстановления после завершения поиска/боя.
+     * РЎРЅРёРјРѕРє РёСЃС…РѕРґРЅРѕРіРѕ СЃРѕСЃС‚РѕСЏРЅРёСЏ Р°РІС‚Рѕ-С„СѓРЅРєС†РёР№ РЅР° РјРѕРјРµРЅС‚ СЃС‚Р°СЂС‚Р° СЃС†РµРЅР°СЂРёСЏ.
+     * РќСѓР¶РµРЅ РґР»СЏ РєРѕСЂСЂРµРєС‚РЅРѕРіРѕ РІРѕСЃСЃС‚Р°РЅРѕРІР»РµРЅРёСЏ РїРѕСЃР»Рµ Р·Р°РІРµСЂС€РµРЅРёСЏ РїРѕРёСЃРєР°/Р±РѕСЏ.
      */
     /**
-     * Снимок пользовательских авто-настроек на момент старта сценария.
+     * РЎРЅРёРјРѕРє РїРѕР»СЊР·РѕРІР°С‚РµР»СЊСЃРєРёС… Р°РІС‚Рѕ-РЅР°СЃС‚СЂРѕРµРє РЅР° РјРѕРјРµРЅС‚ СЃС‚Р°СЂС‚Р° СЃС†РµРЅР°СЂРёСЏ.
      *
-     * Нужен для корректного restore после завершения «Авто-Босса».
-     * В снимок не включаются Auto-Бой и Auto-Лечение — эти режимы
-     * по проектным правилам не ставятся на паузу.
+     * РќСѓР¶РµРЅ РґР»СЏ РєРѕСЂСЂРµРєС‚РЅРѕРіРѕ restore РїРѕСЃР»Рµ Р·Р°РІРµСЂС€РµРЅРёСЏ В«РђРІС‚Рѕ-Р‘РѕСЃСЃР°В».
+     * Р’ СЃРЅРёРјРѕРє РЅРµ РІРєР»СЋС‡Р°СЋС‚СЃСЏ Auto-Р‘РѕР№ Рё Auto-Р›РµС‡РµРЅРёРµ вЂ” СЌС‚Рё СЂРµР¶РёРјС‹
+     * РїРѕ РїСЂРѕРµРєС‚РЅС‹Рј РїСЂР°РІРёР»Р°Рј РЅРµ СЃС‚Р°РІСЏС‚СЃСЏ РЅР° РїР°СѓР·Сѓ.
      */
     private static final class BossScenarioSnapshot {
         boolean autoFishEnabled;
@@ -263,7 +263,7 @@ final class BossAuto {
             stopAndRestore("manual_disable", true);
         } else {
             owner.requestCharacterSyncForAutoFunctionEnableInternal("auto_boss");
-            writeBossChat("Режим включен. Ожидаем системные сообщения о Боссах.");
+            writeBossChat("Р РµР¶РёРј РІРєР»СЋС‡РµРЅ. РћР¶РёРґР°РµРј СЃРёСЃС‚РµРјРЅС‹Рµ СЃРѕРѕР±С‰РµРЅРёСЏ Рѕ Р‘РѕСЃСЃР°С….");
         }
         Log.d(TAG, TRACE_PREFIX + " setAutoBossEnabled=" + enabled);
         owner.syncBackgroundServiceInternal("setAutoBossEnabled(" + enabled + ")");
@@ -324,7 +324,7 @@ final class BossAuto {
     }
 
     /**
-     * Определяет, что сообщение относится к системному каналу сервера, а не к локальному/клановому чату.
+     * РћРїСЂРµРґРµР»СЏРµС‚, С‡С‚Рѕ СЃРѕРѕР±С‰РµРЅРёРµ РѕС‚РЅРѕСЃРёС‚СЃСЏ Рє СЃРёСЃС‚РµРјРЅРѕРјСѓ РєР°РЅР°Р»Сѓ СЃРµСЂРІРµСЂР°, Р° РЅРµ Рє Р»РѕРєР°Р»СЊРЅРѕРјСѓ/РєР»Р°РЅРѕРІРѕРјСѓ С‡Р°С‚Сѓ.
      */
     private boolean isServerBossEventMessage(String messageHtml) {
         if (isEmpty(messageHtml)) {
@@ -334,7 +334,7 @@ final class BossAuto {
         if (messageHtml.contains(LOCAL_CHAT_MARKER)) {
             return false;
         }
-        if (lowerHtml.contains("авто-боссы") || lowerHtml.contains("[авто-боссы]")) {
+        if (lowerHtml.contains("Р°РІС‚Рѕ-Р±РѕСЃСЃС‹") || lowerHtml.contains("[Р°РІС‚Рѕ-Р±РѕСЃСЃС‹]")) {
             return false;
         }
         boolean hasSystemClass = lowerHtml.contains("class=massm") || lowerHtml.contains("class=\"massm\"");
@@ -347,10 +347,10 @@ final class BossAuto {
 
     private boolean looksLikeBossEventText(String messageHtml) {
         String plain = toPlainText(messageHtml).toLowerCase(Locale.ROOT);
-        return plain.contains("монстр")
-                && (plain.contains("напал на игрока")
-                || plain.contains("напала на игрока")
-                || plain.contains("напали на игрока"));
+        return plain.contains("РјРѕРЅСЃС‚СЂ")
+                && (plain.contains("РЅР°РїР°Р» РЅР° РёРіСЂРѕРєР°")
+                || plain.contains("РЅР°РїР°Р»Р° РЅР° РёРіСЂРѕРєР°")
+                || plain.contains("РЅР°РїР°Р»Рё РЅР° РёРіСЂРѕРєР°"));
     }
 
     void onRoomUsersUpdated(List<String> roomNicks, String roomLocationName) {
@@ -408,12 +408,12 @@ final class BossAuto {
                         stage = BossStage.FIGHT_IN_PROGRESS;
                         stageStartedAtMs = now;
                     }
-                    writeBossChat("Бой начался. Передаем управление Авто-Бою.");
+                    writeBossChat("Р‘РѕР№ РЅР°С‡Р°Р»СЃСЏ. РџРµСЂРµРґР°РµРј СѓРїСЂР°РІР»РµРЅРёРµ РђРІС‚Рѕ-Р‘РѕСЋ.");
                     return;
                 }
                 if (now - protectionSentAtMs >= getWaitFightTimeoutMs()) {
                     if (protectionAttempts < 2) {
-                        writeBossChat("Бой не стартовал, повторяем «Свиток Защиты».");
+                        writeBossChat("Р‘РѕР№ РЅРµ СЃС‚Р°СЂС‚РѕРІР°Р», РїРѕРІС‚РѕСЂСЏРµРј В«РЎРІРёС‚РѕРє Р—Р°С‰РёС‚С‹В».");
                         sendProtectionScroll();
                     } else {
                         startReturnOrRestore("fight_not_started");
@@ -435,14 +435,14 @@ final class BossAuto {
     }
 
     /**
-     * Обрабатывает триггер события «Босс напал на игрока».
+     * РћР±СЂР°Р±Р°С‚С‹РІР°РµС‚ С‚СЂРёРіРіРµСЂ СЃРѕР±С‹С‚РёСЏ В«Р‘РѕСЃСЃ РЅР°РїР°Р» РЅР° РёРіСЂРѕРєР°В».
      *
-     * Основные шаги:
-     * - выполняет anti-dup по событию;
-     * - применяет фильтры БД-режима и «Следить за текущими войнами»;
-     * - фиксирует ссылку на бой цели ({@code fid});
-     * - ставит несовместимые авто-функции на паузу;
-     * - запускает поиск цели через Auto-Компас.
+     * РћСЃРЅРѕРІРЅС‹Рµ С€Р°РіРё:
+     * - РІС‹РїРѕР»РЅСЏРµС‚ anti-dup РїРѕ СЃРѕР±С‹С‚РёСЋ;
+     * - РїСЂРёРјРµРЅСЏРµС‚ С„РёР»СЊС‚СЂС‹ СѓС‡Р°СЃС‚РёСЏ РІ С‚РµРєСѓС‰РёС… РєР»Р°РЅРѕРІС‹С… РІРѕР№РЅР°С…;
+     * - С„РёРєСЃРёСЂСѓРµС‚ СЃСЃС‹Р»РєСѓ РЅР° Р±РѕР№ С†РµР»Рё ({@code fid});
+     * - СЃС‚Р°РІРёС‚ РЅРµСЃРѕРІРјРµСЃС‚РёРјС‹Рµ Р°РІС‚Рѕ-С„СѓРЅРєС†РёРё РЅР° РїР°СѓР·Сѓ;
+     * - Р·Р°РїСѓСЃРєР°РµС‚ РїРѕРёСЃРє С†РµР»Рё С‡РµСЂРµР· Auto-РљРѕРјРїР°СЃ.
      */
     private void handleBossEvent(BossEvent event) {
         String normalizedTarget = normalizeNick(event.targetNick);
@@ -481,38 +481,31 @@ final class BossAuto {
         NeverApi.PinfoCompassSnapshot selfSnapshot = safeGetPinfoSnapshot(resolveSelfNick());
         String targetClanToken = normalizeClanToken(targetSnapshot == null ? "" : targetSnapshot.clanToken);
         String selfClanToken = resolveSelfClanTokenWithFallback(selfSnapshot);
-        boolean bdModeEnabled = isAutoBossBdModeEnabled();
         boolean trackCurrentWarsEnabled = isAutoBossTrackCurrentWarsEnabled();
 
         Log.d(TAG, TRACE_PREFIX + " clan filters: target=" + normalizedTarget
-                + ", bdMode=" + bdModeEnabled
                 + ", trackCurrentWars=" + trackCurrentWarsEnabled
                 + ", targetClan=" + targetClanToken
                 + ", selfClan=" + selfClanToken);
-        // Клан-оповещение о самом событии отправляем сразу после распознавания события.
-        // Это не зависит от последующих фильтров BD/wars.
+        // РљР»Р°РЅ-РѕРїРѕРІРµС‰РµРЅРёРµ Рѕ СЃР°РјРѕРј СЃРѕР±С‹С‚РёРё РѕС‚РїСЂР°РІР»СЏРµРј СЃСЂР°Р·Сѓ РїРѕСЃР»Рµ СЂР°СЃРїРѕР·РЅР°РІР°РЅРёСЏ СЃРѕР±С‹С‚РёСЏ.
+        // Р­С‚Рѕ РЅРµ Р·Р°РІРёСЃРёС‚ РѕС‚ РїРѕСЃР»РµРґСѓСЋС‰РёС… С„РёР»СЊС‚СЂРѕРІ BD/wars.
         String initialFightFid = resolveFightFidReliable(normalizedTarget, targetSnapshot);
         String initialFightLink = buildFightLogLink(initialFightFid);
         sendClanBossEventMessageIfNeeded(event.bossName, normalizedTarget, selfClanToken, initialFightLink);
         String locationLabel = resolveTargetLocationLabel(normalizedTarget, targetSnapshot);
         String targetHtml = buildTargetNickHtml(normalizedTarget, targetSnapshot);
         String locationPrefix = isEmpty(locationLabel) ? "" : " [" + escapeHtml(locationLabel) + "]";
-        writeBossChat("Событие. Монстр \"" + escapeHtml(event.bossName) + "\" напал на игрока "
-                + targetHtml + ". Цель " + targetHtml + " в " + buildFightWordHtml(initialFightLink) + "."
+        writeBossChat("РЎРѕР±С‹С‚РёРµ. РњРѕРЅСЃС‚СЂ \"" + escapeHtml(event.bossName) + "\" РЅР°РїР°Р» РЅР° РёРіСЂРѕРєР° "
+                + targetHtml + ". Р¦РµР»СЊ " + targetHtml + " РІ " + buildFightWordHtml(initialFightLink) + "."
                 + locationPrefix);
 
-        if (bdModeEnabled) {
-            if (isEmpty(selfClanToken)) {
-                writeBossChat("Продолжаем поиск цели не учитывая БД режим (наш статус позволяет вмешаться).");
-            } else if (!isEmpty(targetClanToken) && !selfClanToken.equalsIgnoreCase(targetClanToken)) {
-                String deniedTargetHtml = buildTargetNickHtml(normalizedTarget, targetSnapshot);
-                askTargetOnceIfEnabled(normalizedTarget);
-                writeBossChat("Движение к цели остановлено — БД режим не позволяет нам защитить "
-                        + deniedTargetHtml + ".");
-                Log.d(TAG, TRACE_PREFIX + " bd mode denied target: target=" + normalizedTarget
-                        + ", targetClan=" + targetClanToken + ", selfClan=" + selfClanToken);
-                return;
-            }
+        if (trackCurrentWarsEnabled
+                && !isEmpty(selfClanToken)
+                && ClanWarsManager.getInstance(appContext).isClanTokenInCurrentWars(selfClanToken)) {
+            writeBossChat("Р”РІРёР¶РµРЅРёРµ Рє С†РµР»Рё РѕСЃС‚Р°РЅРѕРІР»РµРЅРѕ вЂ” РЅР°С€ РїРµСЂСЃРѕРЅР°Р¶ СѓС‡Р°СЃС‚РІСѓРµС‚ РІ С‚РµРєСѓС‰РµР№ РєР»Р°РЅРѕРІРѕР№ РІРѕР№РЅРµ.");
+            Log.d(TAG, TRACE_PREFIX + " wars filter denied by self clan: selfClan=" + selfClanToken
+                    + ", target=" + normalizedTarget);
+            return;
         }
 
         if (trackCurrentWarsEnabled
@@ -520,8 +513,9 @@ final class BossAuto {
                 && ClanWarsManager.getInstance(appContext).isClanTokenInCurrentWars(targetClanToken)) {
             String deniedTargetHtml = buildTargetNickHtml(normalizedTarget, targetSnapshot);
             askTargetOnceIfEnabled(normalizedTarget);
-            writeBossChat("Движение к цели остановлено — цель " + deniedTargetHtml
-                    + " состоит в клане, участвующем в текущей клановой войне.");
+            writeBossChat("Р”РІРёР¶РµРЅРёРµ Рє С†РµР»Рё РѕСЃС‚Р°РЅРѕРІР»РµРЅРѕ вЂ” С†РµР»СЊ " + deniedTargetHtml
+                    + " СЃРѕСЃС‚РѕРёС‚ РІ РєР»Р°РЅРµ, СѓС‡Р°СЃС‚РІСѓСЋС‰РµРј РІ С‚РµРєСѓС‰РµР№ РєР»Р°РЅРѕРІРѕР№ РІРѕР№РЅРµ.");
+            sendClanBossWarDeniedMessageIfNeeded(selfClanToken);
             Log.d(TAG, TRACE_PREFIX + " wars filter denied by wars list: target=" + normalizedTarget
                     + ", targetClan=" + targetClanToken);
             return;
@@ -559,7 +553,7 @@ final class BossAuto {
             targetAskNextAttemptAtMs = 0L;
         }
 
-        writeBossChat("Запускаем поиск цели.");
+        writeBossChat("Р—Р°РїСѓСЃРєР°РµРј РїРѕРёСЃРє С†РµР»Рё.");
         if (isAutoBossAskTargetEnabled()) {
             synchronized (lock) {
                 targetAskAttempts = 0;
@@ -589,7 +583,7 @@ final class BossAuto {
         }
 
         Log.d(TAG, TRACE_PREFIX + " target cell hint from chat: sender=" + normalizedSender + ", cell=" + cellRegNum);
-        writeBossChat("Получен ответ цели: клетка " + cellRegNum + ". Перестраиваем поиск.");
+        writeBossChat("РџРѕР»СѓС‡РµРЅ РѕС‚РІРµС‚ С†РµР»Рё: РєР»РµС‚РєР° " + cellRegNum + ". РџРµСЂРµСЃС‚СЂР°РёРІР°РµРј РїРѕРёСЃРє.");
         owner.setAutoCompassManualCellsCsv(cellRegNum);
         owner.startSettingsCompassTargetSearch(target, "auto_boss_reply_cell_hint");
     }
@@ -611,8 +605,8 @@ final class BossAuto {
         }
         sendClanBossFoundMessageIfNeeded();
         String targetHtml = buildTargetNickHtml(targetNick, null);
-        writeBossChat("Цель найдена (" + source + "): "
-                + targetHtml + ". Готовим «Свиток Защиты».");
+        writeBossChat("Р¦РµР»СЊ РЅР°Р№РґРµРЅР° (" + source + "): "
+                + targetHtml + ". Р“РѕС‚РѕРІРёРј В«РЎРІРёС‚РѕРє Р—Р°С‰РёС‚С‹В».");
     }
 
     private void sendProtectionScroll() {
@@ -648,8 +642,8 @@ final class BossAuto {
         String targetHtml = buildTargetNickHtml(castTarget, null);
         StringBuilder builder = new StringBuilder();
         builder.append(MainPhp.buildServerChatTimeHtmlExternal());
-        builder.append("<font color=#7E57C2><b>[Авто-Боссы]</b></font> ");
-        builder.append("Используем «Свиток Защиты» на ");
+        builder.append("<font color=#7E57C2><b>[РђРІС‚Рѕ-Р‘РѕСЃСЃС‹]</b></font> ");
+        builder.append("РСЃРїРѕР»СЊР·СѓРµРј В«РЎРІРёС‚РѕРє Р—Р°С‰РёС‚С‹В» РЅР° ");
         builder.append(targetHtml);
         builder.append(".");
         FastActionManager.writeChatMsg(builder.toString());
@@ -659,8 +653,8 @@ final class BossAuto {
     }
 
     /**
-     * Запускает возврат на исходную клетку либо сразу завершает сценарий,
-     * если персонаж уже на исходной клетке.
+     * Р—Р°РїСѓСЃРєР°РµС‚ РІРѕР·РІСЂР°С‚ РЅР° РёСЃС…РѕРґРЅСѓСЋ РєР»РµС‚РєСѓ Р»РёР±Рѕ СЃСЂР°Р·Сѓ Р·Р°РІРµСЂС€Р°РµС‚ СЃС†РµРЅР°СЂРёР№,
+     * РµСЃР»Рё РїРµСЂСЃРѕРЅР°Р¶ СѓР¶Рµ РЅР° РёСЃС…РѕРґРЅРѕР№ РєР»РµС‚РєРµ.
      */
     private void startReturnOrRestore(String reason) {
         String origin;
@@ -675,7 +669,7 @@ final class BossAuto {
                 stage = BossStage.RETURNING_TO_ORIGIN;
                 stageStartedAtMs = System.currentTimeMillis();
             }
-            writeBossChat("Бой завершен, возвращаемся на исходную клетку " + origin + ".");
+            writeBossChat("Р‘РѕР№ Р·Р°РІРµСЂС€РµРЅ, РІРѕР·РІСЂР°С‰Р°РµРјСЃСЏ РЅР° РёСЃС…РѕРґРЅСѓСЋ РєР»РµС‚РєСѓ " + origin + ".");
             Log.d(TAG, TRACE_PREFIX + " return to origin started: reason=" + reason + ", origin=" + origin);
             return;
         }
@@ -705,10 +699,10 @@ final class BossAuto {
     }
 
     /**
-     * Единая точка завершения сценария Авто-Босса.
+     * Р•РґРёРЅР°СЏ С‚РѕС‡РєР° Р·Р°РІРµСЂС€РµРЅРёСЏ СЃС†РµРЅР°СЂРёСЏ РђРІС‚Рѕ-Р‘РѕСЃСЃР°.
      *
-     * Здесь очищается внутреннее состояние и, при необходимости,
-     * восстанавливается снимок ранее активных авто-функций.
+     * Р—РґРµСЃСЊ РѕС‡РёС‰Р°РµС‚СЃСЏ РІРЅСѓС‚СЂРµРЅРЅРµРµ СЃРѕСЃС‚РѕСЏРЅРёРµ Рё, РїСЂРё РЅРµРѕР±С…РѕРґРёРјРѕСЃС‚Рё,
+     * РІРѕСЃСЃС‚Р°РЅР°РІР»РёРІР°РµС‚СЃСЏ СЃРЅРёРјРѕРє СЂР°РЅРµРµ Р°РєС‚РёРІРЅС‹С… Р°РІС‚Рѕ-С„СѓРЅРєС†РёР№.
      */
     private void stopAndRestore(String reason, boolean restoreSnapshot) {
         BossScenarioSnapshot snapshotToRestore = null;
@@ -747,16 +741,16 @@ final class BossAuto {
         }
         if (!isEmpty(oldTarget)) {
             String targetHtml = buildTargetNickHtml(oldTarget, null);
-            writeBossChat("Сценарий завершен (" + reason + ") для цели "
+            writeBossChat("РЎС†РµРЅР°СЂРёР№ Р·Р°РІРµСЂС€РµРЅ (" + reason + ") РґР»СЏ С†РµР»Рё "
                     + targetHtml + ".");
         } else {
-            writeBossChat("Сценарий завершен (" + reason + ").");
+            writeBossChat("РЎС†РµРЅР°СЂРёР№ Р·Р°РІРµСЂС€РµРЅ (" + reason + ").");
         }
         Log.d(TAG, TRACE_PREFIX + " scenario stopped: reason=" + reason);
     }
 
     /**
-     * Сохраняет текущие флаги и параметры авто-функций перед стартом сценария.
+     * РЎРѕС…СЂР°РЅСЏРµС‚ С‚РµРєСѓС‰РёРµ С„Р»Р°РіРё Рё РїР°СЂР°РјРµС‚СЂС‹ Р°РІС‚Рѕ-С„СѓРЅРєС†РёР№ РїРµСЂРµРґ СЃС‚Р°СЂС‚РѕРј СЃС†РµРЅР°СЂРёСЏ.
      */
     private BossScenarioSnapshot captureSnapshot() {
         BossScenarioSnapshot snapshot = new BossScenarioSnapshot();
@@ -784,10 +778,10 @@ final class BossAuto {
     }
 
     /**
-     * Ставит на паузу авто-функции, которые могут конфликтовать с поиском/маршрутом Авто-Босса.
+     * РЎС‚Р°РІРёС‚ РЅР° РїР°СѓР·Сѓ Р°РІС‚Рѕ-С„СѓРЅРєС†РёРё, РєРѕС‚РѕСЂС‹Рµ РјРѕРіСѓС‚ РєРѕРЅС„Р»РёРєС‚РѕРІР°С‚СЊ СЃ РїРѕРёСЃРєРѕРј/РјР°СЂС€СЂСѓС‚РѕРј РђРІС‚Рѕ-Р‘РѕСЃСЃР°.
      *
-     * Важно:
-     * - Авто-Бой и Авто-Лечение здесь не выключаются специально.
+     * Р’Р°Р¶РЅРѕ:
+     * - РђРІС‚Рѕ-Р‘РѕР№ Рё РђРІС‚Рѕ-Р›РµС‡РµРЅРёРµ Р·РґРµСЃСЊ РЅРµ РІС‹РєР»СЋС‡Р°СЋС‚СЃСЏ СЃРїРµС†РёР°Р»СЊРЅРѕ.
      */
     private void pauseNonCombatFunctions() {
         owner.setAutoFishEnabled(false);
@@ -807,12 +801,12 @@ final class BossAuto {
     }
 
     /**
-     * Восстанавливает исходные состояния авто-функций после сценария.
-     * Все переключения делаются только через AutoFunctionsManager, чтобы
-     * не дублировать side-effects и существующие guard-ветки.
+     * Р’РѕСЃСЃС‚Р°РЅР°РІР»РёРІР°РµС‚ РёСЃС…РѕРґРЅС‹Рµ СЃРѕСЃС‚РѕСЏРЅРёСЏ Р°РІС‚Рѕ-С„СѓРЅРєС†РёР№ РїРѕСЃР»Рµ СЃС†РµРЅР°СЂРёСЏ.
+     * Р’СЃРµ РїРµСЂРµРєР»СЋС‡РµРЅРёСЏ РґРµР»Р°СЋС‚СЃСЏ С‚РѕР»СЊРєРѕ С‡РµСЂРµР· AutoFunctionsManager, С‡С‚РѕР±С‹
+     * РЅРµ РґСѓР±Р»РёСЂРѕРІР°С‚СЊ side-effects Рё СЃСѓС‰РµСЃС‚РІСѓСЋС‰РёРµ guard-РІРµС‚РєРё.
      */
     private void restoreSnapshot(BossScenarioSnapshot snapshot) {
-        // Восстанавливаем в том же модуле и через те же setter-ы, чтобы не плодить дубль-логики.
+        // Р’РѕСЃСЃС‚Р°РЅР°РІР»РёРІР°РµРј РІ С‚РѕРј Р¶Рµ РјРѕРґСѓР»Рµ Рё С‡РµСЂРµР· С‚Рµ Р¶Рµ setter-С‹, С‡С‚РѕР±С‹ РЅРµ РїР»РѕРґРёС‚СЊ РґСѓР±Р»СЊ-Р»РѕРіРёРєРё.
         owner.setAutoFishEnabled(snapshot.autoFishEnabled);
         owner.setAutoBaitEnabled(snapshot.autoBaitEnabled);
         owner.setAutoSkinEnabled(snapshot.autoSkinEnabled);
@@ -847,8 +841,8 @@ final class BossAuto {
         Matcher matcher = BOSS_EVENT_PATTERN_FLEX.matcher(plain);
         if (!matcher.find()) {
             String lower = plain.toLowerCase(Locale.ROOT);
-            boolean bossLikeMessage = lower.contains("случайное событие")
-                    || (lower.contains("монстр") && lower.contains("напал на игрока"));
+            boolean bossLikeMessage = lower.contains("СЃР»СѓС‡Р°Р№РЅРѕРµ СЃРѕР±С‹С‚РёРµ")
+                    || (lower.contains("РјРѕРЅСЃС‚СЂ") && lower.contains("РЅР°РїР°Р» РЅР° РёРіСЂРѕРєР°"));
             if (bossLikeMessage) {
                 String snippet = plain.length() > 280 ? plain.substring(0, 280) + "..." : plain;
                 Log.d(TAG, TRACE_PREFIX + " parse miss boss-event: " + snippet);
@@ -867,8 +861,8 @@ final class BossAuto {
     }
 
     /**
-     * Нормализация ника цели из системного сообщения о Боссе.
-     * Удаляет служебную пунктуацию в хвосте и оставляет исходные спецсимволы ника.
+     * РќРѕСЂРјР°Р»РёР·Р°С†РёСЏ РЅРёРєР° С†РµР»Рё РёР· СЃРёСЃС‚РµРјРЅРѕРіРѕ СЃРѕРѕР±С‰РµРЅРёСЏ Рѕ Р‘РѕСЃСЃРµ.
+     * РЈРґР°Р»СЏРµС‚ СЃР»СѓР¶РµР±РЅСѓСЋ РїСѓРЅРєС‚СѓР°С†РёСЋ РІ С…РІРѕСЃС‚Рµ Рё РѕСЃС‚Р°РІР»СЏРµС‚ РёСЃС…РѕРґРЅС‹Рµ СЃРїРµС†СЃРёРјРІРѕР»С‹ РЅРёРєР°.
      */
     private String normalizeBossTargetNick(String rawNick) {
         String value = normalizeNick(rawNick);
@@ -921,8 +915,8 @@ final class BossAuto {
     }
 
     /**
-     * Безопасное чтение pinfo-снимка.
-     * Ошибки сети логируются, но не прерывают state-machine сценария.
+     * Р‘РµР·РѕРїР°СЃРЅРѕРµ С‡С‚РµРЅРёРµ pinfo-СЃРЅРёРјРєР°.
+     * РћС€РёР±РєРё СЃРµС‚Рё Р»РѕРіРёСЂСѓСЋС‚СЃСЏ, РЅРѕ РЅРµ РїСЂРµСЂС‹РІР°СЋС‚ state-machine СЃС†РµРЅР°СЂРёСЏ.
      */
     private NeverApi.PinfoCompassSnapshot safeGetPinfoSnapshot(String nick) {
         if (isEmpty(nick)) {
@@ -937,11 +931,11 @@ final class BossAuto {
     }
 
     /**
-     * Возвращает максимально надёжный {@code fid} боя цели.
+     * Р’РѕР·РІСЂР°С‰Р°РµС‚ РјР°РєСЃРёРјР°Р»СЊРЅРѕ РЅР°РґС‘Р¶РЅС‹Р№ {@code fid} Р±РѕСЏ С†РµР»Рё.
      *
-     * Источники по приоритету:
-     * 1) уже полученный pinfo snapshot;
-     * 2) fallback через NeverApi.getAll(targetNick).
+     * РСЃС‚РѕС‡РЅРёРєРё РїРѕ РїСЂРёРѕСЂРёС‚РµС‚Сѓ:
+     * 1) СѓР¶Рµ РїРѕР»СѓС‡РµРЅРЅС‹Р№ pinfo snapshot;
+     * 2) fallback С‡РµСЂРµР· NeverApi.getAll(targetNick).
      */
     private String resolveFightFidReliable(String targetNick, NeverApi.PinfoCompassSnapshot snapshot) {
         String fromSnapshot = normalizeFightFid(snapshot == null ? "" : snapshot.fightFid);
@@ -975,15 +969,15 @@ final class BossAuto {
     }
 
     /**
-     * Возвращает clanToken нашего профиля с fallback на кэш.
+     * Р’РѕР·РІСЂР°С‰Р°РµС‚ clanToken РЅР°С€РµРіРѕ РїСЂРѕС„РёР»СЏ СЃ fallback РЅР° РєСЌС€.
      *
-     * Зачем нужен fallback:
-     * - `pinfo` иногда кратковременно недоступен/непарсится в момент события Босса;
-     * - без fallback клан-уведомления `%clan%` ошибочно пропускаются как "вне клана".
+     * Р—Р°С‡РµРј РЅСѓР¶РµРЅ fallback:
+     * - `pinfo` РёРЅРѕРіРґР° РєСЂР°С‚РєРѕРІСЂРµРјРµРЅРЅРѕ РЅРµРґРѕСЃС‚СѓРїРµРЅ/РЅРµРїР°СЂСЃРёС‚СЃСЏ РІ РјРѕРјРµРЅС‚ СЃРѕР±С‹С‚РёСЏ Р‘РѕСЃСЃР°;
+     * - Р±РµР· fallback РєР»Р°РЅ-СѓРІРµРґРѕРјР»РµРЅРёСЏ `%clan%` РѕС€РёР±РѕС‡РЅРѕ РїСЂРѕРїСѓСЃРєР°СЋС‚СЃСЏ РєР°Рє "РІРЅРµ РєР»Р°РЅР°".
      *
-     * Правило:
-     * - если live-token получен, обновляем runtime+prefs кэш;
-     * - если live-token пустой, используем последний валидный кэш.
+     * РџСЂР°РІРёР»Рѕ:
+     * - РµСЃР»Рё live-token РїРѕР»СѓС‡РµРЅ, РѕР±РЅРѕРІР»СЏРµРј runtime+prefs РєСЌС€;
+     * - РµСЃР»Рё live-token РїСѓСЃС‚РѕР№, РёСЃРїРѕР»СЊР·СѓРµРј РїРѕСЃР»РµРґРЅРёР№ РІР°Р»РёРґРЅС‹Р№ РєСЌС€.
      */
     private String resolveSelfClanTokenWithFallback(NeverApi.PinfoCompassSnapshot selfSnapshot) {
         String liveToken = normalizeClanToken(selfSnapshot == null ? "" : selfSnapshot.clanToken);
@@ -1035,10 +1029,37 @@ final class BossAuto {
 
     private String buildFightWordHtml(String fightLink) {
         if (isEmpty(fightLink)) {
-            return "бою";
+            return "Р±РѕСЋ";
         }
-        return "<a href=" + escapeHtml(fightLink) + ">бою</a>";
+        return "<a href=" + escapeHtml(fightLink) + ">Р±РѕСЋ</a>";
     }
+    /**
+     * РќРѕСЂРјР°Р»РёР·СѓРµС‚ С‡Р°СЃС‚СЊ "РІ Р±РѕСЋ" РґР»СЏ server-payload (`%clan%`) Р±РµР· HTML.
+     *
+     * РџСЂРёС‡РёРЅР°:
+     * - `<a href=...>` РІРЅСѓС‚СЂРё payload РєР»Р°РЅ-С‡Р°С‚Р° СЃРµСЂРІРµСЂ РјРѕР¶РµС‚ РѕС‚С„РёР»СЊС‚СЂРѕРІР°С‚СЊ/РёСЃРєР°Р·РёС‚СЊ;
+     * - С„РѕСЂРјР°С‚ `[[[fid]]]` СѓР¶Рµ РёСЃРїРѕР»СЊР·СѓРµС‚СЃСЏ РІ РїСЂРѕРµРєС‚Рµ Рё Р±РµР·РѕРїР°СЃРЅРѕ РїСЂРµРІСЂР°С‰Р°РµС‚СЃСЏ РІ СЃСЃС‹Р»РєСѓ
+     *   РїСЂРё РѕС‚РѕР±СЂР°Р¶РµРЅРёРё РІС…РѕРґСЏС‰РµРіРѕ СЃРѕРѕР±С‰РµРЅРёСЏ.
+     */
+    private String normalizeClanFightPartForSend(String fightPart) {
+        String safe = safeTrim(fightPart);
+        if (isEmpty(safe)) {
+            return "\u0432 \u0431\u043e\u044e";
+        }
+        String lower = safe.toLowerCase(Locale.ROOT);
+        if (!lower.contains("<a")) {
+            return safe;
+        }
+        Matcher matcher = FIGHT_FID_IN_LINK_PATTERN.matcher(safe);
+        if (matcher.find()) {
+            String fid = normalizeFightFid(matcher.group(1));
+            if (!isEmpty(fid)) {
+                return "\u0432 \u0431\u043e\u044e [[[" + fid + "]]]";
+            }
+        }
+        return "\u0432 \u0431\u043e\u044e";
+    }
+
     private String getCurrentFightWordHtml() {
         String link;
         synchronized (lock) {
@@ -1048,11 +1069,11 @@ final class BossAuto {
     }
 
     /**
-     * Единый рендер ника для сообщений Авто-Босса.
+     * Р•РґРёРЅС‹Р№ СЂРµРЅРґРµСЂ РЅРёРєР° РґР»СЏ СЃРѕРѕР±С‰РµРЅРёР№ РђРІС‚Рѕ-Р‘РѕСЃСЃР°.
      *
-     * Приоритет:
-     * 1) готовый рендер из {@link RoomManager#buildUnifiedChatNickHtml(String)};
-     * 2) fallback-сборка по данным pinfo/контактов (если room-рендер недоступен).
+     * РџСЂРёРѕСЂРёС‚РµС‚:
+     * 1) РіРѕС‚РѕРІС‹Р№ СЂРµРЅРґРµСЂ РёР· {@link RoomManager#buildUnifiedChatNickHtml(String)};
+     * 2) fallback-СЃР±РѕСЂРєР° РїРѕ РґР°РЅРЅС‹Рј pinfo/РєРѕРЅС‚Р°РєС‚РѕРІ (РµСЃР»Рё room-СЂРµРЅРґРµСЂ РЅРµРґРѕСЃС‚СѓРїРµРЅ).
      */
     private String buildTargetNickHtml(String nick, NeverApi.PinfoCompassSnapshot snapshot) {
         String cleanNick = normalizeNick(nick);
@@ -1093,12 +1114,12 @@ final class BossAuto {
     }
 
     /**
-     * Повторяет вопрос цели в чат о текущей клетке.
+     * РџРѕРІС‚РѕСЂСЏРµС‚ РІРѕРїСЂРѕСЃ С†РµР»Рё РІ С‡Р°С‚ Рѕ С‚РµРєСѓС‰РµР№ РєР»РµС‚РєРµ.
      *
-     * Ограничения:
-     * - не более {@code TARGET_CHAT_ASK_MAX_ATTEMPTS};
-     * - соблюдается пауза {@code TARGET_CHAT_ASK_RETRY_MS};
-     * - отправка выполняется только когда chat-frame готов.
+     * РћРіСЂР°РЅРёС‡РµРЅРёСЏ:
+     * - РЅРµ Р±РѕР»РµРµ {@code TARGET_CHAT_ASK_MAX_ATTEMPTS};
+     * - СЃРѕР±Р»СЋРґР°РµС‚СЃСЏ РїР°СѓР·Р° {@code TARGET_CHAT_ASK_RETRY_MS};
+     * - РѕС‚РїСЂР°РІРєР° РІС‹РїРѕР»РЅСЏРµС‚СЃСЏ С‚РѕР»СЊРєРѕ РєРѕРіРґР° chat-frame РіРѕС‚РѕРІ.
      */
     private void maybeRetryAskTarget(long now) {
         String target;
@@ -1132,8 +1153,8 @@ final class BossAuto {
             return;
         }
 
-        String message = "%<" + target + "> Подскажи на какой клетке Босс?";
-        // Отправляем private message с задержкой 500ms после clan message
+        String message = "%<" + target + "> РџРѕРґСЃРєР°Р¶Рё РЅР° РєР°РєРѕР№ РєР»РµС‚РєРµ Р‘РѕСЃСЃ?";
+        // РћС‚РїСЂР°РІР»СЏРµРј private message СЃ Р·Р°РґРµСЂР¶РєРѕР№ 500ms РїРѕСЃР»Рµ clan message
         final String privateMsg = message;
         new Handler(Looper.getMainLooper()).postDelayed(() -> {
             Chat.sendMessageToServer(privateMsg);
@@ -1147,10 +1168,10 @@ final class BossAuto {
     }
 
     /**
-     * Однократно задаёт цели вопрос о клетке без запуска SEARCHING-цикла.
+     * РћРґРЅРѕРєСЂР°С‚РЅРѕ Р·Р°РґР°С‘С‚ С†РµР»Рё РІРѕРїСЂРѕСЃ Рѕ РєР»РµС‚РєРµ Р±РµР· Р·Р°РїСѓСЃРєР° SEARCHING-С†РёРєР»Р°.
      *
-     * Используется в ветках, где движение к цели заблокировано фильтрами (БД/войны),
-     * но уведомить цель в приват всё равно нужно.
+     * РСЃРїРѕР»СЊР·СѓРµС‚СЃСЏ РІ РІРµС‚РєР°С…, РіРґРµ РґРІРёР¶РµРЅРёРµ Рє С†РµР»Рё Р·Р°Р±Р»РѕРєРёСЂРѕРІР°РЅРѕ С„РёР»СЊС‚СЂР°РјРё (Р‘Р”/РІРѕР№РЅС‹),
+     * РЅРѕ СѓРІРµРґРѕРјРёС‚СЊ С†РµР»СЊ РІ РїСЂРёРІР°С‚ РІСЃС‘ СЂР°РІРЅРѕ РЅСѓР¶РЅРѕ.
      */
     private void askTargetOnceIfEnabled(String target) {
         String normalizedTarget = normalizeNick(target);
@@ -1161,8 +1182,8 @@ final class BossAuto {
             Log.d(TAG, TRACE_PREFIX + " ask target skipped (single): chat frame not ready, target=" + normalizedTarget);
             return;
         }
-        String message = "%<" + normalizedTarget + "> Подскажи на какой клетке Босс?";
-        // Отправляем private message с задержкой 500ms для DDoS protection
+        String message = "%<" + normalizedTarget + "> РџРѕРґСЃРєР°Р¶Рё РЅР° РєР°РєРѕР№ РєР»РµС‚РєРµ Р‘РѕСЃСЃ?";
+        // РћС‚РїСЂР°РІР»СЏРµРј private message СЃ Р·Р°РґРµСЂР¶РєРѕР№ 500ms РґР»СЏ DDoS protection
         final String singleMsg = message;
         final String finalNorm = normalizedTarget;
         new Handler(Looper.getMainLooper()).postDelayed(() -> {
@@ -1177,12 +1198,12 @@ final class BossAuto {
     }
 
     /**
-     * Во время поиска контролирует, что цель всё ещё находится в бою.
+     * Р’Рѕ РІСЂРµРјСЏ РїРѕРёСЃРєР° РєРѕРЅС‚СЂРѕР»РёСЂСѓРµС‚, С‡С‚Рѕ С†РµР»СЊ РІСЃС‘ РµС‰С‘ РЅР°С…РѕРґРёС‚СЃСЏ РІ Р±РѕСЋ.
      *
-     * Логика:
-     * - если {@code fightFid} присутствует — обновляем кэш ссылки на бой;
-     * - если {@code fightFid} временно пропал — даём 1 grace-тик;
-     * - если отсутствует второй тик подряд — отменяем сценарий.
+     * Р›РѕРіРёРєР°:
+     * - РµСЃР»Рё {@code fightFid} РїСЂРёСЃСѓС‚СЃС‚РІСѓРµС‚ вЂ” РѕР±РЅРѕРІР»СЏРµРј РєСЌС€ СЃСЃС‹Р»РєРё РЅР° Р±РѕР№;
+     * - РµСЃР»Рё {@code fightFid} РІСЂРµРјРµРЅРЅРѕ РїСЂРѕРїР°Р» вЂ” РґР°С‘Рј 1 grace-С‚РёРє;
+     * - РµСЃР»Рё РѕС‚СЃСѓС‚СЃС‚РІСѓРµС‚ РІС‚РѕСЂРѕР№ С‚РёРє РїРѕРґСЂСЏРґ вЂ” РѕС‚РјРµРЅСЏРµРј СЃС†РµРЅР°СЂРёР№.
      */
     private boolean monitorTargetFightStateDuringSearch() {
         String target;
@@ -1206,27 +1227,27 @@ final class BossAuto {
             return true;
         }
 
-        writeBossChat("Действие отменено, цель уже не в " + getCurrentFightWordHtml() + ".");
+        writeBossChat("Р”РµР№СЃС‚РІРёРµ РѕС‚РјРµРЅРµРЅРѕ, С†РµР»СЊ СѓР¶Рµ РЅРµ РІ " + getCurrentFightWordHtml() + ".");
         stopAndRestore("target_left_fight", true);
         return false;
     }
 
     /**
-     * Определяет, на кого применять «Свиток Защиты».
+     * РћРїСЂРµРґРµР»СЏРµС‚, РЅР° РєРѕРіРѕ РїСЂРёРјРµРЅСЏС‚СЊ В«РЎРІРёС‚РѕРє Р—Р°С‰РёС‚С‹В».
      *
-     * Приоритет:
-     * 1) исходная цель, если она жива;
-     * 2) первый живой союзник из того же боя (fallback).
+     * РџСЂРёРѕСЂРёС‚РµС‚:
+     * 1) РёСЃС…РѕРґРЅР°СЏ С†РµР»СЊ, РµСЃР»Рё РѕРЅР° Р¶РёРІР°;
+     * 2) РїРµСЂРІС‹Р№ Р¶РёРІРѕР№ СЃРѕСЋР·РЅРёРє РёР· С‚РѕРіРѕ Р¶Рµ Р±РѕСЏ (fallback).
      *
-     * Если живых союзников не осталось, возвращается пустая строка
-     * и сценарий должен быть завершён вызывающей стороной.
+     * Р•СЃР»Рё Р¶РёРІС‹С… СЃРѕСЋР·РЅРёРєРѕРІ РЅРµ РѕСЃС‚Р°Р»РѕСЃСЊ, РІРѕР·РІСЂР°С‰Р°РµС‚СЃСЏ РїСѓСЃС‚Р°СЏ СЃС‚СЂРѕРєР°
+     * Рё СЃС†РµРЅР°СЂРёР№ РґРѕР»Р¶РµРЅ Р±С‹С‚СЊ Р·Р°РІРµСЂС€С‘РЅ РІС‹Р·С‹РІР°СЋС‰РµР№ СЃС‚РѕСЂРѕРЅРѕР№.
      */
     /**
-     * Асинхронный poll pinfo цели во время SEARCHING_TARGET.
+     * РђСЃРёРЅС…СЂРѕРЅРЅС‹Р№ poll pinfo С†РµР»Рё РІРѕ РІСЂРµРјСЏ SEARCHING_TARGET.
      *
-     * Важно: tick Auto-Boss запускается с UI-потока (через foreground-service -> runOnUiThread),
-     * поэтому сетевой вызов NeverApi.getPinfoCompassSnapshot(...) нельзя выполнять синхронно
-     * внутри tick. Иначе возникает NetworkOnMainThreadException и ломается цикл поиска.
+     * Р’Р°Р¶РЅРѕ: tick Auto-Boss Р·Р°РїСѓСЃРєР°РµС‚СЃСЏ СЃ UI-РїРѕС‚РѕРєР° (С‡РµСЂРµР· foreground-service -> runOnUiThread),
+     * РїРѕСЌС‚РѕРјСѓ СЃРµС‚РµРІРѕР№ РІС‹Р·РѕРІ NeverApi.getPinfoCompassSnapshot(...) РЅРµР»СЊР·СЏ РІС‹РїРѕР»РЅСЏС‚СЊ СЃРёРЅС…СЂРѕРЅРЅРѕ
+     * РІРЅСѓС‚СЂРё tick. РРЅР°С‡Рµ РІРѕР·РЅРёРєР°РµС‚ NetworkOnMainThreadException Рё Р»РѕРјР°РµС‚СЃСЏ С†РёРєР» РїРѕРёСЃРєР°.
      */
     private void requestTargetFightPollIfNeeded(String target) {
         if (isEmpty(target)) {
@@ -1262,14 +1283,14 @@ final class BossAuto {
     }
 
     /**
-     * Применение результата асинхронного poll-а состояния боя цели.
+     * РџСЂРёРјРµРЅРµРЅРёРµ СЂРµР·СѓР»СЊС‚Р°С‚Р° Р°СЃРёРЅС…СЂРѕРЅРЅРѕРіРѕ poll-Р° СЃРѕСЃС‚РѕСЏРЅРёСЏ Р±РѕСЏ С†РµР»Рё.
      *
-     * Логика соответствует прежнему синхронному варианту:
-     * - если fightFid есть -> обновляем кеш и сбрасываем grace;
-     * - если fightFid пропал -> первый тик grace, второй тик помечает отмену сценария.
+     * Р›РѕРіРёРєР° СЃРѕРѕС‚РІРµС‚СЃС‚РІСѓРµС‚ РїСЂРµР¶РЅРµРјСѓ СЃРёРЅС…СЂРѕРЅРЅРѕРјСѓ РІР°СЂРёР°РЅС‚Сѓ:
+     * - РµСЃР»Рё fightFid РµСЃС‚СЊ -> РѕР±РЅРѕРІР»СЏРµРј РєРµС€ Рё СЃР±СЂР°СЃС‹РІР°РµРј grace;
+     * - РµСЃР»Рё fightFid РїСЂРѕРїР°Р» -> РїРµСЂРІС‹Р№ С‚РёРє grace, РІС‚РѕСЂРѕР№ С‚РёРє РїРѕРјРµС‡Р°РµС‚ РѕС‚РјРµРЅСѓ СЃС†РµРЅР°СЂРёСЏ.
      *
-     * Сам stopAndRestore выполняется в monitorTargetFightStateDuringSearch (UI-tick),
-     * чтобы не разрывать существующий контур жизненного цикла.
+     * РЎР°Рј stopAndRestore РІС‹РїРѕР»РЅСЏРµС‚СЃСЏ РІ monitorTargetFightStateDuringSearch (UI-tick),
+     * С‡С‚РѕР±С‹ РЅРµ СЂР°Р·СЂС‹РІР°С‚СЊ СЃСѓС‰РµСЃС‚РІСѓСЋС‰РёР№ РєРѕРЅС‚СѓСЂ Р¶РёР·РЅРµРЅРЅРѕРіРѕ С†РёРєР»Р°.
      */
     private void applyTargetFightPollResult(String target, NeverApi.PinfoCompassSnapshot snapshot) {
         if (isEmpty(target) || snapshot == null) {
@@ -1291,7 +1312,7 @@ final class BossAuto {
                 bossFightLostPending = false;
             } else {
                 bossFightFidMissingTicks++;
-                // Ограничиваем счетчик максимальным значением для защиты от переполнения
+                // РћРіСЂР°РЅРёС‡РёРІР°РµРј СЃС‡РµС‚С‡РёРє РјР°РєСЃРёРјР°Р»СЊРЅС‹Рј Р·РЅР°С‡РµРЅРёРµРј РґР»СЏ Р·Р°С‰РёС‚С‹ РѕС‚ РїРµСЂРµРїРѕР»РЅРµРЅРёСЏ
                 if (bossFightFidMissingTicks > BOSS_FIGHT_FID_MISSING_MAX_TICKS) {
                     bossFightFidMissingTicks = BOSS_FIGHT_FID_MISSING_MAX_TICKS;
                 }
@@ -1345,7 +1366,7 @@ final class BossAuto {
             return target;
         }
         if (flogHtml.contains("var off = 1;")) {
-            writeBossChat("Действие отменено, цель уже не в " + buildFightWordHtml(buildFightLogLink(fid)) + ".");
+            writeBossChat("Р”РµР№СЃС‚РІРёРµ РѕС‚РјРµРЅРµРЅРѕ, С†РµР»СЊ СѓР¶Рµ РЅРµ РІ " + buildFightWordHtml(buildFightLogLink(fid)) + ".");
             return "";
         }
 
@@ -1370,19 +1391,19 @@ final class BossAuto {
             return initialState.nick;
         }
         if (firstAlive == null) {
-            writeBossChat("Действие отменено — в бою не найдено живых союзников для защиты.");
+            writeBossChat("Р”РµР№СЃС‚РІРёРµ РѕС‚РјРµРЅРµРЅРѕ вЂ” РІ Р±РѕСЋ РЅРµ РЅР°Р№РґРµРЅРѕ Р¶РёРІС‹С… СЃРѕСЋР·РЅРёРєРѕРІ РґР»СЏ Р·Р°С‰РёС‚С‹.");
             return "";
         }
         if (initialState != null && initialState.curHp <= 0) {
             String aliveHtml = buildTargetNickHtml(firstAlive.nick, null);
-            writeBossChat("Исходная цель мертва, применяем Свиток Защиты на " + aliveHtml + ".");
+            writeBossChat("РСЃС…РѕРґРЅР°СЏ С†РµР»СЊ РјРµСЂС‚РІР°, РїСЂРёРјРµРЅСЏРµРј РЎРІРёС‚РѕРє Р—Р°С‰РёС‚С‹ РЅР° " + aliveHtml + ".");
         }
         return firstAlive.nick;
     }
 
     /**
-     * Парсит союзную часть лога боя и извлекает состояния участников.
-     * Используется fallback-логикой выбора живой цели для защиты.
+     * РџР°СЂСЃРёС‚ СЃРѕСЋР·РЅСѓСЋ С‡Р°СЃС‚СЊ Р»РѕРіР° Р±РѕСЏ Рё РёР·РІР»РµРєР°РµС‚ СЃРѕСЃС‚РѕСЏРЅРёСЏ СѓС‡Р°СЃС‚РЅРёРєРѕРІ.
+     * РСЃРїРѕР»СЊР·СѓРµС‚СЃСЏ fallback-Р»РѕРіРёРєРѕР№ РІС‹Р±РѕСЂР° Р¶РёРІРѕР№ С†РµР»Рё РґР»СЏ Р·Р°С‰РёС‚С‹.
      */
     private List<FightAllyState> parseFightAlliesFromLog(String flogHtml) {
         ArrayList<FightAllyState> result = new ArrayList<>();
@@ -1394,11 +1415,11 @@ final class BossAuto {
             return result;
         }
         String lower = plain.toLowerCase(Locale.ROOT);
-        int startIndex = lower.indexOf("участники боя");
+        int startIndex = lower.indexOf("СѓС‡Р°СЃС‚РЅРёРєРё Р±РѕСЏ");
         if (startIndex < 0) {
             startIndex = 0;
         }
-        int againstIndex = lower.indexOf(" против ", startIndex);
+        int againstIndex = lower.indexOf(" РїСЂРѕС‚РёРІ ", startIndex);
         String alliesPart = againstIndex > startIndex
                 ? plain.substring(startIndex, againstIndex)
                 : plain;
@@ -1460,7 +1481,7 @@ final class BossAuto {
 
     private boolean containsFightCompleted(String plainText) {
         String normalized = plainText.toLowerCase(Locale.ROOT);
-        return normalized.contains("поединок заверш");
+        return normalized.contains("РїРѕРµРґРёРЅРѕРє Р·Р°РІРµСЂС€");
     }
 
     private boolean isFightLikelyActive() {
@@ -1547,25 +1568,25 @@ final class BossAuto {
         FastActionManager.writeChatMsg(
                 LOCAL_CHAT_MARKER
                         + MainPhp.buildServerChatTimeHtmlExternal()
-                        + "<font color=#7E57C2><b>[Авто-Боссы]</b></font> "
+                        + "<font color=#7E57C2><b>[РђРІС‚Рѕ-Р‘РѕСЃСЃС‹]</b></font> "
                         + message
         );
     }
 
     /**
-     * Отправляет клановое уведомление о старте события Босса, если включена соответствующая опция.
-     * Если наш профиль вне клана, вместо отправки в клан-чат пишет локальное уведомление.
+     * РћС‚РїСЂР°РІР»СЏРµС‚ РєР»Р°РЅРѕРІРѕРµ СѓРІРµРґРѕРјР»РµРЅРёРµ Рѕ СЃС‚Р°СЂС‚Рµ СЃРѕР±С‹С‚РёСЏ Р‘РѕСЃСЃР°, РµСЃР»Рё РІРєР»СЋС‡РµРЅР° СЃРѕРѕС‚РІРµС‚СЃС‚РІСѓСЋС‰Р°СЏ РѕРїС†РёСЏ.
+     * Р•СЃР»Рё РЅР°С€ РїСЂРѕС„РёР»СЊ РІРЅРµ РєР»Р°РЅР°, РІРјРµСЃС‚Рѕ РѕС‚РїСЂР°РІРєРё РІ РєР»Р°РЅ-С‡Р°С‚ РїРёС€РµС‚ Р»РѕРєР°Р»СЊРЅРѕРµ СѓРІРµРґРѕРјР»РµРЅРёРµ.
      */
     /**
-     * Отправка клан-уведомления о старте события босса.
+     * РћС‚РїСЂР°РІРєР° РєР»Р°РЅ-СѓРІРµРґРѕРјР»РµРЅРёСЏ Рѕ СЃС‚Р°СЂС‚Рµ СЃРѕР±С‹С‚РёСЏ Р±РѕСЃСЃР°.
      *
-     * Зависимости:
-     * - `resolveAutoCompassLocation(...)` для списка возможных клеток;
-     * - `Chat.sendMessageToServer(...)` для отправки в `%clan%`;
-     * - проверка наличия клана выполняется по `selfClanToken` из pinfo.
+     * Р—Р°РІРёСЃРёРјРѕСЃС‚Рё:
+     * - `resolveAutoCompassLocation(...)` РґР»СЏ СЃРїРёСЃРєР° РІРѕР·РјРѕР¶РЅС‹С… РєР»РµС‚РѕРє;
+     * - `Chat.sendMessageToServer(...)` РґР»СЏ РѕС‚РїСЂР°РІРєРё РІ `%clan%`;
+     * - РїСЂРѕРІРµСЂРєР° РЅР°Р»РёС‡РёСЏ РєР»Р°РЅР° РІС‹РїРѕР»РЅСЏРµС‚СЃСЏ РїРѕ `selfClanToken` РёР· pinfo.
      *
-     * Если персонаж вне клана, клан-сообщение не отправляется:
-     * в локальный чат пишется причина отмены.
+     * Р•СЃР»Рё РїРµСЂСЃРѕРЅР°Р¶ РІРЅРµ РєР»Р°РЅР°, РєР»Р°РЅ-СЃРѕРѕР±С‰РµРЅРёРµ РЅРµ РѕС‚РїСЂР°РІР»СЏРµС‚СЃСЏ:
+     * РІ Р»РѕРєР°Р»СЊРЅС‹Р№ С‡Р°С‚ РїРёС€РµС‚СЃСЏ РїСЂРёС‡РёРЅР° РѕС‚РјРµРЅС‹.
      */
     private void sendClanBossEventMessageIfNeeded(String bossName, String targetNick, String selfClanToken, String fightLink) {
         if (!isAutoBossClanNotifyEnabled()) {
@@ -1576,7 +1597,7 @@ final class BossAuto {
         if (isEmpty(normalizeClanToken(selfClanToken))) {
             Log.d(TAG, TRACE_PREFIX + " clan notify event skipped: self clan token is empty");
             FileLogger.trace(LOG_CHAIN, "[BOSS_CLAN_MSG_SKIPPED] reason=empty_self_clan_token");
-            writeBossChat("Отправка в клан-чат невозможна: отсутствует значок клана (selfClanToken пустой).");
+            writeBossChat("РћС‚РїСЂР°РІРєР° РІ РєР»Р°РЅ-С‡Р°С‚ РЅРµРІРѕР·РјРѕР¶РЅР°: РѕС‚СЃСѓС‚СЃС‚РІСѓРµС‚ Р·РЅР°С‡РѕРє РєР»Р°РЅР° (selfClanToken РїСѓСЃС‚РѕР№).");
             return;
         }
 
@@ -1594,27 +1615,27 @@ final class BossAuto {
             cellsCsv = safeTrim(owner.getAutoCompassCellsCsv());
         }
         if (isEmpty(cellsCsv)) {
-            cellsCsv = "не определены";
+            cellsCsv = "РЅРµ РѕРїСЂРµРґРµР»РµРЅС‹";
         }
 
         String safeBossName = safeTrim(bossName);
         if (isEmpty(safeBossName)) {
-            safeBossName = "Босс";
+            safeBossName = "Р‘РѕСЃСЃ";
         }
         String safeFightLink = safeTrim(fightLink);
-        String fightPart = isEmpty(safeFightLink) ? "в бою" : "в " + buildFightWordHtml(safeFightLink);
+        String fightPart = isEmpty(safeFightLink) ? "РІ Р±РѕСЋ" : "РІ " + buildFightWordHtml(safeFightLink);
         String message = buildClanBossEventMessage(safeBossName, cellsCsv, fightPart, normalizedTarget);
         boolean chatReady = isChatSendReady();
         if (!chatReady) {
             Log.w(TAG, TRACE_PREFIX + " clan notify event CANCELED: chatButtonsWebview not ready, target="
                     + normalizedTarget + ", cells=" + cellsCsv + ". Message will be retried by Chat.sendMessageToServer");
             FileLogger.log("[BossAuto.sendClanBossEventMessageIfNeeded] WebView not ready, message queued for retry: " + message.substring(0, Math.min(100, message.length())));
-            writeBossChat("Клан-сообщение добавлено в очередь. Будет отправлено при подготовке чата.");
+            writeBossChat("РљР»Р°РЅ-СЃРѕРѕР±С‰РµРЅРёРµ РґРѕР±Р°РІР»РµРЅРѕ РІ РѕС‡РµСЂРµРґСЊ. Р‘СѓРґРµС‚ РѕС‚РїСЂР°РІР»РµРЅРѕ РїСЂРё РїРѕРґРіРѕС‚РѕРІРєРµ С‡Р°С‚Р°.");
         }
         Log.d(TAG, TRACE_PREFIX + " clan notify event payload: len=" + message.length() + ", maxLen=" + CLAN_EVENT_CHAT_MAX_LEN);
         FileLogger.trace(LOG_CHAIN, "[BOSS_CLAN_MSG_PAYLOAD] len=" + message.length() + ", maxLen=" + CLAN_EVENT_CHAT_MAX_LEN);
-        // Отправляем clan message с задержкой 1 сек для DDoS protection
-        // (буферизация потока pinfo + compass + других запросов)
+        // РћС‚РїСЂР°РІР»СЏРµРј clan message СЃ Р·Р°РґРµСЂР¶РєРѕР№ 1 СЃРµРє РґР»СЏ DDoS protection
+        // (Р±СѓС„РµСЂРёР·Р°С†РёСЏ РїРѕС‚РѕРєР° pinfo + compass + РґСЂСѓРіРёС… Р·Р°РїСЂРѕСЃРѕРІ)
         final String clanMsg = message;
         final String finalNorm = normalizedTarget;
         new Handler(Looper.getMainLooper()).postDelayed(() -> {
@@ -1631,11 +1652,12 @@ final class BossAuto {
     }
 
     private String buildClanBossEventMessage(String bossName, String cellsCsv, String fightPart, String normalizedTarget) {
-        String prefix = "%clan% \"" + bossName + "\" возможно на клетках: ";
-        String suffix = " " + fightPart + " с персонажем '" + normalizedTarget + "'.";
+        fightPart = normalizeClanFightPartForSend(fightPart);
+        String prefix = "%clan% \"" + bossName + "\" РІРѕР·РјРѕР¶РЅРѕ РЅР° РєР»РµС‚РєР°С…: ";
+        String suffix = " " + fightPart + " СЃ РїРµСЂСЃРѕРЅР°Р¶РµРј '" + normalizedTarget + "'.";
         String normalizedCells = safeTrim(cellsCsv).replaceAll("\\s+", " ");
         if (isEmpty(normalizedCells)) {
-            normalizedCells = "не определены";
+            normalizedCells = "РЅРµ РѕРїСЂРµРґРµР»РµРЅС‹";
         }
 
         String full = prefix + normalizedCells + suffix;
@@ -1671,7 +1693,7 @@ final class BossAuto {
             }
             String shortCells = normalizedCells.substring(0, Math.min(allowedCellsLen, normalizedCells.length())).trim();
             if (shortCells.isEmpty()) {
-                shortCells = "не определены";
+                shortCells = "РЅРµ РѕРїСЂРµРґРµР»РµРЅС‹";
             }
             truncated = shortCells.length() < normalizedCells.length();
             String result = prefix + shortCells + (truncated ? "..." : "") + suffix;
@@ -1685,15 +1707,15 @@ final class BossAuto {
     }
 
     /**
-     * Отправляет клановое уведомление о точной клетке Босса после обнаружения цели в комнате.
-     * Если наш профиль вне клана, вместо отправки в клан-чат пишет локальное уведомление.
+     * РћС‚РїСЂР°РІР»СЏРµС‚ РєР»Р°РЅРѕРІРѕРµ СѓРІРµРґРѕРјР»РµРЅРёРµ Рѕ С‚РѕС‡РЅРѕР№ РєР»РµС‚РєРµ Р‘РѕСЃСЃР° РїРѕСЃР»Рµ РѕР±РЅР°СЂСѓР¶РµРЅРёСЏ С†РµР»Рё РІ РєРѕРјРЅР°С‚Рµ.
+     * Р•СЃР»Рё РЅР°С€ РїСЂРѕС„РёР»СЊ РІРЅРµ РєР»Р°РЅР°, РІРјРµСЃС‚Рѕ РѕС‚РїСЂР°РІРєРё РІ РєР»Р°РЅ-С‡Р°С‚ РїРёС€РµС‚ Р»РѕРєР°Р»СЊРЅРѕРµ СѓРІРµРґРѕРјР»РµРЅРёРµ.
      */
     /**
-     * Отправка клан-уведомления с точной клеткой после обнаружения цели.
+     * РћС‚РїСЂР°РІРєР° РєР»Р°РЅ-СѓРІРµРґРѕРјР»РµРЅРёСЏ СЃ С‚РѕС‡РЅРѕР№ РєР»РµС‚РєРѕР№ РїРѕСЃР»Рµ РѕР±РЅР°СЂСѓР¶РµРЅРёСЏ С†РµР»Рё.
      *
-     * Источник клетки:
-     * - основной: `currentMapRegNum()`;
-     * - fallback: `AppVars.AutoMovingDestinaton`, если карта ещё не синхронизирована.
+     * РСЃС‚РѕС‡РЅРёРє РєР»РµС‚РєРё:
+     * - РѕСЃРЅРѕРІРЅРѕР№: `currentMapRegNum()`;
+     * - fallback: `AppVars.AutoMovingDestinaton`, РµСЃР»Рё РєР°СЂС‚Р° РµС‰С‘ РЅРµ СЃРёРЅС…СЂРѕРЅРёР·РёСЂРѕРІР°РЅР°.
      */
     private void sendClanBossFoundMessageIfNeeded() {
         if (!isAutoBossClanNotifyEnabled()) {
@@ -1701,14 +1723,12 @@ final class BossAuto {
             return;
         }
         String selfClanToken;
-        String localBossName;
         synchronized (lock) {
             selfClanToken = bossSelfClanToken;
-            localBossName = bossName;
         }
         if (isEmpty(normalizeClanToken(selfClanToken))) {
             Log.d(TAG, TRACE_PREFIX + " clan notify found skipped: self clan token is empty");
-            writeBossChat("Отправка в клан-чат невозможна: отсутствует значок клана (selfClanToken пустой).");
+            writeBossChat("РћС‚РїСЂР°РІРєР° РІ РєР»Р°РЅ-С‡Р°С‚ РЅРµРІРѕР·РјРѕР¶РЅР°: РѕС‚СЃСѓС‚СЃС‚РІСѓРµС‚ Р·РЅР°С‡РѕРє РєР»Р°РЅР° (selfClanToken РїСѓСЃС‚РѕР№).");
             return;
         }
 
@@ -1719,18 +1739,40 @@ final class BossAuto {
         if (isEmpty(exactRegNum)) {
             exactRegNum = "?";
         }
-
-        String safeBossName = safeTrim(localBossName);
-        if (isEmpty(safeBossName)) {
-            safeBossName = "Босс";
-        }
-        String message = "%clan% Босс '" + safeBossName + "' на клетке: " + exactRegNum;
+        String message = "%clan% Босс на клетке '" + exactRegNum + "'";
         boolean chatReady = isChatSendReady();
         if (!chatReady) {
             Log.w(TAG, TRACE_PREFIX + " clan notify found send requested while chat is not ready: cell=" + exactRegNum);
         }
         Chat.sendMessageToServer(message);
         Log.d(TAG, TRACE_PREFIX + " clan notify found sent: cell=" + exactRegNum + ", chatReady=" + chatReady);
+    }
+
+    /**
+     * РћС‚РїСЂР°РІР»СЏРµС‚ РІ РєР»Р°РЅ-С‡Р°С‚ СЃР»СѓР¶РµР±РЅРѕРµ СѓРІРµРґРѕРјР»РµРЅРёРµ, РєРѕРіРґР° СЃС†РµРЅР°СЂРёР№ РѕСЃС‚Р°РЅРѕРІР»РµРЅ С„РёР»СЊС‚СЂРѕРј С‚РµРєСѓС‰РёС… РІРѕР№РЅ.
+     *
+     * РЎРѕРѕР±С‰РµРЅРёРµ (РїРѕ С‚СЂРµР±РѕРІР°РЅРёСЋ): "%clan% РџРѕРµРґРёРЅРѕРє СЃ Р‘РѕСЃСЃРѕРј РЅРµРІРѕР·РјРѕР¶РµРЅ, РёРіСЂРѕРє РІ РљР»Р°РЅРѕРІРѕР№ РІРѕР№РЅРµ."
+     */
+    private void sendClanBossWarDeniedMessageIfNeeded(String selfClanToken) {
+        if (!isAutoBossClanNotifyEnabled()) {
+            Log.d(TAG, TRACE_PREFIX + " clan notify wars-denied skipped: disabled by settings");
+            FileLogger.trace(LOG_CHAIN, "[BOSS_CLAN_WARS_DENY_SKIPPED] reason=disabled_by_settings");
+            return;
+        }
+        if (isEmpty(normalizeClanToken(selfClanToken))) {
+            Log.d(TAG, TRACE_PREFIX + " clan notify wars-denied skipped: self clan token is empty");
+            FileLogger.trace(LOG_CHAIN, "[BOSS_CLAN_WARS_DENY_SKIPPED] reason=empty_self_clan_token");
+            writeBossChat("\u041e\u0442\u043f\u0440\u0430\u0432\u043a\u0430 \u0432 \u043a\u043b\u0430\u043d-\u0447\u0430\u0442 \u043d\u0435\u0432\u043e\u0437\u043c\u043e\u0436\u043d\u0430: \u043e\u0442\u0441\u0443\u0442\u0441\u0442\u0432\u0443\u0435\u0442 \u0437\u043d\u0430\u0447\u043e\u043a \u043a\u043b\u0430\u043d\u0430 (selfClanToken \u043f\u0443\u0441\u0442\u043e\u0439).");
+            return;
+        }
+        String message = "%clan% \u041f\u043e\u0435\u0434\u0438\u043d\u043e\u043a \u0441 \u0411\u043e\u0441\u0441\u043e\u043c \u043d\u0435\u0432\u043e\u0437\u043c\u043e\u0436\u0435\u043d, \u0438\u0433\u0440\u043e\u043a \u0432 \u041a\u043b\u0430\u043d\u043e\u0432\u043e\u0439 \u0432\u043e\u0439\u043d\u0435.";
+        boolean chatReady = isChatSendReady();
+        if (!chatReady) {
+            Log.w(TAG, TRACE_PREFIX + " clan notify wars-denied send requested while chat is not ready");
+        }
+        Chat.sendMessageToServer(message);
+        FileLogger.trace(LOG_CHAIN, "[BOSS_CLAN_WARS_DENY_SENT] chatReady=" + chatReady + ", msgLen=" + message.length());
+        Log.d(TAG, TRACE_PREFIX + " clan notify wars-denied sent: chatReady=" + chatReady);
     }
 
     boolean isAutoBossAskTargetEnabled() {
@@ -1741,31 +1783,23 @@ final class BossAuto {
         prefs.edit().putBoolean(PREF_AUTO_BOSS_ASK_TARGET, enabled).apply();
     }
 
-    boolean isAutoBossBdModeEnabled() {
-        return prefs.getBoolean(PREF_AUTO_BOSS_BD_MODE, false);
-    }
-
-    void setAutoBossBdModeEnabled(boolean enabled) {
-        prefs.edit().putBoolean(PREF_AUTO_BOSS_BD_MODE, enabled).apply();
-    }
-
     /**
-     * Проверка по текущим клановым войнам (`wars.cgi`).
-     * Если включено, Авто-Босс не пытается защищать цель,
-     * чьё `targetClanToken` присутствует в списке текущих войн.
-     * Настройка независима от БД-режима.
+     * РџСЂРѕРІРµСЂРєР° РїРѕ С‚РµРєСѓС‰РёРј РєР»Р°РЅРѕРІС‹Рј РІРѕР№РЅР°Рј (`wars.cgi`).
+     * Р•СЃР»Рё РІРєР»СЋС‡РµРЅРѕ, РђРІС‚Рѕ-Р‘РѕСЃСЃ РЅРµ РїС‹С‚Р°РµС‚СЃСЏ Р·Р°С‰РёС‰Р°С‚СЊ С†РµР»СЊ,
+     * С‡СЊС‘ `targetClanToken` РїСЂРёСЃСѓС‚СЃС‚РІСѓРµС‚ РІ СЃРїРёСЃРєРµ С‚РµРєСѓС‰РёС… РІРѕР№РЅ.
+     * РќР°СЃС‚СЂРѕР№РєР° РїСЂРёРјРµРЅСЏРµС‚СЃСЏ РЅРµР·Р°РІРёСЃРёРјРѕ РѕС‚ РґСЂСѓРіРёС… С„РёР»СЊС‚СЂРѕРІ СЃС†РµРЅР°СЂРёСЏ.
      */
     /**
-     * Флаг «Следить за текущими войнами».
+     * Р¤Р»Р°Рі В«РЎР»РµРґРёС‚СЊ Р·Р° С‚РµРєСѓС‰РёРјРё РІРѕР№РЅР°РјРёВ».
      *
-     * При включении цель отклоняется, если её clanToken присутствует
-     * в кэше текущих войн, полученном из {@code wars.cgi}.
+     * РџСЂРё РІРєР»СЋС‡РµРЅРёРё С†РµР»СЊ РѕС‚РєР»РѕРЅСЏРµС‚СЃСЏ, РµСЃР»Рё РµС‘ clanToken РїСЂРёСЃСѓС‚СЃС‚РІСѓРµС‚
+     * РІ РєСЌС€Рµ С‚РµРєСѓС‰РёС… РІРѕР№РЅ, РїРѕР»СѓС‡РµРЅРЅРѕРј РёР· {@code wars.cgi}.
      */
     /**
-     * Флаг «Следить за текущими войнами».
+     * Р¤Р»Р°Рі В«РЎР»РµРґРёС‚СЊ Р·Р° С‚РµРєСѓС‰РёРјРё РІРѕР№РЅР°РјРёВ».
      *
-     * Когда включён, `BossAuto` отфильтровывает цель, если её `targetClanToken`
-     * присутствует в кэше `ClanWarsManager` (данные `wars.cgi`).
+     * РљРѕРіРґР° РІРєР»СЋС‡С‘РЅ, `BossAuto` РѕС‚С„РёР»СЊС‚СЂРѕРІС‹РІР°РµС‚ С†РµР»СЊ, РµСЃР»Рё РµС‘ `targetClanToken`
+     * РїСЂРёСЃСѓС‚СЃС‚РІСѓРµС‚ РІ РєСЌС€Рµ `ClanWarsManager` (РґР°РЅРЅС‹Рµ `wars.cgi`).
      */
     boolean isAutoBossTrackCurrentWarsEnabled() {
         return prefs.getBoolean(PREF_AUTO_BOSS_TRACK_CURRENT_WARS, true);
@@ -1776,16 +1810,16 @@ final class BossAuto {
     }
 
     /**
-     * Флаг отправки служебных сообщений в клан-чат для сценария «Авто-Босс».
+     * Р¤Р»Р°Рі РѕС‚РїСЂР°РІРєРё СЃР»СѓР¶РµР±РЅС‹С… СЃРѕРѕР±С‰РµРЅРёР№ РІ РєР»Р°РЅ-С‡Р°С‚ РґР»СЏ СЃС†РµРЅР°СЂРёСЏ В«РђРІС‚Рѕ-Р‘РѕСЃСЃВ».
      */
     boolean isAutoBossClanNotifyEnabled() {
         return prefs.getBoolean(PREF_AUTO_BOSS_CLAN_NOTIFY, false);
     }
 
     /**
-     * Сохранение флага клан-уведомлений.
-     * Используется UI-настройками, а фактическая отправка выполняется в
-     * {@link #sendClanBossEventMessageIfNeeded(String, String, String, String)} и
+     * РЎРѕС…СЂР°РЅРµРЅРёРµ С„Р»Р°РіР° РєР»Р°РЅ-СѓРІРµРґРѕРјР»РµРЅРёР№.
+     * РСЃРїРѕР»СЊР·СѓРµС‚СЃСЏ UI-РЅР°СЃС‚СЂРѕР№РєР°РјРё, Р° С„Р°РєС‚РёС‡РµСЃРєР°СЏ РѕС‚РїСЂР°РІРєР° РІС‹РїРѕР»РЅСЏРµС‚СЃСЏ РІ
+     * {@link #sendClanBossEventMessageIfNeeded(String, String, String, String)} Рё
      * {@link #sendClanBossFoundMessageIfNeeded()}.
      */
     void setAutoBossClanNotifyEnabled(boolean enabled) {
@@ -1794,12 +1828,12 @@ final class BossAuto {
     }
 
     /**
-     * Признак активного сценария поиска/входа в бой, в котором нежелательны
-     * фоновые переименования карты по pinfo и искусственные задержки шага карты.
+     * РџСЂРёР·РЅР°Рє Р°РєС‚РёРІРЅРѕРіРѕ СЃС†РµРЅР°СЂРёСЏ РїРѕРёСЃРєР°/РІС…РѕРґР° РІ Р±РѕР№, РІ РєРѕС‚РѕСЂРѕРј РЅРµР¶РµР»Р°С‚РµР»СЊРЅС‹
+     * С„РѕРЅРѕРІС‹Рµ РїРµСЂРµРёРјРµРЅРѕРІР°РЅРёСЏ РєР°СЂС‚С‹ РїРѕ pinfo Рё РёСЃРєСѓСЃСЃС‚РІРµРЅРЅС‹Рµ Р·Р°РґРµСЂР¶РєРё С€Р°РіР° РєР°СЂС‚С‹.
      *
-     * Используется как runtime-guard для:
-     * - `RoomManager` (пауза `MapRebuildFromPinfo`);
-     * - `MapAjax` (пауза `MapCellCheckTimeout` при активном Авто-Боссе).
+     * РСЃРїРѕР»СЊР·СѓРµС‚СЃСЏ РєР°Рє runtime-guard РґР»СЏ:
+     * - `RoomManager` (РїР°СѓР·Р° `MapRebuildFromPinfo`);
+     * - `MapAjax` (РїР°СѓР·Р° `MapCellCheckTimeout` РїСЂРё Р°РєС‚РёРІРЅРѕРј РђРІС‚Рѕ-Р‘РѕСЃСЃРµ).
      */
     boolean shouldPauseMapRebuildFromPinfo() {
         if (!isAutoBossEnabled()) {

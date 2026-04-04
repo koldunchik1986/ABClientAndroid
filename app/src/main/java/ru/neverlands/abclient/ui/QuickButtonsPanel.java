@@ -1710,11 +1710,6 @@ public class QuickButtonsPanel {
         askTargetCheck.setChecked(autoFunctionsManager.isAutoBossAskTargetEnabled());
         root.addView(askTargetCheck);
 
-        CheckBox bdModeCheck = new CheckBox(context);
-        bdModeCheck.setText("БД режим (защищать только сокланов и персонажей без клана)");
-        bdModeCheck.setChecked(autoFunctionsManager.isAutoBossBdModeEnabled());
-        root.addView(bdModeCheck);
-
         CheckBox trackWarsCheck = new CheckBox(context);
         trackWarsCheck.setText("Следить за Текущими войнами (не защищать цели из кланов в списке войн)");
         trackWarsCheck.setChecked(autoFunctionsManager.isAutoBossTrackCurrentWarsEnabled());
@@ -1793,7 +1788,6 @@ public class QuickButtonsPanel {
                     }
 
                     autoFunctionsManager.setAutoBossAskTargetEnabled(askTargetCheck.isChecked());
-                    autoFunctionsManager.setAutoBossBdModeEnabled(bdModeCheck.isChecked());
                     autoFunctionsManager.setAutoBossTrackCurrentWarsEnabled(trackWarsCheck.isChecked());
                     autoFunctionsManager.setAutoBossClanNotifyEnabled(clanNotifyCheck.isChecked());
                     autoFunctionsManager.setAutoBossWaitBeforeScrollSec(waitScrollSec);

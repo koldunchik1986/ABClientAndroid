@@ -428,7 +428,7 @@ public class AutoFunctionsManager {
      * Неблокирующий post-login sync текущих клановых войн (`wars.cgi`).
      *
      * Назначение:
-     * - заранее прогреть кэш войн для `BossAuto` (БД-режим) без сетевого вызова в момент события;
+     * - заранее прогреть кэш войн для `BossAuto` (проверки участия в войнах) без сетевого вызова в момент события;
      * - синхронизировать данные для экрана `Кланы -> Текущие войны`.
      *
      * Правила:
@@ -1213,14 +1213,6 @@ public class AutoFunctionsManager {
 
     public void setAutoBossAskTargetEnabled(boolean enabled) {
         bossAuto.setAutoBossAskTargetEnabled(enabled);
-    }
-
-    public boolean isAutoBossBdModeEnabled() {
-        return bossAuto.isAutoBossBdModeEnabled();
-    }
-
-    public void setAutoBossBdModeEnabled(boolean enabled) {
-        bossAuto.setAutoBossBdModeEnabled(enabled);
     }
 
     public boolean isAutoBossTrackCurrentWarsEnabled() {
