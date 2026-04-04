@@ -3522,9 +3522,11 @@ public class MainPhp {
                 if (thing.name == null || thing.wearLink == null || thing.wearLink.isEmpty()) continue;
                 if (containsIgnoreCase(AppVars.Profile.FishHandOne, "Любая удочка")) {
                     if (containsIgnoreCase(thing.name, "удочка") || containsIgnoreCase(thing.name, "спиннинг")) {
+                        notifyAutoFishRodWear(thing.name);
                         return buildRedirectHtml("Одеваем первую попавшуюся удочку", thing.wearLink);
                     }
                 } else if (containsIgnoreCase(thing.name, AppVars.Profile.FishHandOne)) {
+                    notifyAutoFishRodWear(thing.name);
                     return buildRedirectHtml(AppVars.Profile.FishHandOne + " одевается", thing.wearLink);
                 }
             }
@@ -3543,6 +3545,7 @@ public class MainPhp {
                 }
                 if (!matches) continue;
                 if ((ud.Empty1 || ud.Empty2) || !ud.InRightSlot) {
+                    notifyAutoFishRodWear(thing.name);
                     return buildRedirectHtml("Одеваем снасть во вторую руку", thing.wearLink);
                 }
                 if (ud.Wid != null && !ud.Wid.isEmpty() && ud.Vcod != null && !ud.Vcod.isEmpty()) {
@@ -3553,6 +3556,28 @@ public class MainPhp {
         }
         AppVars.AutoFishWearUd = false;
         return null;
+    }
+
+    /**
+     * Пишет в чат уведомление о фактическом автодействии "надеть удочку" в AutoFish.
+     *
+     * Зависимости:
+     * - {@link #buildServerChatTimeHtml()} — серверный timestamp в едином формате чата;
+     * - {@link #sendInventoryChatMessage(String)} — отправка HTML-сообщения в чат через LocalBroadcast;
+     * - {@link #escapeHtmlAttr(String)} — экранирование названия удочки.
+     */
+    private static void notifyAutoFishRodWear(String rodName) {
+        String safeRodName = rodName == null ? "Неизвестная удочка" : rodName.trim();
+        if (safeRodName.isEmpty()) {
+            safeRodName = "Неизвестная удочка";
+        }
+        String message = buildServerChatTimeHtml()
+                + "<font color=#5D7C91><b>[Авто-Рыбалка]</b></font>: Одеваем новую удочку '"
+                + escapeHtmlAttr(safeRodName) + "'.";
+        sendInventoryChatMessage(message);
+        String trace = "AUTO_FISH_TRACE rod wear notify: name=" + safeRodName;
+        Log.d(TAG, trace);
+        FileLogger.trace(TAG, trace);
     }
     /**
      * Формирует ключ текущего состояния проверки снастей авто-рыбалки.

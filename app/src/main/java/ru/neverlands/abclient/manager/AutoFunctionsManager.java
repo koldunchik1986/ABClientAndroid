@@ -305,6 +305,12 @@ public class AutoFunctionsManager {
             AppVars.Profile.AutoFish = enabled;
             AppVars.Profile.save(context);
         }
+        // Синхронизация QuickButton UI при programmatic stop/start (например, отключение из postfilter),
+        // чтобы обводка/подсветка кнопки Авто-Рыбалка не зависала в старом состоянии.
+        String quickUiMsg = "QUICK_UI_SYNC: request refresh from setAutoFishEnabled(" + enabled + ")";
+        Log.d(TAG, quickUiMsg);
+        FileLogger.trace(TAG, quickUiMsg);
+        requestQuickButtonsRefreshInternal("setAutoFishEnabled(" + enabled + ")");
         if (enabled && AppVars.mainActivity != null && AppVars.mainActivity.get() != null) {
             AppVars.mainActivity.get().runOnUiThread(() -> {
                 try {
