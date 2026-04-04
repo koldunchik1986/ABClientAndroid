@@ -2,7 +2,6 @@ package ru.neverlands.abclient.manager;
 
 import android.content.Context;
 import android.content.SharedPreferences;
-import android.util.Log;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -61,6 +60,7 @@ import ru.neverlands.abclient.utils.FileLogger;
 final class BossAuto {
     private static final String TAG = "AutoFunctionsManager";
     private static final String TRACE_PREFIX = "AUTO_BOSS_TRACE";
+    private static final String LOG_CHAIN = "boss_auto";
     private static final String KEY_AUTO_BOSS = "auto_function_auto_boss";
     private static final String PREF_AUTO_BOSS_ASK_TARGET = "auto_boss_ask_target";
     private static final String PREF_AUTO_BOSS_BD_MODE = "auto_boss_bd_mode";
@@ -88,6 +88,31 @@ final class BossAuto {
             Pattern.CASE_INSENSITIVE);
     private static final Pattern FIGHT_ALLY_PATTERN = Pattern.compile(
             "([A-Za-zА-Яа-яЁё0-9_\\-]+)\\s*\\[(\\d{1,9})\\s*/\\s*(\\d{1,9})\\]");
+
+    /**
+     * Единый адаптер логирования BossAuto:
+     * - пишет в logcat (для LogcatFileRecorder),
+     * - дублирует в FileLogger (цепочка `boss_auto`).
+     */
+    private static final class Log {
+        private Log() {
+        }
+
+        static int d(String tag, String message) {
+            FileLogger.trace(LOG_CHAIN, message);
+            return android.util.Log.d(tag, message);
+        }
+
+        static int w(String tag, String message) {
+            FileLogger.warn(LOG_CHAIN, message);
+            return android.util.Log.w(tag, message);
+        }
+
+        static int w(String tag, String message, Throwable error) {
+            FileLogger.error(LOG_CHAIN, "WARN: " + message, error);
+            return android.util.Log.w(tag, message, error);
+        }
+    }
 
     private static final int DEFAULT_SEARCH_TIMEOUT_SEC = 6 * 60;
     private static final int DEFAULT_WAIT_BEFORE_SCROLL_SEC = 2;
