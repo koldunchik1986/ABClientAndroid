@@ -1514,7 +1514,7 @@ public class RoomManager {
             login +
             "');\"><font class=nickname color=\"" + color + "\" style=\"color:" + color + " !important;\"><b style=\"color:" + color + " !important;\">" +
             strArray[1] +
-            "</b></font></a><span class=\"ab-room-level\" style=\"color:" + color + " !important;\">[" +
+            "</b></font></a><span class=\"ab-room-level\" style=\"color:" + color + " !important;font-size:200% !important;line-height:1.1 !important;\">[" +
             strArray[2] +
             "]</span><a href=\"http://neverlands.ru/pinfo.cgi?" +
             nnSec +
@@ -1634,7 +1634,7 @@ public class RoomManager {
                         + "#_room_list_container .ab-room-row .nickname{font-size:140% !important;line-height:1.1 !important;}"
                         + "#_room_list_container .ab-room-row a.activenick{font-size:140% !important;line-height:1.1 !important;}"
                         + "#_room_list_container .ab-room-row .activenick b{font-size:140% !important;line-height:1.1 !important;}"
-                        + "#_room_list_container .ab-room-row .ab-room-level{font-size:150% !important;line-height:1.1 !important;}"
+                        + "#_room_list_container .ab-room-row .ab-room-level{font-size:200% !important;line-height:1.1 !important;}"
                         + "</style>"
                         + "<div id=\"_room_list_container\">"
                         + filterResult.html
