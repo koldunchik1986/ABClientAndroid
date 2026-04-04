@@ -121,6 +121,10 @@ public final class FishAjaxPhp {
         }
 
         String lower = html.toLowerCase(Locale.ROOT);
+        if (containsFishNoGearHardStop(lower)) {
+            handleFishNoGearHardStop(address);
+            return array;
+        }
         if (containsFishHardStop(lower)) {
             disableAutoFish("Нет снастей/приманки или не хватает умения для текущей локации");
             return array;
@@ -1286,11 +1290,32 @@ public final class FishAjaxPhp {
                 AppVars.Profile.AutoFish = false;
             }
         }
-        pushChatMessage("<font color=#cc0000><b>Авто-рыбалка выключена: " + reason + "</b></font>");
+        pushChatMessage(MainPhp.buildServerChatTimeHtmlExternal()
+                + "<font color=#cc0000><b>Авто-рыбалка выключена: " + reason + "</b></font>");
         if (AppVars.getContext() != null) {
             LocalBroadcastManager.getInstance(AppVars.getContext())
                     .sendBroadcast(new Intent(AppVars.ACTION_STOP_AUTOFISH));
         }
+    }
+
+    /**
+     * Обрабатывает server-hard-stop "нет рыболовных снастей" без мгновенного отключения AutoFish.
+     * Запускает существующий recovery-контур через MainPhp (проверка/переодевание удочки).
+     */
+    private static void handleFishNoGearHardStop(String address) {
+        AppVars.AutoFishCheckUd = true;
+        AppVars.AutoFishWearUd = false;
+        String msg = "AUTO_FISH_TRACE hard-stop no-gear: schedule gear recovery bootstrap, address=" + address;
+        Log.w(TAG, msg);
+        FileLogger.trace(TAG, msg);
+        requestAutoFishBootstrap("missing_gear_server");
+    }
+
+    /**
+     * Серверная фраза "нет снастей в руках" (удочка отсутствует/сломалась).
+     */
+    private static boolean containsFishNoGearHardStop(String lower) {
+        return lower != null && lower.contains("у вас нет рыболовных снастей");
     }
 
     /**
@@ -1324,8 +1349,7 @@ public final class FishAjaxPhp {
      * - raw-текст ответа fish_ajax от сервера Neverlands.
      */
     private static boolean containsFishHardStop(String lower) {
-        return lower.contains("у вас нет рыболовных снастей")
-                || lower.contains("у вас нет приманки, чтобы ловить рыбу")
+        return lower.contains("у вас нет приманки, чтобы ловить рыбу")
                 || lower.contains("приманок нет в наличии")
                 || lower.contains("у вас не хватает умения, чтобы ловить тут рыбу");
     }

@@ -3655,7 +3655,8 @@ public class MainPhp {
         }
         if (AppVars.getContext() != null) {
             Intent msgIntent = new Intent(AppVars.ACTION_ADD_CHAT_MESSAGE);
-            msgIntent.putExtra("message", "<font color=#cc0000><b>Авто-рыбалка выключена: " + reason + "</b></font>");
+            msgIntent.putExtra("message", buildServerChatTimeHtml()
+                    + "<font color=#cc0000><b>Авто-рыбалка выключена: " + reason + "</b></font>");
             LocalBroadcastManager.getInstance(AppVars.getContext()).sendBroadcast(msgIntent);
         }
     }
