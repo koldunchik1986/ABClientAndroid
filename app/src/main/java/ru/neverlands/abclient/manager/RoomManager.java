@@ -1514,7 +1514,7 @@ public class RoomManager {
             login +
             "');\"><font class=nickname color=\"" + color + "\" style=\"color:" + color + " !important;\"><b style=\"color:" + color + " !important;\">" +
             strArray[1] +
-            "</b></font></a><span class=\"ab-room-level\" style=\"color:" + color + " !important;font-size:200% !important;line-height:1.1 !important;\">[" +
+            "</b></font></a><span class=\"ab-room-level\" style=\"color:" + color + " !important;\">[" +
             strArray[2] +
             "]</span><a href=\"http://neverlands.ru/pinfo.cgi?" +
             nnSec +

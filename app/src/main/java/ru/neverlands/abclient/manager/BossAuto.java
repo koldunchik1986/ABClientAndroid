@@ -130,7 +130,13 @@ final class BossAuto {
      * 2. Буферизации потока быстрых pinfo/compass запросов
      */
     private static final long CLAN_NOTIFY_DELAY_MS = 1000L;
-    private static final int CLAN_EVENT_CHAT_MAX_LEN = 220;
+    /**
+     * Консервативный лимит длины `%clan%` сообщения.
+     *
+     * По логам длинные клан-пейлоады (особенно с большим списком клеток) могли
+     * отправляться клиентом, но не отображаться у сокланов. Поэтому режем раньше.
+     */
+    private static final int CLAN_EVENT_CHAT_MAX_LEN = 160;
     /**
      * Задержка между clan message и private message для ask target.
      * Предотвращает отклонение обоих сообщений как DDoS.
@@ -869,8 +875,20 @@ final class BossAuto {
         value = value.replaceAll("\\s*\\[\\s*\\d{1,3}\\s*]$", "").trim();
         while (!value.isEmpty()) {
             char tail = value.charAt(value.length() - 1);
-            if (tail == '.' || tail == ',' || tail == ':' || tail == ';') {
+            if (tail == '.' || tail == ',' || tail == ':' || tail == ';'
+                    || tail == ')' || tail == ']' || tail == '}'
+                    || tail == '!' || tail == '?'
+                    || tail == '"' || tail == '\'' || tail == '»') {
                 value = value.substring(0, value.length() - 1).trim();
+                continue;
+            }
+            break;
+        }
+        while (!value.isEmpty()) {
+            char head = value.charAt(0);
+            if (head == '(' || head == '[' || head == '{'
+                    || head == '"' || head == '\'' || head == '«') {
+                value = value.substring(1).trim();
                 continue;
             }
             break;
@@ -1228,7 +1246,9 @@ final class BossAuto {
         }
 
         writeBossChat("Действие отменено, цель уже не в " + getCurrentFightWordHtml() + ".");
-        stopAndRestore("target_left_fight", true);
+        // Даже если цель ушла из боя во время SEARCHING_TARGET, нужно вернуть персонажа
+        // в исходную клетку (если мы уже сдвинулись), а затем восстановить snapshot.
+        startReturnOrRestore("target_left_fight");
         return false;
     }
 
