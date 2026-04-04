@@ -70,6 +70,7 @@ final class BossAuto {
     private static final String PREF_AUTO_BOSS_WAIT_SCROLL_SEC = "auto_boss_wait_scroll_sec";
     private static final String PREF_AUTO_BOSS_SEARCH_TIMEOUT_SEC = "auto_boss_search_timeout_sec";
     private static final String PREF_AUTO_BOSS_WAIT_FIGHT_TIMEOUT_SEC = "auto_boss_wait_fight_timeout_sec";
+    private static final String LOCAL_CHAT_MARKER = "<!--AB_LOCAL_CHAT-->";
 
     private static final Pattern BOSS_EVENT_PATTERN = Pattern.compile(
             "внимание!\\s*случайное событие!\\s*монстр\\s*[\"«]?([^\"»]+)[\"»]?\\s*напал на игрока\\s+([a-zа-я0-9_\\-]+)\\.",
@@ -272,12 +273,24 @@ final class BossAuto {
         if (isEmpty(messageHtml)) {
             return;
         }
-        BossEvent event = parseBossEvent(messageHtml);
-        if (event != null && isAutoBossEnabled()) {
-            FileLogger.log("[BossAuto.onIncomingChatMessage] Event detected: boss=" + event.bossName + ", target=" + event.targetNick);
-            handleBossEvent(event);
+        boolean autoBossEnabled = isAutoBossEnabled();
+        if (autoBossEnabled) {
+            if (isServerBossEventMessage(messageHtml)) {
+                BossEvent event = parseBossEvent(messageHtml);
+                if (event != null) {
+                    FileLogger.log("[BossAuto.onIncomingChatMessage] Event detected: boss=" + event.bossName + ", target=" + event.targetNick);
+                    handleBossEvent(event);
+                }
+            } else if (looksLikeBossEventText(messageHtml)) {
+                String preview = toPlainText(messageHtml);
+                if (preview.length() > 220) {
+                    preview = preview.substring(0, 220) + "...";
+                }
+                FileLogger.trace(LOG_CHAIN, "[BOSS_EVENT_SKIPPED_NON_SERVER] " + preview);
+                Log.d(TAG, TRACE_PREFIX + " skip boss-event parse: non-server chat source");
+            }
         }
-        if (!isAutoBossEnabled()) {
+        if (!autoBossEnabled) {
             return;
         }
 
@@ -307,6 +320,36 @@ final class BossAuto {
             return;
         }
         handleCellHintIfMatchesTarget(senderNick, cellRegNum);
+    }
+
+    /**
+     * Определяет, что сообщение относится к системному каналу сервера, а не к локальному/клановому чату.
+     */
+    private boolean isServerBossEventMessage(String messageHtml) {
+        if (isEmpty(messageHtml)) {
+            return false;
+        }
+        String lowerHtml = messageHtml.toLowerCase(Locale.ROOT);
+        if (messageHtml.contains(LOCAL_CHAT_MARKER)) {
+            return false;
+        }
+        if (lowerHtml.contains("авто-боссы") || lowerHtml.contains("[авто-боссы]")) {
+            return false;
+        }
+        boolean hasSystemClass = lowerHtml.contains("class=massm") || lowerHtml.contains("class=\"massm\"");
+        boolean hasServerSender = lowerHtml.contains("neverlands.ru");
+        if (!hasSystemClass || !hasServerSender) {
+            return false;
+        }
+        return looksLikeBossEventText(messageHtml);
+    }
+
+    private boolean looksLikeBossEventText(String messageHtml) {
+        String plain = toPlainText(messageHtml).toLowerCase(Locale.ROOT);
+        return plain.contains("монстр")
+                && (plain.contains("напал на игрока")
+                || plain.contains("напала на игрока")
+                || plain.contains("напали на игрока"));
     }
 
     void onRoomUsersUpdated(List<String> roomNicks, String roomLocationName) {
@@ -828,6 +871,7 @@ final class BossAuto {
      */
     private String normalizeBossTargetNick(String rawNick) {
         String value = normalizeNick(rawNick);
+        value = value.replaceAll("\\s*\\[\\s*\\d{1,3}\\s*]$", "").trim();
         while (!value.isEmpty()) {
             char tail = value.charAt(value.length() - 1);
             if (tail == '.' || tail == ',' || tail == ':' || tail == ';') {
@@ -1500,7 +1544,8 @@ final class BossAuto {
         }
         FileLogger.trace("auto_boss", message);
         FastActionManager.writeChatMsg(
-                MainPhp.buildServerChatTimeHtmlExternal()
+                LOCAL_CHAT_MARKER
+                        + MainPhp.buildServerChatTimeHtmlExternal()
                         + "<font color=#7E57C2><b>[Авто-Боссы]</b></font> "
                         + message
         );
@@ -1524,10 +1569,12 @@ final class BossAuto {
     private void sendClanBossEventMessageIfNeeded(String bossName, String targetNick, String selfClanToken, String fightLink) {
         if (!isAutoBossClanNotifyEnabled()) {
             Log.d(TAG, TRACE_PREFIX + " clan notify event skipped: disabled by settings");
+            FileLogger.trace(LOG_CHAIN, "[BOSS_CLAN_MSG_SKIPPED] reason=disabled_by_settings");
             return;
         }
         if (isEmpty(normalizeClanToken(selfClanToken))) {
             Log.d(TAG, TRACE_PREFIX + " clan notify event skipped: self clan token is empty");
+            FileLogger.trace(LOG_CHAIN, "[BOSS_CLAN_MSG_SKIPPED] reason=empty_self_clan_token");
             writeBossChat("Отправка в клан-чат невозможна: отсутствует значок клана (selfClanToken пустой).");
             return;
         }

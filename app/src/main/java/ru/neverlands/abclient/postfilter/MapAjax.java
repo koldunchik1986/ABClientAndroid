@@ -1358,7 +1358,7 @@ public class MapAjax {
         Log.i(TAG, triggerMsg);
         FileLogger.trace(TAG, triggerMsg);
         logAutoBlazDecision("decision", "trigger_fast_bliss", tied, threshold, "reg=" + currentRegNum);
-        FastActionManager.fastAttackBlazElixir();
+        FastActionManager.fastAttackBlazElixir("Авто-Клад");
         String redirectMsg = "[MAPAJAX_BLAZ_TRIGGER] REDIRECT to main.php?ab_nav_tired=1 after fast bliss call";
         FileLogger.trace(TAG, redirectMsg);
         return Filter.buildRedirectString(

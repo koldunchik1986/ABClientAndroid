@@ -35,6 +35,7 @@ public class FastActionManager {
     private static final String FAST_ID_BLISS_ELIXIR = "Эликсир Блаженства";
     private static volatile long lastBlissUseAtMs = 0L;
     private static volatile long prevBlissUseAtMs = 0L;
+    private static volatile String lastBlissEtaSourceLabel = "Авто-Клад";
     private static final int FAST_INV_TRANSITION_MAX_RETRIES = 12;
     private static final String FAST_INV_RETRY_PARAM = "ab_fast_inv_retry";
     private static final int TELEPORT_DESTINATION_MIN_ID = 1;
@@ -607,7 +608,17 @@ public class FastActionManager {
 
     /** Эликсир Блаженства (аналог FormMain.FastAttackBlazElixir) — на себя */
     public static void fastAttackBlazElixir() {
+        fastAttackBlazElixir("Быстрое действие");
+    }
+
+    /**
+     * Эликсир Блаженства c фиксацией источника вызова.
+     *
+     * @param sourceLabel имя авто-функции/обработчика, инициировавшего действие
+     */
+    public static void fastAttackBlazElixir(String sourceLabel) {
         // Эликсиры с вкладки im=6 применяются GET-ссылкой без поля nickname.
+        rememberBlissEtaSource(sourceLabel);
         fastStart("Эликсир Блаженства", "");
     }
 
@@ -1243,6 +1254,23 @@ public class FastActionManager {
         Log.d(TAG, "AUTO_BLAZ_ETA_TRACE remember use: prev=" + prevBlissUseAtMs + ", last=" + lastBlissUseAtMs);
     }
 
+    private static void rememberBlissEtaSource(String sourceLabel) {
+        String normalized = sourceLabel == null ? "" : sourceLabel.trim();
+        if (normalized.isEmpty()) {
+            normalized = "Быстрое действие";
+        }
+        lastBlissEtaSourceLabel = normalized;
+        FileLogger.trace(TAG, "AUTO_BLAZ_ETA_TRACE source set: " + normalized);
+    }
+
+    private static String resolveBlissEtaSourceLabel() {
+        String normalized = lastBlissEtaSourceLabel == null ? "" : lastBlissEtaSourceLabel.trim();
+        if (normalized.isEmpty()) {
+            return "Быстрое действие";
+        }
+        return normalized;
+    }
+
     private static String buildAutoTreasureBlissEtaMessage(String fastId, Integer elixirRemainingAfterUse) {
         if (!isBlissElixirFastId(fastId) || !isAutoTreasureActiveNow()) {
             return null;
@@ -1260,12 +1288,13 @@ public class FastActionManager {
         }
         long estimateMs = intervalMs * (long) elixirRemainingAfterUse;
         String hhmm = formatDurationHhMm(estimateMs);
+        String sourceLabel = escapeHtml(resolveBlissEtaSourceLabel());
         Log.d(TAG, "AUTO_BLAZ_ETA_TRACE estimate: intervalMs=" + intervalMs
                 + ", remaining=" + elixirRemainingAfterUse
                 + ", estimateMs=" + estimateMs
                 + ", hhmm=" + hhmm);
         return buildServerChatTimeHtml()
-                + "<font color=#336699>Авто-Клад: Блаженства примерно хватит на <b><font color=#01A9DB>"
+                + "<font color=#336699>" + sourceLabel + ": Блаженства примерно хватит на <b><font color=#01A9DB>"
                 + hhmm + "</font></b> времени.</font>";
     }
 

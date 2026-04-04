@@ -2618,7 +2618,7 @@ public class MainPhp {
             FileLogger.trace(TAG, "AUTO_FISH_TRACE tied=" + tied + " > " + tiedHigh
                     + ", trigger bliss elixir");
             
-            FastActionManager.fastAttackBlazElixir();
+            FastActionManager.fastAttackBlazElixir("Авто-Рыбалка");
             
             // === ЛОГИРОВАНИЕ ПОСЛЕ ВЫЗОВА ===
             FileLogger.trace(TAG, "[AUTO_FISH_AFTER_FAST] ПОСЛЕ fastStart: "
@@ -2703,7 +2703,7 @@ public class MainPhp {
                 + ", tied=" + tied + ", threshold=" + tiedThreshold);
         FileLogger.trace(TAG, "AUTO_BLAZ_TRACE trigger quick action: " + BLISS_ELIXIR_NAME
                 + ", tied=" + tied + ", threshold=" + tiedThreshold);
-        FastActionManager.fastAttackBlazElixir();
+        FastActionManager.fastAttackBlazElixir("Авто-питьё Блажа");
         return buildRedirectHtml(
                 "\u0410\u0432\u0442\u043E\u043F\u0438\u0442\u044C\u0435 \u0431\u043B\u0430\u0436\u0430: " + BLISS_ELIXIR_NAME,
                 "main.php");
