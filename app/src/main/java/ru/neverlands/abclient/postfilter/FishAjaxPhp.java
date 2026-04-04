@@ -1308,6 +1308,8 @@ public final class FishAjaxPhp {
         String msg = "AUTO_FISH_TRACE hard-stop no-gear: schedule gear recovery bootstrap, address=" + address;
         Log.w(TAG, msg);
         FileLogger.trace(TAG, msg);
+        pushChatMessage(MainPhp.buildServerChatTimeHtmlExternal()
+                + "<font color=#cc6600><b>[Авто-рыбалка] Нет снастей в руках. Запускаю проверку и переодевание удочки.</b></font>");
         requestAutoFishBootstrap("missing_gear_server");
     }
 
