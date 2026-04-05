@@ -20,39 +20,46 @@ import ru.neverlands.abclient.utils.HtmlUtils;
 import ru.neverlands.abclient.utils.Russian;
 
 /**
- * РњРѕРґСѓР»СЊ Р±РѕРµРІРѕРіРѕ post-filter, РІС‹РґРµР»РµРЅРЅС‹Р№ РёР· {@link MainPhp}.
+ * Модуль боевого post-filter, выделенный из {@link MainPhp}.
  *
- * РќР°Р·РЅР°С‡РµРЅРёРµ:
- * - С†РµРЅС‚СЂР°Р»РёР·РѕРІР°С‚СЊ РІСЃСЋ Р»РѕРіРёРєСѓ Auto-Р‘РѕСЏ РІ РѕРґРЅРѕРј РєР»Р°СЃСЃРµ;
- * - СѓР±СЂР°С‚СЊ РїРµСЂРµРіСЂСѓР·РєСѓ MainPhp Рё СЃРѕРєСЂР°С‚РёС‚СЊ СЂРёСЃРє СЂРµРіСЂРµСЃСЃРёР№ РїСЂРё С„РёРєСЃРµ Р±РѕСЏ;
- * - СЃРѕС…СЂР°РЅРёС‚СЊ parity РїРѕРІРµРґРµРЅРёСЏ СЃ СѓР¶Рµ СЂР°Р±РѕС‚Р°СЋС‰РµР№ Android-Р»РѕРіРёРєРѕР№ (Р±РµР· РёР·РјРµРЅРµРЅРёСЏ Р°Р»РіРѕСЂРёС‚РјРѕРІ).
+ * Назначение:
+ * - централизовать всю логику Auto-Боя в одном классе;
+ * - убрать перегрузку MainPhp и сократить риск регрессий при фиксе боя;
+ * - сохранить parity поведения с уже работающей Android-логикой (без изменения алгоритмов).
  *
- * Р“СЂР°РЅРёС†С‹ РѕС‚РІРµС‚СЃС‚РІРµРЅРЅРѕСЃС‚Рё:
- * - СЌС‚РѕС‚ РєР»Р°СЃСЃ СѓРїСЂР°РІР»СЏРµС‚ С‚РѕР»СЊРєРѕ runtime-РїРѕС‚РѕРєРѕРј Р±РѕРµРІРѕРіРѕ РєР°РґСЂР°/finish-flow;
- * - РёРЅС„СЂР°СЃС‚СЂСѓРєС‚СѓСЂРЅС‹Рµ РѕРїРµСЂР°С†РёРё (С‡Р°С‚С‹, popup, bridge-redirect, РёР·РІР»РµС‡РµРЅРёРµ URL) РґРµР»РµРіРёСЂСѓСЋС‚СЃСЏ С‡РµСЂРµР· {@link Host};
- * - РіР»РѕР±Р°Р»СЊРЅРѕРµ СЃРѕСЃС‚РѕСЏРЅРёРµ РїРѕ-РїСЂРµР¶РЅРµРјСѓ Р¶РёРІС‘С‚ РІ {@link AppVars}, РєР°Рє Рё Р±С‹Р»Рѕ РґРѕ РІС‹РЅРѕСЃР°.
+ * Границы ответственности:
+ * - этот класс управляет только runtime-потоком боевого кадра/finish-flow;
+ * - инфраструктурные операции (чаты, popup, bridge-redirect, извлечение URL) делегируются через {@link Host};
+ * - глобальное состояние по-прежнему живёт в {@link AppVars}, как и было до выноса.
  */
 public final class FightAuto {
     private static final String TAG = "FightAuto";
     private static final Random RANDOM = new Random();
-    // Р‘Р°Р·РѕРІР°СЏ Р·Р°РґРµСЂР¶РєР° РґР»СЏ auto-finish redirect (РѕРіСЂР°РЅРёС‡РµРЅРёРµ С‡Р°СЃС‚РѕС‚С‹ С„РёРЅР°Р»СЊРЅС‹С… РєР»РёРєРѕРІ).
+    // Базовая задержка для auto-finish redirect (ограничение частоты финальных кликов).
     private static final int AUTO_FINISH_MIN_DELAY_MS = 1000;
-    // РЎР»СѓС‡Р°Р№РЅР°СЏ РґРѕР±Р°РІРєР° Рє Р·Р°РґРµСЂР¶РєРµ (РјРёРєСЂРѕ-РґР¶РёС‚С‚РµСЂ, С‡С‚РѕР±С‹ РЅРµ Р±РѕРјР±РёС‚СЊ РѕРґРёРЅР°РєРѕРІС‹Рј РёРЅС‚РµСЂРІР°Р»РѕРј).
+    // Случайная добавка к задержке (микро-джиттер, чтобы не бомбить одинаковым интервалом).
     private static final int AUTO_FINISH_EXTRA_DELAY_MS = 700;
+    private static final int AUTO_FINISH_MAX_REDIRECTS_PER_LOG = 5;
+    private static final long AUTO_FINISH_LOOP_WINDOW_MS = 25_000L;
+    private static final int AUTO_FINISH_LOOP_FALLBACK_DELAY_MS = 250;
+    private static final String AUTO_FINISH_TITLE = "\u0417\u0430\u0432\u0435\u0440\u0448\u0435\u043D\u0438\u0435 \u0431\u043E\u044F";
 
-    // РЎР»СѓР¶РµР±РЅС‹Р№ С‚Р°Р№РјС€С‚Р°РјРї РїРѕСЃР»РµРґРЅРµРіРѕ auto-finish СЂРµРґРёСЂРµРєС‚Р°.
+    // Служебный таймштамп последнего auto-finish редиректа.
     private static volatile long lastAutoFinishRedirectAtMs = 0L;
-    // Р”РµРґСѓРї РєР»СЋС‡ probe-С€Р°РіР° Р°РІС‚Рѕ-СЂР°Р·РґРµР»РєРё РїРѕСЃР»Рµ Р±РѕСЏ (РЅР° СѓСЂРѕРІРЅРµ РєРѕРЅРєСЂРµС‚РЅРѕРіРѕ LogBoi).
+    private static volatile String lastAutoFinishRedirectLog = "";
+    private static volatile int lastAutoFinishRedirectCount = 0;
+    private static volatile long lastAutoFinishRedirectWindowStartMs = 0L;
+    // Дедуп ключ probe-шага авто-разделки после боя (на уровне конкретного LogBoi).
     private static volatile String lastAutoSkinProbeFightLog = "";
 
     private FightAuto() {
     }
 
     /**
-     * РњРёРЅРёРјР°Р»СЊРЅС‹Р№ СЃРЅРёРјРѕРє HP/MA, РґРѕСЃС‚Р°С‚РѕС‡РЅС‹Р№ РґР»СЏ Restoring-СЌРєСЂР°РЅР° Рё РїРѕСЂРѕРіРѕРІРѕР№ Р»РѕРіРёРєРё.
+     * Минимальный снимок HP/MA, достаточный для Restoring-экрана и пороговой логики.
      *
-     * РСЃС‚РѕС‡РЅРёРє:
-     * - РїР°СЂСЃРёРЅРі `ins_HP(...)` РЅР° СЃС‚РѕСЂРѕРЅРµ MainPhp С‡РµСЂРµР· bridge-РјРµС‚РѕРґ {@link Host#parseInsHpSnapshot(String)}.
+     * Источник:
+     * - парсинг `ins_HP(...)` на стороне MainPhp через bridge-метод {@link Host#parseInsHpSnapshot(String)}.
      */
     public static final class InsHpSnapshot {
         public int curHp;
@@ -62,11 +69,11 @@ public final class FightAuto {
     }
 
     /**
-     * РЇРІРЅР°СЏ РјРѕРґРµР»СЊ РІС‹Р±РѕСЂР° РІРµС‚РєРё Р·Р°РІРµСЂС€РµРЅРёСЏ Р±РѕСЏ.
+     * Явная модель выбора ветки завершения боя.
      *
-     * РќСѓР¶РЅР° РґР»СЏ:
-     * - РїСЂРµРґСЃРєР°Р·СѓРµРјРѕР№ РґРёР°РіРЅРѕСЃС‚РёРєРё (РІРјРµСЃС‚Рѕ РЅРµСЏРІРЅРѕРіРѕ РєР°СЃРєР°РґР° if/return);
-     * - СЃС‚Р°Р±РёР»СЊРЅРѕРіРѕ РїРѕСЃС‚-Р°РЅР°Р»РёР·Р° РІ Р»РѕРіР°С… С‡РµСЂРµР· {@link #logFinishFlowDecision(FinishFlowDecision, LezFight, String, String, String, FightFinishPageMarkers, String)}.
+     * Нужна для:
+     * - предсказуемой диагностики (вместо неявного каскада if/return);
+     * - стабильного пост-анализа в логах через {@link #logFinishFlowDecision(FinishFlowDecision, LezFight, String, String, String, FightFinishPageMarkers, String)}.
      */
     private enum FinishFlowDecision {
         DIRECT_FINISH_LINK,
@@ -76,12 +83,12 @@ public final class FightAuto {
     }
 
     /**
-     * РљРѕРјРїР°РєС‚РЅС‹Р№ РЅР°Р±РѕСЂ РјР°СЂРєРµСЂРѕРІ finish-СЃС‚СЂР°РЅРёС†С‹.
+     * Компактный набор маркеров finish-страницы.
      *
-     * РСЃРїРѕР»СЊР·СѓРµС‚СЃСЏ С‚РѕР»СЊРєРѕ РєР°Рє РґРёР°РіРЅРѕСЃС‚РёС‡РµСЃРєР°СЏ/СЂРµС€Р°СЋС‰Р°СЏ СЃС‚СЂСѓРєС‚СѓСЂР° РІРЅСѓС‚СЂРё finish-flow:
-     * - РЅР°Р»РёС‡РёРµ FEND-С„РѕСЂРјС‹ Рё РїРѕР»СЏ `code`;
-     * - РїСЂРёР·РЅР°РєРё fkey/captcha;
-     * - СЃР»СѓР¶РµР±РЅС‹Рµ С‚РѕРєРµРЅС‹ РёР· `fight_ty`/`fexp`.
+     * Используется только как диагностическая/решающая структура внутри finish-flow:
+     * - наличие FEND-формы и поля `code`;
+     * - признаки fkey/captcha;
+     * - служебные токены из `fight_ty`/`fexp`.
      */
     private static final class FightFinishPageMarkers {
         boolean hasFendForm;
@@ -95,14 +102,14 @@ public final class FightAuto {
     }
 
     /**
-     * Bridge РІ РёРЅС„СЂР°СЃС‚СЂСѓРєС‚СѓСЂСѓ MainPhp.
+     * Bridge в инфраструктуру MainPhp.
      *
-     * РџСЂР°РІРёР»Рѕ:
-     * - FightAuto РЅРµ РґСѓР±Р»РёСЂСѓРµС‚ СѓР¶Рµ СЃСѓС‰РµСЃС‚РІСѓСЋС‰РёРµ helper-РјРµС‚РѕРґС‹, Р° РёСЃРїРѕР»СЊР·СѓРµС‚ РґРµР»РµРіРёСЂРѕРІР°РЅРёРµ;
-     * - Р»СЋР±С‹Рµ РѕРїРµСЂР°С†РёРё, Р·Р°РІСЏР·Р°РЅРЅС‹Рµ РЅР° РІРЅРµС€РЅРёР№ РєРѕРЅС‚РµРєСЃС‚ (С‡Р°С‚С‹, popup, URL-СѓС‚РёР»РёС‚С‹, РїР°СЂСЃРµСЂС‹ MainPhp),
-     *   РґРѕР»Р¶РЅС‹ РїСЂРёС…РѕРґРёС‚СЊ С‡РµСЂРµР· Host.
+     * Правило:
+     * - FightAuto не дублирует уже существующие helper-методы, а использует делегирование;
+     * - любые операции, завязанные на внешний контекст (чаты, popup, URL-утилиты, парсеры MainPhp),
+     *   должны приходить через Host.
      *
-     * Р­С‚Рѕ РїРѕР·РІРѕР»СЏРµС‚ РјРµРЅСЏС‚СЊ Р±РѕРµРІСѓСЋ Р»РѕРіРёРєСѓ РІ РѕРґРЅРѕРј РјРµСЃС‚Рµ, РЅРµ Р»РѕРјР°СЏ РѕСЃС‚Р°Р»СЊРЅРѕР№ pipeline MainPhp.
+     * Это позволяет менять боевую логику в одном месте, не ломая остальной pipeline MainPhp.
      */
     public interface Host {
         void logFightVariable(String html, String variableName);
@@ -171,23 +178,23 @@ public final class FightAuto {
     }
 
     /**
-     * РћСЃРЅРѕРІРЅР°СЏ С‚РѕС‡РєР° РѕР±СЂР°Р±РѕС‚РєРё Р±РѕРµРІРѕРіРѕ РєР°РґСЂР°.
+     * Основная точка обработки боевого кадра.
      *
-     * РџРѕС‚РѕРє СЂРµС€РµРЅРёСЏ:
-     * 1) РџР°СЂСЃРёРЅРі LezFight + СЃРЅРёРјРєР° HP/MA.
-     * 2) Р”РµС‚РµРєС‚ С‚РµРєСѓС‰РµР№ С„Р°Р·С‹: Р°РєС‚РёРІРЅС‹Р№ Р±РѕР№ / РѕР¶РёРґР°РЅРёРµ / Р·Р°РІРµСЂС€РµРЅРёРµ.
-     * 3) РЎРёРЅС…СЂРѕРЅРёР·Р°С†РёСЏ runtime-СЃРѕСЃС‚РѕСЏРЅРёР№ AutoBoi (Timeout/Restoring/On).
+     * Поток решения:
+     * 1) Парсинг LezFight + снимка HP/MA.
+     * 2) Детект текущей фазы: активный бой / ожидание / завершение.
+     * 3) Синхронизация runtime-состояний AutoBoi (Timeout/Restoring/On).
      * 4) Finish-flow (FightLink/FEND/CAPTCHA/manual).
-     * 5) Р’РѕР·РІСЂР°С‚ РєР°РґСЂР° Р°РІС‚Рѕ-СѓРґР°СЂР° Р»РёР±Рѕ РёСЃС…РѕРґРЅРѕРіРѕ HTML РІ СЃРѕРѕС‚РІРµС‚СЃС‚РІРёРё СЃ С‚РµРєСѓС‰РёРјРё С„Р»Р°РіР°РјРё.
+     * 5) Возврат кадра авто-удара либо исходного HTML в соответствии с текущими флагами.
      *
-     * Р—Р°РІРёСЃРёРјРѕСЃС‚Рё:
-     * - {@link LezFight} РєР°Рє РёСЃС‚РѕС‡РЅРёРє Р±РѕРµРІС‹С… С„Р»Р°РіРѕРІ Рё frame-HTML;
-     * - {@link AppVars} РєР°Рє РµРґРёРЅРѕРµ runtime-С…СЂР°РЅРёР»РёС‰Рµ;
-     * - {@link Host} РґР»СЏ РІСЃРµС… РІРЅРµС€РЅРёС… helper-РѕРїРµСЂР°С†РёР№ MainPhp.
+     * Зависимости:
+     * - {@link LezFight} как источник боевых флагов и frame-HTML;
+     * - {@link AppVars} как единое runtime-хранилище;
+     * - {@link Host} для всех внешних helper-операций MainPhp.
      *
-     * Р’Р°Р¶РЅРѕ:
-     * - РјРµС‚РѕРґ intentionally СЃРѕС…СЂР°РЅСЏРµС‚ РїСЂРµР¶РЅСЋСЋ Р»РѕРіРёРєСѓ РІРµС‚РІР»РµРЅРёР№;
-     * - Р»СЋР±С‹Рµ РёР·РјРµРЅРµРЅРёСЏ Р·РґРµСЃСЊ РґРѕР»Р¶РЅС‹ Р±С‹С‚СЊ С‚РѕР»СЊРєРѕ РѕСЃРѕР·РЅР°РЅРЅС‹РјРё, СЃ РѕР±СЏР·Р°С‚РµР»СЊРЅРѕР№ РїСЂРѕРІРµСЂРєРѕР№ Р»РѕРіРѕРІ Р±РѕСЏ.
+     * Важно:
+     * - метод intentionally сохраняет прежнюю логику ветвлений;
+     * - любые изменения здесь должны быть только осознанными, с обязательной проверкой логов боя.
      */
     public static String processFight(String address, String html, Host host) {
         if (host == null || html == null) {
@@ -272,7 +279,7 @@ public final class FightAuto {
         if (fightEnded) {
             host.registerFightEnd(fight);
             host.publishFightResultFromLogsIfNeeded(html, address, fight.LogBoi);
-            // рџЋЇ Р‘РѕР№ Р·Р°РєРѕРЅС‡РёР»СЃСЏ - SessionManager РјРѕР¶РµС‚ РІРµСЂРЅСѓС‚СЊСЃСЏ РЅР° РѕР±С‹С‡РЅС‹Р№ 5-РјРёРЅСѓС‚РЅС‹Р№ timeout
+            // 🎯 Бой закончился - SessionManager может вернуться на обычный 5-минутный timeout
             ru.neverlands.abclient.utils.SessionManager.getInstance().clearFightContext();            
             // ✅ КРИТИЧНОЕ ЛОГИРОВАНИЕ: Очистить FastNeed когда бой завершился
             if (AppVars.FastNeed) {
@@ -406,8 +413,9 @@ public final class FightAuto {
             AppVars.LastBoiUron = "";
             lastAutoSkinProbeFightLog = "";
             AppVars.AutoboiReadyCompletedLog = "";
+            resetAutoFinishLoopGuard();
             fight.updateLastBoiFromLogs();
-            // рџЋЇ РћС‚РјРµС‚РёС‚СЊ С‡С‚Рѕ РЅР°С‡Р°Р»СЃСЏ РЅРѕРІС‹Р№ Р±РѕР№ - SessionManager РґРѕР»Р¶РµРЅ РґРѕР»СЊС€Рµ С…СЂР°РЅРёС‚СЊ vcode
+            // 🎯 Отметить что начался новый бой - SessionManager должен дольше хранить vcode
             ru.neverlands.abclient.utils.SessionManager.getInstance().markFightInProgress();
             host.notifyNewFight(fight);
             UnderAttackManager.parseAsync(html);
@@ -416,9 +424,9 @@ public final class FightAuto {
                 && host.isAutoSkinEnabledByPreference()
                 && address != null
                 && address.contains("get_id=17")) {
-            // Fallback C#-СЃРµРјР°РЅС‚РёРєРё AutoSkin:
-            // РїРѕСЃР»Рµ РєР°РґСЂР° get_id=17 (СЂР°Р·РґРµР»РєР°) РІ Р»СЋР±РѕРј СЃР»СѓС‡Р°Рµ РїР»Р°РЅРёСЂСѓРµРј РїСЂРѕРІРµСЂРєСѓ СЂРµСЃСѓСЂСЃРѕРІ.
-            // Р­С‚Рѕ РїРѕРєСЂС‹РІР°РµС‚ РєРµР№СЃС‹, РєРѕРіРґР° var logs РЅРµ СЃРѕРґРµСЂР¶РёС‚ [8,...], РЅРѕ СЂР°Р·РґРµР»РєР° СЃРµСЂРІРµСЂРѕРј СѓР¶Рµ РїСЂРёРјРµРЅРµРЅР°.
+            // Fallback C#-семантики AutoSkin:
+            // после кадра get_id=17 (разделка) в любом случае планируем проверку ресурсов.
+            // Это покрывает кейсы, когда var logs не содержит [8,...], но разделка сервером уже применена.
             AppVars.AutoSkinCheckRes = true;
             String msg_autoskin = "AUTO_SKIN_TRACE processFight: queue AutoSkinCheckRes=true after get_id=17"
                     + ", logBoi=" + fight.LogBoi;
@@ -450,7 +458,7 @@ public final class FightAuto {
                             + ", sourceAddress=" + address;
                     Log.d(TAG, msg_raz_probe);
                     FileLogger.trace(TAG, msg_raz_probe);
-                    return host.buildDelayedRedirectHtml("РџСЂРѕРІРµСЂРєР° СЂР°Р·РґРµР»РєРё", probeUrl, 260);
+                    return host.buildDelayedRedirectHtml("Проверка разделки", probeUrl, 260);
                 }
             }
         }
@@ -560,11 +568,25 @@ public final class FightAuto {
             }
             if (decision == FinishFlowDecision.DIRECT_FINISH_LINK) {
                 long now = System.currentTimeMillis();
+                if (isFinishRedirectLoopDetected(fight.LogBoi, fightLink, now)) {
+                    String msg_finish_loop = "processFight: finish loop detected, fallback to main.php"
+                            + ", logBoi=" + (fight.LogBoi == null ? "" : fight.LogBoi)
+                            + ", fightLink=" + fightLink
+                            + ", redirects=" + lastAutoFinishRedirectCount;
+                    Log.w(TAG, msg_finish_loop);
+                    FileLogger.trace(TAG, msg_finish_loop);
+                    resetAutoFinishLoopGuard();
+                    AppVars.FightLink = "";
+                    return host.buildDelayedRedirectHtml(
+                            AUTO_FINISH_TITLE,
+                            "http://neverlands.ru/main.php",
+                            AUTO_FINISH_LOOP_FALLBACK_DELAY_MS);
+                }
                 int redirectDelay = AUTO_FINISH_MIN_DELAY_MS + RANDOM.nextInt(AUTO_FINISH_EXTRA_DELAY_MS + 1);
                 if (redirectDelay >= 0) {
                     lastAutoFinishRedirectAtMs = now;
                     AppVars.FightLink = "";
-                    return host.buildDelayedRedirectHtml("Р—Р°РІРµСЂС€РµРЅРёРµ Р±РѕСЏ", fightLink, redirectDelay);
+                    return host.buildDelayedRedirectHtml(AUTO_FINISH_TITLE, fightLink, redirectDelay);
                 }
                 AppVars.FightLink = "";
                 return Russian.getString(Filter.buildRedirect(" ", fightLink));
@@ -707,17 +729,45 @@ public final class FightAuto {
         return AppVars.ContentMainPhp != null ? AppVars.ContentMainPhp : html;
     }
 
+    private static void resetAutoFinishLoopGuard() {
+        lastAutoFinishRedirectAtMs = 0L;
+        lastAutoFinishRedirectLog = "";
+        lastAutoFinishRedirectCount = 0;
+        lastAutoFinishRedirectWindowStartMs = 0L;
+    }
+
+    private static boolean isFinishRedirectLoopDetected(String logBoi, String fightLink, long nowMs) {
+        String safeLogBoi = logBoi == null ? "" : logBoi.trim();
+        String safeFightLink = fightLink == null ? "" : fightLink.trim();
+        String loopKey = !safeLogBoi.isEmpty() ? safeLogBoi : safeFightLink;
+        if (loopKey.isEmpty()) {
+            return false;
+        }
+
+        boolean sameLoopKey = loopKey.equals(lastAutoFinishRedirectLog);
+        boolean windowExpired = nowMs - lastAutoFinishRedirectWindowStartMs > AUTO_FINISH_LOOP_WINDOW_MS;
+        if (!sameLoopKey || windowExpired) {
+            lastAutoFinishRedirectLog = loopKey;
+            lastAutoFinishRedirectWindowStartMs = nowMs;
+            lastAutoFinishRedirectCount = 1;
+            return false;
+        }
+
+        lastAutoFinishRedirectCount++;
+        return lastAutoFinishRedirectCount > AUTO_FINISH_MAX_REDIRECTS_PER_LOG;
+    }
+
     /**
-     * РЎС‚СЂРѕРёС‚ auto-submit HTML РґР»СЏ FEND-С„РѕСЂРјС‹ Р·Р°РІРµСЂС€РµРЅРёСЏ Р±РѕСЏ.
+     * Строит auto-submit HTML для FEND-формы завершения боя.
      *
-     * РџСЂР°РІРёР»Р°:
-     * - РµСЃР»Рё СЃРµСЂРІРµСЂ С‚СЂРµР±СѓРµС‚ СЂСѓС‡РЅРѕР№ РєРѕРґ (`code` РїСѓСЃС‚РѕР№/`????`), Р°РІС‚Рѕ-submit Р·Р°РїСЂРµС‰С‘РЅ;
-     * - СЃРµСЂРёР°Р»РёР·СѓСЋС‚СЃСЏ С‚РѕР»СЊРєРѕ Р±РµР·РѕРїР°СЃРЅС‹Рµ РїРѕР»СЏ С„РѕСЂРјС‹ (Р±РµР· submit/button/reset/image/file).
+     * Правила:
+     * - если сервер требует ручной код (`code` пустой/`????`), авто-submit запрещён;
+     * - сериализуются только безопасные поля формы (без submit/button/reset/image/file).
      *
-     * Р—Р°РІРёСЃРёРјРѕСЃС‚Рё:
-     * - Jsoup РґР»СЏ РёР·РІР»РµС‡РµРЅРёСЏ С„РѕСЂРјС‹/РїРѕР»РµР№;
-     * - {@link Host#escapeHtmlAttr(String)} РґР»СЏ Р±РµР·РѕРїР°СЃРЅРѕР№ РїРѕРґСЃС‚Р°РЅРѕРІРєРё РІ HTML-Р°С‚СЂРёР±СѓС‚С‹;
-     * - {@link HtmlUtils#GENERATED_PAGE_MARKER} РґР»СЏ РјР°СЂРєРёСЂРѕРІРєРё СЃР»СѓР¶РµР±РЅРѕР№ СЃС‚СЂР°РЅРёС†С‹.
+     * Зависимости:
+     * - Jsoup для извлечения формы/полей;
+     * - {@link Host#escapeHtmlAttr(String)} для безопасной подстановки в HTML-атрибуты;
+     * - {@link HtmlUtils#GENERATED_PAGE_MARKER} для маркировки служебной страницы.
      */
     private static String buildFightEndFormSubmitHtml(String html, Host host) {
         if (html == null || html.isEmpty()) {
@@ -755,7 +805,7 @@ public final class FightAuto {
             sb.append(HtmlUtils.GENERATED_PAGE_MARKER);
             sb.append("<html><head><meta http-equiv=\"Content-Type\" content=\"text/html; charset=windows-1251\">");
             sb.append("<title>ABClient</title></head><body>");
-            sb.append("Р—Р°РІРµСЂС€РµРЅРёРµ Р±РѕСЏ...<br>");
+            sb.append("Завершение боя...<br>");
             sb.append("<form id=\"ab_finish_form\" action=\"")
                     .append(host.escapeHtmlAttr(action))
                     .append("\" method=\"")
@@ -801,16 +851,16 @@ public final class FightAuto {
         }
     }
     /**
-     * РЎС‡РёС‚С‹РІР°РµС‚ РјР°СЂРєРµСЂС‹ finish-СЃС‚СЂР°РЅРёС†С‹ РёР· СЃС‹СЂРѕРіРѕ HTML.
+     * Считывает маркеры finish-страницы из сырого HTML.
      *
-     * РќР°Р·РЅР°С‡РµРЅРёРµ:
-     * - РїРѕРґРіРѕС‚РѕРІРёС‚СЊ С„Р°РєС‚РёС‡РµСЃРєРёРµ РїСЂРёР·РЅР°РєРё РґР»СЏ РІС‹Р±РѕСЂР° {@link FinishFlowDecision};
-     * - РґР°С‚СЊ РїРѕР»РЅС‹Р№ РґРёР°РіРЅРѕСЃС‚РёС‡РµСЃРєРёР№ РєРѕРЅС‚РµРєСЃС‚ РґР»СЏ Р»РѕРіРёСЂРѕРІР°РЅРёСЏ РїСЂРёС‡РёРЅС‹ РІРµС‚РєРё.
+     * Назначение:
+     * - подготовить фактические признаки для выбора {@link FinishFlowDecision};
+     * - дать полный диагностический контекст для логирования причины ветки.
      *
-     * Р—Р°РІРёСЃРёРјРѕСЃС‚Рё:
-     * - Jsoup-СЃРµР»РµРєС‚РѕСЂС‹ (`form[name=FEND]`, `input[name=code]`);
-     * - {@link HelperStrings#subString(String, String, String)} + JS-token helper-РјРµС‚РѕРґС‹ Host
-     *   РґР»СЏ СЂР°Р·Р±РѕСЂР° `fight_ty`/`fexp`.
+     * Зависимости:
+     * - Jsoup-селекторы (`form[name=FEND]`, `input[name=code]`);
+     * - {@link HelperStrings#subString(String, String, String)} + JS-token helper-методы Host
+     *   для разбора `fight_ty`/`fexp`.
      */
     private static FightFinishPageMarkers inspectFightFinishPageMarkers(String html, Host host) {
         FightFinishPageMarkers markers = new FightFinishPageMarkers();
@@ -862,14 +912,14 @@ public final class FightAuto {
     }
 
     /**
-     * РџРёС€РµС‚ СЃС‚СЂСѓРєС‚СѓСЂРёСЂРѕРІР°РЅРЅС‹Р№ Р»РѕРі РІС‹Р±СЂР°РЅРЅРѕР№ РІРµС‚РєРё Р·Р°РІРµСЂС€РµРЅРёСЏ Р±РѕСЏ.
+     * Пишет структурированный лог выбранной ветки завершения боя.
      *
-     * РќР°Р·РЅР°С‡РµРЅРёРµ:
-     * - СѓРїСЂРѕСЃС‚РёС‚СЊ СЂР°Р·Р±РѕСЂ СЃР»РѕР¶РЅС‹С… РєРµР№СЃРѕРІ, РєРѕРіРґР° Р±РѕР№ Р·Р°РІРёСЃР°РµС‚ РЅР° finish/captcha;
-     * - С„РёРєСЃРёСЂРѕРІР°С‚СЊ РЅРµ С‚РѕР»СЊРєРѕ РІС‹Р±РѕСЂ РІРµС‚РєРё, РЅРѕ Рё РєРѕРЅС‚РµРєСЃС‚ (РјР°СЂРєРµСЂС‹ HTML, С‚РѕРєРµРЅС‹, URL).
+     * Назначение:
+     * - упростить разбор сложных кейсов, когда бой зависает на finish/captcha;
+     * - фиксировать не только выбор ветки, но и контекст (маркеры HTML, токены, URL).
      *
-     * РџСЂР°РІРёР»Рѕ:
-     * - Р»РѕРі РґРѕР»Р¶РµРЅ Р±С‹С‚СЊ РјР°РєСЃРёРјР°Р»СЊРЅРѕ РёРЅС„РѕСЂРјР°С‚РёРІРЅС‹Рј, РЅРѕ РЅРµ РјРµРЅСЏС‚СЊ runtime-РїРѕРІРµРґРµРЅРёРµ.
+     * Правило:
+     * - лог должен быть максимально информативным, но не менять runtime-поведение.
      */
     private static void logFinishFlowDecision(FinishFlowDecision decision,
                                               LezFight fight,
