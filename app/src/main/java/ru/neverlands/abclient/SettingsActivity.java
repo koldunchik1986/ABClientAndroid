@@ -260,13 +260,18 @@ public class SettingsActivity extends AppCompatActivity {
                     AppVars.Profile.save(requireContext());
                 }
                 mapScalePref.setValue(String.valueOf(currentScale));
-                mapScalePref.setSummary(buildMapScaleSummary(currentScale));
+                mapScalePref.setSummaryProvider(preference -> {
+                    if (!(preference instanceof ListPreference)) {
+                        return "";
+                    }
+                    CharSequence entry = ((ListPreference) preference).getEntry();
+                    return entry == null ? "" : entry;
+                });
                 mapScalePref.setOnPreferenceChangeListener((preference, newValue) -> {
                     int value = parseMapScaleValue(String.valueOf(newValue), AppVars.Profile.MapBigScale);
                     AppVars.Profile.MapBigScale = value;
                     AppVars.Profile.save(requireContext());
                     mapScalePref.setValue(String.valueOf(value));
-                    mapScalePref.setSummary(buildMapScaleSummary(value));
                     return false;
                 });
             }
@@ -407,13 +412,18 @@ public class SettingsActivity extends AppCompatActivity {
                     AppVars.Profile.save(requireContext());
                 }
                 mapNavigatorScalePref.setValue(String.valueOf(currentScale));
-                mapNavigatorScalePref.setSummary(buildMapScaleSummary(currentScale));
+                mapNavigatorScalePref.setSummaryProvider(preference -> {
+                    if (!(preference instanceof ListPreference)) {
+                        return "";
+                    }
+                    CharSequence entry = ((ListPreference) preference).getEntry();
+                    return entry == null ? "" : entry;
+                });
                 mapNavigatorScalePref.setOnPreferenceChangeListener((preference, newValue) -> {
                     int value = parseMapScaleValue(String.valueOf(newValue), AppVars.Profile.MapMiniScale);
                     AppVars.Profile.MapMiniScale = value;
                     AppVars.Profile.save(requireContext());
                     mapNavigatorScalePref.setValue(String.valueOf(value));
-                    mapNavigatorScalePref.setSummary(buildMapScaleSummary(value));
                     return false;
                 });
             }

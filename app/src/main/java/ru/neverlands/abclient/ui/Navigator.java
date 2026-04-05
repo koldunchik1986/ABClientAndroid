@@ -246,17 +246,11 @@ public class Navigator {
         if (pos == null || pos.trim().isEmpty()) {
             return null;
         }
-        String[] parts = pos.split("_");
-        if (parts.length != 2) {
+        ru.neverlands.abclient.model.Position point = ExtMap.Location.get(pos);
+        if (point == null) {
             return null;
         }
-        try {
-            int x = Integer.parseInt(parts[0]);
-            int y = Integer.parseInt(parts[1]);
-            return new int[] {x, y};
-        } catch (Exception ignored) {
-            return null;
-        }
+        return new int[] {point.X, point.Y};
     }
 
     private int[] resolveFallbackCoordinates() {
