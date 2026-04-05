@@ -4,6 +4,8 @@ package ru.neverlands.abclient.ui;
 import ru.neverlands.abclient.utils.AppLog;
 import android.annotation.SuppressLint;
 import android.content.Context;
+import android.os.Handler;
+import android.os.Looper;
 import android.util.Log;
 import android.view.Gravity;
 import android.view.View;
@@ -83,6 +85,7 @@ public class Navigator {
     private final Context context;
     private final AutoFunctionsManager autoFunctionsManager;
     private final Runnable onStateChanged;
+    private final Handler uiHandler = new Handler(Looper.getMainLooper());
 
     private NavigatorMapIndex mapIndexCache;
     private OnCellPicked navigatorMiniMapSelectionListener;
@@ -214,14 +217,27 @@ public class Navigator {
 
         @JavascriptInterface
         public void MoveTo(String dest) {
-            String resolved = resolveCellNumber(dest);
-            if (resolved.isEmpty()) {
-                traceNavigatorMiniMap("invalid_cell", "bridge_move_to=" + String.valueOf(dest));
-                return;
-            }
-            if (navigatorMiniMapSelectionListener != null) {
-                navigatorMiniMapSelectionListener.onCellPicked(resolved);
-            }
+            runOnUiThreadSafe(() -> {
+                String resolved = resolveCellNumber(dest);
+                if (resolved.isEmpty()) {
+                    traceNavigatorMiniMap("invalid_cell", "bridge_move_to=" + String.valueOf(dest));
+                    return;
+                }
+                if (navigatorMiniMapSelectionListener != null) {
+                    navigatorMiniMapSelectionListener.onCellPicked(resolved);
+                }
+            });
+        }
+    }
+
+    private void runOnUiThreadSafe(Runnable task) {
+        if (task == null) {
+            return;
+        }
+        if (Looper.myLooper() == Looper.getMainLooper()) {
+            task.run();
+        } else {
+            uiHandler.post(task);
         }
     }
 
@@ -295,6 +311,10 @@ public class Navigator {
     }
 
     private void renderNavigatorMiniMapCenter(String source) {
+        if (Looper.myLooper() != Looper.getMainLooper()) {
+            runOnUiThreadSafe(() -> renderNavigatorMiniMapCenter(source));
+            return;
+        }
         if (!navigatorMiniMapReady || navigatorMiniMapView == null) {
             return;
         }
@@ -307,6 +327,10 @@ public class Navigator {
     }
 
     private void applyNavigatorMiniMapSelection(String cellNum, String source) {
+        if (Looper.myLooper() != Looper.getMainLooper()) {
+            runOnUiThreadSafe(() -> applyNavigatorMiniMapSelection(cellNum, source));
+            return;
+        }
         String resolved = resolveCellNumber(cellNum);
         if (resolved.isEmpty()) {
             traceNavigatorMiniMap("invalid_cell", "source=" + source + ", value=" + String.valueOf(cellNum));
