@@ -1,6 +1,6 @@
 package ru.neverlands.abclient.postfilter;
 
-import android.util.Log;
+import ru.neverlands.abclient.utils.AppLog;
 
 import ru.neverlands.abclient.utils.Russian;
 
@@ -97,7 +97,7 @@ public class ChMsgJs {
 
             return Russian.getBytes(html);
         } catch (Exception e) {
-            Log.e("ChMsgJs", "Error processing ch_msg_v01.js", e);
+            AppLog.e("ChMsgJs", "Error processing ch_msg_v01.js", e);
             return array;
         }
     }

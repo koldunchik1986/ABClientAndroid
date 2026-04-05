@@ -1,6 +1,6 @@
 package ru.neverlands.abclient.postfilter;
 
-import android.util.Log;
+import ru.neverlands.abclient.utils.AppLog;
 
 import java.util.Calendar;
 import java.util.Date;
@@ -91,7 +91,7 @@ public class ButPhp {
                     // системный часовой пояс на устройстве неверный.
                     long diff = now - serverMs;
                     if (Math.abs(diff) > 24L * 60L * 60L * 1000L) {
-                        Log.w(TAG, "Parsed serverDate out of range, skipping update");
+                        AppLog.w(TAG, "Parsed serverDate out of range, skipping update");
                     } else {
                         if (AppVars.Profile != null) {
                             AppVars.Profile.ServDiff = diff;
@@ -100,15 +100,15 @@ public class ButPhp {
                     }
                     if (year != null) {
                         int outMonth = normalizeMonthIndex(month) + 1;
-                        Log.d(TAG, "Parsed serverDate: " + year + "-" + outMonth + "-" + day + " "
+                        AppLog.d(TAG, "Parsed serverDate: " + year + "-" + outMonth + "-" + day + " "
                                 + hour + ":" + min + ":" + sec + ", diff(ms)=" + diff);
                     } else {
-                        Log.d(TAG, "Parsed server time: " + hour + ":" + min + ":" + sec + ", diff(ms)=" + diff);
+                        AppLog.d(TAG, "Parsed server time: " + hour + ":" + min + ":" + sec + ", diff(ms)=" + diff);
                     }
                 } catch (Exception ignored) {
                 }
             } else {
-                Log.w(TAG, "Server time not found in but.php (hour/min/sec parse failed)");
+                AppLog.w(TAG, "Server time not found in but.php (hour/min/sec parse failed)");
                 logTimeDebugOnce(html);
             }
 
@@ -241,7 +241,7 @@ public class ButPhp {
         if (timeDebugLogged || html == null) return;
         timeDebugLogged = true;
         String lower = html.toLowerCase();
-        Log.d(TAG, "but.php length=" + html.length()
+        AppLog.d(TAG, "but.php length=" + html.length()
                 + ", hasHour=" + lower.contains("hour")
                 + ", hasMin=" + lower.contains("min")
                 + ", hasSec=" + lower.contains("sec"));
@@ -249,9 +249,9 @@ public class ButPhp {
         if (idx != -1) {
             int start = Math.max(0, idx - 60);
             int end = Math.min(html.length(), idx + 160);
-            Log.d(TAG, "but.php around 'hour': " + html.substring(start, end));
+            AppLog.d(TAG, "but.php around 'hour': " + html.substring(start, end));
         } else {
-            Log.d(TAG, "but.php head: " + html.substring(0, Math.min(300, html.length())));
+            AppLog.d(TAG, "but.php head: " + html.substring(0, Math.min(300, html.length())));
         }
     }
 }

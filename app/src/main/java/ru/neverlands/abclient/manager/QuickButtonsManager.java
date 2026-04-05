@@ -2,7 +2,7 @@ package ru.neverlands.abclient.manager;
 
 import android.content.Context;
 import android.content.SharedPreferences;
-import android.util.Log;
+import ru.neverlands.abclient.utils.AppLog;
 
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
@@ -75,7 +75,7 @@ public class QuickButtonsManager {
                 }
             }
         } catch (Exception e) {
-            Log.e(TAG, "Error loading buttons", e);
+            AppLog.e(TAG, "Error loading buttons", e);
             buttons = new ArrayList<>();
             for (int i = 0; i < BUTTON_COUNT; i++) {
                 buttons.add(new QuickButton(i, QuickActionType.NONE));
@@ -90,14 +90,14 @@ public class QuickButtonsManager {
     public void saveButtons() {
         String json = gson.toJson(buttons);
         prefs.edit().putString(KEY_BUTTONS, json).apply();
-        Log.d(TAG, "Buttons saved: " + json);
+        AppLog.d(TAG, "Buttons saved: " + json);
     }
 
     /**
      * Получить список всех кнопок.
      */
     public List<QuickButton> getButtons() {
-        Log.d(TAG, "getButtons called, buttons = " + (buttons != null ? buttons.size() : "null"));
+        AppLog.d(TAG, "getButtons called, buttons = " + (buttons != null ? buttons.size() : "null"));
         if (buttons == null) {
             loadButtons();
         }
@@ -108,14 +108,14 @@ public class QuickButtonsManager {
      * Получить кнопку по позиции.
      */
     public QuickButton getButton(int position) {
-        Log.d(TAG, "getButton position=" + position);
+        AppLog.d(TAG, "getButton position=" + position);
         if (position < 0 || position >= BUTTON_COUNT) {
             return null;
         }
         if (buttons == null) {
             loadButtons();
         }
-        Log.d(TAG, "getButton returns: " + buttons.get(position).getActionType());
+        AppLog.d(TAG, "getButton returns: " + buttons.get(position).getActionType());
         return buttons.get(position);
     }
 
@@ -123,9 +123,9 @@ public class QuickButtonsManager {
      * Назначить функцию на кнопку.
      */
     public void assignFunction(int position, QuickActionType actionType) {
-        Log.d(TAG, "assignFunction: position=" + position + ", actionType=" + actionType);
+        AppLog.d(TAG, "assignFunction: position=" + position + ", actionType=" + actionType);
         if (position < 0 || position >= BUTTON_COUNT) {
-            Log.w(TAG, "Invalid position: " + position);
+            AppLog.w(TAG, "Invalid position: " + position);
             return;
         }
         if (buttons == null) {
@@ -133,8 +133,8 @@ public class QuickButtonsManager {
         }
         buttons.set(position, new QuickButton(position, actionType));
         saveButtons();
-        Log.d(TAG, "assignFunction: saved, button at position " + position + " is now " + actionType);
-        Log.d(TAG, "Assigned " + actionType + " to position " + position);
+        AppLog.d(TAG, "assignFunction: saved, button at position " + position + " is now " + actionType);
+        AppLog.d(TAG, "Assigned " + actionType + " to position " + position);
     }
 
     /**

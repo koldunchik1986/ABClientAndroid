@@ -2,7 +2,7 @@ package ru.neverlands.abclient.utils;
 
 import android.os.Handler;
 import android.os.Looper;
-import android.util.Log;
+import ru.neverlands.abclient.utils.AppLog;
 
 import androidx.webkit.ProxyConfig;
 import androidx.webkit.ProxyController;
@@ -20,7 +20,7 @@ public class WebViewProxyHelper {
         Executor executor = new MainThreadExecutor();
 
         ProxyController.getInstance().setProxyOverride(proxyConfig, executor, () -> {
-            Log.d(TAG, "WebView proxy override set successfully.");
+            AppLog.d(TAG, "WebView proxy override set successfully.");
             if (onProxySetCallback != null) {
                 onProxySetCallback.run();
             }
@@ -30,7 +30,7 @@ public class WebViewProxyHelper {
     public static void clearWebViewProxy() {
         Executor executor = new MainThreadExecutor();
         ProxyController.getInstance().clearProxyOverride(executor, () -> {
-            Log.d(TAG, "WebView proxy override cleared.");
+            AppLog.d(TAG, "WebView proxy override cleared.");
         });
     }
 

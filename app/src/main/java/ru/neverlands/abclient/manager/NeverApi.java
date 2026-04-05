@@ -1,5 +1,7 @@
 package ru.neverlands.abclient.manager;
 
+
+import ru.neverlands.abclient.utils.AppLog;
 import android.webkit.CookieManager;
 
 import java.io.BufferedReader;
@@ -177,7 +179,7 @@ public class NeverApi {
             }
             return id;
         } catch (Exception e) {
-            android.util.Log.w(TAG, "getUserId failed for " + nick, e);
+            AppLog.w(TAG, "getUserId failed for " + nick, e);
             return null;
         }
     }
@@ -214,7 +216,7 @@ public class NeverApi {
         info.fightLog = sp3[14].trim();
         if (info.fightLog.equals("0")) info.fightLog = "";
 
-        android.util.Log.d(TAG, "getAll: nick=" + info.nick + " fightLog=" + info.fightLog);
+        AppLog.d(TAG, "getAll: nick=" + info.nick + " fightLog=" + info.fightLog);
         return info;
     }
 
@@ -254,18 +256,18 @@ public class NeverApi {
             String html = getInfo("http://neverlands.ru/pinfo.cgi?" + encoded);
             PinfoVitals vitals = parsePinfoVitalsFromPinfoHtml(html);
             if (vitals != null) {
-                android.util.Log.d(TAG, "AUTO_BLAZ_TRACE pinfo vitals sync: nick=" + nick
+                AppLog.d(TAG, "AUTO_BLAZ_TRACE pinfo vitals sync: nick=" + nick
                         + ", hp=" + safeInt(vitals.curHp) + "/" + safeInt(vitals.maxHp)
                         + ", ma=" + safeInt(vitals.curMa) + "/" + safeInt(vitals.maxMa)
                         + ", tied=" + safeInt(vitals.curTire)
                         + ", pw=" + safePoisonAndWounds(vitals.poisonAndWounds)
                         + ", topWound=" + safeWoundType(vitals.topWoundType));
             } else {
-                android.util.Log.w(TAG, "AUTO_BLAZ_TRACE pinfo vitals sync failed: value not found for nick=" + nick);
+                AppLog.w(TAG, "AUTO_BLAZ_TRACE pinfo vitals sync failed: value not found for nick=" + nick);
             }
             return vitals;
         } catch (Exception e) {
-            android.util.Log.w(TAG, "AUTO_BLAZ_TRACE pinfo vitals sync error for nick=" + nick, e);
+            AppLog.w(TAG, "AUTO_BLAZ_TRACE pinfo vitals sync error for nick=" + nick, e);
             return null;
         }
     }
@@ -304,7 +306,7 @@ public class NeverApi {
                 if (lastCompassPinfoHttpStatus == 0) {
                     lastCompassPinfoHttpStatus = 200;
                 }
-                android.util.Log.d(TAG, "AUTO_COMPASS_TRACE snapshot: nick=" + snapshot.nick
+                AppLog.d(TAG, "AUTO_COMPASS_TRACE snapshot: nick=" + snapshot.nick
                         + ", locationRaw=" + snapshot.locationRaw
                         + ", region=" + snapshot.locationRegion
                         + ", location=" + snapshot.locationName
@@ -315,14 +317,14 @@ public class NeverApi {
                         + ", tied=" + safeInt(snapshot.curTire)
                         + ", capturedAt=" + snapshot.capturedAtMs);
             } else {
-                android.util.Log.w(TAG, "AUTO_COMPASS_TRACE snapshot: parse failed for nick=" + normalizedNick);
+                AppLog.w(TAG, "AUTO_COMPASS_TRACE snapshot: parse failed for nick=" + normalizedNick);
             }
             return snapshot;
         } catch (Exception e) {
             if (lastCompassPinfoHttpStatus == 0) {
                 lastCompassPinfoHttpStatus = -1;
             }
-            android.util.Log.w(TAG, "AUTO_COMPASS_TRACE snapshot: request failed for nick=" + nick, e);
+            AppLog.w(TAG, "AUTO_COMPASS_TRACE snapshot: request failed for nick=" + nick, e);
             return null;
         }
     }
@@ -353,7 +355,7 @@ public class NeverApi {
                 return clampPercent(Integer.parseInt(textMatcher.group(1)));
             }
         } catch (Exception e) {
-            android.util.Log.w(TAG, "AUTO_BLAZ_TRACE parseCurrentTiedFromPinfoHtml failed", e);
+            AppLog.w(TAG, "AUTO_BLAZ_TRACE parseCurrentTiedFromPinfoHtml failed", e);
         }
         return null;
     }
@@ -407,7 +409,7 @@ public class NeverApi {
                     tied,
                     System.currentTimeMillis());
         } catch (Exception e) {
-            android.util.Log.w(TAG, "AUTO_COMPASS_TRACE parsePinfoCompassSnapshotFromHtml failed", e);
+            AppLog.w(TAG, "AUTO_COMPASS_TRACE parsePinfoCompassSnapshotFromHtml failed", e);
             return null;
         }
     }
@@ -722,7 +724,7 @@ public class NeverApi {
             }
             return new PinfoVitals(curHp, maxHp, curMa, maxMa, curTire, poisonAndWounds, topWoundType);
         } catch (Exception e) {
-            android.util.Log.w(TAG, "AUTO_BLAZ_TRACE parsePinfoVitalsFromPinfoHtml failed", e);
+            AppLog.w(TAG, "AUTO_BLAZ_TRACE parsePinfoVitalsFromPinfoHtml failed", e);
             return null;
         }
     }
@@ -770,7 +772,7 @@ public class NeverApi {
             }
             return poisonAndWounds;
         } catch (Exception e) {
-            android.util.Log.w(TAG, "AUTO_BLAZ_TRACE parsePoisonAndWoundsFromPinfoEff failed", e);
+            AppLog.w(TAG, "AUTO_BLAZ_TRACE parsePoisonAndWoundsFromPinfoEff failed", e);
             return null;
         }
     }
@@ -832,7 +834,7 @@ public class NeverApi {
             }
             return 0;
         } catch (Exception e) {
-            android.util.Log.w(TAG, "AUTO_BLAZ_TRACE parseTopWoundTypeFromPinfoEff failed", e);
+            AppLog.w(TAG, "AUTO_BLAZ_TRACE parseTopWoundTypeFromPinfoEff failed", e);
             return null;
         }
     }
@@ -929,10 +931,10 @@ public class NeverApi {
             URL url = new URL(urlString);
             java.net.Proxy activeProxy = ProxyRuntimeManager.getActiveJavaProxyOrNull();
             if (activeProxy == null && ProxyRuntimeManager.isStrictProxyRequiredForCurrentProfile()) {
-                android.util.Log.e(TAG, "PROXY_FAIL: strict proxy enabled and runtime proxy unavailable, blocking direct NeverApi call: " + urlString);
+                AppLog.e(TAG, "PROXY_FAIL: strict proxy enabled and runtime proxy unavailable, blocking direct NeverApi call: " + urlString);
                 return null;
             }
-            android.util.Log.d(TAG, "PROXY_BINDING: NeverApi openConnection via "
+            AppLog.d(TAG, "PROXY_BINDING: NeverApi openConnection via "
                     + (activeProxy != null ? "local proxy" : "direct")
                     + ", url=" + urlString);
             conn = activeProxy != null
@@ -953,7 +955,7 @@ public class NeverApi {
             lastHttpStatusCode.set(code);
             if (code != 200) {
                 boolean retryable536 = (code == 536) && shouldRetryNeverApiRequest(urlString);
-                android.util.Log.w(TAG, "getInfo: HTTP " + code + " for " + urlString
+                AppLog.w(TAG, "getInfo: HTTP " + code + " for " + urlString
                         + (retryable536 ? " (retry)" : ""));
                 if (retryable536) {
                     sleepRetryQuietly(220L);
@@ -974,7 +976,7 @@ public class NeverApi {
 
         } catch (Exception e) {
             lastHttpStatusCode.set(-1);
-            android.util.Log.w(TAG, "getInfo failed: " + urlString, e);
+            AppLog.w(TAG, "getInfo failed: " + urlString, e);
             return null;
         } finally {
             if (conn != null) conn.disconnect();
@@ -992,7 +994,7 @@ public class NeverApi {
             URL url = new URL(urlString);
             java.net.Proxy activeProxy = ProxyRuntimeManager.getActiveJavaProxyOrNull();
             if (activeProxy == null && ProxyRuntimeManager.isStrictProxyRequiredForCurrentProfile()) {
-                android.util.Log.e(TAG, "PROXY_FAIL: strict proxy enabled and runtime proxy unavailable, blocking direct NeverApi retry: " + urlString);
+                AppLog.e(TAG, "PROXY_FAIL: strict proxy enabled and runtime proxy unavailable, blocking direct NeverApi retry: " + urlString);
                 return null;
             }
 
@@ -1012,7 +1014,7 @@ public class NeverApi {
             int code = conn.getResponseCode();
             lastHttpStatusCode.set(code);
             if (code != 200) {
-                android.util.Log.w(TAG, "getInfoRetryOnce: HTTP " + code + " for " + urlString);
+                AppLog.w(TAG, "getInfoRetryOnce: HTTP " + code + " for " + urlString);
                 return null;
             }
 
@@ -1025,7 +1027,7 @@ public class NeverApi {
             return Russian.getString(baos.toByteArray());
         } catch (Exception e) {
             lastHttpStatusCode.set(-1);
-            android.util.Log.w(TAG, "getInfoRetryOnce failed: " + urlString, e);
+            AppLog.w(TAG, "getInfoRetryOnce failed: " + urlString, e);
             return null;
         } finally {
             if (conn != null) conn.disconnect();

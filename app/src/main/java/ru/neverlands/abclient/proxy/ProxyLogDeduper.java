@@ -1,6 +1,6 @@
 package ru.neverlands.abclient.proxy;
 
-import android.util.Log;
+import ru.neverlands.abclient.utils.AppLog;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -52,9 +52,9 @@ final class ProxyLogDeduper {
         }
 
         if (throwable != null) {
-            Log.w(tag, finalMessage, throwable);
+            AppLog.w(tag, finalMessage, throwable);
         } else {
-            Log.w(tag, finalMessage);
+            AppLog.w(tag, finalMessage);
         }
     }
 

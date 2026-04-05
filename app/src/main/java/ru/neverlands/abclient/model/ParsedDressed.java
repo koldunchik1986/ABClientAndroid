@@ -2,7 +2,7 @@ package ru.neverlands.abclient.model;
 
 import android.content.Context;
 import android.content.Intent;
-import android.util.Log;
+import ru.neverlands.abclient.utils.AppLog;
 
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 
@@ -400,7 +400,7 @@ public class ParsedDressed {
             intent.putExtra("message", message);
             LocalBroadcastManager.getInstance(context).sendBroadcast(intent);
         } catch (Exception e) {
-            Log.w(TAG, "sendKnifeChangedChatMessage failed", e);
+            AppLog.w(TAG, "sendKnifeChangedChatMessage failed", e);
         }
     }
 

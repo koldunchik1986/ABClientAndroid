@@ -1,5 +1,7 @@
 package ru.neverlands.abclient.ui;
 
+
+import ru.neverlands.abclient.utils.AppLog;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -657,7 +659,7 @@ public class AutoBoiSettingsFragment extends DialogFragment {
                 added++;
             }
 
-            android.util.Log.d(TAG, "Rotation fallback: legacyMaxId=" + legacyMaxId
+            AppLog.d(TAG, "Rotation fallback: legacyMaxId=" + legacyMaxId
                     + ", baseMisc=" + baseMisc.length
                     + ", addedNewServerIds=" + added
                     + ", finalMisc=" + merged.size());

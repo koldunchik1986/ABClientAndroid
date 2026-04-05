@@ -1,6 +1,6 @@
 package ru.neverlands.abclient.postfilter;
 
-import android.util.Log;
+import ru.neverlands.abclient.utils.AppLog;
 import ru.neverlands.abclient.utils.Russian;
 
 /**
@@ -57,12 +57,12 @@ public class GameJs {
             
             boolean patchApplied = html.contains(oldClearSize);
             html = html.replace(oldClearSize, newLogic);
-            Log.d("GameJs", "[MAIN_TOP_TRACE] game.js patch applied=" + patchApplied
+            AppLog.d("GameJs", "[MAIN_TOP_TRACE] game.js patch applied=" + patchApplied
                     + ", suppressClientMainTopReload=true");
 
             return Russian.getBytes(html);
         } catch (Exception e) {
-            Log.e("GameJs", "Error processing game script", e);
+            AppLog.e("GameJs", "Error processing game script", e);
             return array;
         }
     }

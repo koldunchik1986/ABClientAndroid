@@ -2,7 +2,7 @@ package ru.neverlands.abclient.manager;
 
 import android.content.Context;
 import android.content.SharedPreferences;
-import android.util.Log;
+import ru.neverlands.abclient.utils.AppLog;
 
 import androidx.preference.PreferenceManager;
 
@@ -104,7 +104,7 @@ final class CompasAuto {
                     try {
                         activity.requestRoomUsersRefreshSoon();
                     } catch (Exception e) {
-                        Log.w(TAG, "AUTO_COMPASS_TRACE initial room refresh failed", e);
+                        AppLog.w(TAG, "AUTO_COMPASS_TRACE initial room refresh failed", e);
                     }
                 });
             }
@@ -125,7 +125,7 @@ final class CompasAuto {
                 owner.stopAutoMoving();
             }
         }
-        Log.d(TAG, "setAutoCompassEnabled: " + enabled);
+        AppLog.d(TAG, "setAutoCompassEnabled: " + enabled);
         owner.syncBackgroundServiceInternal("setAutoCompassEnabled(" + enabled + ")");
         owner.requestQuickButtonsRefreshInternal("setAutoCompassEnabled(" + enabled + ")");
     }
@@ -208,7 +208,7 @@ final class CompasAuto {
         try {
             snapshot = NeverApi.getPinfoCompassSnapshot(normalized);
         } catch (Exception e) {
-            Log.w(TAG, "resolveAutoCompassLocation: pinfo request failed, nick=" + normalized, e);
+            AppLog.w(TAG, "resolveAutoCompassLocation: pinfo request failed, nick=" + normalized, e);
             if (NeverApi.wasLastCompassPinfoRateLimited()) {
                 onAutoCompassRateLimitError(NeverApi.getLastCompassPinfoHttpStatus());
             }
@@ -262,7 +262,7 @@ final class CompasAuto {
             autoCompassCheckedCells.clear();
         }
 
-        Log.d(TAG, "AUTO_COMPASS_TRACE manual resolve: target=" + normalized
+        AppLog.d(TAG, "AUTO_COMPASS_TRACE manual resolve: target=" + normalized
                 + ", location=" + locationLabel + ", candidates=" + cellsCsv);
         onAutoCompassRequestSuccess();
         return new AutoFunctionsManager.CompassLocationResolveResult(
@@ -281,7 +281,7 @@ final class CompasAuto {
             return;
         }
         String normalizedSource = normalizeStartSource(source, "manual");
-        Log.d(TAG, "AUTO_COMPASS_TRACE start: mode=manual_one_shot, source="
+        AppLog.d(TAG, "AUTO_COMPASS_TRACE start: mode=manual_one_shot, source="
                 + normalizedSource + ", target=" + normalized);
         writeCompassStartTrace("manual_one_shot", normalizedSource, normalized);
         setAutoCompassTargetNick(normalized);
@@ -300,7 +300,7 @@ final class CompasAuto {
             return;
         }
         String normalizedSource = normalizeStartSource(source, "settings");
-        Log.d(TAG, "AUTO_COMPASS_TRACE start: mode=full_hunt, source="
+        AppLog.d(TAG, "AUTO_COMPASS_TRACE start: mode=full_hunt, source="
                 + normalizedSource + ", target=" + normalized);
         writeCompassStartTrace("full_hunt", normalizedSource, normalized);
         String currentTarget = getAutoCompassTargetNick();
@@ -385,7 +385,7 @@ final class CompasAuto {
         }
 
         if (bumped != current) {
-            Log.w(TAG, "AUTO_COMPASS_TRACE adaptive poll backoff: status=" + statusCode
+            AppLog.w(TAG, "AUTO_COMPASS_TRACE adaptive poll backoff: status=" + statusCode
                     + ", baseSec=" + base
                     + ", oldSec=" + current
                     + ", newSec=" + bumped);
@@ -396,7 +396,7 @@ final class CompasAuto {
         int base = getAutoCompassBasePollIntervalSec();
         if (autoCompassAdaptivePollSec != base) {
             int oldSec = autoCompassAdaptivePollSec;
-            Log.d(TAG, "AUTO_COMPASS_TRACE adaptive poll reset: oldSec="
+            AppLog.d(TAG, "AUTO_COMPASS_TRACE adaptive poll reset: oldSec="
                     + autoCompassAdaptivePollSec + ", baseSec=" + base);
             writeCompassChat("Компас: связь восстановлена, интервал опроса возвращен к "
                     + base + "с (было " + oldSec + "с).");
@@ -430,7 +430,7 @@ final class CompasAuto {
             try {
                 snapshot = NeverApi.getPinfoCompassSnapshot(targetNick);
             } catch (Exception e) {
-                Log.w(TAG, "tickAutoCompass: failed to fetch pinfo snapshot for " + targetNick, e);
+                AppLog.w(TAG, "tickAutoCompass: failed to fetch pinfo snapshot for " + targetNick, e);
             } finally {
                 autoCompassPinfoInFlight = false;
             }
@@ -453,13 +453,13 @@ final class CompasAuto {
                 previousSnapshot = autoCompassLastSnapshot;
             }
             if (previousSnapshot != null && !isEmpty(previousSnapshot.locationName)) {
-                Log.d(TAG, "AUTO_COMPASS_TRACE snapshot unavailable, keep last location="
+                AppLog.d(TAG, "AUTO_COMPASS_TRACE snapshot unavailable, keep last location="
                         + previousSnapshot.locationName + ", target=" + targetNick);
                 continueAutoCompassNavigation(targetNick);
                 return;
             }
             if (rateLimited) {
-                Log.w(TAG, "AUTO_COMPASS_TRACE snapshot unavailable because rate-limit status="
+                AppLog.w(TAG, "AUTO_COMPASS_TRACE snapshot unavailable because rate-limit status="
                         + pinfoStatus + ", keep waiting with adaptive interval="
                         + getAutoCompassEffectivePollIntervalSec() + "s");
                 return;
@@ -518,7 +518,7 @@ final class CompasAuto {
                 autoCompassDestinationSetAtMs = 0L;
             }
             putDefaultString(PREF_AUTO_COMPASS_CELLS_CSV, joinCompassRegNums(resolvedCandidates));
-            Log.d(TAG, "AUTO_COMPASS_TRACE candidates rebuilt: region=" + locationRegion
+            AppLog.d(TAG, "AUTO_COMPASS_TRACE candidates rebuilt: region=" + locationRegion
                     + ", location=" + locationName
                     + ", count=" + resolvedCandidates.size()
                     + ", cells=" + joinCompassRegNums(resolvedCandidates));
@@ -540,11 +540,11 @@ final class CompasAuto {
                     try {
                         activity.requestRoomUsersRefreshSoon();
                     } catch (Exception e) {
-                        Log.w(TAG, "AUTO_COMPASS_TRACE room refresh failed while waiting map location", e);
+                        AppLog.w(TAG, "AUTO_COMPASS_TRACE room refresh failed while waiting map location", e);
                     }
                 });
             }
-            Log.d(TAG, "AUTO_COMPASS_TRACE waiting map location: target=" + targetNick);
+            AppLog.d(TAG, "AUTO_COMPASS_TRACE waiting map location: target=" + targetNick);
             return;
         }
 
@@ -583,17 +583,17 @@ final class CompasAuto {
                         try {
                             activity.requestRoomUsersRefreshSoon();
                         } catch (Exception e) {
-                            Log.w(TAG, "AUTO_COMPASS_TRACE request room refresh failed after arrival", e);
+                            AppLog.w(TAG, "AUTO_COMPASS_TRACE request room refresh failed after arrival", e);
                         }
                     });
                 }
                 long waitMs = System.currentTimeMillis() - currentDestinationSetAtMs;
                 if (waitMs < AUTO_COMPASS_ROOM_REFRESH_GRACE_MS) {
-                    Log.d(TAG, "AUTO_COMPASS_TRACE waiting room refresh after arrival: destination="
+                    AppLog.d(TAG, "AUTO_COMPASS_TRACE waiting room refresh after arrival: destination="
                             + currentDestination + ", waitedMs=" + waitMs);
                     return;
                 }
-                Log.w(TAG, "AUTO_COMPASS_TRACE room refresh timeout after arrival: destination="
+                AppLog.w(TAG, "AUTO_COMPASS_TRACE room refresh timeout after arrival: destination="
                         + currentDestination + ", waitedMs=" + waitMs);
             }
             synchronized (autoCompassLock) {
@@ -750,7 +750,7 @@ final class CompasAuto {
                 return path.destination.trim();
             }
         } catch (Exception e) {
-            Log.w(TAG, "chooseNearestCompassCell: path build failed, current=" + currentRegNum, e);
+            AppLog.w(TAG, "chooseNearestCompassCell: path build failed, current=" + currentRegNum, e);
         }
         return candidates.get(0);
     }
@@ -790,7 +790,7 @@ final class CompasAuto {
                 && !AppVars.AutoMoving
                 && roomUpdatedAtMs >= destinationSetAtMs;
         if (canUseDestination && (isEmpty(mapRegNum) || !mapRegNum.equals(destination))) {
-            Log.d(TAG, "AUTO_COMPASS_TRACE found regnum overridden by destination: map="
+            AppLog.d(TAG, "AUTO_COMPASS_TRACE found regnum overridden by destination: map="
                     + mapRegNum + ", destination=" + destination);
             return destination;
         }
@@ -1043,7 +1043,7 @@ final class CompasAuto {
         try {
             return defaultPrefs().getBoolean(key, fallback);
         } catch (Exception e) {
-            Log.w(TAG, "getDefaultBoolean failed: key=" + key, e);
+            AppLog.w(TAG, "getDefaultBoolean failed: key=" + key, e);
             return fallback;
         }
     }
@@ -1052,7 +1052,7 @@ final class CompasAuto {
         try {
             defaultPrefs().edit().putBoolean(key, value).apply();
         } catch (Exception e) {
-            Log.w(TAG, "putDefaultBoolean failed: key=" + key + ", value=" + value, e);
+            AppLog.w(TAG, "putDefaultBoolean failed: key=" + key + ", value=" + value, e);
         }
     }
 
@@ -1061,7 +1061,7 @@ final class CompasAuto {
             String value = defaultPrefs().getString(key, fallback);
             return value == null ? fallback : value;
         } catch (Exception e) {
-            Log.w(TAG, "getDefaultString failed: key=" + key, e);
+            AppLog.w(TAG, "getDefaultString failed: key=" + key, e);
             return fallback;
         }
     }
@@ -1070,7 +1070,7 @@ final class CompasAuto {
         try {
             defaultPrefs().edit().putString(key, value).apply();
         } catch (Exception e) {
-            Log.w(TAG, "putDefaultString failed: key=" + key + ", value=" + value, e);
+            AppLog.w(TAG, "putDefaultString failed: key=" + key + ", value=" + value, e);
         }
     }
 
@@ -1078,7 +1078,7 @@ final class CompasAuto {
         try {
             return defaultPrefs().getInt(key, fallback);
         } catch (Exception e) {
-            Log.w(TAG, "getDefaultInt failed: key=" + key, e);
+            AppLog.w(TAG, "getDefaultInt failed: key=" + key, e);
             return fallback;
         }
     }
@@ -1087,7 +1087,7 @@ final class CompasAuto {
         try {
             defaultPrefs().edit().putInt(key, value).apply();
         } catch (Exception e) {
-            Log.w(TAG, "putDefaultInt failed: key=" + key + ", value=" + value, e);
+            AppLog.w(TAG, "putDefaultInt failed: key=" + key + ", value=" + value, e);
         }
     }
 

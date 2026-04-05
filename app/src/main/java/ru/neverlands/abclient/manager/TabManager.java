@@ -7,7 +7,7 @@ import android.content.Context;
 import android.net.Uri;
 import android.os.Handler;
 import android.os.Looper;
-import android.util.Log;
+import ru.neverlands.abclient.utils.AppLog;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.webkit.CookieManager;
@@ -123,7 +123,7 @@ public class TabManager {
                     title = nick;
                 }
             } catch (Exception e) {
-                Log.e(TAG, "Error decoding nick", e);
+                AppLog.e(TAG, "Error decoding nick", e);
                 title = "PINFO"; // fallback
             }
         }
@@ -137,7 +137,7 @@ public class TabManager {
             TabInfo tab = secondaryTabs.get(i);
             String tabNormalizedUrl = normalizeUrl(tab.url);
             if (tabNormalizedUrl != null && tabNormalizedUrl.equals(normalizedUrl)) {
-                Log.d(TAG, "openTab: вкладка уже открыта, переключаемся и обновляем: " + url);
+                AppLog.d(TAG, "openTab: вкладка уже открыта, переключаемся и обновляем: " + url);
                 // Переключаемся на вкладку
                 tabLayout.selectTab(tabLayout.getTabAt(i + 1));
                 // Обновляем страницу
@@ -148,7 +148,7 @@ public class TabManager {
             }
         }
 
-        Log.d(TAG, "openTab: открываем новую вкладку: " + title + " -> " + url);
+        AppLog.d(TAG, "openTab: открываем новую вкладку: " + title + " -> " + url);
 
         // Создаём View для вкладки
         LayoutInflater inflater = LayoutInflater.from(context);
@@ -176,7 +176,7 @@ public class TabManager {
         // Кнопка закрытия теперь всегда находит правильную позицию даже после закрытия других вкладок
         final View finalTabView = tabView; // захватываем ссылку на сам View
         closeButton.setOnClickListener(v -> {
-            Log.d(TAG, "Клик по кнопке закрытия вкладки");
+            AppLog.d(TAG, "Клик по кнопке закрытия вкладки");
             // Ищем текущую позицию по customView
             int position = -1;
             for (int i = 0; i < tabLayout.getTabCount(); i++) {
@@ -241,7 +241,7 @@ public class TabManager {
     private void setupActionButtons(View contentView, TabInfo tabInfo) {
         View actionBar = contentView.findViewById(R.id.action_buttons_bar);
         if (actionBar == null) {
-            Log.w(TAG, "setupActionButtons: action bar not found");
+            AppLog.w(TAG, "setupActionButtons: action bar not found");
             return;
         }
 
@@ -382,7 +382,7 @@ public class TabManager {
                 return URLDecoder.decode(encodedNick, "windows-1251").trim();
             }
         } catch (Exception e) {
-            Log.w(TAG, "resolvePinfoNick failed: url=" + tabInfo.url, e);
+            AppLog.w(TAG, "resolvePinfoNick failed: url=" + tabInfo.url, e);
         }
         return null;
     }
@@ -404,7 +404,7 @@ public class TabManager {
             return;
         }
         
-        Log.d(TAG, "addToContacts: " + playerName);
+        AppLog.d(TAG, "addToContacts: " + playerName);
         Toast.makeText(context, "Добавление " + playerName + "...", Toast.LENGTH_SHORT).show();
         
         ContactsManager.addContact(context, playerName, new ContactsManager.ContactOperationCallback() {
@@ -433,14 +433,14 @@ public class TabManager {
     // Закрытие вкладки по позиции в TabLayout (1+).
     public void closeTab(int tabPosition) {
         if (tabPosition <= 0 || tabPosition > secondaryTabs.size()) {
-            Log.w(TAG, "closeTab: невозможно закрыть вкладку " + tabPosition);
+            AppLog.w(TAG, "closeTab: невозможно закрыть вкладку " + tabPosition);
             return;
         }
 
         int secondaryIndex = tabPosition - 1;
         TabInfo tabInfo = secondaryTabs.get(secondaryIndex);
 
-        Log.d(TAG, "closeTab: закрываем вкладку " + tabPosition + ": " + tabInfo.title);
+        AppLog.d(TAG, "closeTab: закрываем вкладку " + tabPosition + ": " + tabInfo.title);
 
         // Уничтожаем WebView
         if (tabInfo.webView != null) {
@@ -515,7 +515,7 @@ public class TabManager {
      */
     // Переключение UI между основной и вторичными вкладками.
     private void switchToTab(int position) {
-        Log.d(TAG, "switchToTab: " + position);
+        AppLog.d(TAG, "switchToTab: " + position);
         currentTabIndex = position;
 
         if (position == 0) {
@@ -599,7 +599,7 @@ public class TabManager {
             }
 
             private boolean handleSecondaryUrlLoading(WebView view, String url) {
-                Log.d(TAG, "shouldOverrideUrlLoading secondary: " + url);
+                AppLog.d(TAG, "shouldOverrideUrlLoading secondary: " + url);
                 if (url == null || url.isEmpty()) {
                     return false;
                 }
@@ -659,7 +659,7 @@ public class TabManager {
             @Override
             public void onPageFinished(WebView view, String url) {
                 super.onPageFinished(view, url);
-                Log.d(TAG, "onPageFinished secondary: " + url);
+                AppLog.d(TAG, "onPageFinished secondary: " + url);
                 
                 // Для форума НЕ обновляем URL здесь, т.к. shouldOverrideUrlLoading уже делает это корректно
                 // Для остальных - обновляем
@@ -721,7 +721,7 @@ public class TabManager {
         for (TabInfo tab : secondaryTabs) {
             if (tab.webView == webView) {
                 tab.url = url;
-                Log.d(TAG, "updateTabUrl: обновлен URL для вкладки " + tab.title + " -> " + url);
+                AppLog.d(TAG, "updateTabUrl: обновлен URL для вкладки " + tab.title + " -> " + url);
                 break;
             }
         }

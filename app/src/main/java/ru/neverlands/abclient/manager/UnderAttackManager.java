@@ -1,6 +1,6 @@
 package ru.neverlands.abclient.manager;
 
-import android.util.Log;
+import ru.neverlands.abclient.utils.AppLog;
 
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -134,7 +134,7 @@ public final class UnderAttackManager {
             }
         }
 
-        Log.d(TAG, "announce: " + message);
+        AppLog.d(TAG, "announce: " + message);
         Chat.sendMessageToServer(message);
     }
 

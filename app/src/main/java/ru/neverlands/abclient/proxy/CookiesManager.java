@@ -1,5 +1,7 @@
 package ru.neverlands.abclient.proxy;
 
+
+import ru.neverlands.abclient.utils.AppLog;
 import android.webkit.CookieManager;
 import android.webkit.ValueCallback;
 
@@ -36,7 +38,7 @@ public class CookiesManager {
             }
             return cookie == null ? "" : cookie;
         } catch (Throwable t) {
-            android.util.Log.e("CookiesManager", "obtain: CookieManager unavailable", t);
+            AppLog.e("CookiesManager", "obtain: CookieManager unavailable", t);
             return "";
         }
     }
@@ -62,7 +64,7 @@ public class CookiesManager {
                         String nick = java.net.URLDecoder.decode(encodedNick, "windows-1251");
                         if (AppVars.Profile != null && !nick.isEmpty()) {
                             if (!nick.equalsIgnoreCase(AppVars.Profile.UserNick)) {
-                                android.util.Log.e("CookiesManager", "NeverNick mismatch: expected="
+                                AppLog.e("CookiesManager", "NeverNick mismatch: expected="
                                         + AppVars.Profile.UserNick + ", got=" + nick);
                             }
                             AppVars.Profile.UserNick = nick;
@@ -79,7 +81,7 @@ public class CookiesManager {
                 manager.setCookie("http://neverlands.ru/", cookieHeader);
             }
         } catch (Throwable t) {
-            android.util.Log.e("CookiesManager", "assign: CookieManager unavailable", t);
+            AppLog.e("CookiesManager", "assign: CookieManager unavailable", t);
         }
     }
 
@@ -100,14 +102,14 @@ public class CookiesManager {
                 try {
                     manager.flush();
                 } catch (Throwable flushError) {
-                    android.util.Log.e("CookiesManager", "clear: flush failed", flushError);
+                    AppLog.e("CookiesManager", "clear: flush failed", flushError);
                 }
                 if (callback != null) {
                     callback.onReceiveValue(value);
                 }
             });
         } catch (Throwable t) {
-            android.util.Log.e("CookiesManager", "clear: CookieManager unavailable, continue without WebView cookie reset", t);
+            AppLog.e("CookiesManager", "clear: CookieManager unavailable, continue without WebView cookie reset", t);
             if (callback != null) {
                 callback.onReceiveValue(false);
             }

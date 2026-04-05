@@ -1,5 +1,7 @@
 package ru.neverlands.abclient.utils;
 
+
+import ru.neverlands.abclient.utils.AppLog;
 import android.content.Context;
 import android.content.res.AssetManager;
 
@@ -102,9 +104,9 @@ public class ExtMap {
         if (!runtimeFile.exists()) {
             try {
                 copyAssetToFile(context, MAP_XML_ASSET_NAME, runtimeFile);
-                android.util.Log.d(TAG, "runtimeMap: created from asset template, file=" + runtimeFile.getAbsolutePath());
+                AppLog.d(TAG, "runtimeMap: created from asset template, file=" + runtimeFile.getAbsolutePath());
             } catch (Exception e) {
-                android.util.Log.e(TAG, "runtimeMap: cannot create runtime map from template", e);
+                AppLog.e(TAG, "runtimeMap: cannot create runtime map from template", e);
                 return null;
             }
         }
@@ -277,14 +279,14 @@ public class ExtMap {
         }
         try (InputStream in = openRuntimeMapInputStream(context)) {
             int parsed = parseMapXml(in);
-            android.util.Log.d(TAG, "loadMap: source=" + source + ", parsedCells=" + parsed);
+            AppLog.d(TAG, "loadMap: source=" + source + ", parsedCells=" + parsed);
         } catch (Exception e) {
-            android.util.Log.w(TAG, "loadMap: runtime source failed, fallback to assets template", e);
+            AppLog.w(TAG, "loadMap: runtime source failed, fallback to assets template", e);
             try (InputStream in = context.getAssets().open(MAP_XML_ASSET_NAME)) {
                 int parsed = parseMapXml(in);
-                android.util.Log.d(TAG, "loadMap: fallback source=assets/" + MAP_XML_ASSET_NAME + ", parsedCells=" + parsed);
+                AppLog.d(TAG, "loadMap: fallback source=assets/" + MAP_XML_ASSET_NAME + ", parsedCells=" + parsed);
             } catch (Exception fallbackError) {
-                android.util.Log.e(TAG, "loadMap error: fallback parse failed", fallbackError);
+                AppLog.e(TAG, "loadMap error: fallback parse failed", fallbackError);
             }
         }
     }
@@ -415,7 +417,7 @@ public class ExtMap {
                 input = assets.open("abcells.xml");
             }
         } catch (Exception openError) {
-            android.util.Log.e(TAG, "loadAbcMap source open error: " + openError.getMessage());
+            AppLog.e(TAG, "loadAbcMap source open error: " + openError.getMessage());
         }
 
         if (input == null) {
@@ -462,11 +464,11 @@ public class ExtMap {
                 }
                 event = parser.next();
             }
-            android.util.Log.d(TAG, "loadAbcMap: source=" + source
+            AppLog.d(TAG, "loadAbcMap: source=" + source
                     + ", cells=" + abcCosts.size()
                     + ", visitedLoaded=" + loadedVisitedCount);
         } catch (Exception e) {
-            android.util.Log.e(TAG, "loadAbcMap error: " + e.getMessage());
+            AppLog.e(TAG, "loadAbcMap error: " + e.getMessage());
         }
 
         for (String regnum : new java.util.ArrayList<>(Cells.keySet())) {
@@ -613,10 +615,10 @@ public class ExtMap {
             visitedPersistPending = false;
             lastVisitedPersistAtMs = System.currentTimeMillis();
             persistRuntimeMapCellMeta(context, normalizedReg, normalizedServerLabel, resolveRegionLabelForRegNum(normalizedReg));
-            android.util.Log.d(TAG, "persistLabel: saved, reg=" + normalizedReg
+            AppLog.d(TAG, "persistLabel: saved, reg=" + normalizedReg
                     + ", old=" + oldLabel + ", new=" + normalizedServerLabel);
         } else {
-            android.util.Log.w(TAG, "persistLabel: write failed, reg=" + normalizedReg
+            AppLog.w(TAG, "persistLabel: write failed, reg=" + normalizedReg
                     + ", old=" + oldLabel + ", new=" + normalizedServerLabel);
         }
         return oldLabel;
@@ -697,7 +699,7 @@ public class ExtMap {
         if (ok) {
             visitedPersistPending = false;
             lastVisitedPersistAtMs = now;
-            android.util.Log.d(TAG, "persistVisited: saved, entries=" + AppVars.SearchBoxVisited.size()
+            AppLog.d(TAG, "persistVisited: saved, entries=" + AppVars.SearchBoxVisited.size()
                     + ", last=" + lastVisitedPersistRegNum);
         }
     }
@@ -705,7 +707,7 @@ public class ExtMap {
     private static boolean persistVisitedToExternalFile(Context context) {
         File externalDir = context.getExternalFilesDir(null);
         if (externalDir == null) {
-            android.util.Log.w(TAG, "persistVisited: external dir unavailable");
+            AppLog.w(TAG, "persistVisited: external dir unavailable");
             return false;
         }
         File targetFile = new File(externalDir, "abcells.xml");
@@ -713,7 +715,7 @@ public class ExtMap {
             try {
                 copyAssetToFile(context, "abcells.xml", targetFile);
             } catch (Exception e) {
-                android.util.Log.e(TAG, "persistVisited: cannot create target abcells.xml", e);
+                AppLog.e(TAG, "persistVisited: cannot create target abcells.xml", e);
                 return false;
             }
         }
@@ -809,7 +811,7 @@ public class ExtMap {
             serializer.endDocument();
             serializer.flush();
         } catch (Exception e) {
-            android.util.Log.e(TAG, "persistVisited: write failed", e);
+            AppLog.e(TAG, "persistVisited: write failed", e);
             //noinspection ResultOfMethodCallIgnored
             tmpFile.delete();
             return false;
@@ -817,7 +819,7 @@ public class ExtMap {
 
         try {
             if (targetFile.exists() && !targetFile.delete()) {
-                android.util.Log.w(TAG, "persistVisited: cannot delete old abcells.xml");
+                AppLog.w(TAG, "persistVisited: cannot delete old abcells.xml");
                 return false;
             }
             if (!tmpFile.renameTo(targetFile)) {
@@ -830,7 +832,7 @@ public class ExtMap {
             }
             return true;
         } catch (Exception e) {
-            android.util.Log.e(TAG, "persistVisited: replace failed", e);
+            AppLog.e(TAG, "persistVisited: replace failed", e);
             return false;
         }
     }
@@ -992,7 +994,7 @@ public class ExtMap {
             serializer.endDocument();
             serializer.flush();
         } catch (Exception e) {
-            android.util.Log.e(TAG, "persistRuntimeMapCellMeta: write failed, reg=" + normalizedReg, e);
+            AppLog.e(TAG, "persistRuntimeMapCellMeta: write failed, reg=" + normalizedReg, e);
             //noinspection ResultOfMethodCallIgnored
             tmpFile.delete();
             return false;
@@ -1006,7 +1008,7 @@ public class ExtMap {
 
         try {
             if (targetFile.exists() && !targetFile.delete()) {
-                android.util.Log.w(TAG, "persistRuntimeMapCellMeta: cannot delete old runtime map");
+                AppLog.w(TAG, "persistRuntimeMapCellMeta: cannot delete old runtime map");
                 //noinspection ResultOfMethodCallIgnored
                 tmpFile.delete();
                 return false;
@@ -1019,11 +1021,11 @@ public class ExtMap {
                 //noinspection ResultOfMethodCallIgnored
                 tmpFile.delete();
             }
-            android.util.Log.d(TAG, "persistRuntimeMapCellMeta: saved reg=" + normalizedReg
+            AppLog.d(TAG, "persistRuntimeMapCellMeta: saved reg=" + normalizedReg
                     + ", name=" + normalizedLabel + ", region=" + normalizedRegion);
             return true;
         } catch (Exception e) {
-            android.util.Log.e(TAG, "persistRuntimeMapCellMeta: replace failed", e);
+            AppLog.e(TAG, "persistRuntimeMapCellMeta: replace failed", e);
             return false;
         }
     }
@@ -1136,7 +1138,7 @@ public class ExtMap {
                 event = parser.next();
             }
         } catch (Exception e) {
-            android.util.Log.e("ExtMap", "loadTeleports error: " + e.getMessage());
+            AppLog.e("ExtMap", "loadTeleports error: " + e.getMessage());
         }
     }
 }

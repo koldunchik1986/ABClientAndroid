@@ -2,7 +2,7 @@ package ru.neverlands.abclient.proxy;
 
 import android.content.Context;
 import android.net.Uri;
-import android.util.Log;
+import ru.neverlands.abclient.utils.AppLog;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -44,7 +44,7 @@ public class DiskCacheManager {
                 fis.read(data);
                 return data;
             } catch (IOException e) {
-                Log.e(TAG, "Error reading from cache", e);
+                AppLog.e(TAG, "Error reading from cache", e);
             }
         }
 
@@ -73,7 +73,7 @@ public class DiskCacheManager {
         try (FileOutputStream fos = new FileOutputStream(file)) {
             fos.write(data);
         } catch (IOException e) {
-            Log.e(TAG, "Error writing to cache", e);
+            AppLog.e(TAG, "Error writing to cache", e);
         }
     }
 }

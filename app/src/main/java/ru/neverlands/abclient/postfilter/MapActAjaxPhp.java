@@ -1,7 +1,7 @@
 package ru.neverlands.abclient.postfilter;
 
 import android.content.Intent;
-import android.util.Log;
+import ru.neverlands.abclient.utils.AppLog;
 
 import java.util.Locale;
 
@@ -68,7 +68,7 @@ public class MapActAjaxPhp {
                 AppVars.AutoTreasureShovelReadyOption = "";
                 AppVars.AutoTreasureDigPendingInventory = true;
                 TreasureDig.applyTreasurePauseAndStopNavigator("map_act_need_shovel_popup");
-                Log.w(TAG, "AUTO_SEARCH_BOX_TRACE dig flow: server requires shovel, retry equip");
+                AppLog.w(TAG, "AUTO_SEARCH_BOX_TRACE dig flow: server requires shovel, retry equip");
             }
             if (isTreasureDigResultMessage(resoMessage)) {
                 postTreasureDigResultToChat(resoMessage);
@@ -77,7 +77,7 @@ public class MapActAjaxPhp {
                 disableFixedTreasureCellAfterDig();
             }
         } catch (Exception e) {
-            Log.w(TAG, "AUTO_SEARCH_BOX_TRACE dig flow: map_act parse failed", e);
+            AppLog.w(TAG, "AUTO_SEARCH_BOX_TRACE dig flow: map_act parse failed", e);
         }
         return array;
     }
@@ -153,7 +153,7 @@ public class MapActAjaxPhp {
         Intent intent = new Intent(AppVars.ACTION_ADD_CHAT_MESSAGE);
         intent.putExtra("message", messageHtml);
         LocalBroadcastManager.getInstance(AppVars.getContext()).sendBroadcast(intent);
-        Log.d(TAG, "AUTO_SEARCH_BOX_TRACE dig result message posted to chat");
+        AppLog.d(TAG, "AUTO_SEARCH_BOX_TRACE dig result message posted to chat");
     }
 
     /**
@@ -182,7 +182,7 @@ public class MapActAjaxPhp {
                 Intent intent = new Intent(AppVars.ACTION_ADD_CHAT_MESSAGE);
                 intent.putExtra("message", messageHtml);
                 LocalBroadcastManager.getInstance(AppVars.getContext()).sendBroadcast(intent);
-                Log.i(TAG, "AUTO_SEARCH_BOX_TRACE fixed-cell cleared after dig result: " + prevFixedRegNum);
+                AppLog.i(TAG, "AUTO_SEARCH_BOX_TRACE fixed-cell cleared after dig result: " + prevFixedRegNum);
             }
 
             boolean autoTreasureEnabled = manager.isAutoTreasureEnabled() || AppVars.DoSearchBox;
@@ -191,16 +191,16 @@ public class MapActAjaxPhp {
                 String nextDestination = MapAjax.findNextDestForBox(currentRegNum);
                 if (nextDestination != null && !nextDestination.isEmpty()) {
                     manager.startAutoMoving(nextDestination);
-                    Log.i(TAG, "AUTO_SEARCH_BOX_TRACE dig complete -> resume auto treasure, next="
+                    AppLog.i(TAG, "AUTO_SEARCH_BOX_TRACE dig complete -> resume auto treasure, next="
                             + nextDestination + ", from=" + currentRegNum
                             + ", fixedCellWasConfigured=" + fixedCellWasConfigured);
                 } else {
-                    Log.w(TAG, "AUTO_SEARCH_BOX_TRACE dig complete -> no next destination, from="
+                    AppLog.w(TAG, "AUTO_SEARCH_BOX_TRACE dig complete -> no next destination, from="
                             + currentRegNum + ", fixedCellWasConfigured=" + fixedCellWasConfigured);
                 }
             }
         } catch (Exception e) {
-            Log.w(TAG, "AUTO_SEARCH_BOX_TRACE fixed-cell clear failed", e);
+            AppLog.w(TAG, "AUTO_SEARCH_BOX_TRACE fixed-cell clear failed", e);
         }
     }
 

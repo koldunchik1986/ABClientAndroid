@@ -1,6 +1,6 @@
 package ru.neverlands.abclient.proxy;
 
-import android.util.Log;
+import ru.neverlands.abclient.utils.AppLog;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -25,7 +25,7 @@ public class Cache {
     static {
         if (!cacheDir.exists()) {
             if (!cacheDir.mkdirs()) {
-                Log.e(TAG, "Failed to create cache directory");
+                AppLog.e(TAG, "Failed to create cache directory");
             }
         }
     }
@@ -129,7 +129,7 @@ public class Cache {
             fis.read(data);
             return data;
         } catch (IOException e) {
-            Log.e(TAG, "Error reading from disk cache: " + key, e);
+            AppLog.e(TAG, "Error reading from disk cache: " + key, e);
             return null;
         }
     }
@@ -149,7 +149,7 @@ public class Cache {
             File parent = file.getParentFile();
             if (parent != null && !parent.exists()) {
                 if (!parent.mkdirs()) {
-                    Log.e(TAG, "Failed to create parent directories for: " + key);
+                    AppLog.e(TAG, "Failed to create parent directories for: " + key);
                     return;
                 }
             }
@@ -158,7 +158,7 @@ public class Cache {
                 fos.write(data);
             }
         } catch (IOException e) {
-            Log.e(TAG, "Error writing to disk cache: " + key, e);
+            AppLog.e(TAG, "Error writing to disk cache: " + key, e);
         }
     }
 }

@@ -1,6 +1,6 @@
 package ru.neverlands.abclient.postfilter;
 
-import android.util.Log;
+import ru.neverlands.abclient.utils.AppLog;
 
 import ru.neverlands.abclient.utils.Russian;
 
@@ -34,7 +34,7 @@ public class HpJs {
         String html = Russian.getString(array);
         int beforeTargetCount = countOccurrences(html, TARGET_EXPRESSION);
         int beforeBridgeCount = countOccurrences(html, BRIDGE_EXPRESSION);
-        Log.d(TAG, "HPJS_TRACE before: bytes=" + array.length
+        AppLog.d(TAG, "HPJS_TRACE before: bytes=" + array.length
                 + ", targetCount=" + beforeTargetCount
                 + ", bridgeCount=" + beforeBridgeCount);
 
@@ -42,7 +42,7 @@ public class HpJs {
         String processed = html.replace(TARGET_EXPRESSION, BRIDGE_EXPRESSION);
         int afterTargetCount = countOccurrences(processed, TARGET_EXPRESSION);
         int afterBridgeCount = countOccurrences(processed, BRIDGE_EXPRESSION);
-        Log.d(TAG, "HPJS_TRACE after: replaced=" + (!processed.equals(html))
+        AppLog.d(TAG, "HPJS_TRACE after: replaced=" + (!processed.equals(html))
                 + ", targetCount=" + afterTargetCount
                 + ", bridgeCount=" + afterBridgeCount);
 

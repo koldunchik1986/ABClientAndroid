@@ -1,6 +1,6 @@
 package ru.neverlands.abclient.utils;
 
-import android.util.Log;
+import ru.neverlands.abclient.utils.AppLog;
 
 /**
  * Единый модуль для управления принудительными действиями авто-функций.
@@ -43,14 +43,14 @@ public final class ForcedActionGuard {
         
         // Если установлен флаг для рыбалки - принудительное действие
         if (AppVars.ProbeForceNeedAutofish) {
-            Log.d(TAG, "FORCED_ACTION: " + actionName + " - forcing past UI foreground block (elixir cooldown)");
+            AppLog.d(TAG, "FORCED_ACTION: " + actionName + " - forcing past UI foreground block (elixir cooldown)");
             AppVars.ProbeForceNeedAutofish = false;
             return true;
         }
         
         // Если установлен флаг для авто-боя (холодный старт) - принудительное действие
         if (AppVars.ProbeForceNeedAutoboi) {
-            Log.d(TAG, "FORCED_ACTION: " + actionName + " - forcing past UI foreground block (cold start autoboi)");
+            AppLog.d(TAG, "FORCED_ACTION: " + actionName + " - forcing past UI foreground block (cold start autoboi)");
             AppVars.ProbeForceNeedAutoboi = false;
             return true;
         }
@@ -72,7 +72,7 @@ public final class ForcedActionGuard {
      */
     public static void setForceAction(String actionName, String reason) {
         AppVars.ProbeForceNeedAutofish = true;
-        Log.d(TAG, "FORCED_ACTION_SET: " + actionName + " - reason: " + reason);
+        AppLog.d(TAG, "FORCED_ACTION_SET: " + actionName + " - reason: " + reason);
     }
 
     /**
@@ -84,7 +84,7 @@ public final class ForcedActionGuard {
      */
     public static void clearForceAction(String actionName) {
         if (AppVars.ProbeForceNeedAutofish) {
-            Log.d(TAG, "FORCED_ACTION_CLEAR: " + actionName);
+            AppLog.d(TAG, "FORCED_ACTION_CLEAR: " + actionName);
             AppVars.ProbeForceNeedAutofish = false;
         }
     }

@@ -1,6 +1,6 @@
 package ru.neverlands.abclient.manager;
 
-import android.util.Log;
+import ru.neverlands.abclient.utils.AppLog;
 
 import java.util.Locale;
 
@@ -117,7 +117,7 @@ public final class CharacterVitalsManager {
         synchronized (LOCK) {
             int normalized = clampPercent(tied);
             if (AppVars.Tied != normalized) {
-                Log.d(TAG, "VITALS_TRACE tied: " + AppVars.Tied + " -> " + normalized + ", source=" + source);
+                AppLog.d(TAG, "VITALS_TRACE tied: " + AppVars.Tied + " -> " + normalized + ", source=" + source);
                 AppVars.Tied = normalized;
             }
             touchLocked(source);
@@ -136,7 +136,7 @@ public final class CharacterVitalsManager {
         synchronized (LOCK) {
             int normalized = clampPercent(AppVars.Tied + delta);
             if (AppVars.Tied != normalized) {
-                Log.d(TAG, "VITALS_TRACE tied(step): " + AppVars.Tied + " -> " + normalized
+                AppLog.d(TAG, "VITALS_TRACE tied(step): " + AppVars.Tied + " -> " + normalized
                         + ", delta=" + delta + ", source=" + source);
                 AppVars.Tied = normalized;
             }
@@ -185,7 +185,7 @@ public final class CharacterVitalsManager {
                 changed = true;
             }
             if (changed) {
-                Log.d(TAG, "VITALS_TRACE hpma: hp=" + AppVars.CurHP + "/" + AppVars.MaxHP
+                AppLog.d(TAG, "VITALS_TRACE hpma: hp=" + AppVars.CurHP + "/" + AppVars.MaxHP
                         + ", ma=" + AppVars.CurMA + "/" + AppVars.MaxMA + ", source=" + source);
             }
             touchLocked(source);
@@ -216,7 +216,7 @@ public final class CharacterVitalsManager {
                 changed = true;
             }
             if (changed) {
-                Log.d(TAG, "VITALS_TRACE regen: intHp=" + AppVars.PersIntHP
+                AppLog.d(TAG, "VITALS_TRACE regen: intHp=" + AppVars.PersIntHP
                         + ", intMa=" + AppVars.PersIntMA + ", source=" + source);
             }
             touchLocked(source);
@@ -286,7 +286,7 @@ public final class CharacterVitalsManager {
             updateHpMaLocked(curHp, maxHp, curMa, maxMa);
             updateRegenLocked(intHp, intMa);
             touchLocked(source);
-            Log.d(TAG, "VITALS_TRACE from ins_HP: hp=" + AppVars.CurHP + "/" + AppVars.MaxHP
+            AppLog.d(TAG, "VITALS_TRACE from ins_HP: hp=" + AppVars.CurHP + "/" + AppVars.MaxHP
                     + ", ma=" + AppVars.CurMA + "/" + AppVars.MaxMA
                     + ", intHp=" + AppVars.PersIntHP + ", intMa=" + AppVars.PersIntMA
                     + ", source=" + source);
@@ -310,7 +310,7 @@ public final class CharacterVitalsManager {
             updateHpMaLocked(Math.round(curHp), maxHp, Math.round(curMa), maxMa);
             updateRegenLocked(intHp, intMa);
             touchLocked(source);
-            Log.d(TAG, "VITALS_TRACE from hp.js: hp=" + AppVars.CurHP + "/" + AppVars.MaxHP
+            AppLog.d(TAG, "VITALS_TRACE from hp.js: hp=" + AppVars.CurHP + "/" + AppVars.MaxHP
                     + ", ma=" + AppVars.CurMA + "/" + AppVars.MaxMA
                     + ", intHp=" + AppVars.PersIntHP + ", intMa=" + AppVars.PersIntMA
                     + ", source=" + source);
@@ -351,7 +351,7 @@ public final class CharacterVitalsManager {
                 applyPoisonAndWoundsLocked(vitals.poisonAndWounds);
             }
             touchLocked(source);
-            Log.d(TAG, "VITALS_TRACE from pinfo: hp=" + AppVars.CurHP + "/" + AppVars.MaxHP
+            AppLog.d(TAG, "VITALS_TRACE from pinfo: hp=" + AppVars.CurHP + "/" + AppVars.MaxHP
                     + ", ma=" + AppVars.CurMA + "/" + AppVars.MaxMA
                     + ", tied=" + AppVars.Tied
                     + ", pw=" + poisonAndWoundsToLog(AppVars.PoisonAndWounds)
@@ -407,7 +407,7 @@ public final class CharacterVitalsManager {
             return;
         }
         AppVars.PoisonAndWounds = normalized;
-        Log.d(TAG, "VITALS_TRACE poisonAndWounds: " + poisonAndWoundsToLog(normalized));
+        AppLog.d(TAG, "VITALS_TRACE poisonAndWounds: " + poisonAndWoundsToLog(normalized));
     }
 
     private static int[] normalizePoisonAndWounds(int[] poisonAndWounds) {

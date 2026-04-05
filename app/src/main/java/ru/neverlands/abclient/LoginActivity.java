@@ -1,5 +1,7 @@
 package ru.neverlands.abclient;
 
+
+import ru.neverlands.abclient.utils.AppLog;
 import android.Manifest;
 import android.content.Intent;
 import android.content.pm.PackageManager;
@@ -205,7 +207,7 @@ public class LoginActivity extends AppCompatActivity {
             applySelectedProfile(selectedProfile);
         }
 
-        android.util.Log.i(
+        AppLog.i(
                 "LoginActivity",
                 "LOGIN_UI: profilesLoaded=" + profiles.size()
                         + ", selectedId=" + (selectedProfile == null ? "" : selectedProfile.id)
@@ -231,7 +233,7 @@ public class LoginActivity extends AppCompatActivity {
             String savedEncryptionPassword = getSavedEncryptedLoginPassword(profile);
             binding.passwordEditText.setText(savedEncryptionPassword);
             binding.rememberCheckBox.setChecked(!TextUtils.isEmpty(savedEncryptionPassword));
-            android.util.Log.i(
+            AppLog.i(
                     "LoginActivity",
                     "LOGIN_UI: applySelectedProfile id=" + profile.id
                             + ", encrypted=true"
@@ -245,7 +247,7 @@ public class LoginActivity extends AppCompatActivity {
         String savedPassword = profile.UserPassword != null ? profile.UserPassword : "";
         binding.passwordEditText.setText(savedPassword);
         binding.rememberCheckBox.setChecked(profile.UserAutoLogon && !TextUtils.isEmpty(savedPassword));
-        android.util.Log.i(
+        AppLog.i(
                 "LoginActivity",
                 "LOGIN_UI: applySelectedProfile id=" + profile.id
                         + ", encrypted=false"
@@ -317,7 +319,7 @@ public class LoginActivity extends AppCompatActivity {
                 .putString(key, valueToStore)
                 .apply();
         persistLastProfileId(profile);
-        android.util.Log.i(
+        AppLog.i(
                 "LoginActivity",
                 "LOGIN_UI: persistEncryptedRemember stage=" + stage
                         + ", profileId=" + profile.id
@@ -345,7 +347,7 @@ public class LoginActivity extends AppCompatActivity {
         profile.UserPassword = valueToStore;
         profile.save(LoginActivity.this);
         persistLastProfileId(profile);
-        android.util.Log.i(
+        AppLog.i(
                 "LoginActivity",
                 "LOGIN_UI: persistRemember stage=" + stage
                         + ", profileId=" + profile.id
@@ -396,7 +398,7 @@ public class LoginActivity extends AppCompatActivity {
                     "login_click"
             );
         }
-        android.util.Log.i(
+        AppLog.i(
                 "LoginActivity",
                 "LOGIN_UI: loginClick profileId=" + profileToLogin.id
                         + ", encrypted=" + profileToLogin.isEncrypted
@@ -424,7 +426,7 @@ public class LoginActivity extends AppCompatActivity {
     private void clearCookiesAndAuthorize(String username, String gamePassword, UserConfig profileToLogin) {
         // Поднимаем proxy runtime до auth-flow, чтобы первый вход уже шёл через единый контур,
         // как в ПК версии (proxy стартует до основной логики приложения).
-        android.util.Log.i(
+        AppLog.i(
                 "LoginActivity",
                 "PROXY_BOOT: login pre-auth start, doProxy=" + profileToLogin.DoProxy
                         + ", useProxy=" + profileToLogin.UseProxy
@@ -433,7 +435,7 @@ public class LoginActivity extends AppCompatActivity {
         boolean proxyReady = ProxyRuntimeManager.ensureStarted(getApplicationContext(), profileToLogin);
         if (!proxyReady) {
             String reason = ProxyRuntimeManager.getLastStartError();
-            android.util.Log.e(
+            AppLog.e(
                     "LoginActivity",
                     "PROXY_FAIL: proxy runtime start failed before authorize, reason="
                             + (reason == null ? "" : reason)
@@ -446,7 +448,7 @@ public class LoginActivity extends AppCompatActivity {
             Toast.makeText(this, message, Toast.LENGTH_LONG).show();
             return;
         }
-        android.util.Log.i(
+        AppLog.i(
                 "LoginActivity",
                 "PROXY_BOOT: proxy runtime ready, port=" + ProxyRuntimeManager.getActivePort()
         );
@@ -474,7 +476,7 @@ public class LoginActivity extends AppCompatActivity {
             CookieManager.getInstance();
         } catch (Throwable t) {
             if (warmupAttempt < COOKIE_WARMUP_MAX_ATTEMPTS) {
-                android.util.Log.w(
+                AppLog.w(
                         "LoginActivity",
                         "CookieManager warm-up failed, retry " + (warmupAttempt + 1) + "/" + COOKIE_WARMUP_MAX_ATTEMPTS,
                         t
@@ -485,7 +487,7 @@ public class LoginActivity extends AppCompatActivity {
                 );
                 return;
             }
-            android.util.Log.w("LoginActivity", "CookieManager warm-up failed, continue authorize flow", t);
+            AppLog.w("LoginActivity", "CookieManager warm-up failed, continue authorize flow", t);
         }
 
         CookiesManager.clear(value -> {
@@ -509,7 +511,7 @@ public class LoginActivity extends AppCompatActivity {
         ExecutorService executor = Executors.newSingleThreadExecutor();
         Handler handler = new Handler(Looper.getMainLooper());
         final long attemptStartedAtMs = System.currentTimeMillis();
-        android.util.Log.d(
+        AppLog.d(
                 "LoginActivity",
                 "Authorization attempt start: retryAttempt=" + retryAttempt + ", startedAtMs=" + attemptStartedAtMs
         );
@@ -545,7 +547,7 @@ public class LoginActivity extends AppCompatActivity {
                                   int retryAttempt,
                                   long attemptStartedAtMs) {
         long attemptElapsedMs = Math.max(0L, System.currentTimeMillis() - attemptStartedAtMs);
-        android.util.Log.d(
+        AppLog.d(
                 "LoginActivity",
                 "Authorization attempt result: retryAttempt=" + retryAttempt
                         + ", elapsedMs=" + attemptElapsedMs
@@ -566,7 +568,7 @@ public class LoginActivity extends AppCompatActivity {
                     : "Ошибка авторизации";
 
             if (isRetriableAuthError(errorMessage, retryAttempt, attemptElapsedMs)) {
-                android.util.Log.w(
+                AppLog.w(
                         "LoginActivity",
                         "Authorization transient error, auto-retry " + (retryAttempt + 1) + "/" + AUTH_MAX_RETRY_ATTEMPTS
                                 + ", elapsedMs=" + attemptElapsedMs + ": " + errorMessage
@@ -582,7 +584,7 @@ public class LoginActivity extends AppCompatActivity {
 
             binding.progressBar.setVisibility(View.GONE);
             binding.loginButton.setEnabled(true);
-            android.util.Log.w("LoginActivity", "Authorization error: " + errorMessage);
+            AppLog.w("LoginActivity", "Authorization error: " + errorMessage);
             Toast.makeText(LoginActivity.this, errorMessage, Toast.LENGTH_LONG).show();
         }
     }
@@ -601,7 +603,7 @@ public class LoginActivity extends AppCompatActivity {
         long timeoutFromMessageMs = extractTimeoutMsFromError(errorMessage);
         if (attemptElapsedMs >= AUTH_NO_RETRY_TIMEOUT_MS
                 || timeoutFromMessageMs >= AUTH_NO_RETRY_TIMEOUT_MS) {
-            android.util.Log.d(
+            AppLog.d(
                     "LoginActivity",
                     "Authorization retry skipped: long-timeout detected, elapsedMs="
                             + attemptElapsedMs + ", timeoutFromMessageMs=" + timeoutFromMessageMs
@@ -672,7 +674,7 @@ public class LoginActivity extends AppCompatActivity {
         AppVars.AutoFuryHandD = "";
 
         // Запускаем фоновое обновление всех контактов
-        android.util.Log.d("LoginActivity", "Starting background contact refresh after successful login.");
+        AppLog.d("LoginActivity", "Starting background contact refresh after successful login.");
         List<ru.neverlands.abclient.model.Contact> contactsToUpdate = ru.neverlands.abclient.manager.ContactsManager.getContactsFromCache();
         if (contactsToUpdate != null && !contactsToUpdate.isEmpty()) {
             updateContactsRecursive(contactsToUpdate, 0);
@@ -688,7 +690,7 @@ public class LoginActivity extends AppCompatActivity {
      */
     private void updateContactsRecursive(final List<ru.neverlands.abclient.model.Contact> contacts, final int index) {
         if (index >= contacts.size()) {
-            android.util.Log.d("LoginActivity", "Background contact refresh completed.");
+            AppLog.d("LoginActivity", "Background contact refresh completed.");
             // Опционально: можно показать Toast, но это может сбить пользователя с толку, т.к. он уже на другом экране
             // runOnUiThread(() -> Toast.makeText(getApplicationContext(), "Контакты обновлены в фоне", Toast.LENGTH_SHORT).show());
             return;
@@ -714,7 +716,7 @@ public class LoginActivity extends AppCompatActivity {
 
                 @Override
                 public void onFailure(String message) {
-                    android.util.Log.e("LoginActivity", "Failed to refresh contact by ID " + oldContact.playerID + ": " + message);
+                    AppLog.e("LoginActivity", "Failed to refresh contact by ID " + oldContact.playerID + ": " + message);
                     updateContactsRecursive(contacts, index + 1);
                 }
             });

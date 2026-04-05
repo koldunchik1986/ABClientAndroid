@@ -1,5 +1,7 @@
 package ru.neverlands.abclient.ui;
 
+
+import ru.neverlands.abclient.utils.AppLog;
 import android.content.Context;
 import android.view.Gravity;
 import android.view.View;
@@ -1305,7 +1307,7 @@ public class Navigator {
                 event = parser.next();
             }
         } catch (Exception e) {
-            android.util.Log.e("Navigator", "buildNavigatorMapIndex error: " + e.getMessage(), e);
+            AppLog.e("Navigator", "buildNavigatorMapIndex error: " + e.getMessage(), e);
         }
         return index;
     }

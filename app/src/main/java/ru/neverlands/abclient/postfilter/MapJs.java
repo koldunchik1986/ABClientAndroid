@@ -1,7 +1,7 @@
 package ru.neverlands.abclient.postfilter;
 
 import android.content.Context;
-import android.util.Log;
+import ru.neverlands.abclient.utils.AppLog;
 
 import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
@@ -224,7 +224,7 @@ public class MapJs {
             patched += "\n" + TIED_RUNTIME_PATCH;
         }
 
-        Log.d(TAG, "process: source=" + (useAssetBase ? "assets/js/map.js" : "server")
+        AppLog.d(TAG, "process: source=" + (useAssetBase ? "assets/js/map.js" : "server")
                 + ", raw(width=" + rawWidthDecl + ",height=" + rawHeightDecl + ",scale=" + rawScaleDecl
                 + ",width1Count=" + rawWidthOneCount + ",height1Count=" + rawHeightOneCount + ")"
                 + ", patched(width=" + patchedWidthDecl + ",height=" + patchedHeightDecl + ",scale=" + patchedScaleDecl + ")"
@@ -262,7 +262,7 @@ public class MapJs {
             }
             return assetJs;
         } catch (Exception e) {
-            Log.w(TAG, "process: failed to load assets/js/map.js, fallback to server js", e);
+            AppLog.w(TAG, "process: failed to load assets/js/map.js, fallback to server js", e);
             return fallbackJs;
         }
     }

@@ -13,7 +13,7 @@ import android.os.Handler;
 import android.os.IBinder;
 import android.os.Looper;
 import android.os.PowerManager;
-import android.util.Log;
+import ru.neverlands.abclient.utils.AppLog;
 
 import androidx.annotation.Nullable;
 import androidx.core.app.NotificationCompat;
@@ -124,7 +124,7 @@ public class AutoModeForegroundService extends Service {
         }
         Context appContext = context.getApplicationContext();
         boolean shouldRun = shouldRunInBackground(appContext);
-        Log.d(TAG, BG_TRACE_PREFIX + " syncServiceState: shouldRun=" + shouldRun + ", reason=" + reason);
+        AppLog.d(TAG, BG_TRACE_PREFIX + " syncServiceState: shouldRun=" + shouldRun + ", reason=" + reason);
         if (shouldRun) {
             Intent intent = new Intent(appContext, AutoModeForegroundService.class);
             intent.setAction(ACTION_SYNC);
@@ -156,7 +156,7 @@ public class AutoModeForegroundService extends Service {
                     || autoCompassEnabled
                     || autoBossEnabled;
         } catch (Exception e) {
-            Log.w(TAG, BG_TRACE_PREFIX + " shouldRunInBackground: fallback by AppVars.Autoboi", e);
+            AppLog.w(TAG, BG_TRACE_PREFIX + " shouldRunInBackground: fallback by AppVars.Autoboi", e);
             return AppVars.Autoboi == AutoboiState.AutoboiOn;
         }
     }
@@ -168,13 +168,13 @@ public class AutoModeForegroundService extends Service {
         markClientAction("Сервис запущен");
         startForeground(NOTIFICATION_ID, buildNotification("Авто-режим работает в фоне"));
         ensureLocks();
-        Log.d(TAG, BG_TRACE_PREFIX + " onCreate: foreground started");
+        AppLog.d(TAG, BG_TRACE_PREFIX + " onCreate: foreground started");
     }
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         String reason = intent != null ? intent.getStringExtra("reason") : "unknown";
-        Log.d(TAG, BG_TRACE_PREFIX + " onStartCommand: reason=" + reason + ", startId=" + startId);
+        AppLog.d(TAG, BG_TRACE_PREFIX + " onStartCommand: reason=" + reason + ", startId=" + startId);
         startTickLoop();
         return START_STICKY;
     }
@@ -183,7 +183,7 @@ public class AutoModeForegroundService extends Service {
     public void onDestroy() {
         stopTickLoop();
         releaseLocks();
-        Log.d(TAG, BG_TRACE_PREFIX + " onDestroy: foreground stopped");
+        AppLog.d(TAG, BG_TRACE_PREFIX + " onDestroy: foreground stopped");
         super.onDestroy();
     }
 
@@ -203,7 +203,7 @@ public class AutoModeForegroundService extends Service {
                 try {
                     boolean shouldRun = shouldRunInBackground(AutoModeForegroundService.this);
                     if (!shouldRun) {
-                        Log.d(TAG, BG_TRACE_PREFIX + " tick: stopSelf (flags disabled)");
+                        AppLog.d(TAG, BG_TRACE_PREFIX + " tick: stopSelf (flags disabled)");
                         stopSelf();
                         return;
                     }
@@ -211,7 +211,7 @@ public class AutoModeForegroundService extends Service {
                     ensureLocks();
                     runBackgroundTick();
                 } catch (Exception e) {
-                    Log.e(TAG, BG_TRACE_PREFIX + " tick: error", e);
+                    AppLog.e(TAG, BG_TRACE_PREFIX + " tick: error", e);
                 } finally {
                     if (tickRunnable != null) {
                         handler.postDelayed(this, TICK_INTERVAL_MS);
@@ -254,11 +254,11 @@ public class AutoModeForegroundService extends Service {
                 lastMainActivitySeenAtMs = now;
             }
             long noActivityForMs = now - lastMainActivitySeenAtMs;
-            Log.d(TAG, BG_TRACE_PREFIX + " tick: mainActivity=null, noActivityForMs=" + noActivityForMs);
+            AppLog.d(TAG, BG_TRACE_PREFIX + " tick: mainActivity=null, noActivityForMs=" + noActivityForMs);
             markClientAction("UI недоступен: " + (noActivityForMs / 1000) + "с");
             refreshForegroundNotification(false, false, false, false);
             if (noActivityForMs >= NO_ACTIVITY_STOP_TIMEOUT_MS) {
-                Log.d(TAG, BG_TRACE_PREFIX + " tick: stopSelf (no activity for too long)");
+                AppLog.d(TAG, BG_TRACE_PREFIX + " tick: stopSelf (no activity for too long)");
                 stopSelf();
             }
             return;
@@ -284,7 +284,7 @@ public class AutoModeForegroundService extends Service {
                 boolean fightLikelyActive = isFightSessionLikelyActive(activity);
                 boolean uiForegroundInteractive = activity.isUiForegroundInteractive();
                 boolean uiForegroundLikely = activity.isUiForegroundLikely();
-                Log.d(TAG, BG_TRACE_PREFIX + " uiTick: locationTracking=" + locationTrackingEnabled
+                AppLog.d(TAG, BG_TRACE_PREFIX + " uiTick: locationTracking=" + locationTrackingEnabled
                         + ", autoCompass=" + autoCompassEnabled
                         + ", autoBoss=" + autoBossEnabled
                         + ", autoFight=" + autoFightEnabled
@@ -316,7 +316,7 @@ public class AutoModeForegroundService extends Service {
                 boolean staleReadyFinishLink = isReadyFightFinishLink(pendingFightFinishLink)
                         && !isFightFinishDispatchContextValid(tickNow);
                 if (staleReadyFinishLink) {
-                    Log.d(TAG, BG_TRACE_PREFIX + " uiTick: drop stale fight finish link (no active fight context): "
+                    AppLog.d(TAG, BG_TRACE_PREFIX + " uiTick: drop stale fight finish link (no active fight context): "
                             + pendingFightFinishLink);
                     AppVars.FightLink = "";
                     pendingFightFinishLink = "";
@@ -330,13 +330,13 @@ public class AutoModeForegroundService extends Service {
                     boolean sameAsLastFinish = pendingFightFinishLink.equals(lastAutoFightFinishLink);
                     if (!sameAsLastFinish || sinceLastFinishDispatch >= AUTO_FIGHT_FINISH_MIN_INTERVAL_MS) {
                         if (activity.getMainWebView() != null) {
-                            Log.d(TAG, BG_TRACE_PREFIX + " uiTick: dispatch fight finish link: " + pendingFightFinishLink);
+                            AppLog.d(TAG, BG_TRACE_PREFIX + " uiTick: dispatch fight finish link: " + pendingFightFinishLink);
                             activity.getMainWebView().loadUrl(pendingFightFinishLink);
                             markClientAction("Завершение боя: act=7");
                             lastAutoFightFinishDispatchAtMs = tickNow;
                             lastAutoFightFinishLink = pendingFightFinishLink;
                         } else {
-                            Log.w(TAG, BG_TRACE_PREFIX + " uiTick: skip fight finish dispatch, mainWebView=null");
+                            AppLog.w(TAG, BG_TRACE_PREFIX + " uiTick: skip fight finish dispatch, mainWebView=null");
                             markClientAction("Пропуск act=7: webView=null");
                         }
                         // Чистим ссылку после попытки отправки, чтобы не дублировать в следующем тике.
@@ -344,7 +344,7 @@ public class AutoModeForegroundService extends Service {
                         refreshForegroundNotification(autoFightEnabled, locationTrackingEnabled, captchaDialogVisible, true);
                         return;
                     } else {
-                        Log.d(TAG, BG_TRACE_PREFIX + " uiTick: fight finish dispatch throttled, remainingMs="
+                        AppLog.d(TAG, BG_TRACE_PREFIX + " uiTick: fight finish dispatch throttled, remainingMs="
                                 + (AUTO_FIGHT_FINISH_MIN_INTERVAL_MS - sinceLastFinishDispatch));
                     }
                 }
@@ -380,14 +380,14 @@ public class AutoModeForegroundService extends Service {
                             lastPostFightPipelineTickAtMs = tickNow;
                             String pendingReason = buildPendingBackgroundPipelineReason();
                             markClientAction("Фоновый pipeline: " + pendingReason);
-                            Log.d(TAG, BG_TRACE_PREFIX + " uiTick: run pending pipeline, reason=" + pendingReason
+                            AppLog.d(TAG, BG_TRACE_PREFIX + " uiTick: run pending pipeline, reason=" + pendingReason
                                     + ", url=" + pipelineUrl);
                         } else {
                             markClientAction("Пропуск pipeline: webView=null");
-                            Log.w(TAG, BG_TRACE_PREFIX + " uiTick: skip pending pipeline, mainWebView=null");
+                            AppLog.w(TAG, BG_TRACE_PREFIX + " uiTick: skip pending pipeline, mainWebView=null");
                         }
                     } else {
-                        Log.d(TAG, BG_TRACE_PREFIX + " uiTick: pending pipeline throttled, remainingMs="
+                        AppLog.d(TAG, BG_TRACE_PREFIX + " uiTick: pending pipeline throttled, remainingMs="
                                 + (POST_FIGHT_PIPELINE_MIN_INTERVAL_MS - sinceLastPipelineTick)
                                 + ", reason=" + buildPendingBackgroundPipelineReason());
                     }
@@ -401,7 +401,7 @@ public class AutoModeForegroundService extends Service {
                         markClientAction("Слежение: обновление локации");
                         lastRoomUsersTickAtMs = tickNow;
                     } else {
-                        Log.d(TAG, BG_TRACE_PREFIX + " uiTick: room refresh throttled, remainingMs="
+                        AppLog.d(TAG, BG_TRACE_PREFIX + " uiTick: room refresh throttled, remainingMs="
                                 + (roomTickIntervalMs - (tickNow - lastRoomUsersTickAtMs)));
                     }
                 }
@@ -425,7 +425,7 @@ public class AutoModeForegroundService extends Service {
                             && !fightLikelyActive
                             && !hasFightMarkers(AppVars.ContentMainPhp)
                             && pendingFightFinishLink.isEmpty()) {
-                        Log.d(TAG, BG_TRACE_PREFIX + " uiTick: skip autoTurn/probe while map automation active");
+                        AppLog.d(TAG, BG_TRACE_PREFIX + " uiTick: skip autoTurn/probe while map automation active");
                         markClientAction("Пауза авто-хода: активен Авто-Клад");
                         refreshForegroundNotification(autoFightEnabled, locationTrackingEnabled, captchaDialogVisible, false);
                         return;
@@ -439,7 +439,7 @@ public class AutoModeForegroundService extends Service {
                             fightLikelyActive,
                             hasFightMarkers(AppVars.ContentMainPhp),
                             !pendingFightFinishLink.isEmpty())) {
-                        Log.d(TAG, BG_TRACE_PREFIX + " uiTick: skip autoTurn/probe - blocked by UI or other conditions");
+                        AppLog.d(TAG, BG_TRACE_PREFIX + " uiTick: skip autoTurn/probe - blocked by UI or other conditions");
                         markClientAction("Пауза авто-хода: активный UI");
                         refreshForegroundNotification(autoFightEnabled, locationTrackingEnabled, captchaDialogVisible, false);
                         return;
@@ -451,23 +451,23 @@ public class AutoModeForegroundService extends Service {
                             : AUTO_TURN_IDLE_PROBE_INTERVAL_MS;
                     if (sinceLastAutoTurnMs >= minIntervalMs) {
                         if (!fightLikelyActive) {
-                            Log.d(TAG, BG_TRACE_PREFIX + " uiTick: autoTurn idle probe");
+                            AppLog.d(TAG, BG_TRACE_PREFIX + " uiTick: autoTurn idle probe");
                         }
                         activity.requestAutoTurnBackgroundAware();
                         markClientAction(fightLikelyActive ? "Авто-ход: запрос шага" : "Авто-ход: idle-probe");
                         lastAutoTurnTickAtMs = tickNow;
                     } else {
-                        Log.d(TAG, BG_TRACE_PREFIX + " uiTick: autoTurn throttled, remainingMs="
+                        AppLog.d(TAG, BG_TRACE_PREFIX + " uiTick: autoTurn throttled, remainingMs="
                                 + (minIntervalMs - sinceLastAutoTurnMs)
                                 + ", fightLikelyActive=" + fightLikelyActive);
                     }
                 } else if (autoFightEnabled && captchaDialogVisible) {
-                    Log.d(TAG, BG_TRACE_PREFIX + " uiTick: skip autoTurn, captcha dialog visible");
+                    AppLog.d(TAG, BG_TRACE_PREFIX + " uiTick: skip autoTurn, captcha dialog visible");
                     markClientAction("Ожидание ввода капчи");
                 }
                 refreshForegroundNotification(autoFightEnabled, locationTrackingEnabled, captchaDialogVisible, false);
             } catch (Exception e) {
-                Log.e(TAG, BG_TRACE_PREFIX + " uiTick: failed", e);
+                AppLog.e(TAG, BG_TRACE_PREFIX + " uiTick: failed", e);
             }
         });
     }
@@ -493,7 +493,7 @@ public class AutoModeForegroundService extends Service {
         // Начальный bootstrap: если Activity еще не делала ни одного poll-запроса.
         if (lastChatRefreshAtMs <= 0L) {
             if (tickNow - lastForcedChatRefreshAtMs >= forceCooldownMs) {
-                Log.d(TAG, BG_TRACE_PREFIX + " uiTick: chat refresh bootstrap");
+                AppLog.d(TAG, BG_TRACE_PREFIX + " uiTick: chat refresh bootstrap");
                 activity.requestChatRefreshNow();
                 markClientAction("Чат: bootstrap refresh");
                 lastForcedChatRefreshAtMs = tickNow;
@@ -509,7 +509,7 @@ public class AutoModeForegroundService extends Service {
             return;
         }
 
-        Log.w(TAG, BG_TRACE_PREFIX + " uiTick: chat refresh watchdog, staleForMs=" + staleForMs
+        AppLog.w(TAG, BG_TRACE_PREFIX + " uiTick: chat refresh watchdog, staleForMs=" + staleForMs
                 + ", refreshIntervalMs=" + refreshIntervalMs);
         activity.requestChatRefreshNow();
         markClientAction("Чат: watchdog refresh");
@@ -635,7 +635,7 @@ public class AutoModeForegroundService extends Service {
         activity.getMainWebView().loadUrl(syncUrl);
         lastForceFightSyncAtMs = tickNow;
         markClientAction("Синхронизация fight-frame");
-        Log.d(TAG, BG_TRACE_PREFIX + " uiTick: force fight-frame sync after attack announce, url=" + syncUrl);
+        AppLog.d(TAG, BG_TRACE_PREFIX + " uiTick: force fight-frame sync after attack announce, url=" + syncUrl);
     }
 
     /**
@@ -716,7 +716,7 @@ public class AutoModeForegroundService extends Service {
             if (sameAsSubmitted && submittedAtMs > 0L
                     && lastCapturedCaptchaAtMs > 0L
                     && lastCapturedCaptchaAtMs <= submittedAtMs) {
-                Log.d(TAG, BG_TRACE_PREFIX + " uiTick: skip stale fight captcha after submit,"
+                AppLog.d(TAG, BG_TRACE_PREFIX + " uiTick: skip stale fight captcha after submit,"
                         + " ageMs=" + submittedAgeMs
                         + ", lastCaptchaAtMs=" + lastCapturedCaptchaAtMs
                         + ", submittedAtMs=" + submittedAtMs);
@@ -725,7 +725,7 @@ public class AutoModeForegroundService extends Service {
             }
 
             if (sameAsSubmitted && submittedAgeMs >= 0L && submittedAgeMs < FIGHT_CAPTCHA_SUBMIT_GUARD_TTL_MS) {
-                Log.d(TAG, BG_TRACE_PREFIX + " uiTick: skip duplicate fight captcha after submit, ageMs=" + submittedAgeMs);
+                AppLog.d(TAG, BG_TRACE_PREFIX + " uiTick: skip duplicate fight captcha after submit, ageMs=" + submittedAgeMs);
                 markClientAction("Капча: anti-duplicate guard");
                 return true;
             }
@@ -737,7 +737,7 @@ public class AutoModeForegroundService extends Service {
 
         String captchaUrl = normalizeNeverlandsUrl(AppVars.CodeAddress);
         if (captchaUrl.isEmpty()) {
-            Log.w(TAG, BG_TRACE_PREFIX + " uiTick: fight captcha required but captcha url is empty");
+            AppLog.w(TAG, BG_TRACE_PREFIX + " uiTick: fight captcha required but captcha url is empty");
             markClientAction("Капча: нет URL challenge");
             return true;
         }
@@ -760,7 +760,7 @@ public class AutoModeForegroundService extends Service {
         intent.putExtra("finishUrl", pendingFightFinishLink);
         LocalBroadcastManager.getInstance(getApplicationContext()).sendBroadcast(intent);
         markClientAction("Капча: показ popup");
-        Log.d(TAG, BG_TRACE_PREFIX + " uiTick: fight captcha popup requested, finishUrl=" + pendingFightFinishLink);
+        AppLog.d(TAG, BG_TRACE_PREFIX + " uiTick: fight captcha popup requested, finishUrl=" + pendingFightFinishLink);
         return true;
     }
 
@@ -826,7 +826,7 @@ public class AutoModeForegroundService extends Service {
         }
         if (wakeLock != null && !wakeLock.isHeld()) {
             wakeLock.acquire();
-            Log.d(TAG, BG_TRACE_PREFIX + " ensureLocks: wakeLock acquired");
+            AppLog.d(TAG, BG_TRACE_PREFIX + " ensureLocks: wakeLock acquired");
         }
 
         if (wifiLock == null) {
@@ -843,25 +843,25 @@ public class AutoModeForegroundService extends Service {
                     wifiLock.setReferenceCounted(false);
                 }
             } catch (Exception e) {
-                Log.w(TAG, BG_TRACE_PREFIX + " ensureLocks: wifiLock unavailable", e);
+                AppLog.w(TAG, BG_TRACE_PREFIX + " ensureLocks: wifiLock unavailable", e);
             }
         }
         if (wifiLock != null && !wifiLock.isHeld()) {
             wifiLock.acquire();
-            Log.d(TAG, BG_TRACE_PREFIX + " ensureLocks: wifiLock acquired");
+            AppLog.d(TAG, BG_TRACE_PREFIX + " ensureLocks: wifiLock acquired");
         }
     }
 
     private void releaseLocks() {
         if (wakeLock != null && wakeLock.isHeld()) {
             wakeLock.release();
-            Log.d(TAG, BG_TRACE_PREFIX + " releaseLocks: wakeLock released");
+            AppLog.d(TAG, BG_TRACE_PREFIX + " releaseLocks: wakeLock released");
         }
         wakeLock = null;
 
         if (wifiLock != null && wifiLock.isHeld()) {
             wifiLock.release();
-            Log.d(TAG, BG_TRACE_PREFIX + " releaseLocks: wifiLock released");
+            AppLog.d(TAG, BG_TRACE_PREFIX + " releaseLocks: wifiLock released");
         }
         wifiLock = null;
     }

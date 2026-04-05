@@ -4,7 +4,7 @@ import android.content.Intent;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
-import android.util.Log;
+import ru.neverlands.abclient.utils.AppLog;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.widget.Button;
@@ -178,7 +178,7 @@ public class ContactsActivity extends AppCompatActivity implements ContactsAdapt
                 clanInfoCache.putAll(tempCache);
                 runOnUiThread(this::buildDisplayList);
             } catch (IOException e) {
-                Log.e("ClanInfoParser", "Error parsing clans.txt", e);
+                AppLog.e("ClanInfoParser", "Error parsing clans.txt", e);
             }
         }).start();
     }
@@ -570,11 +570,11 @@ public class ContactsActivity extends AppCompatActivity implements ContactsAdapt
                                     public void onSuccess(Contact contact) {
                                         contact.classId = group.groupClassId;
                                         ContactsManager.updateContact(contact);
-                                        Log.d("ClanImport", "Added/Updated: " + contact.nick + " with classId: " + contact.classId);
+                                        AppLog.d("ClanImport", "Added/Updated: " + contact.nick + " with classId: " + contact.classId);
                                     }
                                     @Override
                                     public void onFailure(String message) { 
-                                        Log.e("ClanImport", "Failed to add " + nick + ": " + message);
+                                        AppLog.e("ClanImport", "Failed to add " + nick + ": " + message);
                                     }
                                 });
                                 try { Thread.sleep(1000); } catch (InterruptedException e) { e.printStackTrace(); } 
@@ -596,7 +596,7 @@ public class ContactsActivity extends AppCompatActivity implements ContactsAdapt
 
             } catch (IOException e) {
                 runOnUiThread(() -> Toast.makeText(ContactsActivity.this, "Ошибка чтения файла кланов.", Toast.LENGTH_LONG).show());
-                Log.e("ClanImport", "Error reading clans.txt", e);
+                AppLog.e("ClanImport", "Error reading clans.txt", e);
             }
         }).start();
     }

@@ -1,7 +1,7 @@
 package ru.neverlands.abclient.utils;
 
 import android.content.Context;
-import android.util.Log;
+import ru.neverlands.abclient.utils.AppLog;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -42,7 +42,7 @@ public class DataManager {
         File cacheDir = new File(appContext.getExternalFilesDir(null), "abcache");
         if (!cacheDir.exists()) {
             if (!cacheDir.mkdirs()) {
-                Log.e(TAG, "Failed to create cache directory");
+                AppLog.e(TAG, "Failed to create cache directory");
             }
         }
         
@@ -50,7 +50,7 @@ public class DataManager {
         File logsDir = new File(appContext.getExternalFilesDir(null), "logs");
         if (!logsDir.exists()) {
             if (!logsDir.mkdirs()) {
-                Log.e(TAG, "Failed to create logs directory");
+                AppLog.e(TAG, "Failed to create logs directory");
             }
         }
 
@@ -66,7 +66,7 @@ public class DataManager {
         File profilesDir = new File(appContext.getExternalFilesDir(null), "profiles");
         if (!profilesDir.exists()) {
             if (!profilesDir.mkdirs()) {
-                Log.e(TAG, "Failed to create profiles directory");
+                AppLog.e(TAG, "Failed to create profiles directory");
             }
         }
         return profilesDir;
@@ -89,7 +89,7 @@ public class DataManager {
             copyAssetIfNotExists("ch_list.js");
             copyAssetIfNotExists("map.js");
         } catch (IOException e) {
-            Log.e(TAG, "Error copying assets", e);
+            AppLog.e(TAG, "Error copying assets", e);
         }
     }
     
@@ -128,7 +128,7 @@ public class DataManager {
             fis.read(data);
             return new String(data, StandardCharsets.UTF_8);
         } catch (IOException e) {
-            Log.e(TAG, "Error reading file: " + fileName, e);
+            AppLog.e(TAG, "Error reading file: " + fileName, e);
             return null;
         }
     }
@@ -155,7 +155,7 @@ public class DataManager {
             fos.write(content.getBytes(StandardCharsets.UTF_8));
             return true;
         } catch (IOException e) {
-            Log.e(TAG, "Error writing file: " + file.getName(), e);
+            AppLog.e(TAG, "Error writing file: " + file.getName(), e);
             return false;
         }
     }
@@ -176,7 +176,7 @@ public class DataManager {
             fis.read(data);
             return data;
         } catch (IOException e) {
-            Log.e(TAG, "Error reading file: " + fileName, e);
+            AppLog.e(TAG, "Error reading file: " + fileName, e);
             return null;
         }
     }
@@ -193,7 +193,7 @@ public class DataManager {
             fos.write(content);
             return true;
         } catch (IOException e) {
-            Log.e(TAG, "Error writing file: " + fileName, e);
+            AppLog.e(TAG, "Error writing file: " + fileName, e);
             return false;
         }
     }

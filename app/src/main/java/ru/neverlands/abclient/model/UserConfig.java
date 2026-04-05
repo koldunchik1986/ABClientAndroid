@@ -1,5 +1,7 @@
 package ru.neverlands.abclient.model;
 
+
+import ru.neverlands.abclient.utils.AppLog;
 import android.content.Context;
 import android.util.Xml;
 
@@ -512,7 +514,7 @@ public class UserConfig {
                         this.ProxyAddress = proxyAddress != null ? proxyAddress : this.ProxyAddress;
                         this.ProxyUserName = proxyUserName != null ? proxyUserName : this.ProxyUserName;
                         this.ProxyPassword = proxyPassword != null ? proxyPassword : this.ProxyPassword;
-                        android.util.Log.i(TAG, "load: proxy tag parsed, active=" + proxyActive
+                        AppLog.i(TAG, "load: proxy tag parsed, active=" + proxyActive
                                 + ", address=" + this.ProxyAddress);
                     } else if ("DoProxy".equalsIgnoreCase(tagName) || "UseProxy".equalsIgnoreCase(tagName)) {
                         // Legacy Android migration: старые профили могли хранить флаги отдельными узлами
@@ -521,12 +523,12 @@ public class UserConfig {
                         this.DoProxy = value;
                         this.UseProxy = value;
                         legacyProxyNodesParsed = true;
-                        android.util.Log.i(TAG, "load: legacy proxy flag node parsed, value=" + value);
+                        AppLog.i(TAG, "load: legacy proxy flag node parsed, value=" + value);
                     } else if ("ProxyAddress".equalsIgnoreCase(tagName)) {
                         String value = parseNodeText(parser, this.ProxyAddress);
                         this.ProxyAddress = value == null ? "" : value.trim();
                         legacyProxyNodesParsed = true;
-                        android.util.Log.i(TAG, "load: legacy ProxyAddress node parsed, address=" + this.ProxyAddress);
+                        AppLog.i(TAG, "load: legacy ProxyAddress node parsed, address=" + this.ProxyAddress);
                     } else if ("ProxyUserName".equalsIgnoreCase(tagName)) {
                         String value = parseNodeText(parser, this.ProxyUserName);
                         this.ProxyUserName = value == null ? "" : value.trim();
@@ -667,7 +669,7 @@ public class UserConfig {
                             if (g.SpellsHits == null || g.SpellsHits.length == 0) g.SpellsHits = defaults.SpellsHits;
                             if (g.SpellsBlocks == null || g.SpellsBlocks.length == 0) g.SpellsBlocks = defaults.SpellsBlocks;
                             if (g.SpellsMisc == null || g.SpellsMisc.length == 0) g.SpellsMisc = defaults.SpellsMisc;
-                            android.util.Log.w(TAG, "load: fixed invalid autoboi combat flags for group id=" + g.Id);
+                            AppLog.w(TAG, "load: fixed invalid autoboi combat flags for group id=" + g.Id);
                         }
                         // Обновляем или добавляем группу по полной паре ключей (Id + MinimalLevel).
                         // C# parity: в профиле могут одновременно существовать, например, "Боты 10+" и "Боты 0+".
@@ -778,7 +780,7 @@ public class UserConfig {
                 eventType = parser.next();
             }
             if (!proxyTagParsed && legacyProxyNodesParsed) {
-                android.util.Log.i(TAG, "load: migrated legacy proxy nodes into runtime profile fields");
+                AppLog.i(TAG, "load: migrated legacy proxy nodes into runtime profile fields");
             }
             normalizeProxyFlags();
             normalizeLezGroups();
@@ -1232,7 +1234,7 @@ public class UserConfig {
     private void normalizeProxyFlags() {
         boolean merged = this.DoProxy || this.UseProxy;
         if (this.DoProxy != merged || this.UseProxy != merged) {
-            android.util.Log.i(TAG, "normalizeProxyFlags: doProxy=" + this.DoProxy
+            AppLog.i(TAG, "normalizeProxyFlags: doProxy=" + this.DoProxy
                     + ", useProxy=" + this.UseProxy + " -> merged=" + merged);
         }
         this.DoProxy = merged;

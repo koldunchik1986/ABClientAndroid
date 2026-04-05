@@ -1,7 +1,7 @@
 package ru.neverlands.abclient.proxy;
 
 import android.content.Context;
-import android.util.Log;
+import ru.neverlands.abclient.utils.AppLog;
 
 import java.net.InetSocketAddress;
 import java.net.Proxy;
@@ -57,14 +57,14 @@ public final class ProxyRuntimeManager {
             lastStartError = "";
             strictProxyRequired = isStrictProxyRequired(profile);
             String signature = buildSignature(profile);
-            Log.i(TAG, "PROXY_BOOT: ensureStarted, doProxy="
+            AppLog.i(TAG, "PROXY_BOOT: ensureStarted, doProxy="
                     + (profile != null && profile.DoProxy)
                     + ", useProxy=" + (profile != null && profile.UseProxy)
                     + ", proxyAddress=" + (profile == null ? "" : safeLower(profile.ProxyAddress))
                     + ", running=" + (proxyServer != null && activePort > 0)
                     + ", strictRequired=" + strictProxyRequired);
             if (proxyServer != null && activePort > 0 && signature.equals(activeSignature)) {
-                Log.i(TAG, "PROXY_BOOT: reuse active runtime, port=" + activePort);
+                AppLog.i(TAG, "PROXY_BOOT: reuse active runtime, port=" + activePort);
                 return true;
             }
 
@@ -91,16 +91,16 @@ public final class ProxyRuntimeManager {
                 AppVars.LocalProxyAddress = "127.0.0.1";
                 AppVars.LocalProxyPort = bound;
 
-                Log.i(TAG, "PROXY_BOOT: started, host=127.0.0.1, port=" + bound
+                AppLog.i(TAG, "PROXY_BOOT: started, host=127.0.0.1, port=" + bound
                         + ", mode=" + (upstream.enabled ? "UPSTREAM" : "DIRECT"));
                 if (upstream.enabled) {
-                    Log.i(TAG, "PROXY_UPSTREAM: host=" + upstream.host
+                    AppLog.i(TAG, "PROXY_UPSTREAM: host=" + upstream.host
                             + ", port=" + upstream.port
                             + ", auth=" + (upstream.basicAuthHeader != null && !upstream.basicAuthHeader.isEmpty()));
-                    Log.i(TAG, "PROXY_AUTH: upstream basic auth enabled="
+                    AppLog.i(TAG, "PROXY_AUTH: upstream basic auth enabled="
                             + (upstream.basicAuthHeader != null && !upstream.basicAuthHeader.isEmpty()));
                 } else {
-                    Log.i(TAG, "PROXY_AUTH: upstream auth disabled (direct mode)");
+                    AppLog.i(TAG, "PROXY_AUTH: upstream auth disabled (direct mode)");
                 }
 
                 applyWebViewProxyOverrideLocked(context);
@@ -125,7 +125,7 @@ public final class ProxyRuntimeManager {
      */
     public static void stop(boolean clearWebViewProxy) {
         synchronized (LOCK) {
-            Log.i(TAG, "PROXY_BOOT: stop requested, clearWebViewProxy=" + clearWebViewProxy);
+            AppLog.i(TAG, "PROXY_BOOT: stop requested, clearWebViewProxy=" + clearWebViewProxy);
             stopLocked(clearWebViewProxy);
         }
     }
@@ -143,7 +143,7 @@ public final class ProxyRuntimeManager {
             if (activePort <= 0 || proxyServer == null) {
                 return null;
             }
-            Log.d(TAG, "PROXY_BINDING: java.net.Proxy endpoint=127.0.0.1:" + activePort);
+            AppLog.d(TAG, "PROXY_BINDING: java.net.Proxy endpoint=127.0.0.1:" + activePort);
             return new Proxy(Proxy.Type.HTTP, new InetSocketAddress("127.0.0.1", activePort));
         }
     }
@@ -167,7 +167,7 @@ public final class ProxyRuntimeManager {
      */
     public static void applyWebViewProxyOverride(Context context) {
         synchronized (LOCK) {
-            Log.i(TAG, "PROXY_BINDING: applyWebViewProxyOverride requested, running=" + (activePort > 0));
+            AppLog.i(TAG, "PROXY_BINDING: applyWebViewProxyOverride requested, running=" + (activePort > 0));
             applyWebViewProxyOverrideLocked(context);
         }
     }
@@ -221,7 +221,7 @@ public final class ProxyRuntimeManager {
             return;
         }
         WebViewProxyHelper.setWebViewProxy("127.0.0.1", activePort, () ->
-                Log.i(TAG, "PROXY_BINDING: WebView override applied to 127.0.0.1:" + activePort));
+                AppLog.i(TAG, "PROXY_BINDING: WebView override applied to 127.0.0.1:" + activePort));
     }
 
     private static void stopLocked(boolean clearWebViewProxy) {
@@ -237,12 +237,12 @@ public final class ProxyRuntimeManager {
         if (clearWebViewProxy) {
             try {
                 WebViewProxyHelper.clearWebViewProxy();
-                Log.i(TAG, "PROXY_BINDING: WebView override cleared");
+                AppLog.i(TAG, "PROXY_BINDING: WebView override cleared");
             } catch (Throwable t) {
                 ProxyLogDeduper.warn(TAG, "clear_webview_override", "PROXY_FAIL: clear WebView override failed", t, LOG_DEDUP_WINDOW_MS);
             }
         }
-        Log.i(TAG, "PROXY_BOOT: runtime stopped");
+        AppLog.i(TAG, "PROXY_BOOT: runtime stopped");
     }
 
     private static String buildSignature(UserConfig profile) {

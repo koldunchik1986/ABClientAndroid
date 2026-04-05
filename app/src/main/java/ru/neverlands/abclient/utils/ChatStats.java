@@ -1,6 +1,6 @@
 package ru.neverlands.abclient.utils;
 
-import android.util.Log;
+import ru.neverlands.abclient.utils.AppLog;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -118,7 +118,7 @@ public class ChatStats {
     public static synchronized void addFight() {
         ensureLoaded();
         totalFights++;
-        Log.d(TAG, "addFight: totalFights=" + totalFights + ", resetDate=" + statsResetDateYmd);
+        AppLog.d(TAG, "addFight: totalFights=" + totalFights + ", resetDate=" + statsResetDateYmd);
         saveInternal();
     }
 
@@ -287,7 +287,7 @@ public class ChatStats {
             changed = true;
         }
         if (changed) {
-            Log.d(TAG, "addResourceDeltaKg: totalResourceKg=" + totalResourceKg
+            AppLog.d(TAG, "addResourceDeltaKg: totalResourceKg=" + totalResourceKg
                     + ", resourceTypes=" + resourceKgByType.size());
             saveInternal();
         }
@@ -420,14 +420,14 @@ public class ChatStats {
                 }
             }
         } catch (Exception e) {
-            Log.e(TAG, "loadFromFile failed", e);
+            AppLog.e(TAG, "loadFromFile failed", e);
         }
         if (statsResetDateYmd == null || statsResetDateYmd.isEmpty()) {
             statsResetDateYmd = currentDate;
         }
         // Миграция legacy-дневного файла в новый профильный файл.
         if (statFile != null && sourceFile != null && !statFile.equals(sourceFile)) {
-            Log.i(TAG, "loadFromFile: migrate legacy daily stats -> profile stats file");
+            AppLog.i(TAG, "loadFromFile: migrate legacy daily stats -> profile stats file");
             saveInternal();
         }
     }
@@ -452,7 +452,7 @@ public class ChatStats {
         try (FileOutputStream fos = new FileOutputStream(statFile, false)) {
             fos.write(sb.toString().getBytes(StandardCharsets.UTF_8));
         } catch (Exception e) {
-            Log.e(TAG, "saveInternal failed", e);
+            AppLog.e(TAG, "saveInternal failed", e);
         }
     }
 
@@ -575,7 +575,7 @@ public class ChatStats {
             return;
         }
         if (!currentDate.equals(statsResetDateYmd)) {
-            Log.i(TAG, "maybeApplyMidnightResetLocked: reset by midnight, from="
+            AppLog.i(TAG, "maybeApplyMidnightResetLocked: reset by midnight, from="
                     + statsResetDateYmd + " to=" + currentDate);
             resetStateLocked(System.currentTimeMillis(), currentDate);
             saveInternal();

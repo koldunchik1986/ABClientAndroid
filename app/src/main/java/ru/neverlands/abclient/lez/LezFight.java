@@ -2,7 +2,7 @@ package ru.neverlands.abclient.lez;
 
 import android.content.Context;
 import android.content.Intent;
-import android.util.Log;
+import ru.neverlands.abclient.utils.AppLog;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -129,7 +129,7 @@ public class LezFight {
         // Если fight_ty[3]=='0', сервер ещё не принимает наш submit удара — нужно ждать/обновлять кадр.
         // Предыдущая версия с `IsBoi && ... == '0'` делала флаг всегда false и вызывала "пустые" авто-удары.
         IsWaitingForNextTurn = (_fightty[3].length() >= 1) && (_fightty[3].charAt(0) == '0');
-        android.util.Log.d("LezFight", "fight_ty[3]=" + (_fightty[3].length() > 0 ? _fightty[3].charAt(0) : '?')
+        AppLog.d("LezFight", "fight_ty[3]=" + (_fightty[3].length() > 0 ? _fightty[3].charAt(0) : '?')
                 + ", IsBoi=" + IsBoi + ", IsWaitingForNextTurn=" + IsWaitingForNextTurn);
 
         String[] paramow = ParseString(html, "var param_ow = [", 0);
@@ -200,12 +200,12 @@ public class LezFight {
         // Сценарий актуален для навигатора-индуцированных боев (после teleport скролла).
         if (!_vcode.isEmpty()) {
             SessionManager.getInstance().cacheFightVCode(_vcode, "fight_pm");
-            android.util.Log.d("LezFight", "✅ FIGHT_CACHE: cached vcode=" + _vcode.substring(0, 8) + "... from fight_pm[4]");
+            AppLog.d("LezFight", "✅ FIGHT_CACHE: cached vcode=" + _vcode.substring(0, 8) + "... from fight_pm[4]");
         }
         
         _levbot = Strip(paramen[5]);
 
-        android.util.Log.d("LezFight", "fight_pm: magmax=" + fightpm[0] + ", odmax=" + fightpm[1] + ", hitval=" + fightpm[2] + ", vcode=" + _vcode.substring(0, Math.min(8, _vcode.length())));
+        AppLog.d("LezFight", "fight_pm: magmax=" + fightpm[0] + ", odmax=" + fightpm[1] + ", hitval=" + fightpm[2] + ", vcode=" + _vcode.substring(0, Math.min(8, _vcode.length())));
 
         // Парсим alchemy
         String[] alchemyArr = ParseString(html, "var alchemy = [", 0);
@@ -249,11 +249,11 @@ public class LezFight {
             _foeName = "Человек";
         }
 
-        android.util.Log.d("LezFight", "Foe: name=" + _foeName + ", level=" + _foeLevel + ", image=" + _foeImage);
+        AppLog.d("LezFight", "Foe: name=" + _foeName + ", level=" + _foeLevel + ", image=" + _foeImage);
 
         SelectFoeGroup();
 
-        android.util.Log.d("LezFight", "FoeGroup selected: Id=" + FoeGroup.Id + ", DoHits=" + FoeGroup.DoHits + ", DoBlocks=" + FoeGroup.DoBlocks + ", DoMiscAbils=" + FoeGroup.DoMiscAbils);
+        AppLog.d("LezFight", "FoeGroup selected: Id=" + FoeGroup.Id + ", DoHits=" + FoeGroup.DoHits + ", DoBlocks=" + FoeGroup.DoBlocks + ", DoMiscAbils=" + FoeGroup.DoMiscAbils);
 
         try {
             _magmax = Integer.parseInt(Strip(fightpm[0]));
@@ -275,7 +275,7 @@ public class LezFight {
                 try { lstandin.add(Integer.parseInt(Strip(s))); } catch (Exception ignored) {}
             }
         }
-        android.util.Log.d("LezFight", "stand_in parsed: " + lstandin);
+        AppLog.d("LezFight", "stand_in parsed: " + lstandin);
 
         Selpl(0, lstandin);
 
@@ -285,7 +285,7 @@ public class LezFight {
                 try { lmagicin.add(Integer.parseInt(Strip(s))); } catch (Exception ignored) {}
             }
         }
-        android.util.Log.d("LezFight", "magic_in parsed: " + lmagicin);
+        AppLog.d("LezFight", "magic_in parsed: " + lmagicin);
 
         _magicAlchemyIndexes.clear();
         if (!lmagicin.isEmpty()) Selpl(1, lmagicin);
@@ -317,7 +317,7 @@ public class LezFight {
 
         GenerateCombinations();
 
-        android.util.Log.d("LezFight", "GenerateCombinations: combinations count = " + LezCombinations.size());
+        AppLog.d("LezFight", "GenerateCombinations: combinations count = " + LezCombinations.size());
 
         DoStop = FoeGroup.DoStopNow;
         IsLowHp = FoeGroup.DoStopLowHp && (_percentHp <= FoeGroup.StopLowHp);
@@ -874,7 +874,7 @@ public class LezFight {
         sb.append("<input name=ina type=hidden value=\"").append(ina.toString()).append("\">");
 
         sb.append("</form>");
-        android.util.Log.d("LezFight", "BuildFrame payload: enemy=" + enemy
+        AppLog.d("LezFight", "BuildFrame payload: enemy=" + enemy
                 + ", group=" + group
                 + ", inf_bot=" + infbot
                 + ", inf_zb=" + infzb
@@ -924,7 +924,7 @@ public class LezFight {
             if (vcode != null && !vcode.isEmpty()) {
                 fallbackReloadUrl += "&vcode=" + vcode;
             } else {
-                Log.w("LezFight", "⚠️ SessionManager: vcode not available for fight fallback reload");
+                AppLog.w("LezFight", "⚠️ SessionManager: vcode not available for fight fallback reload");
             }
         }
 
@@ -938,7 +938,7 @@ public class LezFight {
         sb.append("</script></body></html>");
 
         Frame = sb.toString();
-        android.util.Log.d("LezFight", "BuildFrame: Frame generated, length=" + Frame.length() + ", delay=" + delay + "ms");
+        AppLog.d("LezFight", "BuildFrame: Frame generated, length=" + Frame.length() + ", delay=" + delay + "ms");
     }
 
     /**
@@ -1061,7 +1061,7 @@ public class LezFight {
         }
 
         if (filtered.size() != LezCombinations.size()) {
-            Log.d("LezFight", "Magic priority filter applied: base=" + LezCombinations.size()
+            AppLog.d("LezFight", "Magic priority filter applied: base=" + LezCombinations.size()
                     + ", filtered=" + filtered.size()
                     + ", preferScroll=" + preferScroll
                     + ", preferRestoreHp=" + preferRestoreHp);
@@ -1300,10 +1300,10 @@ public class LezFight {
                 "&ftype=" + fexp5;
             
             AppVars.FightLink = fightLink;
-            android.util.Log.d("LezFight", "BuildFightLink(" + (withCaptchaPlaceholder ? "captcha" : "normal")
+            AppLog.d("LezFight", "BuildFightLink(" + (withCaptchaPlaceholder ? "captcha" : "normal")
                     + "): " + fightLink + ", codeAddress=" + AppVars.CodeAddress);
         } catch (Exception e) {
-            android.util.Log.e("LezFight", "BuildFightLink error: " + e.getMessage());
+            AppLog.e("LezFight", "BuildFightLink error: " + e.getMessage());
         }
     }
 
@@ -1479,7 +1479,7 @@ public class LezFight {
                 AppVars.LastBoiSostav = joinMembers(opponents);
             }
         } catch (Exception e) {
-            Log.e("LezFight", "updateLastBoiFromLogs error: " + e.getMessage());
+            AppLog.e("LezFight", "updateLastBoiFromLogs error: " + e.getMessage());
         }
     }
 

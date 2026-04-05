@@ -1,7 +1,7 @@
 package ru.neverlands.abclient.repository;
 
 import android.content.Context;
-import android.util.Log;
+import ru.neverlands.abclient.utils.AppLog;
 import androidx.lifecycle.LiveData;
 import java.io.InputStream;
 import java.util.ArrayList;
@@ -33,14 +33,14 @@ public class ThingsRepository {
             ThingDao dao = AppDatabase.getDatabase(context).thingDao();
             int count = dao.getCount();
             if (count == 0) {
-                Log.d(TAG, "Things database is empty. Populating from XML...");
+                AppLog.d(TAG, "Things database is empty. Populating from XML...");
                 try {
                     InputStream inputStream = context.getAssets().open("abthings.xml");
                     List<Thing> things = parseThingsXml(inputStream);
                     dao.insertAll(things);
-                    Log.d(TAG, "Successfully populated " + things.size() + " items into the database.");
+                    AppLog.d(TAG, "Successfully populated " + things.size() + " items into the database.");
                 } catch (Exception e) {
-                    Log.e(TAG, "Error populating things database", e);
+                    AppLog.e(TAG, "Error populating things database", e);
                 }
             }
         });

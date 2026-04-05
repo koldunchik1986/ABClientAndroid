@@ -1,6 +1,6 @@
 package ru.neverlands.abclient.postfilter;
 
-import android.util.Log;
+import ru.neverlands.abclient.utils.AppLog;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -24,7 +24,7 @@ public class ChListJs {
      * @return Финальная версия скрипта для выполнения в WebView.
      */
     public static byte[] process(byte[] array) {
-        Log.d("ChListJs", "process() called");
+        AppLog.d("ChListJs", "process() called");
         if (array == null || array.length == 0) {
             return array;
         }
@@ -78,11 +78,11 @@ public class ChListJs {
                 e.printStackTrace();
             }
 
-            Log.d("ChListJs", "Finished processing ch_list.js");
+            AppLog.d("ChListJs", "Finished processing ch_list.js");
             return Russian.getBytes(html);
         } catch (Exception e) {
             e.printStackTrace();
-            Log.e("ChListJs", "Error processing ch_list.js", e);
+            AppLog.e("ChListJs", "Error processing ch_list.js", e);
             return new byte[0];
         }
     }

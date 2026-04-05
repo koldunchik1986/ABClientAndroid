@@ -1,6 +1,6 @@
 package ru.neverlands.abclient.postfilter;
 
-import android.util.Log;
+import ru.neverlands.abclient.utils.AppLog;
 import ru.neverlands.abclient.utils.AppVars;
 import ru.neverlands.abclient.utils.Russian;
 
@@ -124,7 +124,7 @@ public class FightJs {
 
             return Russian.getBytes(sb.toString());
         } catch (Exception e) {
-            Log.e("FightJs", "Error processing fight script", e);
+            AppLog.e("FightJs", "Error processing fight script", e);
             return array;
         }
     }

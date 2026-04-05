@@ -3,7 +3,7 @@ package ru.neverlands.abclient.manager;
 import android.content.Context;
 import android.os.Handler;
 import android.os.Looper;
-import android.util.Log;
+import ru.neverlands.abclient.utils.AppLog;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -162,7 +162,7 @@ public final class ClanWarsManager {
         ApiRepository.downloadFile(CLANS_URL, destinationFile, new ApiRepository.ApiCallback<String>() {
             @Override
             public void onSuccess(String result) {
-                Log.i(TAG, TRACE_PREFIX + " clans sync ok: file=" + destinationFile.getAbsolutePath());
+                AppLog.i(TAG, TRACE_PREFIX + " clans sync ok: file=" + destinationFile.getAbsolutePath());
                 if (callback != null) {
                     callback.onSuccess(result);
                 }
@@ -170,7 +170,7 @@ public final class ClanWarsManager {
 
             @Override
             public void onFailure(String message) {
-                Log.w(TAG, TRACE_PREFIX + " clans sync failed: " + message);
+                AppLog.w(TAG, TRACE_PREFIX + " clans sync failed: " + message);
                 if (callback != null) {
                     callback.onFailure(message);
                 }
@@ -198,7 +198,7 @@ public final class ClanWarsManager {
                 pendingWarsSyncCallbacks.add(callback);
             }
             if (warsSyncInProgress) {
-                Log.d(TAG, TRACE_PREFIX + " wars sync join in-flight request");
+                AppLog.d(TAG, TRACE_PREFIX + " wars sync join in-flight request");
                 return;
             }
             warsSyncInProgress = true;
@@ -223,7 +223,7 @@ public final class ClanWarsManager {
                     cachedWars.addAll(parsed);
                     lastWarsSyncAtMs = System.currentTimeMillis();
                 }
-                Log.i(TAG, TRACE_PREFIX + " wars sync ok: rows=" + parsed.size() + ", attempt=" + attempt);
+                AppLog.i(TAG, TRACE_PREFIX + " wars sync ok: rows=" + parsed.size() + ", attempt=" + attempt);
                 finishWarsSyncSuccess(parsed);
             }
 
@@ -232,13 +232,13 @@ public final class ClanWarsManager {
                 boolean retryable = isWarsRateLimitFailure(message);
                 if (retryable && attempt < WARS_SYNC_MAX_ATTEMPTS) {
                     long retryDelayMs = WARS_SYNC_RETRY_DELAY_BASE_MS * attempt;
-                    Log.w(TAG, TRACE_PREFIX + " wars sync retry: attempt=" + attempt
+                    AppLog.w(TAG, TRACE_PREFIX + " wars sync retry: attempt=" + attempt
                             + "/" + WARS_SYNC_MAX_ATTEMPTS + ", delayMs=" + retryDelayMs
                             + ", reason=" + message);
                     mainHandler.postDelayed(() -> syncWarsAttempt(destinationFile, attempt + 1), retryDelayMs);
                     return;
                 }
-                Log.w(TAG, TRACE_PREFIX + " wars sync failed: attempt=" + attempt + ", reason=" + message);
+                AppLog.w(TAG, TRACE_PREFIX + " wars sync failed: attempt=" + attempt + ", reason=" + message);
                 finishWarsSyncFailure(message);
             }
         });
@@ -403,7 +403,7 @@ public final class ClanWarsManager {
                 ));
             }
         } catch (Exception e) {
-            Log.e(TAG, TRACE_PREFIX + " parse wars failed", e);
+            AppLog.e(TAG, TRACE_PREFIX + " parse wars failed", e);
         }
         return parsed;
     }
@@ -412,11 +412,11 @@ public final class ClanWarsManager {
         File root = appContext.getExternalFilesDir(null);
         if (root == null) {
             root = appContext.getFilesDir();
-            Log.w(TAG, TRACE_PREFIX + " external files dir unavailable, fallback to internal files dir");
+            AppLog.w(TAG, TRACE_PREFIX + " external files dir unavailable, fallback to internal files dir");
         }
         File infoDir = new File(root, INFO_DIR);
         if (!infoDir.exists() && !infoDir.mkdirs()) {
-            Log.w(TAG, TRACE_PREFIX + " failed to create info dir: " + infoDir.getAbsolutePath());
+            AppLog.w(TAG, TRACE_PREFIX + " failed to create info dir: " + infoDir.getAbsolutePath());
         }
         return infoDir;
     }
@@ -519,7 +519,7 @@ public final class ClanWarsManager {
         if (reason == null || reason.trim().isEmpty()) {
             reason = "proxy runtime is not ready";
         }
-        Log.w(TAG, TRACE_PREFIX + " sync blocked: " + reason);
+        AppLog.w(TAG, TRACE_PREFIX + " sync blocked: " + reason);
         if (callback != null) {
             callback.onFailure("Proxy runtime error: " + reason);
         }
