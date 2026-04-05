@@ -2,9 +2,15 @@ package ru.neverlands.abclient.ui;
 
 
 import ru.neverlands.abclient.utils.AppLog;
+import android.annotation.SuppressLint;
 import android.content.Context;
+import android.util.Log;
 import android.view.Gravity;
 import android.view.View;
+import android.webkit.JavascriptInterface;
+import android.webkit.WebSettings;
+import android.webkit.WebView;
+import android.webkit.WebViewClient;
 import android.widget.ArrayAdapter;
 import android.widget.CheckBox;
 import android.widget.EditText;
@@ -34,9 +40,11 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import ru.neverlands.abclient.R;
+import ru.neverlands.abclient.bridge.WebAppInterface;
 import ru.neverlands.abclient.manager.AutoFunctionsManager;
 import ru.neverlands.abclient.utils.AppVars;
 import ru.neverlands.abclient.utils.ExtMap;
+import ru.neverlands.abclient.utils.FileLogger;
 
 /**
  * Навигатор клиента.
@@ -66,6 +74,7 @@ public class Navigator {
     private static final int NAV_CATEGORY_OBJECTS = 5;
     private static final int NAV_CATEGORY_TELEPORTS = 6;
     private static final int NAV_CATEGORY_CITIES_ALL = 7;
+    private static final String NAV_MINIMAP_TRACE_PREFIX = "NAV_MINIMAP_TRACE";
 
     private static final String CITY_SUBCATEGORY_ENTRY_DELIMITER = ";";
     private static final String CITY_SUBCATEGORY_VALUE_DELIMITER = "|";
@@ -76,6 +85,12 @@ public class Navigator {
     private final Runnable onStateChanged;
 
     private NavigatorMapIndex mapIndexCache;
+    private OnCellPicked navigatorMiniMapSelectionListener;
+    private android.widget.AutoCompleteTextView navigatorDestInput;
+    private WebView navigatorMiniMapView;
+    private boolean navigatorMiniMapReady;
+    private int navigatorMiniMapCenterX;
+    private int navigatorMiniMapCenterY;
 
     /**
      * Универсальный callback выбора/удаления клетки.
@@ -130,6 +145,212 @@ public class Navigator {
     }
 
     /**
+     * JS bridge для миникарты навигатора.
+     *
+     * Принцип:
+     * - использует те же mapnav-контракты (`IsCellExists`, `GenMoveLink`, `CellAltText`, `CellDivText`, `MoveTo`);
+     * - `MoveTo` в этом bridge не запускает AutoMoving, а возвращает выбранную клетку в Navigator;
+     * - рендер текста клетки делегируется в общий контур `WebAppInterface.CellDivTextNavigatorMini(...)`.
+     */
+    private final class NavigatorMiniMapBridge {
+        private final WebAppInterface sharedMapBridge;
+
+        NavigatorMiniMapBridge() {
+            this.sharedMapBridge = new WebAppInterface(context);
+        }
+
+        @JavascriptInterface
+        public int GetHalfMapWidth() {
+            int mapMiniWidth = (AppVars.Profile != null) ? AppVars.Profile.MapMiniWidth : 5;
+            mapMiniWidth = Math.max(3, mapMiniWidth);
+            if ((mapMiniWidth & 1) == 0) mapMiniWidth -= 1;
+            return Math.max(1, (mapMiniWidth - 1) / 2);
+        }
+
+        @JavascriptInterface
+        public int GetHalfMapHeight() {
+            int mapMiniHeight = (AppVars.Profile != null) ? AppVars.Profile.MapMiniHeight : 3;
+            mapMiniHeight = Math.max(3, mapMiniHeight);
+            if ((mapMiniHeight & 1) == 0) mapMiniHeight -= 1;
+            return Math.max(1, (mapMiniHeight - 1) / 2);
+        }
+
+        @JavascriptInterface
+        public int GetMapScale() {
+            int scale = (AppVars.Profile != null) ? AppVars.Profile.MapMiniScale : 100;
+            if (scale < 50) scale = 50;
+            if (scale > 150) scale = 150;
+            return scale;
+        }
+
+        @JavascriptInterface
+        public boolean IsCellExists(int x, int y) {
+            ExtMap.init(context);
+            String pos = ExtMap.makePosition(x, y);
+            ru.neverlands.abclient.model.Position p = ExtMap.Location.get(pos);
+            return p != null && p.RegNum != null && ExtMap.Cells.containsKey(p.RegNum);
+        }
+
+        @JavascriptInterface
+        public String GenMoveLink(int x, int y) {
+            ExtMap.init(context);
+            String pos = ExtMap.makePosition(x, y);
+            ru.neverlands.abclient.model.Position p = ExtMap.Location.get(pos);
+            if (p == null || p.RegNum == null) {
+                return "";
+            }
+            return p.RegNum;
+        }
+
+        @JavascriptInterface
+        public String CellAltText(int x, int y, int scale) {
+            return sharedMapBridge.CellAltText(x, y, scale);
+        }
+
+        @JavascriptInterface
+        public String CellDivText(int x, int y, int scale, String link, boolean showmove, boolean isframe) {
+            return sharedMapBridge.CellDivTextNavigatorMini(x, y, scale, showmove, isframe);
+        }
+
+        @JavascriptInterface
+        public void MoveTo(String dest) {
+            String resolved = resolveCellNumber(dest);
+            if (resolved.isEmpty()) {
+                traceNavigatorMiniMap("invalid_cell", "bridge_move_to=" + String.valueOf(dest));
+                return;
+            }
+            if (navigatorMiniMapSelectionListener != null) {
+                navigatorMiniMapSelectionListener.onCellPicked(resolved);
+            }
+        }
+    }
+
+    private void traceNavigatorMiniMap(String action, String details) {
+        String safeAction = action == null ? "unknown" : action.trim();
+        String safeDetails = details == null ? "" : details.trim();
+        String msg = NAV_MINIMAP_TRACE_PREFIX + " " + safeAction + (safeDetails.isEmpty() ? "" : " | " + safeDetails);
+        Log.d("Navigator", msg);
+        FileLogger.trace("Navigator", msg);
+    }
+
+    private int[] resolveCoordinatesByCell(String cellNum) {
+        if (cellNum == null || cellNum.trim().isEmpty()) {
+            return null;
+        }
+        ExtMap.init(context);
+        String normalized = resolveCellNumber(cellNum);
+        if (normalized.isEmpty()) {
+            return null;
+        }
+        String pos = ExtMap.InvLocation.get(normalized);
+        if (pos == null || pos.trim().isEmpty()) {
+            return null;
+        }
+        String[] parts = pos.split("_");
+        if (parts.length != 2) {
+            return null;
+        }
+        try {
+            int x = Integer.parseInt(parts[0]);
+            int y = Integer.parseInt(parts[1]);
+            return new int[] {x, y};
+        } catch (Exception ignored) {
+            return null;
+        }
+    }
+
+    private int[] resolveFallbackCoordinates() {
+        ExtMap.init(context);
+        String mapLocation = (AppVars.Profile != null) ? AppVars.Profile.MapLocation : "";
+        int[] byLocation = resolveCoordinatesByCell(mapLocation);
+        if (byLocation != null) {
+            return byLocation;
+        }
+        if (!ExtMap.Location.isEmpty()) {
+            ru.neverlands.abclient.model.Position first = ExtMap.Location.values().iterator().next();
+            if (first != null) {
+                return new int[] {first.X, first.Y};
+            }
+        }
+        return new int[] {0, 0};
+    }
+
+    private String buildMiniMapHtml() {
+        return "<!doctype html><html><head><meta charset='utf-8'>"
+                + "<meta name='viewport' content='width=device-width,initial-scale=1'>"
+                + "<style>html,body{margin:0;padding:0;background:#0E1218;overflow:auto;}</style>"
+                + "</head><body>"
+                + "<script>try{if(window.AndroidBridge){window.external=window.AndroidBridge;}}catch(e){}</script>"
+                + "<script src='file:///android_asset/mapnav.js'></script>"
+                + "</body></html>";
+    }
+
+    private int resolveMiniMapViewHeightPx() {
+        int mapMiniHeight = (AppVars.Profile != null) ? AppVars.Profile.MapMiniHeight : 3;
+        int mapMiniScale = (AppVars.Profile != null) ? AppVars.Profile.MapMiniScale : 100;
+        if (mapMiniHeight < 3) mapMiniHeight = 3;
+        if ((mapMiniHeight & 1) == 0) mapMiniHeight -= 1;
+        if (mapMiniScale < 50) mapMiniScale = 50;
+        if (mapMiniScale > 150) mapMiniScale = 150;
+        int estimate = (mapMiniHeight * mapMiniScale) + (mapMiniHeight + 2);
+        int minHeight = dpToPx(130);
+        int maxHeight = dpToPx(360);
+        if (estimate < minHeight) estimate = minHeight;
+        if (estimate > maxHeight) estimate = maxHeight;
+        return estimate;
+    }
+
+    private void renderNavigatorMiniMapCenter(String source) {
+        if (!navigatorMiniMapReady || navigatorMiniMapView == null) {
+            return;
+        }
+        String js = "try{showMap(" + navigatorMiniMapCenterX + "," + navigatorMiniMapCenterY + ");}catch(e){}";
+        navigatorMiniMapView.evaluateJavascript(js, null);
+        traceNavigatorMiniMap(
+                source == null ? "center" : source,
+                "xy=" + navigatorMiniMapCenterX + "_" + navigatorMiniMapCenterY
+        );
+    }
+
+    private void applyNavigatorMiniMapSelection(String cellNum, String source) {
+        String resolved = resolveCellNumber(cellNum);
+        if (resolved.isEmpty()) {
+            traceNavigatorMiniMap("invalid_cell", "source=" + source + ", value=" + String.valueOf(cellNum));
+            return;
+        }
+        if (navigatorDestInput != null) {
+            navigatorDestInput.setText(resolved);
+            navigatorDestInput.setSelection(navigatorDestInput.getText().length());
+        }
+        int[] coords = resolveCoordinatesByCell(resolved);
+        if (coords == null) {
+            traceNavigatorMiniMap("invalid_cell", "source=" + source + ", cell=" + resolved);
+            return;
+        }
+        navigatorMiniMapCenterX = coords[0];
+        navigatorMiniMapCenterY = coords[1];
+        renderNavigatorMiniMapCenter(source);
+    }
+
+    private void clearNavigatorMiniMapRuntimeState() {
+        navigatorMiniMapSelectionListener = null;
+        navigatorDestInput = null;
+        navigatorMiniMapReady = false;
+        navigatorMiniMapCenterX = 0;
+        navigatorMiniMapCenterY = 0;
+        if (navigatorMiniMapView != null) {
+            try {
+                navigatorMiniMapView.removeJavascriptInterface("AndroidBridge");
+                navigatorMiniMapView.stopLoading();
+                navigatorMiniMapView.loadUrl("about:blank");
+                navigatorMiniMapView.destroy();
+            } catch (Exception ignored) {
+            }
+        }
+        navigatorMiniMapView = null;
+    }
+
+    /**
      * Инициализация навигатора.
      *
      * @param context Android context для UI, ресурсов и сохранения профиля
@@ -155,6 +376,7 @@ public class Navigator {
      * - {@link ExtMap#init(Context)} для подсказок и валидации клеток;
      * - {@link AppVars.Profile#NavigatorAllowTeleports} для чекбокса телепортов.
      */
+    @SuppressLint("SetJavaScriptEnabled")
     public void showDialog() {
         if (AppVars.AutoMoving) {
             String dest = AppVars.AutoMovingDestinaton != null ? AppVars.AutoMovingDestinaton : "?";
@@ -172,28 +394,81 @@ public class Navigator {
         }
 
         ExtMap.init(context);
+        clearNavigatorMiniMapRuntimeState();
 
         int pad = dpToPx(16);
         LinearLayout root = new LinearLayout(context);
         root.setOrientation(LinearLayout.VERTICAL);
         root.setPadding(pad, pad, pad, 0);
 
+        navigatorDestInput = new android.widget.AutoCompleteTextView(context);
+        navigatorDestInput.setHint("Номер клетки (напр. 8-259)");
+        navigatorDestInput.setSingleLine();
+        navigatorDestInput.setThreshold(1);
+        navigatorDestInput.setAdapter(new ArrayAdapter<>(context, android.R.layout.simple_dropdown_item_1line, buildAutocompleteValues()));
+
         String currentLoc = (AppVars.Profile != null
                 && AppVars.Profile.MapLocation != null
                 && !AppVars.Profile.MapLocation.isEmpty())
                 ? AppVars.Profile.MapLocation : "неизвестно";
+
+        int[] initialCenter = resolveCoordinatesByCell(navigatorDestInput.getText() != null ? navigatorDestInput.getText().toString() : null);
+        if (initialCenter == null) {
+            initialCenter = resolveCoordinatesByCell(currentLoc);
+        }
+        if (initialCenter == null) {
+            initialCenter = resolveFallbackCoordinates();
+        }
+        navigatorMiniMapCenterX = initialCenter[0];
+        navigatorMiniMapCenterY = initialCenter[1];
+        navigatorMiniMapReady = false;
+
+        navigatorMiniMapView = new WebView(context);
+        WebSettings miniSettings = navigatorMiniMapView.getSettings();
+        miniSettings.setJavaScriptEnabled(true);
+        miniSettings.setDomStorageEnabled(true);
+        miniSettings.setLoadWithOverviewMode(true);
+        miniSettings.setUseWideViewPort(true);
+        miniSettings.setSupportZoom(false);
+        miniSettings.setBuiltInZoomControls(false);
+        miniSettings.setDisplayZoomControls(false);
+        navigatorMiniMapView.setWebViewClient(new WebViewClient() {
+            @Override
+            public void onPageFinished(WebView view, String url) {
+                super.onPageFinished(view, url);
+                navigatorMiniMapReady = true;
+                renderNavigatorMiniMapCenter("open");
+            }
+        });
+        navigatorMiniMapView.addJavascriptInterface(new NavigatorMiniMapBridge(), "AndroidBridge");
+        navigatorMiniMapView.loadDataWithBaseURL(
+                "file:///android_asset/",
+                buildMiniMapHtml(),
+                "text/html",
+                "UTF-8",
+                null
+        );
+        LinearLayout.LayoutParams miniMapLp = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                resolveMiniMapViewHeightPx()
+        );
+        root.addView(navigatorMiniMapView, miniMapLp);
+
+        navigatorMiniMapSelectionListener = selectedCell -> applyNavigatorMiniMapSelection(selectedCell, "center_from_map_click");
+        navigatorDestInput.setOnItemClickListener((parent, view, position, id) -> {
+            Object item = parent.getItemAtPosition(position);
+            String resolved = resolveCellNumber(item == null ? "" : String.valueOf(item));
+            if (!resolved.isEmpty()) {
+                applyNavigatorMiniMapSelection(resolved, "center_from_list");
+            }
+        });
 
         TextView locLabel = new TextView(context);
         locLabel.setText("Текущая позиция: " + currentLoc);
         locLabel.setTextColor(0xFF666666);
         root.addView(locLabel);
 
-        android.widget.AutoCompleteTextView destInput = new android.widget.AutoCompleteTextView(context);
-        destInput.setHint("Номер клетки (напр. 8-259)");
-        destInput.setSingleLine();
-        destInput.setThreshold(1);
-        destInput.setAdapter(new ArrayAdapter<>(context, android.R.layout.simple_dropdown_item_1line, buildAutocompleteValues()));
-        root.addView(destInput);
+        root.addView(navigatorDestInput);
 
         CheckBox allowTeleCb = new CheckBox(context);
         allowTeleCb.setText("Разрешить телепорты");
@@ -223,7 +498,7 @@ public class Navigator {
 
         final int[] selectedTab = new int[] { TAB_LOCATIONS };
         final Map<String, Boolean> expandedStates = new LinkedHashMap<>();
-        Runnable rerender = () -> renderTabContent(listLayout, destInput, selectedTab[0], expandedStates);
+        Runnable rerender = () -> renderTabContent(listLayout, navigatorDestInput, selectedTab[0], expandedStates);
         rerender.run();
 
         tabLayout.addOnTabSelectedListener(new TabLayout.OnTabSelectedListener() {
@@ -259,7 +534,7 @@ public class Navigator {
         });
 
         dialog.setOnShowListener(d -> dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
-            String cell = resolveCellNumber(destInput.getText().toString());
+            String cell = resolveCellNumber(navigatorDestInput.getText().toString());
             if (cell.isEmpty()) {
                 Toast.makeText(context, "Введите пункт назначения", Toast.LENGTH_SHORT).show();
                 return;
@@ -269,6 +544,8 @@ public class Navigator {
             if (onStateChanged != null) onStateChanged.run();
             dialog.dismiss();
         }));
+
+        dialog.setOnDismissListener(d -> clearNavigatorMiniMapRuntimeState());
 
         dialog.show();
     }
@@ -724,7 +1001,13 @@ public class Navigator {
             TextView item = new TextView(context);
             item.setText(buildCellLabel(cellNum));
             item.setTextColor(0xFF0000AA);
-            item.setOnClickListener(v -> destInput.setText(cellNum));
+            item.setOnClickListener(v -> {
+                if (navigatorMiniMapSelectionListener != null) {
+                    applyNavigatorMiniMapSelection(cellNum, "center_from_list");
+                } else {
+                    destInput.setText(cellNum);
+                }
+            });
             LinearLayout.LayoutParams itemLp = new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f);
             row.addView(item, itemLp);
 

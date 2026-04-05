@@ -475,6 +475,39 @@ public class WebAppInterface {
      */
     @JavascriptInterface
     public String CellDivText(int x, int y, int scale, String link, boolean showmove, boolean isframe) {
+        int fontSizePx = resolveMainMapCellFontSize();
+        return renderCellDivTextInternal(x, y, scale, showmove, isframe, fontSizePx);
+    }
+
+    /**
+     * Рендер CellDivText для миникарты навигатора.
+     *
+     * Зависимости:
+     * - `UserConfig.MapMiniCellFontSize` (отдельная настройка от основной карты);
+     * - использует тот же рендеринг, что и `CellDivText(...)`, без дублирования логики.
+     */
+    public String CellDivTextNavigatorMini(int x, int y, int scale, boolean showmove, boolean isframe) {
+        int fontSizePx = resolveNavigatorMiniMapCellFontSize();
+        return renderCellDivTextInternal(x, y, scale, showmove, isframe, fontSizePx);
+    }
+
+    private static int normalizeCellFontSize(int value) {
+        if (value < 6) return 6;
+        if (value > 24) return 24;
+        return value;
+    }
+
+    private static int resolveMainMapCellFontSize() {
+        int fontSizePx = (AppVars.Profile != null) ? AppVars.Profile.MapCellFontSize : 9;
+        return normalizeCellFontSize(fontSizePx);
+    }
+
+    private static int resolveNavigatorMiniMapCellFontSize() {
+        int fontSizePx = (AppVars.Profile != null) ? AppVars.Profile.MapMiniCellFontSize : 9;
+        return normalizeCellFontSize(fontSizePx);
+    }
+
+    private String renderCellDivTextInternal(int x, int y, int scale, boolean showmove, boolean isframe, int fontSizePx) {
         ensureExtMapInitialized();
         String pos = ExtMap.makePosition(x, y);
         Position p = ExtMap.Location.get(pos);
@@ -489,9 +522,6 @@ public class WebAppInterface {
         int tileSize = Math.max(24, scale);
         int borderSizePx = Math.max(1, Math.round(tileSize * 0.015f));
         int paddingPx = Math.max(1, Math.round(tileSize * 0.03f));
-        int fontSizePx = (AppVars.Profile != null) ? AppVars.Profile.MapCellFontSize : 9;
-        if (fontSizePx < 6) fontSizePx = 6;
-        if (fontSizePx > 24) fontSizePx = 24;
         int regNumFontSizePx = Math.min(28, fontSizePx + 2);
         boolean highlight = showmove || isframe || isRegnumInCurrentPath(p.RegNum);
         String border = highlight ? "border:" + borderSizePx + "px solid red;" : "";

@@ -128,6 +128,25 @@ public class UserConfig {
      */
     public int MapCellFontSize = 9;
     /**
+     * Ширина миникарты навигатора (в клетках).
+     * C# parity: MapMiniWidth.
+     */
+    public int MapMiniWidth = 5;
+    /**
+     * Высота миникарты навигатора (в клетках).
+     * C# parity: MapMiniHeight.
+     */
+    public int MapMiniHeight = 3;
+    /**
+     * Масштаб миникарты навигатора (%).
+     * C# parity: MapMiniScale.
+     */
+    public int MapMiniScale = 100;
+    /**
+     * Размер шрифта подписи клетки в миникарте навигатора (px).
+     */
+    public int MapMiniCellFontSize = 9;
+    /**
      * Включает синхронизацию названий/региона клетки карты по данным ch.php + pinfo.
      *
      * Назначение:
@@ -492,6 +511,10 @@ public class UserConfig {
                         this.MapBigHeight = parseIntAttr(parser, "bigheight", this.MapBigHeight);
                         this.MapBigScale = parseIntAttr(parser, "bigscale", this.MapBigScale);
                         this.MapCellFontSize = parseIntAttr(parser, "cellfontsize", this.MapCellFontSize);
+                        this.MapMiniWidth = parseIntAttr(parser, "miniwidth", this.MapMiniWidth);
+                        this.MapMiniHeight = parseIntAttr(parser, "miniheight", this.MapMiniHeight);
+                        this.MapMiniScale = parseIntAttr(parser, "miniscale", this.MapMiniScale);
+                        this.MapMiniCellFontSize = parseIntAttr(parser, "minicellfontsize", this.MapMiniCellFontSize);
                         this.MapRebuildFromPinfo = parseBoolAttr(parser, "rebuildfrompinfo", this.MapRebuildFromPinfo);
                         this.MapCellCheckTimeoutMs = parseIntAttr(parser, "cellchecktimeoutms", this.MapCellCheckTimeoutMs);
                         if (this.MapBigWidth < 3) this.MapBigWidth = 3;
@@ -500,6 +523,16 @@ public class UserConfig {
                         if (this.MapBigScale > 150) this.MapBigScale = 150;
                         if (this.MapCellFontSize < 6) this.MapCellFontSize = 6;
                         if (this.MapCellFontSize > 24) this.MapCellFontSize = 24;
+                        if (this.MapMiniWidth < 3) this.MapMiniWidth = 3;
+                        if (this.MapMiniHeight < 3) this.MapMiniHeight = 3;
+                        if ((this.MapMiniWidth & 1) == 0) this.MapMiniWidth -= 1;
+                        if ((this.MapMiniHeight & 1) == 0) this.MapMiniHeight -= 1;
+                        if (this.MapMiniWidth < 3) this.MapMiniWidth = 3;
+                        if (this.MapMiniHeight < 3) this.MapMiniHeight = 3;
+                        if (this.MapMiniScale < 50) this.MapMiniScale = 50;
+                        if (this.MapMiniScale > 150) this.MapMiniScale = 150;
+                        if (this.MapMiniCellFontSize < 6) this.MapMiniCellFontSize = 6;
+                        if (this.MapMiniCellFontSize > 24) this.MapMiniCellFontSize = 24;
                         if (this.MapCellCheckTimeoutMs < 0) this.MapCellCheckTimeoutMs = 0;
                         if (this.MapCellCheckTimeoutMs > 5000) this.MapCellCheckTimeoutMs = 5000;
                     } else if ("proxy".equalsIgnoreCase(tagName)) {
@@ -860,6 +893,10 @@ public class UserConfig {
             serializer.attribute(null, "bigheight", String.valueOf(this.MapBigHeight));
             serializer.attribute(null, "bigscale", String.valueOf(this.MapBigScale));
             serializer.attribute(null, "cellfontsize", String.valueOf(this.MapCellFontSize));
+            serializer.attribute(null, "miniwidth", String.valueOf(this.MapMiniWidth));
+            serializer.attribute(null, "miniheight", String.valueOf(this.MapMiniHeight));
+            serializer.attribute(null, "miniscale", String.valueOf(this.MapMiniScale));
+            serializer.attribute(null, "minicellfontsize", String.valueOf(this.MapMiniCellFontSize));
             serializer.attribute(null, "rebuildfrompinfo", String.valueOf(this.MapRebuildFromPinfo));
             serializer.attribute(null, "cellchecktimeoutms", String.valueOf(this.MapCellCheckTimeoutMs));
             serializer.endTag(null, "mapset");

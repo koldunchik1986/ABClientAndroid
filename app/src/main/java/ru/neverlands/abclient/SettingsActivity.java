@@ -133,6 +133,28 @@ public class SettingsActivity extends AppCompatActivity {
             return "Текущий размер: " + formatMapSizeValue(width, height) + " (нечетные 3..31)";
         }
 
+        private static int normalizeMapScaleValue(int value) {
+            if (value < 50) return 50;
+            if (value > 150) return 150;
+            return value;
+        }
+
+        private static int parseMapScaleValue(String raw, int fallback) {
+            int safeFallback = normalizeMapScaleValue(fallback);
+            if (raw == null) {
+                return safeFallback;
+            }
+            try {
+                return normalizeMapScaleValue(Integer.parseInt(raw.trim()));
+            } catch (Exception ignore) {
+                return safeFallback;
+            }
+        }
+
+        private static String buildMapScaleSummary(int value) {
+            return value + "%";
+        }
+
         private static int normalizeMapFontSizeValue(int value) {
             if (value < MAP_FONT_SIZE_MIN) return MAP_FONT_SIZE_MIN;
             if (value > MAP_FONT_SIZE_MAX) return MAP_FONT_SIZE_MAX;
@@ -229,9 +251,7 @@ public class SettingsActivity extends AppCompatActivity {
 
             ListPreference mapScalePref = findPreference("map_scale_percent");
             if (mapScalePref != null && AppVars.Profile != null) {
-                int currentScale = AppVars.Profile.MapBigScale;
-                if (currentScale < 50) currentScale = 50;
-                if (currentScale > 150) currentScale = 150;
+                int currentScale = normalizeMapScaleValue(AppVars.Profile.MapBigScale);
                 if (!(currentScale == 50 || currentScale == 60 || currentScale == 70
                         || currentScale == 80 || currentScale == 90 || currentScale == 100
                         || currentScale == 125 || currentScale == 150)) {
@@ -239,27 +259,15 @@ public class SettingsActivity extends AppCompatActivity {
                     AppVars.Profile.MapBigScale = currentScale;
                     AppVars.Profile.save(requireContext());
                 }
-                String currentScaleStr = String.valueOf(currentScale);
-                mapScalePref.setValue(currentScaleStr);
-                mapScalePref.setSummaryProvider(preference -> {
-                    if (!(preference instanceof ListPreference)) {
-                        return "";
-                    }
-                    CharSequence entry = ((ListPreference) preference).getEntry();
-                    return entry == null ? "" : entry;
-                });
+                mapScalePref.setValue(String.valueOf(currentScale));
+                mapScalePref.setSummary(buildMapScaleSummary(currentScale));
                 mapScalePref.setOnPreferenceChangeListener((preference, newValue) -> {
-                    int value;
-                    try {
-                        value = Integer.parseInt(String.valueOf(newValue));
-                    } catch (Exception ignore) {
-                        value = 80;
-                    }
-                    if (value < 50) value = 50;
-                    if (value > 150) value = 150;
+                    int value = parseMapScaleValue(String.valueOf(newValue), AppVars.Profile.MapBigScale);
                     AppVars.Profile.MapBigScale = value;
                     AppVars.Profile.save(requireContext());
-                    return true;
+                    mapScalePref.setValue(String.valueOf(value));
+                    mapScalePref.setSummary(buildMapScaleSummary(value));
+                    return false;
                 });
             }
 
@@ -381,6 +389,115 @@ public class SettingsActivity extends AppCompatActivity {
                                 AppVars.Profile.MapBigHeight = height;
                                 AppVars.Profile.save(requireContext());
                                 preference.setSummary(buildMapSizeSummary(width, height));
+                            })
+                            .setNegativeButton("Отмена", null)
+                            .show();
+                    return true;
+                });
+            }
+
+            ListPreference mapNavigatorScalePref = findPreference("map_navigator_scale_percent");
+            if (mapNavigatorScalePref != null && AppVars.Profile != null) {
+                int currentScale = normalizeMapScaleValue(AppVars.Profile.MapMiniScale);
+                if (!(currentScale == 50 || currentScale == 60 || currentScale == 70
+                        || currentScale == 80 || currentScale == 90 || currentScale == 100
+                        || currentScale == 125 || currentScale == 150)) {
+                    currentScale = (currentScale <= 75) ? 70 : (currentScale <= 112 ? 100 : 125);
+                    AppVars.Profile.MapMiniScale = currentScale;
+                    AppVars.Profile.save(requireContext());
+                }
+                mapNavigatorScalePref.setValue(String.valueOf(currentScale));
+                mapNavigatorScalePref.setSummary(buildMapScaleSummary(currentScale));
+                mapNavigatorScalePref.setOnPreferenceChangeListener((preference, newValue) -> {
+                    int value = parseMapScaleValue(String.valueOf(newValue), AppVars.Profile.MapMiniScale);
+                    AppVars.Profile.MapMiniScale = value;
+                    AppVars.Profile.save(requireContext());
+                    mapNavigatorScalePref.setValue(String.valueOf(value));
+                    mapNavigatorScalePref.setSummary(buildMapScaleSummary(value));
+                    return false;
+                });
+            }
+
+            Preference mapNavigatorSizePref = findPreference("map_navigator_size_cells");
+            if (mapNavigatorSizePref != null && AppVars.Profile != null) {
+                int normalizedWidth = normalizeMapSizeValue(AppVars.Profile.MapMiniWidth);
+                int normalizedHeight = normalizeMapSizeValue(AppVars.Profile.MapMiniHeight);
+                if (normalizedWidth != AppVars.Profile.MapMiniWidth || normalizedHeight != AppVars.Profile.MapMiniHeight) {
+                    AppVars.Profile.MapMiniWidth = normalizedWidth;
+                    AppVars.Profile.MapMiniHeight = normalizedHeight;
+                    AppVars.Profile.save(requireContext());
+                }
+                mapNavigatorSizePref.setSummary(buildMapSizeSummary(normalizedWidth, normalizedHeight));
+                mapNavigatorSizePref.setOnPreferenceClickListener(preference -> {
+                    LinearLayout row = new LinearLayout(requireContext());
+                    row.setOrientation(LinearLayout.HORIZONTAL);
+                    int pad = (int) (16 * requireContext().getResources().getDisplayMetrics().density);
+                    row.setPadding(pad, pad, pad, 0);
+
+                    EditText xInput = new EditText(requireContext());
+                    xInput.setInputType(InputType.TYPE_CLASS_NUMBER);
+                    xInput.setSingleLine(true);
+                    xInput.setText(String.valueOf(AppVars.Profile.MapMiniWidth));
+                    xInput.setSelection(xInput.getText().length());
+                    LinearLayout.LayoutParams xParams = new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f);
+                    row.addView(xInput, xParams);
+
+                    TextView sep = new TextView(requireContext());
+                    sep.setText("  X  ");
+                    sep.setTextSize(18f);
+                    row.addView(sep, new LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT));
+
+                    EditText yInput = new EditText(requireContext());
+                    yInput.setInputType(InputType.TYPE_CLASS_NUMBER);
+                    yInput.setSingleLine(true);
+                    yInput.setText(String.valueOf(AppVars.Profile.MapMiniHeight));
+                    yInput.setSelection(yInput.getText().length());
+                    LinearLayout.LayoutParams yParams = new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f);
+                    row.addView(yInput, yParams);
+
+                    new AlertDialog.Builder(requireContext())
+                            .setTitle("Размер карты навигатора")
+                            .setView(row)
+                            .setPositiveButton("Сохранить", (dialog, which) -> {
+                                int width = parseMapSizeComponent(xInput.getText().toString(), AppVars.Profile.MapMiniWidth);
+                                int height = parseMapSizeComponent(yInput.getText().toString(), AppVars.Profile.MapMiniHeight);
+                                AppVars.Profile.MapMiniWidth = width;
+                                AppVars.Profile.MapMiniHeight = height;
+                                AppVars.Profile.save(requireContext());
+                                preference.setSummary(buildMapSizeSummary(width, height));
+                            })
+                            .setNegativeButton("Отмена", null)
+                            .show();
+                    return true;
+                });
+            }
+
+            Preference mapNavigatorFontSizePref = findPreference("map_navigator_font_size");
+            if (mapNavigatorFontSizePref != null && AppVars.Profile != null) {
+                int currentFontSize = normalizeMapFontSizeValue(AppVars.Profile.MapMiniCellFontSize);
+                if (currentFontSize != AppVars.Profile.MapMiniCellFontSize) {
+                    AppVars.Profile.MapMiniCellFontSize = currentFontSize;
+                    AppVars.Profile.save(requireContext());
+                }
+                mapNavigatorFontSizePref.setSummary(buildMapFontSizeSummary(currentFontSize));
+                mapNavigatorFontSizePref.setOnPreferenceClickListener(preference -> {
+                    EditText fontInput = new EditText(requireContext());
+                    fontInput.setInputType(InputType.TYPE_CLASS_NUMBER);
+                    fontInput.setSingleLine(true);
+                    fontInput.setText(String.valueOf(AppVars.Profile.MapMiniCellFontSize));
+                    fontInput.setSelection(fontInput.getText().length());
+
+                    new AlertDialog.Builder(requireContext())
+                            .setTitle("Размер шрифта карты навигатора")
+                            .setView(fontInput)
+                            .setPositiveButton("Сохранить", (dialog, which) -> {
+                                int value = parseMapFontSizeValue(
+                                        fontInput.getText() != null ? fontInput.getText().toString() : null,
+                                        AppVars.Profile.MapMiniCellFontSize
+                                );
+                                AppVars.Profile.MapMiniCellFontSize = value;
+                                AppVars.Profile.save(requireContext());
+                                preference.setSummary(buildMapFontSizeSummary(value));
                             })
                             .setNegativeButton("Отмена", null)
                             .show();

@@ -51,6 +51,29 @@
             app:title="Размер шрифта карты"
             app:summary="Текущий размер шрифта CellDivText" />
 
+        <Preference
+            app:key="map_navigator_section"
+            app:title="Карта навигатора"
+            app:selectable="false" />
+
+        <Preference
+            app:key="map_navigator_size_cells"
+            app:title="Размер карты навигатора"
+            app:summary="Формат: Ширина*Высота (например 5*3)" />
+
+        <ListPreference
+            app:key="map_navigator_scale_percent"
+            app:title="Масштаб карты навигатора"
+            app:summary="Текущий масштаб отображения миникарты навигатора"
+            app:entries="@array/map_scale_entries"
+            app:entryValues="@array/map_scale_values"
+            app:defaultValue="100" />
+
+        <Preference
+            app:key="map_navigator_font_size"
+            app:title="Размер шрифта карты навигатора"
+            app:summary="Текущий размер шрифта CellDivText в миникарте навигатора" />
+
         <SwitchPreferenceCompat
             app:key="map_rebuild_from_pinfo"
             app:title="Пересоздавать карту из инфы (pinfo)"
