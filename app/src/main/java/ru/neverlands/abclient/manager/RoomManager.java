@@ -41,6 +41,8 @@ public class RoomManager {
     private static final long AUTO_CURE_ROOM_PINFO_CACHE_TTL_MS = 30_000L;
     private static final long AUTO_CURE_POST_SUBMIT_VERIFY_DELAY_MS = 1_500L;
     private static final long MAP_PINFO_SYNC_COOLDOWN_MS = 3_000L;
+    private static final int MAP_PINFO_SYNC_STABLE_MIN_MS = 150;
+    private static final int MAP_PINFO_SYNC_STABLE_MAX_MS = 5_000;
     private static final long ROOM_RENDER_CACHE_TTL_MS = 20_000L;
     // Последние raw-элементы ChatListU по нику (lowercase), чтобы другие модули
     // (например, Auto-Компас) могли рендерить ник/иконки/уровень/травмы 1:1 как room-list.
@@ -58,6 +60,8 @@ public class RoomManager {
     private static volatile long pendingRoomLocationNameAtMs;
     private static volatile long lastMapPinfoSyncAtMs = 0L;
     private static volatile boolean mapPinfoSyncInFlight = false;
+    private static volatile String lastMapLocationConfirmedRegNum = "";
+    private static volatile long lastMapLocationConfirmedAtMs = 0L;
     private static volatile String lastOwnPinfoRegion = "";
     private static volatile String lastOwnPinfoCellName = "";
     private static volatile String lastStableRoomRenderHtml = "";
@@ -331,6 +335,13 @@ public class RoomManager {
         if (isEmpty(mapRegNum) || !ExtMap.Cells.containsKey(mapRegNum)) {
             return;
         }
+        if (!isMapLocationStableForPinfoSync(mapRegNum)) {
+            Log.d(TAG, "MAP_NAME_SYNC_TRACE: skip pinfo sync, map location not stable yet, reg=" + mapRegNum
+                    + ", confirmedReg=" + normalizeRegNum(lastMapLocationConfirmedRegNum)
+                    + ", autoMoving=" + AppVars.AutoMoving
+                    + ", confirmedAgeMs=" + (System.currentTimeMillis() - lastMapLocationConfirmedAtMs));
+            return;
+        }
         String ownNick = AppVars.Profile.UserNick;
         if (isEmpty(ownNick)) {
             return;
@@ -381,6 +392,13 @@ public class RoomManager {
                     liveRegNum = normalizeRegNum(AppVars.Profile.MapLocation);
                 }
                 if (isEmpty(liveRegNum) || !requestRegNum.equals(liveRegNum)) {
+                    return;
+                }
+                if (!isMapLocationStableForPinfoSync(requestRegNum)) {
+                    Log.d(TAG, "MAP_NAME_SYNC_TRACE: skip pinfo sync in worker, reg is no longer stable, reg="
+                            + requestRegNum + ", liveReg=" + liveRegNum
+                            + ", confirmedReg=" + normalizeRegNum(lastMapLocationConfirmedRegNum)
+                            + ", autoMoving=" + AppVars.AutoMoving);
                     return;
                 }
 
@@ -532,12 +550,14 @@ public class RoomManager {
         if (context == null || isEmpty(regNum)) {
             return;
         }
-        PendingRoomLabel pendingLabel = getPendingRoomLocationIfFresh();
-        if (pendingLabel == null || isEmpty(pendingLabel.locationName)) {
-            return;
-        }
         String normalizedReg = regNum.trim();
         if (!ExtMap.Cells.containsKey(normalizedReg)) {
+            return;
+        }
+        lastMapLocationConfirmedRegNum = normalizedReg;
+        lastMapLocationConfirmedAtMs = System.currentTimeMillis();
+        PendingRoomLabel pendingLabel = getPendingRoomLocationIfFresh();
+        if (pendingLabel == null || isEmpty(pendingLabel.locationName)) {
             return;
         }
         if (!isEmpty(pendingLabel.targetRegNum) && !pendingLabel.targetRegNum.equals(normalizedReg)) {
@@ -815,6 +835,45 @@ public class RoomManager {
             return "";
         }
         return value.replace('\u00A0', ' ').replaceAll("\\s+", " ").trim();
+    }
+
+    /**
+     * Проверяет, что текущий `MapLocation` уже подтверждён через `map_ajax`
+     * и выдержал короткое окно стабилизации перед pinfo-синхронизацией.
+     *
+     * Зачем:
+     * - защищает от гонки, когда pinfo кадр приходит между шагами навигатора;
+     * - не даёт записать мета-данные соседней клетки в текущую при включённой
+     *   настройке "пересоздавать карту из инфы (pinfo)".
+     *
+     * Нагрузка:
+     * - сетевых запросов не добавляет (только локальная валидация перед sync).
+     */
+    private static boolean isMapLocationStableForPinfoSync(String regNum) {
+        String normalizedReg = normalizeRegNum(regNum);
+        if (isEmpty(normalizedReg)) {
+            return false;
+        }
+        String confirmedReg = normalizeRegNum(lastMapLocationConfirmedRegNum);
+        if (isEmpty(confirmedReg)) {
+            return !AppVars.AutoMoving;
+        }
+        if (!normalizedReg.equals(confirmedReg)) {
+            return false;
+        }
+        long confirmedAgeMs = System.currentTimeMillis() - lastMapLocationConfirmedAtMs;
+        return confirmedAgeMs >= resolveMapPinfoStableDelayMs();
+    }
+
+    private static int resolveMapPinfoStableDelayMs() {
+        int value = AppVars.Profile != null ? AppVars.Profile.MapCellCheckTimeoutMs : 0;
+        if (value < MAP_PINFO_SYNC_STABLE_MIN_MS) {
+            return MAP_PINFO_SYNC_STABLE_MIN_MS;
+        }
+        if (value > MAP_PINFO_SYNC_STABLE_MAX_MS) {
+            return MAP_PINFO_SYNC_STABLE_MAX_MS;
+        }
+        return value;
     }
 
     /**
