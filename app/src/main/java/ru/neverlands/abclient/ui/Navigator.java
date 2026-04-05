@@ -288,7 +288,7 @@ public class Navigator {
     private String buildMiniMapHtml() {
         return "<!doctype html><html><head><meta charset='utf-8'>"
                 + "<meta name='viewport' content='width=device-width,initial-scale=1'>"
-                + "<style>html,body{margin:0;padding:0;background:#0E1218;overflow:auto;}</style>"
+                + "<style>html,body{margin:0;padding:0;background:#0E1218;overflow:hidden;}</style>"
                 + "</head><body>"
                 + "<script>try{if(window.AndroidBridge){window.external=window.AndroidBridge;}}catch(e){}</script>"
                 + "<script src='file:///android_asset/mapnav.js'></script>"
@@ -303,10 +303,27 @@ public class Navigator {
         if (mapMiniScale < 50) mapMiniScale = 50;
         if (mapMiniScale > 150) mapMiniScale = 150;
         int estimate = (mapMiniHeight * mapMiniScale) + (mapMiniHeight + 2);
+        estimate = Math.round(estimate * 1.25f);
         int minHeight = dpToPx(130);
-        int maxHeight = dpToPx(360);
+        int maxHeight = dpToPx(450);
         if (estimate < minHeight) estimate = minHeight;
         if (estimate > maxHeight) estimate = maxHeight;
+        return estimate;
+    }
+
+    private int resolveMiniMapViewWidthPx() {
+        int mapMiniWidth = (AppVars.Profile != null) ? AppVars.Profile.MapMiniWidth : 5;
+        int mapMiniScale = (AppVars.Profile != null) ? AppVars.Profile.MapMiniScale : 100;
+        if (mapMiniWidth < 3) mapMiniWidth = 3;
+        if ((mapMiniWidth & 1) == 0) mapMiniWidth -= 1;
+        if (mapMiniScale < 50) mapMiniScale = 50;
+        if (mapMiniScale > 150) mapMiniScale = 150;
+        int estimate = (mapMiniWidth * mapMiniScale) + (mapMiniWidth + 2);
+        estimate = Math.round(estimate * 1.10f);
+        int minWidth = dpToPx(230);
+        int maxWidth = Math.round(context.getResources().getDisplayMetrics().widthPixels * 0.98f);
+        if (estimate < minWidth) estimate = minWidth;
+        if (estimate > maxWidth) estimate = maxWidth;
         return estimate;
     }
 
@@ -466,10 +483,14 @@ public class Navigator {
                 "UTF-8",
                 null
         );
+        int miniMapWidthPx = resolveMiniMapViewWidthPx();
+        int miniMapHeightPx = resolveMiniMapViewHeightPx();
+        traceNavigatorMiniMap("layout_size", "w=" + miniMapWidthPx + ", h=" + miniMapHeightPx);
         LinearLayout.LayoutParams miniMapLp = new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                resolveMiniMapViewHeightPx()
+                miniMapWidthPx,
+                miniMapHeightPx
         );
+        miniMapLp.gravity = Gravity.CENTER_HORIZONTAL;
         root.addView(navigatorMiniMapView, miniMapLp);
 
         navigatorMiniMapSelectionListener = selectedCell -> applyNavigatorMiniMapSelection(selectedCell, "center_from_map_click");
@@ -550,18 +571,31 @@ public class Navigator {
             }
             if (selectedTab[0] == TAB_LOCATIONS) rerender.run();
         });
-
-        dialog.setOnShowListener(d -> dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
-            String cell = resolveCellNumber(navigatorDestInput.getText().toString());
-            if (cell.isEmpty()) {
-                Toast.makeText(context, "Введите пункт назначения", Toast.LENGTH_SHORT).show();
-                return;
+        dialog.setOnShowListener(d -> {
+            android.widget.Button startButton = dialog.getButton(AlertDialog.BUTTON_POSITIVE);
+            android.widget.Button cancelButton = dialog.getButton(AlertDialog.BUTTON_NEGATIVE);
+            if (startButton != null) {
+                int primaryColor = ContextCompat.getColor(context, R.color.purple_500);
+                int textColor = ContextCompat.getColor(context, R.color.white);
+                startButton.setBackgroundColor(primaryColor);
+                startButton.setBackgroundTintList(android.content.res.ColorStateList.valueOf(primaryColor));
+                startButton.setTextColor(textColor);
+                startButton.setOnClickListener(v -> {
+                    String cell = resolveCellNumber(navigatorDestInput.getText().toString());
+                    if (cell.isEmpty()) {
+                        Toast.makeText(context, "\u0412\u0432\u0435\u0434\u0438\u0442\u0435 \u043f\u0443\u043d\u043a\u0442 \u043d\u0430\u0437\u043d\u0430\u0447\u0435\u043d\u0438\u044f", Toast.LENGTH_SHORT).show();
+                        return;
+                    }
+                    autoFunctionsManager.startAutoMoving(cell);
+                    Toast.makeText(context, "\u041d\u0430\u0432\u0438\u0433\u0430\u0442\u043e\u0440 \u0437\u0430\u043f\u0443\u0449\u0435\u043d \u2192 " + cell, Toast.LENGTH_SHORT).show();
+                    if (onStateChanged != null) onStateChanged.run();
+                    dialog.dismiss();
+                });
             }
-            autoFunctionsManager.startAutoMoving(cell);
-            Toast.makeText(context, "Навигатор запущен → " + cell, Toast.LENGTH_SHORT).show();
-            if (onStateChanged != null) onStateChanged.run();
-            dialog.dismiss();
-        }));
+            if (cancelButton != null) {
+                cancelButton.setTextColor(ContextCompat.getColor(context, R.color.white));
+            }
+        });
 
         dialog.setOnDismissListener(d -> clearNavigatorMiniMapRuntimeState());
 
@@ -1018,7 +1052,7 @@ public class Navigator {
 
             TextView item = new TextView(context);
             item.setText(buildCellLabel(cellNum));
-            item.setTextColor(0xFF0000AA);
+            item.setTextColor(ContextCompat.getColor(context, R.color.white));
             item.setOnClickListener(v -> {
                 if (navigatorMiniMapSelectionListener != null) {
                     applyNavigatorMiniMapSelection(cellNum, "center_from_list");
