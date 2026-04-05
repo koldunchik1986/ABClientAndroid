@@ -781,19 +781,39 @@ final class CompasAuto {
         String destination;
         long destinationSetAtMs;
         long roomUpdatedAtMs;
+        List<String> candidatesSnapshot;
         synchronized (autoCompassLock) {
             destination = autoCompassCurrentDestination;
             destinationSetAtMs = autoCompassDestinationSetAtMs;
             roomUpdatedAtMs = autoCompassLastRoomUpdateAtMs;
+            candidatesSnapshot = new ArrayList<>(autoCompassCandidateCells);
         }
-        boolean canUseDestination = !isEmpty(destination)
+        boolean mapInCandidates = !isEmpty(mapRegNum) && candidatesSnapshot.contains(mapRegNum);
+        boolean destinationInCandidates = !isEmpty(destination) && candidatesSnapshot.contains(destination);
+
+        boolean canUseDestinationAfterArrival = !isEmpty(destination)
                 && !AppVars.AutoMoving
                 && roomUpdatedAtMs >= destinationSetAtMs;
-        if (canUseDestination && (isEmpty(mapRegNum) || !mapRegNum.equals(destination))) {
+        if (canUseDestinationAfterArrival && (isEmpty(mapRegNum) || !mapRegNum.equals(destination))) {
             AppLog.d(TAG, "AUTO_COMPASS_TRACE found regnum overridden by destination: map="
                     + mapRegNum + ", destination=" + destination);
             return destination;
         }
+
+        boolean mapRegNumLagWhileMoving = !isEmpty(destination)
+                && AppVars.AutoMoving
+                && destination.equals(AppVars.AutoMovingDestinaton)
+                && (isEmpty(mapRegNum) || !mapRegNum.equals(destination))
+                && destinationInCandidates
+                && !mapInCandidates;
+        if (mapRegNumLagWhileMoving) {
+            AppLog.d(TAG, "AUTO_COMPASS_TRACE found regnum overridden by destination while moving: map="
+                    + mapRegNum + ", destination=" + destination
+                    + ", mapInCandidates=" + mapInCandidates
+                    + ", destinationInCandidates=" + destinationInCandidates);
+            return destination;
+        }
+
         return mapRegNum;
     }
 

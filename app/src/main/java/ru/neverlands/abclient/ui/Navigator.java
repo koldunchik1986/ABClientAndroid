@@ -311,22 +311,6 @@ public class Navigator {
         return estimate;
     }
 
-    private int resolveMiniMapViewWidthPx() {
-        int mapMiniWidth = (AppVars.Profile != null) ? AppVars.Profile.MapMiniWidth : 5;
-        int mapMiniScale = (AppVars.Profile != null) ? AppVars.Profile.MapMiniScale : 100;
-        if (mapMiniWidth < 3) mapMiniWidth = 3;
-        if ((mapMiniWidth & 1) == 0) mapMiniWidth -= 1;
-        if (mapMiniScale < 50) mapMiniScale = 50;
-        if (mapMiniScale > 150) mapMiniScale = 150;
-        int estimate = (mapMiniWidth * mapMiniScale) + (mapMiniWidth + 2);
-        estimate = Math.round(estimate * 1.10f);
-        int minWidth = dpToPx(230);
-        int maxWidth = Math.round(context.getResources().getDisplayMetrics().widthPixels * 0.98f);
-        if (estimate < minWidth) estimate = minWidth;
-        if (estimate > maxWidth) estimate = maxWidth;
-        return estimate;
-    }
-
     private void renderNavigatorMiniMapCenter(String source) {
         if (Looper.myLooper() != Looper.getMainLooper()) {
             runOnUiThreadSafe(() -> renderNavigatorMiniMapCenter(source));
@@ -467,6 +451,9 @@ public class Navigator {
         miniSettings.setSupportZoom(false);
         miniSettings.setBuiltInZoomControls(false);
         miniSettings.setDisplayZoomControls(false);
+        navigatorMiniMapView.setVerticalScrollBarEnabled(false);
+        navigatorMiniMapView.setHorizontalScrollBarEnabled(false);
+        navigatorMiniMapView.setOverScrollMode(View.OVER_SCROLL_NEVER);
         navigatorMiniMapView.setWebViewClient(new WebViewClient() {
             @Override
             public void onPageFinished(WebView view, String url) {
@@ -483,14 +470,12 @@ public class Navigator {
                 "UTF-8",
                 null
         );
-        int miniMapWidthPx = resolveMiniMapViewWidthPx();
         int miniMapHeightPx = resolveMiniMapViewHeightPx();
-        traceNavigatorMiniMap("layout_size", "w=" + miniMapWidthPx + ", h=" + miniMapHeightPx);
+        traceNavigatorMiniMap("layout_size", "w=match_parent, h=" + miniMapHeightPx);
         LinearLayout.LayoutParams miniMapLp = new LinearLayout.LayoutParams(
-                miniMapWidthPx,
+                LinearLayout.LayoutParams.MATCH_PARENT,
                 miniMapHeightPx
         );
-        miniMapLp.gravity = Gravity.CENTER_HORIZONTAL;
         root.addView(navigatorMiniMapView, miniMapLp);
 
         navigatorMiniMapSelectionListener = selectedCell -> applyNavigatorMiniMapSelection(selectedCell, "center_from_map_click");
