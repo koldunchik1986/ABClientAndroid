@@ -7,8 +7,10 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -68,10 +70,12 @@ public class RoomManager {
 
     private static final class CachedRoomPinfoState {
         final int woundType;
+        final List<Integer> effectIds;
         final long capturedAtMs;
 
-        CachedRoomPinfoState(int woundType, long capturedAtMs) {
+        CachedRoomPinfoState(int woundType, List<Integer> effectIds, long capturedAtMs) {
             this.woundType = woundType;
+            this.effectIds = effectIds == null ? Collections.emptyList() : effectIds;
             this.capturedAtMs = capturedAtMs;
         }
     }
@@ -1515,8 +1519,9 @@ public class RoomManager {
         }
 
         String inj = "";
+        Integer injuryEffectId = null;
         if (strArray.length > 6 && !strArray[6].equals("0")) {
-            int injuryEffectId = 1;
+            injuryEffectId = 1;
             if (strArray[6].contains("боевая")) {
                 injuryEffectId = 1;
                 strArray[1] = "<font color=\"#666600\">" + strArray[1] + "</font>";
@@ -1530,10 +1535,12 @@ public class RoomManager {
                 injuryEffectId = 4;
                 strArray[1] = "<font color=\"#ef7f94\">" + strArray[1] + "</font>";
             }
-            inj = "<img class=\"ab-room-injury-icon\" src=http://image.neverlands.ru/pinfo/eff_" + injuryEffectId
-                    + ".gif border=0 width=15 height=12 alt=\""
-                    + strArray[6]
-                    + "\" align=absmiddle>";
+        }
+        List<Integer> cachedEffectIds = getCachedEffectIdsForNick(login);
+        if (!cachedEffectIds.isEmpty()) {
+            inj = buildEffectIconsHtml(cachedEffectIds, strArray.length > 6 ? strArray[6] : "");
+        } else if (injuryEffectId != null) {
+            inj = buildSingleEffectIconHtml(injuryEffectId, strArray.length > 6 ? strArray[6] : "");
         }
 
         String psg = "";
@@ -2152,17 +2159,17 @@ public class RoomManager {
             return cached.woundType;
         }
 
-        int woundType = fetchWoundTypeFromPinfo(nick);
-        autoCureRoomPinfoCache.put(key, new CachedRoomPinfoState(woundType, now));
-        return woundType;
+        return fetchWoundTypeFromPinfo(nick);
     }
 
     private static int fetchWoundTypeFromPinfo(String nick) {
         int woundType = 0;
+        List<Integer> effectIds = Collections.emptyList();
         try {
             AppLog.d(TAG, "INFO_API_TRACE stage=info_api_runtime_call, source_module=auto_cure_room, nick=" + nick);
             NeverApi.PinfoVitals vitals = NeverApi.getPinfoVitalsFromInfoApi(nick, "auto_cure_room");
             if (vitals != null) {
+                effectIds = normalizeEffectIds(vitals.effectIds);
                 // Важно для авто-лечения себя:
                 // RoomManager регулярно читает pinfo в фоне, но до этого не синхронизировал
                 // общий runtime-снимок vitals. Из-за этого AutoCure мог не видеть новые травмы
@@ -2183,6 +2190,7 @@ public class RoomManager {
         } catch (Exception e) {
             AppLog.w(TAG, AUTO_CURE_TRACE_PREFIX + " pinfo read failed for " + nick, e);
         }
+        cacheRoomPinfoState(nick, woundType, effectIds, System.currentTimeMillis());
         return woundType;
     }
 
@@ -2201,7 +2209,7 @@ public class RoomManager {
         }
 
         long now = System.currentTimeMillis();
-        autoCureRoomPinfoCache.put(key, new CachedRoomPinfoState(0, now));
+        autoCureRoomPinfoCache.put(key, new CachedRoomPinfoState(0, Collections.emptyList(), now));
         AppLog.d(TAG, AUTO_CURE_TRACE_PREFIX + " post-submit verify scheduled: nick=" + cleanNick
                 + ", travm=" + cureTravm);
 
@@ -2213,12 +2221,87 @@ public class RoomManager {
                 return;
             }
             int actualWoundType = fetchWoundTypeFromPinfo(cleanNick);
-            autoCureRoomPinfoCache.put(key, new CachedRoomPinfoState(actualWoundType, System.currentTimeMillis()));
             AppLog.d(TAG, AUTO_CURE_TRACE_PREFIX + " post-submit verify result: nick=" + cleanNick
                     + ", woundType=" + actualWoundType + ", travm=" + cureTravm);
         }, "RoomAutoCureVerify");
         worker.setDaemon(true);
         worker.start();
+    }
+
+    private static void cacheRoomPinfoState(String nick, int woundType, List<Integer> effectIds, long capturedAtMs) {
+        String key = normalizeNickKey(nick);
+        if (isEmpty(key)) {
+            return;
+        }
+        autoCureRoomPinfoCache.put(
+                key,
+                new CachedRoomPinfoState(
+                        woundType,
+                        normalizeEffectIds(effectIds),
+                        capturedAtMs));
+    }
+
+    private static List<Integer> getCachedEffectIdsForNick(String nick) {
+        String key = normalizeNickKey(nick);
+        if (isEmpty(key)) {
+            return Collections.emptyList();
+        }
+        CachedRoomPinfoState cached = autoCureRoomPinfoCache.get(key);
+        if (cached == null) {
+            return Collections.emptyList();
+        }
+        long ageMs = System.currentTimeMillis() - cached.capturedAtMs;
+        if (ageMs >= AUTO_CURE_ROOM_PINFO_CACHE_TTL_MS) {
+            return Collections.emptyList();
+        }
+        return cached.effectIds == null ? Collections.emptyList() : cached.effectIds;
+    }
+
+    private static List<Integer> normalizeEffectIds(List<Integer> effectIds) {
+        if (effectIds == null || effectIds.isEmpty()) {
+            return Collections.emptyList();
+        }
+        LinkedHashSet<Integer> result = new LinkedHashSet<>();
+        for (Integer effectId : effectIds) {
+            if (effectId == null || effectId <= 0) {
+                continue;
+            }
+            result.add(effectId);
+        }
+        if (result.isEmpty()) {
+            return Collections.emptyList();
+        }
+        return Collections.unmodifiableList(new ArrayList<>(result));
+    }
+
+    private static String buildSingleEffectIconHtml(int effectId, String altText) {
+        String safeAlt = escapeHtml(altText == null ? "" : altText);
+        return "<img class=\"ab-room-injury-icon\" src=http://image.neverlands.ru/pinfo/eff_" + effectId
+                + ".gif border=0 width=15 height=12 alt=\""
+                + safeAlt
+                + "\" align=absmiddle>";
+    }
+
+    private static String buildEffectIconsHtml(List<Integer> effectIds, String injuryText) {
+        if (effectIds == null || effectIds.isEmpty()) {
+            return "";
+        }
+        String safeInjuryText = escapeHtml(injuryText == null ? "" : injuryText);
+        StringBuilder sb = new StringBuilder();
+        for (Integer effectId : effectIds) {
+            if (effectId == null || effectId <= 0) {
+                continue;
+            }
+            String alt = safeInjuryText.isEmpty()
+                    ? ("эффект #" + effectId)
+                    : safeInjuryText;
+            sb.append("<img class=\"ab-room-injury-icon\" src=http://image.neverlands.ru/pinfo/eff_")
+                    .append(effectId)
+                    .append(".gif border=0 width=15 height=12 alt=\"")
+                    .append(alt)
+                    .append("\" align=absmiddle>");
+        }
+        return sb.toString();
     }
 
     private static int resolveWoundTypeFromSelfSnapshot() {

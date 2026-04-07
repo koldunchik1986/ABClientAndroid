@@ -24,9 +24,11 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Collections;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.io.StringReader;
@@ -101,6 +103,7 @@ public class NeverApi {
      * - MA: curMa/maxMa
      * - усталость: curTire (0..100)
      * - отравление/травмы: poisonAndWounds ([яд, легк, сред, тяж])
+     * - эффекты: effectIds (id из line2/effects info.cgi)
      */
     public static final class PinfoVitals {
         public final Integer curHp;
@@ -111,6 +114,7 @@ public class NeverApi {
         public final int[] poisonAndWounds;
         // 0=no wounds, 1=light, 2=medium, 3=heavy, 4=battle
         public final Integer topWoundType;
+        public final List<Integer> effectIds;
 
         public PinfoVitals(Integer curHp, Integer maxHp, Integer curMa, Integer maxMa, Integer curTire,
                            int[] poisonAndWounds) {
@@ -119,6 +123,11 @@ public class NeverApi {
 
         public PinfoVitals(Integer curHp, Integer maxHp, Integer curMa, Integer maxMa, Integer curTire,
                            int[] poisonAndWounds, Integer topWoundType) {
+            this(curHp, maxHp, curMa, maxMa, curTire, poisonAndWounds, topWoundType, null);
+        }
+
+        public PinfoVitals(Integer curHp, Integer maxHp, Integer curMa, Integer maxMa, Integer curTire,
+                           int[] poisonAndWounds, Integer topWoundType, List<Integer> effectIds) {
             this.curHp = curHp;
             this.maxHp = maxHp;
             this.curMa = curMa;
@@ -126,6 +135,7 @@ public class NeverApi {
             this.curTire = curTire;
             this.poisonAndWounds = normalizePoisonAndWounds(poisonAndWounds);
             this.topWoundType = normalizeTopWoundType(topWoundType);
+            this.effectIds = normalizeEffectIds(effectIds);
         }
     }
 
@@ -650,7 +660,8 @@ public class NeverApi {
                 snapshot.hmu.maxMa,
                 snapshot.hmu.curTire,
                 poisonAndWounds,
-                topWoundType
+                topWoundType,
+                buildEffectIdsFromEffects(snapshot.effects)
         );
     }
 
@@ -734,6 +745,23 @@ public class NeverApi {
             return 1;
         }
         return 0;
+    }
+
+    /**
+     * Сборка стабильного списка effectId из line2/effects.
+     * Сохраняем порядок появления, удаляем дубликаты и невалидные значения.
+     */
+    private static List<Integer> buildEffectIdsFromEffects(List<InfoApiEffect> effects) {
+        LinkedHashSet<Integer> ids = new LinkedHashSet<>();
+        if (effects != null) {
+            for (InfoApiEffect effect : effects) {
+                if (effect == null || effect.id <= 0) {
+                    continue;
+                }
+                ids.add(effect.id);
+            }
+        }
+        return new ArrayList<>(ids);
     }
 
     /**
@@ -2022,6 +2050,23 @@ public class NeverApi {
 
     private static String safeWoundType(Integer woundType) {
         return woundType == null ? "n/a" : String.valueOf(woundType);
+    }
+
+    private static List<Integer> normalizeEffectIds(List<Integer> effectIds) {
+        if (effectIds == null || effectIds.isEmpty()) {
+            return Collections.emptyList();
+        }
+        LinkedHashSet<Integer> values = new LinkedHashSet<>();
+        for (Integer id : effectIds) {
+            if (id == null || id <= 0) {
+                continue;
+            }
+            values.add(id);
+        }
+        if (values.isEmpty()) {
+            return Collections.emptyList();
+        }
+        return Collections.unmodifiableList(new ArrayList<>(values));
     }
 
     private static int clampPercent(int value) {
