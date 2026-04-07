@@ -1209,6 +1209,7 @@ public class RoomManager {
         }
 
         for (String rawChar : chars.values()) {
+            primeRoomPinfoCacheForRawEntry(rawChar);
             if (count > 0) {
                 sb.append(", ");
             }
@@ -1283,6 +1284,7 @@ public class RoomManager {
         StringBuilder sb = new StringBuilder();
         int count = 0;
         for (String rawChar : changedChars.values()) {
+            primeRoomPinfoCacheForRawEntry(rawChar);
             if (count > 0) {
                 sb.append(", ");
             }
@@ -1312,6 +1314,28 @@ public class RoomManager {
             return false;
         }
         return AppVars.Profile.UserNick.equalsIgnoreCase(stripItalic(nick));
+    }
+
+    /**
+     * Подогревает cache эффектов для рендера сообщений слежения за локацией.
+     *
+     * Использует существующий контур `resolveWoundTypeFromPinfoCached(...)`:
+     * - если cache свежий, сетевой запрос не выполняется;
+     * - если cache устарел/пустой, данные обновляются и становятся доступны в `HtmlChar(...)`.
+     */
+    private static void primeRoomPinfoCacheForRawEntry(String rawChar) {
+        if (!isShowAllRoomEffectsEnabled() || isEmpty(rawChar)) {
+            return;
+        }
+        try {
+            String nick = extractNick(rawChar);
+            if (isEmpty(nick)) {
+                return;
+            }
+            resolveWoundTypeFromPinfoCached(nick);
+        } catch (Exception e) {
+            AppLog.w(TAG, "primeRoomPinfoCacheForRawEntry: failed, rawChar=" + rawChar, e);
+        }
     }
 
     private static String extractLocationName(String html) {
@@ -1737,7 +1761,9 @@ public class RoomManager {
             // и подставить туда готовый HTML
             
             // Ищем скрипт с ChatListU для определения позиции
-            Pattern chatListPattern = Pattern.compile("var\\s+ChatListU\\s*=\\s*new Array\\([^)]*\\);");
+            Pattern chatListPattern = Pattern.compile(
+                    "var\\s+ChatListU\\s*=\\s*new\\s+Array\\((.*?)\\);",
+                    Pattern.DOTALL);
             Matcher chatListMatcher = chatListPattern.matcher(html);
             
             if (chatListMatcher.find()) {
