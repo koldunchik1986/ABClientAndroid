@@ -1236,17 +1236,11 @@ public class AutoFunctionsManager {
      * - источник истины: BossAuto (SharedPreferences + runtime-проверки);
      * - потребители: QuickButtonsPanel и runtime-ветки BossAuto.
      */
-    public boolean isAutoBossClanNotifyEnabled() {
-        return bossAuto.isAutoBossClanNotifyEnabled();
-    }
 
     /**
      * Сохраняет настройку клан-уведомлений для Авто-Босса.
      * Важно: метод только меняет конфиг, но сам сообщения в чат не отправляет.
      */
-    public void setAutoBossClanNotifyEnabled(boolean enabled) {
-        bossAuto.setAutoBossClanNotifyEnabled(enabled);
-    }
 
     public int getAutoBossWaitBeforeScrollSec() {
         return bossAuto.getAutoBossWaitBeforeScrollSec();

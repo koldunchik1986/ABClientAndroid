@@ -26,6 +26,7 @@ import androidx.preference.PreferenceManager;
 import ru.neverlands.abclient.MainActivity;
 import ru.neverlands.abclient.model.Cell;
 import ru.neverlands.abclient.model.Contact;
+import ru.neverlands.abclient.postfilter.MainPhp;
 import ru.neverlands.abclient.utils.ExtMap;
 import ru.neverlands.abclient.utils.FileLogger;
 import ru.neverlands.abclient.utils.Russian;
@@ -1107,12 +1108,12 @@ public class RoomManager {
 
         if (!isEmpty(AppVars.myWalkers1)) {
             EventSounds.playSndMsg();
-            FastActionManager.writeChatMsg(AppVars.myWalkers1);
+            FastActionManager.writeChatMsg(MainPhp.buildServerChatTimeHtmlExternal() + AppVars.myWalkers1);
             AppVars.myWalkers1 = "";
         }
 
         if (!isEmpty(AppVars.myWalkers2)) {
-            FastActionManager.writeChatMsg(AppVars.myWalkers2);
+            FastActionManager.writeChatMsg(MainPhp.buildServerChatTimeHtmlExternal() + AppVars.myWalkers2);
             AppVars.myWalkers2 = "";
         }
     }
@@ -2456,9 +2457,11 @@ public class RoomManager {
         String safeNick = target.nick.replace("<", "&lt;").replace(">", "&gt;");
         String safeTarget = target.self ? "себя" : ("<b>" + safeNick + "</b>");
         String scope = target.self ? "self" : (target.classId == CONTACT_CLASS_FRIEND ? "friend" : "neutral");
-        FastActionManager.writeChatMsg("<font color=#5D7C91><b>[Автолечение]</b></font> "
-                + "Найдена " + getWoundLabelByType(target.woundType) + " травма у " + safeTarget
-                + ", запускаем лечение...");
+        String autoCureQueueMessage = MainPhp.buildServerChatTimeHtmlExternal()
+                + "<font color=#5D7C91><b>[\u0410\u0432\u0442\u043e\u043b\u0435\u0447\u0435\u043d\u0438\u0435]</b></font> "
+                + "\u041d\u0430\u0439\u0434\u0435\u043d\u0430 " + getWoundLabelByType(target.woundType) + " \u0442\u0440\u0430\u0432\u043c\u0430 \u0443 " + safeTarget
+                + ", \u0437\u0430\u043f\u0443\u0441\u043a\u0430\u0435\u043c \u043b\u0435\u0447\u0435\u043d\u0438\u0435...";
+        FastActionManager.writeChatMsg(autoCureQueueMessage);
         AppLog.d(TAG, AUTO_CURE_TRACE_PREFIX + " queued target: nick=" + target.nick
                 + ", woundType=" + target.woundType
                 + ", class=" + target.classId

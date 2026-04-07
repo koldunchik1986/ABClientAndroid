@@ -1719,8 +1719,9 @@ public class QuickButtonsPanel {
         // уведомлять клан-чат о событии босса и о найденной точной клетке.
         CheckBox clanNotifyCheck = new CheckBox(context);
         clanNotifyCheck.setText("Писать в клан-чат о Боссе и найденной клетке");
-        clanNotifyCheck.setChecked(autoFunctionsManager.isAutoBossClanNotifyEnabled());
+        clanNotifyCheck.setChecked(false);
         root.addView(clanNotifyCheck);
+        clanNotifyCheck.setVisibility(View.GONE);
 
         TextView waitScrollLabel = new TextView(context);
         waitScrollLabel.setPadding(0, pad, 0, 0);
@@ -1789,7 +1790,6 @@ public class QuickButtonsPanel {
 
                     autoFunctionsManager.setAutoBossAskTargetEnabled(askTargetCheck.isChecked());
                     autoFunctionsManager.setAutoBossTrackCurrentWarsEnabled(trackWarsCheck.isChecked());
-                    autoFunctionsManager.setAutoBossClanNotifyEnabled(clanNotifyCheck.isChecked());
                     autoFunctionsManager.setAutoBossWaitBeforeScrollSec(waitScrollSec);
                     autoFunctionsManager.setAutoBossSearchTimeoutSec(searchTimeoutSec);
                     autoFunctionsManager.setAutoBossWaitFightTimeoutSec(waitFightTimeoutSec);

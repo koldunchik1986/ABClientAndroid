@@ -124,20 +124,20 @@ final class BossAuto {
     private static final int TARGET_CHAT_ASK_MAX_ATTEMPTS = 5;
     private static final long TARGET_CHAT_ASK_RETRY_MS = 1_500L;
     private static final long TARGET_FIGHT_POLL_INTERVAL_MS = 1_000L;
+    private static final long CLAN_NOTIFY_DELAY_MS = 1000L;
+    private static final int CLAN_EVENT_CHAT_MAX_LEN = 160;
     /**
      * Задержка перед отправкой клан-сообщения о событии босса.
      * Нужна для:
      * 1. Предотвращения DDoS-блокировки сервером (много параллельных запросов)
      * 2. Буферизации потока быстрых pinfo/compass запросов
      */
-    private static final long CLAN_NOTIFY_DELAY_MS = 1000L;
     /**
      * Консервативный лимит длины `%clan%` сообщения.
      *
      * По логам длинные клан-пейлоады (особенно с большим списком клеток) могли
      * отправляться клиентом, но не отображаться у сокланов. Поэтому режем раньше.
      */
-    private static final int CLAN_EVENT_CHAT_MAX_LEN = 160;
     /**
      * Задержка между clan message и private message для ask target.
      * Предотвращает отклонение обоих сообщений как DDoS.
@@ -498,7 +498,6 @@ final class BossAuto {
         // Это не зависит от последующих фильтров BD/wars.
         String initialFightFid = resolveFightFidReliable(normalizedTarget, targetSnapshot);
         String initialFightLink = buildFightLogLink(initialFightFid);
-        sendClanBossEventMessageIfNeeded(event.bossName, normalizedTarget, selfClanToken, initialFightLink);
         String locationLabel = resolveTargetLocationLabel(normalizedTarget, targetSnapshot);
         String targetHtml = buildTargetNickHtml(normalizedTarget, targetSnapshot);
         String locationPrefix = isEmpty(locationLabel) ? "" : " [" + escapeHtml(locationLabel) + "]";
@@ -522,7 +521,6 @@ final class BossAuto {
             askTargetOnceIfEnabled(normalizedTarget);
             writeBossChat("Движение к цели остановлено — цель " + deniedTargetHtml
                     + " состоит в клане, участвующем в текущей клановой войне.");
-            sendClanBossWarDeniedMessageIfNeeded(selfClanToken);
             Log.d(TAG, TRACE_PREFIX + " wars filter denied by wars list: target=" + normalizedTarget
                     + ", targetClan=" + targetClanToken);
             return;
@@ -610,7 +608,6 @@ final class BossAuto {
         if (AppVars.AutoMoving) {
             owner.stopAutoMoving();
         }
-        sendClanBossFoundMessageIfNeeded();
         String targetHtml = buildTargetNickHtml(targetNick, null);
         writeBossChat("Цель найдена (" + source + "): "
                 + targetHtml + ". Готовим «Свиток Защиты».");
@@ -1105,11 +1102,19 @@ final class BossAuto {
         if (isEmpty(cleanNick)) {
             return "";
         }
-        String rendered = RoomManager.buildUnifiedChatNickHtml(cleanNick);
+        NeverApi.PinfoCompassSnapshot resolvedSnapshot = snapshot != null ? snapshot : safeGetPinfoSnapshot(cleanNick);
+        Integer levelOverride = resolvedSnapshot == null ? null : resolvedSnapshot.level;
+        Integer inclinationOverride = resolvedSnapshot == null ? null : resolvedSnapshot.inclination;
+        String clanTokenOverride = resolvedSnapshot == null ? null : resolvedSnapshot.clanToken;
+        String rendered = RoomManager.buildUnifiedChatNickHtml(
+                cleanNick,
+                levelOverride,
+                inclinationOverride,
+                clanTokenOverride
+        );
         if (!isEmpty(rendered)) {
             return rendered;
         }
-        NeverApi.PinfoCompassSnapshot resolvedSnapshot = snapshot != null ? snapshot : safeGetPinfoSnapshot(cleanNick);
         int level = 0;
         if (resolvedSnapshot != null && resolvedSnapshot.level != null && resolvedSnapshot.level > 0) {
             level = resolvedSnapshot.level;

@@ -2901,6 +2901,7 @@ public class MainPhp {
                 if (!isSelfWoundElixirNavigationOnlyResult(selfElixirCureHtml)) {
                     decrementSelfWoundCounterIfNeeded(targetNick, cureTravm,
                             "MainPhp.mainPhpExternalRequestedCureStep.selfElixirUsed");
+                    AppVars.CureNickDone = targetNick;
                     RoomManager.onAutoCureSubmitted(targetNick, cureTravm);
                     clearExternalCureRequest("submitted-self-elixir");
                     android.util.Log.d(TAG, "AUTO_CURE_TRACE self elixir submitted: nick="
@@ -2949,6 +2950,7 @@ public class MainPhp {
         // without this, AutoCure may keep seeing old runtime counters and re-trigger self-elixir loop.
         decrementSelfWoundCounterIfNeeded(targetNick, cureTravm,
                 "MainPhp.mainPhpExternalRequestedCureStep.submitted");
+        AppVars.CureNickDone = targetNick;
         RoomManager.onAutoCureSubmitted(targetNick, cureTravm);
 
         clearExternalCureRequest("submitted");
@@ -3045,6 +3047,7 @@ public class MainPhp {
             }
 
             CharacterVitalsManager.decrementPoisonOrWound(POISON_INDEX, "MainPhp.mainPhpAutoCureStep.poisonUsed");
+            AppVars.CureNickDone = nick;
             sendInventoryChatMessage(buildServerChatTimeHtml()
                     + "<font color=#004bbb>Лечим свое отравление...</font>");
             return poisonCureHtml;
@@ -3084,6 +3087,7 @@ public class MainPhp {
                 if (!isSelfWoundElixirNavigationOnlyResult(selfElixirCureHtml)) {
                     CharacterVitalsManager.decrementPoisonOrWound(woundIndex,
                             "MainPhp.mainPhpAutoCureStep.selfElixirUsed");
+                    AppVars.CureNickDone = nick;
                     RoomManager.onAutoCureSubmitted(nick, cureTravm);
                     android.util.Log.d(TAG, "AUTO_CURE_TRACE self elixir submitted (self): travm="
                             + cureTravm + ", index=" + woundIndex);
@@ -3125,6 +3129,7 @@ public class MainPhp {
         }
 
         CharacterVitalsManager.decrementPoisonOrWound(woundIndex, "MainPhp.mainPhpAutoCureStep.woundUsed");
+        AppVars.CureNickDone = nick;
         RoomManager.onAutoCureSubmitted(nick, cureTravm);
         sendInventoryChatMessage(buildServerChatTimeHtml()
                 + "<font color=#004bbb>Лечим свою " + woundLabel + " травму...</font>");
@@ -4115,6 +4120,16 @@ public class MainPhp {
                 .matcher(html);
         if (redBoldMatcher.find()) {
             String candidate = redBoldMatcher.group(1);
+            if (candidate != null && !candidate.trim().isEmpty()) {
+                return candidate.trim();
+            }
+        }
+
+        Matcher redBoldSingleBrMatcher = Pattern.compile(
+                "(?is)<font[^>]*color\\s*=\\s*['\\\"]?#?cc0000['\\\"]?[^>]*>\\s*<b>(.*?)<br\\s*/?>\\s*</b>\\s*</font>")
+                .matcher(html);
+        if (redBoldSingleBrMatcher.find()) {
+            String candidate = redBoldSingleBrMatcher.group(1);
             if (candidate != null && !candidate.trim().isEmpty()) {
                 return candidate.trim();
             }
@@ -6015,6 +6030,14 @@ public class MainPhp {
             return;
         }
         String type = resolveServerNotificationType(normalized, sourceTag, addressHint);
+        boolean appendAutoCureTarget = shouldAppendAutoCureTarget(sourceTag, addressHint);
+        if (appendAutoCureTarget) {
+            type = "\u0410\u0432\u0442\u043e-\u041b\u0435\u0447\u0435\u043d\u0438\u0435";
+            String cureTarget = resolveAutoCureNoticeTargetNick();
+            if (!cureTarget.isEmpty()) {
+                normalized = normalized + " на игрока '" + cureTarget + "'";
+            }
+        }
         String dedupKey = type + "|" + normalized;
         long nowMs = System.currentTimeMillis();
         if (dedupKey.equals(lastServerNoticeKey) && (nowMs - lastServerNoticeAtMs) < SERVER_NOTICE_CHAT_DEDUP_MS) {
@@ -6041,6 +6064,32 @@ public class MainPhp {
                 + ", text=" + normalized;
         Log.d(TAG, msg);
         FileLogger.trace(TAG, msg);
+        if (appendAutoCureTarget) {
+            AppVars.CureNickDone = "";
+        }
+    }
+
+    private static boolean shouldAppendAutoCureTarget(String sourceTag, String addressHint) {
+        String cureTarget = resolveAutoCureNoticeTargetNick();
+        if (cureTarget.isEmpty()) {
+            return false;
+        }
+        String lowerSource = sourceTag == null ? "" : sourceTag.toLowerCase(Locale.ROOT);
+        String lowerAddress = addressHint == null ? "" : addressHint.toLowerCase(Locale.ROOT);
+        return containsAny(lowerSource, "main_php_sys_message", "auto_cure", "cure")
+                || containsAny(lowerAddress, "wca=85", "doctorform", "wca=27", "cure", "med");
+    }
+
+    private static String resolveAutoCureNoticeTargetNick() {
+        String fromDone = AppVars.CureNickDone == null ? "" : AppVars.CureNickDone.trim();
+        if (!fromDone.isEmpty()) {
+            return fromDone;
+        }
+        String fromCurrent = AppVars.CureNick == null ? "" : AppVars.CureNick.trim();
+        if (!fromCurrent.isEmpty()) {
+            return fromCurrent;
+        }
+        return "";
     }
 
     private static String normalizeServerNotificationText(String text) {
