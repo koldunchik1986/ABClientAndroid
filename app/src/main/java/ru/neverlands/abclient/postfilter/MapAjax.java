@@ -1097,7 +1097,7 @@ public class MapAjax {
         FileLogger.trace(TAG, "[MAPAJAX_STARTUP_SYNC_REQUEST] nick='" + nick + "', reg=" + currentRegNum);
 
         int threshold = clampPercent(AppVars.Profile.AutoDrinkBlazTied);
-        NeverApi.PinfoVitals vitals = NeverApi.getPinfoVitalsFromPinfo(nick);
+        NeverApi.PinfoVitals vitals = NeverApi.getPinfoVitalsFromInfoApi(nick, "auto_blaz_startup");
         if (vitals == null) {
             logAutoBlazDecision(
                     "startup",
@@ -1202,7 +1202,7 @@ public class MapAjax {
             return;
         }
         FileLogger.trace(TAG, "[MAPAJAX_SYNC_REQUEST] Requesting pinfo from nick='" + nick + "'");
-        NeverApi.PinfoVitals synced = NeverApi.getPinfoVitalsFromPinfo(nick);
+        NeverApi.PinfoVitals synced = NeverApi.getPinfoVitalsFromInfoApi(nick, "auto_blaz_near_threshold");
         if (synced == null || synced.curTire == null) {
             String failMsg = "[MAPAJAX_SYNC_FAILED] synced=" + (synced == null ? "null" : "notNull");
             FileLogger.trace(TAG, failMsg);

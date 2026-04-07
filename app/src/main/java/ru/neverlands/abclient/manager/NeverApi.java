@@ -2,8 +2,19 @@ package ru.neverlands.abclient.manager;
 
 
 import ru.neverlands.abclient.utils.AppLog;
+import android.content.Intent;
 import android.webkit.CookieManager;
+import android.util.Xml;
 
+import androidx.localbroadcastmanager.content.LocalBroadcastManager;
+
+import org.xmlpull.v1.XmlPullParser;
+import org.xmlpull.v1.XmlSerializer;
+
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.OutputStreamWriter;
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
@@ -11,15 +22,21 @@ import java.net.URL;
 import java.net.URLEncoder;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.io.StringReader;
 
 import ru.neverlands.abclient.utils.AppVars;
+import ru.neverlands.abclient.utils.FileLogger;
 import ru.neverlands.abclient.proxy.ProxyRuntimeManager;
 import ru.neverlands.abclient.utils.Russian;
+import ru.neverlands.abclient.postfilter.MainPhp;
 
 /**
  * Портирование NeverApi.cs — прямые HTTP-запросы к API Neverlands.
@@ -52,6 +69,13 @@ public class NeverApi {
 
     // Кэш nick → userId (аналог NameToId в C#)
     private static final Map<String, String> nameToId = new HashMap<>();
+    private static final Object nickIdCacheLock = new Object();
+    private static final Map<String, NickIdRecord> nickIdCache = new LinkedHashMap<>();
+    private static volatile boolean nickIdCacheLoaded = false;
+    private static final String NICK_ID_CACHE_FILE = "nick_id.xml";
+    private static final String INFO_SOURCE_LOGIN_SYNC = "login_sync";
+    private static final String INFO_SOURCE_AUTO_BLAZ = "auto_blaz";
+    private static final String INFO_SOURCE_MAP_REGION_SYNC = "map_region_sync";
 
     /**
      * @return последний HTTP-код pinfo-запроса компаса.
@@ -156,6 +180,210 @@ public class NeverApi {
         }
     }
 
+    public static final class InfoApiSlot {
+        public final int index;
+        public final String icon;
+        public final String itemName;
+        public final String engraving;
+        public final Integer minDamage;
+        public final Integer maxDamage;
+        public final Integer armor;
+        public final Integer armorPierce;
+        public final Integer hpBonus;
+        public final Integer maBonus;
+        public final Integer durability;
+
+        public InfoApiSlot(int index,
+                           String icon,
+                           String itemName,
+                           String engraving,
+                           Integer minDamage,
+                           Integer maxDamage,
+                           Integer armor,
+                           Integer armorPierce,
+                           Integer hpBonus,
+                           Integer maBonus,
+                           Integer durability) {
+            this.index = index;
+            this.icon = icon == null ? "" : icon.trim();
+            this.itemName = itemName == null ? "" : itemName.trim();
+            this.engraving = engraving == null ? "" : engraving.trim();
+            this.minDamage = minDamage;
+            this.maxDamage = maxDamage;
+            this.armor = armor;
+            this.armorPierce = armorPierce;
+            this.hpBonus = hpBonus;
+            this.maBonus = maBonus;
+            this.durability = durability;
+        }
+
+        public boolean isFilled() {
+            return !isSlotPlaceholder(icon, itemName);
+        }
+    }
+
+    public static final class InfoApiEffect {
+        public final int id;
+        public final String name;
+        public final int count;
+        public final String timeout;
+
+        public InfoApiEffect(int id, String name, int count, String timeout) {
+            this.id = id;
+            this.name = name == null ? "" : name.trim();
+            this.count = Math.max(0, count);
+            this.timeout = timeout == null ? "" : timeout.trim();
+        }
+    }
+
+    public static final class InfoApiInfoLine {
+        public final String nick;
+        public final Integer level;
+        public final Integer inclination;
+        public final String clanCode;
+        public final String clanToken;
+        public final String clanName;
+        public final String clanStatus;
+        public final Integer gender;
+        public final Integer blockStatus;
+        public final Integer jailStatus;
+        public final Integer muteSeconds;
+        public final Integer muteForumSeconds;
+        public final Integer onlineStatus;
+        public final String locationRaw;
+        public final String locationRegion;
+        public final String locationName;
+        public final String fightFid;
+        public final String image;
+
+        public InfoApiInfoLine(String nick,
+                               Integer level,
+                               Integer inclination,
+                               String clanCode,
+                               String clanToken,
+                               String clanName,
+                               String clanStatus,
+                               Integer gender,
+                               Integer blockStatus,
+                               Integer jailStatus,
+                               Integer muteSeconds,
+                               Integer muteForumSeconds,
+                               Integer onlineStatus,
+                               String locationRaw,
+                               String locationRegion,
+                               String locationName,
+                               String fightFid,
+                               String image) {
+            this.nick = nick == null ? "" : nick.trim();
+            this.level = level;
+            this.inclination = inclination;
+            this.clanCode = clanCode == null ? "" : clanCode.trim();
+            this.clanToken = clanToken == null ? "" : clanToken.trim();
+            this.clanName = clanName == null ? "" : clanName.trim();
+            this.clanStatus = clanStatus == null ? "" : clanStatus.trim();
+            this.gender = gender;
+            this.blockStatus = blockStatus;
+            this.jailStatus = jailStatus;
+            this.muteSeconds = muteSeconds;
+            this.muteForumSeconds = muteForumSeconds;
+            this.onlineStatus = onlineStatus;
+            this.locationRaw = locationRaw == null ? "" : locationRaw.trim();
+            this.locationRegion = locationRegion == null ? "" : locationRegion.trim();
+            this.locationName = locationName == null ? "" : locationName.trim();
+            this.fightFid = normalizeFightFid(fightFid);
+            this.image = image == null ? "" : image.trim();
+        }
+    }
+
+    public static final class InfoApiHmuLine {
+        public final Integer curHp;
+        public final Integer maxHp;
+        public final Integer curMa;
+        public final Integer maxMa;
+        public final Integer maxTire;
+        public final Integer curTire;
+
+        public InfoApiHmuLine(Integer curHp,
+                              Integer maxHp,
+                              Integer curMa,
+                              Integer maxMa,
+                              Integer maxTire,
+                              Integer curTire) {
+            this.curHp = curHp;
+            this.maxHp = maxHp;
+            this.curMa = curMa;
+            this.maxMa = maxMa;
+            this.maxTire = maxTire;
+            this.curTire = curTire;
+        }
+    }
+
+    public static final class InfoApiSnapshot {
+        public final String sourceModule;
+        public final String requestedNick;
+        public final String playerId;
+        public final List<InfoApiSlot> slots;
+        public final Map<Integer, InfoApiSlot> slotsByIndex;
+        public final List<InfoApiEffect> effects;
+        public final InfoApiInfoLine info;
+        public final InfoApiHmuLine hmu;
+        public final String rawLine1;
+        public final String rawLine2;
+        public final String rawLine3;
+        public final String rawLine4;
+        public final long capturedAtMs;
+
+        public InfoApiSnapshot(String sourceModule,
+                               String requestedNick,
+                               String playerId,
+                               List<InfoApiSlot> slots,
+                               Map<Integer, InfoApiSlot> slotsByIndex,
+                               List<InfoApiEffect> effects,
+                               InfoApiInfoLine info,
+                               InfoApiHmuLine hmu,
+                               String rawLine1,
+                               String rawLine2,
+                               String rawLine3,
+                               String rawLine4,
+                               long capturedAtMs) {
+            this.sourceModule = sourceModule == null ? "" : sourceModule.trim();
+            this.requestedNick = requestedNick == null ? "" : requestedNick.trim();
+            this.playerId = playerId == null ? "" : playerId.trim();
+            this.slots = slots == null ? new ArrayList<>() : new ArrayList<>(slots);
+            this.slotsByIndex = slotsByIndex == null ? new HashMap<>() : new HashMap<>(slotsByIndex);
+            this.effects = effects == null ? new ArrayList<>() : new ArrayList<>(effects);
+            this.info = info;
+            this.hmu = hmu;
+            this.rawLine1 = rawLine1 == null ? "" : rawLine1;
+            this.rawLine2 = rawLine2 == null ? "" : rawLine2;
+            this.rawLine3 = rawLine3 == null ? "" : rawLine3;
+            this.rawLine4 = rawLine4 == null ? "" : rawLine4;
+            this.capturedAtMs = capturedAtMs;
+        }
+
+        public boolean isValid() {
+            return info != null && hmu != null;
+        }
+
+        public InfoApiSlot getSlot(int index) {
+            return slotsByIndex.get(index);
+        }
+    }
+
+    private static final class NickIdRecord {
+        private final String key;
+        private final String nick;
+        private final String id;
+        private final long updatedAtMs;
+
+        private NickIdRecord(String key, String nick, String id, long updatedAtMs) {
+            this.key = key;
+            this.nick = nick;
+            this.id = id;
+            this.updatedAtMs = updatedAtMs;
+        }
+    }
+
     // -----------------------------------------------------------------------
     // Публичный API
     // -----------------------------------------------------------------------
@@ -166,25 +394,7 @@ public class NeverApi {
      * Ответ: "userId|NickName"
      */
     public static String getUserId(String nick) {
-        synchronized (nameToId) {
-            if (nameToId.containsKey(nick)) return nameToId.get(nick);
-        }
-        try {
-            String encoded = encodeNeverlandsQueryTail(nick);
-            String data = getInfo("http://www.neverlands.ru/modules/api/getid.cgi?" + encoded);
-            if (data == null || data.isEmpty()) return null;
-            String[] parts = data.split("\\|");
-            if (parts.length != 2) return null;
-            String id = parts[0].trim();
-            String name = parts[1].trim();
-            synchronized (nameToId) {
-                nameToId.put(name, id);
-            }
-            return id;
-        } catch (Exception e) {
-            AppLog.w(TAG, "getUserId failed for " + nick, e);
-            return null;
-        }
+        return resolvePlayerIdByNick(nick, "legacy_get_user_id");
     }
 
     /**
@@ -245,6 +455,44 @@ public class NeverApi {
             return null;
         }
         return vitals.curTire;
+    }
+
+    public static PinfoVitals getPinfoVitalsFromInfoApi(String nick, String sourceModule) {
+        InfoApiSnapshot snapshot = getInfoApiSnapshotByNick(nick, sourceModule);
+        if (snapshot == null) {
+            return null;
+        }
+        return convertInfoSnapshotToVitals(snapshot);
+    }
+
+    public static PinfoCompassSnapshot getPinfoCompassSnapshotFromInfoApi(String nick, String sourceModule) {
+        if (nick == null || nick.trim().isEmpty()) {
+            return null;
+        }
+        lastCompassPinfoHttpStatus = 0;
+        InfoApiSnapshot snapshot = getInfoApiSnapshotByNick(nick, sourceModule);
+        if (snapshot == null || snapshot.info == null || snapshot.hmu == null) {
+            return null;
+        }
+        if (lastCompassPinfoHttpStatus == 0) {
+            lastCompassPinfoHttpStatus = 200;
+        }
+        InfoApiInfoLine infoLine = snapshot.info;
+        boolean offlineOrInvisible = (infoLine.onlineStatus != null && infoLine.onlineStatus <= 0)
+                || isEmpty(infoLine.locationName);
+        return new PinfoCompassSnapshot(
+                infoLine.nick.isEmpty() ? nick.trim() : infoLine.nick,
+                infoLine.locationRaw,
+                infoLine.locationRegion,
+                infoLine.locationName,
+                infoLine.clanToken,
+                infoLine.fightFid,
+                infoLine.level,
+                infoLine.inclination,
+                offlineOrInvisible,
+                snapshot.hmu.curTire,
+                snapshot.capturedAtMs
+        );
     }
 
     /**
@@ -331,6 +579,676 @@ public class NeverApi {
             AppLog.w(TAG, "AUTO_COMPASS_TRACE snapshot: request failed for nick=" + nick, e);
             return null;
         }
+    }
+
+    public static InfoApiSnapshot getInfoApiSnapshotByNick(String nick, String sourceModule) {
+        if (nick == null || nick.trim().isEmpty()) {
+            return null;
+        }
+        String normalizedNick = nick.trim();
+        String source = normalizeSourceModule(sourceModule);
+        AppLog.d(TAG, "INFO_API_TRACE source_module=" + source + ", stage=request, nick=" + normalizedNick);
+        try {
+            InfoApiSnapshot snapshot = requestInfoApiSnapshotInternal(normalizedNick, source);
+            if (snapshot == null) {
+                AppLog.w(TAG, "INFO_API_TRACE source_module=" + source + ", stage=request_failed, nick=" + normalizedNick);
+                return null;
+            }
+            AppLog.d(TAG, "INFO_API_TRACE source_module=" + source
+                    + ", stage=request_ok, nick=" + normalizedNick
+                    + ", id=" + snapshot.playerId
+                    + ", level=" + safeInt(snapshot.info == null ? null : snapshot.info.level)
+                    + ", tied=" + safeInt(snapshot.hmu == null ? null : snapshot.hmu.curTire)
+                    + ", location=" + (snapshot.info == null ? "" : snapshot.info.locationRegion + " [" + snapshot.info.locationName + "]"));
+            return snapshot;
+        } catch (Exception e) {
+            AppLog.w(TAG, "INFO_API_TRACE source_module=" + source + ", stage=request_exception, nick=" + normalizedNick, e);
+            return null;
+        }
+    }
+
+    private static InfoApiSnapshot requestInfoApiSnapshotInternal(String nick, String sourceModule) {
+        String playerId = resolvePlayerIdByNick(nick, sourceModule);
+        if (isEmpty(playerId)) {
+            AppLog.w(TAG, "INFO_API_TRACE source_module=" + sourceModule + ", stage=id_resolve_failed, nick=" + nick);
+            return null;
+        }
+
+        String response = fetchInfoApiResponse(playerId, sourceModule);
+        if (response == null || response.trim().isEmpty()) {
+            AppLog.w(TAG, "INFO_API_TRACE source_module=" + sourceModule + ", stage=info_empty, id=" + playerId + ", nick=" + nick);
+            return null;
+        }
+
+        InfoApiSnapshot snapshot = parseInfoApiSnapshot(response, playerId, nick, sourceModule);
+        if (snapshot == null || !snapshot.isValid()) {
+            AppLog.w(TAG, "INFO_API_TRACE source_module=" + sourceModule + ", stage=info_parse_failed, id=" + playerId + ", nick=" + nick);
+            return null;
+        }
+        return snapshot;
+    }
+
+    private static PinfoVitals convertInfoSnapshotToVitals(InfoApiSnapshot snapshot) {
+        if (snapshot == null || snapshot.hmu == null) {
+            return null;
+        }
+        int[] poisonAndWounds = buildPoisonAndWoundsFromEffects(snapshot.effects);
+        Integer topWoundType = resolveTopWoundTypeFromEffects(snapshot.effects);
+        return new PinfoVitals(
+                snapshot.hmu.curHp,
+                snapshot.hmu.maxHp,
+                snapshot.hmu.curMa,
+                snapshot.hmu.maxMa,
+                snapshot.hmu.curTire,
+                poisonAndWounds,
+                topWoundType
+        );
+    }
+
+    private static int[] buildPoisonAndWoundsFromEffects(List<InfoApiEffect> effects) {
+        int[] values = new int[] {0, 0, 0, 0};
+        if (effects == null) {
+            return values;
+        }
+        for (InfoApiEffect effect : effects) {
+            if (effect == null) {
+                continue;
+            }
+            int count = Math.max(1, effect.count);
+            switch (effect.id) {
+                case 24:
+                    values[POISON_INDEX] += count;
+                    break;
+                case 4:
+                    values[LIGHT_WOUND_INDEX] += count;
+                    break;
+                case 3:
+                    values[MEDIUM_WOUND_INDEX] += count;
+                    break;
+                case 2:
+                    values[HEAVY_WOUND_INDEX] += count;
+                    break;
+                default:
+                    break;
+            }
+        }
+        return values;
+    }
+
+    private static Integer resolveTopWoundTypeFromEffects(List<InfoApiEffect> effects) {
+        if (effects == null) {
+            return 0;
+        }
+        boolean hasBattle = false;
+        boolean hasHeavy = false;
+        boolean hasMedium = false;
+        boolean hasLight = false;
+        for (InfoApiEffect effect : effects) {
+            if (effect == null) {
+                continue;
+            }
+            switch (effect.id) {
+                case 1:
+                    hasBattle = true;
+                    break;
+                case 2:
+                    hasHeavy = true;
+                    break;
+                case 3:
+                    hasMedium = true;
+                    break;
+                case 4:
+                    hasLight = true;
+                    break;
+                default:
+                    break;
+            }
+        }
+        if (hasBattle) {
+            return 4;
+        }
+        if (hasHeavy) {
+            return 3;
+        }
+        if (hasMedium) {
+            return 2;
+        }
+        if (hasLight) {
+            return 1;
+        }
+        return 0;
+    }
+
+    private static InfoApiSnapshot parseInfoApiSnapshot(String response, String playerId, String requestedNick, String sourceModule) {
+        try {
+            String[] rows = response.split("\\r?\\n");
+            String line1 = findInfoApiLine(rows, "1|");
+            String line2 = findInfoApiLine(rows, "2|");
+            String line3 = findInfoApiLine(rows, "3|");
+            String line4 = findInfoApiLine(rows, "4|");
+
+            if (line1 == null || line2 == null || line3 == null || line4 == null) {
+                AppLog.w(TAG, "INFO_API_TRACE source_module=" + sourceModule
+                        + ", stage=info_parse_fail, reason=missing_line, id=" + playerId
+                        + ", has1=" + (line1 != null)
+                        + ", has2=" + (line2 != null)
+                        + ", has3=" + (line3 != null)
+                        + ", has4=" + (line4 != null));
+                return null;
+            }
+
+            List<InfoApiSlot> slots = parseInfoApiSlotsLine(line1, sourceModule, playerId);
+            List<InfoApiEffect> effects = parseInfoApiEffectsLine(line2, sourceModule, playerId);
+            InfoApiInfoLine infoLine = parseInfoApiInfoLine(line3, sourceModule, playerId);
+            InfoApiHmuLine hmuLine = parseInfoApiHmuLine(line4, sourceModule, playerId);
+            if (infoLine == null || hmuLine == null) {
+                AppLog.w(TAG, "INFO_API_TRACE source_module=" + sourceModule
+                        + ", stage=info_parse_fail, reason=critical_line_parse, id=" + playerId
+                        + ", infoOk=" + (infoLine != null)
+                        + ", hmuOk=" + (hmuLine != null));
+                return null;
+            }
+
+            Map<Integer, InfoApiSlot> slotsByIndex = new HashMap<>();
+            if (slots != null) {
+                for (InfoApiSlot slot : slots) {
+                    slotsByIndex.put(slot.index, slot);
+                }
+            }
+
+            AppLog.d(TAG, "INFO_API_TRACE source_module=" + sourceModule + ", stage=info_parse_ok, id=" + playerId
+                    + ", slots=" + (slots == null ? 0 : slots.size())
+                    + ", effects=" + (effects == null ? 0 : effects.size())
+                    + ", nick=" + infoLine.nick);
+            return new InfoApiSnapshot(
+                    sourceModule,
+                    requestedNick,
+                    playerId,
+                    slots,
+                    slotsByIndex,
+                    effects,
+                    infoLine,
+                    hmuLine,
+                    line1,
+                    line2,
+                    line3,
+                    line4,
+                    System.currentTimeMillis()
+            );
+        } catch (Exception e) {
+            AppLog.w(TAG, "INFO_API_TRACE source_module=" + sourceModule + ", stage=info_parse_exception, id=" + playerId, e);
+            return null;
+        }
+    }
+
+    private static String findInfoApiLine(String[] rows, String prefix) {
+        if (rows == null || rows.length == 0 || prefix == null) {
+            return null;
+        }
+        for (String row : rows) {
+            if (row == null) {
+                continue;
+            }
+            String value = row.trim();
+            if (value.startsWith(prefix)) {
+                return value;
+            }
+        }
+        return null;
+    }
+
+    private static List<InfoApiSlot> parseInfoApiSlotsLine(String line, String sourceModule, String playerId) {
+        ArrayList<InfoApiSlot> result = new ArrayList<>();
+        try {
+            String payload = line.length() > 2 ? line.substring(2) : "";
+            String[] entries = payload.split("@", -1);
+            for (int index = 0; index < entries.length; index++) {
+                String entry = entries[index];
+                if (entry == null || entry.trim().isEmpty()) {
+                    continue;
+                }
+                InfoApiSlot slot = parseInfoApiSlotEntry(index, entry);
+                if (slot != null) {
+                    result.add(slot);
+                }
+            }
+            AppLog.d(TAG, "INFO_API_TRACE source_module=" + sourceModule + ", stage=info_parse_ok_line1, id=" + playerId + ", slots=" + result.size());
+            return result;
+        } catch (Exception e) {
+            AppLog.w(TAG, "INFO_API_TRACE source_module=" + sourceModule + ", stage=info_parse_fail_line1, id=" + playerId, e);
+            return result;
+        }
+    }
+
+    private static InfoApiSlot parseInfoApiSlotEntry(int index, String entry) {
+        String[] parts = entry.split(":", 3);
+        String icon = parts.length > 0 ? parts[0] : "";
+        String itemName = parts.length > 1 ? parts[1] : "";
+        String tail = parts.length > 2 ? parts[2] : "";
+
+        String engraving = "";
+        Integer minDamage = null;
+        Integer maxDamage = null;
+        Integer armor = null;
+        Integer armorPierce = null;
+        Integer hpBonus = null;
+        Integer maBonus = null;
+        Integer durability = null;
+
+        if (!isEmpty(tail)) {
+            int statsPos = tail.indexOf('|');
+            if (statsPos >= 0) {
+                engraving = tail.substring(0, statsPos);
+                String statsRaw = tail.substring(statsPos + 1);
+                String[] stats = statsRaw.split("\\|", -1);
+                if (stats.length >= 7) {
+                    minDamage = parseIntToken(stats[0]);
+                    maxDamage = parseIntToken(stats[1]);
+                    armor = parseIntToken(stats[2]);
+                    armorPierce = parseIntToken(stats[3]);
+                    hpBonus = parseIntToken(stats[4]);
+                    maBonus = parseIntToken(stats[5]);
+                    durability = parseIntToken(stats[6]);
+                }
+            } else {
+                engraving = tail;
+            }
+        }
+
+        return new InfoApiSlot(
+                index,
+                icon,
+                itemName,
+                engraving,
+                minDamage,
+                maxDamage,
+                armor,
+                armorPierce,
+                hpBonus,
+                maBonus,
+                durability
+        );
+    }
+
+    private static List<InfoApiEffect> parseInfoApiEffectsLine(String line, String sourceModule, String playerId) {
+        ArrayList<InfoApiEffect> result = new ArrayList<>();
+        try {
+            String payload = line.length() > 2 ? line.substring(2) : "";
+            if (payload.trim().isEmpty()) {
+                AppLog.d(TAG, "INFO_API_TRACE source_module=" + sourceModule + ", stage=info_parse_ok_line2, id=" + playerId + ", effects=0");
+                return result;
+            }
+            String[] entries = payload.split("@", -1);
+            for (String entry : entries) {
+                if (entry == null || entry.trim().isEmpty()) {
+                    continue;
+                }
+                String[] parts = entry.split("\\.", 4);
+                if (parts.length < 2) {
+                    continue;
+                }
+                Integer id = parseIntToken(parts[0]);
+                if (id == null) {
+                    continue;
+                }
+                String name = parts[1];
+                Integer count = parts.length >= 3 ? parseIntToken(parts[2]) : 0;
+                String timeout = parts.length >= 4 ? parts[3] : "";
+                result.add(new InfoApiEffect(id, name, count == null ? 0 : count, timeout));
+            }
+            AppLog.d(TAG, "INFO_API_TRACE source_module=" + sourceModule + ", stage=info_parse_ok_line2, id=" + playerId + ", effects=" + result.size());
+            return result;
+        } catch (Exception e) {
+            AppLog.w(TAG, "INFO_API_TRACE source_module=" + sourceModule + ", stage=info_parse_fail_line2, id=" + playerId, e);
+            return result;
+        }
+    }
+
+    private static InfoApiInfoLine parseInfoApiInfoLine(String line, String sourceModule, String playerId) {
+        try {
+            String payload = line.length() > 2 ? line.substring(2) : "";
+            String[] parts = payload.split("\\|", -1);
+            if (parts.length < 16) {
+                AppLog.w(TAG, "INFO_API_TRACE source_module=" + sourceModule + ", stage=info_parse_fail_line3, id=" + playerId
+                        + ", parts=" + parts.length);
+                return null;
+            }
+
+            String locationRaw = parts[13];
+            String[] locationParts = splitPinfoLocationToRegionAndCell(locationRaw);
+            InfoApiInfoLine infoLine = new InfoApiInfoLine(
+                    parts[0],
+                    parseIntToken(parts[1]),
+                    parseIntToken(parts[2]),
+                    parts[3],
+                    parts[4],
+                    parts[5],
+                    parts[6],
+                    parseIntToken(parts[7]),
+                    parseIntToken(parts[8]),
+                    parseIntToken(parts[9]),
+                    parseIntToken(parts[10]),
+                    parseIntToken(parts[11]),
+                    parseIntToken(parts[12]),
+                    locationRaw,
+                    locationParts[0],
+                    locationParts[1],
+                    parts[14],
+                    parts[15]
+            );
+            AppLog.d(TAG, "INFO_API_TRACE source_module=" + sourceModule + ", stage=info_parse_ok_line3, id=" + playerId
+                    + ", nick=" + infoLine.nick + ", fightFid=" + infoLine.fightFid);
+            return infoLine;
+        } catch (Exception e) {
+            AppLog.w(TAG, "INFO_API_TRACE source_module=" + sourceModule + ", stage=info_parse_fail_line3, id=" + playerId, e);
+            return null;
+        }
+    }
+
+    private static InfoApiHmuLine parseInfoApiHmuLine(String line, String sourceModule, String playerId) {
+        try {
+            String payload = line.length() > 2 ? line.substring(2) : "";
+            String[] parts = payload.split("\\|", -1);
+            if (parts.length < 5) {
+                AppLog.w(TAG, "INFO_API_TRACE source_module=" + sourceModule + ", stage=info_parse_fail_line4, id=" + playerId
+                        + ", parts=" + parts.length);
+                return null;
+            }
+            Integer curHp = parseIntToken(parts[0]);
+            Integer maxHp = parseIntToken(parts[1]);
+            Integer curMa = parseIntToken(parts[2]);
+            Integer maxMa = parseIntToken(parts[3]);
+            Integer maxTire = parseIntToken(parts[4]);
+            Integer curTire = maxTire == null ? null : clampPercent(100 - maxTire);
+            InfoApiHmuLine hmu = new InfoApiHmuLine(curHp, maxHp, curMa, maxMa, maxTire, curTire);
+            AppLog.d(TAG, "INFO_API_TRACE source_module=" + sourceModule + ", stage=info_parse_ok_line4, id=" + playerId
+                    + ", hp=" + safeInt(curHp) + "/" + safeInt(maxHp)
+                    + ", ma=" + safeInt(curMa) + "/" + safeInt(maxMa)
+                    + ", tire=" + safeInt(curTire));
+            return hmu;
+        } catch (Exception e) {
+            AppLog.w(TAG, "INFO_API_TRACE source_module=" + sourceModule + ", stage=info_parse_fail_line4, id=" + playerId, e);
+            return null;
+        }
+    }
+
+    private static String fetchInfoApiResponse(String playerId, String sourceModule) {
+        try {
+            String url = "http://www.neverlands.ru/modules/api/info.cgi?playerid=" + playerId
+                    + "&slots=1&effects=1&info=1&hmu=1";
+            String data = getInfo(url);
+            int status = lastHttpStatusCode.get() == null ? 0 : lastHttpStatusCode.get();
+            AppLog.d(TAG, "INFO_API_TRACE source_module=" + sourceModule + ", stage=info_http, id=" + playerId + ", status=" + status);
+            return data;
+        } catch (Exception e) {
+            AppLog.w(TAG, "INFO_API_TRACE source_module=" + sourceModule + ", stage=info_http_exception, id=" + playerId, e);
+            return null;
+        }
+    }
+
+    private static String resolvePlayerIdByNick(String nick, String sourceModule) {
+        if (nick == null || nick.trim().isEmpty()) {
+            return null;
+        }
+        String normalizedNick = nick.trim();
+        String key = normalizeNickKey(normalizedNick);
+        if (isEmpty(key)) {
+            return null;
+        }
+
+        ensureNickIdCacheLoaded();
+
+        NickIdRecord cachedRecord;
+        synchronized (nickIdCacheLock) {
+            cachedRecord = nickIdCache.get(key);
+        }
+        if (cachedRecord != null && !isEmpty(cachedRecord.id)) {
+            synchronized (nameToId) {
+                nameToId.put(key, cachedRecord.id);
+            }
+            AppLog.d(TAG, "INFO_API_TRACE source_module=" + sourceModule + ", stage=id_cache_hit, nick=" + normalizedNick + ", id=" + cachedRecord.id);
+            return cachedRecord.id;
+        }
+
+        synchronized (nameToId) {
+            String memoryId = nameToId.get(key);
+            if (!isEmpty(memoryId)) {
+                AppLog.d(TAG, "INFO_API_TRACE source_module=" + sourceModule + ", stage=id_cache_hit_memory, nick=" + normalizedNick + ", id=" + memoryId);
+                return memoryId;
+            }
+        }
+
+        AppLog.d(TAG, "INFO_API_TRACE source_module=" + sourceModule + ", stage=id_cache_miss, nick=" + normalizedNick);
+        try {
+            String encodedNick = encodeNeverlandsQueryTail(normalizedNick);
+            String response = getInfo("http://www.neverlands.ru/modules/api/getid.cgi?" + encodedNick);
+            int status = lastHttpStatusCode.get() == null ? 0 : lastHttpStatusCode.get();
+            if (response == null || response.trim().isEmpty()) {
+                AppLog.w(TAG, "INFO_API_TRACE source_module=" + sourceModule + ", stage=id_http_empty, nick=" + normalizedNick + ", status=" + status);
+                return null;
+            }
+            String[] parts = response.split("\\|", -1);
+            if (parts.length < 1) {
+                AppLog.w(TAG, "INFO_API_TRACE source_module=" + sourceModule + ", stage=id_parse_fail, nick=" + normalizedNick + ", raw=" + response);
+                return null;
+            }
+            String id = parts[0] == null ? "" : parts[0].trim();
+            if (isEmpty(id)) {
+                AppLog.w(TAG, "INFO_API_TRACE source_module=" + sourceModule + ", stage=id_parse_empty, nick=" + normalizedNick + ", raw=" + response);
+                return null;
+            }
+            String resolvedNick = parts.length > 1 && !isEmpty(parts[1]) ? parts[1].trim() : normalizedNick;
+            cacheNickIdRecord(normalizedNick, resolvedNick, id, sourceModule);
+            return id;
+        } catch (Exception e) {
+            AppLog.w(TAG, "INFO_API_TRACE source_module=" + sourceModule + ", stage=id_http_exception, nick=" + normalizedNick, e);
+            return null;
+        }
+    }
+
+    private static void cacheNickIdRecord(String requestNick, String responseNick, String id, String sourceModule) {
+        if (isEmpty(requestNick) || isEmpty(id)) {
+            return;
+        }
+        String requestKey = normalizeNickKey(requestNick);
+        String responseKey = normalizeNickKey(responseNick);
+        long now = System.currentTimeMillis();
+        boolean wrote = false;
+        synchronized (nickIdCacheLock) {
+            ensureNickIdCacheLoadedLocked();
+            NickIdRecord current = nickIdCache.get(requestKey);
+            if (current == null || !id.equals(current.id) || !safeEquals(current.nick, responseNick)) {
+                nickIdCache.put(requestKey, new NickIdRecord(requestKey, responseNick, id, now));
+                wrote = true;
+            }
+            if (!isEmpty(responseKey) && !responseKey.equals(requestKey)) {
+                NickIdRecord responseRecord = nickIdCache.get(responseKey);
+                if (responseRecord == null || !id.equals(responseRecord.id) || !safeEquals(responseRecord.nick, responseNick)) {
+                    nickIdCache.put(responseKey, new NickIdRecord(responseKey, responseNick, id, now));
+                    wrote = true;
+                }
+            }
+            if (wrote) {
+                writeNickIdCacheLocked();
+            }
+        }
+        synchronized (nameToId) {
+            nameToId.put(requestKey, id);
+            if (!isEmpty(responseKey)) {
+                nameToId.put(responseKey, id);
+            }
+        }
+        if (wrote) {
+            AppLog.i(TAG, "INFO_API_TRACE source_module=" + sourceModule + ", stage=id_cache_write, nick=" + responseNick + ", id=" + id);
+            postNickIdWriteChatNoticeIfDevMode(sourceModule, responseNick, id);
+        }
+    }
+
+    private static void ensureNickIdCacheLoaded() {
+        synchronized (nickIdCacheLock) {
+            ensureNickIdCacheLoadedLocked();
+        }
+    }
+
+    private static void ensureNickIdCacheLoadedLocked() {
+        if (nickIdCacheLoaded) {
+            return;
+        }
+        nickIdCache.clear();
+        File file = resolveNickIdCacheFile();
+        if (file != null && file.exists()) {
+            readNickIdCacheLocked(file);
+        }
+        nickIdCacheLoaded = true;
+        AppLog.d(TAG, "INFO_API_TRACE stage=id_cache_loaded, size=" + nickIdCache.size());
+    }
+
+    private static void readNickIdCacheLocked(File file) {
+        try (FileInputStream stream = new FileInputStream(file);
+             InputStreamReader reader = new InputStreamReader(stream, Charset.forName("UTF-8"))) {
+            XmlPullParser parser = Xml.newPullParser();
+            parser.setInput(reader);
+            int eventType = parser.getEventType();
+            while (eventType != XmlPullParser.END_DOCUMENT) {
+                if (eventType == XmlPullParser.START_TAG && "entry".equals(parser.getName())) {
+                    String nick = parser.getAttributeValue(null, "nick");
+                    String id = parser.getAttributeValue(null, "id");
+                    String keyAttr = parser.getAttributeValue(null, "key");
+                    String updated = parser.getAttributeValue(null, "updated");
+                    String key = isEmpty(keyAttr) ? normalizeNickKey(nick) : normalizeNickKey(keyAttr);
+                    if (!isEmpty(key) && !isEmpty(id)) {
+                        long updatedAt = parseLongSafe(updated, 0L);
+                        nickIdCache.put(key, new NickIdRecord(key, nick == null ? "" : nick.trim(), id.trim(), updatedAt));
+                        synchronized (nameToId) {
+                            nameToId.put(key, id.trim());
+                        }
+                    }
+                }
+                eventType = parser.next();
+            }
+        } catch (Exception e) {
+            AppLog.w(TAG, "INFO_API_TRACE stage=id_cache_read_fail, file=" + file.getAbsolutePath(), e);
+        }
+    }
+
+    private static void writeNickIdCacheLocked() {
+        File file = resolveNickIdCacheFile();
+        if (file == null) {
+            return;
+        }
+        try (FileOutputStream stream = new FileOutputStream(file, false);
+             OutputStreamWriter writer = new OutputStreamWriter(stream, Charset.forName("UTF-8"))) {
+            XmlSerializer serializer = Xml.newSerializer();
+            serializer.setOutput(writer);
+            serializer.startDocument("UTF-8", true);
+            serializer.startTag(null, "nick_ids");
+            serializer.attribute(null, "updated", String.valueOf(System.currentTimeMillis()));
+            for (NickIdRecord record : nickIdCache.values()) {
+                serializer.startTag(null, "entry");
+                serializer.attribute(null, "key", record.key);
+                serializer.attribute(null, "nick", record.nick);
+                serializer.attribute(null, "id", record.id);
+                serializer.attribute(null, "updated", String.valueOf(record.updatedAtMs));
+                serializer.endTag(null, "entry");
+            }
+            serializer.endTag(null, "nick_ids");
+            serializer.endDocument();
+            writer.flush();
+        } catch (Exception e) {
+            AppLog.w(TAG, "INFO_API_TRACE stage=id_cache_write_fail", e);
+        }
+    }
+
+    private static File resolveNickIdCacheFile() {
+        if (AppVars.getContext() == null) {
+            return null;
+        }
+        File infoDir = new File(AppVars.getContext().getFilesDir(), "info");
+        if (!infoDir.exists() && !infoDir.mkdirs()) {
+            AppLog.w(TAG, "INFO_API_TRACE stage=id_cache_dir_fail, path=" + infoDir.getAbsolutePath());
+            return null;
+        }
+        return new File(infoDir, NICK_ID_CACHE_FILE);
+    }
+
+    private static void postNickIdWriteChatNoticeIfDevMode(String sourceModule, String nick, String id) {
+        if (!isDevIdCacheNotifyEnabled()) {
+            return;
+        }
+        if (AppVars.getContext() == null) {
+            return;
+        }
+        String source = isEmpty(sourceModule) ? "info_api" : sourceModule;
+        String safeNick = escapeHtmlText(nick);
+        String safeId = escapeHtmlText(id);
+        String safeSource = escapeHtmlText(source);
+        String html = MainPhp.buildServerChatTimeHtmlExternal()
+                + "<font color=#5D7C91><b>[" + safeSource + "]</b></font> "
+                + "Записан ID <b>" + safeId + "</b> для персонажа <b>" + safeNick + "</b> в базу игроков.";
+        Intent intent = new Intent(AppVars.ACTION_ADD_CHAT_MESSAGE);
+        intent.putExtra("message", html);
+        LocalBroadcastManager.getInstance(AppVars.getContext()).sendBroadcast(intent);
+    }
+
+    private static boolean isDevIdCacheNotifyEnabled() {
+        return AppVars.Profile != null && (AppVars.Profile.DoTexLog || AppVars.Profile.DoHttpLog);
+    }
+
+    private static String normalizeNickKey(String value) {
+        if (value == null) {
+            return "";
+        }
+        return value.trim().toLowerCase(Locale.ROOT);
+    }
+
+    private static String normalizeSourceModule(String sourceModule) {
+        if (sourceModule == null) {
+            return INFO_SOURCE_AUTO_BLAZ;
+        }
+        String value = sourceModule.trim().toLowerCase(Locale.ROOT);
+        if (value.isEmpty()) {
+            return INFO_SOURCE_AUTO_BLAZ;
+        }
+        return value;
+    }
+
+    private static long parseLongSafe(String value, long fallback) {
+        if (value == null) {
+            return fallback;
+        }
+        try {
+            return Long.parseLong(value.trim());
+        } catch (Exception ignored) {
+            return fallback;
+        }
+    }
+
+    private static boolean safeEquals(String left, String right) {
+        if (left == null && right == null) {
+            return true;
+        }
+        if (left == null || right == null) {
+            return false;
+        }
+        return left.equals(right);
+    }
+
+    private static String escapeHtmlText(String value) {
+        if (value == null || value.isEmpty()) {
+            return "";
+        }
+        return value
+                .replace("&", "&amp;")
+                .replace("<", "&lt;")
+                .replace(">", "&gt;")
+                .replace("\"", "&quot;")
+                .replace("'", "&#39;");
+    }
+
+    private static boolean isSlotPlaceholder(String icon, String itemName) {
+        String iconValue = icon == null ? "" : icon.trim().toLowerCase(Locale.ROOT);
+        String nameValue = itemName == null ? "" : itemName.trim().toLowerCase(Locale.ROOT);
+        return iconValue.startsWith("sl_") || nameValue.startsWith("слот для ");
     }
 
     private static Integer parseCurrentTiedFromPinfoHtml(String html) {
@@ -1060,7 +1978,8 @@ public class NeverApi {
         }
         String lower = urlString.toLowerCase();
         return lower.contains("/pinfo.cgi?")
-                || lower.contains("/modules/api/getid.cgi?");
+                || lower.contains("/modules/api/getid.cgi?")
+                || lower.contains("/modules/api/info.cgi?");
     }
 
     private static void sleepRetryQuietly(long millis) {

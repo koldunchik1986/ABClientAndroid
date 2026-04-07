@@ -520,7 +520,10 @@ public class AutoFunctionsManager {
         lastCharacterSyncRequestedAtMs = now;
 
         Thread syncThread = new Thread(() -> {
-            NeverApi.PinfoVitals vitals = NeverApi.getPinfoVitalsFromPinfo(nick);
+            boolean useInfoApi = reason != null && reason.startsWith("after-login");
+            NeverApi.PinfoVitals vitals = useInfoApi
+                    ? NeverApi.getPinfoVitalsFromInfoApi(nick, "login_sync")
+                    : NeverApi.getPinfoVitalsFromPinfo(nick);
             if (vitals == null) {
                 Log.w(TAG, "AUTO_BLAZ_TRACE: " + CHARACTER_SYNC_LABEL
                         + " failed (no vitals), nick=" + nick + ", reason=" + reason);

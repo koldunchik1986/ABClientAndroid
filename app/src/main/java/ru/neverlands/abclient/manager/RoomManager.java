@@ -379,7 +379,7 @@ public class RoomManager {
 
         new Thread(() -> {
             try {
-                NeverApi.PinfoCompassSnapshot snapshot = NeverApi.getPinfoCompassSnapshot(requestNick);
+                NeverApi.PinfoCompassSnapshot snapshot = NeverApi.getPinfoCompassSnapshotFromInfoApi(requestNick, "map_region_sync");
                 if (snapshot == null || snapshot.offlineOrInvisible) {
                     return;
                 }
