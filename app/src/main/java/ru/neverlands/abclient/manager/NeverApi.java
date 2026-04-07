@@ -457,6 +457,18 @@ public class NeverApi {
         return vitals.curTire;
     }
 
+    /**
+     * Возвращает vitals персонажа через новый контур `getid.cgi -> info.cgi`.
+     *
+     * Зависимости:
+     * - {@link #getInfoApiSnapshotByNick(String, String)} — единая точка получения 4-строчного snapshot;
+     * - {@link #convertInfoSnapshotToVitals(InfoApiSnapshot)} — совместимый конвертер в текущую модель
+     *   {@link PinfoVitals}, чтобы не ломать существующие потребители.
+     *
+     * Правила:
+     * - метод не меняет логику принятия решений в вызывающих модулях;
+     * - метод только заменяет источник данных (pinfo.cgi -> info.cgi) для фазовой миграции.
+     */
     public static PinfoVitals getPinfoVitalsFromInfoApi(String nick, String sourceModule) {
         InfoApiSnapshot snapshot = getInfoApiSnapshotByNick(nick, sourceModule);
         if (snapshot == null) {
@@ -465,6 +477,17 @@ public class NeverApi {
         return convertInfoSnapshotToVitals(snapshot);
     }
 
+    /**
+     * Совместимый snapshot для контуров карты/компаса на базе `info.cgi`.
+     *
+     * Назначение:
+     * - отдать вызывающему коду прежний тип {@link PinfoCompassSnapshot},
+     *   но заполненный из line3/line4 ответа `info.cgi`.
+     *
+     * Зависимости:
+     * - {@link #getInfoApiSnapshotByNick(String, String)} — транспорт и парсинг;
+     * - {@link #splitPinfoLocationToRegionAndCell(String)} — единый разбор `Region [CellName]`.
+     */
     public static PinfoCompassSnapshot getPinfoCompassSnapshotFromInfoApi(String nick, String sourceModule) {
         if (nick == null || nick.trim().isEmpty()) {
             return null;
@@ -581,6 +604,17 @@ public class NeverApi {
         }
     }
 
+    /**
+     * Единая точка Phase-1 для чтения данных персонажа через `getid.cgi + info.cgi`.
+     *
+     * Алгоритм:
+     * 1) нормализует nick/source;
+     * 2) получает snapshot через внутренний pipeline;
+     * 3) пишет trace decision-point в logcat + FileLogger через AppLog.
+     *
+     * Логирование:
+     * - `INFO_API_TRACE ... stage=request/request_ok/request_failed`.
+     */
     public static InfoApiSnapshot getInfoApiSnapshotByNick(String nick, String sourceModule) {
         if (nick == null || nick.trim().isEmpty()) {
             return null;
@@ -607,6 +641,14 @@ public class NeverApi {
         }
     }
 
+    /**
+     * Внутренний pipeline `nick -> playerId -> info.cgi -> DTO`.
+     *
+     * Зависимости:
+     * - {@link #resolvePlayerIdByNick(String, String)} — кэш + getid.cgi;
+     * - {@link #fetchInfoApiResponse(String, String)} — HTTP info.cgi;
+     * - {@link #parseInfoApiSnapshot(String, String, String, String)} — парсинг 4 строк.
+     */
     private static InfoApiSnapshot requestInfoApiSnapshotInternal(String nick, String sourceModule) {
         String playerId = resolvePlayerIdByNick(nick, sourceModule);
         if (isEmpty(playerId)) {
@@ -628,6 +670,13 @@ public class NeverApi {
         return snapshot;
     }
 
+    /**
+     * Конвертер нового snapshot (`info.cgi`) в существующий runtime-формат vitals.
+     *
+     * Назначение:
+     * - сохранить обратную совместимость для модулей, ожидающих {@link PinfoVitals},
+     *   без дублирования старого pinfo-парсинга.
+     */
     private static PinfoVitals convertInfoSnapshotToVitals(InfoApiSnapshot snapshot) {
         if (snapshot == null || snapshot.hmu == null) {
             return null;
@@ -645,6 +694,10 @@ public class NeverApi {
         );
     }
 
+    /**
+     * Сборка массива [яд, легк, сред, тяж] из line2/effects `info.cgi`.
+     * Индексы и приоритеты соответствуют текущей C#-совместимой модели.
+     */
     private static int[] buildPoisonAndWoundsFromEffects(List<InfoApiEffect> effects) {
         int[] values = new int[] {0, 0, 0, 0};
         if (effects == null) {
@@ -675,6 +728,10 @@ public class NeverApi {
         return values;
     }
 
+    /**
+     * Приоритет травмы для авто-лечения:
+     * 4 (боевая) > 3 (тяжёлая) > 2 (средняя) > 1 (лёгкая) > 0 (нет травм).
+     */
     private static Integer resolveTopWoundTypeFromEffects(List<InfoApiEffect> effects) {
         if (effects == null) {
             return 0;
@@ -719,6 +776,13 @@ public class NeverApi {
         return 0;
     }
 
+    /**
+     * Парсит 4 строки ответа `info.cgi` и собирает единый DTO.
+     *
+     * Критерии валидности:
+     * - line1..line4 присутствуют;
+     * - line3 (info) и line4 (hmu) распарсены успешно.
+     */
     private static InfoApiSnapshot parseInfoApiSnapshot(String response, String playerId, String requestedNick, String sourceModule) {
         try {
             String[] rows = response.split("\\r?\\n");
@@ -781,6 +845,9 @@ public class NeverApi {
         }
     }
 
+    /**
+     * Извлекает строку по префиксу (`1|`, `2|`, `3|`, `4|`) из multiline-ответа.
+     */
     private static String findInfoApiLine(String[] rows, String prefix) {
         if (rows == null || rows.length == 0 || prefix == null) {
             return null;
@@ -797,6 +864,11 @@ public class NeverApi {
         return null;
     }
 
+    /**
+     * Парсинг line1/slots:
+     * - сохраняет все слоты без потерь;
+     * - поддерживает доступ по индексам (важно для Fishing/Fight: hand1/hand2/pocket).
+     */
     private static List<InfoApiSlot> parseInfoApiSlotsLine(String line, String sourceModule, String playerId) {
         ArrayList<InfoApiSlot> result = new ArrayList<>();
         try {
@@ -820,6 +892,10 @@ public class NeverApi {
         }
     }
 
+    /**
+     * Парсер одной slot-записи line1:
+     * `icon:name:engraving|min|max|armor|pierce|hp|ma|durability`.
+     */
     private static InfoApiSlot parseInfoApiSlotEntry(int index, String entry) {
         String[] parts = entry.split(":", 3);
         String icon = parts.length > 0 ? parts[0] : "";
@@ -870,6 +946,10 @@ public class NeverApi {
         );
     }
 
+    /**
+     * Парсинг line2/effects:
+     * формат записи `id.name.count.timeout`.
+     */
     private static List<InfoApiEffect> parseInfoApiEffectsLine(String line, String sourceModule, String playerId) {
         ArrayList<InfoApiEffect> result = new ArrayList<>();
         try {
@@ -904,6 +984,10 @@ public class NeverApi {
         }
     }
 
+    /**
+     * Парсинг line3/info:
+     * `nick|level|inclination|clanCode|clanToken|...|online|Region [CellName]|fightFid|image`.
+     */
     private static InfoApiInfoLine parseInfoApiInfoLine(String line, String sourceModule, String playerId) {
         try {
             String payload = line.length() > 2 ? line.substring(2) : "";
@@ -945,6 +1029,10 @@ public class NeverApi {
         }
     }
 
+    /**
+     * Парсинг line4/hmu:
+     * `curHP|maxHP|curMA|maxMA|maxTire`, где `curTire = 100 - maxTire`.
+     */
     private static InfoApiHmuLine parseInfoApiHmuLine(String line, String sourceModule, String playerId) {
         try {
             String payload = line.length() > 2 ? line.substring(2) : "";
@@ -972,6 +1060,10 @@ public class NeverApi {
         }
     }
 
+    /**
+     * HTTP-запрос `info.cgi` для уже известного `playerId`.
+     * Использует общий транспорт {@link #getInfo(String)} (proxy/cookies/user-agent/retry).
+     */
     private static String fetchInfoApiResponse(String playerId, String sourceModule) {
         try {
             String url = "http://www.neverlands.ru/modules/api/info.cgi?playerid=" + playerId
@@ -986,6 +1078,14 @@ public class NeverApi {
         }
     }
 
+    /**
+     * Получает `playerId` по nick с двухуровневым кэшем:
+     * 1) in-memory + disk (`nick_id.xml`);
+     * 2) при miss — `getid.cgi`.
+     *
+     * Логирование:
+     * - `id_cache_hit`, `id_cache_hit_memory`, `id_cache_miss`, `id_http_*`, `id_parse_*`.
+     */
     private static String resolvePlayerIdByNick(String nick, String sourceModule) {
         if (nick == null || nick.trim().isEmpty()) {
             return null;
@@ -1046,6 +1146,14 @@ public class NeverApi {
         }
     }
 
+    /**
+     * Записывает новую/обновлённую пару nick->id в:
+     * - runtime map;
+     * - `nick_id.xml` (глобальный кэш).
+     *
+     * Дополнительно:
+     * - в Dev-режиме шлёт уведомление в чат о новой записи ID.
+     */
     private static void cacheNickIdRecord(String requestNick, String responseNick, String id, String sourceModule) {
         if (isEmpty(requestNick) || isEmpty(id)) {
             return;
@@ -1084,12 +1192,21 @@ public class NeverApi {
         }
     }
 
+    /**
+     * Публичный lazy-init кэша nick->id.
+     */
     private static void ensureNickIdCacheLoaded() {
         synchronized (nickIdCacheLock) {
             ensureNickIdCacheLoadedLocked();
         }
     }
 
+    /**
+     * Lazy-init под lock:
+     * - читает `files/info/nick_id.xml`;
+     * - заполняет memory cache;
+     * - подготавливает fallback map `nameToId`.
+     */
     private static void ensureNickIdCacheLoadedLocked() {
         if (nickIdCacheLoaded) {
             return;
@@ -1103,6 +1220,10 @@ public class NeverApi {
         AppLog.d(TAG, "INFO_API_TRACE stage=id_cache_loaded, size=" + nickIdCache.size());
     }
 
+    /**
+     * Читает `nick_id.xml` в memory-кэш.
+     * Формат: `<nick_ids><entry key=\"...\" nick=\"...\" id=\"...\" updated=\"...\"/></nick_ids>`.
+     */
     private static void readNickIdCacheLocked(File file) {
         try (FileInputStream stream = new FileInputStream(file);
              InputStreamReader reader = new InputStreamReader(stream, Charset.forName("UTF-8"))) {
@@ -1131,6 +1252,9 @@ public class NeverApi {
         }
     }
 
+    /**
+     * Атомарно сохраняет memory-кэш в `files/info/nick_id.xml`.
+     */
     private static void writeNickIdCacheLocked() {
         File file = resolveNickIdCacheFile();
         if (file == null) {
@@ -1159,6 +1283,10 @@ public class NeverApi {
         }
     }
 
+    /**
+     * Возвращает путь к глобальному кэшу ID:
+     * `Context.getFilesDir()/info/nick_id.xml`.
+     */
     private static File resolveNickIdCacheFile() {
         if (AppVars.getContext() == null) {
             return null;
@@ -1171,6 +1299,12 @@ public class NeverApi {
         return new File(infoDir, NICK_ID_CACHE_FILE);
     }
 
+    /**
+     * Dev-only уведомление о новой записи ID в базу игроков.
+     *
+     * Условие показа:
+     * - включён dev-флаг профиля (сейчас `DoTexLog || DoHttpLog`).
+     */
     private static void postNickIdWriteChatNoticeIfDevMode(String sourceModule, String nick, String id) {
         if (!isDevIdCacheNotifyEnabled()) {
             return;
@@ -1190,10 +1324,16 @@ public class NeverApi {
         LocalBroadcastManager.getInstance(AppVars.getContext()).sendBroadcast(intent);
     }
 
+    /**
+     * Источник "Dev-режима" для уведомлений ID-кэша.
+     */
     private static boolean isDevIdCacheNotifyEnabled() {
         return AppVars.Profile != null && (AppVars.Profile.DoTexLog || AppVars.Profile.DoHttpLog);
     }
 
+    /**
+     * Нормализация ключа nick для стабильного кэширования.
+     */
     private static String normalizeNickKey(String value) {
         if (value == null) {
             return "";
@@ -1201,6 +1341,9 @@ public class NeverApi {
         return value.trim().toLowerCase(Locale.ROOT);
     }
 
+    /**
+     * Нормализация source-модуля для trace.
+     */
     private static String normalizeSourceModule(String sourceModule) {
         if (sourceModule == null) {
             return INFO_SOURCE_AUTO_BLAZ;
@@ -1212,6 +1355,9 @@ public class NeverApi {
         return value;
     }
 
+    /**
+     * Безопасный парсер long с fallback.
+     */
     private static long parseLongSafe(String value, long fallback) {
         if (value == null) {
             return fallback;
@@ -1223,6 +1369,9 @@ public class NeverApi {
         }
     }
 
+    /**
+     * Null-safe сравнение строк.
+     */
     private static boolean safeEquals(String left, String right) {
         if (left == null && right == null) {
             return true;
@@ -1233,6 +1382,9 @@ public class NeverApi {
         return left.equals(right);
     }
 
+    /**
+     * Минимальный HTML-escape для сообщений в чат.
+     */
     private static String escapeHtmlText(String value) {
         if (value == null || value.isEmpty()) {
             return "";
@@ -1245,6 +1397,9 @@ public class NeverApi {
                 .replace("'", "&#39;");
     }
 
+    /**
+     * Проверка, что slot является "пустым слотом", а не надетым предметом.
+     */
     private static boolean isSlotPlaceholder(String icon, String itemName) {
         String iconValue = icon == null ? "" : icon.trim().toLowerCase(Locale.ROOT);
         String nameValue = itemName == null ? "" : itemName.trim().toLowerCase(Locale.ROOT);
