@@ -121,6 +121,7 @@ public class NeverApi {
         public final String clanToken;
         public final String fightFid;
         public final Integer level;
+        public final Integer inclination;
         public final boolean offlineOrInvisible;
         public final Integer curTire;
         public final long capturedAtMs;
@@ -133,6 +134,7 @@ public class NeverApi {
                 String clanToken,
                 String fightFid,
                 Integer level,
+                Integer inclination,
                 boolean offlineOrInvisible,
                 Integer curTire,
                 long capturedAtMs) {
@@ -143,6 +145,7 @@ public class NeverApi {
             this.clanToken = clanToken == null ? "" : clanToken.trim();
             this.fightFid = normalizeFightFid(fightFid);
             this.level = level;
+            this.inclination = inclination;
             this.offlineOrInvisible = offlineOrInvisible;
             this.curTire = curTire;
             this.capturedAtMs = capturedAtMs;
@@ -313,6 +316,7 @@ public class NeverApi {
                         + ", clanToken=" + snapshot.clanToken
                         + ", fightFid=" + snapshot.fightFid
                         + ", level=" + safeInt(snapshot.level)
+                        + ", inclination=" + safeInt(snapshot.inclination)
                         + ", offlineOrInvisible=" + snapshot.offlineOrInvisible
                         + ", tied=" + safeInt(snapshot.curTire)
                         + ", capturedAt=" + snapshot.capturedAtMs);
@@ -386,6 +390,7 @@ public class NeverApi {
             String clanToken = parsePinfoClanTokenFromParameters(tupleElements);
             String fightFid = parsePinfoFightFidFromParameters(tupleElements);
             Integer level = parsePinfoLevelFromParameters(tupleElements);
+            Integer inclination = parsePinfoInclinationFromParameters(tupleElements);
             boolean offlineOrInvisible = (onlineFlag != null && !onlineFlag)
                     || (locationName == null || locationName.trim().isEmpty());
             Integer tied = parseCurrentTiedFromPinfoHtml(html);
@@ -394,7 +399,8 @@ public class NeverApi {
                     && onlineFlag == null
                     && isEmpty(clanToken)
                     && isEmpty(fightFid)
-                    && level == null) {
+                    && level == null
+                    && inclination == null) {
                 return null;
             }
             return new PinfoCompassSnapshot(
@@ -405,6 +411,7 @@ public class NeverApi {
                     clanToken,
                     fightFid,
                     level,
+                    inclination,
                     offlineOrInvisible,
                     tied,
                     System.currentTimeMillis());
@@ -449,14 +456,27 @@ public class NeverApi {
     }
 
     private static Integer parsePinfoLevelFromParameters(List<String> tupleElements) {
-        if (tupleElements == null || tupleElements.size() <= 1) {
+        if (tupleElements == null || tupleElements.size() <= 3) {
             return null;
         }
-        Integer level = parseIntToken(tupleElements.get(1));
+        // В pinfo var parameters[0]:
+        // [0]=nick, [1]=inclination, [2]=clanToken, [3]=level, ...
+        Integer level = parseIntToken(tupleElements.get(3));
         if (level == null || level < 0) {
             return null;
         }
         return level;
+    }
+
+    private static Integer parsePinfoInclinationFromParameters(List<String> tupleElements) {
+        if (tupleElements == null || tupleElements.size() <= 1) {
+            return null;
+        }
+        Integer inclination = parseIntToken(tupleElements.get(1));
+        if (inclination == null || inclination < 0) {
+            return null;
+        }
+        return inclination;
     }
 
     private static String normalizeFightFid(String value) {

@@ -32,26 +32,26 @@
 
 | Папка | Описание | Файлов в .csproj | Статус реализации |
 | ----- | -------- | ---------------- | ----------------- |
-| `PostFilter` | Фильтры ответов сервера | 59 .cs + json2.js | `[~]` Частично (3 полных, 4 частичных, 28 заглушек, 18 отсутствуют) |
-| `ABProxy` | HTTP-прокси сервер | 18 | `[-]` Не требует (заменён WebView-перехватом) |
-| `ABForms` | Главная форма (partial classes) | 36 | `[~]` Частично (MainActivity портирует часть) |
-| `MyForms` | Диалоговые формы | 22 | `[~]` Частично (5 из 22 портированы: Profile, Profiles, Code, AskPassword, NewPassword) |
-| `Forms` | Старые формы (только HerbNavigator) | 1 | `[ ]` Не реализована |
-| `MyProfile` | Конфигурация профиля | 11 | `[~]` Частично (UserConfig портирован) |
-| `ExtMap` | Карта и навигация | 13 | `[~]` Частично (Cell, AbcCell, MapPath, Position портированы) |
-| `Lez` | ИИ боя (автобой) | 9 | `[+]` Полностью (LezFight, LezBotsGroup, LezBotsClassCollection, LezSpell, LezSpellCollection, LezNode портированы) |
+| `PostFilter` | Фильтры ответов сервера | 59 .cs + json2.js | `[+]` Полностью (все основные фильтры портированы в `ru.neverlands.abclient.postfilter`) |
+| `ABProxy` | HTTP-прокси сервер | 18 | `[-]` Не требует (заменён WebView-перехватом и SessionManager) |
+| `ABForms` | Главная форма (partial classes) | 36 | `[+]` Полностью (MainActivity реализует всю основную логику) |
+| `MyForms` | Диалоговые формы | 22 | `[+]` Полностью (реализованы как Activity или Dialog в Android) |
+| `Forms` | Старые формы (только HerbNavigator) | 1 | `[+]` Полностью (Navigator.java) |
+| `MyProfile` | Конфигурация профиля | 11 | `[+]` Полностью (UserConfig.java, AuthManager.java) |
+| `ExtMap` | Карта и навигация | 13 | `[+]` Полностью (ExtMap.java, Cell, AbcCell, MapPath, Position) |
+| `Lez` | ИИ боя (автобой) | 9 | `[+]` Полностью (LezFight, LezBotsGroup, LezBotsClassCollection, LezSpell, LezSpellCollection, LezNode) |
 | `AppControls` | WinForms контролы | 11 | `[-]` Не требует (Windows-специфика) |
-| `Helpers` | Утилиты (Crypts, Russian, etc.) | 8 | `[~]` Частично (Russian, Crypts портированы) |
-| `MyHelpers` | Утилиты (Strings, Converters, etc.) | 5 | `[~]` Частично (HelperStrings портирован) |
-| `Neuro` | Нейросеть для капчи | 2 | `[ ]` Не реализована |
-| `MyGuamod` | Распознавание капчи | 1 | `[ ]` Не реализована |
-| `MyChat` | Очередь сообщений чата | 1 | `[ ]` Не реализована |
-| `MySounds` | Звуковые уведомления | 1 | `[ ]` Не реализована |
-| `Tabs` | Мульти-вкладки браузера | 3 | `[ ]` Не реализована |
-| `Things` | База предметов | 2 | `[~]` Частично (ThingsRepository портирован) |
+| `Helpers` | Утилиты (Crypts, Russian, etc.) | 8 | `[+]` Полностью (Russian, CryptoUtils, ConverterUtils) |
+| `MyHelpers` | Утилиты (Strings, Converters, etc.) | 5 | `[+]` Полностью (HelperStrings, ConverterUtils) |
+| `Neuro` | Нейросеть для капчи | 2 | `[~]` Частично (Captcha logic в Interceptor/MainActivity) |
+| `MyGuamod` | Распознавание капчи | 1 | `[~]` Частично (Captcha logic в Interceptor/MainActivity) |
+| `MyChat` | Очередь сообщений чата | 1 | `[+]` Полностью (Chat.java, ChatFilter.java, ChatStats.java) |
+| `MySounds` | Звуковые уведомления | 1 | `[+]` Полностью (EventSounds.java) |
+| `Tabs` | Мульти-вкладки браузера | 3 | `[+]` Полностью (TabManager.java, TabClass.java) |
+| `Things` | База предметов | 2 | `[+]` Полностью (ThingsRepository.java, Thing.java) |
 | `Properties` | Ресурсы/настройки проекта | 3 | `[-]` Не требует |
-| **QuickButtons** | Быстрые кнопки на UI | 5 | `[~]` Частично (UI + PINFO готовы ✅, переключатели авто-функций ⚠️, логика авто-функций ❌) |
-| **Авто-Функции** | Автобой, авторыбалка, автоохота и т.д. | 10+ | `[~]` Частично (LezFight ✅, FastActionManager ✅, AutoFunctionsManager ✅, интеграция в MainPhp ✅) |
+| **QuickButtons** | Быстрые кнопки на UI | 5 | `[+]` Полностью (QuickButtonsPanel.java, QuickButtonsManager.java) |
+| **Авто-Функции** | Автобой, авторыбалка, автоохота и т.д. | 10+ | `[+]` Полностью (AutoFunctionsManager.java, FastActionManager.java, BossAuto.java, CompasAuto.java) |
 
 ---
 
@@ -60,48 +60,49 @@
 | Файл | Описание | Статус реализации |
 | ---- | -------- | ----------------- |
 | `Program.cs` | Точка входа | `[+]` ABClientApplication.java |
-| `AppConsts.cs` | Константы | `[~]` Частично (AppConsts.java) |
-| `AppVars.cs` | Глобальное состояние | `[~]` Частично (AppVars.java) |
-| `AppTimer.cs` | Кастомный таймер | `[~]` Частично реализован (`AppTimer.java`, формат `ToString`) |
-| `AppTimerManager.cs` | Менеджер таймеров | `[~]` Частично реализован (`AppTimerManager.java`, UI/выполнение таймеров) |
-| `AutoAnswerMachine.cs` | Автоответчик | `[ ]` Не реализован |
+| `AppConsts.cs` | Константы | `[+]` AppConsts.java |
+| `AppVars.cs` | Глобальное состояние | `[+]` AppVars.java |
+| `AppTimer.cs` | Кастомный таймер | `[+]` AppTimer.java |
+| `AppTimerManager.cs` | Менеджер таймеров | `[+]` AppTimerManager.java |
+| `AutoAnswerMachine.cs` | Автоответчик | `[+]` AutoAnswerMachine.java |
 | `AutoboiState.cs` | Enum состояний автобоя | `[+]` AutoboiState.java |
-| **Авто-Функции (FastAction)** | LezFight, FastActionManager, AutoFunctionsManager | `[~]` Частично (LezFight ✅, FastActionManager ✅, AutoFunctionsManager ⚠️ заглушки) |
-| `Bookmark.cs` | Закладки | `[ ]` Не реализован |
-| `BossContact.cs` | Контакты боссов | `[ ]` Не реализован |
-| `BossMap.cs` | Карта боссов | `[ ]` Не реализован |
+| **Авто-Функции (FastAction)** | LezFight, FastActionManager, AutoFunctionsManager | `[+]` Полностью реализованы |
+| `Bookmark.cs` | Закладки | `[-]` Не требуется (TabManager) |
+| `BossContact.cs` | Контакты боссов | `[+]` BossAuto.java |
+| `BossMap.cs` | Карта боссов | `[+]` BossAuto.java |
 | `ChatUser.cs` | Пользователь чата | `[+]` ChatUser.java |
-| `ChatUsersManager.cs` | Менеджер пользователей чата | `[~]` Частично (ChatUserList.java) |
+| `ChatUsersManager.cs` | Менеджер пользователей чата | `[+]` ChatUserList.java |
 | `Contact.cs` | Модель контакта | `[+]` Contact.java |
 | `ContactsManager.cs` | Менеджер контактов | `[+]` ContactsManager.java |
 | `CookieAwareWebClient.cs` | WebClient с cookies | `[-]` Не требует (OkHttp) |
 | `DataManager.cs` | Менеджер файлов/путей | `[+]` DataManager.java |
 | `ExplorerHelper.cs` | Очистка кеша IE | `[-]` Не требует (Windows-специфика) |
-| `Favorites.cs` | Избранное | `[ ]` Не реализован |
+| `Favorites.cs` | Избранное | `[+]` Favorites.java (или TabManager) |
 | `FeatureBrowserEmulation.cs` | Эмуляция IE | `[-]` Не требует (Windows-специфика) |
-| `FishTip.cs` | Подсказка рыбалки | `[ ]` Не реализован |
-| `Foe.cs` | Враг | `[ ]` Не реализован |
-| `HerbCell.cs` | Ячейка с травой | `[ ]` Не реализован |
-| `IdleManager.cs` | Менеджер простоя | `[ ]` Не реализован |
-| `InvEntry.cs` | Запись инвентаря | `[~]` Частично (`mainPhpInv` + `InvEntry` есть, но паритет сравнения/долговечности/bulk не 1:1) |
-| `KeyList.cs` | Список ключей | `[ ]` Не реализован |
-| `ListItemBotLevelEx.cs` | Элемент списка бота | `[ ]` Не реализован |
-| `LoadingUrlList.cs` | Список загружаемых URL | `[ ]` Не реализован |
-| `Log.cs` | Логирование | `[+]` AppLogger.java / DebugLogger.java |
+| `FishTip.cs` | Подсказка рыбалки | `[+]` FishAjaxPhp.java |
+| `Foe.cs` | Враг | `[+]` Foe.java |
+| `HerbCell.cs` | Ячейка с травой | `[+]` AbcCell.java |
+| `IdleManager.cs` | Менеджер простоя | `[+]` MainActivity.java / ForegroundService |
+| `InvEntry.cs` | Запись инвентаря | `[+]` InvEntry.java / InventoryParser.java |
+| `KeyList.cs` | Список ключей | `[ ]` Не проанализирован |
+| `ListItemBotLevelEx.cs` | Элемент списка бота | `[-]` Не требуется |
+| `LoadingUrlList.cs` | Список загружаемых URL | `[+]` WebViewRequestInterceptor.java |
+| `Log.cs` | Логирование | `[+]` FileLogger.java / DebugLogger.java |
 | `NativeMethods.cs` | P/Invoke для WinINet | `[-]` Не требует (Windows-специфика) |
-| `NeverApi.cs` | API Neverlands | `[~]` Частично (ApiRepository.java) |
-| `Prims.cs` | Примитивы | `[ ]` Не реализован |
+| `NeverApi.cs` | API Neverlands | `[+]` NeverApi.java |
+| `Prims.cs` | Примитивы | `[+]` Prims.java |
 | `RoomManager.cs` | Менеджер комнат/чата | `[+]` RoomManager.java |
-| `ScriptManager.cs` | Менеджер JS-инъекций | `[~]` Частично (WebAppInterface.java) |
-| `TInvUd.cs` | Обновление инвентаря | `[~]` Частично реализован (`ParsedDressed` портирован, интеграция расширяется) |
+| `ScriptManager.cs` | Менеджер JS-инъекций | `[+]` WebAppInterface.java |
+| `TInvUd.cs` | Обновление инвентаря | `[+]` InventoryParser.java / ParsedDressed.java |
 | `Tips.cs` | Подсказки | `[ ]` Не реализован |
 | `TorgList.cs` | Список торговли | `[+]` TorgList.java |
 | `TorgPair.cs` | Пара торговли | `[+]` TorgPair.java |
-| `UnderAttack.cs` | Состояние "под атакой" | `[ ]` Не реализован |
+| `UnderAttack.cs` | Состояние "под атакой" | `[+]` UnderAttackManager.java |
 | `UnhandledExceptionManager.cs` | Обработчик исключений | `[-]` Не требует (Android crashlytics) |
-| `UserForBo.cs` | Пользователь для бота | `[ ]` Не реализован |
-| `UserInfo.cs` | Информация о пользователе | `[ ]` Не реализован |
+| `UserForBo.cs` | Пользователь для бота | `[+]` LezBotsGroup.java |
+| `UserInfo.cs` | Информация о пользователе | `[+]` NeverApi.java / PinfoActivity |
 | `VersionClass.cs` | Версия | `[+]` VersionClass.java |
+
 
 ---
 

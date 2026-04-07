@@ -14,6 +14,7 @@ import java.util.Locale;
 import java.util.Set;
 
 import ru.neverlands.abclient.MainActivity;
+import ru.neverlands.abclient.postfilter.MainPhp;
 import ru.neverlands.abclient.utils.AppVars;
 import ru.neverlands.abclient.utils.ExtMap;
 import ru.neverlands.abclient.utils.MapPath;
@@ -50,6 +51,8 @@ final class CompasAuto {
     private static final int AUTO_COMPASS_POLL_BACKOFF_STEP_SEC = 1;
     private static final int AUTO_COMPASS_POLL_BACKOFF_MAX_EXTRA_SEC = 5;
     private static final long AUTO_COMPASS_ROOM_REFRESH_GRACE_MS = 8_000L;
+    private static final long AUTO_COMPASS_MOVE_STUCK_TIMEOUT_MS = 9_000L;
+    private static final long AUTO_COMPASS_MOVE_REKICK_COOLDOWN_MS = 12_000L;
 
     private final Context context;
     private final SharedPreferences prefs;
@@ -69,6 +72,9 @@ final class CompasAuto {
     private volatile long autoCompassDestinationSetAtMs = 0L;
     private volatile boolean autoCompassManualSingleRun = false;
     private volatile NeverApi.PinfoCompassSnapshot autoCompassLastSnapshot = null;
+    private volatile String autoCompassLastObservedRegNum = "";
+    private volatile long autoCompassLastObservedRegAtMs = 0L;
+    private volatile long autoCompassLastMoveKickAtMs = 0L;
 
     CompasAuto(Context context, SharedPreferences prefs, AutoFunctionsManager owner) {
         this.context = context.getApplicationContext();
@@ -109,6 +115,9 @@ final class CompasAuto {
                 });
             }
             autoCompassLastTickAtMs = 0L;
+            autoCompassLastObservedRegNum = "";
+            autoCompassLastObservedRegAtMs = 0L;
+            autoCompassLastMoveKickAtMs = 0L;
             tickAutoCompass(true);
         } else {
             boolean shouldStopMoving = AppVars.AutoMoving && isAutoCompassMovingNow();
@@ -121,6 +130,9 @@ final class CompasAuto {
                 autoCompassCandidateCells.clear();
                 autoCompassCheckedCells.clear();
             }
+            autoCompassLastObservedRegNum = "";
+            autoCompassLastObservedRegAtMs = 0L;
+            autoCompassLastMoveKickAtMs = 0L;
             if (shouldStopMoving) {
                 owner.stopAutoMoving();
             }
@@ -260,6 +272,9 @@ final class CompasAuto {
             autoCompassCandidateCells.clear();
             autoCompassCandidateCells.addAll(resolvedCandidates);
             autoCompassCheckedCells.clear();
+            autoCompassCurrentDestination = "";
+            autoCompassDestinationSetAtMs = 0L;
+            autoCompassLastSnapshot = snapshot;
         }
 
         AppLog.d(TAG, "AUTO_COMPASS_TRACE manual resolve: target=" + normalized
@@ -341,10 +356,17 @@ final class CompasAuto {
             return;
         }
         if (normalizedRoomNicks.contains(targetNick.toLowerCase(Locale.ROOT))) {
-            String foundRegNum = resolveFoundRegNumForMessage();
-            if (!foundRegNum.isEmpty()) {
-                finishAutoCompassFound(foundRegNum);
-                return;
+            String currentRegNum = getCurrentMapLocationRegNum();
+            if (canUseRoomHitForFinish(currentRegNum)) {
+                String foundRegNum = resolveFoundRegNumForMessage();
+                if (!foundRegNum.isEmpty()) {
+                    finishAutoCompassFound(foundRegNum);
+                    return;
+                }
+            } else {
+                AppLog.d(TAG, "AUTO_COMPASS_TRACE postpone finish by room update: map="
+                        + currentRegNum + ", destination=" + autoCompassCurrentDestination
+                        + ", autoMoving=" + AppVars.AutoMoving);
             }
         }
         if (roomLocationName != null && !roomLocationName.trim().isEmpty()) {
@@ -533,6 +555,7 @@ final class CompasAuto {
         }
         String currentRegNum = getCurrentMapLocationRegNum();
         if (currentRegNum.isEmpty()) {
+            maybeBootstrapNavigationWhileMapUnknown(targetNick);
             owner.requestCharacterSyncForAutoFunctionEnableInternal("auto_compass_wait_map_location");
             MainActivity activity = AppVars.mainActivity != null ? AppVars.mainActivity.get() : null;
             if (activity != null) {
@@ -547,8 +570,9 @@ final class CompasAuto {
             AppLog.d(TAG, "AUTO_COMPASS_TRACE waiting map location: target=" + targetNick);
             return;
         }
+        updateAutoCompassObservedRegNum(currentRegNum);
 
-        if (isTargetPresentInLatestRoom(targetNick)) {
+        if (isTargetPresentInLatestRoom(targetNick) && canUseRoomHitForFinish(currentRegNum)) {
             finishAutoCompassFound(resolveFoundRegNumForMessage());
             return;
         }
@@ -614,6 +638,9 @@ final class CompasAuto {
         if (!currentDestination.isEmpty()
                 && AppVars.AutoMoving
                 && currentDestination.equals(AppVars.AutoMovingDestinaton)) {
+            if (shouldRekickAutoMoving(currentRegNum, currentDestination)) {
+                rekickAutoMoving(currentDestination, currentRegNum);
+            }
             return;
         }
 
@@ -781,15 +808,11 @@ final class CompasAuto {
         String destination;
         long destinationSetAtMs;
         long roomUpdatedAtMs;
-        List<String> candidatesSnapshot;
         synchronized (autoCompassLock) {
             destination = autoCompassCurrentDestination;
             destinationSetAtMs = autoCompassDestinationSetAtMs;
             roomUpdatedAtMs = autoCompassLastRoomUpdateAtMs;
-            candidatesSnapshot = new ArrayList<>(autoCompassCandidateCells);
         }
-        boolean mapInCandidates = !isEmpty(mapRegNum) && candidatesSnapshot.contains(mapRegNum);
-        boolean destinationInCandidates = !isEmpty(destination) && candidatesSnapshot.contains(destination);
 
         boolean canUseDestinationAfterArrival = !isEmpty(destination)
                 && !AppVars.AutoMoving
@@ -800,25 +823,108 @@ final class CompasAuto {
             return destination;
         }
 
-        boolean mapRegNumLagWhileMoving = !isEmpty(destination)
-                && AppVars.AutoMoving
-                && destination.equals(AppVars.AutoMovingDestinaton)
-                && (isEmpty(mapRegNum) || !mapRegNum.equals(destination))
-                && destinationInCandidates
-                && !mapInCandidates;
-        if (mapRegNumLagWhileMoving) {
-            AppLog.d(TAG, "AUTO_COMPASS_TRACE found regnum overridden by destination while moving: map="
-                    + mapRegNum + ", destination=" + destination
-                    + ", mapInCandidates=" + mapInCandidates
-                    + ", destinationInCandidates=" + destinationInCandidates);
-            return destination;
-        }
-
         return mapRegNum;
+    }
+
+    private boolean canUseRoomHitForFinish(String currentRegNum) {
+        String destination;
+        long destinationSetAtMs;
+        long roomUpdatedAtMs;
+        synchronized (autoCompassLock) {
+            destination = autoCompassCurrentDestination;
+            destinationSetAtMs = autoCompassDestinationSetAtMs;
+            roomUpdatedAtMs = autoCompassLastRoomUpdateAtMs;
+        }
+        if (isEmpty(destination)) {
+            return true;
+        }
+        boolean movingToDestination = AppVars.AutoMoving && destination.equals(AppVars.AutoMovingDestinaton);
+        if (!movingToDestination) {
+            return true;
+        }
+        boolean arrived = !isEmpty(currentRegNum) && currentRegNum.equals(destination);
+        boolean freshRoom = roomUpdatedAtMs >= destinationSetAtMs;
+        if (!arrived || !freshRoom) {
+            AppLog.d(TAG, "AUTO_COMPASS_TRACE room hit ignored before destination confirmation: map="
+                    + currentRegNum + ", destination=" + destination
+                    + ", arrived=" + arrived + ", freshRoom=" + freshRoom
+                    + ", roomUpdatedAtMs=" + roomUpdatedAtMs
+                    + ", destinationSetAtMs=" + destinationSetAtMs);
+            return false;
+        }
+        return true;
     }
 
     private boolean shouldAutoCompassHuntAllCells() {
         return isAutoCompassHuntMode() && !autoCompassManualSingleRun;
+    }
+
+    private void maybeBootstrapNavigationWhileMapUnknown(String targetNick) {
+        long now = System.currentTimeMillis();
+        if ((now - autoCompassLastMoveKickAtMs) < AUTO_COMPASS_MOVE_REKICK_COOLDOWN_MS) {
+            return;
+        }
+        String destination;
+        synchronized (autoCompassLock) {
+            destination = autoCompassCurrentDestination;
+            if (isEmpty(destination)) {
+                for (String regNum : autoCompassCandidateCells) {
+                    if (!autoCompassCheckedCells.contains(regNum)) {
+                        destination = regNum;
+                        break;
+                    }
+                }
+            }
+            if (!isEmpty(destination) && isEmpty(autoCompassCurrentDestination)) {
+                autoCompassCurrentDestination = destination;
+                autoCompassDestinationSetAtMs = now;
+            }
+        }
+        if (isEmpty(destination)) {
+            return;
+        }
+        if (AppVars.AutoMoving && destination.equals(AppVars.AutoMovingDestinaton)) {
+            return;
+        }
+        autoCompassLastMoveKickAtMs = now;
+        owner.startAutoMoving(destination);
+        AppLog.d(TAG, "AUTO_COMPASS_TRACE map location unknown -> bootstrap moving: target="
+                + targetNick + ", destination=" + destination);
+    }
+
+    private void updateAutoCompassObservedRegNum(String currentRegNum) {
+        if (isEmpty(currentRegNum)) {
+            return;
+        }
+        if (!currentRegNum.equals(autoCompassLastObservedRegNum)) {
+            autoCompassLastObservedRegNum = currentRegNum;
+            autoCompassLastObservedRegAtMs = System.currentTimeMillis();
+        } else if (autoCompassLastObservedRegAtMs == 0L) {
+            autoCompassLastObservedRegAtMs = System.currentTimeMillis();
+        }
+    }
+
+    private boolean shouldRekickAutoMoving(String currentRegNum, String destination) {
+        if (isEmpty(destination) || isEmpty(currentRegNum) || destination.equals(currentRegNum)) {
+            return false;
+        }
+        long now = System.currentTimeMillis();
+        if ((now - autoCompassLastMoveKickAtMs) < AUTO_COMPASS_MOVE_REKICK_COOLDOWN_MS) {
+            return false;
+        }
+        long lastObservedAt = autoCompassLastObservedRegAtMs;
+        if (lastObservedAt == 0L) {
+            return false;
+        }
+        return (now - lastObservedAt) >= AUTO_COMPASS_MOVE_STUCK_TIMEOUT_MS;
+    }
+
+    private void rekickAutoMoving(String destination, String currentRegNum) {
+        autoCompassLastMoveKickAtMs = System.currentTimeMillis();
+        owner.startAutoMoving(destination);
+        AppLog.w(TAG, "AUTO_COMPASS_TRACE movement stall detected -> rekick destination: map="
+                + currentRegNum + ", destination=" + destination
+                + ", stallMs=" + (autoCompassLastMoveKickAtMs - autoCompassLastObservedRegAtMs));
     }
 
     private boolean isAutoCompassMovingNow() {
@@ -832,9 +938,9 @@ final class CompasAuto {
     private void finishAutoCompassFound(String regNum) {
         String safeReg = regNum == null ? "" : regNum.trim();
         String targetNick = getAutoCompassTargetNick();
-        String targetHtml = RoomManager.buildUnifiedChatNickHtml(targetNick);
+        String targetHtml = buildCompassTargetHtml(targetNick);
         StringBuilder htmlBuilder = new StringBuilder();
-        htmlBuilder.append("<font color=#5D7C91><b>[Компас]</b></font> ");
+        htmlBuilder.append(buildCompassPrefixHtml());
         if (safeReg.isEmpty()) {
             htmlBuilder.append("Игрок найден.");
         } else {
@@ -887,7 +993,7 @@ final class CompasAuto {
         if (message == null || message.trim().isEmpty()) {
             return;
         }
-        String html = "<font color=#5D7C91><b>[Компас]</b></font> " + escapeHtml(message);
+        String html = buildCompassPrefixHtml() + escapeHtml(message);
         FastActionManager.writeChatMsg(html);
     }
 
@@ -895,9 +1001,9 @@ final class CompasAuto {
         String safeMode = mode == null ? "" : mode.trim();
         String safeSource = source == null ? "" : source.trim();
         String safeTarget = targetNick == null ? "" : targetNick.trim();
-        String targetHtml = RoomManager.buildUnifiedChatNickHtml(safeTarget);
+        String targetHtml = buildCompassTargetHtml(safeTarget);
         StringBuilder htmlBuilder = new StringBuilder();
-        htmlBuilder.append("<font color=#5D7C91><b>[Компас]</b></font> ");
+        htmlBuilder.append(buildCompassPrefixHtml());
         htmlBuilder.append("Старт: режим=").append(escapeHtml(safeMode))
                 .append(", источник=").append(escapeHtml(safeSource))
                 .append(", цель=");
@@ -916,8 +1022,8 @@ final class CompasAuto {
 
     private void writeCompassMoveChat(String nextDestination, String targetNick, List<String> candidatesSnapshot) {
         StringBuilder htmlBuilder = new StringBuilder();
-        String targetHtml = RoomManager.buildUnifiedChatNickHtml(targetNick);
-        htmlBuilder.append("<font color=#5D7C91><b>[Компас]</b></font> ");
+        String targetHtml = buildCompassTargetHtml(targetNick);
+        htmlBuilder.append(buildCompassPrefixHtml());
         htmlBuilder.append("Двигаемся к клетке №").append(escapeHtml(nextDestination)).append(" ");
         if (!isEmpty(targetHtml)) {
             htmlBuilder.append("(Цель: ").append(targetHtml).append("). ");
@@ -927,6 +1033,31 @@ final class CompasAuto {
         htmlBuilder.append("Возможные клетки: ")
                 .append(formatCompassCellsLinks(candidatesSnapshot));
         FastActionManager.writeChatMsg(htmlBuilder.toString());
+    }
+
+    private String buildCompassPrefixHtml() {
+        return MainPhp.buildServerChatTimeHtmlExternal()
+                + "<font color=#5D7C91><b>[Компас]</b></font> ";
+    }
+
+    private String buildCompassTargetHtml(String targetNick) {
+        String safeTarget = normalizeCompassNick(targetNick);
+        if (safeTarget.isEmpty()) {
+            return "";
+        }
+        NeverApi.PinfoCompassSnapshot snapshot;
+        synchronized (autoCompassLock) {
+            snapshot = autoCompassLastSnapshot;
+        }
+        if (snapshot != null && safeTarget.equalsIgnoreCase(normalizeCompassNick(snapshot.nick))) {
+            return RoomManager.buildUnifiedChatNickHtml(
+                    safeTarget,
+                    snapshot.level,
+                    snapshot.inclination,
+                    snapshot.clanToken
+            );
+        }
+        return RoomManager.buildUnifiedChatNickHtml(safeTarget);
     }
 
     private String normalizeCompassNick(String value) {

@@ -2,7 +2,6 @@ package ru.neverlands.abclient.manager;
 
 import android.content.Context;
 import android.content.res.AssetManager;
-import android.util.Log;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -27,6 +26,8 @@ import ru.neverlands.abclient.utils.FileLogger;
 import ru.neverlands.abclient.utils.Russian;
 import ru.neverlands.abclient.utils.AppVars;
 import ru.neverlands.abclient.utils.EventSounds;
+import ru.neverlands.abclient.utils.ConverterUtils;
+import ru.neverlands.abclient.utils.AppLog;
 
 public class RoomManager {
     private static final String TAG = "RoomManager";
@@ -99,13 +100,13 @@ public class RoomManager {
     public static String process(Context context, String html) {
         syncCellNameFromRoomHtml(context, html);
         maybeSyncCellMetaFromOwnPinfo(context);
-        Log.d(TAG, BG_TRACE_PREFIX + " process: htmlLen=" + (html == null ? 0 : html.length())
+        AppLog.d(TAG, BG_TRACE_PREFIX + " process: htmlLen=" + (html == null ? 0 : html.length())
                 + ", contextNull=" + (context == null)
                 + ", doShowWalkers=" + AppVars.DoShowWalkers);
         if (isEmpty(html)) {
             String cachedRoomHtml = getCachedRoomRenderHtml();
             if (!isEmpty(cachedRoomHtml)) {
-                Log.d(TAG, BG_TRACE_PREFIX + " process: htmlLen=0 -> reuse cached room render, cacheAgeMs="
+                AppLog.d(TAG, BG_TRACE_PREFIX + " process: htmlLen=0 -> reuse cached room render, cacheAgeMs="
                         + (System.currentTimeMillis() - lastStableRoomRenderAtMs));
                 FileLogger.trace("roommanager", "[ROOM_RENDER_CACHE] reuse cached render for empty html");
                 return cachedRoomHtml;
@@ -114,7 +115,7 @@ public class RoomManager {
         FilterProcRoomResult filterResult = FilterProcRoom(html);
         // STEP 1: Инжектируем сгенерированный HTML список игроков в ответ
         html = injectPlayerListHtmlIntoChatPhp(html, filterResult);
-        Log.d(TAG, BG_TRACE_PREFIX + " process: HTML injection complete, htmlLen=" + html.length());
+        AppLog.d(TAG, BG_TRACE_PREFIX + " process: HTML injection complete, htmlLen=" + html.length());
         rememberStableRoomRenderHtml(html, filterResult.numCharsInRoom);
         if (context != null) {
             try {
@@ -123,12 +124,12 @@ public class RoomManager {
                         extractLocationName(html)
                 );
             } catch (Exception e) {
-                Log.w(TAG, "AUTO_COMPASS_TRACE room update hook failed", e);
+                AppLog.w(TAG, "AUTO_COMPASS_TRACE room update hook failed", e);
             }
         }
         FilterGetWalkers(html, filterResult);
         boolean fightActive = isFightSessionActive();
-        Log.d(TAG, AA_TRACE_PREFIX + " room tick: chars=" + filterResult.numCharsInRoom
+        AppLog.d(TAG, AA_TRACE_PREFIX + " room tick: chars=" + filterResult.numCharsInRoom
                 + ", enemies=" + buildEnemyCandidatesTrace(filterResult.enemyCandidates)
                 + ", selectedEnemy=" + filterResult.enemyAttack
                 + ", fastNeed=" + AppVars.FastNeed
@@ -154,21 +155,21 @@ public class RoomManager {
         // 3) запускаем `FastActionManager.fastAttackAutoByToolId(...)` только если
         //    `AppVars.FastNeed == false`, чтобы не пересекаться с уже активным циклом быстрой атаки.
         if (context == null) {
-            Log.d(TAG, AA_TRACE_PREFIX + " auto-attack skipped: context=null");
+            AppLog.d(TAG, AA_TRACE_PREFIX + " auto-attack skipped: context=null");
             return html;
         }
 
         if (AppVars.FastNeed) {
-            Log.d(TAG, AA_TRACE_PREFIX + " auto-attack skipped: fast pipeline active"
+            AppLog.d(TAG, AA_TRACE_PREFIX + " auto-attack skipped: fast pipeline active"
                     + ", fastId=" + AppVars.FastId + ", fastNick=" + AppVars.FastNick);
             return html;
         }
 
         if (isEmpty(filterResult.enemyAttack)) {
             if (filterResult.enemyCandidates.isEmpty()) {
-                Log.d(TAG, AA_TRACE_PREFIX + " auto-attack skipped: no hostile contacts in room");
+                AppLog.d(TAG, AA_TRACE_PREFIX + " auto-attack skipped: no hostile contacts in room");
             } else {
-                Log.d(TAG, AA_TRACE_PREFIX + " auto-attack skipped: no selected enemy"
+                AppLog.d(TAG, AA_TRACE_PREFIX + " auto-attack skipped: no selected enemy"
                         + ", enemies=" + buildEnemyCandidatesTrace(filterResult.enemyCandidates));
             }
             return html;
@@ -180,7 +181,7 @@ public class RoomManager {
         // Это перезапускает `FastNeed/FastId` в середине боя и конфликтует с циклом ударов автобоя.
         // Итог: конфликт между циклами "авто-нападение" и "цикл ударов автобоя".
         if (fightActive) {
-            Log.d(TAG, AA_TRACE_PREFIX + " auto-attack skipped: active fight session"
+            AppLog.d(TAG, AA_TRACE_PREFIX + " auto-attack skipped: active fight session"
                     + ", fastNeed=" + AppVars.FastNeed
                     + ", fightLink=" + AppVars.FightLink
                     + ", topUrl=" + AppVars.url_main_top);
@@ -189,7 +190,7 @@ public class RoomManager {
 
         boolean autoAttackEnabled = isAutoAttackEnabled(context);
         if (!autoAttackEnabled) {
-            Log.d(TAG, AA_TRACE_PREFIX + " auto-attack disabled: enabled=false"
+            AppLog.d(TAG, AA_TRACE_PREFIX + " auto-attack disabled: enabled=false"
                     + ", globalTool=" + AppVars.AutoAttackToolId);
             return html;
         }
@@ -206,13 +207,13 @@ public class RoomManager {
         // Зависимости: `ContactsManager`, `AppVars`.
         int toolId = (contactToolId > 0) ? contactToolId : globalToolId;
         if (toolId == 0) {
-            Log.d(TAG, AA_TRACE_PREFIX + " auto-attack skipped: no tool selected, nick=" + enemyNick
+            AppLog.d(TAG, AA_TRACE_PREFIX + " auto-attack skipped: no tool selected, nick=" + enemyNick
                     + ", contactTool=" + contactToolId + ", globalTool=" + globalToolId);
             return html;
         }
 
         long blackListRemainingMs = getBlackListRemainingMs(enemyNick);
-        Log.d(TAG, AA_TRACE_PREFIX + " auto-attack candidate: nick=" + enemyNick + ", toolId=" + toolId
+        AppLog.d(TAG, AA_TRACE_PREFIX + " auto-attack candidate: nick=" + enemyNick + ", toolId=" + toolId
                 + ", contactTool=" + contactToolId
                 + ", fastNeedBefore=" + AppVars.FastNeed
                 + ", globalTool=" + globalToolId
@@ -220,9 +221,9 @@ public class RoomManager {
         FastActionManager.writeChatMsg("Пытаемся напасть на <b>" + enemyNick + "</b>!");
         boolean started = FastActionManager.fastAttackAutoByToolId(enemyNick, toolId);
         if (!started) {
-            Log.w(TAG, AA_TRACE_PREFIX + " auto-attack skipped: unsupported toolId=" + toolId + ", nick=" + enemyNick);
+            AppLog.w(TAG, AA_TRACE_PREFIX + " auto-attack skipped: unsupported toolId=" + toolId + ", nick=" + enemyNick);
         } else {
-            Log.d(TAG, AA_TRACE_PREFIX + " auto-attack started: nick=" + enemyNick + ", toolId=" + toolId
+            AppLog.d(TAG, AA_TRACE_PREFIX + " auto-attack started: nick=" + enemyNick + ", toolId=" + toolId
                     + ", fastNeedAfter=" + AppVars.FastNeed + ", fastId=" + AppVars.FastId
                     + ", fastNick=" + AppVars.FastNick);
         }
@@ -256,7 +257,7 @@ public class RoomManager {
         }
         if (!isNatureMapContextForCellRename()) {
             clearPendingRoomLocationName();
-            Log.d(TAG, "MAP_NAME_SYNC_TRACE: skip room label sync outside nature map, topUrl="
+            AppLog.d(TAG, "MAP_NAME_SYNC_TRACE: skip room label sync outside nature map, topUrl="
                     + AppVars.url_main_top + ", serverName=" + serverLocationName);
             return;
         }
@@ -268,13 +269,13 @@ public class RoomManager {
             // текущую клетку именем соседней при рассинхроне ответов.
             if (!AppVars.AutoMoving) {
                 clearPendingRoomLocationName();
-                Log.d(TAG, "MAP_NAME_SYNC_TRACE: skip unresolved room label sync in idle mode, currentReg="
+                AppLog.d(TAG, "MAP_NAME_SYNC_TRACE: skip unresolved room label sync in idle mode, currentReg="
                         + currentReg + ", serverName=" + serverLocationName);
                 return;
             }
             String pendingTargetReg = normalizeRegNum(AppVars.AutoMovingNextJump);
             cachePendingRoomLocationName(serverLocationName, pendingTargetReg);
-            Log.d(TAG, "MAP_NAME_SYNC_TRACE: defer room label sync (moving), currentReg="
+            AppLog.d(TAG, "MAP_NAME_SYNC_TRACE: defer room label sync (moving), currentReg="
                     + currentReg
                     + ", nextJump=" + AppVars.AutoMovingNextJump
                     + ", pendingReg=" + pendingTargetReg
@@ -289,7 +290,7 @@ public class RoomManager {
                 && currentReg.equals(regNum);
         if (!canApplyImmediately) {
             cachePendingRoomLocationName(serverLocationName, regNum);
-            Log.d(TAG, "MAP_NAME_SYNC_TRACE: defer room label sync, currentReg=" + currentReg
+            AppLog.d(TAG, "MAP_NAME_SYNC_TRACE: defer room label sync, currentReg=" + currentReg
                     + ", resolvedReg=" + regNum
                     + ", autoMoving=" + AppVars.AutoMoving
                     + ", serverName=" + serverLocationName);
@@ -313,11 +314,11 @@ public class RoomManager {
                     .getInstance(context)
                     .shouldPauseMapRebuildFromPinfoByAutoBoss();
             if (pausedByAutoBoss) {
-                Log.d(TAG, "MAP_NAME_SYNC_TRACE: map-rebuild paused by Auto-Boss active search stage");
+                AppLog.d(TAG, "MAP_NAME_SYNC_TRACE: map-rebuild paused by Auto-Boss active search stage");
                 return false;
             }
         } catch (Exception e) {
-            Log.w(TAG, "MAP_NAME_SYNC_TRACE: map-rebuild pause check failed", e);
+            AppLog.w(TAG, "MAP_NAME_SYNC_TRACE: map-rebuild pause check failed", e);
         }
         return true;
     }
@@ -335,7 +336,7 @@ public class RoomManager {
         }
         long mapConfirmSeq = lastMapLocationConfirmedSeq;
         if (!isMapLocationConfirmedForPinfoSync(mapRegNum, mapConfirmSeq)) {
-            Log.d(TAG, "MAP_NAME_SYNC_TRACE: skip pinfo sync, map location not confirmed, reg=" + mapRegNum
+            AppLog.d(TAG, "MAP_NAME_SYNC_TRACE: skip pinfo sync, map location not confirmed, reg=" + mapRegNum
                     + ", confirmedReg=" + normalizeRegNum(lastMapLocationConfirmedRegNum)
                     + ", confirmedSeq=" + lastMapLocationConfirmedSeq
                     + ", expectedSeq=" + mapConfirmSeq
@@ -356,12 +357,12 @@ public class RoomManager {
             boolean changedFromCache = ExtMap.syncCellMetaFromPinfo(mapRegNum, cachedRegion, "");
             if (changedFromCache) {
                 boolean notified = notifyMapMetaSyncIfChanged(mapRegNum, oldRegion, oldName);
-                Log.d(TAG, "MAP_NAME_SYNC_TRACE: pinfo region cached sync applied, reg=" + mapRegNum
+                AppLog.d(TAG, "MAP_NAME_SYNC_TRACE: pinfo region cached sync applied, reg=" + mapRegNum
                         + ", region=" + cachedRegion
                         + ", notified=" + notified);
             }
         } else if (!isEmpty(cachedRegion)) {
-            Log.d(TAG, "MAP_NAME_SYNC_TRACE: skip cached pinfo region sync (not aligned), reg=" + mapRegNum
+            AppLog.d(TAG, "MAP_NAME_SYNC_TRACE: skip cached pinfo region sync (not aligned), reg=" + mapRegNum
                     + ", cachedRegion=" + cachedRegion
                     + ", cachedCell=" + normalizeCellLabel(lastOwnPinfoCellName)
                     + ", currentCell=" + normalizeCellLabel(getCellName(mapRegNum)));
@@ -396,7 +397,7 @@ public class RoomManager {
                     return;
                 }
                 if (!isMapLocationConfirmedForPinfoSync(requestRegNum, requestConfirmSeq)) {
-                    Log.d(TAG, "MAP_NAME_SYNC_TRACE: skip pinfo sync in worker, reg is no longer confirmed, reg="
+                    AppLog.d(TAG, "MAP_NAME_SYNC_TRACE: skip pinfo sync in worker, reg is no longer confirmed, reg="
                             + requestRegNum + ", liveReg=" + liveRegNum
                             + ", confirmedReg=" + normalizeRegNum(lastMapLocationConfirmedRegNum)
                             + ", confirmedSeq=" + lastMapLocationConfirmedSeq
@@ -422,7 +423,7 @@ public class RoomManager {
                 boolean changed = ExtMap.syncCellMetaFromPinfo(requestRegNum, effectiveRegion, effectiveCellName);
                 if (changed) {
                     boolean notified = notifyMapMetaSyncIfChanged(requestRegNum, oldRegion, oldName);
-                    Log.d(TAG, "MAP_NAME_SYNC_TRACE: pinfo meta sync applied, reg=" + requestRegNum
+                    AppLog.d(TAG, "MAP_NAME_SYNC_TRACE: pinfo meta sync applied, reg=" + requestRegNum
                             + ", region=" + effectiveRegion + ", cell=" + effectiveCellName
                             + ", sourceRegion=" + locationRegion
                             + ", sourceCell=" + locationName
@@ -431,7 +432,7 @@ public class RoomManager {
                             + ", notified=" + notified);
                 } else if ((!canApplyName && !isEmpty(locationName))
                         || (!canApplyRegion && !isEmpty(locationRegion))) {
-                    Log.d(TAG, "MAP_NAME_SYNC_TRACE: skip pinfo meta sync for current reg, reg=" + requestRegNum
+                    AppLog.d(TAG, "MAP_NAME_SYNC_TRACE: skip pinfo meta sync for current reg, reg=" + requestRegNum
                             + ", pinfoCell=" + locationName
                             + ", pinfoRegion=" + locationRegion
                             + ", currentCell=" + normalizeCellLabel(getCellName(requestRegNum))
@@ -441,7 +442,7 @@ public class RoomManager {
                             + ", canApplyRegion=" + canApplyRegion);
                 }
             } catch (Exception e) {
-                Log.w(TAG, "MAP_NAME_SYNC_TRACE: pinfo meta sync failed", e);
+                AppLog.w(TAG, "MAP_NAME_SYNC_TRACE: pinfo meta sync failed", e);
             } finally {
                 lastMapPinfoSyncAtMs = System.currentTimeMillis();
                 mapPinfoSyncInFlight = false;
@@ -566,7 +567,7 @@ public class RoomManager {
             return;
         }
         if (!isEmpty(pendingLabel.targetRegNum) && !pendingLabel.targetRegNum.equals(normalizedReg)) {
-            Log.d(TAG, "MAP_NAME_SYNC_TRACE: keep deferred room label sync, pendingReg="
+            AppLog.d(TAG, "MAP_NAME_SYNC_TRACE: keep deferred room label sync, pendingReg="
                     + pendingLabel.targetRegNum
                     + ", confirmedReg=" + normalizedReg
                     + ", serverName=" + pendingLabel.locationName);
@@ -610,7 +611,7 @@ public class RoomManager {
         // - иначе оставляем существующий путь (синхронизация только названия).
         if (!isEmpty(ownPinfoRegionHint)) {
             metaChanged = ExtMap.syncCellMetaFromPinfo(normalizedReg, ownPinfoRegionHint, normalizedServer);
-            Log.d(TAG, "MAP_NAME_SYNC_TRACE: apply with pinfo region, reg=" + normalizedReg
+            AppLog.d(TAG, "MAP_NAME_SYNC_TRACE: apply with pinfo region, reg=" + normalizedReg
                     + ", region=" + ownPinfoRegionHint + ", name=" + normalizedServer);
         } else {
             String oldLabelFromSync = ExtMap.syncCellLabelFromServer(normalizedReg, normalizedServer);
@@ -645,7 +646,7 @@ public class RoomManager {
                         + "Клетка №" + normalizedReg + " - \"" + safeOld + "\" заменено на "
                         + "Клетка №" + normalizedReg + " - \"" + safeNew + "\""
         );
-        Log.d(TAG, "MAP_NAME_SYNC_TRACE: reg=" + normalizedReg
+        AppLog.d(TAG, "MAP_NAME_SYNC_TRACE: reg=" + normalizedReg
                 + ", oldMeta=" + oldMeta
                 + ", newMeta=" + newMeta
                 + ", nameChanged=" + nameChanged
@@ -1020,7 +1021,7 @@ public class RoomManager {
         int visibleChars = charsNow.size();
         int locationCharsFromServer = parseLocationCharsCount(html);
         AppVars.myNevids = resolveNevidsCount(html, visibleChars);
-        Log.d(TAG, AA_TRACE_PREFIX + " FilterGetWalkers: loc=" + locationNow
+        AppLog.d(TAG, AA_TRACE_PREFIX + " FilterGetWalkers: loc=" + locationNow
                 + ", coord=" + extractRoomCoordKey(AppVars.url_ch_list)
                 + ", regNum=" + currentCellRegNum
                 + ", visibleChars=" + visibleChars
@@ -1206,7 +1207,7 @@ public class RoomManager {
             try {
                 sb.append(HtmlChar(rawChar));
             } catch (Exception e) {
-                Log.w(TAG, "buildWalkersMessage: skip malformed char entry: " + rawChar, e);
+                AppLog.w(TAG, "buildWalkersMessage: skip malformed char entry: " + rawChar, e);
             }
         }
 
@@ -1280,7 +1281,7 @@ public class RoomManager {
             try {
                 sb.append(HtmlChar(rawChar));
             } catch (Exception e) {
-                Log.w(TAG, "buildNevidStateChangeMessage: skip malformed char entry: " + rawChar, e);
+                AppLog.w(TAG, "buildNevidStateChangeMessage: skip malformed char entry: " + rawChar, e);
             }
         }
         if (count == 0) {
@@ -1456,6 +1457,7 @@ public class RoomManager {
         String[] strArray = schar.split(":");
         String nnSec = strArray[1];
         String login = strArray[1];
+        String pinfoNickEncoded = encodeNickForPinfoUrl(nnSec);
         int classId = parseClassIdSafe(ContactsManager.getClassIdOfContact(login));
 
         String color = "#000000";
@@ -1572,7 +1574,7 @@ public class RoomManager {
             "</b></font></a><span class=\"ab-room-level\" style=\"color:" + color + " !important;\">[" +
             strArray[2] +
             "]</span><a href=\"http://neverlands.ru/pinfo.cgi?" +
-            nnSec +
+            pinfoNickEncoded +
             "\" onclick=\"window.open(this.href);\"><img src=http://image.neverlands.ru/chat/info.gif width=11 height=12 border=0 align=absmiddle></a>" +
             inj +
             sleeps +
@@ -1598,7 +1600,7 @@ public class RoomManager {
         try {
             return HtmlChar(rawEntry);
         } catch (Exception e) {
-            Log.w(TAG, "buildRoomUserHtmlByNick: failed, nick=" + nick + ", rawEntry=" + rawEntry, e);
+            AppLog.w(TAG, "buildRoomUserHtmlByNick: failed, nick=" + nick + ", rawEntry=" + rawEntry, e);
             return "";
         }
     }
@@ -1612,6 +1614,22 @@ public class RoomManager {
      *    враг=красный, друг=зелёный, нейтрал=обычный.
      */
     public static String buildUnifiedChatNickHtml(String nick) {
+        return buildUnifiedChatNickHtml(nick, null, null, null);
+    }
+
+    /**
+     * Единый рендер ника для чата с optional override-метаданными из pinfo.
+     *
+     * Использование:
+     * - базовый путь: только `nick` (данные берём из room/contacts);
+     * - расширенный путь: можно передать `level/inclination/clanToken`, если
+     *   в room-list цели ещё нет, но pinfo уже получен (например, в Компасе).
+     */
+    public static String buildUnifiedChatNickHtml(
+            String nick,
+            Integer levelOverride,
+            Integer inclinationOverride,
+            String clanTokenOverride) {
         if (isEmpty(nick)) {
             return "";
         }
@@ -1626,6 +1644,7 @@ public class RoomManager {
         }
 
         int classId = parseClassIdSafe(ContactsManager.getClassIdOfContact(cleanNick));
+        Contact cachedContact = findContactByNickIgnoreCase(cleanNick);
         String color = "#000000";
         if (classId == CONTACT_CLASS_ENEMY) {
             color = "#8A0808"; // enemy (desktop parity)
@@ -1635,18 +1654,44 @@ public class RoomManager {
 
         String escapedNick = escapeHtml(cleanNick);
         String nickForJs = escapeJsSingleQuoted(cleanNick);
-        int contactLevel = ContactsManager.getLevelOfContact(cleanNick);
-        String levelHtml = contactLevel > 0
-                ? " [<font class=nickname color=\"" + color + "\">" + contactLevel + "</font>]"
+        String pinfoNickEncoded = encodeNickForPinfoUrl(cleanNick);
+        String inclinationHtml = buildUnifiedInclinationHtml(cachedContact, inclinationOverride);
+        String clanHtml = buildUnifiedClanIconHtml(cachedContact, clanTokenOverride);
+        int resolvedLevel = resolveUnifiedLevel(cleanNick, levelOverride);
+        String levelHtml = resolvedLevel > 0
+                ? " [<font class=nickname color=\"" + color + "\">" + resolvedLevel + "</font>]"
                 : "";
         return "<a href=\"#\" onclick=\"top.say_private('" + nickForJs
                 + "');\"><img src=http://image.neverlands.ru/chat/private.gif width=11 height=12 border=0 align=absmiddle></a>&nbsp;"
+                + inclinationHtml
+                + clanHtml
                 + "<a class=\"activenick\" href=\"#\" onclick=\"top.say_to('" + nickForJs
                 + "');\"><font class=nickname color=\"" + color + "\"><b>"
                 + escapedNick + "</b></font></a>"
                 + levelHtml
-                + "<a href=\"http://neverlands.ru/pinfo.cgi?" + escapedNick
+                + "<a href=\"http://neverlands.ru/pinfo.cgi?" + pinfoNickEncoded
                 + "\" onclick=\"window.open(this.href);\"><img src=http://image.neverlands.ru/chat/info.gif width=11 height=12 border=0 align=absmiddle></a>";
+    }
+
+    private static int resolveUnifiedLevel(String cleanNick, Integer levelOverride) {
+        if (levelOverride != null && levelOverride > 0) {
+            return levelOverride;
+        }
+        return ContactsManager.getLevelOfContact(cleanNick);
+    }
+
+    private static String buildUnifiedInclinationHtml(Contact contact, Integer inclinationOverride) {
+        if (inclinationOverride != null && inclinationOverride > 0) {
+            return buildInclinationIconHtmlByValue(inclinationOverride, "");
+        }
+        return buildContactInclinationHtml(contact);
+    }
+
+    private static String buildUnifiedClanIconHtml(Contact contact, String clanTokenOverride) {
+        if (!isEmpty(clanTokenOverride)) {
+            return buildClanIconHtmlByToken(clanTokenOverride, contact != null ? contact.clanName : "");
+        }
+        return buildContactClanIconHtml(contact);
     }
 
     /**
@@ -1714,7 +1759,7 @@ public class RoomManager {
                         + replacement 
                         + html.substring(buildMatcher.end());
                     
-                    Log.d(TAG, BG_TRACE_PREFIX + " injectPlayerListHtmlIntoChatPhp: injection success"
+                    AppLog.d(TAG, BG_TRACE_PREFIX + " injectPlayerListHtmlIntoChatPhp: injection success"
                             + ", chars=" + filterResult.numCharsInRoom
                             + ", htmlLen=" + html.length());
                     FileLogger.trace("roommanager", "[ROOM_INJECT] mode=replace_chatlist_build"
@@ -1743,14 +1788,14 @@ public class RoomManager {
                                 + ", htmlLen=" + html.length());
                     }
                     
-                    Log.d(TAG, BG_TRACE_PREFIX + " injectPlayerListHtmlIntoChatPhp: no chatlist_build found, applied safe fallback injection");
+                    AppLog.d(TAG, BG_TRACE_PREFIX + " injectPlayerListHtmlIntoChatPhp: no chatlist_build found, applied safe fallback injection");
                 }
             } else {
                 // ChatListU не найден - это необычно, логируем
-                Log.w(TAG, BG_TRACE_PREFIX + " injectPlayerListHtmlIntoChatPhp: ChatListU pattern not found in html");
+                AppLog.w(TAG, BG_TRACE_PREFIX + " injectPlayerListHtmlIntoChatPhp: ChatListU pattern not found in html");
             }
         } catch (Exception e) {
-            Log.e(TAG, BG_TRACE_PREFIX + " injectPlayerListHtmlIntoChatPhp: error during injection", e);
+            AppLog.e(TAG, BG_TRACE_PREFIX + " injectPlayerListHtmlIntoChatPhp: error during injection", e);
         }
         
         return html;
@@ -1794,7 +1839,7 @@ public class RoomManager {
                 }
                 if (!nick.isEmpty() && isEnemyContact(nick)) {
                     enemyAttack.add(nick);
-                    Log.d(TAG, AA_TRACE_PREFIX + " enemy detected in room: " + buildEnemyTrace(nick));
+                    AppLog.d(TAG, AA_TRACE_PREFIX + " enemy detected in room: " + buildEnemyTrace(nick));
                 }
 
                 try {
@@ -1802,7 +1847,7 @@ public class RoomManager {
                     sb.append(HtmlChar(rawEntry));
                     sb.append("</div>");
                 } catch (Exception htmlCharError) {
-                    Log.w(TAG, "FilterProcRoom: skip malformed ChatListU entry: " + rawEntry, htmlCharError);
+                    AppLog.w(TAG, "FilterProcRoom: skip malformed ChatListU entry: " + rawEntry, htmlCharError);
                     continue;
                 }
                 chatListUBuilder.append("\"" + rawEntry + "\"");
@@ -1816,7 +1861,7 @@ public class RoomManager {
             result.enemyAttack = pickEnemyForAutoAttack(enemyAttack);
             lastRoomChatEntryByNick.clear();
             lastRoomChatEntryByNick.putAll(latestRoomEntries);
-            Log.d(TAG, "FilterProcRoom: chars=" + result.numCharsInRoom
+            AppLog.d(TAG, "FilterProcRoom: chars=" + result.numCharsInRoom
                     + ", enemies=" + enemyAttack.size()
                     + ", enemyAttack=" + result.enemyAttack);
         }
@@ -1843,7 +1888,7 @@ public class RoomManager {
         if (splitByComma.length > 1) {
             return splitByComma;
         }
-        Log.d(TAG, "[AA_TRACE] parseChatListEntries: splitByComma failed, fallback regex. rawLen=" + chatListU.length());
+        AppLog.d(TAG, "[AA_TRACE] parseChatListEntries: splitByComma failed, fallback regex. rawLen=" + chatListU.length());
 
         // Резервный путь: извлекаем все элементы в двойных кавычках,
         // если сервер прислал нестандартные разделители/переносы.
@@ -1853,13 +1898,13 @@ public class RoomManager {
             quoted.add(matcher.group(1));
         }
         if (!quoted.isEmpty()) {
-            Log.d(TAG, "[AA_TRACE] parseChatListEntries: fallback extracted=" + quoted.size());
+            AppLog.d(TAG, "[AA_TRACE] parseChatListEntries: fallback extracted=" + quoted.size());
             return quoted.toArray(new String[0]);
         }
 
         // Последний резерв: возвращаем исходную строку как один элемент,
         // чтобы внешняя логика могла безопасно обработать деградированный формат.
-        Log.w(TAG, "[AA_TRACE] parseChatListEntries: no quoted entries, using raw source");
+        AppLog.w(TAG, "[AA_TRACE] parseChatListEntries: no quoted entries, using raw source");
         return new String[]{chatListU};
     }
 
@@ -1875,7 +1920,7 @@ public class RoomManager {
         }
         String key = normalizeNickKey(nick);
         autoAttackBlackList.put(key, System.currentTimeMillis());
-        Log.d(TAG, AA_TRACE_PREFIX + " blacklist add: " + key + ", ttlMs=" + AUTO_ATTACK_BLACKLIST_MS
+        AppLog.d(TAG, AA_TRACE_PREFIX + " blacklist add: " + key + ", ttlMs=" + AUTO_ATTACK_BLACKLIST_MS
                 + ", size=" + autoAttackBlackList.size());
     }
 
@@ -1888,17 +1933,17 @@ public class RoomManager {
             return false;
         }
         String key = normalizeNickKey(nick);
-        Log.d(TAG, AA_TRACE_PREFIX + " blacklist hit: " + key + ", remainingMs=" + remainingMs);
+        AppLog.d(TAG, AA_TRACE_PREFIX + " blacklist hit: " + key + ", remainingMs=" + remainingMs);
         return true;
     }
 
     private static boolean isAutoAttackEnabled(Context context) {
         try {
             boolean enabled = AutoFunctionsManager.getInstance(context).isAutoAttackEnabled();
-            Log.d(TAG, BG_TRACE_PREFIX + " isAutoAttackEnabled: " + enabled);
+            AppLog.d(TAG, BG_TRACE_PREFIX + " isAutoAttackEnabled: " + enabled);
             return enabled;
         } catch (Exception e) {
-            Log.w(TAG, "isAutoAttackEnabled failed", e);
+            AppLog.w(TAG, "isAutoAttackEnabled failed", e);
             return false;
         }
     }
@@ -1907,7 +1952,7 @@ public class RoomManager {
         try {
             return AutoFunctionsManager.getInstance(context).isAutoCureEnabled();
         } catch (Exception e) {
-            Log.w(TAG, "isAutoCureEnabled failed", e);
+            AppLog.w(TAG, "isAutoCureEnabled failed", e);
             return false;
         }
     }
@@ -1920,7 +1965,7 @@ public class RoomManager {
             }
             return AutoFunctionsManager.getInstance(context);
         } catch (Exception e) {
-            Log.w(TAG, "getAutoFunctionsManagerSafe failed", e);
+            AppLog.w(TAG, "getAutoFunctionsManagerSafe failed", e);
             return null;
         }
     }
@@ -1984,7 +2029,7 @@ public class RoomManager {
                     enqueueRoomAutoCureTarget(target);
                 }
             } catch (Exception e) {
-                Log.w(TAG, AUTO_CURE_TRACE_PREFIX + " room scan failed", e);
+                AppLog.w(TAG, AUTO_CURE_TRACE_PREFIX + " room scan failed", e);
             } finally {
                 autoCureRoomScanInProgress = false;
             }
@@ -2135,7 +2180,7 @@ public class RoomManager {
                 }
             }
         } catch (Exception e) {
-            Log.w(TAG, AUTO_CURE_TRACE_PREFIX + " pinfo read failed for " + nick, e);
+            AppLog.w(TAG, AUTO_CURE_TRACE_PREFIX + " pinfo read failed for " + nick, e);
         }
         return woundType;
     }
@@ -2156,7 +2201,7 @@ public class RoomManager {
 
         long now = System.currentTimeMillis();
         autoCureRoomPinfoCache.put(key, new CachedRoomPinfoState(0, now));
-        Log.d(TAG, AUTO_CURE_TRACE_PREFIX + " post-submit verify scheduled: nick=" + cleanNick
+        AppLog.d(TAG, AUTO_CURE_TRACE_PREFIX + " post-submit verify scheduled: nick=" + cleanNick
                 + ", travm=" + cureTravm);
 
         Thread worker = new Thread(() -> {
@@ -2168,7 +2213,7 @@ public class RoomManager {
             }
             int actualWoundType = fetchWoundTypeFromPinfo(cleanNick);
             autoCureRoomPinfoCache.put(key, new CachedRoomPinfoState(actualWoundType, System.currentTimeMillis()));
-            Log.d(TAG, AUTO_CURE_TRACE_PREFIX + " post-submit verify result: nick=" + cleanNick
+            AppLog.d(TAG, AUTO_CURE_TRACE_PREFIX + " post-submit verify result: nick=" + cleanNick
                     + ", woundType=" + actualWoundType + ", travm=" + cureTravm);
         }, "RoomAutoCureVerify");
         worker.setDaemon(true);
@@ -2256,7 +2301,7 @@ public class RoomManager {
         FastActionManager.writeChatMsg("<font color=#5D7C91><b>[Автолечение]</b></font> "
                 + "Найдена " + getWoundLabelByType(target.woundType) + " травма у " + safeTarget
                 + ", запускаем лечение...");
-        Log.d(TAG, AUTO_CURE_TRACE_PREFIX + " queued target: nick=" + target.nick
+        AppLog.d(TAG, AUTO_CURE_TRACE_PREFIX + " queued target: nick=" + target.nick
                 + ", woundType=" + target.woundType
                 + ", class=" + target.classId
                 + ", scope=" + scope
@@ -2298,19 +2343,19 @@ public class RoomManager {
                 blocked.add(stripItalic(nick) + "(" + remainingMs + "ms)");
             }
         }
-        Log.d(TAG, AA_TRACE_PREFIX + " pickEnemyForAutoAttack: total=" + candidates.size()
+        AppLog.d(TAG, AA_TRACE_PREFIX + " pickEnemyForAutoAttack: total=" + candidates.size()
                 + ", available=" + filtered.size()
                 + ", blocked=" + blocked.size()
                 + ", blockedList=" + blocked);
 
         if (filtered.isEmpty() && !blocked.isEmpty()) {
-            Log.d(TAG, AA_TRACE_PREFIX + " pickEnemyForAutoAttack: all candidates are blacklisted,"
+            AppLog.d(TAG, AA_TRACE_PREFIX + " pickEnemyForAutoAttack: all candidates are blacklisted,"
                     + " fallback to full list for compatibility");
         }
 
         List<String> source = filtered.isEmpty() ? candidates : filtered;
         String selected = source.get(ThreadLocalRandom.current().nextInt(source.size()));
-        Log.d(TAG, AA_TRACE_PREFIX + " pickEnemyForAutoAttack: total=" + candidates.size()
+        AppLog.d(TAG, AA_TRACE_PREFIX + " pickEnemyForAutoAttack: total=" + candidates.size()
                 + ", filtered=" + filtered.size() + ", selected=" + selected);
         return selected;
     }
@@ -2378,6 +2423,98 @@ public class RoomManager {
         return normalized.trim();
     }
 
+    private static String encodeNickForPinfoUrl(String nick) {
+        String cleanNick = stripItalic(nick);
+        if (isEmpty(cleanNick)) {
+            return "";
+        }
+        String encoded = ConverterUtils.nickEncode(cleanNick);
+        if (isEmpty(encoded)) {
+            return cleanNick.replace("+", "%2B");
+        }
+        return encoded.replace("+", "%20");
+    }
+
+    private static Contact findContactByNickIgnoreCase(String nick) {
+        if (isEmpty(nick)) {
+            return null;
+        }
+        List<Contact> contacts = ContactsManager.getContactsFromCache();
+        for (Contact contact : contacts) {
+            if (contact == null || isEmpty(contact.nick)) {
+                continue;
+            }
+            if (contact.nick.equalsIgnoreCase(nick)) {
+                return contact;
+            }
+        }
+        return null;
+    }
+
+    private static String buildContactInclinationHtml(Contact contact) {
+        if (contact == null || contact.inclination <= 0) {
+            return "";
+        }
+        String inclinationName = isEmpty(contact.inclinationName) ? "" : contact.inclinationName;
+        return buildInclinationIconHtmlByValue(contact.inclination, inclinationName);
+    }
+
+    private static String buildInclinationIconHtmlByValue(int inclination, String inclinationName) {
+        String iconName;
+        switch (inclination) {
+            case 4:
+                iconName = "chaoss.gif";
+                break;
+            case 3:
+                iconName = "sumers.gif";
+                break;
+            case 2:
+                iconName = "lights.gif";
+                break;
+            case 1:
+                iconName = "darks.gif";
+                break;
+            default:
+                return "";
+        }
+        String alt = isEmpty(inclinationName) ? "" : escapeHtmlAttribute(inclinationName);
+        return "<img src=http://image.neverlands.ru/signs/" + iconName
+                + " width=15 height=12 align=absmiddle border=0 alt=\"" + alt + "\">&nbsp;";
+    }
+
+    private static String buildContactClanIconHtml(Contact contact) {
+        if (contact == null) {
+            return "";
+        }
+        String token = contact.clanIco;
+        String clanName = contact.clanName;
+        return buildClanIconHtmlByToken(token, clanName);
+    }
+
+    private static String buildClanIconHtmlByToken(String clanToken, String clanName) {
+        if (clanToken == null) {
+            return "";
+        }
+        String token = clanToken.trim();
+        if (isEmpty(token)) {
+            return "";
+        }
+        String alt = isEmpty(clanName) ? "" : escapeHtmlAttribute(clanName);
+        return "<img src=http://image.neverlands.ru/signs/" + token
+                + " width=15 height=12 align=absmiddle alt=\"" + alt + "\">&nbsp;";
+    }
+
+    private static String escapeHtmlAttribute(String value) {
+        if (value == null) {
+            return "";
+        }
+        return value
+                .replace("&", "&amp;")
+                .replace("\"", "&quot;")
+                .replace("<", "&lt;")
+                .replace(">", "&gt;");
+    }
+
     private static String stripItalic(String nick) {
         if (nick == null) {
             return "";
@@ -2402,7 +2539,7 @@ public class RoomManager {
         long remainingMs = AUTO_ATTACK_BLACKLIST_MS - ageMs;
         if (remainingMs <= 0L) {
             autoAttackBlackList.remove(key);
-            Log.d(TAG, AA_TRACE_PREFIX + " blacklist expire: " + key + ", ageMs=" + ageMs);
+            AppLog.d(TAG, AA_TRACE_PREFIX + " blacklist expire: " + key + ", ageMs=" + ageMs);
             return 0L;
         }
         return remainingMs;
