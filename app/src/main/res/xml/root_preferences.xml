@@ -51,28 +51,32 @@
             app:title="Размер шрифта карты"
             app:summary="Текущий размер шрифта CellDivText" />
 
-        <Preference
-            app:key="map_navigator_section"
-            app:title="Карта навигатора"
-            app:selectable="false" />
+        <PreferenceCategory app:title="Карта навигатора">
 
-        <Preference
-            app:key="map_navigator_size_cells"
-            app:title="Размер карты навигатора"
-            app:summary="Формат: Ширина*Высота (например 5*3)" />
+            <Preference
+                app:key="map_navigator_size_cells"
+                app:title="Размер карты навигатора"
+                app:summary="Формат: Ширина*Высота (например 5*3)" />
 
-        <ListPreference
-            app:key="map_navigator_scale_percent"
-            app:title="Масштаб карты навигатора"
-            app:summary="Текущий масштаб отображения миникарты навигатора"
-            app:entries="@array/map_scale_entries"
-            app:entryValues="@array/map_scale_values"
-            app:defaultValue="100" />
+            <ListPreference
+                app:key="map_navigator_scale_percent"
+                app:title="Масштаб карты навигатора"
+                app:summary="Текущий масштаб отображения миникарты навигатора"
+                app:entries="@array/map_scale_entries"
+                app:entryValues="@array/map_scale_values"
+                app:defaultValue="100" />
 
-        <Preference
-            app:key="map_navigator_font_size"
-            app:title="Размер шрифта карты навигатора"
-            app:summary="Текущий размер шрифта CellDivText в миникарте навигатора" />
+            <Preference
+                app:key="map_navigator_font_size"
+                app:title="Размер шрифта карты навигатора"
+                app:summary="Текущий размер шрифта CellDivText в миникарте навигатора" />
+        </PreferenceCategory>
+
+        <SwitchPreferenceCompat
+            app:key="show_all_room_effects"
+            app:title="Показывать все эффекты в комнате"
+            app:summary="Если выключено — показываются только травмы"
+            app:defaultValue="true" />
 
         <SwitchPreferenceCompat
             app:key="map_rebuild_from_pinfo"

@@ -1,6 +1,7 @@
 package ru.neverlands.abclient.manager;
 
 import android.content.Context;
+import android.content.SharedPreferences;
 import android.content.res.AssetManager;
 
 import java.io.ByteArrayOutputStream;
@@ -19,6 +20,8 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+
+import androidx.preference.PreferenceManager;
 
 import ru.neverlands.abclient.MainActivity;
 import ru.neverlands.abclient.model.Cell;
@@ -45,6 +48,8 @@ public class RoomManager {
     private static final long AUTO_CURE_POST_SUBMIT_VERIFY_DELAY_MS = 1_500L;
     private static final long MAP_PINFO_SYNC_COOLDOWN_MS = 3_000L;
     private static final long ROOM_RENDER_CACHE_TTL_MS = 20_000L;
+    private static final String PREF_SHOW_ALL_ROOM_EFFECTS = "show_all_room_effects";
+    private static volatile Boolean showAllRoomEffectsEnabled;
     // Последние raw-элементы ChatListU по нику (lowercase), чтобы другие модули
     // (например, Auto-Компас) могли рендерить ник/иконки/уровень/травмы 1:1 как room-list.
     private static final Map<String, String> lastRoomChatEntryByNick = new ConcurrentHashMap<>();
@@ -1537,10 +1542,15 @@ public class RoomManager {
             }
         }
         List<Integer> cachedEffectIds = getCachedEffectIdsForNick(login);
-        if (!cachedEffectIds.isEmpty()) {
+        if (isShowAllRoomEffectsEnabled() && !cachedEffectIds.isEmpty()) {
             inj = buildEffectIconsHtml(cachedEffectIds, strArray.length > 6 ? strArray[6] : "");
-        } else if (injuryEffectId != null) {
-            inj = buildSingleEffectIconHtml(injuryEffectId, strArray.length > 6 ? strArray[6] : "");
+        } else {
+            Integer fallbackInjuryEffectId = injuryEffectId != null
+                    ? injuryEffectId
+                    : resolveInjuryEffectIdFromEffects(cachedEffectIds);
+            if (fallbackInjuryEffectId != null) {
+                inj = buildSingleEffectIconHtml(fallbackInjuryEffectId, strArray.length > 6 ? strArray[6] : "");
+            }
         }
 
         String psg = "";
@@ -2228,6 +2238,33 @@ public class RoomManager {
         worker.start();
     }
 
+    public static void setShowAllRoomEffectsEnabled(boolean enabled) {
+        showAllRoomEffectsEnabled = enabled;
+        AppLog.d(TAG, "[ROOM_EFFECTS] setShowAllRoomEffectsEnabled=" + enabled);
+        FileLogger.trace("roommanager", "[ROOM_EFFECTS] setShowAllRoomEffectsEnabled=" + enabled);
+    }
+
+    private static boolean isShowAllRoomEffectsEnabled() {
+        if (showAllRoomEffectsEnabled != null) {
+            return showAllRoomEffectsEnabled;
+        }
+        try {
+            Context context = AppVars.getContext();
+            if (context == null) {
+                showAllRoomEffectsEnabled = true;
+                return true;
+            }
+            SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(context);
+            boolean enabled = preferences.getBoolean(PREF_SHOW_ALL_ROOM_EFFECTS, true);
+            showAllRoomEffectsEnabled = enabled;
+            return enabled;
+        } catch (Exception e) {
+            AppLog.w(TAG, "[ROOM_EFFECTS] read preference failed, fallback=true", e);
+            showAllRoomEffectsEnabled = true;
+            return true;
+        }
+    }
+
     private static void cacheRoomPinfoState(String nick, int woundType, List<Integer> effectIds, long capturedAtMs) {
         String key = normalizeNickKey(nick);
         if (isEmpty(key)) {
@@ -2272,6 +2309,17 @@ public class RoomManager {
             return Collections.emptyList();
         }
         return Collections.unmodifiableList(new ArrayList<>(result));
+    }
+
+    private static Integer resolveInjuryEffectIdFromEffects(List<Integer> effectIds) {
+        if (effectIds == null || effectIds.isEmpty()) {
+            return null;
+        }
+        if (effectIds.contains(1)) return 1; // боевая травма
+        if (effectIds.contains(2)) return 2; // тяжелая травма
+        if (effectIds.contains(3)) return 3; // средняя травма
+        if (effectIds.contains(4)) return 4; // легкая травма
+        return null;
     }
 
     private static String buildSingleEffectIconHtml(int effectId, String altText) {

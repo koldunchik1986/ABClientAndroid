@@ -21,9 +21,11 @@ import androidx.preference.EditTextPreference;
 import androidx.preference.ListPreference;
 import androidx.preference.Preference;
 import androidx.preference.PreferenceFragmentCompat;
+import androidx.preference.PreferenceManager;
 import androidx.preference.SwitchPreferenceCompat;
 
 import ru.neverlands.abclient.model.Prims;
+import ru.neverlands.abclient.manager.RoomManager;
 import ru.neverlands.abclient.ui.AutoBoiSettingsFragment;
 import ru.neverlands.abclient.utils.AppVars;
 import ru.neverlands.abclient.utils.FileLogger;
@@ -511,6 +513,20 @@ public class SettingsActivity extends AppCompatActivity {
                             })
                             .setNegativeButton("Отмена", null)
                             .show();
+                    return true;
+                });
+            }
+
+            SwitchPreferenceCompat showAllRoomEffectsPref = findPreference("show_all_room_effects");
+            if (showAllRoomEffectsPref != null) {
+                boolean current = PreferenceManager
+                        .getDefaultSharedPreferences(requireContext())
+                        .getBoolean("show_all_room_effects", true);
+                showAllRoomEffectsPref.setChecked(current);
+                RoomManager.setShowAllRoomEffectsEnabled(current);
+                showAllRoomEffectsPref.setOnPreferenceChangeListener((preference, newValue) -> {
+                    boolean value = (Boolean) newValue;
+                    RoomManager.setShowAllRoomEffectsEnabled(value);
                     return true;
                 });
             }

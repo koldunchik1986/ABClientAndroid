@@ -1,0 +1,1030 @@
+--------- beginning of main
+04-07 17:29:54.995 22660 22660 I rlands.abclient: Late-enabling -Xcheck:jni
+04-07 17:29:55.017 22660 22660 I rlands.abclient: Using CollectorTypeCC GC.
+04-07 17:29:55.033 22660 22660 D nativeloader: Load libframework-connectivity-tiramisu-jni.so using APEX ns com_android_tethering for caller /apex/com.android.tethering/javalib/framework-connectivity-t.jar: ok
+04-07 17:29:55.036 22660 22660 I MessageMonitor: Load libmiui_runtime
+04-07 17:29:55.052 22660 22672 D AppScoutStateMachine: 22660-ScoutStateMachinecreated
+04-07 17:29:55.054 22660 22660 I HighMemoryManager: High memory monitor not enabled
+04-07 17:29:55.058 22660 22660 D CompatibilityChangeReporter: Compat change id reported: 171979766; UID 10413; state: ENABLED
+04-07 17:29:55.059 22660 22660 D CompatibilityChangeReporter: Compat change id reported: 242716250; UID 10413; state: DISABLED
+04-07 17:29:55.213 22660 22660 D nativeloader: Configuring clns-4 for other apk /data/app/~~gf4cJHJF2cIFPGv2zSdu_w==/ru.neverlands.abclient-lB9pOHRHCTWXlujStBB8kA==/base.apk. target_sdk_version=33, uses_libraries=, library_path=/data/app/~~gf4cJHJF2cIFPGv2zSdu_w==/ru.neverlands.abclient-lB9pOHRHCTWXlujStBB8kA==/lib/arm64, permitted_path=/data:/mnt/expand:/data/user/0/ru.neverlands.abclient
+04-07 17:29:55.221 22660 22660 D nativeloader: Load libframework-connectivity-jni.so using APEX ns com_android_tethering for caller /apex/com.android.tethering/javalib/framework-connectivity.jar: ok
+04-07 17:29:55.223 22660 22660 V GraphicsEnvironment: Currently set values for:
+04-07 17:29:55.223 22660 22660 V GraphicsEnvironment:   angle_gl_driver_selection_pkgs=[]
+04-07 17:29:55.223 22660 22660 V GraphicsEnvironment:   angle_gl_driver_selection_values=[]
+04-07 17:29:55.224 22660 22660 V GraphicsEnvironment: ANGLE GameManagerService for ru.neverlands.abclient: false
+04-07 17:29:55.224 22660 22660 V GraphicsEnvironment: ru.neverlands.abclient is not listed in per-application setting
+04-07 17:29:55.224 22660 22660 V GraphicsEnvironment: App is not on the allowlist for updatable production driver.
+04-07 17:29:55.228 22660 22660 I ForceDarkHelperStubImpl: initialize for ru.neverlands.abclient , ForceDarkAppConfig: null
+04-07 17:29:55.229 22660 22660 D nativeloader: Load libforcedarkimpl.so using system ns (caller=/system_ext/framework/miui-framework.jar): ok
+04-07 17:29:55.229 22660 22660 D OpenGLRenderer: JNI_OnLoad success
+04-07 17:29:55.230 22660 22660 I MiuiForceDarkConfig: setConfig density:2.750000, mainRule:0, secondaryRule:0, tertiaryRule:0
+04-07 17:29:55.234 22660 22660 D CompatibilityChangeReporter: Compat change id reported: 183155436; UID 10413; state: ENABLED
+04-07 17:29:55.713 22660 22660 D CompatibilityChangeReporter: Compat change id reported: 247079863; UID 10413; state: DISABLED
+04-07 17:29:55.804 22660 22660 D ExtMap  : loadMap: source=/storage/emulated/0/Android/data/ru.neverlands.abclient/files/map.xml, parsedCells=2272
+04-07 17:29:56.003 22660 22660 D ExtMap  : loadAbcMap: source=/storage/emulated/0/Android/data/ru.neverlands.abclient/files/abcells.xml, cells=2272, visitedLoaded=2145
+04-07 17:29:56.149 22660 22660 E FileUtils: err open mi_exception_log errno=2
+04-07 17:29:56.149 22660 22660 E FileUtils: err write to mi_exception_log
+04-07 17:29:56.149 22660 22660 W libc    : Access denied finding property "ro.vendor.perf.scroll_opt"
+04-07 17:29:56.152 22660 22660 I M-ProMotion: M-ProMotion is disabled
+04-07 17:29:56.160 22660 22689 W libc    : Access denied finding property "vendor.migl.debug"
+04-07 17:29:56.160 22660 22689 I libMiGL : EnableDR: 0
+04-07 17:29:56.160 22660 22689 D libMEOW : meow new tls: 0xb40000767c0a6640
+04-07 17:29:56.161 22660 22689 D libMEOW : meow reload base cfg path: na
+04-07 17:29:56.161 22660 22689 D libMEOW : meow reload overlay cfg path: na
+04-07 17:29:56.161 22660 22689 W QT      : qt_process_init() called
+04-07 17:29:56.161 22660 22689 E QT      : [QT]file does not exist
+04-07 17:29:56.161 22660 22689 W QT      : Support!!
+04-07 17:29:56.162 22660 22689 E QT      : [QT]file does not exist
+04-07 17:29:56.162 22660 22689 D libMEOW : applied 1 plugins for [ru.neverlands.abclient]:
+04-07 17:29:56.162 22660 22689 D libMEOW :   plugin 1: [libMEOW_gift.so]: 0xb400007667f44440
+04-07 17:29:56.162 22660 22689 D libMEOW : rebuild call chain: 0xb40000767c0c50c0
+04-07 17:29:56.162 22660 22689 D libMEOW : meow delete tls: 0xb40000767c0a6640
+04-07 17:29:56.183 22660 22660 D AppCompatDelegate: Checking for metadata for AppLocalesMetadataHolderService : Service not found
+04-07 17:29:56.199 22660 22660 W rlands.abclient: type=1400 audit(0.0:371652): avc:  denied  { read } for  name="u:object_r:vendor_displayfeature_prop:s0" dev="tmpfs" ino=9081 scontext=u:r:untrusted_app_32:s0:c157,c257,c512,c768 tcontext=u:object_r:vendor_displayfeature_prop:s0 tclass=file permissive=0 app=ru.neverlands.abclient
+04-07 17:29:56.203 22660 22660 W libc    : Access denied finding property "ro.vendor.df.effect.conflict"
+04-07 17:29:56.226 22660 22660 D CompatibilityChangeReporter: Compat change id reported: 210923482; UID 10413; state: ENABLED
+04-07 17:29:56.231 22660 22660 I rlands.abclient: hiddenapi: Accessing hidden method Landroid/view/View;->computeFitSystemWindows(Landroid/graphics/Rect;Landroid/graphics/Rect;)Z (runtime_flags=0, domain=platform, api=unsupported) from Landroidx/appcompat/widget/ViewUtils; (domain=app, TargetSdkVersion=33) using reflection: allowed
+04-07 17:29:56.359 22660 22660 I rlands.abclient: hiddenapi: Accessing hidden method Landroid/view/ViewGroup;->makeOptionalFitsSystemWindows()V (runtime_flags=0, domain=platform, api=unsupported) from Landroidx/appcompat/widget/ViewUtils; (domain=app, TargetSdkVersion=33) using reflection: allowed
+04-07 17:29:56.363 22660 22660 I UserConfig: load: proxy tag parsed, active=false, address=
+04-07 17:29:56.373 22660 22660 I LoginActivity: LOGIN_UI: applySelectedProfile id=Блудя, encrypted=true, autoLogon=true, savedPasswordLen=1
+04-07 17:29:56.374 22660 22660 I LoginActivity: LOGIN_UI: profilesLoaded=1, selectedId=Блудя, selectedNick=Блудя, encrypted=true, autoLogon=false, savedPasswordLen=25
+04-07 17:29:56.391 22660 22660 I SurfaceFactory: [static] sSurfaceFactory = com.mediatek.view.impl.SurfaceFactoryImpl@efd63a6
+04-07 17:29:56.393 22660 22686 D nativeloader: Load libpowerhalwrap_jni.so using system ns (caller=/system_ext/framework/mediatek-framework.jar): ok
+04-07 17:29:56.394 22660 22686 I PowerHalWrapper: PowerHalWrapper.getInstance 
+04-07 17:29:56.395 22660 22660 D CompatibilityChangeReporter: Compat change id reported: 237531167; UID 10413; state: DISABLED
+--------- beginning of system
+04-07 17:29:56.403 22660 22691 E FramePredict: registerContentObserver fail
+04-07 17:29:56.404 22660 22687 W libc    : Access denied finding property "ro.vendor.display.iris_x7.support"
+04-07 17:29:56.407 22660 22660 D VRI[LoginActivity]: hardware acceleration = true, forceHwAccelerated = false
+04-07 17:29:56.412 22660 22660 D libMEOW : meow new tls: 0xb40000760072f340
+04-07 17:29:56.412 22660 22660 D libMEOW : applied 1 plugins for [ru.neverlands.abclient]:
+04-07 17:29:56.412 22660 22660 D libMEOW :   plugin 1: [libMEOW_gift.so]: 0xb400007667f44440
+04-07 17:29:56.413 22660 22660 D libMEOW : rebuild call chain: 0xb400007600743dc0
+04-07 17:29:56.415 22660 22660 E FileUtils: err write to mi_exception_log
+04-07 17:29:56.416 22660 22660 E FileUtils: err write to mi_exception_log
+04-07 17:29:56.416 22660 22660 E FileUtils: err write to mi_exception_log
+04-07 17:29:56.417 22660 22660 I Choreographer: Skipped 140 frames!  The application may be doing too much work on its main thread.
+04-07 17:29:56.459 22660 22660 D BufferQueueConsumer: [](id:588400000000,api:0,p:-1,c:22660) connect: controlledByApp=false
+04-07 17:29:56.465 22660 22687 D libMEOW : meow new tls: 0xb4000075fbb9c9c0
+04-07 17:29:56.465 22660 22687 D libMEOW : applied 1 plugins for [ru.neverlands.abclient]:
+04-07 17:29:56.465 22660 22687 D libMEOW :   plugin 1: [libMEOW_gift.so]: 0xb400007667f44440
+04-07 17:29:56.466 22660 22687 D libMEOW : rebuild call chain: 0xb4000075fbbab800
+04-07 17:29:56.485 22660 22687 E OpenGLRenderer: Unable to match the desired swap behavior.
+04-07 17:29:56.499 22660 22660 D VRI[LoginActivity]: vri.reportNextDraw android.view.ViewRootImpl.performTraversals:4460 android.view.ViewRootImpl.doTraversal:3069 android.view.ViewRootImpl$TraversalRunnable.run:10654 android.view.Choreographer$CallbackRecord.run:1768 android.view.Choreographer$CallbackRecord.run:1777 
+04-07 17:29:56.500 22660 22660 D VRI[LoginActivity]: vri.Setup new sync=wmsSync-VRI[LoginActivity]#0
+04-07 17:29:56.522 22660 22660 W libc    : Access denied finding property "ro.vendor.display.iris_x7.support"
+04-07 17:29:56.524 22660 22687 D OpenGLRenderer: makeCurrent grContext:0xb4000075fbcc3cc0 reset mTextureAvailable
+04-07 17:29:56.527 22660 22687 D rlands.abclient: MiuiProcessManagerServiceStub setSchedFifo
+04-07 17:29:56.527 22660 22687 I MiuiProcessManagerImpl: setSchedFifo pid:22660, mode:3
+04-07 17:29:56.527 22660 22687 W libc    : Access denied finding property "ro.vendor.magt.mtk_magt_support"
+04-07 17:29:56.527 22660 22687 D MAGT_SYNC_FRAME: MAGT Sync: MAGT is not supported. Disabling Sync.
+04-07 17:29:56.527 22660 22687 D hw-ProcessState: Binder ioctl to enable oneway spam detection failed: Invalid argument
+04-07 17:29:56.529 22660 22687 W libc    : Access denied finding property "ro.vendor.display.iris_x7.support"
+04-07 17:29:56.547 22660 22687 E LB      : fail to open file: No such file or directory
+04-07 17:29:56.547 22660 22687 E LB      : fail to open node: No such file or directory
+04-07 17:29:56.548 22660 22687 W libc    : Access denied finding property "ro.vendor.display.iris_x7.support"
+04-07 17:29:56.548 22660 22687 D BLASTBufferQueue: [VRI[LoginActivity]#0](f:0,a:1) acquireNextBufferLocked size=1080x2400 mFrameNumber=1 applyTransaction=true mTimestamp=661063325662094(auto) mPendingTransactions.size=0 graphicBufferId=97323958927363 transform=0
+04-07 17:29:56.549 22660 22660 D VRI[LoginActivity]: vri.reportDrawFinished
+04-07 17:29:56.550 22660 22660 E FileUtils: err write to mi_exception_log
+04-07 17:29:56.550 22660 22660 E FileUtils: err write to mi_exception_log
+04-07 17:29:56.555 22660 22671 I OpenGLRenderer: Davey! duration=1288ms; Flags=1, FrameTimelineVsyncId=196539801, IntendedVsync=661062037277207, Vsync=661063194370767, InputEventId=0, HandleInputStart=661063195675555, AnimationStart=661063195683017, PerformTraversalsStart=661063196139247, DrawStart=661063279604171, FrameDeadline=661062047277207, FrameInterval=661063194978017, FrameStartTime=8264954, FlingPosition=0, SyncQueued=661063301927555, SyncStart=661063302095863, IssueDrawCommandsStart=661063305063247, SwapBuffers=661063321133401, FrameCompleted=661063326334324, DequeueBufferDuration=11000, QueueBufferDuration=448616, GpuCompleted=661063325092171, SwapBuffersCompleted=661063326334324, DisplayPresentTime=0, CommandSubmissionCompleted=661063321133401, 
+04-07 17:29:56.561 22660 22660 D CompatibilityChangeReporter: Compat change id reported: 163400105; UID 10413; state: ENABLED
+04-07 17:29:56.564 22660 22660 I AssistStructure: Flattened final assist data: 2936 bytes, containing 1 windows, 19 views
+04-07 17:29:56.610 22660 22660 I HandWritingStubImpl: refreshLastKeyboardType: 1
+04-07 17:29:56.610 22660 22660 I HandWritingStubImpl: getCurrentKeyboardType: 1
+04-07 17:29:56.634 22660 22660 I HandWritingStubImpl: getCurrentKeyboardType: 1
+04-07 17:29:56.635 22660 22660 I HandWritingStubImpl: getCurrentKeyboardType: 1
+04-07 17:29:56.636 22660 22687 I gralloc4: @set_metadata: update dataspace from GM (0x00000000 -> 0x08010000)
+04-07 17:29:56.641 22660 22687 I gralloc4: @set_metadata: update dataspace from GM (0x00000000 -> 0x08010000)
+04-07 17:29:56.647 22660 22687 I gralloc4: @set_metadata: update dataspace from GM (0x00000000 -> 0x08010000)
+04-07 17:29:56.653 22660 22687 I gralloc4: @set_metadata: update dataspace from GM (0x00000000 -> 0x08010000)
+04-07 17:29:56.661 22660 22687 I gralloc4: @set_metadata: update dataspace from GM (0x00000000 -> 0x08010000)
+04-07 17:29:56.670 22660 22687 I gralloc4: @set_metadata: update dataspace from GM (0x00000000 -> 0x08010000)
+04-07 17:29:56.678 22660 22687 I gralloc4: @set_metadata: update dataspace from GM (0x00000000 -> 0x08010000)
+04-07 17:29:56.685 22660 22687 I gralloc4: @set_metadata: update dataspace from GM (0x00000000 -> 0x08010000)
+04-07 17:29:56.694 22660 22687 I gralloc4: @set_metadata: update dataspace from GM (0x00000000 -> 0x08010000)
+04-07 17:29:56.702 22660 22687 I gralloc4: @set_metadata: update dataspace from GM (0x00000000 -> 0x08010000)
+04-07 17:29:56.708 22660 22664 I rlands.abclient: Compiler allocated 6236KB to compile void android.view.ViewRootImpl.performTraversals()
+04-07 17:29:56.710 22660 22687 I gralloc4: @set_metadata: update dataspace from GM (0x00000000 -> 0x08010000)
+04-07 17:29:57.692 22660 22660 D IS_CTS_MODE: false
+04-07 17:29:57.692 22660 22660 D MULTI_WINDOW_SWITCH_ENABLED: false
+04-07 17:29:57.707 22660 22687 I gralloc4: @set_metadata: update dataspace from GM (0x00000000 -> 0x08010000)
+04-07 17:29:57.709 22660 22687 I gralloc4: @set_metadata: update dataspace from GM (0x00000000 -> 0x08010000)
+04-07 17:29:57.718 22660 22687 I gralloc4: @set_metadata: update dataspace from GM (0x00000000 -> 0x08010000)
+04-07 17:29:57.729 22660 22687 I gralloc4: @set_metadata: update dataspace from GM (0x00000000 -> 0x08010000)
+04-07 17:29:57.734 22660 22687 I gralloc4: @set_metadata: update dataspace from GM (0x00000000 -> 0x08010000)
+04-07 17:29:57.741 22660 22687 I gralloc4: @set_metadata: update dataspace from GM (0x00000000 -> 0x08010000)
+04-07 17:29:57.749 22660 22687 I gralloc4: @set_metadata: update dataspace from GM (0x00000000 -> 0x08010000)
+04-07 17:29:57.757 22660 22687 I gralloc4: @set_metadata: update dataspace from GM (0x00000000 -> 0x08010000)
+04-07 17:29:57.766 22660 22687 I gralloc4: @set_metadata: update dataspace from GM (0x00000000 -> 0x08010000)
+04-07 17:29:57.774 22660 22687 I gralloc4: @set_metadata: update dataspace from GM (0x00000000 -> 0x08010000)
+04-07 17:29:57.778 22660 22660 I LoginActivity: LOGIN_UI: persistEncryptedRemember stage=login_click, profileId=Блудя, rememberChecked=true, savedPasswordLen=1, changed=false
+04-07 17:29:57.778 22660 22660 I LoginActivity: LOGIN_UI: loginClick profileId=Блудя, encrypted=true, rememberChecked=true, inputPasswordLen=1
+04-07 17:29:57.786 22660 22687 I gralloc4: @set_metadata: update dataspace from GM (0x00000000 -> 0x08010000)
+04-07 17:29:57.793 22660 22687 I gralloc4: @set_metadata: update dataspace from GM (0x00000000 -> 0x08010000)
+04-07 17:29:57.802 22660 22687 I gralloc4: @set_metadata: update dataspace from GM (0x00000000 -> 0x08010000)
+04-07 17:29:57.809 22660 22660 I LoginActivity: PROXY_BOOT: login pre-auth start, doProxy=false, useProxy=false, address=
+04-07 17:29:57.809 22660 22687 I gralloc4: @set_metadata: update dataspace from GM (0x00000000 -> 0x08010000)
+04-07 17:29:57.810 22660 22660 I ProxyRuntimeManager: PROXY_BOOT: ensureStarted, doProxy=false, useProxy=false, proxyAddress=, running=false, strictRequired=false
+04-07 17:29:57.810 22660 22660 I ProxyRuntimeManager: PROXY_BOOT: runtime stopped
+04-07 17:29:57.813 22660 22660 I LocalHttpProxyServer: PROXY_BOOT: listener started at 127.0.0.1:8052
+04-07 17:29:57.813 22660 22660 I LocalHttpProxyServer: PROXY_UPSTREAM: enabled=false, host=, port=0
+04-07 17:29:57.813 22660 22660 I LocalHttpProxyServer: PROXY_AUTH: upstream basic auth enabled=false
+04-07 17:29:57.813 22660 22660 I ProxyRuntimeManager: PROXY_BOOT: started, host=127.0.0.1, port=8052, mode=DIRECT
+04-07 17:29:57.813 22660 22660 I ProxyRuntimeManager: PROXY_AUTH: upstream auth disabled (direct mode)
+04-07 17:29:57.819 22660 22687 I gralloc4: @set_metadata: update dataspace from GM (0x00000000 -> 0x08010000)
+04-07 17:29:57.822 22660 22660 I WebViewFactory: Loading com.google.android.webview version 147.0.7727.49 (code 772704913)
+04-07 17:29:57.825 22660 22660 D ApplicationLoaders: Returning zygote-cached class loader: /system/framework/android.test.base.jar
+04-07 17:29:57.826 22660 22687 I gralloc4: @set_metadata: update dataspace from GM (0x00000000 -> 0x08010000)
+04-07 17:29:57.828 22660 22660 W rlands.abclient: Loading /data/app/~~MfKd9kbCT8rNA4lrLOtyWw==/com.google.android.webview-oTZ_C9iKKHBMUQTGfK9qYw==/oat/arm64/base.odex non-executable as it requires an image which we failed to load
+04-07 17:29:57.830 22660 22660 D nativeloader: Configuring clns-5 for other apk /data/app/~~MfKd9kbCT8rNA4lrLOtyWw==/com.google.android.webview-oTZ_C9iKKHBMUQTGfK9qYw==/base.apk. target_sdk_version=36, uses_libraries=, library_path=/data/app/~~MfKd9kbCT8rNA4lrLOtyWw==/com.google.android.webview-oTZ_C9iKKHBMUQTGfK9qYw==/lib/arm64:/data/app/~~MfKd9kbCT8rNA4lrLOtyWw==/com.google.android.webview-oTZ_C9iKKHBMUQTGfK9qYw==/base.apk!/lib/arm64-v8a, permitted_path=/data:/mnt/expand
+04-07 17:29:57.833 22660 22687 I gralloc4: @set_metadata: update dataspace from GM (0x00000000 -> 0x08010000)
+04-07 17:29:57.842 22660 22687 I gralloc4: @set_metadata: update dataspace from GM (0x00000000 -> 0x08010000)
+04-07 17:29:57.851 22660 22687 I gralloc4: @set_metadata: update dataspace from GM (0x00000000 -> 0x08010000)
+04-07 17:29:57.855 22660 22660 I cr_WVCFactoryProvider: version=147.0.7727.49 (772704913) minSdkVersion=29 multiprocess=true packageId=127 splits=<none>
+04-07 17:29:57.861 22660 22687 I gralloc4: @set_metadata: update dataspace from GM (0x00000000 -> 0x08010000)
+04-07 17:29:57.868 22660 22660 D nativeloader: Load /data/app/~~MfKd9kbCT8rNA4lrLOtyWw==/com.google.android.webview-oTZ_C9iKKHBMUQTGfK9qYw==/base.apk!/lib/arm64-v8a/libwebviewchromium.so using class loader ns clns-5 (caller=/data/app/~~MfKd9kbCT8rNA4lrLOtyWw==/com.google.android.webview-oTZ_C9iKKHBMUQTGfK9qYw==/base.apk): ok
+04-07 17:29:57.868 22660 22687 I gralloc4: @set_metadata: update dataspace from GM (0x00000000 -> 0x08010000)
+04-07 17:29:57.869 22660 22660 D nativeloader: Load /system/lib64/libwebviewchromium_plat_support.so using class loader ns clns-5 (caller=/data/app/~~MfKd9kbCT8rNA4lrLOtyWw==/com.google.android.webview-oTZ_C9iKKHBMUQTGfK9qYw==/base.apk): ok
+04-07 17:29:57.872 22660 22728 I chromium: [0407/172957.871842:INFO:android_webview/browser/variations/variations_seed_loader.cc:67] Failed to open file for reading.: No such file or directory (2)
+04-07 17:29:57.877 22660 22660 I cr_LibraryLoader: Successfully loaded native library
+04-07 17:29:57.877 22660 22687 I gralloc4: @set_metadata: update dataspace from GM (0x00000000 -> 0x08010000)
+04-07 17:29:57.878 22660 22660 I cr_CachingUmaRecorder: Flushed 19 samples from 19 histograms, 0 samples were dropped.
+04-07 17:29:57.881 22660 22660 I cr_ChildProcLH: ScopedServiceBindingBatch.tryActivate: false
+04-07 17:29:57.882 22660 22660 I cr_CombinedPProvider: #registerProvider() provider:WV.zk@9ef9bf6 isPolicyCacheEnabled:false policyProvidersSize:0
+04-07 17:29:57.883 22660 22660 I cr_PolicyProvider: #setManagerAndSource() 0
+04-07 17:29:57.884 22660 22687 I gralloc4: @set_metadata: update dataspace from GM (0x00000000 -> 0x08010000)
+04-07 17:29:57.889 22660 22660 I cr_DisplayManager: Is Display Topology available: false
+04-07 17:29:57.893 22660 22687 I gralloc4: @set_metadata: update dataspace from GM (0x00000000 -> 0x08010000)
+04-07 17:29:57.899 22660 22687 I gralloc4: @set_metadata: update dataspace from GM (0x00000000 -> 0x08010000)
+04-07 17:29:57.909 22660 22687 I gralloc4: @set_metadata: update dataspace from GM (0x00000000 -> 0x08010000)
+04-07 17:29:57.917 22660 22687 I gralloc4: @set_metadata: update dataspace from GM (0x00000000 -> 0x08010000)
+04-07 17:29:57.919 22660 22660 I cr_CombinedPProvider: #linkNativeInternal() 1
+04-07 17:29:57.920 22660 22660 I cr_AppResProvider: #getApplicationRestrictionsFromUserManager() Bundle[EMPTY_PARCEL]
+04-07 17:29:57.920 22660 22660 I cr_PolicyProvider: #notifySettingsAvailable() 0
+04-07 17:29:57.920 22660 22660 I cr_CombinedPProvider: #onSettingsAvailable() 0
+04-07 17:29:57.921 22660 22660 I cr_CombinedPProvider: #flushPolicies()
+04-07 17:29:57.924 22660 22687 I gralloc4: @set_metadata: update dataspace from GM (0x00000000 -> 0x08010000)
+04-07 17:29:57.934 22660 22687 I gralloc4: @set_metadata: update dataspace from GM (0x00000000 -> 0x08010000)
+04-07 17:29:57.941 22660 22687 I gralloc4: @set_metadata: update dataspace from GM (0x00000000 -> 0x08010000)
+04-07 17:29:57.950 22660 22687 I gralloc4: @set_metadata: update dataspace from GM (0x00000000 -> 0x08010000)
+04-07 17:29:57.956 22660 22660 W chromium: [WARNING:android_webview/browser/network_service/net_helpers.cc:137] HTTP Cache size is: 169777439
+04-07 17:29:57.959 22660 22687 I gralloc4: @set_metadata: update dataspace from GM (0x00000000 -> 0x08010000)
+04-07 17:29:57.968 22660 22687 I gralloc4: @set_metadata: update dataspace from GM (0x00000000 -> 0x08010000)
+04-07 17:29:57.969 22660 22660 D CompatibilityChangeReporter: Compat change id reported: 214741472; UID 10413; state: ENABLED
+04-07 17:29:57.971 22660 22660 I LoginActivity: PROXY_BOOT: proxy runtime ready, port=8052
+04-07 17:29:57.971 22660 22660 I NetworkClient: PROXY_BINDING: OkHttp instance invalidated
+04-07 17:29:57.971 22660 22660 I NetworkClient: PROXY_BINDING: rebuilding OkHttp client, signature=proxy:running:port=8052:mode=direct:up=:0
+04-07 17:29:57.971 22660 22660 D ProxyRuntimeManager: PROXY_BINDING: java.net.Proxy endpoint=127.0.0.1:8052
+04-07 17:29:57.977 22660 22687 I gralloc4: @set_metadata: update dataspace from GM (0x00000000 -> 0x08010000)
+04-07 17:29:57.983 22660 22687 I gralloc4: @set_metadata: update dataspace from GM (0x00000000 -> 0x08010000)
+04-07 17:29:57.990 22660 22660 I NetworkClient: NET_TIMEOUT: mode=proxy, connect/read/write=60s, strictProxyRequired=false, proxyRuntimeActive=true
+04-07 17:29:57.990 22660 22660 I NetworkClient: PROXY_BINDING: OkHttp proxy enabled
+04-07 17:29:57.992 22660 22687 I gralloc4: @set_metadata: update dataspace from GM (0x00000000 -> 0x08010000)
+04-07 17:29:57.996 22660 22660 E FileUtils: err write to mi_exception_log
+04-07 17:29:58.002 22660 22765 I CameraManagerGlobal: Connecting to camera service
+04-07 17:29:58.003 22660 22687 I gralloc4: @set_metadata: update dataspace from GM (0x00000000 -> 0x08010000)
+04-07 17:29:58.007 22660 22687 I gralloc4: @set_metadata: update dataspace from GM (0x00000000 -> 0x08010000)
+04-07 17:29:58.009 22660 22660 D WebViewProxyHelper: WebView proxy override set successfully.
+04-07 17:29:58.009 22660 22660 I ProxyRuntimeManager: PROXY_BINDING: WebView override applied to 127.0.0.1:8052
+04-07 17:29:58.013 22660 22660 D LoginActivity: Authorization attempt start: retryAttempt=0, startedAtMs=1775572198013
+04-07 17:29:58.013 22660 22765 D CameraExtStub: init android.hardware.camera2.impl.CameraExtImplXiaoMi
+04-07 17:29:58.014 22660 22765 D CameraInjector: waitForResult: 
+04-07 17:29:58.015 22660 22768 D CameraInjector: updateCloudCameraControllerInfoAsync: E
+04-07 17:29:58.017 22660 22687 I gralloc4: @set_metadata: update dataspace from GM (0x00000000 -> 0x08010000)
+04-07 17:29:58.023 22660 22687 I gralloc4: @set_metadata: update dataspace from GM (0x00000000 -> 0x08010000)
+04-07 17:29:58.027 22660 22724 D LocalHttpProxyServer: PROXY_SESSION: accepted client=/127.0.0.1:41198
+04-07 17:29:58.033 22660 22687 I gralloc4: @set_metadata: update dataspace from GM (0x00000000 -> 0x08010000)
+04-07 17:29:58.038 22660 22769 D LocalHttpProxyServer: PROXY_SESSION: method=GET, uri=http://www.neverlands.ru/, bodyBytes=0
+04-07 17:29:58.038 22660 22769 D LocalHttpProxyServer: PROXY_SESSION: route origin=www.neverlands.ru:80, connect=www.neverlands.ru:80, target=/
+04-07 17:29:58.042 22660 22687 I gralloc4: @set_metadata: update dataspace from GM (0x00000000 -> 0x08010000)
+04-07 17:29:58.047 22660 22768 D CameraInjector: updateCloudCameraControllerInfoAsync: X
+04-07 17:29:58.047 22660 22765 W CameraExtImplXiaoMi: ignore the status update of camera: 2
+04-07 17:29:58.047 22660 22765 D CameraInjector: updateCloudCameraControllerInfoAsync: has aleardy start update task.
+04-07 17:29:58.047 22660 22765 D CameraInjector: waitForResult: 
+04-07 17:29:58.047 22660 22765 W CameraExtImplXiaoMi: ignore the status update of camera: 3
+04-07 17:29:58.047 22660 22765 D CameraInjector: updateCloudCameraControllerInfoAsync: has aleardy start update task.
+04-07 17:29:58.047 22660 22765 D CameraInjector: waitForResult: 
+04-07 17:29:58.047 22660 22765 W CameraExtImplXiaoMi: ignore the status update of camera: 4
+04-07 17:29:58.048 22660 22708 D CameraInjector: updateCloudCameraControllerInfoAsync: has aleardy start update task.
+04-07 17:29:58.048 22660 22708 D CameraInjector: waitForResult: 
+04-07 17:29:58.048 22660 22708 W CameraManagerGlobal: ignore the torch status update of camera: 2
+04-07 17:29:58.048 22660 22708 D CameraInjector: updateCloudCameraControllerInfoAsync: has aleardy start update task.
+04-07 17:29:58.048 22660 22708 D CameraInjector: waitForResult: 
+04-07 17:29:58.048 22660 22708 W CameraManagerGlobal: ignore the torch status update of camera: 3
+04-07 17:29:58.048 22660 22708 D CameraInjector: updateCloudCameraControllerInfoAsync: has aleardy start update task.
+04-07 17:29:58.048 22660 22708 D CameraInjector: waitForResult: 
+04-07 17:29:58.048 22660 22708 W CameraManagerGlobal: ignore the torch status update of camera: 4
+04-07 17:29:58.049 22660 22687 I gralloc4: @set_metadata: update dataspace from GM (0x00000000 -> 0x08010000)
+04-07 17:29:58.056 22660 22687 I gralloc4: @set_metadata: update dataspace from GM (0x00000000 -> 0x08010000)
+04-07 17:29:58.065 22660 22687 I gralloc4: @set_metadata: update dataspace from GM (0x00000000 -> 0x08010000)
+04-07 17:29:58.074 22660 22687 I gralloc4: @set_metadata: update dataspace from GM (0x00000000 -> 0x08010000)
+04-07 17:29:58.083 22660 22687 I gralloc4: @set_metadata: update dataspace from GM (0x00000000 -> 0x08010000)
+04-07 17:29:58.089 22660 22687 I gralloc4: @set_metadata: update dataspace from GM (0x00000000 -> 0x08010000)
+04-07 17:29:58.099 22660 22687 I gralloc4: @set_metadata: update dataspace from GM (0x00000000 -> 0x08010000)
+04-07 17:29:58.106 22660 22687 I gralloc4: @set_metadata: update dataspace from GM (0x00000000 -> 0x08010000)
+04-07 17:29:58.114 22660 22687 I gralloc4: @set_metadata: update dataspace from GM (0x00000000 -> 0x08010000)
+04-07 17:29:58.118 22660 22769 D LocalHttpProxyServer: PROXY_RESP: mode=DIRECT, attempt=1, method=GET, target=/, status=200, server=nginx/1.6.2, statusLine=HTTP/1.1 200 OK
+04-07 17:29:58.119 22660 22769 D LocalHttpProxyServer: PROXY_SESSION: target=www.neverlands.ru:80 mode=DIRECT bytesOut=516 latencyMs=91
+04-07 17:29:58.124 22660 22687 I gralloc4: @set_metadata: update dataspace from GM (0x00000000 -> 0x08010000)
+04-07 17:29:58.130 22660 22724 D LocalHttpProxyServer: PROXY_SESSION: accepted client=/127.0.0.1:41202
+04-07 17:29:58.133 22660 22687 I gralloc4: @set_metadata: update dataspace from GM (0x00000000 -> 0x08010000)
+04-07 17:29:58.134 22660 22769 D LocalHttpProxyServer: PROXY_SESSION: method=POST, uri=http://www.neverlands.ru/game.php, bodyBytes=54
+04-07 17:29:58.134 22660 22769 D LocalHttpProxyServer: PROXY_SESSION: route origin=www.neverlands.ru:80, connect=www.neverlands.ru:80, target=/game.php
+04-07 17:29:58.139 22660 22687 I gralloc4: @set_metadata: update dataspace from GM (0x00000000 -> 0x08010000)
+04-07 17:29:58.147 22660 22687 I gralloc4: @set_metadata: update dataspace from GM (0x00000000 -> 0x08010000)
+04-07 17:29:58.156 22660 22687 I gralloc4: @set_metadata: update dataspace from GM (0x00000000 -> 0x08010000)
+04-07 17:29:58.162 22660 22687 I gralloc4: @set_metadata: update dataspace from GM (0x00000000 -> 0x08010000)
+04-07 17:29:58.172 22660 22687 I gralloc4: @set_metadata: update dataspace from GM (0x00000000 -> 0x08010000)
+04-07 17:29:58.180 22660 22687 I gralloc4: @set_metadata: update dataspace from GM (0x00000000 -> 0x08010000)
+04-07 17:29:58.189 22660 22687 I gralloc4: @set_metadata: update dataspace from GM (0x00000000 -> 0x08010000)
+04-07 17:29:58.197 22660 22687 I gralloc4: @set_metadata: update dataspace from GM (0x00000000 -> 0x08010000)
+04-07 17:29:58.206 22660 22687 I gralloc4: @set_metadata: update dataspace from GM (0x00000000 -> 0x08010000)
+04-07 17:29:58.214 22660 22687 I gralloc4: @set_metadata: update dataspace from GM (0x00000000 -> 0x08010000)
+04-07 17:29:58.223 22660 22687 I gralloc4: @set_metadata: update dataspace from GM (0x00000000 -> 0x08010000)
+04-07 17:29:58.224 22660 22769 D LocalHttpProxyServer: PROXY_RESP: mode=DIRECT, attempt=1, method=POST, target=/game.php, status=200, server=nginx/1.6.2, statusLine=HTTP/1.1 200 OK
+04-07 17:29:58.226 22660 22769 D LocalHttpProxyServer: PROXY_SESSION: target=www.neverlands.ru:80 mode=DIRECT bytesOut=1367 latencyMs=95
+04-07 17:29:58.232 22660 22687 I gralloc4: @set_metadata: update dataspace from GM (0x00000000 -> 0x08010000)
+04-07 17:29:58.238 22660 22687 I gralloc4: @set_metadata: update dataspace from GM (0x00000000 -> 0x08010000)
+04-07 17:29:58.247 22660 22687 I gralloc4: @set_metadata: update dataspace from GM (0x00000000 -> 0x08010000)
+04-07 17:29:58.257 22660 22687 I gralloc4: @set_metadata: update dataspace from GM (0x00000000 -> 0x08010000)
+04-07 17:29:58.265 22660 22687 I gralloc4: @set_metadata: update dataspace from GM (0x00000000 -> 0x08010000)
+04-07 17:29:58.273 22660 22687 I gralloc4: @set_metadata: update dataspace from GM (0x00000000 -> 0x08010000)
+04-07 17:29:58.282 22660 22687 I gralloc4: @set_metadata: update dataspace from GM (0x00000000 -> 0x08010000)
+04-07 17:29:58.290 22660 22687 I gralloc4: @set_metadata: update dataspace from GM (0x00000000 -> 0x08010000)
+04-07 17:29:58.298 22660 22687 I gralloc4: @set_metadata: update dataspace from GM (0x00000000 -> 0x08010000)
+04-07 17:29:58.306 22660 22687 I gralloc4: @set_metadata: update dataspace from GM (0x00000000 -> 0x08010000)
+04-07 17:29:58.314 22660 22687 I gralloc4: @set_metadata: update dataspace from GM (0x00000000 -> 0x08010000)
+04-07 17:29:58.322 22660 22687 I gralloc4: @set_metadata: update dataspace from GM (0x00000000 -> 0x08010000)
+04-07 17:29:58.330 22660 22687 I gralloc4: @set_metadata: update dataspace from GM (0x00000000 -> 0x08010000)
+04-07 17:29:58.337 22660 22687 I gralloc4: @set_metadata: update dataspace from GM (0x00000000 -> 0x08010000)
+04-07 17:29:58.346 22660 22687 I gralloc4: @set_metadata: update dataspace from GM (0x00000000 -> 0x08010000)
+04-07 17:29:58.354 22660 22687 I gralloc4: @set_metadata: update dataspace from GM (0x00000000 -> 0x08010000)
+04-07 17:29:58.362 22660 22687 I gralloc4: @set_metadata: update dataspace from GM (0x00000000 -> 0x08010000)
+04-07 17:29:58.371 22660 22687 I gralloc4: @set_metadata: update dataspace from GM (0x00000000 -> 0x08010000)
+04-07 17:29:58.379 22660 22687 I gralloc4: @set_metadata: update dataspace from GM (0x00000000 -> 0x08010000)
+04-07 17:29:58.388 22660 22687 I gralloc4: @set_metadata: update dataspace from GM (0x00000000 -> 0x08010000)
+04-07 17:29:58.396 22660 22687 I gralloc4: @set_metadata: update dataspace from GM (0x00000000 -> 0x08010000)
+04-07 17:29:58.404 22660 22687 I gralloc4: @set_metadata: update dataspace from GM (0x00000000 -> 0x08010000)
+04-07 17:29:58.413 22660 22687 I gralloc4: @set_metadata: update dataspace from GM (0x00000000 -> 0x08010000)
+04-07 17:29:58.421 22660 22687 I gralloc4: @set_metadata: update dataspace from GM (0x00000000 -> 0x08010000)
+04-07 17:29:58.429 22660 22687 I gralloc4: @set_metadata: update dataspace from GM (0x00000000 -> 0x08010000)
+04-07 17:29:58.438 22660 22687 I gralloc4: @set_metadata: update dataspace from GM (0x00000000 -> 0x08010000)
+04-07 17:29:58.445 22660 22687 I gralloc4: @set_metadata: update dataspace from GM (0x00000000 -> 0x08010000)
+04-07 17:29:58.454 22660 22687 I gralloc4: @set_metadata: update dataspace from GM (0x00000000 -> 0x08010000)
+04-07 17:29:58.463 22660 22687 I gralloc4: @set_metadata: update dataspace from GM (0x00000000 -> 0x08010000)
+04-07 17:29:58.471 22660 22687 I gralloc4: @set_metadata: update dataspace from GM (0x00000000 -> 0x08010000)
+04-07 17:29:58.479 22660 22687 I gralloc4: @set_metadata: update dataspace from GM (0x00000000 -> 0x08010000)
+04-07 17:29:58.487 22660 22687 I gralloc4: @set_metadata: update dataspace from GM (0x00000000 -> 0x08010000)
+04-07 17:29:58.495 22660 22687 I gralloc4: @set_metadata: update dataspace from GM (0x00000000 -> 0x08010000)
+04-07 17:29:58.504 22660 22687 I gralloc4: @set_metadata: update dataspace from GM (0x00000000 -> 0x08010000)
+04-07 17:29:58.512 22660 22687 I gralloc4: @set_metadata: update dataspace from GM (0x00000000 -> 0x08010000)
+04-07 17:29:58.520 22660 22687 I gralloc4: @set_metadata: update dataspace from GM (0x00000000 -> 0x08010000)
+04-07 17:29:58.528 22660 22687 I gralloc4: @set_metadata: update dataspace from GM (0x00000000 -> 0x08010000)
+04-07 17:29:58.536 22660 22687 I gralloc4: @set_metadata: update dataspace from GM (0x00000000 -> 0x08010000)
+04-07 17:29:58.544 22660 22687 I gralloc4: @set_metadata: update dataspace from GM (0x00000000 -> 0x08010000)
+04-07 17:29:58.553 22660 22687 I gralloc4: @set_metadata: update dataspace from GM (0x00000000 -> 0x08010000)
+04-07 17:29:58.561 22660 22687 I gralloc4: @set_metadata: update dataspace from GM (0x00000000 -> 0x08010000)
+04-07 17:29:58.570 22660 22687 I gralloc4: @set_metadata: update dataspace from GM (0x00000000 -> 0x08010000)
+04-07 17:29:58.578 22660 22687 I gralloc4: @set_metadata: update dataspace from GM (0x00000000 -> 0x08010000)
+04-07 17:29:58.587 22660 22687 I gralloc4: @set_metadata: update dataspace from GM (0x00000000 -> 0x08010000)
+04-07 17:29:58.594 22660 22687 I gralloc4: @set_metadata: update dataspace from GM (0x00000000 -> 0x08010000)
+04-07 17:29:58.603 22660 22687 I gralloc4: @set_metadata: update dataspace from GM (0x00000000 -> 0x08010000)
+04-07 17:29:58.611 22660 22687 I gralloc4: @set_metadata: update dataspace from GM (0x00000000 -> 0x08010000)
+04-07 17:29:58.619 22660 22687 I gralloc4: @set_metadata: update dataspace from GM (0x00000000 -> 0x08010000)
+04-07 17:29:58.627 22660 22687 I gralloc4: @set_metadata: update dataspace from GM (0x00000000 -> 0x08010000)
+04-07 17:29:58.636 22660 22687 I gralloc4: @set_metadata: update dataspace from GM (0x00000000 -> 0x08010000)
+04-07 17:29:58.644 22660 22687 I gralloc4: @set_metadata: update dataspace from GM (0x00000000 -> 0x08010000)
+04-07 17:29:58.652 22660 22687 I gralloc4: @set_metadata: update dataspace from GM (0x00000000 -> 0x08010000)
+04-07 17:29:58.661 22660 22687 I gralloc4: @set_metadata: update dataspace from GM (0x00000000 -> 0x08010000)
+04-07 17:29:58.669 22660 22687 I gralloc4: @set_metadata: update dataspace from GM (0x00000000 -> 0x08010000)
+04-07 17:29:58.677 22660 22687 I gralloc4: @set_metadata: update dataspace from GM (0x00000000 -> 0x08010000)
+04-07 17:29:58.685 22660 22687 I gralloc4: @set_metadata: update dataspace from GM (0x00000000 -> 0x08010000)
+04-07 17:29:58.693 22660 22687 I gralloc4: @set_metadata: update dataspace from GM (0x00000000 -> 0x08010000)
+04-07 17:29:58.702 22660 22687 I gralloc4: @set_metadata: update dataspace from GM (0x00000000 -> 0x08010000)
+04-07 17:29:58.710 22660 22687 I gralloc4: @set_metadata: update dataspace from GM (0x00000000 -> 0x08010000)
+04-07 17:29:58.718 22660 22687 I gralloc4: @set_metadata: update dataspace from GM (0x00000000 -> 0x08010000)
+04-07 17:29:58.727 22660 22687 I gralloc4: @set_metadata: update dataspace from GM (0x00000000 -> 0x08010000)
+04-07 17:29:58.735 22660 22687 I gralloc4: @set_metadata: update dataspace from GM (0x00000000 -> 0x08010000)
+04-07 17:29:58.743 22660 22687 I gralloc4: @set_metadata: update dataspace from GM (0x00000000 -> 0x08010000)
+04-07 17:29:58.751 22660 22687 I gralloc4: @set_metadata: update dataspace from GM (0x00000000 -> 0x08010000)
+04-07 17:29:58.760 22660 22687 I gralloc4: @set_metadata: update dataspace from GM (0x00000000 -> 0x08010000)
+04-07 17:29:58.768 22660 22687 I gralloc4: @set_metadata: update dataspace from GM (0x00000000 -> 0x08010000)
+04-07 17:29:58.776 22660 22687 I gralloc4: @set_metadata: update dataspace from GM (0x00000000 -> 0x08010000)
+04-07 17:29:58.784 22660 22687 I gralloc4: @set_metadata: update dataspace from GM (0x00000000 -> 0x08010000)
+04-07 17:29:58.793 22660 22687 I gralloc4: @set_metadata: update dataspace from GM (0x00000000 -> 0x08010000)
+04-07 17:29:58.801 22660 22687 I gralloc4: @set_metadata: update dataspace from GM (0x00000000 -> 0x08010000)
+04-07 17:29:58.809 22660 22687 I gralloc4: @set_metadata: update dataspace from GM (0x00000000 -> 0x08010000)
+04-07 17:29:58.818 22660 22687 I gralloc4: @set_metadata: update dataspace from GM (0x00000000 -> 0x08010000)
+04-07 17:29:58.826 22660 22687 I gralloc4: @set_metadata: update dataspace from GM (0x00000000 -> 0x08010000)
+04-07 17:29:58.833 22660 22724 D LocalHttpProxyServer: PROXY_SESSION: accepted client=/127.0.0.1:41206
+04-07 17:29:58.834 22660 22687 I gralloc4: @set_metadata: update dataspace from GM (0x00000000 -> 0x08010000)
+04-07 17:29:58.842 22660 22769 D LocalHttpProxyServer: PROXY_SESSION: method=GET, uri=http://www.neverlands.ru/main.php, bodyBytes=0
+04-07 17:29:58.842 22660 22769 D LocalHttpProxyServer: PROXY_SESSION: route origin=www.neverlands.ru:80, connect=www.neverlands.ru:80, target=/main.php
+04-07 17:29:58.843 22660 22687 I gralloc4: @set_metadata: update dataspace from GM (0x00000000 -> 0x08010000)
+04-07 17:29:58.850 22660 22687 I gralloc4: @set_metadata: update dataspace from GM (0x00000000 -> 0x08010000)
+04-07 17:29:58.859 22660 22687 I gralloc4: @set_metadata: update dataspace from GM (0x00000000 -> 0x08010000)
+04-07 17:29:58.867 22660 22687 I gralloc4: @set_metadata: update dataspace from GM (0x00000000 -> 0x08010000)
+04-07 17:29:58.875 22660 22687 I gralloc4: @set_metadata: update dataspace from GM (0x00000000 -> 0x08010000)
+04-07 17:29:58.884 22660 22687 I gralloc4: @set_metadata: update dataspace from GM (0x00000000 -> 0x08010000)
+04-07 17:29:58.892 22660 22687 I gralloc4: @set_metadata: update dataspace from GM (0x00000000 -> 0x08010000)
+04-07 17:29:58.900 22660 22687 I gralloc4: @set_metadata: update dataspace from GM (0x00000000 -> 0x08010000)
+04-07 17:29:58.908 22660 22687 I gralloc4: @set_metadata: update dataspace from GM (0x00000000 -> 0x08010000)
+04-07 17:29:58.917 22660 22687 I gralloc4: @set_metadata: update dataspace from GM (0x00000000 -> 0x08010000)
+04-07 17:29:58.925 22660 22687 I gralloc4: @set_metadata: update dataspace from GM (0x00000000 -> 0x08010000)
+04-07 17:29:58.933 22660 22687 I gralloc4: @set_metadata: update dataspace from GM (0x00000000 -> 0x08010000)
+04-07 17:29:58.937 22660 22769 D LocalHttpProxyServer: PROXY_RESP: mode=DIRECT, attempt=1, method=GET, target=/main.php, status=200, server=nginx/1.6.2, statusLine=HTTP/1.1 200 OK
+04-07 17:29:58.938 22660 22769 D LocalHttpProxyServer: PROXY_SESSION: target=www.neverlands.ru:80 mode=DIRECT bytesOut=1099 latencyMs=104
+04-07 17:29:58.941 22660 22660 D LoginActivity: Authorization attempt result: retryAttempt=0, elapsedMs=928, success=true, captcha=false
+04-07 17:29:58.943 22660 22687 I gralloc4: @set_metadata: update dataspace from GM (0x00000000 -> 0x08010000)
+04-07 17:29:58.950 22660 22687 I gralloc4: @set_metadata: update dataspace from GM (0x00000000 -> 0x08010000)
+04-07 17:29:58.950 22660 22660 D LoginActivity: Starting background contact refresh after successful login.
+04-07 17:29:58.958 22660 22687 I gralloc4: @set_metadata: update dataspace from GM (0x00000000 -> 0x08010000)
+04-07 17:29:58.966 22660 22687 I gralloc4: @set_metadata: update dataspace from GM (0x00000000 -> 0x08010000)
+04-07 17:29:58.975 22660 22687 I gralloc4: @set_metadata: update dataspace from GM (0x00000000 -> 0x08010000)
+04-07 17:29:58.982 22660 22687 I gralloc4: @set_metadata: update dataspace from GM (0x00000000 -> 0x08010000)
+04-07 17:29:58.986 22660 22660 E BinderMonitor: err open binder_delay errno=2
+04-07 17:29:58.987 22660 22660 E FileUtils: err write to mi_exception_log
+04-07 17:29:58.990 22660 22687 I gralloc4: @set_metadata: update dataspace from GM (0x00000000 -> 0x08010000)
+04-07 17:29:58.998 22660 22687 I gralloc4: @set_metadata: update dataspace from GM (0x00000000 -> 0x08010000)
+04-07 17:29:59.006 22660 22687 I gralloc4: @set_metadata: update dataspace from GM (0x00000000 -> 0x08010000)
+04-07 17:29:59.007 22660 22783 D libMEOW : meow new tls: 0xb4000075c9338cc0
+04-07 17:29:59.007 22660 22783 D libMEOW : applied 1 plugins for [ru.neverlands.abclient]:
+04-07 17:29:59.007 22660 22783 D libMEOW :   plugin 1: [libMEOW_gift.so]: 0xb400007667f44440
+04-07 17:29:59.007 22660 22783 D libMEOW : rebuild call chain: 0xb4000075c9347480
+04-07 17:29:59.007 22660 22783 D libMEOW : meow delete tls: 0xb4000075c9338cc0
+04-07 17:29:59.018 22660 22660 D MainActivity: [BG_TRACE] registerAppBroadcastReceiverIfNeeded: registered
+04-07 17:29:59.019 22660 22660 D MainActivity: [BG_TRACE] registerScreenStateReceiverIfNeeded: registered
+04-07 17:29:59.028 22660 22660 I ContactsManager: Contacts loaded from XML into cache.
+04-07 17:29:59.029 22660 22660 I MainActivity: ABCLIENT_ANDROID_BUILD=2026-02-27_01-34
+04-07 17:29:59.033 22660 22660 D AutoFunctionsManager: applyAutoSkinRuntimeFlags: disabled, reason=constructor_sync
+04-07 17:29:59.033 22660 22660 D AutoFunctionsManager: syncAutoSkinWithProfileIfPresent: SkinAuto=false
+04-07 17:29:59.033 22660 22660 D AutoFunctionsManager: syncAutoFightWithProfileIfPresent: LezDoAutoboi=true
+04-07 17:29:59.033 22660 22660 D AutoFunctionsManager: syncAutoTreasureWithProfileIfPresent: AutoDig=false
+04-07 17:29:59.037 22660 22660 D MainActivity: [BG_TRACE] onCreate_afterInit: interactive=true, deviceLocked=false, idleMode=false, batteryOptimized=true, autoFight=true, appVarsAutoboi=AutoboiOn, autoAttack=false, locationTracking=true, chatRefreshActive=false, roomPollingActive=false
+04-07 17:29:59.040 22660 22660 D ScrollerOptimizationManager: registerConfigChangedListener
+04-07 17:29:59.040 22660 22660 D ScrollerOptimizationManager: registerConfigChangedListener
+04-07 17:29:59.055 22660 22660 D CompatibilityChangeReporter: Compat change id reported: 171228096; UID 10413; state: ENABLED
+04-07 17:29:59.055 22660 22660 D ScrollerOptimizationManager: registerConfigChangedListener
+04-07 17:29:59.116 22660 22793 D libMEOW : meow new tls: 0xb4000075c941cdc0
+04-07 17:29:59.116 22660 22793 D libMEOW : applied 1 plugins for [ru.neverlands.abclient]:
+04-07 17:29:59.116 22660 22793 D libMEOW :   plugin 1: [libMEOW_gift.so]: 0xb400007667f44440
+04-07 17:29:59.117 22660 22793 D libMEOW : rebuild call chain: 0xb4000075c942b300
+04-07 17:29:59.119 22660 22753 W cr_media: BLUETOOTH_CONNECT permission is missing.
+04-07 17:29:59.120 22660 22753 W cr_media: getBluetoothAdapter() requires BLUETOOTH permission
+04-07 17:29:59.120 22660 22753 W cr_media: registerBluetoothIntentsIfNeeded: Requires BLUETOOTH permission
+04-07 17:29:59.167 22660 22660 D ScrollerOptimizationManager: registerConfigChangedListener
+04-07 17:29:59.194 22660 22660 I ProxyRuntimeManager: PROXY_BOOT: ensureStarted, doProxy=false, useProxy=false, proxyAddress=, running=true, strictRequired=false
+04-07 17:29:59.194 22660 22660 I ProxyRuntimeManager: PROXY_BOOT: reuse active runtime, port=8052
+04-07 17:29:59.194 22660 22660 I ProxyRuntimeManager: PROXY_BINDING: applyWebViewProxyOverride requested, running=true
+04-07 17:29:59.195 22660 22660 I MainActivity: PROXY_BOOT: MainActivity runtime state, running=true, port=8052
+04-07 17:29:59.244 22660 22660 D MainActivity: AUTH_COOKIE_SYNC: applied lastCookies names=[NeverFunc, watermark, NeverCode, NeverFVal, NeverExpi, NeverPuid, PHPSESSID, NeverNick, NeverChat, NeverHash, NeverUser]
+04-07 17:29:59.246 22660 22660 D MainActivity: AUTH_COOKIE_SYNC[after_lastCookies_apply]: never=count=11, names=[watermark, PHPSESSID, NeverPuid, NeverCode, NeverHash, NeverChat, NeverUser, NeverFunc, NeverNick, NeverFVal, NeverExpi], www=count=11, names=[watermark, PHPSESSID, NeverPuid, NeverCode, NeverHash, NeverChat, NeverUser, NeverFunc, NeverNick, NeverFVal, NeverExpi]
+04-07 17:29:59.247 22660 22665 I rlands.abclient: Background young concurrent copying GC freed 4820KB AllocSpace bytes, 35(2016KB) LOS objects, 14% free, 15MB/18MB, paused 144us,32us total 157.249ms
+04-07 17:29:59.268 22660 22660 D QuickButtonsPanel: initButtons: starting...
+04-07 17:29:59.268 22660 22660 D QuickButtonsPanel: initButtons: top button[0] = OK
+04-07 17:29:59.268 22660 22660 D QuickButtonsPanel: initButtons: top button[1] = OK
+04-07 17:29:59.268 22660 22660 D QuickButtonsPanel: initButtons: top button[2] = OK
+04-07 17:29:59.268 22660 22660 D QuickButtonsPanel: initButtons: top button[3] = OK
+04-07 17:29:59.268 22660 22660 D QuickButtonsPanel: initButtons: top button[4] = OK
+04-07 17:29:59.268 22660 22660 D QuickButtonsPanel: initButtons: top button[5] = OK
+04-07 17:29:59.268 22660 22660 D QuickButtonsPanel: initButtons: top button[6] = OK
+04-07 17:29:59.268 22660 22660 D QuickButtonsPanel: initButtons: top button[7] = OK
+04-07 17:29:59.268 22660 22660 D QuickButtonsPanel: initButtons: top button[8] = OK
+04-07 17:29:59.268 22660 22660 D QuickButtonsPanel: initButtons: top button[9] = OK
+04-07 17:29:59.268 22660 22660 D QuickButtonsPanel: initButtons: bottom button[10] = OK
+04-07 17:29:59.268 22660 22660 D QuickButtonsPanel: initButtons: bottom button[11] = OK
+04-07 17:29:59.268 22660 22660 D QuickButtonsPanel: initButtons: bottom button[12] = OK
+04-07 17:29:59.268 22660 22660 D QuickButtonsPanel: initButtons: bottom button[13] = OK
+04-07 17:29:59.268 22660 22660 D QuickButtonsPanel: initButtons: bottom button[14] = OK
+04-07 17:29:59.268 22660 22660 D QuickButtonsPanel: initButtons: bottom button[15] = OK
+04-07 17:29:59.268 22660 22660 D QuickButtonsPanel: initButtons: bottom button[16] = OK
+04-07 17:29:59.268 22660 22660 D QuickButtonsPanel: initButtons: bottom button[17] = OK
+04-07 17:29:59.268 22660 22660 D QuickButtonsPanel: initButtons: bottom button[18] = OK
+04-07 17:29:59.268 22660 22660 D QuickButtonsPanel: initButtons: bottom button[19] = OK
+04-07 17:29:59.268 22660 22660 D QuickButtonsPanel: initButtons: finished
+04-07 17:29:59.268 22660 22660 D QuickButtonsPanel: loadAndUpdateButtons: starting...
+04-07 17:29:59.268 22660 22660 D QuickButtonsManager: getButtons called, buttons = 20
+04-07 17:29:59.269 22660 22660 D QuickButtonsPanel: loadAndUpdateButtons: buttons count = 20
+04-07 17:29:59.269 22660 22660 D QuickButtonsPanel: loadAndUpdateButtons: checking button[0], ImageButton=OK
+04-07 17:29:59.269 22660 22660 D QuickButtonsPanel: loadAndUpdateButtons: button[0] = AUTO_FIGHT
+04-07 17:29:59.269 22660 22660 D QuickButtonsPanel: updateButtonAppearance: position=0, button=AUTO_FIGHT
+04-07 17:29:59.271 22660 22660 W Glide   : Failed to find GeneratedAppGlideModule. You should include an annotationProcessor compile dependency on com.github.bumptech.glide:compiler in your application and a @GlideModule annotated AppGlideModule implementation or LibraryGlideModules will be silently ignored
+04-07 17:29:59.288 22660 22660 D QuickButtonsPanel: updateButtonAppearance: icon loaded for position 0, enabled=true
+04-07 17:29:59.288 22660 22660 D QuickButtonsPanel: loadAndUpdateButtons: checking button[1], ImageButton=OK
+04-07 17:29:59.288 22660 22660 D QuickButtonsPanel: loadAndUpdateButtons: button[1] = AUTO_BOSS
+04-07 17:29:59.288 22660 22660 D QuickButtonsPanel: updateButtonAppearance: position=1, button=AUTO_BOSS
+04-07 17:29:59.289 22660 22660 D QuickButtonsPanel: updateButtonAppearance: icon loaded for position 1, enabled=true
+04-07 17:29:59.289 22660 22660 D QuickButtonsPanel: loadAndUpdateButtons: checking button[2], ImageButton=OK
+04-07 17:29:59.289 22660 22660 D QuickButtonsPanel: loadAndUpdateButtons: button[2] = AUTO_CURE
+04-07 17:29:59.289 22660 22660 D QuickButtonsPanel: updateButtonAppearance: position=2, button=AUTO_CURE
+04-07 17:29:59.292 22660 22660 D QuickButtonsPanel: updateButtonAppearance: icon loaded for position 2, enabled=true
+04-07 17:29:59.292 22660 22660 D QuickButtonsPanel: loadAndUpdateButtons: checking button[3], ImageButton=OK
+04-07 17:29:59.292 22660 22660 D QuickButtonsPanel: loadAndUpdateButtons: button[3] = LOCATION_TRACKING
+04-07 17:29:59.292 22660 22660 D QuickButtonsPanel: updateButtonAppearance: position=3, button=LOCATION_TRACKING
+04-07 17:29:59.293 22660 22660 D QuickButtonsPanel: updateButtonAppearance: icon loaded for position 3, enabled=true
+04-07 17:29:59.293 22660 22660 D QuickButtonsPanel: loadAndUpdateButtons: checking button[4], ImageButton=OK
+04-07 17:29:59.293 22660 22660 D QuickButtonsPanel: loadAndUpdateButtons: button[4] = AUTO_COMPASS
+04-07 17:29:59.293 22660 22660 D QuickButtonsPanel: updateButtonAppearance: position=4, button=AUTO_COMPASS
+04-07 17:29:59.294 22660 22660 D QuickButtonsPanel: updateButtonAppearance: icon loaded for position 4, enabled=false
+04-07 17:29:59.294 22660 22660 D QuickButtonsPanel: loadAndUpdateButtons: checking button[5], ImageButton=OK
+04-07 17:29:59.294 22660 22660 D QuickButtonsPanel: loadAndUpdateButtons: button[5] = OPEN_CONTACTS
+04-07 17:29:59.294 22660 22660 D QuickButtonsPanel: updateButtonAppearance: position=5, button=OPEN_CONTACTS
+04-07 17:29:59.295 22660 22660 D QuickButtonsPanel: updateButtonAppearance: icon loaded for position 5, enabled=false
+04-07 17:29:59.295 22660 22660 D QuickButtonsPanel: loadAndUpdateButtons: checking button[6], ImageButton=OK
+04-07 17:29:59.295 22660 22660 D QuickButtonsPanel: loadAndUpdateButtons: button[6] = QUICK_TELEPORT
+04-07 17:29:59.295 22660 22660 D QuickButtonsPanel: updateButtonAppearance: position=6, button=QUICK_TELEPORT
+04-07 17:29:59.296 22660 22660 D QuickButtonsPanel: updateButtonAppearance: icon loaded for position 6, enabled=false
+04-07 17:29:59.296 22660 22660 D QuickButtonsPanel: loadAndUpdateButtons: checking button[7], ImageButton=OK
+04-07 17:29:59.296 22660 22660 D QuickButtonsPanel: loadAndUpdateButtons: button[7] = AUTO_TREASURE
+04-07 17:29:59.296 22660 22660 D QuickButtonsPanel: updateButtonAppearance: position=7, button=AUTO_TREASURE
+04-07 17:29:59.297 22660 22660 D QuickButtonsPanel: updateButtonAppearance: icon loaded for position 7, enabled=false
+04-07 17:29:59.297 22660 22660 D QuickButtonsPanel: loadAndUpdateButtons: checking button[8], ImageButton=OK
+04-07 17:29:59.297 22660 22660 D QuickButtonsPanel: loadAndUpdateButtons: button[8] = OPEN_PINFO
+04-07 17:29:59.297 22660 22660 D QuickButtonsPanel: updateButtonAppearance: position=8, button=OPEN_PINFO
+04-07 17:29:59.298 22660 22660 D QuickButtonsPanel: updateButtonAppearance: icon loaded for position 8, enabled=false
+04-07 17:29:59.298 22660 22660 D QuickButtonsPanel: loadAndUpdateButtons: checking button[9], ImageButton=OK
+04-07 17:29:59.298 22660 22660 D QuickButtonsPanel: loadAndUpdateButtons: button[9] = AUTO_MOVING
+04-07 17:29:59.298 22660 22660 D QuickButtonsPanel: updateButtonAppearance: position=9, button=AUTO_MOVING
+04-07 17:29:59.298 22660 22660 D QuickButtonsPanel: updateButtonAppearance: icon loaded for position 9, enabled=false
+04-07 17:29:59.298 22660 22660 D QuickButtonsPanel: loadAndUpdateButtons: checking button[10], ImageButton=OK
+04-07 17:29:59.298 22660 22660 D QuickButtonsPanel: loadAndUpdateButtons: button[10] = TIMERS
+04-07 17:29:59.298 22660 22660 D QuickButtonsPanel: updateButtonAppearance: position=10, button=TIMERS
+04-07 17:29:59.299 22660 22660 D QuickButtonsPanel: updateButtonAppearance: icon loaded for position 10, enabled=false
+04-07 17:29:59.299 22660 22660 D QuickButtonsPanel: loadAndUpdateButtons: checking button[11], ImageButton=OK
+04-07 17:29:59.299 22660 22660 D QuickButtonsPanel: loadAndUpdateButtons: button[11] = NONE
+04-07 17:29:59.299 22660 22660 D QuickButtonsPanel: updateButtonAppearance: position=11, button=NONE
+04-07 17:29:59.299 22660 22660 D QuickButtonsPanel: updateButtonAppearance: set empty icon for position 11
+04-07 17:29:59.299 22660 22660 D QuickButtonsPanel: loadAndUpdateButtons: checking button[12], ImageButton=OK
+04-07 17:29:59.299 22660 22660 D QuickButtonsPanel: loadAndUpdateButtons: button[12] = NONE
+04-07 17:29:59.299 22660 22660 D QuickButtonsPanel: updateButtonAppearance: position=12, button=NONE
+04-07 17:29:59.299 22660 22660 D QuickButtonsPanel: updateButtonAppearance: set empty icon for position 12
+04-07 17:29:59.299 22660 22660 D QuickButtonsPanel: loadAndUpdateButtons: checking button[13], ImageButton=OK
+04-07 17:29:59.299 22660 22660 D QuickButtonsPanel: loadAndUpdateButtons: button[13] = NONE
+04-07 17:29:59.299 22660 22660 D QuickButtonsPanel: updateButtonAppearance: position=13, button=NONE
+04-07 17:29:59.299 22660 22660 D QuickButtonsPanel: updateButtonAppearance: set empty icon for position 13
+04-07 17:29:59.299 22660 22660 D QuickButtonsPanel: loadAndUpdateButtons: checking button[14], ImageButton=OK
+04-07 17:29:59.299 22660 22660 D QuickButtonsPanel: loadAndUpdateButtons: button[14] = NONE
+04-07 17:29:59.299 22660 22660 D QuickButtonsPanel: updateButtonAppearance: position=14, button=NONE
+04-07 17:29:59.299 22660 22660 D QuickButtonsPanel: updateButtonAppearance: set empty icon for position 14
+04-07 17:29:59.299 22660 22660 D QuickButtonsPanel: loadAndUpdateButtons: checking button[15], ImageButton=OK
+04-07 17:29:59.299 22660 22660 D QuickButtonsPanel: loadAndUpdateButtons: button[15] = NONE
+04-07 17:29:59.299 22660 22660 D QuickButtonsPanel: updateButtonAppearance: position=15, button=NONE
+04-07 17:29:59.300 22660 22660 D QuickButtonsPanel: updateButtonAppearance: set empty icon for position 15
+04-07 17:29:59.300 22660 22660 D QuickButtonsPanel: loadAndUpdateButtons: checking button[16], ImageButton=OK
+04-07 17:29:59.300 22660 22660 D QuickButtonsPanel: loadAndUpdateButtons: button[16] = NONE
+04-07 17:29:59.300 22660 22660 D QuickButtonsPanel: updateButtonAppearance: position=16, button=NONE
+04-07 17:29:59.300 22660 22660 D QuickButtonsPanel: updateButtonAppearance: set empty icon for position 16
+04-07 17:29:59.300 22660 22660 D QuickButtonsPanel: loadAndUpdateButtons: checking button[17], ImageButton=OK
+04-07 17:29:59.300 22660 22660 D QuickButtonsPanel: loadAndUpdateButtons: button[17] = NONE
+04-07 17:29:59.300 22660 22660 D QuickButtonsPanel: updateButtonAppearance: position=17, button=NONE
+04-07 17:29:59.300 22660 22660 D QuickButtonsPanel: updateButtonAppearance: set empty icon for position 17
+04-07 17:29:59.300 22660 22660 D QuickButtonsPanel: loadAndUpdateButtons: checking button[18], ImageButton=OK
+04-07 17:29:59.300 22660 22660 D QuickButtonsPanel: loadAndUpdateButtons: button[18] = NONE
+04-07 17:29:59.300 22660 22660 D QuickButtonsPanel: updateButtonAppearance: position=18, button=NONE
+04-07 17:29:59.300 22660 22660 D QuickButtonsPanel: updateButtonAppearance: set empty icon for position 18
+04-07 17:29:59.300 22660 22660 D QuickButtonsPanel: loadAndUpdateButtons: checking button[19], ImageButton=OK
+04-07 17:29:59.300 22660 22660 D QuickButtonsPanel: loadAndUpdateButtons: button[19] = OPEN_STATS
+04-07 17:29:59.300 22660 22660 D QuickButtonsPanel: updateButtonAppearance: position=19, button=OPEN_STATS
+04-07 17:29:59.300 22660 22660 D QuickButtonsPanel: updateButtonAppearance: icon loaded for position 19, enabled=false
+04-07 17:29:59.323 22660 22724 D LocalHttpProxyServer: PROXY_SESSION: accepted client=/127.0.0.1:41210
+04-07 17:29:59.326 22660 22747 D WebViewInterceptor: Intercepting: http://neverlands.ru/ch/msg.php
+04-07 17:29:59.326 22660 22747 D ProxyRuntimeManager: PROXY_BINDING: java.net.Proxy endpoint=127.0.0.1:8052
+04-07 17:29:59.327 22660 22747 D WebViewInterceptor: PROXY_BINDING: interceptor openConnection via local proxy, url=http://neverlands.ru/ch/msg.php
+04-07 17:29:59.335 22660 22747 D WebViewInterceptor: CHAT_REQ_HEADERS: url=http://neverlands.ru/ch/msg.php, ua=Mozilla/5.0 (Linux; Android 14; 22101316G Build/UP1A.231005.007; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/147.0.7727.49 Mobile Safari/537.36, referer=http://neverlands.ru/main.php, cookieSummary=count=11, names=[watermark, PHPSESSID, NeverPuid, NeverCode, NeverHash, NeverChat, NeverUser, NeverFunc, NeverNick, NeverFVal, NeverExpi], neverChat=2201c13b5a392d1990a10e58b31902d8, neverFunc=6e36087b3a12188f37c722f028f77181
+04-07 17:29:59.338 22660 22769 D LocalHttpProxyServer: PROXY_SESSION: method=GET, uri=http://neverlands.ru/main.php, bodyBytes=0
+04-07 17:29:59.338 22660 22769 D LocalHttpProxyServer: PROXY_SESSION: route origin=neverlands.ru:80, connect=neverlands.ru:80, target=/main.php
+04-07 17:29:59.342 22660 22685 D FileLogger: Proxy segment switched to: 20260407_17_20
+04-07 17:29:59.343 22660 22724 D LocalHttpProxyServer: PROXY_SESSION: accepted client=/127.0.0.1:41212
+04-07 17:29:59.349 22660 22748 D WebViewInterceptor: Intercepting: http://neverlands.ru/ch.php?lo=1
+04-07 17:29:59.349 22660 22748 D ProxyRuntimeManager: PROXY_BINDING: java.net.Proxy endpoint=127.0.0.1:8052
+04-07 17:29:59.349 22660 22748 D WebViewInterceptor: PROXY_BINDING: interceptor openConnection via local proxy, url=http://neverlands.ru/ch.php?lo=1&1775572199349
+04-07 17:29:59.355 22660 22660 D AutoFunctionsManager: restorePersistentAutoModesAfterLogin: autoFish=false, autoFight=true, autoTreasure=false
+04-07 17:29:59.356 22660 22818 D AutoFunctionsManager: INFO_API_TRACE stage=info_api_runtime_call, source_module=login_sync, nick=Блудя, reason=after-login
+04-07 17:29:59.356 22660 22752 D WebViewInterceptor: Intercepting: http://neverlands.ru/ch/but.php
+04-07 17:29:59.356 22660 22748 D WebViewInterceptor: CHAT_REQ_HEADERS: url=http://neverlands.ru/ch.php?lo=1&1775572199349, ua=Mozilla/5.0 (Linux; Android 14; 22101316G Build/UP1A.231005.007; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/147.0.7727.49 Mobile Safari/537.36, referer=http://neverlands.ru/main.php, cookieSummary=count=11, names=[watermark, PHPSESSID, NeverPuid, NeverCode, NeverHash, NeverChat, NeverUser, NeverFunc, NeverNick, NeverFVal, NeverExpi], neverChat=2201c13b5a392d1990a10e58b31902d8, neverFunc=6e36087b3a12188f37c722f028f77181
+04-07 17:29:59.356 22660 22752 D ProxyRuntimeManager: PROXY_BINDING: java.net.Proxy endpoint=127.0.0.1:8052
+04-07 17:29:59.356 22660 22752 D WebViewInterceptor: PROXY_BINDING: interceptor openConnection via local proxy, url=http://neverlands.ru/ch/but.php
+04-07 17:29:59.359 22660 22660 W ApiRepository: SESSION_COOKIE_APPLIED: host=www.neverlands.ru, bytes=0
+04-07 17:29:59.359 22660 22660 D ProxyRuntimeManager: PROXY_BINDING: java.net.Proxy endpoint=127.0.0.1:8052
+04-07 17:29:59.360 22660 22660 D AutoFunctionsManager: restorePersistentAutoModesAfterLogin: keep visited cache, entries=2145
+04-07 17:29:59.360 22660 22724 D LocalHttpProxyServer: PROXY_SESSION: accepted client=/127.0.0.1:41216
+04-07 17:29:59.361 22660 22660 D AutoModeFgService: [BG_TRACE] syncServiceState: shouldRun=true, reason=restoreAutoFightRuntimeAfterLogin(true)
+04-07 17:29:59.362 22660 22752 D WebViewInterceptor: CHAT_REQ_HEADERS: url=http://neverlands.ru/ch/but.php, ua=Mozilla/5.0 (Linux; Android 14; 22101316G Build/UP1A.231005.007; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/147.0.7727.49 Mobile Safari/537.36, referer=http://neverlands.ru/main.php, cookieSummary=count=11, names=[watermark, PHPSESSID, NeverPuid, NeverCode, NeverHash, NeverChat, NeverUser, NeverFunc, NeverNick, NeverFVal, NeverExpi], neverChat=2201c13b5a392d1990a10e58b31902d8, neverFunc=6e36087b3a12188f37c722f028f77181
+04-07 17:29:59.362 22660 22818 D NeverApi: INFO_API_TRACE source_module=login_sync, stage=request, nick=Блудя
+04-07 17:29:59.364 22660 22660 D AutoFunctionsManager: [BG_TRACE] syncBackgroundService: restoreAutoFightRuntimeAfterLogin(true)
+04-07 17:29:59.364 22660 22660 D AutoFunctionsManager: restoreAutoFightRuntimeAfterLogin: runtime autoboi=AutoboiOn, profileAutoFight=true
+04-07 17:29:59.364 22660 22660 D AutoFunctionsManager: restoreAutoFightRuntimeAfterLogin: set ProbeForceNeedAutoboi flag for cold start override
+04-07 17:29:59.364 22660 22660 D AutoFunctionsManager: restoreAutoFightRuntimeAfterLogin: forcing frame reload bootstrap
+04-07 17:29:59.364 22660 22660 W SessionManager: ⚠️ NO_SESSION: actionName=autofight_restore_login - контекст пуст
+04-07 17:29:59.364 22660 22660 D AutoFunctionsManager: restoreAutoFightRuntimeAfterLogin: reload fight frame http://neverlands.ru/main.php?get_id=56&act=10&go=inf&ab_reload_probe=1&ts=1775572199364
+04-07 17:29:59.368 22660 22660 D FightViewModel: [BG_TRACE] FightViewModel constructor: restored UI state from AppVars.Autoboi=AutoboiOn
+04-07 17:29:59.368 22660 22818 D NeverApi: INFO_API_TRACE stage=id_cache_path, file=/storage/emulated/0/Android/data/ru.neverlands.abclient/files/info/nick_id.txt
+04-07 17:29:59.368 22660 22660 D MainActivity: [BG_TRACE] startChatRefresh: seconds=12
+04-07 17:29:59.368 22660 22660 D MainActivity: [BG_TRACE] stopChatRefresh: already stopped
+04-07 17:29:59.368 22660 22815 D LocalHttpProxyServer: PROXY_SESSION: method=GET, uri=http://neverlands.ru/ch/msg.php, bodyBytes=0
+04-07 17:29:59.368 22660 22660 D AutoModeFgService: [BG_TRACE] syncServiceState: shouldRun=true, reason=onCreate
+04-07 17:29:59.368 22660 22815 D LocalHttpProxyServer: PROXY_SESSION: route origin=neverlands.ru:80, connect=neverlands.ru:80, target=/ch/msg.php
+04-07 17:29:59.369 22660 22821 D CompatibilityChangeReporter: Compat change id reported: 351566728; UID 10413; state: DISABLED
+04-07 17:29:59.370 22660 22818 D NeverApi: INFO_API_TRACE stage=id_cache_loaded, size=16
+04-07 17:29:59.370 22660 22818 D NeverApi: INFO_API_TRACE source_module=login_sync, stage=id_cache_hit, nick=Блудя, id=1444298
+04-07 17:29:59.371 22660 22818 D ProxyRuntimeManager: PROXY_BINDING: java.net.Proxy endpoint=127.0.0.1:8052
+04-07 17:29:59.371 22660 22818 D NeverApi: PROXY_BINDING: NeverApi openConnection via local proxy, url=http://www.neverlands.ru/modules/api/info.cgi?playerid=1444298&slots=1&effects=1&info=1&hmu=1
+04-07 17:29:59.382 22660 22724 D LocalHttpProxyServer: PROXY_SESSION: accepted client=/127.0.0.1:41220
+04-07 17:29:59.383 22660 22820 D LocalHttpProxyServer: PROXY_SESSION: method=GET, uri=http://neverlands.ru/ch.php?lo=1&1775572199349, bodyBytes=0
+04-07 17:29:59.383 22660 22820 D LocalHttpProxyServer: PROXY_SESSION: route origin=neverlands.ru:80, connect=neverlands.ru:80, target=/ch.php?lo=1&1775572199349
+04-07 17:29:59.383 22660 22724 D LocalHttpProxyServer: PROXY_SESSION: accepted client=/127.0.0.1:41222
+04-07 17:29:59.384 22660 22660 D MainActivity: [BG_TRACE] startRoomUsersPolling: begin, hasRunnable=false
+04-07 17:29:59.384 22660 22660 D MainActivity: [BG_TRACE] startRoomUsersPolling: first post
+04-07 17:29:59.386 22660 22724 D LocalHttpProxyServer: PROXY_SESSION: accepted client=/127.0.0.1:41224
+04-07 17:29:59.387 22660 22660 D MainActivity: [BG_TRACE] onResume: interactive=true, deviceLocked=false, idleMode=false, batteryOptimized=true, autoFight=true, appVarsAutoboi=AutoboiOn, autoAttack=false, locationTracking=true, chatRefreshActive=true, roomPollingActive=true
+04-07 17:29:59.388 22660 22660 D AutoModeFgService: [BG_TRACE] syncServiceState: shouldRun=true, reason=onResume
+04-07 17:29:59.390 22660 22826 D LocalHttpProxyServer: PROXY_SESSION: method=GET, uri=http://www.neverlands.ru/modules/api/wars.cgi?_ts=1775572199356, bodyBytes=0
+04-07 17:29:59.390 22660 22826 D LocalHttpProxyServer: PROXY_SESSION: route origin=www.neverlands.ru:80, connect=www.neverlands.ru:80, target=/modules/api/wars.cgi?_ts=1775572199356
+04-07 17:29:59.398 22660 22687 W libc    : Access denied finding property "ro.vendor.display.iris_x7.support"
+04-07 17:29:59.399 22660 22660 D VRI[MainActivity]: hardware acceleration = true, forceHwAccelerated = false
+04-07 17:29:59.400 22660 22828 D LocalHttpProxyServer: PROXY_SESSION: method=GET, uri=http://neverlands.ru/ch/but.php, bodyBytes=0
+04-07 17:29:59.400 22660 22828 D LocalHttpProxyServer: PROXY_SESSION: route origin=neverlands.ru:80, connect=neverlands.ru:80, target=/ch/but.php
+04-07 17:29:59.400 22660 22827 D LocalHttpProxyServer: PROXY_SESSION: method=GET, uri=http://www.neverlands.ru/modules/api/info.cgi?playerid=1444298&slots=1&effects=1&info=1&hmu=1, bodyBytes=0
+04-07 17:29:59.401 22660 22827 D LocalHttpProxyServer: PROXY_SESSION: route origin=www.neverlands.ru:80, connect=www.neverlands.ru:80, target=/modules/api/info.cgi?playerid=1444298&slots=1&effects=1&info=1&hmu=1
+04-07 17:29:59.408 22660 22660 E FileUtils: err write to mi_exception_log
+04-07 17:29:59.413 22660 22751 D WebViewInterceptor: Intercepting: http://neverlands.ru/main.php?get_id=56&act=10&go=inf&ab_reload_probe=1&ts=1775572199364
+04-07 17:29:59.413 22660 22751 D ProxyRuntimeManager: PROXY_BINDING: java.net.Proxy endpoint=127.0.0.1:8052
+04-07 17:29:59.414 22660 22751 D WebViewInterceptor: PROXY_BINDING: interceptor openConnection via local proxy, url=http://neverlands.ru/main.php?get_id=56&act=10&go=inf&ab_reload_probe=1&ts=1775572199364
+04-07 17:29:59.423 22660 22660 E FileUtils: err write to mi_exception_log
+04-07 17:29:59.423 22660 22660 I Choreographer: Skipped 49 frames!  The application may be doing too much work on its main thread.
+04-07 17:29:59.427 22660 22660 D CompatibilityChangeReporter: Compat change id reported: 193247900; UID 10413; state: ENABLED
+04-07 17:29:59.428 22660 22724 D LocalHttpProxyServer: PROXY_SESSION: accepted client=/127.0.0.1:41234
+04-07 17:29:59.436 22660 22769 D LocalHttpProxyServer: PROXY_RESP: mode=DIRECT, attempt=1, method=GET, target=/main.php, status=200, server=nginx/1.6.2, statusLine=HTTP/1.1 200 OK
+04-07 17:29:59.438 22660 22769 W LocalHttpProxyServer: PROXY_FAIL: session failed target=neverlands.ru:80
+04-07 17:29:59.438 22660 22769 W LocalHttpProxyServer: java.net.SocketException: Broken pipe
+04-07 17:29:59.438 22660 22769 W LocalHttpProxyServer: 	at java.net.SocketOutputStream.socketWrite0(Native Method)
+04-07 17:29:59.438 22660 22769 W LocalHttpProxyServer: 	at java.net.SocketOutputStream.socketWrite(SocketOutputStream.java:116)
+04-07 17:29:59.438 22660 22769 W LocalHttpProxyServer: 	at java.net.SocketOutputStream.write(SocketOutputStream.java:156)
+04-07 17:29:59.438 22660 22769 W LocalHttpProxyServer: 	at ru.neverlands.abclient.proxy.LocalHttpProxyServer.copyStreamWithCapture(LocalHttpProxyServer.java:879)
+04-07 17:29:59.438 22660 22769 W LocalHttpProxyServer: 	at ru.neverlands.abclient.proxy.LocalHttpProxyServer.forwardRequest(LocalHttpProxyServer.java:316)
+04-07 17:29:59.438 22660 22769 W LocalHttpProxyServer: 	at ru.neverlands.abclient.proxy.LocalHttpProxyServer.handleClient(LocalHttpProxyServer.java:222)
+04-07 17:29:59.438 22660 22769 W LocalHttpProxyServer: 	at ru.neverlands.abclient.proxy.LocalHttpProxyServer.lambda$acceptLoop$0$ru-neverlands-abclient-proxy-LocalHttpProxyServer(LocalHttpProxyServer.java:153)
+04-07 17:29:59.438 22660 22769 W LocalHttpProxyServer: 	at ru.neverlands.abclient.proxy.LocalHttpProxyServer$$ExternalSyntheticLambda0.run(Unknown Source:4)
+04-07 17:29:59.438 22660 22769 W LocalHttpProxyServer: 	at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1154)
+04-07 17:29:59.438 22660 22769 W LocalHttpProxyServer: 	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:652)
+04-07 17:29:59.438 22660 22769 W LocalHttpProxyServer: 	at java.lang.Thread.run(Thread.java:1563)
+04-07 17:29:59.445 22660 22833 D LocalHttpProxyServer: PROXY_SESSION: method=GET, uri=http://neverlands.ru/main.php?get_id=56&act=10&go=inf&ab_reload_probe=1&ts=1775572199364, bodyBytes=0
+04-07 17:29:59.445 22660 22833 D LocalHttpProxyServer: PROXY_SESSION: route origin=neverlands.ru:80, connect=neverlands.ru:80, target=/main.php?get_id=56&act=10&go=inf&ab_reload_probe=1&ts=1775572199364
+04-07 17:29:59.449 22660 22815 D LocalHttpProxyServer: PROXY_RESP: mode=DIRECT, attempt=1, method=GET, target=/ch/msg.php, status=200, server=nginx/1.6.2, statusLine=HTTP/1.1 200 OK
+04-07 17:29:59.451 22660 22815 D LocalHttpProxyServer: PROXY_SESSION: target=neverlands.ru:80 mode=DIRECT bytesOut=1291 latencyMs=104
+04-07 17:29:59.452 22660 22747 D WebViewInterceptor: Response code: 200 for http://neverlands.ru/ch/msg.php
+04-07 17:29:59.452 22660 22747 D WebViewInterceptor: Content-Encoding: null for http://neverlands.ru/ch/msg.php
+04-07 17:29:59.454 22660 22747 D WebViewInterceptor: Raw bytes: 948 for http://neverlands.ru/ch/msg.php
+04-07 17:29:59.456 22660 22747 D WebViewInterceptor: First bytes HEX: 3c 48 54 4d 4c 3e 0d 0a 3c 4d 45 54 41 20 43 6f 6e 74 65 6e 74 3d 22 74 65 78 74 2f 68 74 6d 6c  for http://neverlands.ru/ch/msg.php
+04-07 17:29:59.457 22660 22747 D WebViewInterceptor: Header [null] = [HTTP/1.1 200 OK] for http://neverlands.ru/ch/msg.php
+04-07 17:29:59.457 22660 22747 D WebViewInterceptor: Header [Cache-Control] = [no-store, no-cache, must-revalidate, post-check=0, pre-check=0] for http://neverlands.ru/ch/msg.php
+04-07 17:29:59.458 22660 22747 D WebViewInterceptor: Header [Connection] = [close] for http://neverlands.ru/ch/msg.php
+04-07 17:29:59.458 22660 22747 D WebViewInterceptor: Header [Content-Type] = [text/html; charset=windows-1251] for http://neverlands.ru/ch/msg.php
+04-07 17:29:59.458 22660 22747 D WebViewInterceptor: Header [Date] = [Tue, 07 Apr 2026 14:29:59 GMT] for http://neverlands.ru/ch/msg.php
+04-07 17:29:59.458 22660 22747 D WebViewInterceptor: Header [Expires] = [Thu, 19 Nov 1981 08:52:00 GMT] for http://neverlands.ru/ch/msg.php
+04-07 17:29:59.458 22660 22747 D WebViewInterceptor: Header [Pragma] = [no-cache] for http://neverlands.ru/ch/msg.php
+04-07 17:29:59.458 22660 22747 D WebViewInterceptor: Header [Server] = [nginx/1.6.2] for http://neverlands.ru/ch/msg.php
+04-07 17:29:59.458 22660 22747 D WebViewInterceptor: Header [Transfer-Encoding] = [chunked] for http://neverlands.ru/ch/msg.php
+04-07 17:29:59.458 22660 22747 D WebViewInterceptor: Header [Vary] = [Accept-Encoding] for http://neverlands.ru/ch/msg.php
+04-07 17:29:59.458 22660 22747 D WebViewInterceptor: Header [X-Android-Received-Millis] = [1775572199451] for http://neverlands.ru/ch/msg.php
+04-07 17:29:59.458 22660 22747 D WebViewInterceptor: Header [X-Android-Response-Source] = [NETWORK 200] for http://neverlands.ru/ch/msg.php
+04-07 17:29:59.458 22660 22747 D WebViewInterceptor: Header [X-Android-Selected-Protocol] = [http/1.1] for http://neverlands.ru/ch/msg.php
+04-07 17:29:59.458 22660 22747 D WebViewInterceptor: Header [X-Android-Sent-Millis] = [1775572199344] for http://neverlands.ru/ch/msg.php
+04-07 17:29:59.459 22660 22747 D WebViewInterceptor: HTML preview (http://neverlands.ru/ch/msg.php): <HTML>
+04-07 17:29:59.459 22660 22747 D WebViewInterceptor: <META Content="text/html; Charset=windows-1251" Http-Equiv=Content-type>
+04-07 17:29:59.459 22660 22747 D WebViewInterceptor: <META Http-Equiv=Cache-Control Content=No-Cache>
+04-07 17:29:59.459 22660 22747 D WebViewInterceptor: <META Http-Equiv=Pragma Content=No-Cache>
+04-07 17:29:59.459 22660 22747 D WebViewInterceptor: <META Http-Equiv=Expires 
+04-07 17:29:59.460 22660 22747 D WebViewInterceptor: Calling Filter.process for http://neverlands.ru/ch/msg.php (948 bytes)
+04-07 17:29:59.461 22660 22747 D WebViewInterceptor: Filter.process returned 948 bytes for http://neverlands.ru/ch/msg.php
+04-07 17:29:59.462 22660 22747 W SessionManager: ⚠️ PARSE_VCODE_FAILED: no vcode found in HTML, source=general
+04-07 17:29:59.466 22660 22747 D WebViewInterceptor: Processed preview (http://neverlands.ru/ch/msg.php): <HTML>
+04-07 17:29:59.466 22660 22747 D WebViewInterceptor: <META Content="text/html; Charset=windows-1251" Http-Equiv=Content-type>
+04-07 17:29:59.466 22660 22747 D WebViewInterceptor: <META Http-Equiv=Cache-Control Content=No-Cache>
+04-07 17:29:59.466 22660 22747 D WebViewInterceptor: <META Http-Equiv=Pragma Content=No-Cache>
+04-07 17:29:59.466 22660 22747 D WebViewInterceptor: <META Http-Equiv=Expires 
+04-07 17:29:59.472 22660 22826 D LocalHttpProxyServer: PROXY_RESP: mode=DIRECT, attempt=1, method=GET, target=/modules/api/wars.cgi?_ts=1775572199356, status=200, server=nginx/1.6.2, statusLine=HTTP/1.1 200 OK
+04-07 17:29:59.472 22660 22747 D WebViewInterceptor: Intercepted OK: http://neverlands.ru/ch/msg.php (7115 bytes, text/html; charset=windows-1251)
+04-07 17:29:59.473 22660 22826 D LocalHttpProxyServer: PROXY_SESSION: target=www.neverlands.ru:80 mode=DIRECT bytesOut=840 latencyMs=88
+04-07 17:29:59.473 22660 22827 D LocalHttpProxyServer: PROXY_RESP: mode=DIRECT, attempt=1, method=GET, target=/modules/api/info.cgi?playerid=1444298&slots=1&effects=1&info=1&hmu=1, status=536, server=nginx/1.6.2, statusLine=HTTP/1.1 536 
+04-07 17:29:59.475 22660 22819 I ClanWarsManager: CLAN_WARS_TRACE wars sync ok: rows=12, attempt=1
+04-07 17:29:59.475 22660 22819 I AutoFunctionsManager: AUTO_BOSS_TRACE: post-login wars sync ok, rows=12
+04-07 17:29:59.477 22660 22828 D LocalHttpProxyServer: PROXY_RESP: mode=DIRECT, attempt=1, method=GET, target=/ch/but.php, status=200, server=nginx/1.6.2, statusLine=HTTP/1.1 200 OK
+04-07 17:29:59.477 22660 22828 D LocalHttpProxyServer: PROXY_SESSION: target=neverlands.ru:80 mode=DIRECT bytesOut=6878 latencyMs=90
+04-07 17:29:59.478 22660 22818 W NeverApi: getInfo: HTTP 536 for http://www.neverlands.ru/modules/api/info.cgi?playerid=1444298&slots=1&effects=1&info=1&hmu=1 (retry)
+04-07 17:29:59.478 22660 22752 D WebViewInterceptor: Response code: 200 for http://neverlands.ru/ch/but.php
+04-07 17:29:59.478 22660 22752 D WebViewInterceptor: Content-Encoding: null for http://neverlands.ru/ch/but.php
+04-07 17:29:59.479 22660 22752 D WebViewInterceptor: Raw bytes: 6534 for http://neverlands.ru/ch/but.php
+04-07 17:29:59.480 22660 22752 D WebViewInterceptor: First bytes HEX: 3c 48 54 4d 4c 3e 0d 0a 3c 4d 45 54 41 20 43 6f 6e 74 65 6e 74 3d 22 74 65 78 74 2f 68 74 6d 6c  for http://neverlands.ru/ch/but.php
+04-07 17:29:59.481 22660 22660 D BufferQueueConsumer: [](id:588400000001,api:0,p:-1,c:22660) connect: controlledByApp=false
+04-07 17:29:59.481 22660 22752 D WebViewInterceptor: Header [null] = [HTTP/1.1 200 OK] for http://neverlands.ru/ch/but.php
+04-07 17:29:59.481 22660 22752 D WebViewInterceptor: Header [Cache-Control] = [no-store, no-cache, must-revalidate, post-check=0, pre-check=0] for http://neverlands.ru/ch/but.php
+04-07 17:29:59.481 22660 22752 D WebViewInterceptor: Header [Connection] = [close] for http://neverlands.ru/ch/but.php
+04-07 17:29:59.481 22660 22752 D WebViewInterceptor: Header [Content-Type] = [text/html; charset=windows-1251] for http://neverlands.ru/ch/but.php
+04-07 17:29:59.481 22660 22752 D WebViewInterceptor: Header [Date] = [Tue, 07 Apr 2026 14:29:59 GMT] for http://neverlands.ru/ch/but.php
+04-07 17:29:59.481 22660 22752 D WebViewInterceptor: Header [Expires] = [Thu, 19 Nov 1981 08:52:00 GMT] for http://neverlands.ru/ch/but.php
+04-07 17:29:59.481 22660 22752 D WebViewInterceptor: Header [Pragma] = [no-cache] for http://neverlands.ru/ch/but.php
+04-07 17:29:59.481 22660 22752 D WebViewInterceptor: Header [Server] = [nginx/1.6.2] for http://neverlands.ru/ch/but.php
+04-07 17:29:59.481 22660 22752 D WebViewInterceptor: Header [Transfer-Encoding] = [chunked] for http://neverlands.ru/ch/but.php
+04-07 17:29:59.482 22660 22752 D WebViewInterceptor: Header [Vary] = [Accept-Encoding] for http://neverlands.ru/ch/but.php
+04-07 17:29:59.482 22660 22752 D WebViewInterceptor: Header [X-Android-Received-Millis] = [1775572199478] for http://neverlands.ru/ch/but.php
+04-07 17:29:59.482 22660 22752 D WebViewInterceptor: Header [X-Android-Response-Source] = [NETWORK 200] for http://neverlands.ru/ch/but.php
+04-07 17:29:59.482 22660 22752 D WebViewInterceptor: Header [X-Android-Selected-Protocol] = [http/1.1] for http://neverlands.ru/ch/but.php
+04-07 17:29:59.482 22660 22752 D WebViewInterceptor: Header [X-Android-Sent-Millis] = [1775572199385] for http://neverlands.ru/ch/but.php
+04-07 17:29:59.483 22660 22687 E OpenGLRenderer: Unable to match the desired swap behavior.
+04-07 17:29:59.483 22660 22827 D LocalHttpProxyServer: PROXY_SESSION: target=www.neverlands.ru:80 mode=DIRECT bytesOut=113 latencyMs=97
+04-07 17:29:59.484 22660 22752 D WebViewInterceptor: HTML preview (http://neverlands.ru/ch/but.php): <HTML>
+04-07 17:29:59.484 22660 22752 D WebViewInterceptor: <META Content="text/html; Charset=windows-1251" Http-Equiv=Content-type>
+04-07 17:29:59.484 22660 22752 D WebViewInterceptor: <META Http-Equiv=Cache-Control Content=No-Cache>
+04-07 17:29:59.484 22660 22752 D WebViewInterceptor: <META Http-Equiv=Pragma Content=No-Cache>
+04-07 17:29:59.484 22660 22752 D WebViewInterceptor: <META Http-Equiv=Expires 
+04-07 17:29:59.491 22660 22752 D WebViewInterceptor: Server time sync (but jsDate): diffMs=491
+04-07 17:29:59.491 22660 22752 D WebViewInterceptor: Calling Filter.process for http://neverlands.ru/ch/but.php (6534 bytes)
+04-07 17:29:59.493 22660 22752 D ButPhp  : Parsed serverDate: 2026-4-7 17:29:59, diff(ms)=493
+04-07 17:29:59.495 22660 22752 D WebViewInterceptor: Filter.process returned 8337 bytes for http://neverlands.ru/ch/but.php
+04-07 17:29:59.495 22660 22752 W SessionManager: ⚠️ PARSE_VCODE_FAILED: no vcode found in HTML, source=chat
+04-07 17:29:59.496 22660 22752 D WebViewInterceptor: Processed preview (http://neverlands.ru/ch/but.php): <HTML>
+04-07 17:29:59.496 22660 22752 D WebViewInterceptor: <META Content="text/html; Charset=windows-1251" Http-Equiv=Content-type>
+04-07 17:29:59.496 22660 22752 D WebViewInterceptor: <META Http-Equiv=Cache-Control Content=No-Cache>
+04-07 17:29:59.496 22660 22752 D WebViewInterceptor: <META Http-Equiv=Pragma Content=No-Cache>
+04-07 17:29:59.496 22660 22752 D WebViewInterceptor: <META Http-Equiv=Expires 
+04-07 17:29:59.499 22660 22752 D WebViewInterceptor: Intercepted OK: http://neverlands.ru/ch/but.php (14504 bytes, text/html; charset=windows-1251)
+04-07 17:29:59.518 22660 22761 W AudioCapabilities: Unsupported mime audio/x-adpcm-dvi-ima
+04-07 17:29:59.518 22660 22761 W AudioCapabilities: Unsupported mime audio/x-adpcm-dvi-ima
+04-07 17:29:59.518 22660 22761 W AudioCapabilities: Unsupported mime audio/x-adpcm-ms
+04-07 17:29:59.518 22660 22761 W AudioCapabilities: Unsupported mime audio/x-adpcm-ms
+04-07 17:29:59.519 22660 22761 W AudioCapabilities: Unsupported mime audio/alac
+04-07 17:29:59.519 22660 22761 W AudioCapabilities: Unsupported mime audio/alac
+04-07 17:29:59.519 22660 22761 W AudioCapabilities: Unsupported mime audio/ape
+04-07 17:29:59.519 22660 22761 W AudioCapabilities: Unsupported mime audio/ape
+04-07 17:29:59.527 22660 22761 W VideoCapabilities: Unsupported mime image/vnd.android.heic
+04-07 17:29:59.527 22660 22761 W VideoCapabilities: Unsupported mime image/vnd.android.heic
+04-07 17:29:59.528 22660 22761 W VideoCapabilities: Unsupported mime image/vnd.android.heic
+04-07 17:29:59.528 22660 22761 W VideoCapabilities: Unsupported mime image/vnd.android.heic
+04-07 17:29:59.528 22660 22761 W VideoCapabilities: Unsupported mime video/dolby-vision
+04-07 17:29:59.529 22660 22761 W VideoCapabilities: Unsupported mime video/dolby-vision
+04-07 17:29:59.529 22660 22761 W VideoCapabilities: Unsupported mime video/dolby-vision
+04-07 17:29:59.530 22660 22761 W VideoCapabilities: Unsupported mime video/dolby-vision
+04-07 17:29:59.540 22660 22833 D LocalHttpProxyServer: PROXY_RESP: mode=DIRECT, attempt=1, method=GET, target=/main.php?get_id=56&act=10&go=inf&ab_reload_probe=1&ts=1775572199364, status=200, server=nginx/1.6.2, statusLine=HTTP/1.1 200 OK
+04-07 17:29:59.541 22660 22751 D WebViewInterceptor: Response code: 200 for http://neverlands.ru/main.php?get_id=56&act=10&go=inf&ab_reload_probe=1&ts=1775572199364
+04-07 17:29:59.541 22660 22751 D WebViewInterceptor: Content-Encoding: null for http://neverlands.ru/main.php?get_id=56&act=10&go=inf&ab_reload_probe=1&ts=1775572199364
+04-07 17:29:59.541 22660 22833 D LocalHttpProxyServer: PROXY_SESSION: target=neverlands.ru:80 mode=DIRECT bytesOut=1731 latencyMs=107
+04-07 17:29:59.542 22660 22751 D WebViewInterceptor: Raw bytes: 1388 for http://neverlands.ru/main.php?get_id=56&act=10&go=inf&ab_reload_probe=1&ts=1775572199364
+04-07 17:29:59.543 22660 22751 D WebViewInterceptor: First bytes HEX: 3c 21 44 4f 43 54 59 50 45 20 68 74 6d 6c 20 50 55 42 4c 49 43 20 22 2d 2f 2f 57 33 43 2f 2f 44  for http://neverlands.ru/main.php?get_id=56&act=10&go=inf&ab_reload_probe=1&ts=1775572199364
+04-07 17:29:59.543 22660 22751 D WebViewInterceptor: Header [null] = [HTTP/1.1 200 OK] for http://neverlands.ru/main.php?get_id=56&act=10&go=inf&ab_reload_probe=1&ts=1775572199364
+04-07 17:29:59.543 22660 22751 D WebViewInterceptor: Header [Cache-Control] = [no-store, no-cache, must-revalidate, post-check=0, pre-check=0] for http://neverlands.ru/main.php?get_id=56&act=10&go=inf&ab_reload_probe=1&ts=1775572199364
+04-07 17:29:59.543 22660 22751 D WebViewInterceptor: Header [Connection] = [close] for http://neverlands.ru/main.php?get_id=56&act=10&go=inf&ab_reload_probe=1&ts=1775572199364
+04-07 17:29:59.543 22660 22751 D WebViewInterceptor: Header [Content-Type] = [text/html; charset=windows-1251] for http://neverlands.ru/main.php?get_id=56&act=10&go=inf&ab_reload_probe=1&ts=1775572199364
+04-07 17:29:59.543 22660 22751 D WebViewInterceptor: Header [Date] = [Tue, 07 Apr 2026 14:29:59 GMT] for http://neverlands.ru/main.php?get_id=56&act=10&go=inf&ab_reload_probe=1&ts=1775572199364
+04-07 17:29:59.543 22660 22751 D WebViewInterceptor: Header [Expires] = [Thu, 19 Nov 1981 08:52:00 GMT] for http://neverlands.ru/main.php?get_id=56&act=10&go=inf&ab_reload_probe=1&ts=1775572199364
+04-07 17:29:59.543 22660 22751 D WebViewInterceptor: Header [Pragma] = [no-cache] for http://neverlands.ru/main.php?get_id=56&act=10&go=inf&ab_reload_probe=1&ts=1775572199364
+04-07 17:29:59.543 22660 22751 D WebViewInterceptor: Header [Server] = [nginx/1.6.2] for http://neverlands.ru/main.php?get_id=56&act=10&go=inf&ab_reload_probe=1&ts=1775572199364
+04-07 17:29:59.544 22660 22751 D WebViewInterceptor: Header [Transfer-Encoding] = [chunked] for http://neverlands.ru/main.php?get_id=56&act=10&go=inf&ab_reload_probe=1&ts=1775572199364
+04-07 17:29:59.544 22660 22751 D WebViewInterceptor: Header [Vary] = [Accept-Encoding] for http://neverlands.ru/main.php?get_id=56&act=10&go=inf&ab_reload_probe=1&ts=1775572199364
+04-07 17:29:59.544 22660 22751 D WebViewInterceptor: Header [X-Android-Received-Millis] = [1775572199541] for http://neverlands.ru/main.php?get_id=56&act=10&go=inf&ab_reload_probe=1&ts=1775572199364
+04-07 17:29:59.544 22660 22751 D WebViewInterceptor: Header [X-Android-Response-Source] = [NETWORK 200] for http://neverlands.ru/main.php?get_id=56&act=10&go=inf&ab_reload_probe=1&ts=1775572199364
+04-07 17:29:59.544 22660 22751 D WebViewInterceptor: Header [X-Android-Selected-Protocol] = [http/1.1] for http://neverlands.ru/main.php?get_id=56&act=10&go=inf&ab_reload_probe=1&ts=1775572199364
+04-07 17:29:59.544 22660 22751 D WebViewInterceptor: Header [X-Android-Sent-Millis] = [1775572199429] for http://neverlands.ru/main.php?get_id=56&act=10&go=inf&ab_reload_probe=1&ts=1775572199364
+04-07 17:29:59.544 22660 22751 D WebViewInterceptor: HTML preview (http://neverlands.ru/main.php?get_id=56&act=10&go=inf&ab_reload_probe=1&ts=1775572199364): <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+04-07 17:29:59.544 22660 22751 D WebViewInterceptor: <HTML>
+04-07 17:29:59.544 22660 22751 D WebViewInterceptor: <HEAD>
+04-07 17:29:59.544 22660 22751 D WebViewInterceptor: <META Http-Equiv="Content-Type" Content="text/html; charset=w
+04-07 17:29:59.545 22660 22751 D WebViewInterceptor: [SERVER_FLOW][raw] state=COMMON, url=http://neverlands.ru/main.php?get_id=56&act=10&go=inf&ab_reload_probe=1&ts=1775572199364, hasFightTy=false, hasFEND=false, hasCodeInput=false, hasFkeyJs=false, hasCaptchaImage=false, hasFinishAct7=false, hasResoPacket=false, hasFishUrl=false, hasFishKeywords=false, hasFishResult=false, timeoutSec=0, fendAction=
+04-07 17:29:59.546 22660 22751 D WebViewInterceptor: Calling Filter.process for http://neverlands.ru/main.php?get_id=56&act=10&go=inf&ab_reload_probe=1&ts=1775572199364 (1388 bytes)
+04-07 17:29:59.548 22660 22761 W cr_VAUtil: Unknown profile: 16 for codec video/dolby-vision
+04-07 17:29:59.548 22660 22761 W cr_VAUtil: Unknown profile: 16 for codec video/dolby-vision
+04-07 17:29:59.552 22660 22751 D MainPhp : process() called for 
+04-07 17:29:59.552 22660 22751 D MainPhp : HTML length after getString: 1388
+04-07 17:29:59.552 22660 22751 D MainPhp : HTML first 200: <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+04-07 17:29:59.552 22660 22751 D MainPhp : <HTML>
+04-07 17:29:59.552 22660 22751 D MainPhp : <HEAD>
+04-07 17:29:59.552 22660 22751 D MainPhp : <META Http-Equiv="Content-Type" Content="text/html; charset=w
+04-07 17:29:59.553 22660 22751 D CharacterVitalsManager: VITALS_TRACE from ins_HP: hp=155/155, ma=1114/1114, intHp=1000.0, intMa=4500.0, source=MainPhp.mainPhpInsHp
+04-07 17:29:59.553 22660 22751 D MainPhp : mainPhpInsHp: parsed hpInt=
+04-07 17:29:59.554 22660 22751 D MainPhp : AUTO_DRINK_TRACE no-trigger: hp=100.0%/50 (enabled=false), ma=100.0%/50 (enabled=true), address=http://neverlands.ru/main.php?get_id=56&act=10&go=inf&ab_reload_probe=1&ts=1775572199364, snapshotSource=ins_HP/page
+04-07 17:29:59.555 22660 22751 D MainPhp : AUTO_FURY_TRACE redirect to character page for scroll check
+04-07 17:29:59.555 22660 22751 D WebViewInterceptor: Filter.process returned 337 bytes for http://neverlands.ru/main.php?get_id=56&act=10&go=inf&ab_reload_probe=1&ts=1775572199364
+04-07 17:29:59.555 22660 22751 D SessionManager: 📍 VCODE_EXTRACTED: pattern matched, vcode=f94ff0e8...
+04-07 17:29:59.555 22660 22751 D SessionManager: ✅ VCODE_PARSED: source=main, vcode=f94ff0e8..., version=1, ageMs=0
+04-07 17:29:59.555 22660 22751 D WebViewInterceptor: Processed preview (http://neverlands.ru/main.php?get_id=56&act=10&go=inf&ab_reload_probe=1&ts=1775572199364): <!--ABCLIENT_GENERATED--><html><head><meta http-equiv="Content-Type" content="text/html; charset=windows-1251"><title>ABClient</title></head><body>Переключение на персонаж<script language="JavaScript"
+04-07 17:29:59.555 22660 22751 D WebViewInterceptor: [SERVER_FLOW][processed] state=COMMON, url=http://neverlands.ru/main.php?get_id=56&act=10&go=inf&ab_reload_probe=1&ts=1775572199364, hasFightTy=false, hasFEND=false, hasCodeInput=false, hasFkeyJs=false, hasCaptchaImage=false, hasFinishAct7=false, hasResoPacket=false, hasFishUrl=false, hasFishKeywords=false, hasFishResult=false, timeoutSec=0, fendAction=
+04-07 17:29:59.556 22660 22751 D WebViewInterceptor: Intercepted OK: http://neverlands.ru/main.php?get_id=56&act=10&go=inf&ab_reload_probe=1&ts=1775572199364 (337 bytes, text/html; charset=windows-1251)
+04-07 17:29:59.582 22660 22660 D VRI[MainActivity]: vri.reportNextDraw android.view.ViewRootImpl.performTraversals:4460 android.view.ViewRootImpl.doTraversal:3069 android.view.ViewRootImpl$TraversalRunnable.run:10654 android.view.Choreographer$CallbackRecord.run:1768 android.view.Choreographer$CallbackRecord.run:1777 
+04-07 17:29:59.589 22660 22660 D VRI[MainActivity]: vri.Setup new sync=wmsSync-VRI[MainActivity]#2
+04-07 17:29:59.600 22660 22687 D OpenGLRenderer: makeCurrent grContext:0xb4000075fbcc3cc0 reset mTextureAvailable
+04-07 17:29:59.611 22660 22687 W libc    : Access denied finding property "ro.vendor.display.iris_x7.support"
+04-07 17:29:59.675 22660 22687 D BLASTBufferQueue: [VRI[MainActivity]#1](f:0,a:1) acquireNextBufferLocked size=1080x2400 mFrameNumber=1 applyTransaction=true mTimestamp=661066452314325(auto) mPendingTransactions.size=0 graphicBufferId=97323958927367 transform=0
+04-07 17:29:59.675 22660 22660 D VRI[MainActivity]: vri.reportDrawFinished
+04-07 17:29:59.678 22660 22660 E FileUtils: err write to mi_exception_log
+04-07 17:29:59.679 22660 22660 E FileUtils: err write to mi_exception_log
+04-07 17:29:59.681 22660 22687 I gralloc4: @set_metadata: update dataspace from GM (0x00000000 -> 0x08010000)
+04-07 17:29:59.698 22660 22818 D ProxyRuntimeManager: PROXY_BINDING: java.net.Proxy endpoint=127.0.0.1:8052
+04-07 17:29:59.703 22660 22724 D LocalHttpProxyServer: PROXY_SESSION: accepted client=/127.0.0.1:41240
+04-07 17:29:59.713 22660 22746 D WebViewInterceptor: Intercepting: http://neverlands.ru/ch/ch_msg_v01.js
+04-07 17:29:59.713 22660 22746 D ProxyRuntimeManager: PROXY_BINDING: java.net.Proxy endpoint=127.0.0.1:8052
+04-07 17:29:59.714 22660 22746 D WebViewInterceptor: PROXY_BINDING: interceptor openConnection via local proxy, url=http://neverlands.ru/ch/ch_msg_v01.js
+04-07 17:29:59.718 22660 22833 D LocalHttpProxyServer: PROXY_SESSION: method=GET, uri=http://www.neverlands.ru/modules/api/info.cgi?playerid=1444298&slots=1&effects=1&info=1&hmu=1, bodyBytes=0
+04-07 17:29:59.718 22660 22833 D LocalHttpProxyServer: PROXY_SESSION: route origin=www.neverlands.ru:80, connect=www.neverlands.ru:80, target=/modules/api/info.cgi?playerid=1444298&slots=1&effects=1&info=1&hmu=1
+04-07 17:29:59.719 22660 22724 D LocalHttpProxyServer: PROXY_SESSION: accepted client=/127.0.0.1:41242
+04-07 17:29:59.724 22660 22660 D CompatibilityChangeReporter: Compat change id reported: 160794467; UID 10413; state: ENABLED
+04-07 17:29:59.725 22660 22751 D WebViewInterceptor: Intercepting: http://neverlands.ru/ch/ch_but.js
+04-07 17:29:59.726 22660 22751 D ProxyRuntimeManager: PROXY_BINDING: java.net.Proxy endpoint=127.0.0.1:8052
+04-07 17:29:59.726 22660 22751 D WebViewInterceptor: PROXY_BINDING: interceptor openConnection via local proxy, url=http://neverlands.ru/ch/ch_but.js
+04-07 17:29:59.729 22660 22827 D LocalHttpProxyServer: PROXY_SESSION: method=GET, uri=http://neverlands.ru/ch/ch_msg_v01.js, bodyBytes=0
+04-07 17:29:59.729 22660 22827 D LocalHttpProxyServer: PROXY_SESSION: route origin=neverlands.ru:80, connect=neverlands.ru:80, target=/ch/ch_msg_v01.js
+04-07 17:29:59.733 22660 22724 D LocalHttpProxyServer: PROXY_SESSION: accepted client=/127.0.0.1:41248
+04-07 17:29:59.737 22660 22828 D LocalHttpProxyServer: PROXY_SESSION: method=GET, uri=http://neverlands.ru/ch/ch_but.js, bodyBytes=0
+04-07 17:29:59.737 22660 22828 D LocalHttpProxyServer: PROXY_SESSION: route origin=neverlands.ru:80, connect=neverlands.ru:80, target=/ch/ch_but.js
+04-07 17:29:59.742 22660 22660 D AutoModeFgService: [BG_TRACE] ensureLocks: wakeLock acquired
+04-07 17:29:59.749 22660 22660 D AutoModeFgService: [BG_TRACE] ensureLocks: wifiLock acquired
+04-07 17:29:59.750 22660 22660 D AutoModeFgService: [BG_TRACE] onCreate: foreground started
+04-07 17:29:59.759 22660 22660 D MainActivity: shouldOverrideUrlLoading: http://neverlands.ru/main.php?get_id=56&act=10&go=inf&vcode=f94ff0e8189c6eacb1947e166aeb55f4
+04-07 17:29:59.759 22660 22660 D MainActivity: [BG_TRACE] requestAutoTurn: suppress server probe after manual main navigation, suppressMs=4500, url=http://neverlands.ru/main.php?get_id=56&act=10&go=inf&vcode=f94ff0e8189c6eacb1947e166aeb55f4
+04-07 17:29:59.762 22660 22660 D AutoModeFgService: [BG_TRACE] onStartCommand: reason=restoreAutoFightRuntimeAfterLogin(true), startId=1
+04-07 17:29:59.762 22660 22755 D WebViewInterceptor: Intercepting: http://neverlands.ru/main.php?get_id=56&act=10&go=inf&vcode=f94ff0e8189c6eacb1947e166aeb55f4
+04-07 17:29:59.762 22660 22755 D ProxyRuntimeManager: PROXY_BINDING: java.net.Proxy endpoint=127.0.0.1:8052
+04-07 17:29:59.763 22660 22755 D WebViewInterceptor: PROXY_BINDING: interceptor openConnection via local proxy, url=http://neverlands.ru/main.php?get_id=56&act=10&go=inf&vcode=f94ff0e8189c6eacb1947e166aeb55f4
+04-07 17:29:59.768 22660 22724 D LocalHttpProxyServer: PROXY_SESSION: accepted client=/127.0.0.1:41252
+04-07 17:29:59.769 22660 22660 D AutoModeFgService: [BG_TRACE] onStartCommand: reason=onCreate, startId=2
+04-07 17:29:59.769 22660 22660 D MainActivity: [AA_TRACE] requestRoomUsersRefreshSoon: http://neverlands.ru/ch.php?lo=1&1775572199769
+04-07 17:29:59.772 22660 22660 D AutoModeFgService: [BG_TRACE] onStartCommand: reason=onResume, startId=3
+04-07 17:29:59.773 22660 22752 D WebViewInterceptor: Intercepting: http://neverlands.ru/ch.php?lo=1&1775572199769
+04-07 17:29:59.773 22660 22752 D ProxyRuntimeManager: PROXY_BINDING: java.net.Proxy endpoint=127.0.0.1:8052
+04-07 17:29:59.774 22660 22752 D WebViewInterceptor: PROXY_BINDING: interceptor openConnection via local proxy, url=http://neverlands.ru/ch.php?lo=1&1775572199769&1775572199773
+04-07 17:29:59.779 22660 22826 D LocalHttpProxyServer: PROXY_SESSION: method=GET, uri=http://neverlands.ru/main.php?get_id=56&act=10&go=inf&vcode=f94ff0e8189c6eacb1947e166aeb55f4, bodyBytes=0
+04-07 17:29:59.779 22660 22826 D LocalHttpProxyServer: PROXY_SESSION: route origin=neverlands.ru:80, connect=neverlands.ru:80, target=/main.php?get_id=56&act=10&go=inf&vcode=f94ff0e8189c6eacb1947e166aeb55f4
+04-07 17:29:59.780 22660 22752 D WebViewInterceptor: CHAT_REQ_HEADERS: url=http://neverlands.ru/ch.php?lo=1&1775572199769&1775572199773, ua=Mozilla/5.0 (Linux; Android 14; 22101316G Build/UP1A.231005.007; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/147.0.7727.49 Mobile Safari/537.36, referer=http://neverlands.ru/main.php, cookieSummary=count=11, names=[watermark, PHPSESSID, NeverPuid, NeverCode, NeverHash, NeverChat, NeverUser, NeverFunc, NeverNick, NeverFVal, NeverExpi], neverChat=2201c13b5a392d1990a10e58b31902d8, neverFunc=6e36087b3a12188f37c722f028f77181
+04-07 17:29:59.785 22660 22724 D LocalHttpProxyServer: PROXY_SESSION: accepted client=/127.0.0.1:41256
+04-07 17:29:59.789 22660 22815 D LocalHttpProxyServer: PROXY_SESSION: method=GET, uri=http://neverlands.ru/ch.php?lo=1&1775572199769&1775572199773, bodyBytes=0
+04-07 17:29:59.789 22660 22815 D LocalHttpProxyServer: PROXY_SESSION: route origin=neverlands.ru:80, connect=neverlands.ru:80, target=/ch.php?lo=1&1775572199769&1775572199773
+04-07 17:29:59.799 22660 22833 D LocalHttpProxyServer: PROXY_RESP: mode=DIRECT, attempt=1, method=GET, target=/modules/api/info.cgi?playerid=1444298&slots=1&effects=1&info=1&hmu=1, status=200, server=nginx/1.6.2, statusLine=HTTP/1.1 200 OK
+04-07 17:29:59.799 22660 22833 D LocalHttpProxyServer: PROXY_SESSION: target=www.neverlands.ru:80 mode=DIRECT bytesOut=718 latencyMs=96
+04-07 17:29:59.802 22660 22818 D NeverApi: INFO_API_TRACE source_module=login_sync, stage=info_http, id=1444298, status=200
+04-07 17:29:59.806 22660 22827 D LocalHttpProxyServer: PROXY_RESP: mode=DIRECT, attempt=1, method=GET, target=/ch/ch_msg_v01.js, status=200, server=nginx/1.6.2, statusLine=HTTP/1.1 200 OK
+04-07 17:29:59.806 22660 22660 D WebViewProxyHelper: WebView proxy override set successfully.
+04-07 17:29:59.807 22660 22746 D WebViewInterceptor: Response code: 200 for http://neverlands.ru/ch/ch_msg_v01.js
+04-07 17:29:59.807 22660 22746 D WebViewInterceptor: Content-Encoding: null for http://neverlands.ru/ch/ch_msg_v01.js
+04-07 17:29:59.808 22660 22746 D WebViewInterceptor: Raw bytes: 8145 for http://neverlands.ru/ch/ch_msg_v01.js
+04-07 17:29:59.808 22660 22746 D WebViewInterceptor: First bytes HEX: 64 6f 63 75 6d 65 6e 74 2e 6f 6e 6d 6f 75 73 65 64 6f 77 6e 20 3d 20 66 75 6e 63 74 69 6f 6e 28  for http://neverlands.ru/ch/ch_msg_v01.js
+04-07 17:29:59.808 22660 22746 D WebViewInterceptor: Header [null] = [HTTP/1.1 200 OK] for http://neverlands.ru/ch/ch_msg_v01.js
+04-07 17:29:59.808 22660 22746 D WebViewInterceptor: Header [Accept-Ranges] = [bytes] for http://neverlands.ru/ch/ch_msg_v01.js
+04-07 17:29:59.808 22660 22746 D WebViewInterceptor: Header [Connection] = [close] for http://neverlands.ru/ch/ch_msg_v01.js
+04-07 17:29:59.808 22660 22746 D WebViewInterceptor: Header [Content-Length] = [8145] for http://neverlands.ru/ch/ch_msg_v01.js
+04-07 17:29:59.808 22660 22746 D WebViewInterceptor: Header [Content-Type] = [application/javascript] for http://neverlands.ru/ch/ch_msg_v01.js
+04-07 17:29:59.808 22660 22746 D WebViewInterceptor: Header [Date] = [Tue, 07 Apr 2026 14:29:59 GMT] for http://neverlands.ru/ch/ch_msg_v01.js
+04-07 17:29:59.808 22660 22746 D WebViewInterceptor: Header [ETag] = ["1fd1-5161ce75bc600"] for http://neverlands.ru/ch/ch_msg_v01.js
+04-07 17:29:59.808 22660 22746 D WebViewInterceptor: Header [Last-Modified] = [Fri, 15 May 2015 11:11:20 GMT] for http://neverlands.ru/ch/ch_msg_v01.js
+04-07 17:29:59.808 22660 22746 D WebViewInterceptor: Header [Server] = [nginx/1.6.2] for http://neverlands.ru/ch/ch_msg_v01.js
+04-07 17:29:59.808 22660 22746 D WebViewInterceptor: Header [Vary] = [Accept-Encoding] for http://neverlands.ru/ch/ch_msg_v01.js
+04-07 17:29:59.808 22660 22746 D WebViewInterceptor: Header [X-Android-Received-Millis] = [1775572199807] for http://neverlands.ru/ch/ch_msg_v01.js
+04-07 17:29:59.808 22660 22746 D WebViewInterceptor: Header [X-Android-Response-Source] = [NETWORK 200] for http://neverlands.ru/ch/ch_msg_v01.js
+04-07 17:29:59.808 22660 22746 D WebViewInterceptor: Header [X-Android-Selected-Protocol] = [http/1.1] for http://neverlands.ru/ch/ch_msg_v01.js
+04-07 17:29:59.808 22660 22746 D WebViewInterceptor: Header [X-Android-Sent-Millis] = [1775572199720] for http://neverlands.ru/ch/ch_msg_v01.js
+04-07 17:29:59.809 22660 22827 D LocalHttpProxyServer: PROXY_SESSION: target=neverlands.ru:80 mode=DIRECT bytesOut=8420 latencyMs=89
+04-07 17:29:59.809 22660 22746 D WebViewInterceptor: HTML preview (http://neverlands.ru/ch/ch_msg_v01.js): document.onmousedown = function(event) { t_nick(event) };
+04-07 17:29:59.809 22660 22746 D WebViewInterceptor: 
+04-07 17:29:59.809 22660 22746 D WebViewInterceptor: function t_nick (e)
+04-07 17:29:59.809 22660 22746 D WebViewInterceptor: {
+04-07 17:29:59.809 22660 22746 D WebViewInterceptor:     e = e||window.event;
+04-07 17:29:59.809 22660 22746 D WebViewInterceptor:     top.is_ctrl = e.ctrlKey;
+04-07 17:29:59.809 22660 22746 D WebViewInterceptor:     top.is_alt = e.altKey;
+04-07 17:29:59.809 22660 22746 D WebViewInterceptor: }
+04-07 17:29:59.809 22660 22746 D WebViewInterceptor: 
+04-07 17:29:59.809 22660 22746 D WebViewInterceptor: var sm = new Array('001','
+04-07 17:29:59.810 22660 22746 D WebViewInterceptor: Calling Filter.process for http://neverlands.ru/ch/ch_msg_v01.js (8145 bytes)
+04-07 17:29:59.812 22660 22746 D WebViewInterceptor: Filter.process returned 10624 bytes for http://neverlands.ru/ch/ch_msg_v01.js
+04-07 17:29:59.813 22660 22660 I ProxyRuntimeManager: PROXY_BINDING: WebView override applied to 127.0.0.1:8052
+04-07 17:29:59.813 22660 22660 I Choreographer: Skipped 47 frames!  The application may be doing too much work on its main thread.
+04-07 17:29:59.815 22660 22746 W SessionManager: ⚠️ PARSE_VCODE_FAILED: no vcode found in HTML, source=general
+04-07 17:29:59.817 22660 22746 D WebViewInterceptor: Processed preview (http://neverlands.ru/ch/ch_msg_v01.js): window.external = window.AndroidBridge || window.external;
+04-07 17:29:59.817 22660 22746 D WebViewInterceptor: function androidChatLoadRefr(u){ if(window.AndroidBridge && AndroidBridge.loadFrame){ AndroidBridge.loadFrame('ch_refr', u); } else { locatio
+04-07 17:29:59.819 22660 22828 D LocalHttpProxyServer: PROXY_RESP: mode=DIRECT, attempt=1, method=GET, target=/ch/ch_but.js, status=200, server=nginx/1.6.2, statusLine=HTTP/1.1 200 OK
+04-07 17:29:59.819 22660 22751 D WebViewInterceptor: Response code: 200 for http://neverlands.ru/ch/ch_but.js
+04-07 17:29:59.819 22660 22751 D WebViewInterceptor: Content-Encoding: null for http://neverlands.ru/ch/ch_but.js
+04-07 17:29:59.820 22660 22751 D WebViewInterceptor: Raw bytes: 2650 for http://neverlands.ru/ch/ch_but.js
+04-07 17:29:59.820 22660 22751 D WebViewInterceptor: First bytes HEX: 66 75 6e 63 74 69 6f 6e 20 73 6d 69 6c 65 5f 6f 70 65 6e 28 70 61 67 65 2c 20 65 29 0d 0a 7b 0d  for http://neverlands.ru/ch/ch_but.js
+04-07 17:29:59.820 22660 22751 D WebViewInterceptor: Header [null] = [HTTP/1.1 200 OK] for http://neverlands.ru/ch/ch_but.js
+04-07 17:29:59.820 22660 22751 D WebViewInterceptor: Header [Accept-Ranges] = [bytes] for http://neverlands.ru/ch/ch_but.js
+04-07 17:29:59.820 22660 22751 D WebViewInterceptor: Header [Connection] = [close] for http://neverlands.ru/ch/ch_but.js
+04-07 17:29:59.820 22660 22751 D WebViewInterceptor: Header [Content-Length] = [2650] for http://neverlands.ru/ch/ch_but.js
+04-07 17:29:59.820 22660 22751 D WebViewInterceptor: Header [Content-Type] = [application/javascript] for http://neverlands.ru/ch/ch_but.js
+04-07 17:29:59.820 22660 22751 D WebViewInterceptor: Header [Date] = [Tue, 07 Apr 2026 14:29:59 GMT] for http://neverlands.ru/ch/ch_but.js
+04-07 17:29:59.820 22660 22751 D WebViewInterceptor: Header [ETag] = ["a5a-4a0baa1566e80"] for http://neverlands.ru/ch/ch_but.js
+04-07 17:29:59.820 22660 22751 D WebViewInterceptor: Header [Last-Modified] = [Tue, 12 Apr 2011 15:48:58 GMT] for http://neverlands.ru/ch/ch_but.js
+04-07 17:29:59.820 22660 22751 D WebViewInterceptor: Header [Server] = [nginx/1.6.2] for http://neverlands.ru/ch/ch_but.js
+04-07 17:29:59.820 22660 22751 D WebViewInterceptor: Header [Vary] = [Accept-Encoding] for http://neverlands.ru/ch/ch_but.js
+04-07 17:29:59.820 22660 22751 D WebViewInterceptor: Header [X-Android-Received-Millis] = [1775572199819] for http://neverlands.ru/ch/ch_but.js
+04-07 17:29:59.820 22660 22751 D WebViewInterceptor: Header [X-Android-Response-Source] = [NETWORK 200] for http://neverlands.ru/ch/ch_but.js
+04-07 17:29:59.820 22660 22751 D WebViewInterceptor: Header [X-Android-Selected-Protocol] = [http/1.1] for http://neverlands.ru/ch/ch_but.js
+04-07 17:29:59.820 22660 22751 D WebViewInterceptor: Header [X-Android-Sent-Millis] = [1775572199733] for http://neverlands.ru/ch/ch_but.js
+04-07 17:29:59.820 22660 22751 D WebViewInterceptor: HTML preview (http://neverlands.ru/ch/ch_but.js): function smile_open(page, e)
+04-07 17:29:59.820 22660 22751 D WebViewInterceptor: {
+04-07 17:29:59.820 22660 22751 D WebViewInterceptor:     e = e || window.event;
+04-07 17:29:59.820 22660 22751 D WebViewInterceptor:     var x = e.screenX - 150;
+04-07 17:29:59.820 22660 22751 D WebViewInterceptor:     var y = e.screenY - 580;
+04-07 17:29:59.820 22660 22751 D WebViewInterceptor:     var page = "../ch/smile"+page+".html";
+04-07 17:29:59.820 22660 22751 D WebViewInterceptor:     var sFeatures = 'dialogLeft:'+x
+04-07 17:29:59.821 22660 22828 D LocalHttpProxyServer: PROXY_SESSION: target=neverlands.ru:80 mode=DIRECT bytesOut=2924 latencyMs=88
+04-07 17:29:59.821 22660 22751 D WebViewInterceptor: Calling Filter.process for http://neverlands.ru/ch/ch_but.js (2650 bytes)
+04-07 17:29:59.821 22660 22751 D WebViewInterceptor: Filter.process returned 2650 bytes for http://neverlands.ru/ch/ch_but.js
+04-07 17:29:59.822 22660 22751 W SessionManager: ⚠️ PARSE_VCODE_FAILED: no vcode found in HTML, source=general
+04-07 17:29:59.822 22660 22751 D WebViewInterceptor: Processed preview (http://neverlands.ru/ch/ch_but.js): function smile_open(page, e)
+04-07 17:29:59.822 22660 22751 D WebViewInterceptor: {
+04-07 17:29:59.822 22660 22751 D WebViewInterceptor:     e = e || window.event;
+04-07 17:29:59.822 22660 22751 D WebViewInterceptor:     var x = e.screenX - 150;
+04-07 17:29:59.822 22660 22751 D WebViewInterceptor:     var y = e.screenY - 580;
+04-07 17:29:59.822 22660 22751 D WebViewInterceptor:     var page = "../ch/smile"+page+".html";
+04-07 17:29:59.822 22660 22751 D WebViewInterceptor:     var sFeatures = 'dialogLeft:'+x
+04-07 17:29:59.825 22660 22751 D WebViewInterceptor: Intercepted OK: http://neverlands.ru/ch/ch_but.js (2650 bytes, application/javascript)
+04-07 17:29:59.825 22660 22818 D NeverApi: INFO_API_TRACE source_module=login_sync, stage=info_parse_ok_line1, id=1444298, slots=20
+04-07 17:29:59.826 22660 22818 D NeverApi: INFO_API_TRACE source_module=login_sync, stage=info_parse_ok_line2, id=1444298, effects=0
+04-07 17:29:59.826 22660 22746 D WebViewInterceptor: Intercepted OK: http://neverlands.ru/ch/ch_msg_v01.js (10624 bytes, application/javascript)
+04-07 17:29:59.835 22660 22818 D NeverApi: INFO_API_TRACE source_module=login_sync, stage=info_parse_ok_line3, id=1444298, nick=Блудя, fightFid=
+04-07 17:29:59.836 22660 22818 D NeverApi: INFO_API_TRACE source_module=login_sync, stage=info_parse_ok_line4, id=1444298, hp=155/155, ma=806/1114, tire=1
+04-07 17:29:59.836 22660 22818 D NeverApi: INFO_API_TRACE source_module=login_sync, stage=info_parse_ok, id=1444298, slots=20, effects=0, nick=Блудя
+04-07 17:29:59.836 22660 22818 D NeverApi: INFO_API_TRACE source_module=login_sync, stage=request_ok, nick=Блудя, id=1444298, level=22, tied=1, location=Окрестности Октала [Октал, Южные Ворота]
+04-07 17:29:59.836 22660 22818 D CharacterVitalsManager: VITALS_TRACE poisonAndWounds: [0,0,0,0]
+04-07 17:29:59.836 22660 22818 D CharacterVitalsManager: VITALS_TRACE from pinfo: hp=155/155, ma=806/1114, tied=1, pw=[0,0,0,0], source=AutoFunctionsManager.requestCharacterSyncAfterLogin
+04-07 17:29:59.836 22660 22818 I AutoFunctionsManager: AUTO_BLAZ_TRACE: Синхранизация Персонажа, reason=after-login, tied=1, hp=155/155, ma=806/1114, nick=Блудя
+04-07 17:29:59.860 22660 22815 D LocalHttpProxyServer: PROXY_RESP: mode=DIRECT, attempt=1, method=GET, target=/ch.php?lo=1&1775572199769&1775572199773, status=200, server=nginx/1.6.2, statusLine=HTTP/1.1 200 OK
+04-07 17:29:59.861 22660 22815 D LocalHttpProxyServer: PROXY_SESSION: target=neverlands.ru:80 mode=DIRECT bytesOut=2136 latencyMs=76
+04-07 17:29:59.861 22660 22752 D WebViewInterceptor: Response code: 200 for http://neverlands.ru/ch.php?lo=1&1775572199769&1775572199773
+04-07 17:29:59.861 22660 22752 D WebViewInterceptor: Content-Encoding: null for http://neverlands.ru/ch.php?lo=1&1775572199769&1775572199773
+04-07 17:29:59.862 22660 22752 D WebViewInterceptor: Raw bytes: 1930 for http://neverlands.ru/ch.php?lo=1&1775572199769&1775572199773
+04-07 17:29:59.864 22660 22826 D LocalHttpProxyServer: PROXY_RESP: mode=DIRECT, attempt=1, method=GET, target=/main.php?get_id=56&act=10&go=inf&vcode=f94ff0e8189c6eacb1947e166aeb55f4, status=200, server=nginx/1.6.2, statusLine=HTTP/1.1 200 OK
+04-07 17:29:59.864 22660 22755 D WebViewInterceptor: Response code: 200 for http://neverlands.ru/main.php?get_id=56&act=10&go=inf&vcode=f94ff0e8189c6eacb1947e166aeb55f4
+04-07 17:29:59.864 22660 22755 D WebViewInterceptor: Content-Encoding: null for http://neverlands.ru/main.php?get_id=56&act=10&go=inf&vcode=f94ff0e8189c6eacb1947e166aeb55f4
+04-07 17:29:59.866 22660 22752 D WebViewInterceptor: First bytes HEX: 3c 68 74 6d 6c 3e 0d 0a 3c 68 65 61 64 3e 0d 0a 3c 4c 49 4e 4b 20 68 72 65 66 3d 2f 63 68 2f 6c  for http://neverlands.ru/ch.php?lo=1&1775572199769&1775572199773
+04-07 17:29:59.866 22660 22752 D WebViewInterceptor: Header [null] = [HTTP/1.1 200 OK] for http://neverlands.ru/ch.php?lo=1&1775572199769&1775572199773
+04-07 17:29:59.866 22660 22752 D WebViewInterceptor: Header [Connection] = [close] for http://neverlands.ru/ch.php?lo=1&1775572199769&1775572199773
+04-07 17:29:59.866 22660 22752 D WebViewInterceptor: Header [Content-Type] = [text/html; charset=windows-1251] for http://neverlands.ru/ch.php?lo=1&1775572199769&1775572199773
+04-07 17:29:59.866 22660 22752 D WebViewInterceptor: Header [Date] = [Tue, 07 Apr 2026 14:29:59 GMT] for http://neverlands.ru/ch.php?lo=1&1775572199769&1775572199773
+04-07 17:29:59.866 22660 22752 D WebViewInterceptor: Header [Server] = [nginx/1.6.2] for http://neverlands.ru/ch.php?lo=1&1775572199769&1775572199773
+04-07 17:29:59.866 22660 22752 D WebViewInterceptor: Header [Transfer-Encoding] = [chunked] for http://neverlands.ru/ch.php?lo=1&1775572199769&1775572199773
+04-07 17:29:59.866 22660 22752 D WebViewInterceptor: Header [Vary] = [Accept-Encoding] for http://neverlands.ru/ch.php?lo=1&1775572199769&1775572199773
+04-07 17:29:59.866 22660 22752 D WebViewInterceptor: Header [X-Android-Received-Millis] = [1775572199861] for http://neverlands.ru/ch.php?lo=1&1775572199769&1775572199773
+04-07 17:29:59.866 22660 22752 D WebViewInterceptor: Header [X-Android-Response-Source] = [NETWORK 200] for http://neverlands.ru/ch.php?lo=1&1775572199769&1775572199773
+04-07 17:29:59.866 22660 22752 D WebViewInterceptor: Header [X-Android-Selected-Protocol] = [http/1.1] for http://neverlands.ru/ch.php?lo=1&1775572199769&1775572199773
+04-07 17:29:59.866 22660 22752 D WebViewInterceptor: Header [X-Android-Sent-Millis] = [1775572199785] for http://neverlands.ru/ch.php?lo=1&1775572199769&1775572199773
+04-07 17:29:59.867 22660 22752 D WebViewInterceptor: HTML preview (http://neverlands.ru/ch.php?lo=1&1775572199769&1775572199773): <html>
+04-07 17:29:59.867 22660 22752 D WebViewInterceptor: <head>
+04-07 17:29:59.867 22660 22752 D WebViewInterceptor: <LINK href=/ch/list.css rel=STYLESHEET type=text/css>
+04-07 17:29:59.867 22660 22752 D WebViewInterceptor: <meta content="text/html; charset=windows-1251" http-equiv=Content-type>
+04-07 17:29:59.867 22660 22752 D WebViewInterceptor: <META Http-Equiv=Cache-Control Content=no-cache>
+04-07 17:29:59.867 22660 22752 D WebViewInterceptor: <meta
+04-07 17:29:59.869 22660 22752 D WebViewInterceptor: Calling Filter.process for http://neverlands.ru/ch.php?lo=1&1775572199769&1775572199773 (1930 bytes)
+04-07 17:29:59.871 22660 22752 D RoomManager: [BG_TRACE] process: htmlLen=1930, contextNull=false, doShowWalkers=true
+04-07 17:29:59.872 22660 22752 D ContactsManager: GetClassIdOfContact for '4(e)rten(o)k' returned 0
+04-07 17:29:59.872 22660 22752 D ContactsManager: GetClassIdOfContact for '4(e)rten(o)k' returned 0
+04-07 17:29:59.872 22660 22752 D ContactsManager: GetClassIdOfContact for 'Блудя' returned 2
+04-07 17:29:59.872 22660 22752 D ContactsManager: GetClassIdOfContact for 'Блудя' returned 2
+04-07 17:29:59.872 22660 22752 D ContactsManager: GetClassIdOfContact for 'Legion Commander' returned 0
+04-07 17:29:59.872 22660 22752 D ContactsManager: GetClassIdOfContact for 'Legion Commander' returned 0
+04-07 17:29:59.873 22660 22752 D ContactsManager: GetClassIdOfContact for 'КОПАТИК' returned 0
+04-07 17:29:59.873 22660 22752 D ContactsManager: GetClassIdOfContact for 'КОПАТИК' returned 0
+04-07 17:29:59.873 22660 22752 D RoomManager: FilterProcRoom: chars=4, enemies=0, enemyAttack=null
+04-07 17:29:59.874 22660 22752 W RoomManager: [BG_TRACE] injectPlayerListHtmlIntoChatPhp: ChatListU pattern not found in html
+04-07 17:29:59.874 22660 22752 D RoomManager: [BG_TRACE] process: HTML injection complete, htmlLen=1930
+04-07 17:29:59.877 22660 22752 D RoomManager: [AA_TRACE] FilterGetWalkers: loc=Октал, Южные Ворота, coord=, regNum=, visibleChars=4, locationCharsFromServer=4, nevids=0
+04-07 17:29:59.877 22660 22752 D RoomManager: [AA_TRACE] room tick: chars=4, enemies=[], selectedEnemy=null, fastNeed=false, fastId=null, fastNick=null, fightActive=false, fightLink=
+04-07 17:29:59.879 22660 22752 D RoomManager: [AA_TRACE] auto-attack skipped: no hostile contacts in room
+04-07 17:29:59.879 22660 22752 D WebViewInterceptor: Filter.process returned 1930 bytes for http://neverlands.ru/ch.php?lo=1&1775572199769&1775572199773
+04-07 17:29:59.880 22660 22752 W SessionManager: ⚠️ PARSE_VCODE_FAILED: no vcode found in HTML, source=chat
+04-07 17:29:59.880 22660 22841 D RoomManager: INFO_API_TRACE stage=info_api_runtime_call, source_module=auto_cure_room, nick=Блудя
+04-07 17:29:59.880 22660 22841 D NeverApi: INFO_API_TRACE source_module=auto_cure_room, stage=request, nick=Блудя
+04-07 17:29:59.880 22660 22841 D NeverApi: INFO_API_TRACE source_module=auto_cure_room, stage=id_cache_hit, nick=Блудя, id=1444298
+04-07 17:29:59.881 22660 22841 D ProxyRuntimeManager: PROXY_BINDING: java.net.Proxy endpoint=127.0.0.1:8052
+04-07 17:29:59.881 22660 22841 D NeverApi: PROXY_BINDING: NeverApi openConnection via local proxy, url=http://www.neverlands.ru/modules/api/info.cgi?playerid=1444298&slots=1&effects=1&info=1&hmu=1
+04-07 17:29:59.882 22660 22687 E GPUAUX  : [AUX]GuiExtAuxCheckAuxPath:667: Null anb
+04-07 17:29:59.883 22660 22752 D WebViewInterceptor: Processed preview (http://neverlands.ru/ch.php?lo=1&1775572199769&1775572199773): <html>
+04-07 17:29:59.883 22660 22752 D WebViewInterceptor: <head><script type="text/javascript">try { if (window.AndroidBridge) { window.external = window.AndroidBridge; } } catch(e) {}if (typeof top.start !== 'function') { top.start = function() {}; 
+04-07 17:29:59.885 22660 22724 D LocalHttpProxyServer: PROXY_SESSION: accepted client=/127.0.0.1:41260
+04-07 17:29:59.888 22660 22815 D LocalHttpProxyServer: PROXY_SESSION: method=GET, uri=http://www.neverlands.ru/modules/api/info.cgi?playerid=1444298&slots=1&effects=1&info=1&hmu=1, bodyBytes=0
+04-07 17:29:59.888 22660 22815 D LocalHttpProxyServer: PROXY_SESSION: route origin=www.neverlands.ru:80, connect=www.neverlands.ru:80, target=/modules/api/info.cgi?playerid=1444298&slots=1&effects=1&info=1&hmu=1
+04-07 17:29:59.889 22660 22752 D WebViewInterceptor: Intercepted OK: http://neverlands.ru/ch.php?lo=1&1775572199769&1775572199773 (8097 bytes, text/html; charset=windows-1251)
+04-07 17:29:59.896 22660 22660 E FileUtils: err write to mi_exception_log
+04-07 17:29:59.896 22660 22660 E FileUtils: err write to mi_exception_log
+04-07 17:29:59.897 22660 22687 I gralloc4: @set_metadata: update dataspace from GM (0x00000000 -> 0x08010000)
+04-07 17:29:59.899 22660 22755 D WebViewInterceptor: Raw bytes: 16555 for http://neverlands.ru/main.php?get_id=56&act=10&go=inf&vcode=f94ff0e8189c6eacb1947e166aeb55f4
+04-07 17:29:59.899 22660 22826 D LocalHttpProxyServer: PROXY_SESSION: target=neverlands.ru:80 mode=DIRECT bytesOut=16914 latencyMs=131
+04-07 17:29:59.899 22660 22755 D WebViewInterceptor: First bytes HEX: 0d 0a 3c 48 54 4d 4c 3e 0d 0a 3c 48 45 41 44 3e 0d 0a 3c 4c 49 4e 4b 20 68 72 65 66 3d 22 2e 2f  for http://neverlands.ru/main.php?get_id=56&act=10&go=inf&vcode=f94ff0e8189c6eacb1947e166aeb55f4
+04-07 17:29:59.899 22660 22755 D WebViewInterceptor: Header [null] = [HTTP/1.1 200 OK] for http://neverlands.ru/main.php?get_id=56&act=10&go=inf&vcode=f94ff0e8189c6eacb1947e166aeb55f4
+04-07 17:29:59.900 22660 22755 D WebViewInterceptor: Header [Cache-Control] = [no-store, no-cache, must-revalidate, post-check=0, pre-check=0] for http://neverlands.ru/main.php?get_id=56&act=10&go=inf&vcode=f94ff0e8189c6eacb1947e166aeb55f4
+04-07 17:29:59.900 22660 22755 D WebViewInterceptor: Header [Connection] = [close] for http://neverlands.ru/main.php?get_id=56&act=10&go=inf&vcode=f94ff0e8189c6eacb1947e166aeb55f4
+04-07 17:29:59.900 22660 22755 D WebViewInterceptor: Header [Content-Type] = [text/html; charset=windows-1251] for http://neverlands.ru/main.php?get_id=56&act=10&go=inf&vcode=f94ff0e8189c6eacb1947e166aeb55f4
+04-07 17:29:59.900 22660 22755 D WebViewInterceptor: Header [Date] = [Tue, 07 Apr 2026 14:29:59 GMT] for http://neverlands.ru/main.php?get_id=56&act=10&go=inf&vcode=f94ff0e8189c6eacb1947e166aeb55f4
+04-07 17:29:59.900 22660 22755 D WebViewInterceptor: Header [Expires] = [Thu, 19 Nov 1981 08:52:00 GMT] for http://neverlands.ru/main.php?get_id=56&act=10&go=inf&vcode=f94ff0e8189c6eacb1947e166aeb55f4
+04-07 17:29:59.900 22660 22755 D WebViewInterceptor: Header [Pragma] = [no-cache] for http://neverlands.ru/main.php?get_id=56&act=10&go=inf&vcode=f94ff0e8189c6eacb1947e166aeb55f4
+04-07 17:29:59.900 22660 22755 D WebViewInterceptor: Header [Server] = [nginx/1.6.2] for http://neverlands.ru/main.php?get_id=56&act=10&go=inf&vcode=f94ff0e8189c6eacb1947e166aeb55f4
+04-07 17:29:59.900 22660 22755 D WebViewInterceptor: Header [Transfer-Encoding] = [chunked] for http://neverlands.ru/main.php?get_id=56&act=10&go=inf&vcode=f94ff0e8189c6eacb1947e166aeb55f4
+04-07 17:29:59.900 22660 22755 D WebViewInterceptor: Header [Vary] = [Accept-Encoding] for http://neverlands.ru/main.php?get_id=56&act=10&go=inf&vcode=f94ff0e8189c6eacb1947e166aeb55f4
+04-07 17:29:59.900 22660 22755 D WebViewInterceptor: Header [X-Android-Received-Millis] = [1775572199864] for http://neverlands.ru/main.php?get_id=56&act=10&go=inf&vcode=f94ff0e8189c6eacb1947e166aeb55f4
+04-07 17:29:59.900 22660 22755 D WebViewInterceptor: Header [X-Android-Response-Source] = [NETWORK 200] for http://neverlands.ru/main.php?get_id=56&act=10&go=inf&vcode=f94ff0e8189c6eacb1947e166aeb55f4
+04-07 17:29:59.900 22660 22755 D WebViewInterceptor: Header [X-Android-Selected-Protocol] = [http/1.1] for http://neverlands.ru/main.php?get_id=56&act=10&go=inf&vcode=f94ff0e8189c6eacb1947e166aeb55f4
+04-07 17:29:59.900 22660 22755 D WebViewInterceptor: Header [X-Android-Sent-Millis] = [1775572199769] for http://neverlands.ru/main.php?get_id=56&act=10&go=inf&vcode=f94ff0e8189c6eacb1947e166aeb55f4
+04-07 17:29:59.901 22660 22755 D WebViewInterceptor: HTML preview (http://neverlands.ru/main.php?get_id=56&act=10&go=inf&vcode=f94ff0e8189c6eacb1947e166aeb55f4): 
+04-07 17:29:59.901 22660 22755 D WebViewInterceptor: <HTML>
+04-07 17:29:59.901 22660 22755 D WebViewInterceptor: <HEAD>
+04-07 17:29:59.901 22660 22755 D WebViewInterceptor: <LINK href="./css/game.css" rel=STYLESHEET type=text/css>
+04-07 17:29:59.901 22660 22755 D WebViewInterceptor: <LINK href="/css/frame.css" rel=STYLESHEET type=text/css>
+04-07 17:29:59.901 22660 22755 D WebViewInterceptor: <META Http-Equiv=Content-Type Content="text/html; charset=window
+04-07 17:29:59.904 22660 22755 D WebViewInterceptor: [SERVER_FLOW][raw] state=COMMON, url=http://neverlands.ru/main.php?get_id=56&act=10&go=inf&vcode=f94ff0e8189c6eacb1947e166aeb55f4, hasFightTy=false, hasFEND=false, hasCodeInput=false, hasFkeyJs=false, hasCaptchaImage=false, hasFinishAct7=false, hasResoPacket=false, hasFishUrl=false, hasFishKeywords=false, hasFishResult=false, timeoutSec=0, fendAction=
+04-07 17:29:59.904 22660 22755 D WebViewInterceptor: Calling Filter.process for http://neverlands.ru/main.php?get_id=56&act=10&go=inf&vcode=f94ff0e8189c6eacb1947e166aeb55f4 (16555 bytes)
+04-07 17:29:59.904 22660 22755 D MainPhp : process() called for 
+04-07 17:29:59.904 22660 22755 D MainPhp : HTML length after getString: 16555
+04-07 17:29:59.904 22660 22755 D MainPhp : HTML first 200: 
+04-07 17:29:59.904 22660 22755 D MainPhp : <HTML>
+04-07 17:29:59.904 22660 22755 D MainPhp : <HEAD>
+04-07 17:29:59.904 22660 22755 D MainPhp : <LINK href="./css/game.css" rel=STYLESHEET type=text/css>
+04-07 17:29:59.904 22660 22755 D MainPhp : <LINK href="/css/frame.css" rel=STYLESHEET type=text/css>
+04-07 17:29:59.904 22660 22755 D MainPhp : <META Http-Equiv=Content-Type Content="text/html; charset=window
+04-07 17:29:59.906 22660 22755 D CharacterVitalsManager: VITALS_TRACE from ins_HP: hp=155/155, ma=1114/1114, intHp=1000.0, intMa=4500.0, source=MainPhp.mainPhpInsHp
+04-07 17:29:59.906 22660 22755 D MainPhp : mainPhpInsHp: parsed hpInt=
+04-07 17:29:59.913 22660 22755 D MainPhp : AUTO_DRINK_TRACE no-trigger: hp=100.0%/50 (enabled=false), ma=100.0%/50 (enabled=true), address=http://neverlands.ru/main.php?get_id=56&act=10&go=inf&vcode=f94ff0e8189c6eacb1947e166aeb55f4, snapshotSource=ins_HP/page
+04-07 17:29:59.914 22660 22724 D LocalHttpProxyServer: PROXY_SESSION: accepted client=/127.0.0.1:41264
+04-07 17:29:59.920 22660 22752 D WebViewInterceptor: Intercepting: http://neverlands.ru/ch/ch_list.js
+04-07 17:29:59.920 22660 22752 D ProxyRuntimeManager: PROXY_BINDING: java.net.Proxy endpoint=127.0.0.1:8052
+04-07 17:29:59.920 22660 22752 D WebViewInterceptor: PROXY_BINDING: interceptor openConnection via local proxy, url=http://neverlands.ru/ch/ch_list.js
+04-07 17:29:59.922 22660 22826 D LocalHttpProxyServer: PROXY_SESSION: method=CONNECT, uri=content-autofill.googleapis.com:443, bodyBytes=0
+04-07 17:29:59.924 22660 22724 D LocalHttpProxyServer: PROXY_SESSION: accepted client=/127.0.0.1:41266
+04-07 17:29:59.928 22660 22660 I HandWritingStubImpl: refreshLastKeyboardType: 1
+04-07 17:29:59.929 22660 22660 I HandWritingStubImpl: getCurrentKeyboardType: 1
+04-07 17:29:59.929 22660 22724 D LocalHttpProxyServer: PROXY_SESSION: accepted client=/127.0.0.1:41268
+04-07 17:29:59.929 22660 22826 D LocalHttpProxyServer: PROXY_SESSION: method=CONNECT, uri=content-autofill.googleapis.com:443, bodyBytes=0
+04-07 17:29:59.930 22660 22755 D MainPhp : AUTO_FURY_TRACE scroll check result: armed=true, hand=Свиток Удар Ярости
+04-07 17:29:59.932 22660 22828 D LocalHttpProxyServer: PROXY_SESSION: method=GET, uri=http://neverlands.ru/ch/ch_list.js, bodyBytes=0
+04-07 17:29:59.932 22660 22755 W TreasureDig: AUTO_SEARCH_BOX_TRACE pause depth already 0, ignoring release, reason=dig_flow_inactive
+04-07 17:29:59.934 22660 22828 D LocalHttpProxyServer: PROXY_SESSION: route origin=neverlands.ru:80, connect=neverlands.ru:80, target=/ch/ch_list.js
+04-07 17:29:59.934 22660 22660 W Glide   : Load failed for [http://image.neverlands.ru/signs/compass.gif] with dimensions [72x88]
+04-07 17:29:59.934 22660 22660 W Glide   : class com.bumptech.glide.load.engine.GlideException: Failed to load resource
+04-07 17:29:59.934 22660 22660 W Glide   : There was 1 root cause:
+04-07 17:29:59.934 22660 22660 W Glide   : com.bumptech.glide.load.HttpException(Failed to connect or obtain data, status code: 404)
+04-07 17:29:59.934 22660 22660 W Glide   :  call GlideException#logRootCauses(String) for more detail
+04-07 17:29:59.934 22660 22660 W Glide   :   Cause (1 of 1): class com.bumptech.glide.load.engine.GlideException: Fetching data failed, class java.io.InputStream, REMOTE
+04-07 17:29:59.934 22660 22660 W Glide   : There was 1 root cause:
+04-07 17:29:59.934 22660 22660 W Glide   : com.bumptech.glide.load.HttpException(Failed to connect or obtain data, status code: 404)
+04-07 17:29:59.934 22660 22660 W Glide   :  call GlideException#logRootCauses(String) for more detail
+04-07 17:29:59.934 22660 22660 W Glide   :     Cause (1 of 1): class com.bumptech.glide.load.engine.GlideException: Fetch failed
+04-07 17:29:59.934 22660 22660 W Glide   : There was 1 root cause:
+04-07 17:29:59.934 22660 22660 W Glide   : com.bumptech.glide.load.HttpException(Failed to connect or obtain data, status code: 404)
+04-07 17:29:59.934 22660 22660 W Glide   :  call GlideException#logRootCauses(String) for more detail
+04-07 17:29:59.934 22660 22660 W Glide   :       Cause (1 of 1): class com.bumptech.glide.load.HttpException: Failed to connect or obtain data, status code: 404
+04-07 17:29:59.934 22660 22660 I Glide   : Root cause (1 of 1)
+04-07 17:29:59.934 22660 22660 I Glide   : com.bumptech.glide.load.HttpException: Failed to connect or obtain data, status code: 404
+04-07 17:29:59.934 22660 22660 I Glide   : 	at com.bumptech.glide.load.data.HttpUrlFetcher.loadDataWithRedirects(HttpUrlFetcher.java:98)
+04-07 17:29:59.934 22660 22660 I Glide   : 	at com.bumptech.glide.load.data.HttpUrlFetcher.loadData(HttpUrlFetcher.java:58)
+04-07 17:29:59.934 22660 22660 I Glide   : 	at com.bumptech.glide.load.model.MultiModelLoader$MultiFetcher.loadData(MultiModelLoader.java:100)
+04-07 17:29:59.934 22660 22660 I Glide   : 	at com.bumptech.glide.load.engine.SourceGenerator.startNextLoad(SourceGenerator.java:95)
+04-07 17:29:59.934 22660 22660 I Glide   : 	at com.bumptech.glide.load.engine.SourceGenerator.startNext(SourceGenerator.java:88)
+04-07 17:29:59.934 22660 22660 I Glide   : 	at com.bumptech.glide.load.engine.DecodeJob.runGenerators(DecodeJob.java:311)
+04-07 17:29:59.934 22660 22660 I Glide   : 	at com.bumptech.glide.load.engine.DecodeJob.runWrapped(DecodeJob.java:280)
+04-07 17:29:59.934 22660 22660 I Glide   : 	at com.bumptech.glide.load.engine.DecodeJob.run(DecodeJob.java:235)
+04-07 17:29:59.934 22660 22660 I Glide   : 	at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1154)
+04-07 17:29:59.934 22660 22660 I Glide   : 	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:652)
+04-07 17:29:59.934 22660 22660 I Glide   : 	at com.bumptech.glide.load.engine.executor.GlideExecutor$DefaultThreadFactory$1.run(GlideExecutor.java:424)
+04-07 17:29:59.934 22660 22660 I Glide   : 	at java.lang.Thread.run(Thread.java:1563)
+04-07 17:29:59.934 22660 22660 I Glide   : 	at com.bumptech.glide.load.engine.executor.GlideExecutor$DefaultPriorityThreadFactory$1.run(GlideExecutor.java:383)
+04-07 17:29:59.934 22660 22660 I Glide   : Caused by: java.io.FileNotFoundException: http://image.neverlands.ru/signs/compass.gif
+04-07 17:29:59.934 22660 22660 I Glide   : 	at com.android.okhttp.internal.huc.HttpURLConnectionImpl.getInputStream(HttpURLConnectionImpl.java:255)
+04-07 17:29:59.934 22660 22660 I Glide   : 	at com.bumptech.glide.load.data.HttpUrlFetcher.loadDataWithRedirects(HttpUrlFetcher.java:95)
+04-07 17:29:59.934 22660 22660 I Glide   : 	... 12 more
+04-07 17:29:59.936 22660 22755 D MainPhp : process() returning 
+04-07 17:29:59.936 22660 22755 D MainPhp : Result first 200: 
+04-07 17:29:59.936 22660 22755 D WebViewInterceptor: Filter.process returned 16555 bytes for http://neverlands.ru/main.php?get_id=56&act=10&go=inf&vcode=f94ff0e8189c6eacb1947e166aeb55f4
+04-07 17:29:59.937 22660 22755 D SessionManager: 📍 VCODE_EXTRACTED: pattern matched, vcode=86eaf224...
+04-07 17:29:59.937 22660 22660 D MainActivity: onPageFinished: POST-like main.php, processing fallback
+04-07 17:29:59.937 22660 22660 D MainActivity: onPageFinished: POST-ответ main.php, извлекаем сообщение и перезагружаем
+04-07 17:29:59.937 22660 22755 D SessionManager: ✅ VCODE_PARSED: source=main, vcode=86eaf224..., version=2, ageMs=0
+04-07 17:29:59.939 22660 22755 D WebViewInterceptor: Processed preview (http://neverlands.ru/main.php?get_id=56&act=10&go=inf&vcode=f94ff0e8189c6eacb1947e166aeb55f4): 
+04-07 17:29:59.939 22660 22755 D WebViewInterceptor: <HTML>
+04-07 17:29:59.939 22660 22755 D WebViewInterceptor: <head><script type="text/javascript">try { if (window.AndroidBridge) { window.external = window.AndroidBridge; } } catch(e) {}if (typeof top.start !== 'function') { top.start = function() {}
+04-07 17:29:59.941 22660 22660 D AutoModeFgService: [BG_TRACE] uiTick: locationTracking=true, autoCompass=false, autoBoss=true, autoFight=true, captchaDialogVisible=false, walkersPollIntervalSec=2, fightLikelyActive=false, uiForegroundInteractive=true, uiForegroundLikely=true
+04-07 17:29:59.943 22660 22660 W EpFrameworkFactory: activated: false jar exist: false
+04-07 17:29:59.945 22660 22660 D AutoModeFgService: [BG_TRACE] uiTick: chat refresh bootstrap
+04-07 17:29:59.945 22660 22660 D MainActivity: [BG_TRACE] requestChatRefresh: defer by room-collision guard, waitMs=524, roomDeltaMs=176
+04-07 17:29:59.946 22660 22660 D ForcedActionGuard: FORCED_ACTION: autoFight - forcing past UI foreground block (cold start autoboi)
+04-07 17:29:59.946 22660 22660 D MainActivity: [BG_TRACE] requestRoomUsersRefreshSoon: throttled, deltaMs=177
+04-07 17:29:59.947 22660 22660 D AutoModeFgService: [BG_TRACE] uiTick: skip autoTurn/probe - blocked by UI or other conditions
+04-07 17:29:59.952 22660 22755 D WebViewInterceptor: [SERVER_FLOW][processed] state=COMMON, url=http://neverlands.ru/main.php?get_id=56&act=10&go=inf&vcode=f94ff0e8189c6eacb1947e166aeb55f4, hasFightTy=false, hasFEND=false, hasCodeInput=false, hasFkeyJs=false, hasCaptchaImage=false, hasFinishAct7=false, hasResoPacket=false, hasFishUrl=false, hasFishKeywords=false, hasFishResult=false, timeoutSec=0, fendAction=
+04-07 17:29:59.952 22660 22755 D WebViewInterceptor: Intercepted OK: http://neverlands.ru/main.php?get_id=56&act=10&go=inf&vcode=f94ff0e8189c6eacb1947e166aeb55f4 (22722 bytes, text/html; charset=windows-1251)
+04-07 17:29:59.960 22660 22687 I gralloc4: @set_metadata: update dataspace from GM (0x00000000 -> 0x08010000)
+04-07 17:29:59.961 22660 22815 D LocalHttpProxyServer: PROXY_RESP: mode=DIRECT, attempt=1, method=GET, target=/modules/api/info.cgi?playerid=1444298&slots=1&effects=1&info=1&hmu=1, status=536, server=nginx/1.6.2, statusLine=HTTP/1.1 536 
+04-07 17:29:59.961 22660 22815 D LocalHttpProxyServer: PROXY_SESSION: target=www.neverlands.ru:80 mode=DIRECT bytesOut=113 latencyMs=76
+04-07 17:29:59.962 22660 22841 W NeverApi: getInfo: HTTP 536 for http://www.neverlands.ru/modules/api/info.cgi?playerid=1444298&slots=1&effects=1&info=1&hmu=1 (retry)
+04-07 17:29:59.978 22660 22660 D CompatibilityChangeReporter: Compat change id reported: 147798919; UID 10413; state: ENABLED
+04-07 17:29:59.984 22660 22751 D WebViewInterceptor: Intercepting: http://neverlands.ru/js/hp.js
+04-07 17:29:59.984 22660 22751 D ProxyRuntimeManager: PROXY_BINDING: java.net.Proxy endpoint=127.0.0.1:8052
+04-07 17:29:59.985 22660 22751 D WebViewInterceptor: PROXY_BINDING: interceptor openConnection via local proxy, url=http://neverlands.ru/js/hp.js
+04-07 17:29:59.986 22660 22746 D WebViewInterceptor: Intercepting: http://neverlands.ru/js/slots_v02.js
+04-07 17:29:59.986 22660 22746 D ProxyRuntimeManager: PROXY_BINDING: java.net.Proxy endpoint=127.0.0.1:8052
+04-07 17:29:59.987 22660 22746 D WebViewInterceptor: PROXY_BINDING: interceptor openConnection via local proxy, url=http://neverlands.ru/js/slots_v02.js
+04-07 17:29:59.988 22660 22687 E GPUAUX  : [AUX]GuiExtAuxCheckAuxPath:667: Null anb
+04-07 17:29:59.988 22660 22755 D WebViewInterceptor: Intercepting: http://neverlands.ru/js/dealer.js
+04-07 17:29:59.988 22660 22755 D ProxyRuntimeManager: PROXY_BINDING: java.net.Proxy endpoint=127.0.0.1:8052
+04-07 17:29:59.988 22660 22755 D WebViewInterceptor: PROXY_BINDING: interceptor openConnection via local proxy, url=http://neverlands.ru/js/dealer.js
+04-07 17:29:59.990 22660 22829 D WebViewInterceptor: Intercepting: http://neverlands.ru/js/addstat.js
+04-07 17:29:59.990 22660 22829 D ProxyRuntimeManager: PROXY_BINDING: java.net.Proxy endpoint=127.0.0.1:8052
+04-07 17:29:59.991 22660 22829 D WebViewInterceptor: PROXY_BINDING: interceptor openConnection via local proxy, url=http://neverlands.ru/js/addstat.js
+04-07 17:29:59.993 22660 22747 D WebViewInterceptor: Intercepting: http://neverlands.ru/js/transfer.js
