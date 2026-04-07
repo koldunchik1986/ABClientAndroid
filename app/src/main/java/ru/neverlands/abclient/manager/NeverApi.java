@@ -73,6 +73,7 @@ public class NeverApi {
     private static final Map<String, NickIdRecord> nickIdCache = new LinkedHashMap<>();
     private static volatile boolean nickIdCacheLoaded = false;
     private static final String NICK_ID_CACHE_FILE = "nick_id.xml";
+    private static final String INFO_SOURCE_DEFAULT = "info_api";
     private static final String INFO_SOURCE_LOGIN_SYNC = "login_sync";
     private static final String INFO_SOURCE_AUTO_BLAZ = "auto_blaz";
     private static final String INFO_SOURCE_MAP_REGION_SYNC = "map_region_sync";
@@ -494,7 +495,14 @@ public class NeverApi {
         }
         lastCompassPinfoHttpStatus = 0;
         InfoApiSnapshot snapshot = getInfoApiSnapshotByNick(nick, sourceModule);
+        int status = lastHttpStatusCode.get() == null ? 0 : lastHttpStatusCode.get();
+        if (status != 0) {
+            lastCompassPinfoHttpStatus = status;
+        }
         if (snapshot == null || snapshot.info == null || snapshot.hmu == null) {
+            if (lastCompassPinfoHttpStatus == 0) {
+                lastCompassPinfoHttpStatus = -1;
+            }
             return null;
         }
         if (lastCompassPinfoHttpStatus == 0) {
@@ -522,28 +530,13 @@ public class NeverApi {
      * Полная синхронизация vitals через pinfo.cgi.
      */
     public static PinfoVitals getPinfoVitalsFromPinfo(String nick) {
-        if (nick == null || nick.trim().isEmpty()) {
+        String normalizedNick = nick == null ? "" : nick.trim();
+        if (normalizedNick.isEmpty()) {
             return null;
         }
-        try {
-            String encoded = encodeNeverlandsQueryTail(nick.trim());
-            String html = getInfo("http://neverlands.ru/pinfo.cgi?" + encoded);
-            PinfoVitals vitals = parsePinfoVitalsFromPinfoHtml(html);
-            if (vitals != null) {
-                AppLog.d(TAG, "AUTO_BLAZ_TRACE pinfo vitals sync: nick=" + nick
-                        + ", hp=" + safeInt(vitals.curHp) + "/" + safeInt(vitals.maxHp)
-                        + ", ma=" + safeInt(vitals.curMa) + "/" + safeInt(vitals.maxMa)
-                        + ", tied=" + safeInt(vitals.curTire)
-                        + ", pw=" + safePoisonAndWounds(vitals.poisonAndWounds)
-                        + ", topWound=" + safeWoundType(vitals.topWoundType));
-            } else {
-                AppLog.w(TAG, "AUTO_BLAZ_TRACE pinfo vitals sync failed: value not found for nick=" + nick);
-            }
-            return vitals;
-        } catch (Exception e) {
-            AppLog.w(TAG, "AUTO_BLAZ_TRACE pinfo vitals sync error for nick=" + nick, e);
-            return null;
-        }
+        AppLog.d(TAG, "INFO_API_TRACE stage=legacy_adapter_call, adapter=getPinfoVitalsFromPinfo"
+                + ", source_module=" + INFO_SOURCE_DEFAULT + ", nick=" + normalizedNick);
+        return getPinfoVitalsFromInfoApi(normalizedNick, INFO_SOURCE_DEFAULT);
     }
 
     /**
@@ -563,45 +556,13 @@ public class NeverApi {
      * - при сетевой/парсинг-ошибке сохраняется последний код (или -1 как fallback).
      */
     public static PinfoCompassSnapshot getPinfoCompassSnapshot(String nick) {
-        if (nick == null || nick.trim().isEmpty()) {
+        String normalizedNick = nick == null ? "" : nick.trim();
+        if (normalizedNick.isEmpty()) {
             return null;
         }
-        lastCompassPinfoHttpStatus = 0;
-        try {
-            String normalizedNick = nick.trim();
-            String encoded = encodeNeverlandsQueryTail(normalizedNick);
-            String html = getInfo("http://neverlands.ru/pinfo.cgi?" + encoded);
-            int lastStatus = lastHttpStatusCode.get() == null ? 0 : lastHttpStatusCode.get();
-            if (lastStatus != 0) {
-                lastCompassPinfoHttpStatus = lastStatus;
-            }
-            PinfoCompassSnapshot snapshot = parsePinfoCompassSnapshotFromHtml(normalizedNick, html);
-            if (snapshot != null) {
-                if (lastCompassPinfoHttpStatus == 0) {
-                    lastCompassPinfoHttpStatus = 200;
-                }
-                AppLog.d(TAG, "AUTO_COMPASS_TRACE snapshot: nick=" + snapshot.nick
-                        + ", locationRaw=" + snapshot.locationRaw
-                        + ", region=" + snapshot.locationRegion
-                        + ", location=" + snapshot.locationName
-                        + ", clanToken=" + snapshot.clanToken
-                        + ", fightFid=" + snapshot.fightFid
-                        + ", level=" + safeInt(snapshot.level)
-                        + ", inclination=" + safeInt(snapshot.inclination)
-                        + ", offlineOrInvisible=" + snapshot.offlineOrInvisible
-                        + ", tied=" + safeInt(snapshot.curTire)
-                        + ", capturedAt=" + snapshot.capturedAtMs);
-            } else {
-                AppLog.w(TAG, "AUTO_COMPASS_TRACE snapshot: parse failed for nick=" + normalizedNick);
-            }
-            return snapshot;
-        } catch (Exception e) {
-            if (lastCompassPinfoHttpStatus == 0) {
-                lastCompassPinfoHttpStatus = -1;
-            }
-            AppLog.w(TAG, "AUTO_COMPASS_TRACE snapshot: request failed for nick=" + nick, e);
-            return null;
-        }
+        AppLog.d(TAG, "INFO_API_TRACE stage=legacy_adapter_call, adapter=getPinfoCompassSnapshot"
+                + ", source_module=" + INFO_SOURCE_DEFAULT + ", nick=" + normalizedNick);
+        return getPinfoCompassSnapshotFromInfoApi(normalizedNick, INFO_SOURCE_DEFAULT);
     }
 
     /**
@@ -1346,11 +1307,11 @@ public class NeverApi {
      */
     private static String normalizeSourceModule(String sourceModule) {
         if (sourceModule == null) {
-            return INFO_SOURCE_AUTO_BLAZ;
+            return INFO_SOURCE_DEFAULT;
         }
         String value = sourceModule.trim().toLowerCase(Locale.ROOT);
         if (value.isEmpty()) {
-            return INFO_SOURCE_AUTO_BLAZ;
+            return INFO_SOURCE_DEFAULT;
         }
         return value;
     }

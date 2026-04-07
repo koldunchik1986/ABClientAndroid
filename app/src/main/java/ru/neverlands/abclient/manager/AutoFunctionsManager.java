@@ -18,6 +18,7 @@ import ru.neverlands.abclient.MainActivity;
 import ru.neverlands.abclient.model.AutoboiState;
 import ru.neverlands.abclient.model.QuickActionType;
 import ru.neverlands.abclient.repository.ApiRepository;
+import ru.neverlands.abclient.utils.AppLog;
 import ru.neverlands.abclient.utils.SessionManager;
 import ru.neverlands.abclient.utils.FileLogger;
 import ru.neverlands.abclient.service.AutoModeForegroundService;
@@ -520,10 +521,12 @@ public class AutoFunctionsManager {
         lastCharacterSyncRequestedAtMs = now;
 
         Thread syncThread = new Thread(() -> {
-            boolean useInfoApi = reason != null && reason.startsWith("after-login");
-            NeverApi.PinfoVitals vitals = useInfoApi
-                    ? NeverApi.getPinfoVitalsFromInfoApi(nick, "login_sync")
-                    : NeverApi.getPinfoVitalsFromPinfo(nick);
+            String sourceModule = (reason != null && reason.startsWith("after-login"))
+                    ? "login_sync"
+                    : "character_sync_auto_enable";
+            AppLog.d(TAG, "INFO_API_TRACE stage=info_api_runtime_call, source_module="
+                    + sourceModule + ", nick=" + nick + ", reason=" + reason);
+            NeverApi.PinfoVitals vitals = NeverApi.getPinfoVitalsFromInfoApi(nick, sourceModule);
             if (vitals == null) {
                 Log.w(TAG, "AUTO_BLAZ_TRACE: " + CHARACTER_SYNC_LABEL
                         + " failed (no vitals), nick=" + nick + ", reason=" + reason);

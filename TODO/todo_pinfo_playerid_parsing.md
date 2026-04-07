@@ -93,3 +93,36 @@
 - [x] Переключить map region/cell sync на новый контур
 - [x] Прогнать компиляцию `:app:compileDebugJavaWithJavac`
 - [ ] Проверить сценарии на устройстве по логам `INFO_API_TRACE`
+
+## 8) Phase 2 runtime migration (full switch)
+
+- Scope: только runtime-автоконтуры/sync в `app/` (без `ContactsActivity/ApiRepository`).
+- Legacy-методы `NeverApi.getPinfoVitalsFromPinfo(...)` и `NeverApi.getPinfoCompassSnapshot(...)`
+  сохранены как адаптеры, но теперь делегируют в info API pipeline без `pinfo.cgi`.
+- Сохранена семантика `lastCompassPinfoHttpStatus`/`wasLastCompassPinfoRateLimited()` через статус `info.cgi`.
+
+### Матрица «было/стало» (Phase 2)
+
+- `CompasAuto`:
+  - было: `NeverApi.getPinfoCompassSnapshot(...)`
+  - стало: `NeverApi.getPinfoCompassSnapshotFromInfoApi(..., "auto_compass_manual|auto_compass_tick")`
+- `BossAuto`:
+  - было: `NeverApi.getPinfoCompassSnapshot(...)` в safe snapshot/poll
+  - стало: `NeverApi.getPinfoCompassSnapshotFromInfoApi(..., "auto_boss_snapshot|auto_boss_poll")`
+- `RoomManager` (Auto-Cure room):
+  - было: `NeverApi.getPinfoVitalsFromPinfo(...)`
+  - стало: `NeverApi.getPinfoVitalsFromInfoApi(..., "auto_cure_room")`
+- `MainPhp` (post-fight auto-drink):
+  - было: `NeverApi.getPinfoVitalsFromPinfo(...)`
+  - стало: `NeverApi.getPinfoVitalsFromInfoApi(..., "post_fight_auto_drink")`
+- `AutoFunctionsManager` (character sync):
+  - было: ветка `login -> info`, остальное `-> pinfo`
+  - стало: всегда `NeverApi.getPinfoVitalsFromInfoApi(...)` с `source_module=login_sync|character_sync_auto_enable`
+
+### Чеклист Phase 2
+
+- [x] Убрать runtime-вызовы `NeverApi.getPinfoVitalsFromPinfo(...)` в `app/src/main/java`
+- [x] Убрать runtime-вызовы `NeverApi.getPinfoCompassSnapshot(...)` в `app/src/main/java`
+- [x] Добавить decision-point trace `INFO_API_TRACE stage=info_api_runtime_call` в migrated call-site
+- [x] Обновить legacy-адаптеры `NeverApi` на info API pipeline (без fallback в `pinfo.cgi`)
+- [ ] Проверить device/runtime сценарии по логам и proxy-трафику (что `pinfo.cgi` не используется в runtime-автоконтуре)

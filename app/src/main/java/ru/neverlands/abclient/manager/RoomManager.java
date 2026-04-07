@@ -2160,7 +2160,8 @@ public class RoomManager {
     private static int fetchWoundTypeFromPinfo(String nick) {
         int woundType = 0;
         try {
-            NeverApi.PinfoVitals vitals = NeverApi.getPinfoVitalsFromPinfo(nick);
+            AppLog.d(TAG, "INFO_API_TRACE stage=info_api_runtime_call, source_module=auto_cure_room, nick=" + nick);
+            NeverApi.PinfoVitals vitals = NeverApi.getPinfoVitalsFromInfoApi(nick, "auto_cure_room");
             if (vitals != null) {
                 // Важно для авто-лечения себя:
                 // RoomManager регулярно читает pinfo в фоне, но до этого не синхронизировал

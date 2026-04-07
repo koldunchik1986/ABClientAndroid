@@ -218,7 +218,8 @@ final class CompasAuto {
 
         NeverApi.PinfoCompassSnapshot snapshot;
         try {
-            snapshot = NeverApi.getPinfoCompassSnapshot(normalized);
+            AppLog.d(TAG, "INFO_API_TRACE stage=info_api_runtime_call, source_module=auto_compass_manual, nick=" + normalized);
+            snapshot = NeverApi.getPinfoCompassSnapshotFromInfoApi(normalized, "auto_compass_manual");
         } catch (Exception e) {
             AppLog.w(TAG, "resolveAutoCompassLocation: pinfo request failed, nick=" + normalized, e);
             if (NeverApi.wasLastCompassPinfoRateLimited()) {
@@ -450,7 +451,8 @@ final class CompasAuto {
         new Thread(() -> {
             NeverApi.PinfoCompassSnapshot snapshot = null;
             try {
-                snapshot = NeverApi.getPinfoCompassSnapshot(targetNick);
+                AppLog.d(TAG, "INFO_API_TRACE stage=info_api_runtime_call, source_module=auto_compass_tick, nick=" + targetNick);
+                snapshot = NeverApi.getPinfoCompassSnapshotFromInfoApi(targetNick, "auto_compass_tick");
             } catch (Exception e) {
                 AppLog.w(TAG, "tickAutoCompass: failed to fetch pinfo snapshot for " + targetNick, e);
             } finally {

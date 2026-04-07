@@ -29,6 +29,7 @@ import ru.neverlands.abclient.manager.FastActionManager;
 import ru.neverlands.abclient.manager.NeverApi;
 import ru.neverlands.abclient.manager.RoomManager;
 import ru.neverlands.abclient.manager.UnderAttackManager;
+import ru.neverlands.abclient.utils.AppLog;
 import ru.neverlands.abclient.utils.AppVars;
 import ru.neverlands.abclient.utils.ExtMap;
 import ru.neverlands.abclient.utils.FileLogger;
@@ -1240,7 +1241,8 @@ public class MainPhp {
             FileLogger.trace(TAG, msg);
             return null;
         }
-        NeverApi.PinfoVitals vitals = NeverApi.getPinfoVitalsFromPinfo(nick);
+        AppLog.d(TAG, "INFO_API_TRACE stage=info_api_runtime_call, source_module=post_fight_auto_drink, nick=" + nick);
+        NeverApi.PinfoVitals vitals = NeverApi.getPinfoVitalsFromInfoApi(nick, "post_fight_auto_drink");
         if (vitals == null) {
             String msg = "AUTO_DRINK_TRACE pinfo skip: request failed";
             Log.d(TAG, msg);

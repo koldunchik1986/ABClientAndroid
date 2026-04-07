@@ -14,6 +14,7 @@ import android.os.Looper;
 
 import ru.neverlands.abclient.MainActivity;
 import ru.neverlands.abclient.postfilter.MainPhp;
+import ru.neverlands.abclient.utils.AppLog;
 import ru.neverlands.abclient.utils.AppVars;
 import ru.neverlands.abclient.utils.Chat;
 import ru.neverlands.abclient.utils.FileLogger;
@@ -937,11 +938,17 @@ final class BossAuto {
      * Ошибки сети логируются, но не прерывают state-machine сценария.
      */
     private NeverApi.PinfoCompassSnapshot safeGetPinfoSnapshot(String nick) {
+        return safeGetPinfoSnapshot(nick, "auto_boss_snapshot");
+    }
+
+    private NeverApi.PinfoCompassSnapshot safeGetPinfoSnapshot(String nick, String sourceModule) {
         if (isEmpty(nick)) {
             return null;
         }
         try {
-            return NeverApi.getPinfoCompassSnapshot(nick);
+            String source = isEmpty(sourceModule) ? "auto_boss_snapshot" : sourceModule;
+            AppLog.d(TAG, "INFO_API_TRACE stage=info_api_runtime_call, source_module=" + source + ", nick=" + nick);
+            return NeverApi.getPinfoCompassSnapshotFromInfoApi(nick, source);
         } catch (Exception e) {
             Log.w(TAG, TRACE_PREFIX + " snapshot request failed: nick=" + nick, e);
             return null;
@@ -1290,7 +1297,7 @@ final class BossAuto {
 
         Thread worker = new Thread(() -> {
             try {
-                NeverApi.PinfoCompassSnapshot snapshot = safeGetPinfoSnapshot(targetSnapshot);
+                NeverApi.PinfoCompassSnapshot snapshot = safeGetPinfoSnapshot(targetSnapshot, "auto_boss_poll");
                 applyTargetFightPollResult(targetSnapshot, snapshot);
             } finally {
                 synchronized (lock) {
