@@ -53,6 +53,7 @@ final class CompasAuto {
     private static final long AUTO_COMPASS_ROOM_REFRESH_GRACE_MS = 8_000L;
     private static final long AUTO_COMPASS_MOVE_STUCK_TIMEOUT_MS = 9_000L;
     private static final long AUTO_COMPASS_MOVE_REKICK_COOLDOWN_MS = 12_000L;
+    private static final long AUTO_COMPASS_SNAPSHOT_RETRY_DELAY_MS = 220L;
 
     private final Context context;
     private final SharedPreferences prefs;
@@ -216,19 +217,8 @@ final class CompasAuto {
             );
         }
 
-        NeverApi.PinfoCompassSnapshot snapshot;
-        try {
-            AppLog.d(TAG, "INFO_API_TRACE stage=info_api_runtime_call, source_module=auto_compass_manual, nick=" + normalized);
-            snapshot = NeverApi.getPinfoCompassSnapshotFromInfoApi(normalized, "auto_compass_manual");
-        } catch (Exception e) {
-            AppLog.w(TAG, "resolveAutoCompassLocation: pinfo request failed, nick=" + normalized, e);
-            if (NeverApi.wasLastCompassPinfoRateLimited()) {
-                onAutoCompassRateLimitError(NeverApi.getLastCompassPinfoHttpStatus());
-            }
-            return new AutoFunctionsManager.CompassLocationResolveResult(
-                    false, normalized, "", "", "Компас: pinfo не отвечает."
-            );
-        }
+        NeverApi.PinfoCompassSnapshot snapshot = fetchCompassSnapshotWithSingleRetry(
+                normalized, "auto_compass_manual");
 
         if (snapshot == null) {
             if (NeverApi.wasLastCompassPinfoRateLimited()) {
@@ -449,12 +439,9 @@ final class CompasAuto {
         }
         autoCompassPinfoInFlight = true;
         new Thread(() -> {
-            NeverApi.PinfoCompassSnapshot snapshot = null;
+            NeverApi.PinfoCompassSnapshot snapshot;
             try {
-                AppLog.d(TAG, "INFO_API_TRACE stage=info_api_runtime_call, source_module=auto_compass_tick, nick=" + targetNick);
-                snapshot = NeverApi.getPinfoCompassSnapshotFromInfoApi(targetNick, "auto_compass_tick");
-            } catch (Exception e) {
-                AppLog.w(TAG, "tickAutoCompass: failed to fetch pinfo snapshot for " + targetNick, e);
+                snapshot = fetchCompassSnapshotWithSingleRetry(targetNick, "auto_compass_tick");
             } finally {
                 autoCompassPinfoInFlight = false;
             }
@@ -549,6 +536,39 @@ final class CompasAuto {
         }
 
         continueAutoCompassNavigation(targetNick);
+    }
+
+    private NeverApi.PinfoCompassSnapshot fetchCompassSnapshotWithSingleRetry(String targetNick, String sourceModule) {
+        NeverApi.PinfoCompassSnapshot snapshot = fetchCompassSnapshotOnce(targetNick, sourceModule, false);
+        if (snapshot != null) {
+            return snapshot;
+        }
+        int status = NeverApi.getLastCompassPinfoHttpStatus();
+        if (status == 535 || status == 536) {
+            return null;
+        }
+        sleepQuietly(AUTO_COMPASS_SNAPSHOT_RETRY_DELAY_MS);
+        return fetchCompassSnapshotOnce(targetNick, sourceModule + "_retry", true);
+    }
+
+    private NeverApi.PinfoCompassSnapshot fetchCompassSnapshotOnce(String targetNick, String sourceModule, boolean retry) {
+        try {
+            AppLog.d(TAG, "INFO_API_TRACE stage=info_api_runtime_call, source_module="
+                    + sourceModule + ", nick=" + targetNick + ", retry=" + retry);
+            return NeverApi.getPinfoCompassSnapshotFromInfoApi(targetNick, sourceModule);
+        } catch (Exception e) {
+            AppLog.w(TAG, "AUTO_COMPASS_TRACE snapshot request failed: source=" + sourceModule
+                    + ", nick=" + targetNick + ", retry=" + retry, e);
+            return null;
+        }
+    }
+
+    private void sleepQuietly(long delayMs) {
+        try {
+            Thread.sleep(delayMs);
+        } catch (InterruptedException ignored) {
+            Thread.currentThread().interrupt();
+        }
     }
 
     private void continueAutoCompassNavigation(String targetNick) {

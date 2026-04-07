@@ -1516,21 +1516,21 @@ public class RoomManager {
 
         String inj = "";
         if (strArray.length > 6 && !strArray[6].equals("0")) {
-            String injuryIcon = "tr4";
+            int injuryEffectId = 1;
             if (strArray[6].contains("боевая")) {
-                injuryIcon = "tr4";
+                injuryEffectId = 1;
                 strArray[1] = "<font color=\"#666600\">" + strArray[1] + "</font>";
             } else if (strArray[6].contains("тяжелая")) {
-                injuryIcon = "tr3";
+                injuryEffectId = 2;
                 strArray[1] = "<font color=\"#c10000\">" + strArray[1] + "</font>";
             } else if (strArray[6].contains("средняя")) {
-                injuryIcon = "tr2";
+                injuryEffectId = 3;
                 strArray[1] = "<font color=\"#e94c69\">" + strArray[1] + "</font>";
             } else if (strArray[6].contains("легкая")) {
-                injuryIcon = "tr1";
+                injuryEffectId = 4;
                 strArray[1] = "<font color=\"#ef7f94\">" + strArray[1] + "</font>";
             }
-            inj = "<img class=\"ab-room-injury-icon\" src=http://image.neverlands.ru/chat/" + injuryIcon
+            inj = "<img class=\"ab-room-injury-icon\" src=http://image.neverlands.ru/pinfo/eff_" + injuryEffectId
                     + ".gif border=0 width=15 height=12 alt=\""
                     + strArray[6]
                     + "\" align=absmiddle>";

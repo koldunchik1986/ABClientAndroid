@@ -9,7 +9,6 @@ import android.util.Xml;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 
 import org.xmlpull.v1.XmlPullParser;
-import org.xmlpull.v1.XmlSerializer;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -33,7 +32,6 @@ import java.util.regex.Pattern;
 import java.io.StringReader;
 
 import ru.neverlands.abclient.utils.AppVars;
-import ru.neverlands.abclient.utils.FileLogger;
 import ru.neverlands.abclient.proxy.ProxyRuntimeManager;
 import ru.neverlands.abclient.utils.Russian;
 import ru.neverlands.abclient.postfilter.MainPhp;
@@ -72,7 +70,8 @@ public class NeverApi {
     private static final Object nickIdCacheLock = new Object();
     private static final Map<String, NickIdRecord> nickIdCache = new LinkedHashMap<>();
     private static volatile boolean nickIdCacheLoaded = false;
-    private static final String NICK_ID_CACHE_FILE = "nick_id.xml";
+    private static final String NICK_ID_CACHE_FILE = "nick_id.txt";
+    private static final String LEGACY_NICK_ID_CACHE_FILE_XML = "nick_id.xml";
     private static final String INFO_SOURCE_DEFAULT = "info_api";
     private static final String INFO_SOURCE_LOGIN_SYNC = "login_sync";
     private static final String INFO_SOURCE_AUTO_BLAZ = "auto_blaz";
@@ -1041,7 +1040,7 @@ public class NeverApi {
 
     /**
      * Получает `playerId` по nick с двухуровневым кэшем:
-     * 1) in-memory + disk (`nick_id.xml`);
+     * 1) in-memory + disk (`nick_id.txt`);
      * 2) при miss — `getid.cgi`.
      *
      * Логирование:
@@ -1110,7 +1109,7 @@ public class NeverApi {
     /**
      * Записывает новую/обновлённую пару nick->id в:
      * - runtime map;
-     * - `nick_id.xml` (глобальный кэш).
+     * - `nick_id.txt` (глобальный кэш).
      *
      * Дополнительно:
      * - в Dev-режиме шлёт уведомление в чат о новой записи ID.
@@ -1164,7 +1163,7 @@ public class NeverApi {
 
     /**
      * Lazy-init под lock:
-     * - читает `files/info/nick_id.xml`;
+     * - читает `files/info/nick_id.txt`;
      * - заполняет memory cache;
      * - подготавливает fallback map `nameToId`.
      */
@@ -1176,16 +1175,60 @@ public class NeverApi {
         File file = resolveNickIdCacheFile();
         if (file != null && file.exists()) {
             readNickIdCacheLocked(file);
+        } else {
+            File legacyXml = resolveLegacyNickIdCacheFile();
+            if (legacyXml != null && legacyXml.exists()) {
+                readNickIdCacheLegacyXmlLocked(legacyXml);
+                if (!nickIdCache.isEmpty()) {
+                    writeNickIdCacheLocked();
+                    AppLog.i(TAG, "INFO_API_TRACE stage=id_cache_migrated_from_xml, from="
+                            + legacyXml.getAbsolutePath());
+                }
+            }
         }
         nickIdCacheLoaded = true;
         AppLog.d(TAG, "INFO_API_TRACE stage=id_cache_loaded, size=" + nickIdCache.size());
     }
 
     /**
-     * Читает `nick_id.xml` в memory-кэш.
-     * Формат: `<nick_ids><entry key=\"...\" nick=\"...\" id=\"...\" updated=\"...\"/></nick_ids>`.
+     * Читает `nick_id.txt` в memory-кэш.
+     * Формат строки: `key<TAB>nick<TAB>id<TAB>updatedAtMs`.
      */
     private static void readNickIdCacheLocked(File file) {
+        try (FileInputStream stream = new FileInputStream(file);
+             InputStreamReader reader = new InputStreamReader(stream, Charset.forName("UTF-8"));
+             BufferedReader bufferedReader = new BufferedReader(reader)) {
+            String line;
+            while ((line = bufferedReader.readLine()) != null) {
+                String trimmed = line.trim();
+                if (trimmed.isEmpty() || trimmed.startsWith("#")) {
+                    continue;
+                }
+                String[] parts = line.split("\t", -1);
+                if (parts.length < 3) {
+                    continue;
+                }
+                String key = normalizeNickKey(parts[0]);
+                String nick = parts[1] == null ? "" : parts[1].trim();
+                String id = parts[2] == null ? "" : parts[2].trim();
+                long updatedAt = parts.length > 3 ? parseLongSafe(parts[3], 0L) : 0L;
+                if (!isEmpty(key) && !isEmpty(id)) {
+                    nickIdCache.put(key, new NickIdRecord(key, nick, id, updatedAt));
+                    synchronized (nameToId) {
+                        nameToId.put(key, id);
+                    }
+                }
+            }
+        } catch (Exception e) {
+            AppLog.w(TAG, "INFO_API_TRACE stage=id_cache_read_fail, file=" + file.getAbsolutePath(), e);
+        }
+    }
+
+    /**
+     * Читает legacy `nick_id.xml` в memory-кэш.
+     * Формат: `<nick_ids><entry key=\"...\" nick=\"...\" id=\"...\" updated=\"...\"/></nick_ids>`.
+     */
+    private static void readNickIdCacheLegacyXmlLocked(File file) {
         try (FileInputStream stream = new FileInputStream(file);
              InputStreamReader reader = new InputStreamReader(stream, Charset.forName("UTF-8"))) {
             XmlPullParser parser = Xml.newPullParser();
@@ -1200,21 +1243,24 @@ public class NeverApi {
                     String key = isEmpty(keyAttr) ? normalizeNickKey(nick) : normalizeNickKey(keyAttr);
                     if (!isEmpty(key) && !isEmpty(id)) {
                         long updatedAt = parseLongSafe(updated, 0L);
-                        nickIdCache.put(key, new NickIdRecord(key, nick == null ? "" : nick.trim(), id.trim(), updatedAt));
+                        String safeNick = nick == null ? "" : nick.trim();
+                        String safeId = id.trim();
+                        nickIdCache.put(key, new NickIdRecord(key, safeNick, safeId, updatedAt));
                         synchronized (nameToId) {
-                            nameToId.put(key, id.trim());
+                            nameToId.put(key, safeId);
                         }
                     }
                 }
                 eventType = parser.next();
             }
         } catch (Exception e) {
-            AppLog.w(TAG, "INFO_API_TRACE stage=id_cache_read_fail, file=" + file.getAbsolutePath(), e);
+            AppLog.w(TAG, "INFO_API_TRACE stage=id_cache_read_legacy_xml_fail, file="
+                    + file.getAbsolutePath(), e);
         }
     }
 
     /**
-     * Атомарно сохраняет memory-кэш в `files/info/nick_id.xml`.
+     * Атомарно сохраняет memory-кэш в `files/info/nick_id.txt`.
      */
     private static void writeNickIdCacheLocked() {
         File file = resolveNickIdCacheFile();
@@ -1223,41 +1269,67 @@ public class NeverApi {
         }
         try (FileOutputStream stream = new FileOutputStream(file, false);
              OutputStreamWriter writer = new OutputStreamWriter(stream, Charset.forName("UTF-8"))) {
-            XmlSerializer serializer = Xml.newSerializer();
-            serializer.setOutput(writer);
-            serializer.startDocument("UTF-8", true);
-            serializer.startTag(null, "nick_ids");
-            serializer.attribute(null, "updated", String.valueOf(System.currentTimeMillis()));
+            writer.write("# key\tnick\tid\tupdatedAtMs\n");
             for (NickIdRecord record : nickIdCache.values()) {
-                serializer.startTag(null, "entry");
-                serializer.attribute(null, "key", record.key);
-                serializer.attribute(null, "nick", record.nick);
-                serializer.attribute(null, "id", record.id);
-                serializer.attribute(null, "updated", String.valueOf(record.updatedAtMs));
-                serializer.endTag(null, "entry");
+                writer.write(sanitizeNickIdCacheField(record.key));
+                writer.write('\t');
+                writer.write(sanitizeNickIdCacheField(record.nick));
+                writer.write('\t');
+                writer.write(sanitizeNickIdCacheField(record.id));
+                writer.write('\t');
+                writer.write(String.valueOf(record.updatedAtMs));
+                writer.write('\n');
             }
-            serializer.endTag(null, "nick_ids");
-            serializer.endDocument();
             writer.flush();
         } catch (Exception e) {
-            AppLog.w(TAG, "INFO_API_TRACE stage=id_cache_write_fail", e);
+            AppLog.w(TAG, "INFO_API_TRACE stage=id_cache_write_fail, file="
+                    + file.getAbsolutePath(), e);
         }
     }
 
     /**
      * Возвращает путь к глобальному кэшу ID:
-     * `Context.getFilesDir()/info/nick_id.xml`.
+     * `Context.getExternalFilesDir()/info/nick_id.txt`.
      */
     private static File resolveNickIdCacheFile() {
         if (AppVars.getContext() == null) {
             return null;
         }
-        File infoDir = new File(AppVars.getContext().getFilesDir(), "info");
+        File root = AppVars.getContext().getExternalFilesDir(null);
+        if (root == null) {
+            root = AppVars.getContext().getFilesDir();
+            AppLog.w(TAG, "INFO_API_TRACE stage=id_cache_external_unavailable, fallback_internal=true");
+        }
+        File infoDir = new File(root, "info");
         if (!infoDir.exists() && !infoDir.mkdirs()) {
             AppLog.w(TAG, "INFO_API_TRACE stage=id_cache_dir_fail, path=" + infoDir.getAbsolutePath());
             return null;
         }
-        return new File(infoDir, NICK_ID_CACHE_FILE);
+        File cacheFile = new File(infoDir, NICK_ID_CACHE_FILE);
+        AppLog.d(TAG, "INFO_API_TRACE stage=id_cache_path, file=" + cacheFile.getAbsolutePath());
+        return cacheFile;
+    }
+
+    /**
+     * Путь к legacy-файлу `nick_id.xml` в той же директории, что и текущий TXT-кэш.
+     */
+    private static File resolveLegacyNickIdCacheFile() {
+        File txt = resolveNickIdCacheFile();
+        if (txt == null) {
+            return null;
+        }
+        File parent = txt.getParentFile();
+        if (parent == null) {
+            return null;
+        }
+        return new File(parent, LEGACY_NICK_ID_CACHE_FILE_XML);
+    }
+
+    private static String sanitizeNickIdCacheField(String value) {
+        if (value == null) {
+            return "";
+        }
+        return value.replace('\t', ' ').replace('\n', ' ').replace('\r', ' ').trim();
     }
 
     /**
