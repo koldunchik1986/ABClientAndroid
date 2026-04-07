@@ -223,10 +223,15 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     private volatile long autoTurnManualNavSuppressUntilMs = 0L;
     // true между onResume/onPause; используется для отключения server-probe в активном UI.
     private volatile boolean isActivityResumedState = false;
+    private boolean suppressBackgroundLoopsForContacts = false;
+    private boolean suppressChatRefreshOnceAfterContacts = false;
+    private boolean suppressRoomRefreshOnceAfterContacts = false;
+    private boolean shouldRestoreChatRefreshAfterContacts = false;
     private final ActivityResultLauncher<Intent> contactsActivityLauncher =
             registerForActivityResult(
                     new ActivityResultContracts.StartActivityForResult(),
                     result -> {
+                        suppressBackgroundLoopsForContacts = false;
                         Intent data = result.getData();
                         if (result.getResultCode() == RESULT_OK && data != null) {
                             String url = data.getStringExtra("open_pinfo_url");
@@ -235,6 +240,12 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                                 tabManager.openTab(url, title != null ? title : "PINFO");
                             }
                         }
+                        if (shouldRestoreChatRefreshAfterContacts && chatRefreshRunnable == null) {
+                            Log.d(TAG, BG_TRACE_PREFIX + " contacts-return: restoring chat refresh");
+                            FileLogger.trace("contacts_nav", "restore chat refresh after contacts");
+                            startChatRefresh();
+                        }
+                        shouldRestoreChatRefreshAfterContacts = false;
                     });
 
     /**
@@ -304,6 +315,12 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         WebView chatUsersWebView = binding.appBarMain.contentMain.chatUsersWebview;
         if (chatUsersWebView == null) {
             Log.d(TAG, BG_TRACE_PREFIX + " requestRoomUsersRefreshSoon: skip chatUsersWebView=null");
+            return;
+        }
+        if (suppressRoomRefreshOnceAfterContacts) {
+            suppressRoomRefreshOnceAfterContacts = false;
+            Log.d(TAG, BG_TRACE_PREFIX + " requestRoomUsersRefreshSoon: skipped once after contacts");
+            FileLogger.trace("contacts_nav", "skip first room refresh after contacts");
             return;
         }
 
@@ -3263,6 +3280,11 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         super.onPause();
         isActivityResumedState = false;
         boolean keepBackgroundLoops = shouldKeepBackgroundLoops();
+        if (suppressBackgroundLoopsForContacts) {
+            keepBackgroundLoops = false;
+            Log.d(TAG, BG_TRACE_PREFIX + " onPause: forcing background loops off due to contacts navigation");
+            FileLogger.trace("contacts_nav", "onPause force-stop room loops for contacts");
+        }
         logBackgroundState("onPause_keep=" + keepBackgroundLoops);
         if (keepBackgroundLoops) {
             startRoomUsersPolling();
@@ -3513,6 +3535,17 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             Intent intent = new Intent(this, SettingsActivity.class);
             startActivity(intent);
         } else if (id == R.id.nav_contacts) {
+            suppressBackgroundLoopsForContacts = true;
+            suppressChatRefreshOnceAfterContacts = true;
+            suppressRoomRefreshOnceAfterContacts = true;
+            shouldRestoreChatRefreshAfterContacts = (chatRefreshRunnable != null);
+            Log.d(TAG, BG_TRACE_PREFIX + " nav_contacts: pause chat/room polling, chatActive="
+                    + (chatRefreshRunnable != null) + ", roomActive=" + (roomUsersPollingRunnable != null));
+            FileLogger.trace("contacts_nav",
+                    "open contacts: chatActive=" + (chatRefreshRunnable != null)
+                            + ", roomActive=" + (roomUsersPollingRunnable != null));
+            stopChatRefresh();
+            stopRoomUsersPolling();
             Intent intent = new Intent(this, ContactsActivity.class);
             contactsActivityLauncher.launch(intent);
         } else if (id == R.id.nav_clans) {
@@ -3604,6 +3637,12 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         ensureChatRefrWebViewReady();
         if (chatRefrWebView == null) {
             Log.w(TAG, BG_TRACE_PREFIX + " requestChatRefresh skipped: chatRefrWebView is null");
+            return;
+        }
+        if (suppressChatRefreshOnceAfterContacts) {
+            suppressChatRefreshOnceAfterContacts = false;
+            Log.d(TAG, BG_TRACE_PREFIX + " requestChatRefresh: skipped once after contacts");
+            FileLogger.trace("contacts_nav", "skip first chat refresh after contacts");
             return;
         }
         long now = System.currentTimeMillis();

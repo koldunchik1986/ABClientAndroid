@@ -31,6 +31,7 @@ import ru.neverlands.abclient.manager.ClanWarsManager;
 import ru.neverlands.abclient.manager.ContactsManager;
 import ru.neverlands.abclient.model.Contact;
 import ru.neverlands.abclient.repository.ApiRepository;
+import ru.neverlands.abclient.utils.ContactRenderHelper;
 
 /**
  * Activity для отображения и управления списком контактов.
@@ -49,6 +50,8 @@ public class ContactsActivity extends AppCompatActivity implements ContactsAdapt
     private List<Contact> allContacts = new ArrayList<>();
     private Map<String, Boolean> groupExpansionStates = new HashMap<>();
     private Map<String, ClanInfo> clanInfoCache = new HashMap<>();
+    private static final String NEUTRAL_GROUP_KEY = "__neutral_group__";
+    private static final String NEUTRAL_GROUP_TITLE = "Нейтралы";
 
     /**
      * Определяет глобальный тип сортировки для списка групп.
@@ -206,7 +209,7 @@ public class ContactsActivity extends AppCompatActivity implements ContactsAdapt
         List<Contact> noClanContacts = new ArrayList<>();
 
         for (Contact contact : allContacts) {
-            String clanName = (contact.clanName == null || contact.clanName.isEmpty() || contact.clanName.equals("none")) ? "" : contact.clanName;
+            String clanName = ContactRenderHelper.isNeutralClanName(contact.clanName) ? "" : contact.clanName;
             if (clanName.isEmpty()) {
                 noClanContacts.add(contact);
             }
@@ -229,6 +232,7 @@ public class ContactsActivity extends AppCompatActivity implements ContactsAdapt
             }
         }
         sortContactList(noClanContacts, currentSort);
+        int neutralGroupClassId = noClanContacts.isEmpty() ? 0 : noClanContacts.get(0).classId;
 
         List<String> sortedClanNames = new ArrayList<>(groupedContacts.keySet());
         if (currentSort == SortType.CLASS_ID_FOE_FIRST || currentSort == SortType.CLASS_ID_FRIEND_FIRST) {
@@ -258,7 +262,7 @@ public class ContactsActivity extends AppCompatActivity implements ContactsAdapt
             }
 
             Contact representative = clanMembers.get(0);
-            String clanId = representative.clanIco.replace(".gif", "");
+            String clanId = representative.clanIco == null ? "" : representative.clanIco.replace(".gif", "");
             ClanInfo clanInfo = clanInfoCache.get(clanId);
             String clanLevel = (clanInfo != null) ? clanInfo.clanLevel : "N/A";
             
@@ -272,7 +276,15 @@ public class ContactsActivity extends AppCompatActivity implements ContactsAdapt
             Integer groupClassIdInt = groupClassIds.get(clanName);
             int groupClassId = (groupClassIdInt == null) ? 0 : groupClassIdInt;
 
-            displayList.add(new ContactsAdapter.GroupHeaderItem(clanName, representative.clanIco, clanLevel, clanMembers.size(), onlineMemberCount, groupClassId));
+            displayList.add(new ContactsAdapter.GroupHeaderItem(
+                    clanName,
+                    representative.clanIco,
+                    clanLevel,
+                    clanMembers.size(),
+                    onlineMemberCount,
+                    groupClassId,
+                    false,
+                    clanName));
 
             if (Boolean.TRUE.equals(groupExpansionStates.get(clanName))) {
                 for (Contact member : clanMembers) {
@@ -282,8 +294,31 @@ public class ContactsActivity extends AppCompatActivity implements ContactsAdapt
         }
 
         if (!noClanContacts.isEmpty()) {
+            if (!groupExpansionStates.containsKey(NEUTRAL_GROUP_KEY)) {
+                groupExpansionStates.put(NEUTRAL_GROUP_KEY, true);
+            }
+
+            int onlineNeutralCount = 0;
             for (Contact contact : noClanContacts) {
-                displayList.add(new ContactsAdapter.ContactItem(contact));
+                if (contact.onlineStatus == 1) {
+                    onlineNeutralCount++;
+                }
+            }
+
+            displayList.add(new ContactsAdapter.GroupHeaderItem(
+                    NEUTRAL_GROUP_TITLE,
+                    "",
+                    "-",
+                    noClanContacts.size(),
+                    onlineNeutralCount,
+                    neutralGroupClassId,
+                    true,
+                    NEUTRAL_GROUP_KEY));
+
+            if (Boolean.TRUE.equals(groupExpansionStates.get(NEUTRAL_GROUP_KEY))) {
+                for (Contact contact : noClanContacts) {
+                    displayList.add(new ContactsAdapter.ContactItem(contact));
+                }
             }
         }
 
@@ -320,8 +355,8 @@ public class ContactsActivity extends AppCompatActivity implements ContactsAdapt
     }
 
     private void handleGroupClick(ContactsAdapter.GroupHeaderItem groupHeaderItem) {
-        boolean isExpanded = Boolean.TRUE.equals(groupExpansionStates.get(groupHeaderItem.clanName));
-        groupExpansionStates.put(groupHeaderItem.clanName, !isExpanded);
+        boolean isExpanded = Boolean.TRUE.equals(groupExpansionStates.get(groupHeaderItem.groupKey));
+        groupExpansionStates.put(groupHeaderItem.groupKey, !isExpanded);
         buildDisplayList();
     }
 
@@ -342,7 +377,10 @@ public class ContactsActivity extends AppCompatActivity implements ContactsAdapt
     public void onClassIdChanged(ContactsAdapter.GroupHeaderItem group, int newClassId) {
         Toast.makeText(this, "Смена статуса группы '" + group.clanName + "'...", Toast.LENGTH_SHORT).show();
         for (Contact contact : allContacts) {
-            if (group.clanName.equals(contact.clanName)) {
+            boolean sameGroup = group.isNeutralGroup
+                    ? isNeutralContact(contact)
+                    : group.groupKey.equals(contact.clanName);
+            if (sameGroup) {
                 if (contact.classId != newClassId) {
                     contact.classId = newClassId;
                     ContactsManager.updateContact(contact);
@@ -504,7 +542,7 @@ public class ContactsActivity extends AppCompatActivity implements ContactsAdapt
     }
 
     private int getClassIdForClan(String clanName) {
-        if (clanName == null || clanName.isEmpty() || clanName.equals("none")) {
+        if (ContactRenderHelper.isNeutralClanName(clanName)) {
             return 0;
         }
         for (Contact contact : allContacts) {
@@ -513,6 +551,13 @@ public class ContactsActivity extends AppCompatActivity implements ContactsAdapt
             }
         }
         return 0;
+    }
+
+    private boolean isNeutralContact(Contact contact) {
+        if (contact == null) {
+            return false;
+        }
+        return ContactRenderHelper.isNeutralClanName(contact.clanName);
     }
 
     private void showDeleteConfirmationDialog(Contact contact) {
@@ -524,12 +569,22 @@ public class ContactsActivity extends AppCompatActivity implements ContactsAdapt
     }
 
     private void showGroupContextMenu(ContactsAdapter.GroupHeaderItem group) {
-        final CharSequence[] items = {"Обновить всех в группе", "Удалить всех из группы", "Импортировать весь клан"};
+        final CharSequence[] clanItems = {"Обновить всех в группе", "Удалить всех из группы", "Импортировать весь клан"};
+        final CharSequence[] neutralItems = {"Обновить всех в группе", "Удалить всех из группы"};
+        final CharSequence[] items = group.isNeutralGroup ? neutralItems : clanItems;
         new AlertDialog.Builder(this).setTitle("Группа: " + group.clanName).setItems(items, (dialog, which) -> {
             switch (which) {
-                case 0: updateGroup(group.clanName); break;
-                case 1: deleteGroup(group.clanName); break;
-                case 2: importClanMembers(group); break;
+                case 0:
+                    updateGroup(group.groupKey, group.isNeutralGroup);
+                    break;
+                case 1:
+                    deleteGroup(group.groupKey, group.isNeutralGroup);
+                    break;
+                case 2:
+                    if (!group.isNeutralGroup) {
+                        importClanMembers(group);
+                    }
+                    break;
             }
         }).show();
     }
@@ -605,14 +660,18 @@ public class ContactsActivity extends AppCompatActivity implements ContactsAdapt
      * Удаляет всех контактов из указанной группы.
      * Логика изменена для безопасного удаления: сначала собираем ID, затем удаляем.
      */
-    private void deleteGroup(String clanName) {
+    private void deleteGroup(String groupKey, boolean isNeutralGroup) {
+        String groupTitle = isNeutralGroup ? NEUTRAL_GROUP_TITLE : groupKey;
         new AlertDialog.Builder(this)
                 .setTitle("Удаление группы")
-                .setMessage("Вы уверены, что хотите удалить всех контактов из группы '" + clanName + "'?")
+                .setMessage("Вы уверены, что хотите удалить всех контактов из группы '" + groupTitle + "'?")
                 .setPositiveButton("Удалить", (dialog, which) -> {
                     List<String> nicksToDelete = new ArrayList<>();
                     for (Contact contact : allContacts) {
-                        if (clanName.equals(contact.clanName)) {
+                        boolean sameGroup = isNeutralGroup
+                                ? isNeutralContact(contact)
+                                : groupKey.equals(contact.clanName);
+                        if (sameGroup) {
                             nicksToDelete.add(contact.nick);
                         }
                     }
@@ -620,7 +679,7 @@ public class ContactsActivity extends AppCompatActivity implements ContactsAdapt
                         ContactsManager.deleteContact(nick);
                     }
                     loadContactsFromManager();
-                    Toast.makeText(this, "Группа " + clanName + " удалена", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(this, "Группа " + groupTitle + " удалена", Toast.LENGTH_SHORT).show();
                 })
                 .setNegativeButton("Отмена", null)
                 .show();
@@ -630,16 +689,22 @@ public class ContactsActivity extends AppCompatActivity implements ContactsAdapt
     /**
      * Обновляет информацию для всех контактов в указанной группе, используя централизованный метод.
      */
-    private void updateGroup(String clanName) {
-        Toast.makeText(this, "Обновление группы " + clanName + "...", Toast.LENGTH_SHORT).show();
-        ru.neverlands.abclient.manager.ContactsManager.refreshGroupContacts(this, clanName, () -> {
+    private void updateGroup(String groupKey, boolean isNeutralGroup) {
+        String groupTitle = isNeutralGroup ? NEUTRAL_GROUP_TITLE : groupKey;
+        Toast.makeText(this, "Обновление группы " + groupTitle + "...", Toast.LENGTH_SHORT).show();
+        Runnable onComplete = () -> {
             runOnUiThread(() -> {
                 Toast.makeText(this, "Обновление группы завершено", Toast.LENGTH_SHORT).show();
                 // Перезагружаем данные из кэша и обновляем UI
                 allContacts = ru.neverlands.abclient.manager.ContactsManager.getContactsFromCache();
                 buildDisplayList();
             });
-        });
+        };
+        if (isNeutralGroup) {
+            ContactsManager.refreshNeutralContacts(this, onComplete);
+        } else {
+            ContactsManager.refreshGroupContacts(this, groupKey, onComplete);
+        }
     }
 
     private void setClassIdForGroup(String clanName, int classId) {

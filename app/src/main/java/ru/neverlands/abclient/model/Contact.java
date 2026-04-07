@@ -115,6 +115,12 @@ public class Contact {
     public String comment;
 
     /**
+     * Comma-separated effect ids from info.cgi line "2|...".
+     * Example: "3,31,46"
+     */
+    public String effectIds;
+
+    /**
      * Инструмент авто-нападения для конкретного контакта (аналог C# `Contact.ToolId`).
      *
      * Значения:

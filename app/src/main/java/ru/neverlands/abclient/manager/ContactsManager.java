@@ -31,6 +31,7 @@ import javax.xml.transform.stream.StreamResult;
 
 import ru.neverlands.abclient.model.Contact;
 import ru.neverlands.abclient.repository.ApiRepository;
+import ru.neverlands.abclient.utils.ContactRenderHelper;
 import ru.neverlands.abclient.utils.FileLogger;
 
 /**
@@ -157,6 +158,7 @@ public class ContactsManager {
                     contact.warLogNumber = getTagValue("warLogNumber", element);
                     contact.classId = Integer.parseInt(getTagValue("classId", element, "0"));
                     contact.comment = getTagValue("comment", element);
+                    contact.effectIds = getTagValue("effectIds", element, "");
                     // Персональный инструмент авто-нападения (аналог C# Contact.ToolId).
                     // Если тега нет в старых профилях — используем 0 (глобальный AutoAttackToolId).
                     contact.toolId = Integer.parseInt(getTagValue("toolId", element, "0"));
@@ -210,6 +212,7 @@ public class ContactsManager {
                     createChildElement(doc, contactElement, "warLogNumber", contact.warLogNumber);
                     createChildElement(doc, contactElement, "classId", String.valueOf(contact.classId));
                     createChildElement(doc, contactElement, "comment", contact.comment);
+                    createChildElement(doc, contactElement, "effectIds", contact.effectIds);
                     // Сохраняем персональный инструмент авто-нападения.
                     createChildElement(doc, contactElement, "toolId", String.valueOf(contact.toolId));
                 }
@@ -357,6 +360,14 @@ public class ContactsManager {
         return new ArrayList<>(contactsCache.values());
     }
 
+    public static List<Integer> getEffectIdsOfContact(String name) {
+        Contact contact = contactsCache.get(name);
+        if (contact == null) {
+            return new ArrayList<>();
+        }
+        return ContactRenderHelper.parseEffectIdsCsv(contact.effectIds);
+    }
+
     /**
      * Запускает полное фоновое обновление всех контактов.
      * @param context Контекст для выполнения запросов.
@@ -386,9 +397,33 @@ public class ContactsManager {
                 contactsToUpdate.add(contact);
             }
         }
-        if (!contactsToUpdate.isEmpty()) {
-            updateContactsRecursive(context, contactsToUpdate, 0, onComplete);
+        if (contactsToUpdate.isEmpty()) {
+            if (onComplete != null) {
+                handler.post(onComplete);
+            }
+            return;
         }
+        updateContactsRecursive(context, contactsToUpdate, 0, onComplete);
+    }
+
+    // Обновление всех нейтралов (контактов без клана).
+    public static void refreshNeutralContacts(Context context, Runnable onComplete) {
+        List<Contact> contactsToUpdate = new ArrayList<>();
+        for (Contact contact : contactsCache.values()) {
+            if (contact == null) {
+                continue;
+            }
+            if (ContactRenderHelper.isNeutralClanName(contact.clanName)) {
+                contactsToUpdate.add(contact);
+            }
+        }
+        if (contactsToUpdate.isEmpty()) {
+            if (onComplete != null) {
+                handler.post(onComplete);
+            }
+            return;
+        }
+        updateContactsRecursive(context, contactsToUpdate, 0, onComplete);
     }
 
     /**

@@ -9,9 +9,13 @@ import java.io.IOException;
 import java.io.File;
 import java.net.URL;
 import java.net.URLEncoder;
+import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 
 import okhttp3.Call;
 import okhttp3.Callback;
@@ -26,6 +30,7 @@ import ru.neverlands.abclient.network.NetworkClient;
 import ru.neverlands.abclient.proxy.CookiesManager;
 import ru.neverlands.abclient.proxy.ProxyRuntimeManager;
 import ru.neverlands.abclient.utils.AppVars;
+import ru.neverlands.abclient.utils.ContactRenderHelper;
 import ru.neverlands.abclient.utils.FileLogger;
 
 /**
@@ -299,6 +304,7 @@ public class ApiRepository {
         }
 
         String[] rows = response.trim().split("\\r?\\n");
+        contact.effectIds = ContactRenderHelper.toEffectIdsCsv(parseEffectIdsFromRows(rows));
         if (rows.length >= 3 && rows[2].startsWith("3|")) {
             String[] parts = rows[2].substring(2).split("\\|", -1);
             if (parts.length < 15) {
@@ -350,6 +356,36 @@ public class ApiRepository {
             default: contact.inclinationName = "0"; break;
         }
         return contact;
+    }
+
+    private static List<Integer> parseEffectIdsFromRows(String[] rows) {
+        List<Integer> result = new ArrayList<>();
+        if (rows == null || rows.length < 2) {
+            return result;
+        }
+        String effectsRow = rows[1];
+        if (effectsRow == null || !effectsRow.startsWith("2|")) {
+            return result;
+        }
+        String rawPayload = effectsRow.substring(2);
+        if (rawPayload.trim().isEmpty()) {
+            return result;
+        }
+        String[] effects = rawPayload.split("@");
+        Set<Integer> unique = new LinkedHashSet<>();
+        for (String effect : effects) {
+            if (effect == null || effect.trim().isEmpty()) {
+                continue;
+            }
+            int dotIndex = effect.indexOf('.');
+            String idPart = dotIndex > 0 ? effect.substring(0, dotIndex) : effect;
+            int effectId = parseIntSafe(idPart, 0);
+            if (effectId > 0) {
+                unique.add(effectId);
+            }
+        }
+        result.addAll(unique);
+        return result;
     }
 
     private static int parseIntSafe(String value, int fallback) {
