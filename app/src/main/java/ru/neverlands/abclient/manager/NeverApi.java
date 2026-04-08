@@ -72,6 +72,8 @@ public class NeverApi {
     private static volatile boolean nickIdCacheLoaded = false;
     private static final String NICK_ID_CACHE_FILE = "nick_id.txt";
     private static final String NICK_ID_CACHE_ASSET_PATH = "info/nick_id.txt";
+    private static final long NICK_ID_WRITE_STATS_LOG_THROTTLE_MS = 5000L;
+    private static volatile long lastNickIdWriteStatsLogAtMs = 0L;
     private static final String INFO_SOURCE_DEFAULT = "info_api";
     private static final String INFO_SOURCE_LOGIN_SYNC = "login_sync";
     private static final String INFO_SOURCE_AUTO_BLAZ = "auto_blaz";
@@ -1322,6 +1324,7 @@ public class NeverApi {
         if (file == null) {
             return;
         }
+        long startedAtMs = System.currentTimeMillis();
         try (FileOutputStream stream = new FileOutputStream(file, false);
              OutputStreamWriter writer = new OutputStreamWriter(stream, Charset.forName("UTF-8"))) {
             writer.write("# playerId|nick\n");
@@ -1347,6 +1350,7 @@ public class NeverApi {
                 writer.write('\n');
             }
             writer.flush();
+            maybeLogNickIdWriteStats(uniqueIdToNick.size(), file, startedAtMs);
         } catch (Exception e) {
             AppLog.w(TAG, "INFO_API_TRACE stage=id_cache_write_fail, file="
                     + file.getAbsolutePath(), e);
@@ -1419,6 +1423,25 @@ public class NeverApi {
             }
         }
         return false;
+    }
+
+    /**
+     * Лёгкая телеметрия записи кэша ID:
+     * - только в Dev-режиме;
+     * - с throttle, чтобы не влиять на производительность.
+     */
+    private static void maybeLogNickIdWriteStats(int totalUniqueIds, File file, long startedAtMs) {
+        if (!isDevIdCacheNotifyEnabled()) {
+            return;
+        }
+        long now = System.currentTimeMillis();
+        if (now - lastNickIdWriteStatsLogAtMs < NICK_ID_WRITE_STATS_LOG_THROTTLE_MS) {
+            return;
+        }
+        lastNickIdWriteStatsLogAtMs = now;
+        long elapsedMs = Math.max(0L, now - startedAtMs);
+        AppLog.d(TAG, "INFO_API_TRACE stage=id_cache_write_stats, ids=" + totalUniqueIds
+                + ", elapsed_ms=" + elapsedMs + ", file=" + file.getAbsolutePath());
     }
 
     /**
