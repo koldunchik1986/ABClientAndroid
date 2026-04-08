@@ -121,6 +121,13 @@ public class Contact {
     public String effectIds;
 
     /**
+     * Comma-separated effect states from info.cgi line "2|...".
+     * Format: "id:count:timeout,id:count:timeout"
+     * Example: "3:1:01:54:59,31:5:00:41:25"
+     */
+    public String effectStates;
+
+    /**
      * Инструмент авто-нападения для конкретного контакта (аналог C# `Contact.ToolId`).
      *
      * Значения:

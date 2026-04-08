@@ -334,15 +334,16 @@ public class ContactsAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
 
         private void renderEffectIcons(Contact contact) {
             effectsContainer.removeAllViews();
-            List<Integer> effectIds = ContactRenderHelper.parseEffectIdsCsv(contact.effectIds);
-            if (effectIds == null || effectIds.isEmpty()) {
+            List<ContactRenderHelper.EffectState> effectStates =
+                    ContactRenderHelper.parseEffectStatesCsv(contact.effectStates, contact.effectIds);
+            if (effectStates == null || effectStates.isEmpty()) {
                 effectsContainer.setVisibility(View.GONE);
                 return;
             }
 
             Context context = itemView.getContext();
-            for (Integer effectId : effectIds) {
-                if (effectId == null || effectId <= 0) {
+            for (ContactRenderHelper.EffectState effectState : effectStates) {
+                if (effectState == null || effectState.id <= 0) {
                     continue;
                 }
                 ImageView icon = new ImageView(context);
@@ -351,9 +352,21 @@ public class ContactsAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
                 icon.setLayoutParams(params);
                 icon.setScaleType(ImageView.ScaleType.FIT_CENTER);
                 Glide.with(context)
-                        .load(ContactRenderHelper.buildEffectIconUrl(effectId))
+                        .load(ContactRenderHelper.buildEffectIconUrl(effectState.id))
                         .into(icon);
                 effectsContainer.addView(icon);
+
+                TextView counter = new TextView(context);
+                LinearLayout.LayoutParams textParams = new LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.WRAP_CONTENT,
+                        ViewGroup.LayoutParams.WRAP_CONTENT
+                );
+                textParams.setMarginStart(dp(context, 2));
+                counter.setLayoutParams(textParams);
+                counter.setTextColor(Color.WHITE);
+                counter.setTextSize(10);
+                counter.setText(ContactRenderHelper.formatEffectCounter(effectState));
+                effectsContainer.addView(counter);
             }
             effectsContainer.setVisibility(effectsContainer.getChildCount() > 0 ? View.VISIBLE : View.GONE);
         }

@@ -159,6 +159,7 @@ public class ContactsManager {
                     contact.classId = Integer.parseInt(getTagValue("classId", element, "0"));
                     contact.comment = getTagValue("comment", element);
                     contact.effectIds = getTagValue("effectIds", element, "");
+                    contact.effectStates = getTagValue("effectStates", element, "");
                     // Персональный инструмент авто-нападения (аналог C# Contact.ToolId).
                     // Если тега нет в старых профилях — используем 0 (глобальный AutoAttackToolId).
                     contact.toolId = Integer.parseInt(getTagValue("toolId", element, "0"));
@@ -213,6 +214,7 @@ public class ContactsManager {
                     createChildElement(doc, contactElement, "classId", String.valueOf(contact.classId));
                     createChildElement(doc, contactElement, "comment", contact.comment);
                     createChildElement(doc, contactElement, "effectIds", contact.effectIds);
+                    createChildElement(doc, contactElement, "effectStates", contact.effectStates);
                     // Сохраняем персональный инструмент авто-нападения.
                     createChildElement(doc, contactElement, "toolId", String.valueOf(contact.toolId));
                 }

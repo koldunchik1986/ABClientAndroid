@@ -10,12 +10,10 @@ import java.io.File;
 import java.net.URL;
 import java.net.URLEncoder;
 import java.util.ArrayList;
-import java.util.LinkedHashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.Set;
 
 import okhttp3.Call;
 import okhttp3.Callback;
@@ -304,7 +302,9 @@ public class ApiRepository {
         }
 
         String[] rows = response.trim().split("\\r?\\n");
-        contact.effectIds = ContactRenderHelper.toEffectIdsCsv(parseEffectIdsFromRows(rows));
+        List<ContactRenderHelper.EffectState> effectStates = parseEffectsFromRows(rows);
+        contact.effectStates = ContactRenderHelper.toEffectStatesCsv(effectStates);
+        contact.effectIds = ContactRenderHelper.toEffectIdsCsv(ContactRenderHelper.extractEffectIds(effectStates));
         if (rows.length >= 3 && rows[2].startsWith("3|")) {
             String[] parts = rows[2].substring(2).split("\\|", -1);
             if (parts.length < 15) {
@@ -358,8 +358,8 @@ public class ApiRepository {
         return contact;
     }
 
-    private static List<Integer> parseEffectIdsFromRows(String[] rows) {
-        List<Integer> result = new ArrayList<>();
+    private static List<ContactRenderHelper.EffectState> parseEffectsFromRows(String[] rows) {
+        List<ContactRenderHelper.EffectState> result = new ArrayList<>();
         if (rows == null || rows.length < 2) {
             return result;
         }
@@ -372,19 +372,30 @@ public class ApiRepository {
             return result;
         }
         String[] effects = rawPayload.split("@");
-        Set<Integer> unique = new LinkedHashSet<>();
+        Map<Integer, ContactRenderHelper.EffectState> unique = new LinkedHashMap<>();
         for (String effect : effects) {
             if (effect == null || effect.trim().isEmpty()) {
                 continue;
             }
-            int dotIndex = effect.indexOf('.');
-            String idPart = dotIndex > 0 ? effect.substring(0, dotIndex) : effect;
-            int effectId = parseIntSafe(idPart, 0);
-            if (effectId > 0) {
-                unique.add(effectId);
+            String[] parts = effect.split("\\.", 4);
+            int effectId = parseIntSafe(parts.length > 0 ? parts[0] : "", 0);
+            if (effectId <= 0) {
+                continue;
+            }
+            int effectCount = parseIntSafe(parts.length > 2 ? parts[2] : "", 1);
+            String effectTimeout = parts.length > 3 ? parts[3] : "";
+            ContactRenderHelper.EffectState existing = unique.get(effectId);
+            if (existing == null) {
+                unique.put(effectId, new ContactRenderHelper.EffectState(effectId, effectCount, effectTimeout));
+            } else {
+                int mergedCount = Math.max(1, existing.count) + Math.max(1, effectCount);
+                String mergedTimeout = (existing.timeout == null || existing.timeout.trim().isEmpty())
+                        ? effectTimeout
+                        : existing.timeout;
+                unique.put(effectId, new ContactRenderHelper.EffectState(effectId, mergedCount, mergedTimeout));
             }
         }
-        result.addAll(unique);
+        result.addAll(unique.values());
         return result;
     }
 
