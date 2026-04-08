@@ -15,6 +15,7 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.OutputStreamWriter;
 import java.io.BufferedReader;
+import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
@@ -73,6 +74,7 @@ public class NeverApi {
     private static final Map<String, NickIdRecord> nickIdCache = new LinkedHashMap<>();
     private static volatile boolean nickIdCacheLoaded = false;
     private static final String NICK_ID_CACHE_FILE = "nick_id.txt";
+    private static final String NICK_ID_CACHE_ASSET_PATH = "info/nick_id.txt";
     private static final String LEGACY_NICK_ID_CACHE_FILE_XML = "nick_id.xml";
     private static final String INFO_SOURCE_DEFAULT = "info_api";
     private static final String INFO_SOURCE_LOGIN_SYNC = "login_sync";
@@ -1201,6 +1203,9 @@ public class NeverApi {
         }
         nickIdCache.clear();
         File file = resolveNickIdCacheFile();
+        if (file != null && !file.exists()) {
+            bootstrapNickIdCacheFromAssetsLocked(file);
+        }
         if (file != null && file.exists()) {
             readNickIdCacheLocked(file);
         } else {
@@ -1216,6 +1221,43 @@ public class NeverApi {
         }
         nickIdCacheLoaded = true;
         AppLog.d(TAG, "INFO_API_TRACE stage=id_cache_loaded, size=" + nickIdCache.size());
+    }
+
+    /**
+     * Инициализирует стартовый `nick_id.txt` из assets/info/nick_id.txt,
+     * если файл кэша ещё не создан во внешнем хранилище профиля.
+     *
+     * Важно:
+     * - копирование выполняется только один раз (если target отсутствует);
+     * - после копирования файл остаётся обычным writable файлом во внешнем каталоге `files/info/`.
+     */
+    private static void bootstrapNickIdCacheFromAssetsLocked(File targetFile) {
+        if (targetFile == null || targetFile.exists() || AppVars.getContext() == null) {
+            return;
+        }
+        File parent = targetFile.getParentFile();
+        if (parent != null && !parent.exists() && !parent.mkdirs()) {
+            AppLog.w(TAG, "INFO_API_TRACE stage=id_cache_bootstrap_assets_dir_fail, path="
+                    + parent.getAbsolutePath());
+            return;
+        }
+        try (InputStream input = AppVars.getContext().getAssets().open(NICK_ID_CACHE_ASSET_PATH);
+             FileOutputStream output = new FileOutputStream(targetFile, false)) {
+            byte[] buffer = new byte[4096];
+            int read;
+            long copiedBytes = 0L;
+            while ((read = input.read(buffer)) != -1) {
+                output.write(buffer, 0, read);
+                copiedBytes += read;
+            }
+            output.flush();
+            AppLog.i(TAG, "INFO_API_TRACE stage=id_cache_bootstrap_assets_ok, file="
+                    + targetFile.getAbsolutePath() + ", bytes=" + copiedBytes);
+        } catch (Exception e) {
+            AppLog.d(TAG, "INFO_API_TRACE stage=id_cache_bootstrap_assets_skip, reason="
+                    + e.getClass().getSimpleName() + ", message="
+                    + (e.getMessage() == null ? "" : e.getMessage()));
+        }
     }
 
     /**

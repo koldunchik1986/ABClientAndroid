@@ -212,9 +212,11 @@ namespace ABClient
                                    @"<option value=""ch.php?lo=1&r=prison"">Тюрьма</option>" +
                                    @"<option value=""ch.php?lo=1&r=shop_2"">Деревня:Лавка</option>" +
                                    @"<option value=""ch.php?lo=1&r=arena20"">Деревня:Арена</option>" +
+                                   @"<option value=""ch.php?lo=1&r=jewsp1"">Октал:Антикварная Мастерская</option>" +
                                    @"<option value=""ch.php?lo=1&r=hsp_1"">Октал:Больница</option>" +
                                    @"<option value=""ch.php?lo=1&r=shop_3"">Октал:Лавка</option>" +
                                    @"<option value=""ch.php?lo=1&r=rem_1"">Октал:Пункт переработки</option>" +
+                                   @"<option value=""ch.php?lo=1&r=bar1"">Октал:Таверна</option>" +
                                    @"</select>" +
                                    @"<br>");
             }
