@@ -4,11 +4,8 @@ package ru.neverlands.abclient.manager;
 import ru.neverlands.abclient.utils.AppLog;
 import android.content.Intent;
 import android.webkit.CookieManager;
-import android.util.Xml;
 
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
-
-import org.xmlpull.v1.XmlPullParser;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -75,7 +72,6 @@ public class NeverApi {
     private static volatile boolean nickIdCacheLoaded = false;
     private static final String NICK_ID_CACHE_FILE = "nick_id.txt";
     private static final String NICK_ID_CACHE_ASSET_PATH = "info/nick_id.txt";
-    private static final String LEGACY_NICK_ID_CACHE_FILE_XML = "nick_id.xml";
     private static final String INFO_SOURCE_DEFAULT = "info_api";
     private static final String INFO_SOURCE_LOGIN_SYNC = "login_sync";
     private static final String INFO_SOURCE_AUTO_BLAZ = "auto_blaz";
@@ -383,16 +379,12 @@ public class NeverApi {
     }
 
     private static final class NickIdRecord {
-        private final String key;
         private final String nick;
         private final String id;
-        private final long updatedAtMs;
 
-        private NickIdRecord(String key, String nick, String id, long updatedAtMs) {
-            this.key = key;
+        private NickIdRecord(String nick, String id) {
             this.nick = nick;
             this.id = id;
-            this.updatedAtMs = updatedAtMs;
         }
     }
 
@@ -1149,25 +1141,21 @@ public class NeverApi {
             return;
         }
         String requestKey = normalizeNickKey(requestNick);
-        String responseKey = normalizeNickKey(responseNick);
-        long now = System.currentTimeMillis();
+        String safeResponseNick = isEmpty(responseNick) ? requestNick.trim() : responseNick.trim();
+        String responseKey = normalizeNickKey(safeResponseNick);
         boolean wrote = false;
         synchronized (nickIdCacheLock) {
             ensureNickIdCacheLoadedLocked();
-            NickIdRecord current = nickIdCache.get(requestKey);
-            if (current == null || !id.equals(current.id) || !safeEquals(current.nick, responseNick)) {
-                nickIdCache.put(requestKey, new NickIdRecord(requestKey, responseNick, id, now));
-                wrote = true;
-            }
+            boolean idAlreadyKnown = containsIdInNickCacheLocked(id);
+            upsertNickIdMappingLocked(requestKey, safeResponseNick, id);
             if (!isEmpty(responseKey) && !responseKey.equals(requestKey)) {
-                NickIdRecord responseRecord = nickIdCache.get(responseKey);
-                if (responseRecord == null || !id.equals(responseRecord.id) || !safeEquals(responseRecord.nick, responseNick)) {
-                    nickIdCache.put(responseKey, new NickIdRecord(responseKey, responseNick, id, now));
-                    wrote = true;
-                }
+                upsertNickIdMappingLocked(responseKey, safeResponseNick, id);
             }
-            if (wrote) {
+            // Записываем файл только при появлении нового ID.
+            // Это уменьшает лишние перезаписи и не засоряет кеш дубликатами.
+            if (!idAlreadyKnown) {
                 writeNickIdCacheLocked();
+                wrote = true;
             }
         }
         synchronized (nameToId) {
@@ -1177,8 +1165,8 @@ public class NeverApi {
             }
         }
         if (wrote) {
-            AppLog.i(TAG, "INFO_API_TRACE source_module=" + sourceModule + ", stage=id_cache_write, nick=" + responseNick + ", id=" + id);
-            postNickIdWriteChatNoticeIfDevMode(sourceModule, responseNick, id);
+            AppLog.i(TAG, "INFO_API_TRACE source_module=" + sourceModule + ", stage=id_cache_write, nick=" + safeResponseNick + ", id=" + id);
+            postNickIdWriteChatNoticeIfDevMode(sourceModule, safeResponseNick, id);
         }
     }
 
@@ -1206,17 +1194,13 @@ public class NeverApi {
         if (file != null && !file.exists()) {
             bootstrapNickIdCacheFromAssetsLocked(file);
         }
+        boolean rewriteLegacyTxtToCanonical = false;
         if (file != null && file.exists()) {
-            readNickIdCacheLocked(file);
-        } else {
-            File legacyXml = resolveLegacyNickIdCacheFile();
-            if (legacyXml != null && legacyXml.exists()) {
-                readNickIdCacheLegacyXmlLocked(legacyXml);
-                if (!nickIdCache.isEmpty()) {
-                    writeNickIdCacheLocked();
-                    AppLog.i(TAG, "INFO_API_TRACE stage=id_cache_migrated_from_xml, from="
-                            + legacyXml.getAbsolutePath());
-                }
+            rewriteLegacyTxtToCanonical = readNickIdCacheLocked(file);
+            if (rewriteLegacyTxtToCanonical) {
+                writeNickIdCacheLocked();
+                AppLog.i(TAG, "INFO_API_TRACE stage=id_cache_rewrite_legacy_txt, file="
+                        + file.getAbsolutePath());
             }
         }
         nickIdCacheLoaded = true;
@@ -1262,9 +1246,17 @@ public class NeverApi {
 
     /**
      * Читает `nick_id.txt` в memory-кэш.
-     * Формат строки: `key<TAB>nick<TAB>id<TAB>updatedAtMs`.
+     *
+     * Каноничный формат строки:
+     * `playerId|nick`
+     *
+     * Для обратной совместимости:
+     * - поддерживается старый tab-формат (`key<TAB>nick<TAB>id...`),
+     * - при обнаружении старого формата возвращается `true`, чтобы caller пересобрал файл
+     *   в каноничный компактный вид.
      */
-    private static void readNickIdCacheLocked(File file) {
+    private static boolean readNickIdCacheLocked(File file) {
+        boolean legacyTabFormatDetected = false;
         try (FileInputStream stream = new FileInputStream(file);
              InputStreamReader reader = new InputStreamReader(stream, Charset.forName("UTF-8"));
              BufferedReader bufferedReader = new BufferedReader(reader)) {
@@ -1274,16 +1266,42 @@ public class NeverApi {
                 if (trimmed.isEmpty() || trimmed.startsWith("#")) {
                     continue;
                 }
-                String[] parts = line.split("\t", -1);
-                if (parts.length < 3) {
+                if (line.contains("|") && !line.contains("\t")) {
+                    String[] parts = line.split("\\|", -1);
+                    if (parts.length < 2) {
+                        continue;
+                    }
+                    String id = parts[0] == null ? "" : parts[0].trim();
+                    String nick = parts[1] == null ? "" : parts[1].trim();
+                    String key = normalizeNickKey(nick);
+                    if (!isEmpty(key) && !isEmpty(id)) {
+                        upsertNickIdMappingLocked(key, nick, id);
+                        synchronized (nameToId) {
+                            nameToId.put(key, id);
+                        }
+                    }
                     continue;
                 }
+
+                String[] parts = line.split("\t", -1);
+                if (parts.length < 2) {
+                    continue;
+                }
+                legacyTabFormatDetected = true;
                 String key = normalizeNickKey(parts[0]);
-                String nick = parts[1] == null ? "" : parts[1].trim();
-                String id = parts[2] == null ? "" : parts[2].trim();
-                long updatedAt = parts.length > 3 ? parseLongSafe(parts[3], 0L) : 0L;
+                String nick = "";
+                String id = "";
+                if (parts.length >= 3) {
+                    nick = parts[1] == null ? "" : parts[1].trim();
+                    id = parts[2] == null ? "" : parts[2].trim();
+                } else {
+                    id = parts[1] == null ? "" : parts[1].trim();
+                }
+                if (isEmpty(key) && !isEmpty(nick)) {
+                    key = normalizeNickKey(nick);
+                }
                 if (!isEmpty(key) && !isEmpty(id)) {
-                    nickIdCache.put(key, new NickIdRecord(key, nick, id, updatedAt));
+                    upsertNickIdMappingLocked(key, nick, id);
                     synchronized (nameToId) {
                         nameToId.put(key, id);
                     }
@@ -1291,42 +1309,9 @@ public class NeverApi {
             }
         } catch (Exception e) {
             AppLog.w(TAG, "INFO_API_TRACE stage=id_cache_read_fail, file=" + file.getAbsolutePath(), e);
+            return false;
         }
-    }
-
-    /**
-     * Читает legacy `nick_id.xml` в memory-кэш.
-     * Формат: `<nick_ids><entry key=\"...\" nick=\"...\" id=\"...\" updated=\"...\"/></nick_ids>`.
-     */
-    private static void readNickIdCacheLegacyXmlLocked(File file) {
-        try (FileInputStream stream = new FileInputStream(file);
-             InputStreamReader reader = new InputStreamReader(stream, Charset.forName("UTF-8"))) {
-            XmlPullParser parser = Xml.newPullParser();
-            parser.setInput(reader);
-            int eventType = parser.getEventType();
-            while (eventType != XmlPullParser.END_DOCUMENT) {
-                if (eventType == XmlPullParser.START_TAG && "entry".equals(parser.getName())) {
-                    String nick = parser.getAttributeValue(null, "nick");
-                    String id = parser.getAttributeValue(null, "id");
-                    String keyAttr = parser.getAttributeValue(null, "key");
-                    String updated = parser.getAttributeValue(null, "updated");
-                    String key = isEmpty(keyAttr) ? normalizeNickKey(nick) : normalizeNickKey(keyAttr);
-                    if (!isEmpty(key) && !isEmpty(id)) {
-                        long updatedAt = parseLongSafe(updated, 0L);
-                        String safeNick = nick == null ? "" : nick.trim();
-                        String safeId = id.trim();
-                        nickIdCache.put(key, new NickIdRecord(key, safeNick, safeId, updatedAt));
-                        synchronized (nameToId) {
-                            nameToId.put(key, safeId);
-                        }
-                    }
-                }
-                eventType = parser.next();
-            }
-        } catch (Exception e) {
-            AppLog.w(TAG, "INFO_API_TRACE stage=id_cache_read_legacy_xml_fail, file="
-                    + file.getAbsolutePath(), e);
-        }
+        return legacyTabFormatDetected;
     }
 
     /**
@@ -1339,15 +1324,26 @@ public class NeverApi {
         }
         try (FileOutputStream stream = new FileOutputStream(file, false);
              OutputStreamWriter writer = new OutputStreamWriter(stream, Charset.forName("UTF-8"))) {
-            writer.write("# key\tnick\tid\tupdatedAtMs\n");
-            for (NickIdRecord record : nickIdCache.values()) {
-                writer.write(sanitizeNickIdCacheField(record.key));
-                writer.write('\t');
-                writer.write(sanitizeNickIdCacheField(record.nick));
-                writer.write('\t');
-                writer.write(sanitizeNickIdCacheField(record.id));
-                writer.write('\t');
-                writer.write(String.valueOf(record.updatedAtMs));
+            writer.write("# playerId|nick\n");
+            LinkedHashMap<String, String> uniqueIdToNick = new LinkedHashMap<>();
+            for (Map.Entry<String, NickIdRecord> entry : nickIdCache.entrySet()) {
+                NickIdRecord record = entry.getValue();
+                if (record == null || isEmpty(record.id)) {
+                    continue;
+                }
+                if (uniqueIdToNick.containsKey(record.id)) {
+                    continue;
+                }
+                String nick = sanitizeNickIdCacheField(record.nick);
+                if (isEmpty(nick)) {
+                    nick = sanitizeNickIdCacheField(entry.getKey());
+                }
+                uniqueIdToNick.put(record.id, nick);
+            }
+            for (Map.Entry<String, String> entry : uniqueIdToNick.entrySet()) {
+                writer.write(sanitizeNickIdCacheField(entry.getKey()));
+                writer.write('|');
+                writer.write(sanitizeNickIdCacheField(entry.getValue()));
                 writer.write('\n');
             }
             writer.flush();
@@ -1380,26 +1376,49 @@ public class NeverApi {
         return cacheFile;
     }
 
-    /**
-     * Путь к legacy-файлу `nick_id.xml` в той же директории, что и текущий TXT-кэш.
-     */
-    private static File resolveLegacyNickIdCacheFile() {
-        File txt = resolveNickIdCacheFile();
-        if (txt == null) {
-            return null;
-        }
-        File parent = txt.getParentFile();
-        if (parent == null) {
-            return null;
-        }
-        return new File(parent, LEGACY_NICK_ID_CACHE_FILE_XML);
-    }
-
     private static String sanitizeNickIdCacheField(String value) {
         if (value == null) {
             return "";
         }
-        return value.replace('\t', ' ').replace('\n', ' ').replace('\r', ' ').trim();
+        return value.replace('\t', ' ')
+                .replace('\n', ' ')
+                .replace('\r', ' ')
+                .replace('|', ' ')
+                .trim();
+    }
+
+    /**
+     * Upsert nick->id в локальный map.
+     * Ник хранится для удобного каноничного вывода `playerId|nick` в txt.
+     */
+    private static void upsertNickIdMappingLocked(String normalizedNickKey, String nick, String id) {
+        if (isEmpty(normalizedNickKey) || isEmpty(id)) {
+            return;
+        }
+        NickIdRecord current = nickIdCache.get(normalizedNickKey);
+        String safeNick = isEmpty(nick) ? normalizedNickKey : nick.trim();
+        if (current == null || !id.equals(current.id)) {
+            nickIdCache.put(normalizedNickKey, new NickIdRecord(safeNick, id));
+            return;
+        }
+        if (isEmpty(current.nick) && !isEmpty(safeNick)) {
+            nickIdCache.put(normalizedNickKey, new NickIdRecord(safeNick, id));
+        }
+    }
+
+    /**
+     * Проверка существования id в кэше (для анти-дубликатного сохранения).
+     */
+    private static boolean containsIdInNickCacheLocked(String id) {
+        if (isEmpty(id)) {
+            return false;
+        }
+        for (NickIdRecord record : nickIdCache.values()) {
+            if (record != null && id.equals(record.id)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**
@@ -1456,33 +1475,6 @@ public class NeverApi {
             return INFO_SOURCE_DEFAULT;
         }
         return value;
-    }
-
-    /**
-     * Безопасный парсер long с fallback.
-     */
-    private static long parseLongSafe(String value, long fallback) {
-        if (value == null) {
-            return fallback;
-        }
-        try {
-            return Long.parseLong(value.trim());
-        } catch (Exception ignored) {
-            return fallback;
-        }
-    }
-
-    /**
-     * Null-safe сравнение строк.
-     */
-    private static boolean safeEquals(String left, String right) {
-        if (left == null && right == null) {
-            return true;
-        }
-        if (left == null || right == null) {
-            return false;
-        }
-        return left.equals(right);
     }
 
     /**
