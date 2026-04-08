@@ -181,7 +181,11 @@ public final class ContactRenderHelper {
             return "";
         }
         String timeout = normalizeTimeoutToHourMinute(state.timeout);
-        return "[x" + Math.max(1, state.count) + "]<br>(" + timeout + ")";
+        return "<span style=\"display:inline-block;font-size:75%;line-height:1.05;vertical-align:middle;\">[x"
+                + Math.max(1, state.count)
+                + "]<br>("
+                + timeout
+                + ")</span>";
     }
 
     public static List<Integer> parseEffectIdsCsv(String effectIdsCsv) {
