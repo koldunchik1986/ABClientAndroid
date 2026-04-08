@@ -33,6 +33,7 @@ import ru.neverlands.abclient.utils.Russian;
 import ru.neverlands.abclient.utils.AppVars;
 import ru.neverlands.abclient.utils.EventSounds;
 import ru.neverlands.abclient.utils.ConverterUtils;
+import ru.neverlands.abclient.utils.ContactRenderHelper;
 import ru.neverlands.abclient.utils.AppLog;
 
 public class RoomManager {
@@ -77,11 +78,16 @@ public class RoomManager {
     private static final class CachedRoomPinfoState {
         final int woundType;
         final List<Integer> effectIds;
+        final List<ContactRenderHelper.EffectState> effectStates;
         final long capturedAtMs;
 
-        CachedRoomPinfoState(int woundType, List<Integer> effectIds, long capturedAtMs) {
+        CachedRoomPinfoState(int woundType,
+                             List<Integer> effectIds,
+                             List<ContactRenderHelper.EffectState> effectStates,
+                             long capturedAtMs) {
             this.woundType = woundType;
             this.effectIds = effectIds == null ? Collections.emptyList() : effectIds;
+            this.effectStates = effectStates == null ? Collections.emptyList() : effectStates;
             this.capturedAtMs = capturedAtMs;
         }
     }
@@ -1566,15 +1572,36 @@ public class RoomManager {
                 strArray[1] = "<font color=\"#ef7f94\">" + strArray[1] + "</font>";
             }
         }
+        List<ContactRenderHelper.EffectState> cachedEffectStates = getCachedEffectStatesForNick(login);
         List<Integer> cachedEffectIds = getCachedEffectIdsForNick(login);
-        if (isShowAllRoomEffectsEnabled() && !cachedEffectIds.isEmpty()) {
-            inj = buildEffectIconsHtml(cachedEffectIds, strArray.length > 6 ? strArray[6] : "");
+        if (cachedEffectStates.isEmpty()) {
+            Contact contact = findContactByNickIgnoreCase(login);
+            if (contact != null) {
+                cachedEffectStates = normalizeEffectStates(
+                        ContactRenderHelper.parseEffectStatesCsv(contact.effectStates, contact.effectIds)
+                );
+            }
+        }
+        if (cachedEffectIds.isEmpty() && !cachedEffectStates.isEmpty()) {
+            cachedEffectIds = ContactRenderHelper.extractEffectIds(cachedEffectStates);
+        }
+        if (isShowAllRoomEffectsEnabled() && (!cachedEffectStates.isEmpty() || !cachedEffectIds.isEmpty())) {
+            if (cachedEffectStates.isEmpty()) {
+                cachedEffectStates = normalizeEffectStates(
+                        ContactRenderHelper.parseEffectStatesCsv("", ContactRenderHelper.toEffectIdsCsv(cachedEffectIds))
+                );
+            }
+            inj = buildEffectIconsHtml(cachedEffectStates, strArray.length > 6 ? strArray[6] : "");
         } else {
             Integer fallbackInjuryEffectId = injuryEffectId != null
                     ? injuryEffectId
                     : resolveInjuryEffectIdFromEffects(cachedEffectIds);
             if (fallbackInjuryEffectId != null) {
-                inj = buildSingleEffectIconHtml(fallbackInjuryEffectId, strArray.length > 6 ? strArray[6] : "");
+                ContactRenderHelper.EffectState singleState = findEffectStateById(cachedEffectStates, fallbackInjuryEffectId);
+                if (singleState == null) {
+                    singleState = new ContactRenderHelper.EffectState(fallbackInjuryEffectId, 1, "");
+                }
+                inj = buildSingleEffectIconHtml(singleState, strArray.length > 6 ? strArray[6] : "");
             }
         }
 
@@ -1699,6 +1726,7 @@ public class RoomManager {
         String pinfoNickEncoded = encodeNickForPinfoUrl(cleanNick);
         String inclinationHtml = buildUnifiedInclinationHtml(cachedContact, inclinationOverride);
         String clanHtml = buildUnifiedClanIconHtml(cachedContact, clanTokenOverride);
+        String effectsHtml = buildUnifiedEffectsHtml(cleanNick, cachedContact);
         int resolvedLevel = resolveUnifiedLevel(cleanNick, levelOverride);
         String levelHtml = resolvedLevel > 0
                 ? " [<font class=nickname color=\"" + color + "\">" + resolvedLevel + "</font>]"
@@ -1712,7 +1740,8 @@ public class RoomManager {
                 + escapedNick + "</b></font></a>"
                 + levelHtml
                 + "<a href=\"http://neverlands.ru/pinfo.cgi?" + pinfoNickEncoded
-                + "\" onclick=\"window.open(this.href);\"><img src=http://image.neverlands.ru/chat/info.gif width=11 height=12 border=0 align=absmiddle></a>";
+                + "\" onclick=\"window.open(this.href);\"><img src=http://image.neverlands.ru/chat/info.gif width=11 height=12 border=0 align=absmiddle></a>"
+                + effectsHtml;
     }
 
     private static int resolveUnifiedLevel(String cleanNick, Integer levelOverride) {
@@ -1734,6 +1763,27 @@ public class RoomManager {
             return buildClanIconHtmlByToken(clanTokenOverride, contact != null ? contact.clanName : "");
         }
         return buildContactClanIconHtml(contact);
+    }
+
+    private static String buildUnifiedEffectsHtml(String nick, Contact contact) {
+        List<ContactRenderHelper.EffectState> effectStates = Collections.emptyList();
+        if (contact != null) {
+            effectStates = normalizeEffectStates(
+                    ContactRenderHelper.parseEffectStatesCsv(contact.effectStates, contact.effectIds)
+            );
+        }
+        if (effectStates.isEmpty()) {
+            effectStates = getCachedEffectStatesForNick(nick);
+        }
+        if (effectStates.isEmpty()) {
+            List<Integer> effectIds = getCachedEffectIdsForNick(nick);
+            if (!effectIds.isEmpty()) {
+                effectStates = normalizeEffectStates(
+                        ContactRenderHelper.parseEffectStatesCsv("", ContactRenderHelper.toEffectIdsCsv(effectIds))
+                );
+            }
+        }
+        return buildEffectIconsHtml(effectStates, "");
     }
 
     /**
@@ -1779,6 +1829,8 @@ public class RoomManager {
                         + "#_room_list_container .ab-room-row a.activenick{font-size:140% !important;line-height:1.1 !important;}"
                         + "#_room_list_container .ab-room-row .activenick b{font-size:140% !important;line-height:1.1 !important;}"
                         + "#_room_list_container .ab-room-row .ab-room-level{font-size:200% !important;line-height:1.1 !important;}"
+                        + "#_room_list_container .ab-room-effect-wrap{display:inline-flex;align-items:center;gap:2px;margin-left:2px;}"
+                        + "#_room_list_container .ab-room-effect-meta{display:inline-block;line-height:1.05 !important;font-size:85% !important;vertical-align:middle;}"
                         + "</style>"
                         + "<div id=\"_room_list_container\">"
                         + filterResult.html
@@ -2202,11 +2254,17 @@ public class RoomManager {
     private static int fetchWoundTypeFromPinfo(String nick) {
         int woundType = 0;
         List<Integer> effectIds = Collections.emptyList();
+        List<ContactRenderHelper.EffectState> effectStates = Collections.emptyList();
         try {
             AppLog.d(TAG, "INFO_API_TRACE stage=info_api_runtime_call, source_module=auto_cure_room, nick=" + nick);
             NeverApi.PinfoVitals vitals = NeverApi.getPinfoVitalsFromInfoApi(nick, "auto_cure_room");
             if (vitals != null) {
                 effectIds = normalizeEffectIds(vitals.effectIds);
+                effectStates = normalizeEffectStates(
+                        ContactRenderHelper.parseEffectStatesCsv(
+                                vitals.effectStatesCsv,
+                                ContactRenderHelper.toEffectIdsCsv(effectIds))
+                );
                 // Важно для авто-лечения себя:
                 // RoomManager регулярно читает pinfo в фоне, но до этого не синхронизировал
                 // общий runtime-снимок vitals. Из-за этого AutoCure мог не видеть новые травмы
@@ -2227,7 +2285,7 @@ public class RoomManager {
         } catch (Exception e) {
             AppLog.w(TAG, AUTO_CURE_TRACE_PREFIX + " pinfo read failed for " + nick, e);
         }
-        cacheRoomPinfoState(nick, woundType, effectIds, System.currentTimeMillis());
+        cacheRoomPinfoState(nick, woundType, effectIds, effectStates, System.currentTimeMillis());
         return woundType;
     }
 
@@ -2246,7 +2304,7 @@ public class RoomManager {
         }
 
         long now = System.currentTimeMillis();
-        autoCureRoomPinfoCache.put(key, new CachedRoomPinfoState(0, Collections.emptyList(), now));
+        autoCureRoomPinfoCache.put(key, new CachedRoomPinfoState(0, Collections.emptyList(), Collections.emptyList(), now));
         AppLog.d(TAG, AUTO_CURE_TRACE_PREFIX + " post-submit verify scheduled: nick=" + cleanNick
                 + ", travm=" + cureTravm);
 
@@ -2292,7 +2350,11 @@ public class RoomManager {
         }
     }
 
-    private static void cacheRoomPinfoState(String nick, int woundType, List<Integer> effectIds, long capturedAtMs) {
+    private static void cacheRoomPinfoState(String nick,
+                                            int woundType,
+                                            List<Integer> effectIds,
+                                            List<ContactRenderHelper.EffectState> effectStates,
+                                            long capturedAtMs) {
         String key = normalizeNickKey(nick);
         if (isEmpty(key)) {
             return;
@@ -2302,6 +2364,7 @@ public class RoomManager {
                 new CachedRoomPinfoState(
                         woundType,
                         normalizeEffectIds(effectIds),
+                        normalizeEffectStates(effectStates),
                         capturedAtMs));
     }
 
@@ -2321,6 +2384,22 @@ public class RoomManager {
         return cached.effectIds == null ? Collections.emptyList() : cached.effectIds;
     }
 
+    private static List<ContactRenderHelper.EffectState> getCachedEffectStatesForNick(String nick) {
+        String key = normalizeNickKey(nick);
+        if (isEmpty(key)) {
+            return Collections.emptyList();
+        }
+        CachedRoomPinfoState cached = autoCureRoomPinfoCache.get(key);
+        if (cached == null) {
+            return Collections.emptyList();
+        }
+        long ageMs = System.currentTimeMillis() - cached.capturedAtMs;
+        if (ageMs >= AUTO_CURE_ROOM_PINFO_CACHE_TTL_MS) {
+            return Collections.emptyList();
+        }
+        return cached.effectStates == null ? Collections.emptyList() : cached.effectStates;
+    }
+
     private static List<Integer> normalizeEffectIds(List<Integer> effectIds) {
         if (effectIds == null || effectIds.isEmpty()) {
             return Collections.emptyList();
@@ -2338,6 +2417,30 @@ public class RoomManager {
         return Collections.unmodifiableList(new ArrayList<>(result));
     }
 
+    private static List<ContactRenderHelper.EffectState> normalizeEffectStates(List<ContactRenderHelper.EffectState> effectStates) {
+        if (effectStates == null || effectStates.isEmpty()) {
+            return Collections.emptyList();
+        }
+        LinkedHashMap<Integer, ContactRenderHelper.EffectState> byId = new LinkedHashMap<>();
+        for (ContactRenderHelper.EffectState state : effectStates) {
+            if (state == null || state.id <= 0) {
+                continue;
+            }
+            ContactRenderHelper.EffectState existing = byId.get(state.id);
+            if (existing == null) {
+                byId.put(state.id, new ContactRenderHelper.EffectState(state.id, state.count, state.timeout));
+            } else {
+                int mergedCount = Math.max(1, existing.count) + Math.max(1, state.count);
+                String mergedTimeout = isEmpty(existing.timeout) ? state.timeout : existing.timeout;
+                byId.put(state.id, new ContactRenderHelper.EffectState(state.id, mergedCount, mergedTimeout));
+            }
+        }
+        if (byId.isEmpty()) {
+            return Collections.emptyList();
+        }
+        return Collections.unmodifiableList(new ArrayList<>(byId.values()));
+    }
+
     private static Integer resolveInjuryEffectIdFromEffects(List<Integer> effectIds) {
         if (effectIds == null || effectIds.isEmpty()) {
             return null;
@@ -2349,34 +2452,58 @@ public class RoomManager {
         return null;
     }
 
-    private static String buildSingleEffectIconHtml(int effectId, String altText) {
+    private static String buildSingleEffectIconHtml(ContactRenderHelper.EffectState state, String altText) {
+        if (state == null || state.id <= 0) {
+            return "";
+        }
         String safeAlt = escapeHtml(altText == null ? "" : altText);
-        return "<img class=\"ab-room-injury-icon\" src=http://image.neverlands.ru/pinfo/eff_" + effectId
+        return "<span class=\"ab-room-effect-wrap\">"
+                + "<img class=\"ab-room-injury-icon\" src=http://image.neverlands.ru/pinfo/eff_" + state.id
                 + ".gif border=0 width=15 height=12 alt=\""
                 + safeAlt
-                + "\" align=absmiddle>";
+                + "\" align=absmiddle>"
+                + "<span class=\"ab-room-effect-meta\" style=\"display:inline-block;line-height:1.05;vertical-align:middle;\">"
+                + ContactRenderHelper.formatEffectCounterHtml(state)
+                + "</span></span>";
     }
 
-    private static String buildEffectIconsHtml(List<Integer> effectIds, String injuryText) {
-        if (effectIds == null || effectIds.isEmpty()) {
+    private static String buildEffectIconsHtml(List<ContactRenderHelper.EffectState> effectStates, String injuryText) {
+        if (effectStates == null || effectStates.isEmpty()) {
             return "";
         }
         String safeInjuryText = escapeHtml(injuryText == null ? "" : injuryText);
         StringBuilder sb = new StringBuilder();
-        for (Integer effectId : effectIds) {
-            if (effectId == null || effectId <= 0) {
+        for (ContactRenderHelper.EffectState state : effectStates) {
+            if (state == null || state.id <= 0) {
                 continue;
             }
+            int effectId = state.id;
             String alt = safeInjuryText.isEmpty()
                     ? ("эффект #" + effectId)
                     : safeInjuryText;
-            sb.append("<img class=\"ab-room-injury-icon\" src=http://image.neverlands.ru/pinfo/eff_")
-                    .append(effectId)
+            sb.append("<span class=\"ab-room-effect-wrap\">")
+                    .append("<img class=\"ab-room-injury-icon\" src=http://image.neverlands.ru/pinfo/eff_")
+                    .append(state.id)
                     .append(".gif border=0 width=15 height=12 alt=\"")
                     .append(alt)
-                    .append("\" align=absmiddle>");
+                    .append("\" align=absmiddle>")
+                    .append("<span class=\"ab-room-effect-meta\" style=\"display:inline-block;line-height:1.05;vertical-align:middle;\">")
+                    .append(ContactRenderHelper.formatEffectCounterHtml(state))
+                    .append("</span></span>");
         }
         return sb.toString();
+    }
+
+    private static ContactRenderHelper.EffectState findEffectStateById(List<ContactRenderHelper.EffectState> effectStates, int effectId) {
+        if (effectStates == null || effectStates.isEmpty() || effectId <= 0) {
+            return null;
+        }
+        for (ContactRenderHelper.EffectState state : effectStates) {
+            if (state != null && state.id == effectId) {
+                return state;
+            }
+        }
+        return null;
     }
 
     private static int resolveWoundTypeFromSelfSnapshot() {

@@ -165,14 +165,23 @@ public final class ContactRenderHelper {
     }
 
     public static String formatEffectCounter(EffectState state) {
+        return formatEffectCounterText(state);
+    }
+
+    public static String formatEffectCounterText(EffectState state) {
         if (state == null) {
             return "";
         }
-        String timeout = state.timeout == null ? "" : state.timeout.trim();
-        if (timeout.isEmpty()) {
-            timeout = "--:--:--";
+        String timeout = normalizeTimeoutToHourMinute(state.timeout);
+        return "[x" + Math.max(1, state.count) + "]\n(" + timeout + ")";
+    }
+
+    public static String formatEffectCounterHtml(EffectState state) {
+        if (state == null) {
+            return "";
         }
-        return "[x" + Math.max(1, state.count) + "] (" + timeout + ")";
+        String timeout = normalizeTimeoutToHourMinute(state.timeout);
+        return "[x" + Math.max(1, state.count) + "]<br>(" + timeout + ")";
     }
 
     public static List<Integer> parseEffectIdsCsv(String effectIdsCsv) {
@@ -234,5 +243,25 @@ public final class ContactRenderHelper {
             return "";
         }
         return value.trim().replace(",", "").replace("\n", "").replace("\r", "");
+    }
+
+    private static String normalizeTimeoutToHourMinute(String timeout) {
+        String safe = timeout == null ? "" : timeout.trim();
+        if (safe.isEmpty()) {
+            return "--:--";
+        }
+        String[] parts = safe.split(":");
+        if (parts.length >= 2) {
+            return padTimePart(parts[0]) + ":" + padTimePart(parts[1]);
+        }
+        return safe;
+    }
+
+    private static String padTimePart(String value) {
+        String safe = value == null ? "" : value.trim();
+        if (safe.length() == 1) {
+            return "0" + safe;
+        }
+        return safe;
     }
 }

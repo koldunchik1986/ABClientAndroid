@@ -365,6 +365,8 @@ public class ContactsAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
                 counter.setLayoutParams(textParams);
                 counter.setTextColor(Color.WHITE);
                 counter.setTextSize(10);
+                counter.setSingleLine(false);
+                counter.setLines(2);
                 counter.setText(ContactRenderHelper.formatEffectCounter(effectState));
                 effectsContainer.addView(counter);
             }

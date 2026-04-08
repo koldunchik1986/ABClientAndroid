@@ -115,6 +115,7 @@ public class NeverApi {
         // 0=no wounds, 1=light, 2=medium, 3=heavy, 4=battle
         public final Integer topWoundType;
         public final List<Integer> effectIds;
+        public final String effectStatesCsv;
 
         public PinfoVitals(Integer curHp, Integer maxHp, Integer curMa, Integer maxMa, Integer curTire,
                            int[] poisonAndWounds) {
@@ -128,6 +129,11 @@ public class NeverApi {
 
         public PinfoVitals(Integer curHp, Integer maxHp, Integer curMa, Integer maxMa, Integer curTire,
                            int[] poisonAndWounds, Integer topWoundType, List<Integer> effectIds) {
+            this(curHp, maxHp, curMa, maxMa, curTire, poisonAndWounds, topWoundType, effectIds, "");
+        }
+
+        public PinfoVitals(Integer curHp, Integer maxHp, Integer curMa, Integer maxMa, Integer curTire,
+                           int[] poisonAndWounds, Integer topWoundType, List<Integer> effectIds, String effectStatesCsv) {
             this.curHp = curHp;
             this.maxHp = maxHp;
             this.curMa = curMa;
@@ -136,6 +142,7 @@ public class NeverApi {
             this.poisonAndWounds = normalizePoisonAndWounds(poisonAndWounds);
             this.topWoundType = normalizeTopWoundType(topWoundType);
             this.effectIds = normalizeEffectIds(effectIds);
+            this.effectStatesCsv = effectStatesCsv == null ? "" : effectStatesCsv.trim();
         }
     }
 
@@ -657,7 +664,8 @@ public class NeverApi {
                 snapshot.hmu.curTire,
                 poisonAndWounds,
                 topWoundType,
-                buildEffectIdsFromEffects(snapshot.effects)
+                buildEffectIdsFromEffects(snapshot.effects),
+                buildEffectStatesCsvFromEffects(snapshot.effects)
         );
     }
 
@@ -758,6 +766,44 @@ public class NeverApi {
             }
         }
         return new ArrayList<>(ids);
+    }
+
+    private static String buildEffectStatesCsvFromEffects(List<InfoApiEffect> effects) {
+        if (effects == null || effects.isEmpty()) {
+            return "";
+        }
+        LinkedHashMap<Integer, InfoApiEffect> byId = new LinkedHashMap<>();
+        for (InfoApiEffect effect : effects) {
+            if (effect == null || effect.id <= 0) {
+                continue;
+            }
+            InfoApiEffect existing = byId.get(effect.id);
+            if (existing == null) {
+                byId.put(effect.id, effect);
+            } else {
+                int mergedCount = Math.max(1, existing.count) + Math.max(1, effect.count);
+                String mergedTimeout = isEmpty(existing.timeout) ? effect.timeout : existing.timeout;
+                byId.put(effect.id, new InfoApiEffect(effect.id, effect.name, mergedCount, mergedTimeout));
+            }
+        }
+        if (byId.isEmpty()) {
+            return "";
+        }
+        StringBuilder sb = new StringBuilder();
+        for (InfoApiEffect effect : byId.values()) {
+            if (effect == null || effect.id <= 0) {
+                continue;
+            }
+            if (sb.length() > 0) {
+                sb.append(',');
+            }
+            sb.append(effect.id)
+                    .append(':')
+                    .append(Math.max(1, effect.count))
+                    .append(':')
+                    .append(sanitizeEffectStatePart(effect.timeout));
+        }
+        return sb.toString();
     }
 
     /**
@@ -1698,6 +1744,13 @@ public class NeverApi {
 
     private static boolean isEmpty(String value) {
         return value == null || value.trim().isEmpty();
+    }
+
+    private static String sanitizeEffectStatePart(String value) {
+        if (value == null) {
+            return "";
+        }
+        return value.trim().replace(",", "").replace("\n", "").replace("\r", "");
     }
 
     /**
