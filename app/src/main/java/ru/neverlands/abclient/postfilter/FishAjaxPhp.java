@@ -135,6 +135,19 @@ public final class FishAjaxPhp {
             int errCount = registerAct1ErrAndMaybeRecover("wrong_code_protection");
             Log.w(TAG, "AUTO_FISH_TRACE act2 returned wrong protection code, errCount=" + errCount
                     + ", address=" + address);
+            long now = System.currentTimeMillis();
+            long sinceAct1Ms = lastFishAct1AtMs > 0L ? (now - lastFishAct1AtMs) : -1L;
+            long sinceAct2Ms = lastFishAct2AtMs > 0L ? (now - lastFishAct2AtMs) : -1L;
+            long neverTimerDueInMs = AppVars.NeverTimer > 0L ? Math.max(0L, AppVars.NeverTimer - now) : 0L;
+            String msgWrongCodeDiag = "AUTO_FISH_TRACE wrong-code diag: token=" + lastFishCycleToken
+                    + ", sinceAct1Ms=" + sinceAct1Ms
+                    + ", sinceAct2Ms=" + sinceAct2Ms
+                    + ", neverTimerDueInMs=" + neverTimerDueInMs
+                    + ", suppressBgProbes=" + AppVars.suppressBackgroundProbesDuringFishing
+                    + ", codeAddressPresent=" + (AppVars.CodeAddress != null && !AppVars.CodeAddress.isEmpty())
+                    + ", fightLinkPresent=" + (AppVars.FightLink != null && !AppVars.FightLink.isEmpty());
+            Log.w(TAG, msgWrongCodeDiag);
+            FileLogger.warn(TAG, msgWrongCodeDiag);
             // КРИТИЧНО: vcode из озера невалиден - помечаем озеро как испорченное
             // Следующий цикл перезагружает озеро и получает свежий vcode
             AppVars.FishLakeShouldBeRefreshed = true;
