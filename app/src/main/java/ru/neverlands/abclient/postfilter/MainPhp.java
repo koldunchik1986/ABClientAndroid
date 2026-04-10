@@ -4604,16 +4604,7 @@ public class MainPhp {
                 && !autoFightReloadProbeAddress && isAutoFishEnabledByPreference()) {
             long nowMs = System.currentTimeMillis();
             boolean neverTimerReady = AppVars.NeverTimer <= 0L || nowMs > AppVars.NeverTimer;
-            boolean forceFishGearRecovery = AppVars.AutoFishCheckUd || AppVars.AutoFishWearUd;
-            if (!neverTimerReady && forceFishGearRecovery) {
-                String msg_timerBypass = "AUTO_FISH_TRACE bypass NeverTimer for gear recovery: dueInMs="
-                        + Math.max(0L, AppVars.NeverTimer - nowMs)
-                        + ", checkUd=" + AppVars.AutoFishCheckUd
-                        + ", wearUd=" + AppVars.AutoFishWearUd;
-                Log.d(TAG, msg_timerBypass);
-                FileLogger.trace(TAG, msg_timerBypass);
-            }
-            if (neverTimerReady || forceFishGearRecovery) {
+            if (neverTimerReady) {
                 if (neverTimerReady) {
                 String fishFatigueHtml = mainPhpAutoFishFatigueStep(html);
                 if (fishFatigueHtml != null && !fishFatigueHtml.isEmpty()) {
@@ -4771,6 +4762,11 @@ public class MainPhp {
                         FileLogger.warn(TAG, msg_nofish);
                     }
                 }
+            } else {
+                String msg_waitFish = "AUTO_FISH_TRACE wait NeverTimer before fish action: dueInMs="
+                        + Math.max(0L, AppVars.NeverTimer - nowMs);
+                Log.d(TAG, msg_waitFish);
+                FileLogger.trace(TAG, msg_waitFish);
             }
         }
         // Оркестрация режима "Снежок/Ярость" (buttonFury из C#) + авто-надевание свитка:
