@@ -16,6 +16,7 @@ import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import ru.neverlands.abclient.utils.AppLog;
 import ru.neverlands.abclient.manager.AutoFunctionsManager;
 import ru.neverlands.abclient.MainActivity;
 import ru.neverlands.abclient.model.Prims;
@@ -146,8 +147,7 @@ public final class FishAjaxPhp {
                     + ", suppressBgProbes=" + AppVars.suppressBackgroundProbesDuringFishing
                     + ", codeAddressPresent=" + (AppVars.CodeAddress != null && !AppVars.CodeAddress.isEmpty())
                     + ", fightLinkPresent=" + (AppVars.FightLink != null && !AppVars.FightLink.isEmpty());
-            Log.w(TAG, msgWrongCodeDiag);
-            FileLogger.warn(TAG, msgWrongCodeDiag);
+            AppLog.w(TAG, TAG, msgWrongCodeDiag);
             // КРИТИЧНО: vcode из озера невалиден - помечаем озеро как испорченное
             // Следующий цикл перезагружает озеро и получает свежий vcode
             AppVars.FishLakeShouldBeRefreshed = true;
@@ -231,21 +231,18 @@ public final class FishAjaxPhp {
         }
 
         String beforeSelectMsg = "AUTO_FISH_TRACE before selectAllowedBait: state has " + state.baits.size() + " baits";
-        Log.d(TAG, beforeSelectMsg);
-        FileLogger.trace(TAG, beforeSelectMsg);
+        AppLog.d(TAG, TAG, beforeSelectMsg);
         
         FishBaitSelection selection = selectAllowedBait(state.baits);
         if (selection == null) {
             String failMsg = "AUTO_FISH_TRACE act1: ❌ selectAllowedBait returned null, disabling auto-fish";
-            Log.e(TAG, failMsg);
-            FileLogger.trace(TAG, failMsg);
+            AppLog.e(TAG, TAG, failMsg);
             disableAutoFish("Нет доступной приманки по настройкам");
             return;
         }
 
         String selectedMsg = "AUTO_FISH_TRACE act1: ✅ bait selected id=" + selection.id + " name=" + selection.name + " count=" + selection.count;
-        Log.i(TAG, selectedMsg);
-        FileLogger.trace(TAG, selectedMsg);
+        AppLog.i(TAG, TAG, selectedMsg);
 
         AppVars.AutoFishLikeId = selection.id;
         AppVars.AutoFishLikeVal = String.valueOf(selection.count);
@@ -266,8 +263,7 @@ public final class FishAjaxPhp {
         // и принудительно перезагружает main.php, теряя сессию
         SessionManager.getInstance().parseVCodeFromHtml("vcode=" + state.vcode, "fish");
         String msg_vcode = "AUTO_FISH_TRACE act1: vcode parsed through SessionManager, vcode=" + state.vcode;
-        Log.d(TAG, msg_vcode);
-        FileLogger.trace(TAG, msg_vcode);
+        AppLog.d(TAG, TAG, msg_vcode);
         
         lastFishAct1AtMs = System.currentTimeMillis();
         // Блокируем фоновые probe'ы (main.php?go=inf&af_tick=1) на время критической последовательности act=1→act=2.
@@ -279,16 +275,14 @@ public final class FishAjaxPhp {
         // Сервер может отправить "<font color=#CC0000>Внимание! Возможен перегруз." если текущая масса критична
         if (checkOverweightHtmlPattern(html)) {
             String msg_overweight = "❌ AUTO_FISH_TRACE act1: Перегруз обнаружен в HTML, рыбалка остановлена";
-            Log.e(TAG, msg_overweight);
-            FileLogger.trace(TAG, msg_overweight);
+            AppLog.e(TAG, TAG, msg_overweight);
             return;  // Рыбалка остановлена
         }
 
         // C# parity: переодевание снастей выполняется только через MainPhp (AutoFishCheckUd/AutoFishWearUd).
         // Здесь оставляем лишь разбор act=1 + выбор приманки + капча/act=2.
         String parityRouteMsg = "AUTO_FISH_TRACE act1 parity route: gear/overweight checks delegated to MainPhp";
-        Log.d(TAG, parityRouteMsg);
-        FileLogger.trace(TAG, parityRouteMsg);
+        AppLog.d(TAG, TAG, parityRouteMsg);
 
         boolean captchaRequired = state.captchaToken != null
                 && !state.captchaToken.isEmpty()
@@ -388,16 +382,14 @@ public final class FishAjaxPhp {
                     // Get fresh VCode from SessionManager for fallback request
                     String freshVcode = SessionManager.getInstance().getValidVCodeForAction("fish_act2_fallback");
                     if (freshVcode == null || freshVcode.isEmpty()) {
-                        Log.w(TAG, "AUTO_FISH_TRACE no-captcha fallback: no VCode available, skipping loadUrl");
-                        FileLogger.trace(TAG, "AUTO_FISH_TRACE no-captcha fallback: VCode null, skipping request");
+                        AppLog.w(TAG, "AUTO_FISH_TRACE no-captcha fallback: no VCode available, skipping loadUrl");
                         return;
                     }
                     String url = "http://neverlands.ru/gameplay/ajax/fish_ajax.php?act=2"
                             + "&primid=" + safePrimid
                             + "&vcode=" + freshVcode
                             + "&r=" + System.currentTimeMillis();
-                    Log.d(TAG, "AUTO_FISH_TRACE no-captcha fallback loadUrl: " + url);
-                    FileLogger.trace(TAG, "AUTO_FISH_TRACE no-captcha fallback with freshVcode");
+                    AppLog.d(TAG, "AUTO_FISH_TRACE no-captcha fallback loadUrl: " + url + " (freshVcode)");
                     webView.loadUrl(url);
                 });
             }, FISH_NO_CAPTCHA_FALLBACK_DELAY_MS);
@@ -785,45 +777,38 @@ public final class FishAjaxPhp {
     private static FishAct1State parseFishAct1State(String html) {
         if (html == null || html.isEmpty()) {
             String msg = "AUTO_FISH_TRACE parseFishAct1State: html is null or empty";
-            Log.w(TAG, msg);
-            FileLogger.trace(TAG, msg);
+            AppLog.w(TAG, TAG, msg);
             return null;
         }
 
         // Логируем первые 500 символов для диагностики
         String htmlPreview = html.length() > 500 ? html.substring(0, 500) + "..." : html;
         String msg1 = "AUTO_FISH_TRACE parseFishAct1State: input html=" + htmlPreview;
-        Log.d(TAG, msg1);
-        FileLogger.trace(TAG, msg1);
+        AppLog.d(TAG, TAG, msg1);
 
         String[] sections = html.split("@");
         String msg2 = "AUTO_FISH_TRACE parseFishAct1State: split into " + sections.length + " sections";
-        Log.d(TAG, msg2);
-        FileLogger.trace(TAG, msg2);
+        AppLog.d(TAG, TAG, msg2);
         
         for (int i = 0; i < sections.length && i < 10; i++) {
             String preview = sections[i].length() > 100 ? sections[i].substring(0, 100) + "..." : sections[i];
             String sectionMsg = "AUTO_FISH_TRACE section[" + i + "]=" + preview;
-            Log.d(TAG, sectionMsg);
-            FileLogger.trace(TAG, sectionMsg);
+            AppLog.d(TAG, TAG, sectionMsg);
         }
         
         if (sections.length < 6) {
             String errMsg = "AUTO_FISH_TRACE parseFishAct1State: ❌ REJECTED expected 6+ sections, got " + sections.length;
-            Log.w(TAG, errMsg);
-            FileLogger.trace(TAG, errMsg);
+            AppLog.w(TAG, TAG, errMsg);
             return null;
         }
 
         String payload = sections[5] == null ? "" : sections[5].trim();
         String payloadMsg = "AUTO_FISH_TRACE parseFishAct1State: payload (section[5])=" + payload;
-        Log.d(TAG, payloadMsg);
-        FileLogger.trace(TAG, payloadMsg);
+        AppLog.d(TAG, TAG, payloadMsg);
         
         if (!payload.startsWith("[1,")) {
             String errMsg2 = "AUTO_FISH_TRACE parseFishAct1State: ❌ REJECTED payload does not start with [1,";
-            Log.w(TAG, errMsg2);
-            FileLogger.trace(TAG, errMsg2);
+            AppLog.w(TAG, TAG, errMsg2);
             return null;
         }
 
@@ -832,8 +817,7 @@ public final class FishAjaxPhp {
                 Pattern.DOTALL).matcher(payload);
         if (!header.find()) {
             String errMsg3 = "AUTO_FISH_TRACE parseFishAct1State: ❌ REJECTED header regex failed";
-            Log.w(TAG, errMsg3);
-            FileLogger.trace(TAG, errMsg3);
+            AppLog.w(TAG, TAG, errMsg3);
             return null;
         }
 
@@ -845,8 +829,7 @@ public final class FishAjaxPhp {
 
         String headerMsg = "AUTO_FISH_TRACE parseFishAct1State: ✅ APPROVED captcha=" + state.captchaToken 
                 + ", vcode=" + state.vcode + ", mass=" + state.massCurrent + "/" + state.massMax;
-        Log.d(TAG, headerMsg);
-        FileLogger.trace(TAG, headerMsg);
+        AppLog.d(TAG, TAG, headerMsg);
 
         Matcher baitMatcher = Pattern.compile("\\[(38|39|40|41|42|43|44|45|46),\\s*\"([^\"]+)\",\\s*(\\d+)\\]")
                 .matcher(payload);
@@ -856,13 +839,11 @@ public final class FishAjaxPhp {
             int count = ParseUtils.parseIntSafe(baitMatcher.group(3));
             state.baits.add(new FishBaitSelection(id, name, count));
             String baitMsg = "AUTO_FISH_TRACE parseFishAct1State: found bait id=" + id + ", name=" + name + ", count=" + count;
-            Log.d(TAG, baitMsg);
-            FileLogger.trace(TAG, baitMsg);
+            AppLog.d(TAG, TAG, baitMsg);
         }
         
         String finalMsg = "AUTO_FISH_TRACE parseFishAct1State: ✅ SUCCESS total baits=" + state.baits.size();
-        Log.d(TAG, finalMsg);
-        FileLogger.trace(TAG, finalMsg);
+        AppLog.d(TAG, TAG, finalMsg);
         return state;
     }
 
@@ -885,46 +866,39 @@ public final class FishAjaxPhp {
     private static FishBaitSelection selectAllowedBait(List<FishBaitSelection> baits) {
         if (baits == null || baits.isEmpty() || AppVars.Profile == null) {
             String msg = "AUTO_FISH_TRACE selectAllowedBait: ❌ REJECTED baits null/empty or Profile null";
-            Log.w(TAG, msg);
-            FileLogger.trace(TAG, msg);
+            AppLog.w(TAG, TAG, msg);
             return null;
         }
         
         String baitListMsg = "AUTO_FISH_TRACE selectAllowedBait: checking " + baits.size() + " baits, profile mask=" + AppVars.Profile.FishEnabledPrims;
-        Log.d(TAG, baitListMsg);
-        FileLogger.trace(TAG, baitListMsg);
+        AppLog.d(TAG, TAG, baitListMsg);
         
         for (FishBaitSelection bait : baits) {
             if (bait == null) {
                 String nullMsg = "AUTO_FISH_TRACE selectAllowedBait: ⚠️ bait is null, skipping";
-                Log.d(TAG, nullMsg);
-                FileLogger.trace(TAG, nullMsg);
+                AppLog.d(TAG, TAG, nullMsg);
                 continue;
             }
             
             if (bait.count <= 4) {
                 String countMsg = "AUTO_FISH_TRACE selectAllowedBait: ❌ id=" + bait.id + " name=" + bait.name + " count=" + bait.count + " <= 4, skipping";
-                Log.d(TAG, countMsg);
-                FileLogger.trace(TAG, countMsg);
+                AppLog.d(TAG, TAG, countMsg);
                 continue;
             }
             
             boolean enabled = isBaitEnabledInProfile(bait.id);
             String checkMsg = "AUTO_FISH_TRACE selectAllowedBait: checking id=" + bait.id + " name=" + bait.name + " count=" + bait.count + " enabled=" + enabled;
-            Log.d(TAG, checkMsg);
-            FileLogger.trace(TAG, checkMsg);
+            AppLog.d(TAG, TAG, checkMsg);
             
             if (enabled) {
                 String selectedMsg = "AUTO_FISH_TRACE selectAllowedBait: ✅ SELECTED id=" + bait.id + " name=" + bait.name + " count=" + bait.count;
-                Log.i(TAG, selectedMsg);
-                FileLogger.trace(TAG, selectedMsg);
+                AppLog.i(TAG, TAG, selectedMsg);
                 return bait;
             }
         }
         
         String noSelectionMsg = "AUTO_FISH_TRACE selectAllowedBait: ❌ REJECTED no suitable bait found";
-        Log.w(TAG, noSelectionMsg);
-        FileLogger.trace(TAG, noSelectionMsg);
+        AppLog.w(TAG, TAG, noSelectionMsg);
         return null;
     }
 
@@ -1055,8 +1029,7 @@ public final class FishAjaxPhp {
             
         } catch (NumberFormatException e) {
             // Если не можем распарсить массу - позволяем заброс (fallback)
-            Log.w(TAG, "[FISH_MASS_CHECK] Parse error for mass values, allowing cast as fallback: " + e.getMessage());
-            FileLogger.trace(TAG, "[FISH_MASS_ERROR] " + e.getMessage());
+            AppLog.w(TAG, "[FISH_MASS_CHECK] Parse error for mass values, allowing cast as fallback: " + e.getMessage());
             return true;
         }
     }
@@ -1319,8 +1292,7 @@ public final class FishAjaxPhp {
         AppVars.AutoFishCheckUd = true;
         AppVars.AutoFishWearUd = false;
         String msg = "AUTO_FISH_TRACE hard-stop no-gear: schedule gear recovery bootstrap, address=" + address;
-        Log.w(TAG, msg);
-        FileLogger.trace(TAG, msg);
+        AppLog.w(TAG, TAG, msg);
         pushChatMessage(MainPhp.buildServerChatTimeHtmlExternal()
                 + "<font color=#cc6600><b>[Авто-рыбалка] Нет снастей в руках. Запускаю проверку и переодевание удочки.</b></font>");
         requestAutoFishBootstrap("missing_gear_server");
@@ -1978,8 +1950,7 @@ public final class FishAjaxPhp {
                 String curDlg1 = sldlg[2]; // текущий долг для Hand1
                 if (isBrokenByCurrentDolg(curDlg1)) {
                     String msg = "❌ [FISH_GEAR_CHECK_REJECTED] Hand1 (" + hand1Name + ") broken dolg=" + curDlg1;
-                    Log.w(TAG, msg);
-                    FileLogger.warn(TAG, msg);
+                    AppLog.w(TAG, TAG, msg);
                     return true; // Одета сломанная удочка - переодеть
                 }
             }
@@ -1995,8 +1966,7 @@ public final class FishAjaxPhp {
                 String curDlg2 = sldlg[12]; // текущий долг для Hand2
                 if (isBrokenByCurrentDolg(curDlg2)) {
                     String msg = "❌ [FISH_GEAR_CHECK_REJECTED] Hand2 (" + hand2Name + ") broken dolg=" + curDlg2;
-                    Log.w(TAG, msg);
-                    FileLogger.warn(TAG, msg);
+                    AppLog.w(TAG, TAG, msg);
                     return true; // Одета сломанная удочка - переодеть
                 }
             }
@@ -2024,8 +1994,7 @@ public final class FishAjaxPhp {
             return isBroken;
         } catch (NumberFormatException e) {
             String msg = "⚠️ [FISH_GEAR_CHECK_ERROR] Failed to parse dolg=" + dolgStr;
-            Log.w(TAG, msg);
-            FileLogger.warn(TAG, msg);
+            AppLog.w(TAG, TAG, msg);
             return false;
         }
     }
@@ -2059,8 +2028,7 @@ public final class FishAjaxPhp {
 
         // Перегруз обнаружен в HTML ответе!
         String msg = "⚠️ FISH_OVERWEIGHT: сервер отправил сообщение о перегрузе";
-        Log.w(TAG, msg);
-        FileLogger.trace(TAG, msg);
+        AppLog.w(TAG, TAG, msg);
 
         // Проверяем настройку FishStopOverWeight
         boolean shouldStop = AppVars.Profile != null && AppVars.Profile.FishStopOverWeight;
@@ -2068,8 +2036,7 @@ public final class FishAjaxPhp {
         if (shouldStop) {
             // Останавливаем рыбалку по настройке
             String stopMsg = "❌ FISH_STOP_OVERWEIGHT: Авто-рыбалка остановлена - из за перегруза массы (FishStopOverWeight=true)";
-            Log.e(TAG, stopMsg);
-            FileLogger.trace(TAG, stopMsg);
+            AppLog.e(TAG, TAG, stopMsg);
 
             disableAutoFish("из за перегруза массы");
             return true;  // Рыбалка остановлена
@@ -2078,8 +2045,7 @@ public final class FishAjaxPhp {
             // Ожидаем автоматическую смену удочки при следующей попытке
             String continueMsg = "⚠️ FISH_CONTINUE_ON_OVERWEIGHT: Перегруз обнаружен, но FishStopOverWeight=false, " +
                     "ожидаем смены удочки при следующем цикле";
-            Log.i(TAG, continueMsg);
-            FileLogger.trace(TAG, continueMsg);
+            AppLog.i(TAG, TAG, continueMsg);
             return false;  // Продолжаем - попробуем одеть новую удочку
         }
     }
@@ -2108,14 +2074,12 @@ public final class FishAjaxPhp {
             GearParser gear = new GearParser(html);
             if (!gear.isValid) {
                 String msg = "⚠️ FISH_GEAR_PARSE_FAILED: could not parse current gear, skipping rod replacement";
-                Log.w(TAG, msg);
-                FileLogger.trace(TAG, msg);
+                AppLog.w(TAG, TAG, msg);
                 return false;
             }
 
             String gearStatus = "FISH_GEAR_STATUS: " + gear.getStatusString();
-            Log.d(TAG, gearStatus);
-            FileLogger.trace(TAG, gearStatus);
+            AppLog.d(TAG, TAG, gearStatus);
 
             // Проверяем настройку FishAutoWear - включено ли автооформление
             boolean autoWearEnabled = AppVars.Profile != null && AppVars.Profile.FishAutoWear;
@@ -2133,15 +2097,13 @@ public final class FishAjaxPhp {
 
             // Рука 1 пуста или там не удочка - пытаемся одеть
             String tryWearMsg = "FISH_GEAR_TRY_WEAR_HAND1: рука 1 пуста или требуется смена, ищем удочку в инвентаре";
-            Log.i(TAG, tryWearMsg);
-            FileLogger.trace(TAG, tryWearMsg);
+            AppLog.i(TAG, TAG, tryWearMsg);
 
             // Парсим инвентарь
             List<InventoryParser.InventoryItem> inventory = InventoryParser.parseInventory(html);
             if (inventory.isEmpty()) {
                 String noInvMsg = "❌ FISH_NO_INVENTORY: инвентарь пуст или не спарсен, не можем одеть удочку";
-                Log.e(TAG, noInvMsg);
-                FileLogger.trace(TAG, noInvMsg);
+                AppLog.e(TAG, TAG, noInvMsg);
                 disableAutoFish("нет удочки в инвентаре");
                 return true;  // Остановили рыбалку
             }
@@ -2152,8 +2114,7 @@ public final class FishAjaxPhp {
 
             if (rodToWear == null) {
                 String noRodMsg = "❌ FISH_NO_ROD_FOUND: удочка '" + rodPreference + "' не найдена в инвентаре";
-                Log.e(TAG, noRodMsg);
-                FileLogger.trace(TAG, noRodMsg);
+                AppLog.e(TAG, TAG, noRodMsg);
                 disableAutoFish("нет нужной удочки в инвентаре");
                 return true;  // Остановили рыбалку
             }
@@ -2163,8 +2124,7 @@ public final class FishAjaxPhp {
                 "✅ FISH_WEAR_ROD: одеваем '%s' (dur=%s) по ссылке: %s",
                 rodToWear.name, rodToWear.durability, rodToWear.wearUrl
             );
-            Log.i(TAG, wearMsg);
-            FileLogger.trace(TAG, wearMsg);
+            AppLog.i(TAG, TAG, wearMsg);
 
             // Отправляем запрос на одевание
             executeWearLink(rodToWear.wearUrl, rodToWear.name);
@@ -2172,8 +2132,7 @@ public final class FishAjaxPhp {
 
         } catch (Exception e) {
             String errMsg = "⚠️ FISH_WEAR_ERROR: " + e.getMessage();
-            Log.w(TAG, errMsg, e);
-            FileLogger.trace(TAG, errMsg);
+            AppLog.w(TAG, TAG, errMsg, e);
             return false;
         }
     }
@@ -2211,16 +2170,14 @@ public final class FishAjaxPhp {
                 "FISH_WEAR_EXECUTE: loading URL to wear '%s': %s",
                 rodName, fullUrl
             );
-            Log.d(TAG, logMsg);
-            FileLogger.trace(TAG, logMsg);
+            AppLog.d(TAG, TAG, logMsg);
 
             // Загружаем URL - это выполнит GET запрос и вернёт HTML с новым состоянием gear
             webView.loadUrl(fullUrl);
 
         } catch (Exception e) {
             String errMsg = "⚠️ executeWearLink error: " + e.getMessage();
-            Log.w(TAG, errMsg, e);
-            FileLogger.trace(TAG, errMsg);
+            AppLog.w(TAG, TAG, errMsg, e);
         }
     }
 }

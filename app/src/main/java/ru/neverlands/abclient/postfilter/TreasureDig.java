@@ -11,6 +11,7 @@ import java.util.Locale;
 
 import ru.neverlands.abclient.manager.AutoFunctionsManager;
 import ru.neverlands.abclient.model.ParsedDressed;
+import ru.neverlands.abclient.utils.AppLog;
 import ru.neverlands.abclient.utils.AppVars;
 import ru.neverlands.abclient.utils.ExtMap;
 import ru.neverlands.abclient.utils.FileLogger;
@@ -408,8 +409,7 @@ public final class TreasureDig {
         if (vcode != null) {
             link += "&vcode=" + vcode;
         } else {
-            Log.w(TAG, "[VCode_MISSING] getValidVCodeForAction returned null for treasure_dig");
-            FileLogger.trace("vcode_migration", "[VCode_MISSING] treasure_dig action, will retry");
+            AppLog.w("vcode_migration", TAG, "[VCode_MISSING] getValidVCodeForAction returned null for treasure_dig");
         }
         return host.buildRedirectHtml("Авто-Клад: возврат на природу", link);
     }

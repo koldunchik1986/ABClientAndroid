@@ -75,8 +75,7 @@ public class SessionManager {
     public SessionContext parseVCodeFromHtml(String html, String source) {
         if (html == null || html.isEmpty()) {
             String msg = "PARSE_VCODE: html is empty, source=" + source;
-            Log.w(TAG, "⚠️ " + msg);
-            FileLogger.warn("SessionManager", msg);
+            AppLog.w("SessionManager", TAG, "⚠️ " + msg);
             return null;
         }
 
@@ -84,8 +83,7 @@ public class SessionManager {
             String vcode = extractVCode(html);
             if (vcode.isEmpty()) {
                 String msg = "PARSE_VCODE_FAILED: no vcode found in HTML, source=" + source;
-                Log.w(TAG, "⚠️ " + msg);
-                FileLogger.warn("SessionManager", msg);
+                AppLog.w("SessionManager", TAG, "⚠️ " + msg);
                 return null;
             }
 
@@ -108,8 +106,7 @@ public class SessionManager {
                     + ", vcode=" + vcode.substring(0, 8) + "..."
                     + ", version=" + newVersion
                     + ", ageMs=0";
-                Log.d(TAG, "✅ " + msg);
-                FileLogger.trace("SessionManager", msg);
+                AppLog.d("SessionManager", TAG, "✅ " + msg);
             } finally {
                 contextLock.writeLock().unlock();
             }
@@ -117,8 +114,7 @@ public class SessionManager {
             return newContext;
         } catch (Exception e) {
             String msg = "VCODE_PARSE_ERROR: " + e.getMessage();
-            Log.e(TAG, "❌ " + msg, e);
-            FileLogger.error("SessionManager", msg, e);
+            AppLog.e("SessionManager", TAG, "❌ " + msg, e);
             return null;
         }
     }
@@ -146,28 +142,24 @@ public class SessionManager {
             if ("fight_fallback".equals(actionName)) {
                 actualTimeout = FIGHT_CONTEXT_TIMEOUT;  // 2 минуты вместо стандартных 5 минут
                 String msg = "FIGHT_FALLBACK_MODE: using extended timeout " + actualTimeout + "ms";
-                Log.d(TAG, "🎯 " + msg);
-                FileLogger.trace("SessionManager", msg);
+                AppLog.d("SessionManager", TAG, "🎯 " + msg);
             }
             
             if (currentContext == null) {
                 // 🎯 Если контекст пуст но идет бой - попробовать использовать cached vcode с начала боя
                 if (fightInProgress && fightStartVCode != null && !fightStartVCode.isEmpty()) {
                     String msg = "FIGHT_CACHE: using cached vcode from fight start, vcode=" + fightStartVCode.substring(0, 8) + "...";
-                    Log.d(TAG, "🎯 " + msg);
-                    FileLogger.trace("SessionManager", msg);
+                    AppLog.d("SessionManager", TAG, "🎯 " + msg);
                     return fightStartVCode;
                 }
                 String noSessionMsg = "NO_SESSION: actionName=" + actionName + " - контекст пуст";
-                Log.w(TAG, "⚠️ " + noSessionMsg);
-                FileLogger.warn("SessionManager", noSessionMsg);
+                AppLog.w("SessionManager", TAG, "⚠️ " + noSessionMsg);
                 return null;
             }
 
             if (currentContext.getParsedVCode().isEmpty()) {
                 String msg = "EMPTY_VCODE: actionName=" + actionName;
-                Log.w(TAG, "⚠️ " + msg);
-                FileLogger.warn("SessionManager", msg);
+                AppLog.w("SessionManager", TAG, "⚠️ " + msg);
                 return null;
             }
 
@@ -179,15 +171,13 @@ public class SessionManager {
                         + ", ageMs=" + ageMs
                         + ", maxAgeMs=" + actualTimeout
                         + ", cached_vcode=" + fightStartVCode.substring(0, 8) + "...";
-                    Log.d(TAG, "🎯 " + msg);
-                    FileLogger.trace("SessionManager", msg);
+                    AppLog.d("SessionManager", TAG, "🎯 " + msg);
                     return fightStartVCode;
                 }
                 String staleMsg = "STALE_SESSION: actionName=" + actionName 
                     + ", ageMs=" + ageMs 
                     + ", maxAgeMs=" + actualTimeout;
-                Log.w(TAG, "⚠️ " + staleMsg);
-                FileLogger.warn("SessionManager", staleMsg);
+                AppLog.w("SessionManager", TAG, "⚠️ " + staleMsg);
                 return null;
             }
 
@@ -196,8 +186,7 @@ public class SessionManager {
                 + ", vcode=" + vcode.substring(0, 8) + "..."
                 + ", ageMs=" + currentContext.getAgeMs()
                 + ", source=" + currentContext.getSource();
-            Log.d(TAG, "✅ " + msg);
-            FileLogger.trace("SessionManager", msg);
+            AppLog.d("SessionManager", TAG, "✅ " + msg);
             
             return vcode;
         } finally {
@@ -222,8 +211,7 @@ public class SessionManager {
     public void onInvalidProtectionCodeError(String failingVCode, String actionName) {
         String msg = "INVALID_CODE_ERROR: actionName=" + actionName 
             + ", failingVCode=" + failingVCode.substring(0, 8) + "...";
-        Log.e(TAG, "❌ " + msg);
-        FileLogger.error("SessionManager", msg, null);
+        AppLog.e("SessionManager", TAG, "❌ " + msg);
         
         contextLock.writeLock().lock();
         try {
@@ -231,8 +219,7 @@ public class SessionManager {
             if (currentContext != null &&failingVCode.equals(currentContext.getParsedVCode())) {
                 currentContext = null;
                 String invalidMsg = "SESSION_INVALIDATED: контекст очищен для переперезагрузки";
-                Log.d(TAG, "📋 " + invalidMsg);
-                FileLogger.trace("SessionManager", invalidMsg);
+                AppLog.d("SessionManager", TAG, "📋 " + invalidMsg);
             }
         } finally {
             contextLock.writeLock().unlock();
@@ -256,8 +243,7 @@ public class SessionManager {
      */
     public void invalidateContext(String reason) {
         String msg = "CONTEXT_INVALIDATED: reason=" + reason;
-        Log.w(TAG, "📋 " + msg);
-        FileLogger.warn("SessionManager", msg);
+        AppLog.w("SessionManager", TAG, "📋 " + msg);
         contextLock.writeLock().lock();
         try {
             currentContext = null;
@@ -280,8 +266,7 @@ public class SessionManager {
                 fightStartVCode = currentContext.getParsedVCode();
                 String msg = "FIGHT_STARTED: cached vcode=" + fightStartVCode.substring(0, 8) + "..."
                     + ", will keep for " + (FIGHT_CONTEXT_TIMEOUT / 1000) + " secs";
-                Log.d(TAG, "🎯 " + msg);
-                FileLogger.trace("SessionManager", msg);
+                AppLog.d("SessionManager", TAG, "🎯 " + msg);
             }
         } finally {
             contextLock.readLock().unlock();
@@ -297,8 +282,7 @@ public class SessionManager {
         fightStartTimeMs = 0L;
         fightStartVCode = null;  // 🎯 Очистить кэшированный vcode
         String msg = "FIGHT_ENDED: боевой контекст и кэш vcode очищены, обычный 5-минутный timeout вернулся в силу";
-        Log.d(TAG, "🎯 " + msg);
-        FileLogger.trace("SessionManager", msg);
+        AppLog.d("SessionManager", TAG, "🎯 " + msg);
     }
 
     /**
@@ -372,8 +356,7 @@ public class SessionManager {
                 + ", vcode=" + vcode.substring(0, 8) + "..."
                 + ", source=" + source
                 + ", version=" + newVersion;
-            Log.d(TAG, "🎯 " + msg);
-            FileLogger.trace("SessionManager", msg);
+            AppLog.d("SessionManager", TAG, "🎯 " + msg);
         } finally {
             contextLock.writeLock().unlock();
         }
@@ -395,15 +378,13 @@ public class SessionManager {
                     String vcode = matcher.group(1);
                     if (!vcode.isEmpty() && vcode.length() == 32) {
                         String msg = "VCODE_EXTRACTED: pattern matched, vcode=" + vcode.substring(0, 8) + "...";
-                        Log.d(TAG, "📍 " + msg);
-                        FileLogger.trace("SessionManager", msg);
+                        AppLog.d("SessionManager", TAG, "📍 " + msg);
                         return vcode;
                     }
                 }
             } catch (Exception e) {
                 String msg = "Pattern matching error (non-critical): " + e.getMessage();
-                Log.d(TAG, msg);
-                FileLogger.warn("SessionManager", msg);
+                AppLog.w("SessionManager", TAG, msg);
             }
         }
 

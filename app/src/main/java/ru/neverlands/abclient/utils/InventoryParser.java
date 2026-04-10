@@ -111,14 +111,12 @@ public class InventoryParser {
             }
 
             String msg = String.format("✅ InventoryParser: parsed %d items", items.size());
-            Log.d(TAG, msg);
-            FileLogger.trace(TAG, msg);
+            AppLog.d(TAG, TAG, msg);
 
             return items;
 
         } catch (Exception e) {
-            Log.w(TAG, "InventoryParser parse error", e);
-            FileLogger.trace(TAG, "⚠️ InventoryParser error: " + e.getMessage());
+            AppLog.w(TAG, "InventoryParser parse error: " + e.getMessage(), e);
             return items;
         }
     }

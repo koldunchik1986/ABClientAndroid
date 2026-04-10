@@ -58,8 +58,7 @@ public class GearParser {
             // Если slots_inv не сработал, пытаемся slots_pla() - для плеера в боях
             parseSlots(html, "slots_pla");
         } catch (Exception e) {
-            Log.w(TAG, "GearParser parse failed", e);
-            FileLogger.trace(TAG, "⚠️ GearParser parse error: " + e.getMessage());
+            AppLog.w(TAG, "GearParser parse failed: " + e.getMessage(), e);
         }
     }
 
@@ -116,8 +115,7 @@ public class GearParser {
                 "✅ GearParser: hand1='%s' (empty=%b, dur=%s), hand2='%s' (empty=%b, dur=%s)",
                 hand1, empty1, durability1, hand2, empty2, durability2
             );
-            Log.d(TAG, msg);
-            FileLogger.trace(TAG, msg);
+            AppLog.d(TAG, TAG, msg);
             return true;
 
         } catch (Exception e) {

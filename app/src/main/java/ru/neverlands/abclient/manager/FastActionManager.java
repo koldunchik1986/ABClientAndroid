@@ -7,6 +7,7 @@ import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 
 import java.util.Locale;
 
+import ru.neverlands.abclient.utils.AppLog;
 import ru.neverlands.abclient.model.InvEntry;
 import ru.neverlands.abclient.postfilter.Filter;
 import ru.neverlands.abclient.postfilter.MainPhp;
@@ -293,8 +294,7 @@ public class FastActionManager {
                 + ", oldFastNeed=" + oldFastNeed
                 + ", oldFastId='" + oldFastId + "'"
                 + ", oldFastNick='" + oldFastNick + "'";
-        Log.i(TAG, beforeMsg);
-        FileLogger.trace(TAG, beforeMsg);
+        AppLog.i(TAG, TAG, beforeMsg);
         
         // Полный сброс параметров быстрого действия.
         AppVars.FastNeed = false;
@@ -2256,8 +2256,7 @@ public class FastActionManager {
         if (vcode != null) {
             url += "&vcode=" + vcode;
         } else {
-            Log.w(TAG, "[VCode_MISSING] getValidVCodeForAction returned null for fast_action_reload");
-            FileLogger.trace("vcode_migration", "[VCode_MISSING] fast_action_reload, will reload main.php");
+            AppLog.w("vcode_migration", TAG, "[VCode_MISSING] getValidVCodeForAction returned null for fast_action_reload");
         }
         Log.d(TAG, "reloadMainFrame: loading " + url);
 

@@ -21,6 +21,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.zip.GZIPInputStream;
 
+import ru.neverlands.abclient.utils.AppLog;
 import ru.neverlands.abclient.MainActivity;
 import ru.neverlands.abclient.postfilter.Filter;
 import ru.neverlands.abclient.proxy.CookiesManager;
@@ -380,8 +381,7 @@ public class WebViewRequestInterceptor {
                         + ", cookieSummary=" + summarizeCookieHeader(effectiveCookie)
                         + ", neverChat=" + (neverChatCookie.isEmpty() ? "<empty>" : neverChatCookie)
                         + ", neverFunc=" + (neverFuncCookie.isEmpty() ? "<empty>" : neverFuncCookie);
-                Log.d(TAG, chatReqMessage);
-                FileLogger.trace("chat_poll", chatReqMessage);
+                AppLog.d("chat_poll", TAG, chatReqMessage);
             }
 
             int code = connection.getResponseCode();
@@ -446,8 +446,7 @@ public class WebViewRequestInterceptor {
                     String setNeverChat = getSetCookieValueByName(setCookies, "NeverChat");
                     if (!setNeverChat.isEmpty()) {
                         String cookieMessage = "CHAT_SET_COOKIE: NeverChat=" + setNeverChat + " for " + urlString;
-                        Log.d(TAG, cookieMessage);
-                        FileLogger.trace("chat_poll", cookieMessage);
+                        AppLog.d("chat_poll", TAG, cookieMessage);
                     }
                 }
             }
@@ -587,8 +586,7 @@ public class WebViewRequestInterceptor {
                         + ", processed_lmid=" + (processedLmid.isEmpty() ? "<none>" : processedLmid)
                         + ", set_lmid_only=" + setLmidOnly
                         + ", raw_bytes=" + bytes.length;
-                Log.d(TAG, responseMarkerMessage);
-                FileLogger.trace("chat_poll", responseMarkerMessage);
+                AppLog.d("chat_poll", TAG, responseMarkerMessage);
                 notifyChatPollMetaToActivity(urlString, code, bytes.length, hasAdd, hasLmid);
             }
 
@@ -605,8 +603,7 @@ public class WebViewRequestInterceptor {
             Log.d(TAG, "Intercepted OK: " + urlString + " (" + processed.length + " bytes, " + contentType + ")");
             return response;
         } catch (Exception e) {
-            Log.e(TAG, "Intercept failed: " + request.getUrl(), e);
-            FileLogger.error("chat_poll", "intercept_failed url=" + request.getUrl(), e);
+            AppLog.e("chat_poll", TAG, "Intercept failed: " + request.getUrl(), e);
             RuntimeNetTrace.push("HTTP_FAIL", "url=" + trimUrlForTrace(String.valueOf(request.getUrl())) + " error=" + e.getClass().getSimpleName());
             if (ProxyRuntimeManager.isStrictProxyRequiredForCurrentProfile()) {
                 return buildStrictProxyBlockedResponse();
@@ -1457,8 +1454,7 @@ public class WebViewRequestInterceptor {
                     // ПРАВИЛЬНО: Обновляем VCode через SessionManager (RULE 5 compliance)
                     // ЗАПРЕЩЕНО: AppVars.FishCurrentVcode = newVcode (RULE 5 VIOLATION)
                     SessionManager.getInstance().parseVCodeFromHtml("vcode=" + newVcode, "fish_payment");
-                    Log.i(TAG, "[PAYMENT_VCODE] VCode from payment module parsed via SessionManager, vcode=" + newVcode);
-                    FileLogger.trace("payment", "[PAYMENT_VCODE] newVcode=" + newVcode);
+                    AppLog.i("payment", TAG, "[PAYMENT_VCODE] VCode from payment module parsed via SessionManager, vcode=" + newVcode);
                     return;
                 }
             }

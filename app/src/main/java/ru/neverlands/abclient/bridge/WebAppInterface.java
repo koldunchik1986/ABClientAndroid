@@ -36,6 +36,7 @@ import ru.neverlands.abclient.model.Prims;
 import ru.neverlands.abclient.postfilter.MainPhp;
 import ru.neverlands.abclient.proxy.CookiesManager;
 import ru.neverlands.abclient.proxy.ProxyRuntimeManager;
+import ru.neverlands.abclient.utils.AppLog;
 import ru.neverlands.abclient.utils.AppVars;
 import ru.neverlands.abclient.utils.ExtMap;
 import ru.neverlands.abclient.utils.FileLogger;
@@ -767,8 +768,7 @@ public class WebAppInterface {
         } finally {
             long elapsedMs = System.currentTimeMillis() - startMs;
             if (elapsedMs > 100) {
-                Log.w("WebAppInterface", "SetNeverTimer SLOW: " + elapsedMs + "ms, possible deadlock");
-                FileLogger.warn("WebAppInterface", "SetNeverTimer SLOW: elapsed=" + elapsedMs + "ms");
+                AppLog.w("WebAppInterface", "WebAppInterface", "SetNeverTimer SLOW: " + elapsedMs + "ms, possible deadlock");
             }
         }
     }
@@ -1221,9 +1221,8 @@ public class WebAppInterface {
         new Thread(() -> {
             ChatPostResult result = postChatMessage(baseUrl, finalPayload);
             if (result == null) {
-                Log.w("WebAppInterface", "chatSubmit: POST result is null, fallback to chatRefrWebView.postUrl");
-                FileLogger.warn("chat_poll", "chatSubmit POST fallback to chatRefrWebView.postUrl, url=" + baseUrl
-                        + ", dataLen=" + finalPayload.length());
+                AppLog.w("chat_poll", "WebAppInterface", "chatSubmit: POST result is null, fallback to chatRefrWebView.postUrl, url="
+                        + baseUrl + ", dataLen=" + finalPayload.length());
                 MainActivity fallbackActivity = getMainActivityOrNull();
                 if (fallbackActivity != null) {
                     fallbackActivity.runOnUiThread(() -> fallbackActivity.postChatRefrUrl(baseUrl, finalPayload));
@@ -1262,8 +1261,7 @@ public class WebAppInterface {
             URL target = new URL(url);
             java.net.Proxy activeProxy = ProxyRuntimeManager.getActiveJavaProxyOrNull();
             if (activeProxy == null && ProxyRuntimeManager.isStrictProxyRequiredForCurrentProfile()) {
-                Log.e("WebAppInterface", "PROXY_FAIL: strict proxy enabled and runtime proxy unavailable, blocking direct chat POST: " + url);
-                FileLogger.warn("chat_poll", "chatSubmit POST blocked: strict proxy enabled and runtime proxy unavailable, url=" + url);
+                AppLog.e("chat_poll", "WebAppInterface", "PROXY_FAIL: strict proxy enabled and runtime proxy unavailable, blocking direct chat POST: " + url);
                 return null;
             }
             Log.d("WebAppInterface", "PROXY_BINDING: chat POST via "
@@ -1326,37 +1324,26 @@ public class WebAppInterface {
                     result.rawBytes = bytes.length;
                     result.attempt = attempt;
 
-                    Log.d("WebAppInterface", "chatSubmit: attempt=" + attempt
-                            + ", code=" + code
-                            + ", response bytes=" + bytes.length
-                            + ", addMsg=" + result.messages.size()
-                            + ", lmid=" + (result.lmid == null ? "" : result.lmid));
-                    FileLogger.trace("chat_poll", "chatSubmit POST: attempt=" + attempt
+                    AppLog.d("chat_poll", "WebAppInterface", "chatSubmit POST: attempt=" + attempt
                             + ", code=" + code
                             + ", bytes=" + bytes.length
                             + ", addMsg=" + result.messages.size()
-                            + ", hasLmid=" + (result.lmid != null && !result.lmid.isEmpty()));
+                            + ", lmid=" + (result.lmid == null ? "" : result.lmid));
 
                     boolean hasProtocolMarkers = !result.messages.isEmpty()
                             || (result.lmid != null && !result.lmid.isEmpty());
                     boolean retriable = isRetriableChatPostResponse(code, bytes.length, hasProtocolMarkers);
                     if (retriable && attempt < CHAT_POST_MAX_ATTEMPTS) {
                         long delayMs = CHAT_POST_RETRY_BASE_DELAY_MS * attempt;
-                        Log.w("WebAppInterface", "chatSubmit: transient POST failure, retry in "
+                        AppLog.w("chat_poll", "WebAppInterface", "chatSubmit: transient POST failure, retry in "
                                 + delayMs + "ms (attempt " + attempt + "/" + CHAT_POST_MAX_ATTEMPTS
                                 + ", code=" + code + ", bytes=" + bytes.length + ")");
-                        FileLogger.warn("chat_poll", "chatSubmit POST transient failure, retryInMs=" + delayMs
-                                + ", attempt=" + attempt
-                                + ", code=" + code
-                                + ", bytes=" + bytes.length);
                         sleepSilently(delayMs);
                         continue;
                     }
                     if (retriable) {
-                        Log.e("WebAppInterface", "chatSubmit: POST failed after retries"
+                        AppLog.e("chat_poll", "WebAppInterface", "chatSubmit: POST failed after retries"
                                 + ", code=" + code + ", bytes=" + bytes.length);
-                        FileLogger.warn("chat_poll", "chatSubmit POST failed after retries, code=" + code
-                                + ", bytes=" + bytes.length);
                         return null;
                     }
                     return result;
@@ -1368,8 +1355,7 @@ public class WebAppInterface {
             }
             return null;
         } catch (Exception e) {
-            Log.e("WebAppInterface", "chatSubmit: POST failed", e);
-            FileLogger.error("chat_poll", "chatSubmit POST exception, url=" + url, e);
+            AppLog.e("chat_poll", "WebAppInterface", "chatSubmit: POST failed, url=" + url, e);
             return null;
         }
     }

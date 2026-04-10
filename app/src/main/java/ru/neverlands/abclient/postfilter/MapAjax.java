@@ -13,6 +13,7 @@ import android.os.Handler;
 import android.os.Looper;
 import android.widget.Toast;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
+import ru.neverlands.abclient.utils.AppLog;
 import ru.neverlands.abclient.manager.AutoFunctionsManager;
 import ru.neverlands.abclient.manager.CharacterVitalsManager;
 import ru.neverlands.abclient.manager.FastActionManager;
@@ -85,8 +86,7 @@ public class MapAjax {
                         + ", FastNeed=" + AppVars.FastNeed
                         + ", AutoMoving=" + AppVars.AutoMoving
                         + ", DoSearchBox=" + AppVars.DoSearchBox;
-                Log.d(TAG, msg);
-                FileLogger.trace(TAG, msg);
+                AppLog.d(TAG, TAG, msg);
             }
             return html;
         }
@@ -94,8 +94,7 @@ public class MapAjax {
         if (AppVars.TreasureDigPauseNonCombatAutoFunctions) {
             if (AppVars.AutoMoving || AppVars.DoSearchBox) {
                 String msg = "[MAPAJAX_TRACE_ENTRY] SKIP: treasure dig preparation active";
-                Log.d(TAG, msg);
-                FileLogger.trace(TAG, msg);
+                AppLog.d(TAG, TAG, msg);
             }
             return html;
         }
@@ -1313,8 +1312,7 @@ public class MapAjax {
                     + ", reg=" + currentRegNum
                     + ", thread=" + Thread.currentThread().getId()
                     + ", timestamp=" + System.currentTimeMillis();
-            Log.d(TAG, skipMsg);
-            FileLogger.trace(TAG, skipMsg);
+            AppLog.d(TAG, TAG, skipMsg);
             logAutoBlazDecision("decision", "skip_fast_need", tiedBeforeSync, threshold, "reg=" + currentRegNum + ", fastId=" + AppVars.FastId);
             return null;
         }
@@ -1355,8 +1353,7 @@ public class MapAjax {
                 + ", threshold=" + threshold
                 + ", reg=" + currentRegNum
                 + ", calling FastActionManager.fastAttackBlazElixir()";
-        Log.i(TAG, triggerMsg);
-        FileLogger.trace(TAG, triggerMsg);
+        AppLog.i(TAG, TAG, triggerMsg);
         logAutoBlazDecision("decision", "trigger_fast_bliss", tied, threshold, "reg=" + currentRegNum);
         FastActionManager.fastAttackBlazElixir("Авто-Клад");
         String redirectMsg = "[MAPAJAX_BLAZ_TRIGGER] REDIRECT to main.php?ab_nav_tired=1 after fast bliss call";

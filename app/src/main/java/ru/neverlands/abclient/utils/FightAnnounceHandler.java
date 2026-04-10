@@ -45,14 +45,12 @@ public final class FightAnnounceHandler {
             @NonNull Runnable onApprovedCallback) {
         
         String traceMsg = "[FIGHT_ANNOUNCE_EVENT] fighter=" + fighterNickname + ", captcha=" + isCaptchaVisible;
-        Log.d(TAG, traceMsg);
-        FileLogger.trace(TAG, traceMsg);
+        AppLog.d(TAG, TAG, traceMsg);
         
         // === ПРОВЕРКА 1: Captcha видна ===
         if (isCaptchaVisible) {
             String captchaMsg = "[FIGHT_ANNOUNCE_BLOCKED] captcha visible, delaying turn submit";
-            Log.w(TAG, captchaMsg);
-            FileLogger.trace(TAG, captchaMsg);
+            AppLog.w(TAG, TAG, captchaMsg);
             return;
         }
         
@@ -63,8 +61,7 @@ public final class FightAnnounceHandler {
                 true,          // fightLikelyActive: мы уже знаем что бой активен
                 false)) {      // нет дополнительных блокеров
             String guardMsg = "[FIGHT_ANNOUNCE_BLOCKED] guard conditions not met";
-            Log.w(TAG, guardMsg);
-            FileLogger.trace(TAG, guardMsg);
+            AppLog.w(TAG, TAG, guardMsg);
             // Retry через короткий промежуток времени
             scheduleRetryAfterMs(onApprovedCallback, 500);
             return;
@@ -74,8 +71,7 @@ public final class FightAnnounceHandler {
         String vcode = SessionManager.getInstance().getValidVCodeForAction("fight_turn");
         if (vcode == null) {
             String vcodeMsg = "[FIGHT_ANNOUNCE_BLOCKED] no valid vcode available";
-            Log.w(TAG, vcodeMsg);
-            FileLogger.trace(TAG, vcodeMsg);
+            AppLog.w(TAG, TAG, vcodeMsg);
             // Retry через промежуток для получения нового VCode
             scheduleRetryAfterMs(onApprovedCallback, 800);
             return;
@@ -86,15 +82,13 @@ public final class FightAnnounceHandler {
         long vcodeAgeMs = (ctx != null) ? ctx.getAgeMs() : 0L;
         String approvedMsg = "[FIGHT_ANNOUNCE_APPROVED] all checks passed, triggering immediate auto-turn, vcode age=" + 
                 vcodeAgeMs + "ms";
-        Log.i(TAG, approvedMsg);
-        FileLogger.trace(TAG, approvedMsg);
+        AppLog.i(TAG, TAG, approvedMsg);
         
         try {
             onApprovedCallback.run();
         } catch (Exception e) {
             String errorMsg = "[FIGHT_ANNOUNCE_ERROR] callback failed: " + e.getMessage();
-            Log.e(TAG, errorMsg, e);
-            FileLogger.trace(TAG, errorMsg);
+            AppLog.e(TAG, errorMsg, e);
         }
     }
 

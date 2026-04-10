@@ -19,6 +19,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
 
+import ru.neverlands.abclient.utils.AppLog;
 import ru.neverlands.abclient.model.AppTimer;
 import ru.neverlands.abclient.utils.AppVars;
 import ru.neverlands.abclient.utils.FileLogger;
@@ -237,8 +238,7 @@ public class AppTimerManager {
                     AppVars.TimerPauseNonCombatAutoFunctions = true;
                     String msg = "[TIMER_PAUSE] Non-combat autos paused, timeUntilFire=" + timeUntilFireMs 
                             + "ms, timerId=" + timer.id;
-                    Log.d(TAG, msg);
-                    FileLogger.trace("app_timer", msg);
+                    AppLog.d("app_timer", TAG, msg);
                 }
                 continue;  // Не срабатываем еще, даем время на инвентарь
             }
@@ -336,8 +336,7 @@ public class AppTimerManager {
 
         AppVars.WearComplect = timer.complect;
         String msg = "COMPLECT_TIMER_FIRED_TRACE: id=" + timer.id + ", complect=\"" + timer.complect + "\"";
-        Log.d(TAG, msg);
-        FileLogger.trace(TAG, msg);
+        AppLog.d(TAG, TAG, msg);
         playTimerSignalIfEnabledLocked();
         
         // CRITICAL: Нужно перейти в ИНВЕНТАРЬ (go=inv), чтобы SessionManager получил VCode
@@ -359,15 +358,13 @@ public class AppTimerManager {
         if (!TextUtils.isEmpty(vcode)) {
             url.append("&vcode=").append(vcode);
         } else {
-            Log.w(TAG, "COMPLECT_WEAR_TRACE: vcode not available, navigate to inventory anyway");
-            FileLogger.trace(TAG, "COMPLECT_WEAR_TRACE: vcode not available, navigate to inventory anyway");
+            AppLog.w(TAG, TAG, "COMPLECT_WEAR_TRACE: vcode not available, navigate to inventory anyway");
         }
         
         url.append("&ab_timer=1&r=").append(System.currentTimeMillis());
         
         String msg = "COMPLECT_WEAR_TRACE: navigating to inventory for complect wear, url=" + url.toString();
-        Log.d(TAG, msg);
-        FileLogger.trace(TAG, msg);
+        AppLog.d(TAG, TAG, msg);
 
         Intent intent = new Intent(AppVars.ACTION_WEBVIEW_LOAD_URL);
         intent.putExtra("url", url.toString());
@@ -383,8 +380,7 @@ public class AppTimerManager {
 
         String autoFunc = timer.enableAutoFunction;
         String msg = "AUTO_FUNCTION_TIMER_FIRED: id=" + timer.id + ", action=ENABLE, function=\"" + autoFunc + "\"";
-        Log.d(TAG, msg);
-        FileLogger.trace(TAG, msg);
+        AppLog.d(TAG, TAG, msg);
         playTimerSignalIfEnabledLocked();
 
         // Включение авто-функции через AutoFunctionsManager
@@ -419,8 +415,7 @@ public class AppTimerManager {
 
         String autoFunc = timer.disableAutoFunction;
         String msg = "AUTO_FUNCTION_TIMER_FIRED: id=" + timer.id + ", action=DISABLE, function=\"" + autoFunc + "\"";
-        Log.d(TAG, msg);
-        FileLogger.trace(TAG, msg);
+        AppLog.d(TAG, TAG, msg);
         playTimerSignalIfEnabledLocked();
 
         // Отключение авто-функции через AutoFunctionsManager
@@ -579,8 +574,7 @@ public class AppTimerManager {
         if (!TextUtils.isEmpty(vcode)) {
             url.append("&vcode=").append(vcode);
         } else {
-            Log.w(TAG, "APP_TIMER_TRACE reloadMainPhpInf: vcode not available, reload without vcode");
-            FileLogger.trace(TAG, "APP_TIMER_TRACE reloadMainPhpInf: vcode not available, reload without vcode");
+            AppLog.w(TAG, TAG, "APP_TIMER_TRACE reloadMainPhpInf: vcode not available, reload without vcode");
         }
         
         url.append("&ab_timer=1&r=").append(System.currentTimeMillis());

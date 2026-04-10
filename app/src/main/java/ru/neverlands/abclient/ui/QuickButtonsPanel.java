@@ -35,6 +35,7 @@ import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import ru.neverlands.abclient.utils.AppLog;
 import ru.neverlands.abclient.R;
 import ru.neverlands.abclient.adapter.FunctionListAdapter;
 import ru.neverlands.abclient.manager.QuickButtonsManager;
@@ -2387,8 +2388,7 @@ public class QuickButtonsPanel {
                     }
                     timer.complect = getComplectOptionsArray()[complectIndex];
                     String msg = "COMPLECT_TIMER_DIALOG_TRACE: selected index=" + complectIndex + ", complect=" + timer.complect;
-                    Log.d(TAG, msg);
-                    FileLogger.trace(TAG, msg);
+                    AppLog.d(TAG, TAG, msg);
                     if (TextUtils.isEmpty(timer.description)) {
                         timer.description = "Одеваем комплект " + timer.complect;
                     }

@@ -245,8 +245,7 @@ public class Navigator {
         String safeAction = action == null ? "unknown" : action.trim();
         String safeDetails = details == null ? "" : details.trim();
         String msg = NAV_MINIMAP_TRACE_PREFIX + " " + safeAction + (safeDetails.isEmpty() ? "" : " | " + safeDetails);
-        Log.d("Navigator", msg);
-        FileLogger.trace("Navigator", msg);
+        AppLog.d("Navigator", "Navigator", msg);
     }
 
     private int[] resolveCoordinatesByCell(String cellNum) {

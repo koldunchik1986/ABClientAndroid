@@ -24,6 +24,7 @@ import java.util.zip.GZIPInputStream;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import ru.neverlands.abclient.utils.AppLog;
 import ru.neverlands.abclient.postfilter.MainPhp;
 import ru.neverlands.abclient.utils.AppVars;
 import ru.neverlands.abclient.utils.FileLogger;
@@ -911,8 +912,7 @@ final class LocalHttpProxyServer {
             String msg = "PROXY_NOTICE: method=" + request.method
                     + ", target=" + requestTarget
                     + ", text=" + safeValue(noticeText);
-            Log.d(TAG, msg);
-            FileLogger.trace("proxy_notice", msg);
+            AppLog.d("proxy_notice", TAG, msg);
         } catch (Exception e) {
             FileLogger.error("proxy_notice", "handleServerNoticeFromCapturedPayload failed", e);
         }

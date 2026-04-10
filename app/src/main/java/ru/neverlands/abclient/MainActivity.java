@@ -92,6 +92,7 @@ import ru.neverlands.abclient.model.UserConfig;
 import ru.neverlands.abclient.network.NetworkClient;
 import ru.neverlands.abclient.proxy.CookiesManager;
 import ru.neverlands.abclient.proxy.ProxyRuntimeManager;
+import ru.neverlands.abclient.utils.AppLog;
 import ru.neverlands.abclient.utils.FileLogger;
 import ru.neverlands.abclient.utils.AppVars;
 import ru.neverlands.abclient.utils.Chat;
@@ -241,8 +242,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                             }
                         }
                         if (shouldRestoreChatRefreshAfterContacts && chatRefreshRunnable == null) {
-                            Log.d(TAG, BG_TRACE_PREFIX + " contacts-return: restoring chat refresh");
-                            FileLogger.trace("contacts_nav", "restore chat refresh after contacts");
+                            AppLog.d("contacts_nav", TAG, BG_TRACE_PREFIX + " contacts-return: restoring chat refresh");
                             startChatRefresh();
                         }
                         shouldRestoreChatRefreshAfterContacts = false;
@@ -319,8 +319,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         }
         if (suppressRoomRefreshOnceAfterContacts) {
             suppressRoomRefreshOnceAfterContacts = false;
-            Log.d(TAG, BG_TRACE_PREFIX + " requestRoomUsersRefreshSoon: skipped once after contacts");
-            FileLogger.trace("contacts_nav", "skip first room refresh after contacts");
+            AppLog.d("contacts_nav", TAG, BG_TRACE_PREFIX + " requestRoomUsersRefreshSoon: skipped once after contacts");
             return;
         }
 
@@ -575,8 +574,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             return;
         }
 
-        Log.d(TAG, BG_TRACE_PREFIX + " requestImmediateAutoTurnOnFightAnnounce: triggered by fight announcement");
-        FileLogger.trace(TAG, BG_TRACE_PREFIX + " requestImmediateAutoTurnOnFightAnnounce: immediate turn request on new fight");
+        AppLog.d(TAG, BG_TRACE_PREFIX + " requestImmediateAutoTurnOnFightAnnounce: triggered by fight announcement");
 
         // Используем фоновый механизм, т.к. в момент анонсации UI может быть неинтерактивным
         requestAutoTurnBackgroundAware();
@@ -1544,8 +1542,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         }
         // RULE 5: Мигрирована на SessionManager
         SessionManager.getInstance().parseVCodeFromHtml("vcode=" + vcode, "auto_submit_payload");
-        Log.i(TAG, BG_TRACE_PREFIX + "[VCODE_ADOPT] adoptVCodeFromAutoSubmitPayload: vcode updated via SessionManager");
-        FileLogger.trace("vcode", "[VCODE_ADOPT] auto_submit_payload vcode=" + vcode);
+        AppLog.i("vcode", TAG, BG_TRACE_PREFIX + "[VCODE_ADOPT] adoptVCodeFromAutoSubmitPayload: vcode updated via SessionManager, vcode=" + vcode);
     }
 
     /**
@@ -3282,8 +3279,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         boolean keepBackgroundLoops = shouldKeepBackgroundLoops();
         if (suppressBackgroundLoopsForContacts) {
             keepBackgroundLoops = false;
-            Log.d(TAG, BG_TRACE_PREFIX + " onPause: forcing background loops off due to contacts navigation");
-            FileLogger.trace("contacts_nav", "onPause force-stop room loops for contacts");
+            AppLog.d("contacts_nav", TAG, BG_TRACE_PREFIX + " onPause: forcing background loops off due to contacts navigation");
         }
         logBackgroundState("onPause_keep=" + keepBackgroundLoops);
         if (keepBackgroundLoops) {
@@ -3641,18 +3637,15 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         }
         if (suppressChatRefreshOnceAfterContacts) {
             suppressChatRefreshOnceAfterContacts = false;
-            Log.d(TAG, BG_TRACE_PREFIX + " requestChatRefresh: skipped once after contacts");
-            FileLogger.trace("contacts_nav", "skip first chat refresh after contacts");
+            AppLog.d("contacts_nav", TAG, BG_TRACE_PREFIX + " requestChatRefresh: skipped once after contacts");
             return;
         }
         long now = System.currentTimeMillis();
         long roomDeltaMs = now - lastRoomUsersRefreshAtMs;
         if (roomDeltaMs >= 0 && roomDeltaMs < CHAT_ROOM_COLLISION_GUARD_MS) {
             long waitMs = CHAT_ROOM_COLLISION_GUARD_MS - roomDeltaMs;
-            Log.d(TAG, BG_TRACE_PREFIX + " requestChatRefresh: defer by room-collision guard, waitMs="
+            AppLog.d("chat_poll", TAG, BG_TRACE_PREFIX + " requestChatRefresh: defer by room-collision guard, waitMs="
                     + waitMs + ", roomDeltaMs=" + roomDeltaMs);
-            FileLogger.trace("chat_poll", "defer show=1 by room-collision guard, waitMs=" + waitMs
-                    + ", roomDeltaMs=" + roomDeltaMs);
             chatRefreshHandler.postDelayed(() -> requestChatRefresh(refreshRoomUsers), waitMs);
             return;
         }
@@ -3663,17 +3656,14 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         try {
             chatRefrWebView.loadUrl(url);
         } catch (Throwable t) {
-            Log.e(TAG, BG_TRACE_PREFIX + " requestChatRefresh loadUrl failed", t);
-            FileLogger.error("chat_poll", "requestChatRefresh loadUrl failed, url=" + url, t);
+            AppLog.e("chat_poll", TAG, BG_TRACE_PREFIX + " requestChatRefresh loadUrl failed, url=" + url, t);
             ensureChatRefrWebViewReady();
             if (chatRefrWebView != null) {
                 try {
                     chatRefrWebView.loadUrl(url);
-                    Log.w(TAG, BG_TRACE_PREFIX + " requestChatRefresh: retry after WebView rebind");
-                    FileLogger.warn("chat_poll", "requestChatRefresh retry after WebView rebind, url=" + url);
+                    AppLog.w("chat_poll", TAG, BG_TRACE_PREFIX + " requestChatRefresh: retry after WebView rebind, url=" + url);
                 } catch (Throwable retryError) {
-                    Log.e(TAG, BG_TRACE_PREFIX + " requestChatRefresh retry failed", retryError);
-                    FileLogger.error("chat_poll", "requestChatRefresh retry failed, url=" + url, retryError);
+                    AppLog.e("chat_poll", TAG, BG_TRACE_PREFIX + " requestChatRefresh retry failed, url=" + url, retryError);
                 }
             }
         }

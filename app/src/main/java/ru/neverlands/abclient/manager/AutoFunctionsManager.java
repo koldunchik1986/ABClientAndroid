@@ -309,8 +309,7 @@ public class AutoFunctionsManager {
         // Синхронизация QuickButton UI при programmatic stop/start (например, отключение из postfilter),
         // чтобы обводка/подсветка кнопки Авто-Рыбалка не зависала в старом состоянии.
         String quickUiMsg = "QUICK_UI_SYNC: request refresh from setAutoFishEnabled(" + enabled + ")";
-        Log.d(TAG, quickUiMsg);
-        FileLogger.trace(TAG, quickUiMsg);
+        AppLog.d(TAG, TAG, quickUiMsg);
         requestQuickButtonsRefreshInternal("setAutoFishEnabled(" + enabled + ")");
         if (enabled && AppVars.mainActivity != null && AppVars.mainActivity.get() != null) {
             AppVars.mainActivity.get().runOnUiThread(() -> {
@@ -772,8 +771,7 @@ public class AutoFunctionsManager {
                 if (vcode != null) {
                     reloadUrl += "&vcode=" + vcode;
                 } else {
-                    Log.w(TAG, "[VCode_MISSING] getValidVCodeForAction returned null for auto_skin_check");
-                    FileLogger.trace("vcode_migration", "[VCode_MISSING] auto_skin_check");
+                    AppLog.w("vcode_migration", TAG, "[VCode_MISSING] getValidVCodeForAction returned null for auto_skin_check");
                 }
                 reloadUrl += "&ts=" + System.currentTimeMillis();
                 Log.d(TAG, "triggerAutoSkinCharacterCheck: load " + reloadUrl);
@@ -1915,8 +1913,7 @@ public class AutoFunctionsManager {
                             + vcode
                             + "&ab_nav_bootstrap=1&r="
                             + System.currentTimeMillis();
-                    Log.i(TAG, "[AUTO_NAV_BOOTSTRAP] VCode obtained from SessionManager, URL prepared");
-                    FileLogger.trace("vcode_migration", "[AUTO_NAV_BOOTSTRAP] VCode from SessionManager");
+                    AppLog.i("vcode_migration", TAG, "[AUTO_NAV_BOOTSTRAP] VCode obtained from SessionManager, URL prepared");
                 } else {
                     // Fallback: если vcode еще не извлечен, запускаем старый bootstrap через go=inf.
                     url = "http://neverlands.ru/main.php?get_id=56&act=10&go=inf&ab_nav_bootstrap=1&r="

@@ -5,6 +5,7 @@ import android.util.Log;
 import java.util.ArrayList;
 import java.util.List;
 
+import ru.neverlands.abclient.utils.AppLog;
 import ru.neverlands.abclient.utils.AppVars;
 import ru.neverlands.abclient.utils.FileLogger;
 
@@ -56,8 +57,7 @@ public final class InventoryParser {
             if (!complectName.isEmpty() && !complectNames.contains(complectName)) {
                 complectNames.add(complectName);
                 String msg_found = "COMPLECT_INV_PARSE_TRACE: found complect=\"" + complectName + "\"";
-                Log.d(TAG, msg_found);
-                FileLogger.trace(TAG, msg_found);
+                AppLog.d(TAG, TAG, msg_found);
             }
             
             startIdx = endNameIdx;
@@ -74,8 +74,7 @@ public final class InventoryParser {
             AppVars.Profile.save(AppVars.getContext());
             
             String msg = "COMPLECT_PARSE: saved " + complectNames.size() + " complects: " + AppVars.Profile.SavedComplectsList;
-            Log.d(TAG, msg);
-            FileLogger.trace(TAG, msg);
+            AppLog.d(TAG, TAG, msg);
         }
     }
 }

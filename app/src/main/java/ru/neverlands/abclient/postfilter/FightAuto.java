@@ -10,6 +10,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Random;
 
+import ru.neverlands.abclient.utils.AppLog;
 import ru.neverlands.abclient.lez.LezFight;
 import ru.neverlands.abclient.manager.UnderAttackManager;
 import ru.neverlands.abclient.model.AutoboiState;
@@ -201,8 +202,7 @@ public final class FightAuto {
             return html;
         }
         String msg1 = "processFight: address=" + address + ", htmlLen=" + html.length();
-        Log.d(TAG, msg1);
-        FileLogger.trace(TAG, msg1);
+        AppLog.d(TAG, TAG, msg1);
         host.logFightVariable(html, "fight_ty");
         host.logFightVariable(html, "param_en");
         host.logFightVariable(html, "slots_en");
@@ -220,15 +220,13 @@ public final class FightAuto {
             int totalLen = html.length();
             int chunks = (totalLen + chunkSize - 1) / chunkSize;
             String msg2 = "processFight: HTML dump, total=" + totalLen + " bytes, chunks=" + chunks;
-            Log.d(TAG, msg2);
-            FileLogger.trace(TAG, msg2);
+            AppLog.d(TAG, TAG, msg2);
             for (int i = 0; i < chunks; i++) {
                 int start = i * chunkSize;
                 int end = Math.min(start + chunkSize, totalLen);
                 String msg3 = "processFight HTML[" + start + "-" + end + "]: "
                         + html.substring(start, end);
-                Log.d(TAG, msg3);
-                FileLogger.trace(TAG, msg3);
+                AppLog.d(TAG, TAG, msg3);
             }
         }
 
@@ -241,12 +239,10 @@ public final class FightAuto {
                 + " IsLowMa=" + fight.IsLowMa
                 + " DoExit=" + fight.DoExit
                 + " LogBoi=" + fight.LogBoi;
-        Log.d(TAG, msg4);
-        FileLogger.trace(TAG, msg4);
+        AppLog.d(TAG, TAG, msg4);
         if (!fight.IsValid) {
             String msg = "processFight: fight.IsValid=false, returning original HTML";
-            Log.d(TAG, msg);
-            FileLogger.trace(TAG, msg);
+            AppLog.d(TAG, TAG, msg);
             return html;
         }
 
@@ -271,8 +267,7 @@ public final class FightAuto {
             String msg = "processFight: probe transitional inactive frame detected, postpone finish flow"
                     + ", address=" + address
                     + ", logBoi=" + fight.LogBoi;
-            Log.d(TAG, msg);
-            FileLogger.trace(TAG, msg);
+            AppLog.d(TAG, TAG, msg);
         }
 
         boolean fightEnded = !fight.IsBoi && !fight.IsWaitingForNextTurn && !isProbeTransitionalInactiveFrame;
@@ -287,14 +282,12 @@ public final class FightAuto {
                         + ", logBoi=" + fight.LogBoi
                         + ", oldFastNeed=true"
                         + ", oldFastId='" + AppVars.FastId + "'";
-                Log.i(TAG, msg);
-                FileLogger.trace(TAG, msg);
+                AppLog.i(TAG, TAG, msg);
                 
                 ru.neverlands.abclient.manager.FastActionManager.fastCancel("fight_ended");
                 
                 String cancelMsg = "[FIGHT_ENDED_CLEANUP_COMPLETED] FastNeed cleared after fight end";
-                Log.i(TAG, cancelMsg);
-                FileLogger.trace(TAG, cancelMsg);
+                AppLog.i(TAG, TAG, cancelMsg);
             }        }
         String fightCaptchaUrl = fightEnded ? resolvedFightCaptchaUrl : null;
         host.recoverAutoboiRuntimeStateIfNeeded(fightEnded, fightCaptchaUrl);
@@ -314,8 +307,7 @@ public final class FightAuto {
                 AppVars.AutoboiReadyLog = "";
                 AppVars.Autoboi = AutoboiState.AutoboiOn;
                 String msg_timeout = "processFight: Timeout finished on fight end -> AutoboiOn";
-                Log.d(TAG, msg_timeout);
-                FileLogger.trace(TAG, msg_timeout);
+                AppLog.d(TAG, TAG, msg_timeout);
             }
             if (AppVars.Autoboi == AutoboiState.Restoring) {
                 boolean logChanged = fight.LogBoi != null && !fight.LogBoi.equals(AppVars.AutoboiReadyLog);
@@ -324,8 +316,7 @@ public final class FightAuto {
                     long waitMs = AppVars.AutoboiReadyAtMs > now ? (AppVars.AutoboiReadyAtMs - now) : 1200L;
                     int delay = (int) Math.max(1000L, Math.min(5000L, waitMs));
                     String msg_restoring_inprogress = "processFight: restoring in progress, waitMs=" + waitMs;
-                    Log.d(TAG, msg_restoring_inprogress);
-                    FileLogger.trace(TAG, msg_restoring_inprogress);
+                    AppLog.d(TAG, TAG, msg_restoring_inprogress);
                     int curHp = insHpSnapshot != null ? insHpSnapshot.curHp : fight.getCurrentHp();
                     int maxHp = insHpSnapshot != null ? insHpSnapshot.maxHp : fight.getMaxHp();
                     int curMa = insHpSnapshot != null ? insHpSnapshot.curMa : fight.getCurrentMa();
@@ -347,15 +338,13 @@ public final class FightAuto {
                 if (!logChanged && timerReady && fight.LogBoi != null && !fight.LogBoi.isEmpty()) {
                     AppVars.AutoboiReadyCompletedLog = fight.LogBoi;
                     String msg = "processFight: restoring timer elapsed, mark completed for log=" + fight.LogBoi;
-                    Log.d(TAG, msg);
-                    FileLogger.trace(TAG, msg);
+                    AppLog.d(TAG, TAG, msg);
                 }
                 AppVars.AutoboiReadyAtMs = 0L;
                 AppVars.AutoboiReadyLog = "";
                 AppVars.Autoboi = AutoboiState.AutoboiOn;
                 String msg = "processFight: restoring finished -> AutoboiOn";
-                Log.d(TAG, msg);
-                FileLogger.trace(TAG, msg);
+                AppLog.d(TAG, TAG, msg);
             }
             if (AppVars.Autoboi == AutoboiState.AutoboiOn) {
                 boolean restoreAlreadyCompletedForCurrentLog =
@@ -371,8 +360,7 @@ public final class FightAuto {
                         }
                         AppVars.Autoboi = AutoboiState.Restoring;
                         String msg_set_restoring = "processFight: set Restoring until " + AppVars.AutoboiReadyAtMs;
-                        Log.d(TAG, msg_set_restoring);
-                        FileLogger.trace(TAG, msg_set_restoring);
+                        AppLog.d(TAG, TAG, msg_set_restoring);
                         long waitMs = Math.max(0L, AppVars.AutoboiReadyAtMs - now);
                         int delay = (int) Math.max(1000L, Math.min(5000L, waitMs > 0L ? waitMs : 1200L));
                         int curHp = insHpSnapshot != null ? insHpSnapshot.curHp : fight.getCurrentHp();
@@ -395,8 +383,7 @@ public final class FightAuto {
                     }
                 } else {
                     String msg = "processFight: restoring already completed for current log, continue to finish";
-                Log.d(TAG, msg);
-                FileLogger.trace(TAG, msg);
+                AppLog.d(TAG, TAG, msg);
                 }
                 AppVars.AutoboiReadyAtMs = 0L;
                 AppVars.AutoboiReadyLog = "";
@@ -407,8 +394,7 @@ public final class FightAuto {
                 && !fight.LogBoi.equals(AppVars.LastBoiLog)) {
             String msg_new_fight = "processFight: NEW FIGHT detected! LogBoi changed: "
                     + AppVars.LastBoiLog + " -> " + fight.LogBoi;
-            Log.d(TAG, msg_new_fight);
-            FileLogger.trace(TAG, msg_new_fight);
+            AppLog.d(TAG, TAG, msg_new_fight);
             AppVars.LastBoiLog = fight.LogBoi;
             AppVars.LastBoiUron = "";
             lastAutoSkinProbeFightLog = "";
@@ -430,8 +416,7 @@ public final class FightAuto {
             AppVars.AutoSkinCheckRes = true;
             String msg_autoskin = "AUTO_SKIN_TRACE processFight: queue AutoSkinCheckRes=true after get_id=17"
                     + ", logBoi=" + fight.LogBoi;
-            Log.d(TAG, msg_autoskin);
-            FileLogger.trace(TAG, msg_autoskin);
+            AppLog.d(TAG, TAG, msg_autoskin);
         }
         if (fightEnded && host.isAutoSkinEnabledByPreference()) {
             boolean alreadyOnRazAddress = address != null && address.contains("get_id=17");
@@ -439,8 +424,7 @@ public final class FightAuto {
                 String razHtml = host.mainPhpRaz(html);
                 if (razHtml != null) {
                     String msg_raz_before_finish = "AUTO_SKIN_TRACE processFight: fight ended, run raz before finish";
-                    Log.d(TAG, msg_raz_before_finish);
-                    FileLogger.trace(TAG, msg_raz_before_finish);
+                    AppLog.d(TAG, TAG, msg_raz_before_finish);
                     return razHtml;
                 }
                 boolean infAddress = address != null && address.contains("get_id=56&act=10&go=inf");
@@ -456,8 +440,7 @@ public final class FightAuto {
                     String probeUrl = "http://neverlands.ru/main.php?r=" + System.currentTimeMillis();
                     String msg_raz_probe = "AUTO_SKIN_TRACE processFight: raz probe redirect to " + probeUrl
                             + ", sourceAddress=" + address;
-                    Log.d(TAG, msg_raz_probe);
-                    FileLogger.trace(TAG, msg_raz_probe);
+                    AppLog.d(TAG, TAG, msg_raz_probe);
                     return host.buildDelayedRedirectHtml("Проверка разделки", probeUrl, 260);
                 }
             }
@@ -467,8 +450,7 @@ public final class FightAuto {
                 && autoFightEnabled
                 && AppVars.Autoboi == AutoboiState.AutoboiOn) {
             String msg_fight_ended = "processFight: FIGHT ENDED with autoboi ON - processing finish";
-            Log.d(TAG, msg_fight_ended);
-            FileLogger.trace(TAG, msg_fight_ended);
+            AppLog.d(TAG, TAG, msg_fight_ended);
             String captchaUrl = fightCaptchaUrl;
             boolean needCaptcha = captchaUrl != null && !captchaUrl.isEmpty();
             String fightLink = AppVars.FightLink;
@@ -478,8 +460,7 @@ public final class FightAuto {
                     fightLink = recoveredFightLink;
                     AppVars.FightLink = recoveredFightLink;
                     String msg_recovered_link = "processFight: recovered finish link from html: " + recoveredFightLink;
-                    Log.d(TAG, msg_recovered_link);
-                    FileLogger.trace(TAG, msg_recovered_link);
+                    AppLog.d(TAG, TAG, msg_recovered_link);
                 }
             }
             if (!needCaptcha) {
@@ -492,8 +473,7 @@ public final class FightAuto {
                     AppVars.FightLink = cleanFinishLink;
                     String msg_clean_link = "processFight: recovered CLEAN finish link from html: "
                             + cleanFinishLink + (replacedPrevious ? " (override previous fightLink)" : "");
-                    Log.d(TAG, msg_clean_link);
-                    FileLogger.trace(TAG, msg_clean_link);
+                    AppLog.d(TAG, TAG, msg_clean_link);
                 }
             }
 
@@ -526,8 +506,7 @@ public final class FightAuto {
                         + ", address=" + address
                         + ", logBoi=" + fight.LogBoi
                         + ", fightLink=" + fightLink;
-                Log.d(TAG, msg_probe_defer);
-                FileLogger.trace(TAG, msg_probe_defer);
+                AppLog.d(TAG, TAG, msg_probe_defer);
             } else if (fightLink != null && !fightLink.isEmpty() && !fightLink.contains("????")) {
                 host.clearAutoFightProbeFinishCandidate();
                 decision = FinishFlowDecision.DIRECT_FINISH_LINK;
@@ -549,8 +528,7 @@ public final class FightAuto {
             logFinishFlowDecision(decision, fight, address, fightLink, captchaUrl, markers, decisionReason);
             if (decision == FinishFlowDecision.CAPTCHA_REQUIRED) {
                 String msg_captcha_required = "processFight: CAPTCHA required, stopping autoboi and showing dialog: " + captchaUrl;
-                Log.d(TAG, msg_captcha_required);
-                FileLogger.trace(TAG, msg_captcha_required);
+                AppLog.d(TAG, TAG, msg_captcha_required);
                 boolean fromCaptchaSubmit = address != null
                         && address.contains("get_id=61")
                         && address.contains("act=7")
@@ -573,8 +551,7 @@ public final class FightAuto {
                             + ", logBoi=" + (fight.LogBoi == null ? "" : fight.LogBoi)
                             + ", fightLink=" + fightLink
                             + ", redirects=" + lastAutoFinishRedirectCount;
-                    Log.w(TAG, msg_finish_loop);
-                    FileLogger.trace(TAG, msg_finish_loop);
+                    AppLog.w(TAG, TAG, msg_finish_loop);
                     resetAutoFinishLoopGuard();
                     AppVars.FightLink = "";
                     return host.buildDelayedRedirectHtml(
@@ -593,14 +570,12 @@ public final class FightAuto {
             }
             if (decision == FinishFlowDecision.FEND_AUTOSUBMIT_ALLOWED && finishFormSubmitHtml != null) {
                 String msg_fend_autosubmit = "processFight: FightLink missing, auto-submit FEND form";
-                Log.d(TAG, msg_fend_autosubmit);
-                FileLogger.trace(TAG, msg_fend_autosubmit);
+                AppLog.d(TAG, TAG, msg_fend_autosubmit);
                 AppVars.FightLink = "";
                 return finishFormSubmitHtml;
             }
             String msg_fend_missing = "processFight: FightLink missing and FEND not parsed, keep original fight HTML";
-            Log.d(TAG, msg_fend_missing);
-            FileLogger.trace(TAG, msg_fend_missing);
+            AppLog.d(TAG, TAG, msg_fend_missing);
             AppVars.FightLink = "";
             AppVars.ContentMainPhp = html;
             return html;
@@ -614,16 +589,14 @@ public final class FightAuto {
                     finishLink = address;
                 }
                 String msg_manual_captcha = "processFight: manual mode CAPTCHA detected, showing dialog: " + manualCaptchaUrl;
-                Log.d(TAG, msg_manual_captcha);
-                FileLogger.trace(TAG, msg_manual_captcha);
+                AppLog.d(TAG, TAG, msg_manual_captcha);
                 boolean fromCaptchaSubmit = address != null && address.contains("code=");
                 if (fromCaptchaSubmit) {
                     String submittedCode = host.getUrlParam(address, "code");
                     String submittedVcode = host.getUrlParam(address, "vcode");
                     String msg_captcha_submit = "processFight: captcha submit still requires challenge, code="
                             + submittedCode + ", vcode=" + submittedVcode;
-                    Log.d(TAG, msg_captcha_submit);
-                    FileLogger.trace(TAG, msg_captcha_submit);
+                    AppLog.d(TAG, TAG, msg_captcha_submit);
                     AppVars.LastSubmittedFightCaptchaFinishKey = "";
                     AppVars.LastSubmittedFightCaptchaAtMs = 0L;
                     host.notifyCaptchaRejectedOnce(submittedCode, submittedVcode);
@@ -635,8 +608,7 @@ public final class FightAuto {
         }
         if (fight.IsWaitingForNextTurn) {
             String msg = "processFight: waiting for opponent turn (foe HP=" + fight.FoeCurrentHp + ")";
-            Log.d(TAG, msg);
-            FileLogger.trace(TAG, msg);
+            AppLog.d(TAG, TAG, msg);
             boolean shouldAutoRefresh = AppVars.AutoRefresh;
             if (!shouldAutoRefresh && autoFightEnabled
                     && AppVars.Autoboi == AutoboiState.AutoboiOn) {
@@ -645,20 +617,17 @@ public final class FightAuto {
             if (shouldAutoRefresh) {
                 int delay = 1200 + RANDOM.nextInt(900);
                 String msg_autorefresh = "processFight: auto-refresh waiting enabled, reloading after " + delay + "ms: " + address;
-                Log.d(TAG, msg_autorefresh);
-                FileLogger.trace(TAG, msg_autorefresh);
+                AppLog.d(TAG, TAG, msg_autorefresh);
                 return host.buildInPlaceFightAutoRefreshHtml(html, address, delay);
             }
             String msg_autorefresh_disabled = "processFight: AutoRefresh disabled, returning original content";
-            Log.d(TAG, msg_autorefresh_disabled);
-            FileLogger.trace(TAG, msg_autorefresh_disabled);
+            AppLog.d(TAG, TAG, msg_autorefresh_disabled);
             return AppVars.ContentMainPhp != null ? AppVars.ContentMainPhp : html;
         }
 
         if (autoFightEnabled) {
             String msg_lezdoautoboi = "processFight: LezDoAutoboi enabled, Autoboi state=" + AppVars.Autoboi;
-            Log.d(TAG, msg_lezdoautoboi);
-            FileLogger.trace(TAG, msg_lezdoautoboi);
+            AppLog.d(TAG, TAG, msg_lezdoautoboi);
             if (AppVars.Autoboi == AutoboiState.AutoboiOn) {
                 if (fight.IsBoi) {
                     String msg_safety_check = "processFight: in fight, checking safety conditions:"
@@ -666,16 +635,13 @@ public final class FightAuto {
                             + " IsLowHp=" + fight.IsLowHp
                             + " IsLowMa=" + fight.IsLowMa
                             + " DoExit=" + fight.DoExit;
-                    Log.d(TAG, msg_safety_check);
-                    FileLogger.trace(TAG, msg_safety_check);
+                    AppLog.d(TAG, TAG, msg_safety_check);
 
                     if (!fight.DoStop && !fight.IsLowHp && !fight.IsLowMa && !fight.DoExit) {
                         String msg_safe = "processFight: SAFE - returning fight.Frame for auto-attack";
-                        Log.d(TAG, msg_safe);
-                        FileLogger.trace(TAG, msg_safe);
+                        AppLog.d(TAG, TAG, msg_safe);
                         String msg_frame = "processFight: fight.Frame = " + (fight.Frame != null ? fight.Frame.substring(0, Math.min(200, fight.Frame.length())) : "NULL");
-                        Log.d(TAG, msg_frame);
-                        FileLogger.trace(TAG, msg_frame);
+                        AppLog.d(TAG, TAG, msg_frame);
                         if (fight.Frame != null && !fight.Frame.isEmpty()) {
                             return fight.Frame;
                         }
@@ -687,8 +653,7 @@ public final class FightAuto {
                         return AppVars.ContentMainPhp != null ? AppVars.ContentMainPhp : html;
                     } else {
                         String msg_dangerous = "processFight: DANGEROUS - stopping autoboi, setting Timeout";
-                        Log.d(TAG, msg_dangerous);
-                        FileLogger.trace(TAG, msg_dangerous);
+                        AppLog.d(TAG, TAG, msg_dangerous);
                         if (AppVars.Autoboi != AutoboiState.Timeout) {
                             host.notifyFightStopped(fight);
                             AppVars.Autoboi = AutoboiState.Timeout;
@@ -696,24 +661,20 @@ public final class FightAuto {
                     }
                 } else {
                     String msg_fight_ended_handled = "processFight: fight ended branch already handled, keep current frame";
-                    Log.d(TAG, msg_fight_ended_handled);
-                    FileLogger.trace(TAG, msg_fight_ended_handled);
+                    AppLog.d(TAG, TAG, msg_fight_ended_handled);
                 }
             } else {
                 String msg_autoboi_state = "processFight: Autoboi state is " + AppVars.Autoboi + ", not AutoboiOn";
-                Log.d(TAG, msg_autoboi_state);
-                FileLogger.trace(TAG, msg_autoboi_state);
+                AppLog.d(TAG, TAG, msg_autoboi_state);
             }
         } else {
             String msg_autofight_disabled = "processFight: auto-fight disabled for this frame"
                     + " pref=" + autoFightEnabledByPreference
                     + ", runtimeState=" + AppVars.Autoboi;
-            Log.d(TAG, msg_autofight_disabled);
-            FileLogger.trace(TAG, msg_autofight_disabled);
+            AppLog.d(TAG, TAG, msg_autofight_disabled);
             if (!fight.IsBoi) {
                 String msg_autofight_disabled_manual = "processFight: autoboi disabled, keeping original fight frame for manual finish";
-                Log.d(TAG, msg_autofight_disabled_manual);
-                FileLogger.trace(TAG, msg_autofight_disabled_manual);
+                AppLog.d(TAG, TAG, msg_autofight_disabled_manual);
             }
         }
 
@@ -724,8 +685,7 @@ public final class FightAuto {
                 + " StartAct=" + html.contains("StartAct()")
                 + " document.ff=" + html.contains("document.ff")
                 + " autosubmit=" + html.contains("document.ff.submit");
-        Log.d(TAG, msg_flags);
-        FileLogger.trace(TAG, msg_flags);
+        AppLog.d(TAG, TAG, msg_flags);
         return AppVars.ContentMainPhp != null ? AppVars.ContentMainPhp : html;
     }
 
@@ -784,8 +744,7 @@ public final class FightAuto {
                 String codeValue = codeInput.hasAttr("value") ? codeInput.attr("value").trim() : "";
                 if (codeValue.isEmpty() || "????".equals(codeValue)) {
                     String msg_code_required = "buildFightEndFormSubmitHtml: code required, skip auto-submit";
-                    Log.d(TAG, msg_code_required);
-                    FileLogger.trace(TAG, msg_code_required);
+                    AppLog.d(TAG, TAG, msg_code_required);
                     return null;
                 }
             }
@@ -953,7 +912,6 @@ public final class FightAuto {
                 + ", fightLink=" + (fightLink == null ? "" : fightLink)
                 + ", captchaUrl=" + (captchaUrl == null ? "" : captchaUrl)
                 + ", address=" + (address == null ? "" : address);
-        Log.d(TAG, msg_finish_flow);
-        FileLogger.trace(TAG, msg_finish_flow);
+        AppLog.d(TAG, TAG, msg_finish_flow);
     }
 }

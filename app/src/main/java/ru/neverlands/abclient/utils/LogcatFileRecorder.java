@@ -132,8 +132,7 @@ public final class LogcatFileRecorder {
                         }
                     }
                 } catch (Exception e) {
-                    FileLogger.error("logcat_recorder", "runLoop iteration failed", e);
-                    Log.e(TAG, "runLoop iteration failed", e);
+                    AppLog.e("logcat_recorder", TAG, "runLoop iteration failed", e);
                 } finally {
                     synchronized (LOCK) {
                         logcatProcess = null;

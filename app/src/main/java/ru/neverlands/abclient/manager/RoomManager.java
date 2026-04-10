@@ -2325,8 +2325,7 @@ public class RoomManager {
 
     public static void setShowAllRoomEffectsEnabled(boolean enabled) {
         showAllRoomEffectsEnabled = enabled;
-        AppLog.d(TAG, "[ROOM_EFFECTS] setShowAllRoomEffectsEnabled=" + enabled);
-        FileLogger.trace("roommanager", "[ROOM_EFFECTS] setShowAllRoomEffectsEnabled=" + enabled);
+        AppLog.d("roommanager", TAG, "[ROOM_EFFECTS] setShowAllRoomEffectsEnabled=" + enabled);
     }
 
     private static boolean isShowAllRoomEffectsEnabled() {
