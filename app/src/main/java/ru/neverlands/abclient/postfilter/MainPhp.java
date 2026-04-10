@@ -2551,16 +2551,24 @@ public class MainPhp {
             return null;
         }
         long now = System.currentTimeMillis();
-        if (AppVars.AutoFishDrinkOnce) {
-            long elapsed = now - lastAutoFishDrinkTriggerAtMs;
-            if (elapsed >= 0 && elapsed < AUTO_FISH_DRINK_SERVER_COOLDOWN_MS) {
-                long remainingMs = AUTO_FISH_DRINK_SERVER_COOLDOWN_MS - elapsed;
+        long cooldownRemainingMs = getAutoFishDrinkCooldownRemainingMs(now);
+        if (AppVars.AutoFishDrinkOnce || cooldownRemainingMs > 0L) {
+            if (cooldownRemainingMs > 0L) {
+                if (!AppVars.AutoFishDrinkOnce) {
+                    String msg_recoverCooldown = "AUTO_FISH_TRACE restored drink cooldown by timestamp: remainingMs="
+                            + cooldownRemainingMs;
+                    Log.d(TAG, msg_recoverCooldown);
+                    FileLogger.trace(TAG, msg_recoverCooldown);
+                }
+                AppVars.AutoFishDrinkOnce = true;
+                long elapsed = Math.max(0L, now - lastAutoFishDrinkTriggerAtMs);
                 android.util.Log.d(TAG, "AUTO_FISH_TRACE drink cooldown active: elapsedMs="
-                        + elapsed + ", remainingMs=" + remainingMs);
+                        + elapsed + ", remainingMs=" + cooldownRemainingMs);
                 FileLogger.trace(TAG, "AUTO_FISH_TRACE drink cooldown active: elapsedMs="
-                        + elapsed + ", remainingMs=" + remainingMs);
-                return buildAutoFishDrinkCooldownHtml(remainingMs);
+                        + elapsed + ", remainingMs=" + cooldownRemainingMs);
+                return buildAutoFishDrinkCooldownHtml(cooldownRemainingMs);
             }
+            long elapsed = Math.max(0L, now - lastAutoFishDrinkTriggerAtMs);
             android.util.Log.d(TAG, "AUTO_FISH_TRACE drink cooldown elapsed: elapsedMs="
                     + elapsed + ", recheck tied");
             FileLogger.trace(TAG, "AUTO_FISH_TRACE drink cooldown elapsed: elapsedMs="
@@ -3453,6 +3461,28 @@ public class MainPhp {
                 + "</script></body></html>";
     }
 
+    /**
+     * Возвращает остаток серверного cooldown после шага "Пить" в авто-рыбалке.
+     *
+     * Источник истины — timestamp последнего триггера напитка. Это позволяет
+     * корректно пережить race, когда `AutoFishDrinkOnce` уже потерян, а серверный
+     * cooldown ещё активен и повторный переход в `Ваш персонаж` недопустим.
+     */
+    private static long getAutoFishDrinkCooldownRemainingMs(long nowMs) {
+        long triggerAt = lastAutoFishDrinkTriggerAtMs;
+        if (triggerAt <= 0L) {
+            return 0L;
+        }
+        long elapsed = nowMs - triggerAt;
+        if (elapsed < 0L) {
+            return AUTO_FISH_DRINK_SERVER_COOLDOWN_MS;
+        }
+        if (elapsed >= AUTO_FISH_DRINK_SERVER_COOLDOWN_MS) {
+            return 0L;
+        }
+        return AUTO_FISH_DRINK_SERVER_COOLDOWN_MS - elapsed;
+    }
+
     private static boolean mainPhpIsPerc(String html) {
         String lower = html.toLowerCase(Locale.ROOT);
         return lower.contains("input type=button class=lbut value=\"умения\"");
@@ -3610,6 +3640,19 @@ public class MainPhp {
 
             NeverApi.InfoApiSlot slotHand1 = snapshot.getSlot(AUTO_FISH_INFOAPI_SLOT_HAND1_INDEX);
             NeverApi.InfoApiSlot slotHand2 = snapshot.getSlot(AUTO_FISH_INFOAPI_SLOT_HAND2_INDEX);
+            NeverApi.InfoApiSlot slotHand1ProbeOneBased = snapshot.getSlot(AUTO_FISH_INFOAPI_SLOT_HAND1_INDEX + 1);
+            NeverApi.InfoApiSlot slotHand2ProbeOneBased = snapshot.getSlot(AUTO_FISH_INFOAPI_SLOT_HAND2_INDEX + 1);
+
+            AppLog.d(TAG, "AUTO_FISH_INFOAPI_PRECHECK hands_parsed: hand1Setting=" + AppVars.Profile.FishHandOne
+                    + ", hand2Setting=" + AppVars.Profile.FishHandTwo
+                    + ", index2=" + describeInfoApiSlot(slotHand1)
+                    + ", index12=" + describeInfoApiSlot(slotHand2)
+                    + ", index3_probe=" + describeInfoApiSlot(slotHand1ProbeOneBased)
+                    + ", index13_probe=" + describeInfoApiSlot(slotHand2ProbeOneBased)
+                    + ", rods=" + buildInfoApiRodSlotsDigest(snapshot)
+                    + ", totalSlots=" + (snapshot.slots == null ? 0 : snapshot.slots.size())
+                    + ", sourceNick=" + snapshot.requestedNick
+                    + ", sourceId=" + snapshot.playerId);
 
             String[] slotNames = new String[]{
                     slotHand1 == null ? "" : slotHand1.itemName,
@@ -3635,6 +3678,10 @@ public class MainPhp {
                     usedSlots,
                     false
             );
+            boolean slot1MatchesHand1 = matchesFishingHandSetting(slotNames[0], slotDurability[0], AppVars.Profile.FishHandOne);
+            boolean slot2MatchesHand1 = matchesFishingHandSetting(slotNames[1], slotDurability[1], AppVars.Profile.FishHandOne);
+            boolean slot1MatchesHand2 = matchesFishingHandSetting(slotNames[0], slotDurability[0], AppVars.Profile.FishHandTwo);
+            boolean slot2MatchesHand2 = matchesFishingHandSetting(slotNames[1], slotDurability[1], AppVars.Profile.FishHandTwo);
             boolean mustWear = !(isWear1 && isWear2);
 
             String msgState = "AUTO_FISH_INFOAPI_PRECHECK state: hand1Setting=" + AppVars.Profile.FishHandOne
@@ -3643,6 +3690,10 @@ public class MainPhp {
                     + ", slot2=" + slotNames[1] + " (" + formatInfoApiDurability(slotDurability[1]) + ")"
                     + ", isWear1=" + isWear1
                     + ", isWear2=" + isWear2
+                    + ", slot1MatchesHand1=" + slot1MatchesHand1
+                    + ", slot2MatchesHand1=" + slot2MatchesHand1
+                    + ", slot1MatchesHand2=" + slot1MatchesHand2
+                    + ", slot2MatchesHand2=" + slot2MatchesHand2
                     + ", mustWear=" + mustWear;
             Log.d(TAG, msgState);
             FileLogger.trace(TAG, msgState);
@@ -3739,6 +3790,49 @@ public class MainPhp {
      */
     private static String formatInfoApiDurability(Integer durability) {
         return durability == null ? "" : String.valueOf(durability);
+    }
+
+    private static String describeInfoApiSlot(NeverApi.InfoApiSlot slot) {
+        if (slot == null) {
+            return "<empty>";
+        }
+        String itemName = slot.itemName == null ? "" : slot.itemName.trim();
+        String icon = slot.icon == null ? "" : slot.icon.trim();
+        String durability = slot.durability == null ? "" : String.valueOf(slot.durability);
+        return "{idx=" + slot.index
+                + ", icon=" + icon
+                + ", item=" + itemName
+                + ", dur=" + durability
+                + "}";
+    }
+
+    private static String buildInfoApiRodSlotsDigest(NeverApi.InfoApiSnapshot snapshot) {
+        if (snapshot == null || snapshot.slots == null || snapshot.slots.isEmpty()) {
+            return "[]";
+        }
+        StringBuilder sb = new StringBuilder("[");
+        int appended = 0;
+        for (NeverApi.InfoApiSlot slot : snapshot.slots) {
+            if (slot == null) {
+                continue;
+            }
+            String itemName = slot.itemName == null ? "" : slot.itemName.trim();
+            if (!isFishingRodName(itemName)) {
+                continue;
+            }
+            if (appended > 0) {
+                sb.append(", ");
+            }
+            sb.append(slot.index)
+                    .append(':')
+                    .append(itemName)
+                    .append('(')
+                    .append(formatInfoApiDurability(slot.durability))
+                    .append(')');
+            appended++;
+        }
+        sb.append(']');
+        return sb.toString();
     }
 
     /**
@@ -4630,6 +4724,17 @@ public class MainPhp {
                 }
                 if (!AppVars.AutoFishCheckUd && !AppVars.AutoFishWearUd) {
                     mainPhpPrecheckFishingHandsByInfoApi(nowMs, address);
+                }
+                long postDrinkCooldownRemainingMs = getAutoFishDrinkCooldownRemainingMs(nowMs);
+                if (postDrinkCooldownRemainingMs > 0L) {
+                    String msg_deferFish = "AUTO_FISH_TRACE defer non-fight fish steps during drink cooldown: remainingMs="
+                            + postDrinkCooldownRemainingMs
+                            + ", AutoFishCheckUd=" + AppVars.AutoFishCheckUd
+                            + ", AutoFishWearUd=" + AppVars.AutoFishWearUd
+                            + ", address=" + address;
+                    Log.d(TAG, msg_deferFish);
+                    FileLogger.trace(TAG, msg_deferFish);
+                    return Russian.getBytes(buildAutoFishDrinkCooldownHtml(postDrinkCooldownRemainingMs));
                 }
                 }
                 if (AppVars.AutoFishCheckUd) {

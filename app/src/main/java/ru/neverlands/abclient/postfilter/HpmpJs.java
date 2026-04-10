@@ -69,7 +69,10 @@ public class HpmpJs {
         sb.append("d.getElementById('eHP').width = 160 - s_hp_f;");
         sb.append("d.getElementById('fMP').width = s_ma_f;");
         sb.append("d.getElementById('eMP').width = 160 - s_ma_f;");
-        sb.append("if(document.all(\"hbar\")){");
+        sb.append("var __ab_hbar = null;");
+        sb.append("try{ __ab_hbar = d.getElementById('hbar'); }catch(_ab_hbar_e1){}");
+        sb.append("if(!__ab_hbar){ try{ if(typeof document.all === 'function'){ __ab_hbar = document.all('hbar'); } }catch(_ab_hbar_e2){} }");
+        sb.append("if(__ab_hbar){");
         sb.append("var result = '<font class=hpfont>: [<font color=#bb0000><b>' + Math.round(inshp[0]) + '</b>/<b>' + inshp[1] + '</b>';");
         sb.append("var sHP = Math.round(((inshp[1]-inshp[0])*inshp[4])/inshp[1]);");
         sb.append("if (sHP > 0) result = result + ' (<b>' + hms(sHP) + '</b>)';");
@@ -88,7 +91,7 @@ public class HpmpJs {
         sb.append("}");
         sb.append("}catch(_ab_tire_e){}");
         sb.append("result = result + '</font>]' + __ab_tireSuffix + '</font>';");
-        sb.append("document.all(\"hbar\").innerHTML = result;");
+        sb.append("__ab_hbar.innerHTML = result;");
         sb.append("}");
         sb.append("inshp[0] += inshp[1]/inshp[4];");
         sb.append("inshp[2] += inshp[3]/inshp[5];");
