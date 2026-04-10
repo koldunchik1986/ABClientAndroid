@@ -37,7 +37,7 @@ public final class HtmlUtils {
         return "try { if (window.AndroidBridge) { window.external = window.AndroidBridge; } } catch(e) {}" +
                 "if (typeof top.start !== 'function') { top.start = function() {}; }" +
                 "if (typeof window.chatlist_build !== 'function') { window.chatlist_build = function() {}; }" +
-                "if (typeof window.__abEnsureNode !== 'function') { window.__abEnsureNode = function(id, tag) { try { var n = document.getElementById(id); if (n) return n; var el = document.createElement(tag || 'div'); el.id = id; el.style.display = 'none'; el.style.visibility = 'hidden'; (document.body || document.documentElement).appendChild(el); return el; } catch(e) { return { innerHTML: '', value: '', style: {} }; } }; }" +
+                "if (typeof window.__abEnsureNode !== 'function') { window.__abEnsureNode = function(id, tag) { try { var n = document.getElementById(id); if (n) return n; var el = document.createElement(tag || 'div'); el.id = id; el.setAttribute('data-ab-stub', '1'); el.style.display = 'none'; el.style.visibility = 'hidden'; (document.body || document.documentElement).appendChild(el); return el; } catch(e) { return { innerHTML: '', value: '', style: {} }; } }; }" +
                 "window.__abEnsureNode('transfer', 'div');" +
                 "window.__abEnsureNode('complect', 'div');" +
                 "window.__abEnsureNode('hbar', 'span');" +

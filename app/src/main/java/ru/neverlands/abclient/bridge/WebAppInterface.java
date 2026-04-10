@@ -1819,6 +1819,7 @@ public class WebAppInterface {
     }
 
     private static String buildHpMaTimersHtml(int curHp, int maxHp, double intHp, int curMa, int maxMa, double intMa) {
+        int tied = CharacterVitalsManager.snapshot().tied;
         StringBuilder sb = new StringBuilder("<FONT class=hpfont>: ");
         sb.append("[<font color=#bb0000>")
                 .append("<b>").append(curHp).append("</b>/")
@@ -1839,7 +1840,11 @@ public class WebAppInterface {
         if (maSeconds > 0) {
             sb.append(" (<b>").append(formatHms(maSeconds)).append("</b>)");
         }
-        sb.append("</font>]</font>");
+        sb.append("</font>]");
+        sb.append(" | <font color=#666666><b>\u0423\u0441\u0442\u0430\u043b\u043e\u0441\u0442\u044c:</b> <b>")
+                .append(tied)
+                .append("</b></font>");
+        sb.append("</font>");
         return sb.toString();
     }
 

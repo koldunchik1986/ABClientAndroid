@@ -125,6 +125,30 @@ public class MainPhp {
     private static volatile String lastFightResultWinnerBroadcastKey = "";
     private static volatile String lastFightResultLootBroadcastKey = "";
     private static volatile String lastFightSummaryBroadcastKey = "";
+
+    static final class AutoFishInfoApiPrecheckState {
+        final boolean snapshotValid;
+        final boolean mustWear;
+        final boolean needFatigueStep;
+        final Integer tied;
+        final int tiedThreshold;
+
+        AutoFishInfoApiPrecheckState(boolean snapshotValid,
+                                     boolean mustWear,
+                                     boolean needFatigueStep,
+                                     Integer tied,
+                                     int tiedThreshold) {
+            this.snapshotValid = snapshotValid;
+            this.mustWear = mustWear;
+            this.needFatigueStep = needFatigueStep;
+            this.tied = tied;
+            this.tiedThreshold = tiedThreshold;
+        }
+
+        boolean shouldRouteViaMainPhp() {
+            return mustWear || needFatigueStep;
+        }
+    }
     /**
      * Последний кандидат завершения боя, зафиксированный на probe-кадре.
      *
@@ -3556,98 +3580,219 @@ public class MainPhp {
      * - `AppVars.Profile.FishHandOne/FishHandTwo` — профильная конфигурация рук;
      * - текущий контур MainPhp (`AutoFishCheckUd/AutoFishWearUd`) — фактическое переодевание.
      */
-    private static void mainPhpPrecheckFishingHandsByInfoApi(long nowMs, String address) {
-        if (AppVars.Profile == null || !AppVars.Profile.FishAutoWear) {
-            return;
+    static AutoFishInfoApiPrecheckState mainPhpPrecheckFishingHandsByInfoApi(long nowMs,
+                                                                              String address,
+                                                                              String sourceModule) {
+        if (AppVars.Profile == null) {
+            return buildAutoFishInfoApiPrecheckState(false, false, null);
         }
+
         String selfNick = AppVars.Profile.UserNick == null ? "" : AppVars.Profile.UserNick.trim();
         if (selfNick.isEmpty()) {
-            return;
+            return buildAutoFishInfoApiPrecheckState(false, AppVars.AutoFishCheckUd || AppVars.AutoFishWearUd, null);
         }
+
+        Integer tiedValue = CharacterVitalsManager.snapshot().tied;
+        boolean queuedMustWear = AppVars.AutoFishCheckUd || AppVars.AutoFishWearUd;
+        String safeSourceModule = sourceModule == null || sourceModule.trim().isEmpty()
+                ? "mainphp_autofish_precheck"
+                : sourceModule.trim();
+
         if ((nowMs - lastAutoFishInfoApiPrecheckAtMs) < AUTO_FISH_INFOAPI_PRECHECK_COOLDOWN_MS) {
-            return;
+            AutoFishInfoApiPrecheckState cooldownState =
+                    buildAutoFishInfoApiPrecheckState(false, queuedMustWear, tiedValue);
+            AppLog.d(TAG, "AUTO_FISH_INFOAPI_PRECHECK cooldown skip: source=" + safeSourceModule
+                    + ", address=" + address
+                    + ", mustWear=" + cooldownState.mustWear
+                    + ", needFatigueStep=" + cooldownState.needFatigueStep
+                    + ", tied=" + cooldownState.tied);
+            return cooldownState;
         }
         lastAutoFishInfoApiPrecheckAtMs = nowMs;
 
         try {
-            NeverApi.InfoApiSnapshot snapshot = NeverApi.getInfoApiSnapshotByNick(selfNick, "mainphp_autofish_precheck");
+            NeverApi.InfoApiSnapshot snapshot = NeverApi.getInfoApiSnapshotByNick(selfNick, safeSourceModule);
             if (snapshot == null || !snapshot.isValid()) {
-                String msgInvalid = "AUTO_FISH_INFOAPI_PRECHECK invalid snapshot: nick=" + selfNick
-                        + ", address=" + address;
-                AppLog.w(TAG, msgInvalid);
-                return;
+                AutoFishInfoApiPrecheckState invalidState =
+                        buildAutoFishInfoApiPrecheckState(false, queuedMustWear, tiedValue);
+                AppLog.w(TAG, "AUTO_FISH_INFOAPI_PRECHECK invalid snapshot: nick=" + selfNick
+                        + ", source=" + safeSourceModule
+                        + ", address=" + address
+                        + ", mustWear=" + invalidState.mustWear
+                        + ", needFatigueStep=" + invalidState.needFatigueStep
+                        + ", tied=" + invalidState.tied);
+                return invalidState;
             }
 
-            NeverApi.InfoApiSlot slotHand1 = snapshot.getSlot(AUTO_FISH_INFOAPI_SLOT_HAND1_INDEX);
-            NeverApi.InfoApiSlot slotHand2 = snapshot.getSlot(AUTO_FISH_INFOAPI_SLOT_HAND2_INDEX);
-            NeverApi.InfoApiSlot slotHand1ProbeOneBased = snapshot.getSlot(AUTO_FISH_INFOAPI_SLOT_HAND1_INDEX + 1);
-            NeverApi.InfoApiSlot slotHand2ProbeOneBased = snapshot.getSlot(AUTO_FISH_INFOAPI_SLOT_HAND2_INDEX + 1);
+            if (snapshot.hmu != null && snapshot.hmu.curTire != null) {
+                CharacterVitalsManager.Snapshot tiedSnapshot = CharacterVitalsManager.updateTied(
+                        snapshot.hmu.curTire,
+                        "MainPhp.mainPhpPrecheckFishingHandsByInfoApi/" + safeSourceModule);
+                tiedValue = tiedSnapshot.tied;
+            }
 
-            AppLog.d(TAG, "AUTO_FISH_INFOAPI_PRECHECK hands_parsed: hand1Setting=" + AppVars.Profile.FishHandOne
-                    + ", hand2Setting=" + AppVars.Profile.FishHandTwo
-                    + ", index2=" + describeInfoApiSlot(slotHand1)
-                    + ", index12=" + describeInfoApiSlot(slotHand2)
-                    + ", index3_probe=" + describeInfoApiSlot(slotHand1ProbeOneBased)
-                    + ", index13_probe=" + describeInfoApiSlot(slotHand2ProbeOneBased)
-                    + ", rods=" + buildInfoApiRodSlotsDigest(snapshot)
-                    + ", totalSlots=" + (snapshot.slots == null ? 0 : snapshot.slots.size())
-                    + ", sourceNick=" + snapshot.requestedNick
-                    + ", sourceId=" + snapshot.playerId);
+            boolean mustWear = false;
+            if (AppVars.Profile.FishAutoWear) {
+                NeverApi.InfoApiSlot slotHand1 = snapshot.getSlot(AUTO_FISH_INFOAPI_SLOT_HAND1_INDEX);
+                NeverApi.InfoApiSlot slotHand2 = snapshot.getSlot(AUTO_FISH_INFOAPI_SLOT_HAND2_INDEX);
+                NeverApi.InfoApiSlot slotHand1ProbeOneBased = snapshot.getSlot(AUTO_FISH_INFOAPI_SLOT_HAND1_INDEX + 1);
+                NeverApi.InfoApiSlot slotHand2ProbeOneBased = snapshot.getSlot(AUTO_FISH_INFOAPI_SLOT_HAND2_INDEX + 1);
 
-            String[] slotNames = new String[]{
-                    slotHand1 == null ? "" : slotHand1.itemName,
-                    slotHand2 == null ? "" : slotHand2.itemName
-            };
-            Integer[] slotDurability = new Integer[]{
-                    slotHand1 == null ? null : slotHand1.durability,
-                    slotHand2 == null ? null : slotHand2.durability
-            };
-            boolean[] usedSlots = new boolean[]{false, false};
+                AppLog.d(TAG, "AUTO_FISH_INFOAPI_PRECHECK hands_parsed: hand1Setting=" + AppVars.Profile.FishHandOne
+                        + ", hand2Setting=" + AppVars.Profile.FishHandTwo
+                        + ", index2=" + describeInfoApiSlot(slotHand1)
+                        + ", index12=" + describeInfoApiSlot(slotHand2)
+                        + ", index3_probe=" + describeInfoApiSlot(slotHand1ProbeOneBased)
+                        + ", index13_probe=" + describeInfoApiSlot(slotHand2ProbeOneBased)
+                        + ", rods=" + buildInfoApiRodSlotsDigest(snapshot)
+                        + ", totalSlots=" + (snapshot.slots == null ? 0 : snapshot.slots.size())
+                        + ", sourceNick=" + snapshot.requestedNick
+                        + ", sourceId=" + snapshot.playerId
+                        + ", source=" + safeSourceModule);
 
-            boolean isWear1 = bindFishingHandFromInfoApi(
-                    AppVars.Profile.FishHandOne,
-                    slotNames,
-                    slotDurability,
-                    usedSlots,
-                    true
-            );
-            boolean isWear2 = bindFishingHandFromInfoApi(
-                    AppVars.Profile.FishHandTwo,
-                    slotNames,
-                    slotDurability,
-                    usedSlots,
-                    false
-            );
-            boolean slot1MatchesHand1 = matchesFishingHandSetting(slotNames[0], slotDurability[0], AppVars.Profile.FishHandOne);
-            boolean slot2MatchesHand1 = matchesFishingHandSetting(slotNames[1], slotDurability[1], AppVars.Profile.FishHandOne);
-            boolean slot1MatchesHand2 = matchesFishingHandSetting(slotNames[0], slotDurability[0], AppVars.Profile.FishHandTwo);
-            boolean slot2MatchesHand2 = matchesFishingHandSetting(slotNames[1], slotDurability[1], AppVars.Profile.FishHandTwo);
-            boolean mustWear = !(isWear1 && isWear2);
+                String[] slotNames = new String[]{
+                        slotHand1 == null ? "" : slotHand1.itemName,
+                        slotHand2 == null ? "" : slotHand2.itemName
+                };
+                Integer[] slotDurability = new Integer[]{
+                        slotHand1 == null ? null : slotHand1.durability,
+                        slotHand2 == null ? null : slotHand2.durability
+                };
+                boolean[] usedSlots = new boolean[]{false, false};
 
-            String msgState = "AUTO_FISH_INFOAPI_PRECHECK state: hand1Setting=" + AppVars.Profile.FishHandOne
-                    + ", hand2Setting=" + AppVars.Profile.FishHandTwo
-                    + ", slot1=" + slotNames[0] + " (" + formatInfoApiDurability(slotDurability[0]) + ")"
-                    + ", slot2=" + slotNames[1] + " (" + formatInfoApiDurability(slotDurability[1]) + ")"
-                    + ", isWear1=" + isWear1
-                    + ", isWear2=" + isWear2
-                    + ", slot1MatchesHand1=" + slot1MatchesHand1
-                    + ", slot2MatchesHand1=" + slot2MatchesHand1
-                    + ", slot1MatchesHand2=" + slot1MatchesHand2
-                    + ", slot2MatchesHand2=" + slot2MatchesHand2
-                    + ", mustWear=" + mustWear;
-            AppLog.d(TAG, msgState);
+                boolean isWear1 = bindFishingHandFromInfoApi(
+                        AppVars.Profile.FishHandOne,
+                        slotNames,
+                        slotDurability,
+                        usedSlots,
+                        true
+                );
+                boolean isWear2 = bindFishingHandFromInfoApi(
+                        AppVars.Profile.FishHandTwo,
+                        slotNames,
+                        slotDurability,
+                        usedSlots,
+                        false
+                );
+                boolean slot1MatchesHand1 = matchesFishingHandSetting(slotNames[0], slotDurability[0], AppVars.Profile.FishHandOne);
+                boolean slot2MatchesHand1 = matchesFishingHandSetting(slotNames[1], slotDurability[1], AppVars.Profile.FishHandOne);
+                boolean slot1MatchesHand2 = matchesFishingHandSetting(slotNames[0], slotDurability[0], AppVars.Profile.FishHandTwo);
+                boolean slot2MatchesHand2 = matchesFishingHandSetting(slotNames[1], slotDurability[1], AppVars.Profile.FishHandTwo);
+                mustWear = !(isWear1 && isWear2);
+
+                AppLog.d(TAG, "AUTO_FISH_INFOAPI_PRECHECK state: hand1Setting=" + AppVars.Profile.FishHandOne
+                        + ", hand2Setting=" + AppVars.Profile.FishHandTwo
+                        + ", slot1=" + slotNames[0] + " (" + formatInfoApiDurability(slotDurability[0]) + ")"
+                        + ", slot2=" + slotNames[1] + " (" + formatInfoApiDurability(slotDurability[1]) + ")"
+                        + ", isWear1=" + isWear1
+                        + ", isWear2=" + isWear2
+                        + ", slot1MatchesHand1=" + slot1MatchesHand1
+                        + ", slot2MatchesHand1=" + slot2MatchesHand1
+                        + ", slot1MatchesHand2=" + slot1MatchesHand2
+                        + ", slot2MatchesHand2=" + slot2MatchesHand2
+                        + ", mustWear=" + mustWear
+                        + ", tied=" + tiedValue);
+            } else if (queuedMustWear) {
+                AppVars.AutoFishCheckUd = false;
+                AppVars.AutoFishWearUd = false;
+                resetAutoFishWearLoopGuard();
+                AppLog.d(TAG, "AUTO_FISH_INFOAPI_PRECHECK clear stale gear flags: source=" + safeSourceModule
+                        + ", address=" + address);
+            }
 
             if (mustWear) {
                 AppVars.AutoFishCheckUd = true;
                 AppVars.AutoFishWearUd = false;
-                String msgQueueRecovery = "AUTO_FISH_INFOAPI_PRECHECK queued recovery: AutoFishCheckUd=true, address="
-                        + address;
-                AppLog.w(TAG, msgQueueRecovery);
+                AppLog.w(TAG, "AUTO_FISH_INFOAPI_PRECHECK queued recovery: AutoFishCheckUd=true, source="
+                        + safeSourceModule + ", address=" + address);
+            } else if (AppVars.AutoFishCheckUd || AppVars.AutoFishWearUd) {
+                AppVars.AutoFishCheckUd = false;
+                AppVars.AutoFishWearUd = false;
+                resetAutoFishWearLoopGuard();
+                AppLog.d(TAG, "AUTO_FISH_INFOAPI_PRECHECK clear stale recovery flags after match: source="
+                        + safeSourceModule + ", address=" + address);
             }
+
+            AutoFishInfoApiPrecheckState finalState =
+                    buildAutoFishInfoApiPrecheckState(true, mustWear, tiedValue);
+            AppLog.d(TAG, "AUTO_FISH_INFOAPI_PRECHECK final: source=" + safeSourceModule
+                    + ", address=" + address
+                    + ", mustWear=" + finalState.mustWear
+                    + ", needFatigueStep=" + finalState.needFatigueStep
+                    + ", tied=" + finalState.tied
+                    + ", tiedThreshold=" + finalState.tiedThreshold);
+            return finalState;
         } catch (Exception e) {
-            String msgError = "AUTO_FISH_INFOAPI_PRECHECK failed: nick=" + selfNick + ", address=" + address;
+            AutoFishInfoApiPrecheckState errorState =
+                    buildAutoFishInfoApiPrecheckState(false, queuedMustWear, tiedValue);
+            String msgError = "AUTO_FISH_INFOAPI_PRECHECK failed: nick=" + selfNick
+                    + ", source=" + safeSourceModule
+                    + ", address=" + address
+                    + ", mustWear=" + errorState.mustWear
+                    + ", needFatigueStep=" + errorState.needFatigueStep
+                    + ", tied=" + errorState.tied;
             AppLog.e(TAG, msgError, e);
+            return errorState;
         }
+    }
+
+    static AutoFishInfoApiPrecheckState mainPhpBuildAutoFishCachedPrecheckState(String address,
+                                                                                 String sourceModule) {
+        String safeSourceModule = normalizeAutoFishPrecheckSource(sourceModule);
+        if (AppVars.Profile == null) {
+            AutoFishInfoApiPrecheckState emptyState =
+                    buildAutoFishInfoApiPrecheckState(false, false, null);
+            AppLog.d(TAG, "AUTO_FISH_INFOAPI_PRECHECK cached_state: source=" + safeSourceModule
+                    + ", address=" + address
+                    + ", mustWear=" + emptyState.mustWear
+                    + ", needFatigueStep=" + emptyState.needFatigueStep
+                    + ", tied=" + emptyState.tied
+                    + ", tiedThreshold=" + emptyState.tiedThreshold
+                    + ", profileReady=false");
+            return emptyState;
+        }
+        Integer tiedValue = CharacterVitalsManager.snapshot().tied;
+        boolean queuedMustWear = AppVars.AutoFishCheckUd || AppVars.AutoFishWearUd;
+        AutoFishInfoApiPrecheckState cachedState =
+                buildAutoFishInfoApiPrecheckState(false, queuedMustWear, tiedValue);
+        AppLog.d(TAG, "AUTO_FISH_INFOAPI_PRECHECK cached_state: source=" + safeSourceModule
+                + ", address=" + address
+                + ", mustWear=" + cachedState.mustWear
+                + ", needFatigueStep=" + cachedState.needFatigueStep
+                + ", tied=" + cachedState.tied
+                + ", tiedThreshold=" + cachedState.tiedThreshold
+                + ", profileReady=true");
+        return cachedState;
+    }
+
+    private static AutoFishInfoApiPrecheckState buildAutoFishInfoApiPrecheckState(boolean snapshotValid,
+                                                                                   boolean mustWear,
+                                                                                   Integer tiedValue) {
+        if (AppVars.Profile == null) {
+            return new AutoFishInfoApiPrecheckState(snapshotValid, mustWear, false, tiedValue, 0);
+        }
+        int tiedThreshold = Math.max(0, Math.min(99, AppVars.Profile.FishTiedHigh));
+        Integer safeTiedValue = tiedValue == null ? CharacterVitalsManager.snapshot().tied : tiedValue;
+        if (safeTiedValue != null && !AppVars.AutoFishDrink
+                && safeTiedValue > tiedThreshold
+                && AppVars.Profile.FishTiedZero) {
+            AppVars.AutoFishDrink = true;
+        }
+        boolean needFatigueStep = safeTiedValue != null
+                && (safeTiedValue > tiedThreshold || AppVars.AutoFishDrink);
+        return new AutoFishInfoApiPrecheckState(
+                snapshotValid,
+                mustWear,
+                needFatigueStep,
+                safeTiedValue,
+                tiedThreshold
+        );
+    }
+
+    private static String normalizeAutoFishPrecheckSource(String sourceModule) {
+        return sourceModule == null || sourceModule.trim().isEmpty()
+                ? "mainphp_autofish_precheck"
+                : sourceModule.trim();
     }
 
     /**
@@ -4621,6 +4766,7 @@ public class MainPhp {
             boolean neverTimerReady = AppVars.NeverTimer <= 0L || nowMs > AppVars.NeverTimer;
             if (neverTimerReady) {
                 if (neverTimerReady) {
+                mainPhpPrecheckFishingHandsByInfoApi(nowMs, address, "mainphp_autofish_gate");
                 String fishFatigueHtml = mainPhpAutoFishFatigueStep(html);
                 if (fishFatigueHtml != null && !fishFatigueHtml.isEmpty()) {
                     String msg_fishfatigue = "AUTO_FISH_TRACE fatigue step executed";
@@ -4639,9 +4785,6 @@ public class MainPhp {
                         AppLog.d(TAG, msg_fishskills);
                         return Russian.getBytes(buildRedirectHtml("Переключение на умения персонажа", "main.php?mselect=1"));
                     }
-                }
-                if (!AppVars.AutoFishCheckUd && !AppVars.AutoFishWearUd) {
-                    mainPhpPrecheckFishingHandsByInfoApi(nowMs, address);
                 }
                 long postDrinkCooldownRemainingMs = getAutoFishDrinkCooldownRemainingMs(nowMs);
                 if (postDrinkCooldownRemainingMs > 0L) {

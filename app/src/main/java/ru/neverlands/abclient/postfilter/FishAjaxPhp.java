@@ -545,14 +545,14 @@ public final class FishAjaxPhp {
             long nowMs = System.currentTimeMillis();
             long timerGateMs = AppVars.NeverTimer;
             if (isFightLikelyActiveForFishCycle()) {
-                Log.d(TAG, "AUTO_FISH_TRACE cycle gate by fight markers, wait="
+                AppLog.d(TAG, "AUTO_FISH_TRACE cycle gate by fight markers, wait="
                         + FISH_FIGHT_GUARD_DELAY_MS + "ms, attempt=" + attempt + ", token=" + cycleToken);
                 webView.postDelayed(() -> kickFishCycleAttempt(cycleToken, attempt), FISH_FIGHT_GUARD_DELAY_MS);
                 return;
             }
             if (timerGateMs > nowMs + 250L) {
                 long waitMs = Math.max(300L, timerGateMs - nowMs + FISH_AUTORELOAD_SAFETY_MS);
-                Log.d(TAG, "AUTO_FISH_TRACE cycle gate by NeverTimer, wait=" + waitMs
+                AppLog.d(TAG, "AUTO_FISH_TRACE cycle gate by NeverTimer, wait=" + waitMs
                         + "ms, attempt=" + attempt + ", token=" + cycleToken);
                 webView.postDelayed(() -> kickFishCycleAttempt(cycleToken, attempt), waitMs);
                 return;
@@ -560,10 +560,34 @@ public final class FishAjaxPhp {
 
             // ✅ Ранняя защита от race condition: установить флаг ДО отправки HTTP-запроса
             // Это предотвратит SERVER_TIMER_TICK от перезагрузки main.php пока идет act=1
+            MainPhp.AutoFishInfoApiPrecheckState precheckState =
+                    MainPhp.mainPhpBuildAutoFishCachedPrecheckState(
+                            "fish_cycle_attempt",
+                            "fishajax_cycle_precast");
+            if (precheckState.shouldRouteViaMainPhp()) {
+                String freshVcode = SessionManager.getInstance().getValidVCodeForAction("fish_cycle_preflight");
+                String preflightUrl;
+                if (freshVcode != null && !freshVcode.isEmpty()) {
+                    preflightUrl = "http://neverlands.ru/main.php?af_cycle=1&af_preflight=1&vcode="
+                            + freshVcode + "&r=" + System.currentTimeMillis();
+                } else {
+                    preflightUrl = "http://neverlands.ru/main.php?af_cycle=1&af_preflight=1&r="
+                            + System.currentTimeMillis();
+                }
+                AppLog.d(TAG, "AUTO_FISH_TRACE cycle preflight route via main.php: mustWear="
+                        + precheckState.mustWear
+                        + ", needFatigueStep=" + precheckState.needFatigueStep
+                        + ", tied=" + precheckState.tied
+                        + ", tiedThreshold=" + precheckState.tiedThreshold
+                        + ", url=" + preflightUrl);
+                webView.loadUrl(preflightUrl);
+                return;
+            }
+
             long attemptStartedAtMs = System.currentTimeMillis();
             AppVars.suppressBackgroundProbesDuringFishing = true;
             AppVars.fishingSequenceStartAtMs = attemptStartedAtMs;
-            Log.d(TAG, "AUTO_FISH_TRACE early suppression enabled at cycle start, token=" + cycleToken);
+            AppLog.d(TAG, "AUTO_FISH_TRACE early suppression enabled at cycle start, token=" + cycleToken);
             String jsKick = "(function(){"
                     + "try{"
                     + "  if(typeof ButClick==='function' && document.getElementById('fis')){ButClick('fis'); return 'open_fish_by_button';}"
@@ -583,7 +607,7 @@ public final class FishAjaxPhp {
                         || value.contains("submit_fish_button")
                         || value.contains("submit_fish_start"));
                 if (kickedViaJs) {
-                    Log.d(TAG, "AUTO_FISH_TRACE cycle kick via JS, attempt=" + attempt + ", result=" + value);
+                    AppLog.d(TAG, "AUTO_FISH_TRACE cycle kick via JS, attempt=" + attempt + ", result=" + value);
                     return;
                 }
 
