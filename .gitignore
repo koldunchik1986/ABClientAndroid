@@ -15,10 +15,11 @@ CryptoUtils.java
 # Java class files
 *.class
 
-#backup files
+#backup,files,Logs
 backup/
 *.profile
 files/
+Logs/
 
 #node
 node_modules/
