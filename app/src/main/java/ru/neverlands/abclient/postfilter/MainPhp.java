@@ -544,8 +544,7 @@ public class MainPhp {
             return AutoFunctionsManager.getInstance(context).isAutoFightEnabled();
         } catch (Exception e) {
             String msg = "isAutoFightEnabledByPreference: fallback to profile flag";
-            Log.w(TAG, msg);
-            FileLogger.warn(TAG, msg);
+            AppLog.w(TAG, msg);
             return AppVars.Profile != null && AppVars.Profile.LezDoAutoboi;
         }
     }
@@ -568,14 +567,12 @@ public class MainPhp {
         boolean captchaExpected = fightCaptchaUrl != null && !fightCaptchaUrl.isEmpty();
         if (captchaExpected || AppVars.IsFightCaptchaDialogVisible || AppVars.ResumeAutoboiAfterCaptcha) {
             String msg = "recoverAutoboiRuntimeStateIfNeeded: skip (captcha flow active)";
-            Log.d(TAG, msg);
-            FileLogger.trace(TAG, msg);
+            AppLog.d(TAG, msg);
             return;
         }
         AppVars.Autoboi = AutoboiState.AutoboiOn;
         String msg = "recoverAutoboiRuntimeStateIfNeeded: restored AppVars.Autoboi -> AutoboiOn";
-        Log.w(TAG, msg);
-        FileLogger.warn(TAG, msg);
+        AppLog.w(TAG, msg);
     }
 
     /**
@@ -605,8 +602,7 @@ public class MainPhp {
         // Проверяем, включена ли авто-рыбалка в preferences (SharedPreferences)
         if (!isAutoFishEnabledByPreference()) {
             String msg = "recoverAutofishRuntimeStateIfNeeded: AutoFish disabled in preferences";
-            Log.d(TAG, msg);
-            FileLogger.trace(TAG, msg);
+            AppLog.d(TAG, msg);
             return;
         }
         
@@ -616,12 +612,10 @@ public class MainPhp {
         if (html.contains("name=primid") || html.contains("name=\"primid\"")) {
             AppVars.Profile.AutoFish = true;
             String msg = "recoverAutofishRuntimeStateIfNeeded: ✅ restored AppVars.Profile.AutoFish -> true (lake form detected, enabled in preferences)";
-            Log.w(TAG, msg);
-            FileLogger.warn(TAG, msg);
+            AppLog.w(TAG, msg);
         } else {
             String msg = "recoverAutofishRuntimeStateIfNeeded: ⚠️ NOT restoring AutoFish - lake form not detected (no name=primid in HTML)";
-            Log.d(TAG, msg);
-            FileLogger.trace(TAG, msg);
+            AppLog.d(TAG, msg);
         }
     }
 
@@ -761,8 +755,7 @@ public class MainPhp {
         String captchaUrlFromFexp = extractCaptchaUrlFromFexp(html);
         if (captchaUrlFromFexp != null && !captchaUrlFromFexp.isEmpty()) {
             String msg = "resolveFightCaptchaUrl: built from fexp[4]: " + captchaUrlFromFexp;
-            Log.d(TAG, msg);
-            FileLogger.trace(TAG, msg);
+            AppLog.d(TAG, msg);
             return captchaUrlFromFexp;
         }
         if (AppVars.CodeAddress != null && !AppVars.CodeAddress.isEmpty()) {
@@ -774,8 +767,7 @@ public class MainPhp {
             long age = System.currentTimeMillis() - fallbackAt;
             if (age >= 0 && age <= CAPTCHA_FALLBACK_TTL_MS) {
                 String msg = "resolveFightCaptchaUrl: use fallback from interceptor, ageMs=";
-                Log.d(TAG, msg);
-                FileLogger.trace(TAG, msg);
+                AppLog.d(TAG, msg);
                 return fallbackUrl;
             }
         }
@@ -807,8 +799,7 @@ public class MainPhp {
             }
             return "http://neverlands.ru/modules/code/code.php?" + captchaToken;
         } catch (Exception e) {
-            android.util.Log.e(TAG, "extractCaptchaUrlFromFexp error", e);
-            FileLogger.error(TAG, "extractCaptchaUrlFromFexp error", e);
+            AppLog.e(TAG, "extractCaptchaUrlFromFexp error", e);
             return null;
         }
     }
@@ -991,12 +982,10 @@ public class MainPhp {
                     "MainPhp.mainPhpInsHp"
             );
             String msg = "mainPhpInsHp: parsed hpInt=";
-            Log.d(TAG, msg);
-            FileLogger.trace(TAG, msg);
+            AppLog.d(TAG, msg);
         } catch (Exception e) {
             String msg = "mainPhpInsHp error";
-            Log.e(TAG, msg, e);
-            FileLogger.error(TAG, msg, e);
+            AppLog.e(TAG, msg, e);
         }
     }
     /**
@@ -1041,8 +1030,7 @@ public class MainPhp {
         String[] parts = args.split(",");
         if (parts.length != 6) {
             String msg = "parseInsHpSnapshot: unexpected args count=";
-            Log.d(TAG, msg);
-            FileLogger.trace(TAG, msg);
+            AppLog.d(TAG, msg);
             return null;
         }
         Double curHpRaw = tryParseDoubleInvariant(parts[0]);
@@ -1090,8 +1078,7 @@ public class MainPhp {
         }
         if (!isAutoFightEnabledByPreference()) {
             String msg = "AUTO_DRINK_TRACE skip: auto-fight disabled in preferences";
-            Log.d(TAG, msg);
-            FileLogger.trace(TAG, msg);
+            AppLog.d(TAG, msg);
             return;
         }
         if (isFightFrame || isFightTopFrame) {
@@ -1106,31 +1093,26 @@ public class MainPhp {
                 && isPostFightAutoDrinkFollowupAddress(address);
         if (!hasPageSnapshot && !allowPostFightFollowup) {
             String msg = "AUTO_DRINK_TRACE skip: no inshp snapshot on page, address=";
-            Log.d(TAG, msg);
-            FileLogger.trace(TAG, msg);
+            AppLog.d(TAG, msg);
             return;
         }
         if (allowPostFightFollowup) {
             String msg = "AUTO_DRINK_TRACE allow post-fight follow-up address=";
-            Log.d(TAG, msg);
-            FileLogger.trace(TAG, msg);
+            AppLog.d(TAG, msg);
         }
         if (AppVars.FastNeed) {
             String msg = "AUTO_DRINK_TRACE skip: FastNeed active, fastId=";
-            Log.d(TAG, msg);
-            FileLogger.trace(TAG, msg);
+            AppLog.d(TAG, msg);
             return;
         }
         if (address != null && address.contains("get_id=43")) {
             String msg = "AUTO_DRINK_TRACE skip: get_id=43 action page";
-            Log.d(TAG, msg);
-            FileLogger.trace(TAG, msg);
+            AppLog.d(TAG, msg);
             return;
         }
         if (AppVars.IsFightCaptchaDialogVisible) {
             String msg = "AUTO_DRINK_TRACE skip: captcha dialog visible";
-            Log.d(TAG, msg);
-            FileLogger.trace(TAG, msg);
+            AppLog.d(TAG, msg);
             return;
         }
         InsHpSnapshot snapshot = null;
@@ -1173,8 +1155,7 @@ public class MainPhp {
                         + ", source=" + vitals.source);
             } else {
                 String msg = "AUTO_DRINK_TRACE skip: ins_HP snapshot missing or invalid, vitals empty";
-                Log.d(TAG, msg);
-                FileLogger.trace(TAG, msg);
+                AppLog.d(TAG, msg);
                 return;
             }
         }
@@ -1243,16 +1224,14 @@ public class MainPhp {
         String nick = AppVars.Profile.UserNick != null ? AppVars.Profile.UserNick.trim() : "";
         if (nick.isEmpty()) {
             String msg = "AUTO_DRINK_TRACE pinfo skip: empty nick";
-            Log.d(TAG, msg);
-            FileLogger.trace(TAG, msg);
+            AppLog.d(TAG, msg);
             return null;
         }
         AppLog.d(TAG, "INFO_API_TRACE stage=info_api_runtime_call, source_module=post_fight_auto_drink, nick=" + nick);
         NeverApi.PinfoVitals vitals = NeverApi.getPinfoVitalsFromInfoApi(nick, "post_fight_auto_drink");
         if (vitals == null) {
             String msg = "AUTO_DRINK_TRACE pinfo skip: request failed";
-            Log.d(TAG, msg);
-            FileLogger.trace(TAG, msg);
+            AppLog.d(TAG, msg);
             return null;
         }
         boolean hasHpMa = vitals.curHp != null
@@ -1261,8 +1240,7 @@ public class MainPhp {
                 || vitals.maxMa != null;
         if (!hasHpMa) {
             String msg = "AUTO_DRINK_TRACE pinfo skip: hp/ma not present";
-            Log.d(TAG, msg);
-            FileLogger.trace(TAG, msg);
+            AppLog.d(TAG, msg);
             return null;
         }
         CharacterVitalsManager.Snapshot synced = CharacterVitalsManager.updateFromPinfo(
@@ -1271,8 +1249,7 @@ public class MainPhp {
         );
         if (synced.maxHp <= 0 && synced.maxMa <= 0) {
             String msg = "AUTO_DRINK_TRACE pinfo skip: synced snapshot empty";
-            Log.d(TAG, msg);
-            FileLogger.trace(TAG, msg);
+            AppLog.d(TAG, msg);
             return null;
         }
         InsHpSnapshot snapshot = new InsHpSnapshot();
@@ -1409,13 +1386,10 @@ public class MainPhp {
                     }
                 }
                 String msg = "AUTO_SKIN_TRACE skill parsed: SkinUm=" + skinUm + ", AutoSkinCheckUm=false";
-                Log.d(TAG, msg);
-                FileLogger.trace(TAG, msg);
+                AppLog.d(TAG, msg);
             } catch (Exception e) {
                 String msg = "AUTO_SKIN_TRACE skill parse failed: " + skinSkill;
-                Log.w(TAG, msg);
-                FileLogger.warn(TAG, msg);
-                FileLogger.warn(TAG, msg);
+                AppLog.w(TAG, msg, e);
             }
             return;
         }
@@ -1424,8 +1398,7 @@ public class MainPhp {
         if (AppVars.AutoSkinCheckUm && address != null && address.contains("mselect=1")) {
             AppVars.AutoSkinCheckUm = false;
             String msg = "AUTO_SKIN_TRACE mselect=1 without skill block, forced AutoSkinCheckUm=false";
-            Log.w(TAG, msg);
-            FileLogger.warn(TAG, msg);
+            AppLog.w(TAG, msg);
         }
     }
     /**
@@ -1441,9 +1414,7 @@ public class MainPhp {
             }
         } catch (Exception e) {
             String msg = "isAutoSkinEnabledByPreference: fallback=false";
-            Log.w(TAG, msg);
-            FileLogger.warn(TAG, msg);
-            FileLogger.warn(TAG, msg);
+            AppLog.w(TAG, msg, e);
         }
         return false;
     }
@@ -1460,9 +1431,7 @@ public class MainPhp {
             }
         } catch (Exception e) {
             String msg = "isAutoFishEnabledByPreference: fallback=false";
-            Log.w(TAG, msg);
-            FileLogger.warn(TAG, msg);
-            FileLogger.warn(TAG, msg);
+            AppLog.w(TAG, msg, e);
         }
         return false;
     }
@@ -1482,9 +1451,7 @@ public class MainPhp {
             return AutoFunctionsManager.getInstance(context).isAutoCureEnabled();
         } catch (Exception e) {
             String msg = "isAutoCureEnabledByPreference: fallback=false";
-            Log.w(TAG, msg);
-            FileLogger.warn(TAG, msg);
-            FileLogger.warn(TAG, msg);
+            AppLog.w(TAG, msg, e);
             return false;
         }
     }
@@ -1498,8 +1465,7 @@ public class MainPhp {
             return AutoFunctionsManager.getInstance(context);
         } catch (Exception e) {
             String msg = "getAutoFunctionsManagerSafe failed";
-            Log.w(TAG, msg, e);
-            FileLogger.warn(TAG, msg);
+            AppLog.w(TAG, msg, e);
             return null;
         }
     }
@@ -1584,20 +1550,17 @@ public class MainPhp {
                     AppVars.Profile.FishUm = fishUm;
                 }
                 String msg = "AUTO_FISH_TRACE skill parsed: FishUm=";
-                Log.d(TAG, msg);
-                FileLogger.trace(TAG, msg);
+                AppLog.d(TAG, msg);
             } catch (Exception e) {
                 String msg = "AUTO_FISH_TRACE skill parse failed: ";
-                Log.w(TAG, msg, e);
-                FileLogger.warn(TAG, msg);
+                AppLog.w(TAG, msg, e);
             }
             return;
         }
         if (AppVars.AutoFishCheckUm && address != null && address.contains("mselect=1")) {
             AppVars.AutoFishCheckUm = false;
             String msg = "AUTO_FISH_TRACE mselect=1 without Рыбалка block, forced AutoFishCheckUm=false";
-            Log.w(TAG, msg);
-            FileLogger.warn(TAG, msg);
+            AppLog.w(TAG, msg);
         }
     }
 
@@ -1657,8 +1620,7 @@ public class MainPhp {
                 // Параметр s=2 - специальный код для комплектов (отличается от s=1 для вещей)
                 String wearUrl = "main.php?get_id=57&uid=" + uid + "&s=2&vcode=" + vcode;
                 String msg_wear = "COMPLECT_TIMER_PARSE_TRACE: found complect=\"" + parsedComplectName + "\", uid=" + uid;
-                Log.d(TAG, msg_wear);
-                FileLogger.trace(TAG, msg_wear);
+                AppLog.d(TAG, msg_wear);
                 return buildRedirectHtml("Таймер комплекта: одеваем " + parsedComplectName, wearUrl);
             }
             
@@ -1667,8 +1629,7 @@ public class MainPhp {
         
         // Комплект не найден либо HTML не содержит нужного вызова compl_view
         String msg_notfound = "COMPLECT_TIMER_PARSE_TRACE: complect not found \"" + complectName + "\"";
-        Log.d(TAG, msg_notfound);
-        FileLogger.trace(TAG, msg_notfound);
+        AppLog.d(TAG, msg_notfound);
         return null;
     }
 
@@ -1708,8 +1669,7 @@ public class MainPhp {
             AppVars.AutoSkinLastChecked = now;
             AppVars.AutoSkinCheckKnife = true;
             String msg = "AUTO_SKIN_TRACE periodic knife recheck requested";
-            Log.d(TAG, msg);
-            FileLogger.trace(TAG, msg);
+            AppLog.d(TAG, msg);
         }
     }
     private static String mainPhpWtime(String html) {
@@ -1883,8 +1843,7 @@ public class MainPhp {
             String razLink = buildRazLinkFromFightTyPayload(strFightTy);
             if (razLink != null) {
                 String msg = "AUTO_SKIN_TRACE mainPhpRaz: redirect via fight_ty[";
-                Log.d(TAG, msg);
-                FileLogger.trace(TAG, msg);
+                AppLog.d(TAG, msg);
                 return buildRedirectHtml("Разделка", razLink);
             }
         }
@@ -1892,8 +1851,7 @@ public class MainPhp {
         String fallbackRazLink = extractRazLinkFromHtml(html);
         if (fallbackRazLink != null) {
             String msg = "AUTO_SKIN_TRACE mainPhpRaz: fallback link redirect to ";
-            Log.d(TAG, msg);
-            FileLogger.trace(TAG, msg);
+            AppLog.d(TAG, msg);
             return buildRedirectHtml("Разделка", fallbackRazLink);
         }
         return null;
@@ -2206,8 +2164,7 @@ public class MainPhp {
             String fallbackLink = findMainPhpLinkByQueryParts(html, "get_id=56", "act=10", "go=inf", "vcode=");
             if (fallbackLink != null) {
                 String msg = "AUTO_FALLBACK_TRACE mainPhpFindPerc: regex fallback -> ";
-                Log.d(TAG, msg);
-                FileLogger.trace(TAG, msg);
+                AppLog.d(TAG, msg);
                 return buildRedirectHtml("Переключение на персонаж", fallbackLink);
             }
             return null;
@@ -2218,8 +2175,7 @@ public class MainPhp {
             String fallbackLink = findMainPhpLinkByQueryParts(html, "get_id=56", "act=10", "go=inf", "vcode=");
             if (fallbackLink != null) {
                 String msg = "AUTO_FALLBACK_TRACE mainPhpFindPerc: regex fallback -> ";
-                Log.d(TAG, msg);
-                FileLogger.trace(TAG, msg);
+                AppLog.d(TAG, msg);
                 return buildRedirectHtml("Переключение на персонаж", fallbackLink);
             }
             return null;
@@ -2229,8 +2185,7 @@ public class MainPhp {
             String fallbackLink = findMainPhpLinkByQueryParts(html, "get_id=56", "act=10", "go=inf", "vcode=");
             if (fallbackLink != null) {
                 String msg = "AUTO_FALLBACK_TRACE mainPhpFindPerc: regex fallback -> ";
-                Log.d(TAG, msg);
-                FileLogger.trace(TAG, msg);
+                AppLog.d(TAG, msg);
                 return buildRedirectHtml("Переключение на персонаж", fallbackLink);
             }
             return null;
@@ -2392,8 +2347,7 @@ public class MainPhp {
                 AppVars.ContentLakeHtml = lakeForm;
                 AppVars.ContentLakeHtmlLastUpdateAtMs = System.currentTimeMillis();
                 String msg = "AUTO_FISH_TRACE cached ContentLakeHtml, length=";
-                Log.d(TAG, msg);
-                FileLogger.trace(TAG, msg);
+                AppLog.d(TAG, msg);
             }
         }
 
@@ -2424,15 +2378,13 @@ public class MainPhp {
         CharacterVitalsManager.Snapshot before = CharacterVitalsManager.snapshot();
         if (before.tied != normalized) {
             String msg = "AUTO_FISH_TRACE tied update: old=";
-            Log.d(TAG, msg);
-            FileLogger.trace(TAG, msg);
+            AppLog.d(TAG, msg);
         }
         CharacterVitalsManager.Snapshot after = CharacterVitalsManager.updateTied(normalized, "MainPhp.mainPhpUpdateTied");
         if (AppVars.AutoFishDrink && after.tied <= 0) {
             AppVars.AutoFishDrink = false;
             String msg = "AUTO_FISH_TRACE tied reached zero -> stop drink-to-zero mode";
-            Log.d(TAG, msg);
-            FileLogger.trace(TAG, msg);
+            AppLog.d(TAG, msg);
         }
     }
 
@@ -2469,8 +2421,7 @@ public class MainPhp {
             }
         } catch (Exception e) {
             String msg = "AUTO_FISH_TRACE tied parse failed";
-            Log.w(TAG, msg, e);
-            FileLogger.warn(TAG, msg);
+            AppLog.w(TAG, msg, e);
         }
         return null;
     }
@@ -2504,8 +2455,7 @@ public class MainPhp {
             }
         } catch (Exception e) {
             String msg = "AUTO_FISH_TRACE hpmp tied parse failed";
-            Log.w(TAG, msg, e);
-            FileLogger.warn(TAG, msg);
+            AppLog.w(TAG, msg, e);
         }
         return null;
     }
@@ -2557,8 +2507,7 @@ public class MainPhp {
                 if (!AppVars.AutoFishDrinkOnce) {
                     String msg_recoverCooldown = "AUTO_FISH_TRACE restored drink cooldown by timestamp: remainingMs="
                             + cooldownRemainingMs;
-                    Log.d(TAG, msg_recoverCooldown);
-                    FileLogger.trace(TAG, msg_recoverCooldown);
+                    AppLog.d(TAG, msg_recoverCooldown);
                 }
                 AppVars.AutoFishDrinkOnce = true;
                 long elapsed = Math.max(0L, now - lastAutoFishDrinkTriggerAtMs);
@@ -2580,8 +2529,7 @@ public class MainPhp {
             if (AppVars.FastNeed) {
                 FastActionManager.fastCancel("elixir_cooldown_finished");
                 String msg_cancel = "AUTO_FISH_TRACE cooldown finished, cancel FastNeed to resume autofish";
-                Log.d(TAG, msg_cancel);
-                FileLogger.trace(TAG, msg_cancel);
+                AppLog.d(TAG, msg_cancel);
             }
             
             // КРИТИЧНО: После окончания cooldown'а эликсира, нужно ПРИНУДИТЕЛЬНО запустить probe для рыбалки
@@ -2589,8 +2537,7 @@ public class MainPhp {
             if (FishAjaxPhp.isAutoFishEnabled()) {
                 AppVars.ProbeForceNeedAutofish = true;
                 String msg = "AUTO_FISH_TRACE drink cooldown finished, forcing autofish probe";
-                Log.d(TAG, msg);
-                FileLogger.trace(TAG, msg);
+                AppLog.d(TAG, msg);
             }
         }
         mainPhpUpdateTied(html);
@@ -2812,21 +2759,18 @@ public class MainPhp {
     private static void queueSelfHeavyInjuryCureIfNeeded(String sourceTag) {
         if (!isAutoCureEnabledByPreference()) {
             String msg = "AUTO_CURE_TRACE heavy injury signal ignored: auto-cure disabled, source=";
-            Log.d(TAG, msg);
-            FileLogger.trace(TAG, msg);
+            AppLog.d(TAG, msg);
             return;
         }
         if (AppVars.Profile == null || AppVars.Profile.UserNick == null) {
             String msg = "AUTO_CURE_TRACE heavy injury signal ignored: empty self nick, source=";
-            Log.d(TAG, msg);
-            FileLogger.trace(TAG, msg);
+            AppLog.d(TAG, msg);
             return;
         }
         String selfNick = AppVars.Profile.UserNick.trim();
         if (selfNick.isEmpty()) {
             String msg = "AUTO_CURE_TRACE heavy injury signal ignored: blank self nick, source=";
-            Log.d(TAG, msg);
-            FileLogger.trace(TAG, msg);
+            AppLog.d(TAG, msg);
             return;
         }
 
@@ -2987,8 +2931,7 @@ public class MainPhp {
         AppVars.CureTravm = "";
         AppVars.CurePauseNonCombatAutoFunctions = false;
         String msg = "AUTO_CURE_TRACE clear external request: reason=" + reason;
-        Log.d(TAG, msg);
-        FileLogger.trace(TAG, msg);
+        AppLog.d(TAG, msg);
     }
 
     /**
@@ -3438,8 +3381,7 @@ public class MainPhp {
             }
         } catch (Exception e) {
             String msg = "AUTO_CURE_TRACE disable failed";
-            Log.w(TAG, msg, e);
-            FileLogger.warn(TAG, msg);
+            AppLog.w(TAG, msg, e);
         }
         sendInventoryChatMessage(buildServerChatTimeHtml() + "<font color=#FF0000>" + message + "</font>");
     }
@@ -3545,8 +3487,7 @@ public class MainPhp {
         // Проверяем, не сломаны ли одетые удочки по долговечности (парсим свежие slots из HTML)
         if (FishAjaxPhp.isFishingGearBroken(html)) {
             String msg = "[FISH_GEAR_CHECK_REJECTED] gear is broken, need re-equip";
-            Log.w(TAG, msg);
-            FileLogger.warn(TAG, msg);
+            AppLog.w(TAG, msg);
             return true;
         }
         
@@ -3633,8 +3574,7 @@ public class MainPhp {
             if (snapshot == null || !snapshot.isValid()) {
                 String msgInvalid = "AUTO_FISH_INFOAPI_PRECHECK invalid snapshot: nick=" + selfNick
                         + ", address=" + address;
-                Log.w(TAG, msgInvalid);
-                FileLogger.warn(TAG, msgInvalid);
+                AppLog.w(TAG, msgInvalid);
                 return;
             }
 
@@ -3695,21 +3635,18 @@ public class MainPhp {
                     + ", slot1MatchesHand2=" + slot1MatchesHand2
                     + ", slot2MatchesHand2=" + slot2MatchesHand2
                     + ", mustWear=" + mustWear;
-            Log.d(TAG, msgState);
-            FileLogger.trace(TAG, msgState);
+            AppLog.d(TAG, msgState);
 
             if (mustWear) {
                 AppVars.AutoFishCheckUd = true;
                 AppVars.AutoFishWearUd = false;
                 String msgQueueRecovery = "AUTO_FISH_INFOAPI_PRECHECK queued recovery: AutoFishCheckUd=true, address="
                         + address;
-                Log.w(TAG, msgQueueRecovery);
-                FileLogger.warn(TAG, msgQueueRecovery);
+                AppLog.w(TAG, msgQueueRecovery);
             }
         } catch (Exception e) {
             String msgError = "AUTO_FISH_INFOAPI_PRECHECK failed: nick=" + selfNick + ", address=" + address;
-            Log.w(TAG, msgError, e);
-            FileLogger.error(TAG, msgError, e);
+            AppLog.e(TAG, msgError, e);
         }
     }
 
@@ -3853,8 +3790,7 @@ public class MainPhp {
                 + escapeHtmlAttr(safeRodName) + "'.";
         sendInventoryChatMessage(message);
         String trace = "AUTO_FISH_TRACE rod wear notify: name=" + safeRodName;
-        Log.d(TAG, trace);
-        FileLogger.trace(TAG, trace);
+        AppLog.d(TAG, trace);
     }
     /**
      * Формирует ключ текущего состояния проверки снастей авто-рыбалки.
@@ -3924,8 +3860,7 @@ public class MainPhp {
             }
         } catch (Exception e) {
             String msg = "AUTO_FISH_TRACE disable auto fish failed";
-            Log.w(TAG, msg, e);
-            FileLogger.warn(TAG, msg);
+            AppLog.w(TAG, msg, e);
             if (AppVars.Profile != null) {
                 AppVars.Profile.AutoFish = false;
             }
@@ -4428,8 +4363,7 @@ public class MainPhp {
      */
     public static byte[] process(String address, byte[] array) {
         String msg = "process() called for ";
-        Log.d(TAG, msg);
-        FileLogger.trace(TAG, msg);
+        AppLog.d(TAG, msg);
         // Сохраняем исходный ответ, если он нужен где-то еще
         AppVars.lastMainPhpResponse = array;
         AppVars.IdleTimer = System.currentTimeMillis();
@@ -4438,11 +4372,9 @@ public class MainPhp {
         String html = Russian.getString(array);
         String originalHtml = html;
         String msg_htmlLen = "HTML length after getString: " + html.length();
-        Log.d(TAG, msg_htmlLen);
-        FileLogger.trace(TAG, msg_htmlLen);
+        AppLog.d(TAG, msg_htmlLen);
         String msg_htmlPreview = "HTML first 200: " + (html.length() > 200 ? html.substring(0, 200) : html);
-        Log.d(TAG, msg_htmlPreview);
-        FileLogger.trace(TAG, msg_htmlPreview);
+        AppLog.d(TAG, msg_htmlPreview);
         html = Filter.removeDoctype(html);
         // Порт C# MainPhpInsHp.cs:
         // обновляем интервалы восстановления HP/MA из `ins_HP(...)` до основной логики,
@@ -4463,19 +4395,16 @@ public class MainPhp {
                 int start = Math.max(0, diagIdx - 80);
                 int end = Math.min(html.length(), diagIdx + 200);
                 String msg_cc0000 = "process: get_id=43 cc0000 context: ";
-                Log.d(TAG, msg_cc0000);
-                FileLogger.trace(TAG, msg_cc0000);
+                AppLog.d(TAG, msg_cc0000);
             } else {
                 String msg_nocc0000 = "process: get_id=43 — cc0000 не найден. HTML[0:300]=";
-                Log.d(TAG, msg_nocc0000);
-                FileLogger.trace(TAG, msg_nocc0000);
+                AppLog.d(TAG, msg_nocc0000);
             }
         }
         String sysMessage = extractServerNoticeFromMainHtml(html);
         if (sysMessage != null && !sysMessage.isEmpty()) {
             String msgSys = "process: server sysMessage detected, address=" + address;
-            Log.d(TAG, msgSys);
-            FileLogger.trace(TAG, msgSys);
+            AppLog.d(TAG, msgSys);
             postServerNotificationToChat(sysMessage, "main_php_sys_message", address);
         }
         syncInjuriesFromMapHeavyPopup(html);
@@ -4545,8 +4474,7 @@ public class MainPhp {
                 && !AppVars.IsFightCaptchaDialogVisible) {
             autoDrinkPostFightSyncPending = true;
             String msg_postfight = "AUTO_DRINK_TRACE post-fight redirect to plain main.php, address=";
-            Log.d(TAG, msg_postfight);
-            FileLogger.trace(TAG, msg_postfight);
+            AppLog.d(TAG, msg_postfight);
             return Russian.getBytes(buildRedirectHtml("Автопитьё: синхронизация после боя", "main.php"));
         }
         // Проверка автопитья после получения верхнего фрейма персонажа.
@@ -4594,8 +4522,7 @@ public class MainPhp {
             isEliximInventory = isEliximInventory || inventoryAddressMatchesFilter(address, "&im=6");
             if (isInventoryPage && isEliximInventory && !inventoryAddressMatchesFilter(address, "&im=0&wca=4")) {
                 String msg_postfast = "⚠️ [AUTO_FISH_POST_FAST] post-fast-action: forcing switch to inventory im=0 for gear check (current=" + address + ")";
-                Log.w(TAG, msg_postfast);
-                FileLogger.warn(TAG, msg_postfast);
+                AppLog.w(TAG, msg_postfast);
                 return Russian.getBytes(buildRedirectHtml("Переключение на вещи для проверки снастей", "main.php?im=0&wca=4"));
             }
         }
@@ -4612,8 +4539,7 @@ public class MainPhp {
             if (mapReturnHtml != null && !mapReturnHtml.isEmpty()) {
                 AppVars.FastReturnToMapPending = false;
                 String msg_fastreturn = "FAST_ACTION_TRACE force return-to-map after fast action, address=";
-                Log.d(TAG, msg_fastreturn);
-                FileLogger.trace(TAG, msg_fastreturn);
+                AppLog.d(TAG, msg_fastreturn);
                 return Russian.getBytes(mapReturnHtml);
             }
         }
@@ -4633,20 +4559,17 @@ public class MainPhp {
         // Парсим HTML комплектов, находим нужный и отправляем запрос на одевание.
         if (!AppVars.WearComplect.isEmpty() && !isFightFrame && !isFightTopFrame) {
             String msg_start = "COMPLECT_TIMER_TRACE start wear, AppVars.WearComplect=\"" + AppVars.WearComplect + "\"";
-            Log.d(TAG, msg_start);
-            FileLogger.trace(TAG, msg_start);
+            AppLog.d(TAG, msg_start);
             String complectWearHtml = mainPhpWearComplect(html, AppVars.WearComplect);
             if (complectWearHtml != null && !complectWearHtml.isEmpty()) {
                 String msg_complect = "COMPLECT_TIMER_TRACE redirect to wear complect, name=" + AppVars.WearComplect;
-                Log.d(TAG, msg_complect);
-                FileLogger.trace(TAG, msg_complect);
+                AppLog.d(TAG, msg_complect);
                 AppVars.WearComplect = "";  // Очищаем флаг после отправки
                 return Russian.getBytes(complectWearHtml);
             } else {
                 // Комплект не найден - отключаем флаг и выводим ошибку
                 String msg_complect_notfound = "COMPLECT_TIMER_TRACE complect not found: \"" + AppVars.WearComplect + "\"";
-                Log.d(TAG, msg_complect_notfound);
-                FileLogger.trace(TAG, msg_complect_notfound);
+                AppLog.d(TAG, msg_complect_notfound);
                 AppVars.WearComplect = "";
             }
         }
@@ -4666,8 +4589,7 @@ public class MainPhp {
         boolean autoFightReloadProbeAddress = isAutoFightReloadProbeAddress(address);
         if (autoFightReloadProbeAddress && isAutoFishEnabledByPreference()) {
             String msg_fishskip = "AUTO_FISH_TRACE skip: auto-fight reload probe address=";
-            Log.d(TAG, msg_fishskip);
-            FileLogger.trace(TAG, msg_fishskip);
+            AppLog.d(TAG, msg_fishskip);
         }
         
         // Восстановление авто-рыбалки, если она была отключена во время переходов на персонаж/инвентарь
@@ -4690,8 +4612,7 @@ public class MainPhp {
             diagnostics.append("isFightTopFrame=").append(isFightTopFrame).append(", ");
             diagnostics.append("autoFightProbe=").append(autoFightReloadProbeAddress);
             String msg_block = diagnostics.toString();
-            Log.d(TAG, msg_block);
-            FileLogger.trace(TAG, msg_block);
+            AppLog.d(TAG, msg_block);
         }
         
         if (!isNonCombatAutoPausedByFastAction() && !isFightFrame && !isFightTopFrame
@@ -4703,22 +4624,19 @@ public class MainPhp {
                 String fishFatigueHtml = mainPhpAutoFishFatigueStep(html);
                 if (fishFatigueHtml != null && !fishFatigueHtml.isEmpty()) {
                     String msg_fishfatigue = "AUTO_FISH_TRACE fatigue step executed";
-                    Log.d(TAG, msg_fishfatigue);
-                    FileLogger.trace(TAG, msg_fishfatigue);
+                    AppLog.d(TAG, msg_fishfatigue);
                     return Russian.getBytes(fishFatigueHtml);
                 }
                 if (AppVars.AutoFishCheckUm) {
                     String phtml = mainPhpFindPerc(html);
                     if (phtml != null && !phtml.isEmpty()) {
                         String msg_fishchar = "AUTO_FISH_TRACE redirect to character page for skill check";
-                        Log.d(TAG, msg_fishchar);
-                        FileLogger.trace(TAG, msg_fishchar);
+                        AppLog.d(TAG, msg_fishchar);
                         return Russian.getBytes(phtml);
                     }
                     if (html.toLowerCase(Locale.ROOT).contains("<input type=button class=lbut value=\"умения\" onclick")) {
                         String msg_fishskills = "AUTO_FISH_TRACE redirect to skills page mselect=1";
-                        Log.d(TAG, msg_fishskills);
-                        FileLogger.trace(TAG, msg_fishskills);
+                        AppLog.d(TAG, msg_fishskills);
                         return Russian.getBytes(buildRedirectHtml("Переключение на умения персонажа", "main.php?mselect=1"));
                     }
                 }
@@ -4732,8 +4650,7 @@ public class MainPhp {
                             + ", AutoFishCheckUd=" + AppVars.AutoFishCheckUd
                             + ", AutoFishWearUd=" + AppVars.AutoFishWearUd
                             + ", address=" + address;
-                    Log.d(TAG, msg_deferFish);
-                    FileLogger.trace(TAG, msg_deferFish);
+                    AppLog.d(TAG, msg_deferFish);
                     return Russian.getBytes(buildAutoFishDrinkCooldownHtml(postDrinkCooldownRemainingMs));
                 }
                 }
@@ -4741,8 +4658,7 @@ public class MainPhp {
                     String perchtml = mainPhpFindPerc(html);
                     if (perchtml != null && !perchtml.isEmpty()) {
                         String msg_fishgear = "AUTO_FISH_TRACE redirect to character page for fishing gear check";
-                        Log.d(TAG, msg_fishgear);
-                        FileLogger.trace(TAG, msg_fishgear);
+                        AppLog.d(TAG, msg_fishgear);
                         return Russian.getBytes(perchtml);
                     }
                     AppVars.AutoFishWearUd = false;
@@ -4764,16 +4680,14 @@ public class MainPhp {
                                 + ", hand1D=" + AppVars.AutoFishHand1D
                                 + ", hand2=" + AppVars.AutoFishHand2
                                 + ", hand2D=" + AppVars.AutoFishHand2D;
-                        Log.d(TAG, msg_gearresult);
-                        FileLogger.trace(TAG, msg_gearresult);
+                        AppLog.d(TAG, msg_gearresult);
                     }
                 }
                 if (AppVars.AutoFishWearUd) {
                     String invHtml = mainPhpFindInvWithFallback(html, "&im=0&wca=4", address);
                     if (invHtml != null && !invHtml.isEmpty()) {
                         String msg_fishudred = "AUTO_FISH_TRACE redirect to inventory for fishing gear (&im=0&wca=4)";
-                        Log.d(TAG, msg_fishudred);
-                        FileLogger.trace(TAG, msg_fishudred);
+                        AppLog.d(TAG, msg_fishudred);
                         return Russian.getBytes(invHtml);
                     }
                     if (mainPhpIsInv(html) || isInventoryAddress(address)) {
@@ -4781,8 +4695,7 @@ public class MainPhp {
                         if (invHtml == null || invHtml.isEmpty()) {
                             if (!inventoryAddressMatchesFilter(address, "&im=0&wca=4")) {
                                 String msg_fishudswitch = "AUTO_FISH_TRACE switch to items tab for fishing gear search";
-                                Log.d(TAG, msg_fishudswitch);
-                                FileLogger.trace(TAG, msg_fishudswitch);
+                                AppLog.d(TAG, msg_fishudswitch);
                                 return Russian.getBytes(buildRedirectHtml("Переключение на вещи", "main.php?im=0&wca=4"));
                             }
                         } else {
@@ -4794,16 +4707,14 @@ public class MainPhp {
                 if (!neverTimerReady) {
                     String msg_waitFish = "AUTO_FISH_TRACE wait NeverTimer before fish action: dueInMs="
                             + Math.max(0L, AppVars.NeverTimer - nowMs);
-                    Log.d(TAG, msg_waitFish);
-                    FileLogger.trace(TAG, msg_waitFish);
+                    AppLog.d(TAG, msg_waitFish);
                 } else {
                     // C# parity (`MainPhpFindFlora`): если мы не на карте и есть кнопка "Вернуться",
                     // автоматически возвращаемся на природу перед поиском кнопки "Рыбалка".
                     String floraHtml = mainPhpFindFlora(html);
                     if (floraHtml != null && !floraHtml.isEmpty()) {
                         String msg_florareturn = "AUTO_FISH_TRACE redirect to nature/map via return button";
-                        Log.d(TAG, msg_florareturn);
-                        FileLogger.trace(TAG, msg_florareturn);
+                        AppLog.d(TAG, msg_florareturn);
                         return Russian.getBytes(floraHtml);
                     }
                     // ★ КРИТИЧНО: проверяем, находимся ли уже на озере (есть ли форма выбора приманки)
@@ -4813,14 +4724,12 @@ public class MainPhp {
                     if (isWeAlreadyOnLake) {
                         // Мы на озере с формой выбора приманки - нужно выбрать и отправить act=2
                         String msg_onlake = "AUTO_FISH_TRACE detected lake form (name=primid found), calling mainPhpAutoFishPrepare...";
-                        Log.d(TAG, msg_onlake);
-                        FileLogger.trace(TAG, msg_onlake);
+                        AppLog.d(TAG, msg_onlake);
 
                         String fishPreparedHtml = mainPhpAutoFishPrepare(html);
 
                         String msg_after_prepare = "AUTO_FISH_TRACE mainPhpAutoFishPrepare: result is " + (fishPreparedHtml == null ? "NULL" : "non-null");
-                        Log.d(TAG, msg_after_prepare);
-                        FileLogger.trace(TAG, msg_after_prepare);
+                        AppLog.d(TAG, msg_after_prepare);
 
                         if (fishPreparedHtml != null) {
                             html = fishPreparedHtml;
@@ -4830,48 +4739,41 @@ public class MainPhp {
                                     && address.contains("act=4");
                             if (hasCaptcha && AppVars.FightLink != null && !AppVars.FightLink.isEmpty() && !isFishActionAddress) {
                                 String msg_fishcapt = "AUTO_FISH_TRACE captcha required, show dialog for fish action";
-                                Log.d(TAG, msg_fishcapt);
-                                FileLogger.trace(TAG, msg_fishcapt);
+                                AppLog.d(TAG, msg_fishcapt);
                                 showFishCaptchaDialogOnce(AppVars.CodeAddress, AppVars.FightLink);
                                 return Russian.getBytes(buildCaptchaDialogHoldHtml());
                             }
                             if (hasCaptcha && AppVars.IsFightCaptchaDialogVisible) {
                                 String msg_fishcapthold = "AUTO_FISH_TRACE captcha dialog is visible, keep hold page";
-                                Log.d(TAG, msg_fishcapthold);
-                                FileLogger.trace(TAG, msg_fishcapthold);
+                                AppLog.d(TAG, msg_fishcapthold);
                                 return Russian.getBytes(buildCaptchaDialogHoldHtml());
                             }
                             if (!hasCaptcha && AppVars.FightLink != null && !AppVars.FightLink.isEmpty() && !isFishActionAddress) {
                                 String msg_fishaction = "AUTO_FISH_TRACE redirect to fish action: ";
-                                Log.d(TAG, msg_fishaction);
-                                FileLogger.trace(TAG, msg_fishaction);
+                                AppLog.d(TAG, msg_fishaction);
                                 return Russian.getBytes(buildRedirectHtml("Авторыбалка: заброс", AppVars.FightLink));
                             }
                         }
                     } else {
                         // ★ НЕ НА ОЗЕРЕ: озеро ещё не открыто, инжектируем Fish() для открытия формы озера
                         String msg_notlake = "AUTO_FISH_TRACE no lake form detected (name=primid NOT found), injecting Fish()...";
-                        Log.d(TAG, msg_notlake);
-                        FileLogger.trace(TAG, msg_notlake);
+                        AppLog.d(TAG, msg_notlake);
 
                         // C# parity: на карте автоматически нажимаем "Рыбалка", чтобы открыть форму выбора приманки.
                         String fishMapHtml = mainPhpFindFish(html);
                         if (fishMapHtml != null && !fishMapHtml.isEmpty()) {
                             String msg_fishmap = "AUTO_FISH_TRACE inject Fish(vcode) into map frame";
-                            Log.d(TAG, msg_fishmap);
-                            FileLogger.trace(TAG, msg_fishmap);
+                            AppLog.d(TAG, msg_fishmap);
                             return Russian.getBytes(fishMapHtml);
                         }
                         String msg_nofish = "AUTO_FISH_TRACE warning: Fish button not found on current page, skipping auto-fish";
-                        Log.w(TAG, msg_nofish);
-                        FileLogger.warn(TAG, msg_nofish);
+                        AppLog.w(TAG, msg_nofish);
                     }
                 }
             } else {
                 String msg_waitFish = "AUTO_FISH_TRACE wait NeverTimer before fish action: dueInMs="
                         + Math.max(0L, AppVars.NeverTimer - nowMs);
-                Log.d(TAG, msg_waitFish);
-                FileLogger.trace(TAG, msg_waitFish);
+                AppLog.d(TAG, msg_waitFish);
             }
         }
         // Оркестрация режима "Снежок/Ярость" (buttonFury из C#) + авто-надевание свитка:
@@ -4885,8 +4787,7 @@ public class MainPhp {
                     String perchtml = mainPhpFindPerc(html);
                     if (perchtml != null && !perchtml.isEmpty()) {
                         String msg_furychar = "AUTO_FURY_TRACE redirect to character page for scroll check";
-                        Log.d(TAG, msg_furychar);
-                        FileLogger.trace(TAG, msg_furychar);
+                        AppLog.d(TAG, msg_furychar);
                         return Russian.getBytes(perchtml);
                     }
                     AppVars.AutoFuryArmedScroll = false;
@@ -4901,8 +4802,7 @@ public class MainPhp {
                     String invHtml = mainPhpFindInvWithFallback(html, "&im=0&wca=28", address);
                     if (invHtml != null && !invHtml.isEmpty()) {
                         String msg_furyinv = "AUTO_FURY_TRACE redirect to scroll inventory (&im=0&wca=28)";
-                        Log.d(TAG, msg_furyinv);
-                        FileLogger.trace(TAG, msg_furyinv);
+                        AppLog.d(TAG, msg_furyinv);
                         return Russian.getBytes(invHtml);
                     }
                     if (mainPhpIsInv(html) || isInventoryAddress(address)) {
@@ -4910,8 +4810,7 @@ public class MainPhp {
                         if (invHtml == null || invHtml.isEmpty()) {
                             if (!inventoryAddressMatchesFilter(address, "&im=0&wca=28")) {
                                 String msg_furityab = "AUTO_FURY_TRACE switch to scroll category (wca=28)";
-                                Log.d(TAG, msg_furityab);
-                                FileLogger.trace(TAG, msg_furityab);
+                                AppLog.d(TAG, msg_furityab);
                                 return Russian.getBytes(buildRedirectHtml("Переходим к свиткам", "main.php?im=0&wca=28"));
                             }
                         } else {
@@ -4964,8 +4863,7 @@ public class MainPhp {
                 && (mainPhpIsInv(html) || inventoryAddressMatchesFilter(address, "&im=5"))) {
             AppVars.AutoSkinCheckRes = false;
             String msg_skinload = "AUTO_SKIN_TRACE inventoryReload fallback: read skin resources in transition snapshot";
-            Log.d(TAG, msg_skinload);
-            FileLogger.trace(TAG, msg_skinload);
+            AppLog.d(TAG, msg_skinload);
             mainPhpGetSkinRes(html);
         }
         if (!isNonCombatAutoPausedByFastAction() && !isFightFrame && !isFightTopFrame && isAutoSkinEnabledByPreference()
@@ -4978,14 +4876,12 @@ public class MainPhp {
                     String phtml = mainPhpFindPerc(html);
                     if (phtml != null && !phtml.isEmpty()) {
                         String msg_skinchar = "AUTO_SKIN_TRACE redirect to character page for skill check";
-                        Log.d(TAG, msg_skinchar);
-                        FileLogger.trace(TAG, msg_skinchar);
+                        AppLog.d(TAG, msg_skinchar);
                         return Russian.getBytes(phtml);
                     }
                     if (html.toLowerCase(Locale.ROOT).contains("<input type=button class=lbut value=\"умения\" onclick")) {
                         String msg_skinskills = "AUTO_SKIN_TRACE redirect to skills page mselect=1";
-                        Log.d(TAG, msg_skinskills);
-                        FileLogger.trace(TAG, msg_skinskills);
+                        AppLog.d(TAG, msg_skinskills);
                         return Russian.getBytes(buildRedirectHtml("Переключение на умения персонажа", "main.php?mselect=1"));
                     }
                 }
@@ -4993,15 +4889,13 @@ public class MainPhp {
                     String invHtml = mainPhpFindInvWithFallback(html, "&im=5", address);
                     if (invHtml != null && !invHtml.isEmpty()) {
                         String msg_skinres = "AUTO_SKIN_TRACE redirect to resources inventory (&im=5)";
-                        Log.d(TAG, msg_skinres);
-                        FileLogger.trace(TAG, msg_skinres);
+                        AppLog.d(TAG, msg_skinres);
                         return Russian.getBytes(invHtml);
                     }
                     if (mainPhpIsInv(html) || inventoryAddressMatchesFilter(address, "&im=5")) {
                         AppVars.AutoSkinCheckRes = false;
                         String msg_skingetres = "AUTO_SKIN_TRACE read skin resources";
-                        Log.d(TAG, msg_skingetres);
-                        FileLogger.trace(TAG, msg_skingetres);
+                        AppLog.d(TAG, msg_skingetres);
                         mainPhpGetSkinRes(html);
                     }
                 }
@@ -5009,8 +4903,7 @@ public class MainPhp {
                     String perchtml = mainPhpFindPerc(html);
                     if (perchtml != null && !perchtml.isEmpty()) {
                         String msg_skinknife = "AUTO_SKIN_TRACE redirect to character page for knife check";
-                        Log.d(TAG, msg_skinknife);
-                        FileLogger.trace(TAG, msg_skinknife);
+                        AppLog.d(TAG, msg_skinknife);
                         return Russian.getBytes(perchtml);
                     }
                     AppVars.AutoSkinArmedKnife = false;
@@ -5018,16 +4911,14 @@ public class MainPhp {
                         AppVars.AutoSkinArmedKnife = mainPhpArmedKnife(html);
                         AppVars.AutoSkinCheckKnife = false;
                         String msg_skinresult = "AUTO_SKIN_TRACE knife check result: armed=";
-                        Log.d(TAG, msg_skinresult);
-                        FileLogger.trace(TAG, msg_skinresult);
+                        AppLog.d(TAG, msg_skinresult);
                     }
                 }
                 if (!AppVars.AutoSkinArmedKnife) {
                     String invHtml = mainPhpFindInvWithFallback(html, "&im=0&wca=4", address);
                     if (invHtml != null && !invHtml.isEmpty()) {
                         String msg_skinudinv = "AUTO_SKIN_TRACE redirect to items inventory (&im=0&wca=4)";
-                        Log.d(TAG, msg_skinudinv);
-                        FileLogger.trace(TAG, msg_skinudinv);
+                        AppLog.d(TAG, msg_skinudinv);
                         return Russian.getBytes(invHtml);
                     }
                     if (mainPhpIsInv(html) || isInventoryAddress(address)) {
@@ -5035,8 +4926,7 @@ public class MainPhp {
                         if (invHtml == null || invHtml.isEmpty()) {
                             if (!inventoryAddressMatchesFilter(address, "&im=0&wca=4")) {
                                 String msg_skinudtab = "AUTO_SKIN_TRACE switch to items tab for knife search";
-                                Log.d(TAG, msg_skinudtab);
-                                FileLogger.trace(TAG, msg_skinudtab);
+                                AppLog.d(TAG, msg_skinudtab);
                                 return Russian.getBytes(buildRedirectHtml("Переключение на вещи", "main.php?im=0&wca=4"));
                             }
                         } else {
@@ -5058,8 +4948,7 @@ public class MainPhp {
             html = mainPhpFight(address, html);
             if (html == null) {
                 String msg_fightnull = "process: mainPhpFight returned null, fallback to original HTML";
-                Log.w(TAG, msg_fightnull);
-                FileLogger.warn(TAG, msg_fightnull);
+                AppLog.w(TAG, msg_fightnull);
                 html = originalHtml;
             }
             // Preserve original fight HTML for manual mode (avoid losing images after auto frame)
@@ -5084,8 +4973,7 @@ public class MainPhp {
                 && (invByTemplate || invByRows || invByAddress)) {
             if (!invByTemplate && !invByAddress && invByRows) {
                 String msg_invfallback = "INV_TRACE structural fallback matched: address=";
-                Log.d(TAG, msg_invfallback);
-                FileLogger.trace(TAG, msg_invfallback);
+                AppLog.d(TAG, msg_invfallback);
             }
             html = mainPhpInv(html);
         }
@@ -5128,8 +5016,7 @@ public class MainPhp {
                         bootstrapRetLink += "&vcode=" + vcode.trim();
                     } else {
                         String msg_vcode_err = "⚠️ AUTO_SEARCH_BOX_TRACE: vcode not available from SessionManager";
-                        Log.w(TAG, msg_vcode_err);
-                        FileLogger.warn(TAG, msg_vcode_err);
+                        AppLog.w(TAG, msg_vcode_err);
                     }
                     android.util.Log.d(TAG, "AUTO_SEARCH_BOX_TRACE bootstrap fallback go=ret, address="
                             + address + ", mapLocation=" + currentMapLocation + ", link=" + bootstrapRetLink);
@@ -5180,8 +5067,7 @@ public class MainPhp {
                 String mapReturnHtml = mainPhpFindMapReturnForAutoMoving(html);
                 if (mapReturnHtml != null && !mapReturnHtml.isEmpty()) {
                     String msg_moving = "AUTO_MOVING_TRACE: redirect to map from ";
-                    Log.d(TAG, msg_moving);
-                    FileLogger.trace(TAG, msg_moving);
+                    AppLog.d(TAG, msg_moving);
                     return Russian.getBytes(mapReturnHtml);
                 }
                 if (address != null && address.contains("ab_nav_bootstrap=1")) {
@@ -5192,8 +5078,7 @@ public class MainPhp {
                         bootstrapRetLink += "&vcode=" + vcode.trim();
                     } else {
                         String msg_navvcode = "⚠️ AUTO_MOVING_TRACE: vcode not available from SessionManager";
-                        Log.w(TAG, msg_navvcode);
-                        FileLogger.warn(TAG, msg_navvcode);
+                        AppLog.w(TAG, msg_navvcode);
                     }
                     android.util.Log.d(TAG, "AUTO_MOVING_TRACE: bootstrap fallback to map, address="
                             + address + ", link=" + bootstrapRetLink);
@@ -5205,8 +5090,7 @@ public class MainPhp {
             if (AppVars.FastReturnToMapPending) {
                 AppVars.FastReturnToMapPending = false;
                 String msg_mapok = "FAST_ACTION_TRACE map reached, clear return-to-map pending flag";
-                Log.d(TAG, msg_mapok);
-                FileLogger.trace(TAG, msg_mapok);
+                AppLog.d(TAG, msg_mapok);
             }
             html = MapAjax.process(html);
             if (autoSearchRetryAfterMapSync
@@ -5250,11 +5134,9 @@ public class MainPhp {
         }
         byte[] result = Russian.getBytes(html);
         String msg_returning = "process() returning ";
-        Log.d(TAG, msg_returning);
-        FileLogger.trace(TAG, msg_returning);
+        AppLog.d(TAG, msg_returning);
         String msg_preview = "Result first 200: ";
-        Log.d(TAG, msg_preview);
-        FileLogger.trace(TAG, msg_preview);
+        AppLog.d(TAG, msg_preview);
         return result;
     }
     /**
@@ -5674,8 +5556,7 @@ public class MainPhp {
             String filteredAddress = applyInventoryFilterToLink(normalizedAddress, filter);
             if (!normalizedAddress.equals(filteredAddress)) {
                 String msg = "AUTO_FALLBACK_TRACE mainPhpFindInv: address filter sync -> ";
-                Log.d(TAG, msg);
-                FileLogger.trace(TAG, msg);
+                AppLog.d(TAG, msg);
                 return buildRedirectHtml("Переключение на инвентарь", filteredAddress);
             }
             return null;
@@ -5693,8 +5574,7 @@ public class MainPhp {
         }
         String filteredLink = applyInventoryFilterToLink(fallbackInvLink, filter);
         String msg = "AUTO_FALLBACK_TRACE mainPhpFindInv: regex fallback -> ";
-        Log.d(TAG, msg);
-        FileLogger.trace(TAG, msg);
+        AppLog.d(TAG, msg);
         return buildRedirectHtml("Переключение на инвентарь", filteredLink);
     }
     /**
@@ -5853,14 +5733,12 @@ public class MainPhp {
                     url = "http://neverlands.ru" + url;
                 }
                 String msg = "extractCaptchaUrl: found ";
-                Log.d(TAG, msg);
-                FileLogger.trace(TAG, msg);
+                AppLog.d(TAG, msg);
                 return url;
             }
             if (html != null && html.contains("code.php")) {
                 String msg = "extractCaptchaUrl: code.php present but url pattern not matched";
-                Log.d(TAG, msg);
-                FileLogger.trace(TAG, msg);
+                AppLog.d(TAG, msg);
             }
         } catch (Exception e) {
             android.util.Log.e(TAG, "extractCaptchaUrl error", e);
@@ -5899,21 +5777,18 @@ public class MainPhp {
         if (AppVars.IsFightCaptchaDialogVisible) {
             if (key.equals(lastFightCaptchaDialogKey)) {
                 String msg_visible_same = "showFightCaptchaDialogOnce: dialog already visible for same key, skip";
-                Log.d(TAG, msg_visible_same);
-                FileLogger.trace(TAG, msg_visible_same);
+                AppLog.d(TAG, msg_visible_same);
                 return;
             }
             // Если challenge изменился при уже открытом popup — отправляем обновление.
             // MainActivity сам корректно заменяет текущее окно на новое.
             String msg_visible_new = "showFightCaptchaDialogOnce: dialog visible, update to new key";
-            Log.d(TAG, msg_visible_new);
-            FileLogger.trace(TAG, msg_visible_new);
+            AppLog.d(TAG, msg_visible_new);
             lastFightCaptchaDialogKey = key;
             lastFightCaptchaDialogAtMs = now;
             if (AppVars.getContext() == null) {
                 String msg_visible_null = "showFightCaptchaDialogOnce: context is null while updating dialog";
-                Log.w(TAG, msg_visible_null);
-                FileLogger.warn(TAG, msg_visible_null);
+                AppLog.w(TAG, msg_visible_null);
                 return;
             }
             Intent updateIntent = new Intent(AppVars.ACTION_SHOW_CAPTCHA);
@@ -5924,16 +5799,14 @@ public class MainPhp {
         }
         if (key.equals(lastFightCaptchaDialogKey) && (now - lastFightCaptchaDialogAtMs) < 3000L) {
             String msg_duplicate = "showFightCaptchaDialogOnce: duplicate key, skip dialog";
-            Log.d(TAG, msg_duplicate);
-            FileLogger.trace(TAG, msg_duplicate);
+            AppLog.d(TAG, msg_duplicate);
             return;
         }
         lastFightCaptchaDialogKey = key;
         lastFightCaptchaDialogAtMs = now;
         if (AppVars.getContext() == null) {
             String msg_null_final = "showFightCaptchaDialogOnce: context is null, skip dialog";
-            Log.w(TAG, msg_null_final);
-            FileLogger.warn(TAG, msg_null_final);
+            AppLog.w(TAG, msg_null_final);
             AppVars.IsFightCaptchaDialogVisible = false;
             return;
         }
@@ -5964,16 +5837,14 @@ public class MainPhp {
         String key = normalizedFinishUrl + "|" + normalizedCaptchaUrl;
         if (key.equals(lastFishCaptchaDialogKey) && (now - lastFishCaptchaDialogAtMs) < 3000L) {
             String msg_fish_dup = "showFishCaptchaDialogOnce: duplicate key, skip";
-            Log.d(TAG, msg_fish_dup);
-            FileLogger.trace(TAG, msg_fish_dup);
+            AppLog.d(TAG, msg_fish_dup);
             return;
         }
         lastFishCaptchaDialogKey = key;
         lastFishCaptchaDialogAtMs = now;
         if (AppVars.getContext() == null) {
             String msg_fish_null = "showFishCaptchaDialogOnce: context is null, skip";
-            Log.w(TAG, msg_fish_null);
-            FileLogger.warn(TAG, msg_fish_null);
+            AppLog.w(TAG, msg_fish_null);
             return;
         }
         AppVars.ResumeAutoboiAfterCaptcha = false;
@@ -5989,14 +5860,12 @@ public class MainPhp {
      */
     private static String mainPhpFightEnd(String address, String html) {
         String msg_main = "mainPhpFightEnd: processing fight end page";
-        Log.d(TAG, msg_main);
-        FileLogger.trace(TAG, msg_main);
+        AppLog.d(TAG, msg_main);
         
         // Проверяем, есть ли уже параметры в адресе (URL содержит все нужные параметры)
         if (address.contains("fexp=") && address.contains("act=7")) {
             String msg_fexp = "mainPhpFightEnd: has fexp, building redirect";
-            Log.d(TAG, msg_fexp);
-            FileLogger.trace(TAG, msg_fexp);
+            AppLog.d(TAG, msg_fexp);
             
             // Параметры уже есть в URL - извлекаем их
             String fexp = getUrlParam(address, "fexp");
@@ -6015,8 +5884,7 @@ public class MainPhp {
             if (html.contains("error.css") || html.contains("Ошибка") || html.contains("error")) {
                 // Сервер вернул ошибку - возвращаем оригинальную страницу
                 String msg_error = "mainPhpFightEnd: server returned error page, returning original HTML";
-                Log.d(TAG, msg_error);
-                FileLogger.trace(TAG, msg_error);
+                AppLog.d(TAG, msg_error);
                 return html;
             }
             
@@ -6024,8 +5892,7 @@ public class MainPhp {
             // Но так как WebView не перехватывает POST, просто возвращаем HTML с авто-submit
             if (html.contains("<form") && html.contains("act=7")) {
                 String msg_form = "mainPhpFightEnd: found form in HTML, auto-submitting";
-                Log.d(TAG, msg_form);
-                FileLogger.trace(TAG, msg_form);
+                AppLog.d(TAG, msg_form);
                 // Возвращаем HTML с авто-submit формой
                 return html; // WebView сам отправит форму
             }
@@ -6033,8 +5900,7 @@ public class MainPhp {
             // Строим GET редирект для завершения боя (аналог C# BuildRedirect)
             // Используем window.location для перехвата в WebView
             String msg_redirect = "mainPhpFightEnd: building redirect for fight end";
-            Log.d(TAG, msg_redirect);
-            FileLogger.trace(TAG, msg_redirect);
+            AppLog.d(TAG, msg_redirect);
             
             // Формируем URL с GET параметрами
             String redirectUrl = "main.php?get_id=61&act=7" +
@@ -6055,8 +5921,7 @@ public class MainPhp {
         // Параметры не найдены в URL - ищем в HTML (fexp может быть в JavaScript)
         // Пока возвращаем как есть
         String msg_nofexp = "mainPhpFightEnd: no fexp in URL, returning original HTML";
-        Log.d(TAG, msg_nofexp);
-        FileLogger.trace(TAG, msg_nofexp);
+        AppLog.d(TAG, msg_nofexp);
         return html;
     }
     /**
@@ -6279,8 +6144,7 @@ public class MainPhp {
                 "<font color=#004bbb>" + foes + "</font>" +
                 foeType;
         String msg = "notifyNewFight: ";
-        Log.d(TAG, msg);
-        FileLogger.trace(TAG, msg);
+        AppLog.d(TAG, msg);
         AppVars.LastFightAnnounceAtMs = System.currentTimeMillis();
         Intent msgIntent = new Intent(AppVars.ACTION_ADD_CHAT_MESSAGE);
         msgIntent.putExtra("message", messageHtml);
@@ -6338,8 +6202,7 @@ public class MainPhp {
         long nowMs = System.currentTimeMillis();
         if (dedupKey.equals(lastServerNoticeKey) && (nowMs - lastServerNoticeAtMs) < SERVER_NOTICE_CHAT_DEDUP_MS) {
             String msgDup = "SERVER_NOTICE_TRACE dedup: key=" + dedupKey + ", source=" + sourceTag;
-            Log.d(TAG, msgDup);
-            FileLogger.trace(TAG, msgDup);
+            AppLog.d(TAG, msgDup);
             return;
         }
         lastServerNoticeKey = dedupKey;
@@ -6358,8 +6221,7 @@ public class MainPhp {
                 + ", source=" + sourceTag
                 + ", address=" + addressHint
                 + ", text=" + normalized;
-        Log.d(TAG, msg);
-        FileLogger.trace(TAG, msg);
+        AppLog.d(TAG, msg);
         if (appendAutoCureTarget) {
             AppVars.CureNickDone = "";
         }
@@ -6636,8 +6498,7 @@ public class MainPhp {
         String[] list = extractJsArrayTokens(html, "var list = [[");
         if (list == null || list.length <= 10) {
             String msg = "primeLastBoiDamageFromFinishHtmlIfNeeded: list missing, logId=";
-            Log.d(TAG, msg);
-            FileLogger.trace(TAG, msg);
+            AppLog.d(TAG, msg);
             return;
         }
         int damage = 0;
@@ -6727,12 +6588,10 @@ public class MainPhp {
             // Без этого рыбалка считает бой активным ещё 12+ секунд, причём gate блокирует auto-turn.
             AppVars.LastFightPulseAtMs = 0L;
             String msg = "registerFightEnd: fight counted, source=";
-            Log.d(TAG, msg);
-            FileLogger.trace(TAG, msg);
+            AppLog.d(TAG, msg);
         } else {
             String msg = "registerFightEnd: skip duplicate, source=";
-            Log.d(TAG, msg);
-            FileLogger.trace(TAG, msg);
+            AppLog.d(TAG, msg);
         }
     }
     /**
@@ -6744,8 +6603,7 @@ public class MainPhp {
         int idx = html.indexOf(pattern);
         if (idx < 0) {
             String msg = "logFightVar: ";
-            Log.d(TAG, msg);
-            FileLogger.trace(TAG, msg);
+            AppLog.d(TAG, msg);
             return;
         }
         // Берём подстроку от "var NAME" до конца строки (до \n или ;)
@@ -6753,8 +6611,7 @@ public class MainPhp {
         if (end < 0 || end > idx + 500) end = Math.min(idx + 500, html.length());
         String value = html.substring(idx, end).trim();
         String msg = "logFightVar: ";
-        Log.d(TAG, msg);
-        FileLogger.trace(TAG, msg);
+        AppLog.d(TAG, msg);
     }
     /**
      * Синхронизирует runtime-кэш инвентаря (`AppVars.InvList`) по сырому HTML страницы инвентаря.
@@ -6771,8 +6628,7 @@ public class MainPhp {
             mainPhpInv(html, true);
         } catch (Exception e) {
             String msg = "syncInventoryCacheFromHtml: failed";
-            Log.w(TAG, msg, e);
-            FileLogger.warn(TAG, msg);
+            AppLog.w(TAG, msg, e);
         }
     }
 
@@ -6934,8 +6790,7 @@ public class MainPhp {
 
             String msg_pack = "INV_GROUP_TRACE afterPack=" + parsedCount
                     + ", packed=" + Math.max(0, parsedCount - invList.size());
-            Log.d(TAG, msg_pack);
-            FileLogger.trace(TAG, msg_pack);
+            AppLog.d(TAG, msg_pack);
 
             if (!cacheOnlyMode) {
                 for (InvEntry entry : invList) {
@@ -6950,14 +6805,12 @@ public class MainPhp {
             }
 
             String msg_sort = "INV_GROUP_TRACE afterSort=";
-            Log.d(TAG, msg_sort);
-            FileLogger.trace(TAG, msg_sort);
+            AppLog.d(TAG, msg_sort);
 
             AppVars.InvList = new ArrayList<>(invList);
             if (cacheOnlyMode) {
                 String msg_cache = "INV_GROUP_TRACE cache-only sync done: entries=";
-                Log.d(TAG, msg_cache);
-                FileLogger.trace(TAG, msg_cache);
+                AppLog.d(TAG, msg_cache);
                 return html;
             }
 

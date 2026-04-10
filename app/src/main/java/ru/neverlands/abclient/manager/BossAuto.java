@@ -101,18 +101,15 @@ final class BossAuto {
         }
 
         static int d(String tag, String message) {
-            FileLogger.trace(LOG_CHAIN, message);
-            return android.util.Log.d(tag, message);
+            return AppLog.d(LOG_CHAIN, tag, message);
         }
 
         static int w(String tag, String message) {
-            FileLogger.warn(LOG_CHAIN, message);
-            return android.util.Log.w(tag, message);
+            return AppLog.w(LOG_CHAIN, tag, message);
         }
 
         static int w(String tag, String message, Throwable error) {
-            FileLogger.error(LOG_CHAIN, "WARN: " + message, error);
-            return android.util.Log.w(tag, message, error);
+            return AppLog.w(LOG_CHAIN, tag, message, error);
         }
     }
 
@@ -294,8 +291,8 @@ final class BossAuto {
                 if (preview.length() > 220) {
                     preview = preview.substring(0, 220) + "...";
                 }
-                FileLogger.trace(LOG_CHAIN, "[BOSS_EVENT_SKIPPED_NON_SERVER] " + preview);
-                Log.d(TAG, TRACE_PREFIX + " skip boss-event parse: non-server chat source");
+                AppLog.d(LOG_CHAIN, TAG, "[BOSS_EVENT_SKIPPED_NON_SERVER] " + preview);
+                AppLog.d(LOG_CHAIN, TAG, TRACE_PREFIX + " skip boss-event parse: non-server chat source");
             }
         }
         if (!autoBossEnabled) {
@@ -1219,12 +1216,12 @@ final class BossAuto {
         new Handler(Looper.getMainLooper()).postDelayed(() -> {
             Chat.sendMessageToServer(singleMsg);
             String traceMsg = "[BOSS_PRIVATE_MSG_SENT] Single ask, target=" + finalNorm;
-            FileLogger.trace("boss_auto", traceMsg);
-            Log.d(TAG, TRACE_PREFIX + " ask target sent (single, delayed): target=" + finalNorm + ", message=" + singleMsg);
+            AppLog.d(LOG_CHAIN, TAG, traceMsg);
+            AppLog.d(LOG_CHAIN, TAG, TRACE_PREFIX + " ask target sent (single, delayed): target=" + finalNorm + ", message=" + singleMsg);
         }, CLAN_PRIVATE_MESSAGE_DELAY_MS);
         String queueMsg = "[BOSS_PRIVATE_MSG_QUEUED] Single ask, target=" + normalizedTarget + ", delay=500ms";
-        FileLogger.trace("boss_auto", queueMsg);
-        Log.d(TAG, TRACE_PREFIX + " ask target queued (single, 500ms delay): target=" + normalizedTarget);
+        AppLog.d(LOG_CHAIN, TAG, queueMsg);
+        AppLog.d(LOG_CHAIN, TAG, TRACE_PREFIX + " ask target queued (single, 500ms delay): target=" + normalizedTarget);
     }
 
     /**
@@ -1622,13 +1619,13 @@ final class BossAuto {
      */
     private void sendClanBossEventMessageIfNeeded(String bossName, String targetNick, String selfClanToken, String fightLink) {
         if (!isAutoBossClanNotifyEnabled()) {
-            Log.d(TAG, TRACE_PREFIX + " clan notify event skipped: disabled by settings");
-            FileLogger.trace(LOG_CHAIN, "[BOSS_CLAN_MSG_SKIPPED] reason=disabled_by_settings");
+            AppLog.d(LOG_CHAIN, TAG, TRACE_PREFIX + " clan notify event skipped: disabled by settings");
+            AppLog.d(LOG_CHAIN, TAG, "[BOSS_CLAN_MSG_SKIPPED] reason=disabled_by_settings");
             return;
         }
         if (isEmpty(normalizeClanToken(selfClanToken))) {
-            Log.d(TAG, TRACE_PREFIX + " clan notify event skipped: self clan token is empty");
-            FileLogger.trace(LOG_CHAIN, "[BOSS_CLAN_MSG_SKIPPED] reason=empty_self_clan_token");
+            AppLog.d(LOG_CHAIN, TAG, TRACE_PREFIX + " clan notify event skipped: self clan token is empty");
+            AppLog.d(LOG_CHAIN, TAG, "[BOSS_CLAN_MSG_SKIPPED] reason=empty_self_clan_token");
             writeBossChat("Отправка в клан-чат невозможна: отсутствует значок клана (selfClanToken пустой).");
             return;
         }
@@ -1664,8 +1661,8 @@ final class BossAuto {
             FileLogger.log("[BossAuto.sendClanBossEventMessageIfNeeded] WebView not ready, message queued for retry: " + message.substring(0, Math.min(100, message.length())));
             writeBossChat("Клан-сообщение добавлено в очередь. Будет отправлено при подготовке чата.");
         }
-        Log.d(TAG, TRACE_PREFIX + " clan notify event payload: len=" + message.length() + ", maxLen=" + CLAN_EVENT_CHAT_MAX_LEN);
-        FileLogger.trace(LOG_CHAIN, "[BOSS_CLAN_MSG_PAYLOAD] len=" + message.length() + ", maxLen=" + CLAN_EVENT_CHAT_MAX_LEN);
+        AppLog.d(LOG_CHAIN, TAG, TRACE_PREFIX + " clan notify event payload: len=" + message.length() + ", maxLen=" + CLAN_EVENT_CHAT_MAX_LEN);
+        AppLog.d(LOG_CHAIN, TAG, "[BOSS_CLAN_MSG_PAYLOAD] len=" + message.length() + ", maxLen=" + CLAN_EVENT_CHAT_MAX_LEN);
         // Отправляем clan message с задержкой 1 сек для DDoS protection
         // (буферизация потока pinfo + compass + других запросов)
         final String clanMsg = message;
@@ -1673,13 +1670,13 @@ final class BossAuto {
         new Handler(Looper.getMainLooper()).postDelayed(() -> {
             Chat.sendMessageToServer(clanMsg);
             String traceMsg = "[BOSS_CLAN_MSG_SENT] Delayed 1s, target=" + finalNorm + ", msg=" + clanMsg.substring(0, Math.min(80, clanMsg.length()));
-            FileLogger.trace("boss_auto", traceMsg);
+            AppLog.d(LOG_CHAIN, TAG, traceMsg);
             FileLogger.log("[BossAuto.sendClanBossEventMessageIfNeeded] Sent to Chat.sendMessageToServer (after 1s delay): " + clanMsg.substring(0, Math.min(100, clanMsg.length())));
-            Log.d(TAG, TRACE_PREFIX + " clan notify event sent (delayed): target=" + finalNorm);
+            AppLog.d(LOG_CHAIN, TAG, TRACE_PREFIX + " clan notify event sent (delayed): target=" + finalNorm);
         }, CLAN_NOTIFY_DELAY_MS);
         String schedMsg = "[BOSS_CLAN_MSG_SCHEDULED] 1s delay, target=" + normalizedTarget + ", cells=" + cellsCsv + ", chatReady=" + chatReady;
-        FileLogger.trace("boss_auto", schedMsg);
-        Log.d(TAG, TRACE_PREFIX + " clan notify event scheduled (1s delay): target=" + normalizedTarget + ", cells=" + cellsCsv
+        AppLog.d(LOG_CHAIN, TAG, schedMsg);
+        AppLog.d(LOG_CHAIN, TAG, TRACE_PREFIX + " clan notify event scheduled (1s delay): target=" + normalizedTarget + ", cells=" + cellsCsv
                 + ", chatReady=" + chatReady);
     }
 
@@ -1729,12 +1726,12 @@ final class BossAuto {
             }
             truncated = shortCells.length() < normalizedCells.length();
             String result = prefix + shortCells + (truncated ? "..." : "") + suffix;
-            FileLogger.trace(LOG_CHAIN, "[BOSS_CLAN_MSG_TRIM] fallback=true, truncated=" + truncated + ", len=" + result.length());
+            AppLog.d(LOG_CHAIN, TAG, "[BOSS_CLAN_MSG_TRIM] fallback=true, truncated=" + truncated + ", len=" + result.length());
             return result;
         }
 
         String result = prefix + compact + (truncated ? "..." : "") + suffix;
-        FileLogger.trace(LOG_CHAIN, "[BOSS_CLAN_MSG_TRIM] fallback=false, truncated=" + truncated + ", len=" + result.length());
+        AppLog.d(LOG_CHAIN, TAG, "[BOSS_CLAN_MSG_TRIM] fallback=false, truncated=" + truncated + ", len=" + result.length());
         return result;
     }
 
@@ -1777,12 +1774,12 @@ final class BossAuto {
         if (!chatReady) {
             Log.w(TAG, TRACE_PREFIX + " clan notify found send requested while chat is not ready: cell=" + exactRegNum);
         }
-        FileLogger.trace(LOG_CHAIN, "[BOSS_CLAN_FOUND_PAYLOAD] cell=" + exactRegNum
+        AppLog.d(LOG_CHAIN, TAG, "[BOSS_CLAN_FOUND_PAYLOAD] cell=" + exactRegNum
                 + ", chatReady=" + chatReady
                 + ", msgLen=" + message.length()
                 + ", msg=" + message);
         Chat.sendMessageToServer(message);
-        Log.d(TAG, TRACE_PREFIX + " clan notify found sent: cell=" + exactRegNum + ", chatReady=" + chatReady);
+        AppLog.d(LOG_CHAIN, TAG, TRACE_PREFIX + " clan notify found sent: cell=" + exactRegNum + ", chatReady=" + chatReady);
     }
 
     /**
@@ -1792,13 +1789,13 @@ final class BossAuto {
      */
     private void sendClanBossWarDeniedMessageIfNeeded(String selfClanToken) {
         if (!isAutoBossClanNotifyEnabled()) {
-            Log.d(TAG, TRACE_PREFIX + " clan notify wars-denied skipped: disabled by settings");
-            FileLogger.trace(LOG_CHAIN, "[BOSS_CLAN_WARS_DENY_SKIPPED] reason=disabled_by_settings");
+            AppLog.d(LOG_CHAIN, TAG, TRACE_PREFIX + " clan notify wars-denied skipped: disabled by settings");
+            AppLog.d(LOG_CHAIN, TAG, "[BOSS_CLAN_WARS_DENY_SKIPPED] reason=disabled_by_settings");
             return;
         }
         if (isEmpty(normalizeClanToken(selfClanToken))) {
-            Log.d(TAG, TRACE_PREFIX + " clan notify wars-denied skipped: self clan token is empty");
-            FileLogger.trace(LOG_CHAIN, "[BOSS_CLAN_WARS_DENY_SKIPPED] reason=empty_self_clan_token");
+            AppLog.d(LOG_CHAIN, TAG, TRACE_PREFIX + " clan notify wars-denied skipped: self clan token is empty");
+            AppLog.d(LOG_CHAIN, TAG, "[BOSS_CLAN_WARS_DENY_SKIPPED] reason=empty_self_clan_token");
             writeBossChat("\u041e\u0442\u043f\u0440\u0430\u0432\u043a\u0430 \u0432 \u043a\u043b\u0430\u043d-\u0447\u0430\u0442 \u043d\u0435\u0432\u043e\u0437\u043c\u043e\u0436\u043d\u0430: \u043e\u0442\u0441\u0443\u0442\u0441\u0442\u0432\u0443\u0435\u0442 \u0437\u043d\u0430\u0447\u043e\u043a \u043a\u043b\u0430\u043d\u0430 (selfClanToken \u043f\u0443\u0441\u0442\u043e\u0439).");
             return;
         }
@@ -1808,8 +1805,8 @@ final class BossAuto {
             Log.w(TAG, TRACE_PREFIX + " clan notify wars-denied send requested while chat is not ready");
         }
         Chat.sendMessageToServer(message);
-        FileLogger.trace(LOG_CHAIN, "[BOSS_CLAN_WARS_DENY_SENT] chatReady=" + chatReady + ", msgLen=" + message.length());
-        Log.d(TAG, TRACE_PREFIX + " clan notify wars-denied sent: chatReady=" + chatReady);
+        AppLog.d(LOG_CHAIN, TAG, "[BOSS_CLAN_WARS_DENY_SENT] chatReady=" + chatReady + ", msgLen=" + message.length());
+        AppLog.d(LOG_CHAIN, TAG, TRACE_PREFIX + " clan notify wars-denied sent: chatReady=" + chatReady);
     }
 
     boolean isAutoBossAskTargetEnabled() {

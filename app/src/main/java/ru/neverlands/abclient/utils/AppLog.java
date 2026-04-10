@@ -22,15 +22,33 @@ public final class AppLog {
         return result;
     }
 
+    public static int d(String chain, String tag, String message) {
+        int result = android.util.Log.d(tag, message);
+        FileLogger.trace(resolveChain(chain), normalize(message));
+        return result;
+    }
+
     public static int i(String tag, String message) {
         int result = android.util.Log.i(tag, message);
         FileLogger.trace(resolveChain(tag), normalize(message));
         return result;
     }
 
+    public static int i(String chain, String tag, String message) {
+        int result = android.util.Log.i(tag, message);
+        FileLogger.trace(resolveChain(chain), normalize(message));
+        return result;
+    }
+
     public static int w(String tag, String message) {
         int result = android.util.Log.w(tag, message);
         FileLogger.warn(resolveChain(tag), normalize(message));
+        return result;
+    }
+
+    public static int w(String chain, String tag, String message) {
+        int result = android.util.Log.w(tag, message);
+        FileLogger.warn(resolveChain(chain), normalize(message));
         return result;
     }
 
@@ -43,15 +61,36 @@ public final class AppLog {
         return result;
     }
 
+    public static int w(String chain, String tag, String message, Throwable error) {
+        int result = android.util.Log.w(tag, message, error);
+        FileLogger.warn(resolveChain(chain), normalize(message));
+        if (error != null) {
+            FileLogger.error(resolveChain(chain), "warning throwable", error);
+        }
+        return result;
+    }
+
     public static int e(String tag, String message) {
         int result = android.util.Log.e(tag, message);
         FileLogger.error(resolveChain(tag), normalize(message), null);
         return result;
     }
 
+    public static int e(String chain, String tag, String message) {
+        int result = android.util.Log.e(tag, message);
+        FileLogger.error(resolveChain(chain), normalize(message), null);
+        return result;
+    }
+
     public static int e(String tag, String message, Throwable error) {
         int result = android.util.Log.e(tag, message, error);
         FileLogger.error(resolveChain(tag), normalize(message), error);
+        return result;
+    }
+
+    public static int e(String chain, String tag, String message, Throwable error) {
+        int result = android.util.Log.e(tag, message, error);
+        FileLogger.error(resolveChain(chain), normalize(message), error);
         return result;
     }
 
