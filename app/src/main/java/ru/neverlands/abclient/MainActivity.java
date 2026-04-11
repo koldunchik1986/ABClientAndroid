@@ -724,6 +724,26 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         if (shouldDeferAutoTurnForFirstFrameRender()) {
             return;
         }
+        // Когда приложение в фоне/экран заблокирован — WebView.evaluateJavascript может не сработать
+        // (Android приостанавливает рендеринг WebView). Сразу идём через HTTP server probe.
+        if (allowServerProbeFallback && !isActivityResumedState) {
+            String cachedFightHtml = AppVars.ContentMainPhp;
+            boolean cachedActive = hasFightMarkers(cachedFightHtml) && isActiveFightContext(cachedFightHtml);
+            Log.d(TAG, BG_TRACE_PREFIX + " requestAutoTurn: app backgrounded, skip WebView evaluateJavascript"
+                    + ", cachedActive=" + cachedActive);
+            if (cachedActive) {
+                // Есть актуальный кэш боя — используем как основу + параллельно обновляем через HTTP
+                fightViewModel.autoTurnOnce(cachedFightHtml);
+                long sinceLastProbeMs = System.currentTimeMillis() - lastAutoTurnServerProbeAtMs;
+                if (sinceLastProbeMs >= AUTO_TURN_SERVER_PROBE_MIN_INTERVAL_MS) {
+                    requestAutoTurnFromServerProbe("bg_cached_active_keepalive");
+                }
+            } else {
+                // Нет актуального кэша — HTTP probe как единственный источник
+                requestAutoTurnFromServerProbe("bg_no_webview");
+            }
+            return;
+        }
         Log.d(TAG, BG_TRACE_PREFIX + " requestAutoTurn: start");
         Log.d(TAG, "requestAutoTurn: grabbing current HTML for auto-turn");
         binding.appBarMain.contentMain.webView.evaluateJavascript(

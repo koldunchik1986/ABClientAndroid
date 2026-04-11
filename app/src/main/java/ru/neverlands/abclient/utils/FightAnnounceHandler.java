@@ -59,7 +59,8 @@ public final class FightAnnounceHandler {
                 "fight_turn",  // actionName
                 true,          // uiForegroundLikely: может быть true если пользователь видит экран
                 true,          // fightLikelyActive: мы уже знаем что бой активен
-                false)) {      // нет дополнительных блокеров
+                true,          // hasFightMarkers: бой объявлен
+                false)) {      // hasPendingFinishLink: нет ещё finish-link
             String guardMsg = "[FIGHT_ANNOUNCE_BLOCKED] guard conditions not met";
             AppLog.w(TAG, TAG, guardMsg);
             // Retry через короткий промежуток времени

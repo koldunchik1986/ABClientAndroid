@@ -101,34 +101,34 @@ public final class ForcedActionGuard {
     /**
      * Альтернативная проверка с учетом дополнительных условий.
      * 
-     * Используется если нужна более сложная логика проверки.
+     * Используется для решения: запускать ли авто-действие при фоновом/заблокированном экране.
+     * 
+     * Логика:
+     * 1) Если бой вероятно активен — ВСЕГДА разрешаем (приоритет над блокерами).
+     * 2) Если UI в foreground и нет force-флагов — блокируем (чтобы не мешать ручным действиям).
+     * 3) Иначе (фон/lockscreen) — разрешаем.
      * 
      * @param actionName название действия
      * @param uiForegroundLikely флаг что пользователь смотрит
      * @param fightLikelyActive флаг что идет бой
-     * @param otherBlockers другие условия которые могут заблокировать действие
+     * @param hasFightMarkers есть ли маркеры боя в HTML (информационный, НЕ блокер)
+     * @param hasPendingFinishLink есть ли pendingFightFinishLink (информационный, НЕ блокер)
      * @return true если действие разрешено
      */
     public static boolean shouldForceActionAdvanced(
             String actionName,
             boolean uiForegroundLikely,
             boolean fightLikelyActive,
-            boolean... otherBlockers) {
+            boolean hasFightMarkers,
+            boolean hasPendingFinishLink) {
         
-        // Если есть критичные блокеры - не запускаем
-        for (boolean blocker : otherBlockers) {
-            if (blocker) {
-                return false;
-            }
-        }
-        
-        // 🆕 FIX: Если идет бой, ОБЯЗАТЕЛЬНО разрешаем autoTurn запросы
-        // Это обеспечивает непрерывные ходы во время активного боя
-        if (fightLikelyActive) {
+        // Если идет бой (или есть маркеры/finish-link) — ОБЯЗАТЕЛЬНО разрешаем autoTurn.
+        // Это критично для фонового авто-боя при заблокированном экране.
+        if (fightLikelyActive || hasFightMarkers || hasPendingFinishLink) {
             return true;
         }
         
-        // Стандартная проверка с игнорированием UI foreground
+        // Нет боя — стандартная проверка с учётом UI foreground
         return shouldForceAction(actionName, uiForegroundLikely);
     }
 }
