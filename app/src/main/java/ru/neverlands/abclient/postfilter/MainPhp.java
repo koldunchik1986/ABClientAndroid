@@ -49,20 +49,8 @@ public class MainPhp {
     private static final int AUTO_FINISH_ST7_MIN_DELAY_MS = 220;
     private static final int AUTO_FINISH_ST7_EXTRA_DELAY_MS = 220;
     private static final long AUTO_DRINK_TRIGGER_COOLDOWN_MS = 2500L;
-    private static final long AUTO_FISH_BLAZ_TRIGGER_COOLDOWN_MS = 8000L;
-    // Серверный таймаут после шага "Пить" в рыбалке: выдерживаем ~62 сек перед следующим шагом.
-    private static final long AUTO_FISH_DRINK_SERVER_COOLDOWN_MS = 62_000L;
-    private static final int AUTO_FISH_DRINK_POLL_DELAY_MS = 1500;
     private static final long CAPTCHA_FALLBACK_TTL_MS = 5000L;
     private static final long AUTO_SKIN_KNIFE_RECHECK_INTERVAL_MS = 60_000L;
-    private static final int AUTO_FISH_WEAR_LOOP_MAX_REPEATS = 12;
-    private static final long AUTO_FISH_WEAR_LOOP_WINDOW_MS = 20_000L;
-    private static final long AUTO_FISH_INFOAPI_PRECHECK_COOLDOWN_MS = 900L;
-    // В info.cgi line1 массив слотов индексируется с 0:
-    // slot[3] (из пользовательского описания) = index 2, slot[13] = index 12.
-    private static final int AUTO_FISH_INFOAPI_SLOT_HAND1_INDEX = 2;
-    private static final int AUTO_FISH_INFOAPI_SLOT_HAND2_INDEX = 12;
-    private static final String BLISS_ELIXIR_NAME = "\u042D\u043B\u0438\u043A\u0441\u0438\u0440 \u0411\u043B\u0430\u0436\u0435\u043D\u0441\u0442\u0432\u0430";
     private static final String AUTO_CURE_POISON_POTION_NAME = "Зелье Лечения Отравлений";
     private static final String AUTO_CURE_SELF_ELIXIR_NAME = "Эликсир Мгновенного Исцеления";
     private static final String MAP_HEAVY_INJURY_POPUP_MARKER = "Вы не можете перемещаться! У Вас тяж";
@@ -72,18 +60,6 @@ public class MainPhp {
     private static final int HEAVY_WOUND_INDEX = 3;
     // На части серверных ответов вкладка инвентаря отдается промежуточным шаблоном (без содержимого предметов).
     // Для быстрых действий по эликсирам даем расширенное окно ретраев, чтобы не падать в ложный timeout.
-    private static final int[] FISH_PRIM_IDS = new int[]{38, 39, 40, 41, 42, 43, 44, 45, 46};
-    private static final int[] FISH_PRIM_FLAGS = new int[]{
-            ru.neverlands.abclient.model.Prims.Bread,
-            ru.neverlands.abclient.model.Prims.Worm,
-            ru.neverlands.abclient.model.Prims.BigWorm,
-            ru.neverlands.abclient.model.Prims.Stink,
-            ru.neverlands.abclient.model.Prims.Fly,
-            ru.neverlands.abclient.model.Prims.Light,
-            ru.neverlands.abclient.model.Prims.Donka,
-            ru.neverlands.abclient.model.Prims.Morm,
-            ru.neverlands.abclient.model.Prims.HiFlight
-    };
     private static final long WTIME_SYNC_LOG_GUARD_MS = 1500L;
     private static final long SERVER_NOTICE_CHAT_DEDUP_MS = 1500L;
     /**
@@ -101,9 +77,6 @@ public class MainPhp {
      */
     private static final long AUTO_FIGHT_PROBE_FINISH_CONFIRM_WINDOW_MS = 4500L;
     private static volatile long lastAutoDrinkTriggerAtMs = 0L;
-    private static volatile long lastAutoFishBlazTriggerAtMs = 0L;
-    private static volatile long lastAutoFishDrinkTriggerAtMs = 0L;
-    private static volatile long lastAutoFishInfoApiPrecheckAtMs = 0L;
     private static volatile long lastWtimeSyncLogAtMs = 0L;
     private static volatile long lastAutoDrinkBlazTriggerAtMs = 0L;
     private static volatile long lastMapHeavyInjurySyncAtMs = 0L;
@@ -116,8 +89,6 @@ public class MainPhp {
     // Защита от повторного показа одного и того же диалога капчи завершения боя.
     private static volatile String lastFightCaptchaDialogKey = "";
     private static volatile long lastFightCaptchaDialogAtMs = 0L;
-    private static volatile String lastFishCaptchaDialogKey = "";
-    private static volatile long lastFishCaptchaDialogAtMs = 0L;
     private static volatile String lastCaptchaRejectKey = "";
     private static volatile long lastCaptchaRejectAtMs = 0L;
     // Дедуп публикации результата боя:
@@ -127,29 +98,6 @@ public class MainPhp {
     private static volatile String lastFightResultLootBroadcastKey = "";
     private static volatile String lastFightSummaryBroadcastKey = "";
 
-    static final class AutoFishInfoApiPrecheckState {
-        final boolean snapshotValid;
-        final boolean mustWear;
-        final boolean needFatigueStep;
-        final Integer tied;
-        final int tiedThreshold;
-
-        AutoFishInfoApiPrecheckState(boolean snapshotValid,
-                                     boolean mustWear,
-                                     boolean needFatigueStep,
-                                     Integer tied,
-                                     int tiedThreshold) {
-            this.snapshotValid = snapshotValid;
-            this.mustWear = mustWear;
-            this.needFatigueStep = needFatigueStep;
-            this.tied = tied;
-            this.tiedThreshold = tiedThreshold;
-        }
-
-        boolean shouldRouteViaMainPhp() {
-            return mustWear || needFatigueStep;
-        }
-    }
     /**
      * Последний кандидат завершения боя, зафиксированный на probe-кадре.
      *
@@ -489,7 +437,7 @@ public class MainPhp {
     /**
      * Лёгкая DTO-запись предмета инвентаря для wear-логики (порт `GetInvList` + `InvEntry.WearLink` из C#).
      */
-    private static final class WearInvEntry {
+    static final class WearInvEntry {
         String name;
         String wearLink;
     }
@@ -601,50 +549,6 @@ public class MainPhp {
     }
 
     /**
-     * Восстановление runtime-рассинхронизации авто-рыбалки, когда сохранённый Auto-Fish включён,
-     * но AppVars.Profile.AutoFish был выключен.
-     *
-     * Это обычно происходит когда:
-     * - Пользователь включил авто-рыбалку (установлен флаг в SharedPreferences)
-     * - Произойдёт редирект на персонаж (go=inf/go=10) или инвентарь
-     * - После возврата на природу (go=ret) флаг иногда не восстанавливается из-за race condition
-     *
-     * ✅ ИСПРАВЛЕНО: теперь восстанавливаем флаг на ЛЮБОЙ клетке природы без озера
-     * (озеро может появиться позже при клике на "Рыбалка" или переходе на озёрную клетку).
-     * Проверяем ТОЛЬКО что пользователь включил авто-рыбалку в SharedPreferences.
-     */
-    private static void recoverAutofishRuntimeStateIfNeeded(boolean onMapOrNature, String html, String address) {
-        if (!onMapOrNature) {
-            return;
-        }
-        if (AppVars.Profile == null) {
-            return;
-        }
-        // Если авто-рыбалка уже включена в runtime, нечего восстанавливать
-        if (AppVars.Profile.AutoFish) {
-            return;
-        }
-        // Проверяем, включена ли авто-рыбалка в preferences (SharedPreferences)
-        if (!isAutoFishEnabledByPreference()) {
-            String msg = "recoverAutofishRuntimeStateIfNeeded: AutoFish disabled in preferences";
-            AppLog.d(TAG, msg);
-            return;
-        }
-        
-        // КРИТИЧНО: восстанавливаем флаг ТОЛЬКО если озеро открыто на текущей клетке
-        // Авто-рыбалка должна работать только на странице с формой выбора приманки (озером)
-        // Проверяем наличие озера по характерному признаку: name=primid в HTML
-        if (html.contains("name=primid") || html.contains("name=\"primid\"")) {
-            AppVars.Profile.AutoFish = true;
-            String msg = "recoverAutofishRuntimeStateIfNeeded: ✅ restored AppVars.Profile.AutoFish -> true (lake form detected, enabled in preferences)";
-            AppLog.w(TAG, msg);
-        } else {
-            String msg = "recoverAutofishRuntimeStateIfNeeded: ⚠️ NOT restoring AutoFish - lake form not detected (no name=primid in HTML)";
-            AppLog.d(TAG, msg);
-        }
-    }
-
-    /**
      * Форматирует секунды в `HH:mm:ss` для UI ожидания лечения.
      */
     private static String formatHms(long seconds) {
@@ -733,23 +637,6 @@ public class MainPhp {
                 "} else { window.location = \"" + safeLink + "\"; }" +
                 "}," + safeDelay + ");" +
                 "</script></body></html>";
-    }
-    /**
-     * Строит промежуточную HTML-страницу удержания при активном диалоге капчи.
-     *
-     * Зависимости:
-     * - {@link HtmlUtils#GENERATED_PAGE_MARKER} для безопасной подмены текущего кадра.
-     *
-     * Назначение:
-     * - Сохранить контекст боя, пока пользователь вводит код в отдельном диалоге.
-     */
-    private static String buildCaptchaDialogHoldHtml() {
-        return HtmlUtils.GENERATED_PAGE_MARKER +
-                "<html><head><meta http-equiv=\"Content-Type\" content=\"text/html; charset=windows-1251\">" +
-                "<title>ABClient</title></head><body>" +
-                "Ожидание ввода капчи...<br>" +
-                "Введите код во всплывающем окне." +
-                "</body></html>";
     }
     /**
      * Вычисляет актуальный URL боевой капчи для текущего шага завершения боя.
@@ -969,7 +856,7 @@ public class MainPhp {
      * Назначение:
      * - Исключить ломание разметки из-за спецсимволов ({@code & " < >}) в значениях input-полей.
      */
-    private static String escapeHtmlAttr(String value) {
+    static String escapeHtmlAttr(String value) {
         if (value == null || value.isEmpty()) {
             return "";
         }
@@ -1443,23 +1330,6 @@ public class MainPhp {
         }
         return false;
     }
-    /**
-     * Определяет, включена ли Авто-Рыбалка в профиле/настройках.
-     */
-    private static boolean isAutoFishEnabledByPreference() {
-        if (AppVars.Profile != null) {
-            return AppVars.Profile.AutoFish;
-        }
-        try {
-            if (AppVars.getContext() != null) {
-                return AutoFunctionsManager.getInstance(AppVars.getContext()).isAutoFishEnabled();
-            }
-        } catch (Exception e) {
-            String msg = "isAutoFishEnabledByPreference: fallback=false";
-            AppLog.w(TAG, msg, e);
-        }
-        return false;
-    }
 
     /**
      * Определяет, включено ли Авто-Лечение.
@@ -1546,46 +1416,6 @@ public class MainPhp {
             return (value >= 1 && value <= 4) ? value : 0;
         } catch (Exception ignored) {
             return 0;
-        }
-    }
-    /**
-     * Чтение умения "Рыбалка" на странице `mselect=1` (C# parity для `AutoFishCheckUm`).
-     */
-    private static void mainPhpProcessFishSkills(String html, String address) {
-        if (html == null || html.isEmpty()) {
-            return;
-        }
-        String fishSkill = HelperStrings.subString(
-                html,
-                "Рыбалка</td><td bgcolor=#FCFAF3><font class=proce><font color=#555555><div align=center>[",
-                "]");
-        if (fishSkill == null || fishSkill.isEmpty()) {
-            java.util.regex.Matcher matcher = java.util.regex.Pattern
-                    .compile("Рыбалка</td><td[^\\[]*\\[(\\d+)\\]", java.util.regex.Pattern.CASE_INSENSITIVE | java.util.regex.Pattern.DOTALL)
-                    .matcher(html);
-            if (matcher.find()) {
-                fishSkill = matcher.group(1);
-            }
-        }
-        if (fishSkill != null && !fishSkill.isEmpty()) {
-            try {
-                int fishUm = Integer.parseInt(fishSkill.trim());
-                AppVars.AutoFishCheckUm = false;
-                if (AppVars.Profile != null) {
-                    AppVars.Profile.FishUm = fishUm;
-                }
-                String msg = "AUTO_FISH_TRACE skill parsed: FishUm=";
-                AppLog.d(TAG, msg);
-            } catch (Exception e) {
-                String msg = "AUTO_FISH_TRACE skill parse failed: ";
-                AppLog.w(TAG, msg, e);
-            }
-            return;
-        }
-        if (AppVars.AutoFishCheckUm && address != null && address.contains("mselect=1")) {
-            AppVars.AutoFishCheckUm = false;
-            String msg = "AUTO_FISH_TRACE mselect=1 without Рыбалка block, forced AutoFishCheckUm=false";
-            AppLog.w(TAG, msg);
         }
     }
 
@@ -2036,7 +1866,7 @@ public class MainPhp {
 
     // Global runtime pause for non-combat auto pipelines while FastAction is active.
     // Autoboi/fight flow must continue and therefore is not controlled by this helper.
-    private static boolean isNonCombatAutoPausedByFastAction() {
+    static boolean isNonCombatAutoPausedByFastAction() {
         return (AppVars.FastNeed && AppVars.FastPauseNonCombatAutoFunctions)
                 || AppVars.TreasureDigPauseNonCombatAutoFunctions
                 || AppVars.TimerPauseNonCombatAutoFunctions;  // Pause всех non-combat авто при таймере
@@ -2081,7 +1911,7 @@ public class MainPhp {
      * Проверяет, что текущий адрес уже находится в разделе инвентаря (`go=inv`).
      * Используется как fallback-маркер, когда HTML-шаблон инвентаря может отличаться.
      */
-    private static boolean isInventoryAddress(String address) {
+    static boolean isInventoryAddress(String address) {
         if (address == null || address.isEmpty()) {
             return false;
         }
@@ -2112,7 +1942,7 @@ public class MainPhp {
      * Проверяет, что адрес инвентаря уже содержит все параметры из требуемого фильтра
      * с совпадающими значениями (`im`, `wca` и т.д.).
      */
-    private static boolean inventoryAddressMatchesFilter(String address, String filter) {
+    static boolean inventoryAddressMatchesFilter(String address, String filter) {
         if (!isInventoryAddress(address)) {
             return false;
         }
@@ -2177,7 +2007,7 @@ public class MainPhp {
      * Назначение:
      * - Гарантированно вернуть контекст на "персонажа" после авто-действий, даже при отличиях шаблона страницы.
      */
-    private static String mainPhpFindPerc(String html) {
+    static String mainPhpFindPerc(String html) {
         String vcode = HelperStrings.subString(html, "'main.php?get_id=56&act=10&go=inf&vcode=", "'");
         if (vcode != null && !vcode.isEmpty()) {
             String link = "main.php?get_id=56&act=10&go=inf&vcode=" + vcode;
@@ -2231,7 +2061,7 @@ public class MainPhp {
      *   где доступна кнопка "Рыбалка";
      * - убрать ручной шаг пользователя "нажать Вернуться".
      */
-    private static String mainPhpFindFlora(String html) {
+    static String mainPhpFindFlora(String html) {
         if (html == null || html.isEmpty()) {
             return null;
         }
@@ -2337,421 +2167,6 @@ public class MainPhp {
         } catch (Exception ignored) {
         }
         return null;
-    }
-
-    private static String mainPhpFindFish(String html) {
-        if (html == null || html.isEmpty()) {
-            return null;
-        }
-        String pattern = "[\"fis\",\"Рыбалка\",\"";
-        int posPattern = html.indexOf(pattern);
-        if (posPattern == -1) {
-            return null;
-        }
-        posPattern += pattern.length();
-        int posEnd = html.indexOf('"', posPattern);
-        if (posEnd == -1) {
-            return null;
-        }
-        String vcode = html.substring(posPattern, posEnd);
-        if (vcode.isEmpty()) {
-            return null;
-        }
-        String callFish = "Fish('" + vcode + "');";
-        String patternViewMap = "view_map();";
-        int posScript = html.indexOf(patternViewMap);
-        if (posScript == -1) {
-            return null;
-        }
-        posScript += patternViewMap.length();
-
-        // Кэшируем HTML озера для парсинга приманок (Android версия MainPhpFish.cs)
-        if (AppVars.ContentLakeHtml == null || AppVars.ContentLakeHtml.isEmpty()) {
-            String lakeForm = extractLakeFishFormHtml(html);
-            if (lakeForm != null && !lakeForm.isEmpty()) {
-                AppVars.ContentLakeHtml = lakeForm;
-                AppVars.ContentLakeHtmlLastUpdateAtMs = System.currentTimeMillis();
-                String msg = "AUTO_FISH_TRACE cached ContentLakeHtml, length=";
-                AppLog.d(TAG, msg);
-            }
-        }
-
-        return html.substring(0, posScript) + callFish + html.substring(posScript);
-    }
-    /**
-     * Порт `MainPhpIsPerc` из C# (`MainPhpDrink.cs`).
-     */
-    /**
-     * Обновляет runtime-усталость из текущего HTML верхнего фрейма.
-     *
-     * Что делает:
-     * - извлекает усталость из hpmp/табличного блока (`parseMainPhpTiedValue`);
-     * - обновляет значение через `CharacterVitalsManager.updateTied(...)`;
-     * - если усталость стала 0, снимает режим `AutoFishDrink`.
-     *
-     * Зависимости:
-     * - {@link #parseMainPhpTiedValue(String)} — источник значения усталости;
-     * - {@link CharacterVitalsManager#updateTied(int, String)} — единая точка записи;
-     * - авто-рыбалка (`AppVars.AutoFishDrink`) — завершение режима "пить до нуля".
-     */
-    private static void mainPhpUpdateTied(String html) {
-        Integer tiedValue = parseMainPhpTiedValue(html);
-        if (tiedValue == null) {
-            return;
-        }
-        int normalized = Math.max(0, Math.min(100, tiedValue));
-        CharacterVitalsManager.Snapshot before = CharacterVitalsManager.snapshot();
-        if (before.tied != normalized) {
-            String msg = "AUTO_FISH_TRACE tied update: old=";
-            AppLog.d(TAG, msg);
-        }
-        CharacterVitalsManager.Snapshot after = CharacterVitalsManager.updateTied(normalized, "MainPhp.mainPhpUpdateTied");
-        if (AppVars.AutoFishDrink && after.tied <= 0) {
-            AppVars.AutoFishDrink = false;
-            String msg = "AUTO_FISH_TRACE tied reached zero -> stop drink-to-zero mode";
-            AppLog.d(TAG, msg);
-        }
-    }
-
-    /**
-     * Пытается извлечь процент усталости из блока "Усталость: ...".
-     */
-    private static Integer parseMainPhpTiedValue(String html) {
-        if (html == null || html.isEmpty()) {
-            return null;
-        }
-        try {
-            Integer tiedFromHpmp = parseMainPhpTiedFromHpmp(html);
-            if (tiedFromHpmp != null) {
-                return tiedFromHpmp;
-            }
-
-            java.util.regex.Matcher m = java.util.regex.Pattern
-                    .compile("(?is)\u0423\u0441\u0442\u0430\u043b\u043e\u0441\u0442\u044c\\s*:</td><td[^>]*>.*?<b>\\s*(\\d{1,3})\\s*</b>")
-                    .matcher(html);
-            if (m.find()) {
-                return Integer.parseInt(m.group(1));
-            }
-            m = java.util.regex.Pattern
-                    .compile("(?is)\u0423\u0441\u0442\u0430\u043b\u043e\u0441\u0442\u044c[^0-9]{0,80}(\\d{1,3})\\s*%")
-                    .matcher(html);
-            if (m.find()) {
-                return Integer.parseInt(m.group(1));
-            }
-            m = java.util.regex.Pattern
-                    .compile("(?is)\u0423\u0441\u0442\u0430\u043b\u043e\u0441\u0442\u044c[^0-9]{0,80}(\\d{1,3})")
-                    .matcher(html);
-            if (m.find()) {
-                return Integer.parseInt(m.group(1));
-            }
-        } catch (Exception e) {
-            String msg = "AUTO_FISH_TRACE tied parse failed";
-            AppLog.w(TAG, msg, e);
-        }
-        return null;
-    }
-
-    private static Integer parseMainPhpTiedFromHpmp(String html) {
-        if (html == null || html.isEmpty()) {
-            return null;
-        }
-        try {
-            // Формат hpmp в runtime может отличаться (кавычки/лишние поля/пробелы),
-            // поэтому берём массив целиком и читаем 5-й элемент через общий JS-token parser.
-            java.util.regex.Matcher hpmpMatcher = java.util.regex.Pattern
-                    .compile("(?is)\\bhpmp\\b\\s*=\\s*\\[(.*?)\\]")
-                    .matcher(html);
-            if (hpmpMatcher.find()) {
-                List<String> hpmp = splitJsTopLevelCsv(hpmpMatcher.group(1));
-                if (hpmp.size() >= 5) {
-                    int maxTire = parseIntFromJsToken(hpmp.get(4), Integer.MIN_VALUE);
-                    if (maxTire != Integer.MIN_VALUE) {
-                        return Math.max(0, Math.min(100, 100 - maxTire));
-                    }
-                }
-            }
-
-            java.util.regex.Matcher maxTireMatcher = java.util.regex.Pattern
-                    .compile("(?is)[\"']?maxTire[\"']?\\s*[:=]\\s*[\"']?(\\d{1,3})[\"']?")
-                    .matcher(html);
-            if (maxTireMatcher.find()) {
-                int maxTire = Integer.parseInt(maxTireMatcher.group(1));
-                return Math.max(0, Math.min(100, 100 - maxTire));
-            }
-        } catch (Exception e) {
-            String msg = "AUTO_FISH_TRACE hpmp tied parse failed";
-            AppLog.w(TAG, msg, e);
-        }
-        return null;
-    }
-
-    /**
-     * C# parity (`MainPhpFindDrink`): на карте вставляет вызов `Drink('<vcode>')` после `view_map();`.
-     */
-    private static String mainPhpFindDrink(String html) {
-        if (html == null || html.isEmpty()) {
-            return null;
-        }
-        String pattern = "[\"dri\",\"Пить\",\"";
-        int posPattern = html.indexOf(pattern);
-        if (posPattern == -1) {
-            return null;
-        }
-        posPattern += pattern.length();
-        int posEnd = html.indexOf('"', posPattern);
-        if (posEnd == -1) {
-            return null;
-        }
-        String vcode = html.substring(posPattern, posEnd);
-        if (vcode.isEmpty()) {
-            return null;
-        }
-        String callDrink = "Drink('" + vcode + "');";
-        String patternViewMap = "view_map();";
-        int posScript = html.indexOf(patternViewMap);
-        if (posScript == -1) {
-            return null;
-        }
-        posScript += patternViewMap.length();
-        return html.substring(0, posScript) + callDrink + html.substring(posScript);
-    }
-
-    /**
-     * Шаг контроля усталости авто-рыбалки:
-     * - если усталость выше порога, выполняет "Пить" (или "Эликсир Блаженства" по настройке),
-     * - иначе возвращает null и цикл продолжает обычный шаг "Рыбалка".
-     */
-    private static String mainPhpAutoFishFatigueStep(String html) {
-        if (AppVars.Profile == null || html == null || html.isEmpty()) {
-            return null;
-        }
-        long now = System.currentTimeMillis();
-        long cooldownRemainingMs = getAutoFishDrinkCooldownRemainingMs(now);
-        if (AppVars.AutoFishDrinkOnce || cooldownRemainingMs > 0L) {
-            if (cooldownRemainingMs > 0L) {
-                AppVars.AutoDrinkBlazPending = true;
-                if (!AppVars.AutoFishDrinkOnce) {
-                    String msg_recoverCooldown = "AUTO_FISH_TRACE restored drink cooldown by timestamp: remainingMs="
-                            + cooldownRemainingMs;
-                    AppLog.d(TAG, msg_recoverCooldown);
-                }
-                AppVars.AutoFishDrinkOnce = true;
-                long elapsed = Math.max(0L, now - lastAutoFishDrinkTriggerAtMs);
-                AppLog.d(TAG, "AUTO_FISH_TRACE drink cooldown active: elapsedMs="
-                        + elapsed + ", remainingMs=" + cooldownRemainingMs);
-                return buildAutoFishDrinkCooldownHtml(cooldownRemainingMs);
-            }
-            long elapsed = Math.max(0L, now - lastAutoFishDrinkTriggerAtMs);
-            AppLog.d(TAG, "AUTO_FISH_TRACE drink cooldown elapsed: elapsedMs="
-                    + elapsed + ", recheck tied");
-            AppVars.AutoFishDrinkOnce = false;
-            
-            // КРИТИЧНО: После окончания cooldown'а эликсира ЗАТЕРЕТЬ FastNeed,
-            // иначе система видит FastNeed=true и пропускает авто-рыбалку!
-            if (AppVars.FastNeed) {
-                FastActionManager.fastCancel("elixir_cooldown_finished");
-                String msg_cancel = "AUTO_FISH_TRACE cooldown finished, cancel FastNeed to resume autofish";
-                AppLog.d(TAG, msg_cancel);
-            }
-            
-            // КРИТИЧНО: После окончания cooldown'а эликсира, нужно ПРИНУДИТЕЛЬНО запустить probe для рыбалки
-            // Иначе система может не начать ловить, если пользователь был на UI (uiForegroundLikely=true)
-            if (FishAjaxPhp.isAutoFishEnabled()) {
-                AppVars.ProbeForceNeedAutofish = true;
-                String msg = "AUTO_FISH_TRACE drink cooldown finished, forcing autofish probe";
-                AppLog.d(TAG, msg);
-            }
-        }
-        mainPhpUpdateTied(html);
-
-        int tied = CharacterVitalsManager.snapshot().tied;
-        int tiedHigh = Math.max(0, Math.min(99, AppVars.Profile.FishTiedHigh));
-        if (!AppVars.AutoFishDrink) {
-            AppVars.AutoFishDrink = tied > tiedHigh && AppVars.Profile.FishTiedZero;
-        }
-        boolean needDrinkStep = tied > tiedHigh || AppVars.AutoFishDrink;
-        if (!needDrinkStep) {
-            return null;
-        }
-
-        if (AppVars.Profile.FishDrinkBliss) {
-            if (AppVars.FastNeed) {
-                AppLog.d(TAG, "AUTO_FISH_TRACE tied=" + tied + " > " + tiedHigh
-                        + ", wait bliss: FastNeed=true");
-                return buildRedirectHtml("Авторыбалка: ожидание эликсира", "main.php");
-            }
-            long sinceLast = now - lastAutoFishBlazTriggerAtMs;
-            if (sinceLast >= 0 && sinceLast < AUTO_FISH_BLAZ_TRIGGER_COOLDOWN_MS) {
-                AppLog.d(TAG, "AUTO_FISH_TRACE tied=" + tied + " > " + tiedHigh
-                        + ", bliss cooldown " + sinceLast + "ms");
-                return buildRedirectHtml("Авторыбалка: ожидание эликсира", "main.php");
-            }
-            lastAutoFishBlazTriggerAtMs = now;
-            lastAutoFishDrinkTriggerAtMs = now;
-            AppVars.AutoFishDrinkOnce = true;
-            
-            // === ЛОГИРОВАНИЕ ДО ВЫЗОВА ===
-            AppLog.d(TAG, "[AUTO_FISH_BEFORE_FAST] ПЕРЕД fastStart: "
-                    + "tied=" + tied + ", tiedHigh=" + tiedHigh
-                    + " | FastNeed=" + AppVars.FastNeed
-                    + ", FastId='" + AppVars.FastId + "'"
-                    + ", timestamp=" + now);
-            
-            AppLog.d(TAG, "AUTO_FISH_TRACE tied=" + tied + " > " + tiedHigh
-                    + ", trigger bliss elixir");
-            
-            AppVars.AutoDrinkBlazPending = true;
-            FastActionManager.fastAttackBlazElixir("Авто-Рыбалка");
-            
-            // === ЛОГИРОВАНИЕ ПОСЛЕ ВЫЗОВА ===
-            AppLog.d(TAG, "[AUTO_FISH_AFTER_FAST] ПОСЛЕ fastStart: "
-                    + "FastNeed=" + AppVars.FastNeed
-                    + ", FastId='" + AppVars.FastId + "'"
-                    + ", FastCount=" + AppVars.FastCount
-                    + ", timestamp=" + System.currentTimeMillis());
-            
-            return buildRedirectHtml("Авторыбалка: Эликсир Блаженства", "main.php");
-        }
-
-        String drinkHtml = mainPhpFindDrink(html);
-        if (drinkHtml != null && !drinkHtml.isEmpty()) {
-            lastAutoFishDrinkTriggerAtMs = now;
-            AppVars.AutoFishDrinkOnce = true;
-            AppLog.d(TAG, "AUTO_FISH_TRACE tied=" + tied + " > " + tiedHigh
-                    + ", inject Drink(vcode)");
-            return drinkHtml;
-        }
-
-        String floraHtml = mainPhpFindFlora(html);
-        if (floraHtml != null && !floraHtml.isEmpty()) {
-            AppLog.d(TAG, "AUTO_FISH_TRACE tied=" + tied + " > " + tiedHigh
-                    + ", redirect to map for Drink");
-            return floraHtml;
-        }
-        return null;
-    }
-
-    private static String mainPhpResolveAutoDrinkBlazPending(String address, String html) {
-        if (!AppVars.AutoDrinkBlazPending) {
-            return null;
-        }
-        if (AppVars.FastNeed || AppVars.IsFightCaptchaDialogVisible) {
-            return null;
-        }
-
-        long now = System.currentTimeMillis();
-        AutoFishInfoApiPrecheckState autoFishPrecheckState = null;
-        if (isAutoFishEnabledByPreference()) {
-            autoFishPrecheckState = mainPhpPrecheckFishingHandsByInfoApi(
-                    now, address, "mainphp_blaz_pending");
-        } else {
-            mainPhpUpdateTied(html);
-        }
-
-        int tied = CharacterVitalsManager.snapshot().tied;
-        if (tied <= 0) {
-            AppVars.AutoDrinkBlazPending = false;
-            AppVars.AutoFishDrinkOnce = false;
-            if (FishAjaxPhp.isAutoFishEnabled()) {
-                AppVars.ProbeForceNeedAutofish = true;
-            }
-            AppLog.i(TAG, "AUTO_BLAZ_TRACE pending resolved: tied=" + tied
-                    + ", address=" + address + ", resume autos");
-            return buildRedirectHtml("Автопитьё блажа: усталость восстановлена", "main.php");
-        }
-
-        long cooldownRemainingMs = getAutoFishDrinkCooldownRemainingMs(now);
-        if (cooldownRemainingMs > 0L) {
-            AppLog.d(TAG, "AUTO_BLAZ_TRACE pending wait: tied=" + tied
-                    + ", cooldownRemainingMs=" + cooldownRemainingMs
-                    + ", address=" + address);
-            return buildAutoFishDrinkCooldownHtml(cooldownRemainingMs);
-        }
-
-        boolean autoFishNeedsNextDrink = autoFishPrecheckState != null
-                && autoFishPrecheckState.needFatigueStep;
-        int autoDrinkThreshold = AppVars.Profile == null
-                ? 101
-                : Math.max(0, Math.min(100, AppVars.Profile.AutoDrinkBlazTied));
-        boolean autoDrinkNeedsNextDrink = AppVars.Profile != null
-                && AppVars.Profile.DoAutoDrinkBlaz
-                && !AppVars.AutoMoving
-                && tied >= autoDrinkThreshold;
-        if (autoFishNeedsNextDrink || autoDrinkNeedsNextDrink) {
-            AppLog.d(TAG, "AUTO_BLAZ_TRACE pending handoff: tied=" + tied
-                    + ", fishNeed=" + autoFishNeedsNextDrink
-                    + ", autoDrinkNeed=" + autoDrinkNeedsNextDrink
-                    + ", address=" + address);
-            return null;
-        }
-
-        // tied > 0 но ниже обоих порогов → эликсир подействовал, резолвим pending
-        AppVars.AutoDrinkBlazPending = false;
-        AppVars.AutoFishDrinkOnce = false;
-        if (FishAjaxPhp.isAutoFishEnabled()) {
-            AppVars.ProbeForceNeedAutofish = true;
-        }
-        AppLog.i(TAG, "AUTO_BLAZ_TRACE pending resolved (below thresholds): tied=" + tied
-                + ", autoDrinkThreshold=" + autoDrinkThreshold
-                + ", address=" + address + ", resume autos");
-        return buildRedirectHtml("Автопитьё блажа: усталость ниже порога", "main.php");
-    }
-
-    private static String mainPhpAutoDrinkBlazStep(String address, String html) {
-        if (AppVars.Profile == null || html == null || html.isEmpty()) {
-            return null;
-        }
-        if (!AppVars.Profile.DoAutoDrinkBlaz) {
-            return null;
-        }
-        // Во время AutoMoving/Auto-Клад авто-питьё блажа обрабатывается в MapAjax (single source of truth),
-        // чтобы не запускать второй параллельный контур из MainPhp и не зациклить fast-ветку.
-        if (AppVars.AutoMoving) {
-            return null;
-        }
-        if (AppVars.IsFightCaptchaDialogVisible) {
-            return null;
-        }
-
-        long now = System.currentTimeMillis();
-        // Если AutoDrinkBlazPending=true (система уже решила пить), NeverTimer не блокирует —
-        // питьё приоритетнее рыбного таймера, иначе бесконечный цикл handoff→NeverTimer→redirect.
-        if (!AppVars.AutoDrinkBlazPending && AppVars.NeverTimer > 0L && now < AppVars.NeverTimer) {
-            AppVars.AutoDrinkBlazPending = true;
-            AppLog.d(TAG, "AUTO_BLAZ_TRACE skipped by NeverTimer: dueInMs="
-                    + Math.max(0L, AppVars.NeverTimer - now) + ", address=" + address);
-            return buildRedirectHtml("Автопитьё блажа: ожидание таймера", "main.php");
-        }
-
-        int tied = CharacterVitalsManager.snapshot().tied;
-        int tiedThreshold = Math.max(0, Math.min(100, AppVars.Profile.AutoDrinkBlazTied));
-        if (tied < tiedThreshold) {
-            return null;
-        }
-
-        if (AppVars.FastNeed) {
-            // Если уже выполняется fast-action по блажу, не запускаем параллельный поток.
-            if (BLISS_ELIXIR_NAME.equals(AppVars.FastId)) {
-                return buildRedirectHtml(
-                        "\u0410\u0432\u0442\u043E\u043F\u0438\u0442\u044C\u0435 \u0431\u043B\u0430\u0436\u0430: \u043E\u0436\u0438\u0434\u0430\u043D\u0438\u0435 \u0432\u044B\u043F\u043E\u043B\u043D\u0435\u043D\u0438\u044F",
-                        "main.php");
-            }
-            return null;
-        }
-
-        long sinceLastTrigger = now - lastAutoDrinkBlazTriggerAtMs;
-        if (sinceLastTrigger >= 0L && sinceLastTrigger < 2500L) {
-            return null;
-        }
-
-        lastAutoDrinkBlazTriggerAtMs = now;
-        AppVars.AutoDrinkBlazPending = true;
-        AppLog.d(TAG, "AUTO_BLAZ_TRACE trigger quick action: " + BLISS_ELIXIR_NAME
-                + ", tied=" + tied + ", threshold=" + tiedThreshold);
-        FastActionManager.fastAttackBlazElixir("Авто-питьё Блажа");
-        return buildRedirectHtml(
-                "\u0410\u0432\u0442\u043E\u043F\u0438\u0442\u044C\u0435 \u0431\u043B\u0430\u0436\u0430: " + BLISS_ELIXIR_NAME,
-                "main.php");
     }
 
     /**
@@ -3465,46 +2880,7 @@ public class MainPhp {
         sendInventoryChatMessage(buildServerChatTimeHtml() + "<font color=#FF0000>" + message + "</font>");
     }
 
-    /**
-     * Генерирует "мягкое" ожидание завершения серверного таймаута после шага "Пить".
-     * Не спамит повторными глотками и возвращает цикл на main.php после небольшой паузы.
-     */
-    private static String buildAutoFishDrinkCooldownHtml(long remainingMs) {
-        long safeRemaining = Math.max(0L, remainingMs);
-        int delayMs = (int) Math.max(900L, Math.min((long) AUTO_FISH_DRINK_POLL_DELAY_MS, safeRemaining));
-        long seconds = (safeRemaining + 999L) / 1000L;
-        return HtmlUtils.GENERATED_PAGE_MARKER
-                + "<html><head><meta http-equiv=\"Content-Type\" content=\"text/html; charset=windows-1251\">"
-                + "<title>ABClient</title></head><body>"
-                + "Авторыбалка: глоток в работе, ожидание " + seconds + " с..."
-                + "<script language=\"JavaScript\">"
-                + "setTimeout(function(){ window.location = 'main.php'; }, " + delayMs + ");"
-                + "</script></body></html>";
-    }
-
-    /**
-     * Возвращает остаток серверного cooldown после шага "Пить" в авто-рыбалке.
-     *
-     * Источник истины — timestamp последнего триггера напитка. Это позволяет
-     * корректно пережить race, когда `AutoFishDrinkOnce` уже потерян, а серверный
-     * cooldown ещё активен и повторный переход в `Ваш персонаж` недопустим.
-     */
-    private static long getAutoFishDrinkCooldownRemainingMs(long nowMs) {
-        long triggerAt = lastAutoFishDrinkTriggerAtMs;
-        if (triggerAt <= 0L) {
-            return 0L;
-        }
-        long elapsed = nowMs - triggerAt;
-        if (elapsed < 0L) {
-            return AUTO_FISH_DRINK_SERVER_COOLDOWN_MS;
-        }
-        if (elapsed >= AUTO_FISH_DRINK_SERVER_COOLDOWN_MS) {
-            return 0L;
-        }
-        return AUTO_FISH_DRINK_SERVER_COOLDOWN_MS - elapsed;
-    }
-
-    private static boolean mainPhpIsPerc(String html) {
+    static boolean mainPhpIsPerc(String html) {
         String lower = html.toLowerCase(Locale.ROOT);
         return lower.contains("input type=button class=lbut value=\"умения\"");
     }
@@ -3545,703 +2921,6 @@ public class MainPhp {
         }
         AppVars.AutoSkinArmedKnife = false;
         return null;
-    }
-    /**
-     * C# parity: проверка, нужно ли переодевать снасти авто-рыбалки.
-     */
-    private static boolean mainPhpIsMustWearUd(String html) {
-        ParsedDressed parsedDressed = new ParsedDressed(html);
-        if (!parsedDressed.Valid) {
-            return false;
-        }
-        boolean isWear1 = parsedDressed.IsWear1();
-        if (!isWear1 && AppVars.Profile != null && AppVars.Profile.FishAutoWear) {
-            return true;
-        }
-        boolean isWear2 = parsedDressed.IsWear2();
-        if (!isWear2 && AppVars.Profile != null && AppVars.Profile.FishAutoWear) {
-            return true;
-        }
-        
-        // Проверяем, не сломаны ли одетые удочки по долговечности (парсим свежие slots из HTML)
-        if (FishAjaxPhp.isFishingGearBroken(html)) {
-            String msg = "[FISH_GEAR_CHECK_REJECTED] gear is broken, need re-equip";
-            AppLog.w(TAG, msg);
-            return true;
-        }
-        
-        return false;
-    }
-
-    /**
-     * C# parity: авто-надевание снастей в обе руки (`MainPhpWearUd`).
-     */
-    private static String mainPhpWearUd(String html) {
-        ParsedDressed ud = new ParsedDressed(html);
-        if (AppVars.Profile == null) {
-            return null;
-        }
-        boolean dressedValid = ud.Valid;
-        List<WearInvEntry> invList = getWearInvList(html);
-        if (!dressedValid) {
-            AppLog.w(TAG, "AUTO_FISH_TRACE wear: ParsedDressed invalid on inventory page, fallback to inventory-only mode");
-        }
-        boolean isWear1 = dressedValid && ud.IsWear1();
-        if (!isWear1 && AppVars.Profile.FishAutoWear) {
-            for (WearInvEntry thing : invList) {
-                if (thing.name == null || thing.wearLink == null || thing.wearLink.isEmpty()) continue;
-                if (containsIgnoreCase(AppVars.Profile.FishHandOne, "Любая удочка")) {
-                    if (containsIgnoreCase(thing.name, "удочка") || containsIgnoreCase(thing.name, "спиннинг")) {
-                        notifyAutoFishRodWear(thing.name);
-                        AppLog.d(TAG, "AUTO_FISH_TRACE wear action: hand=1, item="
-                                + thing.name + ", link=" + thing.wearLink);
-                        return buildRedirectHtml("Одеваем первую попавшуюся удочку", thing.wearLink);
-                    }
-                } else if (containsIgnoreCase(thing.name, AppVars.Profile.FishHandOne)) {
-                    notifyAutoFishRodWear(thing.name);
-                    AppLog.d(TAG, "AUTO_FISH_TRACE wear action: hand=1, item="
-                            + thing.name + ", link=" + thing.wearLink);
-                    return buildRedirectHtml(AppVars.Profile.FishHandOne + " одевается", thing.wearLink);
-                }
-            }
-            disableAutoFish("Не найден предмет для первой руки");
-            return null;
-        }
-        boolean isWear2 = dressedValid && ud.IsWear2();
-        if (!isWear2 && AppVars.Profile.FishAutoWear) {
-            boolean foundMatch = false;
-            for (WearInvEntry thing : invList) {
-                if (thing.name == null || thing.wearLink == null || thing.wearLink.isEmpty()) continue;
-                boolean matches;
-                if (containsIgnoreCase(AppVars.Profile.FishHandTwo, "Любая удочка")) {
-                    matches = containsIgnoreCase(thing.name, "удочка") || containsIgnoreCase(thing.name, "спиннинг");
-                } else {
-                    matches = containsIgnoreCase(thing.name, AppVars.Profile.FishHandTwo);
-                }
-                if (!matches) continue;
-                foundMatch = true;
-                boolean allowWearSecond = !dressedValid || (ud.Empty1 || ud.Empty2) || !ud.InRightSlot;
-                if (allowWearSecond) {
-                    notifyAutoFishRodWear(thing.name);
-                    AppLog.d(TAG, "AUTO_FISH_TRACE wear action: hand=2, item="
-                            + thing.name + ", link=" + thing.wearLink);
-                    return buildRedirectHtml("Одеваем снасть во вторую руку", thing.wearLink);
-                }
-                if (dressedValid && ud.Wid != null && !ud.Wid.isEmpty() && ud.Vcod != null && !ud.Vcod.isEmpty()) {
-                    String removeLink = "main.php?get_id=57&uid=" + ud.Wid + "&s=0&vcode=" + ud.Vcod;
-                    AppLog.d(TAG, "AUTO_FISH_TRACE wear action: remove-hand1-before-hand2, item="
-                            + ud.Hand1 + ", link=" + removeLink);
-                    return buildRedirectHtml("Снимаем " + ud.Hand1, removeLink);
-                }
-            }
-            if (!foundMatch && !isNoFishHandSetting(AppVars.Profile.FishHandTwo)) {
-                disableAutoFish("Не найден предмет для второй руки");
-                return null;
-            }
-        }
-        AppVars.AutoFishWearUd = false;
-        return null;
-    }
-
-    /**
-     * Предпроверка экипировки авто-рыбалки через InfoApi slots (line1):
-     * - выполняется перед шагом "Рыбалка" при включённом AutoFish;
-     * - не трогает серверный NeverTimer и не запускает отдельный контур;
-     * - при рассинхронизации рук мягко переводит сценарий в существующий recovery (`AutoFishCheckUd`).
-     *
-     * Зависимости:
-     * - `NeverApi.getInfoApiSnapshotByNick(...)` — единый источник slots;
-     * - `AppVars.Profile.FishHandOne/FishHandTwo` — профильная конфигурация рук;
-     * - текущий контур MainPhp (`AutoFishCheckUd/AutoFishWearUd`) — фактическое переодевание.
-     */
-    static AutoFishInfoApiPrecheckState mainPhpPrecheckFishingHandsByInfoApi(long nowMs,
-                                                                              String address,
-                                                                              String sourceModule) {
-        if (AppVars.Profile == null) {
-            return buildAutoFishInfoApiPrecheckState(false, false, null);
-        }
-
-        String selfNick = AppVars.Profile.UserNick == null ? "" : AppVars.Profile.UserNick.trim();
-        if (selfNick.isEmpty()) {
-            return buildAutoFishInfoApiPrecheckState(false, AppVars.AutoFishCheckUd || AppVars.AutoFishWearUd, null);
-        }
-
-        Integer tiedValue = CharacterVitalsManager.snapshot().tied;
-        boolean queuedMustWear = AppVars.AutoFishCheckUd || AppVars.AutoFishWearUd;
-        String safeSourceModule = sourceModule == null || sourceModule.trim().isEmpty()
-                ? "mainphp_autofish_precheck"
-                : sourceModule.trim();
-
-        boolean isPreflightAddress = address != null && address.contains("af_preflight=1");
-        boolean shouldBypassCooldown =
-                queuedMustWear && (isPreflightAddress || safeSourceModule.contains("fishajax_cycle_precast"));
-        if ((nowMs - lastAutoFishInfoApiPrecheckAtMs) < AUTO_FISH_INFOAPI_PRECHECK_COOLDOWN_MS
-                && !shouldBypassCooldown) {
-            AutoFishInfoApiPrecheckState cooldownState =
-                    buildAutoFishInfoApiPrecheckState(false, queuedMustWear, tiedValue);
-            AppLog.d(TAG, "AUTO_FISH_INFOAPI_PRECHECK cooldown skip: source=" + safeSourceModule
-                    + ", address=" + address
-                    + ", mustWear=" + cooldownState.mustWear
-                    + ", needFatigueStep=" + cooldownState.needFatigueStep
-                    + ", tied=" + cooldownState.tied);
-            return cooldownState;
-        }
-        if (shouldBypassCooldown) {
-            AppLog.d(TAG, "AUTO_FISH_INFOAPI_PRECHECK bypass cooldown: source=" + safeSourceModule
-                    + ", address=" + address
-                    + ", queuedMustWear=" + queuedMustWear);
-        }
-        lastAutoFishInfoApiPrecheckAtMs = nowMs;
-
-        try {
-            NeverApi.InfoApiSnapshot snapshot = NeverApi.getInfoApiSnapshotByNick(selfNick, safeSourceModule);
-            if (snapshot == null || !snapshot.isValid()) {
-                AutoFishInfoApiPrecheckState invalidState =
-                        buildAutoFishInfoApiPrecheckState(false, queuedMustWear, tiedValue);
-                AppLog.w(TAG, "AUTO_FISH_INFOAPI_PRECHECK invalid snapshot: nick=" + selfNick
-                        + ", source=" + safeSourceModule
-                        + ", address=" + address
-                        + ", mustWear=" + invalidState.mustWear
-                        + ", needFatigueStep=" + invalidState.needFatigueStep
-                        + ", tied=" + invalidState.tied);
-                return invalidState;
-            }
-
-            if (snapshot.hmu != null && snapshot.hmu.curTire != null) {
-                CharacterVitalsManager.Snapshot tiedSnapshot = CharacterVitalsManager.updateTied(
-                        snapshot.hmu.curTire,
-                        "MainPhp.mainPhpPrecheckFishingHandsByInfoApi/" + safeSourceModule);
-                tiedValue = tiedSnapshot.tied;
-            }
-
-            boolean mustWear = false;
-            if (AppVars.Profile.FishAutoWear) {
-                NeverApi.InfoApiSlot slotHand1 = snapshot.getSlot(AUTO_FISH_INFOAPI_SLOT_HAND1_INDEX);
-                NeverApi.InfoApiSlot slotHand2 = snapshot.getSlot(AUTO_FISH_INFOAPI_SLOT_HAND2_INDEX);
-                NeverApi.InfoApiSlot slotHand1ProbeOneBased = snapshot.getSlot(AUTO_FISH_INFOAPI_SLOT_HAND1_INDEX + 1);
-                NeverApi.InfoApiSlot slotHand2ProbeOneBased = snapshot.getSlot(AUTO_FISH_INFOAPI_SLOT_HAND2_INDEX + 1);
-
-                AppLog.d(TAG, "AUTO_FISH_INFOAPI_PRECHECK hands_parsed: hand1Setting=" + AppVars.Profile.FishHandOne
-                        + ", hand2Setting=" + AppVars.Profile.FishHandTwo
-                        + ", index2=" + describeInfoApiSlot(slotHand1)
-                        + ", index12=" + describeInfoApiSlot(slotHand2)
-                        + ", index3_probe=" + describeInfoApiSlot(slotHand1ProbeOneBased)
-                        + ", index13_probe=" + describeInfoApiSlot(slotHand2ProbeOneBased)
-                        + ", rods=" + buildInfoApiRodSlotsDigest(snapshot)
-                        + ", totalSlots=" + (snapshot.slots == null ? 0 : snapshot.slots.size())
-                        + ", sourceNick=" + snapshot.requestedNick
-                        + ", sourceId=" + snapshot.playerId
-                        + ", source=" + safeSourceModule);
-
-                String[] slotNames = new String[]{
-                        slotHand1 == null ? "" : slotHand1.itemName,
-                        slotHand2 == null ? "" : slotHand2.itemName
-                };
-                Integer[] slotDurability = new Integer[]{
-                        slotHand1 == null ? null : slotHand1.durability,
-                        slotHand2 == null ? null : slotHand2.durability
-                };
-                boolean[] usedSlots = new boolean[]{false, false};
-
-                boolean isWear1 = bindFishingHandFromInfoApi(
-                        AppVars.Profile.FishHandOne,
-                        slotNames,
-                        slotDurability,
-                        usedSlots,
-                        true
-                );
-                boolean isWear2 = bindFishingHandFromInfoApi(
-                        AppVars.Profile.FishHandTwo,
-                        slotNames,
-                        slotDurability,
-                        usedSlots,
-                        false
-                );
-                boolean slot1MatchesHand1 = matchesFishingHandSetting(slotNames[0], slotDurability[0], AppVars.Profile.FishHandOne);
-                boolean slot2MatchesHand1 = matchesFishingHandSetting(slotNames[1], slotDurability[1], AppVars.Profile.FishHandOne);
-                boolean slot1MatchesHand2 = matchesFishingHandSetting(slotNames[0], slotDurability[0], AppVars.Profile.FishHandTwo);
-                boolean slot2MatchesHand2 = matchesFishingHandSetting(slotNames[1], slotDurability[1], AppVars.Profile.FishHandTwo);
-                mustWear = !(isWear1 && isWear2);
-
-                AppLog.d(TAG, "AUTO_FISH_INFOAPI_PRECHECK state: hand1Setting=" + AppVars.Profile.FishHandOne
-                        + ", hand2Setting=" + AppVars.Profile.FishHandTwo
-                        + ", slot1=" + slotNames[0] + " (" + formatInfoApiDurability(slotDurability[0]) + ")"
-                        + ", slot2=" + slotNames[1] + " (" + formatInfoApiDurability(slotDurability[1]) + ")"
-                        + ", isWear1=" + isWear1
-                        + ", isWear2=" + isWear2
-                        + ", slot1MatchesHand1=" + slot1MatchesHand1
-                        + ", slot2MatchesHand1=" + slot2MatchesHand1
-                        + ", slot1MatchesHand2=" + slot1MatchesHand2
-                        + ", slot2MatchesHand2=" + slot2MatchesHand2
-                        + ", mustWear=" + mustWear
-                        + ", tied=" + tiedValue);
-            } else if (queuedMustWear) {
-                AppVars.AutoFishCheckUd = false;
-                AppVars.AutoFishWearUd = false;
-                resetAutoFishWearLoopGuard();
-                AppLog.d(TAG, "AUTO_FISH_INFOAPI_PRECHECK clear stale gear flags: source=" + safeSourceModule
-                        + ", address=" + address);
-            }
-
-            if (mustWear) {
-                AppVars.AutoFishCheckUd = false;
-                AppVars.AutoFishWearUd = true;
-                AppLog.w(TAG, "AUTO_FISH_INFOAPI_PRECHECK queued recovery: AutoFishWearUd=true, source="
-                        + safeSourceModule + ", address=" + address);
-            } else if (AppVars.AutoFishCheckUd || AppVars.AutoFishWearUd) {
-                AppVars.AutoFishCheckUd = false;
-                AppVars.AutoFishWearUd = false;
-                resetAutoFishWearLoopGuard();
-                AppLog.d(TAG, "AUTO_FISH_INFOAPI_PRECHECK clear stale recovery flags after match: source="
-                        + safeSourceModule + ", address=" + address);
-            }
-
-            AutoFishInfoApiPrecheckState finalState =
-                    buildAutoFishInfoApiPrecheckState(true, mustWear, tiedValue);
-            AppLog.d(TAG, "AUTO_FISH_INFOAPI_PRECHECK final: source=" + safeSourceModule
-                    + ", address=" + address
-                    + ", mustWear=" + finalState.mustWear
-                    + ", needFatigueStep=" + finalState.needFatigueStep
-                    + ", tied=" + finalState.tied
-                    + ", tiedThreshold=" + finalState.tiedThreshold);
-            return finalState;
-        } catch (Exception e) {
-            AutoFishInfoApiPrecheckState errorState =
-                    buildAutoFishInfoApiPrecheckState(false, queuedMustWear, tiedValue);
-            String msgError = "AUTO_FISH_INFOAPI_PRECHECK failed: nick=" + selfNick
-                    + ", source=" + safeSourceModule
-                    + ", address=" + address
-                    + ", mustWear=" + errorState.mustWear
-                    + ", needFatigueStep=" + errorState.needFatigueStep
-                    + ", tied=" + errorState.tied;
-            AppLog.e(TAG, msgError, e);
-            return errorState;
-        }
-    }
-
-    static AutoFishInfoApiPrecheckState mainPhpBuildAutoFishCachedPrecheckState(String address,
-                                                                                 String sourceModule) {
-        String safeSourceModule = normalizeAutoFishPrecheckSource(sourceModule);
-        if (AppVars.Profile == null) {
-            AutoFishInfoApiPrecheckState emptyState =
-                    buildAutoFishInfoApiPrecheckState(false, false, null);
-            AppLog.d(TAG, "AUTO_FISH_INFOAPI_PRECHECK cached_state: source=" + safeSourceModule
-                    + ", address=" + address
-                    + ", mustWear=" + emptyState.mustWear
-                    + ", needFatigueStep=" + emptyState.needFatigueStep
-                    + ", tied=" + emptyState.tied
-                    + ", tiedThreshold=" + emptyState.tiedThreshold
-                    + ", profileReady=false");
-            return emptyState;
-        }
-        Integer tiedValue = CharacterVitalsManager.snapshot().tied;
-        boolean queuedMustWear = AppVars.AutoFishCheckUd || AppVars.AutoFishWearUd;
-        AutoFishInfoApiPrecheckState cachedState =
-                buildAutoFishInfoApiPrecheckState(false, queuedMustWear, tiedValue);
-        AppLog.d(TAG, "AUTO_FISH_INFOAPI_PRECHECK cached_state: source=" + safeSourceModule
-                + ", address=" + address
-                + ", mustWear=" + cachedState.mustWear
-                + ", needFatigueStep=" + cachedState.needFatigueStep
-                + ", tied=" + cachedState.tied
-                + ", tiedThreshold=" + cachedState.tiedThreshold
-                + ", profileReady=true");
-        return cachedState;
-    }
-
-    private static AutoFishInfoApiPrecheckState buildAutoFishInfoApiPrecheckState(boolean snapshotValid,
-                                                                                   boolean mustWear,
-                                                                                   Integer tiedValue) {
-        if (AppVars.Profile == null) {
-            return new AutoFishInfoApiPrecheckState(snapshotValid, mustWear, false, tiedValue, 0);
-        }
-        int tiedThreshold = Math.max(0, Math.min(99, AppVars.Profile.FishTiedHigh));
-        Integer safeTiedValue = tiedValue == null ? CharacterVitalsManager.snapshot().tied : tiedValue;
-        if (safeTiedValue != null && !AppVars.AutoFishDrink
-                && safeTiedValue > tiedThreshold
-                && AppVars.Profile.FishTiedZero) {
-            AppVars.AutoFishDrink = true;
-        }
-        boolean needFatigueStep = safeTiedValue != null
-                && (safeTiedValue > tiedThreshold || AppVars.AutoFishDrink);
-        return new AutoFishInfoApiPrecheckState(
-                snapshotValid,
-                mustWear,
-                needFatigueStep,
-                safeTiedValue,
-                tiedThreshold
-        );
-    }
-
-    private static String normalizeAutoFishPrecheckSource(String sourceModule) {
-        return sourceModule == null || sourceModule.trim().isEmpty()
-                ? "mainphp_autofish_precheck"
-                : sourceModule.trim();
-    }
-
-    /**
-     * Сопоставляет одну профильную настройку руки (`FishHandOne/FishHandTwo`) с текущими slot[3]/slot[13]
-     * из InfoApi и, при успехе, фиксирует runtime-поля `AutoFishHand*`.
-     */
-    private static boolean bindFishingHandFromInfoApi(String expectedSetting,
-                                                      String[] slotNames,
-                                                      Integer[] slotDurability,
-                                                      boolean[] usedSlots,
-                                                      boolean firstHand) {
-        if (isNoFishHandSetting(expectedSetting)) {
-            return true;
-        }
-        if (slotNames == null || slotNames.length < 2 || slotDurability == null || slotDurability.length < 2
-                || usedSlots == null || usedSlots.length < 2) {
-            return false;
-        }
-
-        for (int idx = 0; idx < slotNames.length; idx++) {
-            if (usedSlots[idx]) {
-                continue;
-            }
-            if (!matchesFishingHandSetting(slotNames[idx], slotDurability[idx], expectedSetting)) {
-                continue;
-            }
-            usedSlots[idx] = true;
-            if (firstHand) {
-                AppVars.AutoFishHand1 = slotNames[idx] == null ? "" : slotNames[idx];
-                AppVars.AutoFishHand1D = formatInfoApiDurability(slotDurability[idx]);
-            } else {
-                AppVars.AutoFishHand2 = slotNames[idx] == null ? "" : slotNames[idx];
-                AppVars.AutoFishHand2D = formatInfoApiDurability(slotDurability[idx]);
-            }
-            return true;
-        }
-        return false;
-    }
-
-    /**
-     * Профильный флаг "рука отключена" для авто-рыбалки.
-     */
-    private static boolean isNoFishHandSetting(String value) {
-        if (value == null) {
-            return true;
-        }
-        String normalized = value.trim();
-        return normalized.isEmpty() || "Нет".equalsIgnoreCase(normalized);
-    }
-
-    /**
-     * Проверка соответствия slot-предмета настройке руки.
-     */
-    private static boolean matchesFishingHandSetting(String slotItemName, Integer slotDurability, String expectedSetting) {
-        String safeItemName = slotItemName == null ? "" : slotItemName.trim();
-        if (safeItemName.isEmpty()) {
-            return false;
-        }
-        if (slotDurability != null && slotDurability <= 0) {
-            return false;
-        }
-        if ("Любая удочка".equalsIgnoreCase(expectedSetting == null ? "" : expectedSetting.trim())) {
-            return isFishingRodName(safeItemName);
-        }
-        return containsIgnoreCase(safeItemName, expectedSetting);
-    }
-
-    /**
-     * Признак рыболовной снасти по имени предмета.
-     */
-    private static boolean isFishingRodName(String itemName) {
-        return containsIgnoreCase(itemName, "удочка") || containsIgnoreCase(itemName, "спиннинг");
-    }
-
-    /**
-     * Преобразует durability InfoApi в короткий runtime-вид для debug/чат-подписей.
-     */
-    private static String formatInfoApiDurability(Integer durability) {
-        return durability == null ? "" : String.valueOf(durability);
-    }
-
-    private static String describeInfoApiSlot(NeverApi.InfoApiSlot slot) {
-        if (slot == null) {
-            return "<empty>";
-        }
-        String itemName = slot.itemName == null ? "" : slot.itemName.trim();
-        String icon = slot.icon == null ? "" : slot.icon.trim();
-        String durability = slot.durability == null ? "" : String.valueOf(slot.durability);
-        return "{idx=" + slot.index
-                + ", icon=" + icon
-                + ", item=" + itemName
-                + ", dur=" + durability
-                + "}";
-    }
-
-    private static String buildInfoApiRodSlotsDigest(NeverApi.InfoApiSnapshot snapshot) {
-        if (snapshot == null || snapshot.slots == null || snapshot.slots.isEmpty()) {
-            return "[]";
-        }
-        StringBuilder sb = new StringBuilder("[");
-        int appended = 0;
-        for (NeverApi.InfoApiSlot slot : snapshot.slots) {
-            if (slot == null) {
-                continue;
-            }
-            String itemName = slot.itemName == null ? "" : slot.itemName.trim();
-            if (!isFishingRodName(itemName)) {
-                continue;
-            }
-            if (appended > 0) {
-                sb.append(", ");
-            }
-            sb.append(slot.index)
-                    .append(':')
-                    .append(itemName)
-                    .append('(')
-                    .append(formatInfoApiDurability(slot.durability))
-                    .append(')');
-            appended++;
-        }
-        sb.append(']');
-        return sb.toString();
-    }
-
-    /**
-     * Пишет в чат уведомление о фактическом автодействии "надеть удочку" в AutoFish.
-     *
-     * Зависимости:
-     * - {@link #buildServerChatTimeHtml()} — серверный timestamp в едином формате чата;
-     * - {@link #sendInventoryChatMessage(String)} — отправка HTML-сообщения в чат через LocalBroadcast;
-     * - {@link #escapeHtmlAttr(String)} — экранирование названия удочки.
-     */
-    private static void notifyAutoFishRodWear(String rodName) {
-        String safeRodName = rodName == null ? "Неизвестная удочка" : rodName.trim();
-        if (safeRodName.isEmpty()) {
-            safeRodName = "Неизвестная удочка";
-        }
-        String message = buildServerChatTimeHtml()
-                + "<font color=#5D7C91><b>[Авто-Рыбалка]</b></font>: Одеваем новую удочку '"
-                + escapeHtmlAttr(safeRodName) + "'.";
-        sendInventoryChatMessage(message);
-        String trace = "AUTO_FISH_TRACE rod wear notify: name=" + safeRodName;
-        AppLog.d(TAG, trace);
-    }
-    /**
-     * Формирует ключ текущего состояния проверки снастей авто-рыбалки.
-     *
-     * Назначение:
-     * - нужен для anti-loop guard, чтобы различать повторение одной и той же
-     *   ситуации `mustWear=true` от нормального прогресса.
-     *
-     * Зависимости:
-     * - `AppVars.AutoFishHand1/2` (фактически распознанные надетые снасти);
-     * - `AppVars.Profile.FishHandOne/FishHandTwo` (целевая конфигурация из настроек).
-     */
-    private static String buildAutoFishWearLoopKey() {
-        String cfg1 = "";
-        String cfg2 = "";
-        if (AppVars.Profile != null) {
-            cfg1 = AppVars.Profile.FishHandOne == null ? "" : AppVars.Profile.FishHandOne;
-            cfg2 = AppVars.Profile.FishHandTwo == null ? "" : AppVars.Profile.FishHandTwo;
-        }
-        String h1 = AppVars.AutoFishHand1 == null ? "" : AppVars.AutoFishHand1;
-        String h2 = AppVars.AutoFishHand2 == null ? "" : AppVars.AutoFishHand2;
-        return cfg1 + "|" + cfg2 + "|" + h1 + "|" + h2;
-    }
-    /**
-     * Обновляет счётчик повторов для anti-loop guard авто-рыбалки.
-     *
-     * Поведение:
-     * - если ключ состояния не меняется в пределах окна `AUTO_FISH_WEAR_LOOP_WINDOW_MS`,
-     *   увеличиваем счётчик повторов;
-     * - при смене ключа или истечении окна — сбрасываем счётчик на 1.
-     *
-     * @return `true`, если достигнут лимит повторов и нужно аварийно останавливать авто-рыбалку.
-     */
-    private static boolean markAutoFishWearLoop(String stateKey) {
-        long now = System.currentTimeMillis();
-        boolean sameKey = stateKey.equals(AppVars.AutoFishWearLoopKey);
-        boolean inWindow = AppVars.AutoFishWearLoopStamp > 0L
-                && (now - AppVars.AutoFishWearLoopStamp) <= AUTO_FISH_WEAR_LOOP_WINDOW_MS;
-        if (sameKey && inWindow) {
-            AppVars.AutoFishWearLoopCount++;
-        } else {
-            AppVars.AutoFishWearLoopKey = stateKey;
-            AppVars.AutoFishWearLoopCount = 1;
-        }
-        AppVars.AutoFishWearLoopStamp = now;
-        return AppVars.AutoFishWearLoopCount >= AUTO_FISH_WEAR_LOOP_MAX_REPEATS;
-    }
-    /**
-     * Сбрасывает anti-loop runtime-состояние авто-рыбалки.
-     *
-     * Вызывается:
-     * - при успешной проверке `mustWear=false`;
-     * - при ручном/аварийном выключении авто-рыбалки.
-     */
-    private static void resetAutoFishWearLoopGuard() {
-        AppVars.AutoFishWearLoopKey = "";
-        AppVars.AutoFishWearLoopCount = 0;
-        AppVars.AutoFishWearLoopStamp = 0L;
-    }
-    private static void restartAutoFishCycle(String reason) {
-        resetAutoFishWearLoopGuard();
-        AppVars.AutoFishCheckUd = false;
-        AppVars.AutoFishWearUd = false;
-        lastAutoFishInfoApiPrecheckAtMs = 0L;
-        AppVars.suppressBackgroundProbesDuringFishing = false;
-        String safeReason = reason == null ? "unknown" : reason;
-        String msg = "AUTO_FISH_TRACE restart full cycle: reason=" + safeReason
-                + ", hand1=" + AppVars.AutoFishHand1
-                + ", hand2=" + AppVars.AutoFishHand2;
-        AppLog.w(TAG, msg);
-        FishAjaxPhp.requestAutoFishBootstrap("cycle_broken_" + safeReason);
-    }
-    private static void disableAutoFish(String reason) {
-        resetAutoFishWearLoopGuard();
-        try {
-            if (AppVars.getContext() != null) {
-                AutoFunctionsManager.getInstance(AppVars.getContext()).setAutoFishEnabled(false);
-            } else if (AppVars.Profile != null) {
-                AppVars.Profile.AutoFish = false;
-            }
-        } catch (Exception e) {
-            String msg = "AUTO_FISH_TRACE disable auto fish failed";
-            AppLog.w(TAG, msg, e);
-            if (AppVars.Profile != null) {
-                AppVars.Profile.AutoFish = false;
-            }
-        }
-        if (AppVars.getContext() != null) {
-            Intent msgIntent = new Intent(AppVars.ACTION_ADD_CHAT_MESSAGE);
-            msgIntent.putExtra("message", buildServerChatTimeHtml()
-                    + "<font color=#cc0000><b>Авто-рыбалка выключена: " + reason + "</b></font>");
-            LocalBroadcastManager.getInstance(AppVars.getContext()).sendBroadcast(msgIntent);
-        }
-    }
-    private static String extractInputValue(String html, String name) {
-        if (html == null || html.isEmpty() || name == null || name.isEmpty()) return "";
-        java.util.regex.Matcher m = java.util.regex.Pattern
-                .compile("name\\s*=\\s*['\"]?" + java.util.regex.Pattern.quote(name) + "['\"]?\\s+value\\s*=\\s*['\"]?([^'\"\\s>]+)",
-                        java.util.regex.Pattern.CASE_INSENSITIVE)
-                .matcher(html);
-        if (m.find()) return m.group(1);
-        m = java.util.regex.Pattern
-                .compile("value\\s*=\\s*['\"]?([^'\"\\s>]+)['\"]?\\s+name\\s*=\\s*['\"]?" + java.util.regex.Pattern.quote(name) + "['\"]?",
-                        java.util.regex.Pattern.CASE_INSENSITIVE)
-                .matcher(html);
-        return m.find() ? m.group(1) : "";
-    }
-    private static int pickFishPrimId(String html) {
-        if (AppVars.Profile == null || html == null || html.isEmpty()) {
-            return -1;
-        }
-        
-        String lower = html.toLowerCase(Locale.ROOT);
-        List<Integer> candidates = new ArrayList<>();
-        
-        // Для каждой включенной приманки ищем её в HTML и проверяем остаток
-        for (int i = 0; i < FISH_PRIM_IDS.length; i++) {
-            if ((AppVars.Profile.FishEnabledPrims & FISH_PRIM_FLAGS[i]) == 0) {
-                continue; // Приманка не включена в профиле
-            }
-            
-            int primid = FISH_PRIM_IDS[i];
-            String probe = "name=primid value=" + primid;
-            int probePos = lower.indexOf(probe.toLowerCase(Locale.ROOT));
-            
-            if (probePos < 0) {
-                continue; // Приманка отсутствует в инвентаре
-            }
-            
-            // Пытаемся найти количество приманки после radio button
-            // Ищем следующее число в тегах <b>...</b> или просто числа
-            int countStart = probePos + probe.length();
-            String afterProbe = html.substring(countStart, Math.min(countStart + 200, html.length()));
-            
-            int count = -1;
-            // Ищем число в формате <b>123</b> или просто 123
-            java.util.regex.Pattern countPattern = java.util.regex.Pattern.compile("<b>(\\d+)</b>|\\b(\\d+)\\b");
-            java.util.regex.Matcher countMatcher = countPattern.matcher(afterProbe);
-            if (countMatcher.find()) {
-                String numStr = countMatcher.group(1) != null ? countMatcher.group(1) : countMatcher.group(2);
-                try {
-                    count = Integer.parseInt(numStr);
-                } catch (NumberFormatException e) {
-                    count = -1;
-                }
-            }
-            
-            // Добавляем приманку только если остаток > 4 (для безопасности)
-            if (count > 4) {
-                candidates.add(primid);
-            } else if (count < 0) {
-                // Если не смогли определить количество, всё равно добавляем (лучше использовать, чем не использовать)
-                candidates.add(primid);
-            }
-        }
-        
-        if (candidates.isEmpty()) {
-            return -1;
-        }
-        
-        // Берём первую подходящую (без перемешивания для стабильности)
-        // Или можно перемешать: Collections.shuffle(candidates, RANDOM);
-        return candidates.get(0);
-    }
-    /**
-     * C# parity: подготовка шага рыбалки на странице выбора приманки (`MainPhpAutoFishPrepare`).
-     */
-    private static String mainPhpAutoFishPrepare(String html) {
-        if (html == null || html.isEmpty()) {
-            return null;
-        }
-        String lower = html.toLowerCase(Locale.ROOT);
-        if (!lower.contains("name=primid") || !lower.contains("name=get_id")) {
-            return null;
-        }
-        AppVars.CodeAddress = "";
-        String codeAddress = extractCaptchaUrl(html);
-        if (codeAddress != null && !codeAddress.isEmpty()) {
-            AppVars.CodeAddress = codeAddress;
-        }
-        String getid = extractInputValue(html, "get_id");
-        String act = extractInputValue(html, "act");
-        String vcode = extractInputValue(html, "vcode");
-        String lakeid = extractInputValue(html, "lakeid");
-        if (getid.isEmpty() || act.isEmpty() || vcode.isEmpty() || lakeid.isEmpty()) {
-            return null;
-        }
-        String massa = HelperStrings.subString(html, "<b>Масса Вашего инвентаря: ", "</b>");
-        if (massa != null && !massa.isEmpty()) {
-            AppVars.AutoFishMassa = massa;
-        }
-        int primid = pickFishPrimId(html);
-        if (primid <= 0) {
-            disableAutoFish("Нет доступной приманки по настройкам");
-            return null;
-        }
-        AppVars.AutoFishLikeId = String.valueOf(primid);
-        AppVars.AutoFishLikeVal = "";
-        
-        // ★ FIX: Правильно добавляем `checked` в radio button
-        // Ищем паттерн: type=radio name=primid value=XXX
-        String radioBaitPattern = "(?i)type\\s*=\\s*['\"]?radio['\"]?[^>]*name\\s*=\\s*['\"]?primid['\"]?[^>]*value\\s*=\\s*['\"]?" + primid + "['\"]?";
-        Pattern p = Pattern.compile(radioBaitPattern);
-        Matcher m = p.matcher(html);
-        if (m.find()) {
-            String matchedRadio = m.group(0);
-            if (!matchedRadio.toLowerCase(Locale.ROOT).contains("checked")) {
-                // Вставляем checked перед закрывающим > 
-                String replacedRadio = matchedRadio.replaceAll(">\\s*$", " checked>");
-                html = html.substring(0, m.start()) + replacedRadio + html.substring(m.end());
-                Log.d(TAG, "AUTO_FISH_TRACE mainPhpAutoFishPrepare: added checked to primid=" + primid);
-            }
-        }
-        AppVars.FightLink = "http://neverlands.ru/main.php?get_id=" + getid
-                + "&lakeid=" + lakeid
-                + "&act=" + act
-                + "&primid=" + primid
-                + (AppVars.CodeAddress == null || AppVars.CodeAddress.isEmpty() ? "" : "&code=????")
-                + "&vcode=" + vcode;
-        android.util.Log.d(TAG, "AUTO_FISH_TRACE prepared FightLink=" + AppVars.FightLink
-                + ", captcha=" + (AppVars.CodeAddress != null && !AppVars.CodeAddress.isEmpty())
-                + ", primid=" + primid);
-        return html;
     }
     /**
      * Проверка, надет ли целевой свиток режима осады (`Свиток Удар Ярости`/`Снежок`).
@@ -4395,7 +3074,7 @@ public class MainPhp {
     /**
      * Порт `GetInvList` из C# (`MainPhpWear.cs`) для поиска `WearLink`.
      */
-    private static List<WearInvEntry> getWearInvList(String html) {
+    static List<WearInvEntry> getWearInvList(String html) {
         List<WearInvEntry> invList = new ArrayList<>();
         final String patternStartInv = "</b></font></td></tr>";
         int pos = html.indexOf(patternStartInv);
@@ -4471,7 +3150,7 @@ public class MainPhp {
      * Назначение:
      * - Избежать некорректного split по запятым внутри строк/вложенных структур.
      */
-    private static List<String> splitJsTopLevelCsv(String source) {
+    static List<String> splitJsTopLevelCsv(String source) {
         List<String> result = new ArrayList<>();
         if (source == null || source.isEmpty()) {
             return result;
@@ -4622,7 +3301,7 @@ public class MainPhp {
         // чтобы расчёт `Restoring` выполнялся по актуальным `hp_int/ma_int`.
         mainPhpInsHp(html);
         // Обновляем runtime-усталость на каждом ответе main.php.
-        mainPhpUpdateTied(html);
+        FishAjaxPhp.mainPhpUpdateTied(html);
         // ⚠️ ВАЖНО: VCode больше НЕ кешируется в AppVars.VCode.
         // SessionManager парсит свежий vcode из каждого HTML ответа через WebViewRequestInterceptor.
         // Это предотвращает потерю vcode при смене контекста и обновления PHPSESSID.
@@ -4753,7 +3432,7 @@ public class MainPhp {
             }
         }
         if (!isFightFrame && !isFightTopFrame) {
-            String autoDrinkPendingHtml = mainPhpResolveAutoDrinkBlazPending(address, html);
+            String autoDrinkPendingHtml = FishAjaxPhp.mainPhpResolveAutoDrinkBlazPending(address, html);
             if (autoDrinkPendingHtml != null && !autoDrinkPendingHtml.isEmpty()) {
                 return Russian.getBytes(autoDrinkPendingHtml);
             }
@@ -4797,7 +3476,7 @@ public class MainPhp {
         }
         // Чтение умения "Рыбалка" (C# parity) до оркестрации AutoFish.
         if (!isNonCombatAutoPausedByFastAction()) {
-            mainPhpProcessFishSkills(html, address);
+            FishAjaxPhp.mainPhpProcessFishSkills(html, address);
         }
 
         // ========== ТАЙМЕР: Одевание комплектов ==========
@@ -4824,7 +3503,7 @@ public class MainPhp {
         // C# parity: DoAutoDrinkBlaz.
         // Порядок вызова: до AutoFish/AutoSearchBox, чтобы при высокой усталости сначала обнулить ее.
         if (!isNonCombatAutoPausedByFastAction() && !isFightFrame && !isFightTopFrame) {
-            String autoDrinkBlazHtml = mainPhpAutoDrinkBlazStep(address, html);
+            String autoDrinkBlazHtml = FishAjaxPhp.mainPhpAutoDrinkBlazStep(address, html);
             if (autoDrinkBlazHtml != null && !autoDrinkBlazHtml.isEmpty()) {
                 return Russian.getBytes(autoDrinkBlazHtml);
             }
@@ -4834,7 +3513,7 @@ public class MainPhp {
         // 2) проверяем/переодеваем снасти в обеих руках;
         // 3) на странице рыбалки выбираем приманку и формируем FightLink.
         boolean autoFightReloadProbeAddress = isAutoFightReloadProbeAddress(address);
-        if (autoFightReloadProbeAddress && isAutoFishEnabledByPreference()) {
+        if (autoFightReloadProbeAddress && FishAjaxPhp.isAutoFishEnabledByPreference()) {
             String msg_fishskip = "AUTO_FISH_TRACE skip: auto-fight reload probe address=";
             AppLog.d(TAG, msg_fishskip);
         }
@@ -4843,15 +3522,15 @@ public class MainPhp {
         // и теперь мы вернулись на природу (go=ret или mainPhpFindFlora() вернула null).
         // ВАЖНО: восстанавливаем только если на текущей клетке есть вода (mainPhpFindFish() != null).
         boolean isOnMapOrNature = mainPhpFindFlora(html) == null; // null = уже на карте
-        if (isOnMapOrNature && isAutoFishEnabledByPreference()) {
-            recoverAutofishRuntimeStateIfNeeded(true, html, address);
+        if (isOnMapOrNature && FishAjaxPhp.isAutoFishEnabledByPreference()) {
+            FishAjaxPhp.recoverAutofishRuntimeStateIfNeeded(true, html, address);
         }
         
         // ДИАГНОСТИКА: Логирование всех условий блокировки рыбалки на холодном старте
         boolean isFastActionPaused = isNonCombatAutoPausedByFastAction();
         boolean shouldEnterFishingLogic = !isFastActionPaused && !isFightFrame && !isFightTopFrame
-                && !autoFightReloadProbeAddress && isAutoFishEnabledByPreference();
-        if (!shouldEnterFishingLogic && isAutoFishEnabledByPreference()) {
+                && !autoFightReloadProbeAddress && FishAjaxPhp.isAutoFishEnabledByPreference();
+        if (!shouldEnterFishingLogic && FishAjaxPhp.isAutoFishEnabledByPreference()) {
             StringBuilder diagnostics = new StringBuilder();
             diagnostics.append("AUTO_FISH_TRACE BLOCKED: ");
             diagnostics.append("FastNeed=").append(isFastActionPaused).append(", ");
@@ -4863,10 +3542,10 @@ public class MainPhp {
         }
         
         if (!isNonCombatAutoPausedByFastAction() && !isFightFrame && !isFightTopFrame
-                && !autoFightReloadProbeAddress && isAutoFishEnabledByPreference()) {
+                && !autoFightReloadProbeAddress && FishAjaxPhp.isAutoFishEnabledByPreference()) {
             long nowMs = System.currentTimeMillis();
-            mainPhpPrecheckFishingHandsByInfoApi(nowMs, address, "mainphp_autofish_gate");
-            String fishFatigueHtml = mainPhpAutoFishFatigueStep(html);
+            FishAjaxPhp.mainPhpPrecheckFishingHandsByInfoApi(nowMs, address, "mainphp_autofish_gate");
+            String fishFatigueHtml = FishAjaxPhp.mainPhpAutoFishFatigueStep(html);
             if (fishFatigueHtml != null && !fishFatigueHtml.isEmpty()) {
                 String msg_fishfatigue = "AUTO_FISH_TRACE fatigue step executed";
                 AppLog.d(TAG, msg_fishfatigue);
@@ -4887,7 +3566,7 @@ public class MainPhp {
                         return Russian.getBytes(buildRedirectHtml("Переключение на умения персонажа", "main.php?mselect=1"));
                     }
                 }
-                long postDrinkCooldownRemainingMs = getAutoFishDrinkCooldownRemainingMs(nowMs);
+                long postDrinkCooldownRemainingMs = FishAjaxPhp.getAutoFishDrinkCooldownRemainingMs(nowMs);
                 if (postDrinkCooldownRemainingMs > 0L) {
                     String msg_deferFish = "AUTO_FISH_TRACE defer non-fight fish steps during drink cooldown: remainingMs="
                             + postDrinkCooldownRemainingMs
@@ -4895,7 +3574,7 @@ public class MainPhp {
                             + ", AutoFishWearUd=" + AppVars.AutoFishWearUd
                             + ", address=" + address;
                     AppLog.d(TAG, msg_deferFish);
-                    return Russian.getBytes(buildAutoFishDrinkCooldownHtml(postDrinkCooldownRemainingMs));
+                    return Russian.getBytes(FishAjaxPhp.buildAutoFishDrinkCooldownHtml(postDrinkCooldownRemainingMs));
                 }
                 if (AppVars.AutoFishCheckUd) {
                     String perchtml = mainPhpFindPerc(html);
@@ -4906,17 +3585,17 @@ public class MainPhp {
                     }
                     AppVars.AutoFishWearUd = false;
                     if (mainPhpIsPerc(html)) {
-                        AppVars.AutoFishWearUd = mainPhpIsMustWearUd(html);
+                        AppVars.AutoFishWearUd = FishAjaxPhp.mainPhpIsMustWearUd(html);
                         AppVars.AutoFishCheckUd = false;
                         if (AppVars.AutoFishWearUd) {
-                            String loopKey = buildAutoFishWearLoopKey();
-                            boolean wearLoopBroken = markAutoFishWearLoop(loopKey);
+                            String loopKey = FishAjaxPhp.buildAutoFishWearLoopKey();
+                            boolean wearLoopBroken = FishAjaxPhp.markAutoFishWearLoop(loopKey);
                             if (wearLoopBroken) {
-                                restartAutoFishCycle("wear_loop");
+                                FishAjaxPhp.restartAutoFishCycle("wear_loop");
                                 return array;
                             }
                         } else {
-                            resetAutoFishWearLoopGuard();
+                            FishAjaxPhp.resetAutoFishWearLoopGuard();
                         }
                         String msg_gearresult = "AUTO_FISH_TRACE gear check result: mustWear="
                                 + AppVars.AutoFishWearUd
@@ -4935,7 +3614,7 @@ public class MainPhp {
                         return Russian.getBytes(invHtml);
                     }
                     if (mainPhpIsInv(html) || isInventoryAddress(address)) {
-                        invHtml = mainPhpWearUd(html);
+                        invHtml = FishAjaxPhp.mainPhpWearUd(html);
                         if (invHtml == null || invHtml.isEmpty()) {
                             if (!inventoryAddressMatchesFilter(address, "&im=0&wca=4")) {
                                 String msg_fishudswitch = "AUTO_FISH_TRACE switch to items tab for fishing gear search";
@@ -4969,7 +3648,7 @@ public class MainPhp {
                         String msg_onlake = "AUTO_FISH_TRACE detected lake form (name=primid found), calling mainPhpAutoFishPrepare...";
                         AppLog.d(TAG, msg_onlake);
 
-                        String fishPreparedHtml = mainPhpAutoFishPrepare(html);
+                        String fishPreparedHtml = FishAjaxPhp.mainPhpAutoFishPrepare(html);
 
                         String msg_after_prepare = "AUTO_FISH_TRACE mainPhpAutoFishPrepare: result is " + (fishPreparedHtml == null ? "NULL" : "non-null");
                         AppLog.d(TAG, msg_after_prepare);
@@ -4983,13 +3662,13 @@ public class MainPhp {
                             if (hasCaptcha && AppVars.FightLink != null && !AppVars.FightLink.isEmpty() && !isFishActionAddress) {
                                 String msg_fishcapt = "AUTO_FISH_TRACE captcha required, show dialog for fish action";
                                 AppLog.d(TAG, msg_fishcapt);
-                                showFishCaptchaDialogOnce(AppVars.CodeAddress, AppVars.FightLink);
-                                return Russian.getBytes(buildCaptchaDialogHoldHtml());
+                                FishAjaxPhp.showMainPhpFishCaptchaDialogOnce(AppVars.CodeAddress, AppVars.FightLink);
+                                return Russian.getBytes(FishAjaxPhp.buildCaptchaDialogHoldHtml());
                             }
                             if (hasCaptcha && AppVars.IsFightCaptchaDialogVisible) {
                                 String msg_fishcapthold = "AUTO_FISH_TRACE captcha dialog is visible, keep hold page";
                                 AppLog.d(TAG, msg_fishcapthold);
-                                return Russian.getBytes(buildCaptchaDialogHoldHtml());
+                                return Russian.getBytes(FishAjaxPhp.buildCaptchaDialogHoldHtml());
                             }
                             if (!hasCaptcha && AppVars.FightLink != null && !AppVars.FightLink.isEmpty() && !isFishActionAddress) {
                                 String msg_fishaction = "AUTO_FISH_TRACE redirect to fish action: ";
@@ -5003,7 +3682,7 @@ public class MainPhp {
                         AppLog.d(TAG, msg_notlake);
 
                         // C# parity: на карте автоматически нажимаем "Рыбалка", чтобы открыть форму выбора приманки.
-                        String fishMapHtml = mainPhpFindFish(html);
+                        String fishMapHtml = FishAjaxPhp.mainPhpFindFish(html);
                         if (fishMapHtml != null && !fishMapHtml.isEmpty()) {
                             String msg_fishmap = "AUTO_FISH_TRACE inject Fish(vcode) into map frame";
                             AppLog.d(TAG, msg_fishmap);
@@ -5408,7 +4087,7 @@ public class MainPhp {
      * `main.php?get_id=56&act=10&go=inf&ts=...`.
      * На таком кадре нельзя запускать цепочку AutoFish, иначе начинается race навигации.
      */
-    private static boolean isAutoFightReloadProbeAddress(String address) {
+    static boolean isAutoFightReloadProbeAddress(String address) {
         if (address == null || address.isEmpty()) {
             return false;
         }
@@ -5639,7 +4318,7 @@ public class MainPhp {
      * Назначение:
      * - Нормализация сравнения FastId/названий предметов при разном регистре и раскладке источника.
      */
-    private static boolean containsIgnoreCase(String value, String token) {
+    static boolean containsIgnoreCase(String value, String token) {
         if (value == null || token == null) return false;
         return value.toLowerCase(Locale.ROOT).contains(token.toLowerCase(Locale.ROOT));
     }
@@ -5647,7 +4326,7 @@ public class MainPhp {
      * Проверяет, что мы на странице инвентаря (аналог MainPhpIsInv в MainPhpDrink.cs:221-224).
      * Инвентарь содержит ссылку <a href="?im=0"><img...
      */
-    private static boolean mainPhpIsInv(String html) {
+    static boolean mainPhpIsInv(String html) {
         if (html == null || html.isEmpty()) {
             return false;
         }
@@ -5788,7 +4467,7 @@ public class MainPhp {
      * Стратегия поиска инвентаря на арене (view_arena).
      * Аналог MainPhpDrink.cs строки 99-130
      */
-    private static String mainPhpFindInvWithFallback(String html, String filter, String address) {
+    static String mainPhpFindInvWithFallback(String html, String filter, String address) {
         // Анти-зацикливание: если уже на go=inv с нужным фильтром, redirect не нужен.
         if (inventoryAddressMatchesFilter(address, filter)) {
             return null;
@@ -5915,7 +4594,7 @@ public class MainPhp {
      * Генерирует HTML-страницу с JavaScript redirect (String-версия buildRedirect).
      * Аналог BuildRedirect в Filter.cs:280-291
      */
-    private static String buildRedirectHtml(String description, String link) {
+    static String buildRedirectHtml(String description, String link) {
         String normalizedLink = normalizeNeverlandsMainLink(link);
         return ru.neverlands.abclient.utils.HtmlUtils.GENERATED_PAGE_MARKER +
                 "<html><head><meta http-equiv=\"Content-Type\" content=\"text/html; charset=windows-1251\">" +
@@ -5954,7 +4633,7 @@ public class MainPhp {
      * - результат используется showFightCaptchaDialogOnce(...),
      * - диагностические логи пишутся в TAG `MainPhp`.
      */
-    private static String extractCaptchaUrl(String html) {
+    static String extractCaptchaUrl(String html) {
         try {
             // Поддержка разных вариантов src:
             // 1) /modules/code/code.php?...
@@ -6053,44 +4732,6 @@ public class MainPhp {
             AppVars.IsFightCaptchaDialogVisible = false;
             return;
         }
-        AppVars.IsFightCaptchaDialogVisible = true;
-        Intent intent = new Intent(AppVars.ACTION_SHOW_CAPTCHA);
-        intent.putExtra("captchaUrl", captchaUrl);
-        intent.putExtra("finishUrl", normalizedFinishUrl);
-        LocalBroadcastManager.getInstance(AppVars.getContext()).sendBroadcast(intent);
-    }
-    /**
-     * Инициирует показ captcha-диалога для авто-рыбалки (fish action `get_id=55&act=4`) с дедупликацией.
-     *
-     * Зависимости:
-     * - `AppVars.ACTION_SHOW_CAPTCHA` + `MainActivity.broadcastReceiver` (контракт открытия UI captcha);
-     * - `AppVars.IsFightCaptchaDialogVisible` как единый флаг видимости captcha-окна;
-     * - `lastFishCaptchaDialogKey/AtMs` для защиты от циклических повторов одного challenge.
-     */
-    private static void showFishCaptchaDialogOnce(String captchaUrl, String finishUrl) {
-        if (captchaUrl == null || captchaUrl.isEmpty() || finishUrl == null || finishUrl.isEmpty()) {
-            return;
-        }
-        long now = System.currentTimeMillis();
-        String normalizedFinishUrl = finishUrl;
-        if (!normalizedFinishUrl.startsWith("http")) {
-            normalizedFinishUrl = "http://neverlands.ru/" + normalizedFinishUrl.replaceFirst("^/+", "");
-        }
-        String normalizedCaptchaUrl = captchaUrl.replaceFirst("^https://", "http://");
-        String key = normalizedFinishUrl + "|" + normalizedCaptchaUrl;
-        if (key.equals(lastFishCaptchaDialogKey) && (now - lastFishCaptchaDialogAtMs) < 3000L) {
-            String msg_fish_dup = "showFishCaptchaDialogOnce: duplicate key, skip";
-            AppLog.d(TAG, msg_fish_dup);
-            return;
-        }
-        lastFishCaptchaDialogKey = key;
-        lastFishCaptchaDialogAtMs = now;
-        if (AppVars.getContext() == null) {
-            String msg_fish_null = "showFishCaptchaDialogOnce: context is null, skip";
-            AppLog.w(TAG, msg_fish_null);
-            return;
-        }
-        AppVars.ResumeAutoboiAfterCaptcha = false;
         AppVars.IsFightCaptchaDialogVisible = true;
         Intent intent = new Intent(AppVars.ACTION_SHOW_CAPTCHA);
         intent.putExtra("captchaUrl", captchaUrl);
@@ -6404,7 +5045,7 @@ public class MainPhp {
      * - унифицировать время в сообщениях "Нападение"/"Результат разделки",
      *   чтобы по чату видно было, на каком этапе (до или после нападения) остановился цикл.
      */
-    private static String buildServerChatTimeHtml() {
+    static String buildServerChatTimeHtml() {
         long serverMs = System.currentTimeMillis();
         if (AppVars.Profile != null && AppVars.Profile.ServDiff != Long.MIN_VALUE) {
             serverMs = serverMs - AppVars.Profile.ServDiff;
@@ -6768,7 +5409,7 @@ public class MainPhp {
     /**
      * Безопасный parseInt для токена JS-массива с очисткой кавычек и пробелов.
      */
-    private static int parseIntFromJsToken(String token, int fallback) {
+    static int parseIntFromJsToken(String token, int fallback) {
         try {
             String normalized = token == null ? "" : token.replace("\"", "").trim();
             if (normalized.isEmpty()) {
@@ -7081,7 +5722,7 @@ public class MainPhp {
      * - {@link LocalBroadcastManager};
      * - action {@link AppVars#ACTION_ADD_CHAT_MESSAGE}.
      */
-    private static void sendInventoryChatMessage(String messageHtml) {
+    static void sendInventoryChatMessage(String messageHtml) {
         if (AppVars.getContext() == null || messageHtml == null || messageHtml.isEmpty()) {
             return;
         }
@@ -7119,36 +5760,5 @@ public class MainPhp {
         }
         
         return message;
-    }
-
-    /**
-     * Извлекает HTML форму рыбалки (id="FISHF") из полной страницы озера.
-     * Аналог C#: MainPhpFish.cs, парсинг озера.
-     * 
-     * @param html Полный HTML озера
-     * @return HTML формы <form id="FISHF">...</form> или пустая строка
-     */
-    private static String extractLakeFishFormHtml(String html) {
-        if (html == null || html.isEmpty()) return "";
-        
-        String lowerHtml = html.toLowerCase(java.util.Locale.ROOT);
-        int posForm = lowerHtml.indexOf("id=\"fishf\"");
-        if (posForm == -1) {
-            posForm = lowerHtml.indexOf("id='fishf'");
-        }
-        if (posForm == -1) {
-            return "";
-        }
-        
-        // Найти начало <form>
-        int formStart = html.lastIndexOf("<form", posForm);
-        if (formStart == -1) return "";
-        
-        // Найти </form>
-        int formEnd = html.indexOf("</form>", formStart);
-        if (formEnd == -1) return "";
-        
-        formEnd += "</form>".length();
-        return html.substring(formStart, formEnd);
     }
 }
