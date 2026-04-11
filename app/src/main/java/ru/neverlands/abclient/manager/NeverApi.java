@@ -2,6 +2,7 @@ package ru.neverlands.abclient.manager;
 
 
 import ru.neverlands.abclient.utils.AppLog;
+import ru.neverlands.abclient.utils.FileLogger;
 import android.content.Intent;
 import android.webkit.CookieManager;
 
@@ -1065,6 +1066,14 @@ public class NeverApi {
      */
     private static InfoApiHmuLine parseInfoApiHmuLine(String line, String sourceModule, String playerId) {
         try {
+            // Логируем сырую строку line4 для диагностики расхождений MA
+            // Логируем сырую строку line4 для диагностики расхождений MA
+            AppLog.d(TAG, "INFO_API_TRACE source_module=" + sourceModule
+                    + ", stage=info_raw_line4, id=" + playerId
+                    + ", raw='" + (line == null ? "null" : line) + "'");
+            FileLogger.trace(TAG, "INFO_API_RAW_LINE4 source_module=" + sourceModule
+                    + ", id=" + playerId
+                    + ", raw='" + (line == null ? "null" : line) + "'");
             String payload = line.length() > 2 ? line.substring(2) : "";
             String[] parts = payload.split("\\|", -1);
             if (parts.length < 5) {
@@ -1082,7 +1091,13 @@ public class NeverApi {
             AppLog.d(TAG, "INFO_API_TRACE source_module=" + sourceModule + ", stage=info_parse_ok_line4, id=" + playerId
                     + ", hp=" + safeInt(curHp) + "/" + safeInt(maxHp)
                     + ", ma=" + safeInt(curMa) + "/" + safeInt(maxMa)
-                    + ", tire=" + safeInt(curTire));
+                    + ", tire=" + safeInt(curTire)
+                    + ", rawTokens=[" + parts[0] + "|" + parts[1] + "|" + parts[2] + "|" + parts[3] + "|" + parts[4] + "]");
+            FileLogger.trace(TAG, "INFO_API_PARSED source_module=" + sourceModule + ", id=" + playerId
+                    + ", hp=" + safeInt(curHp) + "/" + safeInt(maxHp)
+                    + ", ma=" + safeInt(curMa) + "/" + safeInt(maxMa)
+                    + ", tire=" + safeInt(curTire)
+                    + ", rawTokens=[" + parts[0] + "|" + parts[1] + "|" + parts[2] + "|" + parts[3] + "|" + parts[4] + "]");
             return hmu;
         } catch (Exception e) {
             AppLog.w(TAG, "INFO_API_TRACE source_module=" + sourceModule + ", stage=info_parse_fail_line4, id=" + playerId, e);
@@ -1098,9 +1113,25 @@ public class NeverApi {
         try {
             String url = "http://www.neverlands.ru/modules/api/info.cgi?playerid=" + playerId
                     + "&slots=1&effects=1&info=1&hmu=1";
+            long fetchStartMs = System.currentTimeMillis();
             String data = getInfo(url);
+            long fetchDurationMs = System.currentTimeMillis() - fetchStartMs;
             int status = lastHttpStatusCode.get() == null ? 0 : lastHttpStatusCode.get();
-            AppLog.d(TAG, "INFO_API_TRACE source_module=" + sourceModule + ", stage=info_http, id=" + playerId + ", status=" + status);
+            AppLog.d(TAG, "INFO_API_TRACE source_module=" + sourceModule + ", stage=info_http, id=" + playerId
+                    + ", status=" + status + ", durationMs=" + fetchDurationMs);
+            // Логируем полный raw-ответ для диагностики расхождений MA
+            if (data != null) {
+                String safeData = data.length() > 500 ? data.substring(0, 500) + "...[truncated]" : data;
+                String rawOneLine = safeData.replace("\n", "\\n").replace("\r", "\\r");
+                AppLog.d(TAG, "INFO_API_TRACE source_module=" + sourceModule
+                        + ", stage=info_raw_response, id=" + playerId
+                        + ", len=" + data.length()
+                        + ", raw='" + rawOneLine + "'");
+                FileLogger.trace(TAG, "INFO_API_RAW source_module=" + sourceModule
+                        + ", id=" + playerId
+                        + ", len=" + data.length()
+                        + ", raw='" + rawOneLine + "'");
+            }
             return data;
         } catch (Exception e) {
             AppLog.w(TAG, "INFO_API_TRACE source_module=" + sourceModule + ", stage=info_http_exception, id=" + playerId, e);

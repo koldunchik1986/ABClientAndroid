@@ -86,6 +86,7 @@ public class MainPhp {
     // after finish-link redirect to plain main.php we allow auto-drink check on ближайших страницах
     // персонажа/инвентаря (go=inf/go=inv/im=*), если "чистый" main.php не попал в Filter.process().
     private static volatile boolean autoDrinkPostFightSyncPending = false;
+    private static volatile long autoDrinkPostFightSyncPendingSinceMs = 0L;
     // Защита от повторного показа одного и того же диалога капчи завершения боя.
     private static volatile String lastFightCaptchaDialogKey = "";
     private static volatile long lastFightCaptchaDialogAtMs = 0L;
@@ -1001,6 +1002,17 @@ public class MainPhp {
         InsHpSnapshot pageSnapshot = parseInsHpSnapshot(html);
         boolean hasPageSnapshot = pageSnapshot != null
                 && (pageSnapshot.maxHp > 0 || pageSnapshot.maxMa > 0);
+        // Логируем ins_HP snapshot с HTML-страницы для сравнения с info.cgi
+        if (hasPageSnapshot) {
+            AppLog.d(TAG, "AUTO_DRINK_TRACE page ins_HP: hp="
+                    + pageSnapshot.curHp + "/" + pageSnapshot.maxHp
+                    + ", ma=" + pageSnapshot.curMa + "/" + pageSnapshot.maxMa
+                    + ", intHp=" + pageSnapshot.intHp + ", intMa=" + pageSnapshot.intMa);
+            FileLogger.trace(TAG, "AUTO_DRINK_TRACE page ins_HP: hp="
+                    + pageSnapshot.curHp + "/" + pageSnapshot.maxHp
+                    + ", ma=" + pageSnapshot.curMa + "/" + pageSnapshot.maxMa
+                    + ", intHp=" + pageSnapshot.intHp + ", intMa=" + pageSnapshot.intMa);
+        }
         boolean allowPostFightFollowup = autoDrinkPostFightSyncPending
                 && isPostFightAutoDrinkFollowupAddress(address);
         if (!hasPageSnapshot && !allowPostFightFollowup) {
@@ -1009,8 +1021,17 @@ public class MainPhp {
             return;
         }
         if (allowPostFightFollowup) {
-            String msg = "AUTO_DRINK_TRACE allow post-fight follow-up address=";
+            CharacterVitalsManager.Snapshot preFollowupVitals = CharacterVitalsManager.snapshot();
+            long preFollowupAgeMs = preFollowupVitals.updatedAtMs > 0
+                    ? Math.max(0L, System.currentTimeMillis() - preFollowupVitals.updatedAtMs) : -1L;
+            String msg = "AUTO_DRINK_TRACE allow post-fight follow-up: address=" + address
+                    + ", currentVitals: hp=" + preFollowupVitals.curHp + "/" + preFollowupVitals.maxHp
+                    + ", ma=" + preFollowupVitals.curMa + "/" + preFollowupVitals.maxMa
+                    + ", tied=" + preFollowupVitals.tied
+                    + ", vitalsSource=" + preFollowupVitals.source
+                    + ", vitalsAgeMs=" + preFollowupAgeMs;
             AppLog.d(TAG, msg);
+            FileLogger.trace(TAG, msg);
         }
         if (AppVars.FastNeed) {
             String msg = "AUTO_DRINK_TRACE skip: FastNeed active, fastId=";
@@ -1139,13 +1160,58 @@ public class MainPhp {
             AppLog.d(TAG, msg);
             return null;
         }
-        AppLog.d(TAG, "INFO_API_TRACE stage=info_api_runtime_call, source_module=post_fight_auto_drink, nick=" + nick);
+        // Снимок CharacterVitalsManager ПЕРЕД запросом info.cgi — для сравнения
+        CharacterVitalsManager.Snapshot preInfoApiSnapshot = CharacterVitalsManager.snapshot();
+        long preInfoApiTs = System.currentTimeMillis();
+        long msSinceFightEndRedirect = autoDrinkPostFightSyncPendingSinceMs > 0
+                ? (preInfoApiTs - autoDrinkPostFightSyncPendingSinceMs) : -1L;
+        AppLog.d(TAG, "INFO_API_TRACE stage=info_api_runtime_call, source_module=post_fight_auto_drink, nick=" + nick
+                + ", msSinceFightEndRedirect=" + msSinceFightEndRedirect);
+        AppLog.d(TAG, "AUTO_DRINK_TRACE pre-info.cgi vitals: hp="
+                + preInfoApiSnapshot.curHp + "/" + preInfoApiSnapshot.maxHp
+                + ", ma=" + preInfoApiSnapshot.curMa + "/" + preInfoApiSnapshot.maxMa
+                + ", tied=" + preInfoApiSnapshot.tied
+                + ", source=" + preInfoApiSnapshot.source
+                + ", ageMs=" + (preInfoApiSnapshot.updatedAtMs > 0 ? (preInfoApiTs - preInfoApiSnapshot.updatedAtMs) : -1));
+        FileLogger.trace(TAG, "AUTO_DRINK_TRACE pre-info.cgi vitals: hp="
+                + preInfoApiSnapshot.curHp + "/" + preInfoApiSnapshot.maxHp
+                + ", ma=" + preInfoApiSnapshot.curMa + "/" + preInfoApiSnapshot.maxMa
+                + ", tied=" + preInfoApiSnapshot.tied
+                + ", source=" + preInfoApiSnapshot.source
+                + ", ageMs=" + (preInfoApiSnapshot.updatedAtMs > 0 ? (preInfoApiTs - preInfoApiSnapshot.updatedAtMs) : -1));
         NeverApi.PinfoVitals vitals = NeverApi.getPinfoVitalsFromInfoApi(nick, "post_fight_auto_drink");
         if (vitals == null) {
             String msg = "AUTO_DRINK_TRACE pinfo skip: request failed";
             AppLog.d(TAG, msg);
             return null;
         }
+        // Сравнение: MA из info.cgi vs MA из CharacterVitalsManager
+        long infoApiDurationMs = System.currentTimeMillis() - preInfoApiTs;
+        boolean maMismatch = vitals.curMa != null && preInfoApiSnapshot.maxMa > 0
+                && Math.abs((vitals.curMa != null ? vitals.curMa : 0) - preInfoApiSnapshot.curMa) > 50;
+        if (maMismatch) {
+            String mismatchMsg = "⚠️ AUTO_DRINK_MA_MISMATCH: info.cgi ma="
+                    + (vitals.curMa != null ? vitals.curMa : "null") + "/" + (vitals.maxMa != null ? vitals.maxMa : "null")
+                    + " vs CharacterVitals ma=" + preInfoApiSnapshot.curMa + "/" + preInfoApiSnapshot.maxMa
+                    + ", delta=" + ((vitals.curMa != null ? vitals.curMa : 0) - preInfoApiSnapshot.curMa)
+                    + ", vitalsSource=" + preInfoApiSnapshot.source
+                    + ", vitalsAgeMs=" + (preInfoApiSnapshot.updatedAtMs > 0 ? (preInfoApiTs - preInfoApiSnapshot.updatedAtMs) : -1)
+                    + ", infoApiCallMs=" + infoApiDurationMs;
+            android.util.Log.w(TAG, mismatchMsg);
+            FileLogger.trace(TAG, mismatchMsg);
+        }
+        AppLog.d(TAG, "AUTO_DRINK_TRACE info.cgi result: hp="
+                + (vitals.curHp != null ? vitals.curHp : "null") + "/" + (vitals.maxHp != null ? vitals.maxHp : "null")
+                + ", ma=" + (vitals.curMa != null ? vitals.curMa : "null") + "/" + (vitals.maxMa != null ? vitals.maxMa : "null")
+                + ", tied=" + (vitals.curTire != null ? vitals.curTire : "null")
+                + ", callDurationMs=" + infoApiDurationMs
+                + ", maMismatch=" + maMismatch);
+        FileLogger.trace(TAG, "AUTO_DRINK_TRACE info.cgi result: hp="
+                + (vitals.curHp != null ? vitals.curHp : "null") + "/" + (vitals.maxHp != null ? vitals.maxHp : "null")
+                + ", ma=" + (vitals.curMa != null ? vitals.curMa : "null") + "/" + (vitals.maxMa != null ? vitals.maxMa : "null")
+                + ", tied=" + (vitals.curTire != null ? vitals.curTire : "null")
+                + ", callDurationMs=" + infoApiDurationMs
+                + ", maMismatch=" + maMismatch);
         boolean hasHpMa = vitals.curHp != null
                 || vitals.maxHp != null
                 || vitals.curMa != null
@@ -3393,8 +3459,11 @@ public class MainPhp {
                 && !AppVars.FastNeed
                 && !AppVars.IsFightCaptchaDialogVisible) {
             autoDrinkPostFightSyncPending = true;
-            String msg_postfight = "AUTO_DRINK_TRACE post-fight redirect to plain main.php, address=";
+            autoDrinkPostFightSyncPendingSinceMs = System.currentTimeMillis();
+            String msg_postfight = "AUTO_DRINK_TRACE post-fight redirect to plain main.php, address=" + address
+                    + ", ts=" + autoDrinkPostFightSyncPendingSinceMs;
             AppLog.d(TAG, msg_postfight);
+            FileLogger.trace(TAG, msg_postfight);
             return Russian.getBytes(buildRedirectHtml("Автопитьё: синхронизация после боя", "main.php"));
         }
         // Проверка автопитья после получения верхнего фрейма персонажа.
