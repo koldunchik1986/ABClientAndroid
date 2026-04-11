@@ -31,6 +31,7 @@ import ru.neverlands.abclient.manager.RoomManager;
 import ru.neverlands.abclient.manager.UnderAttackManager;
 import ru.neverlands.abclient.utils.AppLog;
 import ru.neverlands.abclient.utils.AppVars;
+import ru.neverlands.abclient.utils.Chat;
 import ru.neverlands.abclient.utils.ExtMap;
 import ru.neverlands.abclient.utils.FileLogger;
 import ru.neverlands.abclient.utils.HelperStrings;
@@ -3523,29 +3524,38 @@ public class MainPhp {
      */
     private static String mainPhpWearUd(String html) {
         ParsedDressed ud = new ParsedDressed(html);
-        if (!ud.Valid || AppVars.Profile == null) {
+        if (AppVars.Profile == null) {
             return null;
         }
+        boolean dressedValid = ud.Valid;
         List<WearInvEntry> invList = getWearInvList(html);
-        boolean isWear1 = ud.IsWear1();
+        if (!dressedValid) {
+            AppLog.w(TAG, "AUTO_FISH_TRACE wear: ParsedDressed invalid on inventory page, fallback to inventory-only mode");
+        }
+        boolean isWear1 = dressedValid && ud.IsWear1();
         if (!isWear1 && AppVars.Profile.FishAutoWear) {
             for (WearInvEntry thing : invList) {
                 if (thing.name == null || thing.wearLink == null || thing.wearLink.isEmpty()) continue;
                 if (containsIgnoreCase(AppVars.Profile.FishHandOne, "Любая удочка")) {
                     if (containsIgnoreCase(thing.name, "удочка") || containsIgnoreCase(thing.name, "спиннинг")) {
                         notifyAutoFishRodWear(thing.name);
+                        AppLog.d(TAG, "AUTO_FISH_TRACE wear action: hand=1, item="
+                                + thing.name + ", link=" + thing.wearLink);
                         return buildRedirectHtml("Одеваем первую попавшуюся удочку", thing.wearLink);
                     }
                 } else if (containsIgnoreCase(thing.name, AppVars.Profile.FishHandOne)) {
                     notifyAutoFishRodWear(thing.name);
+                    AppLog.d(TAG, "AUTO_FISH_TRACE wear action: hand=1, item="
+                            + thing.name + ", link=" + thing.wearLink);
                     return buildRedirectHtml(AppVars.Profile.FishHandOne + " одевается", thing.wearLink);
                 }
             }
             disableAutoFish("Не найден предмет для первой руки");
             return null;
         }
-        boolean isWear2 = ud.IsWear2();
+        boolean isWear2 = dressedValid && ud.IsWear2();
         if (!isWear2 && AppVars.Profile.FishAutoWear) {
+            boolean foundMatch = false;
             for (WearInvEntry thing : invList) {
                 if (thing.name == null || thing.wearLink == null || thing.wearLink.isEmpty()) continue;
                 boolean matches;
@@ -3555,14 +3565,24 @@ public class MainPhp {
                     matches = containsIgnoreCase(thing.name, AppVars.Profile.FishHandTwo);
                 }
                 if (!matches) continue;
-                if ((ud.Empty1 || ud.Empty2) || !ud.InRightSlot) {
+                foundMatch = true;
+                boolean allowWearSecond = !dressedValid || (ud.Empty1 || ud.Empty2) || !ud.InRightSlot;
+                if (allowWearSecond) {
                     notifyAutoFishRodWear(thing.name);
+                    AppLog.d(TAG, "AUTO_FISH_TRACE wear action: hand=2, item="
+                            + thing.name + ", link=" + thing.wearLink);
                     return buildRedirectHtml("Одеваем снасть во вторую руку", thing.wearLink);
                 }
-                if (ud.Wid != null && !ud.Wid.isEmpty() && ud.Vcod != null && !ud.Vcod.isEmpty()) {
+                if (dressedValid && ud.Wid != null && !ud.Wid.isEmpty() && ud.Vcod != null && !ud.Vcod.isEmpty()) {
                     String removeLink = "main.php?get_id=57&uid=" + ud.Wid + "&s=0&vcode=" + ud.Vcod;
+                    AppLog.d(TAG, "AUTO_FISH_TRACE wear action: remove-hand1-before-hand2, item="
+                            + ud.Hand1 + ", link=" + removeLink);
                     return buildRedirectHtml("Снимаем " + ud.Hand1, removeLink);
                 }
+            }
+            if (!foundMatch && !isNoFishHandSetting(AppVars.Profile.FishHandTwo)) {
+                disableAutoFish("Не найден предмет для второй руки");
+                return null;
             }
         }
         AppVars.AutoFishWearUd = false;
@@ -3598,7 +3618,11 @@ public class MainPhp {
                 ? "mainphp_autofish_precheck"
                 : sourceModule.trim();
 
-        if ((nowMs - lastAutoFishInfoApiPrecheckAtMs) < AUTO_FISH_INFOAPI_PRECHECK_COOLDOWN_MS) {
+        boolean isPreflightAddress = address != null && address.contains("af_preflight=1");
+        boolean shouldBypassCooldown =
+                queuedMustWear && (isPreflightAddress || safeSourceModule.contains("fishajax_cycle_precast"));
+        if ((nowMs - lastAutoFishInfoApiPrecheckAtMs) < AUTO_FISH_INFOAPI_PRECHECK_COOLDOWN_MS
+                && !shouldBypassCooldown) {
             AutoFishInfoApiPrecheckState cooldownState =
                     buildAutoFishInfoApiPrecheckState(false, queuedMustWear, tiedValue);
             AppLog.d(TAG, "AUTO_FISH_INFOAPI_PRECHECK cooldown skip: source=" + safeSourceModule
@@ -3607,6 +3631,11 @@ public class MainPhp {
                     + ", needFatigueStep=" + cooldownState.needFatigueStep
                     + ", tied=" + cooldownState.tied);
             return cooldownState;
+        }
+        if (shouldBypassCooldown) {
+            AppLog.d(TAG, "AUTO_FISH_INFOAPI_PRECHECK bypass cooldown: source=" + safeSourceModule
+                    + ", address=" + address
+                    + ", queuedMustWear=" + queuedMustWear);
         }
         lastAutoFishInfoApiPrecheckAtMs = nowMs;
 
@@ -3701,9 +3730,9 @@ public class MainPhp {
             }
 
             if (mustWear) {
-                AppVars.AutoFishCheckUd = true;
-                AppVars.AutoFishWearUd = false;
-                AppLog.w(TAG, "AUTO_FISH_INFOAPI_PRECHECK queued recovery: AutoFishCheckUd=true, source="
+                AppVars.AutoFishCheckUd = false;
+                AppVars.AutoFishWearUd = true;
+                AppLog.w(TAG, "AUTO_FISH_INFOAPI_PRECHECK queued recovery: AutoFishWearUd=true, source="
                         + safeSourceModule + ", address=" + address);
             } else if (AppVars.AutoFishCheckUd || AppVars.AutoFishWearUd) {
                 AppVars.AutoFishCheckUd = false;
@@ -3994,6 +4023,19 @@ public class MainPhp {
         AppVars.AutoFishWearLoopKey = "";
         AppVars.AutoFishWearLoopCount = 0;
         AppVars.AutoFishWearLoopStamp = 0L;
+    }
+    private static void restartAutoFishCycle(String reason) {
+        resetAutoFishWearLoopGuard();
+        AppVars.AutoFishCheckUd = false;
+        AppVars.AutoFishWearUd = false;
+        lastAutoFishInfoApiPrecheckAtMs = 0L;
+        AppVars.suppressBackgroundProbesDuringFishing = false;
+        String safeReason = reason == null ? "unknown" : reason;
+        String msg = "AUTO_FISH_TRACE restart full cycle: reason=" + safeReason
+                + ", hand1=" + AppVars.AutoFishHand1
+                + ", hand2=" + AppVars.AutoFishHand2;
+        AppLog.w(TAG, msg);
+        FishAjaxPhp.requestAutoFishBootstrap("cycle_broken_" + safeReason);
     }
     private static void disableAutoFish(String reason) {
         resetAutoFishWearLoopGuard();
@@ -4763,10 +4805,9 @@ public class MainPhp {
         if (!isNonCombatAutoPausedByFastAction() && !isFightFrame && !isFightTopFrame
                 && !autoFightReloadProbeAddress && isAutoFishEnabledByPreference()) {
             long nowMs = System.currentTimeMillis();
+            mainPhpPrecheckFishingHandsByInfoApi(nowMs, address, "mainphp_autofish_gate");
             boolean neverTimerReady = AppVars.NeverTimer <= 0L || nowMs > AppVars.NeverTimer;
             if (neverTimerReady) {
-                if (neverTimerReady) {
-                mainPhpPrecheckFishingHandsByInfoApi(nowMs, address, "mainphp_autofish_gate");
                 String fishFatigueHtml = mainPhpAutoFishFatigueStep(html);
                 if (fishFatigueHtml != null && !fishFatigueHtml.isEmpty()) {
                     String msg_fishfatigue = "AUTO_FISH_TRACE fatigue step executed";
@@ -4796,7 +4837,6 @@ public class MainPhp {
                     AppLog.d(TAG, msg_deferFish);
                     return Russian.getBytes(buildAutoFishDrinkCooldownHtml(postDrinkCooldownRemainingMs));
                 }
-                }
                 if (AppVars.AutoFishCheckUd) {
                     String perchtml = mainPhpFindPerc(html);
                     if (perchtml != null && !perchtml.isEmpty()) {
@@ -4810,9 +4850,10 @@ public class MainPhp {
                         AppVars.AutoFishCheckUd = false;
                         if (AppVars.AutoFishWearUd) {
                             String loopKey = buildAutoFishWearLoopKey();
-                            if (markAutoFishWearLoop(loopKey)) {
-                                disableAutoFish("Зацикливание проверки/надевания снастей");
-                                AppVars.AutoFishWearUd = false;
+                            boolean wearLoopBroken = markAutoFishWearLoop(loopKey);
+                            if (wearLoopBroken) {
+                                restartAutoFishCycle("wear_loop");
+                                return array;
                             }
                         } else {
                             resetAutoFishWearLoopGuard();
@@ -4842,7 +4883,6 @@ public class MainPhp {
                                 return Russian.getBytes(buildRedirectHtml("Переключение на вещи", "main.php?im=0&wca=4"));
                             }
                         } else {
-                            AppVars.AutoFishCheckUd = true;
                             return Russian.getBytes(invHtml);
                         }
                     }
@@ -6983,6 +7023,10 @@ public class MainPhp {
      */
     private static void sendInventoryChatMessage(String messageHtml) {
         if (AppVars.getContext() == null || messageHtml == null || messageHtml.isEmpty()) {
+            return;
+        }
+        if (AppVars.mainActivity != null && AppVars.mainActivity.get() != null) {
+            Chat.addMessageToChat(messageHtml);
             return;
         }
         Intent intent = new Intent(AppVars.ACTION_ADD_CHAT_MESSAGE);

@@ -7,7 +7,6 @@ import java.util.regex.Pattern;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 // 🎯 Импорт FileLogger для критичного логирования
-import ru.neverlands.abclient.utils.FileLogger;
 
 /**
  * SessionManager - единая система управления сессией с сервером.
@@ -42,6 +41,8 @@ public class SessionManager {
         Pattern.compile("(?i)name\\s*=\\s*['\"]?vcode['\"]?[^>]*?value\\s*=\\s*['\"]([a-f0-9]{32})['\"]"),
         // vcode as parameter in URL or form: &vcode=... or vcode=...  
         Pattern.compile("[&?]vcode\\s*=\\s*['\"]?([a-f0-9]{32})['\"]?"),
+        // Bare "vcode=..." snippets used by direct SessionManager seeding from fish act=1.
+        Pattern.compile("^vcode\\s*=\\s*['\"]?([a-f0-9]{32})['\"]?$"),
         // Generic vcode = "..."
         Pattern.compile("vcode\\s*[=:]\\s*['\"]([a-f0-9]{32})['\"]"),
         // var vcode = "..."

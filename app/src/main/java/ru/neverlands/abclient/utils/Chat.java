@@ -27,8 +27,10 @@ public class Chat {
     // Очередь сообщений, ожидающих отправки при готовности ChatWebView
     // Зависимость: используется в sendChatMessage для retry при недоступности WebView
     private static final ConcurrentLinkedQueue<String> PENDING_MESSAGES = new ConcurrentLinkedQueue<>();
+    private static final ConcurrentLinkedQueue<String> PENDING_DISPLAY_MESSAGES = new ConcurrentLinkedQueue<>();
     private static final long RETRY_DELAY_MS = 500L;
     private static volatile boolean chatWebViewRetryScheduled = false;
+    private static volatile boolean chatDisplayRetryScheduled = false;
     // Лог чата — один файл в день: YYYYMMDD_chat.html
     // Используется для формирования имени файла в addStringToChat/getCurrentLogPath.
     private static final SimpleDateFormat LOG_TS_FORMAT = new SimpleDateFormat("yyyyMMdd", Locale.US);
@@ -43,6 +45,12 @@ public class Chat {
         @Override
         public void run() {
             retryPendingMessages();
+        }
+    };
+    private static final Runnable RETRY_PENDING_DISPLAY_MESSAGES_RUNNABLE = new Runnable() {
+        @Override
+        public void run() {
+            retryPendingDisplayMessages();
         }
     };
 
@@ -107,6 +115,7 @@ public class Chat {
         lastChanged = System.currentTimeMillis();
         critical = false;
         scheduleAutoAnswer();
+        retryPendingDisplayMessages();
     }
 
     // Критическое состояние блокирует автоответы (аналог C# Critical).
@@ -268,25 +277,87 @@ public class Chat {
     }
 
     // Вставка сообщения в окно чата (chatMsgWebview) через add_msg JS.
+    private static void schedulePendingDisplayMessagesRetry() {
+        if (chatDisplayRetryScheduled) return;
+        chatDisplayRetryScheduled = true;
+        HANDLER.postDelayed(RETRY_PENDING_DISPLAY_MESSAGES_RUNNABLE, RETRY_DELAY_MS);
+    }
+
+    private static String buildChatPreview(String message) {
+        if (message == null) return "null";
+        String normalized = message.replace('\n', ' ').replace('\r', ' ').trim();
+        return normalized.length() > 120 ? normalized.substring(0, 117) + "..." : normalized;
+    }
+
+    private static void queuePendingDisplayMessage(String message, String reason) {
+        if (message == null || message.isEmpty()) return;
+        PENDING_DISPLAY_MESSAGES.offer(message);
+        AppLog.w(TAG, TAG, "display queued: reason=" + reason
+                + ", pending=" + PENDING_DISPLAY_MESSAGES.size()
+                + ", preview=" + buildChatPreview(message));
+        schedulePendingDisplayMessagesRetry();
+    }
+
+    private static void deliverMessageToChatWebView(MainActivity activity, String message, boolean fromQueue) {
+        if (activity == null
+                || activity.binding == null
+                || activity.binding.appBarMain == null
+                || activity.binding.appBarMain.contentMain == null
+                || activity.binding.appBarMain.contentMain.chatMsgWebview == null) {
+            queuePendingDisplayMessage(message, activity == null ? "activity_null" : "chat_webview_not_ready");
+            return;
+        }
+
+        com.google.gson.Gson gson = new com.google.gson.Gson();
+        String json = gson.toJson(message);
+        activity.binding.appBarMain.contentMain.chatMsgWebview.evaluateJavascript(
+                "(function(){if(typeof add_msg==='function'){add_msg(" + json + ");return 'ready';}return 'pending';})()",
+                result -> {
+                    boolean delivered = result != null && result.contains("ready");
+                    if (delivered) {
+                        AppLog.d(TAG, TAG, "display delivered: fromQueue=" + fromQueue
+                                + ", pending=" + PENDING_DISPLAY_MESSAGES.size()
+                                + ", preview=" + buildChatPreview(message));
+                        if (!PENDING_DISPLAY_MESSAGES.isEmpty()) {
+                            schedulePendingDisplayMessagesRetry();
+                        }
+                        return;
+                    }
+
+                    AppLog.w(TAG, TAG, "display deferred: fromQueue=" + fromQueue
+                            + ", result=" + result
+                            + ", preview=" + buildChatPreview(message));
+                    queuePendingDisplayMessage(message, "add_msg_not_ready");
+                });
+    }
+
+    private static void retryPendingDisplayMessages() {
+        chatDisplayRetryScheduled = false;
+        String message = PENDING_DISPLAY_MESSAGES.poll();
+        if (message == null || message.isEmpty()) return;
+
+        MainActivity activity = AppVars.mainActivity != null ? AppVars.mainActivity.get() : null;
+        if (activity == null) {
+            queuePendingDisplayMessage(message, "retry_without_activity");
+            return;
+        }
+        activity.runOnUiThread(() -> deliverMessageToChatWebView(activity, message, true));
+    }
+
     public static void addMessageToChat(String message) {
-        Log.i(TAG, "addMessageToChat: " + message);
+        String safe = message == null ? "" : message;
+        AppLog.i(TAG, TAG, "addMessageToChat: " + buildChatPreview(safe));
         try {
-            MainActivity activity = AppVars.mainActivity != null ? AppVars.mainActivity.get() : null;
-            String safe = message == null ? "" : message;
             captureSystemChatMessage(safe);
-            if (activity == null) return;
-            com.google.gson.Gson gson = new com.google.gson.Gson();
-            String json = gson.toJson(safe);
-            activity.runOnUiThread(() -> {
-                if (activity.binding != null && activity.binding.appBarMain != null
-                        && activity.binding.appBarMain.contentMain != null
-                        && activity.binding.appBarMain.contentMain.chatMsgWebview != null) {
-                    activity.binding.appBarMain.contentMain.chatMsgWebview
-                            .evaluateJavascript("if (typeof add_msg === 'function') { add_msg(" + json + "); }", null);
-                }
-            });
+            MainActivity activity = AppVars.mainActivity != null ? AppVars.mainActivity.get() : null;
+            if (activity == null) {
+                queuePendingDisplayMessage(safe, "entry_without_activity");
+                return;
+            }
+            activity.runOnUiThread(() -> deliverMessageToChatWebView(activity, safe, false));
         } catch (Exception e) {
-            Log.e(TAG, "addMessageToChat failed", e);
+            AppLog.e(TAG, TAG, "addMessageToChat failed", e);
+            queuePendingDisplayMessage(safe, "exception");
         }
     }
 

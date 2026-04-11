@@ -102,7 +102,7 @@ public class HpmpJs {
         sb.append("var __ab_curTire = 100 - __ab_maxTire;");
         sb.append("if (__ab_curTire < 0) __ab_curTire = 0;");
         sb.append("if (__ab_curTire > 100) __ab_curTire = 100;");
-        sb.append("__ab_tireSuffix = ' | <font color=#666666><b>Усталость:</b> <b>' + __ab_curTire + '</b></font>'; ");
+        sb.append("__ab_tireSuffix = ' | <font color=#333333><b>Усталость:</b> <b>' + __ab_curTire + '</b></font>'; ");
         sb.append("}");
         sb.append("}catch(_ab_tire_e){}");
         sb.append("result = result + '</font>]' + __ab_tireSuffix + '</font>';");

@@ -560,11 +560,15 @@ public final class FishAjaxPhp {
 
             // ✅ Ранняя защита от race condition: установить флаг ДО отправки HTTP-запроса
             // Это предотвратит SERVER_TIMER_TICK от перезагрузки main.php пока идет act=1
+            long attemptStartedAtMs = System.currentTimeMillis();
             MainPhp.AutoFishInfoApiPrecheckState precheckState =
                     MainPhp.mainPhpBuildAutoFishCachedPrecheckState(
                             "fish_cycle_attempt",
                             "fishajax_cycle_precast");
             if (precheckState.shouldRouteViaMainPhp()) {
+                AppVars.suppressBackgroundProbesDuringFishing = true;
+                AppVars.fishingSequenceStartAtMs = attemptStartedAtMs;
+                AppLog.d(TAG, "AUTO_FISH_TRACE preflight suppression enabled, token=" + cycleToken);
                 String freshVcode = SessionManager.getInstance().getValidVCodeForAction("fish_cycle_preflight");
                 String preflightUrl;
                 if (freshVcode != null && !freshVcode.isEmpty()) {
@@ -581,10 +585,28 @@ public final class FishAjaxPhp {
                         + ", tiedThreshold=" + precheckState.tiedThreshold
                         + ", url=" + preflightUrl);
                 webView.loadUrl(preflightUrl);
+                webView.postDelayed(() -> {
+                    if (!isAutoFishEnabled()) {
+                        return;
+                    }
+                    if (cycleToken != lastFishCycleToken) {
+                        return;
+                    }
+                    if (lastFishAct1AtMs >= attemptStartedAtMs) {
+                        AppLog.d(TAG, TAG, "AUTO_FISH_TRACE preflight confirmed by new act=1, attempt=" + attempt);
+                        return;
+                    }
+                    if (attempt >= FISH_CYCLE_MAX_ATTEMPTS) {
+                        AppLog.w(TAG, TAG, "AUTO_FISH_TRACE preflight exhausted attempts=" + attempt + ", token=" + cycleToken);
+                        requestAutoFishBootstrap("preflight_exhausted");
+                        return;
+                    }
+                    AppLog.d(TAG, TAG, "AUTO_FISH_TRACE preflight retry " + (attempt + 1) + "/" + FISH_CYCLE_MAX_ATTEMPTS);
+                    kickFishCycleAttempt(cycleToken, attempt + 1);
+                }, FISH_CYCLE_RETRY_DELAY_MS);
                 return;
             }
 
-            long attemptStartedAtMs = System.currentTimeMillis();
             AppVars.suppressBackgroundProbesDuringFishing = true;
             AppVars.fishingSequenceStartAtMs = attemptStartedAtMs;
             AppLog.d(TAG, "AUTO_FISH_TRACE early suppression enabled at cycle start, token=" + cycleToken);
@@ -616,12 +638,12 @@ public final class FishAjaxPhp {
                 String reloadUrl;
                 if (freshVcode != null && !freshVcode.isEmpty()) {
                     reloadUrl = "http://neverlands.ru/main.php?af_cycle=1&vcode=" + freshVcode + "&r=" + System.currentTimeMillis();
-                    FileLogger.trace(TAG, "AUTO_FISH_TRACE cycle kick fallback with VCode");
+                    AppLog.d(TAG, TAG, "AUTO_FISH_TRACE cycle kick fallback with fresh vcode");
                 } else {
                     reloadUrl = "http://neverlands.ru/main.php?af_cycle=1&r=" + System.currentTimeMillis();
-                    FileLogger.trace(TAG, "AUTO_FISH_TRACE cycle kick fallback WITHOUT VCode (null)");
+                    AppLog.w(TAG, TAG, "AUTO_FISH_TRACE cycle kick fallback without vcode");
                 }
-                Log.d(TAG, "AUTO_FISH_TRACE cycle kick fallback reload, attempt=" + attempt
+                AppLog.d(TAG, TAG, "AUTO_FISH_TRACE cycle kick fallback reload, attempt=" + attempt
                         + ", jsResult=" + value + ", url=" + reloadUrl);
                 webView.loadUrl(reloadUrl);
             });
@@ -634,15 +656,15 @@ public final class FishAjaxPhp {
                     return;
                 }
                 if (lastFishAct1AtMs >= attemptStartedAtMs) {
-                    Log.d(TAG, "AUTO_FISH_TRACE cycle kick confirmed by new act=1, attempt=" + attempt);
+                    AppLog.d(TAG, TAG, "AUTO_FISH_TRACE cycle kick confirmed by new act=1, attempt=" + attempt);
                     return;
                 }
                 if (attempt >= FISH_CYCLE_MAX_ATTEMPTS) {
-                    Log.w(TAG, "AUTO_FISH_TRACE cycle kick exhausted attempts=" + attempt + ", token=" + cycleToken);
+                    AppLog.w(TAG, TAG, "AUTO_FISH_TRACE cycle kick exhausted attempts=" + attempt + ", token=" + cycleToken);
                     requestAutoFishBootstrap("cycle_exhausted");
                     return;
                 }
-                Log.d(TAG, "AUTO_FISH_TRACE cycle kick retry " + (attempt + 1) + "/" + FISH_CYCLE_MAX_ATTEMPTS);
+                AppLog.d(TAG, TAG, "AUTO_FISH_TRACE cycle kick retry " + (attempt + 1) + "/" + FISH_CYCLE_MAX_ATTEMPTS);
                 kickFishCycleAttempt(cycleToken, attempt + 1);
             }, FISH_CYCLE_RETRY_DELAY_MS);
         });
@@ -698,12 +720,12 @@ public final class FishAjaxPhp {
             String reloadUrl = "http://neverlands.ru/main.php?get_id=56&act=10";
             if (freshVcode != null && !freshVcode.isEmpty()) {
                 reloadUrl += "&vcode=" + freshVcode;
-                FileLogger.trace(TAG, "AUTO_FISH_TRACE soft recovery with VCode");
+                AppLog.d(TAG, TAG, "AUTO_FISH_TRACE soft recovery with fresh vcode");
             } else {
-                FileLogger.trace(TAG, "AUTO_FISH_TRACE soft recovery WITHOUT VCode (null)");
+                AppLog.w(TAG, TAG, "AUTO_FISH_TRACE soft recovery without vcode");
             }
             reloadUrl += "&r=" + System.currentTimeMillis();
-            Log.d(TAG, "AUTO_FISH_TRACE soft recovery after " + safeReason + ": " + reloadUrl);
+            AppLog.d(TAG, TAG, "AUTO_FISH_TRACE soft recovery after " + safeReason + ": " + reloadUrl);
             webView.loadUrl(reloadUrl);
         });
     }
@@ -712,7 +734,7 @@ public final class FishAjaxPhp {
      * Принудительно перезапускает fish-цепочку через main.php?go=inf.
      * Используется как recovery после серии ERR/stale-vcode.
      */
-    private static void requestAutoFishBootstrap(String reason) {
+    static void requestAutoFishBootstrap(String reason) {
         if (!isAutoFishEnabled()) {
             return;
         }

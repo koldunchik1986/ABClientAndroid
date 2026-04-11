@@ -181,6 +181,11 @@ public class AutoFunctionsManager {
 
         Log.d(TAG, "setAutoFightEnabled: " + enabled);
         syncBackgroundService("setAutoFightEnabled(" + enabled + ")");
+        boolean suppressFightBootstrapBecauseAutoFish = enabled
+                && (isAutoFishEnabled() || (AppVars.Profile != null && AppVars.Profile.AutoFish));
+        if (suppressFightBootstrapBecauseAutoFish) {
+            AppLog.d(TAG, TAG, "AUTO_FISH_TRACE suppress auto-fight bootstrap reload because auto-fish owns cold start");
+        }
         if (enabled) {
             requestCharacterSyncForAutoFunctionEnable("auto_fight");
         }
@@ -193,7 +198,7 @@ public class AutoFunctionsManager {
         }
 
         // При включении делаем форсированную загрузку боевого кадра (fight.frame).
-        if (enabled) {
+        if (enabled && !suppressFightBootstrapBecauseAutoFish) {
             // При включении автобоя дергаем авто-ход и форсируем загрузку боевого кадра, как в ПК версии.
             if (AppVars.mainActivity != null && AppVars.mainActivity.get() != null) {
                 AppVars.mainActivity.get().runOnUiThread(() -> {
@@ -210,7 +215,7 @@ public class AutoFunctionsManager {
                         if (freshVcode != null && !freshVcode.isEmpty()) {
                             reloadUrl += "&vcode=" + freshVcode;
                         } else {
-                            FileLogger.trace(TAG, "setAutoFightEnabled: autofight_reload no vcode available");
+                            AppLog.w(TAG, TAG, "AUTO_FISH_TRACE auto-fight bootstrap reload has no vcode");
                         }
                         reloadUrl += "&ts=" + System.currentTimeMillis();
                         Log.d(TAG, "setAutoFightEnabled: reload fight frame " + reloadUrl);
@@ -243,6 +248,10 @@ public class AutoFunctionsManager {
     // Включение авто-рыбалки включает авто-бой (враги нападают в озере).
     // Выключение авто-рыбалки не отключает авто-бой.
     public void setAutoFishEnabled(boolean enabled) {
+        prefs.edit().putBoolean(KEY_PREFIX + "auto_fish", enabled).apply();
+        if (AppVars.Profile != null) {
+            AppVars.Profile.AutoFish = enabled;
+        }
         if (enabled) {
             // При включении Авто-Рыбалки: если Авто-Бой выключен - включаем оба
             if (!isAutoFightEnabled()) {
@@ -301,9 +310,7 @@ public class AutoFunctionsManager {
             // старым cooldown'ом.
             AppVars.NeverTimer = 0L;
         }
-        prefs.edit().putBoolean(KEY_PREFIX + "auto_fish", enabled).apply();
         if (AppVars.Profile != null) {
-            AppVars.Profile.AutoFish = enabled;
             AppVars.Profile.save(context);
         }
         // Синхронизация QuickButton UI при programmatic stop/start (например, отключение из postfilter),
@@ -324,7 +331,7 @@ public class AutoFunctionsManager {
                     if (fishVcode != null && !fishVcode.isEmpty()) {
                         url += "&vcode=" + fishVcode;
                     } else {
-                        FileLogger.trace(TAG, "setAutoFishEnabled: autofish_bootstrap no vcode available");
+                        AppLog.w(TAG, TAG, "AUTO_FISH_TRACE cold-start bootstrap has no vcode, continue with go=10");
                     }
                     url += "&ts=" + System.currentTimeMillis();
                     Log.d(TAG, "setAutoFishEnabled: bootstrap navigation to LAKE (go=10), url=" + url);
@@ -380,10 +387,11 @@ public class AutoFunctionsManager {
         // ⚠️ FIX: Рыбалка и бой работают параллельно в озере
         // Враги нападают на рыбака - их нужно убивать чтобы продолжить рыбалку
         if (autoFish) {
-            Log.d(TAG, "restorePersistentAutoModesAfterLogin: starting autoFish + parallel autoFight for lake enemies");
+            AppLog.d(TAG, TAG, "AUTO_FISH_TRACE restore after login: auto-fish owns cold start bootstrap");
             setAutoFishEnabled(true);
-            // ВАЖНО: не возвращаемся - запускаем также боевой контур для врагов озера
-            restoreAutoFightRuntimeAfterLogin(autoFight);
+            if (autoFight) {
+                restoreAutoFightRuntimeAfterLogin(true, false);
+            }
             return;
         }
 
@@ -394,7 +402,7 @@ public class AutoFunctionsManager {
                     + AppVars.SearchBoxVisited.size());
         }
 
-        restoreAutoFightRuntimeAfterLogin(autoFight);
+        restoreAutoFightRuntimeAfterLogin(autoFight, true);
     }
 
     /**
@@ -577,7 +585,7 @@ public class AutoFunctionsManager {
         }
     }
 
-    private void restoreAutoFightRuntimeAfterLogin(boolean autoFightEnabledByProfile) {
+    private void restoreAutoFightRuntimeAfterLogin(boolean autoFightEnabledByProfile, boolean allowBootstrapReload) {
         AppVars.Autoboi = autoFightEnabledByProfile ? AutoboiState.AutoboiOn : AutoboiState.AutoboiOff;
 
         boolean furyEnabledByProfile = AppVars.Profile != null && AppVars.Profile.hasAnyLezFuryGroup();
@@ -591,7 +599,8 @@ public class AutoFunctionsManager {
 
         syncBackgroundService("restoreAutoFightRuntimeAfterLogin(" + autoFightEnabledByProfile + ")");
         Log.d(TAG, "restoreAutoFightRuntimeAfterLogin: runtime autoboi=" + AppVars.Autoboi
-                + ", profileAutoFight=" + autoFightEnabledByProfile);
+                + ", profileAutoFight=" + autoFightEnabledByProfile
+                + ", allowBootstrapReload=" + allowBootstrapReload);
 
         // Установить флаг для принудительного запуска авто-боя при холодном старте.
         // Это нужно чтобы первый probe запустился несмотря на uiForegroundLikely=true.
@@ -603,7 +612,11 @@ public class AutoFunctionsManager {
         // Bootstrap после restore:
         // - запускается только при включенном авто-бое в профиле;
         // - не меняет сам флаг, а только инициирует загрузку боевого кадра для старта цикла.
-        if (autoFightEnabledByProfile && AppVars.mainActivity != null && AppVars.mainActivity.get() != null) {
+        if (autoFightEnabledByProfile && !allowBootstrapReload) {
+            AppLog.d(TAG, TAG, "AUTO_FISH_TRACE restore auto-fight runtime without bootstrap reload");
+        }
+        if (autoFightEnabledByProfile && allowBootstrapReload
+                && AppVars.mainActivity != null && AppVars.mainActivity.get() != null) {
             AppVars.mainActivity.get().runOnUiThread(() -> {
                 try {
                     if (AppVars.mainActivity.get() == null || AppVars.mainActivity.get().getMainWebView() == null) {

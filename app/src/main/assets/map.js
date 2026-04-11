@@ -61,9 +61,10 @@ function view_build_top()
 
 	ins_HP();
 	d.write('<table cellpadding=4 cellspacing=0 border=0 width=100%><tr><td bgcolor=#FCFAF3><table cellpadding=0 cellspacing=0 border=0>');
-	d.write('<tr><td rowspan=3><font class=nick>'+sh_align(build[2],0)+sh_sign(build[3],build[4],build[5])+'<B>'+build[0]+'</B>['+build[1]+']&nbsp;</font></td><td><img src=http://image.neverlands.ru/1x1.gif width=1 height=2><br><img src=http://image.neverlands.ru/gameplay/hp.gif width=0 height=6 border=0 id=fHP vspace=0 align=absmiddle><img src=http://image.neverlands.ru/gameplay/nohp.gif width=0 height=6 border=0 id=eHP vspace=0 align=absmiddle></td><td rowspan=3 class=hpbar><div id=hbar></div></td></tr>');
+	d.write('<tr><td rowspan=4><font class=nick>'+sh_align(build[2],0)+sh_sign(build[3],build[4],build[5])+'<B>'+build[0]+'</B>['+build[1]+']&nbsp;</font></td><td><img src=http://image.neverlands.ru/1x1.gif width=1 height=2><br><img src=http://image.neverlands.ru/gameplay/hp.gif width=0 height=6 border=0 id=fHP vspace=0 align=absmiddle><img src=http://image.neverlands.ru/gameplay/nohp.gif width=0 height=6 border=0 id=eHP vspace=0 align=absmiddle></td></tr>');
 	d.write('<tr><td bgcolor=#ffffff><img src=http://image.neverlands.ru/1x1.gif width=1 height=1></td></tr>');
 	d.write('<tr><td><img src=http://image.neverlands.ru/gameplay/ma.gif width=0 height=6 border=0 id=fMP vspace=0 align=absmiddle><img src=http://image.neverlands.ru/gameplay/noma.gif width=0 height=6 border=0 id=eMP vspace=0 align=absmiddle></td></tr>');
+	d.write('<tr><td><span id=hbar></span></td></tr>');
 	d.write('</table></td><td bgcolor=#FCFAF3><div align=center id=ButtonPlace>'+ButtonGen()+'</div></td><td bgcolor=#FCFAF3><div align=right><a href="javascript: top.exit_redir()"><img src=http://image.neverlands.ru/exit.gif align=absmiddle width=15 height=15 border=0></a></div></td></tr></table>');
 	cha_HP();
 	    

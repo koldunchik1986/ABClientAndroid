@@ -14,6 +14,9 @@
 - [x] При необходимости маршрутизировать цикл обратно в `main.php`, чтобы существующие ветки выпили Блаж/переодели снасть.
 - [x] Исправить выбор реального DOM-узла `hbar`, если в документе есть скрытый stub.
 - [x] Добавить `curTier` в HTML строки HP/MA возле ника.
+- [x] Убрать конфликт cold-start между `autofish_bootstrap` и `ab_reload_probe` после логина.
+- [x] Перенести InfoApi precheck до `NeverTimer`-гейта в `MainPhp`, чтобы stale-флаги рук очищались на preflight-странице.
+- [x] Научить `SessionManager` принимать bare-формат `vcode=...` из fish act=1 без HTML-обёртки.
 - [ ] Собрать `:app:compileDebugJavaWithJavac`.
 
 ## Риски
