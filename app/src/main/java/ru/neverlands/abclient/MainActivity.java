@@ -1549,6 +1549,145 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     }
 
     /**
+     * Прямой HTTP POST для отправки авто-удара, когда Activity в background.
+     *
+     * Зачем:
+     * - Android WebView откладывает навигационные запросы (form.submit) при фоновой Activity;
+     * - evaluateJavascript возвращает "ok_payload_submit", но HTTP POST физически не уходит;
+     * - прямой HTTP POST через HttpURLConnection гарантирует отправку в любом состоянии lifecycle.
+     *
+     * Формат payload: `vcode|enemy|group|inf_bot|lev_bot|ftr|inu|inb|ina`.
+     *
+     * Зависимости:
+     * - {@link ProxyRuntimeManager} (proxy/strict-proxy);
+     * - {@link CookiesManager}, {@link CookieManager} (cookie сессии);
+     * - {@link AppVars#BROWSER_USER_AGENT};
+     * - {@link Russian#getString(byte[])} (декодирование ответа);
+     * - {@link SessionManager#parseVCodeFromHtml(String, String)} (обновление VCode из ответа).
+     */
+    private void submitAutoBattleActionViaDirectHttp(String payload) {
+        if (payload == null || payload.isEmpty()) {
+            AppLog.w(TAG, TAG, BG_TRACE_PREFIX + " directHttpSubmit: empty payload, skip");
+            return;
+        }
+
+        // Извлекаем VCode из payload перед отправкой (для синхронизации SessionManager)
+        adoptVCodeFromAutoSubmitPayload(payload);
+
+        String[] parts = payload.split("\\|");
+        if (parts.length < 9) {
+            AppLog.w(TAG, TAG, BG_TRACE_PREFIX + " directHttpSubmit: payload parts=" + parts.length + ", need 9, skip");
+            return;
+        }
+
+        new Thread(() -> {
+            HttpURLConnection connection = null;
+            InputStream inputStream = null;
+            ByteArrayOutputStream outputStream = null;
+            try {
+                URL url = new URL("http://neverlands.ru/main.php");
+                java.net.Proxy activeProxy = ProxyRuntimeManager.getActiveJavaProxyOrNull();
+                if (activeProxy == null && ProxyRuntimeManager.isStrictProxyRequiredForCurrentProfile()) {
+                    AppLog.e(TAG, TAG, BG_TRACE_PREFIX + " directHttpSubmit: PROXY_FAIL strict proxy required but unavailable");
+                    return;
+                }
+
+                connection = activeProxy != null
+                        ? (HttpURLConnection) url.openConnection(activeProxy)
+                        : (HttpURLConnection) url.openConnection();
+                connection.setRequestMethod("POST");
+                connection.setDoOutput(true);
+                connection.setConnectTimeout(AUTO_TURN_SERVER_PROBE_TIMEOUT_MS);
+                connection.setReadTimeout(AUTO_TURN_SERVER_PROBE_TIMEOUT_MS);
+                connection.setUseCaches(false);
+                connection.setRequestProperty("Content-Type", "application/x-www-form-urlencoded");
+                connection.setRequestProperty("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8");
+                connection.setRequestProperty("Accept-Encoding", "identity");
+                connection.setRequestProperty("Accept-Language", "ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7");
+                connection.setRequestProperty("Cache-Control", "no-cache");
+                connection.setRequestProperty("Pragma", "no-cache");
+                connection.setRequestProperty("Referer", "http://neverlands.ru/main.php");
+                connection.setRequestProperty("User-Agent", AppVars.BROWSER_USER_AGENT);
+
+                String cookie = CookieManager.getInstance().getCookie("http://neverlands.ru/main.php");
+                if (cookie == null || cookie.isEmpty()) {
+                    cookie = CookieManager.getInstance().getCookie("http://neverlands.ru/");
+                }
+                if ((cookie == null || cookie.isEmpty())) {
+                    cookie = CookiesManager.obtain("neverlands.ru");
+                }
+                if (cookie != null && !cookie.isEmpty()) {
+                    connection.setRequestProperty("Cookie", cookie);
+                } else {
+                    AppLog.w(TAG, TAG, BG_TRACE_PREFIX + " directHttpSubmit: cookie is empty");
+                }
+
+                // Формируем POST body: post_id=7&vcode=...&enemy=...&group=...&inf_bot=...&lev_bot=...&ftr=...&inu=...&inb=...&ina=...
+                StringBuilder postBody = new StringBuilder();
+                postBody.append("post_id=7");
+                postBody.append("&vcode=").append(java.net.URLEncoder.encode(parts[0], "UTF-8"));
+                postBody.append("&enemy=").append(java.net.URLEncoder.encode(parts[1], "UTF-8"));
+                postBody.append("&group=").append(java.net.URLEncoder.encode(parts[2], "UTF-8"));
+                postBody.append("&inf_bot=").append(java.net.URLEncoder.encode(parts[3], "UTF-8"));
+                postBody.append("&lev_bot=").append(java.net.URLEncoder.encode(parts[4], "UTF-8"));
+                postBody.append("&ftr=").append(java.net.URLEncoder.encode(parts[5], "UTF-8"));
+                postBody.append("&inu=").append(java.net.URLEncoder.encode(parts[6], "UTF-8"));
+                postBody.append("&inb=").append(java.net.URLEncoder.encode(parts[7], "UTF-8"));
+                postBody.append("&ina=").append(java.net.URLEncoder.encode(parts[8], "UTF-8"));
+
+                byte[] postData = postBody.toString().getBytes("UTF-8");
+                connection.setRequestProperty("Content-Length", String.valueOf(postData.length));
+                connection.getOutputStream().write(postData);
+                connection.getOutputStream().flush();
+
+                int responseCode = connection.getResponseCode();
+                if (responseCode < 200 || responseCode >= 300) {
+                    AppLog.w(TAG, TAG, BG_TRACE_PREFIX + " directHttpSubmit: HTTP " + responseCode);
+                    return;
+                }
+
+                inputStream = connection.getInputStream();
+                outputStream = new ByteArrayOutputStream();
+                byte[] buffer = new byte[4096];
+                int read;
+                while ((read = inputStream.read(buffer)) != -1) {
+                    outputStream.write(buffer, 0, read);
+                }
+                byte[] data = outputStream.toByteArray();
+                String responseHtml = data.length > 0 ? Russian.getString(data) : null;
+
+                if (responseHtml != null && !responseHtml.isEmpty()) {
+                    boolean hasMarkers = hasFightMarkers(responseHtml);
+                    AppLog.d(TAG, TAG, BG_TRACE_PREFIX + " directHttpSubmit: OK, responseLen="
+                            + responseHtml.length() + ", hasFightMarkers=" + hasMarkers);
+
+                    // Обновляем кэш HTML для следующего автохода
+                    if (hasMarkers) {
+                        AppVars.ContentMainPhp = responseHtml;
+                    }
+                    // Парсим VCode из ответа сервера
+                    SessionManager.getInstance().parseVCodeFromHtml(responseHtml, "direct_http_fight_submit");
+                } else {
+                    AppLog.w(TAG, TAG, BG_TRACE_PREFIX + " directHttpSubmit: empty response");
+                }
+
+            } catch (Exception e) {
+                AppLog.e(TAG, TAG, BG_TRACE_PREFIX + " directHttpSubmit: failed: " + e.getMessage());
+            } finally {
+                if (inputStream != null) {
+                    try { inputStream.close(); } catch (IOException ignored) {}
+                }
+                if (outputStream != null) {
+                    try { outputStream.close(); } catch (IOException ignored) {}
+                }
+                if (connection != null) {
+                    connection.disconnect();
+                }
+            }
+        }, "auto-battle-direct-http-submit").start();
+    }
+
+    /**
      * Извлекает vcode из payload авто-удара (`vcode|enemy|group|...`) и синхронизирует `AppVars.VCode`.
      *
      * Зависимости:
@@ -2989,7 +3128,15 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
 
     private void submitAutoBattleNow(String payload) {
         lastAutoBattleSubmitAtMs = System.currentTimeMillis();
-        Log.d(TAG, BG_TRACE_PREFIX + " autoBattleDelay: submit now");
+        // Когда Activity не в foreground, WebView form.submit() реально не отправляет HTTP POST —
+        // Android WebView откладывает навигацию до возврата в foreground.
+        // Поэтому в background используем прямой HTTP POST, минуя WebView.
+        if (!isActivityResumedState) {
+            AppLog.d(TAG, TAG, BG_TRACE_PREFIX + " autoBattleDelay: submit via direct HTTP (background)");
+            submitAutoBattleActionViaDirectHttp(payload);
+            return;
+        }
+        Log.d(TAG, BG_TRACE_PREFIX + " autoBattleDelay: submit now (foreground, WebView)");
         // Подаём действие через безопасный wrapper с retry,
         // чтобы избежать race "AutoSubmit is not defined" после resume/screen on.
         submitAutoBattleActionToWebView(payload, AUTO_SUBMIT_MAX_RETRY_COUNT);
