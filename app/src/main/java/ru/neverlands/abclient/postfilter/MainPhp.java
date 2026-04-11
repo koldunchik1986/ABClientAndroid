@@ -1203,24 +1203,16 @@ public class MainPhp {
                     + ", vitalsAgeMs=" + (preInfoApiSnapshot.updatedAtMs > 0 ? (preInfoApiTs - preInfoApiSnapshot.updatedAtMs) : -1)
                     + ", infoApiCallMs=" + infoApiDurationMs
                     + ", infoApiStale=" + infoApiMaStale;
-            android.util.Log.w(TAG, mismatchMsg);
-            FileLogger.trace(TAG, mismatchMsg);
+            AppLog.w(TAG, mismatchMsg);
         }
         if (infoApiMaStale) {
             String rejectMsg = "AUTO_DRINK_TRACE pinfo REJECTED: info.cgi MA stale (info.cgi="
                     + vitals.curMa + " << CharacterVitals=" + preInfoApiSnapshot.curMa
                     + "), fallback to page ins_HP snapshot";
-            android.util.Log.w(TAG, rejectMsg);
-            FileLogger.trace(TAG, rejectMsg);
+            AppLog.w(TAG, rejectMsg);
             return null;
         }
         AppLog.d(TAG, "AUTO_DRINK_TRACE info.cgi result: hp="
-                + (vitals.curHp != null ? vitals.curHp : "null") + "/" + (vitals.maxHp != null ? vitals.maxHp : "null")
-                + ", ma=" + (vitals.curMa != null ? vitals.curMa : "null") + "/" + (vitals.maxMa != null ? vitals.maxMa : "null")
-                + ", tied=" + (vitals.curTire != null ? vitals.curTire : "null")
-                + ", callDurationMs=" + infoApiDurationMs
-                + ", maMismatch=" + maMismatch);
-        FileLogger.trace(TAG, "AUTO_DRINK_TRACE info.cgi result: hp="
                 + (vitals.curHp != null ? vitals.curHp : "null") + "/" + (vitals.maxHp != null ? vitals.maxHp : "null")
                 + ", ma=" + (vitals.curMa != null ? vitals.curMa : "null") + "/" + (vitals.maxMa != null ? vitals.maxMa : "null")
                 + ", tied=" + (vitals.curTire != null ? vitals.curTire : "null")
