@@ -464,7 +464,17 @@ public final class FightAuto {
                 }
             }
             if (!needCaptcha) {
-                String cleanFinishLink = host.extractFightCleanFinishLinkFromHtml(html);
+                // 🔥 FIX: Не заменять валидный act=7 (полный финальный) линк на act=5 (промежуточный).
+                // act=7 — реальный "Завершить бой" (с fexp), отправляет результат бою на сервер.
+                // act=5&st=6 — только refresh/статус боя, может зацикливаться без смены состояния.
+                // Clean link используется ТОЛЬКО если act=7 не доступен.
+                boolean alreadyHasAct7 = fightLink != null && !fightLink.isEmpty()
+                        && fightLink.contains("act=7");
+                if (alreadyHasAct7) {
+                    String msg_skip_clean = "processFight: skip CLEAN link override, already have act=7: " + fightLink;
+                    AppLog.d(TAG, TAG, msg_skip_clean);
+                }
+                String cleanFinishLink = alreadyHasAct7 ? null : host.extractFightCleanFinishLinkFromHtml(html);
                 if (cleanFinishLink != null && !cleanFinishLink.isEmpty()) {
                     boolean replacedPrevious = fightLink != null
                             && !fightLink.isEmpty()

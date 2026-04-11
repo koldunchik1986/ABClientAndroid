@@ -136,7 +136,11 @@ public class FightViewModel extends ViewModel {
             }
 
             if (!fight.IsBoi) {
-                String msg = BG_TRACE_PREFIX + " processFightHtml: skip, IsBoi=false";
+                String msg = BG_TRACE_PREFIX + " processFightHtml: skip, IsBoi=false"
+                        + ", IsWaitingForNextTurn=" + fight.IsWaitingForNextTurn
+                        + ", FightLink=" + (AppVars.FightLink != null ? AppVars.FightLink : "null")
+                        + ", Autoboi=" + AppVars.Autoboi
+                        + ", LogBoi=" + fight.LogBoi;
                 AppLog.d(TAG, TAG, msg);
                 return;
             }
@@ -195,7 +199,10 @@ public class FightViewModel extends ViewModel {
             announceNewFightIfNeeded(fight, html);
 
             if (!fight.IsBoi) {
-                String msg = BG_TRACE_PREFIX + " autoTurnOnce: skip, IsBoi=false";
+                String msg = BG_TRACE_PREFIX + " autoTurnOnce: skip, IsBoi=false"
+                        + ", IsWaitingForNextTurn=" + fight.IsWaitingForNextTurn
+                        + ", FightLink=" + (AppVars.FightLink != null ? AppVars.FightLink : "null")
+                        + ", Autoboi=" + AppVars.Autoboi;
                 AppLog.d(TAG, TAG, msg);
                 return;
             }
