@@ -1189,6 +1189,11 @@ public class MainPhp {
         long infoApiDurationMs = System.currentTimeMillis() - preInfoApiTs;
         boolean maMismatch = vitals.curMa != null && preInfoApiSnapshot.maxMa > 0
                 && Math.abs((vitals.curMa != null ? vitals.curMa : 0) - preInfoApiSnapshot.curMa) > 50;
+        // info.cgi MA значительно НИЖЕ CharacterVitals → info.cgi вернул стейл-данные (лаг сервера после боя).
+        // CharacterVitals (из ins_HP свежеотрендеренной страницы) достовернее — отклоняем pinfo snapshot.
+        boolean infoApiMaStale = maMismatch
+                && vitals.curMa != null
+                && vitals.curMa < preInfoApiSnapshot.curMa;
         if (maMismatch) {
             String mismatchMsg = "⚠️ AUTO_DRINK_MA_MISMATCH: info.cgi ma="
                     + (vitals.curMa != null ? vitals.curMa : "null") + "/" + (vitals.maxMa != null ? vitals.maxMa : "null")
@@ -1196,9 +1201,18 @@ public class MainPhp {
                     + ", delta=" + ((vitals.curMa != null ? vitals.curMa : 0) - preInfoApiSnapshot.curMa)
                     + ", vitalsSource=" + preInfoApiSnapshot.source
                     + ", vitalsAgeMs=" + (preInfoApiSnapshot.updatedAtMs > 0 ? (preInfoApiTs - preInfoApiSnapshot.updatedAtMs) : -1)
-                    + ", infoApiCallMs=" + infoApiDurationMs;
+                    + ", infoApiCallMs=" + infoApiDurationMs
+                    + ", infoApiStale=" + infoApiMaStale;
             android.util.Log.w(TAG, mismatchMsg);
             FileLogger.trace(TAG, mismatchMsg);
+        }
+        if (infoApiMaStale) {
+            String rejectMsg = "AUTO_DRINK_TRACE pinfo REJECTED: info.cgi MA stale (info.cgi="
+                    + vitals.curMa + " << CharacterVitals=" + preInfoApiSnapshot.curMa
+                    + "), fallback to page ins_HP snapshot";
+            android.util.Log.w(TAG, rejectMsg);
+            FileLogger.trace(TAG, rejectMsg);
+            return null;
         }
         AppLog.d(TAG, "AUTO_DRINK_TRACE info.cgi result: hp="
                 + (vitals.curHp != null ? vitals.curHp : "null") + "/" + (vitals.maxHp != null ? vitals.maxHp : "null")
