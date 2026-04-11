@@ -2714,7 +2714,9 @@ public class MainPhp {
         }
 
         long now = System.currentTimeMillis();
-        if (AppVars.NeverTimer > 0L && now < AppVars.NeverTimer) {
+        // Если AutoDrinkBlazPending=true (система уже решила пить), NeverTimer не блокирует —
+        // питьё приоритетнее рыбного таймера, иначе бесконечный цикл handoff→NeverTimer→redirect.
+        if (!AppVars.AutoDrinkBlazPending && AppVars.NeverTimer > 0L && now < AppVars.NeverTimer) {
             AppVars.AutoDrinkBlazPending = true;
             AppLog.d(TAG, "AUTO_BLAZ_TRACE skipped by NeverTimer: dueInMs="
                     + Math.max(0L, AppVars.NeverTimer - now) + ", address=" + address);
