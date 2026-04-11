@@ -2672,10 +2672,15 @@ public final class FishAjaxPhp {
             AppVars.AutoFishDrinkOnce = false;
             if (FishAjaxPhp.isAutoFishEnabled()) {
                 AppVars.ProbeForceNeedAutofish = true;
+                // FIX: Invalidate stale fishing cycle token — old JS-kick retries
+                // fire on a page where the game AJAX doesn't work after redirect chain.
+                lastFishCycleToken = 0L;
             }
             AppLog.i(TAG, "AUTO_BLAZ_TRACE pending resolved: tied=" + tied
                     + ", address=" + address + ", resume autos");
-            return MainPhp.buildRedirectHtml("\u0410\u0432\u0442\u043E\u043F\u0438\u0442\u044C\u0451 \u0431\u043B\u0430\u0436\u0430: \u0443\u0441\u0442\u0430\u043B\u043E\u0441\u0442\u044C \u0432\u043E\u0441\u0441\u0442\u0430\u043D\u043E\u0432\u043B\u0435\u043D\u0430", "main.php");
+            // FIX: Redirect to fishing info page (not plain main.php) so the
+            // interceptor calls process() and the auto-fish gate can restart.
+            return MainPhp.buildRedirectHtml("\u0410\u0432\u0442\u043E\u043F\u0438\u0442\u044C\u0451 \u0431\u043B\u0430\u0436\u0430: \u0443\u0441\u0442\u0430\u043B\u043E\u0441\u0442\u044C \u0432\u043E\u0441\u0441\u0442\u0430\u043D\u043E\u0432\u043B\u0435\u043D\u0430", "main.php?get_id=56&act=10&go=inf");
         }
         long cooldownRemainingMs = getAutoFishDrinkCooldownRemainingMs(now);
         if (cooldownRemainingMs > 0L) {
@@ -2712,11 +2717,14 @@ public final class FishAjaxPhp {
         AppVars.AutoFishDrinkOnce = false;
         if (FishAjaxPhp.isAutoFishEnabled()) {
             AppVars.ProbeForceNeedAutofish = true;
+            // FIX: Invalidate stale fishing cycle token (same as tied<=0 path)
+            lastFishCycleToken = 0L;
         }
         AppLog.i(TAG, "AUTO_BLAZ_TRACE pending resolved (below thresholds): tied=" + tied
                 + ", autoDrinkThreshold=" + autoDrinkThreshold
                 + ", address=" + address + ", resume autos");
-        return MainPhp.buildRedirectHtml("\u0410\u0432\u0442\u043E\u043F\u0438\u0442\u044C\u0451 \u0431\u043B\u0430\u0436\u0430: \u0443\u0441\u0442\u0430\u043B\u043E\u0441\u0442\u044C \u043D\u0438\u0436\u0435 \u043F\u043E\u0440\u043E\u0433\u0430", "main.php");
+        // FIX: Redirect to fishing info page (not plain main.php)
+        return MainPhp.buildRedirectHtml("\u0410\u0432\u0442\u043E\u043F\u0438\u0442\u044C\u0451 \u0431\u043B\u0430\u0436\u0430: \u0443\u0441\u0442\u0430\u043B\u043E\u0441\u0442\u044C \u043D\u0438\u0436\u0435 \u043F\u043E\u0440\u043E\u0433\u0430", "main.php?get_id=56&act=10&go=inf");
     }
 
     /** C# parity: DoAutoDrinkBlaz — авто-питьё Эликсира Блаженства при высокой усталости. */
