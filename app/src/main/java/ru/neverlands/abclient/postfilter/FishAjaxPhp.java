@@ -2561,6 +2561,15 @@ public final class FishAjaxPhp {
         long cooldownRemainingMs = getAutoFishDrinkCooldownRemainingMs(now);
         if (AppVars.AutoFishDrinkOnce || cooldownRemainingMs > 0L) {
             if (cooldownRemainingMs > 0L) {
+                // Проверяем: если усталость уже ниже порога (эликсир подействовал),
+                // не устанавливаем pending — иначе бесконечный цикл resolve→fatigue→resolve.
+                int currentTied = CharacterVitalsManager.snapshot().tied;
+                int tiedHigh = Math.max(0, Math.min(99, AppVars.Profile.FishTiedHigh));
+                if (currentTied <= tiedHigh) {
+                    AppLog.d(TAG, "AUTO_FISH_TRACE drink cooldown active but tied=" + currentTied
+                            + " <= " + tiedHigh + ", skip pending (elixir resolved)");
+                    return null;
+                }
                 AppVars.AutoDrinkBlazPending = true;
                 if (!AppVars.AutoFishDrinkOnce) {
                     String msg_recoverCooldown = "AUTO_FISH_TRACE restored drink cooldown by timestamp: remainingMs="
@@ -2742,16 +2751,19 @@ public final class FishAjaxPhp {
             return null;
         }
         long now = System.currentTimeMillis();
-        if (!AppVars.AutoDrinkBlazPending && AppVars.NeverTimer > 0L && now < AppVars.NeverTimer) {
-            AppVars.AutoDrinkBlazPending = true;
-            AppLog.d(TAG, "AUTO_BLAZ_TRACE skipped by NeverTimer: dueInMs="
-                    + Math.max(0L, AppVars.NeverTimer - now) + ", address=" + address);
-            return MainPhp.buildRedirectHtml("\u0410\u0432\u0442\u043E\u043F\u0438\u0442\u044C\u0451 \u0431\u043B\u0430\u0436\u0430: \u043E\u0436\u0438\u0434\u0430\u043D\u0438\u0435 \u0442\u0430\u0439\u043C\u0435\u0440\u0430", "main.php");
-        }
+        // КРИТИЧНО: проверять tied ДО NeverTimer, чтобы при tied < порога
+        // не устанавливать AutoDrinkBlazPending (иначе бесконечный цикл resolve→NeverTimer→resolve).
         int tied = CharacterVitalsManager.snapshot().tied;
         int tiedThreshold = Math.max(0, Math.min(100, AppVars.Profile.AutoDrinkBlazTied));
         if (tied < tiedThreshold) {
             return null;
+        }
+        if (!AppVars.AutoDrinkBlazPending && AppVars.NeverTimer > 0L && now < AppVars.NeverTimer) {
+            AppVars.AutoDrinkBlazPending = true;
+            AppLog.d(TAG, "AUTO_BLAZ_TRACE skipped by NeverTimer: dueInMs="
+                    + Math.max(0L, AppVars.NeverTimer - now) + ", tied=" + tied
+                    + ", threshold=" + tiedThreshold + ", address=" + address);
+            return MainPhp.buildRedirectHtml("\u0410\u0432\u0442\u043E\u043F\u0438\u0442\u044C\u0451 \u0431\u043B\u0430\u0436\u0430: \u043E\u0436\u0438\u0434\u0430\u043D\u0438\u0435 \u0442\u0430\u0439\u043C\u0435\u0440\u0430", "main.php");
         }
         if (AppVars.FastNeed) {
             if (BLISS_ELIXIR_NAME.equals(AppVars.FastId)) {
