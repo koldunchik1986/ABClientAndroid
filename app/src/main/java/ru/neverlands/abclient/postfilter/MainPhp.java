@@ -2529,6 +2529,7 @@ public class MainPhp {
         long cooldownRemainingMs = getAutoFishDrinkCooldownRemainingMs(now);
         if (AppVars.AutoFishDrinkOnce || cooldownRemainingMs > 0L) {
             if (cooldownRemainingMs > 0L) {
+                AppVars.AutoDrinkBlazPending = true;
                 if (!AppVars.AutoFishDrinkOnce) {
                     String msg_recoverCooldown = "AUTO_FISH_TRACE restored drink cooldown by timestamp: remainingMs="
                             + cooldownRemainingMs;
@@ -2536,16 +2537,12 @@ public class MainPhp {
                 }
                 AppVars.AutoFishDrinkOnce = true;
                 long elapsed = Math.max(0L, now - lastAutoFishDrinkTriggerAtMs);
-                android.util.Log.d(TAG, "AUTO_FISH_TRACE drink cooldown active: elapsedMs="
-                        + elapsed + ", remainingMs=" + cooldownRemainingMs);
-                FileLogger.trace(TAG, "AUTO_FISH_TRACE drink cooldown active: elapsedMs="
+                AppLog.d(TAG, "AUTO_FISH_TRACE drink cooldown active: elapsedMs="
                         + elapsed + ", remainingMs=" + cooldownRemainingMs);
                 return buildAutoFishDrinkCooldownHtml(cooldownRemainingMs);
             }
             long elapsed = Math.max(0L, now - lastAutoFishDrinkTriggerAtMs);
-            android.util.Log.d(TAG, "AUTO_FISH_TRACE drink cooldown elapsed: elapsedMs="
-                    + elapsed + ", recheck tied");
-            FileLogger.trace(TAG, "AUTO_FISH_TRACE drink cooldown elapsed: elapsedMs="
+            AppLog.d(TAG, "AUTO_FISH_TRACE drink cooldown elapsed: elapsedMs="
                     + elapsed + ", recheck tied");
             AppVars.AutoFishDrinkOnce = false;
             
@@ -2579,17 +2576,13 @@ public class MainPhp {
 
         if (AppVars.Profile.FishDrinkBliss) {
             if (AppVars.FastNeed) {
-                android.util.Log.d(TAG, "AUTO_FISH_TRACE tied=" + tied + " > " + tiedHigh
-                        + ", wait bliss: FastNeed=true");
-                FileLogger.trace(TAG, "AUTO_FISH_TRACE tied=" + tied + " > " + tiedHigh
+                AppLog.d(TAG, "AUTO_FISH_TRACE tied=" + tied + " > " + tiedHigh
                         + ", wait bliss: FastNeed=true");
                 return buildRedirectHtml("Авторыбалка: ожидание эликсира", "main.php");
             }
             long sinceLast = now - lastAutoFishBlazTriggerAtMs;
             if (sinceLast >= 0 && sinceLast < AUTO_FISH_BLAZ_TRIGGER_COOLDOWN_MS) {
-                android.util.Log.d(TAG, "AUTO_FISH_TRACE tied=" + tied + " > " + tiedHigh
-                        + ", bliss cooldown " + sinceLast + "ms");
-                FileLogger.trace(TAG, "AUTO_FISH_TRACE tied=" + tied + " > " + tiedHigh
+                AppLog.d(TAG, "AUTO_FISH_TRACE tied=" + tied + " > " + tiedHigh
                         + ", bliss cooldown " + sinceLast + "ms");
                 return buildRedirectHtml("Авторыбалка: ожидание эликсира", "main.php");
             }
@@ -2598,21 +2591,20 @@ public class MainPhp {
             AppVars.AutoFishDrinkOnce = true;
             
             // === ЛОГИРОВАНИЕ ДО ВЫЗОВА ===
-            FileLogger.trace(TAG, "[AUTO_FISH_BEFORE_FAST] ПЕРЕД fastStart: "
+            AppLog.d(TAG, "[AUTO_FISH_BEFORE_FAST] ПЕРЕД fastStart: "
                     + "tied=" + tied + ", tiedHigh=" + tiedHigh
                     + " | FastNeed=" + AppVars.FastNeed
                     + ", FastId='" + AppVars.FastId + "'"
                     + ", timestamp=" + now);
             
-            android.util.Log.d(TAG, "AUTO_FISH_TRACE tied=" + tied + " > " + tiedHigh
-                    + ", trigger bliss elixir");
-            FileLogger.trace(TAG, "AUTO_FISH_TRACE tied=" + tied + " > " + tiedHigh
+            AppLog.d(TAG, "AUTO_FISH_TRACE tied=" + tied + " > " + tiedHigh
                     + ", trigger bliss elixir");
             
+            AppVars.AutoDrinkBlazPending = true;
             FastActionManager.fastAttackBlazElixir("Авто-Рыбалка");
             
             // === ЛОГИРОВАНИЕ ПОСЛЕ ВЫЗОВА ===
-            FileLogger.trace(TAG, "[AUTO_FISH_AFTER_FAST] ПОСЛЕ fastStart: "
+            AppLog.d(TAG, "[AUTO_FISH_AFTER_FAST] ПОСЛЕ fastStart: "
                     + "FastNeed=" + AppVars.FastNeed
                     + ", FastId='" + AppVars.FastId + "'"
                     + ", FastCount=" + AppVars.FastCount
@@ -2625,22 +2617,84 @@ public class MainPhp {
         if (drinkHtml != null && !drinkHtml.isEmpty()) {
             lastAutoFishDrinkTriggerAtMs = now;
             AppVars.AutoFishDrinkOnce = true;
-            android.util.Log.d(TAG, "AUTO_FISH_TRACE tied=" + tied + " > " + tiedHigh
-                    + ", inject Drink(vcode)");
-            FileLogger.trace(TAG, "AUTO_FISH_TRACE tied=" + tied + " > " + tiedHigh
+            AppLog.d(TAG, "AUTO_FISH_TRACE tied=" + tied + " > " + tiedHigh
                     + ", inject Drink(vcode)");
             return drinkHtml;
         }
 
         String floraHtml = mainPhpFindFlora(html);
         if (floraHtml != null && !floraHtml.isEmpty()) {
-            android.util.Log.d(TAG, "AUTO_FISH_TRACE tied=" + tied + " > " + tiedHigh
-                    + ", redirect to map for Drink");
-            FileLogger.trace(TAG, "AUTO_FISH_TRACE tied=" + tied + " > " + tiedHigh
+            AppLog.d(TAG, "AUTO_FISH_TRACE tied=" + tied + " > " + tiedHigh
                     + ", redirect to map for Drink");
             return floraHtml;
         }
         return null;
+    }
+
+    private static String mainPhpResolveAutoDrinkBlazPending(String address, String html) {
+        if (!AppVars.AutoDrinkBlazPending) {
+            return null;
+        }
+        if (AppVars.FastNeed || AppVars.IsFightCaptchaDialogVisible) {
+            return null;
+        }
+
+        long now = System.currentTimeMillis();
+        AutoFishInfoApiPrecheckState autoFishPrecheckState = null;
+        if (isAutoFishEnabledByPreference()) {
+            autoFishPrecheckState = mainPhpPrecheckFishingHandsByInfoApi(
+                    now, address, "mainphp_blaz_pending");
+        } else {
+            mainPhpUpdateTied(html);
+        }
+
+        int tied = CharacterVitalsManager.snapshot().tied;
+        if (tied <= 0) {
+            AppVars.AutoDrinkBlazPending = false;
+            AppVars.AutoFishDrinkOnce = false;
+            if (FishAjaxPhp.isAutoFishEnabled()) {
+                AppVars.ProbeForceNeedAutofish = true;
+            }
+            AppLog.i(TAG, "AUTO_BLAZ_TRACE pending resolved: tied=" + tied
+                    + ", address=" + address + ", resume autos");
+            return buildRedirectHtml("Автопитьё блажа: усталость восстановлена", "main.php");
+        }
+
+        long cooldownRemainingMs = getAutoFishDrinkCooldownRemainingMs(now);
+        if (cooldownRemainingMs > 0L) {
+            AppLog.d(TAG, "AUTO_BLAZ_TRACE pending wait: tied=" + tied
+                    + ", cooldownRemainingMs=" + cooldownRemainingMs
+                    + ", address=" + address);
+            return buildAutoFishDrinkCooldownHtml(cooldownRemainingMs);
+        }
+
+        boolean autoFishNeedsNextDrink = autoFishPrecheckState != null
+                && autoFishPrecheckState.needFatigueStep;
+        int autoDrinkThreshold = AppVars.Profile == null
+                ? 101
+                : Math.max(0, Math.min(100, AppVars.Profile.AutoDrinkBlazTied));
+        boolean autoDrinkNeedsNextDrink = AppVars.Profile != null
+                && AppVars.Profile.DoAutoDrinkBlaz
+                && !AppVars.AutoMoving
+                && tied >= autoDrinkThreshold;
+        if (autoFishNeedsNextDrink || autoDrinkNeedsNextDrink) {
+            AppLog.d(TAG, "AUTO_BLAZ_TRACE pending handoff: tied=" + tied
+                    + ", fishNeed=" + autoFishNeedsNextDrink
+                    + ", autoDrinkNeed=" + autoDrinkNeedsNextDrink
+                    + ", address=" + address);
+            return null;
+        }
+
+        // tied > 0 но ниже обоих порогов → эликсир подействовал, резолвим pending
+        AppVars.AutoDrinkBlazPending = false;
+        AppVars.AutoFishDrinkOnce = false;
+        if (FishAjaxPhp.isAutoFishEnabled()) {
+            AppVars.ProbeForceNeedAutofish = true;
+        }
+        AppLog.i(TAG, "AUTO_BLAZ_TRACE pending resolved (below thresholds): tied=" + tied
+                + ", autoDrinkThreshold=" + autoDrinkThreshold
+                + ", address=" + address + ", resume autos");
+        return buildRedirectHtml("Автопитьё блажа: усталость ниже порога", "main.php");
     }
 
     private static String mainPhpAutoDrinkBlazStep(String address, String html) {
@@ -2661,11 +2715,10 @@ public class MainPhp {
 
         long now = System.currentTimeMillis();
         if (AppVars.NeverTimer > 0L && now < AppVars.NeverTimer) {
-            android.util.Log.d(TAG, "AUTO_BLAZ_TRACE skipped by NeverTimer: dueInMs="
+            AppVars.AutoDrinkBlazPending = true;
+            AppLog.d(TAG, "AUTO_BLAZ_TRACE skipped by NeverTimer: dueInMs="
                     + Math.max(0L, AppVars.NeverTimer - now) + ", address=" + address);
-            FileLogger.trace(TAG, "AUTO_BLAZ_TRACE skipped by NeverTimer: dueInMs="
-                    + Math.max(0L, AppVars.NeverTimer - now) + ", address=" + address);
-            return null;
+            return buildRedirectHtml("Автопитьё блажа: ожидание таймера", "main.php");
         }
 
         int tied = CharacterVitalsManager.snapshot().tied;
@@ -2690,9 +2743,8 @@ public class MainPhp {
         }
 
         lastAutoDrinkBlazTriggerAtMs = now;
-        android.util.Log.d(TAG, "AUTO_BLAZ_TRACE trigger quick action: " + BLISS_ELIXIR_NAME
-                + ", tied=" + tied + ", threshold=" + tiedThreshold);
-        FileLogger.trace(TAG, "AUTO_BLAZ_TRACE trigger quick action: " + BLISS_ELIXIR_NAME
+        AppVars.AutoDrinkBlazPending = true;
+        AppLog.d(TAG, "AUTO_BLAZ_TRACE trigger quick action: " + BLISS_ELIXIR_NAME
                 + ", tied=" + tied + ", threshold=" + tiedThreshold);
         FastActionManager.fastAttackBlazElixir("Авто-питьё Блажа");
         return buildRedirectHtml(
@@ -4698,6 +4750,12 @@ public class MainPhp {
                 return fastResult;
             }
         }
+        if (!isFightFrame && !isFightTopFrame) {
+            String autoDrinkPendingHtml = mainPhpResolveAutoDrinkBlazPending(address, html);
+            if (autoDrinkPendingHtml != null && !autoDrinkPendingHtml.isEmpty()) {
+                return Russian.getBytes(autoDrinkPendingHtml);
+            }
+        }
         
         // КРИТИЧНО: После завершения fast-action, если нужна проверка снастей,
         // ОБЯЗАТЕЛЬНО переходим на im=0 (основной инвентарь), а не остаемся на текущей категории.
@@ -4806,14 +4864,14 @@ public class MainPhp {
                 && !autoFightReloadProbeAddress && isAutoFishEnabledByPreference()) {
             long nowMs = System.currentTimeMillis();
             mainPhpPrecheckFishingHandsByInfoApi(nowMs, address, "mainphp_autofish_gate");
+            String fishFatigueHtml = mainPhpAutoFishFatigueStep(html);
+            if (fishFatigueHtml != null && !fishFatigueHtml.isEmpty()) {
+                String msg_fishfatigue = "AUTO_FISH_TRACE fatigue step executed";
+                AppLog.d(TAG, msg_fishfatigue);
+                return Russian.getBytes(fishFatigueHtml);
+            }
             boolean neverTimerReady = AppVars.NeverTimer <= 0L || nowMs > AppVars.NeverTimer;
             if (neverTimerReady) {
-                String fishFatigueHtml = mainPhpAutoFishFatigueStep(html);
-                if (fishFatigueHtml != null && !fishFatigueHtml.isEmpty()) {
-                    String msg_fishfatigue = "AUTO_FISH_TRACE fatigue step executed";
-                    AppLog.d(TAG, msg_fishfatigue);
-                    return Russian.getBytes(fishFatigueHtml);
-                }
                 if (AppVars.AutoFishCheckUm) {
                     String phtml = mainPhpFindPerc(html);
                     if (phtml != null && !phtml.isEmpty()) {

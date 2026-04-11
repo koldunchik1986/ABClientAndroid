@@ -1801,10 +1801,11 @@ public class WebAppInterface {
     public String showHpMaTimers(String s, float curHP, int maxHP, float intHP, float curMA, int maxMA, float intMA) {
         CharacterVitalsManager.Snapshot snapshot = CharacterVitalsManager.updateFromHpJs(
                 curHP, maxHP, curMA, maxMA, intHP, intMA, "WebAppInterface.showHpMaTimers");
-        Log.d("WebAppInterface", "showHpMaTimers: hp=" + snapshot.curHp + "/" + snapshot.maxHp
+        AppLog.d("WebAppInterface", "showHpMaTimers: hp=" + snapshot.curHp + "/" + snapshot.maxHp
                 + " ma=" + snapshot.curMa + "/" + snapshot.maxMa
                 + " intHP=" + snapshot.intHp + " intMA=" + snapshot.intMa);
         return buildHpMaTimersHtml(
+                s,
                 snapshot.curHp, snapshot.maxHp, snapshot.intHp,
                 snapshot.curMa, snapshot.maxMa, snapshot.intMa);
     }
@@ -1818,9 +1819,16 @@ public class WebAppInterface {
         return showHpMaTimers(s, curHP, maxHP, intHP, curMA, maxMA, intMA);
     }
 
-    private static String buildHpMaTimersHtml(int curHp, int maxHp, double intHp, int curMa, int maxMa, double intMa) {
+    @JavascriptInterface
+    public int GetCurrentTied() {
+        return CharacterVitalsManager.snapshot().tied;
+    }
+
+    private static String buildHpMaTimersHtml(String sourceText, int curHp, int maxHp, double intHp,
+                                              int curMa, int maxMa, double intMa) {
         int tied = CharacterVitalsManager.snapshot().tied;
-        StringBuilder sb = new StringBuilder("<FONT class=hpfont>: ");
+        StringBuilder sb = new StringBuilder();
+        sb.append("<FONT class=hpfont>: ");
         sb.append("[<font color=#bb0000>")
                 .append("<b>").append(curHp).append("</b>/")
                 .append("<b>").append(maxHp).append("</b>");
