@@ -1327,7 +1327,11 @@ public class MapAjax {
 
         long now = System.currentTimeMillis();
         long neverTimer = AppVars.NeverTimer;
-        if (neverTimer > 0L && now < neverTimer) {
+        // Только откладываем через NeverTimer если tied ЕЩЁ НЕ достиг порога.
+        // При tied >= threshold пить нужно сейчас; NeverTimer от навигации perpetually
+        // сбрасывается каждым шагом, и если откладывать — получается бесконечный цикл:
+        // MapAjax defer → resolver resolve → MapAjax defer → ...
+        if (neverTimer > 0L && now < neverTimer && tied < threshold) {
             AppVars.AutoDrinkBlazPending = true;
             logAutoBlazDecision("decision", "defer_wait_never_timer", tied, threshold,
                     "reg=" + currentRegNum + ", waitMs=" + (neverTimer - now));

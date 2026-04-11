@@ -2693,10 +2693,17 @@ public final class FishAjaxPhp {
                 && AppVars.Profile.DoAutoDrinkBlaz
                 && !AppVars.AutoMoving
                 && tied >= autoDrinkThreshold;
-        if (autoFishNeedsNextDrink || autoDrinkNeedsNextDrink) {
+        // Во время навигации blaz решает MapAjax; если tied всё ещё >= порога,
+        // НЕ резолвим pending — иначе бесконечный цикл resolve→MapAjax defer→resolve.
+        boolean navStillAboveThreshold = AppVars.AutoMoving
+                && AppVars.Profile != null
+                && AppVars.Profile.DoAutoDrinkBlaz
+                && tied >= autoDrinkThreshold;
+        if (autoFishNeedsNextDrink || autoDrinkNeedsNextDrink || navStillAboveThreshold) {
             AppLog.d(TAG, "AUTO_BLAZ_TRACE pending handoff: tied=" + tied
                     + ", fishNeed=" + autoFishNeedsNextDrink
                     + ", autoDrinkNeed=" + autoDrinkNeedsNextDrink
+                    + ", navAbove=" + navStillAboveThreshold
                     + ", address=" + address);
             return null;
         }
