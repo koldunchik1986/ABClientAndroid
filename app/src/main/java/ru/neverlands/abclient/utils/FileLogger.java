@@ -15,9 +15,8 @@ import java.util.concurrent.Executors;
 public final class FileLogger {
     private static final String TAG = "FileLogger";
     private static final Charset UTF8 = Charset.forName("UTF-8");
-    private static final SimpleDateFormat DAY_FORMAT = new SimpleDateFormat("yyyyMMdd", Locale.US);
     private static final SimpleDateFormat TS_FORMAT = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS", Locale.US);
-    private static final SimpleDateFormat PROXY_SEGMENT_FORMAT = new SimpleDateFormat("yyyyMMdd_HH", Locale.US);
+    private static final SimpleDateFormat SEGMENT_FORMAT = new SimpleDateFormat("yyyyMMdd_HH", Locale.US);
     private static final Object FILE_LOCK = new Object();
     private static final long MAX_FILE_BYTES = 8L * 1024L * 1024L;
     private static final int MAX_ROTATIONS = 2;
@@ -95,8 +94,8 @@ public final class FileLogger {
                 return;
             }
 
-            String day = DAY_FORMAT.format(new Date());
-            File targetFile = new File(criticalDir, day + "_" + chain + ".log");
+            String segment = buildSegmentName(System.currentTimeMillis());
+            File targetFile = new File(criticalDir, segment + "_" + chain + ".log");
             synchronized (FILE_LOCK) {
                 rotateIfNeeded(targetFile);
                 try (FileOutputStream stream = new FileOutputStream(targetFile, true);
@@ -130,7 +129,7 @@ public final class FileLogger {
                 Log.e(TAG, "Failed to create proxy pool log directory: " + poolDir.getAbsolutePath());
                 return;
             }
-            String segmentName = buildProxySegmentName(System.currentTimeMillis());
+            String segmentName = buildSegmentName(System.currentTimeMillis());
             
             synchronized (FILE_LOCK) {
                 // Проверка на переключение сегмента (каждые 10 минут)
@@ -214,11 +213,11 @@ public final class FileLogger {
         return value;
     }
 
-    private static String buildProxySegmentName(long nowMs) {
+    private static String buildSegmentName(long nowMs) {
         Date date = new Date(nowMs);
         String hourPrefix;
-        synchronized (PROXY_SEGMENT_FORMAT) {
-            hourPrefix = PROXY_SEGMENT_FORMAT.format(date);
+        synchronized (SEGMENT_FORMAT) {
+            hourPrefix = SEGMENT_FORMAT.format(date);
         }
         int minute = Integer.parseInt(new SimpleDateFormat("mm", Locale.US).format(date));
         int bucket = (minute / 10) * 10;
