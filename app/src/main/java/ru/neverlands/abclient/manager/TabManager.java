@@ -625,6 +625,7 @@ public class TabManager {
                         && (lowerUrl.contains("pinfo")
                         || lowerUrl.contains("ch.php")
                         || lowerUrl.contains("log.php")
+                    || lowerUrl.contains("logs.fcg")
                         || lowerUrl.contains("fight")
                         || lowerUrl.contains("pname")
                         || lowerUrl.contains("pbots"))) {
@@ -632,7 +633,7 @@ public class TabManager {
                     String title = "Новая вкладка";
                     if (lowerUrl.contains("pinfo")) title = "PINFO";
                     else if (lowerUrl.contains("ch.php")) title = "Комната";
-                    else if (lowerUrl.contains("log.php") || lowerUrl.contains("fight")) title = "Бой";
+                    else if (lowerUrl.contains("log.php") || lowerUrl.contains("logs.fcg") || lowerUrl.contains("fight")) title = "Бой";
                     else if (lowerUrl.contains("pname")) title = "Персонаж";
                     else if (lowerUrl.contains("pbots")) title = "Боты";
 
@@ -693,6 +694,18 @@ public class TabManager {
         
         ImageButton btnBack = actionBar.findViewById(R.id.action_button_1);
         if (btnBack == null) return;
+
+        // Для PINFO первая кнопка всегда "Обновить" (reload), не перезаписываем её на back-state.
+        if (tabInfo.tabType == TabType.PINFO) {
+            btnBack.setImageResource(R.drawable.ic_refresh);
+            btnBack.setEnabled(true);
+            btnBack.setAlpha(1.0f);
+            return;
+        }
+
+        if (tabInfo.tabType != TabType.FORUM) {
+            return;
+        }
         
         boolean canGoBack = webView.canGoBack();
         btnBack.setImageResource(canGoBack ? R.drawable.ic_back : R.drawable.ic_back_disabled);
@@ -750,6 +763,7 @@ public class TabManager {
             "            (href.indexOf('pinfo.cgi') !== -1 ||" +
             "             href.indexOf('ch.php') !== -1 ||" +
             "             href.indexOf('log.php') !== -1 ||" +
+            "             href.indexOf('logs.fcg') !== -1 ||" +
             "             href.indexOf('fight') !== -1 ||" +
             "             href.indexOf('pname.cgi') !== -1 ||" +
             "             href.indexOf('pbots.cgi') !== -1)) {" +
@@ -759,7 +773,7 @@ public class TabManager {
             "          var title = 'Новая вкладка';" +
             "          if (href.indexOf('pinfo.cgi') !== -1 || href.indexOf('pinfo') !== -1) title = 'PINFO';" +
             "          else if (href.indexOf('ch.php') !== -1) title = 'Комната';" +
-            "          else if (href.indexOf('log.php') !== -1 || href.indexOf('fight') !== -1) title = 'Бой';" +
+            "          else if (href.indexOf('log.php') !== -1 || href.indexOf('logs.fcg') !== -1 || href.indexOf('fight') !== -1) title = 'Бой';" +
             "          else if (href.indexOf('pname.cgi') !== -1) title = 'Персонаж';" +
             "          else if (href.indexOf('pbots.cgi') !== -1) title = 'Боты';" +
             "          if (window.AndroidBridge) {" +

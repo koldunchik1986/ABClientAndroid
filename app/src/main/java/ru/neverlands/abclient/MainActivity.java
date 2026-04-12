@@ -4407,6 +4407,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             "            href.indexOf('pinfo.cgi') !== -1 ||" +
             "            href.indexOf('ch.php') !== -1 ||" +
             "            href.indexOf('log.php') !== -1 ||" +
+            "            href.indexOf('logs.fcg') !== -1 ||" +
             "            href.indexOf('fight') !== -1 ||" +
             "            href.indexOf('pname.cgi') !== -1 ||" +
             "            href.indexOf('pbots.cgi') !== -1) {" +
@@ -4416,7 +4417,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             "          if (href.indexOf('forum.neverlands.ru') !== -1) title = 'Форум';" +
             "          else if (href.indexOf('pinfo.cgi') !== -1) title = 'PINFO';" +
             "          else if (href.indexOf('ch.php') !== -1) title = 'Комната';" +
-            "          else if (href.indexOf('log.php') !== -1 || href.indexOf('fight') !== -1) title = 'Бой';" +
+            "          else if (href.indexOf('log.php') !== -1 || href.indexOf('logs.fcg') !== -1 || href.indexOf('fight') !== -1) title = 'Бой';" +
             "          if (window.AndroidBridge) {" +
             "            window.AndroidBridge.openInNewTab(href, title);" +
             "          }" +
@@ -4563,7 +4564,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                 // Комната
                 title = "Комната";
                 shouldOpenInNewTab = true;
-            } else if (isNeverlandsHost && (lowerUrl.contains("log.php") || lowerUrl.contains("fight"))) {
+            } else if (isNeverlandsHost && (lowerUrl.contains("log.php") || lowerUrl.contains("logs.fcg") || lowerUrl.contains("fight"))) {
                 title = "Бой";
                 shouldOpenInNewTab = true;
             } else if (isNeverlandsHost && lowerUrl.contains("pname.cgi")) {
