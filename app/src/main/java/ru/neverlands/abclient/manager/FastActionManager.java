@@ -1,6 +1,8 @@
 package ru.neverlands.abclient.manager;
 
 import android.content.Intent;
+import android.os.Handler;
+import android.os.Looper;
 import android.util.Log;
 
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
@@ -42,6 +44,7 @@ public class FastActionManager {
     private static final int TELEPORT_DESTINATION_MIN_ID = 1;
     private static final int TELEPORT_DESTINATION_MAX_ID = 12;
     private static final int TELEPORT_DESTINATION_DEFAULT_ID = 1;
+    private static final long FAST_FINALIZE_RESTORE_DELAY_MS = 900L;
     private static final String TELEPORT_DESTINATION_DEFAULT_NAME = "\u0413\u043E\u0440\u043E\u0434 \u0424\u043E\u0440\u043F\u043E\u0441\u0442";
     private static final int[] TELEPORT_DESTINATION_IDS = new int[] {
             1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12
@@ -304,6 +307,10 @@ public class FastActionManager {
         AppVars.FastPauseNonCombatAutoFunctions = false;
         AppVars.FastNeedAbilDarkTeleport = false;
         AppVars.FastNeedAbilDarkFog = false;
+
+        boolean delayRestoreAfterFinalFast = "fast-action-finished".equals(reason)
+            && oldFastCount <= 1
+            && isDelayedRestoreFastId(oldFastId);
         
         // ✅ ЛОГИРОВАНИЕ ПОСЛЕ СБРОСА
         String afterMsg = "[FASTCANCEL_STATE_CLEARED] reason='" + reason + "'"
@@ -319,55 +326,17 @@ public class FastActionManager {
         
         // === Восстановление авто-функций из таймера паузы ===
         // Если таймер был на паузе (за 5 сек до срабатывания), восстанавливаем состояние
-        if (AppVars.TimerPauseNonCombatAutoFunctions) {
-            try {
-                AutoFunctionsManager mgr = AutoFunctionsManager.getInstance(
-                        AppVars.mainActivity != null && AppVars.mainActivity.get() != null ? 
-                        AppVars.mainActivity.get() : null);
-                
-                if (mgr != null) {
-                    if (AppVars.TimerPauseAutoFishState && !mgr.isAutoFishEnabled()) {
-                        mgr.setAutoFishEnabled(true);
-                        Log.d(TAG, "[TIMER_RESTORE] Auto-Fishing restored");
-                    }
-                    if (AppVars.TimerPauseAutoSkinState && !mgr.isAutoSkinEnabled()) {
-                        mgr.setAutoSkinEnabled(true);
-                        Log.d(TAG, "[TIMER_RESTORE] Auto-Hunting restored");
-                    }
-                    if (AppVars.TimerPauseAutoCutState && !mgr.isAutoCutEnabled()) {
-                        mgr.setAutoCutEnabled(true);
-                        Log.d(TAG, "[TIMER_RESTORE] Auto-Herb restored");
-                    }
-                    if (AppVars.TimerPauseAutoBaitState && !mgr.isAutoBaitEnabled()) {
-                        mgr.setAutoBaitEnabled(true);
-                        Log.d(TAG, "[TIMER_RESTORE] Auto-Bait restored");
-                    }
-                    if (AppVars.TimerPauseAutoCompassState && !mgr.isAutoCompassEnabled()) {
-                        mgr.setAutoCompassEnabled(true);
-                        Log.d(TAG, "[TIMER_RESTORE] Auto-Compass restored");
-                    }
-                    if (AppVars.TimerPauseAutoAttackState && !mgr.isAutoAttackEnabled()) {
-                        mgr.setAutoAttackEnabled(true);
-                        Log.d(TAG, "[TIMER_RESTORE] Auto-Attack restored");
-                    }
-                    if (AppVars.TimerPauseAutoInvisibleState && !mgr.isAutoInvisibleEnabled()) {
-                        mgr.setAutoInvisibleEnabled(true);
-                        Log.d(TAG, "[TIMER_RESTORE] Auto-Invisible restored");
-                    }
-                }
-            } catch (Exception e) {
-                Log.e(TAG, "[TIMER_RESTORE] Error restoring auto functions", e);
-            }
-            
-            AppVars.TimerPauseNonCombatAutoFunctions = false;
-            AppVars.TimerPauseAutoFishState = false;
-            AppVars.TimerPauseAutoSkinState = false;
-            AppVars.TimerPauseAutoCutState = false;
-            AppVars.TimerPauseAutoBaitState = false;
-            AppVars.TimerPauseAutoCompassState = false;
-            AppVars.TimerPauseAutoAttackState = false;
-            AppVars.TimerPauseAutoInvisibleState = false;
-            FileLogger.trace("FastActionManager", "[TIMER_RESTORE] Non-combat autos restored after timer pause");
+        Runnable restoreAutosTask = () -> {
+            restoreTimerPausedAutos();
+            restoreNonCombatAutoSnapshotAfterFast("fastCancel:" + reason);
+        };
+
+        if (delayRestoreAfterFinalFast) {
+            FileLogger.trace(TAG, "[FAST_RESTORE_DELAY] postpone non-combat restore by "
+                    + FAST_FINALIZE_RESTORE_DELAY_MS + "ms, fastId='" + oldFastId + "'");
+            new Handler(Looper.getMainLooper()).postDelayed(restoreAutosTask, FAST_FINALIZE_RESTORE_DELAY_MS);
+        } else {
+            restoreAutosTask.run();
         }
         
         Log.d(TAG, "fastCancel");
@@ -379,7 +348,67 @@ public class FastActionManager {
                 + ", oldPauseNonCombatAuto=" + oldPauseNonCombatAuto
                 + ", newPauseNonCombatAuto=" + AppVars.FastPauseNonCombatAutoFunctions
                 + ", returnToMapPending=" + AppVars.FastReturnToMapPending);
-        restoreNonCombatAutoSnapshotAfterFast("fastCancel:" + reason);
+    }
+
+    private static boolean isDelayedRestoreFastId(String fastId) {
+        if (fastId == null) {
+            return false;
+        }
+        return fastId.contains("Зелье") || fastId.contains("Эликсир");
+    }
+
+    private static void restoreTimerPausedAutos() {
+        if (!AppVars.TimerPauseNonCombatAutoFunctions) {
+            return;
+        }
+        try {
+            AutoFunctionsManager mgr = AutoFunctionsManager.getInstance(
+                    AppVars.mainActivity != null && AppVars.mainActivity.get() != null
+                            ? AppVars.mainActivity.get() : null);
+
+            if (mgr != null) {
+                if (AppVars.TimerPauseAutoFishState && !mgr.isAutoFishEnabled()) {
+                    mgr.setAutoFishEnabled(true);
+                    Log.d(TAG, "[TIMER_RESTORE] Auto-Fishing restored");
+                }
+                if (AppVars.TimerPauseAutoSkinState && !mgr.isAutoSkinEnabled()) {
+                    mgr.setAutoSkinEnabled(true);
+                    Log.d(TAG, "[TIMER_RESTORE] Auto-Hunting restored");
+                }
+                if (AppVars.TimerPauseAutoCutState && !mgr.isAutoCutEnabled()) {
+                    mgr.setAutoCutEnabled(true);
+                    Log.d(TAG, "[TIMER_RESTORE] Auto-Herb restored");
+                }
+                if (AppVars.TimerPauseAutoBaitState && !mgr.isAutoBaitEnabled()) {
+                    mgr.setAutoBaitEnabled(true);
+                    Log.d(TAG, "[TIMER_RESTORE] Auto-Bait restored");
+                }
+                if (AppVars.TimerPauseAutoCompassState && !mgr.isAutoCompassEnabled()) {
+                    mgr.setAutoCompassEnabled(true);
+                    Log.d(TAG, "[TIMER_RESTORE] Auto-Compass restored");
+                }
+                if (AppVars.TimerPauseAutoAttackState && !mgr.isAutoAttackEnabled()) {
+                    mgr.setAutoAttackEnabled(true);
+                    Log.d(TAG, "[TIMER_RESTORE] Auto-Attack restored");
+                }
+                if (AppVars.TimerPauseAutoInvisibleState && !mgr.isAutoInvisibleEnabled()) {
+                    mgr.setAutoInvisibleEnabled(true);
+                    Log.d(TAG, "[TIMER_RESTORE] Auto-Invisible restored");
+                }
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "[TIMER_RESTORE] Error restoring auto functions", e);
+        }
+
+        AppVars.TimerPauseNonCombatAutoFunctions = false;
+        AppVars.TimerPauseAutoFishState = false;
+        AppVars.TimerPauseAutoSkinState = false;
+        AppVars.TimerPauseAutoCutState = false;
+        AppVars.TimerPauseAutoBaitState = false;
+        AppVars.TimerPauseAutoCompassState = false;
+        AppVars.TimerPauseAutoAttackState = false;
+        AppVars.TimerPauseAutoInvisibleState = false;
+        FileLogger.trace("FastActionManager", "[TIMER_RESTORE] Non-combat autos restored after timer pause");
     }
 
     /**

@@ -2915,7 +2915,8 @@ public final class FishAjaxPhp {
         if (!dressedValid) {
             AppLog.w(TAG, "AUTO_FISH_TRACE wear: ParsedDressed invalid on inventory page, fallback to inventory-only mode");
         }
-        boolean isWear1 = dressedValid && ud.IsWear1();
+        boolean hand1DisabledByProfile = isNoFishHandSetting(AppVars.Profile.FishHandOne);
+        boolean isWear1 = hand1DisabledByProfile || (dressedValid && ud.IsWear1());
         if (!isWear1 && AppVars.Profile.FishAutoWear) {
             for (MainPhp.WearInvEntry thing : invList) {
                 if (thing.name == null || thing.wearLink == null || thing.wearLink.isEmpty()) continue;
