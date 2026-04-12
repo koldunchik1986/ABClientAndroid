@@ -140,7 +140,10 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     private static final long AUTO_TURN_FIRST_FRAME_RENDER_GUARD_MS = 420L;
     private static final long AUTO_TURN_MANUAL_NAV_SUPPRESS_MS = 4500L;
     private static final int AUTO_TURN_SERVER_PROBE_TIMEOUT_MS = 12000;
-    private static final long SERVER_TIMER_TICK_MARGIN_MS = 300L;
+    // C# parity: в ПК-версии NeverTimer write-only (нет аналога checkServerTimerDrivenActions).
+    // Margin=0 означает, что Java TICK срабатывает ПОСЛЕ истечения таймера, а не на 300мс раньше.
+    // Это устраняет преждевременные шаги навигации (сервер отвечает ERR если таймер не истёк).
+    private static final long SERVER_TIMER_TICK_MARGIN_MS = 0L;
     private static final long SERVER_TIMER_TICK_DEDUP_MS = 4000L;
     private static final long NAV_TICK_NETWORK_BACKOFF_MS = 8000L;
     private static final long NAV_TICK_ERROR_BURST_WINDOW_MS = 6000L;

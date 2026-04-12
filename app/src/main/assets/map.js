@@ -453,8 +453,8 @@ function timerst(lp)
         d.getElementById('timerfon').style.display = 'none';
         clearInterval(tsec);
 
-        // +ABC
-        location = 'http://neverlands.ru/main.php';
+        // +ABC: корректный URL с параметрами карты.
+        location = 'http://neverlands.ru/main.php?get_id=56&act=10&go=inf';
         // -ABC
     }
     else
@@ -658,6 +658,9 @@ function TimerStart(secgo,mrinit)
             MapReInit([]);
         }
         time_left_sec = secgo*1000;
+        // +ABC: уведомить Java о таймере немедленно (не ждать первый timerst через 1с).
+        window.external.SetNeverTimer(time_left_sec);
+        // -ABC
         if(!timer_img) createCursor();
         timer_img.src = 'http://image.neverlands.ru/map/world/timer.png';
         d.getElementById('timerfon').style.display = 'block';
