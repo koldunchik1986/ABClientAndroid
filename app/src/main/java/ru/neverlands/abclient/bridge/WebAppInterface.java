@@ -3,11 +3,12 @@ package ru.neverlands.abclient.bridge;
 import android.content.Context;
 import android.content.Intent;
 import android.os.Build;
-import android.text.Html;
 import android.util.Log;
 import android.webkit.CookieManager;
 import android.webkit.JavascriptInterface;
 import android.widget.Toast;
+
+import androidx.core.text.HtmlCompat;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -136,12 +137,7 @@ public class WebAppInterface {
             return "";
         }
         try {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-                text = Html.fromHtml(text, Html.FROM_HTML_MODE_LEGACY).toString();
-            } else {
-                //noinspection deprecation
-                text = Html.fromHtml(text).toString();
-            }
+            text = HtmlCompat.fromHtml(text, HtmlCompat.FROM_HTML_MODE_LEGACY).toString();
         } catch (Exception ignored) {
             // Если HTML невалидный, отправим исходный текст после trim.
         }
