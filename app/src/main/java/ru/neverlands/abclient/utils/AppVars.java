@@ -207,6 +207,16 @@ public class AppVars {
     public static volatile boolean suppressBackgroundProbesDuringFishing = false;
     public static volatile long fishingSequenceStartAtMs = 0L;
     /**
+     * Safety-net таймаут подавления фоновых probe'ов во время рыбалки (мс).
+     * Начальное значение — безопасный дефолт для первого цикла.
+     * После первого act=2 (Ловить) обновляется динамически:
+     * JS TimerStart СКЛАДЫВАЕТ act=1(section[4]) + act=2(section[4]),
+     * реальный таймер = act1_timer + act2_timer + 15s запас.
+     * (напр. навык 951: 30+30+15 = 75с; навык 0: 30+291+15 = 336с).
+     * В нормальном режиме act=2 response очищает флаг раньше таймаута.
+     */
+    public static volatile long fishingExpectedDurationMs = 360_000L;
+    /**
      * AutoSkin: флаг "нужно перечитать умение охоты" (аналог C# `AutoSkinCheckUm`).
      * Используется оркестратором `MainPhp` для перехода на вкладку умений.
      */

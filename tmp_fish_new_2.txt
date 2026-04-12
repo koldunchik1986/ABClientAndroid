@@ -1,0 +1,4 @@
+﻿URL: http://neverlands.ru/gameplay/ajax/fish_ajax.php?act=2&primid=39&vcode=c7cb772bdabaa8e223f8d45c9eff173e&r=0.7939148115763457
+Size: 367
+Time: 98ms
+Body: RESO@["Вид ресурса: «Судак».<br>Клёв: 2 шт.<br>Улов: 2 шт."]@[]@[["inf","Ваш персонаж","9c32260b2976259b19fb7a1385069ef5",[]],["inv","Инвентарь","163196a12454b506efe6c5ab3713ecf3",[]],["look","Оглядеться","223fb23240382bae283ad72923c82885",[]],["fis","Рыбалка","2b5c2920f920e4efc72597d409525f6c",[]],["dri","Пить","ce93816d04b5365b3bcb126f7d69a05f",[]]]@[0,[2,30]]@[]

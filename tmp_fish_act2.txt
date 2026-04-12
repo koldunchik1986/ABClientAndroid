@@ -1,0 +1,2 @@
+﻿URL: http://neverlands.ru/gameplay/ajax/fish_ajax.php?act=2&primid=44&vcode=5af0ebd9f2fb77361c2e119a4384575d&r=0.7193072796869824
+Body: RESO@["Вид ресурса: «Лещ».<br>Клёв: 3 шт.<br>Улов: 2 шт."]@[]@[["inf","Ваш персонаж","f541e704ae1bfbb67a82f7f968a4297e",[]],["inv","Инвентарь","65cb13a804d09d592805fc729bfdb7dd",[]],["look","Оглядеться","5e2a41178f84eda6a83a4050719cdc04",[]],["fis","Рыбалка","af06e3be105f2e678459c7b14d75d7f8",[]],["dri","Пить","8b31e6dcecfae726e3c20b627c8a3eb2",[]]]@[0,[2,291]]@[]

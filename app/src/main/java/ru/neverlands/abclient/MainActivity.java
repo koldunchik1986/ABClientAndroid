@@ -4103,14 +4103,20 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         // Без этой защиты фоновый main.php?go=inf перезагружает PHPSESSID и портит vcode.
         if (AppVars.suppressBackgroundProbesDuringFishing) {
             long timeSinceStartMs = System.currentTimeMillis() - AppVars.fishingSequenceStartAtMs;
-            if (timeSinceStartMs < 15000L) {  // 15-секундный timeout (увеличен для медленных сетей)
-                Log.d(TAG, "SERVER_TIMER_TICK skip: fishing sequence in progress (duration=" + timeSinceStartMs + "ms)"
+            long dynamicTimeoutMs = AppVars.fishingExpectedDurationMs; // динамический таймаут по навыку
+            if (timeSinceStartMs < dynamicTimeoutMs) {
+                Log.d(TAG, "SERVER_TIMER_TICK skip: fishing sequence in progress (duration=" + timeSinceStartMs + "ms"
+                        + ", timeout=" + dynamicTimeoutMs + "ms)"
                         + ", dueAt=" + dueAt);
                 return;
             } else {
-                // Timeout - очищаем флаг на случай, если act=2 не прошел
-                Log.w(TAG, "SERVER_TIMER_TICK TIMEOUT: clearing lost fishing suppression flag after " + timeSinceStartMs + "ms");
+                // Timeout - очищаем флаг на случай, если act=2 не прошел (сервер long-polling навыка)
+                Log.w(TAG, "SERVER_TIMER_TICK TIMEOUT: clearing lost fishing suppression flag after " + timeSinceStartMs + "ms"
+                        + " (timeout=" + dynamicTimeoutMs + "ms)");
                 AppVars.suppressBackgroundProbesDuringFishing = false;
+                // Сбрасываем NeverTimer чтобы авто-рыбалка могла перезапуститься
+                // (без этого NeverTimer застревает от go=inf wtime обновлений)
+                AppVars.NeverTimer = 0L;
             }
         }
         if (AppVars.IsFightCaptchaDialogVisible) {

@@ -65,6 +65,8 @@ public final class FishAjaxPhp {
     private static volatile long lastFishBootstrapAtMs = 0L;
     private static volatile String lastFishNoCaptchaFallbackKey = "";
     private static volatile long lastFishNoCaptchaFallbackAtMs = 0L;
+    /** Таймер из act=1 section[4]: JS TimerStart() СКЛАДЫВАЕТ act=1 + act=2 таймеры. */
+    private static volatile int lastAct1TimerSec = 0;
 
     private static final Map<String, Double> FISH_NV = new LinkedHashMap<>();
     private static final Map<String, Double> FISH_MASS = new LinkedHashMap<>();
@@ -271,10 +273,15 @@ public final class FishAjaxPhp {
         AppLog.d(TAG, TAG, msg_vcode);
         
         lastFishAct1AtMs = System.currentTimeMillis();
-        // Блокируем фоновые probe'ы (main.php?go=inf&af_tick=1) на время критической последовательности act=1→act=2.
-        // Это предотвращает перезагрузку PHPSESSID сервером между действиями рыбалки.
+        // Блокируем фоновые probe'ы (main.php?go=inf&af_tick=1) на время рыбалки.
+        // После act=2 ("Ловить") сервер держит соединение весь таймер навыка (long-polling):
+        // ~60с с высоким навыком, до ~300с с нулевым.
+        // Safety-net таймаут = 360с (покрывает худший случай). Нормально act=2 response
+        // очищает флаг сразу по получении ответа.
         AppVars.suppressBackgroundProbesDuringFishing = true;
         AppVars.fishingSequenceStartAtMs = lastFishAct1AtMs;
+        Log.d(TAG, "AUTO_FISH_TRACE act1: suppression enabled, safety timeout="
+                + AppVars.fishingExpectedDurationMs + "ms");
 
         // ✅ ПРАВИЛО 4 (AGENTS.MD): Проверка на сообщение сервера о перегрузе
         // Сервер может отправить "<font color=#CC0000>Внимание! Возможен перегруз." если текущая масса критична
@@ -457,6 +464,16 @@ public final class FishAjaxPhp {
             return;
         }
 
+        // JS TimerStart() СКЛАДЫВАЕТ таймеры: act=1(section[4]) + act=2(section[4]).
+        // Реальный общий таймер цикла = act1 + act2 (напр. 30+30=60, 30+291=321).
+        int act1Timer = lastAct1TimerSec;
+        int totalTimerSec = act1Timer + cooldownSec;
+        // Обновляем fishingExpectedDurationMs с реальным серверным таймером + запас
+        AppVars.fishingExpectedDurationMs = (totalTimerSec * 1000L) + 15_000L;
+        Log.d(TAG, "AUTO_FISH_TRACE act2 timer: act1=" + act1Timer + "s + act2=" + cooldownSec
+                + "s = total " + totalTimerSec + "s → fishingExpectedDurationMs="
+                + AppVars.fishingExpectedDurationMs + "ms");
+
         long nowMs = System.currentTimeMillis();
         long dueAtMs = nowMs + (cooldownSec * 1000L);
         long prevNeverTimerMs = AppVars.NeverTimer;
@@ -495,29 +512,44 @@ public final class FishAjaxPhp {
     }
 
     /**
-     * Извлекает серверный fish-cooldown из payload (`@[0,[2,294]]@` -> `294` секунд).
-     */
-    /**
-     * Извлекает числовой cooldown рыбалки из ответа `act=2`.
+     * Извлекает числовой cooldown рыбалки из ответа (act=1 или act=2).
+     * Парсит section[4] через split('@'), а не regex по всему HTML —
+     * это надёжнее при модификации section[1] в fishReport().
      *
-     * Зависимости:
-     * - шаблон `FISH_COOLDOWN_PATTERN` (`@[0,[2,<sec>]]@`) как единый источник парсинга;
-     * - `parseIntSafe(...)` для безопасной нормализации значения без исключений;
-     * - используется в `syncFishCooldownAndScheduleNextCycle(...)` и `fishReport(...)`.
+     * Формат section[4]: `[N,[2,timer]]` где timer = секунды.
+     * N может быть 0 или 1 — на парсинг не влияет.
      *
      * Возвращает:
-     * - секунды ожидания до следующего заброса;
+     * - секунды таймера из section[4];
      * - `0`, если маркер не найден или формат некорректный.
      */
     private static int extractFishCooldownSec(String html) {
         if (html == null || html.isEmpty()) {
             return 0;
         }
+        // Основной путь: split по '@', парсим section[4] напрямую
+        String[] sections = html.split("@", -1);
+        if (sections.length > 4) {
+            String sec4 = sections[4].trim();
+            Matcher m = Pattern.compile("\\[2,(\\d+)\\]").matcher(sec4);
+            if (m.find()) {
+                int val = ParseUtils.parseIntSafe(m.group(1));
+                Log.d(TAG, "AUTO_FISH_TRACE extractCooldown: section[4]=" + sec4
+                        + " → " + val + "s (sections=" + sections.length + ")");
+                return val;
+            }
+            Log.w(TAG, "AUTO_FISH_TRACE extractCooldown: section[4]=" + sec4
+                    + " → parse failed (sections=" + sections.length + ")");
+        }
+        // Fallback: regex по полному HTML
         Matcher matcher = FISH_COOLDOWN_PATTERN.matcher(html);
         if (!matcher.find()) {
+            Log.w(TAG, "AUTO_FISH_TRACE extractCooldown: no match in " + html.length() + " chars");
             return 0;
         }
-        return ParseUtils.parseIntSafe(matcher.group(1));
+        int val = ParseUtils.parseIntSafe(matcher.group(1));
+        Log.d(TAG, "AUTO_FISH_TRACE extractCooldown: fallback regex → " + val + "s");
+        return val;
     }
 
     /**
@@ -851,6 +883,18 @@ public final class FishAjaxPhp {
             String errMsg = "AUTO_FISH_TRACE parseFishAct1State: ❌ REJECTED expected 6+ sections, got " + sections.length;
             AppLog.w(TAG, TAG, errMsg);
             return null;
+        }
+
+        // Парсим section[4] = [N,[2,timer]] — таймер act=1 (JS TimerStart СКЛАДЫВАЕТ act=1 + act=2)
+        String sec4 = sections[4] == null ? "" : sections[4].trim();
+        Matcher timerMatcher = Pattern.compile("\\[2,(\\d+)\\]").matcher(sec4);
+        if (timerMatcher.find()) {
+            lastAct1TimerSec = ParseUtils.parseIntSafe(timerMatcher.group(1));
+            AppLog.d(TAG, TAG, "AUTO_FISH_TRACE act1 section[4]=" + sec4
+                    + " → timer=" + lastAct1TimerSec + "s (JS adds act1+act2)");
+        } else {
+            lastAct1TimerSec = 0;
+            AppLog.w(TAG, TAG, "AUTO_FISH_TRACE act1 section[4]=" + sec4 + " → timer parse failed");
         }
 
         String payload = sections[5] == null ? "" : sections[5].trim();
@@ -1219,7 +1263,9 @@ public final class FishAjaxPhp {
         sb.append("<br>").append(AppVars.AutoFishNV < 0 ? "Потери за рыбалку" : "Доход за рыбалку")
                 .append(": <b>").append(AppVars.AutoFishNV < 0 ? "" : "+").append(formatDouble(AppVars.AutoFishNV)).append(" NV</b>");
         if (cooldownSec > 0) {
-            sb.append("<br>Таймаут: <b>").append(cooldownSec).append(" сек.</b>");
+            int totalSec = lastAct1TimerSec + cooldownSec;
+            sb.append("<br>Таймаут: <b>").append(totalSec).append(" сек.</b>");
+            sb.append(" (act1=").append(lastAct1TimerSec).append("+act2=").append(cooldownSec).append(")");
         }
         return sb.toString();
     }
@@ -1258,7 +1304,8 @@ public final class FishAjaxPhp {
         } else {
             sb.append("Доход");
         }
-        String timeoutSuffix = cooldownSec > 0 ? " Таймаут: " + cooldownSec + " сек." : "";
+        int totalSec2 = lastAct1TimerSec + cooldownSec;
+        String timeoutSuffix = totalSec2 > 0 ? " Таймаут: " + totalSec2 + " сек." : "";
         if (AppVars.Profile.FishChatReportColor) {
             sb.append(": <b>").append(formatDouble(AppVars.AutoFishNV)).append(" NV</b>.");
             sb.append(timeoutSuffix);
