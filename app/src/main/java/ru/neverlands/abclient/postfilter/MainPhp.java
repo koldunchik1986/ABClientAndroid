@@ -3339,6 +3339,16 @@ public class MainPhp {
         }
         return "";
     }
+
+    /**
+     * Публичный доступ к штатному парсеру серверного системного сообщения из main.php HTML.
+     *
+     * Используется UI-слоем (например, MainActivity POST-fallback), чтобы не дублировать
+     * regex/marker-логику и не хардкодить конкретные фразы сообщений.
+     */
+    public static String extractServerNoticeForUi(String html) {
+        return extractServerNoticeFromMainHtml(html);
+    }
     /**
      * Центральный post-filter обработчик ответов {@code main.php}.
      *

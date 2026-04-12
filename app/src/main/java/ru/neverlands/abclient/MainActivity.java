@@ -92,11 +92,11 @@ import ru.neverlands.abclient.model.UserConfig;
 import ru.neverlands.abclient.network.NetworkClient;
 import ru.neverlands.abclient.proxy.CookiesManager;
 import ru.neverlands.abclient.proxy.ProxyRuntimeManager;
+import ru.neverlands.abclient.postfilter.MainPhp;
 import ru.neverlands.abclient.utils.AppLog;
 import ru.neverlands.abclient.utils.FileLogger;
 import ru.neverlands.abclient.utils.AppVars;
 import ru.neverlands.abclient.utils.Chat;
-import ru.neverlands.abclient.utils.FileLogger;
 import ru.neverlands.abclient.utils.LogcatFileRecorder;
 import ru.neverlands.abclient.utils.RuntimeNetTrace;
 import ru.neverlands.abclient.utils.SessionManager;
@@ -4468,13 +4468,13 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                         modeResult -> {
                             String mode = normalizeJsStringResult(modeResult);
                             if ("FRAMESET".equalsIgnoreCase(mode)) {
-                                Log.d(TAG, "onPageFinished: main.php has frameset, skip POST fallback");
+                                AppLog.d("main_post", TAG, "onPageFinished: main.php has frameset, skip POST fallback");
                                 resetPostReloadGuard("frameset_main");
                                 applyPageFinishedFixes(view, url);
                                 return;
                             }
 
-                            Log.d(TAG, "onPageFinished: POST-like main.php, processing fallback");
+                            AppLog.d("main_post", TAG, "onPageFinished: POST-like main.php, processing fallback");
                             handlePostMainPhpResponse(view);
                         }
                 );
@@ -4662,34 +4662,42 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     }
 
     private void handlePostMainPhpResponse(WebView view) {
-        Log.d(TAG, "onPageFinished: POST-ответ main.php, извлекаем сообщение и перезагружаем");
+        AppLog.d("main_post", TAG, "onPageFinished: POST-ответ main.php, извлекаем сообщение и перезагружаем");
         view.evaluateJavascript(
                 "(function() {"
-                        + "  var b = document.body ? document.body.innerHTML : '';"
-                        + "  var marker = '<font class=nickname><font color=#cc0000><b>';"
-                        + "  var end = '<br><br></b></font></font>';"
-                        + "  var s = b.indexOf(marker);"
-                        + "  if (s >= 0) {"
-                        + "    var e = b.indexOf(end, s);"
-                        + "    if (e >= 0) return b.substring(s + marker.length, e);"
+                        + "  try {"
+                        + "    return document.body ? (document.body.innerHTML || '') : '';"
+                        + "  } catch(e) {"
+                        + "    return '';"
                         + "  }"
-                        + "  return '';"
                         + "})()",
                 result -> {
-                    boolean hasPostMessage = result != null && !result.equals("\"\"") && !result.equals("null");
+                    String htmlBody = normalizeJsStringResult(result);
+                    String parsedServerMessage = MainPhp.extractServerNoticeForUi(htmlBody);
+                    boolean hasPostMessage = parsedServerMessage != null && !parsedServerMessage.isEmpty();
                     boolean autoSkinEnabled = AppVars.Profile != null && AppVars.Profile.SkinAuto;
+                    boolean fastActionActive = AppVars.FastNeed
+                            && AppVars.FastId != null
+                            && !AppVars.FastId.isEmpty();
 
-                    if (!hasPostMessage && !autoSkinEnabled) {
-                        Log.d(TAG, "onPageFinished: no POST marker on main.php, skip POST fallback");
+                    if (!hasPostMessage && !autoSkinEnabled && !fastActionActive) {
+                        AppLog.d("main_post", TAG, "onPageFinished: no POST marker on main.php, skip POST fallback");
                         resetPostReloadGuard("no_post_marker");
                         applyPageFinishedFixes(view, "http://neverlands.ru/main.php");
                         return;
                     }
 
+                    if (!hasPostMessage && fastActionActive) {
+                        String fastMsg = "[FAST_POST_FALLBACK] no POST marker but fast action active"
+                                + ", fastId=" + AppVars.FastId
+                                + ", fastCount=" + AppVars.FastCount;
+                        AppLog.w("fast_action", TAG, fastMsg);
+                    }
+
                     if (hasPostMessage) {
-                        String msg = result.replaceAll("^\"|\"$", "");
+                        String msg = parsedServerMessage;
                         if (!msg.isEmpty()) {
-                            Log.d(TAG, "onPageFinished: sysMessage из POST = " + msg);
+                            AppLog.d("main_post", TAG, "onPageFinished: sysMessage из POST = " + msg);
                             Intent msgIntent = new Intent(ru.neverlands.abclient.utils.AppVars.ACTION_ADD_CHAT_MESSAGE);
                             msgIntent.putExtra("message", "<font color=#cc0000><b>" + msg + "</b></font>");
                             LocalBroadcastManager.getInstance(MainActivity.this).sendBroadcast(msgIntent);
@@ -4728,7 +4736,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                                             .trim();
 
                                     if (!razUrl.isEmpty() && razUrl.contains("get_id=17")) {
-                                        Log.d(TAG, "onPageFinished: POST-ответ, найдена разделка -> " + razUrl);
+                                        AppLog.d("main_post", TAG, "onPageFinished: POST-ответ, найдена разделка -> " + razUrl);
                                         view.loadUrl(razUrl);
                                         return;
                                     }
@@ -4814,7 +4822,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     private void schedulePostResponseReload(WebView view, boolean autoSkinEnabled) {
         view.postDelayed(() -> {
             if (AppVars.IsFightCaptchaDialogVisible) {
-                Log.d(TAG, "onPageFinished: skip POST reload while captcha dialog is visible");
+                AppLog.d("main_post", TAG, "onPageFinished: skip POST reload while captcha dialog is visible");
                 return;
             }
 
@@ -4831,11 +4839,11 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             }
 
             if (isPostReloadBlocked(autoSkinEnabled ? "autoskin" : "fight")) {
-                Log.w(TAG, "onPageFinished: POST reload blocked by anti-loop guard, url=" + reloadUrl);
+                AppLog.w("main_post", TAG, "onPageFinished: POST reload blocked by anti-loop guard, url=" + reloadUrl);
                 return;
             }
 
-            Log.d(TAG, "onPageFinished: POST-ответ, перезагружаем " + reloadUrl);
+            AppLog.d("main_post", TAG, "onPageFinished: POST-ответ, перезагружаем " + reloadUrl);
             view.loadUrl(reloadUrl);
         }, 300);
     }
@@ -4857,7 +4865,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         postReloadGuardCount++;
         if (postReloadGuardCount > POST_RELOAD_GUARD_MAX_COUNT) {
             postReloadGuardBlockUntilMs = now + POST_RELOAD_GUARD_BLOCK_MS;
-            Log.w(TAG, "POST_RELOAD_GUARD: block enabled for " + POST_RELOAD_GUARD_BLOCK_MS
+            AppLog.w("main_post", TAG, "POST_RELOAD_GUARD: block enabled for " + POST_RELOAD_GUARD_BLOCK_MS
                     + "ms, key=" + key + ", count=" + postReloadGuardCount);
             return true;
         }
@@ -4872,7 +4880,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         postReloadGuardCount = 0;
         postReloadGuardBlockUntilMs = 0L;
         postReloadGuardKey = "";
-        Log.d(TAG, "POST_RELOAD_GUARD: reset, reason=" + reason);
+        AppLog.d("main_post", TAG, "POST_RELOAD_GUARD: reset, reason=" + reason);
     }
 
     /**
