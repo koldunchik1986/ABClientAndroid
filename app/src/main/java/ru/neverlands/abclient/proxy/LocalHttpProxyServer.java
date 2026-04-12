@@ -955,6 +955,12 @@ final class LocalHttpProxyServer {
             return "";
         }
 
+        // Reuse centralized main.php notice parser to keep behavior consistent across paths.
+        String centralNotice = MainPhp.extractServerNoticeForUi(html);
+        if (centralNotice != null && !centralNotice.trim().isEmpty()) {
+            return centralNotice.trim();
+        }
+
         Matcher boldRed = Pattern.compile(
                 "(?is)<font\\s+class\\s*=\\s*['\\\"]?nickname['\\\"]?[^>]*>\\s*<font[^>]*color\\s*=\\s*['\\\"]?#?cc0000['\\\"]?[^>]*>\\s*<b>(.*?)<br\\s*/?>\\s*<br\\s*/?>\\s*</b>\\s*</font>\\s*</font>")
                 .matcher(html);
