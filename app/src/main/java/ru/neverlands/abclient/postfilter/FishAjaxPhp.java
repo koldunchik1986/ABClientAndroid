@@ -2563,11 +2563,25 @@ public final class FishAjaxPhp {
             if (cooldownRemainingMs > 0L) {
                 // Проверяем: если усталость уже ниже порога (эликсир подействовал),
                 // не устанавливаем pending — иначе бесконечный цикл resolve→fatigue→resolve.
+                // Полностью очищаем drink-state чтобы рыбалка возобновилась немедленно.
                 int currentTied = CharacterVitalsManager.snapshot().tied;
                 int tiedHigh = Math.max(0, Math.min(99, AppVars.Profile.FishTiedHigh));
                 if (currentTied <= tiedHigh) {
                     AppLog.d(TAG, "AUTO_FISH_TRACE drink cooldown active but tied=" + currentTied
-                            + " <= " + tiedHigh + ", skip pending (elixir resolved)");
+                            + " <= " + tiedHigh + ", elixir resolved — clearing drink state to resume fishing");
+                    // Полная очистка drink-state (как при cooldown elapsed):
+                    AppVars.AutoFishDrinkOnce = false;
+                    lastAutoFishDrinkTriggerAtMs = 0L;
+                    AppVars.AutoDrinkBlazPending = false;
+                    AppVars.AutoFishDrink = false;
+                    if (AppVars.FastNeed) {
+                        FastActionManager.fastCancel("elixir_resolved_during_cooldown");
+                        AppLog.d(TAG, "AUTO_FISH_TRACE cancel FastNeed after elixir resolved");
+                    }
+                    if (FishAjaxPhp.isAutoFishEnabled()) {
+                        AppVars.ProbeForceNeedAutofish = true;
+                        AppLog.d(TAG, "AUTO_FISH_TRACE elixir resolved during cooldown, forcing autofish probe");
+                    }
                     return null;
                 }
                 AppVars.AutoDrinkBlazPending = true;
