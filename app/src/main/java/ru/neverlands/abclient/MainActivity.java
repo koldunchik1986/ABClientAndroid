@@ -56,6 +56,9 @@ import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 
 import com.google.android.material.navigation.NavigationView;
 
+import org.json.JSONException;
+import org.json.JSONObject;
+
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -4668,19 +4671,48 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         view.evaluateJavascript(
                 "(function() {"
                         + "  try {"
-                        + "    return document.body ? (document.body.innerHTML || '') : '';"
+                        + "    var body = document.body;"
+                        + "    var transfer = document.getElementById('transfer');"
+                        + "    return JSON.stringify({"
+                        + "      bodyHtml: body ? (body.innerHTML || '') : '',"
+                        + "      bodyText: body ? (body.innerText || body.textContent || '') : '',"
+                        + "      transferHtml: transfer ? (transfer.innerHTML || '') : '',"
+                        + "      transferText: transfer ? (transfer.innerText || transfer.textContent || '') : ''"
+                        + "    });"
                         + "  } catch(e) {"
-                        + "    return '';"
+                        + "    return JSON.stringify({ bodyHtml: '', bodyText: '', transferHtml: '', transferText: '' });"
                         + "  }"
                         + "})()",
                 result -> {
-                    String htmlBody = normalizeJsStringResult(result);
-                    String parsedServerMessage = MainPhp.extractServerNoticeForUi(htmlBody);
+                    String payload = normalizeJsStringResult(result);
+                    String htmlBody = "";
+                    String bodyText = "";
+                    String transferHtml = "";
+                    String transferText = "";
+                    try {
+                        JSONObject json = new JSONObject(payload);
+                        htmlBody = json.optString("bodyHtml", "");
+                        bodyText = json.optString("bodyText", "");
+                        transferHtml = json.optString("transferHtml", "");
+                        transferText = json.optString("transferText", "");
+                    } catch (JSONException e) {
+                        AppLog.w("main_post", TAG, "onPageFinished: failed to parse POST payload JSON", e);
+                        htmlBody = payload;
+                    }
+
+                    String noticeHtml = !transferHtml.isEmpty() ? transferHtml : htmlBody;
+                    String noticeText = !transferText.isEmpty() ? transferText : bodyText;
+                    String parsedServerMessage = MainPhp.extractServerNoticeForUi(noticeHtml, noticeText);
                     boolean hasPostMessage = parsedServerMessage != null && !parsedServerMessage.isEmpty();
                     boolean autoSkinEnabled = AppVars.Profile != null && AppVars.Profile.SkinAuto;
                     boolean fastActionActive = AppVars.FastNeed
                             && AppVars.FastId != null
                             && !AppVars.FastId.isEmpty();
+
+                    if (!transferText.isEmpty()) {
+                        AppLog.d("main_post", TAG, "onPageFinished: transferText preview = "
+                                + (transferText.length() > 200 ? transferText.substring(0, 200) : transferText));
+                    }
 
                     if (!hasPostMessage && !autoSkinEnabled && !fastActionActive) {
                         AppLog.d("main_post", TAG, "onPageFinished: no POST marker on main.php, skip POST fallback");
@@ -4762,7 +4794,57 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         if (result.length() >= 2 && result.startsWith("\"") && result.endsWith("\"")) {
             result = result.substring(1, result.length() - 1);
         }
-        return result.replace("\\/", "/").replace("\\\"", "\"");
+        StringBuilder sb = new StringBuilder(result.length());
+        for (int i = 0; i < result.length(); i++) {
+            char current = result.charAt(i);
+            if (current == '\\' && i + 1 < result.length()) {
+                char next = result.charAt(++i);
+                switch (next) {
+                    case '/':
+                        sb.append('/');
+                        break;
+                    case '\\':
+                        sb.append('\\');
+                        break;
+                    case '"':
+                        sb.append('"');
+                        break;
+                    case 'n':
+                        sb.append('\n');
+                        break;
+                    case 'r':
+                        sb.append('\r');
+                        break;
+                    case 't':
+                        sb.append('\t');
+                        break;
+                    case 'b':
+                        sb.append('\b');
+                        break;
+                    case 'f':
+                        sb.append('\f');
+                        break;
+                    case 'u':
+                        if (i + 4 < result.length()) {
+                            String hex = result.substring(i + 1, i + 5);
+                            try {
+                                sb.append((char) Integer.parseInt(hex, 16));
+                                i += 4;
+                                break;
+                            } catch (NumberFormatException ignored) {
+                            }
+                        }
+                        sb.append('u');
+                        break;
+                    default:
+                        sb.append(next);
+                        break;
+                }
+            } else {
+                sb.append(current);
+            }
+        }
+        return sb.toString();
     }
 
     private byte[] readAssetFile(String fileName) throws IOException {

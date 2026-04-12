@@ -3367,6 +3367,63 @@ public class MainPhp {
         return "";
     }
 
+    private static String extractServerNoticeFromPlainText(String plainText) {
+        if (plainText == null || plainText.isEmpty()) {
+            return "";
+        }
+        String normalized = plainText
+                .replace('\u00A0', ' ')
+                .replace("\r", "\n")
+                .replaceAll("[\t\x0B\f]+", " ")
+                .replaceAll(" +", " ")
+                .trim();
+        if (normalized.isEmpty()) {
+            return "";
+        }
+
+        String[] lines = normalized.split("\n+");
+        for (String line : lines) {
+            String candidate = line == null ? "" : line.trim().replaceAll(" +", " ");
+            if (candidate.isEmpty()) {
+                continue;
+            }
+            if (candidate.length() < 8) {
+                continue;
+            }
+            if (candidate.startsWith("Деньги:")
+                    || candidate.startsWith("Сила:")
+                    || candidate.startsWith("Ловкость:")
+                    || candidate.startsWith("Удача:")
+                    || candidate.startsWith("Здоровье:")
+                    || candidate.startsWith("Знания:")
+                    || candidate.startsWith("Мудрость:")
+                    || candidate.startsWith("Побед:")
+                    || candidate.startsWith("Поражений:")
+                    || candidate.startsWith("Масса Вашего инвентаря:")
+                    || candidate.startsWith("Использовать \"")
+                    || candidate.startsWith("Кому:")
+                    || candidate.startsWith("На кого:")
+                    || candidate.startsWith("Ваш персонаж")
+                    || candidate.startsWith("Инвентарь")
+                    || candidate.startsWith("Вернуться")) {
+                continue;
+            }
+            if (candidate.contains("Ошибка")
+                    || candidate.contains("Нельзя")
+                    || candidate.contains("Нет такого игрока")
+                    || candidate.contains("не можете")
+                    || candidate.contains("слишком часто")
+                    || candidate.contains("лимит")
+                    || candidate.contains("невозможно")
+                    || candidate.contains("не выполнено")
+                    || candidate.contains("уже действует")
+                    || candidate.contains("достигнут")) {
+                return candidate;
+            }
+        }
+        return "";
+    }
+
     /**
      * Публичный доступ к штатному парсеру серверного системного сообщения из main.php HTML.
      *
@@ -3374,7 +3431,15 @@ public class MainPhp {
      * regex/marker-логику и не хардкодить конкретные фразы сообщений.
      */
     public static String extractServerNoticeForUi(String html) {
-        return extractServerNoticeFromMainHtml(html);
+        return extractServerNoticeForUi(html, "");
+    }
+
+    public static String extractServerNoticeForUi(String html, String plainText) {
+        String htmlNotice = extractServerNoticeFromMainHtml(html);
+        if (htmlNotice != null && !htmlNotice.trim().isEmpty()) {
+            return htmlNotice.trim();
+        }
+        return extractServerNoticeFromPlainText(plainText);
     }
     /**
      * Центральный post-filter обработчик ответов {@code main.php}.
