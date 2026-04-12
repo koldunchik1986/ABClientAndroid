@@ -812,6 +812,20 @@ public class MainPhp {
         }
 
         // 3) Fallback via fexp[3] (vcode), st inferred from fight_ty[4].
+        String vcode = extractFightCleanVcodeFromFexp(html);
+        // 4) Crash-frame fallback: если fexp отсутствует, берём vcode из fight_ty[5].
+        if (vcode == null || vcode.isEmpty()) {
+            vcode = extractFightCleanVcodeFromFightTy(html);
+        }
+        if (vcode == null || vcode.isEmpty()) {
+            return null;
+        }
+        String finishSt = resolveFightFinishStateForAct5(html);
+        String finishLink = "main.php?get_id=61&act=5&st=" + finishSt + "&vcode=" + vcode;
+        return normalizeNeverlandsMainLink(finishLink);
+    }
+
+    private static String extractFightCleanVcodeFromFexp(String html) {
         String rawFexp = HelperStrings.subString(html, "var fexp = [", "];" );
         if (rawFexp == null || rawFexp.isEmpty()) {
             return null;
@@ -824,10 +838,23 @@ public class MainPhp {
         if (vcode == null || vcode.isEmpty() || "0".equals(vcode)) {
             return null;
         }
+        return vcode;
+    }
 
-        String finishSt = resolveFightFinishStateForAct5(html);
-        String finishLink = "main.php?get_id=61&act=5&st=" + finishSt + "&vcode=" + vcode;
-        return normalizeNeverlandsMainLink(finishLink);
+    private static String extractFightCleanVcodeFromFightTy(String html) {
+        String rawFightTy = HelperStrings.subString(html, "var fight_ty = [", "];" );
+        if (rawFightTy == null || rawFightTy.isEmpty()) {
+            return null;
+        }
+        List<String> fightTy = splitJsTopLevelCsv(rawFightTy);
+        if (fightTy.size() <= 5) {
+            return null;
+        }
+        String vcode = trimJsToken(fightTy.get(5));
+        if (vcode == null || vcode.isEmpty() || "0".equals(vcode)) {
+            return null;
+        }
+        return vcode;
     }
 
     /**

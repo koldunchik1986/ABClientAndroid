@@ -254,6 +254,14 @@ public final class FightAuto {
         final boolean autoFightProbeAddress = host.isAutoFightProbeAddress(address);
         final FightFinishPageMarkers finishMarkers = inspectFightFinishPageMarkers(html, host);
         final String resolvedFightCaptchaUrl = host.resolveFightCaptchaUrl(html);
+        final String cleanFinishLinkCandidate = host.extractFightCleanFinishLinkFromHtml(html);
+        final boolean isCrashWaitingFinishFrame = !fight.IsBoi
+            && fight.IsWaitingForNextTurn
+            && (resolvedFightCaptchaUrl == null || resolvedFightCaptchaUrl.isEmpty())
+            && !finishMarkers.hasFendForm
+            && !finishMarkers.hasCodeInput
+            && !finishMarkers.hasCaptchaImage
+            && isCrashWaitingFinishFrameHtml(html, cleanFinishLinkCandidate);
         final boolean isProbeTransitionalInactiveFrame = autoFightProbeAddress
                 && !fight.IsBoi
                 && !fight.IsWaitingForNextTurn
@@ -269,8 +277,16 @@ public final class FightAuto {
                     + ", logBoi=" + fight.LogBoi;
             AppLog.d(TAG, TAG, msg);
         }
+        if (isCrashWaitingFinishFrame) {
+            String msg = "processFight: crash waiting frame with clean finish detected, force finish flow"
+                + ", address=" + address
+                + ", logBoi=" + fight.LogBoi
+                + ", cleanLink=" + cleanFinishLinkCandidate;
+            AppLog.w(TAG, TAG, msg);
+        }
 
-        boolean fightEnded = !fight.IsBoi && !fight.IsWaitingForNextTurn && !isProbeTransitionalInactiveFrame;
+        boolean fightEnded = (!fight.IsBoi && !fight.IsWaitingForNextTurn && !isProbeTransitionalInactiveFrame)
+            || isCrashWaitingFinishFrame;
         if (fightEnded) {
             host.registerFightEnd(fight);
             host.publishFightResultFromLogsIfNeeded(html, address, fight.LogBoi);
@@ -505,7 +521,8 @@ public final class FightAuto {
                 if (normalizedCaptchaFinish != null && !normalizedCaptchaFinish.isEmpty()) {
                     fightLink = normalizedCaptchaFinish;
                 }
-            } else if (autoFightProbeAddress
+                } else if (autoFightProbeAddress
+                    && !isCrashWaitingFinishFrame
                     && fightLink != null
                     && !fightLink.isEmpty()
                     && !fightLink.contains("????")
@@ -878,6 +895,19 @@ public final class FightAuto {
             android.util.Log.e(TAG, "inspectFightFinishPageMarkers error", e);
         }
         return markers;
+    }
+
+    private static boolean isCrashWaitingFinishFrameHtml(String html, String cleanFinishLinkCandidate) {
+        if (html == null || html.isEmpty() || cleanFinishLinkCandidate == null || cleanFinishLinkCandidate.isEmpty()) {
+            return false;
+        }
+        String lower = html.toLowerCase(Locale.ROOT);
+        boolean hasAct5Finish = lower.contains("get_id=61") && lower.contains("act=5");
+        boolean hasShortFinishButton = lower.contains("value=\"завершить\"")
+                || lower.contains("value='завершить'")
+                || lower.contains(">завершить<");
+        boolean hasRegularFightFinishButton = lower.contains("завершить бой");
+        return hasAct5Finish && hasShortFinishButton && !hasRegularFightFinishButton;
     }
 
     /**
