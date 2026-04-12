@@ -1,7 +1,5 @@
 package ru.neverlands.abclient.proxy;
 
-import android.util.Log;
-
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -47,6 +45,7 @@ import ru.neverlands.abclient.utils.RuntimeNetTrace;
  */
 final class LocalHttpProxyServer {
     private static final String TAG = "LocalHttpProxyServer";
+    private static final String LOG_CHAIN = "proxy";
     private static final int MAX_BIND_ATTEMPTS = 64;
     private static final int HEADER_SIZE_LIMIT_BYTES = 64 * 1024;
     private static final int RESPONSE_HEADER_SIZE_LIMIT_BYTES = 64 * 1024;
@@ -91,11 +90,11 @@ final class LocalHttpProxyServer {
         this.workerExecutor = Executors.newCachedThreadPool();
 
         acceptExecutor.execute(this::acceptLoop);
-        Log.i(TAG, "PROXY_BOOT: listener started at 127.0.0.1:" + boundPort);
-        Log.i(TAG, "PROXY_UPSTREAM: enabled=" + upstreamSettings.enabled
+        AppLog.i(LOG_CHAIN, TAG, "PROXY_BOOT: listener started at 127.0.0.1:" + boundPort);
+        AppLog.i(LOG_CHAIN, TAG, "PROXY_UPSTREAM: enabled=" + upstreamSettings.enabled
                 + ", host=" + upstreamSettings.host
                 + ", port=" + upstreamSettings.port);
-        Log.i(TAG, "PROXY_AUTH: upstream basic auth enabled="
+        AppLog.i(LOG_CHAIN, TAG, "PROXY_AUTH: upstream basic auth enabled="
                 + (upstreamSettings.basicAuthHeader != null && !upstreamSettings.basicAuthHeader.isEmpty()));
         return boundPort;
     }
@@ -119,7 +118,7 @@ final class LocalHttpProxyServer {
             workerExecutor = null;
         }
         boundPort = -1;
-        Log.i(TAG, "PROXY_BOOT: listener stopped");
+        AppLog.i(LOG_CHAIN, TAG, "PROXY_BOOT: listener stopped");
     }
 
     int getBoundPort() {
@@ -149,7 +148,7 @@ final class LocalHttpProxyServer {
                 Socket client = serverSocket.accept();
                 client.setSoTimeout(SOCKET_TIMEOUT_MS);
                 client.setTcpNoDelay(true);
-                Log.d(TAG, "PROXY_SESSION: accepted client=" + client.getRemoteSocketAddress());
+                AppLog.d(LOG_CHAIN, TAG, "PROXY_SESSION: accepted client=" + client.getRemoteSocketAddress());
                 if (workerExecutor != null) {
                     workerExecutor.execute(() -> handleClient(client));
                 } else {
@@ -201,7 +200,7 @@ final class LocalHttpProxyServer {
                 return;
             }
             logPoolProxyRequest(request);
-            Log.d(TAG, "PROXY_SESSION: method=" + request.method
+            AppLog.d(LOG_CHAIN, TAG, "PROXY_SESSION: method=" + request.method
                     + ", uri=" + request.uriToken
                     + ", bodyBytes=" + (request.body == null ? 0 : request.body.length));
             RuntimeNetTrace.push("PROXY_REQ",
@@ -213,7 +212,7 @@ final class LocalHttpProxyServer {
             }
 
             ResolvedRoute route = resolveRoute(request);
-            Log.d(TAG, "PROXY_SESSION: route origin=" + route.originHost + ":" + route.originPort
+            AppLog.d(LOG_CHAIN, TAG, "PROXY_SESSION: route origin=" + route.originHost + ":" + route.originPort
                     + ", connect=" + route.connectHost + ":" + route.connectPort
                     + ", target=" + route.requestTarget);
             RuntimeNetTrace.push("PROXY_ROUTE",
@@ -222,7 +221,7 @@ final class LocalHttpProxyServer {
             sessionTarget = route.originHost + ":" + route.originPort;
             long copiedBytes = forwardRequest(route, request, clientOut);
             long elapsed = Math.max(0L, System.currentTimeMillis() - startedAtMs);
-            Log.d(TAG, "PROXY_SESSION: target=" + sessionTarget
+            AppLog.d(LOG_CHAIN, TAG, "PROXY_SESSION: target=" + sessionTarget
                     + " mode=" + (upstreamSettings.enabled ? "UPSTREAM" : "DIRECT")
                     + " bytesOut=" + copiedBytes
                     + " latencyMs=" + elapsed);
@@ -276,7 +275,7 @@ final class LocalHttpProxyServer {
                 String absoluteWithPortTarget = buildAbsoluteTargetWithExplicitPort(route);
                 int retryAttempt = 2;
                 if (!absoluteWithPortTarget.equals(route.requestTarget)) {
-                    Log.w(TAG, "PROXY_UPSTREAM_RETRY: 405 on absolute-form POST /game.php, retry absolute-form with explicit port");
+                    AppLog.w(LOG_CHAIN, TAG, "PROXY_UPSTREAM_RETRY: 405 on absolute-form POST /game.php, retry absolute-form with explicit port");
                     ResponseHead retryHead = forwardSingleRetry(route, request, absoluteWithPortTarget, retryAttempt++);
                     if (isAcceptableRetryResponse(retryHead)) {
                         clientOut.write(retryHead.rawBytes);
@@ -294,7 +293,7 @@ final class LocalHttpProxyServer {
 
                 String originFormTarget = buildOriginFormTarget(route);
                 if (!originFormTarget.equals(route.requestTarget) && !originFormTarget.equals(absoluteWithPortTarget)) {
-                    Log.w(TAG, "PROXY_UPSTREAM_RETRY: 405 persists, retry origin-form POST target=" + originFormTarget);
+                    AppLog.w(LOG_CHAIN, TAG, "PROXY_UPSTREAM_RETRY: 405 persists, retry origin-form POST target=" + originFormTarget);
                     ResponseHead retryHead = forwardSingleRetry(route, request, originFormTarget, retryAttempt++);
                     if (isAcceptableRetryResponse(retryHead)) {
                         clientOut.write(retryHead.rawBytes);
@@ -310,7 +309,7 @@ final class LocalHttpProxyServer {
                     cleanupRetrySocket();
                 }
 
-                Log.w(TAG, "PROXY_UPSTREAM_RETRY: 405 persists, retry via CONNECT tunnel");
+                AppLog.w(LOG_CHAIN, TAG, "PROXY_UPSTREAM_RETRY: 405 persists, retry via CONNECT tunnel");
                 return forwardViaUpstreamConnectTunnel(route, request, clientOut);
             } else {
                 clientOut.write(responseHead.rawBytes);
@@ -498,7 +497,7 @@ final class LocalHttpProxyServer {
             tunnelOut.flush();
 
             ResponseHead connectResponse = readResponseHead(tunnelIn);
-            Log.d(TAG, "PROXY_TUNNEL: CONNECT " + route.originHost + ":" + route.originPort
+            AppLog.d(LOG_CHAIN, TAG, "PROXY_TUNNEL: CONNECT " + route.originHost + ":" + route.originPort
                     + " status=" + connectResponse.statusCode
                     + ", server=" + connectResponse.serverHeader
                     + ", statusLine=" + connectResponse.statusLine);
@@ -583,7 +582,7 @@ final class LocalHttpProxyServer {
                                   int attempt,
                                   ResponseHead head) {
         String mode = upstreamSettings.enabled ? "UPSTREAM" : "DIRECT";
-        Log.d(TAG, "PROXY_RESP: mode=" + mode
+        AppLog.d(LOG_CHAIN, TAG, "PROXY_RESP: mode=" + mode
                 + ", attempt=" + attempt
                 + ", method=" + request.method
                 + ", target=" + requestTarget
