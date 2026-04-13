@@ -3374,7 +3374,7 @@ public class MainPhp {
         String normalized = plainText
                 .replace('\u00A0', ' ')
                 .replace("\r", "\n")
-                .replaceAll("[\t\x0B\f]+", " ")
+            .replaceAll("[\t\u000B\f]+", " ")
                 .replaceAll(" +", " ")
                 .trim();
         if (normalized.isEmpty()) {
