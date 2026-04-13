@@ -42,18 +42,29 @@ namespace ABClient
             var url = $"http://www.neverlands.ru/modules/api/getid.cgi?{encnick}";
             var data = GetInfo(url);
             if (string.IsNullOrEmpty(data))
+            {
+                AppLog.w("NeverApi", "GetUserId: EMPTY_RESPONSE nick=" + normalizedNick);
                 return null;
+            }
 
             var spar = data.Split('|');
             if (spar.Length < 1)
+            {
+                AppLog.w("NeverApi", "GetUserId: PARSE_FAIL nick=" + normalizedNick + " raw=" + data);
                 return null;
+            }
 
             id = spar[0] == null ? string.Empty : spar[0].Trim();
 
             // Валидация: id должен быть непустой строкой (число)
             // Android: isEmpty(id) → return null
             if (string.IsNullOrEmpty(id))
+            {
+                AppLog.w("NeverApi", "GetUserId: EMPTY_ID nick=" + normalizedNick + " raw=" + data);
                 return null;
+            }
+
+            AppLog.d("NeverApi", "GetUserId: nick=" + normalizedNick + " id=" + id);
 
             // Получаем нормализованное имя из ответа (spar[1])
             var resolvedNick = spar.Length > 1 && !string.IsNullOrEmpty(spar[1])
@@ -103,13 +114,16 @@ namespace ABClient
 
             var data = GetInfo($"http://www.neverlands.ru/modules/api/info.cgi?playerid={id}&info=1&hmu=1&effects=1&slots=1");
             /*
-                1|tnsx4hoq.gif:Шлем Гладиатора:|0|0|45|0|60|0|150@abz4cs8n.gif:Амулет Ацтеков:|3|5|5|0|80|0|110@vph7940g.gif:Секира Солнца:|36|50|0|62|25|0|180@u09ops6g.gif:Пояс Смелости:|0|0|15|0|60|0|108@sl_l_4.gif:Слот для содержимого пояса@sl_l_4.gif:Слот для содержимого пояса@sl_l_4.gif:Слот для содержимого пояса@d6ushtk9.gif:Кованые Сапоги:|10|12|24|0|90|0|100@sl_r_0.gif:Слот для кармана@sl_r_1.gif:Слот для содержимого кармана@kf704b5i.gif:Клёпаные Наручи:|8|11|20|20|60|0|100@yvmqa2cg.gif:Кольчужные Перчатки:|4|9|14|10|50|0|90@sl_l_2.gif:Слот для оружия/щита@81rblgew.gif:Кольцо Легендарной Удачи:|0|0|0|0|0|0|300@m5hjvieu.gif:Кольцо Легендарной Силы:|0|0|0|0|0|0|300@u2x1l94a.gif:Броня Единорога:|0|0|64|0|90|0|250@
+                1|tnsx4hoq.gif:Шлем Гладиатора:|0|0|45|0|60|0|150@...
                 2|
                 3|Черный|16|0|n|none|||0|1|0|0|0|0||18834655
                 4|0|785|0|112|77
             */
             if (string.IsNullOrEmpty(data))
+            {
+                AppLog.w("NeverApi", "GetAll: EMPTY_RESPONSE id=" + id + " nick=" + nick);
                 return null;
+            }
 
             var sp = data.Split('\n');
             if (sp.Length < 4)
@@ -189,6 +203,10 @@ namespace ABClient
 
             userInfo.Location = sp3.Length > 13 ? sp3[13] : string.Empty;
             userInfo.FightLog = sp3.Length > 14 ? sp3[14] : "0";
+
+            AppLog.d("NeverApi", "GetAll: nick=" + userInfo.Nick + " level=" + userInfo.Level +
+                " online=" + userInfo.Online + " location=" + userInfo.Location +
+                " fightLog=" + userInfo.FightLog + " clan=" + userInfo.ClanName);
 
             var sp4 = sp[3].Substring(2).Split('|');
             if (sp4.Length < 5)

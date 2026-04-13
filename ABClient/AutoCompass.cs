@@ -87,6 +87,8 @@ namespace ABClient
             _timer.Start();
             ThreadPool.QueueUserWorkItem(CompassSearchAsync, _targetNick);
 
+            AppLog.i("AutoCompass", "START: target=" + _targetNick);
+
             try
             {
                 if (AppVars.MainForm != null)
@@ -118,6 +120,8 @@ namespace ABClient
             {
                 _timer.Stop();
             }
+
+            AppLog.i("AutoCompass", "STOP");
 
             try
             {
@@ -189,6 +193,8 @@ namespace ABClient
                 Timestamp = DateTime.Now,
                 IsOnline = isOnline
             };
+
+            AppLog.d("AutoCompass", "SEARCH: nick=" + nick + " online=" + isOnline + " location=" + location + " fightLog=" + (userInfo.FightLog ?? "null"));
 
             if (!isOnline)
             {

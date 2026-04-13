@@ -107,6 +107,8 @@ namespace ABClient.MyGuamod
             {
             }
 
+            AppLog.i("Recognizer", "RESULT: " + newresultOne + " | " + debugInfo);
+
             if (!string.IsNullOrEmpty(newresultOne) && (newresultOne[0] != '0') && (newresultOne[0] != '1'))
             {
                 try

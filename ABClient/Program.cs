@@ -32,6 +32,8 @@ namespace ABClient
             AppVars.Profile = selectedConfig;
             AppVars.Profile.DoHttpLog = true;
 
+            AppLog.i("App", "START: " + AppVars.AppVersion.NickProductShortVersion + " nick=" + AppVars.Profile.UserNick);
+
             AppTimerManager.SetAppTimers(AppVars.Profile.AppConfigTimers.ToArray());
             AppVars.AppVersion.AddNick(AppVars.Profile.UserNick);
 

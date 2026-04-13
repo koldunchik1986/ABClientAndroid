@@ -127,6 +127,8 @@ namespace ABClient
 
             _myClanName = myInfo.ClanName ?? string.Empty; // Android: cachedSelfClanToken
 
+            AppLog.d("ClanWars", "MyClan=" + _myClanName);
+
             // Шаг 2: собираем список ников для проверки
             var nicksToCheck = new List<string>();
 

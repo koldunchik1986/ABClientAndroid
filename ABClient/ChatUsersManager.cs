@@ -146,7 +146,9 @@ namespace ABClient
                     string chatusers;
                     try
                     {
-                        chatusers = File.ReadAllText("chatusers.xml", Encoding.UTF8);
+                        chatusers = File.ReadAllText(
+                            Path.Combine(System.Windows.Forms.Application.StartupPath, "chatusers.xml"),
+                            Encoding.UTF8);
                     }
                     catch
                     {

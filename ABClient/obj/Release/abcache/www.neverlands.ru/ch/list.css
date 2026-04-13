@@ -1,0 +1,23 @@
+a
+{
+  text-decoration: none;
+  cursor: pointer;
+}
+.placename{
+font-family : Tahoma, Verdana, Arial, Verdana, Arial, Helvetica, Tahoma, Verdana, sans-serif;
+	font-size : 12px;
+	text-decoration : none;
+	color : #222222;
+}
+.sort{
+font-family : Tahoma, Verdana, Arial, Verdana, Arial, Helvetica, Tahoma, Verdana, sans-serif;
+	font-size : 12px;
+	text-decoration : underline;
+	color : #336699;
+}
+.nickname{
+font-family : Verdana, Arial, Verdana, Arial, Helvetica, Tahoma, Verdana, sans-serif;
+	font-size : 12px;
+	text-decoration : none;
+	color : #222222;
+}

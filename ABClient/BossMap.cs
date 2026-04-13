@@ -12,7 +12,13 @@ namespace ABClient
         public static void LoadMap()
         {
             Terrain.Clear();
-            var map2 = File.ReadAllText(AppConsts.FileMap, Encoding.UTF8);
+            var mapPath = Path.Combine(System.Windows.Forms.Application.StartupPath, AppConsts.FileMap);
+            if (!File.Exists(mapPath))
+            {
+                AppLog.w("BossMap", "LoadMap: FILE_NOT_FOUND path=" + mapPath);
+                return;
+            }
+            var map2 = File.ReadAllText(mapPath, Encoding.UTF8);
             var xmlDocument = new XmlDocument();
             xmlDocument.LoadXml(map2);
             var cellsNodeList = xmlDocument.GetElementsByTagName("cell");

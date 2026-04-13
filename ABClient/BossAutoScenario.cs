@@ -80,9 +80,11 @@ namespace ABClient
         private static readonly TimeSpan ReturnTimeout = TimeSpan.FromMinutes(2); // Android: RETURN_TIMEOUT_MS
 
         // Android: BOSS_EVENT_PATTERN_FLEX — парсинг события босса из чата
+        // ВАЖНО: .NET не поддерживает флаг (?u) — только (?i) для case-insensitive.
+        // Android/Java использует (?iu), в .NET используем RegexOptions.IgnoreCase
         private static readonly Regex BossEventPattern = new Regex(
-            @"(?iu)(?:\d{1,2}/\d{1,2}/\d{2,4}\s+\d{1,2}:\d{2}:\d{2}\s+)?(?:внимание!\s*случайное\s+событие!\s*)?монстр\s*[""«]?([^""»]+)[""»]?\s*(?:напал|напала|напали)\s+на\s+(?:игрока|игроков)?\s*(.+?)\s*(?:[.,:;]|$)",
-            RegexOptions.Compiled);
+            @"(?i)(?:\d{1,2}/\d{1,2}/\d{2,4}\s+\d{1,2}:\d{2}:\d{2}\s+)?(?:внимание!\s*случайное\s+событие!\s*)?монстр\s*[""«]?([^""»]+)[""»]?\s*(?:напал|напала|напали)\s+на\s+(?:игрока|игроков)?\s*(.+?)\s*(?:[.,:;]|$)",
+            RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
         /// <summary>
         /// Стадии сценария Авто-Боссов.
@@ -119,6 +121,7 @@ namespace ABClient
             if (AppVars.Profile != null)
                 AppVars.Profile.BossAutoEnabled = true;
 
+            AppLog.i("BossAuto", "ENABLED");
             ReportStatus("[BossAuto] Авто-Боссы включены. Ожидание событий в чате.");
         }
 
@@ -132,6 +135,7 @@ namespace ABClient
             if (AppVars.Profile != null)
                 AppVars.Profile.BossAutoEnabled = false;
 
+            AppLog.i("BossAuto", "DISABLED");
             StopScenario();
             ReportStatus("[BossAuto] Авто-Боссы выключены.");
         }
@@ -162,6 +166,8 @@ namespace ABClient
             var bossName = match.Groups[1].Value.Trim(); // Android: bossName from BOSS_EVENT_PATTERN_FLEX
             var victimPart = match.Groups[2].Value.Trim(); // Android: victimPart
 
+            AppLog.i("BossAuto", "CHAT_EVENT: boss=" + bossName + " victims=" + victimPart);
+
             var victimNicks = victimPart.Split(new[] { ",", " и " }, StringSplitOptions.RemoveEmptyEntries);
             if (victimNicks.Length == 0)
                 return;
@@ -184,6 +190,7 @@ namespace ABClient
             }
 
             ReportStatus($"[BossAuto] Босс {bossName} напал на {targetNick}! Начинаю поиск...");
+            AppLog.i("BossAuto", "SCENARIO_START: boss=" + _bossName + " target=" + targetNick + " origin=" + _originCell);
 
             StartTimer(5000);
 
@@ -319,6 +326,7 @@ namespace ABClient
             var jumps = path.Jumps; // Android: path.Jumps
 
             ReportStatus($"[BossAuto] Цель {targetNick} найдена! Клетка: {nearestCell} ({jumps} шагов). Иду.");
+            AppLog.i("BossAuto", "TARGET_FOUND: target=" + targetNick + " cell=" + nearestCell + " jumps=" + jumps);
 
             lock (Lock)
             {
@@ -362,6 +370,7 @@ namespace ABClient
             if (DateTime.Now - stageStart > WaitScrollTimeout) // Android: DEFAULT_WAIT_BEFORE_SCROLL_SEC
             {
                 ReportStatus("[BossAuto] Применяю Свиток Защиты...");
+                AppLog.i("BossAuto", "SCROLL_ZAS: target=" + _targetNick);
 
                 // Свиток Защиты — FastAction "i_w28_27.gif"
                 // Android: FastActionManager.fastStart → i_w28_27.gif (zas scroll)
@@ -415,6 +424,7 @@ namespace ABClient
             if (!string.IsNullOrEmpty(userInfo.FightLog) && !userInfo.FightLog.Equals("0", StringComparison.Ordinal))
             {
                 ReportStatus($"[BossAuto] Бой начался! Лог: {userInfo.FightLog}");
+                AppLog.i("BossAuto", "FIGHT_STARTED: target=" + targetNick + " flog=" + userInfo.FightLog);
                 lock (Lock)
                 {
                     _stage = BossStage.FightInProgress; // Android: FIGHT_IN_PROGRESS
@@ -453,6 +463,7 @@ namespace ABClient
             if (string.IsNullOrEmpty(userInfo.FightLog) || userInfo.FightLog.Equals("0", StringComparison.Ordinal))
             {
                 ReportStatus("[BossAuto] Бой завершён. Возврат на исходную клетку.");
+                AppLog.i("BossAuto", "FIGHT_ENDED: target=" + targetNick + " returning to " + _originCell);
                 StartReturnToOrigin(); // Android: RETURNING_TO_ORIGIN
             }
         }
@@ -543,6 +554,8 @@ namespace ABClient
         {
             StopTimer();
             AutoCompass.Stop(); // Остановка компаса если активен
+
+            AppLog.i("BossAuto", "SCENARIO_STOP");
 
             lock (Lock)
             {

@@ -208,6 +208,7 @@
     <Compile Include="BossContact.cs" />
     <Compile Include="BossMap.cs" />
     <Compile Include="BossAutoScenario.cs" />
+    <Compile Include="AppLog.cs" />
     <Compile Include="AutoCompass.cs" />
     <Compile Include="ClanWarsManager.cs" />
     <Compile Include="NeverApiSnapshot.cs" />
@@ -215,6 +216,7 @@
     <Compile Include="ChatUsersManager.cs" />
     <Compile Include="DataManager.cs" />
     <Compile Include="ExtMap\AbcCell.cs" />
+    <Compile Include="MyHelpers\FileLogger.cs" />
     <Compile Include="ExtMap\GroupCell.cs" />
     <Compile Include="ExtMap\MapPath.cs" />
     <Compile Include="ExtMap\MapPathNode.cs" />

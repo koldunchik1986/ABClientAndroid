@@ -55,12 +55,13 @@ namespace ABClient
                 Rwl.AcquireWriterLock(5000);
                 try
                 {
-                    if (File.Exists("bossusers.xml"))
+                    var bossUsersPath = Path.Combine(System.Windows.Forms.Application.StartupPath, "bossusers.xml");
+                    if (File.Exists(bossUsersPath))
                     {
                         string bossusers;
                         try
                         {
-                            bossusers = File.ReadAllText("bossusers.xml", Encoding.UTF8);
+                            bossusers = File.ReadAllText(bossUsersPath, Encoding.UTF8);
                         }
                         catch
                         {
