@@ -357,6 +357,65 @@ namespace ABClient.ABForms
             }
         }
 
+        // Обработчик кнопки "АвтоБосс" на тулбаре.
+        // Аналог Android: toggleAutoBoss → AutoFunctionsManager.toggleBossAuto().
+        // Зависимости: BossAutoScenario.Enable/Disable, AppVars.BossAutoEnabled
+        private void ButtonAutoBoss_Click(object sender, EventArgs e)
+        {
+            if (buttonAutoBoss.Checked)
+            {
+                BossAutoScenario.Enable();
+            }
+            else
+            {
+                BossAutoScenario.Disable();
+            }
+        }
+
+        // Обработчик кнопки "АвтоКомпас" на тулбаре.
+        // Аналог Android: CompasAuto.startSearch(nick) через диалог ввода ника.
+        // Зависимости: AutoCompass.Start(nick), ShowInputDialog
+        private void ButtonAutoCompass_Click(object sender, EventArgs e)
+        {
+            var nick = ShowInputDialog("АвтоКомпас", "Введите ник для поиска:");
+            if (!string.IsNullOrEmpty(nick))
+            {
+                AutoCompass.Start(nick.Trim());
+            }
+        }
+
+        // Простой диалог ввода текста. Используется для ввода ника AutoCompass.
+        // Аналог Android: AlertDialog с EditText для ввода ника.
+        private static string ShowInputDialog(string title, string prompt)
+        {
+            var input = string.Empty;
+            var form = new Form
+            {
+                Text = title,
+                Width = 350,
+                Height = 130,
+                FormBorderStyle = FormBorderStyle.FixedDialog,
+                StartPosition = FormStartPosition.CenterScreen,
+                MaximizeBox = false,
+                MinimizeBox = false
+            };
+
+            var label = new Label { Text = prompt, Left = 10, Top = 10, Width = 310 };
+            var textBox = new TextBox { Left = 10, Top = 35, Width = 310 };
+            var okButton = new Button { Text = "OK", Left = 160, Width = 75, Top = 60, DialogResult = DialogResult.OK };
+            var cancelButton = new Button { Text = "Отмена", Left = 245, Width = 75, Top = 60, DialogResult = DialogResult.Cancel };
+
+            form.Controls.AddRange(new Control[] { label, textBox, okButton, cancelButton });
+            form.AcceptButton = okButton;
+            form.CancelButton = cancelButton;
+
+            if (form.ShowDialog() == DialogResult.OK)
+                input = textBox.Text;
+
+            form.Dispose();
+            return input;
+        }
+
         /*
         private void buttonAutoTorg_Click(object sender, EventArgs e)
         {

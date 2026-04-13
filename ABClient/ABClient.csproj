@@ -109,8 +109,8 @@
     <Prefer32Bit>false</Prefer32Bit>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="Newtonsoft.Json, Version=8.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
-      <HintPath>..\packages\Newtonsoft.Json.8.0.2\lib\net20\Newtonsoft.Json.dll</HintPath>
+    <Reference Include="Newtonsoft.Json">
+      <HintPath>Newtonsoft.Json.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="System" />
@@ -207,6 +207,10 @@
     <Compile Include="Bookmark.cs" />
     <Compile Include="BossContact.cs" />
     <Compile Include="BossMap.cs" />
+    <Compile Include="BossAutoScenario.cs" />
+    <Compile Include="AutoCompass.cs" />
+    <Compile Include="ClanWarsManager.cs" />
+    <Compile Include="NeverApiSnapshot.cs" />
     <Compile Include="ChatUser.cs" />
     <Compile Include="ChatUsersManager.cs" />
     <Compile Include="DataManager.cs" />

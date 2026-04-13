@@ -395,6 +395,23 @@ namespace ABClient
 
         internal static DateTime NeverTimer = DateTime.MinValue;
 
+        // AutoCompass — автоматический поиск по компасу
+        // Android: CompasAuto.java → autoCompassEnabled, compassSnapshot
+        internal static bool AutoCompassEnabled; // Android: auto_function_auto_compass
+        internal static PinfoCompassSnapshot CompassSnapshot; // Android: PinfoCompassSnapshot
+
+        // AutoBoss — оркестратор сценария авто-боссов
+        // Android: BossAuto.java → BossAutoEnabled, bossName, targetNick, originRegNum
+        internal static bool BossAutoEnabled; // Android: KEY_AUTO_BOSS / PREF_AUTO_BOSS
+        internal static DateTime BossSearchStartTime; // Android: bossSearchStartTime
+        internal static int BossSearchCount; // Android: bossSearchCount
+        internal static string LastBossFoundNick; // Android: lastBossFoundNick
+        internal static string LastBossFoundLoc; // Android: lastBossFoundLoc
+
+        // ClanWars — список текущих клановых боёв
+        // Android: BossAuto.java → ClanWarInfo (bossSelfClanToken / bossTargetClanToken)
+        internal static List<ClanWarInfo> ClanWarsList = new List<ClanWarInfo>();
+
         static AppVars()
         {
             MyCharsOld = new Dictionary<string, string>();

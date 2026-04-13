@@ -8,9 +8,47 @@ namespace ABClient.MyForms
 
     internal partial class FormSettingsGeneral : Form
     {
+        private readonly CheckBox checkBossAutoEnabled = new CheckBox();
+        private readonly CheckBox checkBossAutoAttack = new CheckBox();
+        private readonly CheckBox checkBossAutoTrace = new CheckBox();
+        private readonly CheckBox checkBossAutoReport = new CheckBox();
+        private readonly CheckBox checkCompassAutoEnabled = new CheckBox();
+        private readonly CheckBox checkCompassAutoOnBattle = new CheckBox();
+        private readonly CheckBox checkCompassAutoAttack = new CheckBox();
+        private readonly CheckBox checkCompassAutoWhisper = new CheckBox();
+        private readonly NumericUpDown numCompassSearchRadius = new NumericUpDown();
+
         internal FormSettingsGeneral()
         {
             InitializeComponent();
+
+            var bossGroup = new GroupBox { Text = @"Авто-Боссы", Dock = DockStyle.Top, Height = 100 };
+            checkBossAutoEnabled.Text = @"Включить авто-боссов";
+            checkBossAutoAttack.Text = @"Автонападение при нахождении";
+            checkBossAutoTrace.Text = @"Слежение за контактами боссов";
+            checkBossAutoReport.Text = @"Уведомление в клан-чат";
+            checkBossAutoEnabled.Left = 10; checkBossAutoEnabled.Top = 20;
+            checkBossAutoAttack.Left = 10; checkBossAutoAttack.Top = 42;
+            checkBossAutoTrace.Left = 10; checkBossAutoTrace.Top = 64;
+            checkBossAutoReport.Left = 200; checkBossAutoReport.Top = 20;
+            bossGroup.Controls.AddRange(new Control[] { checkBossAutoEnabled, checkBossAutoAttack, checkBossAutoTrace, checkBossAutoReport });
+            tabPage1.Controls.Add(bossGroup);
+
+            var compassGroup = new GroupBox { Text = @"Авто-Компас", Dock = DockStyle.Top, Height = 120 };
+            checkCompassAutoEnabled.Text = @"Включить автокомпас";
+            checkCompassAutoOnBattle.Text = @"Искать при бое цели";
+            checkCompassAutoAttack.Text = @"Автоперемещение к цели";
+            checkCompassAutoWhisper.Text = @"Шептать при нахождении";
+            numCompassSearchRadius.Minimum = 1; numCompassSearchRadius.Maximum = 50;
+            numCompassSearchRadius.Value = 5; numCompassSearchRadius.Width = 50;
+            var lblRadius = new Label { Text = @"Радиус (шагов):", Left = 200, Top = 20, AutoSize = true };
+            checkCompassAutoEnabled.Left = 10; checkCompassAutoEnabled.Top = 20;
+            checkCompassAutoOnBattle.Left = 10; checkCompassAutoOnBattle.Top = 42;
+            checkCompassAutoAttack.Left = 10; checkCompassAutoAttack.Top = 64;
+            checkCompassAutoWhisper.Left = 10; checkCompassAutoWhisper.Top = 86;
+            numCompassSearchRadius.Left = 310; numCompassSearchRadius.Top = 18;
+            compassGroup.Controls.AddRange(new Control[] { checkCompassAutoEnabled, checkCompassAutoOnBattle, checkCompassAutoAttack, checkCompassAutoWhisper, lblRadius, numCompassSearchRadius });
+            tabPage1.Controls.Add(compassGroup);
 
             checkBoxDoAutoDrinkBlaz.Checked = AppVars.Profile.DoAutoDrinkBlaz;
             textBoxAutoDrinkBlazTied.Text = AppVars.Profile.AutoDrinkBlazTied.ToString(CultureInfo.InvariantCulture);
@@ -213,6 +251,17 @@ namespace ABClient.MyForms
                     radioSayPair.Checked = true;
                     break;
             }
+
+            checkBossAutoEnabled.Checked = AppVars.Profile.BossAutoEnabled;
+            checkBossAutoAttack.Checked = AppVars.Profile.BossAutoAttack;
+            checkBossAutoTrace.Checked = AppVars.Profile.BossAutoTrace;
+            checkBossAutoReport.Checked = AppVars.Profile.BossAutoReport;
+
+            checkCompassAutoEnabled.Checked = AppVars.Profile.CompassAutoEnabled;
+            checkCompassAutoOnBattle.Checked = AppVars.Profile.CompassAutoOnBattle;
+            checkCompassAutoAttack.Checked = AppVars.Profile.CompassAutoAttack;
+            checkCompassAutoWhisper.Checked = AppVars.Profile.CompassAutoWhisper;
+            numCompassSearchRadius.Value = AppVars.Profile.CompassSearchRadius;
         }
 
         private void OnButtonOkClick(object sender, EventArgs e)
@@ -420,6 +469,17 @@ namespace ABClient.MyForms
 
             if (radioSayPair.Checked)
                 AppVars.Profile.BossSay = LezSayType.Pair;
+
+            AppVars.Profile.BossAutoEnabled = checkBossAutoEnabled.Checked;
+            AppVars.Profile.BossAutoAttack = checkBossAutoAttack.Checked;
+            AppVars.Profile.BossAutoTrace = checkBossAutoTrace.Checked;
+            AppVars.Profile.BossAutoReport = checkBossAutoReport.Checked;
+
+            AppVars.Profile.CompassAutoEnabled = checkCompassAutoEnabled.Checked;
+            AppVars.Profile.CompassAutoOnBattle = checkCompassAutoOnBattle.Checked;
+            AppVars.Profile.CompassAutoAttack = checkCompassAutoAttack.Checked;
+            AppVars.Profile.CompassAutoWhisper = checkCompassAutoWhisper.Checked;
+            AppVars.Profile.CompassSearchRadius = (int)numCompassSearchRadius.Value;
 
             AppVars.Profile.Save();
         }

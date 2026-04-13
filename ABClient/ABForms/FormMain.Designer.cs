@@ -166,6 +166,8 @@ namespace ABClient.ABForms
             this.buttonGameLogOn = new System.Windows.Forms.ToolStripButton();
             this.toolStripSeparator5 = new System.Windows.Forms.ToolStripSeparator();
             this.buttonGameScreen = new System.Windows.Forms.ToolStripButton();
+            this.buttonAutoBoss = new System.Windows.Forms.ToolStripButton();
+            this.buttonAutoCompass = new System.Windows.Forms.ToolStripButton();
             this.ic6x16 = new System.Windows.Forms.ImageList(this.components);
             this.toolStripButton1 = new System.Windows.Forms.ToolStripButton();
             this.toolStripMenuItem2 = new System.Windows.Forms.ToolStripMenuItem();
@@ -1135,7 +1137,9 @@ namespace ABClient.ABForms
             this.toolStripSeparator10,
             this.buttonGameLogOn,
             this.toolStripSeparator5,
-            this.buttonGameScreen});
+            this.buttonGameScreen,
+            this.buttonAutoBoss,
+            this.buttonAutoCompass});
             this.toolbarGame.Location = new System.Drawing.Point(3, 3);
             this.toolbarGame.Name = "toolbarGame";
             this.toolbarGame.Size = new System.Drawing.Size(804, 28);
@@ -1454,6 +1458,27 @@ namespace ABClient.ABForms
             this.buttonGameScreen.Size = new System.Drawing.Size(23, 20);
             this.buttonGameScreen.ToolTipText = "Снимок игрового экрана";
             this.buttonGameScreen.Click += new System.EventHandler(this.buttonForumScreen_Click);
+            // 
+            // buttonAutoBoss
+            // 
+            this.buttonAutoBoss.CheckOnClick = true;
+            this.buttonAutoBoss.DisplayStyle = System.Windows.Forms.ToolStripItemDisplayStyle.Text;
+            this.buttonAutoBoss.ImageTransparentColor = System.Drawing.Color.Magenta;
+            this.buttonAutoBoss.Name = "buttonAutoBoss";
+            this.buttonAutoBoss.Size = new System.Drawing.Size(72, 25);
+            this.buttonAutoBoss.Text = "АвтоБосс";
+            this.buttonAutoBoss.ToolTipText = "Автоматический поиск и нападение на боссов";
+            this.buttonAutoBoss.Click += new System.EventHandler(this.ButtonAutoBoss_Click);
+            // 
+            // buttonAutoCompass
+            // 
+            this.buttonAutoCompass.DisplayStyle = System.Windows.Forms.ToolStripItemDisplayStyle.Text;
+            this.buttonAutoCompass.ImageTransparentColor = System.Drawing.Color.Magenta;
+            this.buttonAutoCompass.Name = "buttonAutoCompass";
+            this.buttonAutoCompass.Size = new System.Drawing.Size(90, 25);
+            this.buttonAutoCompass.Text = "АвтоКомпас";
+            this.buttonAutoCompass.ToolTipText = "Автоматический поиск по компасу";
+            this.buttonAutoCompass.Click += new System.EventHandler(this.ButtonAutoCompass_Click);
             // 
             // ic6x16
             // 
@@ -2415,5 +2440,7 @@ namespace ABClient.ABForms
         private ToolStripMenuItem miAutoAttack5;
         private ToolStripMenuItem miSetGroupToolId5;
         private ToolStripMenuItem cmtsToolId5;
+        private ToolStripButton buttonAutoBoss;
+        private ToolStripButton buttonAutoCompass;
     }
 }

@@ -527,6 +527,26 @@ namespace ABClient.MyProfile
 
         internal LezSayType BossSay = LezSayType.No;
 
+        // AutoCompass — настройки автокомпаса
+        // Android: CompasAuto.java / SharedPreferences → PREF_COMPASS_*
+        // Сериализация: UserConfigSave → <compassauto enabled="" onbattle="" attack="" whisper="" searchradius=""/>
+        internal bool CompassAutoEnabled; // Android: compassAutoEnabled / PREF_COMPASS_AUTO_ENABLED
+        internal bool CompassAutoOnBattle; // Android: compassAutoOnBattle / PREF_COMPASS_ON_BATTLE
+        internal string CompassFilterWords; // Android: compassFilterWords
+        internal int CompassSearchRadius; // Android: compassSearchRadius (шагов, по умолчанию 5)
+        internal bool CompassAutoAttack; // Android: compassAutoAttack / PREF_COMPASS_AUTO_ATTACK
+        internal bool CompassAutoWhisper; // Android: compassAutoWhisper / PREF_COMPASS_AUTO_WHISPER
+
+        // AutoBoss — настройки авто-боссов
+        // Android: BossAuto.java / SharedPreferences → PREF_AUTO_BOSS_*
+        // Сериализация: UserConfigSave → <bossauto enabled="" attack="" trace="" report=""/>
+        internal bool BossAutoEnabled; // Android: PREF_AUTO_BOSS / auto_function_auto_boss
+        internal string BossSearchWords; // Android: bossSearchWords
+        internal bool BossAutoAttack; // Android: bossAutoAttack — автонападение при нахождении
+        internal bool BossAutoTrace; // Android: PREF_AUTO_BOSS_TRACK_CURRENT_WARS
+        internal int BossSearchInterval; // Android: PREF_AUTO_BOSS_SEARCH_TIMEOUT_SEC (секунды)
+        internal bool BossAutoReport; // Android: PREF_AUTO_BOSS_CLAN_NOTIFY — уведомление в клан
+
         /// <summary>
         /// Шифрованный флеш-пароль пользователя.
         /// </summary>

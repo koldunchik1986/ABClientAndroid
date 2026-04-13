@@ -12,32 +12,74 @@ namespace ABClient
 
         private static string GetUserId(string nick)
         {
-            string id;
-            if (NameToId.TryGetValue(nick, out id))
-                return id;
+            if (string.IsNullOrEmpty(nick))
+                return null;
 
-            var encnick = HelperConverters.NickEncode(nick);
+            var normalizedNick = nick.Trim();
+
+            // Кэш: in-memory lookup (Android: nickIdCache + nameToId)
+            string id;
+            try
+            {
+                NameToIdLock.AcquireReaderLock(1000);
+                try
+                {
+                    if (NameToId.TryGetValue(normalizedNick, out id) && !string.IsNullOrEmpty(id))
+                        return id;
+                }
+                finally
+                {
+                    NameToIdLock.ReleaseReaderLock();
+                }
+            }
+            catch (ApplicationException)
+            {
+            }
+
+            // getid.cgi?{encnick} → ответ: "id|nick"
+            // Android: resolvePlayerIdByNick → getid.cgi → parts[0].trim()
+            var encnick = HelperConverters.NickEncode(normalizedNick);
             var url = $"http://www.neverlands.ru/modules/api/getid.cgi?{encnick}";
             var data = GetInfo(url);
             if (string.IsNullOrEmpty(data))
                 return null;
 
             var spar = data.Split('|');
-            if (spar.Length != 2)
+            if (spar.Length < 1)
                 return null;
 
-            id = spar[0];
-            var name = spar[1];
+            id = spar[0] == null ? string.Empty : spar[0].Trim();
+
+            // Валидация: id должен быть непустой строкой (число)
+            // Android: isEmpty(id) → return null
+            if (string.IsNullOrEmpty(id))
+                return null;
+
+            // Получаем нормализованное имя из ответа (spar[1])
+            var resolvedNick = spar.Length > 1 && !string.IsNullOrEmpty(spar[1])
+                ? spar[1].Trim()
+                : normalizedNick;
 
             try
             {
                 NameToIdLock.AcquireWriterLock(1000);
                 try
                 {
-                    if (NameToId.ContainsKey(name))
-                        NameToId[name] = id;
+                    // Кэшируем по ключу из ответа сервера (resolvedNick)
+                    // Android: cacheNickIdRecord → upsertNickIdMappingLocked
+                    if (NameToId.ContainsKey(resolvedNick))
+                        NameToId[resolvedNick] = id;
                     else
-                        NameToId.Add(name, id);
+                        NameToId.Add(resolvedNick, id);
+
+                    // Также кэшируем по оригинальному нику (если отличается)
+                    if (!resolvedNick.Equals(normalizedNick, StringComparison.OrdinalIgnoreCase))
+                    {
+                        if (NameToId.ContainsKey(normalizedNick))
+                            NameToId[normalizedNick] = id;
+                        else
+                            NameToId.Add(normalizedNick, id);
+                    }
                 }
                 finally
                 {
@@ -70,7 +112,11 @@ namespace ABClient
                 return null;
 
             var sp = data.Split('\n');
-            if (sp.Length != 5)
+            if (sp.Length < 4)
+                return null;
+
+            // Строка 0: "1|slots_data" — обрезаем префикс "1|"
+            if (sp[0].Length < 2)
                 return null;
 
             userInfo.SlotsCodes = new string[0];
@@ -119,7 +165,7 @@ namespace ABClient
             }
 
             var sp3 = sp[2].Substring(2).Split('|');
-            if (sp3.Length < 14)
+            if (sp3.Length < 15) // sp3[14] = FightLog — нужно минимум 15 элементов
                 return null;
 
             userInfo.Nick = sp3[0].Trim();
@@ -141,8 +187,8 @@ namespace ABClient
             if (!sp3[12].Equals("0"))
                 userInfo.Online = true;
 
-            userInfo.Location = sp3[13];
-            userInfo.FightLog = sp3[14];
+            userInfo.Location = sp3.Length > 13 ? sp3[13] : string.Empty;
+            userInfo.FightLog = sp3.Length > 14 ? sp3[14] : "0";
 
             var sp4 = sp[3].Substring(2).Split('|');
             if (sp4.Length < 5)

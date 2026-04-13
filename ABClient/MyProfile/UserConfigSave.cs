@@ -712,6 +712,39 @@ namespace ABClient.MyProfile
                     xmlWriter.WriteValue(SkinAuto);
                     xmlWriter.WriteEndElement();
 
+                    xmlWriter.WriteStartElement("bossauto");
+                    xmlWriter.WriteStartAttribute("enabled");
+                    xmlWriter.WriteValue(BossAutoEnabled);
+                    xmlWriter.WriteEndAttribute();
+                    xmlWriter.WriteStartAttribute("attack");
+                    xmlWriter.WriteValue(BossAutoAttack);
+                    xmlWriter.WriteEndAttribute();
+                    xmlWriter.WriteStartAttribute("trace");
+                    xmlWriter.WriteValue(BossAutoTrace);
+                    xmlWriter.WriteEndAttribute();
+                    xmlWriter.WriteStartAttribute("report");
+                    xmlWriter.WriteValue(BossAutoReport);
+                    xmlWriter.WriteEndAttribute();
+                    xmlWriter.WriteEndElement();
+
+                    xmlWriter.WriteStartElement("compassauto");
+                    xmlWriter.WriteStartAttribute("enabled");
+                    xmlWriter.WriteValue(CompassAutoEnabled);
+                    xmlWriter.WriteEndAttribute();
+                    xmlWriter.WriteStartAttribute("onbattle");
+                    xmlWriter.WriteValue(CompassAutoOnBattle);
+                    xmlWriter.WriteEndAttribute();
+                    xmlWriter.WriteStartAttribute("attack");
+                    xmlWriter.WriteValue(CompassAutoAttack);
+                    xmlWriter.WriteEndAttribute();
+                    xmlWriter.WriteStartAttribute("whisper");
+                    xmlWriter.WriteValue(CompassAutoWhisper);
+                    xmlWriter.WriteEndAttribute();
+                    xmlWriter.WriteStartAttribute("searchradius");
+                    xmlWriter.WriteValue(CompassSearchRadius);
+                    xmlWriter.WriteEndAttribute();
+                    xmlWriter.WriteEndElement();
+
                     // Запись хвоста конфигурации
 
                     xmlWriter.WriteEndElement();

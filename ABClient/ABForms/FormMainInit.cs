@@ -116,6 +116,12 @@
 
             menuitemGuamod.Checked = AppVars.Profile.DoGuamod;
 
+            // AutoBoss — инициализация кнопки из профиля
+            // Android: AutoFunctionsManager → auto_function_auto_boss SharedPreferences
+            // Зависимости: AppVars.BossAutoEnabled, AppVars.Profile.BossAutoEnabled, BossAutoScenario
+            buttonAutoBoss.Checked = AppVars.Profile.BossAutoEnabled;
+            AppVars.BossAutoEnabled = AppVars.Profile.BossAutoEnabled;
+
             UpdateStat();
 
             panelRight.Width = AppVars.Profile.Splitter.Width;

@@ -626,6 +626,28 @@ namespace ABClient.MyProfile
                     xmlReader.Read();
                     SkinAuto = xmlReader.ReadContentAsBoolean();
                     break;
+
+                case "bossauto":
+                    {
+                        bool val;
+                        if (bool.TryParse(xmlReader["enabled"], out val)) BossAutoEnabled = val;
+                        if (bool.TryParse(xmlReader["attack"], out val)) BossAutoAttack = val;
+                        if (bool.TryParse(xmlReader["trace"], out val)) BossAutoTrace = val;
+                        if (bool.TryParse(xmlReader["report"], out val)) BossAutoReport = val;
+                    }
+                    break;
+
+                case "compassauto":
+                    {
+                        bool val;
+                        int ival;
+                        if (bool.TryParse(xmlReader["enabled"], out val)) CompassAutoEnabled = val;
+                        if (bool.TryParse(xmlReader["onbattle"], out val)) CompassAutoOnBattle = val;
+                        if (bool.TryParse(xmlReader["attack"], out val)) CompassAutoAttack = val;
+                        if (bool.TryParse(xmlReader["whisper"], out val)) CompassAutoWhisper = val;
+                        if (int.TryParse(xmlReader["searchradius"], out ival)) CompassSearchRadius = ival;
+                    }
+                    break;
             }
         }
 

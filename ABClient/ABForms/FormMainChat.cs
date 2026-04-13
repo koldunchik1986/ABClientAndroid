@@ -262,6 +262,12 @@ namespace ABClient.ABForms
                 message = string.Concat(message.Substring(0, pos1), msg, message.Substring(pos2 + 3));
             } while (true);
 
+            // BossAutoScenario.OnChatMessage — перехват события босса из чата.
+            // Аналог Android: BossAuto.onChatEvent(chatText) → BOSS_EVENT_PATTERN_FLEX
+            // Зависимости: AppVars.BossAutoEnabled, AppVars.Profile.BossAutoEnabled,
+            //   BossEventPattern (regex), AutoCompass.Start()
+            BossAutoScenario.OnChatMessage(message);
+
             Chat.AddStringToChat(message);
             return message;
         }
