@@ -91,6 +91,22 @@ namespace ABClient.MyGuamod
             }
 
             newresultOne = string.IsNullOrEmpty(newresultOne) ? "сбой" : newresultOne.Trim();
+
+            // Отладочный вывод в чат: распознанные цифры + auto-detect info
+            var debugInfo = NeuroBase.DebugInfo();
+            try
+            {
+                if (AppVars.MainForm != null)
+                {
+                    AppVars.MainForm.BeginInvoke(
+                        new UpdateChatDelegate(AppVars.MainForm.UpdateChat),
+                        "[CAPTCHA_DEBUG] " + debugInfo);
+                }
+            }
+            catch (InvalidOperationException)
+            {
+            }
+
             if (!string.IsNullOrEmpty(newresultOne) && (newresultOne[0] != '0') && (newresultOne[0] != '1'))
             {
                 try

@@ -12,23 +12,97 @@
     {
         /*private const string FileBaseName = "abneuro.dat";*/
 
-        private readonly int ConstNumDigits = 5;
+        private int ConstNumDigits = 5;
         private static readonly List<NeuroVector> listVectors = new List<NeuroVector>();
-        private readonly List<double[]> listMatrix;
-        private readonly double[] arrayDistances;
+        private List<double[]> listMatrix;
+        private double[] arrayDistances;
         /*private static readonly string[] arrayVotes = new string[5];*/
         private static readonly StringBuilder gyp = new StringBuilder();
         private static long elapsedTime;
 
+        // Отладочные данные: расстояния до ближайшего вектора для каждой цифры
+        private static double[] debugDistances;
+        private static int debugNumDigits;
+        private static int debugWidth;
+        private static int debugHeight;
+        private static int debugXLeft;
+        private static int debugXRight;
+        private static int debugRealWidth;
+
         internal NeuroBase()
         {
-            if (ConstNumDigits == 0)
-            {
-                ConstNumDigits = Helpers.Dice.Make(4, 6);
-            }
+            // ConstNumDigits определяется автоматически в Calculate()
+            // по количеству групп чёрных пикселей на изображении капчи.
+            // Ранее было захардкожено 5, но сервер может отдавать 4 или 6 цифр.
+            // Мёртвый код Dice.Make(4,6) удалён — автоопределение надёжнее.
 
             listMatrix = new List<double[]>(ConstNumDigits);
             arrayDistances = new double[ConstNumDigits];
+        }
+
+        /// <summary>
+        /// Отладочная информация о последнем распознавании.
+        /// Формат: "RECOGNIZE_DEBUG: digits=N, w=W, h=H, xleft=XL, xright=XR, realwidth=RW, result=XXXXX, dist=[d0,d1,...]"
+        /// </summary>
+        internal static string DebugInfo()
+        {
+            if (debugDistances == null)
+                return "RECOGNIZE_DEBUG: no data yet";
+
+            var distStr = new StringBuilder("[");
+            for (var i = 0; i < debugDistances.Length; i++)
+            {
+                if (i > 0) distStr.Append(", ");
+                distStr.Append(debugDistances[i].ToString("F3"));
+            }
+            distStr.Append("]");
+
+            return $"RECOGNIZE_DEBUG: digits={debugNumDigits}, w={debugWidth}, h={debugHeight}, " +
+                   $"xleft={debugXLeft}, xright={debugXRight}, realwidth={debugRealWidth}, " +
+                   $"result={gyp}, dist={distStr}";
+        }
+
+        /// <summary>
+        /// Автоопределение количества цифр на капче.
+        /// Алгоритм: считаем количество вертикальных групп чёрных пикселей (digits),
+        /// разделённых пробелами (столбцы без чёрных пикселей).
+        /// Минимум 4, максимум 7 цифр.
+        /// </summary>
+        private static int CountDigitGroups(bool[] columnHasBlack, int xleft, int xright)
+        {
+            var count = 0;
+            var inGroup = false;
+            var gapColumns = 0;
+            var minGap = 2; // Минимум 2 пустых столбца подряд = разделитель между цифрами
+
+            for (var x = xleft; x <= xright; x++)
+            {
+                if (columnHasBlack[x])
+                {
+                    gapColumns = 0;
+                    if (!inGroup)
+                    {
+                        count++;
+                        inGroup = true;
+                    }
+                }
+                else
+                {
+                    if (inGroup)
+                    {
+                        gapColumns++;
+                        if (gapColumns >= minGap)
+                        {
+                            inGroup = false;
+                        }
+                    }
+                }
+            }
+
+            // Ограничение: от 4 до 7 цифр (сервер обычно 5, но может быть 4)
+            if (count < 4) count = 4;
+            if (count > 7) count = 7;
+            return count;
         }
 
         internal static string Gyp()
@@ -71,6 +145,11 @@
             var graymax = 0;
             var width = bitmapSource.Size.Width - 2;
             var height = bitmapSource.Size.Height - 2;
+
+            // Отладка: сохраняем размер исходной капчи
+            debugWidth = width;
+            debugHeight = height;
+
             for (var y = 0; y < height; y++)
             {
                 for (var x = 0; x < width; x++)
@@ -94,10 +173,13 @@
                 var grayMiddle = (graymax + graymin) / 2;
                 var arrayTops = new int[width];
                 var arrayBottoms = new int[width];
+                // Отслеживаем какие столбцы содержат чёрные пиксели (для автоопределения кол-ва цифр)
+                var columnHasBlack = new bool[width];
                 for (var i = 0; i < width; i++)
                 {
                     arrayTops[i] = -1;
                     arrayBottoms[i] = -1;
+                    columnHasBlack[i] = false;
                 }
 
                 var xleft = -1;
@@ -123,6 +205,7 @@
                                 }
 
                                 xright = x;
+                                columnHasBlack[x] = true;
 
                                 if (arrayTops[x] == -1)
                                 {
@@ -134,9 +217,25 @@
                         }
                     }
 
+                    // Автоопределение количества цифр на капче
+                    // Считаем группы чёрных пикселей вместо захардкоженного ConstNumDigits = 5
+                    if (xleft != -1 && xright != -1)
+                    {
+                        ConstNumDigits = CountDigitGroups(columnHasBlack, xleft, xright);
+                    }
+
+                    // Отладка: сохраняем границы
+                    debugXLeft = xleft;
+                    debugXRight = xright;
+                    debugNumDigits = ConstNumDigits;
+
                     listMatrix.Clear();
                     gyp.Length = 0;
+                    arrayDistances = new double[ConstNumDigits];
+
                     var realwidth = xright - xleft;
+                    debugRealWidth = realwidth;
+
                     for (var numchar = 0; numchar < ConstNumDigits; numchar++)
                     {
                         var xcleft = ((numchar * realwidth) / ConstNumDigits) + xleft;
@@ -193,6 +292,10 @@
                             }
                         }
                     }
+
+                    // Отладка: сохраняем расстояния для диагностики качества распознавания
+                    debugDistances = new double[ConstNumDigits];
+                    Array.Copy(arrayDistances, debugDistances, ConstNumDigits);
                 }
             }
 
