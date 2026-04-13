@@ -584,6 +584,10 @@ public final class FishAjaxPhp {
             if (isFightLikelyActiveForFishCycle()) {
                 AppLog.d(TAG, "AUTO_FISH_TRACE cycle gate by fight markers, wait="
                         + FISH_FIGHT_GUARD_DELAY_MS + "ms, attempt=" + attempt + ", token=" + cycleToken);
+                // После снятия боевых маркеров нужна свежая InfoApi-проверка снастей:
+                // сброс кэша гарантирует preflight-путь и shouldBypassCooldown=true.
+                AppVars.AutoFishCheckUd = true;
+                lastAutoFishInfoApiPrecheckAtMs = 0L;
                 webView.postDelayed(() -> kickFishCycleAttempt(cycleToken, attempt), FISH_FIGHT_GUARD_DELAY_MS);
                 return;
             }
@@ -636,6 +640,9 @@ public final class FishAjaxPhp {
                     if (attempt >= FISH_CYCLE_MAX_ATTEMPTS) {
                         AppLog.w(TAG, TAG, "AUTO_FISH_TRACE preflight exhausted attempts=" + attempt + ", token=" + cycleToken);
                         requestAutoFishBootstrap("preflight_exhausted");
+                        // Если сервер вернётся за 60с — новый kickFishCycleAttempt возобновит цикл
+                        // без ожидания внешнего af_tick или ручного перезапуска.
+                        scheduleFreshFishCycleKick(60_000L);
                         return;
                     }
                     AppLog.d(TAG, TAG, "AUTO_FISH_TRACE preflight retry " + (attempt + 1) + "/" + FISH_CYCLE_MAX_ATTEMPTS);
@@ -804,6 +811,34 @@ public final class FishAjaxPhp {
             url.append("&ts=").append(System.currentTimeMillis());
             Log.d(TAG, "AUTO_FISH_TRACE recovery bootstrap: " + url);
             webView.loadUrl(url.toString());
+        });
+    }
+
+    /**
+     * Сбрасывает cycle-token и планирует свежий kickFishCycleAttempt через {@code delayMs}.
+     *
+     * После любого сбоя (hard-stop no-gear, elixir, preflight-exhausted) цикл нужно перезапустить
+     * именно через kickFishCycleAttempt, а не через bootstrap, потому что только он загружает URL
+     * с af_preflight=1, что является обязательным условием для shouldBypassCooldown=true в
+     * mainPhpPrecheckFishingHandsByInfoApi. Без bypass InfoApi throttled → gear-wear chain мертва.
+     */
+    private static void scheduleFreshFishCycleKick(long delayMs) {
+        if (!isAutoFishEnabled()) return;
+        long newToken = System.currentTimeMillis();
+        lastFishCycleToken = newToken;
+        AppVars.NeverTimer = 0L;
+        String msg = "AUTO_FISH_TRACE scheduleFreshFishCycleKick: newToken=" + newToken + ", delayMs=" + delayMs;
+        AppLog.d(TAG, msg);
+        MainActivity activity = (AppVars.mainActivity == null) ? null : AppVars.mainActivity.get();
+        if (activity == null) {
+            AppLog.w(TAG, "AUTO_FISH_TRACE scheduleFreshFishCycleKick: activity=null, skip");
+            return;
+        }
+        activity.runOnUiThread(() -> {
+            WebView webView = activity.getMainWebView();
+            if (webView != null) {
+                webView.postDelayed(() -> kickFishCycleAttempt(newToken, 1), delayMs);
+            }
         });
     }
 
@@ -1389,11 +1424,17 @@ public final class FishAjaxPhp {
     private static void handleFishNoGearHardStop(String address) {
         AppVars.AutoFishCheckUd = true;
         AppVars.AutoFishWearUd = false;
-        String msg = "AUTO_FISH_TRACE hard-stop no-gear: schedule gear recovery bootstrap, address=" + address;
+        // Сброс cooldown InfoApi: следующий kickFishCycleAttempt получит shouldBypassCooldown=true
+        // (isPreflightAddress=true в af_cycle=1&af_preflight=1), что запустит полную InfoApi-проверку.
+        lastAutoFishInfoApiPrecheckAtMs = 0L;
+        AppVars.suppressBackgroundProbesDuringFishing = false;
+        String msg = "AUTO_FISH_TRACE hard-stop no-gear: schedule gear recovery cycle, address=" + address;
         AppLog.w(TAG, TAG, msg);
         pushChatMessage(MainPhp.buildServerChatTimeHtmlExternal()
                 + "<font color=#cc6600><b>[Авто-рыбалка] Нет снастей в руках. Запускаю проверку и переодевание удочки.</b></font>");
-        requestAutoFishBootstrap("missing_gear_server");
+        // kickFishCycleAttempt (через scheduleFreshFishCycleKick) загружает af_preflight=1,
+        // что обязательно для shouldBypassCooldown=true и корректного gear-wear recovery.
+        scheduleFreshFishCycleKick(1000L);
     }
 
     /**
@@ -2628,6 +2669,9 @@ public final class FishAjaxPhp {
                     if (FishAjaxPhp.isAutoFishEnabled()) {
                         AppVars.ProbeForceNeedAutofish = true;
                         AppLog.d(TAG, "AUTO_FISH_TRACE elixir resolved during cooldown, forcing autofish probe");
+                        // Гарантируем перезапуск цикла: ProbeForceNeedAutofish ждёт af_tick,
+                        // но NeverTimer мог истечь пока был FastNeed — cycle token устарел.
+                        scheduleFreshFishCycleKick(300L);
                     }
                     return null;
                 }
@@ -2656,6 +2700,8 @@ public final class FishAjaxPhp {
                 AppVars.ProbeForceNeedAutofish = true;
                 String msg = "AUTO_FISH_TRACE drink cooldown finished, forcing autofish probe";
                 AppLog.d(TAG, msg);
+                // Гарантируем перезапуск: если NeverTimer истёк раньше конца cooldown'а, cycle мёртв.
+                scheduleFreshFishCycleKick(300L);
             }
         }
         mainPhpUpdateTied(html);
