@@ -1,23 +1,43 @@
-# Анализ проекта ABClient (согласно ABClient.csproj)
 
-Этот файл отслеживает общий статус реализации (портирования) всех компонентов ПК-версии на Android.
-**Источник истины**: `ABClient\ABClient.csproj` — только файлы, включённые в `<Compile>`, являются активными.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# Анализ проекта ABClient — Сводный файл портирования
+
+**Обновлено**: 2026-04-12  
+**Источник истины**: `ABClient\ABClient.csproj` + полное сканирование диска
 
 ## Мёртвые файлы (есть на диске, но НЕ в .csproj — НЕ компилируются)
 
 Следующие файлы **не включены** в .csproj и не должны портироваться:
 
-| Файл | Папка | Примечание |
+| Файл | Папка | Заменён на |
 | ---- | ----- | ---------- |
-| `Converters.cs` | Helpers | Заменён на `MyHelpers\HelperConverters.cs` |
+| `Converters.cs` | Helpers | `MyHelpers\HelperConverters.cs` |
 | `HelperHttp.cs` | MyHelpers | Не используется |
-| `HelperDice.cs` | MyHelpers | Заменён на `Helpers\Dice.cs` |
-| `AskPassword.cs` | Forms | Заменён на `MyForms\FormAskPassword.cs` |
-| `AutoLogon.cs` | Forms | Заменён на `MyForms\FormAutoLogon.cs` |
-| `FormProfile.cs` | Forms | Заменён на `MyForms\FormProfile.cs` |
-| `FormProfiles.cs` | Forms | Заменён на `MyForms\FormProfiles.cs` |
-| `NewPassword.cs` | Forms | Заменён на `MyForms\FormNewPassword.cs` |
-| `MapPath_0101.cs` | ExtMap | Старая версия, не используется |
+| `HelperDice.cs` | MyHelpers | `Helpers\Dice.cs` |
+| `AskPassword.cs` | Forms | `MyForms\FormAskPassword.cs` |
+| `AutoLogon.cs` | Forms | `MyForms\FormAutoLogon.cs` |
+| `FormProfile.cs` | Forms | `MyForms\FormProfile.cs` |
+| `FormProfiles.cs` | Forms | `MyForms\FormProfiles.cs` |
+| `NewPassword.cs` | Forms | `MyForms\FormNewPassword.cs` |
+| `MapPath_0101.cs` | ExtMap | Старая версия |
 | `MapPath_0103.cs` | ExtMap | Старая версия, не используется |
 
 ---
@@ -30,27 +50,51 @@
 - `[-]` — Не требует портирования (Windows-специфика)
 - `[ ]` — Не реализована
 
-| Папка | Описание | Файлов в .csproj | Статус реализации |
-| ----- | -------- | ---------------- | ----------------- |
-| `PostFilter` | Фильтры ответов сервера | 59 .cs + json2.js | `[+]` Полностью (все основные фильтры портированы в `ru.neverlands.abclient.postfilter`) |
-| `ABProxy` | HTTP-прокси сервер | 18 | `[-]` Не требует (заменён WebView-перехватом и SessionManager) |
-| `ABForms` | Главная форма (partial classes) | 36 | `[+]` Полностью (MainActivity реализует всю основную логику) |
-| `MyForms` | Диалоговые формы | 22 | `[+]` Полностью (реализованы как Activity или Dialog в Android) |
-| `Forms` | Старые формы (только HerbNavigator) | 1 | `[+]` Полностью (Navigator.java) |
-| `MyProfile` | Конфигурация профиля | 11 | `[+]` Полностью (UserConfig.java, AuthManager.java) |
-| `ExtMap` | Карта и навигация | 13 | `[+]` Полностью (ExtMap.java, Cell, AbcCell, MapPath, Position) |
-| `Lez` | ИИ боя (автобой) | 9 | `[+]` Полностью (LezFight, LezBotsGroup, LezBotsClassCollection, LezSpell, LezSpellCollection, LezNode) |
-| `AppControls` | WinForms контролы | 11 | `[-]` Не требует (Windows-специфика) |
-| `Helpers` | Утилиты (Crypts, Russian, etc.) | 8 | `[+]` Полностью (Russian, CryptoUtils, ConverterUtils) |
-| `MyHelpers` | Утилиты (Strings, Converters, etc.) | 5 | `[+]` Полностью (HelperStrings, ConverterUtils) |
-| `Neuro` | Нейросеть для капчи | 2 | `[~]` Частично (Captcha logic в Interceptor/MainActivity) |
-| `MyGuamod` | Распознавание капчи | 1 | `[~]` Частично (Captcha logic в Interceptor/MainActivity) |
-| `MyChat` | Очередь сообщений чата | 1 | `[+]` Полностью (Chat.java, ChatFilter.java, ChatStats.java) |
-| `MySounds` | Звуковые уведомления | 1 | `[+]` Полностью (EventSounds.java) |
-| `Tabs` | Мульти-вкладки браузера | 3 | `[+]` Полностью (TabManager.java, TabClass.java) |
-| `Things` | База предметов | 2 | `[+]` Полностью (ThingsRepository.java, Thing.java) |
-| `Properties` | Ресурсы/настройки проекта | 3 | `[-]` Не требует |
-| **QuickButtons** | Быстрые кнопки на UI | 5 | `[+]` Полностью (QuickButtonsPanel.java, QuickButtonsManager.java) |
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+| Папка | Описание | Файлов .cs | Статус | Android-расположение | Детальный анализ |
+| ----- | -------- | ---------- | ------ | -------------------- | --------------- |
+| `PostFilter` | Фильтры ответов сервера | 59 | `[~]` **Частично** | `postfilter/` | `TODO/todo_PostFilter_detailed_comparison.md` |
+| `ABProxy` | HTTP-прокси сервер | 18 | `[-]` Заменён архитектурно | WebView + SessionManager | — |
+| `ABForms` | Главная форма (partial classes) | 36 | `[+]` Полностью | `MainActivity.java` | — |
+| `MyForms` | Диалоговые формы | 22 | `[+]` Полностью | Activity / Dialog | — |
+| `Forms` | Старые формы (только HerbNavigator) | 1 | `[+]` Полностью | `ui/Navigator.java` | — |
+| `MyProfile` | Конфигурация профиля | 11 | `[+]` Полностью | `model/UserConfig.java` | — |
+| `ExtMap` | Карта и навигация | 13 | `[+]` Полностью | `utils/ExtMap.java`, `model/Cell.java` | — |
+| `Lez` | ИИ боя (автобой) | 9 | `[+]` Полностью | `lez/LezFight.java` | `TODO/todo_LezFight.md` |
+| `AppControls` | WinForms контролы | 11 | `[-]` Win-специфика | — | — |
+| `Helpers` | Утилиты (Crypts, Russian) | 8 | `[+]` Полностью | `utils/CryptoUtils.java` | — |
+| `MyHelpers` | Утилиты (Strings, Conv) | 5 | `[+]` Полностью | `utils/HelperStrings.java` | — |
+| `Neuro` | Нейросеть для капчи | 2 | `[~]` Частично | Captcha в Interceptor | — |
+| `MyGuamod` | Распознавание капчи | 1 | `[~]` Частично | Captcha в Interceptor | — |
+| `MyChat` | Очередь сообщений чата | 1 | `[+]` Полностью | `utils/Chat.java` | — |
+| `MySounds` | Звуковые уведомления | 1 | `[+]` Полностью | `utils/EventSounds.java` | — |
+| `Tabs` | Мульти-вкладки браузера | 3 | `[+]` Полностью | `manager/TabManager.java` | — |
+| `Things` | База предметов | 2 | `[+]` Полностью | `repository/ThingsRepository.java` | — |
+| `Profile` | Простой профиль (устар.) | 2 | `[-]` Заменён | `MyProfile/UserConfig.java` | — |
+| `Properties` | Ресурсы/настройки | 3 | `[-]` Не требует | — | — |
+| `Resources` | DLL, изображения | 2 | `[-]` Не требует | — | — |
+| `Js` | JavaScript файлы | 6 | `[+]` В assets | assets/js/ | — |
+| **QuickButtons** | Быстрые кнопки на UI | 5 | `[+]` Полностью | `ui/QuickButtonsPanel.java` | — |
 | **Авто-Функции** | Автобой, авторыбалка, автоохота и т.д. | 10+ | `[+]` Полностью (AutoFunctionsManager.java, FastActionManager.java, BossAuto.java, CompasAuto.java) |
 
 ---
@@ -129,12 +173,72 @@
 
 ---
 
+## Ключевые архитектурные отличия Android от C#
+
+### 1. Прокси-подход
+- **C#**: Локальный HTTP-прокси (`ABProxy/`) перехватывает все запросы, модифицирует HTML/JS
+- **Android**: `WebViewRequestInterceptor` + `WebViewClient.shouldInterceptRequest()` + JS-инъекции через `HtmlUtils.getJsFix()`
+- **Результат**: Функционально эквивалентно, но архитектурно иначе
+
+### 2. Фреймовая модель
+- **C#**: Мульти-фреймовый IE-браузер (`main_top`, `ch_buttons`, `ch_list`, `chmain`)
+- **Android**: Одиночный WebView + JS-эмуляция `top.frames[...]` через `AndroidBridge`
+- **Результат**: Полная эмуляция через `HtmlUtils.getJsFix()` + DOM-stubs (`transfer`, `complect`, `hbar`)
+
+### 3. Система VCode
+- **C#**: Парсинг из каждого ответа в глобальный `AppVars.VCode`
+- **Android**: `SessionManager` — централизованный синглтон с TTL, fight-fallback, версионированием
+- **Результат**: Android-версия более надёжна (TTL, thread-safe, fight-context)
+
+### 4. Авто-функции
+- **C#**: Таймеры WinForms + `IdleManager`
+- **Android**: `AutoModeForegroundService` + `ForcedActionGuard` + `FightViewModel`
+- **Результат**: Полный паритет, event-driven бой < 100ms
+
+---
+
 ## Сводная статистика
 
 | Категория | Количество |
 | --------- | ---------- |
-| `[+]` Полностью реализовано | ~15 файлов |
-| `[~]` Частично реализовано | ~12 файлов |
-| `[-]` Не требует портирования | ~8 файлов (Windows-специфика) |
-| `[ ]` Не реализовано | ~25 корневых + подпапки |
+| `[+]` Полностью реализовано | ~120 файлов/модулей |
+| `[~]` Частично реализовано | ~20 файлов (PostFilter + Neuro) |
+| `[s]` Заглушки (PostFilter) | ~28 файлов |
+| `[-]` Не требует портирования | ~15 файлов (Windows-специфика) |
+| `[ ]` Не реализовано | ~18 файлов |
+| **Мёртвые файлы (не портировать!)** | **15** |
+
+---
+
+## Приоритеты доработки (по важности)
+
+### P0 — Критичные пробелы (влияют на gameplay)
+1. **PostFilter: 16 отсутствующих MainPhp-модулей** — `MainPhpCure`, `MainPhpDrink`, `MainPhpFish`, `MainPhpWearComplect`, `MainPhpTied`, `MainPhpDarkFog`, `MainPhpDarkTeleport`, `MainPhpRob`, `MainPhpRobinHood`, `MainPhpWtime`, `MainPhpAutoCure`
+2. **PostFilter: 28 заглушек** — `HpJs`, `HpmpJs`, `MapAjax`, `MapJs`, `ButPhp`, `ShopAjaxPhp`, `SvitokJs`, `IndexCgi` и др.
+3. **Neuro/капча** — `abneuro.dat` + нейросеть для распознавания капчи
+
+### P1 — Важные (ухудшают UX)
+4. **Ресурсы**: `spells.txt`, `MySounds/*.wav`, `map2.xml` — не скопированы в assets
+5. **KeyList.cs** — не проанализирован, назначение неизвестно
+6. **Tips.cs** — подсказки игроку
+
+### P2 — Желательные (косметика/оптимизация)
+7. **Neuro полная интеграция** — замена hardcoded-распознавания на нейросеть
+8. **Refactor PostFilter заглушек** — заменить пустые методы на реальные фильтры
+9. **ForumTopicJs, TradePhp, RouletteAjaxPhp** — второстепенные фильтры
+
+---
+
+## Карта зависимостей ключевых систем
+
+```
+MainActivity
+├── WebView → WebViewRequestInterceptor → SessionManager (VCode)
+├── WebView → HtmlUtils.getJsFix() → AndroidBridge (WebAppInterface)
+├── PostFilter.Filter → MainPhp → [LezFight, FishAjaxPhp, FightJs, ...]
+├── AutoModeForegroundService → ForcedActionGuard → AppVars
+├── FightViewModel → FightAnnounceHandler → SessionManager
+├── FastActionManager → AppVars.FastNeed → MainPhp
+├── AutoFunctionsManager → UserConfig → SharedPreferences
+└── ProfileManager → UserConfig → DataManager
 | **Мёртвые файлы (не портировать!)** | **15** |
