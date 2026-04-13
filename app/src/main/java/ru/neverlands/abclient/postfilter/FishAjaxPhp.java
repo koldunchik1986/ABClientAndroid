@@ -3011,6 +3011,14 @@ public final class FishAjaxPhp {
                 }
             }
             if (!foundMatch && !isNoFishHandSetting(AppVars.Profile.FishHandTwo)) {
+                // Bug E fix: не выключать авторыбалку если invList пуст на подозрительно маленькой странице.
+                // Признак: act=10 session истёк, сервер вернул XHTML-заглушку (<5000 байт) вместо полного инвентаря.
+                // Caller (MainPhp.java) должен повторить попытку через plain main.php?im=0&wca=4.
+                if (invList.isEmpty() && html.length() < 5000) {
+                    AppLog.w(TAG, "AUTO_FISH_TRACE wear: foundMatch=false but invList empty on tiny page "
+                            + html.length() + " bytes; NOT disabling, let caller retry with fresh inv");
+                    return null;
+                }
                 disableAutoFishMain("\u041D\u0435 \u043D\u0430\u0439\u0434\u0435\u043D \u043F\u0440\u0435\u0434\u043C\u0435\u0442 \u0434\u043B\u044F \u0432\u0442\u043E\u0440\u043E\u0439 \u0440\u0443\u043A\u0438");
                 return null;
             }
