@@ -33,6 +33,7 @@ namespace ABClient.PostFilter
 
             var gy = Convert.ToInt32(matchY.Groups[1].Value, CultureInfo.InvariantCulture);
             AppVars.LocationReal = Map.ConvertToRegNum(gx, gy);
+            AppLog.i("MainPhp", "FilterGetLocation: gx=" + gx + " gy=" + gy + " => " + AppVars.LocationReal);
 
             /*
             if (Map.AbcCells.ContainsKey(AppVars.LocationReal))
@@ -122,6 +123,7 @@ namespace ABClient.PostFilter
 
         private static byte[] MainPhp(string address, byte[] array)
         {
+            AppLog.d("MainPhp", "MainPhp: processing address=" + address);
             FilterGetLocation(address);
 
             AppVars.IdleTimer = DateTime.Now;
@@ -209,6 +211,7 @@ namespace ABClient.PostFilter
             var sysMessage = HelperStrings.SubString(html, "<font class=nickname><font color=#cc0000><b>", "<br><br></b></font></font>");
             if (!string.IsNullOrEmpty(sysMessage))
             {
+                AppLog.i("MainPhp", "MainPhp: system message found: " + sysMessage);
                 try
                 {
                     if (AppVars.MainForm != null)
@@ -315,6 +318,7 @@ namespace ABClient.PostFilter
             if (html.IndexOf("var arpar = [", StringComparison.CurrentCultureIgnoreCase) != -1 &&
                 html.IndexOf(",\"Ожидаем начала боя!\"];", StringComparison.CurrentCultureIgnoreCase) != -1)
             {
+                AppLog.i("MainPhp", "MainPhp: fight waiting detected (arpar)");
                 var data = HelperStrings.SubString(html, "var data = [", "];");
                 if (!string.IsNullOrEmpty(data))
                 {
@@ -339,6 +343,7 @@ namespace ABClient.PostFilter
             // Нужно ли воровать ?
             if (AppVars.Profile.DoRob)
             {
+                AppLog.d("MainPhp", "MainPhp: rob enabled, checking");
                 var robhtml = MainPhpRob(html);
                 if (!string.IsNullOrEmpty(robhtml))
                 {
@@ -350,6 +355,7 @@ namespace ABClient.PostFilter
             // Нужно ли разделывать ?
             if (AppVars.Profile.SkinAuto)
             {
+                AppLog.d("MainPhp", "MainPhp: skin auto enabled, checking");
                 var razhtml = MainPhpRaz(html);
                 if (!string.IsNullOrEmpty(razhtml))
                 {
@@ -361,6 +367,7 @@ namespace ABClient.PostFilter
             // Инвентарь?
             if (html.IndexOf("/invent/0.gif", StringComparison.OrdinalIgnoreCase) != -1)
             {
+                AppLog.d("MainPhp", "MainPhp: inventory page detected");
                 html = MainPhpInv(html);
             }
 
@@ -370,6 +377,7 @@ namespace ABClient.PostFilter
                     @"<font color=#dd0000>Внимание! Сеанс работы прерван.</b>",
                     StringComparison.OrdinalIgnoreCase) != -1)
             {
+                AppLog.w("MainPhp", "MainPhp: SESSION INTERRUPTED");
                 try
                 {
                     if (AppVars.MainForm != null)
@@ -481,6 +489,7 @@ namespace ABClient.PostFilter
             var inshp = html.IndexOf("ins_HP(", StringComparison.OrdinalIgnoreCase);
             if (inshp != -1)
             {
+                AppLog.d("MainPhp", "MainPhp: ins_HP found, parsing HP/MA");
                 MainPhpInsHp(html, inshp + "ins_HP(".Length);
             }
 
@@ -519,7 +528,7 @@ namespace ABClient.PostFilter
 
             if (html.IndexOf("magic_slots();", StringComparison.OrdinalIgnoreCase) != -1)
             {
-                // Мы находимся в бою
+                AppLog.i("MainPhp", "MainPhp: FIGHT PAGE DETECTED (magic_slots)");
                 html = MainPhpFight(html);
                 goto end;
             }
@@ -527,6 +536,7 @@ namespace ABClient.PostFilter
             //if (AppVars.Profile.DoStopOnDig && (Dice.Make(10) == 0))
             if (AppVars.Profile.DoStopOnDig && (html.IndexOf("[\"dig\",\"Копать\",", StringComparison.Ordinal) != -1))
             {
+                AppLog.i("MainPhp", "MainPhp: DIG detected on current cell, stopping navigation");
                 AppVars.AutoMoving = false;
                 try
                 {
@@ -565,6 +575,7 @@ namespace ABClient.PostFilter
                     html.IndexOf("<font color=#CC0000><b>Приманок нет в наличии.", StringComparison.OrdinalIgnoreCase) != -1 ||
                     html.IndexOf("<font color=#CC0000><b>У Вас не хватает умения, чтобы ловить тут рыбу.", StringComparison.OrdinalIgnoreCase) != -1)
                 {
+                    AppLog.i("MainPhp", "MainPhp: fish stop condition met");
                     try
                     {
                         if (AppVars.MainForm != null)
@@ -585,12 +596,14 @@ namespace ABClient.PostFilter
             var postied = html.IndexOf("Усталость:</td><td bgcolor=#336699 nowrap><font class=proce><font color=#ffffff><b><div align=center>&nbsp;<b>", StringComparison.OrdinalIgnoreCase);
             if (postied != -1)
             {
+                AppLog.d("MainPhp", "MainPhp: tied data found in HTML");
                 MainPhpTied(html, postied + "Усталость:</td><td bgcolor=#336699 nowrap><font class=proce><font color=#ffffff><b><div align=center>&nbsp;<b>".Length);
             }
 
             // Надо ли лечить?
             if (AppVars.CureNeed && (DateTime.Now > AppVars.NeverTimer))
             {
+                AppLog.d("MainPhp", "MainPhp: cure needed, looking for medkit");
                 var invHtml = MainPhpFindInv(html, "&im=0&wca=85");
                 if (!string.IsNullOrEmpty(invHtml))
                 {
@@ -639,6 +652,7 @@ namespace ABClient.PostFilter
                 int fishUm;
                 if (int.TryParse(sust, out fishUm))
                 {
+                    AppLog.i("MainPhp", "MainPhp: fish skill parsed: " + fishUm);
                     AppVars.Profile.FishUm = fishUm;
                     AppVars.AutoFishCheckUm = false;
                 }
@@ -689,6 +703,7 @@ namespace ABClient.PostFilter
             var complects = GetComplects(html);
             if (complects != null)
             {
+                AppLog.d("MainPhp", "MainPhp: complects found: " + complects.Length);
                 try
                 {
                     if (AppVars.MainForm != null)
@@ -706,6 +721,7 @@ namespace ABClient.PostFilter
 
             if (!string.IsNullOrEmpty(AppVars.WearComplect) && (DateTime.Now > AppVars.NeverTimer))
             {
+                AppLog.d("MainPhp", "MainPhp: wear complect requested: " + AppVars.WearComplect);
                 var invHtml = MainPhpFindInv(html, "&im=0&wca=4");
                 if (!string.IsNullOrEmpty(invHtml))
                 {
@@ -741,6 +757,7 @@ namespace ABClient.PostFilter
 
             if ((AppVars.Profile.DoAutoDrinkBlaz) && (AppVars.Tied >= AppVars.Profile.AutoDrinkBlazTied) && (DateTime.Now > AppVars.NeverTimer))
             {
+                AppLog.d("MainPhp", "MainPhp: auto-drink blaz triggered, tied=" + AppVars.Tied + " >= " + AppVars.Profile.AutoDrinkBlazTied);
                 if (!MainPhpIsInv(html))
                 { 
                     var invHtml = MainPhpFindInv(html, AppVars.Profile.AutoDrinkBlazOrder == 0 ? "&im=0&wca=27" : "&im=6");
@@ -804,6 +821,7 @@ namespace ABClient.PostFilter
 
             if (AppVars.SelfNevidNeed && (DateTime.Now > AppVars.NeverTimer))
             {
+                AppLog.d("MainPhp", "MainPhp: self-nevid processing, stage=" + AppVars.SelfNevidStage);
                 while (AppVars.SelfNevidStage < 4)
                 {
                     // Зелик невидимости
@@ -1044,6 +1062,7 @@ namespace ABClient.PostFilter
 
             if (AppVars.Profile.SkinAuto && (DateTime.Now > AppVars.NeverTimer))
             {
+                AppLog.d("MainPhp", "MainPhp: skin auto pre-processing");
                 // Надо прочтитать умелку?
                 if (AppVars.AutoSkinCheckUm && (DateTime.Now > AppVars.NeverTimer))
                 {
@@ -1134,6 +1153,7 @@ namespace ABClient.PostFilter
 
             if (AppVars.Profile.FishAuto && (DateTime.Now > AppVars.NeverTimer))
             {
+                AppLog.d("MainPhp", "MainPhp: fish auto pre-cast checks");
                 // Нормальная для заброса усталость?
                 if (!AppVars.AutoFishDrink)
                 {
@@ -1267,6 +1287,7 @@ namespace ABClient.PostFilter
 
             if (AppVars.FastNeedAbilDarkTeleport || AppVars.FastNeedAbilDarkFog)
             {
+                AppLog.d("MainPhp", "MainPhp: fast abil dark teleport=" + AppVars.FastNeedAbilDarkTeleport + " fog=" + AppVars.FastNeedAbilDarkFog);
                 if (address.EndsWith("main.php?useaction=addon-action&addid=1", StringComparison.OrdinalIgnoreCase))
                 {
                     if (AppVars.FastNeedAbilDarkTeleport)
@@ -1312,7 +1333,7 @@ namespace ABClient.PostFilter
 
             if (AppVars.Profile.DoAutoCure)
             {
-                // Есть ли отравление ?
+                AppLog.d("MainPhp", "MainPhp: auto-cure check");
                 if (AppVars.PoisonAndWounds[0] > 0)
                 {
                     var invhtml = MainPhpFindInv(html, "&im=0&wca=27");
@@ -1428,6 +1449,7 @@ namespace ABClient.PostFilter
 
             if (AppVars.FastNeed)
             {
+                AppLog.d("MainPhp", "MainPhp: FastNeed=true, FastId=" + AppVars.FastId);
                 if (DateTime.Now > AppVars.NeverTimer)
                 {
                     string invHtml, fastHtml;
@@ -1696,6 +1718,7 @@ namespace ABClient.PostFilter
 
             if (AppVars.AutoDrink && (DateTime.Now > AppVars.NeverTimer))
             {
+                AppLog.d("MainPhp", "MainPhp: auto-drink triggered");
                 var newhtml = MainPhpFindDrink(html);
                 if (!string.IsNullOrEmpty(newhtml))
                 {
@@ -1717,11 +1740,12 @@ namespace ABClient.PostFilter
             }
 
             /*
-             * Новая рыбалка
-             */
+              * Новая рыбалка
+              */
 
             if (AppVars.Profile.FishAuto && (DateTime.Now > AppVars.NeverTimer))
             {
+                AppLog.d("MainPhp", "MainPhp: fish auto triggered (new fishing)");
                 var newhtml = MainPhpFindFlora(html);
                 if (!string.IsNullOrEmpty(newhtml))
                 {
@@ -1754,6 +1778,7 @@ namespace ABClient.PostFilter
 
             if (AppVars.DoSearchBox && !AppVars.AutoMoving && (DateTime.Now > AppVars.NeverTimer))
             {
+                AppLog.d("MainPhp", "MainPhp: search box navigation");
                 var dest = FormMain.FindNextDestForBox();
                 if (!string.IsNullOrEmpty(dest) && (AppVars.MainForm != null))
                 {
@@ -1768,6 +1793,7 @@ namespace ABClient.PostFilter
 
             if (AppVars.AutoMoving && (DateTime.Now > AppVars.NeverTimer))
             {
+                AppLog.d("MainPhp", "MainPhp: auto-moving navigation");
                 var cityhtml = MainPhpStartFromCityNavigation(html);
                 if (!string.IsNullOrEmpty(cityhtml))
                 {
@@ -1799,6 +1825,7 @@ namespace ABClient.PostFilter
 
             if (html.IndexOf("var map = ", StringComparison.Ordinal) != -1)
             {
+                AppLog.d("MainPhp", "MainPhp: map data found in HTML");
                 if ((AppVars.Profile.DoAutoDrinkBlaz) && (AppVars.Tied >= AppVars.Profile.AutoDrinkBlazTied) &&
                     (DateTime.Now > AppVars.NeverTimer))
                 {
@@ -1878,6 +1905,7 @@ namespace ABClient.PostFilter
             }
 
             end:
+            AppLog.d("MainPhp", "MainPhp: processing complete");
             if (!string.IsNullOrEmpty(html))
             {
                 AppVars.ContentMainPhp = html;

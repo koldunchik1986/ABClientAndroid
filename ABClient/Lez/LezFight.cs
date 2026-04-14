@@ -58,7 +58,9 @@ namespace ABClient.Lez
         
         public LezFight(string html)
         {
+            AppLog.d("LezFight", "LezFight: parsing html");
             IsValid = Parse(html);
+            AppLog.d("LezFight", "LezFight: IsValid=" + IsValid + " IsBoi=" + IsBoi);
         }
 
         public void PrintDebug()
@@ -163,10 +165,16 @@ namespace ABClient.Lez
 
             _fightty = ParseString(html, @"var fight_ty = [", 0);
             if (_fightty == null)
+            {
+                AppLog.w("LezFight", "Parse: fight_ty not found");
                 return false;
+            }
 
             if (_fightty.Length <= 8)
+            {
+                AppLog.w("LezFight", "Parse: fight_ty too short (" + _fightty.Length + ")");
                 return false;
+            }
 
             LogBoi = Strip(_fightty[8]);
             //if (LogBoi.Length > 0)
@@ -178,6 +186,8 @@ namespace ABClient.Lez
                 ParseFightLog(_html, LogBoi, _fightty[2]);
 
             IsBoi = (_fightty[3].Length >= 1) && (_fightty[3][0] == '1');
+
+            AppLog.i("LezFight", "Parse: IsBoi=" + IsBoi + " ftype=" + _ftype + " LogBoi=" + LogBoi);
 
             var paramow = ParseString(html, @"var param_ow = [", 0);
             if (paramow == null)
@@ -214,6 +224,8 @@ namespace ABClient.Lez
 
             _percentHp = _maxHp > 0 ? (int)((_currentHp * 100.0) / _maxHp) : 0;
             _percentMa = _maxMa > 0 ? (int)((_currentMa * 100.0) / _maxMa) : 0;
+
+            AppLog.i("LezFight", "Parse: HP=" + _currentHp + "/" + _maxHp + " (" + _percentHp + "%) MA=" + _currentMa + "/" + _maxMa + " (" + _percentMa + "%)");
 
             // Проверка на разделку
             ShowRazdMessage();
@@ -262,12 +274,17 @@ namespace ABClient.Lez
             }
 
             if (!IsBoi)
+            {
+                AppLog.d("LezFight", "Parse: not in fight, calling ParseNonFight");
                 return ParseNonFight();
+            }
 
             // мы уже ударили свитком?
             if (_hitByScroll)
             {
                 _hitByScroll = false;
+
+                AppLog.i("LezFight", "Parse: hit by scroll detected, disabling fury/autoboi");
 
                 try
                 {
@@ -322,7 +339,10 @@ namespace ABClient.Lez
 
             var fightpm = ParseString(html, @"var fight_pm = [", 0);
             if (fightpm == null)
+            {
+                AppLog.w("LezFight", "Parse: fight_pm not found");
                 return false;
+            }
 
             var alchemy = ParseString(html, @"var alchemy = [", 0);
 
@@ -331,6 +351,7 @@ namespace ABClient.Lez
                 FoeName = paramen[0].Substring(1, paramen[0].Length - 2);
 
             _foeName = FoeName;
+            AppLog.i("LezFight", "Parse: foe=" + _foeName + " level=" + _foeLevel + " groupId=" + _foeGroupId + " image=" + _foeImage);
             if (
                 (paramen[5].Length < 3) ||
                 (!int.TryParse(Strip(paramen[5]), out _foeLevel)))
@@ -380,6 +401,7 @@ namespace ABClient.Lez
                 if (_foeGroupId != 0)
                 {
                     FoeGroup = (LezBotsGroup)group.Clone();
+                    AppLog.i("LezFight", "Parse: foe matched group " + _foeGroupId);
                     break;
                 }
             }
@@ -768,10 +790,13 @@ namespace ABClient.Lez
             IsLowMa = FoeGroup.DoStopLowMa && (_percentMa <= FoeGroup.StopLowMa);
             DoExit = FoeGroup.DoExitRisky && _ftype >= 80 && _foeName.Equals("Человек");
             
+            AppLog.i("LezFight", "Parse: DoStop=" + DoStop + " IsLowHp=" + IsLowHp + " IsLowMa=" + IsLowMa + " DoExit=" + DoExit);
+            
             if (DoStop || IsLowHp || IsLowMa || DoExit)
             {
                 if (UnderAttack.IsHuman && UnderAttack.IsMe)
                 {
+                    AppLog.i("LezFight", "Parse: under attack by human, overriding stop flags");
                     DoStop = false;
                     IsLowHp = false;
                     IsLowMa = false;
@@ -781,6 +806,7 @@ namespace ABClient.Lez
 
             if (LezCombinations.Count > 0)
             {
+                AppLog.i("LezFight", "Parse: " + LezCombinations.Count + " combinations found, building turn");
                 var index = Helpers.Dice.Make(LezCombinations.Count);
                 LezCombination = LezCombinations[index];
 
@@ -891,6 +917,8 @@ namespace ABClient.Lez
                 var res = new StringBuilder();
                 var vcode = Strip(fightpm[4]);
                 var levbot = Strip(paramen[5]);
+
+                AppLog.d("LezFight", "Parse: vcode=" + vcode + " levbot=" + levbot);
 
                 res.Append(vcode);
                 res.Append('|');
@@ -1015,6 +1043,7 @@ namespace ABClient.Lez
             }
             else
             {
+                AppLog.w("LezFight", "Parse: NO valid combinations found");
                 if (AppVars.Profile.LezDoAutoboi)
                 {
                     try
@@ -1138,7 +1167,11 @@ namespace ABClient.Lez
                 {
                     var php = (int) (_currentHp*100.0/_maxHp);
                     if (php <= FoeGroup.RestoreHp)
+                    {
+                        AppLog.d("LezFight", "IsMagicAllowed: restoreHp allowed code=" + code + " hp%=" + php + " <= " + FoeGroup.RestoreHp);
                         return true;
+                    }
+                    AppLog.d("LezFight", "IsMagicAllowed: restoreHp blocked code=" + code + " hp%=" + php + " > " + FoeGroup.RestoreHp);
                 }
 
                 return false;
@@ -1150,7 +1183,11 @@ namespace ABClient.Lez
                 {
                     var php = (int)(_currentMa * 100.0 / _maxMa);
                     if (php <= FoeGroup.RestoreMa)
+                    {
+                        AppLog.d("LezFight", "IsMagicAllowed: restoreMa allowed code=" + code + " ma%=" + php + " <= " + FoeGroup.RestoreMa);
                         return true;
+                    }
+                    AppLog.d("LezFight", "IsMagicAllowed: restoreMa blocked code=" + code + " ma%=" + php + " > " + FoeGroup.RestoreMa);
                 }
 
                 return false;
@@ -1243,12 +1280,15 @@ namespace ABClient.Lez
 
         private static bool IsBossName(string name)
         {
-            return (
+            var result = (
                 name.Equals("Королева Змей", StringComparison.CurrentCultureIgnoreCase) ||
                 name.Equals("Хранитель Леса", StringComparison.CurrentCultureIgnoreCase) ||
                 name.Equals("Громлех Синезубый", StringComparison.CurrentCultureIgnoreCase) ||
                 name.Equals("Выползень", StringComparison.CurrentCultureIgnoreCase)
                 );
+            if (result)
+                AppLog.i("LezFight", "IsBossName: " + name + " is boss");
+            return result;
         }
 
         private bool IsBossInLog()
@@ -1273,8 +1313,10 @@ namespace ABClient.Lez
                     if (_fexp[4].Length > 2)
                     {
                         // Завершение боя с капчей
+                        AppLog.i("LezFight", "ParseNonFight: fight completion with captcha");
                         if (_fexp[6].Equals("0", StringComparison.Ordinal))
                         {
+                            AppLog.i("LezFight", "ParseNonFight: CAPTCHA detected, CodeAddress set, vcode=" + Strip(_fexp[3]));
                             AppVars.CodeAddress =
                                 "http://www.neverlands.ru/modules/code/code.php?" +
                                 Strip(_fexp[4]);
@@ -1331,6 +1373,7 @@ namespace ABClient.Lez
                     else
                     {
                         // Завершение боя без капчи
+                        AppLog.i("LezFight", "ParseNonFight: fight completion without captcha");
                         if (AppVars.Profile.ShowTrayBaloons)
                         {
                             try
@@ -1369,6 +1412,7 @@ namespace ABClient.Lez
 
                     break;
                 case "3":
+                    AppLog.d("LezFight", "ParseNonFight: case 3 (waiting/timeout)");
                     if (_fightty[6].Length > 2)
                     {
                         if (AppVars.Profile.LezDoWinTimeout)
@@ -1425,6 +1469,7 @@ namespace ABClient.Lez
                     else
                     {
                         IsWaitingForNextTurn = true;
+                        AppLog.i("LezFight", "ParseNonFight: waiting for next turn");
                         AppVars.AccountError = string.Empty;
 
                         if (AppVars.AutoRefresh)
@@ -1456,6 +1501,7 @@ namespace ABClient.Lez
 
                     break;
                 case "4":
+                    AppLog.d("LezFight", "ParseNonFight: case 4 (wait for fight end)");
                     if (AppVars.Profile.ShowTrayBaloons)
                     {
                         try
@@ -1473,6 +1519,7 @@ namespace ABClient.Lez
 
                     break;
                 case "5":
+                    AppLog.d("LezFight", "ParseNonFight: case 5 (finish fight)");
                     if (AppVars.Profile.ShowTrayBaloons)
                     {
                         try
@@ -1685,6 +1732,7 @@ namespace ABClient.Lez
 
         public long CalcRestoreAfterBoi()
         {
+            AppLog.d("LezFight", "CalcRestoreAfterBoi");
             AppVars.Profile.Pers.LogReady = LogBoi;
             double sec = 0;
 

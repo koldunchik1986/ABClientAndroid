@@ -50,6 +50,7 @@ namespace ABClient
 
         public static void LoadBossUsers()
         {
+            AppLog.d("ContactsManager", "LoadBossUsers");
             try
             {
                 Rwl.AcquireWriterLock(5000);
@@ -73,6 +74,7 @@ namespace ABClient
                         var xmlDocument = new XmlDocument();
                         xmlDocument.LoadXml(bossusers);
                         var bossusersNodeList = xmlDocument.GetElementsByTagName("contactentry");
+                        AppLog.d("ContactsManager", "LoadBossUsers: " + bossusersNodeList.Count + " entries found");
                         foreach (XmlNode bossUser in bossusersNodeList)
                         {
                             if (bossUser.Attributes == null)
@@ -86,6 +88,7 @@ namespace ABClient
 
                         rawList.Sort(SortByLastBossUpdated);
                         var count = Math.Min(rawList.Count, 100);
+                        AppLog.d("ContactsManager", "LoadBossUsers: loaded " + count + " boss contacts");
                         for (var i = 0; i < count; i++)
                         {
                             AppVars.BossContacts.Add(rawList[i].Name.ToLower(), rawList[i]);
@@ -109,6 +112,7 @@ namespace ABClient
 
         public static void SaveBossUsers()
         {
+            AppLog.d("ContactsManager", "SaveBossUsers");
             try
             {
                 Rwl.AcquireWriterLock(5000);
@@ -168,6 +172,7 @@ namespace ABClient
 
         public static void AddUsers(string args)
         {
+            AppLog.d("ContactsManager", "AddUsers");
             var added = false;
             try
             {
@@ -194,6 +199,7 @@ namespace ABClient
                             {
                                 var contact = new BossContact(nick, true, DateTime.Now.Subtract(AppVars.Profile.ServDiff));
                                 AppVars.BossContacts.Add(contact.Name.ToLower(), contact);
+                                AppLog.i("ContactsManager", "AddUsers: boss contact added nick=" + nick);
                                 var message = $"Контакт [{nick}] добавлен в слежение";
                                 try
                                 {
@@ -228,6 +234,7 @@ namespace ABClient
 
         public static void Pulse()
         {
+            AppLog.d("ContactsManager", "Pulse");
             var nextContactKey = string.Empty;
             var isBossContact = false;
             try
@@ -278,6 +285,7 @@ namespace ABClient
 
             if (!isBossContact)
             {
+                AppLog.d("ContactsManager", "Pulse: contact check key=" + nextContactKey);
                 if (AppVars.Profile.Contacts.ContainsKey(nextContactKey))
                 {
                     AppVars.Profile.Contacts[nextContactKey].NextCheck =
@@ -288,6 +296,7 @@ namespace ABClient
             }
             else
             {
+                AppLog.d("ContactsManager", "Pulse: boss contact check key=" + nextContactKey);
                 if (AppVars.BossContacts.ContainsKey(nextContactKey))
                 {
                     AppVars.BossContacts[nextContactKey].NextCheck =
@@ -301,6 +310,7 @@ namespace ABClient
         private static void ProcessAsync(object state)
         {
             var nextContactKey = (string)state;
+            AppLog.d("ContactsManager", "ProcessAsync: key=" + nextContactKey);
             Contact contact;
             if (!AppVars.Profile.Contacts.TryGetValue(nextContactKey, out contact))
                 return;
@@ -316,6 +326,7 @@ namespace ABClient
         private static void ProcessBossAsync(object state)
         {
             var nextContactKey = (string)state;
+            AppLog.d("ContactsManager", "ProcessBossAsync: key=" + nextContactKey);
             BossContact contact;
             if (!AppVars.BossContacts.TryGetValue(nextContactKey, out contact))
                 return;

@@ -112,6 +112,7 @@
 
                 if (Url.StartsWith("www.neverlands.ru/cgi-bin/go.cgi?uid=", StringComparison.OrdinalIgnoreCase))
                 {
+                    AppLog.d("ProxySession", "go.cgi intercepted (redirect)");
                     flag = true;
                     Response = new ServerChatter(this, "HTTP/1.1 304 Not Modified\r\nServer: Cache\r\n\r\n");
                     goto afterresponse;
@@ -166,6 +167,7 @@
                     var data = Cache.Get(Url, AppVars.CacheRefresh);
                     if (data != null)
                     {
+                        AppLog.d("ProxySession", "cache hit: " + Url);
                         if (flagsavedtrafic)
                         {
                             try
@@ -221,6 +223,7 @@
 
                 if (!flag)
                 {
+                    AppLog.w("ProxySession", "response read failed, closing session");
                     CloseSessionPipes();
                 }
                 else
@@ -251,12 +254,14 @@
             {
                 if (Url.StartsWith("www.neverlands.ru/main.php", StringComparison.OrdinalIgnoreCase))
                 {
+                    AppLog.d("ProxySession", "main.php response detected");
                     if (Response.Headers.Exists("Date"))
                     {
                         var stringDateTime = Response.Headers["Date"];
                         DateTime serverDateTime;
                         if (DateTime.TryParse(stringDateTime, AppVars.EnUsCulture, DateTimeStyles.None, out serverDateTime))
                         {
+                            AppLog.d("ProxySession", "server time parsed: " + serverDateTime);
                             try
                             {
                                 if (AppVars.MainForm != null)
@@ -277,6 +282,7 @@
                 {
                     if (Response.Headers[i].Name.Equals("Set-Cookie", StringComparison.OrdinalIgnoreCase))
                     {
+                        AppLog.d("ProxySession", "Set-Cookie received from " + Host);
                         CookiesManager.Assign(Host, Response.Headers[i].Value);
                     }
                 }
@@ -286,6 +292,7 @@
                 {
                     if (Url.StartsWith("www.neverlands.ru/modules/code/code.php?", StringComparison.OrdinalIgnoreCase))
                     {
+                        AppLog.i("ProxySession", "code.php intercepted, capturing captcha PNG");
                         AppVars.CodePng = ResponseBodyBytes;
                     }
                     else
@@ -297,6 +304,7 @@
 
                         if (_isCustomFilter && ResponseBodyBytes != null)
                         {
+                            AppLog.d("ProxySession", "custom filter processing: " + Url);
                             var pdata = Filter.Process("http://" + Url, ResponseBodyBytes);
                             Response.AssignData(pdata);
                         }
@@ -499,6 +507,7 @@
             {
                 if (ex.SocketErrorCode != SocketError.ConnectionReset)
                 {
+                    AppLog.e("ProxySession", "ReturnResponse socket error", ex);
                     Request.FailSession(400, "Bad Request", string.Format(CultureInfo.InvariantCulture, "Return response failed.\n{0}", ex.Message));
                 }
             }
@@ -611,6 +620,7 @@
                 Host.EndsWith(".neverlands.ru", StringComparison.OrdinalIgnoreCase))
             {
                 _isGameHost = true;
+                AppLog.d("ProxySession", "ExecuteBasicRequestManipulations: game host detected: " + Host);
             }
 
             var str = Url;

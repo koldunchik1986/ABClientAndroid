@@ -9,10 +9,12 @@
     {
         private static byte[] FightJs(byte[] array)
         {
+            AppLog.d("FightJs", "FightJs: filtering fight.js");
             var sb = new StringBuilder(Helpers.Russian.Codepage.GetString(array));
 
             if (AppVars.Profile.DoGuamod)
             {
+                AppLog.i("FightJs", "FightJs: guamod enabled, injecting captcha stub");
                 sb.Replace(
                     @"code.php?'+fexp[4]+'"" width=134 height=60></TD>",
                     @"code.php?'+fexp[4]+'"" width=134 height=60><br><img src=http://image.neverlands.ru/1x1.gif width=1 height=8><br><span id=guamod3><font class=nickname><font color=#004A7F><b>* * * *</b></font></font></span></TD>");
@@ -40,26 +42,15 @@
                 @" </style>" +
                 @" <SCRIPT language=""JavaScript"">" +
                 @"  document.all(""btx0"").value = window.external.XodButtonElapsedTime();" +
-                /*
-                @" var mins = 0;" +
-                @" var secs = 0;" +
-                 */ 
                 @"  var curTimeInt = setInterval(""xodtimerproc()"",1000);" +
                 @"  function xodtimerproc(){ " +
                 @"   document.all(""btx0"").value = window.external.XodButtonElapsedTime(); }" +
-                /*
-                @"   document.all(""btx0"").value = \' ход (\' + mins + \':\' + ((secs < 10) ? \'0\' + secs : secs) + \') \'; secs = secs + 1; if(secs == 60){ mins = mins + 1; secs = 0; }" +
-                /*
-                @"   if (secs == 29 || secs == 59) { window.location = ""main.php""; } " +
-                @"   if (mins == 4 && secs == 35) { window.location = ""main.php""; } " +
-                 */ 
-                /*fightshow +
-                @"}" +*/
                 @" function myStartAct(){ " +
                 @"   window.external.ResetLastBoiTimer();" +
                 @"   StartAct();" +
                 @" }" +
                 @" </SCRIPT>");
+            AppLog.d("FightJs", "FightJs: replaced fight buttons with auto-fight controls");
             sb.Replace(
                 @"<input type=button class=fbut value=""Завершить"" onclick=""location",
                 @"<input type=button class=fbut value=""Завершить"" onclick=""ResetCure(); location");
@@ -87,6 +78,7 @@
                 "    fight_f.submit();" +
                 "  }" +
                 "}");
+            AppLog.d("FightJs", "FightJs: AutoSubmit function injected (vcode from fexp[4])");
             sb.AppendLine(
                 "function AutoSelect()" +
                 "{" +

@@ -21,6 +21,8 @@ namespace ABClient.ABForms
                 return;
             }
 
+            AppLog.d("FormMainCross", "FishOverload: weight limit reached, stopping fish");
+
             try
             {
                 if (AppVars.MainForm != null)
@@ -37,18 +39,21 @@ namespace ABClient.ABForms
 
         internal static string InsertGuaDiv(string code)
         {
+            AppLog.d("FormMainCross", "InsertGuaDiv: code=" + code);
             AppVars.CodeAddress = code;
             if (!string.IsNullOrEmpty(AppVars.CodeAddress))
             {
                 if (AppVars.Profile.DoGuamod)
-                {
-                    AppVars.FightLink = "????";
+                    {
+                        AppLog.i("FormMainCross", "InsertGuaDiv: guamod active, FightLink=????");
+                        AppVars.FightLink = "????";
                 }
 
                 if (!AppVars.Profile.DoGuamod)
                 {
                     if (AppVars.MainForm != null && AppVars.MainForm.TrayIsDigitsWaitTooLong())
                     {
+                        AppLog.i("FormMainCross", "InsertGuaDiv: digits wait too long, enabling guamod");
                         try
                         {
                             if (AppVars.MainForm != null)
@@ -64,6 +69,7 @@ namespace ABClient.ABForms
                     }
                     else
                     {
+                        AppLog.i("FormMainCross", "InsertGuaDiv: captcha detected, playing digits sound");
                         EventSounds.PlayDigits();
                         try
                         {
@@ -610,6 +616,8 @@ namespace ABClient.ABForms
                 return;
             }
 
+            AppLog.i("FormMainCross", "UpdateLocationSafe: location=" + (string.IsNullOrEmpty(location) ? "?-???" : location));
+
             AppVars.LocationReal = string.IsNullOrEmpty(location) ? "?-???" : location;
             statuslabelLocation.Text = AppVars.LocationReal;
 
@@ -629,6 +637,7 @@ namespace ABClient.ABForms
 
         internal void AutoboiOff()
         {
+            AppLog.i("FormMainCross", "AutoboiOff");
             AppVars.Profile.LezDoAutoboi = false;
             ChangeAutoboiState(AutoboiState.AutoboiOff);
         }
@@ -641,6 +650,7 @@ namespace ABClient.ABForms
 
         internal void UpdateGame(string message)
         {
+            AppLog.i("FormMainCross", "UpdateGame: " + message);
             if (AppVars.MustReload)
                 return;
 
@@ -671,6 +681,7 @@ namespace ABClient.ABForms
         internal void UpdateTied(int tied)
         {
             AppVars.Tied = (tied < 0) ? 0 : tied;
+            AppLog.d("FormMainCross", "UpdateTied: tied=" + AppVars.Tied + "%");
             var sb = new StringBuilder("Усталость: ");
             sb.Append(AppVars.Tied);
             sb.Append('%');
@@ -683,6 +694,7 @@ namespace ABClient.ABForms
                 return;
             }
 
+            AppLog.i("FormMainCross", "UpdateTied: tied=0, auto-drink disabled");
             AppVars.AutoDrink = false;
             AppVars.AutoFishDrink = false;
             buttonDrink.Checked = false;
@@ -723,6 +735,7 @@ namespace ABClient.ABForms
 
         internal void UpdateNavigatorOff()
         {
+            AppLog.i("FormMainCross", "UpdateNavigatorOff");
             buttonNavigator.Checked = false;
             menuitemDoSearchBox.Checked = false;
             AppVars.DoSearchBox = false;
@@ -731,6 +744,7 @@ namespace ABClient.ABForms
 
         internal void UpdateFishOff()
         {
+            AppLog.i("FormMainCross", "UpdateFishOff");
             buttonAutoFish.Checked = false;
             AppVars.Profile.FishAuto = false;
             AppVars.Profile.Save();
@@ -885,6 +899,8 @@ namespace ABClient.ABForms
                 return;
             }
 
+            AppLog.d("FormMainCross", "TraceDrinkPotion: " + wnametxt);
+
             var h = 0;
             switch (wnametxt)
             {
@@ -1018,6 +1034,7 @@ namespace ABClient.ABForms
 
         internal void UpdateGuamodTurnOn()
         {
+            AppLog.i("FormMainCross", "UpdateGuamodTurnOn: enabling auto-input");
             if (!menuitemGuamod.Enabled || menuitemGuamod.Checked)
             {
                 return;

@@ -17,6 +17,7 @@ namespace ABClient
                 try
                 {
                     _numberOfActiveThreads++;
+                    AppLog.d("IdleManager", "AddActivity: threads=" + _numberOfActiveThreads);
                     ShowActivity();
                 }
                 finally
@@ -37,6 +38,7 @@ namespace ABClient
                 try
                 {
                     _numberOfActiveThreads--;                    
+                    AppLog.d("IdleManager", "RemoveActivity: threads=" + _numberOfActiveThreads);
                     ShowActivity();
                 }
                 finally
@@ -49,7 +51,10 @@ namespace ABClient
             }
 
             if (_numberOfActiveThreads == 0)
+            {
+                AppLog.d("IdleManager", "RemoveActivity: idle, triggering Pulse");
                 ContactsManager.Pulse();
+            }
         }
 
         private static void ShowActivity()

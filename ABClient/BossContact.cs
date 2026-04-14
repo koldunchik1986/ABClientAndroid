@@ -26,7 +26,12 @@ namespace ABClient
         public void Process(UserInfo userInfo)
         {
             if (userInfo == null)
+            {
+                AppLog.d("BossContact", "Process: userInfo is null, skip");
                 return;
+            }
+
+            AppLog.d("BossContact", "Process: name=" + Name);
 
             var location = userInfo.Location;
             var splocation = location.Split(new[] { " [" }, StringSplitOptions.RemoveEmptyEntries);
@@ -44,7 +49,10 @@ namespace ABClient
             NextCheck = DateTime.Now.AddSeconds(30);
 
             if (!isonline)
+            {
+                AppLog.d("BossContact", "Process: " + Name + " offline");
                 return;
+            }
 
             if (flog.Equals(Flog))
                 return;
@@ -54,10 +62,15 @@ namespace ABClient
             if (string.IsNullOrEmpty(flog))
                 return;
 
+            AppLog.i("BossContact", "Process: " + Name + " online, flog=" + flog);
+
             var fight = NeverApi.GetFlog(flog);
             //fight = File.ReadAllText("boss3.txt");
             if (string.IsNullOrEmpty(fight))
+            {
+                AppLog.w("BossContact", "Process: GetFlog returned empty for " + Name);
                 return;
+            }
 
             // var lives_g2 = [[3,"Королева Змей",49331,100000,2304578,1]];
 
@@ -74,6 +87,7 @@ namespace ABClient
             var livesg2 = HelperStrings.SubString(fight, "var lives_g2 = [[", "]]");
             if (string.IsNullOrEmpty(livesg1) || string.IsNullOrEmpty(livesg2))
             {
+                AppLog.d("BossContact", "Process: lives_g missing for " + Name);
                 return;
             }
 
@@ -95,6 +109,7 @@ namespace ABClient
 
         private static bool CheckLives(string nick, string flog, UserInfo userInfo, string location, string args)
         {
+            AppLog.d("BossContact", "CheckLives: nick=" + nick + " location=" + location);
             /* 
                 var lives_g1 = [[1,"_(*Na*(_",23,1,"dshi",2810,5075,1],[1,"WAMPIRIK",23,3,"c125",1425,1425,1]];
                 var lives_g2 = [[3,"Хранитель Леса",67935,100000,2303103,1]];
@@ -115,6 +130,7 @@ namespace ABClient
                     {
                         var id = spar[4];
                         var name = spar[1].Trim('\"');
+                        AppLog.i("BossContact", "CheckLives: BOSS FOUND name=" + name + " id=" + id + " location=" + location);
                         var message =
                             $"{HtmlBossEntry(id, name)} напал на {HtmlPercEntry(userInfo)} в локации <b>{location}</b>. Возможные клетки: <i>{BossMap.GetRegNum(location)}</i>.  <a href='http://www.neverlands.ru/logs.fcg?fid={flog}' onclick='window.open(this.href);' target=_blank>Ссылка на бой</a>";
 
