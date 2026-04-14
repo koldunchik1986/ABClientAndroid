@@ -632,5 +632,38 @@
                 return string.Empty;
             return str;
         }
+
+        /// <summary>
+        /// Отладочный лог из JS (map.js Ogl/ButClick и т.д.).
+        /// Вызывается через window.external.DebugLog(message).
+        /// </summary>
+        public void DebugLog(string message)
+        {
+            AppLog.i("JS_DEBUG", message);
+        }
+
+        /// <summary>
+        /// Обработка локальных команд чата (!train и т.д.).
+        /// Вызывается из JS (ButPhp) через window.external.HandleChatCommand(text).
+        /// Возвращает "1" если команда обработана (не отправлять на сервер), "" если нет.
+        /// </summary>
+        public string HandleChatCommand(string text)
+        {
+            if (string.IsNullOrEmpty(text))
+                return "";
+
+            text = text.Trim();
+
+            if (text.StartsWith("!train", StringComparison.OrdinalIgnoreCase))
+            {
+                if (AppVars.MainForm != null)
+                {
+                    FormMain.HandleTrainCommand(text);
+                }
+                return "1";
+            }
+
+            return "";
+        }
     }
 }

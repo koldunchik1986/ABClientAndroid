@@ -256,9 +256,9 @@ namespace ABClient
                         }
                     }
                 }
-                // ReSharper disable once EmptyGeneralCatchClause
-                catch (Exception)
+                catch (Exception ex)
                 {
+                    AppLog.e("NeverApi", "GetInfo FAILED: url=" + url + " error=" + ex.Message, ex);
                 }
                 finally
                 {

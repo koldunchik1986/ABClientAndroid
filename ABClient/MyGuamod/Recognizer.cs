@@ -60,6 +60,23 @@ namespace ABClient.MyGuamod
 
             neuro = new NeuroBase();
             var newresultOne = string.Empty;
+
+            // Сохраняем капчу в файл для анализа/переобучения
+            try
+            {
+                var captchaDir = System.IO.Path.Combine(System.Windows.Forms.Application.StartupPath, "Logs");
+                captchaDir = System.IO.Path.Combine(captchaDir, "Captcha");
+                if (!System.IO.Directory.Exists(captchaDir))
+                    System.IO.Directory.CreateDirectory(captchaDir);
+                var captchaFile = System.IO.Path.Combine(captchaDir, DateTime.Now.ToString("yyyyMMdd_HHmmss") + ".png");
+                System.IO.File.WriteAllBytes(captchaFile, AppVars.CodePng);
+                AppLog.d("Recognizer", "CAPTCHA_SAVED: " + captchaFile + " size=" + AppVars.CodePng.Length);
+            }
+            catch (Exception saveEx)
+            {
+                AppLog.w("Recognizer", "CAPTCHA_SAVE_FAILED: " + saveEx.Message);
+            }
+
             using (var ms = new MemoryStream(AppVars.CodePng))
             {
                 try
@@ -190,12 +207,26 @@ namespace ABClient.MyGuamod
                 return;
             }
 
+            // Сначала пробуем загрузить кастомную обученную базу
+            NeuroBase.LoadCustomBase();
+
+            if (NeuroBase.NumNodes() != 0)
+            {
+                AppLog.i("Recognizer", "Using custom neuro base, nodes=" + NeuroBase.NumNodes());
+                Ready = true;
+                return;
+            }
+
+            // Fallback: встроенная база из ресурсов
             using (var stream = new MemoryStream(Resources.abneuro))
             {
                 var array = new byte[stream.Length];
                 stream.Read(array, 0, (int) stream.Length);
                 NeuroBase.LoadFromArray(array);
             }
+
+            AppLog.i("Recognizer", "Using built-in neuro base, nodes=" + NeuroBase.NumNodes());
+            Ready = true;
         }
 
         internal static TimeSpan BuildTimeDiff()

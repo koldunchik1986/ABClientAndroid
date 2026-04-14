@@ -24,6 +24,69 @@ namespace ABClient.PostFilter
             if (string.IsNullOrEmpty(address))
                 return null;
 
+            // Логируем все POST-запросы (тела запросов) для отладки
+            if (array != null && array.Length > 0)
+            {
+                try
+                {
+                    var postBodyPreview = Helpers.Russian.Codepage.GetString(array);
+                    if (postBodyPreview.Length > 150) postBodyPreview = postBodyPreview.Substring(0, 150) + "...";
+                    AppLog.d("Filter.PreProcess", "POST_BODY: address=" + address + " body=" + postBodyPreview);
+                }
+                catch { }
+            }
+
+            // Перехват команды !train из чата — на уровне прокси.
+            // Когда пользователь вводит "!train 40479" в чат, браузер отправляет POST на ch.php
+            // с текстом сообщения. Здесь перехватываем: если text начинается с "!train",
+            // выполняем обучение нейросети и блокируем отправку на сервер (возвращаем null).
+            // Аналог Android: команда обрабатывается локально, на сервер не уходит.
+            // ВАЖНО: сообщение-ответ содержит "[train]" (не "!train"), чтобы не попасть в цикл.
+            if (array != null && array.Length > 0 && address.Contains("ch.php"))
+            {
+                try
+                {
+                    var postBody = Helpers.Russian.Codepage.GetString(array);
+                    // Формат POST: ...&text=%21train+40479... или text=!train+40479
+                    // Проверяем только поле text=, не sbmsg (sbmsg=Подача запроса от авто-ответа)
+                    var textPos = postBody.IndexOf("text=", StringComparison.Ordinal);
+                    if (textPos >= 0)
+                    {
+                        var textValue = postBody.Substring(textPos + "text=".Length);
+                        var ampPos = textValue.IndexOf('&');
+                        if (ampPos >= 0)
+                            textValue = textValue.Substring(0, ampPos);
+
+                        // Проверяем только %21train (!train) — НЕ перехватываем если это sbmsg авто-ответ
+                        if (textValue.StartsWith("%21train", StringComparison.OrdinalIgnoreCase) ||
+                            textValue.StartsWith("!train", StringComparison.OrdinalIgnoreCase))
+                        {
+                            // URL-decode: + → пробел, %20 → пробел, %21 → !
+                            string decodedText;
+                            try
+                            {
+                                decodedText = System.Uri.UnescapeDataString(textValue.Replace('+', ' ')).Trim();
+                            }
+                            catch (System.UriFormatException)
+                            {
+                                decodedText = textValue.Replace('+', ' ').Replace("%21", "!").Trim();
+                            }
+
+                            if (decodedText.StartsWith("!train", StringComparison.OrdinalIgnoreCase))
+                            {
+                                AppLog.i("Filter.PreProcess", "!TRAIN_INTERCEPTED: text=" + decodedText);
+                                HandleTrainCommand(decodedText);
+                                return null;
+                            }
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    AppLog.e("Filter.PreProcess", "!TRAIN_CHECK_FAILED", ex);
+                }
+            }
+
             /*
             if (address.Equals("http://forum.neverlands.ru/action/"))
             {
@@ -302,6 +365,68 @@ namespace ABClient.PostFilter
             var html = Russian.Codepage.GetString(array);
             html = RemoveDoctype(html);
             return Russian.Codepage.GetBytes(html);
+        }
+
+        /// <summary>
+        /// Обработка команды !train XXXXX — дообучение нейросети капчи.
+        /// Вызывается из PreProcess при перехвате POST чата с текстом "!train".
+        /// Аналог Android: NeuroBase.Train() через чат-команду.
+        /// Зависимости: NeuroBase.Train(), NeuroBase.SaveCustomBase(), AppLog.
+        /// </summary>
+        private static void HandleTrainCommand(string text)
+        {
+            var parts = text.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+            if (parts.Length < 2)
+            {
+                WriteTrainResult("!train: укажите правильные цифры, например: !train 26359");
+                return;
+            }
+
+            var digits = parts[1].Trim();
+            foreach (var c in digits)
+            {
+                if (!char.IsDigit(c))
+                {
+                    WriteTrainResult("!train: только цифры, например: !train 26359");
+                    return;
+                }
+            }
+
+            if (digits.Length < 4 || digits.Length > 7)
+            {
+                WriteTrainResult("!train: нужно 4-7 цифр, например: !train 26359");
+                return;
+            }
+
+            try
+            {
+                Neuro.NeuroBase.Train(digits);
+                WriteTrainResult("!train OK: обучено \"" + digits + "\" (векторов в базе: " + Neuro.NeuroBase.NumNodes() + ")");
+            }
+            catch (Exception ex)
+            {
+                WriteTrainResult("!train ERROR: " + ex.Message);
+                AppLog.e("Filter.HandleTrainCommand", "TRAIN_FAILED", ex);
+            }
+        }
+
+        /// <summary>
+        /// Вывод результата команды !train в чат (через BeginInvoke на UI-поток).
+        /// </summary>
+        private static void WriteTrainResult(string message)
+        {
+            try
+            {
+                if (AppVars.MainForm != null)
+                {
+                    AppVars.MainForm.BeginInvoke(
+                        new ABForms.UpdateWriteRealChatMsgDelegate(AppVars.MainForm.WriteMessageToChat),
+                        new object[] { message });
+                }
+            }
+            catch (InvalidOperationException)
+            {
+            }
         }
     }
 }

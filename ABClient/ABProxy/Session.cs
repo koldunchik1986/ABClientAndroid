@@ -110,6 +110,17 @@
 
                 RequestBodyBytes = Filter.PreProcess("http://" + Url, RequestBodyBytes);
 
+                // Перехват команды !train из чата — блокировка отправки на сервер.
+                // Если PreProcess вернул RequestBodyBytes == null, значит команда обработана
+                // локально (дообучение нейросети), запрос к серверу не нужен.
+                if (RequestBodyBytes == null && Url.Contains("ch.php"))
+                {
+                    AppLog.d("ProxySession", "!train intercepted — local command, no server request");
+                    flag = true;
+                    Response = new ServerChatter(this, "HTTP/1.1 200 OK\r\nServer: Cache\r\nContent-Length: 0\r\n\r\n");
+                    goto afterresponse;
+                }
+
                 if (Url.StartsWith("www.neverlands.ru/cgi-bin/go.cgi?uid=", StringComparison.OrdinalIgnoreCase))
                 {
                     AppLog.d("ProxySession", "go.cgi intercepted (redirect)");

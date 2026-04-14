@@ -114,6 +114,7 @@ function ButtonGen() {
 }
 
 function ButClick(id) {
+    try { window.external.DebugLog('ButClick("' + id + '")'); } catch(e) {}
     var goloc = '';
     switch (id) {
         case 'inf': goloc = 'main.php?get_id=56&act=10&go=inf&vcode=' + bavail[id][0]; break;
@@ -215,7 +216,7 @@ function showMap(x, y) {
                 img.width = scale;
                 img.height = scale;
                 img.id = 'img_' + dx + '_' + dy;
-                img.alt = 'Недоступно';
+                img.alt = 'пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ';
                 img.style.filter = "alpha(opacity=70)";
                 td.appendChild(img);
                 tr.appendChild(td);
@@ -453,7 +454,7 @@ function StateReady() {
                     ND = d.createElement('div');
                     ND.className = 'png';
 
-                    // окно с данными
+                    // пїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ
                     var buttons = '';
                     var ingr = eval(arr_res[5]);
                     var did = 'uni';
@@ -463,7 +464,7 @@ function StateReady() {
                         case 0:
                             var tr = 0;
                             var butalt;
-                            var messal = '<FORM id="ALHF"><table cellpadding=0 cellspacing=0 border=0 width=100%><tr><td bgcolor=#CCCCCC><table cellpadding=10 cellspacing=1 border=0 width=100%>' + (ingr[1] != '00000' ? '<tr><td bgcolor=#FFFFFF colspan=4 class="centr"><img src=http://image.neverlands.ru/1x1.gif width=1 height=10><br><img src="http://www.neverlands.ru/modules/code/code.php?' + ingr[1] + '" width=134 height=60><br><img src=http://image.neverlands.ru/1x1.gif width=1 height=10><br>Код: <input type=text name=code size=4 class=gr_text id=CAPCODE><br><img src=http://image.neverlands.ru/1x1.gif width=1 height=10></td></tr>' : '');
+                            var messal = '<FORM id="ALHF"><table cellpadding=0 cellspacing=0 border=0 width=100%><tr><td bgcolor=#CCCCCC><table cellpadding=10 cellspacing=1 border=0 width=100%>' + (ingr[1] != '00000' ? '<tr><td bgcolor=#FFFFFF colspan=4 class="centr"><img src=http://image.neverlands.ru/1x1.gif width=1 height=10><br><img src="http://www.neverlands.ru/modules/code/code.php?' + ingr[1] + '" width=134 height=60><br><img src=http://image.neverlands.ru/1x1.gif width=1 height=10><br>пїЅпїЅпїЅ: <input type=text name=code size=4 class=gr_text id=CAPCODE><br><img src=http://image.neverlands.ru/1x1.gif width=1 height=10></td></tr>' : '');
 
                             // ABC
                             var abcingr = '';
@@ -472,8 +473,8 @@ function StateReady() {
                             for (var i = 4; i < ingr.length; i++) {
                                 tr++;
                                 if (tr == 1) messal += '<tr>';
-                                butalt = ingr[i][10] == 4 ? 'Срезать' : 'Срубить';
-                                messal += '<td bgcolor=#FFFFFF valign=top width=25%><div align=center>' + (!ingr[i][9] ? '<input type=button class=lbutdis value="' + butalt + '" DISABLED>' : '<input type=button class=lbut value="' + butalt + '" onclick="ResoStart(\'' + ingr[i][0] + '\',' + ingr[2] + ',' + ingr[3] + ',\'' + ingr[i][3] + '\',\'' + ingr[i][2] + '\',\'' + ingr[i][4] + '\',\'' + ingr[i][5] + '\',\'' + ingr[i][6] + '\',\'' + ingr[i][7] + '\',\'' + ingr[i][9] + '\',\'' + ingr[i][10] + '\',\'' + ingr[i][1] + '\')">') + '<br><br><img src=http://image.neverlands.ru/resources/' + ingr[i][0] + '.gif width=60 height=60><br><font class=freetxt><b>' + ingr[i][1] + '</b><br><br>Количество: ' + ingr[i][8] + ' из ' + ingr[i][11] + '</font></div></td>';
+                                butalt = ingr[i][10] == 4 ? 'пїЅпїЅпїЅпїЅпїЅпїЅпїЅ' : 'пїЅпїЅпїЅпїЅпїЅпїЅпїЅ';
+                                messal += '<td bgcolor=#FFFFFF valign=top width=25%><div align=center>' + (!ingr[i][9] ? '<input type=button class=lbutdis value="' + butalt + '" DISABLED>' : '<input type=button class=lbut value="' + butalt + '" onclick="ResoStart(\'' + ingr[i][0] + '\',' + ingr[2] + ',' + ingr[3] + ',\'' + ingr[i][3] + '\',\'' + ingr[i][2] + '\',\'' + ingr[i][4] + '\',\'' + ingr[i][5] + '\',\'' + ingr[i][6] + '\',\'' + ingr[i][7] + '\',\'' + ingr[i][9] + '\',\'' + ingr[i][10] + '\',\'' + ingr[i][1] + '\')">') + '<br><br><img src=http://image.neverlands.ru/resources/' + ingr[i][0] + '.gif width=60 height=60><br><font class=freetxt><b>' + ingr[i][1] + '</b><br><br>пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ: ' + ingr[i][8] + ' пїЅпїЅ ' + ingr[i][11] + '</font></div></td>';
 
                                 // ABC
                                 abcingr += ingr[i][1] + ':' + (!ingr[i][9] ? '0' : '1') + '|';
@@ -501,14 +502,14 @@ function StateReady() {
                             break;
 
                         case 1:
-                            var messal = '<FORM id="FISHF"><table cellspacing=0 cellpadding=0 border=0 width=100%><tr><td bgcolor=#CCCCCC><table cellspacing=1 cellpadding=5 border=0 width=100%><tr><td bgcolor=#FFFFFF colspan=5 class="centr" class=nickname><font class=inv><b>' + ((ingr[4] - ingr[3]) > 10 ? '' : '<font color=#CC0000>Внимание! Возможен перегруз.</font> ') + 'Масса Вашего инвентаря: ' + ingr[3] + '/' + ingr[4] + '</b></font></td></tr><tr><td bgcolor=#FFFFFF colspan=2></td><td bgcolor=#FFFFFF class="centr" width=60%><b>Название приманки</b></td><td bgcolor=#FFFFFF class="centr" width=40%><b>В наличии</b></td></tr>';
+                            var messal = '<FORM id="FISHF"><table cellspacing=0 cellpadding=0 border=0 width=100%><tr><td bgcolor=#CCCCCC><table cellspacing=1 cellpadding=5 border=0 width=100%><tr><td bgcolor=#FFFFFF colspan=5 class="centr" class=nickname><font class=inv><b>' + ((ingr[4] - ingr[3]) > 10 ? '' : '<font color=#CC0000>пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ! пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ.</font> ') + 'пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ: ' + ingr[3] + '/' + ingr[4] + '</b></font></td></tr><tr><td bgcolor=#FFFFFF colspan=2></td><td bgcolor=#FFFFFF class="centr" width=60%><b>пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ</b></td><td bgcolor=#FFFFFF class="centr" width=40%><b>пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ</b></td></tr>';
 
                             // ABC
                             window.external.SetAutoFishMassa(ingr[3] + '/' + ingr[4]);
                             // -ABC
 
                             for (var i = 5; i < ingr.length; i++) messal += '<tr><td bgcolor=#FFFFFF class="centr"><input type=radio name=primid value=' + ingr[i][0] + (ingr[i][2] > 4 ? '' : ' DISABLED') + window.external.CheckPri(ingr[i][1], ingr[i][2]) + '></td><td bgcolor=#FFFFFF><img src=http://image.neverlands.ru/tools/' + ingr[i][0] + '.gif width=60 height=60></td><td bgcolor=#FFFFFF class="centr"><b>' + ingr[i][1] + '</b></td><td bgcolor=#FFFFFF class="centr"><b>' + ingr[i][2] + '</b></td></tr>';
-                            messal += (ingr[1] ? '<tr><td bgcolor=#FFFFFF colspan=5 class="centr"><img src=http://image.neverlands.ru/1x1.gif width=1 height=10><br><img src="http://www.neverlands.ru/modules/code/code.php?' + ingr[1] + '" width=134 height=60><br><img src=http://image.neverlands.ru/1x1.gif width=1 height=10><br>Код: <input type=text name=code size=4 class=gr_text id=CAPCODE><br><img src=http://image.neverlands.ru/1x1.gif width=1 height=10>' + window.external.InsertGuaDiv(ingr[1]) + '</td></tr>' : '') + '</table></td></tr></table></FORM>';
+                            messal += (ingr[1] ? '<tr><td bgcolor=#FFFFFF colspan=5 class="centr"><img src=http://image.neverlands.ru/1x1.gif width=1 height=10><br><img src="http://www.neverlands.ru/modules/code/code.php?' + ingr[1] + '" width=134 height=60><br><img src=http://image.neverlands.ru/1x1.gif width=1 height=10><br>пїЅпїЅпїЅ: <input type=text name=code size=4 class=gr_text id=CAPCODE><br><img src=http://image.neverlands.ru/1x1.gif width=1 height=10>' + window.external.InsertGuaDiv(ingr[1]) + '</td></tr>' : '') + '</table></td></tr></table></FORM>';
                             buttons = '<a class="but lov" id=fishbutton href="javascript: FishStart(\'' + ingr[2] + '\',' + (ingr[1] ? 1 : 0) + ');"></a>';
 
                             // ABC
@@ -581,7 +582,7 @@ function TimerStart(secgo, mrinit) {
 }
 
 function MessBoxDiv(mess) {
-    if (mess.indexOf('Рюкзак') != -1) {
+    if (mess.indexOf('пїЅпїЅпїЅпїЅпїЅпїЅ') != -1) {
         if (!window.external.ShowOverWarning()) {
             return;
         }
@@ -611,7 +612,7 @@ function MessBoxDivClose() {
 
 function fight_map(vcode) {
     top.frames['ch_buttons'].document.FBT.text.focus();
-    MessBoxDiv('<form action=main.php method=POST><input type=hidden name=post_id value="8"><input type=hidden name=vcode value=' + vcode + '><table cellpadding=5 cellspacing=0 border=0 width=100%><tr><td><b>Нападение на природе</b></td></tr><tr><td>На кого: <input type="text" name=pnick class=gr_text maxlength=20></td></tr><tr><td align=center><input type=submit value="Выполнить" class=gr_but></td></tr></table></FORM>');
+    MessBoxDiv('<form action=main.php method=POST><input type=hidden name=post_id value="8"><input type=hidden name=vcode value=' + vcode + '><table cellpadding=5 cellspacing=0 border=0 width=100%><tr><td><b>пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ</b></td></tr><tr><td>пїЅпїЅ пїЅпїЅпїЅпїЅ: <input type="text" name=pnick class=gr_text maxlength=20></td></tr><tr><td align=center><input type=submit value="пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ" class=gr_but></td></tr></table></FORM>');
     d.all('pnick').focus();
     ActionFormUse = 'pnick';
 }
@@ -627,7 +628,7 @@ function AlhStart(name, ct, cid, uid, curs, mass, muid, p, resl, vcode) {
 
         AjaxGet('alchemy_ajax.php?act=2&ct=' + ct + '&cid=' + cid + '&uid=' + uid + '&curs=' + curs + '&mass=' + mass + '&muid=' + muid + '&p=' + p + '&resl=' + resl + '&vcode=' + vcode + '&code=' + CAP + '&r=' + Math.random());
     }
-    else errm = 'Введите защитный код.';
+    else errm = 'пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ.';
     if (errm) MessBoxDiv(errm);
 }
 
@@ -643,7 +644,7 @@ function ResoStart(res_id, r_x, r_y, r_time, l_time, uid, curs, mass, p, vcode, 
 
         AjaxGet('alchemy_ajax.php?act=3&res_id=' + res_id + '&r_x=' + r_x + '&r_y=' + r_y + '&r_time=' + r_time + '&r_type=' + r_type + '&uid=' + uid + '&curs=' + curs + '&mass=' + mass + '&p=' + p + '&l_time=' + l_time + '&vcode=' + vcode + '&code=' + CAP + '&r=' + Math.random());
     }
-    else errm = 'Введите защитный код.';
+    else errm = 'пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ.';
     if (errm) MessBoxDiv(errm);
 }
 
@@ -669,9 +670,9 @@ function FishStart(vcode, ver) {
         if (primid) {
             AjaxGet('fish_ajax.php?act=2&primid=' + primid + '&vcode=' + vcode + (ver ? '&code=' + CAP : '') + '&r=' + Math.random());
         }
-        else errm = 'Не выбрана приманка.';
+        else errm = 'пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ.';
     }
-    else errm = 'Введите защитный код.';
+    else errm = 'пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ.';
     if (errm) MessBoxDiv(errm);
 }
 
@@ -681,7 +682,7 @@ function getDocHeight() {
 
 function moveMapTo(x, y, ps) {
     if (moving_status == 1) return false;
-    d.getElementById('maptext').innerHTML = 'Ожидаем ответ сервера...';
+    d.getElementById('maptext').innerHTML = 'пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ...';
     gox = x;
     goy = y;
     gop = ps;
@@ -690,7 +691,19 @@ function moveMapTo(x, y, ps) {
 }
 
 function Ogl(code) {
-    AjaxGet('alchemy_ajax.php?act=1&vcode=' + code + '&r=' + Math.random());
+    try { window.external.DebugLog('Ogl() called, code=' + code + ', AjaxGet=' + (typeof AjaxGet)); } catch(e) {}
+    if (typeof AjaxGet === 'undefined') {
+        try {
+            var xhr = new XMLHttpRequest();
+            xhr.open('GET', 'alchemy_ajax.php?act=1&vcode=' + code + '&r=' + Math.random(), false);
+            xhr.send();
+            if (xhr.status == 200) { alch_callback(xhr.responseText); }
+        } catch(e2) {
+            try { window.external.DebugLog('Ogl() fallback failed: ' + e2.message); } catch(e3) {}
+        }
+    } else {
+        AjaxGet('alchemy_ajax.php?act=1&vcode=' + code + '&r=' + Math.random());
+    }
 }
 
 function Fish(code) {
@@ -739,7 +752,7 @@ function loadMap(dir) {
                     img.width = scale;
                     img.height = scale;
                     img.id = 'img_' + i + '_' + loaded_bottom;
-                    img.alt = 'Недоступно';
+                    img.alt = 'пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ';
                     img.style.filter = "alpha(opacity=70)";
                     td.appendChild(img);
                     tr.appendChild(td);
@@ -785,7 +798,7 @@ function loadMap(dir) {
                     img.width = scale;
                     img.height = scale;
                     img.id = 'img_' + i + '_' + loaded_top;
-                    img.alt = 'Недоступно';
+                    img.alt = 'пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ';
                     img.style.filter = "alpha(opacity=70)";
                     td.appendChild(img);
                     tr.appendChild(td);
@@ -830,7 +843,7 @@ function loadMap(dir) {
                     img.width = scale;
                     img.height = scale;
                     img.id = 'img_' + loaded_right + '_' + i;
-                    img.alt = 'Недоступно';
+                    img.alt = 'пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ';
                     img.style.filter = "alpha(opacity=70)";
                     td.appendChild(img);
                     tr.appendChild(td);
@@ -874,7 +887,7 @@ function loadMap(dir) {
                     img.width = scale;
                     img.height = scale;
                     img.id = 'img_' + loaded_left + '_' + i;
-                    img.alt = 'Недоступно';
+                    img.alt = 'пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ';
                     img.style.filter = "alpha(opacity=70)";
                     td.appendChild(img);
                     tr.insertBefore(td, tr.firstChild);

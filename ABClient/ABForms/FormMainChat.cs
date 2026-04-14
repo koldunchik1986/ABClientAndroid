@@ -9,6 +9,7 @@ namespace ABClient.ABForms
     using MyChat;
     using MyHelpers;
     using MySounds;
+    using Neuro;
 
     /// <summary>
     /// Работа с чатом.
@@ -316,6 +317,68 @@ namespace ABClient.ABForms
             }
 
             WriteColorMessageToChat(msg);
+        }
+
+        /// <summary>
+        /// Обработка команды !train XXXXX — дообучение нейросети капчи.
+        /// Аналог Android: NeuroBase.Train() через чат-команду.
+        /// Пользователь видит [CAPTCHA_DEBUG] result=36672 а должно быть 26359,
+        /// вводит !train 26359 → вектора из последнего распознавания добавляются в базу.
+        /// Зависимости: NeuroBase.Train(), NeuroBase.SaveCustomBase(), AppLog.
+        /// </summary>
+        internal static void HandleTrainCommand(string text)
+        {
+            // Парсим "!train 26359" — извлекаем цифры после пробела
+            var parts = text.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+            if (parts.Length < 2)
+            {
+                WriteTrainResult("!train: укажите правильные цифры, например: !train 26359");
+                return;
+            }
+
+            var digits = parts[1].Trim();
+            // Проверяем что строка состоит только из цифр
+            foreach (var c in digits)
+            {
+                if (!char.IsDigit(c))
+                {
+                    WriteTrainResult("!train: только цифры, например: !train 26359");
+                    return;
+                }
+            }
+
+            if (digits.Length < 4 || digits.Length > 7)
+            {
+                WriteTrainResult("!train: нужно 4-7 цифр, например: !train 26359");
+                return;
+            }
+
+            try
+            {
+                NeuroBase.Train(digits);
+                WriteTrainResult("!train OK: обучено \"" + digits + "\" (векторов в базе: " + NeuroBase.NumNodes() + ")");
+            }
+            catch (Exception ex)
+            {
+                WriteTrainResult("!train ERROR: " + ex.Message);
+                AppLog.e("HandleTrainCommand", "TRAIN_FAILED", ex);
+            }
+        }
+
+        private static void WriteTrainResult(string message)
+        {
+            try
+            {
+                if (AppVars.MainForm != null)
+                {
+                    AppVars.MainForm.BeginInvoke(
+                        new UpdateWriteRealChatMsgDelegate(AppVars.MainForm.WriteMessageToChat),
+                        new object[] { message });
+                }
+            }
+            catch (InvalidOperationException)
+            {
+            }
         }
 
         private void WriteChatTip(string message)

@@ -29,6 +29,11 @@
         private static int debugXRight;
         private static int debugRealWidth;
 
+        // Данные последнего распознавания для обучения (Train)
+        private static List<double[]> lastListMatrix = new List<double[]>();
+        private static double[] lastArrayDistances = new double[0];
+        private static int lastConstNumDigits;
+
         internal NeuroBase()
         {
             // ConstNumDigits определяется автоматически в Calculate()
@@ -63,26 +68,67 @@
         }
 
         /// <summary>
-        /// Автоопределение количества цифр на капче.
-        /// Алгоритм: считаем количество вертикальных групп чёрных пикселей (digits),
-        /// разделённых пробелами (столбцы без чёрных пикселей).
-        /// Минимум 4, максимум 7 цифр.
+        /// Автоопределение количества цифр на капче — гибридный подход.
+        /// Алгоритм:
+        ///   1. Считаем группы чёрных пикселей (gap≥1 пустой столбец = разделитель)
+        ///   2. Если группа шире 1.5x средней — в ней 2 цифры, разбиваем
+        ///   3. Если стандартный размер капчи (ширина ≈132) → предполагаем 5 цифр
+        ///   4. Если группа одна (все цифры слились) — разбиваем на 5 равных
         /// </summary>
-        private static int CountDigitGroups(bool[] columnHasBlack, int xleft, int xright)
+        private static int CountDigitGroups(bool[] columnHasBlack, int xleft, int xright, int imageWidth)
         {
+            // Для стандартной капчи neverlands (134x60, width=132) — предполагаем 5
+            if (imageWidth >= 125 && imageWidth <= 140)
+            {
+                // Проверяем: если есть хотя бы 3 разделителя (gap≥1), считаем группы
+                // Иначе (все цифры слиплись) — возвращаем 5
+                var gapCount = 0;
+                var inBlack = false;
+                var emptyRun = 0;
+                for (var x = xleft; x <= xright; x++)
+                {
+                    if (columnHasBlack[x])
+                    {
+                        if (!inBlack && emptyRun >= 1)
+                            gapCount++;
+                        inBlack = true;
+                        emptyRun = 0;
+                    }
+                    else
+                    {
+                        emptyRun++;
+                        inBlack = false;
+                    }
+                }
+
+                var groups = gapCount + 1;
+                if (groups >= 4 && groups <= 7)
+                    return groups;
+
+                // Все цифры слиплись или слишком много групп — равно 5
+                return 5;
+            }
+
+            // Для нестандартных размеров — gap-based подсчёт
             var count = 0;
             var inGroup = false;
             var gapColumns = 0;
-            var minGap = 2; // Минимум 2 пустых столбца подряд = разделитель между цифрами
+            var minGap = 1;
+
+            // Сначала собираем группы и их ширину
+            var groupStarts = new System.Collections.Generic.List<int>();
+            var groupEnds = new System.Collections.Generic.List<int>();
+            var currentStart = -1;
 
             for (var x = xleft; x <= xright; x++)
             {
                 if (columnHasBlack[x])
                 {
+                    if (currentStart == -1)
+                        currentStart = x;
                     gapColumns = 0;
                     if (!inGroup)
                     {
-                        count++;
                         inGroup = true;
                     }
                 }
@@ -94,15 +140,108 @@
                         if (gapColumns >= minGap)
                         {
                             inGroup = false;
+                            if (currentStart != -1)
+                            {
+                                groupStarts.Add(currentStart);
+                                groupEnds.Add(x - gapColumns);
+                                currentStart = -1;
+                            }
                         }
                     }
                 }
             }
 
-            // Ограничение: от 4 до 7 цифр (сервер обычно 5, но может быть 4)
-            if (count < 4) count = 4;
-            if (count > 7) count = 7;
-            return count;
+            if (currentStart != -1)
+            {
+                groupStarts.Add(currentStart);
+                groupEnds.Add(xright);
+            }
+
+            count = groupStarts.Count;
+            if (count == 0)
+                return 5;
+
+            // Если 1 группа — все слиплись, разбиваем на 5
+            if (count == 1)
+                return 5;
+
+            // Если какая-то группа явно шире остальных — в ней 2 цифры
+            var totalWidth = 0;
+            for (var i = 0; i < count; i++)
+                totalWidth += groupEnds[i] - groupStarts[i] + 1;
+
+            var avgWidth = totalWidth / count;
+            var expandedCount = count;
+            for (var i = 0; i < count; i++)
+            {
+                var gw = groupEnds[i] - groupStarts[i] + 1;
+                if (gw > avgWidth * 1.5)
+                    expandedCount++;
+            }
+
+            if (expandedCount < 4) expandedCount = 4;
+            if (expandedCount > 7) expandedCount = 7;
+            return expandedCount;
+        }
+
+        /// <summary>
+        /// Адаптивный порог бинаризации (аналог метода Otsu).
+        /// Находит порог, максимизирующий межклассовую дисперсию,
+        /// что лучше разделяет цифры и фон чем простое среднее.
+        /// </summary>
+        private static int ComputeOtsuThreshold(Bitmap bitmapSource, int width, int height, int graymin, int graymax)
+        {
+            // Гистограмма: считаем сколько пикселей попадает в каждый bin
+            var histogram = new int[256];
+            for (var y = 0; y < height; y++)
+            {
+                for (var x = 0; x < width; x++)
+                {
+                    var color = bitmapSource.GetPixel(x + 1, y + 1);
+                    var gray = (color.R + color.G + color.B) / 3;
+                    if (gray >= 0 && gray < 256)
+                        histogram[gray]++;
+                }
+            }
+
+            var total = width * height;
+            var sum = 0;
+            for (var i = 0; i < 256; i++)
+                sum += i * histogram[i];
+
+            var sumB = 0;
+            var wB = 0;
+            var maxVariance = 0.0;
+            var bestThreshold = (graymin + graymax) / 2; // fallback
+
+            for (var t = 0; t < 256; t++)
+            {
+                wB += histogram[t];
+                if (wB == 0)
+                    continue;
+
+                var wF = total - wB;
+                if (wF == 0)
+                    break;
+
+                sumB += t * histogram[t];
+
+                var mB = (double)sumB / wB;
+                var mF = (double)(sum - sumB) / wF;
+
+                var variance = wB * wF * (mB - mF) * (mB - mF);
+                if (variance > maxVariance)
+                {
+                    maxVariance = variance;
+                    bestThreshold = t * 3; // масштабируем обратно к R+G+B
+                }
+            }
+
+            // Если порог слишком близко к краям — используем fallback
+            if (bestThreshold < graymin + 30 || bestThreshold > graymax - 30)
+                bestThreshold = (graymin + graymax) / 2;
+
+            return bestThreshold;
         }
 
         internal static string Gyp()
@@ -170,7 +309,10 @@
 
             if (graymin < graymax)
             {
-                var grayMiddle = (graymax + graymin) / 2;
+                // Адаптивный порог бинаризации через гистограмму (аналог Otsu)
+                // Считаем гистограмму яркости и ищем порог, максимизирующий межклассовую дисперсию
+                var grayMiddle = ComputeOtsuThreshold(bitmapSource, width, height, graymin, graymax);
+
                 var arrayTops = new int[width];
                 var arrayBottoms = new int[width];
                 // Отслеживаем какие столбцы содержат чёрные пиксели (для автоопределения кол-ва цифр)
@@ -187,16 +329,40 @@
 
                 using (var bitmapGray = new Bitmap(width, height, PixelFormat.Format24bppRgb))
                 {
+                    // Шаг 1: Нормализация серого с удаллением шумовых линий
+                    // Капча neverlands содержит горизонтальные шумовые полосы (линии)
+                    // Для каждого столбца вычисляем среднюю яркость и вычитаем её
+                    var columnAvg = new int[width];
+                    for (var x = 0; x < width; x++)
+                    {
+                        var colSum = 0;
+                        var colCount = 0;
+                        for (var y = 0; y < height; y++)
+                        {
+                            var color = bitmapSource.GetPixel(x + 1, y + 1);
+                            colSum += color.R + color.G + color.B;
+                            colCount++;
+                        }
+                        columnAvg[x] = colCount > 0 ? colSum / colCount : 0;
+                    }
+
                     for (var x = 0; x < width; x++)
                     {
                         for (var y = 0; y < height; y++)
                         {
                             var color = bitmapSource.GetPixel(x + 1, y + 1);
                             var gray = color.R + color.G + color.B;
-                            var graynorm = (255 * (gray - graymin)) / (graymax - graymin);
+
+                            // Вычитаем фоновый шум столбца
+                            var bgOffset = columnAvg[x] - (graymin + (graymax - graymin) / 2);
+                            var grayClean = gray - (bgOffset > 0 ? bgOffset / 2 : 0);
+                            if (grayClean < graymin) grayClean = graymin;
+                            if (grayClean > graymax) grayClean = graymax;
+
+                            var graynorm = (255 * (grayClean - graymin)) / (graymax - graymin);
                             bitmapGray.SetPixel(x, y, Color.FromArgb(graynorm, graynorm, graynorm));
 
-                            var isBlack = gray < grayMiddle;
+                            var isBlack = grayClean < grayMiddle;
                             if (isBlack)
                             {
                                 if (xleft == -1)
@@ -221,7 +387,7 @@
                     // Считаем группы чёрных пикселей вместо захардкоженного ConstNumDigits = 5
                     if (xleft != -1 && xright != -1)
                     {
-                        ConstNumDigits = CountDigitGroups(columnHasBlack, xleft, xright);
+                        ConstNumDigits = CountDigitGroups(columnHasBlack, xleft, xright, width);
                     }
 
                     // Отладка: сохраняем границы
@@ -296,51 +462,106 @@
                     // Отладка: сохраняем расстояния для диагностики качества распознавания
                     debugDistances = new double[ConstNumDigits];
                     Array.Copy(arrayDistances, debugDistances, ConstNumDigits);
+
+                    // Сохраняем данные последнего распознавания для обучения (Train)
+                    lastListMatrix = new List<double[]>(listMatrix);
+                    lastArrayDistances = new double[arrayDistances.Length];
+                    Array.Copy(arrayDistances, lastArrayDistances, arrayDistances.Length);
+                    lastConstNumDigits = ConstNumDigits;
                 }
             }
 
             elapsedTime = DateTime.Now.Ticks - startProcess;
         }
 
-        /*
+        /// <summary>
+        /// Обучение нейросети: добавляет вектора из последнего распознавания в базу.
+        /// train — строка правильных цифр (длина = lastConstNumDigits).
+        /// Вектора с очень малым расстоянием (&lt;0.5) к существующему — пропускаются (дубликаты).
+        /// </summary>
         internal static void Train(string train)
         {
-            for (var i = 0; i < 5; i++)
+            if (string.IsNullOrEmpty(train) || lastListMatrix.Count == 0)
+                return;
+
+            var count = Math.Min(train.Length, lastListMatrix.Count);
+            for (var i = 0; i < count; i++)
             {
-                if (listVectors.Count > 0 && arrayDistances[i] < 0.01)
-                {
+                if (i < lastArrayDistances.Length && listVectors.Count > 0 && lastArrayDistances[i] < 0.5)
                     continue;
-                }
 
-                listVectors.Add(new NeuroVector(train[i], listMatrix[i]));
+                listVectors.Add(new NeuroVector(train[i], lastListMatrix[i]));
+                AppLog.i("NeuroBase", "TRAIN: digit=" + train[i] + " dist=" + (i < lastArrayDistances.Length ? lastArrayDistances[i].ToString("F3") : "?") + " totalVectors=" + listVectors.Count);
             }
 
-            SaveToFile();
+            SaveCustomBase();
         }
 
-        internal static void LoadFromFile()
+        /// <summary>
+        /// Сохраняет кастомную базу векторов в файл abneuro.custom (рядом с exe).
+        /// Формат: [int count] [char token + 100 bytes]* , gzip сжатый.
+        /// </summary>
+        internal static void SaveCustomBase()
         {
-            listVectors.Clear();
-            if (!File.Exists(FileBaseName))
+            try
             {
-                return;    
-            }
-
-            var arrayPacked = File.ReadAllBytes(FileBaseName);
-            var arrayStream = UnpackArray(arrayPacked);
-            using (var inner = new MemoryStream(arrayStream))
-            {
-                using (var br = new BinaryReader(inner))
+                var path = System.IO.Path.Combine(System.Windows.Forms.Application.StartupPath, "abneuro.custom");
+                using (var inner = new MemoryStream())
                 {
-                    var count = br.ReadInt32();
-                    for (var i = 0; i < count; i++)
+                    using (var bw = new BinaryWriter(inner))
                     {
-                        listVectors.Add(new NeuroVector(br));
+                        bw.Write(listVectors.Count);
+                        for (var i = 0; i < listVectors.Count; i++)
+                        {
+                            listVectors[i].SaveToStream(bw);
+                        }
                     }
+
+                    var packed = PackArray(inner.ToArray());
+                    File.WriteAllBytes(path, packed);
+                    AppLog.i("NeuroBase", "SAVE_CUSTOM: path=" + path + " vectors=" + listVectors.Count + " bytes=" + packed.Length);
+                }
+            }
+            catch (Exception ex)
+            {
+                AppLog.e("NeuroBase", "SAVE_CUSTOM_FAILED", ex);
+            }
+        }
+
+        /// <summary>
+        /// Загружает кастомную базу векторов из файла abneuro.custom.
+        /// Если файл есть — загружается из него (перезаписывая встроенную базу).
+        /// Если нет — из встроенного ресурса Resources.abneuro.
+        /// </summary>
+        internal static void LoadCustomBase()
+        {
+            var path = System.IO.Path.Combine(System.Windows.Forms.Application.StartupPath, "abneuro.custom");
+            if (File.Exists(path))
+            {
+                try
+                {
+                    var arrayPacked = File.ReadAllBytes(path);
+                    var arrayStream = UnpackArray(arrayPacked);
+                    using (var inner = new MemoryStream(arrayStream))
+                    {
+                        using (var br = new BinaryReader(inner))
+                        {
+                            var count = br.ReadInt32();
+                            for (var i = 0; i < count; i++)
+                            {
+                                listVectors.Add(new NeuroVector(br));
+                            }
+                        }
+                    }
+                    AppLog.i("NeuroBase", "LOAD_CUSTOM: vectors=" + listVectors.Count);
+                }
+                catch (Exception ex)
+                {
+                    AppLog.e("NeuroBase", "LOAD_CUSTOM_FAILED, fallback to resource", ex);
+                    LoadFromArray(Properties.Resources.abneuro);
                 }
             }
         }
-         */ 
 
         internal static void LoadFromArray(byte[] arrayPacked)
         {
@@ -439,25 +660,6 @@
             return false;
         }
 
-        /*
-        private static void SaveToFile()
-        {
-            using (var inner = new MemoryStream())
-            {
-                using (var bw = new BinaryWriter(inner))
-                {
-                    bw.Write(listVectors.Count);
-                    for (var i = 0; i < listVectors.Count; i++)
-                    {
-                        listVectors[i].SaveToStream(bw);
-                    }
-                }
-
-                var arrayPacked = PackArray(inner.ToArray());
-                File.WriteAllBytes(FileBaseName, arrayPacked);
-            }
-        }
-         
         private static byte[] PackArray(byte[] writeData)
         {
             using (var inner = new MemoryStream())
@@ -470,7 +672,6 @@
                 return inner.ToArray();
             }
         }
-         */ 
 
         private static byte[] UnpackArray(byte[] compressedData)
         {
