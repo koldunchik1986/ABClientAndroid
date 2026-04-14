@@ -280,8 +280,6 @@
         internal void Calculate(Bitmap bitmapSource)
         {
             var startProcess = DateTime.Now.Ticks;
-            var graymin = 255 * 3;
-            var graymax = 0;
             var width = bitmapSource.Size.Width - 2;
             var height = bitmapSource.Size.Height - 2;
 
@@ -289,108 +287,58 @@
             debugWidth = width;
             debugHeight = height;
 
-            for (var y = 0; y < height; y++)
-            {
-                for (var x = 0; x < width; x++)
-                {
-                    var color = bitmapSource.GetPixel(x + 1, y + 1);
-                    var gray = color.R + color.G + color.B;
-                    if (gray < graymin)
-                    {
-                        graymin = gray;
-                    }
+            // Бинаризация по насыщенности красного канала:
+            // Цифры красные (R>>G,B), фон и сетка-ромб — серые/белые (R≈G≈B).
+            // redness = R - (G+B)/2  →  для красного ~200+, для серого/белого ~0.
+            // Это надёжно отделяет цифры от фона без Otsu и columnAvg.
+            const int rednessThreshold = 40;
 
-                    if (gray > graymax)
-                    {
-                        graymax = gray;
-                    }
-                }
+            var arrayTops = new int[width];
+            var arrayBottoms = new int[width];
+            var columnHasBlack = new bool[width];
+            for (var i = 0; i < width; i++)
+            {
+                arrayTops[i] = -1;
+                arrayBottoms[i] = -1;
+                columnHasBlack[i] = false;
             }
 
-            if (graymin < graymax)
+            var xleft = -1;
+            var xright = -1;
+
             {
-                // Адаптивный порог бинаризации через гистограмму (аналог Otsu)
-                // Считаем гистограмму яркости и ищем порог, максимизирующий межклассовую дисперсию
-                var grayMiddle = ComputeOtsuThreshold(bitmapSource, width, height, graymin, graymax);
-
-                var arrayTops = new int[width];
-                var arrayBottoms = new int[width];
-                // Отслеживаем какие столбцы содержат чёрные пиксели (для автоопределения кол-ва цифр)
-                var columnHasBlack = new bool[width];
-                for (var i = 0; i < width; i++)
-                {
-                    arrayTops[i] = -1;
-                    arrayBottoms[i] = -1;
-                    columnHasBlack[i] = false;
-                }
-
-                var xleft = -1;
-                var xright = -1;
+                var charBitmapsList = new System.Collections.Generic.List<Bitmap>();
+                var smallBitmapsList = new System.Collections.Generic.List<Bitmap>();
 
                 using (var bitmapGray = new Bitmap(width, height, PixelFormat.Format24bppRgb))
                 {
-                    // Шаг 1: Нормализация серого с удаллением шумовых линий
-                    var charBitmapsList = new System.Collections.Generic.List<Bitmap>();
-                    var smallBitmapsList = new System.Collections.Generic.List<Bitmap>();
-                    // Капча neverlands содержит горизонтальные шумовые полосы (линии)
-                    // Для каждого столбца вычисляем среднюю яркость и вычитаем её
-                    var columnAvg = new int[width];
-                    for (var x = 0; x < width; x++)
-                    {
-                        var colSum = 0;
-                        var colCount = 0;
-                        for (var y = 0; y < height; y++)
-                        {
-                            var color = bitmapSource.GetPixel(x + 1, y + 1);
-                            colSum += color.R + color.G + color.B;
-                            colCount++;
-                        }
-                        columnAvg[x] = colCount > 0 ? colSum / colCount : 0;
-                    }
-
                     for (var x = 0; x < width; x++)
                     {
                         for (var y = 0; y < height; y++)
                         {
                             var color = bitmapSource.GetPixel(x + 1, y + 1);
-                            var gray = color.R + color.G + color.B;
 
-                            // Вычитаем фоновый шум столбца
-                            var bgOffset = columnAvg[x] - (graymin + (graymax - graymin) / 2);
-                            var grayClean = gray - (bgOffset > 0 ? bgOffset / 2 : 0);
-                            if (grayClean < graymin) grayClean = graymin;
-                            if (grayClean > graymax) grayClean = graymax;
+                            // Детектируем пиксель цифры: R-канал явно превышает G и B
+                            var redness = color.R - (color.G + color.B) / 2;
+                            var isBlack = redness > rednessThreshold;
 
-                            var graynorm = (255 * (grayClean - graymin)) / (graymax - graymin);
-                            bitmapGray.SetPixel(x, y, Color.FromArgb(graynorm, graynorm, graynorm));
+                            // bitmapGray: бинарный — чёрный/белый (чистый вход для нейросети)
+                            bitmapGray.SetPixel(x, y, isBlack ? Color.Black : Color.White);
 
-                            var isBlack = grayClean < grayMiddle;
                             if (isBlack)
                             {
-                                if (xleft == -1)
-                                {
-                                    xleft = x;
-                                }
-
+                                if (xleft == -1) xleft = x;
                                 xright = x;
                                 columnHasBlack[x] = true;
-
-                                if (arrayTops[x] == -1)
-                                {
-                                    arrayTops[x] = y;
-                                }
-
+                                if (arrayTops[x] == -1) arrayTops[x] = y;
                                 arrayBottoms[x] = y;
                             }
                         }
                     }
 
-                    // Автоопределение количества цифр на капче
-                    // Считаем группы чёрных пикселей вместо захардкоженного ConstNumDigits = 5
+                    // Автоопределение количества цифр
                     if (xleft != -1 && xright != -1)
-                    {
                         ConstNumDigits = CountDigitGroups(columnHasBlack, xleft, xright, width);
-                    }
 
                     // Отладка: сохраняем границы
                     debugXLeft = xleft;
@@ -404,10 +352,13 @@
                     var realwidth = xright - xleft;
                     debugRealWidth = realwidth;
 
+                    // Gap-based сегментация: ищем реальные границы между цифрами
+                    var segments = BuildDigitSegments(columnHasBlack, xleft, xright, ConstNumDigits);
+
                     for (var numchar = 0; numchar < ConstNumDigits; numchar++)
                     {
-                        var xcleft = ((numchar * realwidth) / ConstNumDigits) + xleft;
-                        var xcright = (((numchar + 1) * realwidth) / ConstNumDigits) + xleft;
+                        var xcleft = segments[numchar].A;
+                        var xcright = segments[numchar].B;
                         var widthChar = xcright - xcleft;
 
                         var ybtop = -1;
@@ -606,6 +557,100 @@
                     }
                 }
             }
+        }
+
+        /// <summary>
+        /// Gap-based сегментация: находит реальные границы каждой цифры по пустым столбцам.
+        /// Алгоритм:
+        ///   1. Собираем группы непрерывных столбцов с чёрными пикселями (gap ≥ 1 пустой столбец)
+        ///   2. Если нашли ровно targetCount групп — используем их границы
+        ///   3. Если групп меньше (цифры слиплись) — разбиваем широкие группы пополам
+        ///   4. Fallback: равномерное разбиение по [xleft..xright]
+        /// Возвращает список из targetCount пар (left, right).
+        /// </summary>
+        private struct IntPair
+        {
+            public int A;
+            public int B;
+            public IntPair(int a, int b) { A = a; B = b; }
+        }
+
+        private static System.Collections.Generic.List<IntPair> BuildDigitSegments(
+            bool[] columnHasBlack, int xleft, int xright, int targetCount)
+        {
+            var groupStarts = new System.Collections.Generic.List<int>();
+            var groupEnds   = new System.Collections.Generic.List<int>();
+            var inGroup = false;
+            for (var x = xleft; x <= xright; x++)
+            {
+                if (columnHasBlack[x])
+                {
+                    if (!inGroup) { inGroup = true; groupStarts.Add(x); }
+                }
+                else
+                {
+                    if (inGroup) { inGroup = false; groupEnds.Add(x - 1); }
+                }
+            }
+            if (inGroup) groupEnds.Add(xright);
+
+            var result = new System.Collections.Generic.List<IntPair>();
+
+            if (groupStarts.Count == targetCount)
+            {
+                for (var i = 0; i < targetCount; i++)
+                    result.Add(new IntPair(groupStarts[i], groupEnds[i]));
+                return result;
+            }
+
+            if (groupStarts.Count > 0 && groupStarts.Count < targetCount)
+            {
+                var totalDigitWidth = 0;
+                for (var i = 0; i < groupStarts.Count; i++)
+                    totalDigitWidth += groupEnds[i] - groupStarts[i] + 1;
+                var avgW = totalDigitWidth / groupStarts.Count;
+
+                for (var i = 0; i < groupStarts.Count; i++)
+                {
+                    var gw = groupEnds[i] - groupStarts[i] + 1;
+                    var n = Math.Max(1, (int)Math.Round((double)gw / avgW));
+                    if (n == 1)
+                    {
+                        result.Add(new IntPair(groupStarts[i], groupEnds[i]));
+                    }
+                    else
+                    {
+                        var partW = gw / n;
+                        for (var p = 0; p < n; p++)
+                        {
+                            var pl = groupStarts[i] + p * partW;
+                            var pr = (p == n - 1) ? groupEnds[i] : groupStarts[i] + (p + 1) * partW - 1;
+                            result.Add(new IntPair(pl, pr));
+                        }
+                    }
+                }
+
+                while (result.Count < targetCount)
+                    result.Add(new IntPair(xright, xright));
+                if (result.Count > targetCount)
+                    result.RemoveRange(targetCount, result.Count - targetCount);
+                return result;
+            }
+
+            if (groupStarts.Count > targetCount)
+            {
+                xleft  = groupStarts[0];
+                xright = groupEnds[groupEnds.Count - 1];
+            }
+
+            var totalWidth = xright - xleft + 1;
+            for (var i = 0; i < targetCount; i++)
+            {
+                var l = xleft + (i * totalWidth) / targetCount;
+                var r = xleft + ((i + 1) * totalWidth) / targetCount - 1;
+                result.Add(new IntPair(l, r));
+            }
+            return result;
         }
 
         private char FindVector(int index, double[] matrix)
