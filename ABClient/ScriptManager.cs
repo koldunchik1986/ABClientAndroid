@@ -637,9 +637,10 @@
         /// Отладочный лог из JS (map.js Ogl/ButClick и т.д.).
         /// Вызывается через window.external.DebugLog(message).
         /// </summary>
-        public void DebugLog(string message)
+        public string DebugLog(string message)
         {
             AppLog.i("JS_DEBUG", message);
+            return "ok";
         }
 
         /// <summary>

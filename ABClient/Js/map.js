@@ -692,17 +692,34 @@ function moveMapTo(x, y, ps) {
 
 function Ogl(code) {
     try { window.external.DebugLog('Ogl() called, code=' + code + ', AjaxGet=' + (typeof AjaxGet)); } catch(e) {}
-    if (typeof AjaxGet === 'undefined') {
-        try {
-            var xhr = new XMLHttpRequest();
-            xhr.open('GET', 'alchemy_ajax.php?act=1&vcode=' + code + '&r=' + Math.random(), false);
-            xhr.send();
-            if (xhr.status == 200) { alch_callback(xhr.responseText); }
-        } catch(e2) {
-            try { window.external.DebugLog('Ogl() fallback failed: ' + e2.message); } catch(e3) {}
-        }
-    } else {
+    var url = './gameplay/ajax/alchemy_ajax.php?act=1&vcode=' + code + '&r=' + Math.random();
+    if (typeof AjaxGet !== 'undefined') {
         AjaxGet('alchemy_ajax.php?act=1&vcode=' + code + '&r=' + Math.random());
+    } else {
+        try {
+            var xhr = false;
+            if (window.XMLHttpRequest) { xhr = new XMLHttpRequest(); }
+            else if (window.ActiveXObject) {
+                try { xhr = new ActiveXObject('Microsoft.XMLHTTP'); }
+                catch(e1) { try { xhr = new ActiveXObject('Msxml2.XMLHTTP'); } catch(e2) {} }
+            }
+            if (!xhr) { try { window.external.DebugLog('Ogl(): no XHR available'); } catch(e3) {} return; }
+            xhr.open('GET', url, true);
+            xhr.onreadystatechange = function() {
+                if (xhr.readyState == 4 && xhr.status == 200) {
+                    var ret = xhr.responseText;
+                    try { window.external.DebugLog('Ogl() response: ' + ret.substring(0, 80)); } catch(e4) {}
+                    if (ret != 'ERR') {
+                        arr_res = ret.split('@');
+                        if (arr_res[0] != 'QUEST') StateReady();
+                        else QuestReady();
+                    }
+                }
+            };
+            xhr.send(null);
+        } catch(e5) {
+            try { window.external.DebugLog('Ogl() XHR failed: ' + e5.message); } catch(e6) {}
+        }
     }
 }
 

@@ -452,17 +452,23 @@
 
                                             var arrayMatrix = new double[100];
                                             var index = 0;
+                                            var matrixDump = new StringBuilder();
                                             for (var y = 0; y < 10; y++)
                                             {
                                                 for (var x = 0; x < 10; x++)
                                                 {
                                                     var color = bitmap10x10.GetPixel(x, y);
                                                     arrayMatrix[index++] = (double) color.R / 255;
+                                                    matrixDump.Append(color.R > 128 ? '.' : '#');
                                                 }
+                                                matrixDump.Append('|');
                                             }
 
                                             listMatrix.Add(arrayMatrix);
                                             gyp.Append(FindVector(numchar, arrayMatrix));
+
+                                            var lastChar = gyp.Length > 0 ? gyp.ToString().Substring(gyp.Length - 1) : "?";
+                                            AppLog.d("NeuroBase", "DIGIT[" + numchar + "]=" + lastChar + " matrix=" + matrixDump + " dist=" + (numchar < arrayDistances.Length ? arrayDistances[numchar].ToString("F1") : "?"));
                                         }
                                     }
                                 }

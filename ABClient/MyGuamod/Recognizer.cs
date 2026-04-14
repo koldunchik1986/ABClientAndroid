@@ -90,8 +90,25 @@ namespace ABClient.MyGuamod
                         }
                     }
                 }
-                catch (ArgumentException)
+                catch (ArgumentException ex)
                 {
+                    AppLog.e("Recognizer", "CALCULATE_ARG_EXCEPTION", ex);
+                    try
+                    {
+                        if (AppVars.MainForm != null)
+                        {
+                            AppVars.MainForm.BeginInvoke(
+                                new UpdateGuamodMessageDelegate(AppVars.MainForm.UpdateGuamodMessage),
+                                new object[] { "Ошибка распознавания" });
+                        }
+                    }
+                    catch (InvalidOperationException)
+                    {
+                    }
+                }
+                catch (Exception ex)
+                {
+                    AppLog.e("Recognizer", "CALCULATE_EXCEPTION", ex);
                     try
                     {
                         if (AppVars.MainForm != null)

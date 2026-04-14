@@ -261,7 +261,7 @@ namespace ABClient.MyForms
             checkCompassAutoOnBattle.Checked = AppVars.Profile.CompassAutoOnBattle;
             checkCompassAutoAttack.Checked = AppVars.Profile.CompassAutoAttack;
             checkCompassAutoWhisper.Checked = AppVars.Profile.CompassAutoWhisper;
-            numCompassSearchRadius.Value = AppVars.Profile.CompassSearchRadius;
+            numCompassSearchRadius.Value = Math.Max(numCompassSearchRadius.Minimum, AppVars.Profile.CompassSearchRadius);
         }
 
         private void OnButtonOkClick(object sender, EventArgs e)
