@@ -176,140 +176,98 @@
         internal void Calculate(Bitmap bitmapSource)
         {
             var startProcess = DateTime.Now.Ticks;
+            var width = bitmapSource.Size.Width - 2;
+            var height = bitmapSource.Size.Height - 2;
 
-            // Полные размеры bitmap (без старого трюка -2)
-            var width  = bitmapSource.Size.Width;
-            var height = bitmapSource.Size.Height;
-
-            debugWidth  = width;
+            debugWidth = width;
             debugHeight = height;
 
-            // Компоненты целевого цвета цифр (#9c1c24 = R:157, G:28, B:36)
-            // Используем константы, чтобы не путаться и легко менять при необходимости
-            const int DR = 157, DG = 28, DB = 36;
+            // Создаем рабочий буфер для обработки цветов
+            Bitmap workBitmap = new Bitmap(width, height, PixelFormat.Format24bppRgb);
 
-            // Рабочий буфер — все манипуляции с цветами происходят здесь,
-            // оригинальный bitmapSource не трогаем
-            using (var workBitmap = new Bitmap(width, height, PixelFormat.Format24bppRgb))
+            // ── ШАГ 1: ПРЕДВАРИТЕЛЬНАЯ ОБРАБОТКА ЦВЕТОВ ───────────────────────
+            // 1. Заменяем цвет сетки (#9c1c24) на белый.
+            // 2. Пиксели в диапазоне "полупрозрачных" красим в цвет цифры и добавляем горизонтального соседа.
+            
+            for (var y = 0; y < height; y++)
             {
-                // ════════════════════════════════════════════════════════════════
-                // ШАГ 1: УДАЛЕНИЕ ЛИНИЙ СЕТКИ-РОМБОВ (#9c1c24 → белый)
-                //
-                // Линии ромбов нарисованы ровно одним цветом: R=157, G=28, B=36.
-                // Это их отличительная черта — ТОЧНЫЙ постоянный цвет без вариаций.
-                // Заменяем все такие пиксели на белый.
-                //
-                // ВАЖНО: тело цифровых штрихов тоже имеет этот цвет,
-                // поэтому оно тоже исчезнет — но это нормально!
-                // Края цифровых штрихов имеют ЧУТЬ БОЛЕЕ СВЕТЛЫЙ оттенок
-                // (анти-алиасинг), и они будут восстановлены на шаге 2.
-                // ════════════════════════════════════════════════════════════════
-                for (var y = 0; y < height; y++)
-                    for (var x = 0; x < width; x++)
-                    {
-                        var c = bitmapSource.GetPixel(x, y);
-                        // Точное совпадение → это линия сетки или тело цифры → в белый
-                        workBitmap.SetPixel(x, y,
-                            (c.R == DR && c.G == DG && c.B == DB) ? Color.White : c);
-                    }
-
-                // ════════════════════════════════════════════════════════════════
-                // ШАГ 2: ВОССТАНОВЛЕНИЕ КОНТУРОВ ЦИФР (анти-алиасинг → #9c1c24)
-                //
-                // После шага 1 от цифр остались только "призрачные" края —
-                // пиксели анти-алиасинга, у которых оттенок чуть светлее:
-                //   R: 157 < R < 220  (немного ярче основного цвета)
-                //   G: 28  < G < 220  (от почти нуля до светлого)
-                //   B: 36  < B < 220  (от почти нуля до светлого)
-                //
-                // ПОЧЕМУ ЧИТАЕМ workBitmap, А НЕ ОРИГИНАЛ:
-                //   На шаге 1 мы уже убрали точный DR,DG,DB (R=157).
-                //   Теперь в workBitmap пикселей с R=157 нет вообще.
-                //   Поэтому диапазон R>157 поймает ТОЛЬКО анти-алиас цифр,
-                //   но НЕ остатки сетки (их там уже нет).
-                //
-                // ГОРИЗОНТАЛЬНЫЙ СОСЕД:
-                //   Красим не только сам пиксель, но и пиксель справа.
-                //   Это заполняет однопиксельные горизонтальные пропуски
-                //   в контурах, которые появляются из-за анти-алиасинга.
-                //
-                // ВАЖНО: этот шаг — ОТДЕЛЬНЫЙ проход по уже изменённому
-                // workBitmap. Если делать в одном проходе с шагом 1,
-                // сосед (x+1), только что записанный нами, будет немедленно
-                // перезаписан при следующей итерации → баг.
-                // ════════════════════════════════════════════════════════════════
-                for (var y = 0; y < height; y++)
-                    for (var x = 0; x < width; x++)
-                    {
-                        var c = workBitmap.GetPixel(x, y); // читаем из workBitmap (уже без сетки)
-                        if (c.R > DR  && c.R < 220 &&
-                            c.G > DG  && c.G < 220 &&
-                            c.B > DB  && c.B < 220)
-                        {
-                            // Этот пиксель — контур цифры: красим в целевой цвет
-                            workBitmap.SetPixel(x, y, ColorDigitTarget);
-
-                            // Сосед справа: заполняем разрыв в горизонтальном контуре
-                            if (x + 1 < width)
-                                workBitmap.SetPixel(x + 1, y, ColorDigitTarget);
-                        }
-                    }
-
-                // ════════════════════════════════════════════════════════════════
-                // ШАГ 3: УДАЛЕНИЕ СЕРЫХ АРТЕФАКТОВ (#dddddd → белый)
-                //
-                // После удаления сетки могут остаться серые точки — тени
-                // пересечений ромбов, узор фона и т.п. Их цвет #dddddd:
-                //   R=221, G=221, B=221
-                // Убираем их в белый, чтобы они не мешали бинаризации.
-                // ════════════════════════════════════════════════════════════════
-                for (var y = 0; y < height; y++)
-                    for (var x = 0; x < width; x++)
-                    {
-                        var c = workBitmap.GetPixel(x, y);
-                        if (c.R == 221 && c.G == 221 && c.B == 221)
-                            workBitmap.SetPixel(x, y, Color.White);
-                    }
-
-                // ════════════════════════════════════════════════════════════════
-                // ШАГ 4: БИНАРИЗАЦИЯ — СТРОИМ ЧЁРНО-БЕЛУЮ МАСКУ
-                //
-                // После трёх шагов в workBitmap:
-                //   • Пиксели цифровых контуров = #9c1c24 (R=157, G=28, B=36)
-                //   • Всё остальное ≈ белый (фон + убранная сетка)
-                //
-                // Переводим в ч/б: #9c1c24 → чёрный, всё остальное → белый.
-                //
-                // Заодно собираем данные по столбцам для сегментации:
-                //   columnHasBlack[x] — есть ли хоть один чёрный пиксель в столбце x
-                //   arrayTops[x]      — y верхнего чёрного пикселя в столбце x
-                //   arrayBottoms[x]   — y нижнего чёрного пикселя в столбце x
-                // ════════════════════════════════════════════════════════════════
-                var columnHasBlack = new bool[width];
-                var arrayTops      = new int[width];
-                var arrayBottoms   = new int[width];
-                for (var i = 0; i < width; i++) { arrayTops[i] = -1; arrayBottoms[i] = -1; }
-
-                using (var binaryBitmap = new Bitmap(width, height, PixelFormat.Format24bppRgb))
+                for (var x = 0; x < width; x++)
                 {
-                    for (var x = 0; x < width; x++)
-                        for (var y = 0; y < height; y++)
+                    Color c = bitmapSource.GetPixel(x, y);
+                    
+                    // Если это цвет сетки или очень близкий к нему -> делаем белым (удаляем сетку)
+                    if (c.R == 157 && c.G == 28 && c.B == 36)
+                    {
+                        workBitmap.SetPixel(x, y, ColorWhite);
+                    }
+                    else
+                    {
+                        // Проверяем диапазон "контурных" пикселей
+                        // 157 < R < 220, 29 < G < 220, 37 < B < 220
+                        if (c.R > 157 && c.R < 220 &&
+                            c.G > 29 && c.G < 220 &&
+                            c.B > 37 && c.B < 220)
                         {
-                            var c = workBitmap.GetPixel(x, y);
-
-                            // Пиксель цифры — только точный целевой цвет, никакой "нечёткости"
-                            // Это надёжно: после трёх шагов других красных пикселей нет
-                            var isDigit = (c.R == DR && c.G == DG && c.B == DB);
-
-                            binaryBitmap.SetPixel(x, y, isDigit ? Color.Black : Color.White);
-
-                            if (isDigit)
+                            // Красим в основной цвет цифры
+                            workBitmap.SetPixel(x, y, ColorDigitTarget);
+                            
+                            // Добавляем горизонтального соседа (справа), если он в пределах изображения
+                            // Это помогает "склеить" разрывы в горизонтальных линиях цифр
+                            if (x + 1 < width)
                             {
-                                columnHasBlack[x] = true;
-                                if (arrayTops[x] == -1) arrayTops[x] = y;
-                                arrayBottoms[x] = y;
+                                workBitmap.SetPixel(x + 1, y, ColorDigitTarget);
                             }
                         }
+                        else
+                        {
+                            // Остальные пиксели оставляем как есть (скорее всего, это уже часть жирной цифры или фон)
+                            workBitmap.SetPixel(x, y, c);
+                        }
+                    }
+                }
+            }
+
+            // ── ШАГ 2: БИНАРИЗАЦИЯ ПО ЦВЕТУ ───────────────────────────────────
+            // Теперь всё, что имеет цвет ColorDigitTarget (или исходный красный), делаем черным.
+            // Всё остальное — белым.
+            
+            bool[] columnHasBlack = new bool[width];
+            int[] arrayTops = new int[width];
+            int[] arrayBottoms = new int[height]; // Исправлено: должен быть [height], но используется как [width] в циклах ниже? Нет, arrayTops/Bottoms индексируются по X.
+            // Внимание: в оригинальном коде arrayBottoms был int[width]. Оставим так для совместимости логики.
+            arrayBottoms = new int[width]; 
+
+            for (var i = 0; i < width; i++)
+            {
+                arrayTops[i] = -1;
+                arrayBottoms[i] = -1;
+                columnHasBlack[i] = false;
+            }
+
+            using (Bitmap binaryBitmap = new Bitmap(width, height, PixelFormat.Format24bppRgb))
+            {
+                for (var x = 0; x < width; x++)
+                {
+                    for (var y = 0; y < height; y++)
+                    {
+                        Color c = workBitmap.GetPixel(x, y);
+                        
+                        // Если пиксель красного оттенка (цифра)
+                        bool isDigitPixel = (c.R > 100 && c.G < 50 && c.B < 50); // Упрощенная проверка на красный цвет цифры
+
+                        if (isDigitPixel)
+                        {
+                            binaryBitmap.SetPixel(x, y, Color.Black);
+                            columnHasBlack[x] = true;
+                            if (arrayTops[x] == -1) arrayTops[x] = y;
+                            arrayBottoms[x] = y;
+                        }
+                        else
+                        {
+                            binaryBitmap.SetPixel(x, y, Color.White);
+                        }
+                    }
+                }
 
                 // ── ШАГ 3: ПОИСК ГРАНИЦ И СЕГМЕНТАЦИЯ ─────────────────────────
                 int xleft = -1;
@@ -334,7 +292,8 @@
                     debugDistances = new double[5];
                     Array.Copy(arrayDistances, debugDistances, 5);
                     elapsedTime = DateTime.Now.Ticks - startProcess;
-                    return; // using workBitmap/binaryBitmap автоматически задиспозятся
+                    workBitmap.Dispose();
+                    return;
                 }
 
                 // Автоопределение количества цифр
@@ -490,9 +449,9 @@
                 lastArrayDistances = new double[arrayDistances.Length];
                 Array.Copy(arrayDistances, lastArrayDistances, arrayDistances.Length);
                 lastConstNumDigits = ConstNumDigits;
-                } // end using binaryBitmap
-            } // end using workBitmap
+            }
 
+            workBitmap.Dispose();
             elapsedTime = DateTime.Now.Ticks - startProcess;
         }
 
