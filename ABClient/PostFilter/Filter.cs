@@ -378,7 +378,7 @@ namespace ABClient.PostFilter
             var parts = text.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
             if (parts.Length < 2)
             {
-                WriteTrainResult("!train: укажите правильные цифры, например: !train 26359");
+                WriteTrainResult("[train] укажите правильные цифры, например: !train 26359");
                 return;
             }
 
@@ -387,25 +387,25 @@ namespace ABClient.PostFilter
             {
                 if (!char.IsDigit(c))
                 {
-                    WriteTrainResult("!train: только цифры, например: !train 26359");
+                    WriteTrainResult("[train] только цифры, например: !train 26359");
                     return;
                 }
             }
 
             if (digits.Length < 4 || digits.Length > 7)
             {
-                WriteTrainResult("!train: нужно 4-7 цифр, например: !train 26359");
+                WriteTrainResult("[train] нужно 4-7 цифр, например: !train 26359");
                 return;
             }
 
             try
             {
                 Neuro.NeuroBase.Train(digits);
-                WriteTrainResult("!train OK: обучено \"" + digits + "\" (векторов в базе: " + Neuro.NeuroBase.NumNodes() + ")");
+                WriteTrainResult("[train] OK: обучено \"" + digits + "\" (векторов в базе: " + Neuro.NeuroBase.NumNodes() + ")");
             }
             catch (Exception ex)
             {
-                WriteTrainResult("!train ERROR: " + ex.Message);
+                WriteTrainResult("[train] ERROR: " + ex.Message);
                 AppLog.e("Filter.HandleTrainCommand", "TRAIN_FAILED", ex);
             }
         }
