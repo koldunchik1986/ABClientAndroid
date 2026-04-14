@@ -330,6 +330,8 @@
                 using (var bitmapGray = new Bitmap(width, height, PixelFormat.Format24bppRgb))
                 {
                     // Шаг 1: Нормализация серого с удаллением шумовых линий
+                    var charBitmapsList = new System.Collections.Generic.List<Bitmap>();
+                    var smallBitmapsList = new System.Collections.Generic.List<Bitmap>();
                     // Капча neverlands содержит горизонтальные шумовые полосы (линии)
                     // Для каждого столбца вычисляем среднюю яркость и вычитаем её
                     var columnAvg = new int[width];
@@ -434,11 +436,20 @@
                                 using (var graphChar = Graphics.FromImage(bitmapChar))
                                 {
                                     graphChar.DrawImage(bitmapGray, 0, 0, section, GraphicsUnit.Pixel);
+                                    
+                                    // Сохраняем копию нарезанной цифры для отладки
+                                    var charCopy = new Bitmap(bitmapChar);
+                                    charBitmapsList.Add(charCopy);
+
                                     var myCallback = new Image.GetThumbnailImageAbort(ThumbnailCallback);
                                     using (var image10x10 = bitmapChar.GetThumbnailImage(10, 10, myCallback, IntPtr.Zero))
                                     {
                                         using (var bitmap10x10 = new Bitmap(image10x10))
                                         {
+                                            // Сохраняем копию 10x10 для отладки
+                                            var smallCopy = new Bitmap(bitmap10x10);
+                                            smallBitmapsList.Add(smallCopy);
+
                                             var arrayMatrix = new double[100];
                                             var index = 0;
                                             for (var y = 0; y < 10; y++)
@@ -457,11 +468,22 @@
                                 }
                             }
                         }
+                        else
+                        {
+                            // Цифра не найдена — добавляем пустые битмапы
+                            charBitmapsList.Add(null);
+                            smallBitmapsList.Add(null);
+                        }
                     }
 
                     // Отладка: сохраняем расстояния для диагностики качества распознавания
                     debugDistances = new double[ConstNumDigits];
                     Array.Copy(arrayDistances, debugDistances, ConstNumDigits);
+
+                    // Сохраняем отладочные изображения того, что видит нейросеть
+                    SaveDebugImages(bitmapGray, xleft, xright, arrayTops, arrayBottoms, ConstNumDigits, realwidth, charBitmapsList, smallBitmapsList);
+                    foreach (var bmp in charBitmapsList) { if (bmp != null) bmp.Dispose(); }
+                    foreach (var bmp in smallBitmapsList) { if (bmp != null) bmp.Dispose(); }
 
                     // Сохраняем данные последнего распознавания для обучения (Train)
                     lastListMatrix = new List<double[]>(listMatrix);
@@ -658,6 +680,63 @@
         private static bool ThumbnailCallback()
         {
             return false;
+        }
+
+        private static int debugSaveCounter;
+
+        /// <summary>
+        /// Сохраняет отладочные изображения того, что видит нейросеть:
+        /// - captcha_gray_N.png — бинаризованная капча целиком
+        /// - captcha_digit_N_M.png — нарезанная цифра M (до сжатия)
+        /// - captcha_10x10_N_M.png — то, что реально видит нейросеть (10x10, увеличено до 100x100)
+        /// N — порядковый номер капчи, M — индекс цифры (0..4)
+        /// </summary>
+        private static void SaveDebugImages(Bitmap bitmapGray, int xleft, int xright, int[] arrayTops, int[] arrayBottoms, int ConstNumDigits, int realwidth, List<Bitmap> charBitmaps, List<Bitmap> smallBitmaps)
+        {
+            try
+            {
+                var dir = Path.Combine(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Logs"), "Captcha");
+                if (!Directory.Exists(dir))
+                    Directory.CreateDirectory(dir);
+
+                var n = debugSaveCounter++;
+
+                // 1. Бинаризованная капча целиком
+                if (bitmapGray != null)
+                {
+                    var grayPath = Path.Combine(dir, string.Format("captcha_gray_{0}.png", n));
+                    bitmapGray.Save(grayPath, ImageFormat.Png);
+                }
+
+                // 2. Каждая нарезанная цифра и её 10x10 представление
+                for (var m = 0; m < charBitmaps.Count && m < smallBitmaps.Count; m++)
+                {
+                    if (charBitmaps[m] != null)
+                    {
+                        var charPath = Path.Combine(dir, string.Format("captcha_digit_{0}_{1}.png", n, m));
+                        charBitmaps[m].Save(charPath, ImageFormat.Png);
+                    }
+                    if (smallBitmaps[m] != null)
+                    {
+                        // Увеличиваем 10x10 до 100x100 для видимости
+                        var enlarged = new Bitmap(100, 100, PixelFormat.Format24bppRgb);
+                        using (var g = Graphics.FromImage(enlarged))
+                        {
+                            g.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.NearestNeighbor;
+                            g.DrawImage(smallBitmaps[m], 0, 0, 100, 100);
+                        }
+                        var smallPath = Path.Combine(dir, string.Format("captcha_10x10_{0}_{1}.png", n, m));
+                        enlarged.Save(smallPath, ImageFormat.Png);
+                        enlarged.Dispose();
+                    }
+                }
+
+                AppLog.d("NeuroBase", "DEBUG_IMAGES_SAVED: captcha #" + n + " digits=" + ConstNumDigits);
+            }
+            catch (Exception ex)
+            {
+                AppLog.e("NeuroBase", "SAVE_DEBUG_IMAGES_FAILED", ex);
+            }
         }
 
         private static byte[] PackArray(byte[] writeData)
