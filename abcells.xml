@@ -146,7 +146,7 @@
   <cell regnum="12-243" label="Окрестность Октала, Алтарь" cost="40" visited="11/28/2013 9:22:35 PM" verified="1/1/0001 12:00:00 AM" />
   <cell regnum="12-247" label="Сельскохозяйственные угодья" cost="40" visited="11/24/2013 8:23:51 PM" verified="1/1/0001 12:00:00 AM" />
   <cell regnum="12-248" label="Сельскохозяйственные угодья" cost="40" visited="12/28/2015 2:09:01 PM" verified="1/1/0001 12:00:00 AM" />
-  <cell regnum="12-249" label="Сельскохозяйственные угодья" cost="40" visited="4/14/2026 9:06:27 AM" verified="1/1/0001 12:00:00 AM" />
+  <cell regnum="12-249" label="Сельскохозяйственные угодья" cost="40" visited="12/28/2015 2:08:20 PM" verified="1/1/0001 12:00:00 AM" />
   <cell regnum="12-251" label="Сельскохозяйственные угодья" cost="40" visited="11/24/2013 8:25:55 PM" verified="1/1/0001 12:00:00 AM" />
   <cell regnum="12-254" label="Сельскохозяйственные угодья" cost="40" visited="11/24/2013 8:28:12 PM" verified="1/1/0001 12:00:00 AM" />
   <cell regnum="12-257" label="Сельскохозяйственные угодья" cost="40" visited="11/24/2013 8:35:03 PM" verified="1/1/0001 12:00:00 AM" />
@@ -1655,9 +1655,9 @@
   <cell regnum="8-188" label="Совиное Урочище" cost="30" visited="12/28/2015 11:44:36 AM" verified="12/28/2015 11:33:37 AM" />
   <cell regnum="8-193" label="Лесная дорога к хутору Гнездо" cost="30" visited="1/2/2016 4:31:54 PM" verified="12/28/2015 10:47:29 AM" />
   <cell regnum="8-194" label="Окрестность Форпоста" cost="30" visited="2/3/2016 12:41:37 PM" verified="12/28/2015 11:47:45 AM" />
-  <cell regnum="8-195" label="Застава" cost="30" visited="4/14/2026 9:09:05 AM" verified="12/28/2015 10:43:20 AM" />
+  <cell regnum="8-195" label="Застава" cost="30" visited="2/3/2016 12:42:37 PM" verified="12/28/2015 10:43:20 AM" />
   <cell regnum="8-196" label="Окрестность Форпоста" cost="40" visited="1/2/2016 3:44:56 PM" verified="12/28/2015 11:52:20 AM" />
-  <cell regnum="8-197" label="Деревня Подгорная" cost="30" visited="4/14/2026 9:08:23 AM" verified="12/28/2015 11:53:08 AM" />
+  <cell regnum="8-197" label="Деревня Подгорная" cost="30" visited="2/3/2016 12:44:38 PM" verified="12/28/2015 11:53:08 AM" />
   <cell regnum="8-200" label="Окрестность Форпоста" cost="30" visited="1/4/2016 5:19:42 PM" verified="12/28/2015 12:08:13 PM" />
   <cell regnum="8-201" label="Окрестность Форпоста" cost="30" visited="1/6/2016 4:11:41 PM" verified="12/28/2015 12:08:49 PM" />
   <cell regnum="8-213" label="Форт Коршуна" cost="40" visited="12/28/2015 11:25:38 AM" verified="12/28/2015 11:13:43 AM" />
@@ -1667,10 +1667,10 @@
   <cell regnum="8-221" label="Окрестность Форпоста, Млечный Тракт" cost="30" visited="12/28/2015 10:59:18 AM" verified="12/28/2015 10:59:15 AM" />
   <cell regnum="8-222" label="Окрестность Форпоста, Млечный Тракт" cost="30" visited="1/2/2016 4:31:23 PM" verified="12/28/2015 10:46:52 AM" />
   <cell regnum="8-223" label="Окрестность Форпоста, Млечный Тракт" cost="30" visited="1/2/2016 3:47:18 PM" verified="12/28/2015 10:46:11 AM" />
-  <cell regnum="8-224" label="Окрестность Форпоста" cost="40" visited="4/14/2026 9:21:27 AM" verified="12/28/2015 10:44:17 AM" />
-  <cell regnum="8-226" label="Окрестность Форпоста" cost="30" visited="4/14/2026 9:08:44 AM" verified="12/28/2015 10:42:22 AM" />
+  <cell regnum="8-224" label="Окрестность Форпоста" cost="40" visited="4/14/2026 10:43:49 AM" verified="12/28/2015 10:44:17 AM" />
+  <cell regnum="8-226" label="Окрестность Форпоста" cost="30" visited="2/3/2016 12:43:38 PM" verified="12/28/2015 10:42:22 AM" />
   <cell regnum="8-227" label="Окрестность Форпоста, Биржа" cost="30" visited="10/27/2016 5:34:20 PM" verified="12/28/2015 10:41:04 AM" />
-  <cell regnum="8-228" label="Деревня Подгорная" cost="30" visited="4/14/2026 9:08:01 AM" verified="12/28/2015 12:12:05 PM" />
+  <cell regnum="8-228" label="Деревня Подгорная" cost="30" visited="11/4/2016 6:47:59 AM" verified="12/28/2015 12:12:05 PM" />
   <cell regnum="8-229" label="Деревня Подгорная" cost="30" visited="2/3/2016 9:41:38 AM" verified="12/28/2015 12:10:58 PM" />
   <cell regnum="8-230" label="Окрестность Форпоста" cost="30" visited="2/3/2016 9:41:08 AM" verified="12/28/2015 12:10:21 PM" />
   <cell regnum="8-231" label="Окрестность Форпоста" cost="40" visited="12/28/2015 12:09:31 PM" verified="12/28/2015 12:09:28 PM" />
@@ -1683,7 +1683,7 @@
   <cell regnum="8-251" label="Окрестность Форпоста, Млечный Тракт" cost="30" visited="12/28/2015 11:46:08 AM" verified="12/28/2015 10:59:55 AM" />
   <cell regnum="8-253" label="Окрестность Форпоста, Озеро" cost="40" visited="12/28/2015 10:45:26 AM" verified="12/28/2015 10:45:19 AM" />
   <cell regnum="8-258" label="Окрестность Форпоста" cost="30" visited="10/27/2016 5:34:51 PM" verified="12/28/2015 10:40:11 AM" />
-  <cell regnum="8-259" label="Форпост, Западные Ворота" cost="30" visited="4/14/2026 9:07:40 AM" verified="12/28/2015 10:08:49 AM" />
+  <cell regnum="8-259" label="Форпост, Западные Ворота" cost="30" visited="11/4/2016 10:48:24 PM" verified="12/28/2015 10:08:49 AM" />
   <cell regnum="8-268" label="Дорога к Старой шахте" cost="30" visited="12/28/2015 10:03:26 AM" verified="12/28/2015 10:03:24 AM" />
   <cell regnum="8-269" label="Дорога к Старой шахте" cost="30" visited="12/29/2015 11:01:16 PM" verified="12/28/2015 9:16:55 AM" />
   <cell regnum="8-270" label="Окрестность Форпоста" cost="30" visited="12/29/2015 11:01:47 PM" verified="12/28/2015 10:01:07 AM" />

@@ -1,5 +1,6 @@
 ﻿namespace ABClient.Neuro
 {
+    using System;
     using System.IO;
 
     internal class NeuroVector
@@ -10,16 +11,30 @@
         internal NeuroVector(char myToken, double[] myVector)
         {
             token = myToken;
-            vector = myVector;
+            var normalized = Normalize(myVector);
+            Array.Copy(normalized, vector, 100);
         }
 
         internal NeuroVector(BinaryReader br)
         {
             token = br.ReadChar();
             for (var i = 0; i < 100; i++)
-            {
                 vector[i] = ((double) br.ReadByte()) / 255;
-            }
+            var normalized = Normalize(vector);
+            Array.Copy(normalized, vector, 100);
+        }
+
+        private static double[] Normalize(double[] v)
+        {
+            var sum = 0.0;
+            for (var i = 0; i < v.Length; i++)
+                sum += v[i];
+            if (sum == 0)
+                return v;
+            var result = new double[v.Length];
+            for (var i = 0; i < v.Length; i++)
+                result[i] = v[i] / sum;
+            return result;
         }
 
         internal void SaveToStream(BinaryWriter bw)

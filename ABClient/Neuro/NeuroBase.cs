@@ -1,806 +1,876 @@
 ﻿namespace ABClient.Neuro
 {
-    using System;
-    using System.Collections.Generic;
-    using System.Drawing;
-    using System.Drawing.Imaging;
-    using System.IO;
-    using System.IO.Compression;
-    using System.Text;
+using System;
+using System.Collections.Generic;
+using System.Drawing;
+using System.Drawing.Imaging;
+using System.IO;
+using System.IO.Compression;
+using System.Text;
+internal class NeuroBase
+{
+    /*private const string FileBaseName = "abneuro.dat";*/
 
-    internal class NeuroBase
+    private int ConstNumDigits = 5;
+    private static readonly List<NeuroVector> listVectors = new List<NeuroVector>();
+    private List<double[]> listMatrix;
+    private double[] arrayDistances;
+    /*private static readonly string[] arrayVotes = new string[5];*/
+    private static readonly StringBuilder gyp = new StringBuilder();
+    private static long elapsedTime;
+
+    // Отладочные данные: расстояния до ближайшего вектора для каждой цифры
+    private static double[] debugDistances;
+    private static int debugNumDigits;
+    private static int debugWidth;
+    private static int debugHeight;
+    private static int debugXLeft;
+    private static int debugXRight;
+    private static int debugRealWidth;
+
+    // Данные последнего распознавания для обучения (Train)
+    private static List<double[]> lastListMatrix = new List<double[]>();
+    private static double[] lastArrayDistances = new double[0];
+    private static int lastConstNumDigits;
+
+    internal NeuroBase()
     {
-        /*private const string FileBaseName = "abneuro.dat";*/
+        // ConstNumDigits определяется автоматически в Calculate()
+        // по количеству групп чёрных пикселей на изображении капчи.
+        // Ранее было захардкожено 5, но сервер может отдавать 4 или 6 цифр.
+         // Мёртвый код Dice.Make(4,6) удалён — автоопределение надёжнее.
 
-        private int ConstNumDigits = 5;
-        private static readonly List<NeuroVector> listVectors = new List<NeuroVector>();
-        private List<double[]> listMatrix;
-        private double[] arrayDistances;
-        /*private static readonly string[] arrayVotes = new string[5];*/
-        private static readonly StringBuilder gyp = new StringBuilder();
-        private static long elapsedTime;
+        listMatrix = new List<double[]>(ConstNumDigits);
+        arrayDistances = new double[ConstNumDigits];
+    }
 
-        // Отладочные данные: расстояния до ближайшего вектора для каждой цифры
-        private static double[] debugDistances;
-        private static int debugNumDigits;
-        private static int debugWidth;
-        private static int debugHeight;
-        private static int debugXLeft;
-        private static int debugXRight;
-        private static int debugRealWidth;
+    /// <summary>
+    /// Отладочная информация о последнем распознавании.
+    /// Формат: "RECOGNIZE_DEBUG: digits=N, w=W, h=H, xleft=XL, xright=XR, realwidth=RW, result=XXXXX, dist=[d0,d1,...]"
+    /// </summary>
+    internal static string DebugInfo()
+    {
+        if (debugDistances == null)
+            return "RECOGNIZE_DEBUG: no data yet";
 
-        // Данные последнего распознавания для обучения (Train)
-        private static List<double[]> lastListMatrix = new List<double[]>();
-        private static double[] lastArrayDistances = new double[0];
-        private static int lastConstNumDigits;
-
-        internal NeuroBase()
+        var distStr = new StringBuilder("[");
+        for (var i = 0; i < debugDistances.Length; i++)
         {
-            // ConstNumDigits определяется автоматически в Calculate()
-            // по количеству групп чёрных пикселей на изображении капчи.
-            // Ранее было захардкожено 5, но сервер может отдавать 4 или 6 цифр.
-            // Мёртвый код Dice.Make(4,6) удалён — автоопределение надёжнее.
-
-            listMatrix = new List<double[]>(ConstNumDigits);
-            arrayDistances = new double[ConstNumDigits];
+            if (i > 0) distStr.Append(", ");
+            distStr.Append(debugDistances[i].ToString("F3"));
         }
+        distStr.Append("]");
 
-        /// <summary>
-        /// Отладочная информация о последнем распознавании.
-        /// Формат: "RECOGNIZE_DEBUG: digits=N, w=W, h=H, xleft=XL, xright=XR, realwidth=RW, result=XXXXX, dist=[d0,d1,...]"
-        /// </summary>
-        internal static string DebugInfo()
+        return $"RECOGNIZE_DEBUG: digits={debugNumDigits}, w={debugWidth}, h={debugHeight}, " +
+               $"xleft={debugXLeft}, xright={debugXRight}, realwidth={debugRealWidth}, " +
+               $"result={gyp}, dist={distStr}";
+    }
+
+    /// <summary>
+    /// Автоопределение количества цифр на капче — гибридный подход.
+    /// Алгоритм:
+    ///   1. Считаем группы чёрных пикселей (gap≥1 пустой столбец = разделитель)
+    ///    2. Если группа шире 1.5x средней — в ней 2 цифры, разбиваем
+    ///   3. Если стандартный размер капчи (ширина ≈132) → предполагаем 5 цифр
+    ///   4. Если группа одна (все цифры слились) — разбиваем на 5 равных
+    /// </summary>
+    private static int CountDigitGroups(bool[] columnHasBlack, int xleft, int xright, int imageWidth)
+    {
+        // Для стандартной капчи neverlands (134x60, width=132) — предполагаем 5
+        if (imageWidth >= 125 && imageWidth <= 140)
         {
-            if (debugDistances == null)
-                return "RECOGNIZE_DEBUG: no data yet";
-
-            var distStr = new StringBuilder("[");
-            for (var i = 0; i < debugDistances.Length; i++)
-            {
-                if (i > 0) distStr.Append(", ");
-                distStr.Append(debugDistances[i].ToString("F3"));
-            }
-            distStr.Append("]");
-
-            return $"RECOGNIZE_DEBUG: digits={debugNumDigits}, w={debugWidth}, h={debugHeight}, " +
-                   $"xleft={debugXLeft}, xright={debugXRight}, realwidth={debugRealWidth}, " +
-                   $"result={gyp}, dist={distStr}";
-        }
-
-        /// <summary>
-        /// Автоопределение количества цифр на капче — гибридный подход.
-        /// Алгоритм:
-        ///   1. Считаем группы чёрных пикселей (gap≥1 пустой столбец = разделитель)
-        ///   2. Если группа шире 1.5x средней — в ней 2 цифры, разбиваем
-        ///   3. Если стандартный размер капчи (ширина ≈132) → предполагаем 5 цифр
-        ///   4. Если группа одна (все цифры слились) — разбиваем на 5 равных
-        /// </summary>
-        private static int CountDigitGroups(bool[] columnHasBlack, int xleft, int xright, int imageWidth)
-        {
-            // Для стандартной капчи neverlands (134x60, width=132) — предполагаем 5
-            if (imageWidth >= 125 && imageWidth <= 140)
-            {
-                // Проверяем: если есть хотя бы 3 разделителя (gap≥1), считаем группы
-                // Иначе (все цифры слиплись) — возвращаем 5
-                var gapCount = 0;
-                var inBlack = false;
-                var emptyRun = 0;
-                for (var x = xleft; x <= xright; x++)
-                {
-                    if (columnHasBlack[x])
-                    {
-                        if (!inBlack && emptyRun >= 1)
-                            gapCount++;
-                        inBlack = true;
-                        emptyRun = 0;
-                    }
-                    else
-                    {
-                        emptyRun++;
-                        inBlack = false;
-                    }
-                }
-
-                var groups = gapCount + 1;
-                if (groups >= 4 && groups <= 7)
-                    return groups;
-
-                // Все цифры слиплись или слишком много групп — равно 5
-                return 5;
-            }
-
-            // Для нестандартных размеров — gap-based подсчёт
-            var count = 0;
-            var inGroup = false;
-            var gapColumns = 0;
-            var minGap = 1;
-
-            // Сначала собираем группы и их ширину
-            var groupStarts = new System.Collections.Generic.List<int>();
-            var groupEnds = new System.Collections.Generic.List<int>();
-            var currentStart = -1;
-
+            // Проверяем: если есть хотя бы 3 разделителя (gap≥1), считаем группы
+            // Иначе (все цифры слиплись) — возвращаем 5
+            var gapCount = 0;
+            var inBlack = false;
+            var emptyRun = 0;
             for (var x = xleft; x <= xright; x++)
             {
                 if (columnHasBlack[x])
                 {
-                    if (currentStart == -1)
-                        currentStart = x;
-                    gapColumns = 0;
-                    if (!inGroup)
-                    {
-                        inGroup = true;
-                    }
+                    if (!inBlack && emptyRun >= 1)
+                        gapCount++;
+                    inBlack = true;
+                    emptyRun = 0;
                 }
                 else
                 {
-                    if (inGroup)
-                    {
-                        gapColumns++;
-                        if (gapColumns >= minGap)
-                        {
-                            inGroup = false;
-                            if (currentStart != -1)
-                            {
-                                groupStarts.Add(currentStart);
-                                groupEnds.Add(x - gapColumns);
-                                currentStart = -1;
-                            }
-                        }
-                    }
+                     emptyRun++;
+                    inBlack = false;
                 }
             }
 
-            if (currentStart != -1)
-            {
-                groupStarts.Add(currentStart);
-                groupEnds.Add(xright);
-            }
+            var groups = gapCount + 1;
+            if (groups >= 4 && groups <= 7)
+                return groups;
 
-            count = groupStarts.Count;
-            if (count == 0)
-                return 5;
-
-            // Если 1 группа — все слиплись, разбиваем на 5
-            if (count == 1)
-                return 5;
-
-            // Если какая-то группа явно шире остальных — в ней 2 цифры
-            var totalWidth = 0;
-            for (var i = 0; i < count; i++)
-                totalWidth += groupEnds[i] - groupStarts[i] + 1;
-
-            var avgWidth = totalWidth / count;
-            var expandedCount = count;
-            for (var i = 0; i < count; i++)
-            {
-                var gw = groupEnds[i] - groupStarts[i] + 1;
-                if (gw > avgWidth * 1.5)
-                    expandedCount++;
-            }
-
-            if (expandedCount < 4) expandedCount = 4;
-            if (expandedCount > 7) expandedCount = 7;
-            return expandedCount;
+            // Все цифры слиплись или слишком много групп — равно 5
+            return 5;
         }
 
-        /// <summary>
-        /// Адаптивный порог бинаризации (аналог метода Otsu).
-        /// Находит порог, максимизирующий межклассовую дисперсию,
-        /// что лучше разделяет цифры и фон чем простое среднее.
-        /// </summary>
-        private static int ComputeOtsuThreshold(Bitmap bitmapSource, int width, int height, int graymin, int graymax)
+        // Для нестандартных размеров — gap-based подсчёт
+        var count = 0;
+        var inGroup = false;
+        var gapColumns = 0;
+        var minGap = 1;
+
+        // Сначала собираем группы и их ширину
+        var groupStarts = new System.Collections.Generic.List<int>();
+        var groupEnds = new System.Collections.Generic.List<int>();
+        var currentStart = -1;
+
+        for (var x = xleft; x <= xright; x++)
         {
-            // Гистограмма: считаем сколько пикселей попадает в каждый bin
-            var histogram = new int[256];
+            if (columnHasBlack[x])
+            {
+                if (currentStart == -1)
+                    currentStart = x;
+                gapColumns = 0;
+                if (!inGroup)
+                {
+                    inGroup = true;
+                }
+            }
+            else
+            {
+                if (inGroup) 
+                {
+                    gapColumns++;
+                    if (gapColumns >= minGap)
+                    {
+                        inGroup = false;
+                        if (currentStart != -1)
+                        {
+                            groupStarts.Add(currentStart);
+                            groupEnds.Add(x - gapColumns);
+                            currentStart = -1;
+                        }
+                    } 
+                }
+            }
+        }
+
+        if (currentStart != -1)
+        {
+            groupStarts.Add(currentStart);
+            groupEnds.Add(xright);
+        }
+
+         count = groupStarts.Count;
+        if (count == 0)
+            return 5;
+
+        // Если 1 группа — все слиплись, разбиваем на 5
+        if (count == 1)
+            return 5;
+
+         // Если какая-то группа явно шире остальных — в ней 2 цифры
+        var totalWidth = 0;
+        for (var i = 0; i < count; i++)
+            totalWidth += groupEnds[i] - groupStarts[i] + 1;
+
+        var avgWidth = totalWidth / count;
+        var expandedCount = count;
+        for (var i = 0; i < count; i++)
+        {
+            var gw = groupEnds[i] - groupStarts[i] + 1;
+            if (gw > avgWidth * 1.5)
+                expandedCount++;
+        }
+
+        if (expandedCount < 4) expandedCount = 4;
+        if (expandedCount > 7) expandedCount = 7;
+        return expandedCount;
+    }
+
+    /// <summary>
+    /// Адаптивный порог бинаризации (аналог метода Otsu).
+    /// Находит порог, максимизирующий межклассовую дисперсию,
+    /// что лучше разделяет цифры и фон чем простое среднее.
+    /// </summary>
+    private static int ComputeOtsuThreshold(Bitmap bitmapSource, int width, int height, int graymin, int graymax)
+    {
+        // Гистограмма: считаем сколько пикселей попадает в каждый bin
+        var histogram = new int[256];
+        for (var y = 0; y < height; y++)
+        {
+            for (var x = 0; x < width; x++)
+            {
+                var color = bitmapSource.GetPixel(x + 1, y + 1);
+                var gray = (color.R + color.G + color.B) / 3;
+                if (gray >= 0 && gray < 256)
+                    histogram[gray]++;
+            }
+        }
+
+        var total = width * height;
+        var sum = 0;
+        for (var i = 0; i < 256; i++)
+            sum += i * histogram[i];
+
+        var sumB = 0;
+        var wB = 0;
+        var maxVariance = 0.0;
+        var bestThreshold = (graymin + graymax) / 2; // fallback
+
+        for (var t = 0; t < 256; t++)
+        {
+            wB += histogram[t];
+            if (wB == 0)
+                continue;
+
+            var wF = total - wB;
+            if (wF == 0)
+                 break;
+
+            sumB += t * histogram[t];
+
+            var mB = (double)sumB / wB;
+            var mF = (double)(sum - sumB) / wF;
+
+            var variance = wB * wF * (mB - mF) * (mB - mF);
+            if (variance > maxVariance)
+            {
+                maxVariance = variance;
+                bestThreshold = t * 3; // масштабируем обратно к R+G+B
+            }
+        }
+
+        // Если порог слишком близко к краям — используем fallback
+        if (bestThreshold < graymin + 30 || bestThreshold > graymax - 30)
+            bestThreshold = (graymin + graymax) / 2;
+
+        return bestThreshold;
+    }
+
+    internal static string Gyp()
+    {
+        return gyp.ToString();
+     }
+
+    internal static int NumNodes()
+    {
+        return listVectors.Count;
+    }
+
+    internal static long ElapsedTime()
+    {
+        return elapsedTime;
+    }
+
+    /*
+    internal static string Votes()
+    {
+        var sb = new StringBuilder();
+        for (var i = 0; i < 5; i++)
+        {
+            if (i > 0)
+            {
+                sb.Append(", ");
+            }
+
+            sb.Append(arrayVotes[i]);
+        }
+
+        return sb.ToString();
+    }
+     */ 
+
+    internal void Calculate(Bitmap bitmapSource)
+    {
+        var startProcess = DateTime.Now.Ticks;
+        var width = bitmapSource.Size.Width - 2;
+        var height = bitmapSource.Size.Height - 2;
+
+        // Отладка: сохраняем размер исходной капчи
+        debugWidth = width;
+        debugHeight = height;
+
+        // ── БИНАРИЗАЦИЯ ПО НАСЫЩЕННОСТИ КРАСНОГО ──────────────────────────────
+        // Капча neverlands: цифры И сетка-ромб нарисованы красным.
+        // Красный пиксель: R >> G, B  →  redness = R − (G+B)/2 > 0
+        // Белый фон: R≈G≈B → redness ≈ 0
+        // Но тонкие линии сетки дают 1–2 красных пикселя на столбец,
+        // а штрихи цифр дают 5–20 пикселей на столбец.
+         // Поэтому фильтруем столбцы по ПЛОТНОСТИ красных пикселей.
+        const int rednessThreshold = 40;   // пиксель считается красным если redness > этого
+        
+        // ИЗМЕНЕНИЕ: Снижаем порог с 25 до 12.
+        // 25 режет цифры на куски (см. логи 10:50).
+        // 3 ловит сетку.
+        // 12 должен отсечь сетку (3-5 пикселей) и оставить цифры (8-15 пикселей).
+        const int densityThreshold = 12;    
+
+        // Проход 1: подсчёт красных пикселей на столбец
+        var columnRedCount = new int[width];
+        for (var x = 0; x < width; x++)
+        {
             for (var y = 0; y < height; y++)
             {
-                for (var x = 0; x < width; x++)
-                {
-                    var color = bitmapSource.GetPixel(x + 1, y + 1);
-                    var gray = (color.R + color.G + color.B) / 3;
-                    if (gray >= 0 && gray < 256)
-                        histogram[gray]++;
-                }
+                var c = bitmapSource.GetPixel(x + 1, y + 1);
+                if (c.R - (c.G + c.B) / 2 > rednessThreshold)
+                    columnRedCount[x]++;
             }
+        }
 
-            var total = width * height;
-            var sum = 0;
-            for (var i = 0; i < 256; i++)
-                sum += i * histogram[i];
+        var arrayTops = new int[width];
+        var arrayBottoms = new int[width];
+        var columnHasBlack = new bool[width];
+        for (var i = 0; i < width; i++)
+        {
+            arrayTops[i] = -1;
+            arrayBottoms[i] = -1;
+            // Столбец «содержит цифру» только если красных пикселей > densityThreshold
+            columnHasBlack[i] = columnRedCount[i] > densityThreshold;
+        }
 
-            var sumB = 0;
-            var wB = 0;
-            var maxVariance = 0.0;
-            var bestThreshold = (graymin + graymax) / 2; // fallback
-
-            for (var t = 0; t < 256; t++)
+        var xleft = -1;
+        var xright = -1;
+        for (var x = 0; x < width; x++)
+        {
+            if (columnHasBlack[x])
             {
-                wB += histogram[t];
-                if (wB == 0)
-                    continue;
-
-                var wF = total - wB;
-                if (wF == 0)
-                    break;
-
-                sumB += t * histogram[t];
-
-                var mB = (double)sumB / wB;
-                var mF = (double)(sum - sumB) / wF;
-
-                var variance = wB * wF * (mB - mF) * (mB - mF);
-                if (variance > maxVariance)
-                {
-                    maxVariance = variance;
-                    bestThreshold = t * 3; // масштабируем обратно к R+G+B
-                }
+                if (xleft == -1) xleft = x;
+                xright = x;
             }
-
-            // Если порог слишком близко к краям — используем fallback
-            if (bestThreshold < graymin + 30 || bestThreshold > graymax - 30)
-                bestThreshold = (graymin + graymax) / 2;
-
-            return bestThreshold;
         }
 
-        internal static string Gyp()
+        var charBitmapsList = new System.Collections.Generic.List<Bitmap>();
+        var smallBitmapsList = new System.Collections.Generic.List<Bitmap>();
+
+        using (var bitmapGray = new Bitmap(width, height, PixelFormat.Format24bppRgb))
         {
-            return gyp.ToString();
-        }
-
-        internal static int NumNodes()
-        {
-            return listVectors.Count;
-        }
-
-        internal static long ElapsedTime()
-        {
-            return elapsedTime;
-        }
-
-        /*
-        internal static string Votes()
-        {
-            var sb = new StringBuilder();
-            for (var i = 0; i < 5; i++)
-            {
-                if (i > 0)
-                {
-                    sb.Append(", ");
-                }
-
-                sb.Append(arrayVotes[i]);
-            }
-
-            return sb.ToString();
-        }
-         */ 
-
-        internal void Calculate(Bitmap bitmapSource)
-        {
-            var startProcess = DateTime.Now.Ticks;
-            var width = bitmapSource.Size.Width - 2;
-            var height = bitmapSource.Size.Height - 2;
-
-            // Отладка: сохраняем размер исходной капчи
-            debugWidth = width;
-            debugHeight = height;
-
-            // ── БИНАРИЗАЦИЯ ПО НАСЫЩЕННОСТИ КРАСНОГО ──────────────────────────────
-            // Капча neverlands: цифры И сетка-ромб нарисованы красным.
-            // Красный пиксель: R >> G, B  →  redness = R − (G+B)/2 > 0
-            // Белый фон: R≈G≈B → redness ≈ 0
-            // Но тонкие линии сетки дают 1–2 красных пикселя на столбец,
-            // а штрихи цифр дают 5–20 пикселей на столбец.
-            // Поэтому фильтруем столбцы по ПЛОТНОСТИ красных пикселей.
-            const int rednessThreshold = 40;   // пиксель считается красным если redness > этого
-            const int densityThreshold = 3;    // столбец считается цифровым если > этого пикселей
-
-            // Проход 1: подсчёт красных пикселей на столбец
-            var columnRedCount = new int[width];
+            // Проход 2: бинаризация в bitmapGray + arrayTops/Bottoms
+             // bitmapGray: чёрный = красный пиксель В цифровом столбце; белый = всё остальное
             for (var x = 0; x < width; x++)
             {
                 for (var y = 0; y < height; y++)
                 {
                     var c = bitmapSource.GetPixel(x + 1, y + 1);
-                    if (c.R - (c.G + c.B) / 2 > rednessThreshold)
-                        columnRedCount[x]++;
-                }
-            }
+                    var isRed = c.R - (c.G + c.B) / 2 > rednessThreshold;
+                    var isDigitCol = columnHasBlack[x];
 
-            var arrayTops = new int[width];
-            var arrayBottoms = new int[width];
-            var columnHasBlack = new bool[width];
-            for (var i = 0; i < width; i++)
-            {
-                arrayTops[i] = -1;
-                arrayBottoms[i] = -1;
-                // Столбец «содержит цифру» только если красных пикселей > densityThreshold
-                columnHasBlack[i] = columnRedCount[i] > densityThreshold;
-            }
+                    bitmapGray.SetPixel(x, y, (isRed && isDigitCol) ? Color.Black : Color.White);
 
-            var xleft = -1;
-            var xright = -1;
-            for (var x = 0; x < width; x++)
-            {
-                if (columnHasBlack[x])
-                {
-                    if (xleft == -1) xleft = x;
-                    xright = x;
-                }
-            }
-
-            var charBitmapsList = new System.Collections.Generic.List<Bitmap>();
-            var smallBitmapsList = new System.Collections.Generic.List<Bitmap>();
-
-            using (var bitmapGray = new Bitmap(width, height, PixelFormat.Format24bppRgb))
-            {
-                // Проход 2: бинаризация в bitmapGray + arrayTops/Bottoms
-                // bitmapGray: чёрный = красный пиксель В цифровом столбце; белый = всё остальное
-                for (var x = 0; x < width; x++)
-                {
-                    for (var y = 0; y < height; y++)
+                    if (isRed && isDigitCol)
                     {
-                        var c = bitmapSource.GetPixel(x + 1, y + 1);
-                        var isRed = c.R - (c.G + c.B) / 2 > rednessThreshold;
-                        var isDigitCol = columnHasBlack[x];
+                        if (arrayTops[x] == -1) arrayTops[x] = y;
+                        arrayBottoms[x] = y;
+                    }
+                 }
+            }
 
-                        bitmapGray.SetPixel(x, y, (isRed && isDigitCol) ? Color.Black : Color.White);
+            // Автоопределение количества цифр на капче
+            if (xleft != -1 && xright != -1)
+                ConstNumDigits = CountDigitGroups(columnHasBlack, xleft, xright, width);
 
-                        if (isRed && isDigitCol)
+            // Отладка: сохраняем границы
+            debugXLeft = xleft;
+             debugXRight = xright;
+            debugNumDigits = ConstNumDigits;
+
+            listMatrix.Clear();
+            gyp.Length = 0;
+            arrayDistances = new double[ConstNumDigits];
+
+            var realwidth = xleft >= 0 && xright >= xleft ? xright - xleft : 0;
+            debugRealWidth = realwidth;
+
+            // Gap-based сегментация с надёжным fallback на равномерную нарезку
+            var segments = BuildDigitSegments(columnHasBlack, xleft, xright, ConstNumDigits);
+
+            for (var numchar = 0; numchar < ConstNumDigits; numchar++)
+            {
+                var xcleft = segments[numchar].A;
+                var xcright = segments[numchar].B;
+                var widthChar = xcright - xcleft;
+
+                    var ybtop = -1;
+                    var ybbottom = -1;
+                    for (var xb = xcleft; xb < xcright; xb++)
+                    {
+                        if ((arrayTops[xb] != -1 && ybtop == -1) ||
+                            (arrayTops[xb] != -1 && ybtop != -1 && arrayTops[xb] < ybtop))
                         {
-                            if (arrayTops[x] == -1) arrayTops[x] = y;
-                            arrayBottoms[x] = y;
+                            ybtop = arrayTops[xb];
+                        }
+
+                        if ((arrayBottoms[xb] != -1 && ybbottom == -1) ||
+                            (arrayBottoms[xb] != -1 && ybbottom != -1 && arrayBottoms[xb] > ybbottom))
+                        {
+                            ybbottom = arrayBottoms[xb];
                         }
                     }
-                }
 
-                // Автоопределение количества цифр на капче
-                if (xleft != -1 && xright != -1)
-                    ConstNumDigits = CountDigitGroups(columnHasBlack, xleft, xright, width);
-
-                // Отладка: сохраняем границы
-                debugXLeft = xleft;
-                debugXRight = xright;
-                debugNumDigits = ConstNumDigits;
-
-                listMatrix.Clear();
-                gyp.Length = 0;
-                arrayDistances = new double[ConstNumDigits];
-
-                var realwidth = xleft >= 0 && xright >= xleft ? xright - xleft : 0;
-                debugRealWidth = realwidth;
-
-                // Gap-based сегментация с надёжным fallback на равномерную нарезку
-                var segments = BuildDigitSegments(columnHasBlack, xleft, xright, ConstNumDigits);
-
-                for (var numchar = 0; numchar < ConstNumDigits; numchar++)
-                {
-                    var xcleft = segments[numchar].A;
-                    var xcright = segments[numchar].B;
-                    var widthChar = xcright - xcleft;
-
-                        var ybtop = -1;
-                        var ybbottom = -1;
-                        for (var xb = xcleft; xb < xcright; xb++)
+                    if (ybtop != -1 && ybbottom != -1)
+                    {
+                        var section = new Rectangle(xcleft, ybtop, widthChar, ybbottom - ybtop + 1);
+                        using (
+                             var bitmapChar = new Bitmap(section.Width, section.Height, PixelFormat.Format24bppRgb))
                         {
-                            if ((arrayTops[xb] != -1 && ybtop == -1) ||
-                                (arrayTops[xb] != -1 && ybtop != -1 && arrayTops[xb] < ybtop))
+                            using (var graphChar = Graphics.FromImage(bitmapChar))
                             {
-                                ybtop = arrayTops[xb];
-                            }
+                                graphChar.DrawImage(bitmapGray, 0, 0, section, GraphicsUnit.Pixel);
+                             }
 
-                            if ((arrayBottoms[xb] != -1 && ybbottom == -1) ||
-                                (arrayBottoms[xb] != -1 && ybbottom != -1 && arrayBottoms[xb] > ybbottom))
+                            // A: Жёсткая бинаризация перед сжатием — чистый ч/б без полутонов
+                            for (var by = 0; by < bitmapChar.Height; by++)
                             {
-                                ybbottom = arrayBottoms[xb];
-                            }
-                        }
-
-                        if (ybtop != -1 && ybbottom != -1)
-                        {
-                            var section = new Rectangle(xcleft, ybtop, widthChar, ybbottom - ybtop + 1);
-                            using (
-                                var bitmapChar = new Bitmap(section.Width, section.Height, PixelFormat.Format24bppRgb))
-                            {
-                                using (var graphChar = Graphics.FromImage(bitmapChar))
+                                for (var bx = 0; bx < bitmapChar.Width; bx++)
                                 {
-                                    graphChar.DrawImage(bitmapGray, 0, 0, section, GraphicsUnit.Pixel);
-                                    
-                                    // Сохраняем копию нарезанной цифры для отладки
-                                    var charCopy = new Bitmap(bitmapChar);
-                                    charBitmapsList.Add(charCopy);
-
-                                    var myCallback = new Image.GetThumbnailImageAbort(ThumbnailCallback);
-                                    using (var image10x10 = bitmapChar.GetThumbnailImage(10, 10, myCallback, IntPtr.Zero))
-                                    {
-                                        using (var bitmap10x10 = new Bitmap(image10x10))
-                                        {
-                                            // Сохраняем копию 10x10 для отладки
-                                            var smallCopy = new Bitmap(bitmap10x10);
-                                            smallBitmapsList.Add(smallCopy);
-
-                                            var arrayMatrix = new double[100];
-                                            var index = 0;
-                                            var matrixDump = new StringBuilder();
-                                            for (var y = 0; y < 10; y++)
-                                            {
-                                                for (var x = 0; x < 10; x++)
-                                                {
-                                                    var color = bitmap10x10.GetPixel(x, y);
-                                                    arrayMatrix[index++] = (double) color.R / 255;
-                                                    matrixDump.Append(color.R > 128 ? '.' : '#');
-                                                }
-                                                matrixDump.Append('|');
-                                            }
-
-                                            listMatrix.Add(arrayMatrix);
-                                            gyp.Append(FindVector(numchar, arrayMatrix));
-
-                                            var lastChar = gyp.Length > 0 ? gyp.ToString().Substring(gyp.Length - 1) : "?";
-                                            AppLog.d("NeuroBase", "DIGIT[" + numchar + "]=" + lastChar + " matrix=" + matrixDump + " dist=" + (numchar < arrayDistances.Length ? arrayDistances[numchar].ToString("F1") : "?"));
-                                        }
-                                    }
+                                    var c = bitmapChar.GetPixel(bx, by);
+                                    var gray = (c.R + c.G + c.B) / 3;
+                                    var binary = gray < 128 ? 0 : 255;
+                                    bitmapChar.SetPixel(bx, by, Color.FromArgb(binary, binary, binary));
                                 }
-                            }
-                        }
-                        else
-                        {
-                            // Цифра не найдена — добавляем пустые битмапы
-                            charBitmapsList.Add(null);
-                            smallBitmapsList.Add(null);
-                        }
-                    }
+                             }
 
-                    // Отладка: сохраняем расстояния для диагностики качества распознавания
-                    debugDistances = new double[ConstNumDigits];
-                    Array.Copy(arrayDistances, debugDistances, ConstNumDigits);
+                            // Сохраняем копию нарезанной цифры для отладки
+                            var charCopy = new Bitmap(bitmapChar);
+                            charBitmapsList.Add(charCopy);
 
-                    // Сохраняем отладочные изображения того, что видит нейросеть
-                    SaveDebugImages(bitmapGray, xleft, xright, arrayTops, arrayBottoms, ConstNumDigits, realwidth, charBitmapsList, smallBitmapsList);
-                    foreach (var bmp in charBitmapsList) { if (bmp != null) bmp.Dispose(); }
-                    foreach (var bmp in smallBitmapsList) { if (bmp != null) bmp.Dispose(); }
-
-                    // Сохраняем данные последнего распознавания для обучения (Train)
-                    lastListMatrix = new List<double[]>(listMatrix);
-                    lastArrayDistances = new double[arrayDistances.Length];
-                    Array.Copy(arrayDistances, lastArrayDistances, arrayDistances.Length);
-                    lastConstNumDigits = ConstNumDigits;
-                }
-
-            elapsedTime = DateTime.Now.Ticks - startProcess;
-        }
-
-        private struct IntPair
-        {
-            public int A;
-            public int B;
-            public IntPair(int a, int b) { A = a; B = b; }
-        }
-
-        private static System.Collections.Generic.List<IntPair> BuildDigitSegments(
-            bool[] columnHasBlack, int xleft, int xright, int targetCount)
-        {
-            var result = new System.Collections.Generic.List<IntPair>();
-
-            if (xleft < 0 || xright < xleft || targetCount <= 0)
-            {
-                for (var i = 0; i < targetCount; i++)
-                    result.Add(new IntPair(0, 0));
-                return result;
-            }
-
-            var groupStarts = new System.Collections.Generic.List<int>();
-            var groupEnds   = new System.Collections.Generic.List<int>();
-            var inGroup = false;
-            for (var x = xleft; x <= xright; x++)
-            {
-                if (columnHasBlack[x])
-                {
-                    if (!inGroup) { inGroup = true; groupStarts.Add(x); }
-                }
-                else
-                {
-                    if (inGroup) { inGroup = false; groupEnds.Add(x - 1); }
-                }
-            }
-            if (inGroup) groupEnds.Add(xright);
-
-            if (groupStarts.Count == targetCount)
-            {
-                for (var i = 0; i < targetCount; i++)
-                    result.Add(new IntPair(groupStarts[i], groupEnds[i]));
-                return result;
-            }
-
-            var segLeft  = groupStarts.Count > 0 ? groupStarts[0] : xleft;
-            var segRight = groupEnds.Count   > 0 ? groupEnds[groupEnds.Count - 1] : xright;
-            var totalW   = segRight - segLeft + 1;
-            for (var i = 0; i < targetCount; i++)
-            {
-                var l = segLeft + (i * totalW) / targetCount;
-                var r = segLeft + ((i + 1) * totalW) / targetCount - 1;
-                result.Add(new IntPair(l, r));
-            }
-            return result;
-        }
-
-        /// <summary>
-        /// Обучение нейросети: добавляет вектора из последнего распознавания в базу.
-        /// train — строка правильных цифр (длина = lastConstNumDigits).
-        /// Вектора с очень малым расстоянием (&lt;0.5) к существующему — пропускаются (дубликаты).
-        /// </summary>
-        internal static void Train(string train)
-        {
-            if (string.IsNullOrEmpty(train) || lastListMatrix.Count == 0)
-                return;
-
-            var count = Math.Min(train.Length, lastListMatrix.Count);
-            for (var i = 0; i < count; i++)
-            {
-                if (i < lastArrayDistances.Length && listVectors.Count > 0 && lastArrayDistances[i] < 0.5)
-                    continue;
-
-                listVectors.Add(new NeuroVector(train[i], lastListMatrix[i]));
-                AppLog.i("NeuroBase", "TRAIN: digit=" + train[i] + " dist=" + (i < lastArrayDistances.Length ? lastArrayDistances[i].ToString("F3") : "?") + " totalVectors=" + listVectors.Count);
-            }
-
-            SaveCustomBase();
-        }
-
-        /// <summary>
-        /// Сохраняет кастомную базу векторов в файл abneuro.custom (рядом с exe).
-        /// Формат: [int count] [char token + 100 bytes]* , gzip сжатый.
-        /// </summary>
-        internal static void SaveCustomBase()
-        {
-            try
-            {
-                var path = System.IO.Path.Combine(System.Windows.Forms.Application.StartupPath, "abneuro.custom");
-                using (var inner = new MemoryStream())
-                {
-                    using (var bw = new BinaryWriter(inner))
-                    {
-                        bw.Write(listVectors.Count);
-                        for (var i = 0; i < listVectors.Count; i++)
-                        {
-                            listVectors[i].SaveToStream(bw);
-                        }
-                    }
-
-                    var packed = PackArray(inner.ToArray());
-                    File.WriteAllBytes(path, packed);
-                    AppLog.i("NeuroBase", "SAVE_CUSTOM: path=" + path + " vectors=" + listVectors.Count + " bytes=" + packed.Length);
-                }
-            }
-            catch (Exception ex)
-            {
-                AppLog.e("NeuroBase", "SAVE_CUSTOM_FAILED", ex);
-            }
-        }
-
-        /// <summary>
-        /// Загружает кастомную базу векторов из файла abneuro.custom.
-        /// Если файл есть — загружается из него (перезаписывая встроенную базу).
-        /// Если нет — из встроенного ресурса Resources.abneuro.
-        /// </summary>
-        internal static void LoadCustomBase()
-        {
-            var path = System.IO.Path.Combine(System.Windows.Forms.Application.StartupPath, "abneuro.custom");
-            if (File.Exists(path))
-            {
-                try
-                {
-                    var arrayPacked = File.ReadAllBytes(path);
-                    var arrayStream = UnpackArray(arrayPacked);
-                    using (var inner = new MemoryStream(arrayStream))
-                    {
-                        using (var br = new BinaryReader(inner))
-                        {
-                            var count = br.ReadInt32();
-                            for (var i = 0; i < count; i++)
+                            // B: Ресайз NearestNeighbor вместо GetThumbnailImage
+                            using (var bitmap10x10 = new Bitmap(10, 10, PixelFormat.Format24bppRgb))
                             {
-                                listVectors.Add(new NeuroVector(br));
+                                using (var g = Graphics.FromImage(bitmap10x10))
+                                {
+                                     g.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.NearestNeighbor;
+                                    g.PixelOffsetMode = System.Drawing.Drawing2D.PixelOffsetMode.Half;
+                                    g.DrawImage(bitmapChar, 0, 0, 10, 10);
+                                }
+
+                                 // Сохраняем копию 10x10 для отладки
+                                var smallCopy = new Bitmap(bitmap10x10);
+                                smallBitmapsList.Add(smallCopy);
+
+                                 var arrayMatrix = new double[100];
+                                var index = 0;
+                                var matrixDump = new StringBuilder();
+                                 for (var y = 0; y < 10; y++)
+                                {
+                                    for (var x = 0; x < 10; x++)
+                                    {
+                                        var color = bitmap10x10.GetPixel(x, y);
+                                        arrayMatrix[index++] = (double)color.R / 255;
+                                        matrixDump.Append(color.R > 128 ? '.' : '#');
+                                    }
+                                    matrixDump.Append('|');
+                                }
+
+                                 // D: Нормализация вектора перед сравнением
+                                var normMatrix = NormalizeVector(arrayMatrix);
+
+                                listMatrix.Add(normMatrix);
+                                gyp.Append(FindVector(numchar, normMatrix));
+
+                                var lastChar = gyp.Length > 0 ? gyp.ToString().Substring(gyp.Length - 1) : "?";
+                                AppLog.d("NeuroBase", "DIGIT[" + numchar + "]=" + lastChar + " matrix=" + matrixDump + " dist=" + (numchar < arrayDistances.Length ? arrayDistances[numchar].ToString("F1") : "?"));
                             }
                         }
-                    }
-                    AppLog.i("NeuroBase", "LOAD_CUSTOM: vectors=" + listVectors.Count);
-                }
-                catch (Exception ex)
-                {
-                    AppLog.e("NeuroBase", "LOAD_CUSTOM_FAILED, fallback to resource", ex);
-                    LoadFromArray(Properties.Resources.abneuro);
-                }
-            }
-        }
-
-        internal static void LoadFromArray(byte[] arrayPacked)
-        {
-            listVectors.Clear();
-            var arrayStream = UnpackArray(arrayPacked);
-            using (var inner = new MemoryStream(arrayStream))
-            {
-                using (var br = new BinaryReader(inner))
-                {
-                    var count = br.ReadInt32();
-                    for (var i = 0; i < count; i++)
-                    {
-                        listVectors.Add(new NeuroVector(br));
-                    }
-                }
-            }
-        }
-
-        private char FindVector(int index, double[] matrix)
-        {
-            if (listVectors.Count == 0)
-            {
-                return '?';
-            }
-
-            /*var listVotes = new List<NeuroVote>(10);*/
-            var minDistance = double.MaxValue;
-            var bestToken = '?';
-            for (var i = 0; i < listVectors.Count; i++)
-            {
-                var distance = listVectors[i].Distance(matrix);
-                /*
-                if (listVotes.Count < 10 || distance < listVotes[listVotes.Count - 1].Distance)
-                {
-                    if (listVotes.Count == 10)
-                    {
-                        listVotes.RemoveAt(9);
-                    }
-
-                    var neuroVote = new NeuroVote { Token = listVectors[i].Token(), Distance = distance };
-                    if (listVotes.Count == 0)
-                    {
-                        listVotes.Add(neuroVote);
                     }
                     else
                     {
-                        var j = 0;
-                        while (j < listVotes.Count)
-                        {
-                            if (distance < listVotes[j].Distance)
-                            {
-                                listVotes.Insert(j, neuroVote);
-                                break;
-                            }
-
-                            j++;
-                        }
-
-                        if (j == listVotes.Count)
-                        {
-                            listVotes.Add(neuroVote);
-                        }
+                        // Цифра не найдена — добавляем пустые битмапы
+                        charBitmapsList.Add(null);
+                        smallBitmapsList.Add(null);
                     }
                 }
-                */
 
-                if (distance > minDistance)
+                 // Отладка: сохраняем расстояния для диагностики качества распознавания
+                debugDistances = new double[ConstNumDigits];
+                Array.Copy(arrayDistances, debugDistances, ConstNumDigits);
+
+                // Сохраняем отладочные изображения того, что видит нейросеть
+                SaveDebugImages(bitmapGray, xleft, xright, arrayTops, arrayBottoms, ConstNumDigits, realwidth, charBitmapsList, smallBitmapsList);
+                foreach (var bmp in charBitmapsList) { if (bmp != null) bmp.Dispose(); }
+                 foreach (var bmp in smallBitmapsList) { if (bmp != null) bmp.Dispose(); }
+
+                // Сохраняем данные последнего распознавания для обучения (Train)
+                lastListMatrix = new List<double[]>(listMatrix);
+                lastArrayDistances = new double[arrayDistances.Length];
+                Array.Copy(arrayDistances, lastArrayDistances, arrayDistances.Length);
+                 lastConstNumDigits = ConstNumDigits;
+            }
+
+        elapsedTime = DateTime.Now.Ticks - startProcess;
+    }
+
+    private struct IntPair
+    {
+        public int A; 
+        public int B;
+        public IntPair(int a, int b) { A = a; B = b; }
+    }
+
+    private static System.Collections.Generic.List<IntPair> BuildDigitSegments(
+        bool[] columnHasBlack, int xleft, int xright, int targetCount)
+    {
+        var result = new System.Collections.Generic.List<IntPair>();
+
+        if (xleft < 0 || xright < xleft || targetCount <= 0)
+        {
+            for (var i = 0; i < targetCount; i++)
+                result.Add(new IntPair(0, 0));
+            return result;
+        }
+
+        var groupStarts = new System.Collections.Generic.List<int>();
+        var groupEnds   = new System.Collections.Generic.List<int>();
+        var inGroup = false;
+        for (var x = xleft; x <= xright; x++)
+        {
+            if (columnHasBlack[x])
+            {
+                if (!inGroup) { inGroup = true; groupStarts.Add(x); }
+            }
+            else
+             {
+                if (inGroup) { inGroup = false; groupEnds.Add(x - 1); }
+            }
+        }
+        if (inGroup) groupEnds.Add(xright);
+
+        if (groupStarts.Count == targetCount)
+        {
+            for (var i = 0; i < targetCount; i++)
+                result.Add(new IntPair(groupStarts[i], groupEnds[i]));
+            return result;
+        }
+
+        var segLeft  = groupStarts.Count > 0 ? groupStarts[0] : xleft;
+        var segRight = groupEnds.Count   > 0 ? groupEnds[groupEnds.Count - 1] : xright;
+        var totalW   = segRight - segLeft + 1;
+        for (var i = 0; i < targetCount; i++)
+        {
+            var l = segLeft + (i * totalW) / targetCount;
+            var r = segLeft + ((i + 1) * totalW) / targetCount - 1;
+            result.Add(new IntPair(l, r));
+        }
+        return result;
+    }
+
+    /// <summary>
+    /// Обучение нейросети: добавляет вектора из последнего распознавания в базу.
+    /// train — строка правильных цифр (длина = lastConstNumDigits).
+    /// Фильтрация: пропускаются вектора с аномальным заполнением (мусор/сетка вместо цифры).
+    /// Проверка на дубликаты временно отключена для перезаполнения базы новыми паттернами.
+    /// </summary>
+    internal static void Train(string train)
+    {
+        if (string.IsNullOrEmpty(train) || lastListMatrix.Count == 0)
+            return;
+
+        var count = Math.Min(train.Length, lastListMatrix.Count);
+        var trained = 0;
+        var skipped = 0;
+        for (var i = 0; i < count; i++)
+        {
+            // Фильтр 1: дубликаты — временно отключено, чтобы позволить базе обновиться новыми паттернами при смене порога
+            /*
+            if (i < lastArrayDistances.Length && listVectors.Count > 0 && lastArrayDistances[i] < 0.5)
+            {
+                skipped++;
+                AppLog.d("NeuroBase", "TRAIN_SKIP: digit=" + train[i] + " reason=DUPLICATE dist=" + (i < lastArrayDistances.Length ? lastArrayDistances[i].ToString("F3") : "?"));
+                continue;
+            }
+            */
+
+            // Фильтр 2: мусор — вектор с аномальным заполнением (кусок сетки или пустота)
+            // После бинаризации нормализованный вектор: sum=1, каждый элемент 0..~0.15
+            // Реальная цифра: 10-40% чёрных пикселей → sum(black) ≈ 0.10..0.40
+            // Мусор/сетка: <5% или >70% чёрных → пропуск
+            var blackSum = 0.0;
+            for (var j = 0; j < 100; j++)
+                blackSum += lastListMatrix[i][j];
+            var blackRatio = blackSum; // после нормализации sum=1, blackSum ~ доля чёрного
+            
+            // Немного расширяем диапазон, так как при пороге 12 цифры могут быть чуть тоньше или жирнее
+            if (blackRatio < 0.03 || blackRatio > 0.75)
+            {
+                skipped++;
+                AppLog.d("NeuroBase", "TRAIN_SKIP: digit=" + train[i] + " reason=GARBAGE blackRatio=" + blackRatio.ToString("F3"));
+                continue;
+            }
+
+            listVectors.Add(new NeuroVector(train[i], lastListMatrix[i]));
+            trained++;
+            AppLog.i("NeuroBase", "TRAIN: digit=" + train[i] + " dist=" + (i < lastArrayDistances.Length ? lastArrayDistances[i].ToString("F3") : "?") + " blackRatio=" + blackRatio.ToString("F3") + " totalVectors=" + listVectors.Count);
+        }
+
+        AppLog.i("NeuroBase", "TRAIN_SUMMARY: trained=" + trained + " skipped=" + skipped + " totalVectors=" + listVectors.Count);
+        SaveCustomBase();
+    }
+
+    /// <summary>
+    /// Сохраняет кастомную базу векторов в файл abneuro.custom (рядом с exe).
+    /// Формат: [int count] [char token + 100 bytes]*, gzip сжатый.
+    /// </summary>
+    internal static void SaveCustomBase()
+    {
+        try
+        {
+            var path = System.IO.Path.Combine(System.Windows.Forms.Application.StartupPath, "abneuro.custom");
+            using (var inner = new MemoryStream())
+            {
+                using (var bw = new BinaryWriter(inner))
                 {
-                    continue;
+                    bw.Write(listVectors.Count);
+                    for (var i = 0; i < listVectors.Count; i++)
+                    {
+                        listVectors[i].SaveToStream(bw);
+                    }
                 }
 
-                minDistance = distance;
-                bestToken = listVectors[i].Token();
+                var packed = PackArray(inner.ToArray());
+                File.WriteAllBytes(path, packed);
+                AppLog.i("NeuroBase", "SAVE_CUSTOM: path=" + path + " vectors=" + listVectors.Count + " bytes=" + packed.Length);
             }
-
-            arrayDistances[index] = minDistance;
-            return bestToken;
-
-            /*
-            var sb = new StringBuilder(16);
-            for (var j = 0; j < listVotes.Count; j++)
-            {
-                sb.Append(listVotes[j].Token);
-            }
-
-            arrayVotes[index] = sb.ToString();
-            var win 
-            
-            arrayDistances[index] = listVotes[0].Distance;
-            return listVotes[0].Token;
-             */ 
         }
-
-        private static bool ThumbnailCallback()
+        catch (Exception ex)
         {
-            return false;
+            AppLog.e("NeuroBase", "SAVE_CUSTOM_FAILED", ex);
         }
+    }
 
-        private static int debugSaveCounter;
-
-        /// <summary>
-        /// Сохраняет отладочные изображения того, что видит нейросеть:
-        /// - captcha_gray_N.png — бинаризованная капча целиком
-        /// - captcha_digit_N_M.png — нарезанная цифра M (до сжатия)
-        /// - captcha_10x10_N_M.png — то, что реально видит нейросеть (10x10, увеличено до 100x100)
-        /// N — порядковый номер капчи, M — индекс цифры (0..4)
-        /// </summary>
-        private static void SaveDebugImages(Bitmap bitmapGray, int xleft, int xright, int[] arrayTops, int[] arrayBottoms, int ConstNumDigits, int realwidth, List<Bitmap> charBitmaps, List<Bitmap> smallBitmaps)
+    /// <summary>
+    /// Загружает кастомную базу векторов из файла abneuro.custom.
+    /// Если файл есть — загружается из него (перезаписывая встроенную базу).
+    /// Если нет — из встроенного ресурса Resources.abneuro.
+    /// </summary>
+    internal static void LoadCustomBase()
+    {
+        var path = System.IO.Path.Combine(System.Windows.Forms.Application.StartupPath, "abneuro.custom");
+        if (File.Exists(path))
         {
             try
             {
-                var dir = Path.Combine(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Logs"), "Captcha");
-                if (!Directory.Exists(dir))
-                    Directory.CreateDirectory(dir);
-
-                var n = debugSaveCounter++;
-
-                // 1. Бинаризованная капча целиком
-                if (bitmapGray != null)
+                var arrayPacked = File.ReadAllBytes(path);
+                var arrayStream = UnpackArray(arrayPacked);
+                using (var inner = new MemoryStream(arrayStream))
                 {
-                    var grayPath = Path.Combine(dir, string.Format("captcha_gray_{0}.png", n));
-                    bitmapGray.Save(grayPath, ImageFormat.Png);
-                }
-
-                // 2. Каждая нарезанная цифра и её 10x10 представление
-                for (var m = 0; m < charBitmaps.Count && m < smallBitmaps.Count; m++)
-                {
-                    if (charBitmaps[m] != null)
-                    {
-                        var charPath = Path.Combine(dir, string.Format("captcha_digit_{0}_{1}.png", n, m));
-                        charBitmaps[m].Save(charPath, ImageFormat.Png);
-                    }
-                    if (smallBitmaps[m] != null)
-                    {
-                        // Увеличиваем 10x10 до 100x100 для видимости
-                        var enlarged = new Bitmap(100, 100, PixelFormat.Format24bppRgb);
-                        using (var g = Graphics.FromImage(enlarged))
+                    using (var br = new BinaryReader(inner))
+                    { 
+                        var count = br.ReadInt32();
+                        for (var i = 0; i < count; i++)
                         {
-                            g.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.NearestNeighbor;
-                            g.DrawImage(smallBitmaps[m], 0, 0, 100, 100);
+                            listVectors.Add(new NeuroVector(br));
                         }
-                        var smallPath = Path.Combine(dir, string.Format("captcha_10x10_{0}_{1}.png", n, m));
-                        enlarged.Save(smallPath, ImageFormat.Png);
-                        enlarged.Dispose();
                     }
                 }
-
-                AppLog.d("NeuroBase", "DEBUG_IMAGES_SAVED: captcha #" + n + " digits=" + ConstNumDigits);
+                 AppLog.i("NeuroBase", "LOAD_CUSTOM: vectors=" + listVectors.Count);
             }
             catch (Exception ex)
             {
-                AppLog.e("NeuroBase", "SAVE_DEBUG_IMAGES_FAILED", ex);
+                AppLog.e("NeuroBase", "LOAD_CUSTOM_FAILED, fallback to resource", ex);
+                LoadFromArray(Properties.Resources.abneuro);
             }
         }
+    }
 
-        private static byte[] PackArray(byte[] writeData)
+    internal static void LoadFromArray(byte[] arrayPacked)
+    {
+        listVectors.Clear();
+        var arrayStream = UnpackArray(arrayPacked);
+        using (var inner = new MemoryStream(arrayStream))
         {
-            using (var inner = new MemoryStream())
+            using (var br = new BinaryReader(inner))
             {
-                using (var stream2 = new GZipStream(inner, CompressionMode.Compress))
+                var count = br.ReadInt32();
+                for (var i = 0; i < count; i++)
                 {
-                    stream2.Write(writeData, 0, writeData.Length);
-                }
-
-                return inner.ToArray();
-            }
-        }
-
-        private static byte[] UnpackArray(byte[] compressedData)
-        {
-            using (var inner = new MemoryStream(compressedData))
-            {
-                using (var stream2 = new MemoryStream())
-                {
-                    using (var stream3 = new GZipStream(inner, CompressionMode.Decompress))
-                    {
-                        var buffer = new byte[0x8000];
-                        int count;
-                        while ((count = stream3.Read(buffer, 0, buffer.Length)) > 0)
-                        {
-                            stream2.Write(buffer, 0, count);
-                        }
-                    }
-
-                    return stream2.ToArray();
+                    listVectors.Add(new NeuroVector(br));
                 }
             }
         }
     }
+
+    private char FindVector(int index, double[] matrix)
+    {
+        if (listVectors.Count == 0)
+        {
+            return '?';
+        }
+
+        /*var listVotes = new List<NeuroVote>(10);*/
+        var minDistance = double.MaxValue;
+        var bestToken = '?';
+        for (var i = 0; i < listVectors.Count; i++)
+        {
+            var distance = listVectors[i].Distance(matrix);
+            /*
+            if (listVotes.Count < 10 || distance < listVotes[listVotes.Count - 1].Distance)
+            {
+                if (listVotes.Count == 10)
+                {
+                    listVotes.RemoveAt(9);
+                }
+
+                 var neuroVote = new NeuroVote { Token = listVectors[i].Token(), Distance = distance };
+                if (listVotes.Count == 0)
+                {
+                     listVotes.Add(neuroVote);
+                }
+                else
+                {
+                    var j = 0;
+                    while (j < listVotes.Count)
+                    {
+                        if (distance < listVotes[j].Distance)
+                        {
+                            listVotes.Insert(j, neuroVote);
+                            break;
+                        }
+
+                         j++;
+                    }
+
+                    if (j == listVotes.Count)
+                    {
+                        listVotes.Add(neuroVote);
+                     }
+                }
+            }
+            */
+
+            if (distance > minDistance)
+            {
+                continue;
+            }
+
+            minDistance = distance;
+            bestToken = listVectors[i].Token();
+        }
+
+        arrayDistances[index] = minDistance;
+        return bestToken;
+
+        /*
+        var sb = new StringBuilder(16);
+        for (var j = 0; j < listVotes.Count; j++)
+        {
+            sb.Append(listVotes[j].Token);
+        }
+
+        arrayVotes[index] = sb.ToString();
+        var win 
+        
+        arrayDistances[index] = listVotes[0].Distance;
+        return listVotes[0].Token;
+         */ 
+    }
+
+    /// <summary>
+    /// D: Нормализация вектора — сумма элементов = 1.
+    /// Устраняет разницу в яркости между разными капчами,
+    /// делает сравнение инвариантным к общему уровню серого.
+     /// </summary>
+    private static double[] NormalizeVector(double[] vector)
+    {
+        var sum = 0.0;
+        for (var i = 0; i < vector.Length; i++)
+            sum += vector[i];
+        if (sum == 0)
+            return vector;
+        var normalized = new double[vector.Length];
+        for (var i = 0; i < vector.Length; i++)
+            normalized[i] = vector[i] / sum;
+        return normalized;
+    }
+
+    private static bool ThumbnailCallback()
+    {
+        return false;
+    }
+
+     private static int debugSaveCounter;
+
+    /// <summary>
+    /// Сохраняет отладочные изображения того, что видит нейросеть:
+    /// - captcha_gray_N.png — бинаризованная капча целиком
+    /// - captcha_digit_N_M.png — нарезанная цифра M (до сжатия)
+    /// - captcha_10x10_N_M.png — то, что реально видит нейросеть (10x10, увеличено до 100x100)
+    /// N — порядковый номер капчи, M — индекс цифры (0..4)
+    /// </summary>
+    private static void SaveDebugImages(Bitmap bitmapGray, int xleft, int xright, int[] arrayTops, int[] arrayBottoms, int ConstNumDigits, int realwidth, List<Bitmap> charBitmaps, List<Bitmap> smallBitmaps)
+    {
+        try
+        {
+            var dir = Path.Combine(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Logs"), "Captcha");
+            if (!Directory.Exists(dir))
+                Directory.CreateDirectory(dir);
+
+            var n = debugSaveCounter++;
+
+            // 1. Бинаризованная капча целиком 
+            if (bitmapGray != null)
+            {
+                var grayPath = Path.Combine(dir, string.Format("captcha_gray_{0}.png", n));
+                bitmapGray.Save(grayPath, ImageFormat.Png);
+            }
+
+            // 2. Каждая нарезанная цифра и её 10x10 представление
+            for (var m = 0; m < charBitmaps.Count && m < smallBitmaps.Count; m++)
+            {
+                if (charBitmaps[m] != null)
+                {
+                    var charPath = Path.Combine(dir, string.Format("captcha_digit_{0}_{1}.png", n, m));
+                    charBitmaps[m].Save(charPath, ImageFormat.Png);
+                }
+                if (smallBitmaps[m] != null)
+                {
+                     // Увеличиваем 10x10 до 100x100 для видимости
+                    var enlarged = new Bitmap(100, 100, PixelFormat.Format24bppRgb);
+                    using (var g = Graphics.FromImage(enlarged))
+                    {
+                        g.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.NearestNeighbor;
+                        g.DrawImage(smallBitmaps[m], 0, 0, 100, 100);
+                    }
+                    var smallPath = Path.Combine(dir, string.Format("captcha_10x10_{0}_{1}.png", n, m));
+                    enlarged.Save(smallPath, ImageFormat.Png);
+                    enlarged.Dispose();
+                }
+            }
+
+            AppLog.d("NeuroBase", "DEBUG_IMAGES_SAVED: captcha #" + n + " digits=" + ConstNumDigits);
+        }
+        catch (Exception ex)
+        {
+            AppLog.e("NeuroBase", "SAVE_DEBUG_IMAGES_FAILED", ex);
+        }
+    }
+
+    private static byte[] PackArray(byte[] writeData)
+    {
+        using (var inner = new MemoryStream())
+        {
+            using (var stream2 = new GZipStream(inner, CompressionMode.Compress))
+            {
+                stream2.Write(writeData, 0, writeData.Length);
+            }
+
+            return inner.ToArray();
+         }
+    }
+
+    private static byte[] UnpackArray(byte[] compressedData)
+    {
+        using (var inner = new MemoryStream(compressedData))
+        {
+            using (var stream2 = new MemoryStream())
+            {
+                using (var stream3 = new GZipStream(inner, CompressionMode.Decompress))
+                {
+                    var buffer = new byte[0x8000];
+                    int count;
+                    while ((count = stream3.Read(buffer, 0, buffer.Length)) > 0)
+                    {
+                        stream2.Write(buffer, 0, count);
+                    }
+                }
+
+                return stream2.ToArray();
+            } 
+        }
+    }
+}
 }
