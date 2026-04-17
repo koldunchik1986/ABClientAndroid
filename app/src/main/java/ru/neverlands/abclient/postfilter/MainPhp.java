@@ -3798,15 +3798,6 @@ public class MainPhp {
                                 AppLog.d(TAG, msg_fishudswitch);
                                 return Russian.getBytes(buildRedirectHtml("Переключение на вещи", "main.php?im=0&wca=4"));
                             }
-                            // Bug E fix: уже на im=0&wca=4, но через act=10-контекст (рыболовная сессия могла истечь).
-                            // Сервер вернул XHTML-заглушку (<5000 байт) вместо полного инвентаря.
-                            // Retry: загрузить чистый main.php?im=0&wca=4 (без act=10).
-                            boolean isActBasedInv = address != null && address.contains("act=10");
-                            if (isActBasedInv) {
-                                AppLog.w(TAG, "AUTO_FISH_TRACE wear: act10-based inv returned no items, retrying with plain im=0");
-                                return Russian.getBytes(buildRedirectHtml("Повторный поиск без контекста рыбалки", "main.php?im=0&wca=4"));
-                            }
-                            // plain im=0&wca=4 тоже не нашёл — disableAutoFishMain уже вызван внутри mainPhpWearUd
                         } else {
                             return Russian.getBytes(invHtml);
                         }
@@ -5259,6 +5250,12 @@ public class MainPhp {
         if (normalized.isEmpty()) {
             return;
         }
+        if (shouldSuppressAutoFishPopupChatNotice(normalized, sourceTag)) {
+            String msgSkip = "SERVER_NOTICE_TRACE skip duplicate auto-fish popup: source="
+                    + sourceTag + ", text=" + normalized;
+            AppLog.d(TAG, msgSkip);
+            return;
+        }
         String type = resolveServerNotificationType(normalized, sourceTag, addressHint);
         boolean appendAutoCureTarget = shouldAppendAutoCureTarget(sourceTag, addressHint);
         if (appendAutoCureTarget) {
@@ -5295,6 +5292,16 @@ public class MainPhp {
         if (appendAutoCureTarget) {
             AppVars.CureNickDone = "";
         }
+    }
+
+    private static boolean shouldSuppressAutoFishPopupChatNotice(String normalized, String sourceTag) {
+        String lowerSource = sourceTag == null ? "" : sourceTag.toLowerCase(Locale.ROOT);
+        String lowerText = normalized == null ? "" : normalized.toLowerCase(Locale.ROOT);
+        if (!containsAny(lowerSource, "map_bridge_popup", "popup", "bridge")) {
+            return false;
+        }
+        return (lowerText.contains("доход за рыбалку") || lowerText.contains("потери за рыбалку"))
+                && lowerText.contains("умелка");
     }
 
     private static boolean shouldAppendAutoCureTarget(String sourceTag, String addressHint) {

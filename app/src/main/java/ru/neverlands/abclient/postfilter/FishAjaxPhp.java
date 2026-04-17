@@ -1233,7 +1233,15 @@ public final class FishAjaxPhp {
                 baitRemainingAfter,
                 cooldownSec);
         ChatStats.addFishCatch(fishName, fishLoot, totalBalance);
-        maybeWriteFishChat(fishName, fishLoot, fishCatch, fishUmUp, cooldownSec);
+        maybeWriteFishChat(
+                fishName,
+                fishLoot,
+                fishCatch,
+                fishUmUp,
+                totalBalance,
+                bait == null ? "" : bait.name,
+                baitRemainingAfter,
+                cooldownSec);
         return report;
     }
 
@@ -1316,6 +1324,9 @@ public final class FishAjaxPhp {
                                            int fishLoot,
                                            int fishCatch,
                                            boolean fishUmUp,
+                                           double totalBalance,
+                                           String baitName,
+                                           int baitRemaining,
                                            int cooldownSec) {
         if (AppVars.Profile == null) {
             return;
@@ -1323,33 +1334,44 @@ public final class FishAjaxPhp {
         if (!AppVars.Profile.FishChatReport && !AppVars.Profile.FishChatReportColor) {
             return;
         }
+        int currentTied = CharacterVitalsManager.snapshot().tied;
+        int totalSec = lastAct1TimerSec + cooldownSec;
         StringBuilder sb = new StringBuilder();
-        sb.append(getFishTimestamp()).append(" ");
-        if (AppVars.Profile.FishChatReportColor) {
-            sb.append("Умелка <b>").append(AppVars.Profile.FishUm).append("</b>. ");
-        } else {
-            sb.append("Умелка ").append(AppVars.Profile.FishUm).append(". ");
+        sb.append(MainPhp.buildServerChatTimeHtml())
+                .append("<font color=#333399><b>[Авто-рыбалка]</b>:</font> ");
+        if (AppVars.Profile.FishUm > 0) {
+            sb.append("Умелка: <b>").append(AppVars.Profile.FishUm).append("</b>");
+            if (fishUmUp) {
+                sb.append(" <font color=#008800><b>(+1)</b></font>");
+            }
+            sb.append(". ");
         }
-        if (AppVars.NamePri != null && !AppVars.NamePri.isEmpty()) {
-            sb.append(AppVars.NamePri).append(" » ");
+        if (baitName != null && !baitName.isEmpty()) {
+            sb.append(escapeHtmlText(baitName)).append(" &raquo; ");
         }
-        sb.append(fishName).append(" [").append(fishLoot).append('/').append(fishCatch).append("]. ");
-        if (AppVars.AutoFishNV < 0) {
-            sb.append("Потери");
-        } else {
-            sb.append("Доход");
+        sb.append("<b>").append(escapeHtmlText(fishName)).append("</b>")
+                .append(" [<b>").append(fishLoot).append('/').append(fishCatch).append("</b>]. ");
+        if (baitName != null && !baitName.isEmpty()) {
+            sb.append("Остаток приманки: <b>").append(Math.max(0, baitRemaining)).append("</b>. ");
         }
-        int totalSec2 = lastAct1TimerSec + cooldownSec;
-        String timeoutSuffix = totalSec2 > 0 ? " Таймаут: " + totalSec2 + " сек." : "";
-        if (AppVars.Profile.FishChatReportColor) {
-            sb.append(": <b>").append(formatDouble(AppVars.AutoFishNV)).append(" NV</b>.");
-            sb.append(timeoutSuffix);
-        } else {
-            sb.append(" за сеанс: ").append(formatDouble(AppVars.AutoFishNV)).append(" NV.");
-            sb.append(timeoutSuffix);
+        if (AppVars.AutoFishMassa != null && !AppVars.AutoFishMassa.isEmpty()) {
+            sb.append("Масса: <b>").append(escapeHtmlText(AppVars.AutoFishMassa)).append("</b>. ");
         }
-        if (fishUmUp) {
-            sb.append(" Умение \"Рыбалка\" ").append(AppVars.Profile.FishChatReportColor ? "<b>повысилось на 1</b>!" : "повысилось на 1!");
+        if (currentTied >= 0) {
+            sb.append("Усталость: <b>").append(currentTied).append("</b>. ");
+        }
+        sb.append(totalBalance < 0 ? "Потери" : "Доход")
+                .append(": <b>")
+                .append(totalBalance < 0 ? "" : "+")
+                .append(formatDouble(totalBalance))
+                .append(" NV</b>. ");
+        sb.append(AppVars.AutoFishNV < 0 ? "Потери за рыбалку: <b>" : "Доход за рыбалку: <b>")
+                .append(AppVars.AutoFishNV < 0 ? "" : "+")
+                .append(formatDouble(AppVars.AutoFishNV))
+                .append(" NV</b>. ");
+        if (totalSec > 0) {
+            sb.append("Таймаут: <b>").append(totalSec).append(" сек.</b> ")
+                    .append("(act1=").append(lastAct1TimerSec).append("+act2=").append(cooldownSec).append(").");
         }
         pushChatMessage(sb.toString());
     }
@@ -1362,6 +1384,17 @@ public final class FishAjaxPhp {
         synchronized (FISH_TIME_FORMAT) {
             return FISH_TIME_FORMAT.format(new Date(serverMs));
         }
+    }
+
+    private static String escapeHtmlText(String value) {
+        if (value == null || value.isEmpty()) {
+            return "";
+        }
+        return value.replace("&", "&amp;")
+                .replace("<", "&lt;")
+                .replace(">", "&gt;")
+                .replace("\"", "&quot;")
+                .replace("'", "&#39;");
     }
 
     /**
@@ -3011,14 +3044,6 @@ public final class FishAjaxPhp {
                 }
             }
             if (!foundMatch && !isNoFishHandSetting(AppVars.Profile.FishHandTwo)) {
-                // Bug E fix: не выключать авторыбалку если invList пуст на подозрительно маленькой странице.
-                // Признак: act=10 session истёк, сервер вернул XHTML-заглушку (<5000 байт) вместо полного инвентаря.
-                // Caller (MainPhp.java) должен повторить попытку через plain main.php?im=0&wca=4.
-                if (invList.isEmpty() && html.length() < 5000) {
-                    AppLog.w(TAG, "AUTO_FISH_TRACE wear: foundMatch=false but invList empty on tiny page "
-                            + html.length() + " bytes; NOT disabling, let caller retry with fresh inv");
-                    return null;
-                }
                 disableAutoFishMain("\u041D\u0435 \u043D\u0430\u0439\u0434\u0435\u043D \u043F\u0440\u0435\u0434\u043C\u0435\u0442 \u0434\u043B\u044F \u0432\u0442\u043E\u0440\u043E\u0439 \u0440\u0443\u043A\u0438");
                 return null;
             }

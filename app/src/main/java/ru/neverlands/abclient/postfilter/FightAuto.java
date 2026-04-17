@@ -304,7 +304,14 @@ public final class FightAuto {
                 
                 String cancelMsg = "[FIGHT_ENDED_CLEANUP_COMPLETED] FastNeed cleared after fight end";
                 AppLog.i(TAG, TAG, cancelMsg);
-            }        }
+            }
+            if (FishAjaxPhp.isAutoFishEnabled()) {
+                String resumeMsg = "[FIGHT_ENDED_AUTOFISH_RESUME] fight ended, restart auto-fishing cycle"
+                        + ", logBoi=" + fight.LogBoi;
+                AppLog.i(TAG, TAG, resumeMsg);
+                FishAjaxPhp.restartAutoFishCycle("fight_ended");
+            }
+        }
         String fightCaptchaUrl = fightEnded ? resolvedFightCaptchaUrl : null;
         host.recoverAutoboiRuntimeStateIfNeeded(fightEnded, fightCaptchaUrl);
 
