@@ -13,6 +13,7 @@
         private int ConstNumDigits = 5;
         private static readonly List<NeuroVector> listVectors = new List<NeuroVector>();
         private List<double[]> listMatrix;
+        private List<double[]> listMatrixRaw;
         private double[] arrayDistances;
         private static readonly StringBuilder gyp = new StringBuilder();
         private static long elapsedTime;
@@ -27,7 +28,10 @@
         private static int debugRealWidth;
 
         // Данные для обучения
+        // lastListMatrixRaw — ненормализованные (0..1), для фильтрации мусора по blackRatio
+        // lastListMatrix — нормализованные (sum=1), для добавления в базу
         private static List<double[]> lastListMatrix = new List<double[]>();
+        private static List<double[]> lastListMatrixRaw = new List<double[]>();
         private static double[] lastArrayDistances = new double[0];
         private static int lastConstNumDigits;
 
@@ -45,6 +49,7 @@
         internal NeuroBase()
         {
             listMatrix = new List<double[]>(ConstNumDigits);
+            listMatrixRaw = new List<double[]>(ConstNumDigits);
             arrayDistances = new double[ConstNumDigits];
         }
 
@@ -327,10 +332,11 @@
                 if (xleft == -1 || xright == -1)
                 {
                     ConstNumDigits = 5;
-                    listMatrix.Clear();
+                listMatrix.Clear();
+                listMatrixRaw.Clear();
                     gyp.Length = 0;
                     arrayDistances = new double[5];
-                    for(int i=0; i<5; i++) { listMatrix.Add(new double[100]); gyp.Append('?'); arrayDistances[i] = 999.0; }
+                    for(int i=0; i<5; i++) { listMatrix.Add(new double[100]); listMatrixRaw.Add(new double[100]); gyp.Append('?'); arrayDistances[i] = 999.0; }
                     debugDistances = new double[5];
                     Array.Copy(arrayDistances, debugDistances, 5);
                     elapsedTime = DateTime.Now.Ticks - startProcess;
@@ -365,6 +371,7 @@
                         charBitmapsList.Add(null);
                         smallBitmapsList.Add(null);
                         listMatrix.Add(new double[100]);
+                        listMatrixRaw.Add(new double[100]);
                         gyp.Append('?');
                         arrayDistances[numchar] = 999.0;
                         continue;
@@ -381,6 +388,7 @@
                         charBitmapsList.Add(null);
                         smallBitmapsList.Add(null);
                         listMatrix.Add(new double[100]);
+                        listMatrixRaw.Add(new double[100]);
                         gyp.Append('?');
                         arrayDistances[numchar] = 999.0;
                         continue;
@@ -459,6 +467,7 @@
 
                                 var normMatrix = NormalizeVector(arrayMatrix);
                                 listMatrix.Add(normMatrix);
+                                listMatrixRaw.Add((double[])arrayMatrix.Clone());
                                 gyp.Append(FindVector(numchar, normMatrix));
 
                                 var lastChar = gyp.Length > 0 ? gyp.ToString().Substring(gyp.Length - 1) : "?";
@@ -473,6 +482,7 @@
                         charBitmapsList.Add(null);
                         smallBitmapsList.Add(null);
                         listMatrix.Add(new double[100]);
+                        listMatrixRaw.Add(new double[100]);
                         gyp.Append('?');
                         arrayDistances[numchar] = 999.0;
                     }
@@ -487,6 +497,7 @@
                 foreach (var bmp in smallBitmapsList) { if (bmp != null) bmp.Dispose(); }
 
                 lastListMatrix = new List<double[]>(listMatrix);
+                lastListMatrixRaw = new List<double[]>(listMatrixRaw);
                 lastArrayDistances = new double[arrayDistances.Length];
                 Array.Copy(arrayDistances, lastArrayDistances, arrayDistances.Length);
                 lastConstNumDigits = ConstNumDigits;
@@ -576,19 +587,30 @@
             var skipped = 0;
             for (var i = 0; i < count; i++)
             {
-                // Фильтр мусора
+                // Фильтр мусора: считаем blackRatio по НЕнормализованному вектору
+                // (нормализованный всегда sum=1.0, фильтр не работает)
                 var blackSum = 0.0;
-                for (var j = 0; j < 100; j++)
-                    blackSum += lastListMatrix[i][j];
+                if (i < lastListMatrixRaw.Count)
+                {
+                    for (var j = 0; j < 100; j++)
+                        blackSum += lastListMatrixRaw[i][j];
+                }
+                else
+                {
+                    for (var j = 0; j < 100; j++)
+                        blackSum += lastListMatrix[i][j];
+                }
                 
                 if (blackSum < 0.02 || blackSum > 0.80)
                 {
                     skipped++;
+                    AppLog.d("NeuroBase", "TRAIN_SKIP: digit=" + train[i] + " reason=GARBAGE blackRatio=" + blackSum.ToString("F3"));
                     continue;
                 }
 
                 listVectors.Add(new NeuroVector(train[i], lastListMatrix[i]));
                 trained++;
+                AppLog.i("NeuroBase", "TRAIN: digit=" + train[i] + " blackRatio=" + blackSum.ToString("F3") + " totalVectors=" + listVectors.Count);
             }
 
             AppLog.i("NeuroBase", string.Format("TRAIN_SUMMARY: trained={0} skipped={1} totalVectors={2}", trained, skipped, listVectors.Count));
@@ -648,14 +670,26 @@
         internal static void LoadFromArray(byte[] arrayPacked)
         {
             listVectors.Clear();
-            using (var inner = new MemoryStream(UnpackArray(arrayPacked)))
-            using (var br = new BinaryReader(inner))
+            try
             {
-                var count = br.ReadInt32();
-                for (var i = 0; i < count; i++)
+                using (var inner = new MemoryStream(UnpackArray(arrayPacked)))
+                using (var br = new BinaryReader(inner))
                 {
-                    listVectors.Add(new NeuroVector(br));
+                    var count = br.ReadInt32();
+                    for (var i = 0; i < count; i++)
+                    {
+                        listVectors.Add(new NeuroVector(br));
+                    }
                 }
+                AppLog.i("NeuroBase", "LOADFromArray: vectors=" + listVectors.Count);
+            }
+            catch (EndOfStreamException ex)
+            {
+                AppLog.e("NeuroBase", "LOADFromArray: TRUNCATED DATA, loaded=" + listVectors.Count, ex);
+            }
+            catch (Exception ex)
+            {
+                AppLog.e("NeuroBase", "LOADFromArray: FAILED", ex);
             }
         }
 
