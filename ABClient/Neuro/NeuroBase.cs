@@ -28,17 +28,18 @@ namespace ABClient.Neuro
         private static int debugRealWidth;
 
         // Настройки морфологии и заливки
+        // Настройки морфологии и заливки
         private static int MorphDilateIterations = 1; // 0 = выкл, >0 = итерации
         private static int UseGeometryFill = 0;       // 1 = вкл, 0 = выкл
         
         // Настройки сегментации (адаптивная)
-        private static double SqueezeFactor = 0.15;
+        private static double SqueezeFactor = 0.0; // Отключаем расклеивание полностью
         private static double AdaptiveSqueezeMultiplier = 0.5;
-        private static bool UseAdaptiveSqueeze = true;
+        private static bool UseAdaptiveSqueeze = false;
         
         // Настройки сегментации (ручная)
         private static int ManualStrokeWidth = 3;        // Толщина штриха в пикселях
-        private static bool UseManualSegmentation = true; // Переключатель
+        private static bool UseManualSegmentation = false; // Отключаем ручную сегментацию
 
         // Данные для обучения
         // lastListMatrixRaw — ненормализованные (0..1), для фильтрации мусора по blackRatio
