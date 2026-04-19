@@ -30,6 +30,15 @@ namespace ABClient.Neuro
         // Настройки морфологии и заливки
         private static int MorphDilateIterations = 1; // 0 = выкл, >0 = итерации
         private static int UseGeometryFill = 0;       // 1 = вкл, 0 = выкл
+        
+        // Настройки сегментации (адаптивная)
+        private static double SqueezeFactor = 0.15;
+        private static double AdaptiveSqueezeMultiplier = 0.5;
+        private static bool UseAdaptiveSqueeze = true;
+        
+        // Настройки сегментации (ручная)
+        private static int ManualStrokeWidth = 3;        // Толщина штриха в пикселях
+        private static bool UseManualSegmentation = true; // Переключатель
 
         // Данные для обучения
         // lastListMatrixRaw — ненормализованные (0..1), для фильтрации мусора по blackRatio
@@ -40,7 +49,6 @@ namespace ABClient.Neuro
         private static int lastConstNumDigits;
 
         // ПАРАМЕТР РАСКЛЕИВАНИЯ: Насколько "утоньшать" группы пикселей при сегментации
-        private const double SqueezeFactor = 0.15;
 
         // ЦВЕТА
         // Основной цвет цифр и сетки на оригинале
@@ -618,39 +626,44 @@ namespace ABClient.Neuro
             }
             if (inGroup) groupEnds.Add(xright);
 
-            // Если групп ровно столько, сколько нужно
-            if (groupStarts.Count == targetCount)
+            // --- РУЧНАЯ СЕГМЕНТАЦИЯ ---
+            List<IntPair> baseGroups = new List<IntPair>();
+            for (int i = 0; i < groupStarts.Count; i++)
             {
-                for (var i = 0; i < targetCount; i++)
+                int l = groupStarts[i];
+                int r = groupEnds[i];
+                int w = r - l + 1;
+
+                if (UseManualSegmentation && w > ManualStrokeWidth * 1.5)
                 {
-                    var l = groupStarts[i];
-                    var r = groupEnds[i];
-                    var w = r - l + 1;
-                    
-                    // Применяем расклеивание (Squeeze)
-                    var squeeze = (int)(w * SqueezeFactor);
-                    if (squeeze > w / 3) squeeze = w / 3; 
-                    
-                    l += squeeze;
-                    r -= squeeze;
-                    
-                    if (l > r) { l = (l + r) / 2; r = l; }
-                    result.Add(new IntPair(l, r));
+                    int mid = (l + r) / 2;
+                    baseGroups.Add(new IntPair(l, mid));
+                    baseGroups.Add(new IntPair(mid + 1, r));
                 }
-                return result;
+                else
+                {
+                    baseGroups.Add(new IntPair(l, r));
+                }
             }
 
-            // Fallback: равномерное деление, если группы слиплись или разбились неправильно
-            var segLeft = groupStarts.Count > 0 ? groupStarts[0] : xleft;
-            var segRight = groupEnds.Count > 0 ? groupEnds[groupEnds.Count - 1] : xright;
-            var totalW = segRight - segLeft + 1;
-            
-            for (var i = 0; i < targetCount; i++)
+            // --- Применение расклеивания к baseGroups ---
+            foreach (var pair in baseGroups)
             {
-                var l = segLeft + (i * totalW) / targetCount;
-                var r = segLeft + ((i + 1) * totalW) / targetCount - 1;
+                int l = pair.A;
+                int r = pair.B;
+                int w = r - l + 1;
+                
+                // Старый алгоритм (SqueezeFactor)
+                int squeeze = (int)(w * SqueezeFactor);
+                if (squeeze > w / 3) squeeze = w / 3; 
+                
+                l += squeeze;
+                r -= squeeze;
+                
+                if (l > r) { l = (l + r) / 2; r = l; }
                 result.Add(new IntPair(l, r));
             }
+            
             return result;
         }
 
