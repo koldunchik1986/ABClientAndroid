@@ -1,4 +1,4 @@
-﻿namespace ABClient.Neuro
+namespace ABClient.Neuro
 {
     using System;
     using System.Collections.Generic;
@@ -587,30 +587,26 @@
             var skipped = 0;
             for (var i = 0; i < count; i++)
             {
-                // Фильтр мусора: считаем blackRatio по НЕнормализованному вектору
-                // (нормализованный всегда sum=1.0, фильтр не работает)
-                var blackSum = 0.0;
-                if (i < lastListMatrixRaw.Count)
+                // Фильтр мусора: считаем blackRatio
+                var blackCount = 0;
+                for (var j = 0; j < 100; j++)
                 {
-                    for (var j = 0; j < 100; j++)
-                        blackSum += lastListMatrixRaw[i][j];
+                    // В матрице: 0.0 - чёрный, 1.0 - белый
+                    if (lastListMatrixRaw[i][j] < 0.5)
+                        blackCount++;
                 }
-                else
-                {
-                    for (var j = 0; j < 100; j++)
-                        blackSum += lastListMatrix[i][j];
-                }
+                var blackRatio = (double)blackCount / 100.0;
                 
-                if (blackSum < 0.02 || blackSum > 0.80)
+                if (blackRatio < 0.02 || blackRatio > 0.80)
                 {
                     skipped++;
-                    AppLog.d("NeuroBase", "TRAIN_SKIP: digit=" + train[i] + " reason=GARBAGE blackRatio=" + blackSum.ToString("F3"));
+                    AppLog.d("NeuroBase", "TRAIN_SKIP: digit=" + train[i] + " reason=GARBAGE blackRatio=" + blackRatio.ToString("F3"));
                     continue;
                 }
 
                 listVectors.Add(new NeuroVector(train[i], lastListMatrix[i]));
                 trained++;
-                AppLog.i("NeuroBase", "TRAIN: digit=" + train[i] + " blackRatio=" + blackSum.ToString("F3") + " totalVectors=" + listVectors.Count);
+                AppLog.i("NeuroBase", "TRAIN: digit=" + train[i] + " blackRatio=" + blackRatio.ToString("F3") + " totalVectors=" + listVectors.Count);
             }
 
             AppLog.i("NeuroBase", string.Format("TRAIN_SUMMARY: trained={0} skipped={1} totalVectors={2}", trained, skipped, listVectors.Count));
