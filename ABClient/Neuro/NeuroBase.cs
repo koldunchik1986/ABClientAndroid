@@ -264,26 +264,24 @@ namespace ABClient.Neuro
                             c.G > DG  && c.G < 220 &&
                             c.B > DB  && c.B < 220)
                         {
-                            // Этот пиксель — контур цифры: красим в целевой цвет
-                            workBitmap.SetPixel(x, y, ColorDigitTarget);
-
-                            // Сосед справа: заполняем разрыв в горизонтальном контуре
-                            if (x + 1 < width)
-                                workBitmap.SetPixel(x + 1, y, ColorDigitTarget);
+                            // НОВАЯ ЛОГИКА: смещаем контур влево на 2 пикселя и стираем текущий
+                            if (x - 2 >= 0)
+                            {
+                                workBitmap.SetPixel(x - 2, y, ColorDigitTarget); // Красим пиксель через один слева
+                            }
+                            workBitmap.SetPixel(x, y, Color.White); // Сам пиксель контура в белый
                         }
                     }
 
-                // --- НОВЫЙ ЭТАП: УЛУЧШЕНИЕ ТЕЛА ЦИФРЫ ---
+                // --- НОВЫЙ ЭТАП: УЛУЧШЕНИЕ ТЕЛА ЦИФРЫ (Closing = Dilate + Erode) ---
                 if (MorphDilateIterations > 0)
                 {
                     for (int i = 0; i < MorphDilateIterations; i++)
                         Dilate(workBitmap);
+                    for (int i = 0; i < MorphDilateIterations; i++) // После Dilate делаем Erode
+                        Erode(workBitmap);
                 }
-
-                if (UseGeometryFill == 1)
-                {
-                    GeometryFill(workBitmap);
-                }
+                // UseGeometryFill остается выключенным (UseGeometryFill = 0)
                 // ----------------------------------------
 
                 // ════════════════════════════════════════════════════════════════
@@ -533,12 +531,11 @@ namespace ABClient.Neuro
             elapsedTime = DateTime.Now.Ticks - startProcess;
         }
 
-        // --- Метод Дилатации (Расширения) ---
+        // --- Метод Дилатации (Расширения) - Оптимизированный "крест" ---
         private void Dilate(Bitmap bmp)
         {
             int w = bmp.Width;
             int h = bmp.Height;
-            // Создаем копию для чтения, чтобы изменения не влияли на текущий проход
             using (Bitmap temp = new Bitmap(bmp))
             {
                 for (int y = 1; y < h - 1; y++)
@@ -547,9 +544,37 @@ namespace ABClient.Neuro
                     {
                         if (temp.GetPixel(x, y).ToArgb() == ColorDigitTarget.ToArgb())
                         {
+                            bmp.SetPixel(x + 1, y, ColorDigitTarget);
+                            bmp.SetPixel(x - 1, y, ColorDigitTarget);
+                            bmp.SetPixel(x, y + 1, ColorDigitTarget);
+                            bmp.SetPixel(x, y - 1, ColorDigitTarget);
+                        }
+                    }
+                }
+            }
+        }
+
+        // --- Метод Эрозии ---
+        private void Erode(Bitmap bmp)
+        {
+            int w = bmp.Width;
+            int h = bmp.Height;
+            using (Bitmap temp = new Bitmap(bmp))
+            {
+                for (int y = 1; y < h - 1; y++)
+                {
+                    for (int x = 1; x < w - 1; x++)
+                    {
+                        if (temp.GetPixel(x, y).ToArgb() == ColorDigitTarget.ToArgb())
+                        {
+                            bool surroundedByTarget = true;
                             for (int dy = -1; dy <= 1; dy++)
                                 for (int dx = -1; dx <= 1; dx++)
-                                    bmp.SetPixel(x + dx, y + dy, ColorDigitTarget);
+                                    if (temp.GetPixel(x + dx, y + dy).ToArgb() != ColorDigitTarget.ToArgb())
+                                        surroundedByTarget = false;
+                            
+                            if (!surroundedByTarget)
+                                bmp.SetPixel(x, y, Color.White);
                         }
                     }
                 }
