@@ -27,6 +27,10 @@ namespace ABClient.Neuro
         private static int debugXRight;
         private static int debugRealWidth;
 
+        // Настройки морфологии и заливки
+        private static int MorphDilateIterations = 1; // 0 = выкл, >0 = итерации
+        private static int UseGeometryFill = 0;       // 1 = вкл, 0 = выкл
+
         // Данные для обучения
         // lastListMatrixRaw — ненормализованные (0..1), для фильтрации мусора по blackRatio
         // lastListMatrix — нормализованные (sum=1), для добавления в базу
@@ -259,6 +263,19 @@ namespace ABClient.Neuro
                                 workBitmap.SetPixel(x + 1, y, ColorDigitTarget);
                         }
                     }
+
+                // --- НОВЫЙ ЭТАП: УЛУЧШЕНИЕ ТЕЛА ЦИФРЫ ---
+                if (MorphDilateIterations > 0)
+                {
+                    for (int i = 0; i < MorphDilateIterations; i++)
+                        Dilate(workBitmap);
+                }
+
+                if (UseGeometryFill == 1)
+                {
+                    GeometryFill(workBitmap);
+                }
+                // ----------------------------------------
 
                 // ════════════════════════════════════════════════════════════════
                 // ШАГ 3: УДАЛЕНИЕ СЕРЫХ АРТЕФАКТОВ (#dddddd → белый)
@@ -505,6 +522,66 @@ namespace ABClient.Neuro
             } // end using workBitmap
 
             elapsedTime = DateTime.Now.Ticks - startProcess;
+        }
+
+        // --- Метод Дилатации (Расширения) ---
+        private void Dilate(Bitmap bmp)
+        {
+            int w = bmp.Width;
+            int h = bmp.Height;
+            // Создаем копию для чтения, чтобы изменения не влияли на текущий проход
+            using (Bitmap temp = new Bitmap(bmp))
+            {
+                for (int y = 1; y < h - 1; y++)
+                {
+                    for (int x = 1; x < w - 1; x++)
+                    {
+                        if (temp.GetPixel(x, y).ToArgb() == ColorDigitTarget.ToArgb())
+                        {
+                            for (int dy = -1; dy <= 1; dy++)
+                                for (int dx = -1; dx <= 1; dx++)
+                                    bmp.SetPixel(x + dx, y + dy, ColorDigitTarget);
+                        }
+                    }
+                }
+            }
+        }
+
+        // --- Метод Геометрической Заливки (Flood Fill) ---
+        private void GeometryFill(Bitmap bmp)
+        {
+            int w = bmp.Width;
+            int h = bmp.Height;
+            bool[,] isBackground = new bool[w, h];
+            Queue<Point> q = new Queue<Point>();
+
+            // Маркируем края как фон
+            for (int x = 0; x < w; x++) { q.Enqueue(new Point(x, 0)); q.Enqueue(new Point(x, h - 1)); }
+            for (int y = 0; y < h; y++) { q.Enqueue(new Point(0, y)); q.Enqueue(new Point(w - 1, y)); }
+
+            while (q.Count > 0)
+            {
+                Point p = q.Dequeue();
+                if (p.X < 0 || p.X >= w || p.Y < 0 || p.Y >= h) continue;
+                if (isBackground[p.X, p.Y]) continue;
+                
+                Color c = bmp.GetPixel(p.X, p.Y);
+                // Если это не контур цифры — это фон
+                if (c.ToArgb() != ColorDigitTarget.ToArgb())
+                {
+                    isBackground[p.X, p.Y] = true;
+                    q.Enqueue(new Point(p.X + 1, p.Y));
+                    q.Enqueue(new Point(p.X - 1, p.Y));
+                    q.Enqueue(new Point(p.X, p.Y + 1));
+                    q.Enqueue(new Point(p.X, p.Y - 1));
+                }
+            }
+
+            // Заполняем всё, что не фон и не контур
+            for (int y = 0; y < h; y++)
+                for (int x = 0; x < w; x++)
+                    if (!isBackground[x, y] && bmp.GetPixel(x, y).ToArgb() != ColorDigitTarget.ToArgb())
+                        bmp.SetPixel(x, y, ColorDigitTarget);
         }
 
         private struct IntPair
