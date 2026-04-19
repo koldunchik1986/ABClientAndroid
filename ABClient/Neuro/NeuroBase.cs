@@ -26,20 +26,7 @@ namespace ABClient.Neuro
         private static int debugXLeft;
         private static int debugXRight;
         private static int debugRealWidth;
-
-        // Настройки морфологии и заливки
-        // Настройки морфологии и заливки
-        private static int MorphDilateIterations = 1; // 0 = выкл, >0 = итерации
-        private static int UseGeometryFill = 0;       // 1 = вкл, 0 = выкл
-        
-        // Настройки сегментации (адаптивная)
-        private static double SqueezeFactor = 0.0; // Отключаем расклеивание полностью
-        private static double AdaptiveSqueezeMultiplier = 0.5;
-        private static bool UseAdaptiveSqueeze = false;
-        
-        // Настройки сегментации (ручная)
-        private static int ManualStrokeWidth = 3;        // Толщина штриха в пикселях
-        private static bool UseManualSegmentation = false; // Отключаем ручную сегментацию
+        private bool[,] isDigitOutline; // Маска для хранения контуров цифр
 
         // Данные для обучения
         // lastListMatrixRaw — ненормализованные (0..1), для фильтрации мусора по blackRatio
@@ -191,6 +178,29 @@ namespace ABClient.Neuro
         internal static int NumNodes() { return listVectors.Count; }
         internal static long ElapsedTime() { return elapsedTime; }
 
+        /// <summary>
+        /// Предварительная идентификация пикселей, принадлежащих контурам цифр.
+        /// Заполняет isDigitOutline.
+        /// </summary>
+        private void IdentifyDigitOutlines(Bitmap bitmapSource, int width, int height, int DR, int DG, int DB)
+        {
+            isDigitOutline = new bool[width, height];
+            for (var y = 0; y < height; y++)
+            {
+                for (var x = 0; x < width; x++)
+                {
+                    var c = bitmapSource.GetPixel(x, y);
+                    // Проверяем на анти-алиасинг, как раньше в Шаге 2
+                    if (c.R > DR && c.R < 220 &&
+                        c.G > DG && c.G < 220 &&
+                        c.B > DB && c.B < 220)
+                    {
+                        isDigitOutline[x, y] = true;
+                    }
+                }
+            }
+        }
+
         internal void Calculate(Bitmap bitmapSource)
         {
             var startProcess = DateTime.Now.Ticks;
@@ -210,8 +220,14 @@ namespace ABClient.Neuro
             // оригинальный bitmapSource не трогаем
             using (var workBitmap = new Bitmap(width, height, PixelFormat.Format24bppRgb))
             {
-                // ════════════════════════════════════════════════════════════════
-                // ШАГ 1: УДАЛЕНИЕ ЛИНИЙ СЕТКИ-РОМБОВ (#9c1c24 → белый)
+            // ════════════════════════════════════════════════════════════════
+            // ШАГ 0: ПРЕДВАРИТЕЛЬНАЯ ИДЕНТИФИКАЦИЯ КОНТУРОВ ЦИФР
+            // Заполняет isDigitOutline для использования в следующих шагах.
+            // ════════════════════════════════════════════════════════════════
+            IdentifyDigitOutlines(bitmapSource, width, height, DR, DG, DB);
+
+            // ════════════════════════════════════════════════════════════════
+            // ШАГ 1: УДАЛЕНИЕ ЛИНИЙ СЕТКИ-РОМБОВ (#9c1c24 → белый)
                 //
                 // Линии ромбов нарисованы ровно одним цветом: R=157, G=28, B=36.
                 // Это их отличительная черта — ТОЧНЫЙ постоянный цвет без вариаций.
@@ -228,61 +244,8 @@ namespace ABClient.Neuro
                         var c = bitmapSource.GetPixel(x, y);
                         // Точное совпадение → это линия сетки или тело цифры → в белый
                         workBitmap.SetPixel(x, y,
-                            (c.R == DR && c.G == DG && c.B == DB) ? Color.White : c);
+                            (c.R == DR && c.G == DG && c.B == DB && !isDigitOutline[x, y]) ? Color.White : c);
                     }
-
-                // ════════════════════════════════════════════════════════════════
-                // ШАГ 2: ВОССТАНОВЛЕНИЕ КОНТУРОВ ЦИФР (анти-алиасинг → #9c1c24)
-                //
-                // После шага 1 от цифр остались только "призрачные" края —
-                // пиксели анти-алиасинга, у которых оттенок чуть светлее:
-                //   R: 157 < R < 220  (немного ярче основного цвета)
-                //   G: 28  < G < 220  (от почти нуля до светлого)
-                //   B: 36  < B < 220  (от почти нуля до светлого)
-                //
-                // ПОЧЕМУ ЧИТАЕМ workBitmap, А НЕ ОРИГИНАЛ:
-                //   На шаге 1 мы уже убрали точный DR,DG,DB (R=157).
-                //   Теперь в workBitmap пикселей с R=157 нет вообще.
-                //   Поэтому диапазон R>157 поймает ТОЛЬКО анти-алиас цифр,
-                //   но НЕ остатки сетки (их там уже нет).
-                //
-                // ГОРИЗОНТАЛЬНЫЙ СОСЕД:
-                //   Красим не только сам пиксель, но и пиксель справа.
-                //   Это заполняет однопиксельные горизонтальные пропуски
-                //   в контурах, которые появляются из-за анти-алиасинга.
-                //
-                // ВАЖНО: этот шаг — ОТДЕЛЬНЫЙ проход по уже изменённому
-                // workBitmap. Если делать в одном проходе с шагом 1,
-                // сосед (x+1), только что записанный нами, будет немедленно
-                // перезаписан при следующей итерации → баг.
-                // ════════════════════════════════════════════════════════════════
-                for (var y = 0; y < height; y++)
-                    for (var x = 0; x < width; x++)
-                    {
-                        var c = workBitmap.GetPixel(x, y); // читаем из workBitmap (уже без сетки)
-                        if (c.R > DR  && c.R < 220 &&
-                            c.G > DG  && c.G < 220 &&
-                            c.B > DB  && c.B < 220)
-                        {
-                            // НОВАЯ ЛОГИКА: смещаем контур влево на 2 пикселя и стираем текущий
-                            if (x - 2 >= 0)
-                            {
-                                workBitmap.SetPixel(x - 2, y, ColorDigitTarget); // Красим пиксель через один слева
-                            }
-                            workBitmap.SetPixel(x, y, Color.White); // Сам пиксель контура в белый
-                        }
-                    }
-
-                // --- НОВЫЙ ЭТАП: УЛУЧШЕНИЕ ТЕЛА ЦИФРЫ (Closing = Dilate + Erode) ---
-                if (MorphDilateIterations > 0)
-                {
-                    for (int i = 0; i < MorphDilateIterations; i++)
-                        Dilate(workBitmap);
-                    for (int i = 0; i < MorphDilateIterations; i++) // После Dilate делаем Erode
-                        Erode(workBitmap);
-                }
-                // UseGeometryFill остается выключенным (UseGeometryFill = 0)
-                // ----------------------------------------
 
                 // ════════════════════════════════════════════════════════════════
                 // ШАГ 3: УДАЛЕНИЕ СЕРЫХ АРТЕФАКТОВ (#dddddd → белый)
@@ -326,9 +289,8 @@ namespace ABClient.Neuro
                         {
                             var c = workBitmap.GetPixel(x, y);
 
-                            // Пиксель цифры — только точный целевой цвет, никакой "нечёткости"
-                            // Это надёжно: после трёх шагов других красных пикселей нет
-                            var isDigit = (c.R == DR && c.G == DG && c.B == DB);
+                            // Пиксель цифры — только если он был идентифицирован как контур
+                            var isDigit = isDigitOutline[x, y];
 
                             binaryBitmap.SetPixel(x, y, isDigit ? Color.Black : Color.White);
 
@@ -531,93 +493,6 @@ namespace ABClient.Neuro
             elapsedTime = DateTime.Now.Ticks - startProcess;
         }
 
-        // --- Метод Дилатации (Расширения) - Оптимизированный "крест" ---
-        private void Dilate(Bitmap bmp)
-        {
-            int w = bmp.Width;
-            int h = bmp.Height;
-            using (Bitmap temp = new Bitmap(bmp))
-            {
-                for (int y = 1; y < h - 1; y++)
-                {
-                    for (int x = 1; x < w - 1; x++)
-                    {
-                        if (temp.GetPixel(x, y).ToArgb() == ColorDigitTarget.ToArgb())
-                        {
-                            bmp.SetPixel(x + 1, y, ColorDigitTarget);
-                            bmp.SetPixel(x - 1, y, ColorDigitTarget);
-                            bmp.SetPixel(x, y + 1, ColorDigitTarget);
-                            bmp.SetPixel(x, y - 1, ColorDigitTarget);
-                        }
-                    }
-                }
-            }
-        }
-
-        // --- Метод Эрозии ---
-        private void Erode(Bitmap bmp)
-        {
-            int w = bmp.Width;
-            int h = bmp.Height;
-            using (Bitmap temp = new Bitmap(bmp))
-            {
-                for (int y = 1; y < h - 1; y++)
-                {
-                    for (int x = 1; x < w - 1; x++)
-                    {
-                        if (temp.GetPixel(x, y).ToArgb() == ColorDigitTarget.ToArgb())
-                        {
-                            bool surroundedByTarget = true;
-                            for (int dy = -1; dy <= 1; dy++)
-                                for (int dx = -1; dx <= 1; dx++)
-                                    if (temp.GetPixel(x + dx, y + dy).ToArgb() != ColorDigitTarget.ToArgb())
-                                        surroundedByTarget = false;
-                            
-                            if (!surroundedByTarget)
-                                bmp.SetPixel(x, y, Color.White);
-                        }
-                    }
-                }
-            }
-        }
-
-        // --- Метод Геометрической Заливки (Flood Fill) ---
-        private void GeometryFill(Bitmap bmp)
-        {
-            int w = bmp.Width;
-            int h = bmp.Height;
-            bool[,] isBackground = new bool[w, h];
-            Queue<Point> q = new Queue<Point>();
-
-            // Маркируем края как фон
-            for (int x = 0; x < w; x++) { q.Enqueue(new Point(x, 0)); q.Enqueue(new Point(x, h - 1)); }
-            for (int y = 0; y < h; y++) { q.Enqueue(new Point(0, y)); q.Enqueue(new Point(w - 1, y)); }
-
-            while (q.Count > 0)
-            {
-                Point p = q.Dequeue();
-                if (p.X < 0 || p.X >= w || p.Y < 0 || p.Y >= h) continue;
-                if (isBackground[p.X, p.Y]) continue;
-                
-                Color c = bmp.GetPixel(p.X, p.Y);
-                // Если это не контур цифры — это фон
-                if (c.ToArgb() != ColorDigitTarget.ToArgb())
-                {
-                    isBackground[p.X, p.Y] = true;
-                    q.Enqueue(new Point(p.X + 1, p.Y));
-                    q.Enqueue(new Point(p.X - 1, p.Y));
-                    q.Enqueue(new Point(p.X, p.Y + 1));
-                    q.Enqueue(new Point(p.X, p.Y - 1));
-                }
-            }
-
-            // Заполняем всё, что не фон и не контур
-            for (int y = 0; y < h; y++)
-                for (int x = 0; x < w; x++)
-                    if (!isBackground[x, y] && bmp.GetPixel(x, y).ToArgb() != ColorDigitTarget.ToArgb())
-                        bmp.SetPixel(x, y, ColorDigitTarget);
-        }
-
         private struct IntPair
         {
             public int A, B;
@@ -627,11 +502,9 @@ namespace ABClient.Neuro
         private static List<IntPair> BuildDigitSegments(bool[] columnHasBlack, int xleft, int xright, int targetCount)
         {
             var result = new List<IntPair>();
-
             if (xleft < 0 || xright < xleft || targetCount <= 0)
             {
-                for (var i = 0; i < targetCount; i++)
-                    result.Add(new IntPair(0, 0));
+                for (var i = 0; i < targetCount; i++) result.Add(new IntPair(0, 0));
                 return result;
             }
 
@@ -652,44 +525,28 @@ namespace ABClient.Neuro
             }
             if (inGroup) groupEnds.Add(xright);
 
-            // --- РУЧНАЯ СЕГМЕНТАЦИЯ ---
-            List<IntPair> baseGroups = new List<IntPair>();
-            for (int i = 0; i < groupStarts.Count; i++)
-            {
-                int l = groupStarts[i];
-                int r = groupEnds[i];
-                int w = r - l + 1;
+            // Логирование для отладки
+            AppLog.d("NeuroBase", "SEGMENTATION: found_groups=" + groupStarts.Count + " target=" + targetCount);
 
-                if (UseManualSegmentation && w > ManualStrokeWidth * 1.5)
-                {
-                    int mid = (l + r) / 2;
-                    baseGroups.Add(new IntPair(l, mid));
-                    baseGroups.Add(new IntPair(mid + 1, r));
-                }
-                else
-                {
-                    baseGroups.Add(new IntPair(l, r));
-                }
-            }
-
-            // --- Применение расклеивания к baseGroups ---
-            foreach (var pair in baseGroups)
+            // Если групп столько, сколько надо, используем их
+            if (groupStarts.Count == targetCount)
             {
-                int l = pair.A;
-                int r = pair.B;
-                int w = r - l + 1;
-                
-                // Старый алгоритм (SqueezeFactor)
-                int squeeze = (int)(w * SqueezeFactor);
-                if (squeeze > w / 3) squeeze = w / 3; 
-                
-                l += squeeze;
-                r -= squeeze;
-                
-                if (l > r) { l = (l + r) / 2; r = l; }
-                result.Add(new IntPair(l, r));
+                for (var i = 0; i < targetCount; i++)
+                    result.Add(new IntPair(groupStarts[i], groupEnds[i]));
+                return result;
             }
             
+            // Если групп больше или меньше - используем fallback
+            var segLeft = groupStarts.Count > 0 ? groupStarts[0] : xleft;
+            var segRight = groupEnds.Count > 0 ? groupEnds[groupEnds.Count - 1] : xright;
+            var totalW = segRight - segLeft + 1;
+            
+            for (var i = 0; i < targetCount; i++)
+            {
+                var l = segLeft + (i * totalW) / targetCount;
+                var r = segLeft + ((i + 1) * totalW) / targetCount - 1;
+                result.Add(new IntPair(l, r));
+            }
             return result;
         }
 
