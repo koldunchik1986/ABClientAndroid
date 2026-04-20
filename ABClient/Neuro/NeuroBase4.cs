@@ -182,58 +182,23 @@ namespace ABClient.Neuro
         /// Предварительная идентификация пикселей, принадлежащих контурам цифр.
         /// Заполняет isDigitOutline.
         /// </summary>
-        /// <summary>
-        /// Идентифицирует пиксели анти-алиасинговых контуров цифр и расширяет их на ±1px
-        /// по горизонтали И вертикали.
-        ///
-        /// ЧТО ЛОВИМ:
-        ///   Сетка-ромб нарисована точным цветом #9c1c24 (R=157, G=28, B=36) — без вариаций.
-        ///   Края цифровых штрихов имеют анти-алиасинг: R чуть выше 157, G и B — чуть выше 28/36.
-        ///   Именно эти "чуть светлее" пиксели мы и ловим.
-        ///
-        /// ЗАЧЕМ РАСШИРЯТЬ (±1px горизонталь + вертикаль):
-        ///   После удаления точного цвета #9c1c24 от штрихов остаётся только 1-2px контур.
-        ///   В colScore (количество контурных пикселей на столбец) это даёт маленькие значения
-        ///   и шум. Расширение до 3x3 "утолщает" контур → проекция становится шире и ровнее →
-        ///   долины между цифрами лучше выражены.
-        /// </summary>
         private void IdentifyDigitOutlines(Bitmap bitmapSource, int width, int height, int DR, int DG, int DB)
         {
             isDigitOutline = new bool[width, height];
-
-            // Проход 1: определяем "сырые" анти-алиасинговые пиксели
-            var raw = new bool[width, height];
             for (var y = 0; y < height; y++)
+            {
                 for (var x = 0; x < width; x++)
                 {
                     var c = bitmapSource.GetPixel(x, y);
-                    // Анти-алиасинг: все три канала чуть выше базового цвета цифры
-                    raw[x, y] = (c.R > DR && c.R < 220 &&
-                                 c.G > DG && c.G < 220 &&
-                                 c.B > DB && c.B < 220);
-                }
-
-            // Проход 2: НОВАЯ ЛОГИКА ЧЕРЕСТРОЧНОГО РАСШИРЕНИЯ
-            for (var y = 0; y < height; y++)
-                for (var x = 0; x < width; x++)
-                {
-                    if (!raw[x, y]) continue;
-                    
-                    // Сам пиксель всегда входит в маску
-                    isDigitOutline[x, y] = true;
-
-                    int nx = x, ny = y;
-                    switch (y % 4)
+                    // Проверяем на анти-алиасинг, как раньше в Шаге 2
+                    if (c.R > DR && c.R < 220 &&
+                        c.G > DG && c.G < 220 &&
+                        c.B > DB && c.B < 220)
                     {
-                        case 0: nx = x; ny = y + 1; break; // X, Y
-                        case 1: nx = x - 1; ny = y; break; // X 1, Y + 1
-                        case 2: nx = x - 2; ny = y + 2; break; // X, Y + 1
-                        case 3: nx = x; ny = y - 2; break; // X - 2, Y
+                        isDigitOutline[x, y] = true;
                     }
-                    
-                    if (nx >= 0 && nx < width && ny >= 0 && ny < height)
-                        isDigitOutline[nx, ny] = true;
                 }
+            }
         }
 
         internal void Calculate(Bitmap bitmapSource)
@@ -315,40 +280,22 @@ namespace ABClient.Neuro
                 var columnHasBlack = new bool[width];
                 var arrayTops      = new int[width];
                 var arrayBottoms   = new int[width];
-                // colScore[x] — количество контурных пикселей в столбце x.
-                // Это вертикальная проекция: высокие значения = тело цифры,
-                // низкие значения = "долина" между цифрами → точка разреза.
-                var colScore       = new int[width];
                 for (var i = 0; i < width; i++) { arrayTops[i] = -1; arrayBottoms[i] = -1; }
 
                 using (var binaryBitmap = new Bitmap(width, height, PixelFormat.Format24bppRgb))
                 {
-                    // ════════════════════════════════════════════════════════════════
-                    // НОВАЯ ЛОГИКА: Стираем контур (x) перед финальной бинаризацией
-                    // ════════════════════════════════════════════════════════════════
-                    for (var y = 0; y < height; y++)
-                        for (var x = 0; x < width; x++)
-                        {
-                            if (isDigitOutline[x, y])
-                            {
-                                int targetX = x + 1; 
-                                if (targetX < width)
-                                    workBitmap.SetPixel(targetX, y, Color.White);
-                                    workBitmap.SetPixel(targetX, y + 1, Color.White);
-                            }
-                        }
-
                     for (var x = 0; x < width; x++)
                         for (var y = 0; y < height; y++)
                         {
                             var c = workBitmap.GetPixel(x, y);
+
+                            // Пиксель цифры — только если он был идентифицирован как контур
                             var isDigit = isDigitOutline[x, y];
 
                             binaryBitmap.SetPixel(x, y, isDigit ? Color.Black : Color.White);
 
                             if (isDigit)
                             {
-                                colScore[x]++;                // накапливаем проекцию
                                 columnHasBlack[x] = true;
                                 if (arrayTops[x] == -1) arrayTops[x] = y;
                                 arrayBottoms[x] = y;
@@ -396,8 +343,8 @@ namespace ABClient.Neuro
                 var realwidth = xright - xleft;
                 debugRealWidth = realwidth;
 
-                // Сегментация по вертикальной проекции
-                var segments = BuildDigitSegments(colScore, xleft, xright, ConstNumDigits);
+                // Сегментация
+                var segments = BuildDigitSegments(columnHasBlack, xleft, xright, ConstNumDigits);
 
                 var charBitmapsList = new List<Bitmap>();
                 var smallBitmapsList = new List<Bitmap>();
@@ -552,118 +499,52 @@ namespace ABClient.Neuro
             public IntPair(int a, int b) { A = a; B = b; }
         }
 
-        /// <summary>
-        /// Сегментация по вертикальной проекции (valley-splitting).
-        ///
-        /// ПОЧЕМУ НЕ GAP-DETECTION:
-        ///   Cursive-цифры соединены — нет столбцов с нулевой плотностью.
-        ///   Но между цифрами плотность всё равно МЕНЬШЕ, чем внутри.
-        ///   Именно эти "долины" мы ищем.
-        ///
-        /// АЛГОРИТМ:
-        ///   1. Сглаживаем colScore (moving average, окно = halfSmooth*2+1).
-        ///      Убираем шум — нам нужны широкие долины, не одиночные провалы.
-        ///   2. Для каждого из (targetCount-1) разрезов:
-        ///      - Вычисляем "ожидаемую" позицию (равномерное деление)
-        ///      - Ищем минимум smooth[] в окне ±window вокруг ожидаемой позиции
-        ///      - Окно = zoneWidth*2/3 → ~66% ширины одной цифры
-        ///        (было zoneWidth/3 = 33% → слишком мало для cursive!)
-        ///      - Принудительный левый край поиска: prevSplit + minSpacing
-        ///        (чтобы два соседних разреза не слились в одном месте)
-        ///      - Принудительный правый край: оставляем место для будущих разрезов
-        ///   3. Записываем найденные разрезы в лог (SPLIT[N]: expected=X found=Y val=Z pct=P%)
-        ///      P% = насколько глубокая долина (0% = пусто, 100% = режем по пику)
-        ///
-        /// ПРИМЕР (rangeLen=100, 5 цифр):
-        ///   zoneWidth=20, window=13, minSpacing=6
-        ///   SPLIT[1]: ищем в [6..43] вместо прежних [24..36] → в 3.5 раза шире!
-        /// </summary>
-        private static List<IntPair> BuildDigitSegments(int[] colScore, int xleft, int xright, int targetCount)
+        private static List<IntPair> BuildDigitSegments(bool[] columnHasBlack, int xleft, int xright, int targetCount)
         {
             var result = new List<IntPair>();
-
-            if (xleft < 0 || xright <= xleft || targetCount <= 0 || colScore == null)
+            if (xleft < 0 || xright < xleft || targetCount <= 0)
             {
                 for (var i = 0; i < targetCount; i++) result.Add(new IntPair(0, 0));
                 return result;
             }
 
-            var rangeLen  = xright - xleft + 1;
-            var zoneWidth = rangeLen / targetCount; // ожидаемая ширина одной цифры
-
-            // ── ШАГ 1: СГЛАЖИВАНИЕ ПРОЕКЦИИ ──────────────────────────────────
-            // Moving average, окно = 2*halfSmooth+1 = 7px.
-            // Убирает шум от отдельных пикселей; реальные долины шире 7px — они выживают.
-            const int halfSmooth = 3;
-            var smooth = new double[rangeLen];
-            for (var i = 0; i < rangeLen; i++)
+            var groupStarts = new List<int>();
+            var groupEnds = new List<int>();
+            var inGroup = false;
+            
+            for (var x = xleft; x <= xright; x++)
             {
-                var sum = 0.0; var cnt = 0;
-                for (var j = Math.Max(0, i - halfSmooth); j <= Math.Min(rangeLen - 1, i + halfSmooth); j++)
-                { sum += colScore[xleft + j]; cnt++; }
-                smooth[i] = sum / cnt;
+                if (columnHasBlack[x])
+                {
+                    if (!inGroup) { inGroup = true; groupStarts.Add(x); }
+                }
+                else
+                {
+                    if (inGroup) { inGroup = false; groupEnds.Add(x - 1); }
+                }
             }
+            if (inGroup) groupEnds.Add(xright);
 
-            // Логируем min/max для диагностики
-            var projMin = double.MaxValue; var projMax = 0.0;
-            for (var i = 0; i < rangeLen; i++)
+            // Логирование для отладки
+            AppLog.d("NeuroBase", "SEGMENTATION: found_groups=" + groupStarts.Count + " target=" + targetCount);
+
+            // Если групп столько, сколько надо, используем их
+            if (groupStarts.Count == targetCount)
             {
-                if (smooth[i] < projMin) projMin = smooth[i];
-                if (smooth[i] > projMax) projMax = smooth[i];
+                for (var i = 0; i < targetCount; i++)
+                    result.Add(new IntPair(groupStarts[i], groupEnds[i]));
+                return result;
             }
-            AppLog.d("NeuroBase", string.Format("PROJ: xleft={0} xright={1} rangeLen={2} projMin={3:F1} projMax={4:F1}",
-                xleft, xright, rangeLen, projMin, projMax));
-
-            // ── ШАГ 2: ПАРАМЕТРЫ ПОИСКА ───────────────────────────────────────
-            // window = 2/3 ширины зоны (66%) — было 1/3 (33%) → вдвое шире
-            var window     = Math.Max(4, zoneWidth * 2 / 3);
-            // Минимальный отступ между двумя соседними разрезами
-            var minSpacing = Math.Max(4, rangeLen / (targetCount * 3));
-
-            // ── ШАГ 3: ПОИСК РАЗРЕЗОВ СЛЕВА НАПРАВО ──────────────────────────
-            var splits = new int[targetCount + 1];
-            splits[0] = xleft;
-            splits[targetCount] = xright + 1;
-
-            var prevSplitI = 0; // предыдущий найденный разрез (индекс в smooth[])
-
-            for (var seg = 1; seg < targetCount; seg++)
-            {
-                var expectedI = (seg * rangeLen) / targetCount; // ожидаемая позиция (индекс)
-
-                // Левая граница окна: не ближе minSpacing к предыдущему разрезу
-                var searchL = Math.Max(prevSplitI + minSpacing, expectedI - window);
-                // Правая граница: оставляем место для (targetCount - seg) будущих разрезов
-                var searchR = Math.Min(rangeLen - (targetCount - seg) * minSpacing - 1, expectedI + window);
-
-                // Если окно схлопнулось — используем ожидаемую позицию
-                if (searchL > searchR) { searchL = searchR = expectedI; }
-                // Страховка от выхода за диапазон
-                searchL = Math.Max(0, searchL);
-                searchR = Math.Min(rangeLen - 1, searchR);
-
-                // Ищем минимум сглаженной проекции в окне
-                var minVal = double.MaxValue;
-                var minI   = expectedI;
-                for (var i = searchL; i <= searchR; i++)
-                    if (smooth[i] < minVal) { minVal = smooth[i]; minI = i; }
-
-                splits[seg] = xleft + minI;
-                prevSplitI  = minI;
-
-                // pct = насколько глубокая долина (0% → пусто, 100% → режем по максимуму)
-                var pct = projMax > 0 ? (minVal / projMax * 100.0) : 0.0;
-                AppLog.d("NeuroBase", string.Format(
-                    "SPLIT[{0}]: expected={1} found={2} val={3:F1} pct={4:F0}% window=[{5}..{6}]",
-                    seg, xleft + expectedI, splits[seg], minVal, pct, xleft + searchL, xleft + searchR));
-            }
-
-            // ── ШАГ 4: СТРОИМ СЕГМЕНТЫ ────────────────────────────────────────
+            
+            // Если групп больше или меньше - используем fallback
+            var segLeft = groupStarts.Count > 0 ? groupStarts[0] : xleft;
+            var segRight = groupEnds.Count > 0 ? groupEnds[groupEnds.Count - 1] : xright;
+            var totalW = segRight - segLeft + 1;
+            
             for (var i = 0; i < targetCount; i++)
             {
-                var l = splits[i];
-                var r = splits[i + 1] - 1;
-                if (l > r) r = l; // сегмент не может быть пустым
+                var l = segLeft + (i * totalW) / targetCount;
+                var r = segLeft + ((i + 1) * totalW) / targetCount - 1;
                 result.Add(new IntPair(l, r));
             }
             return result;
