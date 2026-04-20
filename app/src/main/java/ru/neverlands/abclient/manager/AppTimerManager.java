@@ -6,7 +6,6 @@ import android.content.SharedPreferences;
 import android.media.AudioManager;
 import android.media.ToneGenerator;
 import android.text.TextUtils;
-import android.util.Log;
 
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 
@@ -208,31 +207,31 @@ public class AppTimerManager {
                     // Выключаем все авто-функции кроме авто-боя
                     if (AppVars.TimerPauseAutoFishState) {
                         mgr.setAutoFishEnabled(false);
-                        Log.d(TAG, "[TIMER_PAUSE] Auto-Fishing paused for inventory access");
+                        AppLog.d(TAG, "[TIMER_PAUSE] Auto-Fishing paused for inventory access");
                     }
                     if (AppVars.TimerPauseAutoSkinState) {
                         mgr.setAutoSkinEnabled(false);
-                        Log.d(TAG, "[TIMER_PAUSE] Auto-Hunting paused");
+                        AppLog.d(TAG, "[TIMER_PAUSE] Auto-Hunting paused");
                     }
                     if (AppVars.TimerPauseAutoCutState) {
                         mgr.setAutoCutEnabled(false);
-                        Log.d(TAG, "[TIMER_PAUSE] Auto-Herb paused");
+                        AppLog.d(TAG, "[TIMER_PAUSE] Auto-Herb paused");
                     }
                     if (AppVars.TimerPauseAutoBaitState) {
                         mgr.setAutoBaitEnabled(false);
-                        Log.d(TAG, "[TIMER_PAUSE] Auto-Bait paused");
+                        AppLog.d(TAG, "[TIMER_PAUSE] Auto-Bait paused");
                     }
                     if (AppVars.TimerPauseAutoCompassState) {
                         mgr.setAutoCompassEnabled(false);
-                        Log.d(TAG, "[TIMER_PAUSE] Auto-Compass paused");
+                        AppLog.d(TAG, "[TIMER_PAUSE] Auto-Compass paused");
                     }
                     if (AppVars.TimerPauseAutoAttackState) {
                         mgr.setAutoAttackEnabled(false);
-                        Log.d(TAG, "[TIMER_PAUSE] Auto-Attack paused");
+                        AppLog.d(TAG, "[TIMER_PAUSE] Auto-Attack paused");
                     }
                     if (AppVars.TimerPauseAutoInvisibleState) {
                         mgr.setAutoInvisibleEnabled(false);
-                        Log.d(TAG, "[TIMER_PAUSE] Auto-Invisible paused");
+                        AppLog.d(TAG, "[TIMER_PAUSE] Auto-Invisible paused");
                     }
                     
                     AppVars.TimerPauseNonCombatAutoFunctions = true;
@@ -253,7 +252,7 @@ public class AppTimerManager {
                 long deltaMs = AppVars.NeverTimer - nowMs;
                 String msg = "[TIMER_DEFER_NEVERTIMER] Дожидаемся NeverTimer, deltaMs=" + deltaMs 
                         + ", timerId=" + timer.id;
-                Log.w(TAG, msg);
+                AppLog.w(TAG, msg);
                 ru.neverlands.abclient.utils.FileLogger.trace("app_timer", msg);
                 // Не удаляем таймер, просто пропускаем это срабатывание
                 // Таймер срабатит на следующей итерации processDueTimers
@@ -316,7 +315,7 @@ public class AppTimerManager {
         playTimerSignalIfEnabledLocked();
         String msg = "[POTION_TIMER_FIRED] id=" + timer.id + ", potion='" + timer.potion + "', target=" + targetNick 
                 + ", drinkCount=" + drinkCount + ", isRecur=" + timer.isRecur;
-        Log.d(TAG, "executePotionTimer: " + msg);
+        AppLog.d(TAG, "executePotionTimer: " + msg);
         ru.neverlands.abclient.utils.FileLogger.trace("app_timer", msg);
         FastActionManager.fastStart(timer.potion, targetNick, drinkCount);
     }
@@ -327,7 +326,7 @@ public class AppTimerManager {
 
         playTimerSignalIfEnabledLocked();
         AutoFunctionsManager.getInstance(appContext).startAutoMoving(timer.destination);
-        Log.d(TAG, "processDueTimers: destination timer fired, id=" + timer.id + ", destination=" + timer.destination);
+        AppLog.d(TAG, "processDueTimers: destination timer fired, id=" + timer.id + ", destination=" + timer.destination);
     }
 
     private void executeComplectTimerLocked(int index, AppTimer timer) {
@@ -523,7 +522,7 @@ public class AppTimerManager {
             // ✅ API 21 compatible sort (comparingLong requires API 24)
             Collections.sort(listAppTimers, (o1, o2) -> Long.compare(o1.triggerTime, o2.triggerTime));
         } catch (Exception error) {
-            Log.w(TAG, "ensureLoadedForCurrentProfileLocked: failed to parse timers json", error);
+            AppLog.w(TAG, "ensureLoadedForCurrentProfileLocked: failed to parse timers json", error);
             listAppTimers.clear();
         }
     }
@@ -547,7 +546,7 @@ public class AppTimerManager {
                 item.put("disableAutoFunction", safe(timer.disableAutoFunction));
                 array.put(item);
             } catch (Exception error) {
-                Log.w(TAG, "persistLocked: failed to serialize timer id=" + timer.id, error);
+                AppLog.w(TAG, "persistLocked: failed to serialize timer id=" + timer.id, error);
             }
         }
         prefs.edit().putString(getStorageKeyLocked(), array.toString()).apply();
@@ -562,7 +561,7 @@ public class AppTimerManager {
             toneGenerator.startTone(ToneGenerator.TONE_PROP_BEEP, 220);
             toneGenerator.release();
         } catch (Exception error) {
-            Log.w(TAG, "playTimerSignalIfEnabledLocked: failed", error);
+            AppLog.w(TAG, "playTimerSignalIfEnabledLocked: failed", error);
         }
     }
 

@@ -1,6 +1,6 @@
 package ru.neverlands.abclient.utils;
 
-import android.util.Log;
+import ru.neverlands.abclient.utils.AppLog;
 
 import ru.neverlands.abclient.utils.AppVars;
 import ru.neverlands.abclient.utils.FileLogger;
@@ -74,7 +74,7 @@ public class GearParser {
 
         String[] params = slotStr.split(",");
         if (params.length < 6) {
-            Log.d(TAG, "GearParser: not enough params in " + slotsFunctionName);
+            AppLog.d(TAG, "GearParser: not enough params in " + slotsFunctionName);
             return false;
         }
 
@@ -119,7 +119,7 @@ public class GearParser {
             return true;
 
         } catch (Exception e) {
-            Log.w(TAG, "GearParser parseSlots error", e);
+            AppLog.w(TAG, "GearParser parseSlots error", e);
             return false;
         }
     }

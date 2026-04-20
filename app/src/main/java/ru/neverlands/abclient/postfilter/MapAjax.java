@@ -24,7 +24,6 @@ import ru.neverlands.abclient.utils.AppVars;
 import ru.neverlands.abclient.utils.ExtMap;
 import ru.neverlands.abclient.utils.FileLogger;
 import ru.neverlands.abclient.utils.MapPath;
-import android.util.Log;
 
 public class MapAjax {
     private static final String TAG = "MapAjax";
@@ -117,7 +116,7 @@ public class MapAjax {
                 if (AppVars.NeverTimer < now + MAP_AJAX_SOFT_RETRY_DELAY_MS) {
                     AppVars.NeverTimer = now + MAP_AJAX_SOFT_RETRY_DELAY_MS;
                 }
-                Log.w(TAG, "AUTO_SEARCH_BOX_TRACE: map_ajax returned ERR during automove, soft retry"
+                AppLog.w(TAG, "AUTO_SEARCH_BOX_TRACE: map_ajax returned ERR during automove, soft retry"
                         + ", errCount=" + errCount
                         + ", delayMs=" + MAP_AJAX_SOFT_RETRY_DELAY_MS);
                 return Filter.buildRedirectString(
@@ -131,7 +130,7 @@ public class MapAjax {
             if (AppVars.NeverTimer < now + 900L) {
                 AppVars.NeverTimer = now + 900L;
             }
-            Log.w(TAG, "AUTO_SEARCH_BOX_TRACE: map_ajax returned ERR during automove, redirect to main.php");
+            AppLog.w(TAG, "AUTO_SEARCH_BOX_TRACE: map_ajax returned ERR during automove, redirect to main.php");
             resetMapAjaxErrCounter("hard_recover");
             return Filter.buildRedirectString("\u041D\u0430\u0432\u0438\u0433\u0430\u0442\u043E\u0440: \u0432\u043E\u0441\u0441\u0442\u0430\u043D\u043E\u0432\u043B\u0435\u043D\u0438\u0435", "main.php?ab_nav_recover=1");
         }
@@ -151,7 +150,7 @@ public class MapAjax {
                     ? currentVitals
                     : CharacterVitalsManager.updateTied(100, "MapAjax.process.tooTired");
             if (keepNearThresholdValue) {
-                Log.d(TAG, "AUTO_BLAZ_TRACE keep tied from pinfo after trigger: tied="
+                AppLog.d(TAG, "AUTO_BLAZ_TRACE keep tied from pinfo after trigger: tied="
                         + currentVitals.tied + ", threshold=" + tiedThreshold
                         + ", sinceTriggerMs=" + sinceTrigger);
             }
@@ -165,15 +164,15 @@ public class MapAjax {
                 postAutoTreasureReasonToChat("Авто-Клад остановлен: усталость " + tiedNow
                         + "%, порог " + tiedThreshold
                         + "%. Включите «Пить блаж, если усталость» или снизьте усталость вручную.");
-                Log.w(TAG, "AUTO_SEARCH_BOX_TRACE: too tired, auto moving stopped (DoAutoDrinkBlaz=false)");
+                AppLog.w(TAG, "AUTO_SEARCH_BOX_TRACE: too tired, auto moving stopped (DoAutoDrinkBlaz=false)");
             } else {
                 String currentRegNum = (AppVars.Profile != null) ? AppVars.Profile.MapLocation : null;
                 String autoDrinkRedirect = maybeTriggerAutoDrinkBlazOnThreshold(currentRegNum);
                 if (autoDrinkRedirect != null) {
-                    Log.i(TAG, "AUTO_SEARCH_BOX_TRACE: too tired, auto moving paused, redirect to main.php for auto bliss");
+                    AppLog.i(TAG, "AUTO_SEARCH_BOX_TRACE: too tired, auto moving paused, redirect to main.php for auto bliss");
                     return autoDrinkRedirect;
                 }
-                Log.d(TAG, "AUTO_SEARCH_BOX_TRACE: too tired, auto bliss gate skipped"
+                AppLog.d(TAG, "AUTO_SEARCH_BOX_TRACE: too tired, auto bliss gate skipped"
                         + ", tied=" + tiedNow + ", threshold=" + tiedThreshold
                         + ", fastNeed=" + AppVars.FastNeed);
             }
@@ -260,7 +259,7 @@ public class MapAjax {
         // сопутствующие авто-ветки по карте (усталость/автопитье блажа).
         if (AppVars.CurePauseNonCombatAutoFunctions) {
             if (AppVars.AutoMoving || AppVars.DoSearchBox) {
-                Log.d(TAG, "AUTO_CURE_TRACE: skip map auto processing while cure pipeline is active"
+                AppLog.d(TAG, "AUTO_CURE_TRACE: skip map auto processing while cure pipeline is active"
                         + ", cureNeed=" + AppVars.CureNeed
                         + ", cureNick=" + AppVars.CureNick
                         + ", cureTravm=" + AppVars.CureTravm);
@@ -271,7 +270,7 @@ public class MapAjax {
         // При отложенном автопитье блажа временно не делаем шаги маршрута,
         // но сохраняем AutoMoving-контекст для последующего продолжения.
         if (AppVars.AutoDrinkBlazPending) {
-            Log.d(TAG, "AUTO_BLAZ_DECISION: stage=pause, action=skip_move_while_pending, reg="
+            AppLog.d(TAG, "AUTO_BLAZ_DECISION: stage=pause, action=skip_move_while_pending, reg="
                     + (AppVars.Profile != null ? AppVars.Profile.MapLocation : "?"));
             return html;
         }
@@ -282,7 +281,7 @@ public class MapAjax {
         if (mapLocation == null) return html;
 
         if (AppVars.AutoMovingDestinaton == null || AppVars.AutoMovingDestinaton.isEmpty()) {
-            Log.w(TAG, "AUTO_MOVING_TRACE: destination is empty while AutoMoving=true");
+            AppLog.w(TAG, "AUTO_MOVING_TRACE: destination is empty while AutoMoving=true");
             return html;
         }
 
@@ -292,13 +291,13 @@ public class MapAjax {
                 AppVars.AutoMovingMapPath = null;
                 AppVars.AutoMovingNextJump = null;
                 AppVars.AutoMovingJumps = 0;
-                android.util.Log.i(TAG, "AutoMoving: destination reached at " + mapLocation);
+                AppLog.i(TAG, "AutoMoving: destination reached at " + mapLocation);
                 return html;
             }
 
             String nextSearchDestination = findNextDestForBox(mapLocation);
             if (nextSearchDestination == null || nextSearchDestination.isEmpty()) {
-                Log.i(TAG, "AUTO_SEARCH_BOX_TRACE: no next destination from " + mapLocation);
+                AppLog.i(TAG, "AUTO_SEARCH_BOX_TRACE: no next destination from " + mapLocation);
                 return html;
             }
 
@@ -306,7 +305,7 @@ public class MapAjax {
             AppVars.AutoMovingMapPath = null;
             AppVars.AutoMovingNextJump = null;
             AppVars.AutoMovingJumps = 0;
-            Log.i(TAG, "AUTO_SEARCH_BOX_TRACE: rotate destination to " + nextSearchDestination);
+            AppLog.i(TAG, "AUTO_SEARCH_BOX_TRACE: rotate destination to " + nextSearchDestination);
         }
         else if (AppVars.DoSearchBox && isAutoTreasureThoroughNeighborCheckEnabled()) {
             // Для режима "Тщательный обход" переоцениваем цель на каждом шаге.
@@ -316,7 +315,7 @@ public class MapAjax {
             if (stepSearchDestination != null
                     && !stepSearchDestination.isEmpty()
                     && !stepSearchDestination.equals(AppVars.AutoMovingDestinaton)) {
-                Log.i(TAG, "AUTO_SEARCH_BOX_TRACE: step re-evaluate destination "
+                AppLog.i(TAG, "AUTO_SEARCH_BOX_TRACE: step re-evaluate destination "
                         + AppVars.AutoMovingDestinaton + " -> " + stepSearchDestination
                         + " (source=" + mapLocation + ")");
                 AppVars.AutoMovingDestinaton = stepSearchDestination;
@@ -414,14 +413,14 @@ public class MapAjax {
         }
 
         if (baseDestination.visitedAtMs <= 0L) {
-            Log.d(TAG, "AUTO_SEARCH_BOX_TRACE thorough-neighbor: skip (base has no visited), base="
+            AppLog.d(TAG, "AUTO_SEARCH_BOX_TRACE thorough-neighbor: skip (base has no visited), base="
                     + baseDestination.regNum);
             return baseDestination.regNum;
         }
 
         SearchBoxNeighborScanResult scanResult = findThoroughNeighborCandidates(source, baseDestination, nowMs);
         List<SearchBoxNeighborCandidate> candidates = scanResult.candidates;
-        Log.d(TAG, "AUTO_SEARCH_BOX_TRACE thorough-neighbor: source=" + source
+        AppLog.d(TAG, "AUTO_SEARCH_BOX_TRACE thorough-neighbor: source=" + source
                 + ", base=" + baseDestination.regNum
                 + ", baseVisitedAt=" + baseDestination.visitedAtMs
                 + ", baseDistance=" + baseDestination.distanceSteps
@@ -430,7 +429,7 @@ public class MapAjax {
                 + ", stats=" + formatThoroughNeighborStats(scanResult.stats));
         if (!candidates.isEmpty()) {
             SearchBoxNeighborCandidate selected = candidates.get(0);
-            Log.d(TAG, "AUTO_SEARCH_BOX_TRACE thorough-neighbor: select detour="
+            AppLog.d(TAG, "AUTO_SEARCH_BOX_TRACE thorough-neighbor: select detour="
                     + selected.regNum + ", pathLen=" + selected.distanceSteps
                     + ", visitedDeltaMs=" + (selected.visitedAtMs - baseDestination.visitedAtMs)
                     + ", visitedAgeMs=" + selected.visitedAgeMs
@@ -438,7 +437,7 @@ public class MapAjax {
             if (shouldPostThoroughDetourChat(source, baseDestination.regNum, selected.regNum)) {
                 postAutoTreasureRouteRebuildToChat("Тщательный обход", selected.regNum);
             } else {
-                Log.d(TAG, "AUTO_SEARCH_BOX_TRACE thorough-neighbor: route-chat skipped (detour is on normal path)"
+                AppLog.d(TAG, "AUTO_SEARCH_BOX_TRACE thorough-neighbor: route-chat skipped (detour is on normal path)"
                         + ", source=" + source
                         + ", base=" + baseDestination.regNum
                         + ", detour=" + selected.regNum);
@@ -446,7 +445,7 @@ public class MapAjax {
             return selected.regNum;
         }
 
-        Log.d(TAG, "AUTO_SEARCH_BOX_TRACE thorough-neighbor: no detour candidates, use base="
+        AppLog.d(TAG, "AUTO_SEARCH_BOX_TRACE thorough-neighbor: no detour candidates, use base="
                 + baseDestination.regNum);
         return baseDestination.regNum;
     }
@@ -472,7 +471,7 @@ public class MapAjax {
             String normalNext = normalPath.nextJump;
             return normalNext == null || normalNext.isEmpty() || !detourRegNum.equals(normalNext);
         } catch (Exception e) {
-            Log.w(TAG, "AUTO_SEARCH_BOX_TRACE thorough-neighbor: compare with normal path failed", e);
+            AppLog.w(TAG, "AUTO_SEARCH_BOX_TRACE thorough-neighbor: compare with normal path failed", e);
             return true;
         }
     }
@@ -539,14 +538,14 @@ public class MapAjax {
             long ageMs = Math.max(0L, nowMs - oldestVisitedAtMs);
             if (smartGenerationEnabled && ageMs < SEARCH_BOX_SMART_RECHECK_MIN_AGE_MS) {
                 long waitMs = SEARCH_BOX_SMART_RECHECK_MIN_AGE_MS - ageMs;
-                Log.d(TAG, "AUTO_SEARCH_BOX_TRACE smart-generation: skip recent fallback=" + oldestVisitedFallback
+                AppLog.d(TAG, "AUTO_SEARCH_BOX_TRACE smart-generation: skip recent fallback=" + oldestVisitedFallback
                         + ", ageMs=" + ageMs
                         + ", minAgeMs=" + SEARCH_BOX_SMART_RECHECK_MIN_AGE_MS
                         + ", waitMs=" + waitMs);
                 postAutoTreasureRouteRebuildToChat("Умная генерация", oldestVisitedFallback);
                 return null;
             }
-            Log.d(TAG, "AUTO_SEARCH_BOX_TRACE: fallback oldest-visited destination="
+            AppLog.d(TAG, "AUTO_SEARCH_BOX_TRACE: fallback oldest-visited destination="
                     + oldestVisitedFallback + ", ageMs=" + ageMs
                     + (smartGenerationEnabled ? ", smart=true" : ", smart=false"));
             return new SearchBoxDestination(oldestVisitedFallback, oldestVisitedAtMs, oldestVisitedDistance);
@@ -775,7 +774,7 @@ public class MapAjax {
             return AutoFunctionsManager.getInstance(AppVars.getContext())
                     .isAutoTreasureThoroughNeighborCheckEnabled();
         } catch (Exception e) {
-            Log.w(TAG, "AUTO_SEARCH_BOX_TRACE thorough-neighbor: read setting failed", e);
+            AppLog.w(TAG, "AUTO_SEARCH_BOX_TRACE thorough-neighbor: read setting failed", e);
             return false;
         }
     }
@@ -788,7 +787,7 @@ public class MapAjax {
             return AutoFunctionsManager.getInstance(AppVars.getContext())
                     .isAutoTreasureSmartGenerationEnabled();
         } catch (Exception e) {
-            Log.w(TAG, "AUTO_SEARCH_BOX_TRACE smart-generation: read setting failed", e);
+            AppLog.w(TAG, "AUTO_SEARCH_BOX_TRACE smart-generation: read setting failed", e);
             return false;
         }
     }
@@ -805,7 +804,7 @@ public class MapAjax {
                     Math.min(SEARCH_BOX_THOROUGH_MANHATTAN_RADIUS_MAX, configuredRadius)
             );
         } catch (Exception e) {
-            Log.w(TAG, "AUTO_SEARCH_BOX_TRACE thorough-neighbor: read radius failed", e);
+            AppLog.w(TAG, "AUTO_SEARCH_BOX_TRACE thorough-neighbor: read radius failed", e);
             return SEARCH_BOX_THOROUGH_MANHATTAN_RADIUS_DEFAULT;
         }
     }
@@ -823,7 +822,7 @@ public class MapAjax {
             );
             return normalizedMinutes * 60_000L;
         } catch (Exception e) {
-            Log.w(TAG, "AUTO_SEARCH_BOX_TRACE thorough-neighbor: read min-age failed", e);
+            AppLog.w(TAG, "AUTO_SEARCH_BOX_TRACE thorough-neighbor: read min-age failed", e);
             return SEARCH_BOX_THOROUGH_MIN_AGE_MINUTES_DEFAULT * 60_000L;
         }
     }
@@ -836,7 +835,7 @@ public class MapAjax {
             return AutoFunctionsManager.getInstance(AppVars.getContext())
                     .isAutoTreasureDetourChatEnabled();
         } catch (Exception e) {
-            Log.w(TAG, "AUTO_SEARCH_BOX_TRACE detour-chat: read setting failed", e);
+            AppLog.w(TAG, "AUTO_SEARCH_BOX_TRACE detour-chat: read setting failed", e);
             return false;
         }
     }
@@ -931,7 +930,7 @@ public class MapAjax {
                 return null;
             }
             if (!fixedRegNum.equals(sourceRegNum)) {
-                Log.d(TAG, "AUTO_SEARCH_BOX_TRACE fixed-cell: move to target " + fixedRegNum + " from " + sourceRegNum);
+                AppLog.d(TAG, "AUTO_SEARCH_BOX_TRACE fixed-cell: move to target " + fixedRegNum + " from " + sourceRegNum);
                 return fixedRegNum;
             }
 
@@ -942,12 +941,12 @@ public class MapAjax {
                 if (neighbor == null || neighbor.isEmpty() || neighbor.equals(fixedRegNum)) {
                     continue;
                 }
-                Log.d(TAG, "AUTO_SEARCH_BOX_TRACE fixed-cell: no dig marker yet, hop to neighbor "
+                AppLog.d(TAG, "AUTO_SEARCH_BOX_TRACE fixed-cell: no dig marker yet, hop to neighbor "
                         + neighbor + " and return to " + fixedRegNum);
                 return neighbor;
             }
         } catch (Exception e) {
-            Log.w(TAG, "AUTO_SEARCH_BOX_TRACE fixed-cell destination failed", e);
+            AppLog.w(TAG, "AUTO_SEARCH_BOX_TRACE fixed-cell destination failed", e);
         }
         return null;
     }
@@ -1036,7 +1035,7 @@ public class MapAjax {
             return;
         }
         String msg = "[MAPAJAX_ERR_RESET] reason='" + reason + "', prevCount=" + consecutiveMapAjaxErrCount;
-        Log.d(TAG, "AUTO_SEARCH_BOX_TRACE: reset map_ajax ERR counter, reason=" + reason
+        AppLog.d(TAG, "AUTO_SEARCH_BOX_TRACE: reset map_ajax ERR counter, reason=" + reason
                 + ", prevCount=" + consecutiveMapAjaxErrCount);
         FileLogger.trace(TAG, msg);
         consecutiveMapAjaxErrCount = 0;
@@ -1148,7 +1147,7 @@ public class MapAjax {
                 + "', tied: " + oldTied + "->" + newTied
                 + ", stepCost=" + AUTO_MOVING_TIED_STEP_COST;
         if (newTied != oldTied) {
-            Log.d(TAG, "AUTO_BLAZ_TRACE tied +step: old=" + oldTied
+            AppLog.d(TAG, "AUTO_BLAZ_TRACE tied +step: old=" + oldTied
                     + ", new=" + newTied
                     + ", stepCost=" + AUTO_MOVING_TIED_STEP_COST
                     + ", from=" + previousRegNum
@@ -1263,7 +1262,7 @@ public class MapAjax {
                 + ", hp: " + before.curHp + "/" + before.maxHp + " -> " + after.curHp + "/" + after.maxHp
                 + ", ma: " + before.curMa + "/" + before.maxMa + " -> " + after.curMa + "/" + after.maxMa
                 + ", reg=" + currentRegNum + ", threshold=" + threshold;
-        Log.d(TAG, "AUTO_BLAZ_TRACE pinfo sync (" + syncType + "): tied=" + before.tied + "->" + after.tied
+        AppLog.d(TAG, "AUTO_BLAZ_TRACE pinfo sync (" + syncType + "): tied=" + before.tied + "->" + after.tied
                 + ", hp=" + after.curHp + "/" + after.maxHp
                 + ", ma=" + after.curMa + "/" + after.maxMa
                 + ", reg=" + currentRegNum
@@ -1369,7 +1368,7 @@ public class MapAjax {
 
     private static void logAutoBlazDecision(String stage, String action, int tied, int threshold, String details) {
         String suffix = (details == null || details.isEmpty()) ? "" : (", " + details);
-        Log.d(TAG, "AUTO_BLAZ_DECISION: stage=" + stage
+        AppLog.d(TAG, "AUTO_BLAZ_DECISION: stage=" + stage
                 + ", action=" + action
                 + ", tied=" + tied
                 + ", threshold=" + threshold
@@ -1424,12 +1423,12 @@ public class MapAjax {
             return;
         }
         if (!AppVars.DoSearchBox) {
-            Log.d(TAG, "AUTO_SEARCH_BOX_TRACE route-chat skipped: DoSearchBox=false"
+            AppLog.d(TAG, "AUTO_SEARCH_BOX_TRACE route-chat skipped: DoSearchBox=false"
                     + ", setting=" + settingName + ", cell=" + detourRegNum);
             return;
         }
         if (!isAutoTreasureDetourChatEnabled()) {
-            Log.d(TAG, "AUTO_SEARCH_BOX_TRACE route-chat skipped by setting"
+            AppLog.d(TAG, "AUTO_SEARCH_BOX_TRACE route-chat skipped by setting"
                     + ", setting=" + settingName + ", cell=" + detourRegNum);
             return;
         }
@@ -1494,7 +1493,7 @@ public class MapAjax {
         long remainingMs = timeoutMs - elapsedMs;
         if ((now - lastMapCellCheckDelayLogAtMs) >= 350L) {
             lastMapCellCheckDelayLogAtMs = now;
-            Log.d(TAG, "MAP_NAME_SYNC_TRACE: hold next auto-step (configured step delay)"
+            AppLog.d(TAG, "MAP_NAME_SYNC_TRACE: hold next auto-step (configured step delay)"
                     + ", reg=" + currentRegNum
                     + ", remainingMs=" + remainingMs
                     + ", timeoutMs=" + timeoutMs);
@@ -1510,11 +1509,11 @@ public class MapAjax {
             if (AppVars.getContext() != null
                     && AutoFunctionsManager.getInstance(AppVars.getContext())
                     .shouldPauseMapRebuildFromPinfoByAutoBoss()) {
-                Log.d(TAG, "MAP_NAME_SYNC_TRACE: skip map step delay (Auto-Boss active search stage)");
+                AppLog.d(TAG, "MAP_NAME_SYNC_TRACE: skip map step delay (Auto-Boss active search stage)");
                 return 0;
             }
         } catch (Exception e) {
-            Log.w(TAG, "MAP_NAME_SYNC_TRACE: map step delay pause check failed", e);
+            AppLog.w(TAG, "MAP_NAME_SYNC_TRACE: map step delay pause check failed", e);
         }
         int raw = AppVars.Profile.MapCellCheckTimeoutMs;
         if (raw < MAP_CELL_CHECK_TIMEOUT_MIN_MS) {

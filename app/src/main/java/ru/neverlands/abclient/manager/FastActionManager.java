@@ -3,7 +3,6 @@ package ru.neverlands.abclient.manager;
 import android.content.Intent;
 import android.os.Handler;
 import android.os.Looper;
-import android.util.Log;
 
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 
@@ -160,7 +159,7 @@ public class FastActionManager {
         snapshot.autoDrinkBlazPending = AppVars.AutoDrinkBlazPending;
         snapshot.capturedAtMs = System.currentTimeMillis();
         fastAutoSyncSnapshot = snapshot;
-        Log.d(TAG, "FAST_SYNC_TRACE capture: reason=" + reason
+        AppLog.d(TAG, "FAST_SYNC_TRACE capture: reason=" + reason
                 + ", autoMoving=" + snapshot.autoMoving
                 + ", destination=" + snapshot.autoMovingDestination
                 + ", jumps=" + snapshot.autoMovingJumps
@@ -180,18 +179,18 @@ public class FastActionManager {
         FastAutoSyncSnapshot snapshot = fastAutoSyncSnapshot;
         fastAutoSyncSnapshot = null;
         if (snapshot == null) {
-            Log.d(TAG, "FAST_SYNC_TRACE restore skipped: reason=" + reason + ", snapshot is null");
+            AppLog.d(TAG, "FAST_SYNC_TRACE restore skipped: reason=" + reason + ", snapshot is null");
             return;
         }
 
         if (!snapshot.autoMoving) {
-            Log.d(TAG, "FAST_SYNC_TRACE restore skipped: reason=" + reason
+            AppLog.d(TAG, "FAST_SYNC_TRACE restore skipped: reason=" + reason
                     + ", snapshot.autoMoving=false");
         } else if (AppVars.AutoMoving) {
-            Log.d(TAG, "FAST_SYNC_TRACE restore skipped: reason=" + reason
+            AppLog.d(TAG, "FAST_SYNC_TRACE restore skipped: reason=" + reason
                     + ", autoMoving already active");
         } else if (!AppVars.DoSearchBox) {
-            Log.d(TAG, "FAST_SYNC_TRACE restore skipped: reason=" + reason
+            AppLog.d(TAG, "FAST_SYNC_TRACE restore skipped: reason=" + reason
                     + ", DoSearchBox disabled by user");
         } else {
             AppVars.AutoMoving = true;
@@ -200,13 +199,13 @@ public class FastActionManager {
             AppVars.AutoMovingNextJump = snapshot.autoMovingNextJump;
             AppVars.AutoMovingJumps = snapshot.autoMovingJumps;
             AppVars.AutoMovingCityGate = snapshot.autoMovingCityGate;
-            Log.d(TAG, "FAST_SYNC_TRACE restore AutoMoving: reason=" + reason
+            AppLog.d(TAG, "FAST_SYNC_TRACE restore AutoMoving: reason=" + reason
                     + ", destination=" + AppVars.AutoMovingDestinaton
                     + ", jumps=" + AppVars.AutoMovingJumps);
         }
 
         AppVars.AutoDrinkBlazPending = snapshot.autoDrinkBlazPending;
-        Log.d(TAG, "FAST_SYNC_TRACE restore done: reason=" + reason
+        AppLog.d(TAG, "FAST_SYNC_TRACE restore done: reason=" + reason
                 + ", autoMovingNow=" + AppVars.AutoMoving
                 + ", doSearchBoxNow=" + AppVars.DoSearchBox
                 + ", blazPendingNow=" + AppVars.AutoDrinkBlazPending
@@ -252,13 +251,13 @@ public class FastActionManager {
                 + ", thread=" + Thread.currentThread().getId()
                 + ", timestamp=" + System.currentTimeMillis());
         
-        Log.i(TAG, "[FAST_START_DIAGNOSTIC] СРАЗУ ПОСЛЕ УСТАНОВКИ: "
+        AppLog.i(TAG, "[FAST_START_DIAGNOSTIC] СРАЗУ ПОСЛЕ УСТАНОВКИ: "
                 + "id='" + id + "'"
                 + ", AppVars.FastId='" + AppVars.FastId + "'"
                 + ", FastNeed=" + AppVars.FastNeed);
         
-        Log.d(TAG, "fastStart: id=" + id + ", nick=" + nick + ", count=" + count);
-        Log.d(TAG, "[AA_TRACE] fastStart state: prevFastNeed=" + prevFastNeed
+        AppLog.d(TAG, "fastStart: id=" + id + ", nick=" + nick + ", count=" + count);
+        AppLog.d(TAG, "[AA_TRACE] fastStart state: prevFastNeed=" + prevFastNeed
                 + ", prevFastId=" + prevFastId
                 + ", prevFastNick=" + prevFastNick
                 + ", prevPauseNonCombatAuto=" + prevPauseNonCombatAuto
@@ -339,8 +338,8 @@ public class FastActionManager {
             restoreAutosTask.run();
         }
         
-        Log.d(TAG, "fastCancel");
-        Log.d(TAG, "[AA_TRACE] fastCancel reason=" + reason
+        AppLog.d(TAG, "fastCancel");
+        AppLog.d(TAG, "[AA_TRACE] fastCancel reason=" + reason
                 + ", oldFastNeed=" + oldFastNeed
                 + ", oldFastId=" + oldFastId
                 + ", oldFastNick=" + oldFastNick
@@ -369,35 +368,35 @@ public class FastActionManager {
             if (mgr != null) {
                 if (AppVars.TimerPauseAutoFishState && !mgr.isAutoFishEnabled()) {
                     mgr.setAutoFishEnabled(true);
-                    Log.d(TAG, "[TIMER_RESTORE] Auto-Fishing restored");
+                    AppLog.d(TAG, "[TIMER_RESTORE] Auto-Fishing restored");
                 }
                 if (AppVars.TimerPauseAutoSkinState && !mgr.isAutoSkinEnabled()) {
                     mgr.setAutoSkinEnabled(true);
-                    Log.d(TAG, "[TIMER_RESTORE] Auto-Hunting restored");
+                    AppLog.d(TAG, "[TIMER_RESTORE] Auto-Hunting restored");
                 }
                 if (AppVars.TimerPauseAutoCutState && !mgr.isAutoCutEnabled()) {
                     mgr.setAutoCutEnabled(true);
-                    Log.d(TAG, "[TIMER_RESTORE] Auto-Herb restored");
+                    AppLog.d(TAG, "[TIMER_RESTORE] Auto-Herb restored");
                 }
                 if (AppVars.TimerPauseAutoBaitState && !mgr.isAutoBaitEnabled()) {
                     mgr.setAutoBaitEnabled(true);
-                    Log.d(TAG, "[TIMER_RESTORE] Auto-Bait restored");
+                    AppLog.d(TAG, "[TIMER_RESTORE] Auto-Bait restored");
                 }
                 if (AppVars.TimerPauseAutoCompassState && !mgr.isAutoCompassEnabled()) {
                     mgr.setAutoCompassEnabled(true);
-                    Log.d(TAG, "[TIMER_RESTORE] Auto-Compass restored");
+                    AppLog.d(TAG, "[TIMER_RESTORE] Auto-Compass restored");
                 }
                 if (AppVars.TimerPauseAutoAttackState && !mgr.isAutoAttackEnabled()) {
                     mgr.setAutoAttackEnabled(true);
-                    Log.d(TAG, "[TIMER_RESTORE] Auto-Attack restored");
+                    AppLog.d(TAG, "[TIMER_RESTORE] Auto-Attack restored");
                 }
                 if (AppVars.TimerPauseAutoInvisibleState && !mgr.isAutoInvisibleEnabled()) {
                     mgr.setAutoInvisibleEnabled(true);
-                    Log.d(TAG, "[TIMER_RESTORE] Auto-Invisible restored");
+                    AppLog.d(TAG, "[TIMER_RESTORE] Auto-Invisible restored");
                 }
             }
         } catch (Exception e) {
-            Log.e(TAG, "[TIMER_RESTORE] Error restoring auto functions", e);
+            AppLog.e(TAG, "[TIMER_RESTORE] Error restoring auto functions", e);
         }
 
         AppVars.TimerPauseNonCombatAutoFunctions = false;
@@ -517,38 +516,38 @@ public class FastActionManager {
     // - ContactsManager/AppVars: provide source tool settings.
     // - processMainPhp(...): executes selected tool through parsed HTML forms.
     public static boolean fastAttackAutoByToolId(String nick, int toolId) {
-        Log.d(TAG, "[AA_TRACE] fastAttackAutoByToolId: nick=" + nick + ", toolId=" + toolId);
+        AppLog.d(TAG, "[AA_TRACE] fastAttackAutoByToolId: nick=" + nick + ", toolId=" + toolId);
         switch (toolId) {
             case 1:
                 fastAttackUltimate(nick);
-                Log.d(TAG, "[AA_TRACE] fastAttackAutoByToolId: started fastAttackUltimate");
+                AppLog.d(TAG, "[AA_TRACE] fastAttackAutoByToolId: started fastAttackUltimate");
                 return true;
             case 2:
                 fastAttackClosedUltimate(nick);
-                Log.d(TAG, "[AA_TRACE] fastAttackAutoByToolId: started fastAttackClosedUltimate");
+                AppLog.d(TAG, "[AA_TRACE] fastAttackAutoByToolId: started fastAttackClosedUltimate");
                 return true;
             case 3:
                 fastAttackFist(nick);
-                Log.d(TAG, "[AA_TRACE] fastAttackAutoByToolId: started fastAttackFist");
+                AppLog.d(TAG, "[AA_TRACE] fastAttackAutoByToolId: started fastAttackFist");
                 return true;
             case 4:
                 fastAttackClosedFist(nick);
-                Log.d(TAG, "[AA_TRACE] fastAttackAutoByToolId: started fastAttackClosedFist");
+                AppLog.d(TAG, "[AA_TRACE] fastAttackAutoByToolId: started fastAttackClosedFist");
                 return true;
             case 5:
                 fastAttackPortal(nick);
-                Log.d(TAG, "[AA_TRACE] fastAttackAutoByToolId: started fastAttackPortal");
+                AppLog.d(TAG, "[AA_TRACE] fastAttackAutoByToolId: started fastAttackPortal");
                 return true;
             case 6:
                 fastAttackPoison(nick);
-                Log.d(TAG, "[AA_TRACE] fastAttackAutoByToolId: started fastAttackPoison");
+                AppLog.d(TAG, "[AA_TRACE] fastAttackAutoByToolId: started fastAttackPoison");
                 return true;
             case 7:
                 fastAttackStrongBest(nick);
-                Log.d(TAG, "[AA_TRACE] fastAttackAutoByToolId: started fastAttackStrongBest");
+                AppLog.d(TAG, "[AA_TRACE] fastAttackAutoByToolId: started fastAttackStrongBest");
                 return true;
             default:
-                Log.w(TAG, "[AA_TRACE] fastAttackAutoByToolId: unsupported toolId=" + toolId);
+                AppLog.w(TAG, "[AA_TRACE] fastAttackAutoByToolId: unsupported toolId=" + toolId);
                 return false;
         }
     }
@@ -683,7 +682,7 @@ public class FastActionManager {
 
     private static void fastAttackAsyncImpl(String weapon, String nick) {
         // Основной поток логики ожидания конца боя и последующего fastStart.
-        Log.d(TAG, "fastAttackAsync: weapon=" + weapon + ", nick=" + nick);
+        AppLog.d(TAG, "fastAttackAsync: weapon=" + weapon + ", nick=" + nick);
 
         // 1. Получаем информацию о цели
         NeverApi.UserInfo userInfo = NeverApi.getAll(nick);
@@ -701,7 +700,7 @@ public class FastActionManager {
             AppVars.FastWaitEndOfBoiCancel = false;
             AppVars.FastWaitEndOfBoiActive = true;
 
-            Log.d(TAG, "fastAttackAsync: цель в бою flog=" + flog + ", начинаем ожидание");
+            AppLog.d(TAG, "fastAttackAsync: цель в бою flog=" + flog + ", начинаем ожидание");
 
             while (!AppVars.FastWaitEndOfBoiCancel) {
                 String html = NeverApi.getFlog(flog);
@@ -714,7 +713,7 @@ public class FastActionManager {
                 if (off == null) continue;
 
                 if (off.equals("1")) {
-                    Log.d(TAG, "fastAttackAsync: бой завершён (off=1), scans=" + scans);
+                    AppLog.d(TAG, "fastAttackAsync: бой завершён (off=1), scans=" + scans);
                     break;
                 }
 
@@ -726,7 +725,7 @@ public class FastActionManager {
                             || html.contains("закрытое кулачное нападение")
                             || html.contains("закрытое боевое нападение");
                     if (!closedFight) {
-                        Log.d(TAG, "fastAttackAsync: открытый бой, WaitOpen=false → не ждём");
+                        AppLog.d(TAG, "fastAttackAsync: открытый бой, WaitOpen=false → не ждём");
                         break;
                     }
                 }
@@ -747,13 +746,13 @@ public class FastActionManager {
         if (AppVars.FastWaitEndOfBoiCancel) {
             AppVars.FastWaitEndOfBoiCancel = false;
             writeChatMsg("Ожидание окончания боя прекращено.");
-            Log.d(TAG, "fastAttackAsync: отменено пользователем");
+            AppLog.d(TAG, "fastAttackAsync: отменено пользователем");
             return;
         }
 
         // 4. Бой закончился (или цель не была в бою) → запускаем быстрое действие
         // fastStart уже вызывает reloadMainFrame() внутри себя
-        Log.d(TAG, "fastAttackAsync: армируем действие weapon=" + weapon + " nick=" + nick);
+        AppLog.d(TAG, "fastAttackAsync: армируем действие weapon=" + weapon + " nick=" + nick);
         int count = AppVars.DoPerenap ? Integer.MAX_VALUE : 1;
         fastStart(weapon, nick, count);
     }
@@ -800,7 +799,7 @@ public class FastActionManager {
                 + ", FastCount=" + AppVars.FastCount
                 + ", address=" + address + ", timestamp=" + System.currentTimeMillis());
         
-        Log.i(TAG, "[PROCESSMAINPHPFAST_ENTRY_DIAGNOSTIC] FastNeed=" + AppVars.FastNeed + ", FastId='" + AppVars.FastId + "'");
+        AppLog.i(TAG, "[PROCESSMAINPHPFAST_ENTRY_DIAGNOSTIC] FastNeed=" + AppVars.FastNeed + ", FastId='" + AppVars.FastId + "'");
         
         if (host == null || !AppVars.FastNeed || AppVars.FastId == null) {
             FileLogger.trace(TAG, "[PROCESSMAINPHPFAST_EARLY_EXIT] "
@@ -809,12 +808,12 @@ public class FastActionManager {
         }
         
         String fastId = AppVars.FastId;
-        Log.d(TAG, "processMainPhpFast: FastId=" + fastId + ", address=" + address);
+        AppLog.d(TAG, "processMainPhpFast: FastId=" + fastId + ", address=" + address);
 
         // NeverTimer — cooldown (аналог DateTime.Now > AppVars.NeverTimer в C#)
         boolean requireNeverTimerForFast = host.isAttackFastId(fastId);
         if (requireNeverTimerForFast && AppVars.NeverTimer > 0 && System.currentTimeMillis() < AppVars.NeverTimer) {
-            Log.d(TAG, "processMainPhpFast: NeverTimer ещё не истёк, пропускаем (attack-fast)");
+            AppLog.d(TAG, "processMainPhpFast: NeverTimer ещё не истёк, пропускаем (attack-fast)");
             return null;
         }
 
@@ -823,7 +822,7 @@ public class FastActionManager {
         // Иначе мы будем бесконечно перезапускать процесс.
         if (address != null && address.contains("get_id=43")) {
             if (FAST_ID_BLISS_ELIXIR.equals(fastId)) {
-                Log.d(TAG, "processMainPhpFast: get_id=43 — подтверждён Эликсир Блаженства");
+                AppLog.d(TAG, "processMainPhpFast: get_id=43 — подтверждён Эликсир Блаженства");
                 rememberBlissUseTimestamp(fastId);
                 if (shouldEmitFastResultMessage(AppVars.FastCount)) {
                     Integer elixirRemainingAfterUse = resolveElixirRemainingFromInventoryCache(fastId, html);
@@ -839,7 +838,7 @@ public class FastActionManager {
                 }
                 return null;
             }
-            Log.d(TAG, "processMainPhpFast: get_id=43 — действие уже выполнено, сбрасываем FastNeed");
+            AppLog.d(TAG, "processMainPhpFast: get_id=43 — действие уже выполнено, сбрасываем FastNeed");
             fastCancel("fast-get_id=43-action-already-applied");
             return null;
         }
@@ -855,7 +854,7 @@ public class FastActionManager {
                 && address != null
                 && address.contains("get_id=56&act=10&go=inf")
                 && host.isAttackFastId(fastId)) {
-            Log.d(TAG, "processMainPhpFast: вошли в бой с FastId=" + fastId
+            AppLog.d(TAG, "processMainPhpFast: вошли в бой с FastId=" + fastId
                     + ", сбрасываем FastNeed чтобы не блокировать авто-удары");
             fastCancel("entered-fight-frame-attack-fastid");
             return null;
@@ -863,10 +862,10 @@ public class FastActionManager {
 
         String filter = host.getInventoryFilter(fastId);
         if (filter == null) {
-            Log.w(TAG, "processMainPhpFast: неизвестный FastId=" + fastId);
+            AppLog.w(TAG, "processMainPhpFast: неизвестный FastId=" + fastId);
             return null;
         }
-        Log.d(TAG, "processMainPhpFast: filter=" + filter
+        AppLog.d(TAG, "processMainPhpFast: filter=" + filter
                 + ", isInv=" + host.mainPhpIsInv(html)
                 + ", isInvByAddress=" + host.isInventoryAddress(address)
                 + ", w28_form=" + (html != null && html.contains("w28_form("))
@@ -876,13 +875,13 @@ public class FastActionManager {
         // В C# тотем ищет ["fig","Напасть","vcode"] на основной странице.
         // mainPhpFindFlora делает redirect на основную страницу, если нужно.
         if ("TOTEM".equals(filter)) {
-            Log.d(TAG, "processMainPhpFast: тотем — без навигации на инвентарь");
+            AppLog.d(TAG, "processMainPhpFast: тотем — без навигации на инвентарь");
             String fastHtml = processMainPhp(html);
             if (fastHtml != null) {
-                Log.d(TAG, "processMainPhpFast: УСПЕХ, тотем найден");
+                AppLog.d(TAG, "processMainPhpFast: УСПЕХ, тотем найден");
                 return Russian.getBytes(fastHtml);
             }
-            Log.w(TAG, "processMainPhpFast: тотем не найден, отмена");
+            AppLog.w(TAG, "processMainPhpFast: тотем не найден, отмена");
             fastCancel("inventory-fast-item-not-found");
             return null;
         }
@@ -890,7 +889,7 @@ public class FastActionManager {
         // 1. Если мы НЕ на инвентаре — ищем ссылку на инвентарь с фильтром
         String invRedirect = host.mainPhpFindInvWithFallback(html, filter, address);
         if (invRedirect != null) {
-            Log.d(TAG, "processMainPhpFast: redirect на инвентарь: " + invRedirect);
+            AppLog.d(TAG, "processMainPhpFast: redirect на инвентарь: " + invRedirect);
             return Russian.getBytes(invRedirect);
         }
 
@@ -903,7 +902,7 @@ public class FastActionManager {
             // Это критично при 500+ предметах в инвентаре — поиск по всему
             // HTML (695KB) вместо отфильтрованной страницы (28KB) слишком медленный.
             if (!host.inventoryAddressMatchesFilter(address, filter)) {
-                Log.d(TAG, "processMainPhpFast: на инвентаре, но не на нужной категории ("
+                AppLog.d(TAG, "processMainPhpFast: на инвентаре, но не на нужной категории ("
                         + filterClean + "), переключаем");
                 return Filter.buildRedirect("Переключение на нужную категорию", "main.php?" + filterClean);
             }
@@ -911,7 +910,7 @@ public class FastActionManager {
             // 2b. Мы на правильной вкладке — ищем предмет
             String fastHtml = processMainPhp(html);
             if (fastHtml != null) {
-                Log.d(TAG, "processMainPhpFast: УСПЕХ, предмет найден");
+                AppLog.d(TAG, "processMainPhpFast: УСПЕХ, предмет найден");
                 return Russian.getBytes(fastHtml);
             }
 
@@ -926,7 +925,7 @@ public class FastActionManager {
                 int currentRetry = host.parseUrlParamInt(retryLink, FAST_INV_RETRY_PARAM, 0);
                 if (currentRetry >= FAST_INV_TRANSITION_MAX_RETRIES) {
                     String fallbackInvUrl = "main.php?" + filterClean;
-                    Log.w(TAG, "processMainPhpFast: inventory transitional HTML retry limit reached ("
+                    AppLog.w(TAG, "processMainPhpFast: inventory transitional HTML retry limit reached ("
                             + currentRetry + "/" + FAST_INV_TRANSITION_MAX_RETRIES
                             + "), cancel fast action and force inventory reload: " + fallbackInvUrl);
                     fastCancel("inventory-fast-transition-timeout");
@@ -934,13 +933,13 @@ public class FastActionManager {
                 }
                 int nextRetry = currentRetry + 1;
                 retryLink = host.appendOrReplaceUrlParam(retryLink, FAST_INV_RETRY_PARAM, String.valueOf(nextRetry));
-                Log.d(TAG, "processMainPhpFast: inventory transitional HTML, retry="
+                AppLog.d(TAG, "processMainPhpFast: inventory transitional HTML, retry="
                         + nextRetry + "/" + FAST_INV_TRANSITION_MAX_RETRIES + ", url=" + retryLink);
                 return Filter.buildRedirect("Ожидание загрузки инвентаря (" + nextRetry
                         + "/" + FAST_INV_TRANSITION_MAX_RETRIES + ")", retryLink);
             }
 
-            Log.w(TAG, "processMainPhpFast: предмет не найден на правильной вкладке (" + filterClean + "), отмена");
+            AppLog.w(TAG, "processMainPhpFast: предмет не найден на правильной вкладке (" + filterClean + "), отмена");
             // 3. Мы на правильной вкладке, предмет не найден — отмена
             disableAutoDrinkBlazIfBlissNotFound(fastId);
             host.sendInventoryChatMessage(host.buildFastItemNotFoundMessage(fastId));
@@ -949,7 +948,7 @@ public class FastActionManager {
         }
 
         // Мы не на инвентаре и MainPhpFindInv не нашла ссылку — вероятно, нужен обычный reload
-        Log.d(TAG, "processMainPhpFast: не на инвентаре, MainPhpFindInv не нашла ссылку");
+        AppLog.d(TAG, "processMainPhpFast: не на инвентаре, MainPhpFindInv не нашла ссылку");
         return null;
     }
 
@@ -977,15 +976,15 @@ public class FastActionManager {
                 AppVars.Profile.save(AppVars.getContext());
             }
         } catch (Exception e) {
-            Log.w(TAG, "AUTO_DRINK_BLAZ_TRACE: save profile failed after bliss not found", e);
+            AppLog.w(TAG, "AUTO_DRINK_BLAZ_TRACE: save profile failed after bliss not found", e);
         }
-        Log.w(TAG, "AUTO_DRINK_BLAZ_TRACE: bliss not found -> DoAutoDrinkBlaz=false, pending=false");
+        AppLog.w(TAG, "AUTO_DRINK_BLAZ_TRACE: bliss not found -> DoAutoDrinkBlaz=false, pending=false");
     }
 
     public static void cancelWaitFight() {
         if (AppVars.FastWaitEndOfBoiActive) {
             AppVars.FastWaitEndOfBoiCancel = true;
-            Log.d(TAG, "cancelWaitFight: запрос отмены ожидания");
+            AppLog.d(TAG, "cancelWaitFight: запрос отмены ожидания");
         }
     }
 
@@ -1000,12 +999,12 @@ public class FastActionManager {
      */
     // Парсит HTML main.php и формирует авто‑submit/redirect для быстрого действия.
     public static String processMainPhp(String html) {
-        Log.d(TAG, "processMainPhp: FastNeed=" + AppVars.FastNeed + ", FastId=" + AppVars.FastId
+        AppLog.d(TAG, "processMainPhp: FastNeed=" + AppVars.FastNeed + ", FastId=" + AppVars.FastId
                 + ", FastNick=" + AppVars.FastNick + ", htmlLen=" + (html != null ? html.length() : 0));
         if (!AppVars.FastNeed || AppVars.FastId == null || html == null) return null;
 
         // Логируем наличие ключевых паттернов в HTML
-        Log.d(TAG, "processMainPhp: contains w28_form=" + html.contains("w28_form(")
+        AppLog.d(TAG, "processMainPhp: contains w28_form=" + html.contains("w28_form(")
                 + ", magicreform=" + html.contains("magicreform(")
                 + ", abil_svitok=" + html.contains("abil_svitok("));
 
@@ -1120,7 +1119,7 @@ public class FastActionManager {
                 break;
 
             default:
-                Log.w(TAG, "processMainPhp: неизвестный FastId = " + fastId);
+                AppLog.w(TAG, "processMainPhp: неизвестный FastId = " + fastId);
                 break;
         }
 
@@ -1132,10 +1131,10 @@ public class FastActionManager {
                 || isElixirFastId(fastId);
 
         if (result == null && !noInventoryFallback && html.contains("get_id=56")) {
-            Log.d(TAG, "processMainPhp: Предмет не найден, но мы в get_id=56. Ищем ссылку на нужный раздел.");
+            AppLog.d(TAG, "processMainPhp: Предмет не найден, но мы в get_id=56. Ищем ссылку на нужный раздел.");
             String targetLink = findTargetLink(html, fastId);
             if (targetLink != null) {
-                Log.d(TAG, "processMainPhp: Выполняем переход на: " + targetLink);
+                AppLog.d(TAG, "processMainPhp: Выполняем переход на: " + targetLink);
                 return HTML_HEAD + "<script language=\"JavaScript\">location='" + targetLink + "';</script></body></html>";
             }
         }
@@ -1162,12 +1161,12 @@ public class FastActionManager {
                     fastCancel("fast-action-finished");
                 }
             } else {
-                Log.d(TAG, "processMainPhp: Эликсир Блаженства отправлен, ждём get_id=43 для подтверждения/сообщения");
+                AppLog.d(TAG, "processMainPhp: Эликсир Блаженства отправлен, ждём get_id=43 для подтверждения/сообщения");
             }
-            Log.d(TAG, "processMainPhp: УСПЕХ для FastId=" + fastId + ", resultLen=" + result.length());
-            Log.d(TAG, "processMainPhp: generated HTML: " + (result.length() > 300 ? result.substring(0, 300) : result));
+            AppLog.d(TAG, "processMainPhp: УСПЕХ для FastId=" + fastId + ", resultLen=" + result.length());
+            AppLog.d(TAG, "processMainPhp: generated HTML: " + (result.length() > 300 ? result.substring(0, 300) : result));
         } else {
-            Log.w(TAG, "processMainPhp: НЕУДАЧА, result=null для FastId=" + fastId);
+            AppLog.w(TAG, "processMainPhp: НЕУДАЧА, result=null для FastId=" + fastId);
         }
 
         return result;
@@ -1280,7 +1279,7 @@ public class FastActionManager {
             prevBlissUseAtMs = lastBlissUseAtMs;
         }
         lastBlissUseAtMs = nowMs;
-        Log.d(TAG, "AUTO_BLAZ_ETA_TRACE remember use: prev=" + prevBlissUseAtMs + ", last=" + lastBlissUseAtMs);
+        AppLog.d(TAG, "AUTO_BLAZ_ETA_TRACE remember use: prev=" + prevBlissUseAtMs + ", last=" + lastBlissUseAtMs);
     }
 
     private static void rememberBlissEtaSource(String sourceLabel) {
@@ -1318,7 +1317,7 @@ public class FastActionManager {
         long estimateMs = intervalMs * (long) elixirRemainingAfterUse;
         String hhmm = formatDurationHhMm(estimateMs);
         String sourceLabel = escapeHtml(resolveBlissEtaSourceLabel());
-        Log.d(TAG, "AUTO_BLAZ_ETA_TRACE estimate: intervalMs=" + intervalMs
+        AppLog.d(TAG, "AUTO_BLAZ_ETA_TRACE estimate: intervalMs=" + intervalMs
                 + ", remaining=" + elixirRemainingAfterUse
                 + ", estimateMs=" + estimateMs
                 + ", hhmm=" + hhmm);
@@ -1400,7 +1399,7 @@ public class FastActionManager {
             return null;
         }
 
-        Log.d(TAG, "ELIXIR_REMAIN_TRACE: name=" + elixirName
+        AppLog.d(TAG, "ELIXIR_REMAIN_TRACE: name=" + elixirName
                 + ", matchedEntries=" + matchedEntries
                 + ", totalCurrent=" + totalCurrent
                 + ", source=AppVars.InvList");
@@ -1417,7 +1416,7 @@ public class FastActionManager {
         }
         MainPhp.syncInventoryCacheFromHtml(inventoryHtml);
         int syncedSize = AppVars.InvList == null ? 0 : AppVars.InvList.size();
-        Log.d(TAG, "ELIXIR_REMAIN_TRACE sync-cache: reason=" + reason + ", syncedSize=" + syncedSize);
+        AppLog.d(TAG, "ELIXIR_REMAIN_TRACE sync-cache: reason=" + reason + ", syncedSize=" + syncedSize);
     }
 
     /**
@@ -1479,23 +1478,23 @@ public class FastActionManager {
         boolean isPotion = !fastId.endsWith(".gif");
         String wca = isPotion ? "wca=27" : "wca=28";
 
-        Log.d(TAG, "findTargetLink: ищем категорию " + wca + " для FastId=" + fastId);
+        AppLog.d(TAG, "findTargetLink: ищем категорию " + wca + " для FastId=" + fastId);
 
         // 1. Ищем прямую ссылку на нужную категорию (Свитки или Зелья)
         String link = findLinkWithPattern(html, wca);
         if (link != null) {
-            Log.d(TAG, "findTargetLink: найдена прямая ссылка на категорию: " + link);
+            AppLog.d(TAG, "findTargetLink: найдена прямая ссылка на категорию: " + link);
             return link;
         }
 
         // 2. Если не нашли категорию, ищем общую ссылку на инвентарь (go=inv)
         link = findLinkWithPattern(html, "go=inv");
         if (link != null) {
-            Log.d(TAG, "findTargetLink: найдена ссылка на общий инвентарь: " + link);
+            AppLog.d(TAG, "findTargetLink: найдена ссылка на общий инвентарь: " + link);
             return link;
         }
 
-        Log.w(TAG, "findTargetLink: ссылки на инвентарь не найдены в HTML");
+        AppLog.w(TAG, "findTargetLink: ссылки на инвентарь не найдены в HTML");
         return null;
     }
 
@@ -1536,7 +1535,7 @@ public class FastActionManager {
      * @return сгенерированный HTML с формой или null
      */
     private static String mainPhpFastHit(String html, String[] validSubIds, String description) {
-        Log.d(TAG, "mainPhpFastHit: ищем " + description + " с wsubid=" + java.util.Arrays.toString(validSubIds));
+        AppLog.d(TAG, "mainPhpFastHit: ищем " + description + " с wsubid=" + java.util.Arrays.toString(validSubIds));
 
         // Диагностика: показать все w28_form вызовы с их wsubid
         {
@@ -1558,7 +1557,7 @@ public class FastActionManager {
                 w28Count++;
                 diagPos = wEnd + 1;
             }
-            Log.d(TAG, "mainPhpFastHit: всего w28_form=" + w28Count + ", wsubid=[" + wsubIds + "]");
+            AppLog.d(TAG, "mainPhpFastHit: всего w28_form=" + w28Count + ", wsubid=[" + wsubIds + "]");
         }
 
         String patternW28Form = "w28_form(";
@@ -1603,7 +1602,7 @@ public class FastActionManager {
                     buildSubmitScript();
         }
 
-        Log.w(TAG, description + " не найдена в HTML");
+        AppLog.w(TAG, description + " не найдена в HTML");
         return null;
     }
 
@@ -1649,7 +1648,7 @@ public class FastActionManager {
                     buildSubmitScript();
         }
 
-        Log.w(TAG, description + " не найден в HTML");
+        AppLog.w(TAG, description + " не найден в HTML");
         return null;
     }
 
@@ -1660,7 +1659,7 @@ public class FastActionManager {
     private static String mainPhpFastFog(String html) {
         String namesvitok = "'Свиток Искажающего Тумана'";
         int p0 = html.indexOf(namesvitok);
-        if (p0 == -1) { Log.w(TAG, "Туман не найден"); return null; }
+        if (p0 == -1) { AppLog.w(TAG, "Туман не найден"); return null; }
 
         int ps = html.lastIndexOf('<', p0);
         if (ps == -1) return null;
@@ -1779,7 +1778,7 @@ public class FastActionManager {
                             excellentPotions.add(new PotionMatch(arg[0], arg[6], expStr, true));
                             String exprDesc = expStr != null ? expStr : "нет срока";
                             String msg = "[POTION_FOUND_EXCELLENT] fastId='" + fastId + "', expire=" + exprDesc + ", wuid=" + arg[0];
-                            Log.d(TAG, "selectBestPotion: " + msg);
+                            AppLog.d(TAG, "selectBestPotion: " + msg);
                             ru.neverlands.abclient.utils.FileLogger.trace("fast_action_potion", msg);
                         }
                     }
@@ -1819,7 +1818,7 @@ public class FastActionManager {
                                 regularPotions.add(new PotionMatch(arg[0], arg[6], expStr, false));
                                 String exprDesc = expStr != null ? expStr : "нет срока";
                                 String msg = "[POTION_FOUND_REGULAR] fastId='" + fastId + "', expire=" + exprDesc + ", wuid=" + arg[0];
-                                Log.d(TAG, "selectBestPotion: " + msg);
+                                AppLog.d(TAG, "selectBestPotion: " + msg);
                                 ru.neverlands.abclient.utils.FileLogger.trace("fast_action_potion", msg);
                             }
                         }
@@ -1833,7 +1832,7 @@ public class FastActionManager {
         java.util.List<PotionMatch> candidates = excellentPotions.isEmpty() ? regularPotions : excellentPotions;
         if (candidates.isEmpty()) {
             String msg = "[POTION_NOT_FOUND] fastId='" + fastId + "'";
-            Log.w(TAG, "selectBestPotion: " + msg);
+            AppLog.w(TAG, "selectBestPotion: " + msg);
             ru.neverlands.abclient.utils.FileLogger.trace("fast_action_potion", msg);
             return null;
         }
@@ -1845,7 +1844,7 @@ public class FastActionManager {
         String expDesc = best.expireMs == Long.MAX_VALUE ? "нет срока" : (best.expireMs + "ms");
         String msg = "[POTION_SELECTED] fastId='" + fastId + "', type=" + (best.isExcellent ? "EXCELLENT" : "REGULAR")
                 + ", expire=" + expDesc + ", candidates=" + candidates.size() + ", wuid=" + best.wuid;
-        Log.d(TAG, "selectBestPotion: " + msg);
+        AppLog.d(TAG, "selectBestPotion: " + msg);
         ru.neverlands.abclient.utils.FileLogger.trace("fast_action_potion", msg);
         
         return new String[] { best.wuid, best.wmcode };
@@ -1858,7 +1857,7 @@ public class FastActionManager {
     private static String mainPhpFastPotion(String html) {
         String fastId = AppVars.FastId;
         String msg = "[MAINPHP_FAST_POTION_START] fastId='" + fastId + "'";
-        Log.d(TAG, msg);
+        AppLog.d(TAG, msg);
         ru.neverlands.abclient.utils.FileLogger.trace("fast_action_potion", msg);
 
         // Используем новый метод selectBestPotionByExpiration для выбора зелья с приоритетом:
@@ -1868,7 +1867,7 @@ public class FastActionManager {
         
         if (result == null || result.length < 2) {
             String notFoundMsg = "[POTION_NOT_FOUND_IN_MAINPHP] fastId='" + fastId + "'";
-            Log.w(TAG, "mainPhpFastPotion: " + notFoundMsg);
+            AppLog.w(TAG, "mainPhpFastPotion: " + notFoundMsg);
             ru.neverlands.abclient.utils.FileLogger.trace("fast_action_potion", notFoundMsg);
             return null;
         }
@@ -1877,7 +1876,7 @@ public class FastActionManager {
         String wmcode = result[1];
         
         String foundMsg = "[POTION_FORM_PREPARED] wuid='" + wuid + "', wmcode='" + wmcode + "'";
-        Log.d(TAG, foundMsg);
+        AppLog.d(TAG, foundMsg);
         ru.neverlands.abclient.utils.FileLogger.trace("fast_action_potion", foundMsg);
 
         return HTML_HEAD +
@@ -1904,7 +1903,7 @@ public class FastActionManager {
      * 
     private static String mainPhpFastPotion_OLD(String html) {
         String fastId = AppVars.FastId;
-        Log.d(TAG, "mainPhpFastPotion: ищем '" + fastId + "' в HTML (" + html.length() + " chars)");
+        AppLog.d(TAG, "mainPhpFastPotion: ищем '" + fastId + "' в HTML (" + html.length() + " chars)");
 
         // Диагностика: показать все magicreform вызовы
         int diagPos = 0;
@@ -1915,12 +1914,12 @@ public class FastActionManager {
             int mEnd = html.indexOf(")", mIdx);
             if (mEnd == -1) break;
             String mCall = html.substring(mIdx, Math.min(mEnd + 1, mIdx + 120));
-            Log.d(TAG, "  magicreform[" + magicCount + "]: " + mCall);
+            AppLog.d(TAG, "  magicreform[" + magicCount + "]: " + mCall);
             magicCount++;
             diagPos = mEnd + 1;
-            if (magicCount > 15) { Log.d(TAG, "  ... ещё записи опущены"); break; }
+            if (magicCount > 15) { AppLog.d(TAG, "  ... ещё записи опущены"); break; }
         }
-        Log.d(TAG, "mainPhpFastPotion: всего magicreform = " + magicCount);
+        AppLog.d(TAG, "mainPhpFastPotion: всего magicreform = " + magicCount);
 
         // Ищем зелье среди magicreform вызовов.
         // В C# ищется "'Зелье Сильной Спины'" (с кавычками), но на сервере зелья могут
@@ -1935,7 +1934,7 @@ public class FastActionManager {
 
         // Стратегия 2: поиск без кавычек (для "Превосходное Зелье ..." и подобных вариантов)
         if (p0 == -1) {
-            Log.d(TAG, "mainPhpFastPotion: точное совпадение не найдено, ищем без кавычек");
+            AppLog.d(TAG, "mainPhpFastPotion: точное совпадение не найдено, ищем без кавычек");
             p0 = indexOfIgnoreCase(html, fastId, 0);
         }
 
@@ -1946,12 +1945,12 @@ public class FastActionManager {
                 p0 = indexOfIgnoreCase(html, "Зелье Сильной Спины", 0);
             }
             if (p0 != -1) {
-                Log.d(TAG, "mainPhpFastPotion: fallback на обычное Зелье Сильной Спины");
+                AppLog.d(TAG, "mainPhpFastPotion: fallback на обычное Зелье Сильной Спины");
             }
         }
 
         if (p0 == -1) {
-            Log.w(TAG, "Зелье не найдено: " + fastId);
+            AppLog.w(TAG, "Зелье не найдено: " + fastId);
             return null;
         }
 
@@ -1963,7 +1962,7 @@ public class FastActionManager {
 
         String chunk = html.substring(ps, pe);
         if (indexOfIgnoreCase(chunk, "magicreform(", 0) == -1) {
-            Log.d(TAG, "mainPhpFastPotion: найдено имя зелья, но нет magicreform в контексте");
+            AppLog.d(TAG, "mainPhpFastPotion: найдено имя зелья, но нет magicreform в контексте");
             return null;
         }
 
@@ -1976,7 +1975,7 @@ public class FastActionManager {
         wuid = arg[0];
         wmcode = arg[6];
 
-        Log.d(TAG, "mainPhpFastPotion: НАЙДЕНО wuid=" + wuid + ", wmcode=" + wmcode);
+        AppLog.d(TAG, "mainPhpFastPotion: НАЙДЕНО wuid=" + wuid + ", wmcode=" + wmcode);
 
         return HTML_HEAD +
                 "Используем " + AppVars.FastId + "..." +
@@ -2034,7 +2033,7 @@ public class FastActionManager {
                     buildSubmitScript();
         }
 
-        Log.w(TAG, description + " не найден в HTML");
+        AppLog.w(TAG, description + " не найден в HTML");
         return null;
     }
 
@@ -2086,7 +2085,7 @@ public class FastActionManager {
                     buildSubmitScript();
         }
 
-        Log.w(TAG, "Свиток телепорта не найден в HTML");
+        AppLog.w(TAG, "Свиток телепорта не найден в HTML");
         return null;
     }
 
@@ -2098,23 +2097,23 @@ public class FastActionManager {
     private static String mainPhpFastElixir(String html) {
         String fastId = AppVars.FastId;
         String namepotion = "Использовать " + fastId + " сейчас?";
-        Log.d(TAG, "mainPhpFastElixir: ищем '" + namepotion + "'");
+        AppLog.d(TAG, "mainPhpFastElixir: ищем '" + namepotion + "'");
 
         int p0 = indexOfIgnoreCase(html, namepotion, 0);
         if (p0 == -1) {
-            Log.w(TAG, "mainPhpFastElixir: не найдено '" + namepotion + "'");
+            AppLog.w(TAG, "mainPhpFastElixir: не найдено '" + namepotion + "'");
             return null;
         }
 
         // Ищем ='...' после найденной строки
         int ps = html.indexOf("='", p0);
-        if (ps == -1) { Log.w(TAG, "mainPhpFastElixir: =' не найден"); return null; }
+        if (ps == -1) { AppLog.w(TAG, "mainPhpFastElixir: =' не найден"); return null; }
         ps += 2;
         int pe = html.indexOf("'", ps);
-        if (pe == -1) { Log.w(TAG, "mainPhpFastElixir: закрывающая ' не найдена"); return null; }
+        if (pe == -1) { AppLog.w(TAG, "mainPhpFastElixir: закрывающая ' не найдена"); return null; }
 
         String link = html.substring(ps, pe);
-        Log.d(TAG, "mainPhpFastElixir: redirect на " + link);
+        AppLog.d(TAG, "mainPhpFastElixir: redirect на " + link);
 
         // Эликсиры используют GET redirect (не POST форму)
         return HtmlUtils.GENERATED_PAGE_MARKER +
@@ -2132,7 +2131,7 @@ public class FastActionManager {
     private static String mainPhpFastIsland(String html) {
         // Вариант 1: страница с подтверждением (как в PC-версии)
         String str = "Использовать Свиток Телепорта сейчас?";
-        Log.d(TAG, "mainPhpFastIsland: ищем '" + str + "'");
+        AppLog.d(TAG, "mainPhpFastIsland: ищем '" + str + "'");
 
         int p0 = indexOfIgnoreCase(html, str, 0);
         if (p0 != -1) {
@@ -2142,7 +2141,7 @@ public class FastActionManager {
                 int pe = html.indexOf("'", ps);
                 if (pe != -1) {
                     String link = html.substring(ps, pe);
-                    Log.d(TAG, "mainPhpFastIsland: redirect на " + link);
+                    AppLog.d(TAG, "mainPhpFastIsland: redirect на " + link);
                     return HtmlUtils.GENERATED_PAGE_MARKER +
                             "<html><head><meta http-equiv=\"Content-Type\" content=\"text/html; charset=windows-1251\">" +
                             "<title>ABClient</title></head><body>" +
@@ -2154,7 +2153,7 @@ public class FastActionManager {
 
         // Вариант 2 (fallback): страница инвентаря со свитками (w28_form)
         // Остров Туротор = wtelid=13, wsubid=22 (свиток телепорта)
-        Log.d(TAG, "mainPhpFastIsland: подтверждение не найдено, ищем w28_form с wsubid=22");
+        AppLog.d(TAG, "mainPhpFastIsland: подтверждение не найдено, ищем w28_form с wsubid=22");
         String patternW28Form = "w28_form(";
         int p1 = 0;
         while (p1 != -1) {
@@ -2180,7 +2179,7 @@ public class FastActionManager {
 
             // Остров Туротор = wtelid=13
             int wtelid = 13;
-            Log.d(TAG, "mainPhpFastIsland: найден w28_form wsubid=22, используем wtelid=" + wtelid);
+            AppLog.d(TAG, "mainPhpFastIsland: найден w28_form wsubid=22, используем wtelid=" + wtelid);
 
             return HTML_HEAD +
                     "Используем Телепорт (Остров Туротор)..." +
@@ -2196,7 +2195,7 @@ public class FastActionManager {
                     buildSubmitScript();
         }
 
-        Log.w(TAG, "mainPhpFastIsland: не найдено");
+        AppLog.w(TAG, "mainPhpFastIsland: не найдено");
         return null;
     }
 
@@ -2207,7 +2206,7 @@ public class FastActionManager {
      */
     private static String mainPhpFastTotem(String html) {
         String patternEnter = "[\"fig\",\"Напасть\",\"";
-        Log.d(TAG, "mainPhpFastTotem: ищем паттерн Напасть");
+        AppLog.d(TAG, "mainPhpFastTotem: ищем паттерн Напасть");
 
         int pos = html.indexOf(patternEnter);
         if (pos == -1) {
@@ -2216,19 +2215,19 @@ public class FastActionManager {
             pos = html.indexOf(patternEnter);
         }
         if (pos == -1) {
-            Log.w(TAG, "mainPhpFastTotem: паттерн не найден");
+            AppLog.w(TAG, "mainPhpFastTotem: паттерн не найден");
             return null;
         }
 
         pos += patternEnter.length();
         int posEnd = html.indexOf('"', pos);
         if (posEnd == -1) {
-            Log.w(TAG, "mainPhpFastTotem: закрывающая кавычка не найдена");
+            AppLog.w(TAG, "mainPhpFastTotem: закрывающая кавычка не найдена");
             return null;
         }
 
         String vcode = html.substring(pos, posEnd);
-        Log.d(TAG, "mainPhpFastTotem: vcode=" + vcode);
+        AppLog.d(TAG, "mainPhpFastTotem: vcode=" + vcode);
 
         return HTML_HEAD +
                 "Используем тотемное нападение на " + AppVars.FastNick + "..." +
@@ -2287,7 +2286,7 @@ public class FastActionManager {
         } else {
             AppLog.w("vcode_migration", TAG, "[VCode_MISSING] getValidVCodeForAction returned null for fast_action_reload");
         }
-        Log.d(TAG, "reloadMainFrame: loading " + url);
+        AppLog.d(TAG, "reloadMainFrame: loading " + url);
 
         // Broadcast в MainActivity: попросить WebView загрузить URL.
         Intent intent = new Intent(AppVars.ACTION_WEBVIEW_LOAD_URL);

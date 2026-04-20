@@ -1,6 +1,6 @@
 package ru.neverlands.abclient.utils;
 
-import android.util.Log;
+import ru.neverlands.abclient.utils.AppLog;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 

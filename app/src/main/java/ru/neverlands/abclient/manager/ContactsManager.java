@@ -4,7 +4,7 @@ import android.content.Context;
 import android.content.res.AssetManager;
 import android.os.Handler;
 import android.os.Looper;
-import android.util.Log;
+import ru.neverlands.abclient.utils.AppLog;
 
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
@@ -110,9 +110,9 @@ public class ContactsManager {
             while ((read = in.read(buffer)) != -1) {
                 out.write(buffer, 0, read);
             }
-            Log.i(TAG, "Default contacts.xml copied to " + contactsFile.getAbsolutePath());
+            AppLog.i(TAG, "Default contacts.xml copied to " + contactsFile.getAbsolutePath());
         } catch (IOException e) {
-            Log.e(TAG, "Failed to copy default contacts.xml", e);
+            AppLog.e(TAG, "Failed to copy default contacts.xml", e);
         }
     }
 
@@ -166,9 +166,9 @@ public class ContactsManager {
                     contactsCache.put(contact.nick, contact);
                 }
             }
-            Log.i(TAG, "Contacts loaded from XML into cache.");
+            AppLog.i(TAG, "Contacts loaded from XML into cache.");
         } catch (Exception e) {
-            Log.e(TAG, "Error loading contacts from XML", e);
+            AppLog.e(TAG, "Error loading contacts from XML", e);
         }
     }
 
@@ -225,10 +225,10 @@ public class ContactsManager {
                 StreamResult result = new StreamResult(contactsFile);
                 transformer.transform(source, result);
 
-                Log.i(TAG, "Contacts saved to XML.");
+                AppLog.i(TAG, "Contacts saved to XML.");
 
             } catch (Exception e) {
-                Log.e(TAG, "Error saving contacts to XML", e);
+                AppLog.e(TAG, "Error saving contacts to XML", e);
             }
         });
     }
@@ -316,7 +316,7 @@ public class ContactsManager {
         if (contact != null) {
             classId = contact.classId;
         }
-        Log.d(TAG, "GetClassIdOfContact for '" + name + "' returned " + classId);
+        AppLog.d(TAG, "GetClassIdOfContact for '" + name + "' returned " + classId);
         return String.valueOf(classId);
     }
 
@@ -441,7 +441,7 @@ public class ContactsManager {
         handler.postDelayed(() -> {
             Contact oldContact = contacts.get(index);
             if (oldContact.playerID == null || oldContact.playerID.isEmpty()) {
-                Log.w(TAG, "Skipping contact refresh for " + oldContact.nick + " due to missing playerID.");
+                AppLog.w(TAG, "Skipping contact refresh for " + oldContact.nick + " due to missing playerID.");
                 updateContactsRecursive(context, contacts, index + 1, onComplete);
                 return;
             }
@@ -461,7 +461,7 @@ public class ContactsManager {
 
                 @Override
                 public void onFailure(String message) {
-                    Log.e(TAG, "Failed to refresh contact by ID " + oldContact.playerID + " ("+oldContact.nick+"): " + message);
+                    AppLog.e(TAG, "Failed to refresh contact by ID " + oldContact.playerID + " ("+oldContact.nick+"): " + message);
                     // Все равно продолжаем, даже в случае ошибки
                     updateContactsRecursive(context, contacts, index + 1, onComplete);
                 }

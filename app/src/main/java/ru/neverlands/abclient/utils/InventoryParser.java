@@ -1,6 +1,6 @@
 package ru.neverlands.abclient.utils;
 
-import android.util.Log;
+import ru.neverlands.abclient.utils.AppLog;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -56,7 +56,7 @@ public class InventoryParser {
         List<InventoryItem> items = new ArrayList<>();
 
         if (html == null || html.isEmpty()) {
-            Log.d(TAG, "InventoryParser: empty html");
+            AppLog.d(TAG, "InventoryParser: empty html");
             return items;
         }
 
@@ -67,7 +67,7 @@ public class InventoryParser {
             final String patternStartInv = "</b></font></td></tr>";
             int pos = html.indexOf(patternStartInv);
             if (pos == -1) {
-                Log.d(TAG, "InventoryParser: inventory table start pattern not found");
+                AppLog.d(TAG, "InventoryParser: inventory table start pattern not found");
                 return items;
             }
 
@@ -185,16 +185,16 @@ public class InventoryParser {
             }
 
             if (itemName.isEmpty()) {
-                Log.w(TAG, "InventoryParser: could not extract item name from entry");
+                AppLog.w(TAG, "InventoryParser: could not extract item name from entry");
                 return null;
             }
 
             InventoryItem item = new InventoryItem(itemName, wearUrl, durability, position);
-            Log.d(TAG, "Parsed item: " + item);
+            AppLog.d(TAG, "Parsed item: " + item);
             return item;
 
         } catch (Exception e) {
-            Log.w(TAG, "InventoryParser: error parsing item", e);
+            AppLog.w(TAG, "InventoryParser: error parsing item", e);
             return null;
         }
     }

@@ -15,7 +15,6 @@ import java.util.Random;
 import java.util.regex.Pattern;
 import java.util.regex.Matcher;
 import java.text.SimpleDateFormat;
-import android.util.Log;
 import android.content.Intent;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 import ru.neverlands.abclient.lez.LezFight;
@@ -1103,7 +1102,7 @@ public class MainPhp {
                         ? Math.max(0L, System.currentTimeMillis() - vitals.updatedAtMs)
                         : -1L;
                 snapshotSource = "CharacterVitalsManager(" + vitals.source + ")";
-                android.util.Log.d(TAG, "AUTO_DRINK_TRACE fallback snapshot: hp="
+                AppLog.d(TAG, "AUTO_DRINK_TRACE fallback snapshot: hp="
                         + snapshot.curHp + "/" + snapshot.maxHp
                         + ", ma=" + snapshot.curMa + "/" + snapshot.maxMa
                         + ", ageMs=" + ageMs
@@ -1130,7 +1129,7 @@ public class MainPhp {
                 && snapshot.maxMa > 0
                 && maPercent < AppVars.Profile.LezDrinkMa;
         if (!hpBelow && !maBelow) {
-            android.util.Log.d(TAG, "AUTO_DRINK_TRACE no-trigger: hp="
+            AppLog.d(TAG, "AUTO_DRINK_TRACE no-trigger: hp="
                     + String.format(Locale.US, "%.1f", hpPercent) + "%/" + AppVars.Profile.LezDrinkHp
                     + " (enabled=" + AppVars.Profile.LezDoDrinkHp + "), ma="
                     + String.format(Locale.US, "%.1f", maPercent) + "%/" + AppVars.Profile.LezDrinkMa
@@ -1147,14 +1146,14 @@ public class MainPhp {
         long now = System.currentTimeMillis();
         long sinceLastTrigger = now - lastAutoDrinkTriggerAtMs;
         if (sinceLastTrigger >= 0 && sinceLastTrigger < AUTO_DRINK_TRIGGER_COOLDOWN_MS) {
-            android.util.Log.d(TAG, "AUTO_DRINK_TRACE skip cooldown: sinceLastMs=" + sinceLastTrigger
+            AppLog.d(TAG, "AUTO_DRINK_TRACE skip cooldown: sinceLastMs=" + sinceLastTrigger
                     + ", hpBelow=" + hpBelow + ", maBelow=" + maBelow);
             FileLogger.trace(TAG, "AUTO_DRINK_TRACE skip cooldown: sinceLastMs=" + sinceLastTrigger
                     + ", hpBelow=" + hpBelow + ", maBelow=" + maBelow);
             return;
         }
         lastAutoDrinkTriggerAtMs = now;
-        android.util.Log.d(TAG, "AUTO_DRINK_TRACE trigger restore elixir: hp="
+        AppLog.d(TAG, "AUTO_DRINK_TRACE trigger restore elixir: hp="
                 + snapshot.curHp + "/" + snapshot.maxHp + " (" + String.format(Locale.US, "%.1f", hpPercent) + "%)"
                 + ", ma=" + snapshot.curMa + "/" + snapshot.maxMa + " (" + String.format(Locale.US, "%.1f", maPercent) + "%)"
                 + ", hpThreshold=" + AppVars.Profile.LezDrinkHp + ", maThreshold=" + AppVars.Profile.LezDrinkMa
@@ -1270,7 +1269,7 @@ public class MainPhp {
         snapshot.maxMa = synced.maxMa;
         snapshot.intHp = synced.intHp;
         snapshot.intMa = synced.intMa;
-        android.util.Log.d(TAG, "AUTO_DRINK_TRACE post-fight pinfo snapshot: hp="
+        AppLog.d(TAG, "AUTO_DRINK_TRACE post-fight pinfo snapshot: hp="
                 + snapshot.curHp + "/" + snapshot.maxHp
                 + ", ma=" + snapshot.curMa + "/" + snapshot.maxMa
                 + ", tied=" + synced.tied
@@ -1772,7 +1771,7 @@ public class MainPhp {
 
         if (updated || (now - lastWtimeSyncLogAtMs) >= WTIME_SYNC_LOG_GUARD_MS) {
             lastWtimeSyncLogAtMs = now;
-            android.util.Log.d(TAG, "SERVER_TIMER_TRACE wtime sync: timeoutSec=" + timeoutSec
+            AppLog.d(TAG, "SERVER_TIMER_TRACE wtime sync: timeoutSec=" + timeoutSec
                     + ", updated=" + updated + ", address=" + address
                     + ", dueInMs=" + Math.max(0L, AppVars.NeverTimer - now));
             FileLogger.trace(TAG, "SERVER_TIMER_TRACE wtime sync: timeoutSec=" + timeoutSec
@@ -2310,7 +2309,7 @@ public class MainPhp {
         CharacterVitalsManager.Snapshot snapshot = CharacterVitalsManager.ensureHeavyWoundPresent(
                 "MainPhp.handleHeavyInjurySignal." + sourceTag);
         queueSelfHeavyInjuryCureIfNeeded(sourceTag);
-        android.util.Log.d(TAG, "AUTO_CURE_TRACE heavy injury signal(" + sourceTag + "): pw=["
+        AppLog.d(TAG, "AUTO_CURE_TRACE heavy injury signal(" + sourceTag + "): pw=["
                 + snapshot.poisonCount + "," + snapshot.lightWoundCount + ","
                 + snapshot.mediumWoundCount + "," + snapshot.heavyWoundCount + "]");
         FileLogger.trace(TAG, "AUTO_CURE_TRACE heavy injury signal(" + sourceTag + "): pw=["
@@ -2373,7 +2372,7 @@ public class MainPhp {
         AppVars.CureTravm = "3";
         AppVars.CureNickDone = "";
         AppVars.CureNickBoi = "";
-        android.util.Log.d(TAG, "AUTO_CURE_TRACE heavy injury queued self cure: nick="
+        AppLog.d(TAG, "AUTO_CURE_TRACE heavy injury queued self cure: nick="
                 + selfNick + ", travm=3, source=" + sourceTag);
     }
 
@@ -2455,10 +2454,10 @@ public class MainPhp {
                     AppVars.CureNickDone = targetNick;
                     RoomManager.onAutoCureSubmitted(targetNick, cureTravm);
                     clearExternalCureRequest("submitted-self-elixir");
-                    android.util.Log.d(TAG, "AUTO_CURE_TRACE self elixir submitted: nick="
+                    AppLog.d(TAG, "AUTO_CURE_TRACE self elixir submitted: nick="
                             + targetNick + ", travm=" + cureTravm);
                 } else {
-                    android.util.Log.d(TAG, "AUTO_CURE_TRACE self elixir navigation step: nick="
+                    AppLog.d(TAG, "AUTO_CURE_TRACE self elixir navigation step: nick="
                             + targetNick + ", travm=" + cureTravm);
                 }
                 return selfElixirCureHtml;
@@ -2557,7 +2556,7 @@ public class MainPhp {
         }
         long now = System.currentTimeMillis();
         if (AppVars.NeverTimer > 0L && now < AppVars.NeverTimer) {
-            android.util.Log.d(TAG, "AUTO_CURE_TRACE skipped by NeverTimer: dueInMs="
+            AppLog.d(TAG, "AUTO_CURE_TRACE skipped by NeverTimer: dueInMs="
                     + Math.max(0L, AppVars.NeverTimer - now) + ", address=" + address);
             return null;
         }
@@ -2620,7 +2619,7 @@ public class MainPhp {
             woundLabel = "тяжелую";
         } else {
             if (light > 0 || medium > 0 || heavy > 0) {
-                android.util.Log.d(TAG, "AUTO_CURE_TRACE self wounds present but disabled by settings: "
+                AppLog.d(TAG, "AUTO_CURE_TRACE self wounds present but disabled by settings: "
                         + "light=" + light + "(enabled=" + isAutoCureWoundTypeEnabledForSelfByAnyMethod("1") + "), "
                         + "medium=" + medium + "(enabled=" + isAutoCureWoundTypeEnabledForSelfByAnyMethod("2") + "), "
                         + "heavy=" + heavy + "(enabled=" + isAutoCureWoundTypeEnabledForSelfByAnyMethod("3") + ")");
@@ -2639,10 +2638,10 @@ public class MainPhp {
                             "MainPhp.mainPhpAutoCureStep.selfElixirUsed");
                     AppVars.CureNickDone = nick;
                     RoomManager.onAutoCureSubmitted(nick, cureTravm);
-                    android.util.Log.d(TAG, "AUTO_CURE_TRACE self elixir submitted (self): travm="
+                    AppLog.d(TAG, "AUTO_CURE_TRACE self elixir submitted (self): travm="
                             + cureTravm + ", index=" + woundIndex);
                 } else {
-                    android.util.Log.d(TAG, "AUTO_CURE_TRACE self elixir navigation step (self): travm="
+                    AppLog.d(TAG, "AUTO_CURE_TRACE self elixir navigation step (self): travm="
                             + cureTravm);
                 }
                 return selfElixirCureHtml;
@@ -3011,7 +3010,7 @@ public class MainPhp {
                 }
                 for (String knife : knives) {
                     if (containsIgnoreCase(thing.name, knife)) {
-                        android.util.Log.d(TAG, "AUTO_SKIN_TRACE mainPhpWearKnife: wear " + thing.name
+                        AppLog.d(TAG, "AUTO_SKIN_TRACE mainPhpWearKnife: wear " + thing.name
                                 + ", link=" + thing.wearLink);
                         return buildRedirectHtml("Одеваем " + thing.name, thing.wearLink);
                     }
@@ -3051,7 +3050,7 @@ public class MainPhp {
                 }
                 for (String scrollName : scrollNames) {
                     if (containsIgnoreCase(thing.name, scrollName)) {
-                        android.util.Log.d(TAG, "AUTO_FURY_TRACE mainPhpWearFuryScroll: wear " + thing.name
+                        AppLog.d(TAG, "AUTO_FURY_TRACE mainPhpWearFuryScroll: wear " + thing.name
                                 + ", link=" + thing.wearLink);
                         return buildRedirectHtml("Одеваем " + thing.name, thing.wearLink);
                     }
@@ -3157,14 +3156,14 @@ public class MainPhp {
                 LocalBroadcastManager.getInstance(AppVars.getContext()).sendBroadcast(intent);
             }
             } else {
-                android.util.Log.d(TAG, "AUTO_SKIN_TRACE mainPhpGetSkinRes: chat skipped, RazdChatReport=false"
+                AppLog.d(TAG, "AUTO_SKIN_TRACE mainPhpGetSkinRes: chat skipped, RazdChatReport=false"
                         + ", deltaCount=" + deltaForChat.size());
             }
         }
         if (!deltaForStatsKg.isEmpty()) {
             ru.neverlands.abclient.utils.ChatStats.addResourceDeltaKg(deltaForStatsKg);
         }
-        android.util.Log.d(TAG, "AUTO_SKIN_TRACE mainPhpGetSkinRes: anchorFound=" + anchorFound
+        AppLog.d(TAG, "AUTO_SKIN_TRACE mainPhpGetSkinRes: anchorFound=" + anchorFound
                 + ", baselineFill=" + baselineFill
                 + ", parsedResources=" + parsedResources
                 + ", diffResources=" + diffResources
@@ -3542,7 +3541,7 @@ public class MainPhp {
         boolean closedFightInterfereError = htmlLower.contains("ошибка при использовании. нельзя вмешаться в закрытый бой");
         if (closedFightInterfereError && AppVars.AutoAttackToolId != 0 && AppVars.FastNick != null && !AppVars.FastNick.isEmpty()) {
             String blockedNick = AppVars.FastNick;
-            android.util.Log.d(TAG, "[AA_TRACE] closed fight error: add to blacklist and cancel fast, nick=" + blockedNick
+            AppLog.d(TAG, "[AA_TRACE] closed fight error: add to blacklist and cancel fast, nick=" + blockedNick
                     + ", fastId=" + AppVars.FastId + ", autoTool=" + AppVars.AutoAttackToolId);
             RoomManager.charAddToBlackList(blockedNick);
             if (AppVars.getContext() != null) {
@@ -3893,7 +3892,7 @@ public class MainPhp {
                     if (mainPhpIsPerc(html)) {
                         AppVars.AutoFuryArmedScroll = mainPhpArmedFuryScroll(html);
                         AppVars.AutoFuryCheckScroll = false;
-                        android.util.Log.d(TAG, "AUTO_FURY_TRACE scroll check result: armed=" + AppVars.AutoFuryArmedScroll
+                        AppLog.d(TAG, "AUTO_FURY_TRACE scroll check result: armed=" + AppVars.AutoFuryArmedScroll
                                 + ", hand=" + AppVars.AutoFuryHand);
                     }
                 }
@@ -3937,7 +3936,7 @@ public class MainPhp {
         boolean suspendAutoSkinForInventoryReload = isLikelyInventoryReloadSnapshot(address, html);
         boolean suspendAutoSkinForGeneratedTransition = isGeneratedTransitionPage(address, html);
         if (suspendAutoSkinForFinishFlow || suspendAutoSkinForInventoryReload || suspendAutoSkinForGeneratedTransition) {
-            android.util.Log.d(TAG, "AUTO_SKIN_TRACE suspended: finishFlow=" + suspendAutoSkinForFinishFlow
+            AppLog.d(TAG, "AUTO_SKIN_TRACE suspended: finishFlow=" + suspendAutoSkinForFinishFlow
                     + ", inventoryReload=" + suspendAutoSkinForInventoryReload
                     + ", generatedTransition=" + suspendAutoSkinForGeneratedTransition
                     + ", address=" + address);
@@ -4040,7 +4039,7 @@ public class MainPhp {
         // magic_slots() — признак страницы боя (fight frame)
         // var fight_ty — признак верхнего фрейма с данными о противнике
         if (isFightFrame || isFightTopFrame) {
-            android.util.Log.d(TAG, "=== FIGHT FRAME DETECTED ==="
+            AppLog.d(TAG, "=== FIGHT FRAME DETECTED ==="
                     + " isFightFrame=" + isFightFrame
                     + " isFightTopFrame=" + isFightTopFrame
                     + " address=" + address);
@@ -4094,7 +4093,7 @@ public class MainPhp {
             if (needMapBootstrap) {
                 String mapReturnHtml = mainPhpFindMapReturnForAutoMoving(html);
                 if (mapReturnHtml != null && !mapReturnHtml.isEmpty()) {
-                    android.util.Log.d(TAG, "AUTO_SEARCH_BOX_TRACE bootstrap map via return-link, address=" + address
+                    AppLog.d(TAG, "AUTO_SEARCH_BOX_TRACE bootstrap map via return-link, address=" + address
                             + ", mapLocation=" + currentMapLocation);
                     return Russian.getBytes(mapReturnHtml);
                 }
@@ -4102,7 +4101,7 @@ public class MainPhp {
                 if (!isInfAddress) {
                     String personHtml = mainPhpFindPerc(html);
                     if (personHtml != null && !personHtml.isEmpty()) {
-                        android.util.Log.d(TAG, "AUTO_SEARCH_BOX_TRACE bootstrap person page before map, address="
+                        AppLog.d(TAG, "AUTO_SEARCH_BOX_TRACE bootstrap person page before map, address="
                                 + address + ", mapLocation=" + currentMapLocation);
                         return Russian.getBytes(personHtml);
                     }
@@ -4117,7 +4116,7 @@ public class MainPhp {
                         String msg_vcode_err = "⚠️ AUTO_SEARCH_BOX_TRACE: vcode not available from SessionManager";
                         AppLog.w(TAG, msg_vcode_err);
                     }
-                    android.util.Log.d(TAG, "AUTO_SEARCH_BOX_TRACE bootstrap fallback go=ret, address="
+                    AppLog.d(TAG, "AUTO_SEARCH_BOX_TRACE bootstrap fallback go=ret, address="
                             + address + ", mapLocation=" + currentMapLocation + ", link=" + bootstrapRetLink);
                     return Russian.getBytes(buildRedirectHtml("SearchBox bootstrap: go=ret", bootstrapRetLink));
                 }
@@ -4127,10 +4126,10 @@ public class MainPhp {
                 String nextDest = MapAjax.findNextDestForBox(currentMapLocation);
                 if (nextDest != null && !nextDest.isEmpty()) {
                     startAutoSearchBoxMoving(nextDest);
-                    android.util.Log.d(TAG, "AUTO_SEARCH_BOX_TRACE start moving to " + nextDest
+                    AppLog.d(TAG, "AUTO_SEARCH_BOX_TRACE start moving to " + nextDest
                             + ", address=" + address);
                 } else {
-                    android.util.Log.d(TAG, "AUTO_SEARCH_BOX_TRACE no destination yet, mapLocation="
+                    AppLog.d(TAG, "AUTO_SEARCH_BOX_TRACE no destination yet, mapLocation="
                             + currentMapLocation + ", address=" + address + ", hasMapPayload=" + hasMapPayload);
                     if (hasMapPayload && (currentMapLocation == null || currentMapLocation.isEmpty())) {
                         autoSearchRetryAfterMapSync = true;
@@ -4179,7 +4178,7 @@ public class MainPhp {
                         String msg_navvcode = "⚠️ AUTO_MOVING_TRACE: vcode not available from SessionManager";
                         AppLog.w(TAG, msg_navvcode);
                     }
-                    android.util.Log.d(TAG, "AUTO_MOVING_TRACE: bootstrap fallback to map, address="
+                    AppLog.d(TAG, "AUTO_MOVING_TRACE: bootstrap fallback to map, address="
                             + address + ", link=" + bootstrapRetLink);
                     return Russian.getBytes(buildRedirectHtml("Navigator bootstrap: go=ret", bootstrapRetLink));
                 }
@@ -4203,7 +4202,7 @@ public class MainPhp {
                     String retryDest = MapAjax.findNextDestForBox(refreshedMapLocation);
                     if (retryDest != null && !retryDest.isEmpty()) {
                         startAutoSearchBoxMoving(retryDest);
-                        android.util.Log.d(TAG, "AUTO_SEARCH_BOX_TRACE retry-after-map-sync start moving to "
+                        AppLog.d(TAG, "AUTO_SEARCH_BOX_TRACE retry-after-map-sync start moving to "
                                 + retryDest + ", mapLocation=" + refreshedMapLocation + ", address=" + address);
                         // ✅ SessionManager: получаем вaлидный vcode для retry bootstrap
                         String navVcode = SessionManager.getInstance().getValidVCodeForAction("searchbox_retry_bootstrap");
@@ -4222,7 +4221,7 @@ public class MainPhp {
                         }
                         return Russian.getBytes(buildRedirectHtml("SearchBox retry bootstrap", bootstrapLink));
                     } else {
-                        android.util.Log.d(TAG, "AUTO_SEARCH_BOX_TRACE retry-after-map-sync still no destination, mapLocation="
+                        AppLog.d(TAG, "AUTO_SEARCH_BOX_TRACE retry-after-map-sync still no destination, mapLocation="
                                 + refreshedMapLocation + ", address=" + address);
                     }
                 }
@@ -4840,7 +4839,7 @@ public class MainPhp {
                 AppLog.d(TAG, msg);
             }
         } catch (Exception e) {
-            android.util.Log.e(TAG, "extractCaptchaUrl error", e);
+            AppLog.e(TAG, "extractCaptchaUrl error", e);
         }
         return null;
     }
@@ -4999,7 +4998,7 @@ public class MainPhp {
                 return url.substring(idx, end);
             }
         } catch (Exception e) {
-            android.util.Log.e(TAG, "getUrlParam error: " + paramName, e);
+            AppLog.e(TAG, "getUrlParam error: " + paramName, e);
         }
         return "";
     }
@@ -5122,7 +5121,7 @@ public class MainPhp {
         boolean shouldSendLoot = !lootItems.isEmpty()
                 && !lootDedupKey.equals(lastFightResultLootBroadcastKey);
         if (!shouldSendWinner && !shouldSendLoot) {
-            android.util.Log.d(TAG, "publishFightResultFromLogsIfNeeded: skip duplicate"
+            AppLog.d(TAG, "publishFightResultFromLogsIfNeeded: skip duplicate"
                     + ", logId=" + logId
                     + ", winnerKey=" + winnerDedupKey
                     + ", lootKey=" + lootDedupKey
@@ -5158,7 +5157,7 @@ public class MainPhp {
             if (skinSkillRaised) {
                 AppVars.AutoSkinCheckUm = true;
             }
-            android.util.Log.d(TAG, "AUTO_SKIN_TRACE publishFightResultFromLogsIfNeeded: "
+            AppLog.d(TAG, "AUTO_SKIN_TRACE publishFightResultFromLogsIfNeeded: "
                     + "queue AutoSkinCheckRes=true, AutoSkinCheckUm=" + AppVars.AutoSkinCheckUm
                     + ", lootCount=" + lootItems.size()
                     + ", shouldSendLoot=" + shouldSendLoot
@@ -5167,7 +5166,7 @@ public class MainPhp {
         if (!isSkinResult && shouldSendLoot) {
             ru.neverlands.abclient.utils.ChatStats.addLoot("", lootItems);
         }
-        android.util.Log.d(TAG, "publishFightResultFromLogsIfNeeded: winner=" + winnerNick
+        AppLog.d(TAG, "publishFightResultFromLogsIfNeeded: winner=" + winnerNick
                 + ", lootCount=" + lootItems.size()
                 + ", source=" + address);
     }
@@ -5517,7 +5516,7 @@ public class MainPhp {
         }
         boolean expectXpByFexp = fexp > 0;
         if (battleXp.isEmpty() && expectXpByFexp && uiForegroundInteractive) {
-            android.util.Log.d(TAG, "publishFightSummaryFromFinishHtmlIfNeeded: skip foreground fallback without XP"
+            AppLog.d(TAG, "publishFightSummaryFromFinishHtmlIfNeeded: skip foreground fallback without XP"
                     + ", logId=" + logId + ", foes=" + foes + ", fexp=" + fexp);
             return;
         }
@@ -5536,7 +5535,7 @@ public class MainPhp {
         try {
             filteredMessage = ru.neverlands.abclient.utils.ChatFilter.filter(synthetic.toString());
         } catch (Exception e) {
-            android.util.Log.e(TAG, "publishFightSummaryFromFinishHtmlIfNeeded: ChatFilter failed", e);
+            AppLog.e(TAG, "publishFightSummaryFromFinishHtmlIfNeeded: ChatFilter failed", e);
             filteredMessage = synthetic.toString();
         }
         if (filteredMessage == null || filteredMessage.isEmpty()) {
@@ -5545,7 +5544,7 @@ public class MainPhp {
         Intent msgIntent = new Intent(AppVars.ACTION_ADD_CHAT_MESSAGE);
         msgIntent.putExtra("message", filteredMessage);
         LocalBroadcastManager.getInstance(AppVars.getContext()).sendBroadcast(msgIntent);
-        android.util.Log.d(TAG, "publishFightSummaryFromFinishHtmlIfNeeded: viaChatFilter logId=" + logId
+        AppLog.d(TAG, "publishFightSummaryFromFinishHtmlIfNeeded: viaChatFilter logId=" + logId
                 + ", battleXp=" + battleXp + ", foes=" + foes + ", damage=" + AppVars.LastBoiUron);
     }
     /**
@@ -5583,7 +5582,7 @@ public class MainPhp {
             damage += parseIntFromJsToken(list[idx], 0);
         }
         AppVars.LastBoiUron = String.valueOf(Math.max(0, damage));
-        android.util.Log.d(TAG, "primeLastBoiDamageFromFinishHtmlIfNeeded: logId=" + logId
+        AppLog.d(TAG, "primeLastBoiDamageFromFinishHtmlIfNeeded: logId=" + logId
                 + ", damage=" + AppVars.LastBoiUron);
     }
     /**
@@ -5812,14 +5811,14 @@ public class MainPhp {
             boolean doPack = AppVars.Profile != null && AppVars.Profile.DoInvPack;
             boolean doPackDolg = AppVars.Profile != null && AppVars.Profile.DoInvPackDolg;
             boolean doSort = AppVars.Profile != null && AppVars.Profile.DoInvSort;
-            android.util.Log.d(TAG, "INV_GROUP_TRACE parsed=" + parsedCount
+            AppLog.d(TAG, "INV_GROUP_TRACE parsed=" + parsedCount
                     + ", doPack=" + doPack
                     + ", doPackDolg=" + doPackDolg
                     + ", doSort=" + doSort);
             int sampleLimit = Math.min(5, invList.size());
             for (int sampleIndex = 0; sampleIndex < sampleLimit; sampleIndex++) {
                 InvEntry sample = invList.get(sampleIndex);
-                android.util.Log.d(TAG, "INV_GROUP_TRACE sample[" + sampleIndex + "]"
+                AppLog.d(TAG, "INV_GROUP_TRACE sample[" + sampleIndex + "]"
                         + " name=" + (sample.Name == null ? "" : sample.Name)
                         + ", image=" + (sample.Image == null ? "" : sample.Image)
                         + ", dolg=" + (sample.Dolg == null ? "" : sample.Dolg)

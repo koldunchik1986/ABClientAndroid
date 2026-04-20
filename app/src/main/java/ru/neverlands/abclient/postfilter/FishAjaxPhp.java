@@ -1,7 +1,6 @@
 package ru.neverlands.abclient.postfilter;
 
 import android.content.Intent;
-import android.util.Log;
 import android.webkit.WebView;
 
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
@@ -141,7 +140,7 @@ public final class FishAjaxPhp {
         String lowerAddress = address == null ? "" : address.toLowerCase(Locale.ROOT);
         if (lowerAddress.contains("act=2") && containsFishWrongProtectionCode(lower)) {
             int errCount = registerAct1ErrAndMaybeRecover("wrong_code_protection");
-            Log.w(TAG, "AUTO_FISH_TRACE act2 returned wrong protection code, errCount=" + errCount
+            AppLog.w(TAG, "AUTO_FISH_TRACE act2 returned wrong protection code, errCount=" + errCount
                     + ", address=" + address);
             long now = System.currentTimeMillis();
             long sinceAct1Ms = lastFishAct1AtMs > 0L ? (now - lastFishAct1AtMs) : -1L;
@@ -222,14 +221,14 @@ public final class FishAjaxPhp {
         }
         if (html != null && "ERR".equalsIgnoreCase(html.trim())) {
             int errCount = registerAct1ErrAndMaybeRecover("act1_err");
-            Log.d(TAG, "AUTO_FISH_TRACE act1 temporary ERR, will retry by cycle guard, errCount="
+            AppLog.d(TAG, "AUTO_FISH_TRACE act1 temporary ERR, will retry by cycle guard, errCount="
                     + errCount + ", address=" + address);
             return;
         }
 
         FishAct1State state = parseFishAct1State(html);
         if (state == null) {
-            Log.d(TAG, "AUTO_FISH_TRACE act1 parse failed, address=" + address);
+            AppLog.d(TAG, "AUTO_FISH_TRACE act1 parse failed, address=" + address);
             return;
         }
 
@@ -257,7 +256,7 @@ public final class FishAjaxPhp {
         AppVars.ValPri = selection.count;
 
         if (state.vcode == null || state.vcode.isEmpty()) {
-            Log.w(TAG, "AUTO_FISH_TRACE act1 skip: empty vcode");
+            AppLog.w(TAG, "AUTO_FISH_TRACE act1 skip: empty vcode");
             return;
         }
         resetAct1ErrRecoveryState();
@@ -280,7 +279,7 @@ public final class FishAjaxPhp {
         // очищает флаг сразу по получении ответа.
         AppVars.suppressBackgroundProbesDuringFishing = true;
         AppVars.fishingSequenceStartAtMs = lastFishAct1AtMs;
-        Log.d(TAG, "AUTO_FISH_TRACE act1: suppression enabled, safety timeout="
+        AppLog.d(TAG, "AUTO_FISH_TRACE act1: suppression enabled, safety timeout="
                 + AppVars.fishingExpectedDurationMs + "ms");
 
         // ✅ ПРАВИЛО 4 (AGENTS.MD): Проверка на сообщение сервера о перегрузе
@@ -301,7 +300,7 @@ public final class FishAjaxPhp {
                 && !"00000".equals(state.captchaToken);
         if (!captchaRequired) {
             scheduleNoCaptchaAct2Fallback(state.vcode, selection.id, lastFishAct1AtMs);
-            Log.d(TAG, "AUTO_FISH_TRACE act1: captcha not required, primid=" + selection.id
+            AppLog.d(TAG, "AUTO_FISH_TRACE act1: captcha not required, primid=" + selection.id
                     + ", vcode=" + state.vcode);
             return;
         }
@@ -310,7 +309,7 @@ public final class FishAjaxPhp {
         String currentVcode = ru.neverlands.abclient.utils.SessionManager.getInstance()
                 .getValidVCodeForAction("fish_act2");
         if (currentVcode == null || currentVcode.isEmpty()) {
-            Log.w(TAG, "⚠️ AUTO_FISH_TRACE act1: vcode not available from SessionManager, using fallback state.vcode");
+            AppLog.w(TAG, "⚠️ AUTO_FISH_TRACE act1: vcode not available from SessionManager, using fallback state.vcode");
             currentVcode = state.vcode;  // fallback на переданное значение
         }
         String submitUrl = "http://neverlands.ru/gameplay/ajax/fish_ajax.php?act=2"
@@ -321,7 +320,7 @@ public final class FishAjaxPhp {
         String captchaUrl = FISH_CAPTCHA_URL_PREFIX + state.captchaToken;
         showFishCaptchaDialogOnce(captchaUrl, submitUrl);
 
-        Log.d(TAG, "AUTO_FISH_TRACE act1: captcha required, primid=" + selection.id
+        AppLog.d(TAG, "AUTO_FISH_TRACE act1: captcha required, primid=" + selection.id
                 + ", currentVcode=" + currentVcode + ", captcha=" + captchaUrl);
     }
 
@@ -368,7 +367,7 @@ public final class FishAjaxPhp {
                     return;
                 }
                 if (lastFishAct2AtMs >= act1AtMs) {
-                    Log.d(TAG, "AUTO_FISH_TRACE no-captcha fallback skip: act2 already seen, primid="
+                    AppLog.d(TAG, "AUTO_FISH_TRACE no-captcha fallback skip: act2 already seen, primid="
                             + safePrimid + ", vcode=" + safeVcode);
                     return;
                 }
@@ -384,7 +383,7 @@ public final class FishAjaxPhp {
                         + "return 'miss';"
                         + "})()";
                 webView.evaluateJavascript(js, value -> {
-                    Log.d(TAG, "AUTO_FISH_TRACE no-captcha fallback submit result=" + value
+                    AppLog.d(TAG, "AUTO_FISH_TRACE no-captcha fallback submit result=" + value
                             + ", primid=" + safePrimid + ", vcode=" + safeVcode);
                     boolean jsOk = value != null
                             && (value.contains("ajax") || value.contains("fishstart"));
@@ -417,7 +416,7 @@ public final class FishAjaxPhp {
                 return AutoFunctionsManager.getInstance(AppVars.getContext()).isAutoFishEnabled();
             }
         } catch (Exception e) {
-            Log.w(TAG, "AUTO_FISH_TRACE: failed to read AutoFish from manager", e);
+            AppLog.w(TAG, "AUTO_FISH_TRACE: failed to read AutoFish from manager", e);
         }
         return AppVars.Profile != null && AppVars.Profile.AutoFish;
     }
@@ -437,7 +436,7 @@ public final class FishAjaxPhp {
         String key = captchaUrl + "|" + finishUrl;
         if (key.equals(lastFishCaptchaDialogKey)
                 && now - lastFishCaptchaDialogAtMs < FISH_CAPTCHA_DIALOG_DEDUP_MS) {
-            Log.d(TAG, "AUTO_FISH_TRACE act1: captcha dedup skip");
+            AppLog.d(TAG, "AUTO_FISH_TRACE act1: captcha dedup skip");
             return;
         }
         lastFishCaptchaDialogKey = key;
@@ -470,7 +469,7 @@ public final class FishAjaxPhp {
         int totalTimerSec = act1Timer + cooldownSec;
         // Обновляем fishingExpectedDurationMs с реальным серверным таймером + запас
         AppVars.fishingExpectedDurationMs = (totalTimerSec * 1000L) + 15_000L;
-        Log.d(TAG, "AUTO_FISH_TRACE act2 timer: act1=" + act1Timer + "s + act2=" + cooldownSec
+        AppLog.d(TAG, "AUTO_FISH_TRACE act2 timer: act1=" + act1Timer + "s + act2=" + cooldownSec
                 + "s = total " + totalTimerSec + "s → fishingExpectedDurationMs="
                 + AppVars.fishingExpectedDurationMs + "ms");
 
@@ -504,7 +503,7 @@ public final class FishAjaxPhp {
 
         long delayMs = Math.max(250L, effectiveDueAtMs - nowMs + FISH_AUTORELOAD_SAFETY_MS);
         long cycleToken = effectiveDueAtMs;
-        Log.d(TAG, "AUTO_FISH_TRACE act2 cooldown=" + cooldownSec + "s, prevNeverTimerDelta="
+        AppLog.d(TAG, "AUTO_FISH_TRACE act2 cooldown=" + cooldownSec + "s, prevNeverTimerDelta="
                 + Math.max(0L, prevNeverTimerMs - nowMs) + "ms, schedule next cycle in " + delayMs + "ms");
         activity.runOnUiThread(() -> webView.postDelayed(
                 () -> kickFishCycleAttempt(cycleToken, 1),
@@ -534,21 +533,21 @@ public final class FishAjaxPhp {
             Matcher m = Pattern.compile("\\[2,(\\d+)\\]").matcher(sec4);
             if (m.find()) {
                 int val = ParseUtils.parseIntSafe(m.group(1));
-                Log.d(TAG, "AUTO_FISH_TRACE extractCooldown: section[4]=" + sec4
+                AppLog.d(TAG, "AUTO_FISH_TRACE extractCooldown: section[4]=" + sec4
                         + " → " + val + "s (sections=" + sections.length + ")");
                 return val;
             }
-            Log.w(TAG, "AUTO_FISH_TRACE extractCooldown: section[4]=" + sec4
+            AppLog.w(TAG, "AUTO_FISH_TRACE extractCooldown: section[4]=" + sec4
                     + " → parse failed (sections=" + sections.length + ")");
         }
         // Fallback: regex по полному HTML
         Matcher matcher = FISH_COOLDOWN_PATTERN.matcher(html);
         if (!matcher.find()) {
-            Log.w(TAG, "AUTO_FISH_TRACE extractCooldown: no match in " + html.length() + " chars");
+            AppLog.w(TAG, "AUTO_FISH_TRACE extractCooldown: no match in " + html.length() + " chars");
             return 0;
         }
         int val = ParseUtils.parseIntSafe(matcher.group(1));
-        Log.d(TAG, "AUTO_FISH_TRACE extractCooldown: fallback regex → " + val + "s");
+        AppLog.d(TAG, "AUTO_FISH_TRACE extractCooldown: fallback regex → " + val + "s");
         return val;
     }
 
@@ -805,11 +804,11 @@ public final class FishAjaxPhp {
             if (vcode != null && !vcode.isEmpty()) {
                 url.append("&vcode=").append(vcode);
             } else {
-                Log.w(TAG, "⚠️ AUTO_FISH_TRACE recovery bootstrap: vcode not available from SessionManager");
+                AppLog.w(TAG, "⚠️ AUTO_FISH_TRACE recovery bootstrap: vcode not available from SessionManager");
             }
             url.append("&reason=").append(safeReason);
             url.append("&ts=").append(System.currentTimeMillis());
-            Log.d(TAG, "AUTO_FISH_TRACE recovery bootstrap: " + url);
+            AppLog.d(TAG, "AUTO_FISH_TRACE recovery bootstrap: " + url);
             webView.loadUrl(url.toString());
         });
     }
@@ -1127,7 +1126,7 @@ public final class FishAjaxPhp {
             
             if (percentUsed >= MASS_CRITICAL_THRESHOLD) {
                 // КРИТИЧЕСКИЙ уровень - инвентарь практически полный
-                Log.w(TAG, String.format(
+                AppLog.w(TAG, String.format(
                     "❌ FISH_MASS_CRITICAL: %%.1f%% usage detected (%.2f/%.2f). " +
                     "Bait cast blocked - would cause inventory overflow!",
                     percentUsed, newMassAfterCast, maxMass));
@@ -1140,7 +1139,7 @@ public final class FishAjaxPhp {
             
             if (percentUsed >= MASS_WARNING_THRESHOLD) {
                 // ПРЕДУПРЕДИТЕЛЬНЫЙ уровень - велик шанс вброса в бой сервером
-                Log.w(TAG, String.format(
+                AppLog.w(TAG, String.format(
                     "⚠️ FISH_MASS_WARNING: %.1f%% usage detected (%.2f/%.2f). " +
                     "Approaching server overflow threshold - initiating rod replacement.",
                     percentUsed, newMassAfterCast, maxMass));
@@ -1152,7 +1151,7 @@ public final class FishAjaxPhp {
             }
             
             // Масса в норме
-            Log.d(TAG, String.format(
+            AppLog.d(TAG, String.format(
                 "✅ FISH_MASS_OK: %.1f%% usage (%.2f/%.2f). Bait cast permissible.",
                 percentUsed, newMassAfterCast, maxMass));
             return true;
@@ -1266,7 +1265,7 @@ public final class FishAjaxPhp {
             double next = cur + delta;
             AppVars.AutoFishMassa = formatDouble(next) + "/" + split[1].trim();
         } catch (Exception e) {
-            Log.w(TAG, "AUTO_FISH_TRACE mass update failed", e);
+            AppLog.w(TAG, "AUTO_FISH_TRACE mass update failed", e);
         }
     }
 
@@ -1437,7 +1436,7 @@ public final class FishAjaxPhp {
                 AppVars.Profile.AutoFish = false;
             }
         } catch (Exception e) {
-            Log.w(TAG, "AUTO_FISH_TRACE disable failed", e);
+            AppLog.w(TAG, "AUTO_FISH_TRACE disable failed", e);
             if (AppVars.Profile != null) {
                 AppVars.Profile.AutoFish = false;
             }
@@ -1648,14 +1647,14 @@ public final class FishAjaxPhp {
      */
     public static void executeFishingCycleCore() {
         if (!isAutoFishEnabled()) {
-            Log.d(TAG, "AUTO_FISH_TRACE executeFishingCycleCore: AutoFish not enabled");
+            AppLog.d(TAG, "AUTO_FISH_TRACE executeFishingCycleCore: AutoFish not enabled");
             return;
         }
 
         // КРИТИЧНО: Если озеро считается испорченным (была ошибка vcode или смена контекста)
         // - очищаем его и перезагружаем для свежего vcode
         if (AppVars.FishLakeShouldBeRefreshed) {
-            Log.w(TAG, "AUTO_FISH_TRACE executeFishingCycleCore: lake marked as corrupted, refreshing...");
+            AppLog.w(TAG, "AUTO_FISH_TRACE executeFishingCycleCore: lake marked as corrupted, refreshing...");
             AppVars.FishLakeShouldBeRefreshed = false;
             AppVars.ContentLakeHtml = "";
             AppVars.ContentLakeHtmlLastUpdateAtMs = 0;
@@ -1668,7 +1667,7 @@ public final class FishAjaxPhp {
         // Если озеро кэшировано давно, перезагружаем его для свежего vcode
         long lakeAgeMs = System.currentTimeMillis() - AppVars.ContentLakeHtmlLastUpdateAtMs;
         if (lakeAgeMs > 120_000) {  // 120 сек = 2 минуты
-            Log.w(TAG, "AUTO_FISH_TRACE executeFishingCycleCore: lake cache too old (age=" + lakeAgeMs + "ms), requesting fresh lake");
+            AppLog.w(TAG, "AUTO_FISH_TRACE executeFishingCycleCore: lake cache too old (age=" + lakeAgeMs + "ms), requesting fresh lake");
             AppVars.ContentLakeHtml = "";  // очищаем кэш
             AppVars.ContentLakeHtmlLastUpdateAtMs = 0;
             requestAutoFishBootstrap("lake_cache_expired");
@@ -1677,7 +1676,7 @@ public final class FishAjaxPhp {
 
         String lakeHtml = AppVars.ContentLakeHtml;
         if (lakeHtml == null || lakeHtml.isEmpty()) {
-            Log.w(TAG, "AUTO_FISH_TRACE executeFishingCycleCore: lake HTML is empty, bootstrapping...");
+            AppLog.w(TAG, "AUTO_FISH_TRACE executeFishingCycleCore: lake HTML is empty, bootstrapping...");
             requestAutoFishBootstrap("missing_lake_html");
             return;
         }
@@ -1686,26 +1685,26 @@ public final class FishAjaxPhp {
             // Парсим озеро один раз
             LakeParseResult lakeResult = mainPhpAutoFishPrepareFromLakeAndroid(lakeHtml);
             if (lakeResult == null || lakeResult.vcode.isEmpty() || lakeResult.lakeid <= 0) {
-                Log.w(TAG, "AUTO_FISH_TRACE executeFishingCycleCore: failed to parse lake, requesting bootstrap");
+                AppLog.w(TAG, "AUTO_FISH_TRACE executeFishingCycleCore: failed to parse lake, requesting bootstrap");
                 requestAutoFishBootstrap("lake_parse_fail");
                 return;
             }
 
-            Log.d(TAG, "AUTO_FISH_TRACE executeFishingCycleCore: lake parsed, vcode="
+            AppLog.d(TAG, "AUTO_FISH_TRACE executeFishingCycleCore: lake parsed, vcode="
                     + (lakeResult.vcode.length() > 8 ? lakeResult.vcode.substring(0, 8) + "..." : lakeResult.vcode)
                     + ", lakeid=" + lakeResult.lakeid);
 
             // Выбраем приманку из озера
             BaitSelectionResult baitResult = selectBaitFromLakeHtmlAndroid(lakeHtml);
             if (baitResult == null || !baitResult.isAvailable) {
-                Log.w(TAG, "AUTO_FISH_TRACE executeFishingCycleCore: no available bait, reason="
+                AppLog.w(TAG, "AUTO_FISH_TRACE executeFishingCycleCore: no available bait, reason="
                         + (baitResult == null ? "null" : baitResult.reason));
                 disableAutoFish("Нет доступной приманки в озере: " + 
                         (baitResult == null ? "parse fail" : baitResult.reason));
                 return;
             }
 
-            Log.d(TAG, "AUTO_FISH_TRACE executeFishingCycleCore: bait selected, bait_id="
+            AppLog.d(TAG, "AUTO_FISH_TRACE executeFishingCycleCore: bait selected, bait_id="
                     + baitResult.bait_id + ", available_count=" + baitResult.available_count);
 
             // ⚠️ ВАЖНО: VCode больше НЕ кешируется локально в AppVars.FishCurrentVcode.
@@ -1730,7 +1729,7 @@ public final class FishAjaxPhp {
             }
 
         } catch (Exception e) {
-            Log.e(TAG, "AUTO_FISH_TRACE executeFishingCycleCore: exception", e);
+            AppLog.e(TAG, "AUTO_FISH_TRACE executeFishingCycleCore: exception", e);
             requestAutoFishBootstrap("cycle_core_exception");
         }
     }
@@ -1747,7 +1746,7 @@ public final class FishAjaxPhp {
      */
     private static LakeParseResult mainPhpAutoFishPrepareFromLakeAndroid(String lakeHtml) {
         if (lakeHtml == null || lakeHtml.isEmpty()) {
-            Log.d(TAG, "AUTO_FISH_TRACE mainPhpAutoFishPrepareFromLakeAndroid: null html");
+            AppLog.d(TAG, "AUTO_FISH_TRACE mainPhpAutoFishPrepareFromLakeAndroid: null html");
             return null;
         }
 
@@ -1778,7 +1777,7 @@ public final class FishAjaxPhp {
                 }
             }
 
-            Log.d(TAG, "AUTO_FISH_TRACE mainPhpAutoFishPrepareFromLakeAndroid: "
+            AppLog.d(TAG, "AUTO_FISH_TRACE mainPhpAutoFishPrepareFromLakeAndroid: "
                     + "vcode=" + (result.vcode.length() > 8 ? result.vcode.substring(0, 8) + "..." : result.vcode)
                     + ", lakeid=" + result.lakeid
                     + ", act_list_size=" + result.act_list_fields.size());
@@ -1786,7 +1785,7 @@ public final class FishAjaxPhp {
             return result;
 
         } catch (Exception e) {
-            Log.e(TAG, "AUTO_FISH_TRACE mainPhpAutoFishPrepareFromLakeAndroid: parse exception", e);
+            AppLog.e(TAG, "AUTO_FISH_TRACE mainPhpAutoFishPrepareFromLakeAndroid: parse exception", e);
             return null;
         }
     }
@@ -1805,7 +1804,7 @@ public final class FishAjaxPhp {
      */
     private static BaitSelectionResult selectBaitFromLakeHtmlAndroid(String lakeHtml) {
         if (lakeHtml == null || lakeHtml.isEmpty()) {
-            Log.d(TAG, "AUTO_FISH_TRACE selectBaitFromLakeHtmlAndroid: null html");
+            AppLog.d(TAG, "AUTO_FISH_TRACE selectBaitFromLakeHtmlAndroid: null html");
             return new BaitSelectionResult(-1, 0, false, "empty_lake_html");
         }
 
@@ -1831,13 +1830,13 @@ public final class FishAjaxPhp {
                     info.stock_count = baitsAvailableAtLake;
                     availableBaits.add(info);
 
-                    Log.d(TAG, "AUTO_FISH_TRACE selectBaitFromLakeHtmlAndroid: found bait, id="
+                    AppLog.d(TAG, "AUTO_FISH_TRACE selectBaitFromLakeHtmlAndroid: found bait, id="
                             + baitId + ", name=" + info.name + ", available=" + baitsAvailableAtLake);
                 }
             }
 
             if (availableBaits.isEmpty()) {
-                Log.w(TAG, "AUTO_FISH_TRACE selectBaitFromLakeHtmlAndroid: no available baits found");
+                AppLog.w(TAG, "AUTO_FISH_TRACE selectBaitFromLakeHtmlAndroid: no available baits found");
                 return new BaitSelectionResult(-1, 0, false, "no_baits_in_lake");
             }
 
@@ -1849,13 +1848,13 @@ public final class FishAjaxPhp {
                 }
             }
 
-            Log.d(TAG, "AUTO_FISH_TRACE selectBaitFromLakeHtmlAndroid: selected bait, id="
+            AppLog.d(TAG, "AUTO_FISH_TRACE selectBaitFromLakeHtmlAndroid: selected bait, id="
                     + selectedBait.id + ", name=" + selectedBait.name + ", stock=" + selectedBait.stock_count);
 
             return new BaitSelectionResult(selectedBait.id, selectedBait.stock_count, true, "ok");
 
         } catch (Exception e) {
-            Log.e(TAG, "AUTO_FISH_TRACE selectBaitFromLakeHtmlAndroid: exception", e);
+            AppLog.e(TAG, "AUTO_FISH_TRACE selectBaitFromLakeHtmlAndroid: exception", e);
             return new BaitSelectionResult(-1, 0, false, "parse_exception: " + e.getMessage());
         }
     }
@@ -1873,13 +1872,13 @@ public final class FishAjaxPhp {
      */
     private static void scheduleNextFishingCycleAttempt(String lastResultStatus) {
         if (!isAutoFishEnabled()) {
-            Log.d(TAG, "AUTO_FISH_TRACE scheduleNextFishingCycleAttempt: AutoFish disabled");
+            AppLog.d(TAG, "AUTO_FISH_TRACE scheduleNextFishingCycleAttempt: AutoFish disabled");
             return;
         }
 
         MainActivity activity = getMainActivityOrNull();
         if (activity == null) {
-            Log.w(TAG, "AUTO_FISH_TRACE scheduleNextFishingCycleAttempt: MainActivity not available");
+            AppLog.w(TAG, "AUTO_FISH_TRACE scheduleNextFishingCycleAttempt: MainActivity not available");
             return;
         }
 
@@ -1911,13 +1910,13 @@ public final class FishAjaxPhp {
                 return;
             }
 
-            Log.d(TAG, "AUTO_FISH_TRACE scheduleNextFishingCycleAttempt: scheduled in " + delayMs
+            AppLog.d(TAG, "AUTO_FISH_TRACE scheduleNextFishingCycleAttempt: scheduled in " + delayMs
                     + "ms (status=" + lastResultStatus + ")");
 
             webView.postDelayed(
                     () -> {
                         if (isAutoFishEnabled()) {
-                            Log.d(TAG, "AUTO_FISH_TRACE scheduled cycle attempt triggered");
+                            AppLog.d(TAG, "AUTO_FISH_TRACE scheduled cycle attempt triggered");
                             executeFishingCycleCore();
                         }
                     },
@@ -1934,24 +1933,24 @@ public final class FishAjaxPhp {
     private static void sendFishAct1RequestWithLake(String vcode, int lakeid, int baitId) {
         MainActivity activity = getMainActivityOrNull();
         if (activity == null) {
-            Log.w(TAG, "AUTO_FISH_TRACE sendFishAct1RequestWithLake: MainActivity not available");
+            AppLog.w(TAG, "AUTO_FISH_TRACE sendFishAct1RequestWithLake: MainActivity not available");
             return;
         }
 
         try {
             WebView webView = activity.getMainWebView();
             if (webView == null) {
-                Log.w(TAG, "AUTO_FISH_TRACE sendFishAct1RequestWithLake: WebView not available");
+                AppLog.w(TAG, "AUTO_FISH_TRACE sendFishAct1RequestWithLake: WebView not available");
                 return;
             }
 
             String url = "http://neverlands.ru/gameplay/ajax/fish_ajax.php?act=1&r=" + System.currentTimeMillis();
-            Log.d(TAG, "AUTO_FISH_TRACE sendFishAct1RequestWithLake: sending " + url);
+            AppLog.d(TAG, "AUTO_FISH_TRACE sendFishAct1RequestWithLake: sending " + url);
 
             webView.loadUrl(url);
 
         } catch (Exception e) {
-            Log.e(TAG, "AUTO_FISH_TRACE sendFishAct1RequestWithLake: exception", e);
+            AppLog.e(TAG, "AUTO_FISH_TRACE sendFishAct1RequestWithLake: exception", e);
             requestAutoFishBootstrap("act1_send_fail");
         }
     }
@@ -2256,14 +2255,14 @@ public final class FishAjaxPhp {
             // Проверяем настройку FishAutoWear - включено ли автооформление
             boolean autoWearEnabled = AppVars.Profile != null && AppVars.Profile.FishAutoWear;
             if (!autoWearEnabled) {
-                Log.d(TAG, "FISH_GEAR_AUTOWEAR_DISABLED: не будем одевать удочку (настройка отключена)");
+                AppLog.d(TAG, "FISH_GEAR_AUTOWEAR_DISABLED: не будем одевать удочку (настройка отключена)");
                 return false;
             }
 
             // Проверяем есть ли удочка в руке 1
             if (!gear.empty1 && gear.isRodWorn(1)) {
                 // Удочка есть в руке 1 и она не пуста
-                Log.d(TAG, "FISH_GEAR_OK_HAND1: удочка одета в руке 1");
+                AppLog.d(TAG, "FISH_GEAR_OK_HAND1: удочка одета в руке 1");
                 return false;
             }
 
@@ -2319,19 +2318,19 @@ public final class FishAjaxPhp {
     private static void executeWearLink(String wearUrl, String rodName) {
         try {
             if (AppVars.mainActivity == null || AppVars.mainActivity.get() == null) {
-                Log.w(TAG, "executeWearLink: mainActivity is null, cannot wear");
+                AppLog.w(TAG, "executeWearLink: mainActivity is null, cannot wear");
                 return;
             }
 
             MainActivity activity = AppVars.mainActivity.get();
             if (activity == null) {
-                Log.w(TAG, "executeWearLink: activity reference invalid");
+                AppLog.w(TAG, "executeWearLink: activity reference invalid");
                 return;
             }
 
             android.webkit.WebView webView = activity.getMainWebView();
             if (webView == null) {
-                Log.w(TAG, "executeWearLink: mainWebView is null");
+                AppLog.w(TAG, "executeWearLink: mainWebView is null");
                 return;
             }
 
@@ -3500,7 +3499,7 @@ public final class FishAjaxPhp {
             if (!matchedRadio.toLowerCase(Locale.ROOT).contains("checked")) {
                 String replacedRadio = matchedRadio.replaceAll(">\\s*$", " checked>");
                 html = html.substring(0, m.start()) + replacedRadio + html.substring(m.end());
-                Log.d(TAG, "AUTO_FISH_TRACE mainPhpAutoFishPrepare: added checked to primid=" + primid);
+                AppLog.d(TAG, "AUTO_FISH_TRACE mainPhpAutoFishPrepare: added checked to primid=" + primid);
             }
         }
         AppVars.FightLink = "http://neverlands.ru/main.php?get_id=" + getid
@@ -3509,7 +3508,7 @@ public final class FishAjaxPhp {
                 + "&primid=" + primid
                 + (AppVars.CodeAddress == null || AppVars.CodeAddress.isEmpty() ? "" : "&code=????")
                 + "&vcode=" + vcode;
-        Log.d(TAG, "AUTO_FISH_TRACE prepared FightLink=" + AppVars.FightLink
+        AppLog.d(TAG, "AUTO_FISH_TRACE prepared FightLink=" + AppVars.FightLink
                 + ", captcha=" + (AppVars.CodeAddress != null && !AppVars.CodeAddress.isEmpty())
                 + ", primid=" + primid);
         return html;

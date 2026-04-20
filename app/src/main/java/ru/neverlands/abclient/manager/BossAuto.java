@@ -269,7 +269,7 @@ final class BossAuto {
             owner.requestCharacterSyncForAutoFunctionEnableInternal("auto_boss");
             writeBossChat("Режим включен. Ожидаем системные сообщения о Боссах.");
         }
-        Log.d(TAG, TRACE_PREFIX + " setAutoBossEnabled=" + enabled);
+        AppLog.d(TAG, TRACE_PREFIX + " setAutoBossEnabled=" + enabled);
         owner.syncBackgroundServiceInternal("setAutoBossEnabled(" + enabled + ")");
         owner.requestQuickButtonsRefreshInternal("setAutoBossEnabled(" + enabled + ")");
     }
@@ -310,7 +310,7 @@ final class BossAuto {
                 currentStage = stage;
             }
             if (currentStage == BossStage.WAIT_FIGHT_START || currentStage == BossStage.FIGHT_IN_PROGRESS) {
-                Log.d(TAG, TRACE_PREFIX + " fight completed message detected");
+                AppLog.d(TAG, TRACE_PREFIX + " fight completed message detected");
                 startReturnOrRestore("fight_completed_message");
                 return;
             }
@@ -458,7 +458,7 @@ final class BossAuto {
 
         synchronized (lock) {
             if (dedupKey.equals(lastEventKey) && (now - lastEventAtMs) < EVENT_DEDUP_WINDOW_MS) {
-                Log.d(TAG, TRACE_PREFIX + " skip duplicate event: key=" + dedupKey);
+                AppLog.d(TAG, TRACE_PREFIX + " skip duplicate event: key=" + dedupKey);
                 return;
             }
             lastEventKey = dedupKey;
@@ -473,10 +473,10 @@ final class BossAuto {
         }
         if (currentStage != BossStage.IDLE) {
             if (normalizeNick(currentTarget).equalsIgnoreCase(normalizedTarget)) {
-                Log.d(TAG, TRACE_PREFIX + " scenario already active for target=" + normalizedTarget);
+                AppLog.d(TAG, TRACE_PREFIX + " scenario already active for target=" + normalizedTarget);
                 return;
             }
-            Log.d(TAG, TRACE_PREFIX + " new event while active, replace scenario. oldTarget=" + currentTarget
+            AppLog.d(TAG, TRACE_PREFIX + " new event while active, replace scenario. oldTarget=" + currentTarget
                     + ", newTarget=" + normalizedTarget);
             stopAndRestore("replace_by_new_event", true);
         }
@@ -487,7 +487,7 @@ final class BossAuto {
         String selfClanToken = resolveSelfClanTokenWithFallback(selfSnapshot);
         boolean trackCurrentWarsEnabled = isAutoBossTrackCurrentWarsEnabled();
 
-        Log.d(TAG, TRACE_PREFIX + " clan filters: target=" + normalizedTarget
+        AppLog.d(TAG, TRACE_PREFIX + " clan filters: target=" + normalizedTarget
                 + ", trackCurrentWars=" + trackCurrentWarsEnabled
                 + ", targetClan=" + targetClanToken
                 + ", selfClan=" + selfClanToken);
@@ -506,7 +506,7 @@ final class BossAuto {
                 && !isEmpty(selfClanToken)
                 && ClanWarsManager.getInstance(appContext).isClanTokenInCurrentWars(selfClanToken)) {
             writeBossChat("Движение к цели остановлено — наш персонаж участвует в текущей клановой войне.");
-            Log.d(TAG, TRACE_PREFIX + " wars filter denied by self clan: selfClan=" + selfClanToken
+            AppLog.d(TAG, TRACE_PREFIX + " wars filter denied by self clan: selfClan=" + selfClanToken
                     + ", target=" + normalizedTarget);
             return;
         }
@@ -518,15 +518,15 @@ final class BossAuto {
             askTargetOnceIfEnabled(normalizedTarget);
             writeBossChat("Движение к цели остановлено — цель " + deniedTargetHtml
                     + " состоит в клане, участвующем в текущей клановой войне.");
-            Log.d(TAG, TRACE_PREFIX + " wars filter denied by wars list: target=" + normalizedTarget
+            AppLog.d(TAG, TRACE_PREFIX + " wars filter denied by wars list: target=" + normalizedTarget
                     + ", targetClan=" + targetClanToken);
             return;
         }
         if (trackCurrentWarsEnabled) {
-            Log.d(TAG, TRACE_PREFIX + " wars filter passed: target=" + normalizedTarget
+            AppLog.d(TAG, TRACE_PREFIX + " wars filter passed: target=" + normalizedTarget
                     + ", targetClan=" + targetClanToken);
         } else {
-            Log.d(TAG, TRACE_PREFIX + " wars filter disabled by settings: target=" + normalizedTarget);
+            AppLog.d(TAG, TRACE_PREFIX + " wars filter disabled by settings: target=" + normalizedTarget);
         }
 
         BossScenarioSnapshot newSnapshot = captureSnapshot();
@@ -584,7 +584,7 @@ final class BossAuto {
             return;
         }
 
-        Log.d(TAG, TRACE_PREFIX + " target cell hint from chat: sender=" + normalizedSender + ", cell=" + cellRegNum);
+        AppLog.d(TAG, TRACE_PREFIX + " target cell hint from chat: sender=" + normalizedSender + ", cell=" + cellRegNum);
         writeBossChat("Получен ответ цели: клетка " + cellRegNum + ". Перестраиваем поиск.");
         owner.setAutoCompassManualCellsCsv(cellRegNum);
         owner.startSettingsCompassTargetSearch(target, "auto_boss_reply_cell_hint");
@@ -649,7 +649,7 @@ final class BossAuto {
         builder.append(".");
         FastActionManager.writeChatMsg(builder.toString());
         FastActionManager.fastAttackZas(castTarget);
-        Log.d(TAG, TRACE_PREFIX + " protection scroll sent: target=" + castTarget
+        AppLog.d(TAG, TRACE_PREFIX + " protection scroll sent: target=" + castTarget
                 + ", attempts=" + protectionAttempts);
     }
 
@@ -671,7 +671,7 @@ final class BossAuto {
                 stageStartedAtMs = System.currentTimeMillis();
             }
             writeBossChat("Бой завершен, возвращаемся на исходную клетку " + origin + ".");
-            Log.d(TAG, TRACE_PREFIX + " return to origin started: reason=" + reason + ", origin=" + origin);
+            AppLog.d(TAG, TRACE_PREFIX + " return to origin started: reason=" + reason + ", origin=" + origin);
             return;
         }
         stopAndRestore(reason, true);
@@ -747,7 +747,7 @@ final class BossAuto {
         } else {
             writeBossChat("Сценарий завершен (" + reason + ").");
         }
-        Log.d(TAG, TRACE_PREFIX + " scenario stopped: reason=" + reason);
+        AppLog.d(TAG, TRACE_PREFIX + " scenario stopped: reason=" + reason);
     }
 
     /**
@@ -846,7 +846,7 @@ final class BossAuto {
                     || (lower.contains("монстр") && lower.contains("напал на игрока"));
             if (bossLikeMessage) {
                 String snippet = plain.length() > 280 ? plain.substring(0, 280) + "..." : plain;
-                Log.d(TAG, TRACE_PREFIX + " parse miss boss-event: " + snippet);
+                AppLog.d(TAG, TRACE_PREFIX + " parse miss boss-event: " + snippet);
             }
             return null;
         }
@@ -856,7 +856,7 @@ final class BossAuto {
         if (isEmpty(target)) {
             return null;
         }
-        Log.d(TAG, TRACE_PREFIX + " parse boss-event: rawTarget=" + rawTarget
+        AppLog.d(TAG, TRACE_PREFIX + " parse boss-event: rawTarget=" + rawTarget
                 + ", normalizedTarget=" + target + ", boss=" + boss);
         return new BossEvent(boss, target);
     }
@@ -922,7 +922,7 @@ final class BossAuto {
                 return resolved.locationLabel;
             }
         } catch (Exception e) {
-            Log.w(TAG, TRACE_PREFIX + " resolveTargetLocationLabel failed: target=" + targetNick, e);
+            AppLog.w(TAG, TRACE_PREFIX + " resolveTargetLocationLabel failed: target=" + targetNick, e);
         }
         return owner.getAutoCompassLastLocationLabel();
     }
@@ -944,7 +944,7 @@ final class BossAuto {
             AppLog.d(TAG, "INFO_API_TRACE stage=info_api_runtime_call, source_module=" + source + ", nick=" + nick);
             return NeverApi.getPinfoCompassSnapshotFromInfoApi(nick, source);
         } catch (Exception e) {
-            Log.w(TAG, TRACE_PREFIX + " snapshot request failed: nick=" + nick, e);
+            AppLog.w(TAG, TRACE_PREFIX + " snapshot request failed: nick=" + nick, e);
             return null;
         }
     }
@@ -968,7 +968,7 @@ final class BossAuto {
             NeverApi.UserInfo info = NeverApi.getAll(targetNick);
             return normalizeFightFid(info == null ? "" : info.fightLog);
         } catch (Exception e) {
-            Log.w(TAG, TRACE_PREFIX + " failed to resolve fight fid via getAll: target=" + targetNick, e);
+            AppLog.w(TAG, TRACE_PREFIX + " failed to resolve fight fid via getAll: target=" + targetNick, e);
             return "";
         }
     }
@@ -1004,14 +1004,14 @@ final class BossAuto {
             if (!liveToken.equals(cachedSelfClanToken)) {
                 cachedSelfClanToken = liveToken;
                 prefs.edit().putString(PREF_AUTO_BOSS_SELF_CLAN_TOKEN_CACHE, liveToken).apply();
-                Log.d(TAG, TRACE_PREFIX + " self clan token cache update: " + liveToken);
+                AppLog.d(TAG, TRACE_PREFIX + " self clan token cache update: " + liveToken);
             }
             return liveToken;
         }
 
         String cached = normalizeClanToken(cachedSelfClanToken);
         if (!isEmpty(cached)) {
-            Log.d(TAG, TRACE_PREFIX + " self clan token fallback from runtime cache: " + cached);
+            AppLog.d(TAG, TRACE_PREFIX + " self clan token fallback from runtime cache: " + cached);
             return cached;
         }
 
@@ -1020,7 +1020,7 @@ final class BossAuto {
         );
         if (!isEmpty(persistentCache)) {
             cachedSelfClanToken = persistentCache;
-            Log.d(TAG, TRACE_PREFIX + " self clan token fallback from prefs cache: " + persistentCache);
+            AppLog.d(TAG, TRACE_PREFIX + " self clan token fallback from prefs cache: " + persistentCache);
             return persistentCache;
         }
         return "";
@@ -1175,7 +1175,7 @@ final class BossAuto {
                     targetAskNextAttemptAtMs = now + TARGET_CHAT_ASK_RETRY_MS;
                 }
             }
-            Log.d(TAG, TRACE_PREFIX + " ask target delayed: chat frame not ready, target=" + target
+            AppLog.d(TAG, TRACE_PREFIX + " ask target delayed: chat frame not ready, target=" + target
                     + ", attempt=" + (attempts + 1));
             return;
         }
@@ -1185,13 +1185,13 @@ final class BossAuto {
         final String privateMsg = message;
         new Handler(Looper.getMainLooper()).postDelayed(() -> {
             Chat.sendMessageToServer(privateMsg);
-            Log.d(TAG, TRACE_PREFIX + " ask target sent (delayed): target=" + target + ", message=" + privateMsg);
+            AppLog.d(TAG, TRACE_PREFIX + " ask target sent (delayed): target=" + target + ", message=" + privateMsg);
         }, CLAN_PRIVATE_MESSAGE_DELAY_MS);
         synchronized (lock) {
             targetAskAttempts = TARGET_CHAT_ASK_MAX_ATTEMPTS;
             targetAskNextAttemptAtMs = 0L;
         }
-        Log.d(TAG, TRACE_PREFIX + " ask target scheduled (500ms delay): target=" + target);
+        AppLog.d(TAG, TRACE_PREFIX + " ask target scheduled (500ms delay): target=" + target);
     }
 
     /**
@@ -1206,7 +1206,7 @@ final class BossAuto {
             return;
         }
         if (!isChatSendReady()) {
-            Log.d(TAG, TRACE_PREFIX + " ask target skipped (single): chat frame not ready, target=" + normalizedTarget);
+            AppLog.d(TAG, TRACE_PREFIX + " ask target skipped (single): chat frame not ready, target=" + normalizedTarget);
             return;
         }
         String message = "%<" + normalizedTarget + "> Подскажи на какой клетке Босс?";
@@ -1352,7 +1352,7 @@ final class BossAuto {
             }
         }
         if (isEmpty(latestFid) && missingTicks == 1) {
-            Log.d(TAG, TRACE_PREFIX + " target fight fid missing, wait grace tick: target=" + target);
+            AppLog.d(TAG, TRACE_PREFIX + " target fight fid missing, wait grace tick: target=" + target);
         }
     }
 
@@ -1388,7 +1388,7 @@ final class BossAuto {
         try {
             flogHtml = NeverApi.getFlog(fid);
         } catch (Exception e) {
-            Log.w(TAG, TRACE_PREFIX + " failed to load flog for fid=" + fid, e);
+            AppLog.w(TAG, TRACE_PREFIX + " failed to load flog for fid=" + fid, e);
             return target;
         }
         if (isEmpty(flogHtml)) {
@@ -1638,7 +1638,7 @@ final class BossAuto {
                 cellsCsv = safeTrim(resolved.cellsCsv);
             }
         } catch (Exception e) {
-            Log.w(TAG, TRACE_PREFIX + " clan notify resolve failed: target=" + normalizedTarget, e);
+            AppLog.w(TAG, TRACE_PREFIX + " clan notify resolve failed: target=" + normalizedTarget, e);
         }
         if (isEmpty(cellsCsv)) {
             cellsCsv = safeTrim(owner.getAutoCompassCellsCsv());
@@ -1656,7 +1656,7 @@ final class BossAuto {
         String message = buildClanBossEventMessage(safeBossName, cellsCsv, fightPart, normalizedTarget);
         boolean chatReady = isChatSendReady();
         if (!chatReady) {
-            Log.w(TAG, TRACE_PREFIX + " clan notify event CANCELED: chatButtonsWebview not ready, target="
+            AppLog.w(TAG, TRACE_PREFIX + " clan notify event CANCELED: chatButtonsWebview not ready, target="
                     + normalizedTarget + ", cells=" + cellsCsv + ". Message will be retried by Chat.sendMessageToServer");
             FileLogger.log("[BossAuto.sendClanBossEventMessageIfNeeded] WebView not ready, message queued for retry: " + message.substring(0, Math.min(100, message.length())));
             writeBossChat("Клан-сообщение добавлено в очередь. Будет отправлено при подготовке чата.");
@@ -1748,7 +1748,7 @@ final class BossAuto {
      */
     private void sendClanBossFoundMessageIfNeeded() {
         if (!isAutoBossClanNotifyEnabled()) {
-            Log.d(TAG, TRACE_PREFIX + " clan notify found skipped: disabled by settings");
+            AppLog.d(TAG, TRACE_PREFIX + " clan notify found skipped: disabled by settings");
             return;
         }
         String selfClanToken;
@@ -1756,7 +1756,7 @@ final class BossAuto {
             selfClanToken = bossSelfClanToken;
         }
         if (isEmpty(normalizeClanToken(selfClanToken))) {
-            Log.d(TAG, TRACE_PREFIX + " clan notify found skipped: self clan token is empty");
+            AppLog.d(TAG, TRACE_PREFIX + " clan notify found skipped: self clan token is empty");
             writeBossChat("Отправка в клан-чат невозможна: отсутствует значок клана (selfClanToken пустой).");
             return;
         }
@@ -1772,7 +1772,7 @@ final class BossAuto {
         String message = "%clan% Босс на клетке '" + exactRegNum + "'";
         boolean chatReady = isChatSendReady();
         if (!chatReady) {
-            Log.w(TAG, TRACE_PREFIX + " clan notify found send requested while chat is not ready: cell=" + exactRegNum);
+            AppLog.w(TAG, TRACE_PREFIX + " clan notify found send requested while chat is not ready: cell=" + exactRegNum);
         }
         AppLog.d(LOG_CHAIN, TAG, "[BOSS_CLAN_FOUND_PAYLOAD] cell=" + exactRegNum
                 + ", chatReady=" + chatReady
@@ -1802,7 +1802,7 @@ final class BossAuto {
         String message = "%clan% \u041f\u043e\u0435\u0434\u0438\u043d\u043e\u043a \u0441 \u0411\u043e\u0441\u0441\u043e\u043c \u043d\u0435\u0432\u043e\u0437\u043c\u043e\u0436\u0435\u043d, \u0438\u0433\u0440\u043e\u043a \u0432 \u041a\u043b\u0430\u043d\u043e\u0432\u043e\u0439 \u0432\u043e\u0439\u043d\u0435.";
         boolean chatReady = isChatSendReady();
         if (!chatReady) {
-            Log.w(TAG, TRACE_PREFIX + " clan notify wars-denied send requested while chat is not ready");
+            AppLog.w(TAG, TRACE_PREFIX + " clan notify wars-denied send requested while chat is not ready");
         }
         Chat.sendMessageToServer(message);
         AppLog.d(LOG_CHAIN, TAG, "[BOSS_CLAN_WARS_DENY_SENT] chatReady=" + chatReady + ", msgLen=" + message.length());
@@ -1858,7 +1858,7 @@ final class BossAuto {
      */
     void setAutoBossClanNotifyEnabled(boolean enabled) {
         prefs.edit().putBoolean(PREF_AUTO_BOSS_CLAN_NOTIFY, enabled).apply();
-        Log.d(TAG, TRACE_PREFIX + " setAutoBossClanNotifyEnabled=" + enabled);
+        AppLog.d(TAG, TRACE_PREFIX + " setAutoBossClanNotifyEnabled=" + enabled);
     }
 
     /**

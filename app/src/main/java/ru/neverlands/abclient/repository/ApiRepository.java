@@ -1,5 +1,7 @@
 package ru.neverlands.abclient.repository;
 
+import ru.neverlands.abclient.utils.AppLog;
+
 import android.content.Context;
 import android.webkit.CookieManager;
 
@@ -62,10 +64,10 @@ public class ApiRepository {
         if (cookie != null && !cookie.trim().isEmpty()) {
             builder.header("Cookie", cookie);
             FileLogger.log("SESSION_COOKIE_APPLIED: url=" + url + ", bytes=" + cookie.length());
-            android.util.Log.d("ApiRepository", "SESSION_COOKIE_APPLIED: host=" + host + ", bytes=" + cookie.length());
+            AppLog.d("ApiRepository", "SESSION_COOKIE_APPLIED: host=" + host + ", bytes=" + cookie.length());
         } else {
             FileLogger.log("SESSION_COOKIE_APPLIED: url=" + url + ", bytes=0");
-            android.util.Log.w("ApiRepository", "SESSION_COOKIE_APPLIED: host=" + host + ", bytes=0");
+            AppLog.w("ApiRepository", "SESSION_COOKIE_APPLIED: host=" + host + ", bytes=0");
         }
         return builder.build();
     }

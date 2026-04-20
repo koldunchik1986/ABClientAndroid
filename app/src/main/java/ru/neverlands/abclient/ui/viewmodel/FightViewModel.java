@@ -3,7 +3,6 @@ package ru.neverlands.abclient.ui.viewmodel;
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.ViewModel;
-import android.util.Log;
 
 import ru.neverlands.abclient.utils.AppLog;
 import ru.neverlands.abclient.MainActivity;

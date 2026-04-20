@@ -1,6 +1,6 @@
 package ru.neverlands.abclient.utils;
 
-import android.util.Log;
+import ru.neverlands.abclient.utils.AppLog;
 
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -331,7 +331,7 @@ public class SessionManager {
      */
     public void cacheFightVCode(String vcode, String source) {
         if (vcode == null || vcode.isEmpty()) {
-            Log.w(TAG, "⚠️ FIGHT_CACHE_SKIP: empty vcode");
+            AppLog.w(TAG, "⚠️ FIGHT_CACHE_SKIP: empty vcode");
             return;
         }
         

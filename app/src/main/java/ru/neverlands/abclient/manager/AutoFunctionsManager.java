@@ -2,7 +2,6 @@ package ru.neverlands.abclient.manager;
 
 import android.content.Context;
 import android.content.SharedPreferences;
-import android.util.Log;
 import android.widget.Toast;
 
 import androidx.preference.PreferenceManager;
@@ -124,7 +123,7 @@ public class AutoFunctionsManager {
             boolean prefValue = prefs.getBoolean(KEY_PREFIX + "auto_fight", profileValue);
             if (prefValue != profileValue) {
                 prefs.edit().putBoolean(KEY_PREFIX + "auto_fight", profileValue).apply();
-                Log.d(TAG, "isAutoFightEnabled: sync pref from profile LezDoAutoboi=" + profileValue);
+                AppLog.d(TAG, "isAutoFightEnabled: sync pref from profile LezDoAutoboi=" + profileValue);
             }
             return profileValue;
         }
@@ -176,10 +175,10 @@ public class AutoFunctionsManager {
             AppVars.AutoFuryArmedScroll = false;
             AppVars.AutoFuryHand = "";
             AppVars.AutoFuryHandD = "";
-            Log.d(TAG, "setAutoFightEnabled: AutoFury primed (DoFury=true)");
+            AppLog.d(TAG, "setAutoFightEnabled: AutoFury primed (DoFury=true)");
         }
 
-        Log.d(TAG, "setAutoFightEnabled: " + enabled);
+        AppLog.d(TAG, "setAutoFightEnabled: " + enabled);
         syncBackgroundService("setAutoFightEnabled(" + enabled + ")");
         boolean suppressFightBootstrapBecauseAutoFish = enabled
                 && (isAutoFishEnabled() || (AppVars.Profile != null && AppVars.Profile.AutoFish));
@@ -194,7 +193,7 @@ public class AutoFunctionsManager {
         // Это необходимо для правильной работы автобоя при нежданной атаке во время навигации.
         if (AppVars.mainActivity != null && AppVars.mainActivity.get() != null) {
             AppVars.mainActivity.get().getFightViewModel().setAutoBattleActive(enabled);
-            Log.d(TAG, "setAutoFightEnabled: FightViewModel UI state synced to " + enabled);
+            AppLog.d(TAG, "setAutoFightEnabled: FightViewModel UI state synced to " + enabled);
         }
 
         // При включении делаем форсированную загрузку боевого кадра (fight.frame).
@@ -208,7 +207,7 @@ public class AutoFunctionsManager {
                         AppVars.ContentMainPhp = null;
                         AppVars.LastBoiTimer = new java.util.Date();
                         // Запрашиваем авто-удар (логика автохода в MainActivity).
-                        Log.d(TAG, "setAutoFightEnabled: immediate requestAutoTurn disabled, forcing frame reload only");
+                        AppLog.d(TAG, "setAutoFightEnabled: immediate requestAutoTurn disabled, forcing frame reload only");
                         // Прямая перезагрузка боевого фрейма, с vcode если он есть.
                         String reloadUrl = "http://neverlands.ru/main.php?get_id=56&act=10&go=inf&ab_reload_probe=1";
                         String freshVcode = SessionManager.getInstance().getValidVCodeForAction("autofight_reload");
@@ -218,14 +217,14 @@ public class AutoFunctionsManager {
                             AppLog.w(TAG, TAG, "AUTO_FISH_TRACE auto-fight bootstrap reload has no vcode");
                         }
                         reloadUrl += "&ts=" + System.currentTimeMillis();
-                        Log.d(TAG, "setAutoFightEnabled: reload fight frame " + reloadUrl);
+                        AppLog.d(TAG, "setAutoFightEnabled: reload fight frame " + reloadUrl);
                         AppVars.mainActivity.get().getMainWebView().loadUrl(reloadUrl);
                         // страховочный повтор через ~1.2с, если первый кадр ещё был ручным
                         // Страховочный повтор через ~1.2с: нужен, если первый кадр был "ручным".
                         // Удален second reload: в некоторых сессиях он провоцировал лишние перезагрузки
                         // верхнего фрейма и мешал нормальной навигации после боя.
                     } catch (Exception e) {
-                        Log.e(TAG, "setAutoFightEnabled: failed to trigger auto turn", e);
+                        AppLog.e(TAG, "setAutoFightEnabled: failed to trigger auto turn", e);
                     }
                 });
             }
@@ -256,21 +255,21 @@ public class AutoFunctionsManager {
             // При включении Авто-Рыбалки: если Авто-Бой выключен - включаем оба
             if (!isAutoFightEnabled()) {
                 setAutoFightEnabled(true);
-                Log.d(TAG, "setAutoFishEnabled: Авто-Бой также включен");
+                AppLog.d(TAG, "setAutoFishEnabled: Авто-Бой также включен");
             }
             
             // Эксклюзивные функции: выключаем Авто-Охоту, Авто-Травник, Авто-Приманку
             if (isAutoSkinEnabled()) {
                 setAutoSkinEnabled(false);
-                Log.d(TAG, "setAutoFishEnabled: Авто-Охота выключена");
+                AppLog.d(TAG, "setAutoFishEnabled: Авто-Охота выключена");
             }
             if (isAutoCutEnabled()) {
                 setAutoCutEnabled(false);
-                Log.d(TAG, "setAutoFishEnabled: Авто-Травник выключен");
+                AppLog.d(TAG, "setAutoFishEnabled: Авто-Травник выключен");
             }
             if (isAutoBaitEnabled()) {
                 setAutoBaitEnabled(false);
-                Log.d(TAG, "setAutoFishEnabled: Авто-Приманка выключена");
+                AppLog.d(TAG, "setAutoFishEnabled: Авто-Приманка выключена");
             }
 
             // C# parity (`FormMain.ButtonAutoFish_Click`): инициализируем runtime-состояние авто-рыбалки.
@@ -334,14 +333,14 @@ public class AutoFunctionsManager {
                         AppLog.w(TAG, TAG, "AUTO_FISH_TRACE cold-start bootstrap has no vcode, continue with go=10");
                     }
                     url += "&ts=" + System.currentTimeMillis();
-                    Log.d(TAG, "setAutoFishEnabled: bootstrap navigation to LAKE (go=10), url=" + url);
+                    AppLog.d(TAG, "setAutoFishEnabled: bootstrap navigation to LAKE (go=10), url=" + url);
                     AppVars.mainActivity.get().getMainWebView().loadUrl(url);
                 } catch (Exception e) {
-                    Log.e(TAG, "setAutoFishEnabled: bootstrap navigation failed", e);
+                    AppLog.e(TAG, "setAutoFishEnabled: bootstrap navigation failed", e);
                 }
             });
         }
-        Log.d(TAG, "setAutoFishEnabled: " + enabled);
+        AppLog.d(TAG, "setAutoFishEnabled: " + enabled);
         if (enabled) {
             requestCharacterSyncForAutoFunctionEnable("auto_fish");
         }
@@ -377,7 +376,7 @@ public class AutoFunctionsManager {
         boolean autoFish = isAutoFishEnabled();
         boolean autoFight = isAutoFightEnabled();
         boolean autoTreasure = isAutoTreasureEnabled();
-        Log.d(TAG, "restorePersistentAutoModesAfterLogin: autoFish=" + autoFish
+        AppLog.d(TAG, "restorePersistentAutoModesAfterLogin: autoFish=" + autoFish
                 + ", autoFight=" + autoFight
                 + ", autoTreasure=" + autoTreasure);
 
@@ -398,7 +397,7 @@ public class AutoFunctionsManager {
         AppVars.DoSearchBox = autoTreasure;
         if (!autoTreasure) {
             ExtMap.flushVisitedToDisk();
-            Log.d(TAG, "restorePersistentAutoModesAfterLogin: keep visited cache, entries="
+            AppLog.d(TAG, "restorePersistentAutoModesAfterLogin: keep visited cache, entries="
                     + AppVars.SearchBoxVisited.size());
         }
 
@@ -453,16 +452,16 @@ public class AutoFunctionsManager {
                 @Override
                 public void onSuccess(List<ClanWarsManager.WarEntry> result) {
                     int size = result == null ? 0 : result.size();
-                    Log.i(TAG, "AUTO_BOSS_TRACE: post-login wars sync ok, rows=" + size);
+                    AppLog.i(TAG, "AUTO_BOSS_TRACE: post-login wars sync ok, rows=" + size);
                 }
 
                 @Override
                 public void onFailure(String message) {
-                    Log.w(TAG, "AUTO_BOSS_TRACE: post-login wars sync failed: " + message);
+                    AppLog.w(TAG, "AUTO_BOSS_TRACE: post-login wars sync failed: " + message);
                 }
             });
         } catch (Exception e) {
-            Log.w(TAG, "AUTO_BOSS_TRACE: post-login wars sync exception", e);
+            AppLog.w(TAG, "AUTO_BOSS_TRACE: post-login wars sync exception", e);
         }
     }
 
@@ -521,7 +520,7 @@ public class AutoFunctionsManager {
 
         long now = System.currentTimeMillis();
         if ((now - lastCharacterSyncRequestedAtMs) < cooldownMs) {
-            Log.d(TAG, "AUTO_BLAZ_TRACE: skip " + CHARACTER_SYNC_LABEL
+            AppLog.d(TAG, "AUTO_BLAZ_TRACE: skip " + CHARACTER_SYNC_LABEL
                     + " (cooldown), reason=" + reason + ", cooldownMs=" + cooldownMs);
             return;
         }
@@ -535,13 +534,13 @@ public class AutoFunctionsManager {
                     + sourceModule + ", nick=" + nick + ", reason=" + reason);
             NeverApi.PinfoVitals vitals = NeverApi.getPinfoVitalsFromInfoApi(nick, sourceModule);
             if (vitals == null) {
-                Log.w(TAG, "AUTO_BLAZ_TRACE: " + CHARACTER_SYNC_LABEL
+                AppLog.w(TAG, "AUTO_BLAZ_TRACE: " + CHARACTER_SYNC_LABEL
                         + " failed (no vitals), nick=" + nick + ", reason=" + reason);
                 return;
             }
 
             CharacterVitalsManager.Snapshot snapshot = CharacterVitalsManager.updateFromPinfo(vitals, source);
-            Log.i(TAG, "AUTO_BLAZ_TRACE: " + CHARACTER_SYNC_LABEL
+            AppLog.i(TAG, "AUTO_BLAZ_TRACE: " + CHARACTER_SYNC_LABEL
                     + ", reason=" + reason
                     + ", tied=" + snapshot.tied
                     + ", hp=" + snapshot.curHp + "/" + snapshot.maxHp
@@ -581,7 +580,7 @@ public class AutoFunctionsManager {
                     Toast.LENGTH_SHORT
             ).show());
         } catch (Exception e) {
-            Log.w(TAG, "showCharacterSyncToast failed", e);
+            AppLog.w(TAG, "showCharacterSyncToast failed", e);
         }
     }
 
@@ -598,7 +597,7 @@ public class AutoFunctionsManager {
         }
 
         syncBackgroundService("restoreAutoFightRuntimeAfterLogin(" + autoFightEnabledByProfile + ")");
-        Log.d(TAG, "restoreAutoFightRuntimeAfterLogin: runtime autoboi=" + AppVars.Autoboi
+        AppLog.d(TAG, "restoreAutoFightRuntimeAfterLogin: runtime autoboi=" + AppVars.Autoboi
                 + ", profileAutoFight=" + autoFightEnabledByProfile
                 + ", allowBootstrapReload=" + allowBootstrapReload);
 
@@ -606,7 +605,7 @@ public class AutoFunctionsManager {
         // Это нужно чтобы первый probe запустился несмотря на uiForegroundLikely=true.
         if (autoFightEnabledByProfile) {
             AppVars.ProbeForceNeedAutoboi = true;
-            Log.d(TAG, "restoreAutoFightRuntimeAfterLogin: set ProbeForceNeedAutoboi flag for cold start override");
+            AppLog.d(TAG, "restoreAutoFightRuntimeAfterLogin: set ProbeForceNeedAutoboi flag for cold start override");
         }
 
         // Bootstrap после restore:
@@ -624,17 +623,17 @@ public class AutoFunctionsManager {
                     }
                     AppVars.ContentMainPhp = null;
                     AppVars.LastBoiTimer = new java.util.Date();
-                    Log.d(TAG, "restoreAutoFightRuntimeAfterLogin: forcing frame reload bootstrap");
+                    AppLog.d(TAG, "restoreAutoFightRuntimeAfterLogin: forcing frame reload bootstrap");
                     String reloadUrl = "http://neverlands.ru/main.php?get_id=56&act=10&go=inf&ab_reload_probe=1";
                     String loginRestoreVcode = SessionManager.getInstance().getValidVCodeForAction("autofight_restore_login");
                     if (loginRestoreVcode != null && !loginRestoreVcode.isEmpty()) {
                         reloadUrl += "&vcode=" + loginRestoreVcode;
                     }
                     reloadUrl += "&ts=" + System.currentTimeMillis();
-                    Log.d(TAG, "restoreAutoFightRuntimeAfterLogin: reload fight frame " + reloadUrl);
+                    AppLog.d(TAG, "restoreAutoFightRuntimeAfterLogin: reload fight frame " + reloadUrl);
                     AppVars.mainActivity.get().getMainWebView().loadUrl(reloadUrl);
                 } catch (Exception e) {
-                    Log.e(TAG, "restoreAutoFightRuntimeAfterLogin: failed to reload fight frame", e);
+                    AppLog.e(TAG, "restoreAutoFightRuntimeAfterLogin: failed to reload fight frame", e);
                 }
             });
         }
@@ -659,24 +658,24 @@ public class AutoFunctionsManager {
             // При включении: если Авто-Бой выключен - включаем его
             if (!isAutoFightEnabled()) {
                 setAutoFightEnabled(true);
-                Log.d(TAG, "setAutoBaitEnabled: Авто-Бой также включен");
+                AppLog.d(TAG, "setAutoBaitEnabled: Авто-Бой также включен");
             }
             // Эксклюзивные функции: выключаем Авто-Рыбалку, Авто-Охоту, Авто-Травник
             if (isAutoFishEnabled()) {
                 setAutoFishEnabled(false);
-                Log.d(TAG, "setAutoBaitEnabled: Авто-Рыбалка выключена");
+                AppLog.d(TAG, "setAutoBaitEnabled: Авто-Рыбалка выключена");
             }
             if (isAutoSkinEnabled()) {
                 setAutoSkinEnabled(false);
-                Log.d(TAG, "setAutoBaitEnabled: Авто-Охота выключена");
+                AppLog.d(TAG, "setAutoBaitEnabled: Авто-Охота выключена");
             }
             if (isAutoCutEnabled()) {
                 setAutoCutEnabled(false);
-                Log.d(TAG, "setAutoBaitEnabled: Авто-Травник выключен");
+                AppLog.d(TAG, "setAutoBaitEnabled: Авто-Травник выключен");
             }
         }
         prefs.edit().putBoolean(KEY_PREFIX + "auto_bait", enabled).apply();
-        Log.d(TAG, "setAutoBaitEnabled: " + enabled);
+        AppLog.d(TAG, "setAutoBaitEnabled: " + enabled);
         if (enabled) {
             requestCharacterSyncForAutoFunctionEnable("auto_bait");
         }
@@ -692,7 +691,7 @@ public class AutoFunctionsManager {
             if (profileValue != prefValue) {
                 prefs.edit().putBoolean(KEY_AUTO_SKIN, profileValue).apply();
                 applyAutoSkinRuntimeFlags(profileValue, "sync_from_profile");
-                Log.d(TAG, "isAutoSkinEnabled: sync pref from profile SkinAuto=" + profileValue);
+                AppLog.d(TAG, "isAutoSkinEnabled: sync pref from profile SkinAuto=" + profileValue);
                 return profileValue;
             }
         }
@@ -712,21 +711,21 @@ public class AutoFunctionsManager {
             // При включении Авто-Охоты: если Авто-Бой выключен - включаем оба
             if (!autoFightWasEnabled) {
                 setAutoFightEnabled(true);
-                Log.d(TAG, "setAutoSkinEnabled: Авто-Бой также включен");
+                AppLog.d(TAG, "setAutoSkinEnabled: Авто-Бой также включен");
             }
             
             // Эксклюзивные функции: выключаем Авто-Рыбалку, Авто-Травник, Авто-Приманку
             if (isAutoFishEnabled()) {
                 setAutoFishEnabled(false);
-                Log.d(TAG, "setAutoSkinEnabled: Авто-Рыбалка выключена");
+                AppLog.d(TAG, "setAutoSkinEnabled: Авто-Рыбалка выключена");
             }
             if (isAutoCutEnabled()) {
                 setAutoCutEnabled(false);
-                Log.d(TAG, "setAutoSkinEnabled: Авто-Травник выключен");
+                AppLog.d(TAG, "setAutoSkinEnabled: Авто-Травник выключен");
             }
             if (isAutoBaitEnabled()) {
                 setAutoBaitEnabled(false);
-                Log.d(TAG, "setAutoSkinEnabled: Авто-Приманка выключена");
+                AppLog.d(TAG, "setAutoSkinEnabled: Авто-Приманка выключена");
             }
         }
         
@@ -739,7 +738,7 @@ public class AutoFunctionsManager {
             AppVars.Profile.SkinAuto = enabled;
             AppVars.Profile.save(context);
         }
-        Log.d(TAG, "setAutoSkinEnabled: " + enabled);
+        AppLog.d(TAG, "setAutoSkinEnabled: " + enabled);
         if (enabled) {
             requestCharacterSyncForAutoFunctionEnable("auto_skin");
         }
@@ -758,13 +757,13 @@ public class AutoFunctionsManager {
             AppVars.AutoSkinCheckKnife = true;
             AppVars.AutoSkinArmedKnife = false;
             AppVars.AutoSkinLastChecked = System.currentTimeMillis();
-            Log.d(TAG, "applyAutoSkinRuntimeFlags: enabled, reason=" + reason);
+            AppLog.d(TAG, "applyAutoSkinRuntimeFlags: enabled, reason=" + reason);
         } else {
             AppVars.AutoSkinCheckUm = false;
             AppVars.AutoSkinCheckRes = false;
             AppVars.AutoSkinCheckKnife = false;
             AppVars.AutoSkinArmedKnife = false;
-            Log.d(TAG, "applyAutoSkinRuntimeFlags: disabled, reason=" + reason);
+            AppLog.d(TAG, "applyAutoSkinRuntimeFlags: disabled, reason=" + reason);
         }
     }
 
@@ -774,7 +773,7 @@ public class AutoFunctionsManager {
      */
     private void triggerAutoSkinCharacterCheck() {
         if (AppVars.mainActivity == null || AppVars.mainActivity.get() == null) {
-            Log.w(TAG, "triggerAutoSkinCharacterCheck: mainActivity is null");
+            AppLog.w(TAG, "triggerAutoSkinCharacterCheck: mainActivity is null");
             return;
         }
         AppVars.mainActivity.get().runOnUiThread(() -> {
@@ -787,10 +786,10 @@ public class AutoFunctionsManager {
                     AppLog.w("vcode_migration", TAG, "[VCode_MISSING] getValidVCodeForAction returned null for auto_skin_check");
                 }
                 reloadUrl += "&ts=" + System.currentTimeMillis();
-                Log.d(TAG, "triggerAutoSkinCharacterCheck: load " + reloadUrl);
+                AppLog.d(TAG, "triggerAutoSkinCharacterCheck: load " + reloadUrl);
                 AppVars.mainActivity.get().getMainWebView().loadUrl(reloadUrl);
             } catch (Exception e) {
-                Log.e(TAG, "triggerAutoSkinCharacterCheck: failed", e);
+                AppLog.e(TAG, "triggerAutoSkinCharacterCheck: failed", e);
             }
         });
     }
@@ -806,7 +805,7 @@ public class AutoFunctionsManager {
         boolean profileValue = AppVars.Profile.SkinAuto;
         prefs.edit().putBoolean(KEY_AUTO_SKIN, profileValue).apply();
         applyAutoSkinRuntimeFlags(profileValue, "constructor_sync");
-        Log.d(TAG, "syncAutoSkinWithProfileIfPresent: SkinAuto=" + profileValue);
+        AppLog.d(TAG, "syncAutoSkinWithProfileIfPresent: SkinAuto=" + profileValue);
     }
 
     /**
@@ -833,7 +832,7 @@ public class AutoFunctionsManager {
         boolean profileValue = AppVars.Profile.LezDoAutoboi;
         prefs.edit().putBoolean(KEY_PREFIX + "auto_fight", profileValue).apply();
         AppVars.Autoboi = profileValue ? AutoboiState.AutoboiOn : AutoboiState.AutoboiOff;
-        Log.d(TAG, "syncAutoFightWithProfileIfPresent: LezDoAutoboi=" + profileValue);
+        AppLog.d(TAG, "syncAutoFightWithProfileIfPresent: LezDoAutoboi=" + profileValue);
     }
 
     /**
@@ -847,7 +846,7 @@ public class AutoFunctionsManager {
         boolean profileValue = AppVars.Profile.AutoDig;
         prefs.edit().putBoolean(KEY_AUTO_TREASURE, profileValue).apply();
         AppVars.DoSearchBox = profileValue;
-        Log.d(TAG, "syncAutoTreasureWithProfileIfPresent: AutoDig=" + profileValue);
+        AppLog.d(TAG, "syncAutoTreasureWithProfileIfPresent: AutoDig=" + profileValue);
     }
     
     // === AUTO_ATTACK (Авто-Нападение) ===
@@ -877,7 +876,7 @@ public class AutoFunctionsManager {
 
         // Аналог ПК-логики: авто-нападение работает вместе со "Слежением за локацией".
         // Поэтому при включении AUTO_ATTACK автоматически поднимаем LOCATION_TRACKING.
-        Log.d(TAG, "setAutoAttackEnabled(wrapper): " + enabled + ", toolId=" + getAutoAttackToolId());
+        AppLog.d(TAG, "setAutoAttackEnabled(wrapper): " + enabled + ", toolId=" + getAutoAttackToolId());
         if (enabled && getAutoAttackToolId() > 0) {
             requestCharacterSyncForAutoFunctionEnable("auto_attack");
         }
@@ -921,7 +920,7 @@ public class AutoFunctionsManager {
             }
             requestCharacterSyncForAutoFunctionEnable("auto_attack_tool_" + safeToolId);
         }
-        Log.d(TAG, "setAutoAttackToolId: " + safeToolId);
+        AppLog.d(TAG, "setAutoAttackToolId: " + safeToolId);
         syncBackgroundService("setAutoAttackToolId(" + safeToolId + ")");
     }
 
@@ -954,7 +953,7 @@ public class AutoFunctionsManager {
                     .putInt(KEY_AUTO_ATTACK_TOOL_ID, toolId)
                     .putInt(KEY_AUTO_ATTACK_LAST_NON_ZERO_TOOL_ID, toolId)
                     .apply();
-            Log.d(TAG, "migrateLegacyAutoAttackFlagIfNeeded: legacy auto_attack=true migrated to toolId=1");
+            AppLog.d(TAG, "migrateLegacyAutoAttackFlagIfNeeded: legacy auto_attack=true migrated to toolId=1");
         } else if (toolId > 0) {
             rememberLastNonZeroAutoAttackToolId(toolId);
         }
@@ -976,7 +975,7 @@ public class AutoFunctionsManager {
     // Включение/выключение авто-невида.
     public void setAutoInvisibleEnabled(boolean enabled) {
         prefs.edit().putBoolean(KEY_PREFIX + "auto_invisible", enabled).apply();
-        Log.d(TAG, "setAutoInvisibleEnabled: " + enabled);
+        AppLog.d(TAG, "setAutoInvisibleEnabled: " + enabled);
         if (enabled) {
             requestCharacterSyncForAutoFunctionEnable("auto_invisible");
         }
@@ -1005,7 +1004,7 @@ public class AutoFunctionsManager {
             AppVars.myWalkers1 = "";
             AppVars.myWalkers2 = "";
         }
-        Log.d(TAG, "setLocationTrackingEnabled: " + enabled);
+        AppLog.d(TAG, "setLocationTrackingEnabled: " + enabled);
         syncBackgroundService("setLocationTrackingEnabled(" + enabled + ")");
 
         // При включении сразу запрашиваем room-list, чтобы RoomManager получил тик немедленно.
@@ -1018,7 +1017,7 @@ public class AutoFunctionsManager {
                         activity.requestRoomUsersRefreshSoon();
                     }
                 } catch (Exception e) {
-                    Log.w(TAG, "setLocationTrackingEnabled: room users refresh trigger failed", e);
+                    AppLog.w(TAG, "setLocationTrackingEnabled: room users refresh trigger failed", e);
                 }
             });
         }
@@ -1035,14 +1034,14 @@ public class AutoFunctionsManager {
     public void setWalkersPollIntervalSec(int sec) {
         int safe = normalizeWalkersPollIntervalSec(sec);
         prefs.edit().putInt(KEY_WALKERS_POLL_INTERVAL_SEC, safe).apply();
-        Log.d(TAG, "setWalkersPollIntervalSec: " + safe);
+        AppLog.d(TAG, "setWalkersPollIntervalSec: " + safe);
         if (AppVars.mainActivity != null && AppVars.mainActivity.get() != null) {
             ru.neverlands.abclient.MainActivity activity = AppVars.mainActivity.get();
             activity.runOnUiThread(() -> {
                 try {
                     activity.onWalkersPollingConfigChanged();
                 } catch (Exception e) {
-                    Log.w(TAG, "setWalkersPollIntervalSec: polling reschedule failed", e);
+                    AppLog.w(TAG, "setWalkersPollIntervalSec: polling reschedule failed", e);
                 }
             });
         }
@@ -1302,16 +1301,16 @@ public class AutoFunctionsManager {
             }
             activity.runOnUiThread(() -> activity.refreshQuickButtonsPanelState(reason));
         } catch (Exception e) {
-            Log.w(TAG, "requestQuickButtonsRefreshInternal failed, reason=" + reason, e);
+            AppLog.w(TAG, "requestQuickButtonsRefreshInternal failed, reason=" + reason, e);
         }
     }
 
     private void syncBackgroundService(String reason) {
         try {
             AutoModeForegroundService.syncServiceState(context, reason);
-            Log.d(TAG, BG_TRACE_PREFIX + " syncBackgroundService: " + reason);
+            AppLog.d(TAG, BG_TRACE_PREFIX + " syncBackgroundService: " + reason);
         } catch (Exception e) {
-            Log.w(TAG, BG_TRACE_PREFIX + " syncBackgroundService failed: " + reason, e);
+            AppLog.w(TAG, BG_TRACE_PREFIX + " syncBackgroundService failed: " + reason, e);
         }
     }
     
@@ -1331,7 +1330,7 @@ public class AutoFunctionsManager {
     // Включение/выключение авто-обнаружения.
     public void setAutoDetectEnabled(boolean enabled) {
         prefs.edit().putBoolean(KEY_PREFIX + "auto_detect", enabled).apply();
-        Log.d(TAG, "setAutoDetectEnabled: " + enabled);
+        AppLog.d(TAG, "setAutoDetectEnabled: " + enabled);
         if (enabled) {
             requestCharacterSyncForAutoFunctionEnable("auto_detect");
         }
@@ -1353,7 +1352,7 @@ public class AutoFunctionsManager {
     // Включение/выключение авто-тотема.
     public void setAutoSummonEnabled(boolean enabled) {
         prefs.edit().putBoolean(KEY_PREFIX + "auto_summon", enabled).apply();
-        Log.d(TAG, "setAutoSummonEnabled: " + enabled);
+        AppLog.d(TAG, "setAutoSummonEnabled: " + enabled);
         if (enabled) {
             requestCharacterSyncForAutoFunctionEnable("auto_summon");
         }
@@ -1375,7 +1374,7 @@ public class AutoFunctionsManager {
     // Включение/выключение авто-лечения.
     public void setAutoCureEnabled(boolean enabled) {
         prefs.edit().putBoolean(KEY_PREFIX + "auto_cure", enabled).apply();
-        Log.d(TAG, "setAutoCureEnabled: " + enabled);
+        AppLog.d(TAG, "setAutoCureEnabled: " + enabled);
         if (enabled) {
             requestCharacterSyncForAutoFunctionEnable("auto_cure");
         }
@@ -1389,7 +1388,7 @@ public class AutoFunctionsManager {
         try {
             return defaultPrefs().getBoolean(key, fallback);
         } catch (Exception e) {
-            Log.w(TAG, "getDefaultBoolean failed: key=" + key, e);
+            AppLog.w(TAG, "getDefaultBoolean failed: key=" + key, e);
             return fallback;
         }
     }
@@ -1398,7 +1397,7 @@ public class AutoFunctionsManager {
         try {
             defaultPrefs().edit().putBoolean(key, value).apply();
         } catch (Exception e) {
-            Log.w(TAG, "putDefaultBoolean failed: key=" + key + ", value=" + value, e);
+            AppLog.w(TAG, "putDefaultBoolean failed: key=" + key + ", value=" + value, e);
         }
     }
 
@@ -1407,7 +1406,7 @@ public class AutoFunctionsManager {
             String value = defaultPrefs().getString(key, fallback);
             return value == null ? fallback : value;
         } catch (Exception e) {
-            Log.w(TAG, "getDefaultString failed: key=" + key, e);
+            AppLog.w(TAG, "getDefaultString failed: key=" + key, e);
             return fallback;
         }
     }
@@ -1416,7 +1415,7 @@ public class AutoFunctionsManager {
         try {
             defaultPrefs().edit().putString(key, value).apply();
         } catch (Exception e) {
-            Log.w(TAG, "putDefaultString failed: key=" + key + ", value=" + value, e);
+            AppLog.w(TAG, "putDefaultString failed: key=" + key + ", value=" + value, e);
         }
     }
 
@@ -1424,7 +1423,7 @@ public class AutoFunctionsManager {
         try {
             return defaultPrefs().getInt(key, fallback);
         } catch (Exception e) {
-            Log.w(TAG, "getDefaultInt failed: key=" + key, e);
+            AppLog.w(TAG, "getDefaultInt failed: key=" + key, e);
             return fallback;
         }
     }
@@ -1433,7 +1432,7 @@ public class AutoFunctionsManager {
         try {
             defaultPrefs().edit().putInt(key, value).apply();
         } catch (Exception e) {
-            Log.w(TAG, "putDefaultInt failed: key=" + key + ", value=" + value, e);
+            AppLog.w(TAG, "putDefaultInt failed: key=" + key + ", value=" + value, e);
         }
     }
 
@@ -1572,7 +1571,7 @@ public class AutoFunctionsManager {
     // Включение/выключение авто-питья.
     public void setAutoDrinkEnabled(boolean enabled) {
         prefs.edit().putBoolean(KEY_PREFIX + "auto_drink", enabled).apply();
-        Log.d(TAG, "setAutoDrinkEnabled: " + enabled);
+        AppLog.d(TAG, "setAutoDrinkEnabled: " + enabled);
         if (enabled) {
             requestCharacterSyncForAutoFunctionEnable("auto_drink");
         }
@@ -1623,11 +1622,11 @@ public class AutoFunctionsManager {
             if (AppVars.AutoMoving) {
                 stopAutoMoving();
             }
-            Log.d(TAG, "setAutoTreasureEnabled: keep visited cache on disable, entries="
+            AppLog.d(TAG, "setAutoTreasureEnabled: keep visited cache on disable, entries="
                     + AppVars.SearchBoxVisited.size());
         }
 
-        Log.d(TAG, "setAutoTreasureEnabled: " + enabled);
+        AppLog.d(TAG, "setAutoTreasureEnabled: " + enabled);
         if (enabled) {
             requestCharacterSyncForAutoFunctionEnable("auto_treasure");
         }
@@ -1640,9 +1639,9 @@ public class AutoFunctionsManager {
                     String reloadUrl = "http://neverlands.ru/main.php?ab_search_box_bootstrap=1&r="
                             + System.currentTimeMillis();
                     AppVars.mainActivity.get().getMainWebView().loadUrl(reloadUrl);
-                    Log.d(TAG, "setAutoTreasureEnabled: bootstrap reload " + reloadUrl);
+                    AppLog.d(TAG, "setAutoTreasureEnabled: bootstrap reload " + reloadUrl);
                 } catch (Exception e) {
-                    Log.e(TAG, "setAutoTreasureEnabled: bootstrap reload failed", e);
+                    AppLog.e(TAG, "setAutoTreasureEnabled: bootstrap reload failed", e);
                 }
             });
         }
@@ -1845,7 +1844,7 @@ public class AutoFunctionsManager {
     // Для полноценного запуска используйте startAutoMoving(destination).
     public void setAutoMovingEnabled(boolean enabled) {
         AppVars.AutoMoving = enabled;
-        Log.d(TAG, "setAutoMovingEnabled: " + enabled);
+        AppLog.d(TAG, "setAutoMovingEnabled: " + enabled);
         if (enabled) {
             requestCharacterSyncForAutoFunctionEnable("auto_moving");
         }
@@ -1860,7 +1859,7 @@ public class AutoFunctionsManager {
     // Запуск навигатора к указанному пункту назначения.
     public void startAutoMoving(String destination) {
         if (destination == null || destination.isEmpty()) {
-            Log.w(TAG, "startAutoMoving: destination is empty");
+            AppLog.w(TAG, "startAutoMoving: destination is empty");
             return;
         }
         AppVars.AutoMovingDestinaton = destination;
@@ -1874,10 +1873,10 @@ public class AutoFunctionsManager {
             AppVars.AutoMovingNextJump = path.nextJump;
             AppVars.AutoMovingJumps = path.jumps;
             AppVars.AutoMovingCityGate = path.cityGate;
-            Log.d(TAG, "startAutoMoving: destination=" + destination + " pathExists=" + path.pathExists + " jumps=" + path.jumps);
+            AppLog.d(TAG, "startAutoMoving: destination=" + destination + " pathExists=" + path.pathExists + " jumps=" + path.jumps);
         } else {
             AppVars.AutoMovingMapPath = null;
-            Log.d(TAG, "startAutoMoving: destination=" + destination + " (MapLocation unknown, path will be built lazily)");
+            AppLog.d(TAG, "startAutoMoving: destination=" + destination + " (MapLocation unknown, path will be built lazily)");
         }
         AppVars.AutoMoving = true;
         requestCharacterSyncForAutoFunctionEnable("auto_moving_start");
@@ -1892,7 +1891,7 @@ public class AutoFunctionsManager {
         AppVars.AutoMovingNextJump = null;
         AppVars.AutoMovingJumps = 0;
         AppVars.AutoMovingCityGate = ru.neverlands.abclient.model.CityGateType.None;
-        Log.d(TAG, "stopAutoMoving");
+        AppLog.d(TAG, "stopAutoMoving");
     }
 
     /**
@@ -1908,7 +1907,7 @@ public class AutoFunctionsManager {
     private void triggerAutoMovingBootstrapNavigation() {
         MainActivity activity = AppVars.mainActivity != null ? AppVars.mainActivity.get() : null;
         if (activity == null) {
-            Log.d(TAG, "startAutoMoving: bootstrap skipped (activity is null)");
+            AppLog.d(TAG, "startAutoMoving: bootstrap skipped (activity is null)");
             return;
         }
         activity.runOnUiThread(() -> {
@@ -1916,7 +1915,7 @@ public class AutoFunctionsManager {
                 if (activity.binding == null || activity.binding.appBarMain == null
                         || activity.binding.appBarMain.contentMain == null
                         || activity.binding.appBarMain.contentMain.webView == null) {
-                    Log.d(TAG, "startAutoMoving: bootstrap skipped (webView is null)");
+                    AppLog.d(TAG, "startAutoMoving: bootstrap skipped (webView is null)");
                     return;
                 }
                 String vcode = SessionManager.getInstance().getValidVCodeForAction("auto_nav_bootstrap");
@@ -1933,9 +1932,9 @@ public class AutoFunctionsManager {
                             + System.currentTimeMillis();
                 }
                 activity.binding.appBarMain.contentMain.webView.loadUrl(url);
-                Log.d(TAG, "startAutoMoving: bootstrap navigation to " + url);
+                AppLog.d(TAG, "startAutoMoving: bootstrap navigation to " + url);
             } catch (Exception e) {
-                Log.e(TAG, "startAutoMoving: bootstrap navigation failed", e);
+                AppLog.e(TAG, "startAutoMoving: bootstrap navigation failed", e);
             }
         });
     }
@@ -1959,24 +1958,24 @@ public class AutoFunctionsManager {
             // При включении: если Авто-Бой выключен - включаем его
             if (!isAutoFightEnabled()) {
                 setAutoFightEnabled(true);
-                Log.d(TAG, "setAutoCutEnabled: Авто-Бой также включен");
+                AppLog.d(TAG, "setAutoCutEnabled: Авто-Бой также включен");
             }
             // Эксклюзивные функции: выключаем Авто-Рыбалку, Авто-Охоту, Авто-Приманку
             if (isAutoFishEnabled()) {
                 setAutoFishEnabled(false);
-                Log.d(TAG, "setAutoCutEnabled: Авто-Рыбалка выключена");
+                AppLog.d(TAG, "setAutoCutEnabled: Авто-Рыбалка выключена");
             }
             if (isAutoSkinEnabled()) {
                 setAutoSkinEnabled(false);
-                Log.d(TAG, "setAutoCutEnabled: Авто-Охота выключена");
+                AppLog.d(TAG, "setAutoCutEnabled: Авто-Охота выключена");
             }
             if (isAutoBaitEnabled()) {
                 setAutoBaitEnabled(false);
-                Log.d(TAG, "setAutoCutEnabled: Авто-Приманка выключена");
+                AppLog.d(TAG, "setAutoCutEnabled: Авто-Приманка выключена");
             }
         }
         prefs.edit().putBoolean(KEY_PREFIX + "auto_cut", enabled).apply();
-        Log.d(TAG, "setAutoCutEnabled: " + enabled);
+        AppLog.d(TAG, "setAutoCutEnabled: " + enabled);
         if (enabled) {
             requestCharacterSyncForAutoFunctionEnable("auto_cut");
         }
@@ -1998,7 +1997,7 @@ public class AutoFunctionsManager {
     // Включение/выключение авто-обновления.
     public void setAutoRefreshEnabled(boolean enabled) {
         prefs.edit().putBoolean(KEY_PREFIX + "auto_refresh", enabled).apply();
-        Log.d(TAG, "setAutoRefreshEnabled: " + enabled);
+        AppLog.d(TAG, "setAutoRefreshEnabled: " + enabled);
         if (enabled) {
             requestCharacterSyncForAutoFunctionEnable("auto_refresh");
         }

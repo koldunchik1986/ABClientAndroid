@@ -3,7 +3,6 @@ package ru.neverlands.abclient.bridge;
 import android.content.Context;
 import android.content.Intent;
 import android.os.Build;
-import android.util.Log;
 import android.webkit.CookieManager;
 import android.webkit.JavascriptInterface;
 import android.widget.Toast;
@@ -94,7 +93,7 @@ public class WebAppInterface {
         }
         lastMapBridgeLogAtMs = nowMs;
         lastMapBridgeSignature = signature;
-        Log.d("WebAppInterface", "MAP_BRIDGE " + signature);
+        AppLog.d("WebAppInterface", "MAP_BRIDGE " + signature);
     }
 
     /** Показывает всплывающее сообщение (Toast) из веб-страницы. */
@@ -169,7 +168,7 @@ public class WebAppInterface {
                 return AutoFunctionsManager.getInstance(mContext).isAutoFishEnabled();
             }
         } catch (Exception e) {
-            Log.w("WebAppInterface", "IsAutoFish failed", e);
+            AppLog.w("WebAppInterface", "IsAutoFish failed", e);
         }
         return AppVars.Profile != null && AppVars.Profile.AutoFish;
     }
@@ -289,7 +288,7 @@ public class WebAppInterface {
                 ExtMap.init(mContext);
             }
         } catch (Exception e) {
-            Log.e("WebAppInterface", "ensureExtMapInitialized failed", e);
+            AppLog.e("WebAppInterface", "ensureExtMapInitialized failed", e);
         }
     }
 
@@ -338,14 +337,14 @@ public class WebAppInterface {
         }
         ensureExtMapInitialized();
         if (!ExtMap.Cells.containsKey(safeDest)) {
-            Log.w("WebAppInterface", "MoveTo: unknown destination " + safeDest);
+            AppLog.w("WebAppInterface", "MoveTo: unknown destination " + safeDest);
             return;
         }
         try {
             AutoFunctionsManager.getInstance(mContext).startAutoMoving(safeDest);
-            Log.d("WebAppInterface", "MoveTo: startAutoMoving " + safeDest);
+            AppLog.d("WebAppInterface", "MoveTo: startAutoMoving " + safeDest);
         } catch (Exception e) {
-            Log.e("WebAppInterface", "MoveTo failed for " + safeDest, e);
+            AppLog.e("WebAppInterface", "MoveTo failed for " + safeDest, e);
         }
     }
 
@@ -666,13 +665,13 @@ public class WebAppInterface {
         CharacterVitalsManager.Snapshot before = CharacterVitalsManager.snapshot();
         CharacterVitalsManager.Snapshot after = CharacterVitalsManager.updateTied(curTire, "WebAppInterface.SetCurrentTied");
         if (before.tied != after.tied) {
-            Log.d("WebAppInterface", "SetCurrentTied: old=" + before.tied + ", new=" + after.tied);
+            AppLog.d("WebAppInterface", "SetCurrentTied: old=" + before.tied + ", new=" + after.tied);
         }
     }
     @JavascriptInterface
     public String HerbsList(String list) {
         if (list != null && !list.isEmpty()) {
-            Log.d("WebAppInterface", "HerbsList: " + list);
+            AppLog.d("WebAppInterface", "HerbsList: " + list);
         }
         return "";
     }
@@ -685,7 +684,7 @@ public class WebAppInterface {
     @JavascriptInterface
     public void TraceCut(String herb) {
         if (herb != null && !herb.isEmpty()) {
-            Log.d("WebAppInterface", "TraceCut: " + herb);
+            AppLog.d("WebAppInterface", "TraceCut: " + herb);
         }
     }
 
@@ -711,7 +710,7 @@ public class WebAppInterface {
         }
         lastMapRuntimeTraceAtMs = nowMs;
         lastMapRuntimeTrace = safePayload;
-        Log.d("WebAppInterface", "MAP_RUNTIME " + safePayload);
+        AppLog.d("WebAppInterface", "MAP_RUNTIME " + safePayload);
     }
 
     /**
@@ -756,11 +755,11 @@ public class WebAppInterface {
             if (shouldLog) {
                 lastNeverTimerLogAtMs = nowMs;
                 lastNeverTimerLoggedValueMs = msLeft;
-                Log.d("WebAppInterface", "SetNeverTimer: msLeft=" + msLeft
+                AppLog.d("WebAppInterface", "SetNeverTimer: msLeft=" + msLeft
                         + " (" + (msLeft / 1000L) + "s), dueInMs=" + Math.max(0L, dueAtMs - nowMs));
             }
         } catch (Exception e) {
-            Log.e("WebAppInterface", "SetNeverTimer ERROR", e);
+            AppLog.e("WebAppInterface", "SetNeverTimer ERROR", e);
         } finally {
             long elapsedMs = System.currentTimeMillis() - startMs;
             if (elapsedMs > 100) {
@@ -831,7 +830,7 @@ public class WebAppInterface {
                             + "}catch(e){return 'error:'+e;}"
                             + "return 'miss';"
                             + "})()",
-                    value -> Log.d("WebAppInterface", "SetFishNoCaptchaReady: " + value));
+                    value -> AppLog.d("WebAppInterface", "SetFishNoCaptchaReady: " + value));
         });
     }
 
@@ -867,7 +866,7 @@ public class WebAppInterface {
         try {
             AutoFunctionsManager.getInstance(mContext).setAutoFishEnabled(false);
         } catch (Exception e) {
-            android.util.Log.e("WebAppInterface", "FishOverload: stopAutoFish failed", e);
+            AppLog.e("WebAppInterface", "FishOverload: stopAutoFish failed", e);
         }
     }
 
@@ -1135,14 +1134,14 @@ public class WebAppInterface {
     public String chatFilter(String message) {
         // Пропуск входящих сообщений чата через Java‑фильтр (XP/лут/системные).
         String safeMessage = message == null ? "" : message;
-        Log.d("ChatFilter", safeMessage);
+        AppLog.d("ChatFilter", safeMessage);
         return ru.neverlands.abclient.utils.ChatFilter.filter(safeMessage);
     }
 
     @JavascriptInterface
     public void chatUpdated() {
         // Сигнал из JS: чат обновился (нужен для автоответов).
-        Log.d("WebAppInterface", "Chat updated");
+        AppLog.d("WebAppInterface", "Chat updated");
         ru.neverlands.abclient.utils.Chat.chatUpdated();
     }
 
@@ -1199,7 +1198,7 @@ public class WebAppInterface {
         String safeMethod = method == null ? "POST" : method.toUpperCase();
         String payload = data == null ? "" : data;
         payload = recodeUrlEncoded(payload, Charset.forName("UTF-8"), Charset.forName("windows-1251"));
-        Log.d("WebAppInterface", "chatSubmit: " + safeMethod + " " + url + " dataLen=" + payload.length());
+        AppLog.d("WebAppInterface", "chatSubmit: " + safeMethod + " " + url + " dataLen=" + payload.length());
         final String baseUrl = url;
         final String finalPayload = payload;
         if ("GET".equals(safeMethod)) {
@@ -1260,7 +1259,7 @@ public class WebAppInterface {
                 AppLog.e("chat_poll", "WebAppInterface", "PROXY_FAIL: strict proxy enabled and runtime proxy unavailable, blocking direct chat POST: " + url);
                 return null;
             }
-            Log.d("WebAppInterface", "PROXY_BINDING: chat POST via "
+            AppLog.d("WebAppInterface", "PROXY_BINDING: chat POST via "
                     + (activeProxy != null ? "local proxy" : "direct")
                     + ", url=" + url);
 
@@ -1677,7 +1676,7 @@ public class WebAppInterface {
 
     @JavascriptInterface
     public void AutoSelect() {
-        Log.d("WebAppInterface", BG_TRACE_PREFIX + " AutoSelect called");
+        AppLog.d("WebAppInterface", BG_TRACE_PREFIX + " AutoSelect called");
         MainActivity activity = getMainActivityOrNull();
         if (activity == null) return;
         activity.runOnUiThread(activity::requestAutoSelect);
@@ -1685,7 +1684,7 @@ public class WebAppInterface {
 
     @JavascriptInterface
     public void AutoTurn() {
-        Log.d("WebAppInterface", BG_TRACE_PREFIX + " AutoTurn called");
+        AppLog.d("WebAppInterface", BG_TRACE_PREFIX + " AutoTurn called");
         MainActivity activity = getMainActivityOrNull();
         if (activity == null) return;
         activity.runOnUiThread(activity::requestAutoTurn);
@@ -1693,7 +1692,7 @@ public class WebAppInterface {
 
     @JavascriptInterface
     public void AutoBoi() {
-        Log.d("WebAppInterface", "AutoBoi called, current state: " + AppVars.Autoboi);
+        AppLog.d("WebAppInterface", "AutoBoi called, current state: " + AppVars.Autoboi);
         boolean enable = AppVars.Autoboi != AutoboiState.AutoboiOn;
         try {
             if (mContext != null) {
@@ -1704,16 +1703,16 @@ public class WebAppInterface {
                     AppVars.Profile.LezDoAutoboi = enable;
                 }
             }
-            Log.d("WebAppInterface", BG_TRACE_PREFIX + " AutoBoi toggled: enable=" + enable
+            AppLog.d("WebAppInterface", BG_TRACE_PREFIX + " AutoBoi toggled: enable=" + enable
                     + ", appVarsAutoboi=" + AppVars.Autoboi);
         } catch (Exception e) {
-            Log.e("WebAppInterface", BG_TRACE_PREFIX + " AutoBoi toggle failed", e);
+            AppLog.e("WebAppInterface", BG_TRACE_PREFIX + " AutoBoi toggle failed", e);
         }
     }
 
     @JavascriptInterface
     public void processFightHtml(String html) {
-        Log.d("WebAppInterface", BG_TRACE_PREFIX + " processFightHtml called"
+        AppLog.d("WebAppInterface", BG_TRACE_PREFIX + " processFightHtml called"
                 + ", htmlLen=" + (html == null ? 0 : html.length()));
         if (AppVars.mainActivity != null && AppVars.mainActivity.get() != null) {
             AppVars.mainActivity.get().getFightViewModel().processFightHtml(html);
@@ -1722,7 +1721,7 @@ public class WebAppInterface {
 
     @JavascriptInterface
     public void AutoUd() {
-        Log.d("WebAppInterface", BG_TRACE_PREFIX + " AutoUd called");
+        AppLog.d("WebAppInterface", BG_TRACE_PREFIX + " AutoUd called");
         MainActivity activity = getMainActivityOrNull();
         if (activity == null) return;
         activity.runOnUiThread(activity::requestAutoTurn);
@@ -1730,18 +1729,18 @@ public class WebAppInterface {
 
     @JavascriptInterface
     public void ResetCure() {
-        Log.d("WebAppInterface", "ResetCure called");
+        AppLog.d("WebAppInterface", "ResetCure called");
         // Сброс состояния "восстановление" — возвращаем автобой в активное состояние
         // Аналог ResetCure() в C# ScriptManager.cs
         if (AppVars.Autoboi == AutoboiState.Restoring || AppVars.Autoboi == AutoboiState.Timeout) {
             AppVars.Autoboi = AutoboiState.AutoboiOn;
-            Log.d("WebAppInterface", "ResetCure: Autoboi reset to AutoboiOn");
+            AppLog.d("WebAppInterface", "ResetCure: Autoboi reset to AutoboiOn");
         }
     }
 
     @JavascriptInterface
     public void ResetLastBoiTimer() {
-        Log.d("WebAppInterface", "ResetLastBoiTimer called");
+        AppLog.d("WebAppInterface", "ResetLastBoiTimer called");
         AppVars.LastBoiTimer = new java.util.Date();
     }
 
@@ -1753,7 +1752,7 @@ public class WebAppInterface {
 
     @JavascriptInterface
     public String InfoToolTip(String name, String alt) {
-        Log.d("WebAppInterface", "InfoToolTip: " + name);
+        AppLog.d("WebAppInterface", "InfoToolTip: " + name);
         return alt;
     }
 
@@ -1771,18 +1770,18 @@ public class WebAppInterface {
 
     @JavascriptInterface
     public void TraceDrinkPotion(String nick, String potion) {
-        Log.d("WebAppInterface", "TraceDrinkPotion: " + nick + ", " + potion);
+        AppLog.d("WebAppInterface", "TraceDrinkPotion: " + nick + ", " + potion);
     }
 
     @JavascriptInterface
     public void startBulkSell(String thing, String price, String link) {
-        Log.d("WebAppInterface", "Start bulk sell: " + thing);
+        AppLog.d("WebAppInterface", "Start bulk sell: " + thing);
         // TODO: Set AppVars and trigger refresh
     }
 
     @JavascriptInterface
     public void startBulkDrop(String thing, String price) {
-        Log.d("WebAppInterface", "Start bulk drop: " + thing);
+        AppLog.d("WebAppInterface", "Start bulk drop: " + thing);
         // TODO: Set AppVars and trigger refresh
     }
 
@@ -1880,7 +1879,7 @@ public class WebAppInterface {
     @JavascriptInterface
     public void loadFrame(String frameName, String url) {
         // Замена frameset‑навигации: перенаправляем в нужный WebView.
-        Log.d("WebAppInterface", "loadFrame: " + frameName + " to " + url);
+        AppLog.d("WebAppInterface", "loadFrame: " + frameName + " to " + url);
         if (AppVars.mainActivity == null || AppVars.mainActivity.get() == null) {
             return;
         }
@@ -1928,7 +1927,7 @@ public class WebAppInterface {
                     break;
                 case "ch_refr":
                     AppVars.url_ch_refr = finalUrl;
-                    Log.d("WebAppInterface", "loadFrame: ch_refr to " + finalUrl);
+                    AppLog.d("WebAppInterface", "loadFrame: ch_refr to " + finalUrl);
                     AppVars.mainActivity.get().loadChatRefrUrl(finalUrl);
                     break;
                 default:
@@ -1958,7 +1957,7 @@ public class WebAppInterface {
         lastClientMainTopReloadAtMs = now;
         lastClientMainTopReloadSource = source == null ? "" : source;
         lastClientMainTopReloadPayload = payload == null ? "" : payload;
-        Log.d("WebAppInterface", MAIN_TOP_TRACE_PREFIX
+        AppLog.d("WebAppInterface", MAIN_TOP_TRACE_PREFIX
                 + " client-reload: source=" + lastClientMainTopReloadSource
                 + ", payload=" + lastClientMainTopReloadPayload
                 + ", atMs=" + now);
@@ -2040,7 +2039,7 @@ public class WebAppInterface {
         if (d == null) {
             return;
         }
-        Log.d("WebAppInterface", MAIN_TOP_TRACE_PREFIX + " " + stage
+        AppLog.d("WebAppInterface", MAIN_TOP_TRACE_PREFIX + " " + stage
                 + ": url=" + d.url
                 + ", suppress=" + d.suppress
                 + ", reason=" + d.suppressReason
@@ -2088,7 +2087,7 @@ public class WebAppInterface {
      */
     @JavascriptInterface
     public void openInNewTab(String url, String title) {
-        Log.d("WebAppInterface", "openInNewTab: " + title + " -> " + url);
+        AppLog.d("WebAppInterface", "openInNewTab: " + title + " -> " + url);
         
         // Всегда используем MainActivity для открытия вкладки
         if (AppVars.mainActivity == null || AppVars.mainActivity.get() == null) {
@@ -2108,7 +2107,7 @@ public class WebAppInterface {
             finalUrl = "http://neverlands.ru/" + finalUrl.replaceFirst("^/+", "");
         }
 
-        Log.d("WebAppInterface", "redirectToUrl: " + finalUrl);
+        AppLog.d("WebAppInterface", "redirectToUrl: " + finalUrl);
         
         // Используем локальный broadcast, чтобы его получил MainActivity (регистрируется через LocalBroadcastManager)
         if (mContext != null) {

@@ -6,7 +6,6 @@ import android.content.Context;
 import android.content.Intent;
 import android.text.TextUtils;
 import android.text.InputType;
-import android.util.Log;
 import android.view.Gravity;
 import android.view.View;
 import android.widget.ArrayAdapter;
@@ -205,7 +204,7 @@ public class QuickButtonsPanel {
 
     // Инициализация 20 кнопок (10 верх + 10 низ) и привязка обработчиков клика/лонг-клика.
     private void initButtons(View rootView) {
-        Log.d(TAG, "initButtons: starting...");
+        AppLog.d(TAG, "initButtons: starting...");
         
         // Верхние кнопки (0-9)
         int[] topButtonIds = {
@@ -224,7 +223,7 @@ public class QuickButtonsPanel {
         // Инициализация верхних кнопок
         for (int i = 0; i < BUTTONS_PER_ROW; i++) {
             buttons[i] = rootView.findViewById(topButtonIds[i]);
-            Log.d(TAG, "initButtons: top button[" + i + "] = " + (buttons[i] != null ? "OK" : "NULL"));
+            AppLog.d(TAG, "initButtons: top button[" + i + "] = " + (buttons[i] != null ? "OK" : "NULL"));
             final int position = i;
             
             if (buttons[i] != null) {
@@ -239,7 +238,7 @@ public class QuickButtonsPanel {
         // Инициализация нижних кнопок
         for (int i = 0; i < BUTTONS_PER_ROW; i++) {
             buttons[BUTTONS_PER_ROW + i] = rootView.findViewById(bottomButtonIds[i]);
-            Log.d(TAG, "initButtons: bottom button[" + (BUTTONS_PER_ROW + i) + "] = " + (buttons[BUTTONS_PER_ROW + i] != null ? "OK" : "NULL"));
+            AppLog.d(TAG, "initButtons: bottom button[" + (BUTTONS_PER_ROW + i) + "] = " + (buttons[BUTTONS_PER_ROW + i] != null ? "OK" : "NULL"));
             final int position = BUTTONS_PER_ROW + i;
             
             if (buttons[BUTTONS_PER_ROW + i] != null) {
@@ -251,20 +250,20 @@ public class QuickButtonsPanel {
             }
         }
         
-        Log.d(TAG, "initButtons: finished");
+        AppLog.d(TAG, "initButtons: finished");
     }
 
     // Загружаем конфигурацию кнопок из менеджера и синхронизируем UI.
     private void loadAndUpdateButtons() {
-        Log.d(TAG, "loadAndUpdateButtons: starting...");
+        AppLog.d(TAG, "loadAndUpdateButtons: starting...");
         List<QuickButton> buttonList = buttonsManager.getButtons();
-        Log.d(TAG, "loadAndUpdateButtons: buttons count = " + buttonList.size());
+        AppLog.d(TAG, "loadAndUpdateButtons: buttons count = " + buttonList.size());
         
         for (int i = 0; i < TOTAL_BUTTONS; i++) {
-            Log.d(TAG, "loadAndUpdateButtons: checking button[" + i + "], ImageButton=" + (buttons[i] != null ? "OK" : "NULL"));
+            AppLog.d(TAG, "loadAndUpdateButtons: checking button[" + i + "], ImageButton=" + (buttons[i] != null ? "OK" : "NULL"));
             if (i < buttonList.size()) {
                 QuickButton btn = buttonList.get(i);
-                Log.d(TAG, "loadAndUpdateButtons: button[" + i + "] = " + (btn != null ? btn.getActionType() : "null"));
+                AppLog.d(TAG, "loadAndUpdateButtons: button[" + i + "] = " + (btn != null ? btn.getActionType() : "null"));
                 updateButtonAppearance(i, btn);
             }
         }
@@ -277,9 +276,9 @@ public class QuickButtonsPanel {
 
     // Обновляем иконку/подпись/состояние одной кнопки.
     private void updateButtonAppearance(int position, QuickButton button) {
-        Log.d(TAG, "updateButtonAppearance: position=" + position + ", button=" + (button != null ? button.getActionType() : "null"));
+        AppLog.d(TAG, "updateButtonAppearance: position=" + position + ", button=" + (button != null ? button.getActionType() : "null"));
         if (position >= buttons.length || buttons[position] == null) {
-            Log.w(TAG, "updateButtonAppearance: button at position " + position + " is null!");
+            AppLog.w(TAG, "updateButtonAppearance: button at position " + position + " is null!");
             return;
         }
         
@@ -288,13 +287,13 @@ public class QuickButtonsPanel {
             buttons[position].setContentDescription("Добавить функцию");
             buttons[position].setAlpha(0.3f);
             buttons[position].setBackgroundResource(R.drawable.quick_button_empty);
-            Log.d(TAG, "updateButtonAppearance: set empty icon for position " + position);
+            AppLog.d(TAG, "updateButtonAppearance: set empty icon for position " + position);
         } else {
             // Для заданной функции учитываем включено/выключено (для авто-режимов).
             boolean isEnabled = autoFunctionsManager.isFunctionEnabled(button.getActionType());
             loadIconForAction(buttons[position], button.getActionType(), isEnabled);
             buttons[position].setContentDescription(button.getDisplayName() + (isEnabled ? " (ВКЛ)" : " (ВЫКЛ)"));
-            Log.d(TAG, "updateButtonAppearance: icon loaded for position " + position + ", enabled=" + isEnabled);
+            AppLog.d(TAG, "updateButtonAppearance: icon loaded for position " + position + ", enabled=" + isEnabled);
         }
         
         // Принудительно обновляем кнопку на UI потоке
@@ -524,22 +523,22 @@ public class QuickButtonsPanel {
 
     // Исполнение действия кнопки: либо назначение, либо запуск функции.
     private void executeAction(int position) {
-        Log.d(TAG, "executeAction: position=" + position);
+        AppLog.d(TAG, "executeAction: position=" + position);
         QuickButton button = buttonsManager.getButton(position);
-        Log.d(TAG, "executeAction: button=" + (button != null ? button.getActionType() : "null"));
+        AppLog.d(TAG, "executeAction: button=" + (button != null ? button.getActionType() : "null"));
         
         if (button == null || button.isEmpty()) {
-            Log.d(TAG, "executeAction: button is empty, showing selector");
+            AppLog.d(TAG, "executeAction: button is empty, showing selector");
             showFunctionSelector(position);
             return;
         }
 
         QuickActionType actionType = button.getActionType();
-        Log.d(TAG, "executeAction: actionType=" + actionType);
+        AppLog.d(TAG, "executeAction: actionType=" + actionType);
         
         switch (actionType) {
             case AUTO_FIGHT:
-                Log.d(TAG, "executeAction: AUTO_FIGHT");
+                AppLog.d(TAG, "executeAction: AUTO_FIGHT");
                 autoFunctionsManager.toggleAutoFight();
                 Toast.makeText(context, autoFunctionsManager.isAutoFightEnabled() ? "Авто-Бой ВКЛ" : "Авто-Бой ВЫКЛ", Toast.LENGTH_SHORT).show();
                 loadAndUpdateButtons();
@@ -674,7 +673,7 @@ public class QuickButtonsPanel {
 
     // Быстрые действия (эликсиры/тотем/невид) делегируются в FastActionManager.
     private void executeQuickAction(String actionKey, String actionName) {
-        Log.d(TAG, "executeQuickAction: actionKey=" + actionKey + ", actionName=" + actionName);
+        AppLog.d(TAG, "executeQuickAction: actionKey=" + actionKey + ", actionName=" + actionName);
         Toast.makeText(context, actionName, Toast.LENGTH_SHORT).show();
         
         switch (actionKey) {
@@ -703,7 +702,7 @@ public class QuickButtonsPanel {
                 FastActionManager.fastAttackMomentRestoreElixir();
                 break;
             default:
-                Log.w(TAG, "executeQuickAction: unknown actionKey=" + actionKey);
+                AppLog.w(TAG, "executeQuickAction: unknown actionKey=" + actionKey);
         }
     }
 
@@ -2751,7 +2750,7 @@ public class QuickButtonsPanel {
                 Toast.makeText(context, "TabManager не доступен", Toast.LENGTH_SHORT).show();
             }
         } catch (Exception e) {
-            Log.e(TAG, "Error encoding nick", e);
+            AppLog.e(TAG, "Error encoding nick", e);
             Toast.makeText(context, "Ошибка кодирования URL", Toast.LENGTH_SHORT).show();
         }
     }

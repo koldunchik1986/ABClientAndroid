@@ -1,6 +1,5 @@
 package ru.neverlands.abclient.postfilter;
 
-import android.util.Log;
 
 import java.util.ArrayList;
 import java.util.List;

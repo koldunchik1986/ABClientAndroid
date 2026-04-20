@@ -1,6 +1,5 @@
 package ru.neverlands.abclient.postfilter;
 
-import android.util.Log;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
@@ -679,7 +678,7 @@ public final class FightAuto {
                         if (fight.Frame != null && !fight.Frame.isEmpty()) {
                             return fight.Frame;
                         }
-                        android.util.Log.w(TAG, "processFight: fight.Frame is empty, stopping autoboi to avoid null flow");
+                        AppLog.w(TAG, "processFight: fight.Frame is empty, stopping autoboi to avoid null flow");
                         if (AppVars.Autoboi != AutoboiState.Timeout) {
                             host.notifyFightStopped(fight);
                             AppVars.Autoboi = AutoboiState.Timeout;
@@ -839,7 +838,7 @@ public final class FightAuto {
             sb.append("</script></body></html>");
             return sb.toString();
         } catch (Exception e) {
-            android.util.Log.e(TAG, "buildFightEndFormSubmitHtml error", e);
+            AppLog.e(TAG, "buildFightEndFormSubmitHtml error", e);
             return null;
         }
     }
@@ -899,7 +898,7 @@ public final class FightAuto {
                 }
             }
         } catch (Exception e) {
-            android.util.Log.e(TAG, "inspectFightFinishPageMarkers error", e);
+            AppLog.e(TAG, "inspectFightFinishPageMarkers error", e);
         }
         return markers;
     }

@@ -3,7 +3,6 @@ package ru.neverlands.abclient.postfilter;
 import android.media.Ringtone;
 import android.media.RingtoneManager;
 import android.net.Uri;
-import android.util.Log;
 
 import java.util.Collections;
 import java.util.List;
@@ -113,7 +112,7 @@ public final class TreasureDig {
                 autoManager = AutoFunctionsManager.getInstance(context);
             }
         } catch (Exception e) {
-            android.util.Log.w(TAG, "AUTO_SEARCH_BOX_TRACE dig flow: manager init failed", e);
+            AppLog.w(TAG, "AUTO_SEARCH_BOX_TRACE dig flow: manager init failed", e);
         }
 
         boolean autoDigEnabled = autoManager != null && autoManager.isAutoTreasureDigEnabled();
@@ -149,7 +148,7 @@ public final class TreasureDig {
                 disabledViaManager = true;
             }
         } catch (Exception e) {
-            android.util.Log.w(TAG, "AUTO_SEARCH_BOX_TRACE stop on dig: manager disable failed", e);
+            AppLog.w(TAG, "AUTO_SEARCH_BOX_TRACE stop on dig: manager disable failed", e);
         }
 
         if (!disabledViaManager) {
@@ -162,11 +161,11 @@ public final class TreasureDig {
                         AppVars.Profile.save(context);
                     }
                 } catch (Exception saveEx) {
-                    android.util.Log.w(TAG, "AUTO_SEARCH_BOX_TRACE stop on dig: profile save failed", saveEx);
+                    AppLog.w(TAG, "AUTO_SEARCH_BOX_TRACE stop on dig: profile save failed", saveEx);
                 }
             }
             ExtMap.flushVisitedToDisk();
-            android.util.Log.d(TAG, "AUTO_SEARCH_BOX_TRACE stop on dig: keep visited cache, entries="
+            AppLog.d(TAG, "AUTO_SEARCH_BOX_TRACE stop on dig: keep visited cache, entries="
                     + AppVars.SearchBoxVisited.size());
             AppVars.AutoTreasureDigPendingInventory = false;
             AppVars.AutoTreasureShovelReady = false;
@@ -176,7 +175,7 @@ public final class TreasureDig {
         releaseTreasurePause("treasure_found_on_cell");
         notifyTreasureFoundOnCurrentCell(host);
         playTreasureFoundSignal();
-        android.util.Log.d(TAG, "AUTO_SEARCH_BOX_TRACE treasure marker detected -> stop auto treasure");
+        AppLog.d(TAG, "AUTO_SEARCH_BOX_TRACE treasure marker detected -> stop auto treasure");
         return null;
     }
 
@@ -218,7 +217,7 @@ public final class TreasureDig {
         if (needWearShovel && !AppVars.AutoTreasureShovelReady) {
             AppVars.AutoTreasureDigPendingInventory = true;
             applyTreasurePauseAndStopNavigator("dig_flow_need_wear_shovel");
-            android.util.Log.d(TAG, "AUTO_SEARCH_BOX_TRACE dig flow: open shovel inventory");
+            AppLog.d(TAG, "AUTO_SEARCH_BOX_TRACE dig flow: open shovel inventory");
             return buildAutoTreasureDigOpenInventoryRedirect(html, address, host);
         }
 
@@ -226,7 +225,7 @@ public final class TreasureDig {
         String digClickHtml = buildAutoTreasureDigClickHtml(html);
         releaseTreasurePause("dig_flow_click_ready");
         if (digClickHtml != null) {
-            android.util.Log.d(TAG, "AUTO_SEARCH_BOX_TRACE dig flow: click \"Копать\" by button");
+            AppLog.d(TAG, "AUTO_SEARCH_BOX_TRACE dig flow: click \"Копать\" by button");
         }
         return digClickHtml;
     }
@@ -252,12 +251,12 @@ public final class TreasureDig {
         applyTreasurePauseAndStopNavigator("dig_flow_prepare_inventory");
         boolean inventoryContext = host.mainPhpIsInv(html) || host.isInventoryAddress(address);
         if (!inventoryContext) {
-            android.util.Log.d(TAG, "AUTO_SEARCH_BOX_TRACE dig flow: route to inventory (shovels)");
+            AppLog.d(TAG, "AUTO_SEARCH_BOX_TRACE dig flow: route to inventory (shovels)");
             return buildAutoTreasureDigOpenInventoryRedirect(html, address, host);
         }
 
         if (!host.inventoryAddressMatchesFilter(address, "&im=0&wca=3")) {
-            android.util.Log.d(TAG, "AUTO_SEARCH_BOX_TRACE dig flow: switch inventory filter to wca=3");
+            AppLog.d(TAG, "AUTO_SEARCH_BOX_TRACE dig flow: switch inventory filter to wca=3");
             return buildAutoTreasureDigOpenInventoryRedirect(html, address, host);
         }
 
@@ -273,12 +272,12 @@ public final class TreasureDig {
                         retryUrl,
                         AUTO_TREASURE_SHOVEL_PREP_RETRY_PARAM,
                         String.valueOf(nextRetry));
-                android.util.Log.d(TAG, "AUTO_SEARCH_BOX_TRACE dig flow: inventory transitional html, retry="
+                AppLog.d(TAG, "AUTO_SEARCH_BOX_TRACE dig flow: inventory transitional html, retry="
                         + nextRetry + "/" + AUTO_TREASURE_SHOVEL_PREP_MAX_RETRIES + ", url=" + retryUrl);
                 return host.buildRedirectHtml("Авто-Клад: ожидание загрузки инвентаря лопат ("
                         + nextRetry + "/" + AUTO_TREASURE_SHOVEL_PREP_MAX_RETRIES + ")", retryUrl);
             }
-            android.util.Log.w(TAG, "AUTO_SEARCH_BOX_TRACE dig flow: inventory transitional retry limit reached ("
+            AppLog.w(TAG, "AUTO_SEARCH_BOX_TRACE dig flow: inventory transitional retry limit reached ("
                     + currentRetry + "/" + AUTO_TREASURE_SHOVEL_PREP_MAX_RETRIES + ")");
         }
 
@@ -289,13 +288,13 @@ public final class TreasureDig {
 
         if (isTreasureShovelEquipped(html, selectedShovelOption)) {
             markAutoTreasureShovelReady(selectedShovelOption);
-            android.util.Log.d(TAG, "AUTO_SEARCH_BOX_TRACE dig flow: shovel already equipped");
+            AppLog.d(TAG, "AUTO_SEARCH_BOX_TRACE dig flow: shovel already equipped");
             return buildAutoTreasureDigReturnToMapHtml(html, host);
         }
 
         String wearLink = resolveTreasureShovelWearLink(html, selectedShovelOption, host);
         if (wearLink != null && !wearLink.isEmpty()) {
-            android.util.Log.d(TAG, "AUTO_SEARCH_BOX_TRACE dig flow: wear shovel link=" + wearLink);
+            AppLog.d(TAG, "AUTO_SEARCH_BOX_TRACE dig flow: wear shovel link=" + wearLink);
             return host.buildRedirectHtml("Авто-Клад: одеваем лопату", wearLink);
         }
 
@@ -312,13 +311,13 @@ public final class TreasureDig {
                     retryUrl,
                     AUTO_TREASURE_SHOVEL_PREP_RETRY_PARAM,
                     String.valueOf(nextRetry));
-            android.util.Log.d(TAG, "AUTO_SEARCH_BOX_TRACE dig flow: shovel wear-link not found yet, retry="
+            AppLog.d(TAG, "AUTO_SEARCH_BOX_TRACE dig flow: shovel wear-link not found yet, retry="
                     + nextRetry + "/" + AUTO_TREASURE_SHOVEL_PREP_MAX_RETRIES + ", url=" + retryUrl);
             return host.buildRedirectHtml("Авто-Клад: ожидание доступности лопаты ("
                     + nextRetry + "/" + AUTO_TREASURE_SHOVEL_PREP_MAX_RETRIES + ")", retryUrl);
         }
 
-        android.util.Log.w(TAG, "AUTO_SEARCH_BOX_TRACE dig flow: shovel wear-link retry limit reached ("
+        AppLog.w(TAG, "AUTO_SEARCH_BOX_TRACE dig flow: shovel wear-link retry limit reached ("
                 + currentRetryWearLink + "/" + AUTO_TREASURE_SHOVEL_PREP_MAX_RETRIES + ")");
         AppVars.AutoTreasureDigPendingInventory = false;
         AppVars.AutoTreasureShovelReady = false;
@@ -326,7 +325,7 @@ public final class TreasureDig {
         releaseTreasurePause("dig_flow_shovel_not_found");
         host.sendInventoryChatMessage(host.buildServerChatTimeHtml()
                 + "<font color=#FF0000>Авто-Клад: лопата не найдена, копка отменена.</font>");
-        android.util.Log.w(TAG, "AUTO_SEARCH_BOX_TRACE dig flow: shovel not found, dig cancelled");
+        AppLog.w(TAG, "AUTO_SEARCH_BOX_TRACE dig flow: shovel not found, dig cancelled");
         return buildAutoTreasureDigReturnToMapHtml(html, host);
     }
 
@@ -341,7 +340,7 @@ public final class TreasureDig {
         synchronized (TreasureDig.class) {
             treasurePauseDepth++;
             AppVars.TreasureDigPauseNonCombatAutoFunctions = true;
-            android.util.Log.d(TAG, "AUTO_SEARCH_BOX_TRACE pause depth++ = " + treasurePauseDepth 
+            AppLog.d(TAG, "AUTO_SEARCH_BOX_TRACE pause depth++ = " + treasurePauseDepth 
                     + ", reason=" + reason);
         }
         
@@ -352,11 +351,11 @@ public final class TreasureDig {
             android.content.Context context = AppVars.getContext();
             if (context != null) {
                 AutoFunctionsManager.getInstance(context).stopAutoMoving();
-                android.util.Log.d(TAG, "AUTO_SEARCH_BOX_TRACE pause enabled: navigator stopped, reason=" + reason);
+                AppLog.d(TAG, "AUTO_SEARCH_BOX_TRACE pause enabled: navigator stopped, reason=" + reason);
                 return;
             }
         } catch (Exception e) {
-            android.util.Log.w(TAG, "AUTO_SEARCH_BOX_TRACE pause enabled: manager stop failed, reason=" + reason, e);
+            AppLog.w(TAG, "AUTO_SEARCH_BOX_TRACE pause enabled: manager stop failed, reason=" + reason, e);
         }
         AppVars.AutoMoving = false;
         AppVars.AutoMovingDestinaton = null;
@@ -364,7 +363,7 @@ public final class TreasureDig {
         AppVars.AutoMovingNextJump = null;
         AppVars.AutoMovingJumps = 0;
         AppVars.AutoMovingCityGate = ru.neverlands.abclient.model.CityGateType.None;
-        android.util.Log.d(TAG, "AUTO_SEARCH_BOX_TRACE pause enabled: fallback navigator reset, reason=" + reason);
+        AppLog.d(TAG, "AUTO_SEARCH_BOX_TRACE pause enabled: fallback navigator reset, reason=" + reason);
     }
 
     /**
@@ -376,16 +375,16 @@ public final class TreasureDig {
             if (treasurePauseDepth > 0) {
                 treasurePauseDepth--;
             } else {
-                android.util.Log.w(TAG, "AUTO_SEARCH_BOX_TRACE pause depth already 0, ignoring release, reason=" + reason);
+                AppLog.w(TAG, "AUTO_SEARCH_BOX_TRACE pause depth already 0, ignoring release, reason=" + reason);
                 return;
             }
             
             if (treasurePauseDepth <= 0) {
                 treasurePauseDepth = 0; // Защита от отрицательных значений
                 AppVars.TreasureDigPauseNonCombatAutoFunctions = false;
-                android.util.Log.d(TAG, "AUTO_SEARCH_BOX_TRACE pause depth-- = 0, RELEASED, reason=" + reason);
+                AppLog.d(TAG, "AUTO_SEARCH_BOX_TRACE pause depth-- = 0, RELEASED, reason=" + reason);
             } else {
-                android.util.Log.d(TAG, "AUTO_SEARCH_BOX_TRACE pause depth-- = " + treasurePauseDepth 
+                AppLog.d(TAG, "AUTO_SEARCH_BOX_TRACE pause depth-- = " + treasurePauseDepth 
                         + ", still active, reason=" + reason);
             }
         }
@@ -537,7 +536,7 @@ public final class TreasureDig {
                 ringtone.play();
             }
         } catch (Exception e) {
-            android.util.Log.w(TAG, "AUTO_SEARCH_BOX_TRACE play alarm failed", e);
+            AppLog.w(TAG, "AUTO_SEARCH_BOX_TRACE play alarm failed", e);
         }
     }
 

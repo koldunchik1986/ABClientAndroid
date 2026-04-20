@@ -1,5 +1,7 @@
 package ru.neverlands.abclient.utils;
 
+import ru.neverlands.abclient.utils.AppLog;
+
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
@@ -205,7 +207,7 @@ public class ChatFilter {
                     AutoFunctionsManager.getInstance(AppVars.getContext()).onIncomingChatMessage(result);
                 }
             } catch (Exception e) {
-                android.util.Log.w("ChatFilter", "AUTO_BOSS_TRACE chat hook failed", e);
+                AppLog.w("ChatFilter", "AUTO_BOSS_TRACE chat hook failed", e);
             }
         }
 

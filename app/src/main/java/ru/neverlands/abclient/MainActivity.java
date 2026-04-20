@@ -20,7 +20,6 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.PowerManager;
-import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
@@ -315,12 +314,12 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
      */
     public void requestRoomUsersRefreshSoon() {
         if (binding == null || binding.appBarMain == null || binding.appBarMain.contentMain == null) {
-            Log.d(TAG, BG_TRACE_PREFIX + " requestRoomUsersRefreshSoon: skip binding=null");
+            AppLog.d(TAG, BG_TRACE_PREFIX + " requestRoomUsersRefreshSoon: skip binding=null");
             return;
         }
         WebView chatUsersWebView = binding.appBarMain.contentMain.chatUsersWebview;
         if (chatUsersWebView == null) {
-            Log.d(TAG, BG_TRACE_PREFIX + " requestRoomUsersRefreshSoon: skip chatUsersWebView=null");
+            AppLog.d(TAG, BG_TRACE_PREFIX + " requestRoomUsersRefreshSoon: skip chatUsersWebView=null");
             return;
         }
         if (suppressRoomRefreshOnceAfterContacts) {
@@ -331,18 +330,18 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
 
         long now = System.currentTimeMillis();
         if (now < roomUsersRefreshSuppressedUntilMs) {
-            Log.d(TAG, BG_TRACE_PREFIX + " requestRoomUsersRefreshSoon: suppressed by chat-recovery, waitMs="
+            AppLog.d(TAG, BG_TRACE_PREFIX + " requestRoomUsersRefreshSoon: suppressed by chat-recovery, waitMs="
                     + (roomUsersRefreshSuppressedUntilMs - now));
             return;
         }
         if (now - lastRoomUsersRefreshAtMs < ROOM_USERS_REFRESH_MIN_INTERVAL_MS) {
-            Log.d(TAG, BG_TRACE_PREFIX + " requestRoomUsersRefreshSoon: throttled, deltaMs="
+            AppLog.d(TAG, BG_TRACE_PREFIX + " requestRoomUsersRefreshSoon: throttled, deltaMs="
                     + (now - lastRoomUsersRefreshAtMs));
             return;
         }
 
         String roomUrl = "http://neverlands.ru/ch.php?lo=1&" + now;
-        Log.d(TAG, "[AA_TRACE] requestRoomUsersRefreshSoon: " + roomUrl);
+        AppLog.d(TAG, "[AA_TRACE] requestRoomUsersRefreshSoon: " + roomUrl);
         AppVars.url_ch_list = roomUrl;
         chatUsersWebView.loadUrl(roomUrl);
         lastRoomUsersRefreshAtMs = now;
@@ -371,7 +370,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             autoAttackEnabled = autoFunctionsManager.isAutoAttackEnabled();
             locationTrackingEnabled = autoFunctionsManager.isLocationTrackingEnabled();
         } catch (Exception e) {
-            Log.w(TAG, BG_TRACE_PREFIX + " " + stage + ": failed to read auto flags", e);
+            AppLog.w(TAG, BG_TRACE_PREFIX + " " + stage + ": failed to read auto flags", e);
         }
 
         boolean isInteractive = true;
@@ -391,10 +390,10 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             }
             deviceLocked = isDeviceLocked();
         } catch (Exception e) {
-            Log.w(TAG, BG_TRACE_PREFIX + " " + stage + ": failed to read power state", e);
+            AppLog.w(TAG, BG_TRACE_PREFIX + " " + stage + ": failed to read power state", e);
         }
 
-        Log.d(TAG, BG_TRACE_PREFIX + " " + stage
+        AppLog.d(TAG, BG_TRACE_PREFIX + " " + stage
                 + ": interactive=" + isInteractive
                 + ", deviceLocked=" + deviceLocked
                 + ", idleMode=" + isDeviceIdleMode
@@ -419,7 +418,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         filter.addAction(AppVars.ACTION_STOP_AUTOFISH);
         LocalBroadcastManager.getInstance(this).registerReceiver(broadcastReceiver, filter);
         appBroadcastReceiverRegistered = true;
-        Log.d(TAG, BG_TRACE_PREFIX + " registerAppBroadcastReceiverIfNeeded: registered");
+        AppLog.d(TAG, BG_TRACE_PREFIX + " registerAppBroadcastReceiverIfNeeded: registered");
     }
 
     private void unregisterAppBroadcastReceiverIfNeeded() {
@@ -428,7 +427,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         }
         LocalBroadcastManager.getInstance(this).unregisterReceiver(broadcastReceiver);
         appBroadcastReceiverRegistered = false;
-        Log.d(TAG, BG_TRACE_PREFIX + " unregisterAppBroadcastReceiverIfNeeded: unregistered");
+        AppLog.d(TAG, BG_TRACE_PREFIX + " unregisterAppBroadcastReceiverIfNeeded: unregistered");
     }
 
     private void registerScreenStateReceiverIfNeeded() {
@@ -441,7 +440,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         filter.addAction(Intent.ACTION_USER_PRESENT);
         registerReceiver(screenStateReceiver, filter);
         screenStateReceiverRegistered = true;
-        Log.d(TAG, BG_TRACE_PREFIX + " registerScreenStateReceiverIfNeeded: registered");
+        AppLog.d(TAG, BG_TRACE_PREFIX + " registerScreenStateReceiverIfNeeded: registered");
     }
 
     private void unregisterScreenStateReceiverIfNeeded() {
@@ -450,7 +449,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         }
         unregisterReceiver(screenStateReceiver);
         screenStateReceiverRegistered = false;
-        Log.d(TAG, BG_TRACE_PREFIX + " unregisterScreenStateReceiverIfNeeded: unregistered");
+        AppLog.d(TAG, BG_TRACE_PREFIX + " unregisterScreenStateReceiverIfNeeded: unregistered");
     }
 
     // Автовыбор: берем HTML текущего боя и отправляем в FightViewModel.
@@ -463,13 +462,13 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     }
 
     private void restartRoomUsersPolling() {
-        Log.d(TAG, BG_TRACE_PREFIX + " restartRoomUsersPolling");
+        AppLog.d(TAG, BG_TRACE_PREFIX + " restartRoomUsersPolling");
         stopRoomUsersPolling();
         startRoomUsersPolling();
     }
 
     private void startRoomUsersPolling() {
-        Log.d(TAG, BG_TRACE_PREFIX + " startRoomUsersPolling: begin, hasRunnable="
+        AppLog.d(TAG, BG_TRACE_PREFIX + " startRoomUsersPolling: begin, hasRunnable="
                 + (roomUsersPollingRunnable != null));
         if (roomUsersPollingRunnable != null) {
             roomUsersPollingHandler.removeCallbacks(roomUsersPollingRunnable);
@@ -478,12 +477,12 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             @Override
             public void run() {
                 if (isFinishing() || isDestroyed()) {
-                    Log.d(TAG, BG_TRACE_PREFIX + " roomUsersPolling: stop due to finishing/destroyed");
+                    AppLog.d(TAG, BG_TRACE_PREFIX + " roomUsersPolling: stop due to finishing/destroyed");
                     return;
                 }
                 AutoFunctionsManager autoFunctionsManager = AutoFunctionsManager.getInstance(MainActivity.this);
                 if (!autoFunctionsManager.isLocationTrackingEnabled()) {
-                    Log.d(TAG, BG_TRACE_PREFIX + " roomUsersPolling: skip tick, locationTracking=false");
+                    AppLog.d(TAG, BG_TRACE_PREFIX + " roomUsersPolling: skip tick, locationTracking=false");
                     return;
                 }
                 requestRoomUsersRefreshSoon();
@@ -497,10 +496,10 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
 
         AutoFunctionsManager autoFunctionsManager = AutoFunctionsManager.getInstance(this);
         if (autoFunctionsManager.isLocationTrackingEnabled()) {
-            Log.d(TAG, BG_TRACE_PREFIX + " startRoomUsersPolling: first post");
+            AppLog.d(TAG, BG_TRACE_PREFIX + " startRoomUsersPolling: first post");
             roomUsersPollingHandler.post(roomUsersPollingRunnable);
         } else {
-            Log.d(TAG, BG_TRACE_PREFIX + " startRoomUsersPolling: locationTracking disabled");
+            AppLog.d(TAG, BG_TRACE_PREFIX + " startRoomUsersPolling: locationTracking disabled");
         }
     }
 
@@ -508,14 +507,14 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         if (roomUsersPollingRunnable != null) {
             roomUsersPollingHandler.removeCallbacks(roomUsersPollingRunnable);
             roomUsersPollingRunnable = null;
-            Log.d(TAG, BG_TRACE_PREFIX + " stopRoomUsersPolling: stopped");
+            AppLog.d(TAG, BG_TRACE_PREFIX + " stopRoomUsersPolling: stopped");
         } else {
-            Log.d(TAG, BG_TRACE_PREFIX + " stopRoomUsersPolling: already stopped");
+            AppLog.d(TAG, BG_TRACE_PREFIX + " stopRoomUsersPolling: already stopped");
         }
     }
 
     public void requestAutoSelect() {
-        Log.d(TAG, BG_TRACE_PREFIX + " requestAutoSelect: start");
+        AppLog.d(TAG, BG_TRACE_PREFIX + " requestAutoSelect: start");
         binding.appBarMain.contentMain.webView.evaluateJavascript(
                 "(function() { return document.documentElement.innerHTML; })();",
                 html -> {
@@ -576,7 +575,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
      */
     public void requestImmediateAutoTurnOnFightAnnounce() {
         if (AppVars.IsFightCaptchaDialogVisible) {
-            Log.d(TAG, BG_TRACE_PREFIX + " requestImmediateAutoTurnOnFightAnnounce: skip, captcha dialog visible");
+            AppLog.d(TAG, BG_TRACE_PREFIX + " requestImmediateAutoTurnOnFightAnnounce: skip, captcha dialog visible");
             return;
         }
 
@@ -609,7 +608,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
 
         if (!pollFailed) {
             if (consecutiveChatPollFailures > 0) {
-                Log.d(TAG, BG_TRACE_PREFIX + " chat-poll recovered: code=" + httpCode
+                AppLog.d(TAG, BG_TRACE_PREFIX + " chat-poll recovered: code=" + httpCode
                         + ", bytes=" + rawBytes
                         + ", hasAdd=" + hasAddMsg
                         + ", hasSetLmid=" + hasSetLmid
@@ -645,14 +644,14 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                 retryDelayMs = Math.min(retryDelayMs, CHAT_POLL_FAILURE_RETRY_BOSS_MS);
             }
         } catch (Exception e) {
-            Log.w(TAG, BG_TRACE_PREFIX + " chat-poll degraded: failed to read autoBoss flag", e);
+            AppLog.w(TAG, BG_TRACE_PREFIX + " chat-poll degraded: failed to read autoBoss flag", e);
         }
         roomUsersRefreshSuppressedUntilMs = Math.max(
                 roomUsersRefreshSuppressedUntilMs,
                 now + ROOM_USERS_SUPPRESS_AFTER_CHAT_FAIL_MS
         );
 
-        Log.w(TAG, BG_TRACE_PREFIX + " chat-poll degraded: code=" + httpCode
+        AppLog.w(TAG, BG_TRACE_PREFIX + " chat-poll degraded: code=" + httpCode
                 + ", bytes=" + rawBytes
                 + ", hasAdd=" + hasAddMsg
                 + ", hasSetLmid=" + hasSetLmid
@@ -678,7 +677,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             if (isFinishing() || isDestroyed() || !isChatRefreshEnabled()) {
                 return;
             }
-            Log.d(TAG, BG_TRACE_PREFIX + " chat-poll recovery retry: manual tick");
+            AppLog.d(TAG, BG_TRACE_PREFIX + " chat-poll recovery retry: manual tick");
             requestChatRefresh(false);
         };
         chatRefreshHandler.postDelayed(chatPollRecoveryRunnable, retryDelayMs);
@@ -724,7 +723,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
      */
     private void requestAutoTurnInternal(boolean allowServerProbeFallback) {
         if (AppVars.IsFightCaptchaDialogVisible) {
-            Log.d(TAG, BG_TRACE_PREFIX + " requestAutoTurn: skip, captcha dialog visible");
+            AppLog.d(TAG, BG_TRACE_PREFIX + " requestAutoTurn: skip, captcha dialog visible");
             return;
         }
         if (shouldDeferAutoTurnForFirstFrameRender()) {
@@ -735,7 +734,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         if (allowServerProbeFallback && !isActivityResumedState) {
             String cachedFightHtml = AppVars.ContentMainPhp;
             boolean cachedActive = hasFightMarkers(cachedFightHtml) && isActiveFightContext(cachedFightHtml);
-            Log.d(TAG, BG_TRACE_PREFIX + " requestAutoTurn: app backgrounded, skip WebView evaluateJavascript"
+            AppLog.d(TAG, BG_TRACE_PREFIX + " requestAutoTurn: app backgrounded, skip WebView evaluateJavascript"
                     + ", cachedActive=" + cachedActive);
             if (cachedActive) {
                 // Есть актуальный кэш боя — используем как основу + параллельно обновляем через HTTP
@@ -750,15 +749,15 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             }
             return;
         }
-        Log.d(TAG, BG_TRACE_PREFIX + " requestAutoTurn: start");
-        Log.d(TAG, "requestAutoTurn: grabbing current HTML for auto-turn");
+        AppLog.d(TAG, BG_TRACE_PREFIX + " requestAutoTurn: start");
+        AppLog.d(TAG, "requestAutoTurn: grabbing current HTML for auto-turn");
         binding.appBarMain.contentMain.webView.evaluateJavascript(
                 "(function() { return document.documentElement.innerHTML; })();",
                 html -> {
                     if (html != null && !html.equals("null")) {
                         com.google.gson.Gson gson = new com.google.gson.Gson();
                         String unquoted = gson.fromJson(html, String.class);
-                        Log.d(TAG, "requestAutoTurn: html length=" + (unquoted != null ? unquoted.length() : 0));
+                        AppLog.d(TAG, "requestAutoTurn: html length=" + (unquoted != null ? unquoted.length() : 0));
                         
                         // Проверка на race condition при multi-enemy fight (09:55 issue):
                         // Если HTML слишком мало (<1000 bytes), это означает что WebView еще loading
@@ -766,7 +765,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                         if (unquoted != null && unquoted.length() < 1000 && !hasFightMarkers(unquoted)) {
                             String msg = "[FIGHT_RACE_CONDITION] html size too small (WebView loading), size=" + unquoted.length() 
                                     + ". Deferring turn check 200ms";
-                            Log.w(TAG, BG_TRACE_PREFIX + " requestAutoTurn: " + msg);
+                            AppLog.w(TAG, BG_TRACE_PREFIX + " requestAutoTurn: " + msg);
                             ru.neverlands.abclient.utils.FileLogger.trace("fight_auto", msg);
                             // Откладываем проверку на 200ms чтобы дать WebView время завершить page load
                             new Handler(Looper.getMainLooper()).postDelayed(this::requestAutoTurn, 200);
@@ -778,7 +777,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                             if (allowServerProbeFallback) {
                                 boolean currentActiveFight = isActiveFightContext(unquoted);
                                 if (!currentActiveFight) {
-                                    Log.d(TAG, BG_TRACE_PREFIX + " requestAutoTurn: current html has stale fight markers, inactive context"
+                                    AppLog.d(TAG, BG_TRACE_PREFIX + " requestAutoTurn: current html has stale fight markers, inactive context"
                                             + ", fightLink=" + AppVars.FightLink);
 
                                     String cachedFightHtml = AppVars.ContentMainPhp;
@@ -786,7 +785,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                                     boolean cachedActiveFight = cachedHasMarkers && isActiveFightContext(cachedFightHtml);
                                     if (cachedActiveFight) {
                                         autoTurnHtml = cachedFightHtml;
-                                        Log.d(TAG, BG_TRACE_PREFIX + " requestAutoTurn: fallback to cached active fight html after inactive current html, len="
+                                        AppLog.d(TAG, BG_TRACE_PREFIX + " requestAutoTurn: fallback to cached active fight html after inactive current html, len="
                                                 + cachedFightHtml.length());
                                         if (!hasPendingAct7FightLink(AppVars.FightLink)) {
                                             long sinceLastProbeMs = System.currentTimeMillis() - lastAutoTurnServerProbeAtMs;
@@ -797,17 +796,17 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                                     } else {
                                         if (cachedHasMarkers) {
                                             AppVars.ContentMainPhp = "";
-                                            Log.d(TAG, BG_TRACE_PREFIX + " requestAutoTurn: drop stale cached fight html after inactive current html");
+                                            AppLog.d(TAG, BG_TRACE_PREFIX + " requestAutoTurn: drop stale cached fight html after inactive current html");
                                         }
 
                                         if (!hasPendingAct7FightLink(AppVars.FightLink)) {
                                             boolean probeAllowedByUiState = isAutoTurnServerProbeAllowedNow();
                                             if (!probeAllowedByUiState) {
-                                                Log.d(TAG, BG_TRACE_PREFIX + " requestAutoTurn: forcing server probe after inactive current fight html");
+                                                AppLog.d(TAG, BG_TRACE_PREFIX + " requestAutoTurn: forcing server probe after inactive current fight html");
                                             }
                                             requestAutoTurnFromServerProbe("current_fight_html_inactive");
                                         } else {
-                                            Log.d(TAG, BG_TRACE_PREFIX + " requestAutoTurn: skip server probe, pending act=7 finish link present");
+                                            AppLog.d(TAG, BG_TRACE_PREFIX + " requestAutoTurn: skip server probe, pending act=7 finish link present");
                                         }
                                     }
                                 }
@@ -817,7 +816,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                             if (hasFightMarkers(cachedFightHtml)) {
                                 if (isActiveFightContext(cachedFightHtml)) {
                                     autoTurnHtml = cachedFightHtml;
-                                    Log.d(TAG, BG_TRACE_PREFIX + " requestAutoTurn: fallback to cached active fight html, len="
+                                    AppLog.d(TAG, BG_TRACE_PREFIX + " requestAutoTurn: fallback to cached active fight html, len="
                                             + cachedFightHtml.length());
                                     if (allowServerProbeFallback && !hasPendingAct7FightLink(AppVars.FightLink)) {
                                         long sinceLastProbeMs = System.currentTimeMillis() - lastAutoTurnServerProbeAtMs;
@@ -826,22 +825,22 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                                         }
                                     }
                                 } else {
-                                    Log.d(TAG, BG_TRACE_PREFIX + " requestAutoTurn: cached fight html is stale (inactive), drop and probe");
+                                    AppLog.d(TAG, BG_TRACE_PREFIX + " requestAutoTurn: cached fight html is stale (inactive), drop and probe");
                                     AppVars.ContentMainPhp = "";
                                     if (allowServerProbeFallback) {
                                         boolean probeAllowedByUiState = isAutoTurnServerProbeAllowedNow();
                                         if (!probeAllowedByUiState) {
-                                            Log.d(TAG, BG_TRACE_PREFIX + " requestAutoTurn: forcing server probe after stale cached fight html");
+                                            AppLog.d(TAG, BG_TRACE_PREFIX + " requestAutoTurn: forcing server probe after stale cached fight html");
                                         }
                                         requestAutoTurnFromServerProbe("cached_fight_html_inactive");
                                     }
                                 }
                             } else {
-                                Log.d(TAG, BG_TRACE_PREFIX + " requestAutoTurn: no fight markers in current/cached html");
+                                AppLog.d(TAG, BG_TRACE_PREFIX + " requestAutoTurn: no fight markers in current/cached html");
                                 if (allowServerProbeFallback) {
                                     boolean probeAllowedByUiState = isAutoTurnServerProbeAllowedNow();
                                     if (!probeAllowedByUiState) {
-                                        Log.d(TAG, BG_TRACE_PREFIX + " requestAutoTurn: forcing server probe from background-aware path");
+                                        AppLog.d(TAG, BG_TRACE_PREFIX + " requestAutoTurn: forcing server probe from background-aware path");
                                     }
                                     requestAutoTurnFromServerProbe("no_fight_markers_current_and_cached");
                                 }
@@ -849,11 +848,11 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                         }
                         fightViewModel.autoTurnOnce(autoTurnHtml);
                     } else {
-                        Log.d(TAG, "requestAutoTurn: html is null");
+                        AppLog.d(TAG, "requestAutoTurn: html is null");
                         String cachedFightHtml = AppVars.ContentMainPhp;
                         if (hasFightMarkers(cachedFightHtml)) {
                             if (isActiveFightContext(cachedFightHtml)) {
-                                Log.d(TAG, BG_TRACE_PREFIX + " requestAutoTurn: null html, fallback to cached active fight html, len="
+                                AppLog.d(TAG, BG_TRACE_PREFIX + " requestAutoTurn: null html, fallback to cached active fight html, len="
                                         + cachedFightHtml.length());
                                 fightViewModel.autoTurnOnce(cachedFightHtml);
                                 if (allowServerProbeFallback && !hasPendingAct7FightLink(AppVars.FightLink)) {
@@ -863,22 +862,22 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                                     }
                                 }
                             } else {
-                                Log.d(TAG, BG_TRACE_PREFIX + " requestAutoTurn: null html with stale cached fight html, drop and probe");
+                                AppLog.d(TAG, BG_TRACE_PREFIX + " requestAutoTurn: null html with stale cached fight html, drop and probe");
                                 AppVars.ContentMainPhp = "";
                                 if (allowServerProbeFallback) {
                                     boolean probeAllowedByUiState = isAutoTurnServerProbeAllowedNow();
                                     if (!probeAllowedByUiState) {
-                                        Log.d(TAG, BG_TRACE_PREFIX + " requestAutoTurn: forcing null-html server probe after stale cached fight html");
+                                        AppLog.d(TAG, BG_TRACE_PREFIX + " requestAutoTurn: forcing null-html server probe after stale cached fight html");
                                     }
                                     requestAutoTurnFromServerProbe("null_html_stale_cached_fight_html");
                                 }
                             }
                         } else {
-                            Log.d(TAG, BG_TRACE_PREFIX + " requestAutoTurn: html is null and cached html has no fight markers");
+                            AppLog.d(TAG, BG_TRACE_PREFIX + " requestAutoTurn: html is null and cached html has no fight markers");
                             if (allowServerProbeFallback) {
                                 boolean probeAllowedByUiState = isAutoTurnServerProbeAllowedNow();
                                 if (!probeAllowedByUiState) {
-                                    Log.d(TAG, BG_TRACE_PREFIX + " requestAutoTurn: forcing null-html server probe from background-aware path");
+                                    AppLog.d(TAG, BG_TRACE_PREFIX + " requestAutoTurn: forcing null-html server probe from background-aware path");
                                 }
                                 requestAutoTurnFromServerProbe("null_html_and_no_cached_markers");
                             }
@@ -915,7 +914,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         if (sinceAnnounceMs < 0L || sinceAnnounceMs >= AUTO_TURN_FIRST_FRAME_RENDER_GUARD_MS) {
             return false;
         }
-        Log.d(TAG, BG_TRACE_PREFIX + " requestAutoTurn: defer first turn for frame render, remainingMs="
+        AppLog.d(TAG, BG_TRACE_PREFIX + " requestAutoTurn: defer first turn for frame render, remainingMs="
                 + (AUTO_TURN_FIRST_FRAME_RENDER_GUARD_MS - sinceAnnounceMs)
                 + ", sinceAnnounceMs=" + sinceAnnounceMs);
         return true;
@@ -941,7 +940,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                 return !powerManager.isInteractive();
             }
         } catch (Exception e) {
-            Log.w(TAG, BG_TRACE_PREFIX + " isAutoTurnServerProbeAllowedNow: fallback by resumed-state", e);
+            AppLog.w(TAG, BG_TRACE_PREFIX + " isAutoTurnServerProbeAllowedNow: fallback by resumed-state", e);
         }
         return false;
     }
@@ -1073,7 +1072,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         if (suppressUntil > autoTurnManualNavSuppressUntilMs) {
             autoTurnManualNavSuppressUntilMs = suppressUntil;
         }
-        Log.d(TAG, BG_TRACE_PREFIX + " requestAutoTurn: suppress server probe after manual main navigation"
+        AppLog.d(TAG, BG_TRACE_PREFIX + " requestAutoTurn: suppress server probe after manual main navigation"
                 + ", suppressMs=" + AUTO_TURN_MANUAL_NAV_SUPPRESS_MS
                 + ", url=" + url);
     }
@@ -1105,7 +1104,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             }
             return isManualMainNavigationUrl(currentUrl.toLowerCase(Locale.ROOT));
         } catch (Exception e) {
-            Log.w(TAG, BG_TRACE_PREFIX + " requestAutoTurn: failed to inspect manual navigation context", e);
+            AppLog.w(TAG, BG_TRACE_PREFIX + " requestAutoTurn: failed to inspect manual navigation context", e);
             return false;
         }
     }
@@ -1152,7 +1151,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     private void requestAutoTurnFromServerProbe(String reason) {
         long now = System.currentTimeMillis();
         if (shouldSkipAutoTurnServerProbeForMapAutomation()) {
-            Log.d(TAG, BG_TRACE_PREFIX + " requestAutoTurn: server probe suppressed during map automation, reason="
+            AppLog.d(TAG, BG_TRACE_PREFIX + " requestAutoTurn: server probe suppressed during map automation, reason="
                     + reason + ", autoMoving=" + AppVars.AutoMoving + ", doSearchBox=" + AppVars.DoSearchBox);
             return;
         }
@@ -1160,23 +1159,23 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                 && isManualMainNavigationContextActive()
                 && !hasFightMarkers(AppVars.ContentMainPhp)
                 && !hasPendingAct7FightLink(AppVars.FightLink)) {
-            Log.d(TAG, BG_TRACE_PREFIX + " requestAutoTurn: server probe suppressed in active UI manual context, reason="
+            AppLog.d(TAG, BG_TRACE_PREFIX + " requestAutoTurn: server probe suppressed in active UI manual context, reason="
                     + reason);
             return;
         }
         if (now < autoTurnManualNavSuppressUntilMs) {
-            Log.d(TAG, BG_TRACE_PREFIX + " requestAutoTurn: server probe suppressed by manual main navigation, reason="
+            AppLog.d(TAG, BG_TRACE_PREFIX + " requestAutoTurn: server probe suppressed by manual main navigation, reason="
                     + reason + ", remainingMs=" + (autoTurnManualNavSuppressUntilMs - now));
             return;
         }
         if (now - lastAutoTurnServerProbeAtMs < AUTO_TURN_SERVER_PROBE_MIN_INTERVAL_MS) {
-            Log.d(TAG, BG_TRACE_PREFIX + " requestAutoTurn: server probe throttled, reason=" + reason
+            AppLog.d(TAG, BG_TRACE_PREFIX + " requestAutoTurn: server probe throttled, reason=" + reason
                     + ", remainingMs=" + (AUTO_TURN_SERVER_PROBE_MIN_INTERVAL_MS - (now - lastAutoTurnServerProbeAtMs)));
             return;
         }
         synchronized (autoTurnServerProbeLock) {
             if (autoTurnServerProbeInFlight) {
-                Log.d(TAG, BG_TRACE_PREFIX + " requestAutoTurn: server probe skipped, in-flight, reason=" + reason);
+                AppLog.d(TAG, BG_TRACE_PREFIX + " requestAutoTurn: server probe skipped, in-flight, reason=" + reason);
                 return;
             }
             autoTurnServerProbeInFlight = true;
@@ -1189,11 +1188,11 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                 FightProbeResult probeResult = loadFightProbeHtmlViaHttp();
                 String probeHtml = probeResult.html;
                 if (probeHtml == null || probeHtml.isEmpty()) {
-                    Log.w(TAG, BG_TRACE_PREFIX + " requestAutoTurn: server probe empty, reason=" + probeReason);
+                    AppLog.w(TAG, BG_TRACE_PREFIX + " requestAutoTurn: server probe empty, reason=" + probeReason);
                     return;
                 }
                 runOnUiThread(() -> {
-                    Log.d(TAG, BG_TRACE_PREFIX + " requestAutoTurn: server probe htmlLen=" + probeHtml.length()
+                    AppLog.d(TAG, BG_TRACE_PREFIX + " requestAutoTurn: server probe htmlLen=" + probeHtml.length()
                             + ", hasFightMarkers=" + probeResult.hasFightMarkers
                             + ", probeUrl=" + probeResult.url
                             + ", reason=" + probeReason);
@@ -1201,12 +1200,12 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                         AppVars.ContentMainPhp = probeHtml;
                         fightViewModel.autoTurnOnce(probeHtml);
                     } else {
-                        Log.d(TAG, BG_TRACE_PREFIX + " requestAutoTurn: server probe has no fight markers, probeUrl="
+                        AppLog.d(TAG, BG_TRACE_PREFIX + " requestAutoTurn: server probe has no fight markers, probeUrl="
                                 + probeResult.url);
                     }
                 });
             } catch (Exception e) {
-                Log.e(TAG, BG_TRACE_PREFIX + " requestAutoTurn: server probe failed, reason=" + probeReason, e);
+                AppLog.e(TAG, BG_TRACE_PREFIX + " requestAutoTurn: server probe failed, reason=" + probeReason, e);
             } finally {
                 synchronized (autoTurnServerProbeLock) {
                     autoTurnServerProbeInFlight = false;
@@ -1251,7 +1250,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         for (String probeUrl : probeUrls) {
             String probeHtml = loadFightProbeHtmlViaHttp(probeUrl);
             boolean hasMarkers = hasFightMarkers(probeHtml);
-            Log.d(TAG, BG_TRACE_PREFIX + " requestAutoTurn: probe attempt url=" + probeUrl
+            AppLog.d(TAG, BG_TRACE_PREFIX + " requestAutoTurn: probe attempt url=" + probeUrl
                     + ", htmlLen=" + (probeHtml == null ? 0 : probeHtml.length())
                     + ", hasFightMarkers=" + hasMarkers);
 
@@ -1291,7 +1290,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             URL url = new URL(probeUrl);
             java.net.Proxy activeProxy = ProxyRuntimeManager.getActiveJavaProxyOrNull();
             if (activeProxy == null && ProxyRuntimeManager.isStrictProxyRequiredForCurrentProfile()) {
-                Log.e(TAG, "PROXY_FAIL: strict proxy enabled and runtime proxy unavailable, blocking direct fight probe");
+                AppLog.e(TAG, "PROXY_FAIL: strict proxy enabled and runtime proxy unavailable, blocking direct fight probe");
                 return null;
             }
 
@@ -1320,12 +1319,12 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             if (cookie != null && !cookie.isEmpty()) {
                 connection.setRequestProperty("Cookie", cookie);
             } else {
-                Log.w(TAG, BG_TRACE_PREFIX + " requestAutoTurn: fight probe cookie is empty");
+                AppLog.w(TAG, BG_TRACE_PREFIX + " requestAutoTurn: fight probe cookie is empty");
             }
 
             int responseCode = connection.getResponseCode();
             if (responseCode < 200 || responseCode >= 300) {
-                Log.w(TAG, BG_TRACE_PREFIX + " requestAutoTurn: fight probe HTTP " + responseCode + ", probeUrl=" + probeUrl);
+                AppLog.w(TAG, BG_TRACE_PREFIX + " requestAutoTurn: fight probe HTTP " + responseCode + ", probeUrl=" + probeUrl);
                 return null;
             }
 
@@ -1339,7 +1338,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             byte[] data = outputStream.toByteArray();
             return data.length > 0 ? Russian.getString(data) : null;
         } catch (Exception e) {
-            Log.e(TAG, BG_TRACE_PREFIX + " requestAutoTurn: fight probe request failed: " + probeUrl, e);
+            AppLog.e(TAG, BG_TRACE_PREFIX + " requestAutoTurn: fight probe request failed: " + probeUrl, e);
             return null;
         } finally {
             if (inputStream != null) {
@@ -1451,7 +1450,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             LezFight fight = new LezFight(html);
             return fight.IsValid && fight.IsBoi;
         } catch (Exception e) {
-            Log.w(TAG, BG_TRACE_PREFIX + " isActiveFightContext: parse failed, treat as inactive", e);
+            AppLog.w(TAG, BG_TRACE_PREFIX + " isActiveFightContext: parse failed, treat as inactive", e);
             return false;
         }
     }
@@ -1471,7 +1470,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         if (result == null || binding == null || binding.appBarMain == null
                 || binding.appBarMain.contentMain == null
                 || binding.appBarMain.contentMain.webView == null) {
-            Log.w(TAG, "submitAutoBattleActionToWebView: skip, invalid state");
+            AppLog.w(TAG, "submitAutoBattleActionToWebView: skip, invalid state");
             return;
         }
 
@@ -1537,7 +1536,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             boolean missing = status != null && (status.contains("missing") || status.contains("error"));
             if (missing && retriesLeft > 0) {
                 int nextRetriesLeft = retriesLeft - 1;
-                Log.d(TAG, BG_TRACE_PREFIX + " submitAutoBattleAction: submit path unstable (" + status
+                AppLog.d(TAG, BG_TRACE_PREFIX + " submitAutoBattleAction: submit path unstable (" + status
                         + "), retry left=" + nextRetriesLeft);
                 binding.appBarMain.contentMain.webView.postDelayed(
                         () -> submitAutoBattleActionToWebView(result, nextRetriesLeft),
@@ -1547,9 +1546,9 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             }
 
             if (missing) {
-                Log.w(TAG, BG_TRACE_PREFIX + " submitAutoBattleAction: submit path still unstable after retries, status=" + status);
+                AppLog.w(TAG, BG_TRACE_PREFIX + " submitAutoBattleAction: submit path still unstable after retries, status=" + status);
             } else {
-                Log.d(TAG, BG_TRACE_PREFIX + " submitAutoBattleAction: status=" + status);
+                AppLog.d(TAG, BG_TRACE_PREFIX + " submitAutoBattleAction: status=" + status);
             }
         });
     }
@@ -1750,7 +1749,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
      * @param title Заголовок вкладки (может быть "PINFO" для декодирования ника)
      */
     public void openInNewTab(String url, String title) {
-        Log.d(TAG, "openInNewTab: " + title + " -> " + url);
+        AppLog.d(TAG, "openInNewTab: " + title + " -> " + url);
         
         // Декодируем ник для pinfo/pname (аналог NickDecode в HelperConverters.cs)
         if ("PINFO".equals(title) && url != null) {
@@ -1763,7 +1762,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                     title = nick;
                 }
             } catch (Exception e) {
-                Log.e(TAG, "Error decoding nick", e);
+                AppLog.e(TAG, "Error decoding nick", e);
             }
         }
         
@@ -1811,14 +1810,14 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
      * - setOnShowListener должен быть установлен до dialog.show(), иначе стиль/клик могут не примениться.
      */
     private void showCaptchaDialog(String captchaUrl, String finishUrl) {
-        Log.d(TAG, "showCaptchaDialog: " + captchaUrl + " -> " + finishUrl);
+        AppLog.d(TAG, "showCaptchaDialog: " + captchaUrl + " -> " + finishUrl);
         if (activeFightCaptchaDialog != null && activeFightCaptchaDialog.isShowing()) {
             boolean sameCaptcha = isSameCaptchaUrl(captchaUrl, activeFightCaptchaUrl);
             boolean sameFinish = isSameFightFinishUrl(finishUrl, activeFightFinishUrl);
             if (sameCaptcha && sameFinish) {
-                Log.d(TAG, "showCaptchaDialog: already visible with same challenge, skip duplicate");
+                AppLog.d(TAG, "showCaptchaDialog: already visible with same challenge, skip duplicate");
             } else {
-                Log.d(TAG, "showCaptchaDialog: replacing dialog with newer challenge");
+                AppLog.d(TAG, "showCaptchaDialog: replacing dialog with newer challenge");
                 replacingFightCaptchaDialog = true;
                 activeFightCaptchaLoadSeq++;
                 activeFightCaptchaDialog.dismiss();
@@ -1930,7 +1929,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                 positiveButton.setEnabled(true);
                 positiveButton.setOnClickListener(v -> {
                     String code = input.getText().toString().trim();
-                    Log.d(TAG, "showCaptchaDialog: ok clicked, codeLen=" + code.length());
+                    AppLog.d(TAG, "showCaptchaDialog: ok clicked, codeLen=" + code.length());
                     if (code.isEmpty()) {
                         input.setError("Введите код");
                         input.requestFocus();
@@ -1947,7 +1946,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                             && AppVars.Profile != null
                             && AppVars.Profile.LezDoAutoboi) {
                         AppVars.Autoboi = ru.neverlands.abclient.model.AutoboiState.AutoboiOn;
-                        Log.d(TAG, "showCaptchaDialog: restoring autoboi after captcha submit");
+                        AppLog.d(TAG, "showCaptchaDialog: restoring autoboi after captcha submit");
                     }
                     AppVars.ResumeAutoboiAfterCaptcha = false;
                     boolean resumeSearchBox = AppVars.ResumeSearchBoxAfterCaptcha;
@@ -1961,10 +1960,10 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                         AppVars.FightLink = "";
                         AppVars.CodeAddress = "";
                     }
-                    Log.d(TAG, "showCaptchaDialog: submitting " + submitUrl);
+                    AppLog.d(TAG, "showCaptchaDialog: submitting " + submitUrl);
                     submitCaptchaSolution(submitUrl, isFishCaptcha);
                     if (!isFishCaptcha && resumeSearchBox && AppVars.DoSearchBox && !AppVars.AutoMoving) {
-                        Log.d(TAG, "showCaptchaDialog: bootstrap auto treasure after captcha submit");
+                        AppLog.d(TAG, "showCaptchaDialog: bootstrap auto treasure after captcha submit");
                         WebView targetWebView = null;
                         if (binding != null
                                 && binding.appBarMain != null
@@ -1977,11 +1976,11 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                                 try {
                                     finalTargetWebView.loadUrl("http://neverlands.ru/main.php?ab_search_box_bootstrap=1");
                                 } catch (Exception e) {
-                                    Log.e(TAG, "showCaptchaDialog: auto treasure bootstrap failed", e);
+                                    AppLog.e(TAG, "showCaptchaDialog: auto treasure bootstrap failed", e);
                                 }
                             }, 450L);
                         } else {
-                            Log.w(TAG, "showCaptchaDialog: skip auto treasure bootstrap, webView is null");
+                            AppLog.w(TAG, "showCaptchaDialog: skip auto treasure bootstrap, webView is null");
                         }
                     }
                     dialog.dismiss();
@@ -2104,7 +2103,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
      */
     private void showCaptchaSystemNotification() {
         if (!canPostNotifications()) {
-            Log.d(TAG, "showCaptchaSystemNotification: POST_NOTIFICATIONS not granted");
+            AppLog.d(TAG, "showCaptchaSystemNotification: POST_NOTIFICATIONS not granted");
             return;
         }
         Intent openIntent = new Intent(this, MainActivity.class);
@@ -2252,12 +2251,12 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
      */
     private void submitCaptchaSolution(String submitUrl, boolean isFishCaptcha) {
         if (binding == null || binding.appBarMain == null || binding.appBarMain.contentMain == null) {
-            Log.w(TAG, "submitCaptchaSolution: skip, binding/content is null");
+            AppLog.w(TAG, "submitCaptchaSolution: skip, binding/content is null");
             return;
         }
         WebView mainWebView = binding.appBarMain.contentMain.webView;
         if (mainWebView == null) {
-            Log.w(TAG, "submitCaptchaSolution: skip, mainWebView is null");
+            AppLog.w(TAG, "submitCaptchaSolution: skip, mainWebView is null");
             return;
         }
         if (isFishCaptcha) {
@@ -2278,7 +2277,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
      */
     private void submitFishCaptchaViaAjaxOrFallback(WebView mainWebView, String submitUrl) {
         if (submitUrl == null || submitUrl.isEmpty()) {
-            Log.w(TAG, "submitFishCaptchaViaAjaxOrFallback: submitUrl is empty");
+            AppLog.w(TAG, "submitFishCaptchaViaAjaxOrFallback: submitUrl is empty");
             return;
         }
 
@@ -2325,9 +2324,9 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             }
 
             boolean ajaxOk = status != null && status.startsWith("ok_");
-            Log.d(TAG, "submitFishCaptchaViaAjaxOrFallback: status=" + status);
+            AppLog.d(TAG, "submitFishCaptchaViaAjaxOrFallback: status=" + status);
             if (!ajaxOk) {
-                Log.w(TAG, "submitFishCaptchaViaAjaxOrFallback: fallback to loadUrl, status=" + status);
+                AppLog.w(TAG, "submitFishCaptchaViaAjaxOrFallback: fallback to loadUrl, status=" + status);
                 mainWebView.loadUrl(submitUrl);
             }
         });
@@ -2359,7 +2358,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         if (updateCaptchaImageFromCaptured(imageView, progressBar, captchaUrl, true)) {
             return;
         }
-        Log.d(TAG, "loadCaptchaImageAsync: waiting captured bytes before network fallback, delayMs="
+        AppLog.d(TAG, "loadCaptchaImageAsync: waiting captured bytes before network fallback, delayMs="
                 + CAPTCHA_NETWORK_FALLBACK_DELAY_MS);
 
         byte[] cachedBytes = AppVars.LastFightCaptchaImageBytes;
@@ -2372,10 +2371,10 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         if (hasFreshSameUrlCaptchaBytes) {
             android.graphics.Bitmap cachedBitmap = android.graphics.BitmapFactory.decodeByteArray(cachedBytes, 0, cachedBytes.length);
             if (cachedBitmap != null) {
-                Log.d(TAG, "loadCaptchaImageAsync: showing cached captcha preview, size=" + cachedBytes.length + ", ageMs=" + cachedAge);
+                AppLog.d(TAG, "loadCaptchaImageAsync: showing cached captcha preview, size=" + cachedBytes.length + ", ageMs=" + cachedAge);
                 imageView.setImageBitmap(cachedBitmap);
             } else {
-                Log.d(TAG, "loadCaptchaImageAsync: cached captcha bytes exist but decode failed, size=" + cachedBytes.length);
+                AppLog.d(TAG, "loadCaptchaImageAsync: cached captcha bytes exist but decode failed, size=" + cachedBytes.length);
             }
         }
 
@@ -2383,7 +2382,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         // Поэтому даём WebView/interceptor приоритет и только после таймаута делаем fallback-запрос.
         fightCaptchaHandler.postDelayed(() -> {
             if (loadSeq != activeFightCaptchaLoadSeq) {
-                Log.d(TAG, "loadCaptchaImageAsync: skip stale delayed fallback, loadSeq=" + loadSeq
+                AppLog.d(TAG, "loadCaptchaImageAsync: skip stale delayed fallback, loadSeq=" + loadSeq
                         + ", activeSeq=" + activeFightCaptchaLoadSeq);
                 return;
             }
@@ -2397,15 +2396,15 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                 return;
             }
             if (activeFightCaptchaImageLocked) {
-                Log.d(TAG, "loadCaptchaImageAsync: challenge already locked from interceptor, skip network fallback");
+                AppLog.d(TAG, "loadCaptchaImageAsync: challenge already locked from interceptor, skip network fallback");
                 return;
             }
             if (updateCaptchaImageFromCaptured(imageView, progressBar, captchaUrl, true)) {
-                Log.d(TAG, "loadCaptchaImageAsync: captured bytes arrived before fallback, skip network");
+                AppLog.d(TAG, "loadCaptchaImageAsync: captured bytes arrived before fallback, skip network");
                 return;
             }
             if (activeFightCaptchaImageLocked) {
-                Log.d(TAG, "loadCaptchaImageAsync: challenge locked after captured update, skip network fallback");
+                AppLog.d(TAG, "loadCaptchaImageAsync: challenge locked after captured update, skip network fallback");
                 return;
             }
 
@@ -2418,7 +2417,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
 
                 runOnUiThread(() -> {
                     if (loadSeq != activeFightCaptchaLoadSeq) {
-                        Log.d(TAG, "loadCaptchaImageAsync: skip stale network result, loadSeq=" + loadSeq
+                        AppLog.d(TAG, "loadCaptchaImageAsync: skip stale network result, loadSeq=" + loadSeq
                                 + ", activeSeq=" + activeFightCaptchaLoadSeq);
                         return;
                     }
@@ -2426,31 +2425,31 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                         return;
                     }
                     if (!isSameCaptchaUrl(captchaUrl, activeFightCaptchaUrl)) {
-                        Log.d(TAG, "loadCaptchaImageAsync: skip stale fallback, activeCaptchaUrl=" + activeFightCaptchaUrl);
+                        AppLog.d(TAG, "loadCaptchaImageAsync: skip stale fallback, activeCaptchaUrl=" + activeFightCaptchaUrl);
                         return;
                     }
 
                     // Пока шёл fallback-запрос, bytes могли уже приехать из WebView interceptor — приоритет у них.
                     if (activeFightCaptchaImageLocked) {
-                        Log.d(TAG, "loadCaptchaImageAsync: skip network apply, challenge already locked");
+                        AppLog.d(TAG, "loadCaptchaImageAsync: skip network apply, challenge already locked");
                         return;
                     }
                     if (updateCaptchaImageFromCaptured(imageView, progressBar, captchaUrl, true)) {
-                        Log.d(TAG, "loadCaptchaImageAsync: intercepted bytes arrived during fallback, network result ignored");
+                        AppLog.d(TAG, "loadCaptchaImageAsync: intercepted bytes arrived during fallback, network result ignored");
                         return;
                     }
                     if (activeFightCaptchaImageLocked) {
-                        Log.d(TAG, "loadCaptchaImageAsync: skip network apply after captured lock");
+                        AppLog.d(TAG, "loadCaptchaImageAsync: skip network apply after captured lock");
                         return;
                     }
 
                     progressBar.setVisibility(View.GONE);
                     if (bitmap != null && captchaBytes != null) {
                         if (hasFreshSameUrlCaptchaBytes && captchaBytes.length < 1024) {
-                            Log.w(TAG, "loadCaptchaImageAsync: network captcha is too small, keep cached preview, bytes=" + captchaBytes.length);
+                            AppLog.w(TAG, "loadCaptchaImageAsync: network captcha is too small, keep cached preview, bytes=" + captchaBytes.length);
                             return;
                         }
-                        Log.d(TAG, "loadCaptchaImageAsync: bitmap decoded from network, url=" + captchaUrl
+                        AppLog.d(TAG, "loadCaptchaImageAsync: bitmap decoded from network, url=" + captchaUrl
                                 + ", bytes=" + captchaBytes.length
                                 + ", elapsedMs=" + (System.currentTimeMillis() - fallbackStartedAtMs));
                         imageView.setImageBitmap(bitmap);
@@ -2467,7 +2466,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                         AppVars.LastFightCaptchaImageAtMs = now;
                         updateFightCaptchaSubmitButtonState();
                     } else {
-                        Log.w(TAG, "loadCaptchaImageAsync: bitmap decode failed, url=" + captchaUrl
+                        AppLog.w(TAG, "loadCaptchaImageAsync: bitmap decode failed, url=" + captchaUrl
                                 + ", bytes=" + (captchaBytes != null ? captchaBytes.length : 0));
                         if (!hasFreshSameUrlCaptchaBytes) {
                             Toast.makeText(this, "Failed to load captcha image", Toast.LENGTH_SHORT).show();
@@ -2511,7 +2510,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         }
 
         imageView.setImageBitmap(latestBitmap);
-        Log.d(TAG, "tryRefreshCaptchaImageFromLatest: image updated from latest bytes,"
+        AppLog.d(TAG, "tryRefreshCaptchaImageFromLatest: image updated from latest bytes,"
                 + " initialUrl=" + initialCaptchaUrl
                 + ", latestUrl=" + latestUrl
                 + ", bytes=" + latestBytes.length
@@ -2614,7 +2613,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                     boolean captchaChanged = !isSameCaptchaUrl(activeFightCaptchaUrl, latestCaptchaUrl);
                     boolean finishChanged = !isSameFightFinishUrl(activeFightFinishUrl, candidateFinishUrl);
                     if ((captchaChanged || finishChanged) && !latestCaptchaUrl.isEmpty()) {
-                        Log.d(TAG, "updateCaptchaImageFromCaptured: switch to latest challenge, expected="
+                        AppLog.d(TAG, "updateCaptchaImageFromCaptured: switch to latest challenge, expected="
                                 + expectedCaptchaUrl + ", latest=" + latestCaptchaUrl
                                 + ", finishChanged=" + finishChanged
                                 + ", challengeAgeMs=" + challengeAgeMs);
@@ -2625,7 +2624,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             }
             if (forceUpdate) {
                 progressBar.setVisibility(View.VISIBLE);
-                Log.d(TAG, "updateCaptchaImageFromCaptured: skip foreign bytes, expected="
+                AppLog.d(TAG, "updateCaptchaImageFromCaptured: skip foreign bytes, expected="
                         + expectedCaptchaUrl + ", got=" + latestUrl);
             }
             return false;
@@ -2647,7 +2646,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                 if (forceUpdate) {
                     progressBar.setVisibility(View.VISIBLE);
                 }
-                Log.d(TAG, "updateCaptchaImageFromCaptured: wait stabilize, ageMs=" + ageMs
+                AppLog.d(TAG, "updateCaptchaImageFromCaptured: wait stabilize, ageMs=" + ageMs
                         + ", need=" + CAPTCHA_IMAGE_STABILIZE_DELAY_MS);
                 return false;
             }
@@ -2658,7 +2657,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             if (forceUpdate) {
                 progressBar.setVisibility(View.VISIBLE);
             }
-            Log.w(TAG, "updateCaptchaImageFromCaptured: decode failed, bytes=" + latestBytes.length);
+            AppLog.w(TAG, "updateCaptchaImageFromCaptured: decode failed, bytes=" + latestBytes.length);
             return false;
         }
 
@@ -2677,7 +2676,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             stopFightCaptchaAutoRefresh();
         }
         updateFightCaptchaSubmitButtonState();
-        Log.d(TAG, "updateCaptchaImageFromCaptured: image updated, bytes=" + latestBytes.length
+        AppLog.d(TAG, "updateCaptchaImageFromCaptured: image updated, bytes=" + latestBytes.length
                 + ", atMs=" + latestAtMs + ", url=" + latestUrl);
         return true;
     }
@@ -2727,7 +2726,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         // Не блокируем кнопку полностью: валидация и удержание диалога делается в onClick.
         // Это устраняет кейс, когда из-за race/фокуса кнопка остаётся неактивной.
         btn.setEnabled(true);
-        Log.d(TAG, "updateFightCaptchaSubmitButtonState: codeLen=" + value.length()
+        AppLog.d(TAG, "updateFightCaptchaSubmitButtonState: codeLen=" + value.length()
                 + ", validCode=" + validCode
                 + ", imageReady=" + imageReady
                 + ", btnEnabled=" + btn.isEnabled());
@@ -2845,7 +2844,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             URL url = new URL(captchaUrl);
             java.net.Proxy activeProxy = ProxyRuntimeManager.getActiveJavaProxyOrNull();
             if (activeProxy == null && ProxyRuntimeManager.isStrictProxyRequiredForCurrentProfile()) {
-                Log.e(TAG, "PROXY_FAIL: strict proxy enabled and runtime proxy unavailable, blocking direct captcha download: " + captchaUrl);
+                AppLog.e(TAG, "PROXY_FAIL: strict proxy enabled and runtime proxy unavailable, blocking direct captcha download: " + captchaUrl);
                 return null;
             }
             connection = activeProxy != null
@@ -2872,14 +2871,14 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             }
             if (cookie != null && !cookie.isEmpty()) {
                 connection.setRequestProperty("Cookie", cookie);
-                Log.d(TAG, "downloadCaptchaImageBytes: using cookie len=" + cookie.length());
+                AppLog.d(TAG, "downloadCaptchaImageBytes: using cookie len=" + cookie.length());
             } else {
-                Log.w(TAG, "downloadCaptchaImageBytes: cookie is empty for " + captchaUrl);
+                AppLog.w(TAG, "downloadCaptchaImageBytes: cookie is empty for " + captchaUrl);
             }
 
             int responseCode = connection.getResponseCode();
             if (responseCode < 200 || responseCode >= 300) {
-                Log.w(TAG, "downloadCaptchaImageBytes: HTTP " + responseCode + " for " + captchaUrl);
+                AppLog.w(TAG, "downloadCaptchaImageBytes: HTTP " + responseCode + " for " + captchaUrl);
                 return null;
             }
 
@@ -2892,10 +2891,10 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             }
 
             byte[] data = outputStream.toByteArray();
-            Log.d(TAG, "downloadCaptchaImageBytes: loaded " + data.length + " bytes from " + captchaUrl);
+            AppLog.d(TAG, "downloadCaptchaImageBytes: loaded " + data.length + " bytes from " + captchaUrl);
             return data.length > 0 ? data : null;
         } catch (Exception e) {
-            Log.e(TAG, "downloadCaptchaImageBytes: failed for " + captchaUrl, e);
+            AppLog.e(TAG, "downloadCaptchaImageBytes: failed for " + captchaUrl, e);
             return null;
         } finally {
             if (inputStream != null) {
@@ -2923,7 +2922,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                 return;
             }
             String action = intent.getAction();
-            Log.d(TAG, BG_TRACE_PREFIX + " screenStateReceiver: action=" + action);
+            AppLog.d(TAG, BG_TRACE_PREFIX + " screenStateReceiver: action=" + action);
             if (Intent.ACTION_SCREEN_OFF.equals(action)) {
                 isActivityResumedState = false;
             }
@@ -2949,7 +2948,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                     if (message != null) {
                         if (message.contains("Нападение") || message.contains("НАПАДЕНИЕ")) {
                             AppVars.LastFightAnnounceAtMs = System.currentTimeMillis();
-                            Log.d(TAG, BG_TRACE_PREFIX + " ACTION_ADD_CHAT_MESSAGE: attack announce pulse");
+                            AppLog.d(TAG, BG_TRACE_PREFIX + " ACTION_ADD_CHAT_MESSAGE: attack announce pulse");
                         }
                         Chat.addMessageToChat(message);
                     }
@@ -2996,7 +2995,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         if (AppVars.Profile != null) {
             LogcatFileRecorder.setEnabled(this, AppVars.Profile.RecordLogcatToFile);
         }
-        Log.i(TAG, "ABCLIENT_ANDROID_BUILD=" + BUILD_MARKER);
+        AppLog.i(TAG, "ABCLIENT_ANDROID_BUILD=" + BUILD_MARKER);
         logBackgroundState("onCreate_afterInit");
         
         binding = ActivityMainBinding.inflate(getLayoutInflater());
@@ -3012,7 +3011,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         // Main WebView и вспомогательных WebView сразу работал через localhost proxy.
         ProxyRuntimeManager.ensureStarted(getApplicationContext(), AppVars.Profile);
         ProxyRuntimeManager.applyWebViewProxyOverride(getApplicationContext());
-        Log.i(TAG, "PROXY_BOOT: MainActivity runtime state, running="
+        AppLog.i(TAG, "PROXY_BOOT: MainActivity runtime state, running="
                 + ProxyRuntimeManager.isRunning() + ", port=" + ProxyRuntimeManager.getActivePort());
         
         DrawerLayout drawer = binding.drawerLayout;
@@ -3128,7 +3127,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         };
 
         autoBattleDelayHandler.postDelayed(pendingAutoBattleSubmitRunnable, waitMs);
-        Log.d(TAG, BG_TRACE_PREFIX + " autoBattleDelay: queued, waitMs="
+        AppLog.d(TAG, BG_TRACE_PREFIX + " autoBattleDelay: queued, waitMs="
                 + waitMs + ", configuredSec=" + Math.max(0, AppVars.CurrentAutoBattleHitDelaySec));
     }
 
@@ -3142,7 +3141,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             submitAutoBattleActionViaDirectHttp(payload);
             return;
         }
-        Log.d(TAG, BG_TRACE_PREFIX + " autoBattleDelay: submit now (foreground, WebView)");
+        AppLog.d(TAG, BG_TRACE_PREFIX + " autoBattleDelay: submit now (foreground, WebView)");
         // Подаём действие через безопасный wrapper с retry,
         // чтобы избежать race "AutoSubmit is not defined" после resume/screen on.
         submitAutoBattleActionToWebView(payload, AUTO_SUBMIT_MAX_RETRY_COUNT);
@@ -3222,7 +3221,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                 cookieManager.setCookie(urlWwwNeverlands, cookieValue.toString());
             }
             cookieManager.flush();
-            Log.d(TAG, "AUTH_COOKIE_SYNC: applied lastCookies names=" + names);
+            AppLog.d(TAG, "AUTH_COOKIE_SYNC: applied lastCookies names=" + names);
             AppVars.lastCookies = null;
         }
         syncSessionCookiesAcrossHosts(cookieManager, "after_lastCookies_apply");
@@ -3252,7 +3251,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
 
         boolean neverHasSession = hasSessionCookieTokens(neverCookie);
         boolean wwwHasSession = hasSessionCookieTokens(wwwCookie);
-        Log.d(TAG, "AUTH_COOKIE_SYNC[" + stage + "]: never=" + summarizeCookieHeaderNames(neverCookie)
+        AppLog.d(TAG, "AUTH_COOKIE_SYNC[" + stage + "]: never=" + summarizeCookieHeaderNames(neverCookie)
                 + ", www=" + summarizeCookieHeaderNames(wwwCookie));
 
         boolean changed = false;
@@ -3266,7 +3265,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             manager.flush();
             String neverAfter = manager.getCookie(neverUrl);
             String wwwAfter = manager.getCookie(wwwUrl);
-            Log.d(TAG, "AUTH_COOKIE_SYNC[" + stage + "]: mirrored never=" + summarizeCookieHeaderNames(neverAfter)
+            AppLog.d(TAG, "AUTH_COOKIE_SYNC[" + stage + "]: mirrored never=" + summarizeCookieHeaderNames(neverAfter)
                     + ", www=" + summarizeCookieHeaderNames(wwwAfter));
         }
     }
@@ -3394,7 +3393,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         if (AppVars.ContentLakeHtmlLastUpdateAtMs > 0) {
             long lakeAgeMs = System.currentTimeMillis() - AppVars.ContentLakeHtmlLastUpdateAtMs;
             if (lakeAgeMs > 120_000) {  // озеро старше 2 минут
-                Log.d(TAG, "BG_TRACE onResume: clearing expired lake cache (age=" + lakeAgeMs + "ms)");
+                AppLog.d(TAG, "BG_TRACE onResume: clearing expired lake cache (age=" + lakeAgeMs + "ms)");
                 AppVars.ContentLakeHtml = "";
                 AppVars.ContentLakeHtmlLastUpdateAtMs = 0;
             }
@@ -3436,11 +3435,11 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
 
         String captchaUrl = AppVars.CodeAddress;
         if (captchaUrl == null || captchaUrl.isEmpty()) {
-            Log.w(TAG, "restorePendingFightCaptchaDialogIfNeeded: captcha url is empty");
+            AppLog.w(TAG, "restorePendingFightCaptchaDialogIfNeeded: captcha url is empty");
             return;
         }
 
-        Log.d(TAG, "restorePendingFightCaptchaDialogIfNeeded: restoring pending fight captcha dialog");
+        AppLog.d(TAG, "restorePendingFightCaptchaDialogIfNeeded: restoring pending fight captcha dialog");
         showCaptchaDialog(captchaUrl, finishUrl);
     }
 
@@ -3514,7 +3513,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
 
             @Override
             public boolean onConsoleMessage(ConsoleMessage consoleMessage) {
-                Log.e("JS_CONSOLE", consoleMessage.message() + " -- From line "
+                AppLog.e("JS_CONSOLE", consoleMessage.message() + " -- From line "
                         + consoleMessage.lineNumber() + " of "
                         + consoleMessage.sourceId());
                 return true;
@@ -3708,7 +3707,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             suppressChatRefreshOnceAfterContacts = true;
             suppressRoomRefreshOnceAfterContacts = true;
             shouldRestoreChatRefreshAfterContacts = (chatRefreshRunnable != null);
-            Log.d(TAG, BG_TRACE_PREFIX + " nav_contacts: pause chat/room polling, chatActive="
+            AppLog.d(TAG, BG_TRACE_PREFIX + " nav_contacts: pause chat/room polling, chatActive="
                     + (chatRefreshRunnable != null) + ", roomActive=" + (roomUsersPollingRunnable != null));
             FileLogger.trace("contacts_nav",
                     "open contacts: chatActive=" + (chatRefreshRunnable != null)
@@ -3762,13 +3761,13 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
         if (requestCode == REQUEST_CODE_POST_NOTIFICATIONS) {
             boolean granted = grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED;
-            Log.d(TAG, "onRequestPermissionsResult: POST_NOTIFICATIONS granted=" + granted);
+            AppLog.d(TAG, "onRequestPermissionsResult: POST_NOTIFICATIONS granted=" + granted);
         }
     }
 
     // Запуск периодического опроса чата (ch.php?show=1&fyo=...).
     private void startChatRefresh() {
-        Log.d(TAG, BG_TRACE_PREFIX + " startChatRefresh: seconds=" + chatRefreshSeconds);
+        AppLog.d(TAG, BG_TRACE_PREFIX + " startChatRefresh: seconds=" + chatRefreshSeconds);
         stopChatRefresh();
         chatRefreshRunnable = new Runnable() {
             @Override
@@ -3776,7 +3775,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                 try {
                     requestChatRefresh();
                 } catch (Throwable t) {
-                    Log.e(TAG, BG_TRACE_PREFIX + " requestChatRefresh runnable failed", t);
+                    AppLog.e(TAG, BG_TRACE_PREFIX + " requestChatRefresh runnable failed", t);
                 } finally {
                     chatRefreshHandler.postDelayed(this, getEffectiveChatRefreshSeconds() * 1000L);
                 }
@@ -3790,9 +3789,9 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         if (chatRefreshRunnable != null) {
             chatRefreshHandler.removeCallbacks(chatRefreshRunnable);
             chatRefreshRunnable = null;
-            Log.d(TAG, BG_TRACE_PREFIX + " stopChatRefresh: stopped");
+            AppLog.d(TAG, BG_TRACE_PREFIX + " stopChatRefresh: stopped");
         } else {
-            Log.d(TAG, BG_TRACE_PREFIX + " stopChatRefresh: already stopped");
+            AppLog.d(TAG, BG_TRACE_PREFIX + " stopChatRefresh: already stopped");
         }
     }
 
@@ -3805,7 +3804,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     private void requestChatRefresh(boolean refreshRoomUsers) {
         ensureChatRefrWebViewReady();
         if (chatRefrWebView == null) {
-            Log.w(TAG, BG_TRACE_PREFIX + " requestChatRefresh skipped: chatRefrWebView is null");
+            AppLog.w(TAG, BG_TRACE_PREFIX + " requestChatRefresh skipped: chatRefrWebView is null");
             return;
         }
         if (suppressChatRefreshOnceAfterContacts) {
@@ -3825,7 +3824,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         long ts = now;
         lastChatRefreshAtMs = ts;
         String url = "http://neverlands.ru/ch.php?" + ts + "&show=1&fyo=" + chatFyo;
-        Log.d(TAG, BG_TRACE_PREFIX + " requestChatRefresh: " + url);
+        AppLog.d(TAG, BG_TRACE_PREFIX + " requestChatRefresh: " + url);
         try {
             chatRefrWebView.loadUrl(url);
         } catch (Throwable t) {
@@ -3848,7 +3847,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                 requestRoomUsersRefreshSoon();
             }
         } catch (Exception e) {
-            Log.w(TAG, "requestChatRefresh: failed to refresh room users list", e);
+            AppLog.w(TAG, "requestChatRefresh: failed to refresh room users list", e);
         }
     }
 
@@ -3861,7 +3860,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         }
         if (binding != null && binding.getRoot() instanceof ViewGroup && chatRefrWebView.getParent() == null) {
             ((ViewGroup) binding.getRoot()).addView(chatRefrWebView, new ViewGroup.LayoutParams(1, 1));
-            Log.d(TAG, BG_TRACE_PREFIX + " ensureChatRefrWebViewReady: attached hidden ch_refr view");
+            AppLog.d(TAG, BG_TRACE_PREFIX + " ensureChatRefrWebViewReady: attached hidden ch_refr view");
         }
     }
 
@@ -3872,7 +3871,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                 effective = Math.min(effective, CHAT_REFRESH_AUTO_BOSS_SECONDS);
             }
         } catch (Exception e) {
-            Log.w(TAG, BG_TRACE_PREFIX + " getEffectiveChatRefreshSeconds: failed to read autoBoss flag", e);
+            AppLog.w(TAG, BG_TRACE_PREFIX + " getEffectiveChatRefreshSeconds: failed to read autoBoss flag", e);
         }
         return Math.max(1, effective);
     }
@@ -3934,7 +3933,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                 interactive = powerManager.isInteractive();
             }
         } catch (Exception e) {
-            Log.w(TAG, BG_TRACE_PREFIX + " isUiForegroundInteractive: fallback by resumed-state", e);
+            AppLog.w(TAG, BG_TRACE_PREFIX + " isUiForegroundInteractive: fallback by resumed-state", e);
         }
         return interactive && hasWindowFocus();
     }
@@ -3958,7 +3957,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                 return powerManager.isInteractive();
             }
         } catch (Exception e) {
-            Log.w(TAG, BG_TRACE_PREFIX + " isUiForegroundLikely: fallback by resumed-state", e);
+            AppLog.w(TAG, BG_TRACE_PREFIX + " isUiForegroundLikely: fallback by resumed-state", e);
         }
         return true;
     }
@@ -3974,7 +3973,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             }
             return keyguardManager.isKeyguardLocked();
         } catch (Exception e) {
-            Log.w(TAG, BG_TRACE_PREFIX + " isDeviceLocked: fallback false", e);
+            AppLog.w(TAG, BG_TRACE_PREFIX + " isDeviceLocked: fallback false", e);
             return false;
         }
     }
@@ -4063,11 +4062,11 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                 if (vcode != null && !vcode.isEmpty()) {
                     reloadUrl += "&vcode=" + vcode;
                 }
-                Log.d(TAG, "AUTO_CURE_TRACE requestMainFrameReloadFromAutomation: reason=" + reason
+                AppLog.d(TAG, "AUTO_CURE_TRACE requestMainFrameReloadFromAutomation: reason=" + reason
                         + ", url=" + reloadUrl);
                 binding.appBarMain.contentMain.webView.loadUrl(reloadUrl);
             } catch (Exception e) {
-                Log.w(TAG, "AUTO_CURE_TRACE requestMainFrameReloadFromAutomation failed: reason=" + reason, e);
+                AppLog.w(TAG, "AUTO_CURE_TRACE requestMainFrameReloadFromAutomation failed: reason=" + reason, e);
             }
         });
     }
@@ -4088,7 +4087,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             return;
         }
         if (now < navTickNetworkBackoffUntilMs) {
-            Log.d(TAG, "SERVER_TIMER_TICK backoff active: waitMs=" + (navTickNetworkBackoffUntilMs - now)
+            AppLog.d(TAG, "SERVER_TIMER_TICK backoff active: waitMs=" + (navTickNetworkBackoffUntilMs - now)
                     + ", dueAt=" + dueAt);
             return;
         }
@@ -4100,7 +4099,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             return;
         }
         if (AppVars.TreasureDigPauseNonCombatAutoFunctions) {
-            Log.d(TAG, "SERVER_TIMER_TICK skip: treasure dig preparation pause is active"
+            AppLog.d(TAG, "SERVER_TIMER_TICK skip: treasure dig preparation pause is active"
                     + ", autoMoving=" + autoMoving
                     + ", dueAt=" + dueAt);
             return;
@@ -4111,13 +4110,13 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             long timeSinceStartMs = System.currentTimeMillis() - AppVars.fishingSequenceStartAtMs;
             long dynamicTimeoutMs = AppVars.fishingExpectedDurationMs; // динамический таймаут по навыку
             if (timeSinceStartMs < dynamicTimeoutMs) {
-                Log.d(TAG, "SERVER_TIMER_TICK skip: fishing sequence in progress (duration=" + timeSinceStartMs + "ms"
+                AppLog.d(TAG, "SERVER_TIMER_TICK skip: fishing sequence in progress (duration=" + timeSinceStartMs + "ms"
                         + ", timeout=" + dynamicTimeoutMs + "ms)"
                         + ", dueAt=" + dueAt);
                 return;
             } else {
                 // Timeout - очищаем флаг на случай, если act=2 не прошел (сервер long-polling навыка)
-                Log.w(TAG, "SERVER_TIMER_TICK TIMEOUT: clearing lost fishing suppression flag after " + timeSinceStartMs + "ms"
+                AppLog.w(TAG, "SERVER_TIMER_TICK TIMEOUT: clearing lost fishing suppression flag after " + timeSinceStartMs + "ms"
                         + " (timeout=" + dynamicTimeoutMs + "ms)");
                 AppVars.suppressBackgroundProbesDuringFishing = false;
                 // Сбрасываем NeverTimer чтобы авто-рыбалка могла перезапуститься
@@ -4159,14 +4158,14 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             if (AppVars.suppressBackgroundProbesDuringFishing) {
                 // Рыбалка все еще идет - не отправляем af_tick, перезагружаем озеро для получения vcode
                 reloadUrl = "http://neverlands.ru/main.php?get_id=56&act=10&go=ret&r=" + now;
-                Log.w(TAG, "SERVER_TIMER_TICK: fishing still active! Reloading lake for fresh vcode instead of af_tick.");
+                AppLog.w(TAG, "SERVER_TIMER_TICK: fishing still active! Reloading lake for fresh vcode instead of af_tick.");
             } else {
                 // RULE 5: VCode получается через SessionManager
                 String vcode = SessionManager.getInstance().getValidVCodeForAction("server_timer_tick_af_tick");
                 if (vcode == null || vcode.isEmpty()) {
                     // Vcode пуст - нужна защита: загружаем озеро чтобы получить свежий vcode
                     reloadUrl = "http://neverlands.ru/main.php?get_id=56&act=10&go=ret&r=" + now;
-                    Log.w(TAG, "SERVER_TIMER_TICK: VCode пуст при af_tick! Загружаем озеро для получения vcode.");
+                    AppLog.w(TAG, "SERVER_TIMER_TICK: VCode пуст при af_tick! Загружаем озеро для получения vcode.");
                 } else {
                     reloadUrl = "http://neverlands.ru/main.php?get_id=56&act=10&go=inf&af_tick=1&r=" + now + "&vcode=" + vcode;
                 }
@@ -4178,7 +4177,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         // Локальный anti-loop guard до получения следующего server cooldown.
         AppVars.NeverTimer = now + 1500L;
 
-        Log.d(TAG, "SERVER_TIMER_TICK reload: autoMoving=" + autoMoving
+        AppLog.d(TAG, "SERVER_TIMER_TICK reload: autoMoving=" + autoMoving
                 + ", autoFish=" + autoFish
                 + ", dueAt=" + dueAt
                 + ", currentUrl=" + currentUrl
@@ -4196,7 +4195,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         }
         lastQuickPanelAutoMovingState = autoMovingNow;
         quickButtonsPanel.refreshActionStates();
-        Log.d(TAG, "QUICK_UI_SYNC: AutoMoving changed -> refresh quick buttons, state=" + autoMovingNow);
+        AppLog.d(TAG, "QUICK_UI_SYNC: AutoMoving changed -> refresh quick buttons, state=" + autoMovingNow);
     }
 
     public void refreshQuickButtonsPanelState(String reason) {
@@ -4204,7 +4203,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             return;
         }
         quickButtonsPanel.refreshActionStates();
-        Log.d(TAG, "QUICK_UI_SYNC: refresh requested, reason=" + reason);
+        AppLog.d(TAG, "QUICK_UI_SYNC: refresh requested, reason=" + reason);
     }
     
     public void invalidateQuickButtonsUI() {
@@ -4212,7 +4211,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             return;
         }
         quickButtonsPanel.refreshActionStates();
-        Log.d(TAG, "QUICK_UI_SYNC: invalidateQuickButtonsUI called -> refresh");
+        AppLog.d(TAG, "QUICK_UI_SYNC: invalidateQuickButtonsUI called -> refresh");
     }
     
     public void addAddressToStatusString(String address) {
@@ -4264,7 +4263,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         if (isExiting) {
             return;
         }
-        Log.i(TAG, "LOGOUT_FLOW: started from navigation drawer");
+        AppLog.i(TAG, "LOGOUT_FLOW: started from navigation drawer");
         new Thread(() -> {
             performLogoutRequestBestEffort();
             runOnUiThread(this::finalizeLogoutAndOpenLogin);
@@ -4280,7 +4279,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             URL url = new URL(LOGOUT_URL);
             Proxy activeProxy = ProxyRuntimeManager.getActiveJavaProxyOrNull();
             if (activeProxy == null && ProxyRuntimeManager.isStrictProxyRequiredForCurrentProfile()) {
-                Log.e(TAG, "PROXY_FAIL: strict proxy enabled and runtime proxy unavailable, skip server logout request");
+                AppLog.e(TAG, "PROXY_FAIL: strict proxy enabled and runtime proxy unavailable, skip server logout request");
                 return;
             }
 
@@ -4310,15 +4309,15 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             if (cookie != null && !cookie.isEmpty()) {
                 connection.setRequestProperty("Cookie", cookie);
             } else {
-                Log.w(TAG, "LOGOUT_FLOW: cookie is empty for server logout request");
+                AppLog.w(TAG, "LOGOUT_FLOW: cookie is empty for server logout request");
             }
 
             int responseCode = connection.getResponseCode();
             String location = connection.getHeaderField("Location");
-            Log.i(TAG, "LOGOUT_FLOW: exit.php responseCode=" + responseCode
+            AppLog.i(TAG, "LOGOUT_FLOW: exit.php responseCode=" + responseCode
                     + ", location=" + (location == null ? "" : location));
         } catch (Exception e) {
-            Log.w(TAG, "LOGOUT_FLOW: server logout request failed", e);
+            AppLog.w(TAG, "LOGOUT_FLOW: server logout request failed", e);
         } finally {
             if (connection != null) {
                 connection.disconnect();
@@ -4343,7 +4342,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             manager.removeAllCookies(null);
             manager.flush();
         } catch (Throwable t) {
-            Log.w(TAG, "LOGOUT_FLOW: WebView cookie cleanup failed", t);
+            AppLog.w(TAG, "LOGOUT_FLOW: WebView cookie cleanup failed", t);
         }
 
         AutoModeForegroundService.syncServiceState(this, "logout_to_login");
@@ -4495,7 +4494,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         @Override
         public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
             String url = request.getUrl().toString();
-            Log.d(TAG, "shouldOverrideUrlLoading: " + url);
+            AppLog.d(TAG, "shouldOverrideUrlLoading: " + url);
             
             if (url == null) {
                 return false;
@@ -4509,10 +4508,10 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                         autoFunctionsManager.setAutoCompassEnabled(false);
                     }
                     autoFunctionsManager.startAutoMoving(compassCellRegNum);
-                    Log.d(TAG, "shouldOverrideUrlLoading: compass cell link -> startAutoMoving "
+                    AppLog.d(TAG, "shouldOverrideUrlLoading: compass cell link -> startAutoMoving "
                             + compassCellRegNum + ", sourceUrl=" + url);
                 } catch (Exception e) {
-                    Log.e(TAG, "shouldOverrideUrlLoading: failed to start navigation from compass link: " + url, e);
+                    AppLog.e(TAG, "shouldOverrideUrlLoading: failed to start navigation from compass link: " + url, e);
                 }
                 return true;
             }
@@ -4580,7 +4579,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             
             // Открываем в новой вкладке если это special URL
             if (shouldOpenInNewTab) {
-                Log.d(TAG, "shouldOverrideUrlLoading: открываем вкладку " + title + " -> " + url);
+                AppLog.d(TAG, "shouldOverrideUrlLoading: открываем вкладку " + title + " -> " + url);
                 openInNewTab(url, title);
                 return true; // Не даём WebView загружать этот URL
             }
@@ -4617,7 +4616,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                 }
             }
 
-            Log.e(TAG, "onReceivedError: code=" + errorCode
+            AppLog.e(TAG, "onReceivedError: code=" + errorCode
                     + ", mainFrame=" + isMainFrame
                     + ", url=" + failingUrl
                     + ", desc=" + description);
@@ -4632,7 +4631,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             String safeUrl = failingUrl == null ? "" : failingUrl;
             String safeDescription = description == null ? "" : description;
 
-            Log.e(TAG, "onReceivedError(legacy): code=" + errorCode
+            AppLog.e(TAG, "onReceivedError(legacy): code=" + errorCode
                     + ", url=" + safeUrl
                     + ", desc=" + safeDescription);
 
@@ -4656,7 +4655,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                 String extractorJs = new String(readAssetFile("js/extract_fight_state.js"));
                 view.evaluateJavascript("javascript:" + extractorJs, null);
             } catch (IOException e) {
-                Log.e(TAG, "Failed to read extract_fight_state.js", e);
+                AppLog.e(TAG, "Failed to read extract_fight_state.js", e);
             }
             // DEPRECATED: RoomManager.startTracing() removed - HTML injection in Filter/RoomManager handles player list
         } else if (url.contains("ch.php")) {
@@ -5000,14 +4999,14 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         long now = System.currentTimeMillis();
         if (failingUrl.equals(lastMainFrameTimeoutRetryUrl)
                 && (now - lastMainFrameTimeoutRetryAtMs) < MAINFRAME_TIMEOUT_RETRY_DEDUP_MS) {
-            Log.w(TAG, "onReceivedError: network retry skipped by dedup, url=" + failingUrl
+            AppLog.w(TAG, "onReceivedError: network retry skipped by dedup, url=" + failingUrl
                     + ", context={" + timeoutContext + "}");
             return;
         }
 
         lastMainFrameTimeoutRetryUrl = failingUrl;
         lastMainFrameTimeoutRetryAtMs = now;
-        Log.w(TAG, "onReceivedError: transient main-frame error, retry in "
+        AppLog.w(TAG, "onReceivedError: transient main-frame error, retry in "
                 + MAINFRAME_TIMEOUT_RETRY_DELAY_MS + "ms, url=" + failingUrl
                 + ", context={" + timeoutContext + "}");
 
@@ -5045,7 +5044,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             }
         }
 
-        Log.w(TAG, "SERVER_TIMER_TICK network failure: url=" + failingUrl
+        AppLog.w(TAG, "SERVER_TIMER_TICK network failure: url=" + failingUrl
                 + ", code=" + errorCode
                 + ", desc=" + description
                 + ", burstCount=" + navTickErrorBurstCount
@@ -5061,7 +5060,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         navTickNetworkBackoffUntilMs = 0L;
         navTickErrorBurstWindowStartMs = 0L;
         navTickErrorBurstCount = 0;
-        Log.d(TAG, "SERVER_TIMER_TICK backoff reset: reason=" + reason);
+        AppLog.d(TAG, "SERVER_TIMER_TICK backoff reset: reason=" + reason);
     }
 
     private boolean isTransientNetworkDropError(int errorCode, String description) {

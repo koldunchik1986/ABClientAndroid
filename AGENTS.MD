@@ -527,6 +527,32 @@
         *   ✅ Для боевого сценария есть корректные вызовы `markFightInProgress()` и `clearFightContext()`.
         *   ✅ Логи содержат маркеры `VCODE_PARSED`, `VALID_VCODE`, `NO_SESSION`/`STALE_SESSION` и, при бое, `FIGHT_CACHE`.
 
+12. **Единый модуль логирования — AppLog (обязательно для ВСЕХ прикладных модулей).**
+    *   **Что это:** `AppLog` — фасад двойного логирования: каждый вызов (`d/i/w/e`) пишет в **logcat** + дублирует в **FileLogger** (файлы `files/Logs/Critical/`). Это обеспечивает сохранность критичных логов даже при переполнении системного буфера logcat.
+    *   **КРИТИЧНЫЕ правила:**
+        1. **ЗАПРЕЩЕНО** использовать прямой `android.util.Log.*` в прикладных модулях (все, кроме `AppLog.java`, `FileLogger.java`, `LogcatFileRecorder.java`).
+        2. **ЗАПРЕЩЕНО** использовать shorthand `Log.d/i/w/e` (импорт `android.util.Log`) в прикладных модулях.
+        3. **ОБЯЗАТЕЛЬНО** использовать: `AppLog.d(tag, message)`, `AppLog.i(tag, message)`, `AppLog.w(tag, message)`, `AppLog.e(tag, message)` и перегрузки с `chain` и `Throwable`.
+        4. **ОБЯЗАТЕЛЬНО** добавить импорт: `import ru.neverlands.abclient.utils.AppLog;`
+        5. **ЗАПРЕЩЕНО** оставлять `import android.util.Log;` в прикладных модулях — только в инфраструктурных (`AppLog`, `FileLogger`, `LogcatFileRecorder`).
+    *   **API AppLog (справочно):**
+        *   `AppLog.d(tag, msg)` / `AppLog.d(chain, tag, msg)` — debug
+        *   `AppLog.i(tag, msg)` / `AppLog.i(chain, tag, msg)` — info
+        *   `AppLog.w(tag, msg)` / `AppLog.w(chain, tag, msg)` / `AppLog.w(tag, msg, error)` / `AppLog.w(chain, tag, msg, error)` — warning
+        *   `AppLog.e(tag, msg)` / `AppLog.e(chain, tag, msg)` / `AppLog.e(tag, msg, error)` / `AppLog.e(chain, tag, msg, error)` — error
+        *   `AppLog.getStackTraceString(error)` — аналог `Log.getStackTraceString`
+    *   **Инфраструктурные модули (ИСКЛЮЧЕНИЯ — могут использовать `android.util.Log` напрямую):**
+        *   `AppLog.java` — сама обёртка, делегирует в `android.util.Log` + `FileLogger`
+        *   `FileLogger.java` — файловый логгер, использует `Log.getStackTraceString` и `Log.e/w/d` для металогирования своих ошибок
+        *   `LogcatFileRecorder.java` — рекордер logcat, использует `Log` для металогирования
+    *   **Когда использовать параметр `chain`:**
+        *   Если лог относится к конкретной критичной цепочке (автобой, авторыбалка, прокси, VCode) — передавать chain для группировки в отдельный файл лога: `AppLog.d("AUTO_FISH_TRACE", TAG, msg)`.
+        *   Если лог общий — использовать 2-arg вариант: `AppLog.d(TAG, msg)`.
+    *   **Проверка перед коммитом:**
+        *   grep по коду: `grep -r "android\.util\.Log\." app/src/main/java/` — не должно быть вхождений вне `utils/AppLog.java`, `utils/FileLogger.java`, `utils/LogcatFileRecorder.java`.
+        *   grep по коду: `grep -r "import android\.util\.Log;" app/src/main/java/` — не должно быть вхождений вне тех же трёх файлов.
+        *   grep по shorthand: `grep -rn "^\s*Log\.[diwe](" app/src/main/java/` — не должно быть вхождений.
+
 11. **Анти-дублирование фиксов + единый источник уведомлений.**
     *   **Перед любым новым фиксом обязательно** сделать поиск в текущем Android-коде по:
         *   названию функции/константы/поля;

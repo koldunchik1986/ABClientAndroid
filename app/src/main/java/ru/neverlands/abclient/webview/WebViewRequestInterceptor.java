@@ -1,7 +1,6 @@
 package ru.neverlands.abclient.webview;
 
 import android.net.Uri;
-import android.util.Log;
 import android.webkit.CookieManager;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebResourceResponse;
@@ -195,13 +194,13 @@ public class WebViewRequestInterceptor {
             if (!isNeverlandsHost(host)) {
                 // Short-circuit slow external counters that often time out inside WebView
                 if (isKnownTrackerHost(host)) {
-                    Log.d(TAG, "Blocking tracker host: " + host);
+                    AppLog.d(TAG, "Blocking tracker host: " + host);
                     return new WebResourceResponse("text/plain", "utf-8", new ByteArrayInputStream(new byte[0]));
                 }
                 // Внешние подресурсы (скрипты/счетчики/пиксели) из неигровых доменов
                 // блокируем централизованно, чтобы не получать ложные timeout в авто-функциях.
                 if (!request.isForMainFrame()) {
-                    Log.d(TAG, "Blocking external subresource host: " + host + ", url=" + urlString);
+                    AppLog.d(TAG, "Blocking external subresource host: " + host + ", url=" + urlString);
                     return new WebResourceResponse("text/plain", "utf-8", new ByteArrayInputStream(new byte[0]));
                 }
                 return null;
@@ -229,7 +228,7 @@ public class WebViewRequestInterceptor {
                     if (expectedCaptchaBytes != null
                             && expectedCaptchaBytes.length > 0
                             && isSameCaptchaUrl(expectedCaptchaUrl, cachedCaptchaUrl)) {
-                        Log.d(TAG, "Fight captcha guard: blocked foreign challenge request, requested="
+                        AppLog.d(TAG, "Fight captcha guard: blocked foreign challenge request, requested="
                                 + urlString + ", expected=" + expectedCaptchaUrl
                                 + ", serving expected bytes=" + expectedCaptchaBytes.length);
                         return new WebResourceResponse(
@@ -238,7 +237,7 @@ public class WebViewRequestInterceptor {
                                 new ByteArrayInputStream(expectedCaptchaBytes)
                         );
                     }
-                    Log.d(TAG, "Fight captcha guard: blocked foreign challenge request without expected bytes, requested="
+                    AppLog.d(TAG, "Fight captcha guard: blocked foreign challenge request without expected bytes, requested="
                             + urlString + ", expected=" + expectedCaptchaUrl);
                     return new WebResourceResponse("text/plain", "utf-8", new ByteArrayInputStream(new byte[0]));
                 }
@@ -254,7 +253,7 @@ public class WebViewRequestInterceptor {
                         && urlString.equals(cachedCaptchaUrl)
                         && cachedAgeMs >= 0
                         && cachedAgeMs <= 30_000L) {
-                    Log.d(TAG, "Serving cached fight captcha bytes: " + cachedCaptchaBytes.length
+                    AppLog.d(TAG, "Serving cached fight captcha bytes: " + cachedCaptchaBytes.length
                             + " for " + urlString + ", ageMs=" + cachedAgeMs);
                     return new WebResourceResponse(
                             "image/png",
@@ -278,17 +277,17 @@ public class WebViewRequestInterceptor {
                     && (urlString.contains("fight_v")
                     || urlString.contains("hpmp.js")
                     || urlString.contains("game.js"))) {
-                Log.d(TAG, "Autoboi visual frame mode: keep original fight JS: " + urlString);
+                AppLog.d(TAG, "Autoboi visual frame mode: keep original fight JS: " + urlString);
             }
 
             // Запоминаем URL картинки капчи завершения боя для fallback-детекта в MainPhp.
             // Логируем только факт исходящего запроса капчи.
             // Поля LastFightCaptchaImage* обновляются ниже только после получения bytes.
             if (urlString.contains("/modules/code/code.php")) {
-                Log.d(TAG, "Captured fight captcha image URL (request): " + urlString);
+                AppLog.d(TAG, "Captured fight captcha image URL (request): " + urlString);
             }
 
-            Log.d(TAG, "Intercepting: " + urlString);
+            AppLog.d(TAG, "Intercepting: " + urlString);
 
             // Обновление списка игроков чата: добавляем timestamp для защиты от кеша.
             if (urlString.contains("ch.php?lo=1")) {
@@ -298,16 +297,16 @@ public class WebViewRequestInterceptor {
             URL url = new URL(urlString);
             java.net.Proxy activeProxy = ProxyRuntimeManager.getActiveJavaProxyOrNull();
             if (activeProxy == null && ProxyRuntimeManager.isStrictProxyRequiredForCurrentProfile()) {
-                Log.e(TAG, "PROXY_FAIL: strict proxy enabled and runtime proxy unavailable, blocking direct WebView request: " + urlString);
+                AppLog.e(TAG, "PROXY_FAIL: strict proxy enabled and runtime proxy unavailable, blocking direct WebView request: " + urlString);
                 RuntimeNetTrace.push("PROXY_FAIL", "cmd=block scope=webview strict=1 route=direct url=" + trimUrlForTrace(urlString));
                 return buildStrictProxyBlockedResponse();
             }
             if (isPinfoOrForumUrl(urlString)) {
                 String routeMode = activeProxy != null ? "local-proxy" : "direct";
-                Log.i(TAG, "PROXY_ROUTE: internal page via " + routeMode + ", url=" + urlString);
+                AppLog.i(TAG, "PROXY_ROUTE: internal page via " + routeMode + ", url=" + urlString);
                 RuntimeNetTrace.push("NAV", "target=pinfo_forum route=" + routeMode + " url=" + trimUrlForTrace(urlString));
             }
-            Log.d(TAG, "PROXY_BINDING: interceptor openConnection via "
+            AppLog.d(TAG, "PROXY_BINDING: interceptor openConnection via "
                     + (activeProxy != null ? "local proxy" : "direct")
                     + ", url=" + urlString);
             RuntimeNetTrace.push("HTTP_OPEN", "route=" + (activeProxy != null ? "proxy" : "direct") + " url=" + trimUrlForTrace(urlString));
@@ -385,17 +384,17 @@ public class WebViewRequestInterceptor {
             }
 
             int code = connection.getResponseCode();
-            Log.d(TAG, "Response code: " + code + " for " + urlString);
+            AppLog.d(TAG, "Response code: " + code + " for " + urlString);
             RuntimeNetTrace.push("HTTP_CODE", "code=" + code + " url=" + trimUrlForTrace(urlString));
 
             // Read response body, handling gzip if server sends it despite identity request
             String contentEncoding = connection.getContentEncoding();
-            Log.d(TAG, "Content-Encoding: " + contentEncoding + " for " + urlString);
+            AppLog.d(TAG, "Content-Encoding: " + contentEncoding + " for " + urlString);
             InputStream responseStream = code >= 400 && connection.getErrorStream() != null
                     ? connection.getErrorStream()
                     : connection.getInputStream();
             byte[] bytes = readAllBytes(responseStream);
-            Log.d(TAG, "Raw bytes: " + bytes.length + " for " + urlString);
+            AppLog.d(TAG, "Raw bytes: " + bytes.length + " for " + urlString);
 
             // Сохраняем свежие байты картинки капчи завершения боя для отображения в popup без повторного HTTP-запроса.
             // Консистентно обновляем URL+bytes+timestamp в один момент (после чтения response body),
@@ -404,7 +403,7 @@ public class WebViewRequestInterceptor {
                 ru.neverlands.abclient.utils.AppVars.LastFightCaptchaImageBytes = bytes;
                 ru.neverlands.abclient.utils.AppVars.LastFightCaptchaImageUrl = urlString;
                 ru.neverlands.abclient.utils.AppVars.LastFightCaptchaImageAtMs = System.currentTimeMillis();
-                Log.d(TAG, "Captured fight captcha image BYTES: " + bytes.length + " for " + urlString);
+                AppLog.d(TAG, "Captured fight captcha image BYTES: " + bytes.length + " for " + urlString);
             }
 
             // Log first bytes for diagnostics
@@ -413,27 +412,27 @@ public class WebViewRequestInterceptor {
                 for (int i = 0; i < Math.min(32, bytes.length); i++) {
                     hex.append(String.format("%02x ", bytes[i] & 0xff));
                 }
-                Log.d(TAG, "First bytes HEX: " + hex.toString() + " for " + urlString);
+                AppLog.d(TAG, "First bytes HEX: " + hex.toString() + " for " + urlString);
             }
 
             if ("gzip".equalsIgnoreCase(contentEncoding) && bytes.length > 2
                     && (bytes[0] & 0xff) == 0x1f && (bytes[1] & 0xff) == 0x8b) {
-                Log.d(TAG, "Decompressing gzip for " + urlString);
+                AppLog.d(TAG, "Decompressing gzip for " + urlString);
                 bytes = decompressGzip(bytes);
-                Log.d(TAG, "After gzip: " + bytes.length + " bytes for " + urlString);
+                AppLog.d(TAG, "After gzip: " + bytes.length + " bytes for " + urlString);
             }
             // Also detect gzip magic even if Content-Encoding not set
             if (bytes.length > 2 && (bytes[0] & 0xff) == 0x1f && (bytes[1] & 0xff) == 0x8b) {
-                Log.d(TAG, "Detected gzip magic without Content-Encoding header, decompressing for " + urlString);
+                AppLog.d(TAG, "Detected gzip magic without Content-Encoding header, decompressing for " + urlString);
                 bytes = decompressGzip(bytes);
-                Log.d(TAG, "After gzip: " + bytes.length + " bytes for " + urlString);
+                AppLog.d(TAG, "After gzip: " + bytes.length + " bytes for " + urlString);
             }
 
             // Capture Set-Cookie (case-insensitive)
             Map<String, List<String>> headers = connection.getHeaderFields();
             // Log all response headers for diagnostics
             for (Map.Entry<String, List<String>> hEntry : headers.entrySet()) {
-                Log.d(TAG, "Header [" + hEntry.getKey() + "] = " + hEntry.getValue() + " for " + urlString);
+                AppLog.d(TAG, "Header [" + hEntry.getKey() + "] = " + hEntry.getValue() + " for " + urlString);
             }
             List<String> setCookies = getHeaderIgnoreCase(headers, "Set-Cookie");
             if (setCookies != null) {
@@ -455,7 +454,7 @@ public class WebViewRequestInterceptor {
 
             // Log first 200 chars of decoded HTML for diagnostics
             String preview = new String(bytes, Charset.forName("windows-1251"));
-            Log.d(TAG, "HTML preview (" + urlString + "): " + preview.substring(0, Math.min(200, preview.length())));
+            AppLog.d(TAG, "HTML preview (" + urlString + "): " + preview.substring(0, Math.min(200, preview.length())));
             logCaptchaFlowMarkers("raw", urlString, preview);
 
             // Попытка синхронизировать серверное время по времени в чате + HTTP Date.
@@ -471,11 +470,11 @@ public class WebViewRequestInterceptor {
             if (preview.contains("Cookie...")) {
                 java.net.Proxy secondProxy = ProxyRuntimeManager.getActiveJavaProxyOrNull();
                 if (secondProxy == null && ProxyRuntimeManager.isStrictProxyRequiredForCurrentProfile()) {
-                    Log.e(TAG, "PROXY_FAIL: strict proxy enabled and runtime proxy unavailable, blocking direct WebView retry: " + urlString);
+                    AppLog.e(TAG, "PROXY_FAIL: strict proxy enabled and runtime proxy unavailable, blocking direct WebView retry: " + urlString);
                     RuntimeNetTrace.push("PROXY_FAIL", "cmd=block scope=webview_retry strict=1 route=direct url=" + trimUrlForTrace(urlString));
                     return buildStrictProxyBlockedResponse();
                 }
-                Log.d(TAG, "PROXY_BINDING: interceptor retry openConnection via "
+                AppLog.d(TAG, "PROXY_BINDING: interceptor retry openConnection via "
                         + (secondProxy != null ? "local proxy" : "direct")
                         + ", url=" + urlString);
                 RuntimeNetTrace.push("HTTP_RETRY", "route=" + (secondProxy != null ? "proxy" : "direct") + " url=" + trimUrlForTrace(urlString));
@@ -518,13 +517,13 @@ public class WebViewRequestInterceptor {
                 bytes = secondBytes;
             }
 
-            Log.d(TAG, "Calling Filter.process for " + urlString + " (" + bytes.length + " bytes)");
+            AppLog.d(TAG, "Calling Filter.process for " + urlString + " (" + bytes.length + " bytes)");
             byte[] processed = Filter.process(ru.neverlands.abclient.utils.AppVars.getContext(), urlString, bytes);
             if (processed == null) {
-                Log.d(TAG, "Filter.process returned null, using original bytes for " + urlString);
+                AppLog.d(TAG, "Filter.process returned null, using original bytes for " + urlString);
                 processed = bytes;
             } else {
-                Log.d(TAG, "Filter.process returned " + processed.length + " bytes for " + urlString);
+                AppLog.d(TAG, "Filter.process returned " + processed.length + " bytes for " + urlString);
             }
 
             // ============================================================================
@@ -536,7 +535,7 @@ public class WebViewRequestInterceptor {
                 ru.neverlands.abclient.utils.SessionManager.getInstance()
                         .parseVCodeFromHtml(htmlContent, source);
             } catch (Exception e) {
-                Log.e(TAG, "Failed to parse VCode from HTML: " + e.getMessage());
+                AppLog.e(TAG, "Failed to parse VCode from HTML: " + e.getMessage());
             }
 
             // Парсим новый vcode из ответа модуля платежа капчи (modules/code/code.php)
@@ -560,7 +559,7 @@ public class WebViewRequestInterceptor {
 
             // Log first 200 chars of processed HTML
             String processedPreview = new String(processed, Charset.forName("windows-1251"));
-            Log.d(TAG, "Processed preview (" + urlString + "): " + processedPreview.substring(0, Math.min(200, processedPreview.length())));
+            AppLog.d(TAG, "Processed preview (" + urlString + "): " + processedPreview.substring(0, Math.min(200, processedPreview.length())));
             logCaptchaFlowMarkers("processed", urlString, processedPreview);
             // Диагностика ответов ch_refr: наличие add_msg/set_lmid.
             if (urlString.contains("ch.php") && urlString.contains("show=1")) {
@@ -600,7 +599,7 @@ public class WebViewRequestInterceptor {
                 response.setResponseHeaders(java.util.Collections.singletonMap("Cache-Control", "no-cache"));
             }
 
-            Log.d(TAG, "Intercepted OK: " + urlString + " (" + processed.length + " bytes, " + contentType + ")");
+            AppLog.d(TAG, "Intercepted OK: " + urlString + " (" + processed.length + " bytes, " + contentType + ")");
             return response;
         } catch (Exception e) {
             AppLog.e("chat_poll", TAG, "Intercept failed: " + request.getUrl(), e);
@@ -920,7 +919,7 @@ public class WebViewRequestInterceptor {
                 hasTimeoutMarker
         );
 
-        Log.d(TAG, "[SERVER_FLOW][" + stage + "] state=" + responseState
+        AppLog.d(TAG, "[SERVER_FLOW][" + stage + "] state=" + responseState
                 + ", url=" + (url == null ? "" : url)
                 + ", hasFightTy=" + hasFightTy
                 + ", hasFEND=" + hasFend
@@ -1282,7 +1281,7 @@ public class WebViewRequestInterceptor {
                     if (httpDate != null) {
                         long diff = Math.abs(serverMs - httpDate.getTime());
                         if (diff > 24L * 60L * 60L * 1000L) {
-                            Log.w(TAG, "Server time sync (" + source + " jsDate): httpDate mismatch, skipping");
+                            AppLog.w(TAG, "Server time sync (" + source + " jsDate): httpDate mismatch, skipping");
                             return false;
                         }
                     }
@@ -1352,7 +1351,7 @@ public class WebViewRequestInterceptor {
             long serverMs = server.getTimeInMillis();
             long diffMs = nowMs - serverMs;
             if (diffMs > 24L * 3600L * 1000L || diffMs < -24L * 3600L * 1000L) {
-                Log.w(TAG, "Server time sync (" + source + "): diffMs out of range, skipping");
+                AppLog.w(TAG, "Server time sync (" + source + "): diffMs out of range, skipping");
                 return;
             }
             if (shouldApplyServerTime(serverMs, maxDeltaMs, source)) {
@@ -1382,10 +1381,10 @@ public class WebViewRequestInterceptor {
             // Если базовая синхронизация уже есть, пропускаем chat-коррекцию без WARN-шума.
             if ("chat".equalsIgnoreCase(source)
                     && ru.neverlands.abclient.utils.AppVars.ServerDateTime != null) {
-                Log.d(TAG, "Server time sync skipped (" + source + "): deltaMs=" + delta
+                AppLog.d(TAG, "Server time sync skipped (" + source + "): deltaMs=" + delta
                         + ", maxDeltaMs=" + maxDeltaMs);
             } else {
-                Log.w(TAG, "Server time sync rejected: deltaMs=" + delta
+                AppLog.w(TAG, "Server time sync rejected: deltaMs=" + delta
                         + ", maxDeltaMs=" + maxDeltaMs + ", source=" + source);
             }
             return false;
@@ -1407,7 +1406,7 @@ public class WebViewRequestInterceptor {
             ru.neverlands.abclient.utils.AppVars.Profile.ServDiff = diffMs;
         }
         ru.neverlands.abclient.utils.AppVars.ServerDateTime = new Date(serverMs);
-        Log.d(TAG, "Server time sync (" + source + "): diffMs=" + diffMs);
+        AppLog.d(TAG, "Server time sync (" + source + "): diffMs=" + diffMs);
     }
 
     /**
@@ -1439,7 +1438,7 @@ public class WebViewRequestInterceptor {
         try {
             // Декодируем JSON из byte[] в String (используем windows-1251 как default для neverlands сервера).
             String responseJson = new String(processed, "windows-1251");
-            Log.d(TAG, "Payment module response (first 500 chars): " + responseJson.substring(0, Math.min(500, responseJson.length())));
+            AppLog.d(TAG, "Payment module response (first 500 chars): " + responseJson.substring(0, Math.min(500, responseJson.length())));
             
             // Простой парсинг JSON без JSONObject:
             // Ищем "vcode":{"value":"XXXXX"...}
@@ -1450,7 +1449,7 @@ public class WebViewRequestInterceptor {
             if (matcher.find()) {
                 String newVcode = matcher.group(1);
                 if (newVcode != null && !newVcode.isEmpty()) {
-                    Log.d(TAG, "Payment module: extracted vcode=" + newVcode);
+                    AppLog.d(TAG, "Payment module: extracted vcode=" + newVcode);
                     // ПРАВИЛЬНО: Обновляем VCode через SessionManager (RULE 5 compliance)
                     // ЗАПРЕЩЕНО: AppVars.FishCurrentVcode = newVcode (RULE 5 VIOLATION)
                     SessionManager.getInstance().parseVCodeFromHtml("vcode=" + newVcode, "fish_payment");
@@ -1459,9 +1458,9 @@ public class WebViewRequestInterceptor {
                 }
             }
             
-            Log.w(TAG, "Payment module: could not extract vcode from response, responseJson=" + responseJson.substring(0, Math.min(200, responseJson.length())));
+            AppLog.w(TAG, "Payment module: could not extract vcode from response, responseJson=" + responseJson.substring(0, Math.min(200, responseJson.length())));
         } catch (Exception e) {
-            Log.e(TAG, "updateFishCurrentVcodeFromPaymentModule failed", e);
+            AppLog.e(TAG, "updateFishCurrentVcodeFromPaymentModule failed", e);
         }
     }
 

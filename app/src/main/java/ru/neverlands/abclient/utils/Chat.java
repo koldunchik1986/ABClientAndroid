@@ -1,6 +1,6 @@
 package ru.neverlands.abclient.utils;
 
-import android.util.Log;
+import ru.neverlands.abclient.utils.AppLog;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -174,7 +174,7 @@ public class Chat {
         String safe = message == null ? "" : message;
         com.google.gson.Gson gson = new com.google.gson.Gson();
         String json = gson.toJson(safe);
-        Log.d(TAG, "sendChatMessage request: len=" + safe.length()
+        AppLog.d(TAG, "sendChatMessage request: len=" + safe.length()
                 + ", clanPrefix=" + safe.startsWith("%clan%")
                 + ", privatePrefix=" + safe.startsWith("%<")
                 + ", pairPrefix=" + safe.startsWith("%pair%"));
@@ -184,14 +184,14 @@ public class Chat {
                     && activity.binding.appBarMain.contentMain.chatButtonsWebview != null) {
                 String js = "if(document.FBT&&document.FBT.text){document.FBT.text.value=" + json + ";document.FBT.submit();}";
                 activity.binding.appBarMain.contentMain.chatButtonsWebview.evaluateJavascript(js, null);
-                Log.d(TAG, "sendChatMessage evaluateJavascript: submitted");
+                AppLog.d(TAG, "sendChatMessage evaluateJavascript: submitted");
                 FileLogger.log("[Chat.sendChatMessage] Message delivered via WebView: " + safe.substring(0, Math.min(80, safe.length())));
                 // После успешной отправки, попытаться отправить ожидающие сообщения
                 if (!PENDING_MESSAGES.isEmpty()) {
                     retryPendingMessages();
                 }
             } else {
-                Log.w(TAG, "sendChatMessage dropped: chatButtonsWebview is not ready, adding to retry queue");
+                AppLog.w(TAG, "sendChatMessage dropped: chatButtonsWebview is not ready, adding to retry queue");
                 FileLogger.log("[Chat.sendChatMessage] WebView not ready, queued: " + safe.substring(0, Math.min(80, safe.length())));
                 // Добавить сообщение в очередь для повторной попытки
                 PENDING_MESSAGES.offer(safe);
@@ -227,7 +227,7 @@ public class Chat {
             String message;
             int sentCount = 0;
             while ((message = PENDING_MESSAGES.poll()) != null && sentCount < 5) {
-                Log.d(TAG, "retryPendingMessages: sending from queue, remaining=" + PENDING_MESSAGES.size());
+                AppLog.d(TAG, "retryPendingMessages: sending from queue, remaining=" + PENDING_MESSAGES.size());
                 FileLogger.log("[Chat.retryPendingMessages] Retrying queued message (" + (sentCount + 1) + "): " + 
                     message.substring(0, Math.min(80, message.length())));
                 sendChatMessage(activity, message);
@@ -236,7 +236,7 @@ public class Chat {
             chatWebViewRetryScheduled = false;
         } else {
             // WebView всё ещё не готов - запланировать новый retry
-            Log.d(TAG, "retryPendingMessages: chatButtonsWebview still not ready, queued messages=" + PENDING_MESSAGES.size());
+            AppLog.d(TAG, "retryPendingMessages: chatButtonsWebview still not ready, queued messages=" + PENDING_MESSAGES.size());
             FileLogger.log("[Chat.retryPendingMessages] WebView still not ready, " + PENDING_MESSAGES.size() + " messages waiting");
             if (!chatWebViewRetryScheduled) {
                 chatWebViewRetryScheduled = true;
@@ -260,12 +260,12 @@ public class Chat {
         if (message == null || message.trim().isEmpty()) return;
         MainActivity activity = AppVars.mainActivity != null ? AppVars.mainActivity.get() : null;
         if (activity == null) {
-            Log.w(TAG, "sendMessageToServer: activity is null, skip");
+            AppLog.w(TAG, "sendMessageToServer: activity is null, skip");
             FileLogger.log("[Chat.sendMessageToServer] FAILED: activity is null");
             return;
         }
         String trimmed = message.trim();
-        Log.d(TAG, "sendMessageToServer: len=" + trimmed.length()
+        AppLog.d(TAG, "sendMessageToServer: len=" + trimmed.length()
                 + ", clanPrefix=" + trimmed.startsWith("%clan%")
                 + ", privatePrefix=" + trimmed.startsWith("%<")
                 + ", pairPrefix=" + trimmed.startsWith("%pair%"));
@@ -403,7 +403,7 @@ public class Chat {
                     fos.write((message + "\n").getBytes());
                 }
             } catch (Exception e) {
-                Log.e(TAG, "addStringToChat failed", e);
+                AppLog.e(TAG, "addStringToChat failed", e);
             }
         }
     }
