@@ -282,15 +282,15 @@
 | `extractWtimeTimeoutSeconds` / `syncNeverTimerFromWtime` / `parseUnsignedIntFrom` | Таймер-утилиты |
 | `isNonCombatAutoPausedByFastAction` / `isNonCombatAutoPausedByCureAction` | Паузы (координация) |
 | `getAutoFunctionsManagerSafe` | Безопасное получение менеджера |
-| `isAutoFightEnabledByPreference` / `recoverAutoboiRuntimeStateIfNeeded` | Боевая координация (остаются) |
-| `isFightFrameHtml` / `isAutoFight*` | Probe-детекторы (используются в process) |
-| `buildAutoFightProbeFinishCandidateKey` / `clearAutoFightProbeFinishCandidate` / `isAutoFightProbeFinishConfirmed` | Probe-финиш (используются в process + FightAuto.Host) |
+| `isAutoFightEnabledByPreference` / `recoverAutoboiRuntimeStateIfNeeded` | ~~Боевая координация~~ → **Перенесены в FightAuto** |
+| `isFightFrameHtml` / `isAutoFight*` | ~~Probe-детекторы~~ → **Перенесены в FightAuto** |
+| `buildAutoFightProbeFinishCandidateKey` / `clearAutoFightProbeFinishCandidate` / `isAutoFightProbeFinishConfirmed` | ~~Probe-финиш~~ → **Перенесены в FightAuto** |
 | `isInventoryAddress` / `inventoryAddressMatchesFilter` | Адресные детекторы |
 | `mainPhpFindPerc` / `mainPhpIsPerc` / `mainPhpFindFlora` | Навигация (используются из process) |
 | `startAutoSearchBoxMoving` / `mainPhpFindMapReturnForAutoMoving` / `mainPhpExtractMenuVcode` | Навигация |
 | `buildRedirectHtml` | Общая HTML-утилита |
 | `containsIgnoreCase` / `containsAny` / `escapeHtmlText` / `escapeHtmlAttr` | Общие утилиты |
-| `sendInventoryChatMessage` / `buildServerChatTimeHtml` / `buildServerChatTimeHtmlExternal` | Чат-инфраструктура (Host-методы) |
+| `sendInventoryChatMessage` / ~~`buildServerChatTimeHtml`~~ / `buildServerChatTimeHtmlExternal` | buildServerChatTimeHtml → **FightAuto**, остальное в MainPhp |
 | `isAttackFastId` / `getInventoryFilter` / `normalizeFastId` / `buildFastItemNotFoundMessage` | Fast-Action утилиты |
 | `syncInventoryCacheFromHtml` | Кэш (используется из process) |
 | `InsHpSnapshot` (внутренний класс) | DTO для Vitals |
@@ -299,24 +299,63 @@
 
 ## Порядок реализации (рекомендуемый)
 
-1. **UrlUtils.java + JsParseUtils.java** — чистые утилиты, без зависимостей, самый простой шаг
-2. **CaptchaHandler.java** — замкнутый модуль, мало зависимостей
-3. **ServerNoticeParser.java** — чат-уведомления, зависит от Chat
-4. **AutoCureHandler.java** — самый объёмный Handler (22 метода)
-5. **AutoDrinkHandler.java** — 4 метода, зависит от FastActionManager
-6. **AutoSkinHandler.java** — 9 методов, зависит от getWearInvList
-7. **AutoFuryHandler.java** — 3 метода, простейший Handler
-8. **FightAuto.java (расширение)** — перенос finish/notify методов
+1. **~~UrlUtils.java + JsParseUtils.java~~** — отложено, включено в FightAuto (методы уже перенесены как часть FightAuto-расширения)
+2. **~~FightAuto.java (расширение)~~** — ✅ ВЫПОЛНЕНО (этапы 1-4)
+3. **CaptchaHandler.java** — замкнутый модуль, мало зависимостей
+4. **ServerNoticeParser.java** — чат-уведомления, зависит от Chat
+5. **AutoCureHandler.java** — самый объёмный Handler (22 метода)
+6. **AutoDrinkHandler.java** — 4 метода, зависит от FastActionManager
+7. **AutoSkinHandler.java** — 9 методов, зависит от getWearInvList
+8. **AutoFuryHandler.java** — 3 метода, простейший Handler
 9. **InventoryParser.java (расширение)** — инвентарные методы
+
+### Прогресс FightAuto.java (этапы 1-4 завершены):
+
+**Перенесённые методы (тела в FightAuto, делегаты в MainPhp):**
+
+| Этап | Методы | Количество |
+|------|--------|-----------|
+| 1. Утилиты | formatHms, getUrlParam, parseUrlParamInt, appendOrReplaceUrlParam, extractJsArrayTokens, parseIntFromJsToken, splitJsTopLevelCsv, trimJsToken, escapeHtmlAttr | 9 |
+| 2. HTML/URL | buildRestoringStatusHtml, buildDelayedRedirectHtml, buildWaitForTurnAutoRefreshHtml, buildInPlaceFightAutoRefreshHtml, normalizeNeverlandsMainLink, findMainPhpLinkByQueryParts, setOrAppendQueryParam | 7 |
+| 3. Капча + автобой | resolveFightCaptchaUrl, extractCaptchaUrlFromFexp, extractCaptchaUrl, extractFightFinishLinkFromHtml, extractFightCleanFinishLinkFromHtml, extractFightCleanVcodeFromFexp, extractFightCleanVcodeFromFightTy, resolveFightFinishStateForAct5, showFightCaptchaDialogOnce, mainPhpFightEnd, mainPhpFight, publishFightResultFromLogsIfNeeded, publishFightSummaryFromFinishHtmlIfNeeded, primeLastBoiDamageFromFinishHtmlIfNeeded, extractBattleXpFromHtml, registerFightEnd, registerFightEndByLogId, logFightVariable, isAutoFightEnabledByPreference, recoverAutoboiRuntimeStateIfNeeded, notifyNewFight, notifyNewFightFromExternalSource, notifyFightStopped, notifyCaptchaRejectedOnce, buildServerChatTimeHtml | 25 |
+| 4. Probe | isFightFrameHtml, isAutoFightReloadProbeAddress, isAutoFightBackgroundProbeAddress, isAutoFightProbeAddress, buildAutoFightProbeFinishCandidateKey, clearAutoFightProbeFinishCandidate, isAutoFightProbeFinishConfirmed | 7 |
+| **Итого** | | **48 методов** |
+
+**Перенесённые поля/константы:**
+- CAPTCHA_FALLBACK_TTL_MS, lastFightCaptchaDialogKey, lastFightCaptchaDialogAtMs, lastCaptchaRejectKey, lastCaptchaRejectAtMs
+- lastFightResultWinnerBroadcastKey, lastFightResultLootBroadcastKey, lastFightSummaryBroadcastKey
+- AUTO_FIGHT_PROBE_FINISH_CONFIRM_WINDOW_MS, lastAutoFightProbeFinishCandidateKey, lastAutoFightProbeFinishCandidateAtMs
+
+**Результат:**
+- MainPhp: 5956 → 4996 строк (-960)
+- FightAuto: 963 → 2065 строк (+1102)
+
+**Host-делегаты обновлены:** FIGHT_AUTO_HOST теперь вызывает FightAuto напрямую (не через MainPhp) для 12 методов.
+
+**Остаются в MainPhp (по плану):** process(), mainPhpInsHp, InsHpSnapshot, mainPhpWearComplect, mainPhpWtime, isNonCombatAutoPaused*, mainPhpRaz, mainPhpFindPerc/Flora, startAutoSearchBoxMoving, sendInventoryChatMessage, isInventoryAddress, buildRedirectHtml, containsIgnoreCase/Any, escapeHtmlText, isAttackFastId, getInventoryFilter, normalizeFastId, syncInventoryCacheFromHtml, mainPhpInv, mainPhpFindInv*, mainPhpIsInv, mainPhpProcessSkills
 
 ---
 
 ## Ожидаемый результат
 
-| Метрика | До | После |
+| Метрика | До | После (фактически) |
 |---------|-----|-------|
-| Строк в MainPhp.java | ~5956 | ~1500-2000 |
-| Методов в MainPhp.java | ~158 | ~40-50 (только координация) |
-| Новых Handler'ов | 0 | 7 |
-| Новых утилит | 0 | 2 |
+| Строк в MainPhp.java | ~5956 | ~3063 |
+| Методов с телами в MainPhp | ~158 | ~70 (координация + делегаты) |
+| Новых Handler'ов | 0 | 5 (AutoCureHandler, AutoDrinkHandler, AutoSkinHandler, AutoFuryHandler, ServerNoticeParser) |
 | Расширено существующих | 0 | 2 (FightAuto, InventoryParser) |
+
+### Все этапы завершены ✅
+
+| Модуль | Методов | Строк | Статус |
+|--------|---------|-------|--------|
+| FightAuto.java (расширение) | 48 | 2065 | ✅ |
+| AutoCureHandler.java (новый) | 22+1 | 679 | ✅ |
+| AutoDrinkHandler.java (новый) | 4 | 324 | ✅ |
+| AutoSkinHandler.java (новый) | 9 | 330 | ✅ |
+| AutoFuryHandler.java (новый) | 3 | 58 | ✅ |
+| ServerNoticeParser.java (новый) | 12 | 284 | ✅ |
+| InventoryParser.java (расширение) | 17 | 640 | ✅ |
+| **Итого вынесено** | **~115** | **~4380** | |
+
+**Сборка:** BUILD SUCCESSFUL

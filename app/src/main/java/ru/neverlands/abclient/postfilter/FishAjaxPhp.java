@@ -2989,23 +2989,23 @@ public final class FishAjaxPhp {
             return null;
         }
         boolean dressedValid = ud.Valid;
-        List<MainPhp.WearInvEntry> invList = MainPhp.getWearInvList(html);
+        List<ru.neverlands.abclient.postfilter.InventoryParser.WearInvEntry> invList = ru.neverlands.abclient.postfilter.InventoryParser.getWearInvList(html);
         if (!dressedValid) {
             AppLog.w(TAG, "AUTO_FISH_TRACE wear: ParsedDressed invalid on inventory page, fallback to inventory-only mode");
         }
         boolean hand1DisabledByProfile = isNoFishHandSetting(AppVars.Profile.FishHandOne);
         boolean isWear1 = hand1DisabledByProfile || (dressedValid && ud.IsWear1());
         if (!isWear1 && AppVars.Profile.FishAutoWear) {
-            for (MainPhp.WearInvEntry thing : invList) {
+            for (ru.neverlands.abclient.postfilter.InventoryParser.WearInvEntry thing : invList) {
                 if (thing.name == null || thing.wearLink == null || thing.wearLink.isEmpty()) continue;
-                if (MainPhp.containsIgnoreCase(AppVars.Profile.FishHandOne, "\u041B\u044E\u0431\u0430\u044F \u0443\u0434\u043E\u0447\u043A\u0430")) {
-                    if (MainPhp.containsIgnoreCase(thing.name, "\u0443\u0434\u043E\u0447\u043A\u0430") || MainPhp.containsIgnoreCase(thing.name, "\u0441\u043F\u0438\u043D\u043D\u0438\u043D\u0433")) {
+                if (ru.neverlands.abclient.postfilter.InventoryParser.containsIgnoreCase(AppVars.Profile.FishHandOne, "\u041B\u044E\u0431\u0430\u044F \u0443\u0434\u043E\u0447\u043A\u0430")) {
+                    if (ru.neverlands.abclient.postfilter.InventoryParser.containsIgnoreCase(thing.name, "\u0443\u0434\u043E\u0447\u043A\u0430") || ru.neverlands.abclient.postfilter.InventoryParser.containsIgnoreCase(thing.name, "\u0441\u043F\u0438\u043D\u043D\u0438\u043D\u0433")) {
                         notifyAutoFishRodWear(thing.name);
                         AppLog.d(TAG, "AUTO_FISH_TRACE wear action: hand=1, item="
                                 + thing.name + ", link=" + thing.wearLink);
                         return MainPhp.buildRedirectHtml("\u041E\u0434\u0435\u0432\u0430\u0435\u043C \u043F\u0435\u0440\u0432\u0443\u044E \u043F\u043E\u043F\u0430\u0432\u0448\u0443\u044E\u0441\u044F \u0443\u0434\u043E\u0447\u043A\u0443", thing.wearLink);
                     }
-                } else if (MainPhp.containsIgnoreCase(thing.name, AppVars.Profile.FishHandOne)) {
+                } else if (ru.neverlands.abclient.postfilter.InventoryParser.containsIgnoreCase(thing.name, AppVars.Profile.FishHandOne)) {
                     notifyAutoFishRodWear(thing.name);
                     AppLog.d(TAG, "AUTO_FISH_TRACE wear action: hand=1, item="
                             + thing.name + ", link=" + thing.wearLink);
@@ -3018,13 +3018,13 @@ public final class FishAjaxPhp {
         boolean isWear2 = dressedValid && ud.IsWear2();
         if (!isWear2 && AppVars.Profile.FishAutoWear) {
             boolean foundMatch = false;
-            for (MainPhp.WearInvEntry thing : invList) {
+            for (ru.neverlands.abclient.postfilter.InventoryParser.WearInvEntry thing : invList) {
                 if (thing.name == null || thing.wearLink == null || thing.wearLink.isEmpty()) continue;
                 boolean matches;
-                if (MainPhp.containsIgnoreCase(AppVars.Profile.FishHandTwo, "\u041B\u044E\u0431\u0430\u044F \u0443\u0434\u043E\u0447\u043A\u0430")) {
-                    matches = MainPhp.containsIgnoreCase(thing.name, "\u0443\u0434\u043E\u0447\u043A\u0430") || MainPhp.containsIgnoreCase(thing.name, "\u0441\u043F\u0438\u043D\u043D\u0438\u043D\u0433");
+                if (ru.neverlands.abclient.postfilter.InventoryParser.containsIgnoreCase(AppVars.Profile.FishHandTwo, "\u041B\u044E\u0431\u0430\u044F \u0443\u0434\u043E\u0447\u043A\u0430")) {
+                    matches = ru.neverlands.abclient.postfilter.InventoryParser.containsIgnoreCase(thing.name, "\u0443\u0434\u043E\u0447\u043A\u0430") || ru.neverlands.abclient.postfilter.InventoryParser.containsIgnoreCase(thing.name, "\u0441\u043F\u0438\u043D\u043D\u0438\u043D\u0433");
                 } else {
-                    matches = MainPhp.containsIgnoreCase(thing.name, AppVars.Profile.FishHandTwo);
+                    matches = ru.neverlands.abclient.postfilter.InventoryParser.containsIgnoreCase(thing.name, AppVars.Profile.FishHandTwo);
                 }
                 if (!matches) continue;
                 foundMatch = true;
@@ -3293,11 +3293,11 @@ public final class FishAjaxPhp {
         if ("\u041B\u044E\u0431\u0430\u044F \u0443\u0434\u043E\u0447\u043A\u0430".equalsIgnoreCase(expectedSetting == null ? "" : expectedSetting.trim())) {
             return isFishingRodName(safeItemName);
         }
-        return MainPhp.containsIgnoreCase(safeItemName, expectedSetting);
+        return ru.neverlands.abclient.postfilter.InventoryParser.containsIgnoreCase(safeItemName, expectedSetting);
     }
 
     private static boolean isFishingRodName(String itemName) {
-        return MainPhp.containsIgnoreCase(itemName, "\u0443\u0434\u043E\u0447\u043A\u0430") || MainPhp.containsIgnoreCase(itemName, "\u0441\u043F\u0438\u043D\u043D\u0438\u043D\u0433");
+        return ru.neverlands.abclient.postfilter.InventoryParser.containsIgnoreCase(itemName, "\u0443\u0434\u043E\u0447\u043A\u0430") || ru.neverlands.abclient.postfilter.InventoryParser.containsIgnoreCase(itemName, "\u0441\u043F\u0438\u043D\u043D\u0438\u043D\u0433");
     }
 
     private static String formatInfoApiDurability(Integer durability) {
