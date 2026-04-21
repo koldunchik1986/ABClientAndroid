@@ -1219,6 +1219,9 @@ public class LezFight {
                         AppVars.FightLink = "main.php?get_id=61&act=6&mode=" + mode
                                 + "&gr=" + group
                                 + "&vcode=" + vcode;
+                        if (vcode.length() >= 16) {
+                            ru.neverlands.abclient.utils.SessionManager.getInstance().cacheFightVCode(vcode, "fightty_case3");
+                        }
                     } else {
                         // Ожидание хода противника (аналог C# ParseNonFight() case "3").
                         IsWaitingForNextTurn = true;
@@ -1231,12 +1234,18 @@ public class LezFight {
                 case "5": {
                     String vcode = (_fightty != null && _fightty.length > 5) ? Strip(_fightty[5]) : "";
                     AppVars.FightLink = "main.php?get_id=61&act=5&vcode=" + vcode;
+                    if (vcode.length() >= 16) {
+                        ru.neverlands.abclient.utils.SessionManager.getInstance().cacheFightVCode(vcode, "fightty_case5");
+                    }
                     break;
                 }
                 case "7": {
                     String st = (_fightty != null && _fightty.length > 4) ? Strip(_fightty[4]) : "";
                     String vcode = (_fightty != null && _fightty.length > 5) ? Strip(_fightty[5]) : "";
                     AppVars.FightLink = "main.php?get_id=61&act=5&st=" + st + "&vcode=" + vcode;
+                    if (vcode.length() >= 16) {
+                        ru.neverlands.abclient.utils.SessionManager.getInstance().cacheFightVCode(vcode, "fightty_case7");
+                    }
                     break;
                 }
                 default:
@@ -1300,6 +1309,9 @@ public class LezFight {
                 "&ftype=" + fexp5;
             
             AppVars.FightLink = fightLink;
+            if (fexp3.length() >= 16) {
+                ru.neverlands.abclient.utils.SessionManager.getInstance().cacheFightVCode(fexp3, "fexp_buildfightlink");
+            }
             AppLog.d("LezFight", "BuildFightLink(" + (withCaptchaPlaceholder ? "captcha" : "normal")
                     + "): " + fightLink + ", codeAddress=" + AppVars.CodeAddress);
         } catch (Exception e) {

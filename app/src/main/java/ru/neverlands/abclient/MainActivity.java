@@ -806,7 +806,12 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                                             }
                                             requestAutoTurnFromServerProbe("current_fight_html_inactive");
                                         } else {
-                                            AppLog.d(TAG, BG_TRACE_PREFIX + " requestAutoTurn: skip server probe, pending act=7 finish link present");
+                                            String finishUrl = AppVars.FightLink;
+                                            AppVars.FightLink = "";
+                                            String absoluteUrl = finishUrl.startsWith("http") ? finishUrl : "http://neverlands.ru/" + finishUrl;
+                                            AppLog.d(TAG, BG_TRACE_PREFIX + " requestAutoTurn: navigating to pending finish link: " + absoluteUrl);
+                                            binding.appBarMain.contentMain.webView.loadUrl(absoluteUrl);
+                                            return;
                                         }
                                     }
                                 }

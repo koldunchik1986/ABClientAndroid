@@ -36,7 +36,7 @@ public class SessionManager {
     // Паттерны для парсинга VCode из HTML
     private static final Pattern[] VCODE_PATTERNS = {
         // 🎯 fight_pm array (боевой контекст): var fight_pm = [300,200,70,0,"3f7c5d...",...]
-        Pattern.compile("var\\s+fight_pm\\s*=\\s*\\[[^\\[\\]]*?[,\\s]0[,\\s]+\"([a-f0-9]{32})\""),
+        Pattern.compile("var\\s+fight_pm\\s*=\\s*\\[[^\\[\\]]*?[,\\s]\\d+[,\\s]+\"([a-f0-9]{32})\""),
         // vcode in hidden input: <input ... name=vcode value="...">
         Pattern.compile("(?i)name\\s*=\\s*['\"]?vcode['\"]?[^>]*?value\\s*=\\s*['\"]([a-f0-9]{32})['\"]"),
         // vcode as parameter in URL or form: &vcode=... or vcode=...  

@@ -290,7 +290,7 @@ public final class FightAuto {
             AppLog.w(TAG, TAG, msg);
         }
 
-        boolean fightEnded = (!fight.IsBoi && !fight.IsWaitingForNextTurn && !isProbeTransitionalInactiveFrame)
+        boolean fightEnded = (!fight.IsBoi && !isProbeTransitionalInactiveFrame)
             || isCrashWaitingFinishFrame;
         if (fightEnded) {
             host.registerFightEnd(fight);

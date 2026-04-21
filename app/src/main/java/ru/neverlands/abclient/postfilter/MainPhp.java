@@ -104,13 +104,36 @@ public class MainPhp {
      * Правило:
      * - бизнес-ветвления боя живут в FightAuto;
      * - MainPhp через этот bridge предоставляет только необходимые внешние зависимости.
+     *
+     * Перенесено в: FightAuto (боевая логика) + MainPhp (инфраструктурные обратные вызовы).
+     * Мост между: MainPhp ↔ FightAuto.Host.
+     * Зависимости: FightAuto.processFight(), FightAuto.Host, все статические helper-методы FightAuto.
+     * Связь с C#: выделено из MainPhp.cs/MainPhpFight.cs при модульном рефакторинге.
+     *
+     * Методы bridge делятся на две категории:
+     * 1) Делегирование в FightAuto — методы, чья реализация полностью перенесена в FightAuto.
+     * 2) Loopback в MainPhp — обратные вызовы из FightAuto в MainPhp (isAutoSkinEnabledByPreference, mainPhpRaz).
      */
     private static final FightAuto.Host FIGHT_AUTO_HOST = new FightAuto.Host() {
+        /**
+         * Логирует значение JS-переменной из HTML боя для отладки.
+         * Перенесено в FightAuto.
+         * Вызывает FightAuto.logFightVariable(html, variableName).
+         * Зависимости: AppLog, FileLogger (двойное логирование внутри FightAuto).
+         * Связь с C#: порт logFightVariable() из MainPhpFight.cs.
+         */
         @Override
         public void logFightVariable(String html, String variableName) {
             FightAuto.logFightVariable(html, variableName);
         }
 
+        /**
+         * Маппит MainPhp.InsHpSnapshot → FightAuto.InsHpSnapshot для bridge-изоляции типов.
+         * Перенесено в MainPhp.parseInsHpSnapshot() + адаптация типа.
+         * Вызывает MainPhp.parseInsHpSnapshot(html), маппит поля в FightAuto.InsHpSnapshot.
+         * Зависимости: MainPhp.InsHpSnapshot, FightAuto.InsHpSnapshot.
+         * Связь с C#: порт MainPhpInsHp.cs.
+         */
         @Override
         public FightAuto.InsHpSnapshot parseInsHpSnapshot(String html) {
             InsHpSnapshot source = MainPhp.parseInsHpSnapshot(html);
@@ -125,46 +148,109 @@ public class MainPhp {
             return mapped;
         }
 
+        /**
+         * Сбрасывает состояние кандидата завершения боя на probe-кадрах.
+         * Перенесено в FightAuto.
+         * Вызывает FightAuto.clearAutoFightProbeFinishCandidate().
+         * Зависимости: lastAutoFightProbeFinishCandidateKey (volatile в FightAuto).
+         * Связь с C#: нет прямого аналога, добавлено при реализации probe-подтверждения.
+         */
         @Override
         public void clearAutoFightProbeFinishCandidate() {
             FightAuto.clearAutoFightProbeFinishCandidate();
         }
 
+        /**
+         * Проверяет, что адрес относится к probe-потоку авто-боя (reload или background).
+         * Перенесено в FightAuto.
+         * Вызывает FightAuto.isAutoFightProbeAddress(address).
+         * Зависимости: константы адресов ab_reload_probe, ab_bg_probe.
+         * Связь с C#: нет прямого аналога, добавлено при event-driven рефакторинге.
+         */
         @Override
         public boolean isAutoFightProbeAddress(String address) {
             return FightAuto.isAutoFightProbeAddress(address);
         }
 
+        /**
+         * Вычисляет актуальный URL капчи завершения боя с приоритетами источников.
+         * Перенесено в FightAuto.
+         * Вызывает FightAuto.resolveFightCaptchaUrl(html).
+         * Зависимости: LezFight.BuildFightLink, AppVars.CodeAddress, AppVars.LastFightCaptchaImageUrl.
+         * Связь с C#: порт resolveFightCaptchaUrl из MainPhpFight.cs.
+         */
         @Override
         public String resolveFightCaptchaUrl(String html) {
             return FightAuto.resolveFightCaptchaUrl(html);
         }
 
+        /**
+         * Проверяет, что HTML содержит боевой фрейм (magic_slots / fight_ty).
+         * Перенесено в FightAuto.
+         * Вызывает FightAuto.isFightFrameHtml(html).
+         * Зависимости: паттерны "magic_slots();", "var fight_ty".
+         * Связь с C#: порт isFightFrameHtml из MainPhpFight.cs.
+         */
         @Override
         public boolean isFightFrameHtml(String html) {
             return             FightAuto.isFightFrameHtml(html);
         }
 
+        /**
+         * Регистрирует завершение боя в статистике с дедупом по log-id.
+         * Перенесено в FightAuto.
+         * Вызывает FightAuto.registerFightEnd(fight).
+         * Зависимости: AppVars.LastBoiEndLog, ChatStats.addFight(), AppVars.LastFightPulseAtMs.
+         * Связь с C#: аналог registerFightEnd() из MainPhpFight.cs.
+         */
         @Override
         public void registerFightEnd(LezFight fight) {
             FightAuto.registerFightEnd(fight);
         }
 
+        /**
+         * Публикует итог боя/разделки из массива var logs = [...] в чат.
+         * Перенесено в FightAuto.
+         * Вызывает FightAuto.publishFightResultFromLogsIfNeeded(html, address, logIdHint).
+         * Зависимости: AppVars.LastBoi*, ChatStats, LocalBroadcastManager.
+         * Связь с C#: порт publishFightResult из MainPhpFight.cs.
+         */
         @Override
         public void publishFightResultFromLogsIfNeeded(String html, String address, String logIdHint) {
             FightAuto.publishFightResultFromLogsIfNeeded(html, address, logIdHint);
         }
 
+        /**
+         * Восстанавливает рассинхрон AutoboiState при включённом Auto-Fight.
+         * Перенесено в FightAuto.
+         * Вызывает FightAuto.recoverAutoboiRuntimeStateIfNeeded(fightEnded, fightCaptchaUrl).
+         * Зависимости: AppVars.Autoboi, AutoFunctionsManager, AppVars.IsFightCaptchaDialogVisible.
+         * Связь с C#: аналог восстановления из FormMainTicks.cs.
+         */
         @Override
         public void recoverAutoboiRuntimeStateIfNeeded(boolean fightEnded, String fightCaptchaUrl) {
             FightAuto.recoverAutoboiRuntimeStateIfNeeded(fightEnded, fightCaptchaUrl);
         }
 
+        /**
+         * Проверяет, включён ли Auto-Fight в настройках (AutoFunctionsManager + fallback на профиль).
+         * Перенесено в FightAuto.
+         * Вызывает FightAuto.isAutoFightEnabledByPreference().
+         * Зависимости: AutoFunctionsManager, AppVars.Profile.
+         * Связь с C#: аналог проверки Profile.AutoFight / buttonAutoFight.
+         */
         @Override
         public boolean isAutoFightEnabledByPreference() {
             return FightAuto.isAutoFightEnabledByPreference();
         }
 
+        /**
+         * Генерирует HTML статуса ожидания лечения после боя (HP/MA + таймер).
+         * Перенесено в FightAuto.
+         * Вызывает FightAuto.buildRestoringStatusHtml(address, delayMs, waitMs, curHp, maxHp, curMa, maxMa, ...).
+         * Зависимости: CharacterVitalsManager, AppVars.Profile (waitHp/waitMa пороги), formatHms().
+         * Связь с C#: порт buildRestoringStatusHtml из MainPhpFight.cs.
+         */
         @Override
         public String buildRestoringStatusHtml(String address,
                                                int delayMs,
@@ -192,81 +278,193 @@ public class MainPhp {
             );
         }
 
+        /**
+         * Отправляет чат-анонс о начале нового боя (имя/уровень противника).
+         * Перенесено в FightAuto.
+         * Вызывает FightAuto.notifyNewFight(fight).
+         * Зависимости: LezFight, AppVars.Profile.ServDiff, LocalBroadcastManager, Chat.
+         * Связь с C#: аналог TrayBalloon при смене LogBoi в FormMain.cs.
+         */
         @Override
         public void notifyNewFight(LezFight fight) {
             FightAuto.notifyNewFight(fight);
         }
 
+        /**
+         * Loopback: проверяет, включена ли Авто-Охота (обратный вызов из FightAuto в MainPhp).
+         * Перенесено в AutoSkinHandler (через MainPhp.isAutoSkinEnabledByPreference).
+         * Вызывает MainPhp.isAutoSkinEnabledByPreference().
+         * Зависимости: AutoSkinHandler, AutoFunctionsManager, AppVars.Profile.
+         * Связь с C#: аналог Profile.SkinAuto / buttonAutoSkin.
+         */
         @Override
         public boolean isAutoSkinEnabledByPreference() {
             return MainPhp.isAutoSkinEnabledByPreference();
         }
 
+        /**
+         * Loopback: парсит и выполняет авто-разделку (обратный вызов из FightAuto в MainPhp).
+         * Перенесено в AutoSkinHandler (через MainPhp.mainPhpRaz).
+         * Вызывает MainPhp.mainPhpRaz(html).
+         * Зависимости: AutoSkinHandler.mainPhpRaz, AppVars.AutoSkinCheckRes, LezFight.
+         * Связь с C#: порт MainPhpRaz из MainPhp.cs/MainPhpWear.cs.
+         */
         @Override
         public String mainPhpRaz(String html) {
             return MainPhp.mainPhpRaz(html);
         }
 
+        /**
+         * Строит HTML с отложенным redirect для завершения боя.
+         * Перенесено в FightAuto.
+         * Вызывает FightAuto.buildDelayedRedirectHtml(description, link, delayMs).
+         * Зависимости: HtmlUtils.GENERATED_PAGE_MARKER, AndroidBridge.redirectToUrl.
+         * Связь с C#: порт buildDelayedRedirectHtml из MainPhpFight.cs.
+         */
         @Override
         public String buildDelayedRedirectHtml(String description, String link, int delayMs) {
             return FightAuto.buildDelayedRedirectHtml(description, link, delayMs);
         }
 
+        /**
+         * Извлекает ссылку завершения боя с placeholder капчи из HTML.
+         * Перенесено в FightAuto.
+         * Вызывает FightAuto.extractFightFinishLinkFromHtml(html, withCaptchaPlaceholder).
+         * Зависимости: findMainPhpLinkByQueryParts, fexp-парсинг, LezFight.BuildFightLink.
+         * Связь с C#: порт extractFightFinishLinkFromHtml из MainPhpFight.cs.
+         */
         @Override
         public String extractFightFinishLinkFromHtml(String html, boolean withCaptchaPlaceholder) {
             return             FightAuto.extractFightFinishLinkFromHtml(html, withCaptchaPlaceholder);
         }
 
+        /**
+         * Извлекает "голую" ссылку завершения боя (без captcha/FEND) из HTML.
+         * Перенесено в FightAuto.
+         * Вызывает FightAuto.extractFightCleanFinishLinkFromHtml(html).
+         * Зависимости: findMainPhpLinkByQueryParts, fexp[3] vcode, fight_ty[4] st.
+         * Связь с C#: порт extractFightCleanFinishLinkFromHtml из MainPhpFight.cs.
+         */
         @Override
         public String extractFightCleanFinishLinkFromHtml(String html) {
             return             FightAuto.extractFightCleanFinishLinkFromHtml(html);
         }
 
+        /**
+         * Нормализует ссылку main.php для auto-redirect (хост, относительные пути, &amp;).
+         * Перенесено в FightAuto.
+         * Вызывает FightAuto.normalizeNeverlandsMainLink(link).
+         * Зависимости: URI-парсинг, декодирование &amp;.
+         * Связь с C#: порт normalizeNeverlandsMainLink из Filter.cs.
+         */
         @Override
         public String normalizeNeverlandsMainLink(String link) {
             return FightAuto.normalizeNeverlandsMainLink(link);
         }
 
+        /**
+         * Подтверждает завершение боя по правилу "два совпадения подряд" на probe-кадрах.
+         * Перенесено в FightAuto.
+         * Вызывает FightAuto.isAutoFightProbeFinishConfirmed(logBoi, fightLink).
+         * Зависимости: lastAutoFightProbeFinishCandidateKey/AtMs (volatile в FightAuto).
+         * Связь с C#: нет прямого аналога, добавлено при event-driven рефакторинге.
+         */
         @Override
         public boolean isAutoFightProbeFinishConfirmed(String logBoi, String fightLink) {
             return             FightAuto.isAutoFightProbeFinishConfirmed(logBoi, fightLink);
         }
 
+        /**
+         * Инициирует popup-капчу завершения боя с дедупом по ключу logBoi|captchaUrl|finishUrl.
+         * Перенесено в FightAuto.
+         * Вызывает FightAuto.showFightCaptchaDialogOnce(captchaUrl, finishUrl, logBoi).
+         * Зависимости: AppVars.ACTION_SHOW_CAPTCHA, LocalBroadcastManager, lastFightCaptchaDialogKey.
+         * Связь с C#: порт showCaptchaDialog из FormMain.cs.
+         */
         @Override
         public void showFightCaptchaDialogOnce(String captchaUrl, String finishUrl, String logBoi) {
             FightAuto.showFightCaptchaDialogOnce(captchaUrl, finishUrl, logBoi);
         }
 
+        /**
+         * Извлекает значение query-параметра из URL.
+         * Перенесено в FightAuto.
+         * Вызывает FightAuto.getUrlParam(url, paramName).
+         * Зависимости: нет побочных эффектов, чистый парсер.
+         * Связь с C#: порт getUrlParam из MainPhp.cs.
+         */
         @Override
         public String getUrlParam(String url, String paramName) {
             return FightAuto.getUrlParam(url, paramName);
         }
 
+        /**
+         * Уведомляет об отклонении капчи с дедупом по паре code/vcode.
+         * Перенесено в FightAuto.
+         * Вызывает FightAuto.notifyCaptchaRejectedOnce(submittedCode, submittedVcode).
+         * Зависимости: lastCaptchaRejectKey/AtMs, LocalBroadcastManager, AppVars.ACTION_ADD_CHAT_MESSAGE.
+         * Связь с C#: нет прямого аналога, добавлено для anti-spam.
+         */
         @Override
         public void notifyCaptchaRejectedOnce(String submittedCode, String submittedVcode) {
             FightAuto.notifyCaptchaRejectedOnce(submittedCode, submittedVcode);
         }
 
+        /**
+         * Вставляет auto-refresh в текущий боевой HTML без подмены кадра.
+         * Перенесено в FightAuto.
+         * Вызывает FightAuto.buildInPlaceFightAutoRefreshHtml(html, reloadUrl, delayMs).
+         * Зависимости: JavaScript setTimeout, AndroidBridge.redirectToUrl.
+         * Связь с C#: порт buildInPlaceFightAutoRefreshHtml из MainPhpFight.cs.
+         */
         @Override
         public String buildInPlaceFightAutoRefreshHtml(String html, String reloadUrl, int delayMs) {
             return FightAuto.buildInPlaceFightAutoRefreshHtml(html, reloadUrl, delayMs);
         }
 
+        /**
+         * Уведомляет об остановке автобоя с причинами (LowHp/LowMa/DoStop/DoExit).
+         * Перенесено в FightAuto.
+         * Вызывает FightAuto.notifyFightStopped(fight).
+         * Зависимости: LezFight (DoStop, IsLowHp, IsLowMa, DoExit), LocalBroadcastManager, Chat.
+         * Связь с C#: аналог notifyFightStopped из FormMain.cs.
+         */
         @Override
         public void notifyFightStopped(LezFight fight) {
             FightAuto.notifyFightStopped(fight);
         }
 
+        /**
+         * Делит JS-список значений по верхнеуровневым запятым (учитывает вложенные скобки и строки).
+         * Перенесено в FightAuto.
+         * Вызывает FightAuto.splitJsTopLevelCsv(raw).
+         * Зависимости: нет побочных эффектов, чистый парсер.
+         * Связь с C#: порт splitJsTopLevelCsv из MainPhpFight.cs.
+         */
         @Override
         public List<String> splitJsTopLevelCsv(String raw) {
             return FightAuto.splitJsTopLevelCsv(raw);
         }
 
+        /**
+         * Нормализует JS-токен: trim + снятие внешних кавычек.
+         * Перенесено в FightAuto.
+         * Вызывает FightAuto.trimJsToken(token).
+         * Зависимости: нет побочных эффектов, чистый парсер.
+         * Связь с C#: порт trimJsToken из MainPhpFight.cs.
+         */
         @Override
         public String trimJsToken(String token) {
             return FightAuto.trimJsToken(token);
         }
 
+        /**
+         * Экранирует строку для безопасной подстановки в HTML-атрибут (&amp; &quot; &lt; &gt;).
+         * Перенесено в FightAuto.
+         * Вызывает FightAuto.escapeHtmlAttr(value).
+         * Зависимости: нет побочных эффектов, чистый парсер.
+         * Связь с C#: порт escapeHtmlAttr из MainPhpFight.cs.
+         */
         @Override
         public String escapeHtmlAttr(String value) {
             return FightAuto.escapeHtmlAttr(value);
@@ -282,129 +480,328 @@ public class MainPhp {
      * FastAction host bridge for delegating MainPhp infrastructure helpers
      * into {@link FastActionManager#processMainPhpFast(String, String, FastActionManager.MainPhpFastHost)}.
      */
+    /**
+     * Bridge-адаптер инфраструктурных helper-методов MainPhp для модуля {@link FastActionManager}.
+     *
+     * Назначение:
+     * - после выноса fast-action логики в FastActionManager исключить дублирование утилит;
+     * - предоставить FastActionManager доступ к MainPhp-инфраструктуре (инвентарь, URL-парсинг, чат).
+     *
+     * Перенесено в: FastActionManager (fast-action логика) + MainPhp (инфраструктурные обратные вызовы).
+     * Мост между: MainPhp ↔ FastActionManager.MainPhpFastHost.
+     * Зависимости: FastActionManager.processMainPhpFast(), InventoryParser, FightAuto.
+     * Связь с C#: выделено из MainPhp.cs строки 1429-1619 при модульном рефакторинге.
+     */
     private static final FastActionManager.MainPhpFastHost FAST_ACTION_HOST = new FastActionManager.MainPhpFastHost() {
+        /**
+         * Проверяет, что FastId запускает нападение/вход в бой (а не баф/зелье).
+         * Loopback в MainPhp.
+         * Вызывает MainPhp.isAttackFastId(fastId).
+         * Зависимости: список attack-FastId констант (i_svi_001, i_w28_26 и т.д.).
+         * Связь с C#: порт isAttackFastId из MainPhp.cs.
+         */
         @Override
         public boolean isAttackFastId(String fastId) {
             return MainPhp.isAttackFastId(fastId);
         }
 
+        /**
+         * Определяет фильтр инвентаря по FastId (wca=28/27, im=6).
+         * Loopback в MainPhp.
+         * Вызывает MainPhp.getInventoryFilter(fastId).
+         * Зависимости: normalizeFastId(), switch по FastId.
+         * Связь с C#: порт getInventoryFilter из MainPhp.cs строки 1436-1534.
+         */
         @Override
         public String getInventoryFilter(String fastId) {
             return MainPhp.getInventoryFilter(fastId);
         }
 
+        /**
+         * Проверяет, что HTML содержит боевой фрейм (magic_slots / fight_ty).
+         * Перенесено в FightAuto.
+         * Вызывает FightAuto.isFightFrameHtml(html).
+         * Зависимости: паттерны "magic_slots();", "var fight_ty".
+         * Связь с C#: порт isFightFrameHtml из MainPhpFight.cs.
+         */
         @Override
         public boolean isFightFrameHtml(String html) {
             return             FightAuto.isFightFrameHtml(html);
         }
 
+        /**
+         * Ищет ссылку на инвентарь с fallback-стратегиями (арена/здания/onclick/JSON).
+         * Loopback в MainPhp → InventoryParser.
+         * Вызывает MainPhp.mainPhpFindInvWithFallback(html, filter, address).
+         * Зависимости: InventoryParser, mainPhpFindInv/mainPhpFindInvArena/Building/Old.
+         * Связь с C#: порт MainPhpFindInv из MainPhpDrink.cs строки 86-219.
+         */
         @Override
         public String mainPhpFindInvWithFallback(String html, String filter, String address) {
             return MainPhp.mainPhpFindInvWithFallback(html, filter, address);
         }
 
+        /**
+         * Проверяет, что HTML относится к странице инвентаря (содержит ?im=0).
+         * Loopback в MainPhp → InventoryParser.
+         * Вызывает MainPhp.mainPhpIsInv(html).
+         * Зависимости: InventoryParser.mainPhpIsInv.
+         * Связь с C#: порт MainPhpIsInv из MainPhpDrink.cs:221-224.
+         */
         @Override
         public boolean mainPhpIsInv(String html) {
             return MainPhp.mainPhpIsInv(html);
         }
 
+        /**
+         * Проверяет, что адрес содержит параметры инвентаря (go=inv/im=/wca=).
+         * Loopback в MainPhp → InventoryParser.
+         * Вызывает MainPhp.isInventoryAddress(address).
+         * Зависимости: InventoryParser.isInventoryAddress.
+         * Связь с C#: порт isInventoryAddress из MainPhpDrink.cs.
+         */
         @Override
         public boolean isInventoryAddress(String address) {
             return MainPhp.isInventoryAddress(address);
         }
 
+        /**
+         * Проверяет, что адрес инвентаря содержит все параметры требуемого фильтра.
+         * Loopback в MainPhp → InventoryParser.
+         * Вызывает MainPhp.inventoryAddressMatchesFilter(address, filter).
+         * Зависимости: InventoryParser.inventoryAddressMatchesFilter.
+         * Связь с C#: порт inventoryAddressMatchesFilter из MainPhpDrink.cs.
+         */
         @Override
         public boolean inventoryAddressMatchesFilter(String address, String filter) {
             return MainPhp.inventoryAddressMatchesFilter(address, filter);
         }
 
+        /**
+         * Безопасный parseInt параметра URL с fallback-значением.
+         * Loopback в MainPhp → FightAuto.
+         * Вызывает MainPhp.parseUrlParamInt(url, paramName, fallback).
+         * Зависимости: FightAuto.parseUrlParamInt.
+         * Связь с C#: порт parseUrlParamInt из MainPhp.cs.
+         */
         @Override
         public int parseUrlParamInt(String url, String paramName, int fallback) {
             return MainPhp.parseUrlParamInt(url, paramName, fallback);
         }
 
+        /**
+         * Добавляет/заменяет query-параметр в URL.
+         * Loopback в MainPhp → FightAuto.
+         * Вызывает MainPhp.appendOrReplaceUrlParam(url, paramName, paramValue).
+         * Зависимости: FightAuto.appendOrReplaceUrlParam.
+         * Связь с C#: порт appendOrReplaceUrlParam из MainPhp.cs.
+         */
         @Override
         public String appendOrReplaceUrlParam(String url, String paramName, String paramValue) {
             return MainPhp.appendOrReplaceUrlParam(url, paramName, paramValue);
         }
 
+        /**
+         * Формирует сообщение об отмене fast-action при отсутствии предмета.
+         * Loopback в MainPhp.
+         * Вызывает MainPhp.buildFastItemNotFoundMessage(fastId).
+         * Зависимости: формат 'timestamp' [handler]: предмет не найден.
+         * Связь с C#: нет прямого аналога, добавлено при портировании FastAction.
+         */
         @Override
         public String buildFastItemNotFoundMessage(String fastId) {
             return MainPhp.buildFastItemNotFoundMessage(fastId);
         }
 
+        /**
+         * Отправляет системную строку в чат инвентаря (через Chat/LocalBroadcast).
+         * Loopback в MainPhp.
+         * Вызывает MainPhp.sendInventoryChatMessage(messageHtml).
+         * Зависимости: Chat.addMessageToChat, AppVars.ACTION_ADD_CHAT_MESSAGE, LocalBroadcastManager.
+         * Связь с C#: порт sendInventoryChatMessage из MainPhp.cs.
+         */
         @Override
         public void sendInventoryChatMessage(String messageHtml) {
             MainPhp.sendInventoryChatMessage(messageHtml);
         }
     };
 
+    /**
+     * Bridge-адаптер инфраструктурных helper-методов MainPhp для модуля {@link TreasureDig}.
+     *
+     * Назначение:
+     * - после выноса логики Авто-Клада в TreasureDig исключить дублирование утилит;
+     * - предоставить TreasureDig доступ к MainPhp-инфраструктуре (инвентарь, навигация, чат, redirect).
+     *
+     * Перенесено в: TreasureDig (клад-логика) + MainPhp (инфраструктурные обратные вызовы).
+     * Мост между: MainPhp ↔ TreasureDig.Host.
+     * Зависимости: TreasureDig.maybeStopAutoTreasureOnDig(), InventoryParser, FightAuto.
+     * Связь с C#: выделено из MainPhp.cs/AutoSearchBox при модульном рефакторинге.
+     */
     private static final TreasureDig.Host TREASURE_DIG_HOST = new TreasureDig.Host() {
+        /**
+         * Ищет ссылку на инвентарь с fallback-стратегиями (арена/здания/onclick/JSON).
+         * Loopback в MainPhp → InventoryParser.
+         * Вызывает MainPhp.mainPhpFindInvWithFallback(html, filter, address).
+         * Зависимости: InventoryParser, mainPhpFindInv/mainPhpFindInvArena/Building/Old.
+         * Связь с C#: порт MainPhpFindInv из MainPhpDrink.cs.
+         */
         @Override
         public String mainPhpFindInvWithFallback(String html, String filter, String address) {
             return MainPhp.mainPhpFindInvWithFallback(html, filter, address);
         }
 
+        /**
+         * Ищет ссылку на карту для авто-перехода (go=ret / "Вернуться").
+         * Loopback в MainPhp.
+         * Вызывает MainPhp.mainPhpFindMapReturnForAutoMoving(html).
+         * Зависимости: mainPhpExtractMenuVcode, findMainPhpLinkByQueryParts, buildRedirectHtml.
+         * Связь с C#: порт MainPhpFindMapReturn из MainPhp.cs.
+         */
         @Override
         public String mainPhpFindMapReturnForAutoMoving(String html) {
             return MainPhp.mainPhpFindMapReturnForAutoMoving(html);
         }
 
+        /**
+         * Проверяет, что HTML относится к странице инвентаря (содержит ?im=0).
+         * Loopback в MainPhp → InventoryParser.
+         * Вызывает MainPhp.mainPhpIsInv(html).
+         * Зависимости: InventoryParser.mainPhpIsInv.
+         * Связь с C#: порт MainPhpIsInv из MainPhpDrink.cs.
+         */
         @Override
         public boolean mainPhpIsInv(String html) {
             return MainPhp.mainPhpIsInv(html);
         }
 
+        /**
+         * Проверяет, что адрес содержит параметры инвентаря (go=inv/im=/wca=).
+         * Loopback в MainPhp → InventoryParser.
+         * Вызывает MainPhp.isInventoryAddress(address).
+         * Зависимости: InventoryParser.isInventoryAddress.
+         * Связь с C#: порт isInventoryAddress из MainPhpDrink.cs.
+         */
         @Override
         public boolean isInventoryAddress(String address) {
             return MainPhp.isInventoryAddress(address);
         }
 
+        /**
+         * Проверяет, что адрес инвентаря содержит все параметры требуемого фильтра.
+         * Loopback в MainPhp → InventoryParser.
+         * Вызывает MainPhp.inventoryAddressMatchesFilter(address, filter).
+         * Зависимости: InventoryParser.inventoryAddressMatchesFilter.
+         * Связь с C#: порт inventoryAddressMatchesFilter из MainPhpDrink.cs.
+         */
         @Override
         public boolean inventoryAddressMatchesFilter(String address, String filter) {
             return MainPhp.inventoryAddressMatchesFilter(address, filter);
         }
 
+        /**
+         * Структурный fallback-детект инвентаря по наличию строк предметов в HTML.
+         * Loopback в MainPhp → InventoryParser.
+         * Вызывает MainPhp.hasInventoryRows(html).
+         * Зависимости: InventoryParser.hasInventoryRows.
+         * Связь с C#: нет прямого аналога, добавлено для переходных шаблонов.
+         */
         @Override
         public boolean hasInventoryRows(String html) {
             return MainPhp.hasInventoryRows(html);
         }
 
+        /**
+         * Безопасный parseInt параметра URL с fallback-значением.
+         * Loopback в MainPhp → FightAuto.
+         * Вызывает MainPhp.parseUrlParamInt(url, paramName, fallback).
+         * Зависимости: FightAuto.parseUrlParamInt.
+         * Связь с C#: порт parseUrlParamInt из MainPhp.cs.
+         */
         @Override
         public int parseUrlParamInt(String url, String paramName, int fallback) {
             return MainPhp.parseUrlParamInt(url, paramName, fallback);
         }
 
+        /**
+         * Нормализует ссылку main.php для auto-redirect (хост, относительные пути, &amp;).
+         * Loopback в MainPhp → FightAuto.
+         * Вызывает MainPhp.normalizeNeverlandsMainLink(link).
+         * Зависимости: URI-парсинг, декодирование &amp;.
+         * Связь с C#: порт normalizeNeverlandsMainLink из Filter.cs.
+         */
         @Override
         public String normalizeNeverlandsMainLink(String link) {
             return MainPhp.normalizeNeverlandsMainLink(link);
         }
 
+        /**
+         * Добавляет/заменяет query-параметр в URL.
+         * Loopback в MainPhp → FightAuto.
+         * Вызывает MainPhp.appendOrReplaceUrlParam(url, paramName, paramValue).
+         * Зависимости: FightAuto.appendOrReplaceUrlParam.
+         * Связь с C#: порт appendOrReplaceUrlParam из MainPhp.cs.
+         */
         @Override
         public String appendOrReplaceUrlParam(String url, String paramName, String paramValue) {
             return MainPhp.appendOrReplaceUrlParam(url, paramName, paramValue);
         }
 
+        /**
+         * Генерирует HTML-страницу с JavaScript redirect.
+         * Loopback в MainPhp.
+         * Вызывает MainPhp.buildRedirectHtml(description, link).
+         * Зависимости: HtmlUtils.GENERATED_PAGE_MARKER, normalizeNeverlandsMainLink.
+         * Связь с C#: порт BuildRedirect из Filter.cs:280-291.
+         */
         @Override
         public String buildRedirectHtml(String description, String link) {
             return MainPhp.buildRedirectHtml(description, link);
         }
 
+        /**
+         * Отправляет системную строку в чат инвентаря (через Chat/LocalBroadcast).
+         * Loopback в MainPhp.
+         * Вызывает MainPhp.sendInventoryChatMessage(messageHtml).
+         * Зависимости: Chat.addMessageToChat, AppVars.ACTION_ADD_CHAT_MESSAGE, LocalBroadcastManager.
+         * Связь с C#: порт sendInventoryChatMessage из MainPhp.cs.
+         */
         @Override
         public void sendInventoryChatMessage(String messageHtml) {
             MainPhp.sendInventoryChatMessage(messageHtml);
         }
 
+        /**
+         * Формирует timestamp в серверной шкале времени для HTML-сообщений чата.
+         * Перенесено в FightAuto.
+         * Вызывает FightAuto.buildServerChatTimeHtml().
+         * Зависимости: AppVars.Profile.ServDiff.
+         * Связь с C#: порт buildServerChatTimeHtml из MainPhp.cs.
+         */
         @Override
         public String buildServerChatTimeHtml() {
             return FightAuto.buildServerChatTimeHtml();
         }
 
+        /**
+         * Экранирует строку для безопасной подстановки в HTML-атрибут.
+         * Loopback в MainPhp → FightAuto.
+         * Вызывает MainPhp.escapeHtmlAttr(value).
+         * Зависимости: нет побочных эффектов, чистый парсер.
+         * Связь с C#: порт escapeHtmlAttr из MainPhpFight.cs.
+         */
         @Override
         public String escapeHtmlAttr(String value) {
             return MainPhp.escapeHtmlAttr(value);
         }
 
+        /**
+         * Маппит InventoryParser.WearInvEntry → TreasureDig.WearInvEntry для bridge-изоляции типов.
+         * Перенесено в InventoryParser + адаптация типа.
+         * Вызывает InventoryParser.getWearInvList(html), маппит поля в TreasureDig.WearInvEntry.
+         * Зависимости: InventoryParser.WearInvEntry, TreasureDig.WearInvEntry.
+         * Связь с C#: порт GetInvList из MainPhpWear.cs.
+         */
         @Override
         public List<TreasureDig.WearInvEntry> getWearInvList(String html) {
             List<InventoryParser.WearInvEntry> source = InventoryParser.getWearInvList(html);
@@ -459,6 +856,10 @@ public class MainPhp {
      *
      * Назначение:
      * - Не оставлять WebView в "зависшем" кадре ожидания, а мягко перевести на следующий poll.
+     *
+     * Перенесено в FightAuto.
+     * Вызывает FightAuto.buildWaitForTurnAutoRefreshHtml(reloadUrl, delayMs).
+     * Связь с C#: порт buildWaitForTurnAutoRefreshHtml из MainPhpFight.cs.
      */
     private static String buildWaitForTurnAutoRefreshHtml(String reloadUrl, int delayMs) {
         return FightAuto.buildWaitForTurnAutoRefreshHtml(reloadUrl, delayMs);
@@ -471,6 +872,10 @@ public class MainPhp {
      * - используется из {@link #mainPhpFight(String, String)} только для стадии ожидания хода противника;
      * - сохраняет серверный `FightFrame` на экране, чтобы отображение боя не переключалось на упрощённую страницу;
      * - если HTML не содержит закрывающих тегов, fallback идёт в {@link #buildWaitForTurnAutoRefreshHtml(String, int)}.
+     *
+     * Перенесено в FightAuto.
+     * Вызывает FightAuto.buildInPlaceFightAutoRefreshHtml(html, reloadUrl, delayMs).
+     * Связь с C#: порт buildInPlaceFightAutoRefreshHtml из MainPhpFight.cs.
      */
     private static String buildInPlaceFightAutoRefreshHtml(String html, String reloadUrl, int delayMs) {
         return FightAuto.buildInPlaceFightAutoRefreshHtml(html, reloadUrl, delayMs);
@@ -478,6 +883,11 @@ public class MainPhp {
     /**
      * Возвращает сохранённое состояние переключателя Auto-Fight из AutoFunctionsManager.
      * Если manager/context недоступен, используется fallback на флаг профиля.
+     *
+     * Перенесено в FightAuto.
+     * Вызывает FightAuto.isAutoFightEnabledByPreference().
+     * Зависимости: AutoFunctionsManager, AppVars.Profile.
+     * Связь с C#: аналог проверки Profile.AutoFight / buttonAutoFight.
      */
     private static boolean isAutoFightEnabledByPreference() {
         return FightAuto.isAutoFightEnabledByPreference();
@@ -487,6 +897,11 @@ public class MainPhp {
      * а AppVars.Autoboi выключен.
      *
      * Это восстановление намеренно блокируется при активном потоке CAPTCHA.
+     *
+     * Перенесено в FightAuto.
+     * Вызывает FightAuto.recoverAutoboiRuntimeStateIfNeeded(fightEnded, fightCaptchaUrl).
+     * Зависимости: AppVars.Autoboi, AutoFunctionsManager, AppVars.IsFightCaptchaDialogVisible.
+     * Связь с C#: аналог восстановления из FormMainTicks.cs.
      */
     private static void recoverAutoboiRuntimeStateIfNeeded(boolean fightEnded, String fightCaptchaUrl) {
         FightAuto.recoverAutoboiRuntimeStateIfNeeded(fightEnded, fightCaptchaUrl);
@@ -494,6 +909,11 @@ public class MainPhp {
 
     /**
      * Форматирует секунды в `HH:mm:ss` для UI ожидания лечения.
+     *
+     * Перенесено в FightAuto.
+     * Вызывает FightAuto.formatHms(seconds).
+     * Зависимости: нет побочных эффектов, чистый форматтер.
+     * Связь с C#: порт formatHms из MainPhpFight.cs.
      */
     private static String formatHms(long seconds) {
         return FightAuto.formatHms(seconds);
@@ -531,6 +951,11 @@ public class MainPhp {
      *
      * Назначение:
      * - Ограничить частоту финальных запросов и избежать избыточного спама к серверу.
+     *
+     * Перенесено в FightAuto.
+     * Вызывает FightAuto.buildDelayedRedirectHtml(description, link, delayMs).
+     * Зависимости: HtmlUtils.GENERATED_PAGE_MARKER, AndroidBridge.redirectToUrl, AUTO_FINISH_MIN_DELAY_MS.
+     * Связь с C#: порт buildDelayedRedirectHtml из MainPhpFight.cs.
      */
     private static String buildDelayedRedirectHtml(String description, String link, int delayMs) {
         return FightAuto.buildDelayedRedirectHtml(description, link, delayMs);
@@ -549,11 +974,15 @@ public class MainPhp {
      * - перехваченный URL может относиться к предыдущему challenge (race при фоновых refresh),
      *   поэтому он не должен перебивать `fexp[4]`/`CodeAddress`, если они уже известны.
      *
-     * Зависимости:
-     * - `LezFight.BuildFightLink(...)`,
-     * - `WebViewRequestInterceptor` (captured code.php URL/bytes),
-     * - используется в auto/manual ветках `mainPhpFight(...)`.
-     */
+     * Перенесено в FightAuto.
+     * Вызывает FightAuto.resolveFightCaptchaUrl(html).
+     * Зависимости: LezFight.BuildFightLink, WebViewRequestInterceptor, AppVars.CodeAddress, AppVars.LastFightCaptchaImageUrl.
+      * Связь с C#: порт resolveFightCaptchaUrl из MainPhpFight.cs.
+      * Зависимости:
+      * - LezFight.BuildFightLink(...),
+      * - WebViewRequestInterceptor (captured code.php URL/bytes),
+      * - используется в auto/manual ветках mainPhpFight(...).
+      */
     private static String resolveFightCaptchaUrl(String html) {
         return FightAuto.resolveFightCaptchaUrl(html);
     }
@@ -563,6 +992,11 @@ public class MainPhp {
      * Зависимости:
      * - `HelperStrings.subString`,
      * - формат `fight_v10.js`: `code.php?` + token.
+     *
+     * Перенесено в FightAuto.
+     * Вызывает FightAuto.extractCaptchaUrlFromFexp(html).
+     * Зависимости: HelperStrings.subString.
+     * Связь с C#: порт extractCaptchaUrlFromFexp из MainPhpFight.cs.
      */
     private static String extractCaptchaUrlFromFexp(String html) {
         return FightAuto.extractCaptchaUrlFromFexp(html);
@@ -572,6 +1006,11 @@ public class MainPhp {
      *
      * Нужен как fallback, когда `LezFight.BuildFightLink(...)` не сработал
      * и `AppVars.FightLink` остался пустым, но сервер уже прислал финальный кадр боя.
+     *
+     * Перенесено в FightAuto.
+     * Вызывает FightAuto.extractFightFinishLinkFromHtml(html, withCaptchaPlaceholder).
+     * Зависимости: findMainPhpLinkByQueryParts, LezFight.BuildFightLink.
+     * Связь с C#: порт extractFightFinishLinkFromHtml из MainPhpFight.cs.
      */
     private static String extractFightFinishLinkFromHtml(String html, boolean withCaptchaPlaceholder) {
         return FightAuto.extractFightFinishLinkFromHtml(html, withCaptchaPlaceholder);
@@ -585,21 +1024,44 @@ public class MainPhp {
      * Источники:
      * - прямой URL в HTML/JS (`findMainPhpLinkByQueryParts(...)`);
      * - fallback через `var fexp = [...]`, где `fexp[3]` содержит vcode.
+     *
+     * Перенесено в FightAuto.
+     * Вызывает FightAuto.extractFightCleanFinishLinkFromHtml(html).
+     * Зависимости: findMainPhpLinkByQueryParts, fexp[3] парсинг.
+     * Связь с C#: порт extractFightCleanFinishLinkFromHtml из MainPhpFight.cs.
      */
     private static String extractFightCleanFinishLinkFromHtml(String html) {
         return FightAuto.extractFightCleanFinishLinkFromHtml(html);
     }
 
+    /**
+     * Извлекает vcode завершения боя из массива fexp[3].
+     * Перенесено в FightAuto.
+     * Вызывает FightAuto.extractFightCleanVcodeFromFexp(html).
+     * Зависимости: HelperStrings.subString, fexp-парсинг.
+     * Связь с C#: порт extractFightCleanVcodeFromFexp из MainPhpFight.cs.
+     */
     private static String extractFightCleanVcodeFromFexp(String html) {
         return FightAuto.extractFightCleanVcodeFromFexp(html);
     }
 
+    /**
+     * Извлекает vcode завершения боя из fight_ty[3].
+     * Перенесено в FightAuto.
+     * Вызывает FightAuto.extractFightCleanVcodeFromFightTy(html).
+     * Зависимости: HelperStrings.subString, fight_ty-парсинг.
+     * Связь с C#: порт extractFightCleanVcodeFromFightTy из MainPhpFight.cs.
+     */
     private static String extractFightCleanVcodeFromFightTy(String html) {
         return FightAuto.extractFightCleanVcodeFromFightTy(html);
     }
 
     /**
-     * Returns st for act=5 from fight_ty[4]. Fallback is "6".
+     * Определяет st для act=5 из fight_ty[4]. Fallback "6".
+     * Перенесено в FightAuto.
+     * Вызывает FightAuto.resolveFightFinishStateForAct5(html).
+     * Зависимости: fight_ty-парсинг, splitJsTopLevelCsv, trimJsToken.
+     * Связь с C#: порт resolveFightFinishStateForAct5 из MainPhpFight.cs.
      */
     private static String resolveFightFinishStateForAct5(String html) {
         return FightAuto.resolveFightFinishStateForAct5(html);
@@ -612,6 +1074,11 @@ public class MainPhp {
      *
      * Назначение:
      * - Исключить ломание разметки из-за спецсимволов ({@code & " < >}) в значениях input-полей.
+     *
+     * Перенесено в FightAuto.
+     * Вызывает FightAuto.escapeHtmlAttr(value).
+     * Зависимости: нет побочных эффектов, чистый парсер.
+     * Связь с C#: порт escapeHtmlAttr из MainPhpFight.cs.
      */
     static String escapeHtmlAttr(String value) {
         return FightAuto.escapeHtmlAttr(value);
@@ -727,6 +1194,11 @@ public class MainPhp {
      * Особенность:
      * - если одновременно сработали HP и MA, выполняется ОДИН запуск fast-action
      *   (`FastActionManager.fastAttackMomentRestoreElixir()`), т.к. эликсир восстанавливает оба ресурса.
+     *
+     * Перенесено в AutoDrinkHandler.
+     * Вызывает AutoDrinkHandler.tryTriggerAutoDrinkRestoreElixir(address, html, isFightFrame, isFightTopFrame).
+     * Зависимости: AppVars.FastNeed, AppVars.Profile.LezDoDrinkHp/Ma, FastActionManager, CharacterVitalsManager.
+     * Связь с C#: порт tryTriggerAutoDrinkRestoreElixir из MainPhpDrinkHpMa.cs.
      */
     private static void tryTriggerAutoDrinkRestoreElixir(String address,
                                                          String html,
@@ -740,11 +1212,23 @@ public class MainPhp {
      *
      * Нужна как страховка на кейс, когда `ins_HP(...)` на первом небоевом кадре
      * остаётся со старыми значениями и не отражает фактическое состояние после боя.
+     *
+     * Перенесено в AutoDrinkHandler.
+     * Вызывает AutoDrinkHandler.tryBuildAutoDrinkSnapshotFromPinfo().
+     * Зависимости: AppVars.Profile, CharacterVitalsManager, InsHpSnapshot.
+     * Связь с C#: нет прямого аналога, добавлено при портировании авто-питья.
      */
     private static InsHpSnapshot tryBuildAutoDrinkSnapshotFromPinfo() {
         return AutoDrinkHandler.tryBuildAutoDrinkSnapshotFromPinfo();
     }
 
+    /**
+     * Проверяет, что адрес является followup-адресом для post-fight авто-питья.
+     * Перенесено в AutoDrinkHandler.
+     * Вызывает AutoDrinkHandler.isPostFightAutoDrinkFollowupAddress(address).
+     * Зависимости: список адресов go=inf/go=inv/im=.
+     * Связь с C#: нет прямого аналога, добавлено при портировании авто-питья.
+     */
     private static boolean isPostFightAutoDrinkFollowupAddress(String address) {
         return AutoDrinkHandler.isPostFightAutoDrinkFollowupAddress(address);
     }
@@ -757,6 +1241,11 @@ public class MainPhp {
      *
      * Нужен для post-fight сценария: fast-запросы на эликсир нельзя запускать на `get_id=61&act=7`,
      * иначе они могут быть вытеснены повторной отправкой finish-link.
+     *
+     * Перенесено в AutoDrinkHandler.
+     * Вызывает AutoDrinkHandler.isServerPlainMainAddress(address).
+     * Зависимости: URI-парсинг, проверка хоста neverlands.ru.
+     * Связь с C#: нет прямого аналога, добавлено при портировании пост-боевого питья.
      */
     private static boolean isServerPlainMainAddress(String address) {
         return AutoDrinkHandler.isServerPlainMainAddress(address);
@@ -792,12 +1281,22 @@ public class MainPhp {
      *
      * Это обязательная часть C#-цепочки `AutoSkinCheckUm -> mselect=1`,
      * без неё возникает бесконечный цикл "Переключение на умения персонажа".
+     *
+     * Перенесено в AutoSkinHandler.
+     * Вызывает AutoSkinHandler.mainPhpProcessSkills(html, address).
+     * Зависимости: AppVars.SkinUm, AppVars.AutoSkinCheckUm, AppVars.AutoSkinArmedKnife.
+     * Связь с C#: порт mainPhpProcessSkills из MainPhp.cs.
      */
     private static void mainPhpProcessSkills(String html, String address) {
         AutoSkinHandler.mainPhpProcessSkills(html, address);
     }
     /**
      * Определяет, включена ли Авто-Охота (C# `Profile.SkinAuto` / `buttonAutoSkin`).
+     *
+     * Перенесено в AutoSkinHandler.
+     * Вызывает AutoSkinHandler.isAutoSkinEnabledByPreference().
+     * Зависимости: AutoFunctionsManager, AppVars.Profile.
+     * Связь с C#: аналог Profile.SkinAuto / buttonAutoSkin.
      */
     private static boolean isAutoSkinEnabledByPreference() {
         return AutoSkinHandler.isAutoSkinEnabledByPreference();
@@ -808,6 +1307,11 @@ public class MainPhp {
      *
      * Источник:
      * - переключатель `AUTO_CURE` в `AutoFunctionsManager` (SharedPreferences).
+     *
+     * Перенесено в AutoCureHandler.
+     * Вызывает AutoCureHandler.isAutoCureEnabledByPreference().
+     * Зависимости: AutoFunctionsManager.
+     * Связь с C#: аналог проверки Profile.AutoCure / buttonAutoCure.
      */
     private static boolean isAutoCureEnabledByPreference() {
         return AutoCureHandler.isAutoCureEnabledByPreference();
@@ -823,19 +1327,45 @@ public class MainPhp {
      * - "2" = средняя травма
      * - "3" = тяжелая травма
      * - "4" = боевая травма (эликсир не применяется, только боевая аптечка)
+     *
+     * Перенесено в AutoCureHandler.
+     * Вызывает AutoCureHandler.isAutoCureSelfElixirEnabledForWound(cureTravm).
+     * Зависимости: AutoFunctionsManager (настройки типов травм).
+     * Связь с C#: порт isAutoCureSelfElixirEnabledForWound из MainPhpAutoCure.cs.
      */
     private static boolean isAutoCureSelfElixirEnabledForWound(String cureTravm) {
         return AutoCureHandler.isAutoCureSelfElixirEnabledForWound(cureTravm);
     }
 
+    /**
+     * Проверяет, разрешено ли лечение указанного типа травмы через аптечки (doctorform).
+     * Перенесено в AutoCureHandler.
+     * Вызывает AutoCureHandler.isAutoCureWoundTypeEnabledForTravm(cureTravm).
+     * Зависимости: AutoFunctionsManager (настройки типов травм).
+     * Связь с C#: порт isAutoCureWoundTypeEnabledForTravm из MainPhpAutoCure.cs.
+     */
     private static boolean isAutoCureWoundTypeEnabledForTravm(String cureTravm) {
         return AutoCureHandler.isAutoCureWoundTypeEnabledForTravm(cureTravm);
     }
 
+    /**
+     * Проверяет, разрешено ли self-лечение указанного типа травмы любым методом (эликсир + аптечки).
+     * Перенесено в AutoCureHandler.
+     * Вызывает AutoCureHandler.isAutoCureWoundTypeEnabledForSelfByAnyMethod(cureTravm).
+     * Зависимости: AutoFunctionsManager.
+     * Связь с C#: порт isAutoCureWoundTypeEnabledForSelfByAnyMethod из MainPhpAutoCure.cs.
+     */
     private static boolean isAutoCureWoundTypeEnabledForSelfByAnyMethod(String cureTravm) {
         return AutoCureHandler.isAutoCureWoundTypeEnabledForSelfByAnyMethod(cureTravm);
     }
 
+    /**
+     * Парсит числовой тип травмы из строки cureTravm ("1"-"4").
+     * Перенесено в AutoCureHandler.
+     * Вызывает AutoCureHandler.parseCureTravmType(cureTravm).
+     * Зависимости: нет побочных эффектов.
+     * Связь с C#: порт parseCureTravmType из MainPhpAutoCure.cs.
+     */
     private static int parseCureTravmType(String cureTravm) {
         return AutoCureHandler.parseCureTravmType(cureTravm);
     }
@@ -915,6 +1445,11 @@ public class MainPhp {
      * Источник:
      * - профильный флаг `UserConfig.LezDoFury`;
      * - fallback на runtime-флаг `AppVars.DoFury`.
+     *
+     * Перенесено в AutoFuryHandler.
+     * Вызывает AutoFuryHandler.isAutoFuryEnabledByPreference().
+     * Зависимости: UserConfig.LezDoFury, AppVars.DoFury.
+     * Связь с C#: аналог Profile.DoFury / buttonFury.
      */
     private static boolean isAutoFuryEnabledByPreference() {
         return AutoFuryHandler.isAutoFuryEnabledByPreference();
@@ -922,6 +1457,11 @@ public class MainPhp {
     /**
      * Периодическая (раз в минуту) установка флага проверки ножа,
      * аналог `FormMainTicks.cs`: `AutoSkinLastChecked` -> `AutoSkinCheckKnife = true`.
+     *
+     * Перенесено в AutoSkinHandler.
+     * Вызывает AutoSkinHandler.maybeMarkAutoSkinKnifeRecheck().
+     * Зависимости: AppVars.AutoSkinCheckKnife, AppVars.AutoSkinLastChecked, интервал 60 сек.
+     * Связь с C#: порт maybeMarkAutoSkinKnifeRecheck из FormMainTicks.cs.
      */
     private static void maybeMarkAutoSkinKnifeRecheck() {
         AutoSkinHandler.maybeMarkAutoSkinKnifeRecheck();
@@ -1081,10 +1621,24 @@ public class MainPhp {
         }
     }
 
+    /**
+     * Выполняет авто-разделку: парсит fight_ty и строит redirect на get_id=17.
+     * Перенесено в AutoSkinHandler.
+     * Вызывает AutoSkinHandler.mainPhpRaz(html).
+     * Зависимости: AppVars.AutoSkinCheckRes, LezFight, buildRazLinkFromFightTyPayload, extractRazLinkFromHtml.
+     * Связь с C#: порт MainPhpRaz из MainPhp.cs/MainPhpWear.cs.
+     */
     private static String mainPhpRaz(String html) {
         return AutoSkinHandler.mainPhpRaz(html);
     }
 
+    /**
+     * Строит ссылку разделки из fight_ty payload (элементы fight_ty[8]/[9]).
+     * Перенесено в AutoSkinHandler.
+     * Вызывает AutoSkinHandler.buildRazLinkFromFightTyPayload(strFightTy).
+     * Зависимости: splitJsTopLevelCsv, trimJsToken, HelperStrings.subString.
+     * Связь с C#: порт buildRazLinkFromFightTyPayload из MainPhpWear.cs.
+     */
     private static String buildRazLinkFromFightTyPayload(String strFightTy) {
         return AutoSkinHandler.buildRazLinkFromFightTyPayload(strFightTy);
     }
@@ -1094,6 +1648,11 @@ public class MainPhp {
     /**
      * Fallback-поиск ссылки `main.php?get_id=17...` в HTML боя.
      * Используется, когда `fight_ty[9]` пустой/урезанный, но сервер отдает прямую ссылку "Разделать".
+     *
+     * Перенесено в AutoSkinHandler.
+     * Вызывает AutoSkinHandler.extractRazLinkFromHtml(html).
+     * Зависимости: findMainPhpLinkByQueryParts (get_id=17).
+     * Связь с C#: порт extractRazLinkFromHtml из MainPhpWear.cs.
      */
     private static String extractRazLinkFromHtml(String html) {
         return AutoSkinHandler.extractRazLinkFromHtml(html);
@@ -1103,6 +1662,11 @@ public class MainPhp {
      * - приводит хост к `http://neverlands.ru` без `www`;
      * - разворачивает относительные варианты (`main.php`, `/main.php`, `../main.php`);
      * - декодирует `&amp;` в query-строке.
+     *
+     * Перенесено в FightAuto.
+     * Вызывает FightAuto.normalizeNeverlandsMainLink(link).
+     * Зависимости: URI-парсинг, декодирование &amp;.
+     * Связь с C#: порт normalizeNeverlandsMainLink из Filter.cs.
      */
     static String normalizeNeverlandsMainLink(String link) {
         return FightAuto.normalizeNeverlandsMainLink(link);
@@ -1110,6 +1674,11 @@ public class MainPhp {
     /**
      * Универсальный fallback-поиск ссылки `main.php?...` по набору query-маркеров.
      * Возвращает первую подходящую ссылку в нормализованном виде.
+     *
+     * Перенесено в FightAuto.
+     * Вызывает FightAuto.findMainPhpLinkByQueryParts(html, queryParts).
+     * Зависимости: normalizeNeverlandsMainLink, HTML-парсинг ссылок.
+     * Связь с C#: порт findMainPhpLinkByQueryParts из MainPhpFight.cs.
      */
     private static String findMainPhpLinkByQueryParts(String html, String... queryParts) {
         return FightAuto.findMainPhpLinkByQueryParts(html, queryParts);
@@ -1117,6 +1686,11 @@ public class MainPhp {
     /**
      * Добавляет/дополняет query-параметры фильтра инвентаря (`&im=...&wca=...`) к найденной ссылке.
      * Если ссылка указывает на `go=inf`, переводит её на `go=inv`.
+     *
+     * Перенесено в InventoryParser.
+     * Вызывает InventoryParser.applyInventoryFilterToLink(link, filter).
+     * Зависимости: URL-парсинг, замена go=inf → go=inv.
+     * Связь с C#: порт applyInventoryFilterToLink из MainPhpDrink.cs.
      */
     private static String applyInventoryFilterToLink(String link, String filter) {
         return InventoryParser.applyInventoryFilterToLink(link, filter);
