@@ -340,18 +340,39 @@ public final class FightAuto {
             if (AppVars.Autoboi == AutoboiState.Restoring) {
                 boolean logChanged = fight.LogBoi != null && !fight.LogBoi.equals(AppVars.AutoboiReadyLog);
                 boolean timerReady = AppVars.AutoboiReadyAtMs > 0L && now >= AppVars.AutoboiReadyAtMs;
-                if (logChanged || timerReady) {
-                    if (!logChanged && timerReady && fight.LogBoi != null && !fight.LogBoi.isEmpty()) {
-                        AppVars.AutoboiReadyCompletedLog = fight.LogBoi;
-                        String msg = "processFight: restoring timer elapsed, mark completed for log=" + fight.LogBoi;
-                        AppLog.d(TAG, TAG, msg);
-                    }
-                    AppVars.AutoboiReadyAtMs = 0L;
-                    AppVars.AutoboiReadyLog = "";
-                    AppVars.Autoboi = AutoboiState.AutoboiOn;
-                    String msg = "processFight: restoring finished -> AutoboiOn";
+                if (!logChanged && !timerReady) {
+                    long waitMs = AppVars.AutoboiReadyAtMs > now ? (AppVars.AutoboiReadyAtMs - now) : 1200L;
+                    int delay = (int) Math.max(1000L, Math.min(5000L, waitMs));
+                    String msg_restoring_inprogress = "processFight: restoring in progress, waitMs=" + waitMs;
+                    AppLog.d(TAG, TAG, msg_restoring_inprogress);
+                    int curHp = insHpSnapshot != null ? insHpSnapshot.curHp : fight.getCurrentHp();
+                    int maxHp = insHpSnapshot != null ? insHpSnapshot.maxHp : fight.getMaxHp();
+                    int curMa = insHpSnapshot != null ? insHpSnapshot.curMa : fight.getCurrentMa();
+                    int maxMa = insHpSnapshot != null ? insHpSnapshot.maxMa : fight.getMaxMa();
+                    return host.buildRestoringStatusHtml(
+                            address,
+                            delay,
+                            waitMs,
+                            curHp,
+                            maxHp,
+                            curMa,
+                            maxMa,
+                            waitHpEnabled,
+                            waitHpPercent,
+                            waitMaEnabled,
+                            waitMaPercent
+                    );
+                }
+                if (!logChanged && timerReady && fight.LogBoi != null && !fight.LogBoi.isEmpty()) {
+                    AppVars.AutoboiReadyCompletedLog = fight.LogBoi;
+                    String msg = "processFight: restoring timer elapsed, mark completed for log=" + fight.LogBoi;
                     AppLog.d(TAG, TAG, msg);
                 }
+                AppVars.AutoboiReadyAtMs = 0L;
+                AppVars.AutoboiReadyLog = "";
+                AppVars.Autoboi = AutoboiState.AutoboiOn;
+                String msg = "processFight: restoring finished -> AutoboiOn";
+                AppLog.d(TAG, TAG, msg);
             }
             if (AppVars.Autoboi == AutoboiState.AutoboiOn) {
                 boolean restoreAlreadyCompletedForCurrentLog =
@@ -366,13 +387,31 @@ public final class FightAuto {
                             AppVars.AutoboiReadyAtMs = newReadyAtMs;
                         }
                         AppVars.Autoboi = AutoboiState.Restoring;
-                        String msg_set_restoring = "processFight: set Restoring until " + AppVars.AutoboiReadyAtMs
-                                + " (deferred until after finish link)";
+                        String msg_set_restoring = "processFight: set Restoring until " + AppVars.AutoboiReadyAtMs;
                         AppLog.d(TAG, TAG, msg_set_restoring);
+                        long waitMs = Math.max(0L, AppVars.AutoboiReadyAtMs - now);
+                        int delay = (int) Math.max(1000L, Math.min(5000L, waitMs > 0L ? waitMs : 1200L));
+                        int curHp = insHpSnapshot != null ? insHpSnapshot.curHp : fight.getCurrentHp();
+                        int maxHp = insHpSnapshot != null ? insHpSnapshot.maxHp : fight.getMaxHp();
+                        int curMa = insHpSnapshot != null ? insHpSnapshot.curMa : fight.getCurrentMa();
+                        int maxMa = insHpSnapshot != null ? insHpSnapshot.maxMa : fight.getMaxMa();
+                        return host.buildRestoringStatusHtml(
+                                address,
+                                delay,
+                                waitMs,
+                                curHp,
+                                maxHp,
+                                curMa,
+                                maxMa,
+                                waitHpEnabled,
+                                waitHpPercent,
+                                waitMaEnabled,
+                                waitMaPercent
+                        );
                     }
                 } else {
                     String msg = "processFight: restoring already completed for current log, continue to finish";
-                    AppLog.d(TAG, TAG, msg);
+                AppLog.d(TAG, TAG, msg);
                 }
                 AppVars.AutoboiReadyAtMs = 0L;
                 AppVars.AutoboiReadyLog = "";
@@ -436,9 +475,9 @@ public final class FightAuto {
         }
 
         if (fightEnded
-                && autoFightEnabled) {
-            String msg_fight_ended = "processFight: FIGHT ENDED with autoboi ON - processing finish"
-                    + ", AutoboiState=" + AppVars.Autoboi;
+                && autoFightEnabled
+                && AppVars.Autoboi == AutoboiState.AutoboiOn) {
+            String msg_fight_ended = "processFight: FIGHT ENDED with autoboi ON - processing finish";
             AppLog.d(TAG, TAG, msg_fight_ended);
             String captchaUrl = fightCaptchaUrl;
             boolean needCaptcha = captchaUrl != null && !captchaUrl.isEmpty();
