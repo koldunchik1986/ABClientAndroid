@@ -779,6 +779,15 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                         
                         String autoTurnHtml = unquoted;
                         if (hasFightMarkers(unquoted)) {
+                            // Анти-stale обработка бой-кадра:
+                            // - `unquoted` может содержать fight-маркеры, но уже быть неактивным контекстом
+                            //   (`fight_ty` от старой страницы, `AppVars.IsBoi=false`),
+                            // - в таком случае не отправляем удар сразу, а переключаемся на
+                            //   `AppVars.ContentMainPhp` (если активный) либо на server-probe.
+                            // Зависимые переменные:
+                            // - `AppVars.ContentMainPhp` (кэш активного кадра),
+                            // - `AppVars.FightLink` (pending act=7),
+                            // - `lastAutoTurnServerProbeAtMs` (throttle probe).
                             if (allowServerProbeFallback) {
                                 boolean currentActiveFight = isActiveFightContext(unquoted);
                                 if (!currentActiveFight) {

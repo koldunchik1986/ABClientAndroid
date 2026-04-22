@@ -116,6 +116,11 @@ final class BossAuto {
     private static final int DEFAULT_SEARCH_TIMEOUT_SEC = 6 * 60;
     private static final int DEFAULT_WAIT_BEFORE_SCROLL_SEC = 2;
     private static final int DEFAULT_WAIT_FIGHT_TIMEOUT_SEC = 25;
+    // Динамический timeout возврата после боя:
+    // - `RETURN_TIMEOUT_BASE_MS` = минимальное окно даже для 0/неизвестных прыжков,
+    // - `RETURN_TIMEOUT_PER_JUMP_MS` = добавка на каждый `AppVars.AutoMovingJumps`,
+    // - `RETURN_TIMEOUT_MAX_MS` = верхний предел, чтобы сценарий не зависал бесконечно.
+    // Используется в `calculateReturnTimeoutMs(...)` и `processReturnStage(...)`.
     private static final long RETURN_TIMEOUT_BASE_MS = 2 * 60 * 1000L;
     private static final long RETURN_TIMEOUT_PER_JUMP_MS = 5_000L;
     private static final long RETURN_TIMEOUT_MAX_MS = 12 * 60 * 1000L;
@@ -509,6 +514,12 @@ final class BossAuto {
         if (trackCurrentWarsEnabled
                 && !isEmpty(selfClanToken)
                 && ClanWarsManager.getInstance(appContext).isClanTokenInCurrentWars(selfClanToken)) {
+            // Guard #1 (self clan):
+            // если `selfClanToken` участвует в `wars.cgi`, останавливаем сценарий ДО запуска компаса.
+            // Зависимости/переменные:
+            // - `trackCurrentWarsEnabled` (настройка),
+            // - `selfClanToken` (из `resolveSelfClanTokenWithFallback(...)`),
+            // - `sendClanBossWarDeniedMessageIfNeeded(selfClanToken)` (клан-уведомление о причине отказа).
             writeBossChat("Движение к цели остановлено — наш персонаж участвует в текущей клановой войне.");
             sendClanBossWarDeniedMessageIfNeeded(selfClanToken);
             AppLog.d(TAG, TRACE_PREFIX + " wars filter denied by self clan: selfClan=" + selfClanToken
@@ -519,6 +530,12 @@ final class BossAuto {
         if (trackCurrentWarsEnabled
                 && !isEmpty(targetClanToken)
                 && ClanWarsManager.getInstance(appContext).isClanTokenInCurrentWars(targetClanToken)) {
+            // Guard #2 (target clan):
+            // если `targetClanToken` участвует в `wars.cgi`, не идём к цели и не отправляем защиту.
+            // Зависимости/переменные:
+            // - `targetClanToken` (из `targetSnapshot.clanToken`),
+            // - `askTargetOnceIfEnabled(normalizedTarget)` (одиночный ask перед отменой),
+            // - `sendClanBossWarDeniedMessageIfNeeded(selfClanToken)` (единый канал clan-deny).
             String deniedTargetHtml = buildTargetNickHtml(normalizedTarget, targetSnapshot);
             askTargetOnceIfEnabled(normalizedTarget);
             writeBossChat("Движение к цели остановлено — цель " + deniedTargetHtml
@@ -1983,6 +2000,18 @@ final class BossAuto {
         return getAutoBossWaitFightTimeoutSec() * 1000L;
     }
 
+    /**
+     * Вычисляет динамический timeout возврата на исходную клетку.
+     *
+     * Формула:
+     * - `timeoutMs = RETURN_TIMEOUT_BASE_MS + plannedJumps * RETURN_TIMEOUT_PER_JUMP_MS`;
+     * - затем clamp в диапазон [`RETURN_TIMEOUT_BASE_MS`, `RETURN_TIMEOUT_MAX_MS`].
+     *
+     * Зависимости/переменные:
+     * - входной `plannedJumps` (обычно `AppVars.AutoMovingJumps`);
+     * - константы `RETURN_TIMEOUT_BASE_MS`, `RETURN_TIMEOUT_PER_JUMP_MS`, `RETURN_TIMEOUT_MAX_MS`;
+     * - результат сохраняется в runtime-поле `returnTimeoutMs` и используется в `processReturnStage(...)`.
+     */
     private long calculateReturnTimeoutMs(int plannedJumps) {
         int safeJumps = Math.max(0, plannedJumps);
         long timeoutMs = RETURN_TIMEOUT_BASE_MS + (safeJumps * RETURN_TIMEOUT_PER_JUMP_MS);

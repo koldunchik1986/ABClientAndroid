@@ -250,6 +250,12 @@ public class LezFight {
         }
 
         if (!"Человек".equalsIgnoreCase(_foeName)) {
+            // Data-driven реестр противников:
+            // - `_foeName` берётся из текущего fight-frame,
+            // - `registerEncounteredFoeName(_foeName)` добавляет неизвестное имя в runtime `bottypes.xml`
+            //   как `kind="bot"` (если записи ещё нет),
+            // - в следующих тиках `LezBotsClassCollection.isBossName(...)` и группы по `group.Id`
+            //   уже используют сохранённую классификацию без hardcode.
             LezBotsClassCollection.registerEncounteredFoeName(_foeName);
         }
 
@@ -1539,6 +1545,11 @@ public class LezFight {
 
     /**
      * Аналог C# IsBossName() — проверяет, является ли противник боссом.
+     *
+     * Зависимости:
+     * - `_foeName` — имя текущего противника из `buildFrame()`;
+     * - `LezBotsClassCollection.isBossName(_foeName)` — lookup в runtime bottypes-реестре
+     *   (`files/info/bottypes.xml`, bootstrap из `assets/info/bottypes.xml`).
      */
     public boolean IsBoss() {
         return _foeName != null && LezBotsClassCollection.isBossName(_foeName);

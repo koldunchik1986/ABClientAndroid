@@ -240,6 +240,10 @@ public final class UnderAttackManager {
                     match = !"Человек".equalsIgnoreCase(foeName) && foeLevel >= group.MinimalLevel;
                     break;
                 case 21:
+                    // Группа `Id=21` (Боссы) больше не зависит от hardcode-списков имён.
+                    // Зависимости/переменные:
+                    // - `foeName` -> имя противника из текущего fight-кадра,
+                    // - `isBossName(foeName)` -> lookup в `LezBotsClassCollection` (runtime bottypes.xml).
                     match = isBossName(foeName);
                     break;
                 default:
@@ -270,6 +274,10 @@ public final class UnderAttackManager {
 
     /**
      * Аналог C# IsBossName() для выбора группы Id=21 (Боссы).
+     *
+     * Важно:
+     * - единый источник классификации = `LezBotsClassCollection`;
+     * - изменение типа (`bot`/`boss`) производится в `bottypes.xml`, без правки Java-кода.
      */
     private static boolean isBossName(String name) {
         return LezBotsClassCollection.isBossName(name);

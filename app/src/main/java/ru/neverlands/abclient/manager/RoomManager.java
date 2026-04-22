@@ -47,10 +47,14 @@ public class RoomManager {
     private static final int CONTACT_CLASS_FRIEND = 2;
     private static final long AUTO_CURE_ROOM_SCAN_INTERVAL_MS = 12_000L;
     private static final long AUTO_CURE_ROOM_PINFO_CACHE_TTL_MS = 30_000L;
+    private static final long AUTO_CURE_ROOM_GUARD_CACHE_TTL_MS = 10_000L;
+    private static final long AUTO_CURE_SELF_CLAN_TOKEN_CACHE_TTL_MS = 300_000L;
+    private static final long AUTO_CURE_SKIP_NOTICE_DEDUP_MS = 20_000L;
     private static final long AUTO_CURE_POST_SUBMIT_VERIFY_DELAY_MS = 1_500L;
     private static final long MAP_PINFO_SYNC_COOLDOWN_MS = 3_000L;
     private static final long ROOM_RENDER_CACHE_TTL_MS = 20_000L;
     private static final String PREF_SHOW_ALL_ROOM_EFFECTS = "show_all_room_effects";
+    private static final Pattern FIGHT_FID_PATTERN = Pattern.compile("(\\d{1,16})");
     private static volatile Boolean showAllRoomEffectsEnabled;
     // Последние raw-элементы ChatListU по нику (lowercase), чтобы другие модули
     // (например, Auto-Компас) могли рендерить ник/иконки/уровень/травмы 1:1 как room-list.
@@ -60,8 +64,15 @@ public class RoomManager {
     private static final Map<String, Long> autoAttackBlackList = new ConcurrentHashMap<>();
     // Кэш последнего результата pinfo-проверки травм для ников комнаты.
     private static final Map<String, CachedRoomPinfoState> autoCureRoomPinfoCache = new ConcurrentHashMap<>();
+    // Кэш guard-состояния (клан/бой) для ограничений авто-лечения friend/neutral.
+    private static final Map<String, AutoCureGuardState> autoCureRoomGuardCache = new ConcurrentHashMap<>();
+    // Анти-спам локальных чат-уведомлений по причинам пропуска авто-лечения.
+    // Ключ = "scope|reason|nickOrToken", значение = timestamp последней отправки.
+    private static final Map<String, Long> autoCureSkipNoticeAtMs = new ConcurrentHashMap<>();
     private static volatile boolean autoCureRoomScanInProgress = false;
     private static volatile long lastAutoCureRoomScanAtMs = 0L;
+    private static volatile String cachedAutoCureSelfClanToken = "";
+    private static volatile long cachedAutoCureSelfClanTokenAtMs = 0L;
     private static final long PENDING_ROOM_LABEL_TTL_MS = 20_000L;
     private static volatile String pendingRoomLocationName;
     private static volatile String pendingRoomLocationTargetRegNum;
@@ -89,6 +100,28 @@ public class RoomManager {
             this.effectIds = effectIds == null ? Collections.emptyList() : effectIds;
             this.effectStates = effectStates == null ? Collections.emptyList() : effectStates;
             this.capturedAtMs = capturedAtMs;
+        }
+    }
+
+    private static final class AutoCureGuardState {
+        final String clanToken;
+        final String fightFid;
+        final long capturedAtMs;
+
+        AutoCureGuardState(String clanToken, String fightFid, long capturedAtMs) {
+            this.clanToken = clanToken == null ? "" : clanToken;
+            this.fightFid = fightFid == null ? "" : fightFid;
+            this.capturedAtMs = capturedAtMs;
+        }
+    }
+
+    private static final class AutoCureExternalGuardContext {
+        final String selfClanToken;
+        final boolean selfClanInCurrentWars;
+
+        AutoCureExternalGuardContext(String selfClanToken, boolean selfClanInCurrentWars) {
+            this.selfClanToken = selfClanToken == null ? "" : selfClanToken;
+            this.selfClanInCurrentWars = selfClanInCurrentWars;
         }
     }
 
@@ -2141,10 +2174,32 @@ public class RoomManager {
 
         String selfNick = stripItalic(AppVars.Profile.UserNick);
         if (!isEmpty(selfNick)) {
-            AutoCureTarget selfTarget = buildAutoCureTarget(selfNick, CONTACT_CLASS_NEUTRAL, true, injuryHints);
+            AutoCureTarget selfTarget = buildAutoCureTarget(
+                    selfNick,
+                    CONTACT_CLASS_NEUTRAL,
+                    true,
+                    injuryHints,
+                    null
+            );
             if (selfTarget != null) {
                 return selfTarget;
             }
+        }
+
+        // Guard-контекст для friend/neutral ветки.
+        // Зависимости:
+        // - `buildAutoCureExternalGuardContext(selfNick)` -> читает clanToken себя через pinfo/cache;
+        // - `guardContext.selfClanInCurrentWars` -> итог флага wars-check через `ClanWarsManager`;
+        // - `guardContext.selfClanToken` -> диагностическое значение для логов/уведомлений.
+        AutoCureExternalGuardContext guardContext = buildAutoCureExternalGuardContext(selfNick);
+        if (guardContext.selfClanInCurrentWars) {
+            AppLog.d(TAG, AUTO_CURE_TRACE_PREFIX + " skip external cures: self clan in current wars, token="
+                    + guardContext.selfClanToken);
+            maybeNotifyAutoCureSkipReason(
+                    "external|self_clan_wars|" + guardContext.selfClanToken,
+                    "Внешнее лечение временно приостановлено: наш клан участвует в текущей клановой войне."
+            );
+            return null;
         }
 
         Set<String> seen = new HashSet<>();
@@ -2176,7 +2231,13 @@ public class RoomManager {
 
         if (allowFriends) {
             for (String friendNick : friendNicks) {
-                AutoCureTarget target = buildAutoCureTarget(friendNick, CONTACT_CLASS_FRIEND, false, injuryHints);
+                AutoCureTarget target = buildAutoCureTarget(
+                        friendNick,
+                        CONTACT_CLASS_FRIEND,
+                        false,
+                        injuryHints,
+                        guardContext
+                );
                 if (target != null) {
                     return target;
                 }
@@ -2184,7 +2245,13 @@ public class RoomManager {
         }
         if (allowNeutrals) {
             for (String neutralNick : neutralNicks) {
-                AutoCureTarget target = buildAutoCureTarget(neutralNick, CONTACT_CLASS_NEUTRAL, false, injuryHints);
+                AutoCureTarget target = buildAutoCureTarget(
+                        neutralNick,
+                        CONTACT_CLASS_NEUTRAL,
+                        false,
+                        injuryHints,
+                        guardContext
+                );
                 if (target != null) {
                     return target;
                 }
@@ -2194,9 +2261,10 @@ public class RoomManager {
     }
 
     private static AutoCureTarget buildAutoCureTarget(String nick,
-                                                      int classId,
-                                                      boolean self,
-                                                      Map<String, Integer> injuryHints) {
+                                                       int classId,
+                                                       boolean self,
+                                                       Map<String, Integer> injuryHints,
+                                                       AutoCureExternalGuardContext guardContext) {
         String cleanNick = stripItalic(nick);
         if (isEmpty(cleanNick)) {
             return null;
@@ -2220,7 +2288,193 @@ public class RoomManager {
                 return null;
             }
         }
+
+        if (!self) {
+            // Для friend/neutral цели выполняем доп. ограничения (паритет с Auto-Boss guard):
+            // 1) цель в бою (`guardState.fightFid`) -> лечение откладываем;
+            // 2) клан цели в текущих войнах (`guardState.clanToken`) -> лечение пропускаем.
+            // Зависимости:
+            // - `resolveAutoCureGuardState(cleanNick)` -> pinfo snapshot + короткий cache;
+            // - `isClanTokenInCurrentWarsSafe(...)` -> проверка по `ClanWarsManager`.
+            AutoCureGuardState guardState = resolveAutoCureGuardState(cleanNick);
+            if (guardState == null) {
+                AppLog.d(TAG, AUTO_CURE_TRACE_PREFIX + " skip external target: guard snapshot unavailable, nick="
+                        + cleanNick + ", woundType=" + woundType);
+                return null;
+            }
+
+            if (!isEmpty(guardState.fightFid)) {
+                AppLog.d(TAG, AUTO_CURE_TRACE_PREFIX + " postpone external target: nick=" + cleanNick
+                        + ", reason=target_in_fight"
+                        + ", fightFid=" + guardState.fightFid
+                        + ", woundType=" + woundType
+                        + ", recheck=next_room_update");
+                maybeNotifyAutoCureSkipReason(
+                        "target|fight|" + normalizeNickKey(cleanNick),
+                        "Цель <b>" + escapeHtml(cleanNick) + "</b> сейчас в бою (fid="
+                                + escapeHtml(guardState.fightFid)
+                                + "), лечение отложено до следующего обновления комнаты."
+                );
+                return null;
+            }
+
+            if (!isEmpty(guardState.clanToken) && isClanTokenInCurrentWarsSafe(guardState.clanToken)) {
+                AppLog.d(TAG, AUTO_CURE_TRACE_PREFIX + " skip external target by current wars: nick=" + cleanNick
+                        + ", targetClan=" + guardState.clanToken
+                        + ", selfClan=" + (guardContext == null ? "" : guardContext.selfClanToken)
+                        + ", woundType=" + woundType);
+                maybeNotifyAutoCureSkipReason(
+                        "target|wars|" + normalizeNickKey(cleanNick) + "|" + guardState.clanToken,
+                        "Цель <b>" + escapeHtml(cleanNick) + "</b> состоит в клане, участвующем в текущей клановой войне. Лечение пропущено."
+                );
+                return null;
+            }
+        }
+
         return new AutoCureTarget(cleanNick, woundType, classId, self);
+    }
+
+    private static AutoCureExternalGuardContext buildAutoCureExternalGuardContext(String selfNick) {
+        // selfNick -> guardState(clanToken/fightFid) -> selfClanToken -> selfClanInCurrentWars
+        // Важно: для self используем только clanToken (fightFid себя не блокирует self-лечение,
+        // но блокирует внешнее лечение friend/neutral выше по вызову).
+        String selfClanToken = "";
+        if (!isEmpty(selfNick)) {
+            AutoCureGuardState selfGuardState = resolveAutoCureGuardState(selfNick);
+            selfClanToken = normalizeClanToken(selfGuardState == null ? "" : selfGuardState.clanToken);
+        }
+
+        long now = System.currentTimeMillis();
+        if (!isEmpty(selfClanToken)) {
+            cachedAutoCureSelfClanToken = selfClanToken;
+            cachedAutoCureSelfClanTokenAtMs = now;
+        } else {
+            String cachedToken = normalizeClanToken(cachedAutoCureSelfClanToken);
+            if (!isEmpty(cachedToken)
+                    && (now - cachedAutoCureSelfClanTokenAtMs) < AUTO_CURE_SELF_CLAN_TOKEN_CACHE_TTL_MS) {
+                selfClanToken = cachedToken;
+            }
+        }
+
+        boolean selfClanInCurrentWars = !isEmpty(selfClanToken)
+                && isClanTokenInCurrentWarsSafe(selfClanToken);
+        return new AutoCureExternalGuardContext(selfClanToken, selfClanInCurrentWars);
+    }
+
+    private static AutoCureGuardState resolveAutoCureGuardState(String nick) {
+        // Короткий кэш guard-снимка нужен для двух зависимых проверок:
+        // - `target_in_fight`: поле `AutoCureGuardState.fightFid`;
+        // - `current_wars`: поле `AutoCureGuardState.clanToken`.
+        // Переменные: `autoCureRoomGuardCache`, `AUTO_CURE_ROOM_GUARD_CACHE_TTL_MS`, `capturedAtMs`.
+        String key = normalizeNickKey(nick);
+        if (isEmpty(key)) {
+            return null;
+        }
+
+        long now = System.currentTimeMillis();
+        AutoCureGuardState cached = autoCureRoomGuardCache.get(key);
+        if (cached != null && (now - cached.capturedAtMs) < AUTO_CURE_ROOM_GUARD_CACHE_TTL_MS) {
+            return cached;
+        }
+
+        AutoCureGuardState fresh = fetchAutoCureGuardStateFromPinfo(nick);
+        if (fresh != null) {
+            autoCureRoomGuardCache.put(key, fresh);
+            return fresh;
+        }
+
+        return cached;
+    }
+
+    private static AutoCureGuardState fetchAutoCureGuardStateFromPinfo(String nick) {
+        // Источник истины для guard-полей цели: `NeverApi.PinfoCompassSnapshot`.
+        // Зависимости:
+        // - `snapshot.fightFid` -> `normalizeFightFid(...)`;
+        // - `snapshot.clanToken` -> `normalizeClanToken(...)`;
+        // - fallback к `Contact.clanIco` (через `resolveContactClanTokenFallback`) при пустом pinfo clanToken.
+        String cleanNick = stripItalic(nick);
+        if (isEmpty(cleanNick)) {
+            return null;
+        }
+        try {
+            AppLog.d(TAG, "INFO_API_TRACE stage=info_api_runtime_call, source_module=auto_cure_room_guard, nick="
+                    + cleanNick);
+            NeverApi.PinfoCompassSnapshot snapshot = NeverApi.getPinfoCompassSnapshotFromInfoApi(
+                    cleanNick,
+                    "auto_cure_room_guard"
+            );
+            if (snapshot == null) {
+                return null;
+            }
+            String clanToken = normalizeClanToken(snapshot.clanToken);
+            if (isEmpty(clanToken)) {
+                clanToken = resolveContactClanTokenFallback(cleanNick);
+            }
+            String fightFid = normalizeFightFid(snapshot.fightFid);
+            return new AutoCureGuardState(clanToken, fightFid, System.currentTimeMillis());
+        } catch (Exception e) {
+            AppLog.w(TAG, AUTO_CURE_TRACE_PREFIX + " guard snapshot read failed for " + cleanNick, e);
+            return null;
+        }
+    }
+
+    private static boolean isClanTokenInCurrentWarsSafe(String clanToken) {
+        String token = normalizeClanToken(clanToken);
+        if (isEmpty(token)) {
+            return false;
+        }
+        try {
+            Context context = AppVars.getContext();
+            if (context == null) {
+                return false;
+            }
+            return ClanWarsManager.getInstance(context).isClanTokenInCurrentWars(token);
+        } catch (Exception e) {
+            AppLog.w(TAG, AUTO_CURE_TRACE_PREFIX + " wars-check failed: token=" + token, e);
+            return false;
+        }
+    }
+
+    private static String resolveContactClanTokenFallback(String nick) {
+        Contact contact = findContactByNickIgnoreCase(nick);
+        if (contact == null) {
+            return "";
+        }
+        return normalizeClanToken(contact.clanIco);
+    }
+
+    /**
+     * Публикует локальное уведомление авто-лечения с дедупликацией по ключу.
+     *
+     * Зависимости:
+     * - `MainPhp.buildServerChatTimeHtmlExternal()` — серверный timestamp в сообщении;
+     * - `FastActionManager.writeChatMsg(...)` — единый канал локального чата;
+     * - `autoCureSkipNoticeAtMs` + `AUTO_CURE_SKIP_NOTICE_DEDUP_MS` — анти-спам окно.
+     *
+     * Переменные:
+     * - `dedupKey` = scope/reason/nick-or-token;
+     * - `lastAt` / `now` — контроль минимального интервала повторной отправки.
+     */
+    private static void maybeNotifyAutoCureSkipReason(String dedupKey, String reasonHtml) {
+        String key = safeTrim(dedupKey);
+        String reason = safeTrim(reasonHtml);
+        if (isEmpty(key) || isEmpty(reason)) {
+            return;
+        }
+        long now = System.currentTimeMillis();
+        Long lastAt = autoCureSkipNoticeAtMs.get(key);
+        if (lastAt != null && (now - lastAt) < AUTO_CURE_SKIP_NOTICE_DEDUP_MS) {
+            AppLog.d(TAG, AUTO_CURE_TRACE_PREFIX + " skip-notice dedup: key=" + key
+                    + ", remainingMs=" + (AUTO_CURE_SKIP_NOTICE_DEDUP_MS - (now - lastAt)));
+            return;
+        }
+        autoCureSkipNoticeAtMs.put(key, now);
+
+        String notice = MainPhp.buildServerChatTimeHtmlExternal()
+                + "<font color=#5D7C91><b>[Автолечение][RoomManager]</b></font> "
+                + reason;
+        FastActionManager.writeChatMsg(notice);
+        AppLog.d(TAG, AUTO_CURE_TRACE_PREFIX + " skip-notice posted: key=" + key);
     }
 
     private static int resolveRoomWoundType(String nick, int hintedType, boolean self) {
@@ -2807,6 +3061,29 @@ public class RoomManager {
             return "";
         }
         return nick.replace("<i>", "").replace("</i>", "").trim();
+    }
+
+    private static String normalizeClanToken(String value) {
+        if (value == null) {
+            return "";
+        }
+        return value.replace('\u00A0', ' ').trim().toLowerCase(Locale.ROOT);
+    }
+
+    private static String normalizeFightFid(String value) {
+        if (value == null) {
+            return "";
+        }
+        String text = value.trim();
+        if (text.isEmpty() || "0".equals(text) || "null".equalsIgnoreCase(text)) {
+            return "";
+        }
+        Matcher digits = FIGHT_FID_PATTERN.matcher(text);
+        return digits.find() ? digits.group(1) : text;
+    }
+
+    private static String safeTrim(String value) {
+        return value == null ? "" : value.trim();
     }
 
     private static String normalizeNickKey(String nick) {

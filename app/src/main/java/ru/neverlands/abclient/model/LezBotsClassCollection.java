@@ -87,6 +87,13 @@ public class LezBotsClassCollection {
         if (normalizedName.isEmpty() || "Человек".equalsIgnoreCase(normalizedName)) {
             return;
         }
+        // Runtime auto-upsert неизвестных имён:
+        // - `normalizedName` -> ключ противника из боя (без изменений регистра/символов);
+        // - `normalizedKind` -> только из whitelist (`all/human/bot/boss`), иначе fallback `bot`;
+        // - `classesByName` -> защита от дублей по `normalizeNameKey(name)`;
+        // - `dynamicId` -> выдаётся через `nextDynamicIdLocked()` начиная с `DYNAMIC_CLASS_ID_START`.
+        // После вставки обязательно пишем runtime XML (`persistRuntimeFile()`), чтобы новое имя
+        // стало доступно в следующих сессиях и в фильтрах `LezFight` / `UnderAttackManager`.
         String normalizedKind = normalizeKind(defaultKind);
         boolean inserted = false;
         synchronized (LOCK) {
@@ -125,6 +132,13 @@ public class LezBotsClassCollection {
                 return;
             }
 
+            // Порядок инициализации canonical-источника bottypes:
+            // 1) `runtimeFile = resolveRuntimeFile(context)` -> `<files>/info/bottypes.xml`;
+            // 2) `ensureRuntimeFileExistsFromAssetsLocked(...)` -> bootstrap из `assets/info/bottypes.xml`;
+            // 3) `loadFromRuntimeFileLocked()` -> приоритет runtime-версии;
+            // 4) fallback `loadFromAssetLocked(context)` если runtime ещё невалиден;
+            // 5) при пустом результате -> `seedMinimalFallbackLocked()` (Все/Человек/Бот/Босс).
+            // Это обеспечивает data-driven поведение без hardcode по именам боссов.
             runtimeFile = resolveRuntimeFile(context);
             boolean bootstrapped = ensureRuntimeFileExistsFromAssetsLocked(context);
             boolean loadedRuntime = loadFromRuntimeFileLocked();

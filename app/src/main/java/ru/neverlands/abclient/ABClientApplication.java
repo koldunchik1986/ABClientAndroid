@@ -28,7 +28,13 @@ public class ABClientApplication extends Application {
         // Инициализация менеджера данных
         DataManager.init(this);
 
-        // Инициализация runtime-справочника типов противников
+        // Инициализация runtime-справочника типов противников.
+        // Зависимости:
+        // - `LezFight` / `UnderAttackManager` читают boss/bot классификацию через
+        //   `LezBotsClassCollection.isBossName(...)`.
+        // Переменные/файлы:
+        // - bootstrap: `assets/info/bottypes.xml`;
+        // - runtime: `<files>/info/bottypes.xml` (auto-upsert новых имён).
         LezBotsClassCollection.init(this);
 
         // Инициализация репозитория вещей

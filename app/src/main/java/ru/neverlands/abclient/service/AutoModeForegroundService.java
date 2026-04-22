@@ -674,6 +674,25 @@ public class AutoModeForegroundService extends Service {
                 && url.contains("code=????");
     }
 
+    /**
+     * Нормализует stale-состояние боевой капчи в фоне.
+     *
+     * Проблема, которую закрывает:
+     * - после завершения/переключения боя могли оставаться stale-флаги
+     *   (`AppVars.IsFightCaptchaDialogVisible=true`, `FightLink/code=????`, `CodeAddress`),
+     *   из-за чего service бесконечно блокировал auto-turn.
+     *
+     * Критерий «капча всё ещё валидна»:
+     * - dialog реально открыт (`activity.isFightCaptchaDialogShowing()`),
+     *   ИЛИ одновременно есть валидный finish-link + captcha URL.
+     *
+     * Что сбрасываем при stale:
+     * - `AppVars.IsFightCaptchaDialogVisible`,
+     * - `AppVars.ResumeAutoboiAfterCaptcha`,
+     * - `AppVars.ResumeSearchBoxAfterCaptcha`,
+     * - `AppVars.FightLink`,
+     * - `AppVars.CodeAddress`.
+     */
     private boolean normalizeStaleFightCaptchaState(
             MainActivity activity,
             boolean captchaDialogVisible,
