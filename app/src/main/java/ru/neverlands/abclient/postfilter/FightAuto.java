@@ -1732,6 +1732,59 @@ public final class FightAuto {
         AppLog.d(TAG, msg);
     }
 
+    private static String extractWinnerNickFromLogs(String logsBlock) {
+        if (logsBlock == null || logsBlock.isEmpty()) {
+            return "";
+        }
+        int markerIndex = logsBlock.indexOf("<B>\u041f\u043e\u0431\u0435\u0434\u0430 \u0437\u0430</B>");
+        if (markerIndex < 0) {
+            return "";
+        }
+        int winnerArrayStart = logsBlock.indexOf("[", markerIndex);
+        if (winnerArrayStart < 0) {
+            return "";
+        }
+
+        int cursor = winnerArrayStart;
+        int commaCount = 0;
+        while (cursor < logsBlock.length() && commaCount < 2) {
+            if (logsBlock.charAt(cursor) == ',') {
+                commaCount++;
+            }
+            cursor++;
+        }
+        if (commaCount < 2) {
+            return "";
+        }
+        while (cursor < logsBlock.length() && Character.isWhitespace(logsBlock.charAt(cursor))) {
+            cursor++;
+        }
+        if (cursor >= logsBlock.length()) {
+            return "";
+        }
+
+        if (cursor + 1 < logsBlock.length()
+                && logsBlock.charAt(cursor) == '\\'
+                && logsBlock.charAt(cursor + 1) == '"') {
+            int start = cursor + 2;
+            int end = logsBlock.indexOf("\\\"", start);
+            if (end > start) {
+                return logsBlock.substring(start, end).trim();
+            }
+            return "";
+        }
+
+        char quote = logsBlock.charAt(cursor);
+        if (quote == '"' || quote == '\'') {
+            int start = cursor + 1;
+            int end = logsBlock.indexOf(quote, start);
+            if (end > start) {
+                return logsBlock.substring(start, end).trim();
+            }
+        }
+        return "";
+    }
+
     static void publishFightResultFromLogsIfNeeded(String html, String address, String logIdHint) {
         if (html == null || html.isEmpty() || !html.contains("var logs = ")) {
             return;
@@ -1740,14 +1793,7 @@ public final class FightAuto {
         if (logsBlock == null || logsBlock.isEmpty()) {
             return;
         }
-        String winnerNick = "";
-        java.util.regex.Matcher winnerMatcher = java.util.regex.Pattern.compile(
-                "\"<B>\u041f\u043e\u0431\u0435\u0434\u0430 \u0437\u0430</B>\",[1,2,\\\"([^\\\"]+)\\\""
-        ).matcher(logsBlock);
-        if (winnerMatcher.find()) {
-            String winnerRaw = winnerMatcher.group(1);
-            winnerNick = winnerRaw == null ? "" : winnerRaw.trim();
-        }
+        String winnerNick = extractWinnerNickFromLogs(logsBlock);
         boolean isSkinResult = address != null && address.contains("get_id=17");
         boolean skinSkillRaised = false;
         List<String> lootItems = new ArrayList<>();

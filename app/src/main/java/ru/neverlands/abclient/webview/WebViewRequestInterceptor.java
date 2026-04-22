@@ -237,9 +237,8 @@ public class WebViewRequestInterceptor {
                                 new ByteArrayInputStream(expectedCaptchaBytes)
                         );
                     }
-                    AppLog.d(TAG, "Fight captcha guard: blocked foreign challenge request without expected bytes, requested="
+                    AppLog.w(TAG, "Fight captcha guard: expected bytes missing, allow challenge request for resync, requested="
                             + urlString + ", expected=" + expectedCaptchaUrl);
-                    return new WebResourceResponse("text/plain", "utf-8", new ByteArrayInputStream(new byte[0]));
                 }
 
                 byte[] cachedCaptchaBytes = ru.neverlands.abclient.utils.AppVars.LastFightCaptchaImageBytes;

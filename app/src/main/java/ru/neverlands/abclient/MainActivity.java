@@ -141,6 +141,8 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     private static final long AUTO_TURN_SERVER_PROBE_MIN_INTERVAL_MS = 1200L;
     private static final long AUTO_TURN_FIRST_FRAME_RENDER_GUARD_MS = 420L;
     private static final long AUTO_TURN_MANUAL_NAV_SUPPRESS_MS = 4500L;
+    private static final long PENDING_FINISH_REPEAT_WINDOW_MS = 6000L;
+    private static final int PENDING_FINISH_REPEAT_LIMIT = 4;
     private static final int AUTO_TURN_SERVER_PROBE_TIMEOUT_MS = 12000;
     // C# parity: в ПК-версии NeverTimer write-only (нет аналога checkServerTimerDrivenActions).
     // Margin=0 означает, что Java TICK срабатывает ПОСЛЕ истечения таймера, а не на 300мс раньше.
@@ -227,6 +229,9 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     private volatile boolean autoTurnServerProbeInFlight = false;
     private volatile long lastAutoTurnServerProbeAtMs = 0L;
     private volatile long autoTurnManualNavSuppressUntilMs = 0L;
+    private String lastPendingFinishAbsoluteUrl = "";
+    private long lastPendingFinishAtMs = 0L;
+    private int pendingFinishRepeatCount = 0;
     // true между onResume/onPause; используется для отключения server-probe в активном UI.
     private volatile boolean isActivityResumedState = false;
     private boolean suppressBackgroundLoopsForContacts = false;
@@ -809,6 +814,35 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                                             String finishUrl = AppVars.FightLink;
                                             AppVars.FightLink = "";
                                             String absoluteUrl = finishUrl.startsWith("http") ? finishUrl : "http://neverlands.ru/" + finishUrl;
+                                            long nowMs = System.currentTimeMillis();
+                                            if (absoluteUrl.equals(lastPendingFinishAbsoluteUrl)
+                                                    && (nowMs - lastPendingFinishAtMs) <= PENDING_FINISH_REPEAT_WINDOW_MS) {
+                                                pendingFinishRepeatCount++;
+                                            } else {
+                                                pendingFinishRepeatCount = 1;
+                                                lastPendingFinishAbsoluteUrl = absoluteUrl;
+                                            }
+                                            lastPendingFinishAtMs = nowMs;
+
+                                            if (pendingFinishRepeatCount > PENDING_FINISH_REPEAT_LIMIT) {
+                                                AppLog.w(TAG, BG_TRACE_PREFIX + " requestAutoTurn: repeated same pending finish link too many times"
+                                                        + ", repeats=" + pendingFinishRepeatCount
+                                                        + ", fallback=plain_main"
+                                                        + ", url=" + absoluteUrl);
+                                                pendingFinishRepeatCount = 0;
+                                                lastPendingFinishAbsoluteUrl = "";
+                                                lastPendingFinishAtMs = 0L;
+                                                binding.appBarMain.contentMain.webView.loadUrl("http://neverlands.ru/main.php");
+                                                return;
+                                            }
+
+                                            if (pendingFinishRepeatCount > 1) {
+                                                AppLog.d(TAG, BG_TRACE_PREFIX + " requestAutoTurn: suppress duplicate pending finish navigation"
+                                                        + ", repeats=" + pendingFinishRepeatCount
+                                                        + ", url=" + absoluteUrl);
+                                                return;
+                                            }
+
                                             AppLog.d(TAG, BG_TRACE_PREFIX + " requestAutoTurn: navigating to pending finish link: " + absoluteUrl);
                                             binding.appBarMain.contentMain.webView.loadUrl(absoluteUrl);
                                             return;

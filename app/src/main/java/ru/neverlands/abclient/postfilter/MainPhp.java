@@ -71,8 +71,8 @@ public class MainPhp {
     private static volatile long lastWtimeSyncLogAtMs = 0L;
 
     // One-shot post-fight marker:
-    // after finish-link redirect to plain main.php we allow auto-drink check on ближайших страницах
-    // персонажа/инвентаря (go=inf/go=inv/im=*), если "чистый" main.php не попал в Filter.process().
+    // after finish-link redirect to персонажа (go=inf) we allow auto-drink check on ближайших
+    // страницах персонажа/инвентаря (go=inf/go=inv/im=*).
 
     // Защита от повторного показа одного и того же диалога капчи завершения боя.
     private static volatile String lastFightCaptchaDialogKey = "";
@@ -2281,11 +2281,9 @@ public class MainPhp {
             }
             FastActionManager.fastCancel("closed-fight-interfere-error");
         }
-        // Пост-боевой синхро-переход на "чистый" main.php для автопитья.
-        // В некоторых потоках после act=7 следующий кадр process(...) на plain main.php не приходит сразу,
-        // и tryTriggerAutoDrinkRestoreElixir(...) остаётся в режиме "wait plain main.php".
-        // Делаем один явный переход, чтобы получить полноценный серверный кадр с ins_HP(...) и
-        // уже на нём принять решение по порогам HP/MA (без запуска FastAction на act=7 странице).
+        // Пост-боевой синхро-переход на страницу персонажа (go=inf) для автопитья.
+        // После act=7 нужен полноценный небойовый кадр, чтобы принять решение по порогам HP/MA
+        // без запуска FastAction прямо на странице завершения боя.
         if (isFightFinishAddress
                 && !isFightFrame
                 && !isFightTopFrame
@@ -2297,11 +2295,11 @@ public class MainPhp {
                 && !AppVars.IsFightCaptchaDialogVisible) {
             AutoDrinkHandler.autoDrinkPostFightSyncPending = true;
             AutoDrinkHandler.autoDrinkPostFightSyncPendingSinceMs = System.currentTimeMillis();
-            String msg_postfight = "AUTO_DRINK_TRACE post-fight redirect to plain main.php, address=" + address
+            String msg_postfight = "AUTO_DRINK_TRACE post-fight redirect to go=inf, address=" + address
                     + ", ts=" + AutoDrinkHandler.autoDrinkPostFightSyncPendingSinceMs;
             AppLog.d(TAG, msg_postfight);
             FileLogger.trace(TAG, msg_postfight);
-            return Russian.getBytes(buildRedirectHtml("Автопитьё: синхронизация после боя", "main.php"));
+            return Russian.getBytes(buildRedirectHtml("Автопитьё: синхронизация после боя", "main.php?get_id=56&act=10&go=inf"));
         }
         // Проверка автопитья после получения верхнего фрейма персонажа.
         // При совпадении условий запускает единый fast-action "Эликсир Восстановления".
