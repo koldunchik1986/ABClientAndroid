@@ -272,10 +272,6 @@ public final class UnderAttackManager {
      * Аналог C# IsBossName() для выбора группы Id=21 (Боссы).
      */
     private static boolean isBossName(String name) {
-        if (name == null) return false;
-        return "Королева Змей".equalsIgnoreCase(name)
-                || "Хранитель Леса".equalsIgnoreCase(name)
-                || "Громлех Синезубый".equalsIgnoreCase(name)
-                || "Выползень".equalsIgnoreCase(name);
+        return LezBotsClassCollection.isBossName(name);
     }
 }

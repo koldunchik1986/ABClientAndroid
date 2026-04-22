@@ -249,6 +249,10 @@ public class LezFight {
             _foeName = "Человек";
         }
 
+        if (!"Человек".equalsIgnoreCase(_foeName)) {
+            LezBotsClassCollection.registerEncounteredFoeName(_foeName);
+        }
+
         AppLog.d("LezFight", "Foe: name=" + _foeName + ", level=" + _foeLevel + ", image=" + _foeImage);
 
         SelectFoeGroup();
@@ -1537,11 +1541,6 @@ public class LezFight {
      * Аналог C# IsBossName() — проверяет, является ли противник боссом.
      */
     public boolean IsBoss() {
-        return _foeName != null && (
-            _foeName.equals("Королева Змей") ||
-            _foeName.equals("Хранитель Леса") ||
-            _foeName.equals("Громлех Синезубый") ||
-            _foeName.equals("Выползень")
-        );
+        return _foeName != null && LezBotsClassCollection.isBossName(_foeName);
     }
 }

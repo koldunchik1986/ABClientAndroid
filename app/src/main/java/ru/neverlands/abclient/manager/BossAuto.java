@@ -116,7 +116,9 @@ final class BossAuto {
     private static final int DEFAULT_SEARCH_TIMEOUT_SEC = 6 * 60;
     private static final int DEFAULT_WAIT_BEFORE_SCROLL_SEC = 2;
     private static final int DEFAULT_WAIT_FIGHT_TIMEOUT_SEC = 25;
-    private static final long RETURN_TIMEOUT_MS = 2 * 60 * 1000L;
+    private static final long RETURN_TIMEOUT_BASE_MS = 2 * 60 * 1000L;
+    private static final long RETURN_TIMEOUT_PER_JUMP_MS = 5_000L;
+    private static final long RETURN_TIMEOUT_MAX_MS = 12 * 60 * 1000L;
     private static final long EVENT_DEDUP_WINDOW_MS = 20_000L;
     private static final int TARGET_CHAT_ASK_MAX_ATTEMPTS = 5;
     private static final long TARGET_CHAT_ASK_RETRY_MS = 1_500L;
@@ -174,6 +176,8 @@ final class BossAuto {
     private String bossTargetClanToken = "";
     private String bossSelfClanToken = "";
     private String cachedSelfClanToken = "";
+    private long returnTimeoutMs = 0L;
+    private int returnPlannedJumps = 0;
 
     private enum BossStage {
         IDLE,
@@ -506,6 +510,7 @@ final class BossAuto {
                 && !isEmpty(selfClanToken)
                 && ClanWarsManager.getInstance(appContext).isClanTokenInCurrentWars(selfClanToken)) {
             writeBossChat("Движение к цели остановлено — наш персонаж участвует в текущей клановой войне.");
+            sendClanBossWarDeniedMessageIfNeeded(selfClanToken);
             AppLog.d(TAG, TRACE_PREFIX + " wars filter denied by self clan: selfClan=" + selfClanToken
                     + ", target=" + normalizedTarget);
             return;
@@ -518,6 +523,7 @@ final class BossAuto {
             askTargetOnceIfEnabled(normalizedTarget);
             writeBossChat("Движение к цели остановлено — цель " + deniedTargetHtml
                     + " состоит в клане, участвующем в текущей клановой войне.");
+            sendClanBossWarDeniedMessageIfNeeded(selfClanToken);
             AppLog.d(TAG, TRACE_PREFIX + " wars filter denied by wars list: target=" + normalizedTarget
                     + ", targetClan=" + targetClanToken);
             return;
@@ -666,12 +672,20 @@ final class BossAuto {
         if (!isEmpty(origin) && !origin.equals(current)) {
             owner.setAutoCompassEnabled(false);
             owner.startAutoMoving(origin);
+            int plannedJumps = Math.max(0, AppVars.AutoMovingJumps);
+            long timeoutMs = calculateReturnTimeoutMs(plannedJumps);
             synchronized (lock) {
                 stage = BossStage.RETURNING_TO_ORIGIN;
                 stageStartedAtMs = System.currentTimeMillis();
+                returnPlannedJumps = plannedJumps;
+                returnTimeoutMs = timeoutMs;
             }
             writeBossChat("Бой завершен, возвращаемся на исходную клетку " + origin + ".");
-            AppLog.d(TAG, TRACE_PREFIX + " return to origin started: reason=" + reason + ", origin=" + origin);
+            AppLog.d(TAG, TRACE_PREFIX + " return to origin started: reason=" + reason
+                    + ", origin=" + origin
+                    + ", current=" + current
+                    + ", plannedJumps=" + plannedJumps
+                    + ", timeoutMs=" + timeoutMs);
             return;
         }
         stopAndRestore(reason, true);
@@ -679,8 +693,12 @@ final class BossAuto {
 
     private void processReturnStage(long now, long stageStartMs) {
         String origin;
+        long activeTimeoutMs;
+        int plannedJumps;
         synchronized (lock) {
             origin = originRegNum;
+            activeTimeoutMs = returnTimeoutMs;
+            plannedJumps = returnPlannedJumps;
         }
         if (isEmpty(origin)) {
             stopAndRestore("return_stage_no_origin", true);
@@ -691,10 +709,37 @@ final class BossAuto {
             stopAndRestore("return_completed", true);
             return;
         }
+        int liveJumps = Math.max(0, AppVars.AutoMovingJumps);
+        if ((activeTimeoutMs <= 0L || plannedJumps <= 0) && liveJumps > 0) {
+            long recalculatedTimeoutMs = calculateReturnTimeoutMs(liveJumps);
+            synchronized (lock) {
+                if (returnTimeoutMs <= 0L || liveJumps > returnPlannedJumps) {
+                    returnTimeoutMs = recalculatedTimeoutMs;
+                    returnPlannedJumps = liveJumps;
+                }
+                activeTimeoutMs = returnTimeoutMs;
+                plannedJumps = returnPlannedJumps;
+            }
+            AppLog.d(TAG, TRACE_PREFIX + " return timeout recalculated: jumps=" + plannedJumps
+                    + ", timeoutMs=" + activeTimeoutMs);
+        }
+        if (activeTimeoutMs <= 0L) {
+            activeTimeoutMs = calculateReturnTimeoutMs(liveJumps);
+        }
         if (!AppVars.AutoMoving && !origin.equals(current)) {
             owner.startAutoMoving(origin);
+            AppLog.d(TAG, TRACE_PREFIX + " return stage: auto moving restarted, origin=" + origin
+                    + ", current=" + current
+                    + ", liveJumps=" + liveJumps);
         }
-        if (now - stageStartMs >= RETURN_TIMEOUT_MS) {
+        long elapsedMs = now - stageStartMs;
+        if (elapsedMs >= activeTimeoutMs) {
+            AppLog.w(TAG, TRACE_PREFIX + " return timeout reached: elapsedMs=" + elapsedMs
+                    + ", timeoutMs=" + activeTimeoutMs
+                    + ", origin=" + origin
+                    + ", current=" + current
+                    + ", plannedJumps=" + plannedJumps
+                    + ", liveJumps=" + liveJumps);
             stopAndRestore("return_timeout", true);
         }
     }
@@ -733,6 +778,8 @@ final class BossAuto {
             bossFightLostPending = false;
             bossTargetClanToken = "";
             bossSelfClanToken = "";
+            returnTimeoutMs = 0L;
+            returnPlannedJumps = 0;
         }
         if (owner.isAutoCompassEnabled()) {
             owner.setAutoCompassEnabled(false);
@@ -1934,5 +1981,17 @@ final class BossAuto {
 
     private long getWaitFightTimeoutMs() {
         return getAutoBossWaitFightTimeoutSec() * 1000L;
+    }
+
+    private long calculateReturnTimeoutMs(int plannedJumps) {
+        int safeJumps = Math.max(0, plannedJumps);
+        long timeoutMs = RETURN_TIMEOUT_BASE_MS + (safeJumps * RETURN_TIMEOUT_PER_JUMP_MS);
+        if (timeoutMs < RETURN_TIMEOUT_BASE_MS) {
+            timeoutMs = RETURN_TIMEOUT_BASE_MS;
+        }
+        if (timeoutMs > RETURN_TIMEOUT_MAX_MS) {
+            timeoutMs = RETURN_TIMEOUT_MAX_MS;
+        }
+        return timeoutMs;
     }
 }

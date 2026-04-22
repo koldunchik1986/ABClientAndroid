@@ -3460,26 +3460,49 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         if (!AppVars.IsFightCaptchaDialogVisible) {
             return;
         }
-        if (activeFightCaptchaDialog != null && activeFightCaptchaDialog.isShowing()) {
+        if (isFightCaptchaDialogShowing()) {
             return;
         }
 
         String finishUrl = AppVars.FightLink;
-        if (finishUrl == null
-                || !finishUrl.contains("get_id=61")
-                || !finishUrl.contains("act=7")
-                || !finishUrl.contains("code=????")) {
+        if (!isPendingFightCaptchaFinishLink(finishUrl)) {
+            clearStaleFightCaptchaState("pending finishUrl is invalid");
             return;
         }
 
         String captchaUrl = AppVars.CodeAddress;
-        if (captchaUrl == null || captchaUrl.isEmpty()) {
-            AppLog.w(TAG, "restorePendingFightCaptchaDialogIfNeeded: captcha url is empty");
+        if (captchaUrl == null || captchaUrl.trim().isEmpty()) {
+            clearStaleFightCaptchaState("pending captchaUrl is empty");
             return;
         }
 
         AppLog.d(TAG, "restorePendingFightCaptchaDialogIfNeeded: restoring pending fight captcha dialog");
         showCaptchaDialog(captchaUrl, finishUrl);
+    }
+
+    public boolean isFightCaptchaDialogShowing() {
+        return activeFightCaptchaDialog != null && activeFightCaptchaDialog.isShowing();
+    }
+
+    private boolean isPendingFightCaptchaFinishLink(String finishUrl) {
+        if (finishUrl == null || finishUrl.trim().isEmpty()) {
+            return false;
+        }
+        String normalized = finishUrl.trim();
+        return normalized.contains("get_id=61")
+                && normalized.contains("act=7")
+                && normalized.contains("code=????");
+    }
+
+    private void clearStaleFightCaptchaState(String reason) {
+        AppLog.w(TAG, "restorePendingFightCaptchaDialogIfNeeded: clear stale captcha state, reason=" + reason
+                + ", fightLink=" + (AppVars.FightLink == null ? "null" : AppVars.FightLink)
+                + ", codeAddress=" + (AppVars.CodeAddress == null ? "null" : AppVars.CodeAddress));
+        AppVars.IsFightCaptchaDialogVisible = false;
+        AppVars.ResumeAutoboiAfterCaptcha = false;
+        AppVars.ResumeSearchBoxAfterCaptcha = false;
+        AppVars.FightLink = "";
+        AppVars.CodeAddress = "";
     }
 
     // Отписка от LocalBroadcast событий (во избежание утечек).

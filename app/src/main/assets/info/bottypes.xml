@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bottypes version="1">
+    <class id="1" name="Все" plural="Все" type="all" />
+    <class id="10" name="Человек" plural="Люди" type="human" />
+    <class id="20" name="Бот" plural="Боты" type="bot" />
+    <class id="21" name="Босс" plural="Боссы" type="boss" />
+
+    <class id="101" name="Орк" plural="Орки" type="bot" />
+    <class id="102" name="Гоблин" plural="Гоблины" type="bot" />
+    <class id="103" name="Крыса" plural="Крысы" type="bot" />
+    <class id="104" name="Кабан" plural="Кабаны" type="bot" />
+    <class id="105" name="Ядовитый паук" plural="Ядовитые пауки" type="bot" />
+    <class id="106" name="Скелет" plural="Скелеты" type="bot" />
+    <class id="107" name="Скелет-мечник" plural="Скелеты-мечники" type="bot" />
+    <class id="108" name="Зомби" plural="Зомби" type="bot" />
+    <class id="109" name="Тролль" plural="Тролли" type="bot" />
+    <class id="110" name="Огр" plural="Огры" type="bot" />
+    <class id="111" name="Огр-берсеркер" plural="Огры-берсеркеры" type="bot" />
+    <class id="112" name="Сильф" plural="Сильфы" type="bot" />
+    <class id="113" name="Нетопырь" plural="Нетопыри" type="bot" />
+    <class id="114" name="Разбойник" plural="Разбойники" type="bot" />
+    <class id="115" name="Грабитель" plural="Грабители" type="bot" />
+    <class id="116" name="Призрак" plural="Призраки" type="bot" />
+    <class id="117" name="Некромант" plural="Некроманты" type="bot" />
+    <class id="118" name="Элементаль" plural="Элементали" type="bot" />
+    <class id="119" name="Дварф" plural="Дварфы" type="bot" />
+    <class id="120" name="Медведь" plural="Медведи" type="bot" />
+    <class id="121" name="Воин Таэров" plural="Воины Таэров" type="bot" />
+
+    <class id="901" name="Королева Змей" plural="Королевы Змей" type="boss" />
+    <class id="902" name="Хранитель Леса" plural="Хранители Леса" type="boss" />
+    <class id="903" name="Громлех Синезубый" plural="Громлехи Синезубые" type="boss" />
+    <class id="904" name="Выползень" plural="Выползни" type="boss" />
+</bottypes>

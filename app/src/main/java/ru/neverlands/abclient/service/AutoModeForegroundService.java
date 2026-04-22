@@ -321,6 +321,10 @@ public class AutoModeForegroundService extends Service {
                     AppVars.FightLink = "";
                     pendingFightFinishLink = "";
                 }
+                captchaDialogVisible = normalizeStaleFightCaptchaState(activity, captchaDialogVisible, pendingFightFinishLink);
+                if (!captchaDialogVisible) {
+                    pendingFightFinishLink = normalizeNeverlandsUrl(AppVars.FightLink);
+                }
                 boolean canDispatchFightFinish = autoFightEnabled
                         && !captchaDialogVisible
                         && isReadyFightFinishLink(pendingFightFinishLink)
@@ -668,6 +672,34 @@ public class AutoModeForegroundService extends Service {
         return url.contains("get_id=61")
                 && url.contains("act=7")
                 && url.contains("code=????");
+    }
+
+    private boolean normalizeStaleFightCaptchaState(
+            MainActivity activity,
+            boolean captchaDialogVisible,
+            String pendingFightFinishLink
+    ) {
+        if (!captchaDialogVisible) {
+            return false;
+        }
+        boolean dialogShowing = activity != null && activity.isFightCaptchaDialogShowing();
+        boolean hasValidFightFinishLink = isFightCaptchaFinishLink(pendingFightFinishLink);
+        String captchaUrl = normalizeNeverlandsUrl(AppVars.CodeAddress);
+        boolean hasCaptchaUrl = !captchaUrl.isEmpty();
+        if (dialogShowing || (hasValidFightFinishLink && hasCaptchaUrl)) {
+            return true;
+        }
+
+        AppLog.w(TAG, BG_TRACE_PREFIX + " uiTick: clear stale captcha state"
+                + ", dialogShowing=" + dialogShowing
+                + ", hasValidFightFinishLink=" + hasValidFightFinishLink
+                + ", hasCaptchaUrl=" + hasCaptchaUrl);
+        AppVars.IsFightCaptchaDialogVisible = false;
+        AppVars.ResumeAutoboiAfterCaptcha = false;
+        AppVars.ResumeSearchBoxAfterCaptcha = false;
+        AppVars.FightLink = "";
+        AppVars.CodeAddress = "";
+        return false;
     }
 
     /**
