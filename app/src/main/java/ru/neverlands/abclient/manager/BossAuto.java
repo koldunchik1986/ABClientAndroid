@@ -178,6 +178,7 @@ final class BossAuto {
     private boolean targetFightPollInFlight = false;
     private String targetFightPollNick = "";
     private boolean bossFightLostPending = false;
+    private boolean targetLeftClanNotifySent = false;
     private String bossTargetClanToken = "";
     private String bossSelfClanToken = "";
     private String cachedSelfClanToken = "";
@@ -417,6 +418,16 @@ final class BossAuto {
                 break;
             case WAIT_FIGHT_START:
                 if (isFightLikelyActive()) {
+                    if (isCurrentFightClearlyForeign(now)) {
+                        String currentFoes = safeTrim(AppVars.LastBoiSostav);
+                        if (isEmpty(currentFoes)) {
+                            currentFoes = "не определен";
+                        }
+                        writeBossChat("Обнаружен чужой бой (" + escapeHtml(currentFoes)
+                                + "), сценарий остановлен.");
+                        startReturnOrRestore("foreign_fight_detected");
+                        return;
+                    }
                     synchronized (lock) {
                         stage = BossStage.FIGHT_IN_PROGRESS;
                         stageStartedAtMs = now;
@@ -567,6 +578,7 @@ final class BossAuto {
             targetFightPollInFlight = false;
             targetFightPollNick = "";
             bossFightLostPending = false;
+            targetLeftClanNotifySent = false;
             bossTargetClanToken = targetClanToken;
             bossSelfClanToken = selfClanToken;
             stage = BossStage.SEARCHING_TARGET;
@@ -793,6 +805,7 @@ final class BossAuto {
             targetFightPollInFlight = false;
             targetFightPollNick = "";
             bossFightLostPending = false;
+            targetLeftClanNotifySent = false;
             bossTargetClanToken = "";
             bossSelfClanToken = "";
             returnTimeoutMs = 0L;
@@ -1318,6 +1331,7 @@ final class BossAuto {
             return true;
         }
 
+        sendClanBossTargetLeftMessageIfNeeded(target);
         writeBossChat("Действие отменено, цель уже не в " + getCurrentFightWordHtml() + ".");
         // Даже если цель ушла из боя во время SEARCHING_TARGET, нужно вернуть персонажа
         // в исходную клетку (если мы уже сдвинулись), а затем восстановить snapshot.
@@ -1459,6 +1473,7 @@ final class BossAuto {
             return target;
         }
         if (flogHtml.contains("var off = 1;")) {
+            sendClanBossTargetLeftMessageIfNeeded(target);
             writeBossChat("Действие отменено, цель уже не в " + buildFightWordHtml(buildFightLogLink(fid)) + ".");
             return "";
         }
@@ -1590,6 +1605,63 @@ final class BossAuto {
         return topUrl.contains("go=inf") && topUrl.contains("main.php");
     }
 
+    private boolean isCurrentFightClearlyForeign(long now) {
+        String expectedBoss;
+        String expectedTarget;
+        long protectionSentAtSnapshot;
+        synchronized (lock) {
+            expectedBoss = bossName;
+            expectedTarget = targetNick;
+            protectionSentAtSnapshot = protectionSentAtMs;
+        }
+        if (isEmpty(expectedBoss) && isEmpty(expectedTarget)) {
+            return false;
+        }
+        if (protectionSentAtSnapshot > 0L && (now - protectionSentAtSnapshot) < 1200L) {
+            return false;
+        }
+
+        String currentOpponents = safeTrim(AppVars.LastBoiSostav);
+        if (isEmpty(currentOpponents)) {
+            return false;
+        }
+        String normalizedOpponents = normalizeFightCompareToken(currentOpponents);
+        if (isEmpty(normalizedOpponents)) {
+            return false;
+        }
+        boolean hasBossToken = containsNormalizedFightToken(normalizedOpponents, expectedBoss);
+        boolean hasTargetToken = containsNormalizedFightToken(normalizedOpponents, expectedTarget);
+        if (hasBossToken || hasTargetToken) {
+            return false;
+        }
+
+        AppLog.w(TAG, TRACE_PREFIX + " foreign fight detected: expectedBoss=" + expectedBoss
+                + ", expectedTarget=" + expectedTarget
+                + ", currentOpponents=" + currentOpponents);
+        return true;
+    }
+
+    private String normalizeFightCompareToken(String value) {
+        if (value == null) {
+            return "";
+        }
+        return value
+                .toLowerCase(Locale.ROOT)
+                .replace('ё', 'е')
+                .replaceAll("[^a-zа-я0-9]+", "");
+    }
+
+    private boolean containsNormalizedFightToken(String normalizedHaystack, String rawNeedle) {
+        if (isEmpty(normalizedHaystack) || isEmpty(rawNeedle)) {
+            return false;
+        }
+        String normalizedNeedle = normalizeFightCompareToken(rawNeedle);
+        if (isEmpty(normalizedNeedle)) {
+            return false;
+        }
+        return normalizedHaystack.contains(normalizedNeedle);
+    }
+
     private String currentMapRegNum() {
         if (AppVars.Profile == null || AppVars.Profile.MapLocation == null) {
             return "";
@@ -1664,6 +1736,46 @@ final class BossAuto {
                         + "<font color=#7E57C2><b>[Авто-Боссы]</b></font> "
                         + message
         );
+    }
+
+    private void sendClanBossTargetLeftMessageIfNeeded(String targetNickValue) {
+        if (!isAutoBossClanNotifyEnabled()) {
+            AppLog.d(LOG_CHAIN, TAG, TRACE_PREFIX + " clan notify target-left skipped: disabled by settings");
+            return;
+        }
+        String target = normalizeNick(targetNickValue);
+        if (isEmpty(target)) {
+            return;
+        }
+
+        String selfClanToken;
+        synchronized (lock) {
+            if (targetLeftClanNotifySent) {
+                AppLog.d(LOG_CHAIN, TAG, TRACE_PREFIX + " clan notify target-left skipped: already sent, target=" + target);
+                return;
+            }
+            targetLeftClanNotifySent = true;
+            selfClanToken = bossSelfClanToken;
+        }
+
+        if (isEmpty(normalizeClanToken(selfClanToken))) {
+            AppLog.d(LOG_CHAIN, TAG, TRACE_PREFIX + " clan notify target-left skipped: self clan token is empty");
+            AppLog.d(LOG_CHAIN, TAG, "[BOSS_CLAN_TARGET_LEFT_SKIPPED] reason=empty_self_clan_token,target=" + target);
+            return;
+        }
+
+        String safeTargetForChat = target.replace("'", "");
+        String message = "%clan% '" + safeTargetForChat + "' слил бой с Боссом.";
+        boolean chatReady = isChatSendReady();
+        if (!chatReady) {
+            AppLog.w(TAG, TRACE_PREFIX + " clan notify target-left send requested while chat is not ready: target=" + target);
+        }
+        Chat.sendMessageToServer(message);
+        AppLog.d(LOG_CHAIN, TAG, "[BOSS_CLAN_TARGET_LEFT_SENT] target=" + target
+                + ", chatReady=" + chatReady
+                + ", msgLen=" + message.length());
+        AppLog.d(LOG_CHAIN, TAG, TRACE_PREFIX + " clan notify target-left sent: target=" + target
+                + ", chatReady=" + chatReady);
     }
 
     /**

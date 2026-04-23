@@ -361,6 +361,22 @@ public class Chat {
         }
     }
 
+    private static String buildDailyChatLogFileName(Date date) {
+        return LOG_TS_FORMAT.format(date) + "_chat.html";
+    }
+
+    private static String resolveDailyChatLogFileNameLocked() {
+        String expectedFileName = buildDailyChatLogFileName(new Date());
+        if (chatLogFileName == null || !chatLogFileName.equals(expectedFileName)) {
+            String previousFileName = chatLogFileName;
+            chatLogFileName = expectedFileName;
+            if (previousFileName != null && !previousFileName.equals(expectedFileName)) {
+                AppLog.i(TAG, "chat log rotated: " + previousFileName + " -> " + expectedFileName);
+            }
+        }
+        return chatLogFileName;
+    }
+
     public static void addStringToChat(String message) {
         if (message == null || message.isEmpty()) return;
         captureSystemChatMessage(message);
@@ -369,10 +385,7 @@ public class Chat {
         if (AppVars.getContext() == null) return;
         synchronized (LOG_LOCK) {
             try {
-                // Имя файла лога фиксируется на текущий день.
-                if (chatLogFileName == null) {
-                    chatLogFileName = LOG_TS_FORMAT.format(new Date()) + "_chat.html";
-                }
+                String dailyLogFileName = resolveDailyChatLogFileNameLocked();
                 String nick = AppVars.Profile != null ? AppVars.Profile.UserNick : "unknown";
                 if (nick == null || nick.isEmpty()) nick = "unknown";
                 String safeNick = nick.replaceAll("[/\\\\:*?\"<>|]", "_");
@@ -384,7 +397,7 @@ public class Chat {
                 // Для каждого ника — отдельная подпапка (Logs/<Nick>/...).
                 File userDir = new File(baseLogs, safeNick);
                 if (!userDir.exists()) userDir.mkdirs();
-                File file = new File(userDir, chatLogFileName);
+                File file = new File(userDir, dailyLogFileName);
                 boolean newFile = !file.exists();
                 try (FileOutputStream fos = new FileOutputStream(file, true)) {
                     if (newFile) {
@@ -419,9 +432,9 @@ public class Chat {
         }
         if (baseLogs == null) return "";
         // Текущий дневной лог: YYYYMMDD_chat.html
-        String fileName = chatLogFileName;
-        if (fileName == null) {
-            fileName = LOG_TS_FORMAT.format(new Date()) + "_chat.html";
+        String fileName;
+        synchronized (LOG_LOCK) {
+            fileName = resolveDailyChatLogFileNameLocked();
         }
         return new File(new File(baseLogs, safeNick), fileName).getAbsolutePath();
     }

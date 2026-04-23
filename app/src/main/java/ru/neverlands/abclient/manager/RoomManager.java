@@ -46,6 +46,7 @@ public class RoomManager {
     private static final int CONTACT_CLASS_ENEMY = 1;
     private static final int CONTACT_CLASS_FRIEND = 2;
     private static final long AUTO_CURE_ROOM_SCAN_INTERVAL_MS = 12_000L;
+    private static final long AUTO_CURE_ROOM_SCAN_PRIORITY_INTERVAL_MS = 1_000L;
     private static final long AUTO_CURE_ROOM_PINFO_CACHE_TTL_MS = 30_000L;
     private static final long AUTO_CURE_ROOM_GUARD_CACHE_TTL_MS = 10_000L;
     private static final long AUTO_CURE_SELF_CLAN_TOKEN_CACHE_TTL_MS = 300_000L;
@@ -2131,24 +2132,34 @@ public class RoomManager {
         if (isEmpty(AppVars.Profile.UserNick) || AppVars.FastNeed || AppVars.CureNeed || fightActive) {
             return;
         }
-        long now = System.currentTimeMillis();
-        if (autoCureRoomScanInProgress || (now - lastAutoCureRoomScanAtMs) < AUTO_CURE_ROOM_SCAN_INTERVAL_MS) {
-            return;
-        }
-
         final List<String> roomNicksSnapshot = new ArrayList<>(filterResult.roomNicks);
         final Map<String, Integer> injuryHintsSnapshot = new LinkedHashMap<>(filterResult.injuryTypeHints);
         if (roomNicksSnapshot.isEmpty() && injuryHintsSnapshot.isEmpty()) {
             return;
         }
 
+        long now = System.currentTimeMillis();
+        boolean urgentRoomScan = hasUrgentRoomAutoCureCandidate(roomNicksSnapshot, injuryHintsSnapshot, now);
+        long minScanIntervalMs = urgentRoomScan
+                ? AUTO_CURE_ROOM_SCAN_PRIORITY_INTERVAL_MS
+                : AUTO_CURE_ROOM_SCAN_INTERVAL_MS;
+        if (autoCureRoomScanInProgress || (now - lastAutoCureRoomScanAtMs) < minScanIntervalMs) {
+            return;
+        }
+
         synchronized (RoomManager.class) {
             long nowSync = System.currentTimeMillis();
-            if (autoCureRoomScanInProgress || (nowSync - lastAutoCureRoomScanAtMs) < AUTO_CURE_ROOM_SCAN_INTERVAL_MS) {
+            if (autoCureRoomScanInProgress || (nowSync - lastAutoCureRoomScanAtMs) < minScanIntervalMs) {
                 return;
             }
             autoCureRoomScanInProgress = true;
             lastAutoCureRoomScanAtMs = nowSync;
+        }
+
+        if (urgentRoomScan) {
+            AppLog.d(TAG, AUTO_CURE_TRACE_PREFIX + " urgent room scan: hints=" + injuryHintsSnapshot.size()
+                    + ", roomNicks=" + roomNicksSnapshot.size()
+                    + ", minIntervalMs=" + minScanIntervalMs);
         }
 
         Thread worker = new Thread(() -> {
@@ -2165,6 +2176,56 @@ public class RoomManager {
         }, "RoomAutoCureScan");
         worker.setDaemon(true);
         worker.start();
+    }
+
+    private static boolean hasUrgentRoomAutoCureCandidate(List<String> roomNicks,
+                                                           Map<String, Integer> injuryHints,
+                                                           long nowMs) {
+        String selfKey = normalizeNickKey(AppVars.Profile == null ? "" : AppVars.Profile.UserNick);
+        if (injuryHints != null && !injuryHints.isEmpty()) {
+            for (Map.Entry<String, Integer> entry : injuryHints.entrySet()) {
+                if (entry == null) {
+                    continue;
+                }
+                Integer hintWoundType = entry.getValue();
+                if (hintWoundType == null || hintWoundType <= 0) {
+                    continue;
+                }
+                String nickKey = normalizeNickKey(entry.getKey());
+                if (isEmpty(nickKey)) {
+                    continue;
+                }
+                if (!isEmpty(selfKey) && selfKey.equalsIgnoreCase(nickKey)) {
+                    continue;
+                }
+                return true;
+            }
+        }
+
+        if (roomNicks == null || roomNicks.isEmpty()) {
+            return false;
+        }
+        for (String rawNick : roomNicks) {
+            String cleanNick = stripItalic(rawNick);
+            String nickKey = normalizeNickKey(cleanNick);
+            if (isEmpty(nickKey)) {
+                continue;
+            }
+            if (!isEmpty(selfKey) && selfKey.equalsIgnoreCase(nickKey)) {
+                continue;
+            }
+            CachedRoomPinfoState cachedState = autoCureRoomPinfoCache.get(nickKey);
+            if (cachedState == null) {
+                continue;
+            }
+            if ((nowMs - cachedState.capturedAtMs) >= AUTO_CURE_ROOM_PINFO_CACHE_TTL_MS) {
+                continue;
+            }
+            if (cachedState.woundType > 0) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private static AutoCureTarget selectRoomAutoCureTarget(List<String> roomNicks,

@@ -15,6 +15,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import ru.neverlands.abclient.manager.UnderAttackManager;
 import ru.neverlands.abclient.model.*;
+import ru.neverlands.abclient.postfilter.MainPhp;
 import ru.neverlands.abclient.utils.AppVars;
 import ru.neverlands.abclient.utils.HelperStrings;
 import ru.neverlands.abclient.utils.ParseUtils;
@@ -429,7 +430,10 @@ public class LezFight {
         Context context = AppVars.getContext();
         if (context != null) {
             Intent msgIntent = new Intent(AppVars.ACTION_ADD_CHAT_MESSAGE);
-            msgIntent.putExtra("message", "<b>Режим свитка осады</b>: первый удар выполнен.");
+            msgIntent.putExtra("message",
+                    MainPhp.buildServerChatTimeHtmlExternal()
+                            + "<font color=#5D7C91><b>[Автобой]</b></font> "
+                            + "<b>Режим свитка осады</b>: первый удар выполнен.");
             LocalBroadcastManager.getInstance(context).sendBroadcast(msgIntent);
         }
     }
