@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Layout вспомогательной вкладки (аналог вспомогательных вкладок в C# версии) -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical">
+
+    <!-- Панель кнопок действий -->
+    <include
+        android:id="@+id/action_buttons_bar"
+        layout="@layout/action_buttons_bar" />
+
+    <!-- WebView для отображения контента вкладки -->
+    <WebView
+        android:id="@+id/secondary_webview"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent" />
+
+</LinearLayout>

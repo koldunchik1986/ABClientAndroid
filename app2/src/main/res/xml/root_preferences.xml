@@ -1,0 +1,223 @@
+<PreferenceScreen xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <PreferenceCategory app:title="Основные настройки">
+
+        <SwitchPreferenceCompat
+            app:key="do_prompt_exit"
+            app:title="Запрашивать подтверждение при выходе"
+            app:defaultValue="true" />
+
+        <SwitchPreferenceCompat
+            app:key="show_over_warning"
+            app:title="Показывать сообщение о перегрузе"
+            app:summary="Если выключено, сообщение о перегрузе рюкзака скрывается"
+            app:defaultValue="false" />
+
+        <SwitchPreferenceCompat
+            app:key="show_razd_chat_report"
+            app:title="Показывать результат разделки в чат"
+            app:summary="Сообщение &quot;Результат разделки&quot; при срабатывании Авто-Охоты"
+            app:defaultValue="false" />
+
+        <SwitchPreferenceCompat
+            app:key="cache_refresh"
+            app:title="Обновлять кэш"
+            app:summary="Всегда обновлять кэш при запросах"
+            app:defaultValue="false" />
+
+        <Preference
+            app:key="clear_cache"
+            app:title="Очистить кэш"
+            app:summary="Удаление всех кэшированных данных" />
+    </PreferenceCategory>
+
+    <PreferenceCategory app:title="Карта">
+
+        <Preference
+            app:key="map_size_cells"
+            app:title="Размер карты"
+            app:summary="Формат: Ширина*Высота (например 9*7)" />
+
+        <ListPreference
+            app:key="map_scale_percent"
+            app:title="Масштаб карты"
+            app:summary="Текущий масштаб отображения карты"
+            app:entries="@array/map_scale_entries"
+            app:entryValues="@array/map_scale_values"
+            app:defaultValue="80" />
+
+        <Preference
+            app:key="map_font_size"
+            app:title="Размер шрифта карты"
+            app:summary="Текущий размер шрифта CellDivText" />
+
+        <PreferenceCategory app:title="Карта навигатора">
+
+            <Preference
+                app:key="map_navigator_size_cells"
+                app:title="Размер карты навигатора"
+                app:summary="Формат: Ширина*Высота (например 5*3)" />
+
+            <ListPreference
+                app:key="map_navigator_scale_percent"
+                app:title="Масштаб карты навигатора"
+                app:summary="Текущий масштаб отображения миникарты навигатора"
+                app:entries="@array/map_scale_entries"
+                app:entryValues="@array/map_scale_values"
+                app:defaultValue="100" />
+
+            <Preference
+                app:key="map_navigator_font_size"
+                app:title="Размер шрифта карты навигатора"
+                app:summary="Текущий размер шрифта CellDivText в миникарте навигатора" />
+        </PreferenceCategory>
+
+        <SwitchPreferenceCompat
+            app:key="show_all_room_effects"
+            app:title="Показывать все эффекты в комнате"
+            app:summary="Если выключено — показываются только травмы"
+            app:defaultValue="true" />
+
+        <SwitchPreferenceCompat
+            app:key="map_rebuild_from_pinfo"
+            app:title="Пересоздавать карту из инфы (pinfo)"
+            app:summary="Синхронизировать название/регион клетки по ch.php и pinfo (может замедлять авто-навигацию)"
+            app:defaultValue="true" />
+
+        <EditTextPreference
+            app:key="map_cell_check_timeout_ms"
+            app:title="Задержка между шагами (мс)"
+            app:summary="450"
+            app:dependency="map_rebuild_from_pinfo"
+            app:useSimpleSummaryProvider="false" />
+
+        <SwitchPreferenceCompat
+            app:key="do_stop_on_dig"
+            app:title="Останавливаться на кладе"
+            app:summary="Если появляется кнопка «Копать», Авто-Клад останавливается и подается сигнал"
+            app:defaultValue="true" />
+
+        <SwitchPreferenceCompat
+            app:key="do_auto_drink_blaz"
+            app:title="Пить блаж, если усталость"
+            app:defaultValue="false" />
+
+        <EditTextPreference
+            app:key="auto_drink_blaz_tied"
+            app:title="Порог усталости для блажа"
+            app:summary="84"
+            app:dependency="do_auto_drink_blaz"
+            app:useSimpleSummaryProvider="false" />
+
+        <ListPreference
+            app:key="auto_drink_blaz_order"
+            app:title="Порядок поиска блажа"
+            app:entries="@array/auto_drink_blaz_order_entries"
+            app:entryValues="@array/auto_drink_blaz_order_values"
+            app:dependency="do_auto_drink_blaz"
+            app:defaultValue="0" />
+    </PreferenceCategory>
+
+    <PreferenceCategory app:title="Инвентарь">
+
+        <SwitchPreferenceCompat
+            app:key="do_inv_pack"
+            app:title="Объединять одинаковые предметы"
+            app:defaultValue="true" />
+
+        <SwitchPreferenceCompat
+            app:key="do_inv_pack_dolg"
+            app:title="Даже с разной долговечностью"
+            app:defaultValue="true" />
+
+        <SwitchPreferenceCompat
+            app:key="do_inv_sort"
+            app:title="Сортировать в алфавитном порядке"
+            app:defaultValue="true" />
+    </PreferenceCategory>
+
+    <PreferenceCategory app:title="Разработка">
+
+        <SwitchPreferenceCompat
+            app:key="do_http_log"
+            app:title="HTTP-логирование"
+            app:summary="Логирование HTTP-запросов и ответов"
+            app:defaultValue="false" />
+
+        <SwitchPreferenceCompat
+            app:key="do_tex_log"
+            app:title="Текстовое логирование"
+            app:summary="Логирование текстовых сообщений"
+            app:defaultValue="false" />
+
+        <SwitchPreferenceCompat
+            app:key="show_performance"
+            app:title="Показывать производительность"
+            app:summary="Отображение информации о производительности"
+            app:defaultValue="false" />
+
+        <SwitchPreferenceCompat
+            app:key="record_logcat_to_file"
+            app:title="Записывать весь Logcat в files/Logs/"
+            app:summary="Потоковая запись logcat текущего процесса в файлы по 10 минут"
+            app:defaultValue="false" />
+
+        <SwitchPreferenceCompat
+            app:key="record_proxy_pool_log"
+            app:title="Записывать proxy GET/POST в Logs/pool/"
+            app:summary="Локальный proxy: запросы/ответы с временной привязкой в файлы *_proxy.txt (сегменты по 10 минут)"
+            app:defaultValue="false" />
+
+        <Preference
+            app:key="clear_logs"
+            app:title="Очистить логи"
+            app:summary="Удаление всех файлов логов" />
+    </PreferenceCategory>
+
+    <PreferenceCategory app:title="Автоматизация">
+
+        <Preference
+            app:key="auto_fight_settings"
+            app:title="Автоматический бой"
+            app:icon="@drawable/ic_settings_gear"
+            app:summary="Открыть настройки авто-боя" />
+
+        <Preference
+            app:key="auto_fish_settings"
+            app:title="Автоматическая рыбалка"
+            app:icon="@drawable/ic_settings_gear"
+            app:summary="Открыть настройки авто-рыбалки" />
+
+        <Preference
+            app:key="auto_herb_settings"
+            app:title="Автоматический сбор трав"
+            app:icon="@drawable/ic_settings_gear"
+            app:summary="Открыть настройки авто-сбора трав" />
+
+        <Preference
+            app:key="auto_mine_settings"
+            app:title="Автоматическая добыча руды"
+            app:icon="@drawable/ic_settings_gear"
+            app:summary="Открыть настройки авто-добычи руды" />
+
+        <Preference
+            app:key="auto_tree_settings"
+            app:title="Автоматическая рубка деревьев"
+            app:icon="@drawable/ic_settings_gear"
+            app:summary="Открыть настройки авто-рубки деревьев" />
+
+        <Preference
+            app:key="auto_dig_settings"
+            app:title="Автоматический поиск Клада"
+            app:icon="@drawable/ic_settings_gear"
+            app:summary="Открыть настройки поиска клада" />
+
+        <Preference
+            app:key="auto_torg_settings"
+            app:title="Автоматическая торговля"
+            app:icon="@drawable/ic_settings_gear"
+            app:summary="Открыть настройки авто-торговли" />
+
+    </PreferenceCategory>
+
+</PreferenceScreen>

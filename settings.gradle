@@ -1,2 +1,2 @@
 rootProject.name = "ABClient"
-include ':app'
+include ':app', ':app2'

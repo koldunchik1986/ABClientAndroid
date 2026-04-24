@@ -1,0 +1,131 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/quick_buttons_bar_bottom"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="horizontal"
+    android:background="@color/colorPrimary"
+    android:padding="4dp"
+    android:gravity="center">
+
+    <ImageButton
+        android:id="@+id/quick_button_bottom_0"
+        android:layout_width="0dp"
+        android:layout_height="40dp"
+        android:layout_weight="1"
+        android:layout_margin="2dp"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:scaleType="centerInside"
+        android:padding="4dp"
+        android:src="@drawable/ic_add"
+        android:contentDescription="Кнопка 1" />
+
+    <ImageButton
+        android:id="@+id/quick_button_bottom_1"
+        android:layout_width="0dp"
+        android:layout_height="40dp"
+        android:layout_weight="1"
+        android:layout_margin="2dp"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:scaleType="centerInside"
+        android:padding="4dp"
+        android:src="@drawable/ic_add"
+        android:contentDescription="Кнопка 2" />
+
+    <ImageButton
+        android:id="@+id/quick_button_bottom_2"
+        android:layout_width="0dp"
+        android:layout_height="40dp"
+        android:layout_weight="1"
+        android:layout_margin="2dp"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:scaleType="centerInside"
+        android:padding="4dp"
+        android:src="@drawable/ic_add"
+        android:contentDescription="Кнопка 3" />
+
+    <ImageButton
+        android:id="@+id/quick_button_bottom_3"
+        android:layout_width="0dp"
+        android:layout_height="40dp"
+        android:layout_weight="1"
+        android:layout_margin="2dp"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:scaleType="centerInside"
+        android:padding="4dp"
+        android:src="@drawable/ic_add"
+        android:contentDescription="Кнопка 4" />
+
+    <ImageButton
+        android:id="@+id/quick_button_bottom_4"
+        android:layout_width="0dp"
+        android:layout_height="40dp"
+        android:layout_weight="1"
+        android:layout_margin="2dp"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:scaleType="centerInside"
+        android:padding="4dp"
+        android:src="@drawable/ic_add"
+        android:contentDescription="Кнопка 5" />
+
+    <ImageButton
+        android:id="@+id/quick_button_bottom_5"
+        android:layout_width="0dp"
+        android:layout_height="40dp"
+        android:layout_weight="1"
+        android:layout_margin="2dp"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:scaleType="centerInside"
+        android:padding="4dp"
+        android:src="@drawable/ic_add"
+        android:contentDescription="Кнопка 6" />
+
+    <ImageButton
+        android:id="@+id/quick_button_bottom_6"
+        android:layout_width="0dp"
+        android:layout_height="40dp"
+        android:layout_weight="1"
+        android:layout_margin="2dp"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:scaleType="centerInside"
+        android:padding="4dp"
+        android:src="@drawable/ic_add"
+        android:contentDescription="Кнопка 7" />
+
+    <ImageButton
+        android:id="@+id/quick_button_bottom_7"
+        android:layout_width="0dp"
+        android:layout_height="40dp"
+        android:layout_weight="1"
+        android:layout_margin="2dp"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:scaleType="centerInside"
+        android:padding="4dp"
+        android:src="@drawable/ic_add"
+        android:contentDescription="Кнопка 8" />
+
+    <ImageButton
+        android:id="@+id/quick_button_bottom_8"
+        android:layout_width="0dp"
+        android:layout_height="40dp"
+        android:layout_weight="1"
+        android:layout_margin="2dp"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:scaleType="centerInside"
+        android:padding="4dp"
+        android:src="@drawable/ic_add"
+        android:contentDescription="Кнопка 9" />
+
+    <ImageButton
+        android:id="@+id/quick_button_bottom_9"
+        android:layout_width="0dp"
+        android:layout_height="40dp"
+        android:layout_weight="1"
+        android:layout_margin="2dp"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:scaleType="centerInside"
+        android:padding="4dp"
+        android:src="@drawable/ic_add"
+        android:contentDescription="Кнопка 10" />
+
+</LinearLayout>

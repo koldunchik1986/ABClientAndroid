@@ -1,0 +1,494 @@
+package ru.neverlands.anclient.manager;
+
+import android.content.Context;
+import android.content.res.AssetManager;
+import android.os.Handler;
+import android.os.Looper;
+import ru.neverlands.anclient.utils.AppLog;
+
+import org.w3c.dom.Document;
+import org.w3c.dom.Element;
+import org.w3c.dom.Node;
+import org.w3c.dom.NodeList;
+
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+
+import javax.xml.parsers.DocumentBuilder;
+import javax.xml.parsers.DocumentBuilderFactory;
+import javax.xml.transform.Transformer;
+import javax.xml.transform.TransformerFactory;
+import javax.xml.transform.dom.DOMSource;
+import javax.xml.transform.stream.StreamResult;
+
+import ru.neverlands.anclient.model.Contact;
+import ru.neverlands.anclient.repository.ApiRepository;
+import ru.neverlands.anclient.utils.ContactRenderHelper;
+import ru.neverlands.anclient.utils.FileLogger;
+
+/**
+ * Управляет всеми операциями, связанными с контактами:
+ * - Загрузка из XML-файла при старте.
+ * - Хранение контактов в кэше в памяти для быстрого доступа.
+ * - Добавление, обновление и удаление контактов.
+ * - Сохранение изменений обратно в XML-файл.
+ */
+public class ContactsManager {
+
+    private static final String TAG = "ContactsManager";
+    private static final String CONTACTS_FILE_NAME = "contacts.xml";
+
+    /**
+     * Основное хранилище контактов в памяти. Ключ - ник персонажа (String), значение - объект Contact.
+     * Используется ConcurrentHashMap для потокобезопасности.
+     */
+    private static final ConcurrentHashMap<String, Contact> contactsCache = new ConcurrentHashMap<>();
+
+    /**
+     * Файл, в котором хранятся контакты на устройстве.
+     * Зависимость: `CONTACTS_FILE_NAME`
+     */
+    private static File contactsFile;
+
+    /**
+     * Однопоточный исполнитель для асинхронной записи в файл, чтобы не блокировать UI.
+     */
+    private static final ExecutorService executor = Executors.newSingleThreadExecutor();
+
+    /**
+     * Handler для выполнения колбэков в основном потоке UI.
+     */
+    private static final Handler handler = new Handler(Looper.getMainLooper());
+
+    // --- Интерфейсы для колбэков ---
+
+    public interface ContactOperationCallback {
+        void onSuccess(Contact contact);
+        void onFailure(String message);
+    }
+
+    public interface LoadContactsCallback {
+        void onSuccess(List<Contact> contacts);
+        void onFailure(String message);
+    }
+
+    /**
+     * Инициализирует менеджер. Вызывается один раз при старте приложения.
+     * Находит или создает файл contacts.xml и запускает загрузку контактов в кэш.
+     * @param context Контекст приложения.
+     */
+    // Инициализация: подготовка файла contacts.xml и загрузка в кеш.
+    public static void initialize(Context context) {
+        File filesDir = context.getExternalFilesDir(null);
+        if (filesDir != null) {
+            contactsFile = new File(filesDir, CONTACTS_FILE_NAME);
+            if (!contactsFile.exists()) {
+                copyDefaultContactsFromAssets(context);
+            }
+            loadContactsFromXml();
+        }
+    }
+
+    /**
+     * Копирует стандартный `contacts.xml` из assets в файловую систему, если он отсутствует.
+     */
+    // Копирует дефолтный contacts.xml из assets при первом запуске.
+    private static void copyDefaultContactsFromAssets(Context context) {
+        AssetManager assetManager = context.getAssets();
+        try (InputStream in = assetManager.open(CONTACTS_FILE_NAME);
+             OutputStream out = new FileOutputStream(contactsFile)) {
+            byte[] buffer = new byte[1024];
+            int read;
+            while ((read = in.read(buffer)) != -1) {
+                out.write(buffer, 0, read);
+            }
+            AppLog.i(TAG, "Default contacts.xml copied to " + contactsFile.getAbsolutePath());
+        } catch (IOException e) {
+            AppLog.e(TAG, "Failed to copy default contacts.xml", e);
+        }
+    }
+
+    /**
+     * Загружает все контакты из `contacts.xml` в `contactsCache`.
+     */
+    // Считывание XML контактов в in-memory кеш.
+    private static void loadContactsFromXml() {
+        if (contactsFile == null || !contactsFile.exists()) {
+            return;
+        }
+        try {
+            DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
+            DocumentBuilder builder = factory.newDocumentBuilder();
+            Document doc = builder.parse(contactsFile);
+            doc.getDocumentElement().normalize();
+
+            NodeList nList = doc.getElementsByTagName("contact");
+            contactsCache.clear();
+
+            for (int i = 0; i < nList.getLength(); i++) {
+                Node node = nList.item(i);
+                if (node.getNodeType() == Node.ELEMENT_NODE) {
+                    Element element = (Element) node;
+                    Contact contact = new Contact();
+                    // Заполнение полей объекта Contact из XML
+                    contact.playerID = getTagValue("playerID", element);
+                    contact.nick = getTagValue("nick", element);
+                    contact.playerLevel = Integer.parseInt(getTagValue("playerLevel", element, "0"));
+                    contact.inclination = Integer.parseInt(getTagValue("inclination", element, "0"));
+                    contact.inclinationName = getTagValue("inclinationName", element);
+                    contact.clanNumber = getTagValue("clanNumber", element);
+                    contact.clanIco = getTagValue("clanIco", element);
+                    contact.clanName = getTagValue("clanName", element);
+                    contact.clanStatus = getTagValue("clanStatus", element);
+                    contact.gender = Integer.parseInt(getTagValue("gender", element, "0"));
+                    contact.blockStatus = Integer.parseInt(getTagValue("blockStatus", element, "0"));
+                    contact.jailStatus = Integer.parseInt(getTagValue("jailStatus", element, "0"));
+                    contact.muteSeconds = Integer.parseInt(getTagValue("muteSeconds", element, "0"));
+                    contact.muteForumSeconds = Integer.parseInt(getTagValue("muteForumSeconds", element, "0"));
+                    contact.onlineStatus = Integer.parseInt(getTagValue("onlineStatus", element, "0"));
+                    contact.geoLocation = getTagValue("geoLocation", element);
+                    contact.warLogNumber = getTagValue("warLogNumber", element);
+                    contact.classId = Integer.parseInt(getTagValue("classId", element, "0"));
+                    contact.comment = getTagValue("comment", element);
+                    contact.effectIds = getTagValue("effectIds", element, "");
+                    contact.effectStates = getTagValue("effectStates", element, "");
+                    // Персональный инструмент авто-нападения (аналог C# Contact.ToolId).
+                    // Если тега нет в старых профилях — используем 0 (глобальный AutoAttackToolId).
+                    contact.toolId = Integer.parseInt(getTagValue("toolId", element, "0"));
+                    contactsCache.put(contact.nick, contact);
+                }
+            }
+            AppLog.i(TAG, "Contacts loaded from XML into cache.");
+        } catch (Exception e) {
+            AppLog.e(TAG, "Error loading contacts from XML", e);
+        }
+    }
+
+    /**
+     * Асинхронно сохраняет все контакты из `contactsCache` в `contacts.xml`.
+     */
+    // Асинхронное сохранение кеша обратно в contacts.xml.
+    private static void saveContactsToXml() {
+        if (contactsFile == null) {
+            return;
+        }
+        executor.execute(() -> {
+            try {
+                DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
+                DocumentBuilder builder = factory.newDocumentBuilder();
+                Document doc = builder.newDocument();
+
+                Element rootElement = doc.createElement("contacts");
+                doc.appendChild(rootElement);
+
+                for (Contact contact : contactsCache.values()) {
+                    Element contactElement = doc.createElement("contact");
+                    rootElement.appendChild(contactElement);
+                    
+                    // Создание XML-элементов для каждого поля контакта
+                    createChildElement(doc, contactElement, "playerID", contact.playerID);
+                    createChildElement(doc, contactElement, "nick", contact.nick);
+                    createChildElement(doc, contactElement, "playerLevel", String.valueOf(contact.playerLevel));
+                    createChildElement(doc, contactElement, "inclination", String.valueOf(contact.inclination));
+                    createChildElement(doc, contactElement, "inclinationName", contact.inclinationName);
+                    createChildElement(doc, contactElement, "clanNumber", contact.clanNumber);
+                    createChildElement(doc, contactElement, "clanIco", contact.clanIco);
+                    createChildElement(doc, contactElement, "clanName", contact.clanName);
+                    createChildElement(doc, contactElement, "clanStatus", contact.clanStatus);
+                    createChildElement(doc, contactElement, "gender", String.valueOf(contact.gender));
+                    createChildElement(doc, contactElement, "blockStatus", String.valueOf(contact.blockStatus));
+                    createChildElement(doc, contactElement, "jailStatus", String.valueOf(contact.jailStatus));
+                    createChildElement(doc, contactElement, "muteSeconds", String.valueOf(contact.muteSeconds));
+                    createChildElement(doc, contactElement, "muteForumSeconds", String.valueOf(contact.muteForumSeconds));
+                    createChildElement(doc, contactElement, "onlineStatus", String.valueOf(contact.onlineStatus));
+                    createChildElement(doc, contactElement, "geoLocation", contact.geoLocation);
+                    createChildElement(doc, contactElement, "warLogNumber", contact.warLogNumber);
+                    createChildElement(doc, contactElement, "classId", String.valueOf(contact.classId));
+                    createChildElement(doc, contactElement, "comment", contact.comment);
+                    createChildElement(doc, contactElement, "effectIds", contact.effectIds);
+                    createChildElement(doc, contactElement, "effectStates", contact.effectStates);
+                    // Сохраняем персональный инструмент авто-нападения.
+                    createChildElement(doc, contactElement, "toolId", String.valueOf(contact.toolId));
+                }
+
+                TransformerFactory transformerFactory = TransformerFactory.newInstance();
+                Transformer transformer = transformerFactory.newTransformer();
+                DOMSource source = new DOMSource(doc);
+                StreamResult result = new StreamResult(contactsFile);
+                transformer.transform(source, result);
+
+                AppLog.i(TAG, "Contacts saved to XML.");
+
+            } catch (Exception e) {
+                AppLog.e(TAG, "Error saving contacts to XML", e);
+            }
+        });
+    }
+
+    /**
+     * Добавляет или обновляет контакт. 
+     * Выполняет цепочку асинхронных запросов: сначала получает ID по нику, затем полную информацию по ID.
+     * Зависимости: `ApiRepository.getPlayerId`, `ApiRepository.getPlayerInfo`.
+     * @param nick Ник персонажа для добавления/обновления.
+     * @param callback Колбэк для уведомления о результате.
+     */
+    // Добавление контакта: ник -> playerId -> подробная инфа -> сохранение в XML.
+    public static void addContact(Context context, String nick, final ContactOperationCallback callback) {
+        // CustomDebugLogger.initialize removed - using FileLogger now
+        // FileLogger.log("add_contact_" + nick + ".txt");
+        ApiRepository.getPlayerId(nick, new ApiRepository.ApiCallback<String>() {
+            @Override
+            public void onSuccess(String serverResponse) {
+                handler.postDelayed(() -> {
+                    String[] parts = serverResponse.split("\\|");
+                    String playerId = parts[0];
+                    ApiRepository.getPlayerInfo(playerId, new ApiRepository.ApiCallback<Contact>() {
+                        @Override
+                        public void onSuccess(Contact contact) {
+                            contactsCache.put(contact.nick, contact);
+                            saveContactsToXml();
+                            handler.post(() -> callback.onSuccess(contact));
+                        }
+
+                        @Override
+                        public void onFailure(String message) {
+                            handler.post(() -> callback.onFailure(message));
+                        }
+                    });
+                }, 500);
+            }
+
+            @Override
+            public void onFailure(String message) {
+                handler.post(() -> callback.onFailure(message));
+            }
+        });
+    }
+
+    /**
+     * Удаляет контакт из кэша и инициирует сохранение в XML.
+     * @param name Ник контакта для удаления.
+     */
+    // Удаление контакта из кеша и XML.
+    public static void deleteContact(String name) {
+        contactsCache.remove(name);
+        saveContactsToXml();
+    }
+
+    /**
+     * Обновляет данные контакта в кэше и инициирует сохранение в XML.
+     * Используется для изменения `classId` или комментария.
+     * @param contact Объект контакта с обновленными данными.
+     */
+    // Обновление контакта (кеш + XML).
+    public static void updateContact(Contact contact) {
+        if (contact == null || contact.nick == null) return;
+        contactsCache.put(contact.nick, contact);
+        saveContactsToXml();
+    }
+
+    /**
+     * Загружает список всех контактов из кэша.
+     * @param callback Колбэк, в который передается список контактов.
+     */
+    // Возвращает список контактов из кеша.
+    public static void loadContacts(Context context, final LoadContactsCallback callback) {
+        handler.post(() -> callback.onSuccess(new ArrayList<>(contactsCache.values())));
+    }
+
+    /**
+     * Возвращает `classId` для указанного ника. Используется для окрашивания ников в чате/комнате.
+     * @param name Ник персонажа.
+     * @return Строковое представление `classId` (0, 1 или 2).
+     */
+    // classId используется для окраски ников в чате/комнате.
+    public static String getClassIdOfContact(String name) {
+        Contact contact = contactsCache.get(name);
+        int classId = 0;
+        if (contact != null) {
+            classId = contact.classId;
+        }
+        AppLog.d(TAG, "GetClassIdOfContact for '" + name + "' returned " + classId);
+        return String.valueOf(classId);
+    }
+
+    /**
+     * Возвращает уровень контакта из кэша contacts.xml.
+     * Используется как fallback-источник для единого рендера ника в чате,
+     * когда игрока нет в текущем room-list (`ChatListU`).
+     */
+    public static int getLevelOfContact(String name) {
+        Contact contact = contactsCache.get(name);
+        if (contact == null) {
+            return 0;
+        }
+        return Math.max(0, contact.playerLevel);
+    }
+
+    /**
+     * Возвращает `toolId` для контакта (аналог C# `ContactsManager.GetToolIdOfContact`).
+     *
+     * Зависимости:
+     * - `RoomManager` использует это значение как приоритетный инструмент авто-нападения.
+     * - При отсутствии контакта или значения возвращается `0` (fallback на глобальный `AppVars.AutoAttackToolId`).
+     */
+    public static int getToolIdOfContact(String name) {
+        Contact contact = contactsCache.get(name);
+        if (contact == null) {
+            return 0;
+        }
+        int toolId = contact.toolId;
+        if (toolId < 0) {
+            return 0;
+        }
+        // Supported range [0..7]:
+        // 0 = use global auto-attack tool, 1..7 = explicit per-contact tool.
+        if (toolId > 7) {
+            return 7;
+        }
+        return toolId;
+    }
+
+    // Быстрый доступ к копии кеша.
+    public static List<Contact> getContactsFromCache() {
+        return new ArrayList<>(contactsCache.values());
+    }
+
+    public static List<Integer> getEffectIdsOfContact(String name) {
+        Contact contact = contactsCache.get(name);
+        if (contact == null) {
+            return new ArrayList<>();
+        }
+        return ContactRenderHelper.parseEffectIdsCsv(contact.effectIds);
+    }
+
+    /**
+     * Запускает полное фоновое обновление всех контактов.
+     * @param context Контекст для выполнения запросов.
+     * @param onComplete Колбэк, который будет вызван по завершении всех обновлений.
+     */
+    // Полное обновление всех контактов по playerID.
+    public static void refreshAllContacts(Context context, Runnable onComplete) {
+        List<Contact> currentContacts = new ArrayList<>(contactsCache.values());
+        if (currentContacts.isEmpty()) {
+            if (onComplete != null) handler.post(onComplete);
+            return;
+        }
+        updateContactsRecursive(context, currentContacts, 0, onComplete);
+    }
+
+    /**
+     * Запускает фоновое обновление контактов для указанной группы.
+     * @param context Контекст для выполнения запросов.
+     * @param clanName Имя клана для обновления.
+     * @param onComplete Колбэк, который будет вызван по завершении всех обновлений.
+     */
+    // Обновление контактов по клану.
+    public static void refreshGroupContacts(Context context, String clanName, Runnable onComplete) {
+        List<Contact> contactsToUpdate = new ArrayList<>();
+        for (Contact contact : contactsCache.values()) {
+            if (clanName.equals(contact.clanName)) {
+                contactsToUpdate.add(contact);
+            }
+        }
+        if (contactsToUpdate.isEmpty()) {
+            if (onComplete != null) {
+                handler.post(onComplete);
+            }
+            return;
+        }
+        updateContactsRecursive(context, contactsToUpdate, 0, onComplete);
+    }
+
+    // Обновление всех нейтралов (контактов без клана).
+    public static void refreshNeutralContacts(Context context, Runnable onComplete) {
+        List<Contact> contactsToUpdate = new ArrayList<>();
+        for (Contact contact : contactsCache.values()) {
+            if (contact == null) {
+                continue;
+            }
+            if (ContactRenderHelper.isNeutralClanName(contact.clanName)) {
+                contactsToUpdate.add(contact);
+            }
+        }
+        if (contactsToUpdate.isEmpty()) {
+            if (onComplete != null) {
+                handler.post(onComplete);
+            }
+            return;
+        }
+        updateContactsRecursive(context, contactsToUpdate, 0, onComplete);
+    }
+
+    /**
+     * Рекурсивно обновляет список контактов один за другим с задержкой, используя PlayerID.
+     */
+    // Рекурсивное обновление контактов по одному с задержкой (чтобы не спамить сервер).
+    private static void updateContactsRecursive(Context context, final List<Contact> contacts, final int index, final Runnable onComplete) {
+        if (index >= contacts.size()) {
+            if (onComplete != null) handler.post(onComplete);
+            return;
+        }
+
+        handler.postDelayed(() -> {
+            Contact oldContact = contacts.get(index);
+            if (oldContact.playerID == null || oldContact.playerID.isEmpty()) {
+                AppLog.w(TAG, "Skipping contact refresh for " + oldContact.nick + " due to missing playerID.");
+                updateContactsRecursive(context, contacts, index + 1, onComplete);
+                return;
+            }
+
+            ApiRepository.getPlayerInfo(oldContact.playerID, new ApiRepository.ApiCallback<Contact>() {
+                @Override
+                public void onSuccess(Contact newContact) {
+                    // Сохраняем кастомные поля, которые не приходят от сервера
+                    newContact.classId = oldContact.classId;
+                    newContact.comment = oldContact.comment;
+                    // Сохраняем локальный выбор инструмента авто-нападения (аналог C# Contact.ToolId).
+                    newContact.toolId = oldContact.toolId;
+                    updateContact(newContact); // Обновляем кэш и сохраняем в XML
+                    // Сразу же вызываем следующий шаг рекурсии (задержка уже отработала)
+                    updateContactsRecursive(context, contacts, index + 1, onComplete);
+                }
+
+                @Override
+                public void onFailure(String message) {
+                    AppLog.e(TAG, "Failed to refresh contact by ID " + oldContact.playerID + " ("+oldContact.nick+"): " + message);
+                    // Все равно продолжаем, даже в случае ошибки
+                    updateContactsRecursive(context, contacts, index + 1, onComplete);
+                }
+            });
+        }, 1200); // Задержка между info.cgi-запросами (anti-rate-limit 535/536)
+    }
+
+    // --- Вспомогательные методы для работы с XML ---
+
+    private static String getTagValue(String tag, Element element) {
+        NodeList nodeList = element.getElementsByTagName(tag).item(0).getChildNodes();
+        Node node = (Node) nodeList.item(0);
+        return node != null ? node.getNodeValue() : "";
+    }
+
+    private static String getTagValue(String tag, Element element, String defaultValue) {
+        try {
+            return getTagValue(tag, element);
+        } catch (Exception e) {
+            return defaultValue;
+        }
+    }
+
+    private static void createChildElement(Document doc, Element parent, String tagName, String textContent) {
+        if (textContent == null) textContent = "";
+        Element element = doc.createElement(tagName);
+        element.appendChild(doc.createTextNode(textContent));
+        parent.appendChild(element);
+    }
+}

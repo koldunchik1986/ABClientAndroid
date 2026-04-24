@@ -1,0 +1,152 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/an_autoboi_bg"
+    android:theme="@style/ThemeOverlay.MaterialComponents.Dark">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="16dp">
+
+        <!-- Включить авто-бой -->
+        <CheckBox
+            android:id="@+id/checkDoAutoboi"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Включить авто-бой"
+            android:layout_marginBottom="12dp" />
+
+        <!-- Ждать восстановления HP -->
+        <CheckBox
+            android:id="@+id/checkDoWaitHp"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Ждать восстановления HP" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:layout_marginBottom="12dp">
+
+            <SeekBar
+                android:id="@+id/seekWaitHp"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:max="100" />
+
+            <TextView
+                android:id="@+id/tvWaitHp"
+                android:layout_width="50dp"
+                android:layout_height="wrap_content"
+                android:gravity="end"
+                android:text="100%" />
+
+        </LinearLayout>
+
+        <!-- Ждать восстановления MA -->
+        <CheckBox
+            android:id="@+id/checkDoWaitMa"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Ждать восстановления MA" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:layout_marginBottom="12dp">
+
+            <SeekBar
+                android:id="@+id/seekWaitMa"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:max="100" />
+
+            <TextView
+                android:id="@+id/tvWaitMa"
+                android:layout_width="50dp"
+                android:layout_height="wrap_content"
+                android:gravity="end"
+                android:text="100%" />
+
+        </LinearLayout>
+
+        <!-- Пить зелья HP -->
+        <CheckBox
+            android:id="@+id/checkDoDrinkHp"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Пить зелья HP если HP ниже:" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:layout_marginBottom="12dp">
+
+            <SeekBar
+                android:id="@+id/seekDrinkHp"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:max="100" />
+
+            <TextView
+                android:id="@+id/tvDrinkHp"
+                android:layout_width="50dp"
+                android:layout_height="wrap_content"
+                android:gravity="end"
+                android:text="50%" />
+
+        </LinearLayout>
+
+        <!-- Пить зелья MA -->
+        <CheckBox
+            android:id="@+id/checkDoDrinkMa"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Пить зелья MA если MA ниже:" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:layout_marginBottom="12dp">
+
+            <SeekBar
+                android:id="@+id/seekDrinkMa"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:max="100" />
+
+            <TextView
+                android:id="@+id/tvDrinkMa"
+                android:layout_width="50dp"
+                android:layout_height="wrap_content"
+                android:gravity="end"
+                android:text="50%" />
+
+        </LinearLayout>
+
+        <!-- Выйти из боя по таймауту -->
+        <CheckBox
+            android:id="@+id/checkDoWinTimeout"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Выйти из боя по таймауту"
+            android:layout_marginBottom="12dp" />
+
+    </LinearLayout>
+
+</ScrollView>
