@@ -83,6 +83,7 @@ import java.util.regex.Pattern;
 import java.util.zip.GZIPInputStream;
 
 import ru.neverlands.abclient.bridge.WebAppInterface;
+import ru.neverlands.abclient.handlers.FightContextChoiceHandler;
 import ru.neverlands.abclient.lez.LezFight;
 import ru.neverlands.abclient.manager.AutoFunctionsManager;
 import ru.neverlands.abclient.manager.AppTimerManager;
@@ -763,7 +764,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                         com.google.gson.Gson gson = new com.google.gson.Gson();
                         String unquoted = gson.fromJson(html, String.class);
                         AppLog.d(TAG, "requestAutoTurn: html length=" + (unquoted != null ? unquoted.length() : 0));
-                        
+
                         // Проверка на race condition при multi-enemy fight (09:55 issue):
                         // Если HTML слишком мало (<1000 bytes), это означает что WebView еще loading
                         // Добавляем задержку вместо skip чтобы дать WebView время завершить page load
@@ -776,162 +777,105 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                             new Handler(Looper.getMainLooper()).postDelayed(this::requestAutoTurn, 200);
                             return;
                         }
-                        
-                        String autoTurnHtml = unquoted;
-                        if (hasFightMarkers(unquoted)) {
-                            // Анти-stale обработка бой-кадра:
-                            // - `unquoted` может содержать fight-маркеры, но уже быть неактивным контекстом
-                            //   (`fight_ty` от старой страницы, `AppVars.IsBoi=false`),
-                            // - в таком случае не отправляем удар сразу, а переключаемся на
-                            //   `AppVars.ContentMainPhp` (если активный) либо на server-probe.
-                            // Зависимые переменные:
-                            // - `AppVars.ContentMainPhp` (кэш активного кадра),
-                            // - `AppVars.FightLink` (pending act=7),
-                            // - `lastAutoTurnServerProbeAtMs` (throttle probe).
-                            if (allowServerProbeFallback) {
-                                boolean currentActiveFight = isActiveFightContext(unquoted);
-                                if (!currentActiveFight) {
-                                    AppLog.d(TAG, BG_TRACE_PREFIX + " requestAutoTurn: current html has stale fight markers, inactive context"
-                                            + ", fightLink=" + AppVars.FightLink);
 
-                                    String cachedFightHtml = AppVars.ContentMainPhp;
-                                    boolean cachedHasMarkers = hasFightMarkers(cachedFightHtml);
-                                    boolean cachedActiveFight = cachedHasMarkers && isActiveFightContext(cachedFightHtml);
-                                    if (cachedActiveFight) {
-                                        autoTurnHtml = cachedFightHtml;
-                                        AppLog.d(TAG, BG_TRACE_PREFIX + " requestAutoTurn: fallback to cached active fight html after inactive current html, len="
-                                                + cachedFightHtml.length());
-                                        if (!hasPendingAct7FightLink(AppVars.FightLink)) {
-                                            long sinceLastProbeMs = System.currentTimeMillis() - lastAutoTurnServerProbeAtMs;
-                                            if (sinceLastProbeMs >= AUTO_TURN_SERVER_PROBE_MIN_INTERVAL_MS) {
-                                                requestAutoTurnFromServerProbe("cached_active_fight_html_keepalive_after_inactive_current");
-                                            }
-                                        }
-                                    } else {
-                                        if (cachedHasMarkers) {
-                                            AppVars.ContentMainPhp = "";
-                                            AppLog.d(TAG, BG_TRACE_PREFIX + " requestAutoTurn: drop stale cached fight html after inactive current html");
-                                        }
-
-                                        if (!hasPendingAct7FightLink(AppVars.FightLink)) {
-                                            boolean probeAllowedByUiState = isAutoTurnServerProbeAllowedNow();
-                                            if (!probeAllowedByUiState) {
-                                                AppLog.d(TAG, BG_TRACE_PREFIX + " requestAutoTurn: forcing server probe after inactive current fight html");
-                                            }
-                                            requestAutoTurnFromServerProbe("current_fight_html_inactive");
-                                        } else {
-                                            String finishUrl = AppVars.FightLink;
-                                            AppVars.FightLink = "";
-                                            String absoluteUrl = finishUrl.startsWith("http") ? finishUrl : "http://neverlands.ru/" + finishUrl;
-                                            long nowMs = System.currentTimeMillis();
-                                            if (absoluteUrl.equals(lastPendingFinishAbsoluteUrl)
-                                                    && (nowMs - lastPendingFinishAtMs) <= PENDING_FINISH_REPEAT_WINDOW_MS) {
-                                                pendingFinishRepeatCount++;
-                                            } else {
-                                                pendingFinishRepeatCount = 1;
-                                                lastPendingFinishAbsoluteUrl = absoluteUrl;
-                                            }
-                                            lastPendingFinishAtMs = nowMs;
-
-                                            if (pendingFinishRepeatCount > PENDING_FINISH_REPEAT_LIMIT) {
-                                                AppLog.w(TAG, BG_TRACE_PREFIX + " requestAutoTurn: repeated same pending finish link too many times"
-                                                        + ", repeats=" + pendingFinishRepeatCount
-                                                        + ", fallback=plain_main"
-                                                        + ", url=" + absoluteUrl);
-                                                pendingFinishRepeatCount = 0;
-                                                lastPendingFinishAbsoluteUrl = "";
-                                                lastPendingFinishAtMs = 0L;
-                                                binding.appBarMain.contentMain.webView.loadUrl("http://neverlands.ru/main.php");
-                                                return;
-                                            }
-
-                                            if (pendingFinishRepeatCount > 1) {
-                                                AppLog.d(TAG, BG_TRACE_PREFIX + " requestAutoTurn: suppress duplicate pending finish navigation"
-                                                        + ", repeats=" + pendingFinishRepeatCount
-                                                        + ", url=" + absoluteUrl);
-                                                return;
-                                            }
-
-                                            AppLog.d(TAG, BG_TRACE_PREFIX + " requestAutoTurn: navigating to pending finish link: " + absoluteUrl);
-                                            binding.appBarMain.contentMain.webView.loadUrl(absoluteUrl);
-                                            return;
-                                        }
-                                    }
-                                }
-                            }
-                        } else {
-                            String cachedFightHtml = AppVars.ContentMainPhp;
-                            if (hasFightMarkers(cachedFightHtml)) {
-                                if (isActiveFightContext(cachedFightHtml)) {
-                                    autoTurnHtml = cachedFightHtml;
-                                    AppLog.d(TAG, BG_TRACE_PREFIX + " requestAutoTurn: fallback to cached active fight html, len="
-                                            + cachedFightHtml.length());
-                                    if (allowServerProbeFallback && !hasPendingAct7FightLink(AppVars.FightLink)) {
-                                        long sinceLastProbeMs = System.currentTimeMillis() - lastAutoTurnServerProbeAtMs;
-                                        if (sinceLastProbeMs >= AUTO_TURN_SERVER_PROBE_MIN_INTERVAL_MS) {
-                                            requestAutoTurnFromServerProbe("cached_active_fight_html_keepalive");
-                                        }
-                                    }
-                                } else {
-                                    AppLog.d(TAG, BG_TRACE_PREFIX + " requestAutoTurn: cached fight html is stale (inactive), drop and probe");
-                                    AppVars.ContentMainPhp = "";
-                                    if (allowServerProbeFallback) {
-                                        boolean probeAllowedByUiState = isAutoTurnServerProbeAllowedNow();
-                                        if (!probeAllowedByUiState) {
-                                            AppLog.d(TAG, BG_TRACE_PREFIX + " requestAutoTurn: forcing server probe after stale cached fight html");
-                                        }
-                                        requestAutoTurnFromServerProbe("cached_fight_html_inactive");
-                                    }
-                                }
-                            } else {
-                                AppLog.d(TAG, BG_TRACE_PREFIX + " requestAutoTurn: no fight markers in current/cached html");
-                                if (allowServerProbeFallback) {
-                                    boolean probeAllowedByUiState = isAutoTurnServerProbeAllowedNow();
-                                    if (!probeAllowedByUiState) {
-                                        AppLog.d(TAG, BG_TRACE_PREFIX + " requestAutoTurn: forcing server probe from background-aware path");
-                                    }
-                                    requestAutoTurnFromServerProbe("no_fight_markers_current_and_cached");
-                                }
-                            }
-                        }
-                        fightViewModel.autoTurnOnce(autoTurnHtml);
+                        FightContextChoiceHandler.Decision decision = FightContextChoiceHandler.chooseForCurrentHtml(
+                                unquoted,
+                                AppVars.ContentMainPhp,
+                                AppVars.FightLink,
+                                allowServerProbeFallback,
+                                createFightContextOracle());
+                        applyFightContextDecision(decision);
                     } else {
                         AppLog.d(TAG, "requestAutoTurn: html is null");
-                        String cachedFightHtml = AppVars.ContentMainPhp;
-                        if (hasFightMarkers(cachedFightHtml)) {
-                            if (isActiveFightContext(cachedFightHtml)) {
-                                AppLog.d(TAG, BG_TRACE_PREFIX + " requestAutoTurn: null html, fallback to cached active fight html, len="
-                                        + cachedFightHtml.length());
-                                fightViewModel.autoTurnOnce(cachedFightHtml);
-                                if (allowServerProbeFallback && !hasPendingAct7FightLink(AppVars.FightLink)) {
-                                    long sinceLastProbeMs = System.currentTimeMillis() - lastAutoTurnServerProbeAtMs;
-                                    if (sinceLastProbeMs >= AUTO_TURN_SERVER_PROBE_MIN_INTERVAL_MS) {
-                                        requestAutoTurnFromServerProbe("null_html_cached_active_fight_html_keepalive");
-                                    }
-                                }
-                            } else {
-                                AppLog.d(TAG, BG_TRACE_PREFIX + " requestAutoTurn: null html with stale cached fight html, drop and probe");
-                                AppVars.ContentMainPhp = "";
-                                if (allowServerProbeFallback) {
-                                    boolean probeAllowedByUiState = isAutoTurnServerProbeAllowedNow();
-                                    if (!probeAllowedByUiState) {
-                                        AppLog.d(TAG, BG_TRACE_PREFIX + " requestAutoTurn: forcing null-html server probe after stale cached fight html");
-                                    }
-                                    requestAutoTurnFromServerProbe("null_html_stale_cached_fight_html");
-                                }
-                            }
-                        } else {
-                            AppLog.d(TAG, BG_TRACE_PREFIX + " requestAutoTurn: html is null and cached html has no fight markers");
-                            if (allowServerProbeFallback) {
-                                boolean probeAllowedByUiState = isAutoTurnServerProbeAllowedNow();
-                                if (!probeAllowedByUiState) {
-                                    AppLog.d(TAG, BG_TRACE_PREFIX + " requestAutoTurn: forcing null-html server probe from background-aware path");
-                                }
-                                requestAutoTurnFromServerProbe("null_html_and_no_cached_markers");
-                            }
-                        }
+                        FightContextChoiceHandler.Decision decision = FightContextChoiceHandler.chooseForNullHtml(
+                                AppVars.ContentMainPhp,
+                                AppVars.FightLink,
+                                allowServerProbeFallback,
+                                createFightContextOracle());
+                        applyFightContextDecision(decision);
                     }
                 });
+    }
+
+    private FightContextChoiceHandler.Oracle createFightContextOracle() {
+        return new FightContextChoiceHandler.Oracle() {
+            @Override
+            public boolean hasFightMarkers(String html) {
+                return MainActivity.this.hasFightMarkers(html);
+            }
+
+            @Override
+            public boolean isActiveFightContext(String html) {
+                return MainActivity.this.isActiveFightContext(html);
+            }
+
+            @Override
+            public boolean hasPendingAct7FightLink(String fightLink) {
+                return MainActivity.this.hasPendingAct7FightLink(fightLink);
+            }
+        };
+    }
+
+    private void applyFightContextDecision(FightContextChoiceHandler.Decision decision) {
+        if (decision == null) {
+            return;
+        }
+        if (decision.shouldClearCachedHtml()) {
+            AppVars.ContentMainPhp = "";
+        }
+        if (decision.shouldNavigatePendingFinish()) {
+            handlePendingFightFinishNavigation();
+            return;
+        }
+        if (decision.shouldRequestProbe()) {
+            if (decision.shouldLogProbeIfUiActive() && !isAutoTurnServerProbeAllowedNow()) {
+                AppLog.d(TAG, BG_TRACE_PREFIX + " requestAutoTurn: forcing server probe, reason=" + decision.getProbeReason());
+            }
+            requestAutoTurnFromServerProbe(decision.getProbeReason());
+        }
+        if (decision.shouldAutoTurn()) {
+            fightViewModel.autoTurnOnce(decision.getAutoTurnHtml());
+        }
+    }
+
+    private void handlePendingFightFinishNavigation() {
+        String finishUrl = AppVars.FightLink;
+        if (finishUrl == null || finishUrl.isEmpty()) {
+            return;
+        }
+        AppVars.FightLink = "";
+        String absoluteUrl = finishUrl.startsWith("http") ? finishUrl : "http://neverlands.ru/" + finishUrl;
+        long nowMs = System.currentTimeMillis();
+        if (absoluteUrl.equals(lastPendingFinishAbsoluteUrl)
+                && (nowMs - lastPendingFinishAtMs) <= PENDING_FINISH_REPEAT_WINDOW_MS) {
+            pendingFinishRepeatCount++;
+        } else {
+            pendingFinishRepeatCount = 1;
+            lastPendingFinishAbsoluteUrl = absoluteUrl;
+        }
+        lastPendingFinishAtMs = nowMs;
+
+        if (pendingFinishRepeatCount > PENDING_FINISH_REPEAT_LIMIT) {
+            AppLog.w(TAG, BG_TRACE_PREFIX + " requestAutoTurn: repeated same pending finish link too many times"
+                    + ", repeats=" + pendingFinishRepeatCount
+                    + ", fallback=plain_main"
+                    + ", url=" + absoluteUrl);
+            pendingFinishRepeatCount = 0;
+            lastPendingFinishAbsoluteUrl = "";
+            lastPendingFinishAtMs = 0L;
+            binding.appBarMain.contentMain.webView.loadUrl("http://neverlands.ru/main.php");
+            return;
+        }
+
+        if (pendingFinishRepeatCount > 1) {
+            AppLog.d(TAG, BG_TRACE_PREFIX + " requestAutoTurn: suppress duplicate pending finish navigation"
+                    + ", repeats=" + pendingFinishRepeatCount
+                    + ", url=" + absoluteUrl);
+            return;
+        }
+
+        AppLog.d(TAG, BG_TRACE_PREFIX + " requestAutoTurn: navigating to pending finish link: " + absoluteUrl);
+        binding.appBarMain.contentMain.webView.loadUrl(absoluteUrl);
     }
 
     /**
@@ -1424,7 +1368,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
      *
      * Зависимости:
      * - `AppVars.Autoboi` / `Profile.LezDoAutoboi`: runtime-флаг активного авто-боя;
-     * - `AppVars.VCode`: добавляется в URL восстановления, если доступен;
+     * - `SessionManager`: предоставляет vcode для защищённых recovery-запросов;
      * - `binding.appBarMain.contentMain.webView`: целевой WebView верхнего фрейма.
      */
 
@@ -1741,11 +1685,11 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     }
 
     /**
-     * Извлекает vcode из payload авто-удара (`vcode|enemy|group|...`) и синхронизирует `AppVars.VCode`.
+     * Извлекает vcode из payload авто-удара (`vcode|enemy|group|...`) и синхронизирует SessionManager.
      *
      * Зависимости:
      * - `FightViewModel -> LezFight.BuildResult()` формирует payload с vcode первым токеном;
-     * - `schedulePostResponseReload(...)` и recovery-ветка используют `AppVars.VCode`.
+     * - `schedulePostResponseReload(...)` и recovery-ветка берут код защиты через SessionManager.
      */
     private void adoptVCodeFromAutoSubmitPayload(String payload) {
         String vcode = extractVCodeFromAutoSubmitPayload(payload);
@@ -1765,7 +1709,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
      *
      * Зависимости:
      * - используется в {@link #adoptVCodeFromAutoSubmitPayload(String)};
-     * - валидирует токен регулярным шаблоном hex, чтобы не перетирать `AppVars.VCode`
+     * - валидирует токен регулярным шаблоном hex, чтобы не сохранять в SessionManager
      *   случайными значениями из неполного/битого payload.
      *
      * @param payload строка payload из `BuildResult`.

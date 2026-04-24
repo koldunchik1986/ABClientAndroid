@@ -112,13 +112,13 @@
 
 ---
 
-## 1.5 AUTO-SKIN METHODS (Переключение скинов)
+## 1.5 AUTO-SKIN METHODS (Авто-Охота)
 
 | Метод | Строки | Назначение | Сложность | VCode |
 |-------|--------|-----------|-----------|-------|
 | `mainPhpProcessSkills(html, address)` | 1315-1373 | **ГЛАВНЫЙ цикл скиллов** | **[REFACTOR] High (switch + condition tree)** | No |
 | `mainPhpProcessFishSkills(html, address)` | 1503-1553 | Скиллы для рыбалки | Medium | Yes |
-| `mainPhpGetSkinRes(html)` | 3741-3850 | **Парсинг ресурсов скина** | **[REFACTOR] Very High (regex + tracking)** | No |
+| `mainPhpGetSkinRes(html)` | 3741-3850 | **Парсинг ресурсов Авто-Охота** | **[REFACTOR] Very High (regex + tracking)** | No |
 | `mainPhpWearComplect(html, name)` | 1553-1621 | Надевание комплекта | Medium | Yes |
 | `mainPhpWearFuryScroll(html)` | 3713-3741 | Надевание свитка ярости | Medium | No |
 | `mainPhpArmedFuryScroll(html)` | 3701-3713 | Вооружён ли fury scroll? | Low | No |

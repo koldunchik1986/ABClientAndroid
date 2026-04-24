@@ -414,5 +414,14 @@ public class ManualNavGuardHandler {
 
 ---
 
+## Актуализация 2026-04-24
+
+- [x] VCode Migration завершена фактически: прямых runtime-обращений к `AppVars.VCode` в Java-коде не найдено.
+- [x] `FightContextChoiceHandler` создан и подключён к `requestAutoTurnInternal(...)`.
+- [ ] `ChatPollRecoveryHandler` отсутствует.
+- [ ] `ManualNavGuardHandler` отсутствует.
+- [ ] `SubmitRetryHandler` отсутствует; часть submit-guard уже реализована в `enqueueAutoBattleSubmit(...)`.
+- [ ] При внедрении использовать `AppLog`, не прямой `android.util.Log`.
+
 **Дата плана:** 2026-04-03  
-**Статус:** Ready for Implementation (После VCode Migration)
+**Статус:** In Progress (после фактической VCode Migration)

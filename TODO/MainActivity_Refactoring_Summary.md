@@ -2,7 +2,7 @@
 
 **Дата анализа:** 2026-04-03  
 **Версия файла:** ~6000 строк (estimated)  
-**Статус:** READY FOR IMPLEMENTATION  
+**Статус:** IN PROGRESS (актуализировано 2026-04-24)  
 **Общая сложность:** HARD  
 **Общее время на рефакторинг:** 10-15 часов
 
@@ -10,11 +10,26 @@
 
 ## 📊 СВОДНЫЕ ТАБЛИЦЫ
 
+## Актуализация 2026-04-24
+
+| Пункт | Фактический статус | Подтверждение | Что осталось |
+|-------|--------------------|---------------|--------------|
+| VCode migration | `[x]` Реализовано в коде | `SessionManager.getValidVCodeForAction(...)`; в `MainActivity.java` stale-комментарии обновлены | Остаётся только справочный комментарий в `MainPhp.java`, что VCode больше не кешируется в `AppVars.VCode` |
+| `FightContextChoiceHandler` | `[x]` Реализован | `app/src/main/java/ru/neverlands/abclient/handlers/FightContextChoiceHandler.java`; `requestAutoTurnInternal(...)` вызывает decision-handler | Runtime-проверка auto-turn по логам боя |
+| `ChatPollRecoveryHandler` | `[ ]` Не реализован | `onChatPollResponseMeta(...)` остаётся в `MainActivity.java` | Вынести retry/recovery state в handler |
+| `ManualNavGuardHandler` | `[ ]` Не реализован | handler отсутствует | Вынести после стабилизации auto-turn refactor |
+| `SubmitRetryHandler` | `[~]` Частично | Очередь submit уже есть через `enqueueAutoBattleSubmit(...)`, но отдельного handler нет | Вынести JS/retry без изменения submit-порядка |
+| `CaptchaDialogBuilder` | `[~]` Частично | `showCaptchaDialog(...)` уменьшен, но builder отсутствует | Вынести UI-сборку позже |
+| Binding helpers | `[ ]` Не реализовано | `getMainWebViewOrNull()` и `isMainBindingReady()` не найдены | Следующий малорисковый шаг после handler extraction |
+| State holders | `[ ]` Не реализовано | `FightStateHolder`, `ChatStateHolder`, `CaptchaStateHolder` не найдены | Планировать отдельной фазой |
+
+Текущий рабочий трекер: `TODO/todo_task_20260424_mainactivity_refactoring.md`.
+
 ### Обнаруженные проблемы по приоритету
 
 | # | Проблема | Тип | Критичность | Сложность | Время | Файл |
 |---|----------|-----|-------------|-----------|--------|------|
-| 1 | AppVars.VCode прямое использование (5 мест) | VCode | 🔴 CRITICAL | MEDIUM | 2-3ч | todo_MainActivity_Analysis.md / VCode_Migration_Plan.md |
+| 1 | AppVars.VCode прямое использование (5 мест) | VCode | ✅ DONE | MEDIUM | завершено ранее | todo_MainActivity_Analysis.md / VCode_Migration_Plan.md |
 | 2 | requestAutoTurnInternal() - 200 строк нестинга | God Method | 🔴 CRITICAL | HARD | 4-5ч | Handler_Extraction_Plan.md (#1) |
 | 3 | Дублирование fallback-логики (3+ раза) | Duplication | 🟠 HIGH | MEDIUM | 2-3ч | todo_MainActivity_Analysis.md (§3) |
 | 4 | onChatPollResponseMeta() - 120 строк | God Method | 🟠 HIGH | MEDIUM | 2-3ч | Handler_Extraction_Plan.md (#2) |
@@ -165,7 +180,7 @@
 
 ### Правило 1: UTF-8 кодировка
 - [ ] Всегда сохраняй файлы в UTF-8 (без BOM)
-- [ ] Проверь что нет mojibake (РЎР..., РџС...) в диффе перед коммитом
+- [ ] Проверь что нет mojibake-паттернов из `AGENTS.MD` в диффе перед коммитом
 
 ### Правило 2: Rule 5 - VCode через SessionManager
 - [ ] Никогда `AppVars.VCode` напрямую
@@ -256,6 +271,6 @@ God Methods (>150 строк):       0 методов  (легко тестир�
 
 ---
 
-**Финальный статус:** ✅ **READY FOR IMPLEMENTATION**
+**Финальный статус:** 🔄 **IN PROGRESS**
 
-Все три документа готовы. Начинай с VCode Migration.
+VCode migration фактически выполнена. `FightContextChoiceHandler` добавлен 2026-04-24. Следующий стартовый пункт: binding helpers или `ChatPollRecoveryHandler`.
