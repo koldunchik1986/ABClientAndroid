@@ -5,6 +5,13 @@ import java.util.Locale;
 import ru.neverlands.abclient.manager.CharacterVitalsManager;
 import ru.neverlands.abclient.utils.AppLog;
 
+/**
+ * Парсинг HP/MA snapshot из main.php и синхронизация CharacterVitalsManager.
+ *
+ * Источник выноса: MainPhp.mainPhpInsHp(...), parseInsHpSnapshot(...), parseInsHpSnapshotArgs(...),
+ * tryParseDoubleInvariant(...). Пока тип snapshot оставлен MainPhp.InsHpSnapshot, чтобы не менять
+ * зависимости FightAuto.Host/AutoDrinkHandler в этом срезе.
+ */
 final class MainPhpVitals {
 
     private static final String TAG = "MainPhp";
@@ -12,6 +19,13 @@ final class MainPhpVitals {
     private MainPhpVitals() {
     }
 
+    /**
+     * Главный runtime-вызов: читает snapshot из html и пишет его в CharacterVitalsManager.
+     *
+     * Переменные snapshot:
+     * - curHp/maxHp/curMa/maxMa: integer HP/MA для авто-питья и боя.
+     * - intHp/intMa: дробные внутренние значения из server JS, сохраняются для точной диагностики.
+     */
     static void mainPhpInsHp(String html) {
         try {
             MainPhp.InsHpSnapshot snapshot = parseInsHpSnapshot(html);
@@ -33,6 +47,10 @@ final class MainPhpVitals {
         }
     }
 
+    /**
+     * Ищет snapshot в двух server-форматах: `var inshp = [...]` и вызов `ins_HP(...)`.
+     * Возвращает MainPhp.InsHpSnapshot или null, если текущий HTML не содержит vitals.
+     */
     static MainPhp.InsHpSnapshot parseInsHpSnapshot(String html) {
         if (html == null || html.isEmpty()) {
             return null;
@@ -61,6 +79,10 @@ final class MainPhpVitals {
         return parseInsHpSnapshotArgs(html.substring(start, end));
     }
 
+    /**
+     * Парсит шесть аргументов vitals: curHp, maxHp, curMa, maxMa, intHp, intMa.
+     * Все числа проходят через tryParseDoubleInvariant(...), чтобы пережить кавычки, NBSP и запятую.
+     */
     static MainPhp.InsHpSnapshot parseInsHpSnapshotArgs(String args) {
         if (args == null || args.isEmpty()) {
             return null;
@@ -91,6 +113,10 @@ final class MainPhpVitals {
         return snapshot;
     }
 
+    /**
+     * Locale-independent parser для server-чисел из JS/HTML.
+     * Нормализует кавычки, NBSP, пробелы и десятичную запятую перед Double.parseDouble(...).
+     */
     static Double tryParseDoubleInvariant(String raw) {
         if (raw == null) {
             return null;

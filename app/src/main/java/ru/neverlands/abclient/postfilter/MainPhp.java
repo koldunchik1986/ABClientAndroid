@@ -1991,25 +1991,15 @@ public class MainPhp {
             FishAjaxPhp.mainPhpProcessFishSkills(html, address);
         }
 
-        // ========== ТАЙМЕР: Одевание комплектов ==========
-        // Порт C# FormMainTimers.cs: если таймер комплекта сработал,
-        // AppVars.WearComplect содержит название комплекта.
-        // Парсим HTML комплектов, находим нужный и отправляем запрос на одевание.
-        if (!AppVars.WearComplect.isEmpty() && !isFightFrame && !isFightTopFrame) {
-            String msg_start = "COMPLECT_TIMER_TRACE start wear, AppVars.WearComplect=\"" + AppVars.WearComplect + "\"";
-            AppLog.d(TAG, msg_start);
-            String complectWearHtml = mainPhpWearComplect(html, AppVars.WearComplect);
-            if (complectWearHtml != null && !complectWearHtml.isEmpty()) {
-                String msg_complect = "COMPLECT_TIMER_TRACE redirect to wear complect, name=" + AppVars.WearComplect;
-                AppLog.d(TAG, msg_complect);
-                AppVars.WearComplect = "";  // Очищаем флаг после отправки
-                return Russian.getBytes(complectWearHtml);
-            } else {
-                // Комплект не найден - отключаем флаг и выводим ошибку
-                String msg_complect_notfound = "COMPLECT_TIMER_TRACE complect not found: \"" + AppVars.WearComplect + "\"";
-                AppLog.d(TAG, msg_complect_notfound);
-                AppVars.WearComplect = "";
-            }
+        // Рефакторинг 2026-04-24: ветка таймерного надевания комплекта перенесена
+        // из MainPhp.process() в ComplectWearHandler.processWearComplectStep(...).
+        // Зависимости и состояние: html содержит текущий main.php кадр с JS `compl_view(...)`,
+        // isFightFrame/isFightTopFrame запрещают non-combat redirect в боевом кадре,
+        // AppVars.WearComplect хранит имя комплекта и очищается внутри handler-а после попытки.
+        // Возврат: redirect-HTML на `main.php?get_id=57&uid=...&s=2&vcode=...` или null.
+        String complectWearHtml = ComplectWearHandler.processWearComplectStep(html, isFightFrame, isFightTopFrame);
+        if (complectWearHtml != null && !complectWearHtml.isEmpty()) {
+            return Russian.getBytes(complectWearHtml);
         }
 
         // C# parity: DoAutoDrinkBlaz.
@@ -2030,309 +2020,40 @@ public class MainPhp {
             AppLog.d(TAG, msg_fishskip);
         }
         
-        // Восстановление авто-рыбалки, если она была отключена во время переходов на персонаж/инвентарь
-        // и теперь мы вернулись на природу (go=ret или mainPhpFindFlora() вернула null).
-        // ВАЖНО: восстанавливаем только если на текущей клетке есть вода (mainPhpFindFish() != null).
-        boolean isOnMapOrNature = mainPhpFindFlora(html) == null; // null = уже на карте
-        if (isOnMapOrNature && FishAjaxPhp.isAutoFishEnabledByPreference()) {
-            FishAjaxPhp.recoverAutofishRuntimeStateIfNeeded(true, html, address);
-        }
-        
-        // ДИАГНОСТИКА: Логирование всех условий блокировки рыбалки на холодном старте
-        boolean isFastActionPaused = isNonCombatAutoPausedByFastAction();
-        boolean shouldEnterFishingLogic = !isFastActionPaused && !isFightFrame && !isFightTopFrame
-                && !autoFightReloadProbeAddress && FishAjaxPhp.isAutoFishEnabledByPreference();
-        if (!shouldEnterFishingLogic && FishAjaxPhp.isAutoFishEnabledByPreference()) {
-            StringBuilder diagnostics = new StringBuilder();
-            diagnostics.append("AUTO_FISH_TRACE BLOCKED: ");
-            diagnostics.append("FastNeed=").append(isFastActionPaused).append(", ");
-            diagnostics.append("isFightFrame=").append(isFightFrame).append(", ");
-            diagnostics.append("isFightTopFrame=").append(isFightTopFrame).append(", ");
-            diagnostics.append("autoFightProbe=").append(autoFightReloadProbeAddress);
-            String msg_block = diagnostics.toString();
-            AppLog.d(TAG, msg_block);
-        }
-        
-        if (!isNonCombatAutoPausedByFastAction() && !isFightFrame && !isFightTopFrame
-                && !autoFightReloadProbeAddress && FishAjaxPhp.isAutoFishEnabledByPreference()) {
-            long nowMs = System.currentTimeMillis();
-            FishAjaxPhp.mainPhpPrecheckFishingHandsByInfoApi(nowMs, address, "mainphp_autofish_gate");
-            String fishFatigueHtml = FishAjaxPhp.mainPhpAutoFishFatigueStep(html);
-            if (fishFatigueHtml != null && !fishFatigueHtml.isEmpty()) {
-                String msg_fishfatigue = "AUTO_FISH_TRACE fatigue step executed";
-                AppLog.d(TAG, msg_fishfatigue);
-                return Russian.getBytes(fishFatigueHtml);
-            }
-            boolean neverTimerReady = AppVars.NeverTimer <= 0L || nowMs > AppVars.NeverTimer;
-            if (neverTimerReady) {
-                if (AppVars.AutoFishCheckUm) {
-                    String phtml = mainPhpFindPerc(html);
-                    if (phtml != null && !phtml.isEmpty()) {
-                        String msg_fishchar = "AUTO_FISH_TRACE redirect to character page for skill check";
-                        AppLog.d(TAG, msg_fishchar);
-                        return Russian.getBytes(phtml);
-                    }
-                    if (html.toLowerCase(Locale.ROOT).contains("<input type=button class=lbut value=\"умения\" onclick")) {
-                        String msg_fishskills = "AUTO_FISH_TRACE redirect to skills page mselect=1";
-                        AppLog.d(TAG, msg_fishskills);
-                        return Russian.getBytes(buildRedirectHtml("Переключение на умения персонажа", "main.php?mselect=1"));
-                    }
-                }
-                long postDrinkCooldownRemainingMs = FishAjaxPhp.getAutoFishDrinkCooldownRemainingMs(nowMs);
-                if (postDrinkCooldownRemainingMs > 0L) {
-                    String msg_deferFish = "AUTO_FISH_TRACE defer non-fight fish steps during drink cooldown: remainingMs="
-                            + postDrinkCooldownRemainingMs
-                            + ", AutoFishCheckUd=" + AppVars.AutoFishCheckUd
-                            + ", AutoFishWearUd=" + AppVars.AutoFishWearUd
-                            + ", address=" + address;
-                    AppLog.d(TAG, msg_deferFish);
-                    return Russian.getBytes(FishAjaxPhp.buildAutoFishDrinkCooldownHtml(postDrinkCooldownRemainingMs));
-                }
-                if (AppVars.AutoFishCheckUd) {
-                    String perchtml = mainPhpFindPerc(html);
-                    if (perchtml != null && !perchtml.isEmpty()) {
-                        String msg_fishgear = "AUTO_FISH_TRACE redirect to character page for fishing gear check";
-                        AppLog.d(TAG, msg_fishgear);
-                        return Russian.getBytes(perchtml);
-                    }
-                    AppVars.AutoFishWearUd = false;
-                    if (mainPhpIsPerc(html)) {
-                        AppVars.AutoFishWearUd = FishAjaxPhp.mainPhpIsMustWearUd(html);
-                        AppVars.AutoFishCheckUd = false;
-                        if (AppVars.AutoFishWearUd) {
-                            String loopKey = FishAjaxPhp.buildAutoFishWearLoopKey();
-                            boolean wearLoopBroken = FishAjaxPhp.markAutoFishWearLoop(loopKey);
-                            if (wearLoopBroken) {
-                                FishAjaxPhp.restartAutoFishCycle("wear_loop");
-                                return array;
-                            }
-                        } else {
-                            FishAjaxPhp.resetAutoFishWearLoopGuard();
-                        }
-                        String msg_gearresult = "AUTO_FISH_TRACE gear check result: mustWear="
-                                + AppVars.AutoFishWearUd
-                                + ", hand1=" + AppVars.AutoFishHand1
-                                + ", hand1D=" + AppVars.AutoFishHand1D
-                                + ", hand2=" + AppVars.AutoFishHand2
-                                + ", hand2D=" + AppVars.AutoFishHand2D;
-                        AppLog.d(TAG, msg_gearresult);
-                    }
-                }
-                if (AppVars.AutoFishWearUd) {
-                    String invHtml = mainPhpFindInvWithFallback(html, "&im=0&wca=4", address);
-                    if (invHtml != null && !invHtml.isEmpty()) {
-                        String msg_fishudred = "AUTO_FISH_TRACE redirect to inventory for fishing gear (&im=0&wca=4)";
-                        AppLog.d(TAG, msg_fishudred);
-                        return Russian.getBytes(invHtml);
-                    }
-                    if (mainPhpIsInv(html) || isInventoryAddress(address)) {
-                        invHtml = FishAjaxPhp.mainPhpWearUd(html);
-                        if (invHtml == null || invHtml.isEmpty()) {
-                            if (!inventoryAddressMatchesFilter(address, "&im=0&wca=4")) {
-                                String msg_fishudswitch = "AUTO_FISH_TRACE switch to items tab for fishing gear search";
-                                AppLog.d(TAG, msg_fishudswitch);
-                                return Russian.getBytes(buildRedirectHtml("Переключение на вещи", "main.php?im=0&wca=4"));
-                            }
-                        } else {
-                            return Russian.getBytes(invHtml);
-                        }
-                    }
-                }
-                if (!neverTimerReady) {
-                    String msg_waitFish = "AUTO_FISH_TRACE wait NeverTimer before fish action: dueInMs="
-                            + Math.max(0L, AppVars.NeverTimer - nowMs);
-                    AppLog.d(TAG, msg_waitFish);
-                } else {
-                    // C# parity (`MainPhpFindFlora`): если мы не на карте и есть кнопка "Вернуться",
-                    // автоматически возвращаемся на природу перед поиском кнопки "Рыбалка".
-                    String floraHtml = mainPhpFindFlora(html);
-                    if (floraHtml != null && !floraHtml.isEmpty()) {
-                        String msg_florareturn = "AUTO_FISH_TRACE redirect to nature/map via return button";
-                        AppLog.d(TAG, msg_florareturn);
-                        return Russian.getBytes(floraHtml);
-                    }
-                    // ★ КРИТИЧНО: проверяем, находимся ли уже на озере (есть ли форма выбора приманки)
-                    // На озере есть input type=radio name=primid для выбора приманки
-                    boolean isWeAlreadyOnLake = html.contains("name=primid") || html.contains("name=\"primid\"");
-
-                    if (isWeAlreadyOnLake) {
-                        // Мы на озере с формой выбора приманки - нужно выбрать и отправить act=2
-                        String msg_onlake = "AUTO_FISH_TRACE detected lake form (name=primid found), calling mainPhpAutoFishPrepare...";
-                        AppLog.d(TAG, msg_onlake);
-
-                        String fishPreparedHtml = FishAjaxPhp.mainPhpAutoFishPrepare(html);
-
-                        String msg_after_prepare = "AUTO_FISH_TRACE mainPhpAutoFishPrepare: result is " + (fishPreparedHtml == null ? "NULL" : "non-null");
-                        AppLog.d(TAG, msg_after_prepare);
-
-                        if (fishPreparedHtml != null) {
-                            html = fishPreparedHtml;
-                            boolean hasCaptcha = AppVars.CodeAddress != null && !AppVars.CodeAddress.isEmpty();
-                            boolean isFishActionAddress = address != null
-                                    && address.contains("get_id=55")
-                                    && address.contains("act=4");
-                            if (hasCaptcha && AppVars.FightLink != null && !AppVars.FightLink.isEmpty() && !isFishActionAddress) {
-                                String msg_fishcapt = "AUTO_FISH_TRACE captcha required, show dialog for fish action";
-                                AppLog.d(TAG, msg_fishcapt);
-                                FishAjaxPhp.showMainPhpFishCaptchaDialogOnce(AppVars.CodeAddress, AppVars.FightLink);
-                                return Russian.getBytes(FishAjaxPhp.buildCaptchaDialogHoldHtml());
-                            }
-                            if (hasCaptcha && AppVars.IsFightCaptchaDialogVisible) {
-                                String msg_fishcapthold = "AUTO_FISH_TRACE captcha dialog is visible, keep hold page";
-                                AppLog.d(TAG, msg_fishcapthold);
-                                return Russian.getBytes(FishAjaxPhp.buildCaptchaDialogHoldHtml());
-                            }
-                            if (!hasCaptcha && AppVars.FightLink != null && !AppVars.FightLink.isEmpty() && !isFishActionAddress) {
-                                String msg_fishaction = "AUTO_FISH_TRACE redirect to fish action: ";
-                                AppLog.d(TAG, msg_fishaction);
-                                return Russian.getBytes(buildRedirectHtml("Авторыбалка: заброс", AppVars.FightLink));
-                            }
-                        }
-                    } else {
-                        // ★ НЕ НА ОЗЕРЕ: озеро ещё не открыто, инжектируем Fish() для открытия формы озера
-                        String msg_notlake = "AUTO_FISH_TRACE no lake form detected (name=primid NOT found), injecting Fish()...";
-                        AppLog.d(TAG, msg_notlake);
-
-                        // C# parity: на карте автоматически нажимаем "Рыбалка", чтобы открыть форму выбора приманки.
-                        String fishMapHtml = FishAjaxPhp.mainPhpFindFish(html);
-                        if (fishMapHtml != null && !fishMapHtml.isEmpty()) {
-                            String msg_fishmap = "AUTO_FISH_TRACE inject Fish(vcode) into map frame";
-                            AppLog.d(TAG, msg_fishmap);
-                            return Russian.getBytes(fishMapHtml);
-                        }
-                        String msg_nofish = "AUTO_FISH_TRACE warning: Fish button not found on current page, skipping auto-fish";
-                        AppLog.w(TAG, msg_nofish);
-                    }
-                }
-            } else {
-                String msg_waitFish = "AUTO_FISH_TRACE wait NeverTimer before fish action: dueInMs="
-                        + Math.max(0L, AppVars.NeverTimer - nowMs);
-                AppLog.d(TAG, msg_waitFish);
-            }
+        // Рефакторинг 2026-04-24: вся non-combat оркестрация авто-рыбалки вынесена
+        // в существующий владелец домена FishAjaxPhp, чтобы не плодить параллельный контур.
+        // Входные переменные: address/html/current raw array, флаги isFightFrame/isFightTopFrame
+        // и autoFightReloadProbeAddress. Handler сохраняет прежний порядок действий:
+        // skill mselect=1 -> InfoApi/precheck -> fatigue -> gear check/wear -> return to map -> lake form -> captcha/FightLink.
+        // Важно для отладки: при wear-loop handler может вернуть originalBytes (`array`),
+        // чтобы сохранить прежнее поведение `return array` из старого MainPhp-блока.
+        byte[] autoFishBytes = FishAjaxPhp.processMainPhpAutoFishPipeline(
+                address, html, array, isFightFrame, isFightTopFrame, autoFightReloadProbeAddress);
+        if (autoFishBytes != null) {
+            return autoFishBytes;
         }
         // Оркестрация режима "Снежок/Ярость" (buttonFury из C#) + авто-надевание свитка:
         // 1) проверка надетого свитка на странице персонажа;
         // 2) авто-переход в инвентарь свитков (`im=0&wca=28`);
         // 3) авто-нажатие wear-link (`get_id=57&uid=...&s=1&vcode=...`).
+        // Рефакторинг 2026-04-24: AutoFury/Снежок оставлен в AutoFuryHandler.
+        // Зависимости: address/html, isFightFrame/isFightTopFrame, AppVars.AutoFuryCheckScroll,
+        // AppVars.AutoFuryArmedScroll, AppVars.AutoFuryHand, AppVars.NeverTimer и фильтр инвентаря `&im=0&wca=28`.
+        // Handler возвращает готовый redirect-HTML или null, MainPhp только кодирует результат в Russian.getBytes(...).
         String autoFuryHtml = AutoFuryHandler.processMainPhpAutoFuryStep(address, html, isFightFrame, isFightTopFrame);
         if (autoFuryHtml != null && !autoFuryHtml.isEmpty()) {
             return Russian.getBytes(autoFuryHtml);
         }
-        // Авто-разделка (MainPhpRaz.cs): если в текущем боевом кадре доступна кнопка "Разделать",
-        // выполняем редирект на действие разделки до стандартной боевой обработки.
-        if (!isNonCombatAutoPausedByFastAction() && isAutoSkinEnabledByPreference()) {
-            String razHtml = mainPhpRaz(html);
-            if (razHtml != null) {
-                return Russian.getBytes(razHtml);
-            }
-        }
-        // Оркестрация AutoSkin из C# MainPhp.cs (MainPhpWear.cs + TInvUd.cs):
-        // 1) проверка/чтение умения "Охота";
-        // 2) считывание охотничьих ресурсов;
-        // 3) проверка надетого ножа;
-        // 4) авто-надевание ножа через инвентарь.
-        boolean suspendAutoSkinForFinishFlow = isFightFinishAddressForInv;
-        boolean suspendAutoSkinForInventoryReload = isLikelyInventoryReloadSnapshot(address, html);
-        boolean suspendAutoSkinForGeneratedTransition = isGeneratedTransitionPage(address, html);
-        if (suspendAutoSkinForFinishFlow || suspendAutoSkinForInventoryReload || suspendAutoSkinForGeneratedTransition) {
-            AppLog.d(TAG, "AUTO_SKIN_TRACE suspended: finishFlow=" + suspendAutoSkinForFinishFlow
-                    + ", inventoryReload=" + suspendAutoSkinForInventoryReload
-                    + ", generatedTransition=" + suspendAutoSkinForGeneratedTransition
-                    + ", address=" + address);
-        }
-        // Точечный фикс регрессии после разделки:
-        // в переходном кадре `main.php?r=...` (inventoryReload=true) оркестратор AutoSkin
-        // приостановлен, но именно в этом кадре сервер часто уже отдаёт обновлённые ресурсы.
-        // Если ждём только следующий "чистый" кадр, результат разделки может не попасть в чат.
-        //
-        // Зависимости:
-        // - `AppVars.AutoSkinCheckRes` выставляется после `get_id=17` (см. publishFightResultFromLogsIfNeeded);
-        // - `mainPhpGetSkinRes(...)` обновляет статистику и (при RazdChatReport=true) шлёт сообщение в чат;
-        // - `mainPhpIsInv(...)` / `inventoryAddressMatchesFilter(..., "&im=5")` подтверждают, что HTML уже инвентарь ресурсов.
-        if (!isNonCombatAutoPausedByFastAction()
-                && !isFightFrame
-                && !isFightTopFrame
-                && isAutoSkinEnabledByPreference()
-                && !suspendAutoSkinForFinishFlow
-                && !suspendAutoSkinForGeneratedTransition
-                && suspendAutoSkinForInventoryReload
-                && AppVars.AutoSkinCheckRes
-                && (mainPhpIsInv(html) || inventoryAddressMatchesFilter(address, "&im=5"))) {
-            AppVars.AutoSkinCheckRes = false;
-            String msg_skinload = "AUTO_SKIN_TRACE inventoryReload fallback: read skin resources in transition snapshot";
-            AppLog.d(TAG, msg_skinload);
-            mainPhpGetSkinRes(html);
-        }
-        if (!isNonCombatAutoPausedByFastAction() && !isFightFrame && !isFightTopFrame && isAutoSkinEnabledByPreference()
-                && !suspendAutoSkinForFinishFlow
-                && !suspendAutoSkinForInventoryReload
-                && !suspendAutoSkinForGeneratedTransition) {
-            long nowMs = System.currentTimeMillis();
-            if (AppVars.NeverTimer <= 0L || nowMs > AppVars.NeverTimer) {
-                if (AppVars.AutoSkinCheckUm) {
-                    String phtml = mainPhpFindPerc(html);
-                    if (phtml != null && !phtml.isEmpty()) {
-                        String msg_skinchar = "AUTO_SKIN_TRACE redirect to character page for skill check";
-                        AppLog.d(TAG, msg_skinchar);
-                        return Russian.getBytes(phtml);
-                    }
-                    if (html.toLowerCase(Locale.ROOT).contains("<input type=button class=lbut value=\"умения\" onclick")) {
-                        String msg_skinskills = "AUTO_SKIN_TRACE redirect to skills page mselect=1";
-                        AppLog.d(TAG, msg_skinskills);
-                        return Russian.getBytes(buildRedirectHtml("Переключение на умения персонажа", "main.php?mselect=1"));
-                    }
-                }
-                if (AppVars.AutoSkinCheckRes) {
-                    String invHtml = mainPhpFindInvWithFallback(html, "&im=5", address);
-                    if (invHtml != null && !invHtml.isEmpty()) {
-                        String msg_skinres = "AUTO_SKIN_TRACE redirect to resources inventory (&im=5)";
-                        AppLog.d(TAG, msg_skinres);
-                        return Russian.getBytes(invHtml);
-                    }
-                    if (mainPhpIsInv(html) || inventoryAddressMatchesFilter(address, "&im=5")) {
-                        AppVars.AutoSkinCheckRes = false;
-                        String msg_skingetres = "AUTO_SKIN_TRACE read skin resources";
-                        AppLog.d(TAG, msg_skingetres);
-                        mainPhpGetSkinRes(html);
-                    }
-                }
-                if (AppVars.AutoSkinCheckKnife) {
-                    String perchtml = mainPhpFindPerc(html);
-                    if (perchtml != null && !perchtml.isEmpty()) {
-                        String msg_skinknife = "AUTO_SKIN_TRACE redirect to character page for knife check";
-                        AppLog.d(TAG, msg_skinknife);
-                        return Russian.getBytes(perchtml);
-                    }
-                    AppVars.AutoSkinArmedKnife = false;
-                    if (mainPhpIsPerc(html)) {
-                        AppVars.AutoSkinArmedKnife = mainPhpArmedKnife(html);
-                        AppVars.AutoSkinCheckKnife = false;
-                        String msg_skinresult = "AUTO_SKIN_TRACE knife check result: armed=";
-                        AppLog.d(TAG, msg_skinresult);
-                    }
-                }
-                if (!AppVars.AutoSkinArmedKnife) {
-                    String invHtml = mainPhpFindInvWithFallback(html, "&im=0&wca=4", address);
-                    if (invHtml != null && !invHtml.isEmpty()) {
-                        String msg_skinudinv = "AUTO_SKIN_TRACE redirect to items inventory (&im=0&wca=4)";
-                        AppLog.d(TAG, msg_skinudinv);
-                        return Russian.getBytes(invHtml);
-                    }
-                    if (mainPhpIsInv(html) || isInventoryAddress(address)) {
-                        invHtml = mainPhpWearKnife(html);
-                        if (invHtml == null || invHtml.isEmpty()) {
-                            if (!inventoryAddressMatchesFilter(address, "&im=0&wca=4")) {
-                                String msg_skinudtab = "AUTO_SKIN_TRACE switch to items tab for knife search";
-                                AppLog.d(TAG, msg_skinudtab);
-                                return Russian.getBytes(buildRedirectHtml("Переключение на вещи", "main.php?im=0&wca=4"));
-                            }
-                        } else {
-                            AppVars.AutoSkinCheckKnife = true;
-                            return Russian.getBytes(invHtml);
-                        }
-                    }
-                }
-            }
+        // Рефакторинг 2026-04-24: AutoSkin/Охота/Разделка перенесены в AutoSkinHandler.
+        // Зависимости: address/html, isFightFrame/isFightTopFrame, isFightFinishAddressForInv,
+        // AppVars.AutoSkinCheckUm, AppVars.AutoSkinCheckRes, AppVars.AutoSkinCheckKnife,
+        // AppVars.AutoSkinArmedKnife и AppVars.NeverTimer. Handler также сам вычисляет
+        // suspendAutoSkinForInventoryReload/suspendAutoSkinForGeneratedTransition через InventoryParser.
+        // Порядок относительно боя сохранён: AutoSkin выполняется перед mainPhpFight(...), как и раньше.
+        String autoSkinHtml = AutoSkinHandler.processMainPhpAutoSkinStep(
+                address, html, isFightFrame, isFightTopFrame, isFightFinishAddressForInv);
+        if (autoSkinHtml != null && !autoSkinHtml.isEmpty()) {
+            return Russian.getBytes(autoSkinHtml);
         }
         // Обработка страницы боя
         // magic_slots() — признак страницы боя (fight frame)

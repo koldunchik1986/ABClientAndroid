@@ -7,6 +7,13 @@ import ru.neverlands.abclient.utils.AppLog;
 import ru.neverlands.abclient.utils.AppVars;
 import ru.neverlands.abclient.utils.FileLogger;
 
+/**
+ * Handler server timer/wtime логики main.php.
+ *
+ * Источник выноса: MainPhp.mainPhpWtime(...), extractWtimeTimeoutSeconds(...), syncNeverTimerFromWtime(...).
+ * Зависимости: AppVars.NeverTimer для suppress non-combat actions, AppVars.AutoMoving* для HTML-статуса,
+ * CharacterVitalsManager.snapshot().tied для отображения усталости, AppLog/FileLogger для SERVER_TIMER_TRACE.
+ */
 final class MainPhpTimerHandler {
 
     private static final String TAG = "MainPhp";
@@ -17,6 +24,14 @@ final class MainPhpTimerHandler {
     private MainPhpTimerHandler() {
     }
 
+    /**
+     * Вставляет пользовательский статус ожидания/автоперехода рядом с серверным wtime.
+     *
+     * Важные переменные:
+     * - html: текущий main.php HTML.
+     * - AppVars.AutoMoving/AutoMovingJumps/AutoMovingDestinaton: состояние авто-движения.
+     * - curTire: текущая усталость из CharacterVitalsManager.snapshot().tied.
+     */
     static String mainPhpWtime(String html) {
         html = html.replace("id=wtime></div>", "id=wtime><i>\u0412\u044b\u043f\u043e\u043b\u043d\u044f\u0435\u0442\u0441\u044f \u0434\u0435\u0439\u0441\u0442\u0432\u0438\u0435...</i></div>");
         String staticScriptEnd = "</SCRIPT>";
@@ -37,6 +52,10 @@ final class MainPhpTimerHandler {
         return html;
     }
 
+    /**
+     * Извлекает server cooldown в секундах из разных вариантов HTML/JS таймера.
+     * Поддерживаемые источники: `id=tdsec`, `time_left_sec`, `secgo`.
+     */
     static int extractWtimeTimeoutSeconds(String html) {
         if (html == null || html.isEmpty()) {
             return 0;
@@ -84,6 +103,15 @@ final class MainPhpTimerHandler {
         return 0;
     }
 
+    /**
+     * Синхронизирует AppVars.NeverTimer по server timer из main.php.
+     *
+     * Переменные для отладки:
+     * - timeoutSec: результат extractWtimeTimeoutSeconds(html).
+     * - now/dueAt: текущее время и новый deadline.
+     * - prev/prevDelta/newDelta/updated: диагностика, почему NeverTimer был/не был обновлён.
+     * - address: URL текущего кадра, пишется в SERVER_TIMER_TRACE.
+     */
     static void syncNeverTimerFromWtime(String html, String address) {
         int timeoutSec = extractWtimeTimeoutSeconds(html);
         if (timeoutSec <= 0) {
@@ -111,6 +139,10 @@ final class MainPhpTimerHandler {
         }
     }
 
+    /**
+     * Парсит первое unsigned int значение из text начиная с fromIndex.
+     * Возвращает -1, если до цифр встретился HTML/JS-разделитель (`\n`, `\r`, `;`, `<`).
+     */
     static int parseUnsignedIntFrom(String text, int fromIndex) {
         if (text == null || fromIndex < 0 || fromIndex >= text.length()) {
             return -1;

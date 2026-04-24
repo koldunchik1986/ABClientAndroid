@@ -75,9 +75,9 @@
 | Post-fight auto-drink sync | `process()` | `AutoDrinkHandler` или отдельный метод в orchestrator | `[ ]` Не выполнено |
 | Cure pipeline dispatch | `process()` | вызовы `AutoCureHandler` | `[ ]` Не выполнено |
 | FastAction pipeline dispatch | `process()` | вызов `FastActionManager` через `MainPhpHosts` | `[ ]` Не выполнено |
-| AutoFish pipeline dispatch | `process()` | `FishAjaxPhp.processMainPhpAutoFishPipeline(...)` | `[ ]` Не выполнено |
+| AutoFish pipeline dispatch | `process()` | `FishAjaxPhp.processMainPhpAutoFishPipeline(...)` | `[x]` Выполнено |
 | AutoFury pipeline dispatch | `process()` | `AutoFuryHandler.processMainPhpAutoFuryStep(...)` | `[x]` Выполнено |
-| AutoSkin pipeline dispatch | `process()` | `AutoSkinHandler.processMainPhpAutoSkinStep(...)` | `[ ]` Не выполнено |
+| AutoSkin pipeline dispatch | `process()` | `AutoSkinHandler.processMainPhpAutoSkinStep(...)` | `[x]` Выполнено |
 | Fight frame dispatch | `process()` | `FightAuto.processFight(...)` через host | `[ ]` Не выполнено |
 | Treasure/inventory dispatch | `process()` | `TreasureDig` + `InventoryParser` | `[ ]` Не выполнено |
 | Movement/searchbox/map dispatch | `process()` | `MainPhpMovementPipeline` или `MainPhpNavigationHandler` | `[ ]` Не выполнено |
@@ -177,8 +177,8 @@
 | Элемент | Текущее место | Целевое место | Статус |
 | --- | --- | --- | --- |
 | `mainPhpWearComplect(String html, String complectName)` | `MainPhp.java:1382-1440` | `ComplectWearHandler.mainPhpWearComplect(...)` | `[x]` Выполнено |
-| `COMPLECT_TIMER_PARSE_TRACE` логи | `mainPhpWearComplect` | оставить в новом handler через `AppLog` | `[ ]` Не выполнено |
-| Ветка process `AppVars.WearComplect` | `MainPhp.java:2390-2405` | `ComplectWearHandler.processWearComplectStep(...)` | `[ ]` Не выполнено |
+| `COMPLECT_TIMER_PARSE_TRACE` логи | `mainPhpWearComplect` | оставить в новом handler через `AppLog` | `[x]` Выполнено |
+| Ветка process `AppVars.WearComplect` | `MainPhp.java:2390-2405` | `ComplectWearHandler.processWearComplectStep(...)` | `[x]` Выполнено |
 
 Правило: `s=2`, `compl_view(...)`, очистка `AppVars.WearComplect` после попытки должны остаться как сейчас.
 
@@ -213,15 +213,15 @@
 
 | Элемент | Текущее место | Целевое место | Статус |
 | --- | --- | --- | --- |
-| AutoFish gate и `autoFightReloadProbeAddress` skip | `MainPhp.java:2419-2423` | `FishAjaxPhp.processMainPhpAutoFishPipeline(...)` | `[ ]` Не выполнено |
-| Runtime recovery на карте/природе | `MainPhp.java:2425-2431` | `FishAjaxPhp` | `[ ]` Не выполнено |
-| Диагностика blocked условий | `MainPhp.java:2433-2446` | `FishAjaxPhp` | `[ ]` Не выполнено |
-| `mainPhpPrecheckFishingHandsByInfoApi` и fatigue step | `MainPhp.java:2448-2457` | `FishAjaxPhp` | `[ ]` Не выполнено |
-| Проверка skill `AutoFishCheckUm` | `MainPhp.java:2460-2472` | `FishAjaxPhp` через navigation host | `[ ]` Не выполнено |
-| Cooldown after drink | `MainPhp.java:2473-2482` | `FishAjaxPhp` | `[ ]` Не выполнено |
-| Проверка/надевание удочек | `MainPhp.java:2483-2532` | `FishAjaxPhp` | `[ ]` Не выполнено |
-| Возврат на природу и lake form detection | `MainPhp.java:2538-2597` | `FishAjaxPhp` | `[ ]` Не выполнено |
-| Wait by `NeverTimer` logs | `MainPhp.java:2599-2603` | `FishAjaxPhp` | `[ ]` Не выполнено |
+| AutoFish gate и `autoFightReloadProbeAddress` skip | `MainPhp.java:2419-2423` | `FishAjaxPhp.processMainPhpAutoFishPipeline(...)` | `[x]` Выполнено |
+| Runtime recovery на карте/природе | `MainPhp.java:2425-2431` | `FishAjaxPhp` | `[x]` Выполнено |
+| Диагностика blocked условий | `MainPhp.java:2433-2446` | `FishAjaxPhp` | `[x]` Выполнено |
+| `mainPhpPrecheckFishingHandsByInfoApi` и fatigue step | `MainPhp.java:2448-2457` | `FishAjaxPhp` | `[x]` Выполнено |
+| Проверка skill `AutoFishCheckUm` | `MainPhp.java:2460-2472` | `FishAjaxPhp` через navigation host | `[x]` Выполнено |
+| Cooldown after drink | `MainPhp.java:2473-2482` | `FishAjaxPhp` | `[x]` Выполнено |
+| Проверка/надевание удочек | `MainPhp.java:2483-2532` | `FishAjaxPhp` | `[x]` Выполнено |
+| Возврат на природу и lake form detection | `MainPhp.java:2538-2597` | `FishAjaxPhp` | `[x]` Выполнено |
+| Wait by `NeverTimer` logs | `MainPhp.java:2599-2603` | `FishAjaxPhp` | `[x]` Выполнено |
 
 Правило: использовать существующий `FishAjaxPhp`, потому что там уже находятся `mainPhpFindFish`, `mainPhpAutoFishPrepare`, `mainPhpWearUd`, captcha hold и Blaz-ветки.
 
@@ -232,9 +232,9 @@
 | Элемент | Текущее место | Целевое место | Статус |
 | --- | --- | --- | --- |
 | Проверка `isAutoFuryEnabledByPreference()` | `MainPhp.java:2609` | `AutoFuryHandler.processMainPhpAutoFuryStep(...)` | `[x]` Выполнено |
-| Проверка персонажа и свитка | `MainPhp.java:2612-2625` | `AutoFuryHandler` | `[ ]` Не выполнено |
-| Переход в инвентарь `&im=0&wca=28` | `MainPhp.java:2627-2633` | `AutoFuryHandler` через inventory/navigation helpers | `[ ]` Не выполнено |
-| Надевание свитка и переключение вкладки | `MainPhp.java:2634-2645` | `AutoFuryHandler` | `[ ]` Не выполнено |
+| Проверка персонажа и свитка | `MainPhp.java:2612-2625` | `AutoFuryHandler` | `[x]` Выполнено |
+| Переход в инвентарь `&im=0&wca=28` | `MainPhp.java:2627-2633` | `AutoFuryHandler` через inventory/navigation helpers | `[x]` Выполнено |
+| Надевание свитка и переключение вкладки | `MainPhp.java:2634-2645` | `AutoFuryHandler` | `[x]` Выполнено |
 
 Правило: не менять `AutoFuryCheckScroll`, `AutoFuryArmedScroll`, `AutoFuryHand`.
 
@@ -244,13 +244,13 @@
 
 | Элемент | Текущее место | Целевое место | Статус |
 | --- | --- | --- | --- |
-| Auto-разделка `mainPhpRaz` gate | `MainPhp.java:2650-2657` | `AutoSkinHandler.processMainPhpAutoRazStep(...)` или внутри pipeline | `[ ]` Не выполнено |
-| Suspend-флаги finish/inventory/generated | `MainPhp.java:2663-2671` | `AutoSkinHandler.processMainPhpAutoSkinStep(...)` | `[ ]` Не выполнено |
-| Inventory reload fallback for skin resources | `MainPhp.java:2681-2694` | `AutoSkinHandler` | `[ ]` Не выполнено |
-| Skill check `AutoSkinCheckUm` | `MainPhp.java:2695-2713` | `AutoSkinHandler` | `[ ]` Не выполнено |
-| Resource inventory `&im=5` | `MainPhp.java:2714-2727` | `AutoSkinHandler` | `[ ]` Не выполнено |
-| Knife check on character | `MainPhp.java:2728-2742` | `AutoSkinHandler` | `[ ]` Не выполнено |
-| Knife inventory/wear/switch tab | `MainPhp.java:2743-2764` | `AutoSkinHandler` | `[ ]` Не выполнено |
+| Auto-разделка `mainPhpRaz` gate | `MainPhp.java:2650-2657` | `AutoSkinHandler.processMainPhpAutoSkinStep(...)` | `[x]` Выполнено |
+| Suspend-флаги finish/inventory/generated | `MainPhp.java:2663-2671` | `AutoSkinHandler.processMainPhpAutoSkinStep(...)` | `[x]` Выполнено |
+| Inventory reload fallback for skin resources | `MainPhp.java:2681-2694` | `AutoSkinHandler` | `[x]` Выполнено |
+| Skill check `AutoSkinCheckUm` | `MainPhp.java:2695-2713` | `AutoSkinHandler` | `[x]` Выполнено |
+| Resource inventory `&im=5` | `MainPhp.java:2714-2727` | `AutoSkinHandler` | `[x]` Выполнено |
+| Knife check on character | `MainPhp.java:2728-2742` | `AutoSkinHandler` | `[x]` Выполнено |
+| Knife inventory/wear/switch tab | `MainPhp.java:2743-2764` | `AutoSkinHandler` | `[x]` Выполнено |
 
 Правило: использовать существующий `AutoSkinHandler`, не создавать второй hunting/skin handler.
 
@@ -374,7 +374,7 @@
 | 2 | Вынести `MainPhpHosts` | Убрать ~700 строк bridge-кода из `MainPhp` | `[ ]` Не выполнено |
 | 3 | Механически перенести тело `process()` в `MainPhpProcessOrchestrator` без изменения тела | Главный файл станет фасадом | `[ ]` Не выполнено |
 | 4 | Вынести navigation/timer/complect/fast-support | Убрать оставшуюся реальную логику из `MainPhp` | `[ ]` Не выполнено |
-| 5 | Перенести AutoFish/AutoFury/AutoSkin pipeline-блоки из orchestrator в существующие модули | Декомпозиция по доменам без дублей | `[ ]` Не выполнено |
+| 5 | Перенести AutoFish/AutoFury/AutoSkin pipeline-блоки из orchestrator в существующие модули | Декомпозиция по доменам без дублей | `[x]` Выполнено |
 | 6 | Перенести Movement/SearchBox pipeline в отдельный файл | Изолировать навигационный state machine | `[ ]` Не выполнено |
 | 7 | Удалить private wrappers на `FightAuto`, `InventoryParser`, `ServerNoticeParser` | Сократить фасадный шум | `[ ]` Не выполнено |
 | 8 | Почистить imports/comments, проверить compile, BOM, mojibake, `AppVars.VCode`, `android.util.Log` | Финальная стабилизация | `[ ]` Не выполнено |

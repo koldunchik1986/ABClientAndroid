@@ -1,10 +1,20 @@
 package ru.neverlands.abclient.postfilter;
 
+/**
+ * Справочник fast-action фильтров и сообщений для MainPhp/FastActionManager.
+ *
+ * Источник выноса: helpers `isAttackFastId`, `getInventoryFilter`, `buildFastItemNotFoundMessage`
+ * из MainPhp.java. Класс не выполняет action сам, а только классифицирует FastId и строит текст.
+ */
 final class MainPhpFastActionSupport {
 
     private MainPhpFastActionSupport() {
     }
 
+    /**
+     * Проверяет, относится ли fastId к атакующим свиткам/иконкам.
+     * Вход: AppVars.FastId или нормализованный id предмета из UI/профиля.
+     */
     static boolean isAttackFastId(String fastId) {
         if (fastId == null) return false;
         switch (fastId) {
@@ -21,6 +31,16 @@ final class MainPhpFastActionSupport {
         }
     }
 
+    /**
+     * Возвращает фильтр инвентаря для fastId.
+     *
+     * Возвращаемые значения:
+     * - `&im=0&wca=28`: свитки/телепорт.
+     * - `&im=0&wca=27`: зелья.
+     * - `&im=6`: эликсиры.
+     * - `TOTEM`: отдельная ветка тотемов.
+     * - null: фильтр неизвестен.
+     */
     static String getInventoryFilter(String fastId) {
         if (fastId == null) return null;
         String normalizedFastId = normalizeFastId(fastId);
@@ -99,6 +119,11 @@ final class MainPhpFastActionSupport {
         }
     }
 
+    /**
+     * Строит локальное chat-сообщение об отсутствии предмета.
+     * Важные переменные: safeFastId, timestamp, handler="FastActionManager".
+     * Формат сохраняет требование проекта: `'timestamp' [Источник]: текст`.
+     */
     static String buildFastItemNotFoundMessage(String fastId) {
         String safeFastId = fastId == null ? "" : fastId.trim();
 
@@ -121,6 +146,9 @@ final class MainPhpFastActionSupport {
         return message;
     }
 
+    /**
+     * Нормализация FastId перед switch: убирает NBSP/BOM/zero-width и сжимает пробелы.
+     */
     private static String normalizeFastId(String fastId) {
         if (fastId == null) return "";
         String normalized = fastId

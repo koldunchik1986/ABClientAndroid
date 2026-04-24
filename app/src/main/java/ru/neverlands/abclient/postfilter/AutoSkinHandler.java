@@ -14,6 +14,19 @@ import ru.neverlands.abclient.utils.AppVars;
 import ru.neverlands.abclient.utils.ChatStats;
 import ru.neverlands.abclient.utils.HelperStrings;
 
+/**
+ * Владелец AutoSkin-пайплайна для main.php.
+ *
+ * Источник выноса: MainPhp.process() и старые helpers `mainPhpRaz`, `mainPhpProcessSkills`,
+ * `mainPhpArmedKnife`, `mainPhpWearKnife`, `mainPhpGetSkinRes`.
+ *
+ * Основные runtime-зависимости:
+ * - AppVars.AutoSkinCheckUm: нужно открыть `mselect=1` и прочитать навык "Охота".
+ * - AppVars.AutoSkinCheckRes: нужно открыть инвентарь ресурсов `&im=5` и обновить AppVars.SkinRes.
+ * - AppVars.AutoSkinCheckKnife/AppVars.AutoSkinArmedKnife: нужно проверить/надеть нож через `&im=0&wca=4`.
+ * - AppVars.NeverTimer: запрещает новый non-combat redirect до истечения серверного таймера.
+ * - InventoryParser/FightAuto/MainPhp facades: навигация, inventory-detect, redirect HTML, parsing `fight_ty`.
+ */
 final class AutoSkinHandler {
 
     private static final String TAG = "AutoSkinHandler";
@@ -22,6 +35,15 @@ final class AutoSkinHandler {
     private AutoSkinHandler() {
     }
 
+    /**
+     * Авто-разделка: ищет ссылку `get_id=17` в боевом HTML и строит redirect.
+     *
+     * Зависимости:
+     * - html: текущий main.php/fight кадр, где может быть JS `var fight_ty = [...]`.
+     * - buildRazLinkFromFightTyPayload(strFightTy): основной C#-совместимый путь через `fight_ty[9]`.
+     * - extractRazLinkFromHtml(html): fallback для обычной ссылки `main.php?get_id=17...`.
+     * - MainPhp.buildRedirectHtml(...): единый redirect-шаблон с HtmlUtils.GENERATED_PAGE_MARKER.
+     */
     static String mainPhpRaz(String html) {
         if (html == null || html.isEmpty()) {
             return null;
@@ -97,6 +119,15 @@ final class AutoSkinHandler {
         return FightAuto.findMainPhpLinkByQueryParts(html, "get_id=17");
     }
 
+    /**
+     * Читает навык "Охота" со страницы `mselect=1` и синхронизирует AppVars.SkinUm.
+     *
+     * Важные переменные:
+     * - AppVars.AutoSkinCheckUm: сбрасывается в false после успешного чтения или fallback-сброса на mselect=1.
+     * - AppVars.SkinUm: предыдущее значение навыка, используется для расчёта прироста `(+N)`.
+     * - address: нужен только для защиты от зависания AutoSkinCheckUm, если сервер отдал mselect=1 без блока навыка.
+     * - AppVars.ACTION_ADD_CHAT_MESSAGE: уведомление о росте навыка уходит в локальный чат.
+     */
     static void mainPhpProcessSkills(String html, String address) {
         if (html == null || html.isEmpty()) {
             return;
@@ -175,6 +206,146 @@ final class AutoSkinHandler {
         }
     }
 
+    /**
+     * Главная точка AutoSkin из MainPhp.process().
+     *
+     * Порядок сохранён из старого MainPhp-блока:
+     * 1. До боевой обработки пытаемся выполнить авто-разделку через mainPhpRaz(html).
+     * 2. Вычисляем suspend-флаги, чтобы не перехватить finish-flow или generated transition page.
+     * 3. При inventory reload snapshot читаем ресурсы, если AppVars.AutoSkinCheckRes=true.
+     * 4. При готовом AppVars.NeverTimer запускаем skill/resource/knife pipeline.
+     *
+     * Входные переменные:
+     * - address/html: текущий main.php URL и HTML после Filter.removeDoctype/Russian.getString.
+     * - isFightFrame/isFightTopFrame: запрещают non-combat навигацию в бою.
+     * - isFightFinishAddressForInv: suspendAutoSkinForFinishFlow, чтобы act=7 не сломал finish-flow.
+     *
+     * Runtime-зависимости:
+     * - MainPhp.isNonCombatAutoPausedByFastAction(): подавляет AutoSkin при активном FastNeed/таймере/кладе.
+     * - InventoryParser.isLikelyInventoryReloadSnapshot(...) и isGeneratedTransitionPage(...): защита от race redirect.
+     * - AppVars.AutoSkinCheckUm/AutoSkinCheckRes/AutoSkinCheckKnife/AutoSkinArmedKnife/NeverTimer.
+     * - MainPhp.mainPhpFindPerc/mainPhpFindInvWithFallback/mainPhpIsInv/isInventoryAddress для navigation facades.
+     *
+     * Возврат: готовый redirect-HTML/hold-HTML или null, если AutoSkin не должен менять текущий ответ.
+     */
+    static String processMainPhpAutoSkinStep(String address,
+                                             String html,
+                                             boolean isFightFrame,
+                                             boolean isFightTopFrame,
+                                             boolean isFightFinishAddressForInv) {
+        if (!MainPhp.isNonCombatAutoPausedByFastAction() && isAutoSkinEnabledByPreference()) {
+            String razHtml = mainPhpRaz(html);
+            if (razHtml != null) {
+                return razHtml;
+            }
+        }
+
+        boolean suspendAutoSkinForFinishFlow = isFightFinishAddressForInv;
+        boolean suspendAutoSkinForInventoryReload = InventoryParser.isLikelyInventoryReloadSnapshot(address, html);
+        boolean suspendAutoSkinForGeneratedTransition = InventoryParser.isGeneratedTransitionPage(address, html);
+        if (suspendAutoSkinForFinishFlow || suspendAutoSkinForInventoryReload || suspendAutoSkinForGeneratedTransition) {
+            AppLog.d(TAG, "AUTO_SKIN_TRACE suspended: finishFlow=" + suspendAutoSkinForFinishFlow
+                    + ", inventoryReload=" + suspendAutoSkinForInventoryReload
+                    + ", generatedTransition=" + suspendAutoSkinForGeneratedTransition
+                    + ", address=" + address);
+        }
+
+        if (!MainPhp.isNonCombatAutoPausedByFastAction()
+                && !isFightFrame
+                && !isFightTopFrame
+                && isAutoSkinEnabledByPreference()
+                && !suspendAutoSkinForFinishFlow
+                && !suspendAutoSkinForGeneratedTransition
+                && suspendAutoSkinForInventoryReload
+                && AppVars.AutoSkinCheckRes
+                && (MainPhp.mainPhpIsInv(html) || MainPhp.inventoryAddressMatchesFilter(address, "&im=5"))) {
+            AppVars.AutoSkinCheckRes = false;
+            String msgSkinLoad = "AUTO_SKIN_TRACE inventoryReload fallback: read skin resources in transition snapshot";
+            AppLog.d(TAG, msgSkinLoad);
+            mainPhpGetSkinRes(html);
+        }
+
+        if (!MainPhp.isNonCombatAutoPausedByFastAction()
+                && !isFightFrame
+                && !isFightTopFrame
+                && isAutoSkinEnabledByPreference()
+                && !suspendAutoSkinForFinishFlow
+                && !suspendAutoSkinForInventoryReload
+                && !suspendAutoSkinForGeneratedTransition) {
+            long nowMs = System.currentTimeMillis();
+            if (AppVars.NeverTimer <= 0L || nowMs > AppVars.NeverTimer) {
+                if (AppVars.AutoSkinCheckUm) {
+                    String phtml = MainPhp.mainPhpFindPerc(html);
+                    if (phtml != null && !phtml.isEmpty()) {
+                        String msgSkinChar = "AUTO_SKIN_TRACE redirect to character page for skill check";
+                        AppLog.d(TAG, msgSkinChar);
+                        return phtml;
+                    }
+                    if (html.toLowerCase(Locale.ROOT).contains("<input type=button class=lbut value=\"умения\" onclick")) {
+                        String msgSkinSkills = "AUTO_SKIN_TRACE redirect to skills page mselect=1";
+                        AppLog.d(TAG, msgSkinSkills);
+                        return MainPhp.buildRedirectHtml("Переключение на умения персонажа", "main.php?mselect=1");
+                    }
+                }
+                if (AppVars.AutoSkinCheckRes) {
+                    String invHtml = MainPhp.mainPhpFindInvWithFallback(html, "&im=5", address);
+                    if (invHtml != null && !invHtml.isEmpty()) {
+                        String msgSkinRes = "AUTO_SKIN_TRACE redirect to resources inventory (&im=5)";
+                        AppLog.d(TAG, msgSkinRes);
+                        return invHtml;
+                    }
+                    if (MainPhp.mainPhpIsInv(html) || MainPhp.inventoryAddressMatchesFilter(address, "&im=5")) {
+                        AppVars.AutoSkinCheckRes = false;
+                        String msgSkinGetRes = "AUTO_SKIN_TRACE read skin resources";
+                        AppLog.d(TAG, msgSkinGetRes);
+                        mainPhpGetSkinRes(html);
+                    }
+                }
+                if (AppVars.AutoSkinCheckKnife) {
+                    String perchtml = MainPhp.mainPhpFindPerc(html);
+                    if (perchtml != null && !perchtml.isEmpty()) {
+                        String msgSkinKnife = "AUTO_SKIN_TRACE redirect to character page for knife check";
+                        AppLog.d(TAG, msgSkinKnife);
+                        return perchtml;
+                    }
+                    AppVars.AutoSkinArmedKnife = false;
+                    if (MainPhp.mainPhpIsPerc(html)) {
+                        AppVars.AutoSkinArmedKnife = mainPhpArmedKnife(html);
+                        AppVars.AutoSkinCheckKnife = false;
+                        String msgSkinResult = "AUTO_SKIN_TRACE knife check result: armed=";
+                        AppLog.d(TAG, msgSkinResult);
+                    }
+                }
+                if (!AppVars.AutoSkinArmedKnife) {
+                    String invHtml = MainPhp.mainPhpFindInvWithFallback(html, "&im=0&wca=4", address);
+                    if (invHtml != null && !invHtml.isEmpty()) {
+                        String msgSkinUdInv = "AUTO_SKIN_TRACE redirect to items inventory (&im=0&wca=4)";
+                        AppLog.d(TAG, msgSkinUdInv);
+                        return invHtml;
+                    }
+                    if (MainPhp.mainPhpIsInv(html) || MainPhp.isInventoryAddress(address)) {
+                        invHtml = mainPhpWearKnife(html);
+                        if (invHtml == null || invHtml.isEmpty()) {
+                            if (!MainPhp.inventoryAddressMatchesFilter(address, "&im=0&wca=4")) {
+                                String msgSkinUdTab = "AUTO_SKIN_TRACE switch to items tab for knife search";
+                                AppLog.d(TAG, msgSkinUdTab);
+                                return MainPhp.buildRedirectHtml("Переключение на вещи", "main.php?im=0&wca=4");
+                            }
+                        } else {
+                            AppVars.AutoSkinCheckKnife = true;
+                            return invHtml;
+                        }
+                    }
+                }
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Проверяет, надет ли охотничий нож на странице персонажа.
+     * Зависимость: ParsedDressed.Valid и ParsedDressed.IsWearKnife(), html должен быть страницей персонажа.
+     */
     static boolean mainPhpArmedKnife(String html) {
         ParsedDressed parsedDressed = new ParsedDressed(html);
         if (!parsedDressed.Valid) {
@@ -183,6 +354,14 @@ final class AutoSkinHandler {
         return parsedDressed.IsWearKnife();
     }
 
+    /**
+     * Ищет охотничий нож в инвентаре и возвращает redirect на wear-link.
+     *
+     * Важные переменные:
+     * - InventoryParser.getWearInvList(html): список предметов с thing.name/thing.wearLink.
+     * - ParsedDressed.getSkinKnifeNames(): допустимые названия ножей.
+     * - AppVars.AutoSkinArmedKnife: сбрасывается в false, если нож не найден/не надет.
+     */
     static String mainPhpWearKnife(String html) {
         ParsedDressed dressed = new ParsedDressed(html);
         if (!dressed.Valid) {
@@ -209,6 +388,15 @@ final class AutoSkinHandler {
         return null;
     }
 
+    /**
+     * Считывает результат разделки из инвентаря ресурсов и обновляет статистику.
+     *
+     * Важные переменные:
+     * - AppVars.SkinRes: map ресурс -> последний вес, baselineFill отличает первый проход от реального прироста.
+     * - deltaForChat: список приростов для локального чата, отправляется только при Profile.RazdChatReport=true.
+     * - deltaForStatsKg: агрегат прироста в килограммах для ChatStats.addResourceDeltaKg(...).
+     * - parsedResources/diffResources: диагностические счётчики для AUTO_SKIN_TRACE.
+     */
     static void mainPhpGetSkinRes(String html) {
         final String patternStartRes = "<B>Рост</B></td></tr>";
         int pos = html.indexOf(patternStartRes);

@@ -2875,6 +2875,211 @@ public final class FishAjaxPhp {
         return MainPhp.buildRedirectHtml("\u0410\u0432\u0442\u043E\u043F\u0438\u0442\u044C\u0451 \u0431\u043B\u0430\u0436\u0430: \u0443\u0441\u0442\u0430\u043B\u043E\u0441\u0442\u044C \u043D\u0438\u0436\u0435 \u043F\u043E\u0440\u043E\u0433\u0430", "main.php?get_id=56&act=10&go=inf");
     }
 
+    /**
+     * MainPhp-side оркестратор авто-рыбалки после выноса из MainPhp.process().
+     *
+     * Почему метод возвращает byte[]:
+     * - большинство веток генерирует новый HTML и кодирует его через Russian.getBytes(...);
+     * - ветка anti-loop `wearLoopBroken` должна вернуть исходный `originalBytes`, потому что в старом
+     *   MainPhp-блоке был прямой `return array` после restartAutoFishCycle("wear_loop").
+     *
+     * Входные переменные:
+     * - address: текущий URL main.php, используется для фильтров `&im=...`, `get_id=55`, `act=4`.
+     * - html: текущий HTML main.php после декодирования и Filter.removeDoctype.
+     * - originalBytes: исходный ответ `array` из MainPhp.process(), нужен только для сохранения старого return-path.
+     * - isFightFrame/isFightTopFrame: блокируют non-combat AutoFish внутри боя.
+     * - autoFightReloadProbeAddress: подавляет рыбалку на `ab_reload_probe`, чтобы не конфликтовать с авто-боем.
+     *
+     * Runtime-зависимости и флаги:
+     * - MainPhp.isNonCombatAutoPausedByFastAction(): учитывает AppVars.FastNeed/FastPauseNonCombatAutoFunctions.
+     * - AppVars.AutoFishCheckUm: запускает переход на персонажа и `mselect=1` для чтения навыка Рыбалка.
+     * - AppVars.AutoFishCheckUd/AppVars.AutoFishWearUd: проверка/надевание снастей через `&im=0&wca=4`.
+     * - AppVars.AutoFishHand1/AutoFishHand1D/AutoFishHand2/AutoFishHand2D: диагностическое состояние снастей.
+     * - AppVars.NeverTimer: серверный cooldown перед следующим non-combat действием.
+     * - AppVars.CodeAddress/AppVars.FightLink/IsFightCaptchaDialogVisible: капча и финальный action-заброс.
+     *
+     * Порядок действий сохранён из MainPhp:
+     * recovery на карте -> blocked diagnostics -> InfoApi precheck -> fatigue step -> skill step -> drink cooldown
+     * -> gear check/wear -> return to map -> lake form prepare -> captcha hold/redirect to AppVars.FightLink.
+     */
+    static byte[] processMainPhpAutoFishPipeline(String address,
+                                                 String html,
+                                                 byte[] originalBytes,
+                                                 boolean isFightFrame,
+                                                 boolean isFightTopFrame,
+                                                 boolean autoFightReloadProbeAddress) {
+        boolean isOnMapOrNature = MainPhp.mainPhpFindFlora(html) == null;
+        if (isOnMapOrNature && FishAjaxPhp.isAutoFishEnabledByPreference()) {
+            FishAjaxPhp.recoverAutofishRuntimeStateIfNeeded(true, html, address);
+        }
+
+        boolean isFastActionPaused = MainPhp.isNonCombatAutoPausedByFastAction();
+        boolean shouldEnterFishingLogic = !isFastActionPaused && !isFightFrame && !isFightTopFrame
+                && !autoFightReloadProbeAddress && FishAjaxPhp.isAutoFishEnabledByPreference();
+        if (!shouldEnterFishingLogic && FishAjaxPhp.isAutoFishEnabledByPreference()) {
+            StringBuilder diagnostics = new StringBuilder();
+            diagnostics.append("AUTO_FISH_TRACE BLOCKED: ");
+            diagnostics.append("FastNeed=").append(isFastActionPaused).append(", ");
+            diagnostics.append("isFightFrame=").append(isFightFrame).append(", ");
+            diagnostics.append("isFightTopFrame=").append(isFightTopFrame).append(", ");
+            diagnostics.append("autoFightProbe=").append(autoFightReloadProbeAddress);
+            String msgBlock = diagnostics.toString();
+            AppLog.d(TAG, msgBlock);
+        }
+
+        if (!MainPhp.isNonCombatAutoPausedByFastAction() && !isFightFrame && !isFightTopFrame
+                && !autoFightReloadProbeAddress && FishAjaxPhp.isAutoFishEnabledByPreference()) {
+            long nowMs = System.currentTimeMillis();
+            FishAjaxPhp.mainPhpPrecheckFishingHandsByInfoApi(nowMs, address, "mainphp_autofish_gate");
+            String fishFatigueHtml = FishAjaxPhp.mainPhpAutoFishFatigueStep(html);
+            if (fishFatigueHtml != null && !fishFatigueHtml.isEmpty()) {
+                String msgFishFatigue = "AUTO_FISH_TRACE fatigue step executed";
+                AppLog.d(TAG, msgFishFatigue);
+                return Russian.getBytes(fishFatigueHtml);
+            }
+            boolean neverTimerReady = AppVars.NeverTimer <= 0L || nowMs > AppVars.NeverTimer;
+            if (neverTimerReady) {
+                if (AppVars.AutoFishCheckUm) {
+                    String phtml = MainPhp.mainPhpFindPerc(html);
+                    if (phtml != null && !phtml.isEmpty()) {
+                        String msgFishChar = "AUTO_FISH_TRACE redirect to character page for skill check";
+                        AppLog.d(TAG, msgFishChar);
+                        return Russian.getBytes(phtml);
+                    }
+                    if (html.toLowerCase(Locale.ROOT).contains("<input type=button class=lbut value=\"умения\" onclick")) {
+                        String msgFishSkills = "AUTO_FISH_TRACE redirect to skills page mselect=1";
+                        AppLog.d(TAG, msgFishSkills);
+                        return Russian.getBytes(MainPhp.buildRedirectHtml("Переключение на умения персонажа", "main.php?mselect=1"));
+                    }
+                }
+                long postDrinkCooldownRemainingMs = FishAjaxPhp.getAutoFishDrinkCooldownRemainingMs(nowMs);
+                if (postDrinkCooldownRemainingMs > 0L) {
+                    String msgDeferFish = "AUTO_FISH_TRACE defer non-fight fish steps during drink cooldown: remainingMs="
+                            + postDrinkCooldownRemainingMs
+                            + ", AutoFishCheckUd=" + AppVars.AutoFishCheckUd
+                            + ", AutoFishWearUd=" + AppVars.AutoFishWearUd
+                            + ", address=" + address;
+                    AppLog.d(TAG, msgDeferFish);
+                    return Russian.getBytes(FishAjaxPhp.buildAutoFishDrinkCooldownHtml(postDrinkCooldownRemainingMs));
+                }
+                if (AppVars.AutoFishCheckUd) {
+                    String perchtml = MainPhp.mainPhpFindPerc(html);
+                    if (perchtml != null && !perchtml.isEmpty()) {
+                        String msgFishGear = "AUTO_FISH_TRACE redirect to character page for fishing gear check";
+                        AppLog.d(TAG, msgFishGear);
+                        return Russian.getBytes(perchtml);
+                    }
+                    AppVars.AutoFishWearUd = false;
+                    if (MainPhp.mainPhpIsPerc(html)) {
+                        AppVars.AutoFishWearUd = FishAjaxPhp.mainPhpIsMustWearUd(html);
+                        AppVars.AutoFishCheckUd = false;
+                        if (AppVars.AutoFishWearUd) {
+                            String loopKey = FishAjaxPhp.buildAutoFishWearLoopKey();
+                            boolean wearLoopBroken = FishAjaxPhp.markAutoFishWearLoop(loopKey);
+                            if (wearLoopBroken) {
+                                FishAjaxPhp.restartAutoFishCycle("wear_loop");
+                                return originalBytes;
+                            }
+                        } else {
+                            FishAjaxPhp.resetAutoFishWearLoopGuard();
+                        }
+                        String msgGearResult = "AUTO_FISH_TRACE gear check result: mustWear="
+                                + AppVars.AutoFishWearUd
+                                + ", hand1=" + AppVars.AutoFishHand1
+                                + ", hand1D=" + AppVars.AutoFishHand1D
+                                + ", hand2=" + AppVars.AutoFishHand2
+                                + ", hand2D=" + AppVars.AutoFishHand2D;
+                        AppLog.d(TAG, msgGearResult);
+                    }
+                }
+                if (AppVars.AutoFishWearUd) {
+                    String invHtml = MainPhp.mainPhpFindInvWithFallback(html, "&im=0&wca=4", address);
+                    if (invHtml != null && !invHtml.isEmpty()) {
+                        String msgFishUdRed = "AUTO_FISH_TRACE redirect to inventory for fishing gear (&im=0&wca=4)";
+                        AppLog.d(TAG, msgFishUdRed);
+                        return Russian.getBytes(invHtml);
+                    }
+                    if (MainPhp.mainPhpIsInv(html) || MainPhp.isInventoryAddress(address)) {
+                        invHtml = FishAjaxPhp.mainPhpWearUd(html);
+                        if (invHtml == null || invHtml.isEmpty()) {
+                            if (!MainPhp.inventoryAddressMatchesFilter(address, "&im=0&wca=4")) {
+                                String msgFishUdSwitch = "AUTO_FISH_TRACE switch to items tab for fishing gear search";
+                                AppLog.d(TAG, msgFishUdSwitch);
+                                return Russian.getBytes(MainPhp.buildRedirectHtml("Переключение на вещи", "main.php?im=0&wca=4"));
+                            }
+                        } else {
+                            return Russian.getBytes(invHtml);
+                        }
+                    }
+                }
+                if (!neverTimerReady) {
+                    String msgWaitFish = "AUTO_FISH_TRACE wait NeverTimer before fish action: dueInMs="
+                            + Math.max(0L, AppVars.NeverTimer - nowMs);
+                    AppLog.d(TAG, msgWaitFish);
+                } else {
+                    String floraHtml = MainPhp.mainPhpFindFlora(html);
+                    if (floraHtml != null && !floraHtml.isEmpty()) {
+                        String msgFloraReturn = "AUTO_FISH_TRACE redirect to nature/map via return button";
+                        AppLog.d(TAG, msgFloraReturn);
+                        return Russian.getBytes(floraHtml);
+                    }
+                    boolean isWeAlreadyOnLake = html.contains("name=primid") || html.contains("name=\"primid\"");
+
+                    if (isWeAlreadyOnLake) {
+                        String msgOnLake = "AUTO_FISH_TRACE detected lake form (name=primid found), calling mainPhpAutoFishPrepare...";
+                        AppLog.d(TAG, msgOnLake);
+
+                        String fishPreparedHtml = FishAjaxPhp.mainPhpAutoFishPrepare(html);
+
+                        String msgAfterPrepare = "AUTO_FISH_TRACE mainPhpAutoFishPrepare: result is " + (fishPreparedHtml == null ? "NULL" : "non-null");
+                        AppLog.d(TAG, msgAfterPrepare);
+
+                        if (fishPreparedHtml != null) {
+                            html = fishPreparedHtml;
+                            boolean hasCaptcha = AppVars.CodeAddress != null && !AppVars.CodeAddress.isEmpty();
+                            boolean isFishActionAddress = address != null
+                                    && address.contains("get_id=55")
+                                    && address.contains("act=4");
+                            if (hasCaptcha && AppVars.FightLink != null && !AppVars.FightLink.isEmpty() && !isFishActionAddress) {
+                                String msgFishCapt = "AUTO_FISH_TRACE captcha required, show dialog for fish action";
+                                AppLog.d(TAG, msgFishCapt);
+                                FishAjaxPhp.showMainPhpFishCaptchaDialogOnce(AppVars.CodeAddress, AppVars.FightLink);
+                                return Russian.getBytes(FishAjaxPhp.buildCaptchaDialogHoldHtml());
+                            }
+                            if (hasCaptcha && AppVars.IsFightCaptchaDialogVisible) {
+                                String msgFishCaptHold = "AUTO_FISH_TRACE captcha dialog is visible, keep hold page";
+                                AppLog.d(TAG, msgFishCaptHold);
+                                return Russian.getBytes(FishAjaxPhp.buildCaptchaDialogHoldHtml());
+                            }
+                            if (!hasCaptcha && AppVars.FightLink != null && !AppVars.FightLink.isEmpty() && !isFishActionAddress) {
+                                String msgFishAction = "AUTO_FISH_TRACE redirect to fish action: ";
+                                AppLog.d(TAG, msgFishAction);
+                                return Russian.getBytes(MainPhp.buildRedirectHtml("Авторыбалка: заброс", AppVars.FightLink));
+                            }
+                        }
+                    } else {
+                        String msgNotLake = "AUTO_FISH_TRACE no lake form detected (name=primid NOT found), injecting Fish()...";
+                        AppLog.d(TAG, msgNotLake);
+
+                        String fishMapHtml = FishAjaxPhp.mainPhpFindFish(html);
+                        if (fishMapHtml != null && !fishMapHtml.isEmpty()) {
+                            String msgFishMap = "AUTO_FISH_TRACE inject Fish(vcode) into map frame";
+                            AppLog.d(TAG, msgFishMap);
+                            return Russian.getBytes(fishMapHtml);
+                        }
+                        String msgNoFish = "AUTO_FISH_TRACE warning: Fish button not found on current page, skipping auto-fish";
+                        AppLog.w(TAG, msgNoFish);
+                    }
+                }
+            } else {
+                String msgWaitFish = "AUTO_FISH_TRACE wait NeverTimer before fish action: dueInMs="
+                        + Math.max(0L, AppVars.NeverTimer - nowMs);
+                AppLog.d(TAG, msgWaitFish);
+            }
+        }
+        return null;
+    }
+
     /** C# parity: DoAutoDrinkBlaz — авто-питьё Эликсира Блаженства при высокой усталости. */
     static String mainPhpAutoDrinkBlazStep(String address, String html) {
         if (AppVars.Profile == null || html == null || html.isEmpty()) {

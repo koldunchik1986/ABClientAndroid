@@ -9,6 +9,14 @@ import ru.neverlands.abclient.utils.AppVars;
 import ru.neverlands.abclient.utils.HelperStrings;
 import ru.neverlands.abclient.utils.MapPath;
 
+/**
+ * Общая non-combat навигация main.php.
+ *
+ * Источник выноса: helpers `mainPhpFindPerc`, `mainPhpFindFlora`, `mainPhpFindMapReturnForAutoMoving`,
+ * `startAutoSearchBoxMoving` из MainPhp.java.
+ * Зависимости: MainPhp.buildRedirectHtml(...) как единый redirect-шаблон, FightAuto URL/link helpers,
+ * InventoryParser.containsIgnoreCase(...), AppVars.AutoMoving* и AppVars.Profile.MapLocation.
+ */
 final class MainPhpNavigationHandler {
 
     private static final String TAG = "MainPhp";
@@ -16,6 +24,14 @@ final class MainPhpNavigationHandler {
     private MainPhpNavigationHandler() {
     }
 
+    /**
+     * Инициализирует состояние авто-движения к destination для SearchBox/клада.
+     *
+     * Важные переменные:
+     * - destination: целевая клетка/локация.
+     * - AppVars.AutoMoving/AutoMovingDestinaton/AutoMovingMapPath/AutoMovingNextJump/AutoMovingJumps/AutoMovingCityGate.
+     * - AppVars.Profile.MapLocation: стартовая точка для MapPath, если уже известна.
+     */
     static void startAutoSearchBoxMoving(String destination) {
         if (destination == null || destination.isEmpty()) {
             return;
@@ -37,6 +53,14 @@ final class MainPhpNavigationHandler {
         }
     }
 
+    /**
+     * Строит переход на страницу персонажа `go=inf`.
+     *
+     * Порядок источников vcode:
+     * - прямой onclick `main.php?get_id=56&act=10&go=inf&vcode=...`;
+     * - JSON menu entry `["inf","Ваш персонаж","..."]`;
+     * - fallback FightAuto.findMainPhpLinkByQueryParts(...).
+     */
     static String mainPhpFindPerc(String html) {
         String vcode = HelperStrings.subString(html, "'main.php?get_id=56&act=10&go=inf&vcode=", "'");
         if (vcode != null && !vcode.isEmpty()) {
@@ -79,6 +103,11 @@ final class MainPhpNavigationHandler {
         return MainPhp.buildRedirectHtml("Переключение на персонаж", link);
     }
 
+    /**
+     * Возвращает redirect на природу/карту через кнопку "Вернуться".
+     * Используется AutoFish/AutoMoving после инвентаря или страницы персонажа.
+     * Если обнаружен disabled "Причал", возвращает null, чтобы не кликать недоступный переход.
+     */
     static String mainPhpFindFlora(String html) {
         if (html == null || html.isEmpty()) {
             return null;
@@ -111,6 +140,14 @@ final class MainPhpNavigationHandler {
         return MainPhp.buildRedirectHtml("Переключение на природу", link);
     }
 
+    /**
+     * Надёжный поиск ссылки возврата на карту `go=ret` для AutoMoving/SearchBox.
+     *
+     * Важные переменные:
+     * - retVcode: vcode из menu item `ret`.
+     * - mapLink: кандидат ссылки, приоритетно с `go=ret`, fallback через `go=inf -> go=ret`.
+     * - returnMarker/onClickPrefix/linkStart/linkEnd: fallback по кнопке `Вернуться`.
+     */
     static String mainPhpFindMapReturnForAutoMoving(String html) {
         if (html == null || html.isEmpty()) {
             return null;
@@ -164,6 +201,10 @@ final class MainPhpNavigationHandler {
         return MainPhp.buildRedirectHtml("Навигатор: переход на карту", mapLink);
     }
 
+    /**
+     * Извлекает vcode из JS/menu entry по ключу menuKey (`ret`, `inf` и т.п.).
+     * Возвращает null, если menu entry отсутствует или формат отличается.
+     */
     private static String mainPhpExtractMenuVcode(String html, String menuKey) {
         if (html == null || html.isEmpty() || menuKey == null || menuKey.isEmpty()) {
             return null;

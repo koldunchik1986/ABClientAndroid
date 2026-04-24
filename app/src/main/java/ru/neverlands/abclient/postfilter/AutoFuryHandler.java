@@ -6,6 +6,18 @@ import ru.neverlands.abclient.model.ParsedDressed;
 import ru.neverlands.abclient.utils.AppLog;
 import ru.neverlands.abclient.utils.AppVars;
 
+/**
+ * Handler режима "Снежок/Ярость" из main.php.
+ *
+ * Источник выноса: AutoFury-блок из MainPhp.process(). Handler владеет проверкой
+ * AutoFury preference, переходом на персонажа, переходом в инвентарь свитков и wear-link.
+ *
+ * Ключевые runtime-переменные:
+ * - AppVars.AutoFuryCheckScroll: нужна проверка страницы персонажа.
+ * - AppVars.AutoFuryArmedScroll: результат mainPhpArmedFuryScroll(html).
+ * - AppVars.AutoFuryHand: диагностическое состояние руки/слота для логов.
+ * - AppVars.NeverTimer: запрещает новый non-combat redirect до истечения server timer.
+ */
 public class AutoFuryHandler {
 
     private static final String TAG = "AutoFuryHandler";
@@ -56,6 +68,22 @@ public class AutoFuryHandler {
         return null;
     }
 
+    /**
+     * Главная точка AutoFury из MainPhp.process().
+     *
+     * Входные переменные:
+     * - address/html: текущий main.php URL и HTML.
+     * - isFightFrame/isFightTopFrame: защита от запуска non-combat свитка в бою.
+     *
+     * Порядок старого MainPhp-блока сохранён:
+     * 1. Проверить pause guard и isAutoFuryEnabledByPreference().
+     * 2. Дождаться AppVars.NeverTimer.
+     * 3. Если AppVars.AutoFuryCheckScroll=true, перейти на персонажа через MainPhp.mainPhpFindPerc(html).
+     * 4. На странице персонажа обновить AppVars.AutoFuryArmedScroll и AppVars.AutoFuryCheckScroll.
+     * 5. Если свиток не надет, перейти в инвентарь `&im=0&wca=28`, найти wear-link или переключить вкладку.
+     *
+     * Возврат: redirect-HTML или null, если AutoFury ничего не делает на текущем кадре.
+     */
     static String processMainPhpAutoFuryStep(String address,
                                              String html,
                                              boolean isFightFrame,
