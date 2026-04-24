@@ -1098,88 +1098,18 @@ public class MainPhp {
      * - боевые подсистемы (например, LezFight), которые читают PersIntHP/PersIntMA для расчета восстановления.
      */
     private static void mainPhpInsHp(String html) {
-        try {
-            InsHpSnapshot snapshot = parseInsHpSnapshot(html);
-            if (snapshot == null) return;
-            CharacterVitalsManager.Snapshot vitals = CharacterVitalsManager.updateFromInsHpSnapshot(
-                    snapshot.curHp,
-                    snapshot.maxHp,
-                    snapshot.curMa,
-                    snapshot.maxMa,
-                    snapshot.intHp,
-                    snapshot.intMa,
-                    "MainPhp.mainPhpInsHp"
-            );
-            String msg = "mainPhpInsHp: parsed hpInt=";
-            AppLog.d(TAG, msg);
-        } catch (Exception e) {
-            String msg = "mainPhpInsHp error";
-            AppLog.e(TAG, msg, e);
-        }
+        MainPhpVitals.mainPhpInsHp(html);
     }
     /**
      * Парсит снимок из вызова `ins_HP(...)`: cur/max HP, cur/max MA, hp_int/ma_int.
      * Возвращает `null`, если вызов не найден или формат невалиден.
      */
     static InsHpSnapshot parseInsHpSnapshot(String html) {
-        if (html == null || html.isEmpty()) {
-            return null;
-        }
-        String htmlLower = html.toLowerCase(Locale.ROOT);
-        // C# parity (MainPhpDrinkHpMa.cs):
-        // 1) first try `var inshp = [curHp,maxHp,curMa,maxMa,intHp,intMa];`
-        // 2) fallback to `ins_HP(curHp,maxHp,curMa,maxMa,intHp,intMa);`
-        int varPos = htmlLower.indexOf("var inshp");
-        if (varPos != -1) {
-            int bracketStart = html.indexOf('[', varPos);
-            int bracketEnd = html.indexOf("];", bracketStart);
-            if (bracketStart != -1 && bracketEnd != -1 && bracketEnd > bracketStart) {
-                InsHpSnapshot fromVar = parseInsHpSnapshotArgs(html.substring(bracketStart + 1, bracketEnd));
-                if (fromVar != null) {
-                    return fromVar;
-                }
-            }
-        }
-        int start = htmlLower.indexOf("ins_hp(");
-        if (start == -1) {
-            return null;
-        }
-        start += "ins_hp(".length();
-        int end = html.indexOf(')', start);
-        if (end == -1 || end <= start) {
-            return null;
-        }
-        return parseInsHpSnapshotArgs(html.substring(start, end));
+        return MainPhpVitals.parseInsHpSnapshot(html);
     }
 
     private static InsHpSnapshot parseInsHpSnapshotArgs(String args) {
-        if (args == null || args.isEmpty()) {
-            return null;
-        }
-        String[] parts = args.split(",");
-        if (parts.length != 6) {
-            String msg = "parseInsHpSnapshot: unexpected args count=";
-            AppLog.d(TAG, msg);
-            return null;
-        }
-        Double curHpRaw = tryParseDoubleInvariant(parts[0]);
-        Double maxHpRaw = tryParseDoubleInvariant(parts[1]);
-        Double curMaRaw = tryParseDoubleInvariant(parts[2]);
-        Double maxMaRaw = tryParseDoubleInvariant(parts[3]);
-        Double intHpRaw = tryParseDoubleInvariant(parts[4]);
-        Double intMaRaw = tryParseDoubleInvariant(parts[5]);
-        if (curHpRaw == null || maxHpRaw == null || curMaRaw == null || maxMaRaw == null
-                || intHpRaw == null || intMaRaw == null) {
-            return null;
-        }
-        InsHpSnapshot snapshot = new InsHpSnapshot();
-        snapshot.curHp = (int) Math.round(curHpRaw);
-        snapshot.maxHp = (int) Math.round(maxHpRaw);
-        snapshot.curMa = (int) Math.round(curMaRaw);
-        snapshot.maxMa = (int) Math.round(maxMaRaw);
-        snapshot.intHp = intHpRaw;
-        snapshot.intMa = intMaRaw;
-        return snapshot;
+        return MainPhpVitals.parseInsHpSnapshotArgs(args);
     }
     /**
      * Авто-питьё "Эликсира Восстановления" по данным верхнего фрейма (`ins_HP(...)`).
@@ -1255,23 +1185,7 @@ public class MainPhp {
      * Допускает кавычки вокруг значения.
      */
     private static Double tryParseDoubleInvariant(String raw) {
-        if (raw == null) {
-            return null;
-        }
-        String normalized = raw.trim()
-                .replace("\"", "")
-                .replace("'", "")
-                .replace('\u00A0', ' ')
-                .replace(" ", "")
-                .replace(",", ".");
-        if (normalized.isEmpty()) {
-            return null;
-        }
-        try {
-            return Double.parseDouble(normalized);
-        } catch (NumberFormatException ignored) {
-            return null;
-        }
+        return MainPhpVitals.tryParseDoubleInvariant(raw);
     }
     /**
      * Порт блока чтения умений из C# `MainPhp.cs`:
@@ -1380,63 +1294,7 @@ public class MainPhp {
      * Параметр s=2 используется специально для комплектов.
      */
     private static String mainPhpWearComplect(String html, String complectName) {
-        if (html == null || html.isEmpty() || complectName == null || complectName.isEmpty()) {
-            return null;
-        }
-        
-        // Парсим все вызовы compl_view("название", "uid", "vcode")
-        // Паттерн: compl_view("название","uid","vcode");
-        
-        int startIdx = 0;
-        while (true) {
-            final String marker = "compl_view(\"";
-            startIdx = html.indexOf(marker, startIdx);
-            if (startIdx == -1) break;
-            
-            startIdx += marker.length();
-            int endNameIdx = html.indexOf("\"", startIdx);
-            if (endNameIdx == -1) break;
-            
-            String parsedComplectName = html.substring(startIdx, endNameIdx);
-            
-            // Ищем следующую часть: uid
-            final String uidMarker = "\",\"";
-            int uidStartIdx = html.indexOf(uidMarker, endNameIdx);
-            if (uidStartIdx == -1) break;
-            
-            uidStartIdx += uidMarker.length();
-            int uidEndIdx = html.indexOf("\"", uidStartIdx);
-            if (uidEndIdx == -1) break;
-            
-            String uid = html.substring(uidStartIdx, uidEndIdx);
-            
-            // Ищем VCode (третий параметр)
-            int vcodeStartIdx = html.indexOf(uidMarker, uidEndIdx);
-            if (vcodeStartIdx == -1) break;
-            
-            vcodeStartIdx += uidMarker.length();
-            int vcodeEndIdx = html.indexOf("\"", vcodeStartIdx);
-            if (vcodeEndIdx == -1) break;
-            
-            String vcode = html.substring(vcodeStartIdx, vcodeEndIdx);
-            
-            // Проверяем, совпадает ли название compl_view() с запрашиваемым
-            if (parsedComplectName.equalsIgnoreCase(complectName)) {
-                // Найден! Формируем запрос для одевания комплекта
-                // Параметр s=2 - специальный код для комплектов (отличается от s=1 для вещей)
-                String wearUrl = "main.php?get_id=57&uid=" + uid + "&s=2&vcode=" + vcode;
-                String msg_wear = "COMPLECT_TIMER_PARSE_TRACE: found complect=\"" + parsedComplectName + "\", uid=" + uid;
-                AppLog.d(TAG, msg_wear);
-                return buildRedirectHtml("Таймер комплекта: одеваем " + parsedComplectName, wearUrl);
-            }
-            
-            startIdx = vcodeEndIdx;
-        }
-        
-        // Комплект не найден либо HTML не содержит нужного вызова compl_view
-        String msg_notfound = "COMPLECT_TIMER_PARSE_TRACE: complect not found \"" + complectName + "\"";
-        AppLog.d(TAG, msg_notfound);
-        return null;
+        return ComplectWearHandler.mainPhpWearComplect(html, complectName);
     }
 
     /**
@@ -1467,158 +1325,26 @@ public class MainPhp {
         AutoSkinHandler.maybeMarkAutoSkinKnifeRecheck();
     }
     private static String mainPhpWtime(String html) {
-        html = html.replace("id=wtime></div>", "id=wtime><i>\u0412\u044b\u043f\u043e\u043b\u043d\u044f\u0435\u0442\u0441\u044f \u0434\u0435\u0439\u0441\u0442\u0432\u0438\u0435...</i></div>");
-        String staticScriptEnd = "</SCRIPT>";
-        int poswt = html.toLowerCase(java.util.Locale.ROOT).lastIndexOf(staticScriptEnd.toLowerCase());
-        if (poswt != -1) {
-            poswt += staticScriptEnd.length();
-        }
-        if (poswt != -1 && AppVars.AutoMoving && AppVars.AutoMovingJumps > 0) {
-            int curTire = CharacterVitalsManager.snapshot().tied;
-            String statusHtml = "<font class=nickname><div align=center style=\"color: #660066;\"><i>"
-                    + "\u041f\u0443\u043d\u043a\u0442 \u043d\u0430\u0437\u043d\u0430\u0447\u0435\u043d\u0438\u044f: <b>" + AppVars.AutoMovingDestinaton + "</b><br>"
-                    + "\u0415\u0449\u0435 \u043f\u0435\u0440\u0435\u0445\u043e\u0434\u043e\u0432: <b>" + AppVars.AutoMovingJumps + "</b><br>"
-                    + "\u0422\u0435\u043a\u0443\u0449\u0430\u044f \u0423\u0441\u0442\u0430\u043b\u043e\u0441\u0442\u044c: <b>" + curTire + "</b>"
-                    + (AppVars.DoSearchBox ? "<br>\u0418\u0449\u0435\u043c \u043a\u043b\u0430\u0434..." : "")
-                    + "</i></div></font>";
-            html = html.substring(0, poswt) + statusHtml + html.substring(poswt);
-        }
-        return html;
+        return MainPhpTimerHandler.mainPhpWtime(html);
     }
 
     /**
      * Запускает авто-переход к целевой клетке для режима "Авто-Клад" (DoSearchBox).
      */
     private static void startAutoSearchBoxMoving(String destination) {
-        if (destination == null || destination.isEmpty()) {
-            return;
-        }
-        AppVars.AutoMoving = true;
-        AppVars.AutoMovingDestinaton = destination;
-        AppVars.AutoMovingMapPath = null;
-        AppVars.AutoMovingNextJump = null;
-        AppVars.AutoMovingJumps = 0;
-        AppVars.AutoMovingCityGate = ru.neverlands.abclient.model.CityGateType.None;
-
-        String mapLocation = (AppVars.Profile != null) ? AppVars.Profile.MapLocation : null;
-        if (mapLocation != null && !mapLocation.isEmpty()) {
-            ru.neverlands.abclient.utils.MapPath path =
-                    new ru.neverlands.abclient.utils.MapPath(mapLocation, Collections.singletonList(destination));
-            AppVars.AutoMovingMapPath = path;
-            AppVars.AutoMovingNextJump = path.nextJump;
-            AppVars.AutoMovingJumps = path.jumps;
-            AppVars.AutoMovingCityGate = path.cityGate;
-        }
+        MainPhpNavigationHandler.startAutoSearchBoxMoving(destination);
     }
 
     private static int parseUnsignedIntFrom(String text, int fromIndex) {
-        if (text == null || fromIndex < 0 || fromIndex >= text.length()) {
-            return -1;
-        }
-        int i = fromIndex;
-        while (i < text.length()) {
-            char c = text.charAt(i);
-            if (c >= '0' && c <= '9') {
-                break;
-            }
-            if (c == '\n' || c == '\r' || c == ';' || c == '<') {
-                return -1;
-            }
-            i++;
-        }
-        if (i >= text.length()) {
-            return -1;
-        }
-        int start = i;
-        while (i < text.length()) {
-            char c = text.charAt(i);
-            if (c < '0' || c > '9') {
-                break;
-            }
-            i++;
-        }
-        if (i <= start) {
-            return -1;
-        }
-        try {
-            return Integer.parseInt(text.substring(start, i));
-        } catch (Exception ignored) {
-            return -1;
-        }
+        return MainPhpTimerHandler.parseUnsignedIntFrom(text, fromIndex);
     }
 
     private static int extractWtimeTimeoutSeconds(String html) {
-        if (html == null || html.isEmpty()) {
-            return 0;
-        }
-        String lower = html.toLowerCase(Locale.ROOT);
-
-        int tdSecIdx = lower.indexOf("id=tdsec");
-        if (tdSecIdx < 0) tdSecIdx = lower.indexOf("id=\"tdsec\"");
-        if (tdSecIdx < 0) tdSecIdx = lower.indexOf("id='tdsec'");
-        if (tdSecIdx >= 0) {
-            int gt = lower.indexOf('>', tdSecIdx);
-            if (gt >= 0) {
-                int sec = parseUnsignedIntFrom(lower, gt + 1);
-                if (sec > 0 && sec < 86400) {
-                    return sec;
-                }
-            }
-        }
-
-        int leftIdx = lower.indexOf("time_left_sec");
-        if (leftIdx >= 0) {
-            int eq = lower.indexOf('=', leftIdx);
-            if (eq >= 0) {
-                int value = parseUnsignedIntFrom(lower, eq + 1);
-                if (value > 0) {
-                    if (value > 1000) {
-                        return (int) Math.ceil(value / 1000.0d);
-                    }
-                    return value;
-                }
-            }
-        }
-
-        int secGoIdx = lower.indexOf("secgo");
-        if (secGoIdx >= 0) {
-            int eq = lower.indexOf('=', secGoIdx);
-            if (eq >= 0) {
-                int sec = parseUnsignedIntFrom(lower, eq + 1);
-                if (sec > 0 && sec < 86400) {
-                    return sec;
-                }
-            }
-        }
-
-        return 0;
+        return MainPhpTimerHandler.extractWtimeTimeoutSeconds(html);
     }
 
     private static void syncNeverTimerFromWtime(String html, String address) {
-        int timeoutSec = extractWtimeTimeoutSeconds(html);
-        if (timeoutSec <= 0) {
-            return;
-        }
-
-        long now = System.currentTimeMillis();
-        long dueAt = now + timeoutSec * 1000L;
-        long prev = AppVars.NeverTimer;
-        long prevDelta = prev - now;
-        long newDelta = timeoutSec * 1000L;
-        boolean updated = prev <= now || Math.abs(prevDelta - newDelta) > 1500L;
-        if (updated) {
-            AppVars.NeverTimer = dueAt;
-        }
-
-        if (updated || (now - lastWtimeSyncLogAtMs) >= WTIME_SYNC_LOG_GUARD_MS) {
-            lastWtimeSyncLogAtMs = now;
-            AppLog.d(TAG, "SERVER_TIMER_TRACE wtime sync: timeoutSec=" + timeoutSec
-                    + ", updated=" + updated + ", address=" + address
-                    + ", dueInMs=" + Math.max(0L, AppVars.NeverTimer - now));
-            FileLogger.trace(TAG, "SERVER_TIMER_TRACE wtime sync: timeoutSec=" + timeoutSec
-                    + ", updated=" + updated + ", address=" + address
-                    + ", dueInMs=" + Math.max(0L, AppVars.NeverTimer - now));
-        }
+        MainPhpTimerHandler.syncNeverTimerFromWtime(html, address);
     }
 
     /**
@@ -1699,15 +1425,13 @@ public class MainPhp {
     // Global runtime pause for non-combat auto pipelines while FastAction is active.
     // Autoboi/fight flow must continue and therefore is not controlled by this helper.
     static boolean isNonCombatAutoPausedByFastAction() {
-        return (AppVars.FastNeed && AppVars.FastPauseNonCombatAutoFunctions)
-                || AppVars.TreasureDigPauseNonCombatAutoFunctions
-                || AppVars.TimerPauseNonCombatAutoFunctions;  // Pause всех non-combat авто при таймере
+        return MainPhpPauseGuards.isNonCombatAutoPausedByFastAction();
     }
 
     // Runtime pause for non-combat auto pipelines while external auto-cure request is active.
     // Used to prevent AutoSearch/AutoMoving overlap with doctorform processing.
     private static boolean isNonCombatAutoPausedByCureAction() {
-        return AppVars.CurePauseNonCombatAutoFunctions;
+        return MainPhpPauseGuards.isNonCombatAutoPausedByCureAction();
     }
     /**
      * Устанавливает query-параметр в URL:
@@ -1749,45 +1473,7 @@ public class MainPhp {
      * - Гарантированно вернуть контекст на "персонажа" после авто-действий, даже при отличиях шаблона страницы.
      */
     static String mainPhpFindPerc(String html) {
-        String vcode = HelperStrings.subString(html, "'main.php?get_id=56&act=10&go=inf&vcode=", "'");
-        if (vcode != null && !vcode.isEmpty()) {
-            String link = "main.php?get_id=56&act=10&go=inf&vcode=" + vcode;
-            return buildRedirectHtml("Переключение на персонаж", link);
-        }
-        String patternEnter = "[\"inf\",\"Ваш персонаж\",\"";
-        int posPatternEnter = html.indexOf(patternEnter);
-        if (posPatternEnter == -1) {
-            String fallbackLink = findMainPhpLinkByQueryParts(html, "get_id=56", "act=10", "go=inf", "vcode=");
-            if (fallbackLink != null) {
-                String msg = "AUTO_FALLBACK_TRACE mainPhpFindPerc: regex fallback -> ";
-                AppLog.d(TAG, msg);
-                return buildRedirectHtml("Переключение на персонаж", fallbackLink);
-            }
-            return null;
-        }
-        posPatternEnter += patternEnter.length();
-        int posEnd = html.indexOf('"', posPatternEnter);
-        if (posEnd == -1) {
-            String fallbackLink = findMainPhpLinkByQueryParts(html, "get_id=56", "act=10", "go=inf", "vcode=");
-            if (fallbackLink != null) {
-                String msg = "AUTO_FALLBACK_TRACE mainPhpFindPerc: regex fallback -> ";
-                AppLog.d(TAG, msg);
-                return buildRedirectHtml("Переключение на персонаж", fallbackLink);
-            }
-            return null;
-        }
-        String jsonVcode = html.substring(posPatternEnter, posEnd);
-        if (jsonVcode == null || jsonVcode.isEmpty()) {
-            String fallbackLink = findMainPhpLinkByQueryParts(html, "get_id=56", "act=10", "go=inf", "vcode=");
-            if (fallbackLink != null) {
-                String msg = "AUTO_FALLBACK_TRACE mainPhpFindPerc: regex fallback -> ";
-                AppLog.d(TAG, msg);
-                return buildRedirectHtml("Переключение на персонаж", fallbackLink);
-            }
-            return null;
-        }
-        String link = "main.php?get_id=56&act=10&go=inf&vcode=" + jsonVcode;
-        return buildRedirectHtml("Переключение на персонаж", link);
+        return MainPhpNavigationHandler.mainPhpFindPerc(html);
     }
     /**
      * Порт `MainPhpFindFlora` из ПК-версии (`MainPhpDrink.cs`):
@@ -1803,91 +1489,13 @@ public class MainPhp {
      * - убрать ручной шаг пользователя "нажать Вернуться".
      */
     static String mainPhpFindFlora(String html) {
-        if (html == null || html.isEmpty()) {
-            return null;
-        }
-        // C# parity: если "Причал" DISABLED, автопереход на природу не нужен.
-        if (containsIgnoreCase(html, "<input type=button class=lbutdis value=\"Причал\" disabled>")) {
-            return null;
-        }
-        final String returnMarker = "value=\"Вернуться\">";
-        int posReturn = html.toLowerCase(Locale.ROOT).indexOf(returnMarker.toLowerCase(Locale.ROOT));
-        if (posReturn == -1) {
-            return null;
-        }
-        final String onClickPrefix = "onclick=\"location='";
-        int posOnClick = html.toLowerCase(Locale.ROOT).lastIndexOf(
-                onClickPrefix.toLowerCase(Locale.ROOT),
-                posReturn
-        );
-        if (posOnClick == -1) {
-            return null;
-        }
-        int linkStart = posOnClick + onClickPrefix.length();
-        int linkEnd = html.indexOf('\'', linkStart);
-        if (linkEnd == -1 || linkEnd <= linkStart) {
-            return null;
-        }
-        String link = html.substring(linkStart, linkEnd);
-        if (link.isEmpty()) {
-            return null;
-        }
-        return buildRedirectHtml("Переключение на природу", link);
+        return MainPhpNavigationHandler.mainPhpFindFlora(html);
     }
     /**
      * C# parity (`MainPhpFindFish`): на карте вставляет вызов `Fish('<vcode>')` после `view_map();`.
      */
     private static String mainPhpFindMapReturnForAutoMoving(String html) {
-        if (html == null || html.isEmpty()) {
-            return null;
-        }
-
-        String retVcode = mainPhpExtractMenuVcode(html, "ret");
-
-        String mapLink = findMainPhpLinkByQueryParts(html, "get_id=56", "act=10", "go=ret", "vcode=");
-        if (mapLink == null) {
-            mapLink = findMainPhpLinkByQueryParts(html, "get_id=56", "act=10", "go=ret");
-        }
-        if ((mapLink == null || mapLink.isEmpty()) && retVcode != null && !retVcode.isEmpty()) {
-            mapLink = normalizeNeverlandsMainLink("main.php?get_id=56&act=10&go=ret&vcode=" + retVcode);
-        }
-        if (mapLink == null) {
-            String infLink = findMainPhpLinkByQueryParts(html, "get_id=56", "act=10", "go=inf", "vcode=");
-            if (infLink != null && !infLink.isEmpty()) {
-                mapLink = normalizeNeverlandsMainLink(infLink.replace("go=inf", "go=ret"));
-            }
-        }
-
-        if (mapLink == null) {
-            final String returnMarker = "value=\"Вернуться\">";
-            int posReturn = html.toLowerCase(Locale.ROOT).indexOf(returnMarker.toLowerCase(Locale.ROOT));
-            if (posReturn != -1) {
-                final String onClickPrefix = "onclick=\"location='";
-                int posOnClick = html.toLowerCase(Locale.ROOT).lastIndexOf(
-                        onClickPrefix.toLowerCase(Locale.ROOT),
-                        posReturn
-                );
-                if (posOnClick != -1) {
-                    int linkStart = posOnClick + onClickPrefix.length();
-                    int linkEnd = html.indexOf('\'', linkStart);
-                    if (linkEnd > linkStart) {
-                        mapLink = normalizeNeverlandsMainLink(html.substring(linkStart, linkEnd));
-                        if (retVcode != null && !retVcode.isEmpty()) {
-                            mapLink = normalizeNeverlandsMainLink("main.php?get_id=56&act=10&go=ret&vcode=" + retVcode);
-                        } else if (mapLink.contains("go=inf")) {
-                            mapLink = normalizeNeverlandsMainLink(mapLink.replace("go=inf", "go=ret"));
-                        } else if (mapLink.endsWith("/main.php") || mapLink.endsWith("/main.php?")) {
-                            mapLink = normalizeNeverlandsMainLink("main.php?get_id=56&act=10&go=ret");
-                        }
-                    }
-                }
-            }
-        }
-
-        if (mapLink == null || mapLink.isEmpty()) {
-            return null;
-        }
-        return buildRedirectHtml("Навигатор: переход на карту", mapLink);
+        return MainPhpNavigationHandler.mainPhpFindMapReturnForAutoMoving(html);
     }
 
     private static String mainPhpExtractMenuVcode(String html, String menuKey) {
@@ -2606,46 +2214,9 @@ public class MainPhp {
         // 1) проверка надетого свитка на странице персонажа;
         // 2) авто-переход в инвентарь свитков (`im=0&wca=28`);
         // 3) авто-нажатие wear-link (`get_id=57&uid=...&s=1&vcode=...`).
-        if (!isNonCombatAutoPausedByFastAction() && !isFightFrame && !isFightTopFrame && isAutoFuryEnabledByPreference()) {
-            long nowMs = System.currentTimeMillis();
-            if (AppVars.NeverTimer <= 0L || nowMs > AppVars.NeverTimer) {
-                if (AppVars.AutoFuryCheckScroll) {
-                    String perchtml = mainPhpFindPerc(html);
-                    if (perchtml != null && !perchtml.isEmpty()) {
-                        String msg_furychar = "AUTO_FURY_TRACE redirect to character page for scroll check";
-                        AppLog.d(TAG, msg_furychar);
-                        return Russian.getBytes(perchtml);
-                    }
-                    AppVars.AutoFuryArmedScroll = false;
-                    if (mainPhpIsPerc(html)) {
-                        AppVars.AutoFuryArmedScroll = mainPhpArmedFuryScroll(html);
-                        AppVars.AutoFuryCheckScroll = false;
-                        AppLog.d(TAG, "AUTO_FURY_TRACE scroll check result: armed=" + AppVars.AutoFuryArmedScroll
-                                + ", hand=" + AppVars.AutoFuryHand);
-                    }
-                }
-                if (!AppVars.AutoFuryArmedScroll) {
-                    String invHtml = mainPhpFindInvWithFallback(html, "&im=0&wca=28", address);
-                    if (invHtml != null && !invHtml.isEmpty()) {
-                        String msg_furyinv = "AUTO_FURY_TRACE redirect to scroll inventory (&im=0&wca=28)";
-                        AppLog.d(TAG, msg_furyinv);
-                        return Russian.getBytes(invHtml);
-                    }
-                    if (mainPhpIsInv(html) || isInventoryAddress(address)) {
-                        invHtml = mainPhpWearFuryScroll(html);
-                        if (invHtml == null || invHtml.isEmpty()) {
-                            if (!inventoryAddressMatchesFilter(address, "&im=0&wca=28")) {
-                                String msg_furityab = "AUTO_FURY_TRACE switch to scroll category (wca=28)";
-                                AppLog.d(TAG, msg_furityab);
-                                return Russian.getBytes(buildRedirectHtml("Переходим к свиткам", "main.php?im=0&wca=28"));
-                            }
-                        } else {
-                            AppVars.AutoFuryCheckScroll = true;
-                            return Russian.getBytes(invHtml);
-                        }
-                    }
-                }
-            }
+        String autoFuryHtml = AutoFuryHandler.processMainPhpAutoFuryStep(address, html, isFightFrame, isFightTopFrame);
+        if (autoFuryHtml != null && !autoFuryHtml.isEmpty()) {
+            return Russian.getBytes(autoFuryHtml);
         }
         // Авто-разделка (MainPhpRaz.cs): если в текущем боевом кадре доступна кнопка "Разделать",
         // выполняем редирект на действие разделки до стандартной боевой обработки.
@@ -3058,19 +2629,7 @@ public class MainPhp {
      * Для них при входе в бой fast-цикл должен завершаться.
      */
     private static boolean isAttackFastId(String fastId) {
-        if (fastId == null) return false;
-        switch (fastId) {
-            case "i_svi_001.gif":
-            case "i_svi_002.gif":
-            case "i_w28_26.gif":
-            case "i_w28_26X.gif":
-            case "i_svi_205.gif":
-            case "i_w28_24.gif":
-            case "i_w28_25.gif":
-                return true;
-            default:
-                return false;
-        }
+        return MainPhpFastActionSupport.isAttackFastId(fastId);
     }
     /**
      * Определяет фильтр инвентаря по FastId.
@@ -3079,91 +2638,7 @@ public class MainPhp {
      * @return строка фильтра (например "&im=0&wca=28") или null для неизвестного FastId
      */
     private static String getInventoryFilter(String fastId) {
-        if (fastId == null) return null;
-        String normalizedFastId = normalizeFastId(fastId);
-        switch (normalizedFastId) {
-            // Свитки и нападалки → wca=28
-            case "i_svi_001.gif":
-            case "i_svi_002.gif":
-            case "i_w28_26.gif":
-            case "i_w28_26X.gif":
-            case "i_svi_205.gif":
-            case "i_w28_24.gif":
-            case "i_w28_25.gif":
-            case "i_w28_22.gif":
-            case "i_w28_23.gif":
-            case "i_w28_28.gif":
-            case "i_svi_213.gif":
-            case "i_w28_27.gif":
-            case "i_w28_86.gif":
-                return "&im=0&wca=28";
-            // Зелья → wca=27
-            case "Яд":
-            case "Зелье Сильной Спины":
-            case "Превосходное Зелье Сильной Спины":
-            case "Зелье Невидимости":
-            case "Зелье Блаженства":
-            case "Зелье Метаболизма":
-            case "Зелье Просветления":
-            case "Зелье Сокрушительных Ударов":
-            case "Зелье Стойкости":
-            case "Зелье Недосягаемости":
-            case "Зелье Точного Попадания":
-            case "Зелье Ловких Ударов":
-            case "Зелье Мужества":
-            case "Зелье Жизни":
-            case "Зелье Лечения":
-            case "Зелье Восстановления Маны":
-            case "Зелье Энергии":
-            case "Зелье Удачи":
-            case "Зелье Силы":
-            case "Зелье Ловкости":
-            case "Зелье Гения":
-            case "Зелье Боевой Славы":
-            case "Зелье Секрет Волшебника":
-            case "Зелье Медитации":
-            case "Зелье Иммунитета":
-            case "Зелье Лечения Отравлений":
-            case "Зелье Огненного Ореола":
-            case "Зелье Колкости":
-            case "Зелье Загрубелой Кожи":
-            case "Зелье Панциря":
-            case "Зелье Человек-гора":
-            case "Зелье Скорости":
-            case "Жажда Жизни":
-            case "Ментальная Жажда":
-            case "Зелье подвижности":
-            case "Ярость Берсерка":
-            case "Зелье Хрупкости":
-            case "Зелье Мифриловый Стержень":
-            case "Зелье Соколиный взор":
-            case "Секретное Зелье":
-                return "&im=0&wca=27";
-            // Эликсиры → im=6
-            case "Эликсир Блаженства":
-            case "Эликсир Мгновенного Исцеления":
-            case "Эликсир Восстановления":
-                return "&im=6";
-            // Телепорт остров
-            case "Телепорт (Остров Туротор)":
-                return "&im=0&wca=28";
-            // Тотем — НЕ требует инвентаря, работает с основной страницы
-            // Возвращаем специальный маркер, processMainPhpFast обрабатывает его отдельно
-            case "Тотем":
-                return "TOTEM";
-            default:
-                // Дополнительная нормализация для Android-порта:
-                // в настройках/контактах название может прийти с отличиями по регистру
-                // и пробелам (включая неразрывные), поэтому для ключевых автодействий
-                // делаем мягкое сопоставление по фрагменту названия.
-                if (containsIgnoreCase(normalizedFastId, "сильной спины")) {
-                    return "&im=0&wca=27";
-                }
-                if (containsIgnoreCase(normalizedFastId, "яд")) {
-                    return "&im=0&wca=27";
-                }
-                return null;
-        }
+        return MainPhpFastActionSupport.getInventoryFilter(fastId);
     }
     /**
      * Нормализует FastId перед сопоставлением:
@@ -3278,12 +2753,7 @@ public class MainPhp {
      * Аналог BuildRedirect в Filter.cs:280-291
      */
     static String buildRedirectHtml(String description, String link) {
-        String normalizedLink = normalizeNeverlandsMainLink(link);
-        return ru.neverlands.abclient.utils.HtmlUtils.GENERATED_PAGE_MARKER +
-                "<html><head><meta http-equiv=\"Content-Type\" content=\"text/html; charset=windows-1251\">" +
-                "<title>ABClient</title></head><body>" +
-                description +
-                "<script language=\"JavaScript\">window.location = \"" + normalizedLink + "\";</script></body></html>";
+        return MainPhpRedirects.buildRedirectHtml(description, link);
     }
     /**
      * Тонкая обёртка боевого post-filter после выноса в {@link FightAuto}.
@@ -3404,7 +2874,7 @@ public class MainPhp {
      *   чтобы по чату видно было, на каком этапе (до или после нападения) остановился цикл.
      */
     static String buildServerChatTimeHtml() {
-        return FightAuto.buildServerChatTimeHtml();
+        return MainPhpChatBridge.buildServerChatTimeHtml();
     }
 
     /**
@@ -3594,16 +3064,7 @@ public class MainPhp {
      * - action {@link AppVars#ACTION_ADD_CHAT_MESSAGE}.
      */
     static void sendInventoryChatMessage(String messageHtml) {
-        if (AppVars.getContext() == null || messageHtml == null || messageHtml.isEmpty()) {
-            return;
-        }
-        if (AppVars.mainActivity != null && AppVars.mainActivity.get() != null) {
-            Chat.addMessageToChat(messageHtml);
-            return;
-        }
-        Intent intent = new Intent(AppVars.ACTION_ADD_CHAT_MESSAGE);
-        intent.putExtra("message", messageHtml);
-        LocalBroadcastManager.getInstance(AppVars.getContext()).sendBroadcast(intent);
+        MainPhpChatBridge.sendInventoryChatMessage(messageHtml);
     }
 
     /**
@@ -3611,25 +3072,6 @@ public class MainPhp {
      * Для эликсиров сохраняем явную формулировку по запросу: "Эликсир ... не найден, действие отменено.".
      */
     private static String buildFastItemNotFoundMessage(String fastId) {
-        String safeFastId = fastId == null ? "" : fastId.trim();
-        
-        // Формат: 'timestamp-server' ['Обработчик вызова']: Эликсир Блаженства не найден, действие отменено
-        long now = System.currentTimeMillis();
-        String timestamp = String.format("%02d:%02d:%02d", 
-            (now / 3600000) % 24, 
-            (now / 60000) % 60, 
-            (now / 1000) % 60);
-        String handler = "FastActionManager";
-        
-        String message;
-        if (safeFastId.startsWith("Эликсир ")) {
-            message = "<font color=#FF0000>'" + timestamp + "' [" + handler + "]: " + safeFastId + " не найден, действие отменено.</font>";
-        } else if (safeFastId.isEmpty()) {
-            message = "<font color=#FF0000>'" + timestamp + "' [" + handler + "]: Предмет не найден, действие отменено.</font>";
-        } else {
-            message = "<font color=#FF0000>'" + timestamp + "' [" + handler + "]: " + safeFastId + " в инвентаре не найден, действие отменено.</font>";
-        }
-        
-        return message;
+        return MainPhpFastActionSupport.buildFastItemNotFoundMessage(fastId);
     }
 }

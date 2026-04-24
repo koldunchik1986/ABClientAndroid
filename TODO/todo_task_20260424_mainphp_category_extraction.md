@@ -76,7 +76,7 @@
 | Cure pipeline dispatch | `process()` | вызовы `AutoCureHandler` | `[ ]` Не выполнено |
 | FastAction pipeline dispatch | `process()` | вызов `FastActionManager` через `MainPhpHosts` | `[ ]` Не выполнено |
 | AutoFish pipeline dispatch | `process()` | `FishAjaxPhp.processMainPhpAutoFishPipeline(...)` | `[ ]` Не выполнено |
-| AutoFury pipeline dispatch | `process()` | `AutoFuryHandler.processMainPhpAutoFuryStep(...)` | `[ ]` Не выполнено |
+| AutoFury pipeline dispatch | `process()` | `AutoFuryHandler.processMainPhpAutoFuryStep(...)` | `[x]` Выполнено |
 | AutoSkin pipeline dispatch | `process()` | `AutoSkinHandler.processMainPhpAutoSkinStep(...)` | `[ ]` Не выполнено |
 | Fight frame dispatch | `process()` | `FightAuto.processFight(...)` через host | `[ ]` Не выполнено |
 | Treasure/inventory dispatch | `process()` | `TreasureDig` + `InventoryParser` | `[ ]` Не выполнено |
@@ -106,10 +106,10 @@
 | Элемент | Текущее место | Целевое место | Статус |
 | --- | --- | --- | --- |
 | `InsHpSnapshot` | `MainPhp.java:842-849` | `MainPhpVitals.InsHpSnapshot` | `[ ]` Не выполнено |
-| `mainPhpInsHp(String html)` | `MainPhp.java:1100-1119` | `MainPhpVitals.mainPhpInsHp(...)` | `[ ]` Не выполнено |
-| `parseInsHpSnapshot(String html)` | `MainPhp.java:1124-1153` | `MainPhpVitals.parseInsHpSnapshot(...)` | `[ ]` Не выполнено |
-| `parseInsHpSnapshotArgs(String args)` | `MainPhp.java:1155-1183` | `MainPhpVitals` private | `[ ]` Не выполнено |
-| `tryParseDoubleInvariant(String raw)` | `MainPhp.java:1257-1275` | `MainPhpVitals` private/static | `[ ]` Не выполнено |
+| `mainPhpInsHp(String html)` | `MainPhp.java:1100-1119` | `MainPhpVitals.mainPhpInsHp(...)` | `[x]` Выполнено |
+| `parseInsHpSnapshot(String html)` | `MainPhp.java:1124-1153` | `MainPhpVitals.parseInsHpSnapshot(...)` | `[x]` Выполнено |
+| `parseInsHpSnapshotArgs(String args)` | `MainPhp.java:1155-1183` | `MainPhpVitals` private | `[x]` Выполнено |
+| `tryParseDoubleInvariant(String raw)` | `MainPhp.java:1257-1275` | `MainPhpVitals` private/static | `[x]` Выполнено |
 | `AutoDrinkHandler` зависимость от `MainPhp.InsHpSnapshot` | `AutoDrinkHandler.java` | заменить на `MainPhpVitals.InsHpSnapshot` | `[ ]` Не выполнено |
 | `FightAuto.Host.parseInsHpSnapshot` mapping | `MainPhp.java` host | перенести mapping в `MainPhpHosts` | `[ ]` Не выполнено |
 
@@ -121,8 +121,8 @@
 
 | Элемент | Текущее место | Целевое место | Статус |
 | --- | --- | --- | --- |
-| `buildRedirectHtml(String description, String link)` | `MainPhp.java:3280-3287` | `MainPhpRedirects.buildRedirectHtml(...)` | `[ ]` Не выполнено |
-| Вызовы из `MainPhp.java` | много мест | заменить на `MainPhpRedirects.buildRedirectHtml(...)` или фасад | `[ ]` Не выполнено |
+| `buildRedirectHtml(String description, String link)` | `MainPhp.java:3280-3287` | `MainPhpRedirects.buildRedirectHtml(...)` | `[x]` Выполнено |
+| Вызовы из `MainPhp.java` | много мест | заменить на `MainPhpRedirects.buildRedirectHtml(...)` или фасад | `[x]` Выполнено через фасад |
 | Вызовы из `InventoryParser`, `FishAjaxPhp`, `AutoSkinHandler`, `AutoFuryHandler`, `AutoCureHandler` | много мест | по отдельному этапу перевести с `MainPhp.buildRedirectHtml` на `MainPhpRedirects` | `[ ]` Не выполнено |
 
 Правило: текст HTML и `window.location` оставить байт-в-байт эквивалентным текущей реализации.
@@ -133,9 +133,9 @@
 
 | Элемент | Текущее место | Целевое место | Статус |
 | --- | --- | --- | --- |
-| `sendInventoryChatMessage(String messageHtml)` | `MainPhp.java:3596-3607` | `MainPhpChatBridge.sendInventoryChatMessage(...)` | `[ ]` Не выполнено |
-| `buildServerChatTimeHtml()` | `MainPhp.java:3406-3408` | `MainPhpChatBridge.buildServerChatTimeHtml()` делегирует в `FightAuto` | `[ ]` Не выполнено |
-| `buildServerChatTimeHtmlExternal()` | `MainPhp.java:3416-3418` | фасад в `MainPhp` или прямой вызов `MainPhpChatBridge` | `[ ]` Не выполнено |
+| `sendInventoryChatMessage(String messageHtml)` | `MainPhp.java:3596-3607` | `MainPhpChatBridge.sendInventoryChatMessage(...)` | `[x]` Выполнено |
+| `buildServerChatTimeHtml()` | `MainPhp.java:3406-3408` | `MainPhpChatBridge.buildServerChatTimeHtml()` делегирует в `FightAuto` | `[x]` Выполнено |
+| `buildServerChatTimeHtmlExternal()` | `MainPhp.java:3416-3418` | фасад в `MainPhp` или прямой вызов `MainPhpChatBridge` | `[x]` Выполнено через фасад |
 | Call-site из `RoomManager`, `BossAuto`, `MapAjax`, `MapActAjaxPhp`, `FishAjaxPhp`, `NeverApi`, `CompasAuto`, `LezFight` | внешние классы | оставить фасад сначала, переводить отдельным безопасным этапом | `[ ]` Не выполнено |
 
 Правило: формат сообщений `'timestamp-server' + [Источник] + текст` не менять.
@@ -146,11 +146,11 @@
 
 | Элемент | Текущее место | Целевое место | Статус |
 | --- | --- | --- | --- |
-| `mainPhpFindPerc(String html)` | `MainPhp.java:1751-1791` | `MainPhpNavigationHandler.mainPhpFindPerc(...)` | `[ ]` Не выполнено |
-| `mainPhpFindFlora(String html)` | `MainPhp.java:1805-1836` | `MainPhpNavigationHandler.mainPhpFindFlora(...)` | `[ ]` Не выполнено |
-| `mainPhpFindMapReturnForAutoMoving(String html)` | `MainPhp.java:1840-1891` | `MainPhpNavigationHandler.mainPhpFindMapReturnForAutoMoving(...)` | `[ ]` Не выполнено |
+| `mainPhpFindPerc(String html)` | `MainPhp.java:1751-1791` | `MainPhpNavigationHandler.mainPhpFindPerc(...)` | `[x]` Выполнено |
+| `mainPhpFindFlora(String html)` | `MainPhp.java:1805-1836` | `MainPhpNavigationHandler.mainPhpFindFlora(...)` | `[x]` Выполнено |
+| `mainPhpFindMapReturnForAutoMoving(String html)` | `MainPhp.java:1840-1891` | `MainPhpNavigationHandler.mainPhpFindMapReturnForAutoMoving(...)` | `[x]` Выполнено |
 | `mainPhpExtractMenuVcode(String html, String menuKey)` | `MainPhp.java:1893-1911` | `MainPhpNavigationHandler` private/static | `[ ]` Не выполнено |
-| `startAutoSearchBoxMoving(String destination)` | `MainPhp.java:1492-1512` | `MainPhpNavigationHandler.startAutoSearchBoxMoving(...)` | `[ ]` Не выполнено |
+| `startAutoSearchBoxMoving(String destination)` | `MainPhp.java:1492-1512` | `MainPhpNavigationHandler.startAutoSearchBoxMoving(...)` | `[x]` Выполнено |
 | `getQueryParamValue(...)` wrappers if needed | `MainPhp.java:1737-1739` | оставить в `InventoryParser`, не дублировать | `[ ]` Не выполнено |
 
 Правило: `go=inf`, `go=ret`, fallback через `vcode`, `Вернуться`, `Причал disabled` оставить без изменений.
@@ -161,12 +161,12 @@
 
 | Элемент | Текущее место | Целевое место | Статус |
 | --- | --- | --- | --- |
-| `WTIME_SYNC_LOG_GUARD_MS` | `MainPhp.java:54` | `MainPhpTimerHandler` | `[ ]` Не выполнено |
-| `lastWtimeSyncLogAtMs` | `MainPhp.java:71` | `MainPhpTimerHandler` | `[ ]` Не выполнено |
-| `mainPhpWtime(String html)` | `MainPhp.java:1469-1487` | `MainPhpTimerHandler.mainPhpWtime(...)` | `[ ]` Не выполнено |
-| `parseUnsignedIntFrom(String text, int fromIndex)` | `MainPhp.java:1514-1548` | `MainPhpTimerHandler` private/static | `[ ]` Не выполнено |
-| `extractWtimeTimeoutSeconds(String html)` | `MainPhp.java:1550-1595` | `MainPhpTimerHandler.extractWtimeTimeoutSeconds(...)` | `[ ]` Не выполнено |
-| `syncNeverTimerFromWtime(String html, String address)` | `MainPhp.java:1597-1622` | `MainPhpTimerHandler.syncNeverTimerFromWtime(...)` | `[ ]` Не выполнено |
+| `WTIME_SYNC_LOG_GUARD_MS` | `MainPhp.java:54` | `MainPhpTimerHandler` | `[x]` Выполнено |
+| `lastWtimeSyncLogAtMs` | `MainPhp.java:71` | `MainPhpTimerHandler` | `[x]` Выполнено |
+| `mainPhpWtime(String html)` | `MainPhp.java:1469-1487` | `MainPhpTimerHandler.mainPhpWtime(...)` | `[x]` Выполнено |
+| `parseUnsignedIntFrom(String text, int fromIndex)` | `MainPhp.java:1514-1548` | `MainPhpTimerHandler` private/static | `[x]` Выполнено |
+| `extractWtimeTimeoutSeconds(String html)` | `MainPhp.java:1550-1595` | `MainPhpTimerHandler.extractWtimeTimeoutSeconds(...)` | `[x]` Выполнено |
+| `syncNeverTimerFromWtime(String html, String address)` | `MainPhp.java:1597-1622` | `MainPhpTimerHandler.syncNeverTimerFromWtime(...)` | `[x]` Выполнено |
 
 Правило: `SERVER_TIMER_TRACE` и `FileLogger.trace` оставить эквивалентными.
 
@@ -176,7 +176,7 @@
 
 | Элемент | Текущее место | Целевое место | Статус |
 | --- | --- | --- | --- |
-| `mainPhpWearComplect(String html, String complectName)` | `MainPhp.java:1382-1440` | `ComplectWearHandler.mainPhpWearComplect(...)` | `[ ]` Не выполнено |
+| `mainPhpWearComplect(String html, String complectName)` | `MainPhp.java:1382-1440` | `ComplectWearHandler.mainPhpWearComplect(...)` | `[x]` Выполнено |
 | `COMPLECT_TIMER_PARSE_TRACE` логи | `mainPhpWearComplect` | оставить в новом handler через `AppLog` | `[ ]` Не выполнено |
 | Ветка process `AppVars.WearComplect` | `MainPhp.java:2390-2405` | `ComplectWearHandler.processWearComplectStep(...)` | `[ ]` Не выполнено |
 
@@ -188,10 +188,10 @@
 
 | Элемент | Текущее место | Целевое место | Статус |
 | --- | --- | --- | --- |
-| `isAttackFastId(String fastId)` | `MainPhp.java:3060-3074` | `MainPhpFastActionSupport.isAttackFastId(...)` | `[ ]` Не выполнено |
-| `getInventoryFilter(String fastId)` | `MainPhp.java:3081-3167` | `MainPhpFastActionSupport.getInventoryFilter(...)` | `[ ]` Не выполнено |
+| `isAttackFastId(String fastId)` | `MainPhp.java:3060-3074` | `MainPhpFastActionSupport.isAttackFastId(...)` | `[x]` Выполнено |
+| `getInventoryFilter(String fastId)` | `MainPhp.java:3081-3167` | `MainPhpFastActionSupport.getInventoryFilter(...)` | `[x]` Выполнено |
 | `normalizeFastId(String fastId)` | `MainPhp.java:3175-3183` | `MainPhpFastActionSupport` private/static | `[ ]` Не выполнено |
-| `buildFastItemNotFoundMessage(String fastId)` | `MainPhp.java:3613-3634` | `MainPhpFastActionSupport.buildFastItemNotFoundMessage(...)` | `[ ]` Не выполнено |
+| `buildFastItemNotFoundMessage(String fastId)` | `MainPhp.java:3613-3634` | `MainPhpFastActionSupport.buildFastItemNotFoundMessage(...)` | `[x]` Выполнено |
 | `processMainPhpFast(...)` wrapper | `MainPhp.java:2980-2982` | удалить после прямого вызова `FastActionManager` из orchestrator | `[ ]` Не выполнено |
 
 Правило: список FastId и фильтры `wca=28`, `wca=27`, `im=6`, `TOTEM` не менять.
@@ -202,8 +202,8 @@
 
 | Элемент | Текущее место | Целевое место | Статус |
 | --- | --- | --- | --- |
-| `isNonCombatAutoPausedByFastAction()` | `MainPhp.java:1701-1705` | `MainPhpPauseGuards.isNonCombatAutoPausedByFastAction()` | `[ ]` Не выполнено |
-| `isNonCombatAutoPausedByCureAction()` | `MainPhp.java:1709-1711` | `MainPhpPauseGuards.isNonCombatAutoPausedByCureAction()` | `[ ]` Не выполнено |
+| `isNonCombatAutoPausedByFastAction()` | `MainPhp.java:1701-1705` | `MainPhpPauseGuards.isNonCombatAutoPausedByFastAction()` | `[x]` Выполнено |
+| `isNonCombatAutoPausedByCureAction()` | `MainPhp.java:1709-1711` | `MainPhpPauseGuards.isNonCombatAutoPausedByCureAction()` | `[x]` Выполнено |
 
 Правило: fight/autoboi flow не должен попадать под эти guard-ы, как и сейчас.
 
@@ -231,7 +231,7 @@
 
 | Элемент | Текущее место | Целевое место | Статус |
 | --- | --- | --- | --- |
-| Проверка `isAutoFuryEnabledByPreference()` | `MainPhp.java:2609` | `AutoFuryHandler.processMainPhpAutoFuryStep(...)` | `[ ]` Не выполнено |
+| Проверка `isAutoFuryEnabledByPreference()` | `MainPhp.java:2609` | `AutoFuryHandler.processMainPhpAutoFuryStep(...)` | `[x]` Выполнено |
 | Проверка персонажа и свитка | `MainPhp.java:2612-2625` | `AutoFuryHandler` | `[ ]` Не выполнено |
 | Переход в инвентарь `&im=0&wca=28` | `MainPhp.java:2627-2633` | `AutoFuryHandler` через inventory/navigation helpers | `[ ]` Не выполнено |
 | Надевание свитка и переключение вкладки | `MainPhp.java:2634-2645` | `AutoFuryHandler` | `[ ]` Не выполнено |
@@ -369,8 +369,8 @@
 
 | Этап | Действие | Ожидаемый эффект | Статус |
 | --- | --- | --- | --- |
-| 0 | Зафиксировать baseline сборкой до правок | Понимание исходного состояния | `[ ]` Не выполнено |
-| 1 | Вынести `MainPhpRedirects`, `MainPhpChatBridge`, `MainPhpVitals`, `MainPhpPauseGuards` | Убрать независимые helper-блоки | `[ ]` Не выполнено |
+| 0 | Зафиксировать baseline сборкой до правок | Понимание исходного состояния | `[x]` Выполнено |
+| 1 | Вынести `MainPhpRedirects`, `MainPhpChatBridge`, `MainPhpVitals`, `MainPhpPauseGuards` | Убрать независимые helper-блоки | `[x]` Выполнено |
 | 2 | Вынести `MainPhpHosts` | Убрать ~700 строк bridge-кода из `MainPhp` | `[ ]` Не выполнено |
 | 3 | Механически перенести тело `process()` в `MainPhpProcessOrchestrator` без изменения тела | Главный файл станет фасадом | `[ ]` Не выполнено |
 | 4 | Вынести navigation/timer/complect/fast-support | Убрать оставшуюся реальную логику из `MainPhp` | `[ ]` Не выполнено |
