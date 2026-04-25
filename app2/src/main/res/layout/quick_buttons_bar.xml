@@ -4,7 +4,7 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:orientation="horizontal"
-    android:background="@color/colorPrimary"
+    android:background="@color/quick_buttons_bar_background"
     android:padding="4dp"
     android:gravity="center">
 

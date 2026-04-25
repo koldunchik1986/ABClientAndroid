@@ -134,7 +134,7 @@
   <cell cellNumber="1-546" cost="21" hasFish="False" hasWater="False" herbGroup="0" name="Виноградники" tooltip="Деревня Виноградники" updated="01.01.1900 00:00:00" nameUpdated="01.01.1900 00:00:00" costUpdated="01.01.1900 00:00:00" />
   <cell cellNumber="1-563" cost="21" hasFish="False" hasWater="False" herbGroup="0" name="" tooltip="Окрестности Эринграда" updated="01.01.1900 00:00:00" nameUpdated="01.01.1900 00:00:00" costUpdated="01.01.1900 00:00:00" />
   <cell cellNumber="1-564" cost="21" hasFish="False" hasWater="False" herbGroup="0" name="" tooltip="Ворота Дерхольца" updated="01.01.1900 00:00:00" nameUpdated="01.01.1900 00:00:00" costUpdated="01.01.1900 00:00:00" />
-  <cell cellNumber="1-565" cost="21" hasFish="False" hasWater="False" herbGroup="0" name="" tooltip="Дерхольц" updated="01.01.1900 00:00:00" nameUpdated="01.01.1900 00:00:00" costUpdated="01.01.1900 00:00:00" />
+  <cell cellNumber="1-565" cost="21" hasFish="False" hasWater="False" herbGroup="0" name="Ворота Дерхольца" tooltip="Дерхольц" updated="04.04.2026 08:55:33" nameUpdated="04.04.2026 08:55:33" costUpdated="01.01.1900 00:00:00" region="Окрестности Эринграда" />
   <cell cellNumber="1-566" cost="21" hasFish="False" hasWater="False" herbGroup="0" name="" tooltip="Дерхольц" updated="01.01.1900 00:00:00" nameUpdated="01.01.1900 00:00:00" costUpdated="01.01.1900 00:00:00" />
   <cell cellNumber="2-481" cost="21" hasFish="False" hasWater="False" herbGroup="0" name="" tooltip="Окрестность Форпоста, Мост" updated="28.03.2026 06:05:14" nameUpdated="28.03.2026 06:05:14" costUpdated="01.01.1900 00:00:00" region="Окрестности Форпоста" />
   <cell cellNumber="2-482" cost="21" hasFish="False" hasWater="False" herbGroup="0" name="Башня алхимов" tooltip="Окрестность Форпоста, Башня Алхимиков" updated="28.03.2026 05:53:34" nameUpdated="28.03.2026 05:53:34" costUpdated="01.01.1900 00:00:00" region="Окрестности Форпоста" />
@@ -762,7 +762,7 @@
     <bots name="Разбойники" minLevel="8" maxLevel="11" c="z" d="a" />
     <bots name="Грабители" minLevel="8" maxLevel="10" c="z" d="a" />
   </cell>
-  <cell cellNumber="5-522" cost="28" hasFish="False" hasWater="False" herbGroup=" 5" name="" tooltip="Пандарийская Роща" updated="01.01.1900 00:00:00" nameUpdated="01.01.1900 00:00:00" costUpdated="01.01.1900 00:00:00">
+  <cell cellNumber="5-522" cost="28" hasFish="False" hasWater="False" herbGroup=" 5" name="Пандарийская Роща" tooltip="Пандарийская Роща" updated="04.04.2026 15:01:28" nameUpdated="04.04.2026 15:01:28" costUpdated="01.01.1900 00:00:00" region="Окрестности Форпоста">
     <bots name="Кабаны" minLevel="8" maxLevel="12" c="z" d="a" />
     <bots name="Разбойники" minLevel="8" maxLevel="11" c="z" d="a" />
     <bots name="Грабители" minLevel="8" maxLevel="10" c="z" d="a" />
@@ -778,12 +778,12 @@
     <bots name="Разбойники" minLevel="8" maxLevel="11" c="z" d="a" />
     <bots name="Грабители" minLevel="8" maxLevel="10" c="z" d="a" />
   </cell>
-  <cell cellNumber="5-552" cost="21" hasFish="False" hasWater="False" herbGroup=" 5" name="" tooltip="Лесная дорога к Руднику" updated="01.01.1900 00:00:00" nameUpdated="01.01.1900 00:00:00" costUpdated="01.01.1900 00:00:00">
+  <cell cellNumber="5-552" cost="21" hasFish="False" hasWater="False" herbGroup=" 5" name="Лесная дорога к Руднику" tooltip="Лесная дорога к Руднику" updated="04.04.2026 15:00:53" nameUpdated="04.04.2026 15:00:53" costUpdated="01.01.1900 00:00:00" region="Окрестности Форпоста">
     <bots name="Кабаны" minLevel="8" maxLevel="12" c="z" d="a" />
     <bots name="Разбойники" minLevel="8" maxLevel="11" c="z" d="a" />
     <bots name="Грабители" minLevel="8" maxLevel="10" c="z" d="a" />
   </cell>
-  <cell cellNumber="5-553" cost="43" hasFish="False" hasWater="False" herbGroup=" 6" name="" tooltip="Драконий Клык" updated="01.01.1900 00:00:00" nameUpdated="01.01.1900 00:00:00" costUpdated="01.01.1900 00:00:00" />
+  <cell cellNumber="5-553" cost="43" hasFish="False" hasWater="False" herbGroup=" 6" name="Драконий Клык" tooltip="Драконий Клык" updated="04.04.2026 15:01:45" nameUpdated="04.04.2026 15:01:45" costUpdated="01.01.1900 00:00:00" region="Окрестности Форпоста" />
   <cell cellNumber="6-18" cost="43" hasFish="False" hasWater="False" herbGroup=" 1" name="" tooltip="Пустыня Самум-Бейт" updated="01.01.1900 00:00:00" nameUpdated="01.01.1900 00:00:00" costUpdated="01.01.1900 00:00:00">
     <bots name="Пауки" minLevel="1" maxLevel="5" c="z" d="a" />
     <bots name="Ядовитые пауки" minLevel="6" maxLevel="10" c="z" d="a" />
@@ -1798,7 +1798,7 @@
   <cell cellNumber="8-138" cost="43" hasFish="False" hasWater="False" herbGroup=" 6" name="" tooltip="Драконий Клык" updated="01.01.1900 00:00:00" nameUpdated="01.01.1900 00:00:00" costUpdated="01.01.1900 00:00:00" />
   <cell cellNumber="8-139" cost="43" hasFish="False" hasWater="False" herbGroup=" 6" name="" tooltip="Драконий Клык" updated="01.01.1900 00:00:00" nameUpdated="01.01.1900 00:00:00" costUpdated="01.01.1900 00:00:00" />
   <cell cellNumber="8-140" cost="28" hasFish="False" hasWater="False" herbGroup="0" name="" tooltip="Окрестность Форпоста" updated="01.01.1900 00:00:00" nameUpdated="01.01.1900 00:00:00" costUpdated="01.01.1900 00:00:00" />
-  <cell cellNumber="8-141" cost="21" hasFish="False" hasWater="False" herbGroup="0" name="Причал" tooltip="Посёлок Лазурный" updated="01.01.1900 00:00:00" nameUpdated="01.01.1900 00:00:00" costUpdated="01.01.1900 00:00:00" />
+  <cell cellNumber="8-141" cost="21" hasFish="False" hasWater="False" herbGroup="0" name="Посёлок Лазурный" tooltip="Посёлок Лазурный" updated="02.04.2026 18:22:29" nameUpdated="02.04.2026 18:22:29" costUpdated="01.01.1900 00:00:00" region="Окрестности Форпоста" />
   <cell cellNumber="8-143" cost="0" hasFish="False" hasWater="False" herbGroup="0" name="Обитель ботов" tooltip="Обитель ботов" updated="01.01.1900 00:00:00" nameUpdated="01.01.1900 00:00:00" costUpdated="01.01.1900 00:00:00" />
   <cell cellNumber="8-144" cost="0" hasFish="False" hasWater="False" herbGroup="0" name="Обитель ботов" tooltip="Обитель ботов" updated="01.01.1900 00:00:00" nameUpdated="01.01.1900 00:00:00" costUpdated="01.01.1900 00:00:00" />
   <cell cellNumber="8-145" cost="0" hasFish="False" hasWater="False" herbGroup="0" name="Обитель ботов" tooltip="Обитель ботов" updated="01.01.1900 00:00:00" nameUpdated="01.01.1900 00:00:00" costUpdated="01.01.1900 00:00:00" />
@@ -1910,7 +1910,7 @@
   </cell>
   <cell cellNumber="8-224" cost="28" hasFish="True" hasWater="True" herbGroup=" 2" name="Окрестность Форпоста" tooltip="Окрестность Форпоста" updated="01.01.1900 00:00:00" nameUpdated="01.01.1900 00:00:00" costUpdated="01.01.1900 00:00:00" region="Окрестности Форпоста" />
   <cell cellNumber="8-226" cost="21" hasFish="False" hasWater="False" herbGroup="0" name="Окрестность Форпоста" tooltip="Окрестность Форпоста" updated="28.03.2026 05:41:30" nameUpdated="28.03.2026 05:41:30" costUpdated="01.01.1900 00:00:00" region="Окрестности Форпоста" />
-  <cell cellNumber="8-227" cost="21" hasFish="False" hasWater="False" herbGroup="0" name="Биржа" tooltip="Окрестность Форпоста, Биржа" updated="01.01.1900 00:00:00" nameUpdated="01.01.1900 00:00:00" costUpdated="01.01.1900 00:00:00" />
+  <cell cellNumber="8-227" cost="21" hasFish="False" hasWater="False" herbGroup="0" name="Окрестность Форпоста, Биржа" tooltip="Окрестность Форпоста, Биржа" updated="03.04.2026 01:08:21" nameUpdated="03.04.2026 01:08:21" costUpdated="01.01.1900 00:00:00" region="Окрестности Форпоста" />
   <cell cellNumber="8-228" cost="21" hasFish="False" hasWater="False" herbGroup="0" name="" tooltip="Деревня Подгорная" updated="01.01.1900 00:00:00" nameUpdated="01.01.1900 00:00:00" costUpdated="01.01.1900 00:00:00" />
   <cell cellNumber="8-229" cost="21" hasFish="False" hasWater="False" herbGroup="0" name="" tooltip="Деревня Подгорная" updated="01.01.1900 00:00:00" nameUpdated="01.01.1900 00:00:00" costUpdated="01.01.1900 00:00:00" />
   <cell cellNumber="8-230" cost="22" hasFish="False" hasWater="False" herbGroup="0" name="Квестовые крысы" tooltip="Окрестность Форпоста" updated="01.01.1900 00:00:00" nameUpdated="01.01.1900 00:00:00" costUpdated="01.01.1900 00:00:00">
@@ -2165,7 +2165,7 @@
     <bots name="Грабители" minLevel="6" maxLevel="8" c="g" d="i" />
     <bots name="Гоблины" minLevel="6" maxLevel="6" c="g" d="g" />
   </cell>
-  <cell cellNumber="8-467" cost="28" hasFish="True" hasWater="True" herbGroup=" 2" name="Южное озеро" tooltip="Окрестность Форпоста, Озеро" updated="01.01.1900 00:00:00" nameUpdated="01.01.1900 00:00:00" costUpdated="01.01.1900 00:00:00">
+  <cell cellNumber="8-467" cost="28" hasFish="True" hasWater="True" herbGroup=" 2" name="Окрестность Форпоста, Озеро" tooltip="Окрестность Форпоста, Озеро" updated="03.04.2026 01:11:39" nameUpdated="03.04.2026 01:11:39" costUpdated="01.01.1900 00:00:00" region="Окрестности Форпоста">
     <bots name="Орки" minLevel="4" maxLevel="5" c="e" d="f" />
     <bots name="Гоблины" minLevel="4" maxLevel="5" c="e" d="f" />
   </cell>
@@ -2211,7 +2211,7 @@
     <bots name="Разбойники" minLevel="7" maxLevel="10" c="z" d="a" />
     <bots name="Грабители" minLevel="7" maxLevel="9" c="z" d="a" />
   </cell>
-  <cell cellNumber="8-529" cost="21" hasFish="False" hasWater="False" herbGroup="0" name="Причал" tooltip="Посёлок Жемчужный" updated="01.01.1900 00:00:00" nameUpdated="01.01.1900 00:00:00" costUpdated="01.01.1900 00:00:00">
+  <cell cellNumber="8-529" cost="21" hasFish="False" hasWater="False" herbGroup="0" name="Причал" tooltip="Посёлок Жемчужный" updated="03.04.2026 09:42:22" nameUpdated="03.04.2026 09:42:22" costUpdated="01.01.1900 00:00:00" region="Окрестности Фейдана">
     <bots name="Орки" minLevel="5" maxLevel="6" c="z" d="a" />
     <bots name="Гоблины" minLevel="5" maxLevel="6" c="z" d="a" />
   </cell>
@@ -6758,7 +6758,7 @@
     <bots name="Разбойники" minLevel="5" maxLevel="8" c="z" d="a" />
     <bots name="Грабители" minLevel="6" maxLevel="8" c="z" d="a" />
   </cell>
-  <cell cellNumber="34-188" cost="21" hasFish="False" hasWater="False" herbGroup="0" name="Телепорт" tooltip="Восточные Леса, Телепорт" updated="05.04.2026 16:25:49" nameUpdated="05.04.2026 16:25:49" costUpdated="01.01.1900 00:00:00" region="Эльмах-Дейн" />
+  <cell cellNumber="34-188" cost="21" hasFish="False" hasWater="False" herbGroup="0" name="Телепорт" tooltip="Восточные Леса, Телепорт" updated="04.04.2026 15:10:04" nameUpdated="04.04.2026 15:10:04" costUpdated="01.01.1900 00:00:00" region="Эльмах-Дейн" />
   <cell cellNumber="34-189" cost="21" hasFish="False" hasWater="False" herbGroup=" 9" name="" tooltip="Восточные Леса, Тракт Дарб-аль-Иштир" updated="01.01.1900 00:00:00" nameUpdated="01.01.1900 00:00:00" costUpdated="01.01.1900 00:00:00" region="Эльмах-Дейн">
     <bots name="Разбойники" minLevel="5" maxLevel="8" c="z" d="a" />
     <bots name="Грабители" minLevel="6" maxLevel="8" c="z" d="a" />

@@ -2,16 +2,10 @@ package ru.neverlands.anclient;
 
 import android.os.Bundle;
 import android.text.InputType;
-import android.view.MenuItem;
-import android.view.Gravity;
-import android.widget.ArrayAdapter;
-import android.widget.CheckBox;
 import android.widget.EditText;
 import android.widget.LinearLayout;
-import android.widget.ScrollView;
-import android.widget.Spinner;
 import android.widget.TextView;
-import android.widget.Toast;
+import android.view.MenuItem;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.ActionBar;
@@ -24,12 +18,11 @@ import androidx.preference.PreferenceFragmentCompat;
 import androidx.preference.PreferenceManager;
 import androidx.preference.SwitchPreferenceCompat;
 
-import ru.neverlands.anclient.model.Prims;
 import ru.neverlands.anclient.manager.RoomManager;
-import ru.neverlands.anclient.ui.AutoBoiSettingsFragment;
 import ru.neverlands.anclient.utils.AppVars;
 import ru.neverlands.anclient.utils.FileLogger;
 import ru.neverlands.anclient.utils.LogcatFileRecorder;
+import ru.neverlands.anclient.utils.ThemeModeManager;
 
 /**
  * Активность настроек приложения.
@@ -71,41 +64,6 @@ public class SettingsActivity extends AppCompatActivity {
         private static final int MAP_SIZE_MAX = 31;
         private static final int MAP_FONT_SIZE_MIN = 6;
         private static final int MAP_FONT_SIZE_MAX = 24;
-        private static final String[] FISH_HAND_OPTIONS = new String[]{
-                "Нет",
-                "Любая удочка",
-                "Ореховая Удочка",
-                "Ивовая Удочка",
-                "Бамбуковая Удочка",
-                "Бамбуковая 2-х коленная Удочка",
-                "Бамбуковая 3-х коленная Удочка",
-                "Телескопическая Удочка",
-                "Телескопическая Облегченная Удочка",
-                "Телескопический Спиннинг",
-                "Сачок"
-        };
-        private static final String[] FISH_PRIM_LABELS = new String[]{
-                "Хлеб",
-                "Червяк",
-                "Крупный червяк",
-                "Опарыш",
-                "Мотыль",
-                "Блесна",
-                "Донка",
-                "Мормышка",
-                "Заговоренная блесна"
-        };
-        private static final int[] FISH_PRIM_FLAGS = new int[]{
-                Prims.Bread,
-                Prims.Worm,
-                Prims.BigWorm,
-                Prims.Stink,
-                Prims.Fly,
-                Prims.Light,
-                Prims.Donka,
-                Prims.Morm,
-                Prims.HiFlight
-        };
 
         private static int normalizeMapSizeValue(int value) {
             if (value < MAP_SIZE_MIN) value = MAP_SIZE_MIN;
@@ -212,6 +170,18 @@ public class SettingsActivity extends AppCompatActivity {
          * Настройка обработчиков изменения настроек
          */
         private void setupPreferenceListeners() {
+            SwitchPreferenceCompat forceDarkThemePref = findPreference(ThemeModeManager.KEY_FORCE_DARK_THEME);
+            if (forceDarkThemePref != null) {
+                forceDarkThemePref.setChecked(ThemeModeManager.isForceDarkEnabled(requireContext()));
+                forceDarkThemePref.setSummary(buildThemeModeSummary(forceDarkThemePref.isChecked()));
+                forceDarkThemePref.setOnPreferenceChangeListener((preference, newValue) -> {
+                    boolean value = (Boolean) newValue;
+                    ThemeModeManager.setForceDarkEnabled(requireContext(), value);
+                    preference.setSummary(buildThemeModeSummary(value));
+                    return true;
+                });
+            }
+
             // Настройка запроса подтверждения при выходе
             SwitchPreferenceCompat doPromptExitPref = findPreference("do_prompt_exit");
             if (doPromptExitPref != null) {
@@ -744,15 +714,6 @@ public class SettingsActivity extends AppCompatActivity {
                 });
             }
             
-            // Раздел "Автоматизация": только кнопки-переходы в окна настроек (без переключателей).
-            bindAutomationSettingsEntry("auto_fight_settings", this::openAutoBoiSettingsDialog);
-            bindAutomationSettingsEntry("auto_fish_settings", this::showAutoFishSettingsDialog);
-            bindAutomationSettingsEntry("auto_herb_settings", this::showAutoFunctionsSettingsDialog);
-            bindAutomationSettingsEntry("auto_mine_settings", this::showAutoFunctionsSettingsDialog);
-            bindAutomationSettingsEntry("auto_tree_settings", this::showAutoFunctionsSettingsDialog);
-            bindAutomationSettingsEntry("auto_dig_settings", this::showAutoFunctionsSettingsDialog);
-            bindAutomationSettingsEntry("auto_torg_settings", this::showAutoFunctionsSettingsDialog);
-            
             // Настройка обновления кэша
             SwitchPreferenceCompat cacheRefreshPref = findPreference("cache_refresh");
             if (cacheRefreshPref != null) {
@@ -783,184 +744,10 @@ public class SettingsActivity extends AppCompatActivity {
             }
         }
 
-        private void bindAutomationSettingsEntry(String key, Runnable action) {
-            Preference pref = findPreference(key);
-            if (pref != null) {
-                pref.setOnPreferenceClickListener(preference -> {
-                    action.run();
-                    return true;
-                });
-            }
-        }
-
-        private void openAutoBoiSettingsDialog() {
-            AutoBoiSettingsFragment fragment = new AutoBoiSettingsFragment();
-            fragment.show(getParentFragmentManager(), "autoboi_settings_from_general");
-        }
-
-        private void showAutoFunctionsSettingsDialog() {
-            Toast.makeText(
-                    requireContext(),
-                    "Настройки этой авто-функции откроются в следующем этапе.",
-                    Toast.LENGTH_SHORT
-            ).show();
-        }
-
-        private void showAutoFishSettingsDialog() {
-            if (AppVars.Profile == null) {
-                Toast.makeText(requireContext(), "Профиль не загружен", Toast.LENGTH_SHORT).show();
-                return;
-            }
-
-            final int pad = (int) (requireContext().getResources().getDisplayMetrics().density * 12);
-            ScrollView scroll = new ScrollView(requireContext());
-            LinearLayout root = new LinearLayout(requireContext());
-            root.setOrientation(LinearLayout.VERTICAL);
-            root.setPadding(pad, pad, pad, pad);
-            scroll.addView(root);
-
-            CheckBox autoWear = new CheckBox(requireContext());
-            autoWear.setText("Автонадевание снастей");
-            autoWear.setChecked(AppVars.Profile.FishAutoWear);
-            root.addView(autoWear);
-
-            TextView hand1Title = new TextView(requireContext());
-            hand1Title.setText("Рука 1");
-            hand1Title.setPadding(0, pad, 0, 0);
-            root.addView(hand1Title);
-
-            Spinner hand1Spinner = new Spinner(requireContext());
-            ArrayAdapter<String> handAdapter = new ArrayAdapter<>(
-                    requireContext(),
-                    android.R.layout.simple_spinner_item,
-                    FISH_HAND_OPTIONS
-            );
-            handAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-            hand1Spinner.setAdapter(handAdapter);
-            int hand1Index = indexOfFishHand(AppVars.Profile.FishHandOne);
-            hand1Spinner.setSelection(hand1Index >= 0 ? hand1Index : 1);
-            root.addView(hand1Spinner);
-
-            TextView hand2Title = new TextView(requireContext());
-            hand2Title.setText("Рука 2");
-            hand2Title.setPadding(0, pad, 0, 0);
-            root.addView(hand2Title);
-
-            Spinner hand2Spinner = new Spinner(requireContext());
-            hand2Spinner.setAdapter(handAdapter);
-            int hand2Index = indexOfFishHand(AppVars.Profile.FishHandTwo);
-            hand2Spinner.setSelection(hand2Index >= 0 ? hand2Index : 0);
-            root.addView(hand2Spinner);
-
-            TextView autoDrinkTitle = new TextView(requireContext());
-            autoDrinkTitle.setText("Автопитье");
-            autoDrinkTitle.setPadding(0, pad, 0, 0);
-            root.addView(autoDrinkTitle);
-
-            LinearLayout tiedRow = new LinearLayout(requireContext());
-            tiedRow.setOrientation(LinearLayout.HORIZONTAL);
-            tiedRow.setGravity(Gravity.CENTER_VERTICAL);
-            TextView tiedLabel = new TextView(requireContext());
-            tiedLabel.setText("Глоток, если усталка больше");
-            tiedRow.addView(tiedLabel);
-            EditText tiedHighInput = new EditText(requireContext());
-            tiedHighInput.setInputType(InputType.TYPE_CLASS_NUMBER);
-            tiedHighInput.setText(String.valueOf(Math.max(0, Math.min(99, AppVars.Profile.FishTiedHigh))));
-            LinearLayout.LayoutParams tiedParams = new LinearLayout.LayoutParams(
-                    (int) (requireContext().getResources().getDisplayMetrics().density * 56),
-                    LinearLayout.LayoutParams.WRAP_CONTENT
-            );
-            tiedParams.leftMargin = (int) (requireContext().getResources().getDisplayMetrics().density * 8);
-            tiedHighInput.setLayoutParams(tiedParams);
-            tiedRow.addView(tiedHighInput);
-            root.addView(tiedRow);
-
-            CheckBox tiedZero = new CheckBox(requireContext());
-            tiedZero.setText("Пить до нуля усталости");
-            tiedZero.setChecked(AppVars.Profile.FishTiedZero);
-            root.addView(tiedZero);
-
-            CheckBox fishDrinkBliss = new CheckBox(requireContext());
-            fishDrinkBliss.setText("Пить Эликсир Блаженства, если усталка больше порога");
-            fishDrinkBliss.setChecked(AppVars.Profile.FishDrinkBliss);
-            root.addView(fishDrinkBliss);
-
-            CheckBox stopOverWeight = new CheckBox(requireContext());
-            stopOverWeight.setText("Прекращать рыбалку при перегрузе");
-            stopOverWeight.setChecked(AppVars.Profile.FishStopOverWeight);
-            root.addView(stopOverWeight);
-
-            CheckBox fishChatReport = new CheckBox(requireContext());
-            fishChatReport.setText("Выводить результаты лова в чат");
-            fishChatReport.setChecked(AppVars.Profile.FishChatReport);
-            root.addView(fishChatReport);
-
-            CheckBox fishChatReportColor = new CheckBox(requireContext());
-            fishChatReportColor.setText("Выводить результаты лова в приват");
-            fishChatReportColor.setChecked(AppVars.Profile.FishChatReportColor);
-            root.addView(fishChatReportColor);
-
-            TextView primsTitle = new TextView(requireContext());
-            primsTitle.setText("Приманки");
-            primsTitle.setPadding(0, pad, 0, 0);
-            root.addView(primsTitle);
-
-            final CheckBox[] primChecks = new CheckBox[FISH_PRIM_FLAGS.length];
-            for (int i = 0; i < FISH_PRIM_FLAGS.length; i++) {
-                CheckBox cb = new CheckBox(requireContext());
-                cb.setText(FISH_PRIM_LABELS[i]);
-                cb.setChecked((AppVars.Profile.FishEnabledPrims & FISH_PRIM_FLAGS[i]) != 0);
-                primChecks[i] = cb;
-                root.addView(cb);
-            }
-
-            new AlertDialog.Builder(requireContext())
-                    .setTitle("Настройки авто-рыбалки")
-                    .setView(scroll)
-                    .setPositiveButton("Сохранить", (dialog, which) -> {
-                        AppVars.Profile.FishAutoWear = autoWear.isChecked();
-                        AppVars.Profile.FishHandOne = FISH_HAND_OPTIONS[Math.max(0, hand1Spinner.getSelectedItemPosition())];
-                        AppVars.Profile.FishHandTwo = FISH_HAND_OPTIONS[Math.max(0, hand2Spinner.getSelectedItemPosition())];
-                        int tiedHigh = AppVars.Profile.FishTiedHigh;
-                        try {
-                            String value = tiedHighInput.getText() == null ? "" : tiedHighInput.getText().toString().trim();
-                            if (!value.isEmpty()) {
-                                tiedHigh = Integer.parseInt(value);
-                            }
-                        } catch (Exception ignored) {
-                        }
-                        AppVars.Profile.FishTiedHigh = Math.max(0, Math.min(99, tiedHigh));
-                        AppVars.Profile.FishTiedZero = tiedZero.isChecked();
-                        AppVars.Profile.FishDrinkBliss = fishDrinkBliss.isChecked();
-                        AppVars.Profile.FishStopOverWeight = stopOverWeight.isChecked();
-                        AppVars.Profile.FishChatReport = fishChatReport.isChecked();
-                        AppVars.Profile.FishChatReportColor = fishChatReportColor.isChecked();
-
-                        int mask = 0;
-                        for (int i = 0; i < FISH_PRIM_FLAGS.length; i++) {
-                            if (primChecks[i].isChecked()) {
-                                mask |= FISH_PRIM_FLAGS[i];
-                            }
-                        }
-                        if (mask == 0) {
-                            mask = Prims.DEFAULT_ALL;
-                        }
-                        AppVars.Profile.FishEnabledPrims = mask;
-                        AppVars.Profile.save(requireContext());
-                        Toast.makeText(requireContext(), "Настройки авто-рыбалки сохранены", Toast.LENGTH_SHORT).show();
-                    })
-                    .setNegativeButton("Отмена", null)
-                    .show();
-        }
-
-        private int indexOfFishHand(String value) {
-            if (value == null) return -1;
-            for (int i = 0; i < FISH_HAND_OPTIONS.length; i++) {
-                if (FISH_HAND_OPTIONS[i].equalsIgnoreCase(value)) {
-                    return i;
-                }
-            }
-            return -1;
+        private static String buildThemeModeSummary(boolean forceDark) {
+            return forceDark
+                    ? "Приложение всегда использует тёмную тему"
+                    : "Используется системная тема Android";
         }
     }
 }

@@ -11,6 +11,7 @@ import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.List;
 
+import ru.neverlands.anclient.license.LicenseRuntime;
 import ru.neverlands.anclient.model.QuickActionType;
 import ru.neverlands.anclient.model.QuickButton;
 
@@ -81,6 +82,7 @@ public class QuickButtonsManager {
                 buttons.add(new QuickButton(i, QuickActionType.NONE));
             }
         }
+        sanitizeButtonsForLicense();
         return buttons;
     }
 
@@ -116,7 +118,8 @@ public class QuickButtonsManager {
             loadButtons();
         }
         AppLog.d(TAG, "getButton returns: " + buttons.get(position).getActionType());
-        return buttons.get(position);
+        QuickButton button = buttons.get(position);
+        return sanitizeButtonForLicense(button, position);
     }
 
     /**
@@ -130,6 +133,14 @@ public class QuickButtonsManager {
         }
         if (buttons == null) {
             loadButtons();
+        }
+        if (actionType != null && actionType != QuickActionType.NONE
+                && !LicenseRuntime.getInstance().isActionAllowed(actionType)) {
+            // Guard назначения: сохранённый quick-button JSON (`KEY_BUTTONS`) не должен хранить
+            // full-only actions после перехода пользователя на public/limited features.
+            AppLog.w("ANCLIENT_LICENSE", TAG, "LICENSE_FEATURE_DENIED: assignFunction action="
+                    + actionType.getActionKey() + ", position=" + position);
+            return;
         }
         buttons.set(position, new QuickButton(position, actionType));
         saveButtons();
@@ -152,6 +163,32 @@ public class QuickButtonsManager {
             buttons.set(i, new QuickButton(i, QuickActionType.NONE));
         }
         saveButtons();
+    }
+
+    private void sanitizeButtonsForLicense() {
+        // Очистка при загрузке. `buttons` приходит из SharedPreferences и может содержать
+        // actions, разрешённые старым profile.reg; denied entries заменяются на NONE.
+        if (buttons == null) {
+            return;
+        }
+        for (int index = 0; index < buttons.size(); index++) {
+            buttons.set(index, sanitizeButtonForLicense(buttons.get(index), index));
+        }
+    }
+
+    private QuickButton sanitizeButtonForLicense(QuickButton button, int fallbackPosition) {
+        if (button == null || button.isEmpty()) {
+            return button == null ? new QuickButton(fallbackPosition, QuickActionType.NONE) : button;
+        }
+        QuickActionType type = button.getActionType();
+        if (type == null || LicenseRuntime.getInstance().isActionAllowed(type)) {
+            return button;
+        }
+        // Не возвращаем denied button в UI. Возврат NONE сохраняет состояние панели
+        // детерминированным и не даёт будущим `execute` paths увидеть stale action keys.
+        AppLog.w("ANCLIENT_LICENSE", TAG, "LICENSE_FEATURE_HIDDEN: action="
+                + type.getActionKey() + ", position=" + button.getPosition());
+        return new QuickButton(button.getPosition(), QuickActionType.NONE);
     }
 
     /**

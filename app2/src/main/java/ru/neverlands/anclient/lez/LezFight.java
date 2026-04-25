@@ -744,10 +744,10 @@ public class LezFight {
     // Сбор строки Result для AutoSubmit (VCODE|ENEMY|GROUP|...).
     // Должен полностью соответствовать C# LezFight.cs:
     // vcode|enemy|group|inf_bot|lev_bot|ftr|inu|inb|ina
-    // Dependencies for BuildResult():
-    // - WebAppInterface.processFightHtml(...) forwards Result to JS AutoSubmit.
-    // - FightJs.AutoSubmit(...) parses exact "vcode|enemy|group|inf_bot|lev_bot|ftr|inu|inb|ina" format.
-    // - Any delimiter/order mismatch stops server-side hit processing.
+    // Зависимости BuildResult():
+    // - WebAppInterface.processFightHtml(...) передаёт Result в JS AutoSubmit.
+    // - FightJs.AutoSubmit(...) парсит точный формат "vcode|enemy|group|inf_bot|lev_bot|ftr|inu|inb|ina".
+    // - Любое расхождение delimiter/order ломает server-side обработку удара.
     private void BuildResult() {
         String vcode = _vcode != null ? _vcode : "";
         // C# parity: enemy/group/inf_bot берутся ИСХОДНЫМИ значениями из fight_pm (без Strip).
@@ -806,9 +806,9 @@ public class LezFight {
     }
 
     // Формирование минимального fight.Frame для автобоя (инфо + auto-submit).
-    // Dependencies for BuildFrame():
-    // - MainPhp.mainPhpFight(...) returns this lightweight frame in AutoboiOn mode.
-    // - Server expects post_id=7 and exact inu/inb/ina field formats.
+    // Зависимости BuildFrame():
+    // - MainPhp.mainPhpFight(...) возвращает этот lightweight frame в режиме AutoboiOn.
+    // - Сервер ожидает post_id=7 и точные форматы полей inu/inb/ina.
     private void BuildFrame() {
         if (_fightpm == null || _fightpm.length < 11) return;
         

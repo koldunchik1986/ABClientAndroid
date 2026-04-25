@@ -21,6 +21,7 @@ import java.util.Comparator;
 import java.util.List;
 
 import ru.neverlands.anclient.R;
+import ru.neverlands.anclient.license.LicenseRuntime;
 import ru.neverlands.anclient.model.QuickActionType;
 
 /**
@@ -42,7 +43,12 @@ public class FunctionListAdapter extends BaseAdapter {
         this.functions = new ArrayList<>();
         
         for (QuickActionType type : QuickActionType.values()) {
-            if (type != QuickActionType.NONE && !isQuickSelfAction(type)) {
+            // Фильтрация selector намеренно выполняется до render. Limited/public users
+            // не должны видеть full-only functions, а назначение повторно проверяется в
+            // `QuickButtonsManager.assignFunction(...)` вторым слоем.
+            if (type != QuickActionType.NONE
+                    && !isQuickSelfAction(type)
+                    && LicenseRuntime.getInstance().isActionAllowed(type)) {
                 functions.add(type);
             }
         }
@@ -219,16 +225,26 @@ public class FunctionListAdapter extends BaseAdapter {
     }
 
     private void showQuickActionsSubMenu() {
-        List<QuickActionType> selfActions = Arrays.asList(
-            QuickActionType.QUICK_SELF_RASS,
-            QuickActionType.QUICK_OPEN_NEVID,
-            QuickActionType.QUICK_TELEPORT,
-            QuickActionType.QUICK_ISLAND,
-            QuickActionType.QUICK_TOTEM,
-            QuickActionType.QUICK_ELIXIR_BLAZ,
-            QuickActionType.QUICK_ELIXIR_CURE,
-            QuickActionType.QUICK_ELIXIR_RESTORE
-        );
+        List<QuickActionType> selfActions = new ArrayList<>(Arrays.asList(
+                QuickActionType.QUICK_SELF_RASS,
+                QuickActionType.QUICK_OPEN_NEVID,
+                QuickActionType.QUICK_TELEPORT,
+                QuickActionType.QUICK_ISLAND,
+                QuickActionType.QUICK_TOTEM,
+                QuickActionType.QUICK_ELIXIR_BLAZ,
+                QuickActionType.QUICK_ELIXIR_CURE,
+                QuickActionType.QUICK_ELIXIR_RESTORE
+        ));
+        for (int index = selfActions.size() - 1; index >= 0; index--) {
+            if (!LicenseRuntime.getInstance().isActionAllowed(selfActions.get(index))) {
+                selfActions.remove(index);
+            }
+        }
+
+        if (selfActions.isEmpty()) {
+            Toast.makeText(context, "Быстрые действия недоступны", Toast.LENGTH_SHORT).show();
+            return;
+        }
 
         Collections.sort(selfActions, new Comparator<QuickActionType>() {
             @Override

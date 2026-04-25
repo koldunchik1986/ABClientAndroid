@@ -85,12 +85,16 @@ import java.util.zip.GZIPInputStream;
 import ru.neverlands.anclient.bridge.WebAppInterface;
 import ru.neverlands.anclient.handlers.FightContextChoiceHandler;
 import ru.neverlands.anclient.lez.LezFight;
+import ru.neverlands.anclient.license.LicenseFeature;
+import ru.neverlands.anclient.license.LicenseRuntime;
+import ru.neverlands.anclient.license.LicenseSession;
 import ru.neverlands.anclient.manager.AutoFunctionsManager;
 import ru.neverlands.anclient.manager.AppTimerManager;
 import ru.neverlands.anclient.manager.ContactsManager;
 import ru.neverlands.anclient.databinding.ActivityMainBinding;
 import ru.neverlands.anclient.manager.TabManager;
 import ru.neverlands.anclient.manager.RoomManager;
+import ru.neverlands.anclient.model.QuickActionType;
 import ru.neverlands.anclient.model.UserConfig;
 import ru.neverlands.anclient.network.NetworkClient;
 import ru.neverlands.anclient.proxy.CookiesManager;
@@ -1914,7 +1918,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             android.widget.Button positiveButton = dialog.getButton(AlertDialog.BUTTON_POSITIVE);
             if (positiveButton != null) {
                 int primaryColor = ContextCompat.getColor(this, R.color.purple_500);
-                int textColor = ContextCompat.getColor(this, R.color.white);
+                int textColor = ContextCompat.getColor(this, R.color.colorOnPrimarySurface);
                 positiveButton.setBackgroundColor(primaryColor);
                 positiveButton.setBackgroundTintList(android.content.res.ColorStateList.valueOf(primaryColor));
                 positiveButton.setTextColor(textColor);
@@ -2984,6 +2988,12 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         requestPostNotificationsPermissionIfNeeded();
         ContactsManager.initialize(this);
         AppVars.mainActivity = new WeakReference<>(this);
+        // Второй license gate после LoginActivity: Android может пересоздать MainActivity,
+        // пока `AppVars.Profile` ещё присутствует, поэтому надо повторно проверить/восстановить
+        // `LicenseSession` до инициализации WebView, proxy runtime, timers и auto-functions.
+        if (!ensureLicenseRuntimeForMainActivity()) {
+            return;
+        }
         if (AppVars.Profile != null) {
             LogcatFileRecorder.setEnabled(this, AppVars.Profile.RecordLogcatToFile);
         }
@@ -3013,6 +3023,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         drawer.addDrawerListener(toggle);
         toggle.syncState();
         navigationView.setNavigationItemSelectedListener(this);
+        applyLicenseNavigationVisibility(navigationView.getMenu());
 
         View headerView = navigationView.getHeaderView(0);
         TextView navHeaderTitle = headerView.findViewById(R.id.nav_header_title);
@@ -3071,6 +3082,56 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         startTimer();
         startChatRefresh();
         AutoModeForegroundService.syncServiceState(this, "onCreate");
+    }
+
+    private boolean ensureLicenseRuntimeForMainActivity() {
+        if (AppVars.Profile == null || AppVars.Profile.UserNick == null || AppVars.Profile.UserNick.trim().isEmpty()) {
+            AppLog.w("ANCLIENT_LICENSE", TAG, "LICENSE_RUNTIME_MAIN_REJECTED: profile missing");
+            startActivity(new Intent(this, LoginActivity.class));
+            finish();
+            return false;
+        }
+        // `ensureActiveForProfile` переиспользует валидную `currentSession` только для того же
+        // `AppVars.Profile.UserNick`; иначе повторно запускается `LicenseManager`, который может
+        // пересоздать request.txt / вернуть пользователя в LoginActivity.
+        LicenseSession session = LicenseRuntime.getInstance().ensureActiveForProfile(
+                this,
+                AppVars.Profile.UserNick,
+                "main_activity"
+        );
+        if (session != null) {
+            AppLog.i("ANCLIENT_LICENSE", TAG, "LICENSE_RUNTIME_MAIN_APPROVED: "
+                    + LicenseRuntime.getInstance().describeCurrentSession());
+            return true;
+        }
+        AppLog.w("ANCLIENT_LICENSE", TAG, "LICENSE_RUNTIME_MAIN_REJECTED: session missing");
+        Toast.makeText(this, "Лицензия не подтверждена", Toast.LENGTH_LONG).show();
+        startActivity(new Intent(this, LoginActivity.class));
+        finish();
+        return false;
+    }
+
+    private void applyLicenseNavigationVisibility(Menu menu) {
+        if (menu == null) {
+            return;
+        }
+        // Пункты drawer скрываются, а не просто disable-ятся. Так limited/public users
+        // не видят full-only entry points; click handlers ниже всё равно повторяют эти проверки.
+        setMenuItemVisible(menu, R.id.nav_quick_actions,
+                LicenseRuntime.getInstance().isActionAllowed(QuickActionType.QUICK_ACTIONS));
+        setMenuItemVisible(menu, R.id.nav_contacts,
+                LicenseRuntime.getInstance().isActionAllowed(QuickActionType.OPEN_CONTACTS));
+        setMenuItemVisible(menu, R.id.nav_clans,
+                LicenseRuntime.getInstance().hasFeature(LicenseFeature.FEATURE_CLANS));
+        setMenuItemVisible(menu, R.id.nav_logs,
+                LicenseRuntime.getInstance().isActionAllowed(QuickActionType.OPEN_LOGS));
+    }
+
+    private void setMenuItemVisible(Menu menu, int itemId, boolean visible) {
+        MenuItem item = menu.findItem(itemId);
+        if (item != null) {
+            item.setVisible(visible);
+        }
     }
 
     /**
@@ -3713,11 +3774,19 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         } else if (id == R.id.nav_profile) {
             binding.appBarMain.contentMain.webView.loadUrl("http://neverlands.ru/main.php?get_id=33&act=1");
         } else if (id == R.id.nav_quick_actions) {
+            if (!LicenseRuntime.getInstance().isActionAllowed(QuickActionType.QUICK_ACTIONS)) {
+                Toast.makeText(this, "Быстрые действия недоступны", Toast.LENGTH_SHORT).show();
+                return true;
+            }
             ru.neverlands.anclient.ui.QuickActionsBottomSheet.newInstance(null).show(getSupportFragmentManager(), "QuickActions");
         } else if (id == R.id.nav_settings) {
             Intent intent = new Intent(this, SettingsActivity.class);
             startActivity(intent);
         } else if (id == R.id.nav_contacts) {
+            if (!LicenseRuntime.getInstance().isActionAllowed(QuickActionType.OPEN_CONTACTS)) {
+                Toast.makeText(this, "Контакты недоступны", Toast.LENGTH_SHORT).show();
+                return true;
+            }
             suppressBackgroundLoopsForContacts = true;
             suppressChatRefreshOnceAfterContacts = true;
             suppressRoomRefreshOnceAfterContacts = true;
@@ -3732,9 +3801,17 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             Intent intent = new Intent(this, ContactsActivity.class);
             contactsActivityLauncher.launch(intent);
         } else if (id == R.id.nav_clans) {
+            if (!LicenseRuntime.getInstance().hasFeature(LicenseFeature.FEATURE_CLANS)) {
+                Toast.makeText(this, "Кланы недоступны", Toast.LENGTH_SHORT).show();
+                return true;
+            }
             Intent intent = new Intent(this, ClansActivity.class);
             startActivity(intent);
         } else if (id == R.id.nav_logs) {
+            if (!LicenseRuntime.getInstance().isActionAllowed(QuickActionType.OPEN_LOGS)) {
+                Toast.makeText(this, "Логи недоступны", Toast.LENGTH_SHORT).show();
+                return true;
+            }
             Intent intent = new Intent(this, LogsActivity.class);
             startActivity(intent);
         } else if (id == R.id.nav_logout) {
@@ -4037,7 +4114,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                 netColor = ContextCompat.getColor(this, R.color.red);
                 break;
             default:
-                netColor = ContextCompat.getColor(this, R.color.white);
+                netColor = ContextCompat.getColor(this, R.color.colorOnPrimarySurface);
                 break;
         }
         binding.appBarMain.contentMain.statusBar.networkDebugTextView.setTextColor(netColor);
@@ -4351,6 +4428,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         AppVars.lastCookies = null;
         NetworkClient.clearCookies();
         CookiesManager.clear();
+        LicenseRuntime.getInstance().clear("logout_to_login");
         try {
             CookieManager manager = CookieManager.getInstance();
             manager.removeSessionCookies(null);

@@ -14,6 +14,7 @@ import android.widget.Spinner;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
+import androidx.core.content.ContextCompat;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.bumptech.glide.Glide;
@@ -363,7 +364,7 @@ public class ContactsAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
                 );
                 textParams.setMarginStart(dp(context, 2));
                 counter.setLayoutParams(textParams);
-                counter.setTextColor(Color.WHITE);
+                counter.setTextColor(ContextCompat.getColor(context, R.color.colorTextSecondary));
                 counter.setTextSize(10);
                 counter.setSingleLine(false);
                 counter.setLines(2);

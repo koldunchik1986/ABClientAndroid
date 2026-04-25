@@ -37,11 +37,14 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import ru.neverlands.anclient.databinding.ActivityLoginBinding;
+import ru.neverlands.anclient.license.LicenseStatus;
+import ru.neverlands.anclient.license.LicenseValidationHandler;
 import ru.neverlands.anclient.model.AuthResult;
 import ru.neverlands.anclient.model.UserConfig;
 import ru.neverlands.anclient.network.NetworkClient;
 import ru.neverlands.anclient.proxy.ProxyRuntimeManager;
 import ru.neverlands.anclient.proxy.CookiesManager;
+import ru.neverlands.anclient.ui.LicenseRequestDialog;
 import ru.neverlands.anclient.utils.AppVars;
 import ru.neverlands.anclient.utils.CryptoUtils;
 
@@ -383,10 +386,37 @@ public class LoginActivity extends AppCompatActivity {
             return;
         }
 
+        final UserConfig profileToLogin = selectedProfile;
+        String gamePassword;
+        String flashPassword;
+
+        if (profileToLogin.isEncrypted) {
+            try {
+                gamePassword = CryptoUtils.decrypt(profileToLogin.UserPassword, passwordOrKey);
+                flashPassword = decryptProfileSecret(profileToLogin.UserPasswordFlash, passwordOrKey);
+            } catch (Exception e) {
+                Toast.makeText(this, "Неверный пароль шифрования", Toast.LENGTH_SHORT).show();
+                binding.progressBar.setVisibility(View.GONE);
+                binding.loginButton.setEnabled(true);
+                return;
+            }
+        } else {
+            gamePassword = passwordOrKey;
+            flashPassword = profileToLogin.UserPasswordFlash == null ? "" : profileToLogin.UserPasswordFlash;
+        }
+
+        UserConfig licenseDiagnostics = createLicenseDiagnosticsProfile(profileToLogin, gamePassword, flashPassword);
+        // Лицензионный gate должен выполниться до любой сетевой авторизации. Для шифрованного
+        // профиля request.txt получает уже расшифрованные diagnostic-поля, но исходный профиль не мутируется.
+        LicenseStatus licenseStatus = LicenseValidationHandler.validateBeforeLogin(this, licenseDiagnostics);
+        if (!licenseStatus.isAllowed()) {
+            showLicenseDialog(licenseStatus);
+            return;
+        }
+
         binding.progressBar.setVisibility(View.VISIBLE);
         binding.loginButton.setEnabled(false);
 
-        final UserConfig profileToLogin = selectedProfile;
         if (!profileToLogin.isEncrypted) {
             profileToLogin.UserAutoLogon = binding.rememberCheckBox.isChecked();
             persistRememberPasswordSnapshot(profileToLogin, passwordOrKey, "login_click");
@@ -405,25 +435,45 @@ public class LoginActivity extends AppCompatActivity {
                         + ", rememberChecked=" + binding.rememberCheckBox.isChecked()
                         + ", inputPasswordLen=" + safeLen(passwordOrKey)
         );
-        String gamePassword;
 
-        if (profileToLogin.isEncrypted) {
-            try {
-                gamePassword = CryptoUtils.decrypt(profileToLogin.UserPassword, passwordOrKey);
-            } catch (Exception e) {
-                Toast.makeText(this, "Неверный пароль шифрования", Toast.LENGTH_SHORT).show();
-                binding.progressBar.setVisibility(View.GONE);
-                binding.loginButton.setEnabled(true);
-                return;
-            }
-        } else {
-            gamePassword = passwordOrKey;
-        }
-
-        clearCookiesAndAuthorize(username, gamePassword, profileToLogin);
+        clearCookiesAndAuthorize(username, gamePassword, flashPassword, profileToLogin);
     }
 
-    private void clearCookiesAndAuthorize(String username, String gamePassword, UserConfig profileToLogin) {
+    private UserConfig createLicenseDiagnosticsProfile(UserConfig source,
+                                                       String plainUserPassword,
+                                                       String plainFlashPassword) {
+        UserConfig result = new UserConfig();
+        if (source == null) {
+            return result;
+        }
+        result.id = source.id;
+        result.UserNick = source.UserNick;
+        result.isEncrypted = source.isEncrypted;
+        result.UserPassword = plainUserPassword == null ? "" : plainUserPassword;
+        result.UserPasswordFlash = plainFlashPassword == null ? "" : plainFlashPassword;
+        result.UseProxy = source.UseProxy;
+        result.DoProxy = source.DoProxy;
+        result.ProxyAddress = source.ProxyAddress;
+        result.ProxyUserName = source.ProxyUserName;
+        result.ProxyPassword = source.ProxyPassword;
+        return result;
+    }
+
+    private String decryptProfileSecret(String encryptedText, String encryptionPassword) throws Exception {
+        if (TextUtils.isEmpty(encryptedText)) {
+            return "";
+        }
+        return CryptoUtils.decrypt(encryptedText, encryptionPassword);
+    }
+
+    private void showLicenseDialog(LicenseStatus status) {
+        LicenseRequestDialog.show(this, status);
+    }
+
+    private void clearCookiesAndAuthorize(String username,
+                                          String gamePassword,
+                                          String flashPassword,
+                                          UserConfig profileToLogin) {
         // Поднимаем proxy runtime до auth-flow, чтобы первый вход уже шёл через единый контур,
         // как в ПК версии (proxy стартует до основной логики приложения).
         AppLog.i(
@@ -459,12 +509,13 @@ public class LoginActivity extends AppCompatActivity {
         // Each new login must start from a clean cookie state (desktop behavior).
         AppVars.lastCookies = null;
         NetworkClient.clearCookies();
-        clearCookiesAndAuthorizeInternal(username, gamePassword, profileToLogin, 0);
+        clearCookiesAndAuthorizeInternal(username, gamePassword, flashPassword, profileToLogin, 0);
     }
 
     private void clearCookiesAndAuthorizeInternal(
             String username,
             String gamePassword,
+            String flashPassword,
             UserConfig profileToLogin,
             int warmupAttempt
     ) {
@@ -482,7 +533,7 @@ public class LoginActivity extends AppCompatActivity {
                         t
                 );
                 new Handler(Looper.getMainLooper()).postDelayed(
-                        () -> clearCookiesAndAuthorizeInternal(username, gamePassword, profileToLogin, warmupAttempt + 1),
+                        () -> clearCookiesAndAuthorizeInternal(username, gamePassword, flashPassword, profileToLogin, warmupAttempt + 1),
                         COOKIE_WARMUP_DELAY_MS
                 );
                 return;
@@ -494,7 +545,7 @@ public class LoginActivity extends AppCompatActivity {
             if (isFinishing() || isDestroyed()) {
                 return;
             }
-            startAuthorizeRequest(username, gamePassword, profileToLogin, 0);
+            startAuthorizeRequest(username, gamePassword, flashPassword, profileToLogin, 0);
         });
     }
 
@@ -502,12 +553,16 @@ public class LoginActivity extends AppCompatActivity {
      * Запускает синхронный auth-flow в фоновом потоке с контролем retry-индекса.
      *
      * Зависимости:
-     * - {@link AuthManager#authorize(String, String)} как основной HTTP-пайплайн входа;
+     * - {@link AuthManager#authorize(String, String, String)} как основной HTTP-пайплайн входа;
      * - главный поток (`Handler`) для безопасной работы с UI и переходами активностей;
-     * - {@link #handleAuthResult(AuthResult, String, String, UserConfig, int, long)} для развилки
+     * - {@link #handleAuthResult(AuthResult, String, String, String, UserConfig, int, long)} для развилки
      *   успех/капча/авто-повтор/финальная ошибка.
      */
-    private void startAuthorizeRequest(String username, String gamePassword, UserConfig profileToLogin, int retryAttempt) {
+    private void startAuthorizeRequest(String username,
+                                       String gamePassword,
+                                       String flashPassword,
+                                       UserConfig profileToLogin,
+                                       int retryAttempt) {
         ExecutorService executor = Executors.newSingleThreadExecutor();
         Handler handler = new Handler(Looper.getMainLooper());
         final long attemptStartedAtMs = System.currentTimeMillis();
@@ -517,11 +572,12 @@ public class LoginActivity extends AppCompatActivity {
         );
         executor.execute(() -> {
             AuthManager authManager = new AuthManager();
-            AuthResult result = authManager.authorize(username, gamePassword);
+            AuthResult result = authManager.authorize(username, gamePassword, flashPassword);
             handler.post(() -> handleAuthResult(
                     result,
                     username,
                     gamePassword,
+                    flashPassword,
                     profileToLogin,
                     retryAttempt,
                     attemptStartedAtMs
@@ -537,12 +593,13 @@ public class LoginActivity extends AppCompatActivity {
      *
      * Зависимости:
      * - {@link #isRetriableAuthError(String, int, long)} для классификации transient-сбоев;
-     * - {@link #startAuthorizeRequest(String, String, UserConfig, int)} для повторной попытки;
+     * - {@link #startAuthorizeRequest(String, String, String, UserConfig, int)} для повторной попытки;
      * - UI-состояние кнопки/прогресса (`binding.loginButton`, `binding.progressBar`).
      */
     private void handleAuthResult(AuthResult result,
                                   String username,
                                   String gamePassword,
+                                  String flashPassword,
                                   UserConfig profileToLogin,
                                   int retryAttempt,
                                   long attemptStartedAtMs) {
@@ -561,7 +618,7 @@ public class LoginActivity extends AppCompatActivity {
         } else if (result.isCaptchaRequired()) {
             binding.progressBar.setVisibility(View.GONE);
             binding.loginButton.setEnabled(true);
-            showCaptchaDialog(username, gamePassword, result.getCaptchaUrl(), result.getVcode(), profileToLogin);
+            showCaptchaDialog(username, gamePassword, flashPassword, result.getCaptchaUrl(), result.getVcode(), profileToLogin);
         } else {
             String errorMessage = result != null && result.getErrorMessage() != null
                     ? result.getErrorMessage()
@@ -576,7 +633,7 @@ public class LoginActivity extends AppCompatActivity {
                 binding.progressBar.setVisibility(View.VISIBLE);
                 binding.loginButton.setEnabled(false);
                 new Handler(Looper.getMainLooper()).postDelayed(
-                        () -> startAuthorizeRequest(username, gamePassword, profileToLogin, retryAttempt + 1),
+                        () -> startAuthorizeRequest(username, gamePassword, flashPassword, profileToLogin, retryAttempt + 1),
                         AUTH_RETRY_DELAY_MS
                 );
                 return;
@@ -728,7 +785,12 @@ public class LoginActivity extends AppCompatActivity {
         return (unixEpochMs + 62135596800000L) * 10_000L;
     }
 
-    private void showCaptchaDialog(String username, String gamePassword, String captchaUrl, String vcode, UserConfig profileToLogin) {
+    private void showCaptchaDialog(String username,
+                                   String gamePassword,
+                                   String flashPassword,
+                                   String captchaUrl,
+                                   String vcode,
+                                   UserConfig profileToLogin) {
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
         LayoutInflater inflater = getLayoutInflater();
         View dialogView = inflater.inflate(R.layout.dialog_captcha, null);
@@ -757,11 +819,18 @@ public class LoginActivity extends AppCompatActivity {
 
                 executor.execute(() -> {
                     AuthManager authManager = new AuthManager();
-                    AuthResult result = authManager.authorizeWithCaptcha(username, gamePassword, vcode, verify);
+                    AuthResult result = authManager.authorizeWithCaptcha(
+                            username,
+                            gamePassword,
+                            flashPassword,
+                            vcode,
+                            verify
+                    );
                     handler.post(() -> handleAuthResult(
                             result,
                             username,
                             gamePassword,
+                            flashPassword,
                             profileToLogin,
                             0,
                             attemptStartedAtMs

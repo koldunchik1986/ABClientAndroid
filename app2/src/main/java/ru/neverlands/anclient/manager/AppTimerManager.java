@@ -19,7 +19,9 @@ import java.util.List;
 import java.util.Locale;
 
 import ru.neverlands.anclient.utils.AppLog;
+import ru.neverlands.anclient.license.LicenseRuntime;
 import ru.neverlands.anclient.model.AppTimer;
+import ru.neverlands.anclient.model.QuickActionType;
 import ru.neverlands.anclient.utils.AppVars;
 import ru.neverlands.anclient.utils.FileLogger;
 import ru.neverlands.anclient.utils.SessionManager;
@@ -175,6 +177,12 @@ public class AppTimerManager {
      * - простые due-таймеры удаляются пакетно в этом же проходе (как `goto again` в C#).
      */
     public synchronized void processDueTimers() {
+        if (!LicenseRuntime.getInstance().isActionAllowed(QuickActionType.TIMERS)) {
+            // Выполнение таймера может косвенно запускать protected actions (drink, move,
+            // переключение auto-functions). Сначала gate-им dispatcher, потом отдельные
+            // labels auto-functions проверяются через `isTimerAutoFunctionAllowed(...)`.
+            return;
+        }
         ensureLoadedForCurrentProfileLocked();
         if (listAppTimers.isEmpty()) {
             return;
@@ -384,18 +392,29 @@ public class AppTimerManager {
 
         // Включение авто-функции через AutoFunctionsManager
         if (!TextUtils.isEmpty(autoFunc) && autoFunctionsManager != null) {
+            if (!LicenseRuntime.getInstance().isTimerAutoFunctionAllowed(autoFunc)) {
+                AppLog.w("ANCLIENT_LICENSE", TAG, "LICENSE_FEATURE_DENIED: timer enable function=" + autoFunc);
+                FileLogger.trace(TAG, "LICENSE_FEATURE_DENIED: timer enable function=" + autoFunc);
+                return;
+            }
             if ("Авто-Бой".equals(autoFunc)) {
                 autoFunctionsManager.setAutoFightEnabled(true);
                 FileLogger.trace(TAG, "AUTO_FUNCTION_TIMER_FIRED: Авто-Бой ENABLED");
             } else if ("Авто-Рыбалка".equals(autoFunc)) {
                 autoFunctionsManager.setAutoFishEnabled(true);
                 FileLogger.trace(TAG, "AUTO_FUNCTION_TIMER_FIRED: Авто-Рыбалка ENABLED");
+            } else if ("Авто-Охота".equals(autoFunc)) {
+                autoFunctionsManager.setAutoSkinEnabled(true);
+                FileLogger.trace(TAG, "AUTO_FUNCTION_TIMER_FIRED: Авто-Охота ENABLED");
             } else if ("Авто-Питьё".equals(autoFunc)) {
                 autoFunctionsManager.setAutoDrinkEnabled(true);
                 FileLogger.trace(TAG, "AUTO_FUNCTION_TIMER_FIRED: Авто-Питьё ENABLED");
             } else if ("Авто-Клад".equals(autoFunc)) {
                 autoFunctionsManager.setAutoTreasureEnabled(true);
                 FileLogger.trace(TAG, "AUTO_FUNCTION_TIMER_FIRED: Авто-Клад ENABLED");
+            } else if ("Авто-Босс".equals(autoFunc) || "Авто-Боссы".equals(autoFunc)) {
+                autoFunctionsManager.setAutoBossEnabled(true);
+                FileLogger.trace(TAG, "AUTO_FUNCTION_TIMER_FIRED: Авто-Босс ENABLED");
             }
             
             // Обновляем UI QuickButtons - должны изменить визуальный статус (обводка)
@@ -419,18 +438,29 @@ public class AppTimerManager {
 
         // Отключение авто-функции через AutoFunctionsManager
         if (!TextUtils.isEmpty(autoFunc) && autoFunctionsManager != null) {
+            if (!LicenseRuntime.getInstance().isTimerAutoFunctionAllowed(autoFunc)) {
+                AppLog.w("ANCLIENT_LICENSE", TAG, "LICENSE_FEATURE_DENIED: timer disable function=" + autoFunc);
+                FileLogger.trace(TAG, "LICENSE_FEATURE_DENIED: timer disable function=" + autoFunc);
+                return;
+            }
             if ("Авто-Бой".equals(autoFunc)) {
                 autoFunctionsManager.setAutoFightEnabled(false);
                 FileLogger.trace(TAG, "AUTO_FUNCTION_TIMER_FIRED: Авто-Бой DISABLED");
             } else if ("Авто-Рыбалка".equals(autoFunc)) {
                 autoFunctionsManager.setAutoFishEnabled(false);
                 FileLogger.trace(TAG, "AUTO_FUNCTION_TIMER_FIRED: Авто-Рыбалка DISABLED");
+            } else if ("Авто-Охота".equals(autoFunc)) {
+                autoFunctionsManager.setAutoSkinEnabled(false);
+                FileLogger.trace(TAG, "AUTO_FUNCTION_TIMER_FIRED: Авто-Охота DISABLED");
             } else if ("Авто-Питьё".equals(autoFunc)) {
                 autoFunctionsManager.setAutoDrinkEnabled(false);
                 FileLogger.trace(TAG, "AUTO_FUNCTION_TIMER_FIRED: Авто-Питьё DISABLED");
             } else if ("Авто-Клад".equals(autoFunc)) {
                 autoFunctionsManager.setAutoTreasureEnabled(false);
                 FileLogger.trace(TAG, "AUTO_FUNCTION_TIMER_FIRED: Авто-Клад DISABLED");
+            } else if ("Авто-Босс".equals(autoFunc) || "Авто-Боссы".equals(autoFunc)) {
+                autoFunctionsManager.setAutoBossEnabled(false);
+                FileLogger.trace(TAG, "AUTO_FUNCTION_TIMER_FIRED: Авто-Босс DISABLED");
             }
             
             // Обновляем UI QuickButtons - должны изменить визуальный статус (обводка)

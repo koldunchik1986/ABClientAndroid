@@ -23,7 +23,10 @@ import okhttp3.Request;
 import okhttp3.Response;
 
 import ru.neverlands.anclient.databinding.ActivityProfileBinding;
+import ru.neverlands.anclient.license.LicenseManager;
+import ru.neverlands.anclient.license.LicenseStatus;
 import ru.neverlands.anclient.model.UserConfig;
+import ru.neverlands.anclient.ui.LicenseRequestDialog;
 import ru.neverlands.anclient.utils.AppVars;
 import ru.neverlands.anclient.utils.CryptoUtils;
 
@@ -68,6 +71,7 @@ public class ProfileActivity extends AppCompatActivity {
         binding.savePasswordsCheckBox.setChecked(profile.isEncrypted);
 
         binding.saveButton.setOnClickListener(v -> prepareSaveProfile());
+        binding.licenseRequestButton.setOnClickListener(v -> showLicenseRequestDialog());
         binding.testProxyButton.setOnClickListener(v -> startProxyConnectivityTest());
     }
 
@@ -300,6 +304,102 @@ public class ProfileActivity extends AppCompatActivity {
         }
     }
 
+    private void showLicenseRequestDialog() {
+        if (needsEncryptionPasswordForLicenseRequest()) {
+            showLicenseRequestEncryptionPasswordDialog();
+            return;
+        }
+        UserConfig requestProfile = buildLicenseRequestProfile(null, null);
+        createAndShowLicenseRequest(requestProfile);
+    }
+
+    private boolean needsEncryptionPasswordForLicenseRequest() {
+        if (profile == null || !profile.isEncrypted || !binding.savePasswordsCheckBox.isChecked()) {
+            return false;
+        }
+        boolean missingGamePassword = TextUtils.isEmpty(textOf(binding.passwordEditText))
+                && !TextUtils.isEmpty(profile.UserPassword);
+        boolean missingFlashPassword = TextUtils.isEmpty(textOf(binding.flashPasswordEditText))
+                && !TextUtils.isEmpty(profile.UserPasswordFlash);
+        return missingGamePassword || missingFlashPassword;
+    }
+
+    private void showLicenseRequestEncryptionPasswordDialog() {
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setTitle("Пароль шифрования для запроса лицензии");
+
+        View view = LayoutInflater.from(this).inflate(R.layout.dialog_enter_password, null);
+        builder.setView(view);
+
+        final EditText passwordField = view.findViewById(R.id.password_field);
+
+        builder.setPositiveButton("OK", (dialog, which) -> {
+            String encryptionPassword = passwordField.getText().toString();
+            try {
+                String decryptedPassword = decryptProfileSecret(profile.UserPassword, encryptionPassword);
+                String decryptedFlashPassword = decryptProfileSecret(profile.UserPasswordFlash, encryptionPassword);
+                UserConfig requestProfile = buildLicenseRequestProfile(decryptedPassword, decryptedFlashPassword);
+                createAndShowLicenseRequest(requestProfile);
+            } catch (Exception e) {
+                Toast.makeText(ProfileActivity.this, "Неверный пароль шифрования", Toast.LENGTH_SHORT).show();
+            }
+        });
+        builder.setNegativeButton("Отмена", (dialog, which) -> dialog.cancel());
+
+        builder.show();
+    }
+
+    private void createAndShowLicenseRequest(UserConfig requestProfile) {
+        if (requestProfile == null) {
+            return;
+        }
+        LicenseStatus status = LicenseManager.createRequest(this, requestProfile);
+        LicenseRequestDialog.show(this, status);
+    }
+
+    private UserConfig buildLicenseRequestProfile(String fallbackPassword, String fallbackFlashPassword) {
+        String username = textOf(binding.usernameEditText).trim();
+        if (username.isEmpty()) {
+            Toast.makeText(this, "Имя пользователя не может быть пустым", Toast.LENGTH_SHORT).show();
+            return null;
+        }
+
+        String password = textOf(binding.passwordEditText);
+        String flashPassword = textOf(binding.flashPasswordEditText);
+        if (TextUtils.isEmpty(password) && fallbackPassword != null) {
+            password = fallbackPassword;
+        }
+        if (TextUtils.isEmpty(flashPassword) && fallbackFlashPassword != null) {
+            flashPassword = fallbackFlashPassword;
+        }
+        if (profile != null && !profile.isEncrypted) {
+            if (TextUtils.isEmpty(password)) {
+                password = profile.UserPassword == null ? "" : profile.UserPassword;
+            }
+            if (TextUtils.isEmpty(flashPassword)) {
+                flashPassword = profile.UserPasswordFlash == null ? "" : profile.UserPasswordFlash;
+            }
+        }
+
+        UserConfig result = new UserConfig();
+        result.id = profile == null ? "" : profile.id;
+        result.UserNick = username;
+        result.UserAutoLogon = binding.autoLogonCheckBox.isChecked();
+        result.isEncrypted = binding.savePasswordsCheckBox.isChecked();
+        result.UserPassword = password;
+        result.UserPasswordFlash = flashPassword;
+        result.UseProxy = binding.useProxyCheckBox.isChecked();
+        result.DoProxy = result.UseProxy || (profile != null && profile.DoProxy);
+        result.ProxyAddress = textOf(binding.proxyAddressEditText).trim();
+        result.ProxyUserName = textOf(binding.proxyUsernameEditText).trim();
+        result.ProxyPassword = textOf(binding.proxyPasswordEditText).trim();
+        return result;
+    }
+
+    private String textOf(EditText editText) {
+        return editText == null || editText.getText() == null ? "" : editText.getText().toString();
+    }
+
     private void showCreateEncryptionPasswordDialog() {
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
         builder.setTitle("Создать пароль шифрования");
@@ -338,7 +438,7 @@ public class ProfileActivity extends AppCompatActivity {
             try {
                 // Пытаемся расшифровать, чтобы проверить пароль
                 String decryptedPassword = CryptoUtils.decrypt(profile.UserPassword, pass);
-                String decryptedFlashPassword = CryptoUtils.decrypt(profile.UserPasswordFlash, pass);
+                String decryptedFlashPassword = decryptProfileSecret(profile.UserPasswordFlash, pass);
 
                 // Сохраняем расшифрованные пароли
                 profile.UserPassword = decryptedPassword;
@@ -353,6 +453,13 @@ public class ProfileActivity extends AppCompatActivity {
         builder.setNegativeButton("Отмена", (dialog, which) -> dialog.cancel());
 
         builder.show();
+    }
+
+    private String decryptProfileSecret(String encryptedText, String encryptionPassword) throws Exception {
+        if (TextUtils.isEmpty(encryptedText)) {
+            return "";
+        }
+        return CryptoUtils.decrypt(encryptedText, encryptionPassword);
     }
 
 

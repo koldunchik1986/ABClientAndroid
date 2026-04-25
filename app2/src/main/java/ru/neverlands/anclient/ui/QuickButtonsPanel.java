@@ -37,6 +37,7 @@ import java.util.regex.Pattern;
 import ru.neverlands.anclient.utils.AppLog;
 import ru.neverlands.anclient.R;
 import ru.neverlands.anclient.adapter.FunctionListAdapter;
+import ru.neverlands.anclient.license.LicenseRuntime;
 import ru.neverlands.anclient.manager.QuickButtonsManager;
 import ru.neverlands.anclient.manager.AppTimerManager;
 import ru.neverlands.anclient.model.Prims;
@@ -170,6 +171,7 @@ public class QuickButtonsPanel {
     private static final String[] AUTO_FUNCTIONS = new String[]{
             "Авто-Бой",
             "Авто-Рыбалка",
+            "Авто-Охота",
             "Авто-Питьё",
             "Авто-Клад",
             "Авто-Босс"
@@ -284,13 +286,25 @@ public class QuickButtonsPanel {
         
         if (button == null || button.isEmpty()) {
             buttons[position].setImageResource(R.drawable.ic_add);
+            buttons[position].setColorFilter(ContextCompat.getColor(context, R.color.colorOnPrimarySurface));
             buttons[position].setContentDescription("Добавить функцию");
-            buttons[position].setAlpha(0.3f);
+            buttons[position].setAlpha(0.9f);
             buttons[position].setBackgroundResource(R.drawable.quick_button_empty);
             AppLog.d(TAG, "updateButtonAppearance: set empty icon for position " + position);
+        } else if (!LicenseRuntime.getInstance().isActionAllowed(button.getActionType())) {
+            // UI-скрытие для stale saved buttons. `QuickButtonsManager` уже очищает
+            // persisted data, но эта проверка защищает panel, если license state меняется,
+            // пока view жива и `button` уже передан в rendering.
+            buttons[position].setImageResource(R.drawable.ic_add);
+            buttons[position].setColorFilter(ContextCompat.getColor(context, R.color.colorOnPrimarySurface));
+            buttons[position].setContentDescription("Добавить функцию");
+            buttons[position].setAlpha(0.45f);
+            buttons[position].setBackgroundResource(R.drawable.quick_button_empty);
+            AppLog.w("ANCLIENT_LICENSE", TAG, "LICENSE_FEATURE_HIDDEN: position=" + position);
         } else {
             // Для заданной функции учитываем включено/выключено (для авто-режимов).
             boolean isEnabled = autoFunctionsManager.isFunctionEnabled(button.getActionType());
+            buttons[position].clearColorFilter();
             loadIconForAction(buttons[position], button.getActionType(), isEnabled);
             buttons[position].setContentDescription(button.getDisplayName() + (isEnabled ? " (ВКЛ)" : " (ВЫКЛ)"));
             AppLog.d(TAG, "updateButtonAppearance: icon loaded for position " + position + ", enabled=" + isEnabled);
@@ -535,6 +549,15 @@ public class QuickButtonsPanel {
 
         QuickActionType actionType = button.getActionType();
         AppLog.d(TAG, "executeAction: actionType=" + actionType);
+
+        if (!LicenseRuntime.getInstance().isActionAllowed(actionType)) {
+            buttonsManager.removeFunction(position);
+            Toast.makeText(context, "Функция недоступна", Toast.LENGTH_SHORT).show();
+            AppLog.w("ANCLIENT_LICENSE", TAG, "LICENSE_FEATURE_DENIED: execute action="
+                    + (actionType == null ? "" : actionType.getActionKey()));
+            loadAndUpdateButtons();
+            return;
+        }
         
         switch (actionType) {
             case AUTO_FIGHT:
@@ -746,6 +769,18 @@ public class QuickButtonsPanel {
 
     private void showButtonOptions(int position) {
         QuickButton button = buttonsManager.getButton(position);
+
+        if (button == null) {
+            showFunctionSelector(position);
+            return;
+        }
+
+        if (!button.isEmpty() && !LicenseRuntime.getInstance().isActionAllowed(button.getActionType())) {
+            buttonsManager.removeFunction(position);
+            loadAndUpdateButtons();
+            Toast.makeText(context, "Функция недоступна", Toast.LENGTH_SHORT).show();
+            return;
+        }
 
         if (button.isEmpty()) {
             showFunctionSelector(position);
@@ -1537,7 +1572,7 @@ public class QuickButtonsPanel {
         Button resolveLocationButton = new Button(context);
         resolveLocationButton.setText("Поиск локации игрока");
         resolveLocationButton.setAllCaps(false);
-        resolveLocationButton.setTextColor(ContextCompat.getColor(context, R.color.white));
+        resolveLocationButton.setTextColor(ContextCompat.getColor(context, R.color.colorOnPrimarySurface));
         resolveLocationButton.setBackgroundColor(ContextCompat.getColor(context, R.color.purple_500));
         LinearLayout.LayoutParams resolveButtonParams = new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
@@ -1671,7 +1706,7 @@ public class QuickButtonsPanel {
         Button searchTargetButton = dialog.getButton(AlertDialog.BUTTON_NEUTRAL);
         if (searchTargetButton != null) {
             searchTargetButton.setAllCaps(false);
-            searchTargetButton.setTextColor(ContextCompat.getColor(context, R.color.white));
+            searchTargetButton.setTextColor(ContextCompat.getColor(context, R.color.colorOnPrimarySurface));
             searchTargetButton.setBackgroundColor(ContextCompat.getColor(context, R.color.purple_500));
         }
     }
@@ -1934,7 +1969,7 @@ public class QuickButtonsPanel {
         Button addButton = new Button(context);
         addButton.setText("Добавить");
         addButton.setAllCaps(false);
-        addButton.setTextColor(ContextCompat.getColor(context, R.color.white));
+        addButton.setTextColor(ContextCompat.getColor(context, R.color.colorOnPrimarySurface));
         addButton.setBackgroundColor(ContextCompat.getColor(context, R.color.purple_500));
         LinearLayout.LayoutParams addParams = new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.WRAP_CONTENT,
@@ -2110,7 +2145,8 @@ public class QuickButtonsPanel {
         enableAutoFuncContainer.setPadding(dpToPx(16), dpToPx(4), 0, 0);
         enableAutoFuncContainer.setVisibility(View.GONE);
         Spinner enableAutoFuncSpinner = new Spinner(context);
-        ArrayAdapter<String> enableAdapter = new ArrayAdapter<>(context, android.R.layout.simple_spinner_item, AUTO_FUNCTIONS);
+        final String[] allowedAutoFunctions = getAllowedAutoFunctions();
+        ArrayAdapter<String> enableAdapter = new ArrayAdapter<>(context, android.R.layout.simple_spinner_item, allowedAutoFunctions);
         enableAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         enableAutoFuncSpinner.setAdapter(enableAdapter);
         LinearLayout.LayoutParams spinnerParams = new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f);
@@ -2127,7 +2163,7 @@ public class QuickButtonsPanel {
         disableAutoFuncContainer.setPadding(dpToPx(16), dpToPx(4), 0, 0);
         disableAutoFuncContainer.setVisibility(View.GONE);
         Spinner disableAutoFuncSpinner = new Spinner(context);
-        ArrayAdapter<String> disableAdapter = new ArrayAdapter<>(context, android.R.layout.simple_spinner_item, AUTO_FUNCTIONS);
+        ArrayAdapter<String> disableAdapter = new ArrayAdapter<>(context, android.R.layout.simple_spinner_item, allowedAutoFunctions);
         disableAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         disableAutoFuncSpinner.setAdapter(disableAdapter);
         disableAutoFuncContainer.addView(disableAutoFuncSpinner, spinnerParams);
@@ -2261,16 +2297,16 @@ public class QuickButtonsPanel {
         if (isEdit) {
             if (!TextUtils.isEmpty(existingTimer.enableAutoFunction)) {
                 modeEnableAutoFunc.setChecked(true);
-                for (int i = 0; i < AUTO_FUNCTIONS.length; i++) {
-                    if (AUTO_FUNCTIONS[i].equals(existingTimer.enableAutoFunction)) {
+                for (int i = 0; i < allowedAutoFunctions.length; i++) {
+                    if (allowedAutoFunctions[i].equals(existingTimer.enableAutoFunction)) {
                         enableAutoFuncSpinner.setSelection(i);
                         break;
                     }
                 }
             } else if (!TextUtils.isEmpty(existingTimer.disableAutoFunction)) {
                 modeDisableAutoFunc.setChecked(true);
-                for (int i = 0; i < AUTO_FUNCTIONS.length; i++) {
-                    if (AUTO_FUNCTIONS[i].equals(existingTimer.disableAutoFunction)) {
+                for (int i = 0; i < allowedAutoFunctions.length; i++) {
+                    if (allowedAutoFunctions[i].equals(existingTimer.disableAutoFunction)) {
                         disableAutoFuncSpinner.setSelection(i);
                         break;
                     }
@@ -2310,7 +2346,7 @@ public class QuickButtonsPanel {
             }
             // Фиолетовый фон для кнопки "ОК"
             saveButton.setBackgroundColor(ContextCompat.getColor(context, R.color.purple_500));
-            saveButton.setTextColor(ContextCompat.getColor(context, R.color.white));
+            saveButton.setTextColor(ContextCompat.getColor(context, R.color.colorOnPrimarySurface));
             saveButton.setOnClickListener(view -> {
                 int hours = parseIntInRange(hourInput.getText() == null ? "" : hourInput.getText().toString(), 0, 999, 0);
                 int minutes = parseIntInRange(minuteInput.getText() == null ? "" : minuteInput.getText().toString(), 0, 59, 0);
@@ -2330,22 +2366,22 @@ public class QuickButtonsPanel {
 
                 if (modeEnableAutoFunc.isChecked()) {
                     int autoFuncIndex = enableAutoFuncSpinner.getSelectedItemPosition();
-                    if (autoFuncIndex < 0 || autoFuncIndex >= AUTO_FUNCTIONS.length) {
+                    if (autoFuncIndex < 0 || autoFuncIndex >= allowedAutoFunctions.length) {
                         Toast.makeText(context, "Выберите авто-функцию для включения", Toast.LENGTH_SHORT).show();
                         return;
                     }
-                    timer.enableAutoFunction = AUTO_FUNCTIONS[autoFuncIndex];
+                    timer.enableAutoFunction = allowedAutoFunctions[autoFuncIndex];
                     if (TextUtils.isEmpty(timer.description)) {
                         timer.description = "Включаем " + timer.enableAutoFunction;
                     }
                     FileLogger.trace(TAG, "Timer: ENABLE auto=" + timer.enableAutoFunction);
                 } else if (modeDisableAutoFunc.isChecked()) {
                     int autoFuncIndex = disableAutoFuncSpinner.getSelectedItemPosition();
-                    if (autoFuncIndex < 0 || autoFuncIndex >= AUTO_FUNCTIONS.length) {
+                    if (autoFuncIndex < 0 || autoFuncIndex >= allowedAutoFunctions.length) {
                         Toast.makeText(context, "Выберите авто-функцию для отключения", Toast.LENGTH_SHORT).show();
                         return;
                     }
-                    timer.disableAutoFunction = AUTO_FUNCTIONS[autoFuncIndex];
+                    timer.disableAutoFunction = allowedAutoFunctions[autoFuncIndex];
                     if (TextUtils.isEmpty(timer.description)) {
                         timer.description = "Выключаем " + timer.disableAutoFunction;
                     }
@@ -2686,6 +2722,10 @@ public class QuickButtonsPanel {
     // Зависимость: вызывается только из buildStatsText() для строк ресурсов в кг.
     private String formatKg(double kilograms) {
         return String.format(java.util.Locale.US, "%.2f", kilograms);
+    }
+
+    private String[] getAllowedAutoFunctions() {
+        return LicenseRuntime.getInstance().filterAutoFunctionLabels(AUTO_FUNCTIONS);
     }
 
     // Утилита для перевода dp -> px.

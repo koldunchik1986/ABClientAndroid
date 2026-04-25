@@ -4,8 +4,7 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:background="@color/an_autoboi_bg"
-    android:theme="@style/ThemeOverlay.MaterialComponents.Dark">
+    android:background="@color/an_autoboi_bg">
 
     <com.google.android.material.tabs.TabLayout
         android:id="@+id/tabLayout"
@@ -36,15 +35,13 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="Отмена"
-            style="@style/Widget.MaterialComponents.Button.TextButton"
             android:layout_marginEnd="8dp" />
 
         <Button
             android:id="@+id/btnSave"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Сохранить"
-            style="@style/Widget.MaterialComponents.Button" />
+            android:text="Сохранить" />
 
     </LinearLayout>
 

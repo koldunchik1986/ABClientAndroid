@@ -8,6 +8,7 @@ import java.net.Proxy;
 import java.nio.charset.Charset;
 import java.util.Locale;
 
+import ru.neverlands.anclient.license.LicenseRuntime;
 import ru.neverlands.anclient.model.UserConfig;
 import ru.neverlands.anclient.utils.AppVars;
 import ru.neverlands.anclient.utils.WebViewProxyHelper;
@@ -55,6 +56,15 @@ public final class ProxyRuntimeManager {
     public static boolean ensureStarted(Context context, UserConfig profile) {
         synchronized (LOCK) {
             lastStartError = "";
+            if (LicenseRuntime.getInstance().requireSession("proxy_runtime") == null) {
+                // Proxy — часть protected runtime surface. Если `LicenseSession` отсутствует,
+                // останавливаем localhost proxy до того, как WebView/OkHttp смогут
+                // переиспользовать stale endpoint от предыдущего профиля.
+                lastStartError = "license runtime session missing";
+                AppLog.e("ANCLIENT_LICENSE", TAG, "LICENSE_RUNTIME_BLOCK: proxy runtime not started");
+                stopLocked(false);
+                return false;
+            }
             strictProxyRequired = isStrictProxyRequired(profile);
             String signature = buildSignature(profile);
             AppLog.i(TAG, "PROXY_BOOT: ensureStarted, doProxy="

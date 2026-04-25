@@ -21,7 +21,9 @@ import java.io.IOException;
 import java.io.InputStream;
 
 import ru.neverlands.anclient.R;
+import ru.neverlands.anclient.license.LicenseRuntime;
 import ru.neverlands.anclient.manager.FastActionManager;
+import ru.neverlands.anclient.model.QuickActionType;
 import ru.neverlands.anclient.utils.AppVars;
 
 /**
@@ -60,6 +62,14 @@ public class QuickActionsBottomSheet extends BottomSheetDialogFragment {
     @Override
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
+
+        if (!LicenseRuntime.getInstance().isActionAllowed(QuickActionType.QUICK_ACTIONS)) {
+            // BottomSheet может открываться из нескольких call sites. Держим gate и здесь,
+            // потому что одного скрытия drawer/menu items недостаточно против stale fragments.
+            Toast.makeText(requireContext(), "Быстрые действия недоступны", Toast.LENGTH_SHORT).show();
+            dismissAllowingStateLoss();
+            return;
+        }
 
         editTextNick = view.findViewById(R.id.editTextNick);
         switchAutoClose = view.findViewById(R.id.switchAutoClose);
@@ -230,6 +240,10 @@ public class QuickActionsBottomSheet extends BottomSheetDialogFragment {
      * @param nick       ник цели
      */
     private void onAttackButtonClick(String attackType, String nick) {
+        if (!LicenseRuntime.getInstance().isActionAllowed(QuickActionType.QUICK_ACTIONS)) {
+            Toast.makeText(requireContext(), "Быстрые действия недоступны", Toast.LENGTH_SHORT).show();
+            return;
+        }
         // Вызываем соответствующий метод FastActionManager (портировано из FormMainFast.cs)
         // Все атаки запускаются через fastAttackAsync — он сначала проверяет бой цели,
         // ждёт окончания если нужно, и только потом армирует быстрое действие.
@@ -267,6 +281,10 @@ public class QuickActionsBottomSheet extends BottomSheetDialogFragment {
      * Обработчик нажатия на кнопку действия БЕЗ цели (на себя).
      */
     private void onSelfActionClick(String attackType) {
+        if (!LicenseRuntime.getInstance().isActionAllowed(QuickActionType.QUICK_ACTIONS)) {
+            Toast.makeText(requireContext(), "Быстрые действия недоступны", Toast.LENGTH_SHORT).show();
+            return;
+        }
         switch (attackType) {
             case "selfRass":     FastActionManager.fastAttackSelfRass(); break;
             case "openNevid":    FastActionManager.fastAttackOpenNevid(); break;

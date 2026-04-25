@@ -28,6 +28,10 @@ import ru.neverlands.anclient.utils.FileLogger;
 
 public class AuthManager {
     private static final Pattern LAST_HTTP_CODE_PATTERN = Pattern.compile("(\\d{3})(?!.*\\d)");
+    private static final Pattern FLASH_PLID_PATTERN = Pattern.compile(
+            "flashvars\\s*=\\s*['\"][^'\"]*?plid=([0-9]+)",
+            Pattern.CASE_INSENSITIVE
+    );
 
     /**
      * Полный auth-flow без капчи.
@@ -39,15 +43,19 @@ public class AuthManager {
      * - {@link DebugLogger}: детальная трассировка шагов авторизации.
      *
      * Поведение:
-     * - выполняет основной 3-шаговый сценарий через {@link #authorizeInternal(String, String, String)};
+     * - выполняет основной сценарий через {@link #authorizeInternal(String, String, String, String)};
      * - если включен proxy и получена HTTP-ошибка уровня host-маршрута, выполняет один fallback
      *   на альтернативный host (`www <-> non-www`) после очистки cookies.
      */
     public AuthResult authorize(String username, String password) {
+        return authorize(username, password, "");
+    }
+
+    public AuthResult authorize(String username, String password, String flashPassword) {
         FileLogger.log("AuthManager: Starting synchronous authorization for user: " + username);
         final String primaryBaseUrl = resolveAuthBaseUrl();
         try {
-            AuthResult primary = authorizeInternal(username, password, primaryBaseUrl);
+            AuthResult primary = authorizeInternal(username, password, flashPassword, primaryBaseUrl);
             if (!shouldRetryWithAlternateHost(primary)) {
                 return primary;
             }
@@ -59,7 +67,7 @@ public class AuthManager {
                             + ", reason=" + (primary == null ? "" : primary.getErrorMessage())
             );
             NetworkClient.clearCookies();
-            return authorizeInternal(username, password, alternateBaseUrl);
+            return authorizeInternal(username, password, flashPassword, alternateBaseUrl);
         } finally {
             // DebugLogger.close() removed - using FileLogger now
         }
@@ -75,10 +83,18 @@ public class AuthManager {
      * - {@link DebugLogger}: журналирование этапов и причины отказа.
      */
     public AuthResult authorizeWithCaptcha(String username, String password, String vcode, String verify) {
+        return authorizeWithCaptcha(username, password, "", vcode, verify);
+    }
+
+    public AuthResult authorizeWithCaptcha(String username,
+                                           String password,
+                                           String flashPassword,
+                                           String vcode,
+                                           String verify) {
         FileLogger.log("AuthManager: Starting authorization with captcha for user: " + username);
         final String primaryBaseUrl = resolveAuthBaseUrl();
         try {
-            AuthResult primary = authorizeWithCaptchaInternal(username, password, vcode, verify, primaryBaseUrl);
+            AuthResult primary = authorizeWithCaptchaInternal(username, password, flashPassword, vcode, verify, primaryBaseUrl);
             if (!shouldRetryWithAlternateHost(primary)) {
                 return primary;
             }
@@ -90,7 +106,7 @@ public class AuthManager {
                             + ", reason=" + (primary == null ? "" : primary.getErrorMessage())
             );
             NetworkClient.clearCookies();
-            return authorizeWithCaptchaInternal(username, password, vcode, verify, alternateBaseUrl);
+            return authorizeWithCaptchaInternal(username, password, flashPassword, vcode, verify, alternateBaseUrl);
         } finally {
             // DebugLogger.close() removed - using FileLogger now
         }
@@ -100,14 +116,18 @@ public class AuthManager {
      * Внутренний 3-шаговый auth-flow:
      * 1) GET "/" для первичных cookies/watermark.
      * 2) POST "/game.php" с player_nick/player_password (windows-1251).
-     * 3) GET "/main.php" для финализации сессии.
+     * 3) при наличии flash-check страницы отправляет `flcheck`/`nid`, как ПК-версия.
+     * 4) GET "/main.php" для финализации сессии.
      *
      * Важные зависимости:
      * - windows-1251 для формы логина (совместимость с сервером neverlands).
      * - Referer/Origin завязаны на конкретный host authBaseUrl.
      * - {@link #collectNeverlandsCookies(java.net.CookieManager)} собирает итоговый cookie-набор.
      */
-    private AuthResult authorizeInternal(String username, String password, String authBaseUrl) {
+    private AuthResult authorizeInternal(String username,
+                                         String password,
+                                         String flashPassword,
+                                         String authBaseUrl) {
         final String refererRoot = authBaseUrl + "/";
         final String gameUrl = authBaseUrl + "/game.php";
         final String mainUrl = authBaseUrl + "/main.php";
@@ -166,6 +186,10 @@ public class AuthManager {
                 if (loginResponseBody.contains("auth_form")) {
                     return new AuthResult("Ошибка авторизации: неверный логин или пароль.");
                 }
+                AuthResult flashResult = submitFlashPasswordIfRequired(client, gameUrl, authBaseUrl, loginResponseBody, flashPassword);
+                if (flashResult != null) {
+                    return flashResult;
+                }
             }
             FileLogger.log("AuthManager: 2. Login POST SUCCESS.");
 
@@ -202,7 +226,8 @@ public class AuthManager {
      * Внутренний captcha-flow:
      * 1) POST "/game.php" с vcode/verify + credentials.
      * 2) при повторной captcha возвращает новый captchaUrl/vcode.
-     * 3) GET "/main.php" для завершения сессии.
+     * 3) при наличии flash-check страницы отправляет `flcheck`/`nid`, как ПК-версия.
+     * 4) GET "/main.php" для завершения сессии.
      *
      * Зависимости:
      * - charset windows-1251;
@@ -211,6 +236,7 @@ public class AuthManager {
      */
     private AuthResult authorizeWithCaptchaInternal(String username,
                                                     String password,
+                                                    String flashPassword,
                                                     String vcode,
                                                     String verify,
                                                     String authBaseUrl) {
@@ -258,6 +284,10 @@ public class AuthManager {
                 if (loginResponseBody.contains("auth_form")) {
                     return new AuthResult("Ошибка авторизации: неверный логин или пароль.");
                 }
+                AuthResult flashResult = submitFlashPasswordIfRequired(client, gameUrl, authBaseUrl, loginResponseBody, flashPassword);
+                if (flashResult != null) {
+                    return flashResult;
+                }
             }
             FileLogger.log("AuthManager: 2. Captcha Login POST SUCCESS.");
 
@@ -288,6 +318,50 @@ public class AuthManager {
             FileLogger.log("AuthManager: Authorization FAILED: " + e.getMessage());
             return new AuthResult(e.getMessage());
         }
+    }
+
+    /**
+     * C# parity (`PostFilter.GamePhp`): после логина сервер может вернуть flash-page
+     * с `flashvars="plid=..."`. ПК-клиент автоматически POST-ит `flcheck` и `nid`.
+     */
+    private AuthResult submitFlashPasswordIfRequired(OkHttpClient client,
+                                                     String gameUrl,
+                                                     String authBaseUrl,
+                                                     String html,
+                                                     String flashPassword) throws Exception {
+        String safeFlashPassword = flashPassword == null ? "" : flashPassword.trim();
+        if (safeFlashPassword.isEmpty() || html == null || html.isEmpty()) {
+            return null;
+        }
+        Matcher matcher = FLASH_PLID_PATTERN.matcher(html);
+        if (!matcher.find()) {
+            return null;
+        }
+        String pid = matcher.group(1);
+        if (pid == null || pid.trim().isEmpty()) {
+            return null;
+        }
+
+        RequestBody flashBody = new FormBody.Builder(Charset.forName("windows-1251"))
+                .add("flcheck", safeFlashPassword)
+                .add("nid", pid.trim())
+                .build();
+        Request flashRequest = new Request.Builder()
+                .url(gameUrl)
+                .header("User-Agent", AppVars.BROWSER_USER_AGENT)
+                .header("Referer", gameUrl)
+                .header("Origin", authBaseUrl)
+                .post(flashBody)
+                .build();
+        FileLogger.log("AuthManager: Flash password POST request, nid=" + pid.trim());
+        try (Response flashResponse = client.newCall(flashRequest).execute()) {
+            FileLogger.log("AuthManager: Flash password POST response\n" + flashResponse);
+            if (!flashResponse.isSuccessful()) {
+                return new AuthResult("Ошибка ввода Flash-пароля: " + flashResponse.code());
+            }
+        }
+        FileLogger.log("AuthManager: Flash password POST SUCCESS.");
+        return null;
     }
 
     /**

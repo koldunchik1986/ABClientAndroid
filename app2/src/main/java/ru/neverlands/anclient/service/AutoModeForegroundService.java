@@ -26,6 +26,7 @@ import java.util.Locale;
 
 import ru.neverlands.anclient.MainActivity;
 import ru.neverlands.anclient.R;
+import ru.neverlands.anclient.license.LicenseRuntime;
 import ru.neverlands.anclient.manager.AutoFunctionsManager;
 import ru.neverlands.anclient.manager.AppTimerManager;
 import ru.neverlands.anclient.model.AutoboiState;
@@ -144,6 +145,12 @@ public class AutoModeForegroundService extends Service {
      */
     public static boolean shouldRunInBackground(Context context) {
         try {
+            if (LicenseRuntime.getInstance().requireSession("auto_mode_foreground_service") == null) {
+                // Фоновые auto-контуры не должны стартовать только по persisted AppVars.
+                // Этот guard требует ту же `LicenseSession`, которую использует UI/network код.
+                AppLog.w("ANCLIENT_LICENSE", TAG, "LICENSE_RUNTIME_BLOCK: foreground service disabled");
+                return false;
+            }
             AutoFunctionsManager autoFunctionsManager = AutoFunctionsManager.getInstance(context);
             boolean autoFightEnabled = autoFunctionsManager.isAutoFightEnabled()
                     || AppVars.Autoboi == AutoboiState.AutoboiOn;

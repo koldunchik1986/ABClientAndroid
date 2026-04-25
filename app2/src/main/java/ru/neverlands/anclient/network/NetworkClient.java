@@ -8,6 +8,7 @@ import java.util.concurrent.TimeUnit;
 import ru.neverlands.anclient.utils.AppLog;
 import okhttp3.JavaNetCookieJar;
 import okhttp3.OkHttpClient;
+import ru.neverlands.anclient.license.LicenseRuntime;
 import ru.neverlands.anclient.proxy.ProxyRuntimeManager;
 import ru.neverlands.anclient.utils.RuntimeNetTrace;
 
@@ -28,6 +29,7 @@ public class NetworkClient {
             cookieManager.setCookiePolicy(CookiePolicy.ACCEPT_ALL);
 
             boolean strictProxyRequired = ProxyRuntimeManager.isStrictProxyRequiredForCurrentProfile();
+            boolean licenseRuntimeMissing = LicenseRuntime.getInstance().requireSession("network_client") == null;
             Proxy proxy = ProxyRuntimeManager.getActiveJavaProxyOrNull();
             boolean proxyRuntimeActive = proxy != null;
             int timeoutSeconds = (strictProxyRequired || proxyRuntimeActive)
@@ -44,8 +46,17 @@ public class NetworkClient {
                     + ((strictProxyRequired || proxyRuntimeActive) ? "proxy" : "direct")
                     + ", connect/read/write=" + timeoutSeconds + "s"
                     + ", strictProxyRequired=" + strictProxyRequired
-                    + ", proxyRuntimeActive=" + proxyRuntimeActive);
-            if (proxy != null) {
+                    + ", proxyRuntimeActive=" + proxyRuntimeActive
+                    + ", licenseRuntimeMissing=" + licenseRuntimeMissing);
+            if (licenseRuntimeMissing) {
+                // Сетевой fail-closed слой. LoginActivity/MainActivity должны были активировать
+                // `LicenseRuntime.currentSession`; если этого нет, принудительно ведём OkHttp
+                // через dead loopback proxy, чтобы direct egress не обошёл license gate незаметно.
+                Proxy blockedProxy = new Proxy(Proxy.Type.HTTP, new InetSocketAddress("127.0.0.1", 1));
+                builder.proxy(blockedProxy);
+                AppLog.e("ANCLIENT_LICENSE", TAG, "LICENSE_RUNTIME_BLOCK: OkHttp direct egress blocked");
+                RuntimeNetTrace.push("LICENSE_RUNTIME", "scope=okhttp route=blocked reason=no_session");
+            } else if (proxy != null) {
                 builder.proxy(proxy);
                 AppLog.i(TAG, "PROXY_BINDING: OkHttp proxy enabled");
                 RuntimeNetTrace.push("OKHTTP", "route=proxy state=enabled");

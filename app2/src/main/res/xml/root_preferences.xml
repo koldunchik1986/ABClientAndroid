@@ -31,6 +31,15 @@
             app:summary="Удаление всех кэшированных данных" />
     </PreferenceCategory>
 
+    <PreferenceCategory app:title="Внешний вид">
+
+        <SwitchPreferenceCompat
+            app:key="force_dark_theme"
+            app:title="Тёмный режим приложения"
+            app:summary="Если выключено, используется системная тема Android"
+            app:defaultValue="false" />
+    </PreferenceCategory>
+
     <PreferenceCategory app:title="Карта">
 
         <Preference
@@ -82,7 +91,7 @@
             app:key="map_rebuild_from_pinfo"
             app:title="Пересоздавать карту из инфы (pinfo)"
             app:summary="Синхронизировать название/регион клетки по ch.php и pinfo (может замедлять авто-навигацию)"
-            app:defaultValue="true" />
+            app:defaultValue="false" />
 
         <EditTextPreference
             app:key="map_cell_check_timeout_ms"
@@ -172,52 +181,6 @@
             app:key="clear_logs"
             app:title="Очистить логи"
             app:summary="Удаление всех файлов логов" />
-    </PreferenceCategory>
-
-    <PreferenceCategory app:title="Автоматизация">
-
-        <Preference
-            app:key="auto_fight_settings"
-            app:title="Автоматический бой"
-            app:icon="@drawable/ic_settings_gear"
-            app:summary="Открыть настройки авто-боя" />
-
-        <Preference
-            app:key="auto_fish_settings"
-            app:title="Автоматическая рыбалка"
-            app:icon="@drawable/ic_settings_gear"
-            app:summary="Открыть настройки авто-рыбалки" />
-
-        <Preference
-            app:key="auto_herb_settings"
-            app:title="Автоматический сбор трав"
-            app:icon="@drawable/ic_settings_gear"
-            app:summary="Открыть настройки авто-сбора трав" />
-
-        <Preference
-            app:key="auto_mine_settings"
-            app:title="Автоматическая добыча руды"
-            app:icon="@drawable/ic_settings_gear"
-            app:summary="Открыть настройки авто-добычи руды" />
-
-        <Preference
-            app:key="auto_tree_settings"
-            app:title="Автоматическая рубка деревьев"
-            app:icon="@drawable/ic_settings_gear"
-            app:summary="Открыть настройки авто-рубки деревьев" />
-
-        <Preference
-            app:key="auto_dig_settings"
-            app:title="Автоматический поиск Клада"
-            app:icon="@drawable/ic_settings_gear"
-            app:summary="Открыть настройки поиска клада" />
-
-        <Preference
-            app:key="auto_torg_settings"
-            app:title="Автоматическая торговля"
-            app:icon="@drawable/ic_settings_gear"
-            app:summary="Открыть настройки авто-торговли" />
-
     </PreferenceCategory>
 
 </PreferenceScreen>

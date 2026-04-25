@@ -7,8 +7,10 @@ import android.os.Build;
 
 import ru.neverlands.anclient.model.LezBotsClassCollection;
 import ru.neverlands.anclient.repository.ThingsRepository;
+import ru.neverlands.anclient.license.LicenseRuntime;
 import ru.neverlands.anclient.utils.AppVars;
 import ru.neverlands.anclient.utils.DataManager;
+import ru.neverlands.anclient.utils.ThemeModeManager;
 
 /**
  * Основной класс приложения, инициализирующий глобальные переменные и компоненты.
@@ -21,9 +23,14 @@ public class ANClientApplication extends Application {
     public void onCreate() {
         super.onCreate();
         instance = this;
+
+        ThemeModeManager.applyFromPreferences(this);
         
         // Инициализация глобальных переменных
         AppVars.init(this);
+
+        // LicenseRuntime держит активную capability-сессию после проверки profile.reg.
+        LicenseRuntime.getInstance().initialize(this);
         
         // Инициализация менеджера данных
         DataManager.init(this);

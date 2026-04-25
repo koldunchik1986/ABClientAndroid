@@ -153,7 +153,7 @@ public class UserConfig {
      * - управляет модулем переименования клетки по фактическому названию комнаты;
      * - разрешает фоновую подпитку Region из pinfo для ускорения точного поиска в Авто-Компасе.
      */
-    public boolean MapRebuildFromPinfo = true;
+    public boolean MapRebuildFromPinfo = false;
     /**
      * Дополнительный таймаут проверки клетки после перехода (мс).
      * Применяется только при включенном `MapRebuildFromPinfo`.
@@ -465,6 +465,13 @@ public class UserConfig {
                     if ("user".equals(tagName)) {
                         this.UserNick = parser.getAttributeValue(null, "name");
                         this.UserPassword = parser.getAttributeValue(null, "password");
+                        String flashPassword = getAttributeValueIgnoreCase(parser, "flashpassword");
+                        if (flashPassword == null) {
+                            flashPassword = getAttributeValueIgnoreCase(parser, "flashPassword");
+                        }
+                        if (flashPassword != null) {
+                            this.UserPasswordFlash = flashPassword;
+                        }
                         String isEncryptedStr = parser.getAttributeValue(null, "isEncrypted");
                         this.isEncrypted = "true".equalsIgnoreCase(isEncryptedStr);
                         this.UserAutoLogon = parseBoolAttr(parser, "autologon", this.UserAutoLogon);
@@ -570,6 +577,9 @@ public class UserConfig {
                         String value = parseNodeText(parser, this.ProxyPassword);
                         this.ProxyPassword = value == null ? "" : value.trim();
                         legacyProxyNodesParsed = true;
+                    } else if ("UserPasswordFlash".equalsIgnoreCase(tagName) || "FlashPassword".equalsIgnoreCase(tagName)) {
+                        String value = parseNodeText(parser, this.UserPasswordFlash);
+                        this.UserPasswordFlash = value == null ? "" : value.trim();
                     } else if ("DoButtonSell".equalsIgnoreCase(tagName)) {
                         this.DoButtonSell = parseBoolNodeText(parser, this.DoButtonSell);
                     } else if ("DoButtonDrop".equalsIgnoreCase(tagName)) {
@@ -854,6 +864,7 @@ public class UserConfig {
             serializer.startTag(null, "user");
             serializer.attribute(null, "name", this.UserNick);
             serializer.attribute(null, "password", this.UserPassword);
+            serializer.attribute(null, "flashpassword", this.UserPasswordFlash != null ? this.UserPasswordFlash : "");
             serializer.attribute(null, "isEncrypted", String.valueOf(this.isEncrypted));
             serializer.attribute(null, "autologon", String.valueOf(this.UserAutoLogon));
             serializer.attribute(null, "lastlogon", String.valueOf(this.LastLogin));

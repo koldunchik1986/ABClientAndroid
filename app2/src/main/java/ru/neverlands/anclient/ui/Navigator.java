@@ -487,7 +487,7 @@ public class Navigator {
 
         TextView locLabel = new TextView(context);
         locLabel.setText("Текущая позиция: " + currentLoc);
-        locLabel.setTextColor(0xFF666666);
+        locLabel.setTextColor(ContextCompat.getColor(context, R.color.colorTextSecondary));
         root.addView(locLabel);
 
         root.addView(navigatorDestInput);
@@ -559,7 +559,7 @@ public class Navigator {
             android.widget.Button cancelButton = dialog.getButton(AlertDialog.BUTTON_NEGATIVE);
             if (startButton != null) {
                 int primaryColor = ContextCompat.getColor(context, R.color.purple_500);
-                int textColor = ContextCompat.getColor(context, R.color.white);
+                int textColor = ContextCompat.getColor(context, R.color.colorOnPrimarySurface);
                 startButton.setBackgroundColor(primaryColor);
                 startButton.setBackgroundTintList(android.content.res.ColorStateList.valueOf(primaryColor));
                 startButton.setTextColor(textColor);
@@ -576,7 +576,7 @@ public class Navigator {
                 });
             }
             if (cancelButton != null) {
-                cancelButton.setTextColor(ContextCompat.getColor(context, R.color.white));
+                cancelButton.setTextColor(ContextCompat.getColor(context, R.color.colorOnPrimarySurface));
             }
         });
 
@@ -803,7 +803,7 @@ public class Navigator {
         titleView.setText(title);
         titleView.setTypeface(null, android.graphics.Typeface.BOLD);
         // Категории выделяем красным, чтобы визуально отличались от подкатегорий.
-        titleView.setTextColor(0xFFC62828);
+        titleView.setTextColor(ContextCompat.getColor(context, R.color.colorDangerText));
         LinearLayout.LayoutParams titleLp = new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f);
         headerRow.addView(titleView, titleLp);
 
@@ -906,7 +906,7 @@ public class Navigator {
         TextView tv = new TextView(context);
         tv.setText(title);
         tv.setTypeface(null, android.graphics.Typeface.BOLD);
-        tv.setTextColor(0xFF555555);
+        tv.setTextColor(ContextCompat.getColor(context, R.color.colorTextSecondary));
         tv.setPadding(leftPaddingPx + dpToPx(14), dpToPx(6), dpToPx(10), dpToPx(2));
         parent.addView(tv);
     }
@@ -1035,7 +1035,7 @@ public class Navigator {
 
             TextView item = new TextView(context);
             item.setText(buildCellLabel(cellNum));
-            item.setTextColor(ContextCompat.getColor(context, R.color.white));
+            item.setTextColor(ContextCompat.getColor(context, R.color.an_autoboi_text_primary));
             item.setOnClickListener(v -> {
                 if (navigatorMiniMapSelectionListener != null) {
                     applyNavigatorMiniMapSelection(cellNum, "center_from_list");
@@ -1064,7 +1064,7 @@ public class Navigator {
     private void addEmptyHint(LinearLayout parent, String message) {
         TextView empty = new TextView(context);
         empty.setText(message);
-        empty.setTextColor(0xFF777777);
+        empty.setTextColor(ContextCompat.getColor(context, R.color.an_autoboi_text_secondary));
         empty.setPadding(dpToPx(14), dpToPx(8), dpToPx(10), dpToPx(8));
         parent.addView(empty);
     }

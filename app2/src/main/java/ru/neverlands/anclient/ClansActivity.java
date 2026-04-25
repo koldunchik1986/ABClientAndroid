@@ -17,6 +17,7 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
+import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentActivity;
 import androidx.viewpager2.adapter.FragmentStateAdapter;
@@ -66,7 +67,7 @@ public class ClansActivity extends AppCompatActivity {
             tabText.setText(position == 0 ? "Кланы" : "Текущие войны");
             tabText.setPadding(dpTab(14), dpTab(8), dpTab(14), dpTab(8));
             tabText.setTypeface(Typeface.DEFAULT_BOLD);
-            tabText.setTextColor(0xFFFFFFFF);
+            tabText.setTextColor(ContextCompat.getColor(this, R.color.colorOnPrimarySurface));
             tab.setCustomView(tabText);
         });
         mediator.attach();
@@ -122,7 +123,9 @@ public class ClansActivity extends AppCompatActivity {
             return;
         }
         View customView = tab.getCustomView();
-        customView.setBackgroundColor(selected ? 0xCC7E57C2 : 0x00000000);
+        customView.setBackgroundColor(selected
+                ? ContextCompat.getColor(this, R.color.an_autoboi_group_selected_bg)
+                : android.graphics.Color.TRANSPARENT);
     }
 
     private int dpTab(int value) {
@@ -252,7 +255,7 @@ public class ClansActivity extends AppCompatActivity {
             super.onViewCreated(view, savedInstanceState);
             btnRefreshWars = view.findViewById(R.id.btnRefreshWars);
             tvWarsStatus = view.findViewById(R.id.tvWarsStatus);
-            tvWarsStatus.setTextColor(0xFFFFFFFF);
+            tvWarsStatus.setTextColor(ContextCompat.getColor(requireContext(), R.color.colorText));
             tableWars = view.findViewById(R.id.tableWars);
 
             btnRefreshWars.setOnClickListener(v -> refreshWars(true));
@@ -329,7 +332,7 @@ public class ClansActivity extends AppCompatActivity {
 
         private TableRow createHeaderRow() {
             TableRow row = new TableRow(requireContext());
-            row.setBackgroundColor(0xFF7E57C2);
+            row.setBackgroundColor(ContextCompat.getColor(requireContext(), R.color.purple_500));
             row.addView(createHeaderCell("Дата", dp(126)));
             row.addView(createHeaderCell("Агрессор/Противник", dp(190)));
             row.addView(createHeaderCell("Счёт", dp(70)));
@@ -377,7 +380,7 @@ public class ClansActivity extends AppCompatActivity {
             tv.setPadding(dp(8), dp(8), dp(8), dp(8));
             tv.setTypeface(Typeface.DEFAULT_BOLD);
             tv.setTextSize(13f);
-            tv.setTextColor(0xFFFFFFFF);
+            tv.setTextColor(ContextCompat.getColor(requireContext(), R.color.colorOnPrimarySurface));
             tv.setText(text);
             return tv;
         }
@@ -465,7 +468,7 @@ public class ClansActivity extends AppCompatActivity {
             tv.setText(safeText(text));
             tv.setTextSize(12f);
             tv.setTypeface(Typeface.DEFAULT_BOLD);
-            tv.setTextColor(0xFFFFFFFF);
+            tv.setTextColor(ContextCompat.getColor(requireContext(), R.color.colorTextSecondary));
             tv.setGravity(Gravity.START);
             tv.setTextAlignment(View.TEXT_ALIGNMENT_TEXT_START);
             android.widget.LinearLayout.LayoutParams lp = new android.widget.LinearLayout.LayoutParams(
@@ -522,7 +525,7 @@ public class ClansActivity extends AppCompatActivity {
          * Правило:
          * - лидирующая сторона: зелёный;
          * - отстающая сторона: красный;
-         * - равный/неопределённый счёт: белый (нейтральный).
+         * - равный/неопределённый счёт: цвет текста текущей темы.
          */
         private int resolveWarPartyColor(int score1, int score2, boolean aggressor) {
             if (score1 > score2) {
@@ -531,13 +534,13 @@ public class ClansActivity extends AppCompatActivity {
             if (score1 < score2) {
                 return aggressor ? 0xFFC62828 : 0xFF2E7D32;
             }
-            return 0xFFFFFFFF;
+            return ContextCompat.getColor(requireContext(), R.color.colorWarNeutralText);
         }
 
         private View createDividerRow() {
             TableRow dividerRow = new TableRow(requireContext());
             TextView divider = new TextView(requireContext());
-            divider.setBackgroundColor(0x337E57C2);
+            divider.setBackgroundColor(ContextCompat.getColor(requireContext(), R.color.colorDividerPurple));
             TableRow.LayoutParams lp = new TableRow.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT,
                     dp(1)

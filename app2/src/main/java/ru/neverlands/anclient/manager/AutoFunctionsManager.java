@@ -13,6 +13,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Set;
 
+import ru.neverlands.anclient.license.LicenseRuntime;
 import ru.neverlands.anclient.MainActivity;
 import ru.neverlands.anclient.model.AutoboiState;
 import ru.neverlands.anclient.model.QuickActionType;
@@ -113,11 +114,45 @@ public class AutoFunctionsManager {
         }
         return instance;
     }
-    
+
+    private boolean rejectFeatureIfDenied(QuickActionType type, boolean enabled, String source) {
+        // Guard на стороне setter. Если вызывающий код пытается включить feature,
+        // которой нет в `LicenseSession.enabledFeatures`, отказываем до изменения AppVars/Profile/prefs.
+        // `source` нужен только для логов, чтобы было видно, какая функция пыталась включиться.
+        if (!enabled || type == null || type == QuickActionType.NONE) {
+            return false;
+        }
+        if (LicenseRuntime.getInstance().isActionAllowed(type)) {
+            return false;
+        }
+        AppLog.w("ANCLIENT_LICENSE", TAG, "LICENSE_FEATURE_DENIED: source=" + source
+                + ", action=" + type.getActionKey());
+        requestQuickButtonsRefreshInternal("license_denied:" + source);
+        return true;
+    }
+
+    private boolean isFeatureAvailable(QuickActionType type, String source) {
+        // Guard на стороне getter/tick. Persisted-флаги могут пережить смену лицензии,
+        // поэтому каждый public getter/tick проверяет runtime-доступность перед выдачей ON-состояния.
+        if (type == null || type == QuickActionType.NONE) {
+            return true;
+        }
+        boolean allowed = LicenseRuntime.getInstance().isActionAllowed(type);
+        if (!allowed) {
+            AppLog.w("ANCLIENT_LICENSE", TAG, "LICENSE_FEATURE_HIDDEN: source=" + source
+                    + ", action=" + type.getActionKey());
+        }
+        return allowed;
+    }
+
     // === AUTO_FIGHT (Авто-Бой) ===
-    
+
     // Текущее состояние авто-боя.
     public boolean isAutoFightEnabled() {
+        if (!isFeatureAvailable(QuickActionType.AUTO_FIGHT, "isAutoFightEnabled")) {
+            AppVars.Autoboi = AutoboiState.AutoboiOff;
+            return false;
+        }
         if (AppVars.Profile != null) {
             boolean profileValue = AppVars.Profile.LezDoAutoboi;
             boolean prefValue = prefs.getBoolean(KEY_PREFIX + "auto_fight", profileValue);
@@ -157,6 +192,15 @@ public class AutoFunctionsManager {
     // Почему это важно:
     // - без bootstrap после включения флаг мог быть ON, но авто-ход не стартовал до ручного переключения.
     public void setAutoFightEnabled(boolean enabled) {
+        if (rejectFeatureIfDenied(QuickActionType.AUTO_FIGHT, enabled, "setAutoFightEnabled")) {
+            prefs.edit().putBoolean(KEY_PREFIX + "auto_fight", false).apply();
+            AppVars.Autoboi = AutoboiState.AutoboiOff;
+            if (AppVars.Profile != null) {
+                AppVars.Profile.LezDoAutoboi = false;
+                AppVars.Profile.save(context);
+            }
+            return;
+        }
         prefs.edit().putBoolean(KEY_PREFIX + "auto_fight", enabled).apply();
         // Глобальный флаг боевого режима для ядра клиента.
         AppVars.Autoboi = enabled ? AutoboiState.AutoboiOn : AutoboiState.AutoboiOff;
@@ -235,6 +279,9 @@ public class AutoFunctionsManager {
     
     // Авто-рыбалка: состояние.
     public boolean isAutoFishEnabled() {
+        if (!isFeatureAvailable(QuickActionType.AUTO_FISH, "isAutoFishEnabled")) {
+            return false;
+        }
         return prefs.getBoolean(KEY_PREFIX + "auto_fish", false);
     }
     
@@ -247,6 +294,14 @@ public class AutoFunctionsManager {
     // Включение авто-рыбалки включает авто-бой (враги нападают в озере).
     // Выключение авто-рыбалки не отключает авто-бой.
     public void setAutoFishEnabled(boolean enabled) {
+        if (rejectFeatureIfDenied(QuickActionType.AUTO_FISH, enabled, "setAutoFishEnabled")) {
+            prefs.edit().putBoolean(KEY_PREFIX + "auto_fish", false).apply();
+            if (AppVars.Profile != null) {
+                AppVars.Profile.AutoFish = false;
+                AppVars.Profile.save(context);
+            }
+            return;
+        }
         prefs.edit().putBoolean(KEY_PREFIX + "auto_fish", enabled).apply();
         if (AppVars.Profile != null) {
             AppVars.Profile.AutoFish = enabled;
@@ -643,6 +698,9 @@ public class AutoFunctionsManager {
     
     // Авто-приманка: состояние.
     public boolean isAutoBaitEnabled() {
+        if (!isFeatureAvailable(QuickActionType.AUTO_BAIT, "isAutoBaitEnabled")) {
+            return false;
+        }
         return prefs.getBoolean(KEY_PREFIX + "auto_bait", false);
     }
     
@@ -654,6 +712,10 @@ public class AutoFunctionsManager {
     
     // Включение авто-приманки включает авто-бой и отключает несовместимые режимы.
     public void setAutoBaitEnabled(boolean enabled) {
+        if (rejectFeatureIfDenied(QuickActionType.AUTO_BAIT, enabled, "setAutoBaitEnabled")) {
+            prefs.edit().putBoolean(KEY_PREFIX + "auto_bait", false).apply();
+            return;
+        }
         if (enabled) {
             // При включении: если Авто-Бой выключен - включаем его
             if (!isAutoFightEnabled()) {
@@ -685,6 +747,10 @@ public class AutoFunctionsManager {
     
     // Авто-охота: состояние.
     public boolean isAutoSkinEnabled() {
+        if (!isFeatureAvailable(QuickActionType.AUTO_SKIN, "isAutoSkinEnabled")) {
+            applyAutoSkinRuntimeFlags(false, "license_denied");
+            return false;
+        }
         if (AppVars.Profile != null) {
             boolean profileValue = AppVars.Profile.SkinAuto;
             boolean prefValue = prefs.getBoolean(KEY_AUTO_SKIN, false);
@@ -706,6 +772,15 @@ public class AutoFunctionsManager {
     
     // Включение авто-охоты включает авто-бой и отключает несовместимые режимы.
     public void setAutoSkinEnabled(boolean enabled) {
+        if (rejectFeatureIfDenied(QuickActionType.AUTO_SKIN, enabled, "setAutoSkinEnabled")) {
+            prefs.edit().putBoolean(KEY_AUTO_SKIN, false).apply();
+            applyAutoSkinRuntimeFlags(false, "license_denied");
+            if (AppVars.Profile != null) {
+                AppVars.Profile.SkinAuto = false;
+                AppVars.Profile.save(context);
+            }
+            return;
+        }
         boolean autoFightWasEnabled = isAutoFightEnabled();
         if (enabled) {
             // При включении Авто-Охоты: если Авто-Бой выключен - включаем оба
@@ -853,6 +928,10 @@ public class AutoFunctionsManager {
     
     // Авто-нападение: состояние.
     public boolean isAutoAttackEnabled() {
+        if (!isFeatureAvailable(QuickActionType.AUTO_ATTACK, "isAutoAttackEnabled")) {
+            AppVars.AutoAttackToolId = 0;
+            return false;
+        }
         return getAutoAttackToolId() != 0;
     }
     
@@ -864,6 +943,10 @@ public class AutoFunctionsManager {
     
     // Включение/выключение авто-нападения.
     public void setAutoAttackEnabled(boolean enabled) {
+        if (rejectFeatureIfDenied(QuickActionType.AUTO_ATTACK, enabled, "setAutoAttackEnabled")) {
+            setAutoAttackToolId(0);
+            return;
+        }
         if (enabled) {
             int toolId = getAutoAttackToolId();
             if (toolId == 0) {
@@ -890,6 +973,10 @@ public class AutoFunctionsManager {
      * в потоке пост-фильтра/боевой логики.
      */
     public int getAutoAttackToolId() {
+        if (!isFeatureAvailable(QuickActionType.AUTO_ATTACK, "getAutoAttackToolId")) {
+            AppVars.AutoAttackToolId = 0;
+            return 0;
+        }
         int toolId = prefs.getInt(KEY_AUTO_ATTACK_TOOL_ID, AppVars.AutoAttackToolId);
         int safeToolId = normalizeAutoAttackToolId(toolId);
         if (safeToolId != toolId) {
@@ -911,6 +998,9 @@ public class AutoFunctionsManager {
      */
     public void setAutoAttackToolId(int toolId) {
         int safeToolId = normalizeAutoAttackToolId(toolId);
+        if (safeToolId > 0 && rejectFeatureIfDenied(QuickActionType.AUTO_ATTACK, true, "setAutoAttackToolId")) {
+            safeToolId = 0;
+        }
         prefs.edit().putInt(KEY_AUTO_ATTACK_TOOL_ID, safeToolId).apply();
         AppVars.AutoAttackToolId = safeToolId;
         if (safeToolId > 0) {
@@ -963,6 +1053,9 @@ public class AutoFunctionsManager {
     
     // Авто-невид: состояние.
     public boolean isAutoInvisibleEnabled() {
+        if (!isFeatureAvailable(QuickActionType.AUTO_INVISIBLE, "isAutoInvisibleEnabled")) {
+            return false;
+        }
         return prefs.getBoolean(KEY_PREFIX + "auto_invisible", false);
     }
     
@@ -974,6 +1067,10 @@ public class AutoFunctionsManager {
     
     // Включение/выключение авто-невида.
     public void setAutoInvisibleEnabled(boolean enabled) {
+        if (rejectFeatureIfDenied(QuickActionType.AUTO_INVISIBLE, enabled, "setAutoInvisibleEnabled")) {
+            prefs.edit().putBoolean(KEY_PREFIX + "auto_invisible", false).apply();
+            return;
+        }
         prefs.edit().putBoolean(KEY_PREFIX + "auto_invisible", enabled).apply();
         AppLog.d(TAG, "setAutoInvisibleEnabled: " + enabled);
         if (enabled) {
@@ -985,6 +1082,10 @@ public class AutoFunctionsManager {
     
     // Слежение за локацией: состояние.
     public boolean isLocationTrackingEnabled() {
+        if (!isFeatureAvailable(QuickActionType.LOCATION_TRACKING, "isLocationTrackingEnabled")) {
+            AppVars.DoShowWalkers = false;
+            return false;
+        }
         return prefs.getBoolean(KEY_LOCATION_TRACKING, false);
     }
     
@@ -996,6 +1097,11 @@ public class AutoFunctionsManager {
     
     // Включение/выключение слежения за локацией.
     public void setLocationTrackingEnabled(boolean enabled) {
+        if (rejectFeatureIfDenied(QuickActionType.LOCATION_TRACKING, enabled, "setLocationTrackingEnabled")) {
+            prefs.edit().putBoolean(KEY_LOCATION_TRACKING, false).apply();
+            AppVars.DoShowWalkers = false;
+            return;
+        }
         prefs.edit().putBoolean(KEY_LOCATION_TRACKING, enabled).apply();
         AppVars.DoShowWalkers = enabled;
         if (enabled) {
@@ -1063,16 +1169,27 @@ public class AutoFunctionsManager {
 
     // Авто-компас: текущее состояние.
     public boolean isAutoCompassEnabled() {
+        if (!isFeatureAvailable(QuickActionType.AUTO_COMPASS, "isAutoCompassEnabled")) {
+            return false;
+        }
         return compasAuto.isAutoCompassEnabled();
     }
 
     // Переключение авто-компаса.
     public void toggleAutoCompass() {
+        if (rejectFeatureIfDenied(QuickActionType.AUTO_COMPASS, true, "toggleAutoCompass")) {
+            compasAuto.setAutoCompassEnabled(false);
+            return;
+        }
         compasAuto.toggleAutoCompass();
     }
 
     // Включение/выключение авто-компаса.
     public void setAutoCompassEnabled(boolean enabled) {
+        if (rejectFeatureIfDenied(QuickActionType.AUTO_COMPASS, enabled, "setAutoCompassEnabled")) {
+            compasAuto.setAutoCompassEnabled(false);
+            return;
+        }
         compasAuto.setAutoCompassEnabled(enabled);
     }
 
@@ -1182,6 +1299,10 @@ public class AutoFunctionsManager {
     }
 
     public void startSettingsCompassTargetSearch(String nick, String source) {
+        if (rejectFeatureIfDenied(QuickActionType.AUTO_COMPASS, true, "startSettingsCompassTargetSearch")) {
+            compasAuto.setAutoCompassEnabled(false);
+            return;
+        }
         compasAuto.startSettingsCompassTargetSearch(nick, source);
     }
 
@@ -1190,12 +1311,19 @@ public class AutoFunctionsManager {
      * Делегирует в внутренний метод с `forceNow=false`.
      */
     public void tickAutoCompass() {
+        if (!isFeatureAvailable(QuickActionType.AUTO_COMPASS, "tickAutoCompass")) {
+            return;
+        }
         compasAuto.tickAutoCompass();
     }
 
     public void onRoomUsersUpdated(List<String> roomNicks, String roomLocationName) {
-        compasAuto.onRoomUsersUpdated(roomNicks, roomLocationName);
-        bossAuto.onRoomUsersUpdated(roomNicks, roomLocationName);
+        if (isFeatureAvailable(QuickActionType.AUTO_COMPASS, "onRoomUsersUpdated:auto_compass")) {
+            compasAuto.onRoomUsersUpdated(roomNicks, roomLocationName);
+        }
+        if (isFeatureAvailable(QuickActionType.AUTO_BOSS, "onRoomUsersUpdated:auto_boss")) {
+            bossAuto.onRoomUsersUpdated(roomNicks, roomLocationName);
+        }
     }
 
     // === AUTO_BOSS (Авто-Боссы) ===
@@ -1204,22 +1332,40 @@ public class AutoFunctionsManager {
     // Публичный фасад: UI и сервисы вызывают методы этого блока, а детальная
     // state-machine логика остаётся инкапсулированной в BossAuto.
     public boolean isAutoBossEnabled() {
+        if (!isFeatureAvailable(QuickActionType.AUTO_BOSS, "isAutoBossEnabled")) {
+            return false;
+        }
         return bossAuto.isAutoBossEnabled();
     }
 
     public void toggleAutoBoss() {
+        if (rejectFeatureIfDenied(QuickActionType.AUTO_BOSS, true, "toggleAutoBoss")) {
+            bossAuto.setAutoBossEnabled(false);
+            return;
+        }
         bossAuto.toggleAutoBoss();
     }
 
     public void setAutoBossEnabled(boolean enabled) {
+        if (rejectFeatureIfDenied(QuickActionType.AUTO_BOSS, enabled, "setAutoBossEnabled")) {
+            bossAuto.setAutoBossEnabled(false);
+            return;
+        }
         bossAuto.setAutoBossEnabled(enabled);
     }
 
     public void onIncomingChatMessage(String messageHtml) {
+        if (!isFeatureAvailable(QuickActionType.AUTO_BOSS, "onIncomingChatMessage:auto_boss")) {
+            bossAuto.setAutoBossEnabled(false);
+            return;
+        }
         bossAuto.onIncomingChatMessage(messageHtml);
     }
 
     public void tickAutoBoss() {
+        if (!isFeatureAvailable(QuickActionType.AUTO_BOSS, "tickAutoBoss")) {
+            return;
+        }
         bossAuto.tickAutoBoss();
     }
 
@@ -1318,6 +1464,9 @@ public class AutoFunctionsManager {
     
     // Авто-обнаружение: состояние.
     public boolean isAutoDetectEnabled() {
+        if (!isFeatureAvailable(QuickActionType.AUTO_DETECT, "isAutoDetectEnabled")) {
+            return false;
+        }
         return prefs.getBoolean(KEY_PREFIX + "auto_detect", false);
     }
     
@@ -1329,6 +1478,10 @@ public class AutoFunctionsManager {
     
     // Включение/выключение авто-обнаружения.
     public void setAutoDetectEnabled(boolean enabled) {
+        if (rejectFeatureIfDenied(QuickActionType.AUTO_DETECT, enabled, "setAutoDetectEnabled")) {
+            prefs.edit().putBoolean(KEY_PREFIX + "auto_detect", false).apply();
+            return;
+        }
         prefs.edit().putBoolean(KEY_PREFIX + "auto_detect", enabled).apply();
         AppLog.d(TAG, "setAutoDetectEnabled: " + enabled);
         if (enabled) {
@@ -1340,6 +1493,9 @@ public class AutoFunctionsManager {
     
     // Авто-тотем: состояние.
     public boolean isAutoSummonEnabled() {
+        if (!isFeatureAvailable(QuickActionType.AUTO_SUMMON, "isAutoSummonEnabled")) {
+            return false;
+        }
         return prefs.getBoolean(KEY_PREFIX + "auto_summon", false);
     }
     
@@ -1351,6 +1507,10 @@ public class AutoFunctionsManager {
     
     // Включение/выключение авто-тотема.
     public void setAutoSummonEnabled(boolean enabled) {
+        if (rejectFeatureIfDenied(QuickActionType.AUTO_SUMMON, enabled, "setAutoSummonEnabled")) {
+            prefs.edit().putBoolean(KEY_PREFIX + "auto_summon", false).apply();
+            return;
+        }
         prefs.edit().putBoolean(KEY_PREFIX + "auto_summon", enabled).apply();
         AppLog.d(TAG, "setAutoSummonEnabled: " + enabled);
         if (enabled) {
@@ -1362,6 +1522,9 @@ public class AutoFunctionsManager {
     
     // Авто-лечение: состояние.
     public boolean isAutoCureEnabled() {
+        if (!isFeatureAvailable(QuickActionType.AUTO_CURE, "isAutoCureEnabled")) {
+            return false;
+        }
         return prefs.getBoolean(KEY_PREFIX + "auto_cure", false);
     }
     
@@ -1373,6 +1536,10 @@ public class AutoFunctionsManager {
     
     // Включение/выключение авто-лечения.
     public void setAutoCureEnabled(boolean enabled) {
+        if (rejectFeatureIfDenied(QuickActionType.AUTO_CURE, enabled, "setAutoCureEnabled")) {
+            prefs.edit().putBoolean(KEY_PREFIX + "auto_cure", false).apply();
+            return;
+        }
         prefs.edit().putBoolean(KEY_PREFIX + "auto_cure", enabled).apply();
         AppLog.d(TAG, "setAutoCureEnabled: " + enabled);
         if (enabled) {
@@ -1559,6 +1726,9 @@ public class AutoFunctionsManager {
     
     // Авто-питье: состояние.
     public boolean isAutoDrinkEnabled() {
+        if (!isFeatureAvailable(QuickActionType.AUTO_DRINK, "isAutoDrinkEnabled")) {
+            return false;
+        }
         return prefs.getBoolean(KEY_PREFIX + "auto_drink", false);
     }
     
@@ -1570,6 +1740,10 @@ public class AutoFunctionsManager {
     
     // Включение/выключение авто-питья.
     public void setAutoDrinkEnabled(boolean enabled) {
+        if (rejectFeatureIfDenied(QuickActionType.AUTO_DRINK, enabled, "setAutoDrinkEnabled")) {
+            prefs.edit().putBoolean(KEY_PREFIX + "auto_drink", false).apply();
+            return;
+        }
         prefs.edit().putBoolean(KEY_PREFIX + "auto_drink", enabled).apply();
         AppLog.d(TAG, "setAutoDrinkEnabled: " + enabled);
         if (enabled) {
@@ -1581,6 +1755,10 @@ public class AutoFunctionsManager {
 
     // Возвращает текущее состояние "Авто-Клад".
     public boolean isAutoTreasureEnabled() {
+        if (!isFeatureAvailable(QuickActionType.AUTO_TREASURE, "isAutoTreasureEnabled")) {
+            AppVars.DoSearchBox = false;
+            return false;
+        }
         if (AppVars.Profile != null) {
             boolean profileValue = AppVars.Profile.AutoDig;
             boolean prefValue = prefs.getBoolean(KEY_AUTO_TREASURE, profileValue);
@@ -1605,6 +1783,15 @@ public class AutoFunctionsManager {
      * C# parity: menuitemDoSearchBox -> AppVars.DoSearchBox + ReloadMainFrame().
      */
     public void setAutoTreasureEnabled(boolean enabled) {
+        if (rejectFeatureIfDenied(QuickActionType.AUTO_TREASURE, enabled, "setAutoTreasureEnabled")) {
+            prefs.edit().putBoolean(KEY_AUTO_TREASURE, false).apply();
+            AppVars.DoSearchBox = false;
+            if (AppVars.Profile != null) {
+                AppVars.Profile.AutoDig = false;
+                AppVars.Profile.save(context);
+            }
+            return;
+        }
         prefs.edit().putBoolean(KEY_AUTO_TREASURE, enabled).apply();
         AppVars.DoSearchBox = enabled;
 
@@ -1837,12 +2024,19 @@ public class AutoFunctionsManager {
 
     // Возвращает true, если навигатор активен (рейс к пункту назначения в процессе).
     public boolean isAutoMovingEnabled() {
+        if (!isFeatureAvailable(QuickActionType.AUTO_MOVING, "isAutoMovingEnabled")) {
+            return false;
+        }
         return AppVars.AutoMoving;
     }
 
     // Непосредственное включение/выключение флага навигатора (без выбора маршрута).
     // Для полноценного запуска используйте startAutoMoving(destination).
     public void setAutoMovingEnabled(boolean enabled) {
+        if (rejectFeatureIfDenied(QuickActionType.AUTO_MOVING, enabled, "setAutoMovingEnabled")) {
+            AppVars.AutoMoving = false;
+            return;
+        }
         AppVars.AutoMoving = enabled;
         AppLog.d(TAG, "setAutoMovingEnabled: " + enabled);
         if (enabled) {
@@ -1858,6 +2052,10 @@ public class AutoFunctionsManager {
 
     // Запуск навигатора к указанному пункту назначения.
     public void startAutoMoving(String destination) {
+        if (rejectFeatureIfDenied(QuickActionType.AUTO_MOVING, true, "startAutoMoving")) {
+            AppVars.AutoMoving = false;
+            return;
+        }
         if (destination == null || destination.isEmpty()) {
             AppLog.w(TAG, "startAutoMoving: destination is empty");
             return;
@@ -1943,6 +2141,9 @@ public class AutoFunctionsManager {
     
     // Авто-травник: состояние.
     public boolean isAutoCutEnabled() {
+        if (!isFeatureAvailable(QuickActionType.AUTO_CUT, "isAutoCutEnabled")) {
+            return false;
+        }
         return prefs.getBoolean(KEY_PREFIX + "auto_cut", false);
     }
     
@@ -1954,6 +2155,10 @@ public class AutoFunctionsManager {
     
     // Включение авто-травника включает авто-бой и отключает несовместимые режимы.
     public void setAutoCutEnabled(boolean enabled) {
+        if (rejectFeatureIfDenied(QuickActionType.AUTO_CUT, enabled, "setAutoCutEnabled")) {
+            prefs.edit().putBoolean(KEY_PREFIX + "auto_cut", false).apply();
+            return;
+        }
         if (enabled) {
             // При включении: если Авто-Бой выключен - включаем его
             if (!isAutoFightEnabled()) {
@@ -1985,6 +2190,9 @@ public class AutoFunctionsManager {
     
     // Авто-обновление: состояние.
     public boolean isAutoRefreshEnabled() {
+        if (!isFeatureAvailable(QuickActionType.AUTO_REFRESH, "isAutoRefreshEnabled")) {
+            return false;
+        }
         return prefs.getBoolean(KEY_PREFIX + "auto_refresh", false);
     }
     
@@ -1996,6 +2204,10 @@ public class AutoFunctionsManager {
     
     // Включение/выключение авто-обновления.
     public void setAutoRefreshEnabled(boolean enabled) {
+        if (rejectFeatureIfDenied(QuickActionType.AUTO_REFRESH, enabled, "setAutoRefreshEnabled")) {
+            prefs.edit().putBoolean(KEY_PREFIX + "auto_refresh", false).apply();
+            return;
+        }
         prefs.edit().putBoolean(KEY_PREFIX + "auto_refresh", enabled).apply();
         AppLog.d(TAG, "setAutoRefreshEnabled: " + enabled);
         if (enabled) {
@@ -2010,6 +2222,9 @@ public class AutoFunctionsManager {
      */
     // Универсальный опрос состояния по типу кнопки (используется панелью быстрых кнопок).
     public boolean isFunctionEnabled(QuickActionType type) {
+        if (!isFeatureAvailable(type, "isFunctionEnabled")) {
+            return false;
+        }
         switch (type) {
             case AUTO_FIGHT: return isAutoFightEnabled();
             case AUTO_FISH: return isAutoFishEnabled();
@@ -2037,6 +2252,9 @@ public class AutoFunctionsManager {
      */
     // Универсальное переключение состояния по типу кнопки.
     public void toggleFunction(QuickActionType type) {
+        if (rejectFeatureIfDenied(type, true, "toggleFunction")) {
+            return;
+        }
         switch (type) {
             case AUTO_FIGHT: toggleAutoFight(); break;
             case AUTO_FISH: toggleAutoFish(); break;
@@ -2081,5 +2299,104 @@ public class AutoFunctionsManager {
         setAutoTreasureEnabled(false);
         setAutoCutEnabled(false);
         setAutoRefreshEnabled(false);
+    }
+
+    /**
+     * Снимает persisted/runtime-флаги только у тех авто-функций, которые исчезли из текущей
+     * license-сессии. Используется при downgrade full -> public после истечения grant.
+     */
+    public void disableUnavailableFeatures(String reason) {
+        StringBuilder disabled = new StringBuilder();
+        disableIfUnavailable(QuickActionType.AUTO_FIGHT, this::setAutoFightEnabled, disabled);
+        disableIfUnavailable(QuickActionType.AUTO_FISH, this::setAutoFishEnabled, disabled);
+        disableIfUnavailable(QuickActionType.AUTO_BAIT, this::setAutoBaitEnabled, disabled);
+        disableIfUnavailable(QuickActionType.AUTO_SKIN, this::setAutoSkinEnabled, disabled);
+        disableIfUnavailable(QuickActionType.AUTO_ATTACK, this::setAutoAttackEnabled, disabled);
+        disableIfUnavailable(QuickActionType.AUTO_COMPASS, this::setAutoCompassEnabled, disabled);
+        disableIfUnavailable(QuickActionType.AUTO_BOSS, this::setAutoBossEnabled, disabled);
+        disableIfUnavailable(QuickActionType.AUTO_INVISIBLE, this::setAutoInvisibleEnabled, disabled);
+        disableIfUnavailable(QuickActionType.LOCATION_TRACKING, this::setLocationTrackingEnabled, disabled);
+        disableIfUnavailable(QuickActionType.AUTO_DETECT, this::setAutoDetectEnabled, disabled);
+        disableIfUnavailable(QuickActionType.AUTO_SUMMON, this::setAutoSummonEnabled, disabled);
+        disableIfUnavailable(QuickActionType.AUTO_CURE, this::setAutoCureEnabled, disabled);
+        disableIfUnavailable(QuickActionType.AUTO_DRINK, this::setAutoDrinkEnabled, disabled);
+        disableIfUnavailable(QuickActionType.AUTO_MOVING, this::setAutoMovingEnabled, disabled);
+        disableIfUnavailable(QuickActionType.AUTO_TREASURE, this::setAutoTreasureEnabled, disabled);
+        disableIfUnavailable(QuickActionType.AUTO_CUT, this::setAutoCutEnabled, disabled);
+        disableIfUnavailable(QuickActionType.AUTO_REFRESH, this::setAutoRefreshEnabled, disabled);
+        requestQuickButtonsRefreshInternal("license_sync:" + reason);
+        if (disabled.length() > 0) {
+            AppLog.w("ANCLIENT_LICENSE", TAG, "LICENSE_FEATURE_FLAGS_DISABLED: reason=" + reason
+                    + ", actions=" + disabled);
+            syncBackgroundService("license_downgrade:" + reason);
+        }
+    }
+
+    private interface BoolSetter {
+        void set(boolean value);
+    }
+
+    private void disableIfUnavailable(QuickActionType type,
+                                      BoolSetter setter,
+                                      StringBuilder disabled) {
+        if (type == null || LicenseRuntime.getInstance().isActionAllowed(type) || !isRawFunctionEnabled(type)) {
+            return;
+        }
+        setter.set(false);
+        if (disabled.length() > 0) {
+            disabled.append(',');
+        }
+        disabled.append(type.getActionKey());
+    }
+
+    private boolean isRawFunctionEnabled(QuickActionType type) {
+        if (type == null) {
+            return false;
+        }
+        switch (type) {
+            case AUTO_FIGHT:
+                return AppVars.Profile != null
+                        ? AppVars.Profile.LezDoAutoboi
+                        : prefs.getBoolean(KEY_PREFIX + "auto_fight", false);
+            case AUTO_FISH:
+                return prefs.getBoolean(KEY_PREFIX + "auto_fish", false);
+            case AUTO_BAIT:
+                return prefs.getBoolean(KEY_PREFIX + "auto_bait", false);
+            case AUTO_SKIN:
+                return AppVars.Profile != null
+                        ? AppVars.Profile.SkinAuto
+                        : prefs.getBoolean(KEY_AUTO_SKIN, false);
+            case AUTO_ATTACK:
+                return normalizeAutoAttackToolId(prefs.getInt(KEY_AUTO_ATTACK_TOOL_ID, AppVars.AutoAttackToolId)) > 0
+                        || prefs.getBoolean(KEY_AUTO_ATTACK_LEGACY, false);
+            case AUTO_COMPASS:
+                return compasAuto.isAutoCompassEnabled();
+            case AUTO_BOSS:
+                return bossAuto.isAutoBossEnabled();
+            case AUTO_INVISIBLE:
+                return prefs.getBoolean(KEY_PREFIX + "auto_invisible", false);
+            case LOCATION_TRACKING:
+                return prefs.getBoolean(KEY_LOCATION_TRACKING, false) || AppVars.DoShowWalkers;
+            case AUTO_DETECT:
+                return prefs.getBoolean(KEY_PREFIX + "auto_detect", false);
+            case AUTO_SUMMON:
+                return prefs.getBoolean(KEY_PREFIX + "auto_summon", false);
+            case AUTO_CURE:
+                return prefs.getBoolean(KEY_PREFIX + "auto_cure", false);
+            case AUTO_DRINK:
+                return prefs.getBoolean(KEY_PREFIX + "auto_drink", false);
+            case AUTO_MOVING:
+                return AppVars.AutoMoving;
+            case AUTO_TREASURE:
+                return AppVars.Profile != null
+                        ? AppVars.Profile.AutoDig
+                        : prefs.getBoolean(KEY_AUTO_TREASURE, false);
+            case AUTO_CUT:
+                return prefs.getBoolean(KEY_PREFIX + "auto_cut", false);
+            case AUTO_REFRESH:
+                return prefs.getBoolean(KEY_PREFIX + "auto_refresh", false);
+            default:
+                return false;
+        }
     }
 }

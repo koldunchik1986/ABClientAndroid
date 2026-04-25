@@ -483,11 +483,11 @@ public class FastActionManager {
     }
 
     /** Сильная спина с приоритетом "Превосходное" (если есть в инвентаре). */
-    // Auto-attack strong-back variant with priority for "Превосходное ...".
-    // Dependencies:
-    // - fastStart(...): launches unified fast-action pipeline.
-    // - mainPhpFastPotion(...): resolves potion in HTML and sends POST.
-    // Fallback to regular "Зелье Сильной Спины" is implemented in mainPhpFastPotion(...).
+    // Вариант авто-нападения через сильную спину с приоритетом "Превосходное ...".
+    // Зависимости:
+    // - fastStart(...): запускает единый fast-action pipeline.
+    // - mainPhpFastPotion(...): находит зелье в HTML и отправляет POST.
+    // Fallback на обычное "Зелье Сильной Спины" реализован в mainPhpFastPotion(...).
     public static void fastAttackStrongBest(String nick) {
         fastStart("Превосходное Зелье Сильной Спины", stripItalic(nick));
     }
@@ -510,11 +510,11 @@ public class FastActionManager {
      *
      * @return true, если toolId поддержан и действие запущено.
      */
-    // Dispatcher for per-contact/global auto-attack tool selection.
-    // Dependencies:
-    // - RoomManager: resolves final toolId priority (contact > global).
-    // - ContactsManager/AppVars: provide source tool settings.
-    // - processMainPhp(...): executes selected tool through parsed HTML forms.
+    // Диспетчер выбора инструмента авто-нападения per-contact/global.
+    // Зависимости:
+    // - RoomManager: выбирает итоговый приоритет toolId (contact > global).
+    // - ContactsManager/AppVars: предоставляют исходные настройки инструмента.
+    // - processMainPhp(...): выполняет выбранный инструмент через распарсенные HTML-формы.
     public static boolean fastAttackAutoByToolId(String nick, int toolId) {
         AppLog.d(TAG, "[AA_TRACE] fastAttackAutoByToolId: nick=" + nick + ", toolId=" + toolId);
         switch (toolId) {
