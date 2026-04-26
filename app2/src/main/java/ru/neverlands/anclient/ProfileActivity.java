@@ -31,9 +31,12 @@ import ru.neverlands.anclient.utils.AppVars;
 import ru.neverlands.anclient.utils.CryptoUtils;
 
 public class ProfileActivity extends AppCompatActivity {
+    public static final String EXTRA_ENCRYPTION_PASSWORD = "profile_encryption_password";
+
     private ActivityProfileBinding binding;
     private UserConfig profile;
     private String originalUserNick;
+    private String editorEncryptionPassword;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -56,12 +59,24 @@ public class ProfileActivity extends AppCompatActivity {
             profile = new UserConfig();
         }
 
+        editorEncryptionPassword = getIntent().getStringExtra(EXTRA_ENCRYPTION_PASSWORD);
+
         originalUserNick = profile.UserNick;
 
         binding.usernameEditText.setText(profile.UserNick);
         if (!profile.isEncrypted) {
             binding.passwordEditText.setText(profile.UserPassword);
             binding.flashPasswordEditText.setText(profile.UserPasswordFlash);
+        } else if (!TextUtils.isEmpty(editorEncryptionPassword)) {
+            try {
+                binding.passwordEditText.setText(decryptProfileSecret(profile.UserPassword, editorEncryptionPassword));
+                binding.flashPasswordEditText.setText(decryptProfileSecret(profile.UserPasswordFlash, editorEncryptionPassword));
+            } catch (Exception e) {
+                editorEncryptionPassword = "";
+                Toast.makeText(this, "Неверный пароль шифрования", Toast.LENGTH_SHORT).show();
+                finish();
+                return;
+            }
         }
         binding.autoLogonCheckBox.setChecked(profile.UserAutoLogon);
         binding.useProxyCheckBox.setChecked(profile.UseProxy);
@@ -290,6 +305,8 @@ public class ProfileActivity extends AppCompatActivity {
             if (!profile.isEncrypted) {
                 // Если пароли еще не зашифрованы, показываем диалог для создания пароля шифрования
                 showCreateEncryptionPasswordDialog();
+            } else if (!TextUtils.isEmpty(editorEncryptionPassword)) {
+                saveProfile(editorEncryptionPassword);
             } else {
                 // Если уже зашифровано, просто сохраняем. В будущем можно добавить смену пароля.
                 saveProfile(null);
@@ -297,7 +314,11 @@ public class ProfileActivity extends AppCompatActivity {
         } else {
             // Если шифрование отключается, нужно расшифровать пароли, если они были зашифрованы
             if (profile.isEncrypted) {
-                showEnterEncryptionPasswordToDecryptDialog();
+                if (!TextUtils.isEmpty(editorEncryptionPassword)) {
+                    saveProfile(null);
+                } else {
+                    showEnterEncryptionPasswordToDecryptDialog();
+                }
             } else {
                 saveProfile(null);
             }
@@ -305,51 +326,10 @@ public class ProfileActivity extends AppCompatActivity {
     }
 
     private void showLicenseRequestDialog() {
-        if (needsEncryptionPasswordForLicenseRequest()) {
-            showLicenseRequestEncryptionPasswordDialog();
+        if (!validateLicenseRequestRequiredFields()) {
             return;
         }
-        UserConfig requestProfile = buildLicenseRequestProfile(null, null);
-        createAndShowLicenseRequest(requestProfile);
-    }
-
-    private boolean needsEncryptionPasswordForLicenseRequest() {
-        if (profile == null || !profile.isEncrypted || !binding.savePasswordsCheckBox.isChecked()) {
-            return false;
-        }
-        boolean missingGamePassword = TextUtils.isEmpty(textOf(binding.passwordEditText))
-                && !TextUtils.isEmpty(profile.UserPassword);
-        boolean missingFlashPassword = TextUtils.isEmpty(textOf(binding.flashPasswordEditText))
-                && !TextUtils.isEmpty(profile.UserPasswordFlash);
-        return missingGamePassword || missingFlashPassword;
-    }
-
-    private void showLicenseRequestEncryptionPasswordDialog() {
-        AlertDialog.Builder builder = new AlertDialog.Builder(this);
-        builder.setTitle("Пароль шифрования для запроса лицензии");
-
-        View view = LayoutInflater.from(this).inflate(R.layout.dialog_enter_password, null);
-        builder.setView(view);
-
-        final EditText passwordField = view.findViewById(R.id.password_field);
-
-        builder.setPositiveButton("OK", (dialog, which) -> {
-            String encryptionPassword = passwordField.getText().toString();
-            try {
-                String decryptedPassword = decryptProfileSecret(profile.UserPassword, encryptionPassword);
-                String decryptedFlashPassword = decryptProfileSecret(profile.UserPasswordFlash, encryptionPassword);
-                UserConfig requestProfile = buildLicenseRequestProfile(decryptedPassword, decryptedFlashPassword);
-                createAndShowLicenseRequest(requestProfile);
-            } catch (Exception e) {
-                Toast.makeText(ProfileActivity.this, "Неверный пароль шифрования", Toast.LENGTH_SHORT).show();
-            }
-        });
-        builder.setNegativeButton("Отмена", (dialog, which) -> dialog.cancel());
-
-        builder.show();
-    }
-
-    private void createAndShowLicenseRequest(UserConfig requestProfile) {
+        UserConfig requestProfile = buildLicenseRequestProfile();
         if (requestProfile == null) {
             return;
         }
@@ -357,7 +337,27 @@ public class ProfileActivity extends AppCompatActivity {
         LicenseRequestDialog.show(this, status);
     }
 
-    private UserConfig buildLicenseRequestProfile(String fallbackPassword, String fallbackFlashPassword) {
+    private boolean validateLicenseRequestRequiredFields() {
+        String message = getString(R.string.profile_required_fields_error);
+        boolean usernameMissing = TextUtils.isEmpty(textOf(binding.usernameEditText).trim());
+        boolean passwordMissing = TextUtils.isEmpty(textOf(binding.passwordEditText));
+
+        binding.usernameLayout.setError(usernameMissing ? message : null);
+        binding.passwordLayout.setError(passwordMissing ? message : null);
+        binding.licenseRequestErrorText.setVisibility(usernameMissing || passwordMissing ? View.VISIBLE : View.GONE);
+
+        if (usernameMissing) {
+            binding.usernameEditText.requestFocus();
+            return false;
+        }
+        if (passwordMissing) {
+            binding.passwordEditText.requestFocus();
+            return false;
+        }
+        return true;
+    }
+
+    private UserConfig buildLicenseRequestProfile() {
         String username = textOf(binding.usernameEditText).trim();
         if (username.isEmpty()) {
             Toast.makeText(this, "Имя пользователя не может быть пустым", Toast.LENGTH_SHORT).show();
@@ -366,12 +366,6 @@ public class ProfileActivity extends AppCompatActivity {
 
         String password = textOf(binding.passwordEditText);
         String flashPassword = textOf(binding.flashPasswordEditText);
-        if (TextUtils.isEmpty(password) && fallbackPassword != null) {
-            password = fallbackPassword;
-        }
-        if (TextUtils.isEmpty(flashPassword) && fallbackFlashPassword != null) {
-            flashPassword = fallbackFlashPassword;
-        }
         if (profile != null && !profile.isEncrypted) {
             if (TextUtils.isEmpty(password)) {
                 password = profile.UserPassword == null ? "" : profile.UserPassword;

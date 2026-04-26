@@ -22,7 +22,6 @@ $ClassesDir = Join-Path $RootDir 'app3\build\classes\java\main'
 $DefaultRequest = Join-Path $App3Dir 'request\request.txt'
 $DefaultDecode = 'автоматически: Nick_devicePublicKeySha256.txt рядом с заявкой'
 $DefaultLicense = Join-Path $App3Dir 'request\profile.reg'
-$DefaultRequestFolder = Join-Path $App3Dir 'request'
 
 if (!(Test-Path -LiteralPath $Gradlew)) {
     Write-Host "Не найден Gradle wrapper: $Gradlew"
@@ -95,14 +94,6 @@ function Ask-LicensePath {
     $value = Read-Host "Путь к файлу лицензии [$DefaultLicense]"
     if ([string]::IsNullOrWhiteSpace($value)) {
         $value = $DefaultLicense
-    }
-    return $value
-}
-
-function Ask-RequestFolder {
-    $value = Read-Host "Папка с заявками для отображения ников [$DefaultRequestFolder]"
-    if ([string]::IsNullOrWhiteSpace($value)) {
-        $value = $DefaultRequestFolder
     }
     return $value
 }
@@ -180,9 +171,10 @@ function Show-InspectLicenseHelp {
     Write-Host '  - когда доступ истекает и сколько осталось времени.'
     Write-Host 'Важно: сам profile.reg хранит защищённый hash ника, а не открытый ник.'
     Write-Host 'В новых profile.reg ник берётся из встроенного зашифрованного индекса.'
-    Write-Host 'Для старых profile.reg без индекса можно положить рядом request.txt или отчёт Nick_device.txt.'
+    Write-Host 'Папка с заявками больше не спрашивается. Для старых profile.reg без индекса её можно передать вторым CLI-аргументом.'
     Write-Host 'Пример CLI: app3\app3_menu.bat check'
-    Write-Host 'Пример напрямую: app3\app3_menu.bat inspect-license app3\request\profile.reg app3\request'
+    Write-Host 'Пример напрямую: app3\app3_menu.bat inspect-license app3\request\profile.reg'
+    Write-Host 'Legacy fallback: app3\app3_menu.bat inspect-license app3\request\profile.reg app3\request'
     Write-Host ''
 }
 
@@ -253,7 +245,7 @@ function Show-FullHelp {
     Write-Host 'Прямые команды:'
     Write-Host '  init-keys [--force]'
     Write-Host '  decode-request request.txt [profileName.txt]'
-    Write-Host '  inspect-license [profile.reg] [папка с request.txt]'
+    Write-Host '  inspect-license [profile.reg] [legacy-папка с request.txt]'
     Write-Host '  issue request.txt [profile.reg] [срок] [доступ ника] [общий доступ]'
     Write-Host '  build'
     Write-Host ''
@@ -317,8 +309,7 @@ function Run-InspectLicenseMenu {
     Show-InspectLicenseHelp
     if (!(Confirm-Continue)) { return }
     $license = Ask-LicensePath
-    $requestFolder = Ask-RequestFolder
-    [void](Invoke-LicenseTool @('inspect-license', $license, $requestFolder))
+    [void](Invoke-LicenseTool @('inspect-license', $license))
     Pause-Menu
 }
 
@@ -460,8 +451,8 @@ if ($args.Count -gt 0) {
         'menu' { Show-Menu; exit 0 }
         'help' { Show-FullHelp; exit 0 }
         'build' { exit (Invoke-App3Build) }
-        'check' { exit (Invoke-LicenseTool @('inspect-license', $DefaultLicense, $DefaultRequestFolder)) }
-        'inspect' { exit (Invoke-LicenseTool @('inspect-license', $DefaultLicense, $DefaultRequestFolder)) }
+        'check' { exit (Invoke-LicenseTool @('inspect-license', $DefaultLicense)) }
+        'inspect' { exit (Invoke-LicenseTool @('inspect-license', $DefaultLicense)) }
         'full10m' { exit (Invoke-LicenseTool @('issue', $DefaultRequest, $DefaultLicense, '10m', 'full', 'limited')) }
         default { exit (Invoke-LicenseTool $args) }
     }

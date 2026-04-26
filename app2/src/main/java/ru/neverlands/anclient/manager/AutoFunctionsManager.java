@@ -1340,7 +1340,7 @@ public class AutoFunctionsManager {
 
     public void toggleAutoBoss() {
         if (rejectFeatureIfDenied(QuickActionType.AUTO_BOSS, true, "toggleAutoBoss")) {
-            bossAuto.setAutoBossEnabled(false);
+            bossAuto.disableForLicenseSync("license_denied:toggleAutoBoss");
             return;
         }
         bossAuto.toggleAutoBoss();
@@ -1348,7 +1348,7 @@ public class AutoFunctionsManager {
 
     public void setAutoBossEnabled(boolean enabled) {
         if (rejectFeatureIfDenied(QuickActionType.AUTO_BOSS, enabled, "setAutoBossEnabled")) {
-            bossAuto.setAutoBossEnabled(false);
+            bossAuto.disableForLicenseSync("license_denied:setAutoBossEnabled");
             return;
         }
         bossAuto.setAutoBossEnabled(enabled);
@@ -1356,7 +1356,7 @@ public class AutoFunctionsManager {
 
     public void onIncomingChatMessage(String messageHtml) {
         if (!isFeatureAvailable(QuickActionType.AUTO_BOSS, "onIncomingChatMessage:auto_boss")) {
-            bossAuto.setAutoBossEnabled(false);
+            bossAuto.disableForLicenseSync("license_denied:onIncomingChatMessage");
             return;
         }
         bossAuto.onIncomingChatMessage(messageHtml);
@@ -2313,7 +2313,15 @@ public class AutoFunctionsManager {
         disableIfUnavailable(QuickActionType.AUTO_SKIN, this::setAutoSkinEnabled, disabled);
         disableIfUnavailable(QuickActionType.AUTO_ATTACK, this::setAutoAttackEnabled, disabled);
         disableIfUnavailable(QuickActionType.AUTO_COMPASS, this::setAutoCompassEnabled, disabled);
-        disableIfUnavailable(QuickActionType.AUTO_BOSS, this::setAutoBossEnabled, disabled);
+        disableIfUnavailable(QuickActionType.AUTO_BOSS,
+                enabled -> {
+                    if (enabled) {
+                        setAutoBossEnabled(true);
+                    } else {
+                        bossAuto.disableForLicenseSync("license_downgrade:" + reason);
+                    }
+                },
+                disabled);
         disableIfUnavailable(QuickActionType.AUTO_INVISIBLE, this::setAutoInvisibleEnabled, disabled);
         disableIfUnavailable(QuickActionType.LOCATION_TRACKING, this::setLocationTrackingEnabled, disabled);
         disableIfUnavailable(QuickActionType.AUTO_DETECT, this::setAutoDetectEnabled, disabled);

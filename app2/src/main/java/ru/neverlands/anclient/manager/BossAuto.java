@@ -272,9 +272,37 @@ final class BossAuto {
     }
 
     void setAutoBossEnabled(boolean enabled) {
+        setAutoBossEnabledInternal(enabled, "manual_disable", true, true);
+    }
+
+    void disableForLicenseSync(String reason) {
+        setAutoBossEnabledInternal(false, normalizeDisableReason(reason), false, false);
+    }
+
+    private void setAutoBossEnabledInternal(boolean enabled,
+                                           String disableReason,
+                                           boolean notifyChat,
+                                           boolean restoreSnapshot) {
+        boolean wasEnabled = isAutoBossEnabled();
+        if (wasEnabled == enabled) {
+            if (!enabled && hasScenarioState()) {
+                stopAndRestore(disableReason, restoreSnapshot, notifyChat);
+                AppLog.d(TAG, TRACE_PREFIX + " setAutoBossEnabled=false cleared stale scenario"
+                        + ", reason=" + disableReason);
+                owner.syncBackgroundServiceInternal("setAutoBossEnabled(false)");
+                owner.requestQuickButtonsRefreshInternal("setAutoBossEnabled(false)");
+                return;
+            }
+            AppLog.d(TAG, TRACE_PREFIX + " setAutoBossEnabled ignored: already=" + enabled
+                    + ", reason=" + disableReason);
+            return;
+        }
         prefs.edit().putBoolean(KEY_AUTO_BOSS, enabled).apply();
         if (!enabled) {
-            stopAndRestore("manual_disable", true);
+            boolean scenarioActive = hasScenarioState();
+            if (notifyChat || scenarioActive) {
+                stopAndRestore(disableReason, restoreSnapshot, notifyChat);
+            }
         } else {
             owner.requestCharacterSyncForAutoFunctionEnableInternal("auto_boss");
             writeBossChat("Режим включен. Ожидаем системные сообщения о Боссах.");
@@ -780,6 +808,10 @@ final class BossAuto {
      * восстанавливается снимок ранее активных авто-функций.
      */
     private void stopAndRestore(String reason, boolean restoreSnapshot) {
+        stopAndRestore(reason, restoreSnapshot, true);
+    }
+
+    private void stopAndRestore(String reason, boolean restoreSnapshot, boolean notifyChat) {
         BossScenarioSnapshot snapshotToRestore = null;
         String oldTarget;
         synchronized (lock) {
@@ -817,14 +849,33 @@ final class BossAuto {
         if (snapshotToRestore != null) {
             restoreSnapshot(snapshotToRestore);
         }
-        if (!isEmpty(oldTarget)) {
-            String targetHtml = buildTargetNickHtml(oldTarget, null);
-            writeBossChat("Сценарий завершен (" + reason + ") для цели "
-                    + targetHtml + ".");
-        } else {
-            writeBossChat("Сценарий завершен (" + reason + ").");
+        if (notifyChat) {
+            if (!isEmpty(oldTarget)) {
+                String targetHtml = buildTargetNickHtml(oldTarget, null);
+                writeBossChat("Сценарий завершен (" + reason + ") для цели "
+                        + targetHtml + ".");
+            } else {
+                writeBossChat("Сценарий завершен (" + reason + ").");
+            }
         }
         AppLog.d(TAG, TRACE_PREFIX + " scenario stopped: reason=" + reason);
+    }
+
+    private boolean hasScenarioState() {
+        synchronized (lock) {
+            return stage != BossStage.IDLE
+                    || snapshot != null
+                    || !isEmpty(targetNick)
+                    || !isEmpty(bossName)
+                    || !isEmpty(originRegNum)
+                    || !isEmpty(bossFightFid)
+                    || !isEmpty(bossFightLink);
+        }
+    }
+
+    private String normalizeDisableReason(String reason) {
+        String normalized = safeTrim(reason);
+        return normalized.isEmpty() ? "license_sync" : normalized;
     }
 
     /**

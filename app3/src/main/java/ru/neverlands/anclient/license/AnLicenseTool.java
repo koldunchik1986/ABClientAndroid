@@ -112,7 +112,7 @@ public final class AnLicenseTool {
                     : new File(root, "app3/request/profile.reg");
             File requestLookupDir = args.length >= 3
                     ? new File(args[2])
-                    : new File(root, "app3/request");
+                    : null;
             inspectLicense(root, licenseFile, requestLookupDir);
             return;
         }
@@ -138,7 +138,7 @@ public final class AnLicenseTool {
         System.out.println("Команды:");
         System.out.println("  init-keys [--force]");
         System.out.println("  decode-request <заявка от устройства> [отчёт по заявке]");
-        System.out.println("  inspect-license [файл лицензии] [папка с заявками]");
+        System.out.println("  inspect-license [файл лицензии] [legacy-папка с заявками]");
         System.out.println("  issue <заявка от устройства> [файл лицензии] [срок] [доступ ника] [общий доступ]");
         System.out.println("Существующий ANREG2 profile.reg обновляется на месте: старые ники сохраняются, выбранный ник получает новый срок/набор функций.");
     }
@@ -280,8 +280,8 @@ public final class AnLicenseTool {
         PublicKey signingPublic = readPublicKey(new File(keysDir, SIGN_PUBLIC));
         PrivateKey requestPrivate = readPrivateKey(new File(keysDir, REQUEST_PRIVATE));
         Map<String, String> license = readVerifiedBundle(licenseFile, signingPublic);
-        Map<String, RequestInfo> requestIndex = loadProfileNameIndex(license, requestPrivate);
-        requestIndex.putAll(loadRequestIndex(requestLookupDir, requestPrivate));
+        Map<String, RequestInfo> requestIndex = loadRequestIndex(requestLookupDir, requestPrivate);
+        requestIndex.putAll(loadProfileNameIndex(license, requestPrivate));
         List<GrantRecord> grants = parseGrantRecords(value(license, "grants"));
         long now = System.currentTimeMillis();
 
@@ -503,7 +503,7 @@ public final class AnLicenseTool {
         boolean deviceMatches = requestInfo != null && grant.devicePublicKeySha256.equals(requestInfo.devicePublicKeySha256);
         boolean fingerprintMatches = requestInfo != null
                 && (grant.fingerprintHash.isEmpty() || grant.fingerprintHash.equals(requestInfo.fingerprintHash));
-        System.out.println("  [" + index + "] " + (requestInfo == null ? "Ник не найден в папке заявок" : "Ник: " + requestInfo.profileName));
+        System.out.println("  [" + index + "] " + (requestInfo == null ? "Ник не найден во встроенном индексе/заявках" : "Ник: " + requestInfo.profileName));
         System.out.println("      Доступ: " + describeFeatureSpec(grant.featureSpec, false));
         System.out.println("      Срок: " + describeGrantExpiry(grant.expiresAt, now));
         System.out.println("      Статус: " + (expired ? "истёк, останутся только общедоступные функции" : "активен"));
@@ -519,7 +519,12 @@ public final class AnLicenseTool {
                                           boolean deviceMatches,
                                           boolean fingerprintMatches) {
         if (requestInfo == null) {
-            return "есть в файле лицензии, но нет request.txt для сверки ника";
+            return "есть в файле лицензии, но нет встроенного индекса/request.txt для сверки ника";
+        }
+        if ("profile.reg:index".equals(requestInfo.sourcePath)) {
+            return deviceMatches && fingerprintMatches
+                    ? "совпадает со встроенным индексом profile.reg"
+                    : "НЕ совпадает со встроенным индексом profile.reg";
         }
         if (deviceMatches && fingerprintMatches) {
             return "совпадает с найденной заявкой";

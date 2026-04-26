@@ -34,6 +34,7 @@
     <string name="profile_proxy_password">Пароль прокси</string>
     <string name="profile_save">Сохранить</string>
     <string name="profile_license_request">Запрос Лицензии</string>
+    <string name="profile_required_fields_error">Заполните необходимые поля</string>
     <string name="captcha_notification_channel_name">Капча (бой)</string>
     <string name="captcha_notification_channel_description">Уведомления о ручном вводе капчи для завершения боя</string>
     <string name="captcha_notification_title">Требуется капча</string>

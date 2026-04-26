@@ -208,7 +208,7 @@ app3\app3_menu.bat check
 Прямая команда:
 
 ```powershell
-.\gradlew.bat --no-daemon :app3:run --args="inspect-license app3/request/profile.reg app3/request"
+.\gradlew.bat --no-daemon :app3:run --args="inspect-license app3/request/profile.reg"
 ```
 
 Что показывает проверка:
@@ -218,9 +218,15 @@ app3\app3_menu.bat check
 - все индивидуальные записи по никам;
 - какие функции выданы каждому нику;
 - срок окончания индивидуального доступа и сколько времени осталось;
-- совпадает ли запись с найденной заявкой устройства, если заявка лежит рядом.
+- совпадает ли запись с найденной заявкой устройства, если legacy-папка заявок явно передана вторым аргументом.
 
-Новые `profile.reg`, выпущенные после добавления `profileNameIndex`, содержат зашифрованный индекс ников. Поэтому `inspect-license` может показать весь список ников без лежащих рядом `request.txt`. Для старых `profile.reg`, где такого индекса ещё нет, ник нельзя восстановить из hash; тогда для отображения ника можно положить рядом исходный `request.txt` или отчёт `Nick_devicePublicKeySha256.txt`.
+Новые `profile.reg`, выпущенные после добавления `profileNameIndex`, содержат зашифрованный индекс ников. Поэтому `inspect-license` показывает список ников без папки с заявками и без `request.txt` рядом. Для старых `profile.reg`, где такого индекса ещё нет, ник нельзя восстановить из hash; тогда для отображения ника можно явно передать вторым аргументом папку с исходным `request.txt` или отчётом `Nick_devicePublicKeySha256.txt`.
+
+Legacy fallback для старого файла без `profileNameIndex`:
+
+```powershell
+.\gradlew.bat --no-daemon :app3:run --args="inspect-license app3/request/profile.reg app3/request"
+```
 
 ## Создание или обновление profile.reg
 

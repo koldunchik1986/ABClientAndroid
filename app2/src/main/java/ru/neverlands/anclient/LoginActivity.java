@@ -110,7 +110,7 @@ public class LoginActivity extends AppCompatActivity {
         binding.addProfileButton.setOnClickListener(v -> openProfileActivity(null));
         binding.editProfileButton.setOnClickListener(v -> {
             if (selectedProfile != null) {
-                openProfileActivity(selectedProfile);
+                openProfileActivityForEdit(selectedProfile);
             }
         });
 
@@ -365,11 +365,47 @@ public class LoginActivity extends AppCompatActivity {
     }
 
     private void openProfileActivity(UserConfig profile) {
+        openProfileActivity(profile, null);
+    }
+
+    private void openProfileActivity(UserConfig profile, String encryptionPassword) {
         Intent intent = new Intent(this, ProfileActivity.class);
         if (profile != null && profile.id != null) {
             intent.putExtra("profile_id", profile.id);
         }
+        if (!TextUtils.isEmpty(encryptionPassword)) {
+            intent.putExtra(ProfileActivity.EXTRA_ENCRYPTION_PASSWORD, encryptionPassword);
+        }
         profileActivityLauncher.launch(intent);
+    }
+
+    private void openProfileActivityForEdit(UserConfig profile) {
+        if (profile == null) {
+            return;
+        }
+        if (!profile.isEncrypted) {
+            openProfileActivity(profile);
+            return;
+        }
+
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setTitle("Введите пароль шифрования");
+        View view = LayoutInflater.from(this).inflate(R.layout.dialog_enter_password, null);
+        builder.setView(view);
+
+        final EditText passwordField = view.findViewById(R.id.password_field);
+        builder.setPositiveButton("OK", (dialog, which) -> {
+            String encryptionPassword = passwordField.getText().toString();
+            try {
+                decryptProfileSecret(profile.UserPassword, encryptionPassword);
+                decryptProfileSecret(profile.UserPasswordFlash, encryptionPassword);
+                openProfileActivity(profile, encryptionPassword);
+            } catch (Exception e) {
+                Toast.makeText(LoginActivity.this, "Неверный пароль шифрования", Toast.LENGTH_SHORT).show();
+            }
+        });
+        builder.setNegativeButton("Отмена", (dialog, which) -> dialog.cancel());
+        builder.show();
     }
 
     private void login() {

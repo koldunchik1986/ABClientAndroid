@@ -31,6 +31,9 @@ import java.util.TreeMap;
  */
 public class UserConfig {
     private static final String TAG = "UserConfig";
+    private static final int LEZ_GROUP_ALL_ID = 1;
+    private static final int LEZ_GROUP_BOSS_ID = 21;
+    private static final int LEZ_GROUP_DEFAULT_LEVEL = 0;
 
     // --- Публичные поля для совместимости с C# и существующим кодом --- //
 
@@ -411,8 +414,10 @@ public class UserConfig {
     public LezSayType BossSay = LezSayType.No;
 
     public UserConfig() {
-        // Конструктор по умолчанию
-        LezGroups.add(new LezBotsGroup(1, 0));
+        // Базовые группы создаются сразу, чтобы новый профиль требовал минимум ручной настройки.
+        LezGroups.add(new LezBotsGroup(LEZ_GROUP_ALL_ID, LEZ_GROUP_DEFAULT_LEVEL));
+        LezGroups.add(createDefaultBossGroup());
+        LezDoFury = hasAnyLezFuryGroup();
     }
 
     /**
@@ -842,7 +847,7 @@ public class UserConfig {
     public void save(Context context) {
         normalizeProxyFlags();
         // Перед сохранением приводим список к C#-совместимому виду:
-        // - гарантируем наличие группы "Все 0+"
+        // - гарантируем наличие групп "Все 0+" и "Боссы 0+"
         // - сортируем по LezBotsGroup.compareTo() (Id DESC, MinimalLevel DESC)
         normalizeLezGroups();
         this.LezDoFury = hasAnyLezFuryGroup();
@@ -1267,7 +1272,7 @@ public class UserConfig {
 
     /**
      * Нормализует список групп автобоя под поведение ПК-версии (FormSettingsAb + LezFight):
-     * 1) всегда существует fallback-группа "Все 0+";
+     * 1) всегда существуют базовые группы "Все 0+" и "Боссы 0+";
      * 2) группы отсортированы по приоритету подбора (Id DESC, MinimalLevel DESC),
      *    чтобы LezFight.SelectFoeGroup() мог брать первую подошедшую группу 1:1 как в C#.
      */
@@ -1298,17 +1303,32 @@ public class UserConfig {
         }
 
         boolean hasAllGroup = false;
+        boolean hasBossGroup = false;
         for (LezBotsGroup group : this.LezGroups) {
-            if (group != null && group.Id == 1 && group.MinimalLevel == 0) {
+            if (group == null) {
+                continue;
+            }
+            if (group.Id == LEZ_GROUP_ALL_ID && group.MinimalLevel == LEZ_GROUP_DEFAULT_LEVEL) {
                 hasAllGroup = true;
-                break;
+            } else if (group.Id == LEZ_GROUP_BOSS_ID && group.MinimalLevel == LEZ_GROUP_DEFAULT_LEVEL) {
+                hasBossGroup = true;
             }
         }
         if (!hasAllGroup) {
-            this.LezGroups.add(new LezBotsGroup(1, 0));
+            this.LezGroups.add(new LezBotsGroup(LEZ_GROUP_ALL_ID, LEZ_GROUP_DEFAULT_LEVEL));
+        }
+        if (!hasBossGroup) {
+            this.LezGroups.add(createDefaultBossGroup());
         }
 
         Collections.sort(this.LezGroups);
+    }
+
+    private static LezBotsGroup createDefaultBossGroup() {
+        LezBotsGroup group = new LezBotsGroup(LEZ_GROUP_BOSS_ID, LEZ_GROUP_DEFAULT_LEVEL);
+        group.DoFury = true;
+        group.DoStopNow = true;
+        return group;
     }
 
     /**

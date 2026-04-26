@@ -53,13 +53,13 @@ import ru.neverlands.anclient.utils.AppVars;
 /**
  * Диалог настроек автобоя.
  * Аналог FormSettingsAb.cs из ПК версии.
- * Содержит 4 вкладки: Общие, Группы, Ротация, Останов.
+ * Содержит 4 вкладки: Общие, Группы, Ротация, Условия.
  */
 public class AutoBoiSettingsFragment extends DialogFragment {
 
     private static final String TAG = "AutoBoiSettings";
 
-    // Текущая выбранная группа (для вкладок Ротация и Останов)
+    // Текущая выбранная группа (для вкладок Ротация и Условия)
     private int selectedGroupIndex = 0;
 
     private interface OnGroupIndexChangedListener {
@@ -101,7 +101,7 @@ public class AutoBoiSettingsFragment extends DialogFragment {
                 case 0: tab.setText("Общие"); break;
                 case 1: tab.setText("Группы"); break;
                 case 2: tab.setText("Ротация"); break;
-                case 3: tab.setText("Останов"); break;
+                case 3: tab.setText("Условия"); break;
             }
         }).attach();
 
@@ -117,7 +117,7 @@ public class AutoBoiSettingsFragment extends DialogFragment {
      *
      * Последовательность:
      * 1) Сохраняет вкладку "Общие" (флаги автоповедения и пороги).
-     * 2) Сохраняет выбранную группу из вкладок "Ротация" и "Останов".
+     * 2) Сохраняет выбранную группу из вкладок "Ротация" и "Условия".
      * 3) Выполняет legacy-fallback для задержки удара:
      *    текущее `group.HitDelaySec` дублируется в `profile.LezHitDelaySec`,
      *    чтобы старые части парсера/профиля не теряли значение.
@@ -443,10 +443,10 @@ public class AutoBoiSettingsFragment extends DialogFragment {
             if (p == null || p.LezGroups.isEmpty()) return;
             if (selectedGroupIdx < 0 || selectedGroupIdx >= p.LezGroups.size()) return;
             LezBotsGroup g = p.LezGroups.get(selectedGroupIdx);
-            // Нельзя удалить группу "Все" (Id=1, MinimalLevel=0)
-            if (g.Id == 1 && g.MinimalLevel == 0) {
+            // Нельзя удалить базовые группы, которые UserConfig всегда восстанавливает при нормализации.
+            if ((g.Id == 1 || g.Id == 21) && g.MinimalLevel == 0) {
                 android.widget.Toast.makeText(requireContext(),
-                        "Нельзя удалить группу «Все»", android.widget.Toast.LENGTH_SHORT).show();
+                        "Нельзя удалить базовую группу «" + g.toString() + "»", android.widget.Toast.LENGTH_SHORT).show();
                 return;
             }
             p.LezGroups.remove(selectedGroupIdx);
@@ -948,7 +948,7 @@ public class AutoBoiSettingsFragment extends DialogFragment {
         }
     }
 
-    // ─────────────────────────── Вкладка 4: Останов ─────────────────────────────
+    // ─────────────────────────── Вкладка 4: Условия ─────────────────────────────
 
     public static class StopTabFragment extends Fragment {
         private int selectedGroupIdx = 0;
@@ -1021,7 +1021,7 @@ public class AutoBoiSettingsFragment extends DialogFragment {
         }
 
         void saveGroup(LezBotsGroup g) {
-            // Защита от NPE при "Сохранить" без открытия вкладки "Останов".
+            // Защита от NPE при "Сохранить" без открытия вкладки "Условия".
             // Зависимость: жизненный цикл ViewPager2 (fragment view создаётся лениво).
             if (checkDoStopNow == null || checkDoStopLowHp == null || checkDoStopLowMa == null
                     || checkDoExit == null || checkDoExitRisky == null

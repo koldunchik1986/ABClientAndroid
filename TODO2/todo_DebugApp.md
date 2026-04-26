@@ -35,3 +35,20 @@
 - В `Logs/Critical/20260425_12_30_automodefgservice.log` на `12:39:58` видно `autoBoss=true`, `autoFight=true`, `locationTracking=true` в фоне.
 - В `Logs/Блудя/20260425_chat.html` есть последующие сообщения `[Авто-Боссы]`, значит persisted/runtime-флаг продолжал участвовать в обработке событий.
 - В выгруженных `12:30` critical-логах нет `ANCLIENT_LICENSE` файла, поэтому точный момент `LICENSE_RUNTIME_EXPIRED` не был зафиксирован, но кодовая причина найдена: session-expiry очищала сессию без перехода на public-only, а чатовый вход Авто-Босса обходил guard.
+
+## Повторный regression-check 2026-04-26 11:00-11:30
+
+- [x] Проверены `Logs/Critical/20260426_11_00_*`, `20260426_11_10_*`, `20260426_11_20_*`, `20260426_11_30_*` с учетом поддиректорий `Logs`.
+- [x] В `20260426_11_00_auto_boss.log`, `20260426_11_10_auto_boss.log`, `20260426_11_20_auto_boss.log` найден повтор `Сценарий завершен (manual_disable)` после downgrade full -> public.
+- [x] В `20260426_11_00_chatfilter.log` и соседних `chat.log` подтверждено, что это уходит в локальный чат как `[Авто-Боссы]`.
+- [x] В `20260426_11_00_anclient_license.log` видно постоянное `LICENSE_FEATURE_HIDDEN: source=isAutoBossEnabled/onIncomingChatMessage, action=auto_boss`, то есть feature уже недоступна в license-session.
+- [x] Причина: guard в `AutoFunctionsManager.onIncomingChatMessage(...)` при denied `AUTO_BOSS` вызывал side-effectful `bossAuto.setAutoBossEnabled(false)`, а `BossAuto.setAutoBossEnabled(false)` всегда выполнял `stopAndRestore("manual_disable", true)` и писал chat-сообщение даже при повторном `false`.
+- [x] Исправление: `BossAuto` получил idempotent setter и тихий путь `disableForLicenseSync(...)`; `AutoFunctionsManager` использует его для `license_denied:*` и `license_downgrade:*`, чтобы снять persisted/runtime флаг без chat-шума и без восстановления snapshot full-функций.
+
+## Debug 2026-04-26: Авто-Бой в background не отправляет удары
+
+- [x] Проверены `Logs/` с учетом поддиректорий (`Critical`, `Logcat`, профильные папки).
+- [x] В `Logs/Critical/20260426_12_00_mainactivity.log` и `20260426_12_10_mainactivity.log` найден повтор: `directHttpSubmit: payload parts=8, need 9, skip`.
+- [x] В `fightviewmodel.log` видно, что `autoTurnOnce` формирует `submit posted`, то есть парсер боя и `LezFight.BuildResult()` работают.
+- [x] Причина: `MainActivity.submitAutoBattleActionViaDirectHttp()` парсил payload через `split("\\|")`; Java отбрасывает trailing empty token, поэтому корректный payload с пустым `ina` (`...|inb|`) превращался из 9 частей в 8 и фоновая отправка отбрасывалась.
+- [x] Исправление: direct HTTP submit использует `split("\\|", -1)`, чтобы сохранить пустое последнее поле `ina` и отправлять ход в background.

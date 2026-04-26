@@ -1575,7 +1575,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         // Извлекаем VCode из payload перед отправкой (для синхронизации SessionManager)
         adoptVCodeFromAutoSubmitPayload(payload);
 
-        String[] parts = payload.split("\\|");
+        String[] parts = payload.split("\\|", -1);
         if (parts.length < 9) {
             AppLog.w(TAG, TAG, BG_TRACE_PREFIX + " directHttpSubmit: payload parts=" + parts.length + ", need 9, skip");
             return;
