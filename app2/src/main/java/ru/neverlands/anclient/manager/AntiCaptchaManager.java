@@ -4,8 +4,6 @@ import android.util.Base64;
 
 import org.json.JSONObject;
 
-import java.io.ByteArrayOutputStream;
-import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.concurrent.TimeUnit;
 
@@ -237,20 +235,6 @@ public final class AntiCaptchaManager {
                 throw new IllegalStateException("HTTP " + code + ": " + responseText);
             }
             return new JSONObject(responseText);
-        }
-    }
-
-    private static String readAll(InputStream input) throws Exception {
-        if (input == null) {
-            return "";
-        }
-        try (InputStream in = input; ByteArrayOutputStream output = new ByteArrayOutputStream()) {
-            byte[] buffer = new byte[4096];
-            int read;
-            while ((read = in.read(buffer)) != -1) {
-                output.write(buffer, 0, read);
-            }
-            return new String(output.toByteArray(), StandardCharsets.UTF_8);
         }
     }
 
