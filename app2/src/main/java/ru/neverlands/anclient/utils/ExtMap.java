@@ -211,6 +211,34 @@ public class ExtMap {
         return normalizeRegionLabel(regionNameByRegionId.get(regionId));
     }
 
+    public static synchronized String resolveRegNumForCoordinates(int x, int y) {
+        Position position = Location.get(makePosition(x, y));
+        if (position == null || position.RegNum == null) {
+            return "";
+        }
+        return position.RegNum.trim();
+    }
+
+    public static synchronized String resolveCellNameForCoordinates(int x, int y) {
+        String regNum = resolveRegNumForCoordinates(x, y);
+        if (regNum.isEmpty()) {
+            return "";
+        }
+        Cell cell = Cells.get(regNum);
+        if (cell == null || cell.Name == null) {
+            return "";
+        }
+        return normalizeCellLabel(cell.Name);
+    }
+
+    public static synchronized boolean syncCellLabelFromCoordinates(int x, int y, String serverLabel) {
+        String regNum = resolveRegNumForCoordinates(x, y);
+        if (regNum.isEmpty()) {
+            return false;
+        }
+        return syncCellLabelFromServer(regNum, serverLabel) != null;
+    }
+
     private static void buildRegions() {
         addRegion("1",  952, 954);
         addRegion("2",  982, 954);

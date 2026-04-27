@@ -457,6 +457,15 @@ public class NeverApi {
         return getInfo("http://neverlands.ru/logs.fcg?fid=" + flog);
     }
 
+    public static String getRoomHtml(String roomKey, String sourceModule) {
+        if (roomKey == null || !roomKey.matches("m_\\d{3,4}_\\d{3,4}")) {
+            AppLog.w(TAG, "getRoomHtml: invalid roomKey=" + roomKey + ", source=" + sourceModule);
+            return null;
+        }
+        AppLog.d(TAG, "getRoomHtml: room=" + roomKey + ", source=" + sourceModule);
+        return getInfo("http://www.neverlands.ru/ch.php?lo=1&r=" + roomKey);
+    }
+
     /**
      * Текущая усталость персонажа через pinfo.cgi.
      *

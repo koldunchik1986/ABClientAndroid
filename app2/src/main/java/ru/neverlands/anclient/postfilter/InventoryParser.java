@@ -470,6 +470,10 @@ public final class InventoryParser {
         try {
             parseAndSaveComplectsFromInventory(html);
 
+            if (!cacheOnlyMode) {
+                html = InventoryEngravingResolver.replaceCoordinateEngravings(html);
+            }
+
             final String patternStartInv = "</b></font></td></tr>";
             int pos = html.indexOf(patternStartInv);
             int posStartInv;
