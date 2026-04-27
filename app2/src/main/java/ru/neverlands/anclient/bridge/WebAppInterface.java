@@ -680,13 +680,21 @@ public class WebAppInterface {
 
     /**
      * C# parity (`ScriptManager.DoHerbAutoCut`): разрешает map.js автоматический `Оглядеться`.
-     * Возвращаем true только если включен существующий `AUTO_CUT` и выбрана хотя бы одна трава.
+     *
+     * Зависимости и guards:
+     * - `AutoFunctionsManager.isAutoCutEnabled()` уже license-gated через `QuickActionType.AUTO_CUT`;
+     * - `AutoCutManager.getSelectedHerbCount()` запрещает auto-look без выбранных трав;
+     * - `AutoCutManager.shouldAutoLookOnCurrentCell()` запрещает запуск во время `AutoMoving`,
+     *   проверки серпа, cleanup и повторной проверки already-checked клетки текущей смены.
+     *
+     * Важно: метод только возвращает boolean в JS; он не отправляет HTTP-запросы и не открывает captcha.
      */
     @JavascriptInterface
     public boolean DoHerbAutoCut() {
         try {
             AutoFunctionsManager manager = AutoFunctionsManager.getInstance(mContext);
             if (!manager.isAutoCutEnabled()) {
+                AppLog.d(AutoCutManager.TRACE_CHAIN, "WebAppInterface", "DoHerbAutoCut=false, disabled");
                 return false;
             }
             AutoCutManager autoCut = AutoCutManager.getInstance(mContext);
@@ -698,6 +706,7 @@ public class WebAppInterface {
                 AppLog.d(AutoCutManager.TRACE_CHAIN, "WebAppInterface", "DoHerbAutoCut=false, current cell not ready");
                 return false;
             }
+            AppLog.i(AutoCutManager.TRACE_CHAIN, "WebAppInterface", "DoHerbAutoCut=true");
             return true;
         } catch (Exception e) {
             AppLog.w(AutoCutManager.TRACE_CHAIN, "WebAppInterface", "DoHerbAutoCut failed", e);
@@ -705,6 +714,11 @@ public class WebAppInterface {
         }
     }
 
+    /**
+     * C# parity (`ScriptManager.IsHerbAutoCut`): проверяет, выбрана ли трава в настройках.
+     * Используется map.js как лёгкий JS-side filter; окончательное решение всё равно повторяется
+     * в `AlchemyAjaxPhp.processAlchemyAct1(...)` по `res_id`, `availableCount` и `cutVcode`.
+     */
     @JavascriptInterface
     public boolean IsHerbAutoCut(String herb) {
         try {
@@ -715,6 +729,11 @@ public class WebAppInterface {
         }
     }
 
+    /**
+     * JS-сигнал о выбранной/срезанной траве.
+     * Сохраняется только как fallback trace; подтверждённый success определяется по ответу
+     * `alchemy_ajax.php?act=3`, чтобы не ставить таймер по одному клику в UI.
+     */
     @JavascriptInterface
     public void HerbCut(String name) {
         AutoCutManager.getInstance(mContext).onTraceCut(name);
@@ -756,6 +775,16 @@ public class WebAppInterface {
         lastMapRuntimeTraceAtMs = nowMs;
         lastMapRuntimeTrace = safePayload;
         AppLog.d("WebAppInterface", "MAP_RUNTIME " + safePayload);
+    }
+
+    /** Диагностика JS-ветки Авто-Травника из map.js без отдельного HTTP-контура. */
+    @JavascriptInterface
+    public void TraceAutoCutRuntime(String payload) {
+        String safePayload = payload == null ? "" : payload.trim();
+        if (safePayload.isEmpty()) {
+            return;
+        }
+        AppLog.d(AutoCutManager.TRACE_CHAIN, "WebAppInterface", "AUTO_CUT_JS " + safePayload);
     }
 
     /**

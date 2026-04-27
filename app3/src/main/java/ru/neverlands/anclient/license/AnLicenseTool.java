@@ -62,6 +62,7 @@ public final class AnLicenseTool {
     private static final int SLOT_CAPACITY = 10_000;
     private static final String BUNDLE_ROOT_CHAIN = "ROOT";
     private static final String FEATURE_ANTI_CAPTCHA = "anti_captcha";
+    private static final String FEATURE_AUTO_CUT = "auto_cut";
     private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss zzz");
     private static final String[] REQUEST_DUMP_FIELDS = {
             "profileName",
@@ -551,12 +552,12 @@ public final class AnLicenseTool {
         }
         if ("full".equals(value)) {
             if (publicFeatures) {
-                return "полный public-набор без Anti-Captcha: все быстрые/авто-функции и clans, кроме anti_captcha";
+                return "полный public-набор без Anti-Captcha и Авто-Травника: все быстрые/авто-функции и clans, кроме anti_captcha и auto_cut";
             }
-            return "полный набор: все быстрые/авто-функции, Anti-Captcha и clans";
+            return "полный набор: все быстрые/авто-функции, Anti-Captcha, Авто-Травник и clans";
         }
         if ("limited".equals(value) || "free".equals(value) || "basic".equals(value)) {
-            return "базовый набор: Авто-Бой, Авто-Рыбалка, Авто-Охота, Навигатор, Компас, Быстрые действия, Таймеры, Контакты, Кланы, Статистика, PINFO; Anti-Captcha не входит";
+            return "базовый набор: Авто-Бой, Авто-Рыбалка, Авто-Охота, Навигатор, Компас, Быстрые действия, Таймеры, Контакты, Кланы, Статистика, PINFO; Anti-Captcha и Авто-Травник не входят";
         }
         String[] parts = value.split("[,;|\\s]+");
         StringBuilder builder = new StringBuilder("выборочный набор: ");
@@ -591,7 +592,7 @@ public final class AnLicenseTool {
         if ("auto_drink".equals(token)) return "Авто-Питьё (auto_drink)";
         if ("auto_moving".equals(token)) return "Навигатор (auto_moving)";
         if ("auto_treasure".equals(token)) return "Авто-Клад (auto_treasure)";
-        if ("auto_cut".equals(token)) return "Авто-Травник (auto_cut)";
+        if (FEATURE_AUTO_CUT.equals(token)) return "Авто-Травник (auto_cut, только full/custom grant)";
         if ("auto_refresh".equals(token)) return "Авто-Обновление (auto_refresh)";
         if (FEATURE_ANTI_CAPTCHA.equals(token)) return "Анти-Captcha (anti_captcha, только full/custom grant)";
         if ("auto_skin".equals(token)) return "Авто-Охота (auto_skin)";
@@ -1024,8 +1025,8 @@ public final class AnLicenseTool {
         }
         if ("full".equals(value)) {
             // Public full остаётся каноническим словом `full`, но сторона app2 при чтении
-            // ANREG2.publicFeatures вырезает `anti_captcha`. В отчёте выше это также
-            // описывается как public full без Anti-Captcha.
+            // ANREG2.publicFeatures вырезает non-public tokens `anti_captcha` и `auto_cut`.
+            // В отчёте выше это также описывается как public full без Anti-Captcha/Авто-Травника.
             return "full";
         }
         return removeNonPublicFeatureTokens(value);
@@ -1039,9 +1040,10 @@ public final class AnLicenseTool {
             if (token.isEmpty() || "none".equals(token) || "off".equals(token) || "empty".equals(token)) {
                 continue;
             }
-            if (FEATURE_ANTI_CAPTCHA.equals(token)) {
-                // Anti-Captcha оплачивает внешний сервис и не должна попадать в общий bundle.
-                // Для неё использовать индивидуальный full grant или custom grant `anti_captcha`.
+            if (FEATURE_ANTI_CAPTCHA.equals(token) || FEATURE_AUTO_CUT.equals(token)) {
+                // Anti-Captcha и AutoCut не должны попадать в общий bundle.
+                // Для них использовать индивидуальный full grant или custom grants
+                // `anti_captcha`/`auto_cut` с нужным сроком действия.
                 continue;
             }
             if (builder.length() > 0) {

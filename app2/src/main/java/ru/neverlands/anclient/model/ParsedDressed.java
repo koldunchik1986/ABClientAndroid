@@ -69,6 +69,14 @@ public class ParsedDressed {
             "Разделочный Топорик",
             "Нож Мастера-охотника"
     };
+    /**
+     * Whitelist серпов Авто-Травника.
+     *
+     * Зависимости:
+     * - `AutoCutHandler.mainPhpWearSickle(...)` ищет эти названия в inventory кнопках `Надеть`;
+     * - `IsWearSickle()` ищет эти названия в parsed hand slots и обновляет `AppVars.AutoCutSickleHand*`;
+     * - порядок не влияет на protocol, но влияет на первый найденный предмет при нескольких серпах.
+     */
     private static final String[] AUTO_CUT_SICKLE_NAMES = new String[]{
             "Серп Мастера-травника",
             "Серп собирателя",
@@ -358,6 +366,14 @@ public class ParsedDressed {
     /**
      * Проверяет, надет ли серп для Авто-Травника, и обновляет runtime-поля AppVars.
      */
+    /**
+     * Проверяет, надет ли серп Авто-Травника в одном из слотов рук.
+     *
+     * Переменные и зависимости:
+     * - `slist`/`dlist` — parsed списки предметов и долговечности из `slots_inv(...)`/`slots_pla(...)`;
+     * - `AUTO_CUT_SICKLE_NAMES` — whitelist названий инструментов;
+     * - `AppVars.AutoCutSickleHand/AutoCutSickleHandD` — runtime-снимок для логов и handler guard.
+     */
     public boolean IsWearSickle() {
         for (int i = 0; i < slist.size(); i++) {
             for (String sickleName : AUTO_CUT_SICKLE_NAMES) {
@@ -371,6 +387,7 @@ public class ParsedDressed {
         return false;
     }
 
+    /** Возвращает копию whitelist-а серпов для inventory wear-поиска. */
     public static String[] getAutoCutSickleNames() {
         return AUTO_CUT_SICKLE_NAMES.clone();
     }

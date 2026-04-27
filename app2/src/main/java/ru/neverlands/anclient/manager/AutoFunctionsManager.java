@@ -50,6 +50,8 @@ public class AutoFunctionsManager {
     // - `full`/custom индивидуальный grant включает её через `QuickActionType.AUTO_CAPTCHA.getActionKey()`;
     // - при истечении grant `LicenseRuntime.requireSession(...)` обновляет сессию и вызывает
     //   `disableUnavailableFeatures(...)`, который сбрасывает этот persisted-флаг.
+    // Такой же non-public контракт применён к `AUTO_CUT`: флаг `auto_cut` виден только
+    // в individual full/custom grant и затирается тем же downgrade-проходом ниже.
     private static final String KEY_ANTI_CAPTCHA = KEY_PREFIX + "anti_captcha";
     private static final String PREF_ANTI_CAPTCHA_API_KEY = "anti_captcha_api_key";
     private static final String PREF_ANTI_CAPTCHA_PHRASE = "anti_captcha_phrase";
@@ -2172,7 +2174,20 @@ public class AutoFunctionsManager {
         setAutoCutEnabled(newState);
     }
     
-    // Включение авто-травника включает авто-бой и отключает несовместимые режимы.
+    /**
+     * Включает/выключает premium-функцию Авто-Травник.
+     *
+     * Переменные и зависимости:
+     * - `enabled` — желаемое persisted-состояние `KEY_PREFIX + "auto_cut"`;
+     * - `rejectFeatureIfDenied(AUTO_CUT, ...)` — первый license guard, запрещает включение
+     *   без individual `full` или custom grant `auto_cut`;
+     * - `AutoCutManager.onAutoCutEnabled(...)` — runtime bootstrap: проверка серпа,
+     *   сброс cleanup-флагов и старт маршрута по CSV-клеткам;
+     * - конфликтующие навигационные владельцы (`AutoFish`, `AutoSkin`, `AutoBait`, `AutoTreasure`)
+     *   выключаются через существующие setter-ы, чтобы не создавать второй маршрутный контур;
+     * - `requestCharacterSyncForAutoFunctionEnable("auto_cut")` поднимает main.php-контекст,
+     *   где `AutoCutHandler` сможет проверить экипировку и вернуться на карту.
+     */
     public void setAutoCutEnabled(boolean enabled) {
         if (rejectFeatureIfDenied(QuickActionType.AUTO_CUT, enabled, "setAutoCutEnabled")) {
             prefs.edit().putBoolean(KEY_PREFIX + "auto_cut", false).apply();
@@ -2282,6 +2297,30 @@ public class AutoFunctionsManager {
 
     public void updateAutoCutHerbMeta(String key, int skill, int growthMinutes, String group) {
         AutoCutManager.getInstance(context).updateHerbMeta(key, skill, growthMinutes, group);
+    }
+
+    public String[] getAutoCutAvailableSickleNames() {
+        return AutoCutManager.getInstance(context).getAvailableSickleNames();
+    }
+
+    public List<String> getAutoCutEnabledSickleNames() {
+        return AutoCutManager.getInstance(context).getEnabledSickleNames();
+    }
+
+    public void setAutoCutEnabledSickleNames(Set<String> selectedNames) {
+        AutoCutManager.getInstance(context).setEnabledSickleNames(selectedNames);
+    }
+
+    public String getAutoCutShiftScheduleText() {
+        return AutoCutManager.getInstance(context).getShiftScheduleText();
+    }
+
+    public boolean setAutoCutShiftScheduleText(String text) {
+        return AutoCutManager.getInstance(context).setShiftScheduleText(text);
+    }
+
+    public void resetAutoCutShiftScheduleToDefault() {
+        AutoCutManager.getInstance(context).resetShiftScheduleToDefault();
     }
 
     public int getAutoCutSelectedHerbCount() {
@@ -2517,8 +2556,9 @@ public class AutoFunctionsManager {
     /**
      * Снимает persisted/runtime-флаги только у тех авто-функций, которые исчезли из текущей
      * license-сессии. Используется при downgrade full -> public после истечения grant.
-     * Для Anti-Captcha это обязательный путь выключения по временному лимиту: full/custom grant
-     * истёк, `LicenseRuntime` пересобрал public-only session, этот метод затирает KEY_ANTI_CAPTCHA.
+     * Для Anti-Captcha и AutoCut это обязательный путь выключения по временному лимиту:
+     * full/custom grant истёк, `LicenseRuntime` пересобрал public-only session, а этот метод
+     * затирает `KEY_ANTI_CAPTCHA` и `KEY_PREFIX + "auto_cut"` через соответствующие setter-ы.
      */
     public void disableUnavailableFeatures(String reason) {
         StringBuilder disabled = new StringBuilder();

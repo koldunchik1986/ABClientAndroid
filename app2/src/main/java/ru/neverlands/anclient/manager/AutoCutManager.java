@@ -21,9 +21,12 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import ru.neverlands.anclient.MainActivity;
 import ru.neverlands.anclient.model.AppTimer;
+import ru.neverlands.anclient.model.ParsedDressed;
 import ru.neverlands.anclient.postfilter.MainPhp;
 import ru.neverlands.anclient.utils.AppLog;
 import ru.neverlands.anclient.utils.AppVars;
@@ -35,28 +38,60 @@ import ru.neverlands.anclient.utils.SessionManager;
  * Контур дополняет уже существующий флаг `AUTO_CUT` в {@link AutoFunctionsManager}:
  * этот класс не включает/выключает функцию, а хранит выбранные травы, клетки поиска
  * и ставит таймеры после подтвержденного `alchemy_ajax.php?act=3`.
+ *
+ * Основные зависимости:
+ * - `AlchemyAjaxPhp` вызывает `registerObservedHerb(...)`, `markHerbCut(...)` и sickle guards;
+ * - `WebAppInterface.DoHerbAutoCut()` читает `shouldAutoLookOnCurrentCell()` перед JS `Ogl(...)`;
+ * - `AutoCutHandler` обслуживает main.php-подготовку серпа и cleanup по флагам AppVars;
+ * - `AutoFunctionsManager` владеет license-gated флагом `AUTO_CUT` и вызывает
+ *   `onAutoCutEnabled(...)`/`onAutoCutDisabled()`;
+ * - `AppTimerManager` получает herb timers после успешного среза.
  */
 public final class AutoCutManager {
+    /** Logcat/FileLogger tag текущего manager-а. */
     private static final String TAG = "AutoCutManager";
+    /** Chain-name для критичных файловых логов AutoCut. */
     public static final String TRACE_CHAIN = "AUTO_CUT_TRACE";
 
+    /** SharedPreferences-файл с настройками AutoCut, scoped per nick через `scopedKey(...)`. */
     private static final String PREFS_NAME = "auto_cut_prefs";
+    /** JSON-словарь трав: id/name/skill/growth/group/selected. */
     private static final String KEY_HERBS_JSON_PREFIX = "herbs_json_";
+    /** CSV списка клеток обхода в формате `x-y`. */
     private static final String KEY_CELLS_CSV_PREFIX = "cells_csv_";
+    /** Флаг вывода сообщения о срезе в локальный чат. */
     private static final String KEY_WRITE_CHAT_PREFIX = "write_chat_";
+    /** Флаг включения cleanup-прохода после прироста массы. */
     private static final String KEY_CLEANUP_ENABLED_PREFIX = "cleanup_enabled_";
+    /** JSON выбранных серпов для авто-надевания. */
+    private static final String KEY_SICKLES_JSON_PREFIX = "sickles_json_";
+    /** JSON расписания смен трав. */
+    private static final String KEY_SHIFTS_JSON_PREFIX = "shifts_json_";
+    /** Список уже проверенных клеток для текущей 6-часовой смены трав. */
     private static final String KEY_CHECKED_SHIFT_PREFIX = "checked_shift_";
+    /** Группа для неизвестных трав, найденных в live `RESO@`. */
     private static final String GROUP_UNKNOWN = "Не определено";
+    /** Безопасное время роста для новых/неизвестных трав. */
     private static final int DEFAULT_GROWTH_MINUTES = 60;
+    /** TTL JS trace `TraceCut(...)`, если success `act=3` пришёл без pending DTO. */
     private static final long TRACE_CUT_NAME_TTL_MS = 60_000L;
+    /** Небольшая задержка перед стартом route, чтобы WebView завершил текущий ajax/update кадр. */
     private static final long ROUTE_NEXT_DELAY_MS = 450L;
+    /** Fallback cleanup threshold, если `SetAutoFishMassa` ещё не дал max mass. */
     private static final double CLEANUP_FALLBACK_THRESHOLD_MASS = 10d;
+    /** Формат строки смены: `00:50-06:50`, одна смена на строку. */
+    private static final Pattern SHIFT_LINE_PATTERN = Pattern.compile("(\\d{1,2})[:\\-](\\d{1,2})\\s*[-–—]\\s*(\\d{1,2})[:\\-](\\d{1,2})");
 
+    /** Singleton manager-а на application context. */
     private static AutoCutManager instance;
 
+    /** Application context для prefs, broadcasts и AppTimerManager. */
     private final Context appContext;
+    /** Scoped persisted settings хранилище AutoCut. */
     private final SharedPreferences prefs;
+    /** Последняя трава из JS `TraceCut`, volatile из-за вызовов из WebView bridge. */
     private volatile String lastTraceCutName = "";
+    /** Время последнего `TraceCut`, нужно для TTL stale-защиты. */
     private volatile long lastTraceCutAtMs = 0L;
 
     private AutoCutManager(Context context) {
@@ -64,6 +99,7 @@ public final class AutoCutManager {
         prefs = appContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
     }
 
+    /** Возвращает singleton AutoCutManager для application context. */
     public static synchronized AutoCutManager getInstance(Context context) {
         if (instance == null) {
             instance = new AutoCutManager(context);
@@ -71,38 +107,120 @@ public final class AutoCutManager {
         return instance;
     }
 
+    /** Persisted CSV клеток обхода, как ввёл пользователь в настройках. */
     public synchronized String getCellsCsv() {
         return prefs.getString(scopedKey(KEY_CELLS_CSV_PREFIX), "");
     }
 
+    /** Нормализует и сохраняет CSV клеток, удаляя дубли/мусорные токены. */
     public synchronized void setCellsCsv(String csv) {
         prefs.edit().putString(scopedKey(KEY_CELLS_CSV_PREFIX), normalizeCellsCsv(csv)).apply();
     }
 
+    /** Возвращает нормализованный список клеток для route logic. */
     public synchronized List<String> getSearchCells() {
         return parseCellsCsv(getCellsCsv());
     }
 
+    /** true, если после успешного среза нужно писать результат в чат. */
     public synchronized boolean isWriteChatEnabled() {
         return prefs.getBoolean(scopedKey(KEY_WRITE_CHAT_PREFIX), true);
     }
 
+    /** Сохраняет флаг chat-report для текущего nick. */
     public synchronized void setWriteChatEnabled(boolean enabled) {
         prefs.edit().putBoolean(scopedKey(KEY_WRITE_CHAT_PREFIX), enabled).apply();
     }
 
+    /** true, если включён inventory cleanup после прироста массы. */
     public synchronized boolean isCleanupEnabled() {
         return prefs.getBoolean(scopedKey(KEY_CLEANUP_ENABLED_PREFIX), false);
     }
 
+    /** Сохраняет cleanup-флаг для текущего nick. */
     public synchronized void setCleanupEnabled(boolean enabled) {
         prefs.edit().putBoolean(scopedKey(KEY_CLEANUP_ENABLED_PREFIX), enabled).apply();
     }
 
+    /** Доступные серпы в порядке приоритета авто-надевания. */
+    public String[] getAvailableSickleNames() {
+        return ParsedDressed.getAutoCutSickleNames();
+    }
+
+    /** Persisted список разрешённых серпов; пустое значение трактуется как дефолтный список. */
+    public synchronized List<String> getEnabledSickleNames() {
+        String raw = prefs.getString(scopedKey(KEY_SICKLES_JSON_PREFIX), "");
+        ArrayList<String> result = new ArrayList<>();
+        if (!TextUtils.isEmpty(raw)) {
+            try {
+                JSONArray array = new JSONArray(raw);
+                for (int i = 0; i < array.length(); i++) {
+                    String name = safe(array.optString(i, ""));
+                    if (!name.isEmpty()) {
+                        result.add(name);
+                    }
+                }
+            } catch (Exception error) {
+                AppLog.w(TRACE_CHAIN, TAG, "failed to parse sickles json, fallback to defaults", error);
+                result.clear();
+            }
+        }
+        if (result.isEmpty()) {
+            for (String name : getAvailableSickleNames()) {
+                result.add(name);
+            }
+        }
+        return result;
+    }
+
+    /** Сохраняет список серпов, которые можно надевать автоматически. */
+    public synchronized void setEnabledSickleNames(Set<String> selectedNames) {
+        Set<String> safeSelected = selectedNames == null ? new LinkedHashSet<>() : selectedNames;
+        JSONArray array = new JSONArray();
+        for (String name : getAvailableSickleNames()) {
+            if (safeSelected.contains(name)) {
+                array.put(name);
+            }
+        }
+        prefs.edit().putString(scopedKey(KEY_SICKLES_JSON_PREFIX), array.toString()).apply();
+        AppLog.i(TRACE_CHAIN, TAG, "sickle settings saved: count=" + array.length());
+    }
+
+    /** Возвращает расписание смен трав как редактируемый многострочный текст. */
+    public synchronized String getShiftScheduleText() {
+        StringBuilder builder = new StringBuilder();
+        for (AutoCutShift shift : loadShiftsLocked()) {
+            if (builder.length() > 0) {
+                builder.append('\n');
+            }
+            builder.append(shift.displayRange());
+        }
+        return builder.toString();
+    }
+
+    /** Сохраняет пользовательское расписание смен трав. Возвращает false, если ни одна строка не распознана. */
+    public synchronized boolean setShiftScheduleText(String text) {
+        List<AutoCutShift> parsed = parseShiftScheduleText(text);
+        if (parsed.isEmpty()) {
+            return false;
+        }
+        persistShiftsLocked(parsed);
+        AppLog.i(TRACE_CHAIN, TAG, "shift schedule saved: count=" + parsed.size());
+        return true;
+    }
+
+    /** Сбрасывает расписание смен к известному серверному дефолту. */
+    public synchronized void resetShiftScheduleToDefault() {
+        persistShiftsLocked(defaultShifts());
+        AppLog.i(TRACE_CHAIN, TAG, "shift schedule reset to default");
+    }
+
+    /** Возвращает UI-список трав с seed+live entries. */
     public synchronized List<AutoCutHerb> getHerbs() {
         return new ArrayList<>(loadHerbsLocked().values());
     }
 
+    /** Количество выбранных трав; guard для `DoHerbAutoCut()`. */
     public synchronized int getSelectedHerbCount() {
         int count = 0;
         for (AutoCutHerb herb : loadHerbsLocked().values()) {
@@ -113,11 +231,13 @@ public final class AutoCutManager {
         return count;
     }
 
+    /** Проверяет, выбрана ли трава по id или имени из live `RESO@`. */
     public synchronized boolean isHerbSelected(String id, String name) {
         AutoCutHerb herb = findHerbLocked(loadHerbsLocked(), id, name);
         return herb != null && herb.selected;
     }
 
+    /** Сохраняет checkbox selections из настроек AutoCut. */
     public synchronized void setHerbSelections(Set<String> selectedKeys) {
         Set<String> safeKeys = selectedKeys == null ? new LinkedHashSet<>() : selectedKeys;
         LinkedHashMap<String, AutoCutHerb> herbs = loadHerbsLocked();
@@ -131,6 +251,7 @@ public final class AutoCutManager {
         AppLog.i(TRACE_CHAIN, TAG, "settings saved: selectedCount=" + safeKeys.size());
     }
 
+    /** Обновляет metadata травы из long-press UI: skill, growth minutes, group. */
     public synchronized void updateHerbMeta(String key, int skill, int growthMinutes, String group) {
         if (TextUtils.isEmpty(key)) {
             return;
@@ -148,6 +269,15 @@ public final class AutoCutManager {
                 + ", skill=" + skill + ", growth=" + safeGrowth + ", group=" + safeGroup);
     }
 
+    /**
+     * Добавляет или обновляет траву, увиденную в JS `HerbsList(...)` или `RESO@`.
+     *
+     * Переменные:
+     * - `id` — приоритетный ключ, если сервер прислал `res_id`;
+     * - `name` — fallback-ключ и UI label;
+     * - `skill/growthMinutes/group` — metadata из seed/ручной правки/live parse.
+     * Существующий флаг `selected` сохраняется, чтобы live discovery не сбрасывал настройки.
+     */
     public synchronized void registerObservedHerb(String id, String name, int skill, int growthMinutes, String group) {
         String safeName = safe(name);
         if (safeName.isEmpty()) {
@@ -180,6 +310,11 @@ public final class AutoCutManager {
         persistHerbsLocked(herbs);
     }
 
+    /**
+     * Bridge callback `WebAppInterface.HerbsList(...)` из map.js.
+     * Формат `list`: элементы через `|`, имя может идти до `:`; метод только обновляет словарь,
+     * не запускает срез и не открывает captcha.
+     */
     public void onHerbsList(String list) {
         if (list == null || list.trim().isEmpty()) {
             return;
@@ -200,6 +335,10 @@ public final class AutoCutManager {
         AppLog.d(TRACE_CHAIN, TAG, "HerbsList observed count=" + count);
     }
 
+    /**
+     * Bridge callback `TraceCut/HerbCut`: запоминает имя травы как fallback для success `act=3`.
+     * TTL защищает от stale trace после перезагрузки карты или ручного действия пользователя.
+     */
     public void onTraceCut(String herb) {
         String safeHerb = safe(herb);
         if (safeHerb.isEmpty()) {
@@ -210,6 +349,7 @@ public final class AutoCutManager {
         AppLog.d(TRACE_CHAIN, TAG, "TraceCut observed: " + safeHerb);
     }
 
+    /** Возвращает и очищает свежий JS trace, если он не старше `TRACE_CUT_NAME_TTL_MS`. */
     public String consumeRecentTraceCutName() {
         long now = System.currentTimeMillis();
         String name = lastTraceCutName;
@@ -221,11 +361,32 @@ public final class AutoCutManager {
         return name;
     }
 
+    /** Упрощённая overload без массы, используется fallback-ветками. */
     public void markHerbCut(String id, String name, int growthMinutes, String regNum, String source) {
         markHerbCut(id, name, growthMinutes, regNum, source, 0d);
     }
 
+    /** Упрощённая overload без snapshot-а клетки, используется legacy/fallback-ветками. */
     public void markHerbCut(String id, String name, int growthMinutes, String regNum, String source, double resourceMass) {
+        markHerbCut(id, name, growthMinutes, regNum, source, resourceMass, "");
+    }
+
+    /**
+     * Финализирует успешный срез.
+     *
+     * Действия:
+     * - ставит herb timer через `AppTimerManager`, если смена трав не слишком близко;
+     * - пишет chat-report, если включён `write_chat_*`;
+     * - помечает текущую клетку checked для текущей смены;
+     * - добавляет массу в cleanup accumulator и либо открывает inventory cleanup, либо запускает route.
+     */
+    public void markHerbCut(String id,
+                            String name,
+                            int growthMinutes,
+                            String regNum,
+                            String source,
+                            double resourceMass,
+                            String cellResourcesSummary) {
         String safeName = safe(name);
         if (safeName.isEmpty()) {
             return;
@@ -246,7 +407,7 @@ public final class AutoCutManager {
             AppTimerManager.getInstance(appContext).addAppTimer(timer);
         }
         if (isWriteChatEnabled()) {
-            postCutResultToChat(safeName, timerPlan, source);
+            postCutResultToChat(safeName, timerPlan, safeRegNum, cellResourcesSummary, source);
         }
         markCurrentCellChecked("cut_success:" + source);
         boolean cleanupPending = maybeRequestCleanupAfterCut(resourceMass, source);
@@ -261,6 +422,11 @@ public final class AutoCutManager {
         }
     }
 
+    /**
+     * Guard для `WebAppInterface.DoHerbAutoCut()` перед автоматическим JS `Ogl(...)`.
+     * Возвращает false, если уже идёт навигация, проверка серпа, cleanup, нет выбранных трав,
+     * текущая клетка не входит в CSV или уже проверена в текущую смену.
+     */
     public boolean shouldAutoLookOnCurrentCell() {
         if (AppVars.AutoMoving || AppVars.AutoCutCheckSickle || AppVars.AutoCutCleanupPending) {
             return false;
@@ -276,6 +442,11 @@ public final class AutoCutManager {
         return !isCellCheckedForCurrentShift(current);
     }
 
+    /**
+     * Runtime bootstrap после license-gated включения `AUTO_CUT`.
+     * Сбрасывает старые флаги, требует проверку серпа, reload-ит main frame и при необходимости
+     * стартует маршрут к первой непроверенной CSV-клетке.
+     */
     public void onAutoCutEnabled(AutoFunctionsManager manager) {
         AppVars.AutoCutCheckSickle = true;
         AppVars.AutoCutArmedSickle = false;
@@ -287,6 +458,7 @@ public final class AutoCutManager {
         routeNextCellIfCurrentIsNotReady(manager, "enabled");
     }
 
+    /** Сброс runtime-флагов при ручном выключении или license downgrade/expiry. */
     public void onAutoCutDisabled() {
         AppVars.AutoCutCheckSickle = false;
         AppVars.AutoCutArmedSickle = false;
@@ -297,10 +469,12 @@ public final class AutoCutManager {
         AppVars.AutoCutHarvestedMassSinceCleanup = 0d;
     }
 
+    /** true, если `act=3` можно отправлять без риска среза голыми руками/без инструмента. */
     public boolean isSickleReadyForCut() {
         return AppVars.AutoCutArmedSickle && !AppVars.AutoCutCheckSickle;
     }
 
+    /** Запрашивает main.php-проверку серпа, когда `act=1` уже нашёл выбранную доступную траву. */
     public void requestSickleCheckBeforeCut(String source) {
         AppVars.AutoCutCheckSickle = true;
         AppVars.AutoCutArmedSickle = false;
@@ -308,11 +482,13 @@ public final class AutoCutManager {
         requestMainFrameReload("sickle_check:" + source);
     }
 
+    /** Помечает клетку checked и маршрутизирует дальше, если `act=1` не нашёл выбранных доступных трав. */
     public void onScanWithoutSelectedHerb(String source) {
         markCurrentCellChecked("no_selected:" + source);
         routeNextCell("no_selected:" + source);
     }
 
+    /** Завершает cleanup-проход после inventory и возвращает route к следующей клетке. */
     public void onCleanupCompleted(String source) {
         AppVars.AutoCutCleanupPending = false;
         AppVars.AutoCutCleanupReason = "";
@@ -321,6 +497,10 @@ public final class AutoCutManager {
         routeNextCell("cleanup_completed:" + source);
     }
 
+    /**
+     * Обновляет max mass из bridge `SetAutoFishMassa(current/max)`.
+     * Имя bridge историческое от авто-рыбалки, но map.js вызывает его и для resource pages.
+     */
     public void updateMassSnapshot(String mass) {
         MassSnapshot snapshot = parseMassSnapshot(mass);
         if (snapshot.max > 0d) {
@@ -329,6 +509,7 @@ public final class AutoCutManager {
         }
     }
 
+    /** Стартует route только если текущая клетка не подходит для немедленного `Оглядеться`. */
     private void routeNextCellIfCurrentIsNotReady(AutoFunctionsManager manager, String source) {
         if (manager == null) {
             return;
@@ -345,6 +526,7 @@ public final class AutoCutManager {
         routeNextCellWithManager(manager, source);
     }
 
+    /** Получает `AutoFunctionsManager` и делегирует старт маршрута с защитой от исключений. */
     private void routeNextCell(String source) {
         try {
             AutoFunctionsManager manager = AutoFunctionsManager.getInstance(appContext);
@@ -354,6 +536,10 @@ public final class AutoCutManager {
         }
     }
 
+    /**
+     * Выбирает следующую непроверенную CSV-клетку и запускает существующий навигатор.
+     * Не перезапускает маршрут, если `AppVars.AutoMovingDestinaton` уже равен нужной клетке.
+     */
     private void routeNextCellWithManager(AutoFunctionsManager manager, String source) {
         List<String> cells = getSearchCells();
         if (cells.isEmpty()) {
@@ -373,6 +559,7 @@ public final class AutoCutManager {
         AppLog.i(TRACE_CHAIN, TAG, "route next: destination=" + next + ", source=" + source);
     }
 
+    /** Round-robin поиск следующей непроверенной клетки относительно текущей позиции. */
     private String findNextUncheckedCell(List<String> cells, String current) {
         if (cells == null || cells.isEmpty()) {
             return "";
@@ -388,6 +575,10 @@ public final class AutoCutManager {
         return "";
     }
 
+    /**
+     * Накопляет массу срезов и при превышении 10% max mass ставит cleanup-флаг.
+     * Если max mass неизвестна, использует `CLEANUP_FALLBACK_THRESHOLD_MASS`.
+     */
     private boolean maybeRequestCleanupAfterCut(double resourceMass, String source) {
         if (!isCleanupEnabled() || resourceMass <= 0d) {
             return false;
@@ -408,6 +599,7 @@ public final class AutoCutManager {
         return true;
     }
 
+    /** Добавляет текущую клетку в checked-set активной смены трав. */
     private void markCurrentCellChecked(String source) {
         String current = resolveCurrentRegNum();
         if (current.isEmpty()) {
@@ -430,7 +622,7 @@ public final class AutoCutManager {
     }
 
     private ShiftCheckedCells loadCheckedCellsLocked() {
-        int shift = getShift(getServerNowMs(System.currentTimeMillis()));
+        int shift = getShiftForServerMs(getServerNowMs(System.currentTimeMillis()));
         String raw = prefs.getString(scopedKey(KEY_CHECKED_SHIFT_PREFIX), "");
         ShiftCheckedCells result = new ShiftCheckedCells(shift);
         if (TextUtils.isEmpty(raw)) {
@@ -484,6 +676,113 @@ public final class AutoCutManager {
         });
     }
 
+    private List<AutoCutShift> loadShiftsLocked() {
+        ArrayList<AutoCutShift> result = new ArrayList<>();
+        String raw = prefs.getString(scopedKey(KEY_SHIFTS_JSON_PREFIX), "");
+        if (!TextUtils.isEmpty(raw)) {
+            try {
+                JSONArray array = new JSONArray(raw);
+                for (int i = 0; i < array.length(); i++) {
+                    JSONObject item = array.optJSONObject(i);
+                    if (item == null) {
+                        continue;
+                    }
+                    AutoCutShift shift = new AutoCutShift(
+                            item.optInt("startHour", 0),
+                            item.optInt("startMinute", 0),
+                            item.optInt("endHour", 0),
+                            item.optInt("endMinute", 0));
+                    if (shift.isValid()) {
+                        result.add(shift);
+                    }
+                }
+            } catch (Exception error) {
+                AppLog.w(TRACE_CHAIN, TAG, "failed to parse shift schedule, fallback to defaults", error);
+                result.clear();
+            }
+        }
+        if (result.isEmpty()) {
+            result.addAll(defaultShifts());
+        }
+        return result;
+    }
+
+    private void persistShiftsLocked(List<AutoCutShift> shifts) {
+        JSONArray array = new JSONArray();
+        List<AutoCutShift> safeShifts = (shifts == null || shifts.isEmpty()) ? defaultShifts() : shifts;
+        for (AutoCutShift shift : safeShifts) {
+            if (shift == null || !shift.isValid()) {
+                continue;
+            }
+            JSONObject item = new JSONObject();
+            try {
+                item.put("startHour", shift.startHour);
+                item.put("startMinute", shift.startMinute);
+                item.put("endHour", shift.endHour);
+                item.put("endMinute", shift.endMinute);
+                array.put(item);
+            } catch (Exception error) {
+                AppLog.w(TRACE_CHAIN, TAG, "failed to serialize shift: " + shift.displayRange(), error);
+            }
+        }
+        prefs.edit().putString(scopedKey(KEY_SHIFTS_JSON_PREFIX), array.toString()).apply();
+    }
+
+    private static List<AutoCutShift> parseShiftScheduleText(String text) {
+        ArrayList<AutoCutShift> result = new ArrayList<>();
+        if (TextUtils.isEmpty(text)) {
+            return result;
+        }
+        String[] lines = text.split("\\r?\\n");
+        for (String line : lines) {
+            AutoCutShift shift = parseShiftLine(line);
+            if (shift != null && shift.isValid()) {
+                result.add(shift);
+            }
+        }
+        return result;
+    }
+
+    private static AutoCutShift parseShiftLine(String line) {
+        if (line == null) {
+            return null;
+        }
+        Matcher matcher = SHIFT_LINE_PATTERN.matcher(line.trim());
+        if (!matcher.find()) {
+            return null;
+        }
+        return new AutoCutShift(
+                parseIntSafe(matcher.group(1), 0),
+                parseIntSafe(matcher.group(2), 0),
+                parseIntSafe(matcher.group(3), 0),
+                parseIntSafe(matcher.group(4), 0));
+    }
+
+    private static List<AutoCutShift> defaultShifts() {
+        ArrayList<AutoCutShift> shifts = new ArrayList<>();
+        shifts.add(new AutoCutShift(0, 50, 6, 50));
+        shifts.add(new AutoCutShift(6, 50, 12, 50));
+        shifts.add(new AutoCutShift(12, 50, 18, 50));
+        shifts.add(new AutoCutShift(18, 50, 0, 50));
+        return shifts;
+    }
+
+    private int getShiftForServerMs(long serverMs) {
+        Calendar calendar = Calendar.getInstance();
+        calendar.setTimeInMillis(serverMs);
+        int minutes = calendar.get(Calendar.HOUR_OF_DAY) * 60 + calendar.get(Calendar.MINUTE);
+        List<AutoCutShift> shifts;
+        synchronized (this) {
+            shifts = loadShiftsLocked();
+        }
+        for (int i = 0; i < shifts.size(); i++) {
+            if (shifts.get(i).containsMinuteOfDay(minutes)) {
+                return i + 1;
+            }
+        }
+        return 0;
+    }
+
     private static MassSnapshot parseMassSnapshot(String mass) {
         MassSnapshot result = new MassSnapshot();
         if (TextUtils.isEmpty(mass) || !mass.contains("/")) {
@@ -506,12 +805,23 @@ public final class AutoCutManager {
         }
     }
 
+    private static int parseIntSafe(String value, int fallback) {
+        if (value == null) {
+            return fallback;
+        }
+        try {
+            return Integer.parseInt(value.trim());
+        } catch (NumberFormatException ignored) {
+            return fallback;
+        }
+    }
+
     private TimerPlan buildTimerPlan(String herb, int growthMinutes, String regNum) {
         long localNow = System.currentTimeMillis();
         long serverNow = getServerNowMs(localNow);
-        int currentShift = getShift(serverNow);
+        int currentShift = getShiftForServerMs(serverNow);
         long firstWindowMs = serverNow + TimeUnit.MINUTES.toMillis(Math.max(1, growthMinutes) - 2L);
-        int nextShift = getShift(firstWindowMs);
+        int nextShift = getShiftForServerMs(firstWindowMs);
         if (currentShift != nextShift) {
             return new TimerPlan(false, 0L, "Таймер не установлен, смена трав близка.");
         }
@@ -519,24 +829,46 @@ public final class AutoCutManager {
         String message = growthMinutes >= 120
                 ? "Таймер установлен на 2 часа."
                 : "Таймер установлен на 1 час.";
-        if (!TextUtils.isEmpty(regNum)) {
-            message += " Клетка: " + regNum + ".";
-        }
         return new TimerPlan(true, triggerAt, message);
     }
 
-    private void postCutResultToChat(String herb, TimerPlan timerPlan, String source) {
+    private void postCutResultToChat(String herb,
+                                     TimerPlan timerPlan,
+                                     String regNum,
+                                     String cellResourcesSummary,
+                                     String source) {
         String sourceLabel = TextUtils.isEmpty(source) ? "auto_cut" : source;
-        String message = MainPhp.buildServerChatTimeHtmlExternal()
-                + "<font color=#006600><b>[" + escapeHtml(sourceLabel) + "]</b> Авто-Травник: "
-                + escapeHtml(herb)
-                + " срезана. "
-                + escapeHtml(timerPlan.message)
-                + "</font>";
+        StringBuilder builder = new StringBuilder();
+        builder.append(MainPhp.buildServerChatTimeHtmlExternal())
+                .append("<font color=#006600><b>[")
+                .append(escapeHtml(sourceLabel))
+                .append("]</b> Авто-Травник: ")
+                .append(escapeHtml(herb))
+                .append(" срезана. ")
+                .append(escapeHtml(timerPlan.message));
+        String safeRegNum = safe(regNum);
+        String safeSummary = safe(cellResourcesSummary);
+        if (!safeRegNum.isEmpty()) {
+            if (!safeSummary.isEmpty()) {
+                builder.append(" Клетка '")
+                        .append(escapeHtml(safeRegNum))
+                        .append("' содержит: ")
+                        .append(escapeHtml(safeSummary))
+                        .append('.');
+            } else {
+                builder.append(" Клетка '")
+                        .append(escapeHtml(safeRegNum))
+                        .append("'.");
+            }
+        }
+        builder.append("</font>");
         Intent intent = new Intent(AppVars.ACTION_ADD_CHAT_MESSAGE);
-        intent.putExtra("message", message);
+        intent.putExtra("message", builder.toString());
         LocalBroadcastManager.getInstance(appContext).sendBroadcast(intent);
-        AppLog.d(TRACE_CHAIN, TAG, "chat posted: herb=" + herb + ", source=" + source);
+        AppLog.d(TRACE_CHAIN, TAG, "chat posted: herb=" + herb
+                + ", regNum=" + safeRegNum
+                + ", summary=" + safeSummary
+                + ", source=" + source);
     }
 
     private LinkedHashMap<String, AutoCutHerb> loadHerbsLocked() {
@@ -578,11 +910,92 @@ public final class AutoCutManager {
 
     private boolean mergeSeedHerbs(LinkedHashMap<String, AutoCutHerb> herbs) {
         boolean changed = false;
-        changed |= mergeSeedHerb(herbs, "437", "Петрушка кровавобережная", 20, 60, "11");
-        changed |= mergeSeedHerb(herbs, "442", "Чеснок", 30, 60, "11");
-        changed |= mergeSeedHerb(herbs, "443", "Картофель", 20, 60, "11");
-        changed |= mergeSeedHerb(herbs, "450", "Томат", 20, 60, "11");
+        changed |= mergeSeedHerb(herbs, "86", "Моховик", 0, 60, "5");
+        changed |= mergeSeedHerb(herbs, "67", "Кассия", 0, 60, "4");
+        changed |= mergeSeedHerb(herbs, "75", "Аралия", 0, 60, "6");
+        changed |= mergeSeedHerb(herbs, "114", "Лимон", 5, 120, "7");
+        changed |= mergeSeedHerb(herbs, "96", "Осот", 5, 60, "2");
+        changed |= mergeSeedHerb(herbs, "444", "Водоросли приозёрные", 5, 60, "2");
         changed |= mergeSeedHerb(herbs, "451", "Сахарный тростник", 5, 60, "11");
+        changed |= mergeSeedHerb(herbs, "102", "Пшеница", 5, 60, "11");
+        changed |= mergeSeedHerb(herbs, "77", "Гравилат", 10, 120, "2");
+        changed |= mergeSeedHerb(herbs, "84", "Хвоя", 10, 60, "5");
+        changed |= mergeSeedHerb(herbs, "440", "Перец Форпостной", 10, 60, "11");
+        changed |= mergeSeedHerb(herbs, "447", "Боровик", 10, 60, "9");
+        changed |= mergeSeedHerb(herbs, "448", "Лисички", 10, 60, "9");
+        changed |= mergeSeedHerb(herbs, "47", "Каланхоэ", 20, 60, "3");
+        changed |= mergeSeedHerb(herbs, "83", "Сосна", 20, 60, "9");
+        changed |= mergeSeedHerb(herbs, "439", "Перец Октальский", 20, 60, "11");
+        changed |= mergeSeedHerb(herbs, "450", "Томат", 20, 60, "11");
+        changed |= mergeSeedHerb(herbs, "443", "Картофель", 20, 60, "11");
+        changed |= mergeSeedHerb(herbs, "438", "Сельдерей", 20, 60, "11");
+        changed |= mergeSeedHerb(herbs, "437", "Петрушка Кровавобережная", 20, 60, "11");
+        changed |= mergeSeedHerb(herbs, "87", "Бадан", 30, 60, "2");
+        changed |= mergeSeedHerb(herbs, "442", "Чеснок", 30, 60, "11");
+        changed |= mergeSeedHerb(herbs, "441", "Укроп болотный", 30, 60, "11");
+        changed |= mergeSeedHerb(herbs, "103", "Тарвин", 40, 60, "4");
+        changed |= mergeSeedHerb(herbs, "108", "Змеиный корень", 50, 60, "1");
+        changed |= mergeSeedHerb(herbs, "118", "Виноград светлый", 50, 60, "8");
+        changed |= mergeSeedHerb(herbs, "119", "Виноград тёмный", 50, 60, "8");
+        changed |= mergeSeedHerb(herbs, "91", "Трифоль", 60, 60, "2");
+        changed |= mergeSeedHerb(herbs, "115", "Бегония", 75, 60, "6");
+        changed |= mergeSeedHerb(herbs, "58", "Алтей", 90, 60, "6");
+        changed |= mergeSeedHerb(herbs, "76", "Бессмертник", 105, 60, "6");
+        changed |= mergeSeedHerb(herbs, "98", "Катарантус", 105, 60, "1");
+        changed |= mergeSeedHerb(herbs, "104", "Жизненное дерево", 110, 60, "7");
+        changed |= mergeSeedHerb(herbs, "60", "Астрагал", 110, 60, "4");
+        changed |= mergeSeedHerb(herbs, "80", "Ведьмино кольцо", 120, 60, "9");
+        changed |= mergeSeedHerb(herbs, "88", "Болотник", 120, 60, "2");
+        changed |= mergeSeedHerb(herbs, "94", "Анис", 130, 60, "7");
+        changed |= mergeSeedHerb(herbs, "90", "Маклея", 130, 60, "2");
+        changed |= mergeSeedHerb(herbs, "48", "Каперс", 140, 120, "7");
+        changed |= mergeSeedHerb(herbs, "56", "Подберёзовик", 140, 60, "5");
+        changed |= mergeSeedHerb(herbs, "112", "Кентарийская дикая роза", 150, 120, "3");
+        changed |= mergeSeedHerb(herbs, "63", "Девясил", 150, 60, "4");
+        changed |= mergeSeedHerb(herbs, "89", "Брусника", 160, 120, "2");
+        changed |= mergeSeedHerb(herbs, "66", "Истод", 160, 60, "3");
+        changed |= mergeSeedHerb(herbs, "110", "Прагениана", 170, 120, "3");
+        changed |= mergeSeedHerb(herbs, "92", "Сыроежка", 170, 60, "5");
+        changed |= mergeSeedHerb(herbs, "107", "Ландыш", 180, 120, "4");
+        changed |= mergeSeedHerb(herbs, "49", "Кориандр", 180, 60, "7");
+        changed |= mergeSeedHerb(herbs, "106", "Люминисцентная поганка", 190, 60, "9");
+        changed |= mergeSeedHerb(herbs, "113", "Антуриум хрустальный", 190, 60, "2");
+        changed |= mergeSeedHerb(herbs, "74", "Алоэ", 200, 120, "7");
+        changed |= mergeSeedHerb(herbs, "79", "Термопсис", 20, 60, "6");
+        changed |= mergeSeedHerb(herbs, "117", "Смертоцвет", 210, 120, "3");
+        changed |= mergeSeedHerb(herbs, "65", "Карагана", 210, 60, "9");
+        changed |= mergeSeedHerb(herbs, "52", "Берёза", 220, 120, "5");
+        changed |= mergeSeedHerb(herbs, "68", "Кипрей", 220, 60, "5");
+        changed |= mergeSeedHerb(herbs, "57", "Поганка", 230, 60, "5");
+        changed |= mergeSeedHerb(herbs, "93", "Мухомор", 230, 60, "9");
+        changed |= mergeSeedHerb(herbs, "50", "Крестовник", 240, 60, "11");
+        changed |= mergeSeedHerb(herbs, "101", "Парибигус", 240, 60, "6");
+        changed |= mergeSeedHerb(herbs, "46", "Айва", 250, 120, "7");
+        changed |= mergeSeedHerb(herbs, "111", "Камелия", 250, 120, "3");
+        changed |= mergeSeedHerb(herbs, "69", "Лён", 250, 60, "11");
+        changed |= mergeSeedHerb(herbs, "82", "Дягиль", 300, 120, "9");
+        changed |= mergeSeedHerb(herbs, "99", "Коризиус", 300, 60, "5");
+        changed |= mergeSeedHerb(herbs, "53", "Дуб", 350, 120, "5");
+        changed |= mergeSeedHerb(herbs, "61", "Вереск", 350, 60, "4");
+        changed |= mergeSeedHerb(herbs, "51", "Секуринега", 400, 120, "3");
+        changed |= mergeSeedHerb(herbs, "97", "Фенхель", 400, 60, "1");
+        changed |= mergeSeedHerb(herbs, "81", "Амми", 400, 60, "7");
+        changed |= mergeSeedHerb(herbs, "105", "Секвойя", 400, 60, "4");
+        changed |= mergeSeedHerb(herbs, "73", "Эфедра", 550, 60, "4");
+        changed |= mergeSeedHerb(herbs, "116", "Кипарис", 600, 120, "9");
+        changed |= mergeSeedHerb(herbs, "54", "Ива", 600, 60, "5");
+        changed |= mergeSeedHerb(herbs, "55", "Лиственница", 600, 60, "9");
+        changed |= mergeSeedHerb(herbs, "64", "Дурман", 640, 120, "2");
+        changed |= mergeSeedHerb(herbs, "109", "Пустынный агапантус", 640, 60, "1");
+        changed |= mergeSeedHerb(herbs, "59", "Арника", 680, 60, "3");
+        changed |= mergeSeedHerb(herbs, "72", "Чернокорень", 680, 60, "4");
+        changed |= mergeSeedHerb(herbs, "71", "Рапонтикум", 700, 120, "3");
+        changed |= mergeSeedHerb(herbs, "95", "Инжир", 720, 120, "1");
+        changed |= mergeSeedHerb(herbs, "100", "Куфис", 720, 60, "6");
+        changed |= mergeSeedHerb(herbs, "78", "Родиола", 720, 60, "6");
+        changed |= mergeSeedHerb(herbs, "62", "Галега", 780, 60, "3");
+        changed |= mergeSeedHerb(herbs, "85", "Подосиновик", 780, 60, "5");
+        changed |= mergeSeedHerb(herbs, "70", "Плаун", 800, 60, "2");
         return changed;
     }
 
@@ -718,22 +1131,6 @@ public final class AutoCutManager {
         return localNowMs;
     }
 
-    private static int getShift(long serverMs) {
-        Calendar calendar = Calendar.getInstance();
-        calendar.setTimeInMillis(serverMs);
-        int minutes = calendar.get(Calendar.HOUR_OF_DAY) * 60 + calendar.get(Calendar.MINUTE);
-        if (minutes < 50 || minutes >= 18 * 60 + 50) {
-            return 4;
-        }
-        if (minutes < 6 * 60 + 50) {
-            return 1;
-        }
-        if (minutes < 12 * 60 + 50) {
-            return 2;
-        }
-        return 3;
-    }
-
     private static String resolveCurrentRegNum() {
         if (AppVars.Profile == null || TextUtils.isEmpty(AppVars.Profile.MapLocation)) {
             return "";
@@ -750,9 +1147,13 @@ public final class AutoCutManager {
                 .replace("'", "&#39;");
     }
 
+    /** План таймера роста после среза; отделяет расчёт от создания `AppTimer`. */
     private static final class TimerPlan {
+        /** true, если смена трав не близко и таймер можно создавать. */
         final boolean shouldCreateTimer;
+        /** Локальное время срабатывания таймера в milliseconds. */
         final long triggerAtMs;
+        /** Текст для chat-report, почему таймер создан или пропущен. */
         final String message;
 
         TimerPlan(boolean shouldCreateTimer, long triggerAtMs, String message) {
@@ -762,8 +1163,11 @@ public final class AutoCutManager {
         }
     }
 
+    /** Persisted checked-set одной серверной смены трав. */
     private static final class ShiftCheckedCells {
+        /** Номер смены 1..4, вычисленный по server time + `Profile.ServDiff`. */
         final int shift;
+        /** Нормализованные regNum клеток, уже проверенных в этой смене. */
         final LinkedHashSet<String> cells = new LinkedHashSet<>();
 
         ShiftCheckedCells(int shift) {
@@ -771,18 +1175,86 @@ public final class AutoCutManager {
         }
     }
 
+    /** Parsed `current/max` из `SetAutoFishMassa(...)`. */
     private static final class MassSnapshot {
+        /** Текущая масса inventory; сейчас используется только в логах. */
         double current;
+        /** Максимальная масса inventory; задаёт 10% cleanup threshold. */
         double max;
     }
 
+    /** Редактируемое окно смены трав. */
+    public static final class AutoCutShift {
+        public final int startHour;
+        public final int startMinute;
+        public final int endHour;
+        public final int endMinute;
+
+        AutoCutShift(int startHour, int startMinute, int endHour, int endMinute) {
+            this.startHour = startHour;
+            this.startMinute = startMinute;
+            this.endHour = endHour;
+            this.endMinute = endMinute;
+        }
+
+        boolean isValid() {
+            return isTimeValid(startHour, startMinute)
+                    && isTimeValid(endHour, endMinute)
+                    && startMinuteOfDay() != endMinuteOfDay();
+        }
+
+        boolean containsMinuteOfDay(int minuteOfDay) {
+            int start = startMinuteOfDay();
+            int end = endMinuteOfDay();
+            if (start < end) {
+                return minuteOfDay >= start && minuteOfDay < end;
+            }
+            return minuteOfDay >= start || minuteOfDay < end;
+        }
+
+        String displayRange() {
+            return two(startHour) + ":" + two(startMinute) + "-" + two(endHour) + ":" + two(endMinute);
+        }
+
+        private int startMinuteOfDay() {
+            return startHour * 60 + startMinute;
+        }
+
+        private int endMinuteOfDay() {
+            return endHour * 60 + endMinute;
+        }
+
+        private static boolean isTimeValid(int hour, int minute) {
+            return hour >= 0 && hour <= 23 && minute >= 0 && minute <= 59;
+        }
+
+        private static String two(int value) {
+            return value < 10 ? "0" + value : String.valueOf(value);
+        }
+    }
+
+    /**
+     * UI/persisted DTO травы.
+     *
+     * Связь с ПК-версией:
+     * - сохраняет понятные поля из `FormMainHerbs`/`FormSettingsAutoCut`;
+     * - `key` стабилизирует checkbox state между discovery по имени и discovery по id;
+     * - `selected` определяет, будет ли `AlchemyAjaxPhp` отправлять `act=3` для этой травы.
+     */
     public static final class AutoCutHerb {
+        /** Persisted key: `id:<res_id>` или `name:<normalizedName>`. */
         public final String key;
+        /** Server `res_id`, если известен из `RESO@` или seed-словаря. */
         public final String id;
+        /** Отображаемое имя травы. */
         public final String name;
+        /** Минимальное умение травника; сейчас metadata для UI/отладки. */
         public final int skill;
+        /** Время роста в минутах, используется для timer plan. */
         public final int growthMinutes;
+        /** Группа трав из справочника или `Не определено`. */
         public final String group;
+        /** Checkbox пользователя: разрешён ли автосрез этой травы. */
         public final boolean selected;
 
         AutoCutHerb(String key, String id, String name, int skill, int growthMinutes, String group, boolean selected) {
@@ -795,14 +1267,17 @@ public final class AutoCutManager {
             this.selected = selected;
         }
 
+        /** Immutable-copy helper для checkbox changes. */
         AutoCutHerb withSelected(boolean selected) {
             return new AutoCutHerb(key, id, name, skill, growthMinutes, group, selected);
         }
 
+        /** Immutable-copy helper для long-press metadata edits. */
         AutoCutHerb withMeta(int skill, int growthMinutes, String group) {
             return new AutoCutHerb(key, id, name, skill, growthMinutes, group, selected);
         }
 
+        /** Формирует строку checkbox-а в настройках AutoCut. */
         public String displayLabel() {
             String idPart = TextUtils.isEmpty(id) ? "" : (" #" + id);
             return name + idPart + " | умение " + skill + " | рост " + growthMinutes + " мин | группа " + group;

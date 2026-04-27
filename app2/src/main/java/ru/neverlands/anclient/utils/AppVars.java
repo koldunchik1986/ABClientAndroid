@@ -245,18 +245,58 @@ public class AppVars {
      * Время последней периодической проверки ножа в ms (аналог C# `AutoSkinLastChecked`).
      */
     public static long AutoSkinLastChecked = 0L;
-    /** AutoCut: требуется проверить/надеть серп перед срезом травы. */
+    /**
+     * AutoCut: требуется проверить/надеть серп перед срезом травы.
+     *
+     * Зависимости:
+     * - выставляется `AutoCutManager.onAutoCutEnabled(...)` и `requestSickleCheckBeforeCut(...)`;
+     * - читается `WebAppInterface.DoHerbAutoCut()` и `AutoCutHandler.processMainPhpAutoCutStep(...)`;
+     * - пока true, map.js не запускает автоматический `Оглядеться`, чтобы сначала пройти
+     *   main.php -> персонаж/инвентарь -> надевание серпа.
+     */
     public static boolean AutoCutCheckSickle = false;
-    /** AutoCut: серп найден в руках или успешно надет. */
+    /**
+     * AutoCut: серп найден в руках или успешно надет.
+     *
+     * Зависимости:
+     * - заполняется `ParsedDressed.IsWearSickle()` после разбора `slots_inv(...)`/`slots_pla(...)`;
+     * - проверяется `AutoCutManager.isSickleReadyForCut()` перед отправкой `alchemy_ajax.php?act=3`;
+     * - сбрасывается при выключении AutoCut и при новом запросе проверки серпа.
+     */
     public static boolean AutoCutArmedSickle = false;
-    /** AutoCut: название найденного серпа для диагностики и чата. */
+    /**
+     * AutoCut: название найденного серпа для диагностики и файлового лога.
+     *
+     * Зависимости:
+     * - значение берётся из parsed hand slot в `ParsedDressed.IsWearSickle()`;
+     * - используется только как runtime-снимок, не как persisted-настройка.
+     */
     public static String AutoCutSickleHand = "";
-    /** AutoCut: долговечность найденного серпа в формате current/max. */
+    /**
+     * AutoCut: долговечность найденного серпа в формате `current/max`.
+     *
+     * Зависимости:
+     * - синхронизируется с `AutoCutSickleHand` по индексу slot-списка `ParsedDressed`;
+     * - нужна для диагностики износа без повторного парсинга страницы персонажа.
+     */
     public static String AutoCutSickleHandD = "";
-    /** AutoCut: запрошен проход инвентаря для штатного cleanup/выброса просрочки. */
+    /**
+     * AutoCut: запрошен проход инвентаря для штатного cleanup/выброса просрочки.
+     *
+     * Зависимости:
+     * - выставляется `AutoCutManager.maybeRequestCleanupAfterCut(...)`, когда прирост массы
+     *   после срезов превысил настроенный порог;
+     * - обслуживается `AutoCutHandler.processCleanupOpenInventory(...)` и завершается
+     *   `AutoCutHandler.afterMainPhpInventoryStep(...)` после стандартного `mainPhpInv(...)`;
+     * - пока true, `DoHerbAutoCut()` не запускает новый `Оглядеться`, чтобы не смешивать
+     *   map ajax и inventory cleanup.
+     */
     public static boolean AutoCutCleanupPending = false;
+    /** Причина последнего AutoCut cleanup-запроса для `AUTO_CUT_TRACE` логов. */
     public static String AutoCutCleanupReason = "";
+    /** Накопленный вес срезанной травы с момента последнего cleanup-прохода. */
     public static double AutoCutHarvestedMassSinceCleanup = 0d;
+    /** Максимальная масса инвентаря из `SetAutoFishMassa(...)`; fallback-порог применяется, если 0. */
     public static double AutoCutKnownMassMax = 0d;
     /**
      * AutoSkin: флаг "нужно перечитать результаты охоты" (аналог C# `AutoSkinCheckRes`).

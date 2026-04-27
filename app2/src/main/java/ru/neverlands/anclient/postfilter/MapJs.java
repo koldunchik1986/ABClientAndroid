@@ -32,6 +32,7 @@ public class MapJs {
     // Маркеры, чтобы не дублировать патчи при повторной обработке.
     private static final String ANCLIENT_MAP_STUB_MARKER = "/*ANCLIENT_MAP_STUBS*/";
     private static final String ANCLIENT_MAP_RUNTIME_PATCH_MARKER = "/*ANCLIENT_MAP_RUNTIME_PATCHES*/";
+    private static final String ANCLIENT_MAP_AUTO_CUT_RUNTIME_PATCH_MARKER = "/*ANCLIENT_MAP_RUNTIME_PATCH_AUTO_CUT*/";
 
     // C# parity для no-captcha в авто-рыбалке.
     private static final String FISH_NO_CAPTCHA_CONDITION_OLD =
@@ -134,6 +135,7 @@ public class MapJs {
                     + "  IsHerbAutoCut: function(herb){ return !!__anCall('IsHerbAutoCut', [String(herb)], false); },\n"
                     + "  HerbCut: function(herb){ return __anCall('HerbCut', [String(herb)], null); },\n"
                     + "  TraceCut: function(herb){ return __anCall('TraceCut', [String(herb)], null); },\n"
+                    + "  TraceAutoCutRuntime: function(message){ return __anCall('TraceAutoCutRuntime', [String(message)], null); },\n"
                     + "  SetNeverTimer: function(ms){ return __anCall('SetNeverTimer', [ms], null); },\n"
                     + "  SetAutoFishMassa: function(v){ return __anCall('SetAutoFishMassa', [v], null); },\n"
                     + "  CheckPri: function(name,myst){ return String(__anCall('CheckPri', [name,myst], '')); },\n"
@@ -173,6 +175,75 @@ public class MapJs {
                     + "window.__anPushTied = __anPushTied;\n"
                     + "setInterval(__anPushTied, 1000);\n"
                     + "__anPushTied();\n"
+                    + "})();\n";
+
+    /**
+     * Runtime fallback for AutoCut: the primary hook lives in assets/js/map.js ButtonGen/ReAddBut.
+     * This wrapper re-checks the same mapbt button after view_map() finishes, so a missed initial
+     * document.write phase cannot leave AutoCut stuck on a ready cell.
+     */
+    private static final String AUTO_CUT_RUNTIME_PATCH =
+            ANCLIENT_MAP_AUTO_CUT_RUNTIME_PATCH_MARKER + "\n"
+                    + "(function(){\n"
+                    + "if (window.__an_auto_cut_patch_applied) return;\n"
+                    + "window.__an_auto_cut_patch_applied = true;\n"
+                    + "function __anTraceAutoCut(msg){\n"
+                    + "  try {\n"
+                    + "    if (window.external && typeof window.external.TraceAutoCutRuntime === 'function') {\n"
+                    + "      window.external.TraceAutoCutRuntime(msg);\n"
+                    + "    }\n"
+                    + "  } catch (_an_e) {}\n"
+                    + "}\n"
+                    + "function __anFindOglCode(){\n"
+                    + "  try {\n"
+                    + "    if (typeof mapbt === 'undefined' || !mapbt) return '';\n"
+                    + "    var __anLegacyOglCode = '';\n"
+                    + "    for (var i = 0; i < mapbt.length; i++) {\n"
+                    + "      if (!mapbt[i]) continue;\n"
+                    + "      if (mapbt[i][0] === 'look') return mapbt[i][2] || '';\n"
+                    + "      if (mapbt[i][0] === 'ogl') __anLegacyOglCode = mapbt[i][2] || '';\n"
+                    + "    }\n"
+                    + "    return __anLegacyOglCode;\n"
+                    + "  } catch (_an_e) {}\n"
+                    + "  return '';\n"
+                    + "}\n"
+                    + "window.__anTryAutoCutFromMap = function(source){\n"
+                    + "  var code = __anFindOglCode();\n"
+                    + "  if (!code) {\n"
+                    + "    __anTraceAutoCut('skip no look/ogl button, source=' + source);\n"
+                    + "    return;\n"
+                    + "  }\n"
+                    + "  if (typeof window.AnTryAutoCutOgl === 'function') {\n"
+                    + "    window.AnTryAutoCutOgl(code, source);\n"
+                    + "    return;\n"
+                    + "  }\n"
+                    + "  try {\n"
+                    + "    if (!window.external || typeof window.external.DoHerbAutoCut !== 'function' || !window.external.DoHerbAutoCut()) {\n"
+                    + "      __anTraceAutoCut('skip fallback guard false, source=' + source);\n"
+                    + "      return;\n"
+                    + "    }\n"
+                    + "  } catch (_an_e_guard) {\n"
+                    + "    __anTraceAutoCut('skip fallback bridge error, source=' + source + ', error=' + _an_e_guard);\n"
+                    + "    return;\n"
+                    + "  }\n"
+                    + "  var now = (new Date()).getTime();\n"
+                    + "  if (window.__an_auto_cut_fallback_guard_until && now < window.__an_auto_cut_fallback_guard_until) {\n"
+                    + "    __anTraceAutoCut('skip fallback guard, source=' + source);\n"
+                    + "    return;\n"
+                    + "  }\n"
+                    + "  window.__an_auto_cut_fallback_guard_until = now + 3000;\n"
+                    + "  __anTraceAutoCut('start fallback Ogl, source=' + source);\n"
+                    + "  try { Ogl(code); } catch (_an_e_ogl) { __anTraceAutoCut('fallback Ogl failed, source=' + source + ', error=' + _an_e_ogl); }\n"
+                    + "};\n"
+                    + "if (typeof window.view_map === 'function' && !window.__an_auto_cut_view_map_wrapped) {\n"
+                    + "  var __anOldViewMap = window.view_map;\n"
+                    + "  window.view_map = function(){\n"
+                    + "    var result = __anOldViewMap.apply(this, arguments);\n"
+                    + "    setTimeout(function(){ window.__anTryAutoCutFromMap('view_map'); }, 50);\n"
+                    + "    return result;\n"
+                    + "  };\n"
+                    + "  window.__an_auto_cut_view_map_wrapped = true;\n"
+                    + "}\n"
                     + "})();\n";
 
     public static byte[] process(Context context, byte[] array) {
@@ -224,6 +295,9 @@ public class MapJs {
         }
         if (!patched.contains("/*ANCLIENT_MAP_RUNTIME_PATCH_TIED*/")) {
             patched += "\n" + TIED_RUNTIME_PATCH;
+        }
+        if (!patched.contains(ANCLIENT_MAP_AUTO_CUT_RUNTIME_PATCH_MARKER)) {
+            patched += "\n" + AUTO_CUT_RUNTIME_PATCH;
         }
 
         AppLog.d(TAG, "process: source=" + (useAssetBase ? "assets/js/map.js" : "server")

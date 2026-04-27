@@ -105,13 +105,57 @@ function ButtonGen() {
     for (var i = 0; i < mapbt.length; i++) {
         bavail[mapbt[i][0]] = [mapbt[i][2], mapbt[i][3]];
         str += ' <input type=button class=fr_but id="' + mapbt[i][0] + '" value="' + mapbt[i][1] + '" onclick=\'ButClick("' + mapbt[i][0] + '")\'>';
-        if (mapbt[i][0] == 'ogl') {
-            if (window.external.DoHerbAutoCut()) {
-                Ogl(mapbt[i][2]);
-            }
+        if (mapbt[i][0] == 'look' || mapbt[i][0] == 'ogl') {
+            AnTryAutoCutOgl(mapbt[i][2], 'ButtonGen');
         }
     }
     return str;
+}
+
+var an_auto_cut_ogl_guard_until = 0;
+function AnAutoCutTrace(message) {
+    try {
+        if (window.external && typeof window.external.TraceAutoCutRuntime == 'function') {
+            window.external.TraceAutoCutRuntime(message);
+        }
+    } catch (e) {}
+}
+
+function AnTryAutoCutOgl(code, source) {
+    var now = (new Date()).getTime();
+    if (!code) {
+        AnAutoCutTrace('skip no look/ogl code, source=' + source);
+        return;
+    }
+    if (now < an_auto_cut_ogl_guard_until) {
+        AnAutoCutTrace('skip guard, source=' + source);
+        return;
+    }
+    var allowed = false;
+    try {
+        allowed = window.external.DoHerbAutoCut();
+    } catch (e) {
+        AnAutoCutTrace('skip bridge error, source=' + source + ', error=' + e);
+        return;
+    }
+    if (!allowed) {
+        AnAutoCutTrace('skip guard false, source=' + source);
+        return;
+    }
+    an_auto_cut_ogl_guard_until = now + 3000;
+    AnAutoCutTrace('schedule Ogl, source=' + source);
+    setTimeout(function () {
+        try {
+            if (!window.external.DoHerbAutoCut()) {
+                AnAutoCutTrace('cancel delayed Ogl, source=' + source);
+                return;
+            }
+            AnAutoCutTrace('start Ogl, source=' + source);
+            Ogl(code);
+        } catch (e) {
+            AnAutoCutTrace('Ogl failed, source=' + source + ', error=' + e);
+        }
+    }, 250);
 }
 
 function ButClick(id) {
@@ -119,6 +163,7 @@ function ButClick(id) {
     switch (id) {
         case 'inf': goloc = 'main.php?get_id=56&act=10&go=inf&vcode=' + bavail[id][0]; break;
         case 'inv': goloc = 'main.php?get_id=56&act=10&go=inv&vcode=' + bavail[id][0]; break;
+        case 'look': Ogl(bavail[id][0]); break;
         case 'ogl': Ogl(bavail[id][0]); break;
         case 'fis': Fish(bavail[id][0]); break;
         case 'fig': fight_map(bavail[id][0]); break;
@@ -153,10 +198,8 @@ function ReAddBut(obj) {
             k++;
             bavail[obj[i][0]] = [obj[i][2], obj[i][3]];
             d.getElementById('ButtonPlace').innerHTML += ' <input type=button class=fr_but id="' + obj[i][0] + '" value="' + obj[i][1] + '" onclick=\'ButClick("' + obj[i][0] + '")\'>';
-            if (obj[i][0] == 'ogl') {
-                if (window.external.DoHerbAutoCut()) {
-                    Ogl(obj[i][2]);
-                }
+            if (obj[i][0] == 'look' || obj[i][0] == 'ogl') {
+                AnTryAutoCutOgl(obj[i][2], 'ReAddBut');
             }
         }
     }
@@ -398,9 +441,11 @@ function timerst(lp) {
         d.getElementById('timerdiv').style.display = 'none';
         d.getElementById('timerfon').style.display = 'none';
         clearInterval(tsec);
-        // +ABC: корректный URL с параметрами карты (без параметров загружается фреймсет).
-        location = 'http://neverlands.ru/main.php?get_id=56&act=10&go=inf';
-        // -ABC        
+        try {
+            if (window.external && typeof window.external.TraceMapRuntime == 'function') {
+                window.external.TraceMapRuntime('timerst complete, stay on current map, lp=' + lp);
+            }
+        } catch (e) {}
     }
     else {
         d.getElementById('tdsec').innerHTML = (time_left_sec / 1000);

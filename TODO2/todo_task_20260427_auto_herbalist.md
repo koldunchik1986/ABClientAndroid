@@ -65,14 +65,14 @@ GET http://neverlands.ru/gameplay/ajax/alchemy_ajax.php?act=3&res_id=<id>&r_x=<x
 - `AutoFunctionsManager.isAutoCutEnabled/toggleAutoCut/setAutoCutEnabled` уже хранит флаг и выключает конфликтующие авто-функции.
 - `AppTimerManager` уже сохраняет и временно отключает `AutoCut` при таймерах.
 - `BossAuto` уже сохраняет/ставит на паузу/восстанавливает `AutoCut` в сценарии Авто-Босса.
-- `QuickButtonsPanel` уже умеет включать/выключать `AUTO_CUT`, но иконка сейчас `null`/`ic_add`.
+- `QuickButtonsPanel` умеет включать/выключать `AUTO_CUT`, показывает внешнюю иконку травника и long-press меню настроек.
 - `FunctionListAdapter` уже показывает `AUTO_CUT`, но иконка сейчас `null`/`ic_add`.
-- `MapJs.java` уже объявляет JS shim `window.external.DoHerbAutoCut()`, `HerbsList(...)`, `TraceCut(...)`.
-- `app2/src/main/assets/js/map.js` уже вызывает `DoHerbAutoCut()` и автоматически делает `Ogl(...)` при наличии кнопки `Оглядеться`.
-- `WebAppInterface.HerbsList(String list)` и `TraceCut(String herb)` сейчас только логируют, без состояния Авто-Травника.
-- `WebAppInterface.DoHerbAutoCut()` отсутствует, поэтому текущий JS shim всегда получает default `false`.
-- В `Filter.process(...)` нет обработчика `alchemy_ajax.php`, значит Java-side postfilter не видит структурно ответы `act=1/act=3`.
-- Long-press меню настроек для `AUTO_CUT` отсутствует.
+- `MapJs.java` объявляет JS shim `window.external.DoHerbAutoCut()`, `HerbsList(...)`, `TraceCut(...)`, `TraceAutoCutRuntime(...)`.
+- `MapJs.process(...)` подменяет server `js/map.js` на `app2/src/main/assets/js/map.js`, поэтому runtime AutoCut JS-хук работает через текущий postfilter-контур.
+- `app2/src/main/assets/js/map.js` вызывает `AnTryAutoCutOgl(...)` из существующих `ButtonGen/ReAddBut`, имеет guard от повторов, delayed `Ogl(...)` и JS->bridge трассировку.
+- `WebAppInterface.HerbsList(String list)`, `TraceCut(String herb)`, `HerbCut(String name)`, `DoHerbAutoCut()` и `TraceAutoCutRuntime(String payload)` связаны с `AutoCutManager` и файловым логом `AUTO_CUT_TRACE`.
+- `Filter.process(...)` подключает обработчик `alchemy_ajax.php`, поэтому Java-side postfilter видит структурно ответы `act=1/act=3`.
+- Long-press меню для `AUTO_CUT` открывает `Настройки авто-травника`, `Список трав`, `Серпы`, `Смены трав` или удаление кнопки.
 
 ## Инварианты реализации
 
@@ -85,6 +85,8 @@ GET http://neverlands.ru/gameplay/ajax/alchemy_ajax.php?act=3&res_id=<id>&r_x=<x
 - Manual captcha popup должен оставаться fallback; Anti-Captcha только автоматически заполняет и отправляет уже открытый popup.
 - Ручные HTML-клики и ручное `Оглядеться` должны иметь приоритет над фоновыми auto-запросами.
 - При runtime-логике добавлять файловую диагностику через `AppLog` chain, например `AUTO_CUT_TRACE`.
+- `auto_cut` не входит в public/limited bundle лицензии: доступ только через individual `full` grant или custom grant `auto_cut`.
+- При истечении временного individual grant `LicenseRuntime` пересобирает public-only session, а `AutoFunctionsManager.disableUnavailableFeatures(...)` сбрасывает persisted `auto_cut`.
 
 ## План реализации
 
@@ -96,12 +98,12 @@ GET http://neverlands.ru/gameplay/ajax/alchemy_ajax.php?act=3&res_id=<id>&r_x=<x
 
 ### Фаза 1: настройки Авто-Травника
 
-- [x] Добавить long-press меню для `AUTO_CUT`: `Настройки авто-травника` и `Удалить кнопку`.
+- [x] Добавить long-press меню для `AUTO_CUT`: `Настройки авто-травника`, `Список трав`, `Серпы`, `Смены трав` и `Удалить кнопку`.
 - [x] Добавить экран/диалог настроек с полем `Клетки для поиска`, CSV формата `xx-xxx, x-xxx`.
-- [ ] Добавить отдельный групповой список трав `Травы 1`..`Травы 11` и `Не определено`.
+- [x] Добавить отдельный групповой список трав `Травы 1`..`Травы 11` и `Не определено`.
 - [x] Добавить чекбоксы выбора трав для автосреза.
 - [x] Добавить long-press на траву: редактировать `Умение`, `Время среза`, `Группа`.
-- [ ] Добавить editable смены трав: `00:50-06:50`, `06:50-12:50`, `12:50-18:50`, `18:50-00:50`.
+- [x] Добавить editable смены трав: `00:50-06:50`, `06:50-12:50`, `12:50-18:50`, `18:50-00:50`.
 - [x] Добавить флаг `Выводить в чат результат`, аналог `DoAutoCutWriteChat` из ПК-версии.
 
 ### Фаза 2: модель данных
@@ -162,14 +164,25 @@ GET http://neverlands.ru/gameplay/ajax/alchemy_ajax.php?act=3&res_id=<id>&r_x=<x
 - [x] `Серп мастера-травника`.
 - [x] `Серп эксперта-травника`.
 - [x] `Серп Триады`.
+- [x] Добавить UI-настройку разрешенных серпов для авто-надевания.
 - [x] Если масса инвентаря выросла больше чем на `10%`, запускать cleanup/выброс мусора по отдельной настройке.
 - [x] Не ломать ручную работу инвентаря: все действия через существующие guard-ветки и suppression windows.
 
+### Фаза 8: лицензирование и документация кода
+
+- [x] Добавить подробные Javadoc-комментарии к новым AutoCut runtime-переменным, DTO, handler-ам и bridge-методам.
+- [x] В `app2` исключить `auto_cut` из public feature expansion рядом с `anti_captcha`.
+- [x] В `app2` оставить `auto_cut` доступным через individual `full` или custom grant.
+- [x] В `app2` добавить `Авто-Травник` в timer auto-function mapping с license filter.
+- [x] В `app2` проверить, что `disableUnavailableFeatures(...)` отключает AutoCut при downgrade/expiry.
+- [x] В `app3` исключить `auto_cut` из public `full`/custom public features.
+- [x] В `app3` обновить описания full/custom grants и инструкцию выдачи `auto_cut`.
+
 ## Риски и проверки
 
-- [ ] Проверить, что `DoHerbAutoCut()` не вызывает бесконечный `Ogl(...)` при каждом redraw карты.
-- [ ] Проверить, что `act=3` использует именно `cutVCode`, а не stale `SessionManager` vcode.
-- [ ] Проверить, что при ручном `Оглядеться` без выбранной травы Anti-Captcha не стартует.
+- [x] Проверить, что `DoHerbAutoCut()` не вызывает бесконечный `Ogl(...)` при каждом redraw карты.
+- [x] Проверить, что `act=3` использует именно `cutVCode`, а не stale `SessionManager` vcode.
+- [x] Проверить, что при ручном `Оглядеться` без выбранной травы Anti-Captcha не стартует.
 - [ ] Проверить, что manual captcha popup работает при выключенной Anti-Captcha или пустом API key.
 - [ ] Проверить, что `alchemy_ajax.php` response остается в `AjaxGet` flow и карта обновляет таймер/кнопки.
 - [ ] Проверить, что фоновый сервис запускается/останавливается корректно, если runtime Авто-Травника потребует background tick.
@@ -177,6 +190,7 @@ GET http://neverlands.ru/gameplay/ajax/alchemy_ajax.php?act=3&res_id=<id>&r_x=<x
 - [x] Проверить UTF-8 без BOM измененных `.java`, `.js`, `.md` файлов.
 - [x] Проверить стандартные mojibake-паттерны без self-hit в тексте TODO.
 - [x] Проверить отсутствие новых `import android.util.Log;` и `Log.d/i/w/e` в app2 прикладном коде.
+- [ ] Device smoke после фикса возврата на карту: после проверки серпа должен появиться лог `return to map using parsed link`, затем загрузка карты, `AUTO_CUT_JS schedule/start` или диагностический `AUTO_CUT_JS skip no ogl button`, далее `DoHerbAutoCut` и `alchemy_ajax.php?act=1`.
 
 ## Проверки 2026-04-27
 
@@ -192,4 +206,55 @@ GET http://neverlands.ru/gameplay/ajax/alchemy_ajax.php?act=3&res_id=<id>&r_x=<x
 - [x] BOM-проверка измененных Java/MD файлов после фаз 6/7 — OK.
 - [x] Mojibake-проверка `app2/src/main/java` и `TODO2` после фаз 6/7 — совпадений нет.
 - [x] Проверка `Log.*` после фаз 6/7: совпадения только в разрешенных `FileLogger.java`/`LogcatFileRecorder.java`.
+- [x] `./gradlew.bat --no-daemon :app2:assembleDebug` после лицензирования/comment pass — успешно.
+- [x] `./gradlew.bat --no-daemon :app3:classes` после лицензирования — успешно.
+- [x] BOM-проверка измененных Java/MD файлов после лицензирования — OK.
+- [x] Mojibake-проверка `app2/src/main/java`, `app3` и `TODO2` после лицензирования — совпадений нет.
+- [x] Проверка `Log.*` после лицензирования: совпадения только в разрешенных `FileLogger.java`/`LogcatFileRecorder.java`.
 - [ ] Device smoke: открыть long-press `AUTO_CUT`, сохранить настройки, проверить `Оглядеться`/captcha на live-карте.
+- [x] `./gradlew.bat --no-daemon :app2:assembleDebug` после фикса возврата Авто-Травника на карту — успешно.
+- [x] BOM-проверка `AutoCutHandler.java` и этого task-файла после фикса возврата — OK.
+- [x] Mojibake-проверка `AutoCutHandler.java` после фикса возврата — совпадений нет.
+- [x] Проверка `AutoCutHandler.java` на прямой `android.util.Log`/`Log.*` после фикса возврата — совпадений нет.
+
+## Проверки 2026-04-28
+
+- [x] Проверено, что `MapJs.process(...)` берёт `app2/src/main/assets/js/map.js`, поэтому `AnTryAutoCutOgl(...)` находится в рабочем runtime-контуре server `js/map.js`.
+- [x] Добавлена JS-трассировка `TraceAutoCutRuntime(...)`: в логах должен появляться `AUTO_CUT_JS schedule/start/cancel/skip ...`.
+- [x] Добавлены UI-разделы `Список трав`, `Серпы`, `Смены трав` в long-press меню `AUTO_CUT` и основной dialog настроек.
+- [x] Добавлена persisted настройка списка серпов через `AutoCutManager.getEnabledSickleNames()` и использование её в `AutoCutHandler`.
+- [x] Добавлено persisted расписание смен трав через `AutoCutManager.getShiftScheduleText()/setShiftScheduleText(...)`.
+- [x] `./gradlew.bat --no-daemon :app2:assembleDebug` после UI/runtime доработок — успешно.
+- [x] BOM-проверка измененных app2/TODO2 файлов после UI/runtime доработок — OK.
+- [x] Mojibake-проверка `app2/src/main/java`, `app2/src/main/assets/js`, `TODO2` — совпадений нет.
+- [x] Проверка прямого `Log.*`: совпадения только в разрешенных `AppLog.java`, `FileLogger.java`, `LogcatFileRecorder.java`.
+- [x] Проверка нового AutoCut runtime на старые `ab_auto_cut`/`ab_cut`/`ABCLIENT`/`abclient`/`ru.neverlands.abclient` — совпадений нет.
+- [x] По логам `20260428_01_20` выявлено: после `return to map using parsed link` карта и `assets/js/map.js` загружались, но `DoHerbAutoCut`/`AUTO_CUT_JS`/`alchemy_ajax.php?act=1` не появлялись, значит отказ был до AJAX `Оглядеться`.
+- [x] В `MapJs.java` добавлен runtime-patch `ANCLIENT_MAP_RUNTIME_PATCH_AUTO_CUT`: wrapper `view_map()` после построения карты повторно ищет `mapbt['ogl']` и вызывает существующий `AnTryAutoCutOgl(...)` с тем же guard, без второго native HTTP-контура.
+- [x] `./gradlew.bat --no-daemon :app2:assembleDebug` после runtime fallback `view_map()` — успешно.
+- [x] BOM-проверка измененных `MapJs.java`, `app2/src/main/assets/js/map.js`, `TODO2/todo_task_20260427_auto_herbalist.md` — OK.
+- [x] Mojibake-проверка `app2/src/main/java`, `app2/src/main/assets/js`, `TODO2` — без mojibake; совпадения `????` относятся к ожидаемому captcha placeholder `code=????`.
+- [x] Проверка прямого `Log.*`: совпадения только в разрешенных `AppLog.java`, `FileLogger.java`, `LogcatFileRecorder.java`.
+- [x] Проверка `MapJs.java` на старые runtime-префиксы `ABCLIENT`/`abclient`/`ru.neverlands.abclient`/`ab_*` — совпадений нет.
+- [x] По логам `20260428_01_40` подтверждено: ручная попытка не формирует `alchemy_ajax.php?act=1`; вместо этого идут `main.php?get_id=56&act=10&go=inf/go=ret`, а AutoCut пишет `AUTO_CUT_JS skip no ogl button`.
+- [x] Найден фикc-в-фиксе в `app2/src/main/assets/js/map.js`: `timerst(...)` после окончания таймера движения принудительно делал `location = ...go=inf`, чего нет в `map_orig.js`; из-за этого карта уходила с текущего `mapbt` и `Оглядеться` пропадало до клика.
+- [x] Убран forced reload на `go=inf` из `timerst(...)`; вместо него добавлена файловая runtime-диагностика `TraceMapRuntime('timerst complete, stay on current map, lp=...')`.
+- [x] Сверен `ogl.har`: ручной `Оглядеться` должен идти через `AjaxGet -> Look -> ButClick` в `alchemy_ajax.php?act=1&vcode=<lookVCode>&r=<random>`, без перехода на `main.php?...go=inf`.
+- [x] `./gradlew.bat --no-daemon :app2:assembleDebug` после фикса `timerst(...)` — успешно.
+- [x] BOM-проверка измененных app2/TODO2/app3 файлов после фикса `timerst(...)` — OK.
+- [x] Mojibake-проверка `app2/src/main/java`, `app2/src/main/assets/js`, `TODO2`, `app3` — совпадений нет.
+- [x] Проверка прямого `Log.*`: совпадения только в разрешенных `FileLogger.java`/`LogcatFileRecorder.java`.
+- [x] По логам `20260428_01_50` и `ogl.har` выявлено актуальное имя кнопки `Оглядеться`: сервер возвращает `mapbt[i][0] == "look"`, а рабочий runtime искал только legacy `ogl`.
+- [x] Исправлен существующий JS-контур `ButtonGen/ReAddBut/ButClick` в `app2/src/main/assets/js/map.js`: теперь ручной `look` вызывает `Ogl(...)`, а Авто-Травник принимает `look` и legacy `ogl` без второго native HTTP-контура.
+- [x] Исправлен runtime fallback `ANCLIENT_MAP_RUNTIME_PATCH_AUTO_CUT` в `MapJs.java`: `__anFindOglCode()` сначала ищет `look`, затем fallback `ogl`; диагностика теперь пишет `skip no look/ogl button`.
+- [x] `./gradlew.bat --no-daemon :app2:assembleDebug` после фикса `look` — успешно; Kotlin daemon не подключился, но Gradle отработал fallback compile и завершил `BUILD SUCCESSFUL`.
+- [x] BOM-проверка измененных `MapJs.java`, `app2/src/main/assets/js/map.js`, `TODO2/todo_task_20260427_auto_herbalist.md` после фикса `look` — OK.
+- [x] Mojibake-проверка `app2/src/main` и `TODO2` после фикса `look` — совпадений нет.
+- [x] Проверка прямого `Log.*` после фикса `look`: совпадения только в разрешенных `AppLog.java`, `FileLogger.java`, `LogcatFileRecorder.java`.
+- [x] Проверка измененных `MapJs.java` и `assets/js/map.js` на старые runtime-префиксы `ABCLIENT`/`abclient`/`ru.neverlands.abclient`/`ab_auto_cut`/`ab_cut` — совпадений нет.
+- [x] Device smoke после фикса `look`: ручной клик `Оглядеться` дал `alchemy_ajax.php?act=1`, Авто-Травник дал `RESO@`/`HerbsList` и успешный `act=3`.
+- [x] По логам `20260428_02_10` подтвержден успешный runtime-цикл: `act1: selected herb=Томат`, `HerbsList observed count=6`, `cut success: herb=Томат`, chat-report создан.
+- [x] Проверено, что `AlchemyAjaxPhp.processAlchemyAct1(...)` перебирает все `state.resources` из `RESO@` и выбирает первую доступную выбранную траву, а не только первый элемент массива.
+- [x] В `AlchemyAjaxPhp` добавлен snapshot всех трав клетки из `RESO@` (`buildCellResourcesSummary(...)`) и сохранение его в `PendingCut` до ответа `act=3`.
+- [x] В `AutoCutManager.postCutResultToChat(...)` chat-report расширен до формата `Клетка '<regNum>' содержит: "Трава" available/total, ...` с server timestamp и source label.
+- [ ] Проверить live-лог после обновления chat-report: сообщение должно содержать полный список трав клетки, например `Клетка '12-307' содержит: "Картофель" 2/2, "Томат" 1/2.`

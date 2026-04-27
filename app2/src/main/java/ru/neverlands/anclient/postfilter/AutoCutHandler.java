@@ -11,14 +11,43 @@ import ru.neverlands.anclient.utils.SessionManager;
 
 /**
  * MainPhp-пайплайн Авто-Травника для подготовки серпа и inventory cleanup.
+ *
+ * Назначение:
+ * - не отправляет `alchemy_ajax.php?act=3` напрямую, а только готовит main.php-контекст;
+ * - использует существующие inventory/navigation helpers (`MainPhp.mainPhpFindInvWithFallback`,
+ *   `InventoryParser.getWearInvList`, `ParsedDressed`) вместо отдельного HTTP-контура;
+ * - возвращает готовый служебный HTML redirect или `null`, если текущий main.php должен идти дальше.
+ *
+ * Ключевые зависимости:
+ * - `AppVars.AutoCutCheckSickle/AutoCutArmedSickle` — runtime-состояние проверки серпа;
+ * - `AppVars.AutoCutCleanupPending` — флаг cleanup-прохода после роста массы;
+ * - `AutoCutManager` — владелец настроек, маршрутизации по CSV-клеткам и логирования `AUTO_CUT_TRACE`;
+ * - `MainPhpNavigationHandler` — источник реальной ссылки возврата `go=ret` из текущего HTML.
  */
 final class AutoCutHandler {
     private static final String TAG = "AutoCutHandler";
+
+    /**
+     * Фильтр inventory-вкладки, где сервер показывает вещи/инструменты.
+     * Используется для поиска серпов тем же путём, что AutoSkin ищет ножи.
+     */
     private static final String AUTO_CUT_SICKLE_INV_FILTER = "&im=0&wca=4";
 
     private AutoCutHandler() {
     }
 
+    /**
+     * Основной decision point AutoCut внутри `MainPhp.process(...)`.
+     *
+     * Переменные:
+     * - `address` — текущий URL main.php; нужен для распознавания inventory и синхронизации фильтра;
+     * - `html` — текущий HTML после decode/removeDoctype; парсится только локально;
+     * - `isFightFrame`/`isFightTopFrame` — запрет любых non-combat redirect во время боя.
+     *
+     * Возврат:
+     * - redirect HTML на персонажа/инвентарь/надевание/карту;
+     * - `null`, если AutoCut не должен перехватывать текущий ответ.
+     */
     static String processMainPhpAutoCutStep(String address,
                                             String html,
                                             boolean isFightFrame,
@@ -64,6 +93,13 @@ final class AutoCutHandler {
         return null;
     }
 
+    /**
+     * Пост-инвентарная точка cleanup.
+     *
+     * Вызывается после штатного `mainPhpInv(...)`, чтобы не ломать существующую обработку
+     * группировки, сортировки и удаления просрочки. Если cleanup-флаг активен и текущая страница
+     * действительно inventory, сбрасывает cleanup-состояние в `AutoCutManager` и возвращает карту.
+     */
     static String afterMainPhpInventoryStep(String address, String html) {
         if (!AppVars.AutoCutCleanupPending || html == null || html.isEmpty()) {
             return null;
@@ -78,9 +114,17 @@ final class AutoCutHandler {
         if (AppVars.getContext() != null) {
             AutoCutManager.getInstance(AppVars.getContext()).onCleanupCompleted("inventory_pass");
         }
-        return buildReturnToMapHtml("Авто-Травник: cleanup завершен", "auto_cut_cleanup_return");
+        return buildReturnToMapHtml("Авто-Травник: cleanup завершен", "auto_cut_cleanup_return", html);
     }
 
+    /**
+     * Проверяет, надет ли поддерживаемый серп на странице персонажа.
+     *
+     * Зависимости:
+     * - `ParsedDressed` разбирает `slots_inv(...)`/`slots_pla(...)`;
+     * - `ParsedDressed.IsWearSickle()` обновляет `AppVars.AutoCutSickleHand*`;
+     * - результат записывается в `AppVars.AutoCutArmedSickle` для guard перед `act=3`.
+     */
     static boolean mainPhpArmedSickle(String html) {
         ParsedDressed parsedDressed = new ParsedDressed(html);
         if (!parsedDressed.Valid) {
@@ -95,16 +139,25 @@ final class AutoCutHandler {
         return armed;
     }
 
+    /**
+     * Ищет серп в текущем HTML инвентаря и строит redirect на серверную wear-link.
+     *
+     * Важные переменные:
+     * - `invList` — список предметов с кнопкой `Надеть`, построенный `InventoryParser`;
+     * - `sickles` — whitelist названий из `ParsedDressed.getAutoCutSickleNames()`;
+     * - при найденной ссылке выставляется `AutoCutCheckSickle=true`, чтобы следующий main.php-кадр
+     *   снова проверил руки после серверного надевания.
+     */
     static String mainPhpWearSickle(String html) {
         ParsedDressed dressed = new ParsedDressed(html);
         if (dressed.Valid && dressed.IsWearSickle()) {
             AppVars.AutoCutArmedSickle = true;
             AppVars.AutoCutCheckSickle = false;
-            return buildReturnToMapHtml("Авто-Травник: серп уже надет", "auto_cut_sickle_ready");
+            return buildReturnToMapHtml("Авто-Травник: серп уже надет", "auto_cut_sickle_ready", html);
         }
 
         List<InventoryParser.WearInvEntry> invList = InventoryParser.getWearInvList(html);
-        String[] sickles = ParsedDressed.getAutoCutSickleNames();
+        List<String> sickles = getConfiguredSickleNames();
         for (InventoryParser.WearInvEntry thing : invList) {
             if (thing.name == null || thing.wearLink == null || thing.wearLink.isEmpty()) {
                 continue;
@@ -122,11 +175,15 @@ final class AutoCutHandler {
         return null;
     }
 
+    /**
+     * Шаг проверки рук: если мы уже на персонаже/inventory snapshot, читаем экипировку;
+     * иначе переводим main.php на страницу персонажа через существующий навигационный helper.
+     */
     private static String processSickleCheck(String address, String html) {
         if (MainPhp.mainPhpIsPerc(html) || MainPhp.mainPhpIsInv(html) || MainPhp.isInventoryAddress(address)) {
             if (mainPhpArmedSickle(html)) {
                 AppVars.AutoCutCheckSickle = false;
-                return buildReturnToMapHtml("Авто-Травник: серп проверен", "auto_cut_sickle_checked");
+                return buildReturnToMapHtml("Авто-Травник: серп проверен", "auto_cut_sickle_checked", html);
             }
             AppLog.d(AutoCutManager.TRACE_CHAIN, TAG,
                     "sickle not armed on current page, continue wear flow, address=" + address);
@@ -141,6 +198,10 @@ final class AutoCutHandler {
         return MainPhp.buildRedirectHtml("Авто-Травник: персонаж", "main.php?get_id=56&act=10&go=inf");
     }
 
+    /**
+     * Шаг надевания серпа: переводит на вкладку вещей и делегирует поиск предмета
+     * в `mainPhpWearSickle(...)`. Не создаёт новый HTTP-клиент и не обходит `MainPhp`.
+     */
     private static String processSickleWear(String address, String html) {
         String invHtml = MainPhp.mainPhpFindInvWithFallback(html, AUTO_CUT_SICKLE_INV_FILTER, address);
         if (invHtml != null && !invHtml.isEmpty()) {
@@ -159,6 +220,11 @@ final class AutoCutHandler {
         return null;
     }
 
+    /**
+     * Открывает inventory для cleanup, когда `AutoCutManager` накопил прирост массы.
+     * Сам cleanup выполняет существующий `mainPhpInv(...)`; этот метод только гарантирует,
+     * что мы попадём на inventory-страницу и не перехватим ручной HTML-клик.
+     */
     private static String processCleanupOpenInventory(String address, String html) {
         if (MainPhp.mainPhpIsInv(html) || MainPhp.isInventoryAddress(address) || MainPhp.hasInventoryRows(html)) {
             return null;
@@ -172,6 +238,10 @@ final class AutoCutHandler {
         return MainPhp.buildRedirectHtml("Авто-Травник: cleanup инвентаря", "main.php?im=0");
     }
 
+    /**
+     * Fail-safe при отсутствии серпа: отключает AutoCut через `AutoFunctionsManager`,
+     * пишет сообщение в чат и сбрасывает runtime-флаги, чтобы не зациклить переходы inventory.
+     */
     private static void stopAutoCutNoSickle() {
         AppVars.AutoCutCheckSickle = false;
         AppVars.AutoCutArmedSickle = false;
@@ -183,6 +253,21 @@ final class AutoCutHandler {
         }
     }
 
+    private static List<String> getConfiguredSickleNames() {
+        if (AppVars.getContext() == null) {
+            return java.util.Arrays.asList(ParsedDressed.getAutoCutSickleNames());
+        }
+        List<String> sickles = AutoCutManager.getInstance(AppVars.getContext()).getEnabledSickleNames();
+        if (sickles == null || sickles.isEmpty()) {
+            return java.util.Arrays.asList(ParsedDressed.getAutoCutSickleNames());
+        }
+        return sickles;
+    }
+
+    /**
+     * Читает persisted/license-gated состояние AutoCut.
+     * При ошибке возвращает false, чтобы pipeline был fail-closed.
+     */
     private static boolean isAutoCutEnabled() {
         try {
             return AppVars.getContext() != null
@@ -193,7 +278,23 @@ final class AutoCutHandler {
         }
     }
 
-    private static String buildReturnToMapHtml(String title, String actionName) {
+    /**
+     * Возвращает WebView на карту после проверки серпа или cleanup.
+     *
+     * Зависимости:
+     * - сначала берёт реальную ссылку `go=ret` из текущего HTML, потому что menu-vcode
+     *   для `go=inf` может вернуть страницу персонажа вместо карты;
+     * - `SessionManager.getValidVCodeForAction(actionName)` остаётся только fallback-источником;
+     * - параметр `an_auto_cut=1` нужен только как runtime-маркер диагностики ANClient.
+     */
+    private static String buildReturnToMapHtml(String title, String actionName, String html) {
+        String parsedReturnHtml = MainPhpNavigationHandler.mainPhpFindMapReturnForAutoMoving(html);
+        if (parsedReturnHtml != null && !parsedReturnHtml.isEmpty()) {
+            AppLog.i(AutoCutManager.TRACE_CHAIN, TAG,
+                    "return to map using parsed link, action=" + actionName);
+            return parsedReturnHtml;
+        }
+
         String link = "main.php?get_id=56&act=10&go=ret";
         String vcode = SessionManager.getInstance().getValidVCodeForAction(actionName);
         if (vcode != null && !vcode.trim().isEmpty()) {
