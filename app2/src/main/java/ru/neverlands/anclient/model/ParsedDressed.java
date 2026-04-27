@@ -69,6 +69,13 @@ public class ParsedDressed {
             "Разделочный Топорик",
             "Нож Мастера-охотника"
     };
+    private static final String[] AUTO_CUT_SICKLE_NAMES = new String[]{
+            "Серп Мастера-травника",
+            "Серп собирателя",
+            "Серп мастера-травника",
+            "Серп эксперта-травника",
+            "Серп Триады"
+    };
     private static final String[] FURY_SCROLL_NAMES = new String[]{
             "Свиток Удар Ярости",
             "Снежок"
@@ -346,6 +353,26 @@ public class ParsedDressed {
 
     public static String[] getSkinKnifeNames() {
         return SKIN_KNIFE_NAMES.clone();
+    }
+
+    /**
+     * Проверяет, надет ли серп для Авто-Травника, и обновляет runtime-поля AppVars.
+     */
+    public boolean IsWearSickle() {
+        for (int i = 0; i < slist.size(); i++) {
+            for (String sickleName : AUTO_CUT_SICKLE_NAMES) {
+                if (containsIgnoreCase(slist.get(i), sickleName)) {
+                    AppVars.AutoCutSickleHand = slist.get(i);
+                    AppVars.AutoCutSickleHandD = i < dlist.size() ? dlist.get(i) : "";
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    public static String[] getAutoCutSickleNames() {
+        return AUTO_CUT_SICKLE_NAMES.clone();
     }
 
     /**

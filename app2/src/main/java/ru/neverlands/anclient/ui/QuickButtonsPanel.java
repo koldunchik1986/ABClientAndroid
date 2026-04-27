@@ -50,6 +50,7 @@ import ru.neverlands.anclient.manager.ContactsManager;
 import ru.neverlands.anclient.manager.FastActionManager;
 import ru.neverlands.anclient.manager.TabManager;
 import ru.neverlands.anclient.manager.AutoFunctionsManager;
+import ru.neverlands.anclient.manager.AutoCutManager;
 import ru.neverlands.anclient.model.Cell;
 import ru.neverlands.anclient.utils.AppVars;
 import ru.neverlands.anclient.utils.ChatStats;
@@ -390,7 +391,7 @@ public class QuickButtonsPanel {
             case AUTO_TREASURE:
                 return "http://image.neverlands.ru/achievement/9/a_9_10.gif";
             case AUTO_CUT:
-                return null;
+                return "http://image.neverlands.ru/achievement/20/a_20_3.gif";
             case AUTO_REFRESH:
                 return null;
             case OPEN_CONTACTS:
@@ -645,7 +646,12 @@ public class QuickButtonsPanel {
                 break;
             case AUTO_CUT:
                 autoFunctionsManager.toggleAutoCut();
-                Toast.makeText(context, autoFunctionsManager.isAutoCutEnabled() ? "Авто-Травник ВКЛ" : "Авто-Травник ВЫКЛ", Toast.LENGTH_SHORT).show();
+                if (autoFunctionsManager.isAutoCutEnabled()
+                        && autoFunctionsManager.getAutoCutSelectedHerbCount() == 0) {
+                    Toast.makeText(context, "Авто-Травник ВКЛ, но травы не выбраны", Toast.LENGTH_LONG).show();
+                } else {
+                    Toast.makeText(context, autoFunctionsManager.isAutoCutEnabled() ? "Авто-Травник ВКЛ" : "Авто-Травник ВЫКЛ", Toast.LENGTH_SHORT).show();
+                }
                 loadAndUpdateButtons();
                 break;
             case AUTO_REFRESH:
@@ -897,6 +903,18 @@ public class QuickButtonsPanel {
                     })
                     .setNegativeButton("Отмена", null)
                     .show();
+        } else if (button.getActionType() == QuickActionType.AUTO_CUT) {
+            new AlertDialog.Builder(context)
+                    .setTitle("Авто-Травник")
+                    .setItems(new CharSequence[]{"Настройки авто-травника", "Удалить кнопку"}, (dialog, which) -> {
+                        if (which == 0) {
+                            showAutoCutSettingsDialog();
+                        } else {
+                            showRemoveConfirmation(position);
+                        }
+                    })
+                    .setNegativeButton("Отмена", null)
+                    .show();
         } else if (button.getActionType() == QuickActionType.AUTO_CAPTCHA) {
             // Long-press меню не запускает solver напрямую. Оно только открывает настройки
             // API key/параметров или удаляет кнопку. Сам solver стартует из MainActivity popup,
@@ -1100,6 +1118,148 @@ public class QuickButtonsPanel {
                 .setNegativeButton("Отмена", null)
                 .show();
 
+    }
+
+    private void showAutoCutSettingsDialog() {
+        final int pad = (int) (context.getResources().getDisplayMetrics().density * 12);
+        ScrollView scroll = new ScrollView(context);
+        LinearLayout root = new LinearLayout(context);
+        root.setOrientation(LinearLayout.VERTICAL);
+        root.setPadding(pad, pad, pad, pad);
+        scroll.addView(root);
+
+        TextView cellsTitle = new TextView(context);
+        cellsTitle.setText("Клетки для поиска (через запятую)");
+        root.addView(cellsTitle);
+
+        EditText cellsInput = new EditText(context);
+        cellsInput.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_MULTI_LINE);
+        cellsInput.setSingleLine(false);
+        cellsInput.setMinLines(2);
+        cellsInput.setHint("Например: 12-494, 13-501");
+        cellsInput.setText(autoFunctionsManager.getAutoCutCellsCsv());
+        root.addView(cellsInput);
+
+        CheckBox writeChat = new CheckBox(context);
+        writeChat.setText("Выводить результат в чат");
+        writeChat.setChecked(autoFunctionsManager.isAutoCutWriteChatEnabled());
+        writeChat.setPadding(0, pad / 2, 0, 0);
+        root.addView(writeChat);
+
+        CheckBox cleanupEnabled = new CheckBox(context);
+        cleanupEnabled.setText("После набора массы заходить в инвентарь для cleanup");
+        cleanupEnabled.setChecked(autoFunctionsManager.isAutoCutCleanupEnabled());
+        cleanupEnabled.setPadding(0, pad / 2, 0, 0);
+        root.addView(cleanupEnabled);
+
+        TextView herbsTitle = new TextView(context);
+        herbsTitle.setText("Травы для автосреза (удерживайте строку для правки)");
+        herbsTitle.setTypeface(herbsTitle.getTypeface(), android.graphics.Typeface.BOLD);
+        herbsTitle.setPadding(0, pad, 0, 0);
+        root.addView(herbsTitle);
+
+        LinearLayout buttonsRow = new LinearLayout(context);
+        buttonsRow.setOrientation(LinearLayout.HORIZONTAL);
+        Button selectAll = new Button(context);
+        selectAll.setText("Все");
+        Button unselectAll = new Button(context);
+        unselectAll.setText("Ни одной");
+        buttonsRow.addView(selectAll, new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
+        buttonsRow.addView(unselectAll, new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
+        root.addView(buttonsRow);
+
+        List<AutoCutManager.AutoCutHerb> herbs = autoFunctionsManager.getAutoCutHerbs();
+        ArrayList<CheckBox> herbBoxes = new ArrayList<>();
+        for (AutoCutManager.AutoCutHerb herb : herbs) {
+            CheckBox herbBox = new CheckBox(context);
+            herbBox.setText(herb.displayLabel());
+            herbBox.setTag(herb.key);
+            herbBox.setChecked(herb.selected);
+            herbBox.setOnLongClickListener(v -> {
+                showAutoCutHerbEditDialog(herb);
+                return true;
+            });
+            herbBoxes.add(herbBox);
+            root.addView(herbBox);
+        }
+
+        selectAll.setOnClickListener(v -> {
+            for (CheckBox box : herbBoxes) {
+                box.setChecked(true);
+            }
+        });
+        unselectAll.setOnClickListener(v -> {
+            for (CheckBox box : herbBoxes) {
+                box.setChecked(false);
+            }
+        });
+
+        new AlertDialog.Builder(context)
+                .setTitle("Настройки Авто-Травника")
+                .setView(scroll)
+                .setPositiveButton("Сохранить", (dialog, which) -> {
+                    autoFunctionsManager.setAutoCutCellsCsv(cellsInput.getText() == null ? "" : cellsInput.getText().toString());
+                    autoFunctionsManager.setAutoCutWriteChatEnabled(writeChat.isChecked());
+                    autoFunctionsManager.setAutoCutCleanupEnabled(cleanupEnabled.isChecked());
+                    LinkedHashSet<String> selectedKeys = new LinkedHashSet<>();
+                    for (CheckBox box : herbBoxes) {
+                        Object tag = box.getTag();
+                        if (box.isChecked() && tag != null) {
+                            selectedKeys.add(String.valueOf(tag));
+                        }
+                    }
+                    autoFunctionsManager.setAutoCutHerbSelections(selectedKeys);
+                    Toast.makeText(context, "Настройки авто-травника сохранены", Toast.LENGTH_SHORT).show();
+                })
+                .setNegativeButton("Отмена", null)
+                .show();
+    }
+
+    private void showAutoCutHerbEditDialog(AutoCutManager.AutoCutHerb herb) {
+        if (herb == null) {
+            return;
+        }
+        final int pad = (int) (context.getResources().getDisplayMetrics().density * 12);
+        LinearLayout root = new LinearLayout(context);
+        root.setOrientation(LinearLayout.VERTICAL);
+        root.setPadding(pad, pad, pad, pad);
+
+        TextView title = new TextView(context);
+        title.setText(herb.name);
+        title.setTypeface(title.getTypeface(), android.graphics.Typeface.BOLD);
+        root.addView(title);
+
+        EditText skillInput = new EditText(context);
+        skillInput.setHint("Умение");
+        skillInput.setInputType(InputType.TYPE_CLASS_NUMBER);
+        skillInput.setText(String.valueOf(herb.skill));
+        root.addView(skillInput);
+
+        EditText growthInput = new EditText(context);
+        growthInput.setHint("Время роста, минут");
+        growthInput.setInputType(InputType.TYPE_CLASS_NUMBER);
+        growthInput.setText(String.valueOf(herb.growthMinutes));
+        root.addView(growthInput);
+
+        EditText groupInput = new EditText(context);
+        groupInput.setHint("Группа трав");
+        groupInput.setInputType(InputType.TYPE_CLASS_TEXT);
+        groupInput.setText(herb.group);
+        root.addView(groupInput);
+
+        new AlertDialog.Builder(context)
+                .setTitle("Правка травы")
+                .setView(root)
+                .setPositiveButton("Сохранить", (dialog, which) -> {
+                    int skill = parseIntInRange(skillInput.getText() == null ? "" : skillInput.getText().toString(), 0, 999, herb.skill);
+                    int growth = parseIntInRange(growthInput.getText() == null ? "" : growthInput.getText().toString(), 1, 24 * 60, herb.growthMinutes);
+                    String group = groupInput.getText() == null ? "" : groupInput.getText().toString().trim();
+                    autoFunctionsManager.updateAutoCutHerbMeta(herb.key, skill, growth, group);
+                    Toast.makeText(context, "Трава обновлена", Toast.LENGTH_SHORT).show();
+                    showAutoCutSettingsDialog();
+                })
+                .setNegativeButton("Отмена", null)
+                .show();
     }
 
     private void showAutoCureSettingsDialog() {

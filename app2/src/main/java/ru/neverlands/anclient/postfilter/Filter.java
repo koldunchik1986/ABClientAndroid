@@ -117,6 +117,10 @@ public class Filter {
             return FishAjaxPhp.process(address, array);
         }
 
+        if (address.startsWith("http://neverlands.ru/gameplay/ajax/alchemy_ajax.php")) {
+            return AlchemyAjaxPhp.process(address, array);
+        }
+
         // Список игроков в чате (RoomManager).
         if (address.contains("/ch.php?lo=1")) {
             String html = Russian.getString(array);

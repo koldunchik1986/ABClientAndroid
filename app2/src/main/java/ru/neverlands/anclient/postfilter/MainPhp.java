@@ -2010,6 +2010,17 @@ public class MainPhp {
                 return Russian.getBytes(autoDrinkBlazHtml);
             }
         }
+        // Авто-Травник использует тот же main.php-пайплайн, что авто-рыбалка/охота:
+        // сначала проверяет/надевает серп и обслуживает cleanup через существующий инвентарь.
+        if (!isNonCombatAutoPausedByFastAction()
+                && !isNonCombatAutoPausedByCureAction()
+                && !isFightFrame
+                && !isFightTopFrame) {
+            String autoCutHtml = AutoCutHandler.processMainPhpAutoCutStep(address, html, isFightFrame, isFightTopFrame);
+            if (autoCutHtml != null && !autoCutHtml.isEmpty()) {
+                return Russian.getBytes(autoCutHtml);
+            }
+        }
         // Оркестрация Авто-Рыбалки (C# MainPhp.cs + MainPhpWear.cs + MainPhpFish.cs):
         // 1) при необходимости читаем умение Рыбалка (mselect=1);
         // 2) проверяем/переодеваем снасти в обеих руках;
@@ -2094,6 +2105,11 @@ public class MainPhp {
                 AppLog.d(TAG, msg_invfallback);
             }
             html = mainPhpInv(html);
+            String autoCutAfterInvHtml = AutoCutHandler.afterMainPhpInventoryStep(address, html);
+            if (autoCutAfterInvHtml != null && !autoCutAfterInvHtml.isEmpty()) {
+                AppVars.ContentMainPhp = autoCutAfterInvHtml;
+                return Russian.getBytes(autoCutAfterInvHtml);
+            }
         }
 
         // C# parity (`DoSearchBox && !AutoMoving && DateTime.Now > NeverTimer`):
@@ -2403,7 +2419,7 @@ public class MainPhp {
      *
      * Нужен для C#-паритета: в ПК версии упаковка/сортировка применяется по факту HTML списка предметов.
      */
-    private static boolean hasInventoryRows(String html) {
+    static boolean hasInventoryRows(String html) {
         return InventoryParser.hasInventoryRows(html);
     }
 

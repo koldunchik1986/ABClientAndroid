@@ -27,6 +27,7 @@ import java.util.zip.GZIPInputStream;
 
 import ru.neverlands.anclient.MainActivity;
 import ru.neverlands.anclient.manager.AutoFunctionsManager;
+import ru.neverlands.anclient.manager.AutoCutManager;
 import ru.neverlands.anclient.manager.CharacterVitalsManager;
 import ru.neverlands.anclient.manager.ContactsManager;
 import ru.neverlands.anclient.model.AutoboiState;
@@ -672,8 +673,51 @@ public class WebAppInterface {
     public String HerbsList(String list) {
         if (list != null && !list.isEmpty()) {
             AppLog.d("WebAppInterface", "HerbsList: " + list);
+            AutoCutManager.getInstance(mContext).onHerbsList(list);
         }
         return "";
+    }
+
+    /**
+     * C# parity (`ScriptManager.DoHerbAutoCut`): разрешает map.js автоматический `Оглядеться`.
+     * Возвращаем true только если включен существующий `AUTO_CUT` и выбрана хотя бы одна трава.
+     */
+    @JavascriptInterface
+    public boolean DoHerbAutoCut() {
+        try {
+            AutoFunctionsManager manager = AutoFunctionsManager.getInstance(mContext);
+            if (!manager.isAutoCutEnabled()) {
+                return false;
+            }
+            AutoCutManager autoCut = AutoCutManager.getInstance(mContext);
+            if (autoCut.getSelectedHerbCount() <= 0) {
+                AppLog.d(AutoCutManager.TRACE_CHAIN, "WebAppInterface", "DoHerbAutoCut=false, no selected herbs");
+                return false;
+            }
+            if (!autoCut.shouldAutoLookOnCurrentCell()) {
+                AppLog.d(AutoCutManager.TRACE_CHAIN, "WebAppInterface", "DoHerbAutoCut=false, current cell not ready");
+                return false;
+            }
+            return true;
+        } catch (Exception e) {
+            AppLog.w(AutoCutManager.TRACE_CHAIN, "WebAppInterface", "DoHerbAutoCut failed", e);
+            return false;
+        }
+    }
+
+    @JavascriptInterface
+    public boolean IsHerbAutoCut(String herb) {
+        try {
+            return AutoCutManager.getInstance(mContext).isHerbSelected("", herb);
+        } catch (Exception e) {
+            AppLog.w(AutoCutManager.TRACE_CHAIN, "WebAppInterface", "IsHerbAutoCut failed", e);
+            return false;
+        }
+    }
+
+    @JavascriptInterface
+    public void HerbCut(String name) {
+        AutoCutManager.getInstance(mContext).onTraceCut(name);
     }
 
     /**
@@ -685,6 +729,7 @@ public class WebAppInterface {
     public void TraceCut(String herb) {
         if (herb != null && !herb.isEmpty()) {
             AppLog.d("WebAppInterface", "TraceCut: " + herb);
+            AutoCutManager.getInstance(mContext).onTraceCut(herb);
         }
     }
 
@@ -719,6 +764,7 @@ public class WebAppInterface {
     @JavascriptInterface
     public void SetAutoFishMassa(String massa) {
         AppVars.AutoFishMassa = massa == null ? "" : massa.trim();
+        AutoCutManager.getInstance(mContext).updateMassSnapshot(AppVars.AutoFishMassa);
     }
 
     /**

@@ -2197,8 +2197,22 @@ public class AutoFunctionsManager {
                 setAutoBaitEnabled(false);
                 AppLog.d(TAG, "setAutoCutEnabled: Авто-Приманка выключена");
             }
+            if (isAutoTreasureEnabled()) {
+                setAutoTreasureEnabled(false);
+                AppLog.d(AutoCutManager.TRACE_CHAIN, TAG, "setAutoCutEnabled: Авто-Клад выключен как конфликтующая навигация");
+            }
+            int selectedHerbs = AutoCutManager.getInstance(context).getSelectedHerbCount();
+            if (selectedHerbs == 0) {
+                AppLog.w(AutoCutManager.TRACE_CHAIN, TAG,
+                        "setAutoCutEnabled: enabled without selected herbs");
+            }
         }
         prefs.edit().putBoolean(KEY_PREFIX + "auto_cut", enabled).apply();
+        if (enabled) {
+            AutoCutManager.getInstance(context).onAutoCutEnabled(this);
+        } else {
+            AutoCutManager.getInstance(context).onAutoCutDisabled();
+        }
         AppLog.d(TAG, "setAutoCutEnabled: " + enabled);
         if (enabled) {
             requestCharacterSyncForAutoFunctionEnable("auto_cut");
@@ -2232,6 +2246,46 @@ public class AutoFunctionsManager {
         if (enabled) {
             requestCharacterSyncForAutoFunctionEnable("auto_refresh");
         }
+    }
+
+    public String getAutoCutCellsCsv() {
+        return AutoCutManager.getInstance(context).getCellsCsv();
+    }
+
+    public void setAutoCutCellsCsv(String csv) {
+        AutoCutManager.getInstance(context).setCellsCsv(csv);
+    }
+
+    public boolean isAutoCutWriteChatEnabled() {
+        return AutoCutManager.getInstance(context).isWriteChatEnabled();
+    }
+
+    public void setAutoCutWriteChatEnabled(boolean enabled) {
+        AutoCutManager.getInstance(context).setWriteChatEnabled(enabled);
+    }
+
+    public boolean isAutoCutCleanupEnabled() {
+        return AutoCutManager.getInstance(context).isCleanupEnabled();
+    }
+
+    public void setAutoCutCleanupEnabled(boolean enabled) {
+        AutoCutManager.getInstance(context).setCleanupEnabled(enabled);
+    }
+
+    public List<AutoCutManager.AutoCutHerb> getAutoCutHerbs() {
+        return AutoCutManager.getInstance(context).getHerbs();
+    }
+
+    public void setAutoCutHerbSelections(Set<String> selectedKeys) {
+        AutoCutManager.getInstance(context).setHerbSelections(selectedKeys);
+    }
+
+    public void updateAutoCutHerbMeta(String key, int skill, int growthMinutes, String group) {
+        AutoCutManager.getInstance(context).updateHerbMeta(key, skill, growthMinutes, group);
+    }
+
+    public int getAutoCutSelectedHerbCount() {
+        return AutoCutManager.getInstance(context).getSelectedHerbCount();
     }
 
     // === ANTI_CAPTCHA ===

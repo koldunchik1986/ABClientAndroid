@@ -245,6 +245,19 @@ public class AppVars {
      * Время последней периодической проверки ножа в ms (аналог C# `AutoSkinLastChecked`).
      */
     public static long AutoSkinLastChecked = 0L;
+    /** AutoCut: требуется проверить/надеть серп перед срезом травы. */
+    public static boolean AutoCutCheckSickle = false;
+    /** AutoCut: серп найден в руках или успешно надет. */
+    public static boolean AutoCutArmedSickle = false;
+    /** AutoCut: название найденного серпа для диагностики и чата. */
+    public static String AutoCutSickleHand = "";
+    /** AutoCut: долговечность найденного серпа в формате current/max. */
+    public static String AutoCutSickleHandD = "";
+    /** AutoCut: запрошен проход инвентаря для штатного cleanup/выброса просрочки. */
+    public static boolean AutoCutCleanupPending = false;
+    public static String AutoCutCleanupReason = "";
+    public static double AutoCutHarvestedMassSinceCleanup = 0d;
+    public static double AutoCutKnownMassMax = 0d;
     /**
      * AutoSkin: флаг "нужно перечитать результаты охоты" (аналог C# `AutoSkinCheckRes`).
      */

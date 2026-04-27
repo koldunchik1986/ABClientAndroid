@@ -131,6 +131,8 @@ public class MapJs {
                     + "  DoHideMiniMap: function(){ return !!__anCall('DoHideMiniMap', [], false); },\n"
                     + "  MapText: function(){ return String(__anCall('MapText', [], '')); },\n"
                     + "  HerbsList: function(list){ return String(__anCall('HerbsList', [String(list)], '')); },\n"
+                    + "  IsHerbAutoCut: function(herb){ return !!__anCall('IsHerbAutoCut', [String(herb)], false); },\n"
+                    + "  HerbCut: function(herb){ return __anCall('HerbCut', [String(herb)], null); },\n"
                     + "  TraceCut: function(herb){ return __anCall('TraceCut', [String(herb)], null); },\n"
                     + "  SetNeverTimer: function(ms){ return __anCall('SetNeverTimer', [ms], null); },\n"
                     + "  SetAutoFishMassa: function(v){ return __anCall('SetAutoFishMassa', [v], null); },\n"

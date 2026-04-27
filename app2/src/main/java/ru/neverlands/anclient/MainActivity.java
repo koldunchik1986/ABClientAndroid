@@ -1882,8 +1882,14 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         boolean isFishCaptcha = finishUrl != null
                 && ((finishUrl.contains("get_id=55") && finishUrl.contains("act=4"))
                 || (finishUrl.contains("/gameplay/ajax/fish_ajax.php") && finishUrl.contains("act=2")));
+        boolean isAlchemyCaptcha = finishUrl != null
+                && finishUrl.contains("/gameplay/ajax/alchemy_ajax.php")
+                && finishUrl.contains("act=3");
+        boolean useAjaxSubmit = isFishCaptcha || isAlchemyCaptcha;
         String captchaTitle = isFishCaptcha
                 ? "Введите капчу для рыбалки"
+                : isAlchemyCaptcha
+                ? "Введите капчу для травника"
                 : "Введите капчу для завершения боя";
 
         AlertDialog dialog = new androidx.appcompat.app.AlertDialog.Builder(this)
@@ -1937,7 +1943,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                 positiveButton.setEnabled(true);
                 positiveButton.setOnClickListener(v -> {
                     String code = input.getText().toString().trim();
-                    submitCaptchaCodeFromDialog(code, finishUrl, isFishCaptcha, captchaSubmitted, input, dialog, "manual_ok");
+                    submitCaptchaCodeFromDialog(code, finishUrl, useAjaxSubmit, captchaSubmitted, input, dialog, "manual_ok");
                 });
             }
             input.addTextChangedListener(new android.text.TextWatcher() {
@@ -1967,15 +1973,15 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             resetAntiCaptchaState("captcha refresh");
             loadCaptchaImageAsync(captchaUrl, imageView, progressBar);
             startFightCaptchaAutoRefresh(imageView, progressBar, captchaUrl);
-            maybeStartAntiCaptchaForActiveChallenge(finishUrl, isFishCaptcha, captchaSubmitted, input, dialog);
+            maybeStartAntiCaptchaForActiveChallenge(finishUrl, useAjaxSubmit, captchaSubmitted, input, dialog);
         });
         startFightCaptchaAutoRefresh(imageView, progressBar, captchaUrl);
-        maybeStartAntiCaptchaForActiveChallenge(finishUrl, isFishCaptcha, captchaSubmitted, input, dialog);
+        maybeStartAntiCaptchaForActiveChallenge(finishUrl, useAjaxSubmit, captchaSubmitted, input, dialog);
     }
 
     private void submitCaptchaCodeFromDialog(String code,
                                              String finishUrl,
-                                             boolean isFishCaptcha,
+                                             boolean useAjaxSubmit,
                                              boolean[] captchaSubmitted,
                                              android.widget.EditText input,
                                              AlertDialog dialog,
@@ -2005,7 +2011,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         AppVars.ResumeSearchBoxAfterCaptcha = false;
 
         String submitUrl = appendOrReplaceCaptchaCode(finishUrl, safeCode);
-        if (!isFishCaptcha) {
+        if (!useAjaxSubmit) {
             AppVars.LastSubmittedFightCaptchaFinishKey = buildFightCaptchaFinishKey(submitUrl);
             AppVars.LastSubmittedFightCaptchaAtMs = System.currentTimeMillis();
             // Сбрасываем текущие captcha-маркеры, чтобы stale-значения не триггерили повторный popup.
@@ -2013,8 +2019,8 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             AppVars.CodeAddress = "";
         }
         AppLog.d(TAG, "showCaptchaDialog: submitting " + submitUrl);
-        submitCaptchaSolution(submitUrl, isFishCaptcha);
-        if (!isFishCaptcha && resumeSearchBox && AppVars.DoSearchBox && !AppVars.AutoMoving) {
+        submitCaptchaSolution(submitUrl, useAjaxSubmit);
+        if (!useAjaxSubmit && resumeSearchBox && AppVars.DoSearchBox && !AppVars.AutoMoving) {
             AppLog.d(TAG, "showCaptchaDialog: bootstrap auto treasure after captcha submit");
             WebView targetWebView = null;
             if (binding != null
@@ -2039,7 +2045,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     }
 
     private void maybeStartAntiCaptchaForActiveChallenge(String finishUrl,
-                                                         boolean isFishCaptcha,
+                                                         boolean useAjaxSubmit,
                                                          boolean[] captchaSubmitted,
                                                          android.widget.EditText input,
                                                          AlertDialog dialog) {
@@ -2080,7 +2086,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             }
             antiCaptchaImageWaitAttempts++;
             fightCaptchaHandler.postDelayed(
-                    () -> maybeStartAntiCaptchaForActiveChallenge(finishUrl, isFishCaptcha, captchaSubmitted, input, dialog),
+                    () -> maybeStartAntiCaptchaForActiveChallenge(finishUrl, useAjaxSubmit, captchaSubmitted, input, dialog),
                     350L
             );
             return;
@@ -2108,7 +2114,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                         text,
                         config,
                         finishUrl,
-                        isFishCaptcha,
+                        useAjaxSubmit,
                         captchaSubmitted,
                         input,
                         dialog
@@ -2131,7 +2137,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                                          String text,
                                          AntiCaptchaManager.Config config,
                                          String finishUrl,
-                                         boolean isFishCaptcha,
+                                         boolean useAjaxSubmit,
                                          boolean[] captchaSubmitted,
                                          android.widget.EditText input,
                                          AlertDialog dialog) {
@@ -2166,7 +2172,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         input.setSelection(code.length());
         // Единая точка отправки: manual OK и Anti-Captcha разделяют URL-normalization,
         // флаги autoboi/search-box resume и anti-duplicate markers.
-        submitCaptchaCodeFromDialog(code, finishUrl, isFishCaptcha, captchaSubmitted, input, dialog, "anti_captcha");
+        submitCaptchaCodeFromDialog(code, finishUrl, useAjaxSubmit, captchaSubmitted, input, dialog, "anti_captcha");
         postAntiCaptchaCodeSubmittedToChat(code);
     }
 
@@ -2442,22 +2448,22 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
      *
      * Зависимости:
      * - `binding.appBarMain.contentMain.webView`: основной игровой WebView;
-     * - `submitFishCaptchaViaAjaxOrFallback(...)`: fish captcha (`fish_ajax.php?act=2`) через Ajax;
+     * - `submitAjaxCaptchaViaAjaxOrFallback(...)`: ajax captcha (`fish_ajax.php`/`alchemy_ajax.php`) через Ajax;
      * - `WebView.loadUrl(...)`: fallback и штатный submit для боя (`main.php?get_id=61&act=7...`).
      */
     /**
      * Отправляет решение капчи в правильный серверный поток.
      *
      * Ветки:
-     * - isFishCaptcha=true: отправка через submitFishCaptchaViaAjaxOrFallback(...), чтобы сохранить JS-flow рыбалки;
-     * - isFishCaptcha=false: прямой переход mainWebView.loadUrl(submitUrl) для боевого act=7.
+     * - useAjaxSubmit=true: отправка через AjaxGet(...), чтобы сохранить JS-flow ajax-модулей;
+     * - useAjaxSubmit=false: прямой переход mainWebView.loadUrl(submitUrl) для боевого act=7.
      *
      * Зависимости:
      * - binding.appBarMain.contentMain.webView;
-     * - submitFishCaptchaViaAjaxOrFallback(...);
+     * - submitAjaxCaptchaViaAjaxOrFallback(...);
      * - логи showCaptchaDialog: submitting ... для трассировки отправки.
      */
-    private void submitCaptchaSolution(String submitUrl, boolean isFishCaptcha) {
+    private void submitCaptchaSolution(String submitUrl, boolean useAjaxSubmit) {
         if (binding == null || binding.appBarMain == null || binding.appBarMain.contentMain == null) {
             AppLog.w(TAG, "submitCaptchaSolution: skip, binding/content is null");
             return;
@@ -2467,8 +2473,8 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             AppLog.w(TAG, "submitCaptchaSolution: skip, mainWebView is null");
             return;
         }
-        if (isFishCaptcha) {
-            submitFishCaptchaViaAjaxOrFallback(mainWebView, submitUrl);
+        if (useAjaxSubmit) {
+            submitAjaxCaptchaViaAjaxOrFallback(mainWebView, submitUrl);
             return;
         }
         mainWebView.loadUrl(submitUrl);
@@ -2483,9 +2489,9 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
      * - `AjaxGet`/`window.AjaxGet`/`parent.AjaxGet`/`frames.main.AjaxGet` как разные точки входа;
      * - `Gson` для чтения статуса выполнения JS и принятия решения о fallback.
      */
-    private void submitFishCaptchaViaAjaxOrFallback(WebView mainWebView, String submitUrl) {
+    private void submitAjaxCaptchaViaAjaxOrFallback(WebView mainWebView, String submitUrl) {
         if (submitUrl == null || submitUrl.isEmpty()) {
-            AppLog.w(TAG, "submitFishCaptchaViaAjaxOrFallback: submitUrl is empty");
+            AppLog.w(TAG, "submitAjaxCaptchaViaAjaxOrFallback: submitUrl is empty");
             return;
         }
 
@@ -2532,9 +2538,9 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             }
 
             boolean ajaxOk = status != null && status.startsWith("ok_");
-            AppLog.d(TAG, "submitFishCaptchaViaAjaxOrFallback: status=" + status);
+            AppLog.d(TAG, "submitAjaxCaptchaViaAjaxOrFallback: status=" + status);
             if (!ajaxOk) {
-                AppLog.w(TAG, "submitFishCaptchaViaAjaxOrFallback: fallback to loadUrl, status=" + status);
+                AppLog.w(TAG, "submitAjaxCaptchaViaAjaxOrFallback: fallback to loadUrl, status=" + status);
                 mainWebView.loadUrl(submitUrl);
             }
         });
