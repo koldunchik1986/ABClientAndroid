@@ -159,6 +159,33 @@ public final class ProxyRuntimeManager {
     }
 
     /**
+     * Возвращает внешний upstream proxy без loopback-обертки.
+     *
+     * Назначение:
+     * - HTTPS-запросы к внешним API не должны идти через {@link LocalHttpProxyServer},
+     *   потому что локальный proxy обслуживает HTTP-трафик игры и не реализует CONNECT.
+     * - При включенном профильном proxy такие запросы должны идти сразу через upstream,
+     *   сохраняя strict anti-leak поведение без прямого fallback.
+     */
+    public static Proxy getActiveUpstreamJavaProxyOrNull() {
+        synchronized (LOCK) {
+            if (!activeUpstream.enabled || activeUpstream.host == null || activeUpstream.host.trim().isEmpty()
+                    || activeUpstream.port <= 0) {
+                return null;
+            }
+            AppLog.d(TAG, "PROXY_BINDING: upstream java.net.Proxy endpoint="
+                    + activeUpstream.host + ":" + activeUpstream.port);
+            return new Proxy(Proxy.Type.HTTP, new InetSocketAddress(activeUpstream.host, activeUpstream.port));
+        }
+    }
+
+    public static String getActiveUpstreamBasicAuthHeaderOrEmpty() {
+        synchronized (LOCK) {
+            return activeUpstream.basicAuthHeader == null ? "" : activeUpstream.basicAuthHeader;
+        }
+    }
+
+    /**
      * Возвращает сигнатуру текущего proxy runtime состояния.
      * Используется сетевым слоем для безопасного auto-rebuild клиента при смене конфига.
      */

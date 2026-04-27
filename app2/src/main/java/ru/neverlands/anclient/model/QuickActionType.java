@@ -23,6 +23,7 @@ public enum QuickActionType {
     AUTO_TREASURE("Авто-Клад", "auto_treasure"),
     AUTO_CUT("Авто-Травник", "auto_cut"),
     AUTO_REFRESH("Авто-Обновление", "auto_refresh"),
+    AUTO_CAPTCHA("Анти-Captcha", "anti_captcha"),
     AUTO_SKIN("Авто-Охота", "auto_skin"),
 
     // Дополнительные действия

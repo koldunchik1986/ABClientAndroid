@@ -45,6 +45,15 @@ public class AutoFunctionsManager {
     private static final String KEY_AUTO_ATTACK_LAST_NON_ZERO_TOOL_ID = KEY_PREFIX + "auto_attack_last_non_zero_tool_id";
     private static final String KEY_LOCATION_TRACKING = KEY_PREFIX + "location_tracking";
     private static final String KEY_WALKERS_POLL_INTERVAL_SEC = KEY_PREFIX + "walkers_poll_interval_sec";
+    private static final String KEY_ANTI_CAPTCHA = KEY_PREFIX + "anti_captcha";
+    private static final String PREF_ANTI_CAPTCHA_API_KEY = "anti_captcha_api_key";
+    private static final String PREF_ANTI_CAPTCHA_PHRASE = "anti_captcha_phrase";
+    private static final String PREF_ANTI_CAPTCHA_CASE = "anti_captcha_case";
+    private static final String PREF_ANTI_CAPTCHA_NUMERIC = "anti_captcha_numeric";
+    private static final String PREF_ANTI_CAPTCHA_MATH = "anti_captcha_math";
+    private static final String PREF_ANTI_CAPTCHA_MIN_LENGTH = "anti_captcha_min_length";
+    private static final String PREF_ANTI_CAPTCHA_MAX_LENGTH = "anti_captcha_max_length";
+    private static final String PREF_ANTI_CAPTCHA_LANGUAGE_POOL = "anti_captcha_language_pool";
     private static final int WALKERS_POLL_INTERVAL_DEFAULT_SEC = 1;
     // Настройки Авто-Лечения (UI long-press + MainPhp/RoomManager используют общий набор ключей).
     private static final String PREF_AUTO_CURE_WOUND_LIGHT = "auto_cure_wound_light";
@@ -85,6 +94,11 @@ public class AutoFunctionsManager {
     public static final String TREASURE_SHOVEL_SEEKER = "Лопата кладоискателя";
     public static final String TREASURE_SHOVEL_TRAVEL = "Походная лопатка";
     public static final String TREASURE_SHOVEL_ARCHAEOLOGIST = "Лопата археолога";
+    public static final int ANTI_CAPTCHA_NUMERIC_NONE = 0;
+    public static final int ANTI_CAPTCHA_NUMERIC_NUMBERS_ONLY = 1;
+    public static final int ANTI_CAPTCHA_NUMERIC_NO_NUMBERS = 2;
+    public static final int ANTI_CAPTCHA_MIN_LENGTH_DEFAULT = 5;
+    public static final int ANTI_CAPTCHA_MAX_LENGTH_DEFAULT = 5;
     
     private static AutoFunctionsManager instance;
     private final Context context;
@@ -2214,6 +2228,116 @@ public class AutoFunctionsManager {
             requestCharacterSyncForAutoFunctionEnable("auto_refresh");
         }
     }
+
+    // === ANTI_CAPTCHA ===
+
+    public boolean isAntiCaptchaEnabled() {
+        if (!isFeatureAvailable(QuickActionType.AUTO_CAPTCHA, "isAntiCaptchaEnabled")) {
+            return false;
+        }
+        return prefs.getBoolean(KEY_ANTI_CAPTCHA, false);
+    }
+
+    public void toggleAntiCaptcha() {
+        setAntiCaptchaEnabled(!isAntiCaptchaEnabled());
+    }
+
+    public void setAntiCaptchaEnabled(boolean enabled) {
+        if (rejectFeatureIfDenied(QuickActionType.AUTO_CAPTCHA, enabled, "setAntiCaptchaEnabled")) {
+            prefs.edit().putBoolean(KEY_ANTI_CAPTCHA, false).apply();
+            return;
+        }
+        prefs.edit().putBoolean(KEY_ANTI_CAPTCHA, enabled).apply();
+        AppLog.d(TAG, "setAntiCaptchaEnabled: " + enabled);
+    }
+
+    public String getAntiCaptchaApiKey() {
+        return prefs.getString(PREF_ANTI_CAPTCHA_API_KEY, "");
+    }
+
+    public void setAntiCaptchaApiKey(String value) {
+        prefs.edit().putString(PREF_ANTI_CAPTCHA_API_KEY, value == null ? "" : value.trim()).apply();
+    }
+
+    public boolean isAntiCaptchaPhrase() {
+        return prefs.getBoolean(PREF_ANTI_CAPTCHA_PHRASE, false);
+    }
+
+    public void setAntiCaptchaPhrase(boolean value) {
+        prefs.edit().putBoolean(PREF_ANTI_CAPTCHA_PHRASE, value).apply();
+    }
+
+    public boolean isAntiCaptchaCaseSensitive() {
+        return prefs.getBoolean(PREF_ANTI_CAPTCHA_CASE, false);
+    }
+
+    public void setAntiCaptchaCaseSensitive(boolean value) {
+        prefs.edit().putBoolean(PREF_ANTI_CAPTCHA_CASE, value).apply();
+    }
+
+    public int getAntiCaptchaNumeric() {
+        return clampInt(prefs.getInt(PREF_ANTI_CAPTCHA_NUMERIC, ANTI_CAPTCHA_NUMERIC_NUMBERS_ONLY), 0, 2);
+    }
+
+    public void setAntiCaptchaNumeric(int value) {
+        prefs.edit().putInt(PREF_ANTI_CAPTCHA_NUMERIC, clampInt(value, 0, 2)).apply();
+    }
+
+    public int getAntiCaptchaMath() {
+        return clampInt(prefs.getInt(PREF_ANTI_CAPTCHA_MATH, 0), 0, 1);
+    }
+
+    public void setAntiCaptchaMath(int value) {
+        prefs.edit().putInt(PREF_ANTI_CAPTCHA_MATH, clampInt(value, 0, 1)).apply();
+    }
+
+    public int getAntiCaptchaMinLength() {
+        return clampInt(prefs.getInt(PREF_ANTI_CAPTCHA_MIN_LENGTH, ANTI_CAPTCHA_MIN_LENGTH_DEFAULT), 0, 20);
+    }
+
+    public void setAntiCaptchaMinLength(int value) {
+        prefs.edit().putInt(PREF_ANTI_CAPTCHA_MIN_LENGTH, clampInt(value, 0, 20)).apply();
+    }
+
+    public int getAntiCaptchaMaxLength() {
+        return clampInt(prefs.getInt(PREF_ANTI_CAPTCHA_MAX_LENGTH, ANTI_CAPTCHA_MAX_LENGTH_DEFAULT), 0, 20);
+    }
+
+    public void setAntiCaptchaMaxLength(int value) {
+        prefs.edit().putInt(PREF_ANTI_CAPTCHA_MAX_LENGTH, clampInt(value, 0, 20)).apply();
+    }
+
+    public String getAntiCaptchaLanguagePool() {
+        String value = prefs.getString(PREF_ANTI_CAPTCHA_LANGUAGE_POOL, "en");
+        value = value == null ? "" : value.trim().toLowerCase(Locale.ROOT);
+        return value.isEmpty() ? "en" : value;
+    }
+
+    public void setAntiCaptchaLanguagePool(String value) {
+        String normalized = value == null ? "" : value.trim().toLowerCase(Locale.ROOT);
+        if (!"rn".equals(normalized)) {
+            normalized = "en";
+        }
+        prefs.edit().putString(PREF_ANTI_CAPTCHA_LANGUAGE_POOL, normalized).apply();
+    }
+
+    public AntiCaptchaManager.Config getAntiCaptchaConfig() {
+        int minLength = getAntiCaptchaMinLength();
+        int maxLength = getAntiCaptchaMaxLength();
+        if (maxLength > 0 && minLength > maxLength) {
+            minLength = maxLength;
+        }
+        return new AntiCaptchaManager.Config(
+                getAntiCaptchaApiKey(),
+                isAntiCaptchaPhrase(),
+                isAntiCaptchaCaseSensitive(),
+                getAntiCaptchaNumeric(),
+                getAntiCaptchaMath(),
+                minLength,
+                maxLength,
+                getAntiCaptchaLanguagePool()
+        );
+    }
     
     // === Универсальные методы ===
     
@@ -2243,6 +2367,7 @@ public class AutoFunctionsManager {
             case AUTO_TREASURE: return isAutoTreasureEnabled();
             case AUTO_CUT: return isAutoCutEnabled();
             case AUTO_REFRESH: return isAutoRefreshEnabled();
+            case AUTO_CAPTCHA: return isAntiCaptchaEnabled();
             default: return false;
         }
     }
@@ -2273,6 +2398,7 @@ public class AutoFunctionsManager {
             case AUTO_TREASURE: toggleAutoTreasure(); break;
             case AUTO_CUT: toggleAutoCut(); break;
             case AUTO_REFRESH: toggleAutoRefresh(); break;
+            case AUTO_CAPTCHA: toggleAntiCaptcha(); break;
             default: break;
         }
     }
@@ -2299,6 +2425,7 @@ public class AutoFunctionsManager {
         setAutoTreasureEnabled(false);
         setAutoCutEnabled(false);
         setAutoRefreshEnabled(false);
+        setAntiCaptchaEnabled(false);
     }
 
     /**
@@ -2332,6 +2459,7 @@ public class AutoFunctionsManager {
         disableIfUnavailable(QuickActionType.AUTO_TREASURE, this::setAutoTreasureEnabled, disabled);
         disableIfUnavailable(QuickActionType.AUTO_CUT, this::setAutoCutEnabled, disabled);
         disableIfUnavailable(QuickActionType.AUTO_REFRESH, this::setAutoRefreshEnabled, disabled);
+        disableIfUnavailable(QuickActionType.AUTO_CAPTCHA, this::setAntiCaptchaEnabled, disabled);
         requestQuickButtonsRefreshInternal("license_sync:" + reason);
         if (disabled.length() > 0) {
             AppLog.w("ANCLIENT_LICENSE", TAG, "LICENSE_FEATURE_FLAGS_DISABLED: reason=" + reason
@@ -2403,8 +2531,14 @@ public class AutoFunctionsManager {
                 return prefs.getBoolean(KEY_PREFIX + "auto_cut", false);
             case AUTO_REFRESH:
                 return prefs.getBoolean(KEY_PREFIX + "auto_refresh", false);
+            case AUTO_CAPTCHA:
+                return prefs.getBoolean(KEY_ANTI_CAPTCHA, false);
             default:
                 return false;
         }
+    }
+
+    private static int clampInt(int value, int min, int max) {
+        return Math.max(min, Math.min(max, value));
     }
 }

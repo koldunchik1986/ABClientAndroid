@@ -174,7 +174,8 @@ public class QuickButtonsPanel {
             "Авто-Охота",
             "Авто-Питьё",
             "Авто-Клад",
-            "Авто-Босс"
+            "Авто-Босс",
+            "Анти-Captcha"
     };
     
     private final Context context;
@@ -457,6 +458,7 @@ public class QuickButtonsPanel {
             case AUTO_TREASURE:
             case AUTO_CUT:
             case AUTO_REFRESH:
+            case AUTO_CAPTCHA:
                 return true;
             default:
                 return false;
@@ -502,6 +504,8 @@ public class QuickButtonsPanel {
                 return R.drawable.ic_add;
             case AUTO_REFRESH:
                 return R.drawable.ic_refresh;
+            case AUTO_CAPTCHA:
+                return R.drawable.ic_auto_detect;
             case OPEN_CONTACTS:
                 return R.drawable.ic_add_contact;
             case OPEN_PINFO:
@@ -645,6 +649,15 @@ public class QuickButtonsPanel {
             case AUTO_REFRESH:
                 autoFunctionsManager.toggleAutoRefresh();
                 Toast.makeText(context, autoFunctionsManager.isAutoRefreshEnabled() ? "Авто-Обновление ВКЛ" : "Авто-Обновление ВЫКЛ", Toast.LENGTH_SHORT).show();
+                loadAndUpdateButtons();
+                break;
+            case AUTO_CAPTCHA:
+                autoFunctionsManager.toggleAntiCaptcha();
+                if (autoFunctionsManager.isAntiCaptchaEnabled() && TextUtils.isEmpty(autoFunctionsManager.getAntiCaptchaApiKey())) {
+                    Toast.makeText(context, "Анти-Captcha ВКЛ, но API key пуст", Toast.LENGTH_LONG).show();
+                } else {
+                    Toast.makeText(context, autoFunctionsManager.isAntiCaptchaEnabled() ? "Анти-Captcha ВКЛ" : "Анти-Captcha ВЫКЛ", Toast.LENGTH_SHORT).show();
+                }
                 loadAndUpdateButtons();
                 break;
             case OPEN_CONTACTS:
@@ -876,6 +889,18 @@ public class QuickButtonsPanel {
                     .setItems(new CharSequence[]{"Настройки авто-клада", "Удалить кнопку"}, (dialog, which) -> {
                         if (which == 0) {
                             showAutoTreasureSettingsDialog();
+                        } else {
+                            showRemoveConfirmation(position);
+                        }
+                    })
+                    .setNegativeButton("Отмена", null)
+                    .show();
+        } else if (button.getActionType() == QuickActionType.AUTO_CAPTCHA) {
+            new AlertDialog.Builder(context)
+                    .setTitle("Анти-Captcha")
+                    .setItems(new CharSequence[]{"Настройки Anti-Captcha", "Удалить кнопку"}, (dialog, which) -> {
+                        if (which == 0) {
+                            showAntiCaptchaSettingsDialog();
                         } else {
                             showRemoveConfirmation(position);
                         }
@@ -1451,6 +1476,21 @@ public class QuickButtonsPanel {
         return -1;
     }
 
+    private int parseIntOrDefault(EditText input, int fallback) {
+        if (input == null || input.getText() == null) {
+            return fallback;
+        }
+        String raw = input.getText().toString().trim();
+        if (raw.isEmpty()) {
+            return fallback;
+        }
+        try {
+            return Integer.parseInt(raw);
+        } catch (NumberFormatException ignored) {
+            return fallback;
+        }
+    }
+
     private String safeFishHand(String value) {
         if (value == null || value.isEmpty()) return "Нет";
         return value;
@@ -1829,6 +1869,150 @@ public class QuickButtonsPanel {
                     autoFunctionsManager.setAutoBossSearchTimeoutSec(searchTimeoutSec);
                     autoFunctionsManager.setAutoBossWaitFightTimeoutSec(waitFightTimeoutSec);
                     Toast.makeText(context, "Настройки Авто-Боссов сохранены", Toast.LENGTH_SHORT).show();
+                })
+                .setNegativeButton("Отмена", null)
+                .show();
+    }
+
+    private void showAntiCaptchaSettingsDialog() {
+        final int pad = dpToPx(12);
+        ScrollView scroll = new ScrollView(context);
+        LinearLayout root = new LinearLayout(context);
+        root.setOrientation(LinearLayout.VERTICAL);
+        root.setPadding(pad, pad, pad, pad);
+        scroll.addView(root);
+
+        TextView apiKeyLabel = new TextView(context);
+        apiKeyLabel.setText("Anti-Captcha API key");
+        root.addView(apiKeyLabel);
+
+        EditText apiKeyInput = new EditText(context);
+        apiKeyInput.setSingleLine(true);
+        apiKeyInput.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD);
+        apiKeyInput.setHint("clientKey из anti-captcha.com");
+        apiKeyInput.setText(autoFunctionsManager.getAntiCaptchaApiKey());
+        root.addView(apiKeyInput);
+
+        CheckBox phraseCheck = new CheckBox(context);
+        phraseCheck.setText("Фраза из нескольких слов");
+        phraseCheck.setChecked(autoFunctionsManager.isAntiCaptchaPhrase());
+        root.addView(phraseCheck);
+
+        CheckBox caseCheck = new CheckBox(context);
+        caseCheck.setText("Учитывать регистр");
+        caseCheck.setChecked(autoFunctionsManager.isAntiCaptchaCaseSensitive());
+        root.addView(caseCheck);
+
+        TextView numericLabel = new TextView(context);
+        numericLabel.setPadding(0, pad, 0, 0);
+        numericLabel.setText("Тип символов");
+        root.addView(numericLabel);
+
+        String[] numericLabels = new String[]{"Обычная", "Только цифры", "Без цифр"};
+        int[] numericValues = new int[]{
+                AutoFunctionsManager.ANTI_CAPTCHA_NUMERIC_NONE,
+                AutoFunctionsManager.ANTI_CAPTCHA_NUMERIC_NUMBERS_ONLY,
+                AutoFunctionsManager.ANTI_CAPTCHA_NUMERIC_NO_NUMBERS
+        };
+        Spinner numericSpinner = new Spinner(context);
+        ArrayAdapter<String> numericAdapter = new ArrayAdapter<>(context, android.R.layout.simple_spinner_item, numericLabels);
+        numericAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        numericSpinner.setAdapter(numericAdapter);
+        int currentNumeric = autoFunctionsManager.getAntiCaptchaNumeric();
+        for (int index = 0; index < numericValues.length; index++) {
+            if (numericValues[index] == currentNumeric) {
+                numericSpinner.setSelection(index);
+                break;
+            }
+        }
+        root.addView(numericSpinner);
+
+        TextView mathLabel = new TextView(context);
+        mathLabel.setPadding(0, pad, 0, 0);
+        mathLabel.setText("Математика");
+        root.addView(mathLabel);
+
+        String[] mathLabels = new String[]{"Обычная капча", "Математическое выражение"};
+        Spinner mathSpinner = new Spinner(context);
+        ArrayAdapter<String> mathAdapter = new ArrayAdapter<>(context, android.R.layout.simple_spinner_item, mathLabels);
+        mathAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        mathSpinner.setAdapter(mathAdapter);
+        mathSpinner.setSelection(Math.max(0, Math.min(1, autoFunctionsManager.getAntiCaptchaMath())));
+        root.addView(mathSpinner);
+
+        LinearLayout lengthRow = new LinearLayout(context);
+        lengthRow.setOrientation(LinearLayout.HORIZONTAL);
+        lengthRow.setGravity(Gravity.CENTER_VERTICAL);
+        lengthRow.setPadding(0, pad, 0, 0);
+        root.addView(lengthRow);
+
+        EditText minLengthInput = new EditText(context);
+        minLengthInput.setInputType(InputType.TYPE_CLASS_NUMBER);
+        minLengthInput.setSingleLine(true);
+        minLengthInput.setHint("min");
+        minLengthInput.setText(String.valueOf(autoFunctionsManager.getAntiCaptchaMinLength()));
+        lengthRow.addView(minLengthInput, new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
+
+        EditText maxLengthInput = new EditText(context);
+        maxLengthInput.setInputType(InputType.TYPE_CLASS_NUMBER);
+        maxLengthInput.setSingleLine(true);
+        maxLengthInput.setHint("max");
+        maxLengthInput.setText(String.valueOf(autoFunctionsManager.getAntiCaptchaMaxLength()));
+        LinearLayout.LayoutParams maxParams = new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f);
+        maxParams.leftMargin = dpToPx(8);
+        lengthRow.addView(maxLengthInput, maxParams);
+
+        TextView languageLabel = new TextView(context);
+        languageLabel.setPadding(0, pad, 0, 0);
+        languageLabel.setText("Language pool");
+        root.addView(languageLabel);
+
+        String[] languageLabels = new String[]{"en - латиница", "rn - кириллица/латиница"};
+        String[] languageValues = new String[]{"en", "rn"};
+        Spinner languageSpinner = new Spinner(context);
+        ArrayAdapter<String> languageAdapter = new ArrayAdapter<>(context, android.R.layout.simple_spinner_item, languageLabels);
+        languageAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        languageSpinner.setAdapter(languageAdapter);
+        String currentLanguage = autoFunctionsManager.getAntiCaptchaLanguagePool();
+        languageSpinner.setSelection("rn".equals(currentLanguage) ? 1 : 0);
+        root.addView(languageSpinner);
+
+        TextView hint = new TextView(context);
+        hint.setPadding(0, pad, 0, 0);
+        hint.setText("Для Neverlands по умолчанию: только цифры, min=5, max=5, languagePool=en.");
+        root.addView(hint);
+
+        new AlertDialog.Builder(context)
+                .setTitle("Настройки Anti-Captcha")
+                .setView(scroll)
+                .setPositiveButton("Сохранить", (dialog, which) -> {
+                    int numericIndex = Math.max(0, Math.min(numericValues.length - 1, numericSpinner.getSelectedItemPosition()));
+                    int languageIndex = Math.max(0, Math.min(languageValues.length - 1, languageSpinner.getSelectedItemPosition()));
+                    int minLength = parseIntInRange(
+                            minLengthInput.getText() == null ? "" : minLengthInput.getText().toString(),
+                            0,
+                            20,
+                            AutoFunctionsManager.ANTI_CAPTCHA_MIN_LENGTH_DEFAULT
+                    );
+                    int maxLength = parseIntInRange(
+                            maxLengthInput.getText() == null ? "" : maxLengthInput.getText().toString(),
+                            0,
+                            20,
+                            AutoFunctionsManager.ANTI_CAPTCHA_MAX_LENGTH_DEFAULT
+                    );
+                    if (maxLength > 0 && minLength > maxLength) {
+                        minLength = maxLength;
+                    }
+
+                    autoFunctionsManager.setAntiCaptchaApiKey(apiKeyInput.getText() == null ? "" : apiKeyInput.getText().toString());
+                    autoFunctionsManager.setAntiCaptchaPhrase(phraseCheck.isChecked());
+                    autoFunctionsManager.setAntiCaptchaCaseSensitive(caseCheck.isChecked());
+                    autoFunctionsManager.setAntiCaptchaNumeric(numericValues[numericIndex]);
+                    autoFunctionsManager.setAntiCaptchaMath(Math.max(0, Math.min(1, mathSpinner.getSelectedItemPosition())));
+                    autoFunctionsManager.setAntiCaptchaMinLength(minLength);
+                    autoFunctionsManager.setAntiCaptchaMaxLength(maxLength);
+                    autoFunctionsManager.setAntiCaptchaLanguagePool(languageValues[languageIndex]);
+                    Toast.makeText(context, "Настройки Anti-Captcha сохранены", Toast.LENGTH_SHORT).show();
                 })
                 .setNegativeButton("Отмена", null)
                 .show();

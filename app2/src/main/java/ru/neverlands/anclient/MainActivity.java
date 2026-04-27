@@ -88,6 +88,7 @@ import ru.neverlands.anclient.lez.LezFight;
 import ru.neverlands.anclient.license.LicenseFeature;
 import ru.neverlands.anclient.license.LicenseRuntime;
 import ru.neverlands.anclient.license.LicenseSession;
+import ru.neverlands.anclient.manager.AntiCaptchaManager;
 import ru.neverlands.anclient.manager.AutoFunctionsManager;
 import ru.neverlands.anclient.manager.AppTimerManager;
 import ru.neverlands.anclient.manager.ContactsManager;
@@ -136,6 +137,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     private static final int AUTO_SUBMIT_MAX_RETRY_COUNT = 3;
     private static final long CAPTCHA_IMAGE_STABILIZE_DELAY_MS = 180L;
     private static final long CAPTCHA_NETWORK_FALLBACK_DELAY_MS = 900L;
+    private static final int ANTI_CAPTCHA_IMAGE_WAIT_MAX_RETRIES = 30;
     private static final int CAPTCHA_NOTIFICATION_ID = 6107;
     private static final String CAPTCHA_NOTIFICATION_CHANNEL_ID = "captcha_alerts";
     private static final long POST_RELOAD_GUARD_WINDOW_MS = 5000L;
@@ -205,6 +207,9 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     private long activeFightCaptchaLoadSeq = 0L;
     private String activeFightCaptchaUrl = "";
     private String activeFightFinishUrl = "";
+    private boolean antiCaptchaInFlight = false;
+    private String antiCaptchaChallengeKey = "";
+    private int antiCaptchaImageWaitAttempts = 0;
     /**
      * Текущее поле ввода кода в активном popup капчи.
      *
@@ -1904,6 +1909,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             activeFightFinishUrl = "";
             activeFightCaptchaInput = null;
             activeFightCaptchaImageLocked = false;
+            resetAntiCaptchaState("dialog dismissed");
             activeFightCaptchaLoadSeq++;
             if (replacingFightCaptchaDialog) {
                 replacingFightCaptchaDialog = false;
@@ -1931,61 +1937,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                 positiveButton.setEnabled(true);
                 positiveButton.setOnClickListener(v -> {
                     String code = input.getText().toString().trim();
-                    AppLog.d(TAG, "showCaptchaDialog: ok clicked, codeLen=" + code.length());
-                    if (code.isEmpty()) {
-                        input.setError("Введите код");
-                        input.requestFocus();
-                        return;
-                    }
-                    if (!code.matches("\\d{1,6}")) {
-                        input.setError("Код должен содержать только цифры");
-                        input.requestFocus();
-                        return;
-                    }
-
-                    captchaSubmitted[0] = true;
-                    if (AppVars.ResumeAutoboiAfterCaptcha
-                            && AppVars.Profile != null
-                            && AppVars.Profile.LezDoAutoboi) {
-                        AppVars.Autoboi = ru.neverlands.anclient.model.AutoboiState.AutoboiOn;
-                        AppLog.d(TAG, "showCaptchaDialog: restoring autoboi after captcha submit");
-                    }
-                    AppVars.ResumeAutoboiAfterCaptcha = false;
-                    boolean resumeSearchBox = AppVars.ResumeSearchBoxAfterCaptcha;
-                    AppVars.ResumeSearchBoxAfterCaptcha = false;
-
-                    String submitUrl = appendOrReplaceCaptchaCode(finishUrl, code);
-                    if (!isFishCaptcha) {
-                        AppVars.LastSubmittedFightCaptchaFinishKey = buildFightCaptchaFinishKey(submitUrl);
-                        AppVars.LastSubmittedFightCaptchaAtMs = System.currentTimeMillis();
-                        // Сбрасываем текущие captcha-маркеры, чтобы stale-значения не триггерили повторный popup.
-                        AppVars.FightLink = "";
-                        AppVars.CodeAddress = "";
-                    }
-                    AppLog.d(TAG, "showCaptchaDialog: submitting " + submitUrl);
-                    submitCaptchaSolution(submitUrl, isFishCaptcha);
-                    if (!isFishCaptcha && resumeSearchBox && AppVars.DoSearchBox && !AppVars.AutoMoving) {
-                        AppLog.d(TAG, "showCaptchaDialog: bootstrap auto treasure after captcha submit");
-                        WebView targetWebView = null;
-                        if (binding != null
-                                && binding.appBarMain != null
-                                && binding.appBarMain.contentMain != null) {
-                            targetWebView = binding.appBarMain.contentMain.webView;
-                        }
-                        if (targetWebView != null) {
-                            WebView finalTargetWebView = targetWebView;
-                            finalTargetWebView.postDelayed(() -> {
-                                try {
-                                    finalTargetWebView.loadUrl("http://neverlands.ru/main.php?an_search_box_bootstrap=1");
-                                } catch (Exception e) {
-                                    AppLog.e(TAG, "showCaptchaDialog: auto treasure bootstrap failed", e);
-                                }
-                            }, 450L);
-                        } else {
-                            AppLog.w(TAG, "showCaptchaDialog: skip auto treasure bootstrap, webView is null");
-                        }
-                    }
-                    dialog.dismiss();
+                    submitCaptchaCodeFromDialog(code, finishUrl, isFishCaptcha, captchaSubmitted, input, dialog, "manual_ok");
                 });
             }
             input.addTextChangedListener(new android.text.TextWatcher() {
@@ -2012,10 +1964,248 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             activeFightCaptchaImageAtMs = 0L;
             activeFightCaptchaImageHash = 0;
             activeFightCaptchaImageLocked = false;
+            resetAntiCaptchaState("captcha refresh");
             loadCaptchaImageAsync(captchaUrl, imageView, progressBar);
             startFightCaptchaAutoRefresh(imageView, progressBar, captchaUrl);
+            maybeStartAntiCaptchaForActiveChallenge(finishUrl, isFishCaptcha, captchaSubmitted, input, dialog);
         });
         startFightCaptchaAutoRefresh(imageView, progressBar, captchaUrl);
+        maybeStartAntiCaptchaForActiveChallenge(finishUrl, isFishCaptcha, captchaSubmitted, input, dialog);
+    }
+
+    private void submitCaptchaCodeFromDialog(String code,
+                                             String finishUrl,
+                                             boolean isFishCaptcha,
+                                             boolean[] captchaSubmitted,
+                                             android.widget.EditText input,
+                                             AlertDialog dialog,
+                                             String source) {
+        String safeCode = code == null ? "" : code.trim();
+        AppLog.d(TAG, "showCaptchaDialog: submit source=" + source + ", codeLen=" + safeCode.length());
+        if (safeCode.isEmpty()) {
+            input.setError("Введите код");
+            input.requestFocus();
+            return;
+        }
+        if (!safeCode.matches("\\d{1,6}")) {
+            input.setError("Код должен содержать только цифры");
+            input.requestFocus();
+            return;
+        }
+
+        captchaSubmitted[0] = true;
+        if (AppVars.ResumeAutoboiAfterCaptcha
+                && AppVars.Profile != null
+                && AppVars.Profile.LezDoAutoboi) {
+            AppVars.Autoboi = ru.neverlands.anclient.model.AutoboiState.AutoboiOn;
+            AppLog.d(TAG, "showCaptchaDialog: restoring autoboi after captcha submit");
+        }
+        AppVars.ResumeAutoboiAfterCaptcha = false;
+        boolean resumeSearchBox = AppVars.ResumeSearchBoxAfterCaptcha;
+        AppVars.ResumeSearchBoxAfterCaptcha = false;
+
+        String submitUrl = appendOrReplaceCaptchaCode(finishUrl, safeCode);
+        if (!isFishCaptcha) {
+            AppVars.LastSubmittedFightCaptchaFinishKey = buildFightCaptchaFinishKey(submitUrl);
+            AppVars.LastSubmittedFightCaptchaAtMs = System.currentTimeMillis();
+            // Сбрасываем текущие captcha-маркеры, чтобы stale-значения не триггерили повторный popup.
+            AppVars.FightLink = "";
+            AppVars.CodeAddress = "";
+        }
+        AppLog.d(TAG, "showCaptchaDialog: submitting " + submitUrl);
+        submitCaptchaSolution(submitUrl, isFishCaptcha);
+        if (!isFishCaptcha && resumeSearchBox && AppVars.DoSearchBox && !AppVars.AutoMoving) {
+            AppLog.d(TAG, "showCaptchaDialog: bootstrap auto treasure after captcha submit");
+            WebView targetWebView = null;
+            if (binding != null
+                    && binding.appBarMain != null
+                    && binding.appBarMain.contentMain != null) {
+                targetWebView = binding.appBarMain.contentMain.webView;
+            }
+            if (targetWebView != null) {
+                WebView finalTargetWebView = targetWebView;
+                finalTargetWebView.postDelayed(() -> {
+                    try {
+                        finalTargetWebView.loadUrl("http://neverlands.ru/main.php?an_search_box_bootstrap=1");
+                    } catch (Exception e) {
+                        AppLog.e(TAG, "showCaptchaDialog: auto treasure bootstrap failed", e);
+                    }
+                }, 450L);
+            } else {
+                AppLog.w(TAG, "showCaptchaDialog: skip auto treasure bootstrap, webView is null");
+            }
+        }
+        dialog.dismiss();
+    }
+
+    private void maybeStartAntiCaptchaForActiveChallenge(String finishUrl,
+                                                         boolean isFishCaptcha,
+                                                         boolean[] captchaSubmitted,
+                                                         android.widget.EditText input,
+                                                         AlertDialog dialog) {
+        if (captchaSubmitted == null || captchaSubmitted[0]) {
+            return;
+        }
+        if (dialog == null || !dialog.isShowing()) {
+            return;
+        }
+        AutoFunctionsManager autoManager = AutoFunctionsManager.getInstance(this);
+        if (!autoManager.isAntiCaptchaEnabled()) {
+            return;
+        }
+        AntiCaptchaManager.Config config = autoManager.getAntiCaptchaConfig();
+        if (!config.hasClientKey()) {
+            AppLog.w(TAG, "ANTI_CAPTCHA_TRACE skip: API key is empty");
+            return;
+        }
+        byte[] imageBytes = AppVars.LastFightCaptchaImageBytes;
+        boolean imageReady = imageBytes != null
+                && imageBytes.length > 0
+                && activeFightCaptchaImageHash != 0
+                && isSameCaptchaUrl(activeFightCaptchaUrl, AppVars.LastFightCaptchaImageUrl);
+        if (!imageReady) {
+            if (antiCaptchaImageWaitAttempts >= ANTI_CAPTCHA_IMAGE_WAIT_MAX_RETRIES) {
+                AppLog.w(TAG, "ANTI_CAPTCHA_TRACE skip: captcha image bytes timeout, captchaUrl=" + activeFightCaptchaUrl);
+                return;
+            }
+            antiCaptchaImageWaitAttempts++;
+            fightCaptchaHandler.postDelayed(
+                    () -> maybeStartAntiCaptchaForActiveChallenge(finishUrl, isFishCaptcha, captchaSubmitted, input, dialog),
+                    350L
+            );
+            return;
+        }
+
+        String challengeKey = buildAntiCaptchaChallengeKey(finishUrl);
+        if (challengeKey.isEmpty()) {
+            return;
+        }
+        if (challengeKey.equals(antiCaptchaChallengeKey)) {
+            return;
+        }
+
+        antiCaptchaChallengeKey = challengeKey;
+        antiCaptchaInFlight = true;
+        byte[] safeBytes = imageBytes.clone();
+        AppLog.i(TAG, "ANTI_CAPTCHA_TRACE start: key=" + challengeKey + ", bytes=" + safeBytes.length);
+        AntiCaptchaManager.solveImageAsync(safeBytes, config, challengeKey, new AntiCaptchaManager.Callback() {
+            @Override
+            public void onSolved(String solvedChallengeKey, String text) {
+                runOnUiThread(() -> handleAntiCaptchaSolved(
+                        solvedChallengeKey,
+                        text,
+                        config,
+                        finishUrl,
+                        isFishCaptcha,
+                        captchaSubmitted,
+                        input,
+                        dialog
+                ));
+            }
+
+            @Override
+            public void onFailed(String failedChallengeKey, String message) {
+                runOnUiThread(() -> {
+                    if (failedChallengeKey != null && failedChallengeKey.equals(antiCaptchaChallengeKey)) {
+                        antiCaptchaInFlight = false;
+                    }
+                    AppLog.w(TAG, "ANTI_CAPTCHA_TRACE failed for active popup: " + message);
+                });
+            }
+        });
+    }
+
+    private void handleAntiCaptchaSolved(String solvedChallengeKey,
+                                         String text,
+                                         AntiCaptchaManager.Config config,
+                                         String finishUrl,
+                                         boolean isFishCaptcha,
+                                         boolean[] captchaSubmitted,
+                                         android.widget.EditText input,
+                                         AlertDialog dialog) {
+        antiCaptchaInFlight = false;
+        if (captchaSubmitted == null || captchaSubmitted[0]) {
+            AppLog.d(TAG, "ANTI_CAPTCHA_TRACE ignore solved code: already submitted");
+            return;
+        }
+        if (dialog == null || !dialog.isShowing()) {
+            AppLog.d(TAG, "ANTI_CAPTCHA_TRACE ignore solved code: dialog is not showing");
+            return;
+        }
+        String currentChallengeKey = buildAntiCaptchaChallengeKey(finishUrl);
+        if (solvedChallengeKey == null || !solvedChallengeKey.equals(currentChallengeKey)) {
+            AppLog.w(TAG, "ANTI_CAPTCHA_TRACE ignore stale solution, solvedKey=" + solvedChallengeKey
+                    + ", currentKey=" + currentChallengeKey);
+            return;
+        }
+        String code = text == null ? "" : text.trim();
+        if (!isAntiCaptchaSolutionValid(code, config)) {
+            AppLog.w(TAG, "ANTI_CAPTCHA_TRACE invalid solution textLen=" + code.length());
+            input.setText(code);
+            input.setError("Ответ Anti-Captcha не прошёл проверку");
+            input.requestFocus();
+            return;
+        }
+
+        AppLog.i(TAG, "ANTI_CAPTCHA_TRACE solved, auto-submit codeLen=" + code.length());
+        input.setText(code);
+        input.setSelection(code.length());
+        submitCaptchaCodeFromDialog(code, finishUrl, isFishCaptcha, captchaSubmitted, input, dialog, "anti_captcha");
+        postAntiCaptchaCodeSubmittedToChat(code);
+    }
+
+    private void postAntiCaptchaCodeSubmittedToChat(String code) {
+        String safeCode = escapeHtmlText(code == null ? "" : code.trim());
+        String message = MainPhp.buildServerChatTimeHtmlExternal()
+                + "<font color=#008000>[Анти-Captcha]: ответ сервиса '"
+                + safeCode
+                + "' - код отправлен.</font>";
+        Chat.addMessageToChat(message);
+        AppLog.i(TAG, "ANTI_CAPTCHA_TRACE chat notification posted, codeLen=" + safeCode.length());
+    }
+
+    private String escapeHtmlText(String value) {
+        if (value == null || value.isEmpty()) {
+            return "";
+        }
+        return value
+                .replace("&", "&amp;")
+                .replace("<", "&lt;")
+                .replace(">", "&gt;")
+                .replace("\"", "&quot;")
+                .replace("'", "&#39;");
+    }
+
+    private boolean isAntiCaptchaSolutionValid(String code, AntiCaptchaManager.Config config) {
+        if (code == null || code.isEmpty()) {
+            return false;
+        }
+        if (config != null && config.numeric == AutoFunctionsManager.ANTI_CAPTCHA_NUMERIC_NUMBERS_ONLY
+                && !code.matches("\\d+")) {
+            return false;
+        }
+        int minLength = config == null ? 0 : config.minLength;
+        int maxLength = config == null ? 0 : config.maxLength;
+        if (minLength > 0 && code.length() < minLength) {
+            return false;
+        }
+        return maxLength <= 0 || code.length() <= maxLength;
+    }
+
+    private String buildAntiCaptchaChallengeKey(String finishUrl) {
+        if (activeFightCaptchaImageHash == 0 || activeFightCaptchaUrl == null || activeFightCaptchaUrl.isEmpty()) {
+            return "";
+        }
+        return normalizeCaptchaUrlForCompare(activeFightCaptchaUrl)
+                + "|" + normalizeFightFinishUrlForCompare(finishUrl)
+                + "|" + activeFightCaptchaImageHash;
+    }
+
+    private void resetAntiCaptchaState(String reason) {
+        antiCaptchaInFlight = false;
+        antiCaptchaChallengeKey = "";
+        antiCaptchaImageWaitAttempts = 0;
+        AppLog.d(TAG, "ANTI_CAPTCHA_TRACE reset: " + reason);
     }
 
     /**

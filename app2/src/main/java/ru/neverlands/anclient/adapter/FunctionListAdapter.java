@@ -169,6 +169,7 @@ public class FunctionListAdapter extends BaseAdapter {
             case AUTO_CUT:
                 return null;
             case AUTO_REFRESH:
+            case AUTO_CAPTCHA:
                 return null;
             case QUICK_SELF_RASS:
                 return "http://image.neverlands.ru/weapon/i_w28_23.gif";
@@ -219,6 +220,8 @@ public class FunctionListAdapter extends BaseAdapter {
                 return R.drawable.ic_auto_detect;
             case AUTO_REFRESH:
                 return R.drawable.ic_refresh;
+            case AUTO_CAPTCHA:
+                return R.drawable.ic_auto_detect;
             default:
                 return R.drawable.ic_add;
         }

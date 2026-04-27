@@ -133,6 +133,7 @@ public final class LicenseFeature {
         if ("Авто-Питьё".equals(value) || "Авто-Питье".equals(value)) return QuickActionType.AUTO_DRINK.getActionKey();
         if ("Авто-Клад".equals(value)) return QuickActionType.AUTO_TREASURE.getActionKey();
         if ("Авто-Босс".equals(value) || "Авто-Боссы".equals(value)) return QuickActionType.AUTO_BOSS.getActionKey();
+        if ("Анти-Captcha".equals(value) || "Анти-Капча".equals(value)) return QuickActionType.AUTO_CAPTCHA.getActionKey();
         return "";
     }
 

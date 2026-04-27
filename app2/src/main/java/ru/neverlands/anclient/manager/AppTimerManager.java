@@ -415,6 +415,9 @@ public class AppTimerManager {
             } else if ("Авто-Босс".equals(autoFunc) || "Авто-Боссы".equals(autoFunc)) {
                 autoFunctionsManager.setAutoBossEnabled(true);
                 FileLogger.trace(TAG, "AUTO_FUNCTION_TIMER_FIRED: Авто-Босс ENABLED");
+            } else if ("Анти-Captcha".equals(autoFunc) || "Анти-Капча".equals(autoFunc)) {
+                autoFunctionsManager.setAntiCaptchaEnabled(true);
+                FileLogger.trace(TAG, "AUTO_FUNCTION_TIMER_FIRED: Анти-Captcha ENABLED");
             }
             
             // Обновляем UI QuickButtons - должны изменить визуальный статус (обводка)
@@ -461,6 +464,9 @@ public class AppTimerManager {
             } else if ("Авто-Босс".equals(autoFunc) || "Авто-Боссы".equals(autoFunc)) {
                 autoFunctionsManager.setAutoBossEnabled(false);
                 FileLogger.trace(TAG, "AUTO_FUNCTION_TIMER_FIRED: Авто-Босс DISABLED");
+            } else if ("Анти-Captcha".equals(autoFunc) || "Анти-Капча".equals(autoFunc)) {
+                autoFunctionsManager.setAntiCaptchaEnabled(false);
+                FileLogger.trace(TAG, "AUTO_FUNCTION_TIMER_FIRED: Анти-Captcha DISABLED");
             }
             
             // Обновляем UI QuickButtons - должны изменить визуальный статус (обводка)
