@@ -68,10 +68,11 @@ public final class HtmlUtils {
                 "if (typeof top.change_chatsetup !== 'function') { top.change_chatsetup = function(){ if(window.AndroidBridge && AndroidBridge.chatChangeChatSetup){ AndroidBridge.chatChangeChatSetup(); } }; }" +
                 "if (typeof top.change_latrus !== 'function') { top.change_latrus = function(){ if(window.AndroidBridge && AndroidBridge.chatChangeLatrus){ AndroidBridge.chatChangeLatrus(); } }; }" +
                 "if (typeof top.latrus === 'undefined') { top.latrus = 0; }" +
+                "if (typeof window.__anEnsureChatButtonsFrame !== 'function') { window.__anEnsureChatButtonsFrame = function(frame) { try { if (!frame) frame = {}; if (!frame.document) frame.document = {}; var doc = frame.document; if (!doc.FBT) doc.FBT = {}; var fbt = doc.FBT; if (!fbt.text) fbt.text = { value: '', focus: function(){ try { if (window.AndroidBridge && AndroidBridge.chatFocus) AndroidBridge.chatFocus(); } catch(e) {} } }; if (typeof fbt.text.focus !== 'function') fbt.text.focus = function(){ try { if (window.AndroidBridge && AndroidBridge.chatFocus) AndroidBridge.chatFocus(); } catch(e) {} }; if (!fbt.fyo) fbt.fyo = { value: 0 }; if (!fbt.lmid) fbt.lmid = { value: '' }; if (!fbt.schat) fbt.schat = { src: '', alt: '', title: '' }; if (!fbt.spchat) fbt.spchat = { src: '', alt: '', title: '' }; if (!fbt.lrchat) fbt.lrchat = { src: '', alt: '', title: '' }; if (typeof fbt.submit !== 'function') fbt.submit = function() {}; if (typeof doc.getElementById !== 'function') doc.getElementById = function(id) { return document.getElementById(id) || fbt[id] || { innerHTML: '', value: '', style: {}, focus: function(){} }; }; return frame; } catch(e) { return frame || {}; } }; }" +
                 "if (typeof window.ButClick !== 'function') { window.ButClick = function() {}; }" +
                 "if (typeof top.frames == 'undefined' || !top.frames['main_top']) { " +
                 "  if (typeof top.frames == 'undefined') { top.frames = {}; } " +
-                "  if (!top.frames['ch_buttons']) { top.frames['ch_buttons'] = { set location(url) { AndroidBridge.loadFrame('ch_buttons', url); } }; } " +
+                "  if (!top.frames['ch_buttons']) { top.frames['ch_buttons'] = window.__anEnsureChatButtonsFrame({ set location(url) { AndroidBridge.loadFrame('ch_buttons', url); } }); } " +
                 "  if (!top.frames['ch_refr']) { top.frames['ch_refr'] = { set location(url) { AndroidBridge.loadFrame('ch_refr', url); } }; } " +
                 "  if (!top.frames['ch_list']) { top.frames['ch_list'] = { set location(url) { AndroidBridge.loadFrame('ch_list', url); } }; } " +
                 "  if (!top.frames['chmain']) { top.frames['chmain'] = { " +
@@ -94,6 +95,7 @@ public final class HtmlUtils {
                 "    } " +
                 "  }; } " +
                 "}" +
+                "try { if (top.frames && top.frames['ch_buttons']) { top.frames['ch_buttons'] = window.__anEnsureChatButtonsFrame(top.frames['ch_buttons']); } } catch(e) {}" +
                 "if (top.frames && top.frames['main_top']) { top.frames['main_top'].innerHeight = 800; top.frames['main_top'].innerWidth = 600; }";
     }
 

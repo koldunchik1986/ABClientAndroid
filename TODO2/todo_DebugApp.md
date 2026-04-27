@@ -52,3 +52,12 @@
 - [x] В `fightviewmodel.log` видно, что `autoTurnOnce` формирует `submit posted`, то есть парсер боя и `LezFight.BuildResult()` работают.
 - [x] Причина: `MainActivity.submitAutoBattleActionViaDirectHttp()` парсил payload через `split("\\|")`; Java отбрасывает trailing empty token, поэтому корректный payload с пустым `ina` (`...|inb|`) превращался из 9 частей в 8 и фоновая отправка отбрасывалась.
 - [x] Исправление: direct HTTP submit использует `split("\\|", -1)`, чтобы сохранить пустое последнее поле `ina` и отправлять ход в background.
+
+## Debug 2026-04-27: JS-кнопки инвентаря не открывают формы действий
+
+- [x] Проверены `Logs/` рекурсивно (`Critical`, `pool`).
+- [x] В `Logs/Critical/20260427_12_40_js_console.log` найден повтор: `Cannot read properties of undefined (reading 'FBT')` из `transfer_v01.js`, `w28.js`, `svitok_v2.js`.
+- [x] По логам `webviewinterceptor` подтверждено, что инвентарные JS-файлы (`dealer.js`, `selling.js`, `compl.js`, `transfer_v01.js`, `svitok_v2.js`, `w28.js`) загружаются, но выполнение action-функций обрывается на `top.frames['ch_buttons'].document.FBT...` до вставки формы в `transfer`.
+- [x] Сверено с ПК-эталоном `ABClient/PostFilter/SvitokJs.cs`: оригинальный JS перед показом формы вызывает `top.frames['ch_buttons'].document.FBT.text.focus()`.
+- [x] Причина: Android-shim в `HtmlUtils.getJsFix()` создавал `top.frames['ch_buttons']`, но без совместимого `document.FBT`, поэтому старый JS падал и кнопки визуально ничего не делали.
+- [x] Исправление: существующий frames-shim расширен `__anEnsureChatButtonsFrame(...)`, который добавляет `document.FBT.text/fyo/lmid/schat/spchat/lrchat/submit` и сохраняет bridge-фокус через `AndroidBridge.chatFocus()`.
