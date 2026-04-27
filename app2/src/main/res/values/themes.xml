@@ -42,8 +42,10 @@
     <style name="Theme.ANClient.PopupOverlay" parent="ThemeOverlay.AppCompat.Light" />
 
     <style name="ThemeOverlay.ANClient.AlertDialog" parent="ThemeOverlay.MaterialComponents.MaterialAlertDialog">
-        <item name="android:colorAccent">@color/colorOnPrimarySurface</item>
-        <item name="colorAccent">@color/colorOnPrimarySurface</item>
+        <!-- Диалоговые action-кнопки должны оставаться фиолетовыми в light/dark темах.
+             Белый accent превращал OK/Отмена в белый текст на светлом transparent фоне. -->
+        <item name="android:colorAccent">@color/purple_500</item>
+        <item name="colorAccent">@color/purple_500</item>
         <item name="android:buttonBarButtonStyle">@style/Widget.ANClient.DialogButton</item>
         <item name="buttonBarButtonStyle">@style/Widget.ANClient.DialogButton</item>
         <item name="buttonBarPositiveButtonStyle">@style/Widget.ANClient.DialogButton</item>
@@ -52,17 +54,26 @@
     </style>
 
     <style name="Widget.ANClient.Button" parent="Widget.MaterialComponents.Button">
+        <!-- Единый вид кнопок ANClient: фиолетовый фон + белый текст независимо от темы устройства. -->
+        <item name="android:background">@drawable/anclient_button_background</item>
         <item name="android:backgroundTint">@color/purple_500</item>
         <item name="backgroundTint">@color/purple_500</item>
-        <item name="android:textColor">@color/colorOnPrimarySurface</item>
-        <item name="iconTint">@color/colorOnPrimarySurface</item>
+        <item name="android:textColor">@color/anclient_button_text</item>
+        <item name="iconTint">@color/anclient_button_text</item>
     </style>
 
-    <style name="Widget.ANClient.DialogButton" parent="Widget.AppCompat.Button.ButtonBar.AlertDialog">
-        <item name="android:backgroundTint">@color/purple_500</item>
-        <item name="backgroundTint">@color/purple_500</item>
-        <item name="android:textColor">@color/dialog_button_text</item>
-        <item name="android:textColorLink">@color/dialog_button_text</item>
+    <style name="Widget.ANClient.DialogButton" parent="Widget.AppCompat.Button">
+        <!-- AlertDialog по умолчанию делает text-button без фона; задаём реальный фон,
+             чтобы OK/Отмена не терялись на светлой поверхности. -->
+        <item name="android:background">@drawable/anclient_button_background</item>
+        <item name="android:backgroundTint">@null</item>
+        <item name="backgroundTint">@null</item>
+        <item name="android:textColor">@color/anclient_button_text</item>
+        <item name="android:textColorLink">@color/anclient_button_text</item>
+        <item name="android:minHeight">36dp</item>
+        <item name="android:minWidth">72dp</item>
+        <item name="android:paddingLeft">12dp</item>
+        <item name="android:paddingRight">12dp</item>
         <item name="android:textAllCaps">false</item>
     </style>
 </resources>

@@ -180,7 +180,7 @@
         <Preference
             app:key="clear_logs"
             app:title="Очистить логи"
-            app:summary="Удаление всех файлов логов" />
+            app:summary="Удаление files/Logs; чат и статистика хранятся в files/info и сохраняются" />
     </PreferenceCategory>
 
 </PreferenceScreen>

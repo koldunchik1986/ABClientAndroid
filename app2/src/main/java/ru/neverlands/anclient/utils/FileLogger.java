@@ -225,7 +225,10 @@ public final class FileLogger {
     }
 
     /**
-     * Clears all log files from the Logs directory.
+     * Очищает всю debug/runtime-директорию files/Logs.
+     *
+     * Игровые chat/stat файлы пишутся в files/info/<nick>/ и здесь намеренно не
+     * мигрируются: старые файлы в Logs считаются старыми логами и удаляются вместе с Logs.
      */
     public static void clearAllLogs() {
         IO.execute(() -> {

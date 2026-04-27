@@ -389,15 +389,10 @@ public class Chat {
                 String nick = AppVars.Profile != null ? AppVars.Profile.UserNick : "unknown";
                 if (nick == null || nick.isEmpty()) nick = "unknown";
                 String safeNick = nick.replaceAll("[/\\\\:*?\"<>|]", "_");
-                // Базовая директория логов в AppVars (ExternalFiles/Logs).
-                File baseLogs = AppVars.getLogsDir();
-                if (baseLogs == null) {
-                    baseLogs = new File(AppVars.getContext().getFilesDir(), "Logs");
-                }
-                // Для каждого ника — отдельная подпапка (Logs/<Nick>/...).
-                File userDir = new File(baseLogs, safeNick);
-                if (!userDir.exists()) userDir.mkdirs();
-                File file = new File(userDir, dailyLogFileName);
+                // Чат — игровая история пользователя, поэтому пишем в files/info/<nick>/,
+                // а не в files/Logs, который полностью очищается настройкой debug-логов.
+                File file = GameInfoStorage.resolveChatLogFile(safeNick, dailyLogFileName);
+                if (file == null) return;
                 boolean newFile = !file.exists();
                 try (FileOutputStream fos = new FileOutputStream(file, true)) {
                     if (newFile) {
@@ -426,16 +421,14 @@ public class Chat {
         String nick = AppVars.Profile.UserNick != null ? AppVars.Profile.UserNick : "unknown";
         if (nick.isEmpty()) nick = "unknown";
         String safeNick = nick.replaceAll("[/\\\\:*?\"<>|]", "_");
-        File baseLogs = AppVars.getLogsDir();
-        if (baseLogs == null && AppVars.getContext() != null) {
-            baseLogs = new File(AppVars.getContext().getFilesDir(), "Logs");
-        }
-        if (baseLogs == null) return "";
+        // Путь показывается пользователю в статистике; он должен совпадать с текущей
+        // директорией хранения игровых данных files/info/<nick>/.
         // Текущий дневной лог: YYYYMMDD_chat.html
         String fileName;
         synchronized (LOG_LOCK) {
             fileName = resolveDailyChatLogFileNameLocked();
         }
-        return new File(new File(baseLogs, safeNick), fileName).getAbsolutePath();
+        File file = GameInfoStorage.resolveChatLogFile(safeNick, fileName);
+        return file == null ? "" : file.getAbsolutePath();
     }
 }

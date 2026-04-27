@@ -5,6 +5,7 @@ import ru.neverlands.anclient.utils.AppLog;
 import android.Manifest;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
@@ -70,6 +71,7 @@ public class LoginActivity extends AppCompatActivity {
     private ActivityLoginBinding binding;
     private List<UserConfig> profiles;
     private UserConfig selectedProfile;
+    private String pendingProfileRegImportPath = "";
 
     private final ActivityResultLauncher<Intent> profileActivityLauncher = registerForActivityResult(
             new ActivityResultContracts.StartActivityForResult(),
@@ -77,6 +79,26 @@ public class LoginActivity extends AppCompatActivity {
                 if (result.getResultCode() == RESULT_OK) {
                     loadProfiles();
                 }
+            });
+
+    private final ActivityResultLauncher<Intent> profileRegImportLauncher = registerForActivityResult(
+            new ActivityResultContracts.StartActivityForResult(),
+            result -> {
+                // После успешного импорта сразу повторяем login: пользователь уже выбрал
+                // корректный profile.reg, дополнительное ручное нажатие не требуется.
+                String destinationPath = pendingProfileRegImportPath;
+                pendingProfileRegImportPath = "";
+                if (result.getResultCode() != RESULT_OK) {
+                    return;
+                }
+                Intent data = result.getData();
+                Uri uri = data == null ? null : data.getData();
+                LicenseRequestDialog.copyProfileRegFromUri(
+                        this,
+                        uri,
+                        destinationPath,
+                        destinationFile -> login()
+                );
             });
 
     @Override
@@ -503,7 +525,21 @@ public class LoginActivity extends AppCompatActivity {
     }
 
     private void showLicenseDialog(LicenseStatus status) {
-        LicenseRequestDialog.show(this, status);
+        LicenseRequestDialog.show(this, status, this::requestProfileRegAttach);
+    }
+
+    private void requestProfileRegAttach(String licensePath) {
+        pendingProfileRegImportPath = licensePath == null ? "" : licensePath;
+        try {
+            AppLog.i("ANCLIENT_LICENSE", "LoginActivity", "LICENSE_PROFILE_REG_PICKER_OPEN: destination="
+                    + pendingProfileRegImportPath);
+            profileRegImportLauncher.launch(LicenseRequestDialog.createProfileRegPickerIntent());
+        } catch (Exception e) {
+            pendingProfileRegImportPath = "";
+            AppLog.w("ANCLIENT_LICENSE", "LoginActivity", "LICENSE_PROFILE_REG_PICKER_FAILED: "
+                    + e.getMessage(), e);
+            Toast.makeText(this, "Не удалось открыть выбор profile.reg", Toast.LENGTH_LONG).show();
+        }
     }
 
     private void clearCookiesAndAuthorize(String username,

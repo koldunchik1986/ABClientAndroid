@@ -1,5 +1,7 @@
 package ru.neverlands.anclient;
 
+import android.content.Intent;
+import android.net.Uri;
 import android.os.Bundle;
 import android.text.TextUtils;
 import android.view.LayoutInflater;
@@ -7,6 +9,8 @@ import android.view.View;
 import android.widget.EditText;
 import android.widget.Toast;
 
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.app.AlertDialog;
@@ -37,6 +41,27 @@ public class ProfileActivity extends AppCompatActivity {
     private UserConfig profile;
     private String originalUserNick;
     private String editorEncryptionPassword;
+    private String pendingProfileRegImportPath = "";
+
+    private final ActivityResultLauncher<Intent> profileRegImportLauncher = registerForActivityResult(
+            new ActivityResultContracts.StartActivityForResult(),
+            result -> {
+                // В редакторе профиля после импорта нужна не авторизация, а локальная
+                // валидация profile.reg для текущего набора полей профиля.
+                String destinationPath = pendingProfileRegImportPath;
+                pendingProfileRegImportPath = "";
+                if (result.getResultCode() != RESULT_OK) {
+                    return;
+                }
+                Intent data = result.getData();
+                Uri uri = data == null ? null : data.getData();
+                LicenseRequestDialog.copyProfileRegFromUri(
+                        this,
+                        uri,
+                        destinationPath,
+                        destinationFile -> validateImportedLicense()
+                );
+            });
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -334,7 +359,41 @@ public class ProfileActivity extends AppCompatActivity {
             return;
         }
         LicenseStatus status = LicenseManager.createRequest(this, requestProfile);
-        LicenseRequestDialog.show(this, status);
+        LicenseRequestDialog.show(this, status, this::requestProfileRegAttach);
+    }
+
+    private void requestProfileRegAttach(String licensePath) {
+        pendingProfileRegImportPath = licensePath == null ? "" : licensePath;
+        try {
+            ru.neverlands.anclient.utils.AppLog.i(
+                    "ANCLIENT_LICENSE",
+                    "ProfileActivity",
+                    "LICENSE_PROFILE_REG_PICKER_OPEN: destination=" + pendingProfileRegImportPath
+            );
+            profileRegImportLauncher.launch(LicenseRequestDialog.createProfileRegPickerIntent());
+        } catch (Exception e) {
+            pendingProfileRegImportPath = "";
+            ru.neverlands.anclient.utils.AppLog.w(
+                    "ANCLIENT_LICENSE",
+                    "ProfileActivity",
+                    "LICENSE_PROFILE_REG_PICKER_FAILED: " + e.getMessage(),
+                    e
+            );
+            Toast.makeText(this, "Не удалось открыть выбор profile.reg", Toast.LENGTH_LONG).show();
+        }
+    }
+
+    private void validateImportedLicense() {
+        UserConfig requestProfile = buildLicenseRequestProfile();
+        if (requestProfile == null) {
+            return;
+        }
+        LicenseStatus status = LicenseManager.validateOrCreateRequest(this, requestProfile);
+        if (status.isAllowed()) {
+            Toast.makeText(this, "Лицензия подтверждена", Toast.LENGTH_LONG).show();
+        } else {
+            LicenseRequestDialog.show(this, status, this::requestProfileRegAttach);
+        }
     }
 
     private boolean validateLicenseRequestRequiredFields() {

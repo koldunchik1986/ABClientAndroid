@@ -24,8 +24,6 @@ public class ChatStats {
     private static final String TAG = "ChatStats";
     // Формат даты для служебных полей статистики (RESET_DATE/DATE).
     private static final SimpleDateFormat STAT_DATE_FORMAT = new SimpleDateFormat("yyyyMMdd", Locale.US);
-    // Персистентный файл статистики текущего профиля (без автосброса по датам).
-    private static final String STAT_FILE_SUFFIX = "_stat.txt";
     /**
      * Шаблон денежного дропа в формате игры: "22 NV", "1 234 NV".
      *
@@ -327,7 +325,7 @@ public class ChatStats {
     }
 
     /**
-     * Загружает статистику из персистентного файла профиля `Logs/<profile>_stat.txt`.
+     * Загружает статистику из персистентного файла профиля `info/<profile>/<date>_stat.txt`.
      *
      * Поддерживаемые ключи:
      * - `START_MS=`, `RESET_DATE=`, `XP=`, `FIGHTS=`, `NV=`,
@@ -433,7 +431,7 @@ public class ChatStats {
     }
 
     /**
-     * Сохраняет статистику в персистентный файл профиля `Logs/<profile>_stat.txt`.
+     * Сохраняет статистику в персистентный файл профиля `info/<profile>/<date>_stat.txt`.
      *
      * Зависимости:
      * - вызывается после каждого изменения счётчиков (xp/fights/nv/kg/items);
@@ -504,40 +502,25 @@ public class ChatStats {
         }
     }
 
-    // Определяет путь Logs/<profile>_stat.txt.
+    // Определяет путь info/<profile>/<date>_stat.txt.
     private static File resolveStatFile() {
-        File baseLogs = AppVars.getLogsDir();
-        if (baseLogs == null && AppVars.getContext() != null) {
-            baseLogs = new File(AppVars.getContext().getFilesDir(), "Logs");
-        }
-        if (baseLogs == null) return null;
-        if (!baseLogs.exists()) baseLogs.mkdirs();
         String safeNick = getCurrentProfileLogDirName();
-        File userDir = new File(baseLogs, safeNick);
-        if (!userDir.exists()) userDir.mkdirs();
-        return new File(userDir, getCurrentDateYmd() + STAT_FILE_SUFFIX);
+        // Новая статистика хранится рядом с игровым chat-log в files/info/<nick>/,
+        // чтобы очистка files/Logs не удаляла пользовательский прогресс.
+        return GameInfoStorage.resolveStatFile(safeNick, getCurrentDateYmd());
     }
 
     private static File resolveLegacyProfileStatFile() {
-        File baseLogs = AppVars.getLogsDir();
-        if (baseLogs == null && AppVars.getContext() != null) {
-            baseLogs = new File(AppVars.getContext().getFilesDir(), "Logs");
-        }
-        if (baseLogs == null) return null;
-        if (!baseLogs.exists()) baseLogs.mkdirs();
         String profileKey = getCurrentProfileStatsKey();
-        return new File(baseLogs, profileKey + STAT_FILE_SUFFIX);
+        // Legacy fallback только читает старый корневой Logs/<profile>_stat.txt;
+        // по требованию не переносим его перед очисткой логов.
+        return GameInfoStorage.resolveLegacyProfileStatFile(profileKey);
     }
 
     // Legacy fallback: старый дневной путь Logs/YYYYMMDD_stat.txt.
     private static File resolveLegacyDailyStatFile(String dateYmd) {
-        File baseLogs = AppVars.getLogsDir();
-        if (baseLogs == null && AppVars.getContext() != null) {
-            baseLogs = new File(AppVars.getContext().getFilesDir(), "Logs");
-        }
-        if (baseLogs == null) return null;
-        if (!baseLogs.exists()) baseLogs.mkdirs();
-        return new File(baseLogs, dateYmd + "_stat.txt");
+        // Legacy fallback только читает старый Logs/<date>_stat.txt до очистки Logs.
+        return GameInfoStorage.resolveLegacyDailyStatFile(dateYmd);
     }
 
     // Унифицированная очистка/инициализация состояния счётчиков.

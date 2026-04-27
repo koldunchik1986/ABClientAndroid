@@ -402,6 +402,7 @@ public class AppVars {
     public static List<ShopEntry> ShopList = new ArrayList<>();
     private static AssetManager assetManager;
     private static java.io.File logsDir;
+    private static java.io.File infoDir;
 
     public static int LocalProxyPort = 8052;
     public static String LocalProxyAddress = "127.0.0.1";
@@ -528,6 +529,9 @@ public class AppVars {
         if (logsDir != null && !logsDir.exists()) {
             logsDir.mkdirs();
         }
+        // files/info — постоянные пользовательские данные ANClient (license, chat, stats).
+        // В отличие от files/Logs, эта директория не очищается кнопкой "Очистить логи".
+        infoDir = resolveInfoDir(context);
     }
 
     public static Context getContext() {
@@ -541,5 +545,28 @@ public class AppVars {
 
     public static java.io.File getLogsDir() {
         return logsDir;
+    }
+
+    public static java.io.File getInfoDir() {
+        if (infoDir == null && context != null) {
+            // Lazy fallback нужен для статических вызовов после восстановления процесса Android.
+            infoDir = resolveInfoDir(context);
+        }
+        return infoDir;
+    }
+
+    private static java.io.File resolveInfoDir(Context context) {
+        if (context == null) {
+            return null;
+        }
+        java.io.File root = context.getExternalFilesDir(null);
+        if (root == null) {
+            root = context.getFilesDir();
+        }
+        java.io.File dir = new java.io.File(root, "info");
+        if (!dir.exists()) {
+            dir.mkdirs();
+        }
+        return dir;
     }
 }

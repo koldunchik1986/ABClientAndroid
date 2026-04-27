@@ -1575,6 +1575,8 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         // Извлекаем VCode из payload перед отправкой (для синхронизации SessionManager)
         adoptVCodeFromAutoSubmitPayload(payload);
 
+        // В payload допустимо пустое trailing-поле `ina`; обычный split() его отрежет
+        // и direct HTTP авто-ход будет ошибочно отклонён как parts=8 вместо 9.
         String[] parts = payload.split("\\|", -1);
         if (parts.length < 9) {
             AppLog.w(TAG, TAG, BG_TRACE_PREFIX + " directHttpSubmit: payload parts=" + parts.length + ", need 9, skip");
