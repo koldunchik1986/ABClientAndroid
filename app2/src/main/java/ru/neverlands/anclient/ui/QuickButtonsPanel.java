@@ -167,7 +167,9 @@ public class QuickButtonsPanel {
             "Секретное Зелье"
     };
 
-    // Список доступных авто-функций для включения/отключения по таймеру
+    // Список доступных авто-функций для включения/отключения по таймеру.
+    // Перед показом список проходит `LicenseRuntime.filterAutoFunctionLabels(...)`, поэтому
+    // `Анти-Captcha` появится только при full/custom grant `anti_captcha` и исчезнет после expiresAt.
     private static final String[] AUTO_FUNCTIONS = new String[]{
             "Авто-Бой",
             "Авто-Рыбалка",
@@ -896,6 +898,9 @@ public class QuickButtonsPanel {
                     .setNegativeButton("Отмена", null)
                     .show();
         } else if (button.getActionType() == QuickActionType.AUTO_CAPTCHA) {
+            // Long-press меню не запускает solver напрямую. Оно только открывает настройки
+            // API key/параметров или удаляет кнопку. Сам solver стартует из MainActivity popup,
+            // где повторно проверяется LicenseRuntime и актуальность captcha challenge.
             new AlertDialog.Builder(context)
                     .setTitle("Анти-Captcha")
                     .setItems(new CharSequence[]{"Настройки Anti-Captcha", "Удалить кнопку"}, (dialog, which) -> {
@@ -1875,6 +1880,11 @@ public class QuickButtonsPanel {
     }
 
     private void showAntiCaptchaSettingsDialog() {
+        // Настройки Anti-Captcha привязаны к AutoFunctionsManager, а не к конкретной кнопке.
+        // Зависимости:
+        // - API key хранится локально в SharedPreferences и не входит в profile.reg;
+        // - параметры ImageToTextTask читаются MainActivity непосредственно перед createTask;
+        // - доступ к самому включению/использованию ограничен LicenseFeature anti_captcha.
         final int pad = dpToPx(12);
         ScrollView scroll = new ScrollView(context);
         LinearLayout root = new LinearLayout(context);

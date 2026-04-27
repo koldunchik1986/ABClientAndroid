@@ -45,6 +45,11 @@ public class AutoFunctionsManager {
     private static final String KEY_AUTO_ATTACK_LAST_NON_ZERO_TOOL_ID = KEY_PREFIX + "auto_attack_last_non_zero_tool_id";
     private static final String KEY_LOCATION_TRACKING = KEY_PREFIX + "location_tracking";
     private static final String KEY_WALKERS_POLL_INTERVAL_SEC = KEY_PREFIX + "walkers_poll_interval_sec";
+    // Anti-Captcha хранится как обычная auto-function, но лицензируется строже:
+    // - `LicenseFeature.expandPublicFeatureSpec(...)` никогда не выдаёт `anti_captcha` из public bundle;
+    // - `full`/custom индивидуальный grant включает её через `QuickActionType.AUTO_CAPTCHA.getActionKey()`;
+    // - при истечении grant `LicenseRuntime.requireSession(...)` обновляет сессию и вызывает
+    //   `disableUnavailableFeatures(...)`, который сбрасывает этот persisted-флаг.
     private static final String KEY_ANTI_CAPTCHA = KEY_PREFIX + "anti_captcha";
     private static final String PREF_ANTI_CAPTCHA_API_KEY = "anti_captcha_api_key";
     private static final String PREF_ANTI_CAPTCHA_PHRASE = "anti_captcha_phrase";
@@ -2230,9 +2235,20 @@ public class AutoFunctionsManager {
     }
 
     // === ANTI_CAPTCHA ===
+    // Назначение:
+    // - хранить локальный ON/OFF и настройки ImageToTextTask для сервиса anti-captcha.com;
+    // - отдавать MainActivity готовый immutable Config для текущего popup captcha;
+    // - не отправлять запросы к внешнему сервису без активного licensed feature `anti_captcha`.
+    //
+    // Зависимости:
+    // - QuickActionType.AUTO_CAPTCHA / LicenseFeature.FEATURE_ANTI_CAPTCHA — feature key в profile.reg;
+    // - MainActivity.maybeStartAntiCaptchaForActiveChallenge(...) — единственная точка runtime запуска;
+    // - AntiCaptchaManager.Config — DTO параметров createTask/getTaskResult;
+    // - LicenseRuntime.disableUnavailableFeatures(...) — сброс флага при истечении временного grant.
 
     public boolean isAntiCaptchaEnabled() {
         if (!isFeatureAvailable(QuickActionType.AUTO_CAPTCHA, "isAntiCaptchaEnabled")) {
+            disableAntiCaptchaForLicenseLoss("isAntiCaptchaEnabled");
             return false;
         }
         return prefs.getBoolean(KEY_ANTI_CAPTCHA, false);
@@ -2244,11 +2260,24 @@ public class AutoFunctionsManager {
 
     public void setAntiCaptchaEnabled(boolean enabled) {
         if (rejectFeatureIfDenied(QuickActionType.AUTO_CAPTCHA, enabled, "setAntiCaptchaEnabled")) {
-            prefs.edit().putBoolean(KEY_ANTI_CAPTCHA, false).apply();
+            disableAntiCaptchaForLicenseLoss("setAntiCaptchaEnabled_denied");
             return;
         }
         prefs.edit().putBoolean(KEY_ANTI_CAPTCHA, enabled).apply();
         AppLog.d(TAG, "setAntiCaptchaEnabled: " + enabled);
+    }
+
+    private void disableAntiCaptchaForLicenseLoss(String source) {
+        if (!prefs.getBoolean(KEY_ANTI_CAPTCHA, false)) {
+            return;
+        }
+        // Этот сброс нужен именно для временных full/custom grants: после окончания expiresAt
+        // флаг не должен оставаться "включенным" в SharedPreferences и самовосстанавливаться
+        // при следующем popup captcha. Ручной API key при этом сохраняется, чтобы после
+        // продления лицензии пользователь не вводил его заново.
+        prefs.edit().putBoolean(KEY_ANTI_CAPTCHA, false).apply();
+        AppLog.w("ANCLIENT_LICENSE", TAG, "LICENSE_FEATURE_FLAG_DISABLED: source=" + source
+                + ", action=" + QuickActionType.AUTO_CAPTCHA.getActionKey());
     }
 
     public String getAntiCaptchaApiKey() {
@@ -2322,6 +2351,9 @@ public class AutoFunctionsManager {
     }
 
     public AntiCaptchaManager.Config getAntiCaptchaConfig() {
+        // Config собирается непосредственно перед отправкой captcha. Так MainActivity получает
+        // актуальные defaults Neverlands (5 цифр, numeric=1, languagePool=en) и ручные override
+        // из long-press настроек, не держа stale-копию между разными popup challenge.
         int minLength = getAntiCaptchaMinLength();
         int maxLength = getAntiCaptchaMaxLength();
         if (maxLength > 0 && minLength > maxLength) {
@@ -2431,6 +2463,8 @@ public class AutoFunctionsManager {
     /**
      * Снимает persisted/runtime-флаги только у тех авто-функций, которые исчезли из текущей
      * license-сессии. Используется при downgrade full -> public после истечения grant.
+     * Для Anti-Captcha это обязательный путь выключения по временному лимиту: full/custom grant
+     * истёк, `LicenseRuntime` пересобрал public-only session, этот метод затирает KEY_ANTI_CAPTCHA.
      */
     public void disableUnavailableFeatures(String reason) {
         StringBuilder disabled = new StringBuilder();

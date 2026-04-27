@@ -166,6 +166,9 @@ public final class ProxyRuntimeManager {
      *   потому что локальный proxy обслуживает HTTP-трафик игры и не реализует CONNECT.
      * - При включенном профильном proxy такие запросы должны идти сразу через upstream,
      *   сохраняя strict anti-leak поведение без прямого fallback.
+     *
+     * Основной потребитель сейчас — AntiCaptchaManager: anti-captcha.com работает только по HTTPS,
+     * поэтому route через {@link #getActiveJavaProxyOrNull()} давал CONNECT -> 501.
      */
     public static Proxy getActiveUpstreamJavaProxyOrNull() {
         synchronized (LOCK) {

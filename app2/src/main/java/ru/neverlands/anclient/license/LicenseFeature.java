@@ -15,7 +15,9 @@ import ru.neverlands.anclient.model.QuickActionType;
  * Важно для отладки:
  * - feature-ключи — lower-case значения `QuickActionType.getActionKey()`;
  * - `limited` соответствует public/free набору общедоступных функций;
- * - `full` разворачивается во все quick actions плюс `FEATURE_CLANS`;
+ * - `full` для индивидуального grant разворачивается во все quick actions плюс `FEATURE_CLANS`;
+ * - `publicFeatures` дополнительно проходит через {@link #removeNonPublicFeatures(Set)}:
+ *   `anti_captcha` нельзя открыть общим bundle даже если администратор ошибочно указал public `full`;
  * - custom CSV grants принимаются как есть после нормализации.
  */
 public final class LicenseFeature {
@@ -23,6 +25,7 @@ public final class LicenseFeature {
     public static final String TIER_LIMITED = "limited";
     public static final String TIER_CUSTOM = "custom";
     public static final String FEATURE_CLANS = "clans";
+    public static final String FEATURE_ANTI_CAPTCHA = "anti_captcha";
     public static final String FEATURE_NONE = "none";
 
     private static final LinkedHashSet<String> LIMITED_FEATURES = buildLimitedFeatures();
@@ -74,21 +77,23 @@ public final class LicenseFeature {
         String spec = normalize(featureSpec);
         // Семантика public bundle: empty/none/off/empty не должны случайно превратиться в full.
         // Этот метод используется только для `ANREG2.publicFeatures`.
+        // Важный инвариант лицензирования: Anti-Captcha не является общедоступной функцией.
+        // Она доступна только через индивидуальный `full` grant или custom grant `anti_captcha`.
         if (spec.isEmpty() || FEATURE_NONE.equals(spec) || "off".equals(spec) || "empty".equals(spec)) {
             return Collections.emptySet();
         }
-        return expandFeatureSpec(spec);
+        return removeNonPublicFeatures(expandFeatureSpec(spec));
     }
 
     public static String deriveTier(String featureSpec, Set<String> enabledFeatures) {
         String spec = normalize(featureSpec);
-        if (spec.isEmpty() || TIER_FULL.equals(spec)) {
+        Set<String> safeFeatures = enabledFeatures == null ? Collections.emptySet() : enabledFeatures;
+        if ((spec.isEmpty() || TIER_FULL.equals(spec)) && safeFeatures.containsAll(allQuickActionFeatures())) {
             return TIER_FULL;
         }
         if (TIER_LIMITED.equals(spec) || "free".equals(spec) || "basic".equals(spec)) {
             return TIER_LIMITED;
         }
-        Set<String> safeFeatures = enabledFeatures == null ? Collections.emptySet() : enabledFeatures;
         if (safeFeatures.containsAll(allQuickActionFeatures())) {
             return TIER_FULL;
         }
@@ -141,6 +146,20 @@ public final class LicenseFeature {
         return Collections.unmodifiableSet(new LinkedHashSet<>(LIMITED_FEATURES));
     }
 
+    private static Set<String> removeNonPublicFeatures(Set<String> source) {
+        LinkedHashSet<String> result = new LinkedHashSet<>();
+        if (source != null) {
+            for (String feature : source) {
+                String normalized = normalize(feature);
+                if (normalized.isEmpty() || FEATURE_ANTI_CAPTCHA.equals(normalized)) {
+                    continue;
+                }
+                result.add(normalized);
+            }
+        }
+        return Collections.unmodifiableSet(result);
+    }
+
     public static Set<String> allQuickActionFeatures() {
         LinkedHashSet<String> result = new LinkedHashSet<>();
         for (QuickActionType type : QuickActionType.values()) {
@@ -170,6 +189,8 @@ public final class LicenseFeature {
         result.add(QuickActionType.OPEN_STATS.getActionKey());
         result.add(QuickActionType.OPEN_PINFO.getActionKey());
         result.add(FEATURE_CLANS);
+        // Anti-Captcha намеренно не входит в limited/public набор: это платная внешняя
+        // интеграция, которая должна выдаваться только индивидуальным full/custom grant.
         return result;
     }
 

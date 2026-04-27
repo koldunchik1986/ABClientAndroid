@@ -416,6 +416,9 @@ public class AppTimerManager {
                 autoFunctionsManager.setAutoBossEnabled(true);
                 FileLogger.trace(TAG, "AUTO_FUNCTION_TIMER_FIRED: Авто-Босс ENABLED");
             } else if ("Анти-Captcha".equals(autoFunc) || "Анти-Капча".equals(autoFunc)) {
+                // Таймер не обходит лицензию: выше `isTimerAutoFunctionAllowed(...)` мапит
+                // русскую подпись в action key `anti_captcha`. После истечения grant этот branch
+                // не включит функцию, а LicenseRuntime/AutoFunctionsManager сотрут persisted ON-флаг.
                 autoFunctionsManager.setAntiCaptchaEnabled(true);
                 FileLogger.trace(TAG, "AUTO_FUNCTION_TIMER_FIRED: Анти-Captcha ENABLED");
             }
@@ -465,6 +468,8 @@ public class AppTimerManager {
                 autoFunctionsManager.setAutoBossEnabled(false);
                 FileLogger.trace(TAG, "AUTO_FUNCTION_TIMER_FIRED: Авто-Босс DISABLED");
             } else if ("Анти-Captcha".equals(autoFunc) || "Анти-Капча".equals(autoFunc)) {
+                // Отключение безопасно даже если API key сохранён: сбрасывается только ON-флаг,
+                // чтобы ручной captcha popup продолжил работать как fallback.
                 autoFunctionsManager.setAntiCaptchaEnabled(false);
                 FileLogger.trace(TAG, "AUTO_FUNCTION_TIMER_FIRED: Анти-Captcha DISABLED");
             }

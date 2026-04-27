@@ -61,6 +61,7 @@ public final class AnLicenseTool {
     private static final int FIXED_LICENSE_BYTES = 5 * 1024 * 1024;
     private static final int SLOT_CAPACITY = 10_000;
     private static final String BUNDLE_ROOT_CHAIN = "ROOT";
+    private static final String FEATURE_ANTI_CAPTCHA = "anti_captcha";
     private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss zzz");
     private static final String[] REQUEST_DUMP_FIELDS = {
             "profileName",
@@ -549,10 +550,13 @@ public final class AnLicenseTool {
             return "нет доступа";
         }
         if ("full".equals(value)) {
-            return "полный набор: все быстрые/авто-функции и clans";
+            if (publicFeatures) {
+                return "полный public-набор без Anti-Captcha: все быстрые/авто-функции и clans, кроме anti_captcha";
+            }
+            return "полный набор: все быстрые/авто-функции, Anti-Captcha и clans";
         }
         if ("limited".equals(value) || "free".equals(value) || "basic".equals(value)) {
-            return "базовый набор: Авто-Бой, Авто-Рыбалка, Авто-Охота, Навигатор, Компас, Быстрые действия, Таймеры, Контакты, Кланы, Статистика, PINFO";
+            return "базовый набор: Авто-Бой, Авто-Рыбалка, Авто-Охота, Навигатор, Компас, Быстрые действия, Таймеры, Контакты, Кланы, Статистика, PINFO; Anti-Captcha не входит";
         }
         String[] parts = value.split("[,;|\\s]+");
         StringBuilder builder = new StringBuilder("выборочный набор: ");
@@ -589,6 +593,7 @@ public final class AnLicenseTool {
         if ("auto_treasure".equals(token)) return "Авто-Клад (auto_treasure)";
         if ("auto_cut".equals(token)) return "Авто-Травник (auto_cut)";
         if ("auto_refresh".equals(token)) return "Авто-Обновление (auto_refresh)";
+        if (FEATURE_ANTI_CAPTCHA.equals(token)) return "Анти-Captcha (anti_captcha, только full/custom grant)";
         if ("auto_skin".equals(token)) return "Авто-Охота (auto_skin)";
         if ("open_contacts".equals(token)) return "Открыть контакты (open_contacts)";
         if ("open_pinfo".equals(token)) return "Открыть PINFO (open_pinfo)";
@@ -617,7 +622,10 @@ public final class AnLicenseTool {
             if ("free".equals(value) || "basic".equals(value)) {
                 return "limited";
             }
-            return value;
+            if ("full".equals(value)) {
+                return "full";
+            }
+            return removeNonPublicFeatureTokens(value);
         }
         return normalizeFeatureSpec(featureSpec);
     }
@@ -1014,7 +1022,37 @@ public final class AnLicenseTool {
         if ("off".equals(value) || "empty".equals(value)) {
             return "none";
         }
-        return value;
+        if ("full".equals(value)) {
+            // Public full остаётся каноническим словом `full`, но сторона app2 при чтении
+            // ANREG2.publicFeatures вырезает `anti_captcha`. В отчёте выше это также
+            // описывается как public full без Anti-Captcha.
+            return "full";
+        }
+        return removeNonPublicFeatureTokens(value);
+    }
+
+    private static String removeNonPublicFeatureTokens(String featureSpec) {
+        String[] parts = featureSpec == null ? new String[0] : featureSpec.split("[,;|\\s]+");
+        StringBuilder builder = new StringBuilder();
+        for (String part : parts) {
+            String token = normalize(part);
+            if (token.isEmpty() || "none".equals(token) || "off".equals(token) || "empty".equals(token)) {
+                continue;
+            }
+            if (FEATURE_ANTI_CAPTCHA.equals(token)) {
+                // Anti-Captcha оплачивает внешний сервис и не должна попадать в общий bundle.
+                // Для неё использовать индивидуальный full grant или custom grant `anti_captcha`.
+                continue;
+            }
+            if (builder.length() > 0) {
+                builder.append(',');
+            }
+            builder.append(token);
+        }
+        if (builder.length() == 0) {
+            return "none";
+        }
+        return builder.toString();
     }
 
     private static boolean isNoGrant(String featureSpec) {

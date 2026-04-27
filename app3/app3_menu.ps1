@@ -122,6 +122,7 @@ function Show-FeatureTokens {
     Write-Host '  auto_compass, auto_boss, auto_invisible, location_tracking'
     Write-Host '  auto_detect, auto_summon, auto_cure, auto_drink, auto_moving'
     Write-Host '  auto_treasure, auto_cut, auto_refresh, auto_skin'
+    Write-Host '  anti_captcha (только full/custom grant; из publicFeatures удаляется)'
     Write-Host '  open_contacts, open_pinfo, open_logs, open_stats, timers, refresh_contacts'
     Write-Host '  quick_self_rass, quick_open_nevid, quick_teleport, quick_island'
     Write-Host '  quick_totem, quick_elixir_blaz, quick_elixir_cure, quick_elixir_restore'
@@ -181,7 +182,7 @@ function Show-InspectLicenseHelp {
 function Show-IssueFullHelp {
     Clear-Host
     Write-Host '[5] Выдать нику полный доступ'
-    Write-Host 'Назначение: открыть конкретному нику/устройству все функции.'
+    Write-Host 'Назначение: открыть конкретному нику/устройству все функции, включая Anti-Captcha.'
     Write-Host 'Что задаётся:'
     Write-Host '  - заявка от устройства, по ней определяется ник и устройство;'
     Write-Host '  - файл лицензии, который будет создан или обновлён;'
@@ -209,6 +210,7 @@ function Show-PublicOnlyHelp {
     Write-Host '[7] Обновить только общий доступ для всех'
     Write-Host 'Назначение: создать или обновить файл лицензии без индивидуального доступа для ника.'
     Write-Host 'Итог: все профили с этим profile.reg получают выбранный общий набор функций.'
+    Write-Host 'Anti-Captcha в общий набор не попадает даже при public full; выдавайте её full/custom grant.'
     Write-Host 'Срок тут не используется, потому что индивидуальный доступ не создаётся.'
     Write-Host 'Общий доступ по умолчанию: базовый набор. Можно выбрать полный, пустой или конкретные функции.'
     Write-Host 'Пример: app3\app3_menu.bat issue app3\request\request.txt app3\request\profile.reg 0 none limited'
@@ -221,9 +223,11 @@ function Show-ManualIssueHelp {
     Write-Host 'Назначение: точно указать, какие функции открыть нику и какие оставить общими.'
     Write-Host 'Срок индивидуального доступа: 0, never, 10m, 2h, 7d, или Unix epoch millis.'
     Write-Host 'Набор для ника: full, limited, none/off/empty/public-only, или список функций через запятую.'
-    Write-Host 'Общий набор для всех: full, limited, none/off/empty, или список функций через запятую.'
+    Write-Host 'Общий набор для всех: full, limited, none/off/empty, или список функций через запятую; anti_captcha из него удаляется.'
     Write-Host 'Пример custom на 10 минут:'
     Write-Host '  app3\app3_menu.bat issue app3\request\request.txt app3\request\profile.reg 10m auto_fight,auto_fish limited'
+    Write-Host 'Пример вручную открыть только Anti-Captcha на 10 минут:'
+    Write-Host '  app3\app3_menu.bat issue app3\request\request.txt app3\request\profile.reg 10m anti_captcha limited'
     Write-Host ''
     Show-FeatureTokens
 }
@@ -258,7 +262,7 @@ function Show-FullHelp {
     Write-Host 'Важно: просто 10 не означает 10 минут. Для минут пиши 10m.'
     Write-Host ''
     Write-Host 'Индивидуальный набор для конкретного ника:'
-    Write-Host '  full = все quick actions плюс clans.'
+    Write-Host '  full = все quick actions плюс clans, включая Anti-Captcha.'
     Write-Host '  limited, free, basic = базовый общедоступный набор.'
     Write-Host '  none, off, empty, public-only = не создавать индивидуальный доступ.'
     Write-Host '  custom CSV = перечисление кодов функций через запятую.'
@@ -266,8 +270,8 @@ function Show-FullHelp {
     Write-Host 'Общий набор для всех профилей с этим profile.reg:'
     Write-Host '  limited = базовый public-доступ всем профилям bundle.'
     Write-Host '  none, off, empty = без public-доступа.'
-    Write-Host '  full = full public-доступ всем профилям bundle.'
-    Write-Host '  custom CSV = перечисление кодов функций через запятую.'
+    Write-Host '  full = full public-доступ всем профилям bundle, но без Anti-Captcha.'
+    Write-Host '  custom CSV = перечисление кодов функций через запятую; anti_captcha из public удаляется.'
     Write-Host ''
     Show-FeatureTokens
     Write-Host ''
@@ -284,6 +288,8 @@ function Show-FullHelp {
     Write-Host '    app3\app3_menu.bat issue app3\request\request.txt app3\request\profile.reg 0 none limited'
     Write-Host '  Выборочный доступ на 2 часа:'
     Write-Host '    app3\app3_menu.bat issue app3\request\request.txt app3\request\profile.reg 2h auto_fight,auto_fish,quick_actions limited'
+    Write-Host '  Anti-Captcha вручную на 10 минут:'
+    Write-Host '    app3\app3_menu.bat issue app3\request\request.txt app3\request\profile.reg 10m anti_captcha limited'
     Write-Host ''
 }
 

@@ -2043,6 +2043,14 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                                                          boolean[] captchaSubmitted,
                                                          android.widget.EditText input,
                                                          AlertDialog dialog) {
+        // Anti-Captcha встраивается только в существующий ручной popup captcha.
+        // Зависимости:
+        // - `showCaptchaDialog(...)` уже знает finishUrl, тип captcha и общий submit-контур;
+        // - `AppVars.LastFightCaptchaImageBytes/Url` заполняются текущей загрузкой картинки;
+        // - `AutoFunctionsManager.isAntiCaptchaEnabled()` повторно проверяет license feature
+        //   и сбрасывает persisted ON-флаг, если временный full/custom grant истёк;
+        // - `captchaSubmitted[0]` общий с кнопкой OK, чтобы auto-submit и manual-submit
+        //   не отправили один и тот же finishUrl дважды.
         if (captchaSubmitted == null || captchaSubmitted[0]) {
             return;
         }
@@ -2064,6 +2072,8 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                 && activeFightCaptchaImageHash != 0
                 && isSameCaptchaUrl(activeFightCaptchaUrl, AppVars.LastFightCaptchaImageUrl);
         if (!imageReady) {
+            // Картинка captcha иногда приходит позже самого AlertDialog. Ждём только текущий URL,
+            // чтобы не отправить stale bytes от прошлого challenge и не получить неверный ответ.
             if (antiCaptchaImageWaitAttempts >= ANTI_CAPTCHA_IMAGE_WAIT_MAX_RETRIES) {
                 AppLog.w(TAG, "ANTI_CAPTCHA_TRACE skip: captcha image bytes timeout, captchaUrl=" + activeFightCaptchaUrl);
                 return;
@@ -2088,6 +2098,8 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         antiCaptchaInFlight = true;
         byte[] safeBytes = imageBytes.clone();
         AppLog.i(TAG, "ANTI_CAPTCHA_TRACE start: key=" + challengeKey + ", bytes=" + safeBytes.length);
+        // Callback не трогает WebView/AlertDialog из worker-thread: результат всегда возвращается
+        // в UI thread и затем проходит через тот же submitCaptchaCodeFromDialog(...), что ручной OK.
         AntiCaptchaManager.solveImageAsync(safeBytes, config, challengeKey, new AntiCaptchaManager.Callback() {
             @Override
             public void onSolved(String solvedChallengeKey, String text) {
@@ -2134,6 +2146,8 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         }
         String currentChallengeKey = buildAntiCaptchaChallengeKey(finishUrl);
         if (solvedChallengeKey == null || !solvedChallengeKey.equals(currentChallengeKey)) {
+            // Защита от гонки: пользователь мог обновить captcha или popup мог быть заменён новым
+            // challenge, пока anti-captcha.com решал старую картинку.
             AppLog.w(TAG, "ANTI_CAPTCHA_TRACE ignore stale solution, solvedKey=" + solvedChallengeKey
                     + ", currentKey=" + currentChallengeKey);
             return;
@@ -2150,6 +2164,8 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         AppLog.i(TAG, "ANTI_CAPTCHA_TRACE solved, auto-submit codeLen=" + code.length());
         input.setText(code);
         input.setSelection(code.length());
+        // Единая точка отправки: manual OK и Anti-Captcha разделяют URL-normalization,
+        // флаги autoboi/search-box resume и anti-duplicate markers.
         submitCaptchaCodeFromDialog(code, finishUrl, isFishCaptcha, captchaSubmitted, input, dialog, "anti_captcha");
         postAntiCaptchaCodeSubmittedToChat(code);
     }

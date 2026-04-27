@@ -260,7 +260,7 @@ Legacy fallback для старого файла без `profileNameIndex`:
 
 ## Значения grantFeatures
 
-`full` — полный grant для конкретного nick/device.
+`full` — полный grant для конкретного nick/device, включая `anti_captcha`.
 
 `limited`, `free`, `basic` — базовый общедоступный набор:
 
@@ -277,12 +277,20 @@ Legacy fallback для старого файла без `profileNameIndex`:
 - `open_stats`;
 - `open_pinfo`.
 
+`anti_captcha` в `limited/free/basic` не входит.
+
 `none`, `off`, `empty`, `public-only` — не создавать/не обновлять grant для nick, оставить только `publicFeatures`.
 
 Custom-набор через CSV:
 
 ```text
 auto_fight,auto_fish,quick_actions,clans
+```
+
+Чтобы вручную выдать только Anti-Captcha конкретному nick/device:
+
+```text
+anti_captcha
 ```
 
 Ключи должны совпадать с `QuickActionType.getActionKey()` или отдельными feature keys вроде `clans`.
@@ -293,13 +301,15 @@ auto_fight,auto_fish,quick_actions,clans
 
 `none`, `off`, `empty` — без public-функций.
 
-`full` — полный public-доступ всем профилям bundle. Использовать осторожно.
+`full` — полный public-доступ всем профилям bundle, кроме `anti_captcha`. Использовать осторожно.
 
-Custom CSV работает так же, как для `grantFeatures`:
+Custom CSV работает так же, как для `grantFeatures`, но `anti_captcha` из public-набора удаляется:
 
 ```text
 auto_fight,auto_fish,auto_skin
 ```
+
+Anti-Captcha не является общедоступной функцией: выдавайте её только индивидуальным `full` grant или custom grant `anti_captcha` с нужным сроком.
 
 Если `publicFeatures` не указан при создании нового bundle, default — `limited`.
 
@@ -341,6 +351,12 @@ app3\app3_menu.bat issue app3\request\request.txt app3\request\profile.reg 10m f
 .\gradlew.bat --no-daemon :app3:run --args="issue C:\Temp\request.txt C:\Temp\profile.reg 0 auto_fight,auto_fish,quick_actions limited"
 ```
 
+Выдать только Anti-Captcha на 10 минут:
+
+```powershell
+.\gradlew.bat --no-daemon :app3:run --args="issue C:\Temp\request.txt C:\Temp\profile.reg 10m anti_captcha limited"
+```
+
 ## Как работает patch-in-place
 
 Если `[profile.reg]` уже существует и имеет формат `ANREG2`, app3:
@@ -369,6 +385,7 @@ nickHash|expiresAt|featureSpec|requestId|devicePublicKeySha256|grantId|updatedAt
 - `nickHash` — hash нормализованного nick из `profileName`; игровые спецсимволы не вырезаются и не заменяются.
 - `expiresAt` — срок действия grant, `0` значит без срока.
 - `featureSpec` — `full`, `limited`, `none` или custom CSV.
+- `anti_captcha` разрешён только в `featureSpec` индивидуального grant; при истечении `expiresAt` app2 пересобирает public-only session и отключает persisted-флаг Anti-Captcha.
 - `requestId` — id request-файла, по которому выдан grant.
 - `devicePublicKeySha256` — hash публичного ключа устройства.
 - `grantId` — стабильный id grant для этой пары nick/device.

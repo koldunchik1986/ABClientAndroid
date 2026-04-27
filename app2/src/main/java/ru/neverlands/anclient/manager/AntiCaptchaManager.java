@@ -18,6 +18,22 @@ import ru.neverlands.anclient.proxy.ProxyRuntimeManager;
 import ru.neverlands.anclient.utils.AppLog;
 import ru.neverlands.anclient.utils.AppVars;
 
+/**
+ * HTTP-клиент внешнего сервиса anti-captcha.com для задачи ImageToTextTask.
+ *
+ * Назначение:
+ * - получить bytes текущей Neverlands captcha из MainActivity;
+ * - создать задачу `createTask` с body=base64 PNG/GIF/JPEG;
+ * - опрашивать `getTaskResult` до готовности ответа;
+ * - вернуть только распознанный текст, а submit captcha оставить существующему popup-контуры.
+ *
+ * Зависимости и инварианты:
+ * - лицензирование и настройка API key живут в AutoFunctionsManager/LicenseRuntime;
+ * - User-Agent всегда берётся из AppVars.BROWSER_USER_AGENT, без ANClient/ABClient маркеров;
+ * - HTTPS API нельзя отправлять через локальный LocalHttpProxyServer, потому что он обслуживает
+ *   HTTP-трафик игры и не реализует CONNECT. Если профильный proxy включён, используем upstream
+ *   напрямую через ProxyRuntimeManager.getActiveUpstreamJavaProxyOrNull(); иначе route=direct_external.
+ */
 public final class AntiCaptchaManager {
     private static final String TAG = "AntiCaptchaManager";
     private static final String API_CREATE_TASK = "https://api.anti-captcha.com/createTask";
@@ -198,6 +214,9 @@ public final class AntiCaptchaManager {
         java.net.Proxy upstreamProxy = ProxyRuntimeManager.getActiveUpstreamJavaProxyOrNull();
         boolean strictProxyRequired = ProxyRuntimeManager.isStrictProxyRequiredForCurrentProfile();
         if (upstreamProxy != null) {
+            // Внешний HTTPS route в proxy-профиле: идём сразу через upstream proxy.
+            // Локальный 127.0.0.1 proxy здесь запрещён, иначе Android OkHttp отправляет CONNECT
+            // в LocalHttpProxyServer и получает 501 Not Implemented.
             clientBuilder.proxy(upstreamProxy);
             String upstreamAuthHeader = ProxyRuntimeManager.getActiveUpstreamBasicAuthHeaderOrEmpty();
             if (!upstreamAuthHeader.isEmpty()) {
@@ -215,6 +234,8 @@ public final class AntiCaptchaManager {
             if (strictProxyRequired) {
                 throw new IllegalStateException("strict proxy enabled but runtime proxy unavailable");
             }
+            // Proxy не включён в профиле: явно задаём NO_PROXY, чтобы системные/старые WebView
+            // proxy-overrides не перехватили внешний Anti-Captcha HTTPS API.
             clientBuilder.proxy(java.net.Proxy.NO_PROXY);
             AppLog.i(TAG, "ANTI_CAPTCHA_TRACE route=direct_external, url=" + urlString);
         }
