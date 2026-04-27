@@ -64,6 +64,11 @@ public class SettingsActivity extends AppCompatActivity {
         private static final int MAP_SIZE_MAX = 31;
         private static final int MAP_FONT_SIZE_MIN = 6;
         private static final int MAP_FONT_SIZE_MAX = 24;
+        private static final int FRAME_FONT_SCALE_MIN = 50;
+        private static final int FRAME_FONT_SCALE_MAX = 200;
+        private static final int[] FRAME_FONT_SCALE_LIST_VALUES = {
+                50, 60, 70, 80, 90, 100, 110, 125, 150, 175, 200
+        };
 
         private static int normalizeMapSizeValue(int value) {
             if (value < MAP_SIZE_MIN) value = MAP_SIZE_MIN;
@@ -113,6 +118,38 @@ public class SettingsActivity extends AppCompatActivity {
 
         private static String buildMapScaleSummary(int value) {
             return value + "%";
+        }
+
+        private static int normalizeFrameFontScaleValue(int value) {
+            if (value < FRAME_FONT_SCALE_MIN) return FRAME_FONT_SCALE_MIN;
+            if (value > FRAME_FONT_SCALE_MAX) return FRAME_FONT_SCALE_MAX;
+            return value;
+        }
+
+        private static int parseFrameFontScaleValue(String raw, int fallback) {
+            int safeFallback = normalizeFrameFontScaleValue(fallback);
+            if (raw == null) {
+                return safeFallback;
+            }
+            try {
+                return normalizeFrameFontScaleValue(Integer.parseInt(raw.trim()));
+            } catch (Exception ignore) {
+                return safeFallback;
+            }
+        }
+
+        private static int snapFrameFontScaleListValue(int value) {
+            int normalized = normalizeFrameFontScaleValue(value);
+            int best = FRAME_FONT_SCALE_LIST_VALUES[0];
+            int bestDelta = Math.abs(normalized - best);
+            for (int candidate : FRAME_FONT_SCALE_LIST_VALUES) {
+                int delta = Math.abs(normalized - candidate);
+                if (delta < bestDelta) {
+                    best = candidate;
+                    bestDelta = delta;
+                }
+            }
+            return best;
         }
 
         private static int normalizeMapFontSizeValue(int value) {
@@ -179,6 +216,60 @@ public class SettingsActivity extends AppCompatActivity {
                     ThemeModeManager.setForceDarkEnabled(requireContext(), value);
                     preference.setSummary(buildThemeModeSummary(value));
                     return true;
+                });
+            }
+
+            ListPreference frameFontScalePref = findPreference("frame_font_scale_percent");
+            if (frameFontScalePref != null && AppVars.Profile != null) {
+                int currentScale = snapFrameFontScaleListValue(AppVars.Profile.FrameFontScale);
+                if (currentScale != AppVars.Profile.FrameFontScale) {
+                    AppVars.Profile.FrameFontScale = currentScale;
+                    AppVars.Profile.save(requireContext());
+                }
+                frameFontScalePref.setValue(String.valueOf(currentScale));
+                frameFontScalePref.setSummaryProvider(preference -> {
+                    if (!(preference instanceof ListPreference)) {
+                        return "";
+                    }
+                    CharSequence entry = ((ListPreference) preference).getEntry();
+                    return entry == null ? "" : entry;
+                });
+                frameFontScalePref.setOnPreferenceChangeListener((preference, newValue) -> {
+                    int value = snapFrameFontScaleListValue(parseFrameFontScaleValue(
+                            String.valueOf(newValue),
+                            AppVars.Profile.FrameFontScale
+                    ));
+                    AppVars.Profile.FrameFontScale = value;
+                    AppVars.Profile.save(requireContext());
+                    frameFontScalePref.setValue(String.valueOf(value));
+                    return false;
+                });
+            }
+
+            ListPreference chatFrameFontScalePref = findPreference("chat_frame_font_scale_percent");
+            if (chatFrameFontScalePref != null && AppVars.Profile != null) {
+                int currentScale = snapFrameFontScaleListValue(AppVars.Profile.ChatFrameFontScale);
+                if (currentScale != AppVars.Profile.ChatFrameFontScale) {
+                    AppVars.Profile.ChatFrameFontScale = currentScale;
+                    AppVars.Profile.save(requireContext());
+                }
+                chatFrameFontScalePref.setValue(String.valueOf(currentScale));
+                chatFrameFontScalePref.setSummaryProvider(preference -> {
+                    if (!(preference instanceof ListPreference)) {
+                        return "";
+                    }
+                    CharSequence entry = ((ListPreference) preference).getEntry();
+                    return entry == null ? "" : entry;
+                });
+                chatFrameFontScalePref.setOnPreferenceChangeListener((preference, newValue) -> {
+                    int value = snapFrameFontScaleListValue(parseFrameFontScaleValue(
+                            String.valueOf(newValue),
+                            AppVars.Profile.ChatFrameFontScale
+                    ));
+                    AppVars.Profile.ChatFrameFontScale = value;
+                    AppVars.Profile.save(requireContext());
+                    chatFrameFontScalePref.setValue(String.valueOf(value));
+                    return false;
                 });
             }
 

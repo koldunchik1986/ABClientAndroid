@@ -121,6 +121,8 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     private static final String BG_TRACE_PREFIX = "[BG_TRACE]";
     private static final String BUILD_MARKER = "2026-02-27_01-34";
     private static final int REQUEST_CODE_POST_NOTIFICATIONS = 1002;
+    private static final int FRAME_FONT_SCALE_MIN = 50;
+    private static final int FRAME_FONT_SCALE_MAX = 200;
     private static final int CHAT_REFRESH_DEFAULT_SECONDS = 12;
     private static final int CHAT_REFRESH_AUTO_BOSS_SECONDS = 3;
     private static final int CHAT_REFRESH_INITIAL_DELAY_MS = 1000;
@@ -169,6 +171,8 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     private TabManager tabManager;
     private QuickButtonsPanel quickButtonsPanel;
     private WebView chatRefrWebView;
+    private int appliedMainFrameFontScale = -1;
+    private int appliedChatFrameFontScale = -1;
     private final java.util.List<WebView> chatPopupWebViews = new java.util.ArrayList<>();
     private final Handler chatRefreshHandler = createMainHandler();
     private Runnable chatRefreshRunnable;
@@ -3239,6 +3243,8 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         setupWebView(chatMsgWebView, customWebViewClient);
         setupWebView(chatUsersWebView, customWebViewClient);
         setupWebView(chatButtonsWebView, customWebViewClient);
+        applyMainFrameFontScale();
+        applyChatFrameFontScale();
         // Скрытый WebView для ch_refr (серверные ответы чата и отправка форм).
         if (chatRefrWebView == null) {
             chatRefrWebView = new WebView(this);
@@ -3440,6 +3446,8 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         registerScreenStateReceiverIfNeeded();
         startRoomUsersPolling();
         logBackgroundState("onResume");
+        applyMainFrameFontScale();
+        applyChatFrameFontScale();
         
         // КРИТИЧНО: Очищаем кэш озера при возобновлении приложения
         // Если приложение было свёрнуто более 2 минут, vcode в кэше озера истеёк
@@ -3539,6 +3547,54 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             stopRoomUsersPolling();
         }
         AutoModeForegroundService.syncServiceState(this, "onPause");
+    }
+
+    private static int normalizeFrameFontScalePercent(int value) {
+        if (value < FRAME_FONT_SCALE_MIN) return FRAME_FONT_SCALE_MIN;
+        if (value > FRAME_FONT_SCALE_MAX) return FRAME_FONT_SCALE_MAX;
+        return value;
+    }
+
+    private int getConfiguredFrameFontScalePercent() {
+        int value = AppVars.Profile != null ? AppVars.Profile.FrameFontScale : 100;
+        return normalizeFrameFontScalePercent(value);
+    }
+
+    private int getConfiguredChatFrameFontScalePercent() {
+        int value = AppVars.Profile != null ? AppVars.Profile.ChatFrameFontScale : 100;
+        return normalizeFrameFontScalePercent(value);
+    }
+
+    private void applyMainFrameFontScale() {
+        if (binding == null || binding.appBarMain == null || binding.appBarMain.contentMain == null) {
+            return;
+        }
+        WebView mainWebView = binding.appBarMain.contentMain.webView;
+        if (mainWebView == null) {
+            return;
+        }
+        int scale = getConfiguredFrameFontScalePercent();
+        mainWebView.getSettings().setTextZoom(scale);
+        if (appliedMainFrameFontScale != scale) {
+            appliedMainFrameFontScale = scale;
+            AppLog.d(TAG, "FRAME_FONT_SCALE: main frame textZoom=" + scale + "%");
+        }
+    }
+
+    private void applyChatFrameFontScale() {
+        if (binding == null || binding.appBarMain == null || binding.appBarMain.contentMain == null) {
+            return;
+        }
+        WebView chatMsgWebView = binding.appBarMain.contentMain.chatMsgWebview;
+        if (chatMsgWebView == null) {
+            return;
+        }
+        int scale = getConfiguredChatFrameFontScalePercent();
+        chatMsgWebView.getSettings().setTextZoom(scale);
+        if (appliedChatFrameFontScale != scale) {
+            appliedChatFrameFontScale = scale;
+            AppLog.d(TAG, "FRAME_FONT_SCALE: chat frame textZoom=" + scale + "%");
+        }
     }
 
     // Общая настройка WebView (JS, cookies, bridge, окна).

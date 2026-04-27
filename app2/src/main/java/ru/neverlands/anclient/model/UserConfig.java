@@ -98,6 +98,15 @@ public class UserConfig {
      */
     public boolean ShowOverWarning = false;
     /**
+     * Масштаб текста HTML-ответов сервера в верхнем фрейме WebView (%).
+     * Применяется через WebSettings.setTextZoom(...) без изменения HTML/JS страницы.
+     */
+    public int FrameFontScale = 100;
+    /**
+     * Масштаб текста HTML-ответов сервера во фрейме сообщений чата (%).
+     */
+    public int ChatFrameFontScale = 100;
+    /**
      * Ширина большой карты (в клетках).
      *
      * C# parity:
@@ -511,6 +520,13 @@ public class UserConfig {
                         this.DoAutoAnswer = Boolean.parseBoolean(parser.getAttributeValue(null, "autoAnswer"));
                         this.DoChatLevels = Boolean.parseBoolean(parser.getAttributeValue(null, "chatLevels"));
                         this.StatsResetAtMidnight = parseBoolAttr(parser, "statsResetAtMidnight", this.StatsResetAtMidnight);
+                    } else if ("interfaceset".equalsIgnoreCase(tagName)) {
+                        this.FrameFontScale = parseIntAttr(parser, "framefontscale", this.FrameFontScale);
+                        this.ChatFrameFontScale = parseIntAttr(parser, "chatframefontscale", this.ChatFrameFontScale);
+                        if (this.FrameFontScale < 50) this.FrameFontScale = 50;
+                        if (this.FrameFontScale > 200) this.FrameFontScale = 200;
+                        if (this.ChatFrameFontScale < 50) this.ChatFrameFontScale = 50;
+                        if (this.ChatFrameFontScale > 200) this.ChatFrameFontScale = 200;
                     } else if ("inventory".equalsIgnoreCase(tagName)) {
                         // Параметры инвентаря (bulk-кнопки / упаковка / сортировка).
                         this.DoButtonSell = parseBoolAttr(parser, "buttonSell", this.DoButtonSell);
@@ -904,6 +920,10 @@ public class UserConfig {
             serializer.attribute(null, "chatLevels", String.valueOf(this.DoChatLevels));
             serializer.attribute(null, "statsResetAtMidnight", String.valueOf(this.StatsResetAtMidnight));
             serializer.endTag(null, "chat");
+            serializer.startTag(null, "interfaceset");
+            serializer.attribute(null, "framefontscale", String.valueOf(this.FrameFontScale));
+            serializer.attribute(null, "chatframefontscale", String.valueOf(this.ChatFrameFontScale));
+            serializer.endTag(null, "interfaceset");
             serializer.startTag(null, "mapset");
             serializer.attribute(null, "bigwidth", String.valueOf(this.MapBigWidth));
             serializer.attribute(null, "bigheight", String.valueOf(this.MapBigHeight));
