@@ -6,6 +6,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
 
+import ru.neverlands.anclient.manager.AutoCutManager;
 import ru.neverlands.anclient.model.InvComparer;
 import ru.neverlands.anclient.model.InvEntry;
 import ru.neverlands.anclient.utils.AppLog;
@@ -513,14 +514,20 @@ public final class InventoryParser {
                 InvEntry invEntry = new InvEntry(htmlEntry);
 
                 if (!cacheOnlyMode) {
+                    String dropThing = invEntry.DropThing == null ? "" : invEntry.DropThing;
+                    String dropPrice = invEntry.DropPrice == null ? "" : invEntry.DropPrice;
                     boolean isBulkDropMatch = !AppVars.BulkDropThing.isEmpty()
-                            && !AppVars.BulkDropPrice.isEmpty()
-                            && AppVars.BulkDropThing.equalsIgnoreCase(invEntry.DropThing == null ? "" : invEntry.DropThing)
-                            && AppVars.BulkDropPrice.equals(invEntry.DropPrice == null ? "" : invEntry.DropPrice);
+                            && AppVars.BulkDropThing.equalsIgnoreCase(dropThing)
+                            && (AppVars.BulkDropPrice.isEmpty() || AppVars.BulkDropPrice.equals(dropPrice))
+                            && invEntry.DropLink != null
+                            && !invEntry.DropLink.isEmpty();
 
                     if (invEntry.isExpired() || isBulkDropMatch) {
-                        String dropThing = invEntry.DropThing == null ? "" : invEntry.DropThing;
                         String redirectMessage = "Выбрасывание предмета <b>&laquo;" + dropThing + "&raquo;</b>...";
+                        if (AutoCutManager.GARBAGE_ITEM_NAME.equalsIgnoreCase(dropThing)) {
+                            AppLog.i(AutoCutManager.TRACE_CHAIN, TAG,
+                                    "garbage bulk-drop redirect: link=" + invEntry.DropLink);
+                        }
                         return MainPhp.buildRedirectHtml(redirectMessage, invEntry.DropLink == null ? "" : invEntry.DropLink);
                     }
 
@@ -565,7 +572,11 @@ public final class InventoryParser {
             if (!cacheOnlyMode) {
                 if (!AppVars.BulkDropThing.isEmpty()) {
                     MainPhp.sendInventoryChatMessage("Выбрасывание пачки <b>&laquo;" + AppVars.BulkDropThing + "&raquo;</b> завершено.");
+                    if (AutoCutManager.GARBAGE_ITEM_NAME.equalsIgnoreCase(AppVars.BulkDropThing)) {
+                        AppLog.i(AutoCutManager.TRACE_CHAIN, TAG, "garbage bulk-drop completed");
+                    }
                     AppVars.BulkDropThing = "";
+                    AppVars.BulkDropPrice = "";
                 }
                 if (!AppVars.BulkSellThing.isEmpty()) {
                     MainPhp.sendInventoryChatMessage("Продажа пачки <b>&laquo;" + AppVars.BulkSellThing

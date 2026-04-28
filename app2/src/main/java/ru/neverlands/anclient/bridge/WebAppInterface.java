@@ -686,6 +686,8 @@ public class WebAppInterface {
      * - `AutoCutManager.getSelectedHerbCount()` запрещает auto-look без выбранных трав;
      * - `AutoCutManager.shouldAutoLookOnCurrentCell()` запрещает запуск во время `AutoMoving`,
      *   проверки серпа, cleanup и повторной проверки already-checked клетки текущей смены.
+     * - `AutoCutManager.deferLookUntilServerTimerIfActive(...)` не даёт отправить `act=1`
+     *   раньше серверного cooldown, потому сервер отвечает `ERR` на преждевременное `Оглядеться`.
      *
      * Важно: метод только возвращает boolean в JS; он не отправляет HTTP-запросы и не открывает captcha.
      */
@@ -703,7 +705,18 @@ public class WebAppInterface {
                 return false;
             }
             if (!autoCut.shouldAutoLookOnCurrentCell()) {
+                if (autoCut.routeNextAfterTimerReturnIfArrived(manager, "bridge_do_herb_auto_cut")) {
+                    AppLog.d(AutoCutManager.TRACE_CHAIN, "WebAppInterface",
+                            "DoHerbAutoCut=false, timer return arrived, route next scheduled");
+                    return false;
+                }
                 AppLog.d(AutoCutManager.TRACE_CHAIN, "WebAppInterface", "DoHerbAutoCut=false, current cell not ready");
+                return false;
+            }
+            if (autoCut.deferLookUntilServerTimerIfActive("bridge_do_herb_auto_cut")) {
+                AppLog.d(AutoCutManager.TRACE_CHAIN, "WebAppInterface",
+                        "DoHerbAutoCut=false, server timer active, dueInMs="
+                                + Math.max(0L, AppVars.NeverTimer - System.currentTimeMillis()));
                 return false;
             }
             AppLog.i(AutoCutManager.TRACE_CHAIN, "WebAppInterface", "DoHerbAutoCut=true");

@@ -258,13 +258,17 @@ public class MapAjax {
         // Во время doctorform-конвейера не выполняем шаги автоклада и не запускаем
         // сопутствующие авто-ветки по карте (усталость/автопитье блажа).
         if (AppVars.CurePauseNonCombatAutoFunctions) {
-            if (AppVars.AutoMoving || AppVars.DoSearchBox) {
-                AppLog.d(TAG, "AUTO_CURE_TRACE: skip map auto processing while cure pipeline is active"
-                        + ", cureNeed=" + AppVars.CureNeed
-                        + ", cureNick=" + AppVars.CureNick
-                        + ", cureTravm=" + AppVars.CureTravm);
+            if (AutoCureHandler.clearStaleExternalCureRequestIfNeeded("map_ajax")) {
+                AppLog.d(TAG, "AUTO_CURE_TRACE: stale cure pause cleared, continue map auto processing");
+            } else {
+                if (AppVars.AutoMoving || AppVars.DoSearchBox) {
+                    AppLog.d(TAG, "AUTO_CURE_TRACE: skip map auto processing while cure pipeline is active"
+                            + ", cureNeed=" + AppVars.CureNeed
+                            + ", cureNick=" + AppVars.CureNick
+                            + ", cureTravm=" + AppVars.CureTravm);
+                }
+                return html;
             }
-            return html;
         }
 
         // При отложенном автопитье блажа временно не делаем шаги маршрута,

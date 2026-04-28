@@ -89,6 +89,7 @@ import ru.neverlands.anclient.license.LicenseFeature;
 import ru.neverlands.anclient.license.LicenseRuntime;
 import ru.neverlands.anclient.license.LicenseSession;
 import ru.neverlands.anclient.manager.AntiCaptchaManager;
+import ru.neverlands.anclient.manager.AutoCutManager;
 import ru.neverlands.anclient.manager.AutoFunctionsManager;
 import ru.neverlands.anclient.manager.AppTimerManager;
 import ru.neverlands.anclient.manager.ContactsManager;
@@ -591,17 +592,74 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
      * Безопасность:
      * - VCode получится из SessionManager (boевой HTML только что парсился)
      * - requestAutoTurnInternal(false) как fallback, если MainActivity недоступна
+     * - активный captcha popup Авто-Травника (`alchemy_ajax.php?act=3`) не считается боевой captcha:
+     *   stale popup закрывается, чтобы не блокировать event-driven автоход в новом бою.
      */
     public void requestImmediateAutoTurnOnFightAnnounce() {
         if (AppVars.IsFightCaptchaDialogVisible) {
-            AppLog.d(TAG, BG_TRACE_PREFIX + " requestImmediateAutoTurnOnFightAnnounce: skip, captcha dialog visible");
-            return;
+            if (isActiveAlchemyCaptchaDialog()) {
+                if (Looper.myLooper() != Looper.getMainLooper()) {
+                    runOnUiThread(this::requestImmediateAutoTurnOnFightAnnounce);
+                    return;
+                }
+                dismissActiveAlchemyCaptchaForFight("fight_announce");
+            } else {
+                AppLog.d(TAG, BG_TRACE_PREFIX + " requestImmediateAutoTurnOnFightAnnounce: skip, fight captcha dialog visible");
+                return;
+            }
         }
 
         AppLog.d(TAG, BG_TRACE_PREFIX + " requestImmediateAutoTurnOnFightAnnounce: triggered by fight announcement");
 
         // Используем фоновый механизм, т.к. в момент анонсации UI может быть неинтерактивным
         requestAutoTurnBackgroundAware();
+    }
+
+    /**
+     * true только для captcha popup Авто-Травника, который нельзя считать боевой captcha.
+     *
+     * Зависимости:
+     * - `activeFightCaptchaDialog`/`activeFightFinishUrl` исторически общие для fight/fish/alchemy captcha;
+     * - `FightViewModel.isBlockingFightCaptchaVisible()` и `requestImmediateAutoTurnOnFightAnnounce()`
+     *   используют этот метод, чтобы AutoCut popup не стопорил автобой;
+     * - manual fallback сохраняется: popup закрывается только при боевом action/recovery, а не при обычном UI idle.
+     */
+    public boolean isActiveAlchemyCaptchaDialog() {
+        return activeFightCaptchaDialog != null
+                && activeFightCaptchaDialog.isShowing()
+                && isAlchemyCaptchaFinishUrl(activeFightFinishUrl);
+    }
+
+    /**
+     * Распознаёт finishUrl captcha-среза Авто-Травника.
+     *
+     * Контракт: проверяем endpoint и `act=3`, потому именно этот запрос отправляет код captcha
+     * в `AlchemyAjaxPhp`; обычные fight captcha идут через `main.php?get_id=61&act=7`.
+     */
+    private boolean isAlchemyCaptchaFinishUrl(String finishUrl) {
+        return finishUrl != null
+                && finishUrl.contains("/gameplay/ajax/alchemy_ajax.php")
+                && finishUrl.contains("act=3");
+    }
+
+    /**
+     * Закрывает stale captcha popup Авто-Травника перед боевым автоходом.
+     *
+     * Зависимости:
+     * - вызывается только после `isActiveAlchemyCaptchaDialog()`;
+     * - очищает `CodeAddress` и `IsFightCaptchaDialogVisible`, чтобы guard-ы автобоя не видели
+     *   alchemy popup как настоящую боевую captcha;
+     * - не трогает `FightLink`, потому alchemy captcha не владеет боевым finish link.
+     */
+    private void dismissActiveAlchemyCaptchaForFight(String reason) {
+        if (activeFightCaptchaDialog == null || !activeFightCaptchaDialog.isShowing()) {
+            return;
+        }
+        AppLog.w(TAG, BG_TRACE_PREFIX + " dismiss stale AutoCut captcha before fight auto-turn, reason=" + reason
+                + ", finishUrl=" + activeFightFinishUrl);
+        AppVars.CodeAddress = "";
+        activeFightCaptchaDialog.dismiss();
+        AppVars.IsFightCaptchaDialogVisible = false;
     }
 
     /**
@@ -742,8 +800,16 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
      */
     private void requestAutoTurnInternal(boolean allowServerProbeFallback) {
         if (AppVars.IsFightCaptchaDialogVisible) {
-            AppLog.d(TAG, BG_TRACE_PREFIX + " requestAutoTurn: skip, captcha dialog visible");
-            return;
+            if (isActiveAlchemyCaptchaDialog()) {
+                if (Looper.myLooper() != Looper.getMainLooper()) {
+                    runOnUiThread(() -> requestAutoTurnInternal(allowServerProbeFallback));
+                    return;
+                }
+                dismissActiveAlchemyCaptchaForFight("request_auto_turn");
+            } else {
+                AppLog.d(TAG, BG_TRACE_PREFIX + " requestAutoTurn: skip, fight captcha dialog visible");
+                return;
+            }
         }
         if (shouldDeferAutoTurnForFirstFrameRender()) {
             return;
@@ -3716,8 +3782,17 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         showCaptchaDialog(captchaUrl, finishUrl);
     }
 
+    /**
+     * true только для активного blocking fight captcha popup.
+     *
+     * Зависимость: AutoCut captcha использует тот же dialog field, но определяется по
+     * `alchemy_ajax.php?act=3` и исключается, чтобы fight recovery/event-driven ход не ждал
+     * завершения травника.
+     */
     public boolean isFightCaptchaDialogShowing() {
-        return activeFightCaptchaDialog != null && activeFightCaptchaDialog.isShowing();
+        return activeFightCaptchaDialog != null
+                && activeFightCaptchaDialog.isShowing()
+                && !isAlchemyCaptchaFinishUrl(activeFightFinishUrl);
     }
 
     private boolean isPendingFightCaptchaFinishLink(String finishUrl) {
@@ -4433,6 +4508,17 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         });
     }
 
+    /**
+     * Dispatcher server-timer действий на ближайший `NeverTimer` tick.
+     *
+     * Зависимости:
+     * - общий источник времени — `AppVars.NeverTimer`, который выставляют серверные JS/ajax ответы;
+     * - AutoMoving и AutoFish используют существующие reload ветки;
+     * - AutoCut подключён только как pending look retry: state хранит `AutoCutManager`, а этот метод
+     *   по due tick делает `go=ret&an_auto_cut_tick=1`, чтобы WebView вернулся к карте и штатный JS
+     *   нажал `Оглядеться` без второго native HTTP-контура;
+     * - fight/captcha/fishing suppression guard-ы имеют приоритет, чтобы не ломать ручные и боевые действия.
+     */
     private void checkServerTimerDrivenActions() {
         long dueAt = AppVars.NeverTimer;
         if (dueAt <= 0L) {
@@ -4455,9 +4541,11 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         }
 
         AutoFunctionsManager autoFunctionsManager = AutoFunctionsManager.getInstance(this);
+        AutoCutManager autoCutManager = AutoCutManager.getInstance(this);
         boolean autoMoving = AppVars.AutoMoving;
         boolean autoFish = autoFunctionsManager.isAutoFishEnabled();
-        if (!autoMoving && !autoFish) {
+        boolean autoCutRetry = autoFunctionsManager.isAutoCutEnabled() && autoCutManager.hasPendingLookRetry();
+        if (!autoMoving && !autoFish && !autoCutRetry) {
             return;
         }
         if (AppVars.TreasureDigPauseNonCombatAutoFunctions) {
@@ -4510,9 +4598,27 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             currentUrl = "";
         }
 
+        String autoCutRetrySource = "";
+        if (!autoMoving && !autoFish && autoCutRetry) {
+            autoCutRetrySource = autoCutManager.consumePendingLookRetryIfDue(now);
+            if (autoCutRetrySource.isEmpty()) {
+                return;
+            }
+        }
+
         String reloadUrl;
         if (autoMoving) {
             reloadUrl = "http://neverlands.ru/main.php?get_id=56&act=10&go=inf&ab_nav_tick=1&r=" + now;
+        } else if (!autoCutRetrySource.isEmpty()) {
+            reloadUrl = "http://neverlands.ru/main.php?get_id=56&act=10&go=ret";
+            String vcode = SessionManager.getInstance().getValidVCodeForAction("server_timer_tick_auto_cut");
+            if (vcode != null && !vcode.isEmpty()) {
+                reloadUrl += "&vcode=" + vcode;
+            } else {
+                AppLog.w(AutoCutManager.TRACE_CHAIN, TAG,
+                        "SERVER_TIMER_TICK auto-cut retry without vcode, source=" + autoCutRetrySource);
+            }
+            reloadUrl += "&an_auto_cut_tick=1&r=" + now;
         } else {
             // КРИТИЧНО: af_tick никогда не должен отправляться БЕЗ vcode!
             // Если vcode пуст → происходит загрузка БЕЗ vcode → сервер обновляет PHPSESSID → старый vcode невалиден
@@ -4536,11 +4642,19 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
 
         lastServerTimerDrivenReloadAtMs = now;
         lastServerTimerDrivenReloadDueAtMs = dueAt;
-        // Локальный anti-loop guard до получения следующего server cooldown.
-        AppVars.NeverTimer = now + 1500L;
+        if (!autoCutRetrySource.isEmpty()) {
+            AppVars.NeverTimer = 0L;
+            AppLog.d(AutoCutManager.TRACE_CHAIN, TAG,
+                    "SERVER_TIMER_TICK auto-cut retry released expired NeverTimer, source=" + autoCutRetrySource);
+        } else {
+            // Локальный anti-loop guard до получения следующего server cooldown.
+            AppVars.NeverTimer = now + 1500L;
+        }
 
         AppLog.d(TAG, "SERVER_TIMER_TICK reload: autoMoving=" + autoMoving
                 + ", autoFish=" + autoFish
+                + ", autoCutRetry=" + !autoCutRetrySource.isEmpty()
+                + ", autoCutRetrySource=" + autoCutRetrySource
                 + ", dueAt=" + dueAt
                 + ", currentUrl=" + currentUrl
                 + ", reloadUrl=" + reloadUrl);

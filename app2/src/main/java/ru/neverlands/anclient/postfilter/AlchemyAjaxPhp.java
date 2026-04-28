@@ -1,6 +1,8 @@
 package ru.neverlands.anclient.postfilter;
 
 import android.content.Intent;
+import android.os.Handler;
+import android.os.Looper;
 import android.text.TextUtils;
 
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
@@ -79,9 +81,16 @@ public final class AlchemyAjaxPhp {
      *
      * Алгоритм:
      * - парсит `RESO@` и регистрирует все увиденные травы в словаре настроек;
+     * - очищает one-shot retry и due herb timer-ы текущей клетки, потому сам факт `RESO@`
+     *   означает, что запланированный повтор/возврат по timer-у реально дошёл до scan-а;
      * - выбирает первую доступную выбранную траву (`availableCount > 0` и `cutVcode` не пустой);
      * - если серп не готов, откладывает выбранный ресурс и запускает main.php-проверку серпа;
      * - если captcha нужна, открывает native popup; иначе отправляет `act=3` через `AjaxGet(...)`.
+     *
+     * Зависимости:
+     * - `AutoCutManager` владеет настройками выбора трав, retry state, herb timers и checked-клетками;
+     * - `PendingCut` хранит snapshot клетки и флаг multi-cut до ответа `act=3`;
+     * - `showAlchemyCaptchaDialogOnce(...)` использует общий captcha popup MainActivity, без отдельного solver.
      */
     private static void processAlchemyAct1(String html) {
         if (!isAutoCutEnabled()) {
@@ -89,11 +98,13 @@ public final class AlchemyAjaxPhp {
         }
         ResourceState state = parseResourceState(html);
         if (state == null || state.resources.isEmpty()) {
-            AppLog.d(AutoCutManager.TRACE_CHAIN, TAG, "act1: no resource state");
+            handleMissingResourceState(html);
             return;
         }
 
         AutoCutManager autoCut = AutoCutManager.getInstance(AppVars.getContext());
+        autoCut.clearPendingLookRetry("alchemy_act1");
+        autoCut.clearDueHerbTimersForCurrentCell("alchemy_act1");
         for (ResourceCandidate resource : state.resources) {
             autoCut.registerObservedHerb(resource.resId, resource.name, 0, resource.rTime, "");
         }
@@ -115,26 +126,103 @@ public final class AlchemyAjaxPhp {
             return;
         }
 
+        PendingCut selectedCut = new PendingCut(selected,
+                state.captchaToken,
+                buildCellResourcesSummary(state.resources),
+                hasMoreSelectedAvailableAfterCut(state.resources, selected, autoCut),
+                System.currentTimeMillis());
         if (!autoCut.isSickleReadyForCut()) {
-            pendingCut = new PendingCut(selected, buildCellResourcesSummary(state.resources), System.currentTimeMillis());
+            pendingCut = selectedCut;
             autoCut.requestSickleCheckBeforeCut("alchemy_act1:" + selected.resId);
             AppLog.i(AutoCutManager.TRACE_CHAIN, TAG,
                     "act1: selected herb waits for sickle check, herb=" + selected.name);
             return;
         }
+        if (autoCut.needsMassSnapshotBeforeCut()) {
+            pendingCut = selectedCut;
+            autoCut.requestMassSnapshotBeforeCut("alchemy_act1:" + selected.resId);
+            AppLog.i(AutoCutManager.TRACE_CHAIN, TAG,
+                    "act1: selected herb waits for mass snapshot, herb=" + selected.name);
+            return;
+        }
 
-        pendingCut = new PendingCut(selected, buildCellResourcesSummary(state.resources), System.currentTimeMillis());
-        String captchaToken = state.captchaToken == null ? "" : state.captchaToken.trim();
+        dispatchPendingCut(selectedCut, "alchemy_act1");
+    }
+
+    static boolean resumePendingCutAfterPreparation(String source) {
+        PendingCut scheduled = pendingCut;
+        if (scheduled == null || scheduled.isExpired() || !isAutoCutEnabled()) {
+            return false;
+        }
+        new Handler(Looper.getMainLooper()).postDelayed(() -> {
+            PendingCut current = pendingCut;
+            if (current == null || current.isExpired() || !isAutoCutEnabled()) {
+                return;
+            }
+            if (AppVars.getContext() == null) {
+                return;
+            }
+            AutoCutManager autoCut = AutoCutManager.getInstance(AppVars.getContext());
+            if (!autoCut.isSickleReadyForCut()) {
+                AppLog.w(AutoCutManager.TRACE_CHAIN, TAG,
+                        "pending cut resume skipped: sickle not ready, source=" + source);
+                return;
+            }
+            if (autoCut.needsMassSnapshotBeforeCut()) {
+                autoCut.requestMassSnapshotBeforeCut("resume_after_" + source + ":" + current.resource.resId);
+                AppLog.i(AutoCutManager.TRACE_CHAIN, TAG,
+                        "pending cut resume waits for mass snapshot, herb=" + current.resource.name
+                                + ", source=" + source);
+                return;
+            }
+            dispatchPendingCut(current, "resume_after_" + source);
+        }, 900L);
+        AppLog.i(AutoCutManager.TRACE_CHAIN, TAG,
+                "pending cut resume scheduled after preparation, herb=" + scheduled.resource.name
+                        + ", source=" + source);
+        return true;
+    }
+
+    private static void dispatchPendingCut(PendingCut cut, String source) {
+        if (cut == null || cut.isExpired()) {
+            return;
+        }
+        pendingCut = cut;
+        String captchaToken = cut.captchaToken == null ? "" : cut.captchaToken.trim();
         boolean captchaRequired = !captchaToken.isEmpty() && !"00000".equals(captchaToken);
-        String finishUrl = selected.buildFinishUrl(captchaRequired ? "????" : "1");
+        String finishUrl = cut.resource.buildFinishUrl(captchaRequired ? "????" : "1");
         if (captchaRequired) {
-            showAlchemyCaptchaDialogOnce(ALCHEMY_CAPTCHA_URL_PREFIX + captchaToken, finishUrl, selected);
+            showAlchemyCaptchaDialogOnce(ALCHEMY_CAPTCHA_URL_PREFIX + captchaToken, finishUrl, cut.resource);
         } else {
             submitAlchemyAct3ViaAjax(finishUrl);
         }
-        AppLog.i(AutoCutManager.TRACE_CHAIN, TAG, "act1: selected herb=" + selected.name
-                + ", id=" + selected.resId
-                + ", captchaRequired=" + captchaRequired);
+        AppLog.i(AutoCutManager.TRACE_CHAIN, TAG, "act1: selected herb=" + cut.resource.name
+                + ", id=" + cut.resource.resId
+                + ", captchaRequired=" + captchaRequired
+                + ", source=" + source);
+    }
+
+    /**
+     * Fail-safe для `act=1`, когда сервер вместо `RESO@` вернул `ERR`.
+     *
+     * Типовой сценарий: карта ещё держит server cooldown (`NeverTimer`), а JS уже попытался
+     * нажать `Оглядеться`. В этом случае не помечаем клетку checked, а ставим существующий
+     * one-shot retry через `MainActivity.checkServerTimerDrivenActions()`.
+     */
+    private static void handleMissingResourceState(String html) {
+        String response = html == null ? "" : html.trim();
+        if ("ERR".equalsIgnoreCase(response) && AppVars.getContext() != null) {
+            AutoCutManager autoCut = AutoCutManager.getInstance(AppVars.getContext());
+            boolean deferredByTimer = autoCut.deferLookUntilServerTimerIfActive("alchemy_act1_err");
+            if (!deferredByTimer && !autoCut.hasPendingLookRetry()) {
+                autoCut.scheduleLookRetryAfterTimer("alchemy_act1_err");
+            }
+            AppLog.w(AutoCutManager.TRACE_CHAIN, TAG,
+                    "act1: ERR response, look retry scheduled, deferredByTimer=" + deferredByTimer
+                            + ", dueInMs=" + Math.max(0L, AppVars.NeverTimer - System.currentTimeMillis()));
+            return;
+        }
+        AppLog.d(AutoCutManager.TRACE_CHAIN, TAG, "act1: no resource state");
     }
 
     /**
@@ -143,7 +231,9 @@ public final class AlchemyAjaxPhp {
      * Зависимости:
      * - успешный серверный маркер: `Всё прошло успешно.` / `Все прошло успешно.`;
      * - `pendingCut` содержит `resId/name/rTime/mass`, чтобы `AutoCutManager.markHerbCut(...)`
-     *   поставил таймер роста, пометил клетку checked и оценил cleanup-порог;
+     *   поставил timer роста, обновил статистику, пометил клетку checked и оценил cleanup-порог;
+     * - wrong captcha очищает только актуальный pending state и планирует retry текущей клетки,
+     *   чтобы пользователь/Anti-Captcha могли повторить без ухода маршрута дальше;
      * - fallback `TraceCut` используется, если серверный успех пришёл без актуального pending-состояния.
      */
     private static void processAlchemyAct3(String html) {
@@ -153,16 +243,29 @@ public final class AlchemyAjaxPhp {
         String lower = html.toLowerCase(Locale.ROOT);
         if (lower.contains("невер") && lower.contains("код")) {
             AppLog.w(AutoCutManager.TRACE_CHAIN, TAG, "act3: wrong protection/captcha code response");
+            PendingCut rejected = pendingCut;
+            pendingCut = null;
+            if (rejected != null && !rejected.isExpired() && isAutoCutEnabled()) {
+                lastAlchemyCaptchaDialogKey = "";
+                lastAlchemyCaptchaDialogAtMs = 0L;
+                AutoCutManager.getInstance(AppVars.getContext()).onCutCaptchaRejected("alchemy_act3");
+            }
             return;
         }
         if (!lower.contains("всё прошло успешно") && !lower.contains("все прошло успешно")) {
             return;
         }
+        boolean foundGarbage = lower.contains(AutoCutManager.GARBAGE_ITEM_NAME.toLowerCase(Locale.ROOT));
+        boolean garbageCleanupRequested = false;
 
         AutoCutManager autoCut = AutoCutManager.getInstance(AppVars.getContext());
         PendingCut current = pendingCut;
         pendingCut = null;
         if (current != null && !current.isExpired()) {
+            if (foundGarbage) {
+                autoCut.requestGarbageCleanupAfterCut("alchemy_act3");
+                garbageCleanupRequested = true;
+            }
             autoCut.markHerbCut(
                     current.resource.resId,
                     current.resource.name,
@@ -170,13 +273,20 @@ public final class AlchemyAjaxPhp {
                     resolveCurrentRegNum(),
                     "alchemy_act3",
                     current.resource.massAsDouble(),
-                    current.cellResourcesSummary);
+                    current.cellResourcesSummary,
+                    current.retrySameCellAfterCut);
             return;
         }
 
         String tracedName = autoCut.consumeRecentTraceCutName();
         if (!TextUtils.isEmpty(tracedName)) {
+            if (foundGarbage) {
+                autoCut.requestGarbageCleanupAfterCut("alchemy_act3_tracecut");
+                garbageCleanupRequested = true;
+            }
             autoCut.markHerbCut("", tracedName, 0, resolveCurrentRegNum(), "alchemy_act3_tracecut");
+        } else if (foundGarbage && !garbageCleanupRequested) {
+            autoCut.requestGarbageCleanupAfterCut("alchemy_act3_unmatched");
         }
     }
 
@@ -275,6 +385,41 @@ public final class AlchemyAjaxPhp {
                     .append(Math.max(0, total));
         }
         return builder.toString();
+    }
+
+    /** true, если после успешного среза на этой же клетке остаётся выбранная доступная трава. */
+    private static boolean hasMoreSelectedAvailableAfterCut(List<ResourceCandidate> resources,
+                                                            ResourceCandidate selected,
+                                                            AutoCutManager autoCut) {
+        if (resources == null || selected == null || autoCut == null) {
+            return false;
+        }
+        for (ResourceCandidate resource : resources) {
+            if (resource == null || resource.availableCount <= 0 || TextUtils.isEmpty(resource.cutVcode)) {
+                continue;
+            }
+            if (!autoCut.isHerbSelected(resource.resId, resource.name)) {
+                continue;
+            }
+            int remaining = resource.availableCount;
+            if (isSameResource(resource, selected)) {
+                remaining--;
+            }
+            if (remaining > 0) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static boolean isSameResource(ResourceCandidate left, ResourceCandidate right) {
+        if (left == null || right == null) {
+            return false;
+        }
+        if (!TextUtils.isEmpty(left.resId) && left.resId.equals(right.resId)) {
+            return true;
+        }
+        return !TextUtils.isEmpty(left.name) && left.name.equalsIgnoreCase(right.name);
     }
 
     /**
@@ -457,14 +602,24 @@ public final class AlchemyAjaxPhp {
     private static final class PendingCut {
         /** Выбранный resource candidate; содержит id/name/rTime/mass для success handling. */
         final ResourceCandidate resource;
+        /** Captcha token из того же `RESO@`, нужен при resume после mass/sickle preparation. */
+        final String captchaToken;
         /** Человекочитаемый список всех трав на клетке из того же `RESO@`. */
         final String cellResourcesSummary;
+        /** true, если после этого среза нельзя уходить с клетки: есть ещё выбранная доступная трава. */
+        final boolean retrySameCellAfterCut;
         /** Локальное время создания; защищает от stale success после reload/нового `Оглядеться`. */
         final long createdAtMs;
 
-        PendingCut(ResourceCandidate resource, String cellResourcesSummary, long createdAtMs) {
+        PendingCut(ResourceCandidate resource,
+                   String captchaToken,
+                   String cellResourcesSummary,
+                   boolean retrySameCellAfterCut,
+                   long createdAtMs) {
             this.resource = resource;
+            this.captchaToken = captchaToken == null ? "" : captchaToken.trim();
             this.cellResourcesSummary = cellResourcesSummary == null ? "" : cellResourcesSummary.trim();
+            this.retrySameCellAfterCut = retrySameCellAfterCut;
             this.createdAtMs = createdAtMs;
         }
 

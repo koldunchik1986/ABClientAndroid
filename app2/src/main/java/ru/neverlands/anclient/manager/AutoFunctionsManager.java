@@ -2287,6 +2287,14 @@ public class AutoFunctionsManager {
         AutoCutManager.getInstance(context).setCleanupEnabled(enabled);
     }
 
+    public boolean isAutoCutCutByTimersEnabled() {
+        return AutoCutManager.getInstance(context).isCutByTimersEnabled();
+    }
+
+    public void setAutoCutCutByTimersEnabled(boolean enabled) {
+        AutoCutManager.getInstance(context).setCutByTimersEnabled(enabled);
+    }
+
     public List<AutoCutManager.AutoCutHerb> getAutoCutHerbs() {
         return AutoCutManager.getInstance(context).getHerbs();
     }

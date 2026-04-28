@@ -143,6 +143,7 @@ public final class AnLicenseTool {
         System.out.println("  inspect-license [файл лицензии] [legacy-папка с заявками]");
         System.out.println("  issue <заявка от устройства> [файл лицензии] [срок] [доступ ника] [общий доступ]");
         System.out.println("Существующий ANREG2 profile.reg обновляется на месте: старые ники сохраняются, выбранный ник получает новый срок/набор функций.");
+        System.out.println("Важно: общий доступ (publicFeatures) всегда очищается от anti_captcha и auto_cut; Авто-Травник выдаётся только individual full/custom grant.");
     }
 
     private static void initKeys(File root, boolean force) throws Exception {
@@ -205,6 +206,9 @@ public final class AnLicenseTool {
         // Без этой проверки request.txt от другой сборки мог бы загрязнить список grants.
         ensureBundleMatchesRequest(license, requestPayload);
         if (publicFeatureSpec != null && !publicFeatureSpec.trim().isEmpty()) {
+            // Public-набор применяется ко всем пользователям bundle. Поэтому перед записью он проходит
+            // `normalizePublicFeatureSpec(...)`, где non-public automation (`anti_captcha`, `auto_cut`)
+            // удаляется даже из custom CSV. App2 дополнительно повторяет этот guard в LicenseFeature.
             license.put("publicFeatures", normalizePublicFeatureSpec(publicFeatureSpec));
         }
 
@@ -1029,6 +1033,9 @@ public final class AnLicenseTool {
             // В отчёте выше это также описывается как public full без Anti-Captcha/Авто-Травника.
             return "full";
         }
+        // Custom public CSV нормализуется здесь, а не в UI app2: license-файл уже должен быть
+        // безопасным для любого профиля bundle. Если администратор случайно указал `auto_cut`,
+        // токен будет удалён и сможет попасть в app2 только из device-bound grant.
         return removeNonPublicFeatureTokens(value);
     }
 
@@ -1044,6 +1051,9 @@ public final class AnLicenseTool {
                 // Anti-Captcha и AutoCut не должны попадать в общий bundle.
                 // Для них использовать индивидуальный full grant или custom grants
                 // `anti_captcha`/`auto_cut` с нужным сроком действия.
+                // Зависимость app2: `LicenseManager` сначала разворачивает `publicFeatures`,
+                // затем добавляет только активный grant; после истечения grant AutoCut будет выключен
+                // через `AutoFunctionsManager.disableUnavailableFeatures(...)`.
                 continue;
             }
             if (builder.length() > 0) {

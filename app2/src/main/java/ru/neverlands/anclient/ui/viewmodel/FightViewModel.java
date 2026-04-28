@@ -64,7 +64,7 @@ public class FightViewModel extends ViewModel {
         // как только получили HTML с боевыми маркерами, обновляем отдельный pulse для фонового сервиса.
         // Это не заменяет LastBoiTimer (UI-таймер кнопки хода), а дополняет его для isFightSessionLikelyActive(...).
         boolean autoBattleUiEnabled = Boolean.TRUE.equals(_isAutoBattleActive.getValue());
-        boolean captchaDialogVisible = AppVars.IsFightCaptchaDialogVisible;
+        boolean captchaDialogVisible = isBlockingFightCaptchaVisible();
         boolean autoBattleRuntimeEnabled = autoBattleUiEnabled
                 || AppVars.Autoboi == AutoboiState.AutoboiOn
                 || (AppVars.Profile != null && AppVars.Profile.LezDoAutoboi);
@@ -177,8 +177,8 @@ public class FightViewModel extends ViewModel {
         }
         // Одиночный автоход тоже считается "живым" боевым пульсом:
         // нужен, чтобы foreground-service не терял бой на кратких переходах между кадрами.
-        if (AppVars.IsFightCaptchaDialogVisible) {
-            String msg = BG_TRACE_PREFIX + " autoTurnOnce: skip, captcha dialog visible";
+        if (isBlockingFightCaptchaVisible()) {
+            String msg = BG_TRACE_PREFIX + " autoTurnOnce: skip, fight captcha dialog visible";
             AppLog.d(TAG, TAG, msg);
             return;
         }
@@ -356,7 +356,7 @@ public class FightViewModel extends ViewModel {
             }
 
             // ✅ Использовать модульный FightAnnounceHandler для всех проверок и call-back'а
-            boolean captchaVisible = AppVars.IsFightCaptchaDialogVisible;
+            boolean captchaVisible = isBlockingFightCaptchaVisible();
             ru.neverlands.anclient.utils.FightAnnounceHandler.onFightAnnounced(
                     "auto-boi",  // fighterNickname
                     captchaVisible,
@@ -378,5 +378,28 @@ public class FightViewModel extends ViewModel {
             String msg = BG_TRACE_PREFIX + " tryTriggerImmediateAutoTurnOnAnnounce failed: " + e.getMessage();
             AppLog.e(TAG, TAG, msg);
         }
+    }
+
+    /**
+     * Проверяет только captcha, которая действительно блокирует автобой.
+     *
+     * Зависимости:
+     * - глобальный `AppVars.IsFightCaptchaDialogVisible` выставляется общим captcha popup в MainActivity;
+     * - popup Авто-Травника (`alchemy_ajax.php?act=3`) использует тот же dialog-контур для manual fallback,
+     *   но не должен стопорить event-driven `requestImmediateAutoTurnOnFightAnnounce()`;
+     * - если MainActivity недоступна или проверка упала, fail-safe оставляет старое поведение: captcha считается blocking.
+     */
+    private boolean isBlockingFightCaptchaVisible() {
+        if (!AppVars.IsFightCaptchaDialogVisible) {
+            return false;
+        }
+        try {
+            MainActivity activity = AppVars.mainActivity != null ? AppVars.mainActivity.get() : null;
+            if (activity != null && activity.isActiveAlchemyCaptchaDialog()) {
+                return false;
+            }
+        } catch (Exception ignored) {
+        }
+        return true;
     }
 }

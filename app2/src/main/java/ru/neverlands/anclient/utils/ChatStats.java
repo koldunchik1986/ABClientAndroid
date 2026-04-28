@@ -92,6 +92,8 @@ public class ChatStats {
     private static final Map<String, Long> itemCountByName = new LinkedHashMap<>();
     // Количество пойманной рыбы по типам: "тип рыбы" -> "шт.".
     private static final Map<String, Long> fishCountByType = new LinkedHashMap<>();
+    // Количество срезанных трав по названиям: "трава" -> "шт.".
+    private static final Map<String, Long> herbCutCountByName = new LinkedHashMap<>();
     private static final List<String> lootLog = new ArrayList<>();
     // Состояние загрузки/кеша статистики.
     private static boolean loaded = false;
@@ -174,6 +176,19 @@ public class ChatStats {
         return Collections.unmodifiableMap(new LinkedHashMap<>(fishCountByType));
     }
 
+    /**
+     * Возвращает количество срезанных Авто-Травником трав по названиям.
+     *
+     * Зависимости:
+     * - пополняется только через `AutoCutManager.markHerbCut(...)` после подтверждённого success `act=3`;
+     * - отображается UI-слоем в `QuickButtonsPanel.buildStatsText()` отдельным разделом `Травы (шт.)`;
+     * - хранится отдельно от `itemCountByName`, чтобы собранные травы не смешивались с боевым/поисковым лутом.
+     */
+    public static synchronized Map<String, Long> getHerbCutCountByName() {
+        ensureLoaded();
+        return Collections.unmodifiableMap(new LinkedHashMap<>(herbCutCountByName));
+    }
+
     // Добавление шага рыбалки в статистику (доход + количество рыбы по типу).
     public static synchronized void addFishCatch(String fishName, int fishCount, double incomeNv) {
         ensureLoaded();
@@ -184,6 +199,26 @@ public class ChatStats {
                     ? fishCountByType.get(normalizedFishName) : 0L;
             fishCountByType.put(normalizedFishName, current + fishCount);
         }
+        saveInternal();
+    }
+
+    /**
+     * Добавляет успешный срез травы в статистику профиля.
+     *
+     * Контракт:
+     * - вызывать только после серверного маркера `Всё прошло успешно.`;
+     * - пустое имя игнорируется, чтобы fallback-ветки без имени не создавали мусорные ключи;
+     * - изменения сразу сохраняются в `info/<profile>/<date>_stat.txt` через общий `saveInternal()`.
+     */
+    public static synchronized void addHerbCut(String herbName) {
+        ensureLoaded();
+        String normalizedHerbName = herbName == null ? "" : herbName.trim();
+        if (normalizedHerbName.isEmpty()) {
+            return;
+        }
+        long current = herbCutCountByName.containsKey(normalizedHerbName)
+                ? herbCutCountByName.get(normalizedHerbName) : 0L;
+        herbCutCountByName.put(normalizedHerbName, current + 1L);
         saveInternal();
     }
 
@@ -401,6 +436,16 @@ public class ChatStats {
                             fishCountByType.put(fishName, count);
                         }
                     }
+                } else if (line.startsWith("HERB_CUT=")) {
+                    String value = line.substring(9);
+                    int splitPos = value.lastIndexOf('\t');
+                    if (splitPos > 0 && splitPos < value.length() - 1) {
+                        String herbName = value.substring(0, splitPos).trim();
+                        long count = ParseUtils.parseLongSafe(value.substring(splitPos + 1));
+                        if (!herbName.isEmpty() && count > 0L) {
+                            herbCutCountByName.put(herbName, count);
+                        }
+                    }
                 } else if (line.startsWith("LOOT=")) {
                     String value = line.substring(5);
                     if (!value.isEmpty()) {
@@ -474,6 +519,7 @@ public class ChatStats {
         appendResourceKgItems(sb);
         appendItemCountEntries(sb);
         appendFishCountEntries(sb);
+        appendHerbCutEntries(sb);
         appendLootLog(sb);
         return sb;
     }
@@ -493,6 +539,12 @@ public class ChatStats {
     private static void appendFishCountEntries(StringBuilder sb) {
         for (Map.Entry<String, Long> entry : fishCountByType.entrySet()) {
             sb.append("FISH_ITEM=").append(entry.getKey()).append("\t").append(entry.getValue()).append("\n");
+        }
+    }
+
+    private static void appendHerbCutEntries(StringBuilder sb) {
+        for (Map.Entry<String, Long> entry : herbCutCountByName.entrySet()) {
+            sb.append("HERB_CUT=").append(entry.getKey()).append("\t").append(entry.getValue()).append("\n");
         }
     }
 
@@ -535,6 +587,7 @@ public class ChatStats {
         resourceKgByType.clear();
         itemCountByName.clear();
         fishCountByType.clear();
+        herbCutCountByName.clear();
         lootLog.clear();
     }
 

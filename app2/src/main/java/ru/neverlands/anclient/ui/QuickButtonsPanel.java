@@ -1154,6 +1154,12 @@ public class QuickButtonsPanel {
         cleanupEnabled.setPadding(0, pad / 2, 0, 0);
         root.addView(cleanupEnabled);
 
+        CheckBox cutByTimers = new CheckBox(context);
+        cutByTimers.setText("Срезать по таймерам");
+        cutByTimers.setChecked(autoFunctionsManager.isAutoCutCutByTimersEnabled());
+        cutByTimers.setPadding(0, pad / 2, 0, 0);
+        root.addView(cutByTimers);
+
         TextView herbsSummary = new TextView(context);
         herbsSummary.setText("Выбрано трав: " + autoFunctionsManager.getAutoCutSelectedHerbCount()
                 + ". Откройте полноценный список по группам 1-11.");
@@ -1188,6 +1194,7 @@ public class QuickButtonsPanel {
                     autoFunctionsManager.setAutoCutCellsCsv(cellsInput.getText() == null ? "" : cellsInput.getText().toString());
                     autoFunctionsManager.setAutoCutWriteChatEnabled(writeChat.isChecked());
                     autoFunctionsManager.setAutoCutCleanupEnabled(cleanupEnabled.isChecked());
+                    autoFunctionsManager.setAutoCutCutByTimersEnabled(cutByTimers.isChecked());
                     Toast.makeText(context, "Настройки авто-травника сохранены", Toast.LENGTH_SHORT).show();
                 })
                 .setNegativeButton("Отмена", null)
@@ -3175,11 +3182,14 @@ public class QuickButtonsPanel {
      * - Денежные средства (`ChatStats.getTotalNv()`),
      * - Доход рыбалки (`ChatStats.getTotalFishNv()`) и рыба по типам (`ChatStats.getFishCountByType()`),
      * - Ресурсы (`ChatStats.getTotalResourceKg()` и `ChatStats.getResourceKgByType()`),
+     * - Травы (`ChatStats.getHerbCutCountByName()`),
      * - Предметы по названиям (`ChatStats.getItemCountByName()`), в формате "Название: N шт.".
      *
      * Зависимости:
      * - `ChatStats` хранит и восстанавливает статистику профиля из `info/<profile>/<date>_stat.txt`;
      * - порядок предметов/ресурсов определяется порядком накопления в `LinkedHashMap` внутри `ChatStats`;
+     * - раздел трав намеренно использует формат `Название - N шт.`, чтобы отличаться от предметного
+     *   лута и совпадать с требованием статистики Авто-Травника;
      * - значение этого метода используется и для текста окна, и для копирования в буфер.
      */
     private String buildStatsText() {
@@ -3191,6 +3201,7 @@ public class QuickButtonsPanel {
         double totalResourcesKg = ChatStats.getTotalResourceKg();
         java.util.Map<String, Double> resourceKgByType = ChatStats.getResourceKgByType();
         java.util.Map<String, Long> fishCountByType = ChatStats.getFishCountByType();
+        java.util.Map<String, Long> herbCutCountByName = ChatStats.getHerbCutCountByName();
         java.util.Map<String, Long> itemCountByName = ChatStats.getItemCountByName();
 
         StringBuilder sb = new StringBuilder();
@@ -3214,6 +3225,14 @@ public class QuickButtonsPanel {
             sb.append("Ресурсы по типам:\n");
             for (java.util.Map.Entry<String, Double> entry : resourceKgByType.entrySet()) {
                 sb.append("• ").append(entry.getKey()).append(": ").append(formatKg(entry.getValue())).append(" кг\n");
+            }
+            sb.append("\n");
+        }
+
+        if (!herbCutCountByName.isEmpty()) {
+            sb.append("Травы (шт.):\n");
+            for (java.util.Map.Entry<String, Long> entry : herbCutCountByName.entrySet()) {
+                sb.append("• ").append(entry.getKey()).append(" - ").append(entry.getValue()).append(" шт.\n");
             }
             sb.append("\n");
         }

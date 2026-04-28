@@ -257,4 +257,99 @@ GET http://neverlands.ru/gameplay/ajax/alchemy_ajax.php?act=3&res_id=<id>&r_x=<x
 - [x] Проверено, что `AlchemyAjaxPhp.processAlchemyAct1(...)` перебирает все `state.resources` из `RESO@` и выбирает первую доступную выбранную траву, а не только первый элемент массива.
 - [x] В `AlchemyAjaxPhp` добавлен snapshot всех трав клетки из `RESO@` (`buildCellResourcesSummary(...)`) и сохранение его в `PendingCut` до ответа `act=3`.
 - [x] В `AutoCutManager.postCutResultToChat(...)` chat-report расширен до формата `Клетка '<regNum>' содержит: "Трава" available/total, ...` с server timestamp и source label.
+- [x] В `AutoCutManager` добавлен вывод массы в chat-report Авто-Травника по формату Авто-Рыбалки: `Масса: <b>current/max</b>` с delta `+mass` после среза.
+- [x] В `AutoCutHandler` добавлена синхронизация `Масса Вашего инвентаря: current/max` из main.php/inventory HTML перед проверкой серпа/cleanup, чтобы AutoCut не зависел только от рыболовного `SetAutoFishMassa(...)`.
+- [x] `./gradlew.bat --no-daemon :app2:assembleDebug` после добавления snapshot-а клетки и массы — успешно.
+- [x] BOM-проверка измененных `AutoCutManager.java`, `AutoCutHandler.java`, `AlchemyAjaxPhp.java`, `TODO2/todo_task_20260427_auto_herbalist.md` — OK.
+- [x] Mojibake-проверка `app2/src/main` и `TODO2` после добавления массы — совпадений нет.
+- [x] Проверка прямого `Log.*` после добавления массы: совпадения только в разрешенных `FileLogger.java`/`LogcatFileRecorder.java`.
 - [ ] Проверить live-лог после обновления chat-report: сообщение должно содержать полный список трав клетки, например `Клетка '12-307' содержит: "Картофель" 2/2, "Томат" 1/2.`
+- [ ] Проверить live-лог после обновления массы: сообщение Авто-Травника должно содержать `Масса: <b>.../...</b> (+...)`.
+- [x] По логам `20260428_02_50`/`03_00` выявлены регрессии runtime: wrong captcha не ставила повторный `Оглядеться`, AutoCut captcha считалась боевой и блокировала event-driven автобой, после одного среза клетка помечалась checked при наличии ещё выбранной доступной травы.
+- [x] В `AlchemyAjaxPhp.processAlchemyAct3(...)` добавлена обработка wrong captcha только для актуального `pendingCut`: pending сбрасывается, captcha dedup-key очищается, `AutoCutManager.onCutCaptchaRejected(...)` планирует retry текущей клетки после `NeverTimer` без отметки checked.
+- [x] В `AutoCutManager` добавлен one-shot retry `Оглядеться` через существующий `NeverTimer` и `MainActivity.checkServerTimerDrivenActions()`: по due tick загружается `go=ret&an_auto_cut_tick=1`, после реального `act=1` retry очищается.
+- [x] В `AlchemyAjaxPhp` вычисляется `retrySameCellAfterCut`: если после успешного среза на клетке остаются выбранные доступные травы, `AutoCutManager.markHerbCut(...)` не помечает клетку checked и не запускает route next, а планирует повторный `Оглядеться`.
+- [x] В `MainActivity` и `FightViewModel` AutoCut captcha (`alchemy_ajax.php?act=3`) отделена от боевой captcha: при объявлении боя stale popup Авто-Травника закрывается и не блокирует `requestImmediateAutoTurnOnFightAnnounce()`/`autoTurnOnce(...)`.
+- [x] `./gradlew.bat --no-daemon :app2:assembleDebug` после retry/captcha/multi-cut фиксов — успешно.
+- [x] BOM-проверка измененных `AutoCutManager.java`, `AlchemyAjaxPhp.java`, `MainActivity.java`, `FightViewModel.java`, `TODO2/todo_task_20260427_auto_herbalist.md` — OK.
+- [x] Mojibake-проверка `app2/src/main/java` и `TODO2` после retry/captcha/multi-cut фиксов — совпадений нет.
+- [x] Проверка прямого `Log.*`: совпадения только в разрешенных `AppLog.java`, `FileLogger.java`, `LogcatFileRecorder.java`.
+- [-] `git diff --stat` показал известное предупреждение `.gitattributes" is not a valid attribute name: .gitattributes:7`; diff-stat при этом вывел измененные файлы.
+- [x] Реализован круговой обход после последней CSV-клетки: `AutoCutManager.routeNextCellWithManager(...)` больше не останавливается на `all cells checked`, а очищает checked-set текущей смены и запускает следующий round-robin круг.
+- [x] Due herb timers текущей смены теперь имеют приоритет маршрута: AutoCut извлекает `regNum` из `AppTimer.description` вида `Вырастет <трава> на <cell>`, игнорирует/удаляет stale timer-ы других смен и ведёт на клетку, когда ожидаемое время роста наступило.
+- [x] Фактический `alchemy_ajax.php?act=1` очищает due herb timer-ы текущей клетки через `AutoCutManager.clearDueHerbTimersForCurrentCell(...)`, потому один scan проверяет и выросшую траву, и новое содержимое клетки.
+- [x] `shouldAutoLookOnCurrentCell()` разрешает `Оглядеться` на checked-клетке, если для неё есть due herb timer текущей смены.
+- [x] В `ChatStats` добавлена отдельная persisted-статистика `HERB_CUT=<Название>\t<count>` и UI-раздел `Травы (шт.)` в окне `Статистика` по формату `Название - N шт.`.
+- [x] `./gradlew.bat --no-daemon :app2:assembleDebug` после кругового обхода/timer/statistics — успешно.
+- [x] BOM-проверка изменённых `AutoCutManager.java`, `AlchemyAjaxPhp.java`, `ChatStats.java`, `QuickButtonsPanel.java`, `TODO2/todo_task_20260427_auto_herbalist.md` — OK.
+- [x] Mojibake-проверка `app2/src/main/java` и `TODO2` после кругового обхода/timer/statistics — совпадений нет.
+- [x] Проверка прямого `Log.*`: совпадения только в разрешённых `FileLogger.java`/`LogcatFileRecorder.java`.
+- [x] Добавлены подробные Javadoc/inline-комментарии с зависимостями к текущим и ранее добавленным веткам Авто-Травника: retry через `NeverTimer`, due herb timers, круговой route, mass sync, statistics, alchemy captcha/fight captcha separation.
+- [x] Проверено лицензирование `Авто-Травник` через `app3`: `AnLicenseTool.normalizePublicFeatureSpec(...)` и `removeNonPublicFeatureTokens(...)` удаляют `auto_cut` из public/custom public-наборов, а `app2 LicenseFeature.expandPublicFeatureSpec(...)` повторно вырезает `auto_cut` при чтении `ANREG2.publicFeatures`.
+- [x] Подтверждён ожидаемый режим выдачи: `auto_cut` доступен только через individual `full` grant или custom grant `auto_cut`; public `full`/`limited`/custom public не должны открывать `Авто-Травник`.
+- [x] В `app3 AnLicenseTool` добавлены комментарии и usage-строка, фиксирующие non-public контракт для `anti_captcha`/`auto_cut` и зависимость от app2 verifier/runtime disable.
+- [x] `./gradlew.bat --no-daemon :app2:assembleDebug` после комментариев/licensing-check — успешно.
+- [x] `./gradlew.bat --no-daemon :app3:classes` после комментариев/licensing-check — успешно.
+- [x] BOM-проверка изменённых app2/app3/TODO2 файлов после комментариев/licensing-check — OK.
+- [x] Mojibake-проверка `app2/src/main/java`, `app3/src/main/java`, `TODO2` после комментариев/licensing-check — совпадений нет.
+- [x] Проверка прямого `Log.*`: совпадения только в разрешённых `FileLogger.java`/`LogcatFileRecorder.java`.
+- [x] Проверка diff изменённых app2-файлов на старые AutoCut runtime-префиксы `ABCLIENT`/`abclient`/`ru.neverlands.abclient`/`ab_auto_cut`/`ab_cut` — совпадений нет; `git diff` продолжает показывать известное предупреждение `.gitattributes:7`.
+- [x] По логам `20260428_04_10` подтверждено: успешный `act=3` может вернуть `Случайно найдено: Предмет: Бесполезный хлам (1 шт).`, но прежний AutoCut продолжал route next без inventory cleanup.
+- [x] В `AlchemyAjaxPhp.processAlchemyAct3(...)` добавлен детект `Бесполезный хлам` после success и запуск cleanup через существующий `AutoCutManager`, без нового native HTTP-контура.
+- [x] В `AutoCutManager` cleanup хлама больше не зависит от галочки cleanup по массе: выставляется `BulkDropThing=Бесполезный хлам`, открывается inventory, route AutoCut удерживается до завершения cleanup.
+- [x] На время AutoCut cleanup добавлена пауза небоевых авто-функций с snapshot/restore; `Авто-Бой` и `Авто-Лечение` не выключаются, восстанавливаются только реально активные функции.
+- [x] В `InventoryParser.mainPhpInv(...)` bulk-drop получил wildcard по цене для AutoCut garbage-cleanup и продолжает использовать существующий `InvEntry.DropLink` (`del.gif`) для удаления всех найденных предметов.
+- [x] Chat-report AutoCut теперь показывает fallback массы `+mass`, если `current/max` ещё не синхронизирован из main.php/inventory.
+- [x] Исправлено залипание self `Авто-Лечение` тяжёлой травмы: очередь из heavy injury popup теперь сама запрашивает reload main.php, а stale `CurePauseNonCombatAutoFunctions` имеет timeout/fail-safe clear.
+- [x] `./gradlew.bat --no-daemon :app2:assembleDebug` после cleanup хлама/mass fallback/Auto-Cure fixes — успешно; Kotlin daemon не подключился, Gradle отработал fallback compile и завершил `BUILD SUCCESSFUL`.
+- [x] BOM-проверка изменённых `AutoCutManager.java`, `AlchemyAjaxPhp.java`, `AutoCureHandler.java`, `InventoryParser.java`, `MapAjax.java`, `TODO2/todo_task_20260427_auto_herbalist.md` — OK.
+- [x] Mojibake-проверка `app2/src/main/java` и `TODO2` после cleanup хлама/mass fallback/Auto-Cure fixes — совпадений нет.
+- [x] Проверка прямого `Log.*` в изменённых manager/postfilter файлах — совпадений нет; общая проверка показывает только разрешённые `AppLog.java`, `FileLogger.java`, `LogcatFileRecorder.java`.
+- [x] Проверка новых AutoCut/Auto-Cure runtime-маркеров: добавлен только `an_auto_cure`; новые `ab_*` не добавлялись. В `MapAjax/MainPhp/FightAuto` остаются старые pre-existing `ab_nav`/`ab_bg_probe`/HTML id, не относящиеся к этой правке.
+- [x] По логам `20260428_13_00` подтверждено: chat-report Авто-Травника пишет `Масса: +5`, потому перед `act=3` нет валидного `AppVars.AutoFishMassa=current/max`; в логах отсутствуют `SetAutoFishMassa`/`mass snapshot updated`.
+- [x] Найдена существующая точка исправления без нового HTTP-контура: `AlchemyAjaxPhp.processAlchemyAct1(...)` перед no-captcha/captcha `act=3` и `AutoCutHandler.processMainPhpAutoCutStep(...)`, который уже умеет парсить `Масса Вашего инвентаря` из main.php/inventory HTML.
+- [x] В `AutoCutManager` добавлен one-shot mass-sync guard: при пустом `current/max` перед срезом Авто-Травник ставит `AutoCutCheckSickle`, запрашивает штатный main.php/inventory проход и не даёт map.js отправить `act=3` параллельно.
+- [x] В `AutoCutHandler` добавлен mass-sync pass через существующий `MainPhp.mainPhpFindInvWithFallback(...)`: если go=inf уже содержит массу, sync завершается сразу; если нет — открывается inventory; при пустом inventory срабатывает fail-safe и остаётся прежний fallback `+mass`.
+- [ ] Проверить live-лог после mass-sync фикса: перед успешным `act=3` должны появиться `mass snapshot requested before cut` и `mass snapshot updated`, а chat-report должен содержать `Масса: <b>current/max</b> (+...)`.
+- [x] По логам `20260428_13_20` выявлена причина остановки после 13:11/13:20: `DoHerbAutoCut=true` запускал `Ogl(...)` при активном `NeverTimer` (`SetNeverTimer: 15s`), сервер отвечал на `alchemy_ajax.php?act=1` коротким `ERR`, а `AlchemyAjaxPhp` только писал `act1: no resource state` без retry/route.
+- [x] В `AutoCutManager` добавлен общий guard `deferLookUntilServerTimerIfActive(...)`: он переиспользует existing one-shot retry через `NeverTimer`/`MainActivity.checkServerTimerDrivenActions()` и не создаёт новый HTTP-контур.
+- [x] `WebAppInterface.DoHerbAutoCut()` теперь после проверки готовности клетки блокирует преждевременный JS `Ogl(...)`, если server cooldown ещё активен, и ставит retry текущей клетки.
+- [x] `AlchemyAjaxPhp` теперь обрабатывает `ERR` от `act=1` как recoverable: не помечает клетку checked, а планирует повторное `Оглядеться` через существующий retry/fallback.
+- [x] `./gradlew.bat --no-daemon :app2:assembleDebug` после mass-sync фикса — успешно.
+- [x] BOM-проверка изменённых `AutoCutManager.java`, `AlchemyAjaxPhp.java`, `AutoCutHandler.java`, `TODO2/todo_task_20260427_auto_herbalist.md` — OK.
+- [x] Mojibake-проверка `app2/src/main/java` и `TODO2` — совпадений `РЎР`/`РџС`/`Ð`/`Ñ` нет; совпадения `????` относятся к ожидаемым captcha placeholder-ам.
+- [x] Проверка прямого `Log.*`: совпадения только в разрешённых `FileLogger.java`/`LogcatFileRecorder.java`.
+- [x] Проверка app2 Java на старые runtime-префиксы `ABCLIENT`/`abclient`/`ru.neverlands.abclient`/`ab_auto_cut`/`ab_cut` — совпадений нет.
+- [x] По логам `20260428_13_30` выявлен новый false-stop: серп был надет (`NeverApi` raw: `Серп Мастера-травника`, ранее `sickle armed: ... 967/1000`), но после one-shot mass-sync inventory не содержал строку массы и `AutoCutHandler` провалился в ветку auto-wear, где надетого серпа уже нет в списке `Надеть`.
+- [x] Найдена существующая точка исправления без нового HTTP-контура: `AutoCutManager.requestMassSnapshotBeforeCut(...)` и `AutoCutHandler.processMassSnapshotSync(...)`; причина была в смешении mass-sync guard с реальной проверкой серпа через `AutoCutCheckSickle`/`AutoCutArmedSickle`.
+- [x] `requestMassSnapshotBeforeCut(...)` больше не сбрасывает `AutoCutArmedSickle`, потому mass-sync вызывается только после успешной проверки серпа; это сохраняет подтверждение надетого инструмента.
+- [x] `processMassSnapshotSync(...)` теперь завершает one-shot mass-sync самостоятельным возвратом на карту и снимает временный `AutoCutCheckSickle` guard, чтобы inventory fail-safe не попадал в ошибочную остановку `Серп ... не найден`.
+- [x] `./gradlew.bat --no-daemon :app2:assembleDebug` после фикса false-stop с надетым серпом — успешно.
+- [x] BOM-проверка изменённых `AutoCutManager.java`, `AutoCutHandler.java`, `TODO2/todo_task_20260427_auto_herbalist.md` — OK.
+- [x] Mojibake-проверка `app2/src/main/java` и `TODO2` после фикса false-stop — совпадений нет, кроме self-hit в этой TODO-строке с перечислением старых проверок.
+- [x] Проверка прямого `Log.*`: совпадения только в разрешённых `FileLogger.java`/`LogcatFileRecorder.java`.
+- [x] Проверка app2 Java на старые AutoCut runtime-префиксы `ABCLIENT`/`abclient`/`ru.neverlands.abclient`/`ab_auto_cut`/`ab_cut` — совпадений нет.
+- [-] `git diff --check` для изменённых файлов показал только известное предупреждение `.gitattributes:7` и LF/CRLF warnings, без whitespace-error строк.
+- [x] По логам `20260428_13_50`/`14_00` выявлен новый retry-loop: `SERVER_TIMER_TICK` после `an_auto_cut_tick=1` сам ставил локальный `NeverTimer = now + 1500`, затем `DoHerbAutoCut()` видел этот локальный cooldown и заново планировал `server_timer:bridge_do_herb_auto_cut` вместо запуска `Ogl(...)`.
+- [x] Найдена существующая точка исправления без нового HTTP-контура: `MainActivity.checkServerTimerDrivenActions()`; AutoCut retry теперь очищает истёкший `NeverTimer` и не продлевает локальный anti-loop guard, поэтому штатный `map.js` может сразу выполнить `Оглядеться` после reload-а.
+- [ ] Проверить live-лог после retry-loop фикса: после `look retry consumed` должен появиться `DoHerbAutoCut=true`/`AUTO_CUT_JS start Ogl`, а не новая пара `look retry scheduled: source=server_timer:bridge_do_herb_auto_cut` + `DoHerbAutoCut=false, server timer active`.
+- [x] `./gradlew.bat --no-daemon :app2:assembleDebug` после retry-loop фикса — успешно.
+- [x] BOM-проверка изменённых `MainActivity.java` и `TODO2/todo_task_20260427_auto_herbalist.md` — OK.
+- [x] Mojibake-проверка изменённого Java-кода — совпадений нет; в TODO остаётся ожидаемый self-hit строки с перечислением паттернов `РЎР`/`РџС`/`Ð`/`Ñ`.
+- [x] Проверка прямого `Log.*`: совпадения только в разрешённых `FileLogger.java`/`LogcatFileRecorder.java`.
+- [x] Проверка изменённого Java-кода на старые AutoCut runtime-префиксы `ABCLIENT`/`abclient`/`ru.neverlands.abclient`/`ab_auto_cut`/`ab_cut` — совпадений нет.
+- [-] `git diff --check` для изменённых файлов показал только известное предупреждение `.gitattributes:7` и LF/CRLF warnings.
+- [x] По свежим логам `20260428_14_10` подтверждено: AutoCut пошёл по `herb_timer` (`12-342`, затем `12-311`), `Оглядеться` находил выбранный `Лён`, но после `act1: selected herb waits for mass snapshot` выполнялся inventory mass-sync и возврат на карту без отправки сохранённого `act=3`.
+- [x] Найдена существующая точка исправления без нового HTTP-контура: `AlchemyAjaxPhp.pendingCut` + `AutoCutHandler.processMassSnapshotSync(...)`; после mass/sickle preparation теперь планируется delayed resume pending-среза через тот же `AjaxGet(...)` flow.
+- [x] Добавлена настройка `Срезать по таймерам` в диалог `Настройки Авто-Травника`; она управляет уже существующим route по herb timer-ам.
+- [x] Herb timer после успешного среза теперь ставится на `growthMinutes + 5` минут, а route считает timer готовым только по фактическому `triggerTime`, без раннего `triggerTime - 28min` обхода.
+- [x] `AppTimerManager` при включённом `Авто-Травник` + `Срезать по таймерам` не удаляет due herb timer как обычный сработавший timer; timer удаляется после реального `alchemy_ajax.php?act=1` на его клетке.
+- [x] После среза/проверки timer-клетки AutoCut запоминает клетку, с которой ушёл на timer-route, возвращается на неё и затем продолжает обычный CSV-обход дальше.
+- [x] Проверен edge-case resume после проверки/надевания серпа: если `pendingCut` ещё не имеет `current/max` snapshot, `AlchemyAjaxPhp.resumePendingCutAfterPreparation(...)` сначала запускает existing mass-sync, а не отправляет `act=3` раньше времени.
+- [x] `./gradlew.bat --no-daemon :app2:assembleDebug` после настройки `Срезать по таймерам`, timer-route return и pending-cut resume — успешно.
+- [x] BOM-проверка изменённых app2/TODO2 файлов — OK.
+- [x] Mojibake-проверка `app2/src/main` — совпадений `РЎР`/`РџС`/`Ð`/`Ñ` нет; совпадения `????` относятся к ожидаемым captcha placeholder-ам `code=????`.
+- [x] Проверка прямого `Log.*`: совпадения только в разрешённых `AppLog.java`, `FileLogger.java`, `LogcatFileRecorder.java`.
+- [x] Проверка `app2/src/main` на старые AutoCut runtime-префиксы `ABCLIENT`/`abclient`/`ru.neverlands.abclient`/`ab_auto_cut`/`ab_cut` — совпадений нет.
+- [-] `git diff --check -- app2 TODO2` показал только известное предупреждение `.gitattributes:7` и LF/CRLF warnings, без whitespace-error строк.
+- [ ] Проверить live-лог после этих правок: после `mass snapshot sync finished` должен появиться `pending cut resume scheduled` и затем `act3 no-captcha submit via AjaxGet` или captcha popup; после timer-route должен быть `timer-route return` и `timer-route returned to source cell`.

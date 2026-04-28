@@ -271,6 +271,10 @@ public class AppTimerManager {
                 return;
             }
 
+            if (timer.isHerb && shouldKeepDueHerbTimerForAutoCut()) {
+                continue;
+            }
+
             if (!TextUtils.isEmpty(timer.enableAutoFunction)) {
                 executeEnableAutoFunctionTimerLocked(index, timer);
                 return;
@@ -304,6 +308,18 @@ public class AppTimerManager {
 
         if (listChanged) {
             persistLocked();
+        }
+    }
+
+    private boolean shouldKeepDueHerbTimerForAutoCut() {
+        try {
+            AutoFunctionsManager manager = AutoFunctionsManager.getInstance(appContext);
+            return manager.isAutoCutEnabled()
+                    && AutoCutManager.getInstance(appContext).isCutByTimersEnabled();
+        } catch (Exception error) {
+            AppLog.w(AutoCutManager.TRACE_CHAIN, TAG,
+                    "failed to read AutoCut timer mode, herb timer will fire normally", error);
+            return false;
         }
     }
 

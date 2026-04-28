@@ -2,6 +2,7 @@ package ru.neverlands.anclient.postfilter;
 
 import java.util.Locale;
 
+import ru.neverlands.anclient.MainActivity;
 import ru.neverlands.anclient.manager.AutoFunctionsManager;
 import ru.neverlands.anclient.manager.CharacterVitalsManager;
 import ru.neverlands.anclient.manager.FastActionManager;
@@ -11,6 +12,7 @@ import ru.neverlands.anclient.utils.AppVars;
 import ru.neverlands.anclient.utils.FileLogger;
 import ru.neverlands.anclient.utils.HelperStrings;
 import ru.neverlands.anclient.utils.HtmlUtils;
+import ru.neverlands.anclient.utils.SessionManager;
 
 final class AutoCureHandler {
 
@@ -23,8 +25,12 @@ final class AutoCureHandler {
     static final int LIGHT_WOUND_INDEX = 1;
     static final int MEDIUM_WOUND_INDEX = 2;
     static final int HEAVY_WOUND_INDEX = 3;
+    private static final long EXTERNAL_CURE_STALE_TIMEOUT_MS = 120_000L;
+    private static final long EXTERNAL_CURE_RELOAD_THROTTLE_MS = 3_000L;
 
     static volatile long lastMapHeavyInjurySyncAtMs = 0L;
+    private static volatile long externalCureQueuedAtMs = 0L;
+    private static volatile long lastExternalCureReloadAtMs = 0L;
 
     private AutoCureHandler() {
     }
@@ -472,8 +478,29 @@ final class AutoCureHandler {
         AppVars.CureNick = "";
         AppVars.CureTravm = "";
         AppVars.CurePauseNonCombatAutoFunctions = false;
+        externalCureQueuedAtMs = 0L;
+        lastExternalCureReloadAtMs = 0L;
         String msg = "AUTO_CURE_TRACE clear external request: reason=" + reason;
         AppLog.d(TAG, msg);
+    }
+
+    static boolean clearStaleExternalCureRequestIfNeeded(String sourceTag) {
+        if (!AppVars.CurePauseNonCombatAutoFunctions) {
+            return false;
+        }
+        if (!AppVars.CureNeed) {
+            clearExternalCureRequest("stale-pause-without-cure-need:" + sourceTag);
+            return true;
+        }
+        long queuedAt = externalCureQueuedAtMs;
+        long now = System.currentTimeMillis();
+        if (queuedAt > 0L && now - queuedAt > EXTERNAL_CURE_STALE_TIMEOUT_MS) {
+            clearExternalCureRequest("stale-timeout:" + sourceTag);
+            AppLog.w(TAG, "AUTO_CURE_TRACE stale external cure cleared: source=" + sourceTag
+                    + ", ageMs=" + (now - queuedAt));
+            return true;
+        }
+        return false;
     }
 
     static boolean isAutoCureEnabledByPreference() {
@@ -645,14 +672,47 @@ final class AutoCureHandler {
             return;
         }
 
+        boolean samePending = AppVars.CureNeed
+                && "3".equals(AppVars.CureTravm)
+                && selfNick.equalsIgnoreCase(AppVars.CureNick == null ? "" : AppVars.CureNick.trim());
         AppVars.CurePauseNonCombatAutoFunctions = true;
         AppVars.CureNeed = true;
         AppVars.CureNick = selfNick;
         AppVars.CureTravm = "3";
         AppVars.CureNickDone = "";
         AppVars.CureNickBoi = "";
+        if (!samePending || externalCureQueuedAtMs <= 0L) {
+            externalCureQueuedAtMs = System.currentTimeMillis();
+        }
         AppLog.d(TAG, "AUTO_CURE_TRACE heavy injury queued self cure: nick="
-                + selfNick + ", travm=3, source=" + sourceTag);
+                + selfNick + ", travm=3, samePending=" + samePending + ", source=" + sourceTag);
+        requestMainFrameReloadForExternalCure(sourceTag);
+    }
+
+    private static void requestMainFrameReloadForExternalCure(String sourceTag) {
+        long now = System.currentTimeMillis();
+        if (now - lastExternalCureReloadAtMs < EXTERNAL_CURE_RELOAD_THROTTLE_MS) {
+            return;
+        }
+        lastExternalCureReloadAtMs = now;
+        MainActivity activity = AppVars.mainActivity != null ? AppVars.mainActivity.get() : null;
+        if (activity == null || activity.getMainWebView() == null) {
+            AppLog.w(TAG, "AUTO_CURE_TRACE main reload skipped: activity/webview null, source=" + sourceTag);
+            return;
+        }
+        activity.runOnUiThread(() -> {
+            String link = "http://neverlands.ru/main.php?get_id=56&act=10&go=inf";
+            String vcode = SessionManager.getInstance().getValidVCodeForAction("auto_cure_external");
+            if (vcode != null && !vcode.trim().isEmpty()) {
+                link += "&vcode=" + vcode.trim();
+            } else {
+                AppLog.w(TAG, "AUTO_CURE_TRACE main reload without vcode, source=" + sourceTag);
+            }
+            link += "&an_auto_cure=1&r=" + System.currentTimeMillis();
+            activity.getMainWebView().loadUrl(link);
+            AppLog.d(TAG, "AUTO_CURE_TRACE main reload requested: source=" + sourceTag
+                    + ", url=" + link);
+        });
     }
 
     static void syncInjuriesFromMapHeavyPopup(String html) {

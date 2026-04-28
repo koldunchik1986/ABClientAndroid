@@ -66,6 +66,24 @@ final class AutoCutHandler {
             return null;
         }
 
+        AutoCutManager autoCut = AppVars.getContext() != null
+                ? AutoCutManager.getInstance(AppVars.getContext())
+                : null;
+
+        // Синхронизация массы выполняется здесь, а не в `AlchemyAjaxPhp`, потому только main.php/inventory
+        // стабильно содержит строку "Масса Вашего инвентаря: current/max". Значение нужно сразу двум
+        // зависимым веткам: chat-report Авто-Травника (`AutoFishMassa`) и cleanup-порог (`AutoCutKnownMassMax`).
+        if (AppVars.getContext() != null) {
+            autoCut.updateMassSnapshotFromHtml(html);
+        }
+
+        if (autoCut != null && autoCut.isMassSnapshotSyncPending()) {
+            String massSyncHtml = processMassSnapshotSync(address, html, autoCut);
+            if (massSyncHtml != null) {
+                return massSyncHtml;
+            }
+        }
+
         if (AppVars.AutoCutCleanupPending) {
             String cleanupHtml = processCleanupOpenInventory(address, html);
             if (cleanupHtml != null) {
@@ -153,6 +171,7 @@ final class AutoCutHandler {
         if (dressed.Valid && dressed.IsWearSickle()) {
             AppVars.AutoCutArmedSickle = true;
             AppVars.AutoCutCheckSickle = false;
+            AlchemyAjaxPhp.resumePendingCutAfterPreparation("sickle_already_ready");
             return buildReturnToMapHtml("Авто-Травник: серп уже надет", "auto_cut_sickle_ready", html);
         }
 
@@ -183,6 +202,7 @@ final class AutoCutHandler {
         if (MainPhp.mainPhpIsPerc(html) || MainPhp.mainPhpIsInv(html) || MainPhp.isInventoryAddress(address)) {
             if (mainPhpArmedSickle(html)) {
                 AppVars.AutoCutCheckSickle = false;
+                AlchemyAjaxPhp.resumePendingCutAfterPreparation("sickle_checked");
                 return buildReturnToMapHtml("Авто-Травник: серп проверен", "auto_cut_sickle_checked", html);
             }
             AppLog.d(AutoCutManager.TRACE_CHAIN, TAG,
@@ -236,6 +256,47 @@ final class AutoCutHandler {
             return invHtml;
         }
         return MainPhp.buildRedirectHtml("Авто-Травник: cleanup инвентаря", "main.php?im=0");
+    }
+
+    /**
+     * One-shot sync массы перед срезом: если go=inf не дал `current/max`, доходим до inventory
+     * через существующий main.php helper и не создаём отдельный HTTP-контур.
+     */
+    private static String processMassSnapshotSync(String address, String html, AutoCutManager autoCut) {
+        if (autoCut.hasUsableMassSnapshot()) {
+            return finishMassSnapshotSync(autoCut, "mass_available", html);
+        }
+        boolean inventoryPage = MainPhp.mainPhpIsInv(html)
+                || MainPhp.isInventoryAddress(address)
+                || MainPhp.hasInventoryRows(html);
+        if (inventoryPage) {
+            autoCut.clearMassSnapshotSyncPending("inventory_without_mass");
+            AppLog.w(AutoCutManager.TRACE_CHAIN, TAG,
+                    "mass snapshot sync reached inventory but mass was not found; continue with fallback");
+            return releaseMassSnapshotGuardAndReturnToMap("inventory_without_mass", html);
+        }
+        String invHtml = MainPhp.mainPhpFindInvWithFallback(html, "&im=0", address);
+        if (invHtml != null && !invHtml.isEmpty()) {
+            AppLog.i(AutoCutManager.TRACE_CHAIN, TAG, "mass snapshot redirect to inventory via parsed link");
+            return invHtml;
+        }
+        AppLog.i(AutoCutManager.TRACE_CHAIN, TAG, "mass snapshot redirect to inventory fallback");
+        return MainPhp.buildRedirectHtml("Авто-Травник: масса инвентаря", "main.php?im=0");
+    }
+
+    private static String finishMassSnapshotSync(AutoCutManager autoCut, String source, String html) {
+        autoCut.clearMassSnapshotSyncPending(source);
+        return releaseMassSnapshotGuardAndReturnToMap(source, html);
+    }
+
+    private static String releaseMassSnapshotGuardAndReturnToMap(String source, String html) {
+        AppVars.AutoCutCheckSickle = false;
+        AppLog.i(AutoCutManager.TRACE_CHAIN, TAG,
+                "mass snapshot sync finished, return to map, source=" + source
+                        + ", armed=" + AppVars.AutoCutArmedSickle
+                        + ", mass=" + AppVars.AutoFishMassa);
+        AlchemyAjaxPhp.resumePendingCutAfterPreparation("mass_snapshot:" + source);
+        return buildReturnToMapHtml("Авто-Травник: масса проверена", "auto_cut_mass_snapshot", html);
     }
 
     /**

@@ -30,6 +30,7 @@ import ru.neverlands.anclient.model.ParsedDressed;
 import ru.neverlands.anclient.postfilter.MainPhp;
 import ru.neverlands.anclient.utils.AppLog;
 import ru.neverlands.anclient.utils.AppVars;
+import ru.neverlands.anclient.utils.ChatStats;
 import ru.neverlands.anclient.utils.SessionManager;
 
 /**
@@ -52,6 +53,8 @@ public final class AutoCutManager {
     private static final String TAG = "AutoCutManager";
     /** Chain-name для критичных файловых логов AutoCut. */
     public static final String TRACE_CHAIN = "AUTO_CUT_TRACE";
+    /** Серверное название мусорного предмета, который случайно падает при срезе трав. */
+    public static final String GARBAGE_ITEM_NAME = "Бесполезный хлам";
 
     /** SharedPreferences-файл с настройками AutoCut, scoped per nick через `scopedKey(...)`. */
     private static final String PREFS_NAME = "auto_cut_prefs";
@@ -63,6 +66,8 @@ public final class AutoCutManager {
     private static final String KEY_WRITE_CHAT_PREFIX = "write_chat_";
     /** Флаг включения cleanup-прохода после прироста массы. */
     private static final String KEY_CLEANUP_ENABLED_PREFIX = "cleanup_enabled_";
+    /** Флаг маршрута по herb timer-ам: идти на клетку только после due-time. */
+    private static final String KEY_CUT_BY_TIMERS_PREFIX = "cut_by_timers_";
     /** JSON выбранных серпов для авто-надевания. */
     private static final String KEY_SICKLES_JSON_PREFIX = "sickles_json_";
     /** JSON расписания смен трав. */
@@ -77,11 +82,22 @@ public final class AutoCutManager {
     private static final long TRACE_CUT_NAME_TTL_MS = 60_000L;
     /** Небольшая задержка перед стартом route, чтобы WebView завершил текущий ajax/update кадр. */
     private static final long ROUTE_NEXT_DELAY_MS = 450L;
+    /** Fallback-delay для повторного `Оглядеться`, если сервер не прислал `SetNeverTimer(...)`. */
+    private static final long AUTO_CUT_RETRY_FALLBACK_DELAY_MS = 1500L;
+    /** Дедуп запроса main.php/inventory для массы, чтобы при пустом HTML не зациклить срез. */
+    private static final long MASS_SYNC_REQUEST_DEDUP_MS = 30_000L;
     /** Fallback cleanup threshold, если `SetAutoFishMassa` ещё не дал max mass. */
     private static final double CLEANUP_FALLBACK_THRESHOLD_MASS = 10d;
+    /** Запас к времени роста травы: AutoCut идёт по timer-у только через growth + 5 минут. */
+    private static final long HERB_TIMER_EXTRA_DELAY_MINUTES = 5L;
     /** Формат строки смены: `00:50-06:50`, одна смена на строку. */
     private static final Pattern SHIFT_LINE_PATTERN = Pattern.compile("(\\d{1,2})[:\\-](\\d{1,2})\\s*[-–—]\\s*(\\d{1,2})[:\\-](\\d{1,2})");
-
+    /** Формат строки массы на main.php/inventory: `Масса Вашего инвентаря: current/max`. */
+    private static final Pattern INVENTORY_MASS_PATTERN = Pattern.compile(
+            "Масса\\s+Вашего\\s+инвентаря:\\s*([0-9]+(?:[\\.,][0-9]+)?\\s*/\\s*[0-9]+(?:[\\.,][0-9]+)?)",
+            Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CASE);
+    /** RegNum внутри описания herb timer-а: `Вырастет <herb> на <regNum>`. */
+    private static final Pattern HERB_TIMER_CELL_PATTERN = Pattern.compile("\\b(\\d{1,4}-\\d{1,5})\\b");
     /** Singleton manager-а на application context. */
     private static AutoCutManager instance;
 
@@ -93,6 +109,24 @@ public final class AutoCutManager {
     private volatile String lastTraceCutName = "";
     /** Время последнего `TraceCut`, нужно для TTL stale-защиты. */
     private volatile long lastTraceCutAtMs = 0L;
+    /** One-shot retry `Оглядеться` после wrong captcha или частичного среза клетки. */
+    private volatile boolean lookRetryPending = false;
+    /** Последний источник retry для диагностики AUTO_CUT_TRACE. */
+    private volatile String lookRetrySource = "";
+    /** Локальное время постановки retry, чтобы видеть stale-зависания в логах. */
+    private volatile long lookRetryRequestedAtMs = 0L;
+    /** One-shot запрос inventory/main.php для получения `Масса Вашего инвентаря: current/max` перед срезом. */
+    private volatile boolean massSnapshotSyncPending = false;
+    /** Последний запрос sync массы; защищает от бесконечного go=inf/inventory loop при пустом ответе. */
+    private volatile long lastMassSnapshotSyncRequestAtMs = 0L;
+    /** Snapshot функций, временно выключенных на время AutoCut cleanup. */
+    private volatile CleanupPauseSnapshot cleanupPauseSnapshot = null;
+    /** Клетка, с которой AutoCut ушёл на due herb timer. */
+    private volatile String timerRouteReturnCell = "";
+    /** Due timer-клетка, после обработки которой нужно вернуться на `timerRouteReturnCell`. */
+    private volatile String timerRouteTargetCell = "";
+    /** true, когда AutoCut уже возвращается после timer-route и ждёт прибытия на исходную клетку. */
+    private volatile boolean timerRouteReturning = false;
 
     private AutoCutManager(Context context) {
         appContext = context.getApplicationContext();
@@ -140,6 +174,20 @@ public final class AutoCutManager {
     /** Сохраняет cleanup-флаг для текущего nick. */
     public synchronized void setCleanupEnabled(boolean enabled) {
         prefs.edit().putBoolean(scopedKey(KEY_CLEANUP_ENABLED_PREFIX), enabled).apply();
+    }
+
+    /** true, если AutoCut должен ходить на клетки только по сработавшим herb timer-ам. */
+    public synchronized boolean isCutByTimersEnabled() {
+        return prefs.getBoolean(scopedKey(KEY_CUT_BY_TIMERS_PREFIX), false);
+    }
+
+    /** Сохраняет режим `Срезать по таймерам` для текущего nick. */
+    public synchronized void setCutByTimersEnabled(boolean enabled) {
+        prefs.edit().putBoolean(scopedKey(KEY_CUT_BY_TIMERS_PREFIX), enabled).apply();
+        if (!enabled) {
+            clearTimerRouteState("cut_by_timers_disabled");
+        }
+        AppLog.i(TRACE_CHAIN, TAG, "cut by timers setting saved: enabled=" + enabled);
     }
 
     /** Доступные серпы в порядке приоритета авто-надевания. */
@@ -371,6 +419,17 @@ public final class AutoCutManager {
         markHerbCut(id, name, growthMinutes, regNum, source, resourceMass, "");
     }
 
+    /** Упрощённая overload без флага повторного `Оглядеться`, используется legacy/fallback-ветками. */
+    public void markHerbCut(String id,
+                            String name,
+                            int growthMinutes,
+                            String regNum,
+                            String source,
+                            double resourceMass,
+                            String cellResourcesSummary) {
+        markHerbCut(id, name, growthMinutes, regNum, source, resourceMass, cellResourcesSummary, false);
+    }
+
     /**
      * Финализирует успешный срез.
      *
@@ -386,7 +445,8 @@ public final class AutoCutManager {
                             String regNum,
                             String source,
                             double resourceMass,
-                            String cellResourcesSummary) {
+                            String cellResourcesSummary,
+                            boolean retrySameCellAfterCut) {
         String safeName = safe(name);
         if (safeName.isEmpty()) {
             return;
@@ -399,6 +459,7 @@ public final class AutoCutManager {
         int growth = herb != null ? herb.growthMinutes : normalizeGrowthMinutes(growthMinutes);
         String safeRegNum = TextUtils.isEmpty(regNum) ? resolveCurrentRegNum() : regNum.trim();
         TimerPlan timerPlan = buildTimerPlan(safeName, growth, safeRegNum);
+        String massSnapshot = updateInventoryMassAfterCut(resourceMass);
         if (timerPlan.shouldCreateTimer) {
             AppTimer timer = new AppTimer();
             timer.description = "Вырастет " + safeName + " на " + safeRegNum;
@@ -406,26 +467,41 @@ public final class AutoCutManager {
             timer.isHerb = true;
             AppTimerManager.getInstance(appContext).addAppTimer(timer);
         }
+        ChatStats.addHerbCut(safeName);
         if (isWriteChatEnabled()) {
-            postCutResultToChat(safeName, timerPlan, safeRegNum, cellResourcesSummary, source);
+            postCutResultToChat(safeName, timerPlan, safeRegNum, cellResourcesSummary, massSnapshot, resourceMass, source);
         }
-        markCurrentCellChecked("cut_success:" + source);
-        boolean cleanupPending = maybeRequestCleanupAfterCut(resourceMass, source);
+        boolean cleanupPending = AppVars.AutoCutCleanupPending;
+        if (!cleanupPending) {
+            cleanupPending = maybeRequestCleanupAfterCut(resourceMass, source);
+        }
+        if (retrySameCellAfterCut) {
+            scheduleLookRetryAfterTimer("multi_cut:" + source);
+        } else {
+            markCurrentCellChecked("cut_success:" + source);
+        }
         AppLog.i(TRACE_CHAIN, TAG, "cut success: herb=" + safeName
                 + ", regNum=" + safeRegNum
                 + ", growth=" + growth
                 + ", timer=" + timerPlan.shouldCreateTimer
                 + ", cleanupPending=" + cleanupPending
+                + ", retrySameCell=" + retrySameCellAfterCut
                 + ", source=" + source);
         if (!cleanupPending) {
-            routeNextCell("cut_success:" + source);
+            if (retrySameCellAfterCut) {
+                AppLog.i(TRACE_CHAIN, TAG, "stay on current cell for next selected herb, source=" + source);
+            } else if (routeBackToTimerReturnIfNeeded("cut_success:" + source)) {
+                AppLog.i(TRACE_CHAIN, TAG, "timer-route cut completed, returning before CSV continuation, source=" + source);
+            } else {
+                routeNextCell("cut_success:" + source);
+            }
         }
     }
 
     /**
      * Guard для `WebAppInterface.DoHerbAutoCut()` перед автоматическим JS `Ogl(...)`.
      * Возвращает false, если уже идёт навигация, проверка серпа, cleanup, нет выбранных трав,
-     * текущая клетка не входит в CSV или уже проверена в текущую смену.
+     * текущая клетка не входит в CSV или уже проверена в текущую смену без due herb timer-а.
      */
     public boolean shouldAutoLookOnCurrentCell() {
         if (AppVars.AutoMoving || AppVars.AutoCutCheckSickle || AppVars.AutoCutCleanupPending) {
@@ -439,7 +515,31 @@ public final class AutoCutManager {
         if (!cells.isEmpty() && (current.isEmpty() || !cells.contains(current))) {
             return false;
         }
+        if (hasDueHerbTimerForCurrentShift(current)) {
+            return true;
+        }
         return !isCellCheckedForCurrentShift(current);
+    }
+
+    /**
+     * Продолжает обычный CSV-обход после возврата с timer-route на исходную клетку.
+     * Вызывается из bridge, когда карта уже перерисовалась на return-cell и `DoHerbAutoCut()`
+     * видит, что сама return-cell не требует повторного `Оглядеться`.
+     */
+    public boolean routeNextAfterTimerReturnIfArrived(AutoFunctionsManager manager, String source) {
+        String returnCell = safe(timerRouteReturnCell);
+        if (!timerRouteReturning || TextUtils.isEmpty(returnCell)) {
+            return false;
+        }
+        String current = resolveCurrentRegNum();
+        if (!returnCell.equals(current)) {
+            return false;
+        }
+        clearTimerRouteState("timer_return_arrived:" + source);
+        AppLog.i(TRACE_CHAIN, TAG, "timer-route returned to source cell, continue CSV route: cell="
+                + current + ", source=" + source);
+        routeNextCellWithManager(manager, "timer_return_arrived:" + source);
+        return true;
     }
 
     /**
@@ -454,12 +554,18 @@ public final class AutoCutManager {
         AppVars.AutoCutSickleHandD = "";
         AppVars.AutoCutCleanupPending = false;
         AppVars.AutoCutCleanupReason = "";
+        AppVars.AutoFishMassa = "";
+        AppVars.AutoCutKnownMassMax = 0d;
+        massSnapshotSyncPending = false;
+        lastMassSnapshotSyncRequestAtMs = 0L;
+        clearTimerRouteState("auto_cut_enabled");
         requestMainFrameReload("enabled_sickle_check");
         routeNextCellIfCurrentIsNotReady(manager, "enabled");
     }
 
     /** Сброс runtime-флагов при ручном выключении или license downgrade/expiry. */
     public void onAutoCutDisabled() {
+        restoreAutosPausedForCleanup("auto_cut_disabled");
         AppVars.AutoCutCheckSickle = false;
         AppVars.AutoCutArmedSickle = false;
         AppVars.AutoCutSickleHand = "";
@@ -467,6 +573,11 @@ public final class AutoCutManager {
         AppVars.AutoCutCleanupPending = false;
         AppVars.AutoCutCleanupReason = "";
         AppVars.AutoCutHarvestedMassSinceCleanup = 0d;
+        massSnapshotSyncPending = false;
+        lastMassSnapshotSyncRequestAtMs = 0L;
+        clearTimerRouteState("auto_cut_disabled");
+        AppVars.BulkDropThing = "";
+        AppVars.BulkDropPrice = "";
     }
 
     /** true, если `act=3` можно отправлять без риска среза голыми руками/без инструмента. */
@@ -474,7 +585,60 @@ public final class AutoCutManager {
         return AppVars.AutoCutArmedSickle && !AppVars.AutoCutCheckSickle;
     }
 
-    /** Запрашивает main.php-проверку серпа, когда `act=1` уже нашёл выбранную доступную траву. */
+    /** true, если есть пригодный snapshot `current/max` для chat-report и cleanup-порога. */
+    public boolean hasUsableMassSnapshot() {
+        return parseMassSnapshot(AppVars.AutoFishMassa).max > 0d;
+    }
+
+    /** true, если перед `act=3` нужно один раз сходить в main.php/inventory за `current/max`. */
+    public boolean needsMassSnapshotBeforeCut() {
+        if (hasUsableMassSnapshot() || massSnapshotSyncPending) {
+            return false;
+        }
+        long now = System.currentTimeMillis();
+        return now - lastMassSnapshotSyncRequestAtMs >= MASS_SYNC_REQUEST_DEDUP_MS;
+    }
+
+    /** Флаг обслуживает `AutoCutHandler` в существующем main.php/inventory pipeline. */
+    public boolean isMassSnapshotSyncPending() {
+        return massSnapshotSyncPending;
+    }
+
+    /** Сбрасывает one-shot mass-sync после успешного парсинга или inventory fail-safe pass. */
+    public void clearMassSnapshotSyncPending(String source) {
+        if (!massSnapshotSyncPending) {
+            return;
+        }
+        massSnapshotSyncPending = false;
+        AppLog.d(TRACE_CHAIN, TAG, "mass snapshot sync cleared, source=" + source
+                + ", mass=" + safe(AppVars.AutoFishMassa));
+    }
+
+    /**
+     * Запрашивает штатный main.php/inventory проход перед срезом, если `current/max` ещё не известен.
+     * Использует существующий `AutoCutCheckSickle` guard, чтобы map.js не отправил `act=3` параллельно.
+     * При этом не сбрасывает `AutoCutArmedSickle`: mass-sync вызывается только после уже пройденной
+     * проверки серпа, а сброс переводит надетый серп в ошибочную ветку auto-wear inventory.
+     */
+    public void requestMassSnapshotBeforeCut(String source) {
+        massSnapshotSyncPending = true;
+        lastMassSnapshotSyncRequestAtMs = System.currentTimeMillis();
+        AppVars.AutoCutCheckSickle = true;
+        AppLog.i(TRACE_CHAIN, TAG, "mass snapshot requested before cut, source=" + source);
+        requestMainFrameReload("mass_snapshot:" + source);
+    }
+
+    /**
+     * Запрашивает main.php-проверку серпа, когда `act=1` уже нашёл выбранную доступную траву.
+     *
+     * Зависимости и порядок:
+     * - вызывается только из `AlchemyAjaxPhp.processAlchemyAct1(...)`, когда ресурс уже выбран,
+     *   но `AppVars.AutoCutArmedSickle` ещё не подтверждён текущим main.php/inventory HTML;
+     * - выставляет `AutoCutCheckSickle=true`, чтобы `AutoCutHandler.processMainPhpAutoCutStep(...)`
+     *   взял управление в существующем main.php postfilter-контуре и не создавал второй HTTP-поток;
+     * - сбрасывает `AutoCutArmedSickle`, потому что между клетками пользователь мог снять/сломать серп;
+     * - после `requestMainFrameReload(...)` возврат на карту выполняется через `AutoCutHandler`.
+     */
     public void requestSickleCheckBeforeCut(String source) {
         AppVars.AutoCutCheckSickle = true;
         AppVars.AutoCutArmedSickle = false;
@@ -482,18 +646,189 @@ public final class AutoCutManager {
         requestMainFrameReload("sickle_check:" + source);
     }
 
-    /** Помечает клетку checked и маршрутизирует дальше, если `act=1` не нашёл выбранных доступных трав. */
+    /**
+     * Помечает клетку checked и маршрутизирует дальше, если `act=1` не нашёл выбранных доступных трав.
+     *
+     * Зависимости:
+     * - вызывается из `AlchemyAjaxPhp.processAlchemyAct1(...)` после полного разбора `RESO@`;
+     * - checked-set scoped по текущей серверной смене трав через `loadCheckedCellsLocked()`;
+     * - переход дальше делегируется `routeNextCell(...)`, который учитывает due herb timers и круговой обход.
+     */
     public void onScanWithoutSelectedHerb(String source) {
         markCurrentCellChecked("no_selected:" + source);
+        if (routeBackToTimerReturnIfNeeded("no_selected:" + source)) {
+            return;
+        }
         routeNextCell("no_selected:" + source);
     }
 
-    /** Завершает cleanup-проход после inventory и возвращает route к следующей клетке. */
+    /**
+     * Планирует повторное `Оглядеться` после неверной captcha, не помечая клетку checked.
+     *
+     * Зависимости:
+     * - вызывается только для актуального pending cut из `AlchemyAjaxPhp.processAlchemyAct3(...)`;
+     * - использует общий `NeverTimer`, чтобы retry не конкурировал с серверным cooldown;
+     * - фактический reload делает `MainActivity.checkServerTimerDrivenActions()` через `go=ret&an_auto_cut_tick=1`.
+     */
+    public void onCutCaptchaRejected(String source) {
+        scheduleLookRetryAfterTimer("wrong_captcha:" + source);
+    }
+
+    /**
+     * Ставит one-shot retry текущей клетки после истечения общего `NeverTimer`.
+     *
+     * Назначение:
+     * - используется для wrong captcha и multi-cut, когда клетку нельзя помечать checked;
+     * - не вызывает WebView напрямую, а только записывает state, потому что единственный владелец
+     *   server-timer reload-а — `MainActivity.checkServerTimerDrivenActions()`;
+     * - если сервер не прислал `NeverTimer`, ставит короткий fallback, чтобы retry не завис навсегда.
+     */
+    public synchronized void scheduleLookRetryAfterTimer(String source) {
+        long now = System.currentTimeMillis();
+        lookRetryPending = true;
+        lookRetrySource = safe(source);
+        lookRetryRequestedAtMs = now;
+        if (AppVars.NeverTimer <= now) {
+            AppVars.NeverTimer = now + AUTO_CUT_RETRY_FALLBACK_DELAY_MS;
+        }
+        AppLog.i(TRACE_CHAIN, TAG, "look retry scheduled: source=" + lookRetrySource
+                + ", dueInMs=" + Math.max(0L, AppVars.NeverTimer - now));
+    }
+
+    /**
+     * Откладывает автоматическое `Оглядеться`, если серверный cooldown ещё не истёк.
+     *
+     * Зависимости:
+     * - вызывается из `WebAppInterface.DoHerbAutoCut()` перед JS `Ogl(...)`;
+     * - использует тот же one-shot retry, что wrong-captcha/multi-cut, чтобы `MainActivity`
+     *   вернула WebView на карту по ближайшему `NeverTimer` tick без второго HTTP-контура.
+     */
+    public synchronized boolean deferLookUntilServerTimerIfActive(String source) {
+        long now = System.currentTimeMillis();
+        long dueInMs = AppVars.NeverTimer - now;
+        if (dueInMs <= 100L) {
+            return false;
+        }
+        if (!lookRetryPending) {
+            scheduleLookRetryAfterTimer("server_timer:" + source);
+        } else {
+            AppLog.d(TRACE_CHAIN, TAG, "look retry already pending while server timer active: source="
+                    + safe(source) + ", pendingSource=" + lookRetrySource + ", dueInMs=" + dueInMs);
+        }
+        return true;
+    }
+
+    /**
+     * true, если AutoCut ждёт ближайший server-timer tick для повторного `Оглядеться`.
+     *
+     * Зависимость: читается `MainActivity.checkServerTimerDrivenActions()` вместе с license-gated
+     * `AutoFunctionsManager.isAutoCutEnabled()`, поэтому выключенный AutoCut не продолжит retry.
+     */
+    public synchronized boolean hasPendingLookRetry() {
+        return lookRetryPending;
+    }
+
+    /**
+     * Возвращает source retry, если он уже due, и атомарно очищает one-shot state.
+     *
+     * Контракт:
+     * - пустая строка означает "ещё не due" или "нет pending retry";
+     * - непустой source можно сразу использовать в логах `SERVER_TIMER_TICK`;
+     * - очистка происходит до reload-а, чтобы один tick не отправил несколько `go=ret` запросов.
+     */
+    public synchronized String consumePendingLookRetryIfDue(long now) {
+        if (!lookRetryPending) {
+            return "";
+        }
+        if (AppVars.NeverTimer > 0L && now < AppVars.NeverTimer) {
+            return "";
+        }
+        String source = lookRetrySource;
+        long ageMs = Math.max(0L, now - lookRetryRequestedAtMs);
+        lookRetryPending = false;
+        lookRetrySource = "";
+        lookRetryRequestedAtMs = 0L;
+        AppLog.i(TRACE_CHAIN, TAG, "look retry consumed: source=" + source + ", ageMs=" + ageMs);
+        return source;
+    }
+
+    /**
+     * Очищает pending retry, когда реальный `Оглядеться` уже дошёл до `act=1`.
+     *
+     * Зависимость: вызывается из `AlchemyAjaxPhp.processAlchemyAct1(...)`, потому именно ответ `RESO@`
+     * подтверждает, что WebView вернулся на карту и retry больше не нужен.
+     */
+    public synchronized void clearPendingLookRetry(String source) {
+        if (!lookRetryPending) {
+            return;
+        }
+        AppLog.d(TRACE_CHAIN, TAG, "look retry cleared: source=" + source + ", pendingSource=" + lookRetrySource);
+        lookRetryPending = false;
+        lookRetrySource = "";
+        lookRetryRequestedAtMs = 0L;
+    }
+
+    /**
+     * Удаляет due herb timer-ы текущей клетки после фактического `act=1` scan-а.
+     *
+     * Зачем это нужно:
+     * - `AppTimer` хранит напоминание "на этой клетке должна вырасти трава";
+     * - после реального `Оглядеться` эта клетка уже проверена, значит timer больше не должен
+     *   снова тянуть маршрут на тот же regNum в рамках текущего круга;
+     * - удаляются только due timer-ы текущей серверной смены, старые timer-ы другой смены чистит
+     *   `pruneStaleHerbTimersForCurrentShift(...)`.
+     *
+     * Зависимости:
+     * - `AppTimerManager` остаётся единственным хранилищем пользовательских/herb timer-ов;
+     * - `extractHerbTimerCell(...)` поддерживает и новый `destination`, и legacy description.
+     */
+    public void clearDueHerbTimersForCurrentCell(String source) {
+        String current = resolveCurrentRegNum();
+        if (current.isEmpty()) {
+            return;
+        }
+        long now = System.currentTimeMillis();
+        int currentShift = getShiftForServerMs(getServerNowMs(now));
+        if (currentShift == 0) {
+            return;
+        }
+        AppTimerManager timerManager = AppTimerManager.getInstance(appContext);
+        List<AppTimer> timers = timerManager.getTimers();
+        int removed = 0;
+        for (AppTimer timer : timers) {
+            if (isDueHerbTimerForCell(timer, current, now, currentShift)) {
+                timerManager.removeTimerById(timer.id);
+                removed++;
+            }
+        }
+        if (removed > 0) {
+            AppLog.i(TRACE_CHAIN, TAG, "due herb timers cleared for current cell: cell="
+                    + current + ", removed=" + removed + ", source=" + source);
+        }
+    }
+
+    /**
+     * Завершает cleanup-проход после inventory и возвращает route к следующей клетке.
+     *
+     * Зависимости:
+     * - вызывается из `AutoCutHandler.processCleanupOpenInventory(...)` после штатного inventory pass;
+     * - сбрасывает только AutoCut cleanup-флаги и массу, не трогая настройки пользователя;
+     * - если на текущей клетке стоит pending look retry, маршрут не запускается, чтобы multi-cut/wrong-captcha
+     *   продолжили именно текущую клетку после общего `NeverTimer`.
+     */
     public void onCleanupCompleted(String source) {
         AppVars.AutoCutCleanupPending = false;
         AppVars.AutoCutCleanupReason = "";
         AppVars.AutoCutHarvestedMassSinceCleanup = 0d;
+        restoreAutosPausedForCleanup("cleanup_completed:" + source);
         AppLog.i(TRACE_CHAIN, TAG, "cleanup completed, source=" + source);
+        if (hasPendingLookRetry()) {
+            AppLog.i(TRACE_CHAIN, TAG, "cleanup completed: keep current cell for pending look retry, source=" + source);
+            return;
+        }
+        if (routeBackToTimerReturnIfNeeded("cleanup_completed:" + source)) {
+            return;
+        }
         routeNextCell("cleanup_completed:" + source);
     }
 
@@ -505,11 +840,45 @@ public final class AutoCutManager {
         MassSnapshot snapshot = parseMassSnapshot(mass);
         if (snapshot.max > 0d) {
             AppVars.AutoCutKnownMassMax = snapshot.max;
+            clearMassSnapshotSyncPending("mass_updated");
             AppLog.d(TRACE_CHAIN, TAG, "mass snapshot updated: current=" + snapshot.current + ", max=" + snapshot.max);
         }
     }
 
-    /** Стартует route только если текущая клетка не подходит для немедленного `Оглядеться`. */
+    /**
+     * Синхронизирует `AutoFishMassa` из main.php/inventory HTML, чтобы AutoCut chat видел current/max.
+     *
+     * Зависимости:
+     * - вызывается из `AutoCutHandler.processMainPhpAutoCutStep(...)` для каждого подходящего main.php HTML;
+     * - использует тот же глобальный буфер массы, что исторически заполнялся через JS `SetAutoFishMassa(...)`;
+     * - обновляет `AutoCutKnownMassMax`, от которого зависит cleanup threshold в `maybeRequestCleanupAfterCut(...)`.
+     */
+    public void updateMassSnapshotFromHtml(String html) {
+        if (TextUtils.isEmpty(html)) {
+            return;
+        }
+        String plain = html.replace("&nbsp;", " ").replaceAll("<[^>]+>", " ");
+        Matcher matcher = INVENTORY_MASS_PATTERN.matcher(plain);
+        if (!matcher.find()) {
+            return;
+        }
+        String mass = matcher.group(1) == null ? "" : matcher.group(1).replace(" ", "").trim();
+        if (mass.isEmpty()) {
+            return;
+        }
+        AppVars.AutoFishMassa = mass;
+        updateMassSnapshot(mass);
+    }
+
+    /**
+     * Стартует route только если текущая клетка не подходит для немедленного `Оглядеться`.
+     *
+     * Зависимости:
+     * - используется при включении AutoCut, когда пользователь может уже стоять на нужной клетке;
+     * - не запускает `AutoFunctionsManager.startAutoMoving(...)`, если текущий regNum входит в CSV
+     *   и либо ещё не checked, либо имеет due herb timer текущей смены;
+     * - все остальные случаи уходят в общий `routeNextCellWithManager(...)`.
+     */
     private void routeNextCellIfCurrentIsNotReady(AutoFunctionsManager manager, String source) {
         if (manager == null) {
             return;
@@ -519,7 +888,9 @@ public final class AutoCutManager {
             return;
         }
         String current = resolveCurrentRegNum();
-        if (!current.isEmpty() && cells.contains(current) && !isCellCheckedForCurrentShift(current)) {
+        if (!current.isEmpty()
+                && cells.contains(current)
+                && (hasDueHerbTimerForCurrentShift(current) || !isCellCheckedForCurrentShift(current))) {
             AppLog.d(TRACE_CHAIN, TAG, "route skip: current cell ready for Ogl, source=" + source + ", cell=" + current);
             return;
         }
@@ -537,8 +908,17 @@ public final class AutoCutManager {
     }
 
     /**
-     * Выбирает следующую непроверенную CSV-клетку и запускает существующий навигатор.
-     * Не перезапускает маршрут, если `AppVars.AutoMovingDestinaton` уже равен нужной клетке.
+     * Выбирает следующую CSV-клетку и запускает существующий навигатор.
+     *
+     * Приоритеты:
+     * - сначала due herb timer текущей смены, чтобы вернуться туда, где трава должна была вырасти;
+     * - затем следующая unchecked клетка текущей смены;
+     * - если checked весь CSV-список, cleared checked-set и стартуется новый круг.
+     *
+     * Зависимости:
+     * - навигацию выполняет только `AutoFunctionsManager.startAutoMoving(...)`;
+     * - `AppVars.AutoMovingDestinaton` защищает от дублирующего запуска того же маршрута;
+     * - при `next == current` ставится one-shot retry вместо искусственного self-route.
      */
     private void routeNextCellWithManager(AutoFunctionsManager manager, String source) {
         List<String> cells = getSearchCells();
@@ -546,20 +926,99 @@ public final class AutoCutManager {
             AppLog.d(TRACE_CHAIN, TAG, "route next skipped: cells list empty, source=" + source);
             return;
         }
-        String next = findNextUncheckedCell(cells, resolveCurrentRegNum());
+        String current = resolveCurrentRegNum();
+        pruneStaleHerbTimersForCurrentShift("route_next:" + source);
+
+        DueHerbTimer dueTimer = findDueHerbTimerForRoute(cells, current);
+        String routeReason = dueTimer != null ? "herb_timer:" + dueTimer.timerId : "unchecked";
+        String next = dueTimer != null ? dueTimer.cell : findNextUncheckedCell(cells, current);
         if (TextUtils.isEmpty(next)) {
-            AppLog.i(TRACE_CHAIN, TAG, "route next skipped: all cells checked for current shift, source=" + source);
+            clearCheckedCellsForCurrentShift("new_circle:" + source);
+            next = findNextCellRoundRobin(cells, current);
+            routeReason = "new_circle";
+            if (TextUtils.isEmpty(next)) {
+                AppLog.i(TRACE_CHAIN, TAG, "route next skipped: no cells after circle reset, source=" + source);
+                return;
+            }
+        }
+        if (next.equals(current)) {
+            scheduleLookRetryAfterTimer("route_current:" + source);
+            AppLog.i(TRACE_CHAIN, TAG, "route next: current cell scheduled for recheck, cell="
+                    + next + ", reason=" + routeReason + ", source=" + source);
             return;
         }
         if (AppVars.AutoMoving && next.equals(AppVars.AutoMovingDestinaton)) {
             AppLog.d(TRACE_CHAIN, TAG, "route next skip: navigator already goes to " + next + ", source=" + source);
             return;
         }
-        new Handler(Looper.getMainLooper()).postDelayed(() -> manager.startAutoMoving(next), ROUTE_NEXT_DELAY_MS);
-        AppLog.i(TRACE_CHAIN, TAG, "route next: destination=" + next + ", source=" + source);
+        rememberTimerRouteReturnIfNeeded(dueTimer, current, source);
+        final String destination = next;
+        new Handler(Looper.getMainLooper()).postDelayed(() -> manager.startAutoMoving(destination), ROUTE_NEXT_DELAY_MS);
+        AppLog.i(TRACE_CHAIN, TAG, "route next: destination=" + destination
+                + ", reason=" + routeReason + ", source=" + source);
     }
 
-    /** Round-robin поиск следующей непроверенной клетки относительно текущей позиции. */
+    private void rememberTimerRouteReturnIfNeeded(DueHerbTimer dueTimer, String current, String source) {
+        if (dueTimer == null || TextUtils.isEmpty(current) || current.equals(dueTimer.cell)) {
+            return;
+        }
+        timerRouteReturnCell = current;
+        timerRouteTargetCell = dueTimer.cell;
+        timerRouteReturning = false;
+        AppLog.i(TRACE_CHAIN, TAG, "timer-route detour remembered: from=" + current
+                + ", target=" + dueTimer.cell
+                + ", timerId=" + dueTimer.timerId
+                + ", source=" + source);
+    }
+
+    private boolean routeBackToTimerReturnIfNeeded(String source) {
+        String current = resolveCurrentRegNum();
+        String target = safe(timerRouteTargetCell);
+        String returnCell = safe(timerRouteReturnCell);
+        if (TextUtils.isEmpty(current) || TextUtils.isEmpty(target) || TextUtils.isEmpty(returnCell)
+                || !target.equals(current)) {
+            return false;
+        }
+        if (AppVars.AutoMoving && returnCell.equals(AppVars.AutoMovingDestinaton)) {
+            return true;
+        }
+        timerRouteTargetCell = "";
+        timerRouteReturning = true;
+        try {
+            AutoFunctionsManager manager = AutoFunctionsManager.getInstance(appContext);
+            new Handler(Looper.getMainLooper()).postDelayed(
+                    () -> manager.startAutoMoving(returnCell), ROUTE_NEXT_DELAY_MS);
+            AppLog.i(TRACE_CHAIN, TAG, "timer-route return: destination=" + returnCell
+                    + ", from=" + current + ", source=" + source);
+            return true;
+        } catch (Exception error) {
+            AppLog.w(TRACE_CHAIN, TAG, "timer-route return failed, source=" + source, error);
+            clearTimerRouteState("timer_return_failed:" + source);
+            return false;
+        }
+    }
+
+    private void clearTimerRouteState(String source) {
+        if (TextUtils.isEmpty(timerRouteReturnCell)
+                && TextUtils.isEmpty(timerRouteTargetCell)
+                && !timerRouteReturning) {
+            return;
+        }
+        AppLog.d(TRACE_CHAIN, TAG, "timer-route state cleared: source=" + source
+                + ", returnCell=" + timerRouteReturnCell
+                + ", targetCell=" + timerRouteTargetCell
+                + ", returning=" + timerRouteReturning);
+        timerRouteReturnCell = "";
+        timerRouteTargetCell = "";
+        timerRouteReturning = false;
+    }
+
+    /**
+     * Round-robin поиск следующей непроверенной клетки относительно текущей позиции.
+     *
+     * Зависимость: checked-set scoped по серверной смене, поэтому при смене трав список автоматически
+     * читается пустым через `loadCheckedCellsLocked()` без ручной миграции старых отметок.
+     */
     private String findNextUncheckedCell(List<String> cells, String current) {
         if (cells == null || cells.isEmpty()) {
             return "";
@@ -571,6 +1030,24 @@ public final class AutoCutManager {
             if (!isCellCheckedForCurrentShift(cell)) {
                 return cell;
             }
+        }
+        return "";
+    }
+
+    /**
+     * Round-robin следующая клетка без checked-фильтра, используется для нового круга обхода.
+     *
+     * Отличие от `findNextUncheckedCell(...)`: метод намеренно игнорирует checked-set после полного
+     * прохождения CSV, чтобы AutoCut продолжал patrol и ловил новую траву/таймеры до конца смены.
+     */
+    private String findNextCellRoundRobin(List<String> cells, String current) {
+        if (cells == null || cells.isEmpty()) {
+            return "";
+        }
+        int startIndex = cells.indexOf(current);
+        for (int offset = 1; offset <= cells.size(); offset++) {
+            int index = startIndex >= 0 ? (startIndex + offset) % cells.size() : offset - 1;
+            return cells.get(index);
         }
         return "";
     }
@@ -591,12 +1068,121 @@ public final class AutoCutManager {
                     + AppVars.AutoCutHarvestedMassSinceCleanup + ", threshold=" + threshold);
             return false;
         }
-        AppVars.AutoCutCleanupPending = true;
-        AppVars.AutoCutCleanupReason = "mass_delta:" + source;
-        requestMainFrameReload("cleanup:" + source);
+        startCleanup("mass_delta:" + source, false);
         AppLog.i(TRACE_CHAIN, TAG, "cleanup requested: delta="
                 + AppVars.AutoCutHarvestedMassSinceCleanup + ", threshold=" + threshold);
         return true;
+    }
+
+    /**
+     * Форсирует cleanup `Бесполезный хлам` после server success `act=3`.
+     *
+     * Важно: это не зависит от пользовательской галочки cleanup по массе. Само удаление делает
+     * существующий inventory bulk-drop контур через `AppVars.BulkDropThing` и `InvEntry.DropLink`.
+     */
+    public void requestGarbageCleanupAfterCut(String source) {
+        startCleanup("garbage:" + source, true);
+        AppLog.i(TRACE_CHAIN, TAG, "garbage cleanup requested: thing=" + GARBAGE_ITEM_NAME
+                + ", source=" + source);
+    }
+
+    private synchronized void startCleanup(String reason, boolean dropGarbage) {
+        pauseAutosForCleanup(reason);
+        if (dropGarbage) {
+            AppVars.BulkDropThing = GARBAGE_ITEM_NAME;
+            AppVars.BulkDropPrice = "";
+        }
+        AppVars.AutoCutCleanupPending = true;
+        AppVars.AutoCutCleanupReason = safe(reason);
+        requestMainFrameReload("cleanup:" + reason);
+    }
+
+    private synchronized void pauseAutosForCleanup(String reason) {
+        if (cleanupPauseSnapshot != null) {
+            AppLog.d(TRACE_CHAIN, TAG, "cleanup pause already active, reason=" + reason);
+            return;
+        }
+        CleanupPauseSnapshot snapshot = new CleanupPauseSnapshot();
+        try {
+            AutoFunctionsManager manager = AutoFunctionsManager.getInstance(appContext);
+            snapshot.autoFish = manager.isAutoFishEnabled();
+            snapshot.autoSkin = manager.isAutoSkinEnabled();
+            snapshot.autoBait = manager.isAutoBaitEnabled();
+            snapshot.autoCompass = manager.isAutoCompassEnabled();
+            snapshot.autoAttack = manager.isAutoAttackEnabled();
+            snapshot.autoInvisible = manager.isAutoInvisibleEnabled();
+            snapshot.autoDetect = manager.isAutoDetectEnabled();
+            snapshot.autoSummon = manager.isAutoSummonEnabled();
+            snapshot.autoDrink = manager.isAutoDrinkEnabled();
+            snapshot.autoTreasure = manager.isAutoTreasureEnabled();
+            snapshot.autoBoss = manager.isAutoBossEnabled();
+            snapshot.autoRefresh = manager.isAutoRefreshEnabled();
+            snapshot.autoMoving = AppVars.AutoMoving;
+            snapshot.autoMovingDestination = AppVars.AutoMovingDestinaton;
+            snapshot.autoMovingMapPath = AppVars.AutoMovingMapPath;
+            snapshot.autoMovingNextJump = AppVars.AutoMovingNextJump;
+            snapshot.autoMovingJumps = AppVars.AutoMovingJumps;
+            snapshot.autoMovingCityGate = AppVars.AutoMovingCityGate;
+            snapshot.capturedAtMs = System.currentTimeMillis();
+
+            if (snapshot.autoFish) manager.setAutoFishEnabled(false);
+            if (snapshot.autoSkin) manager.setAutoSkinEnabled(false);
+            if (snapshot.autoBait) manager.setAutoBaitEnabled(false);
+            if (snapshot.autoCompass) manager.setAutoCompassEnabled(false);
+            if (snapshot.autoAttack) manager.setAutoAttackEnabled(false);
+            if (snapshot.autoInvisible) manager.setAutoInvisibleEnabled(false);
+            if (snapshot.autoDetect) manager.setAutoDetectEnabled(false);
+            if (snapshot.autoSummon) manager.setAutoSummonEnabled(false);
+            if (snapshot.autoDrink) manager.setAutoDrinkEnabled(false);
+            if (snapshot.autoTreasure) manager.setAutoTreasureEnabled(false);
+            if (snapshot.autoBoss) manager.setAutoBossEnabled(false);
+            if (snapshot.autoRefresh) manager.setAutoRefreshEnabled(false);
+            if (snapshot.autoMoving) {
+                AppVars.AutoMoving = false;
+            }
+            cleanupPauseSnapshot = snapshot.hasPausedAnything() ? snapshot : null;
+            AppLog.i(TRACE_CHAIN, TAG, "cleanup pause captured: reason=" + reason
+                    + ", paused=" + snapshot.describePaused());
+        } catch (Exception error) {
+            cleanupPauseSnapshot = snapshot.hasPausedAnything() ? snapshot : null;
+            AppLog.w(TRACE_CHAIN, TAG, "cleanup pause failed, reason=" + reason, error);
+        }
+    }
+
+    private synchronized void restoreAutosPausedForCleanup(String reason) {
+        CleanupPauseSnapshot snapshot = cleanupPauseSnapshot;
+        cleanupPauseSnapshot = null;
+        if (snapshot == null) {
+            return;
+        }
+        try {
+            AutoFunctionsManager manager = AutoFunctionsManager.getInstance(appContext);
+            if (snapshot.autoFish && !manager.isAutoFishEnabled()) manager.setAutoFishEnabled(true);
+            if (snapshot.autoSkin && !manager.isAutoSkinEnabled()) manager.setAutoSkinEnabled(true);
+            if (snapshot.autoBait && !manager.isAutoBaitEnabled()) manager.setAutoBaitEnabled(true);
+            if (snapshot.autoCompass && !manager.isAutoCompassEnabled()) manager.setAutoCompassEnabled(true);
+            if (snapshot.autoAttack && !manager.isAutoAttackEnabled()) manager.setAutoAttackEnabled(true);
+            if (snapshot.autoInvisible && !manager.isAutoInvisibleEnabled()) manager.setAutoInvisibleEnabled(true);
+            if (snapshot.autoDetect && !manager.isAutoDetectEnabled()) manager.setAutoDetectEnabled(true);
+            if (snapshot.autoSummon && !manager.isAutoSummonEnabled()) manager.setAutoSummonEnabled(true);
+            if (snapshot.autoDrink && !manager.isAutoDrinkEnabled()) manager.setAutoDrinkEnabled(true);
+            if (snapshot.autoTreasure && !manager.isAutoTreasureEnabled()) manager.setAutoTreasureEnabled(true);
+            if (snapshot.autoBoss && !manager.isAutoBossEnabled()) manager.setAutoBossEnabled(true);
+            if (snapshot.autoRefresh && !manager.isAutoRefreshEnabled()) manager.setAutoRefreshEnabled(true);
+            if (snapshot.autoMoving && !AppVars.AutoMoving) {
+                AppVars.AutoMoving = true;
+                AppVars.AutoMovingDestinaton = snapshot.autoMovingDestination;
+                AppVars.AutoMovingMapPath = snapshot.autoMovingMapPath;
+                AppVars.AutoMovingNextJump = snapshot.autoMovingNextJump;
+                AppVars.AutoMovingJumps = snapshot.autoMovingJumps;
+                AppVars.AutoMovingCityGate = snapshot.autoMovingCityGate;
+            }
+            AppLog.i(TRACE_CHAIN, TAG, "cleanup restore completed: reason=" + reason
+                    + ", restored=" + snapshot.describePaused()
+                    + ", ageMs=" + (System.currentTimeMillis() - snapshot.capturedAtMs));
+        } catch (Exception error) {
+            AppLog.w(TRACE_CHAIN, TAG, "cleanup restore failed, reason=" + reason, error);
+        }
     }
 
     /** Добавляет текущую клетку в checked-set активной смены трав. */
@@ -614,11 +1200,198 @@ public final class AutoCutManager {
         AppLog.d(TRACE_CHAIN, TAG, "cell checked: " + current + ", source=" + source);
     }
 
+    /**
+     * Очищает checked-set текущей смены, чтобы AutoCut продолжал следующий круг после последней CSV-клетки.
+     *
+     * Зависимости:
+     * - не удаляет herb timers: они остаются в `AppTimerManager` и имеют приоритет в следующем route pass;
+     * - persisted value сохраняется с тем же shift id, чтобы UI/route видели начало нового круга сразу.
+     */
+    private void clearCheckedCellsForCurrentShift(String source) {
+        int removed;
+        synchronized (this) {
+            ShiftCheckedCells checked = loadCheckedCellsLocked();
+            removed = checked.cells.size();
+            if (removed <= 0) {
+                return;
+            }
+            checked.cells.clear();
+            persistCheckedCellsLocked(checked);
+        }
+        AppLog.i(TRACE_CHAIN, TAG, "checked cells cleared for next circle: removed="
+                + removed + ", source=" + source);
+    }
+
     private synchronized boolean isCellCheckedForCurrentShift(String cell) {
         if (TextUtils.isEmpty(cell)) {
             return false;
         }
         return loadCheckedCellsLocked().cells.contains(cell.trim());
+    }
+
+    /**
+     * Ищет ближайший due herb timer в CSV-порядке относительно текущей клетки.
+     *
+     * Зависимости:
+     * - читает snapshot timer-ов через `AppTimerManager.getTimers()`, не меняя список;
+     * - учитывает только timer-ы текущей серверной смены, чтобы прошлые смены не ломали круг;
+     * - порядок поиска совпадает с основным round-robin маршрутом, поэтому timer не создаёт второй навигатор.
+     */
+    private DueHerbTimer findDueHerbTimerForRoute(List<String> cells, String current) {
+        if (!isCutByTimersEnabled() || cells == null || cells.isEmpty()) {
+            return null;
+        }
+        long now = System.currentTimeMillis();
+        int currentShift = getShiftForServerMs(getServerNowMs(now));
+        if (currentShift == 0) {
+            return null;
+        }
+        List<AppTimer> timers = AppTimerManager.getInstance(appContext).getTimers();
+        if (timers.isEmpty()) {
+            return null;
+        }
+        int startIndex = cells.indexOf(current);
+        for (int offset = 0; offset < cells.size(); offset++) {
+            int index = startIndex >= 0 ? (startIndex + offset) % cells.size() : offset;
+            DueHerbTimer dueTimer = findDueHerbTimerForCell(timers, cells.get(index), now, currentShift);
+            if (dueTimer != null) {
+                return dueTimer;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * true, если конкретная клетка имеет due herb timer текущей смены.
+     *
+     * Используется guard-ами `shouldAutoLookOnCurrentCell()` и `routeNextCellIfCurrentIsNotReady(...)`,
+     * чтобы checked-клетка могла быть проверена повторно по росту травы.
+     */
+    private boolean hasDueHerbTimerForCurrentShift(String cell) {
+        if (!isCutByTimersEnabled() || TextUtils.isEmpty(cell)) {
+            return false;
+        }
+        long now = System.currentTimeMillis();
+        int currentShift = getShiftForServerMs(getServerNowMs(now));
+        if (currentShift == 0) {
+            return false;
+        }
+        List<AppTimer> timers = AppTimerManager.getInstance(appContext).getTimers();
+        return findDueHerbTimerForCell(timers, cell.trim(), now, currentShift) != null;
+    }
+
+    /**
+     * Возвращает первый due herb timer для конкретной клетки из переданного snapshot-а timer-ов.
+     *
+     * Зависимость: метод не удаляет timer, потому удаление должно происходить только после реального
+     * `alchemy_ajax.php?act=1` через `clearDueHerbTimersForCurrentCell(...)`.
+     */
+    private DueHerbTimer findDueHerbTimerForCell(List<AppTimer> timers, String cell, long now, int currentShift) {
+        if (timers == null || timers.isEmpty() || TextUtils.isEmpty(cell)) {
+            return null;
+        }
+        String safeCell = cell.trim();
+        for (AppTimer timer : timers) {
+            if (!isDueHerbTimerForCell(timer, safeCell, now, currentShift)) {
+                continue;
+            }
+            return new DueHerbTimer(timer.id, safeCell, timer.description, getHerbTimerReadyAtMs(timer));
+        }
+        return null;
+    }
+
+    /**
+     * Проверяет, что timer относится к AutoCut-клетке, находится в текущей смене и уже наступил.
+     *
+     * Маршрут срабатывает только после фактического due-time herb timer-а.
+     */
+    private boolean isDueHerbTimerForCell(AppTimer timer, String cell, long now, int currentShift) {
+        if (timer == null || !timer.isHerb || TextUtils.isEmpty(cell)) {
+            return false;
+        }
+        String timerCell = extractHerbTimerCell(timer);
+        if (!cell.trim().equals(timerCell)) {
+            return false;
+        }
+        if (!isHerbTimerInCurrentShift(timer, currentShift)) {
+            return false;
+        }
+        return now >= getHerbTimerReadyAtMs(timer);
+    }
+
+    /**
+     * Удаляет herb timer-ы, чей ожидаемый рост относится не к текущей серверной смене.
+     *
+     * Это сохраняет правило пользователя: herb timer действует только от смены до смены.
+     * Обычные timer-ы, potion/complect/destination timer-ы и timer-ы без AutoCut regNum не трогаются.
+     */
+    private void pruneStaleHerbTimersForCurrentShift(String source) {
+        long now = System.currentTimeMillis();
+        int currentShift = getShiftForServerMs(getServerNowMs(now));
+        if (currentShift == 0) {
+            return;
+        }
+        AppTimerManager timerManager = AppTimerManager.getInstance(appContext);
+        List<AppTimer> timers = timerManager.getTimers();
+        int removed = 0;
+        for (AppTimer timer : timers) {
+            if (timer == null || !timer.isHerb) {
+                continue;
+            }
+            if (TextUtils.isEmpty(extractHerbTimerCell(timer))) {
+                continue;
+            }
+            if (!isHerbTimerInCurrentShift(timer, currentShift)) {
+                timerManager.removeTimerById(timer.id);
+                removed++;
+            }
+        }
+        if (removed > 0) {
+            AppLog.i(TRACE_CHAIN, TAG, "stale herb timers removed for shift: removed="
+                    + removed + ", shift=" + currentShift + ", source=" + source);
+        }
+    }
+
+    /**
+     * true, если готовность herb timer-а приходится на активную серверную смену трав.
+     *
+     * Зависимость: время переводится через `getServerNowMs(...)`, чтобы локальные часы Android
+     * не ломали границы смен при известном `Profile.ServDiff`.
+     */
+    private boolean isHerbTimerInCurrentShift(AppTimer timer, int currentShift) {
+        if (timer == null || currentShift == 0) {
+            return false;
+        }
+        int timerShift = getShiftForServerMs(getServerNowMs(getHerbTimerReadyAtMs(timer)));
+        return timerShift == currentShift;
+    }
+
+    /**
+     * Возвращает локальное время, когда route уже должен считать herb timer готовым.
+     *
+     * `triggerTime` уже хранит фактический due-time: рост травы + 5 минут запаса.
+     */
+    private static long getHerbTimerReadyAtMs(AppTimer timer) {
+        return timer == null ? 0L : Math.max(0L, timer.triggerTime);
+    }
+
+    /**
+     * Извлекает regNum клетки из herb timer-а.
+     *
+     * Поддерживаются два источника:
+     * - `timer.destination`, если в будущем AutoCut начнёт сохранять regNum явно;
+     * - legacy/current description `Вырастет <herb> на <regNum>`, созданный `markHerbCut(...)`.
+     */
+    private static String extractHerbTimerCell(AppTimer timer) {
+        if (timer == null) {
+            return "";
+        }
+        String destination = safe(timer.destination);
+        if (destination.matches("\\d{1,4}-\\d{1,5}")) {
+            return destination;
+        }
+        Matcher matcher = HERB_TIMER_CELL_PATTERN.matcher(safe(timer.description));
+        return matcher.find() ? matcher.group(1) : "";
     }
 
     private ShiftCheckedCells loadCheckedCellsLocked() {
@@ -794,6 +1567,24 @@ public final class AutoCutManager {
         return result;
     }
 
+    private static String updateInventoryMassAfterCut(double resourceMass) {
+        String mass = AppVars.AutoFishMassa == null ? "" : AppVars.AutoFishMassa.trim();
+        if (mass.isEmpty()) {
+            return "";
+        }
+        if (resourceMass <= 0d || !mass.contains("/")) {
+            return mass;
+        }
+        String[] split = mass.split("/", 2);
+        if (split.length < 2 || TextUtils.isEmpty(split[0]) || TextUtils.isEmpty(split[1])) {
+            return mass;
+        }
+        double current = parseDoubleSafe(split[0]);
+        double next = Math.max(0d, current + resourceMass);
+        AppVars.AutoFishMassa = formatDouble(next) + "/" + split[1].trim();
+        return AppVars.AutoFishMassa;
+    }
+
     private static double parseDoubleSafe(String value) {
         if (value == null) {
             return 0d;
@@ -803,6 +1594,10 @@ public final class AutoCutManager {
         } catch (NumberFormatException ignored) {
             return 0d;
         }
+    }
+
+    private static String formatDouble(double value) {
+        return String.format(Locale.US, "%.2f", value).replaceAll("\\.?0+$", "");
     }
 
     private static int parseIntSafe(String value, int fallback) {
@@ -819,16 +1614,16 @@ public final class AutoCutManager {
     private TimerPlan buildTimerPlan(String herb, int growthMinutes, String regNum) {
         long localNow = System.currentTimeMillis();
         long serverNow = getServerNowMs(localNow);
+        int safeGrowthMinutes = Math.max(1, growthMinutes);
+        long delayMinutes = safeGrowthMinutes + HERB_TIMER_EXTRA_DELAY_MINUTES;
         int currentShift = getShiftForServerMs(serverNow);
-        long firstWindowMs = serverNow + TimeUnit.MINUTES.toMillis(Math.max(1, growthMinutes) - 2L);
-        int nextShift = getShiftForServerMs(firstWindowMs);
+        long triggerServerMs = serverNow + TimeUnit.MINUTES.toMillis(delayMinutes);
+        int nextShift = getShiftForServerMs(triggerServerMs);
         if (currentShift != nextShift) {
             return new TimerPlan(false, 0L, "Таймер не установлен, смена трав близка.");
         }
-        long triggerAt = localNow + TimeUnit.MINUTES.toMillis(Math.max(1, growthMinutes) - 2L + 30L);
-        String message = growthMinutes >= 120
-                ? "Таймер установлен на 2 часа."
-                : "Таймер установлен на 1 час.";
+        long triggerAt = localNow + TimeUnit.MINUTES.toMillis(delayMinutes);
+        String message = "Таймер установлен на " + delayMinutes + " мин. (рост +5 мин).";
         return new TimerPlan(true, triggerAt, message);
     }
 
@@ -836,6 +1631,8 @@ public final class AutoCutManager {
                                      TimerPlan timerPlan,
                                      String regNum,
                                      String cellResourcesSummary,
+                                     String massSnapshot,
+                                     double resourceMass,
                                      String source) {
         String sourceLabel = TextUtils.isEmpty(source) ? "auto_cut" : source;
         StringBuilder builder = new StringBuilder();
@@ -861,6 +1658,23 @@ public final class AutoCutManager {
                         .append("'.");
             }
         }
+        String safeMass = safe(massSnapshot);
+        if (!safeMass.isEmpty()) {
+            builder.append(" Масса: <b>")
+                    .append(escapeHtml(safeMass))
+                    .append("</b>");
+            if (resourceMass > 0d) {
+                builder.append(" (<font color=#008800><b>+")
+                        .append(formatDouble(resourceMass))
+                        .append("</b></font>)");
+            }
+            builder.append('.');
+        } else if (resourceMass > 0d) {
+            builder.append(" Масса: <font color=#008800><b>+")
+                    .append(formatDouble(resourceMass))
+                    .append("</b></font>.");
+            safeMass = "+" + formatDouble(resourceMass);
+        }
         builder.append("</font>");
         Intent intent = new Intent(AppVars.ACTION_ADD_CHAT_MESSAGE);
         intent.putExtra("message", builder.toString());
@@ -868,6 +1682,7 @@ public final class AutoCutManager {
         AppLog.d(TRACE_CHAIN, TAG, "chat posted: herb=" + herb
                 + ", regNum=" + safeRegNum
                 + ", summary=" + safeSummary
+                + ", mass=" + safeMass
                 + ", source=" + source);
     }
 
@@ -1147,6 +1962,63 @@ public final class AutoCutManager {
                 .replace("'", "&#39;");
     }
 
+    /** Snapshot функций, которые AutoCut временно поставил на паузу ради inventory cleanup. */
+    private static final class CleanupPauseSnapshot {
+        boolean autoFish;
+        boolean autoSkin;
+        boolean autoBait;
+        boolean autoCompass;
+        boolean autoAttack;
+        boolean autoInvisible;
+        boolean autoDetect;
+        boolean autoSummon;
+        boolean autoDrink;
+        boolean autoTreasure;
+        boolean autoBoss;
+        boolean autoRefresh;
+        boolean autoMoving;
+        String autoMovingDestination;
+        ru.neverlands.anclient.utils.MapPath autoMovingMapPath;
+        String autoMovingNextJump;
+        int autoMovingJumps;
+        ru.neverlands.anclient.model.CityGateType autoMovingCityGate;
+        long capturedAtMs;
+
+        boolean hasPausedAnything() {
+            return autoFish || autoSkin || autoBait || autoCompass || autoAttack || autoInvisible
+                    || autoDetect || autoSummon || autoDrink || autoTreasure || autoBoss
+                    || autoRefresh || autoMoving;
+        }
+
+        String describePaused() {
+            StringBuilder builder = new StringBuilder();
+            appendPaused(builder, autoFish, "auto_fish");
+            appendPaused(builder, autoSkin, "auto_skin");
+            appendPaused(builder, autoBait, "auto_bait");
+            appendPaused(builder, autoCompass, "auto_compass");
+            appendPaused(builder, autoAttack, "auto_attack");
+            appendPaused(builder, autoInvisible, "auto_invisible");
+            appendPaused(builder, autoDetect, "auto_detect");
+            appendPaused(builder, autoSummon, "auto_summon");
+            appendPaused(builder, autoDrink, "auto_drink");
+            appendPaused(builder, autoTreasure, "auto_treasure");
+            appendPaused(builder, autoBoss, "auto_boss");
+            appendPaused(builder, autoRefresh, "auto_refresh");
+            appendPaused(builder, autoMoving, "auto_moving");
+            return builder.length() == 0 ? "none" : builder.toString();
+        }
+
+        private static void appendPaused(StringBuilder builder, boolean enabled, String label) {
+            if (!enabled) {
+                return;
+            }
+            if (builder.length() > 0) {
+                builder.append(',');
+            }
+            builder.append(label);
+        }
+    }
+
     /** План таймера роста после среза; отделяет расчёт от создания `AppTimer`. */
     private static final class TimerPlan {
         /** true, если смена трав не близко и таймер можно создавать. */
@@ -1160,6 +2032,21 @@ public final class AutoCutManager {
             this.shouldCreateTimer = shouldCreateTimer;
             this.triggerAtMs = triggerAtMs;
             this.message = message;
+        }
+    }
+
+    /** Due herb timer, который должен вернуть AutoCut на клетку внутри текущей смены. */
+    private static final class DueHerbTimer {
+        final int timerId;
+        final String cell;
+        final String description;
+        final long readyAtMs;
+
+        DueHerbTimer(int timerId, String cell, String description, long readyAtMs) {
+            this.timerId = timerId;
+            this.cell = cell;
+            this.description = description;
+            this.readyAtMs = readyAtMs;
         }
     }
 

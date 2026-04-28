@@ -1,7 +1,6 @@
 package ru.neverlands.anclient.model;
 
 import java.util.Locale;
-import java.util.concurrent.TimeUnit;
 
 /**
  * Модель пользовательского таймера (порт `ANClient/AppTimer.cs`).
@@ -49,7 +48,8 @@ public class AppTimer {
      * Формат строки 1:1 по C#-логике:
      * `id[*]) Еще mm:ss - description [count]`.
      *
-     * Для `isHerb` используется смещение `-30 минут` (как в ПК-клиенте).
+     * Для `isHerb` показываем фактическое время срабатывания: AutoCut сам ставит
+     * запас `growth + 5 минут`, а маршрут должен идти только после due-time.
      */
     public String toDisplayString(long nowMs) {
         StringBuilder builder = new StringBuilder();
@@ -59,20 +59,10 @@ public class AppTimer {
         }
         builder.append(") Еще ");
 
-        long triggerForDisplay = triggerTime;
-        if (isHerb) {
-            triggerForDisplay -= TimeUnit.MINUTES.toMillis(30);
-        }
-
-        if (triggerForDisplay < nowMs) {
-            if (isHerb) {
-                long remainMs = Math.max(0L, triggerTime - nowMs);
-                builder.append(formatRemain(remainMs)).append(" (?)");
-            } else {
-                builder.append("0:00");
-            }
+        if (triggerTime < nowMs) {
+            builder.append("0:00");
         } else {
-            long remainMs = triggerForDisplay - nowMs;
+            long remainMs = triggerTime - nowMs;
             builder.append(formatRemain(remainMs));
         }
 
