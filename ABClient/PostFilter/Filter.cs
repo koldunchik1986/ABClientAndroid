@@ -312,6 +312,11 @@ namespace ABClient.PostFilter
                 return FishAjaxPhp(array);
             }
 
+            if (address.StartsWith("http://www.neverlands.ru/gameplay/ajax/alchemy_ajax.php", StringComparison.OrdinalIgnoreCase))
+            {
+                return AlchemyAjaxPhp(address, array);
+            }
+
             if (address.StartsWith("http://www.neverlands.ru/gameplay/ajax/shop_ajax.php", StringComparison.OrdinalIgnoreCase))
             {
                 return ShopAjaxPhp(array);

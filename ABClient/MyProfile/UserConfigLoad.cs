@@ -226,6 +226,10 @@ namespace ABClient.MyProfile
                     DoAutoCutWriteChat = xmlReader.ReadContentAsBoolean();
                     break;
 
+                case "anticaptcha":
+                    LoadAntiCaptchaSettings(xmlReader);
+                    break;
+
                 case "showperformance":
                     xmlReader.Read();
                     ShowPerformance = xmlReader.ReadContentAsBoolean();
@@ -1161,6 +1165,58 @@ namespace ABClient.MyProfile
             if (xmlReader[ConstAttributeTorgDeny] != null)
             {
                 TorgDeny = xmlReader[ConstAttributeTorgDeny];
+            }
+        }
+
+        private void LoadAntiCaptchaSettings(XmlReader xmlReader)
+        {
+            bool boolValue;
+            int intValue;
+
+            if (bool.TryParse(xmlReader["enabled"], out boolValue))
+            {
+                AntiCaptchaEnabled = boolValue;
+            }
+
+            if (xmlReader["apikey"] != null)
+            {
+                AntiCaptchaApiKey = xmlReader["apikey"];
+            }
+
+            if (bool.TryParse(xmlReader["phrase"], out boolValue))
+            {
+                AntiCaptchaPhrase = boolValue;
+            }
+
+            if (bool.TryParse(xmlReader["case"], out boolValue))
+            {
+                AntiCaptchaCaseSensitive = boolValue;
+            }
+
+            if (int.TryParse(xmlReader["numeric"], out intValue))
+            {
+                AntiCaptchaNumeric = Math.Max(0, Math.Min(2, intValue));
+            }
+
+            if (int.TryParse(xmlReader["math"], out intValue))
+            {
+                AntiCaptchaMath = Math.Max(0, Math.Min(1, intValue));
+            }
+
+            if (int.TryParse(xmlReader["minlength"], out intValue))
+            {
+                AntiCaptchaMinLength = Math.Max(0, Math.Min(20, intValue));
+            }
+
+            if (int.TryParse(xmlReader["maxlength"], out intValue))
+            {
+                AntiCaptchaMaxLength = Math.Max(0, Math.Min(20, intValue));
+            }
+
+            var languagePool = xmlReader["languagepool"];
+            if (!string.IsNullOrEmpty(languagePool))
+            {
+                AntiCaptchaLanguagePool = languagePool.Equals("rn", StringComparison.OrdinalIgnoreCase) ? "rn" : "en";
             }
         }
     }

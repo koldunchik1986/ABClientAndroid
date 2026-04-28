@@ -206,6 +206,36 @@ namespace ABClient.MyProfile
                     xmlWriter.WriteValue(DoAutoCutWriteChat);
                     xmlWriter.WriteEndElement();
 
+                    xmlWriter.WriteStartElement("anticaptcha");
+                    xmlWriter.WriteStartAttribute("enabled");
+                    xmlWriter.WriteValue(AntiCaptchaEnabled);
+                    xmlWriter.WriteEndAttribute();
+                    xmlWriter.WriteStartAttribute("apikey");
+                    xmlWriter.WriteString(AntiCaptchaApiKey ?? string.Empty);
+                    xmlWriter.WriteEndAttribute();
+                    xmlWriter.WriteStartAttribute("phrase");
+                    xmlWriter.WriteValue(AntiCaptchaPhrase);
+                    xmlWriter.WriteEndAttribute();
+                    xmlWriter.WriteStartAttribute("case");
+                    xmlWriter.WriteValue(AntiCaptchaCaseSensitive);
+                    xmlWriter.WriteEndAttribute();
+                    xmlWriter.WriteStartAttribute("numeric");
+                    xmlWriter.WriteValue(AntiCaptchaNumeric);
+                    xmlWriter.WriteEndAttribute();
+                    xmlWriter.WriteStartAttribute("math");
+                    xmlWriter.WriteValue(AntiCaptchaMath);
+                    xmlWriter.WriteEndAttribute();
+                    xmlWriter.WriteStartAttribute("minlength");
+                    xmlWriter.WriteValue(AntiCaptchaMinLength);
+                    xmlWriter.WriteEndAttribute();
+                    xmlWriter.WriteStartAttribute("maxlength");
+                    xmlWriter.WriteValue(AntiCaptchaMaxLength);
+                    xmlWriter.WriteEndAttribute();
+                    xmlWriter.WriteStartAttribute("languagepool");
+                    xmlWriter.WriteString(AntiCaptchaLanguagePool ?? "en");
+                    xmlWriter.WriteEndAttribute();
+                    xmlWriter.WriteEndElement();
+
                     xmlWriter.WriteStartElement("complects");
                     xmlWriter.WriteString(Complects);
                     xmlWriter.WriteEndElement();

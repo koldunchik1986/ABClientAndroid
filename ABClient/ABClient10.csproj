@@ -141,6 +141,7 @@
     <Compile Include="AppConsts.cs" />
     <Compile Include="AppTimer.cs" />
     <Compile Include="AppTimerManager.cs" />
+    <Compile Include="AppLog.cs" />
     <Compile Include="AppVars.cs" />
     <Compile Include="AutoAnswerMachine.cs" />
     <Compile Include="AutoboiState.cs" />
@@ -175,6 +176,7 @@
     <Compile Include="Helpers\Http.cs" />
     <Compile Include="Helpers\NativeMethods.cs" />
     <Compile Include="Helpers\Pack.cs" />
+    <Compile Include="MyHelpers\FileLogger.cs" />
     <Compile Include="HerbCell.cs" />
     <Compile Include="InvEntry.cs" />
     <Compile Include="KeyList.cs" />
@@ -407,6 +409,7 @@
     <Compile Include="AppControls\ListBoxEx.cs">
       <SubType>Component</SubType>
     </Compile>
+    <Compile Include="MyGuamod\AntiCaptchaManager.cs" />
     <Compile Include="MyGuamod\Recognizer.cs" />
     <Compile Include="MyHelpers\HelperConverters.cs" />
     <Compile Include="Helpers\Dice.cs" />

@@ -33,3 +33,17 @@ C:\Users\User\AbclientAndroid\ABClient\obj\Debug\ABClient.MyForms.FormProfile.re
 C:\Users\User\AbclientAndroid\ABClient\obj\Debug\ABClient.MyForms.FormProfiles.resources
 C:\Users\User\AbclientAndroid\ABClient\obj\Debug\ABClient.csproj.GenerateResource.cache
 C:\Users\User\AbclientAndroid\ABClient\obj\Debug\ABClient.csproj.CoreCompileInputs.cache
+C:\Users\User\AbclientAndroid\ABClient\bin\Debug\abcells.xml
+C:\Users\User\AbclientAndroid\ABClient\bin\Debug\abthings.xml
+C:\Users\User\AbclientAndroid\ABClient\bin\Debug\bossusers.xml
+C:\Users\User\AbclientAndroid\ABClient\bin\Debug\chatusers.xml
+C:\Users\User\AbclientAndroid\ABClient\bin\Debug\map.xml
+C:\Users\User\AbclientAndroid\ABClient\bin\Debug\abfavorites.xml
+C:\Users\User\AbclientAndroid\ABClient\bin\Debug\abteleports.xml
+C:\Users\User\AbclientAndroid\ABClient\bin\Debug\ABClient.exe.config
+C:\Users\User\AbclientAndroid\ABClient\bin\Debug\ABClient.exe
+C:\Users\User\AbclientAndroid\ABClient\bin\Debug\ABClient.pdb
+C:\Users\User\AbclientAndroid\ABClient\bin\Debug\Newtonsoft.Json.dll
+C:\Users\User\AbclientAndroid\ABClient\obj\Debug\ABClient.csproj.Up2Date
+C:\Users\User\AbclientAndroid\ABClient\obj\Debug\ABClient.exe
+C:\Users\User\AbclientAndroid\ABClient\obj\Debug\ABClient.pdb

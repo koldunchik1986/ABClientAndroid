@@ -370,6 +370,27 @@ namespace ABClient.MyProfile
         internal bool DoAutoCutWriteChat { get; set; }
 
         /// <summary>
+        /// Использовать внешний сервис anti-captcha.com перед локальным гуамодом.
+        /// </summary>
+        internal bool AntiCaptchaEnabled { get; set; }
+
+        internal string AntiCaptchaApiKey { get; set; }
+
+        internal bool AntiCaptchaPhrase { get; set; }
+
+        internal bool AntiCaptchaCaseSensitive { get; set; }
+
+        internal int AntiCaptchaNumeric { get; set; }
+
+        internal int AntiCaptchaMath { get; set; }
+
+        internal int AntiCaptchaMinLength { get; set; }
+
+        internal int AntiCaptchaMaxLength { get; set; }
+
+        internal string AntiCaptchaLanguagePool { get; set; }
+
+        /// <summary>
         /// Рисовать ли уровни
         /// </summary>
         internal bool DoChatLevels { get; set; }

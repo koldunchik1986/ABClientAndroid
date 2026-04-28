@@ -162,6 +162,7 @@ namespace ABClient.ABForms
             this.buttonAutoFish = new System.Windows.Forms.ToolStripButton();
             this.toolStripSeparator22 = new System.Windows.Forms.ToolStripSeparator();
             this.buttonAutoSkin = new System.Windows.Forms.ToolStripButton();
+            this.buttonHerbAutoCut = new System.Windows.Forms.ToolStripButton();
             this.toolStripSeparator10 = new System.Windows.Forms.ToolStripSeparator();
             this.buttonGameLogOn = new System.Windows.Forms.ToolStripButton();
             this.toolStripSeparator5 = new System.Windows.Forms.ToolStripSeparator();
@@ -1134,6 +1135,7 @@ namespace ABClient.ABForms
             this.buttonAutoFish,
             this.toolStripSeparator22,
             this.buttonAutoSkin,
+            this.buttonHerbAutoCut,
             this.toolStripSeparator10,
             this.buttonGameLogOn,
             this.toolStripSeparator5,
@@ -1428,7 +1430,18 @@ namespace ABClient.ABForms
             this.buttonAutoSkin.Text = "Авторазделка";
             this.buttonAutoSkin.ToolTipText = "Авторазделка";
             this.buttonAutoSkin.Click += new System.EventHandler(this.buttonAutoSkin_Click);
-            // 
+            //
+            // buttonHerbAutoCut
+            //
+            this.buttonHerbAutoCut.CheckOnClick = true;
+            this.buttonHerbAutoCut.DisplayStyle = System.Windows.Forms.ToolStripItemDisplayStyle.Text;
+            this.buttonHerbAutoCut.ImageTransparentColor = System.Drawing.Color.Magenta;
+            this.buttonHerbAutoCut.Name = "buttonHerbAutoCut";
+            this.buttonHerbAutoCut.Size = new System.Drawing.Size(84, 25);
+            this.buttonHerbAutoCut.Text = "Автотравник";
+            this.buttonHerbAutoCut.ToolTipText = "Авто-Травник";
+            this.buttonHerbAutoCut.Click += new System.EventHandler(this.buttonHerbAutoCut_Click);
+            //
             // toolStripSeparator10
             // 
             this.toolStripSeparator10.Name = "toolStripSeparator10";
@@ -2432,6 +2445,7 @@ namespace ABClient.ABForms
         private ToolStripButton tsContactTrace;
         private ToolStripSeparator toolStripSeparator22;
         private ToolStripButton buttonAutoSkin;
+        private ToolStripButton buttonHerbAutoCut;
         private TabPage tabPageLog;
         private CheckBox checkDoLog;
         private ToolStripMenuItem сканированиеКартыToolStripMenuItem;

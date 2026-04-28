@@ -201,6 +201,15 @@ namespace ABClient.MyProfile
             DoShowFastAttackPortal = true;            
 
             DoAutoCutWriteChat = true;
+            AntiCaptchaEnabled = false;
+            AntiCaptchaApiKey = string.Empty;
+            AntiCaptchaPhrase = false;
+            AntiCaptchaCaseSensitive = false;
+            AntiCaptchaNumeric = 1;
+            AntiCaptchaMath = 0;
+            AntiCaptchaMinLength = 5;
+            AntiCaptchaMaxLength = 5;
+            AntiCaptchaLanguagePool = "en";
             DoStopOnDig = true;
 
             DoAutoDrinkBlaz = false;

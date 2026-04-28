@@ -129,7 +129,7 @@ function ButtonGen()
         str += ' <input type=button class=fr_but id="' + mapbt[i][0] + '" value="' + mapbt[i][1] + '" onclick=\'ButClick("' + mapbt[i][0] + '")\'>';
 
         // +ABC
-        if (mapbt[i][0] == 'ogl') {
+        if (mapbt[i][0] == 'look' || mapbt[i][0] == 'ogl') {
             if (window.external.DoHerbAutoCut()) {
                 Ogl(mapbt[i][2]);
             }
@@ -146,6 +146,7 @@ function ButClick(id)
     {
         case 'inf': goloc = 'main.php?get_id=56&act=10&go=inf&vcode='+bavail[id][0]; break;
         case 'inv': goloc = 'main.php?get_id=56&act=10&go=inv&vcode='+bavail[id][0]; break;
+        case 'look': Ogl(bavail[id][0]); break;
         case 'ogl': Ogl(bavail[id][0]); break;
         case 'fis': Fish(bavail[id][0]); break;
         case 'fig': fight_map(bavail[id][0]); break;
@@ -188,7 +189,7 @@ function ReAddBut(obj)
             d.getElementById('ButtonPlace').innerHTML += ' <input type=button class=fr_but id="' + obj[i][0] + '" value="' + obj[i][1] + '" onclick=\'ButClick("' + obj[i][0] + '")\'>';
 
             // +ABC
-            if (obj[i][0] == 'ogl') {
+            if (obj[i][0] == 'look' || obj[i][0] == 'ogl') {
                 if (window.external.DoHerbAutoCut()) {
                     Ogl(obj[i][2]);
                 }
@@ -713,7 +714,8 @@ function AlhStart(ct,cid,uid,curs,mass,muid,p,resl,vcode)
 {
     var CAP;
     var errm = '';
-    CAP = d.getElementById("CAPCODE").value;
+    var capInput = d.getElementById("CAPCODE");
+    CAP = capInput ? capInput.value : 1;
     if(CAP)
     {
         // ABC

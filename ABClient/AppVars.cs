@@ -140,7 +140,7 @@ namespace ABClient
         /// <summary>
         /// Работа автоспила
         /// </summary>
-        // internal static bool DoHerbAutoCut;
+        internal static bool DoHerbAutoCut;
 
         /// <summary>
         /// Форма очистки кеша.

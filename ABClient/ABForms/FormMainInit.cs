@@ -107,6 +107,8 @@
                 AppVars.AutoSkinArmedKnife = false;
             }
 
+            buttonHerbAutoCut.Checked = AppVars.DoHerbAutoCut;
+
             buttonSilence.Checked = !AppVars.Profile.Sound.Enabled;
             statuslabelTorgAdv.Enabled = AppVars.Profile.TorgActive;
             if (AppVars.Profile.SelectedRightPanel < tabControlRight.TabCount)

@@ -49,6 +49,37 @@ namespace ABClient.ABForms
             }
         }
 
+        private void EnterAlchemyCode(string link)
+        {
+            if (string.IsNullOrEmpty(link))
+            {
+                return;
+            }
+
+            var framebuttons = GetFrame("main_top");
+            if (framebuttons == null || framebuttons.Document == null)
+            {
+                return;
+            }
+
+            try
+            {
+                var ajaxLink = link;
+                const string fullPrefix = "http://www.neverlands.ru/gameplay/ajax/";
+                if (ajaxLink.StartsWith(fullPrefix, StringComparison.OrdinalIgnoreCase))
+                {
+                    ajaxLink = ajaxLink.Substring(fullPrefix.Length);
+                }
+
+                framebuttons.Document.InvokeScript("AjaxGet", new object[] { ajaxLink });
+                AppLog.i("auto_cut_trace", "FormMainDom", "alchemy submit via AjaxGet: " + ajaxLink);
+            }
+            catch (Exception ex)
+            {
+                AppLog.w("auto_cut_trace", "FormMainDom", "alchemy submit failed", ex);
+            }
+        }
+
         private HtmlWindow GetFrame(string name)
         {
             try

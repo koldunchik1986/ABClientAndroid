@@ -51,6 +51,7 @@
             }
 
             AppVars.Profile.DoAutoCutWriteChat = checkDoAutoCutWriteChat.Checked;
+            AppVars.DoHerbAutoCut = AppVars.Profile.HerbsAutoCut.Count > 0;
             AppVars.Profile.Save();
             Close();
         }

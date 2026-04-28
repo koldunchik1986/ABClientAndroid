@@ -236,6 +236,15 @@
             // Если нераспознанной капчи нет
             if (AppVars.FightLink.IndexOf("????", StringComparison.Ordinal) == -1)
             {
+                if (AppVars.FightLink.IndexOf("alchemy_ajax.php", StringComparison.OrdinalIgnoreCase) >= 0)
+                {
+                    var alchemyLink = AppVars.FightLink;
+                    AppVars.FightLink = string.Empty;
+                    UpdateTexLog("Срез травы");
+                    EnterAlchemyCode(alchemyLink);
+                    return;
+                }
+
                 if (AppVars.Profile.LezDoAutoboi)
                 {
                     AppVars.Profile.Pers.Ready = 0;
@@ -285,8 +294,8 @@
                 return;
             }
 
-            // Все дальнейшие операции - только если включен гуамод
-            if (!AppVars.Profile.DoGuamod)
+            // Все дальнейшие операции требуют локального гуамода или внешнего Anti-Captcha fallback.
+            if (!AppVars.Profile.DoGuamod && !AppVars.Profile.AntiCaptchaEnabled)
             {
                 if (DateTime.Now.Subtract(AppVars.IdleTimer).TotalMinutes > 4)
                 {
@@ -325,7 +334,10 @@
 
                 AppVars.GuamodCode = "?????";
                 ChangeAutoboiState(AutoboiState.Guamod);
-                Recognizer.Perform();
+                if (!AntiCaptchaManager.TrySolveCurrentCaptchaWithFallback())
+                {
+                    Recognizer.Perform();
+                }
             }
         }
 

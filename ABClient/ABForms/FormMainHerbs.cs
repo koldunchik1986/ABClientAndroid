@@ -7,6 +7,7 @@
     using System.Text;
     using System.IO;
     using Helpers;
+    using MyChat;
     using System.Threading;
 
     internal sealed partial class FormMain
@@ -40,7 +41,6 @@
 
         internal static bool IsHerbAutoCut(string herb)
         {
-            /*
             if (herb == null)
             {
                 return false;
@@ -58,14 +58,12 @@
                     return true;
                 }
             }
-             */ 
 
             return false;
         }
 
         internal static void HerbCut(string name)
         {
-            /*
             if (AppVars.Profile.DoAutoCutWriteChat)
             {
                 var message = string.Format(@"{0}: Автоспил травы ""{1}""...", AppVars.AppVersion.ProductShortVersion, name);
@@ -87,18 +85,18 @@
             }
 
             TraceCut(name);
-             */ 
         }
 
         internal static bool DoHerbAutoCut()
         {
-            /*
-            if (Key.KeyFile.IsPay() && AppVars.DoHerbAutoCut)
+            if (AppVars.DoHerbAutoCut &&
+                AppVars.Profile != null &&
+                AppVars.Profile.HerbsAutoCut.Count > 0 &&
+                !AppVars.AutoMoving &&
+                DateTime.Now > AppVars.NeverTimer)
             {
-                CheckTied();
                 return true;
             }
-             */ 
 
             return false;
         }

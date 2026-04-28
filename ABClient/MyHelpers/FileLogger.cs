@@ -31,7 +31,7 @@ namespace ABClient.MyHelpers
         // Single-threaded queue — аналог Android IO ExecutorService
         private static readonly Thread WriterThread;
         private static readonly AutoResetEvent WakeEvent = new AutoResetEvent(false);
-        private static volatile bool _shutdown;
+        private static volatile bool _shutdown = false;
 
         static FileLogger()
         {

@@ -773,7 +773,6 @@ namespace ABClient.ABForms
 
         private void buttonHerbAutoCut_Click(object sender, EventArgs e)
         {
-            /*
             AppVars.DoHerbAutoCut = buttonHerbAutoCut.Checked;
             if (!AppVars.DoHerbAutoCut) return;
             if (AppVars.Profile.HerbsAutoCut.Count == 0)
@@ -787,10 +786,11 @@ namespace ABClient.ABForms
                 {
                     formSettingsAutoCut.ShowDialog();
                 }
+                AppVars.DoHerbAutoCut = AppVars.Profile.HerbsAutoCut.Count > 0;
+                buttonHerbAutoCut.Checked = AppVars.DoHerbAutoCut;
             }
 
-            ReloadMainTop();
-             */
+            ReloadMainPhpInvoke();
         }
 
         private void menuitemChatAdvisor_Click(object sender, EventArgs e)

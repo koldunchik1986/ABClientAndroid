@@ -485,6 +485,7 @@
     <Compile Include="AppControls\ListBoxEx.cs">
       <SubType>Component</SubType>
     </Compile>
+    <Compile Include="MyGuamod\AntiCaptchaManager.cs" />
     <Compile Include="MyGuamod\Recognizer.cs" />
     <Compile Include="MyHelpers\HelperConverters.cs" />
     <Compile Include="Helpers\Dice.cs" />
@@ -518,6 +519,7 @@
     <Compile Include="CookieAwareWebClient.cs">
       <SubType>Component</SubType>
     </Compile>
+    <Compile Include="PostFilter\AlchemyAjaxPhp.cs" />
     <Compile Include="PostFilter\ArenaJs.cs" />
     <Compile Include="PostFilter\BuildingJs.cs" />
     <Compile Include="PostFilter\ButPhp.cs" />
