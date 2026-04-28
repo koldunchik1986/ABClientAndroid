@@ -1,4 +1,4 @@
-﻿using ABClient.MyProfile;
+using ABClient.MyProfile;
 
 namespace ABClient.MyForms
 {
@@ -12,6 +12,8 @@ namespace ABClient.MyForms
         private readonly CheckBox checkBossAutoAttack = new CheckBox();
         private readonly CheckBox checkBossAutoTrace = new CheckBox();
         private readonly CheckBox checkBossAutoReport = new CheckBox();
+        private readonly TextBox textBossSearchWords = new TextBox();
+        private readonly NumericUpDown numBossSearchInterval = new NumericUpDown();
         private readonly CheckBox checkCompassAutoEnabled = new CheckBox();
         private readonly CheckBox checkCompassAutoOnBattle = new CheckBox();
         private readonly CheckBox checkCompassAutoAttack = new CheckBox();
@@ -22,7 +24,10 @@ namespace ABClient.MyForms
         {
             InitializeComponent();
 
-            var bossGroup = new GroupBox { Text = @"Авто-Боссы", Dock = DockStyle.Top, Height = 100 };
+            var tabPageBossAuto = new TabPage { Text = @"АвтоБосс", UseVisualStyleBackColor = true };
+            tabControlSettings.Controls.Add(tabPageBossAuto);
+
+            var bossGroup = new GroupBox { Text = @"Авто-Босс", Dock = DockStyle.Top, Height = 185 };
             checkBossAutoEnabled.Text = @"Включить авто-боссов";
             checkBossAutoAttack.Text = @"Автонападение при нахождении";
             checkBossAutoTrace.Text = @"Слежение за контактами боссов";
@@ -30,9 +35,27 @@ namespace ABClient.MyForms
             checkBossAutoEnabled.Left = 10; checkBossAutoEnabled.Top = 20;
             checkBossAutoAttack.Left = 10; checkBossAutoAttack.Top = 42;
             checkBossAutoTrace.Left = 10; checkBossAutoTrace.Top = 64;
-            checkBossAutoReport.Left = 200; checkBossAutoReport.Top = 20;
-            bossGroup.Controls.AddRange(new Control[] { checkBossAutoEnabled, checkBossAutoAttack, checkBossAutoTrace, checkBossAutoReport });
-            tabPage1.Controls.Add(bossGroup);
+            checkBossAutoReport.Left = 10; checkBossAutoReport.Top = 86;
+
+            var labelBossSearchWords = new Label { Text = @"Фильтр боссов:", Left = 10, Top = 118, AutoSize = true };
+            textBossSearchWords.Left = 115; textBossSearchWords.Top = 115; textBossSearchWords.Width = 290;
+
+            var labelBossSearchInterval = new Label { Text = @"Таймаут поиска, сек:", Left = 10, Top = 150, AutoSize = true };
+            numBossSearchInterval.Minimum = 30; numBossSearchInterval.Maximum = 1800; numBossSearchInterval.Increment = 30;
+            numBossSearchInterval.Left = 145; numBossSearchInterval.Top = 147; numBossSearchInterval.Width = 70;
+
+            bossGroup.Controls.AddRange(new Control[]
+            {
+                checkBossAutoEnabled,
+                checkBossAutoAttack,
+                checkBossAutoTrace,
+                checkBossAutoReport,
+                labelBossSearchWords,
+                textBossSearchWords,
+                labelBossSearchInterval,
+                numBossSearchInterval
+            });
+            tabPageBossAuto.Controls.Add(bossGroup);
 
             var compassGroup = new GroupBox { Text = @"Авто-Компас", Dock = DockStyle.Top, Height = 120 };
             checkCompassAutoEnabled.Text = @"Включить автокомпас";
@@ -256,6 +279,10 @@ namespace ABClient.MyForms
             checkBossAutoAttack.Checked = AppVars.Profile.BossAutoAttack;
             checkBossAutoTrace.Checked = AppVars.Profile.BossAutoTrace;
             checkBossAutoReport.Checked = AppVars.Profile.BossAutoReport;
+            textBossSearchWords.Text = AppVars.Profile.BossSearchWords ?? string.Empty;
+            numBossSearchInterval.Value = Math.Max(
+                numBossSearchInterval.Minimum,
+                Math.Min(numBossSearchInterval.Maximum, AppVars.Profile.BossSearchInterval <= 0 ? 360 : AppVars.Profile.BossSearchInterval));
 
             checkCompassAutoEnabled.Checked = AppVars.Profile.CompassAutoEnabled;
             checkCompassAutoOnBattle.Checked = AppVars.Profile.CompassAutoOnBattle;
@@ -474,6 +501,8 @@ namespace ABClient.MyForms
             AppVars.Profile.BossAutoAttack = checkBossAutoAttack.Checked;
             AppVars.Profile.BossAutoTrace = checkBossAutoTrace.Checked;
             AppVars.Profile.BossAutoReport = checkBossAutoReport.Checked;
+            AppVars.Profile.BossSearchWords = textBossSearchWords.Text.Trim();
+            AppVars.Profile.BossSearchInterval = (int)numBossSearchInterval.Value;
 
             AppVars.Profile.CompassAutoEnabled = checkCompassAutoEnabled.Checked;
             AppVars.Profile.CompassAutoOnBattle = checkCompassAutoOnBattle.Checked;

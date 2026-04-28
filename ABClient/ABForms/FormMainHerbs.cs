@@ -1,4 +1,4 @@
-﻿namespace ABClient.ABForms
+namespace ABClient.ABForms
 {
     using System;
     using System.Net;
@@ -21,6 +21,33 @@
                 return;
             }
 
+            var catalogChanged = false;
+            if (AppVars.Profile != null)
+            {
+                catalogChanged = AutoCutCatalog.EnsureProfileCatalog(AppVars.Profile);
+                var entries = list.Split('|');
+                for (var i = 0; i < entries.Length; i++)
+                {
+                    if (string.IsNullOrEmpty(entries[i]))
+                    {
+                        continue;
+                    }
+
+                    var parts = entries[i].Split(':');
+                    if (parts.Length == 0 || string.IsNullOrEmpty(parts[0]))
+                    {
+                        continue;
+                    }
+
+                    catalogChanged |= AutoCutCatalog.RegisterObservedHerb(
+                        AppVars.Profile,
+                        string.Empty,
+                        parts[0],
+                        0,
+                        AppVars.Profile.MapLocation ?? string.Empty);
+                }
+            }
+
             var updatedInTicks = DateTime.Now.Subtract(AppVars.Profile.ServDiff).Ticks;
             if (AppVars.Profile.HerbCells.ContainsKey(AppVars.Profile.MapLocation))
             {
@@ -37,6 +64,12 @@
                                    };
                 AppVars.Profile.HerbCells.Add(AppVars.Profile.MapLocation, herbcell);
             }
+
+            if (catalogChanged)
+            {
+                AppLog.i("auto_cut_trace", "FormMainHerbs", "catalog updated from HerbsList, location=" + AppVars.Profile.MapLocation);
+                AppVars.Profile.Save();
+            }
         }
 
         internal static bool IsHerbAutoCut(string herb)
@@ -46,9 +79,16 @@
                 return false;
             }
 
-            if (!AppVars.DoHerbAutoCut)
+            if (!AppVars.DoHerbAutoCut || AppVars.Profile == null)
             {
                 return false;
+            }
+
+            AutoCutCatalog.EnsureProfileCatalog(AppVars.Profile);
+            var catalogHerb = AutoCutCatalog.Find(AppVars.Profile.AutoCutHerbs, string.Empty, herb);
+            if (catalogHerb != null)
+            {
+                return catalogHerb.Selected;
             }
 
             for (var i = 0; i < AppVars.Profile.HerbsAutoCut.Count; i++)
@@ -93,7 +133,8 @@
                 AppVars.Profile != null &&
                 AppVars.Profile.HerbsAutoCut.Count > 0 &&
                 !AppVars.AutoMoving &&
-                DateTime.Now > AppVars.NeverTimer)
+                DateTime.Now > AppVars.NeverTimer &&
+                AutoCutRuntime.ShouldAutoLookOnCurrentCell())
             {
                 return true;
             }

@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using System;
 using System.Globalization;
 using System.Text;
@@ -41,6 +41,18 @@ namespace ABClient.PostFilter
                 Map.AbcCells[AppVars.LocationReal].Visited = DateTime.Now;
             }
             */
+        }
+
+        private static bool MainPhpIsAutoCutInventoryAddress(string address)
+        {
+            if (string.IsNullOrEmpty(address))
+            {
+                return false;
+            }
+
+            return address.IndexOf("main.php", StringComparison.OrdinalIgnoreCase) >= 0 &&
+                   address.IndexOf("go=inv", StringComparison.OrdinalIgnoreCase) >= 0 &&
+                   address.IndexOf("im=0", StringComparison.OrdinalIgnoreCase) >= 0;
         }
 
         private static string[] GetComplects(string html)
@@ -369,6 +381,12 @@ namespace ABClient.PostFilter
             {
                 AppLog.d("MainPhp", "MainPhp: inventory page detected");
                 html = MainPhpInv(html);
+                if (AppVars.AutoCutCleanupPending &&
+                    html.IndexOf("Выбрасывание предмета", StringComparison.OrdinalIgnoreCase) >= 0 &&
+                    html.IndexOf("window.location", StringComparison.OrdinalIgnoreCase) >= 0)
+                {
+                    goto end;
+                }
             }
 
             html = html.Replace(AppConsts.HtmlCounters, string.Empty);
@@ -1142,6 +1160,130 @@ namespace ABClient.PostFilter
                         else
                         {
                             AppVars.AutoSkinCheckKnife = true;
+                            html = invHtml;
+                            goto end;
+                        }
+                    }
+                }
+            }
+
+            // Переключения перед автоспилом травы: серп должен быть надет до act=3.
+            if (AppVars.DoHerbAutoCut && (DateTime.Now > AppVars.NeverTimer))
+            {
+                AppLog.d("auto_cut_trace", "MainPhp", "auto cut pre-processing");
+                AutoCutRuntime.UpdateMassSnapshotFromHtml(html);
+                if (AutoCutRuntime.IsMassSnapshotSyncPending())
+                {
+                    if (AutoCutRuntime.HasUsableMassSnapshot() || MainPhpIsInv(html) || MainPhpIsAutoCutInventoryAddress(address))
+                    {
+                        AutoCutRuntime.ClearMassSnapshotSyncPending(AutoCutRuntime.HasUsableMassSnapshot() ? "mass_available" : "inventory_without_mass");
+                        AppVars.AutoCutCheckSickle = false;
+                        if (ResumePendingAlchemyCutAfterPreparation("mass_snapshot"))
+                        {
+                            var florahtml = MainPhpFindFlora(html);
+                            if (!string.IsNullOrEmpty(florahtml))
+                            {
+                                html = florahtml;
+                                goto end;
+                            }
+                        }
+                    }
+                    else
+                    {
+                        var massInvHtml = MainPhpFindInv(html, "&im=0");
+                        if (!string.IsNullOrEmpty(massInvHtml))
+                        {
+                            html = massInvHtml;
+                            goto end;
+                        }
+
+                        if (!address.EndsWith("im=0", StringComparison.OrdinalIgnoreCase))
+                        {
+                            html = BuildRedirect("Переключение на инвентарь", "main.php?im=0");
+                            goto end;
+                        }
+                    }
+                }
+
+                if (AppVars.AutoCutCleanupPending && !MainPhpIsInv(html))
+                {
+                    var cleanupInvHtml = MainPhpFindInv(html, "&im=0");
+                    if (!string.IsNullOrEmpty(cleanupInvHtml))
+                    {
+                        html = cleanupInvHtml;
+                        goto end;
+                    }
+
+                    if (!address.EndsWith("im=0", StringComparison.OrdinalIgnoreCase))
+                    {
+                        html = BuildRedirect("Авто-Травник: cleanup инвентаря", "main.php?im=0");
+                        goto end;
+                    }
+                }
+
+                if (AppVars.AutoCutCheckSickle && (DateTime.Now > AppVars.NeverTimer))
+                {
+                    var perchtml = MainPhpFindPerc(html);
+                    if (!string.IsNullOrEmpty(perchtml))
+                    {
+                        html = perchtml;
+                        goto end;
+                    }
+
+                    AppVars.AutoCutArmedSickle = false;
+                    if (MainPhpIsPerc(html) || MainPhpIsInv(html))
+                    {
+                        AppVars.AutoCutArmedSickle = MainPhpArmedSickle(html);
+                        AppVars.AutoCutCheckSickle = false;
+                        var resumedPendingCut = AppVars.AutoCutArmedSickle && ResumePendingAlchemyCutAfterPreparation("sickle_checked");
+                        if (resumedPendingCut)
+                        {
+                            var florahtml = MainPhpFindFlora(html);
+                            if (!string.IsNullOrEmpty(florahtml))
+                            {
+                                html = florahtml;
+                                goto end;
+                            }
+                        }
+
+                        if (AppVars.AutoCutArmedSickle && !resumedPendingCut)
+                        {
+                            var florahtml = MainPhpFindFlora(html);
+                            if (!string.IsNullOrEmpty(florahtml))
+                            {
+                                AppLog.i("auto_cut_trace", "MainPhp", "sickle checked: return to flora before auto look");
+                                html = florahtml;
+                                goto end;
+                            }
+
+                            AutoCutRuntime.ScheduleLookRetry("sickle_checked");
+                        }
+                    }
+                }
+
+                if (!AppVars.AutoCutArmedSickle && (DateTime.Now > AppVars.NeverTimer))
+                {
+                    var invHtml = MainPhpFindInv(html, "&im=0&wca=4");
+                    if (!string.IsNullOrEmpty(invHtml))
+                    {
+                        html = invHtml;
+                        goto end;
+                    }
+
+                    if (MainPhpIsInv(html))
+                    {
+                        invHtml = MainPhpWearSickle(html);
+                        if (string.IsNullOrEmpty(invHtml))
+                        {
+                            if (AppVars.DoHerbAutoCut && !address.EndsWith("im=0&wca=4", StringComparison.OrdinalIgnoreCase))
+                            {
+                                html = BuildRedirect("Переключение на вещи", "main.php?im=0&wca=4");
+                                goto end;
+                            }
+                        }
+                        else
+                        {
+                            AppVars.AutoCutCheckSickle = true;
                             html = invHtml;
                             goto end;
                         }

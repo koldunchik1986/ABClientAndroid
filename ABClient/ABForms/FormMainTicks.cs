@@ -1,8 +1,10 @@
-﻿namespace ABClient.ABForms
+namespace ABClient.ABForms
 {
     using System;
     using System.Globalization;
     using System.Text;
+    using System.Windows.Forms;
+    using ABClient.Forms;
     using MyChat;
     using MyGuamod;
     using MyHelpers;
@@ -190,6 +192,12 @@
                 return;
             }
 
+            if (AppVars.DoHerbAutoCut && AutoCutRuntime.ConsumeLookRetryIfDue())
+            {
+                ReloadMainPhpInvoke();
+                return;
+            }
+
             // Оглядываемся...
             /*
             if (AppVars.DoHerbAutoCut)
@@ -294,22 +302,17 @@
                 return;
             }
 
-            // Все дальнейшие операции требуют локального гуамода или внешнего Anti-Captcha fallback.
-            if (!AppVars.Profile.DoGuamod && !AppVars.Profile.AntiCaptchaEnabled)
-            {
-                if (DateTime.Now.Subtract(AppVars.IdleTimer).TotalMinutes > 4)
-                {
-                    AppVars.IdleTimer = DateTime.Now;
-                    ReloadMainPhpInvoke();
-                }
-
-                return;
-            }
-
             if (AppVars.Autoboi == AutoboiState.Guamod)
             {
                 // Уже идет распознавание
-                ChangeAutoboiState(AutoboiState.Guamod);
+                if (!AppVars.Profile.DoGuamod && !AntiCaptchaManager.Busy)
+                {
+                    PromptManualCaptcha();
+                }
+                else
+                {
+                    ChangeAutoboiState(AutoboiState.Guamod);
+                }
             }
             else
             {
@@ -334,10 +337,56 @@
 
                 AppVars.GuamodCode = "?????";
                 ChangeAutoboiState(AutoboiState.Guamod);
-                if (!AntiCaptchaManager.TrySolveCurrentCaptchaWithFallback())
+                if (AppVars.Profile.AntiCaptchaEnabled && AntiCaptchaManager.TrySolveCurrentCaptcha())
+                {
+                    return;
+                }
+
+                if (AppVars.Profile.DoGuamod)
                 {
                     Recognizer.Perform();
+                    return;
                 }
+
+                PromptManualCaptcha();
+            }
+        }
+
+        private void PromptManualCaptcha()
+        {
+            AppLog.i("Captcha", "MANUAL_CAPTCHA_PROMPT");
+            UpdateTexLog("Ожидание ручного ввода кода");
+            UpdateGuamodMessage("Введите код вручную");
+
+            using (var formCode = new FormCode())
+            {
+                formCode.StartPosition = FormStartPosition.CenterParent;
+                if (formCode.ShowDialog(this) != DialogResult.OK)
+                {
+                    AppLog.w("Captcha", "MANUAL_CAPTCHA_CANCELLED");
+                    AppVars.FightLink = string.Empty;
+                    AppVars.CodePng = null;
+                    ChangeAutoboiState(AppVars.Profile.LezDoAutoboi ? AutoboiState.AutoboiOn : AutoboiState.AutoboiOff);
+                    return;
+                }
+
+                var code = (formCode.Code ?? string.Empty).Trim();
+                if (code.Length == 0)
+                {
+                    AppLog.w("Captcha", "MANUAL_CAPTCHA_EMPTY");
+                    return;
+                }
+
+                AppVars.GuamodCode = code;
+                AppVars.CodePng = null;
+                if (!string.IsNullOrEmpty(AppVars.FightLink))
+                {
+                    AppVars.FightLink = AppVars.FightLink.Replace("????", AppVars.GuamodCode);
+                }
+
+                UpdateGuamodMessage("Ручной ввод: " + AppVars.GuamodCode);
+                UpdateTexLog("Ручной код: " + AppVars.GuamodCode);
+                AppLog.i("Captcha", "MANUAL_CAPTCHA_ENTERED len=" + AppVars.GuamodCode.Length);
             }
         }
 

@@ -27,6 +27,7 @@ import java.util.regex.Pattern;
 import ru.neverlands.anclient.MainActivity;
 import ru.neverlands.anclient.model.AppTimer;
 import ru.neverlands.anclient.model.ParsedDressed;
+import ru.neverlands.anclient.postfilter.AlchemyAjaxPhp;
 import ru.neverlands.anclient.postfilter.MainPhp;
 import ru.neverlands.anclient.utils.AppLog;
 import ru.neverlands.anclient.utils.AppVars;
@@ -883,6 +884,10 @@ public final class AutoCutManager {
         if (manager == null) {
             return;
         }
+        if (shouldDelayRouteForPreparation()) {
+            AppLog.d(TRACE_CHAIN, TAG, "route skip: preparation pending, source=" + source);
+            return;
+        }
         List<String> cells = getSearchCells();
         if (cells.isEmpty()) {
             return;
@@ -895,6 +900,27 @@ public final class AutoCutManager {
             return;
         }
         routeNextCellWithManager(manager, source);
+    }
+
+    /**
+     * Блокирует старт маршрута, пока existing main.php/alchemy preparation ещё не завершён.
+     * Иначе `onAutoCutEnabled(...)` может увести WebView с текущей ready-клетки до возврата
+     * `AutoCutHandler` на карту после проверки серпа или one-shot mass-sync.
+     */
+    private boolean shouldDelayRouteForPreparation() {
+        if (AppVars.AutoCutCleanupPending || massSnapshotSyncPending || AlchemyAjaxPhp.hasPendingCutForRouteGuard()) {
+            return true;
+        }
+        if (!AppVars.AutoCutCheckSickle) {
+            return false;
+        }
+        List<String> cells = getSearchCells();
+        String current = resolveCurrentRegNum();
+        if (cells.isEmpty() || TextUtils.isEmpty(current)) {
+            return true;
+        }
+        return cells.contains(current)
+                && (hasDueHerbTimerForCurrentShift(current) || !isCellCheckedForCurrentShift(current));
     }
 
     /** Получает `AutoFunctionsManager` и делегирует старт маршрута с защитой от исключений. */

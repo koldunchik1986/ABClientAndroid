@@ -1,4 +1,4 @@
-﻿namespace ABClient
+namespace ABClient
 {
     using System;
     using System.Globalization;
@@ -41,7 +41,8 @@
 
         public void SetAutoFishMassa(string massa)
         {
-            AppVars.AutoFishMassa = massa;
+            AppVars.AutoFishMassa = (massa ?? string.Empty).Trim();
+            AutoCutRuntime.UpdateMassSnapshot(AppVars.AutoFishMassa);
         }
 
         public string CheckPri(string namePri, int myst)

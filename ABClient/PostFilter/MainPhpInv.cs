@@ -1,4 +1,4 @@
-﻿namespace ABClient.PostFilter
+namespace ABClient.PostFilter
 {
     using System;
     using System.Collections.Generic;
@@ -53,10 +53,14 @@
                 if (
                     invEntry.IsExpired() ||
                     (!string.IsNullOrEmpty(AppVars.BulkDropThing) &&
-                    !string.IsNullOrEmpty(AppVars.BulkDropPrice) &&
                     AppVars.BulkDropThing.Equals(invEntry.DropThing, StringComparison.CurrentCultureIgnoreCase) &&
-                    AppVars.BulkDropPrice.Equals(invEntry.DropPrice, StringComparison.CurrentCultureIgnoreCase)))
+                    (string.IsNullOrEmpty(AppVars.BulkDropPrice) || AppVars.BulkDropPrice.Equals(invEntry.DropPrice, StringComparison.CurrentCultureIgnoreCase))))
                 {
+                    if (string.Equals(AppVars.BulkDropThing, AutoCutRuntime.GarbageItemName, StringComparison.CurrentCultureIgnoreCase))
+                    {
+                        AppLog.i("auto_cut_trace", "MainPhpInv", "garbage bulk-drop redirect: link=" + invEntry.DropLink);
+                    }
+
                     html = BuildRedirect($"Выбрасывание предмета <b>&laquo;{invEntry.DropThing}&raquo;</b>...", invEntry.DropLink);
                     return html;
                 }
@@ -82,6 +86,8 @@
 
             if (!string.IsNullOrEmpty(AppVars.BulkDropThing))
             {
+                var wasAutoCutGarbageCleanup = AppVars.AutoCutCleanupPending &&
+                                               AppVars.BulkDropThing.Equals(AutoCutRuntime.GarbageItemName, StringComparison.CurrentCultureIgnoreCase);
                 var messageBulkDropFinished = $"Выбрасывание пачки <b>&laquo;{AppVars.BulkDropThing}&raquo;</b> завершено.";
                 try
                 {
@@ -96,6 +102,12 @@
                 }
 
                 AppVars.BulkDropThing = string.Empty;
+                AppVars.BulkDropPrice = string.Empty;
+                if (wasAutoCutGarbageCleanup)
+                {
+                    AppLog.i("auto_cut_trace", "MainPhpInv", "garbage bulk-drop completed");
+                    AutoCutRuntime.OnCleanupCompleted("inventory_pass");
+                }
             }
 
             if (
@@ -117,6 +129,11 @@
                 }
 
                 AppVars.BulkSellThing = string.Empty;
+            }
+
+            if (AppVars.AutoCutCleanupPending && string.IsNullOrEmpty(AppVars.BulkDropThing))
+            {
+                AutoCutRuntime.OnCleanupCompleted("inventory_pass");
             }
 
             if (InvList.Count > 1)

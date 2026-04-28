@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Text;
@@ -206,6 +206,24 @@ namespace ABClient.MyProfile
                     xmlWriter.WriteValue(DoAutoCutWriteChat);
                     xmlWriter.WriteEndElement();
 
+                    xmlWriter.WriteStartElement("autocut");
+                    xmlWriter.WriteStartAttribute("cells");
+                    xmlWriter.WriteString(AutoCutSearchCellsCsv ?? string.Empty);
+                    xmlWriter.WriteEndAttribute();
+                    xmlWriter.WriteStartAttribute("cleanup");
+                    xmlWriter.WriteValue(AutoCutCleanupEnabled);
+                    xmlWriter.WriteEndAttribute();
+                    xmlWriter.WriteStartAttribute("bytimers");
+                    xmlWriter.WriteValue(AutoCutByTimers);
+                    xmlWriter.WriteEndAttribute();
+                    xmlWriter.WriteStartAttribute("shifts");
+                    xmlWriter.WriteString(AutoCutShiftSchedule ?? AutoCutCatalog.DefaultShiftSchedule);
+                    xmlWriter.WriteEndAttribute();
+                    xmlWriter.WriteStartAttribute("sickles");
+                    xmlWriter.WriteString(AutoCutSicklesCsv ?? string.Empty);
+                    xmlWriter.WriteEndAttribute();
+                    xmlWriter.WriteEndElement();
+
                     xmlWriter.WriteStartElement("anticaptcha");
                     xmlWriter.WriteStartAttribute("enabled");
                     xmlWriter.WriteValue(AntiCaptchaEnabled);
@@ -307,6 +325,45 @@ namespace ABClient.MyProfile
                         {
                             xmlWriter.WriteStartElement("herbautocut");
                             xmlWriter.WriteString(HerbsAutoCut[i] ?? string.Empty);
+                            xmlWriter.WriteEndElement();
+                        }
+
+                        xmlWriter.WriteEndElement();
+                    }
+
+                    if (AutoCutHerbs.Count > 0)
+                    {
+                        xmlWriter.WriteStartElement("autocutherbs");
+                        for (var i = 0; i < AutoCutHerbs.Count; i++)
+                        {
+                            var herb = AutoCutHerbs[i];
+                            if (herb == null || string.IsNullOrEmpty(herb.Name))
+                            {
+                                continue;
+                            }
+
+                            xmlWriter.WriteStartElement("autocutherb");
+                            xmlWriter.WriteStartAttribute("id");
+                            xmlWriter.WriteString(herb.Id ?? string.Empty);
+                            xmlWriter.WriteEndAttribute();
+                            xmlWriter.WriteStartAttribute("name");
+                            xmlWriter.WriteString(herb.Name ?? string.Empty);
+                            xmlWriter.WriteEndAttribute();
+                            xmlWriter.WriteStartAttribute("skill");
+                            xmlWriter.WriteValue(herb.Skill);
+                            xmlWriter.WriteEndAttribute();
+                            xmlWriter.WriteStartAttribute("growth");
+                            xmlWriter.WriteValue(herb.GrowthMinutes);
+                            xmlWriter.WriteEndAttribute();
+                            xmlWriter.WriteStartAttribute("group");
+                            xmlWriter.WriteString(herb.Group ?? AutoCutCatalog.UnknownGroup);
+                            xmlWriter.WriteEndAttribute();
+                            xmlWriter.WriteStartAttribute("location");
+                            xmlWriter.WriteString(herb.LastLocation ?? string.Empty);
+                            xmlWriter.WriteEndAttribute();
+                            xmlWriter.WriteStartAttribute("selected");
+                            xmlWriter.WriteValue(herb.Selected);
+                            xmlWriter.WriteEndAttribute();
                             xmlWriter.WriteEndElement();
                         }
 
@@ -754,6 +811,12 @@ namespace ABClient.MyProfile
                     xmlWriter.WriteEndAttribute();
                     xmlWriter.WriteStartAttribute("report");
                     xmlWriter.WriteValue(BossAutoReport);
+                    xmlWriter.WriteEndAttribute();
+                    xmlWriter.WriteStartAttribute("searchwords");
+                    xmlWriter.WriteString(BossSearchWords ?? string.Empty);
+                    xmlWriter.WriteEndAttribute();
+                    xmlWriter.WriteStartAttribute("searchinterval");
+                    xmlWriter.WriteValue(BossSearchInterval);
                     xmlWriter.WriteEndAttribute();
                     xmlWriter.WriteEndElement();
 

@@ -353,3 +353,11 @@ GET http://neverlands.ru/gameplay/ajax/alchemy_ajax.php?act=3&res_id=<id>&r_x=<x
 - [x] Проверка `app2/src/main` на старые AutoCut runtime-префиксы `ABCLIENT`/`abclient`/`ru.neverlands.abclient`/`ab_auto_cut`/`ab_cut` — совпадений нет.
 - [-] `git diff --check -- app2 TODO2` показал только известное предупреждение `.gitattributes:7` и LF/CRLF warnings, без whitespace-error строк.
 - [ ] Проверить live-лог после этих правок: после `mass snapshot sync finished` должен появиться `pending cut resume scheduled` и затем `act3 no-captcha submit via AjaxGet` или captcha popup; после timer-route должен быть `timer-route return` и `timer-route returned to source cell`.
+- [x] После C# фикса `Лён`/toolbar/start сверена app2-точка `AutoCutHandler.processSickleCheck(...)`: возврат после проверки серпа уже идёт через существующий `buildReturnToMapHtml(...)` и лог `return to map using parsed link`.
+- [x] Найдена и исправлена app2-аналогичная гонка без нового HTTP-контура: `AutoCutManager.routeNextCellIfCurrentIsNotReady(...)` теперь не запускает маршрут, пока активна подготовка серпа, mass-sync, cleanup или pending `AlchemyAjaxPhp` cut; ожидаемый лог `route skip: preparation pending`.
+- [ ] Проверить live-лог после preparation-route guard: при включении Авто-Травника на ready-клетке должны идти `route skip: preparation pending` -> `return to map using parsed link` -> `AUTO_CUT_JS schedule/start Ogl`, без преждевременного `route next`.
+- [x] `./gradlew.bat --no-daemon :app2:assembleDebug` после preparation-route guard — успешно.
+- [x] BOM-проверка изменённых `AutoCutManager.java`, `AlchemyAjaxPhp.java`, `TODO2/todo_task_20260427_auto_herbalist.md` — OK.
+- [x] Mojibake-проверка diff изменённых файлов после preparation-route guard — совпадений нет.
+- [x] Проверка прямого `Log.*` и старых AutoCut runtime-префиксов в изменённых Java-папках — совпадений нет.
+- [-] `git diff --check` для изменённых файлов показал только известное предупреждение `.gitattributes:7` и LF/CRLF warnings, без whitespace-error строк.

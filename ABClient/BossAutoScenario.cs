@@ -74,7 +74,7 @@ namespace ABClient
         private static System.Windows.Forms.Timer _timer; // Android: Handler + postDelayed
 
         // Таймауты — соответствуют Android BossAuto.java
-        private static readonly TimeSpan SearchTimeout = TimeSpan.FromMinutes(6); // Android: DEFAULT_SEARCH_TIMEOUT_SEC
+        private static readonly TimeSpan DefaultSearchTimeout = TimeSpan.FromMinutes(6); // Android: DEFAULT_SEARCH_TIMEOUT_SEC
         private static readonly TimeSpan WaitFightTimeout = TimeSpan.FromSeconds(25); // Android: DEFAULT_WAIT_FIGHT_TIMEOUT_SEC
         private static readonly TimeSpan WaitScrollTimeout = TimeSpan.FromSeconds(2); // Android: DEFAULT_WAIT_BEFORE_SCROLL_SEC
         private static readonly TimeSpan ReturnTimeout = TimeSpan.FromMinutes(2); // Android: RETURN_TIMEOUT_MS
@@ -165,6 +165,12 @@ namespace ABClient
 
             var bossName = match.Groups[1].Value.Trim(); // Android: bossName from BOSS_EVENT_PATTERN_FLEX
             var victimPart = match.Groups[2].Value.Trim(); // Android: victimPart
+
+            if (!IsBossAllowed(bossName))
+            {
+                AppLog.d("BossAuto", "CHAT_EVENT_SKIPPED_BY_FILTER: boss=" + bossName);
+                return;
+            }
 
             AppLog.i("BossAuto", "CHAT_EVENT: boss=" + bossName + " victims=" + victimPart);
 
@@ -287,7 +293,7 @@ namespace ABClient
         /// </summary>
         private static void ProcessSearchingTarget(string targetNick, DateTime stageStart)
         {
-            if (DateTime.Now - stageStart > SearchTimeout) // Android: DEFAULT_SEARCH_TIMEOUT_SEC
+            if (DateTime.Now - stageStart > GetSearchTimeout()) // Android: DEFAULT_SEARCH_TIMEOUT_SEC
             {
                 ReportStatus($"[BossAuto] Таймаут поиска цели {targetNick}. Отмена.");
                 StopScenario();
@@ -565,6 +571,38 @@ namespace ABClient
                 _originCell = string.Empty;
                 _stageStartTime = DateTime.MinValue;
             }
+        }
+
+        private static TimeSpan GetSearchTimeout()
+        {
+            var seconds = AppVars.Profile == null ? 0 : AppVars.Profile.BossSearchInterval;
+            if (seconds <= 0)
+            {
+                seconds = (int)DefaultSearchTimeout.TotalSeconds;
+            }
+
+            seconds = Math.Max(30, Math.Min(1800, seconds));
+            return TimeSpan.FromSeconds(seconds);
+        }
+
+        private static bool IsBossAllowed(string bossName)
+        {
+            if (AppVars.Profile == null || string.IsNullOrEmpty(AppVars.Profile.BossSearchWords))
+            {
+                return true;
+            }
+
+            var words = AppVars.Profile.BossSearchWords.Split(new[] { ',', ';', '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
+            for (var i = 0; i < words.Length; i++)
+            {
+                var word = words[i].Trim();
+                if (word.Length > 0 && bossName.IndexOf(word, StringComparison.OrdinalIgnoreCase) >= 0)
+                {
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         /// <summary>

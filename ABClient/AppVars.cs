@@ -1,4 +1,4 @@
-﻿using ABClient.ExtMap;
+using ABClient.ExtMap;
 using System;
 using System.Collections.Generic;
 using System.Collections.Specialized;
@@ -210,6 +210,22 @@ namespace ABClient
         internal static DateTime AutoSkinLastChecked { get; set; }
         internal static bool AutoSkinCheckRes { get; set; }
         internal static readonly Dictionary<string, double> SkinRes = new Dictionary<string, double>();
+
+        internal static bool AutoCutCheckSickle { get; set; }
+
+        internal static bool AutoCutArmedSickle { get; set; }
+
+        internal static string AutoCutSickleHand { get; set; }
+
+        internal static string AutoCutSickleHandD { get; set; }
+
+        internal static bool AutoCutCleanupPending { get; set; }
+
+        internal static string AutoCutCleanupReason { get; set; }
+
+        internal static double AutoCutHarvestedMassSinceCleanup { get; set; }
+
+        internal static double AutoCutKnownMassMax { get; set; }
 
         internal static bool AutoFishCheckUd { get; set; }
 

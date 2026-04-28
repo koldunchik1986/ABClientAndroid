@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using ABClient.Lez;
 
 namespace ABClient.MyProfile
@@ -368,6 +368,16 @@ namespace ABClient.MyProfile
         /// Вывод в чат результата спила
         /// </summary>
         internal bool DoAutoCutWriteChat { get; set; }
+
+        internal string AutoCutSearchCellsCsv { get; set; }
+
+        internal bool AutoCutCleanupEnabled { get; set; }
+
+        internal bool AutoCutByTimers { get; set; }
+
+        internal string AutoCutShiftSchedule { get; set; }
+
+        internal string AutoCutSicklesCsv { get; set; }
 
         /// <summary>
         /// Использовать внешний сервис anti-captcha.com перед локальным гуамодом.

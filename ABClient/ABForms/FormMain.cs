@@ -1,4 +1,4 @@
-﻿using System.IO;
+using System.IO;
 using System.Net;
 using System.Threading;
 using ABClient.ExtMap;
@@ -33,6 +33,7 @@ namespace ABClient.ABForms
         {
             InitializeComponent();
             InitForm();
+            InitializeToolsSettingsMenu();
         }
 
         internal string GetServerTime()
@@ -217,6 +218,63 @@ namespace ABClient.ABForms
         private void MenuitemFishAdvisor_Click(object sender, EventArgs e)
         {
             ShowFishTip();
+        }
+
+        private void InitializeToolsSettingsMenu()
+        {
+            AddToolSettingsMenuItem("menuitemSettingsAutoCut", "Авто-Травник...", menuitemSettingsAutoCut_Click);
+            AddToolSettingsMenuItem("menuitemSettingsAntiCaptcha", "Anti-Captcha...", menuitemSettingsAntiCaptcha_Click);
+        }
+
+        private void AddToolSettingsMenuItem(string name, string text, EventHandler handler)
+        {
+            for (var i = 0; i < menuitemTools.DropDownItems.Count; i++)
+            {
+                if (menuitemTools.DropDownItems[i].Name.Equals(name, StringComparison.Ordinal))
+                {
+                    return;
+                }
+            }
+
+            var item = new ToolStripMenuItem(text);
+            item.Name = name;
+            item.Click += handler;
+            ToolStripItem anchor = menuitemFishAdvisor;
+            if (name.Equals("menuitemSettingsAntiCaptcha", StringComparison.Ordinal))
+            {
+                for (var i = 0; i < menuitemTools.DropDownItems.Count; i++)
+                {
+                    if (menuitemTools.DropDownItems[i].Name.Equals("menuitemSettingsAutoCut", StringComparison.Ordinal))
+                    {
+                        anchor = menuitemTools.DropDownItems[i];
+                        break;
+                    }
+                }
+            }
+
+            var insertIndex = menuitemTools.DropDownItems.IndexOf(anchor) + 1;
+            if (insertIndex <= 0 || insertIndex > menuitemTools.DropDownItems.Count)
+            {
+                insertIndex = menuitemTools.DropDownItems.Count;
+            }
+
+            menuitemTools.DropDownItems.Insert(insertIndex, item);
+        }
+
+        private void menuitemSettingsAutoCut_Click(object sender, EventArgs e)
+        {
+            using (var formSettingsAutoCut = new FormSettingsAutoCut())
+            {
+                formSettingsAutoCut.ShowDialog();
+            }
+        }
+
+        private void menuitemSettingsAntiCaptcha_Click(object sender, EventArgs e)
+        {
+            using (var formSettingsAntiCaptcha = new FormSettingsAntiCaptcha())
+            {
+                formSettingsAntiCaptcha.ShowDialog();
+            }
         }
 
         // *** Табы ***
@@ -761,20 +819,25 @@ namespace ABClient.ABForms
             Close();
         }
 
-        /*
-        private void menuitemSettingsAutoCut_Click(object sender, EventArgs e)
-        {
-            using (var formSettingsAutoCut = new FormSettingsAutoCut())
-            {
-                formSettingsAutoCut.ShowDialog();
-            }
-        }
-         */
-
         private void buttonHerbAutoCut_Click(object sender, EventArgs e)
         {
             AppVars.DoHerbAutoCut = buttonHerbAutoCut.Checked;
-            if (!AppVars.DoHerbAutoCut) return;
+            if (!AppVars.DoHerbAutoCut)
+            {
+                if (!string.IsNullOrEmpty(AppVars.FightLink) &&
+                    AppVars.FightLink.IndexOf("alchemy_ajax.php", StringComparison.OrdinalIgnoreCase) >= 0)
+                {
+                    AppVars.FightLink = string.Empty;
+                }
+
+                return;
+            }
+
+            AutoCutRuntime.ResetRuntime("toolbar_enabled");
+            AppVars.AutoCutCheckSickle = true;
+            AppVars.AutoCutArmedSickle = false;
+            AppVars.AutoCutSickleHand = string.Empty;
+            AppVars.AutoCutSickleHandD = string.Empty;
             if (AppVars.Profile.HerbsAutoCut.Count == 0)
             {
                 MessageBox.Show(
@@ -791,6 +854,7 @@ namespace ABClient.ABForms
             }
 
             ReloadMainPhpInvoke();
+            AutoCutRuntime.RouteNextCellIfCurrentIsNotReady("toolbar_enabled");
         }
 
         private void menuitemChatAdvisor_Click(object sender, EventArgs e)

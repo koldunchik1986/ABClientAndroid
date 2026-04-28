@@ -51,9 +51,17 @@ namespace ABClient.PostFilter
             var state = ParseResourceState(html);
             if (state == null || state.Resources.Count == 0)
             {
+                if (html.Trim().Equals("ERR", StringComparison.OrdinalIgnoreCase))
+                {
+                    AutoCutRuntime.ScheduleLookRetry("alchemy_act1_err");
+                }
+
                 AppLog.d(AlchemyTraceChain, "AlchemyAjaxPhp", "act1: no resource state");
                 return;
             }
+
+            RegisterObservedResources(state);
+            AutoCutRuntime.ClearDueHerbTimersForCurrentCell("alchemy_act1");
 
             ResourceCandidate selected = null;
             for (var i = 0; i < state.Resources.Count; i++)
@@ -74,11 +82,111 @@ namespace ABClient.PostFilter
             if (selected == null)
             {
                 AppLog.d(AlchemyTraceChain, "AlchemyAjaxPhp", "act1: no selected available herb, resources=" + state.Resources.Count);
+                AutoCutRuntime.OnScanWithoutSelectedHerb("alchemy_act1");
                 return;
             }
 
-            pendingAlchemyCut = new PendingAlchemyCut(selected, state.CaptchaToken, DateTime.Now);
+            var selectedCut = new PendingAlchemyCut(selected, state.CaptchaToken, HasMoreSelectedAvailableAfterCut(state, selected), DateTime.Now);
+            if (!AppVars.AutoCutArmedSickle)
+            {
+                pendingAlchemyCut = selectedCut;
+                AppVars.AutoCutCheckSickle = true;
+                AppVars.FightLink = string.Empty;
+                RequestMainPhpReload("act1: selected herb waits for sickle check, herb=" + selected.Name);
+                return;
+            }
+
+            if (AutoCutRuntime.NeedsMassSnapshotBeforeCut())
+            {
+                pendingAlchemyCut = selectedCut;
+                AutoCutRuntime.RequestMassSnapshotBeforeCut("alchemy_act1:" + selected.ResId);
+                AppLog.i(AlchemyTraceChain, "AlchemyAjaxPhp", "act1: selected herb waits for mass snapshot, herb=" + selected.Name);
+                return;
+            }
+
+            pendingAlchemyCut = selectedCut;
             DispatchPendingAlchemyCut(pendingAlchemyCut);
+        }
+
+        private static bool ResumePendingAlchemyCutAfterPreparation(string source)
+        {
+            var current = pendingAlchemyCut;
+            if (current == null || current.IsExpired || !AppVars.DoHerbAutoCut || !AppVars.AutoCutArmedSickle)
+            {
+                return false;
+            }
+
+            if (AutoCutRuntime.NeedsMassSnapshotBeforeCut())
+            {
+                AutoCutRuntime.RequestMassSnapshotBeforeCut("resume_after_" + source + ":" + current.Resource.ResId);
+                AppLog.i(AlchemyTraceChain, "AlchemyAjaxPhp", "pending cut resume waits for mass snapshot: herb=" + current.Resource.Name + ", source=" + source);
+                return true;
+            }
+
+            DispatchPendingAlchemyCut(current);
+            AppLog.i(AlchemyTraceChain, "AlchemyAjaxPhp", "pending cut resumed: herb=" + current.Resource.Name + ", source=" + source);
+            return true;
+        }
+
+        private static void RegisterObservedResources(ResourceState state)
+        {
+            if (state == null || AppVars.Profile == null)
+            {
+                return;
+            }
+
+            var catalogChanged = AutoCutCatalog.EnsureProfileCatalog(AppVars.Profile);
+            var listBuilder = new StringBuilder();
+            for (var i = 0; i < state.Resources.Count; i++)
+            {
+                var resource = state.Resources[i];
+                if (resource == null || string.IsNullOrEmpty(resource.Name))
+                {
+                    continue;
+                }
+
+                int growthMinutes;
+                int.TryParse(resource.RTime, NumberStyles.Integer, CultureInfo.InvariantCulture, out growthMinutes);
+                catalogChanged |= AutoCutCatalog.RegisterObservedHerb(
+                    AppVars.Profile,
+                    resource.ResId,
+                    resource.Name,
+                    growthMinutes,
+                    AppVars.Profile.MapLocation ?? string.Empty);
+
+                listBuilder.Append(resource.Name);
+                listBuilder.Append(':');
+                listBuilder.Append(resource.AvailableCount > 0 ? '1' : '0');
+                listBuilder.Append('|');
+            }
+
+            if (listBuilder.Length > 0)
+            {
+                FormMain.HerbsList(listBuilder.ToString());
+            }
+
+            if (catalogChanged)
+            {
+                AppLog.i(AlchemyTraceChain, "AlchemyAjaxPhp", "catalog updated from RESO@, resources=" + state.Resources.Count);
+                AppVars.Profile.Save();
+            }
+        }
+
+        private static void RequestMainPhpReload(string reason)
+        {
+            AppLog.i(AlchemyTraceChain, "AlchemyAjaxPhp", reason);
+            try
+            {
+                if (AppVars.MainForm != null)
+                {
+                    AppVars.MainForm.BeginInvoke(
+                        new ReloadMainPhpInvokeDelegate(AppVars.MainForm.ReloadMainPhpInvoke),
+                        new object[] { });
+                }
+            }
+            catch (InvalidOperationException)
+            {
+            }
         }
 
         private static void DispatchPendingAlchemyCut(PendingAlchemyCut cut)
@@ -113,6 +221,7 @@ namespace ABClient.PostFilter
                 AppLog.w(AlchemyTraceChain, "AlchemyAjaxPhp", "act3: wrong protection/captcha code response");
                 pendingAlchemyCut = null;
                 AppVars.FightLink = string.Empty;
+                AutoCutRuntime.ScheduleLookRetry("wrong_captcha:alchemy_act3");
                 return;
             }
 
@@ -122,9 +231,16 @@ namespace ABClient.PostFilter
                 return;
             }
 
+            var foundGarbage = lower.IndexOf(AutoCutRuntime.GarbageItemName.ToLowerInvariant(), StringComparison.OrdinalIgnoreCase) >= 0;
+
             var current = pendingAlchemyCut;
             pendingAlchemyCut = null;
             AppVars.FightLink = string.Empty;
+            if (foundGarbage)
+            {
+                AutoCutRuntime.RequestGarbageCleanupAfterCut(current == null || current.IsExpired ? "alchemy_act3_unmatched" : "alchemy_act3");
+            }
+
             if (current == null || current.IsExpired)
             {
                 AppLog.i(AlchemyTraceChain, "AlchemyAjaxPhp", "act3 success without pending cut");
@@ -132,7 +248,53 @@ namespace ABClient.PostFilter
             }
 
             FormMain.TraceCut(current.Resource.Name);
+            AutoCutRuntime.OnCutSuccess(current.RetrySameCellAfterCut, "alchemy_act3", current.Resource.MassAsDouble());
             AppLog.i(AlchemyTraceChain, "AlchemyAjaxPhp", "act3 success: herb=" + current.Resource.Name);
+        }
+
+        private static bool HasMoreSelectedAvailableAfterCut(ResourceState state, ResourceCandidate selected)
+        {
+            if (state == null || selected == null)
+            {
+                return false;
+            }
+
+            for (var i = 0; i < state.Resources.Count; i++)
+            {
+                var resource = state.Resources[i];
+                if (resource == null || resource.AvailableCount <= 0 || string.IsNullOrEmpty(resource.CutVcode) || !FormMain.IsHerbAutoCut(resource.Name))
+                {
+                    continue;
+                }
+
+                var remaining = resource.AvailableCount;
+                if (IsSameResource(resource, selected))
+                {
+                    remaining--;
+                }
+
+                if (remaining > 0)
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        private static bool IsSameResource(ResourceCandidate left, ResourceCandidate right)
+        {
+            if (left == null || right == null)
+            {
+                return false;
+            }
+
+            if (!string.IsNullOrEmpty(left.ResId) && left.ResId.Equals(right.ResId, StringComparison.Ordinal))
+            {
+                return true;
+            }
+
+            return !string.IsNullOrEmpty(left.Name) && left.Name.Equals(right.Name, StringComparison.OrdinalIgnoreCase);
         }
 
         private static ResourceState ParseResourceState(string html)
@@ -341,6 +503,12 @@ namespace ABClient.PostFilter
                        + "&r=" + DateTime.Now.Ticks.ToString(CultureInfo.InvariantCulture);
             }
 
+            internal double MassAsDouble()
+            {
+                double result;
+                return double.TryParse((Mass ?? string.Empty).Trim().Replace(',', '.'), NumberStyles.Any, CultureInfo.InvariantCulture, out result) ? result : 0d;
+            }
+
             private static string Url(string value)
             {
                 return HttpUtility.UrlEncode(value ?? string.Empty, AppVars.Codepage);
@@ -351,12 +519,14 @@ namespace ABClient.PostFilter
         {
             internal readonly ResourceCandidate Resource;
             internal readonly string CaptchaToken;
+            internal readonly bool RetrySameCellAfterCut;
             private readonly DateTime createdAt;
 
-            internal PendingAlchemyCut(ResourceCandidate resource, string captchaToken, DateTime now)
+            internal PendingAlchemyCut(ResourceCandidate resource, string captchaToken, bool retrySameCellAfterCut, DateTime now)
             {
                 Resource = resource;
                 CaptchaToken = captchaToken;
+                RetrySameCellAfterCut = retrySameCellAfterCut;
                 createdAt = now;
             }
 

@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using ABClient.Lez;
 
 namespace ABClient.MyProfile
@@ -230,6 +230,10 @@ namespace ABClient.MyProfile
                     LoadAntiCaptchaSettings(xmlReader);
                     break;
 
+                case "autocut":
+                    LoadAutoCutSettings(xmlReader);
+                    break;
+
                 case "showperformance":
                     xmlReader.Read();
                     ShowPerformance = xmlReader.ReadContentAsBoolean();
@@ -269,6 +273,10 @@ namespace ABClient.MyProfile
                 case "herbautocut":
                     xmlReader.Read();
                     HerbsAutoCut.Add(xmlReader.ReadContentAsString());
+                    break;
+
+                case "autocutherb":
+                    LoadAutoCutHerb(xmlReader);
                     break;
 
                 case "complects":
@@ -634,10 +642,13 @@ namespace ABClient.MyProfile
                 case "bossauto":
                     {
                         bool val;
+                        int ival;
                         if (bool.TryParse(xmlReader["enabled"], out val)) BossAutoEnabled = val;
                         if (bool.TryParse(xmlReader["attack"], out val)) BossAutoAttack = val;
                         if (bool.TryParse(xmlReader["trace"], out val)) BossAutoTrace = val;
                         if (bool.TryParse(xmlReader["report"], out val)) BossAutoReport = val;
+                        BossSearchWords = xmlReader["searchwords"] ?? BossSearchWords;
+                        if (int.TryParse(xmlReader["searchinterval"], out ival)) BossSearchInterval = ival;
                     }
                     break;
 
@@ -1217,6 +1228,88 @@ namespace ABClient.MyProfile
             if (!string.IsNullOrEmpty(languagePool))
             {
                 AntiCaptchaLanguagePool = languagePool.Equals("rn", StringComparison.OrdinalIgnoreCase) ? "rn" : "en";
+            }
+        }
+
+        private void LoadAutoCutSettings(XmlReader xmlReader)
+        {
+            bool boolValue;
+            if (xmlReader["cells"] != null)
+            {
+                AutoCutSearchCellsCsv = xmlReader["cells"];
+            }
+
+            if (bool.TryParse(xmlReader["cleanup"], out boolValue))
+            {
+                AutoCutCleanupEnabled = boolValue;
+            }
+
+            if (bool.TryParse(xmlReader["bytimers"], out boolValue))
+            {
+                AutoCutByTimers = boolValue;
+            }
+
+            if (xmlReader["shifts"] != null)
+            {
+                AutoCutShiftSchedule = xmlReader["shifts"];
+            }
+
+            if (xmlReader["sickles"] != null)
+            {
+                AutoCutSicklesCsv = xmlReader["sickles"];
+            }
+        }
+
+        private void LoadAutoCutHerb(XmlReader xmlReader)
+        {
+            var name = xmlReader["name"] ?? string.Empty;
+            if (string.IsNullOrEmpty(name))
+            {
+                return;
+            }
+
+            var herb = new AutoCutHerbInfo
+                           {
+                               Id = xmlReader["id"] ?? string.Empty,
+                               Name = name,
+                               Group = xmlReader["group"] ?? AutoCutCatalog.UnknownGroup,
+                               LastLocation = xmlReader["location"] ?? string.Empty
+                           };
+            int intValue;
+            if (int.TryParse(xmlReader["skill"], out intValue))
+            {
+                herb.Skill = Math.Max(0, intValue);
+            }
+
+            if (int.TryParse(xmlReader["growth"], out intValue))
+            {
+                herb.GrowthMinutes = Math.Max(1, intValue);
+            }
+            else
+            {
+                herb.GrowthMinutes = 60;
+            }
+
+            bool boolValue;
+            if (bool.TryParse(xmlReader["selected"], out boolValue))
+            {
+                herb.Selected = boolValue;
+            }
+
+            var existing = AutoCutCatalog.Find(AutoCutHerbs, herb.Id, herb.Name);
+            if (existing == null)
+            {
+                AutoCutHerbs.Add(herb);
+            }
+            else
+            {
+                existing.Id = herb.Id;
+                existing.Name = herb.Name;
+                existing.Skill = herb.Skill;
+                existing.GrowthMinutes = herb.GrowthMinutes;
+                existing.Group = herb.Group;
+                existing.LastLocation = herb.LastLocation;
+                existing.Selected = herb.Selected;
             }
         }
     }

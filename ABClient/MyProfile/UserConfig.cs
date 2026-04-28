@@ -1,4 +1,4 @@
-﻿using System.Threading;
+using System.Threading;
 
 namespace ABClient.MyProfile
 {
@@ -15,6 +15,7 @@ namespace ABClient.MyProfile
         private static readonly ReaderWriterLock UserConfigLock = new ReaderWriterLock();
 
         internal readonly SortedDictionary<string, HerbCell> HerbCells = new SortedDictionary<string, HerbCell>();
+        internal readonly List<AutoCutHerbInfo> AutoCutHerbs = new List<AutoCutHerbInfo>();
         internal readonly List<string> HerbsAutoCut = new List<string>();
         internal readonly List<AppTimer> AppConfigTimers = new List<AppTimer>();        
 
@@ -201,6 +202,11 @@ namespace ABClient.MyProfile
             DoShowFastAttackPortal = true;            
 
             DoAutoCutWriteChat = true;
+            AutoCutSearchCellsCsv = string.Empty;
+            AutoCutCleanupEnabled = false;
+            AutoCutByTimers = false;
+            AutoCutShiftSchedule = AutoCutCatalog.DefaultShiftSchedule;
+            AutoCutSicklesCsv = string.Empty;
             AntiCaptchaEnabled = false;
             AntiCaptchaApiKey = string.Empty;
             AntiCaptchaPhrase = false;
@@ -210,6 +216,8 @@ namespace ABClient.MyProfile
             AntiCaptchaMinLength = 5;
             AntiCaptchaMaxLength = 5;
             AntiCaptchaLanguagePool = "en";
+            BossSearchWords = string.Empty;
+            BossSearchInterval = 360;
             DoStopOnDig = true;
 
             DoAutoDrinkBlaz = false;

@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using System.Globalization;
 using System.Text;
 using ABClient.MyHelpers;
@@ -230,6 +230,77 @@ stopautofish:
             }
 
             AppVars.AutoSkinArmedKnife = false;
+            return null;
+        }
+
+        private static bool MainPhpArmedSickle(string html)
+        {
+            var parsedDressed = new ParsedDressed(html);
+            if (!parsedDressed.Valid)
+            {
+                return false;
+            }
+
+            var result = parsedDressed.IsWearSickle();
+            if (result)
+            {
+                AppLog.i("auto_cut_trace", "MainPhpWear", "sickle armed: " + AppVars.AutoCutSickleHand + " " + AppVars.AutoCutSickleHandD);
+            }
+
+            return result;
+        }
+
+        private static string MainPhpWearSickle(string html)
+        {
+            var parsedDressed = new ParsedDressed(html);
+            if (!parsedDressed.Valid)
+            {
+                return null;
+            }
+
+            if (parsedDressed.IsWearSickle())
+            {
+                AppVars.AutoCutArmedSickle = true;
+                AppVars.AutoCutCheckSickle = false;
+                return null;
+            }
+
+            var invList = GetInvList(html);
+            var list = ParsedDressed.GetAutoCutSickleNames();
+            foreach (var thing in invList)
+            {
+                for (var j = 0; j < list.Length; j++)
+                {
+                    if (thing.Name.IndexOf(list[j], StringComparison.CurrentCultureIgnoreCase) < 0)
+                    {
+                        continue;
+                    }
+
+                    if (!string.IsNullOrEmpty(thing.WearLink))
+                    {
+                        AppLog.i("auto_cut_trace", "MainPhpWear", "wear sickle: " + thing.Name);
+                        return BuildRedirect("Одеваем " + thing.Name, thing.WearLink);
+                    }
+                }
+            }
+
+            AppVars.DoHerbAutoCut = false;
+            AppVars.AutoCutArmedSickle = false;
+            AppVars.AutoCutCheckSickle = false;
+            AppLog.w("auto_cut_trace", "MainPhpWear", "sickle not found, Auto-Травник disabled");
+            try
+            {
+                if (AppVars.MainForm != null)
+                {
+                    AppVars.MainForm.BeginInvoke(
+                        new UpdateWriteChatMsgDelegate(AppVars.MainForm.WriteChatMsg),
+                        "Авто-Травник выключен: серп не найден в инвентаре.");
+                }
+            }
+            catch (InvalidOperationException)
+            {
+            }
+
             return null;
         }
 

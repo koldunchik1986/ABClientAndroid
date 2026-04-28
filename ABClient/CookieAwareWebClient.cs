@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Net;
 
 namespace ABClient
@@ -32,8 +32,19 @@ namespace ABClient
                     _cookieContainer.Add(responce.Cookies);
                 }
             }
-            catch (WebException)
+            catch (WebException ex)
             {
+                if (ex.Response == null)
+                {
+                    throw;
+                }
+
+                basewr = ex.Response;
+                var responce = basewr as HttpWebResponse;
+                if (responce != null && responce.Cookies != null)
+                {
+                    _cookieContainer.Add(responce.Cookies);
+                }
             }
 
             return basewr;

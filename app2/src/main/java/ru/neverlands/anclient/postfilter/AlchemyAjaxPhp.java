@@ -183,6 +183,15 @@ public final class AlchemyAjaxPhp {
         return true;
     }
 
+    /**
+     * Диагностический guard для `AutoCutManager`: пока выбранный ресурс ждёт серп/mass-sync,
+     * route не должен уводить WebView с текущей клетки до resume через тот же AjaxGet flow.
+     */
+    public static boolean hasPendingCutForRouteGuard() {
+        PendingCut current = pendingCut;
+        return current != null && !current.isExpired();
+    }
+
     private static void dispatchPendingCut(PendingCut cut, String source) {
         if (cut == null || cut.isExpired()) {
             return;

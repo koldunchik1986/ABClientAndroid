@@ -1,4 +1,4 @@
-﻿using ABClient.ABForms;
+using ABClient.ABForms;
 
 namespace ABClient
 {
@@ -17,6 +17,15 @@ namespace ABClient
 
         private readonly List<string> slist = new List<string>();
         private readonly List<string> dlist = new List<string>();
+
+        private static readonly string[] AutoCutSickleNames =
+            {
+                "Серп Мастера-травника",
+                "Серп собирателя",
+                "Серп мастера-травника",
+                "Серп эксперта-травника",
+                "Серп Триады"
+            };
 
         internal ParsedDressed(string html)
         {
@@ -330,6 +339,33 @@ namespace ABClient
             }
 
             return false;
+        }
+
+        internal bool IsWearSickle()
+        {
+            AppVars.AutoCutSickleHand = string.Empty;
+            AppVars.AutoCutSickleHandD = string.Empty;
+            for (var i = 0; i < slist.Count; i++)
+            {
+                for (var j = 0; j < AutoCutSickleNames.Length; j++)
+                {
+                    if (slist[i].IndexOf(AutoCutSickleNames[j], StringComparison.CurrentCultureIgnoreCase) < 0)
+                    {
+                        continue;
+                    }
+
+                    AppVars.AutoCutSickleHand = slist[i];
+                    AppVars.AutoCutSickleHandD = i < dlist.Count ? dlist[i] : string.Empty;
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        internal static string[] GetAutoCutSickleNames()
+        {
+            return (string[]) AutoCutSickleNames.Clone();
         }
     }
 }
