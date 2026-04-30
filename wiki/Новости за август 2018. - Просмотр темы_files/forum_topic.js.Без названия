@@ -1,0 +1,87 @@
+var _____WB$wombat$assign$function_____=function(name){return (self._wb_wombat && self._wb_wombat.local_init && self._wb_wombat.local_init(name))||self[name];};if(!self.__WB_pmw){self.__WB_pmw=function(obj){this.__WB_source=obj;return this;}}{
+let window = _____WB$wombat$assign$function_____("window");
+let self = _____WB$wombat$assign$function_____("self");
+let document = _____WB$wombat$assign$function_____("document");
+let location = _____WB$wombat$assign$function_____("location");
+let top = _____WB$wombat$assign$function_____("top");
+let parent = _____WB$wombat$assign$function_____("parent");
+let frames = _____WB$wombat$assign$function_____("frames");
+let opens = _____WB$wombat$assign$function_____("opens");
+var pages = '';
+
+function view_forum_topic_top()
+{
+       var strtime = fdata[15].split('.');
+       pages = PageLinks(fdata[14],0);
+       d.write('<div id="container">');
+       d.write('<div id="fTopInner">'+PNGImage('forum/design/ftop_inner.gif','forum/design/ftop_inner.png',560,224)+'</div>');
+       d.write('<div id="wingsPlaceInner"></div>');
+       d.write('<div id="searchBox">');
+       d.write('<div style="position: relative;"><form name="s" action=""><input type="text" value="Поиск" size="25"><div id="button"><a href="#"><img src="https://web.archive.org/web/20200806005244/http://image.neverlands.ru/forum/design/search_but.gif" width="90" height="18" border="0"></a></div></form>');
+       d.write(PNGImage('forum/design/search.gif','forum/design/search.png',416,102));
+       d.write('</div>');
+       d.write('</div>');
+       d.write('<div id="mainColsInner">');
+       d.write('<table cellpadding="0" cellspacing="0" width="100%" border="0">');
+       d.write('<tr height="208"><td width="184">'+PNGImage('forum/design/left_col.gif','forum/design/left_col.png',184,208)+'</td><td width="174">'+PNGImage('forum/design/left_tent.gif','forum/design/left_tent.png',174,208)+'</td><td class="leftTent" width="40%">&nbsp;</td><td class="rightTent" width="40%">&nbsp;</td><td width="172">'+PNGImage('forum/design/right_tent.gif','forum/design/right_tent.png',172,208)+'</td><td width="184">'+PNGImage('forum/design/right_col.gif','forum/design/right_col.png',184,208)+'</td></tr>');
+       d.write('<tr height="91"><td align="right"><img src="https://web.archive.org/web/20200806005244/http://image.neverlands.ru/forum/design/left_colum.gif" width="164" height="91" border="0"></td><td colspan="4">&nbsp;</td><td align="left"><img src="https://web.archive.org/web/20200806005244/http://image.neverlands.ru/forum/design/right_colum.gif" width="164" height="91" border="0"></td></tr>');
+       d.write('<tr><td colspan="6" valign="top">');
+       d.write('<div id="tableForumInner">');
+       d.write('<table cellpadding="0" cellspacing="0" width="100%" border="0">');
+       d.write('<tr><td width="71" rowspan="3"><img src="https://web.archive.org/web/20200806005244/http://image.neverlands.ru/forum/design/f1.gif" width="71" height="82" border="0"></td><td align="left" colspan="2" width="90%"><img src="https://web.archive.org/web/20200806005244/http://image.neverlands.ru/forum/design/f2.gif" width="55" height="28" border="0"></td><td width="58" rowspan="3"><img src="https://web.archive.org/web/20200806005244/http://image.neverlands.ru/forum/design/f3.gif" width="58" height="82" border="0"></td></tr>');
+       d.write('<tr><td height="29" colspan="2"><table cellpadding="0" cellspacing="0" width="100%" border="0"><tr><td class="fbg1" width="50%"><span id="FTPLACE">'+ForumPath(1)+'</span></td><td width="51"><img src="https://web.archive.org/web/20200806005244/http://image.neverlands.ru/forum/design/f4.gif" width="51" height="29" border="0"></td><td class="fbg2">&nbsp;</td></tr></table></td></tr>');
+       d.write('<tr><td height="25" colspan="2" class="fBg">&nbsp;</td></tr>');
+       d.write('<tr><td class="lBg">&nbsp;</td><td valign="top" bgcolor="#d9d9d9" class="fNonBg_topic" nowrap><p><span class="nick">'+Nickname(fdata[6],fdata[7],fdata[8],fdata[9],fdata[11],1)+'</span><br>'+strtime[0]+' '+mo[strtime[1]]+' '+strtime[2]+(fdata[10] == 0 ? '' : '<br><img src="https://web.archive.org/web/20200806005244/http://image.neverlands.ru/forum/avatars/'+fdata[10]+'.jpg" width="80" height="80" border="0" vspace="3">')+'</p></td><td bgcolor="#d9d9d9" style="padding: 5px 10px 5px 10px;" valign="top" width=100%><p><font class="forumSubj">'+fdata[3]+'</font></p><p><table cellpadding=0 cellspacing=0 border=0><tr><td><font class=nick>'+fdata[13]+'</font></td></tr></table></p>'+(!fdata[5] ? '' : '<br><p><span class=nick><font color=#bb0000><B>Тема закрыта</B></font></span></p>')+(!fmain[4] ? '' : TopicAct(fmain[2],fdata[5],1))+'</td><td class="rBg">&nbsp;</td></tr>');
+       d.write('<tr><td width="71"><img src="https://web.archive.org/web/20200806005244/http://image.neverlands.ru/forum/design/f5.gif" width="71" height="46" border="0"></td><td class="fBg3d">&nbsp;</td><td class="fBg3"><table cellpadding="0" cellspacing="0" width="100%" border="0"><tr><td align="center" valign="top"><img style="margin-left: -23%;" src="https://web.archive.org/web/20200806005244/http://image.neverlands.ru/forum/design/f8.gif" width="78" height="37" border="0"></td><td width="9" align="right"><img src="https://web.archive.org/web/20200806005244/http://image.neverlands.ru/forum/design/f7.gif" width="9" height="46" border="0"></td></tr></table></td><td width="58"><img src="https://web.archive.org/web/20200806005244/http://image.neverlands.ru/forum/design/f6.gif" width="58" height="46" border="0"></td></tr>');
+}
+
+function view_forum_topic_bottom()
+{
+       if(pages) d.write('<tr><td class="lBg1">&nbsp;</td><td bgcolor="#e6e6e6">&nbsp;</td><td valign="top" style="padding-bottom: 5px; padding-left: 10px;"><strong>Страницы: </strong>'+pages+'&nbsp;&nbsp;&nbsp;</td><td class="rBg1">&nbsp;</td></tr>');
+       d.write('<tr><td height="73" valign="bottom"><img src="https://web.archive.org/web/20200806005244/http://image.neverlands.ru/forum/design/f9.gif" width="71" height="73" border="0"></td><td class="llbg"><table cellpadding="0" cellspacing="0" width="100%" border="0"><tr><td width="65"><img src="https://web.archive.org/web/20200806005244/http://image.neverlands.ru/forum/design/llb1.gif" width="65" height="73" border="0"></td><td width="100%">&nbsp;</td><td width="62"><img src="https://web.archive.org/web/20200806005244/http://image.neverlands.ru/forum/design/llb2.gif" width="62" height="73" border="0"></td></tr></table></td><td class="fBg8"><img src="https://web.archive.org/web/20200806005244/http://image.neverlands.ru/forum/design/f12.gif" align="left" style="float: left;" width="27" height="73" border="0"><img src="https://web.archive.org/web/20200806005244/http://image.neverlands.ru/forum/design/f13.gif" align="right" style="float: right;" width="24" height="73" border="0"></td><td height="73" valign="bottom"><img src="https://web.archive.org/web/20200806005244/http://image.neverlands.ru/forum/design/f10.gif" width="58" height="73" border="0"></td></tr>');
+       d.write('</table>');
+       d.write('</div>');
+       d.write('</td></tr>');
+       d.write('<tr><td class="lColBgInner">&nbsp;</td><td valign="top" colspan="4" align="center">');
+       if(fmain[4] & 1) d.write('<div style="position: relative; width: 340px; height: 270px;"><div style="position: absolute; left: -46%; top: 0;"><table cellpadding="0" cellspacing="0" border="0" width="650"><tr><td width="70"><img src="https://web.archive.org/web/20200806005244/http://image.neverlands.ru/forum/design/ff1.gif" width="70" height="17" border="0"></td><td><img src="https://web.archive.org/web/20200806005244/http://image.neverlands.ru/forum/design/ff2.gif" width="26" height="17" border="0" align="left"><img src="https://web.archive.org/web/20200806005244/http://image.neverlands.ru/forum/design/ff3.gif" width="26" height="17" border="0" align="right"></td><td width="70"><img src="https://web.archive.org/web/20200806005244/http://image.neverlands.ru/forum/design/ff4.gif" width="70" height="17" border="0"></td></tr><tr><td><img src="https://web.archive.org/web/20200806005244/http://image.neverlands.ru/forum/design/ff5.gif" width="70" height="39" border="0"></td><td class="tbg" valign="top" style="padding-top: 8px;"><span class="redText">Добавить ответ в данной теме</span></td><td><img src="https://web.archive.org/web/20200806005244/http://image.neverlands.ru/forum/design/ff6.gif" width="70" height="39" border="0"></td></tr><tr><td class="forBg1Inner">&nbsp;</td><td style="padding-top: 10px"><table cellpadding="3" cellspacing="0" width="98%" align="center" border="0"><form action="/action/" method=POST><input type=hidden name=act value=1><input type=hidden name=subact value=2><input type=hidden name=f value='+fmain[0]+'><input type=hidden name=p value='+fmain[1]+'><input type=hidden name=id value='+fmain[2]+'><input type=hidden name=tp value='+fmain[3]+'><input type=hidden name=messid value="'+fmain[6]+'"><tr><td><strong>Заголовок:</strong></td><td width="100%"><input class="inputTxt" type="text" name="reply_subj" value="Re: '+fdata[3]+'" style="width:99%;" id="MTITLE"></td></tr><tr><td colspan="2"><strong>Сообщение:</strong></td></tr><tr><td colspan="2"><textarea class="inputTxt" style="width: 99%;" name="reply_mess" cols="40" rows="5" id="MESSAGE"></textarea></td></tr><tr><td colspan="2" align="center"><div style="position: relative; width: 100%; height: auto;"><input type=button onmouseover="HideSmiles(); ShowSmiles(); ClearTime(); return true;" onmouseout="CloseSmiles(); return true;" class=buttons value=":)"> <div id="SMILES" style="display:none" onmouseover="ClearTime(); return true;" onmouseout="CloseSmiles(); return true;"></div> <input type=button onClick="BBTags(0);" value="B" class=buttons> <input type=button onClick="BBTags(1);" value="I" class=buttons> <input type=button onClick="BBTags(2);" value="U" class=buttons> <input type=button onClick="BBTags(3);" value="URL" class=buttons> <input type=button onClick="translate();" value="L -> R" class=buttons> <input type="submit" name="s" value="  Добавить ответ  " class=buttons></div></td></tr></table></td><td class="forBg2Inner">&nbsp;</td></tr><tr><td><img src="https://web.archive.org/web/20200806005244/http://image.neverlands.ru/forum/design/ff7.gif" width="70" height="44" border="0"></td><td class="ffbg">&nbsp;</td><td><img src="https://web.archive.org/web/20200806005244/http://image.neverlands.ru/forum/design/ff8.gif" width="70" height="44" border="0"></td></tr></table></div></div>');
+       d.write('</td><td class="rColBgInner">&nbsp;</td></tr>');
+       d.write('<tr height="45"><td class="lColBgInner"><div id="bLeft">'+PNGImage('forum/design/b1.gif','forum/design/b1.png',158,42)+'</div></td><td colspan="4"><img src="https://web.archive.org/web/20200806005244/http://image.neverlands.ru/forum/design/spacer.gif" width="1" height="45" border="0"></td><td class="rColBgInner"><div id="bRight">'+PNGImage('forum/design/b2.gif','forum/design/b2.png',158,42)+'</div></td></tr>');
+       d.write('</table>');	
+       BottomLinks();
+}
+
+function view_forum_topic()
+{
+       var i;
+       var all_data = fdata.length - 1;
+       var strtime;
+       var nick_a;
+       
+       view_forum_topic_top();
+       if((all_data - 15) > 0)
+       {
+              for(i=16; i<=all_data; i++)
+              {
+		     strtime = fdata[i][8].split('.');
+                     d.write('<tr><td class="lBg1">&nbsp;</td><td valign="top" class="fBg7" bgcolor="#e6e6e6" nowrap><p><span class="nick">'+Nickname(fdata[i][2],fdata[i][3],fdata[i][4],fdata[i][5],fdata[i][7],1)+'</span><br>'+strtime[0]+' '+mo[strtime[1]]+' '+strtime[2]+(fdata[i][6] == 0 ? '' : '<br><img src="https://web.archive.org/web/20200806005244/http://image.neverlands.ru/forum/avatars/'+fdata[i][6]+'.jpg" width="80" height="80" border="0" vspace="3">')+'</p></td><td valign="top" class="fCont" width=100%><p><font class="forumSubj">'+fdata[i][9]+'</font></p><p><table cellpadding=0 cellspacing=0 border=0><tr><td><font class=nick>'+fdata[i][10]+'</font></td></tr></table></p>'+(!fdata[i][16] ? '' : '<p><span class="nick">'+Nickname(fdata[i][11],fdata[i][12],fdata[i][13],fdata[i][14],fdata[i][15],1)+'</span></p>')+(!fmain[4] ? '' : ReplyAct(fdata[i][16],fdata[i][0]))+'</td><td class="rBg1">&nbsp;</td></tr>');
+              }
+       }
+       view_forum_topic_bottom();
+}
+}
+
+/*
+     FILE ARCHIVED ON 00:52:44 Aug 06, 2020 AND RETRIEVED FROM THE
+     INTERNET ARCHIVE ON 07:26:04 Apr 29, 2026.
+     JAVASCRIPT APPENDED BY WAYBACK MACHINE, COPYRIGHT INTERNET ARCHIVE.
+
+     ALL OTHER CONTENT MAY ALSO BE PROTECTED BY COPYRIGHT (17 U.S.C.
+     SECTION 108(a)(3)).
+*/
+/*
+playback timings (ms):
+  capture_cache.get: 0.334
+  load_resource: 57.048
+  PetaboxLoader3.resolve: 35.147
+  PetaboxLoader3.datanode: 20.775
+*/

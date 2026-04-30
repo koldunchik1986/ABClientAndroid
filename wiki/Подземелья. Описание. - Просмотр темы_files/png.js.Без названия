@@ -1,0 +1,41 @@
+var _____WB$wombat$assign$function_____=function(name){return (self._wb_wombat && self._wb_wombat.local_init && self._wb_wombat.local_init(name))||self[name];};if(!self.__WB_pmw){self.__WB_pmw=function(obj){this.__WB_source=obj;return this;}}{
+let window = _____WB$wombat$assign$function_____("window");
+let self = _____WB$wombat$assign$function_____("self");
+let document = _____WB$wombat$assign$function_____("document");
+let location = _____WB$wombat$assign$function_____("location");
+let top = _____WB$wombat$assign$function_____("top");
+let parent = _____WB$wombat$assign$function_____("parent");
+let frames = _____WB$wombat$assign$function_____("frames");
+let opens = _____WB$wombat$assign$function_____("opens");
+var pngAlpha = 1;
+var ua = navigator.userAgent.toLowerCase();
+
+this.isIE = ((ua.indexOf('msie') != -1) && !(ua.indexOf('opera') != -1) && (ua.indexOf('webtv') == -1));
+this.versionMinor = parseFloat(navigator.appVersion);
+this.versionMajor = parseInt(navigator.appVersion);
+
+if(this.isIE && this.versionMinor >= 4) this.versionMinor = parseFloat(ua.substring(ua.indexOf('msie ')+5));
+if(this.isIE && parseInt(this.versionMinor)<7) pngAlpha = 0;
+
+function PNGImage(img,png,w,h)
+{
+       if(!pngAlpha) return '<img src="https://web.archive.org/web/20200806005244/http://image.neverlands.ru/'+img+'" width="'+w+'" height="'+h+'" border="0" style="FILTER: progid:DXImageTransform.Microsoft.AlphaImageLoader(src=\'http://image.neverlands.ru/'+png+'\')">';
+       else return '<img src="https://web.archive.org/web/20200806005244/http://image.neverlands.ru/'+img+'" width="'+w+'" height="'+h+'" border="0" style="background-image: url(\'http://image.neverlands.ru/'+png+'\');">';
+}
+}
+
+/*
+     FILE ARCHIVED ON 00:52:44 Aug 06, 2020 AND RETRIEVED FROM THE
+     INTERNET ARCHIVE ON 07:26:05 Apr 29, 2026.
+     JAVASCRIPT APPENDED BY WAYBACK MACHINE, COPYRIGHT INTERNET ARCHIVE.
+
+     ALL OTHER CONTENT MAY ALSO BE PROTECTED BY COPYRIGHT (17 U.S.C.
+     SECTION 108(a)(3)).
+*/
+/*
+playback timings (ms):
+  capture_cache.get: 0.352
+  load_resource: 87.875
+  PetaboxLoader3.resolve: 62.977
+  PetaboxLoader3.datanode: 23.947
+*/

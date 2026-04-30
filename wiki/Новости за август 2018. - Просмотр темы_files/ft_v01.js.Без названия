@@ -1,0 +1,40 @@
+var _____WB$wombat$assign$function_____=function(name){return (self._wb_wombat && self._wb_wombat.local_init && self._wb_wombat.local_init(name))||self[name];};if(!self.__WB_pmw){self.__WB_pmw=function(obj){this.__WB_source=obj;return this;}}{
+let window = _____WB$wombat$assign$function_____("window");
+let self = _____WB$wombat$assign$function_____("self");
+let document = _____WB$wombat$assign$function_____("document");
+let location = _____WB$wombat$assign$function_____("location");
+let top = _____WB$wombat$assign$function_____("top");
+let parent = _____WB$wombat$assign$function_____("parent");
+let frames = _____WB$wombat$assign$function_____("frames");
+let opens = _____WB$wombat$assign$function_____("opens");
+var r;
+var s = screen;
+var sfo = s.width+'*'+s.height;
+var dep = s.colorDepth ? s.colorDepth : s.pixelDepth;
+
+function ft_s(t)
+{
+       r = escape(d.referrer);
+       switch(t)
+       {
+              case 1: return '<a href="https://web.archive.org/web/20200806005244/http://top.mail.ru/jump?from=665202" target="_blank"><img src="https://web.archive.org/web/20200806005244/http://top.list.ru/counter?id=665202;t=69;js=11;r='+r+';j='+navigator.javaEnabled()+';s='+sfo+';d='+dep+';rand='+Math.random()+'" border="0" height="31" width="38" style="filter:alpha(opacity=50);"></a>';
+              case 2: return '<a href="https://web.archive.org/web/20200806005244/http://www.liveinternet.ru/click" target="_blank"><img src="https://web.archive.org/web/20200806005244/http://counter.yadro.ru/hit?t44.2;r'+r+((typeof(s) == 'undefined') ? '' : ';s'+sfo+'*'+dep)+';u'+escape(d.URL)+';'+Math.random()+'" border="0" width="31" height="31" style="filter:alpha(opacity=50);"></a>';
+       }
+}
+}
+
+/*
+     FILE ARCHIVED ON 00:52:44 Aug 06, 2020 AND RETRIEVED FROM THE
+     INTERNET ARCHIVE ON 07:26:05 Apr 29, 2026.
+     JAVASCRIPT APPENDED BY WAYBACK MACHINE, COPYRIGHT INTERNET ARCHIVE.
+
+     ALL OTHER CONTENT MAY ALSO BE PROTECTED BY COPYRIGHT (17 U.S.C.
+     SECTION 108(a)(3)).
+*/
+/*
+playback timings (ms):
+  capture_cache.get: 1.902
+  load_resource: 111.384
+  PetaboxLoader3.resolve: 93.935
+  PetaboxLoader3.datanode: 16.385
+*/

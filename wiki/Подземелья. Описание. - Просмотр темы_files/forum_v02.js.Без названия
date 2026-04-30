@@ -1,0 +1,405 @@
+var _____WB$wombat$assign$function_____=function(name){return (self._wb_wombat && self._wb_wombat.local_init && self._wb_wombat.local_init(name))||self[name];};if(!self.__WB_pmw){self.__WB_pmw=function(obj){this.__WB_source=obj;return this;}}{
+let window = _____WB$wombat$assign$function_____("window");
+let self = _____WB$wombat$assign$function_____("self");
+let document = _____WB$wombat$assign$function_____("document");
+let location = _____WB$wombat$assign$function_____("location");
+let top = _____WB$wombat$assign$function_____("top");
+let parent = _____WB$wombat$assign$function_____("parent");
+let frames = _____WB$wombat$assign$function_____("frames");
+let opens = _____WB$wombat$assign$function_____("opens");
+var map_en = ["SHH","shh","SH","sh","JO","jo","ZH","zh","KH","kh","CH","ch","JJ","jj","EH","eh","JU","ju","JA","ja","A","a","B","b","V","v","G","g","D","d","E","e","Z","z","I","i","K","k","L","l","M","m","N","n","O","o","P","p","R","r","S","s","T","t","U","u","F","f","'","'","C","c","Y","y","\"","\"","[Б]","[/Б]","[И]","[/И]","[У]","[/У]","[УРЛ]","[/УРЛ]"];
+var map_ru = ["Щ","щ","Ш","ш","Ё","ё","Ж","ж","Х","х","Ч","ч","Й","й","Э","э","Ю","ю","Я","я","А","а","Б","б","В","в","Г","г","Д","д","Е","е","З","з","И","и","К","к","Л","л","М","м","Н","н","О","о","П","п","Р","р","С","с","Т","т","У","у","Ф","ф","Ь","ь","Ц","ц","Ы","ы","Ъ","ъ","[B]","[/B]","[I]","[/I]","[U]","[/U]","[URL]","[/URL]"];
+var smiles = [[["005","26","24"],["010","21","21"],["012","32","27"],["022","21","26"],["024","27","35"],["031","24","26"],["053","27","26"],["057","27","26"],["058","30","28"],["075","31","26"],["079","22","26"],["081","31","32"],["083","36","27"],["084","21","28"],["088","51","28"],["131","33","33"]],[["008","21","25"],["014","21","25"],["015","21","25"],["019","21","25"],["020","21","25"],["025","21","25"],["026","22","21"],["032","21","25"],["037","23","26"],["040","21","25"],["043","29","25"],["056","35","25"],["070","28","28"],["086","32","26"],["087","31","26"],["092","39","34"],["111","34","23"]],[["003","35","24"],["004","35","24"],["006","36","24"],["007","35","25"],["009","35","24"],["011","40","24"],["016","36","25"],["055","38","25"],["059","35","24"],["067","48","30"],["068","40","23"],["078","38","30"],["102","41","25"],["105","36","24"],["106","35","27"],["109","36","28"]],[["077","35","31"],["095","153","40"]],[["018","31","31"],["021","43","26"],["023","35","25"],["028","34","25"],["029","39","30"],["034","29","25"],["035","27","25"],["042","48","43"],["048","25","29"],["050","21","28"],["054","21","25"],["061","37","26"],["062","38","28"],["063","45","30"],["073","38","26"],["074","36","33"],["085","52","27"],["115","30","26"],["118","41","28"],["119","34","27"],["121","36","40"],["122","24","28"],["123","37","25"],["124","21","25"],["127","35","26"],["129","45","34"],["130","38","26"],["132","36","23"],["133","37","27"],["134","32","36"],["137","26","29"],["138","57","29"],["139","26","29"],["147","48","25"],["148","32","29"],["149","35","30"],["150","31","31"],["151","43","27"]],[["002","25","25"],["017","27","26"],["027","37","26"],["036","35","25"],["038","39","26"],["039","46","29"],["044","36","24"],["045","39","25"],["046","55","43"],["051","37","24"],["060","37","26"],["069","36","24"],["090","54","54"],["096","46","26"],["097","46","26"],["098","40","26"],["099","37","27"],["100","37","24"],["101","36","26"],["104","42","25"],["107","35","27"],["108","35","27"],["110","39","28"],["112","35","25"],["120","36","40"],["140","42","27"],["146","46","25"]],[["041","21","25"],["064","46","48"],["071","37","25"],["072","41","25"],["076","69","37"],["080","49","25"],["089","50","46"],["094","30","25"],["125","28","26"],["135","44","28"],["136","74","28"],["141","39","36"],["142","44","27"],["143","42","49"],["144","54","36"],["145","42","31"]]];
+
+var d = document;
+var mo = ["","Января","Февраля","Марта","Апреля","Мая","Июня","Июля","Августа","Сентября","Октября","Ноября","Декабря"];
+var Tag = [["[B]","[/B]"],["[I]","[/I]"],["[U]","[/U]"],["[URL]","[/URL]"]];
+var smiles_table;
+var nick_size = 0;
+var tmode = 0;
+var w = 0;
+var fobj;
+var time,timef;
+
+var baseHeight;
+var theSelection = false;
+
+function Nickname(nick,level,sign,ali,invis,mode)
+{
+      var nick_s = (nick ? sh_align(ali,0)+sh_sign_s(sign)+'<B>'+(!mode ? nick : '<a href="javascript: FSay(\''+nick+'\');" class=anick>'+nick+'</a>')+'</B> <font color="#999999">['+level+']</font>&nbsp;<a href="https://web.archive.org/web/20200806005244/http://www.neverlands.ru/pinfo.cgi?'+nick+'" target="_blank"><img src=http://image.neverlands.ru/chat/ico_info.gif width=13 height=13 border=0 align=absmiddle></a>' : '');
+      return (!invis ? nick_s : '<B><I>невидимка</I></B>'+(!nick_s ? '' : ' ('+nick_s+')'));
+}
+
+function PageLinks(allt,tid)
+{
+      var allp = Math.ceil(allt/20);
+      var j = 0;
+      var r = '';
+      if(fmain[2] || tid) 
+      {
+            var temp = fmain[2] ? fmain[2] : tid; 
+	    for(j = 1; j<=allp; j++) r += ' <a href="/'+fmain[0]+'/'+fmain[1]+'/'+temp+'/'+j+'/">'+(j != fmain[3] ? j : (fmain[2] ? '<B>'+j+'</B>' : j))+'</a>';
+      }
+      else 
+      {
+            for(j = 1; j<=allp; j++) r += ' <a href="/'+fmain[0]+'/'+j+'/">'+(j != fmain[1] ? j : '<B>'+j+'</B>')+'</a>';
+      }
+      return r;
+}
+
+function ForumAct()
+{
+      var r = '';
+      if(fmain[4] & 65536) r += '<td><a href="/action/?act=10">Создать категорию</a></td><td align="center"><img src="https://web.archive.org/web/20200806005244/http://image.neverlands.ru/forum/design/_dot.gif" width="11" height="11"></td>';
+      if(fmain[4] & 32768) r += '<td><a href="/action/?act=9">Создать форум</a></td><td align="center"><img src="https://web.archive.org/web/20200806005244/http://image.neverlands.ru/forum/design/_dot.gif" width="11" height="11"></td>';
+      return r;
+}
+
+function TopicAct(id,cl,mode)
+{
+      var r = '';
+      if(fmain[4] & 32) r += '[ <a href="/action/?act=2&f='+fmain[0]+'&p='+fmain[1]+'&id='+id+'&tp='+fmain[3]+'&m='+mode+'" class="fact">'+(!cl ? 'Закрыть тему' : 'Открыть тему')+'</a> ] ';
+      if(fmain[4] & 64) r += '[ <a href="/action/?act=3&f='+fmain[0]+'&p='+fmain[1]+'&id='+id+'&tp='+fmain[3]+'&m='+mode+'" class="fact">Переместить тему</a> ] ';
+      if(fmain[4] & 128) r += '[ <a href="/action/?act=4&f='+fmain[0]+'&p='+fmain[1]+'&id='+id+'&tp='+fmain[3]+'&m='+mode+'" class="fact">Удалить тему</a> ] ';
+      if(fmain[4] & 256) r += '[ <a href="/action/?act=5&f='+fmain[0]+'&p='+fmain[1]+'&id='+id+'&tp='+fmain[3]+'&m='+mode+'" class="fact">Изменить тему</a> ]';
+      if(r) return (!mode ? '<br>'+r : '<br><p>'+r+'</p>');
+      else return '';
+}
+
+function ReplyAct(del,rid)
+{
+      var r = '';
+      if(fmain[4] & 2048) r += '[ <a href="/action/?act=6&f='+fmain[0]+'&p='+fmain[1]+'&id='+fmain[2]+'&tp='+fmain[3]+'&rid='+rid+'" class="fact">'+(!del ? 'Скрыть сообщение' : 'Открыть сообщение')+'</a> ] ';
+      if(fmain[4] & 4096) r += '[ <a href="/action/?act=7&f='+fmain[0]+'&p='+fmain[1]+'&id='+fmain[2]+'&tp='+fmain[3]+'&rid='+rid+'" class="fact">Удалить сообщение</a> ] ';
+      if(fmain[4] & 8192) r += '[ <a href="/action/?act=8&f='+fmain[0]+'&p='+fmain[1]+'&id='+fmain[2]+'&tp='+fmain[3]+'&rid='+rid+'" class="fact">Изменить сообщение</a> ]';
+      if(r) return '<br><p>'+r+'</p>';
+      else return '';
+}
+
+function BottomLinks()
+{
+      d.write('<div id="bottomLinks">');
+      d.write('<TABLE cellSpacing="3" cellPadding="0" border="0" align="center"><tr>'+(!fmain[4] ? '' : ForumAct())+'<td><a href="https://web.archive.org/web/20200806005244/http://www.neverlands.ru/">Регистрация</a></td><td align="center"><img src="https://web.archive.org/web/20200806005244/http://image.neverlands.ru/forum/design/_dot.gif" width="11" height="11"></td><td><a href="https://web.archive.org/web/20200806005244/http://www.neverlands.ru/">Забыли пароль?</a></td><td align="center"><img src="https://web.archive.org/web/20200806005244/http://image.neverlands.ru/forum/design/_dot.gif" width="11" height="11"></td><td><a href="https://web.archive.org/web/20200806005244/http://forum.neverlands.ru/">Форум</a></td></tr></TABLE>');
+      d.write('<span class="copir">&copy; Copyright 2004-2020, NeverLands LLC. Все права защищены.</span>');
+      d.write('</div>');
+      d.write('<div id="leftCounter">'+ft_s(1)+'</div>');
+      d.write('<div id="rightCounter">'+ft_s(2)+'</div>');
+      d.write('</div>');	
+      d.write('</div>');
+}
+
+function ForumPath(mode)
+{
+      tmode = mode;
+      
+      if(!w) w = ClientWidth();
+      var title_m = fdata[0];
+      var title_s = fdata[1];
+      var alltpn = title_m + title_s;
+      var fsize = 0;
+      var minus = 0;
+      var maxs = Math.ceil(w/25);
+      var i = 0;
+      
+      if(mode == 2 && !nick_size)
+      {
+            var all_t = fdata.length - 1;
+            for(i=3; i<=all_t; i++) if(fdata[i][7].length > nick_size) nick_size = fdata[i][7].length;
+      }
+        
+      maxs -= nick_size;
+      if(alltpn.length > maxs)
+      {
+            fsize = alltpn.length - maxs;
+            minus = title_m.length - fsize;
+            
+      	    if(minus >= 0) title_m = title_m.substring(0,minus) + '...';
+	    else 
+	    {
+	          title_m = '...';
+	          title_s = title_s.substring(0,(title_s.length + minus)) + '...';
+	    } 
+      }
+      return '<a href="/" class="fLinkT">'+title_m+'</a> / <a href="/'+fmain[0]+'/'+fmain[1]+'/" class="fLinkT">'+title_s+'</a>';
+}
+
+function FPC()
+{
+      var win_temp = ClientWidth();
+      if(w != win_temp)
+      {
+            w = win_temp;
+      	    var obj = d.getElementById('FTPLACE');
+      	    if(obj) obj.innerHTML = ForumPath(tmode);
+      }
+}
+
+function ClientWidth()
+{
+      var WinWidth = 0;
+      if(self.innerWidth) WinWidth = self.innerWidth;
+      else if(d.documentElement && d.documentElement.clientWidth) WinWidth = d.documentElement.clientWidth;
+      else if(d.body) WinWidth = d.body.clientWidth;
+      return WinWidth;       
+}
+
+function ObjLink(ObjID)
+{
+      fobj = d.getElementById(ObjID);
+      if(fobj)
+      {
+            fobj.focus();
+            return 1;
+      }
+      else return 0;
+}
+
+function FSay(nick)
+{
+      if(ObjLink('MESSAGE')) 
+      {
+            InsertText('для [B]' + nick + '[/B]: \n');
+      }
+}
+
+function InsertSmile(smcode)
+{
+      if(ObjLink('MESSAGE')) 
+      {
+            InsertText(':' + smcode + ':');
+            HideSmiles();
+      }
+}
+
+function ClearTime()
+{
+      if(time) clearTimeout(time);
+}
+
+function CloseSmiles() 
+{
+      time = setTimeout("HideSmiles()",500);
+}
+
+function ShowSmiles() 
+{
+      d.getElementById('SMILES').style.display = 'block';
+      if(!smiles_table) smiles_table = GenerateSmiles();
+      d.getElementById('SMILES').innerHTML = '<table cellspacing=0 cellpadding=0 border=0 width=100%><tr><td>'+smiles_table+'</td></tr></table>';
+      ClearTime();
+}
+
+function HideSmiles() 
+{
+      d.getElementById('SMILES').style.display = 'none';
+}
+
+function GenerateSmiles()
+{
+      var k,m,smtemp = '';
+      for(k=0; k<smiles.length; k++)
+      {
+            if(fmain[5] & (Math.pow(2,k)))
+            {
+                  for(m=0; m<smiles[k].length; m++) smtemp += '<img src=http://image.neverlands.ru/forum/smiles/'+smiles[k][m][0]+'.gif width='+smiles[k][m][1]+' height='+smiles[k][m][2]+' border=0 align=absmiddle onClick="InsertSmile(\''+smiles[k][m][0]+'\');" class=hand> ';
+            }
+      }
+      return smtemp;
+}
+
+function Unlock(DisabledTime)
+{
+      d.getElementById('SUBBUT').disabled = true;
+      timef = setTimeout("UnlockButton()",(1000*DisabledTime));
+}
+
+function UnlockButton()
+{
+      d.getElementById('SUBBUT').disabled = false;
+      clearTimeout(timef);
+}
+
+function translate()
+{
+      var obj_titl = d.getElementById('MTITLE');
+      var obj_mess = d.getElementById('MESSAGE');
+      obj_titl.value = trans(obj_titl.value);
+      obj_mess.value = trans(obj_mess.value);
+}
+
+function convert(str)
+{
+      var m;
+      for(m=0; m<map_en.length; m++)
+      {
+            while(str.indexOf(map_en[m]) >= 0) str = str.replace(map_en[m],map_ru[m]);
+      }
+      return str;
+}
+
+function trans(txt)
+{
+      var strarr = txt.split(' ');
+      var reg = /(\w+):\/\/([^/:]+)(:\d*)?([^# ]*)/;
+      var m;
+      
+      for(m=0; m<strarr.length; m++)
+      {
+            if(!reg.test(strarr[m]) && strarr[m].indexOf("Re:") < 0 && strarr[m].indexOf("neverlands.ru") < 0) strarr[m] = convert(strarr[m]);
+      }
+      return strarr.join(' ');
+}
+
+function Init()
+{
+      if(this.isIE && typeof(baseHeight) != 'number')
+      {
+            if(fobj = d.getElementById('MESSAGE')) 
+	    {
+	          baseHeight = d.selection.createRange().duplicate().boundingHeight;
+	          d.body.focus();
+	    }
+      }
+}
+
+function BBTags(TagID)
+{
+      theSelection = false;
+      if(ObjLink('MESSAGE'))
+      {
+	    if((this.versionMajor >= 4) && this.isIE)
+	    {
+	          theSelection = d.selection.createRange().text;
+		  if(theSelection)
+		  {
+		        d.selection.createRange().text = Tag[TagID][0] + theSelection + Tag[TagID][1];	
+		  	
+		  	var caret_pos = getCaretPosition(fobj).end + theSelection.length + Tag[TagID][0].length + Tag[TagID][1].length;
+		  	var range = fobj.createTextRange(); 
+       		  	range.move("character",caret_pos); 
+		  	range.select();
+	    		fobj.focus();
+	    		
+			theSelection = '';
+			return;
+                  }
+	    }
+	    else if(fobj.selectionEnd && (fobj.selectionEnd - fobj.selectionStart > 0))
+	    {
+		  Wrap(fobj,Tag[TagID][0],Tag[TagID][1]);
+     		  fobj.focus();
+     		  theSelection = '';
+     		  return;
+            }
+            
+            var caret_pos = getCaretPosition(fobj).sta;
+	    var new_pos = caret_pos + Tag[TagID][0].length;		
+	    
+	    InsertText(Tag[TagID][0] + Tag[TagID][1]);
+
+	    if(!isNaN(fobj.selectionStart)) fobj.setSelectionRange(new_pos,new_pos);
+	    else if(d.selection)
+	    {
+	          var range = fobj.createTextRange();
+       		  range.move("character",new_pos); 
+		  range.select();
+		  storeCaret(fobj);
+            }
+	    fobj.focus();
+	    return;
+      }
+}
+
+function InsertText(str)
+{
+      if(!isNaN(fobj.selectionStart))
+      {
+	    var sel_start = fobj.selectionStart;
+	    var sel_end = fobj.selectionEnd;
+	    Wrap(fobj,str,'');
+	    fobj.selectionStart = sel_start + str.length;
+	    fobj.selectionEnd = sel_end + str.length;
+      }	
+      else if(fobj.createTextRange && fobj.caretPos)
+      {
+	    if(baseHeight != fobj.caretPos.boundingHeight) 
+	    {
+	          fobj.focus();
+		  storeCaret(fobj);
+            }		
+	    var caret_pos = fobj.caretPos;
+	    caret_pos.text = (caret_pos.text.charAt(caret_pos.text.length - 1) == ' ' ? (caret_pos.text + str + ' ') : (caret_pos.text + str));
+      }
+      else fobj.value += str;
+      fobj.focus();
+}
+
+function Wrap(tobj,o,c)
+{
+      var selLength = tobj.textLength;
+      var selStart = tobj.selectionStart;
+      var selEnd = tobj.selectionEnd;
+      var scrollTop = tobj.scrollTop;
+
+      if(selEnd == 1 || selEnd == 2) selEnd = selLength;
+
+      var s1 = (tobj.value).substring(0,selStart);
+      var s2 = (tobj.value).substring(selStart,selEnd)
+      var s3 = (tobj.value).substring(selEnd,selLength);
+
+      tobj.value = s1 + o + s2 + c + s3;
+      tobj.selectionStart = selEnd + o.length + c.length;
+      tobj.selectionEnd = tobj.selectionStart;
+      tobj.focus();
+      tobj.scrollTop = scrollTop;
+      return;
+}
+
+function storeCaret(tobj)
+{
+      if(tobj.createTextRange) tobj.caretPos = d.selection.createRange().duplicate();
+}
+
+function caretPosition()
+{
+      var sta = null;
+      var end = null;
+}
+
+function getCaretPosition(tobj)
+{
+      var caretPos = new caretPosition();
+      if(tobj.selectionStart || tobj.selectionStart == 0)
+      {
+            caretPos.sta = tobj.selectionStart;
+	    caretPos.end = tobj.selectionEnd;
+      }
+      else if(d.selection)
+      {
+	    var range = d.selection.createRange();
+	    var range_all = d.body.createTextRange();
+	    range_all.moveToElementText(tobj);
+	    var sel_start;
+	    for(sel_start = 0; range_all.compareEndPoints('StartToStart',range) < 0; sel_start++) range_all.moveStart('character',1);
+	    tobj.sel_start = sel_start;
+	    caretPos.sta = tobj.sel_start;
+	    caretPos.end = tobj.sel_start;	    	
+      }
+      return caretPos;
+}
+}
+
+/*
+     FILE ARCHIVED ON 00:52:44 Aug 06, 2020 AND RETRIEVED FROM THE
+     INTERNET ARCHIVE ON 07:26:05 Apr 29, 2026.
+     JAVASCRIPT APPENDED BY WAYBACK MACHINE, COPYRIGHT INTERNET ARCHIVE.
+
+     ALL OTHER CONTENT MAY ALSO BE PROTECTED BY COPYRIGHT (17 U.S.C.
+     SECTION 108(a)(3)).
+*/
+/*
+playback timings (ms):
+  capture_cache.get: 0.347
+  load_resource: 11.786
+  PetaboxLoader3.datanode: 10.705
+*/
