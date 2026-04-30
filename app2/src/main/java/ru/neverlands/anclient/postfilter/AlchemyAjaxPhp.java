@@ -11,6 +11,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 
+import ru.neverlands.anclient.MainActivity;
 import ru.neverlands.anclient.manager.AutoCutManager;
 import ru.neverlands.anclient.manager.AutoFunctionsManager;
 import ru.neverlands.anclient.utils.AppLog;
@@ -491,6 +492,15 @@ public final class AlchemyAjaxPhp {
      */
     private static void submitAlchemyAct3ViaAjax(String absoluteUrl) {
         if (TextUtils.isEmpty(absoluteUrl) || AppVars.getContext() == null) {
+            return;
+        }
+        MainActivity activity = AppVars.mainActivity == null ? null : AppVars.mainActivity.get();
+        if (activity != null && !activity.isUiForegroundLikely()) {
+            Intent intent = new Intent(AppVars.ACTION_WEBVIEW_LOAD_URL);
+            intent.putExtra("url", absoluteUrl);
+            LocalBroadcastManager.getInstance(AppVars.getContext()).sendBroadcast(intent);
+            AppLog.d(AutoCutManager.TRACE_CHAIN, TAG,
+                    "act3 no-captcha submit via direct load in background: " + absoluteUrl);
             return;
         }
         String rel = toGameplayAjaxRelativeUrl(absoluteUrl);

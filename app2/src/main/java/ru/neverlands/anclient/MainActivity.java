@@ -97,6 +97,7 @@ import ru.neverlands.anclient.manager.ContactsManager;
 import ru.neverlands.anclient.databinding.ActivityMainBinding;
 import ru.neverlands.anclient.manager.TabManager;
 import ru.neverlands.anclient.manager.RoomManager;
+import ru.neverlands.anclient.model.Position;
 import ru.neverlands.anclient.model.QuickActionType;
 import ru.neverlands.anclient.model.UserConfig;
 import ru.neverlands.anclient.network.NetworkClient;
@@ -104,10 +105,12 @@ import ru.neverlands.anclient.proxy.CookiesManager;
 import ru.neverlands.anclient.proxy.ProxyRuntimeManager;
 import ru.neverlands.anclient.postfilter.MainPhp;
 import ru.neverlands.anclient.utils.AppLog;
+import ru.neverlands.anclient.utils.ExtMap;
 import ru.neverlands.anclient.utils.FileLogger;
 import ru.neverlands.anclient.utils.AppVars;
 import ru.neverlands.anclient.utils.Chat;
 import ru.neverlands.anclient.utils.LogcatFileRecorder;
+import ru.neverlands.anclient.utils.MapPath;
 import ru.neverlands.anclient.utils.RuntimeNetTrace;
 import ru.neverlands.anclient.utils.SessionManager;
 import ru.neverlands.anclient.utils.Russian;
@@ -138,6 +141,12 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     private static final int AUTO_SUBMIT_RETRY_DELAY_MS = 180;
     private static final int AUTO_SUBMIT_MAX_RETRY_COUNT = 3;
     private static final long CAPTCHA_IMAGE_STABILIZE_DELAY_MS = 180L;
+    private static final Pattern MAP_DECL_PATTERN = Pattern.compile(
+            "var\\s+map\\s*=\\s*\\[\\s*\\[\\s*(-?\\d+)\\s*,\\s*(-?\\d+)\\s*,\\s*(\\d+)",
+            Pattern.CASE_INSENSITIVE);
+    private static final Pattern MAPBT_LOOK_PATTERN = Pattern.compile(
+            "\\[\\s*\"(?:look|ogl)\"\\s*,\\s*\"[^\"]*\"\\s*,\\s*\"([^\"]+)\"",
+            Pattern.CASE_INSENSITIVE);
     private static final long CAPTCHA_NETWORK_FALLBACK_DELAY_MS = 900L;
     private static final int ANTI_CAPTCHA_IMAGE_WAIT_MAX_RETRIES = 30;
     private static final int CAPTCHA_NOTIFICATION_ID = 6107;
@@ -4747,18 +4756,36 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         }
 
         String reloadUrl;
+        boolean autoCutRetryRescheduled = false;
         if (autoMoving) {
-            reloadUrl = "http://neverlands.ru/main.php?get_id=56&act=10&go=inf&ab_nav_tick=1&r=" + now;
-        } else if (!autoCutRetrySource.isEmpty()) {
-            reloadUrl = "http://neverlands.ru/main.php?get_id=56&act=10&go=ret";
-            String vcode = SessionManager.getInstance().getValidVCodeForAction("server_timer_tick_auto_cut");
-            if (vcode != null && !vcode.isEmpty()) {
-                reloadUrl += "&vcode=" + vcode;
+            String backgroundStepUrl = buildBackgroundAutoCutNavigationStepUrl(autoCutManager, now);
+            if (!backgroundStepUrl.isEmpty()) {
+                reloadUrl = backgroundStepUrl;
             } else {
-                AppLog.w(AutoCutManager.TRACE_CHAIN, TAG,
-                        "SERVER_TIMER_TICK auto-cut retry without vcode, source=" + autoCutRetrySource);
+                reloadUrl = "http://neverlands.ru/main.php?get_id=56&act=10&go=inf&ab_nav_tick=1&r=" + now;
             }
-            reloadUrl += "&an_auto_cut_tick=1&r=" + now;
+        } else if (!autoCutRetrySource.isEmpty()) {
+            String backgroundLookUrl = buildBackgroundAutoCutLookUrl(autoCutManager, now);
+            if (!backgroundLookUrl.isEmpty()) {
+                reloadUrl = backgroundLookUrl;
+            } else {
+                reloadUrl = "http://neverlands.ru/main.php?get_id=56&act=10&go=ret";
+                String vcode = SessionManager.getInstance().getValidVCodeForAction("server_timer_tick_auto_cut");
+                if (vcode != null && !vcode.isEmpty()) {
+                    reloadUrl += "&vcode=" + vcode;
+                } else {
+                    AppLog.w(AutoCutManager.TRACE_CHAIN, TAG,
+                            "SERVER_TIMER_TICK auto-cut retry without vcode, source=" + autoCutRetrySource);
+                }
+                reloadUrl += "&an_auto_cut_tick=1&r=" + now;
+                if (!isUiForegroundLikely()) {
+                    autoCutRetryRescheduled = true;
+                    autoCutManager.scheduleLookRetryAfterTimer("background_map_reload:" + autoCutRetrySource);
+                    AppLog.d(AutoCutManager.TRACE_CHAIN, TAG,
+                            "SERVER_TIMER_TICK background auto-cut waits for fresh map before direct look, source="
+                                    + autoCutRetrySource);
+                }
+            }
         } else {
             // КРИТИЧНО: af_tick никогда не должен отправляться БЕЗ vcode!
             // Если vcode пуст → происходит загрузка БЕЗ vcode → сервер обновляет PHPSESSID → старый vcode невалиден
@@ -4783,9 +4810,18 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         lastServerTimerDrivenReloadAtMs = now;
         lastServerTimerDrivenReloadDueAtMs = dueAt;
         if (!autoCutRetrySource.isEmpty()) {
-            AppVars.NeverTimer = 0L;
-            AppLog.d(AutoCutManager.TRACE_CHAIN, TAG,
-                    "SERVER_TIMER_TICK auto-cut retry released expired NeverTimer, source=" + autoCutRetrySource);
+            if (autoCutRetryRescheduled) {
+                if (AppVars.NeverTimer <= now) {
+                    AppVars.NeverTimer = now + 1500L;
+                }
+                AppLog.d(AutoCutManager.TRACE_CHAIN, TAG,
+                        "SERVER_TIMER_TICK auto-cut retry rescheduled after map reload, source=" + autoCutRetrySource
+                                + ", dueInMs=" + Math.max(0L, AppVars.NeverTimer - now));
+            } else {
+                AppVars.NeverTimer = 0L;
+                AppLog.d(AutoCutManager.TRACE_CHAIN, TAG,
+                        "SERVER_TIMER_TICK auto-cut retry released expired NeverTimer, source=" + autoCutRetrySource);
+            }
         } else {
             // Локальный anti-loop guard до получения следующего server cooldown.
             AppVars.NeverTimer = now + 1500L;
@@ -4799,6 +4835,121 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                 + ", currentUrl=" + currentUrl
                 + ", reloadUrl=" + reloadUrl);
         binding.appBarMain.contentMain.webView.loadUrl(reloadUrl);
+    }
+
+    private String buildBackgroundAutoCutNavigationStepUrl(AutoCutManager autoCutManager, long now) {
+        if (isUiForegroundLikely() || autoCutManager == null) {
+            return "";
+        }
+        String destination = AppVars.AutoMovingDestinaton == null ? "" : AppVars.AutoMovingDestinaton.trim();
+        if (destination.isEmpty() || !autoCutManager.isAutoCutRouteDestination(destination)) {
+            return "";
+        }
+        String current = AppVars.Profile == null || AppVars.Profile.MapLocation == null
+                ? ""
+                : AppVars.Profile.MapLocation.trim();
+        if (current.isEmpty() || current.equals(destination)) {
+            return "";
+        }
+
+        MapPath path = AppVars.AutoMovingMapPath;
+        if (path == null || !path.canUseExistingPath(current, destination)) {
+            path = new MapPath(current, java.util.Collections.singletonList(destination));
+            AppVars.AutoMovingMapPath = path;
+        }
+        if (!path.pathExists || path.nextJump == null || path.nextJump.trim().isEmpty()) {
+            AppLog.d(AutoCutManager.TRACE_CHAIN, TAG,
+                    "SERVER_TIMER_TICK background nav fallback: path unavailable, current=" + current
+                            + ", destination=" + destination);
+            return "";
+        }
+
+        AppVars.AutoMovingNextJump = path.nextJump;
+        AppVars.AutoMovingJumps = path.jumps;
+        AppVars.AutoMovingCityGate = path.cityGate;
+
+        String coordKey = ExtMap.InvLocation.get(path.nextJump);
+        Position position = coordKey == null ? null : ExtMap.Location.get(coordKey);
+        String stepVCode = coordKey == null ? "" : ExtMap.MovableCells.get(coordKey);
+        String gti = extractMapGtiFromContent(AppVars.ContentMainPhp);
+        if (position == null || stepVCode == null || stepVCode.trim().isEmpty() || gti.isEmpty()) {
+            AppLog.d(AutoCutManager.TRACE_CHAIN, TAG,
+                    "SERVER_TIMER_TICK background nav waits for fresh map: current=" + current
+                            + ", destination=" + destination
+                            + ", nextJump=" + path.nextJump
+                            + ", hasPosition=" + (position != null)
+                            + ", hasVCode=" + (stepVCode != null && !stepVCode.trim().isEmpty())
+                            + ", hasGti=" + !gti.isEmpty());
+            return "";
+        }
+
+        String url = "http://neverlands.ru/gameplay/ajax/map_ajax.php?act=1"
+                + "&mx=" + position.X
+                + "&my=" + position.Y
+                + "&gti=" + gti
+                + "&vcode=" + stepVCode.trim()
+                + "&an_auto_cut_bg_nav=1&r=" + now;
+        AppLog.i(AutoCutManager.TRACE_CHAIN, TAG,
+                "SERVER_TIMER_TICK background nav step: current=" + current
+                        + ", destination=" + destination
+                        + ", nextJump=" + path.nextJump
+                        + ", jumps=" + path.jumps
+                        + ", url=" + url);
+        return url;
+    }
+
+    private String buildBackgroundAutoCutLookUrl(AutoCutManager autoCutManager, long now) {
+        if (isUiForegroundLikely() || autoCutManager == null) {
+            return "";
+        }
+        if (!autoCutManager.shouldAutoLookOnCurrentCell()) {
+            AppLog.d(AutoCutManager.TRACE_CHAIN, TAG,
+                    "SERVER_TIMER_TICK background auto-cut look skipped: current cell not ready");
+            return "";
+        }
+        String current = AppVars.Profile == null || AppVars.Profile.MapLocation == null
+                ? ""
+                : AppVars.Profile.MapLocation.trim();
+        String contentCell = extractMapRegNumFromContent(AppVars.ContentMainPhp);
+        if (current.isEmpty() || contentCell.isEmpty() || !current.equals(contentCell)) {
+            AppLog.d(AutoCutManager.TRACE_CHAIN, TAG,
+                    "SERVER_TIMER_TICK background auto-cut look waits for matching map: current=" + current
+                            + ", contentCell=" + contentCell);
+            return "";
+        }
+        String lookCode = extractMapLookCodeFromContent(AppVars.ContentMainPhp);
+        if (lookCode.isEmpty()) {
+            AppLog.d(AutoCutManager.TRACE_CHAIN, TAG,
+                    "SERVER_TIMER_TICK background auto-cut look waits for look button: current=" + current);
+            return "";
+        }
+        String url = "http://neverlands.ru/gameplay/ajax/alchemy_ajax.php?act=1&vcode="
+                + lookCode
+                + "&an_auto_cut_bg_look=1&r=" + now;
+        AppLog.i(AutoCutManager.TRACE_CHAIN, TAG,
+                "SERVER_TIMER_TICK background auto-cut direct look: current=" + current + ", url=" + url);
+        return url;
+    }
+
+    private String extractMapGtiFromContent(String html) {
+        Matcher matcher = html == null ? null : MAP_DECL_PATTERN.matcher(html);
+        return matcher != null && matcher.find() ? matcher.group(3) : "";
+    }
+
+    private String extractMapRegNumFromContent(String html) {
+        Matcher matcher = html == null ? null : MAP_DECL_PATTERN.matcher(html);
+        if (matcher == null || !matcher.find()) {
+            return "";
+        }
+        String x = matcher.group(1);
+        String y = matcher.group(2);
+        Position position = ExtMap.Location.get(y + "/" + x + "_" + y);
+        return position == null || position.RegNum == null ? "" : position.RegNum.trim();
+    }
+
+    private String extractMapLookCodeFromContent(String html) {
+        Matcher matcher = html == null ? null : MAPBT_LOOK_PATTERN.matcher(html);
+        return matcher != null && matcher.find() ? matcher.group(1).trim() : "";
     }
 
     private void syncQuickButtonsRuntimeState() {

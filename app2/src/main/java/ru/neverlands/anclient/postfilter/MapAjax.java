@@ -13,6 +13,7 @@ import android.os.Handler;
 import android.os.Looper;
 import android.widget.Toast;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
+import ru.neverlands.anclient.MainActivity;
 import ru.neverlands.anclient.utils.AppLog;
 import ru.neverlands.anclient.manager.AutoCutManager;
 import ru.neverlands.anclient.manager.AutoFunctionsManager;
@@ -108,6 +109,7 @@ public class MapAjax {
             resetMapAjaxErrCounter("automove_disabled");
         } else if (isMapAjaxGoResponse(html)) {
             resetMapAjaxErrCounter("map_ajax_go");
+            processMapAjaxGoResponse(html);
         }
 
         if (isMapAjaxErrResponse(html) && AppVars.AutoMoving) {
@@ -301,11 +303,13 @@ public class MapAjax {
 
         if (mapLocation.equals(AppVars.AutoMovingDestinaton)) {
             if (!AppVars.DoSearchBox) {
+                String reachedDestination = AppVars.AutoMovingDestinaton;
                 AppVars.AutoMoving = false;
                 AppVars.AutoMovingMapPath = null;
                 AppVars.AutoMovingNextJump = null;
                 AppVars.AutoMovingJumps = 0;
                 AppLog.i(TAG, "AutoMoving: destination reached at " + mapLocation);
+                scheduleAutoCutLookAfterDestinationReached(reachedDestination, "main_map");
                 return html;
             }
 
@@ -1032,6 +1036,109 @@ public class MapAjax {
         }
         String trimmed = html.trim();
         return trimmed.startsWith("GO@");
+    }
+
+    private static void processMapAjaxGoResponse(String html) {
+        if (html == null) {
+            return;
+        }
+        String[] parts = html.trim().split("@", 4);
+        if (parts.length < 4) {
+            return;
+        }
+        String x = parts[1].trim();
+        String y = parts[2].trim();
+        String coordKey = y + "/" + x + "_" + y;
+        Position position = ExtMap.Location.get(coordKey);
+        if (position == null || position.RegNum == null || position.RegNum.trim().isEmpty()) {
+            AppLog.d(TAG, "AUTO_SEARCH_BOX_TRACE: map_ajax GO has unknown coord, x=" + x + ", y=" + y);
+            updateMovableCellsFromMapAjaxGo(parts[3]);
+            return;
+        }
+
+        String previousMapLocation = AppVars.Profile != null ? AppVars.Profile.MapLocation : null;
+        String regNum = position.RegNum.trim();
+        if (AppVars.Profile != null) {
+            AppVars.Profile.MapLocation = regNum;
+        }
+        RoomManager.onMapLocationConfirmed(AppVars.getContext(), regNum);
+        markSearchBoxVisited(regNum);
+        updateMovableCellsFromMapAjaxGo(parts[3]);
+
+        if (AppVars.AutoMoving && !AppVars.CurePauseNonCombatAutoFunctions) {
+            onAutoMovingCellObserved(previousMapLocation, regNum);
+            String destination = AppVars.AutoMovingDestinaton == null ? "" : AppVars.AutoMovingDestinaton.trim();
+            if (!destination.isEmpty() && destination.equals(regNum) && !AppVars.DoSearchBox) {
+                AppVars.AutoMoving = false;
+                AppVars.AutoMovingMapPath = null;
+                AppVars.AutoMovingNextJump = null;
+                AppVars.AutoMovingJumps = 0;
+                AppLog.i(TAG, "AutoMoving: destination reached at " + regNum + " via map_ajax GO");
+                scheduleAutoCutLookAfterDestinationReached(destination, "map_ajax_go");
+            }
+        }
+    }
+
+    private static void updateMovableCellsFromMapAjaxGo(String payload) {
+        if (payload == null || payload.trim().isEmpty()) {
+            return;
+        }
+        ExtMap.MovableCells.clear();
+        int posOpenBracket = payload.indexOf("[[");
+        if (posOpenBracket == -1) {
+            return;
+        }
+        posOpenBracket += 2;
+        while (posOpenBracket != -1 && posOpenBracket < payload.length()) {
+            int posCloseBracket = payload.indexOf(']', posOpenBracket);
+            if (posCloseBracket == -1) {
+                break;
+            }
+            String insideBrackets = payload.substring(posOpenBracket, posCloseBracket);
+            if (insideBrackets.indexOf(';') != -1) {
+                break;
+            }
+            String[] parsInsideBrackets = insideBrackets.split(",");
+            if (parsInsideBrackets.length == 3) {
+                String sCoordX = parsInsideBrackets[0].trim();
+                String sCoordY = parsInsideBrackets[1].trim();
+                String position = sCoordY + "/" + sCoordX + "_" + sCoordY;
+                String magicCode = parsInsideBrackets[2].trim().replace("\"", "");
+                ExtMap.MovableCells.put(position, magicCode);
+            }
+            posOpenBracket = payload.indexOf('[', posCloseBracket);
+            if (posOpenBracket == -1) {
+                break;
+            }
+            posOpenBracket++;
+        }
+    }
+
+    private static void scheduleAutoCutLookAfterDestinationReached(String destination, String source) {
+        if (AppVars.getContext() == null || destination == null || destination.trim().isEmpty()) {
+            return;
+        }
+        MainActivity activity = AppVars.mainActivity == null ? null : AppVars.mainActivity.get();
+        if (activity != null && activity.isUiForegroundLikely()) {
+            return;
+        }
+        try {
+            AutoFunctionsManager manager = AutoFunctionsManager.getInstance(AppVars.getContext());
+            if (!manager.isAutoCutEnabled()) {
+                return;
+            }
+            AutoCutManager autoCut = AutoCutManager.getInstance(AppVars.getContext());
+            if (!autoCut.isAutoCutRouteDestination(destination)) {
+                return;
+            }
+            autoCut.scheduleLookRetryAfterTimer("auto_moving_arrived:" + source);
+            AppLog.i(AutoCutManager.TRACE_CHAIN, TAG,
+                    "auto-cut look scheduled after destination reached: destination=" + destination
+                            + ", source=" + source);
+        } catch (Exception e) {
+            AppLog.w(AutoCutManager.TRACE_CHAIN, TAG,
+                    "failed to schedule auto-cut look after destination reached, source=" + source, e);
+        }
     }
 
     private static int registerMapAjaxErr(long nowMs) {
