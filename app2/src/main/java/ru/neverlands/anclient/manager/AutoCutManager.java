@@ -914,6 +914,25 @@ public final class AutoCutManager {
     }
 
     /**
+     * Откладывает cleanup-inventory pass до окончания серверного cooldown.
+     * Использует тот же one-shot `NeverTimer` dispatcher, что и retry `Оглядеться`, чтобы не
+     * гонять `go=inf -> go=inv` во время страницы ожидания после успешного среза.
+     */
+    public synchronized boolean deferCleanupInventoryUntilServerTimer(String source) {
+        long now = System.currentTimeMillis();
+        long dueInMs = AppVars.NeverTimer - now;
+        if (dueInMs <= 500L) {
+            return false;
+        }
+        boolean deferred = deferLookUntilServerTimerIfActive("cleanup_inventory:" + safe(source));
+        if (deferred) {
+            AppLog.i(TRACE_CHAIN, TAG, "cleanup inventory wait deferred until server timer: source="
+                    + safe(source) + ", dueInMs=" + Math.max(0L, AppVars.NeverTimer - now));
+        }
+        return deferred;
+    }
+
+    /**
      * true, если AutoCut ждёт ближайший server-timer tick для повторного `Оглядеться`.
      *
      * Зависимость: читается `MainActivity.checkServerTimerDrivenActions()` вместе с license-gated

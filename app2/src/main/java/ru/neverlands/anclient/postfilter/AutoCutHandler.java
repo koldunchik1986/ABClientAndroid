@@ -257,6 +257,13 @@ final class AutoCutHandler {
             return null;
         }
         if (MainPhp.isInventoryAddress(address)) {
+            if (AppVars.getContext() != null
+                    && AutoCutManager.getInstance(AppVars.getContext())
+                    .deferCleanupInventoryUntilServerTimer("inventory_without_rows")) {
+                AppLog.i(AutoCutManager.TRACE_CHAIN, TAG,
+                        "cleanup waits server timer before reopening inventory, address=" + address);
+                return null;
+            }
             AppLog.w(AutoCutManager.TRACE_CHAIN, TAG,
                     "cleanup inventory address has no inventory html, reload main frame, address=" + address);
             return MainPhp.buildRedirectHtml("Авто-Травник: повторное открытие инвентаря",
