@@ -32,6 +32,7 @@ final class AutoCutHandler {
      * Используется для поиска серпов тем же путём, что AutoSkin ищет ножи.
      */
     private static final String AUTO_CUT_SICKLE_INV_FILTER = "&im=0&wca=4";
+    private static final String AUTO_CUT_CLEANUP_INV_FILTER = "&im=0";
 
     private AutoCutHandler() {
     }
@@ -126,7 +127,11 @@ final class AutoCutHandler {
             AppLog.d(AutoCutManager.TRACE_CHAIN, TAG, "cleanup waits generated inventory transition");
             return null;
         }
-        if (!MainPhp.mainPhpIsInv(html) && !MainPhp.isInventoryAddress(address) && !MainPhp.hasInventoryRows(html)) {
+        if (!MainPhp.mainPhpIsInv(html) && !MainPhp.hasInventoryRows(html)) {
+            if (MainPhp.isInventoryAddress(address)) {
+                AppLog.w(AutoCutManager.TRACE_CHAIN, TAG,
+                        "cleanup waits real inventory html, address=" + address);
+            }
             return null;
         }
         if (AppVars.getContext() != null) {
@@ -171,7 +176,8 @@ final class AutoCutHandler {
         if (dressed.Valid && dressed.IsWearSickle()) {
             AppVars.AutoCutArmedSickle = true;
             AppVars.AutoCutCheckSickle = false;
-            AlchemyAjaxPhp.resumePendingCutAfterPreparation("sickle_already_ready");
+            boolean pendingCutResumed = AlchemyAjaxPhp.resumePendingCutAfterPreparation("sickle_already_ready");
+            continueRouteAfterPreparationIfIdle("sickle_already_ready", pendingCutResumed);
             return buildReturnToMapHtml("Авто-Травник: серп уже надет", "auto_cut_sickle_ready", html);
         }
 
@@ -202,7 +208,8 @@ final class AutoCutHandler {
         if (MainPhp.mainPhpIsPerc(html) || MainPhp.mainPhpIsInv(html) || MainPhp.isInventoryAddress(address)) {
             if (mainPhpArmedSickle(html)) {
                 AppVars.AutoCutCheckSickle = false;
-                AlchemyAjaxPhp.resumePendingCutAfterPreparation("sickle_checked");
+                boolean pendingCutResumed = AlchemyAjaxPhp.resumePendingCutAfterPreparation("sickle_checked");
+                continueRouteAfterPreparationIfIdle("sickle_checked", pendingCutResumed);
                 return buildReturnToMapHtml("Авто-Травник: серп проверен", "auto_cut_sickle_checked", html);
             }
             AppLog.d(AutoCutManager.TRACE_CHAIN, TAG,
@@ -246,13 +253,21 @@ final class AutoCutHandler {
      * что мы попадём на inventory-страницу и не перехватим ручной HTML-клик.
      */
     private static String processCleanupOpenInventory(String address, String html) {
-        if (MainPhp.mainPhpIsInv(html) || MainPhp.isInventoryAddress(address) || MainPhp.hasInventoryRows(html)) {
+        if (MainPhp.mainPhpIsInv(html) || MainPhp.hasInventoryRows(html)) {
             return null;
         }
-        String invHtml = MainPhp.mainPhpFindInvWithFallback(html, "&im=0", address);
+        if (MainPhp.isInventoryAddress(address)) {
+            AppLog.w(AutoCutManager.TRACE_CHAIN, TAG,
+                    "cleanup inventory address has no inventory html, reload main frame, address=" + address);
+            return MainPhp.buildRedirectHtml("Авто-Травник: повторное открытие инвентаря",
+                    "main.php?get_id=56&act=10&go=inf");
+        }
+        String inventoryFilter = AUTO_CUT_CLEANUP_INV_FILTER;
+        String invHtml = MainPhp.mainPhpFindInvWithFallback(html, inventoryFilter, address);
         if (invHtml != null && !invHtml.isEmpty()) {
             AppLog.i(AutoCutManager.TRACE_CHAIN, TAG,
-                    "cleanup redirect to inventory, reason=" + AppVars.AutoCutCleanupReason);
+                    "cleanup redirect to inventory, reason=" + AppVars.AutoCutCleanupReason
+                            + ", filter=" + inventoryFilter);
             return invHtml;
         }
         return MainPhp.buildRedirectHtml("Авто-Травник: cleanup инвентаря", "main.php?im=0");
@@ -295,8 +310,23 @@ final class AutoCutHandler {
                 "mass snapshot sync finished, return to map, source=" + source
                         + ", armed=" + AppVars.AutoCutArmedSickle
                         + ", mass=" + AppVars.AutoFishMassa);
-        AlchemyAjaxPhp.resumePendingCutAfterPreparation("mass_snapshot:" + source);
+        boolean pendingCutResumed = AlchemyAjaxPhp.resumePendingCutAfterPreparation("mass_snapshot:" + source);
+        continueRouteAfterPreparationIfIdle("mass_snapshot:" + source, pendingCutResumed);
         return buildReturnToMapHtml("Авто-Травник: масса проверена", "auto_cut_mass_snapshot", html);
+    }
+
+    private static void continueRouteAfterPreparationIfIdle(String source, boolean pendingCutResumed) {
+        if (pendingCutResumed) {
+            AppLog.d(AutoCutManager.TRACE_CHAIN, TAG,
+                    "preparation completed: pending cut resume scheduled, source=" + source);
+            return;
+        }
+        if (AppVars.getContext() == null) {
+            AppLog.w(AutoCutManager.TRACE_CHAIN, TAG,
+                    "preparation completed: route bootstrap skipped without context, source=" + source);
+            return;
+        }
+        AutoCutManager.getInstance(AppVars.getContext()).continueRouteAfterPreparationIfIdle(source);
     }
 
     /**

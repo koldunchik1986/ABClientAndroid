@@ -18,6 +18,14 @@ import java.net.HttpCookie;
 public class AppVars {
     public static List<HttpCookie> lastCookies;
     public static UserConfig Profile;
+    /**
+     * Runtime-only учетные данные последнего успешного входа.
+     * Не сохраняются на диск и нужны только для auto-relogin текущей сессии после `css/error.css`.
+     */
+    public static volatile String RuntimeAuthProfileId = "";
+    public static volatile String RuntimeAuthUserNick = "";
+    public static volatile String RuntimeAuthGamePassword = "";
+    public static volatile String RuntimeAuthFlashPassword = "";
     public static boolean CacheRefresh = false;
     public static boolean AutoRefresh = false;
     public static boolean WaitFlash = false;
@@ -585,6 +593,24 @@ public class AppVars {
         // files/info — постоянные пользовательские данные ANClient (license, chat, stats).
         // В отличие от files/Logs, эта директория не очищается кнопкой "Очистить логи".
         infoDir = resolveInfoDir(context);
+    }
+
+    public static void setRuntimeAuthCredentials(UserConfig profile, String gamePassword, String flashPassword) {
+        if (profile == null) {
+            clearRuntimeAuthCredentials();
+            return;
+        }
+        RuntimeAuthProfileId = profile.id == null ? "" : profile.id;
+        RuntimeAuthUserNick = profile.UserNick == null ? "" : profile.UserNick;
+        RuntimeAuthGamePassword = gamePassword == null ? "" : gamePassword;
+        RuntimeAuthFlashPassword = flashPassword == null ? "" : flashPassword;
+    }
+
+    public static void clearRuntimeAuthCredentials() {
+        RuntimeAuthProfileId = "";
+        RuntimeAuthUserNick = "";
+        RuntimeAuthGamePassword = "";
+        RuntimeAuthFlashPassword = "";
     }
 
     public static Context getContext() {

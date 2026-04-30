@@ -686,7 +686,7 @@ public class LoginActivity extends AppCompatActivity {
         if (result.isSuccess()) {
             binding.progressBar.setVisibility(View.GONE);
             binding.loginButton.setEnabled(true);
-            onLoginSuccess(result.getCookies(), gamePassword, profileToLogin);
+            onLoginSuccess(result.getCookies(), gamePassword, flashPassword, profileToLogin);
         } else if (result.isCaptchaRequired()) {
             binding.progressBar.setVisibility(View.GONE);
             binding.loginButton.setEnabled(true);
@@ -771,7 +771,10 @@ public class LoginActivity extends AppCompatActivity {
         }
     }
 
-    private void onLoginSuccess(List<HttpCookie> cookies, String gamePassword, UserConfig profileToLogin) {
+    private void onLoginSuccess(List<HttpCookie> cookies,
+                                String gamePassword,
+                                String flashPassword,
+                                UserConfig profileToLogin) {
         // Сохраняем куки для последующей передачи в WebView
         AppVars.lastCookies = cookies;
         profileToLogin.LastLogin = currentDotNetTicks();
@@ -786,6 +789,7 @@ public class LoginActivity extends AppCompatActivity {
 
         // Устанавливаем глобальный профиль для сессии
         AppVars.Profile = profileToLogin;
+        AppVars.setRuntimeAuthCredentials(profileToLogin, gamePassword, flashPassword);
         
         // Синхронизируем состояние автобоя с профилем
         if (profileToLogin.LezDoAutoboi) {

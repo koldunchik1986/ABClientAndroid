@@ -426,10 +426,11 @@ public class AutoFunctionsManager {
      * Восстанавливает runtime-состояние сохранённых авто-режимов после успешного входа в MainActivity.
      *
      * Зависимости:
-     * - SharedPreferences (`isAutoFishEnabled()/isAutoFightEnabled()`) как источник сохранённых флагов;
+     * - SharedPreferences (`isAutoFishEnabled()/isAutoFightEnabled()/isAutoCutEnabled()`) как источник сохранённых флагов;
      * - `setAutoFishEnabled(true)` для полной C#-цепочки AutoFish (инициализация runtime + bootstrap-навигация в `go=inf`);
      * - `restoreAutoFightRuntimeAfterLogin(...)` для мягкого восстановления только runtime AutoFight
      *   (без лишнего reload верхнего фрейма и без принудительного запроса авто-удара);
+     * - `setAutoCutEnabled(true)` для полной C#-цепочки AutoCut (проверка серпа + маршрут);
      * - `AppVars.mainActivity`/`MainActivity.getMainWebView()` внутри указанных методов для фактического старта потока.
      *
      * Почему нужен метод:
@@ -442,7 +443,8 @@ public class AutoFunctionsManager {
     // - после успешного логина восстанавливает сохраненные авто-режимы в runtime.
     // Алгоритм:
     // - если включена авто-рыбалка, приоритетно запускается ее полная цепочка;
-    // - иначе мягко восстанавливается runtime авто-боя через restoreAutoFightRuntimeAfterLogin(...).
+     // - иначе если включен авто-травник, запускается его полная цепочка;
+     // - иначе мягко восстанавливается runtime авто-боя через restoreAutoFightRuntimeAfterLogin(...).
     //
     // Зависимости:
     // - SharedPreferences: сохраненные флаги AutoFish/AutoFight;
@@ -452,9 +454,11 @@ public class AutoFunctionsManager {
         boolean autoFish = isAutoFishEnabled();
         boolean autoFight = isAutoFightEnabled();
         boolean autoTreasure = isAutoTreasureEnabled();
+        boolean autoCut = isAutoCutEnabled();
         AppLog.d(TAG, "restorePersistentAutoModesAfterLogin: autoFish=" + autoFish
                 + ", autoFight=" + autoFight
-                + ", autoTreasure=" + autoTreasure);
+                + ", autoTreasure=" + autoTreasure
+                + ", autoCut=" + autoCut);
 
         requestCharacterSyncAfterLogin();
         requestClanWarsSyncAfterLogin();
@@ -467,6 +471,14 @@ public class AutoFunctionsManager {
             if (autoFight) {
                 restoreAutoFightRuntimeAfterLogin(true, false);
             }
+            return;
+        }
+
+        if (autoCut) {
+            AppLog.d(AutoCutManager.TRACE_CHAIN, TAG,
+                    "restore after login: auto-cut owns cold start bootstrap");
+            restoreAutoFightRuntimeAfterLogin(autoFight, false);
+            setAutoCutEnabled(true);
             return;
         }
 

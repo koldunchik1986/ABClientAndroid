@@ -108,6 +108,7 @@ public final class AlchemyAjaxPhp {
         for (ResourceCandidate resource : state.resources) {
             autoCut.registerObservedHerb(resource.resId, resource.name, 0, resource.rTime, "");
         }
+        autoCut.updateCurrentCellSnapshot(buildCellSnapshotList(state.resources), "alchemy_act1");
 
         ResourceCandidate selected = null;
         for (ResourceCandidate resource : state.resources) {
@@ -138,7 +139,7 @@ public final class AlchemyAjaxPhp {
                     "act1: selected herb waits for sickle check, herb=" + selected.name);
             return;
         }
-        if (autoCut.needsMassSnapshotBeforeCut()) {
+        if (!selectedCut.isCaptchaRequired() && autoCut.needsMassSnapshotBeforeCut()) {
             pendingCut = selectedCut;
             autoCut.requestMassSnapshotBeforeCut("alchemy_act1:" + selected.resId);
             AppLog.i(AutoCutManager.TRACE_CHAIN, TAG,
@@ -168,7 +169,7 @@ public final class AlchemyAjaxPhp {
                         "pending cut resume skipped: sickle not ready, source=" + source);
                 return;
             }
-            if (autoCut.needsMassSnapshotBeforeCut()) {
+            if (!current.isCaptchaRequired() && autoCut.needsMassSnapshotBeforeCut()) {
                 autoCut.requestMassSnapshotBeforeCut("resume_after_" + source + ":" + current.resource.resId);
                 AppLog.i(AutoCutManager.TRACE_CHAIN, TAG,
                         "pending cut resume waits for mass snapshot, herb=" + current.resource.name
@@ -229,6 +230,11 @@ public final class AlchemyAjaxPhp {
             AppLog.w(AutoCutManager.TRACE_CHAIN, TAG,
                     "act1: ERR response, look retry scheduled, deferredByTimer=" + deferredByTimer
                             + ", dueInMs=" + Math.max(0L, AppVars.NeverTimer - System.currentTimeMillis()));
+            return;
+        }
+        if (AppVars.getContext() != null) {
+            AutoCutManager.getInstance(AppVars.getContext()).onScanWithoutSelectedHerb("alchemy_act1_no_resource_state");
+            AppLog.d(AutoCutManager.TRACE_CHAIN, TAG, "act1: no resource state, route next requested");
             return;
         }
         AppLog.d(AutoCutManager.TRACE_CHAIN, TAG, "act1: no resource state");
@@ -392,6 +398,24 @@ public final class AlchemyAjaxPhp {
                     .append(available)
                     .append('/')
                     .append(Math.max(0, total));
+        }
+        return builder.toString();
+    }
+
+    /** Snapshot для route-skip cache: `name:availableCount|...`. */
+    private static String buildCellSnapshotList(List<ResourceCandidate> resources) {
+        if (resources == null || resources.isEmpty()) {
+            return "";
+        }
+        StringBuilder builder = new StringBuilder();
+        for (ResourceCandidate resource : resources) {
+            if (resource == null || TextUtils.isEmpty(resource.name)) {
+                continue;
+            }
+            builder.append(resource.name.trim())
+                    .append(':')
+                    .append(Math.max(0, resource.availableCount))
+                    .append('|');
         }
         return builder.toString();
     }
@@ -635,6 +659,11 @@ public final class AlchemyAjaxPhp {
         /** true, если pending-состояние устарело и нельзя использовать его для таймера/массы. */
         boolean isExpired() {
             return System.currentTimeMillis() - createdAtMs > PENDING_CUT_TTL_MS;
+        }
+
+        /** true, если `RESO@` выдал captcha token и срез должен уйти без промежуточного main.php. */
+        boolean isCaptchaRequired() {
+            return !captchaToken.isEmpty() && !"00000".equals(captchaToken);
         }
     }
 }

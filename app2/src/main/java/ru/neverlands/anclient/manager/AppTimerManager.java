@@ -193,6 +193,7 @@ public class AppTimerManager {
 
         for (int index = 0; index < listAppTimers.size(); index++) {
             AppTimer timer = listAppTimers.get(index);
+            boolean keepHerbTimerForAutoCut = timer.isHerb && shouldKeepDueHerbTimerForAutoCut();
             
             // === 5-SECOND BUFFER BEFORE TIMER FIRES ===
             // За 5 секунд до срабатывания таймера И если NeverTimer еще активен:
@@ -200,6 +201,13 @@ public class AppTimerManager {
             // - приостанавливаем все авто-функции кроме авто-боя
             // Это позволяет пользователю спокойно открыть инвентарь и пить зелье.
             long timeUntilFireMs = timer.triggerTime - nowMs;
+            if (timeUntilFireMs > 0 && timeUntilFireMs <= 5000 && nowMs < AppVars.NeverTimer
+                    && keepHerbTimerForAutoCut) {
+                String msg = "[TIMER_PAUSE_SKIP] AutoCut owns herb timer, keep Auto-Herb enabled, timeUntilFire="
+                        + timeUntilFireMs + "ms, timerId=" + timer.id;
+                AppLog.d("app_timer", TAG, msg);
+                continue;
+            }
             if (timeUntilFireMs > 0 && timeUntilFireMs <= 5000 && nowMs < AppVars.NeverTimer) {
                 if (!AppVars.TimerPauseNonCombatAutoFunctions) {
                     // Сохраняем текущее состояние всех авто-функций
@@ -271,7 +279,7 @@ public class AppTimerManager {
                 return;
             }
 
-            if (timer.isHerb && shouldKeepDueHerbTimerForAutoCut()) {
+            if (keepHerbTimerForAutoCut) {
                 continue;
             }
 

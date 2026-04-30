@@ -374,8 +374,15 @@ public class AutoModeForegroundService extends Service {
                     refreshForegroundNotification(autoFightEnabled, locationTrackingEnabled, true, true);
                     return;
                 }
-                // Используем единый модуль для проверки: может ли автобой запуститься, несмотря на UI флаги
-                if (autoFightEnabled && !captchaDialogVisible && ForcedActionGuard.shouldForceAction("autoFight", uiForegroundLikely)) {
+                long announceAtMs = AppVars.LastFightAnnounceAtMs;
+                boolean recentFightAnnounce = announceAtMs > 0L
+                        && tickNow >= announceAtMs
+                        && (tickNow - announceAtMs) <= FIGHT_ANNOUNCE_GRACE_MS;
+
+                // Используем единый модуль для проверки: может ли автобой запуститься, несмотря на UI флаги.
+                // Force-sync нужен только после реального announce; иначе он может съесть cold-start probe flag.
+                if (autoFightEnabled && !captchaDialogVisible && recentFightAnnounce
+                        && ForcedActionGuard.shouldForceAction("autoFight", uiForegroundLikely)) {
                     maybeForceFightFrameSync(activity, tickNow, pendingFightFinishLink);
                 }
 
@@ -418,13 +425,9 @@ public class AutoModeForegroundService extends Service {
                 }
 
                 // Подробное описание guard-блока авто-хода:
-                // Назначение:
-                // - в активном foreground UI не дергать лишние probe/autoTurn, когда действительно нет признаков боя.
-                //
-                // Ключевая деталь текущего фикса:
-                // - условие skip применяется только при !fightLikelyActive.
-                // - если бой уже вероятно активен (fightLikelyActive=true), skip не срабатывает,
-                //   и сервис продолжает requestAutoTurnBackgroundAware(), чтобы не было "залипания" после логина.
+                // - не дергать лишние probe/autoTurn, когда действительно нет признаков боя;
+                // - один initial probe допустим при cold-start автобоя или свежем announce;
+                // - если бой уже вероятно активен, сервис продолжает requestAutoTurnBackgroundAware().
                 //
                 // Зависимости:
                 // - hasFightMarkers(AppVars.ContentMainPhp): маркеры боя в текущем html-кэше;
@@ -441,6 +444,20 @@ public class AutoModeForegroundService extends Service {
                         refreshForegroundNotification(autoFightEnabled, locationTrackingEnabled, captchaDialogVisible, false);
                         return;
                     }
+                    boolean hasFightContext = fightLikelyActive
+                            || hasFightMarkers(AppVars.ContentMainPhp)
+                            || !pendingFightFinishLink.isEmpty();
+                    boolean coldStartAutoboiProbe = AppVars.ProbeForceNeedAutoboi;
+                    boolean allowInitialFightProbe = coldStartAutoboiProbe || recentFightAnnounce;
+                    if (!hasFightContext && !allowInitialFightProbe) {
+                        AppLog.d(TAG, BG_TRACE_PREFIX + " uiTick: skip autoTurn idle probe, no fight context"
+                                + ", autoFight=" + autoFightEnabled
+                                + ", recentFightAnnounce=" + recentFightAnnounce);
+                        markClientAction("Пауза авто-хода: нет боя");
+                        refreshForegroundNotification(autoFightEnabled, locationTrackingEnabled, captchaDialogVisible, false);
+                        return;
+                    }
+
                     long sinceLastAutoTurnMs = tickNow - lastAutoTurnTickAtMs;
                     
                     // Используем единый модуль для проверки: разрешена ли работа авто-функций несмотря на UI флаги
@@ -456,13 +473,20 @@ public class AutoModeForegroundService extends Service {
                         return;
                     }
                     
-                    // Background-safe polling: do auto-turn/probe even when fightLikelyActive=false.
+                    // Idle probe allowed only for cold start or a fresh fight announce. Plain no-fight polling
+                    // races with map automations by reloading main.php and invalidating action vcode.
                     long minIntervalMs = fightLikelyActive
                             ? AUTO_TURN_MIN_INTERVAL_MS
                             : AUTO_TURN_IDLE_PROBE_INTERVAL_MS;
                     if (sinceLastAutoTurnMs >= minIntervalMs) {
                         if (!fightLikelyActive) {
                             AppLog.d(TAG, BG_TRACE_PREFIX + " uiTick: autoTurn idle probe");
+                        }
+                        if (!fightLikelyActive && coldStartAutoboiProbe) {
+                            // Cold-start probe is one-shot. In background mode ForcedActionGuard can allow it
+                            // without consuming ProbeForceNeedAutoboi, which would otherwise re-enable idle probes forever.
+                            AppVars.ProbeForceNeedAutoboi = false;
+                            AppLog.d(TAG, BG_TRACE_PREFIX + " uiTick: consumed cold-start autoboi probe flag");
                         }
                         activity.requestAutoTurnBackgroundAware();
                         markClientAction(fightLikelyActive ? "Авто-ход: запрос шага" : "Авто-ход: idle-probe");

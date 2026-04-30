@@ -14,6 +14,7 @@ import android.os.Looper;
 import android.widget.Toast;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 import ru.neverlands.anclient.utils.AppLog;
+import ru.neverlands.anclient.manager.AutoCutManager;
 import ru.neverlands.anclient.manager.AutoFunctionsManager;
 import ru.neverlands.anclient.manager.CharacterVitalsManager;
 import ru.neverlands.anclient.manager.FastActionManager;
@@ -156,15 +157,24 @@ public class MapAjax {
             }
             int tiedNow = tooTiredVitals.tied;
             if (AppVars.Profile == null || !AppVars.Profile.DoAutoDrinkBlaz) {
+                String stoppedDestination = AppVars.AutoMovingDestinaton;
+                boolean autoCutRetryScheduled = scheduleAutoCutRouteRetryAfterTiredness(
+                        stoppedDestination,
+                        tiedNow,
+                        tiedThreshold);
                 // Без автопитья блажа маршрут останавливаем сразу, чтобы не зациклиться на "усталости".
                 AppVars.AutoMoving = false;
                 AppVars.AutoMovingMapPath = null;
                 AppVars.AutoMovingNextJump = null;
                 AppVars.AutoMovingJumps = 0;
-                postAutoTreasureReasonToChat("Авто-Клад остановлен: усталость " + tiedNow
-                        + "%, порог " + tiedThreshold
-                        + "%. Включите «Пить блаж, если усталость» или снизьте усталость вручную.");
-                AppLog.w(TAG, "AUTO_SEARCH_BOX_TRACE: too tired, auto moving stopped (DoAutoDrinkBlaz=false)");
+                if (!autoCutRetryScheduled) {
+                    postAutoTreasureReasonToChat("Авто-Клад остановлен: усталость " + tiedNow
+                            + "%, порог " + tiedThreshold
+                            + "%. Включите «Пить блаж, если усталость» или снизьте усталость вручную.");
+                }
+                AppLog.w(TAG, "AUTO_SEARCH_BOX_TRACE: too tired, auto moving stopped (DoAutoDrinkBlaz=false)"
+                        + ", destination=" + stoppedDestination
+                        + ", autoCutRetryScheduled=" + autoCutRetryScheduled);
             } else {
                 String currentRegNum = (AppVars.Profile != null) ? AppVars.Profile.MapLocation : null;
                 String autoDrinkRedirect = maybeTriggerAutoDrinkBlazOnThreshold(currentRegNum);
@@ -1386,6 +1396,32 @@ public class MapAjax {
         }
         new Handler(Looper.getMainLooper()).post(() ->
                 Toast.makeText(context, text, Toast.LENGTH_SHORT).show());
+    }
+
+    private static boolean scheduleAutoCutRouteRetryAfterTiredness(String destination,
+                                                                   int tiedNow,
+                                                                   int tiedThreshold) {
+        android.content.Context context = AppVars.getContext();
+        if (context == null || destination == null || destination.isEmpty()) {
+            return false;
+        }
+        try {
+            AutoFunctionsManager manager = AutoFunctionsManager.getInstance(context);
+            if (!manager.isAutoCutEnabled()) {
+                return false;
+            }
+            return AutoCutManager.getInstance(context).scheduleRouteRetryAfterTiredness(
+                    manager,
+                    destination,
+                    tiedNow,
+                    tiedThreshold,
+                    "map_ajax_too_tired");
+        } catch (Exception error) {
+            AppLog.w(AutoCutManager.TRACE_CHAIN, TAG,
+                    "failed to schedule AutoCut tired route retry, destination=" + destination,
+                    error);
+            return false;
+        }
     }
 
     private static void postAutoTreasureReasonToChat(String reason) {

@@ -710,6 +710,11 @@ public class WebAppInterface {
                             "DoHerbAutoCut=false, timer return arrived, route next scheduled");
                     return false;
                 }
+                if (autoCut.routeNextIfCurrentCellCachedNotReady(manager, "bridge_do_herb_auto_cut")) {
+                    AppLog.d(AutoCutManager.TRACE_CHAIN, "WebAppInterface",
+                            "DoHerbAutoCut=false, current cell skipped by cache, route next scheduled");
+                    return false;
+                }
                 AppLog.d(AutoCutManager.TRACE_CHAIN, "WebAppInterface", "DoHerbAutoCut=false, current cell not ready");
                 return false;
             }

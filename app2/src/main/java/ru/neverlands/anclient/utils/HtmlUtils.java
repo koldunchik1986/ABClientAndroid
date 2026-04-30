@@ -54,6 +54,8 @@ public final class HtmlUtils {
                 "if (typeof window.slots_inv !== 'function') { window.slots_inv = function() {}; }" +
                 "if (typeof window.compl_view !== 'function') { window.compl_view = function() {}; }" +
                 "if (typeof window.view_t !== 'function') { window.view_t = function() {}; }" +
+                "if (typeof top.DeleteTrue !== 'function') { top.DeleteTrue = function(thing){ return confirm('Вы действительно хотите выбросить ' + (thing || 'предмет') + '?'); }; }" +
+                "if (typeof top.deletetrue !== 'function') { top.deletetrue = top.DeleteTrue; }" +
                 // Мосты чата: обновление, отправка/очистка, и эмуляция frames['ch_*'].
                 "if (typeof top.ch_refresh_n !== 'function') { top.ch_refresh_n = function(){ if(window.AndroidBridge && AndroidBridge.chatRefreshN){ AndroidBridge.chatRefreshN(); } }; }" +
                 "if (typeof top.set_lmid !== 'function') { top.set_lmid = function(v){ if(window.AndroidBridge && AndroidBridge.chatSetLmid){ AndroidBridge.chatSetLmid(v); } }; }" +

@@ -84,6 +84,7 @@ import java.util.zip.GZIPInputStream;
 
 import ru.neverlands.anclient.bridge.WebAppInterface;
 import ru.neverlands.anclient.handlers.FightContextChoiceHandler;
+import ru.neverlands.anclient.handlers.SessionReloginHandler;
 import ru.neverlands.anclient.lez.LezFight;
 import ru.neverlands.anclient.license.LicenseFeature;
 import ru.neverlands.anclient.license.LicenseRuntime;
@@ -165,6 +166,8 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     private static final String LOGOUT_URL = "http://neverlands.ru/exit.php";
     private static final String LOGOUT_REFERER = "http://neverlands.ru/game.php";
     private static final int LOGOUT_HTTP_TIMEOUT_MS = 10000;
+    private static final long SESSION_RELOGIN_DEDUP_MS = 15000L;
+    private static final String SESSION_RELOGIN_CHAIN = "session_relogin";
     public ActivityMainBinding binding;
     private Timer timer;
     private boolean isExiting = false;
@@ -253,6 +256,11 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     private boolean suppressChatRefreshOnceAfterContacts = false;
     private boolean suppressRoomRefreshOnceAfterContacts = false;
     private boolean shouldRestoreChatRefreshAfterContacts = false;
+    private boolean sessionReloginInFlight = false;
+    private long lastSessionReloginStartAtMs = 0L;
+    private String lastSessionReloginUrl = "";
+    private boolean restoreChatRefreshAfterSessionRelogin = false;
+    private boolean restoreRoomPollingAfterSessionRelogin = false;
     private final ActivityResultLauncher<Intent> contactsActivityLauncher =
             registerForActivityResult(
                     new ActivityResultContracts.StartActivityForResult(),
@@ -758,6 +766,134 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             requestChatRefresh(false);
         };
         chatRefreshHandler.postDelayed(chatPollRecoveryRunnable, retryDelayMs);
+    }
+
+    /**
+     * Запускает восстановление игровой сессии после HTML-страницы `css/error.css`.
+     *
+     * Вызовы приходят из общего WebView response pipeline и могут повториться из нескольких
+     * фреймов, поэтому здесь расположен единый debounce и orchestration.
+     */
+    public void onSessionErrorHtmlDetected(String url, String source) {
+        if (Looper.myLooper() != Looper.getMainLooper()) {
+            runOnUiThread(() -> onSessionErrorHtmlDetected(url, source));
+            return;
+        }
+        if (isFinishing() || isDestroyed()) {
+            return;
+        }
+
+        long now = System.currentTimeMillis();
+        String safeUrl = url == null ? "" : url;
+        String safeSource = source == null ? "" : source;
+        if (sessionReloginInFlight) {
+            AppLog.d(SESSION_RELOGIN_CHAIN, TAG, "SESSION_RELOGIN_SKIP: already in flight, source="
+                    + safeSource + ", url=" + safeUrl + ", firstUrl=" + lastSessionReloginUrl);
+            return;
+        }
+        if (now - lastSessionReloginStartAtMs < SESSION_RELOGIN_DEDUP_MS) {
+            AppLog.d(SESSION_RELOGIN_CHAIN, TAG, "SESSION_RELOGIN_SKIP: dedup window, source="
+                    + safeSource + ", url=" + safeUrl);
+            return;
+        }
+
+        sessionReloginInFlight = true;
+        lastSessionReloginStartAtMs = now;
+        lastSessionReloginUrl = safeUrl;
+        restoreChatRefreshAfterSessionRelogin = chatRefreshRunnable != null;
+        restoreRoomPollingAfterSessionRelogin = roomUsersPollingRunnable != null;
+
+        AppLog.w(SESSION_RELOGIN_CHAIN, TAG, "SESSION_RELOGIN_DETECTED: source=" + safeSource
+                + ", url=" + safeUrl
+                + ", restoreChat=" + restoreChatRefreshAfterSessionRelogin
+                + ", restoreRoom=" + restoreRoomPollingAfterSessionRelogin);
+        MainPhp.postServerNotificationToChat(
+                "Сеанс работы прерван. Перезаход в игру",
+                "session_relogin",
+                safeUrl
+        );
+
+        stopChatRefresh();
+        stopRoomUsersPolling();
+        clearPendingAutoBattleSubmit();
+
+        SessionReloginHandler.start(getApplicationContext(), AppVars.Profile, new SessionReloginHandler.Callback() {
+            @Override
+            public void onReloginSuccess(List<java.net.HttpCookie> cookies) {
+                handleSessionReloginSuccess(cookies, safeUrl);
+            }
+
+            @Override
+            public void onReloginFallbackRequired(String reason) {
+                handleSessionReloginFallback(reason, safeUrl);
+            }
+        });
+    }
+
+    private void handleSessionReloginSuccess(List<java.net.HttpCookie> cookies, String sourceUrl) {
+        if (Looper.myLooper() != Looper.getMainLooper()) {
+            runOnUiThread(() -> handleSessionReloginSuccess(cookies, sourceUrl));
+            return;
+        }
+        if (isFinishing() || isDestroyed()) {
+            return;
+        }
+
+        sessionReloginInFlight = false;
+        AppLog.i(SESSION_RELOGIN_CHAIN, TAG, "SESSION_RELOGIN_SUCCESS: cookies="
+                + (cookies == null ? 0 : cookies.size()) + ", sourceUrl=" + sourceUrl);
+
+        if (AppVars.Profile != null) {
+            AppVars.Profile.LastLogin = currentDotNetTicksForSessionRelogin();
+            AppVars.Profile.save(this);
+        }
+        applyAuthCookiesToWebView(cookies, "session_relogin");
+        SessionManager.getInstance().invalidateContext("session_relogin_success");
+        SessionManager.getInstance().clearFightContext();
+        AppVars.ContentMainPhp = "";
+        AppVars.NextCheckNoConnection = new Date(System.currentTimeMillis() + 5 * 60 * 1000);
+        resetPostReloadGuard("session_relogin_success");
+        lastMainFrameTimeoutRetryAtMs = 0L;
+        lastMainFrameTimeoutRetryUrl = "";
+
+        loadInitialUrls();
+        if (restoreChatRefreshAfterSessionRelogin && isChatRefreshEnabled()) {
+            startChatRefresh();
+        }
+        if (restoreRoomPollingAfterSessionRelogin) {
+            startRoomUsersPolling();
+        }
+        restoreChatRefreshAfterSessionRelogin = false;
+        restoreRoomPollingAfterSessionRelogin = false;
+
+        MainPhp.postServerNotificationToChat(
+                "Сеанс восстановлен",
+                "session_relogin",
+                sourceUrl == null ? "" : sourceUrl
+        );
+        AutoModeForegroundService.syncServiceState(this, "session_relogin_success");
+    }
+
+    private void handleSessionReloginFallback(String reason, String sourceUrl) {
+        if (Looper.myLooper() != Looper.getMainLooper()) {
+            runOnUiThread(() -> handleSessionReloginFallback(reason, sourceUrl));
+            return;
+        }
+        if (isFinishing() || isDestroyed()) {
+            return;
+        }
+        sessionReloginInFlight = false;
+        restoreChatRefreshAfterSessionRelogin = false;
+        restoreRoomPollingAfterSessionRelogin = false;
+        String safeReason = reason == null ? "unknown" : reason;
+        AppLog.w(SESSION_RELOGIN_CHAIN, TAG, "SESSION_RELOGIN_FALLBACK: reason=" + safeReason
+                + ", sourceUrl=" + (sourceUrl == null ? "" : sourceUrl));
+        MainPhp.postServerNotificationToChat(
+                "Не удалось восстановить сеанс: " + safeReason + ". Открываю экран входа",
+                "session_relogin",
+                sourceUrl == null ? "" : sourceUrl
+        );
+        finalizeLogoutAndOpenLogin();
     }
 
     /**
@@ -3533,12 +3669,17 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             }
         }
 
+        applyAuthCookiesToWebView(AppVars.lastCookies, "lastCookies_apply");
+        AppVars.lastCookies = null;
+    }
+
+    private void applyAuthCookiesToWebView(List<java.net.HttpCookie> cookies, String stage) {
         CookieManager cookieManager = CookieManager.getInstance();
-        if (AppVars.lastCookies != null && !AppVars.lastCookies.isEmpty()) {
+        if (cookies != null && !cookies.isEmpty()) {
             java.util.List<java.net.HttpCookie> filteredCookies = new java.util.ArrayList<>();
             java.util.Set<String> names = new java.util.HashSet<>();
-            for (int i = AppVars.lastCookies.size() - 1; i >= 0; i--) {
-                java.net.HttpCookie cookie = AppVars.lastCookies.get(i);
+            for (int i = cookies.size() - 1; i >= 0; i--) {
+                java.net.HttpCookie cookie = cookies.get(i);
                 if (!names.contains(cookie.getName())) {
                     filteredCookies.add(0, cookie);
                     names.add(cookie.getName());
@@ -3560,10 +3701,9 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                 cookieManager.setCookie(urlWwwNeverlands, cookieValue.toString());
             }
             cookieManager.flush();
-            AppLog.d(TAG, "AUTH_COOKIE_SYNC: applied lastCookies names=" + names);
-            AppVars.lastCookies = null;
+            AppLog.d(TAG, "AUTH_COOKIE_SYNC: applied " + stage + " names=" + names);
         }
-        syncSessionCookiesAcrossHosts(cookieManager, "after_lastCookies_apply");
+        syncSessionCookiesAcrossHosts(cookieManager, "after_" + stage);
     }
 
     // Первичная загрузка основных и чат-фреймов.
@@ -4810,6 +4950,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         }
         isExiting = true;
         AppVars.lastCookies = null;
+        AppVars.clearRuntimeAuthCredentials();
         NetworkClient.clearCookies();
         CookiesManager.clear();
         LicenseRuntime.getInstance().clear("logout_to_login");
@@ -5176,6 +5317,13 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                         htmlBody = payload;
                     }
 
+                    if (isSessionInterruptedHtml(htmlBody, bodyText)) {
+                        AppLog.w(SESSION_RELOGIN_CHAIN, TAG,
+                                "SESSION_RELOGIN_DETECTED: source=page_finished_main, url=http://neverlands.ru/main.php");
+                        onSessionErrorHtmlDetected("http://neverlands.ru/main.php", "page_finished_main");
+                        return;
+                    }
+
                     String noticeHtml = !transferHtml.isEmpty() ? transferHtml : htmlBody;
                     String noticeText = !transferText.isEmpty() ? transferText : bodyText;
                     String parsedServerMessage = MainPhp.extractServerNoticeForUi(noticeHtml, noticeText);
@@ -5321,6 +5469,23 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             }
         }
         return sb.toString();
+    }
+
+    private boolean isSessionInterruptedHtml(String html, String text) {
+        String combined = (html == null ? "" : html) + " " + (text == null ? "" : text);
+        if (combined.trim().isEmpty()) {
+            return false;
+        }
+        String lower = combined.toLowerCase(Locale.ROOT);
+        return lower.contains("css/error.css")
+                && (lower.contains("сеанс работы прерван")
+                || lower.contains("сессия работы прервана")
+                || lower.contains("session"));
+    }
+
+    private static long currentDotNetTicksForSessionRelogin() {
+        long unixEpochMs = System.currentTimeMillis();
+        return (unixEpochMs + 62135596800000L) * 10_000L;
     }
 
     private byte[] readAssetFile(String fileName) throws IOException {

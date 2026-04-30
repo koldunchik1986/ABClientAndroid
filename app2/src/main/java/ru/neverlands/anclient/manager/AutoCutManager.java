@@ -73,8 +73,10 @@ public final class AutoCutManager {
     private static final String KEY_SICKLES_JSON_PREFIX = "sickles_json_";
     /** JSON расписания смен трав. */
     private static final String KEY_SHIFTS_JSON_PREFIX = "shifts_json_";
-    /** Список уже проверенных клеток для текущей 6-часовой смены трав. */
+    /** Список уже проверенных клеток для текущего server-window смены трав. */
     private static final String KEY_CHECKED_SHIFT_PREFIX = "checked_shift_";
+    /** Snapshot последних `HerbsList`/`RESO@` по клеткам, нужен для skip known-empty route. */
+    private static final String KEY_CELL_SNAPSHOTS_JSON_PREFIX = "cell_snapshots_json_";
     /** Группа для неизвестных трав, найденных в live `RESO@`. */
     private static final String GROUP_UNKNOWN = "Не определено";
     /** Безопасное время роста для новых/неизвестных трав. */
@@ -85,6 +87,10 @@ public final class AutoCutManager {
     private static final long ROUTE_NEXT_DELAY_MS = 450L;
     /** Fallback-delay для повторного `Оглядеться`, если сервер не прислал `SetNeverTimer(...)`. */
     private static final long AUTO_CUT_RETRY_FALLBACK_DELAY_MS = 1500L;
+    /** Пауза перед новым кругом, когда все выбранные травы по cache пустые в текущей смене. */
+    private static final long CURRENT_CELL_NO_SELECTED_RETRY_MS = 30_000L;
+    /** Минимальная пауза перед повторным маршрутом AutoCut после server `too tired`. */
+    private static final long TIRED_ROUTE_RETRY_MIN_DELAY_MS = 60_000L;
     /** Дедуп запроса main.php/inventory для массы, чтобы при пустом HTML не зациклить срез. */
     private static final long MASS_SYNC_REQUEST_DEDUP_MS = 30_000L;
     /** Fallback cleanup threshold, если `SetAutoFishMassa` ещё не дал max mass. */
@@ -128,6 +134,10 @@ public final class AutoCutManager {
     private volatile String timerRouteTargetCell = "";
     /** true, когда AutoCut уже возвращается после timer-route и ждёт прибытия на исходную клетку. */
     private volatile boolean timerRouteReturning = false;
+    /** true, когда AutoCut ждёт повторного старта маршрута после server `too tired`. */
+    private volatile boolean tiredRouteRetryPending = false;
+    /** Последняя цель AutoCut route, остановленная сервером из-за усталости. */
+    private volatile String tiredRouteRetryDestination = "";
 
     private AutoCutManager(Context context) {
         appContext = context.getApplicationContext();
@@ -381,7 +391,45 @@ public final class AutoCutManager {
                 count++;
             }
         }
+        updateCurrentCellSnapshot(list, "herbs_list");
         AppLog.d(TRACE_CHAIN, TAG, "HerbsList observed count=" + count);
+    }
+
+    /**
+     * Сохраняет snapshot трав текущей клетки для C#-parity `HerbCells` route skip.
+     * Формат `resourcesList`: `Название:count|...`; unknown/stale snapshot или snapshot прошлой
+     * server-shift window не блокирует маршрут.
+     */
+    public synchronized void updateCurrentCellSnapshot(String resourcesList, String source) {
+        List<CellHerbEntry> entries = parseCellSnapshotEntries(resourcesList);
+        if (entries.isEmpty()) {
+            return;
+        }
+        String current = resolveCurrentRegNum();
+        int shift = getShiftForServerMs(getServerNowMs(System.currentTimeMillis()));
+        if (TextUtils.isEmpty(current) || shift == 0) {
+            return;
+        }
+        try {
+            JSONObject snapshots = loadCellSnapshotsLocked();
+            JSONArray herbs = new JSONArray();
+            for (CellHerbEntry entry : entries) {
+                JSONObject item = new JSONObject();
+                item.put("name", entry.name);
+                item.put("count", Math.max(0, entry.count));
+                herbs.put(item);
+            }
+            JSONObject snapshot = new JSONObject();
+            snapshot.put("shift", shift);
+            snapshot.put("updatedAtMs", System.currentTimeMillis());
+            snapshot.put("herbs", herbs);
+            snapshots.put(current, snapshot);
+            prefs.edit().putString(scopedKey(KEY_CELL_SNAPSHOTS_JSON_PREFIX), snapshots.toString()).apply();
+            AppLog.d(TRACE_CHAIN, TAG, "cell snapshot updated: cell=" + current
+                    + ", entries=" + entries.size() + ", shift=" + shift + ", source=" + source);
+        } catch (Exception error) {
+            AppLog.w(TRACE_CHAIN, TAG, "failed to persist cell snapshot, source=" + source, error);
+        }
     }
 
     /**
@@ -519,6 +567,9 @@ public final class AutoCutManager {
         if (hasDueHerbTimerForCurrentShift(current)) {
             return true;
         }
+        if (!shouldRouteToUncheckedCell(current, "current_cell")) {
+            return false;
+        }
         return !isCellCheckedForCurrentShift(current);
     }
 
@@ -543,6 +594,106 @@ public final class AutoCutManager {
         return true;
     }
 
+    /** Запускает route, если текущая unchecked-клетка по snapshot-у не содержит выбранных трав. */
+    public boolean routeNextIfCurrentCellCachedNotReady(AutoFunctionsManager manager, String source) {
+        if (manager == null || shouldDelayRouteForPreparation()) {
+            return false;
+        }
+        List<String> cells = getSearchCells();
+        String current = resolveCurrentRegNum();
+        if (cells.isEmpty()
+                || TextUtils.isEmpty(current)
+                || !cells.contains(current)
+                || isCellCheckedForCurrentShift(current)
+                || hasDueHerbTimerForCurrentShift(current)) {
+            return false;
+        }
+        if (shouldRouteToUncheckedCell(current, "current_cell_route")) {
+            return false;
+        }
+        routeNextCellWithManager(manager, "cache_skip:" + source);
+        return true;
+    }
+
+    /** true, если остановленный AutoMoving destination принадлежит текущему CSV-маршруту AutoCut. */
+    public boolean isAutoCutRouteDestination(String destination) {
+        if (TextUtils.isEmpty(destination)) {
+            return false;
+        }
+        return getSearchCells().contains(destination.trim());
+    }
+
+    /**
+     * Сохраняет AutoCut живым, когда общий MapAjax останавливает AutoMoving из-за усталости.
+     * Повторный старт идёт через существующий `startAutoMoving(...)`, без второго HTTP-контура;
+     * при retry заново выбирается актуальная due/unchecked клетка.
+     */
+    public boolean scheduleRouteRetryAfterTiredness(AutoFunctionsManager manager,
+                                                   String destination,
+                                                   int tiedNow,
+                                                   int tiedThreshold,
+                                                   String source) {
+        if (manager == null || !isAutoCutRouteDestination(destination)) {
+            return false;
+        }
+        String safeDestination = destination.trim();
+        synchronized (this) {
+            if (tiredRouteRetryPending && safeDestination.equals(tiredRouteRetryDestination)) {
+                AppLog.d(TRACE_CHAIN, TAG, "tired route retry already pending: destination="
+                        + safeDestination + ", source=" + safe(source));
+                return true;
+            }
+            tiredRouteRetryPending = true;
+            tiredRouteRetryDestination = safeDestination;
+        }
+        long retryDelayMs = calculateTiredRouteRetryDelayMs(tiedNow, tiedThreshold);
+        new Handler(Looper.getMainLooper()).postDelayed(
+                () -> runTiredRouteRetry(source),
+                retryDelayMs);
+        AppLog.w(TRACE_CHAIN, TAG, "auto-moving stopped by tiredness, route retry scheduled: destination="
+                + safeDestination + ", tied=" + tiedNow + ", threshold=" + tiedThreshold
+                + ", delayMs=" + retryDelayMs + ", source=" + safe(source));
+        return true;
+    }
+
+    private long calculateTiredRouteRetryDelayMs(int tiedNow, int tiedThreshold) {
+        int tied = Math.max(0, Math.min(100, tiedNow));
+        int threshold = Math.max(0, Math.min(100, tiedThreshold));
+        long minutesUntilBelowThreshold = Math.max(1L, (long) tied - threshold + 1L);
+        return Math.max(TIRED_ROUTE_RETRY_MIN_DELAY_MS, minutesUntilBelowThreshold * 60_000L);
+    }
+
+    private void runTiredRouteRetry(String source) {
+        String destination;
+        synchronized (this) {
+            if (!tiredRouteRetryPending) {
+                return;
+            }
+            tiredRouteRetryPending = false;
+            destination = tiredRouteRetryDestination;
+            tiredRouteRetryDestination = "";
+        }
+        try {
+            AutoFunctionsManager manager = AutoFunctionsManager.getInstance(appContext);
+            if (!manager.isAutoCutEnabled()) {
+                AppLog.i(TRACE_CHAIN, TAG, "tired route retry cancelled: AutoCut disabled, destination="
+                        + safe(destination) + ", source=" + safe(source));
+                return;
+            }
+            if (AppVars.AutoMoving) {
+                AppLog.i(TRACE_CHAIN, TAG, "tired route retry skipped: navigator already active, destination="
+                        + safe(destination) + ", source=" + safe(source));
+                return;
+            }
+            AppLog.i(TRACE_CHAIN, TAG, "tired route retry fired: previousDestination="
+                    + safe(destination) + ", source=" + safe(source));
+            routeNextCellWithManager(manager, "tired_retry:" + source);
+        } catch (Exception error) {
+            AppLog.w(TRACE_CHAIN, TAG, "tired route retry failed, destination="
+                    + safe(destination) + ", source=" + safe(source), error);
+        }
+    }
+
     /**
      * Runtime bootstrap после license-gated включения `AUTO_CUT`.
      * Сбрасывает старые флаги, требует проверку серпа, reload-ит main frame и при необходимости
@@ -564,6 +715,32 @@ public final class AutoCutManager {
         routeNextCellIfCurrentIsNotReady(manager, "enabled");
     }
 
+    /**
+     * Продолжает cold-start маршрут после main.php-подготовки, если она не принадлежала pending cut.
+     * Сохраняет единственный route-контур через `startAutoMoving(...)` и повторно применяет guard
+     * текущей клетки, чтобы не увести пользователя с ready-клетки до `Оглядеться`.
+     */
+    public void continueRouteAfterPreparationIfIdle(String source) {
+        if (AlchemyAjaxPhp.hasPendingCutForRouteGuard()) {
+            AppLog.d(TRACE_CHAIN, TAG, "preparation completed: pending cut owns resume, source=" + safe(source));
+            return;
+        }
+        if (!AppVars.AutoCutArmedSickle || AppVars.AutoCutCheckSickle) {
+            AppLog.d(TRACE_CHAIN, TAG, "preparation completed: route bootstrap skipped, source="
+                    + safe(source) + ", armed=" + AppVars.AutoCutArmedSickle
+                    + ", checkSickle=" + AppVars.AutoCutCheckSickle);
+            return;
+        }
+        try {
+            AutoFunctionsManager manager = AutoFunctionsManager.getInstance(appContext);
+            AppLog.i(TRACE_CHAIN, TAG, "preparation completed: continue route bootstrap, source="
+                    + safe(source) + ", current=" + safe(resolveCurrentRegNum()));
+            routeNextCellIfCurrentIsNotReady(manager, "preparation_completed:" + source);
+        } catch (Exception e) {
+            AppLog.w(TRACE_CHAIN, TAG, "preparation route bootstrap failed, source=" + safe(source), e);
+        }
+    }
+
     /** Сброс runtime-флагов при ручном выключении или license downgrade/expiry. */
     public void onAutoCutDisabled() {
         restoreAutosPausedForCleanup("auto_cut_disabled");
@@ -577,6 +754,10 @@ public final class AutoCutManager {
         massSnapshotSyncPending = false;
         lastMassSnapshotSyncRequestAtMs = 0L;
         clearTimerRouteState("auto_cut_disabled");
+        synchronized (this) {
+            tiredRouteRetryPending = false;
+            tiredRouteRetryDestination = "";
+        }
         AppVars.BulkDropThing = "";
         AppVars.BulkDropPrice = "";
     }
@@ -691,6 +872,19 @@ public final class AutoCutManager {
         lookRetryRequestedAtMs = now;
         if (AppVars.NeverTimer <= now) {
             AppVars.NeverTimer = now + AUTO_CUT_RETRY_FALLBACK_DELAY_MS;
+        }
+        AppLog.i(TRACE_CHAIN, TAG, "look retry scheduled: source=" + lookRetrySource
+                + ", dueInMs=" + Math.max(0L, AppVars.NeverTimer - now));
+    }
+
+    private synchronized void scheduleLookRetryAfterDelay(String source, long delayMs) {
+        long now = System.currentTimeMillis();
+        long requestedDueAtMs = now + Math.max(AUTO_CUT_RETRY_FALLBACK_DELAY_MS, delayMs);
+        lookRetryPending = true;
+        lookRetrySource = safe(source);
+        lookRetryRequestedAtMs = now;
+        if (AppVars.NeverTimer < requestedDueAtMs) {
+            AppVars.NeverTimer = requestedDueAtMs;
         }
         AppLog.i(TRACE_CHAIN, TAG, "look retry scheduled: source=" + lookRetrySource
                 + ", dueInMs=" + Math.max(0L, AppVars.NeverTimer - now));
@@ -895,7 +1089,8 @@ public final class AutoCutManager {
         String current = resolveCurrentRegNum();
         if (!current.isEmpty()
                 && cells.contains(current)
-                && (hasDueHerbTimerForCurrentShift(current) || !isCellCheckedForCurrentShift(current))) {
+                && (hasDueHerbTimerForCurrentShift(current)
+                || (!isCellCheckedForCurrentShift(current) && shouldRouteToUncheckedCell(current, "current_cell")))) {
             AppLog.d(TRACE_CHAIN, TAG, "route skip: current cell ready for Ogl, source=" + source + ", cell=" + current);
             return;
         }
@@ -939,7 +1134,7 @@ public final class AutoCutManager {
      * Приоритеты:
      * - сначала due herb timer текущей смены, чтобы вернуться туда, где трава должна была вырасти;
      * - затем следующая unchecked клетка текущей смены;
-     * - если checked весь CSV-список, cleared checked-set и стартуется новый круг.
+     * - если checked весь CSV-список, cleared checked-set и стартуется новый круг через тот же cache-skip filter.
      *
      * Зависимости:
      * - навигацию выполняет только `AutoFunctionsManager.startAutoMoving(...)`;
@@ -959,13 +1154,8 @@ public final class AutoCutManager {
         String routeReason = dueTimer != null ? "herb_timer:" + dueTimer.timerId : "unchecked";
         String next = dueTimer != null ? dueTimer.cell : findNextUncheckedCell(cells, current);
         if (TextUtils.isEmpty(next)) {
-            clearCheckedCellsForCurrentShift("new_circle:" + source);
-            next = findNextCellRoundRobin(cells, current);
-            routeReason = "new_circle";
-            if (TextUtils.isEmpty(next)) {
-                AppLog.i(TRACE_CHAIN, TAG, "route next skipped: no cells after circle reset, source=" + source);
-                return;
-            }
+            scheduleNextRouteRound(cells, source);
+            return;
         }
         if (next.equals(current)) {
             scheduleLookRetryAfterTimer("route_current:" + source);
@@ -982,6 +1172,22 @@ public final class AutoCutManager {
         new Handler(Looper.getMainLooper()).postDelayed(() -> manager.startAutoMoving(destination), ROUTE_NEXT_DELAY_MS);
         AppLog.i(TRACE_CHAIN, TAG, "route next: destination=" + destination
                 + ", reason=" + routeReason + ", source=" + source);
+    }
+
+    private void scheduleNextRouteRound(List<String> cells, String source) {
+        clearCheckedCellsForCurrentShift("new_circle:" + source);
+        int invalidated = invalidateSelectedEmptyCellSnapshots(cells);
+        ShiftCheckedCells checked;
+        synchronized (this) {
+            checked = loadCheckedCellsLocked();
+        }
+        scheduleLookRetryAfterDelay(
+                "all_cells_checked_new_round:" + source,
+                CURRENT_CELL_NO_SELECTED_RETRY_MS);
+        AppLog.i(TRACE_CHAIN, TAG, "all cells checked for shift=" + checked.shift
+                + ", shiftStartServerMs=" + checked.shiftStartServerMs
+                + ", restart route round, invalidated=" + invalidated
+                + ", source=" + source);
     }
 
     private void rememberTimerRouteReturnIfNeeded(DueHerbTimer dueTimer, String current, String source) {
@@ -1042,40 +1248,166 @@ public final class AutoCutManager {
     /**
      * Round-robin поиск следующей непроверенной клетки относительно текущей позиции.
      *
-     * Зависимость: checked-set scoped по серверной смене, поэтому при смене трав список автоматически
-     * читается пустым через `loadCheckedCellsLocked()` без ручной миграции старых отметок.
+     * Зависимость: checked-set scoped по точному server-window смены, поэтому смена трав или новый
+     * день не переиспользуют stale отметки старого круга.
      */
     private String findNextUncheckedCell(List<String> cells, String current) {
         if (cells == null || cells.isEmpty()) {
             return "";
         }
+        ShiftCheckedCells checkedSnapshot;
+        synchronized (this) {
+            checkedSnapshot = loadCheckedCellsLocked();
+        }
         int startIndex = cells.indexOf(current);
+        int skippedChecked = 0;
+        ArrayList<String> skippedSamples = new ArrayList<>();
         for (int offset = 1; offset <= cells.size(); offset++) {
             int index = startIndex >= 0 ? (startIndex + offset) % cells.size() : offset - 1;
             String cell = cells.get(index);
-            if (!isCellCheckedForCurrentShift(cell)) {
+            if (checkedSnapshot.cells.contains(cell.trim())) {
+                skippedChecked++;
+                if (skippedSamples.size() < 5) {
+                    skippedSamples.add(cell);
+                }
+                continue;
+            }
+            if (shouldRouteToUncheckedCell(cell, "unchecked_route")) {
+                logSkippedCheckedCells(skippedChecked, skippedSamples, current, checkedSnapshot, cell);
                 return cell;
             }
         }
+        logSkippedCheckedCells(skippedChecked, skippedSamples, current, checkedSnapshot, "");
         return "";
     }
 
-    /**
-     * Round-robin следующая клетка без checked-фильтра, используется для нового круга обхода.
-     *
-     * Отличие от `findNextUncheckedCell(...)`: метод намеренно игнорирует checked-set после полного
-     * прохождения CSV, чтобы AutoCut продолжал patrol и ловил новую траву/таймеры до конца смены.
-     */
-    private String findNextCellRoundRobin(List<String> cells, String current) {
-        if (cells == null || cells.isEmpty()) {
+    private void logSkippedCheckedCells(int count,
+                                        List<String> samples,
+                                        String current,
+                                        ShiftCheckedCells checked,
+                                        String next) {
+        if (count <= 0 || checked == null) {
+            return;
+        }
+        AppLog.i(TRACE_CHAIN, TAG, "route skipped checked cells: count=" + count
+                + ", sample=" + samples
+                + ", current=" + safe(current)
+                + ", next=" + safe(next)
+                + ", shift=" + checked.shift
+                + ", shiftStartServerMs=" + checked.shiftStartServerMs);
+    }
+
+    private boolean shouldRouteToUncheckedCell(String cell, String source) {
+        String skipReason = getUncheckedCellSkipReason(cell);
+        if (TextUtils.isEmpty(skipReason)) {
+            return true;
+        }
+        AppLog.i(TRACE_CHAIN, TAG, "route skip cell: cell=" + safe(cell)
+                + ", reason=" + skipReason + ", source=" + source);
+        return false;
+    }
+
+    private String getUncheckedCellSkipReason(String cell) {
+        if (TextUtils.isEmpty(cell)) {
+            return "invalid_cell";
+        }
+        JSONObject snapshot;
+        synchronized (this) {
+            snapshot = loadCellSnapshotsLocked().optJSONObject(cell.trim());
+        }
+        if (snapshot == null) {
             return "";
         }
-        int startIndex = cells.indexOf(current);
-        for (int offset = 1; offset <= cells.size(); offset++) {
-            int index = startIndex >= 0 ? (startIndex + offset) % cells.size() : offset - 1;
-            return cells.get(index);
+        return getUncheckedCellSkipReasonForSnapshot(snapshot);
+    }
+
+    private String getUncheckedCellSkipReasonForSnapshot(JSONObject snapshot) {
+        if (snapshot == null) {
+            return "";
         }
-        return "";
+        long now = System.currentTimeMillis();
+        int currentShift = getShiftForServerMs(getServerNowMs(now));
+        if (currentShift == 0
+                || snapshot.optInt("shift", -1) != currentShift
+                || !isSnapshotUpdatedInCurrentShift(snapshot, currentShift, now)) {
+            return "";
+        }
+        JSONArray herbs = snapshot.optJSONArray("herbs");
+        if (herbs == null || herbs.length() == 0) {
+            return "";
+        }
+        boolean hasSelectedHerb = false;
+        for (int index = 0; index < herbs.length(); index++) {
+            JSONObject item = herbs.optJSONObject(index);
+            if (item == null) {
+                continue;
+            }
+            String name = safe(item.optString("name", ""));
+            if (name.isEmpty() || !isHerbSelected("", name)) {
+                continue;
+            }
+            hasSelectedHerb = true;
+            if (item.optInt("count", 0) > 0) {
+                return "";
+            }
+        }
+        return hasSelectedHerb ? "selected_herbs_empty_current_shift" : "no_selected_herbs_in_cell_cache";
+    }
+
+    private int invalidateSelectedEmptyCellSnapshots(List<String> cells) {
+        if (cells == null || cells.isEmpty()) {
+            return 0;
+        }
+        int invalidated = 0;
+        synchronized (this) {
+            try {
+                JSONObject snapshots = loadCellSnapshotsLocked();
+                for (String rawCell : cells) {
+                    String cell = safe(rawCell);
+                    if (TextUtils.isEmpty(cell)) {
+                        continue;
+                    }
+                    JSONObject snapshot = snapshots.optJSONObject(cell);
+                    if (!"selected_herbs_empty_current_shift".equals(getUncheckedCellSkipReasonForSnapshot(snapshot))) {
+                        continue;
+                    }
+                    snapshot.put("updatedAtMs", 0L);
+                    invalidated++;
+                }
+                if (invalidated > 0) {
+                    prefs.edit().putString(scopedKey(KEY_CELL_SNAPSHOTS_JSON_PREFIX), snapshots.toString()).apply();
+                }
+            } catch (Exception error) {
+                AppLog.w(TRACE_CHAIN, TAG, "failed to invalidate selected-empty cell snapshots, source=new_round", error);
+            }
+        }
+        return invalidated;
+    }
+
+    /**
+     * Проверяет, что persisted snapshot клетки был получен именно в текущем окне server-shift.
+     * Номер смены 1..4 повторяется каждый день, поэтому одного `shift` недостаточно для route skip.
+     */
+    private boolean isSnapshotUpdatedInCurrentShift(JSONObject snapshot, int currentShift, long localNowMs) {
+        long updatedAtMs = snapshot.optLong("updatedAtMs", 0L);
+        if (updatedAtMs <= 0L || currentShift <= 0) {
+            return false;
+        }
+        List<AutoCutShift> shifts;
+        synchronized (this) {
+            shifts = loadShiftsLocked();
+        }
+        if (currentShift > shifts.size()) {
+            return false;
+        }
+        long serverNowMs = getServerNowMs(localNowMs);
+        AutoCutShift shift = shifts.get(currentShift - 1);
+        long shiftStartMs = getShiftStartServerMs(serverNowMs, shift);
+        long shiftEndMs = getShiftEndServerMs(shiftStartMs, shift);
+        long updatedServerMs = getServerNowMs(updatedAtMs);
+        return updatedServerMs >= shiftStartMs
+                && updatedServerMs < shiftEndMs
+                && updatedServerMs <= serverNowMs + TimeUnit.MINUTES.toMillis(1);
     }
 
     /**
@@ -1421,30 +1753,38 @@ public final class AutoCutManager {
     }
 
     private ShiftCheckedCells loadCheckedCellsLocked() {
-        int shift = getShiftForServerMs(getServerNowMs(System.currentTimeMillis()));
+        long localNowMs = System.currentTimeMillis();
+        long serverNowMs = getServerNowMs(localNowMs);
+        int shift = getShiftForServerMs(serverNowMs);
+        long shiftStartServerMs = getCurrentShiftStartServerMs(serverNowMs, shift);
         String raw = prefs.getString(scopedKey(KEY_CHECKED_SHIFT_PREFIX), "");
-        ShiftCheckedCells result = new ShiftCheckedCells(shift);
+        ShiftCheckedCells result = new ShiftCheckedCells(shift, shiftStartServerMs);
         if (TextUtils.isEmpty(raw)) {
             return result;
         }
-        String[] parts = raw.split("\\|", 2);
-        int storedShift = -1;
-        try {
-            storedShift = Integer.parseInt(parts[0]);
-        } catch (Exception ignored) {
-        }
-        if (storedShift != shift) {
+        String[] parts = raw.split("\\|", 3);
+        if (parts.length < 3) {
+            // Legacy format was `shift|cells` and could leak checked cells into the same shift next day.
             return result;
         }
-        if (parts.length > 1) {
-            result.cells.addAll(parseCellsCsv(parts[1]));
+        long storedShiftStartServerMs = -1L;
+        int storedShift = -1;
+        try {
+            storedShiftStartServerMs = Long.parseLong(parts[0]);
+            storedShift = Integer.parseInt(parts[1]);
+        } catch (Exception ignored) {
         }
+        if (storedShift != shift || storedShiftStartServerMs != shiftStartServerMs) {
+            return result;
+        }
+        result.cells.addAll(parseCellsCsv(parts[2]));
         return result;
     }
 
     private void persistCheckedCellsLocked(ShiftCheckedCells checked) {
         StringBuilder value = new StringBuilder();
-        value.append(checked.shift).append('|');
+        value.append(checked.shiftStartServerMs).append('|')
+                .append(checked.shift).append('|');
         int index = 0;
         for (String cell : checked.cells) {
             if (index++ > 0) {
@@ -1580,6 +1920,50 @@ public final class AutoCutManager {
             }
         }
         return 0;
+    }
+
+    private long getCurrentShiftStartServerMs(long serverNowMs, int shiftIndex) {
+        if (shiftIndex <= 0) {
+            return 0L;
+        }
+        List<AutoCutShift> shifts;
+        synchronized (this) {
+            shifts = loadShiftsLocked();
+        }
+        if (shiftIndex > shifts.size()) {
+            return 0L;
+        }
+        return getShiftStartServerMs(serverNowMs, shifts.get(shiftIndex - 1));
+    }
+
+    private static long getShiftStartServerMs(long serverNowMs, AutoCutShift shift) {
+        Calendar calendar = Calendar.getInstance();
+        calendar.setTimeInMillis(serverNowMs);
+        int nowMinute = calendar.get(Calendar.HOUR_OF_DAY) * 60 + calendar.get(Calendar.MINUTE);
+        setServerCalendarTime(calendar, shift.startHour, shift.startMinute);
+        long startMs = calendar.getTimeInMillis();
+        if (shift.startMinuteOfDay() > shift.endMinuteOfDay() && nowMinute < shift.endMinuteOfDay()) {
+            startMs -= TimeUnit.DAYS.toMillis(1);
+        }
+        return startMs;
+    }
+
+    private static long getShiftEndServerMs(long shiftStartMs, AutoCutShift shift) {
+        Calendar calendar = Calendar.getInstance();
+        calendar.setTimeInMillis(shiftStartMs);
+        setServerCalendarTime(calendar, shift.endHour, shift.endMinute);
+        long endMs = calendar.getTimeInMillis();
+        if (endMs <= shiftStartMs) {
+            endMs += TimeUnit.DAYS.toMillis(1);
+        }
+        return endMs;
+    }
+
+    private static void setServerCalendarTime(Calendar calendar, int hour, int minute) {
+        calendar.set(Calendar.HOUR_OF_DAY, hour);
+        calendar.set(Calendar.MINUTE, minute);
+        calendar.set(Calendar.SECOND, 0);
+        calendar.set(Calendar.MILLISECOND, 0);
     }
 
     private static MassSnapshot parseMassSnapshot(String mass) {
@@ -1747,6 +2131,19 @@ public final class AutoCutManager {
             persistHerbsLocked(result);
         }
         return result;
+    }
+
+    private JSONObject loadCellSnapshotsLocked() {
+        String raw = prefs.getString(scopedKey(KEY_CELL_SNAPSHOTS_JSON_PREFIX), "{}");
+        if (TextUtils.isEmpty(raw)) {
+            return new JSONObject();
+        }
+        try {
+            return new JSONObject(raw);
+        } catch (Exception error) {
+            AppLog.w(TRACE_CHAIN, TAG, "failed to parse cell snapshots json, reset route cache", error);
+            return new JSONObject();
+        }
     }
 
     private boolean mergeSeedHerbs(LinkedHashMap<String, AutoCutHerb> herbs) {
@@ -1936,6 +2333,27 @@ public final class AutoCutManager {
         return result;
     }
 
+    private static List<CellHerbEntry> parseCellSnapshotEntries(String list) {
+        ArrayList<CellHerbEntry> result = new ArrayList<>();
+        if (TextUtils.isEmpty(list)) {
+            return result;
+        }
+        String[] entries = list.split("\\|");
+        for (String rawEntry : entries) {
+            String entry = safe(rawEntry);
+            if (entry.isEmpty()) {
+                continue;
+            }
+            int separator = entry.lastIndexOf(':');
+            String name = separator >= 0 ? entry.substring(0, separator).trim() : entry;
+            int count = separator >= 0 ? parseIntSafe(entry.substring(separator + 1), 0) : 1;
+            if (!name.isEmpty()) {
+                result.add(new CellHerbEntry(name, count));
+            }
+        }
+        return result;
+    }
+
     private static String buildKey(String id, String name) {
         String safeId = safeNumeric(id);
         if (!safeId.isEmpty()) {
@@ -2076,15 +2494,18 @@ public final class AutoCutManager {
         }
     }
 
-    /** Persisted checked-set одной серверной смены трав. */
+    /** Persisted checked-set одного server-window смены трав. */
     private static final class ShiftCheckedCells {
         /** Номер смены 1..4, вычисленный по server time + `Profile.ServDiff`. */
         final int shift;
+        /** Начало конкретного server-window смены; не даёт переиспользовать checked на следующий день. */
+        final long shiftStartServerMs;
         /** Нормализованные regNum клеток, уже проверенных в этой смене. */
         final LinkedHashSet<String> cells = new LinkedHashSet<>();
 
-        ShiftCheckedCells(int shift) {
+        ShiftCheckedCells(int shift, long shiftStartServerMs) {
             this.shift = shift;
+            this.shiftStartServerMs = shiftStartServerMs;
         }
     }
 
@@ -2094,6 +2515,17 @@ public final class AutoCutManager {
         double current;
         /** Максимальная масса inventory; задаёт 10% cleanup threshold. */
         double max;
+    }
+
+    /** Одна запись snapshot-а клетки: имя травы и доступное количество/флаг среза. */
+    private static final class CellHerbEntry {
+        final String name;
+        final int count;
+
+        CellHerbEntry(String name, int count) {
+            this.name = name;
+            this.count = count;
+        }
     }
 
     /** Редактируемое окно смены трав. */

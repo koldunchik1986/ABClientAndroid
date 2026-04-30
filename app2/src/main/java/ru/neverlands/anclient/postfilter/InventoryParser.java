@@ -521,8 +521,12 @@ public final class InventoryParser {
                             && (AppVars.BulkDropPrice.isEmpty() || AppVars.BulkDropPrice.equals(dropPrice))
                             && invEntry.DropLink != null
                             && !invEntry.DropLink.isEmpty();
+                    boolean isAutoCutGarbageDrop = AppVars.AutoCutCleanupPending
+                            && AutoCutManager.GARBAGE_ITEM_NAME.equalsIgnoreCase(dropThing)
+                            && invEntry.DropLink != null
+                            && !invEntry.DropLink.isEmpty();
 
-                    if (invEntry.isExpired() || isBulkDropMatch) {
+                    if (invEntry.isExpired() || isBulkDropMatch || isAutoCutGarbageDrop) {
                         String redirectMessage = "Выбрасывание предмета <b>&laquo;" + dropThing + "&raquo;</b>...";
                         if (AutoCutManager.GARBAGE_ITEM_NAME.equalsIgnoreCase(dropThing)) {
                             AppLog.i(AutoCutManager.TRACE_CHAIN, TAG,

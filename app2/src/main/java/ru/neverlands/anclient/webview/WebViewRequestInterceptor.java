@@ -455,6 +455,9 @@ public class WebViewRequestInterceptor {
             String preview = new String(bytes, Charset.forName("windows-1251"));
             AppLog.d(TAG, "HTML preview (" + urlString + "): " + preview.substring(0, Math.min(200, preview.length())));
             logCaptchaFlowMarkers("raw", urlString, preview);
+            if (isSessionInterruptedHtml(preview)) {
+                notifySessionErrorToActivity(urlString, "raw");
+            }
 
             // Попытка синхронизировать серверное время по времени в чате + HTTP Date.
             if (urlString.contains("ch.php") && urlString.contains("show=1")) {
@@ -560,6 +563,9 @@ public class WebViewRequestInterceptor {
             String processedPreview = new String(processed, Charset.forName("windows-1251"));
             AppLog.d(TAG, "Processed preview (" + urlString + "): " + processedPreview.substring(0, Math.min(200, processedPreview.length())));
             logCaptchaFlowMarkers("processed", urlString, processedPreview);
+            if (isSessionInterruptedHtml(processedPreview)) {
+                notifySessionErrorToActivity(urlString, "processed");
+            }
             // Диагностика ответов ch_refr: наличие add_msg/set_lmid.
             if (urlString.contains("ch.php") && urlString.contains("show=1")) {
                 boolean hasAdd = processedPreview.contains("add_msg");
@@ -649,6 +655,33 @@ public class WebViewRequestInterceptor {
             activity.onChatPollResponseMeta(httpCode, rawBytes, hasAddMsg, hasSetLmid, url);
         } catch (Throwable ignored) {
             // Диагностический callback не должен ломать сетевой pipeline.
+        }
+    }
+
+    private static boolean isSessionInterruptedHtml(String html) {
+        if (html == null || html.isEmpty()) {
+            return false;
+        }
+        String lower = html.toLowerCase(Locale.ROOT);
+        return lower.contains("css/error.css")
+                && (lower.contains("сеанс работы прерван")
+                || lower.contains("сессия работы прервана")
+                || lower.contains("session"));
+    }
+
+    private static void notifySessionErrorToActivity(String url, String source) {
+        try {
+            AppLog.w("session_relogin", TAG, "SESSION_RELOGIN_DETECTED: source=" + source + ", url=" + url);
+            if (AppVars.mainActivity == null) {
+                return;
+            }
+            MainActivity activity = AppVars.mainActivity.get();
+            if (activity == null) {
+                return;
+            }
+            activity.onSessionErrorHtmlDetected(url, source);
+        } catch (Throwable ignored) {
+            // Session recovery callback must not break WebView response delivery.
         }
     }
 
