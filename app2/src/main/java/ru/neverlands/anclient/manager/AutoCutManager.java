@@ -433,6 +433,18 @@ public final class AutoCutManager {
     }
 
     /**
+     * PC parity (`HerbCell.UpdatedInTicks`): время последнего успешного `Оглядеться` клетки.
+     * Используется только UI-слоем карты для подписи `Травы <group> (HH:mm)`.
+     */
+    public synchronized long getCellSnapshotUpdatedAtMs(String regNum) {
+        if (TextUtils.isEmpty(regNum)) {
+            return 0L;
+        }
+        JSONObject snapshot = loadCellSnapshotsLocked().optJSONObject(regNum.trim());
+        return snapshot != null ? snapshot.optLong("updatedAtMs", 0L) : 0L;
+    }
+
+    /**
      * Bridge callback `TraceCut/HerbCut`: запоминает имя травы как fallback для success `act=3`.
      * TTL защищает от stale trace после перезагрузки карты или ручного действия пользователя.
      */

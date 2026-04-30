@@ -3035,15 +3035,26 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                         candidateFinishUrl = activeFightFinishUrl;
                     }
 
+                    String parserCaptchaUrl = AppVars.CodeAddress == null ? "" : AppVars.CodeAddress.trim();
+                    boolean latestMatchesParserCaptcha = !parserCaptchaUrl.isEmpty()
+                            && isSameCaptchaUrl(latestCaptchaUrl, parserCaptchaUrl);
                     boolean captchaChanged = !isSameCaptchaUrl(activeFightCaptchaUrl, latestCaptchaUrl);
                     boolean finishChanged = !isSameFightFinishUrl(activeFightFinishUrl, candidateFinishUrl);
-                    if ((captchaChanged || finishChanged) && !latestCaptchaUrl.isEmpty()) {
+                    if ((captchaChanged || finishChanged)
+                            && !latestCaptchaUrl.isEmpty()
+                            && latestMatchesParserCaptcha) {
                         AppLog.d(TAG, "updateCaptchaImageFromCaptured: switch to latest challenge, expected="
                                 + expectedCaptchaUrl + ", latest=" + latestCaptchaUrl
                                 + ", finishChanged=" + finishChanged
                                 + ", challengeAgeMs=" + challengeAgeMs);
                         showCaptchaDialog(latestCaptchaUrl, candidateFinishUrl);
                         return false;
+                    } else if ((captchaChanged || finishChanged) && !latestCaptchaUrl.isEmpty()) {
+                        AppLog.d(TAG, "updateCaptchaImageFromCaptured: skip foreign latest challenge, expected="
+                                + expectedCaptchaUrl + ", latest=" + latestCaptchaUrl
+                                + ", parserCaptcha=" + parserCaptchaUrl
+                                + ", finishChanged=" + finishChanged
+                                + ", challengeAgeMs=" + challengeAgeMs);
                     }
                 }
             }

@@ -55,6 +55,7 @@ public class WebAppInterface {
     private static final long MAIN_TOP_CLIENT_RELOAD_GUARD_MS = 2500L;
     private static final long MAP_BRIDGE_LOG_THROTTLE_MS = 1500L;
     private static final long SERVER_POPUP_DEDUP_MS = 1500L;
+    private static final long HERB_SNAPSHOT_VISIBLE_MS = 6L * 60L * 60L * 1000L;
     private static final int CHAT_POST_MAX_ATTEMPTS = 3;
     private static final long CHAT_POST_RETRY_BASE_DELAY_MS = 350L;
     private static volatile long lastNeverTimerLogAtMs = 0L;
@@ -434,6 +435,13 @@ public class WebAppInterface {
         return String.format(Locale.US, "#%02X%02X%02X", r, g, b);
     }
 
+    private static String hexColorHerbSnapshot(double hours) {
+        if (hours < 1.0d) return "#00CC00";
+        if (hours < 2.0d) return "#009900";
+        if (hours < 3.0d) return "#006600";
+        return hours < 6.0d ? "#003300" : "#999999";
+    }
+
     private static boolean isRegnumInCurrentPath(String regNum) {
         if (!AppVars.AutoMoving || AppVars.AutoMovingMapPath == null || regNum == null) {
             return false;
@@ -577,9 +585,29 @@ public class WebAppInterface {
             sb.append("<br><span style=\"color:#33CCFF\">Вода</span>");
         }
         if (cell.HerbGroup != null && !cell.HerbGroup.isEmpty() && !"0".equals(cell.HerbGroup)) {
-            sb.append("<br><span style=\"color:#999999\">Травы ")
-                    .append(escapeHtml(cell.HerbGroup))
-                    .append("</span>");
+            String herbColor = "#999999";
+            String herbCheckedAt = "";
+            long herbSnapshotLocalMs = AutoCutManager.getInstance(mContext).getCellSnapshotUpdatedAtMs(p.RegNum);
+            if (herbSnapshotLocalMs > 0L) {
+                long herbSnapshotServerMs = toServerClockMs(herbSnapshotLocalMs);
+                long herbSnapshotAgeMs = Math.max(0L, nowServerClockMs() - herbSnapshotServerMs);
+                double herbSnapshotHours = (double) herbSnapshotAgeMs / (60.0d * 60.0d * 1000.0d);
+                herbColor = hexColorHerbSnapshot(herbSnapshotHours);
+                if (herbSnapshotAgeMs < HERB_SNAPSHOT_VISIBLE_MS) {
+                    herbCheckedAt = new java.text.SimpleDateFormat("HH:mm", Locale.getDefault())
+                            .format(new Date(herbSnapshotServerMs));
+                }
+            }
+            sb.append("<br><span style=\"color:")
+                    .append(herbColor)
+                    .append("\">Травы ")
+                    .append(escapeHtml(cell.HerbGroup));
+            if (!herbCheckedAt.isEmpty()) {
+                sb.append(" (")
+                        .append(escapeHtml(herbCheckedAt))
+                        .append(")");
+            }
+            sb.append("</span>");
         }
         Long visitedAtMs = AppVars.SearchBoxVisited.get(p.RegNum);
         if (visitedAtMs != null && visitedAtMs > 0L) {
