@@ -2,9 +2,11 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Text;
+using System.Threading;
 using System.Web;
 using ABClient.ABForms;
 using ABClient.Helpers;
+using ABClient.MyGuamod;
 
 namespace ABClient.PostFilter
 {
@@ -54,9 +56,12 @@ namespace ABClient.PostFilter
                 if (html.Trim().Equals("ERR", StringComparison.OrdinalIgnoreCase))
                 {
                     AutoCutRuntime.ScheduleLookRetry("alchemy_act1_err");
+                    AppLog.d(AlchemyTraceChain, "AlchemyAjaxPhp", "act1: no resource state");
+                    return;
                 }
 
-                AppLog.d(AlchemyTraceChain, "AlchemyAjaxPhp", "act1: no resource state");
+                AutoCutRuntime.OnScanWithoutSelectedHerb("alchemy_act1_no_resource_state");
+                AppLog.d(AlchemyTraceChain, "AlchemyAjaxPhp", "act1: no resource state, route next requested");
                 return;
             }
 
@@ -96,7 +101,9 @@ namespace ABClient.PostFilter
                 return;
             }
 
-            if (AutoCutRuntime.NeedsMassSnapshotBeforeCut())
+            EnsureAlchemyCaptchaState(selectedCut);
+
+            if (!selectedCut.CaptchaRequired && AutoCutRuntime.NeedsMassSnapshotBeforeCut())
             {
                 pendingAlchemyCut = selectedCut;
                 AutoCutRuntime.RequestMassSnapshotBeforeCut("alchemy_act1:" + selected.ResId);
@@ -116,7 +123,7 @@ namespace ABClient.PostFilter
                 return false;
             }
 
-            if (AutoCutRuntime.NeedsMassSnapshotBeforeCut())
+            if (!current.CaptchaRequired && AutoCutRuntime.NeedsMassSnapshotBeforeCut())
             {
                 AutoCutRuntime.RequestMassSnapshotBeforeCut("resume_after_" + source + ":" + current.Resource.ResId);
                 AppLog.i(AlchemyTraceChain, "AlchemyAjaxPhp", "pending cut resume waits for mass snapshot: herb=" + current.Resource.Name + ", source=" + source);
@@ -125,6 +132,34 @@ namespace ABClient.PostFilter
 
             DispatchPendingAlchemyCut(current);
             AppLog.i(AlchemyTraceChain, "AlchemyAjaxPhp", "pending cut resumed: herb=" + current.Resource.Name + ", source=" + source);
+            return true;
+        }
+
+        internal static bool CancelPendingAlchemyCut(string source, bool scheduleLookRetry)
+        {
+            var hasPendingCut = pendingAlchemyCut != null;
+            var hasAlchemyLink = AutoCutRuntime.IsAlchemyActionPending();
+            if (!hasPendingCut && !hasAlchemyLink)
+            {
+                return false;
+            }
+
+            pendingAlchemyCut = null;
+            if (hasAlchemyLink)
+            {
+                AppVars.FightLink = string.Empty;
+            }
+
+            // Alchemy captcha state belongs to pendingAlchemyCut even if FightLink was already overwritten by fight flow.
+            AppVars.CodeAddress = string.Empty;
+            AppVars.CodePng = null;
+
+            AppLog.w(AlchemyTraceChain, "AlchemyAjaxPhp", "pending cut cancelled: source=" + (source ?? "unknown") + ", hadPending=" + hasPendingCut + ", hadLink=" + hasAlchemyLink);
+            if (scheduleLookRetry && AppVars.DoHerbAutoCut)
+            {
+                AutoCutRuntime.ScheduleLookRetry("alchemy_cancelled:" + (source ?? "unknown"));
+            }
+
             return true;
         }
 
@@ -163,6 +198,7 @@ namespace ABClient.PostFilter
             if (listBuilder.Length > 0)
             {
                 FormMain.HerbsList(listBuilder.ToString());
+                AppLog.i(AlchemyTraceChain, "AlchemyAjaxPhp", "act1 resources: " + listBuilder);
             }
 
             if (catalogChanged)
@@ -196,20 +232,59 @@ namespace ABClient.PostFilter
                 return;
             }
 
-            var captchaToken = (cut.CaptchaToken ?? string.Empty).Trim();
-            var captchaRequired = captchaToken.Length > 0 && !captchaToken.Equals("00000", StringComparison.OrdinalIgnoreCase);
+            var captchaRequired = cut.CaptchaRequired;
             var code = captchaRequired ? "????" : "1";
             AppVars.FightLink = cut.Resource.BuildFinishUrl(code);
             if (captchaRequired)
             {
-                AppVars.CodeAddress = AlchemyCaptchaUrlPrefix + captchaToken;
-                AppVars.CodePng = null;
-                AppLog.i(AlchemyTraceChain, "AlchemyAjaxPhp", "captcha pending: herb=" + cut.Resource.Name);
+                EnsureAlchemyCaptchaState(cut);
+                AppLog.i(AlchemyTraceChain, "AlchemyAjaxPhp", "captcha pending: herb=" + cut.Resource.Name + ", id=" + cut.Resource.ResId + ", codeAddressHash=" + AppVars.CodeAddress.GetHashCode().ToString(CultureInfo.InvariantCulture));
+                TryStartAlchemyCaptchaSolve(cut);
             }
             else
             {
                 AppLog.i(AlchemyTraceChain, "AlchemyAjaxPhp", "no-captcha pending: herb=" + cut.Resource.Name);
             }
+        }
+
+        private static void EnsureAlchemyCaptchaState(PendingAlchemyCut cut)
+        {
+            if (cut == null || !cut.CaptchaRequired)
+            {
+                return;
+            }
+
+            var codeAddress = AlchemyCaptchaUrlPrefix + (cut.CaptchaToken ?? string.Empty).Trim();
+            if (!string.Equals(AppVars.CodeAddress ?? string.Empty, codeAddress, StringComparison.Ordinal))
+            {
+                AppVars.CodeAddress = codeAddress;
+                AppVars.CodePng = null;
+                AppLog.d(AlchemyTraceChain, "AlchemyAjaxPhp", "captcha context prepared, codeAddressHash=" + codeAddress.GetHashCode().ToString(CultureInfo.InvariantCulture));
+            }
+        }
+
+        private static void TryStartAlchemyCaptchaSolve(PendingAlchemyCut cut)
+        {
+            if (cut == null || !cut.CaptchaRequired || AppVars.Profile == null || !AppVars.Profile.AntiCaptchaEnabled)
+            {
+                return;
+            }
+
+            ThreadPool.QueueUserWorkItem(
+                delegate
+                {
+                    try
+                    {
+                        if (AntiCaptchaManager.TrySolveCurrentCaptcha())
+                        {
+                            AppLog.i(AlchemyTraceChain, "AlchemyAjaxPhp", "anti-captcha solve requested immediately: herb=" + cut.Resource.Name);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        AppLog.w(AlchemyTraceChain, "AlchemyAjaxPhp", "anti-captcha immediate solve failed", ex);
+                    }
+                });
         }
 
         private static void ProcessAlchemyAct3(string html)
@@ -221,6 +296,8 @@ namespace ABClient.PostFilter
                 AppLog.w(AlchemyTraceChain, "AlchemyAjaxPhp", "act3: wrong protection/captcha code response");
                 pendingAlchemyCut = null;
                 AppVars.FightLink = string.Empty;
+                AppVars.CodeAddress = string.Empty;
+                AppVars.CodePng = null;
                 AutoCutRuntime.ScheduleLookRetry("wrong_captcha:alchemy_act3");
                 return;
             }
@@ -533,6 +610,15 @@ namespace ABClient.PostFilter
             internal bool IsExpired
             {
                 get { return DateTime.Now.Subtract(createdAt).TotalSeconds > 120; }
+            }
+
+            internal bool CaptchaRequired
+            {
+                get
+                {
+                    var captchaToken = (CaptchaToken ?? string.Empty).Trim();
+                    return captchaToken.Length > 0 && !captchaToken.Equals("00000", StringComparison.OrdinalIgnoreCase);
+                }
             }
         }
     }

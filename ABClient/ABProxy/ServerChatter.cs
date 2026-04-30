@@ -1,4 +1,4 @@
-﻿namespace ABClient.ABProxy
+namespace ABClient.ABProxy
 {
     using System;
     using System.Globalization;
@@ -37,6 +37,13 @@
 
         internal HttpResponseHeaders Headers { get; set; }
 
+        internal Exception LastReadException { get; private set; }
+
+        internal long ResponseBytesRead
+        {
+            get { return _responseData == null ? 0L : _responseData.Length; }
+        }
+
         internal string this[string strHeader]
         {
             set
@@ -58,6 +65,7 @@
 
         internal bool ReadResponse()
         {
+            LastReadException = null;
             bool flag = false;
             bool flag2 = false;
             bool flag3 = !_session.BufferResponse;
@@ -87,8 +95,9 @@
                         }
                     }
                 }
-                catch (Exception)
+                catch (Exception ex)
                 {
+                    LastReadException = ex;
                     flag2 = true;
                 }
             }

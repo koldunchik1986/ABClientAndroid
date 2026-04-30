@@ -1,12 +1,18 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
+using System.Globalization;
+using System.Net;
+using System.Text.RegularExpressions;
 using System.Threading;
+using ABClient.ABProxy;
 using ABClient.MyHelpers;
 
 namespace ABClient
 {
     public static class NeverApi
     {
+        private const string BrowserUserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36";
+        private static readonly Regex HpmpRegex = new Regex(@"(?:var\s+)?hpmp\s*=\s*\[\s*-?\d+\s*,\s*-?\d+\s*,\s*-?\d+\s*,\s*-?\d+\s*,\s*(?<energy>-?\d+)", RegexOptions.IgnoreCase | RegexOptions.Compiled);
         private static readonly Dictionary<string, string> NameToId = new Dictionary<string, string>();
         private static readonly ReaderWriterLock NameToIdLock = new ReaderWriterLock();
 
@@ -224,8 +230,58 @@ namespace ABClient
 
         public static string GetPInfo(string nick)
         {
-            var url = HelperConverters.AddressEncode(string.Concat("http://neverlands.ru/pinfo.cgi?", nick));
+            var url = HelperConverters.AddressEncode(string.Concat("http://www.neverlands.ru/pinfo.cgi?", nick));
             return GetInfo(url);
+        }
+
+        public static bool TryGetTiedFromPInfo(string nick, out int tied)
+        {
+            tied = 0;
+            if (string.IsNullOrEmpty(nick))
+            {
+                AppLog.w("NeverApi", "TryGetTiedFromPInfo: EMPTY_NICK");
+                return false;
+            }
+
+            var html = GetPInfo(nick);
+            if (string.IsNullOrEmpty(html))
+            {
+                AppLog.w("NeverApi", "TryGetTiedFromPInfo: EMPTY_RESPONSE nick=" + nick);
+                return false;
+            }
+
+            if (!TryParseTiedFromPInfoHtml(html, out tied))
+            {
+                AppLog.w("NeverApi", "TryGetTiedFromPInfo: HPMP_NOT_FOUND nick=" + nick);
+                return false;
+            }
+
+            AppLog.i("NeverApi", "TryGetTiedFromPInfo: nick=" + nick + " tied=" + tied + "%");
+            return true;
+        }
+
+        public static bool TryParseTiedFromPInfoHtml(string html, out int tied)
+        {
+            tied = 0;
+            if (string.IsNullOrEmpty(html))
+            {
+                return false;
+            }
+
+            var match = HpmpRegex.Match(html);
+            if (!match.Success)
+            {
+                return false;
+            }
+
+            int energy;
+            if (!int.TryParse(match.Groups["energy"].Value, NumberStyles.Integer, CultureInfo.InvariantCulture, out energy))
+            {
+                return false;
+            }
+
+            tied = NormalizeTied(100 - energy);
+            return true;
         }
 
         public static string GetFlog(string flog)
@@ -241,14 +297,34 @@ namespace ABClient
             {
                 try
                 {
+                    var requestUri = new Uri(url);
+                    wc.Headers[HttpRequestHeader.UserAgent] = BrowserUserAgent;
+                    wc.Headers[HttpRequestHeader.Accept] = "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8";
+                    wc.Headers[HttpRequestHeader.AcceptLanguage] = "ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7";
+                    wc.Headers[HttpRequestHeader.CacheControl] = "no-cache";
+                    wc.Headers[HttpRequestHeader.Referer] = "http://www.neverlands.ru/main.php";
+                    var cookieHost = requestUri.Host.Equals("neverlands.ru", StringComparison.OrdinalIgnoreCase)
+                        ? "www.neverlands.ru"
+                        : requestUri.Host;
+                    var cookies = CookiesManager.Obtain(cookieHost);
+                    if (!string.IsNullOrEmpty(cookies))
+                    {
+                        wc.SetCookies(requestUri, cookies);
+                    }
+
                     IdleManager.AddActivity();
-                    var buffer = wc.DownloadData(url);
+                    var buffer = wc.DownloadData(requestUri);
                     if (buffer != null)
                     {
+                        if (buffer.Length == 0)
+                        {
+                            AppLog.w("NeverApi", "GetInfo: EMPTY_BODY url=" + url + " cookies=" + !string.IsNullOrEmpty(cookies));
+                        }
+
                         html = AppVars.Codepage.GetString(buffer);
                         if (html.IndexOf("Cookie...", StringComparison.CurrentCultureIgnoreCase) != -1)
                         {
-                            buffer = wc.DownloadData(url);
+                            buffer = wc.DownloadData(requestUri);
                             if (buffer != null)
                             {
                                 html = AppVars.Codepage.GetString(buffer);
@@ -267,6 +343,16 @@ namespace ABClient
             }
 
             return html;
+        }
+
+        private static int NormalizeTied(int tied)
+        {
+            if (tied < 0)
+            {
+                return 0;
+            }
+
+            return tied > 100 ? 100 : tied;
         }
     }
 }

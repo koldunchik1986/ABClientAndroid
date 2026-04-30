@@ -611,12 +611,7 @@ namespace ABClient.PostFilter
                 }
             }
 
-            var postied = html.IndexOf("Усталость:</td><td bgcolor=#336699 nowrap><font class=proce><font color=#ffffff><b><div align=center>&nbsp;<b>", StringComparison.OrdinalIgnoreCase);
-            if (postied != -1)
-            {
-                AppLog.d("MainPhp", "MainPhp: tied data found in HTML");
-                MainPhpTied(html, postied + "Усталость:</td><td bgcolor=#336699 nowrap><font class=proce><font color=#ffffff><b><div align=center>&nbsp;<b>".Length);
-            }
+            MainPhpTied(html);
 
             // Надо ли лечить?
             if (AppVars.CureNeed && (DateTime.Now > AppVars.NeverTimer))
@@ -776,9 +771,11 @@ namespace ABClient.PostFilter
             if ((AppVars.Profile.DoAutoDrinkBlaz) && (AppVars.Tied >= AppVars.Profile.AutoDrinkBlazTied) && (DateTime.Now > AppVars.NeverTimer))
             {
                 AppLog.d("MainPhp", "MainPhp: auto-drink blaz triggered, tied=" + AppVars.Tied + " >= " + AppVars.Profile.AutoDrinkBlazTied);
+                var preferPotion = AppVars.Profile.AutoDrinkBlazOrder == 0;
                 if (!MainPhpIsInv(html))
-                { 
-                    var invHtml = MainPhpFindInv(html, AppVars.Profile.AutoDrinkBlazOrder == 0 ? "&im=0&wca=27" : "&im=6");
+                {
+                    AppVars.DrinkBlazPotOrElixirFirst = false;
+                    var invHtml = MainPhpFindInv(html, preferPotion ? "&im=0&wca=27" : "&im=6");
                     if (!string.IsNullOrEmpty(invHtml))
                     {
                         html = invHtml;
@@ -791,33 +788,41 @@ namespace ABClient.PostFilter
                     var cureHtml = MainPhpDrinkBlazPotOrElixir(html);
                     if (string.IsNullOrEmpty(cureHtml))
                     {
-                        if (AppVars.Profile.AutoDrinkBlazOrder == 0)
+                        var atPotionPage = MainPhpIsBlazPotionAddress(address);
+                        var atElixirPage = MainPhpIsBlazElixirAddress(address);
+                        AppLog.d("MainPhp", "MainPhp: auto-drink blaz item not found, address=" + address +
+                            ", firstChecked=" + AppVars.DrinkBlazPotOrElixirFirst +
+                            ", atPotion=" + atPotionPage + ", atElixir=" + atElixirPage);
+
+                        if (preferPotion)
                         {
-                            if (!AppVars.DrinkBlazPotOrElixirFirst && !address.EndsWith("im=0&wca=27"))
+                            if (atPotionPage)
                             {
                                 AppVars.DrinkBlazPotOrElixirFirst = true;
-                                html = BuildRedirect("Переключение на зелья", "main.php?im=0&wca=27");
+                                html = BuildRedirect("Переключение на эликсиры", "main.php?im=6");
                                 goto end;
                             }
 
-                            if (address.EndsWith("im=0&wca=27"))
+                            if (!atElixirPage || !AppVars.DrinkBlazPotOrElixirFirst)
                             {
-                                html = BuildRedirect("Переключение на элексиры", "main.php?im=6");
+                                AppVars.DrinkBlazPotOrElixirFirst = false;
+                                html = BuildRedirect("Переключение на зелья", "main.php?im=0&wca=27");
                                 goto end;
                             }
                         }
                         else
                         {
-                            if (!AppVars.DrinkBlazPotOrElixirFirst && !address.EndsWith("im=6"))
+                            if (atElixirPage)
                             {
                                 AppVars.DrinkBlazPotOrElixirFirst = true;
-                                html = BuildRedirect("Переключение на элексиры", "main.php?im=6");
+                                html = BuildRedirect("Переключение на зелья", "main.php?im=0&wca=27");
                                 goto end;
                             }
 
-                            if (address.EndsWith("im=6"))
+                            if (!atPotionPage || !AppVars.DrinkBlazPotOrElixirFirst)
                             {
-                                html = BuildRedirect("Переключение на зелья", "main.php?im=0&wca=27");
+                                AppVars.DrinkBlazPotOrElixirFirst = false;
+                                html = BuildRedirect("Переключение на эликсиры", "main.php?im=6");
                                 goto end;
                             }
                         }
@@ -828,7 +833,15 @@ namespace ABClient.PostFilter
                     }
                     else
                     {
+                        AppVars.DrinkBlazPotOrElixirFirst = false;
                         AppVars.Tied = 0;
+                        AppVars.SwitchToFlora = true;
+                        AppLog.i("MainPhp", "MainPhp: auto-drink blaz submitted, return to flora scheduled");
+                        if (AppVars.DoHerbAutoCut)
+                        {
+                            AppLog.i("auto_cut_trace", "MainPhp", "auto-drink blaz submitted: return to flora before auto look");
+                        }
+
                         html = cureHtml;
                         goto end;
                     }

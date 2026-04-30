@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using ABClient.Helpers;
 
 namespace ABClient.ABForms
@@ -1100,6 +1100,17 @@ namespace ABClient.ABForms
             }
 
             CheckTied();
+        }
+
+        internal void UpdateCheckTiedFromPInfoSafe()
+        {
+            if (InvokeRequired)
+            {
+                BeginInvoke((MethodInvoker)UpdateCheckTiedFromPInfoSafe);
+                return;
+            }
+
+            CheckTied(true);
         }
 
         internal void UpdateTrayBaloonSafe(string message)

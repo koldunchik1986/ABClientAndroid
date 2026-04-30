@@ -1,4 +1,4 @@
-﻿using ABClient.MyChat;
+using ABClient.MyChat;
 
 namespace ABClient.ABForms
 {
@@ -45,6 +45,76 @@ namespace ABClient.ABForms
             // ReSharper disable EmptyGeneralCatchClause
             catch
             // ReSharper restore EmptyGeneralCatchClause
+            {
+            }
+        }
+
+        internal bool TrySubmitReadyAlchemyFightLink(string source)
+        {
+            var link = AppVars.FightLink;
+            if (string.IsNullOrEmpty(link) ||
+                link.IndexOf("alchemy_ajax.php", StringComparison.OrdinalIgnoreCase) < 0 ||
+                link.IndexOf("????", StringComparison.Ordinal) >= 0)
+            {
+                return false;
+            }
+
+            AppVars.FightLink = string.Empty;
+            UpdateTexLog("Срез травы");
+            AppLog.i("auto_cut_trace", "FormMainDom", "alchemy ready submit: source=" + (source ?? "unknown"));
+            EnterAlchemyCode(link);
+            ChangeAutoboiState(AppVars.Profile.LezDoAutoboi ? AutoboiState.AutoboiOn : AutoboiState.AutoboiOff);
+            return true;
+        }
+
+        internal bool TrySubmitReadyAutoboiFightLink(string source)
+        {
+            var link = AppVars.FightLink;
+            if (AppVars.Profile == null ||
+                !AppVars.Profile.LezDoAutoboi ||
+                string.IsNullOrEmpty(link) ||
+                link.Length <= 5 ||
+                link.IndexOf("????", StringComparison.Ordinal) >= 0 ||
+                link.IndexOf("alchemy_ajax.php", StringComparison.OrdinalIgnoreCase) >= 0)
+            {
+                return false;
+            }
+
+            AppVars.Profile.Pers.Ready = 0;
+            UpdateTexLog("Завершение боя");
+            if (link.IndexOf("=00000&", StringComparison.Ordinal) == -1)
+            {
+                SetMainTopInvoke(link);
+            }
+
+            PulseTrayBalloonAfterFightLinkSubmit();
+            AppVars.FightLink = string.Empty;
+            ChangeAutoboiState(AppVars.Profile.LezDoAutoboi ? AutoboiState.AutoboiOn : AutoboiState.AutoboiOff);
+            AppLog.i("LezFight", "FormMainDom", "autoboi ready submit: source=" + (source ?? "unknown"));
+            return true;
+        }
+
+        private void PulseTrayBalloonAfterFightLinkSubmit()
+        {
+            if (!AppVars.Profile.ShowTrayBaloons || !trayIcon.Visible)
+            {
+                return;
+            }
+
+            try
+            {
+                LockBaloon.AcquireWriterLock(5000);
+                try
+                {
+                    trayIcon.Visible = false;
+                    trayIcon.Visible = true;
+                }
+                finally
+                {
+                    LockBaloon.ReleaseWriterLock();
+                }
+            }
+            catch (ApplicationException)
             {
             }
         }

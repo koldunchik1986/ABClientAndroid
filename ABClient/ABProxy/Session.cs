@@ -1,4 +1,4 @@
-﻿namespace ABClient.ABProxy
+namespace ABClient.ABProxy
 {
     using System;
     using System.Globalization;
@@ -234,7 +234,18 @@
 
                 if (!flag)
                 {
-                    AppLog.w("ProxySession", "response read failed, closing session");
+                    var readException = Response == null ? null : Response.LastReadException;
+                    var bytesRead = Response == null ? 0L : Response.ResponseBytesRead;
+                    var message = "response read failed, closing session: url=" + Url + ", bytes=" + bytesRead;
+                    if (readException == null)
+                    {
+                        AppLog.w("ProxySession", message);
+                    }
+                    else
+                    {
+                        AppLog.w("ProxySession", message, readException);
+                    }
+
                     CloseSessionPipes();
                 }
                 else

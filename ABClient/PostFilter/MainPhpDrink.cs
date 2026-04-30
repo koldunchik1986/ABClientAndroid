@@ -1,4 +1,4 @@
-﻿namespace ABClient.PostFilter
+namespace ABClient.PostFilter
 {
     using System;
     using System.Globalization;
@@ -221,6 +221,18 @@
         private static bool MainPhpIsInv(string html)
         {
             return html.IndexOf(@"<a href=""?im=0""><img", StringComparison.OrdinalIgnoreCase) != -1;
+        }
+
+        private static bool MainPhpIsBlazPotionAddress(string address)
+        {
+            return !string.IsNullOrEmpty(address) &&
+                   address.IndexOf("im=0&wca=27", StringComparison.OrdinalIgnoreCase) != -1;
+        }
+
+        private static bool MainPhpIsBlazElixirAddress(string address)
+        {
+            return !string.IsNullOrEmpty(address) &&
+                   address.IndexOf("im=6", StringComparison.OrdinalIgnoreCase) != -1;
         }
 
         /*

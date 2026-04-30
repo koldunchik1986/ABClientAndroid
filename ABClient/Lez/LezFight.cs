@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Globalization;
 using ABClient.MyHelpers;
@@ -7,6 +7,7 @@ using System.Text;
 using System.Threading;
 using System.Windows.Forms;
 using ABClient.ABForms;
+using ABClient.PostFilter;
 using Newtonsoft.Json.Linq;
 
 namespace ABClient.Lez
@@ -1316,6 +1317,7 @@ namespace ABClient.Lez
                         AppLog.i("LezFight", "ParseNonFight: fight completion with captcha");
                         if (_fexp[6].Equals("0", StringComparison.Ordinal))
                         {
+                            Filter.CancelPendingAlchemyCut("fight_completion_captcha", true);
                             AppLog.i("LezFight", "ParseNonFight: CAPTCHA detected, CodeAddress set, vcode=" + Strip(_fexp[3]));
                             AppVars.CodeAddress =
                                 "http://www.neverlands.ru/modules/code/code.php?" +
@@ -1374,6 +1376,7 @@ namespace ABClient.Lez
                     {
                         // Завершение боя без капчи
                         AppLog.i("LezFight", "ParseNonFight: fight completion without captcha");
+                        Filter.CancelPendingAlchemyCut("fight_completion", true);
                         if (AppVars.Profile.ShowTrayBaloons)
                         {
                             try

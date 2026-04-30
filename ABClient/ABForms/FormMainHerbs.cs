@@ -129,16 +129,27 @@ namespace ABClient.ABForms
 
         internal static bool DoHerbAutoCut()
         {
-            if (AppVars.DoHerbAutoCut &&
-                AppVars.Profile != null &&
-                AppVars.Profile.HerbsAutoCut.Count > 0 &&
-                !AppVars.AutoMoving &&
-                DateTime.Now > AppVars.NeverTimer &&
-                AutoCutRuntime.ShouldAutoLookOnCurrentCell())
+            if (!AppVars.DoHerbAutoCut ||
+                AppVars.Profile == null ||
+                AppVars.Profile.HerbsAutoCut.Count == 0 ||
+                AppVars.AutoMoving ||
+                DateTime.Now <= AppVars.NeverTimer)
+            {
+                return false;
+            }
+
+            if (AutoCutRuntime.IsAlchemyActionPending())
+            {
+                AppLog.d("auto_cut_trace", "FormMainHerbs", "auto look skip: alchemy action pending");
+                return false;
+            }
+
+            if (AutoCutRuntime.ShouldAutoLookOnCurrentCell())
             {
                 return true;
             }
 
+            AutoCutRuntime.RouteNextIfCurrentCellCachedNotReady("do_herb_auto_cut");
             return false;
         }
 

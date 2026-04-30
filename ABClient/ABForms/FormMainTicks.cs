@@ -5,6 +5,7 @@ namespace ABClient.ABForms
     using System.Text;
     using System.Windows.Forms;
     using ABClient.Forms;
+    using ABClient.PostFilter;
     using MyChat;
     using MyGuamod;
     using MyHelpers;
@@ -244,56 +245,27 @@ namespace ABClient.ABForms
             // Если нераспознанной капчи нет
             if (AppVars.FightLink.IndexOf("????", StringComparison.Ordinal) == -1)
             {
-                if (AppVars.FightLink.IndexOf("alchemy_ajax.php", StringComparison.OrdinalIgnoreCase) >= 0)
+                if (TrySubmitReadyAlchemyFightLink("timer_crap"))
                 {
-                    var alchemyLink = AppVars.FightLink;
-                    AppVars.FightLink = string.Empty;
-                    UpdateTexLog("Срез травы");
-                    EnterAlchemyCode(alchemyLink);
+                    return;
+                }
+
+                if (TrySubmitReadyAutoboiFightLink("timer_crap"))
+                {
                     return;
                 }
 
                 if (AppVars.Profile.LezDoAutoboi)
                 {
                     AppVars.Profile.Pers.Ready = 0;
-                    if (AppVars.FightLink.Length > 5)
-                    {
-                        UpdateTexLog("Завершение боя");
-                        if (AppVars.FightLink != null)
-                        {
-                            if (AppVars.FightLink.IndexOf("=00000&", StringComparison.Ordinal) == -1)
-                            {
-                                SetMainTopInvoke(AppVars.FightLink);
-                            }
-                        }                        
-                    }
-                    else
+                    if (AppVars.FightLink.Length <= 5)
                     {
                         UpdateTexLog("Завершение рыбалки");
                         EnterFishCode(AppVars.FightLink);
                     }
 
-                    if (AppVars.Profile.ShowTrayBaloons && trayIcon.Visible)
-                    {
-                        try
-                        {
-                            LockBaloon.AcquireWriterLock(5000);
-                            try
-                            {
-                                trayIcon.Visible = false;
-                                trayIcon.Visible = true;
-                            }
-                            finally
-                            {
-                                LockBaloon.ReleaseWriterLock();
-                            }
-                        }
-                        catch (ApplicationException)
-                        {
-                        }
-                    }
-
                     AppVars.FightLink = string.Empty;
+                    PulseTrayBalloonAfterFightLinkSubmit();
                     ChangeAutoboiState(AppVars.Profile.LezDoAutoboi
                                            ? AutoboiState.AutoboiOn
                                            : AutoboiState.AutoboiOff);
@@ -305,6 +277,11 @@ namespace ABClient.ABForms
             if (AppVars.Autoboi == AutoboiState.Guamod)
             {
                 // Уже идет распознавание
+                if (AppVars.Profile.AntiCaptchaEnabled && AntiCaptchaManager.TrySolveCurrentCaptcha())
+                {
+                    return;
+                }
+
                 if (!AppVars.Profile.DoGuamod && !AntiCaptchaManager.Busy)
                 {
                     PromptManualCaptcha();
@@ -364,6 +341,7 @@ namespace ABClient.ABForms
                 if (formCode.ShowDialog(this) != DialogResult.OK)
                 {
                     AppLog.w("Captcha", "MANUAL_CAPTCHA_CANCELLED");
+                    Filter.CancelPendingAlchemyCut("manual_captcha_cancelled", AutoCutRuntime.IsAlchemyActionPending());
                     AppVars.FightLink = string.Empty;
                     AppVars.CodePng = null;
                     ChangeAutoboiState(AppVars.Profile.LezDoAutoboi ? AutoboiState.AutoboiOn : AutoboiState.AutoboiOff);

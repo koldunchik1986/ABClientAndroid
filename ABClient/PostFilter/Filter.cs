@@ -1,4 +1,4 @@
-﻿using System.Text.RegularExpressions;
+using System.Text.RegularExpressions;
 using ABClient.Helpers;
 
 namespace ABClient.PostFilter
@@ -263,7 +263,7 @@ namespace ABClient.PostFilter
 
             if (address.StartsWith("http://www.neverlands.ru/pinfo.cgi", StringComparison.OrdinalIgnoreCase))
             {
-                return RemoveDoctype(array);
+                return Pinfo(array);
             }
 
             if (address.StartsWith("http://www.neverlands.ru/pbots.cgi", StringComparison.OrdinalIgnoreCase))

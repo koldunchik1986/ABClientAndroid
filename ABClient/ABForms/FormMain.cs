@@ -3,6 +3,7 @@ using System.Net;
 using System.Threading;
 using ABClient.ExtMap;
 using ABClient.MyHelpers;
+using ABClient.PostFilter;
 
 namespace ABClient.ABForms
 {
@@ -830,9 +831,12 @@ namespace ABClient.ABForms
                     AppVars.FightLink = string.Empty;
                 }
 
+                Filter.CancelPendingAlchemyCut("toolbar_disabled", false);
+
                 return;
             }
 
+            Filter.CancelPendingAlchemyCut("toolbar_enabled_reset", false);
             AutoCutRuntime.ResetRuntime("toolbar_enabled");
             AppVars.AutoCutCheckSickle = true;
             AppVars.AutoCutArmedSickle = false;

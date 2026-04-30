@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Globalization;
 using ABClient.Helpers;
@@ -280,7 +280,7 @@ namespace ABClient.ExtMap
             if (currentCell.Equals("12-494") && NextJump.Equals("12-428"))
             {
                 IsNextCity = true;
-                CityGate = CityGateType.OktalLeftToRightGate;
+                CityGate = CityGateType.OktalRightToLeftGate;
                 return true;
             }
 

@@ -401,6 +401,7 @@ namespace ABClient
         internal const string GarbageItemName = "Бесполезный хлам";
 
         private const double CleanupFallbackThresholdMass = 10d;
+        private const int CurrentCellNoSelectedRetryMilliseconds = 30000;
         private static readonly List<string> CheckedCells = new List<string>();
         private static string checkedShiftKey = string.Empty;
         private static DateTime lookRetryAt = DateTime.MinValue;
@@ -457,12 +458,24 @@ namespace ABClient
                 return true;
             }
 
+            if (!ShouldRouteToUncheckedCell(current, "current_cell"))
+            {
+                return false;
+            }
+
             return !IsCellCheckedForCurrentShift(current);
         }
 
         internal static void OnScanWithoutSelectedHerb(string source)
         {
             MarkCurrentCellChecked("no_selected:" + source);
+            if (GetSearchCells().Count == 0)
+            {
+                ScheduleLookRetryAtNextShift("no_selected_current_cell:" + source);
+                AppLog.i("auto_cut_trace", "AutoCutRuntime", "current cell skipped until next shift: no selected herb, source=" + source);
+                return;
+            }
+
             if (RouteBackToTimerReturnIfNeeded("no_selected:" + source))
             {
                 return;
@@ -632,6 +645,30 @@ namespace ABClient
             RouteNextCell(source);
         }
 
+        internal static bool RouteNextIfCurrentCellCachedNotReady(string source)
+        {
+            if (ShouldDelayRouteForPreparation())
+            {
+                return false;
+            }
+
+            var cells = GetSearchCells();
+            var current = CurrentCell();
+            if (cells.Count == 0 || string.IsNullOrEmpty(current) || !ContainsCell(cells, current) ||
+                IsCellCheckedForCurrentShift(current) || HasDueHerbTimerForCell(current))
+            {
+                return false;
+            }
+
+            if (ShouldRouteToUncheckedCell(current, "current_cell_route"))
+            {
+                return false;
+            }
+
+            RouteNextCell("cache_skip:" + source);
+            return true;
+        }
+
         private static bool ShouldDelayRouteForPreparation()
         {
             if (AppVars.AutoCutCleanupPending || massSnapshotSyncPending || IsAlchemyActionPending())
@@ -654,7 +691,7 @@ namespace ABClient
             return ContainsCell(cells, current) && !IsCellCheckedForCurrentShift(current);
         }
 
-        private static bool IsAlchemyActionPending()
+        internal static bool IsAlchemyActionPending()
         {
             return !string.IsNullOrEmpty(AppVars.FightLink) &&
                    AppVars.FightLink.IndexOf("alchemy_ajax.php", StringComparison.OrdinalIgnoreCase) >= 0;
@@ -662,7 +699,12 @@ namespace ABClient
 
         internal static void ScheduleLookRetry(string source)
         {
-            var retry = DateTime.Now.AddMilliseconds(1500);
+            ScheduleLookRetry(source, 1500);
+        }
+
+        private static void ScheduleLookRetry(string source, int delayMilliseconds)
+        {
+            var retry = DateTime.Now.AddMilliseconds(Math.Max(1500, delayMilliseconds));
             if (AppVars.NeverTimer > retry)
             {
                 retry = AppVars.NeverTimer;
@@ -671,6 +713,32 @@ namespace ABClient
             lookRetryAt = retry;
             lookRetrySource = source ?? string.Empty;
             AppLog.i("auto_cut_trace", "AutoCutRuntime", "look retry scheduled: source=" + lookRetrySource + ", at=" + lookRetryAt.ToString("HH:mm:ss"));
+        }
+
+        private static void ScheduleLookRetryAtNextShift(string source)
+        {
+            if (AppVars.Profile == null)
+            {
+                ScheduleLookRetry(source, CurrentCellNoSelectedRetryMilliseconds);
+                return;
+            }
+
+            var serverNow = DateTime.Now.Subtract(AppVars.Profile.ServDiff);
+            var nextServerShift = FindNextShiftStart(serverNow).AddSeconds(5);
+            var retry = nextServerShift.Add(AppVars.Profile.ServDiff);
+            if (retry <= DateTime.Now)
+            {
+                retry = DateTime.Now.AddMinutes(1);
+            }
+
+            if (AppVars.NeverTimer > retry)
+            {
+                retry = AppVars.NeverTimer;
+            }
+
+            lookRetryAt = retry;
+            lookRetrySource = source ?? string.Empty;
+            AppLog.i("auto_cut_trace", "AutoCutRuntime", "look retry scheduled for next shift: source=" + lookRetrySource + ", shift=" + BuildShiftKey(serverNow) + ", serverAt=" + nextServerShift.ToString("HH:mm:ss"));
         }
 
         internal static bool ConsumeLookRetryIfDue()
@@ -702,13 +770,7 @@ namespace ABClient
             var reason = string.IsNullOrEmpty(dueTimerCell) ? "unchecked" : "herb_timer";
             if (string.IsNullOrEmpty(next))
             {
-                CheckedCells.Clear();
-                next = FindNextRoundRobin(cells, current);
-                reason = "new_circle";
-            }
-
-            if (string.IsNullOrEmpty(next))
-            {
+                ScheduleNextRouteRound(cells, source);
                 return;
             }
 
@@ -721,6 +783,48 @@ namespace ABClient
             RememberTimerRouteReturnIfNeeded(dueTimerCell, current, source);
             AppLog.i("auto_cut_trace", "AutoCutRuntime", "route next: destination=" + next + ", reason=" + reason + ", source=" + source);
             AppVars.MainForm.MoveToSafe(next);
+        }
+
+        private static void ScheduleNextRouteRound(List<string> cells, string source)
+        {
+            RefreshCheckedShift();
+            CheckedCells.Clear();
+            var invalidated = InvalidateSelectedEmptyCellSnapshots(cells);
+            ScheduleLookRetry("all_cells_checked_new_round:" + source, CurrentCellNoSelectedRetryMilliseconds);
+            AppLog.i("auto_cut_trace", "AutoCutRuntime", "all cells checked for shift=" + checkedShiftKey + ", restart route round, invalidated=" + invalidated + ", source=" + source);
+        }
+
+        private static int InvalidateSelectedEmptyCellSnapshots(List<string> cells)
+        {
+            if (AppVars.Profile == null || cells == null || cells.Count == 0)
+            {
+                return 0;
+            }
+
+            var invalidated = 0;
+            for (var i = 0; i < cells.Count; i++)
+            {
+                HerbCell herbCell;
+                if (!AppVars.Profile.HerbCells.TryGetValue(cells[i], out herbCell) || herbCell == null || string.IsNullOrEmpty(herbCell.Herbs))
+                {
+                    continue;
+                }
+
+                if (!IsHerbCellUpdatedInCurrentShift(herbCell))
+                {
+                    continue;
+                }
+
+                if (!"selected_herbs_empty_current_shift".Equals(GetUncheckedCellSkipReason(cells[i]), StringComparison.Ordinal))
+                {
+                    continue;
+                }
+
+                herbCell.UpdatedInTicks = 0;
+                invalidated++;
+            }
+
+            return invalidated;
         }
 
         private static void RememberTimerRouteReturnIfNeeded(string dueTimerCell, string current, string source)
@@ -858,13 +962,138 @@ namespace ABClient
             {
                 var index = startIndex >= 0 ? (startIndex + offset) % cells.Count : offset - 1;
                 var cell = cells[index];
-                if (!IsCellCheckedForCurrentShift(cell))
+                if (!IsCellCheckedForCurrentShift(cell) && ShouldRouteToUncheckedCell(cell, "unchecked_route"))
                 {
                     return cell;
                 }
             }
 
             return string.Empty;
+        }
+
+        private static bool ShouldRouteToUncheckedCell(string cell, string source)
+        {
+            var skipReason = GetUncheckedCellSkipReason(cell);
+            if (string.IsNullOrEmpty(skipReason))
+            {
+                return true;
+            }
+
+            AppLog.i("auto_cut_trace", "AutoCutRuntime", "route skip cell: cell=" + cell + ", reason=" + skipReason + ", source=" + source);
+            return false;
+        }
+
+        private static string GetUncheckedCellSkipReason(string cell)
+        {
+            if (AppVars.Profile == null || string.IsNullOrEmpty(cell))
+            {
+                return "invalid_cell";
+            }
+
+            HerbCell herbCell;
+            if (!AppVars.Profile.HerbCells.TryGetValue(cell, out herbCell) || herbCell == null || string.IsNullOrEmpty(herbCell.Herbs))
+            {
+                return string.Empty;
+            }
+
+            if (!IsHerbCellUpdatedInCurrentShift(herbCell))
+            {
+                return string.Empty;
+            }
+
+            var hasSelectedHerb = false;
+            var entries = herbCell.Herbs.Split('|');
+            for (var i = 0; i < entries.Length; i++)
+            {
+                string name;
+                int count;
+                if (!TryParseHerbEntry(entries[i], out name, out count) || !IsSelectedHerbName(name))
+                {
+                    continue;
+                }
+
+                hasSelectedHerb = true;
+                if (count > 0)
+                {
+                    return string.Empty;
+                }
+            }
+
+            if (!hasSelectedHerb)
+            {
+                return "no_selected_herbs_in_cell_cache";
+            }
+
+            return "selected_herbs_empty_current_shift";
+        }
+
+        private static bool TryParseHerbEntry(string entry, out string name, out int count)
+        {
+            name = string.Empty;
+            count = 0;
+            var safeEntry = (entry ?? string.Empty).Trim();
+            if (safeEntry.Length == 0)
+            {
+                return false;
+            }
+
+            var separator = safeEntry.LastIndexOf(':');
+            if (separator == -1)
+            {
+                name = safeEntry;
+                count = 1;
+                return true;
+            }
+
+            name = safeEntry.Substring(0, separator).Trim();
+            if (name.Length == 0)
+            {
+                return false;
+            }
+
+            return int.TryParse(safeEntry.Substring(separator + 1).Trim(), NumberStyles.Integer, CultureInfo.InvariantCulture, out count);
+        }
+
+        private static bool IsSelectedHerbName(string herbName)
+        {
+            if (AppVars.Profile == null || string.IsNullOrEmpty(herbName))
+            {
+                return false;
+            }
+
+            AutoCutCatalog.EnsureProfileCatalog(AppVars.Profile);
+            var catalogHerb = AutoCutCatalog.Find(AppVars.Profile.AutoCutHerbs, string.Empty, herbName);
+            if (catalogHerb != null)
+            {
+                return catalogHerb.Selected;
+            }
+
+            var normalized = NormalizeHerbName(herbName);
+            for (var i = 0; i < AppVars.Profile.HerbsAutoCut.Count; i++)
+            {
+                if (NormalizeHerbName(AppVars.Profile.HerbsAutoCut[i]).Equals(normalized, StringComparison.Ordinal))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        private static bool IsHerbCellUpdatedInCurrentShift(HerbCell herbCell)
+        {
+            if (AppVars.Profile == null || herbCell == null || herbCell.UpdatedInTicks <= 0)
+            {
+                return false;
+            }
+
+            var currentServerTime = DateTime.Now.Subtract(AppVars.Profile.ServDiff);
+            return BuildShiftKey(new DateTime(herbCell.UpdatedInTicks)).Equals(BuildShiftKey(currentServerTime), StringComparison.Ordinal);
+        }
+
+        private static string NormalizeHerbName(string value)
+        {
+            return (value ?? string.Empty).Trim().Replace('ё', 'е').Replace('Ё', 'Е').ToLowerInvariant();
         }
 
         private static string FindNextRoundRobin(List<string> cells, string current)
@@ -982,6 +1211,23 @@ namespace ABClient
             }
 
             return (dateTime >= d3) && (dateTime < d4) ? 3 : 0;
+        }
+
+        private static DateTime FindNextShiftStart(DateTime serverTime)
+        {
+            var currentShift = GetShift(serverTime);
+            var probe = new DateTime(serverTime.Year, serverTime.Month, serverTime.Day, serverTime.Hour, serverTime.Minute, 0).AddMinutes(1);
+            for (var i = 0; i < (24 * 60) + 2; i++)
+            {
+                if (GetShift(probe) != currentShift)
+                {
+                    return probe;
+                }
+
+                probe = probe.AddMinutes(1);
+            }
+
+            return serverTime.AddHours(1);
         }
 
         private static bool TryGetConfiguredShift(DateTime dateTime, out int shift)

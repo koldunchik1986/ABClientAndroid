@@ -1,4 +1,4 @@
-﻿using ABClient.Helpers;
+using ABClient.Helpers;
 using System;
 using System.Text;
 using ABClient.ABForms;
@@ -1371,12 +1371,8 @@ namespace ABClient.PostFilter
             var namepotion = string.Format("Использовать {0} сейчас?", AppVars.FastId);
             var p0 = html.IndexOf(namepotion, StringComparison.CurrentCultureIgnoreCase);
             if (p0 == -1) goto failed;
-            var ps = html.IndexOf("='", p0, StringComparison.Ordinal);
-            if (ps == -1) goto failed;
-            ps += 2;
-            var pe = html.IndexOf("'", ps, StringComparison.Ordinal);
-            if (pe == -1) goto failed;
-            var link = html.Substring(ps, pe - ps);
+            var link = MainPhpExtractInventoryActionLink(html, p0);
+            if (string.IsNullOrEmpty(link)) goto failed;
             var description = string.Format("Используем {0}...", AppVars.FastId);
             var htmlElixir = BuildRedirect(description, link);
             return htmlElixir;
@@ -1484,18 +1480,12 @@ namespace ABClient.PostFilter
                         p0 = html.IndexOf(namepotion, StringComparison.CurrentCultureIgnoreCase);
                         if (p0 != -1)
                         {
-                            var ps = html.IndexOf("='", p0, StringComparison.Ordinal);
-                            if (ps != -1)
+                            var link = MainPhpExtractInventoryActionLink(html, p0);
+                            if (!string.IsNullOrEmpty(link))
                             {
-                                ps += 2;
-                                var pe = html.IndexOf("'", ps, StringComparison.Ordinal);
-                                if (pe != -1)
-                                {
-                                    var link = html.Substring(ps, pe - ps);
-                                    var description = string.Format("Используем {0}...", "Эликсир Блаженства");
-                                    var htmlElixir = BuildRedirect(description, link);
-                                    return htmlElixir;
-                                }
+                                var description = string.Format("Используем {0}...", "Эликсир Блаженства");
+                                var htmlElixir = BuildRedirect(description, link);
+                                return htmlElixir;
                             }
                         }
 
@@ -1506,6 +1496,49 @@ namespace ABClient.PostFilter
             }
 
             return null;           
+        }
+
+        private static string MainPhpExtractInventoryActionLink(string html, int start)
+        {
+            var link = MainPhpExtractQuotedLink(html, start, "location='");
+            if (!string.IsNullOrEmpty(link))
+            {
+                return link;
+            }
+
+            link = MainPhpExtractQuotedLink(html, start, "location=\"");
+            if (!string.IsNullOrEmpty(link))
+            {
+                return link;
+            }
+
+            link = MainPhpExtractQuotedLink(html, start, "href='");
+            if (!string.IsNullOrEmpty(link))
+            {
+                return link;
+            }
+
+            link = MainPhpExtractQuotedLink(html, start, "href=\"");
+            if (!string.IsNullOrEmpty(link))
+            {
+                return link;
+            }
+
+            return MainPhpExtractQuotedLink(html, start, "='");
+        }
+
+        private static string MainPhpExtractQuotedLink(string html, int start, string marker)
+        {
+            var ps = html.IndexOf(marker, start, StringComparison.OrdinalIgnoreCase);
+            if (ps == -1)
+            {
+                return null;
+            }
+
+            ps += marker.Length;
+            var quote = marker[marker.Length - 1];
+            var pe = html.IndexOf(quote, ps);
+            return pe == -1 ? null : html.Substring(ps, pe - ps);
         }
 
         private static string MainPhpNevidPotion(string html)

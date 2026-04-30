@@ -1,8 +1,7 @@
-﻿using ABClient.Properties;
+using ABClient.Properties;
 using System;
-using System.Text;
 using ABClient.Helpers;
-using ABClient.MyHelpers;
+using ABClient.ABForms;
 
 namespace ABClient.PostFilter
 {
@@ -11,6 +10,22 @@ namespace ABClient.PostFilter
         private static byte[] Pinfo(byte[] array)
         {
             var html = Russian.Codepage.GetString(array);
+            int tied;
+            if (NeverApi.TryParseTiedFromPInfoHtml(html, out tied))
+            {
+                AppLog.i("FormMainCheckTied", "Pinfo: hpmp tied=" + tied + "%");
+                try
+                {
+                    if (AppVars.MainForm != null)
+                    {
+                        AppVars.MainForm.BeginInvoke(
+                            new UpdateTiedDelegate(AppVars.MainForm.UpdateTied), tied);
+                    }
+                }
+                catch (InvalidOperationException)
+                {
+                }
+            }
 
             /*
             html = html.Replace(
@@ -128,7 +143,7 @@ namespace ABClient.PostFilter
             }
              * */
 
-            return Russian.Codepage.GetBytes(html);
+            return Russian.Codepage.GetBytes(RemoveDoctype(html));
         }
 
         /*

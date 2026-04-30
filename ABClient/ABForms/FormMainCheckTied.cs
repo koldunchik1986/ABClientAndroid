@@ -1,21 +1,68 @@
-﻿using System.Threading;
+using System.Threading;
 using System;
 
 namespace ABClient.ABForms
 {
     internal sealed partial class FormMain
     {
+        private static int checkTiedInProgress;
+
         private static void CheckTied()
         {
-            ThreadPool.QueueUserWorkItem(CheckTiedAsync, null);
+            CheckTied(false);
+        }
+
+        private static void CheckTied(bool tiedOnly)
+        {
+            if (Interlocked.Exchange(ref checkTiedInProgress, 1) == 1)
+            {
+                AppLog.d("FormMainCheckTied", "CheckTied: skipped, previous request still running");
+                return;
+            }
+
+            ThreadPool.QueueUserWorkItem(CheckTiedAsync, tiedOnly);
         }
 
         private static void CheckTiedAsync(object state)
         {
+            try
+            {
+                var tiedOnly = (state is bool) && (bool)state;
+                CheckTiedAsyncCore(tiedOnly);
+            }
+            finally
+            {
+                Interlocked.Exchange(ref checkTiedInProgress, 0);
+            }
+        }
+
+        private static void CheckTiedAsyncCore(bool tiedOnly)
+        {
             AppVars.LastTied = DateTime.Now;
+            var hasPInfoTied = TryUpdateTiedFromPInfo();
+            if (tiedOnly)
+            {
+                if (!hasPInfoTied)
+                {
+                    AppVars.LastTied = DateTime.Now.AddSeconds(-170);
+                    AppLog.w("FormMainCheckTied", "CheckTiedAsync: tied-only pinfo returned null, retry in 30s");
+                }
+
+                return;
+            }
+
             var userInfo = NeverApi.GetAll(AppVars.Profile.UserNick);
             if (userInfo == null)
+            {
+                if (hasPInfoTied)
+                {
+                    return;
+                }
+
+                AppVars.LastTied = DateTime.Now.AddSeconds(-170);
+                AppLog.w("FormMainCheckTied", "CheckTiedAsync: NeverApi.GetAll and pinfo fallback returned null, retry in 30s");
                 return;
+            }
 
             // var effects = [[1,'Боевая травма (x9) (еще 23:06:17)'],[2,'Тяжелая травма (x2) (еще 07:01:22)'],[17,'Молчанка (еще 00:00:05)']];
             // var effects = [[24,'<b>Яд</b> (x1) (еще 04:59:46)'],[77,'<b>Новогодний бонус</b> (x1) (еще 352:52:16)']];
@@ -111,6 +158,30 @@ namespace ABClient.ABForms
                 {
                 }
             }
+        }
+
+        private static bool TryUpdateTiedFromPInfo()
+        {
+            int tiedFromPInfo;
+            if (!NeverApi.TryGetTiedFromPInfo(AppVars.Profile.UserNick, out tiedFromPInfo))
+            {
+                return false;
+            }
+
+            AppLog.i("FormMainCheckTied", "CheckTiedAsync: pinfo tied=" + tiedFromPInfo + "%");
+            try
+            {
+                if (AppVars.MainForm != null)
+                {
+                    AppVars.MainForm.BeginInvoke(
+                        new UpdateTiedDelegate(AppVars.MainForm.UpdateTied), tiedFromPInfo);
+                }
+            }
+            catch (InvalidOperationException)
+            {
+            }
+
+            return true;
         }
     }
 }

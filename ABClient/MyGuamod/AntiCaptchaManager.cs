@@ -5,7 +5,9 @@ using System.Net;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
+using System.Windows.Forms;
 using ABClient.ABForms;
+using ABClient.ABProxy;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
@@ -19,6 +21,7 @@ namespace ABClient.MyGuamod
         private const int MaxPollCount = 120;
         private const int InitialPollDelayMs = 3000;
         private const int PollDelayMs = 1000;
+        private const int CaptchaImageWaitTimeoutMs = 25000;
         private const string BrowserUserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36";
 
         private static readonly Regex TaskIdRegex = new Regex("\"taskId\"\\s*:\\s*(\\d+)", RegexOptions.Compiled);
@@ -29,6 +32,8 @@ namespace ABClient.MyGuamod
         private static readonly Regex ErrorDescriptionRegex = new Regex("\"errorDescription\"\\s*:\\s*\"([^\"]*)\"", RegexOptions.Compiled);
         private static bool busy;
         private static string lastFailedChallenge = string.Empty;
+        private static string waitingImageChallenge = string.Empty;
+        private static DateTime waitingImageSince = DateTime.MinValue;
 
         internal static bool Busy
         {
@@ -47,12 +52,13 @@ namespace ABClient.MyGuamod
                 return false;
             }
 
-            if (string.IsNullOrEmpty(AppVars.Profile.AntiCaptchaApiKey) || AppVars.CodePng == null || AppVars.CodePng.Length == 0)
+            if (string.IsNullOrEmpty(AppVars.Profile.AntiCaptchaApiKey))
             {
                 return false;
             }
 
             var challenge = AppVars.FightLink;
+            var codeAddress = AppVars.CodeAddress;
             if (string.IsNullOrEmpty(challenge) || challenge.IndexOf("????", StringComparison.Ordinal) == -1)
             {
                 return false;
@@ -63,16 +69,159 @@ namespace ABClient.MyGuamod
                 return false;
             }
 
+            if (AppVars.CodePng == null || AppVars.CodePng.Length == 0)
+            {
+                TryLoadCaptchaImageFromCodeAddress(challenge, codeAddress);
+                if (AppVars.CodePng == null || AppVars.CodePng.Length == 0)
+                {
+                    if (ShouldWaitForCaptchaImage(challenge, codeAddress))
+                    {
+                        return true;
+                    }
+
+                    AppLog.w(Tag, "ANTI_CAPTCHA_TRACE captcha image wait timeout");
+                    ResetCaptchaImageWait();
+                    return false;
+                }
+            }
+
+            ResetCaptchaImageWait();
+
             var imageBytes = new byte[AppVars.CodePng.Length];
             Buffer.BlockCopy(AppVars.CodePng, 0, imageBytes, 0, AppVars.CodePng.Length);
             busy = true;
-            ThreadPool.QueueUserWorkItem(delegate { SolveWorker(challenge, imageBytes); });
+            ThreadPool.QueueUserWorkItem(delegate { SolveWorker(challenge, codeAddress, imageBytes); });
             AppLog.i(Tag, "ANTI_CAPTCHA_TRACE started, bytes=" + imageBytes.Length);
             UpdateGuamodMessage("Anti-Captcha: отправка...");
             return true;
         }
 
-        private static void SolveWorker(string challenge, byte[] imageBytes)
+        private static bool ShouldWaitForCaptchaImage(string challenge, string codeAddress)
+        {
+            if (string.IsNullOrEmpty(codeAddress))
+            {
+                return false;
+            }
+
+            if (!IsSameCaptchaContext(challenge, codeAddress))
+            {
+                AppLog.w(Tag, "ANTI_CAPTCHA_TRACE captcha image wait cancelled: stale context");
+                ResetCaptchaImageWait();
+                return false;
+            }
+
+            if (!string.Equals(waitingImageChallenge, challenge, StringComparison.Ordinal))
+            {
+                waitingImageChallenge = challenge;
+                waitingImageSince = DateTime.Now;
+            }
+
+            var elapsedMs = DateTime.Now.Subtract(waitingImageSince).TotalMilliseconds;
+            if (elapsedMs >= CaptchaImageWaitTimeoutMs)
+            {
+                return false;
+            }
+
+            AppLog.d(Tag, "ANTI_CAPTCHA_TRACE waiting captcha image, elapsedMs=" + ((int)elapsedMs).ToString(CultureInfo.InvariantCulture));
+            UpdateGuamodMessage("Anti-Captcha: жду картинку...");
+            return true;
+        }
+
+        private static void ResetCaptchaImageWait()
+        {
+            waitingImageChallenge = string.Empty;
+            waitingImageSince = DateTime.MinValue;
+        }
+
+        private static bool IsSameCaptchaContext(string challenge, string codeAddress)
+        {
+            return string.Equals(AppVars.FightLink, challenge, StringComparison.Ordinal) &&
+                   string.Equals(AppVars.CodeAddress ?? string.Empty, codeAddress ?? string.Empty, StringComparison.Ordinal);
+        }
+
+        private static void ClearCaptchaImageIfCurrent(string codeAddress)
+        {
+            if (string.Equals(AppVars.CodeAddress ?? string.Empty, codeAddress ?? string.Empty, StringComparison.Ordinal))
+            {
+                AppVars.CodePng = null;
+            }
+        }
+
+        private static void TryLoadCaptchaImageFromCodeAddress(string challenge, string codeAddress)
+        {
+            if (string.IsNullOrEmpty(codeAddress) || AppVars.CodePng != null && AppVars.CodePng.Length > 0)
+            {
+                return;
+            }
+
+            if (!IsSameCaptchaContext(challenge, codeAddress))
+            {
+                AppLog.w(Tag, "ANTI_CAPTCHA_TRACE captcha image load skipped: stale context");
+                return;
+            }
+
+            try
+            {
+                var request = (HttpWebRequest)WebRequest.Create(codeAddress);
+                request.Method = "GET";
+                request.UserAgent = BrowserUserAgent;
+                request.Accept = "image/png,image/*,*/*";
+                request.Timeout = 10000;
+                request.ReadWriteTimeout = 10000;
+                request.KeepAlive = false;
+
+                var cookies = CookiesManager.Obtain("www.neverlands.ru");
+                if (!string.IsNullOrEmpty(cookies))
+                {
+                    request.Headers.Add("Cookie", cookies);
+                }
+
+                using (var response = (HttpWebResponse)request.GetResponse())
+                {
+                    if (response.StatusCode != HttpStatusCode.OK)
+                    {
+                        AppLog.w(Tag, "ANTI_CAPTCHA_TRACE captcha image http status=" + (int)response.StatusCode);
+                        return;
+                    }
+
+                    using (var stream = response.GetResponseStream())
+                    {
+                        if (stream == null)
+                        {
+                            return;
+                        }
+
+                        using (var memory = new MemoryStream())
+                        {
+                            var buffer = new byte[4096];
+                            int read;
+                            while ((read = stream.Read(buffer, 0, buffer.Length)) > 0)
+                            {
+                                memory.Write(buffer, 0, read);
+                            }
+
+                            if (memory.Length > 0)
+                            {
+                                if (!IsSameCaptchaContext(challenge, codeAddress))
+                                {
+                                    AppLog.w(Tag, "ANTI_CAPTCHA_TRACE stale captcha image ignored");
+                                    return;
+                                }
+
+                                AppVars.CodePng = memory.ToArray();
+                                AppLog.i(Tag, "ANTI_CAPTCHA_TRACE captcha image loaded, bytes=" + AppVars.CodePng.Length + ", challengeHash=" + challenge.GetHashCode().ToString(CultureInfo.InvariantCulture) + ", codeAddressHash=" + codeAddress.GetHashCode().ToString(CultureInfo.InvariantCulture));
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                AppLog.w(Tag, "ANTI_CAPTCHA_TRACE captcha image load failed", ex);
+            }
+        }
+
+        private static void SolveWorker(string challenge, string codeAddress, byte[] imageBytes)
         {
             try
             {
@@ -90,8 +239,9 @@ namespace ABClient.MyGuamod
                     return;
                 }
 
-                if (!string.Equals(AppVars.FightLink, challenge, StringComparison.Ordinal))
+                if (!IsSameCaptchaContext(challenge, codeAddress))
                 {
+                    ClearCaptchaImageIfCurrent(codeAddress);
                     AppLog.w(Tag, "ANTI_CAPTCHA_TRACE stale solution ignored");
                     return;
                 }
@@ -100,6 +250,8 @@ namespace ABClient.MyGuamod
                 AppVars.CodePng = null;
                 AppVars.FightLink = AppVars.FightLink.Replace("????", AppVars.GuamodCode);
                 lastFailedChallenge = string.Empty;
+                TrySubmitSolvedAlchemyLink();
+                TrySubmitSolvedAutoboiFightLink();
                 UpdateGuamodMessage("Anti-Captcha: распознано " + AppVars.GuamodCode);
                 UpdateTexLog("Anti-Captcha код: " + AppVars.GuamodCode);
                 AppLog.i(Tag, "ANTI_CAPTCHA_TRACE solved, textLen=" + AppVars.GuamodCode.Length);
@@ -112,6 +264,77 @@ namespace ABClient.MyGuamod
             finally
             {
                 busy = false;
+            }
+        }
+
+        private static void TrySubmitSolvedAlchemyLink()
+        {
+            var mainForm = AppVars.MainForm;
+            var link = AppVars.FightLink;
+            if (mainForm == null ||
+                string.IsNullOrEmpty(link) ||
+                link.IndexOf("alchemy_ajax.php", StringComparison.OrdinalIgnoreCase) < 0 ||
+                link.IndexOf("????", StringComparison.Ordinal) >= 0)
+            {
+                return;
+            }
+
+            try
+            {
+                mainForm.BeginInvoke(
+                    new MethodInvoker(
+                        delegate
+                        {
+                            if (mainForm.TrySubmitReadyAlchemyFightLink("anti_captcha_solved"))
+                            {
+                                AppLog.i("auto_cut_trace", Tag, "anti-captcha immediate alchemy submit executed");
+                            }
+                        }));
+                AppLog.i("auto_cut_trace", Tag, "anti-captcha immediate alchemy submit queued");
+            }
+            catch (ObjectDisposedException ex)
+            {
+                AppLog.w("auto_cut_trace", Tag, "anti-captcha immediate alchemy submit failed", ex);
+            }
+            catch (InvalidOperationException ex)
+            {
+                AppLog.w("auto_cut_trace", Tag, "anti-captcha immediate alchemy submit failed", ex);
+            }
+        }
+
+        private static void TrySubmitSolvedAutoboiFightLink()
+        {
+            var mainForm = AppVars.MainForm;
+            var link = AppVars.FightLink;
+            if (mainForm == null ||
+                string.IsNullOrEmpty(link) ||
+                link.Length <= 5 ||
+                link.IndexOf("alchemy_ajax.php", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                link.IndexOf("????", StringComparison.Ordinal) >= 0)
+            {
+                return;
+            }
+
+            try
+            {
+                mainForm.BeginInvoke(
+                    new MethodInvoker(
+                        delegate
+                        {
+                            if (mainForm.TrySubmitReadyAutoboiFightLink("anti_captcha_solved"))
+                            {
+                                AppLog.i("LezFight", Tag, "anti-captcha immediate autoboi submit executed");
+                            }
+                        }));
+                AppLog.i("LezFight", Tag, "anti-captcha immediate autoboi submit queued");
+            }
+            catch (ObjectDisposedException ex)
+            {
+                AppLog.w("LezFight", Tag, "anti-captcha immediate autoboi submit failed", ex);
+            }
+            catch (InvalidOperationException ex)
+            {
+                AppLog.w("LezFight", Tag, "anti-captcha immediate autoboi submit failed", ex);
             }
         }
 

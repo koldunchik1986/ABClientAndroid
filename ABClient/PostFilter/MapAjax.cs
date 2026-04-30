@@ -1,4 +1,4 @@
-﻿namespace ABClient.PostFilter
+namespace ABClient.PostFilter
 {
     using System;
     using System.Globalization;
@@ -40,6 +40,8 @@
                 try
                 {
                     AppVars.MainForm.UpdateLocationSafe(regNum);
+                    AppVars.MainForm.UpdateCheckTiedFromPInfoSafe();
+                    AppLog.d("FormMainCheckTied", "MapAjax: tied-only pinfo refresh requested after map update, location=" + regNum);
                 }
                 catch
                 {
@@ -123,6 +125,12 @@
                 {
                     if (!AppVars.DoSearchBox)
                     {
+                        AppVars.AutoMoving = false;
+                        if (AppVars.DoHerbAutoCut)
+                        {
+                            AppLog.i("auto_cut_trace", "MapAjax", "auto-moving destination reached before auto look: location=" + AppVars.Profile.MapLocation);
+                        }
+
                         try
                         {
                             if (AppVars.MainForm != null)
