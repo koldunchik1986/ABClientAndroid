@@ -61,3 +61,14 @@
 - [x] Сверено с ПК-эталоном `ABClient/PostFilter/SvitokJs.cs`: оригинальный JS перед показом формы вызывает `top.frames['ch_buttons'].document.FBT.text.focus()`.
 - [x] Причина: Android-shim в `HtmlUtils.getJsFix()` создавал `top.frames['ch_buttons']`, но без совместимого `document.FBT`, поэтому старый JS падал и кнопки визуально ничего не делали.
 - [x] Исправление: существующий frames-shim расширен `__anEnsureChatButtonsFrame(...)`, который добавляет `document.FBT.text/fyo/lmid/schat/spchat/lrchat/submit` и сохраняет bridge-фокус через `AndroidBridge.chatFocus()`.
+
+## Debug 2026-04-30: Навигатор после боя с proxy-fail
+
+- [x] Принят уточняющий контекст игрока: сетевой путь `WebView/OkHttp -> локальный proxy 127.0.0.1 -> удалённый upstream proxy -> игровой сервер`.
+- [x] Найдены существующие decision point без нового контура: `MainPhp` для `AutoMoving`/возврата на карту и `WebViewRequestInterceptor` для маршрута через локальный proxy.
+- [x] Гипотеза 1 подтверждена по коду: ветка `AutoMoving` в `MainPhp` могла пытаться выполнить non-combat возврат на карту прямо при `isFightFrame/isFightTopFrame`, если бой начался во время маршрута.
+- [x] Гипотеза 2 подтверждена по proxy-коду: transient 502/503/504 от локального/upstream proxy попадал в WebView как обычное тело, поэтому `onReceivedError` retry не запускался и main-frame мог остаться на странице ошибки.
+- [x] Исправление в `MainPhp`: навигатор теперь логирует `AUTO_MOVING_TRACE: pause navigator while fight frame is active` и не выполняет `mainPhpWtime`, city/teleport/map-return ветки на боевом кадре.
+- [x] Исправление в `WebViewRequestInterceptor`: main-frame transient proxy failure возвращает HTML auto-retry на тот же URL через настроенный proxy-маршрут, с логом `PROXY_RETRY` и контекстом `autoMoving/destination/fight`.
+- [x] `./gradlew.bat --no-daemon :app2:assembleDebug` после фикса — успешно.
+- [ ] Проверить live на профиле с upstream proxy: во время боя нет `AUTO_MOVING_TRACE: redirect to map` до завершения боя; при proxy-сбое виден `PROXY_RETRY`; после `act=7` навигатор возвращается на карту и продолжает текущий `AutoMovingDestinaton`.

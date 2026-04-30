@@ -84,6 +84,7 @@ public class WebViewRequestInterceptor {
             "set_lmid\\s*\\(\\s*(\\d+)\\s*\\)",
             Pattern.CASE_INSENSITIVE
     );
+    private static final long MAIN_FRAME_PROXY_RETRY_DELAY_MS = 3_000L;
 
     /**
      * Определяет, нужно ли перехватывать данный URL.
@@ -458,6 +459,14 @@ public class WebViewRequestInterceptor {
             if (isSessionInterruptedHtml(preview)) {
                 notifySessionErrorToActivity(urlString, "raw");
             }
+            if (isMainFrameRequest(request) && isTransientProxyHttpFailure(code, bytes)) {
+                AppLog.w("proxy", TAG, "PROXY_RETRY: transient main-frame proxy response"
+                        + ", code=" + code
+                        + ", url=" + urlString
+                        + ", context={" + buildProxyRetryContext() + "}");
+                RuntimeNetTrace.push("PROXY_RETRY", "code=" + code + " url=" + trimUrlForTrace(urlString));
+                return buildProxyRetryResponse(urlString, "proxy_http_" + code);
+            }
 
             // Попытка синхронизировать серверное время по времени в чате + HTTP Date.
             if (urlString.contains("ch.php") && urlString.contains("show=1")) {
@@ -474,6 +483,9 @@ public class WebViewRequestInterceptor {
                 if (secondProxy == null && ProxyRuntimeManager.isStrictProxyRequiredForCurrentProfile()) {
                     AppLog.e(TAG, "PROXY_FAIL: strict proxy enabled and runtime proxy unavailable, blocking direct WebView retry: " + urlString);
                     RuntimeNetTrace.push("PROXY_FAIL", "cmd=block scope=webview_retry strict=1 route=direct url=" + trimUrlForTrace(urlString));
+                    if (isMainFrameRequest(request)) {
+                        return buildProxyRetryResponse(urlString, "strict_proxy_retry_unavailable");
+                    }
                     return buildStrictProxyBlockedResponse();
                 }
                 AppLog.d(TAG, "PROXY_BINDING: interceptor retry openConnection via "
@@ -610,6 +622,16 @@ public class WebViewRequestInterceptor {
             AppLog.e("chat_poll", TAG, "Intercept failed: " + request.getUrl(), e);
             RuntimeNetTrace.push("HTTP_FAIL", "url=" + trimUrlForTrace(String.valueOf(request.getUrl())) + " error=" + e.getClass().getSimpleName());
             if (ProxyRuntimeManager.isStrictProxyRequiredForCurrentProfile()) {
+                String failingUrl = request.getUrl() == null ? "" : request.getUrl().toString();
+                if (isMainFrameRequest(request) && isNeverlandsUrlString(failingUrl)) {
+                    AppLog.w("proxy", TAG, "PROXY_RETRY: strict-proxy main-frame intercept failure"
+                            + ", error=" + e.getClass().getSimpleName()
+                            + ", url=" + failingUrl
+                            + ", context={" + buildProxyRetryContext() + "}");
+                    RuntimeNetTrace.push("PROXY_RETRY", "error=" + e.getClass().getSimpleName()
+                            + " url=" + trimUrlForTrace(failingUrl));
+                    return buildProxyRetryResponse(failingUrl, e.getClass().getSimpleName());
+                }
                 return buildStrictProxyBlockedResponse();
             }
             return null;
@@ -630,6 +652,98 @@ public class WebViewRequestInterceptor {
                 "utf-8",
                 new ByteArrayInputStream("proxy runtime unavailable".getBytes(Charset.forName("UTF-8")))
         );
+    }
+
+    /**
+     * Для main-frame с временным сбоем локальный proxy -> upstream proxy не отдаём plain 502 в игру.
+     * Страница сама перезагружает тот же URL, сохраняя strict-proxy маршрут и состояние боя/навигатора.
+     */
+    private static WebResourceResponse buildProxyRetryResponse(String urlString, String reason) {
+        String safeUrl = urlString == null ? "http://neverlands.ru/main.php" : urlString;
+        String html = "<!doctype html><html><head><meta charset=\"utf-8\">"
+                + "<meta http-equiv=\"refresh\" content=\"3;url=" + escapeHtmlAttr(safeUrl) + "\">"
+                + "<title>Proxy retry</title></head><body>"
+                + "Proxy connection failed, retrying through configured proxy..."
+                + "<script>setTimeout(function(){location.replace('" + escapeJsString(safeUrl) + "');},"
+                + MAIN_FRAME_PROXY_RETRY_DELAY_MS + ");</script>"
+                + "<!-- reason=" + escapeHtmlAttr(reason) + " -->"
+                + "</body></html>";
+        WebResourceResponse response = new WebResourceResponse(
+                "text/html",
+                "utf-8",
+                new ByteArrayInputStream(html.getBytes(Charset.forName("UTF-8")))
+        );
+        java.util.Map<String, String> headers = new java.util.HashMap<>();
+        headers.put("Cache-Control", "no-store, no-cache, must-revalidate");
+        headers.put("Pragma", "no-cache");
+        response.setResponseHeaders(headers);
+        return response;
+    }
+
+    private static boolean isMainFrameRequest(WebResourceRequest request) {
+        try {
+            return request != null && request.isForMainFrame();
+        } catch (Throwable ignored) {
+            return false;
+        }
+    }
+
+    private static boolean isTransientProxyHttpFailure(int code, byte[] bytes) {
+        if (code != 502 && code != 503 && code != 504) {
+            return false;
+        }
+        String body = bytes == null || bytes.length == 0
+                ? ""
+                : new String(bytes, Charset.forName("UTF-8")).toLowerCase(Locale.ROOT);
+        return body.contains("proxy forwarding error")
+                || body.contains("proxy runtime unavailable")
+                || body.contains("bad gateway")
+                || body.contains("gateway timeout")
+                || body.contains("service unavailable");
+    }
+
+    private static boolean isNeverlandsUrlString(String urlString) {
+        try {
+            Uri uri = Uri.parse(urlString);
+            String host = uri != null && uri.getHost() != null ? uri.getHost() : "";
+            return isNeverlandsHost(host);
+        } catch (Throwable ignored) {
+            return false;
+        }
+    }
+
+    private static String buildProxyRetryContext() {
+        String contentMainPhp = AppVars.ContentMainPhp;
+        boolean hasFightHtml = contentMainPhp != null
+                && (contentMainPhp.contains("var fight_ty") || contentMainPhp.contains("magic_slots();"));
+        boolean hasFightLink = AppVars.FightLink != null && AppVars.FightLink.contains("get_id=61&act=");
+        boolean recentFightPulse = AppVars.LastFightPulseAtMs > 0L
+                && (System.currentTimeMillis() - AppVars.LastFightPulseAtMs) <= 20_000L;
+        return "autoMoving=" + AppVars.AutoMoving
+                + ", destination=" + (AppVars.AutoMovingDestinaton == null ? "" : AppVars.AutoMovingDestinaton)
+                + ", hasFightHtml=" + hasFightHtml
+                + ", hasFightLink=" + hasFightLink
+                + ", recentFightPulse=" + recentFightPulse;
+    }
+
+    private static String escapeHtmlAttr(String value) {
+        if (value == null || value.isEmpty()) {
+            return "";
+        }
+        return value.replace("&", "&amp;")
+                .replace("\"", "&quot;")
+                .replace("<", "&lt;")
+                .replace(">", "&gt;");
+    }
+
+    private static String escapeJsString(String value) {
+        if (value == null || value.isEmpty()) {
+            return "";
+        }
+        return value.replace("\\", "\\\\")
+                .replace("'", "\\'")
+                .replace("\r", "")
+                .replace("\n", "");
     }
 
     /**

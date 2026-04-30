@@ -2177,6 +2177,8 @@ public class MainPhp {
         if (!isNonCombatAutoPausedByFastAction()
                 && !isNonCombatAutoPausedByCureAction()
                 && !AppVars.AutoDrinkBlazPending
+                && !isFightFrame
+                && !isFightTopFrame
                 && AppVars.AutoMoving
                 && html.contains(" id=wtime>")) {
             html = mainPhpWtime(html);
@@ -2186,6 +2188,8 @@ public class MainPhp {
         if (!isNonCombatAutoPausedByFastAction()
                 && !isNonCombatAutoPausedByCureAction()
                 && !AppVars.AutoDrinkBlazPending
+                && !isFightFrame
+                && !isFightTopFrame
                 && AppVars.AutoMoving) {
             String cityNavHtml = MainPhpCityNavigation.process(html);
             if (cityNavHtml != null && !cityNavHtml.isEmpty()) {
@@ -2219,6 +2223,11 @@ public class MainPhp {
                     return Russian.getBytes(buildRedirectHtml("Navigator bootstrap: go=ret", bootstrapRetLink));
                 }
             }
+        } else if (AppVars.AutoMoving && (isFightFrame || isFightTopFrame)) {
+            AppLog.d(TAG, "AUTO_MOVING_TRACE: pause navigator while fight frame is active, address=" + address
+                    + ", isFightFrame=" + isFightFrame
+                    + ", isFightTopFrame=" + isFightTopFrame
+                    + ", destination=" + AppVars.AutoMovingDestinaton);
         }
         if (html.contains("var map = [[")) {
             if (AppVars.FastReturnToMapPending) {
