@@ -1124,7 +1124,7 @@ public class MapAjax {
         }
         try {
             AutoFunctionsManager manager = AutoFunctionsManager.getInstance(AppVars.getContext());
-            if (!manager.isAutoCutEnabled()) {
+            if (!manager.isAutoCutLikeEnabled()) {
                 return;
             }
             AutoCutManager autoCut = AutoCutManager.getInstance(AppVars.getContext());
@@ -1514,7 +1514,7 @@ public class MapAjax {
         }
         try {
             AutoFunctionsManager manager = AutoFunctionsManager.getInstance(context);
-            if (!manager.isAutoCutEnabled()) {
+            if (!manager.isAutoCutLikeEnabled()) {
                 return false;
             }
             return AutoCutManager.getInstance(context).scheduleRouteRetryAfterTiredness(

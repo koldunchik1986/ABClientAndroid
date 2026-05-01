@@ -32,6 +32,7 @@ final class AutoCutHandler {
      * Используется для поиска серпов тем же путём, что AutoSkin ищет ножи.
      */
     private static final String AUTO_CUT_SICKLE_INV_FILTER = "&im=0&wca=4";
+    private static final String AUTO_CUT_AXE_INV_FILTER = "&im=0&wca=2";
     private static final String AUTO_CUT_CLEANUP_INV_FILTER = "&im=0";
 
     private AutoCutHandler() {
@@ -70,6 +71,7 @@ final class AutoCutHandler {
         AutoCutManager autoCut = AppVars.getContext() != null
                 ? AutoCutManager.getInstance(AppVars.getContext())
                 : null;
+        AutoCutManager.AutoCutMode mode = autoCut != null ? autoCut.getActiveMode() : AutoCutManager.AutoCutMode.HERB;
 
         // Синхронизация массы выполняется здесь, а не в `AlchemyAjaxPhp`, потому только main.php/inventory
         // стабильно содержит строку "Масса Вашего инвентаря: current/max". Значение нужно сразу двум
@@ -86,7 +88,7 @@ final class AutoCutHandler {
         }
 
         if (AppVars.AutoCutCleanupPending) {
-            String cleanupHtml = processCleanupOpenInventory(address, html);
+            String cleanupHtml = processCleanupOpenInventory(address, html, mode);
             if (cleanupHtml != null) {
                 return cleanupHtml;
             }
@@ -97,14 +99,14 @@ final class AutoCutHandler {
         }
 
         if (AppVars.AutoCutCheckSickle) {
-            String checkHtml = processSickleCheck(address, html);
+            String checkHtml = processSickleCheck(address, html, mode);
             if (checkHtml != null) {
                 return checkHtml;
             }
         }
 
         if (!AppVars.AutoCutArmedSickle) {
-            String wearHtml = processSickleWear(address, html);
+            String wearHtml = processSickleWear(address, html, mode);
             if (wearHtml != null) {
                 return wearHtml;
             }
@@ -137,7 +139,8 @@ final class AutoCutHandler {
         if (AppVars.getContext() != null) {
             AutoCutManager.getInstance(AppVars.getContext()).onCleanupCompleted("inventory_pass");
         }
-        return buildReturnToMapHtml("Авто-Травник: cleanup завершен", "auto_cut_cleanup_return", html);
+        AutoCutManager.AutoCutMode mode = getActiveMode();
+        return buildReturnToMapHtml(mode.title + ": cleanup завершен", "auto_cut_cleanup_return", html);
     }
 
     /**
@@ -149,15 +152,17 @@ final class AutoCutHandler {
      * - результат записывается в `AppVars.AutoCutArmedSickle` для guard перед `act=3`.
      */
     static boolean mainPhpArmedSickle(String html) {
+        AutoCutManager.AutoCutMode mode = getActiveMode();
         ParsedDressed parsedDressed = new ParsedDressed(html);
         if (!parsedDressed.Valid) {
             return false;
         }
-        boolean armed = parsedDressed.IsWearSickle();
+        boolean armed = parsedDressed.IsWearAutoCutTool(getConfiguredToolNames(mode).toArray(new String[0]));
         AppVars.AutoCutArmedSickle = armed;
         if (armed) {
             AppLog.i(AutoCutManager.TRACE_CHAIN, TAG,
-                    "sickle armed: " + AppVars.AutoCutSickleHand + " " + AppVars.AutoCutSickleHandD);
+                    "tool armed: mode=" + mode.actionKey + ", item="
+                            + AppVars.AutoCutSickleHand + " " + AppVars.AutoCutSickleHandD);
         }
         return armed;
     }
@@ -172,17 +177,18 @@ final class AutoCutHandler {
      *   снова проверил руки после серверного надевания.
      */
     static String mainPhpWearSickle(String html) {
+        AutoCutManager.AutoCutMode mode = getActiveMode();
         ParsedDressed dressed = new ParsedDressed(html);
-        if (dressed.Valid && dressed.IsWearSickle()) {
+        if (dressed.Valid && dressed.IsWearAutoCutTool(getConfiguredToolNames(mode).toArray(new String[0]))) {
             AppVars.AutoCutArmedSickle = true;
             AppVars.AutoCutCheckSickle = false;
-            boolean pendingCutResumed = AlchemyAjaxPhp.resumePendingCutAfterPreparation("sickle_already_ready");
-            continueRouteAfterPreparationIfIdle("sickle_already_ready", pendingCutResumed);
-            return buildReturnToMapHtml("Авто-Травник: серп уже надет", "auto_cut_sickle_ready", html);
+            boolean pendingCutResumed = AlchemyAjaxPhp.resumePendingCutAfterPreparation("tool_already_ready");
+            continueRouteAfterPreparationIfIdle("tool_already_ready", pendingCutResumed);
+            return buildReturnToMapHtml(mode.title + ": инструмент уже надет", "auto_cut_tool_ready", html);
         }
 
         List<InventoryParser.WearInvEntry> invList = InventoryParser.getWearInvList(html);
-        List<String> sickles = getConfiguredSickleNames();
+        List<String> sickles = getConfiguredToolNames(mode);
         for (InventoryParser.WearInvEntry thing : invList) {
             if (thing.name == null || thing.wearLink == null || thing.wearLink.isEmpty()) {
                 continue;
@@ -191,12 +197,13 @@ final class AutoCutHandler {
                 if (InventoryParser.containsIgnoreCase(thing.name, sickle)) {
                     AppVars.AutoCutCheckSickle = true;
                     AppLog.i(AutoCutManager.TRACE_CHAIN, TAG,
-                            "wear sickle: " + thing.name + ", link=" + thing.wearLink);
+                            "wear tool: mode=" + mode.actionKey + ", item=" + thing.name
+                                    + ", link=" + thing.wearLink);
                     return MainPhp.buildRedirectHtml("Одеваем " + thing.name, thing.wearLink);
                 }
             }
         }
-        stopAutoCutNoSickle();
+        stopAutoCutNoTool(mode);
         return null;
     }
 
@@ -204,42 +211,44 @@ final class AutoCutHandler {
      * Шаг проверки рук: если мы уже на персонаже/inventory snapshot, читаем экипировку;
      * иначе переводим main.php на страницу персонажа через существующий навигационный helper.
      */
-    private static String processSickleCheck(String address, String html) {
+    private static String processSickleCheck(String address, String html, AutoCutManager.AutoCutMode mode) {
         if (MainPhp.mainPhpIsPerc(html) || MainPhp.mainPhpIsInv(html) || MainPhp.isInventoryAddress(address)) {
             if (mainPhpArmedSickle(html)) {
                 AppVars.AutoCutCheckSickle = false;
-                boolean pendingCutResumed = AlchemyAjaxPhp.resumePendingCutAfterPreparation("sickle_checked");
-                continueRouteAfterPreparationIfIdle("sickle_checked", pendingCutResumed);
-                return buildReturnToMapHtml("Авто-Травник: серп проверен", "auto_cut_sickle_checked", html);
+                boolean pendingCutResumed = AlchemyAjaxPhp.resumePendingCutAfterPreparation("tool_checked");
+                continueRouteAfterPreparationIfIdle("tool_checked", pendingCutResumed);
+                return buildReturnToMapHtml(mode.title + ": инструмент проверен", "auto_cut_tool_checked", html);
             }
             AppLog.d(AutoCutManager.TRACE_CHAIN, TAG,
-                    "sickle not armed on current page, continue wear flow, address=" + address);
+                    "tool not armed on current page, continue wear flow, mode=" + mode.actionKey
+                            + ", address=" + address);
             return null;
         }
 
         String personHtml = MainPhp.mainPhpFindPerc(html);
         if (personHtml != null && !personHtml.isEmpty()) {
-            AppLog.d(AutoCutManager.TRACE_CHAIN, TAG, "redirect to character page for sickle check");
+            AppLog.d(AutoCutManager.TRACE_CHAIN, TAG, "redirect to character page for tool check, mode=" + mode.actionKey);
             return personHtml;
         }
-        return MainPhp.buildRedirectHtml("Авто-Травник: персонаж", "main.php?get_id=56&act=10&go=inf");
+        return MainPhp.buildRedirectHtml(mode.title + ": персонаж", "main.php?get_id=56&act=10&go=inf");
     }
 
     /**
      * Шаг надевания серпа: переводит на вкладку вещей и делегирует поиск предмета
      * в `mainPhpWearSickle(...)`. Не создаёт новый HTTP-клиент и не обходит `MainPhp`.
      */
-    private static String processSickleWear(String address, String html) {
-        String invHtml = MainPhp.mainPhpFindInvWithFallback(html, AUTO_CUT_SICKLE_INV_FILTER, address);
+    private static String processSickleWear(String address, String html, AutoCutManager.AutoCutMode mode) {
+        String toolFilter = getToolInventoryFilter(mode);
+        String invHtml = MainPhp.mainPhpFindInvWithFallback(html, toolFilter, address);
         if (invHtml != null && !invHtml.isEmpty()) {
-            AppLog.d(AutoCutManager.TRACE_CHAIN, TAG, "redirect to inventory for sickle wear");
+            AppLog.d(AutoCutManager.TRACE_CHAIN, TAG, "redirect to inventory for tool wear, mode=" + mode.actionKey);
             return invHtml;
         }
         if (MainPhp.mainPhpIsInv(html) || MainPhp.isInventoryAddress(address)) {
             String wearHtml = mainPhpWearSickle(html);
             if (wearHtml == null || wearHtml.isEmpty()) {
-                if (!MainPhp.inventoryAddressMatchesFilter(address, AUTO_CUT_SICKLE_INV_FILTER)) {
-                    return MainPhp.buildRedirectHtml("Авто-Травник: вещи", "main.php?im=0&wca=4");
+                if (!MainPhp.inventoryAddressMatchesFilter(address, toolFilter)) {
+                    return MainPhp.buildRedirectHtml(mode.title + ": вещи", "main.php?im=0" + toolFilter.replace("&im=0", ""));
                 }
             }
             return wearHtml;
@@ -252,7 +261,7 @@ final class AutoCutHandler {
      * Сам cleanup выполняет существующий `mainPhpInv(...)`; этот метод только гарантирует,
      * что мы попадём на inventory-страницу и не перехватим ручной HTML-клик.
      */
-    private static String processCleanupOpenInventory(String address, String html) {
+    private static String processCleanupOpenInventory(String address, String html, AutoCutManager.AutoCutMode mode) {
         boolean inventoryHtml = MainPhp.mainPhpIsInv(html) || MainPhp.hasInventoryRows(html);
         if (inventoryHtml) {
             return null;
@@ -267,7 +276,7 @@ final class AutoCutHandler {
             }
             AppLog.w(AutoCutManager.TRACE_CHAIN, TAG,
                     "cleanup inventory address has no inventory html, reload main frame, address=" + address);
-            return MainPhp.buildRedirectHtml("Авто-Травник: повторное открытие инвентаря",
+            return MainPhp.buildRedirectHtml(mode.title + ": повторное открытие инвентаря",
                     "main.php?get_id=56&act=10&go=inf");
         }
         String inventoryFilter = AUTO_CUT_CLEANUP_INV_FILTER;
@@ -278,7 +287,7 @@ final class AutoCutHandler {
                             + ", filter=" + inventoryFilter);
             return invHtml;
         }
-        return MainPhp.buildRedirectHtml("Авто-Травник: cleanup инвентаря", "main.php?im=0");
+        return MainPhp.buildRedirectHtml(mode.title + ": cleanup инвентаря", "main.php?im=0");
     }
 
     /**
@@ -313,6 +322,7 @@ final class AutoCutHandler {
     }
 
     private static String releaseMassSnapshotGuardAndReturnToMap(String source, String html) {
+        AutoCutManager.AutoCutMode mode = getActiveMode();
         AppVars.AutoCutCheckSickle = false;
         AppLog.i(AutoCutManager.TRACE_CHAIN, TAG,
                 "mass snapshot sync finished, return to map, source=" + source
@@ -320,7 +330,7 @@ final class AutoCutHandler {
                         + ", mass=" + AppVars.AutoFishMassa);
         boolean pendingCutResumed = AlchemyAjaxPhp.resumePendingCutAfterPreparation("mass_snapshot:" + source);
         continueRouteAfterPreparationIfIdle("mass_snapshot:" + source, pendingCutResumed);
-        return buildReturnToMapHtml("Авто-Травник: масса проверена", "auto_cut_mass_snapshot", html);
+        return buildReturnToMapHtml(mode.title + ": масса проверена", "auto_cut_mass_snapshot", html);
     }
 
     private static void continueRouteAfterPreparationIfIdle(String source, boolean pendingCutResumed) {
@@ -341,26 +351,51 @@ final class AutoCutHandler {
      * Fail-safe при отсутствии серпа: отключает AutoCut через `AutoFunctionsManager`,
      * пишет сообщение в чат и сбрасывает runtime-флаги, чтобы не зациклить переходы inventory.
      */
-    private static void stopAutoCutNoSickle() {
+    private static void stopAutoCutNoTool(AutoCutManager.AutoCutMode mode) {
+        AutoCutManager.AutoCutMode safeMode = mode == null ? AutoCutManager.AutoCutMode.HERB : mode;
         AppVars.AutoCutCheckSickle = false;
         AppVars.AutoCutArmedSickle = false;
-        AppLog.w(AutoCutManager.TRACE_CHAIN, TAG, "sickle not found, stop AutoCut");
+        AppLog.w(AutoCutManager.TRACE_CHAIN, TAG, "tool not found, stop AutoCut, mode=" + safeMode.actionKey);
+        String toolName = safeMode.isTree() ? "Топор" : "Серп";
         MainPhp.sendInventoryChatMessage(MainPhp.buildServerChatTimeHtmlExternal()
-                + "<font color=#990000><b>[auto_cut]</b> Серп для Авто-Травника не найден, автосрез остановлен.</font>");
+                + "<font color=#990000><b>[" + safeMode.actionKey + "]</b> " + toolName
+                + " для " + safeMode.title + " не найден, автофункция остановлена.</font>");
         if (AppVars.getContext() != null) {
-            AutoFunctionsManager.getInstance(AppVars.getContext()).setAutoCutEnabled(false);
+            AutoFunctionsManager manager = AutoFunctionsManager.getInstance(AppVars.getContext());
+            if (safeMode.isTree()) {
+                manager.setAutoLumberjackEnabled(false);
+            } else {
+                manager.setAutoCutEnabled(false);
+            }
         }
     }
 
-    private static List<String> getConfiguredSickleNames() {
+    private static List<String> getConfiguredToolNames(AutoCutManager.AutoCutMode mode) {
         if (AppVars.getContext() == null) {
-            return java.util.Arrays.asList(ParsedDressed.getAutoCutSickleNames());
+            return java.util.Arrays.asList(mode != null && mode.isTree()
+                    ? ParsedDressed.getAutoCutAxeNames()
+                    : ParsedDressed.getAutoCutSickleNames());
         }
-        List<String> sickles = AutoCutManager.getInstance(AppVars.getContext()).getEnabledSickleNames();
+        AutoCutManager autoCut = AutoCutManager.getInstance(AppVars.getContext());
+        AutoCutManager.AutoCutMode safeMode = mode == null ? autoCut.getActiveMode() : mode;
+        List<String> sickles = autoCut.getEnabledToolNames(safeMode);
         if (sickles == null || sickles.isEmpty()) {
-            return java.util.Arrays.asList(ParsedDressed.getAutoCutSickleNames());
+            return java.util.Arrays.asList(safeMode.isTree()
+                    ? ParsedDressed.getAutoCutAxeNames()
+                    : ParsedDressed.getAutoCutSickleNames());
         }
         return sickles;
+    }
+
+    private static AutoCutManager.AutoCutMode getActiveMode() {
+        if (AppVars.getContext() == null) {
+            return AutoCutManager.AutoCutMode.HERB;
+        }
+        return AutoCutManager.getInstance(AppVars.getContext()).getActiveMode();
+    }
+
+    private static String getToolInventoryFilter(AutoCutManager.AutoCutMode mode) {
+        return mode != null && mode.isTree() ? AUTO_CUT_AXE_INV_FILTER : AUTO_CUT_SICKLE_INV_FILTER;
     }
 
     /**
@@ -370,7 +405,7 @@ final class AutoCutHandler {
     private static boolean isAutoCutEnabled() {
         try {
             return AppVars.getContext() != null
-                    && AutoFunctionsManager.getInstance(AppVars.getContext()).isAutoCutEnabled();
+                    && AutoFunctionsManager.getInstance(AppVars.getContext()).isAutoCutLikeEnabled();
         } catch (Exception e) {
             AppLog.w(AutoCutManager.TRACE_CHAIN, TAG, "AutoCut state read failed", e);
             return false;

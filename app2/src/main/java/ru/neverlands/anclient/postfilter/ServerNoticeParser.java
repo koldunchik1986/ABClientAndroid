@@ -194,7 +194,7 @@ public class ServerNoticeParser {
             return;
         }
         try {
-            if (!AutoFunctionsManager.getInstance(AppVars.getContext()).isAutoCutEnabled()) {
+            if (!AutoFunctionsManager.getInstance(AppVars.getContext()).isAutoCutLikeEnabled()) {
                 AppLog.d(AutoCutManager.TRACE_CHAIN, TAG,
                         "garbage notice ignored: AutoCut disabled, source=" + sourceTag);
                 return;

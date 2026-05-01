@@ -224,6 +224,7 @@ final class BossAuto {
         String autoMovingDestination;
         boolean autoTreasureEnabled;
         boolean autoCutEnabled;
+        boolean autoLumberjackEnabled;
         boolean autoRefreshEnabled;
 
         String autoCompassTargetNick;
@@ -897,6 +898,7 @@ final class BossAuto {
         snapshot.autoMovingDestination = AppVars.AutoMovingDestinaton == null ? "" : AppVars.AutoMovingDestinaton.trim();
         snapshot.autoTreasureEnabled = owner.isAutoTreasureEnabled();
         snapshot.autoCutEnabled = owner.isAutoCutEnabled();
+        snapshot.autoLumberjackEnabled = owner.isAutoLumberjackEnabled();
         snapshot.autoRefreshEnabled = owner.isAutoRefreshEnabled();
 
         snapshot.autoCompassTargetNick = owner.getAutoCompassTargetNick();
@@ -926,6 +928,7 @@ final class BossAuto {
         owner.stopAutoMoving();
         owner.setAutoTreasureEnabled(false);
         owner.setAutoCutEnabled(false);
+        owner.setAutoLumberjackEnabled(false);
         owner.setAutoRefreshEnabled(false);
     }
 
@@ -947,6 +950,7 @@ final class BossAuto {
         owner.setAutoDrinkEnabled(snapshot.autoDrinkEnabled);
         owner.setAutoTreasureEnabled(snapshot.autoTreasureEnabled);
         owner.setAutoCutEnabled(snapshot.autoCutEnabled);
+        owner.setAutoLumberjackEnabled(snapshot.autoLumberjackEnabled);
         owner.setAutoRefreshEnabled(snapshot.autoRefreshEnabled);
 
         owner.setAutoCompassTargetNick(snapshot.autoCompassTargetNick);

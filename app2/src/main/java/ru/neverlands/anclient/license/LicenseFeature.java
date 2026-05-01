@@ -17,7 +17,7 @@ import ru.neverlands.anclient.model.QuickActionType;
  * - `limited` соответствует public/free набору общедоступных функций;
  * - `full` для индивидуального grant разворачивается во все quick actions плюс `FEATURE_CLANS`;
  * - `publicFeatures` дополнительно проходит через {@link #removeNonPublicFeatures(Set)}:
- *   `anti_captcha` и `auto_cut` нельзя открыть общим bundle даже если администратор
+ *   `anti_captcha`, `auto_cut` и `auto_lumberjack` нельзя открыть общим bundle даже если администратор
  *   ошибочно указал public `full`;
  * - custom CSV grants принимаются как есть после нормализации.
  */
@@ -28,6 +28,7 @@ public final class LicenseFeature {
     public static final String FEATURE_CLANS = "clans";
     public static final String FEATURE_ANTI_CAPTCHA = "anti_captcha";
     public static final String FEATURE_AUTO_CUT = QuickActionType.AUTO_CUT.getActionKey();
+    public static final String FEATURE_AUTO_LUMBERJACK = QuickActionType.AUTO_LUMBERJACK.getActionKey();
     public static final String FEATURE_NONE = "none";
 
     private static final LinkedHashSet<String> LIMITED_FEATURES = buildLimitedFeatures();
@@ -79,9 +80,9 @@ public final class LicenseFeature {
         String spec = normalize(featureSpec);
         // Семантика public bundle: empty/none/off/empty не должны случайно превратиться в full.
         // Этот метод используется только для `ANREG2.publicFeatures`.
-        // Важный инвариант лицензирования: Anti-Captcha и Авто-Травник не являются
+        // Важный инвариант лицензирования: Anti-Captcha, Авто-Травник и Авто-Лесоруб не являются
         // общедоступными функциями. Они доступны только через индивидуальный `full` grant
-        // или custom grant с ключами `anti_captcha`/`auto_cut`.
+        // или custom grant с ключами `anti_captcha`/`auto_cut`/`auto_lumberjack`.
         if (spec.isEmpty() || FEATURE_NONE.equals(spec) || "off".equals(spec) || "empty".equals(spec)) {
             return Collections.emptySet();
         }
@@ -141,6 +142,7 @@ public final class LicenseFeature {
         if ("Авто-Питьё".equals(value) || "Авто-Питье".equals(value)) return QuickActionType.AUTO_DRINK.getActionKey();
         if ("Авто-Клад".equals(value)) return QuickActionType.AUTO_TREASURE.getActionKey();
         if ("Авто-Травник".equals(value)) return QuickActionType.AUTO_CUT.getActionKey();
+        if ("Авто-Лесоруб".equals(value)) return QuickActionType.AUTO_LUMBERJACK.getActionKey();
         if ("Авто-Босс".equals(value) || "Авто-Боссы".equals(value)) return QuickActionType.AUTO_BOSS.getActionKey();
         if ("Анти-Captcha".equals(value) || "Анти-Капча".equals(value)) return QuickActionType.AUTO_CAPTCHA.getActionKey();
         return "";
@@ -157,7 +159,8 @@ public final class LicenseFeature {
                 String normalized = normalize(feature);
                 if (normalized.isEmpty()
                         || FEATURE_ANTI_CAPTCHA.equals(normalized)
-                        || FEATURE_AUTO_CUT.equals(normalized)) {
+                        || FEATURE_AUTO_CUT.equals(normalized)
+                        || FEATURE_AUTO_LUMBERJACK.equals(normalized)) {
                     continue;
                 }
                 result.add(normalized);
@@ -195,10 +198,11 @@ public final class LicenseFeature {
         result.add(QuickActionType.OPEN_STATS.getActionKey());
         result.add(QuickActionType.OPEN_PINFO.getActionKey());
         result.add(FEATURE_CLANS);
-        // Anti-Captcha и AutoCut намеренно не входят в limited/public набор:
+        // Anti-Captcha, AutoCut и AutoLumberjack намеренно не входят в limited/public набор:
         // - Anti-Captcha использует платную внешнюю интеграцию;
         // - Авто-Травник — premium automation, которая выдаётся только индивидуальным
         //   full grant или custom grant `auto_cut` с нужным сроком.
+        // - Авто-Лесоруб использует тот же premium contract с custom grant `auto_lumberjack`.
         return result;
     }
 

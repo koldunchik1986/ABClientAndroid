@@ -84,6 +84,16 @@ public class ParsedDressed {
             "Серп эксперта-травника",
             "Серп Триады"
     };
+    /** Whitelist топоров Авто-Лесоруба для `main.php?wca=2`. */
+    private static final String[] AUTO_CUT_AXE_NAMES = new String[]{
+            "Мачете",
+            "Столярный топорик",
+            "Плотницкий топор",
+            "Топор подмастерья",
+            "Топор дровосека",
+            "Секира лесоруба",
+            "Секира Мастера-лесоруба"
+    };
     private static final String[] FURY_SCROLL_NAMES = new String[]{
             "Свиток Удар Ярости",
             "Снежок"
@@ -375,8 +385,16 @@ public class ParsedDressed {
      * - `AppVars.AutoCutSickleHand/AutoCutSickleHandD` — runtime-снимок для логов и handler guard.
      */
     public boolean IsWearSickle() {
+        return IsWearAutoCutTool(AUTO_CUT_SICKLE_NAMES);
+    }
+
+    /** Проверяет, надет ли один из разрешённых инструментов AutoCut-like режима. */
+    public boolean IsWearAutoCutTool(String[] toolNames) {
+        String[] safeToolNames = toolNames == null || toolNames.length == 0
+                ? AUTO_CUT_SICKLE_NAMES
+                : toolNames;
         for (int i = 0; i < slist.size(); i++) {
-            for (String sickleName : AUTO_CUT_SICKLE_NAMES) {
+            for (String sickleName : safeToolNames) {
                 if (containsIgnoreCase(slist.get(i), sickleName)) {
                     AppVars.AutoCutSickleHand = slist.get(i);
                     AppVars.AutoCutSickleHandD = i < dlist.size() ? dlist.get(i) : "";
@@ -390,6 +408,11 @@ public class ParsedDressed {
     /** Возвращает копию whitelist-а серпов для inventory wear-поиска. */
     public static String[] getAutoCutSickleNames() {
         return AUTO_CUT_SICKLE_NAMES.clone();
+    }
+
+    /** Возвращает копию whitelist-а топоров для inventory wear-поиска. */
+    public static String[] getAutoCutAxeNames() {
+        return AUTO_CUT_AXE_NAMES.clone();
     }
 
     /**

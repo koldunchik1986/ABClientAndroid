@@ -723,13 +723,14 @@ public class WebAppInterface {
     public boolean DoHerbAutoCut() {
         try {
             AutoFunctionsManager manager = AutoFunctionsManager.getInstance(mContext);
-            if (!manager.isAutoCutEnabled()) {
+            if (!manager.isAutoCutLikeEnabled()) {
                 AppLog.d(AutoCutManager.TRACE_CHAIN, "WebAppInterface", "DoHerbAutoCut=false, disabled");
                 return false;
             }
             AutoCutManager autoCut = AutoCutManager.getInstance(mContext);
-            if (autoCut.getSelectedHerbCount() <= 0) {
-                AppLog.d(AutoCutManager.TRACE_CHAIN, "WebAppInterface", "DoHerbAutoCut=false, no selected herbs");
+            AutoCutManager.AutoCutMode mode = autoCut.getActiveMode();
+            if (autoCut.getSelectedResourceCount(mode) <= 0) {
+                AppLog.d(AutoCutManager.TRACE_CHAIN, "WebAppInterface", "DoHerbAutoCut=false, no selected resources, mode=" + mode.actionKey);
                 return false;
             }
             if (!autoCut.shouldAutoLookOnCurrentCell()) {
@@ -752,7 +753,7 @@ public class WebAppInterface {
                                 + Math.max(0L, AppVars.NeverTimer - System.currentTimeMillis()));
                 return false;
             }
-            AppLog.i(AutoCutManager.TRACE_CHAIN, "WebAppInterface", "DoHerbAutoCut=true");
+            AppLog.i(AutoCutManager.TRACE_CHAIN, "WebAppInterface", "DoHerbAutoCut=true, mode=" + mode.actionKey);
             return true;
         } catch (Exception e) {
             AppLog.w(AutoCutManager.TRACE_CHAIN, "WebAppInterface", "DoHerbAutoCut failed", e);
@@ -768,7 +769,8 @@ public class WebAppInterface {
     @JavascriptInterface
     public boolean IsHerbAutoCut(String herb) {
         try {
-            return AutoCutManager.getInstance(mContext).isHerbSelected("", herb);
+            AutoCutManager autoCut = AutoCutManager.getInstance(mContext);
+            return autoCut.isResourceSelected(autoCut.getActiveMode(), "", herb);
         } catch (Exception e) {
             AppLog.w(AutoCutManager.TRACE_CHAIN, "WebAppInterface", "IsHerbAutoCut failed", e);
             return false;

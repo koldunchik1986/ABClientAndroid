@@ -104,9 +104,12 @@ public final class AlchemyAjaxPhp {
         }
 
         AutoCutManager autoCut = AutoCutManager.getInstance(AppVars.getContext());
+        AutoCutManager.AutoCutMode mode = autoCut.getActiveMode();
         autoCut.clearPendingLookRetry("alchemy_act1");
         for (ResourceCandidate resource : state.resources) {
-            autoCut.registerObservedHerb(resource.resId, resource.name, 0, resource.rTime, "");
+            if (autoCut.isResourceCandidateForMode(mode, resource.resId, resource.name, resource.rType)) {
+                autoCut.registerObservedResource(mode, resource.resId, resource.name, 0, resource.rTime, "");
+            }
         }
         autoCut.updateCurrentCellSnapshot(buildCellSnapshotList(state.resources), "alchemy_act1");
 
@@ -115,14 +118,18 @@ public final class AlchemyAjaxPhp {
             if (resource.availableCount <= 0 || TextUtils.isEmpty(resource.cutVcode)) {
                 continue;
             }
-            if (autoCut.isHerbSelected(resource.resId, resource.name)) {
+            if (!autoCut.isResourceCandidateForMode(mode, resource.resId, resource.name, resource.rType)) {
+                continue;
+            }
+            if (autoCut.isResourceSelected(mode, resource.resId, resource.name)) {
                 selected = resource;
                 break;
             }
         }
         if (selected == null) {
             AppLog.d(AutoCutManager.TRACE_CHAIN, TAG,
-                    "act1: no selected available herb, resources=" + state.resources.size());
+                    "act1: no selected available resource, mode=" + mode.actionKey
+                            + ", resources=" + state.resources.size());
             autoCut.clearDueHerbTimersForCurrentCell("alchemy_act1_no_selected");
             autoCut.onScanWithoutSelectedHerb("alchemy_act1");
             return;
@@ -133,18 +140,20 @@ public final class AlchemyAjaxPhp {
                 buildCellResourcesSummary(state.resources),
                 hasMoreSelectedAvailableAfterCut(state.resources, selected, autoCut),
                 System.currentTimeMillis());
-        if (!autoCut.isSickleReadyForCut()) {
+        if (!autoCut.isToolReadyForCut()) {
             pendingCut = selectedCut;
             autoCut.requestSickleCheckBeforeCut("alchemy_act1:" + selected.resId);
             AppLog.i(AutoCutManager.TRACE_CHAIN, TAG,
-                    "act1: selected herb waits for sickle check, herb=" + selected.name);
+                    "act1: selected resource waits for tool check, mode=" + mode.actionKey
+                            + ", resource=" + selected.name);
             return;
         }
         if (!selectedCut.isCaptchaRequired() && autoCut.needsMassSnapshotBeforeCut()) {
             pendingCut = selectedCut;
             autoCut.requestMassSnapshotBeforeCut("alchemy_act1:" + selected.resId);
             AppLog.i(AutoCutManager.TRACE_CHAIN, TAG,
-                    "act1: selected herb waits for mass snapshot, herb=" + selected.name);
+                    "act1: selected resource waits for mass snapshot, mode=" + mode.actionKey
+                            + ", resource=" + selected.name);
             return;
         }
 
@@ -165,9 +174,9 @@ public final class AlchemyAjaxPhp {
                 return;
             }
             AutoCutManager autoCut = AutoCutManager.getInstance(AppVars.getContext());
-            if (!autoCut.isSickleReadyForCut()) {
+            if (!autoCut.isToolReadyForCut()) {
                 AppLog.w(AutoCutManager.TRACE_CHAIN, TAG,
-                        "pending cut resume skipped: sickle not ready, source=" + source);
+                        "pending cut resume skipped: tool not ready, source=" + source);
                 return;
             }
             if (!current.isCaptchaRequired() && autoCut.needsMassSnapshotBeforeCut()) {
@@ -180,7 +189,7 @@ public final class AlchemyAjaxPhp {
             dispatchPendingCut(current, "resume_after_" + source);
         }, 900L);
         AppLog.i(AutoCutManager.TRACE_CHAIN, TAG,
-                "pending cut resume scheduled after preparation, herb=" + scheduled.resource.name
+                "pending cut resume scheduled after preparation, resource=" + scheduled.resource.name
                         + ", source=" + source);
         return true;
     }
@@ -207,8 +216,9 @@ public final class AlchemyAjaxPhp {
         } else {
             submitAlchemyAct3ViaAjax(finishUrl);
         }
-        AppLog.i(AutoCutManager.TRACE_CHAIN, TAG, "act1: selected herb=" + cut.resource.name
+        AppLog.i(AutoCutManager.TRACE_CHAIN, TAG, "act1: selected resource=" + cut.resource.name
                 + ", id=" + cut.resource.resId
+                + ", rType=" + cut.resource.rType
                 + ", captchaRequired=" + captchaRequired
                 + ", source=" + source);
     }
@@ -428,11 +438,13 @@ public final class AlchemyAjaxPhp {
         if (resources == null || selected == null || autoCut == null) {
             return false;
         }
+        AutoCutManager.AutoCutMode mode = autoCut.getActiveMode();
         for (ResourceCandidate resource : resources) {
             if (resource == null || resource.availableCount <= 0 || TextUtils.isEmpty(resource.cutVcode)) {
                 continue;
             }
-            if (!autoCut.isHerbSelected(resource.resId, resource.name)) {
+            if (!autoCut.isResourceCandidateForMode(mode, resource.resId, resource.name, resource.rType)
+                    || !autoCut.isResourceSelected(mode, resource.resId, resource.name)) {
                 continue;
             }
             int remaining = resource.availableCount;
@@ -519,7 +531,7 @@ public final class AlchemyAjaxPhp {
     private static boolean isAutoCutEnabled() {
         try {
             return AppVars.getContext() != null
-                    && AutoFunctionsManager.getInstance(AppVars.getContext()).isAutoCutEnabled();
+                    && AutoFunctionsManager.getInstance(AppVars.getContext()).isAutoCutLikeEnabled();
         } catch (Exception e) {
             AppLog.w(AutoCutManager.TRACE_CHAIN, TAG, "failed to read AutoCut state", e);
             return false;

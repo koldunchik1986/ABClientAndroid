@@ -538,6 +538,7 @@ public class AppVars {
     public static volatile boolean TimerPauseAutoFishState = false;
     public static volatile boolean TimerPauseAutoSkinState = false;
     public static volatile boolean TimerPauseAutoCutState = false;
+    public static volatile boolean TimerPauseAutoLumberjackState = false;
     public static volatile boolean TimerPauseAutoBaitState = false;
     public static volatile boolean TimerPauseAutoCompassState = false;
     public static volatile boolean TimerPauseAutoAttackState = false;

@@ -168,6 +168,8 @@ public class FunctionListAdapter extends BaseAdapter {
                 return "http://image.neverlands.ru/achievement/9/a_9_10.gif";
             case AUTO_CUT:
                 return "http://image.neverlands.ru/achievement/20/a_20_3.gif";
+            case AUTO_LUMBERJACK:
+                return "http://image.neverlands.ru/achievement/30/a_30_10.gif";
             case AUTO_REFRESH:
             case AUTO_CAPTCHA:
                 return null;

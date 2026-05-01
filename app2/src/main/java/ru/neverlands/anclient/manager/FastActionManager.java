@@ -378,6 +378,10 @@ public class FastActionManager {
                     mgr.setAutoCutEnabled(true);
                     AppLog.d(TAG, "[TIMER_RESTORE] Auto-Herb restored");
                 }
+                if (AppVars.TimerPauseAutoLumberjackState && !mgr.isAutoLumberjackEnabled()) {
+                    mgr.setAutoLumberjackEnabled(true);
+                    AppLog.d(TAG, "[TIMER_RESTORE] Auto-Lumberjack restored");
+                }
                 if (AppVars.TimerPauseAutoBaitState && !mgr.isAutoBaitEnabled()) {
                     mgr.setAutoBaitEnabled(true);
                     AppLog.d(TAG, "[TIMER_RESTORE] Auto-Bait restored");
@@ -403,6 +407,7 @@ public class FastActionManager {
         AppVars.TimerPauseAutoFishState = false;
         AppVars.TimerPauseAutoSkinState = false;
         AppVars.TimerPauseAutoCutState = false;
+        AppVars.TimerPauseAutoLumberjackState = false;
         AppVars.TimerPauseAutoBaitState = false;
         AppVars.TimerPauseAutoCompassState = false;
         AppVars.TimerPauseAutoAttackState = false;

@@ -170,8 +170,8 @@ public class QuickButtonsPanel {
 
     // Список доступных авто-функций для включения/отключения по таймеру.
     // Перед показом список проходит `LicenseRuntime.filterAutoFunctionLabels(...)`, поэтому
-    // `Авто-Травник` и `Анти-Captcha` появятся только при individual full/custom grant
-    // (`auto_cut`/`anti_captcha`) и исчезнут после истечения expiresAt.
+    // `Авто-Травник`, `Авто-Лесоруб` и `Анти-Captcha` появятся только при individual
+    // full/custom grant (`auto_cut`/`auto_lumberjack`/`anti_captcha`) и исчезнут после истечения expiresAt.
     private static final String[] AUTO_FUNCTIONS = new String[]{
             "Авто-Бой",
             "Авто-Рыбалка",
@@ -179,6 +179,7 @@ public class QuickButtonsPanel {
             "Авто-Питьё",
             "Авто-Клад",
             "Авто-Травник",
+            "Авто-Лесоруб",
             "Авто-Босс",
             "Анти-Captcha"
     };
@@ -394,6 +395,8 @@ public class QuickButtonsPanel {
                 return "http://image.neverlands.ru/achievement/9/a_9_10.gif";
             case AUTO_CUT:
                 return "http://image.neverlands.ru/achievement/20/a_20_3.gif";
+            case AUTO_LUMBERJACK:
+                return "http://image.neverlands.ru/achievement/30/a_30_10.gif";
             case AUTO_REFRESH:
                 return null;
             case OPEN_CONTACTS:
@@ -462,6 +465,7 @@ public class QuickButtonsPanel {
             case AUTO_MOVING:
             case AUTO_TREASURE:
             case AUTO_CUT:
+            case AUTO_LUMBERJACK:
             case AUTO_REFRESH:
             case AUTO_CAPTCHA:
                 return true;
@@ -506,6 +510,8 @@ public class QuickButtonsPanel {
             case AUTO_TREASURE:
                 return R.drawable.ic_auto_detect;
             case AUTO_CUT:
+                return R.drawable.ic_add;
+            case AUTO_LUMBERJACK:
                 return R.drawable.ic_add;
             case AUTO_REFRESH:
                 return R.drawable.ic_refresh;
@@ -653,6 +659,16 @@ public class QuickButtonsPanel {
                     Toast.makeText(context, "Авто-Травник ВКЛ, но травы не выбраны", Toast.LENGTH_LONG).show();
                 } else {
                     Toast.makeText(context, autoFunctionsManager.isAutoCutEnabled() ? "Авто-Травник ВКЛ" : "Авто-Травник ВЫКЛ", Toast.LENGTH_SHORT).show();
+                }
+                loadAndUpdateButtons();
+                break;
+            case AUTO_LUMBERJACK:
+                autoFunctionsManager.toggleAutoLumberjack();
+                if (autoFunctionsManager.isAutoLumberjackEnabled()
+                        && autoFunctionsManager.getAutoLumberjackSelectedTreeCount() == 0) {
+                    Toast.makeText(context, "Авто-Лесоруб ВКЛ, но деревья не выбраны", Toast.LENGTH_LONG).show();
+                } else {
+                    Toast.makeText(context, autoFunctionsManager.isAutoLumberjackEnabled() ? "Авто-Лесоруб ВКЛ" : "Авто-Лесоруб ВЫКЛ", Toast.LENGTH_SHORT).show();
                 }
                 loadAndUpdateButtons();
                 break;
@@ -912,6 +928,18 @@ public class QuickButtonsPanel {
                         if (which == 0) showAutoCutSettingsDialog();
                         else if (which == 1) showAutoCutHerbListDialog("Все");
                         else if (which == 2) showAutoCutSickleSettingsDialog();
+                        else if (which == 3) showAutoCutShiftSettingsDialog();
+                        else showRemoveConfirmation(position);
+                    })
+                    .setNegativeButton("Отмена", null)
+                    .show();
+        } else if (button.getActionType() == QuickActionType.AUTO_LUMBERJACK) {
+            new AlertDialog.Builder(context)
+                    .setTitle("Авто-Лесоруб")
+                    .setItems(new CharSequence[]{"Настройки авто-лесоруба", "Список деревьев", "Топоры", "Смены ресурсов", "Удалить кнопку"}, (dialog, which) -> {
+                        if (which == 0) showAutoLumberjackSettingsDialog();
+                        else if (which == 1) showAutoLumberjackTreeListDialog("Все");
+                        else if (which == 2) showAutoLumberjackAxeSettingsDialog();
                         else if (which == 3) showAutoCutShiftSettingsDialog();
                         else showRemoveConfirmation(position);
                     })
@@ -1435,6 +1463,286 @@ public class QuickButtonsPanel {
                     autoFunctionsManager.updateAutoCutHerbMeta(herb.key, skill, growth, group);
                     Toast.makeText(context, "Трава обновлена", Toast.LENGTH_SHORT).show();
                     showAutoCutSettingsDialog();
+                })
+                .setNegativeButton("Отмена", null)
+                .show();
+    }
+
+    private void showAutoLumberjackSettingsDialog() {
+        final int pad = (int) (context.getResources().getDisplayMetrics().density * 12);
+        ScrollView scroll = new ScrollView(context);
+        LinearLayout root = new LinearLayout(context);
+        root.setOrientation(LinearLayout.VERTICAL);
+        root.setPadding(pad, pad, pad, pad);
+        scroll.addView(root);
+
+        TextView cellsTitle = new TextView(context);
+        cellsTitle.setText("Клетки для поиска деревьев (через запятую)");
+        root.addView(cellsTitle);
+
+        EditText cellsInput = new EditText(context);
+        cellsInput.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_MULTI_LINE);
+        cellsInput.setSingleLine(false);
+        cellsInput.setMinLines(2);
+        cellsInput.setHint("Например: 12-494, 13-501");
+        cellsInput.setText(autoFunctionsManager.getAutoLumberjackCellsCsv());
+        root.addView(cellsInput);
+
+        CheckBox writeChat = new CheckBox(context);
+        writeChat.setText("Выводить результат в чат");
+        writeChat.setChecked(autoFunctionsManager.isAutoLumberjackWriteChatEnabled());
+        writeChat.setPadding(0, pad / 2, 0, 0);
+        root.addView(writeChat);
+
+        CheckBox cleanupEnabled = new CheckBox(context);
+        cleanupEnabled.setText("После набора массы заходить в инвентарь для cleanup");
+        cleanupEnabled.setChecked(autoFunctionsManager.isAutoLumberjackCleanupEnabled());
+        cleanupEnabled.setPadding(0, pad / 2, 0, 0);
+        root.addView(cleanupEnabled);
+
+        CheckBox cutByTimers = new CheckBox(context);
+        cutByTimers.setText("Спиливать по таймерам");
+        cutByTimers.setChecked(autoFunctionsManager.isAutoLumberjackCutByTimersEnabled());
+        cutByTimers.setPadding(0, pad / 2, 0, 0);
+        root.addView(cutByTimers);
+
+        TextView treesSummary = new TextView(context);
+        treesSummary.setText("Выбрано деревьев: " + autoFunctionsManager.getAutoLumberjackSelectedTreeCount()
+                + ". Откройте список деревьев по группам.");
+        treesSummary.setPadding(0, pad, 0, 0);
+        root.addView(treesSummary);
+
+        Button treeListButton = new Button(context);
+        treeListButton.setText("Список деревьев");
+        treeListButton.setAllCaps(false);
+        treeListButton.setTextColor(ContextCompat.getColor(context, R.color.colorOnPrimarySurface));
+        treeListButton.setBackgroundColor(ContextCompat.getColor(context, R.color.purple_500));
+        root.addView(treeListButton);
+
+        Button axesButton = new Button(context);
+        axesButton.setText("Топоры");
+        axesButton.setAllCaps(false);
+        root.addView(axesButton);
+
+        Button shiftsButton = new Button(context);
+        shiftsButton.setText("Смены ресурсов");
+        shiftsButton.setAllCaps(false);
+        root.addView(shiftsButton);
+
+        treeListButton.setOnClickListener(v -> showAutoLumberjackTreeListDialog("Все"));
+        axesButton.setOnClickListener(v -> showAutoLumberjackAxeSettingsDialog());
+        shiftsButton.setOnClickListener(v -> showAutoCutShiftSettingsDialog());
+
+        new AlertDialog.Builder(context)
+                .setTitle("Настройки Авто-Лесоруба")
+                .setView(scroll)
+                .setPositiveButton("Сохранить", (dialog, which) -> {
+                    autoFunctionsManager.setAutoLumberjackCellsCsv(cellsInput.getText() == null ? "" : cellsInput.getText().toString());
+                    autoFunctionsManager.setAutoLumberjackWriteChatEnabled(writeChat.isChecked());
+                    autoFunctionsManager.setAutoLumberjackCleanupEnabled(cleanupEnabled.isChecked());
+                    autoFunctionsManager.setAutoLumberjackCutByTimersEnabled(cutByTimers.isChecked());
+                    Toast.makeText(context, "Настройки авто-лесоруба сохранены", Toast.LENGTH_SHORT).show();
+                })
+                .setNegativeButton("Отмена", null)
+                .show();
+    }
+
+    private void showAutoLumberjackTreeListDialog(String initialGroup) {
+        final int pad = (int) (context.getResources().getDisplayMetrics().density * 8);
+        final String[] groups = new String[]{"Все", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "Не определено"};
+        final String[] selectedGroup = new String[]{TextUtils.isEmpty(initialGroup) ? "Все" : initialGroup};
+
+        List<AutoCutManager.AutoCutHerb> trees = autoFunctionsManager.getAutoLumberjackTrees();
+        LinkedHashSet<String> selectedKeys = new LinkedHashSet<>();
+        for (AutoCutManager.AutoCutHerb tree : trees) {
+            if (tree.selected) {
+                selectedKeys.add(tree.key);
+            }
+        }
+
+        LinearLayout root = new LinearLayout(context);
+        root.setOrientation(LinearLayout.HORIZONTAL);
+        root.setPadding(pad, pad, pad, pad);
+
+        ScrollView groupScroll = new ScrollView(context);
+        LinearLayout groupColumn = new LinearLayout(context);
+        groupColumn.setOrientation(LinearLayout.VERTICAL);
+        groupScroll.addView(groupColumn);
+        root.addView(groupScroll, new LinearLayout.LayoutParams(dpToPx(112), LinearLayout.LayoutParams.MATCH_PARENT));
+
+        LinearLayout right = new LinearLayout(context);
+        right.setOrientation(LinearLayout.VERTICAL);
+        right.setPadding(pad, 0, 0, 0);
+        root.addView(right, new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.MATCH_PARENT, 1f));
+
+        TextView header = new TextView(context);
+        header.setTypeface(header.getTypeface(), android.graphics.Typeface.BOLD);
+        right.addView(header);
+
+        LinearLayout actionRow = new LinearLayout(context);
+        actionRow.setOrientation(LinearLayout.HORIZONTAL);
+        Button selectVisible = new Button(context);
+        selectVisible.setText("Отметить");
+        selectVisible.setAllCaps(false);
+        Button unselectVisible = new Button(context);
+        unselectVisible.setText("Снять");
+        unselectVisible.setAllCaps(false);
+        actionRow.addView(selectVisible, new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
+        actionRow.addView(unselectVisible, new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
+        right.addView(actionRow);
+
+        ScrollView treeScroll = new ScrollView(context);
+        LinearLayout treeList = new LinearLayout(context);
+        treeList.setOrientation(LinearLayout.VERTICAL);
+        treeScroll.addView(treeList);
+        right.addView(treeScroll, new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, dpToPx(420)));
+
+        final Runnable[] renderRef = new Runnable[1];
+        renderRef[0] = () -> {
+            treeList.removeAllViews();
+            header.setText("Группа: " + selectedGroup[0] + " | выбрано: " + selectedKeys.size());
+            int visibleCount = 0;
+            for (AutoCutManager.AutoCutHerb tree : autoFunctionsManager.getAutoLumberjackTrees()) {
+                String group = TextUtils.isEmpty(tree.group) ? "Не определено" : tree.group.trim();
+                if (!"Все".equals(selectedGroup[0]) && !group.equals(selectedGroup[0])) {
+                    continue;
+                }
+                CheckBox box = new CheckBox(context);
+                box.setText(tree.displayLabel());
+                box.setChecked(selectedKeys.contains(tree.key));
+                box.setOnCheckedChangeListener((buttonView, isChecked) -> {
+                    if (isChecked) selectedKeys.add(tree.key);
+                    else selectedKeys.remove(tree.key);
+                    header.setText("Группа: " + selectedGroup[0] + " | выбрано: " + selectedKeys.size());
+                });
+                box.setOnLongClickListener(v -> {
+                    showAutoLumberjackTreeEditDialog(tree);
+                    return true;
+                });
+                treeList.addView(box);
+                visibleCount++;
+            }
+            if (visibleCount == 0) {
+                TextView empty = new TextView(context);
+                empty.setText("В этой группе пока нет деревьев.");
+                empty.setPadding(0, pad, 0, pad);
+                treeList.addView(empty);
+            }
+        };
+
+        for (String group : groups) {
+            Button groupButton = new Button(context);
+            groupButton.setText(group.equals("Все") ? "Все" : ("Гр. " + group));
+            groupButton.setAllCaps(false);
+            groupButton.setOnClickListener(v -> {
+                selectedGroup[0] = group;
+                renderRef[0].run();
+            });
+            groupColumn.addView(groupButton, new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT));
+        }
+
+        selectVisible.setOnClickListener(v -> {
+            for (AutoCutManager.AutoCutHerb tree : autoFunctionsManager.getAutoLumberjackTrees()) {
+                String group = TextUtils.isEmpty(tree.group) ? "Не определено" : tree.group.trim();
+                if ("Все".equals(selectedGroup[0]) || group.equals(selectedGroup[0])) {
+                    selectedKeys.add(tree.key);
+                }
+            }
+            renderRef[0].run();
+        });
+        unselectVisible.setOnClickListener(v -> {
+            for (AutoCutManager.AutoCutHerb tree : autoFunctionsManager.getAutoLumberjackTrees()) {
+                String group = TextUtils.isEmpty(tree.group) ? "Не определено" : tree.group.trim();
+                if ("Все".equals(selectedGroup[0]) || group.equals(selectedGroup[0])) {
+                    selectedKeys.remove(tree.key);
+                }
+            }
+            renderRef[0].run();
+        });
+
+        AlertDialog dialog = new AlertDialog.Builder(context)
+                .setTitle("Список деревьев")
+                .setView(root)
+                .setPositiveButton("Сохранить", (d, which) -> {
+                    autoFunctionsManager.setAutoLumberjackTreeSelections(selectedKeys);
+                    Toast.makeText(context, "Список деревьев сохранён", Toast.LENGTH_SHORT).show();
+                })
+                .setNegativeButton("Отмена", null)
+                .create();
+        dialog.setOnShowListener(d -> renderRef[0].run());
+        dialog.show();
+    }
+
+    private void showAutoLumberjackAxeSettingsDialog() {
+        String[] axes = autoFunctionsManager.getAutoLumberjackAvailableAxeNames();
+        List<String> enabled = autoFunctionsManager.getAutoLumberjackEnabledAxeNames();
+        boolean[] checked = new boolean[axes.length];
+        for (int i = 0; i < axes.length; i++) {
+            checked[i] = enabled.contains(axes[i]);
+        }
+        new AlertDialog.Builder(context)
+                .setTitle("Топоры Авто-Лесоруба")
+                .setMultiChoiceItems(axes, checked, (dialog, which, isChecked) -> checked[which] = isChecked)
+                .setPositiveButton("Сохранить", (dialog, which) -> {
+                    LinkedHashSet<String> selected = new LinkedHashSet<>();
+                    for (int i = 0; i < axes.length; i++) {
+                        if (checked[i]) {
+                            selected.add(axes[i]);
+                        }
+                    }
+                    if (selected.isEmpty()) {
+                        Toast.makeText(context, "Нужно выбрать хотя бы один топор", Toast.LENGTH_SHORT).show();
+                        return;
+                    }
+                    autoFunctionsManager.setAutoLumberjackEnabledAxeNames(selected);
+                    Toast.makeText(context, "Список топоров сохранён", Toast.LENGTH_SHORT).show();
+                })
+                .setNegativeButton("Отмена", null)
+                .show();
+    }
+
+    private void showAutoLumberjackTreeEditDialog(AutoCutManager.AutoCutHerb tree) {
+        if (tree == null) {
+            return;
+        }
+        final int pad = (int) (context.getResources().getDisplayMetrics().density * 12);
+        LinearLayout root = new LinearLayout(context);
+        root.setOrientation(LinearLayout.VERTICAL);
+        root.setPadding(pad, pad, pad, pad);
+
+        TextView title = new TextView(context);
+        title.setText(tree.name);
+        title.setTypeface(title.getTypeface(), android.graphics.Typeface.BOLD);
+        root.addView(title);
+
+        EditText skillInput = new EditText(context);
+        skillInput.setHint("Умение лесоруба");
+        skillInput.setInputType(InputType.TYPE_CLASS_NUMBER);
+        skillInput.setText(String.valueOf(tree.skill));
+        root.addView(skillInput);
+
+        EditText growthInput = new EditText(context);
+        growthInput.setHint("Время роста, минут");
+        growthInput.setInputType(InputType.TYPE_CLASS_NUMBER);
+        growthInput.setText(String.valueOf(tree.growthMinutes));
+        root.addView(growthInput);
+
+        EditText groupInput = new EditText(context);
+        groupInput.setHint("Группа дерева");
+        groupInput.setInputType(InputType.TYPE_CLASS_TEXT);
+        groupInput.setText(tree.group);
+        root.addView(groupInput);
+
+        new AlertDialog.Builder(context)
+                .setTitle("Правка дерева")
+                .setView(root)
+                .setPositiveButton("Сохранить", (dialog, which) -> {
+                    int skill = parseIntInRange(skillInput.getText() == null ? "" : skillInput.getText().toString(), 0, 9999, tree.skill);
+                    int growth = parseIntInRange(growthInput.getText() == null ? "" : growthInput.getText().toString(), 1, 24 * 60, tree.growthMinutes);
+                    String group = groupInput.getText() == null ? "" : groupInput.getText().toString().trim();
+                    autoFunctionsManager.updateAutoLumberjackTreeMeta(tree.key, skill, growth, group);
+                    Toast.makeText(context, "Дерево обновлено", Toast.LENGTH_SHORT).show();
+                    showAutoLumberjackSettingsDialog();
                 })
                 .setNegativeButton("Отмена", null)
                 .show();

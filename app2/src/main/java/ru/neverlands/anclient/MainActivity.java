@@ -4820,7 +4820,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         AutoCutManager autoCutManager = AutoCutManager.getInstance(this);
         boolean autoMoving = AppVars.AutoMoving;
         boolean autoFish = autoFunctionsManager.isAutoFishEnabled();
-        boolean autoCutRetry = autoFunctionsManager.isAutoCutEnabled() && autoCutManager.hasPendingLookRetry();
+        boolean autoCutRetry = autoFunctionsManager.isAutoCutLikeEnabled() && autoCutManager.hasPendingLookRetry();
         if (!autoMoving && !autoFish && !autoCutRetry) {
             return;
         }

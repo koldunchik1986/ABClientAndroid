@@ -215,6 +215,7 @@ public class AppTimerManager {
                     AppVars.TimerPauseAutoFishState = mgr.isAutoFishEnabled();
                     AppVars.TimerPauseAutoSkinState = mgr.isAutoSkinEnabled();
                     AppVars.TimerPauseAutoCutState = mgr.isAutoCutEnabled();
+                    AppVars.TimerPauseAutoLumberjackState = mgr.isAutoLumberjackEnabled();
                     AppVars.TimerPauseAutoBaitState = mgr.isAutoBaitEnabled();
                     AppVars.TimerPauseAutoCompassState = mgr.isAutoCompassEnabled();
                     AppVars.TimerPauseAutoAttackState = mgr.isAutoAttackEnabled();
@@ -232,6 +233,10 @@ public class AppTimerManager {
                     if (AppVars.TimerPauseAutoCutState) {
                         mgr.setAutoCutEnabled(false);
                         AppLog.d(TAG, "[TIMER_PAUSE] Auto-Herb paused");
+                    }
+                    if (AppVars.TimerPauseAutoLumberjackState) {
+                        mgr.setAutoLumberjackEnabled(false);
+                        AppLog.d(TAG, "[TIMER_PAUSE] Auto-Lumberjack paused");
                     }
                     if (AppVars.TimerPauseAutoBaitState) {
                         mgr.setAutoBaitEnabled(false);
@@ -322,7 +327,7 @@ public class AppTimerManager {
     private boolean shouldKeepDueHerbTimerForAutoCut() {
         try {
             AutoFunctionsManager manager = AutoFunctionsManager.getInstance(appContext);
-            return manager.isAutoCutEnabled()
+            return manager.isAutoCutLikeEnabled()
                     && AutoCutManager.getInstance(appContext).isCutByTimersEnabled();
         } catch (Exception error) {
             AppLog.w(AutoCutManager.TRACE_CHAIN, TAG,

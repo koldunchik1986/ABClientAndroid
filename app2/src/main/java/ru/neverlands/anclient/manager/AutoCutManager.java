@@ -61,22 +61,36 @@ public final class AutoCutManager {
     private static final String PREFS_NAME = "auto_cut_prefs";
     /** JSON-словарь трав: id/name/skill/growth/group/selected. */
     private static final String KEY_HERBS_JSON_PREFIX = "herbs_json_";
+    /** JSON-словарь деревьев Авто-Лесоруба: id/name/skill/growth/group/selected. */
+    private static final String KEY_TREES_JSON_PREFIX = "trees_json_";
     /** CSV списка клеток обхода в формате `x-y`. */
     private static final String KEY_CELLS_CSV_PREFIX = "cells_csv_";
+    /** CSV списка клеток обхода Авто-Лесоруба в формате `x-y`. */
+    private static final String KEY_LUMBERJACK_CELLS_CSV_PREFIX = "lumberjack_cells_csv_";
     /** Флаг вывода сообщения о срезе в локальный чат. */
     private static final String KEY_WRITE_CHAT_PREFIX = "write_chat_";
+    /** Флаг вывода сообщения о спиле в локальный чат. */
+    private static final String KEY_LUMBERJACK_WRITE_CHAT_PREFIX = "lumberjack_write_chat_";
     /** Флаг включения cleanup-прохода после прироста массы. */
     private static final String KEY_CLEANUP_ENABLED_PREFIX = "cleanup_enabled_";
+    /** Флаг включения cleanup-прохода Авто-Лесоруба после прироста массы. */
+    private static final String KEY_LUMBERJACK_CLEANUP_ENABLED_PREFIX = "lumberjack_cleanup_enabled_";
     /** Флаг маршрута по herb timer-ам: идти на клетку только после due-time. */
     private static final String KEY_CUT_BY_TIMERS_PREFIX = "cut_by_timers_";
+    /** Флаг маршрута Авто-Лесоруба по resource timer-ам. */
+    private static final String KEY_LUMBERJACK_CUT_BY_TIMERS_PREFIX = "lumberjack_cut_by_timers_";
     /** JSON выбранных серпов для авто-надевания. */
     private static final String KEY_SICKLES_JSON_PREFIX = "sickles_json_";
+    /** JSON выбранных топоров для авто-надевания. */
+    private static final String KEY_AXES_JSON_PREFIX = "axes_json_";
     /** JSON расписания смен трав. */
     private static final String KEY_SHIFTS_JSON_PREFIX = "shifts_json_";
     /** Список уже проверенных клеток для текущего server-window смены трав. */
     private static final String KEY_CHECKED_SHIFT_PREFIX = "checked_shift_";
     /** Snapshot последних `HerbsList`/`RESO@` по клеткам, нужен для skip known-empty route. */
     private static final String KEY_CELL_SNAPSHOTS_JSON_PREFIX = "cell_snapshots_json_";
+    /** Snapshot последних `HerbsList`/`RESO@` по клеткам Авто-Лесоруба. */
+    private static final String KEY_LUMBERJACK_CELL_SNAPSHOTS_JSON_PREFIX = "lumberjack_cell_snapshots_json_";
     /** Группа для неизвестных трав, найденных в live `RESO@`. */
     private static final String GROUP_UNKNOWN = "Не определено";
     /** Безопасное время роста для новых/неизвестных трав. */
@@ -107,6 +121,40 @@ public final class AutoCutManager {
     private static final Pattern HERB_TIMER_CELL_PATTERN = Pattern.compile("\\b(\\d{1,4}-\\d{1,5})\\b");
     /** Singleton manager-а на application context. */
     private static AutoCutManager instance;
+
+    /** Режим общего AutoCut-контура: травы или деревья. */
+    public enum AutoCutMode {
+        HERB("Авто-Травник", "auto_cut", "трав", "трава", "срезана", "Серпы", "&im=0&wca=4"),
+        TREE("Авто-Лесоруб", "auto_lumberjack", "деревьев", "дерево", "спилено", "Топоры", "&im=0&wca=2");
+
+        public final String title;
+        public final String actionKey;
+        public final String resourcePlural;
+        public final String resourceSingular;
+        public final String successVerb;
+        public final String toolTitle;
+        public final String inventoryFilter;
+
+        AutoCutMode(String title,
+                    String actionKey,
+                    String resourcePlural,
+                    String resourceSingular,
+                    String successVerb,
+                    String toolTitle,
+                    String inventoryFilter) {
+            this.title = title;
+            this.actionKey = actionKey;
+            this.resourcePlural = resourcePlural;
+            this.resourceSingular = resourceSingular;
+            this.successVerb = successVerb;
+            this.toolTitle = toolTitle;
+            this.inventoryFilter = inventoryFilter;
+        }
+
+        public boolean isTree() {
+            return this == TREE;
+        }
+    }
 
     /** Application context для prefs, broadcasts и AppTimerManager. */
     private final Context appContext;
@@ -154,61 +202,170 @@ public final class AutoCutManager {
 
     /** Persisted CSV клеток обхода, как ввёл пользователь в настройках. */
     public synchronized String getCellsCsv() {
-        return prefs.getString(scopedKey(KEY_CELLS_CSV_PREFIX), "");
+        return getCellsCsv(AutoCutMode.HERB);
+    }
+
+    /** Persisted CSV клеток обхода для Авто-Лесоруба. */
+    public synchronized String getLumberjackCellsCsv() {
+        return getCellsCsv(AutoCutMode.TREE);
+    }
+
+    /** Persisted CSV клеток обхода для указанного resource-mode. */
+    public synchronized String getCellsCsv(AutoCutMode mode) {
+        return prefs.getString(scopedKey(cellsCsvPrefix(mode)), "");
     }
 
     /** Нормализует и сохраняет CSV клеток, удаляя дубли/мусорные токены. */
     public synchronized void setCellsCsv(String csv) {
-        prefs.edit().putString(scopedKey(KEY_CELLS_CSV_PREFIX), normalizeCellsCsv(csv)).apply();
+        setCellsCsv(AutoCutMode.HERB, csv);
+    }
+
+    /** Нормализует и сохраняет CSV клеток Авто-Лесоруба. */
+    public synchronized void setLumberjackCellsCsv(String csv) {
+        setCellsCsv(AutoCutMode.TREE, csv);
+    }
+
+    /** Нормализует и сохраняет CSV клеток для указанного resource-mode. */
+    public synchronized void setCellsCsv(AutoCutMode mode, String csv) {
+        prefs.edit().putString(scopedKey(cellsCsvPrefix(mode)), normalizeCellsCsv(csv)).apply();
     }
 
     /** Возвращает нормализованный список клеток для route logic. */
     public synchronized List<String> getSearchCells() {
-        return parseCellsCsv(getCellsCsv());
+        return getSearchCells(getActiveMode());
+    }
+
+    /** Возвращает нормализованный список клеток указанного resource-mode. */
+    public synchronized List<String> getSearchCells(AutoCutMode mode) {
+        return parseCellsCsv(getCellsCsv(mode));
     }
 
     /** true, если после успешного среза нужно писать результат в чат. */
     public synchronized boolean isWriteChatEnabled() {
-        return prefs.getBoolean(scopedKey(KEY_WRITE_CHAT_PREFIX), true);
+        return isWriteChatEnabled(getActiveMode());
+    }
+
+    /** true, если после успешного спила нужно писать результат в чат. */
+    public synchronized boolean isLumberjackWriteChatEnabled() {
+        return isWriteChatEnabled(AutoCutMode.TREE);
+    }
+
+    /** true, если после успешного действия указанного режима нужно писать результат в чат. */
+    public synchronized boolean isWriteChatEnabled(AutoCutMode mode) {
+        return prefs.getBoolean(scopedKey(writeChatPrefix(mode)), true);
     }
 
     /** Сохраняет флаг chat-report для текущего nick. */
     public synchronized void setWriteChatEnabled(boolean enabled) {
-        prefs.edit().putBoolean(scopedKey(KEY_WRITE_CHAT_PREFIX), enabled).apply();
+        setWriteChatEnabled(AutoCutMode.HERB, enabled);
+    }
+
+    /** Сохраняет флаг chat-report Авто-Лесоруба для текущего nick. */
+    public synchronized void setLumberjackWriteChatEnabled(boolean enabled) {
+        setWriteChatEnabled(AutoCutMode.TREE, enabled);
+    }
+
+    /** Сохраняет флаг chat-report для указанного resource-mode. */
+    public synchronized void setWriteChatEnabled(AutoCutMode mode, boolean enabled) {
+        prefs.edit().putBoolean(scopedKey(writeChatPrefix(mode)), enabled).apply();
     }
 
     /** true, если включён inventory cleanup после прироста массы. */
     public synchronized boolean isCleanupEnabled() {
-        return prefs.getBoolean(scopedKey(KEY_CLEANUP_ENABLED_PREFIX), false);
+        return isCleanupEnabled(getActiveMode());
+    }
+
+    /** true, если включён inventory cleanup Авто-Лесоруба после прироста массы. */
+    public synchronized boolean isLumberjackCleanupEnabled() {
+        return isCleanupEnabled(AutoCutMode.TREE);
+    }
+
+    /** true, если включён inventory cleanup после прироста массы для указанного mode. */
+    public synchronized boolean isCleanupEnabled(AutoCutMode mode) {
+        return prefs.getBoolean(scopedKey(cleanupEnabledPrefix(mode)), false);
     }
 
     /** Сохраняет cleanup-флаг для текущего nick. */
     public synchronized void setCleanupEnabled(boolean enabled) {
-        prefs.edit().putBoolean(scopedKey(KEY_CLEANUP_ENABLED_PREFIX), enabled).apply();
+        setCleanupEnabled(AutoCutMode.HERB, enabled);
+    }
+
+    /** Сохраняет cleanup-флаг Авто-Лесоруба для текущего nick. */
+    public synchronized void setLumberjackCleanupEnabled(boolean enabled) {
+        setCleanupEnabled(AutoCutMode.TREE, enabled);
+    }
+
+    /** Сохраняет cleanup-флаг для указанного mode. */
+    public synchronized void setCleanupEnabled(AutoCutMode mode, boolean enabled) {
+        prefs.edit().putBoolean(scopedKey(cleanupEnabledPrefix(mode)), enabled).apply();
     }
 
     /** true, если AutoCut должен ходить на клетки только по сработавшим herb timer-ам. */
     public synchronized boolean isCutByTimersEnabled() {
-        return prefs.getBoolean(scopedKey(KEY_CUT_BY_TIMERS_PREFIX), false);
+        return isCutByTimersEnabled(getActiveMode());
+    }
+
+    /** true, если Авто-Лесоруб должен ходить на клетки только по сработавшим timer-ам. */
+    public synchronized boolean isLumberjackCutByTimersEnabled() {
+        return isCutByTimersEnabled(AutoCutMode.TREE);
+    }
+
+    /** true, если указанный режим должен ходить на клетки только по сработавшим timer-ам. */
+    public synchronized boolean isCutByTimersEnabled(AutoCutMode mode) {
+        return prefs.getBoolean(scopedKey(cutByTimersPrefix(mode)), false);
     }
 
     /** Сохраняет режим `Срезать по таймерам` для текущего nick. */
     public synchronized void setCutByTimersEnabled(boolean enabled) {
-        prefs.edit().putBoolean(scopedKey(KEY_CUT_BY_TIMERS_PREFIX), enabled).apply();
+        setCutByTimersEnabled(AutoCutMode.HERB, enabled);
+    }
+
+    /** Сохраняет режим `Спиливать по таймерам` для текущего nick. */
+    public synchronized void setLumberjackCutByTimersEnabled(boolean enabled) {
+        setCutByTimersEnabled(AutoCutMode.TREE, enabled);
+    }
+
+    /** Сохраняет timer-mode для указанного resource-mode. */
+    public synchronized void setCutByTimersEnabled(AutoCutMode mode, boolean enabled) {
+        prefs.edit().putBoolean(scopedKey(cutByTimersPrefix(mode)), enabled).apply();
         if (!enabled) {
             clearTimerRouteState("cut_by_timers_disabled");
         }
-        AppLog.i(TRACE_CHAIN, TAG, "cut by timers setting saved: enabled=" + enabled);
+        AppLog.i(TRACE_CHAIN, TAG, "cut by timers setting saved: mode=" + safeMode(mode).actionKey
+                + ", enabled=" + enabled);
     }
 
     /** Доступные серпы в порядке приоритета авто-надевания. */
     public String[] getAvailableSickleNames() {
-        return ParsedDressed.getAutoCutSickleNames();
+        return getAvailableToolNames(AutoCutMode.HERB);
+    }
+
+    /** Доступные топоры в порядке приоритета авто-надевания. */
+    public String[] getAvailableAxeNames() {
+        return getAvailableToolNames(AutoCutMode.TREE);
+    }
+
+    /** Доступные инструменты указанного режима в порядке приоритета авто-надевания. */
+    public String[] getAvailableToolNames(AutoCutMode mode) {
+        return safeMode(mode).isTree()
+                ? ParsedDressed.getAutoCutAxeNames()
+                : ParsedDressed.getAutoCutSickleNames();
     }
 
     /** Persisted список разрешённых серпов; пустое значение трактуется как дефолтный список. */
     public synchronized List<String> getEnabledSickleNames() {
-        String raw = prefs.getString(scopedKey(KEY_SICKLES_JSON_PREFIX), "");
+        return getEnabledToolNames(AutoCutMode.HERB);
+    }
+
+    /** Persisted список разрешённых топоров; пустое значение трактуется как дефолтный список. */
+    public synchronized List<String> getEnabledAxeNames() {
+        return getEnabledToolNames(AutoCutMode.TREE);
+    }
+
+    /** Persisted список разрешённых инструментов; пустое значение трактуется как дефолтный список. */
+    public synchronized List<String> getEnabledToolNames(AutoCutMode mode) {
+        AutoCutMode safeMode = safeMode(mode);
+        String raw = prefs.getString(scopedKey(toolNamesJsonPrefix(safeMode)), "");
         ArrayList<String> result = new ArrayList<>();
         if (!TextUtils.isEmpty(raw)) {
             try {
@@ -220,12 +377,13 @@ public final class AutoCutManager {
                     }
                 }
             } catch (Exception error) {
-                AppLog.w(TRACE_CHAIN, TAG, "failed to parse sickles json, fallback to defaults", error);
+                AppLog.w(TRACE_CHAIN, TAG, "failed to parse tool names json, fallback to defaults, mode="
+                        + safeMode.actionKey, error);
                 result.clear();
             }
         }
         if (result.isEmpty()) {
-            for (String name : getAvailableSickleNames()) {
+            for (String name : getAvailableToolNames(safeMode)) {
                 result.add(name);
             }
         }
@@ -234,15 +392,27 @@ public final class AutoCutManager {
 
     /** Сохраняет список серпов, которые можно надевать автоматически. */
     public synchronized void setEnabledSickleNames(Set<String> selectedNames) {
+        setEnabledToolNames(AutoCutMode.HERB, selectedNames);
+    }
+
+    /** Сохраняет список топоров, которые можно надевать автоматически. */
+    public synchronized void setEnabledAxeNames(Set<String> selectedNames) {
+        setEnabledToolNames(AutoCutMode.TREE, selectedNames);
+    }
+
+    /** Сохраняет список инструментов указанного режима, которые можно надевать автоматически. */
+    public synchronized void setEnabledToolNames(AutoCutMode mode, Set<String> selectedNames) {
+        AutoCutMode safeMode = safeMode(mode);
         Set<String> safeSelected = selectedNames == null ? new LinkedHashSet<>() : selectedNames;
         JSONArray array = new JSONArray();
-        for (String name : getAvailableSickleNames()) {
+        for (String name : getAvailableToolNames(safeMode)) {
             if (safeSelected.contains(name)) {
                 array.put(name);
             }
         }
-        prefs.edit().putString(scopedKey(KEY_SICKLES_JSON_PREFIX), array.toString()).apply();
-        AppLog.i(TRACE_CHAIN, TAG, "sickle settings saved: count=" + array.length());
+        prefs.edit().putString(scopedKey(toolNamesJsonPrefix(safeMode)), array.toString()).apply();
+        AppLog.i(TRACE_CHAIN, TAG, "tool settings saved: mode=" + safeMode.actionKey
+                + ", count=" + array.length());
     }
 
     /** Возвращает расписание смен трав как редактируемый многострочный текст. */
@@ -276,13 +446,33 @@ public final class AutoCutManager {
 
     /** Возвращает UI-список трав с seed+live entries. */
     public synchronized List<AutoCutHerb> getHerbs() {
-        return new ArrayList<>(loadHerbsLocked().values());
+        return getResources(AutoCutMode.HERB);
+    }
+
+    /** Возвращает UI-список деревьев с seed+live entries. */
+    public synchronized List<AutoCutHerb> getTrees() {
+        return getResources(AutoCutMode.TREE);
+    }
+
+    /** Возвращает UI-список ресурсов указанного режима с seed+live entries. */
+    public synchronized List<AutoCutHerb> getResources(AutoCutMode mode) {
+        return new ArrayList<>(loadResourcesLocked(safeMode(mode)).values());
     }
 
     /** Количество выбранных трав; guard для `DoHerbAutoCut()`. */
     public synchronized int getSelectedHerbCount() {
+        return getSelectedResourceCount(AutoCutMode.HERB);
+    }
+
+    /** Количество выбранных деревьев; guard для `DoHerbAutoCut()` в режиме Авто-Лесоруба. */
+    public synchronized int getSelectedTreeCount() {
+        return getSelectedResourceCount(AutoCutMode.TREE);
+    }
+
+    /** Количество выбранных ресурсов указанного режима. */
+    public synchronized int getSelectedResourceCount(AutoCutMode mode) {
         int count = 0;
-        for (AutoCutHerb herb : loadHerbsLocked().values()) {
+        for (AutoCutHerb herb : loadResourcesLocked(safeMode(mode)).values()) {
             if (herb.selected) {
                 count++;
             }
@@ -292,30 +482,63 @@ public final class AutoCutManager {
 
     /** Проверяет, выбрана ли трава по id или имени из live `RESO@`. */
     public synchronized boolean isHerbSelected(String id, String name) {
-        AutoCutHerb herb = findHerbLocked(loadHerbsLocked(), id, name);
+        return isResourceSelected(AutoCutMode.HERB, id, name);
+    }
+
+    /** Проверяет, выбрано ли дерево по id или имени из live `RESO@`. */
+    public synchronized boolean isTreeSelected(String id, String name) {
+        return isResourceSelected(AutoCutMode.TREE, id, name);
+    }
+
+    /** Проверяет, выбран ли ресурс указанного режима по id или имени из live `RESO@`. */
+    public synchronized boolean isResourceSelected(AutoCutMode mode, String id, String name) {
+        AutoCutHerb herb = findHerbLocked(loadResourcesLocked(safeMode(mode)), id, name);
         return herb != null && herb.selected;
     }
 
     /** Сохраняет checkbox selections из настроек AutoCut. */
     public synchronized void setHerbSelections(Set<String> selectedKeys) {
+        setResourceSelections(AutoCutMode.HERB, selectedKeys);
+    }
+
+    /** Сохраняет checkbox selections из настроек Авто-Лесоруба. */
+    public synchronized void setTreeSelections(Set<String> selectedKeys) {
+        setResourceSelections(AutoCutMode.TREE, selectedKeys);
+    }
+
+    /** Сохраняет checkbox selections для указанного resource-mode. */
+    public synchronized void setResourceSelections(AutoCutMode mode, Set<String> selectedKeys) {
+        AutoCutMode safeMode = safeMode(mode);
         Set<String> safeKeys = selectedKeys == null ? new LinkedHashSet<>() : selectedKeys;
-        LinkedHashMap<String, AutoCutHerb> herbs = loadHerbsLocked();
+        LinkedHashMap<String, AutoCutHerb> herbs = loadResourcesLocked(safeMode);
         LinkedHashMap<String, AutoCutHerb> updated = new LinkedHashMap<>();
         for (Map.Entry<String, AutoCutHerb> entry : herbs.entrySet()) {
             AutoCutHerb herb = entry.getValue();
             boolean selected = safeKeys.contains(herb.key);
             updated.put(entry.getKey(), herb.withSelected(selected));
         }
-        persistHerbsLocked(updated);
-        AppLog.i(TRACE_CHAIN, TAG, "settings saved: selectedCount=" + safeKeys.size());
+        persistResourcesLocked(safeMode, updated);
+        AppLog.i(TRACE_CHAIN, TAG, "settings saved: mode=" + safeMode.actionKey
+                + ", selectedCount=" + safeKeys.size());
     }
 
     /** Обновляет metadata травы из long-press UI: skill, growth minutes, group. */
     public synchronized void updateHerbMeta(String key, int skill, int growthMinutes, String group) {
+        updateResourceMeta(AutoCutMode.HERB, key, skill, growthMinutes, group);
+    }
+
+    /** Обновляет metadata дерева из long-press UI: skill, growth minutes, group. */
+    public synchronized void updateTreeMeta(String key, int skill, int growthMinutes, String group) {
+        updateResourceMeta(AutoCutMode.TREE, key, skill, growthMinutes, group);
+    }
+
+    /** Обновляет metadata ресурса указанного режима из long-press UI. */
+    public synchronized void updateResourceMeta(AutoCutMode mode, String key, int skill, int growthMinutes, String group) {
         if (TextUtils.isEmpty(key)) {
             return;
         }
-        LinkedHashMap<String, AutoCutHerb> herbs = loadHerbsLocked();
+        AutoCutMode safeMode = safeMode(mode);
+        LinkedHashMap<String, AutoCutHerb> herbs = loadResourcesLocked(safeMode);
         AutoCutHerb current = herbs.get(key);
         if (current == null) {
             return;
@@ -323,8 +546,9 @@ public final class AutoCutManager {
         int safeGrowth = growthMinutes > 0 ? growthMinutes : current.growthMinutes;
         String safeGroup = TextUtils.isEmpty(group) ? GROUP_UNKNOWN : group.trim();
         herbs.put(key, current.withMeta(Math.max(0, skill), safeGrowth, safeGroup));
-        persistHerbsLocked(herbs);
-        AppLog.i(TRACE_CHAIN, TAG, "herb meta updated: key=" + key
+        persistResourcesLocked(safeMode, herbs);
+        AppLog.i(TRACE_CHAIN, TAG, "resource meta updated: mode=" + safeMode.actionKey
+                + ", key=" + key
                 + ", skill=" + skill + ", growth=" + safeGrowth + ", group=" + safeGroup);
     }
 
@@ -338,11 +562,22 @@ public final class AutoCutManager {
      * Существующий флаг `selected` сохраняется, чтобы live discovery не сбрасывал настройки.
      */
     public synchronized void registerObservedHerb(String id, String name, int skill, int growthMinutes, String group) {
+        registerObservedResource(AutoCutMode.HERB, id, name, skill, growthMinutes, group);
+    }
+
+    /** Добавляет или обновляет дерево, увиденное в live `RESO@`. */
+    public synchronized void registerObservedTree(String id, String name, int skill, int growthMinutes, String group) {
+        registerObservedResource(AutoCutMode.TREE, id, name, skill, growthMinutes, group);
+    }
+
+    /** Добавляет или обновляет ресурс указанного режима, увиденный в JS `HerbsList(...)` или `RESO@`. */
+    public synchronized void registerObservedResource(AutoCutMode mode, String id, String name, int skill, int growthMinutes, String group) {
+        AutoCutMode safeMode = safeMode(mode);
         String safeName = safe(name);
         if (safeName.isEmpty()) {
             return;
         }
-        LinkedHashMap<String, AutoCutHerb> herbs = loadHerbsLocked();
+        LinkedHashMap<String, AutoCutHerb> herbs = loadResourcesLocked(safeMode);
         AutoCutHerb existing = findHerbLocked(herbs, id, safeName);
         String safeId = safeNumeric(id);
         String key = buildKey(safeId, safeName);
@@ -366,7 +601,7 @@ public final class AutoCutManager {
                     TextUtils.isEmpty(group) ? GROUP_UNKNOWN : group.trim(),
                     false));
         }
-        persistHerbsLocked(herbs);
+        persistResourcesLocked(safeMode, herbs);
     }
 
     /**
@@ -378,6 +613,7 @@ public final class AutoCutManager {
         if (list == null || list.trim().isEmpty()) {
             return;
         }
+        AutoCutMode mode = getActiveMode();
         String[] entries = list.split("\\|");
         int count = 0;
         for (String entry : entries) {
@@ -387,12 +623,14 @@ public final class AutoCutManager {
             int sep = entry.indexOf(':');
             String name = sep >= 0 ? entry.substring(0, sep) : entry;
             if (!safe(name).isEmpty()) {
-                registerObservedHerb("", name, 0, DEFAULT_GROWTH_MINUTES, GROUP_UNKNOWN);
-                count++;
+                if (!mode.isTree() || isKnownResourceName(AutoCutMode.TREE, name)) {
+                    registerObservedResource(mode, "", name, 0, DEFAULT_GROWTH_MINUTES, GROUP_UNKNOWN);
+                    count++;
+                }
             }
         }
         updateCurrentCellSnapshot(list, "herbs_list");
-        AppLog.d(TRACE_CHAIN, TAG, "HerbsList observed count=" + count);
+        AppLog.d(TRACE_CHAIN, TAG, "HerbsList observed count=" + count + ", mode=" + mode.actionKey);
     }
 
     /**
@@ -424,7 +662,7 @@ public final class AutoCutManager {
             snapshot.put("updatedAtMs", System.currentTimeMillis());
             snapshot.put("herbs", herbs);
             snapshots.put(current, snapshot);
-            prefs.edit().putString(scopedKey(KEY_CELL_SNAPSHOTS_JSON_PREFIX), snapshots.toString()).apply();
+            prefs.edit().putString(scopedKey(cellSnapshotsJsonPrefix(getActiveMode())), snapshots.toString()).apply();
             AppLog.d(TRACE_CHAIN, TAG, "cell snapshot updated: cell=" + current
                     + ", entries=" + entries.size() + ", shift=" + shift + ", source=" + source);
         } catch (Exception error) {
@@ -512,10 +750,11 @@ public final class AutoCutManager {
         if (safeName.isEmpty()) {
             return;
         }
-        registerObservedHerb(id, safeName, 0, growthMinutes, GROUP_UNKNOWN);
+        AutoCutMode mode = getActiveMode();
+        registerObservedResource(mode, id, safeName, 0, growthMinutes, GROUP_UNKNOWN);
         AutoCutHerb herb;
         synchronized (this) {
-            herb = findHerbLocked(loadHerbsLocked(), id, safeName);
+            herb = findHerbLocked(loadResourcesLocked(mode), id, safeName);
         }
         int growth = herb != null ? herb.growthMinutes : normalizeGrowthMinutes(growthMinutes);
         String safeRegNum = TextUtils.isEmpty(regNum) ? resolveCurrentRegNum() : regNum.trim();
@@ -543,7 +782,7 @@ public final class AutoCutManager {
         } else {
             markCurrentCellChecked("cut_success:" + source);
         }
-        AppLog.i(TRACE_CHAIN, TAG, "cut success: herb=" + safeName
+        AppLog.i(TRACE_CHAIN, TAG, "cut success: mode=" + mode.actionKey + ", resource=" + safeName
                 + ", regNum=" + safeRegNum
                 + ", growth=" + growth
                 + ", timer=" + timerPlan.shouldCreateTimer
@@ -573,7 +812,7 @@ public final class AutoCutManager {
                 || AlchemyAjaxPhp.hasPendingCutForRouteGuard()) {
             return false;
         }
-        if (getSelectedHerbCount() <= 0) {
+        if (getSelectedResourceCount(getActiveMode()) <= 0) {
             return false;
         }
         String current = resolveCurrentRegNum();
@@ -692,7 +931,7 @@ public final class AutoCutManager {
         }
         try {
             AutoFunctionsManager manager = AutoFunctionsManager.getInstance(appContext);
-            if (!manager.isAutoCutEnabled()) {
+            if (!manager.isAutoCutLikeEnabled()) {
                 AppLog.i(TRACE_CHAIN, TAG, "tired route retry cancelled: AutoCut disabled, destination="
                         + safe(destination) + ", source=" + safe(source));
                 return;
@@ -717,6 +956,12 @@ public final class AutoCutManager {
      * стартует маршрут к первой непроверенной CSV-клетке.
      */
     public void onAutoCutEnabled(AutoFunctionsManager manager) {
+        onAutoCutEnabled(manager, AutoCutMode.HERB);
+    }
+
+    /** Runtime bootstrap после license-gated включения AutoCut-like режима. */
+    public void onAutoCutEnabled(AutoFunctionsManager manager, AutoCutMode mode) {
+        AutoCutMode safeMode = safeMode(mode);
         AppVars.AutoCutCheckSickle = true;
         AppVars.AutoCutArmedSickle = false;
         AppVars.AutoCutSickleHand = "";
@@ -727,9 +972,9 @@ public final class AutoCutManager {
         AppVars.AutoCutKnownMassMax = 0d;
         massSnapshotSyncPending = false;
         lastMassSnapshotSyncRequestAtMs = 0L;
-        clearTimerRouteState("auto_cut_enabled");
-        requestMainFrameReload("enabled_sickle_check");
-        routeNextCellIfCurrentIsNotReady(manager, "enabled");
+        clearTimerRouteState(safeMode.actionKey + "_enabled");
+        requestMainFrameReload("enabled_tool_check:" + safeMode.actionKey);
+        routeNextCellIfCurrentIsNotReady(manager, "enabled:" + safeMode.actionKey);
     }
 
     /**
@@ -781,6 +1026,11 @@ public final class AutoCutManager {
 
     /** true, если `act=3` можно отправлять без риска среза голыми руками/без инструмента. */
     public boolean isSickleReadyForCut() {
+        return isToolReadyForCut();
+    }
+
+    /** true, если `act=3` можно отправлять без риска действия голыми руками/без инструмента. */
+    public boolean isToolReadyForCut() {
         return AppVars.AutoCutArmedSickle && !AppVars.AutoCutCheckSickle;
     }
 
@@ -1380,7 +1630,7 @@ public final class AutoCutManager {
                 continue;
             }
             String name = safe(item.optString("name", ""));
-            if (name.isEmpty() || !isHerbSelected("", name)) {
+            if (name.isEmpty() || !isResourceSelected(getActiveMode(), "", name)) {
                 continue;
             }
             hasSelectedHerb = true;
@@ -1412,7 +1662,7 @@ public final class AutoCutManager {
                     invalidated++;
                 }
                 if (invalidated > 0) {
-                    prefs.edit().putString(scopedKey(KEY_CELL_SNAPSHOTS_JSON_PREFIX), snapshots.toString()).apply();
+                    prefs.edit().putString(scopedKey(cellSnapshotsJsonPrefix(getActiveMode())), snapshots.toString()).apply();
                 }
             } catch (Exception error) {
                 AppLog.w(TRACE_CHAIN, TAG, "failed to invalidate selected-empty cell snapshots, source=new_round", error);
@@ -1858,6 +2108,7 @@ public final class AutoCutManager {
     }
 
     private void requestMainFrameReload(String source) {
+        AutoCutMode mode = getActiveMode();
         MainActivity activity = AppVars.mainActivity != null ? AppVars.mainActivity.get() : null;
         if (activity == null || activity.getMainWebView() == null) {
             AppLog.w(TRACE_CHAIN, TAG, "main frame reload skipped: activity/webview null, source=" + source);
@@ -1865,15 +2116,16 @@ public final class AutoCutManager {
         }
         activity.runOnUiThread(() -> {
             String link = "http://neverlands.ru/main.php?get_id=56&act=10&go=inf";
-            String vcode = SessionManager.getInstance().getValidVCodeForAction("auto_cut_" + source.replace(':', '_'));
+            String vcode = SessionManager.getInstance().getValidVCodeForAction(mode.actionKey + "_" + source.replace(':', '_'));
             if (!TextUtils.isEmpty(vcode)) {
                 link += "&vcode=" + vcode;
             } else {
                 AppLog.w(TRACE_CHAIN, TAG, "main frame reload without vcode, source=" + source);
             }
-            link += "&an_auto_cut=1&r=" + System.currentTimeMillis();
+            link += "&an_auto_cut=1&an_auto_resource=" + mode.actionKey + "&r=" + System.currentTimeMillis();
             activity.getMainWebView().loadUrl(link);
-            AppLog.d(TRACE_CHAIN, TAG, "main frame reload requested: source=" + source + ", url=" + link);
+            AppLog.d(TRACE_CHAIN, TAG, "main frame reload requested: mode=" + mode.actionKey
+                    + ", source=" + source + ", url=" + link);
         });
     }
 
@@ -2106,14 +2358,19 @@ public final class AutoCutManager {
                                      String massSnapshot,
                                      double resourceMass,
                                      String source) {
+        AutoCutMode mode = getActiveMode();
         String sourceLabel = TextUtils.isEmpty(source) ? "auto_cut" : source;
         StringBuilder builder = new StringBuilder();
         builder.append(MainPhp.buildServerChatTimeHtmlExternal())
                 .append("<font color=#006600><b>[")
                 .append(escapeHtml(sourceLabel))
-                .append("]</b> Авто-Травник: ")
+                .append("]</b> ")
+                .append(escapeHtml(mode.title))
+                .append(": ")
                 .append(escapeHtml(herb))
-                .append(" срезана. ")
+                .append(' ')
+                .append(escapeHtml(mode.successVerb))
+                .append(". ")
                 .append(escapeHtml(timerPlan.message));
         String safeRegNum = safe(regNum);
         String safeSummary = safe(cellResourcesSummary);
@@ -2151,7 +2408,7 @@ public final class AutoCutManager {
         Intent intent = new Intent(AppVars.ACTION_ADD_CHAT_MESSAGE);
         intent.putExtra("message", builder.toString());
         LocalBroadcastManager.getInstance(appContext).sendBroadcast(intent);
-        AppLog.d(TRACE_CHAIN, TAG, "chat posted: herb=" + herb
+        AppLog.d(TRACE_CHAIN, TAG, "chat posted: mode=" + mode.actionKey + ", resource=" + herb
                 + ", regNum=" + safeRegNum
                 + ", summary=" + safeSummary
                 + ", mass=" + safeMass
@@ -2159,8 +2416,13 @@ public final class AutoCutManager {
     }
 
     private LinkedHashMap<String, AutoCutHerb> loadHerbsLocked() {
+        return loadResourcesLocked(AutoCutMode.HERB);
+    }
+
+    private LinkedHashMap<String, AutoCutHerb> loadResourcesLocked(AutoCutMode mode) {
+        AutoCutMode safeMode = safeMode(mode);
         LinkedHashMap<String, AutoCutHerb> result = new LinkedHashMap<>();
-        String json = prefs.getString(scopedKey(KEY_HERBS_JSON_PREFIX), "[]");
+        String json = prefs.getString(scopedKey(resourcesJsonPrefix(safeMode)), "[]");
         try {
             JSONArray array = new JSONArray(json);
             for (int index = 0; index < array.length(); index++) {
@@ -2184,19 +2446,20 @@ public final class AutoCutManager {
                         item.optBoolean("selected", false)));
             }
         } catch (Exception error) {
-            AppLog.w(TRACE_CHAIN, TAG, "failed to parse herbs json, reset to seeds", error);
+            AppLog.w(TRACE_CHAIN, TAG, "failed to parse resources json, reset to seeds, mode="
+                    + safeMode.actionKey, error);
             result.clear();
         }
 
-        boolean changed = mergeSeedHerbs(result);
+        boolean changed = mergeSeedResources(safeMode, result);
         if (changed) {
-            persistHerbsLocked(result);
+            persistResourcesLocked(safeMode, result);
         }
         return result;
     }
 
     private JSONObject loadCellSnapshotsLocked() {
-        String raw = prefs.getString(scopedKey(KEY_CELL_SNAPSHOTS_JSON_PREFIX), "{}");
+        String raw = prefs.getString(scopedKey(cellSnapshotsJsonPrefix(getActiveMode())), "{}");
         if (TextUtils.isEmpty(raw)) {
             return new JSONObject();
         }
@@ -2206,6 +2469,10 @@ public final class AutoCutManager {
             AppLog.w(TRACE_CHAIN, TAG, "failed to parse cell snapshots json, reset route cache", error);
             return new JSONObject();
         }
+    }
+
+    private boolean mergeSeedResources(AutoCutMode mode, LinkedHashMap<String, AutoCutHerb> herbs) {
+        return safeMode(mode).isTree() ? mergeSeedTrees(herbs) : mergeSeedHerbs(herbs);
     }
 
     private boolean mergeSeedHerbs(LinkedHashMap<String, AutoCutHerb> herbs) {
@@ -2299,6 +2566,62 @@ public final class AutoCutManager {
         return changed;
     }
 
+    private boolean mergeSeedTrees(LinkedHashMap<String, AutoCutHerb> trees) {
+        boolean changed = false;
+        changed |= mergeSeedHerb(trees, "275", "Медный кактус", 0, 30, "1");
+        changed |= mergeSeedHerb(trees, "261", "Орешник", 0, 30, "5");
+        changed |= mergeSeedHerb(trees, "262", "Ива", 0, 30, "5");
+        changed |= mergeSeedHerb(trees, "280", "Дифенбахия", 0, 30, "7");
+        changed |= mergeSeedHerb(trees, "276", "Песчаная колючка", 20, 30, "1");
+        changed |= mergeSeedHerb(trees, "264", "Осина", 20, 30, "5");
+        changed |= mergeSeedHerb(trees, "263", "Ольха", 20, 30, "5");
+        changed |= mergeSeedHerb(trees, "281", "Жимолость южная", 20, 30, "7");
+        changed |= mergeSeedHerb(trees, "265", "Берёза", 30, 30, "5");
+        changed |= mergeSeedHerb(trees, "290", "Ель", 30, 30, "9");
+        changed |= mergeSeedHerb(trees, "266", "Липа", 40, 40, "5");
+        changed |= mergeSeedHerb(trees, "282", "Фиговое дерево", 40, 30, "7");
+        changed |= mergeSeedHerb(trees, "291", "Сосна", 50, 30, "9");
+        changed |= mergeSeedHerb(trees, "267", "Тополь", 60, 40, "5");
+        changed |= mergeSeedHerb(trees, "283", "Бамбук", 60, 30, "7");
+        changed |= mergeSeedHerb(trees, "277", "Финиковая пальма", 60, 60, "1");
+        changed |= mergeSeedHerb(trees, "268", "Тис", 80, 40, "5");
+        changed |= mergeSeedHerb(trees, "284", "Драцена", 80, 30, "7");
+        changed |= mergeSeedHerb(trees, "292", "Бук", 80, 30, "9");
+        changed |= mergeSeedHerb(trees, "269", "Вяз", 100, 40, "5");
+        changed |= mergeSeedHerb(trees, "285", "Эвкалипт", 100, 40, "7");
+        changed |= mergeSeedHerb(trees, "294", "Граб", 100, 60, "9");
+        changed |= mergeSeedHerb(trees, "278", "Самшит", 100, 60, "1");
+        changed |= mergeSeedHerb(trees, "270", "Клён", 120, 60, "5, 9");
+        changed |= mergeSeedHerb(trees, "293", "Кипарис", 120, 30, "9");
+        changed |= mergeSeedHerb(trees, "286", "Лавр кучерявый", 120, 60, "7");
+        changed |= mergeSeedHerb(trees, "271", "Ясень", 140, 60, "5, 9");
+        changed |= mergeSeedHerb(trees, "287", "Латания", 140, 60, "7");
+        changed |= mergeSeedHerb(trees, "295", "Кедр", 140, 60, "9");
+        changed |= mergeSeedHerb(trees, "279", "Сандал огненный", 150, 180, "1");
+        changed |= mergeSeedHerb(trees, "273", "Сассафрас совиный", 150, 180, "5");
+        changed |= mergeSeedHerb(trees, "289", "Мангровое дерево", 150, 180, "7");
+        changed |= mergeSeedHerb(trees, "272", "Дуб", 160, 60, "5, 9");
+        changed |= mergeSeedHerb(trees, "298", "Платан остролистый", 200, 30, "4");
+        changed |= mergeSeedHerb(trees, "274", "Серебристый тополь", 200, 180, "5");
+        changed |= mergeSeedHerb(trees, "288", "Хурма", 200, 180, "7");
+        changed |= mergeSeedHerb(trees, "296", "Чёрный кедр", 200, 180, "9");
+        changed |= mergeSeedHerb(trees, "299", "Падуб", 230, 30, "4");
+        changed |= mergeSeedHerb(trees, "297", "Тайпал", 250, 180, "9");
+        changed |= mergeSeedHerb(trees, "300", "Тигровое дерево", 270, 30, "4");
+        changed |= mergeSeedHerb(trees, "301", "Камфорное дерево", 350, 30, "4");
+        changed |= mergeSeedHerb(trees, "302", "Амирис", 400, 30, "4");
+        changed |= mergeSeedHerb(trees, "303", "Секвойя", 500, 40, "4");
+        changed |= mergeSeedHerb(trees, "305", "Красное дерево", 500, 180, "4");
+        changed |= mergeSeedHerb(trees, "304", "Ююба", 550, 40, "4");
+        changed |= mergeSeedHerb(trees, "306", "Драконовое дерево", 650, 60, "10");
+        changed |= mergeSeedHerb(trees, "307", "Казуриана", 720, 60, "10");
+        changed |= mergeSeedHerb(trees, "308", "Гикори", 800, 60, "10");
+        changed |= mergeSeedHerb(trees, "309", "Эбеновое дерево", 900, 60, "10");
+        changed |= mergeSeedHerb(trees, "310", "Каламандровое дерево", 1000, 60, "10");
+        changed |= mergeSeedHerb(trees, "311", "Мамонтовое дерево", 1000, 120, "10");
+        return changed;
+    }
+
     private boolean mergeSeedHerb(LinkedHashMap<String, AutoCutHerb> herbs,
                                   String id,
                                   String name,
@@ -2320,6 +2643,11 @@ public final class AutoCutManager {
     }
 
     private void persistHerbsLocked(LinkedHashMap<String, AutoCutHerb> herbs) {
+        persistResourcesLocked(AutoCutMode.HERB, herbs);
+    }
+
+    private void persistResourcesLocked(AutoCutMode mode, LinkedHashMap<String, AutoCutHerb> herbs) {
+        AutoCutMode safeMode = safeMode(mode);
         JSONArray array = new JSONArray();
         for (AutoCutHerb herb : herbs.values()) {
             JSONObject item = new JSONObject();
@@ -2335,7 +2663,7 @@ public final class AutoCutManager {
                 AppLog.w(TRACE_CHAIN, TAG, "failed to serialize herb: " + herb.name, error);
             }
         }
-        prefs.edit().putString(scopedKey(KEY_HERBS_JSON_PREFIX), array.toString()).apply();
+        prefs.edit().putString(scopedKey(resourcesJsonPrefix(safeMode)), array.toString()).apply();
     }
 
     private AutoCutHerb findHerbLocked(LinkedHashMap<String, AutoCutHerb> herbs, String id, String name) {
@@ -2356,6 +2684,75 @@ public final class AutoCutManager {
             }
         }
         return null;
+    }
+
+    /** Возвращает текущий активный AutoCut-like режим по persisted флагам AutoFunctionsManager. */
+    public AutoCutMode getActiveMode() {
+        try {
+            AutoFunctionsManager manager = AutoFunctionsManager.getInstance(appContext);
+            if (manager.isAutoLumberjackEnabled()) {
+                return AutoCutMode.TREE;
+            }
+        } catch (Exception ignored) {
+        }
+        return AutoCutMode.HERB;
+    }
+
+    /** true, если включён Авто-Травник или Авто-Лесоруб. */
+    public boolean isAnyAutoCutModeEnabled() {
+        try {
+            AutoFunctionsManager manager = AutoFunctionsManager.getInstance(appContext);
+            return manager.isAutoCutEnabled() || manager.isAutoLumberjackEnabled();
+        } catch (Exception error) {
+            AppLog.w(TRACE_CHAIN, TAG, "failed to read AutoCut-like state", error);
+            return false;
+        }
+    }
+
+    /** true, если ресурс по имени уже есть в seed/live списке указанного режима. */
+    public synchronized boolean isKnownResourceName(AutoCutMode mode, String name) {
+        return findHerbLocked(loadResourcesLocked(safeMode(mode)), "", name) != null;
+    }
+
+    /** true, если кандидат `RESO@` относится к указанному режиму. */
+    public synchronized boolean isResourceCandidateForMode(AutoCutMode mode, String id, String name, String rType) {
+        AutoCutMode safeMode = safeMode(mode);
+        if (safeMode.isTree()) {
+            return "9".equals(safe(rType)) || isKnownResourceName(AutoCutMode.TREE, name);
+        }
+        return !"9".equals(safe(rType));
+    }
+
+    private static AutoCutMode safeMode(AutoCutMode mode) {
+        return mode == null ? AutoCutMode.HERB : mode;
+    }
+
+    private static String resourcesJsonPrefix(AutoCutMode mode) {
+        return safeMode(mode).isTree() ? KEY_TREES_JSON_PREFIX : KEY_HERBS_JSON_PREFIX;
+    }
+
+    private static String cellsCsvPrefix(AutoCutMode mode) {
+        return safeMode(mode).isTree() ? KEY_LUMBERJACK_CELLS_CSV_PREFIX : KEY_CELLS_CSV_PREFIX;
+    }
+
+    private static String writeChatPrefix(AutoCutMode mode) {
+        return safeMode(mode).isTree() ? KEY_LUMBERJACK_WRITE_CHAT_PREFIX : KEY_WRITE_CHAT_PREFIX;
+    }
+
+    private static String cleanupEnabledPrefix(AutoCutMode mode) {
+        return safeMode(mode).isTree() ? KEY_LUMBERJACK_CLEANUP_ENABLED_PREFIX : KEY_CLEANUP_ENABLED_PREFIX;
+    }
+
+    private static String cutByTimersPrefix(AutoCutMode mode) {
+        return safeMode(mode).isTree() ? KEY_LUMBERJACK_CUT_BY_TIMERS_PREFIX : KEY_CUT_BY_TIMERS_PREFIX;
+    }
+
+    private static String toolNamesJsonPrefix(AutoCutMode mode) {
+        return safeMode(mode).isTree() ? KEY_AXES_JSON_PREFIX : KEY_SICKLES_JSON_PREFIX;
+    }
+
+    private static String cellSnapshotsJsonPrefix(AutoCutMode mode) {
+        return safeMode(mode).isTree() ? KEY_LUMBERJACK_CELL_SNAPSHOTS_JSON_PREFIX : KEY_CELL_SNAPSHOTS_JSON_PREFIX;
     }
 
     private String scopedKey(String prefix) {
