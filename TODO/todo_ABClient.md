@@ -20,8 +20,172 @@
 
 # Анализ проекта ABClient — Сводный файл портирования
 
-**Обновлено**: 2026-04-12  
+**Обновлено**: 2026-05-01
 **Источник истины**: `ABClient\ABClient.csproj` + полное сканирование диска
+
+## P0 — Авто-Лесоруб в ПК-версии ABClient
+
+**Статус**: `[ ]` Не реализован в ПК-версии.
+**Цель**: добавить в C# клиент отдельную автофункцию `Авто-Лесоруб` по уже проверенной Android-логике `app2/ANClient`, но без создания второго HTTP/JS/scheduler-контура.
+**Ограничение текущей задачи**: этот раздел является подробным TODO/планом; файлы `ABClient/` не изменялись.
+
+### Что уже известно из Android и HAR
+
+- `Оглядеться`: `gameplay/ajax/alchemy_ajax.php?act=1&vcode=...&r=...`.
+- Ответ `act=1` может содержать травы и деревья одновременно.
+- `Орешник` из `ogl_srez_oreshnik.har`: `[261,"Орешник",30,30,209397049,10,2,2,1,"522496d14d51781a8a2cc142812a245e",9,1]`.
+- Признак дерева в HAR: `r_type=9`; дополнительный fallback — whitelist названий деревьев из `wiki/Таблица Лесоруба — Викиневер.html`.
+- `Спилить`: `alchemy_ajax.php?act=3&res_id=261&r_x=993&r_y=999&r_time=30&r_type=9&uid=209397049&curs=10&mass=2&p=2&l_time=30&vcode=...&code=52022`.
+- Успех: `RESO@["Всё прошло успешно."]@[]...@[0,[1,600]]@[]`.
+- Подготовка инструмента лесоруба должна использовать `main.php?im=0&wca=2`, а не травяной `wca=4`.
+
+### Инструменты лесоруба
+
+- `Мачете`
+- `Столярный топорик`
+- `Плотницкий топор`
+- `Топор подмастерья`
+- `Топор дровосека`
+- `Секира лесоруба`
+- `Секира Мастера-лесоруба`
+
+### Найденный существующий ПК-контур
+
+| Файл | Текущая роль | Что нужно сделать для `Авто-Лесоруб` |
+| ---- | ------------ | ------------------------------------ |
+| `ABClient\HerbCell.cs` | `HerbCell`, `AutoCutCatalog`, `AutoCutRuntime`: каталог трав, кеш клеток, маршрут, таймеры роста, cleanup, retry | Ввести режим ресурса `HERB/TREE` или эквивалентную mode-aware модель; расширить каталог деревьями; сохранить старые поля трав для совместимости профилей |
+| `ABClient\ABForms\FormMainHerbs.cs` | Bridge-методы `HerbsList`, `IsHerbAutoCut`, `HerbCut`, `DoHerbAutoCut`, `TraceCut` | Добавить mode-aware wrappers: выбор ресурса, сообщение в чат, таймеры и проверка выбранности без копирования алгоритма |
+| `ABClient\PostFilter\AlchemyAjaxPhp.cs` | Парсит `RESO@`, выбирает ресурс, ставит `pendingAlchemyCut`, отправляет `act=3`, обрабатывает успех/капчу | Фильтровать `act=1` по активному режиму: травы отдельно, деревья отдельно; для деревьев использовать `r_type=9` и tree whitelist; `PendingAlchemyCut` должен хранить mode/source |
+| `ABClient\PostFilter\MainPhp.cs` | Перед автоспилом проверяет/надевает серп, делает mass snapshot, cleanup | Убрать hard-code `sickle/wca=4` из общего AutoCut-префлоу: для деревьев проверять/надевать топор через `wca=2`; тексты и возврат на карту сделать mode-aware |
+| `ABClient\PostFilter\MainPhpInv.cs` | Завершает bulk-drop `Бесполезный хлам`, вызывает `AutoCutRuntime.OnCleanupCompleted` | Cleanup оставить общим, но лог/source должен указывать `auto_cut` или `auto_lumberjack` |
+| `ABClient\TInvUd.cs` | `ParsedDressed.IsWearSickle()` и whitelist серпов | Добавить whitelist топоров и общий метод `IsWearAutoCutTool(string[] toolNames)`; `IsWearSickle()` оставить wrapper-ом |
+| `ABClient\ABForms\FormSettingsAutoCut.cs` + `.Designer.cs` + `.resx` | WinForms настройки травника: список трав, клетки, cleanup, timers, серпы, anti-captcha | Расширить существующее окно вкладками/группами `Авто-Травник` и `Авто-Лесоруб`; добавить список деревьев, клетки обхода, cleanup, timers, список топоров |
+| `ABClient\MyProfile\UserConfig.cs` | Runtime/profile defaults: `AutoCutHerbs`, `HerbsAutoCut`, `HerbCells`, `AutoCutSicklesCsv` | Добавить tree-поля с дефолтами без миграции старых herb-полей: `AutoCutTrees`, `TreesAutoCut`, `TreeCells`, `AutoLumberjack...` |
+| `ABClient\MyProfile\UserConfigVars.cs` | Свойства настроек | Добавить свойства `AutoLumberjackSearchCellsCsv`, `AutoLumberjackCleanupEnabled`, `AutoLumberjackByTimers`, `AutoLumberjackShiftSchedule`, `AutoLumberjackAxesCsv`, `DoAutoLumberjackWriteChat` или использовать общий chat flag с явным решением |
+| `ABClient\MyProfile\UserConfigLoad.cs` | XML-load `<autocut>`, `<autocutherb>`, `<herbautocut>` | Добавить чтение `<autolumberjack>`, `<autocuttree>`/`<treeautocut>`; старые профили должны открываться без ошибок |
+| `ABClient\MyProfile\UserConfigSave.cs` | XML-save autocut-настроек | Сохранять новые настройки деревьев отдельными XML-узлами; не менять семантику старых узлов травника |
+| `ABClient\ScriptManager.cs` | COM bridge для `map.js`: `HerbsList`, `IsHerbAutoCut`, `DoHerbAutoCut`, `TraceCut` | Добавить bridge-методы для richer resource list (`ResourcesList`) или mode-aware wrappers; старые методы оставить для совместимости JS |
+| `ABClient\map.js` | Активный JS карты из `.csproj`; вызывает `window.external.DoHerbAutoCut()`, `Ogl(...)`, `HerbsList(...)`, `TraceCut(...)`, `ResoStart(...)` | Не создавать новый JS-контур; при необходимости добавить передачу `r_type` в C# (`ResourcesList`) и сохранить старый `HerbsList` |
+| `ABClient\ABForms\FormMain.cs` | Toolbar/menu: `buttonHerbAutoCut_Click`, `menuitemSettingsAutoCut_Click` | Добавить отдельный toggle `Авто-Лесоруб`; при включении выключать `Авто-Травник`, сбрасывать pending alchemy и runtime режима |
+| `ABClient\ABForms\FormMainTicks.cs` | Tick-loop: consume retry, PressOgl/auto-look | Учитывать active AutoCut-like режим: retry и auto-look работают для травника или лесоруба, но не конкурируют |
+| `ABClient\PostFilter\Filter.cs` | Роутинг `alchemy_ajax.php` в `AlchemyAjaxPhp` | Изменений минимум; убедиться, что оба режима проходят через тот же фильтр |
+
+### Архитектурное решение
+
+- [ ] Не создавать новый `alchemy_ajax` handler, отдельный scheduler, отдельный route manager или отдельный captcha solver.
+- [ ] Расширить существующий `AutoCutRuntime` mode-aware режимом `HERB/TREE`.
+- [ ] Оставить старые публичные имена травника (`HerbsList`, `DoHerbAutoCut`, `TraceCut`, `AutoCutHerbs`) как wrappers/legacy storage, чтобы не ломать существующие профили и JS.
+- [ ] Для деревьев добавить отдельное persistent-хранилище, чтобы не смешивать выбранные травы и деревья: `TreeCells`, `AutoCutTrees`, `TreesAutoCut` или эквивалент.
+- [ ] Сделать активным только один AutoCut-like режим: если включили `Авто-Лесоруб`, выключить `Авто-Травник`; если включили `Авто-Травник`, выключить `Авто-Лесоруб`.
+- [ ] `PendingAlchemyCut` должен знать режим, чтобы success/retry/cleanup/timer/chat не писали дерево как траву.
+- [ ] `r_type=9` считается деревом; если сервер вернет нестандартный `r_type`, fallback по названию из tree catalog.
+- [ ] `r_type!=9` для режима `HERB` не должен выбираться лесорубом; дерево не должно попадать в травяной auto-cut.
+
+### Модель данных профиля
+
+- [ ] В `UserConfig` добавить список деревьев по форме `AutoCutHerbInfo` или новый класс `AutoCutTreeInfo` с полями `Id`, `Name`, `Skill`, `GrowthMinutes`, `Group`, `LastLocation`, `Selected`.
+- [ ] Добавить кеш клеток деревьев отдельно от `HerbCells`: `TreeCells` или generic map с mode key.
+- [ ] Добавить выбранные деревья: `TreesAutoCut`.
+- [ ] Добавить настройки обхода: `AutoLumberjackSearchCellsCsv`.
+- [ ] Добавить настройки cleanup: `AutoLumberjackCleanupEnabled`.
+- [ ] Добавить настройки таймеров: `AutoLumberjackByTimers`, `AutoLumberjackShiftSchedule`.
+- [ ] Добавить настройки инструментов: `AutoLumberjackAxesCsv`.
+- [ ] Решить и зафиксировать в коде, общий ли chat flag (`DoAutoCutWriteChat`) или отдельный `DoAutoLumberjackWriteChat`; предпочтение Android-паритету — отдельный флаг.
+- [ ] XML backward compatibility: отсутствие новых узлов в старом профиле должно давать безопасные дефолты и не сбрасывать старый `Авто-Травник`.
+
+### Каталог деревьев
+
+- [ ] Извлечь seed-список деревьев из `wiki/Таблица Лесоруба — Викиневер.html`.
+- [ ] Добавить в каталог `Орешник` и сверить его с HAR: `res_id=261`, `r_type=9`, `r_time=30`, `mass=2`.
+- [ ] Для каждого дерева заполнить `Name`, `Skill`, `GrowthMinutes`, `Group`; если ID неизвестен — пустой ID, как сейчас сделано для квестовых трав.
+- [ ] `RegisterObservedResource` должен обновлять ID/рост/последнюю клетку по фактическому `RESO@`, не ломая seed-данные.
+
+### UI и управление
+
+- [ ] В `FormSettingsAutoCut` добавить вкладку или отдельную группу `Авто-Лесоруб`.
+- [ ] Для деревьев показать `ListView`: `Дерево`, `ID`, `Умение`, `Рост`, `Клетка`, `Группа`.
+- [ ] Добавить кнопки `Выбрать все`/`Снять все` для деревьев или общий selector по активной вкладке.
+- [ ] Добавить поле клеток обхода лесоруба отдельно от травника.
+- [ ] Добавить checkbox cleanup для лесоруба.
+- [ ] Добавить checkbox `Спиливать по таймерам роста` для лесоруба.
+- [ ] Добавить список разрешённых топоров (`CheckedListBox`) по whitelist из `TInvUd.cs`.
+- [ ] В `FormMain` добавить отдельный toolbar/menu toggle `Авто-Лесоруб`.
+- [ ] При включении лесоруба: сбросить pending alchemy, runtime, tool-check flags, вызвать reload main.php, запустить route-next если текущая клетка не готова.
+- [ ] При выключении лесоруба: отменить pending alchemy, очистить `FightLink` если это `alchemy_ajax.php`, не трогать ручные действия пользователя.
+
+### Runtime и маршрут
+
+- [ ] Обобщить `AutoCutRuntime.CheckedCells`, `checkedShiftKey`, `lookRetryAt`, `timerRoute...`, `massSnapshotSyncPending` так, чтобы состояние не смешивалось между `HERB` и `TREE`.
+- [ ] `ShouldAutoLookOnCurrentCell(mode)` должен брать клетки и cache текущего режима.
+- [ ] `OnScanWithoutSelectedResource(mode, source)` должен маршрутизировать по клеткам текущего режима.
+- [ ] `OnCutSuccess(mode, retrySameCell, source, resourceMass)` должен ставить таймер и cleanup для текущего режима.
+- [ ] `GetUncheckedCellSkipReason(mode, cell)` должен анализировать cache именно трав или деревьев.
+- [ ] `HasDueTimerForCell(mode, cell)` должен отличать timers лесоруба от timers травника.
+- [ ] Логи оставить в `auto_cut_trace`, но source/tag должны явно содержать `auto_lumberjack` или `mode=tree`.
+
+### Alchemy AJAX
+
+- [ ] `ProcessAlchemyAct1` должен работать только если включен один из AutoCut-like режимов.
+- [ ] Парсер `ResourceCandidate` уже читает `RType`; использовать его для mode-фильтра.
+- [ ] Для режима `TREE` выбирать только `resource.RType == "9"` или resource name из tree catalog.
+- [ ] Для режима `HERB` не выбирать `RType == "9"`, если это дерево.
+- [ ] `RegisterObservedResources` должен писать и `HerbCells`, и `TreeCells` по соответствующим ресурсам.
+- [ ] `HasMoreSelectedAvailableAfterCut` должен считать только ресурсы текущего режима.
+- [ ] `BuildFinishUrl` уже передает `r_type`; для деревьев оставить `r_type=9` из ответа сервера без переопределения.
+- [ ] Ошибка `Неверный код защиты`/captcha должна сбрасывать pending current mode и ставить retry только для current mode.
+
+### Инструменты и inventory
+
+- [ ] В `ParsedDressed` добавить `AutoCutAxeNames` с whitelist топоров.
+- [ ] Добавить `IsWearAutoCutTool(string[] toolNames)` и `GetAutoCutAxeNames()`.
+- [ ] `IsWearSickle()` оставить для старого кода и сделать wrapper на общий метод.
+- [ ] В `MainPhp` заменить жесткие `MainPhpArmedSickle`/`MainPhpWearSickle` вызовы в AutoCut-preflow на mode-aware проверки.
+- [ ] Для `HERB`: inventory filter `&im=0&wca=4`, tool list `GetAutoCutSickleNames()`.
+- [ ] Для `TREE`: inventory filter `&im=0&wca=2`, tool list `GetAutoCutAxeNames()`.
+- [ ] Если инструмент не найден, выключить только текущую автофункцию и написать понятное сообщение в чат.
+
+### JS bridge и map.js
+
+- [ ] Активный файл по `.csproj`: `ABClient\map.js`, не `ABClient\Js\map.js`.
+- [ ] Не дублировать `Ogl(...)`, `ResoStart(...)`, `AjaxGet('alchemy_ajax.php?...')`.
+- [ ] Сохранить ручные кнопки `Срезать`/`Срубить` и текущий `ResoStart(...)` без изменения server protocol.
+- [ ] Если нужен richer cache для деревьев, добавить `window.external.ResourcesList(...)` с `name:available:r_type|` рядом с существующим `HerbsList(...)`.
+- [ ] Старый `HerbsList(name:available|)` оставить, чтобы не ломать текущий травник.
+
+### Чат, таймеры и сообщения
+
+- [ ] Сообщение старого травника оставить: `Автоспил травы ...`.
+- [ ] Для лесоруба добавить отдельное сообщение: `Авто-Лесоруб: спил дерева ...` или `Автоспил дерева ...`.
+- [ ] `TraceCut` разделить по mode: `Трава ... спилена` и `Дерево ... спилено`.
+- [ ] Таймеры роста должны иметь описания вида `Вырастет <дерево> на <клетка>` или отдельный маркер `IsLumberjack/IsTree`, чтобы routing по таймерам не смешивал дерево и траву.
+- [ ] Если структура `AppTimer` не поддерживает mode, добавить поле/описание без ломки старых timers.
+
+### Анти-регрессия травника
+
+- [ ] С включенным только `Авто-Травник` должны сохраниться: выбор трав, route CSV, retry той же клетки, captcha, mass snapshot, cleanup `Бесполезный хлам`, таймеры роста.
+- [ ] Деревья из смешанного `act=1` ответа не должны срезаться травником.
+- [ ] Старые профили с `<herbsautocut>`, `<autocutherbs>`, `<autocut sickles=...>` должны загружаться без миграционных ошибок.
+- [ ] Старый toolbar `buttonHerbAutoCut` должен работать как раньше.
+
+### Проверки после реализации
+
+- [ ] Собрать `ABClient.sln` или `ABClient.csproj` в той конфигурации, которая используется для ПК-клиента.
+- [ ] Проверить `git diff --check`.
+- [ ] Проверить UTF-8 без BOM и отсутствие mojibake в измененных `.cs`, `.js`, `.resx`, `.md`.
+- [ ] Проверить, что не добавлены новые browser-identifying `User-Agent` строки.
+- [ ] Проверить, что нет второго параллельного `alchemy_ajax.php`/route/captcha контура.
+- [ ] Smoke-run ПК-клиента: включить `Авто-Травник`, убедиться что он ведет себя как раньше.
+- [ ] Smoke-run ПК-клиента: включить `Авто-Лесоруб`, открыть клетку с `Орешник`, убедиться что выбран `r_type=9`, надевается топор через `wca=2`, отправляется `act=3`, успех ставит timer/cleanup.
+- [ ] Проверить взаимное исключение: включение лесоруба выключает травник и наоборот.
+- [ ] Проверить manual HTML buttons: ручное `Срубить`/`Срезать` продолжает работать.
+
+### Риски
+
+- Если смешать cache трав и деревьев в `HerbCells`, route может пропускать нужные клетки или считать клетку проверенной для неправильного режима.
+- Если не mode-aware `PendingAlchemyCut`, success дерева может вызвать `TraceCut` травника и поставить неправильный timer.
+- Если оставить hard-code `wca=4`, лесоруб будет искать серп вместо топора.
+- Если включить обе автофункции одновременно, они начнут конкурировать за `Ogl(...)`, `FightLink` и `alchemy_ajax.php`.
+- Если изменить `map.js` без совместимости `HerbsList`, можно сломать ручное окно ресурсов и текущий травник.
 
 ## Мёртвые файлы (есть на диске, но НЕ в .csproj — НЕ компилируются)
 
