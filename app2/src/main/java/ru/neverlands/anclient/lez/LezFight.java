@@ -1216,12 +1216,16 @@ public class LezFight {
                     }
                     String captchaToken = Strip(_fexp[4]);
                     String captchaFlag = (_fexp.length > 6) ? Strip(_fexp[6]) : "";
-                    boolean needManualCaptcha = captchaToken.length() > 2 && "0".equals(captchaFlag);
+                    boolean hasCaptchaToken = captchaToken.length() > 2;
+                    boolean needManualCaptcha = hasCaptchaToken && "0".equals(captchaFlag);
                     if (needManualCaptcha) {
                         AppVars.CodeAddress = "http://neverlands.ru/modules/code/code.php?" + captchaToken;
                         BuildFightLink(true);
-                    } else {
+                    } else if (!hasCaptchaToken) {
                         BuildFightLink(false);
+                    } else {
+                        AppLog.d("LezFight", "ParseNonFight: fexp captcha token ignored by flag="
+                                + captchaFlag + ", skip normal finish link");
                     }
                     break;
                 }

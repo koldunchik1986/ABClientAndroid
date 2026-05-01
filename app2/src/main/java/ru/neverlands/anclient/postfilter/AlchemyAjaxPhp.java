@@ -82,8 +82,8 @@ public final class AlchemyAjaxPhp {
      *
      * Алгоритм:
      * - парсит `RESO@` и регистрирует все увиденные травы в словаре настроек;
-     * - очищает one-shot retry и due herb timer-ы текущей клетки, потому сам факт `RESO@`
-     *   означает, что запланированный повтор/возврат по timer-у реально дошёл до scan-а;
+     * - очищает one-shot retry; due herb timer текущей клетки удаляется только после no-selected
+     *   scan-а или успешного `act=3`, чтобы wrong-captcha retry мог повторить текущую клетку;
      * - выбирает первую доступную выбранную траву (`availableCount > 0` и `cutVcode` не пустой);
      * - если серп не готов, откладывает выбранный ресурс и запускает main.php-проверку серпа;
      * - если captcha нужна, открывает native popup; иначе отправляет `act=3` через `AjaxGet(...)`.
@@ -105,7 +105,6 @@ public final class AlchemyAjaxPhp {
 
         AutoCutManager autoCut = AutoCutManager.getInstance(AppVars.getContext());
         autoCut.clearPendingLookRetry("alchemy_act1");
-        autoCut.clearDueHerbTimersForCurrentCell("alchemy_act1");
         for (ResourceCandidate resource : state.resources) {
             autoCut.registerObservedHerb(resource.resId, resource.name, 0, resource.rTime, "");
         }
@@ -124,6 +123,7 @@ public final class AlchemyAjaxPhp {
         if (selected == null) {
             AppLog.d(AutoCutManager.TRACE_CHAIN, TAG,
                     "act1: no selected available herb, resources=" + state.resources.size());
+            autoCut.clearDueHerbTimersForCurrentCell("alchemy_act1_no_selected");
             autoCut.onScanWithoutSelectedHerb("alchemy_act1");
             return;
         }

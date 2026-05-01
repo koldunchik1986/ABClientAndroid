@@ -1452,11 +1452,16 @@ public final class FightAuto {
                 return null;
             }
             String[] parts = rawFexp.split(",");
-            if (parts.length < 5) {
+            if (parts.length < 7) {
                 return null;
             }
             String captchaToken = parts[4].replace("\"", "").replace("'", "").trim();
+            String captchaFlag = parts[6].replace("\"", "").replace("'", "").trim();
             if (captchaToken.length() <= 2) {
+                return null;
+            }
+            if (!"0".equals(captchaFlag)) {
+                AppLog.d(TAG, "extractCaptchaUrlFromFexp: token ignored by captcha flag=" + captchaFlag);
                 return null;
             }
             return "http://neverlands.ru/modules/code/code.php?" + captchaToken;
@@ -1584,6 +1589,12 @@ public final class FightAuto {
         if (fexp.size() < 14) {
             return null;
         }
+        String fexp4 = trimJsToken(fexp.get(4));
+        String fexp6 = fexp.size() > 6 ? trimJsToken(fexp.get(6)) : "";
+        if (!withCaptchaPlaceholder && fexp4.length() > 2) {
+            AppLog.d(TAG, "extractFightFinishLinkFromHtml: skip normal fexp finish link, captcha token flag=" + fexp6);
+            return null;
+        }
         String fexp0 = trimJsToken(fexp.get(0));
         String fexp1 = trimJsToken(fexp.get(1));
         String fexp3 = trimJsToken(fexp.get(3));
@@ -1657,6 +1668,13 @@ public final class FightAuto {
         }
         List<String> fexp = splitJsTopLevelCsv(rawFexp);
         if (fexp.size() < 4) {
+            return null;
+        }
+        String captchaToken = fexp.size() > 4 ? trimJsToken(fexp.get(4)) : "";
+        if (captchaToken.length() > 2) {
+            String captchaFlag = fexp.size() > 6 ? trimJsToken(fexp.get(6)) : "";
+            AppLog.d(TAG, "extractFightCleanVcodeFromFexp: skip clean finish fallback, captcha token flag="
+                    + captchaFlag);
             return null;
         }
         String vcode = trimJsToken(fexp.get(3));

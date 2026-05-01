@@ -521,6 +521,7 @@ public final class AutoCutManager {
         String safeRegNum = TextUtils.isEmpty(regNum) ? resolveCurrentRegNum() : regNum.trim();
         TimerPlan timerPlan = buildTimerPlan(safeName, growth, safeRegNum);
         String massSnapshot = updateInventoryMassAfterCut(resourceMass);
+        clearDueHerbTimersForCurrentCell("cut_success:" + source);
         if (timerPlan.shouldCreateTimer) {
             AppTimer timer = new AppTimer();
             timer.description = "Вырастет " + safeName + " на " + safeRegNum;
@@ -565,7 +566,10 @@ public final class AutoCutManager {
      * текущая клетка не входит в CSV или уже проверена в текущую смену без due herb timer-а.
      */
     public boolean shouldAutoLookOnCurrentCell() {
-        if (AppVars.AutoMoving || AppVars.AutoCutCheckSickle || AppVars.AutoCutCleanupPending) {
+        if (AppVars.AutoMoving
+                || AppVars.AutoCutCheckSickle
+                || AppVars.AutoCutCleanupPending
+                || AlchemyAjaxPhp.hasPendingCutForRouteGuard()) {
             return false;
         }
         if (getSelectedHerbCount() <= 0) {
@@ -1046,8 +1050,9 @@ public final class AutoCutManager {
         AppVars.AutoCutCleanupPending = false;
         AppVars.AutoCutCleanupReason = "";
         AppVars.AutoCutHarvestedMassSinceCleanup = 0d;
+        AppVars.AutoFishMassa = "";
         restoreAutosPausedForCleanup("cleanup_completed:" + source);
-        AppLog.i(TRACE_CHAIN, TAG, "cleanup completed, source=" + source);
+        AppLog.i(TRACE_CHAIN, TAG, "cleanup completed, source=" + source + ", massSnapshotInvalidated=true");
         if (hasPendingLookRetry()) {
             AppLog.i(TRACE_CHAIN, TAG, "cleanup completed: keep current cell for pending look retry, source=" + source);
             return;
@@ -1470,6 +1475,12 @@ public final class AutoCutManager {
      * существующий inventory bulk-drop контур через `AppVars.BulkDropThing` и `InvEntry.DropLink`.
      */
     public void requestGarbageCleanupAfterCut(String source) {
+        if (AppVars.AutoCutCleanupPending
+                && GARBAGE_ITEM_NAME.equalsIgnoreCase(safe(AppVars.BulkDropThing))) {
+            AppLog.d(TRACE_CHAIN, TAG, "garbage cleanup already pending, source=" + source
+                    + ", reason=" + safe(AppVars.AutoCutCleanupReason));
+            return;
+        }
         startCleanup("garbage:" + source, true);
         AppLog.i(TRACE_CHAIN, TAG, "garbage cleanup requested: thing=" + GARBAGE_ITEM_NAME
                 + ", source=" + source);
@@ -1672,8 +1683,8 @@ public final class AutoCutManager {
     /**
      * Возвращает первый due herb timer для конкретной клетки из переданного snapshot-а timer-ов.
      *
-     * Зависимость: метод не удаляет timer, потому удаление должно происходить только после реального
-     * `alchemy_ajax.php?act=1` через `clearDueHerbTimersForCurrentCell(...)`.
+     * Зависимость: метод не удаляет timer, потому удаление должно происходить только после no-selected
+     * scan-а или успешного `act=3` через `clearDueHerbTimersForCurrentCell(...)`.
      */
     private DueHerbTimer findDueHerbTimerForCell(List<AppTimer> timers, String cell, long now, int currentShift) {
         if (timers == null || timers.isEmpty() || TextUtils.isEmpty(cell)) {

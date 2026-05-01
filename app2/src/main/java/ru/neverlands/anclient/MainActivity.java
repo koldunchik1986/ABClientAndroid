@@ -141,6 +141,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     private static final int AUTO_SUBMIT_RETRY_DELAY_MS = 180;
     private static final int AUTO_SUBMIT_MAX_RETRY_COUNT = 3;
     private static final long CAPTCHA_IMAGE_STABILIZE_DELAY_MS = 180L;
+    private static final int CAPTCHA_IMAGE_MIN_USABLE_BYTES = 1024;
     private static final Pattern MAP_DECL_PATTERN = Pattern.compile(
             "var\\s+map\\s*=\\s*\\[\\s*\\[\\s*(-?\\d+)\\s*,\\s*(-?\\d+)\\s*,\\s*(\\d+)",
             Pattern.CASE_INSENSITIVE);
@@ -1662,12 +1663,24 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         if (!hasFightMarkers(html)) {
             return false;
         }
+        String previousFightLink = AppVars.FightLink;
+        String previousCodeAddress = AppVars.CodeAddress;
         try {
             LezFight fight = new LezFight(html);
             return fight.IsValid && fight.IsBoi;
         } catch (Exception e) {
             AppLog.w(TAG, BG_TRACE_PREFIX + " isActiveFightContext: parse failed, treat as inactive", e);
             return false;
+        } finally {
+            boolean fightLinkChanged = !java.util.Objects.equals(previousFightLink, AppVars.FightLink);
+            boolean codeAddressChanged = !java.util.Objects.equals(previousCodeAddress, AppVars.CodeAddress);
+            if (fightLinkChanged || codeAddressChanged) {
+                AppLog.d(TAG, BG_TRACE_PREFIX + " isActiveFightContext: restore validation side effects"
+                        + ", generatedFightLink=" + (AppVars.FightLink == null ? "null" : AppVars.FightLink)
+                        + ", generatedCodeAddress=" + (AppVars.CodeAddress == null ? "null" : AppVars.CodeAddress));
+            }
+            AppVars.FightLink = previousFightLink;
+            AppVars.CodeAddress = previousCodeAddress;
         }
     }
 
@@ -2285,9 +2298,9 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         }
         byte[] imageBytes = AppVars.LastFightCaptchaImageBytes;
         boolean imageReady = imageBytes != null
-                && imageBytes.length > 0
                 && activeFightCaptchaImageHash != 0
-                && isSameCaptchaUrl(activeFightCaptchaUrl, AppVars.LastFightCaptchaImageUrl);
+                && isSameCaptchaUrl(activeFightCaptchaUrl, AppVars.LastFightCaptchaImageUrl)
+                && decodeUsableCaptchaBitmap(imageBytes, "ANTI_CAPTCHA_TRACE.ready") != null;
         if (!imageReady) {
             // Картинка captcha иногда приходит позже самого AlertDialog. Ждём только текущий URL,
             // чтобы не отправить stale bytes от прошлого challenge и не получить неверный ответ.
@@ -2439,6 +2452,29 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         antiCaptchaChallengeKey = "";
         antiCaptchaImageWaitAttempts = 0;
         AppLog.d(TAG, "ANTI_CAPTCHA_TRACE reset: " + reason);
+    }
+
+    private android.graphics.Bitmap decodeUsableCaptchaBitmap(byte[] captchaBytes, String source) {
+        String safeSource = source == null ? "captcha" : source;
+        if (captchaBytes == null || captchaBytes.length == 0) {
+            AppLog.w(TAG, safeSource + ": captcha image bytes are empty");
+            return null;
+        }
+        if (captchaBytes.length < CAPTCHA_IMAGE_MIN_USABLE_BYTES) {
+            AppLog.w(TAG, safeSource + ": captcha image bytes too small, bytes="
+                    + captchaBytes.length + ", min=" + CAPTCHA_IMAGE_MIN_USABLE_BYTES);
+            return null;
+        }
+        android.graphics.Bitmap bitmap = android.graphics.BitmapFactory.decodeByteArray(
+                captchaBytes,
+                0,
+                captchaBytes.length
+        );
+        if (bitmap == null) {
+            AppLog.w(TAG, safeSource + ": captcha bitmap decode failed, bytes=" + captchaBytes.length);
+            return null;
+        }
+        return bitmap;
     }
 
     /**
@@ -2791,17 +2827,17 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         long cachedAt = AppVars.LastFightCaptchaImageAtMs;
         long cachedAge = cachedAt > 0 ? (System.currentTimeMillis() - cachedAt) : Long.MAX_VALUE;
         boolean isSameCaptchaUrl = isSameCaptchaUrl(cachedUrl, captchaUrl);
-        boolean hasFreshSameUrlCaptchaBytes = isSameCaptchaUrl && cachedBytes != null && cachedBytes.length > 0
+        boolean hasFreshSameUrlCaptchaBytes = isSameCaptchaUrl && cachedBytes != null
                 && cachedAge >= 0 && cachedAge <= 30000L;
+        android.graphics.Bitmap cachedBitmap = null;
         if (hasFreshSameUrlCaptchaBytes) {
-            android.graphics.Bitmap cachedBitmap = android.graphics.BitmapFactory.decodeByteArray(cachedBytes, 0, cachedBytes.length);
+            cachedBitmap = decodeUsableCaptchaBitmap(cachedBytes, "loadCaptchaImageAsync.cached");
             if (cachedBitmap != null) {
                 AppLog.d(TAG, "loadCaptchaImageAsync: showing cached captcha preview, size=" + cachedBytes.length + ", ageMs=" + cachedAge);
                 imageView.setImageBitmap(cachedBitmap);
-            } else {
-                AppLog.d(TAG, "loadCaptchaImageAsync: cached captcha bytes exist but decode failed, size=" + cachedBytes.length);
             }
         }
+        final boolean hasUsableFreshSameUrlCaptchaBytes = hasFreshSameUrlCaptchaBytes && cachedBitmap != null;
 
         // Важно: повторный GET code.php может сгенерировать новый challenge.
         // Поэтому даём WebView/interceptor приоритет и только после таймаута делаем fallback-запрос.
@@ -2836,9 +2872,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             final long fallbackStartedAtMs = System.currentTimeMillis();
             new Thread(() -> {
                 byte[] captchaBytes = downloadCaptchaImageBytes(captchaUrl);
-                final android.graphics.Bitmap bitmap = captchaBytes == null
-                        ? null
-                        : android.graphics.BitmapFactory.decodeByteArray(captchaBytes, 0, captchaBytes.length);
+                final android.graphics.Bitmap bitmap = decodeUsableCaptchaBitmap(captchaBytes, "loadCaptchaImageAsync.network");
 
                 runOnUiThread(() -> {
                     if (loadSeq != activeFightCaptchaLoadSeq) {
@@ -2870,7 +2904,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
 
                     progressBar.setVisibility(View.GONE);
                     if (bitmap != null && captchaBytes != null) {
-                        if (hasFreshSameUrlCaptchaBytes && captchaBytes.length < 1024) {
+                        if (hasUsableFreshSameUrlCaptchaBytes && captchaBytes.length < CAPTCHA_IMAGE_MIN_USABLE_BYTES) {
                             AppLog.w(TAG, "loadCaptchaImageAsync: network captcha is too small, keep cached preview, bytes=" + captchaBytes.length);
                             return;
                         }
@@ -2893,7 +2927,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                     } else {
                         AppLog.w(TAG, "loadCaptchaImageAsync: bitmap decode failed, url=" + captchaUrl
                                 + ", bytes=" + (captchaBytes != null ? captchaBytes.length : 0));
-                        if (!hasFreshSameUrlCaptchaBytes) {
+                        if (!hasUsableFreshSameUrlCaptchaBytes) {
                             Toast.makeText(this, "Failed to load captcha image", Toast.LENGTH_SHORT).show();
                         }
                     }
@@ -2929,7 +2963,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             return;
         }
 
-        android.graphics.Bitmap latestBitmap = android.graphics.BitmapFactory.decodeByteArray(latestBytes, 0, latestBytes.length);
+        android.graphics.Bitmap latestBitmap = decodeUsableCaptchaBitmap(latestBytes, "tryRefreshCaptchaImageFromLatest");
         if (latestBitmap == null) {
             return;
         }
@@ -3088,12 +3122,11 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             }
         }
 
-        android.graphics.Bitmap latestBitmap = android.graphics.BitmapFactory.decodeByteArray(latestBytes, 0, latestBytes.length);
+        android.graphics.Bitmap latestBitmap = decodeUsableCaptchaBitmap(latestBytes, "updateCaptchaImageFromCaptured");
         if (latestBitmap == null) {
             if (forceUpdate) {
                 progressBar.setVisibility(View.VISIBLE);
             }
-            AppLog.w(TAG, "updateCaptchaImageFromCaptured: decode failed, bytes=" + latestBytes.length);
             return false;
         }
 

@@ -5,6 +5,8 @@ import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 import java.util.Locale;
 import java.util.regex.Pattern;
 import java.util.regex.Matcher;
+import ru.neverlands.anclient.manager.AutoCutManager;
+import ru.neverlands.anclient.manager.AutoFunctionsManager;
 import ru.neverlands.anclient.utils.AppLog;
 import ru.neverlands.anclient.utils.AppVars;
 import ru.neverlands.anclient.utils.HelperStrings;
@@ -160,6 +162,7 @@ public class ServerNoticeParser {
         }
         lastServerNoticeKey = dedupKey;
         lastServerNoticeAtMs = nowMs;
+        maybeRequestGarbageCleanupFromNotice(normalized, sourceTag);
 
         String messageHtml = FightAuto.buildServerChatTimeHtml()
                 + "<font color=#333399><b>["
@@ -177,6 +180,30 @@ public class ServerNoticeParser {
         AppLog.d(TAG, msg);
         if (appendAutoCureTarget) {
             AppVars.CureNickDone = "";
+        }
+    }
+
+    private static void maybeRequestGarbageCleanupFromNotice(String normalized, String sourceTag) {
+        if (AppVars.getContext() == null || normalized == null || normalized.isEmpty()) {
+            return;
+        }
+        String lower = normalized.toLowerCase(Locale.ROOT);
+        if (!lower.contains("случайно найдено")
+                || !lower.contains("предмет")
+                || !lower.contains(AutoCutManager.GARBAGE_ITEM_NAME.toLowerCase(Locale.ROOT))) {
+            return;
+        }
+        try {
+            if (!AutoFunctionsManager.getInstance(AppVars.getContext()).isAutoCutEnabled()) {
+                AppLog.d(AutoCutManager.TRACE_CHAIN, TAG,
+                        "garbage notice ignored: AutoCut disabled, source=" + sourceTag);
+                return;
+            }
+            AutoCutManager.getInstance(AppVars.getContext())
+                    .requestGarbageCleanupAfterCut("server_notice:" + sourceTag);
+        } catch (Exception error) {
+            AppLog.w(AutoCutManager.TRACE_CHAIN, TAG,
+                    "garbage notice cleanup request failed, source=" + sourceTag, error);
         }
     }
 

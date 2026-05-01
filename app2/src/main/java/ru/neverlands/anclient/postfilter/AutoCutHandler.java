@@ -253,7 +253,8 @@ final class AutoCutHandler {
      * что мы попадём на inventory-страницу и не перехватим ручной HTML-клик.
      */
     private static String processCleanupOpenInventory(String address, String html) {
-        if (MainPhp.mainPhpIsInv(html) || MainPhp.hasInventoryRows(html)) {
+        boolean inventoryHtml = MainPhp.mainPhpIsInv(html) || MainPhp.hasInventoryRows(html);
+        if (inventoryHtml) {
             return null;
         }
         if (MainPhp.isInventoryAddress(address)) {

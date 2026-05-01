@@ -521,16 +521,16 @@ public final class InventoryParser {
                             && (AppVars.BulkDropPrice.isEmpty() || AppVars.BulkDropPrice.equals(dropPrice))
                             && invEntry.DropLink != null
                             && !invEntry.DropLink.isEmpty();
-                    boolean isAutoCutGarbageDrop = AppVars.AutoCutCleanupPending
-                            && AutoCutManager.GARBAGE_ITEM_NAME.equalsIgnoreCase(dropThing)
+                    boolean isGarbageDrop = AutoCutManager.GARBAGE_ITEM_NAME.equalsIgnoreCase(dropThing)
                             && invEntry.DropLink != null
                             && !invEntry.DropLink.isEmpty();
 
-                    if (invEntry.isExpired() || isBulkDropMatch || isAutoCutGarbageDrop) {
+                    if (invEntry.isExpired() || isBulkDropMatch || isGarbageDrop) {
                         String redirectMessage = "Выбрасывание предмета <b>&laquo;" + dropThing + "&raquo;</b>...";
                         if (AutoCutManager.GARBAGE_ITEM_NAME.equalsIgnoreCase(dropThing)) {
                             AppLog.i(AutoCutManager.TRACE_CHAIN, TAG,
-                                    "garbage bulk-drop redirect: link=" + invEntry.DropLink);
+                                    "garbage bulk-drop redirect: link=" + invEntry.DropLink
+                                            + ", cleanupPending=" + AppVars.AutoCutCleanupPending);
                         }
                         return MainPhp.buildRedirectHtml(redirectMessage, invEntry.DropLink == null ? "" : invEntry.DropLink);
                     }
