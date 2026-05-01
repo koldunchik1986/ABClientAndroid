@@ -538,6 +538,7 @@ public final class AutoCutManager {
             cleanupPending = maybeRequestCleanupAfterCut(resourceMass, source);
         }
         if (retrySameCellAfterCut) {
+            unmarkCurrentCellChecked("multi_cut:" + source);
             scheduleLookRetryAfterTimer("multi_cut:" + source);
         } else {
             markCurrentCellChecked("cut_success:" + source);
@@ -1598,6 +1599,25 @@ public final class AutoCutManager {
             }
         }
         AppLog.d(TRACE_CHAIN, TAG, "cell checked: " + current + ", source=" + source);
+    }
+
+    /** Убирает текущую клетку из checked-set, когда multi-cut должен повторить `Оглядеться`. */
+    private void unmarkCurrentCellChecked(String source) {
+        String current = resolveCurrentRegNum();
+        if (current.isEmpty()) {
+            return;
+        }
+        boolean removed;
+        synchronized (this) {
+            ShiftCheckedCells checked = loadCheckedCellsLocked();
+            removed = checked.cells.remove(current);
+            if (removed) {
+                persistCheckedCellsLocked(checked);
+            }
+        }
+        if (removed) {
+            AppLog.i(TRACE_CHAIN, TAG, "cell unchecked for retry: " + current + ", source=" + source);
+        }
     }
 
     /**

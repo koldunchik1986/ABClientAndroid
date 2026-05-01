@@ -142,6 +142,8 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     private static final int AUTO_SUBMIT_MAX_RETRY_COUNT = 3;
     private static final long CAPTCHA_IMAGE_STABILIZE_DELAY_MS = 180L;
     private static final int CAPTCHA_IMAGE_MIN_USABLE_BYTES = 1024;
+    private static final int ANTI_CAPTCHA_CREATE_RETRY_MAX_COUNT = 5;
+    private static final long ANTI_CAPTCHA_CREATE_RETRY_BASE_DELAY_MS = 10_000L;
     private static final Pattern MAP_DECL_PATTERN = Pattern.compile(
             "var\\s+map\\s*=\\s*\\[\\s*\\[\\s*(-?\\d+)\\s*,\\s*(-?\\d+)\\s*,\\s*(\\d+)",
             Pattern.CASE_INSENSITIVE);
@@ -224,6 +226,8 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     private boolean antiCaptchaInFlight = false;
     private String antiCaptchaChallengeKey = "";
     private int antiCaptchaImageWaitAttempts = 0;
+    private int antiCaptchaCreateRetryAttempts = 0;
+    private Runnable antiCaptchaRetryRunnable;
     /**
      * Текущее поле ввода кода в активном popup капчи.
      *
@@ -2352,9 +2356,83 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                         antiCaptchaInFlight = false;
                     }
                     AppLog.w(TAG, "ANTI_CAPTCHA_TRACE failed for active popup: " + message);
+                    if (shouldRetryAntiCaptchaFailure(message)) {
+                        scheduleAntiCaptchaRetry(
+                                failedChallengeKey,
+                                message,
+                                finishUrl,
+                                useAjaxSubmit,
+                                captchaSubmitted,
+                                input,
+                                dialog
+                        );
+                    }
                 });
             }
         });
+    }
+
+    private boolean shouldRetryAntiCaptchaFailure(String message) {
+        String normalized = message == null ? "" : message.toLowerCase(Locale.ROOT);
+        return normalized.contains("error_no_slot_available")
+                || normalized.contains("no idle workers")
+                || normalized.contains("http 5")
+                || normalized.contains("timeout");
+    }
+
+    private void scheduleAntiCaptchaRetry(String failedChallengeKey,
+                                          String message,
+                                          String finishUrl,
+                                          boolean useAjaxSubmit,
+                                          boolean[] captchaSubmitted,
+                                          android.widget.EditText input,
+                                          AlertDialog dialog) {
+        if (captchaSubmitted == null || captchaSubmitted[0]) {
+            return;
+        }
+        if (dialog == null || !dialog.isShowing()) {
+            return;
+        }
+        String currentChallengeKey = buildAntiCaptchaChallengeKey(finishUrl);
+        if (failedChallengeKey == null || !failedChallengeKey.equals(currentChallengeKey)) {
+            AppLog.d(TAG, "ANTI_CAPTCHA_TRACE retry skip: stale failedKey=" + failedChallengeKey
+                    + ", currentKey=" + currentChallengeKey);
+            return;
+        }
+        if (antiCaptchaCreateRetryAttempts >= ANTI_CAPTCHA_CREATE_RETRY_MAX_COUNT) {
+            AppLog.w(TAG, "ANTI_CAPTCHA_TRACE retry give up: attempts=" + antiCaptchaCreateRetryAttempts
+                    + ", reason=" + message);
+            return;
+        }
+
+        antiCaptchaCreateRetryAttempts++;
+        long delayMs = ANTI_CAPTCHA_CREATE_RETRY_BASE_DELAY_MS * antiCaptchaCreateRetryAttempts;
+        if (antiCaptchaRetryRunnable != null) {
+            fightCaptchaHandler.removeCallbacks(antiCaptchaRetryRunnable);
+        }
+        antiCaptchaRetryRunnable = () -> {
+            antiCaptchaRetryRunnable = null;
+            if (captchaSubmitted[0]) {
+                return;
+            }
+            if (dialog == null || !dialog.isShowing()) {
+                return;
+            }
+            String retryChallengeKey = buildAntiCaptchaChallengeKey(finishUrl);
+            if (!failedChallengeKey.equals(retryChallengeKey)) {
+                AppLog.d(TAG, "ANTI_CAPTCHA_TRACE retry skip: challenge changed, failedKey="
+                        + failedChallengeKey + ", currentKey=" + retryChallengeKey);
+                return;
+            }
+            antiCaptchaChallengeKey = "";
+            antiCaptchaInFlight = false;
+            AppLog.i(TAG, "ANTI_CAPTCHA_TRACE retry start: attempt=" + antiCaptchaCreateRetryAttempts
+                    + ", delayMs=" + delayMs);
+            maybeStartAntiCaptchaForActiveChallenge(finishUrl, useAjaxSubmit, captchaSubmitted, input, dialog);
+        };
+        AppLog.i(TAG, "ANTI_CAPTCHA_TRACE retry scheduled: attempt=" + antiCaptchaCreateRetryAttempts
+                + ", delayMs=" + delayMs + ", reason=" + message);
+        fightCaptchaHandler.postDelayed(antiCaptchaRetryRunnable, delayMs);
     }
 
     private void handleAntiCaptchaSolved(String solvedChallengeKey,
@@ -2451,6 +2529,11 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         antiCaptchaInFlight = false;
         antiCaptchaChallengeKey = "";
         antiCaptchaImageWaitAttempts = 0;
+        antiCaptchaCreateRetryAttempts = 0;
+        if (antiCaptchaRetryRunnable != null) {
+            fightCaptchaHandler.removeCallbacks(antiCaptchaRetryRunnable);
+            antiCaptchaRetryRunnable = null;
+        }
         AppLog.d(TAG, "ANTI_CAPTCHA_TRACE reset: " + reason);
     }
 

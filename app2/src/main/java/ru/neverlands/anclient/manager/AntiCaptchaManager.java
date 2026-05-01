@@ -116,7 +116,7 @@ public final class AntiCaptchaManager {
                     + ", lang=" + config.languagePool);
             long taskId = createTask(imageBytes, config);
             if (taskId <= 0L) {
-                notifyFailed(callback, safeChallengeKey, "createTask failed");
+                notifyFailed(callback, safeChallengeKey, "createTask failed: empty taskId");
                 return;
             }
 
@@ -128,8 +128,13 @@ public final class AntiCaptchaManager {
 
             notifySolved(callback, safeChallengeKey, text.trim());
         } catch (Exception e) {
-            AppLog.e(TAG, "ANTI_CAPTCHA_TRACE solve failed", e);
-            notifyFailed(callback, safeChallengeKey, e.getMessage() == null ? "solve failed" : e.getMessage());
+            String message = e.getMessage() == null ? "solve failed" : e.getMessage();
+            if (message.startsWith("createTask failed:")) {
+                AppLog.w(TAG, "ANTI_CAPTCHA_TRACE solve failed: " + message);
+            } else {
+                AppLog.e(TAG, "ANTI_CAPTCHA_TRACE solve failed", e);
+            }
+            notifyFailed(callback, safeChallengeKey, message);
         }
     }
 
@@ -159,9 +164,11 @@ public final class AntiCaptchaManager {
         JSONObject response = postJson(API_CREATE_TASK, request);
         int errorId = response.optInt("errorId", -1);
         if (errorId != 0) {
-            AppLog.w(TAG, "ANTI_CAPTCHA_TRACE createTask error="
-                    + response.optString("errorCode") + ": " + response.optString("errorDescription"));
-            return 0L;
+            String errorMessage = response.optString("errorCode")
+                    + ": "
+                    + response.optString("errorDescription");
+            AppLog.w(TAG, "ANTI_CAPTCHA_TRACE createTask error=" + errorMessage);
+            throw new IllegalStateException("createTask failed: " + errorMessage);
         }
         return response.optLong("taskId", 0L);
     }
