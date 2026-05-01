@@ -1,4 +1,3 @@
-﻿
 namespace ABClient
 {
     using System;
@@ -16,6 +15,7 @@ namespace ABClient
         internal string Complect = string.Empty;
         internal int Id;
         internal bool IsHerb;
+        internal bool IsAutoLumberjack;
 
         public override string ToString()
         {

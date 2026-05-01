@@ -837,7 +837,7 @@ namespace ABClient.PostFilter
                         AppVars.Tied = 0;
                         AppVars.SwitchToFlora = true;
                         AppLog.i("MainPhp", "MainPhp: auto-drink blaz submitted, return to flora scheduled");
-                        if (AppVars.DoHerbAutoCut)
+                        if (AutoCutRuntime.IsAutoCutLikeEnabled())
                         {
                             AppLog.i("auto_cut_trace", "MainPhp", "auto-drink blaz submitted: return to flora before auto look");
                         }
@@ -1180,10 +1180,13 @@ namespace ABClient.PostFilter
                 }
             }
 
-            // Переключения перед автоспилом травы: серп должен быть надет до act=3.
-            if (AppVars.DoHerbAutoCut && (DateTime.Now > AppVars.NeverTimer))
+            // Переключения перед AutoCut: нужный инструмент должен быть надет до act=3.
+            if (AutoCutRuntime.IsAutoCutLikeEnabled() && (DateTime.Now > AppVars.NeverTimer))
             {
-                AppLog.d("auto_cut_trace", "MainPhp", "auto cut pre-processing");
+                var autoCutMode = AutoCutRuntime.GetActiveMode();
+                var toolFilter = AutoCutRuntime.GetToolInventoryFilter(autoCutMode);
+                var modeTitle = AutoCutRuntime.GetModeTitle(autoCutMode);
+                AppLog.d("auto_cut_trace", "MainPhp", "auto cut pre-processing: mode=" + AutoCutRuntime.GetModeActionKey(autoCutMode));
                 AutoCutRuntime.UpdateMassSnapshotFromHtml(html);
                 if (AutoCutRuntime.IsMassSnapshotSyncPending())
                 {
@@ -1229,7 +1232,7 @@ namespace ABClient.PostFilter
 
                     if (!address.EndsWith("im=0", StringComparison.OrdinalIgnoreCase))
                     {
-                        html = BuildRedirect("Авто-Травник: cleanup инвентаря", "main.php?im=0");
+                        html = BuildRedirect(modeTitle + ": cleanup инвентаря", "main.php?im=0");
                         goto end;
                     }
                 }
@@ -1246,9 +1249,9 @@ namespace ABClient.PostFilter
                     AppVars.AutoCutArmedSickle = false;
                     if (MainPhpIsPerc(html) || MainPhpIsInv(html))
                     {
-                        AppVars.AutoCutArmedSickle = MainPhpArmedSickle(html);
+                        AppVars.AutoCutArmedSickle = MainPhpArmedAutoCutTool(html, autoCutMode);
                         AppVars.AutoCutCheckSickle = false;
-                        var resumedPendingCut = AppVars.AutoCutArmedSickle && ResumePendingAlchemyCutAfterPreparation("sickle_checked");
+                        var resumedPendingCut = AppVars.AutoCutArmedSickle && ResumePendingAlchemyCutAfterPreparation("tool_checked");
                         if (resumedPendingCut)
                         {
                             var florahtml = MainPhpFindFlora(html);
@@ -1264,19 +1267,19 @@ namespace ABClient.PostFilter
                             var florahtml = MainPhpFindFlora(html);
                             if (!string.IsNullOrEmpty(florahtml))
                             {
-                                AppLog.i("auto_cut_trace", "MainPhp", "sickle checked: return to flora before auto look");
+                                AppLog.i("auto_cut_trace", "MainPhp", "tool checked: return to flora before auto look, mode=" + AutoCutRuntime.GetModeActionKey(autoCutMode));
                                 html = florahtml;
                                 goto end;
                             }
 
-                            AutoCutRuntime.ScheduleLookRetry("sickle_checked");
+                            AutoCutRuntime.ScheduleLookRetry("tool_checked");
                         }
                     }
                 }
 
                 if (!AppVars.AutoCutArmedSickle && (DateTime.Now > AppVars.NeverTimer))
                 {
-                    var invHtml = MainPhpFindInv(html, "&im=0&wca=4");
+                    var invHtml = MainPhpFindInv(html, toolFilter);
                     if (!string.IsNullOrEmpty(invHtml))
                     {
                         html = invHtml;
@@ -1285,12 +1288,12 @@ namespace ABClient.PostFilter
 
                     if (MainPhpIsInv(html))
                     {
-                        invHtml = MainPhpWearSickle(html);
+                        invHtml = MainPhpWearAutoCutTool(html, autoCutMode);
                         if (string.IsNullOrEmpty(invHtml))
                         {
-                            if (AppVars.DoHerbAutoCut && !address.EndsWith("im=0&wca=4", StringComparison.OrdinalIgnoreCase))
+                            if (AutoCutRuntime.IsAutoCutLikeEnabled() && !address.EndsWith(toolFilter.TrimStart('&'), StringComparison.OrdinalIgnoreCase))
                             {
-                                html = BuildRedirect("Переключение на вещи", "main.php?im=0&wca=4");
+                                html = BuildRedirect("Переключение на вещи", "main.php?im=0" + toolFilter.Replace("&im=0", string.Empty));
                                 goto end;
                             }
                         }

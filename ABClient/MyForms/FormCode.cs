@@ -61,7 +61,7 @@ namespace ABClient.Forms
 
         private void ShowPic()
         {
-            if (AppVars.CodePng == null) return;
+            if (AppVars.CodePng == null || !AppVars.IsCodePngForAddress(AppVars.CodeAddress)) return;
             using (var ms = new MemoryStream(AppVars.CodePng))
             {
                 pictureBox.Image = Image.FromStream(ms);

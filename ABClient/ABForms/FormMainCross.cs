@@ -40,6 +40,11 @@ namespace ABClient.ABForms
         internal static string InsertGuaDiv(string code)
         {
             AppLog.d("FormMainCross", "InsertGuaDiv: code=" + code);
+            if (!AppVars.IsSameCaptchaCodeAddress(AppVars.CodeAddress, code))
+            {
+                AppVars.ClearCodePng();
+            }
+
             AppVars.CodeAddress = code;
             if (!string.IsNullOrEmpty(AppVars.CodeAddress))
             {

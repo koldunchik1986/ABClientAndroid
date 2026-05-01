@@ -1319,9 +1319,15 @@ namespace ABClient.Lez
                         {
                             Filter.CancelPendingAlchemyCut("fight_completion_captcha", true);
                             AppLog.i("LezFight", "ParseNonFight: CAPTCHA detected, CodeAddress set, vcode=" + Strip(_fexp[3]));
-                            AppVars.CodeAddress =
+                            var codeAddress =
                                 "http://www.neverlands.ru/modules/code/code.php?" +
                                 Strip(_fexp[4]);
+                            if (!AppVars.IsSameCaptchaCodeAddress(AppVars.CodeAddress, codeAddress))
+                            {
+                                AppVars.ClearCodePng();
+                            }
+
+                            AppVars.CodeAddress = codeAddress;
 
                             AppVars.FightLink =
                                 "http://www.neverlands.ru/main.php?code=????&get_id=61&act=7&fexp=" +

@@ -235,16 +235,21 @@ stopautofish:
 
         private static bool MainPhpArmedSickle(string html)
         {
+            return MainPhpArmedAutoCutTool(html, AutoCutMode.Herb);
+        }
+
+        private static bool MainPhpArmedAutoCutTool(string html, AutoCutMode mode)
+        {
             var parsedDressed = new ParsedDressed(html);
             if (!parsedDressed.Valid)
             {
                 return false;
             }
 
-            var result = parsedDressed.IsWearSickle();
+            var result = parsedDressed.IsWearAutoCutTool(GetConfiguredAutoCutToolNames(mode));
             if (result)
             {
-                AppLog.i("auto_cut_trace", "MainPhpWear", "sickle armed: " + AppVars.AutoCutSickleHand + " " + AppVars.AutoCutSickleHandD);
+                AppLog.i("auto_cut_trace", "MainPhpWear", "tool armed: mode=" + AutoCutRuntime.GetModeActionKey(mode) + ", item=" + AppVars.AutoCutSickleHand + " " + AppVars.AutoCutSickleHandD);
             }
 
             return result;
@@ -252,13 +257,18 @@ stopautofish:
 
         private static string MainPhpWearSickle(string html)
         {
+            return MainPhpWearAutoCutTool(html, AutoCutMode.Herb);
+        }
+
+        private static string MainPhpWearAutoCutTool(string html, AutoCutMode mode)
+        {
             var parsedDressed = new ParsedDressed(html);
             if (!parsedDressed.Valid)
             {
                 return null;
             }
 
-            if (parsedDressed.IsWearSickle())
+            if (parsedDressed.IsWearAutoCutTool(GetConfiguredAutoCutToolNames(mode)))
             {
                 AppVars.AutoCutArmedSickle = true;
                 AppVars.AutoCutCheckSickle = false;
@@ -266,7 +276,7 @@ stopautofish:
             }
 
             var invList = GetInvList(html);
-            var list = ParsedDressed.GetAutoCutSickleNames();
+            var list = GetConfiguredAutoCutToolNames(mode);
             foreach (var thing in invList)
             {
                 for (var j = 0; j < list.Length; j++)
@@ -278,23 +288,31 @@ stopautofish:
 
                     if (!string.IsNullOrEmpty(thing.WearLink))
                     {
-                        AppLog.i("auto_cut_trace", "MainPhpWear", "wear sickle: " + thing.Name);
+                        AppLog.i("auto_cut_trace", "MainPhpWear", "wear tool: mode=" + AutoCutRuntime.GetModeActionKey(mode) + ", item=" + thing.Name);
                         return BuildRedirect("Одеваем " + thing.Name, thing.WearLink);
                     }
                 }
             }
 
-            AppVars.DoHerbAutoCut = false;
+            if (mode == AutoCutMode.Tree)
+            {
+                AppVars.DoAutoLumberjack = false;
+            }
+            else
+            {
+                AppVars.DoHerbAutoCut = false;
+            }
+
             AppVars.AutoCutArmedSickle = false;
             AppVars.AutoCutCheckSickle = false;
-            AppLog.w("auto_cut_trace", "MainPhpWear", "sickle not found, Auto-Травник disabled");
+            AppLog.w("auto_cut_trace", "MainPhpWear", "tool not found, " + AutoCutRuntime.GetModeTitle(mode) + " disabled");
             try
             {
                 if (AppVars.MainForm != null)
                 {
                     AppVars.MainForm.BeginInvoke(
                         new UpdateWriteChatMsgDelegate(AppVars.MainForm.WriteChatMsg),
-                        "Авто-Травник выключен: серп не найден в инвентаре.");
+                        AutoCutRuntime.GetModeTitle(mode) + " выключен: инструмент не найден в инвентаре.");
                 }
             }
             catch (InvalidOperationException)
@@ -302,6 +320,28 @@ stopautofish:
             }
 
             return null;
+        }
+
+        private static string[] GetConfiguredAutoCutToolNames(AutoCutMode mode)
+        {
+            var saved = AutoCutRuntime.GetConfiguredToolsCsv(mode);
+            if (string.IsNullOrEmpty(saved))
+            {
+                return AutoCutRuntime.GetDefaultToolNames(mode);
+            }
+
+            var parts = saved.Split('|');
+            var result = new List<string>();
+            for (var i = 0; i < parts.Length; i++)
+            {
+                var name = (parts[i] ?? string.Empty).Trim();
+                if (name.Length > 0)
+                {
+                    result.Add(name);
+                }
+            }
+
+            return result.Count == 0 ? AutoCutRuntime.GetDefaultToolNames(mode) : result.ToArray();
         }
 
         private static void MainPhpGetSkinRes(string html)

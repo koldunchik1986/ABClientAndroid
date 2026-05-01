@@ -45,14 +45,22 @@ namespace ABClient.PostFilter
 
         private static void ProcessAlchemyAct1(string html)
         {
-            if (!AppVars.DoHerbAutoCut)
+            if (!AutoCutRuntime.IsAutoCutLikeEnabled())
             {
                 return;
             }
 
+            var mode = AutoCutRuntime.GetActiveMode();
+
             var state = ParseResourceState(html);
             if (state == null || state.Resources.Count == 0)
             {
+                if (state != null)
+                {
+                    FormMain.HerbsList(string.Empty);
+                    AutoCutRuntime.ClearDueHerbTimersForCurrentCell("alchemy_act1_empty");
+                }
+
                 if (html.Trim().Equals("ERR", StringComparison.OrdinalIgnoreCase))
                 {
                     AutoCutRuntime.ScheduleLookRetry("alchemy_act1_err");
@@ -77,7 +85,7 @@ namespace ABClient.PostFilter
                     continue;
                 }
 
-                if (FormMain.IsHerbAutoCut(resource.Name))
+                if (FormMain.IsResourceAutoCut(mode, resource.Name, resource.RType))
                 {
                     selected = resource;
                     break;
@@ -86,18 +94,18 @@ namespace ABClient.PostFilter
 
             if (selected == null)
             {
-                AppLog.d(AlchemyTraceChain, "AlchemyAjaxPhp", "act1: no selected available herb, resources=" + state.Resources.Count);
+                AppLog.d(AlchemyTraceChain, "AlchemyAjaxPhp", "act1: no selected available resource, mode=" + AutoCutRuntime.GetModeActionKey(mode) + ", resources=" + state.Resources.Count);
                 AutoCutRuntime.OnScanWithoutSelectedHerb("alchemy_act1");
                 return;
             }
 
-            var selectedCut = new PendingAlchemyCut(selected, state.CaptchaToken, HasMoreSelectedAvailableAfterCut(state, selected), DateTime.Now);
+            var selectedCut = new PendingAlchemyCut(mode, selected, state.CaptchaToken, HasMoreSelectedAvailableAfterCut(state, selected, mode), DateTime.Now);
             if (!AppVars.AutoCutArmedSickle)
             {
                 pendingAlchemyCut = selectedCut;
                 AppVars.AutoCutCheckSickle = true;
                 AppVars.FightLink = string.Empty;
-                RequestMainPhpReload("act1: selected herb waits for sickle check, herb=" + selected.Name);
+                RequestMainPhpReload("act1: selected resource waits for tool check, mode=" + AutoCutRuntime.GetModeActionKey(mode) + ", resource=" + selected.Name);
                 return;
             }
 
@@ -107,7 +115,7 @@ namespace ABClient.PostFilter
             {
                 pendingAlchemyCut = selectedCut;
                 AutoCutRuntime.RequestMassSnapshotBeforeCut("alchemy_act1:" + selected.ResId);
-                AppLog.i(AlchemyTraceChain, "AlchemyAjaxPhp", "act1: selected herb waits for mass snapshot, herb=" + selected.Name);
+                AppLog.i(AlchemyTraceChain, "AlchemyAjaxPhp", "act1: selected resource waits for mass snapshot, mode=" + AutoCutRuntime.GetModeActionKey(mode) + ", resource=" + selected.Name);
                 return;
             }
 
@@ -118,7 +126,7 @@ namespace ABClient.PostFilter
         private static bool ResumePendingAlchemyCutAfterPreparation(string source)
         {
             var current = pendingAlchemyCut;
-            if (current == null || current.IsExpired || !AppVars.DoHerbAutoCut || !AppVars.AutoCutArmedSickle)
+            if (current == null || current.IsExpired || !AutoCutRuntime.IsAutoCutLikeEnabled() || current.Mode != AutoCutRuntime.GetActiveMode() || !AppVars.AutoCutArmedSickle)
             {
                 return false;
             }
@@ -126,12 +134,12 @@ namespace ABClient.PostFilter
             if (!current.CaptchaRequired && AutoCutRuntime.NeedsMassSnapshotBeforeCut())
             {
                 AutoCutRuntime.RequestMassSnapshotBeforeCut("resume_after_" + source + ":" + current.Resource.ResId);
-                AppLog.i(AlchemyTraceChain, "AlchemyAjaxPhp", "pending cut resume waits for mass snapshot: herb=" + current.Resource.Name + ", source=" + source);
+                AppLog.i(AlchemyTraceChain, "AlchemyAjaxPhp", "pending cut resume waits for mass snapshot: mode=" + AutoCutRuntime.GetModeActionKey(current.Mode) + ", resource=" + current.Resource.Name + ", source=" + source);
                 return true;
             }
 
             DispatchPendingAlchemyCut(current);
-            AppLog.i(AlchemyTraceChain, "AlchemyAjaxPhp", "pending cut resumed: herb=" + current.Resource.Name + ", source=" + source);
+            AppLog.i(AlchemyTraceChain, "AlchemyAjaxPhp", "pending cut resumed: mode=" + AutoCutRuntime.GetModeActionKey(current.Mode) + ", resource=" + current.Resource.Name + ", source=" + source);
             return true;
         }
 
@@ -152,10 +160,10 @@ namespace ABClient.PostFilter
 
             // Alchemy captcha state belongs to pendingAlchemyCut even if FightLink was already overwritten by fight flow.
             AppVars.CodeAddress = string.Empty;
-            AppVars.CodePng = null;
+            AppVars.ClearCodePng();
 
             AppLog.w(AlchemyTraceChain, "AlchemyAjaxPhp", "pending cut cancelled: source=" + (source ?? "unknown") + ", hadPending=" + hasPendingCut + ", hadLink=" + hasAlchemyLink);
-            if (scheduleLookRetry && AppVars.DoHerbAutoCut)
+            if (scheduleLookRetry && AutoCutRuntime.IsAutoCutLikeEnabled())
             {
                 AutoCutRuntime.ScheduleLookRetry("alchemy_cancelled:" + (source ?? "unknown"));
             }
@@ -182,22 +190,36 @@ namespace ABClient.PostFilter
 
                 int growthMinutes;
                 int.TryParse(resource.RTime, NumberStyles.Integer, CultureInfo.InvariantCulture, out growthMinutes);
-                catalogChanged |= AutoCutCatalog.RegisterObservedHerb(
-                    AppVars.Profile,
-                    resource.ResId,
-                    resource.Name,
-                    growthMinutes,
-                    AppVars.Profile.MapLocation ?? string.Empty);
+                if (AutoCutRuntime.IsTreeCandidate(resource.Name, resource.RType))
+                {
+                    catalogChanged |= AutoCutCatalog.RegisterObservedTree(
+                        AppVars.Profile,
+                        resource.ResId,
+                        resource.Name,
+                        growthMinutes,
+                        AppVars.Profile.MapLocation ?? string.Empty);
+                }
+                else
+                {
+                    catalogChanged |= AutoCutCatalog.RegisterObservedHerb(
+                        AppVars.Profile,
+                        resource.ResId,
+                        resource.Name,
+                        growthMinutes,
+                        AppVars.Profile.MapLocation ?? string.Empty);
+                }
 
                 listBuilder.Append(resource.Name);
                 listBuilder.Append(':');
                 listBuilder.Append(resource.AvailableCount > 0 ? '1' : '0');
+                listBuilder.Append(':');
+                listBuilder.Append(resource.RType ?? string.Empty);
                 listBuilder.Append('|');
             }
 
+            FormMain.HerbsList(listBuilder.ToString());
             if (listBuilder.Length > 0)
             {
-                FormMain.HerbsList(listBuilder.ToString());
                 AppLog.i(AlchemyTraceChain, "AlchemyAjaxPhp", "act1 resources: " + listBuilder);
             }
 
@@ -238,12 +260,12 @@ namespace ABClient.PostFilter
             if (captchaRequired)
             {
                 EnsureAlchemyCaptchaState(cut);
-                AppLog.i(AlchemyTraceChain, "AlchemyAjaxPhp", "captcha pending: herb=" + cut.Resource.Name + ", id=" + cut.Resource.ResId + ", codeAddressHash=" + AppVars.CodeAddress.GetHashCode().ToString(CultureInfo.InvariantCulture));
+                AppLog.i(AlchemyTraceChain, "AlchemyAjaxPhp", "captcha pending: mode=" + AutoCutRuntime.GetModeActionKey(cut.Mode) + ", resource=" + cut.Resource.Name + ", id=" + cut.Resource.ResId + ", codeAddressHash=" + AppVars.CodeAddress.GetHashCode().ToString(CultureInfo.InvariantCulture));
                 TryStartAlchemyCaptchaSolve(cut);
             }
             else
             {
-                AppLog.i(AlchemyTraceChain, "AlchemyAjaxPhp", "no-captcha pending: herb=" + cut.Resource.Name);
+                AppLog.i(AlchemyTraceChain, "AlchemyAjaxPhp", "no-captcha pending: mode=" + AutoCutRuntime.GetModeActionKey(cut.Mode) + ", resource=" + cut.Resource.Name);
             }
         }
 
@@ -258,7 +280,7 @@ namespace ABClient.PostFilter
             if (!string.Equals(AppVars.CodeAddress ?? string.Empty, codeAddress, StringComparison.Ordinal))
             {
                 AppVars.CodeAddress = codeAddress;
-                AppVars.CodePng = null;
+                AppVars.ClearCodePng();
                 AppLog.d(AlchemyTraceChain, "AlchemyAjaxPhp", "captcha context prepared, codeAddressHash=" + codeAddress.GetHashCode().ToString(CultureInfo.InvariantCulture));
             }
         }
@@ -277,7 +299,7 @@ namespace ABClient.PostFilter
                     {
                         if (AntiCaptchaManager.TrySolveCurrentCaptcha())
                         {
-                            AppLog.i(AlchemyTraceChain, "AlchemyAjaxPhp", "anti-captcha solve requested immediately: herb=" + cut.Resource.Name);
+                            AppLog.i(AlchemyTraceChain, "AlchemyAjaxPhp", "anti-captcha solve requested immediately: mode=" + AutoCutRuntime.GetModeActionKey(cut.Mode) + ", resource=" + cut.Resource.Name);
                         }
                     }
                     catch (Exception ex)
@@ -297,7 +319,7 @@ namespace ABClient.PostFilter
                 pendingAlchemyCut = null;
                 AppVars.FightLink = string.Empty;
                 AppVars.CodeAddress = string.Empty;
-                AppVars.CodePng = null;
+                AppVars.ClearCodePng();
                 AutoCutRuntime.ScheduleLookRetry("wrong_captcha:alchemy_act3");
                 return;
             }
@@ -324,12 +346,12 @@ namespace ABClient.PostFilter
                 return;
             }
 
-            FormMain.TraceCut(current.Resource.Name);
+            FormMain.TraceCut(current.Mode, current.Resource.Name);
             AutoCutRuntime.OnCutSuccess(current.RetrySameCellAfterCut, "alchemy_act3", current.Resource.MassAsDouble());
-            AppLog.i(AlchemyTraceChain, "AlchemyAjaxPhp", "act3 success: herb=" + current.Resource.Name);
+            AppLog.i(AlchemyTraceChain, "AlchemyAjaxPhp", "act3 success: mode=" + AutoCutRuntime.GetModeActionKey(current.Mode) + ", resource=" + current.Resource.Name);
         }
 
-        private static bool HasMoreSelectedAvailableAfterCut(ResourceState state, ResourceCandidate selected)
+        private static bool HasMoreSelectedAvailableAfterCut(ResourceState state, ResourceCandidate selected, AutoCutMode mode)
         {
             if (state == null || selected == null)
             {
@@ -339,7 +361,7 @@ namespace ABClient.PostFilter
             for (var i = 0; i < state.Resources.Count; i++)
             {
                 var resource = state.Resources[i];
-                if (resource == null || resource.AvailableCount <= 0 || string.IsNullOrEmpty(resource.CutVcode) || !FormMain.IsHerbAutoCut(resource.Name))
+                if (resource == null || resource.AvailableCount <= 0 || string.IsNullOrEmpty(resource.CutVcode) || !FormMain.IsResourceAutoCut(mode, resource.Name, resource.RType))
                 {
                     continue;
                 }
@@ -594,13 +616,15 @@ namespace ABClient.PostFilter
 
         private sealed class PendingAlchemyCut
         {
+            internal readonly AutoCutMode Mode;
             internal readonly ResourceCandidate Resource;
             internal readonly string CaptchaToken;
             internal readonly bool RetrySameCellAfterCut;
             private readonly DateTime createdAt;
 
-            internal PendingAlchemyCut(ResourceCandidate resource, string captchaToken, bool retrySameCellAfterCut, DateTime now)
+            internal PendingAlchemyCut(AutoCutMode mode, ResourceCandidate resource, string captchaToken, bool retrySameCellAfterCut, DateTime now)
             {
+                Mode = mode;
                 Resource = resource;
                 CaptchaToken = captchaToken;
                 RetrySameCellAfterCut = retrySameCellAfterCut;

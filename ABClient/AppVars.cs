@@ -143,6 +143,11 @@ namespace ABClient
         internal static bool DoHerbAutoCut;
 
         /// <summary>
+        /// Работа авто-лесоруба через общий AutoCut-контур.
+        /// </summary>
+        internal static bool DoAutoLumberjack;
+
+        /// <summary>
         /// Форма очистки кеша.
         /// </summary>
         internal static ClearExplorerCacheForm ClearExplorerCacheFormMain { get; set; }
@@ -181,6 +186,52 @@ namespace ABClient
         internal static string CodeAddress { get; set; }
 
         internal static byte[] CodePng { get; set; }
+
+        internal static string CodePngAddress { get; private set; }
+
+        internal static void ClearCodePng()
+        {
+            CodePng = null;
+            CodePngAddress = string.Empty;
+        }
+
+        internal static void AssignCodePng(byte[] codePng, string codeAddress)
+        {
+            CodePng = codePng;
+            CodePngAddress = NormalizeCaptchaCodeAddress(codeAddress);
+        }
+
+        internal static bool IsCodePngForAddress(string codeAddress)
+        {
+            return CodePng != null &&
+                   CodePng.Length > 0 &&
+                   IsSameCaptchaCodeAddress(CodePngAddress, codeAddress);
+        }
+
+        internal static bool IsSameCaptchaCodeAddress(string left, string right)
+        {
+            var leftToken = NormalizeCaptchaCodeAddress(left);
+            var rightToken = NormalizeCaptchaCodeAddress(right);
+            return leftToken.Length > 0 && string.Equals(leftToken, rightToken, StringComparison.Ordinal);
+        }
+
+        internal static string NormalizeCaptchaCodeAddress(string codeAddress)
+        {
+            var value = (codeAddress ?? string.Empty).Trim();
+            if (value.Length == 0)
+            {
+                return string.Empty;
+            }
+
+            const string marker = "code.php?";
+            var markerIndex = value.IndexOf(marker, StringComparison.OrdinalIgnoreCase);
+            if (markerIndex >= 0)
+            {
+                return value.Substring(markerIndex + marker.Length).Trim();
+            }
+
+            return value;
+        }
 
         internal static int Tied { get; set; }
 

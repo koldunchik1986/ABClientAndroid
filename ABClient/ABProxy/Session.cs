@@ -314,8 +314,16 @@ namespace ABClient.ABProxy
                 {
                     if (Url.StartsWith("www.neverlands.ru/modules/code/code.php?", StringComparison.OrdinalIgnoreCase))
                     {
-                        AppLog.i("ProxySession", "code.php intercepted, capturing captcha PNG");
-                        AppVars.CodePng = ResponseBodyBytes;
+                        var requestCodeAddress = "http://" + Url;
+                        if (AppVars.IsSameCaptchaCodeAddress(requestCodeAddress, AppVars.CodeAddress))
+                        {
+                            AppLog.i("ProxySession", "code.php intercepted, capturing current captcha PNG, codeAddressHash=" + AppVars.NormalizeCaptchaCodeAddress(requestCodeAddress).GetHashCode().ToString(CultureInfo.InvariantCulture));
+                            AppVars.AssignCodePng(ResponseBodyBytes, requestCodeAddress);
+                        }
+                        else
+                        {
+                            AppLog.w("ProxySession", "code.php intercepted, stale captcha PNG ignored, requestHash=" + AppVars.NormalizeCaptchaCodeAddress(requestCodeAddress).GetHashCode().ToString(CultureInfo.InvariantCulture) + ", expectedHash=" + AppVars.NormalizeCaptchaCodeAddress(AppVars.CodeAddress).GetHashCode().ToString(CultureInfo.InvariantCulture));
+                        }
                     }
                     else
                     {

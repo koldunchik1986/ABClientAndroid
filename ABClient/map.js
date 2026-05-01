@@ -1,4 +1,4 @@
-﻿var d = document;
+var d = document;
 var world = false;
 var transport_img = false;
 var timer_img = false;
@@ -574,7 +574,7 @@ function StateReady()
                             messal += '<td bgcolor=#FFFFFF valign=top width=25%><div align=center>' + (!ingr[i][9] ? '<input type=button class=lbutdis value="' + butalt + '" DISABLED>' : '<input type=button class=lbut value="' + butalt + '" onclick="ResoStart(\'' + ingr[i][0] + '\',' + ingr[2] + ',' + ingr[3] + ',\'' + ingr[i][3] + '\',\'' + ingr[i][2] + '\',\'' + ingr[i][4] + '\',\'' + ingr[i][5] + '\',\'' + ingr[i][6] + '\',\'' + ingr[i][7] + '\',\'' + ingr[i][9] + '\',\'' + ingr[i][10] + '\',\'' + ingr[i][1] + '\')">') + '<br><br><img src=http://image.neverlands.ru/resources/' + ingr[i][0] + '.gif width=60 height=60><br><font class=freetxt><b>' + ingr[i][1] + '</b><br><br>Количество: ' + ingr[i][8] + ' из ' + ingr[i][11] + '</font></div></td>';
 
                             // ABC
-                            abcingr += ingr[i][1] + ':' + (!ingr[i][9] ? '0' : '1') + '|';
+                            abcingr += ingr[i][1] + ':' + (!ingr[i][9] ? '0' : '1') + ':' + ingr[i][10] + '|';
                             // -ABC
 
                             if (tr == 4) {

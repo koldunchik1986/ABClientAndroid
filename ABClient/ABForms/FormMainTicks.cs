@@ -193,7 +193,7 @@ namespace ABClient.ABForms
                 return;
             }
 
-            if (AppVars.DoHerbAutoCut && AutoCutRuntime.ConsumeLookRetryIfDue())
+            if (AutoCutRuntime.IsAutoCutLikeEnabled() && AutoCutRuntime.ConsumeLookRetryIfDue())
             {
                 ReloadMainPhpInvoke();
                 return;
@@ -343,7 +343,7 @@ namespace ABClient.ABForms
                     AppLog.w("Captcha", "MANUAL_CAPTCHA_CANCELLED");
                     Filter.CancelPendingAlchemyCut("manual_captcha_cancelled", AutoCutRuntime.IsAlchemyActionPending());
                     AppVars.FightLink = string.Empty;
-                    AppVars.CodePng = null;
+                    AppVars.ClearCodePng();
                     ChangeAutoboiState(AppVars.Profile.LezDoAutoboi ? AutoboiState.AutoboiOn : AutoboiState.AutoboiOff);
                     return;
                 }
@@ -356,7 +356,7 @@ namespace ABClient.ABForms
                 }
 
                 AppVars.GuamodCode = code;
-                AppVars.CodePng = null;
+                AppVars.ClearCodePng();
                 if (!string.IsNullOrEmpty(AppVars.FightLink))
                 {
                     AppVars.FightLink = AppVars.FightLink.Replace("????", AppVars.GuamodCode);

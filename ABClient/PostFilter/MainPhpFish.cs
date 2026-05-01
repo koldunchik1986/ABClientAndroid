@@ -22,6 +22,7 @@
             }
 
             AppVars.CodeAddress = string.Empty;
+            AppVars.ClearCodePng();
             var pcode = html.IndexOf(AppConsts.HtmlCodePhp, StringComparison.OrdinalIgnoreCase);
             if (pcode != -1)
             {

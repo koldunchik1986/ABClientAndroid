@@ -24,6 +24,7 @@ namespace ABClient.ABForms
         internal static readonly ReaderWriterLock LockOb = new ReaderWriterLock();
         private static readonly ReaderWriterLock LockBaloon = new ReaderWriterLock();
         private FormWindowState _prevWindowState = FormWindowState.Normal;
+        private ToolStripButton buttonAutoLumberjack;
 
         //private readonly Boss _boss1 = new Boss("2303103");
         //private readonly Boss _boss2 = new Boss("2304578");
@@ -33,6 +34,7 @@ namespace ABClient.ABForms
         internal FormMain()
         {
             InitializeComponent();
+            InitializeAutoLumberjackToolbarButton();
             InitForm();
             InitializeToolsSettingsMenu();
         }
@@ -223,8 +225,34 @@ namespace ABClient.ABForms
 
         private void InitializeToolsSettingsMenu()
         {
-            AddToolSettingsMenuItem("menuitemSettingsAutoCut", "Авто-Травник...", menuitemSettingsAutoCut_Click);
+            AddToolSettingsMenuItem("menuitemSettingsAutoCut", "Настройки Авто-Спила...", menuitemSettingsAutoCut_Click);
+            AddToolSettingsMenuItem("menuitemSettingsAutoLumberjack", "Настройки Авто-Спила (деревья)...", menuitemSettingsAutoLumberjack_Click);
             AddToolSettingsMenuItem("menuitemSettingsAntiCaptcha", "Anti-Captcha...", menuitemSettingsAntiCaptcha_Click);
+        }
+
+        private void InitializeAutoLumberjackToolbarButton()
+        {
+            if (buttonAutoLumberjack != null)
+            {
+                return;
+            }
+
+            buttonAutoLumberjack = new ToolStripButton();
+            buttonAutoLumberjack.CheckOnClick = true;
+            buttonAutoLumberjack.DisplayStyle = ToolStripItemDisplayStyle.Text;
+            buttonAutoLumberjack.Name = "buttonAutoLumberjack";
+            buttonAutoLumberjack.Text = "Автолесоруб";
+            buttonAutoLumberjack.ToolTipText = "Авто-Лесоруб";
+            buttonAutoLumberjack.Click += buttonAutoLumberjack_Click;
+            var insertIndex = toolbarGame.Items.IndexOf(buttonHerbAutoCut) + 1;
+            if (insertIndex <= 0 || insertIndex > toolbarGame.Items.Count)
+            {
+                toolbarGame.Items.Add(buttonAutoLumberjack);
+            }
+            else
+            {
+                toolbarGame.Items.Insert(insertIndex, buttonAutoLumberjack);
+            }
         }
 
         private void AddToolSettingsMenuItem(string name, string text, EventHandler handler)
@@ -245,7 +273,7 @@ namespace ABClient.ABForms
             {
                 for (var i = 0; i < menuitemTools.DropDownItems.Count; i++)
                 {
-                    if (menuitemTools.DropDownItems[i].Name.Equals("menuitemSettingsAutoCut", StringComparison.Ordinal))
+                    if (menuitemTools.DropDownItems[i].Name.Equals("menuitemSettingsAutoLumberjack", StringComparison.Ordinal))
                     {
                         anchor = menuitemTools.DropDownItems[i];
                         break;
@@ -264,9 +292,30 @@ namespace ABClient.ABForms
 
         private void menuitemSettingsAutoCut_Click(object sender, EventArgs e)
         {
-            using (var formSettingsAutoCut = new FormSettingsAutoCut())
+            ShowAutoCutSettings(AutoCutMode.Herb);
+        }
+
+        private void menuitemSettingsAutoLumberjack_Click(object sender, EventArgs e)
+        {
+            ShowAutoCutSettings(AutoCutMode.Tree);
+        }
+
+        private void ShowAutoCutSettings(AutoCutMode initialMode)
+        {
+            using (var formSettingsAutoCut = new FormSettingsAutoCut(initialMode))
             {
                 formSettingsAutoCut.ShowDialog();
+            }
+
+            SyncAutoCutToolbarButtons();
+        }
+
+        private void SyncAutoCutToolbarButtons()
+        {
+            buttonHerbAutoCut.Checked = AppVars.DoHerbAutoCut;
+            if (buttonAutoLumberjack != null)
+            {
+                buttonAutoLumberjack.Checked = AppVars.DoAutoLumberjack;
             }
         }
 
@@ -823,6 +872,15 @@ namespace ABClient.ABForms
         private void buttonHerbAutoCut_Click(object sender, EventArgs e)
         {
             AppVars.DoHerbAutoCut = buttonHerbAutoCut.Checked;
+            if (AppVars.DoHerbAutoCut)
+            {
+                AppVars.DoAutoLumberjack = false;
+                if (buttonAutoLumberjack != null)
+                {
+                    buttonAutoLumberjack.Checked = false;
+                }
+            }
+
             if (!AppVars.DoHerbAutoCut)
             {
                 if (!string.IsNullOrEmpty(AppVars.FightLink) &&
@@ -849,16 +907,73 @@ namespace ABClient.ABForms
                     "Автоспил",
                     MessageBoxButtons.OK,
                     MessageBoxIcon.Warning);
-                using (var formSettingsAutoCut = new FormSettingsAutoCut())
+                using (var formSettingsAutoCut = new FormSettingsAutoCut(AutoCutMode.Herb))
                 {
                     formSettingsAutoCut.ShowDialog();
                 }
+
                 AppVars.DoHerbAutoCut = AppVars.Profile.HerbsAutoCut.Count > 0;
-                buttonHerbAutoCut.Checked = AppVars.DoHerbAutoCut;
+                SyncAutoCutToolbarButtons();
+                if (!AppVars.DoHerbAutoCut)
+                {
+                    return;
+                }
             }
 
             ReloadMainPhpInvoke();
             AutoCutRuntime.RouteNextCellIfCurrentIsNotReady("toolbar_enabled");
+        }
+
+        private void buttonAutoLumberjack_Click(object sender, EventArgs e)
+        {
+            AppVars.DoAutoLumberjack = buttonAutoLumberjack.Checked;
+            if (AppVars.DoAutoLumberjack)
+            {
+                AppVars.DoHerbAutoCut = false;
+                buttonHerbAutoCut.Checked = false;
+            }
+
+            if (!AppVars.DoAutoLumberjack)
+            {
+                if (!string.IsNullOrEmpty(AppVars.FightLink) &&
+                    AppVars.FightLink.IndexOf("alchemy_ajax.php", StringComparison.OrdinalIgnoreCase) >= 0)
+                {
+                    AppVars.FightLink = string.Empty;
+                }
+
+                Filter.CancelPendingAlchemyCut("toolbar_lumberjack_disabled", false);
+                return;
+            }
+
+            Filter.CancelPendingAlchemyCut("toolbar_lumberjack_enabled_reset", false);
+            AutoCutRuntime.ResetRuntime("toolbar_lumberjack_enabled");
+            AppVars.AutoCutCheckSickle = true;
+            AppVars.AutoCutArmedSickle = false;
+            AppVars.AutoCutSickleHand = string.Empty;
+            AppVars.AutoCutSickleHandD = string.Empty;
+            AutoCutCatalog.EnsureProfileCatalog(AppVars.Profile);
+            if (AppVars.Profile.TreesAutoCut.Count == 0)
+            {
+                MessageBox.Show(
+                    "Ни одно дерево не выбрано!",
+                    "Авто-Лесоруб",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Warning);
+                using (var formSettingsAutoCut = new FormSettingsAutoCut(AutoCutMode.Tree))
+                {
+                    formSettingsAutoCut.ShowDialog();
+                }
+
+                AppVars.DoAutoLumberjack = AppVars.Profile.TreesAutoCut.Count > 0;
+                SyncAutoCutToolbarButtons();
+                if (!AppVars.DoAutoLumberjack)
+                {
+                    return;
+                }
+            }
+
+            ReloadMainPhpInvoke();
+            AutoCutRuntime.RouteNextCellIfCurrentIsNotReady("toolbar_lumberjack_enabled");
         }
 
         private void menuitemChatAdvisor_Click(object sender, EventArgs e)

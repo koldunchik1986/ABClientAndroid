@@ -206,6 +206,10 @@ namespace ABClient.MyProfile
                     xmlWriter.WriteValue(DoAutoCutWriteChat);
                     xmlWriter.WriteEndElement();
 
+                    xmlWriter.WriteStartElement("doautolumberjackwritechat");
+                    xmlWriter.WriteValue(DoAutoLumberjackWriteChat);
+                    xmlWriter.WriteEndElement();
+
                     xmlWriter.WriteStartElement("autocut");
                     xmlWriter.WriteStartAttribute("cells");
                     xmlWriter.WriteString(AutoCutSearchCellsCsv ?? string.Empty);
@@ -221,6 +225,24 @@ namespace ABClient.MyProfile
                     xmlWriter.WriteEndAttribute();
                     xmlWriter.WriteStartAttribute("sickles");
                     xmlWriter.WriteString(AutoCutSicklesCsv ?? string.Empty);
+                    xmlWriter.WriteEndAttribute();
+                    xmlWriter.WriteEndElement();
+
+                    xmlWriter.WriteStartElement("autolumberjack");
+                    xmlWriter.WriteStartAttribute("cells");
+                    xmlWriter.WriteString(AutoLumberjackSearchCellsCsv ?? string.Empty);
+                    xmlWriter.WriteEndAttribute();
+                    xmlWriter.WriteStartAttribute("cleanup");
+                    xmlWriter.WriteValue(AutoLumberjackCleanupEnabled);
+                    xmlWriter.WriteEndAttribute();
+                    xmlWriter.WriteStartAttribute("bytimers");
+                    xmlWriter.WriteValue(AutoLumberjackByTimers);
+                    xmlWriter.WriteEndAttribute();
+                    xmlWriter.WriteStartAttribute("shifts");
+                    xmlWriter.WriteString(AutoLumberjackShiftSchedule ?? AutoCutCatalog.DefaultShiftSchedule);
+                    xmlWriter.WriteEndAttribute();
+                    xmlWriter.WriteStartAttribute("axes");
+                    xmlWriter.WriteString(AutoLumberjackAxesCsv ?? string.Empty);
                     xmlWriter.WriteEndAttribute();
                     xmlWriter.WriteEndElement();
 
@@ -318,6 +340,29 @@ namespace ABClient.MyProfile
                         xmlWriter.WriteEndElement();
                     }
 
+                    if (TreeCells.Count > 0)
+                    {
+                        xmlWriter.WriteStartElement("treecells");
+                        var kvp = new KeyValuePair<string, HerbCell>[TreeCells.Count];
+                        TreeCells.CopyTo(kvp, 0);
+                        for (var index = 0; index < kvp.Length; index++)
+                        {
+                            xmlWriter.WriteStartElement("treecell");
+                            xmlWriter.WriteStartAttribute("location");
+                            xmlWriter.WriteString(kvp[index].Value.RegNum);
+                            xmlWriter.WriteEndAttribute();
+                            xmlWriter.WriteStartAttribute("trees");
+                            xmlWriter.WriteString(kvp[index].Value.Herbs);
+                            xmlWriter.WriteEndAttribute();
+                            xmlWriter.WriteStartAttribute("lastview");
+                            xmlWriter.WriteValue(kvp[index].Value.UpdatedInTicks);
+                            xmlWriter.WriteEndAttribute();
+                            xmlWriter.WriteEndElement();
+                        }
+
+                        xmlWriter.WriteEndElement();
+                    }
+
                     if (HerbsAutoCut.Count > 0)
                     {
                         xmlWriter.WriteStartElement("herbsautocut");
@@ -325,6 +370,19 @@ namespace ABClient.MyProfile
                         {
                             xmlWriter.WriteStartElement("herbautocut");
                             xmlWriter.WriteString(HerbsAutoCut[i] ?? string.Empty);
+                            xmlWriter.WriteEndElement();
+                        }
+
+                        xmlWriter.WriteEndElement();
+                    }
+
+                    if (TreesAutoCut.Count > 0)
+                    {
+                        xmlWriter.WriteStartElement("treesautocut");
+                        for (var i = 0; i < TreesAutoCut.Count; i++)
+                        {
+                            xmlWriter.WriteStartElement("treeautocut");
+                            xmlWriter.WriteString(TreesAutoCut[i] ?? string.Empty);
                             xmlWriter.WriteEndElement();
                         }
 
@@ -363,6 +421,45 @@ namespace ABClient.MyProfile
                             xmlWriter.WriteEndAttribute();
                             xmlWriter.WriteStartAttribute("selected");
                             xmlWriter.WriteValue(herb.Selected);
+                            xmlWriter.WriteEndAttribute();
+                            xmlWriter.WriteEndElement();
+                        }
+
+                        xmlWriter.WriteEndElement();
+                    }
+
+                    if (AutoCutTrees.Count > 0)
+                    {
+                        xmlWriter.WriteStartElement("autocuttrees");
+                        for (var i = 0; i < AutoCutTrees.Count; i++)
+                        {
+                            var tree = AutoCutTrees[i];
+                            if (tree == null || string.IsNullOrEmpty(tree.Name))
+                            {
+                                continue;
+                            }
+
+                            xmlWriter.WriteStartElement("autocuttree");
+                            xmlWriter.WriteStartAttribute("id");
+                            xmlWriter.WriteString(tree.Id ?? string.Empty);
+                            xmlWriter.WriteEndAttribute();
+                            xmlWriter.WriteStartAttribute("name");
+                            xmlWriter.WriteString(tree.Name ?? string.Empty);
+                            xmlWriter.WriteEndAttribute();
+                            xmlWriter.WriteStartAttribute("skill");
+                            xmlWriter.WriteValue(tree.Skill);
+                            xmlWriter.WriteEndAttribute();
+                            xmlWriter.WriteStartAttribute("growth");
+                            xmlWriter.WriteValue(tree.GrowthMinutes);
+                            xmlWriter.WriteEndAttribute();
+                            xmlWriter.WriteStartAttribute("group");
+                            xmlWriter.WriteString(tree.Group ?? AutoCutCatalog.UnknownGroup);
+                            xmlWriter.WriteEndAttribute();
+                            xmlWriter.WriteStartAttribute("location");
+                            xmlWriter.WriteString(tree.LastLocation ?? string.Empty);
+                            xmlWriter.WriteEndAttribute();
+                            xmlWriter.WriteStartAttribute("selected");
+                            xmlWriter.WriteValue(tree.Selected);
                             xmlWriter.WriteEndAttribute();
                             xmlWriter.WriteEndElement();
                         }
@@ -517,6 +614,13 @@ namespace ABClient.MyProfile
                         {
                             xmlWriter.WriteStartAttribute("isherb");
                             xmlWriter.WriteValue(appTimer.IsHerb);
+                            xmlWriter.WriteEndAttribute();
+                        }
+
+                        if (appTimer.IsAutoLumberjack)
+                        {
+                            xmlWriter.WriteStartAttribute("isautolumberjack");
+                            xmlWriter.WriteValue(appTimer.IsAutoLumberjack);
                             xmlWriter.WriteEndAttribute();
                         }
 

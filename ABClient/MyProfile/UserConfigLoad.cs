@@ -226,12 +226,21 @@ namespace ABClient.MyProfile
                     DoAutoCutWriteChat = xmlReader.ReadContentAsBoolean();
                     break;
 
+                case "doautolumberjackwritechat":
+                    xmlReader.Read();
+                    DoAutoLumberjackWriteChat = xmlReader.ReadContentAsBoolean();
+                    break;
+
                 case "anticaptcha":
                     LoadAntiCaptchaSettings(xmlReader);
                     break;
 
                 case "autocut":
                     LoadAutoCutSettings(xmlReader);
+                    break;
+
+                case "autolumberjack":
+                    LoadAutoLumberjackSettings(xmlReader);
                     break;
 
                 case "showperformance":
@@ -275,8 +284,17 @@ namespace ABClient.MyProfile
                     HerbsAutoCut.Add(xmlReader.ReadContentAsString());
                     break;
 
+                case "treeautocut":
+                    xmlReader.Read();
+                    TreesAutoCut.Add(xmlReader.ReadContentAsString());
+                    break;
+
                 case "autocutherb":
                     LoadAutoCutHerb(xmlReader);
+                    break;
+
+                case "autocuttree":
+                    LoadAutoCutTree(xmlReader);
                     break;
 
                 case "complects":
@@ -354,6 +372,16 @@ namespace ABClient.MyProfile
                         if (bool.TryParse(xmlisherb, out isherb))
                         {
                             appTimer.IsHerb = isherb;
+                        }
+                    }
+
+                    var xmlisautolumberjack = xmlReader["isautolumberjack"];
+                    if (xmlisautolumberjack != null)
+                    {
+                        bool isautolumberjack;
+                        if (bool.TryParse(xmlisautolumberjack, out isautolumberjack))
+                        {
+                            appTimer.IsAutoLumberjack = isautolumberjack;
                         }
                     }
 
@@ -449,6 +477,31 @@ namespace ABClient.MyProfile
                                             HerbCells.Add(location, herbCell);
                                         }
                                     }
+                                }
+                            }
+                        }
+                    }
+
+                    break;
+
+                case "treecell":
+                    var treeCell = new HerbCell();
+                    var treeLocation = xmlReader["location"] ?? string.Empty;
+                    if (!string.IsNullOrEmpty(treeLocation))
+                    {
+                        treeCell.RegNum = treeLocation;
+                        treeCell.Herbs = xmlReader["trees"] ?? string.Empty;
+                        var lastTreeViewString = xmlReader["lastview"] ?? string.Empty;
+                        long updatedInTicks;
+                        if (long.TryParse(lastTreeViewString, out updatedInTicks))
+                        {
+                            if ((ServDiff != TimeSpan.MinValue) && (updatedInTicks < DateTime.Now.Subtract(ServDiff).Ticks))
+                            {
+                                treeCell.UpdatedInTicks = updatedInTicks;
+                                var timediff = TimeSpan.FromTicks(DateTime.Now.Subtract(ServDiff).Ticks - updatedInTicks);
+                                if (timediff.TotalHours < 6 && !TreeCells.ContainsKey(treeLocation))
+                                {
+                                    TreeCells.Add(treeLocation, treeCell);
                                 }
                             }
                         }
@@ -1260,6 +1313,35 @@ namespace ABClient.MyProfile
             }
         }
 
+        private void LoadAutoLumberjackSettings(XmlReader xmlReader)
+        {
+            bool boolValue;
+            if (xmlReader["cells"] != null)
+            {
+                AutoLumberjackSearchCellsCsv = xmlReader["cells"];
+            }
+
+            if (bool.TryParse(xmlReader["cleanup"], out boolValue))
+            {
+                AutoLumberjackCleanupEnabled = boolValue;
+            }
+
+            if (bool.TryParse(xmlReader["bytimers"], out boolValue))
+            {
+                AutoLumberjackByTimers = boolValue;
+            }
+
+            if (xmlReader["shifts"] != null)
+            {
+                AutoLumberjackShiftSchedule = xmlReader["shifts"];
+            }
+
+            if (xmlReader["axes"] != null)
+            {
+                AutoLumberjackAxesCsv = xmlReader["axes"];
+            }
+        }
+
         private void LoadAutoCutHerb(XmlReader xmlReader)
         {
             var name = xmlReader["name"] ?? string.Empty;
@@ -1310,6 +1392,59 @@ namespace ABClient.MyProfile
                 existing.Group = herb.Group;
                 existing.LastLocation = herb.LastLocation;
                 existing.Selected = herb.Selected;
+            }
+        }
+
+        private void LoadAutoCutTree(XmlReader xmlReader)
+        {
+            var name = xmlReader["name"] ?? string.Empty;
+            if (string.IsNullOrEmpty(name))
+            {
+                return;
+            }
+
+            var tree = new AutoCutHerbInfo
+                           {
+                               Id = xmlReader["id"] ?? string.Empty,
+                               Name = name,
+                               Group = xmlReader["group"] ?? AutoCutCatalog.UnknownGroup,
+                               LastLocation = xmlReader["location"] ?? string.Empty
+                           };
+            int intValue;
+            if (int.TryParse(xmlReader["skill"], out intValue))
+            {
+                tree.Skill = Math.Max(0, intValue);
+            }
+
+            if (int.TryParse(xmlReader["growth"], out intValue))
+            {
+                tree.GrowthMinutes = Math.Max(1, intValue);
+            }
+            else
+            {
+                tree.GrowthMinutes = 30;
+            }
+
+            bool boolValue;
+            if (bool.TryParse(xmlReader["selected"], out boolValue))
+            {
+                tree.Selected = boolValue;
+            }
+
+            var existing = AutoCutCatalog.Find(AutoCutTrees, tree.Id, tree.Name);
+            if (existing == null)
+            {
+                AutoCutTrees.Add(tree);
+            }
+            else
+            {
+                existing.Id = tree.Id;
+                existing.Name = tree.Name;
+                existing.Skill = tree.Skill;
+                existing.GrowthMinutes = tree.GrowthMinutes;
+                existing.Group = tree.Group;
+                existing.LastLocation = tree.LastLocation;
+                existing.Selected = tree.Selected;
             }
         }
     }

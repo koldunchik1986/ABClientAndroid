@@ -12,6 +12,12 @@ namespace ABClient
         internal long UpdatedInTicks;
     }
 
+    internal enum AutoCutMode
+    {
+        Herb,
+        Tree
+    }
+
     internal sealed class AutoCutHerbInfo
     {
         internal string Id;
@@ -120,6 +126,61 @@ namespace ABClient
                 new SeedHerb("", "Кора дуба", 350, 120, UnknownGroup)
             };
 
+        private static readonly SeedHerb[] SeedTrees =
+            {
+                new SeedHerb("275", "Медный кактус", 0, 30, "1"),
+                new SeedHerb("261", "Орешник", 0, 30, "5"),
+                new SeedHerb("262", "Ива", 0, 30, "5"),
+                new SeedHerb("280", "Дифенбахия", 0, 30, "7"),
+                new SeedHerb("276", "Песчаная колючка", 20, 30, "1"),
+                new SeedHerb("264", "Осина", 20, 30, "5"),
+                new SeedHerb("263", "Ольха", 20, 30, "5"),
+                new SeedHerb("281", "Жимолость южная", 20, 30, "7"),
+                new SeedHerb("265", "Береза", 30, 30, "5"),
+                new SeedHerb("290", "Ель", 30, 30, "9"),
+                new SeedHerb("266", "Липа", 40, 40, "5"),
+                new SeedHerb("282", "Фиговое дерево", 40, 30, "7"),
+                new SeedHerb("291", "Сосна", 50, 30, "9"),
+                new SeedHerb("267", "Тополь", 60, 40, "5"),
+                new SeedHerb("283", "Бамбук", 60, 30, "7"),
+                new SeedHerb("277", "Финиковая пальма", 60, 60, "1"),
+                new SeedHerb("268", "Тис", 80, 40, "5"),
+                new SeedHerb("284", "Драцена", 80, 30, "7"),
+                new SeedHerb("292", "Бук", 80, 30, "9"),
+                new SeedHerb("269", "Вяз", 100, 40, "5"),
+                new SeedHerb("285", "Эвкалипт", 100, 40, "7"),
+                new SeedHerb("294", "Граб", 100, 60, "9"),
+                new SeedHerb("278", "Самшит", 100, 60, "1"),
+                new SeedHerb("270", "Клен", 120, 60, "5, 9"),
+                new SeedHerb("293", "Кипарис", 120, 30, "9"),
+                new SeedHerb("286", "Лавр кучерявый", 120, 60, "7"),
+                new SeedHerb("271", "Ясень", 140, 60, "5, 9"),
+                new SeedHerb("287", "Латания", 140, 60, "7"),
+                new SeedHerb("295", "Кедр", 140, 60, "9"),
+                new SeedHerb("279", "Сандал огненный", 150, 180, "1"),
+                new SeedHerb("273", "Сассафрас совиный", 150, 180, "5"),
+                new SeedHerb("289", "Мангровое дерево", 150, 180, "7"),
+                new SeedHerb("272", "Дуб", 160, 60, "5, 9"),
+                new SeedHerb("298", "Платан остролистый", 200, 30, "4"),
+                new SeedHerb("274", "Серебристый тополь", 200, 180, "5"),
+                new SeedHerb("288", "Хурма", 200, 180, "7"),
+                new SeedHerb("296", "Черный кедр", 200, 180, "9"),
+                new SeedHerb("299", "Падуб", 230, 30, "4"),
+                new SeedHerb("297", "Тайпал", 250, 180, "9"),
+                new SeedHerb("300", "Тигровое дерево", 270, 30, "4"),
+                new SeedHerb("301", "Камфорное дерево", 350, 30, "4"),
+                new SeedHerb("302", "Амирис", 400, 30, "4"),
+                new SeedHerb("303", "Секвойя", 500, 40, "4"),
+                new SeedHerb("305", "Красное дерево", 500, 180, "4"),
+                new SeedHerb("304", "Ююба", 550, 40, "4"),
+                new SeedHerb("306", "Драконовое дерево", 650, 60, "10"),
+                new SeedHerb("307", "Казуриана", 720, 60, "10"),
+                new SeedHerb("308", "Гикори", 800, 60, "10"),
+                new SeedHerb("309", "Эбеновое дерево", 900, 60, "10"),
+                new SeedHerb("310", "Каламандровое дерево", 1000, 60, "10"),
+                new SeedHerb("311", "Мамонтовое дерево", 1000, 120, "10")
+            };
+
         internal static bool EnsureProfileCatalog(UserConfig profile)
         {
             if (profile == null)
@@ -131,6 +192,11 @@ namespace ABClient
             for (var i = 0; i < SeedHerbs.Length; i++)
             {
                 changed |= MergeSeedHerb(profile.AutoCutHerbs, SeedHerbs[i]);
+            }
+
+            for (var i = 0; i < SeedTrees.Length; i++)
+            {
+                changed |= MergeSeedHerb(profile.AutoCutTrees, SeedTrees[i]);
             }
 
             for (var i = 0; i < profile.HerbsAutoCut.Count; i++)
@@ -163,6 +229,36 @@ namespace ABClient
                 }
             }
 
+            for (var i = 0; i < profile.TreesAutoCut.Count; i++)
+            {
+                var name = profile.TreesAutoCut[i];
+                if (string.IsNullOrEmpty(name))
+                {
+                    continue;
+                }
+
+                var tree = Find(profile.AutoCutTrees, string.Empty, name);
+                if (tree == null)
+                {
+                    profile.AutoCutTrees.Add(new AutoCutHerbInfo
+                                                 {
+                                                     Id = string.Empty,
+                                                     Name = name.Trim(),
+                                                     Skill = 0,
+                                                     GrowthMinutes = 30,
+                                                     Group = UnknownGroup,
+                                                     LastLocation = string.Empty,
+                                                     Selected = true
+                                                 });
+                    changed = true;
+                }
+                else if (!tree.Selected)
+                {
+                    tree.Selected = true;
+                    changed = true;
+                }
+            }
+
             return changed;
         }
 
@@ -176,7 +272,7 @@ namespace ABClient
             EnsureProfileCatalog(profile);
             var safeId = SafeNumeric(id);
             var safeName = name.Trim();
-            var seed = FindSeed(safeId, safeName);
+            var seed = FindSeed(SeedHerbs, safeId, safeName);
             var herb = Find(profile.AutoCutHerbs, safeId, safeName);
             var changed = false;
             if (herb == null)
@@ -227,6 +323,74 @@ namespace ABClient
             }
 
             return changed;
+        }
+
+        internal static bool RegisterObservedTree(UserConfig profile, string id, string name, int growthMinutes, string location)
+        {
+            if (profile == null || string.IsNullOrEmpty(name))
+            {
+                return false;
+            }
+
+            EnsureProfileCatalog(profile);
+            var safeId = SafeNumeric(id);
+            var safeName = name.Trim();
+            var seed = FindSeed(SeedTrees, safeId, safeName);
+            var tree = Find(profile.AutoCutTrees, safeId, safeName);
+            var changed = false;
+            if (tree == null)
+            {
+                tree = new AutoCutHerbInfo
+                           {
+                               Id = safeId,
+                               Name = safeName,
+                               Skill = seed == null ? 0 : seed.Skill,
+                               GrowthMinutes = growthMinutes > 0 ? growthMinutes : (seed == null ? 30 : seed.GrowthMinutes),
+                               Group = seed == null ? UnknownGroup : seed.Group,
+                               LastLocation = location ?? string.Empty,
+                               Selected = false
+                           };
+                profile.AutoCutTrees.Add(tree);
+                return true;
+            }
+
+            if (string.IsNullOrEmpty(tree.Id) && !string.IsNullOrEmpty(safeId))
+            {
+                tree.Id = safeId;
+                changed = true;
+            }
+
+            if (!string.Equals(tree.Name, safeName, StringComparison.Ordinal) && !string.IsNullOrEmpty(safeName))
+            {
+                tree.Name = safeName;
+                changed = true;
+            }
+
+            if (growthMinutes > 0 && tree.GrowthMinutes != growthMinutes)
+            {
+                tree.GrowthMinutes = growthMinutes;
+                changed = true;
+            }
+
+            if (seed != null && (string.IsNullOrEmpty(tree.Group) || tree.Group.Equals(UnknownGroup, StringComparison.OrdinalIgnoreCase)))
+            {
+                tree.Group = seed.Group;
+                changed = true;
+            }
+
+            var safeLocation = location ?? string.Empty;
+            if (!string.Equals(tree.LastLocation ?? string.Empty, safeLocation, StringComparison.OrdinalIgnoreCase))
+            {
+                tree.LastLocation = safeLocation;
+                changed = true;
+            }
+
+            return changed;
+        }
+
+        internal static bool IsTreeResourceName(string name)
+        {
+            return FindSeed(SeedTrees, string.Empty, name) != null;
         }
 
         internal static AutoCutHerbInfo Find(List<AutoCutHerbInfo> herbs, string id, string name)
@@ -331,23 +495,23 @@ namespace ABClient
             return changed;
         }
 
-        private static SeedHerb FindSeed(string id, string name)
+        private static SeedHerb FindSeed(SeedHerb[] seeds, string id, string name)
         {
             var safeId = SafeNumeric(id);
-            for (var i = 0; i < SeedHerbs.Length; i++)
+            for (var i = 0; i < seeds.Length; i++)
             {
-                if (!string.IsNullOrEmpty(safeId) && SeedHerbs[i].Id == safeId)
+                if (!string.IsNullOrEmpty(safeId) && seeds[i].Id == safeId)
                 {
-                    return SeedHerbs[i];
+                    return seeds[i];
                 }
             }
 
             var normalizedName = NormalizeName(name);
-            for (var i = 0; i < SeedHerbs.Length; i++)
+            for (var i = 0; i < seeds.Length; i++)
             {
-                if (NormalizeName(SeedHerbs[i].Name).Equals(normalizedName, StringComparison.Ordinal))
+                if (NormalizeName(seeds[i].Name).Equals(normalizedName, StringComparison.Ordinal))
                 {
-                    return SeedHerbs[i];
+                    return seeds[i];
                 }
             }
 
@@ -412,6 +576,70 @@ namespace ABClient
         private static string timerRouteTargetCell = string.Empty;
         private static bool timerRouteReturning;
 
+        internal static bool IsAutoCutLikeEnabled()
+        {
+            return AppVars.DoHerbAutoCut || AppVars.DoAutoLumberjack;
+        }
+
+        internal static AutoCutMode GetActiveMode()
+        {
+            return AppVars.DoAutoLumberjack ? AutoCutMode.Tree : AutoCutMode.Herb;
+        }
+
+        internal static string GetModeTitle(AutoCutMode mode)
+        {
+            return mode == AutoCutMode.Tree ? "Авто-Лесоруб" : "Авто-Травник";
+        }
+
+        internal static string GetModeActionKey(AutoCutMode mode)
+        {
+            return mode == AutoCutMode.Tree ? "auto_lumberjack" : "auto_cut";
+        }
+
+        internal static string GetToolInventoryFilter(AutoCutMode mode)
+        {
+            return mode == AutoCutMode.Tree ? "&im=0&wca=2" : "&im=0&wca=4";
+        }
+
+        internal static string[] GetDefaultToolNames(AutoCutMode mode)
+        {
+            return mode == AutoCutMode.Tree ? ParsedDressed.GetAutoCutAxeNames() : ParsedDressed.GetAutoCutSickleNames();
+        }
+
+        internal static string GetConfiguredToolsCsv(AutoCutMode mode)
+        {
+            if (AppVars.Profile == null)
+            {
+                return string.Empty;
+            }
+
+            return mode == AutoCutMode.Tree ? AppVars.Profile.AutoLumberjackAxesCsv : AppVars.Profile.AutoCutSicklesCsv;
+        }
+
+        internal static bool IsTreeCandidate(string name, string rType)
+        {
+            var safeRType = (rType ?? string.Empty).Trim();
+            if (safeRType.Length > 0)
+            {
+                return !string.Equals(safeRType, "4", StringComparison.Ordinal);
+            }
+
+            return AutoCutCatalog.IsTreeResourceName(name);
+        }
+
+        internal static bool IsResourceCandidateForMode(AutoCutMode mode, string name, string rType)
+        {
+            var safeRType = (rType ?? string.Empty).Trim();
+            if (safeRType.Length > 0)
+            {
+                return mode == AutoCutMode.Tree
+                           ? !string.Equals(safeRType, "4", StringComparison.Ordinal)
+                           : string.Equals(safeRType, "4", StringComparison.Ordinal);
+            }
+
+            return mode == AutoCutMode.Tree ? AutoCutCatalog.IsTreeResourceName(name) : true;
+        }
+
         internal static void ResetRuntime(string source)
         {
             CheckedCells.Clear();
@@ -435,7 +663,7 @@ namespace ABClient
                 return false;
             }
 
-            if (AppVars.Profile.HerbsAutoCut.Count == 0)
+            if (GetSelectedResourceNames().Count == 0)
             {
                 return false;
             }
@@ -453,7 +681,7 @@ namespace ABClient
                 return false;
             }
 
-            if (HasDueHerbTimerForCell(current))
+            if (HasDueResourceTimerForCell(current))
             {
                 return true;
             }
@@ -472,7 +700,7 @@ namespace ABClient
             if (GetSearchCells().Count == 0)
             {
                 ScheduleLookRetryAtNextShift("no_selected_current_cell:" + source);
-                AppLog.i("auto_cut_trace", "AutoCutRuntime", "current cell skipped until next shift: no selected herb, source=" + source);
+                AppLog.i("auto_cut_trace", "AutoCutRuntime", "current cell skipped until next shift: no selected resource, mode=" + GetModeActionKey(GetActiveMode()) + ", source=" + source);
                 return;
             }
 
@@ -655,7 +883,7 @@ namespace ABClient
             var cells = GetSearchCells();
             var current = CurrentCell();
             if (cells.Count == 0 || string.IsNullOrEmpty(current) || !ContainsCell(cells, current) ||
-                IsCellCheckedForCurrentShift(current) || HasDueHerbTimerForCell(current))
+                IsCellCheckedForCurrentShift(current) || HasDueResourceTimerForCell(current))
             {
                 return false;
             }
@@ -805,7 +1033,7 @@ namespace ABClient
             for (var i = 0; i < cells.Count; i++)
             {
                 HerbCell herbCell;
-                if (!AppVars.Profile.HerbCells.TryGetValue(cells[i], out herbCell) || herbCell == null || string.IsNullOrEmpty(herbCell.Herbs))
+                if (!GetCellSnapshots().TryGetValue(cells[i], out herbCell) || herbCell == null || string.IsNullOrEmpty(herbCell.Herbs))
                 {
                     continue;
                 }
@@ -815,7 +1043,7 @@ namespace ABClient
                     continue;
                 }
 
-                if (!"selected_herbs_empty_current_shift".Equals(GetUncheckedCellSkipReason(cells[i]), StringComparison.Ordinal))
+                if (!"selected_resources_empty_current_shift".Equals(GetUncheckedCellSkipReason(cells[i]), StringComparison.Ordinal))
                 {
                     continue;
                 }
@@ -898,12 +1126,15 @@ namespace ABClient
         private static List<string> GetSearchCells()
         {
             var result = new List<string>();
-            if (AppVars.Profile == null || string.IsNullOrEmpty(AppVars.Profile.AutoCutSearchCellsCsv))
+            var cellsCsv = GetActiveMode() == AutoCutMode.Tree
+                               ? (AppVars.Profile == null ? string.Empty : AppVars.Profile.AutoLumberjackSearchCellsCsv)
+                               : (AppVars.Profile == null ? string.Empty : AppVars.Profile.AutoCutSearchCellsCsv);
+            if (AppVars.Profile == null || string.IsNullOrEmpty(cellsCsv))
             {
                 return result;
             }
 
-            var parts = AppVars.Profile.AutoCutSearchCellsCsv.Split(',', ';', '|', '\r', '\n', ' ', '\t');
+            var parts = cellsCsv.Split(',', ';', '|', '\r', '\n', ' ', '\t');
             for (var i = 0; i < parts.Length; i++)
             {
                 var cell = (parts[i] ?? string.Empty).Trim();
@@ -916,6 +1147,36 @@ namespace ABClient
             }
 
             return result;
+        }
+
+        private static SortedDictionary<string, HerbCell> GetCellSnapshots()
+        {
+            return GetActiveMode() == AutoCutMode.Tree ? AppVars.Profile.TreeCells : AppVars.Profile.HerbCells;
+        }
+
+        private static List<AutoCutHerbInfo> GetResourceCatalog()
+        {
+            return GetActiveMode() == AutoCutMode.Tree ? AppVars.Profile.AutoCutTrees : AppVars.Profile.AutoCutHerbs;
+        }
+
+        private static List<string> GetSelectedResourceNames()
+        {
+            return GetActiveMode() == AutoCutMode.Tree ? AppVars.Profile.TreesAutoCut : AppVars.Profile.HerbsAutoCut;
+        }
+
+        private static bool IsCleanupEnabled()
+        {
+            return GetActiveMode() == AutoCutMode.Tree ? AppVars.Profile.AutoLumberjackCleanupEnabled : AppVars.Profile.AutoCutCleanupEnabled;
+        }
+
+        private static bool IsByTimersEnabled()
+        {
+            return GetActiveMode() == AutoCutMode.Tree ? AppVars.Profile.AutoLumberjackByTimers : AppVars.Profile.AutoCutByTimers;
+        }
+
+        private static string GetShiftSchedule()
+        {
+            return GetActiveMode() == AutoCutMode.Tree ? AppVars.Profile.AutoLumberjackShiftSchedule : AppVars.Profile.AutoCutShiftSchedule;
         }
 
         private static bool IsValidCell(string cell)
@@ -991,7 +1252,7 @@ namespace ABClient
             }
 
             HerbCell herbCell;
-            if (!AppVars.Profile.HerbCells.TryGetValue(cell, out herbCell) || herbCell == null || string.IsNullOrEmpty(herbCell.Herbs))
+            if (!GetCellSnapshots().TryGetValue(cell, out herbCell) || herbCell == null || string.IsNullOrEmpty(herbCell.Herbs))
             {
                 return string.Empty;
             }
@@ -1001,30 +1262,30 @@ namespace ABClient
                 return string.Empty;
             }
 
-            var hasSelectedHerb = false;
+            var hasSelectedResource = false;
             var entries = herbCell.Herbs.Split('|');
             for (var i = 0; i < entries.Length; i++)
             {
                 string name;
                 int count;
-                if (!TryParseHerbEntry(entries[i], out name, out count) || !IsSelectedHerbName(name))
+                if (!TryParseHerbEntry(entries[i], out name, out count) || !IsSelectedResourceName(name))
                 {
                     continue;
                 }
 
-                hasSelectedHerb = true;
+                hasSelectedResource = true;
                 if (count > 0)
                 {
                     return string.Empty;
                 }
             }
 
-            if (!hasSelectedHerb)
+            if (!hasSelectedResource)
             {
-                return "no_selected_herbs_in_cell_cache";
+                return "no_selected_resources_in_cell_cache";
             }
 
-            return "selected_herbs_empty_current_shift";
+            return "selected_resources_empty_current_shift";
         }
 
         private static bool TryParseHerbEntry(string entry, out string name, out int count)
@@ -1054,7 +1315,7 @@ namespace ABClient
             return int.TryParse(safeEntry.Substring(separator + 1).Trim(), NumberStyles.Integer, CultureInfo.InvariantCulture, out count);
         }
 
-        private static bool IsSelectedHerbName(string herbName)
+        private static bool IsSelectedResourceName(string herbName)
         {
             if (AppVars.Profile == null || string.IsNullOrEmpty(herbName))
             {
@@ -1062,16 +1323,17 @@ namespace ABClient
             }
 
             AutoCutCatalog.EnsureProfileCatalog(AppVars.Profile);
-            var catalogHerb = AutoCutCatalog.Find(AppVars.Profile.AutoCutHerbs, string.Empty, herbName);
+            var catalogHerb = AutoCutCatalog.Find(GetResourceCatalog(), string.Empty, herbName);
             if (catalogHerb != null)
             {
                 return catalogHerb.Selected;
             }
 
             var normalized = NormalizeHerbName(herbName);
-            for (var i = 0; i < AppVars.Profile.HerbsAutoCut.Count; i++)
+            var selectedNames = GetSelectedResourceNames();
+            for (var i = 0; i < selectedNames.Count; i++)
             {
-                if (NormalizeHerbName(AppVars.Profile.HerbsAutoCut[i]).Equals(normalized, StringComparison.Ordinal))
+                if (NormalizeHerbName(selectedNames[i]).Equals(normalized, StringComparison.Ordinal))
                 {
                     return true;
                 }
@@ -1233,12 +1495,13 @@ namespace ABClient
         private static bool TryGetConfiguredShift(DateTime dateTime, out int shift)
         {
             shift = 0;
-            if (AppVars.Profile == null || string.IsNullOrEmpty(AppVars.Profile.AutoCutShiftSchedule))
+            var shiftSchedule = AppVars.Profile == null ? string.Empty : GetShiftSchedule();
+            if (AppVars.Profile == null || string.IsNullOrEmpty(shiftSchedule))
             {
                 return false;
             }
 
-            var lines = AppVars.Profile.AutoCutShiftSchedule.Split('\r', '\n');
+            var lines = shiftSchedule.Split('\r', '\n');
             for (var i = 0; i < lines.Length; i++)
             {
                 var line = (lines[i] ?? string.Empty).Trim();
@@ -1303,9 +1566,9 @@ namespace ABClient
             return true;
         }
 
-        private static bool HasDueHerbTimerForCell(string cell)
+        private static bool HasDueResourceTimerForCell(string cell)
         {
-            if (AppVars.Profile == null || !AppVars.Profile.AutoCutByTimers || string.IsNullOrEmpty(cell))
+            if (AppVars.Profile == null || !IsByTimersEnabled() || string.IsNullOrEmpty(cell))
             {
                 return false;
             }
@@ -1313,7 +1576,7 @@ namespace ABClient
             var timers = AppTimerManager.GetTimers();
             for (var i = 0; i < timers.Length; i++)
             {
-                if (IsDueHerbTimerForCell(timers[i], cell))
+                if (IsDueResourceTimerForCell(timers[i], cell))
                 {
                     return true;
                 }
@@ -1334,7 +1597,7 @@ namespace ABClient
             var removed = 0;
             for (var i = timers.Length - 1; i >= 0; i--)
             {
-                if (IsDueHerbTimerForCell(timers[i], current))
+                if (IsDueResourceTimerForCell(timers[i], current))
                 {
                     AppTimerManager.RemoveTimerAt(i);
                     removed++;
@@ -1343,13 +1606,13 @@ namespace ABClient
 
             if (removed > 0)
             {
-                AppLog.i("auto_cut_trace", "AutoCutRuntime", "due herb timers cleared: cell=" + current + ", removed=" + removed + ", source=" + source);
+                AppLog.i("auto_cut_trace", "AutoCutRuntime", "due resource timers cleared: mode=" + GetModeActionKey(GetActiveMode()) + ", cell=" + current + ", removed=" + removed + ", source=" + source);
             }
         }
 
         private static string FindDueHerbTimerForRoute(List<string> cells, string current)
         {
-            if (AppVars.Profile == null || !AppVars.Profile.AutoCutByTimers || cells == null || cells.Count == 0)
+            if (AppVars.Profile == null || !IsByTimersEnabled() || cells == null || cells.Count == 0)
             {
                 return string.Empty;
             }
@@ -1367,7 +1630,7 @@ namespace ABClient
                 var cell = cells[index];
                 for (var timerIndex = 0; timerIndex < timers.Length; timerIndex++)
                 {
-                    if (IsDueHerbTimerForCell(timers[timerIndex], cell))
+                    if (IsDueResourceTimerForCell(timers[timerIndex], cell))
                     {
                         return cell;
                     }
@@ -1377,9 +1640,14 @@ namespace ABClient
             return string.Empty;
         }
 
-        private static bool IsDueHerbTimerForCell(AppTimer timer, string cell)
+        private static bool IsDueResourceTimerForCell(AppTimer timer, string cell)
         {
             if (timer == null || !timer.IsHerb || string.IsNullOrEmpty(cell))
+            {
+                return false;
+            }
+
+            if ((GetActiveMode() == AutoCutMode.Tree) != timer.IsAutoLumberjack)
             {
                 return false;
             }
@@ -1391,7 +1659,7 @@ namespace ABClient
 
         private static void PruneStaleHerbTimersForCurrentShift(string source)
         {
-            if (AppVars.Profile == null || !AppVars.Profile.AutoCutByTimers)
+            if (AppVars.Profile == null || !IsByTimersEnabled())
             {
                 return;
             }
@@ -1400,7 +1668,7 @@ namespace ABClient
             var removed = 0;
             for (var i = timers.Length - 1; i >= 0; i--)
             {
-                if (timers[i] == null || !timers[i].IsHerb || string.IsNullOrEmpty(ExtractTimerCell(timers[i])))
+                if (timers[i] == null || !timers[i].IsHerb || ((GetActiveMode() == AutoCutMode.Tree) != timers[i].IsAutoLumberjack) || string.IsNullOrEmpty(ExtractTimerCell(timers[i])))
                 {
                     continue;
                 }
@@ -1414,7 +1682,7 @@ namespace ABClient
 
             if (removed > 0)
             {
-                AppLog.i("auto_cut_trace", "AutoCutRuntime", "stale herb timers removed for shift: removed=" + removed + ", source=" + source);
+                AppLog.i("auto_cut_trace", "AutoCutRuntime", "stale resource timers removed for shift: mode=" + GetModeActionKey(GetActiveMode()) + ", removed=" + removed + ", source=" + source);
             }
         }
 
@@ -1456,7 +1724,7 @@ namespace ABClient
 
         private static bool MaybeRequestCleanupAfterCut(double resourceMass, string source)
         {
-            if (AppVars.Profile == null || !AppVars.Profile.AutoCutCleanupEnabled || resourceMass <= 0d)
+            if (AppVars.Profile == null || !IsCleanupEnabled() || resourceMass <= 0d)
             {
                 return false;
             }

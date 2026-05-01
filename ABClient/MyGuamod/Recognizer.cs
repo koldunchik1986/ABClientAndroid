@@ -159,7 +159,7 @@ namespace ABClient.MyGuamod
                 }
 
                 AppVars.GuamodCode = newresultOne;
-                AppVars.CodePng = null;
+                AppVars.ClearCodePng();
                 Thread.Sleep(5000);
                 AppVars.FightLink = AppVars.FightLink.Replace("????", AppVars.GuamodCode);
             

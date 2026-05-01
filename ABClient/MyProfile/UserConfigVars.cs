@@ -379,6 +379,18 @@ namespace ABClient.MyProfile
 
         internal string AutoCutSicklesCsv { get; set; }
 
+        internal bool DoAutoLumberjackWriteChat { get; set; }
+
+        internal string AutoLumberjackSearchCellsCsv { get; set; }
+
+        internal bool AutoLumberjackCleanupEnabled { get; set; }
+
+        internal bool AutoLumberjackByTimers { get; set; }
+
+        internal string AutoLumberjackShiftSchedule { get; set; }
+
+        internal string AutoLumberjackAxesCsv { get; set; }
+
         /// <summary>
         /// Использовать внешний сервис anti-captcha.com перед локальным гуамодом.
         /// </summary>

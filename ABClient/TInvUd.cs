@@ -27,6 +27,17 @@ namespace ABClient
                 "Серп Триады"
             };
 
+        private static readonly string[] AutoCutAxeNames =
+            {
+                "Мачете",
+                "Столярный топорик",
+                "Плотницкий топор",
+                "Топор подмастерья",
+                "Топор дровосека",
+                "Секира лесоруба",
+                "Секира Мастера-лесоруба"
+            };
+
         internal ParsedDressed(string html)
         {
             Valid = false;
@@ -343,13 +354,18 @@ namespace ABClient
 
         internal bool IsWearSickle()
         {
+            return IsWearAutoCutTool(AutoCutSickleNames);
+        }
+
+        internal bool IsWearAutoCutTool(string[] toolNames)
+        {
             AppVars.AutoCutSickleHand = string.Empty;
             AppVars.AutoCutSickleHandD = string.Empty;
             for (var i = 0; i < slist.Count; i++)
             {
-                for (var j = 0; j < AutoCutSickleNames.Length; j++)
+                for (var j = 0; j < toolNames.Length; j++)
                 {
-                    if (slist[i].IndexOf(AutoCutSickleNames[j], StringComparison.CurrentCultureIgnoreCase) < 0)
+                    if (slist[i].IndexOf(toolNames[j], StringComparison.CurrentCultureIgnoreCase) < 0)
                     {
                         continue;
                     }
@@ -366,6 +382,11 @@ namespace ABClient
         internal static string[] GetAutoCutSickleNames()
         {
             return (string[]) AutoCutSickleNames.Clone();
+        }
+
+        internal static string[] GetAutoCutAxeNames()
+        {
+            return (string[]) AutoCutAxeNames.Clone();
         }
     }
 }

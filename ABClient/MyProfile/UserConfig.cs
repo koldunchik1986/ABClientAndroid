@@ -15,8 +15,11 @@ namespace ABClient.MyProfile
         private static readonly ReaderWriterLock UserConfigLock = new ReaderWriterLock();
 
         internal readonly SortedDictionary<string, HerbCell> HerbCells = new SortedDictionary<string, HerbCell>();
+        internal readonly SortedDictionary<string, HerbCell> TreeCells = new SortedDictionary<string, HerbCell>();
         internal readonly List<AutoCutHerbInfo> AutoCutHerbs = new List<AutoCutHerbInfo>();
+        internal readonly List<AutoCutHerbInfo> AutoCutTrees = new List<AutoCutHerbInfo>();
         internal readonly List<string> HerbsAutoCut = new List<string>();
+        internal readonly List<string> TreesAutoCut = new List<string>();
         internal readonly List<AppTimer> AppConfigTimers = new List<AppTimer>();        
 
         private readonly List<string> _listtabs = new List<string>();
@@ -207,6 +210,12 @@ namespace ABClient.MyProfile
             AutoCutByTimers = false;
             AutoCutShiftSchedule = AutoCutCatalog.DefaultShiftSchedule;
             AutoCutSicklesCsv = string.Empty;
+            DoAutoLumberjackWriteChat = true;
+            AutoLumberjackSearchCellsCsv = string.Empty;
+            AutoLumberjackCleanupEnabled = false;
+            AutoLumberjackByTimers = false;
+            AutoLumberjackShiftSchedule = AutoCutCatalog.DefaultShiftSchedule;
+            AutoLumberjackAxesCsv = string.Empty;
             AntiCaptchaEnabled = false;
             AntiCaptchaApiKey = string.Empty;
             AntiCaptchaPhrase = false;

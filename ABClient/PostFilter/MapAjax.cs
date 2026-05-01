@@ -126,7 +126,7 @@ namespace ABClient.PostFilter
                     if (!AppVars.DoSearchBox)
                     {
                         AppVars.AutoMoving = false;
-                        if (AppVars.DoHerbAutoCut)
+                        if (AutoCutRuntime.IsAutoCutLikeEnabled())
                         {
                             AppLog.i("auto_cut_trace", "MapAjax", "auto-moving destination reached before auto look: location=" + AppVars.Profile.MapLocation);
                         }

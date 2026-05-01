@@ -18,6 +18,7 @@ namespace ABClient.MyGuamod
         private const string Tag = "AntiCaptchaManager";
         private const string ApiCreateTask = "https://api.anti-captcha.com/createTask";
         private const string ApiGetTaskResult = "https://api.anti-captcha.com/getTaskResult";
+        private const string CaptchaImageUrlPrefix = "http://www.neverlands.ru/modules/code/code.php?";
         private const int MaxPollCount = 120;
         private const int InitialPollDelayMs = 3000;
         private const int PollDelayMs = 1000;
@@ -69,12 +70,24 @@ namespace ABClient.MyGuamod
                 return false;
             }
 
+            if (AppVars.CodePng != null && AppVars.CodePng.Length > 0 && !AppVars.IsCodePngForAddress(codeAddress))
+            {
+                AppLog.w(Tag, "ANTI_CAPTCHA_TRACE stale captcha image cleared before solve, expectedHash=" + AppVars.NormalizeCaptchaCodeAddress(codeAddress).GetHashCode().ToString(CultureInfo.InvariantCulture));
+                AppVars.ClearCodePng();
+            }
+
             if (AppVars.CodePng == null || AppVars.CodePng.Length == 0)
             {
+                var preferBrowserImage = IsAlchemyCaptchaChallenge(challenge);
+                if (preferBrowserImage && ShouldWaitForCaptchaImage(challenge, codeAddress, CaptchaImageWaitTimeoutMs))
+                {
+                    return true;
+                }
+
                 TryLoadCaptchaImageFromCodeAddress(challenge, codeAddress);
                 if (AppVars.CodePng == null || AppVars.CodePng.Length == 0)
                 {
-                    if (ShouldWaitForCaptchaImage(challenge, codeAddress))
+                    if (ShouldWaitForCaptchaImage(challenge, codeAddress, CaptchaImageWaitTimeoutMs))
                     {
                         return true;
                     }
@@ -96,7 +109,7 @@ namespace ABClient.MyGuamod
             return true;
         }
 
-        private static bool ShouldWaitForCaptchaImage(string challenge, string codeAddress)
+        private static bool ShouldWaitForCaptchaImage(string challenge, string codeAddress, int timeoutMs)
         {
             if (string.IsNullOrEmpty(codeAddress))
             {
@@ -117,12 +130,12 @@ namespace ABClient.MyGuamod
             }
 
             var elapsedMs = DateTime.Now.Subtract(waitingImageSince).TotalMilliseconds;
-            if (elapsedMs >= CaptchaImageWaitTimeoutMs)
+            if (elapsedMs >= timeoutMs)
             {
                 return false;
             }
 
-            AppLog.d(Tag, "ANTI_CAPTCHA_TRACE waiting captcha image, elapsedMs=" + ((int)elapsedMs).ToString(CultureInfo.InvariantCulture));
+            AppLog.d(Tag, "ANTI_CAPTCHA_TRACE waiting captcha image, elapsedMs=" + ((int)elapsedMs).ToString(CultureInfo.InvariantCulture) + ", timeoutMs=" + timeoutMs.ToString(CultureInfo.InvariantCulture));
             UpdateGuamodMessage("Anti-Captcha: жду картинку...");
             return true;
         }
@@ -133,23 +146,29 @@ namespace ABClient.MyGuamod
             waitingImageSince = DateTime.MinValue;
         }
 
+        private static bool IsAlchemyCaptchaChallenge(string challenge)
+        {
+            return !string.IsNullOrEmpty(challenge) &&
+                   challenge.IndexOf("alchemy_ajax.php", StringComparison.OrdinalIgnoreCase) >= 0;
+        }
+
         private static bool IsSameCaptchaContext(string challenge, string codeAddress)
         {
             return string.Equals(AppVars.FightLink, challenge, StringComparison.Ordinal) &&
-                   string.Equals(AppVars.CodeAddress ?? string.Empty, codeAddress ?? string.Empty, StringComparison.Ordinal);
+                   AppVars.IsSameCaptchaCodeAddress(AppVars.CodeAddress, codeAddress);
         }
 
         private static void ClearCaptchaImageIfCurrent(string codeAddress)
         {
-            if (string.Equals(AppVars.CodeAddress ?? string.Empty, codeAddress ?? string.Empty, StringComparison.Ordinal))
+            if (AppVars.IsSameCaptchaCodeAddress(AppVars.CodeAddress, codeAddress))
             {
-                AppVars.CodePng = null;
+                AppVars.ClearCodePng();
             }
         }
 
         private static void TryLoadCaptchaImageFromCodeAddress(string challenge, string codeAddress)
         {
-            if (string.IsNullOrEmpty(codeAddress) || AppVars.CodePng != null && AppVars.CodePng.Length > 0)
+            if (string.IsNullOrEmpty(codeAddress) || AppVars.IsCodePngForAddress(codeAddress))
             {
                 return;
             }
@@ -162,7 +181,8 @@ namespace ABClient.MyGuamod
 
             try
             {
-                var request = (HttpWebRequest)WebRequest.Create(codeAddress);
+                var requestAddress = BuildCaptchaImageUrl(codeAddress);
+                var request = (HttpWebRequest)WebRequest.Create(requestAddress);
                 request.Method = "GET";
                 request.UserAgent = BrowserUserAgent;
                 request.Accept = "image/png,image/*,*/*";
@@ -208,7 +228,7 @@ namespace ABClient.MyGuamod
                                     return;
                                 }
 
-                                AppVars.CodePng = memory.ToArray();
+                                AppVars.AssignCodePng(memory.ToArray(), requestAddress);
                                 AppLog.i(Tag, "ANTI_CAPTCHA_TRACE captcha image loaded, bytes=" + AppVars.CodePng.Length + ", challengeHash=" + challenge.GetHashCode().ToString(CultureInfo.InvariantCulture) + ", codeAddressHash=" + codeAddress.GetHashCode().ToString(CultureInfo.InvariantCulture));
                             }
                         }
@@ -247,7 +267,7 @@ namespace ABClient.MyGuamod
                 }
 
                 AppVars.GuamodCode = text.Trim();
-                AppVars.CodePng = null;
+                AppVars.ClearCodePng();
                 AppVars.FightLink = AppVars.FightLink.Replace("????", AppVars.GuamodCode);
                 lastFailedChallenge = string.Empty;
                 TrySubmitSolvedAlchemyLink();
@@ -265,6 +285,19 @@ namespace ABClient.MyGuamod
             {
                 busy = false;
             }
+        }
+
+        private static string BuildCaptchaImageUrl(string codeAddress)
+        {
+            var value = (codeAddress ?? string.Empty).Trim();
+            if (value.StartsWith("http://", StringComparison.OrdinalIgnoreCase) ||
+                value.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+            {
+                return value;
+            }
+
+            var token = AppVars.NormalizeCaptchaCodeAddress(value);
+            return token.Length == 0 ? value : CaptchaImageUrlPrefix + token;
         }
 
         private static void TrySubmitSolvedAlchemyLink()

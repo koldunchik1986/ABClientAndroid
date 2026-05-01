@@ -1,4 +1,4 @@
-﻿namespace ABClient.ABForms
+namespace ABClient.ABForms
 {
     using System;
     using System.Windows.Forms;
@@ -108,6 +108,10 @@
             }
 
             buttonHerbAutoCut.Checked = AppVars.DoHerbAutoCut;
+            if (buttonAutoLumberjack != null)
+            {
+                buttonAutoLumberjack.Checked = AppVars.DoAutoLumberjack;
+            }
 
             buttonSilence.Checked = !AppVars.Profile.Sound.Enabled;
             statuslabelTorgAdv.Enabled = AppVars.Profile.TorgActive;
