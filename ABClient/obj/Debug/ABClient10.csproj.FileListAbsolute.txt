@@ -1,3 +1,0 @@
-C:\Users\User\AbclientAndroid\ABClient\obj\Debug\ABClient10.csproj.AssemblyReference.cache
-C:\Users\User\AbclientAndroid\ABClient\obj\Debug\ABClient.exe
-C:\Users\User\AbclientAndroid\ABClient\obj\Debug\ABClient.pdb
