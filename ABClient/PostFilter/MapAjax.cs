@@ -144,6 +144,21 @@ namespace ABClient.PostFilter
                         {
                         }
 
+                        if (AutoCutRuntime.IsAutoCutLikeEnabled())
+                        {
+                            if (AutoCutRuntime.RouteNextIfCurrentCellCachedNotReady("auto_moving_arrived"))
+                            {
+                                return html;
+                            }
+
+                            if (!MapHasAutoCutLookButton(html))
+                            {
+                                AppLog.i("auto_cut_trace", "MapAjax", "auto-moving destination has no look button, mark checked: location=" + AppVars.Profile.MapLocation);
+                                AutoCutRuntime.OnScanWithoutSelectedHerb("map_without_look_button");
+                                return html;
+                            }
+                        }
+
                         return html;
                     }
 
@@ -215,6 +230,19 @@ namespace ABClient.PostFilter
             }
 
             return html;
+        }
+
+        private static bool MapHasAutoCutLookButton(string html)
+        {
+            if (string.IsNullOrEmpty(html))
+            {
+                return false;
+            }
+
+            return html.IndexOf("[\"look\"", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                   html.IndexOf("['look'", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                   html.IndexOf("[\"ogl\"", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                   html.IndexOf("['ogl'", StringComparison.OrdinalIgnoreCase) >= 0;
         }
     }
 }

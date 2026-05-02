@@ -9,7 +9,7 @@ namespace ABClient.PostFilter
     {
         private static readonly List<InvEntry> InvList = new List<InvEntry>();
 
-        private static string MainPhpInv(string html)
+        private static string MainPhpInv(string html, string address)
         {
             const string patternStartInv = "</b></font></td></tr>";
             var pos = html.IndexOf(patternStartInv, StringComparison.Ordinal);
@@ -88,6 +88,12 @@ namespace ABClient.PostFilter
             {
                 var wasAutoCutGarbageCleanup = AppVars.AutoCutCleanupPending &&
                                                AppVars.BulkDropThing.Equals(AutoCutRuntime.GarbageItemName, StringComparison.CurrentCultureIgnoreCase);
+                if (wasAutoCutGarbageCleanup && !MainPhpIsAutoCutCleanupInventoryAddress(address))
+                {
+                    AppLog.w("auto_cut_trace", "MainPhpInv", "garbage bulk-drop verification skipped on non-cleanup inventory: address=" + (address ?? string.Empty));
+                    return html;
+                }
+
                 var messageBulkDropFinished = $"Выбрасывание пачки <b>&laquo;{AppVars.BulkDropThing}&raquo;</b> завершено.";
                 try
                 {

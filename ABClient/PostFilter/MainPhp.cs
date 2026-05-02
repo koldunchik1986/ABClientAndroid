@@ -55,6 +55,51 @@ namespace ABClient.PostFilter
                    address.IndexOf("im=0", StringComparison.OrdinalIgnoreCase) >= 0;
         }
 
+        private static bool MainPhpIsAutoCutCleanupInventoryAddress(string address)
+        {
+            if (string.IsNullOrEmpty(address) ||
+                address.IndexOf("main.php", StringComparison.OrdinalIgnoreCase) < 0)
+            {
+                return false;
+            }
+
+            if (address.IndexOf("get_id=50", StringComparison.OrdinalIgnoreCase) >= 0)
+            {
+                return true;
+            }
+
+            return address.IndexOf("im=0", StringComparison.OrdinalIgnoreCase) >= 0 &&
+                   address.IndexOf("wca=", StringComparison.OrdinalIgnoreCase) < 0;
+        }
+
+        private static bool MainPhpHasAutoCutDropPending()
+        {
+            return AppVars.AutoCutCleanupPending && !string.IsNullOrEmpty(AppVars.BulkDropThing);
+        }
+
+        private static string MainPhpAutoCutCleanupRedirect(string address, string html, string modeTitle, string source)
+        {
+            if (!AppVars.AutoCutCleanupPending || MainPhpIsInv(html))
+            {
+                return string.Empty;
+            }
+
+            var cleanupInvHtml = MainPhpFindInv(html, "&im=0");
+            if (!string.IsNullOrEmpty(cleanupInvHtml))
+            {
+                AppLog.i("auto_cut_trace", "MainPhp", "cleanup inventory redirect via link: source=" + source);
+                return cleanupInvHtml;
+            }
+
+            if (!MainPhpIsAutoCutCleanupInventoryAddress(address))
+            {
+                AppLog.i("auto_cut_trace", "MainPhp", "cleanup inventory redirect: source=" + source);
+                return BuildRedirect(modeTitle + ": cleanup инвентаря", "main.php?im=0");
+            }
+
+            return string.Empty;
+        }
+
         private static string[] GetComplects(string html)
         {
             /*
@@ -380,7 +425,16 @@ namespace ABClient.PostFilter
             if (html.IndexOf("/invent/0.gif", StringComparison.OrdinalIgnoreCase) != -1)
             {
                 AppLog.d("MainPhp", "MainPhp: inventory page detected");
-                html = MainPhpInv(html);
+                if (MainPhpHasAutoCutDropPending() &&
+                    AutoCutRuntime.IsAutoCutLikeEnabled() &&
+                    !MainPhpIsAutoCutCleanupInventoryAddress(address))
+                {
+                    AppLog.i("auto_cut_trace", "MainPhp", "cleanup inventory view correction: address=" + address);
+                    html = BuildRedirect(AutoCutRuntime.GetModeTitle(AutoCutRuntime.GetActiveMode()) + ": cleanup инвентаря", "main.php?im=0");
+                    goto end;
+                }
+
+                html = MainPhpInv(html, address);
                 if (AppVars.AutoCutCleanupPending &&
                     html.IndexOf("Выбрасывание предмета", StringComparison.OrdinalIgnoreCase) >= 0 &&
                     html.IndexOf("window.location", StringComparison.OrdinalIgnoreCase) >= 0)
@@ -767,6 +821,20 @@ namespace ABClient.PostFilter
             }
 
             // Нужно ли выпить блаж (авто зелик/элик) ?
+
+            if (AutoCutRuntime.IsAutoCutLikeEnabled() && AppVars.AutoCutCleanupPending)
+            {
+                var cleanupHtml = MainPhpAutoCutCleanupRedirect(
+                    address,
+                    html,
+                    AutoCutRuntime.GetModeTitle(AutoCutRuntime.GetActiveMode()),
+                    "before_auto_drink");
+                if (!string.IsNullOrEmpty(cleanupHtml))
+                {
+                    html = cleanupHtml;
+                    goto end;
+                }
+            }
 
             if ((AppVars.Profile.DoAutoDrinkBlaz) && (AppVars.Tied >= AppVars.Profile.AutoDrinkBlazTied) && (DateTime.Now > AppVars.NeverTimer))
             {
@@ -1221,18 +1289,12 @@ namespace ABClient.PostFilter
                     }
                 }
 
-                if (AppVars.AutoCutCleanupPending && !MainPhpIsInv(html))
+                if (AppVars.AutoCutCleanupPending)
                 {
-                    var cleanupInvHtml = MainPhpFindInv(html, "&im=0");
-                    if (!string.IsNullOrEmpty(cleanupInvHtml))
+                    var cleanupHtml = MainPhpAutoCutCleanupRedirect(address, html, modeTitle, "auto_cut_preprocessing");
+                    if (!string.IsNullOrEmpty(cleanupHtml))
                     {
-                        html = cleanupInvHtml;
-                        goto end;
-                    }
-
-                    if (!address.EndsWith("im=0", StringComparison.OrdinalIgnoreCase))
-                    {
-                        html = BuildRedirect(modeTitle + ": cleanup инвентаря", "main.php?im=0");
+                        html = cleanupHtml;
                         goto end;
                     }
                 }
