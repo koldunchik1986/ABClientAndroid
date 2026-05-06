@@ -70,6 +70,8 @@ public class MapAjax {
     private static volatile long lastAutoDrinkBlazPinfoSyncAtMs = 0L;
     private static volatile long lastAutoDrinkBlazStartupSyncAttemptAtMs = 0L;
     private static volatile long lastAutoDrinkBlazTriggerAtMs = 0L;
+    private static volatile long autoDrinkBlazWaitNeverTimerDueAtMs = 0L;
+    private static volatile boolean autoDrinkBlazTimerPauseActive = false;
     private static volatile long lastAutoMovingCellObservedAtMs = 0L;
     private static volatile long lastMapCellCheckDelayLogAtMs = 0L;
     private static volatile long lastMapAjaxErrAtMs = 0L;
@@ -90,6 +92,24 @@ public class MapAjax {
                 AppLog.d(TAG, TAG, msg);
             }
             return html;
+        }
+
+        if (AppVars.TimerPauseNonCombatAutoFunctions && AppVars.AutoDrinkBlazPending && autoDrinkBlazTimerPauseActive) {
+            long waitDueAt = autoDrinkBlazWaitNeverTimerDueAtMs;
+            long now = System.currentTimeMillis();
+            if (waitDueAt > 0L && now + 50L >= waitDueAt) {
+                AppVars.TimerPauseNonCombatAutoFunctions = false;
+                autoDrinkBlazTimerPauseActive = false;
+                AppLog.d(TAG, "AUTO_BLAZ_DECISION: stage=pause, action=release_never_timer_pause"
+                        + ", dueAt=" + waitDueAt
+                        + ", now=" + now
+                        + ", currentNeverTimer=" + AppVars.NeverTimer);
+            } else {
+                AppLog.d(TAG, "AUTO_BLAZ_DECISION: stage=pause, action=skip_map_ajax_while_waiting_never_timer"
+                        + ", waitMs=" + Math.max(0L, waitDueAt - now)
+                        + ", currentNeverTimer=" + AppVars.NeverTimer);
+                return html;
+            }
         }
 
         if (AppVars.TreasureDigPauseNonCombatAutoFunctions) {
@@ -1413,6 +1433,11 @@ public class MapAjax {
     private static String maybeTriggerAutoDrinkBlazOnThreshold(String currentRegNum) {
         if (AppVars.Profile == null || !AppVars.Profile.DoAutoDrinkBlaz) {
             AppVars.AutoDrinkBlazPending = false;
+            autoDrinkBlazWaitNeverTimerDueAtMs = 0L;
+            if (autoDrinkBlazTimerPauseActive) {
+                AppVars.TimerPauseNonCombatAutoFunctions = false;
+                autoDrinkBlazTimerPauseActive = false;
+            }
             logAutoBlazDecision("decision", "skip_profile_disabled", CharacterVitalsManager.snapshot().tied, 0, "reg=" + currentRegNum);
             String disabledMsg = "[MAPAJAX_AUTO_BLAZ] Profile disabled for auto-drink blaz";
             FileLogger.trace(TAG, disabledMsg);
@@ -1447,14 +1472,19 @@ public class MapAjax {
 
         long now = System.currentTimeMillis();
         long neverTimer = AppVars.NeverTimer;
-        // Только откладываем через NeverTimer если tied ЕЩЁ НЕ достиг порога.
-        // При tied >= threshold пить нужно сейчас; NeverTimer от навигации perpetually
-        // сбрасывается каждым шагом, и если откладывать — получается бесконечный цикл:
-        // MapAjax defer → resolver resolve → MapAjax defer → ...
-        if (neverTimer > 0L && now < neverTimer && tied < threshold) {
+        long waitDueAt = autoDrinkBlazWaitNeverTimerDueAtMs;
+        if (waitDueAt <= 0L && neverTimer > 0L && now < neverTimer) {
+            waitDueAt = neverTimer;
+            autoDrinkBlazWaitNeverTimerDueAtMs = waitDueAt;
+        }
+        if (waitDueAt > 0L && now + 50L < waitDueAt) {
             AppVars.AutoDrinkBlazPending = true;
+            AppVars.TimerPauseNonCombatAutoFunctions = true;
+            autoDrinkBlazTimerPauseActive = true;
             logAutoBlazDecision("decision", "defer_wait_never_timer", tied, threshold,
-                    "reg=" + currentRegNum + ", waitMs=" + (neverTimer - now));
+                    "reg=" + currentRegNum
+                            + ", waitMs=" + (waitDueAt - now)
+                            + ", currentNeverTimer=" + neverTimer);
             return Filter.buildRedirectString(
                     "",
                     "main.php?ab_nav_blaz_wait=1");
@@ -1462,6 +1492,11 @@ public class MapAjax {
 
         if (tied < threshold) {
             AppVars.AutoDrinkBlazPending = false;
+            autoDrinkBlazWaitNeverTimerDueAtMs = 0L;
+            if (autoDrinkBlazTimerPauseActive) {
+                AppVars.TimerPauseNonCombatAutoFunctions = false;
+                autoDrinkBlazTimerPauseActive = false;
+            }
             logAutoBlazDecision("decision", "skip_below_threshold_after_wait", tied, threshold, "reg=" + currentRegNum);
             return null;
         }
@@ -1472,6 +1507,14 @@ public class MapAjax {
         }
         lastAutoDrinkBlazTriggerAtMs = now;
         AppVars.AutoDrinkBlazPending = false;
+        autoDrinkBlazWaitNeverTimerDueAtMs = 0L;
+        if (autoDrinkBlazTimerPauseActive) {
+            AppVars.TimerPauseNonCombatAutoFunctions = false;
+            autoDrinkBlazTimerPauseActive = false;
+        }
+        if (neverTimer > 0L && now + 50L >= waitDueAt) {
+            AppVars.NeverTimer = 0L;
+        }
 
         String triggerMsg = "[MAPAJAX_BLAZ_TRIGGER] EXECUTE: tied=" + tied
                 + ", threshold=" + threshold

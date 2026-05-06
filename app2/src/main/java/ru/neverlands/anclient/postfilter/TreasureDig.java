@@ -32,6 +32,7 @@ import ru.neverlands.anclient.utils.SessionManager;
 public final class TreasureDig {
     private static final String TAG = "TreasureDig";
     private static final String DIG_BUTTON_MARKER = "[\"dig\",\"Копать\",";
+    private static final String DIG_BUTTON_CODE_PREFIX = "[\"dig\",\"Копать\",\"";
     private static final int AUTO_TREASURE_SHOVEL_PREP_MAX_RETRIES = 8;
     private static final String AUTO_TREASURE_SHOVEL_PREP_RETRY_PARAM = "an_tdig_inv_retry";
     
@@ -100,7 +101,7 @@ public final class TreasureDig {
             return null;
         }
 
-        boolean digMarkerDetected = html.contains(DIG_BUTTON_MARKER);
+        boolean digMarkerDetected = hasDigButtonMarker(html);
         boolean autoTreasureActive = AppVars.DoSearchBox
                 || AppVars.AutoMoving
                 || (AppVars.Profile != null && AppVars.Profile.AutoDig);
@@ -336,11 +337,12 @@ public final class TreasureDig {
     }
 
     public static void applyTreasurePauseAndStopNavigator(String reason) {
-        // Инкрементируем счетчик глубины и устанавливаем флаг
         synchronized (TreasureDig.class) {
-            treasurePauseDepth++;
+            if (treasurePauseDepth <= 0) {
+                treasurePauseDepth = 1;
+            }
             AppVars.TreasureDigPauseNonCombatAutoFunctions = true;
-            AppLog.d(TAG, "AUTO_SEARCH_BOX_TRACE pause depth++ = " + treasurePauseDepth 
+            AppLog.d(TAG, "AUTO_SEARCH_BOX_TRACE pause active, depth=" + treasurePauseDepth
                     + ", reason=" + reason);
         }
         
@@ -373,21 +375,23 @@ public final class TreasureDig {
     public static void releaseTreasurePause(String reason) {
         synchronized (TreasureDig.class) {
             if (treasurePauseDepth > 0) {
-                treasurePauseDepth--;
+                treasurePauseDepth = 0;
             } else {
-                AppLog.w(TAG, "AUTO_SEARCH_BOX_TRACE pause depth already 0, ignoring release, reason=" + reason);
+                if (!isExpectedIdleRelease(reason)) {
+                    AppLog.w(TAG, "AUTO_SEARCH_BOX_TRACE pause depth already 0, ignoring release, reason=" + reason);
+                }
                 return;
             }
-            
-            if (treasurePauseDepth <= 0) {
-                treasurePauseDepth = 0; // Защита от отрицательных значений
-                AppVars.TreasureDigPauseNonCombatAutoFunctions = false;
-                AppLog.d(TAG, "AUTO_SEARCH_BOX_TRACE pause depth-- = 0, RELEASED, reason=" + reason);
-            } else {
-                AppLog.d(TAG, "AUTO_SEARCH_BOX_TRACE pause depth-- = " + treasurePauseDepth 
-                        + ", still active, reason=" + reason);
-            }
+
+            AppVars.TreasureDigPauseNonCombatAutoFunctions = false;
+            AppLog.d(TAG, "AUTO_SEARCH_BOX_TRACE pause RELEASED, reason=" + reason);
         }
+    }
+
+    private static boolean isExpectedIdleRelease(String reason) {
+        return "dig_flow_inactive".equals(reason)
+                || "dig_flow_no_marker".equals(reason)
+                || "dig_flow_shovel_changed".equals(reason);
     }
 
     private static String buildAutoTreasureDigOpenInventoryRedirect(String html, String address, Host host) {
@@ -414,17 +418,23 @@ public final class TreasureDig {
     }
 
     private static String buildAutoTreasureDigClickHtml(String html) {
-        if (html == null || html.isEmpty() || !html.contains(DIG_BUTTON_MARKER)) {
+        if (html == null || html.isEmpty() || !hasDigButtonMarker(html)) {
             return null;
+        }
+        String digCode = extractDigCode(html);
+        String directDigCall = "";
+        if (digCode != null && !digCode.isEmpty()) {
+            directDigCall = "if(typeof Digg==='function'){Digg('" + escapeJsString(digCode) + "');return;}";
         }
         String script = "<script language=\"JavaScript\">"
                 + "setTimeout(function(){"
                 + "try{"
                 + "if(window.__anAutoTreasureDigClicked){return;}"
                 + "window.__anAutoTreasureDigClicked=true;"
-                + "if(typeof ButClick==='function' && document.getElementById('dig')){ButClick('dig');return;}"
+                + "if(typeof ButClick==='function' && typeof bavail!=='undefined' && bavail['dig']){ButClick('dig');return;}"
                 + "var digBtn=document.getElementById('dig');"
                 + "if(digBtn && typeof digBtn.click==='function'){digBtn.click();}"
+                + directDigCall
                 + "}catch(e){}"
                 + "},180);"
                 + "</script>";
@@ -433,6 +443,33 @@ public final class TreasureDig {
             return html.substring(0, bodyEnd) + script + html.substring(bodyEnd);
         }
         return html + script;
+    }
+
+    private static boolean hasDigButtonMarker(String html) {
+        return html != null && html.contains(DIG_BUTTON_MARKER);
+    }
+
+    private static String extractDigCode(String html) {
+        if (html == null || html.isEmpty()) {
+            return null;
+        }
+        int codeStart = html.indexOf(DIG_BUTTON_CODE_PREFIX);
+        if (codeStart == -1) {
+            return null;
+        }
+        codeStart += DIG_BUTTON_CODE_PREFIX.length();
+        int codeEnd = html.indexOf('"', codeStart);
+        if (codeEnd == -1 || codeEnd <= codeStart) {
+            return null;
+        }
+        return html.substring(codeStart, codeEnd);
+    }
+
+    private static String escapeJsString(String value) {
+        if (value == null || value.isEmpty()) {
+            return "";
+        }
+        return value.replace("\\", "\\\\").replace("'", "\\'");
     }
 
     private static String resolveTreasureShovelWearLink(String html, String selectedShovelOption, Host host) {
