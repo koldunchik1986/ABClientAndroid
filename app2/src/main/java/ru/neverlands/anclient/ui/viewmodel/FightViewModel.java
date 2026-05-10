@@ -8,6 +8,7 @@ import ru.neverlands.anclient.utils.AppLog;
 import ru.neverlands.anclient.MainActivity;
 import ru.neverlands.anclient.lez.LezFight;
 import ru.neverlands.anclient.model.AutoboiState;
+import ru.neverlands.anclient.postfilter.FightAuto;
 import ru.neverlands.anclient.postfilter.MainPhp;
 import ru.neverlands.anclient.utils.AppVars;
 import ru.neverlands.anclient.utils.FileLogger;
@@ -141,6 +142,7 @@ public class FightViewModel extends ViewModel {
                         + ", Autoboi=" + AppVars.Autoboi
                         + ", LogBoi=" + fight.LogBoi;
                 AppLog.d(TAG, TAG, msg);
+                showPendingFightCaptchaFromParsedStateIfNeeded(fight, html);
                 return;
             }
             // ⚠️ FIX для group=2+: Не блокировать обработку при IsWaitingForNextTurn в режиме autoboi
@@ -282,6 +284,27 @@ public class FightViewModel extends ViewModel {
         long fightPulseNow = System.currentTimeMillis();
         AppVars.LastFightPulseAtMs = fightPulseNow;
         AppVars.LastBoiTimer = new java.util.Date(fightPulseNow);
+    }
+
+    private void showPendingFightCaptchaFromParsedStateIfNeeded(LezFight fight, String html) {
+        String finishUrl = AppVars.FightLink == null ? "" : AppVars.FightLink.trim();
+        String captchaUrl = AppVars.CodeAddress == null ? "" : AppVars.CodeAddress.trim();
+        if (finishUrl.isEmpty()
+                || captchaUrl.isEmpty()
+                || !finishUrl.contains("get_id=61")
+                || !finishUrl.contains("act=7")
+                || !finishUrl.contains("code=????")) {
+            return;
+        }
+        AppVars.ResumeAutoboiAfterCaptcha = true;
+        AppVars.Autoboi = AutoboiState.AutoboiOff;
+        AppVars.ContentMainPhp = html;
+        String msg = BG_TRACE_PREFIX + " processFightHtml: show pending fight captcha from parsed state"
+                + ", finishUrl=" + finishUrl
+                + ", captchaUrl=" + captchaUrl
+                + ", LogBoi=" + (fight == null ? "" : fight.LogBoi);
+        AppLog.d(TAG, TAG, msg);
+        FightAuto.showFightCaptchaDialogOnce(captchaUrl, finishUrl, fight == null ? "" : fight.LogBoi);
     }
 
     private boolean containsFightMarkers(String html) {

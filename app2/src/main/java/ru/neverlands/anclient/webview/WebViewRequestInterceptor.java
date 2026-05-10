@@ -578,32 +578,40 @@ public class WebViewRequestInterceptor {
             if (isSessionInterruptedHtml(processedPreview)) {
                 notifySessionErrorToActivity(urlString, "processed");
             }
-            // Диагностика ответов ch_refr: наличие add_msg/set_lmid.
+            // Диагностика ответов ch_refr и ранний server-signal для боя.
+            //
+            // Зависимости:
+            // - `add_msg`/`set_lmid`: старые маркеры валидного chat-poll ответа;
+            // - `hasMainTopMainPhpReloadSignal(...)`: новый detector серверной команды
+            //   `top.frames['main_top'].location='main.php'`;
+            // - `notifyChatPollMetaToActivity(...)`: передаёт только метаданные в MainActivity,
+            //   не выполняя навигацию из interceptor и не создавая отдельный HTTP-контур.
             if (urlString.contains("ch.php") && urlString.contains("show=1")) {
                 boolean hasAdd = processedPreview.contains("add_msg");
                 boolean hasLmid = processedPreview.contains("set_lmid");
                 String rawLmid = extractSetLmidValue(preview);
                 String processedLmid = extractSetLmidValue(processedPreview);
-                if (!hasAdd || !hasLmid) {
-                    String full = processedPreview;
-                    if (processed.length > 0 && processed.length < 20000) {
-                        full = new String(processed, Charset.forName("windows-1251"));
-                        hasAdd = full.contains("add_msg");
-                        hasLmid = full.contains("set_lmid");
-                        if (processedLmid.isEmpty()) {
-                            processedLmid = extractSetLmidValue(full);
-                        }
+                String full = processedPreview;
+                if (processed.length > 0 && processed.length < 20000) {
+                    full = new String(processed, Charset.forName("windows-1251"));
+                    hasAdd = full.contains("add_msg");
+                    hasLmid = full.contains("set_lmid");
+                    if (processedLmid.isEmpty()) {
+                        processedLmid = extractSetLmidValue(full);
                     }
                 }
+                boolean hasMainTopMainPhpReload = hasMainTopMainPhpReloadSignal(preview)
+                        || hasMainTopMainPhpReloadSignal(full);
                 boolean setLmidOnly = hasLmid && !hasAdd && bytes.length <= 80;
                 String responseMarkerMessage = "ch_refr response markers: add_msg=" + hasAdd
                         + ", set_lmid=" + hasLmid
                         + ", raw_lmid=" + (rawLmid.isEmpty() ? "<none>" : rawLmid)
                         + ", processed_lmid=" + (processedLmid.isEmpty() ? "<none>" : processedLmid)
                         + ", set_lmid_only=" + setLmidOnly
+                        + ", main_top_main_php=" + hasMainTopMainPhpReload
                         + ", raw_bytes=" + bytes.length;
                 AppLog.d("chat_poll", TAG, responseMarkerMessage);
-                notifyChatPollMetaToActivity(urlString, code, bytes.length, hasAdd, hasLmid);
+                notifyChatPollMetaToActivity(urlString, code, bytes.length, hasAdd, hasLmid, hasMainTopMainPhpReload);
             }
 
             WebResourceResponse response = new WebResourceResponse(
@@ -750,14 +758,27 @@ public class WebViewRequestInterceptor {
      * Передает в `MainActivity` служебные метаданные каждого ответа `ch.php?show=1`.
      *
      * Зависимости:
-     * - источник: этот же `WebViewRequestInterceptor` (после анализа `add_msg/set_lmid`);
+     * - источник: этот же `WebViewRequestInterceptor` (после анализа `add_msg/set_lmid`
+     *   и `main_top -> main.php`);
      * - получатель: `MainActivity.onChatPollResponseMeta(...)`.
      *
      * Назначение:
      * - дать Activity возможность выполнить recovery polling, если сервер вернул 535/546
      *   или пустой body, не меняя основной цикл refresh.
+     * - передать ранний fight/main-frame сигнал в существующий background decision point,
+     *   чтобы `AutoModeForegroundService` мог обойти suppression `AutoMoving=true` только
+     *   в коротком fight recovery окне.
+     *
+     * @param hasMainTopMainPhpReload true, если `ch.php?show=1` содержит команду сервера
+     *                                открыть `main.php` в frame `main_top`.
      */
-    private static void notifyChatPollMetaToActivity(String url, int httpCode, int rawBytes, boolean hasAddMsg, boolean hasSetLmid) {
+    private static void notifyChatPollMetaToActivity(
+            String url,
+            int httpCode,
+            int rawBytes,
+            boolean hasAddMsg,
+            boolean hasSetLmid,
+            boolean hasMainTopMainPhpReload) {
         try {
             if (AppVars.mainActivity == null) {
                 return;
@@ -766,9 +787,54 @@ public class WebViewRequestInterceptor {
             if (activity == null) {
                 return;
             }
-            activity.onChatPollResponseMeta(httpCode, rawBytes, hasAddMsg, hasSetLmid, url);
+            activity.onChatPollResponseMeta(
+                    httpCode,
+                    rawBytes,
+                    hasAddMsg,
+                    hasSetLmid,
+                    hasMainTopMainPhpReload,
+                    url);
         } catch (Throwable ignored) {
             // Диагностический callback не должен ломать сетевой pipeline.
+        }
+    }
+
+    /**
+     * Ищет в ответе `ch.php?show=1` серверную команду перезагрузить верхний frame на `main.php`.
+     *
+     * Почему это важно:
+     * - в background/lockscreen WebView может не выполнить JS `top.frames['main_top'].location=...`;
+     * - при активном `AppVars.AutoMoving` обычный idle-probe подавлен, чтобы не мешать навигации;
+     * - этот detector даёт безопасный signal без прямой навигации из interceptor: MainActivity только
+     *   обновляет `AppVars.LastFightAnnounceAtMs`, а сервис решает, когда делать recovery.
+     *
+     * Зависимости:
+     * - `MainActivity.onChatPollResponseMeta(...)`: потребитель boolean-флага;
+     * - `AutoModeForegroundService`: читает `LastFightAnnounceAtMs` и разрешает autoTurn/probe;
+     * - поддерживаются относительные и абсолютные варианты `main.php` для устойчивости к HTML/JS формату.
+     */
+    private static boolean hasMainTopMainPhpReloadSignal(String html) {
+        if (html == null || html.isEmpty()) {
+            return false;
+        }
+        String normalized = html.toLowerCase(Locale.ROOT)
+                .replace('"', '\'')
+                .replaceAll("\\s+", "");
+        String prefix = "top.frames['main_top'].location='";
+        int searchFrom = 0;
+        while (true) {
+            int valueStart = normalized.indexOf(prefix, searchFrom);
+            if (valueStart < 0) {
+                return false;
+            }
+            valueStart += prefix.length();
+            if (normalized.startsWith("main.php", valueStart)
+                    || normalized.startsWith("/main.php", valueStart)
+                    || normalized.startsWith("http://neverlands.ru/main.php", valueStart)
+                    || normalized.startsWith("https://neverlands.ru/main.php", valueStart)) {
+                return true;
+            }
+            searchFrom = valueStart;
         }
     }
 

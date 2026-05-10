@@ -835,12 +835,20 @@ public final class AutoCutManager {
      * видит, что сама return-cell не требует повторного `Оглядеться`.
      */
     public boolean routeNextAfterTimerReturnIfArrived(AutoFunctionsManager manager, String source) {
+        if (manager == null) {
+            return false;
+        }
         String returnCell = safe(timerRouteReturnCell);
         if (!timerRouteReturning || TextUtils.isEmpty(returnCell)) {
             return false;
         }
         String current = resolveCurrentRegNum();
         if (!returnCell.equals(current)) {
+            return false;
+        }
+        if (shouldDelayRouteForPreparation()) {
+            AppLog.d(TRACE_CHAIN, TAG, "timer-route returned but route delayed: preparation pending"
+                    + ", cell=" + current + ", source=" + source);
             return false;
         }
         clearTimerRouteState("timer_return_arrived:" + source);

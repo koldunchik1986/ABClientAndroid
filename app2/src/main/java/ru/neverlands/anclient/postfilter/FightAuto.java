@@ -1498,7 +1498,7 @@ public final class FightAuto {
         return null;
     }
 
-    static void showFightCaptchaDialogOnce(String captchaUrl, String finishUrl, String logBoi) {
+    public static void showFightCaptchaDialogOnce(String captchaUrl, String finishUrl, String logBoi) {
         if (captchaUrl == null || captchaUrl.isEmpty() || finishUrl == null || finishUrl.isEmpty()) {
             return;
         }

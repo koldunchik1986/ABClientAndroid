@@ -275,9 +275,10 @@ final class AutoCutHandler {
                 return null;
             }
             AppLog.w(AutoCutManager.TRACE_CHAIN, TAG,
-                    "cleanup inventory address has no inventory html, reload main frame, address=" + address);
-            return MainPhp.buildRedirectHtml(mode.title + ": повторное открытие инвентаря",
-                    "main.php?get_id=56&act=10&go=inf");
+                    "cleanup inventory address has no inventory html, retry inventory after delay, address=" + address);
+            return FightAuto.buildDelayedRedirectHtml(mode.title + ": ожидание инвентаря",
+                    "main.php?im=0",
+                    800);
         }
         String inventoryFilter = AUTO_CUT_CLEANUP_INV_FILTER;
         String invHtml = MainPhp.mainPhpFindInvWithFallback(html, inventoryFilter, address);

@@ -141,6 +141,20 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     private static final int AUTO_SUBMIT_RETRY_DELAY_MS = 180;
     private static final int AUTO_SUBMIT_MAX_RETRY_COUNT = 3;
     private static final long CAPTCHA_IMAGE_STABILIZE_DELAY_MS = 180L;
+    /**
+     * TTL fallback-адреса картинки боевой капчи, перехваченной сетевым контуром раньше UI.
+     *
+     * Назначение:
+     * - дать `restorePendingFightCaptchaDialogIfNeeded()` короткое окно, чтобы восстановить popup,
+     *   если `AppVars.CodeAddress` ещё пустой, но `WebViewRequestInterceptor` уже сохранил
+     *   `AppVars.LastFightCaptchaImageUrl` / `AppVars.LastFightCaptchaImageAtMs`.
+     *
+     * Зависимости:
+     * - `AppVars.LastFightCaptchaImageUrl` и `AppVars.LastFightCaptchaImageAtMs`;
+     * - `resolvePendingFightCaptchaUrlForRestore()` как единственная UI-точка fallback-восстановления;
+     * - `AutoModeForegroundService.resolveFightCaptchaUrlForPopup(...)` использует такой же TTL в фоне.
+     */
+    private static final long FIGHT_CAPTCHA_CAPTURE_FALLBACK_TTL_MS = 5_000L;
     private static final int CAPTCHA_IMAGE_MIN_USABLE_BYTES = 1024;
     private static final int ANTI_CAPTCHA_CREATE_RETRY_MAX_COUNT = 5;
     private static final long ANTI_CAPTCHA_CREATE_RETRY_BASE_DELAY_MS = 10_000L;
@@ -164,6 +178,20 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     private static final long AUTO_TURN_SERVER_PROBE_MIN_INTERVAL_MS = 1200L;
     private static final long AUTO_TURN_FIRST_FRAME_RENDER_GUARD_MS = 420L;
     private static final long AUTO_TURN_MANUAL_NAV_SUPPRESS_MS = 4500L;
+    /**
+     * Окно, в котором серверный сигнал "main_top должен открыть main.php" считается fight-сигналом.
+     *
+     * Назначение:
+     * - не запускать постоянный idle-probe во время `AppVars.AutoMoving`;
+     * - но разрешить разовый recovery server-probe, когда `ch.php?show=1` сообщил
+     *   `top.frames['main_top'].location='main.php'` и включён авто-бой.
+     *
+     * Зависимости:
+     * - `WebViewRequestInterceptor.hasMainTopMainPhpReloadSignal(...)` находит серверный JS-сигнал;
+     * - `onChatPollResponseMeta(...)` переносит сигнал в `AppVars.LastFightAnnounceAtMs`;
+     * - `shouldSkipAutoTurnServerProbeForMapAutomation()` читает этот TTL перед подавлением probe.
+     */
+    private static final long AUTO_TURN_FIGHT_ANNOUNCE_PROBE_GRACE_MS = 25_000L;
     private static final long PENDING_FINISH_REPEAT_WINDOW_MS = 6000L;
     private static final int PENDING_FINISH_REPEAT_LIMIT = 4;
     private static final int AUTO_TURN_SERVER_PROBE_TIMEOUT_MS = 12000;
@@ -689,21 +717,54 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
      *
      * Зависимости:
      * - источник вызова: `WebViewRequestInterceptor` (каждый `show=1` ответ);
+     * - `WebViewRequestInterceptor.hasMainTopMainPhpReloadSignal(...)`: распознаёт серверный JS
+     *   `top.frames['main_top'].location='main.php'` как ранний признак боя/капчи;
+     * - `AppVars.LastFightAnnounceAtMs`: единый runtime-сигнал для `AutoModeForegroundService`
+     *   и `requestAutoTurnFromServerProbe(...)`;
      * - управляет временным подавлением `requestRoomUsersRefreshSoon()` и планирует
      *   ускоренный recovery-ретрай chat poll без перезапуска общего periodic runnable.
      *
      * Назначение:
      * - уменьшить вероятность пропуска системных сообщений (например, событий Босса),
      *   когда один poll-тик падает с HTTP 546/535 или пустым body.
+     * - не выполнять прямую навигацию из chat-poll callback: метод только ставит fight-сигнал,
+     *   а существующие decision points (`AutoModeForegroundService` и `requestAutoTurn...`) сами
+     *   решают, когда безопасно делать sync/probe.
+     *
+     * @param hasMainTopMainPhpReload true, если в ответе `ch.php?show=1` найден server-side reload
+     *                                верхнего фрейма на `main.php`.
      */
-    public void onChatPollResponseMeta(int httpCode, int rawBytes, boolean hasAddMsg, boolean hasSetLmid, String url) {
+    public void onChatPollResponseMeta(
+            int httpCode,
+            int rawBytes,
+            boolean hasAddMsg,
+            boolean hasSetLmid,
+            boolean hasMainTopMainPhpReload,
+            String url) {
         if (Looper.myLooper() != Looper.getMainLooper()) {
-            runOnUiThread(() -> onChatPollResponseMeta(httpCode, rawBytes, hasAddMsg, hasSetLmid, url));
+            runOnUiThread(() -> onChatPollResponseMeta(
+                    httpCode,
+                    rawBytes,
+                    hasAddMsg,
+                    hasSetLmid,
+                    hasMainTopMainPhpReload,
+                    url));
             return;
         }
 
         boolean pollFailed = httpCode >= 535 || rawBytes <= 0;
         long now = System.currentTimeMillis();
+
+        // Переносим server/chat signal в уже существующий `LastFightAnnounceAtMs` вместо создания
+        // нового флага: так `AutoModeForegroundService` и `requestAutoTurnFromServerProbe(...)`
+        // используют тот же путь, что и обычный чатовый анонс "Нападение".
+        if (hasMainTopMainPhpReload && isAutoFightRuntimeEnabled()) {
+            AppVars.LastFightAnnounceAtMs = now;
+            AppLog.d("chat_poll", TAG, BG_TRACE_PREFIX + " chat-poll main_top reload signal -> fight announce pulse"
+                    + ", code=" + httpCode
+                    + ", bytes=" + rawBytes
+                    + ", url=" + url);
+        }
 
         if (!pollFailed) {
             if (consecutiveChatPollFailures > 0) {
@@ -1040,7 +1101,8 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
 
             @Override
             public boolean hasPendingAct7FightLink(String fightLink) {
-                return MainActivity.this.hasPendingAct7FightLink(fightLink);
+                return MainActivity.this.hasPendingAct7FightLink(fightLink)
+                        || MainActivity.this.hasPendingAct7FightLink(AppVars.FightLink);
             }
         };
     }
@@ -1119,9 +1181,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
      * - в фоне/на lockscreen задержка не применяется.
      */
     private boolean shouldDeferAutoTurnForFirstFrameRender() {
-        boolean autoFightRuntimeEnabled = AppVars.Autoboi == ru.neverlands.anclient.model.AutoboiState.AutoboiOn
-                || (AppVars.Profile != null && AppVars.Profile.LezDoAutoboi);
-        if (!autoFightRuntimeEnabled) {
+        if (!isAutoFightRuntimeEnabled()) {
             return false;
         }
         if (!isUiForegroundLikely()) {
@@ -1139,6 +1199,25 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                 + (AUTO_TURN_FIRST_FRAME_RENDER_GUARD_MS - sinceAnnounceMs)
                 + ", sinceAnnounceMs=" + sinceAnnounceMs);
         return true;
+    }
+
+    /**
+     * Единая проверка runtime-включения авто-боя для UI и background-контуров MainActivity.
+     *
+     * Назначение:
+     * - не дублировать условие `AppVars.Autoboi == AutoboiOn || Profile.LezDoAutoboi`
+     *   в разных recovery-ветках;
+     * - гарантировать, что chat/server signal из `onChatPollResponseMeta(...)` не запускает
+     *   fight recovery, если авто-бой выключен профилем или runtime-флагом.
+     *
+     * Зависимости:
+     * - `AppVars.Autoboi`: runtime-состояние кнопки/автобоя;
+     * - `AppVars.Profile.LezDoAutoboi`: профильная настройка автобоя;
+     * - `shouldDeferAutoTurnForFirstFrameRender()` и `onChatPollResponseMeta(...)`.
+     */
+    private boolean isAutoFightRuntimeEnabled() {
+        return AppVars.Autoboi == ru.neverlands.anclient.model.AutoboiState.AutoboiOn
+                || (AppVars.Profile != null && AppVars.Profile.LezDoAutoboi);
     }
 
     /**
@@ -1334,12 +1413,20 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
      * Во время активной навигации Авто-Клада не запускаем idle server-probe авто-боя.
      *
      * Причина:
-     * - в этом режиме `requestAutoTurn` не должен генерировать лишние `ab_bg_probe`,
+     * - в этом режиме `requestAutoTurn` не должен генерировать лишние background probe,
      *   т.к. они создают конкурентную сетевую нагрузку (особенно через proxy) и мешают map-циклу.
      *
      * Ограничение:
      * - блокируем только idle-probe без признаков боя;
      * - если уже есть маркеры боя/finish-link, probe не подавляется.
+     * - если `ch.php?show=1` недавно прислал `top.frames['main_top'].location='main.php'`,
+     *   probe разрешается как fight recovery, потому сервер уже требует обновить верхний фрейм.
+     *
+     * Зависимости:
+     * - `AppVars.AutoMoving`: активная навигация Авто-Клада/карты;
+     * - `AppVars.ContentMainPhp`: кэш текущего верхнего фрейма с fight-маркерами;
+     * - `AppVars.FightLink`: pending finish/captcha link, сформированный `LezFight`;
+     * - `AppVars.LastFightAnnounceAtMs`: общий fight-сигнал от чата и `WebViewRequestInterceptor`.
      */
     private boolean shouldSkipAutoTurnServerProbeForMapAutomation() {
         if (!AppVars.AutoMoving) {
@@ -1351,7 +1438,31 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         if (hasFightMarkers(AppVars.ContentMainPhp)) {
             return false;
         }
+        if (hasRecentFightAnnounceSignal(System.currentTimeMillis())) {
+            AppLog.d(TAG, BG_TRACE_PREFIX + " requestAutoTurn: allow server probe during map automation, reason=recent_fight_signal");
+            return false;
+        }
         return !hasPendingAct7FightLink(AppVars.FightLink);
+    }
+
+    /**
+     * Проверяет, свежий ли fight-сигнал для обхода map-automation suppression.
+     *
+     * Назначение:
+     * - отличить постоянный no-fight фон от короткого окна, когда сервер уже сообщил о новом
+     *   `main.php`/fight-контексте через чатовый frame;
+     * - не вводить отдельный флаг для AutoMoving recovery и не плодить параллельный контур.
+     *
+     * Зависимости:
+     * - `AUTO_TURN_FIGHT_ANNOUNCE_PROBE_GRACE_MS`: TTL валидности сигнала;
+     * - `AppVars.LastFightAnnounceAtMs`: устанавливается обычным "Нападение" и
+     *   `onChatPollResponseMeta(...)` при `main_top -> main.php`.
+     */
+    private boolean hasRecentFightAnnounceSignal(long nowMs) {
+        long announceAtMs = AppVars.LastFightAnnounceAtMs;
+        return announceAtMs > 0L
+                && nowMs >= announceAtMs
+                && (nowMs - announceAtMs) <= AUTO_TURN_FIGHT_ANNOUNCE_PROBE_GRACE_MS;
     }
 
     /**
@@ -1628,16 +1739,39 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     }
 
     /**
-     * Проверяет наличие pending-ссылки завершения боя (`act=7`) в `FightLink`.
+     * Проверяет наличие готовой pending-ссылки завершения боя (`act=7`) в `FightLink`.
      *
      * Правила:
      * - если ссылка завершения уже готова, лишний server-probe не запускается;
+     * - captcha-placeholder (`code=????`) не считается готовой ссылкой для навигации;
      * - проверка делается без изменения состояния.
      *
      * Зависимости:
      * - используется в {@link #requestAutoTurnInternal(boolean)} для anti-loop сценария.
+     * - `AppVars.FightLink` может быть сформирован не только основным auto-turn parser,
+     *   но и validation-парсером `isActiveFightContext(...)`, поэтому проверка не должна
+     *   иметь side effects и не должна чистить состояние.
      */
     private boolean hasPendingAct7FightLink(String fightLink) {
+        if (!hasFightFinishAct7Link(fightLink)) {
+            return false;
+        }
+        return !fightLink.toLowerCase(Locale.ROOT).contains("code=????");
+    }
+
+    /**
+     * Базовая проверка, что ссылка относится к завершению боя `get_id=61&act=7`.
+     *
+     * Отличие от `hasPendingAct7FightLink(...)`:
+     * - этот метод принимает и captcha-placeholder `code=????`, потому он нужен для сохранения
+     *   side effects `LezFight` в `isActiveFightContext(...)`;
+     * - прямую навигацию по `code=????` он не разрешает, её фильтрует `hasPendingAct7FightLink(...)`.
+     *
+     * Зависимости:
+     * - `LezFight.BuildFightLink(...)`: формирует normal/captcha finish-link;
+     * - `AutoModeForegroundService.isFightCaptchaFinishLink(...)`: позднее отделяет captcha-flow.
+     */
+    private boolean hasFightFinishAct7Link(String fightLink) {
         if (fightLink == null || fightLink.isEmpty()) {
             return false;
         }
@@ -1662,6 +1796,13 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
      * Зависимости:
      * - {@link #hasFightMarkers(String)};
      * - {@link LezFight} как источник фактического состояния `IsBoi`.
+     * - `AppVars.FightLink` / `AppVars.CodeAddress`: `LezFight` может заполнить их даже
+     *   при `IsBoi=false`, когда страница уже является финальной формой `act=7`.
+     *
+     * Важное изменение:
+     * - validation-парсер больше не откатывает сгенерированную finish-link `get_id=61&act=7`;
+     * - если это не finish-link, старые значения восстанавливаются, чтобы stale side effects
+     *   не попали в основной auto-turn контур.
      */
     private boolean isActiveFightContext(String html) {
         if (!hasFightMarkers(html)) {
@@ -1678,13 +1819,23 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         } finally {
             boolean fightLinkChanged = !java.util.Objects.equals(previousFightLink, AppVars.FightLink);
             boolean codeAddressChanged = !java.util.Objects.equals(previousCodeAddress, AppVars.CodeAddress);
+            String generatedFightLink = AppVars.FightLink;
+            String generatedCodeAddress = AppVars.CodeAddress;
             if (fightLinkChanged || codeAddressChanged) {
-                AppLog.d(TAG, BG_TRACE_PREFIX + " isActiveFightContext: restore validation side effects"
+                AppLog.d(TAG, BG_TRACE_PREFIX + " isActiveFightContext: validation side effects"
                         + ", generatedFightLink=" + (AppVars.FightLink == null ? "null" : AppVars.FightLink)
                         + ", generatedCodeAddress=" + (AppVars.CodeAddress == null ? "null" : AppVars.CodeAddress));
             }
-            AppVars.FightLink = previousFightLink;
-            AppVars.CodeAddress = previousCodeAddress;
+            if (hasFightFinishAct7Link(generatedFightLink)) {
+                AppLog.d(TAG, BG_TRACE_PREFIX + " isActiveFightContext: keep generated finish link from inactive fight html"
+                        + ", finishLink=" + generatedFightLink
+                        + ", codeAddress=" + (generatedCodeAddress == null ? "" : generatedCodeAddress));
+                AppVars.FightLink = generatedFightLink;
+                AppVars.CodeAddress = generatedCodeAddress;
+            } else {
+                AppVars.FightLink = previousFightLink;
+                AppVars.CodeAddress = previousCodeAddress;
+            }
         }
     }
 
@@ -4032,30 +4183,76 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
      * - `AppVars.IsFightCaptchaDialogVisible`: флаг ожидания ручного ввода капчи;
      * - `AppVars.FightLink`: finish-link (`get_id=61&act=7&code=????...`);
      * - `AppVars.CodeAddress`: URL картинки капчи (`/modules/code/code.php?...`);
+     * - `AppVars.LastFightCaptchaImageUrl` / `LastFightCaptchaImageAtMs`: fallback,
+     *   если картинка уже перехвачена `WebViewRequestInterceptor`, а `CodeAddress` ещё пустой;
      * - `showCaptchaDialog(...)`: единый UI-контур ввода и submit кода.
+     *
+     * Важное изменение:
+     * - метод может восстановить отсутствующий `IsFightCaptchaDialogVisible`, если есть валидные
+     *   `FightLink + captchaUrl`; это чинит сценарий, где фон увидел captcha challenge до onResume.
      */
     private void restorePendingFightCaptchaDialogIfNeeded() {
-        if (!AppVars.IsFightCaptchaDialogVisible) {
-            return;
-        }
         if (isFightCaptchaDialogShowing()) {
             return;
         }
 
         String finishUrl = AppVars.FightLink;
         if (!isPendingFightCaptchaFinishLink(finishUrl)) {
-            clearStaleFightCaptchaState("pending finishUrl is invalid");
+            if (AppVars.IsFightCaptchaDialogVisible) {
+                clearStaleFightCaptchaState("pending finishUrl is invalid");
+            }
             return;
         }
 
-        String captchaUrl = AppVars.CodeAddress;
+        String captchaUrl = resolvePendingFightCaptchaUrlForRestore();
         if (captchaUrl == null || captchaUrl.trim().isEmpty()) {
-            clearStaleFightCaptchaState("pending captchaUrl is empty");
+            if (AppVars.IsFightCaptchaDialogVisible) {
+                clearStaleFightCaptchaState("pending captchaUrl is empty");
+            }
             return;
         }
 
-        AppLog.d(TAG, "restorePendingFightCaptchaDialogIfNeeded: restoring pending fight captcha dialog");
+        if (!AppVars.IsFightCaptchaDialogVisible) {
+            AppVars.IsFightCaptchaDialogVisible = true;
+            AppVars.ResumeAutoboiAfterCaptcha = true;
+            AppLog.w(TAG, "restorePendingFightCaptchaDialogIfNeeded: recovered missing visible flag"
+                    + ", finishUrl=" + finishUrl + ", captchaUrl=" + captchaUrl);
+        } else {
+            AppLog.d(TAG, "restorePendingFightCaptchaDialogIfNeeded: restoring pending fight captcha dialog");
+        }
         showCaptchaDialog(captchaUrl, finishUrl);
+    }
+
+    /**
+     * Возвращает URL картинки боевой капчи для восстановления popup после onResume.
+     *
+     * Порядок источников:
+     * - сначала `AppVars.CodeAddress`, если его успел заполнить parser/LezFight;
+     * - затем свежий `AppVars.LastFightCaptchaImageUrl`, если image request уже прошёл через
+     *   `WebViewRequestInterceptor`, но parser ещё не синхронизировал `CodeAddress`.
+     *
+     * Зависимости:
+     * - `FIGHT_CAPTCHA_CAPTURE_FALLBACK_TTL_MS`: защита от использования старого challenge;
+     * - `AppVars.CodeAddress`: обновляется при выборе fallback, чтобы остальные контуры увидели
+     *   тот же URL капчи.
+     */
+    private String resolvePendingFightCaptchaUrlForRestore() {
+        String captchaUrl = AppVars.CodeAddress == null ? "" : AppVars.CodeAddress.trim();
+        if (!captchaUrl.isEmpty()) {
+            return captchaUrl;
+        }
+        String capturedUrl = AppVars.LastFightCaptchaImageUrl == null ? "" : AppVars.LastFightCaptchaImageUrl.trim();
+        long capturedAtMs = AppVars.LastFightCaptchaImageAtMs;
+        long capturedAgeMs = capturedAtMs > 0L ? (System.currentTimeMillis() - capturedAtMs) : Long.MAX_VALUE;
+        if (!capturedUrl.isEmpty()
+                && capturedAgeMs >= 0L
+                && capturedAgeMs <= FIGHT_CAPTCHA_CAPTURE_FALLBACK_TTL_MS) {
+            AppVars.CodeAddress = capturedUrl;
+            AppLog.d(TAG, "restorePendingFightCaptchaDialogIfNeeded: use captured captcha url fallback"
+                    + ", ageMs=" + capturedAgeMs + ", url=" + capturedUrl);
+            return capturedUrl;
+        }
+        return "";
     }
 
     /**

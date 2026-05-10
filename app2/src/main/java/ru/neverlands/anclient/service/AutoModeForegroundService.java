@@ -83,6 +83,7 @@ public class AutoModeForegroundService extends Service {
      * - дать серверу время прислать новое состояние кадра боя.
      */
     private static final long FIGHT_CAPTCHA_SUBMIT_GUARD_TTL_MS = 20_000L;
+    private static final long FIGHT_CAPTCHA_CAPTURE_FALLBACK_TTL_MS = 5_000L;
 
     private static final String ACTION_SYNC = "ru.neverlands.anclient.action.AUTO_BG_SYNC";
 
@@ -315,33 +316,34 @@ public class AutoModeForegroundService extends Service {
                 // Без этого цикл может зависать: autoTurn крутится по одному и тому же fight-frame,
                 // LezFight собирает AppVars.FightLink, но сам URL завершения никогда не открывается.
                 //
+                // Важное изменение:
+                // - готовый non-captcha `act=7` больше не удаляется только из-за отсутствия свежего
+                //   `LastFightPulseAtMs`; сама finish-link уже является достаточным действием;
+                // - `fightFinishContextValid` оставлен диагностикой в логе, чтобы видеть fallback-сценарии,
+                //   но он не блокирует отправку готового URL.
+                //
                 // Зависимости:
                 // - AppVars.FightLink: формируется в LezFight.ParseNonFight()/BuildFightLink(...);
                 // - MainActivity.getMainWebView().loadUrl(...): фактическая отправка act=7;
+                // - isReadyFightFinishLink(...): запрещает прямую навигацию по captcha-placeholder `code=????`;
                 // - anti-loop guard: lastAutoFightFinishDispatchAtMs + lastAutoFightFinishLink.
                 String pendingFightFinishLink = normalizeNeverlandsUrl(AppVars.FightLink);
-                boolean staleReadyFinishLink = isReadyFightFinishLink(pendingFightFinishLink)
-                        && !isFightFinishDispatchContextValid(tickNow);
-                if (staleReadyFinishLink) {
-                    AppLog.d(TAG, BG_TRACE_PREFIX + " uiTick: drop stale fight finish link (no active fight context): "
-                            + pendingFightFinishLink);
-                    AppVars.FightLink = "";
-                    pendingFightFinishLink = "";
-                }
                 captchaDialogVisible = normalizeStaleFightCaptchaState(activity, captchaDialogVisible, pendingFightFinishLink);
                 if (!captchaDialogVisible) {
                     pendingFightFinishLink = normalizeNeverlandsUrl(AppVars.FightLink);
                 }
+                boolean fightFinishContextValid = isFightFinishDispatchContextValid(tickNow);
                 boolean canDispatchFightFinish = autoFightEnabled
                         && !captchaDialogVisible
-                        && isReadyFightFinishLink(pendingFightFinishLink)
-                        && isFightFinishDispatchContextValid(tickNow);
+                        && isReadyFightFinishLink(pendingFightFinishLink);
                 if (canDispatchFightFinish) {
                     long sinceLastFinishDispatch = tickNow - lastAutoFightFinishDispatchAtMs;
                     boolean sameAsLastFinish = pendingFightFinishLink.equals(lastAutoFightFinishLink);
                     if (!sameAsLastFinish || sinceLastFinishDispatch >= AUTO_FIGHT_FINISH_MIN_INTERVAL_MS) {
                         if (activity.getMainWebView() != null) {
-                            AppLog.d(TAG, BG_TRACE_PREFIX + " uiTick: dispatch fight finish link: " + pendingFightFinishLink);
+                            AppLog.d(TAG, BG_TRACE_PREFIX + " uiTick: dispatch fight finish link: "
+                                    + pendingFightFinishLink
+                                    + ", contextValid=" + fightFinishContextValid);
                             activity.getMainWebView().loadUrl(pendingFightFinishLink);
                             markClientAction("Завершение боя: act=7");
                             lastAutoFightFinishDispatchAtMs = tickNow;
@@ -432,12 +434,20 @@ public class AutoModeForegroundService extends Service {
                 // Зависимости:
                 // - hasFightMarkers(AppVars.ContentMainPhp): маркеры боя в текущем html-кэше;
                 // - pendingFightFinishLink: наличие этапа завершения/капчи;
-                // - fightLikelyActive: агрегированная эвристика активности боя.
+                // - fightLikelyActive: агрегированная эвристика активности боя;
+                // - recentFightAnnounce: общий signal из чатового "Нападение" или из
+                //   `WebViewRequestInterceptor -> MainActivity.onChatPollResponseMeta(...)`, когда сервер
+                //   прислал `top.frames['main_top'].location='main.php'`.
                 if (autoFightEnabled && !captchaDialogVisible) {
                     boolean mapAutomationActive = AppVars.AutoMoving;
+                    boolean hasCachedFightMarkers = hasFightMarkers(AppVars.ContentMainPhp);
+                    // Guard AutoMoving остаётся главным anti-race механизмом для ручных/map действий.
+                    // Исключение только одно: свежий fight/server signal, потому без него background
+                    // не подхватывал бой/капчу до `onResume` и ждал foreground-разворачивания.
                     if (mapAutomationActive
+                            && !recentFightAnnounce
                             && !fightLikelyActive
-                            && !hasFightMarkers(AppVars.ContentMainPhp)
+                            && !hasCachedFightMarkers
                             && pendingFightFinishLink.isEmpty()) {
                         AppLog.d(TAG, BG_TRACE_PREFIX + " uiTick: skip autoTurn/probe while map automation active");
                         markClientAction("Пауза авто-хода: активен Авто-Клад");
@@ -445,7 +455,7 @@ public class AutoModeForegroundService extends Service {
                         return;
                     }
                     boolean hasFightContext = fightLikelyActive
-                            || hasFightMarkers(AppVars.ContentMainPhp)
+                            || hasCachedFightMarkers
                             || !pendingFightFinishLink.isEmpty();
                     boolean coldStartAutoboiProbe = AppVars.ProbeForceNeedAutoboi;
                     boolean allowInitialFightProbe = coldStartAutoboiProbe || recentFightAnnounce;
@@ -465,7 +475,7 @@ public class AutoModeForegroundService extends Service {
                             "autoTurn",
                             uiForegroundLikely || uiForegroundInteractive,
                             fightLikelyActive,
-                            hasFightMarkers(AppVars.ContentMainPhp),
+                            hasCachedFightMarkers,
                             !pendingFightFinishLink.isEmpty())) {
                         AppLog.d(TAG, BG_TRACE_PREFIX + " uiTick: skip autoTurn/probe - blocked by UI or other conditions");
                         markClientAction("Пауза авто-хода: активный UI");
@@ -717,6 +727,11 @@ public class AutoModeForegroundService extends Service {
      * - dialog реально открыт (`activity.isFightCaptchaDialogShowing()`),
      *   ИЛИ одновременно есть валидный finish-link + captcha URL.
      *
+     * Важное изменение:
+     * - captcha URL проверяется через `resolveFightCaptchaUrlForPopup(...)`, а не только через
+     *   `AppVars.CodeAddress`; это позволяет сохранить валидное состояние, если image request уже
+     *   перехвачен как `AppVars.LastFightCaptchaImageUrl`, но parser ещё не записал CodeAddress.
+     *
      * Что сбрасываем при stale:
      * - `AppVars.IsFightCaptchaDialogVisible`,
      * - `AppVars.ResumeAutoboiAfterCaptcha`,
@@ -734,7 +749,7 @@ public class AutoModeForegroundService extends Service {
         }
         boolean dialogShowing = activity != null && activity.isFightCaptchaDialogShowing();
         boolean hasValidFightFinishLink = isFightCaptchaFinishLink(pendingFightFinishLink);
-        String captchaUrl = normalizeNeverlandsUrl(AppVars.CodeAddress);
+        String captchaUrl = resolveFightCaptchaUrlForPopup(System.currentTimeMillis());
         boolean hasCaptchaUrl = !captchaUrl.isEmpty();
         if (dialogShowing || (hasValidFightFinishLink && hasCaptchaUrl)) {
             return true;
@@ -763,6 +778,7 @@ public class AutoModeForegroundService extends Service {
      *
      * Зависимости:
      * - AppVars.FightLink / CodeAddress / LastSubmittedFightCaptcha* / LastFightCaptchaImageAtMs;
+     * - `resolveFightCaptchaUrlForPopup(...)`: единый выбор CodeAddress или свежего captured URL;
      * - MainActivity.broadcastReceiver -> MainActivity.showCaptchaDialog(...);
      * - normalizeNeverlandsUrl(...) и buildFightCaptchaFinishKey(...) для унификации сравнения.
      *
@@ -817,7 +833,7 @@ public class AutoModeForegroundService extends Service {
             }
         }
 
-        String captchaUrl = normalizeNeverlandsUrl(AppVars.CodeAddress);
+        String captchaUrl = resolveFightCaptchaUrlForPopup(tickNow);
         if (captchaUrl.isEmpty()) {
             AppLog.w(TAG, BG_TRACE_PREFIX + " uiTick: fight captcha required but captcha url is empty");
             markClientAction("Капча: нет URL challenge");
@@ -844,6 +860,39 @@ public class AutoModeForegroundService extends Service {
         markClientAction("Капча: показ popup");
         AppLog.d(TAG, BG_TRACE_PREFIX + " uiTick: fight captcha popup requested, finishUrl=" + pendingFightFinishLink);
         return true;
+    }
+
+    /**
+     * Возвращает URL картинки боевой капчи для фонового popup-flow.
+     *
+     * Порядок источников:
+     * - `AppVars.CodeAddress`, если его уже сформировал `LezFight.BuildFightLink(captcha)`;
+     * - свежий `AppVars.LastFightCaptchaImageUrl`, если `WebViewRequestInterceptor` раньше
+     *   поймал загрузку `/modules/code/code.php?...` и записал image URL/время.
+     *
+     * Зависимости:
+     * - `FIGHT_CAPTCHA_CAPTURE_FALLBACK_TTL_MS`: не даёт использовать старый challenge;
+     * - `maybeShowFightCaptchaDialog(...)` и `normalizeStaleFightCaptchaState(...)`;
+     * - `MainActivity.restorePendingFightCaptchaDialogIfNeeded()` использует тот же принцип
+     *   для foreground/onResume восстановления.
+     */
+    private String resolveFightCaptchaUrlForPopup(long nowMs) {
+        String captchaUrl = normalizeNeverlandsUrl(AppVars.CodeAddress);
+        if (!captchaUrl.isEmpty()) {
+            return captchaUrl;
+        }
+        String capturedUrl = normalizeNeverlandsUrl(AppVars.LastFightCaptchaImageUrl);
+        long capturedAtMs = AppVars.LastFightCaptchaImageAtMs;
+        long capturedAgeMs = capturedAtMs > 0L ? nowMs - capturedAtMs : Long.MAX_VALUE;
+        if (!capturedUrl.isEmpty()
+                && capturedAgeMs >= 0L
+                && capturedAgeMs <= FIGHT_CAPTCHA_CAPTURE_FALLBACK_TTL_MS) {
+            AppVars.CodeAddress = capturedUrl;
+            AppLog.d(TAG, BG_TRACE_PREFIX + " uiTick: use captured fight captcha url fallback, ageMs="
+                    + capturedAgeMs + ", url=" + capturedUrl);
+            return capturedUrl;
+        }
+        return "";
     }
 
     /**
