@@ -440,7 +440,7 @@ public final class AlchemyAjaxPhp {
         return builder.toString();
     }
 
-    /** Snapshot для route-skip cache: `name:availableCount|...`. */
+    /** Snapshot для route-skip cache: `name:availableCount/totalCount|...`. */
     private static String buildCellSnapshotList(List<ResourceCandidate> resources) {
         if (resources == null || resources.isEmpty()) {
             return "";
@@ -450,9 +450,13 @@ public final class AlchemyAjaxPhp {
             if (resource == null || TextUtils.isEmpty(resource.name)) {
                 continue;
             }
+            int available = Math.max(0, resource.availableCount);
+            int total = resource.totalCount > 0 ? resource.totalCount : available;
             builder.append(resource.name.trim())
                     .append(':')
-                    .append(Math.max(0, resource.availableCount))
+                    .append(available)
+                    .append('/')
+                    .append(Math.max(0, total))
                     .append('|');
         }
         return builder.toString();

@@ -637,7 +637,7 @@ public final class AutoCutManager {
 
     /**
      * Сохраняет snapshot трав текущей клетки для C#-parity `HerbCells` route skip.
-     * Формат `resourcesList`: `Название:count|...`; unknown/stale snapshot или snapshot прошлой
+     * Формат `resourcesList`: `Название:available/total|...`; unknown/stale snapshot или snapshot прошлой
      * server-shift window не блокирует маршрут.
      */
     public synchronized void updateCurrentCellSnapshot(String resourcesList, String source) {
@@ -656,7 +656,8 @@ public final class AutoCutManager {
             for (CellHerbEntry entry : entries) {
                 JSONObject item = new JSONObject();
                 item.put("name", entry.name);
-                item.put("count", Math.max(0, entry.count));
+                item.put("count", Math.max(0, entry.available));
+                item.put("total", Math.max(0, entry.total));
                 herbs.put(item);
             }
             JSONObject snapshot = new JSONObject();
@@ -733,7 +734,9 @@ public final class AutoCutManager {
             if (appended > 0) {
                 sb.append(", ");
             }
-            sb.append(name).append(' ').append(Math.max(0, item.optInt("count", 0)));
+            int available = Math.max(0, item.optInt("count", 0));
+            int total = item.has("total") ? Math.max(0, item.optInt("total", available)) : available;
+            sb.append(name).append(' ').append(available).append('/').append(total);
             appended++;
         }
         if (appended == 0) {
@@ -2955,9 +2958,16 @@ public final class AutoCutManager {
             }
             int separator = entry.lastIndexOf(':');
             String name = separator >= 0 ? entry.substring(0, separator).trim() : entry;
-            int count = separator >= 0 ? parseIntSafe(entry.substring(separator + 1), 0) : 1;
+            String countPart = separator >= 0 ? entry.substring(separator + 1).trim() : "1";
+            int slash = countPart.indexOf('/');
+            int available = slash >= 0
+                    ? parseIntSafe(countPart.substring(0, slash), 0)
+                    : parseIntSafe(countPart, 0);
+            int total = slash >= 0
+                    ? parseIntSafe(countPart.substring(slash + 1), available)
+                    : available;
             if (!name.isEmpty()) {
-                result.add(new CellHerbEntry(name, count));
+                result.add(new CellHerbEntry(name, available, total));
             }
         }
         return result;
@@ -3126,14 +3136,16 @@ public final class AutoCutManager {
         double max;
     }
 
-    /** Одна запись snapshot-а клетки: имя травы и доступное количество/флаг среза. */
+    /** Одна запись snapshot-а клетки: имя ресурса и видимое количество available/total. */
     private static final class CellHerbEntry {
         final String name;
-        final int count;
+        final int available;
+        final int total;
 
-        CellHerbEntry(String name, int count) {
+        CellHerbEntry(String name, int available, int total) {
             this.name = name;
-            this.count = count;
+            this.available = Math.max(0, available);
+            this.total = Math.max(0, total);
         }
     }
 

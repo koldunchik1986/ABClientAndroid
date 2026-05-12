@@ -121,3 +121,23 @@
 - [x] `./gradlew.bat :app2:compileDebugJavaWithJavac --rerun-tasks` выполнен успешно; остался существующий deprecation warning в `DeviceKeyStore.java`.
 - [x] `./gradlew.bat :app2:assembleDebug` выполнен успешно, assets/runtime JS вошли в APK.
 - [x] `./gradlew.bat :app2:installDebug` выполнен успешно; APK `anclient_v1.1.5.apk` установлен на `Mi Note 3 - 9`.
+
+## Доработка long-press по логам 13:20
+
+- [x] В свежих логах modern-блок строится (`MAP_RUNTIME CELL_INFO rendered len=1304`), но нет событий `selected by long press`, значит отказ происходит до вызова `SelectedCellFullInfo(...)`.
+- [x] Найдена слабая точка существующего runtime-patch: long-press таймер отменялся на любом `touchmove`; Android WebView часто генерирует микродвижение пальца во время удержания.
+- [x] В `MapJs.CURRENT_CELL_INFO_RUNTIME_PATCH` long-press больше не отменяется на `touchmove`, добавлен `contextmenu` fallback для native long-click WebView и trace `CELL_INFO long press handlers installed`.
+- [x] Проверка mojibake по `MapJs.java` и этому TODO не нашла совпадений.
+- [x] `./gradlew.bat :app2:compileDebugJavaWithJavac --rerun-tasks` выполнен успешно; остался существующий deprecation warning в `DeviceKeyStore.java`.
+- [x] `./gradlew.bat :app2:assembleDebug` выполнен успешно.
+- [x] `./gradlew.bat :app2:installDebug` выполнен успешно; APK `anclient_v1.1.6.apk` установлен на `Mi Note 3 - 9`.
+
+## Доработка количества ресурсов в full-info
+
+- [x] Найден существующий контур содержимого клетки: `AlchemyAjaxPhp.buildCellSnapshotList(...)` сохраняет `RESO@` snapshot, `AutoCutManager.getCellResourceSummaryForMap(...)` отдаёт его в `WebAppInterface.buildCellContentsInfo(...)`.
+- [x] Snapshot теперь сохраняет видимое серверное количество `available/total` для трав и деревьев, например `1/1`, `0/1`, `1/2`.
+- [x] Старые snapshot-ы с одним числом остаются совместимыми: `name:1` отображается как `1/1`.
+- [x] Проверка mojibake по `AutoCutManager.java`, `AlchemyAjaxPhp.java` и этому TODO не нашла новых повреждений; `????` в `AlchemyAjaxPhp.java` относится к старому captcha-placeholder.
+- [x] `./gradlew.bat :app2:compileDebugJavaWithJavac --rerun-tasks` выполнен успешно; остался существующий deprecation warning в `DeviceKeyStore.java`.
+- [x] `./gradlew.bat :app2:assembleDebug` выполнен успешно.
+- [x] `./gradlew.bat :app2:installDebug` выполнен успешно; APK `anclient_v1.1.6.apk` установлен на `Mi Note 3 - 9`.
