@@ -8,6 +8,7 @@ import android.webkit.JavascriptInterface;
 import android.widget.Toast;
 
 import androidx.core.text.HtmlCompat;
+import androidx.preference.PreferenceManager;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -30,6 +31,7 @@ import ru.neverlands.anclient.manager.AutoFunctionsManager;
 import ru.neverlands.anclient.manager.AutoCutManager;
 import ru.neverlands.anclient.manager.CharacterVitalsManager;
 import ru.neverlands.anclient.manager.ContactsManager;
+import ru.neverlands.anclient.manager.RoomManager;
 import ru.neverlands.anclient.model.AutoboiState;
 import ru.neverlands.anclient.model.Cell;
 import ru.neverlands.anclient.model.Position;
@@ -55,6 +57,7 @@ public class WebAppInterface {
     private static final long MAIN_TOP_CLIENT_RELOAD_GUARD_MS = 2500L;
     private static final long MAP_BRIDGE_LOG_THROTTLE_MS = 1500L;
     private static final long SERVER_POPUP_DEDUP_MS = 1500L;
+    private static final String PREF_SHOW_CURRENT_CELL_FULL_INFO = "show_current_cell_full_info";
     private static final long HERB_SNAPSHOT_VISIBLE_MS = 6L * 60L * 60L * 1000L;
     private static final int CHAT_POST_MAX_ATTEMPTS = 3;
     private static final long CHAT_POST_RETRY_BASE_DELAY_MS = 350L;
@@ -322,6 +325,40 @@ public class WebAppInterface {
     }
 
     /**
+     * Синхронизация текущей клетки после JS-завершения перехода.
+     *
+     * MapAjax обычно обновляет `Profile.MapLocation` по серверному payload, но визуальный
+     * таймер карты завершается в JS. Этот bridge держит modern-блок клетки и overlay карты
+     * в одном состоянии без дополнительного HTTP-запроса.
+     */
+    @JavascriptInterface
+    public void UpdateCurrentCellFromCoords(int x, int y, String source) {
+        try {
+            ensureExtMapInitialized();
+            String pos = ExtMap.makePosition(x, y);
+            Position p = ExtMap.Location.get(pos);
+            if (p == null || p.RegNum == null || p.RegNum.trim().isEmpty()) {
+                AppLog.w("WebAppInterface", "UpdateCurrentCellFromCoords: unknown coords x=" + x
+                        + ", y=" + y + ", source=" + source);
+                return;
+            }
+            String regNum = p.RegNum.trim();
+            String previous = AppVars.Profile == null ? "" : safe(AppVars.Profile.MapLocation);
+            if (AppVars.Profile != null) {
+                AppVars.Profile.MapLocation = regNum;
+            }
+            RoomManager.onMapLocationConfirmed(AppVars.getContext(), regNum);
+            ExtMap.markCellVisited(regNum);
+            if (!regNum.equals(previous)) {
+                AppLog.d("WebAppInterface", "UpdateCurrentCellFromCoords: " + previous + " -> "
+                        + regNum + ", x=" + x + ", y=" + y + ", source=" + source);
+            }
+        } catch (Exception e) {
+            AppLog.w("WebAppInterface", "UpdateCurrentCellFromCoords failed, source=" + source, e);
+        }
+    }
+
+    /**
      * C# parity (`ScriptManager.MoveTo`): запуск навигации к клетке назначения.
      *
      * Зависимости:
@@ -358,6 +395,10 @@ public class WebAppInterface {
                 .replace(">", "&gt;")
                 .replace("\"", "&quot;")
                 .replace("'", "&#39;");
+    }
+
+    private static String safe(String value) {
+        return value == null ? "" : value.trim();
     }
 
     private static String shortLabel(Cell cell) {
@@ -648,6 +689,126 @@ public class WebAppInterface {
         return tooltip == null ? "" : tooltip;
     }
 
+    private static void appendCellInfoCard(StringBuilder sb, String title, String body, String accentColor) {
+        sb.append("<div class=\"an-cell-card\" style=\"border-top-color:").append(accentColor).append("\">")
+                .append("<div class=\"an-cell-card-title\" style=\"color:").append(accentColor).append("\">")
+                .append(escapeHtml(title)).append("</div><div class=\"an-cell-card-body\">")
+                .append(body == null || body.isEmpty() ? "<span class=\"an-cell-muted\">нет данных</span>" : body)
+                .append("</div></div>");
+    }
+
+    private static String buildBotsInfo(Cell cell) {
+        if (cell == null || cell.Bots == null || cell.Bots.isEmpty()) {
+            if (cell != null && cell.MaxBotLevel > 0) {
+                return "Боты уровня " + cell.MinBotLevel + "-" + cell.MaxBotLevel;
+            }
+            return "<span class=\"an-cell-muted\">боты не указаны</span>";
+        }
+        StringBuilder sb = new StringBuilder();
+        for (Object raw : cell.Bots) {
+            if (!(raw instanceof Cell.BotInfo)) {
+                continue;
+            }
+            Cell.BotInfo bot = (Cell.BotInfo) raw;
+            if (sb.length() > 0) {
+                sb.append("<br>");
+            }
+            String name = safe(bot.Name).isEmpty() ? "Бот" : bot.Name;
+            sb.append("<span class=\"an-cell-chip\">").append(escapeHtml(name));
+            if (bot.MinLevel > 0 || bot.MaxLevel > 0) {
+                int min = bot.MinLevel > 0 ? bot.MinLevel : bot.MaxLevel;
+                int max = bot.MaxLevel > 0 ? bot.MaxLevel : min;
+                sb.append(" ").append(min);
+                if (max != min) {
+                    sb.append("-").append(max);
+                }
+            }
+            sb.append("</span>");
+        }
+        return sb.length() == 0 ? "<span class=\"an-cell-muted\">боты не указаны</span>" : sb.toString();
+    }
+
+    private static String buildCellContentsInfo(Cell cell, String resources) {
+        StringBuilder sb = new StringBuilder();
+        if (cell != null) {
+            if (cell.HasFish) {
+                sb.append("<span class=\"an-cell-chip blue\">Рыба</span> ");
+            } else if (cell.HasWater) {
+                sb.append("<span class=\"an-cell-chip blue\">Вода</span> ");
+            }
+            if (!safe(cell.HerbGroup).isEmpty() && !"0".equals(cell.HerbGroup)) {
+                sb.append("<span class=\"an-cell-chip green\">Группа трав ")
+                        .append(escapeHtml(cell.HerbGroup)).append("</span> ");
+            }
+        }
+        if (!safe(resources).isEmpty()) {
+            if (sb.length() > 0) {
+                sb.append("<br>");
+            }
+            sb.append(escapeHtml(resources).replace("&lt;br&gt;", "<br>"));
+        }
+        return sb.length() == 0 ? "<span class=\"an-cell-muted\">содержимое не осматривалось</span>" : sb.toString();
+    }
+
+    private String buildInspectTimes(String regNum) {
+        AutoCutManager manager = AutoCutManager.getInstance(mContext);
+        long herbMs = manager.getCellSnapshotUpdatedAtMs(regNum);
+        String summary = manager.getCellResourceSummaryForMap(regNum);
+        if (herbMs <= 0L && safe(summary).isEmpty()) {
+            return "нет отметки";
+        }
+        return herbMs > 0L ? formatFullMapTime(toServerClockMs(herbMs)) : "есть snapshot, время не указано";
+    }
+
+    private String buildCellFullInfo(String regNum, String kicker) {
+        if (safe(regNum).isEmpty()) {
+            return buildMapInfoEmpty("Клетка ещё не определена");
+        }
+        Cell cell = ExtMap.Cells.get(regNum);
+        if (cell == null) {
+            return buildMapInfoEmpty("Нет данных по клетке " + escapeHtml(regNum));
+        }
+
+        String title = safe(cell.Name).isEmpty() ? regNum : cell.Name;
+        String region = safe(cell.Region);
+        String resources = AutoCutManager.getInstance(mContext).getCellResourceSummaryForMap(regNum);
+        Long visitedAtMs = AppVars.SearchBoxVisited.get(regNum);
+        String visited = visitedAtMs != null && visitedAtMs > 0L ? formatFullMapTime(toServerClockMs(visitedAtMs)) : "нет отметки";
+        String inspected = buildInspectTimes(regNum);
+
+        StringBuilder sb = new StringBuilder();
+        sb.append("<div class=\"an-cell-info\">");
+        sb.append("<div class=\"an-cell-head\"><div><span class=\"an-cell-kicker\">")
+                .append(escapeHtml(kicker)).append("</span>")
+                .append("<div class=\"an-cell-title\">").append(escapeHtml(regNum)).append(" • ")
+                .append(escapeHtml(title)).append("</div>");
+        if (!region.isEmpty()) {
+            sb.append("<div class=\"an-cell-subtitle\">").append(escapeHtml(region)).append("</div>");
+        }
+        sb.append("</div><div class=\"an-cell-cost\" style=\"border-color:")
+                .append(hexColorCost(cell.Cost)).append(";color:").append(hexColorCost(cell.Cost)).append("\">ход ")
+                .append(cell.Cost).append("</div></div>");
+
+        sb.append("<div class=\"an-cell-grid\">");
+        appendCellInfoCard(sb, "Боты", buildBotsInfo(cell), "#88BBDD");
+        appendCellInfoCard(sb, "Содержимое", buildCellContentsInfo(cell, resources), "#34D399");
+        appendCellInfoCard(sb, "Время", "Посещение: " + visited + "<br>Осмотр: " + inspected, "#FBBF24");
+        sb.append("</div></div>");
+        return sb.toString();
+    }
+
+    private static String buildMapInfoEmpty(String text) {
+        return "<div class=\"an-cell-info\"><div class=\"an-cell-empty\">" + escapeHtml(text) + "</div></div>";
+    }
+
+    private static String formatFullMapTime(long timeMs) {
+        try {
+            return new java.text.SimpleDateFormat("dd.MM.yyyy HH:mm", Locale.getDefault()).format(new Date(timeMs));
+        } catch (Exception ignored) {
+            return "нет отметки";
+        }
+    }
+
     /**
      * C# parity (`FormMain.MapText`): формирует текст-подсказку над картой.
      *
@@ -670,6 +831,59 @@ public class WebAppInterface {
                     + "<br><font color=#FF3333>Текущая Усталость:</font> <font color=#FFFF00>" + curTire + "</font>";
         }
         return "Перемещаемся на соседнюю клетку...";
+    }
+
+    /**
+     * Modern-блок полной информации текущей клетки под картой природы.
+     *
+     * Зависимости:
+     * - текущая клетка берётся из `AppVars.Profile.MapLocation`, которую обновляет `MapAjax.process(...)`;
+     * - статические данные клетки (`cost`, регион, вода/рыба, боты) берутся из `ExtMap.Cells`;
+     * - подробное содержимое после `Оглядеться`/спила берётся из `AutoCutManager` snapshot-cache,
+     *   без нового ajax-запроса и без конкуренции с ручными HTML-действиями;
+     * - время посещения берётся из `AppVars.SearchBoxVisited`, которое уже персистится в `abcells.xml`.
+     */
+    @JavascriptInterface
+    public String CurrentCellFullInfo() {
+        try {
+            ensureExtMapInitialized();
+            String regNum = AppVars.Profile == null ? "" : safe(AppVars.Profile.MapLocation);
+            if (regNum.isEmpty()) {
+                return buildMapInfoEmpty("Текущая клетка ещё не определена");
+            }
+            return buildCellFullInfo(regNum, "Полная информация текущей клетки");
+        } catch (Exception e) {
+            AppLog.w("WebAppInterface", "CurrentCellFullInfo failed", e);
+            return buildMapInfoEmpty("Ошибка построения информации клетки");
+        }
+    }
+
+    @JavascriptInterface
+    public boolean IsCurrentCellFullInfoEnabled() {
+        if (mContext == null) {
+            return true;
+        }
+        return PreferenceManager.getDefaultSharedPreferences(mContext)
+                .getBoolean(PREF_SHOW_CURRENT_CELL_FULL_INFO, true);
+    }
+
+    /**
+     * Modern-блок полной информации выбранной клетки без изменения текущей локации персонажа.
+     */
+    @JavascriptInterface
+    public String SelectedCellFullInfo(int x, int y) {
+        try {
+            ensureExtMapInitialized();
+            String pos = ExtMap.makePosition(x, y);
+            Position p = ExtMap.Location.get(pos);
+            if (p == null || safe(p.RegNum).isEmpty()) {
+                return buildMapInfoEmpty("Нет данных по выбранной клетке " + x + ":" + y);
+            }
+            return buildCellFullInfo(p.RegNum.trim(), "Полная информация выбранной клетки");
+        } catch (Exception e) {
+            AppLog.w("WebAppInterface", "SelectedCellFullInfo failed x=" + x + ", y=" + y, e);
+            return buildMapInfoEmpty("Ошибка построения информации выбранной клетки");
+        }
     }
 
     /**

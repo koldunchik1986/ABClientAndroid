@@ -76,6 +76,12 @@
             app:title="Размер шрифта карты"
             app:summary="Текущий размер шрифта CellDivText" />
 
+        <SwitchPreferenceCompat
+            app:key="show_current_cell_full_info"
+            app:title="Полная информация текущей клетки"
+            app:summary="Показывать modern-блок с подробностями клетки под картой"
+            app:defaultValue="true" />
+
         <PreferenceCategory app:title="Карта навигатора">
 
             <Preference

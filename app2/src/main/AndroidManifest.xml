@@ -71,6 +71,13 @@
             android:theme="@style/Theme.ANClient.NoActionBar" />
 
         <activity
+            android:name=".KaznaActivity"
+            android:exported="false"
+            android:label="Казна"
+            android:parentActivityName=".MainActivity"
+            android:theme="@style/Theme.ANClient.NoActionBar" />
+
+        <activity
             android:name=".PinfoActivity"
             android:exported="false"
             android:label="Инфо"

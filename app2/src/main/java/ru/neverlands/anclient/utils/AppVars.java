@@ -103,6 +103,13 @@ public class AppVars {
      * Используется вместе с `LastSubmittedFightCaptchaFinishKey` для TTL анти-дубля.
      */
     public static volatile long LastSubmittedFightCaptchaAtMs = 0L;
+    /**
+     * Минимальное время, раньше которого нельзя отправлять решение боевой captcha.
+     *
+     * Сервер может вернуть новый `fexp[4]` challenge сразу после submit, но `fexp[6]`
+     * ещё содержит countdown. Диалог надо показать сразу, а auto-submit удержать до 0.
+     */
+    public static volatile long FightCaptchaSubmitNotBeforeMs = 0L;
     // Флаг восстановления авто-боя после ручного ввода капчи завершения боя.
     // Цепочка зависимостей:
     // 1) MainPhp.mainPhpFight(...) выставляет true, когда капча пришла при AutoboiOn.

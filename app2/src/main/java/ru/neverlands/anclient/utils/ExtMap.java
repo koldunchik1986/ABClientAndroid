@@ -383,8 +383,14 @@ public class ExtMap {
                 break;
             }
             if (innerEvent == XmlPullParser.START_TAG && "bots".equalsIgnoreCase(parser.getName())) {
+                String botName = parser.getAttributeValue(null, "name");
                 int minLevel = parsePositiveInt(parser.getAttributeValue(null, "minLevel"));
                 int maxLevel = parsePositiveInt(parser.getAttributeValue(null, "maxLevel"));
+                String colorCode = parser.getAttributeValue(null, "c");
+                String dangerCode = parser.getAttributeValue(null, "d");
+                if ((botName != null && !botName.trim().isEmpty()) || minLevel > 0 || maxLevel > 0) {
+                    cell.Bots.add(new Cell.BotInfo(botName, minLevel, maxLevel, colorCode, dangerCode));
+                }
                 if (minLevel > 0) {
                     if (cell.MinBotLevel == 0 || minLevel < cell.MinBotLevel) {
                         cell.MinBotLevel = minLevel;

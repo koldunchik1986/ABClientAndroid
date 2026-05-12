@@ -54,7 +54,7 @@ public final class AutoCutManager {
     private static final String TAG = "AutoCutManager";
     /** Chain-name для критичных файловых логов AutoCut. */
     public static final String TRACE_CHAIN = "AUTO_CUT_TRACE";
-    /** Серверное название мусорного предмета, который случайно падает при срезе трав. */
+    /** Серверное название мусорного предмета, который случайно падает при добыче ресурсов. */
     public static final String GARBAGE_ITEM_NAME = "Бесполезный хлам";
 
     /** SharedPreferences-файл с настройками AutoCut, scoped per nick через `scopedKey(...)`. */
@@ -164,12 +164,14 @@ public final class AutoCutManager {
     private volatile String lastTraceCutName = "";
     /** Время последнего `TraceCut`, нужно для TTL stale-защиты. */
     private volatile long lastTraceCutAtMs = 0L;
-    /** One-shot retry `Оглядеться` после wrong captcha или частичного среза клетки. */
+    /** One-shot retry `Оглядеться` после wrong captcha, частичного среза/спила или cleanup-перехода. */
     private volatile boolean lookRetryPending = false;
     /** Последний источник retry для диагностики AUTO_CUT_TRACE. */
     private volatile String lookRetrySource = "";
     /** Локальное время постановки retry, чтобы видеть stale-зависания в логах. */
     private volatile long lookRetryRequestedAtMs = 0L;
+    /** Собственный due-time retry; для cleanup inventory совпадает с server `NeverTimer`. */
+    private volatile long lookRetryDueAtMs = 0L;
     /** One-shot запрос inventory/main.php для получения `Масса Вашего инвентаря: current/max` перед срезом. */
     private volatile boolean massSnapshotSyncPending = false;
     /** Последний запрос sync массы; защищает от бесконечного go=inf/inventory loop при пустом ответе. */
@@ -683,6 +685,68 @@ public final class AutoCutManager {
     }
 
     /**
+     * Возвращает человекочитаемое содержимое клетки из последних `Оглядеться` snapshot-ов.
+     *
+     * Зачем нужен отдельный публичный метод:
+     * - карта должна показать подробности клетки снизу без нового `alchemy_ajax.php` запроса;
+     * - snapshot уже сохраняется существующим AutoCut-контуром (`HerbsList(...)`/`RESO@`);
+     * - для пользователя важно видеть и травы, и деревья, поэтому метод читает оба профильных
+     *   cache-префикса (`cell_snapshots_json_*` и `lumberjack_cell_snapshots_json_*`).
+     */
+    public synchronized String getCellResourceSummaryForMap(String regNum) {
+        if (TextUtils.isEmpty(regNum)) {
+            return "";
+        }
+        String cell = regNum.trim();
+        String herbSummary = buildCellResourceSummaryForMode(cell, AutoCutMode.HERB);
+        String treeSummary = buildCellResourceSummaryForMode(cell, AutoCutMode.TREE);
+        if (TextUtils.isEmpty(herbSummary)) {
+            return treeSummary;
+        }
+        if (TextUtils.isEmpty(treeSummary)) {
+            return herbSummary;
+        }
+        return herbSummary + "<br>" + treeSummary;
+    }
+
+    private String buildCellResourceSummaryForMode(String regNum, AutoCutMode mode) {
+        JSONObject snapshot = loadCellSnapshotsLocked(mode).optJSONObject(regNum);
+        if (snapshot == null) {
+            return "";
+        }
+        JSONArray herbs = snapshot.optJSONArray("herbs");
+        if (herbs == null || herbs.length() == 0) {
+            return "";
+        }
+        StringBuilder sb = new StringBuilder();
+        sb.append(safeMode(mode).isTree() ? "Деревья" : "Травы").append(": ");
+        int appended = 0;
+        for (int index = 0; index < herbs.length(); index++) {
+            JSONObject item = herbs.optJSONObject(index);
+            if (item == null) {
+                continue;
+            }
+            String name = safe(item.optString("name", ""));
+            if (TextUtils.isEmpty(name)) {
+                continue;
+            }
+            if (appended > 0) {
+                sb.append(", ");
+            }
+            sb.append(name).append(' ').append(Math.max(0, item.optInt("count", 0)));
+            appended++;
+        }
+        if (appended == 0) {
+            return "";
+        }
+        long updatedAtMs = snapshot.optLong("updatedAtMs", 0L);
+        if (updatedAtMs > 0L) {
+            sb.append(" • осмотр ").append(formatMapInfoTime(updatedAtMs));
+        }
+        return sb.toString();
+    }
+
+    /**
      * Bridge callback `TraceCut/HerbCut`: запоминает имя травы как fallback для success `act=3`.
      * TTL защищает от stale trace после перезагрузки карты или ручного действия пользователя.
      */
@@ -1142,27 +1206,34 @@ public final class AutoCutManager {
      */
     public synchronized void scheduleLookRetryAfterTimer(String source) {
         long now = System.currentTimeMillis();
+        long retryDueAtMs = AppVars.NeverTimer > now
+                ? AppVars.NeverTimer
+                : now + AUTO_CUT_RETRY_FALLBACK_DELAY_MS;
         lookRetryPending = true;
         lookRetrySource = safe(source);
         lookRetryRequestedAtMs = now;
+        lookRetryDueAtMs = retryDueAtMs;
         if (AppVars.NeverTimer <= now) {
-            AppVars.NeverTimer = now + AUTO_CUT_RETRY_FALLBACK_DELAY_MS;
+            AppVars.NeverTimer = retryDueAtMs;
         }
         AppLog.i(TRACE_CHAIN, TAG, "look retry scheduled: source=" + lookRetrySource
-                + ", dueInMs=" + Math.max(0L, AppVars.NeverTimer - now));
+                + ", dueInMs=" + Math.max(0L, lookRetryDueAtMs - now)
+                + ", globalDueInMs=" + Math.max(0L, AppVars.NeverTimer - now));
     }
 
-    private synchronized void scheduleLookRetryAfterDelay(String source, long delayMs) {
+    public synchronized void scheduleLookRetryAfterDelay(String source, long delayMs) {
         long now = System.currentTimeMillis();
         long requestedDueAtMs = now + Math.max(AUTO_CUT_RETRY_FALLBACK_DELAY_MS, delayMs);
         lookRetryPending = true;
         lookRetrySource = safe(source);
         lookRetryRequestedAtMs = now;
+        lookRetryDueAtMs = requestedDueAtMs;
         if (AppVars.NeverTimer < requestedDueAtMs) {
             AppVars.NeverTimer = requestedDueAtMs;
         }
         AppLog.i(TRACE_CHAIN, TAG, "look retry scheduled: source=" + lookRetrySource
-                + ", dueInMs=" + Math.max(0L, AppVars.NeverTimer - now));
+                + ", dueInMs=" + Math.max(0L, lookRetryDueAtMs - now)
+                + ", globalDueInMs=" + Math.max(0L, AppVars.NeverTimer - now));
     }
 
     /**
@@ -1175,6 +1246,13 @@ public final class AutoCutManager {
      */
     public synchronized boolean deferLookUntilServerTimerIfActive(String source) {
         long now = System.currentTimeMillis();
+        if (lookRetryPending && isPendingLookRetryDueLocked(now)) {
+            AppLog.i(TRACE_CHAIN, TAG, "look retry due despite active server timer: source="
+                    + safe(source) + ", pendingSource=" + lookRetrySource
+                    + ", retryDueLagMs=" + Math.max(0L, now - getPendingLookRetryDueAtLocked())
+                    + ", globalDueInMs=" + Math.max(0L, AppVars.NeverTimer - now));
+            return false;
+        }
         long dueInMs = AppVars.NeverTimer - now;
         if (dueInMs <= 100L) {
             return false;
@@ -1183,15 +1261,17 @@ public final class AutoCutManager {
             scheduleLookRetryAfterTimer("server_timer:" + source);
         } else {
             AppLog.d(TRACE_CHAIN, TAG, "look retry already pending while server timer active: source="
-                    + safe(source) + ", pendingSource=" + lookRetrySource + ", dueInMs=" + dueInMs);
+                    + safe(source) + ", pendingSource=" + lookRetrySource
+                    + ", retryDueInMs=" + Math.max(0L, getPendingLookRetryDueAtLocked() - now)
+                    + ", globalDueInMs=" + dueInMs);
         }
         return true;
     }
 
     /**
-     * Откладывает cleanup-inventory pass до окончания серверного cooldown.
-     * Использует тот же one-shot `NeverTimer` dispatcher, что и retry `Оглядеться`, чтобы не
-     * гонять `go=inf -> go=inv` во время страницы ожидания после успешного среза.
+     * Откладывает cleanup-inventory pass до истечения server `NeverTimer`.
+     * Inventory/character страницы сервер не отдаёт во время cooldown, поэтому короткий retry
+     * приводит к спаму `go=inv`; ждать нужно тот же timer, который блокирует action.
      */
     public synchronized boolean deferCleanupInventoryUntilServerTimer(String source) {
         long now = System.currentTimeMillis();
@@ -1199,12 +1279,28 @@ public final class AutoCutManager {
         if (dueInMs <= 500L) {
             return false;
         }
-        boolean deferred = deferLookUntilServerTimerIfActive("cleanup_inventory:" + safe(source));
-        if (deferred) {
-            AppLog.i(TRACE_CHAIN, TAG, "cleanup inventory wait deferred until server timer: source="
-                    + safe(source) + ", dueInMs=" + Math.max(0L, AppVars.NeverTimer - now));
+        long requestedDueAtMs = AppVars.NeverTimer;
+        long pendingDueAtMs = getPendingLookRetryDueAtLocked();
+        if (!lookRetryPending || pendingDueAtMs <= 0L || pendingDueAtMs < requestedDueAtMs) {
+            lookRetryPending = true;
+            lookRetrySource = "cleanup_inventory:" + safe(source);
+            lookRetryRequestedAtMs = now;
+            lookRetryDueAtMs = requestedDueAtMs;
+            AppLog.i(TRACE_CHAIN, TAG, "cleanup inventory retry scheduled after NeverTimer: source="
+                    + safe(source)
+                    + ", retryDueInMs=" + Math.max(0L, lookRetryDueAtMs - now)
+                    + ", globalDueInMs=" + Math.max(0L, AppVars.NeverTimer - now));
+        } else {
+            AppLog.d(TRACE_CHAIN, TAG, "cleanup inventory keeps pending retry: source="
+                    + safe(source) + ", pendingSource=" + lookRetrySource
+                    + ", retryDueInMs=" + Math.max(0L, pendingDueAtMs - now)
+                    + ", globalDueInMs=" + dueInMs);
         }
-        return deferred;
+        AppLog.i(TRACE_CHAIN, TAG, "cleanup inventory wait deferred until NeverTimer: source="
+                + safe(source)
+                + ", retryDueInMs=" + Math.max(0L, getPendingLookRetryDueAtLocked() - now)
+                + ", globalDueInMs=" + Math.max(0L, AppVars.NeverTimer - now));
+        return true;
     }
 
     /**
@@ -1215,6 +1311,16 @@ public final class AutoCutManager {
      */
     public synchronized boolean hasPendingLookRetry() {
         return lookRetryPending;
+    }
+
+    /** Возвращает due-time pending retry для фонового dispatcher-а `MainActivity`. */
+    public synchronized long getPendingLookRetryDueAtMs() {
+        return lookRetryPending ? getPendingLookRetryDueAtLocked() : 0L;
+    }
+
+    /** true, если AutoCut retry уже можно выполнять независимо от позднего unrelated `NeverTimer`. */
+    public synchronized boolean isPendingLookRetryDue(long now) {
+        return lookRetryPending && isPendingLookRetryDueLocked(now);
     }
 
     /**
@@ -1229,15 +1335,20 @@ public final class AutoCutManager {
         if (!lookRetryPending) {
             return "";
         }
-        if (AppVars.NeverTimer > 0L && now < AppVars.NeverTimer) {
+        long retryDueAtMs = getPendingLookRetryDueAtLocked();
+        if (retryDueAtMs > 0L && now < retryDueAtMs) {
             return "";
         }
         String source = lookRetrySource;
         long ageMs = Math.max(0L, now - lookRetryRequestedAtMs);
+        long dueLagMs = Math.max(0L, now - retryDueAtMs);
         lookRetryPending = false;
         lookRetrySource = "";
         lookRetryRequestedAtMs = 0L;
-        AppLog.i(TRACE_CHAIN, TAG, "look retry consumed: source=" + source + ", ageMs=" + ageMs);
+        lookRetryDueAtMs = 0L;
+        AppLog.i(TRACE_CHAIN, TAG, "look retry consumed: source=" + source
+                + ", ageMs=" + ageMs + ", dueLagMs=" + dueLagMs
+                + ", globalDueInMs=" + Math.max(0L, AppVars.NeverTimer - now));
         return source;
     }
 
@@ -1255,6 +1366,24 @@ public final class AutoCutManager {
         lookRetryPending = false;
         lookRetrySource = "";
         lookRetryRequestedAtMs = 0L;
+        lookRetryDueAtMs = 0L;
+    }
+
+    private boolean isPendingLookRetryDueLocked(long now) {
+        long dueAtMs = getPendingLookRetryDueAtLocked();
+        return dueAtMs > 0L && now >= dueAtMs;
+    }
+
+    private long getPendingLookRetryDueAtLocked() {
+        if (lookRetryDueAtMs > 0L) {
+            return lookRetryDueAtMs;
+        }
+        if (AppVars.NeverTimer > 0L) {
+            return AppVars.NeverTimer;
+        }
+        return lookRetryRequestedAtMs > 0L
+                ? lookRetryRequestedAtMs + AUTO_CUT_RETRY_FALLBACK_DELAY_MS
+                : 0L;
     }
 
     /**
@@ -2467,7 +2596,11 @@ public final class AutoCutManager {
     }
 
     private JSONObject loadCellSnapshotsLocked() {
-        String raw = prefs.getString(scopedKey(cellSnapshotsJsonPrefix(getActiveMode())), "{}");
+        return loadCellSnapshotsLocked(getActiveMode());
+    }
+
+    private JSONObject loadCellSnapshotsLocked(AutoCutMode mode) {
+        String raw = prefs.getString(scopedKey(cellSnapshotsJsonPrefix(safeMode(mode))), "{}");
         if (TextUtils.isEmpty(raw)) {
             return new JSONObject();
         }
@@ -2476,6 +2609,15 @@ public final class AutoCutManager {
         } catch (Exception error) {
             AppLog.w(TRACE_CHAIN, TAG, "failed to parse cell snapshots json, reset route cache", error);
             return new JSONObject();
+        }
+    }
+
+    private static String formatMapInfoTime(long localMs) {
+        try {
+            return new java.text.SimpleDateFormat("dd.MM HH:mm", Locale.getDefault())
+                    .format(new java.util.Date(localMs));
+        } catch (Exception ignored) {
+            return "";
         }
     }
 

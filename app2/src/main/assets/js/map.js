@@ -23,6 +23,8 @@ var loaded_top = 0;
 var loaded_bottom = 0;
 var moving_status = 0;
 var finStatus = 0;
+var an_moving_flash_active = false;
+var an_moving_flash_timeout = false;
 var gox = 0;
 var goy = 0;
 var gop = 0;
@@ -65,6 +67,25 @@ function view_build_top() {
 
 function view_build_bottom() {
     d.write('<table cellpadding=0 cellspacing=0 border=0 width=100%><tr><td bgcolor=#FFFFFF><img src=http://image.neverlands.ru/1x1.gif width=1 height=4></td></tr><tr><td align=center>' + view_t() + '</td></tr><tr><td bgcolor=#FFFFFF><img src=http://image.neverlands.ru/1x1.gif width=1 height=10></td></tr></table>');
+}
+
+function anCurrentCellFullInfo() {
+    try {
+        if (window.external && typeof window.external.CurrentCellFullInfo == 'function') {
+            return window.external.CurrentCellFullInfo();
+        }
+    } catch (e) {}
+    return '';
+}
+
+if (!d.getElementById('an_cell_info_styles')) {
+    try {
+        var anCellInfoStyle = d.createElement('style');
+        anCellInfoStyle.id = 'an_cell_info_styles';
+        anCellInfoStyle.type = 'text/css';
+        anCellInfoStyle.textContent = '.an-cell-info{max-width:940px;margin:12px auto 6px;padding:14px;border-radius:18px;background:linear-gradient(135deg,#111827 0%,#1f2937 46%,#0f766e 100%);box-shadow:0 14px 34px rgba(15,23,42,.35);color:#e5e7eb;font-family:Verdana,Arial,sans-serif;text-align:left;border:1px solid rgba(255,255,255,.18)}.an-cell-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;margin-bottom:12px}.an-cell-kicker{display:inline-block;font-size:10px;text-transform:uppercase;letter-spacing:.12em;color:#93c5fd}.an-cell-title{font-size:18px;font-weight:bold;color:#fff;margin-top:3px}.an-cell-subtitle{font-size:12px;color:#cbd5e1;margin-top:3px}.an-cell-cost{border:1px solid;border-radius:999px;padding:7px 10px;background:rgba(15,23,42,.72);font-weight:bold;white-space:nowrap}.an-cell-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px}.an-cell-card{background:rgba(255,255,255,.09);border:1px solid rgba(255,255,255,.13);border-top:3px solid;border-radius:14px;padding:10px;min-height:66px}.an-cell-card-title{font-weight:bold;font-size:12px;margin-bottom:7px}.an-cell-card-body{font-size:12px;line-height:1.45;color:#f8fafc}.an-cell-chip{display:inline-block;border-radius:999px;background:rgba(136,187,221,.18);border:1px solid rgba(136,187,221,.45);padding:2px 7px;margin:1px 2px 2px 0;color:#dbeafe;font-weight:bold}.an-cell-chip.blue{background:rgba(51,204,255,.16);border-color:rgba(51,204,255,.45);color:#bae6fd}.an-cell-chip.green{background:rgba(52,211,153,.16);border-color:rgba(52,211,153,.45);color:#bbf7d0}.an-cell-muted{color:#94a3b8}.an-cell-empty{color:#cbd5e1;text-align:center;font-weight:bold}@media(max-width:720px){.an-cell-info{margin:10px 6px;border-radius:14px}.an-cell-head{display:block}.an-cell-cost{display:inline-block;margin-top:8px}.an-cell-grid{grid-template-columns:1fr}}';
+        (d.head || d.documentElement).appendChild(anCellInfoStyle);
+    } catch (e) {}
 }
 
 function view_map() {
@@ -205,6 +226,73 @@ function ReAddBut(obj) {
     }
 }
 
+function AnTraceMapRuntime(message) {
+    try {
+        if (window.external && typeof window.external.TraceMapRuntime == 'function') {
+            window.external.TraceMapRuntime(message);
+        }
+    } catch (e) {}
+}
+
+function AnSyncCurrentCell(source) {
+    try {
+        if (window.external && typeof window.external.UpdateCurrentCellFromCoords == 'function') {
+            window.external.UpdateCurrentCellFromCoords(parseInt(current_x), parseInt(current_y), source);
+        }
+    } catch (e) {
+        AnTraceMapRuntime('cell sync failed, source=' + source + ', error=' + e);
+    }
+    try {
+        if (typeof window.__anRenderCellInfo == 'function') {
+            setTimeout(window.__anRenderCellInfo, 80);
+            setTimeout(window.__anRenderCellInfo, 500);
+        }
+    } catch (e2) {}
+}
+
+function AnStopMovingFlash(source) {
+    an_moving_flash_active = false;
+    if (an_moving_flash_timeout) {
+        clearTimeout(an_moving_flash_timeout);
+        an_moving_flash_timeout = false;
+    }
+    try {
+        var movingcell = d.getElementById('movingcell');
+        if (movingcell) {
+            movingcell.style.borderColor = 'red';
+            movingcell.className = '';
+            movingcell.removeAttribute('id');
+        }
+    } catch (e) {}
+    AnTraceMapRuntime('moving flash stopped, source=' + source);
+}
+
+function AnRefreshCurrentCellMarker(source) {
+    try {
+        if (window.external && typeof window.external.CellDivText == 'function') {
+            var divs = d.getElementsByTagName('DIV');
+            for (var idx = 0; idx < divs.length; idx++) {
+                var item = divs[idx];
+                if (!item || !item.id || item.id.indexOf('divtext_') !== 0) continue;
+                var parts = item.id.substring(8).split('_');
+                if (parts.length != 2) continue;
+                var x = parseInt(parts[0]);
+                var y = parseInt(parts[1]);
+                if (isNaN(x) || isNaN(y)) continue;
+                item.innerHTML = window.external.CellDivText(x, y, scale, '', false, x == parseInt(current_x) && y == parseInt(current_y));
+            }
+        }
+    } catch (e) {
+        AnTraceMapRuntime('current marker refresh failed, source=' + source + ', error=' + e);
+    }
+    try {
+        if (typeof window.__anRenderCellInfo == 'function') {
+            setTimeout(window.__anRenderCellInfo, 80);
+            setTimeout(window.__anRenderCellInfo, 500);
+        }
+    } catch (e2) {}
+}
+
 function showMap(x, y) {
     if (!world) {
         world = d.createElement('DIV');
@@ -290,6 +378,7 @@ function showMap(x, y) {
 
 function finFunction() {
     moving_status = 0;
+    AnStopMovingFlash('finFunction');
     switch (finStatus) {
         case 0:
 
@@ -300,6 +389,7 @@ function finFunction() {
             map[0][3] = objmap[1];
             map[1] = eval(arr_res[3]);
             MapReInit(map[1]);
+            AnRefreshCurrentCellMarker('finFunction GO');
             mapbt = eval(arr_res[4]);
             d.getElementById('ButtonPlace').innerHTML = ButtonGen();
             if (objmap[2]) MessBoxDiv(objmap[2]);
@@ -312,6 +402,7 @@ function finFunction() {
             current_y = map[0][1];
             ButtonSt(false);
             MapReInit(map[1]);
+            AnRefreshCurrentCellMarker('finFunction pending');
 
             break;
     }
@@ -434,7 +525,9 @@ function timerst(lp) {
             ButtonSt(false);
             MapReInit(map[1]);
             finStatus = 0;
+            AnRefreshCurrentCellMarker('timerst lp');
         }
+        AnStopMovingFlash('timerst complete');
         timer_img.src = 'http://image.neverlands.ru/1x1.gif';
         d.getElementById('tdsec').innerHTML = '';
         d.getElementById('timertxt').style.display = 'none';
@@ -465,8 +558,15 @@ function StateReady() {
 
             MapReInit([]);
             var divid = 'divtext_' + gox + '_' + goy;
-            d.getElementById(divid).innerHTML = window.external.CellDivText(gox, goy, scale, '', true, false);
-            d.getElementById('maptext').innerHTML = window.external.MapText();
+            var targetDiv = d.getElementById(divid);
+            if (targetDiv) {
+                targetDiv.innerHTML = window.external.CellDivText(gox, goy, scale, '', true, false);
+            }
+            var mapTextDiv = d.getElementById('maptext');
+            if (mapTextDiv) {
+                mapTextDiv.innerHTML = window.external.MapText();
+            }
+            an_moving_flash_active = true;
             Flash1();
 
             dest_x = gox;
@@ -535,7 +635,7 @@ function StateReady() {
                             for (var i = 4; i < ingr.length; i++) {
                                 tr++;
                                 if (tr == 1) messal += '<tr>';
-                                butalt = ingr[i][10] == 4 ? '' : '';
+                                butalt = ingr[i][10] == 4 ? 'Срезать' : 'Срубить';
                                 messal += '<td bgcolor=#FFFFFF valign=top width=25%><div align=center>' + (!ingr[i][9] ? '<input type=button class=lbutdis value="' + butalt + '" DISABLED>' : '<input type=button class=lbut value="' + butalt + '" onclick="ResoStart(\'' + ingr[i][0] + '\',' + ingr[2] + ',' + ingr[3] + ',\'' + ingr[i][3] + '\',\'' + ingr[i][2] + '\',\'' + ingr[i][4] + '\',\'' + ingr[i][5] + '\',\'' + ingr[i][6] + '\',\'' + ingr[i][7] + '\',\'' + ingr[i][9] + '\',\'' + ingr[i][10] + '\',\'' + ingr[i][1] + '\')">') + '<br><br><img src=http://image.neverlands.ru/resources/' + ingr[i][0] + '.gif width=60 height=60><br><font class=freetxt><b>' + ingr[i][1] + '</b><br><br>: ' + ingr[i][8] + '  ' + ingr[i][11] + '</font></div></td>';
 
                                 // ABC
@@ -1123,14 +1223,24 @@ function ReInitCursor() {
 }
 
 function Flash1() {
+    if (!an_moving_flash_active) return;
     var movingcell = d.getElementById('movingcell');
+    if (!movingcell) {
+        AnStopMovingFlash('Flash1 missing movingcell');
+        return;
+    }
     movingcell.style.borderColor = 'white';
     movingcell.className = 'white';
-    setTimeout('Flash2()', 50);
+    an_moving_flash_timeout = setTimeout('Flash2()', 50);
 }
 
 function Flash2() {
+    if (!an_moving_flash_active) return;
     var movingcell = d.getElementById('movingcell');
+    if (!movingcell) {
+        AnStopMovingFlash('Flash2 missing movingcell');
+        return;
+    }
     movingcell.style.borderColor = 'red';
-    setTimeout('Flash1()', 750);
+    an_moving_flash_timeout = setTimeout('Flash1()', 750);
 }

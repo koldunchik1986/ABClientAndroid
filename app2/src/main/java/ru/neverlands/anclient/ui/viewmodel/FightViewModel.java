@@ -205,6 +205,7 @@ public class FightViewModel extends ViewModel {
                         + ", FightLink=" + (AppVars.FightLink != null ? AppVars.FightLink : "null")
                         + ", Autoboi=" + AppVars.Autoboi;
                 AppLog.d(TAG, TAG, msg);
+                showPendingFightCaptchaFromParsedStateIfNeeded(fight, html);
                 return;
             }
             if (fight.IsWaitingForNextTurn) {

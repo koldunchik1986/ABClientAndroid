@@ -48,6 +48,7 @@ public final class FightAuto {
     private static final int AUTO_FINISH_MAX_REDIRECTS_PER_LOG = 5;
     private static final long AUTO_FINISH_LOOP_WINDOW_MS = 25_000L;
     private static final int AUTO_FINISH_LOOP_FALLBACK_DELAY_MS = 250;
+    private static final int FEXP_CAPTCHA_MAX_COUNTDOWN_SECONDS = 30;
     private static final String AUTO_FINISH_TITLE = "\u0417\u0430\u0432\u0435\u0440\u0448\u0435\u043D\u0438\u0435 \u0431\u043E\u044F";
 
     // Служебный таймштамп последнего auto-finish редиректа.
@@ -568,6 +569,7 @@ public final class FightAuto {
             if (decision == FinishFlowDecision.CAPTCHA_REQUIRED) {
                 String msg_captcha_required = "processFight: CAPTCHA required, stopping autoboi and showing dialog: " + captchaUrl;
                 AppLog.d(TAG, TAG, msg_captcha_required);
+                AppVars.FightCaptchaSubmitNotBeforeMs = 0L;
                 boolean fromCaptchaSubmit = address != null
                         && address.contains("get_id=61")
                         && address.contains("act=7")
@@ -629,6 +631,7 @@ public final class FightAuto {
                 }
                 String msg_manual_captcha = "processFight: manual mode CAPTCHA detected, showing dialog: " + manualCaptchaUrl;
                 AppLog.d(TAG, TAG, msg_manual_captcha);
+                AppVars.FightCaptchaSubmitNotBeforeMs = 0L;
                 boolean fromCaptchaSubmit = address != null && address.contains("code=");
                 if (fromCaptchaSubmit) {
                     String submittedCode = host.getUrlParam(address, "code");
@@ -1460,14 +1463,55 @@ public final class FightAuto {
             if (captchaToken.length() <= 2) {
                 return null;
             }
-            if (!"0".equals(captchaFlag)) {
-                AppLog.d(TAG, "extractCaptchaUrlFromFexp: token ignored by captcha flag=" + captchaFlag);
+            if (!isRealFexpCaptchaFlag(captchaFlag)) {
+                AppLog.d(TAG, "extractCaptchaUrlFromFexp: token ignored by non-captcha flag=" + captchaFlag);
                 return null;
+            }
+            if (!"0".equals(captchaFlag)) {
+                AppLog.d(TAG, "extractCaptchaUrlFromFexp: token accepted with submit countdown flag=" + captchaFlag);
             }
             return "http://neverlands.ru/modules/code/code.php?" + captchaToken;
         } catch (Exception e) {
             AppLog.e(TAG, "extractCaptchaUrlFromFexp error", e);
             return null;
+        }
+    }
+
+    private static boolean isRealFexpCaptchaFlag(String rawFlag) {
+        try {
+            int flag = Integer.parseInt(rawFlag == null ? "" : rawFlag.trim());
+            return flag >= 0 && flag <= FEXP_CAPTCHA_MAX_COUNTDOWN_SECONDS;
+        } catch (Exception ignored) {
+            return false;
+        }
+    }
+
+    static int extractCaptchaSubmitDelaySecondsFromFexp(String html) {
+        try {
+            if (html == null || html.isEmpty()) {
+                return 0;
+            }
+            String rawFexp = HelperStrings.subString(html, "var fexp = [", "];");
+            if (rawFexp == null || rawFexp.isEmpty()) {
+                return 0;
+            }
+            String[] parts = rawFexp.split(",");
+            if (parts.length < 7) {
+                return 0;
+            }
+            String captchaToken = parts[4].replace("\"", "").replace("'", "").trim();
+            if (captchaToken.length() <= 2) {
+                return 0;
+            }
+            String captchaFlag = parts[6].replace("\"", "").replace("'", "").trim();
+            if (!isRealFexpCaptchaFlag(captchaFlag)) {
+                return 0;
+            }
+            int delaySeconds = Integer.parseInt(captchaFlag);
+            return Math.max(0, Math.min(delaySeconds, FEXP_CAPTCHA_MAX_COUNTDOWN_SECONDS));
+        } catch (Exception e) {
+            AppLog.e(TAG, "extractCaptchaSubmitDelaySecondsFromFexp error", e);
+            return 0;
         }
     }
 
@@ -1591,7 +1635,7 @@ public final class FightAuto {
         }
         String fexp4 = trimJsToken(fexp.get(4));
         String fexp6 = fexp.size() > 6 ? trimJsToken(fexp.get(6)) : "";
-        if (!withCaptchaPlaceholder && fexp4.length() > 2) {
+        if (!withCaptchaPlaceholder && fexp4.length() > 2 && isRealFexpCaptchaFlag(fexp6)) {
             AppLog.d(TAG, "extractFightFinishLinkFromHtml: skip normal fexp finish link, captcha token flag=" + fexp6);
             return null;
         }
@@ -1673,9 +1717,12 @@ public final class FightAuto {
         String captchaToken = fexp.size() > 4 ? trimJsToken(fexp.get(4)) : "";
         if (captchaToken.length() > 2) {
             String captchaFlag = fexp.size() > 6 ? trimJsToken(fexp.get(6)) : "";
-            AppLog.d(TAG, "extractFightCleanVcodeFromFexp: skip clean finish fallback, captcha token flag="
-                    + captchaFlag);
-            return null;
+            if (isRealFexpCaptchaFlag(captchaFlag)) {
+                AppLog.d(TAG, "extractFightCleanVcodeFromFexp: skip clean finish fallback, captcha token flag="
+                        + captchaFlag);
+                return null;
+            }
+            AppLog.d(TAG, "extractFightCleanVcodeFromFexp: ignore non-captcha token flag=" + captchaFlag);
         }
         String vcode = trimJsToken(fexp.get(3));
         if (vcode == null || vcode.isEmpty() || "0".equals(vcode)) {

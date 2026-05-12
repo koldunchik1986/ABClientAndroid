@@ -8,7 +8,8 @@ import java.io.File;
  * Единая точка путей для игровых user-data ANClient.
  *
  * files/Logs остаётся debug/runtime зоной и полностью чистится кнопкой "Очистить логи".
- * files/info/<nick>/ хранит игровые чат/статистику и не участвует в очистке Logs.
+ * files/info/<nick>/ хранит игровые чат/статистику/profile-scoped кеши и
+ * не участвует в очистке Logs.
  */
 public final class GameInfoStorage {
     public static final String CHAT_LOG_SUFFIX = "_chat.html";
@@ -39,6 +40,19 @@ public final class GameInfoStorage {
         return new File(userDir, safeDate + STAT_LOG_SUFFIX);
     }
 
+    public static File resolveUserInfoSubDir(String nick, String childDirName) {
+        File userDir = resolveUserInfoDir(nick);
+        if (userDir == null) {
+            return null;
+        }
+        String safeChildDirName = sanitizeFileName(childDirName);
+        if (safeChildDirName.isEmpty()) {
+            safeChildDirName = DEFAULT_PROFILE_DIR;
+        }
+        File childDir = new File(userDir, safeChildDirName);
+        return ensureDir(childDir) ? childDir : null;
+    }
+
     public static File resolveLegacyUserLogsDir(String nick) {
         // Только read fallback для старых установок; при очистке Logs миграция не выполняется.
         File logsRoot = resolveLogsRoot();
@@ -63,7 +77,7 @@ public final class GameInfoStorage {
         return value.isEmpty() ? DEFAULT_PROFILE_DIR : value;
     }
 
-    private static File resolveUserInfoDir(String nick) {
+    public static File resolveUserInfoDir(String nick) {
         File infoRoot = resolveInfoRoot();
         if (infoRoot == null) {
             return null;

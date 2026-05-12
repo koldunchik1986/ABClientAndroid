@@ -70,6 +70,15 @@ public class MapAjax {
     private static volatile long lastAutoDrinkBlazPinfoSyncAtMs = 0L;
     private static volatile long lastAutoDrinkBlazStartupSyncAttemptAtMs = 0L;
     private static volatile long lastAutoDrinkBlazTriggerAtMs = 0L;
+    // Срок ожидания исходного `AppVars.NeverTimer` для AutoDrinkBlaz.
+    //
+    // Зависимости:
+    // - выставляется в `maybeTriggerAutoDrinkBlazOnThreshold(...)`, когда усталость уже выше
+    //   порога, но серверный таймер ещё запрещает новое действие;
+    // - проверяется в начале `process(...)`, чтобы на время ожидания подавить non-combat
+    //   MapAjax-цепочки через `AppVars.TimerPauseNonCombatAutoFunctions`;
+    // - очищается при отключении профиля, падении усталости ниже порога и перед запуском
+    //   `FastActionManager.fastAttackBlazElixir("Авто-Клад")`.
     private static volatile long autoDrinkBlazWaitNeverTimerDueAtMs = 0L;
     private static volatile boolean autoDrinkBlazTimerPauseActive = false;
     private static volatile long lastAutoMovingCellObservedAtMs = 0L;
@@ -95,6 +104,10 @@ public class MapAjax {
         }
 
         if (AppVars.TimerPauseNonCombatAutoFunctions && AppVars.AutoDrinkBlazPending && autoDrinkBlazTimerPauseActive) {
+            // Пока AutoDrinkBlaz ждёт исходный NeverTimer, не даём MapAjax/авто-кладу
+            // построить новый маршрут или отправить параллельный action. Это устраняет гонку,
+            // где fast-action эликсира стартовал раньше серверного cooldown-а и оставлял
+            // Auto-Клад/AutoMoving в подвешенном состоянии.
             long waitDueAt = autoDrinkBlazWaitNeverTimerDueAtMs;
             long now = System.currentTimeMillis();
             if (waitDueAt > 0L && now + 50L >= waitDueAt) {
@@ -1474,6 +1487,9 @@ public class MapAjax {
         long neverTimer = AppVars.NeverTimer;
         long waitDueAt = autoDrinkBlazWaitNeverTimerDueAtMs;
         if (waitDueAt <= 0L && neverTimer > 0L && now < neverTimer) {
+            // Сохраняем именно текущий NeverTimer как deadline ожидания. Дальше `process(...)`
+            // удерживает `TimerPauseNonCombatAutoFunctions`, чтобы фоновые non-combat цепочки
+            // не обгоняли отложенное автопитьё блажа.
             waitDueAt = neverTimer;
             autoDrinkBlazWaitNeverTimerDueAtMs = waitDueAt;
         }
@@ -1513,6 +1529,9 @@ public class MapAjax {
             autoDrinkBlazTimerPauseActive = false;
         }
         if (neverTimer > 0L && now + 50L >= waitDueAt) {
+            // Таймер, ради которого ставили pause, уже истёк. Сбрасываем только после
+            // перехода к fast-action, чтобы следующие MapAjax циклы не продолжали ждать
+            // устаревший NeverTimer.
             AppVars.NeverTimer = 0L;
         }
 

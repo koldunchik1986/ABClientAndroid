@@ -1858,6 +1858,17 @@ public class MainPhp {
         }
         boolean isFightFrame = html.contains("magic_slots();");
         boolean isFightTopFrame = html.contains("var fight_ty");
+        boolean isGoInfAddress = address != null
+                && address.toLowerCase(Locale.ROOT).contains("go=inf");
+        if (isGoInfAddress && !isFightFrame && !isFightTopFrame) {
+            // Cache-only пополнение `info/<profile nick>/kazna/uids.txt` для экрана `Казна`.
+            // Зависимости:
+            // - `InventoryParser.syncKaznaItemDetailsCacheFromHtml(...)` сам проверяет
+            //   наличие `get_id=57&uid=...` и не меняет HTML текущего ответа;
+            // - fight frames исключены, чтобы не смешивать боевой HTML с inventory-card;
+            // - сетевой контур не создаётся: используем уже полученный `go=inf` response.
+            InventoryParser.syncKaznaItemDetailsCacheFromHtml(html, "go_inf_entry");
+        }
         boolean isFightFinishAddress = address != null && address.contains("get_id=61") && address.contains("act=7");
         boolean isFightFinishAddressForInv = address != null
                 && address.contains("get_id=61")
@@ -2090,6 +2101,22 @@ public class MainPhp {
                 AppVars.ContentMainPhp = html;
                 return Russian.getBytes(html);
             }
+        }
+        // HTML-инъекция казны подключена именно здесь, до `mainPhpInv(...)`.
+        //
+        // Почему такая точка:
+        // - серверная казна (`useaction=clan-action&addid=3`) содержит табличные строки,
+        //   которые могут быть похожи на инвентарь, но обрабатывать их `InventoryParser` нельзя;
+        // - бой уже обработан выше и исключён флагами `isFightFrame/isFightTopFrame`, чтобы не
+        //   вмешиваться в critical auto-fight/VCode порядок;
+        // - `TreasureDig` остаётся выше, потому его stop-on-dig/auto-click должен сработать
+        //   на карте до любого декоративного HTML-renderer-а;
+        // - renderer использует уже полученный HTML и существующий `KaznaManager`, не создавая
+        //   конкурирующий запрос, поэтому ручные кнопки `Взять из казны` остаются первым кликом.
+        if (!isFightFrame && !isFightTopFrame && KaznaHtmlInjectionRenderer.isKaznaRequest(address)) {
+            html = KaznaHtmlInjectionRenderer.render(address, html);
+            AppVars.ContentMainPhp = html;
+            return Russian.getBytes(html);
         }
         // Обработка инвентаря выполняется ТОЛЬКО на странице инвентаря.
         // Важно: не запускать на страницах боя (`act=7`) и прочих `main.php`,

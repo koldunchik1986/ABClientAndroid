@@ -7,8 +7,11 @@ import java.util.List;
 import java.util.Locale;
 
 import ru.neverlands.anclient.manager.AutoCutManager;
+import ru.neverlands.anclient.manager.KaznaItemDetailsCache;
 import ru.neverlands.anclient.model.InvComparer;
 import ru.neverlands.anclient.model.InvEntry;
+import ru.neverlands.anclient.model.KaznaItemDetails;
+import ru.neverlands.anclient.parser.KaznaItemDetailsParser;
 import ru.neverlands.anclient.utils.AppLog;
 import ru.neverlands.anclient.utils.AppVars;
 import ru.neverlands.anclient.utils.FileLogger;
@@ -17,6 +20,10 @@ import ru.neverlands.anclient.utils.HtmlUtils;
 
 public final class InventoryParser {
     private static final String TAG = "InventoryParser";
+    private static final String PATTERN_START_INV = "</b></font></td></tr>";
+    private static final String PATTERN_START_TR = "<tr><td bgcolor=#F5F5F5>";
+    private static final String PATTERN_END_TR_LONG = "<td bgcolor=#FCFAF3><img src=http://image.neverlands.ru/1x1.gif width=5 height=1></td></tr></table></td></tr></table></td></tr>";
+    private static final String PATTERN_END_TR_SHORT = "<img src=http://image.neverlands.ru/1x1.gif width=1 height=5></td></tr></table></td></tr>";
 
     public static void parseAndSaveComplectsFromInventory(String html) {
         if (html == null || html.isEmpty() || AppVars.Profile == null) {
@@ -61,34 +68,29 @@ public final class InventoryParser {
 
     public static final class WearInvEntry {
         public String name;
+        public String uid;
         public String wearLink;
     }
 
     public static List<WearInvEntry> getWearInvList(String html) {
         List<WearInvEntry> invList = new ArrayList<>();
-        final String patternStartInv = "</b></font></td></tr>";
-        int pos = html.indexOf(patternStartInv);
+        int pos = html.indexOf(PATTERN_START_INV);
+        if (pos == -1) {
+            pos = html.indexOf(PATTERN_START_TR);
+        } else {
+            pos += PATTERN_START_INV.length();
+        }
         if (pos == -1) {
             return invList;
         }
-        pos += patternStartInv.length();
         while (true) {
-            final String patternStartTr = "<tr><td bgcolor=#F5F5F5>";
-            if (pos + patternStartTr.length() > html.length()
-                    || !html.substring(pos, pos + patternStartTr.length()).startsWith(patternStartTr)) {
+            if (pos + PATTERN_START_TR.length() > html.length()
+                    || !html.regionMatches(true, pos, PATTERN_START_TR, 0, PATTERN_START_TR.length())) {
                 break;
             }
-            final String patternEndTrLong = "<td bgcolor=#FCFAF3><img src=http://image.neverlands.ru/1x1.gif width=5 height=1></td></tr></table></td></tr></table></td></tr>";
-            int posEnd = html.indexOf(patternEndTrLong, pos);
+            int posEnd = findInventoryEntryEnd(html, pos);
             if (posEnd == -1) {
-                final String patternEndTrShort = "<img src=http://image.neverlands.ru/1x1.gif width=1 height=5></td></tr></table></td></tr>";
-                posEnd = html.indexOf(patternEndTrShort, pos);
-                if (posEnd == -1) {
-                    return invList;
-                }
-                posEnd += patternEndTrShort.length();
-            } else {
-                posEnd += patternEndTrLong.length();
+                return invList;
             }
             String htmlEntry = html.substring(pos, posEnd);
             WearInvEntry entry = parseWearInvEntry(htmlEntry);
@@ -103,6 +105,9 @@ public final class InventoryParser {
     private static WearInvEntry parseWearInvEntry(String htmlEntry) {
         WearInvEntry entry = new WearInvEntry();
         entry.name = HelperStrings.subString(htmlEntry, "<font class=nickname><b> ", "</b>");
+        if (entry.name == null || entry.name.isEmpty()) {
+            entry.name = HelperStrings.subString(htmlEntry, "<font class=nickname><b>", "</b>");
+        }
         String wearLink = HelperStrings.subString(
                 htmlEntry,
                 "<input type=button class=invbut onclick=\"location='",
@@ -119,7 +124,22 @@ public final class InventoryParser {
             }
         }
         entry.wearLink = wearLink == null ? "" : wearLink;
+        entry.uid = extractUidFromLink(entry.wearLink);
         return entry;
+    }
+
+    private static String extractUidFromLink(String link) {
+        if (link == null || link.isEmpty()) {
+            return "";
+        }
+        String normalized = link.replace("&amp;", "&");
+        String[] parts = normalized.split("[?&]");
+        for (String part : parts) {
+            if (part != null && part.startsWith("uid=")) {
+                return part.substring("uid=".length()).trim();
+            }
+        }
+        return "";
     }
 
     static WearInvEntry parseWearInvEntryPublic(String htmlEntry) {
@@ -463,6 +483,94 @@ public final class InventoryParser {
         }
     }
 
+    /**
+     * Обновляет только кеш UID-свойств казны из уже полученного HTML.
+     *
+     * Контекст доработки:
+     * - пользователь открывает `go=inf`, и в ответе могут быть те же карточки
+     *   inventory-entry с `get_id=57&uid=...`, что и при явном `go=inv`;
+     * - нам нужно пополнить `info/<profile nick>/kazna/uids.txt` как можно раньше,
+     *   чтобы экран `KaznaActivity` мог показать свойства/картинку предметов казны;
+     * - метод не делает redirect в инвентарь и не трогает `AppVars.InvList`, поэтому
+     *   ручная навигация по профилю и фоновые postfilter-цепочки не меняются.
+     *
+     * Decision point:
+     * - вызывается на каждом `go=inf`, но не перестраивает HTML и не меняет `AppVars.InvList`;
+     * - если текущий `go=inf` не содержит карточек инвентаря, метод тихо завершается.
+     */
+    public static void syncKaznaItemDetailsCacheFromHtml(String html, String source) {
+        syncKaznaItemDetailsCacheFromHtml(html, source, null);
+    }
+
+    public static void syncKaznaItemDetailsCacheFromHtml(String html, String source, String profileNick) {
+        if (html == null || html.isEmpty() || !containsIgnoreCase(html, "get_id=57") || !containsIgnoreCase(html, "uid=")) {
+            return;
+        }
+        try {
+            List<KaznaItemDetails> details = parseKaznaItemDetailsFromInventoryHtml(html);
+            if (!details.isEmpty()) {
+                if (profileNick == null || profileNick.trim().isEmpty()) {
+                    KaznaItemDetailsCache.mergeFromInventoryDetails(details);
+                } else {
+                    KaznaItemDetailsCache.mergeFromInventoryDetails(details, profileNick);
+                }
+                AppLog.d(TAG, "KAZNA_TRACE uid details sync from " + (source == null ? "" : source)
+                        + ": parsed=" + details.size());
+            }
+        } catch (Exception e) {
+            AppLog.w(TAG, "KAZNA_TRACE uid details sync failed from " + (source == null ? "" : source), e);
+        }
+    }
+
+    private static List<KaznaItemDetails> parseKaznaItemDetailsFromInventoryHtml(String html) {
+        ArrayList<KaznaItemDetails> details = new ArrayList<>();
+        int pos = html.indexOf(PATTERN_START_INV);
+        if (pos == -1) {
+            pos = html.indexOf(PATTERN_START_TR);
+        } else {
+            pos += PATTERN_START_INV.length();
+        }
+        if (pos == -1) {
+            addKaznaItemDetailsFromEntry(html, details);
+            return details;
+        }
+        while (true) {
+            if (pos + PATTERN_START_TR.length() > html.length()
+                    || !html.regionMatches(true, pos, PATTERN_START_TR, 0, PATTERN_START_TR.length())) {
+                break;
+            }
+            int posEnd = findInventoryEntryEnd(html, pos);
+            if (posEnd == -1) {
+                break;
+            }
+            addKaznaItemDetailsFromEntry(html.substring(pos, posEnd), details);
+            pos = posEnd;
+        }
+        if (details.isEmpty()) {
+            addKaznaItemDetailsFromEntry(html, details);
+        }
+        return details;
+    }
+
+    private static void addKaznaItemDetailsFromEntry(String htmlEntry, List<KaznaItemDetails> details) {
+        KaznaItemDetails kaznaDetails = KaznaItemDetailsParser.parseFromInventoryEntry(htmlEntry);
+        if (kaznaDetails != null) {
+            details.add(kaznaDetails);
+        }
+    }
+
+    private static int findInventoryEntryEnd(String html, int pos) {
+        int posEnd = html.indexOf(PATTERN_END_TR_LONG, pos);
+        if (posEnd != -1) {
+            return posEnd + PATTERN_END_TR_LONG.length();
+        }
+        posEnd = html.indexOf(PATTERN_END_TR_SHORT, pos);
+        if (posEnd != -1) {
+            return posEnd + PATTERN_END_TR_SHORT.length();
+        }
+        return -1;
+    }
+
     static String mainPhpInv(String html) {
         return mainPhpInv(html, false);
     }
@@ -475,43 +583,38 @@ public final class InventoryParser {
                 html = InventoryEngravingResolver.replaceCoordinateEngravings(html);
             }
 
-            final String patternStartInv = "</b></font></td></tr>";
-            int pos = html.indexOf(patternStartInv);
+            int pos = html.indexOf(PATTERN_START_INV);
             int posStartInv;
             if (pos == -1) {
-                pos = html.indexOf("<tr><td bgcolor=#F5F5F5>");
+                pos = html.indexOf(PATTERN_START_TR);
                 if (pos == -1) {
                     return html;
                 }
                 posStartInv = pos;
             } else {
-                pos += patternStartInv.length();
+                pos += PATTERN_START_INV.length();
                 posStartInv = pos;
             }
 
             List<InvEntry> invList = new ArrayList<>();
+            // UID-детали для казны собираются в том же цикле, где уже создаются
+            // `InvEntry`, чтобы не плодить второй inventory-parser и не делать
+            // дополнительный HTTP-запрос ради свойств предмета.
+            List<KaznaItemDetails> kaznaUidDetails = new ArrayList<>();
             while (true) {
-                final String patternStartTr = "<tr><td bgcolor=#F5F5F5>";
-                if (pos + patternStartTr.length() > html.length()
-                        || !html.regionMatches(true, pos, patternStartTr, 0, patternStartTr.length())) {
+                if (pos + PATTERN_START_TR.length() > html.length()
+                        || !html.regionMatches(true, pos, PATTERN_START_TR, 0, PATTERN_START_TR.length())) {
                     break;
                 }
 
-                final String patternEndTrLong = "<td bgcolor=#FCFAF3><img src=http://image.neverlands.ru/1x1.gif width=5 height=1></td></tr></table></td></tr></table></td></tr>";
-                int posEnd = html.indexOf(patternEndTrLong, pos);
+                int posEnd = findInventoryEntryEnd(html, pos);
                 if (posEnd == -1) {
-                    final String patternEndTrShort = "<img src=http://image.neverlands.ru/1x1.gif width=1 height=5></td></tr></table></td></tr>";
-                    posEnd = html.indexOf(patternEndTrShort, pos);
-                    if (posEnd == -1) {
-                        return html;
-                    }
-                    posEnd += patternEndTrShort.length();
-                } else {
-                    posEnd += patternEndTrLong.length();
+                    return html;
                 }
 
                 String htmlEntry = html.substring(pos, posEnd);
                 InvEntry invEntry = new InvEntry(htmlEntry);
+                addKaznaItemDetailsFromEntry(htmlEntry, kaznaUidDetails);
 
                 if (!cacheOnlyMode) {
                     String dropThing = invEntry.DropThing == null ? "" : invEntry.DropThing;
@@ -553,6 +656,8 @@ public final class InventoryParser {
                 invList.add(invEntry);
                 pos = posEnd;
             }
+
+            KaznaItemDetailsCache.mergeFromInventoryDetails(kaznaUidDetails);
 
             int parsedCount = invList.size();
             boolean doPack = AppVars.Profile != null && AppVars.Profile.DoInvPack;

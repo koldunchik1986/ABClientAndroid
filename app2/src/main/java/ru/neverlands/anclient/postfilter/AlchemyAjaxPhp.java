@@ -278,6 +278,24 @@ public final class AlchemyAjaxPhp {
             }
             return;
         }
+        if (isResourceAlreadyTakenResponse(lower)) {
+            PendingCut stale = pendingCut;
+            pendingCut = null;
+            lastAlchemyCaptchaDialogKey = "";
+            lastAlchemyCaptchaDialogAtMs = 0L;
+            if (stale != null && !stale.isExpired() && isAutoCutEnabled()) {
+                AutoCutManager.getInstance(AppVars.getContext())
+                        .scheduleLookRetryAfterTimer("resource_taken:alchemy_act3");
+                AppLog.w(AutoCutManager.TRACE_CHAIN, TAG,
+                        "act3: resource already taken, stale pending captcha cleared, retry look scheduled"
+                                + ", resource=" + stale.resource.name
+                                + ", dueInMs=" + Math.max(0L, AppVars.NeverTimer - System.currentTimeMillis()));
+            } else {
+                AppLog.w(AutoCutManager.TRACE_CHAIN, TAG,
+                        "act3: resource already taken, stale pending captcha cleared");
+            }
+            return;
+        }
         if (!lower.contains("всё прошло успешно") && !lower.contains("все прошло успешно")) {
             return;
         }
@@ -349,6 +367,15 @@ public final class AlchemyAjaxPhp {
             }
         }
         return state;
+    }
+
+    /** true, если ресурс уже забрал другой игрок между `Оглядеться` и submit captcha. */
+    private static boolean isResourceAlreadyTakenResponse(String lowerHtml) {
+        if (lowerHtml == null || lowerHtml.isEmpty()) {
+            return false;
+        }
+        return lowerHtml.contains("опередил")
+                || (lowerHtml.contains("кто-то") && lowerHtml.contains("оперед"));
     }
 
     /**

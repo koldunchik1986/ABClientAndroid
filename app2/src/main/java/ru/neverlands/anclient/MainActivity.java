@@ -2296,6 +2296,9 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             activeFightCaptchaImageLocked = false;
             resetAntiCaptchaState("dialog dismissed");
             activeFightCaptchaLoadSeq++;
+            if (!replacingFightCaptchaDialog) {
+                AppVars.FightCaptchaSubmitNotBeforeMs = 0L;
+            }
             if (replacingFightCaptchaDialog) {
                 replacingFightCaptchaDialog = false;
             } else if (!captchaSubmitted[0]) {
@@ -2391,6 +2394,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
 
         String submitUrl = appendOrReplaceCaptchaCode(finishUrl, safeCode);
         if (!useAjaxSubmit) {
+            AppVars.FightCaptchaSubmitNotBeforeMs = 0L;
             AppVars.LastSubmittedFightCaptchaFinishKey = buildFightCaptchaFinishKey(submitUrl);
             AppVars.LastSubmittedFightCaptchaAtMs = System.currentTimeMillis();
             // Сбрасываем текущие captcha-маркеры, чтобы stale-значения не триггерили повторный popup.
@@ -4588,7 +4592,13 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         } else if (id == R.id.nav_map) {
             binding.appBarMain.contentMain.webView.loadUrl("http://neverlands.ru/map.php");
         } else if (id == R.id.nav_inventory) {
-            binding.appBarMain.contentMain.webView.loadUrl("http://neverlands.ru/main.php?get_id=33&act=10");
+            // Пункт меню исторически назывался `Инвентарь`, но для ANClient/app2
+            // теперь открывает портированный модуль `Казна`. Внутри `KaznaActivity`
+            // используются `KaznaManager`, `KaznaParser`, локальные комплекты и
+            // UID-cache из inventory HTML; WebView-инвентарь остаётся доступен через
+            // существующие fast-action/wear сценарии и не дублируется здесь.
+            Intent intent = new Intent(this, KaznaActivity.class);
+            startActivity(intent);
         } else if (id == R.id.nav_profile) {
             binding.appBarMain.contentMain.webView.loadUrl("http://neverlands.ru/main.php?get_id=33&act=1");
         } else if (id == R.id.nav_quick_actions) {
@@ -4966,7 +4976,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                     return;
                 }
                 long now = System.currentTimeMillis();
-                String reloadUrl = "http://neverlands.ru/main.php?get_id=56&act=10&go=inf&ab_auto=1&r=" + now;
+                String reloadUrl = "http://neverlands.ru/main.php?get_id=56&act=10&go=inf&an_auto=1&r=" + now;
                 // RULE 5: VCode получается через SessionManager
                 String vcode = SessionManager.getInstance().getValidVCodeForAction("auto_cure_reload");
                 if (vcode != null && !vcode.isEmpty()) {
@@ -4985,7 +4995,9 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
      * Dispatcher server-timer действий на ближайший `NeverTimer` tick.
      *
      * Зависимости:
-     * - общий источник времени — `AppVars.NeverTimer`, который выставляют серверные JS/ajax ответы;
+     * - основной источник времени — `AppVars.NeverTimer`, который выставляют серверные JS/ajax ответы;
+     * - AutoCut дополнительно хранит собственный due-time retry, потому cleanup/повторный look не должны
+     *   наследовать дальний `NeverTimer` от боя, навигации или другого фонового процесса;
      * - AutoMoving и AutoFish используют существующие reload ветки;
      * - AutoCut подключён только как pending look retry: state хранит `AutoCutManager`, а этот метод
      *   по due tick делает `go=ret&an_auto_cut_tick=1`, чтобы WebView вернулся к карте и штатный JS
@@ -4993,14 +5005,22 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
      * - fight/captcha/fishing suppression guard-ы имеют приоритет, чтобы не ломать ручные и боевые действия.
      */
     private void checkServerTimerDrivenActions() {
-        long dueAt = AppVars.NeverTimer;
-        if (dueAt <= 0L) {
+        long now = System.currentTimeMillis();
+        long serverDueAt = AppVars.NeverTimer;
+        AutoFunctionsManager autoFunctionsManager = AutoFunctionsManager.getInstance(this);
+        AutoCutManager autoCutManager = AutoCutManager.getInstance(this);
+        boolean autoCutRetryPending = autoFunctionsManager.isAutoCutLikeEnabled()
+                && autoCutManager.hasPendingLookRetry();
+        long autoCutRetryDueAt = autoCutRetryPending ? autoCutManager.getPendingLookRetryDueAtMs() : 0L;
+        boolean serverTimerDue = serverDueAt > 0L && now + SERVER_TIMER_TICK_MARGIN_MS >= serverDueAt;
+        boolean autoCutRetryDue = autoCutRetryPending && autoCutManager.isPendingLookRetryDue(now);
+        if (!serverTimerDue && !autoCutRetryDue) {
             return;
         }
 
-        long now = System.currentTimeMillis();
-        if (now + SERVER_TIMER_TICK_MARGIN_MS < dueAt) {
-            return;
+        long dueAt = serverTimerDue ? serverDueAt : autoCutRetryDueAt;
+        if (autoCutRetryDue && autoCutRetryDueAt > 0L && (!serverTimerDue || autoCutRetryDueAt < dueAt)) {
+            dueAt = autoCutRetryDueAt;
         }
 
         if (dueAt == lastServerTimerDrivenReloadDueAtMs
@@ -5013,11 +5033,9 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             return;
         }
 
-        AutoFunctionsManager autoFunctionsManager = AutoFunctionsManager.getInstance(this);
-        AutoCutManager autoCutManager = AutoCutManager.getInstance(this);
-        boolean autoMoving = AppVars.AutoMoving;
-        boolean autoFish = autoFunctionsManager.isAutoFishEnabled();
-        boolean autoCutRetry = autoFunctionsManager.isAutoCutLikeEnabled() && autoCutManager.hasPendingLookRetry();
+        boolean autoMoving = AppVars.AutoMoving && serverTimerDue;
+        boolean autoFish = autoFunctionsManager.isAutoFishEnabled() && serverTimerDue;
+        boolean autoCutRetry = autoCutRetryPending && autoCutRetryDue;
         if (!autoMoving && !autoFish && !autoCutRetry) {
             return;
         }
@@ -5086,7 +5104,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             if (!backgroundStepUrl.isEmpty()) {
                 reloadUrl = backgroundStepUrl;
             } else {
-                reloadUrl = "http://neverlands.ru/main.php?get_id=56&act=10&go=inf&ab_nav_tick=1&r=" + now;
+                reloadUrl = "http://neverlands.ru/main.php?get_id=56&act=10&go=inf&an_nav_tick=1&r=" + now;
             }
         } else if (!autoCutRetrySource.isEmpty()) {
             String backgroundLookUrl = buildBackgroundAutoCutLookUrl(autoCutManager, now);
@@ -5104,7 +5122,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                 reloadUrl += "&an_auto_cut_tick=1&r=" + now;
                 if (!isUiForegroundLikely()) {
                     autoCutRetryRescheduled = true;
-                    autoCutManager.scheduleLookRetryAfterTimer("background_map_reload:" + autoCutRetrySource);
+                    autoCutManager.scheduleLookRetryAfterDelay("background_map_reload:" + autoCutRetrySource, 1500L);
                     AppLog.d(AutoCutManager.TRACE_CHAIN, TAG,
                             "SERVER_TIMER_TICK background auto-cut waits for fresh map before direct look, source="
                                     + autoCutRetrySource);
@@ -5140,11 +5158,20 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                 }
                 AppLog.d(AutoCutManager.TRACE_CHAIN, TAG,
                         "SERVER_TIMER_TICK auto-cut retry rescheduled after map reload, source=" + autoCutRetrySource
-                                + ", dueInMs=" + Math.max(0L, AppVars.NeverTimer - now));
+                                + ", retryDueInMs="
+                                + Math.max(0L, autoCutManager.getPendingLookRetryDueAtMs() - now)
+                                + ", globalDueInMs=" + Math.max(0L, AppVars.NeverTimer - now));
             } else {
-                AppVars.NeverTimer = 0L;
-                AppLog.d(AutoCutManager.TRACE_CHAIN, TAG,
-                        "SERVER_TIMER_TICK auto-cut retry released expired NeverTimer, source=" + autoCutRetrySource);
+                if (serverTimerDue || AppVars.NeverTimer <= now) {
+                    AppVars.NeverTimer = 0L;
+                    AppLog.d(AutoCutManager.TRACE_CHAIN, TAG,
+                            "SERVER_TIMER_TICK auto-cut retry released expired NeverTimer, source=" + autoCutRetrySource);
+                } else {
+                    AppLog.d(AutoCutManager.TRACE_CHAIN, TAG,
+                            "SERVER_TIMER_TICK auto-cut retry preserved future global NeverTimer, source="
+                                    + autoCutRetrySource
+                                    + ", globalDueInMs=" + Math.max(0L, AppVars.NeverTimer - now));
+                }
             }
         } else {
             // Локальный anti-loop guard до получения следующего server cooldown.

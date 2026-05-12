@@ -421,6 +421,20 @@ public final class TreasureDig {
         if (html == null || html.isEmpty() || !hasDigButtonMarker(html)) {
             return null;
         }
+        // Усиление auto-click для кнопки `Копать`.
+        //
+        // Зависимости серверного HTML:
+        // - основной marker приходит в JS-массиве вида `["dig","Копать",...]`;
+        // - штатный путь страницы вызывает `ButClick('dig')`, если `bavail['dig']` разрешён;
+        // - на части ответов доступна функция `Digg(code)`, где code находится третьим
+        //   элементом того же JS-маркера.
+        //
+        // Почему три fallback-а:
+        // 1) `ButClick('dig')` повторяет штатное поведение страницы;
+        // 2) DOM click по `id=dig` покрывает случаи, когда кнопка есть, но JS-массив не готов;
+        // 3) прямой `Digg(code)` нужен для страниц, где кнопка отрисована нестабильно, но код
+        //    копки уже присутствует в HTML. `window.__anAutoTreasureDigClicked` не даёт
+        //    отправить несколько конкурирующих кликов.
         String digCode = extractDigCode(html);
         String directDigCall = "";
         if (digCode != null && !digCode.isEmpty()) {
@@ -449,6 +463,12 @@ public final class TreasureDig {
         return html != null && html.contains(DIG_BUTTON_MARKER);
     }
 
+    /**
+     * Достаёт код прямого вызова `Digg(code)` из серверного JS-маркера кнопки.
+     *
+     * Не используем regex по всему HTML, чтобы не зацепить похожие строки из логов/чатов:
+     * поиск привязан к точному prefix `["dig","Копать","`.
+     */
     private static String extractDigCode(String html) {
         if (html == null || html.isEmpty()) {
             return null;
