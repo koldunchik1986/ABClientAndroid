@@ -1532,7 +1532,7 @@ public class MapAjax {
             // Таймер, ради которого ставили pause, уже истёк. Сбрасываем только после
             // перехода к fast-action, чтобы следующие MapAjax циклы не продолжали ждать
             // устаревший NeverTimer.
-            AppVars.NeverTimer = 0L;
+            AppVars.clearNeverTimer("auto_blaz:wait_timer_expired");
         }
 
         String triggerMsg = "[MAPAJAX_BLAZ_TRIGGER] EXECUTE: tied=" + tied

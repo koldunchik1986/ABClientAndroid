@@ -825,7 +825,7 @@ public final class FishAjaxPhp {
         if (!isAutoFishEnabled()) return;
         long newToken = System.currentTimeMillis();
         lastFishCycleToken = newToken;
-        AppVars.NeverTimer = 0L;
+        AppVars.clearNeverTimer("auto_fish:schedule_fresh_cycle_kick");
         String msg = "AUTO_FISH_TRACE scheduleFreshFishCycleKick: newToken=" + newToken + ", delayMs=" + delayMs;
         AppLog.d(TAG, msg);
         MainActivity activity = (AppVars.mainActivity == null) ? null : AppVars.mainActivity.get();

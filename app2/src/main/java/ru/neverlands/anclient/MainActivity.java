@@ -5062,7 +5062,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                 AppVars.suppressBackgroundProbesDuringFishing = false;
                 // Сбрасываем NeverTimer чтобы авто-рыбалка могла перезапуститься
                 // (без этого NeverTimer застревает от go=inf wtime обновлений)
-                AppVars.NeverTimer = 0L;
+                AppVars.clearNeverTimer("server_timer_tick:fishing_suppression_timeout");
             }
         }
         if (AppVars.IsFightCaptchaDialogVisible) {
@@ -5163,7 +5163,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                                 + ", globalDueInMs=" + Math.max(0L, AppVars.NeverTimer - now));
             } else {
                 if (serverTimerDue || AppVars.NeverTimer <= now) {
-                    AppVars.NeverTimer = 0L;
+                    AppVars.clearNeverTimer("server_timer_tick:auto_cut_retry_released");
                     AppLog.d(AutoCutManager.TRACE_CHAIN, TAG,
                             "SERVER_TIMER_TICK auto-cut retry released expired NeverTimer, source=" + autoCutRetrySource);
                 } else {

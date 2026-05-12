@@ -1,6 +1,7 @@
 package ru.neverlands.anclient.utils;
 
 import android.content.Context;
+import android.content.SharedPreferences;
 import android.content.res.AssetManager;
 import android.webkit.WebView;
 
@@ -16,6 +17,8 @@ import ru.neverlands.anclient.model.UserConfig;
 import java.net.HttpCookie;
 
 public class AppVars {
+    private static final String RUNTIME_TIMERS_PREFS = "runtime_timers_prefs";
+    private static final String KEY_NEVER_TIMER_DUE_AT_MS = "never_timer_due_at_ms";
     public static List<HttpCookie> lastCookies;
     public static UserConfig Profile;
     /**
@@ -601,6 +604,70 @@ public class AppVars {
         // files/info — постоянные пользовательские данные ANClient (license, chat, stats).
         // В отличие от files/Logs, эта директория не очищается кнопкой "Очистить логи".
         infoDir = resolveInfoDir(context);
+        restorePersistentNeverTimer(context, "AppVars.init");
+    }
+
+    public static synchronized void setNeverTimerDueAt(long dueAtMs, String source) {
+        NeverTimer = Math.max(0L, dueAtMs);
+        persistNeverTimerDueAt(NeverTimer, source);
+    }
+
+    public static synchronized void setNeverTimerRemaining(long msLeft, String source) {
+        long safeMsLeft = Math.max(0L, msLeft);
+        setNeverTimerDueAt(System.currentTimeMillis() + safeMsLeft, source);
+    }
+
+    public static synchronized void clearNeverTimer(String source) {
+        NeverTimer = 0L;
+        persistNeverTimerDueAt(0L, source);
+    }
+
+    public static long getNeverTimerRemainingMs() {
+        return Math.max(0L, NeverTimer - System.currentTimeMillis());
+    }
+
+    public static boolean isNeverTimerActive() {
+        return getNeverTimerRemainingMs() > 0L;
+    }
+
+    public static synchronized long restorePersistentNeverTimer(Context context, String source) {
+        if (context == null) {
+            return NeverTimer;
+        }
+        long now = System.currentTimeMillis();
+        long persistedDueAt = getRuntimeTimersPrefs(context).getLong(KEY_NEVER_TIMER_DUE_AT_MS, 0L);
+        if (persistedDueAt > now) {
+            NeverTimer = Math.max(NeverTimer, persistedDueAt);
+            AppLog.d("NEVER_TIMER", "restorePersistentNeverTimer: source=" + source
+                    + ", dueInMs=" + Math.max(0L, NeverTimer - now));
+        } else if (persistedDueAt > 0L) {
+            getRuntimeTimersPrefs(context).edit().remove(KEY_NEVER_TIMER_DUE_AT_MS).apply();
+            if (NeverTimer <= now) {
+                NeverTimer = 0L;
+            }
+            AppLog.d("NEVER_TIMER", "restorePersistentNeverTimer: expired, source=" + source);
+        }
+        return NeverTimer;
+    }
+
+    private static void persistNeverTimerDueAt(long dueAtMs, String source) {
+        Context appContext = context;
+        if (appContext == null) {
+            return;
+        }
+        SharedPreferences prefs = getRuntimeTimersPrefs(appContext);
+        if (dueAtMs > System.currentTimeMillis()) {
+            prefs.edit().putLong(KEY_NEVER_TIMER_DUE_AT_MS, dueAtMs).apply();
+            AppLog.d("NEVER_TIMER", "persistNeverTimerDueAt: source=" + source
+                    + ", dueInMs=" + Math.max(0L, dueAtMs - System.currentTimeMillis()));
+        } else {
+            prefs.edit().remove(KEY_NEVER_TIMER_DUE_AT_MS).apply();
+            AppLog.d("NEVER_TIMER", "clearPersistentNeverTimer: source=" + source);
+        }
+    }
+
+    private static SharedPreferences getRuntimeTimersPrefs(Context context) {
+        return context.getApplicationContext().getSharedPreferences(RUNTIME_TIMERS_PREFS, Context.MODE_PRIVATE);
     }
 
     public static void setRuntimeAuthCredentials(UserConfig profile, String gamePassword, String flashPassword) {

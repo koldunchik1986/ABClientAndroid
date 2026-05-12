@@ -1080,7 +1080,7 @@ public class WebAppInterface {
             }
             long nowMs = System.currentTimeMillis();
             long dueAtMs = nowMs + msLeft;
-            AppVars.NeverTimer = dueAtMs;
+            AppVars.setNeverTimerDueAt(dueAtMs, "WebAppInterface.SetNeverTimer");
 
             // Debug-трасса countdown из map.js (throttle: по дельте/времени/последним секундам).
             long prevLogAt = lastNeverTimerLogAtMs;

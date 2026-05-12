@@ -2,6 +2,8 @@ package ru.neverlands.anclient.manager;
 
 import android.content.Context;
 import android.content.SharedPreferences;
+import android.os.Handler;
+import android.os.Looper;
 import android.widget.Toast;
 
 import androidx.preference.PreferenceManager;
@@ -36,6 +38,7 @@ public class AutoFunctionsManager {
     private static final String CHARACTER_SYNC_LABEL = "\u0421\u0438\u043D\u0445\u0440\u0430\u043D\u0438\u0437\u0430\u0446\u0438\u044F \u041F\u0435\u0440\u0441\u043E\u043D\u0430\u0436\u0430";
     private static final long CHARACTER_SYNC_LOGIN_COOLDOWN_MS = 15_000L;
     private static final long CHARACTER_SYNC_AUTO_ENABLE_COOLDOWN_MS = 1_500L;
+    private static final long COLD_START_NEVER_TIMER_MARGIN_MS = 250L;
     private static final String PREFS_NAME = "auto_functions_prefs";
     private static final String KEY_PREFIX = "auto_function_";
     private static final String KEY_AUTO_CUT = KEY_PREFIX + "auto_cut";
@@ -115,7 +118,9 @@ public class AutoFunctionsManager {
     private final SharedPreferences prefs;
     private final CompasAuto compasAuto;
     private final BossAuto bossAuto;
+    private final Handler mainHandler = new Handler(Looper.getMainLooper());
     private volatile long lastCharacterSyncRequestedAtMs = 0L;
+    private volatile boolean pendingAutoRestoreAfterNeverTimer = false;
     
     // SharedPreferences фиксируют состояние автозадач между перезапусками.
     private AutoFunctionsManager(Context context) {
@@ -379,8 +384,12 @@ public class AutoFunctionsManager {
                     AppVars.Profile.FishHandTwo = "Нет";
                 }
             }
-            // Снимаем возможный cooldown fast-действий, чтобы авто-рыбалка стартовала сразу после включения.
-            AppVars.NeverTimer = 0L;
+            if (AppVars.isNeverTimerActive()) {
+                AppLog.i("NEVER_TIMER", TAG, "setAutoFishEnabled: keep active NeverTimer before bootstrap, dueInMs="
+                        + AppVars.getNeverTimerRemainingMs());
+            } else {
+                AppVars.clearNeverTimer("setAutoFishEnabled(true):no_active_timer");
+            }
         } else {
             // При ручном выключении также очищаем anti-loop state, чтобы при следующем старте
             // авто-рыбалка начинала с чистого runtime-контекста.
@@ -390,7 +399,7 @@ public class AutoFunctionsManager {
             
             // Очищаем NeverTimer, чтобы следующая попытка включить рыбалку не была заблокирована
             // старым cooldown'ом.
-            AppVars.NeverTimer = 0L;
+            AppVars.clearNeverTimer("setAutoFishEnabled(false)");
         }
         if (AppVars.Profile != null) {
             AppVars.Profile.save(context);
@@ -458,6 +467,11 @@ public class AutoFunctionsManager {
     // - setAutoFishEnabled(true): полная инициализация рыбалки;
     // - restoreAutoFightRuntimeAfterLogin(...): мягкое восстановление боевого контура.
     public void restorePersistentAutoModesAfterLogin() {
+        AppVars.restorePersistentNeverTimer(context, "restorePersistentAutoModesAfterLogin");
+        if (delayPersistentAutoRestoreForNeverTimer("restorePersistentAutoModesAfterLogin")) {
+            return;
+        }
+
         boolean autoFish = isAutoFishEnabled();
         boolean autoFight = isAutoFightEnabled();
         boolean autoTreasure = isAutoTreasureEnabled();
@@ -507,6 +521,30 @@ public class AutoFunctionsManager {
         }
 
         restoreAutoFightRuntimeAfterLogin(autoFight, true);
+    }
+
+    private boolean delayPersistentAutoRestoreForNeverTimer(String source) {
+        long waitMs = AppVars.getNeverTimerRemainingMs();
+        if (waitMs <= 0L) {
+            pendingAutoRestoreAfterNeverTimer = false;
+            return false;
+        }
+        if (pendingAutoRestoreAfterNeverTimer) {
+            AppLog.d("NEVER_TIMER", TAG, "cold-start auto restore already delayed: source=" + source
+                    + ", waitMs=" + waitMs);
+            return true;
+        }
+        pendingAutoRestoreAfterNeverTimer = true;
+        long delayMs = waitMs + COLD_START_NEVER_TIMER_MARGIN_MS;
+        AppLog.i("NEVER_TIMER", TAG, "cold-start auto restore delayed until NeverTimer: source=" + source
+                + ", waitMs=" + waitMs
+                + ", delayMs=" + delayMs);
+        mainHandler.postDelayed(() -> {
+            pendingAutoRestoreAfterNeverTimer = false;
+            AppVars.restorePersistentNeverTimer(context, "cold_start_restore_delay_finished");
+            restorePersistentAutoModesAfterLogin();
+        }, delayMs);
+        return true;
     }
 
     /**
