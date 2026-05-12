@@ -388,6 +388,7 @@ public class MapJs {
                     + "    if (__anLongPressTimer) clearTimeout(__anLongPressTimer);\n"
                     + "    __anLongPressTimer = setTimeout(function(){\n"
                     + "      __anLongPressTimer = null;\n"
+                    + "      if (window.__an_map_pan_active) { __anTraceCellInfo('long press skipped during map pan'); return; }\n"
                     + "      __anSelectedCellInfo = coords;\n"
                     + "      __anSuppressClickUntil = new Date().getTime() + 900;\n"
                     + "      __anTraceCellInfo('selected by long press ' + coords.x + ':' + coords.y);\n"

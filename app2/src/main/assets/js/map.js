@@ -25,6 +25,14 @@ var moving_status = 0;
 var finStatus = 0;
 var an_moving_flash_active = false;
 var an_moving_flash_timeout = false;
+var an_map_pan_installed = false;
+var an_map_pan_touch = false;
+var an_map_pan_dragging = false;
+var an_map_pan_start_x = 0;
+var an_map_pan_start_y = 0;
+var an_map_pan_last_x = 0;
+var an_map_pan_last_y = 0;
+var an_map_pan_suppress_click_until = 0;
 var gox = 0;
 var goy = 0;
 var gop = 0;
@@ -372,8 +380,169 @@ function showMap(x, y) {
     loaded_right = x + width;
     loaded_top = y - height;
     loaded_bottom = y + height;
+    AnInstallDynamicMapPan('showMap');
 
     return true;
+}
+
+function AnMapPanTrace(message) {
+    AnTraceMapRuntime('MAP_PAN ' + message);
+}
+
+function AnInstallDynamicMapPan(source) {
+    if (an_map_pan_installed) return;
+    var host = d.getElementById('world_host');
+    if (!host) return;
+    an_map_pan_installed = true;
+    host.style.touchAction = 'none';
+    host.style.webkitUserSelect = 'none';
+    host.style.userSelect = 'none';
+    if (host.addEventListener) {
+        host.addEventListener('touchstart', AnMapPanStart, true);
+        host.addEventListener('touchmove', AnMapPanMove, true);
+        host.addEventListener('touchend', AnMapPanEnd, true);
+        host.addEventListener('touchcancel', AnMapPanEnd, true);
+        host.addEventListener('mousedown', AnMapMousePanStart, true);
+        d.addEventListener('mousemove', AnMapMousePanMove, true);
+        d.addEventListener('mouseup', AnMapMousePanEnd, true);
+        host.addEventListener('click', AnMapPanClickGuard, true);
+    }
+    AnMapPanTrace('installed source=' + source + ', loaded=' + loaded_left + ':' + loaded_right + ':' + loaded_top + ':' + loaded_bottom);
+}
+
+function AnMapPanPoint(evt) {
+    if (!evt) return null;
+    var touch = evt.touches && evt.touches.length ? evt.touches[0] : (evt.changedTouches && evt.changedTouches.length ? evt.changedTouches[0] : evt);
+    if (!touch) return null;
+    return { x: touch.clientX, y: touch.clientY };
+}
+
+function AnMapPanCanStart(evt) {
+    if (!world || moving_status == 1) return false;
+    if (evt && evt.touches && evt.touches.length > 1) return false;
+    return true;
+}
+
+function AnMapPanStart(evt) {
+    if (!AnMapPanCanStart(evt)) return;
+    var point = AnMapPanPoint(evt);
+    if (!point) return;
+    an_map_pan_touch = true;
+    an_map_pan_dragging = false;
+    window.__an_map_pan_active = false;
+    an_map_pan_start_x = point.x;
+    an_map_pan_start_y = point.y;
+    an_map_pan_last_x = point.x;
+    an_map_pan_last_y = point.y;
+}
+
+function AnMapMousePanStart(evt) {
+    if (!AnMapPanCanStart(evt)) return;
+    var point = AnMapPanPoint(evt);
+    if (!point) return;
+    an_map_pan_touch = true;
+    an_map_pan_dragging = false;
+    window.__an_map_pan_active = false;
+    an_map_pan_start_x = point.x;
+    an_map_pan_start_y = point.y;
+    an_map_pan_last_x = point.x;
+    an_map_pan_last_y = point.y;
+}
+
+function AnMapPanMove(evt) {
+    if (!an_map_pan_touch || !world || moving_status == 1) return;
+    var point = AnMapPanPoint(evt);
+    if (!point) return;
+    var totalDx = point.x - an_map_pan_start_x;
+    var totalDy = point.y - an_map_pan_start_y;
+    if (!an_map_pan_dragging && (Math.abs(totalDx) > 10 || Math.abs(totalDy) > 10)) {
+        an_map_pan_dragging = true;
+        window.__an_map_pan_active = true;
+        AnMapPanTrace('drag start');
+    }
+    if (!an_map_pan_dragging) return;
+    var dx = point.x - an_map_pan_last_x;
+    var dy = point.y - an_map_pan_last_y;
+    an_map_pan_last_x = point.x;
+    an_map_pan_last_y = point.y;
+    cur_margin_left += dx;
+    cur_margin_top += dy;
+    AnEnsureDynamicMapCoverage();
+    world.style.marginLeft = parseInt(cur_margin_left) + 'px';
+    world.style.marginTop = parseInt(cur_margin_top) + 'px';
+    if (evt.preventDefault) evt.preventDefault();
+    if (evt.stopPropagation) evt.stopPropagation();
+    evt.cancelBubble = true;
+    evt.returnValue = false;
+}
+
+function AnMapMousePanMove(evt) {
+    AnMapPanMove(evt);
+}
+
+function AnMapPanEnd(evt) {
+    if (!an_map_pan_touch) return;
+    if (an_map_pan_dragging) {
+        an_map_pan_suppress_click_until = (new Date()).getTime() + 600;
+        AnMapPanTrace('drag end margin=' + parseInt(cur_margin_left) + ':' + parseInt(cur_margin_top) + ', loaded=' + loaded_left + ':' + loaded_right + ':' + loaded_top + ':' + loaded_bottom);
+        if (evt && evt.preventDefault) evt.preventDefault();
+        if (evt && evt.stopPropagation) evt.stopPropagation();
+    }
+    an_map_pan_touch = false;
+    an_map_pan_dragging = false;
+    window.__an_map_pan_active = false;
+}
+
+function AnMapMousePanEnd(evt) {
+    AnMapPanEnd(evt);
+}
+
+function AnMapPanClickGuard(evt) {
+    if ((new Date()).getTime() > an_map_pan_suppress_click_until) return;
+    if (evt.preventDefault) evt.preventDefault();
+    if (evt.stopImmediatePropagation) evt.stopImmediatePropagation();
+    if (evt.stopPropagation) evt.stopPropagation();
+    evt.cancelBubble = true;
+    evt.returnValue = false;
+    AnMapPanTrace('click suppressed after drag');
+    return false;
+}
+
+function AnEnsureDynamicMapCoverage() {
+    if (!world) return;
+    var cell = scale + 1;
+    var visibleColumns = (width * 2) + 1;
+    var visibleRows = (height * 2) + 1;
+    var leftVisible = loaded_left - (cur_margin_left / cell);
+    var rightVisible = leftVisible + visibleColumns - 1;
+    var topVisible = loaded_top - (cur_margin_top / cell);
+    var bottomVisible = topVisible + visibleRows - 1;
+    var guard = 0;
+    while (rightVisible > loaded_right + 0.25 && guard < 32) {
+        loaded_right += 1;
+        loadMap('right');
+        guard++;
+    }
+    guard = 0;
+    while (leftVisible < loaded_left - 0.25 && guard < 32) {
+        loaded_left -= 1;
+        loadMap('left');
+        leftVisible = loaded_left - (cur_margin_left / cell);
+        guard++;
+    }
+    guard = 0;
+    while (bottomVisible > loaded_bottom + 0.25 && guard < 32) {
+        loaded_bottom += 1;
+        loadMap('bottom');
+        guard++;
+    }
+    guard = 0;
+    while (topVisible < loaded_top - 0.25 && guard < 32) {
+        loaded_top -= 1;
+        loadMap('top');
+        topVisible = loaded_top - (cur_margin_top / cell);
+        guard++;
+    }
 }
 
 function finFunction() {

@@ -132,6 +132,17 @@
 - [x] `./gradlew.bat :app2:assembleDebug` выполнен успешно.
 - [x] `./gradlew.bat :app2:installDebug` выполнен успешно; APK `anclient_v1.1.6.apk` установлен на `Mi Note 3 - 9`.
 
+## Доработка динамической карты жестом
+
+- [x] Найден существующий контур подгрузки видимых клеток: `map.js` уже содержит `loadMap(dir)` для дорисовки строк/колонок и `freeMap(dir)` для серверного движения.
+- [x] Добавлен touch/mouse-pan в `assets/js/map.js`: при перетаскивании карты меняются `cur_margin_left/top`, а края догружаются через существующий `loadMap('left/right/top/bottom')` без `map_ajax.php` и без изменения текущей клетки персонажа.
+- [x] После drag подавляется синтетический click WebView, чтобы отпускание пальца не запускало переход по клетке.
+- [x] `MapJs` учитывает флаг `window.__an_map_pan_active`, чтобы long-press full-info не срабатывал во время реального перетаскивания карты.
+- [x] Проверка mojibake по `map.js` и `MapJs.java` не нашла совпадений; в TODO осталась только старая документированная строка про `????` в `AlchemyAjaxPhp.java`.
+- [x] `./gradlew.bat :app2:compileDebugJavaWithJavac --rerun-tasks` выполнен успешно; остался существующий deprecation warning в `DeviceKeyStore.java`.
+- [x] `./gradlew.bat :app2:assembleDebug` выполнен успешно.
+- [x] `./gradlew.bat :app2:installDebug` выполнен успешно; APK `anclient_v1.1.6.apk` установлен на `Mi Note 3 - 9`.
+
 ## Доработка количества ресурсов в full-info
 
 - [x] Найден существующий контур содержимого клетки: `AlchemyAjaxPhp.buildCellSnapshotList(...)` сохраняет `RESO@` snapshot, `AutoCutManager.getCellResourceSummaryForMap(...)` отдаёт его в `WebAppInterface.buildCellContentsInfo(...)`.
