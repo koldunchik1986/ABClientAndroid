@@ -1663,16 +1663,18 @@ public class RoomManager {
             }
         }
 
+        String nickForQuickActionJs = escapeJsSingleQuoted(login);
+
         return
-            "<a href=\"#\" onclick=\"top.say_private('" +
+            "<a href=\"javascript:void(0)\" onclick=\"if(event){event.preventDefault();event.stopPropagation();}top.say_private('" +
             login +
-            "');\"><img src=http://image.neverlands.ru/chat/private.gif width=11 height=12 border=0 align=absmiddle></a>&nbsp;" +
+            "');return false;\"><img src=http://image.neverlands.ru/chat/private.gif width=11 height=12 border=0 align=absmiddle></a>&nbsp;" +
             psg +
             align +
             ss +
-            "<a class=\"activenick\" style=\"color:" + color + " !important;\" href=\"#\" onclick=\"top.say_to('" +
-            login +
-            "');\"><font class=nickname color=\"" + color + "\" style=\"color:" + color + " !important;\"><b style=\"color:" + color + " !important;\">" +
+            "<a class=\"activenick\" style=\"color:" + color + " !important;\" href=\"javascript:void(0)\" onclick=\"if(event){event.preventDefault();event.stopPropagation();}var b=window.AndroidBridge||window.external;if(b&&b.OpenQuickActionsForNick){b.OpenQuickActionsForNick('" +
+            nickForQuickActionJs +
+            "');}else{top.say_to('" + nickForQuickActionJs + "');}return false;\"><font class=nickname color=\"" + color + "\" style=\"color:" + color + " !important;\"><b style=\"color:" + color + " !important;\">" +
             strArray[1] +
             "</b></font></a><span class=\"an-room-level\" style=\"color:" + color + " !important;\">[" +
             strArray[2] +
@@ -1765,12 +1767,13 @@ public class RoomManager {
         String levelHtml = resolvedLevel > 0
                 ? " [<font class=nickname color=\"" + color + "\">" + resolvedLevel + "</font>]"
                 : "";
-        return "<a href=\"#\" onclick=\"top.say_private('" + nickForJs
-                + "');\"><img src=http://image.neverlands.ru/chat/private.gif width=11 height=12 border=0 align=absmiddle></a>&nbsp;"
+        return "<a href=\"javascript:void(0)\" onclick=\"if(event){event.preventDefault();event.stopPropagation();}top.say_private('" + nickForJs
+                + "');return false;\"><img src=http://image.neverlands.ru/chat/private.gif width=11 height=12 border=0 align=absmiddle></a>&nbsp;"
                 + inclinationHtml
                 + clanHtml
-                + "<a class=\"activenick\" href=\"#\" onclick=\"top.say_to('" + nickForJs
-                + "');\"><font class=nickname color=\"" + color + "\"><b>"
+                + "<a class=\"activenick\" href=\"javascript:void(0)\" onclick=\"if(event){event.preventDefault();event.stopPropagation();}var b=window.AndroidBridge||window.external;if(b&&b.OpenQuickActionsForNick){b.OpenQuickActionsForNick('" + nickForJs
+                + "');}else{top.say_to('" + nickForJs
+                + "');}return false;\"><font class=nickname color=\"" + color + "\"><b>"
                 + escapedNick + "</b></font></a>"
                 + levelHtml
                 + "<a href=\"http://neverlands.ru/pinfo.cgi?" + pinfoNickEncoded
@@ -1836,9 +1839,11 @@ public class RoomManager {
      * 5) Заменяет оригинальное содержимое на наше
      */
     private static String injectPlayerListHtmlIntoChatPhp(String html, FilterProcRoomResult filterResult) {
-        if (html == null || filterResult.html == null || filterResult.html.isEmpty()) {
+        if (html == null || filterResult == null) {
             return html;
         }
+        String originalHtmlForMeta = html;
+        html = stripServerRoomRefreshControl(html);
         
         try {
             // Обычно сервер возвращает HTML с JavaScript инициализацией ChatListU
@@ -1854,21 +1859,7 @@ public class RoomManager {
             if (chatListMatcher.find()) {
                 // Нашли скрипт с ChatListU
                 int chatListEndPos = chatListMatcher.end();
-                String roomListContainer = "<style id=\"_room_list_style\">"
-                        + "#_room_list_container{display:block;line-height:1.4;}"
-                        + "#_room_list_container .an-room-row{display:block;margin:4px 0;}"
-                        + "#_room_list_container .an-room-row img{height:26px !important;width:auto !important;vertical-align:middle;}"
-                        + "#_room_list_container .an-room-row img.an-room-injury-icon{height:26px !important;width:auto !important;vertical-align:middle;}"
-                        + "#_room_list_container .an-room-row .nickname{font-size:140% !important;line-height:1.1 !important;}"
-                        + "#_room_list_container .an-room-row a.activenick{font-size:140% !important;line-height:1.1 !important;}"
-                        + "#_room_list_container .an-room-row .activenick b{font-size:140% !important;line-height:1.1 !important;}"
-                        + "#_room_list_container .an-room-row .an-room-level{font-size:200% !important;line-height:1.1 !important;}"
-                        + "#_room_list_container .an-room-effect-wrap{display:inline-flex;align-items:center;gap:2px;margin-left:2px;}"
-                        + "#_room_list_container .an-room-effect-meta{display:inline-block;line-height:1.05 !important;font-size:85% !important;vertical-align:middle;}"
-                        + "</style>"
-                        + "<div id=\"_room_list_container\">"
-                        + filterResult.html
-                        + "</div>";
+                String roomListContainer = buildModernRoomListContainer(originalHtmlForMeta, filterResult);
                 // ВАЖНО: ch.php?lo=1 содержит этот участок внутри <script>.
                 // Если вставить сюда сырой HTML (<div ...>), JS ломается на "Unexpected token '<'".
                 // Поэтому в script-контексте всегда вставляем через document.write('...').
@@ -1931,6 +1922,181 @@ public class RoomManager {
         return html;
     }
 
+    private static String buildModernRoomListContainer(String sourceHtml, FilterProcRoomResult filterResult) {
+        String[] locationParts = extractLocationParts(sourceHtml);
+        String regionName = escapeHtml(locationParts[0]);
+        String locationName = escapeHtml(locationParts[1]);
+        int visibleCount = Math.max(0, filterResult.numCharsInRoom);
+        int hiddenCount = Math.max(0, resolveNevidsCount(sourceHtml, visibleCount));
+        int onlineCount = parseOnlineCharsCount(sourceHtml);
+        if (onlineCount < 0) {
+            onlineCount = Math.max(0, visibleCount + hiddenCount);
+        }
+        String targetNick = stripItalic(filterResult.enemyAttack);
+        String targetHtml = isEmpty(targetNick)
+                ? "<span class=\"an-room-status-ok\">Без цели</span>"
+                : "<span class=\"an-room-status-danger\">Цель: " + escapeHtml(targetNick) + "</span>";
+        String hiddenStatHtml = hiddenCount > 0
+                ? "<div class=\"an-room-stat\"><b>" + hiddenCount + "</b><span>Невидимок</span></div>"
+                : "";
+
+        return "<style id=\"_room_list_style\">"
+                + "html,body{margin:0;padding:0;width:100%;max-width:100%;overflow-x:hidden;background:#f4f7fb;}"
+                + "#_room_list_container{display:block;width:100%;max-width:100%;min-height:100%;box-sizing:border-box;padding:2px;background:#f4f7fb;color:#1f2937;font-family:Verdana,Arial,sans-serif;font-size:18px;line-height:1.2;overflow-x:hidden;}"
+                + "#_room_list_container *{box-sizing:border-box;max-width:100%;}"
+                + "#_room_list_container .an-room-panel{width:100%;max-width:100%;border:1px solid #cbd5e1;border-radius:9px;background:#ffffff;overflow:hidden;box-shadow:0 2px 10px rgba(15,23,42,.12);}"
+                + "#_room_list_container .an-room-head{padding:6px 7px;background:linear-gradient(135deg,#e0f2fe,#f0fdfa);border-bottom:1px solid #cbd5e1;}"
+                + "#_room_list_container .an-room-kicker{display:none;}"
+                + "#_room_list_container .an-room-title{font-size:34px;font-weight:bold;color:#0f172a;white-space:normal;overflow-wrap:anywhere;}"
+                + "#_room_list_container .an-room-region{font-size:31px;font-weight:bold;color:#334155;white-space:normal;overflow-wrap:anywhere;margin-top:2px;}"
+                + "#_room_list_container .an-room-target{margin-top:3px;font-size:18px;font-weight:bold;}"
+                + "#_room_list_container .an-room-status-ok{color:#15803d;}"
+                + "#_room_list_container .an-room-status-danger{color:#b91c1c;}"
+                + "#_room_list_container .an-room-stats{display:block;padding:4px 5px;background:#eef6ff;border-bottom:1px solid #dbeafe;}"
+                + "#_room_list_container .an-room-stat{display:block;width:100%;border:1px solid #cbd5e1;border-radius:7px;padding:5px 6px;background:#ffffff;white-space:nowrap;margin:0 0 5px 0;}"
+                + "#_room_list_container .an-room-stat b{display:inline;font-size:30px;color:#0f172a;margin-left:4px;}"
+                + "#_room_list_container .an-room-stat span{display:inline;font-size:30px;color:#334155;font-weight:bold;}"
+                + "#_room_list_container .an-room-refresh{padding:5px 2px 7px 2px;text-align:left;background:#ffffff;}"
+                + "#_room_list_container .an-room-refresh button{display:inline-block;width:300px;max-width:100%;height:50px;border:1px solid #38bdf8;border-radius:999px;background:linear-gradient(135deg,#0284c7,#14b8a6);color:#ffffff;font-size:24px;font-weight:bold;padding:0 8px;box-shadow:0 3px 8px rgba(2,132,199,.25);}"
+                + "#_room_list_container .an-room-list{width:100%;padding:2px;}"
+                + "#_room_list_container .an-room-row{display:block;width:100%;max-width:100%;margin:2px 0;padding:5px 4px;border-radius:7px;background:#ffffff;border:1px solid #dbe1ea;border-left:5px solid #94a3b8;word-break:break-word;overflow-wrap:anywhere;}"
+                + "#_room_list_container .an-room-row.an-room-enemy{border-left-color:#ef4444;background:#fff1f2;}"
+                + "#_room_list_container .an-room-row.an-room-friend{border-left-color:#22c55e;background:#f0fdf4;}"
+                + "#_room_list_container .an-room-row.an-room-self{border-left-color:#38bdf8;background:#eff6ff;}"
+                + "#_room_list_container .an-room-row img{height:25px !important;width:auto !important;vertical-align:middle;margin:0 1px;}"
+                + "#_room_list_container .an-room-row img.an-room-injury-icon{height:27px !important;width:auto !important;}"
+                + "#_room_list_container .an-room-row .nickname{font-size:132% !important;line-height:1.08 !important;}"
+                + "#_room_list_container .an-room-row a.activenick{font-size:132% !important;line-height:1.08 !important;text-decoration:none;}"
+                + "#_room_list_container .an-room-row .activenick b{font-size:132% !important;line-height:1.08 !important;}"
+                + "#_room_list_container .an-room-row .an-room-level{display:inline-block;margin-left:2px;padding:0 4px;border-radius:999px;background:#e2e8f0;border:1px solid #cbd5e1;font-size:150% !important;line-height:1.08 !important;font-weight:bold;color:#0f172a !important;}"
+                + "#_room_list_container .an-room-effect-wrap{display:inline-flex;align-items:center;gap:1px;margin-left:1px;padding:0 2px;border-radius:999px;background:#f8fafc;border:1px solid #cbd5e1;}"
+                + "#_room_list_container .an-room-effect-meta{display:inline-block;line-height:1.05 !important;font-size:95% !important;vertical-align:middle;color:#334155;}"
+                + "#_room_list_container .an-room-empty{padding:10px 4px;text-align:center;color:#475569;font-weight:bold;font-size:20px;}"
+                + "</style>"
+                + "<div id=\"_room_list_container\"><div class=\"an-room-panel\">"
+                + "<div class=\"an-room-refresh\"><button type=\"button\" onclick=\"location.href='/ch.php?lo=1&'+(new Date()).getTime();return false;\">Обновить</button></div>"
+                + "<div class=\"an-room-head\"><div class=\"an-room-kicker\">RoomManager</div>"
+                + "<div class=\"an-room-title\">" + (isEmpty(locationName) ? "Текущая локация" : locationName) + "</div>"
+                + (isEmpty(regionName) ? "" : "<div class=\"an-room-region\">" + regionName + "</div>")
+                + "<div class=\"an-room-target\">" + targetHtml + "</div></div>"
+                + "<div class=\"an-room-stats\">"
+                + "<div class=\"an-room-stat\"><span>В онлайне:</span><b>" + onlineCount + "</b></div>"
+                + "<div class=\"an-room-stat\"><span>На локации:</span><b>" + visibleCount + "</b></div>"
+                + hiddenStatHtml
+                + "</div><div class=\"an-room-list\">"
+                + (isEmpty(filterResult.html) ? "<div class=\"an-room-empty\">В комнате никого не видно</div>" : filterResult.html)
+                + "</div></div></div>";
+    }
+
+    private static String stripServerRoomRefreshControl(String html) {
+        if (isEmpty(html)) {
+            return html;
+        }
+        int chatListPos = html.indexOf("var ChatListU");
+        int limit = chatListPos >= 0 ? chatListPos : Math.min(html.length(), 4096);
+        String prefix = html.substring(0, limit);
+        String suffix = html.substring(limit);
+
+        // Скрываем только серверный верх до ChatListU. Наша modern-кнопка и meta-блок
+        // добавляются позже в buildModernRoomListContainer(...) и этим regex не затрагиваются.
+        prefix = prefix.replaceAll("(?is)<input\\b[^>]*(?:value|title|alt)\\s*=\\s*['\"]?Обновить['\"]?[^>]*>", "");
+        prefix = prefix.replaceAll("(?is)<button\\b[^>]*>\\s*Обновить\\s*</button>", "");
+        prefix = prefix.replaceAll("(?is)<a\\b[^>]*>\\s*Обновить\\s*</a>", "");
+        prefix = prefix.replaceAll("(?is)<a\\b[^>]*>\\s*<font\\b[^>]*class\\s*=\\s*['\"]?placename['\"]?[^>]*>.*?</font>\\s*</a>\\s*(?:\\[\\s*\\d+\\s*\\])?", "");
+        prefix = prefix.replaceAll("(?is)<font\\b[^>]*class\\s*=\\s*['\"]?placename['\"]?[^>]*>.*?</font>\\s*(?:\\[\\s*\\d+\\s*\\])?", "");
+        prefix = prefix.replaceAll("(?is)(?:Название|Регион)\\s*:?\\s*(?:<br\\s*/?>|&nbsp;|\\s)*", "");
+        return prefix + suffix;
+    }
+
+    private static String[] extractLocationParts(String html) {
+        String rawLocation = extractRawLocationName(html);
+        if (isEmpty(rawLocation)) {
+            return extractLocationPartsFromCurrentCell("", "");
+        }
+        String normalized = rawLocation
+                .replace("<br />", "<br>")
+                .replace("<br/>", "<br>")
+                .replace("<BR>", "<br>");
+        String[] parts = normalized.split("(?i)<br>");
+        if (parts.length >= 2) {
+            String region = stripHtml(parts[0]);
+            String name = stripHtml(parts[1]);
+            return extractLocationPartsFromCurrentCell(region, name);
+        }
+        return extractLocationPartsFromCurrentCell("", stripHtml(normalized));
+    }
+
+    private static String[] extractLocationPartsFromCurrentCell(String region, String name) {
+        String normalizedRegion = normalizeCellLabel(region);
+        String normalizedName = normalizeCellLabel(name);
+        String resolvedReg = resolveCellRegNumForRoomName(normalizedName);
+        if (isEmpty(resolvedReg) && AppVars.Profile != null) {
+            resolvedReg = normalizeRegNum(AppVars.Profile.MapLocation);
+        }
+        if (!isEmpty(resolvedReg) && ExtMap.Cells.containsKey(resolvedReg)) {
+            if (isEmpty(normalizedRegion)) {
+                normalizedRegion = normalizeCellLabel(getCellRegionDirect(resolvedReg));
+            }
+            if (isEmpty(normalizedName)) {
+                normalizedName = normalizeCellLabel(getCellName(resolvedReg));
+            }
+        }
+        return new String[]{normalizedRegion, normalizedName};
+    }
+
+    private static String extractRawLocationName(String html) {
+        String location = extractBetween(html, "<font class=placename><b>", "</b>");
+        if (isEmpty(location)) {
+            location = extractBetween(html, "<font class=placename><b>", "</b></font>");
+        }
+        return location;
+    }
+
+    private static int parseOnlineCharsCount(String html) {
+        int online = parseFirstFormattedIntBeforeChatList(html, "Всего");
+        if (online >= 0) {
+            return online;
+        }
+        online = parseFirstInt(html, "(?is)Всего\\s*:?\\s*(?:</?[^>]+>\\s*)*(\\d+)");
+        if (online >= 0) {
+            return online;
+        }
+        return parseFirstInt(html, "(?is)>\\s*Всего\\s*:?\\s*(\\d+)\\s*<");
+    }
+
+    private static int parseFirstFormattedIntBeforeChatList(String html, String label) {
+        if (isEmpty(html) || isEmpty(label)) {
+            return -1;
+        }
+        int chatListPos = html.indexOf("var ChatListU");
+        int searchLimit = chatListPos >= 0 ? chatListPos : Math.min(html.length(), 4096);
+        String prefixText = stripHtml(html.substring(0, searchLimit))
+                .replace("&nbsp;", " ")
+                .replace("&#160;", " ")
+                .replace('\u00A0', ' ');
+        Matcher matcher = Pattern.compile("(?is)" + Pattern.quote(label)
+                + "\\s*:?\\s*(?:\\[\\s*)?([0-9][0-9\\s.]*[0-9]|[0-9])").matcher(prefixText);
+        if (!matcher.find()) {
+            return -1;
+        }
+        String digits = matcher.group(1).replaceAll("[^0-9]", "");
+        if (digits.isEmpty()) {
+            return -1;
+        }
+        try {
+            return Integer.parseInt(digits);
+        } catch (Exception ignored) {
+            return -1;
+        }
+    }
+
+    private static String stripHtml(String value) {
+        if (value == null) {
+            return "";
+        }
+        return value.replaceAll("<[^>]+>", " ");
+    }
+
     // Парсит JS-массив ChatListU и формирует HTML списка игроков.
     private static FilterProcRoomResult FilterProcRoom(String html) {
         FilterProcRoomResult result = new FilterProcRoomResult();
@@ -1971,9 +2137,22 @@ public class RoomManager {
                     enemyAttack.add(nick);
                     AppLog.d(TAG, AA_TRACE_PREFIX + " enemy detected in room: " + buildEnemyTrace(nick));
                 }
+                int classId = parseClassIdSafe(ContactsManager.getClassIdOfContact(nick));
+                if (classId == CONTACT_CLASS_ENEMY) {
+                    result.enemyCount++;
+                } else if (classId == CONTACT_CLASS_FRIEND) {
+                    result.friendCount++;
+                } else if (!nick.isEmpty()) {
+                    result.neutralCount++;
+                }
+                if (parseRoomInjuryTypeHint(rawEntry) > 0) {
+                    result.injuredCount++;
+                }
 
                 try {
-                    sb.append("<div class=\"an-room-row\">");
+                    sb.append("<div class=\"an-room-row ")
+                            .append(getRoomRowClass(nick, classId))
+                            .append("\">");
                     sb.append(HtmlChar(rawEntry));
                     sb.append("</div>");
                 } catch (Exception htmlCharError) {
@@ -1997,6 +2176,19 @@ public class RoomManager {
         }
 
         return result;
+    }
+
+    private static String getRoomRowClass(String nick, int classId) {
+        if (!isEmpty(nick) && isSelfNick(nick)) {
+            return "an-room-self";
+        }
+        if (classId == CONTACT_CLASS_ENEMY) {
+            return "an-room-enemy";
+        }
+        if (classId == CONTACT_CLASS_FRIEND) {
+            return "an-room-friend";
+        }
+        return "an-room-neutral";
     }
 
     /**
@@ -3226,6 +3418,10 @@ public class RoomManager {
     // Вспомогательный контейнер результата парсинга списка комнаты.
     private static class FilterProcRoomResult {
         int numCharsInRoom;
+        int friendCount;
+        int enemyCount;
+        int neutralCount;
+        int injuredCount;
         String enemyAttack;
         String html;
         String chatListU;

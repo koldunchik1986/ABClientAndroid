@@ -34,6 +34,7 @@ final class AutoCutHandler {
     private static final String AUTO_CUT_SICKLE_INV_FILTER = "&im=0&wca=4";
     private static final String AUTO_CUT_AXE_INV_FILTER = "&im=0&wca=2";
     private static final String AUTO_CUT_CLEANUP_INV_FILTER = "&im=0";
+    private static final int AUTO_CUT_TOOL_INVENTORY_RETRY_DELAY_MS = 800;
 
     private AutoCutHandler() {
     }
@@ -244,7 +245,8 @@ final class AutoCutHandler {
             AppLog.d(AutoCutManager.TRACE_CHAIN, TAG, "redirect to inventory for tool wear, mode=" + mode.actionKey);
             return invHtml;
         }
-        if (MainPhp.mainPhpIsInv(html) || MainPhp.isInventoryAddress(address)) {
+        boolean inventoryHtml = MainPhp.mainPhpIsInv(html) || MainPhp.hasInventoryRows(html);
+        if (inventoryHtml) {
             String wearHtml = mainPhpWearSickle(html);
             if (wearHtml == null || wearHtml.isEmpty()) {
                 if (!MainPhp.inventoryAddressMatchesFilter(address, toolFilter)) {
@@ -252,6 +254,14 @@ final class AutoCutHandler {
                 }
             }
             return wearHtml;
+        }
+        if (MainPhp.isInventoryAddress(address)) {
+            AppLog.w(AutoCutManager.TRACE_CHAIN, TAG,
+                    "tool wear inventory address has no inventory html, retry inventory after delay, mode="
+                            + mode.actionKey + ", address=" + address);
+            return FightAuto.buildDelayedRedirectHtml(mode.title + ": ожидание инвентаря",
+                    address,
+                    AUTO_CUT_TOOL_INVENTORY_RETRY_DELAY_MS);
         }
         return null;
     }

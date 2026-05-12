@@ -4650,6 +4650,18 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         drawer.closeDrawer(GravityCompat.START);
         return true;
     }
+
+    public void openQuickActionsForNick(String nick) {
+        runOnUiThread(() -> {
+            if (!LicenseRuntime.getInstance().isActionAllowed(QuickActionType.QUICK_ACTIONS)) {
+                Toast.makeText(this, "Быстрые действия недоступны", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            String cleanNick = nick == null ? "" : nick.trim();
+            ru.neverlands.anclient.ui.QuickActionsBottomSheet.newInstance(cleanNick)
+                    .show(getSupportFragmentManager(), "QuickActions");
+        });
+    }
     
     // Таймер UI: обновление часов + проверка соединения раз в секунду.
     private void startTimer() {

@@ -107,6 +107,18 @@ public class WebAppInterface {
         Toast.makeText(mContext, toast, Toast.LENGTH_SHORT).show();
     }
 
+    @JavascriptInterface
+    public void OpenQuickActionsForNick(String nick) {
+        MainActivity mainActivity = getMainActivityOrNull();
+        if (mainActivity == null) {
+            AppLog.w("WebAppInterface", "OpenQuickActionsForNick: MainActivity is null");
+            return;
+        }
+        String cleanNick = nick == null ? "" : nick.trim();
+        AppLog.d("WebAppInterface", "OpenQuickActionsForNick: nick=" + cleanNick);
+        mainActivity.openQuickActionsForNick(cleanNick);
+    }
+
     /**
      * Единый канал: серверные popup из JS карты отправляются в чат и не показываются overlay-окном.
      */
