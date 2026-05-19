@@ -95,6 +95,7 @@ import ru.neverlands.anclient.manager.AutoFunctionsManager;
 import ru.neverlands.anclient.manager.AppTimerManager;
 import ru.neverlands.anclient.manager.ContactsManager;
 import ru.neverlands.anclient.databinding.ActivityMainBinding;
+import ru.neverlands.anclient.manager.ProfessionRatingMonitor;
 import ru.neverlands.anclient.manager.TabManager;
 import ru.neverlands.anclient.manager.RoomManager;
 import ru.neverlands.anclient.model.Position;
@@ -103,6 +104,7 @@ import ru.neverlands.anclient.model.UserConfig;
 import ru.neverlands.anclient.network.NetworkClient;
 import ru.neverlands.anclient.proxy.CookiesManager;
 import ru.neverlands.anclient.proxy.ProxyRuntimeManager;
+import ru.neverlands.anclient.postfilter.FightAuto;
 import ru.neverlands.anclient.postfilter.MainPhp;
 import ru.neverlands.anclient.utils.AppLog;
 import ru.neverlands.anclient.utils.ExtMap;
@@ -140,6 +142,9 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     private static final long CHAT_ROOM_COLLISION_GUARD_MS = 700L;
     private static final int AUTO_SUBMIT_RETRY_DELAY_MS = 180;
     private static final int AUTO_SUBMIT_MAX_RETRY_COUNT = 3;
+    private static final long AUTO_BATTLE_LEGACY_RANDOM_MIN_DELAY_MS = 1000L;
+    private static final long AUTO_BATTLE_LEGACY_RANDOM_DELAY_RANGE_MS = 1001L;
+    private static final long AUTO_BATTLE_DUPLICATE_SUBMIT_SUPPRESS_MS = 5000L;
     private static final long CAPTCHA_IMAGE_STABILIZE_DELAY_MS = 180L;
     /**
      * TTL fallback-адреса картинки боевой капчи, перехваченной сетевым контуром раньше UI.
@@ -281,6 +286,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     private int navTickErrorBurstCount = 0;
     private boolean lastQuickPanelAutoMovingState = false;
     private long lastAutoBattleSubmitAtMs = 0L;
+    private String lastAutoBattleSubmitPayloadKey = "";
     private final Handler autoBattleDelayHandler = createMainHandler();
     private Runnable pendingAutoBattleSubmitRunnable;
     private String pendingAutoBattleSubmitPayload = "";
@@ -1810,9 +1816,10 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         }
         String previousFightLink = AppVars.FightLink;
         String previousCodeAddress = AppVars.CodeAddress;
+        LezFight parsedFight = null;
         try {
-            LezFight fight = new LezFight(html);
-            return fight.IsValid && fight.IsBoi;
+            parsedFight = new LezFight(html);
+            return parsedFight.IsValid && parsedFight.IsBoi;
         } catch (Exception e) {
             AppLog.w(TAG, BG_TRACE_PREFIX + " isActiveFightContext: parse failed, treat as inactive", e);
             return false;
@@ -1826,13 +1833,20 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                         + ", generatedFightLink=" + (AppVars.FightLink == null ? "null" : AppVars.FightLink)
                         + ", generatedCodeAddress=" + (AppVars.CodeAddress == null ? "null" : AppVars.CodeAddress));
             }
-            if (hasFightFinishAct7Link(generatedFightLink)) {
+            boolean finishAlreadyConfirmed = parsedFight != null
+                    && FightAuto.isFightFinishConfirmedForLog(parsedFight.LogBoi);
+            if (hasFightFinishAct7Link(generatedFightLink) && !finishAlreadyConfirmed) {
                 AppLog.d(TAG, BG_TRACE_PREFIX + " isActiveFightContext: keep generated finish link from inactive fight html"
                         + ", finishLink=" + generatedFightLink
                         + ", codeAddress=" + (generatedCodeAddress == null ? "" : generatedCodeAddress));
                 AppVars.FightLink = generatedFightLink;
                 AppVars.CodeAddress = generatedCodeAddress;
             } else {
+                if (finishAlreadyConfirmed && hasFightFinishAct7Link(generatedFightLink)) {
+                    AppLog.d(TAG, BG_TRACE_PREFIX + " isActiveFightContext: drop generated finish link for confirmed fight"
+                            + ", logBoi=" + parsedFight.LogBoi
+                            + ", finishLink=" + generatedFightLink);
+                }
                 AppVars.FightLink = previousFightLink;
                 AppVars.CodeAddress = previousCodeAddress;
             }
@@ -3849,9 +3863,11 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
      * Планирует авто-удар с учётом пользовательской задержки между ударами.
      *
      * Поведение:
-     * - если задержка не задана (0 сек), отправляем сразу;
-     * - если задержка задана и ещё не прошла, ставим отложенную отправку payload (postDelayed),
-     *   а не теряем ход.
+     * - первый удар после анонса боя отправляем сразу, чтобы сохранить event-driven отклик;
+     * - между следующими ударами соблюдаем задержку: заданную в группе или legacy 1-2 сек при 0;
+     * - если задержка ещё не прошла, ставим отложенную отправку payload (postDelayed), а не теряем ход;
+     * - повторный payload того же состояния боя подавляется коротким окном, чтобы WebView/JS-bridge
+     *   не создавал submit-storm при повторной обработке одного и того же fight_pm/vcode.
      *
      * Зависимости:
      * - `AppVars.CurrentAutoBattleHitDelaySec` (задержка активной группы из вкладки "Ротация"),
@@ -3861,6 +3877,28 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     private void enqueueAutoBattleSubmit(String payload) {
         if (payload == null || payload.isEmpty()) {
             return;
+        }
+
+        long nowMs = System.currentTimeMillis();
+        String payloadKey = buildAutoBattleSubmitPayloadKey(payload);
+        if (!payloadKey.isEmpty()) {
+            if (payloadKey.equals(lastAutoBattleSubmitPayloadKey)) {
+                long sinceLastSameSubmitMs = nowMs - lastAutoBattleSubmitAtMs;
+                if (sinceLastSameSubmitMs >= 0L
+                        && sinceLastSameSubmitMs < AUTO_BATTLE_DUPLICATE_SUBMIT_SUPPRESS_MS) {
+                    AppLog.d(TAG, BG_TRACE_PREFIX + " autoBattleDelay: duplicate payload suppressed"
+                            + ", payloadKey=" + payloadKey
+                            + ", sinceLastMs=" + sinceLastSameSubmitMs
+                            + ", suppressMs=" + AUTO_BATTLE_DUPLICATE_SUBMIT_SUPPRESS_MS);
+                    return;
+                }
+            }
+            if (pendingAutoBattleSubmitRunnable != null
+                    && payloadKey.equals(buildAutoBattleSubmitPayloadKey(pendingAutoBattleSubmitPayload))) {
+                AppLog.d(TAG, BG_TRACE_PREFIX + " autoBattleDelay: duplicate payload already queued"
+                        + ", payloadKey=" + payloadKey);
+                return;
+            }
         }
 
         long waitMs = getAutoBattleSubmitWaitMs();
@@ -3897,6 +3935,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
 
     private void submitAutoBattleNow(String payload) {
         lastAutoBattleSubmitAtMs = System.currentTimeMillis();
+        lastAutoBattleSubmitPayloadKey = buildAutoBattleSubmitPayloadKey(payload);
         // Когда Activity не в foreground, WebView form.submit() реально не отправляет HTTP POST —
         // Android WebView откладывает навигацию до возврата в foreground.
         // Поэтому в background используем прямой HTTP POST, минуя WebView.
@@ -3912,19 +3951,34 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     }
 
     private long getAutoBattleSubmitWaitMs() {
-        int delaySec = Math.max(0, AppVars.CurrentAutoBattleHitDelaySec);
-        if (delaySec <= 0) {
-            return 0L;
-        }
-        long configuredDelayMs = Math.min(300_000L, delaySec * 1000L);
         if (lastAutoBattleSubmitAtMs <= 0L) {
             return 0L;
         }
+        int delaySec = Math.max(0, AppVars.CurrentAutoBattleHitDelaySec);
+        long configuredDelayMs = delaySec > 0
+                ? Math.min(300_000L, delaySec * 1000L)
+                : resolveLegacyRandomAutoBattleDelayMs();
         long elapsedMs = System.currentTimeMillis() - lastAutoBattleSubmitAtMs;
         if (elapsedMs >= configuredDelayMs) {
             return 0L;
         }
         return configuredDelayMs - elapsedMs;
+    }
+
+    /**
+     * Legacy-режим `HitDelaySec=0`: первый event-driven удар остаётся мгновенным,
+     * а следующие удары получают стабильное для последнего submit окно 1-2 секунды.
+     */
+    private long resolveLegacyRandomAutoBattleDelayMs() {
+        return AUTO_BATTLE_LEGACY_RANDOM_MIN_DELAY_MS
+                + (lastAutoBattleSubmitAtMs % AUTO_BATTLE_LEGACY_RANDOM_DELAY_RANGE_MS);
+    }
+
+    private String buildAutoBattleSubmitPayloadKey(String payload) {
+        if (payload == null || payload.isEmpty()) {
+            return "";
+        }
+        return Integer.toHexString(payload.hashCode());
     }
 
     private void clearPendingAutoBattleSubmit() {
@@ -4635,6 +4689,12 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             }
             Intent intent = new Intent(this, ClansActivity.class);
             startActivity(intent);
+        } else if (id == R.id.nav_forpost_info) {
+            Intent intent = new Intent(this, ForpostInfoActivity.class);
+            startActivity(intent);
+        } else if (id == R.id.nav_tables) {
+            Intent intent = new Intent(this, TablesActivity.class);
+            startActivity(intent);
         } else if (id == R.id.nav_logs) {
             if (!LicenseRuntime.getInstance().isActionAllowed(QuickActionType.OPEN_LOGS)) {
                 Toast.makeText(this, "Логи недоступны", Toast.LENGTH_SHORT).show();
@@ -4673,6 +4733,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                     updateClock();
                     checkConnection();
                     checkServerTimerDrivenActions();
+                    ProfessionRatingMonitor.maybeCheck(MainActivity.this);
                     syncQuickButtonsRuntimeState();
                     AppTimerManager.getInstance(MainActivity.this).processDueTimers();
                 });
@@ -5012,8 +5073,9 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
      *   наследовать дальний `NeverTimer` от боя, навигации или другого фонового процесса;
      * - AutoMoving и AutoFish используют существующие reload ветки;
      * - AutoCut подключён только как pending look retry: state хранит `AutoCutManager`, а этот метод
-     *   по due tick делает `go=ret&an_auto_cut_tick=1`, чтобы WebView вернулся к карте и штатный JS
-     *   нажал `Оглядеться` без второго native HTTP-контура;
+     *   по due tick возвращает WebView в нужный штатный HTML-контекст без второго native HTTP-контура;
+     * - обычный look retry идёт через `go=ret&an_auto_cut_tick=1`, cleanup-inventory retry идёт
+     *   через `go=inv&im=0`, чтобы bulk-drop получил реальную inventory page;
      * - fight/captcha/fishing suppression guard-ы имеют приоритет, чтобы не ломать ручные и боевые действия.
      */
     private void checkServerTimerDrivenActions() {
@@ -5026,6 +5088,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         long autoCutRetryDueAt = autoCutRetryPending ? autoCutManager.getPendingLookRetryDueAtMs() : 0L;
         boolean serverTimerDue = serverDueAt > 0L && now + SERVER_TIMER_TICK_MARGIN_MS >= serverDueAt;
         boolean autoCutRetryDue = autoCutRetryPending && autoCutManager.isPendingLookRetryDue(now);
+        boolean autoCutCleanupRetryDue = autoCutRetryPending && autoCutManager.isPendingCleanupInventoryRetryDue(now);
         if (!serverTimerDue && !autoCutRetryDue) {
             return;
         }
@@ -5045,8 +5108,8 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             return;
         }
 
-        boolean autoMoving = AppVars.AutoMoving && serverTimerDue;
-        boolean autoFish = autoFunctionsManager.isAutoFishEnabled() && serverTimerDue;
+        boolean autoMoving = AppVars.AutoMoving && serverTimerDue && !autoCutCleanupRetryDue;
+        boolean autoFish = autoFunctionsManager.isAutoFishEnabled() && serverTimerDue && !autoCutCleanupRetryDue;
         boolean autoCutRetry = autoCutRetryPending && autoCutRetryDue;
         if (!autoMoving && !autoFish && !autoCutRetry) {
             return;
@@ -5119,25 +5182,38 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                 reloadUrl = "http://neverlands.ru/main.php?get_id=56&act=10&go=inf&an_nav_tick=1&r=" + now;
             }
         } else if (!autoCutRetrySource.isEmpty()) {
-            String backgroundLookUrl = buildBackgroundAutoCutLookUrl(autoCutManager, now);
-            if (!backgroundLookUrl.isEmpty()) {
-                reloadUrl = backgroundLookUrl;
-            } else {
-                reloadUrl = "http://neverlands.ru/main.php?get_id=56&act=10&go=ret";
-                String vcode = SessionManager.getInstance().getValidVCodeForAction("server_timer_tick_auto_cut");
-                if (vcode != null && !vcode.isEmpty()) {
-                    reloadUrl += "&vcode=" + vcode;
-                } else {
+            if (isAutoCutCleanupInventoryRetrySource(autoCutRetrySource)) {
+                reloadUrl = buildAutoCutCleanupInventoryReloadUrl(autoCutRetrySource, now);
+                if (reloadUrl.isEmpty()) {
+                    autoCutManager.scheduleLookRetryAfterDelay(
+                            "cleanup_inventory:no_vcode:" + autoCutRetrySource,
+                            1500L);
                     AppLog.w(AutoCutManager.TRACE_CHAIN, TAG,
-                            "SERVER_TIMER_TICK auto-cut retry without vcode, source=" + autoCutRetrySource);
-                }
-                reloadUrl += "&an_auto_cut_tick=1&r=" + now;
-                if (!isUiForegroundLikely()) {
-                    autoCutRetryRescheduled = true;
-                    autoCutManager.scheduleLookRetryAfterDelay("background_map_reload:" + autoCutRetrySource, 1500L);
-                    AppLog.d(AutoCutManager.TRACE_CHAIN, TAG,
-                            "SERVER_TIMER_TICK background auto-cut waits for fresh map before direct look, source="
+                            "SERVER_TIMER_TICK auto-cut cleanup inventory rescheduled: no vcode, source="
                                     + autoCutRetrySource);
+                    return;
+                }
+            } else {
+                String backgroundLookUrl = buildBackgroundAutoCutLookUrl(autoCutManager, now);
+                if (!backgroundLookUrl.isEmpty()) {
+                    reloadUrl = backgroundLookUrl;
+                } else {
+                    reloadUrl = "http://neverlands.ru/main.php?get_id=56&act=10&go=ret";
+                    String vcode = SessionManager.getInstance().getValidVCodeForAction("server_timer_tick_auto_cut");
+                    if (vcode != null && !vcode.isEmpty()) {
+                        reloadUrl += "&vcode=" + vcode;
+                    } else {
+                        AppLog.w(AutoCutManager.TRACE_CHAIN, TAG,
+                                "SERVER_TIMER_TICK auto-cut retry without vcode, source=" + autoCutRetrySource);
+                    }
+                    reloadUrl += "&an_auto_cut_tick=1&r=" + now;
+                    if (!isUiForegroundLikely()) {
+                        autoCutRetryRescheduled = true;
+                        autoCutManager.scheduleLookRetryAfterDelay("background_map_reload:" + autoCutRetrySource, 1500L);
+                        AppLog.d(AutoCutManager.TRACE_CHAIN, TAG,
+                                "SERVER_TIMER_TICK background auto-cut waits for fresh map before direct look, source="
+                                        + autoCutRetrySource);
+                    }
                 }
             }
         } else {
@@ -5198,6 +5274,26 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                 + ", currentUrl=" + currentUrl
                 + ", reloadUrl=" + reloadUrl);
         binding.appBarMain.contentMain.webView.loadUrl(reloadUrl);
+    }
+
+    private boolean isAutoCutCleanupInventoryRetrySource(String source) {
+        return source != null && source.contains("cleanup_inventory:");
+    }
+
+    private String buildAutoCutCleanupInventoryReloadUrl(String source, long now) {
+        String reloadUrl = "http://neverlands.ru/main.php?get_id=56&act=10&go=inv";
+        String vcode = SessionManager.getInstance().getValidVCodeForAction("server_timer_tick_auto_cut_cleanup_inventory");
+        if (vcode == null || vcode.isEmpty()) {
+            AppLog.w(AutoCutManager.TRACE_CHAIN, TAG,
+                    "SERVER_TIMER_TICK auto-cut cleanup inventory without vcode, source=" + source);
+            return "";
+        }
+        reloadUrl += "&vcode=" + vcode;
+        reloadUrl += "&im=0&an_auto_cut_tick=1&r=" + now;
+        AppLog.d(AutoCutManager.TRACE_CHAIN, TAG,
+                "SERVER_TIMER_TICK auto-cut cleanup inventory reload, source=" + source
+                        + ", url=" + reloadUrl);
+        return reloadUrl;
     }
 
     private String buildBackgroundAutoCutNavigationStepUrl(AutoCutManager autoCutManager, long now) {

@@ -321,6 +321,21 @@ public final class FightAuto {
         String fightCaptchaUrl = fightEnded ? resolvedFightCaptchaUrl : null;
         host.recoverAutoboiRuntimeStateIfNeeded(fightEnded, fightCaptchaUrl);
 
+        if (fightEnded && isFightFinishConfirmedForLog(fight.LogBoi)) {
+            AppVars.FightLink = "";
+            AppVars.CodeAddress = "";
+            AppVars.ContentMainPhp = "";
+            String msg_confirmed_stale = "processFight: skip stale finished fight frame after confirmed act=7"
+                    + ", logBoi=" + fight.LogBoi
+                    + ", address=" + address;
+            AppLog.w(TAG, TAG, msg_confirmed_stale);
+            FileLogger.trace(TAG, msg_confirmed_stale);
+            return host.buildDelayedRedirectHtml(
+                    AUTO_FINISH_TITLE,
+                    "http://neverlands.ru/main.php?get_id=56&act=10&go=inf",
+                    AUTO_FINISH_LOOP_FALLBACK_DELAY_MS);
+        }
+
         final boolean autoFightEnabledByPreference = host.isAutoFightEnabledByPreference();
         final boolean autoFightEnabled = autoFightEnabledByPreference
                 || AppVars.Autoboi == AutoboiState.AutoboiOn;
@@ -427,6 +442,7 @@ public final class FightAuto {
             AppVars.LastBoiLog = fight.LogBoi;
             AppVars.LastBoiUron = "";
             lastAutoSkinProbeFightLog = "";
+            AppVars.LastFightFinishConfirmedLog = "";
             AppVars.AutoboiReadyCompletedLog = "";
             resetAutoFinishLoopGuard();
             fight.updateLastBoiFromLogs();
@@ -757,6 +773,45 @@ public final class FightAuto {
 
         lastAutoFinishRedirectCount++;
         return lastAutoFinishRedirectCount > AUTO_FINISH_MAX_REDIRECTS_PER_LOG;
+    }
+
+    /**
+     * Фиксирует, что сервер уже принял финальный `act=7` и вернул non-fight HTML.
+     * Decision point нужен, чтобы stale fight frame больше не создавал новый `FightLink`.
+     */
+    public static void markFightFinishConfirmed(String logId, String source, String address) {
+        String safeLogId = logId == null ? "" : logId.trim();
+        if (safeLogId.isEmpty()) {
+            safeLogId = AppVars.LastBoiEndLog == null ? "" : AppVars.LastBoiEndLog.trim();
+        }
+        if (safeLogId.isEmpty()) {
+            safeLogId = AppVars.LastBoiLog == null ? "" : AppVars.LastBoiLog.trim();
+        }
+        AppVars.LastFightFinishConfirmedLog = safeLogId;
+        AppVars.FightLink = "";
+        AppVars.CodeAddress = "";
+        AppVars.ContentMainPhp = "";
+        AppVars.LastFightPulseAtMs = 0L;
+        AppVars.LastFightAnnounceAtMs = 0L;
+        resetAutoFinishLoopGuard();
+        ru.neverlands.anclient.utils.SessionManager.getInstance().clearFightContext();
+        String msg = "markFightFinishConfirmed: clear stale fight state"
+                + ", logBoi=" + safeLogId
+                + ", source=" + source
+                + ", address=" + address;
+        AppLog.i(TAG, TAG, msg);
+        FileLogger.trace(TAG, msg);
+    }
+
+    /**
+     * Проверяет, относится ли stale fight HTML к уже подтверждённому завершённому бою.
+     */
+    public static boolean isFightFinishConfirmedForLog(String logId) {
+        if (logId == null || logId.trim().isEmpty()) {
+            return false;
+        }
+        String confirmedLog = AppVars.LastFightFinishConfirmedLog;
+        return confirmedLog != null && logId.trim().equals(confirmedLog.trim());
     }
 
     /**

@@ -133,6 +133,8 @@ public class ContactsManager {
             NodeList nList = doc.getElementsByTagName("contact");
             contactsCache.clear();
 
+            int loadedCount = 0;
+            int onlineCount = 0;
             for (int i = 0; i < nList.getLength(); i++) {
                 Node node = nList.item(i);
                 if (node.getNodeType() == Node.ELEMENT_NODE) {
@@ -164,9 +166,13 @@ public class ContactsManager {
                     // Если тега нет в старых профилях — используем 0 (глобальный AutoAttackToolId).
                     contact.toolId = Integer.parseInt(getTagValue("toolId", element, "0"));
                     contactsCache.put(contact.nick, contact);
+                    loadedCount++;
+                    if (contact.isOnline()) {
+                        onlineCount++;
+                    }
                 }
             }
-            AppLog.i(TAG, "Contacts loaded from XML into cache.");
+            AppLog.i(TAG, "Contacts loaded from XML into cache: count=" + loadedCount + ", online=" + onlineCount);
         } catch (Exception e) {
             AppLog.e(TAG, "Error loading contacts from XML", e);
         }
@@ -292,6 +298,12 @@ public class ContactsManager {
     public static void updateContact(Contact contact) {
         if (contact == null || contact.nick == null) return;
         contactsCache.put(contact.nick, contact);
+        AppLog.i(TAG, "updateContact: nick=" + contact.nick
+                + ", playerID=" + safe(contact.playerID)
+                + ", onlineStatus=" + contact.onlineStatus
+                + ", isOnline=" + contact.isOnline()
+                + ", hasLocation=" + !isEmpty(contact.geoLocation)
+                + ", warLogNumber=" + safe(contact.warLogNumber));
         saveContactsToXml();
     }
 
@@ -360,6 +372,14 @@ public class ContactsManager {
     // Быстрый доступ к копии кеша.
     public static List<Contact> getContactsFromCache() {
         return new ArrayList<>(contactsCache.values());
+    }
+
+    private static boolean isEmpty(String value) {
+        return value == null || value.trim().isEmpty();
+    }
+
+    private static String safe(String value) {
+        return value == null ? "" : value;
     }
 
     public static List<Integer> getEffectIdsOfContact(String name) {

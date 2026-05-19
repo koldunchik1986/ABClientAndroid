@@ -1885,6 +1885,9 @@ public class MainPhp {
             registerFightEndByLogId(AppVars.LastBoiLog, "fight_finish_url_early");
             publishFightResultFromLogsIfNeeded(html, address, AppVars.LastBoiLog);
             publishFightSummaryFromFinishHtmlIfNeeded(html, address, AppVars.LastBoiLog);
+            if (!isFightFrame && !isFightTopFrame) {
+                FightAuto.markFightFinishConfirmed(AppVars.LastBoiLog, "fight_finish_url_non_fight", address);
+            }
         }
         maybeMarkAutoSkinKnifeRecheck();
         boolean closedFightInterfereError = htmlLower.contains("ошибка при использовании. нельзя вмешаться в закрытый бой");

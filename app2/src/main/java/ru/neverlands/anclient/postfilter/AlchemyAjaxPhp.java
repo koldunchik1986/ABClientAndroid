@@ -85,6 +85,7 @@ public final class AlchemyAjaxPhp {
      * - очищает one-shot retry; due herb timer текущей клетки удаляется только после no-selected
      *   scan-а или успешного `act=3`, чтобы wrong-captcha retry мог повторить текущую клетку;
      * - выбирает первую доступную выбранную траву (`availableCount > 0` и `cutVcode` не пустой);
+     * - если выбранный ресурс есть, но `cutVcode` пустой, считает кнопку неактивной и перепроверяет инструмент;
      * - если серп не готов, откладывает выбранный ресурс и запускает main.php-проверку серпа;
      * - если captcha нужна, открывает native popup; иначе отправляет `act=3` через `AjaxGet(...)`.
      *
@@ -114,19 +115,36 @@ public final class AlchemyAjaxPhp {
         autoCut.updateCurrentCellSnapshot(buildCellSnapshotList(state.resources), "alchemy_act1");
 
         ResourceCandidate selected = null;
+        ResourceCandidate selectedWithInactiveButton = null;
         for (ResourceCandidate resource : state.resources) {
-            if (resource.availableCount <= 0 || TextUtils.isEmpty(resource.cutVcode)) {
+            if (resource.availableCount <= 0) {
                 continue;
             }
             if (!autoCut.isResourceCandidateForMode(mode, resource.resId, resource.name, resource.rType)) {
                 continue;
             }
             if (autoCut.isResourceSelected(mode, resource.resId, resource.name)) {
+                if (TextUtils.isEmpty(resource.cutVcode)) {
+                    if (selectedWithInactiveButton == null) {
+                        selectedWithInactiveButton = resource;
+                    }
+                    continue;
+                }
                 selected = resource;
                 break;
             }
         }
         if (selected == null) {
+            if (selectedWithInactiveButton != null) {
+                autoCut.requestSickleCheckBeforeCut("alchemy_act1_inactive_button:" + selectedWithInactiveButton.resId);
+                AppLog.w(AutoCutManager.TRACE_CHAIN, TAG,
+                        "act1: selected resource available but cut button inactive, tool check requested"
+                                + ", mode=" + mode.actionKey
+                                + ", resource=" + selectedWithInactiveButton.name
+                                + ", available=" + selectedWithInactiveButton.availableCount
+                                + ", total=" + selectedWithInactiveButton.totalCount);
+                return;
+            }
             AppLog.d(AutoCutManager.TRACE_CHAIN, TAG,
                     "act1: no selected available resource, mode=" + mode.actionKey
                             + ", resources=" + state.resources.size());

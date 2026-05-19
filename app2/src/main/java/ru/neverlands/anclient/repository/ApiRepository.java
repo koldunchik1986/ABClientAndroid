@@ -357,6 +357,12 @@ public class ApiRepository {
             case 1: contact.inclinationName = "Darks"; break;
             default: contact.inclinationName = "0"; break;
         }
+        AppLog.d("ApiRepository", "CONTACT_INFO_PARSED: nick=" + contact.nick
+                + ", playerID=" + contact.playerID
+                + ", onlineStatus=" + contact.onlineStatus
+                + ", isOnline=" + contact.isOnline()
+                + ", hasLocation=" + (contact.geoLocation != null && !contact.geoLocation.trim().isEmpty())
+                + ", warLogNumber=" + (contact.warLogNumber == null ? "" : contact.warLogNumber));
         return contact;
     }
 

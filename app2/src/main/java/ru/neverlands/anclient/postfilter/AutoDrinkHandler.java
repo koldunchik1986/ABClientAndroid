@@ -10,9 +10,11 @@ import ru.neverlands.anclient.utils.AppLog;
 import ru.neverlands.anclient.utils.AppVars;
 import ru.neverlands.anclient.utils.FileLogger;
 
-class AutoDrinkHandler {
+public class AutoDrinkHandler {
 
     private static final String TAG = "AutoDrinkHandler";
+    private static final long AUTO_DRINK_RESTORE_ELIXIR_MIN_RETRY_MS = 30_000L;
+    private static final long AUTO_DRINK_RESTORE_ELIXIR_MAX_GUARD_MS = 300_000L;
 
     static final long AUTO_DRINK_TRIGGER_COOLDOWN_MS = 2500L;
 
@@ -20,6 +22,13 @@ class AutoDrinkHandler {
     static volatile long lastAutoDrinkBlazTriggerAtMs = 0L;
     static volatile boolean autoDrinkPostFightSyncPending = false;
     static volatile long autoDrinkPostFightSyncPendingSinceMs = 0L;
+    private static volatile boolean restoreElixirRequestGuardActive = false;
+    private static volatile long restoreElixirRequestSentAtMs = 0L;
+    private static volatile long restoreElixirLastProgressAtMs = 0L;
+    private static volatile int restoreElixirLastObservedHp = -1;
+    private static volatile int restoreElixirLastObservedMa = -1;
+    private static volatile int restoreElixirLastObservedMaxHp = -1;
+    private static volatile int restoreElixirLastObservedMaxMa = -1;
 
     static void tryTriggerAutoDrinkRestoreElixir(String address,
                                                   String html,
@@ -141,6 +150,7 @@ class AutoDrinkHandler {
                 && snapshot.maxMa > 0
                 && maPercent < AppVars.Profile.LezDrinkMa;
         if (!hpBelow && !maBelow) {
+            clearRestoreElixirRequestGuardIfActive("thresholds_recovered", snapshot, snapshotSource);
             AppLog.d(TAG, "AUTO_DRINK_TRACE no-trigger: hp="
                     + String.format(Locale.US, "%.1f", hpPercent) + "%/" + AppVars.Profile.LezDrinkHp
                     + " (enabled=" + AppVars.Profile.LezDoDrinkHp + "), ma="
@@ -153,6 +163,9 @@ class AutoDrinkHandler {
                     + String.format(Locale.US, "%.1f", maPercent) + "%/" + AppVars.Profile.LezDrinkMa
                     + " (enabled=" + AppVars.Profile.LezDoDrinkMa + "), address=" + address
                     + ", snapshotSource=" + snapshotSource);
+            return;
+        }
+        if (shouldSuppressRestoreElixirRetry(snapshot, hpBelow, maBelow, address, snapshotSource)) {
             return;
         }
         long now = System.currentTimeMillis();
@@ -179,7 +192,147 @@ class AutoDrinkHandler {
                 + ", hpEnabled=" + AppVars.Profile.LezDoDrinkHp + ", maEnabled=" + AppVars.Profile.LezDoDrinkMa
                 + ", address=" + address
                 + ", snapshotSource=" + snapshotSource);
+        rememberRestoreElixirObservation(snapshot, now, "trigger_baseline:" + snapshotSource);
         FastActionManager.fastAttackMomentRestoreElixir();
+    }
+
+    public static void markRestoreElixirRequestSent(String source) {
+        long now = System.currentTimeMillis();
+        CharacterVitalsManager.Snapshot vitals = CharacterVitalsManager.snapshot();
+        restoreElixirRequestGuardActive = true;
+        restoreElixirRequestSentAtMs = now;
+        restoreElixirLastProgressAtMs = now;
+        boolean hasTriggerBaseline = restoreElixirLastObservedMaxHp > 0 || restoreElixirLastObservedMaxMa > 0;
+        if (!hasTriggerBaseline && (vitals.maxHp > 0 || vitals.maxMa > 0)) {
+            restoreElixirLastObservedHp = vitals.curHp;
+            restoreElixirLastObservedMa = vitals.curMa;
+            restoreElixirLastObservedMaxHp = vitals.maxHp;
+            restoreElixirLastObservedMaxMa = vitals.maxMa;
+        }
+        String msg = "AUTO_DRINK_TRACE restore guard armed: source=" + source
+                + ", hp=" + restoreElixirLastObservedHp + "/" + restoreElixirLastObservedMaxHp
+                + ", ma=" + restoreElixirLastObservedMa + "/" + restoreElixirLastObservedMaxMa
+                + ", sentAt=" + restoreElixirRequestSentAtMs;
+        AppLog.d(TAG, msg);
+        FileLogger.trace(TAG, msg);
+    }
+
+    private static boolean shouldSuppressRestoreElixirRetry(MainPhp.InsHpSnapshot snapshot,
+                                                            boolean hpBelow,
+                                                            boolean maBelow,
+                                                            String address,
+                                                            String snapshotSource) {
+        if (!restoreElixirRequestGuardActive) {
+            return false;
+        }
+        long now = System.currentTimeMillis();
+        long elapsedMs = now - restoreElixirRequestSentAtMs;
+        if (elapsedMs < 0 || elapsedMs > AUTO_DRINK_RESTORE_ELIXIR_MAX_GUARD_MS) {
+            String msg = "AUTO_DRINK_TRACE restore guard expired: elapsedMs=" + elapsedMs
+                    + ", maxGuardMs=" + AUTO_DRINK_RESTORE_ELIXIR_MAX_GUARD_MS
+                    + ", address=" + address;
+            AppLog.d(TAG, msg);
+            FileLogger.trace(TAG, msg);
+            resetRestoreElixirRequestGuard();
+            rememberRestoreElixirObservation(snapshot, now, "expired_retry_baseline:" + snapshotSource);
+            return false;
+        }
+
+        boolean progress = rememberRestoreElixirObservation(snapshot, now, "guard_check:" + snapshotSource);
+        long sinceProgressMs = now - restoreElixirLastProgressAtMs;
+        boolean retryWindowActive = elapsedMs < AUTO_DRINK_RESTORE_ELIXIR_MIN_RETRY_MS;
+        boolean recoveryProgressActive = progress
+                || (sinceProgressMs >= 0 && sinceProgressMs < AUTO_DRINK_RESTORE_ELIXIR_MIN_RETRY_MS);
+        if (retryWindowActive || recoveryProgressActive) {
+            String msg = "AUTO_DRINK_TRACE restore guard skip: elapsedMs=" + elapsedMs
+                    + ", sinceProgressMs=" + sinceProgressMs
+                    + ", retryWindowActive=" + retryWindowActive
+                    + ", recoveryProgressActive=" + recoveryProgressActive
+                    + ", hpBelow=" + hpBelow
+                    + ", maBelow=" + maBelow
+                    + ", hp=" + snapshot.curHp + "/" + snapshot.maxHp
+                    + ", ma=" + snapshot.curMa + "/" + snapshot.maxMa
+                    + ", address=" + address
+                    + ", snapshotSource=" + snapshotSource;
+            AppLog.d(TAG, msg);
+            FileLogger.trace(TAG, msg);
+            return true;
+        }
+
+        String msg = "AUTO_DRINK_TRACE restore guard retry allowed: elapsedMs=" + elapsedMs
+                + ", sinceProgressMs=" + sinceProgressMs
+                + ", hpBelow=" + hpBelow
+                + ", maBelow=" + maBelow
+                + ", address=" + address
+                + ", snapshotSource=" + snapshotSource;
+        AppLog.d(TAG, msg);
+        FileLogger.trace(TAG, msg);
+        resetRestoreElixirRequestGuard();
+        return false;
+    }
+
+    private static boolean rememberRestoreElixirObservation(MainPhp.InsHpSnapshot snapshot,
+                                                            long now,
+                                                            String source) {
+        if (snapshot == null || (snapshot.maxHp <= 0 && snapshot.maxMa <= 0)) {
+            return false;
+        }
+        boolean maxChanged = (snapshot.maxHp > 0 && restoreElixirLastObservedMaxHp > 0
+                && snapshot.maxHp != restoreElixirLastObservedMaxHp)
+                || (snapshot.maxMa > 0 && restoreElixirLastObservedMaxMa > 0
+                && snapshot.maxMa != restoreElixirLastObservedMaxMa);
+        boolean hpProgress = snapshot.maxHp > 0
+                && restoreElixirLastObservedHp >= 0
+                && snapshot.curHp > restoreElixirLastObservedHp;
+        boolean maProgress = snapshot.maxMa > 0
+                && restoreElixirLastObservedMa >= 0
+                && snapshot.curMa > restoreElixirLastObservedMa;
+        boolean progress = !maxChanged && (hpProgress || maProgress);
+        if (progress) {
+            restoreElixirLastProgressAtMs = now;
+            String msg = "AUTO_DRINK_TRACE restore guard progress: source=" + source
+                    + ", hp=" + restoreElixirLastObservedHp + "->" + snapshot.curHp + "/" + snapshot.maxHp
+                    + ", ma=" + restoreElixirLastObservedMa + "->" + snapshot.curMa + "/" + snapshot.maxMa;
+            AppLog.d(TAG, msg);
+            FileLogger.trace(TAG, msg);
+        }
+        restoreElixirLastObservedHp = snapshot.curHp;
+        restoreElixirLastObservedMa = snapshot.curMa;
+        restoreElixirLastObservedMaxHp = snapshot.maxHp;
+        restoreElixirLastObservedMaxMa = snapshot.maxMa;
+        if (maxChanged) {
+            String msg = "AUTO_DRINK_TRACE restore guard baseline reset: source=" + source
+                    + ", hp=" + snapshot.curHp + "/" + snapshot.maxHp
+                    + ", ma=" + snapshot.curMa + "/" + snapshot.maxMa;
+            AppLog.d(TAG, msg);
+            FileLogger.trace(TAG, msg);
+        }
+        return progress;
+    }
+
+    private static void clearRestoreElixirRequestGuardIfActive(String reason,
+                                                               MainPhp.InsHpSnapshot snapshot,
+                                                               String snapshotSource) {
+        if (!restoreElixirRequestGuardActive) {
+            return;
+        }
+        String msg = "AUTO_DRINK_TRACE restore guard cleared: reason=" + reason
+                + ", hp=" + (snapshot != null ? snapshot.curHp + "/" + snapshot.maxHp : "null")
+                + ", ma=" + (snapshot != null ? snapshot.curMa + "/" + snapshot.maxMa : "null")
+                + ", snapshotSource=" + snapshotSource;
+        AppLog.d(TAG, msg);
+        FileLogger.trace(TAG, msg);
+        resetRestoreElixirRequestGuard();
+    }
+
+    private static void resetRestoreElixirRequestGuard() {
+        restoreElixirRequestGuardActive = false;
+        restoreElixirRequestSentAtMs = 0L;
+        restoreElixirLastProgressAtMs = 0L;
+        restoreElixirLastObservedHp = -1;
+        restoreElixirLastObservedMa = -1;
+        restoreElixirLastObservedMaxHp = -1;
+        restoreElixirLastObservedMaxMa = -1;
     }
 
     static MainPhp.InsHpSnapshot tryBuildAutoDrinkSnapshotFromPinfo() {

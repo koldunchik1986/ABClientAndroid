@@ -140,6 +140,11 @@ public class AppVars {
     public static boolean DebugDumpFightHtml = false;
     public static String LastBoiLog = "";
     public static String LastBoiEndLog = "";
+    /**
+     * LogBoi, для которого сервер уже подтвердил non-fight ответом `act=7` завершение боя.
+     * Используется, чтобы stale fight HTML не генерировал новый finish-link и не блокировал карту.
+     */
+    public static volatile String LastFightFinishConfirmedLog = "";
     public static String LastBoiSostav = "";
     public static String LastBoiTravm = "";
     public static String LastBoiUron = "";

@@ -596,6 +596,16 @@ public final class InventoryParser {
                 posStartInv = pos;
             }
 
+            boolean autoCutGarbageDropPending = isAutoCutGarbageDropPending();
+            int rawGarbageDeleteMarkers = countOccurrencesIgnoreCase(html,
+                    "if(top.DeleteTrue('" + AutoCutManager.GARBAGE_ITEM_NAME + "'))");
+            if (autoCutGarbageDropPending || rawGarbageDeleteMarkers > 0) {
+                AppLog.i(AutoCutManager.TRACE_CHAIN, TAG,
+                        "garbage cleanup inventory scan: rawDeleteMarkers=" + rawGarbageDeleteMarkers
+                                + ", bulkDropThing=" + AppVars.BulkDropThing
+                                + ", cleanupPending=" + AppVars.AutoCutCleanupPending);
+            }
+
             List<InvEntry> invList = new ArrayList<>();
             // UID-детали для казны собираются в том же цикле, где уже создаются
             // `InvEntry`, чтобы не плодить второй inventory-parser и не делать
@@ -619,20 +629,43 @@ public final class InventoryParser {
                 if (!cacheOnlyMode) {
                     String dropThing = invEntry.DropThing == null ? "" : invEntry.DropThing;
                     String dropPrice = invEntry.DropPrice == null ? "" : invEntry.DropPrice;
-                    boolean isBulkDropMatch = !AppVars.BulkDropThing.isEmpty()
-                            && AppVars.BulkDropThing.equalsIgnoreCase(dropThing)
-                            && (AppVars.BulkDropPrice.isEmpty() || AppVars.BulkDropPrice.equals(dropPrice))
+                    String bulkDropThing = AppVars.BulkDropThing == null ? "" : AppVars.BulkDropThing;
+                    String bulkDropPrice = AppVars.BulkDropPrice == null ? "" : AppVars.BulkDropPrice;
+                    boolean isBulkDropMatch = !bulkDropThing.isEmpty()
+                            && bulkDropThing.equalsIgnoreCase(dropThing)
+                            && (bulkDropPrice.isEmpty() || bulkDropPrice.equals(dropPrice))
                             && invEntry.DropLink != null
                             && !invEntry.DropLink.isEmpty();
-                    boolean isGarbageDrop = AutoCutManager.GARBAGE_ITEM_NAME.equalsIgnoreCase(dropThing)
+                    boolean isGarbageDropCandidate = AutoCutManager.GARBAGE_ITEM_NAME.equalsIgnoreCase(dropThing)
+                            && invEntry.DropLink != null
+                            && !invEntry.DropLink.isEmpty();
+                    boolean hasForeignBulkDrop = !bulkDropThing.isEmpty()
+                            && !AutoCutManager.GARBAGE_ITEM_NAME.equalsIgnoreCase(bulkDropThing);
+                    boolean isGarbageDrop = isGarbageDropCandidate
+                            && !hasForeignBulkDrop;
+                    if (isGarbageDrop && bulkDropThing.isEmpty()) {
+                        AppVars.BulkDropThing = AutoCutManager.GARBAGE_ITEM_NAME;
+                        AppVars.BulkDropPrice = "";
+                        AppLog.i(AutoCutManager.TRACE_CHAIN, TAG,
+                                "garbage bulk-drop auto-start: link=" + invEntry.DropLink
+                                        + ", rawDeleteMarkers=" + rawGarbageDeleteMarkers
+                                        + ", cleanupPending=" + AppVars.AutoCutCleanupPending);
+                    }
+                    if (isGarbageDropCandidate && hasForeignBulkDrop) {
+                        AppLog.i(AutoCutManager.TRACE_CHAIN, TAG,
+                                "garbage bulk-drop skipped while other bulk-drop is active: active=" + bulkDropThing);
+                    }
+                    boolean isAutoCutGarbageDrop = autoCutGarbageDropPending
+                            && AutoCutManager.GARBAGE_ITEM_NAME.equalsIgnoreCase(dropThing)
                             && invEntry.DropLink != null
                             && !invEntry.DropLink.isEmpty();
 
-                    if (invEntry.isExpired() || isBulkDropMatch || isGarbageDrop) {
+                    if (invEntry.isExpired() || isBulkDropMatch || isGarbageDrop || isAutoCutGarbageDrop) {
                         String redirectMessage = "Выбрасывание предмета <b>&laquo;" + dropThing + "&raquo;</b>...";
                         if (AutoCutManager.GARBAGE_ITEM_NAME.equalsIgnoreCase(dropThing)) {
                             AppLog.i(AutoCutManager.TRACE_CHAIN, TAG,
                                     "garbage bulk-drop redirect: link=" + invEntry.DropLink
+                                            + ", rawDeleteMarkers=" + rawGarbageDeleteMarkers
                                             + ", cleanupPending=" + AppVars.AutoCutCleanupPending);
                         }
                         return MainPhp.buildRedirectHtml(redirectMessage, invEntry.DropLink == null ? "" : invEntry.DropLink);
@@ -680,12 +713,18 @@ public final class InventoryParser {
 
             if (!cacheOnlyMode) {
                 if (!AppVars.BulkDropThing.isEmpty()) {
-                    MainPhp.sendInventoryChatMessage("Выбрасывание пачки <b>&laquo;" + AppVars.BulkDropThing + "&raquo;</b> завершено.");
-                    if (AutoCutManager.GARBAGE_ITEM_NAME.equalsIgnoreCase(AppVars.BulkDropThing)) {
-                        AppLog.i(AutoCutManager.TRACE_CHAIN, TAG, "garbage bulk-drop completed");
+                    if (isAutoCutGarbageDropPending()) {
+                        AppLog.i(AutoCutManager.TRACE_CHAIN, TAG,
+                                "garbage bulk-drop awaits AutoCut verification: rawDeleteMarkers="
+                                        + rawGarbageDeleteMarkers + ", parsedEntries=" + parsedCount);
+                    } else {
+                        MainPhp.sendInventoryChatMessage("Выбрасывание пачки <b>&laquo;" + AppVars.BulkDropThing + "&raquo;</b> завершено.");
+                        if (AutoCutManager.GARBAGE_ITEM_NAME.equalsIgnoreCase(AppVars.BulkDropThing)) {
+                            AppLog.i(AutoCutManager.TRACE_CHAIN, TAG, "garbage bulk-drop completed");
+                        }
+                        AppVars.BulkDropThing = "";
+                        AppVars.BulkDropPrice = "";
                     }
-                    AppVars.BulkDropThing = "";
-                    AppVars.BulkDropPrice = "";
                 }
                 if (!AppVars.BulkSellThing.isEmpty()) {
                     MainPhp.sendInventoryChatMessage("Продажа пачки <b>&laquo;" + AppVars.BulkSellThing
@@ -759,6 +798,30 @@ public final class InventoryParser {
             e.printStackTrace(new java.io.PrintWriter(sw));
             FileLogger.log("Error during mainPhpInv processing: \n" + sw);
             return html;
+        }
+    }
+
+    private static boolean isAutoCutGarbageDropPending() {
+        return AppVars.AutoCutCleanupPending
+                && AutoCutManager.GARBAGE_ITEM_NAME.equalsIgnoreCase(
+                AppVars.BulkDropThing == null ? "" : AppVars.BulkDropThing);
+    }
+
+    private static int countOccurrencesIgnoreCase(String source, String pattern) {
+        if (source == null || source.isEmpty() || pattern == null || pattern.isEmpty()) {
+            return 0;
+        }
+        String lowerSource = source.toLowerCase(Locale.ROOT);
+        String lowerPattern = pattern.toLowerCase(Locale.ROOT);
+        int count = 0;
+        int from = 0;
+        while (true) {
+            int pos = lowerSource.indexOf(lowerPattern, from);
+            if (pos == -1) {
+                return count;
+            }
+            count++;
+            from = pos + lowerPattern.length();
         }
     }
 }

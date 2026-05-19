@@ -10,6 +10,7 @@ import java.util.Locale;
 
 import ru.neverlands.anclient.utils.AppLog;
 import ru.neverlands.anclient.model.InvEntry;
+import ru.neverlands.anclient.postfilter.AutoDrinkHandler;
 import ru.neverlands.anclient.postfilter.Filter;
 import ru.neverlands.anclient.postfilter.MainPhp;
 import ru.neverlands.anclient.utils.AppVars;
@@ -826,6 +827,7 @@ public class FastActionManager {
         // Сервер уже применил действие (по GET-запросу), поэтому FastNeed нужно сбросить.
         // Иначе мы будем бесконечно перезапускать процесс.
         if (address != null && address.contains("get_id=43")) {
+            notifyRestoreElixirRequestSentIfNeeded(fastId, "processMainPhpFast:get_id=43");
             if (FAST_ID_BLISS_ELIXIR.equals(fastId)) {
                 AppLog.d(TAG, "processMainPhpFast: get_id=43 — подтверждён Эликсир Блаженства");
                 rememberBlissUseTimestamp(fastId);
@@ -1145,6 +1147,7 @@ public class FastActionManager {
         }
 
         if (result != null) {
+            notifyRestoreElixirRequestSentIfNeeded(fastId, "processMainPhp:result");
             boolean deferBlissChatUntilGetId43 = FAST_ID_BLISS_ELIXIR.equals(fastId);
             if (!deferBlissChatUntilGetId43) {
                 rememberBlissUseTimestamp(fastId);
@@ -1273,6 +1276,12 @@ public class FastActionManager {
 
     private static boolean isBlissElixirFastId(String fastId) {
         return FAST_ID_BLISS_ELIXIR.equals(fastId);
+    }
+
+    private static void notifyRestoreElixirRequestSentIfNeeded(String fastId, String source) {
+        if ("Эликсир Восстановления".equals(fastId)) {
+            AutoDrinkHandler.markRestoreElixirRequestSent(source);
+        }
     }
 
     private static void rememberBlissUseTimestamp(String fastId) {

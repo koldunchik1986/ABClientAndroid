@@ -808,7 +808,9 @@ public class LoginActivity extends AppCompatActivity {
 
         // Запускаем фоновое обновление всех контактов
         AppLog.d("LoginActivity", "Starting background contact refresh after successful login.");
+        ru.neverlands.anclient.manager.ContactsManager.initialize(getApplicationContext());
         List<ru.neverlands.anclient.model.Contact> contactsToUpdate = ru.neverlands.anclient.manager.ContactsManager.getContactsFromCache();
+        AppLog.d("LoginActivity", "Background contact refresh queue size=" + (contactsToUpdate == null ? 0 : contactsToUpdate.size()));
         if (contactsToUpdate != null && !contactsToUpdate.isEmpty()) {
             updateContactsRecursive(contactsToUpdate, 0);
         }
@@ -832,6 +834,7 @@ public class LoginActivity extends AppCompatActivity {
         new Handler(Looper.getMainLooper()).postDelayed(() -> {
             final ru.neverlands.anclient.model.Contact oldContact = contacts.get(index);
             if (oldContact.playerID == null || oldContact.playerID.isEmpty()) {
+                AppLog.w("LoginActivity", "Skipping background contact refresh: missing playerID, nick=" + oldContact.nick);
                 updateContactsRecursive(contacts, index + 1);
                 return;
             }
@@ -843,6 +846,9 @@ public class LoginActivity extends AppCompatActivity {
                     newContact.comment = oldContact.comment;
                     // Сохраняем персональный toolId при фоновом обновлении после логина.
                     newContact.toolId = oldContact.toolId;
+                    AppLog.d("LoginActivity", "Background contact refreshed: nick=" + newContact.nick
+                            + ", onlineStatus=" + newContact.onlineStatus
+                            + ", isOnline=" + newContact.isOnline());
                     ru.neverlands.anclient.manager.ContactsManager.updateContact(newContact);
                     updateContactsRecursive(contacts, index + 1);
                 }

@@ -281,7 +281,7 @@ public class ContactsAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
                   final OnInfoClickListener infoListener,
                   final OnWarStatusClickListener warListener,
                   final OnItemLongClickListener longListener) {
-            onlineStatusIndicator.setColorFilter(contact.onlineStatus == 1 ? Color.GREEN : Color.RED);
+            onlineStatusIndicator.setColorFilter(contact.isOnline() ? Color.GREEN : Color.RED);
 
             String inclinationUrl = null;
             switch (contact.inclination) {

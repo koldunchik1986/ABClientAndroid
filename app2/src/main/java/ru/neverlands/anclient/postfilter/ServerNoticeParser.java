@@ -14,8 +14,12 @@ import ru.neverlands.anclient.utils.HelperStrings;
 public class ServerNoticeParser {
     private static final String TAG = "ServerNoticeParser";
     static final long SERVER_NOTICE_CHAT_DEDUP_MS = 1500L;
+    static final long HEAVY_BACKPACK_NOTICE_DEDUP_MS = 2000L;
     static volatile long lastServerNoticeAtMs = 0L;
     static volatile String lastServerNoticeKey = "";
+    static volatile long lastHeavyBackpackNoticeAtMs = 0L;
+    static volatile String lastHeavyBackpackNoticeKey = "";
+    static volatile boolean heavyBackpackGarbageCleanupRequested = false;
 
     static String extractServerNoticeFromMainHtml(String html) {
         if (html == null || html.isEmpty()) {
@@ -144,6 +148,13 @@ public class ServerNoticeParser {
             AppLog.d(TAG, msgSkip);
             return;
         }
+        if (shouldSuppressHeavyBackpackPopupChatNotice(normalized, sourceTag)) {
+            String msgSkip = "SERVER_NOTICE_TRACE skip duplicate heavy backpack popup: source="
+                    + sourceTag + ", text=" + normalized;
+            AppLog.d(AutoCutManager.TRACE_CHAIN, TAG, msgSkip);
+            return;
+        }
+        maybeRequestHeavyBackpackGarbageCleanup(normalized, sourceTag);
         String type = resolveServerNotificationType(normalized, sourceTag, addressHint);
         boolean appendAutoCureTarget = shouldAppendAutoCureTarget(sourceTag, addressHint);
         if (appendAutoCureTarget) {
@@ -207,6 +218,30 @@ public class ServerNoticeParser {
         }
     }
 
+    private static synchronized void maybeRequestHeavyBackpackGarbageCleanup(String normalized, String sourceTag) {
+        if (heavyBackpackGarbageCleanupRequested
+                || AppVars.getContext() == null
+                || !isHeavyBackpackSlowPopupNotice(normalized, sourceTag)) {
+            return;
+        }
+        try {
+            if (!AutoFunctionsManager.getInstance(AppVars.getContext()).isAutoCutLikeEnabled()) {
+                AppLog.d(AutoCutManager.TRACE_CHAIN, TAG,
+                        "heavy backpack garbage cleanup ignored: AutoCut disabled, source=" + sourceTag);
+                return;
+            }
+            if (AutoCutManager.getInstance(AppVars.getContext())
+                    .requestGarbageCleanupAfterHeavyBackpackNotice("server_notice:" + sourceTag)) {
+                heavyBackpackGarbageCleanupRequested = true;
+                AppLog.i(AutoCutManager.TRACE_CHAIN, TAG,
+                        "heavy backpack garbage cleanup one-shot scheduled, source=" + sourceTag);
+            }
+        } catch (Exception error) {
+            AppLog.w(AutoCutManager.TRACE_CHAIN, TAG,
+                    "heavy backpack garbage cleanup request failed, source=" + sourceTag, error);
+        }
+    }
+
     static boolean shouldSuppressAutoFishPopupChatNotice(String normalized, String sourceTag) {
         String lowerSource = sourceTag == null ? "" : sourceTag.toLowerCase(Locale.ROOT);
         String lowerText = normalized == null ? "" : normalized.toLowerCase(Locale.ROOT);
@@ -215,6 +250,43 @@ public class ServerNoticeParser {
         }
         return (lowerText.contains("доход за рыбалку") || lowerText.contains("потери за рыбалку"))
                 && lowerText.contains("умелка");
+    }
+
+    static boolean shouldSuppressHeavyBackpackPopupChatNotice(String normalized, String sourceTag) {
+        if (!isHeavyBackpackSlowPopupNotice(normalized, sourceTag)) {
+            return false;
+        }
+        String compareText = normalizeServerNoticeCompareText(normalized);
+        long nowMs = System.currentTimeMillis();
+        if (compareText.equals(lastHeavyBackpackNoticeKey)
+                && (nowMs - lastHeavyBackpackNoticeAtMs) < HEAVY_BACKPACK_NOTICE_DEDUP_MS) {
+            return true;
+        }
+        lastHeavyBackpackNoticeKey = compareText;
+        lastHeavyBackpackNoticeAtMs = nowMs;
+        return false;
+    }
+
+    private static boolean isHeavyBackpackSlowPopupNotice(String normalized, String sourceTag) {
+        String lowerSource = sourceTag == null ? "" : sourceTag.toLowerCase(Locale.ROOT);
+        if (!containsAny(lowerSource, "map_bridge_popup", "popup", "bridge")) {
+            return false;
+        }
+        String compareText = normalizeServerNoticeCompareText(normalized);
+        return compareText.contains("рюкзак слишком тяжелый")
+                && compareText.contains("замедленное перемещение");
+    }
+
+    private static String normalizeServerNoticeCompareText(String text) {
+        String normalized = normalizeServerNotificationText(text)
+                .toLowerCase(Locale.ROOT)
+                .replace('ё', 'е')
+                .replaceAll("\\s+", " ")
+                .trim();
+        if (normalized.startsWith("системное окно:")) {
+            normalized = normalized.substring("системное окно:".length()).trim();
+        }
+        return normalized;
     }
 
     static boolean shouldAppendAutoCureTarget(String sourceTag, String addressHint) {

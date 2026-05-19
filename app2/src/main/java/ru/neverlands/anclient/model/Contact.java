@@ -87,7 +87,7 @@ public class Contact {
 
     /**
      * Статус онлайн.
-     * 1 - онлайн, 0 - оффлайн.
+     * 0 - оффлайн, любое значение больше 0 - онлайн.
      */
     public int onlineStatus;
 
@@ -145,6 +145,10 @@ public class Contact {
      * - `RoomManager` использует это значение при авто-нападении.
      */
     public int toolId;
+
+    public boolean isOnline() {
+        return onlineStatus > 0;
+    }
 
     public Contact() {}
 

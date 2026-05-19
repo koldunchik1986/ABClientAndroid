@@ -71,6 +71,18 @@
             android:theme="@style/Theme.ANClient.NoActionBar" />
 
         <activity
+            android:name=".ForpostInfoActivity"
+            android:exported="false"
+            android:label="Постройки"
+            android:parentActivityName=".MainActivity" />
+
+        <activity
+            android:name=".TablesActivity"
+            android:exported="false"
+            android:label="Таблицы"
+            android:parentActivityName=".MainActivity" />
+
+        <activity
             android:name=".KaznaActivity"
             android:exported="false"
             android:label="Казна"

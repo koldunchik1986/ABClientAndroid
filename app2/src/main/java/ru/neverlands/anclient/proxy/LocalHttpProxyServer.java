@@ -259,6 +259,7 @@ final class LocalHttpProxyServer {
     }
 
     private long forwardRequest(ResolvedRoute route, HttpRequest request, OutputStream clientOut) throws IOException {
+        waitProxyQueueTurn(route, route.requestTarget, "primary");
         try (Socket remote = new Socket()) {
             remote.setTcpNoDelay(true);
             remote.setSoTimeout(SOCKET_TIMEOUT_MS);
@@ -348,6 +349,7 @@ final class LocalHttpProxyServer {
                                             String retryTarget,
                                             int attempt) throws IOException {
         cleanupRetrySocket();
+        waitProxyQueueTurn(route, retryTarget, "retry_" + attempt);
         Socket retrySocket = new Socket();
         retrySocketRef = retrySocket;
         retrySocket.setTcpNoDelay(true);
@@ -467,8 +469,9 @@ final class LocalHttpProxyServer {
      * - {@link #readResponseHead(InputStream)} для диагностики CONNECT и итогового POST ответа.
      */
     private long forwardViaUpstreamConnectTunnel(ResolvedRoute route,
-                                                 HttpRequest request,
-                                                 OutputStream clientOut) throws IOException {
+                                                  HttpRequest request,
+                                                  OutputStream clientOut) throws IOException {
+        waitProxyQueueTurn(route, route.originPath, "connect_tunnel");
         try (Socket tunnelSocket = new Socket()) {
             tunnelSocket.setTcpNoDelay(true);
             tunnelSocket.setSoTimeout(SOCKET_TIMEOUT_MS);
@@ -517,6 +520,55 @@ final class LocalHttpProxyServer {
             handleServerNoticeFromCapturedPayload(route, request, route.originPath, tunneledResponse, tunneledCopy.capturedBytes);
             return tunneledResponse.rawBytes.length + tunneledCopy.totalBytes;
         }
+    }
+
+    /**
+     * Делегирует динамический Neverlands request в session-wide queue перед реальным remote connect.
+     *
+     * Зависимости:
+     * - `ProxyRequestQueue` повторяет фильтры C# `ANProxy.ProxyRequestQueue`;
+     * - `SessionManager` внутри queue хранит общий timestamp-slot для всех proxy worker-потоков;
+     * - вызывается только из мест, которые действительно открывают новый remote socket.
+     *
+     * Почему это здесь:
+     * - `LocalHttpProxyServer` является единой точкой для WebView, OkHttp и `HttpURLConnection`,
+     *   когда они идут через local/upstream proxy runtime;
+     * - автофункции и parser-ветки не получают новый сетевой контур и не меняют порядок действий.
+     */
+    private void waitProxyQueueTurn(ResolvedRoute route, String requestTarget, String source) {
+        if (route == null) {
+            return;
+        }
+        String host = route.originHost == null ? "" : route.originHost;
+        String queueUrl = buildQueueUrl(route, requestTarget);
+        ProxyRequestQueue.waitTurn(queueUrl, host, isNeverlandsGameHost(host), false);
+    }
+
+    /**
+     * Формирует host+path для queue-классификации и safe diagnostics.
+     * Зависимость: `ResolvedRoute.originPath` содержит path+query независимо от direct/upstream mode.
+     */
+    private String buildQueueUrl(ResolvedRoute route, String requestTarget) {
+        String path = requestTarget == null || requestTarget.isEmpty() ? route.originPath : requestTarget;
+        if (path == null || path.isEmpty()) {
+            path = "/";
+        }
+        if (path.startsWith("http://") || path.startsWith("https://")) {
+            return path;
+        }
+        return (route.originHost == null ? "" : route.originHost) + (path.startsWith("/") ? path : "/" + path);
+    }
+
+    /**
+     * Определяет игровые host Neverlands для proxy queue.
+     * Зависимость: повторяет C# `Session.ExecuteBasicRequestManipulations()` host-check.
+     */
+    private boolean isNeverlandsGameHost(String host) {
+        if (host == null || host.isEmpty()) {
+            return false;
+        }
+        String lower = host.toLowerCase(Locale.ROOT);
+        return "neverlands.ru".equals(lower) || lower.endsWith(".neverlands.ru");
     }
 
     /**

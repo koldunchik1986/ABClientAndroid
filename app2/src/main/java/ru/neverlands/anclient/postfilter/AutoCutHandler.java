@@ -1,9 +1,11 @@
 package ru.neverlands.anclient.postfilter;
 
 import java.util.List;
+import java.util.Locale;
 
 import ru.neverlands.anclient.manager.AutoCutManager;
 import ru.neverlands.anclient.manager.AutoFunctionsManager;
+import ru.neverlands.anclient.model.InvEntry;
 import ru.neverlands.anclient.model.ParsedDressed;
 import ru.neverlands.anclient.utils.AppLog;
 import ru.neverlands.anclient.utils.AppVars;
@@ -34,7 +36,9 @@ final class AutoCutHandler {
     private static final String AUTO_CUT_SICKLE_INV_FILTER = "&im=0&wca=4";
     private static final String AUTO_CUT_AXE_INV_FILTER = "&im=0&wca=2";
     private static final String AUTO_CUT_CLEANUP_INV_FILTER = "&im=0";
+    private static final String AUTO_CUT_GARBAGE_INV_FILTER = "&wca=60";
     private static final int AUTO_CUT_TOOL_INVENTORY_RETRY_DELAY_MS = 800;
+    private static final long POST_FIGHT_RETURN_WINDOW_MS = 15_000L;
 
     private AutoCutHandler() {
     }
@@ -93,6 +97,14 @@ final class AutoCutHandler {
             if (cleanupHtml != null) {
                 return cleanupHtml;
             }
+            AppLog.d(AutoCutManager.TRACE_CHAIN, TAG,
+                    "cleanup pending yields to inventory parser, address=" + address);
+            return null;
+        }
+
+        String postFightReturnHtml = processPostFightReturnToMap(address, html, mode);
+        if (postFightReturnHtml != null) {
+            return postFightReturnHtml;
         }
 
         if (!AppVars.AutoCutCheckSickle && AppVars.AutoCutArmedSickle) {
@@ -137,10 +149,60 @@ final class AutoCutHandler {
             }
             return null;
         }
-        if (AppVars.getContext() != null) {
-            AutoCutManager.getInstance(AppVars.getContext()).onCleanupCompleted("inventory_pass");
-        }
         AutoCutManager.AutoCutMode mode = getActiveMode();
+        AutoCutManager autoCut = AppVars.getContext() != null
+                ? AutoCutManager.getInstance(AppVars.getContext())
+                : null;
+        if (isAutoCutGarbageCleanupPending()) {
+            GarbageInventorySnapshot garbageSnapshot = scanGarbageInventorySnapshot();
+            AppLog.i(AutoCutManager.TRACE_CHAIN, TAG,
+                    "garbage cleanup verification pass: address=" + address
+                            + ", nameMatches=" + garbageSnapshot.nameMatches
+                            + ", dropThingMatches=" + garbageSnapshot.dropThingMatches
+                            + ", dropCandidates=" + garbageSnapshot.dropCandidates
+                            + ", totalCount=" + garbageSnapshot.totalCount
+                            + ", firstDropLink=" + garbageSnapshot.firstDropLink);
+            if (garbageSnapshot.dropCandidates > 0) {
+                AppLog.w(AutoCutManager.TRACE_CHAIN, TAG,
+                        "garbage cleanup fallback redirect from verified cache: count="
+                                + garbageSnapshot.totalCount + ", link=" + garbageSnapshot.firstDropLink);
+                return MainPhp.buildRedirectHtml(
+                        "Выбрасывание предмета <b>&laquo;" + AutoCutManager.GARBAGE_ITEM_NAME + "&raquo;</b>...",
+                        garbageSnapshot.firstDropLink);
+            }
+            if (isDropActionAddress(address) && !isCleanupVerificationAddress(address)) {
+                AppLog.i(AutoCutManager.TRACE_CHAIN, TAG,
+                        "garbage cleanup requests fresh inventory verification after drop result");
+                return buildCleanupVerificationRedirect(mode, "drop_result");
+            }
+            if (garbageSnapshot.hasVisibleGarbage() && !isCleanupWarningAddress(address)) {
+                AppLog.w(AutoCutManager.TRACE_CHAIN, TAG,
+                        "garbage cleanup sees visible garbage without drop link, retry fresh inventory once: count="
+                                + garbageSnapshot.totalCount);
+                return buildCleanupWarningRedirect(mode, "visible_without_drop_link");
+            }
+            if (garbageSnapshot.hasVisibleGarbage()) {
+                AppLog.w(AutoCutManager.TRACE_CHAIN, TAG,
+                        "garbage cleanup finishing with fallback: visible garbage has no drop link after verification, count="
+                                + garbageSnapshot.totalCount);
+            }
+            AppVars.BulkDropThing = "";
+            AppVars.BulkDropPrice = "";
+            MainPhp.sendInventoryChatMessage(MainPhp.buildServerChatTimeHtmlExternal()
+                    + "<font color=#333399><b>[" + mode.actionKey + "]</b></font> "
+                    + "Выбрасывание пачки <b>&laquo;" + AutoCutManager.GARBAGE_ITEM_NAME
+                    + "&raquo;</b> завершено.");
+            AppLog.i(AutoCutManager.TRACE_CHAIN, TAG,
+                    "garbage bulk-drop completed: verified=true, remainingVisible="
+                            + garbageSnapshot.totalCount);
+            if (autoCut != null) {
+                autoCut.onCleanupCompleted("inventory_pass");
+            }
+            return buildReturnToMapHtml(mode.title + ": cleanup завершен", "auto_cut_cleanup_return", html);
+        }
+        if (autoCut != null) {
+            autoCut.onCleanupCompleted("inventory_pass");
+        }
         return buildReturnToMapHtml(mode.title + ": cleanup завершен", "auto_cut_cleanup_return", html);
     }
 
@@ -274,6 +336,14 @@ final class AutoCutHandler {
     private static String processCleanupOpenInventory(String address, String html, AutoCutManager.AutoCutMode mode) {
         boolean inventoryHtml = MainPhp.mainPhpIsInv(html) || MainPhp.hasInventoryRows(html);
         if (inventoryHtml) {
+            if (isAutoCutGarbageCleanupPending()
+                    && !isDropActionAddress(address)
+                    && !MainPhp.inventoryAddressMatchesFilter(address, AUTO_CUT_GARBAGE_INV_FILTER)) {
+                AppLog.i(AutoCutManager.TRACE_CHAIN, TAG,
+                        "garbage cleanup switch to quest inventory category, address=" + address);
+                return MainPhp.buildRedirectHtml(mode.title + ": категория cleanup",
+                        "main.php?wca=60");
+            }
             return null;
         }
         if (MainPhp.isInventoryAddress(address)) {
@@ -299,6 +369,43 @@ final class AutoCutHandler {
             return invHtml;
         }
         return MainPhp.buildRedirectHtml(mode.title + ": cleanup инвентаря", "main.php?im=0");
+    }
+
+    /**
+     * Возвращает AutoCut на карту после post-fight `go=inf`, который нужен автопитью для HP/MA sync.
+     * Без этого готовый `auto_lumberjack` остаётся на вкладке персонажа и не получает map.js/`Оглядеться`.
+     */
+    private static String processPostFightReturnToMap(String address, String html, AutoCutManager.AutoCutMode mode) {
+        long syncSinceMs = AutoDrinkHandler.autoDrinkPostFightSyncPendingSinceMs;
+        long ageMs = syncSinceMs > 0L ? System.currentTimeMillis() - syncSinceMs : Long.MAX_VALUE;
+        if (ageMs < 0L || ageMs > POST_FIGHT_RETURN_WINDOW_MS) {
+            return null;
+        }
+        if (html.contains("var map = [[")) {
+            AutoDrinkHandler.autoDrinkPostFightSyncPendingSinceMs = 0L;
+            AppLog.i(AutoCutManager.TRACE_CHAIN, TAG,
+                    "post-fight return already on map after auto-drink sync, mode=" + mode.actionKey
+                            + ", ageMs=" + ageMs
+                            + ", address=" + address);
+            return null;
+        }
+        if (AppVars.AutoCutCheckSickle) {
+            return null;
+        }
+        if (MainPhp.mainPhpIsInv(html) || MainPhp.hasInventoryRows(html)) {
+            return null;
+        }
+        String lowerAddress = address == null ? "" : address.toLowerCase(Locale.ROOT);
+        if (!lowerAddress.contains("go=inf")) {
+            return null;
+        }
+        AutoDrinkHandler.autoDrinkPostFightSyncPendingSinceMs = 0L;
+        AppLog.i(AutoCutManager.TRACE_CHAIN, TAG,
+                "post-fight return to map after auto-drink sync, mode=" + mode.actionKey
+                        + ", ageMs=" + ageMs
+                        + ", armed=" + AppVars.AutoCutArmedSickle
+                        + ", address=" + address);
+        return buildReturnToMapHtml(mode.title + ": возврат на карту после боя", "auto_cut_post_fight_return", html);
     }
 
     /**
@@ -396,6 +503,87 @@ final class AutoCutHandler {
                     : ParsedDressed.getAutoCutSickleNames());
         }
         return sickles;
+    }
+
+    private static boolean isAutoCutGarbageCleanupPending() {
+        return AppVars.AutoCutCleanupPending
+                && AutoCutManager.GARBAGE_ITEM_NAME.equalsIgnoreCase(
+                AppVars.BulkDropThing == null ? "" : AppVars.BulkDropThing);
+    }
+
+    private static GarbageInventorySnapshot scanGarbageInventorySnapshot() {
+        GarbageInventorySnapshot snapshot = new GarbageInventorySnapshot();
+        if (AppVars.InvList == null || AppVars.InvList.isEmpty()) {
+            return snapshot;
+        }
+        for (InvEntry entry : AppVars.InvList) {
+            snapshot.add(entry);
+        }
+        return snapshot;
+    }
+
+    private static boolean isDropActionAddress(String address) {
+        String lowerAddress = address == null ? "" : address.toLowerCase(Locale.ROOT);
+        return lowerAddress.contains("main.php") && lowerAddress.contains("get_id=50");
+    }
+
+    private static boolean isCleanupVerificationAddress(String address) {
+        String lowerAddress = address == null ? "" : address.toLowerCase(Locale.ROOT);
+        return lowerAddress.contains("an_auto_cut_cleanup_verify=1");
+    }
+
+    private static boolean isCleanupWarningAddress(String address) {
+        String lowerAddress = address == null ? "" : address.toLowerCase(Locale.ROOT);
+        return lowerAddress.contains("an_auto_cut_cleanup_warn=1");
+    }
+
+    private static String buildCleanupVerificationRedirect(AutoCutManager.AutoCutMode mode, String reason) {
+        return MainPhp.buildRedirectHtml(mode.title + ": проверка cleanup",
+                "main.php?wca=60&an_auto_cut_cleanup_verify=1&an_auto_cut_reason="
+                        + reason + "&r=" + System.currentTimeMillis());
+    }
+
+    private static String buildCleanupWarningRedirect(AutoCutManager.AutoCutMode mode, String reason) {
+        return MainPhp.buildRedirectHtml(mode.title + ": повторная проверка cleanup",
+                "main.php?wca=60&an_auto_cut_cleanup_verify=1&an_auto_cut_cleanup_warn=1&an_auto_cut_reason="
+                        + reason + "&r=" + System.currentTimeMillis());
+    }
+
+    private static final class GarbageInventorySnapshot {
+        int nameMatches;
+        int dropThingMatches;
+        int dropCandidates;
+        int totalCount;
+        String firstDropLink = "";
+
+        void add(InvEntry entry) {
+            if (entry == null) {
+                return;
+            }
+            int count = Math.max(1, entry.Count);
+            boolean nameMatch = AutoCutManager.GARBAGE_ITEM_NAME.equalsIgnoreCase(entry.Name == null ? "" : entry.Name);
+            boolean dropThingMatch = AutoCutManager.GARBAGE_ITEM_NAME.equalsIgnoreCase(
+                    entry.DropThing == null ? "" : entry.DropThing);
+            if (nameMatch) {
+                nameMatches++;
+            }
+            if (dropThingMatch) {
+                dropThingMatches++;
+            }
+            if (nameMatch || dropThingMatch) {
+                totalCount += count;
+            }
+            if (dropThingMatch && entry.DropLink != null && !entry.DropLink.isEmpty()) {
+                dropCandidates++;
+                if (firstDropLink.isEmpty()) {
+                    firstDropLink = entry.DropLink;
+                }
+            }
+        }
+
+        boolean hasVisibleGarbage() {
+            return nameMatches > 0 || dropThingMatches > 0;
+        }
     }
 
     private static AutoCutManager.AutoCutMode getActiveMode() {

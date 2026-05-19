@@ -26,6 +26,11 @@ public class SessionManager {
 
     private volatile SessionContext currentContext;
     private final ReentrantReadWriteLock contextLock = new ReentrantReadWriteLock();
+    private final Object proxyRequestQueueLock = new Object();
+    private static final long PROXY_GAME_REQUEST_SPACING_MS = 1_000L;
+    private static final long PROXY_QUEUE_SKIP_LOG_THROTTLE_MS = 10_000L;
+    private long nextAllowedProxyGameRequestMs = 0L;
+    private long nextProxyQueueSkipLogMs = 0L;
     
     // Отслеживание боевого контекста - vcode должен жить дольше во время боя
     private volatile boolean fightInProgress = false;
@@ -200,6 +205,59 @@ public class SessionManager {
      */
     public String getValidVCodeForAction(String actionName) {
         return getValidVCodeForAction(actionName, 300_000L);  // 5 минут
+    }
+
+    /**
+     * Резервирует общий slot для динамического игрового запроса, проходящего через proxy runtime.
+     *
+     * Назначение:
+     * - `ProxyRequestQueue` вызывает этот метод перед реальным remote connect;
+     * - `SessionManager` хранит slot-state, потому очередь относится к текущей серверной сессии,
+     *   а не к отдельному worker-потоку локального proxy;
+     * - возвращаемая задержка позволяет вызывающему proxy worker самому выполнить sleep и не держать
+     *   locks во время ожидания.
+     *
+     * Зависимости:
+     * - `LocalHttpProxyServer` может обслуживать несколько socket worker-потоков одновременно;
+     * - этот lock сериализует только вычисление timestamp, не сетевой I/O.
+     *
+     * @return задержка в миллисекундах до разрешённого старта запроса, либо 0 если можно отправлять сразу.
+     */
+    public int reserveProxyGameRequestSlot() {
+        synchronized (proxyRequestQueueLock) {
+            long nowMs = System.currentTimeMillis();
+            long scheduledMs = Math.max(nowMs, nextAllowedProxyGameRequestMs);
+            nextAllowedProxyGameRequestMs = scheduledMs + PROXY_GAME_REQUEST_SPACING_MS;
+            long waitMs = scheduledMs - nowMs;
+            if (waitMs <= 0L) {
+                return 0;
+            }
+            return waitMs > Integer.MAX_VALUE ? Integer.MAX_VALUE : (int) waitMs;
+        }
+    }
+
+    /**
+     * Throttle для skip-логов request queue.
+     *
+     * Назначение:
+     * - static/cache/safe lookup запросы проходят без задержки и могут быть частыми;
+     * - этот метод даёт `ProxyRequestQueue` единый session-wide limiter логов, чтобы не забить
+     *   `files/Logs/Critical/proxy*` повторяющимися сообщениями.
+     *
+     * Зависимости:
+     * - вызывается только из `ProxyRequestQueue.logSkipThrottled(...)`;
+     * - использует тот же `proxyRequestQueueLock`, что и reservation, чтобы состояние очереди было
+     *   консистентным для всех proxy worker-потоков.
+     */
+    public boolean shouldLogProxyRequestQueueSkip() {
+        synchronized (proxyRequestQueueLock) {
+            long nowMs = System.currentTimeMillis();
+            if (nowMs < nextProxyQueueSkipLogMs) {
+                return false;
+            }
+            nextProxyQueueSkipLogMs = nowMs + PROXY_QUEUE_SKIP_LOG_THROTTLE_MS;
+            return true;
+        }
     }
 
     /**

@@ -170,7 +170,7 @@ public final class AutoCutManager {
     private volatile String lookRetrySource = "";
     /** Локальное время постановки retry, чтобы видеть stale-зависания в логах. */
     private volatile long lookRetryRequestedAtMs = 0L;
-    /** Собственный due-time retry; для cleanup inventory совпадает с server `NeverTimer`. */
+    /** Собственный due-time retry; cleanup inventory подтягивает поздний server `NeverTimer`. */
     private volatile long lookRetryDueAtMs = 0L;
     /** One-shot запрос inventory/main.php для получения `Масса Вашего инвентаря: current/max` перед срезом. */
     private volatile boolean massSnapshotSyncPending = false;
@@ -1326,6 +1326,11 @@ public final class AutoCutManager {
         return lookRetryPending && isPendingLookRetryDueLocked(now);
     }
 
+    /** true, если due retry относится именно к cleanup inventory и должен обогнать AutoMoving/AutoFish. */
+    public synchronized boolean isPendingCleanupInventoryRetryDue(long now) {
+        return lookRetryPending && isCleanupInventoryRetrySourceLocked() && isPendingLookRetryDueLocked(now);
+    }
+
     /**
      * Возвращает source retry, если он уже due, и атомарно очищает one-shot state.
      *
@@ -1378,6 +1383,9 @@ public final class AutoCutManager {
     }
 
     private long getPendingLookRetryDueAtLocked() {
+        if (isCleanupInventoryRetrySourceLocked() && AppVars.NeverTimer > lookRetryDueAtMs) {
+            return AppVars.NeverTimer;
+        }
         if (lookRetryDueAtMs > 0L) {
             return lookRetryDueAtMs;
         }
@@ -1387,6 +1395,10 @@ public final class AutoCutManager {
         return lookRetryRequestedAtMs > 0L
                 ? lookRetryRequestedAtMs + AUTO_CUT_RETRY_FALLBACK_DELAY_MS
                 : 0L;
+    }
+
+    private boolean isCleanupInventoryRetrySourceLocked() {
+        return lookRetrySource != null && lookRetrySource.contains("cleanup_inventory:");
     }
 
     /**
@@ -1877,7 +1889,37 @@ public final class AutoCutManager {
                 + ", source=" + source);
     }
 
+    /**
+     * Ставит одноразовую проверку inventory после popup-а тяжелого рюкзака.
+     * Reload не выполняется сразу: dispatcher ждёт `NeverTimer` или короткий fallback, чтобы не
+     * конкурировать с server cooldown, который приходит рядом с popup-ом замедленного движения.
+     */
+    public boolean requestGarbageCleanupAfterHeavyBackpackNotice(String source) {
+        if (AppVars.AutoCutCleanupPending
+                && GARBAGE_ITEM_NAME.equalsIgnoreCase(safe(AppVars.BulkDropThing))) {
+            AppLog.d(TRACE_CHAIN, TAG, "heavy backpack garbage cleanup already pending, source=" + source
+                    + ", reason=" + safe(AppVars.AutoCutCleanupReason));
+            return true;
+        }
+        String reason = "garbage:" + safe(source);
+        startCleanupState(reason, true);
+        boolean deferred = deferCleanupInventoryUntilServerTimer("heavy_backpack_notice:" + safe(source));
+        if (!deferred && !hasPendingLookRetry()) {
+            scheduleLookRetryAfterTimer("cleanup_inventory:heavy_backpack_notice:" + safe(source));
+        }
+        AppLog.i(TRACE_CHAIN, TAG, "heavy backpack garbage cleanup scheduled after NeverTimer: thing="
+                + GARBAGE_ITEM_NAME + ", source=" + source
+                + ", deferred=" + deferred
+                + ", retryDueInMs=" + Math.max(0L, getPendingLookRetryDueAtMs() - System.currentTimeMillis()));
+        return true;
+    }
+
     private synchronized void startCleanup(String reason, boolean dropGarbage) {
+        startCleanupState(reason, dropGarbage);
+        requestMainFrameReload("cleanup:" + reason);
+    }
+
+    private synchronized void startCleanupState(String reason, boolean dropGarbage) {
         pauseAutosForCleanup(reason);
         if (dropGarbage) {
             AppVars.BulkDropThing = GARBAGE_ITEM_NAME;
@@ -1885,7 +1927,6 @@ public final class AutoCutManager {
         }
         AppVars.AutoCutCleanupPending = true;
         AppVars.AutoCutCleanupReason = safe(reason);
-        requestMainFrameReload("cleanup:" + reason);
     }
 
     private synchronized void pauseAutosForCleanup(String reason) {

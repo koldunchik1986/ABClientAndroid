@@ -268,7 +268,7 @@ public class ContactsActivity extends AppCompatActivity implements ContactsAdapt
             
             int onlineMemberCount = 0;
             for (Contact c : clanMembers) {
-                if (c.onlineStatus == 1) {
+                if (c.isOnline()) {
                     onlineMemberCount++;
                 }
             }
@@ -300,7 +300,7 @@ public class ContactsActivity extends AppCompatActivity implements ContactsAdapt
 
             int onlineNeutralCount = 0;
             for (Contact contact : noClanContacts) {
-                if (contact.onlineStatus == 1) {
+                if (contact.isOnline()) {
                     onlineNeutralCount++;
                 }
             }
