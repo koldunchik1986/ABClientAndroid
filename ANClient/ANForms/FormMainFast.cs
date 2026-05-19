@@ -40,6 +40,7 @@ namespace ANClient.ANForms
             AppVars.FastNick = null;
             AppVars.FastId = null;
             AppVars.FastCount = 0;
+            AppVars.FastIslandTeleportIndex = -1;
             AppVars.FastNeedAbilDarkTeleport = false;
             AppVars.FastNeedAbilDarkFog = false;
 
@@ -315,7 +316,18 @@ namespace ANClient.ANForms
         {
             if (AppVars.MainForm != null)
             {
-                AppVars.MainForm.FastStartSafe("Телепорт (Остров Туротор)", AppVars.Profile.UserNick);
+                AppVars.FastIslandTeleportIndex = 0;
+                AppVars.MainForm.FastStartSafe("Телепорт (Остров Туротор)", AppVars.Profile.UserNick, 2);
+                ReloadMainFrame();
+            }
+        }
+
+        private static void FastAttackTopiPot()
+        {
+            if (AppVars.MainForm != null)
+            {
+                AppVars.FastIslandTeleportIndex = 1;
+                AppVars.MainForm.FastStartSafe("Телепорт (Гиблая Топь)", AppVars.Profile.UserNick, 2);
                 ReloadMainFrame();
             }
         }

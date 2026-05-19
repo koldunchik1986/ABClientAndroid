@@ -5,6 +5,7 @@ namespace ANClient.ANForms
     using System.Text;
     using System.Windows.Forms;
     using ANClient.Forms;
+    using ANClient.Info;
     using ANClient.PostFilter;
     using MyChat;
     using MyGuamod;
@@ -29,6 +30,8 @@ namespace ANClient.ANForms
 
             // Таймеры
             UpdateTimers();
+
+            ProfessionRatingMonitor.MaybeCheck();
 
             // После лечения
             if (!string.IsNullOrEmpty(AppVars.CureNickDone))

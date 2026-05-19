@@ -280,6 +280,10 @@ namespace ANClient.MyProfile
                     xmlWriter.WriteString(Complects);
                     xmlWriter.WriteEndElement();
 
+                    xmlWriter.WriteStartElement("clankaznacomplects");
+                    xmlWriter.WriteString(ClanKaznaComplects ?? string.Empty);
+                    xmlWriter.WriteEndElement();
+
                     xmlWriter.WriteStartElement("pers");
                     xmlWriter.WriteStartAttribute("guamod");
                     xmlWriter.WriteValue(Pers.Guamod);
@@ -536,6 +540,78 @@ namespace ANClient.MyProfile
 
                                 xmlWriter.WriteStartAttribute("level");
                                 xmlWriter.WriteString(contact.Value.Level ?? string.Empty);
+                                xmlWriter.WriteEndAttribute();
+
+                                xmlWriter.WriteStartAttribute("playerid");
+                                xmlWriter.WriteString(contact.Value.PlayerId ?? string.Empty);
+                                xmlWriter.WriteEndAttribute();
+
+                                xmlWriter.WriteStartAttribute("playerlevel");
+                                xmlWriter.WriteValue(contact.Value.PlayerLevel);
+                                xmlWriter.WriteEndAttribute();
+
+                                xmlWriter.WriteStartAttribute("inclination");
+                                xmlWriter.WriteValue(contact.Value.Inclination);
+                                xmlWriter.WriteEndAttribute();
+
+                                xmlWriter.WriteStartAttribute("inclinationname");
+                                xmlWriter.WriteString(contact.Value.InclinationName ?? string.Empty);
+                                xmlWriter.WriteEndAttribute();
+
+                                xmlWriter.WriteStartAttribute("clannumber");
+                                xmlWriter.WriteString(contact.Value.ClanNumber ?? string.Empty);
+                                xmlWriter.WriteEndAttribute();
+
+                                xmlWriter.WriteStartAttribute("clanico");
+                                xmlWriter.WriteString(contact.Value.ClanIco ?? string.Empty);
+                                xmlWriter.WriteEndAttribute();
+
+                                xmlWriter.WriteStartAttribute("clanname");
+                                xmlWriter.WriteString(contact.Value.ClanName ?? string.Empty);
+                                xmlWriter.WriteEndAttribute();
+
+                                xmlWriter.WriteStartAttribute("clanstatus");
+                                xmlWriter.WriteString(contact.Value.ClanStatus ?? string.Empty);
+                                xmlWriter.WriteEndAttribute();
+
+                                xmlWriter.WriteStartAttribute("gender");
+                                xmlWriter.WriteValue(contact.Value.Gender);
+                                xmlWriter.WriteEndAttribute();
+
+                                xmlWriter.WriteStartAttribute("blockstatus");
+                                xmlWriter.WriteValue(contact.Value.BlockStatus);
+                                xmlWriter.WriteEndAttribute();
+
+                                xmlWriter.WriteStartAttribute("jailstatus");
+                                xmlWriter.WriteValue(contact.Value.JailStatus);
+                                xmlWriter.WriteEndAttribute();
+
+                                xmlWriter.WriteStartAttribute("muteseconds");
+                                xmlWriter.WriteValue(contact.Value.MuteSeconds);
+                                xmlWriter.WriteEndAttribute();
+
+                                xmlWriter.WriteStartAttribute("muteforumseconds");
+                                xmlWriter.WriteValue(contact.Value.MuteForumSeconds);
+                                xmlWriter.WriteEndAttribute();
+
+                                xmlWriter.WriteStartAttribute("onlinestatus");
+                                xmlWriter.WriteValue(contact.Value.OnlineStatus);
+                                xmlWriter.WriteEndAttribute();
+
+                                xmlWriter.WriteStartAttribute("geolocation");
+                                xmlWriter.WriteString(contact.Value.GeoLocation ?? string.Empty);
+                                xmlWriter.WriteEndAttribute();
+
+                                xmlWriter.WriteStartAttribute("warlognumber");
+                                xmlWriter.WriteString(contact.Value.WarLogNumber ?? string.Empty);
+                                xmlWriter.WriteEndAttribute();
+
+                                xmlWriter.WriteStartAttribute("effectids");
+                                xmlWriter.WriteString(contact.Value.EffectIds ?? string.Empty);
+                                xmlWriter.WriteEndAttribute();
+
+                                xmlWriter.WriteStartAttribute("effectstates");
+                                xmlWriter.WriteString(contact.Value.EffectStates ?? string.Empty);
                                 xmlWriter.WriteEndAttribute();
 
                                 xmlWriter.WriteEndElement();

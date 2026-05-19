@@ -551,6 +551,8 @@ namespace ANClient.MyProfile
 
         internal string Complects { get; set; }
 
+        internal string ClanKaznaComplects { get; set; }
+
         internal int AutoDrinkBlazOrder { get; set; }
 
         // Lez AutoBoi

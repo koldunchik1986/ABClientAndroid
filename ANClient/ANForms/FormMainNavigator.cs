@@ -80,7 +80,10 @@ namespace ANClient.ANForms
             AppVars.AutoMovingDestinaton = dest;
             var path = new MapPath(AppVars.Profile.MapLocation, new[] { dest });
             if (path.IsIslandRequired)
-                AppVars.MainForm.FastStartSafe("Телепорт (Остров Туротор)", AppVars.Profile.UserNick);
+            {
+                AppVars.FastIslandTeleportIndex = 0;
+                AppVars.MainForm.FastStartSafe("Телепорт (Остров Туротор)", AppVars.Profile.UserNick, 2);
+            }
 
             AppVars.AutoMovingMapPath = path;
 

@@ -15,6 +15,37 @@ namespace ANClient
     public static class ContactsManager
     {
         public static readonly ReaderWriterLock Rwl = new ReaderWriterLock();
+        private const int ContactInfoRefreshDelayMs = 500;
+        private const int ContactLookupRefreshDelayMs = 1200;
+        private static readonly object ContactApiLock = new object();
+        private static readonly object ContactRefreshQueueLock = new object();
+        private static readonly Queue<ContactRefreshState> ContactRefreshQueue = new Queue<ContactRefreshState>();
+        private static readonly Dictionary<string, ContactRefreshState> ContactRefreshPending = new Dictionary<string, ContactRefreshState>();
+        private static DateTime _lastContactApiRequestUtc = DateTime.MinValue;
+        private static bool _contactRefreshWorkerRunning;
+
+        private sealed class ContactRefreshState
+        {
+            internal string Key;
+            internal bool NotifyChanges;
+            internal string Source;
+        }
+
+        private sealed class ClanImportState
+        {
+            internal TreeViewEx Tree;
+            internal string Nick;
+            internal string Source;
+            internal UserInfo SeedUserInfo;
+        }
+
+        private sealed class ClanImportApplyResult
+        {
+            internal bool Added;
+            internal bool Updated;
+            internal bool Skipped;
+            internal string Key;
+        }
 
         public static void Init(TreeViewEx tree)
         {
@@ -291,7 +322,7 @@ namespace ANClient
                     AppVars.Profile.Contacts[nextContactKey].NextCheck =
                         AppVars.Profile.Contacts[nextContactKey].NextCheck.AddMinutes(1);
 
-                    ThreadPool.QueueUserWorkItem(ProcessAsync, nextContactKey);
+                    QueueContactRefresh(nextContactKey, true, "Pulse");
                 }
             }
             else
@@ -310,17 +341,7 @@ namespace ANClient
         private static void ProcessAsync(object state)
         {
             var nextContactKey = (string)state;
-            AppLog.d("ContactsManager", "ProcessAsync: key=" + nextContactKey);
-            Contact contact;
-            if (!AppVars.Profile.Contacts.TryGetValue(nextContactKey, out contact))
-                return;
-
-            var nick = contact.Name;
-            var userInfo = NeverApi.GetAll(nick);
-            if (!AppVars.Profile.Contacts.TryGetValue(nextContactKey, out contact))
-                return;
-
-            contact.Process(userInfo);
+            QueueContactRefresh(nextContactKey, true, "ProcessAsync");
         }
 
         private static void ProcessBossAsync(object state)
@@ -332,6 +353,7 @@ namespace ANClient
                 return;
 
             var nick = contact.Name;
+            WaitContactApiTurn("ProcessBossAsync", ContactLookupRefreshDelayMs);
             var userInfo = NeverApi.GetAll(nick);
             if (!AppVars.BossContacts.TryGetValue(nextContactKey, out contact))
                 return;
@@ -406,16 +428,21 @@ namespace ANClient
 
         internal static void Add(TreeViewEx tree, string nick)
         {
+            if (string.IsNullOrEmpty(nick))
+                return;
+
+            Contact contact = null;
             try
             {
                 Rwl.AcquireWriterLock(5000);
                 try
                 {
-                    var contact = new Contact(nick, 0, 0, string.Empty, true, false);
-                    if (AppVars.Profile.Contacts.ContainsKey(nick.ToLower()))
+                    var key = nick.Trim().ToLower();
+                    if (AppVars.Profile.Contacts.ContainsKey(key))
                         return;
 
-                    AppVars.Profile.Contacts.Add(nick.ToLower(), contact);
+                    contact = new Contact(nick, 0, 0, string.Empty, true, false);
+                    AppVars.Profile.Contacts.Add(key, contact);
                     Add(tree, contact);
                 }
                 finally
@@ -426,6 +453,270 @@ namespace ANClient
             catch (ApplicationException)
             {
             }
+
+            if (contact == null)
+                return;
+
+            AppVars.Profile.Save();
+            AppLog.i("ContactsManager", "Add: queued full contact lookup nick=" + contact.Name);
+            QueueContactRefresh(contact.Name.ToLower(), false, "Add");
+        }
+
+        internal static void ImportClan(TreeViewEx tree, string nick, string source)
+        {
+            if (tree == null || string.IsNullOrEmpty(nick))
+                return;
+
+            var importSource = string.IsNullOrEmpty(source) ? "ContactsManager.ImportClan" : source;
+            AppLog.i("ContactsManager", "ImportClan: queued nick=" + nick + " source=" + importSource);
+            NotifyImportChat(importSource, "запущено добавление клана по персонажу [" + nick + "]");
+            ThreadPool.QueueUserWorkItem(ImportClanAsync, new ClanImportState { Tree = tree, Nick = nick.Trim(), Source = importSource });
+        }
+
+        internal static void ImportClan(TreeViewEx tree, Contact contact, string source)
+        {
+            if (tree == null || contact == null || string.IsNullOrEmpty(contact.Name))
+                return;
+
+            var importSource = string.IsNullOrEmpty(source) ? "ContactsManager.ImportClan" : source;
+            var seedUserInfo = new UserInfo
+            {
+                Nick = contact.Name,
+                ClanSign = contact.ClanIco,
+                ClanIco = contact.ClanIco,
+                ClanName = string.IsNullOrEmpty(contact.ClanName) ? contact.Clan : contact.ClanName
+            };
+
+            AppLog.i("ContactsManager", "ImportClan: queued contact nick=" + contact.Name + " clan=" + seedUserInfo.ClanName + " source=" + importSource);
+            NotifyImportChat(importSource, "запущено добавление клана [" + seedUserInfo.ClanName + "] по контакту [" + contact.Name + "]");
+            ThreadPool.QueueUserWorkItem(ImportClanAsync, new ClanImportState { Tree = tree, Nick = contact.Name.Trim(), Source = importSource, SeedUserInfo = seedUserInfo });
+        }
+
+        private static void ImportClanAsync(object state)
+        {
+            var importState = state as ClanImportState;
+            if (importState == null || importState.Tree == null || string.IsNullOrEmpty(importState.Nick))
+                return;
+
+            if (importState.SeedUserInfo == null)
+            {
+                WaitContactApiTurn("ImportClan.GetRoster", ContactLookupRefreshDelayMs);
+            }
+
+            var roster = importState.SeedUserInfo == null
+                ? NeverApi.GetClanRosterByNick(importState.Nick)
+                : NeverApi.GetClanRosterByUserInfo(importState.SeedUserInfo);
+            if (roster == null || roster.MainUserInfo == null)
+            {
+                AppLog.w("ContactsManager", "ImportClan: roster not found nick=" + importState.Nick + " source=" + importState.Source);
+                NotifyImportChat(importState.Source, "не удалось получить список клана для [" + importState.Nick + "]");
+                return;
+            }
+
+            if (string.IsNullOrEmpty(roster.ClanName) || ContactRenderHelper.IsNeutralClanName(roster.ClanName))
+            {
+                NotifyImportChat(importState.Source, "у персонажа [" + roster.MainUserInfo.Nick + "] не найден клан");
+                return;
+            }
+
+            if (roster.MemberNicks.Length == 0)
+            {
+                NotifyImportChat(importState.Source, "список клана [" + roster.ClanName + "] пуст");
+                return;
+            }
+
+            NotifyImportChat(importState.Source, "быстро добавляем всех из '" + roster.ClanName + "': " + roster.MemberNicks.Length.ToString(CultureInfo.InvariantCulture));
+            var added = 0;
+            var updated = 0;
+            var skipped = 0;
+            var refreshKeys = new List<string>();
+
+            foreach (var member in roster.Members)
+            {
+                if (member == null || string.IsNullOrEmpty(member.Nick))
+                    continue;
+
+                var userInfo = BuildClanRosterSnapshot(roster, member);
+                var applyResult = ApplyImportedContact(importState.Tree, userInfo, member.Nick);
+                if (applyResult.Added)
+                    added++;
+                else if (applyResult.Updated)
+                    updated++;
+                else if (applyResult.Skipped)
+                    skipped++;
+
+                if (!applyResult.Skipped)
+                {
+                    AddUniqueContactKey(refreshKeys, applyResult.Key);
+                }
+            }
+
+            AppVars.Profile.Save();
+            AppLog.i("ContactsManager", "ImportClan: phase1 finished clan=" + roster.ClanName + " added=" + added.ToString(CultureInfo.InvariantCulture) + " updated=" + updated.ToString(CultureInfo.InvariantCulture) + " skipped=" + skipped.ToString(CultureInfo.InvariantCulture) + " refreshQueued=" + refreshKeys.Count.ToString(CultureInfo.InvariantCulture));
+            NotifyImportChat(importState.Source, "быстрое добавление из '" + roster.ClanName + "' завершено: новых " + added.ToString(CultureInfo.InvariantCulture) + ", обновлено " + updated.ToString(CultureInfo.InvariantCulture) + ", пропущено " + skipped.ToString(CultureInfo.InvariantCulture) + "; проверка в очереди " + refreshKeys.Count.ToString(CultureInfo.InvariantCulture));
+
+            if (refreshKeys.Count > 0)
+            {
+                QueueContactListRefresh(refreshKeys, "ImportClan.PostRefresh clan=" + roster.ClanName);
+            }
+        }
+
+        private static UserInfo BuildClanRosterSnapshot(NeverApi.ClanRoster roster, NeverApi.ClanRosterMember member)
+        {
+            var level = member == null ? 0 : member.Level;
+            return new UserInfo
+            {
+                PlayerId = member == null ? string.Empty : member.PlayerId,
+                Nick = member == null ? string.Empty : member.Nick,
+                Level = level > 0 ? level.ToString(CultureInfo.InvariantCulture) : string.Empty,
+                PlayerLevel = level,
+                ClanCode = roster == null ? string.Empty : roster.ClanId,
+                ClanNumber = roster == null ? string.Empty : roster.ClanId,
+                ClanSign = roster == null ? string.Empty : roster.ClanSign,
+                ClanIco = roster == null ? string.Empty : roster.ClanSign,
+                ClanName = roster == null ? string.Empty : roster.ClanName,
+                ClanStatus = member == null ? string.Empty : member.Status
+            };
+        }
+
+        private static void AddUniqueContactKey(List<string> keys, string key)
+        {
+            if (keys == null || string.IsNullOrEmpty(key))
+                return;
+
+            foreach (var existingKey in keys)
+            {
+                if (key.Equals(existingKey, StringComparison.OrdinalIgnoreCase))
+                    return;
+            }
+
+            keys.Add(key);
+        }
+
+        private static ClanImportApplyResult ApplyImportedContact(TreeViewEx tree, UserInfo userInfo, string fallbackNick)
+        {
+            var result = new ClanImportApplyResult();
+            if (tree == null || tree.IsDisposed)
+            {
+                result.Skipped = true;
+                return result;
+            }
+
+            if (tree.InvokeRequired)
+            {
+                var wait = new ManualResetEvent(false);
+                ClanImportApplyResult invokedResult = null;
+                Exception invokeError = null;
+                try
+                {
+                    tree.BeginInvoke((MethodInvoker)delegate
+                    {
+                        try
+                        {
+                            invokedResult = ApplyImportedContact(tree, userInfo, fallbackNick);
+                        }
+                        catch (Exception ex)
+                        {
+                            invokeError = ex;
+                        }
+                        finally
+                        {
+                            wait.Set();
+                        }
+                    });
+                    wait.WaitOne();
+                }
+                catch (InvalidOperationException)
+                {
+                    result.Skipped = true;
+                    return result;
+                }
+
+                if (invokeError != null)
+                {
+                    AppLog.e("ContactsManager", "ApplyImportedContact: UI invoke failed nick=" + (fallbackNick ?? string.Empty), invokeError);
+                    result.Skipped = true;
+                    return result;
+                }
+
+                return invokedResult ?? result;
+            }
+
+            var contactName = userInfo == null || string.IsNullOrEmpty(userInfo.Nick) ? fallbackNick : userInfo.Nick;
+            if (string.IsNullOrEmpty(contactName))
+            {
+                result.Skipped = true;
+                return result;
+            }
+
+            var key = contactName.Trim().ToLower();
+            Contact contact;
+            var added = false;
+            var updated = false;
+            try
+            {
+                Rwl.AcquireWriterLock(5000);
+                try
+                {
+                    if (AppVars.Profile.Contacts.TryGetValue(key, out contact))
+                    {
+                        if (userInfo != null)
+                        {
+                            contact.ApplyClanRosterSnapshot(userInfo);
+                        }
+
+                        updated = true;
+                    }
+                    else
+                    {
+                        contact = new Contact(contactName, 0, 0, string.Empty, true, false);
+                        if (userInfo != null)
+                        {
+                            contact.ApplyClanRosterSnapshot(userInfo);
+                        }
+
+                        AppVars.Profile.Contacts.Add(contact.Name.ToLower(), contact);
+                        added = true;
+                    }
+                }
+                finally
+                {
+                    Rwl.ReleaseWriterLock();
+                }
+            }
+            catch (ApplicationException)
+            {
+                result.Skipped = true;
+                return result;
+            }
+
+            if (added)
+            {
+                Add(tree, contact);
+                result.Added = true;
+                result.Key = contact.Name.ToLower();
+                return result;
+            }
+
+            if (updated)
+            {
+                NormalizeContactKey(key, contact);
+                Update(tree, contact);
+                result.Updated = true;
+                result.Key = contact.Name.ToLower();
+                return result;
+            }
+
+            result.Skipped = true;
+            return result;
+        }
+
+        private static void NotifyImportChat(string source, string text)
+        {
+            if (AppVars.MainForm == null || string.IsNullOrEmpty(text))
+                return;
+
+            AppVars.MainForm.WriteChatMsgSafe("[" + source + "] " + text);
         }
 
         private static TreeNode MakeTreeNode(Contact ce)
@@ -433,7 +724,7 @@ namespace ANClient
             var tn = new TreeNode
             {
                 Name = ce.TreeNode,
-                Text = ce.ToString(),
+                Text = ce.BuildTreeText(),
                 ContextMenuStrip = AppVars.MainForm.CmPerson,
                 Checked = ce.Tracing,
                 ForeColor = Color.LightBlue,
@@ -472,10 +763,344 @@ namespace ANClient
         internal static int GetToolIdOfContact(string nick)
         {
             if (!AppVars.Profile.Contacts.ContainsKey(nick.ToLower()))
-                return -1;
+                return 0;
 
             var toolid = AppVars.Profile.Contacts[nick.ToLower()].ToolId;
+            if (toolid < 0)
+                return 0;
+
+            if (toolid > 7)
+                return 7;
+
             return toolid;
+        }
+
+        internal static int GetLevelOfContact(string nick)
+        {
+            if (string.IsNullOrEmpty(nick) || !AppVars.Profile.Contacts.ContainsKey(nick.ToLower()))
+                return 0;
+
+            return Math.Max(0, AppVars.Profile.Contacts[nick.ToLower()].PlayerLevel);
+        }
+
+        internal static int[] GetEffectIdsOfContact(string nick)
+        {
+            if (string.IsNullOrEmpty(nick) || !AppVars.Profile.Contacts.ContainsKey(nick.ToLower()))
+                return new int[0];
+
+            return ContactRenderHelper.ParseEffectIdsCsv(AppVars.Profile.Contacts[nick.ToLower()].EffectIds).ToArray();
+        }
+
+        internal static string GetEffectIdsCsvOfContact(string nick)
+        {
+            if (string.IsNullOrEmpty(nick) || !AppVars.Profile.Contacts.ContainsKey(nick.ToLower()))
+                return string.Empty;
+
+            return AppVars.Profile.Contacts[nick.ToLower()].EffectIds ?? string.Empty;
+        }
+
+        internal static string GetEffectHtmlOfContact(string nick)
+        {
+            if (string.IsNullOrEmpty(nick) || !AppVars.Profile.Contacts.ContainsKey(nick.ToLower()))
+                return string.Empty;
+
+            var contact = AppVars.Profile.Contacts[nick.ToLower()];
+            return ContactRenderHelper.BuildEffectIconsHtml(contact.EffectStates, contact.EffectIds);
+        }
+
+        internal static void RefreshContact(Contact contact)
+        {
+            if (contact == null)
+                return;
+
+            QueueContactRefresh(contact.Name.ToLower(), false, "RefreshContact");
+        }
+
+        internal static void RefreshAllContacts()
+        {
+            var keys = new List<string>();
+            try
+            {
+                Rwl.AcquireReaderLock(5000);
+                try
+                {
+                    foreach (var contact in AppVars.Profile.Contacts)
+                    {
+                        keys.Add(contact.Key);
+                    }
+                }
+                finally
+                {
+                    Rwl.ReleaseReaderLock();
+                }
+            }
+            catch (ApplicationException)
+            {
+            }
+
+            QueueContactListRefresh(keys, "all");
+        }
+
+        internal static void RefreshGroupContacts(string group)
+        {
+            if (string.IsNullOrEmpty(group))
+                return;
+
+            var keys = new List<string>();
+            try
+            {
+                Rwl.AcquireReaderLock(5000);
+                try
+                {
+                    foreach (var contact in AppVars.Profile.Contacts)
+                    {
+                        if (group.Equals(contact.Value.Parent, StringComparison.OrdinalIgnoreCase) || group.Equals(GetParentName(contact.Value), StringComparison.OrdinalIgnoreCase))
+                        {
+                            keys.Add(contact.Key);
+                        }
+                    }
+                }
+                finally
+                {
+                    Rwl.ReleaseReaderLock();
+                }
+            }
+            catch (ApplicationException)
+            {
+            }
+
+            QueueContactListRefresh(keys, "group=" + group);
+        }
+
+        internal static void RefreshNeutralContacts()
+        {
+            var keys = new List<string>();
+            try
+            {
+                Rwl.AcquireReaderLock(5000);
+                try
+                {
+                    foreach (var contact in AppVars.Profile.Contacts)
+                    {
+                        if (ContactRenderHelper.IsNeutralClanName(contact.Value.ClanName))
+                        {
+                            keys.Add(contact.Key);
+                        }
+                    }
+                }
+                finally
+                {
+                    Rwl.ReleaseReaderLock();
+                }
+            }
+            catch (ApplicationException)
+            {
+            }
+
+            QueueContactListRefresh(keys, "neutral");
+        }
+
+        private static void QueueContactListRefresh(List<string> keys, string source)
+        {
+            if (keys == null || keys.Count == 0)
+            {
+                AppLog.i("ContactsManager", "RefreshContacts: skip empty source=" + source);
+                return;
+            }
+
+            AppLog.i("ContactsManager", "RefreshContacts: queued count=" + keys.Count.ToString(CultureInfo.InvariantCulture) + " source=" + source);
+            foreach (var key in keys)
+            {
+                QueueContactRefresh(key, false, source);
+            }
+        }
+
+        private static void RefreshContactListAsync(object state)
+        {
+            var keys = state as string[];
+            if (keys == null)
+                return;
+
+            foreach (var key in keys)
+            {
+                RefreshContactByKey(key, false);
+            }
+        }
+
+        private static void RefreshContactAsync(object state)
+        {
+            var refreshState = state as ContactRefreshState;
+            if (refreshState == null || string.IsNullOrEmpty(refreshState.Key))
+                return;
+
+            RefreshContactByKey(refreshState.Key, refreshState.NotifyChanges);
+        }
+
+        private static void QueueContactRefresh(string key, bool notifyChanges, string source)
+        {
+            if (string.IsNullOrEmpty(key))
+                return;
+
+            var normalizedKey = key.ToLower();
+            var shouldStartWorker = false;
+            lock (ContactRefreshQueueLock)
+            {
+                ContactRefreshState existing;
+                if (ContactRefreshPending.TryGetValue(normalizedKey, out existing))
+                {
+                    existing.NotifyChanges = existing.NotifyChanges || notifyChanges;
+                    return;
+                }
+
+                var state = new ContactRefreshState
+                {
+                    Key = normalizedKey,
+                    NotifyChanges = notifyChanges,
+                    Source = source ?? string.Empty
+                };
+                ContactRefreshPending.Add(normalizedKey, state);
+                ContactRefreshQueue.Enqueue(state);
+                if (!_contactRefreshWorkerRunning)
+                {
+                    _contactRefreshWorkerRunning = true;
+                    shouldStartWorker = true;
+                }
+            }
+
+            if (shouldStartWorker)
+            {
+                ThreadPool.QueueUserWorkItem(ContactRefreshQueueAsync);
+            }
+        }
+
+        private static void ContactRefreshQueueAsync(object state)
+        {
+            while (true)
+            {
+                ContactRefreshState refreshState;
+                lock (ContactRefreshQueueLock)
+                {
+                    if (ContactRefreshQueue.Count == 0)
+                    {
+                        _contactRefreshWorkerRunning = false;
+                        return;
+                    }
+
+                    refreshState = ContactRefreshQueue.Dequeue();
+                    ContactRefreshPending.Remove(refreshState.Key);
+                }
+
+                try
+                {
+                    AppLog.d("ContactsManager", "ContactRefreshWorker: key=" + refreshState.Key + " notify=" + refreshState.NotifyChanges.ToString(CultureInfo.InvariantCulture) + " source=" + refreshState.Source);
+                    RefreshContactByKey(refreshState.Key, refreshState.NotifyChanges);
+                }
+                catch (Exception ex)
+                {
+                    AppLog.w("ContactsManager", "ContactRefreshWorker: refresh failed key=" + refreshState.Key + " source=" + refreshState.Source, ex);
+                }
+            }
+        }
+
+        private static void RefreshContactByKey(string key, bool notifyChanges)
+        {
+            Contact contact;
+            if (string.IsNullOrEmpty(key) || !AppVars.Profile.Contacts.TryGetValue(key, out contact))
+                return;
+
+            var hasPlayerId = !string.IsNullOrEmpty(contact.PlayerId);
+            WaitContactApiTurn("RefreshContactByKey", hasPlayerId ? ContactInfoRefreshDelayMs : ContactLookupRefreshDelayMs);
+            AppLog.d("ContactsManager", "RefreshContactByKey: route=" + (hasPlayerId ? "info.cgi" : "getid+info.cgi") + " key=" + key + " playerId=" + contact.PlayerId);
+            var userInfo = hasPlayerId
+                ? NeverApi.GetAllByPlayerId(contact.PlayerId)
+                : NeverApi.GetAll(contact.Name);
+
+            if (userInfo == null)
+            {
+                AppLog.w("ContactsManager", "RefreshContactByKey: EMPTY_USER_INFO key=" + key + " playerId=" + contact.PlayerId);
+                return;
+            }
+
+            if (!AppVars.Profile.Contacts.TryGetValue(key, out contact))
+                return;
+
+            if (notifyChanges)
+            {
+                contact.Process(userInfo);
+            }
+            else
+            {
+                contact.ApplySnapshot(userInfo);
+                NotifyContactUpdated(contact);
+            }
+
+            NormalizeContactKey(key, contact);
+            AppVars.Profile.Save();
+        }
+
+        private static void NormalizeContactKey(string oldKey, Contact contact)
+        {
+            if (contact == null || string.IsNullOrEmpty(contact.Name))
+                return;
+
+            var newKey = contact.Name.ToLower();
+            if (newKey.Equals(oldKey, StringComparison.Ordinal))
+                return;
+
+            try
+            {
+                Rwl.AcquireWriterLock(5000);
+                try
+                {
+                    if (!AppVars.Profile.Contacts.ContainsKey(oldKey) || AppVars.Profile.Contacts.ContainsKey(newKey))
+                        return;
+
+                    AppVars.Profile.Contacts.Remove(oldKey);
+                    AppVars.Profile.Contacts.Add(newKey, contact);
+                    AppLog.i("ContactsManager", "NormalizeContactKey: " + oldKey + " -> " + newKey);
+                }
+                finally
+                {
+                    Rwl.ReleaseWriterLock();
+                }
+            }
+            catch (ApplicationException)
+            {
+            }
+        }
+
+        private static void NotifyContactUpdated(Contact contact)
+        {
+            if (contact == null || AppVars.MainForm == null)
+                return;
+
+            try
+            {
+                AppVars.MainForm.BeginInvoke(new UpdateContactDelegate(AppVars.MainForm.UpdateContact), contact);
+            }
+            catch (InvalidOperationException)
+            {
+            }
+        }
+
+        private static void WaitContactApiTurn(string source, int delayMs)
+        {
+            lock (ContactApiLock)
+            {
+                var now = DateTime.UtcNow;
+                var elapsedMs = (now - _lastContactApiRequestUtc).TotalMilliseconds;
+                if (_lastContactApiRequestUtc != DateTime.MinValue && elapsedMs < delayMs)
+                {
+                    var sleepMs = delayMs - (int)elapsedMs;
+                    if (sleepMs > 0)
+                    {
+                        AppLog.d("ContactsManager", "WaitContactApiTurn: source=" + source + " sleepMs=" + sleepMs.ToString(CultureInfo.InvariantCulture));
+                        Thread.Sleep(sleepMs);
+                    }
+                }
+
+                _lastContactApiRequestUtc = DateTime.UtcNow;
+            }
         }
 
         internal static Color GetColorOfContact(Contact contact)
@@ -529,58 +1154,106 @@ namespace ANClient
                         return;
                     }
 
-                    tn.Text = contact.ToString();
-                    tn.ForeColor = GetColorOfContact(contact);
-                    tn.ImageKey = tn.SelectedImageKey = PrepareContactSign(contact);
-                    tn.ToolTipText = contact.Location;
-
-                    var nameGroup = GetParentName(contact);
-                    if (!nameGroup.Equals(contact.Parent, StringComparison.OrdinalIgnoreCase))
+                    var treeText = contact.BuildTreeText();
+                    if (!string.Equals(tn.Text, treeText, StringComparison.Ordinal))
                     {
-                        if (string.IsNullOrEmpty(contact.Parent))
-                        {
-                            tree.Nodes.Remove(tn);
-                        }
-                        else
-                        {
-                            if (tree.Nodes.ContainsKey(contact.Parent))
-                            {
-                                var tnoldparent = tree.Nodes[contact.Parent];
-                                tnoldparent.Nodes.Remove(tn);
-                                UpdateGroupCounter(tnoldparent);
-                            }
-                        }
+                        tn.Text = treeText;
+                    }
 
-                        if (string.IsNullOrEmpty(nameGroup))
+                    var contactColor = GetColorOfContact(contact);
+                    if (tn.ForeColor != contactColor)
+                    {
+                        tn.ForeColor = contactColor;
+                    }
+
+                    var imageKey = PrepareContactSign(contact);
+                    if (!string.Equals(tn.ImageKey, imageKey, StringComparison.Ordinal) ||
+                        !string.Equals(tn.SelectedImageKey, imageKey, StringComparison.Ordinal))
+                    {
+                        tn.ImageKey = imageKey;
+                        tn.SelectedImageKey = imageKey;
+                    }
+
+                    if (!string.Equals(tn.ToolTipText, contact.Location, StringComparison.Ordinal))
+                    {
+                        tn.ToolTipText = contact.Location;
+                    }
+
+                    tn.Tag = contact;
+
+                    var nameGroup = GetParentName(contact) ?? string.Empty;
+                    var currentParent = tn.Parent == null ? string.Empty : tn.Parent.Name;
+                    var storedParent = contact.Parent ?? string.Empty;
+                    var needsMove = !nameGroup.Equals(currentParent, StringComparison.OrdinalIgnoreCase);
+                    var needsParentSync = !nameGroup.Equals(storedParent, StringComparison.OrdinalIgnoreCase);
+                    var treeUpdateStarted = false;
+                    try
+                    {
+                        if (needsMove)
                         {
-                            tree.Nodes.Add(tn);
-                        }
-                        else
-                        {
-                            if (!tree.Nodes.ContainsKey(nameGroup))
+                            tree.BeginUpdate();
+                            treeUpdateStarted = true;
+
+                            var wasSelected = tree.SelectedNode == tn;
+                            var oldParent = tn.Parent;
+                            if (oldParent == null)
                             {
-                                var tnparent = MakeGroupNode(nameGroup, contact);
-                                tree.Nodes.Insert(0, tnparent);
-                                tnparent.Nodes.Add(tn);
-                                UpdateGroupCounter(tnparent);
-                                if (AppVars.Profile.Contacts.ContainsKey(contact.Name.ToLower()))
-                                    AppVars.Profile.Contacts[contact.Name.ToLower()].Parent = nameGroup;
+                                tree.Nodes.Remove(tn);
                             }
                             else
                             {
-                                var tnparent = tree.Nodes[nameGroup];
-                                tnparent.Nodes.Add(tn);
-                                if (AppVars.Profile.Contacts.ContainsKey(contact.Name.ToLower()))
-                                    AppVars.Profile.Contacts[contact.Name.ToLower()].Parent = nameGroup;
+                                oldParent.Nodes.Remove(tn);
+                                UpdateGroupCounter(oldParent);
                             }
+
+                            if (string.IsNullOrEmpty(nameGroup))
+                            {
+                                tree.Nodes.Add(tn);
+                            }
+                            else
+                            {
+                                TreeNode tnparent;
+                                if (!tree.Nodes.ContainsKey(nameGroup))
+                                {
+                                    tnparent = MakeGroupNode(nameGroup, contact);
+                                    tree.Nodes.Insert(0, tnparent);
+                                }
+                                else
+                                {
+                                    tnparent = tree.Nodes[nameGroup];
+                                }
+
+                                tnparent.Nodes.Add(tn);
+                            }
+
+                            if (wasSelected)
+                            {
+                                tree.SelectedNode = tn;
+                            }
+                        }
+
+                        if (needsMove || needsParentSync)
+                        {
+                            contact.Parent = nameGroup;
+                            if (AppVars.Profile.Contacts.ContainsKey(contact.Name.ToLower()))
+                                AppVars.Profile.Contacts[contact.Name.ToLower()].Parent = nameGroup;
+                        }
+
+                        if (!string.IsNullOrEmpty(nameGroup) && tree.Nodes.ContainsKey(nameGroup))
+                        {
+                            var tnparent = tree.Nodes[nameGroup];
+                            UpdateGroupCounter(tnparent);
+                        }
+                    }
+                    finally
+                    {
+                        if (treeUpdateStarted)
+                        {
+                            tree.EndUpdate();
                         }
                     }
 
-                    if (!string.IsNullOrEmpty(nameGroup) && tree.Nodes.ContainsKey(nameGroup))
-                    {
-                        var tnparent = tree.Nodes[nameGroup];
-                        UpdateGroupCounter(tnparent);
-                    }
+                    tree.InvalidateNodeRow(tn);
                 }
                 finally
                 {

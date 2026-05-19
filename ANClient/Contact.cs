@@ -5,6 +5,7 @@ using System.Globalization;
 using System.Net;
 using System.Text;
 using ANClient.ANForms;
+using ANClient.ANProxy;
 using ANClient.Helpers;
 using ANClient.MyHelpers;
 using ANClient.Things;
@@ -13,11 +14,32 @@ namespace ANClient
 {
     internal sealed class Contact
     {
+        private const string DetailsSeparator = "\r\n\r\n--- Данные сервера ---\r\n";
+
         internal string Name { get; private set; } // Имя 
         internal string Comments { get; set; } // Комментарии
         internal bool Tracing { get; set; } // Нужно ли следить за контактом
         internal int ClassId { get; set; } // Группа: 0 -нейтрал, 1 - враг, 2 - друг
         internal int ToolId { get; set; } // Применение нападалки: 0 - по умолчанию, 1 - боевая , 2 - закрытая боевая, 3 - кулачка, 4 - закрытая кулачка
+
+        internal string PlayerId { get; private set; } // app2: playerID
+        internal int PlayerLevel { get; private set; } // app2: playerLevel
+        internal int Inclination { get; private set; } // app2: inclination
+        internal string InclinationName { get; private set; } // app2: inclinationName
+        internal string ClanNumber { get; private set; } // app2: clanNumber
+        internal string ClanIco { get; private set; } // app2: clanIco
+        internal string ClanName { get; private set; } // app2: clanName
+        internal string ClanStatus { get; private set; } // app2: clanStatus
+        internal int Gender { get; private set; } // app2: gender
+        internal int BlockStatus { get; private set; } // app2: blockStatus
+        internal int JailStatus { get; private set; } // app2: jailStatus
+        internal int MuteSeconds { get; private set; } // app2: muteSeconds
+        internal int MuteForumSeconds { get; private set; } // app2: muteForumSeconds
+        internal int OnlineStatus { get; private set; } // app2: onlineStatus
+        internal string GeoLocation { get; private set; } // app2: geoLocation
+        internal string WarLogNumber { get; private set; } // app2: warLogNumber
+        internal string EffectIds { get; private set; } // app2: effectIds
+        internal string EffectStates { get; private set; } // app2: effectStates
         
         internal string Sign { get; private set; } // Значок клана
         internal string Align { get; private set; } // Склонность
@@ -34,6 +56,11 @@ namespace ANClient
 
         private string[] CodeEffects { get; set; }
         private string[] NameEffects { get; set; }
+
+        private sealed class EffectNameLookup
+        {
+            internal readonly Dictionary<int, string> ById = new Dictionary<int, string>();
+        }
 
         internal bool IsMolch { get; private set; }
         internal bool IsOnline { get; private set; }
@@ -79,10 +106,30 @@ namespace ANClient
 
         private void InternalInit(bool delayedCheck)
         {
+            PlayerId = string.Empty;
+            PlayerLevel = ParseIntSafe(Level, 0);
+            Inclination = ParseIntSafe(Align, 0);
+            InclinationName = ContactRenderHelper.GetInclinationName(Inclination);
+            ClanNumber = string.Empty;
+            ClanIco = Sign ?? string.Empty;
+            ClanName = Clan ?? string.Empty;
+            ClanStatus = string.Empty;
+            Gender = 0;
+            BlockStatus = 0;
+            JailStatus = 0;
+            MuteSeconds = 0;
+            MuteForumSeconds = 0;
+            OnlineStatus = 0;
+            GeoLocation = string.Empty;
+            WarLogNumber = string.Empty;
+            EffectIds = string.Empty;
+            EffectStates = string.Empty;
             Parent = string.Empty;
             Location = string.Empty;
             WoundCounts = 0;
             Wounds = new int[4];
+            CodeEffects = new string[0];
+            NameEffects = new string[0];
             Tied = 0;
             Flog = string.Empty;
             _isFirst = true;
@@ -96,6 +143,521 @@ namespace ANClient
         {
             var result = string.IsNullOrEmpty(Level) ? Name : string.Format(CultureInfo.InvariantCulture, "{0} [{1}]", Name, Level);
             return result;
+        }
+
+        internal string BuildTreeText()
+        {
+            return ToString();
+        }
+
+        internal void ApplyPersistedProfile(
+            string playerId,
+            int playerLevel,
+            int inclination,
+            string inclinationName,
+            string clanNumber,
+            string clanIco,
+            string clanName,
+            string clanStatus,
+            int gender,
+            int blockStatus,
+            int jailStatus,
+            int muteSeconds,
+            int muteForumSeconds,
+            int onlineStatus,
+            string geoLocation,
+            string warLogNumber,
+            string effectIds,
+            string effectStates)
+        {
+            ApplyServerFields(
+                Name,
+                playerId,
+                playerLevel,
+                inclination,
+                inclinationName,
+                clanNumber,
+                clanIco,
+                clanName,
+                clanStatus,
+                gender,
+                blockStatus,
+                jailStatus,
+                muteSeconds,
+                muteForumSeconds,
+                onlineStatus,
+                geoLocation,
+                warLogNumber,
+                effectIds,
+                effectStates);
+        }
+
+        internal void ApplySnapshot(UserInfo userInfo)
+        {
+            if (userInfo == null)
+                return;
+
+            var location = NormalizeLocation(userInfo.Location);
+            var flog = NormalizeFightLog(userInfo.FightLog);
+            ApplyServerFields(
+                userInfo.Nick,
+                userInfo.PlayerId,
+                userInfo.PlayerLevel,
+                userInfo.Inclination,
+                userInfo.InclinationName,
+                userInfo.ClanNumber,
+                userInfo.ClanIco,
+                userInfo.ClanName,
+                userInfo.ClanStatus,
+                userInfo.Gender,
+                userInfo.BlockStatus,
+                userInfo.JailStatus,
+                userInfo.MuteSeconds,
+                userInfo.MuteForumSeconds,
+                userInfo.OnlineStatus,
+                location,
+                flog,
+                userInfo.EffectIds,
+                userInfo.EffectStates);
+
+            Location = location;
+            IsOnline = ResolveIsOnline(userInfo, location);
+            OnlineStatus = ResolveOnlineStatus(userInfo, IsOnline);
+            Tied = userInfo.Tied;
+            Flog = flog;
+            PSlots = BuildSlotSnapshot(userInfo);
+            ApplyEffectSnapshot(userInfo);
+            _isFirst = false;
+            _delay = 0;
+            NextCheck = DateTime.Now;
+        }
+
+        internal void ApplyClanRosterSnapshot(UserInfo userInfo)
+        {
+            if (userInfo == null)
+                return;
+
+            ApplyServerFields(
+                userInfo.Nick,
+                string.IsNullOrEmpty(userInfo.PlayerId) ? PlayerId : userInfo.PlayerId,
+                userInfo.PlayerLevel > 0 ? userInfo.PlayerLevel : PlayerLevel,
+                Inclination,
+                InclinationName,
+                string.IsNullOrEmpty(userInfo.ClanNumber) ? ClanNumber : userInfo.ClanNumber,
+                string.IsNullOrEmpty(userInfo.ClanIco) ? ClanIco : userInfo.ClanIco,
+                string.IsNullOrEmpty(userInfo.ClanName) ? ClanName : userInfo.ClanName,
+                string.IsNullOrEmpty(userInfo.ClanStatus) ? ClanStatus : userInfo.ClanStatus,
+                Gender,
+                BlockStatus,
+                JailStatus,
+                MuteSeconds,
+                MuteForumSeconds,
+                OnlineStatus,
+                GeoLocation,
+                WarLogNumber,
+                EffectIds,
+                EffectStates);
+        }
+
+        internal string BuildDetailsText()
+        {
+            var sb = new StringBuilder();
+            if (!string.IsNullOrEmpty(Comments))
+            {
+                sb.Append(Comments);
+            }
+
+            var serverDetails = BuildServerDetailsText();
+            if (serverDetails.Length > 0)
+            {
+                sb.Append(DetailsSeparator);
+                sb.Append(serverDetails);
+            }
+
+            return sb.ToString();
+        }
+
+        internal static string ExtractEditableComments(string detailsText)
+        {
+            if (string.IsNullOrEmpty(detailsText))
+                return string.Empty;
+
+            var pos = detailsText.IndexOf(DetailsSeparator, StringComparison.Ordinal);
+            if (pos < 0)
+                return detailsText;
+
+            return detailsText.Substring(0, pos);
+        }
+
+        private void ApplyServerFields(
+            string nick,
+            string playerId,
+            int playerLevel,
+            int inclination,
+            string inclinationName,
+            string clanNumber,
+            string clanIco,
+            string clanName,
+            string clanStatus,
+            int gender,
+            int blockStatus,
+            int jailStatus,
+            int muteSeconds,
+            int muteForumSeconds,
+            int onlineStatus,
+            string geoLocation,
+            string warLogNumber,
+            string effectIds,
+            string effectStates)
+        {
+            if (!string.IsNullOrEmpty(nick))
+            {
+                Name = nick.Trim();
+            }
+
+            PlayerId = playerId ?? string.Empty;
+            PlayerLevel = playerLevel > 0 ? playerLevel : ParseIntSafe(Level, 0);
+            Inclination = inclination;
+            InclinationName = string.IsNullOrEmpty(inclinationName) ? ContactRenderHelper.GetInclinationName(inclination) : inclinationName;
+            ClanNumber = clanNumber ?? string.Empty;
+            ClanIco = clanIco ?? string.Empty;
+            ClanName = clanName ?? string.Empty;
+            ClanStatus = clanStatus ?? string.Empty;
+            Gender = gender;
+            BlockStatus = blockStatus;
+            JailStatus = jailStatus;
+            MuteSeconds = muteSeconds;
+            MuteForumSeconds = muteForumSeconds;
+            OnlineStatus = onlineStatus;
+            GeoLocation = geoLocation ?? string.Empty;
+            WarLogNumber = string.IsNullOrEmpty(warLogNumber) ? string.Empty : warLogNumber;
+            EffectIds = effectIds ?? string.Empty;
+            EffectStates = effectStates ?? string.Empty;
+
+            if (PlayerLevel > 0)
+            {
+                Level = PlayerLevel.ToString(CultureInfo.InvariantCulture);
+            }
+
+            Align = inclination.ToString(CultureInfo.InvariantCulture);
+            Sign = string.IsNullOrEmpty(ClanIco) ? (string.IsNullOrEmpty(Sign) ? "none" : Sign) : ClanIco;
+            Clan = ContactRenderHelper.IsNeutralClanName(ClanName) ? string.Empty : ClanName;
+        }
+
+        private string BuildServerDetailsText()
+        {
+            var sb = new StringBuilder();
+            AppendDetail(sb, "playerID", PlayerId);
+            AppendDetail(sb, "Ник", Name);
+            AppendDetail(sb, "Уровень", PlayerLevel > 0 ? PlayerLevel.ToString(CultureInfo.InvariantCulture) : Level);
+            AppendDetail(sb, "Склонность", string.IsNullOrEmpty(InclinationName) ? Align : InclinationName + " (" + Align + ")");
+            AppendDetail(sb, "Клан", string.IsNullOrEmpty(ClanName) ? Clan : ClanName);
+            AppendDetail(sb, "Иконка клана", ClanIco);
+            AppendDetail(sb, "Статус в клане", ClanStatus);
+            AppendDetail(sb, "Пол", Gender.ToString(CultureInfo.InvariantCulture));
+            AppendDetail(sb, "Блокировка", BlockStatus.ToString(CultureInfo.InvariantCulture));
+            AppendDetail(sb, "Тюрьма", JailStatus.ToString(CultureInfo.InvariantCulture));
+            AppendDetail(sb, "Молчанка чат", MuteSeconds.ToString(CultureInfo.InvariantCulture));
+            AppendDetail(sb, "Молчанка форум", MuteForumSeconds.ToString(CultureInfo.InvariantCulture));
+            AppendDetail(sb, "Онлайн", OnlineStatus.ToString(CultureInfo.InvariantCulture));
+            AppendDetail(sb, "Локация", GeoLocation);
+            AppendDetail(sb, "Бой", WarLogNumber);
+            AppendDetail(sb, "Эффекты", FormatEffectDetails());
+            return sb.ToString();
+        }
+
+        private string FormatEffectDetails()
+        {
+            var states = ContactRenderHelper.ParseEffectStatesCsv(EffectStates, EffectIds);
+            if (states.Count == 0)
+                return string.Empty;
+
+            var sb = new StringBuilder();
+            foreach (var state in states)
+            {
+                if (sb.Length > 0)
+                    sb.Append(", ");
+
+                sb.Append(state.Id.ToString(CultureInfo.InvariantCulture));
+                sb.Append(' ');
+                sb.Append(ContactRenderHelper.FormatEffectCounterText(state));
+            }
+
+            return sb.ToString();
+        }
+
+        private static void AppendDetail(StringBuilder sb, string title, string value)
+        {
+            if (string.IsNullOrEmpty(value))
+                return;
+
+            if (sb.Length > 0)
+                sb.AppendLine();
+
+            sb.Append(title);
+            sb.Append(": ");
+            sb.Append(value);
+        }
+
+        private static string NormalizeLocation(string location)
+        {
+            if (string.IsNullOrEmpty(location))
+                return string.Empty;
+
+            var result = location;
+            var splocation = result.Split(new[] { " [" }, StringSplitOptions.RemoveEmptyEntries);
+            if (splocation.Length == 2)
+            {
+                splocation[1] = splocation[1].Substring(0, splocation[1].Length - 1);
+                if ((splocation[1].IndexOf(splocation[0], StringComparison.OrdinalIgnoreCase) != -1) || splocation[1].Contains(","))
+                {
+                    result = splocation[1];
+                }
+            }
+
+            return result;
+        }
+
+        private static string NormalizeFightLog(string fightLog)
+        {
+            if (string.IsNullOrEmpty(fightLog) || fightLog.Equals("0", StringComparison.Ordinal))
+                return string.Empty;
+
+            return fightLog;
+        }
+
+        private static bool ResolveIsOnline(UserInfo userInfo, string normalizedLocation)
+        {
+            if (userInfo == null)
+                return !string.IsNullOrEmpty(normalizedLocation);
+
+            return userInfo.Online || userInfo.OnlineStatus > 0 || !string.IsNullOrEmpty(normalizedLocation);
+        }
+
+        private static int ResolveOnlineStatus(UserInfo userInfo, bool isOnline)
+        {
+            if (userInfo != null && userInfo.OnlineStatus > 0)
+                return userInfo.OnlineStatus;
+
+            return isOnline ? 1 : 0;
+        }
+
+        private static string[] BuildSlotSnapshot(UserInfo userInfo)
+        {
+            if (userInfo == null || userInfo.SlotsCodes == null)
+                return new string[0];
+
+            var pslots = new string[userInfo.SlotsCodes.Length];
+            for (var indexSlot = 0; indexSlot < userInfo.SlotsCodes.Length; indexSlot++)
+            {
+                var slotName = userInfo.SlotsNames != null && indexSlot < userInfo.SlotsNames.Length ? userInfo.SlotsNames[indexSlot] : string.Empty;
+                pslots[indexSlot] = $"{userInfo.SlotsCodes[indexSlot]}:{slotName}";
+            }
+
+            return pslots;
+        }
+
+        private void ApplyEffectSnapshot(UserInfo userInfo)
+        {
+            var woundCounts = 0;
+            var wounds = new int[4];
+            var isMolch = false;
+            var codeEffects = new List<string>();
+            var nameEffects = new List<string>();
+            if (userInfo != null && userInfo.EffectsCodes != null)
+            {
+                for (var k = 0; k < userInfo.EffectsCodes.Length; k++)
+                {
+                    var effcode = userInfo.EffectsCodes[k];
+                    var effname = userInfo.EffectsNames != null && k < userInfo.EffectsNames.Length ? userInfo.EffectsNames[k] : string.Empty;
+                    int effcount;
+                    int.TryParse(userInfo.EffectsSizes != null && k < userInfo.EffectsSizes.Length ? userInfo.EffectsSizes[k] : string.Empty, out effcount);
+                    switch (effcode)
+                    {
+                        case "1":
+                            woundCounts += effcount;
+                            wounds[3] = effcount;
+                            break;
+                        case "2":
+                            woundCounts += effcount;
+                            wounds[2] = effcount;
+                            break;
+                        case "3":
+                            woundCounts += effcount;
+                            wounds[1] = effcount;
+                            break;
+                        case "4":
+                            woundCounts += effcount;
+                            wounds[0] = effcount;
+                            break;
+                        case "17":
+                            isMolch = true;
+                            break;
+                        default:
+                            codeEffects.Add(effcode);
+                            var pos = effname.IndexOf(" (", StringComparison.Ordinal);
+                            var ename = (pos >= 0 ? effname.Substring(0, pos) : effname).Trim('\'');
+                            nameEffects.Add(ename);
+                            break;
+                    }
+                }
+            }
+
+            WoundCounts = woundCounts;
+            Wounds = wounds;
+            IsMolch = isMolch;
+            CodeEffects = codeEffects.ToArray();
+            NameEffects = nameEffects.ToArray();
+        }
+
+        private static Dictionary<int, ContactRenderHelper.EffectState> BuildChatEffectStateMap(string effectStates, string effectIds)
+        {
+            var result = new Dictionary<int, ContactRenderHelper.EffectState>();
+            var states = ContactRenderHelper.ParseEffectStatesCsv(effectStates, effectIds);
+            foreach (var state in states)
+            {
+                if (state == null || !IsChatEffect(state.Id))
+                    continue;
+
+                result[state.Id] = state;
+            }
+
+            return result;
+        }
+
+        private static EffectNameLookup BuildEffectNameLookup(IList<string> codes, IList<string> names)
+        {
+            var result = new EffectNameLookup();
+            if (codes == null)
+                return result;
+
+            for (var index = 0; index < codes.Count; index++)
+            {
+                var id = ParseIntSafe(codes[index], 0);
+                if (!IsChatEffect(id))
+                    continue;
+
+                var name = names != null && index < names.Count ? NormalizeEffectName(names[index]) : string.Empty;
+                if (string.IsNullOrEmpty(name))
+                    name = "эффект #" + id.ToString(CultureInfo.InvariantCulture);
+
+                result.ById[id] = name;
+            }
+
+            return result;
+        }
+
+        private static bool IsChatEffect(int id)
+        {
+            return id > 0 && id != 1 && id != 2 && id != 3 && id != 4 && id != 17;
+        }
+
+        private static string NormalizeEffectName(string effectName)
+        {
+            if (string.IsNullOrEmpty(effectName))
+                return string.Empty;
+
+            var pos = effectName.IndexOf(" (", StringComparison.Ordinal);
+            return (pos >= 0 ? effectName.Substring(0, pos) : effectName).Trim('\'');
+        }
+
+        private static string GetEffectName(EffectNameLookup lookup, int effectId)
+        {
+            if (lookup != null)
+            {
+                string name;
+                if (lookup.ById.TryGetValue(effectId, out name) && !string.IsNullOrEmpty(name))
+                    return name;
+            }
+
+            return "эффект #" + effectId.ToString(CultureInfo.InvariantCulture);
+        }
+
+        private static string BuildEffectChatEntry(ContactRenderHelper.EffectState state, string effectName)
+        {
+            if (state == null || state.Id <= 0)
+                return string.Empty;
+
+            var safeName = string.IsNullOrEmpty(effectName) ? "эффект #" + state.Id.ToString(CultureInfo.InvariantCulture) : effectName;
+            return string.Format(
+                CultureInfo.InvariantCulture,
+                "&nbsp;<img src=http://image.neverlands.ru/pinfo/eff_{0}.gif width=15 height=15 align=absmiddle title=\"{1}\">&nbsp;{1} {2}",
+                state.Id,
+                safeName,
+                ContactRenderHelper.FormatEffectCounterText(state));
+        }
+
+        private static string BuildEffectChangeChatEntry(ContactRenderHelper.EffectState oldState, ContactRenderHelper.EffectState newState, string effectName)
+        {
+            if (newState == null || newState.Id <= 0)
+                return string.Empty;
+
+            var safeName = string.IsNullOrEmpty(effectName) ? "эффект #" + newState.Id.ToString(CultureInfo.InvariantCulture) : effectName;
+            var oldCounter = oldState == null ? string.Empty : ContactRenderHelper.FormatEffectCounterText(oldState);
+            var newCounter = ContactRenderHelper.FormatEffectCounterText(newState);
+            return string.Format(
+                CultureInfo.InvariantCulture,
+                "&nbsp;<img src=http://image.neverlands.ru/pinfo/eff_{0}.gif width=15 height=15 align=absmiddle title=\"{1}\">&nbsp;{1} {2}&rarr;{3}",
+                newState.Id,
+                safeName,
+                oldCounter,
+                newCounter);
+        }
+
+        private static bool HasEffectCountChanged(ContactRenderHelper.EffectState oldState, ContactRenderHelper.EffectState newState)
+        {
+            return oldState != null && newState != null && Math.Max(1, oldState.Count) != Math.Max(1, newState.Count);
+        }
+
+        private static bool HasEffectTimeoutRefresh(ContactRenderHelper.EffectState oldState, ContactRenderHelper.EffectState newState)
+        {
+            if (oldState == null || newState == null)
+                return false;
+
+            if (HasEffectCountChanged(oldState, newState))
+                return false;
+
+            int oldSeconds;
+            int newSeconds;
+            if (!TryParseEffectTimeoutSeconds(oldState.Timeout, out oldSeconds) || !TryParseEffectTimeoutSeconds(newState.Timeout, out newSeconds))
+                return false;
+
+            return newSeconds > oldSeconds + 60;
+        }
+
+        private static bool TryParseEffectTimeoutSeconds(string timeout, out int seconds)
+        {
+            seconds = 0;
+            if (string.IsNullOrEmpty(timeout))
+                return false;
+
+            var parts = timeout.Trim().Split(':');
+            if (parts.Length < 2)
+                return false;
+
+            int hours;
+            int minutes;
+            int secs = 0;
+            if (!int.TryParse(parts[0], NumberStyles.Integer, CultureInfo.InvariantCulture, out hours) ||
+                !int.TryParse(parts[1], NumberStyles.Integer, CultureInfo.InvariantCulture, out minutes))
+            {
+                return false;
+            }
+
+            if (parts.Length > 2 && !int.TryParse(parts[2], NumberStyles.Integer, CultureInfo.InvariantCulture, out secs))
+                secs = 0;
+
+            seconds = hours * 3600 + minutes * 60 + secs;
+            return true;
+        }
+
+        private static int ParseIntSafe(string value, int fallback)
+        {
+            if (string.IsNullOrEmpty(value))
+                return fallback;
+
+            int parsed;
+            return int.TryParse(value.Trim(), NumberStyles.Integer, CultureInfo.InvariantCulture, out parsed) ? parsed : fallback;
         }
 
         internal void Process(UserInfo userInfo)
@@ -135,16 +697,9 @@ namespace ANClient
             sslots.Length--;
 
             var nick = userInfo.Nick;
-            var align = userInfo.Align;
-            var sign = userInfo.ClanSign;
-            var level = userInfo.Level;
-            var location = userInfo.Location;
-            var isonline = !string.IsNullOrEmpty(location);
-            var flog = userInfo.FightLog;
-            if (flog.Equals("0", StringComparison.Ordinal))
-            {
-                flog = string.Empty;
-            }
+            var location = NormalizeLocation(userInfo.Location);
+            var isonline = ResolveIsOnline(userInfo, location);
+            var flog = NormalizeFightLog(userInfo.FightLog);
 
             var clan = userInfo.ClanName;
 
@@ -205,21 +760,29 @@ namespace ANClient
                 }
             }
 
-            var splocation = location.Split(new[] { " [" }, StringSplitOptions.RemoveEmptyEntries);
-            if (splocation.Length == 2)
-            {
-                splocation[1] = splocation[1].Substring(0, splocation[1].Length - 1);
-                if ((splocation[1].IndexOf(splocation[0], StringComparison.OrdinalIgnoreCase) != -1) || splocation[1].Contains(","))
-                {
-                    location = splocation[1];
-                }
-            }
+            var oldEffectIds = EffectIds;
+            var oldEffectStates = EffectStates;
 
-            Name = nick;
-            Level = level;
-            Align = align;
-            Sign = sign;
-            Clan = clan;
+            ApplyServerFields(
+                nick,
+                userInfo.PlayerId,
+                userInfo.PlayerLevel,
+                userInfo.Inclination,
+                userInfo.InclinationName,
+                userInfo.ClanNumber,
+                userInfo.ClanIco,
+                clan,
+                userInfo.ClanStatus,
+                userInfo.Gender,
+                userInfo.BlockStatus,
+                userInfo.JailStatus,
+                userInfo.MuteSeconds,
+                userInfo.MuteForumSeconds,
+                userInfo.OnlineStatus,
+                location,
+                flog,
+                userInfo.EffectIds,
+                userInfo.EffectStates);
 
             var sb = new StringBuilder();
             var messagePrefix = HtmlContactEntry(this)/* + sbeff*/;
@@ -337,7 +900,11 @@ namespace ANClient
                 try
                 {
                     IdleManager.AddActivity();
-                    bufferLog = wc.DownloadData("http://www.neverlands.ru/logs.fcg?fid=" + flog);
+                    var fightLogUri = new Uri("http://www.neverlands.ru/logs.fcg?fid=" + flog);
+                    if (DirectGameRequestGuard.Prepare(wc, fightLogUri, "Contact.FightLog"))
+                    {
+                        bufferLog = wc.DownloadData(fightLogUri);
+                    }
                 }
                 catch (Exception ex)
                 {
@@ -488,16 +1055,20 @@ namespace ANClient
             {
                 if (!_isFirst)
                 {
+                    var oldEffectStateById = BuildChatEffectStateMap(oldEffectStates, oldEffectIds);
+                    var newEffectStateById = BuildChatEffectStateMap(userInfo.EffectStates, userInfo.EffectIds);
+                    var oldEffectNames = BuildEffectNameLookup(CodeEffects, NameEffects);
+                    var newEffectNames = BuildEffectNameLookup(codeEffects, nameEffects);
+
                     var sbadd = new StringBuilder();
-                    for (var i = 0; i < codeEffects.Count; i++)
+                    foreach (var effectState in newEffectStateById.Values)
                     {
-                        if (Array.IndexOf(CodeEffects, codeEffects[i]) < 0)
+                        if (!oldEffectStateById.ContainsKey(effectState.Id))
                         {
                             if (sbadd.Length == 0)
                                 sbadd.Append(" получает");
 
-                            sbadd.Append(
-                                $"&nbsp;<img src=http://image.neverlands.ru/pinfo/eff_{codeEffects[i]}.gif width=15 height=15 align=absmiddle title=\"{nameEffects[i]}\">&nbsp;{nameEffects[i]}");
+                            sbadd.Append(BuildEffectChatEntry(effectState, GetEffectName(newEffectNames, effectState.Id)));
                         }
                     }
 
@@ -510,15 +1081,14 @@ namespace ANClient
                     }
 
                     var sbrem = new StringBuilder();
-                    for (var i = 0; i < CodeEffects.Length; i++)
+                    foreach (var effectState in oldEffectStateById.Values)
                     {
-                        if (!codeEffects.Contains(CodeEffects[i]))
+                        if (!newEffectStateById.ContainsKey(effectState.Id))
                         {
                             if (sbrem.Length == 0)
                                 sbrem.Append(" теряет");
 
-                            sbrem.Append(
-                                $"&nbsp;<img src=http://image.neverlands.ru/pinfo/eff_{CodeEffects[i]}.gif width=15 height=15 align=absmiddle title=\"{NameEffects[i]}\">&nbsp;{NameEffects[i]}");
+                            sbrem.Append(BuildEffectChatEntry(effectState, GetEffectName(oldEffectNames, effectState.Id)));
                         }
                     }
 
@@ -529,12 +1099,39 @@ namespace ANClient
 
                         sb.Append(sbrem);
                     }
+
+                    var sbchg = new StringBuilder();
+                    foreach (var effectState in newEffectStateById.Values)
+                    {
+                        ContactRenderHelper.EffectState oldState;
+                        if (!oldEffectStateById.TryGetValue(effectState.Id, out oldState))
+                            continue;
+
+                        if (!HasEffectCountChanged(oldState, effectState) && !HasEffectTimeoutRefresh(oldState, effectState))
+                            continue;
+
+                        if (sbchg.Length == 0)
+                            sbchg.Append(" меняет");
+
+                        sbchg.Append(BuildEffectChangeChatEntry(oldState, effectState, GetEffectName(newEffectNames, effectState.Id)));
+                    }
+
+                    if (sbchg.Length > 0)
+                    {
+                        if (sb.Length > 0)
+                            sb.Append(',');
+
+                        sb.Append(sbchg);
+                    }
                 }
             }
 
             NameEffects = nameEffects.ToArray();
             CodeEffects = codeEffects.ToArray();
 
+            OnlineStatus = ResolveOnlineStatus(userInfo, isonline);
+            GeoLocation = location;
+            WarLogNumber = flog;
             IsOnline = isonline;
             Location = location;
             Tied = tied;

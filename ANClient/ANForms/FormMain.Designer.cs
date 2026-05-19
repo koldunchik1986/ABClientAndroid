@@ -184,6 +184,7 @@ namespace ANClient.ANForms
             this.menuitemOpenForum = new System.Windows.Forms.ToolStripMenuItem();
             this.menuitemOpenTodayChat = new System.Windows.Forms.ToolStripMenuItem();
             this.menuitemOpenNotepad = new System.Windows.Forms.ToolStripMenuItem();
+            this.menuitemOpenForpostInfo = new System.Windows.Forms.ToolStripMenuItem();
             this.toolStripSeparator16 = new System.Windows.Forms.ToolStripSeparator();
             this.menuitemTools = new System.Windows.Forms.ToolStripMenuItem();
             this.menuitemShowCookies = new System.Windows.Forms.ToolStripMenuItem();
@@ -1618,6 +1619,13 @@ namespace ANClient.ANForms
             this.menuitemOpenNotepad.Size = new System.Drawing.Size(211, 22);
             this.menuitemOpenNotepad.Text = "Открыть блокнот";
             this.menuitemOpenNotepad.Click += new System.EventHandler(this.MenuitemOpenNotepadClick);
+            //
+            // menuitemOpenForpostInfo
+            //
+            this.menuitemOpenForpostInfo.Name = "menuitemOpenForpostInfo";
+            this.menuitemOpenForpostInfo.Size = new System.Drawing.Size(260, 22);
+            this.menuitemOpenForpostInfo.Text = "Таблицы крафта / Здания / Ратуша";
+            this.menuitemOpenForpostInfo.Click += new System.EventHandler(this.MenuitemOpenForpostInfoClick);
             // 
             // toolStripSeparator16
             // 
@@ -1627,8 +1635,9 @@ namespace ANClient.ANForms
             // menuitemTools
             // 
             this.menuitemTools.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
-            this.menuitemShowCookies,
+            this.menuitemOpenForpostInfo,
             this.toolStripSeparator25,
+            this.menuitemShowCookies,
             this.menuitemDoSearchBox,
             this.menuitemDoResetVisitedCells,
             this.toolStripSeparator7,
@@ -2405,6 +2414,7 @@ namespace ANClient.ANForms
         private ToolStripSeparator toolStripSeparator25;
         private Timer timerCheckInfo;
         private ToolStripMenuItem menuitemOpenTodayChat;
+        private ToolStripMenuItem menuitemOpenForpostInfo;
         private ToolStripMenuItem miFastDarkTeleport;
         private ToolStripMenuItem miFastDarkFog;
         private ToolStripMenuItem menuitemMainFrameInspector;

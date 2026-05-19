@@ -198,7 +198,7 @@ namespace ANClient.ANProxy
                         if (_isCustomFilter)
                         {
                             _isCustomFilter = false;
-                            var pdata = Filter.Process("http://" + Url, data);
+                            var pdata = ProcessCustomFilterSafe("http://" + Url, data);
                             Response.AssignData(pdata);
                         }
                         else
@@ -212,6 +212,8 @@ namespace ANClient.ANProxy
                 }
 
                 // Begin of request
+
+                ProxyRequestQueue.WaitTurn(Url, Host, _isGameHost, _isCache);
 
                 IdleManager.AddActivity();
 
@@ -335,7 +337,7 @@ namespace ANClient.ANProxy
                         if (_isCustomFilter && ResponseBodyBytes != null)
                         {
                             AppLog.d("ProxySession", "custom filter processing: " + Url);
-                            var pdata = Filter.Process("http://" + Url, ResponseBodyBytes);
+                            var pdata = ProcessCustomFilterSafe("http://" + Url, ResponseBodyBytes);
                             Response.AssignData(pdata);
                         }
                     }
@@ -725,6 +727,20 @@ namespace ANClient.ANProxy
                 }
 
                 Response.ServerSocket = null;
+            }
+        }
+
+        private static byte[] ProcessCustomFilterSafe(string address, byte[] data)
+        {
+            try
+            {
+                var filtered = Filter.Process(address, data);
+                return filtered ?? data;
+            }
+            catch (Exception ex)
+            {
+                AppLog.e("ProxySession", "custom filter failed, original response returned: " + address, ex);
+                return data;
             }
         }
 

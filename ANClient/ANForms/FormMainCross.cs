@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using ANClient.ANProxy;
 using ANClient.Helpers;
 
 namespace ANClient.ANForms
@@ -341,6 +342,11 @@ namespace ANClient.ANForms
                     var httpWebRequest = (HttpWebRequest)WebRequest.Create("http://www.neverlands.ru/modules/anclient/auth.php");
                     httpWebRequest.Method = "POST";
                     httpWebRequest.Proxy = AppVars.LocalProxy;
+                    if (!DirectGameRequestGuard.Prepare(httpWebRequest, "FormMain.CrossAuth"))
+                    {
+                        return;
+                    }
+
                     var postData = string.Format(
                         CultureInfo.InvariantCulture,
                         "ask={0}",

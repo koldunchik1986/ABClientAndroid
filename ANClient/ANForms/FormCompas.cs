@@ -129,102 +129,29 @@ namespace ANClient.ANForms
             if (nick == null)
                 return;
 
-            var mainUserInfo = NeverApi.GetAll(nick);
-            if (mainUserInfo == null)
+            var roster = NeverApi.GetClanRosterByNick(nick);
+            if (roster == null || roster.MainUserInfo == null)
                 return;
 
-            var firstNick = mainUserInfo.Nick;
-            var firstSign = mainUserInfo.ClanSign;
+            var mainUserInfo = roster.MainUserInfo;
             var firstClan = mainUserInfo.ClanName;
+            var listClanNicks = new List<string>(roster.MemberNicks);
 
-            var listClanNicks = new List<string> { firstNick };
-            if (!string.IsNullOrEmpty(firstClan))
+            try
             {
-                byte[] buffer;
-                using (var wc = new WebClient { Proxy = AppVars.LocalProxy })
+                if (AppVars.VipFormCompas != null && !string.IsNullOrEmpty(firstClan) && !ContactRenderHelper.IsNeutralClanName(firstClan))
                 {
-                    try
-                    {
-                        IdleManager.AddActivity();
-                        buffer = wc.DownloadData(new Uri("http://allnl.ru/clan-players/all"));
-                    }
-                    catch (WebException)
-                    {
-                        return;
-                    }
-                    finally
-                    {
-                        IdleManager.RemoveActivity();
-                    }
+                    var message = string.Format($"Получаем список клана [{firstClan}]...");
+                    AppVars.VipFormCompas.BeginInvoke(
+                        new UpdateStatusDelegate(AppVars.VipFormCompas.UpdateStatus), message);
                 }
-
-                var html = Encoding.UTF8.GetString(buffer);
-                if (string.IsNullOrEmpty(html))
+                else if (AppVars.VipFormCompas == null)
+                {
                     return;
-
-                try
-                {
-                    if (AppVars.VipFormCompas != null)
-                    {
-                        var message = string.Format($"Получаем список клана [{firstClan}]...");
-                        AppVars.VipFormCompas.BeginInvoke(
-                            new UpdateStatusFormAddClanDelegate(AppVars.VipFormCompas.UpdateStatus), message);
-                    }
-                    else
-                    {
-                        return;
-                    }
                 }
-                catch (InvalidOperationException)
-                {
-                }
-
-                var linkClan = HelperStrings.SubString(
-                    html,
-                    $"<img src=\"http://image.neverlands.ru/signs/{firstSign}\"> <a href=\"/clan-players/",
-                    $"\">{firstClan}</a>");
-
-                if (string.IsNullOrEmpty(linkClan))
-                    return;
-
-                using (var wc = new WebClient { Proxy = AppVars.LocalProxy })
-                {
-                    try
-                    {
-                        IdleManager.AddActivity();
-                        buffer = wc.DownloadData(new Uri($"http://allnl.ru/clan-players/{linkClan}"));
-                    }
-                    catch (WebException)
-                    {
-                        return;
-                    }
-                    finally
-                    {
-                        IdleManager.RemoveActivity();
-                    }
-                }
-
-                html = Encoding.UTF8.GetString(buffer);
-                if (string.IsNullOrEmpty(html))
-                    return;
-
-                var p1 = 0;
-                while (p1 != -1)
-                {
-                    string pat1 = $"<img src=\"http://image.neverlands.ru/signs/{firstSign}\">";
-                    p1 = html.IndexOf(pat1, p1, StringComparison.OrdinalIgnoreCase);
-                    if (p1 == -1)
-                        break;
-
-                    p1 += pat1.Length;
-                    var p2 = html.IndexOf(@"[", p1, StringComparison.OrdinalIgnoreCase);
-                    if (p2 == -1)
-                        continue;
-
-                    var statnick = html.Substring(p1, p2 - p1).Trim();
-                    if (statnick.Length < 64)
-                        listClanNicks.Add(statnick);
-                }
+            }
+            catch (InvalidOperationException)
+            {
             }
 
             foreach (var vipNick in listClanNicks)

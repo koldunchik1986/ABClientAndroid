@@ -11,6 +11,7 @@ namespace ANClient.ANForms
     using System.Windows.Forms;
     using ANProxy;
     using AppControls;
+    using Info;
     using MyHelpers;
     using Properties;
     using Tabs;
@@ -18,6 +19,8 @@ namespace ANClient.ANForms
 
     internal sealed partial class FormMain
     {
+        private const string AddressForpostInfo = "anclient://ratings";
+
         private void InitGameTab()
         {
             try
@@ -183,6 +186,12 @@ namespace ANClient.ANForms
                 return;
             }
 
+            if (IsForpostInfoAddress(tourl))
+            {
+                CreateNewTab(TabType.ForpostInfo, tourl, false);
+                return;
+            }
+
             /*
             if (tourl.StartsWith("http://stat.alone.com.ua/userinfo/?name=", StringComparison.OrdinalIgnoreCase))
             {
@@ -197,6 +206,32 @@ namespace ANClient.ANForms
 
         private void CreateNewTab(TabType tt, string tourl, bool delayed)
         {
+            if (tt == TabType.ForpostInfo)
+            {
+                delayed = false;
+                if (string.IsNullOrEmpty(tourl))
+                {
+                    tourl = AddressForpostInfo;
+                }
+
+                for (var index = 1; index < tabControlLeft.TabPages.Count; index++)
+                {
+                    var existingTabClass = tabControlLeft.TabPages[index].Tag as TabClass;
+                    if (existingTabClass == null || existingTabClass.MyType != TabType.ForpostInfo)
+                    {
+                        continue;
+                    }
+
+                    tabControlLeft.SelectedIndex = index;
+                    if (existingTabClass.WB != null && !existingTabClass.WB.IsDisposed)
+                    {
+                        existingTabClass.WB.Navigate(tourl);
+                    }
+
+                    return;
+                }
+            }
+
             if (!string.IsNullOrEmpty(tourl))
             {
                 for (var index = 1; index < tabControlLeft.TabPages.Count; index++)
@@ -221,10 +256,17 @@ namespace ANClient.ANForms
 
             ExtendedWebBrowser browser = null;
             TextBox textbox = null;
+            ForpostInfoController forpostInfoController = null;
             if (tabc.MyType != TabType.Notepad)
             {
                 browser = new ExtendedWebBrowser { Dock = DockStyle.Fill, ScriptErrorsSuppressed = true, ObjectForScripting = new ScriptManager() }; // !!!
                 browser.BeforeNewWindow += wbTab_BeforeNewWindow;
+                if (tabc.MyType == TabType.ForpostInfo)
+                {
+                    forpostInfoController = new ForpostInfoController(browser, tourl);
+                    browser.BeforeNavigate += forpostInfoController.BeforeNavigate;
+                }
+
                 tabc.WB = browser;
             }
             else
@@ -443,7 +485,7 @@ namespace ANClient.ANForms
                                             ImageTransparentColor = Color.Magenta,
                                             Name = Guid.NewGuid().ToString(),
                                             Size = new Size(64, 22),
-                                            Text = @"Весь клан",
+                                            Text = @"Весь Клан",
                                             ToolTipText = @"Добавление всего клана в контакты",
                                             Tag = nick,
                                             Enabled = true
@@ -541,8 +583,9 @@ namespace ANClient.ANForms
                     break;
                 case TabType.PBots:
                 case TabType.Room:
+                case TabType.ForpostInfo:
                     toolstrip.Items.AddRange(new ToolStripItem[]
-                                                 {
+                                                  {
                                                      buttonrefresh,
                                                      buttonclose,
                                                      toolstripseparator1,
@@ -648,12 +691,15 @@ namespace ANClient.ANForms
                 case TabType.TodayChat:
                     tabpage.Text = "Сегодняшний чат";                   
                     break;
+                case TabType.ForpostInfo:
+                    tabpage.Text = "Справочник";
+                    break;
                 case TabType.Other:
                     if (tourl != null) tabpage.Text = new Uri(tourl).DnsSafeHost;
                     break;
             }
 
-            if ((tt != TabType.Game) && (tt != TabType.Notepad) && (tt != TabType.TodayChat))
+            if ((tt != TabType.Game) && (tt != TabType.Notepad) && (tt != TabType.TodayChat) && (tt != TabType.ForpostInfo))
             {
                 if (!delayed)
                 {
@@ -679,6 +725,11 @@ namespace ANClient.ANForms
             else
             {
                 tabControlLeft.TabPages.Add(tabpage);
+            }
+
+            if (forpostInfoController != null)
+            {
+                forpostInfoController.Start();
             }
 
             if (delayed)
@@ -755,6 +806,11 @@ namespace ANClient.ANForms
             if (myTabClass.MyType == TabType.TodayChat)
             {
                 return Resources.AddressTodayChat;
+            }
+
+            if (myTabClass.MyType == TabType.ForpostInfo)
+            {
+                return AddressForpostInfo;
             }
 
             if (myTabClass.MyType == TabType.PInfo || myTabClass.MyType == TabType.PName)
@@ -849,15 +905,16 @@ namespace ANClient.ANForms
         {
             var button = (ToolStripButton)sender;
             var nick = (string)button.Tag;
-            if (AppVars.VipFormAddClan != null)
-            {
-                AppVars.VipFormAddClan.SetNick(nick);
-                AppVars.VipFormAddClan.Focus();
+            if (AppVars.MainForm == null)
                 return;
-            } 
 
-            AppVars.VipFormAddClan = new FormAddClan(nick);
-            AppVars.VipFormAddClan.Show();
+            ContactsManager.ImportClan(AppVars.MainForm.treeContacts, nick, "PInfoToolbar");
+            if (AppVars.MainForm.collapsibleSplitter.IsCollapsed)
+            {
+                AppVars.MainForm.collapsibleSplitter.ToggleState();
+            }
+
+            AppVars.MainForm.tabControlRight.SelectedIndex = 0;
         }
 
         private void TabPrivate(object sender)
@@ -932,6 +989,11 @@ namespace ANClient.ANForms
             CreateNewTab(TabType.Notepad, Resources.AddressNotepad, false);
         }
 
+        private void TabAddForpostInfo()
+        {
+            CreateNewTab(TabType.ForpostInfo, AddressForpostInfo, false);
+        }
+
         private void TabAddNew()
         {
             using (var ff = new FormNewTab())
@@ -983,8 +1045,21 @@ namespace ANClient.ANForms
         {
             for (var tab = 0; tab < AppVars.Profile.Tabs.Length; tab++)
             {
+                if (IsForpostInfoAddress(AppVars.Profile.Tabs[tab]))
+                {
+                    continue;
+                }
+
                 BeforeNewWindow(AppVars.Profile.Tabs[tab], true);
             }
+        }
+
+        private static bool IsForpostInfoAddress(string address)
+        {
+            return !string.IsNullOrEmpty(address) &&
+                   (address.StartsWith("anclient://forpost", StringComparison.OrdinalIgnoreCase) ||
+                    address.StartsWith("anclient://tables", StringComparison.OrdinalIgnoreCase) ||
+                    address.StartsWith("anclient://ratings", StringComparison.OrdinalIgnoreCase));
         }
     }
 }

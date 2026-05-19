@@ -64,6 +64,11 @@ namespace ANClient.ANForms
                 var httpWebRequest = (HttpWebRequest)WebRequest.Create("http://www.neverlands.ru/main.php");
                 httpWebRequest.Method = "GET";
                 httpWebRequest.Proxy = AppVars.LocalProxy;
+                if (!DirectGameRequestGuard.Prepare(httpWebRequest, "FormMain.WaitForTurnAsync"))
+                {
+                    break;
+                }
+
                 var cookies = CookiesManager.Obtain("www.neverlands.ru");
                 httpWebRequest.Headers.Add("Cookie", cookies);
                 string html = null;

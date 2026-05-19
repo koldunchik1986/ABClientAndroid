@@ -408,6 +408,12 @@ namespace ANClient
 
         internal static string WearComplect;
 
+        internal static bool ClanKaznaOpenRequested;
+        internal static int ClanKaznaViewMode;
+        internal static string ClanKaznaComplectQueue;
+        internal static string ClanKaznaComplectName;
+        internal static int FastIslandTeleportIndex;
+
         internal static string LocationName { get; set; }
 
         internal static bool AutoRefresh { get; set; }
@@ -487,6 +493,9 @@ namespace ANClient
             PoisonAndWounds = new int[4];
             FastTotemMessageTime = DateTime.MinValue;
             NextCheckNoConnection = DateTime.Now.AddMinutes(5);
+            ClanKaznaComplectQueue = string.Empty;
+            ClanKaznaComplectName = string.Empty;
+            FastIslandTeleportIndex = -1;
         }
     }
 }

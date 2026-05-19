@@ -189,6 +189,10 @@ namespace ANClient.MyGuamod
                 request.Timeout = 10000;
                 request.ReadWriteTimeout = 10000;
                 request.KeepAlive = false;
+                if (!DirectGameRequestGuard.Prepare(request, Tag + ".TryLoadCaptchaImageFromCodeAddress"))
+                {
+                    return;
+                }
 
                 var cookies = CookiesManager.Obtain("www.neverlands.ru");
                 if (!string.IsNullOrEmpty(cookies))

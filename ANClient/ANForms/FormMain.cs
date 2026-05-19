@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.IO;
 using System.Net;
 using System.Threading;
@@ -25,6 +26,8 @@ namespace ANClient.ANForms
         private static readonly ReaderWriterLock LockBaloon = new ReaderWriterLock();
         private FormWindowState _prevWindowState = FormWindowState.Normal;
         private ToolStripButton buttonAutoLumberjack;
+        private ToolStripMenuItem miFastTopi;
+        private ToolStripMenuItem miClanKazna;
 
         //private readonly Boss _boss1 = new Boss("2303103");
         //private readonly Boss _boss2 = new Boss("2304578");
@@ -34,9 +37,12 @@ namespace ANClient.ANForms
         internal FormMain()
         {
             InitializeComponent();
+            InitializeContactsExtensions();
             InitializeAutoLumberjackToolbarButton();
             InitForm();
             InitializeToolsSettingsMenu();
+            InitializeTurotorTopiMenu();
+            InitializeClanKaznaMenu();
         }
 
         internal string GetServerTime()
@@ -153,6 +159,11 @@ namespace ANClient.ANForms
         private void MenuitemOpenNotepadClick(object sender, EventArgs e)
         {
             TabAddNotepad();
+        }
+
+        private void MenuitemOpenForpostInfoClick(object sender, EventArgs e)
+        {
+            TabAddForpostInfo();
         }
 
         private void OnMenuitemOpenTabClick(object sender, EventArgs e)
@@ -288,6 +299,253 @@ namespace ANClient.ANForms
             }
 
             menuitemTools.DropDownItems.Insert(insertIndex, item);
+        }
+
+        private void InitializeTurotorTopiMenu()
+        {
+            if (miFastTopi != null)
+                return;
+
+            miFastTopi = new ToolStripMenuItem("Телепорт (Гиблая Топь)")
+            {
+                Name = "miFastTopi",
+                Size = miFastCtrlF12.Size
+            };
+            miFastTopi.Click += MiFastTopiPotClick;
+
+            var insertIndex = menuitemCommands.DropDownItems.IndexOf(miFastCtrlF12) + 1;
+            if (insertIndex <= 0 || insertIndex > menuitemCommands.DropDownItems.Count)
+            {
+                insertIndex = menuitemCommands.DropDownItems.Count;
+            }
+
+            menuitemCommands.DropDownItems.Insert(insertIndex, miFastTopi);
+        }
+
+        private void InitializeClanKaznaMenu()
+        {
+            if (miClanKazna != null)
+                return;
+
+            miClanKazna = new ToolStripMenuItem("Клановая казна")
+            {
+                Name = "miClanKazna"
+            };
+            miClanKazna.DropDownOpening += MiClanKaznaDropDownOpening;
+
+            var insertIndex = menuitemCommands.DropDownItems.IndexOf(toolStripSeparator20);
+            if (insertIndex < 0 || insertIndex > menuitemCommands.DropDownItems.Count)
+            {
+                insertIndex = menuitemCommands.DropDownItems.Count;
+            }
+
+            menuitemCommands.DropDownItems.Insert(insertIndex, miClanKazna);
+            RebuildClanKaznaMenu();
+        }
+
+        private void MiClanKaznaDropDownOpening(object sender, EventArgs e)
+        {
+            RebuildClanKaznaMenu();
+        }
+
+        private void RebuildClanKaznaMenu()
+        {
+            if (miClanKazna == null)
+                return;
+
+            miClanKazna.DropDownItems.Clear();
+            AddClanKaznaMenuItem("Открыть", 0, ClanKaznaOpenClick);
+            AddClanKaznaMenuItem("Все", 0, ClanKaznaViewClick);
+            AddClanKaznaMenuItem("Арты", 2, ClanKaznaViewClick);
+            AddClanKaznaMenuItem("Рары", 1, ClanKaznaViewClick);
+            AddClanKaznaMenuItem("Обычные", 3, ClanKaznaViewClick);
+            miClanKazna.DropDownItems.Add(new ToolStripSeparator());
+            AddClanKaznaMenuItem("Добавить комплект...", null, ClanKaznaAddComplectClick);
+
+            var complects = ParseClanKaznaComplects(AppVars.Profile.ClanKaznaComplects);
+            if (complects.Count == 0)
+                return;
+
+            var takeMenu = new ToolStripMenuItem("Взять комплект");
+            var deleteMenu = new ToolStripMenuItem("Удалить комплект");
+            foreach (var complect in complects)
+            {
+                var takeItem = new ToolStripMenuItem(complect.Key) { Tag = complect.Value };
+                takeItem.Click += ClanKaznaTakeComplectClick;
+                takeMenu.DropDownItems.Add(takeItem);
+
+                var deleteItem = new ToolStripMenuItem(complect.Key) { Tag = complect.Key };
+                deleteItem.Click += ClanKaznaDeleteComplectClick;
+                deleteMenu.DropDownItems.Add(deleteItem);
+            }
+
+            miClanKazna.DropDownItems.Add(takeMenu);
+            miClanKazna.DropDownItems.Add(deleteMenu);
+        }
+
+        private void AddClanKaznaMenuItem(string text, object tag, EventHandler handler)
+        {
+            var item = new ToolStripMenuItem(text) { Tag = tag };
+            item.Click += handler;
+            miClanKazna.DropDownItems.Add(item);
+        }
+
+        private void ClanKaznaOpenClick(object sender, EventArgs e)
+        {
+            StartClanKaznaOpen(AppVars.ClanKaznaViewMode);
+        }
+
+        private void ClanKaznaViewClick(object sender, EventArgs e)
+        {
+            var item = sender as ToolStripItem;
+            var mode = item != null && item.Tag is int ? (int)item.Tag : 0;
+            StartClanKaznaOpen(mode);
+        }
+
+        private void StartClanKaznaOpen(int mode)
+        {
+            AppVars.ClanKaznaViewMode = mode;
+            AppVars.ClanKaznaOpenRequested = true;
+            AppVars.ClanKaznaComplectQueue = string.Empty;
+            AppVars.ClanKaznaComplectName = string.Empty;
+            WriteChatMsgSafe("Переходим в клановую казну: " + GetClanKaznaModeName(mode));
+            ReloadMainFrame();
+        }
+
+        private void ClanKaznaAddComplectClick(object sender, EventArgs e)
+        {
+            var name = ShowInputDialog("Клановая казна", "Название комплекта:");
+            if (string.IsNullOrEmpty(name))
+                return;
+
+            var items = ShowInputDialog("Клановая казна", "ID предметов через пробел, запятую или двоеточие:");
+            items = NormalizeClanKaznaItems(items);
+            if (string.IsNullOrEmpty(items))
+            {
+                WriteChatMsgSafe("Комплект казны не сохранён: список ID пуст.");
+                return;
+            }
+
+            AppVars.Profile.ClanKaznaComplects = UpsertClanKaznaComplect(AppVars.Profile.ClanKaznaComplects, name.Trim(), items);
+            AppVars.Profile.Save();
+            RebuildClanKaznaMenu();
+            WriteChatMsgSafe("Комплект казны сохранён: " + name.Trim());
+        }
+
+        private void ClanKaznaTakeComplectClick(object sender, EventArgs e)
+        {
+            var item = sender as ToolStripMenuItem;
+            if (item == null || item.Tag == null)
+                return;
+
+            AppVars.ClanKaznaComplectName = item.Text;
+            AppVars.ClanKaznaComplectQueue = item.Tag.ToString();
+            AppVars.ClanKaznaOpenRequested = true;
+            WriteChatMsgSafe("Заказано взятие комплекта из казны: " + item.Text);
+            ReloadMainFrame();
+        }
+
+        private void ClanKaznaDeleteComplectClick(object sender, EventArgs e)
+        {
+            var item = sender as ToolStripMenuItem;
+            if (item == null || item.Tag == null)
+                return;
+
+            AppVars.Profile.ClanKaznaComplects = RemoveClanKaznaComplect(AppVars.Profile.ClanKaznaComplects, item.Tag.ToString());
+            AppVars.Profile.Save();
+            RebuildClanKaznaMenu();
+            WriteChatMsgSafe("Комплект казны удалён: " + item.Tag);
+        }
+
+        private static List<KeyValuePair<string, string>> ParseClanKaznaComplects(string source)
+        {
+            var result = new List<KeyValuePair<string, string>>();
+            if (string.IsNullOrEmpty(source))
+                return result;
+
+            var entries = source.Split(new[] { ';' }, StringSplitOptions.RemoveEmptyEntries);
+            foreach (var entry in entries)
+            {
+                var index = entry.IndexOf('=');
+                if (index <= 0 || index >= entry.Length - 1)
+                    continue;
+
+                result.Add(new KeyValuePair<string, string>(entry.Substring(0, index), entry.Substring(index + 1)));
+            }
+
+            return result;
+        }
+
+        private static string UpsertClanKaznaComplect(string source, string name, string items)
+        {
+            var complects = ParseClanKaznaComplects(source);
+            var sb = new StringBuilder();
+            var wasUpdated = false;
+            foreach (var complect in complects)
+            {
+                var value = complect.Value;
+                if (complect.Key.Equals(name, StringComparison.OrdinalIgnoreCase))
+                {
+                    value = items;
+                    wasUpdated = true;
+                }
+
+                AppendClanKaznaComplect(sb, complect.Key, value);
+            }
+
+            if (!wasUpdated)
+                AppendClanKaznaComplect(sb, name, items);
+
+            return sb.ToString();
+        }
+
+        private static string RemoveClanKaznaComplect(string source, string name)
+        {
+            var complects = ParseClanKaznaComplects(source);
+            var sb = new StringBuilder();
+            foreach (var complect in complects)
+            {
+                if (complect.Key.Equals(name, StringComparison.OrdinalIgnoreCase))
+                    continue;
+
+                AppendClanKaznaComplect(sb, complect.Key, complect.Value);
+            }
+
+            return sb.ToString();
+        }
+
+        private static void AppendClanKaznaComplect(StringBuilder sb, string name, string items)
+        {
+            if (sb.Length > 0)
+                sb.Append(';');
+
+            sb.Append(name.Replace("=", string.Empty).Replace(";", string.Empty));
+            sb.Append('=');
+            sb.Append(NormalizeClanKaznaItems(items));
+        }
+
+        private static string NormalizeClanKaznaItems(string source)
+        {
+            if (string.IsNullOrEmpty(source))
+                return string.Empty;
+
+            var parts = source.Split(new[] { ' ', ',', ';', ':', '|', '\r', '\n', '\t' }, StringSplitOptions.RemoveEmptyEntries);
+            return string.Join(":", parts);
+        }
+
+        private static string GetClanKaznaModeName(int mode)
+        {
+            switch (mode)
+            {
+                case 1:
+                    return "Рары";
+                case 2:
+                    return "Арты";
+                case 3:
+                    return "Обычные";
+                default:
+                    return "Все";
+            }
         }
 
         private void menuitemSettingsAutoCut_Click(object sender, EventArgs e)
@@ -1010,6 +1268,8 @@ namespace ANClient.ANForms
             miFastF3.Enabled = miFastEnabled.Checked;
             miFastF4.Enabled = miFastEnabled.Checked;
             miFastCtrlF12.Enabled = miFastEnabled.Checked;
+            if (miFastTopi != null)
+                miFastTopi.Enabled = miFastEnabled.Checked;
             miFastSvitFog.Enabled = miFastEnabled.Checked;
             miFastF9.Enabled = miFastEnabled.Checked;
             miFastF10.Enabled = miFastEnabled.Checked;
@@ -1038,6 +1298,11 @@ namespace ANClient.ANForms
         private void MiFastIslandPotClick(object sender, EventArgs e)
         {
             FastAttackIslandPot();
+        }
+
+        private void MiFastTopiPotClick(object sender, EventArgs e)
+        {
+            FastAttackTopiPot();
         }
 
         private void MiFastBlazPotClick(object sender, EventArgs e)
@@ -1806,6 +2071,11 @@ namespace ANClient.ANForms
                     var httpWebRequest = (HttpWebRequest)WebRequest.Create(url);
                     httpWebRequest.Method = "GET";
                     httpWebRequest.Proxy = AppVars.LocalProxy;
+                    if (!DirectGameRequestGuard.Prepare(httpWebRequest, "FormMain.ScanMap"))
+                    {
+                        break;
+                    }
+
                     var cookies = CookiesManager.Obtain("www.neverlands.ru");
                     httpWebRequest.Headers.Add("Cookie", cookies);
                     var resp = httpWebRequest.GetResponse();

@@ -10,6 +10,7 @@ namespace ANClient.Tabs
         Log = 5, 
         Room = 6,
         TodayChat = 7,
+        ForpostInfo = 8,
         Other = 100,
         Notepad = 200
     }

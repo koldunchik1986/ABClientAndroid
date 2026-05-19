@@ -1,5 +1,6 @@
 using ANClient.Helpers;
 using System;
+using System.Globalization;
 using System.Text;
 using ANClient.ANForms;
 using ANClient.MyHelpers;
@@ -37,6 +38,7 @@ namespace ANClient.PostFilter
                 case "i_w28_27.gif": // Свиток защиты
                     return MainPhpFastZas(html);
                 case "Телепорт (Остров Туротор)":
+                case "Телепорт (Гиблая Топь)":
                     return MainPhpFastIsland(html);
                 case "i_w28_86.gif":
                     return MainPhpFastPortal(html);
@@ -457,12 +459,75 @@ namespace ANClient.PostFilter
                     if (num2 != -1)
                     {
                         var link = html.Substring(startIndex2, num2 - startIndex2);
+                        if (AppVars.FastCount < 2)
+                            AppVars.FastCount = 2;
+
                         return BuildRedirect($"Используем {AppVars.FastId}...", link);
                     }
                 }
             }
 
+            var specialTeleportLink = MainPhpFastIslandSpecialTeleportLink(html);
+            if (!string.IsNullOrEmpty(specialTeleportLink))
+                return BuildRedirect($"Используем {AppVars.FastId}...", specialTeleportLink);
+
             return null;
+        }
+
+        private static bool MainPhpIsFastIslandAction()
+        {
+            return string.Equals(AppVars.FastId, "Телепорт (Остров Туротор)", StringComparison.OrdinalIgnoreCase) ||
+                   string.Equals(AppVars.FastId, "Телепорт (Гиблая Топь)", StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static int MainPhpFastIslandTargetIndex()
+        {
+            if (AppVars.FastIslandTeleportIndex >= 0)
+                return AppVars.FastIslandTeleportIndex;
+
+            return string.Equals(AppVars.FastId, "Телепорт (Гиблая Топь)", StringComparison.OrdinalIgnoreCase) ? 1 : 0;
+        }
+
+        private static string MainPhpFastIslandSpecialTeleportLink(string html)
+        {
+            if (string.IsNullOrEmpty(html))
+                return null;
+
+            var telep = HelperStrings.SubString(html, "var telep = [[", "]];");
+            if (string.IsNullOrEmpty(telep))
+                return null;
+
+            var targetIndex = MainPhpFastIslandTargetIndex();
+            var targetName = targetIndex == 1 ? "Гиблая Топь" : "Остров Туротор";
+            var entries = telep.Split(new[] { "],[" }, StringSplitOptions.None);
+            for (var i = 0; i < entries.Length; i++)
+            {
+                var pars = entries[i].Split(',');
+                if (pars.Length < 4)
+                    continue;
+
+                var name = MainPhpFastIslandTrimJsValue(pars[1]);
+                if (i != targetIndex && !name.Equals(targetName, StringComparison.OrdinalIgnoreCase))
+                    continue;
+
+                var sp = MainPhpFastIslandTrimJsValue(pars[0]);
+                var vcode = MainPhpFastIslandTrimJsValue(pars[3]);
+                if (string.IsNullOrEmpty(sp) || string.IsNullOrEmpty(vcode))
+                    continue;
+
+                return string.Format(
+                    CultureInfo.InvariantCulture,
+                    "main.php?get_id=16&act=3&sp={0}&vcode={1}",
+                    sp,
+                    vcode);
+            }
+
+            return null;
+        }
+
+        private static string MainPhpFastIslandTrimJsValue(string value)
+        {
+            return string.IsNullOrEmpty(value) ? string.Empty : value.Trim().Trim('"', '\'');
         }
 
         private static string MainPhpFastPortal(string html)

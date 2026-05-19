@@ -236,6 +236,7 @@ namespace ANClient.MyProfile
             ShowOverWarning = false;
 
             Complects = string.Empty;
+            ClanKaznaComplects = string.Empty;
 
             DoRob = true;
 

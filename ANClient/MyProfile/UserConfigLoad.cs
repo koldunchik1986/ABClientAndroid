@@ -302,6 +302,11 @@ namespace ANClient.MyProfile
                     Complects = xmlReader.ReadContentAsString();
                     break;
 
+                case "clankaznacomplects":
+                    xmlReader.Read();
+                    ClanKaznaComplects = xmlReader.ReadContentAsString();
+                    break;
+
                 case "dotray":
                     xmlReader.Read();
                     DoTray = xmlReader.ReadContentAsBoolean();
@@ -424,17 +429,42 @@ namespace ANClient.MyProfile
                         toolid = 0;
                     }
 
+                    var oldLevel = xmlReader["level"] ?? string.Empty;
+                    var oldAlign = xmlReader["align"] ?? string.Empty;
+                    var oldSign = xmlReader["sign"] ?? string.Empty;
+                    var oldClan = xmlReader["clan"] ?? string.Empty;
+
                     var contact = new Contact(
                         xmlReader["name"] ?? string.Empty,
                         classid,
                         toolid,
-                        xmlReader["sign"] ?? string.Empty,
-                        xmlReader["clan"] ?? string.Empty,
-                        xmlReader["align"] ?? string.Empty,
+                        oldSign,
+                        oldClan,
+                        oldAlign,
                         HelperPacks.UnpackString(xmlReader["comments"] ?? string.Empty),
                         xmlReader["tracing"] == null || Convert.ToBoolean(xmlReader["tracing"], CultureInfo.InvariantCulture),                        
-                        xmlReader["level"] ?? string.Empty,
+                        oldLevel,
                         true);
+
+                    contact.ApplyPersistedProfile(
+                        ReadXmlAttr(xmlReader, "playerid", "playerID"),
+                        ReadXmlInt(xmlReader, "playerlevel", ReadXmlInt(xmlReader, "playerLevel", ParseIntOrDefault(oldLevel, 0))),
+                        ReadXmlInt(xmlReader, "inclination", ParseIntOrDefault(oldAlign, 0)),
+                        ReadXmlAttr(xmlReader, "inclinationname", "inclinationName"),
+                        ReadXmlAttr(xmlReader, "clannumber", "clanNumber"),
+                        ReadXmlAttr(xmlReader, "clanico", "clanIco", "sign"),
+                        ReadXmlAttr(xmlReader, "clanname", "clanName", "clan"),
+                        ReadXmlAttr(xmlReader, "clanstatus", "clanStatus"),
+                        ReadXmlInt(xmlReader, "gender", 0),
+                        ReadXmlInt(xmlReader, "blockstatus", ReadXmlInt(xmlReader, "blockStatus", 0)),
+                        ReadXmlInt(xmlReader, "jailstatus", ReadXmlInt(xmlReader, "jailStatus", 0)),
+                        ReadXmlInt(xmlReader, "muteseconds", ReadXmlInt(xmlReader, "muteSeconds", 0)),
+                        ReadXmlInt(xmlReader, "muteforumseconds", ReadXmlInt(xmlReader, "muteForumSeconds", 0)),
+                        ReadXmlInt(xmlReader, "onlinestatus", ReadXmlInt(xmlReader, "onlineStatus", 0)),
+                        ReadXmlAttr(xmlReader, "geolocation", "geoLocation"),
+                        ReadXmlAttr(xmlReader, "warlognumber", "warLogNumber"),
+                        ReadXmlAttr(xmlReader, "effectids", "effectIds"),
+                        ReadXmlAttr(xmlReader, "effectstates", "effectStates"));
 
                     if (Contacts == null)
                     {
@@ -1446,6 +1476,41 @@ namespace ANClient.MyProfile
                 existing.LastLocation = tree.LastLocation;
                 existing.Selected = tree.Selected;
             }
+        }
+
+        private static string ReadXmlAttr(XmlReader xmlReader, params string[] names)
+        {
+            if (xmlReader == null || names == null)
+                return string.Empty;
+
+            foreach (var name in names)
+            {
+                if (string.IsNullOrEmpty(name))
+                    continue;
+
+                var value = xmlReader[name];
+                if (value != null)
+                    return value;
+            }
+
+            return string.Empty;
+        }
+
+        private static int ReadXmlInt(XmlReader xmlReader, string name, int fallback)
+        {
+            if (xmlReader == null || string.IsNullOrEmpty(name))
+                return fallback;
+
+            return ParseIntOrDefault(xmlReader[name], fallback);
+        }
+
+        private static int ParseIntOrDefault(string value, int fallback)
+        {
+            if (string.IsNullOrEmpty(value))
+                return fallback;
+
+            int parsed;
+            return int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out parsed) ? parsed : fallback;
         }
     }
 }

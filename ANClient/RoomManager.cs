@@ -90,6 +90,12 @@ namespace ANClient
                         var wr = (HttpWebRequest) WebRequest.Create("http://neverlands.ru/ch.php?lo=1&");
                         wr.Method = "GET";
                         wr.Proxy = AppVars.LocalProxy;
+                        if (!DirectGameRequestGuard.Prepare(wr, "RoomManager.RoomAsync"))
+                        {
+                            Event.WaitOne(5000, false);
+                            continue;
+                        }
+
                         var cookies = CookiesManager.Obtain("www.neverlands.ru");
                         wr.Headers.Add("Cookie", cookies);
                         var resp = wr.GetResponse();
@@ -291,6 +297,12 @@ namespace ANClient
                                     break;
                                 case 5:
                                     FormMain.FastAttackPortalAutoAttack(resultFilterProcRoom.EnemyAttack);
+                                    break;
+                                case 6:
+                                    FormMain.FastAttackPoison(resultFilterProcRoom.EnemyAttack);
+                                    break;
+                                case 7:
+                                    FormMain.FastAttackStrong(resultFilterProcRoom.EnemyAttack);
                                     break;
                             }
 

@@ -136,6 +136,417 @@ namespace ANClient.PostFilter
             return list.Count == 0 ? null : list.ToArray();
         }
 
+        private const int ClanKaznaViewAll = 0;
+        private const int ClanKaznaViewRares = 1;
+        private const int ClanKaznaViewArts = 2;
+        private const int ClanKaznaViewOrdinary = 3;
+        private const int ClanKaznaViewSets = 4;
+        private const string ClanKaznaUrl = "main.php?wfo=1&useaction=clan-action&addid=3";
+        private const string ClanKaznaTakePrefix = "main.php?get_id=29&uid=";
+        private static readonly Regex ClanKaznaRowRegex = new Regex(@"<tr><td bgcolor=#f.*?</div></td></tr>", RegexOptions.IgnoreCase | RegexOptions.Singleline);
+        private static readonly Regex ClanKaznaDurabilityRegex = new Regex(@"(\d+)\s*/\s*(\d+)", RegexOptions.IgnoreCase | RegexOptions.Singleline);
+        private static readonly Regex ClanKaznaArtifactRegex = new Regex(@"(?<!\d)([12]\.\d{2})(?!\d)", RegexOptions.IgnoreCase | RegexOptions.Singleline);
+        private static readonly Regex ClanKaznaHtmlTagRegex = new Regex(@"<[^>]+>", RegexOptions.IgnoreCase | RegexOptions.Singleline);
+
+        private sealed class ClanKaznaViewCounters
+        {
+            internal int All;
+            internal int Rares;
+            internal int Arts;
+            internal int Ordinary;
+        }
+
+        private static bool MainPhpIsClanKazna(string address, string html)
+        {
+            if (!string.IsNullOrEmpty(address) &&
+                address.IndexOf("useaction=clan-action&addid=3", StringComparison.OrdinalIgnoreCase) != -1)
+            {
+                return true;
+            }
+
+            return !string.IsNullOrEmpty(html) &&
+                   (html.IndexOf("СПИСОК ВЕЩЕЙ КЛАНА", StringComparison.CurrentCultureIgnoreCase) != -1 ||
+                    html.IndexOf(ClanKaznaTakePrefix, StringComparison.OrdinalIgnoreCase) != -1);
+        }
+
+        private static string MainPhpClanKazna(string address, string html)
+        {
+            MainPhpClanKaznaUpdateViewModeFromAddress(address);
+            var actionResult = MainPhpClanKaznaHandleAction(address);
+            if (!string.IsNullOrEmpty(actionResult))
+                return actionResult;
+
+            var isClanKazna = MainPhpIsClanKazna(address, html);
+            if (!isClanKazna)
+                return BuildRedirect("Переходим в казну", ClanKaznaUrl);
+
+            AppVars.ClanKaznaOpenRequested = false;
+            if (!string.IsNullOrEmpty(AppVars.ClanKaznaComplectQueue))
+                return MainPhpClanKaznaTakeNext(html);
+
+            if (!string.IsNullOrEmpty(AppVars.ClanKaznaComplectName))
+            {
+                if (AppVars.MainForm != null)
+                    AppVars.MainForm.WriteChatMsgSafe("Взятие комплекта из казны завершено: " + AppVars.ClanKaznaComplectName);
+
+                AppVars.ClanKaznaComplectName = string.Empty;
+            }
+
+            return MainPhpClanKaznaApplyView(address, html);
+        }
+
+        private static string MainPhpClanKaznaHandleAction(string address)
+        {
+            var action = MainPhpClanKaznaQuery(address, "an_kazna_action");
+            if (string.IsNullOrEmpty(action))
+                return string.Empty;
+
+            var setName = MainPhpClanKaznaQuery(address, "an_kazna_set");
+            var uid = MainPhpClanKaznaQuery(address, "an_kazna_uid");
+            if (action.Equals("create", StringComparison.OrdinalIgnoreCase))
+            {
+                if (ANClient.Kazna.KaznaSetStore.AddSet(setName) && AppVars.MainForm != null)
+                    AppVars.MainForm.WriteChatMsgSafe("Комплект казны создан: " + setName);
+                return string.Empty;
+            }
+
+            if (action.Equals("add", StringComparison.OrdinalIgnoreCase))
+            {
+                if (ANClient.Kazna.KaznaSetStore.AddItemToSet(setName, uid) && AppVars.MainForm != null)
+                    AppVars.MainForm.WriteChatMsgSafe("Предмет " + uid + " добавлен в комплект казны: " + setName);
+                return string.Empty;
+            }
+
+            if (action.Equals("remove", StringComparison.OrdinalIgnoreCase))
+            {
+                if (ANClient.Kazna.KaznaSetStore.RemoveItemFromSet(setName, uid) && AppVars.MainForm != null)
+                    AppVars.MainForm.WriteChatMsgSafe("Предмет " + uid + " удалён из комплекта казны: " + setName);
+                return string.Empty;
+            }
+
+            if (action.Equals("delete", StringComparison.OrdinalIgnoreCase))
+            {
+                if (ANClient.Kazna.KaznaSetStore.DeleteSet(setName) && AppVars.MainForm != null)
+                    AppVars.MainForm.WriteChatMsgSafe("Комплект казны удалён: " + setName);
+                return string.Empty;
+            }
+
+            if (action.Equals("collect", StringComparison.OrdinalIgnoreCase))
+            {
+                var set = ANClient.Kazna.KaznaSetStore.FindSet(setName);
+                if (set == null || set.ItemUids.Count == 0)
+                {
+                    if (AppVars.MainForm != null)
+                        AppVars.MainForm.WriteChatMsgSafe("Комплект казны пуст или не найден: " + setName);
+                    return string.Empty;
+                }
+
+                AppVars.ClanKaznaComplectName = set.Name;
+                AppVars.ClanKaznaComplectQueue = string.Join(":", set.ItemUids.ToArray());
+                if (AppVars.MainForm != null)
+                    AppVars.MainForm.WriteChatMsgSafe("Заказано взятие комплекта из казны: " + set.Name);
+                return string.Empty;
+            }
+
+            return string.Empty;
+        }
+
+        private static string MainPhpClanKaznaTakeNext(string html)
+        {
+            var queue = MainPhpClanKaznaBuildQueue(AppVars.ClanKaznaComplectQueue);
+            while (queue.Count > 0)
+            {
+                var itemId = queue.Dequeue();
+                var link = MainPhpClanKaznaFindTakeLink(html, itemId);
+                AppVars.ClanKaznaComplectQueue = string.Join(":", queue.ToArray());
+                if (string.IsNullOrEmpty(link))
+                {
+                    if (AppVars.MainForm != null)
+                        AppVars.MainForm.WriteChatMsgSafe("В казне не найден предмет ID " + itemId + ".");
+
+                    continue;
+                }
+
+                return BuildRedirect("Берём из казны ID " + itemId + "...", link);
+            }
+
+            if (AppVars.MainForm != null && !string.IsNullOrEmpty(AppVars.ClanKaznaComplectName))
+                AppVars.MainForm.WriteChatMsgSafe("Взятие комплекта из казны завершено: " + AppVars.ClanKaznaComplectName);
+
+            AppVars.ClanKaznaComplectQueue = string.Empty;
+            AppVars.ClanKaznaComplectName = string.Empty;
+            return MainPhpClanKaznaApplyView(string.Empty, html);
+        }
+
+        private static Queue<string> MainPhpClanKaznaBuildQueue(string source)
+        {
+            var queue = new Queue<string>();
+            if (string.IsNullOrEmpty(source))
+                return queue;
+
+            var items = source.Split(new[] { ':' }, StringSplitOptions.RemoveEmptyEntries);
+            foreach (var item in items)
+            {
+                var itemId = item.Trim();
+                if (!string.IsNullOrEmpty(itemId))
+                    queue.Enqueue(itemId);
+            }
+
+            return queue;
+        }
+
+        private static string MainPhpClanKaznaFindTakeLink(string html, string itemId)
+        {
+            if (string.IsNullOrEmpty(html) || string.IsNullOrEmpty(itemId))
+                return null;
+
+            var prefix = ClanKaznaTakePrefix + itemId;
+            var pos = 0;
+            while (pos >= 0 && pos < html.Length)
+            {
+                pos = html.IndexOf(prefix, pos, StringComparison.OrdinalIgnoreCase);
+                if (pos == -1)
+                    return null;
+
+                var end = MainPhpClanKaznaFindLinkEnd(html, pos);
+                if (end == -1)
+                    return null;
+
+                return html.Substring(pos, end - pos).Replace("&amp;", "&");
+            }
+
+            return null;
+        }
+
+        private static int MainPhpClanKaznaFindLinkEnd(string html, int pos)
+        {
+            var singleQuote = html.IndexOf('\'', pos);
+            var doubleQuote = html.IndexOf('"', pos);
+            if (singleQuote == -1)
+                return doubleQuote;
+
+            if (doubleQuote == -1)
+                return singleQuote;
+
+            return Math.Min(singleQuote, doubleQuote);
+        }
+
+        private static string MainPhpClanKaznaApplyView(string address, string html)
+        {
+            try
+            {
+                AppLog.d("Kazna", "render start: address=" + (address ?? string.Empty) + ", mode=" + AppVars.ClanKaznaViewMode.ToString(CultureInfo.InvariantCulture));
+                var rendered = ANClient.Kazna.KaznaHtmlRenderer.Render(html, address, AppVars.ClanKaznaViewMode);
+                AppLog.d("Kazna", "render complete: address=" + (address ?? string.Empty));
+                return rendered;
+            }
+            catch (Exception ex)
+            {
+                AppLog.e("Kazna", "render failed, original clan kazna html returned: " + (address ?? string.Empty), ex);
+                return html;
+            }
+        }
+
+        private static void MainPhpClanKaznaUpdateViewModeFromAddress(string address)
+        {
+            if (string.IsNullOrEmpty(address))
+                return;
+
+            var match = Regex.Match(address, @"[?&]an_kazna_view=(\d+)", RegexOptions.IgnoreCase);
+            if (!match.Success || match.Groups.Count < 2)
+                return;
+
+            int mode;
+            if (!int.TryParse(match.Groups[1].Value, out mode))
+                return;
+
+            if (mode < ClanKaznaViewAll || mode > ClanKaznaViewSets)
+                mode = ClanKaznaViewAll;
+
+            AppVars.ClanKaznaViewMode = mode;
+        }
+
+        private static string MainPhpClanKaznaQuery(string address, string name)
+        {
+            if (string.IsNullOrEmpty(address) || string.IsNullOrEmpty(name))
+                return string.Empty;
+
+            var match = Regex.Match(address, @"[?&]" + Regex.Escape(name) + @"=([^&]*)", RegexOptions.IgnoreCase);
+            if (!match.Success || match.Groups.Count < 2)
+                return string.Empty;
+
+            return Uri.UnescapeDataString(match.Groups[1].Value.Replace('+', ' '));
+        }
+
+        private static ClanKaznaViewCounters MainPhpClanKaznaCountRows(string html)
+        {
+            var counters = new ClanKaznaViewCounters();
+            if (string.IsNullOrEmpty(html))
+                return counters;
+
+            var matches = ClanKaznaRowRegex.Matches(html);
+            foreach (Match match in matches)
+            {
+                var row = match.Value;
+                if (!MainPhpClanKaznaIsItemRow(row))
+                    continue;
+
+                counters.All++;
+                if (MainPhpClanKaznaIsModeMatch(row, ClanKaznaViewArts))
+                {
+                    counters.Arts++;
+                }
+                else if (MainPhpClanKaznaIsModeMatch(row, ClanKaznaViewRares))
+                {
+                    counters.Rares++;
+                }
+                else if (MainPhpClanKaznaIsModeMatch(row, ClanKaznaViewOrdinary))
+                {
+                    counters.Ordinary++;
+                }
+            }
+
+            return counters;
+        }
+
+        private static string MainPhpClanKaznaInjectHeader(string html, ClanKaznaViewCounters counters)
+        {
+            var modeName = MainPhpClanKaznaModeName(AppVars.ClanKaznaViewMode);
+            var visibleCount = MainPhpClanKaznaModeCount(counters, AppVars.ClanKaznaViewMode);
+            var panel = new StringBuilder();
+            panel.Append("<div style=\"padding:6px;text-align:center;background:#FCFAF3;color:#6B4E16;font-family:Verdana;font-size:11px;border-bottom:1px solid #D4C9A4\">");
+            panel.Append("<b>ANClient: клановая казна</b>");
+            panel.Append("<br>Режим: <b>").Append(modeName).Append("</b>, показано ").Append(visibleCount).Append(" из ").Append(counters.All);
+            panel.Append("<br>");
+            MainPhpClanKaznaAppendModeLink(panel, ClanKaznaViewAll, "Все", counters.All);
+            MainPhpClanKaznaAppendModeLink(panel, ClanKaznaViewArts, "Арты", counters.Arts);
+            MainPhpClanKaznaAppendModeLink(panel, ClanKaznaViewRares, "Рары", counters.Rares);
+            MainPhpClanKaznaAppendModeLink(panel, ClanKaznaViewOrdinary, "Обычные", counters.Ordinary);
+            panel.Append("<br><span style=\"font-size:10px;color:#8B7650\">Классификация как в Android `Казна`: арт = коэффициент 1.xx/2.xx, рар = без коэффициента и долговечность >= 300.</span>");
+            panel.Append("</div>");
+            var body = html.IndexOf("<body", StringComparison.OrdinalIgnoreCase);
+            if (body == -1)
+                return panel.ToString() + html;
+
+            var bodyEnd = html.IndexOf('>', body);
+            return bodyEnd == -1 ? panel.ToString() + html : html.Insert(bodyEnd + 1, panel.ToString());
+        }
+
+        private static void MainPhpClanKaznaAppendModeLink(StringBuilder panel, int mode, string title, int count)
+        {
+            var isCurrent = AppVars.ClanKaznaViewMode == mode;
+            if (isCurrent)
+            {
+                panel.Append(" <b style=\"color:#8B0000\">").Append(title).Append(" (").Append(count).Append(")</b> ");
+                return;
+            }
+
+            panel.Append(" <a style=\"color:#3564A5;font-weight:bold\" href=\"")
+                .Append(MainPhpClanKaznaBuildModeUrl(mode))
+                .Append("\">")
+                .Append(title)
+                .Append(" (")
+                .Append(count)
+                .Append(")</a> ");
+        }
+
+        private static string MainPhpClanKaznaBuildModeUrl(int mode)
+        {
+            return ClanKaznaUrl + "&an_kazna_view=" + mode.ToString(CultureInfo.InvariantCulture);
+        }
+
+        private static int MainPhpClanKaznaModeCount(ClanKaznaViewCounters counters, int mode)
+        {
+            switch (mode)
+            {
+                case ClanKaznaViewRares:
+                    return counters.Rares;
+                case ClanKaznaViewArts:
+                    return counters.Arts;
+                case ClanKaznaViewOrdinary:
+                    return counters.Ordinary;
+                default:
+                    return counters.All;
+            }
+        }
+
+        private static bool MainPhpClanKaznaIsModeMatch(string row, int mode)
+        {
+            if (!MainPhpClanKaznaIsItemRow(row))
+                return true;
+
+            var artifact = MainPhpClanKaznaHasArtifactCoefficient(row);
+            var maxDurability = MainPhpClanKaznaMaxDurability(row);
+            if (mode == ClanKaznaViewArts)
+            {
+                return artifact;
+            }
+
+            if (mode == ClanKaznaViewRares)
+            {
+                return !artifact && maxDurability >= 300;
+            }
+
+            if (mode == ClanKaznaViewOrdinary)
+            {
+                return !artifact && maxDurability >= 0 && maxDurability < 300;
+            }
+
+            return true;
+        }
+
+        private static bool MainPhpClanKaznaIsItemRow(string row)
+        {
+            if (string.IsNullOrEmpty(row))
+                return false;
+
+            return row.IndexOf("Долговечность", StringComparison.CurrentCultureIgnoreCase) != -1 &&
+                   ClanKaznaDurabilityRegex.IsMatch(MainPhpClanKaznaPlainText(row));
+        }
+
+        private static bool MainPhpClanKaznaHasArtifactCoefficient(string row)
+        {
+            return !string.IsNullOrEmpty(row) && ClanKaznaArtifactRegex.IsMatch(MainPhpClanKaznaPlainText(row));
+        }
+
+        private static int MainPhpClanKaznaMaxDurability(string row)
+        {
+            if (string.IsNullOrEmpty(row))
+                return -1;
+
+            var match = ClanKaznaDurabilityRegex.Match(MainPhpClanKaznaPlainText(row));
+            if (!match.Success || match.Groups.Count < 3)
+                return -1;
+
+            int max;
+            return int.TryParse(match.Groups[2].Value, NumberStyles.Integer, CultureInfo.InvariantCulture, out max) ? max : -1;
+        }
+
+        private static string MainPhpClanKaznaPlainText(string html)
+        {
+            if (string.IsNullOrEmpty(html))
+                return string.Empty;
+
+            var text = html.Replace("&nbsp;", " ").Replace("&amp;", "&");
+            text = ClanKaznaHtmlTagRegex.Replace(text, " ");
+            return Regex.Replace(text, @"\s+", " ").Trim();
+        }
+
+        private static string MainPhpClanKaznaModeName(int mode)
+        {
+            switch (mode)
+            {
+                case ClanKaznaViewRares:
+                    return "Рары";
+                case ClanKaznaViewArts:
+                    return "Арты";
+                case ClanKaznaViewOrdinary:
+                    return "Обычные";
+                default:
+                    return "Все";
+            }
+        }
+
         private static string MainPhpRoulette(string html)
         {
             var pos1 = html.IndexOf("<object", StringComparison.Ordinal);
@@ -283,6 +694,14 @@ namespace ANClient.PostFilter
             }           
 
             UnderAttack.Parse(html);
+
+            if (AppVars.ClanKaznaOpenRequested ||
+                !string.IsNullOrEmpty(AppVars.ClanKaznaComplectQueue) ||
+                MainPhpIsClanKazna(address, html))
+            {
+                html = MainPhpClanKazna(address, html);
+                goto end;
+            }
 
             /*             
             if (AppVars.ServerDateTime >= new DateTime(2017, 11, 5))
@@ -1665,6 +2084,39 @@ namespace ANClient.PostFilter
                 }
             }
 
+            if (AppVars.FastNeed &&
+                MainPhpIsFastIslandAction() &&
+                html.IndexOf("var telep = ", StringComparison.Ordinal) != -1)
+            {
+                var fastIslandHtml = MainPhpFast(html);
+                if (!string.IsNullOrEmpty(fastIslandHtml))
+                {
+                    if (AppVars.MainForm != null && AppVars.FastId != null)
+                    {
+                        AppVars.MainForm.WriteChatMsgSafe("Используем " + AppVars.FastId);
+                        AppVars.MainForm.FastCancelSafe();
+                    }
+
+                    html = fastIslandHtml;
+                    goto end;
+                }
+
+                if (address.IndexOf("get_id=16", StringComparison.OrdinalIgnoreCase) != -1 && AppVars.MainForm != null)
+                {
+                    AppVars.MainForm.WriteChatMsgSafe("Спецтелепорт не найден, действие отменено.");
+                    AppVars.MainForm.FastCancelSafe();
+                }
+            }
+
+            if (AppVars.FastNeed &&
+                MainPhpIsFastIslandAction() &&
+                address.IndexOf("get_id=16", StringComparison.OrdinalIgnoreCase) != -1 &&
+                !MainPhpIsInv(html) &&
+                AppVars.MainForm != null)
+            {
+                AppVars.MainForm.FastCancelSafe();
+            }
+
             // Заказано ли быстрое действие?
 
             if (AppVars.FastNeed)
@@ -1690,6 +2142,7 @@ namespace ANClient.PostFilter
                         case "i_svi_205.gif": // Закрытая нападалка
                         case "i_w28_27.gif": // Свиток защиты
                         case "Телепорт (Остров Туротор)":
+                        case "Телепорт (Гиблая Топь)":
                         case "i_w28_86.gif": // Портал
                             // Работаем со свитками
                             invHtml = MainPhpFindInv(html, "&im=0&wca=28");
@@ -1918,7 +2371,7 @@ namespace ANClient.PostFilter
                     }
                 }
             }
-                
+
             try
             {
                 if (AppVars.MainForm != null)

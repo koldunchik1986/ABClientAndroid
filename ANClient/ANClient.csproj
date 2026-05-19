@@ -196,6 +196,8 @@
     <Compile Include="ANProxy\HttpResponseHeaders.cs" />
     <Compile Include="ANProxy\Parser.cs" />
     <Compile Include="ANProxy\Proxy.cs" />
+    <Compile Include="ANProxy\DirectGameRequestGuard.cs" />
+    <Compile Include="ANProxy\ProxyRequestQueue.cs" />
     <Compile Include="ANProxy\ServerChatter.cs" />
     <Compile Include="ANProxy\ServerPipe.cs" />
     <Compile Include="ANProxy\Session.cs" />
@@ -249,6 +251,20 @@
     <Compile Include="HerbCell.cs" />
     <Compile Include="IdleManager.cs" />
     <Compile Include="InvEntry.cs" />
+    <Compile Include="Info\ForpostInfoController.cs" />
+    <Compile Include="Info\ProfessionRatingMonitor.cs" />
+    <Compile Include="Info\ProfessionRatingRepository.cs" />
+    <Compile Include="Info\RecipeDatabase.cs" />
+    <Compile Include="Kazna\KaznaCategory.cs" />
+    <Compile Include="Kazna\KaznaHtmlRenderer.cs" />
+    <Compile Include="Kazna\KaznaItem.cs" />
+    <Compile Include="Kazna\KaznaItemDetails.cs" />
+    <Compile Include="Kazna\KaznaItemDetailsCache.cs" />
+    <Compile Include="Kazna\KaznaItemDetailsParser.cs" />
+    <Compile Include="Kazna\KaznaParser.cs" />
+    <Compile Include="Kazna\KaznaSet.cs" />
+    <Compile Include="Kazna\KaznaSetStore.cs" />
+    <Compile Include="Kazna\KaznaSnapshot.cs" />
     <Compile Include="KeyList.cs" />
     <Compile Include="Lez\LezBotsClass.cs" />
     <Compile Include="Lez\LezBotsClassCollection.cs" />
@@ -261,6 +277,7 @@
     <Compile Include="Log.cs" />
     <Compile Include="MyChat\MyChat.cs" />
     <Compile Include="Contact.cs" />
+    <Compile Include="ContactRenderHelper.cs" />
     <Compile Include="ContactsManager.cs" />
     <Compile Include="AppControls\CollapsibleSplitter.cs">
       <SubType>Component</SubType>
@@ -754,6 +771,9 @@
     <None Include="Icons\16x16-fury.gif" />
     <None Include="Icons\i_w61_101.gif" />
     <Content Include="anthings.xml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Info\recipe_tables.txt">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
     <Content Include="bossusers.xml">

@@ -138,3 +138,6 @@ lint/tmp/
 # lint/reports/
 app/src.rar
 app3/keys/
+/ANClient/obj
+/ANClient/obj
+/ANClient/obj

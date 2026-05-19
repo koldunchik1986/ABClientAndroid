@@ -21,6 +21,7 @@ namespace ANClient.PostFilter
             pos += patternStartInv.Length;
             var posStartInv = pos;
             InvList.Clear();
+            var kaznaUidDetails = new List<ANClient.Kazna.KaznaItemDetails>();
             while (true)
             {
                 const string parrernStartTr = "<tr><td bgcolor=#F5F5F5>";
@@ -49,6 +50,9 @@ namespace ANClient.PostFilter
                 
                 var htmlEntry = html.Substring(pos, posEnd - pos);
                 var invEntry = new InvEntry(htmlEntry);
+                var kaznaDetails = ANClient.Kazna.KaznaItemDetailsParser.ParseFromInventoryEntry(htmlEntry);
+                if (kaznaDetails != null)
+                    kaznaUidDetails.Add(kaznaDetails);
 
                 if (
                     invEntry.IsExpired() ||
@@ -83,6 +87,8 @@ namespace ANClient.PostFilter
                 InvList.Add(invEntry);
                 pos = posEnd;
             }
+
+            ANClient.Kazna.KaznaItemDetailsCache.MergeFromInventoryDetails(kaznaUidDetails);
 
             if (!string.IsNullOrEmpty(AppVars.BulkDropThing))
             {

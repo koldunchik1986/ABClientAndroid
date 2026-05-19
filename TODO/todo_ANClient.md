@@ -78,3 +78,15 @@
 - `MSBuild.exe ANClient\ANClient.csproj /t:CoreCompile /p:Configuration=Debug` запущен; сборка не проходит на локальном .NET4/MSBuild из-за C# 6 `$` interpolation/newer syntax в существующем коде, не из-за текущего rename.
 - VS2022 BuildTools `MSBuild.exe ANClient.csproj /t:Build /p:Configuration=Debug /p:Platform=AnyCPU /p:OutDir=bin\VerifyWork\` после восстановления повреждённых `.resx` base64-потоков проходит успешно: 0 warnings, 0 errors.
 - Причина ошибки `FormMain.resx : MSB3103 Invalid Resx file / Не удалось загрузить ImageList`: blind-replace `AB` -> `AN` попал внутрь base64 `ImageListStreamer` (`AQAB...` -> `AQAN...`), что повредило сериализованный `ImageList`.
+
+## Анализ `D:\IBC2` на отсутствующие функции
+
+- [x] Проверены прямые совпадения в `D:\IBC2` по `Turotor`, `Treasure`, `CastleBuff`, `DwarfCraft`, `mineMoveTo`, `getMineCellHTML`, `Казн`, `Арты`, `Рары`, `Гибл`, `топь`.
+- [x] Найдены формы-заготовки `D:\IBC2\ABClient.MyForms\FormTurotor.cs` и `D:\IBC2\ABClient.MyForms\FormTreasure.cs`, но тела обработчиков пустые из-за protected/runtime-stub decompile.
+- [x] Найдены новые настройки профиля в `D:\IBC2\Fv2WJm81JhH8CRlcvjB\sl7XIJ89X3GijIiML1i.cs`: `TurotorToGo`, `TurotorToGoSecondary`, `TurotorIntervalStart`, `TurotorIntevalEnd`, `CastleBuffTeleportId`, `CastleBuffCastleCell`, `CastleBuffBackToCell`, `CastleBuffEffects`, `DNVNVLimit`, `DNVFrequency`.
+- [x] Найдены новые COM/JS bridge-методы в `D:\IBC2\ABClient\ScriptManager.cs`: `GetItemID`, `GetItemVcode`, `GetItemPrice`, `getCellImg`, `mineMoveTo`, `getMineCellHTML`, `getMoveText`, `DwarfCraftSetCategory`, `DwarfCraftGetCategory`, `DwarfCraftSetId`, `DwarfCraftGetId`, `GetFortBuffsState`, `LeaveFort`, `MoveToFort`, `TellBuffTaken`, `SetTirednessToMax`, `ThrowAwayUselessRubbish`, `SaveCastleBuffEffects`, `GetCastleBuffState`, `GetCastleBuffEffects`, `SetCastleBuffState`.
+- [x] Проверен `ANClient`: есть только быстрый телепорт `Телепорт (Остров Туротор)` через `MainPhpFastIsland`, `FormMainFast.FastAttackIslandPot`, `FormMainNavigator` и флаг маршрута `MapPath.IsIslandRequired`.
+- [x] Проверен `ANClient`: нет `FormTurotor`, `FormTreasure`, профильных настроек `Turotor*`/`CastleBuff*`, bridge-методов `DwarfCraft*`/mine/fort/castle/tiredness и ресурсов `castle_v05`, `dwarfshop_v01`, `lottery_v01`, `mine`, `outpost_v02`.
+- [x] Установлен `ilspycmd` во временную папку `C:\Users\User\AppData\Local\Temp\opencode\tools` и выполнен decompile `D:\IBC2\iBClient_BD_deobf.exe` в `C:\Users\User\AppData\Local\Temp\opencode\IBC2_ilspy` без изменения репозитория.
+- [x] `ilspycmd` подтвердил блокер: `FormTurotor`, `FormTreasure` и критичные методы `ScriptManager` остались runtime-stub; реальная логика находится в encrypted resources/protector, обычный decompile её не раскрывает.
+- [ ] Для восстановления реальной логики нужен отдельный разрешённый шаг: runtime-unpack/запуск protected loader или другой unpacker. Без этого можно портировать только UI-настройки и stubs, но нельзя достоверно восстановить endpoints и state-machine `Туротор`/`Гиблая топь`/казна.

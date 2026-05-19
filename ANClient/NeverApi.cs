@@ -12,11 +12,48 @@ namespace ANClient
     public static class NeverApi
     {
         private const string BrowserUserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36";
+        private const string ClansInfoUrl = "http://service.neverlands.ru/info/clans.txt";
         private static readonly Regex HpmpRegex = new Regex(@"(?:var\s+)?hpmp\s*=\s*\[\s*-?\d+\s*,\s*-?\d+\s*,\s*-?\d+\s*,\s*-?\d+\s*,\s*(?<energy>-?\d+)", RegexOptions.IgnoreCase | RegexOptions.Compiled);
         private static readonly Dictionary<string, string> NameToId = new Dictionary<string, string>();
         private static readonly ReaderWriterLock NameToIdLock = new ReaderWriterLock();
 
-        private static string GetUserId(string nick)
+        internal sealed class ClanRoster
+        {
+            internal readonly UserInfo MainUserInfo;
+            internal readonly string ClanId;
+            internal readonly string ClanName;
+            internal readonly string ClanSign;
+            internal readonly ClanRosterMember[] Members;
+            internal readonly string[] MemberNicks;
+
+            internal ClanRoster(UserInfo mainUserInfo, string clanId, string clanName, string clanSign, ClanRosterMember[] members)
+            {
+                MainUserInfo = mainUserInfo;
+                ClanId = clanId ?? string.Empty;
+                ClanName = clanName ?? string.Empty;
+                ClanSign = NormalizeClanIcon(clanSign, clanId);
+                Members = members ?? new ClanRosterMember[0];
+                MemberNicks = BuildMemberNicks(Members);
+            }
+        }
+
+        internal sealed class ClanRosterMember
+        {
+            internal readonly string PlayerId;
+            internal readonly string Nick;
+            internal readonly int Level;
+            internal readonly string Status;
+
+            internal ClanRosterMember(string playerId, string nick, int level, string status)
+            {
+                PlayerId = playerId ?? string.Empty;
+                Nick = nick ?? string.Empty;
+                Level = level;
+                Status = status ?? string.Empty;
+            }
+        }
+
+        public static string GetPlayerId(string nick)
         {
             if (string.IsNullOrEmpty(nick))
                 return null;
@@ -49,14 +86,14 @@ namespace ANClient
             var data = GetInfo(url);
             if (string.IsNullOrEmpty(data))
             {
-                AppLog.w("NeverApi", "GetUserId: EMPTY_RESPONSE nick=" + normalizedNick);
+                AppLog.w("NeverApi", "GetPlayerId: EMPTY_RESPONSE nick=" + normalizedNick);
                 return null;
             }
 
             var spar = data.Split('|');
             if (spar.Length < 1)
             {
-                AppLog.w("NeverApi", "GetUserId: PARSE_FAIL nick=" + normalizedNick + " raw=" + data);
+                AppLog.w("NeverApi", "GetPlayerId: PARSE_FAIL nick=" + normalizedNick + " raw=" + data);
                 return null;
             }
 
@@ -66,11 +103,11 @@ namespace ANClient
             // Android: isEmpty(id) → return null
             if (string.IsNullOrEmpty(id))
             {
-                AppLog.w("NeverApi", "GetUserId: EMPTY_ID nick=" + normalizedNick + " raw=" + data);
+                AppLog.w("NeverApi", "GetPlayerId: EMPTY_ID nick=" + normalizedNick + " raw=" + data);
                 return null;
             }
 
-            AppLog.d("NeverApi", "GetUserId: nick=" + normalizedNick + " id=" + id);
+            AppLog.d("NeverApi", "GetPlayerId: nick=" + normalizedNick + " id=" + id);
 
             // Получаем нормализованное имя из ответа (spar[1])
             var resolvedNick = spar.Length > 1 && !string.IsNullOrEmpty(spar[1])
@@ -112,120 +149,460 @@ namespace ANClient
 
         public static UserInfo GetAll(string nick)
         {
-            var userInfo = new UserInfo();
-
-            var id = GetUserId(nick);
+            var id = GetPlayerId(nick);
             if (string.IsNullOrEmpty(id))
                 return null;
 
-            var data = GetInfo($"http://www.neverlands.ru/modules/api/info.cgi?playerid={id}&info=1&hmu=1&effects=1&slots=1");
-            /*
-                1|tnsx4hoq.gif:Шлем Гладиатора:|0|0|45|0|60|0|150@...
-                2|
-                3|Черный|16|0|n|none|||0|1|0|0|0|0||18834655
-                4|0|785|0|112|77
-            */
-            if (string.IsNullOrEmpty(data))
+            return GetAllByPlayerId(id, nick);
+        }
+
+        internal static ClanRoster GetClanRosterByNick(string nick)
+        {
+            var mainUserInfo = GetAll(nick);
+            if (mainUserInfo == null)
             {
-                AppLog.w("NeverApi", "GetAll: EMPTY_RESPONSE id=" + id + " nick=" + nick);
+                AppLog.w("NeverApi", "GetClanRosterByNick: EMPTY_USER_INFO nick=" + (nick ?? string.Empty));
                 return null;
             }
 
-            var sp = data.Split('\n');
-            if (sp.Length < 4)
+            return GetClanRosterByUserInfo(mainUserInfo);
+        }
+
+        internal static ClanRoster GetClanRosterByUserInfo(UserInfo mainUserInfo)
+        {
+            if (mainUserInfo == null)
                 return null;
 
-            // Строка 0: "1|slots_data" — обрезаем префикс "1|"
-            if (sp[0].Length < 2)
-                return null;
+            var firstNick = mainUserInfo.Nick;
+            var firstSign = mainUserInfo.ClanSign;
+            var firstClan = mainUserInfo.ClanName;
+            var clanId = NormalizeClanToken(firstSign);
+            var members = new List<ClanRosterMember>();
+            AddUniqueClanMember(members, new ClanRosterMember(mainUserInfo.PlayerId, firstNick, mainUserInfo.PlayerLevel, mainUserInfo.ClanStatus));
 
-            userInfo.SlotsCodes = new string[0];
-            userInfo.SlotsNames = new string[0];
-
-            var sp1 = sp[0].Substring(2).Split('@');
-            if (sp1.Length < 16)
-                return null;
-
-            userInfo.SlotsCodes = new string[16];
-            userInfo.SlotsNames = new string[16];
-
-            for (var i = 0; i < 16; i++)
+            if (string.IsNullOrEmpty(clanId) || string.IsNullOrEmpty(firstClan) || ContactRenderHelper.IsNeutralClanName(firstClan))
             {
-                var sps = sp1[i].Split(':');
-                if (sps.Length < 2)
-                    return null;
-
-                userInfo.SlotsCodes[i] = sps[0];
-                userInfo.SlotsNames[i] = sps[1];
+                return new ClanRoster(mainUserInfo, clanId, firstClan, firstSign, members.ToArray());
             }
 
-            userInfo.EffectsCodes = new string[0];
-            userInfo.EffectsNames = new string[0];
-            userInfo.EffectsSizes = new string[0];
-            userInfo.EffectsLefts = new string[0];
+            var clansText = DownloadPublicText(ClansInfoUrl, "NeverApi.GetClanRoster.clansTxt");
+            if (string.IsNullOrEmpty(clansText))
+                return null;
 
-            if (sp[1].Length > 2)
+            if (!ParseClansTxtRoster(clansText, clanId, firstClan, members))
             {
-                var sp2 = sp[1].Substring(2).Split('@');
-                userInfo.EffectsCodes = new string[sp2.Length];
-                userInfo.EffectsNames = new string[sp2.Length];
-                userInfo.EffectsSizes = new string[sp2.Length];
-                userInfo.EffectsLefts = new string[sp2.Length];
-                for (var i = 0; i < sp2.Length; i++)
+                AppLog.w("NeverApi", "GetClanRosterByUserInfo: CLAN_NOT_FOUND_IN_SERVICE clan=" + firstClan + " clanId=" + clanId);
+                return null;
+            }
+
+            AppLog.i("NeverApi", "GetClanRosterByUserInfo: clan=" + firstClan + " clanId=" + clanId + " members=" + members.Count.ToString(CultureInfo.InvariantCulture));
+            return new ClanRoster(mainUserInfo, clanId, firstClan, firstSign, members.ToArray());
+        }
+
+        private static string DownloadPublicText(string url, string source)
+        {
+            byte[] buffer;
+            var activityAdded = false;
+            using (var wc = new WebClient { Proxy = AppVars.LocalProxy })
+            {
+                try
                 {
-                    var sps = sp2[i].Split('.');
-                    if (sps.Length < 4)
+                    var requestUri = new Uri(url);
+                    if (!DirectGameRequestGuard.Prepare(wc, requestUri, source))
+                    {
                         return null;
+                    }
 
-                    userInfo.EffectsCodes[i] = sps[0];
-                    userInfo.EffectsNames[i] = sps[1];
-                    userInfo.EffectsSizes[i] = sps[2];
-                    userInfo.EffectsLefts[i] = sps[3];
+                    wc.Headers[HttpRequestHeader.UserAgent] = BrowserUserAgent;
+                    wc.Headers[HttpRequestHeader.Accept] = "text/plain,*/*;q=0.8";
+                    wc.Headers[HttpRequestHeader.AcceptLanguage] = "ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7";
+                    wc.Headers[HttpRequestHeader.CacheControl] = "no-cache";
+                    IdleManager.AddActivity();
+                    activityAdded = true;
+                    buffer = wc.DownloadData(requestUri);
+                }
+                catch (Exception ex)
+                {
+                    AppLog.e("NeverApi", source + " FAILED: url=" + url + " error=" + ex.Message, ex);
+                    return null;
+                }
+                finally
+                {
+                    if (activityAdded)
+                    {
+                        IdleManager.RemoveActivity();
+                    }
                 }
             }
 
-            var sp3 = sp[2].Substring(2).Split('|');
-            if (sp3.Length < 15) // sp3[14] = FightLog — нужно минимум 15 элементов
+            return buffer == null || buffer.Length == 0 ? null : AppVars.Codepage.GetString(buffer);
+        }
+
+        private static bool ParseClansTxtRoster(string clansText, string clanId, string clanName, List<ClanRosterMember> members)
+        {
+            if (string.IsNullOrEmpty(clansText) || string.IsNullOrEmpty(clanId) || members == null)
+                return false;
+
+            var rows = clansText.Replace("\r", string.Empty).Split('\n');
+            string matchedMembers = null;
+            string matchedClanName = null;
+            foreach (var row in rows)
+            {
+                if (string.IsNullOrEmpty(row))
+                    continue;
+
+                var clanParts = row.Split(new[] { '|' }, StringSplitOptions.None);
+                if (clanParts.Length <= 5)
+                    continue;
+
+                var rowClanId = NormalizeClanToken(clanParts[0]);
+                var rowClanName = clanParts[1] == null ? string.Empty : clanParts[1].Trim();
+                if (!rowClanId.Equals(clanId, StringComparison.OrdinalIgnoreCase) &&
+                    (string.IsNullOrEmpty(clanName) || !rowClanName.Equals(clanName, StringComparison.OrdinalIgnoreCase)))
+                {
+                    continue;
+                }
+
+                matchedClanName = rowClanName;
+                matchedMembers = clanParts[5] ?? string.Empty;
+                break;
+            }
+
+            if (matchedMembers == null)
+                return false;
+
+            var players = matchedMembers.Split(new[] { '#' }, StringSplitOptions.RemoveEmptyEntries);
+            foreach (var player in players)
+            {
+                var member = ParseClanRosterMember(player);
+                if (member == null)
+                    continue;
+
+                AddUniqueClanMember(members, member);
+            }
+
+            AppLog.i("NeverApi", "ParseClansTxtRoster: clan=" + matchedClanName + " clanId=" + clanId + " rawPlayers=" + players.Length.ToString(CultureInfo.InvariantCulture));
+            return true;
+        }
+
+        private static ClanRosterMember ParseClanRosterMember(string player)
+        {
+            if (string.IsNullOrEmpty(player))
                 return null;
 
-            userInfo.Nick = sp3[0].Trim();
-            userInfo.Level = sp3[1];
-            userInfo.Align = sp3[2];
-            userInfo.ClanCode = sp3[3];
-            userInfo.ClanSign = sp3[4];
-            userInfo.ClanName = sp3[5];
-            userInfo.ClanStatus = sp3[6];
-            userInfo.Sex = sp3[7];
-            if (!sp3[8].Equals("0"))
-                userInfo.Disabled = true;
+            var playerParts = player.Split(',');
+            if (playerParts.Length <= 1)
+                return null;
 
-            if (!sp3[9].Equals("0"))
-                userInfo.Jailed = true;
+            return new ClanRosterMember(
+                playerParts[0].Trim(),
+                playerParts[1].Trim(),
+                playerParts.Length > 2 ? ParseIntSafe(playerParts[2], 0) : 0,
+                playerParts.Length > 3 ? playerParts[3].Trim() : string.Empty);
+        }
 
-            userInfo.ChatMuted = sp3[10];
-            userInfo.ForumMuted = sp3[11];
-            if (!sp3[12].Equals("0"))
-                userInfo.Online = true;
+        private static string NormalizeClanToken(string clanToken)
+        {
+            if (string.IsNullOrEmpty(clanToken))
+                return string.Empty;
 
-            userInfo.Location = sp3.Length > 13 ? sp3[13] : string.Empty;
-            userInfo.FightLog = sp3.Length > 14 ? sp3[14] : "0";
+            var token = clanToken.Trim();
+            if (token.EndsWith(".gif", StringComparison.OrdinalIgnoreCase))
+            {
+                token = token.Substring(0, token.Length - ".gif".Length);
+            }
+
+            return token;
+        }
+
+        private static string NormalizeClanIcon(string clanSign, string clanId)
+        {
+            var sign = string.IsNullOrEmpty(clanSign) ? string.Empty : clanSign.Trim();
+            if (sign.Length == 0)
+            {
+                sign = NormalizeClanToken(clanId);
+            }
+
+            if (sign.Length == 0 || sign.Equals("none", StringComparison.OrdinalIgnoreCase))
+                return sign;
+
+            return sign.EndsWith(".gif", StringComparison.OrdinalIgnoreCase) ? sign : sign + ".gif";
+        }
+
+        private static void AddUniqueClanMember(List<ClanRosterMember> members, ClanRosterMember member)
+        {
+            if (members == null || member == null || string.IsNullOrEmpty(member.Nick))
+                return;
+
+            var safeNick = member.Nick.Trim();
+            if (safeNick.Length == 0)
+                return;
+
+            for (var i = 0; i < members.Count; i++)
+            {
+                var existingMember = members[i];
+                if (existingMember != null && safeNick.Equals(existingMember.Nick, StringComparison.OrdinalIgnoreCase))
+                {
+                    members[i] = MergeClanRosterMember(existingMember, member);
+                    return;
+                }
+            }
+
+            members.Add(member);
+        }
+
+        private static ClanRosterMember MergeClanRosterMember(ClanRosterMember existingMember, ClanRosterMember newMember)
+        {
+            if (existingMember == null)
+                return newMember;
+
+            if (newMember == null)
+                return existingMember;
+
+            return new ClanRosterMember(
+                string.IsNullOrEmpty(existingMember.PlayerId) ? newMember.PlayerId : existingMember.PlayerId,
+                string.IsNullOrEmpty(existingMember.Nick) ? newMember.Nick : existingMember.Nick,
+                existingMember.Level > 0 ? existingMember.Level : newMember.Level,
+                string.IsNullOrEmpty(existingMember.Status) ? newMember.Status : existingMember.Status);
+        }
+
+        private static string[] BuildMemberNicks(ClanRosterMember[] members)
+        {
+            if (members == null || members.Length == 0)
+                return new string[0];
+
+            var result = new List<string>();
+            foreach (var member in members)
+            {
+                if (member == null || string.IsNullOrEmpty(member.Nick))
+                    continue;
+
+                result.Add(member.Nick);
+            }
+
+            return result.ToArray();
+        }
+
+        public static UserInfo GetAllByPlayerId(string playerId)
+        {
+            return GetAllByPlayerId(playerId, null);
+        }
+
+        internal static Contact GetContactByNick(string nick, int classId, int toolId, string comments, bool tracing)
+        {
+            var userInfo = GetAll(nick);
+            if (userInfo == null)
+                return null;
+
+            return BuildContactFromUserInfo(userInfo, classId, toolId, comments, tracing);
+        }
+
+        internal static Contact GetContactByPlayerId(string playerId, int classId, int toolId, string comments, bool tracing)
+        {
+            var userInfo = GetAllByPlayerId(playerId);
+            if (userInfo == null)
+                return null;
+
+            return BuildContactFromUserInfo(userInfo, classId, toolId, comments, tracing);
+        }
+
+        private static UserInfo GetAllByPlayerId(string id, string fallbackNick)
+        {
+            var data = GetInfo($"http://www.neverlands.ru/modules/api/info.cgi?playerid={id}&info=1&hmu=1&effects=1&slots=1");
+            if (string.IsNullOrEmpty(data))
+            {
+                AppLog.w("NeverApi", "GetAll: EMPTY_RESPONSE id=" + id + " nick=" + (fallbackNick ?? string.Empty));
+                return null;
+            }
+
+            var userInfo = ParseUserInfo(id, fallbackNick, data);
+            if (userInfo == null)
+                return null;
 
             AppLog.d("NeverApi", "GetAll: nick=" + userInfo.Nick + " level=" + userInfo.Level +
                 " online=" + userInfo.Online + " location=" + userInfo.Location +
                 " fightLog=" + userInfo.FightLog + " clan=" + userInfo.ClanName);
 
-            var sp4 = sp[3].Substring(2).Split('|');
-            if (sp4.Length < 5)
+            return userInfo;
+        }
+
+        private static Contact BuildContactFromUserInfo(UserInfo userInfo, int classId, int toolId, string comments, bool tracing)
+        {
+            var nick = string.IsNullOrEmpty(userInfo.Nick) ? string.Empty : userInfo.Nick;
+            var contact = new Contact(nick, classId, toolId, comments ?? string.Empty, tracing, false);
+            contact.ApplySnapshot(userInfo);
+            return contact;
+        }
+
+        private static UserInfo ParseUserInfo(string playerId, string fallbackNick, string data)
+        {
+            if (string.IsNullOrEmpty(data))
                 return null;
 
-            int.TryParse(sp4[0], out userInfo.HpCur);
-            int.TryParse(sp4[1], out userInfo.HpMax);
-            int.TryParse(sp4[2], out userInfo.MaCur);
-            int.TryParse(sp4[3], out userInfo.MaMax);
-            int.TryParse(sp4[4], out userInfo.Tied);
-            userInfo.Tied = 100 - userInfo.Tied;
+            var userInfo = new UserInfo { PlayerId = playerId ?? string.Empty };
+            var rows = data.Replace("\r", string.Empty).Split('\n');
+            if (rows.Length >= 3 && rows[2].StartsWith("3|", StringComparison.Ordinal))
+            {
+                ParseSlotsRow(userInfo, rows.Length > 0 ? rows[0] : string.Empty);
+                ParseEffectsRow(userInfo, rows.Length > 1 ? rows[1] : string.Empty);
+                if (!ParseInfoParts(userInfo, rows[2].Substring(2).Split(new[] { '|' }, StringSplitOptions.None), 0, fallbackNick))
+                    return null;
+
+                if (rows.Length > 3)
+                {
+                    ParseHmuRow(userInfo, rows[3]);
+                }
+
+                return userInfo;
+            }
+
+            var parts = data.Split(new[] { '|' }, StringSplitOptions.None);
+            if (!ParseInfoParts(userInfo, parts, 1, fallbackNick))
+                return null;
 
             return userInfo;
+        }
+
+        private static bool ParseInfoParts(UserInfo userInfo, string[] parts, int offset, string fallbackNick)
+        {
+            if (parts == null || parts.Length < offset + 15)
+                return false;
+
+            userInfo.Nick = SafePart(parts, offset).Trim();
+            if (string.IsNullOrEmpty(userInfo.Nick))
+            {
+                userInfo.Nick = fallbackNick ?? string.Empty;
+            }
+
+            userInfo.Level = SafePart(parts, offset + 1);
+            userInfo.PlayerLevel = ParseIntSafe(userInfo.Level, 0);
+            userInfo.Align = SafePart(parts, offset + 2);
+            userInfo.Inclination = ParseIntSafe(userInfo.Align, 0);
+            userInfo.InclinationName = ContactRenderHelper.GetInclinationName(userInfo.Inclination);
+            userInfo.ClanCode = SafePart(parts, offset + 3);
+            userInfo.ClanNumber = userInfo.ClanCode;
+            userInfo.ClanSign = SafePart(parts, offset + 4);
+            userInfo.ClanIco = userInfo.ClanSign;
+            userInfo.ClanName = SafePart(parts, offset + 5);
+            userInfo.ClanStatus = SafePart(parts, offset + 6);
+            userInfo.Sex = SafePart(parts, offset + 7);
+            userInfo.Gender = ParseIntSafe(userInfo.Sex, 0);
+            userInfo.BlockStatus = ParseIntSafe(SafePart(parts, offset + 8), 0);
+            userInfo.JailStatus = ParseIntSafe(SafePart(parts, offset + 9), 0);
+            userInfo.Disabled = userInfo.BlockStatus != 0;
+            userInfo.Jailed = userInfo.JailStatus != 0;
+            userInfo.ChatMuted = SafePart(parts, offset + 10);
+            userInfo.ForumMuted = SafePart(parts, offset + 11);
+            userInfo.MuteSeconds = ParseIntSafe(userInfo.ChatMuted, 0);
+            userInfo.MuteForumSeconds = ParseIntSafe(userInfo.ForumMuted, 0);
+            userInfo.OnlineStatus = ParseIntSafe(SafePart(parts, offset + 12), 0);
+            userInfo.Online = userInfo.OnlineStatus > 0;
+            userInfo.Location = SafePart(parts, offset + 13);
+            userInfo.GeoLocation = userInfo.Location;
+            userInfo.FightLog = SafePart(parts, offset + 14);
+            userInfo.WarLogNumber = userInfo.FightLog;
+            if (string.IsNullOrEmpty(userInfo.FightLog))
+            {
+                userInfo.FightLog = "0";
+                userInfo.WarLogNumber = "0";
+            }
+
+            return true;
+        }
+
+        private static void ParseSlotsRow(UserInfo userInfo, string row)
+        {
+            userInfo.SlotsCodes = new string[0];
+            userInfo.SlotsNames = new string[0];
+            if (string.IsNullOrEmpty(row) || !row.StartsWith("1|", StringComparison.Ordinal) || row.Length <= 2)
+                return;
+
+            var items = row.Substring(2).Split('@');
+            userInfo.SlotsCodes = new string[items.Length];
+            userInfo.SlotsNames = new string[items.Length];
+            for (var i = 0; i < items.Length; i++)
+            {
+                var slotParts = items[i].Split(':');
+                userInfo.SlotsCodes[i] = slotParts.Length > 0 ? slotParts[0] : string.Empty;
+                userInfo.SlotsNames[i] = slotParts.Length > 1 ? slotParts[1] : string.Empty;
+            }
+        }
+
+        private static void ParseEffectsRow(UserInfo userInfo, string row)
+        {
+            userInfo.EffectsCodes = new string[0];
+            userInfo.EffectsNames = new string[0];
+            userInfo.EffectsSizes = new string[0];
+            userInfo.EffectsLefts = new string[0];
+            userInfo.EffectIds = string.Empty;
+            userInfo.EffectStates = string.Empty;
+            if (string.IsNullOrEmpty(row) || !row.StartsWith("2|", StringComparison.Ordinal) || row.Length <= 2)
+                return;
+
+            var rawEffects = row.Substring(2).Split('@');
+            var codes = new List<string>();
+            var names = new List<string>();
+            var sizes = new List<string>();
+            var lefts = new List<string>();
+            var effectStates = new List<ContactRenderHelper.EffectState>();
+            foreach (var rawEffect in rawEffects)
+            {
+                if (string.IsNullOrEmpty(rawEffect))
+                    continue;
+
+                var effectParts = rawEffect.Split(new[] { '.' }, 4);
+                if (effectParts.Length == 0 || string.IsNullOrEmpty(effectParts[0]))
+                    continue;
+
+                codes.Add(effectParts[0]);
+                names.Add(effectParts.Length > 1 ? effectParts[1] : string.Empty);
+                sizes.Add(effectParts.Length > 2 ? effectParts[2] : "1");
+                lefts.Add(effectParts.Length > 3 ? effectParts[3] : string.Empty);
+
+                var effectId = ParseIntSafe(effectParts[0], 0);
+                if (effectId > 0)
+                {
+                    effectStates.Add(new ContactRenderHelper.EffectState(effectId, ParseIntSafe(effectParts.Length > 2 ? effectParts[2] : string.Empty, 1), effectParts.Length > 3 ? effectParts[3] : string.Empty));
+                }
+            }
+
+            userInfo.EffectsCodes = codes.ToArray();
+            userInfo.EffectsNames = names.ToArray();
+            userInfo.EffectsSizes = sizes.ToArray();
+            userInfo.EffectsLefts = lefts.ToArray();
+            userInfo.EffectStates = ContactRenderHelper.ToEffectStatesCsv(effectStates);
+            userInfo.EffectIds = ContactRenderHelper.ToEffectIdsCsv(ContactRenderHelper.ExtractEffectIds(effectStates));
+        }
+
+        private static void ParseHmuRow(UserInfo userInfo, string row)
+        {
+            if (string.IsNullOrEmpty(row) || !row.StartsWith("4|", StringComparison.Ordinal) || row.Length <= 2)
+                return;
+
+            var parts = row.Substring(2).Split('|');
+            if (parts.Length < 5)
+                return;
+
+            int.TryParse(parts[0], out userInfo.HpCur);
+            int.TryParse(parts[1], out userInfo.HpMax);
+            int.TryParse(parts[2], out userInfo.MaCur);
+            int.TryParse(parts[3], out userInfo.MaMax);
+            int.TryParse(parts[4], out userInfo.Tied);
+            userInfo.Tied = 100 - userInfo.Tied;
+        }
+
+        private static string SafePart(string[] parts, int index)
+        {
+            return parts != null && index >= 0 && index < parts.Length && parts[index] != null ? parts[index] : string.Empty;
+        }
+
+        private static int ParseIntSafe(string value, int fallback)
+        {
+            if (string.IsNullOrEmpty(value))
+                return fallback;
+
+            int parsed;
+            return int.TryParse(value.Trim(), NumberStyles.Integer, CultureInfo.InvariantCulture, out parsed) ? parsed : fallback;
         }
 
         public static string GetPInfo(string nick)
@@ -293,11 +670,17 @@ namespace ANClient
         private static string GetInfo(string url)
         {
             string html = null;
+            var activityAdded = false;
             using (var wc = new CookieAwareWebClient { Proxy = AppVars.LocalProxy })
             {
                 try
                 {
                     var requestUri = new Uri(url);
+                    if (!DirectGameRequestGuard.Prepare(wc, requestUri, "NeverApi.GetInfo"))
+                    {
+                        return null;
+                    }
+
                     wc.Headers[HttpRequestHeader.UserAgent] = BrowserUserAgent;
                     wc.Headers[HttpRequestHeader.Accept] = "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8";
                     wc.Headers[HttpRequestHeader.AcceptLanguage] = "ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7";
@@ -313,6 +696,7 @@ namespace ANClient
                     }
 
                     IdleManager.AddActivity();
+                    activityAdded = true;
                     var buffer = wc.DownloadData(requestUri);
                     if (buffer != null)
                     {
@@ -324,6 +708,11 @@ namespace ANClient
                         html = AppVars.Codepage.GetString(buffer);
                         if (html.IndexOf("Cookie...", StringComparison.CurrentCultureIgnoreCase) != -1)
                         {
+                            if (!DirectGameRequestGuard.Prepare(wc, requestUri, "NeverApi.GetInfo.CookieRetry"))
+                            {
+                                return html;
+                            }
+
                             buffer = wc.DownloadData(requestUri);
                             if (buffer != null)
                             {
@@ -338,7 +727,10 @@ namespace ANClient
                 }
                 finally
                 {
-                    IdleManager.RemoveActivity();
+                    if (activityAdded)
+                    {
+                        IdleManager.RemoveActivity();
+                    }
                 }
             }
 

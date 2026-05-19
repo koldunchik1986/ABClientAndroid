@@ -496,6 +496,21 @@ namespace ANClient
             return ContactsManager.GetClassIdOfContact(nick);
         }
 
+        public int GetLevelOfContact(string nick)
+        {
+            return ContactsManager.GetLevelOfContact(nick);
+        }
+
+        public string GetEffectIdsOfContact(string nick)
+        {
+            return ContactsManager.GetEffectIdsCsvOfContact(nick);
+        }
+
+        public string GetEffectHtmlOfContact(string nick)
+        {
+            return ContactsManager.GetEffectHtmlOfContact(nick);
+        }
+
         public void HerbsList(string list)
         {
             if (AppVars.MainForm != null)
