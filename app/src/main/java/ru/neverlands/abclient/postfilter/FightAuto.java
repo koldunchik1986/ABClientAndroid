@@ -1451,11 +1451,17 @@ public final class FightAuto {
             if (rawFexp == null || rawFexp.isEmpty()) {
                 return null;
             }
-            String[] parts = rawFexp.split(",");
-            if (parts.length < 5) {
+            List<String> parts = splitJsTopLevelCsv(rawFexp);
+            if (parts.size() < 7) {
                 return null;
             }
-            String captchaToken = parts[4].replace("\"", "").replace("'", "").trim();
+            String captchaToken = trimJsToken(parts.get(4));
+            String captchaFlag = trimJsToken(parts.get(6));
+            if (!"0".equals(captchaFlag)) {
+                String msg = "extractCaptchaUrlFromFexp: skip fexp[4], captcha flag=" + captchaFlag;
+                AppLog.d(TAG, TAG, msg);
+                return null;
+            }
             if (captchaToken.length() <= 2) {
                 return null;
             }

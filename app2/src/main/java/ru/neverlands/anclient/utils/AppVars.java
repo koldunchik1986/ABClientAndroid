@@ -109,8 +109,9 @@ public class AppVars {
     /**
      * Минимальное время, раньше которого нельзя отправлять решение боевой captcha.
      *
-     * Сервер может вернуть новый `fexp[4]` challenge сразу после submit, но `fexp[6]`
-     * ещё содержит countdown. Диалог надо показать сразу, а auto-submit удержать до 0.
+     * `fexp[4]` считается активной боевой captcha только при `fexp[6] == "0"`.
+     * Ненулевой `fexp[6]` — переходное состояние сервера: popup/auto-submit нужно ждать
+     * до следующего валидного кадра, чтобы не отправить stale `vcode`.
      */
     public static volatile long FightCaptchaSubmitNotBeforeMs = 0L;
     // Флаг восстановления авто-боя после ручного ввода капчи завершения боя.
@@ -321,6 +322,20 @@ public class AppVars {
     public static double AutoCutHarvestedMassSinceCleanup = 0d;
     /** Максимальная масса инвентаря из `SetAutoFishMassa(...)`; fallback-порог применяется, если 0. */
     public static double AutoCutKnownMassMax = 0d;
+    /** AutoMine: требуется проверить/надеть кирку перед добычей. */
+    public static volatile boolean AutoMineCheckPickaxe = false;
+    /** AutoMine: кирка найдена в руках или успешно надета. */
+    public static volatile boolean AutoMineArmedPickaxe = false;
+    /** AutoMine: название найденной кирки для диагностики. */
+    public static volatile String AutoMinePickaxeHand = "";
+    /** AutoMine: долговечность найденной кирки. */
+    public static volatile String AutoMinePickaxeHandD = "";
+    /** AutoMine: требуется проверить наличие факела/фонаря перед перемещением в шахте. */
+    public static volatile boolean AutoMineCheckTorch = false;
+    /** AutoMine: факел/фонарь найден или уже активирован. */
+    public static volatile boolean AutoMineTorchReady = false;
+    /** AutoMine: runtime-пауза небоевых автоцепочек на время подготовки инвентаря. */
+    public static volatile boolean AutoMinePauseNonCombatAutoFunctions = false;
     /**
      * AutoSkin: флаг "нужно перечитать результаты охоты" (аналог C# `AutoSkinCheckRes`).
      */

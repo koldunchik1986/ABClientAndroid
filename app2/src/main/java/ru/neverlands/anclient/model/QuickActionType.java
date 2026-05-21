@@ -23,6 +23,7 @@ public enum QuickActionType {
     AUTO_TREASURE("Авто-Клад", "auto_treasure"),
     AUTO_CUT("Авто-Травник", "auto_cut"),
     AUTO_LUMBERJACK("Авто-Лесоруб", "auto_lumberjack"),
+    AUTO_MINE("Авто-Шахтёр", "auto_mine"),
     AUTO_REFRESH("Авто-Обновление", "auto_refresh"),
     // Anti-Captcha: платная внешняя интеграция anti-captcha.com.
     // Лицензирование: не входит в public/limited; доступна через full grant или custom `anti_captcha`.

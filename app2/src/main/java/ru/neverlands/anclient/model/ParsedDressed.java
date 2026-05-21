@@ -405,6 +405,65 @@ public class ParsedDressed {
         return false;
     }
 
+    /** Проверяет, надета ли кирка Авто-Шахтёра, и обновляет runtime-поля AppVars. */
+    public boolean IsWearAutoMinePickaxe(String[] pickaxeNames) {
+        if (pickaxeNames == null || pickaxeNames.length == 0) {
+            return false;
+        }
+        for (int i = 0; i < slist.size(); i++) {
+            for (String pickaxeName : pickaxeNames) {
+                if (containsIgnoreCase(slist.get(i), pickaxeName)) {
+                    AppVars.AutoMinePickaxeHand = slist.get(i);
+                    AppVars.AutoMinePickaxeHandD = i < dlist.size() ? dlist.get(i) : "";
+                    if (isExhaustedByCurrentDolg(AppVars.AutoMinePickaxeHandD)) {
+                        AppLog.w("AUTO_MINE_TRACE", TAG,
+                                "auto mine pickaxe is exhausted: item=" + AppVars.AutoMinePickaxeHand
+                                        + ", dolg=" + AppVars.AutoMinePickaxeHandD);
+                        continue;
+                    }
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    private static boolean isExhaustedByCurrentDolg(String dolg) {
+        if (isNullOrEmpty(dolg)) {
+            return false;
+        }
+        int slash = dolg.indexOf('/');
+        if (slash < 0) {
+            return false;
+        }
+        // ParsedDressed stores equipment durability as current/max; only zero current is unusable.
+        String current = dolg.substring(0, slash);
+        String max = dolg.substring(slash + 1);
+        try {
+            int currentValue = Integer.parseInt(current.trim());
+            int maxValue = Integer.parseInt(max.trim());
+            return maxValue > 0 && currentValue <= 0;
+        } catch (NumberFormatException e) {
+            AppLog.w("AUTO_MINE_TRACE", TAG, "auto mine pickaxe dolg parse failed: " + dolg);
+            return false;
+        }
+    }
+
+    /** Проверяет, надет ли выбранный факел/фонарь Авто-Шахтёра в любом слоте экипировки. */
+    public boolean IsWearAutoMineTorch(String[] torchNames) {
+        if (torchNames == null || torchNames.length == 0) {
+            return false;
+        }
+        for (String equippedName : equippedNameList) {
+            for (String torchName : torchNames) {
+                if (containsIgnoreCase(equippedName, torchName)) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
     /** Возвращает копию whitelist-а серпов для inventory wear-поиска. */
     public static String[] getAutoCutSickleNames() {
         return AUTO_CUT_SICKLE_NAMES.clone();

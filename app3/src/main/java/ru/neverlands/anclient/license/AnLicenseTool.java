@@ -63,6 +63,8 @@ public final class AnLicenseTool {
     private static final String BUNDLE_ROOT_CHAIN = "ROOT";
     private static final String FEATURE_ANTI_CAPTCHA = "anti_captcha";
     private static final String FEATURE_AUTO_CUT = "auto_cut";
+    private static final String FEATURE_AUTO_LUMBERJACK = "auto_lumberjack";
+    private static final String FEATURE_AUTO_MINE = "auto_mine";
     private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss zzz");
     private static final String[] REQUEST_DUMP_FIELDS = {
             "profileName",
@@ -143,7 +145,7 @@ public final class AnLicenseTool {
         System.out.println("  inspect-license [файл лицензии] [legacy-папка с заявками]");
         System.out.println("  issue <заявка от устройства> [файл лицензии] [срок] [доступ ника] [общий доступ]");
         System.out.println("Существующий ANREG2 profile.reg обновляется на месте: старые ники сохраняются, выбранный ник получает новый срок/набор функций.");
-        System.out.println("Важно: общий доступ (publicFeatures) всегда очищается от anti_captcha и auto_cut; Авто-Травник выдаётся только individual full/custom grant.");
+        System.out.println("Важно: общий доступ (publicFeatures) всегда очищается от anti_captcha, auto_cut, auto_lumberjack и auto_mine; эти функции выдаются только individual full/custom grant.");
     }
 
     private static void initKeys(File root, boolean force) throws Exception {
@@ -207,7 +209,8 @@ public final class AnLicenseTool {
         ensureBundleMatchesRequest(license, requestPayload);
         if (publicFeatureSpec != null && !publicFeatureSpec.trim().isEmpty()) {
             // Public-набор применяется ко всем пользователям bundle. Поэтому перед записью он проходит
-            // `normalizePublicFeatureSpec(...)`, где non-public automation (`anti_captcha`, `auto_cut`)
+            // `normalizePublicFeatureSpec(...)`, где non-public automation (`anti_captcha`, `auto_cut`,
+            // `auto_lumberjack`, `auto_mine`)
             // удаляется даже из custom CSV. App2 дополнительно повторяет этот guard в LicenseFeature.
             license.put("publicFeatures", normalizePublicFeatureSpec(publicFeatureSpec));
         }
@@ -556,12 +559,12 @@ public final class AnLicenseTool {
         }
         if ("full".equals(value)) {
             if (publicFeatures) {
-                return "полный public-набор без Anti-Captcha и Авто-Травника: все быстрые/авто-функции и clans, кроме anti_captcha и auto_cut";
+                return "полный public-набор без Anti-Captcha, Авто-Травника, Авто-Лесоруба и Авто-Шахтёра: все быстрые/авто-функции и clans, кроме anti_captcha, auto_cut, auto_lumberjack и auto_mine";
             }
-            return "полный набор: все быстрые/авто-функции, Anti-Captcha, Авто-Травник и clans";
+            return "полный набор: все быстрые/авто-функции, Anti-Captcha, Авто-Травник, Авто-Лесоруб, Авто-Шахтёр и clans";
         }
         if ("limited".equals(value) || "free".equals(value) || "basic".equals(value)) {
-            return "базовый набор: Авто-Бой, Авто-Рыбалка, Авто-Охота, Навигатор, Компас, Быстрые действия, Таймеры, Контакты, Кланы, Статистика, PINFO; Anti-Captcha и Авто-Травник не входят";
+            return "базовый набор: Авто-Бой, Авто-Рыбалка, Авто-Охота, Навигатор, Компас, Быстрые действия, Таймеры, Контакты, Кланы, Статистика, PINFO; Anti-Captcha, Авто-Травник, Авто-Лесоруб и Авто-Шахтёр не входят";
         }
         String[] parts = value.split("[,;|\\s]+");
         StringBuilder builder = new StringBuilder("выборочный набор: ");
@@ -597,6 +600,8 @@ public final class AnLicenseTool {
         if ("auto_moving".equals(token)) return "Навигатор (auto_moving)";
         if ("auto_treasure".equals(token)) return "Авто-Клад (auto_treasure)";
         if (FEATURE_AUTO_CUT.equals(token)) return "Авто-Травник (auto_cut, только full/custom grant)";
+        if (FEATURE_AUTO_LUMBERJACK.equals(token)) return "Авто-Лесоруб (auto_lumberjack, только full/custom grant)";
+        if (FEATURE_AUTO_MINE.equals(token)) return "Авто-Шахтёр (auto_mine, только full/custom grant)";
         if ("auto_refresh".equals(token)) return "Авто-Обновление (auto_refresh)";
         if (FEATURE_ANTI_CAPTCHA.equals(token)) return "Анти-Captcha (anti_captcha, только full/custom grant)";
         if ("auto_skin".equals(token)) return "Авто-Охота (auto_skin)";
@@ -1029,12 +1034,13 @@ public final class AnLicenseTool {
         }
         if ("full".equals(value)) {
             // Public full остаётся каноническим словом `full`, но сторона app2 при чтении
-            // ANREG2.publicFeatures вырезает non-public tokens `anti_captcha` и `auto_cut`.
-            // В отчёте выше это также описывается как public full без Anti-Captcha/Авто-Травника.
+            // ANREG2.publicFeatures вырезает non-public tokens `anti_captcha`, `auto_cut`,
+            // `auto_lumberjack` и `auto_mine`.
+            // В отчёте выше это также описывается как public full без этих функций.
             return "full";
         }
         // Custom public CSV нормализуется здесь, а не в UI app2: license-файл уже должен быть
-        // безопасным для любого профиля bundle. Если администратор случайно указал `auto_cut`,
+        // безопасным для любого профиля bundle. Если администратор случайно указал `auto_cut`/`auto_mine`,
         // токен будет удалён и сможет попасть в app2 только из device-bound grant.
         return removeNonPublicFeatureTokens(value);
     }
@@ -1047,12 +1053,15 @@ public final class AnLicenseTool {
             if (token.isEmpty() || "none".equals(token) || "off".equals(token) || "empty".equals(token)) {
                 continue;
             }
-            if (FEATURE_ANTI_CAPTCHA.equals(token) || FEATURE_AUTO_CUT.equals(token)) {
-                // Anti-Captcha и AutoCut не должны попадать в общий bundle.
+            if (FEATURE_ANTI_CAPTCHA.equals(token)
+                    || FEATURE_AUTO_CUT.equals(token)
+                    || FEATURE_AUTO_LUMBERJACK.equals(token)
+                    || FEATURE_AUTO_MINE.equals(token)) {
+                // Anti-Captcha, AutoCut-like и AutoMine не должны попадать в общий bundle.
                 // Для них использовать индивидуальный full grant или custom grants
-                // `anti_captcha`/`auto_cut` с нужным сроком действия.
+                // `anti_captcha`/`auto_cut`/`auto_lumberjack`/`auto_mine` с нужным сроком действия.
                 // Зависимость app2: `LicenseManager` сначала разворачивает `publicFeatures`,
-                // затем добавляет только активный grant; после истечения grant AutoCut будет выключен
+                // затем добавляет только активный grant; после истечения grant функции будут выключены
                 // через `AutoFunctionsManager.disableUnavailableFeatures(...)`.
                 continue;
             }

@@ -167,9 +167,11 @@ public class FunctionListAdapter extends BaseAdapter {
             case AUTO_TREASURE:
                 return "http://image.neverlands.ru/achievement/9/a_9_10.gif";
             case AUTO_CUT:
-                return "http://image.neverlands.ru/achievement/20/a_20_3.gif";
+                return "http://image.neverlands.ru/achievement/20/a_20_10.gif";
             case AUTO_LUMBERJACK:
                 return "http://image.neverlands.ru/achievement/30/a_30_10.gif";
+            case AUTO_MINE:
+                return "http://image.neverlands.ru/achievement/60/a_60_10.gif";
             case AUTO_REFRESH:
             case AUTO_CAPTCHA:
                 return null;
@@ -220,6 +222,8 @@ public class FunctionListAdapter extends BaseAdapter {
                 return R.drawable.ic_compas;
             case AUTO_TREASURE:
                 return R.drawable.ic_auto_detect;
+            case AUTO_MINE:
+                return R.drawable.ic_add;
             case AUTO_REFRESH:
                 return R.drawable.ic_refresh;
             case AUTO_CAPTCHA:

@@ -1196,12 +1196,13 @@ public class MapAjax {
         lastMapAjaxErrAtMs = 0L;
     }
 
-    private static boolean containsTooTiredMessage(String html) {
+    static boolean containsTooTiredMessage(String html) {
         if (html == null || html.isEmpty()) {
             return false;
         }
         String lower = html.toLowerCase(Locale.ROOT);
-        return lower.contains("\u0441\u043b\u0438\u0448\u043a\u043e\u043c \u0443\u0441\u0442\u0430\u043b")
+        return lower.contains("\u0432\u044b \u0441\u043b\u0438\u0448\u043a\u043e\u043c \u0443\u0441\u0442\u0430\u043b\u0438")
+                || lower.contains("\u0441\u043b\u0438\u0448\u043a\u043e\u043c \u0443\u0441\u0442\u0430\u043b")
                 || lower.contains("\u043e\u0442\u0434\u043e\u0445\u043d\u0438\u0442\u0435")
                 || lower.contains("\u0432\u044b \u0443\u0441\u0442\u0430\u043b\u0438");
     }

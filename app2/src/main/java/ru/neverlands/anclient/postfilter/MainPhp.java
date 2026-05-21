@@ -2035,6 +2035,17 @@ public class MainPhp {
                 return Russian.getBytes(autoCutHtml);
             }
         }
+        // Авто-Шахтёр использует тот же main.php decision point: подготовка кирки/факела
+        // и one-shot инъекция добычи остаются в существующем WebView-контуре.
+        if (!isNonCombatAutoPausedByFastAction()
+                && !isNonCombatAutoPausedByCureAction()
+                && !isFightFrame
+                && !isFightTopFrame) {
+            String autoMineHtml = AutoMineHandler.processMainPhpAutoMineStep(address, html, isFightFrame, isFightTopFrame);
+            if (autoMineHtml != null && !autoMineHtml.isEmpty()) {
+                return Russian.getBytes(autoMineHtml);
+            }
+        }
         // Оркестрация Авто-Рыбалки (C# MainPhp.cs + MainPhpWear.cs + MainPhpFish.cs):
         // 1) при необходимости читаем умение Рыбалка (mselect=1);
         // 2) проверяем/переодеваем снасти в обеих руках;

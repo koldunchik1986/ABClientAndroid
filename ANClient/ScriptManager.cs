@@ -660,6 +660,15 @@ namespace ANClient
         }
 
         /// <summary>
+        /// Отладочный лог из runtime карты. Вызывается через window.external.TraceMapRuntime(message).
+        /// </summary>
+        public string TraceMapRuntime(string message)
+        {
+            AppLog.i("MAP_RUNTIME_TRACE", message);
+            return "ok";
+        }
+
+        /// <summary>
         /// Обработка локальных команд чата (!train и т.д.).
         /// Вызывается из JS (ButPhp) через window.external.HandleChatCommand(text).
         /// Возвращает "1" если команда обработана (не отправлять на сервер), "" если нет.

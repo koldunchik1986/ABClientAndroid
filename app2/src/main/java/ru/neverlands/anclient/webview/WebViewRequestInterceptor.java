@@ -1693,6 +1693,12 @@ public class WebViewRequestInterceptor {
 
         String lower = urlString.toLowerCase(Locale.ROOT);
 
+        if (lower.contains("/js/mine")
+                || lower.contains("mine_ajax.php")
+                || (lower.contains("main.php") && lower.contains("an_auto_mine"))) {
+            return "mine";
+        }
+
         // Fight: акты 4-7 трубка боя (act=4/5/6/7)
         if (lower.contains("act=4") || lower.contains("act=5") 
                 || lower.contains("act=6") || lower.contains("act=7")) {

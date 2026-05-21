@@ -655,6 +655,10 @@ public class UserConfig {
                         } catch (Exception ignore) {
                             // Если узел поврежден, оставляем дефолт (false), как в C#.
                         }
+                    } else if ("AutoMine".equals(tagName)) {
+                        this.AutoMine = parseBoolNodeText(parser, this.AutoMine);
+                    } else if ("automine".equalsIgnoreCase(tagName)) {
+                        this.AutoMine = parseBoolAttr(parser, "auto", this.AutoMine);
                     } else if ("group".equals(tagName)) {
                         LezBotsGroup g = new LezBotsGroup(
                             parseIntAttr(parser, "id", 1),
@@ -1040,6 +1044,10 @@ public class UserConfig {
             serializer.startTag(null, "SkinAuto");
             serializer.text(String.valueOf(this.SkinAuto));
             serializer.endTag(null, "SkinAuto");
+
+            serializer.startTag(null, "automine");
+            serializer.attribute(null, "auto", String.valueOf(this.AutoMine));
+            serializer.endTag(null, "automine");
 
             // Сохранение групп противников (аналог LezBotsGroup сериализации в C#)
             serializer.startTag(null, "lezgroups");

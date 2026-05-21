@@ -35,6 +35,9 @@ public class Filter {
             if (address.contains("/js/map.js")) {
                 return MapJs.process(context, array);
             }
+            if (address.contains("/js/mine")) {
+                return MineJs.process(context, array);
+            }
             if (address.endsWith("/js/game.js")) {
                 return GameJs.process(array);
             }
@@ -115,6 +118,10 @@ public class Filter {
 
         if (address.startsWith("http://neverlands.ru/gameplay/ajax/fish_ajax.php")) {
             return FishAjaxPhp.process(address, array);
+        }
+
+        if (address.startsWith("http://neverlands.ru/gameplay/ajax/mine_ajax.php")) {
+            return MineAjaxPhp.process(address, array);
         }
 
         if (address.startsWith("http://neverlands.ru/gameplay/ajax/alchemy_ajax.php")) {

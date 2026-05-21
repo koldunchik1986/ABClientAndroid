@@ -27,6 +27,14 @@ var loaded_top = 0;
 var loaded_bottom = 0;
 var moving_status = 0;
 var finStatus = 0;
+var an_map_pan_installed = false;
+var an_map_pan_touch = false;
+var an_map_pan_dragging = false;
+var an_map_pan_start_x = 0;
+var an_map_pan_start_y = 0;
+var an_map_pan_last_x = 0;
+var an_map_pan_last_y = 0;
+var an_map_pan_suppress_click_until = 0;
 var gox = 0;
 var goy = 0;
 var gop = 0;
@@ -80,9 +88,9 @@ function view_map()
 {
     view_build_top();
 
-    document.write("<div style=\"text-align:center\"><div style=\"display:inline-block;\">");
-    document.write("<div id=\"world_cont\" style=\"position: absolute; text-align: center; overflow: hidden; width:" + ancmapwidth + "px; height:" + ancmapheight + "px;\"></div>");
-    document.write("<div id=\"world_cont2\" style=\"width: " + ancmapwidth + "px; height: " + ancmapheight + "px; text-align: left;\"></div>");
+    document.write("<div style=\"text-align:center\"><div id=\"world_host\" style=\"position:relative; display:inline-block; width:" + ancmapwidth + "px; height:" + ancmapheight + "px;\">");
+    document.write("<div id=\"world_cont\" style=\"position:absolute; left:0; top:0; text-align:center; overflow:hidden; width:" + ancmapwidth + "px; height:" + ancmapheight + "px;\"></div>");
+    document.write("<div id=\"world_cont2\" style=\"position:absolute; left:0; top:0; width:" + ancmapwidth + "px; height:" + ancmapheight + "px; text-align:left; pointer-events:none;\"></div>");
     document.write("</div></div>");
     createMapText();
 
@@ -210,12 +218,16 @@ function showMap(x, y) {
     }
 
     world.innerHTML = "";
+    cur_margin_top = 0;
+    cur_margin_left = 0;
+    world.style.marginTop = "0px";
+    world.style.marginLeft = "0px";
 
     table = document.createElement("TABLE");
     table.cellPadding = 0;
-    table.cellSpacing = 0;
+    table.cellSpacing = 1;
     table.bgColor = "black";
-    table.border = "1px solid black";
+    table.border = 0;
     world.appendChild(table);
 
     tbody = document.createElement("TBODY");
@@ -234,8 +246,8 @@ function showMap(x, y) {
             td.style.backgroundPosition = "left top";
             td.style.borderWidth = "0";
 
-            td.style.width = "100px";
-            td.style.height = "100px";
+            td.style.width = scale + "px";
+            td.style.height = scale + "px";
             td.style.display = "inline-block";
             td.style.verticalAlign = "top";
             td.style.textAlign = "left";
@@ -246,7 +258,7 @@ function showMap(x, y) {
             if (isCellExists) {
                 var isframe = (current_x == dx) && (current_y == dy);
                 window.external.MakeVisit(current_x, current_y);
-                td.onclick = function (dx, dy) { return function () { window.external.MoveTo(window.external.GenMoveLink(dx, dy)); }; }(dx, dy);
+                td.onclick = AnMapCellClick(dx, dy);
                 td.title = window.external.CellAltText(dx, dy, scale);
                 td.style.cursor = "pointer";
                 if (window.external.IsCellInPath(dx, dy)) {
@@ -283,8 +295,254 @@ function showMap(x, y) {
     loaded_right = x + width;
     loaded_top = y - height;
     loaded_bottom = y + height;
+    AnInstallDynamicMapPan('showMap');
 
     return true;
+}
+
+function AnMapPanTrace(message) {
+    try {
+        window.external.TraceMapRuntime('MAP_PAN ' + message);
+        return;
+    } catch (e) {}
+    try {
+        window.external.DebugLog('MAP_PAN ' + message);
+    } catch (e2) {}
+}
+
+function AnMapCellClick(dx, dy) {
+    return function () {
+        return AnMapMoveToCoords(dx, dy, 'cell');
+    };
+}
+
+function AnMapMoveToCoords(dx, dy, source) {
+    if ((new Date()).getTime() <= an_map_pan_suppress_click_until) {
+        AnMapPanTrace(source + ' click suppressed after drag');
+        return false;
+    }
+    if (!window.external.IsCellExists(dx, dy)) {
+        AnMapPanTrace(source + ' click skipped no cell ' + dx + ':' + dy);
+        return false;
+    }
+    var dest = window.external.GenMoveLink(dx, dy);
+    if (!dest) {
+        AnMapPanTrace(source + ' click skipped empty destination ' + dx + ':' + dy);
+        return false;
+    }
+    AnMapPanTrace(source + ' click move ' + dx + ':' + dy + ' -> ' + dest);
+    window.external.MoveTo(dest);
+    return false;
+}
+
+function AnMapCoordsFromTarget(target) {
+    var node = target;
+    while (node && node !== d.body) {
+        var id = String(node.id || '');
+        if (id.indexOf('td_') == 0) {
+            var parts = id.substring(3).split('_');
+            if (parts.length == 2) {
+                var x = parseInt(parts[0], 10);
+                var y = parseInt(parts[1], 10);
+                if (!isNaN(x) && !isNaN(y)) return { x: x, y: y };
+            }
+        }
+        node = node.parentNode;
+    }
+    return null;
+}
+
+function AnMapCoordsFromPoint(evt) {
+    var host = d.getElementById('world_host');
+    var point = AnMapPanPoint(evt);
+    if (!host || !point) return null;
+    var rect = host.getBoundingClientRect ? host.getBoundingClientRect() : null;
+    var hostLeft = rect ? rect.left : 0;
+    var hostTop = rect ? rect.top : 0;
+    var cell = scale + 1;
+    var relX = point.x - hostLeft - cur_margin_left;
+    var relY = point.y - hostTop - cur_margin_top;
+    if (relX < 0 || relY < 0) return null;
+    var dx = loaded_left + Math.floor(relX / cell);
+    var dy = loaded_top + Math.floor(relY / cell);
+    if (dx < loaded_left || dx > loaded_right || dy < loaded_top || dy > loaded_bottom) return null;
+    return { x: dx, y: dy };
+}
+
+function AnMapHostClick(evt) {
+    evt = evt || window.event;
+    var target = evt.target || evt.srcElement;
+    if (AnMapCoordsFromTarget(target)) return;
+    var coords = AnMapCoordsFromPoint(evt);
+    if (!coords) return;
+    if (evt.preventDefault) evt.preventDefault();
+    if (evt.stopPropagation) evt.stopPropagation();
+    evt.cancelBubble = true;
+    evt.returnValue = false;
+    return AnMapMoveToCoords(coords.x, coords.y, 'host');
+}
+
+function AnInstallDynamicMapPan(source) {
+    if (an_map_pan_installed) return;
+    var host = d.getElementById('world_host');
+    if (!host) return;
+    an_map_pan_installed = true;
+    host.style.msTouchAction = 'none';
+    host.style.touchAction = 'none';
+    host.style.webkitUserSelect = 'none';
+    host.style.userSelect = 'none';
+    host.onselectstart = function () { return false; };
+    if (host.addEventListener) {
+        host.addEventListener('touchstart', AnMapPanStart, true);
+        host.addEventListener('touchmove', AnMapPanMove, true);
+        host.addEventListener('touchend', AnMapPanEnd, true);
+        host.addEventListener('touchcancel', AnMapPanEnd, true);
+        host.addEventListener('mousedown', AnMapMousePanStart, true);
+        d.addEventListener('mousemove', AnMapMousePanMove, true);
+        d.addEventListener('mouseup', AnMapMousePanEnd, true);
+        host.addEventListener('click', AnMapPanClickGuard, true);
+        host.addEventListener('click', AnMapHostClick, false);
+    }
+    else if (host.attachEvent) {
+        host.attachEvent('onmousedown', AnMapMousePanStart);
+        d.attachEvent('onmousemove', AnMapMousePanMove);
+        d.attachEvent('onmouseup', AnMapMousePanEnd);
+        host.attachEvent('onclick', AnMapPanClickGuard);
+        host.attachEvent('onclick', AnMapHostClick);
+    }
+    AnMapPanTrace('installed source=' + source + ', loaded=' + loaded_left + ':' + loaded_right + ':' + loaded_top + ':' + loaded_bottom);
+}
+
+function AnMapPanPoint(evt) {
+    evt = evt || window.event;
+    if (!evt) return null;
+    var touch = evt.touches && evt.touches.length ? evt.touches[0] : (evt.changedTouches && evt.changedTouches.length ? evt.changedTouches[0] : evt);
+    if (!touch) return null;
+    return { x: touch.clientX, y: touch.clientY };
+}
+
+function AnMapPanCanStart(evt) {
+    evt = evt || window.event;
+    if (!world || moving_status == 1) return false;
+    if (evt && evt.touches && evt.touches.length > 1) return false;
+    if (evt && evt.type && evt.type.indexOf('mouse') == 0 && typeof evt.button != 'undefined' && evt.button != 0 && evt.button != 1) return false;
+    return true;
+}
+
+function AnMapPanStart(evt) {
+    if (!AnMapPanCanStart(evt)) return;
+    var point = AnMapPanPoint(evt);
+    if (!point) return;
+    an_map_pan_touch = true;
+    an_map_pan_dragging = false;
+    window.__an_map_pan_active = false;
+    an_map_pan_start_x = point.x;
+    an_map_pan_start_y = point.y;
+    an_map_pan_last_x = point.x;
+    an_map_pan_last_y = point.y;
+}
+
+function AnMapMousePanStart(evt) {
+    AnMapPanStart(evt || window.event);
+}
+
+function AnMapPanMove(evt) {
+    evt = evt || window.event;
+    if (!an_map_pan_touch || !world || moving_status == 1) return;
+    var point = AnMapPanPoint(evt);
+    if (!point) return;
+    var totalDx = point.x - an_map_pan_start_x;
+    var totalDy = point.y - an_map_pan_start_y;
+    if (!an_map_pan_dragging && (Math.abs(totalDx) > 10 || Math.abs(totalDy) > 10)) {
+        an_map_pan_dragging = true;
+        window.__an_map_pan_active = true;
+        AnMapPanTrace('drag start');
+    }
+    if (!an_map_pan_dragging) return;
+    var dx = point.x - an_map_pan_last_x;
+    var dy = point.y - an_map_pan_last_y;
+    an_map_pan_last_x = point.x;
+    an_map_pan_last_y = point.y;
+    cur_margin_left += dx;
+    cur_margin_top += dy;
+    AnEnsureDynamicMapCoverage();
+    world.style.marginLeft = parseInt(cur_margin_left, 10) + 'px';
+    world.style.marginTop = parseInt(cur_margin_top, 10) + 'px';
+    if (evt.preventDefault) evt.preventDefault();
+    if (evt.stopPropagation) evt.stopPropagation();
+    evt.cancelBubble = true;
+    evt.returnValue = false;
+}
+
+function AnMapMousePanMove(evt) {
+    AnMapPanMove(evt || window.event);
+}
+
+function AnMapPanEnd(evt) {
+    evt = evt || window.event;
+    if (!an_map_pan_touch) return;
+    if (an_map_pan_dragging) {
+        an_map_pan_suppress_click_until = (new Date()).getTime() + 600;
+        AnMapPanTrace('drag end margin=' + parseInt(cur_margin_left, 10) + ':' + parseInt(cur_margin_top, 10) + ', loaded=' + loaded_left + ':' + loaded_right + ':' + loaded_top + ':' + loaded_bottom);
+        if (evt && evt.preventDefault) evt.preventDefault();
+        if (evt && evt.stopPropagation) evt.stopPropagation();
+    }
+    an_map_pan_touch = false;
+    an_map_pan_dragging = false;
+    window.__an_map_pan_active = false;
+}
+
+function AnMapMousePanEnd(evt) {
+    AnMapPanEnd(evt || window.event);
+}
+
+function AnMapPanClickGuard(evt) {
+    evt = evt || window.event;
+    if ((new Date()).getTime() > an_map_pan_suppress_click_until) return;
+    if (evt.preventDefault) evt.preventDefault();
+    if (evt.stopImmediatePropagation) evt.stopImmediatePropagation();
+    if (evt.stopPropagation) evt.stopPropagation();
+    evt.cancelBubble = true;
+    evt.returnValue = false;
+    AnMapPanTrace('click suppressed after drag');
+    return false;
+}
+
+function AnEnsureDynamicMapCoverage() {
+    if (!world) return;
+    var cell = scale + 1;
+    var visibleColumns = (width * 2) + 1;
+    var visibleRows = (height * 2) + 1;
+    var leftVisible = loaded_left - (cur_margin_left / cell);
+    var rightVisible = leftVisible + visibleColumns - 1;
+    var topVisible = loaded_top - (cur_margin_top / cell);
+    var bottomVisible = topVisible + visibleRows - 1;
+    var guard = 0;
+    while (rightVisible > loaded_right + 0.25 && guard < 32) {
+        loaded_right += 1;
+        loadMap('right');
+        guard++;
+    }
+    guard = 0;
+    while (leftVisible < loaded_left - 0.25 && guard < 32) {
+        loaded_left -= 1;
+        loadMap('left');
+        leftVisible = loaded_left - (cur_margin_left / cell);
+        guard++;
+    }
+    guard = 0;
+    while (bottomVisible > loaded_bottom + 0.25 && guard < 32) {
+        loaded_bottom += 1;
+        loadMap('bottom');
+        guard++;
+    }
+    guard = 0;
+    while (topVisible < loaded_top - 0.25 && guard < 32) {
+        loaded_top -= 1;
+        loadMap('top');
+        topVisible = loaded_top - (cur_margin_top / cell);
+        guard++;
+    }
 }
 // -ANC
 
@@ -331,7 +589,7 @@ function MapReInit(obj)
             var td = document.getElementById(id);
             var isCellExists = window.external.IsCellExists(dx, dy);
             if (isCellExists) {
-                td.onclick = function (dx, dy) { return function () { window.external.MoveTo(window.external.GenMoveLink(dx, dy)); }; }(dx, dy);
+                td.onclick = AnMapCellClick(dx, dy);
                 if (window.external.IsCellInPath(dx, dy)) {
                     td.onmouseover = function () { this.style.opacity = "1.0"; this.style.filter = "alpha(opacity=100)"; };
                     td.onmouseout = function () { this.style.opacity = "0.8"; this.style.filter = "alpha(opacity=80)"; };
@@ -836,15 +1094,15 @@ function loadMap(dir) {
                 dy = loaded_bottom;
                 td.id = "td_" + dx + "_" + dy;
                 td.style.backgroundImage = "url(http://image.neverlands.ru/map/world/" + map[0][3] + "/" + dy + "/" + dx + "_" + dy + ".jpg)";
-                td.style.width = "100px";
-                td.style.height = "100px";
+                td.style.width = scale + "px";
+                td.style.height = scale + "px";
                 td.style.display = "inline-block";
                 td.style.verticalAlign = "top";
                 td.style.textAlign = "left";
                 td.style.opacity = "0.8";
                 td.style.filter = "alpha(opacity=80)";
-                if (window.external.IsCellExists(i, loaded_bottom)) {
-                    td.onclick = function (dx, dy) { return function () { window.external.MoveTo(window.external.GenMoveLink(dx, dy)); }; }(dx, dy);
+                if (window.external.IsCellExists(dx, dy)) {
+                    td.onclick = AnMapCellClick(dx, dy);
                     td.title = window.external.CellAltText(dx, dy, scale);
                     td.style.cursor = "pointer";
                     if (window.external.IsCellInPath(dx, dy)) {
@@ -882,15 +1140,15 @@ function loadMap(dir) {
                 dy = loaded_top;
                 td.id = "td_" + dx + "_" + dy;
                 td.style.backgroundImage = "url(http://image.neverlands.ru/map/world/" + map[0][3] + "/" + dy + "/" + dx + "_" + dy + ".jpg)";
-                td.style.width = "100px";
-                td.style.height = "100px";
+                td.style.width = scale + "px";
+                td.style.height = scale + "px";
                 td.style.display = "inline-block";
                 td.style.verticalAlign = "top";
                 td.style.textAlign = "left";
                 td.style.opacity = "0.8";
                 td.style.filter = "alpha(opacity=80)";
-                if (window.external.IsCellExists(i, loaded_bottom)) {
-                    td.onclick = function (dx, dy) { return function () { window.external.MoveTo(window.external.GenMoveLink(dx, dy)); }; }(dx, dy);
+                if (window.external.IsCellExists(dx, dy)) {
+                    td.onclick = AnMapCellClick(dx, dy);
                     td.title = window.external.CellAltText(dx, dy, scale);
                     td.style.cursor = "pointer";
                     if (window.external.IsCellInPath(dx, dy)) {
@@ -926,15 +1184,15 @@ function loadMap(dir) {
                 dy = i;
                 td.id = "td_" + dx + "_" + dy;
                 td.style.backgroundImage = "url(http://image.neverlands.ru/map/world/" + map[0][3] + "/" + dy + "/" + dx + "_" + dy + ".jpg)";
-                td.style.width = "100px";
-                td.style.height = "100px";
+                td.style.width = scale + "px";
+                td.style.height = scale + "px";
                 td.style.display = "inline-block";
                 td.style.verticalAlign = "top";
                 td.style.textAlign = "left";
                 td.style.opacity = "0.8";
                 td.style.filter = "alpha(opacity=80)";
-                if (window.external.IsCellExists(i, loaded_bottom)) {
-                    td.onclick = function (dx, dy) { return function () { window.external.MoveTo(window.external.GenMoveLink(dx, dy)); }; }(dx, dy);
+                if (window.external.IsCellExists(dx, dy)) {
+                    td.onclick = AnMapCellClick(dx, dy);
                     td.title = window.external.CellAltText(dx, dy, scale);
                     td.style.cursor = "pointer";
                     if (window.external.IsCellInPath(dx, dy)) {
@@ -971,15 +1229,15 @@ function loadMap(dir) {
                 dy = i;
                 td.id = "td_" + dx + "_" + dy;
                 td.style.backgroundImage = "url(http://image.neverlands.ru/map/world/" + map[0][3] + "/" + dy + "/" + dx + "_" + dy + ".jpg)";
-                td.style.width = "100px";
-                td.style.height = "100px";
+                td.style.width = scale + "px";
+                td.style.height = scale + "px";
                 td.style.display = "inline-block";
                 td.style.verticalAlign = "top";
                 td.style.textAlign = "left";
                 td.style.opacity = "0.8";
                 td.style.filter = "alpha(opacity=80)";
-                if (window.external.IsCellExists(i, loaded_bottom)) {
-                    td.onclick = function (dx, dy) { return function () { window.external.MoveTo(window.external.GenMoveLink(dx, dy)); }; }(dx, dy);
+                if (window.external.IsCellExists(dx, dy)) {
+                    td.onclick = AnMapCellClick(dx, dy);
                     td.title = window.external.CellAltText(dx, dy, scale);
                     td.style.cursor = "pointer";
                     if (window.external.IsCellInPath(dx, dy)) {

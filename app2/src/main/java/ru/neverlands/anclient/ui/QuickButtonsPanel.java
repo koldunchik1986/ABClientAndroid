@@ -51,6 +51,7 @@ import ru.neverlands.anclient.manager.FastActionManager;
 import ru.neverlands.anclient.manager.TabManager;
 import ru.neverlands.anclient.manager.AutoFunctionsManager;
 import ru.neverlands.anclient.manager.AutoCutManager;
+import ru.neverlands.anclient.manager.AutoMineManager;
 import ru.neverlands.anclient.model.Cell;
 import ru.neverlands.anclient.utils.AppVars;
 import ru.neverlands.anclient.utils.ChatStats;
@@ -180,6 +181,7 @@ public class QuickButtonsPanel {
             "Авто-Клад",
             "Авто-Травник",
             "Авто-Лесоруб",
+            "Авто-Шахтёр",
             "Авто-Босс",
             "Анти-Captcha"
     };
@@ -394,9 +396,11 @@ public class QuickButtonsPanel {
             case AUTO_TREASURE:
                 return "http://image.neverlands.ru/achievement/9/a_9_10.gif";
             case AUTO_CUT:
-                return "http://image.neverlands.ru/achievement/20/a_20_3.gif";
+                return "http://image.neverlands.ru/achievement/20/a_20_10.gif";
             case AUTO_LUMBERJACK:
                 return "http://image.neverlands.ru/achievement/30/a_30_10.gif";
+            case AUTO_MINE:
+                return "http://image.neverlands.ru/achievement/60/a_60_10.gif";
             case AUTO_REFRESH:
                 return null;
             case OPEN_CONTACTS:
@@ -466,6 +470,7 @@ public class QuickButtonsPanel {
             case AUTO_TREASURE:
             case AUTO_CUT:
             case AUTO_LUMBERJACK:
+            case AUTO_MINE:
             case AUTO_REFRESH:
             case AUTO_CAPTCHA:
                 return true;
@@ -512,6 +517,8 @@ public class QuickButtonsPanel {
             case AUTO_CUT:
                 return R.drawable.ic_add;
             case AUTO_LUMBERJACK:
+                return R.drawable.ic_add;
+            case AUTO_MINE:
                 return R.drawable.ic_add;
             case AUTO_REFRESH:
                 return R.drawable.ic_refresh;
@@ -670,6 +677,11 @@ public class QuickButtonsPanel {
                 } else {
                     Toast.makeText(context, autoFunctionsManager.isAutoLumberjackEnabled() ? "Авто-Лесоруб ВКЛ" : "Авто-Лесоруб ВЫКЛ", Toast.LENGTH_SHORT).show();
                 }
+                loadAndUpdateButtons();
+                break;
+            case AUTO_MINE:
+                autoFunctionsManager.toggleAutoMine();
+                Toast.makeText(context, autoFunctionsManager.isAutoMineEnabled() ? "Авто-Шахтёр ВКЛ" : "Авто-Шахтёр ВЫКЛ", Toast.LENGTH_SHORT).show();
                 loadAndUpdateButtons();
                 break;
             case AUTO_REFRESH:
@@ -945,6 +957,17 @@ public class QuickButtonsPanel {
                     })
                     .setNegativeButton("Отмена", null)
                     .show();
+        } else if (button.getActionType() == QuickActionType.AUTO_MINE) {
+            new AlertDialog.Builder(context)
+                    .setTitle("Авто-Шахтёр")
+                    .setItems(new CharSequence[]{"Настройки авто-шахты", "Кирки", "Факелы/фонари", "Удалить кнопку"}, (dialog, which) -> {
+                        if (which == 0) showAutoMineSettingsDialog();
+                        else if (which == 1) showAutoMinePickaxeSettingsDialog();
+                        else if (which == 2) showAutoMineTorchSettingsDialog();
+                        else showRemoveConfirmation(position);
+                    })
+                    .setNegativeButton("Отмена", null)
+                    .show();
         } else if (button.getActionType() == QuickActionType.AUTO_CAPTCHA) {
             // Long-press меню не запускает solver напрямую. Оно только открывает настройки
             // API key/параметров или удаляет кнопку. Сам solver стартует из MainActivity popup,
@@ -1148,6 +1171,108 @@ public class QuickButtonsPanel {
                 .setNegativeButton("Отмена", null)
                 .show();
 
+    }
+
+    private void showAutoMineSettingsDialog() {
+        final int pad = (int) (context.getResources().getDisplayMetrics().density * 12);
+        AutoMineManager manager = AutoMineManager.getInstance(context);
+        ScrollView scroll = new ScrollView(context);
+        LinearLayout root = new LinearLayout(context);
+        root.setOrientation(LinearLayout.VERTICAL);
+        root.setPadding(pad, pad, pad, pad);
+        scroll.addView(root);
+
+        CheckBox chatReport = new CheckBox(context);
+        chatReport.setText("Выводить результаты добычи в чат");
+        chatReport.setChecked(manager.isChatReportEnabled());
+        root.addView(chatReport);
+
+        CheckBox stopOnEmpty = new CheckBox(context);
+        stopOnEmpty.setText("Останавливать при пустой добыче");
+        stopOnEmpty.setChecked(manager.isStopOnEmptyEnabled());
+        root.addView(stopOnEmpty);
+
+        Button pickaxesButton = new Button(context);
+        pickaxesButton.setText("Кирки: " + manager.getEnabledPickaxeNames().size());
+        pickaxesButton.setAllCaps(false);
+        root.addView(pickaxesButton);
+
+        Button torchesButton = new Button(context);
+        torchesButton.setText("Факелы/фонари: " + manager.getEnabledTorchNames().size());
+        torchesButton.setAllCaps(false);
+        root.addView(torchesButton);
+
+        pickaxesButton.setOnClickListener(v -> showAutoMinePickaxeSettingsDialog());
+        torchesButton.setOnClickListener(v -> showAutoMineTorchSettingsDialog());
+
+        new AlertDialog.Builder(context)
+                .setTitle("Настройки Авто-Шахтёра")
+                .setView(scroll)
+                .setPositiveButton("Сохранить", (dialog, which) -> {
+                    manager.setChatReportEnabled(chatReport.isChecked());
+                    manager.setStopOnEmptyEnabled(stopOnEmpty.isChecked());
+                    Toast.makeText(context, "Настройки авто-шахты сохранены", Toast.LENGTH_SHORT).show();
+                })
+                .setNegativeButton("Отмена", null)
+                .show();
+    }
+
+    private void showAutoMinePickaxeSettingsDialog() {
+        AutoMineManager manager = AutoMineManager.getInstance(context);
+        String[] pickaxes = manager.getAvailablePickaxeNames();
+        List<String> enabled = manager.getEnabledPickaxeNames();
+        boolean[] checked = new boolean[pickaxes.length];
+        for (int i = 0; i < pickaxes.length; i++) {
+            checked[i] = enabled.contains(pickaxes[i]);
+        }
+        new AlertDialog.Builder(context)
+                .setTitle("Кирки Авто-Шахтёра")
+                .setMultiChoiceItems(pickaxes, checked, (dialog, which, isChecked) -> checked[which] = isChecked)
+                .setPositiveButton("Сохранить", (dialog, which) -> {
+                    LinkedHashSet<String> selected = new LinkedHashSet<>();
+                    for (int i = 0; i < pickaxes.length; i++) {
+                        if (checked[i]) {
+                            selected.add(pickaxes[i]);
+                        }
+                    }
+                    if (selected.isEmpty()) {
+                        Toast.makeText(context, "Нужно выбрать хотя бы одну кирку", Toast.LENGTH_SHORT).show();
+                        return;
+                    }
+                    manager.setEnabledPickaxeNames(selected);
+                    Toast.makeText(context, "Список кирок сохранён", Toast.LENGTH_SHORT).show();
+                })
+                .setNegativeButton("Отмена", null)
+                .show();
+    }
+
+    private void showAutoMineTorchSettingsDialog() {
+        AutoMineManager manager = AutoMineManager.getInstance(context);
+        String[] torches = manager.getAvailableTorchNames();
+        List<String> enabled = manager.getEnabledTorchNames();
+        boolean[] checked = new boolean[torches.length];
+        for (int i = 0; i < torches.length; i++) {
+            checked[i] = enabled.contains(torches[i]);
+        }
+        new AlertDialog.Builder(context)
+                .setTitle("Факелы/фонари Авто-Шахтёра")
+                .setMultiChoiceItems(torches, checked, (dialog, which, isChecked) -> checked[which] = isChecked)
+                .setPositiveButton("Сохранить", (dialog, which) -> {
+                    LinkedHashSet<String> selected = new LinkedHashSet<>();
+                    for (int i = 0; i < torches.length; i++) {
+                        if (checked[i]) {
+                            selected.add(torches[i]);
+                        }
+                    }
+                    if (selected.isEmpty()) {
+                        Toast.makeText(context, "Нужно выбрать хотя бы один факел или фонарь", Toast.LENGTH_SHORT).show();
+                        return;
+                    }
+                    manager.setEnabledTorchNames(selected);
+                    Toast.makeText(context, "Список факелов сохранён", Toast.LENGTH_SHORT).show();
+                })
+                .setNegativeButton("Отмена", null)
+                .show();
     }
 
     private void showAutoCutSettingsDialog() {

@@ -29,6 +29,7 @@ import java.util.zip.GZIPInputStream;
 import ru.neverlands.anclient.MainActivity;
 import ru.neverlands.anclient.manager.AutoFunctionsManager;
 import ru.neverlands.anclient.manager.AutoCutManager;
+import ru.neverlands.anclient.manager.AutoMineManager;
 import ru.neverlands.anclient.manager.CharacterVitalsManager;
 import ru.neverlands.anclient.manager.ContactsManager;
 import ru.neverlands.anclient.manager.RoomManager;
@@ -1059,6 +1060,71 @@ public class WebAppInterface {
             return;
         }
         AppLog.d(AutoCutManager.TRACE_CHAIN, "WebAppInterface", "AUTO_CUT_JS " + safePayload);
+    }
+
+    /** C# parity: разрешает mine.js выполнить one-shot `Digg(code)` для Авто-Шахтёра. */
+    @JavascriptInterface
+    public boolean DoMineAutoDig(String code) {
+        try {
+            return AutoMineManager.getInstance(mContext).shouldDispatchAutoDigFromBridge(code, "bridge");
+        } catch (Exception e) {
+            AppLog.w(AutoMineManager.TRACE_CHAIN, "WebAppInterface", "DoMineAutoDig failed", e);
+            return false;
+        }
+    }
+
+    @JavascriptInterface
+    public long getMineAutoDigWaitMs() {
+        return AutoMineManager.getInstance(mContext).getAutoDigWaitMs();
+    }
+
+    /** Диагностика JS-ветки Авто-Шахтёра из mine.js без отдельного HTTP-контура. */
+    @JavascriptInterface
+    public void TraceAutoMineRuntime(String payload) {
+        String safePayload = payload == null ? "" : payload.trim();
+        if (safePayload.isEmpty()) {
+            return;
+        }
+        AppLog.d(AutoMineManager.TRACE_CHAIN, "WebAppInterface", "AUTO_MINE_JS " + safePayload);
+    }
+
+    @JavascriptInterface
+    public String getCellImg(String x, String y) {
+        return AutoMineManager.getInstance(mContext).getCellImg(x, y);
+    }
+
+    @JavascriptInterface
+    public String mineMoveTo(String x, String y) {
+        return AutoMineManager.getInstance(mContext).mineMoveTo(x, y);
+    }
+
+    @JavascriptInterface
+    public String getNextMineMoveDirection(String x, String y, String lvl, String source) {
+        return AutoMineManager.getInstance(mContext).getNextMineMoveDirection(x, y, lvl, source);
+    }
+
+    @JavascriptInterface
+    public boolean hasPendingMineRoute() {
+        return AutoMineManager.getInstance(mContext).hasPendingMineRoute();
+    }
+
+    @JavascriptInterface
+    public void MarkMineRouteMoveDispatched(String x, String y, String lvl, String direction, String source) {
+        try {
+            AutoMineManager.getInstance(mContext).markMineRouteMoveDispatched(x, y, lvl, direction, source);
+        } catch (Exception e) {
+            AppLog.w(AutoMineManager.TRACE_CHAIN, "WebAppInterface", "MarkMineRouteMoveDispatched failed", e);
+        }
+    }
+
+    @JavascriptInterface
+    public String getMineCellHTML(String x, String y, String lvl) {
+        return AutoMineManager.getInstance(mContext).getMineCellHTML(x, y, lvl);
+    }
+
+    @JavascriptInterface
+    public String getMoveText() {
+        return AutoMineManager.getInstance(mContext).getMoveText();
     }
 
     /**

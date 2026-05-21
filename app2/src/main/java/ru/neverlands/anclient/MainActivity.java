@@ -1028,6 +1028,11 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                 return;
             }
         }
+        if (shouldPauseAutoBattleForFightCaptcha()) {
+            clearPendingAutoBattleSubmit();
+            AppLog.d(TAG, BG_TRACE_PREFIX + " requestAutoTurn: skip, fight captcha pending");
+            return;
+        }
         if (shouldDeferAutoTurnForFirstFrameRender()) {
             return;
         }
@@ -1131,6 +1136,12 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             requestAutoTurnFromServerProbe(decision.getProbeReason());
         }
         if (decision.shouldAutoTurn()) {
+            if (shouldPauseAutoBattleForFightCaptcha()) {
+                clearPendingAutoBattleSubmit();
+                AppLog.d(TAG, BG_TRACE_PREFIX + " requestAutoTurn: skip autoTurn, fight captcha pending, reason="
+                        + decision.getProbeReason());
+                return;
+            }
             fightViewModel.autoTurnOnce(decision.getAutoTurnHtml());
         }
     }
@@ -1488,6 +1499,11 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
      */
     private void requestAutoTurnFromServerProbe(String reason) {
         long now = System.currentTimeMillis();
+        if (shouldPauseAutoBattleForFightCaptcha()) {
+            AppLog.d(TAG, BG_TRACE_PREFIX + " requestAutoTurn: server probe skipped, fight captcha pending, reason="
+                    + reason);
+            return;
+        }
         if (shouldSkipAutoTurnServerProbeForMapAutomation()) {
             AppLog.d(TAG, BG_TRACE_PREFIX + " requestAutoTurn: server probe suppressed during map automation, reason="
                     + reason + ", autoMoving=" + AppVars.AutoMoving + ", doSearchBox=" + AppVars.DoSearchBox);
@@ -1530,6 +1546,11 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                     return;
                 }
                 runOnUiThread(() -> {
+                    if (shouldPauseAutoBattleForFightCaptcha()) {
+                        AppLog.d(TAG, BG_TRACE_PREFIX + " requestAutoTurn: ignore server probe result, fight captcha pending, reason="
+                                + probeReason);
+                        return;
+                    }
                     AppLog.d(TAG, BG_TRACE_PREFIX + " requestAutoTurn: server probe htmlLen=" + probeHtml.length()
                             + ", hasFightMarkers=" + probeResult.hasFightMarkers
                             + ", probeUrl=" + probeResult.url
@@ -2323,6 +2344,10 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         activeFightCaptchaDialog = dialog;
         activeFightCaptchaUrl = captchaUrl == null ? "" : captchaUrl;
         activeFightFinishUrl = finishUrl == null ? "" : finishUrl;
+        if (isPendingFightCaptchaFinishLink(activeFightFinishUrl)) {
+            clearPendingAutoBattleSubmit();
+            AppLog.d(TAG, BG_TRACE_PREFIX + " showCaptchaDialog: cleared pending auto battle submit for fight captcha");
+        }
         // Фиксируем ожидаемый challenge для interceptor-guard: пока открыт popup,
         // внешние code.php-URL (другой challenge) не должны подменять текущую капчу.
         AppVars.CodeAddress = activeFightCaptchaUrl;
@@ -2339,7 +2364,14 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                 positiveButton.setEnabled(true);
                 positiveButton.setOnClickListener(v -> {
                     String code = input.getText().toString().trim();
-                    submitCaptchaCodeFromDialog(code, finishUrl, useAjaxSubmit, captchaSubmitted, input, dialog, "manual_ok");
+                    submitCaptchaCodeFromDialog(
+                            code,
+                            resolveActiveCaptchaFinishUrl(finishUrl),
+                            useAjaxSubmit,
+                            captchaSubmitted,
+                            input,
+                            dialog,
+                            "manual_ok");
                 });
             }
             input.addTextChangedListener(new android.text.TextWatcher() {
@@ -2394,6 +2426,12 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             input.requestFocus();
             return;
         }
+        String currentFinishUrl = resolveActiveCaptchaFinishUrl(finishUrl);
+        if (!useAjaxSubmit && !isFightCaptchaFinishVCodeCurrent(currentFinishUrl, "submit_" + source)) {
+            input.setError("Капча обновилась, дождитесь новой картинки");
+            input.requestFocus();
+            return;
+        }
 
         captchaSubmitted[0] = true;
         if (AppVars.ResumeAutoboiAfterCaptcha
@@ -2406,7 +2444,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         boolean resumeSearchBox = AppVars.ResumeSearchBoxAfterCaptcha;
         AppVars.ResumeSearchBoxAfterCaptcha = false;
 
-        String submitUrl = appendOrReplaceCaptchaCode(finishUrl, safeCode);
+        String submitUrl = appendOrReplaceCaptchaCode(currentFinishUrl, safeCode);
         if (!useAjaxSubmit) {
             AppVars.FightCaptchaSubmitNotBeforeMs = 0L;
             AppVars.LastSubmittedFightCaptchaFinishKey = buildFightCaptchaFinishKey(submitUrl);
@@ -2469,6 +2507,11 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             AppLog.w(TAG, "ANTI_CAPTCHA_TRACE skip: API key is empty");
             return;
         }
+        String currentFinishUrl = resolveActiveCaptchaFinishUrl(finishUrl);
+        if (!useAjaxSubmit && !isFightCaptchaFinishVCodeCurrent(currentFinishUrl, "anti_captcha_start")) {
+            AppLog.w(TAG, "ANTI_CAPTCHA_TRACE skip: finishUrl vcode is stale, waiting for matching challenge");
+            return;
+        }
         byte[] imageBytes = AppVars.LastFightCaptchaImageBytes;
         boolean imageReady = imageBytes != null
                 && activeFightCaptchaImageHash != 0
@@ -2489,7 +2532,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             return;
         }
 
-        String challengeKey = buildAntiCaptchaChallengeKey(finishUrl);
+        String challengeKey = buildAntiCaptchaChallengeKey(currentFinishUrl);
         if (challengeKey.isEmpty()) {
             return;
         }
@@ -2510,7 +2553,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                         solvedChallengeKey,
                         text,
                         config,
-                        finishUrl,
+                        currentFinishUrl,
                         useAjaxSubmit,
                         captchaSubmitted,
                         input,
@@ -2529,7 +2572,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                         scheduleAntiCaptchaRetry(
                                 failedChallengeKey,
                                 message,
-                                finishUrl,
+                                currentFinishUrl,
                                 useAjaxSubmit,
                                 captchaSubmitted,
                                 input,
@@ -2562,7 +2605,8 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         if (dialog == null || !dialog.isShowing()) {
             return;
         }
-        String currentChallengeKey = buildAntiCaptchaChallengeKey(finishUrl);
+        String currentFinishUrl = resolveActiveCaptchaFinishUrl(finishUrl);
+        String currentChallengeKey = buildAntiCaptchaChallengeKey(currentFinishUrl);
         if (failedChallengeKey == null || !failedChallengeKey.equals(currentChallengeKey)) {
             AppLog.d(TAG, "ANTI_CAPTCHA_TRACE retry skip: stale failedKey=" + failedChallengeKey
                     + ", currentKey=" + currentChallengeKey);
@@ -2587,7 +2631,8 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             if (dialog == null || !dialog.isShowing()) {
                 return;
             }
-            String retryChallengeKey = buildAntiCaptchaChallengeKey(finishUrl);
+            String retryFinishUrl = resolveActiveCaptchaFinishUrl(finishUrl);
+            String retryChallengeKey = buildAntiCaptchaChallengeKey(retryFinishUrl);
             if (!failedChallengeKey.equals(retryChallengeKey)) {
                 AppLog.d(TAG, "ANTI_CAPTCHA_TRACE retry skip: challenge changed, failedKey="
                         + failedChallengeKey + ", currentKey=" + retryChallengeKey);
@@ -2597,7 +2642,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             antiCaptchaInFlight = false;
             AppLog.i(TAG, "ANTI_CAPTCHA_TRACE retry start: attempt=" + antiCaptchaCreateRetryAttempts
                     + ", delayMs=" + delayMs);
-            maybeStartAntiCaptchaForActiveChallenge(finishUrl, useAjaxSubmit, captchaSubmitted, input, dialog);
+            maybeStartAntiCaptchaForActiveChallenge(retryFinishUrl, useAjaxSubmit, captchaSubmitted, input, dialog);
         };
         AppLog.i(TAG, "ANTI_CAPTCHA_TRACE retry scheduled: attempt=" + antiCaptchaCreateRetryAttempts
                 + ", delayMs=" + delayMs + ", reason=" + message);
@@ -2621,7 +2666,8 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             AppLog.d(TAG, "ANTI_CAPTCHA_TRACE ignore solved code: dialog is not showing");
             return;
         }
-        String currentChallengeKey = buildAntiCaptchaChallengeKey(finishUrl);
+        String currentFinishUrl = resolveActiveCaptchaFinishUrl(finishUrl);
+        String currentChallengeKey = buildAntiCaptchaChallengeKey(currentFinishUrl);
         if (solvedChallengeKey == null || !solvedChallengeKey.equals(currentChallengeKey)) {
             // Защита от гонки: пользователь мог обновить captcha или popup мог быть заменён новым
             // challenge, пока anti-captcha.com решал старую картинку.
@@ -2643,7 +2689,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         input.setSelection(code.length());
         // Единая точка отправки: manual OK и Anti-Captcha разделяют URL-normalization,
         // флаги autoboi/search-box resume и anti-duplicate markers.
-        submitCaptchaCodeFromDialog(code, finishUrl, useAjaxSubmit, captchaSubmitted, input, dialog, "anti_captcha");
+        submitCaptchaCodeFromDialog(code, currentFinishUrl, useAjaxSubmit, captchaSubmitted, input, dialog, "anti_captcha");
         postAntiCaptchaCodeSubmittedToChat(code);
     }
 
@@ -2683,6 +2729,67 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             return false;
         }
         return maxLength <= 0 || code.length() <= maxLength;
+    }
+
+    private String resolveActiveCaptchaFinishUrl(String fallbackFinishUrl) {
+        String activeFinishUrl = activeFightFinishUrl == null ? "" : activeFightFinishUrl.trim();
+        if (activeFightCaptchaDialog != null
+                && activeFightCaptchaDialog.isShowing()
+                && !activeFinishUrl.isEmpty()) {
+            return activeFinishUrl;
+        }
+        return fallbackFinishUrl == null ? "" : fallbackFinishUrl.trim();
+    }
+
+    private boolean isFightCaptchaFinishVCodeCurrent(String finishUrl, String source) {
+        if (!hasFightFinishAct7Link(finishUrl)) {
+            return true;
+        }
+        String finishVCode = getQueryParameterSafely(finishUrl, "vcode");
+        if (finishVCode.isEmpty()) {
+            return true;
+        }
+        String sessionVCode = SessionManager.getInstance().getValidVCodeForAction("fight_fallback");
+        if (sessionVCode == null || sessionVCode.trim().isEmpty()) {
+            AppLog.w(TAG, "CAPTCHA_VCODE_TRACE " + source + ": SessionManager vcode is empty, allow submit fallback");
+            return true;
+        }
+        boolean sameVCode = finishVCode.equals(sessionVCode.trim());
+        if (!sameVCode) {
+            AppLog.w(TAG, "CAPTCHA_VCODE_TRACE " + source + ": stale finish vcode, finish="
+                    + abbreviateToken(finishVCode) + ", session=" + abbreviateToken(sessionVCode));
+        }
+        return sameVCode;
+    }
+
+    private String getQueryParameterSafely(String rawUrl, String paramName) {
+        if (rawUrl == null || rawUrl.isEmpty() || paramName == null || paramName.isEmpty()) {
+            return "";
+        }
+        try {
+            String value = Uri.parse(rawUrl).getQueryParameter(paramName);
+            return value == null ? "" : value.trim();
+        } catch (Exception ignored) {
+            try {
+                Pattern pattern = Pattern.compile("(?:[?&])" + Pattern.quote(paramName) + "=([^&#]*)",
+                        Pattern.CASE_INSENSITIVE);
+                Matcher matcher = pattern.matcher(rawUrl);
+                if (matcher.find()) {
+                    return Uri.decode(matcher.group(1)).trim();
+                }
+            } catch (Exception ignoredAgain) {
+                return "";
+            }
+        }
+        return "";
+    }
+
+    private String abbreviateToken(String token) {
+        if (token == null || token.isEmpty()) {
+            return "";
+        }
+        String safeToken = token.trim();
+        return safeToken.length() <= 8 ? safeToken : safeToken.substring(0, 8) + "...";
     }
 
     private String buildAntiCaptchaChallengeKey(String finishUrl) {
@@ -3317,18 +3424,20 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                     boolean candidateIsFightFinish = candidateFinishUrl.contains("get_id=61")
                             && candidateFinishUrl.contains("act=7")
                             && candidateFinishUrl.contains("code=????");
-                    if (!candidateIsFightFinish) {
-                        candidateFinishUrl = activeFightFinishUrl;
-                    }
 
                     String parserCaptchaUrl = AppVars.CodeAddress == null ? "" : AppVars.CodeAddress.trim();
                     boolean latestMatchesParserCaptcha = !parserCaptchaUrl.isEmpty()
                             && isSameCaptchaUrl(latestCaptchaUrl, parserCaptchaUrl);
                     boolean captchaChanged = !isSameCaptchaUrl(activeFightCaptchaUrl, latestCaptchaUrl);
-                    boolean finishChanged = !isSameFightFinishUrl(activeFightFinishUrl, candidateFinishUrl);
+                    boolean finishChanged = candidateIsFightFinish
+                            && !isSameFightFinishUrl(activeFightFinishUrl, candidateFinishUrl);
+                    boolean candidateHasCurrentVCode = candidateIsFightFinish
+                            && isFightCaptchaFinishVCodeCurrent(candidateFinishUrl, "image_switch");
                     if ((captchaChanged || finishChanged)
                             && !latestCaptchaUrl.isEmpty()
-                            && latestMatchesParserCaptcha) {
+                            && latestMatchesParserCaptcha
+                            && candidateIsFightFinish
+                            && candidateHasCurrentVCode) {
                         AppLog.d(TAG, "updateCaptchaImageFromCaptured: switch to latest challenge, expected="
                                 + expectedCaptchaUrl + ", latest=" + latestCaptchaUrl
                                 + ", finishChanged=" + finishChanged
@@ -3339,6 +3448,9 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                         AppLog.d(TAG, "updateCaptchaImageFromCaptured: skip foreign latest challenge, expected="
                                 + expectedCaptchaUrl + ", latest=" + latestCaptchaUrl
                                 + ", parserCaptcha=" + parserCaptchaUrl
+                                + ", candidateFinish=" + candidateFinishUrl
+                                + ", candidateIsFightFinish=" + candidateIsFightFinish
+                                + ", candidateHasCurrentVCode=" + candidateHasCurrentVCode
                                 + ", finishChanged=" + finishChanged
                                 + ", challengeAgeMs=" + challengeAgeMs);
                     }
@@ -3878,6 +3990,11 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         if (payload == null || payload.isEmpty()) {
             return;
         }
+        if (shouldPauseAutoBattleForFightCaptcha()) {
+            clearPendingAutoBattleSubmit();
+            AppLog.d(TAG, BG_TRACE_PREFIX + " autoBattleDelay: skip submit, fight captcha pending");
+            return;
+        }
 
         long nowMs = System.currentTimeMillis();
         String payloadKey = buildAutoBattleSubmitPayloadKey(payload);
@@ -3919,6 +4036,10 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             if (delayedPayload == null || delayedPayload.isEmpty()) {
                 return;
             }
+            if (shouldPauseAutoBattleForFightCaptcha()) {
+                AppLog.d(TAG, BG_TRACE_PREFIX + " autoBattleDelay: drop delayed submit, fight captcha pending");
+                return;
+            }
             long secondCheckWaitMs = getAutoBattleSubmitWaitMs();
             if (secondCheckWaitMs > 0L) {
                 // Редкий случай смещения таймера/часов: перепланируем корректно.
@@ -3934,6 +4055,11 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     }
 
     private void submitAutoBattleNow(String payload) {
+        if (shouldPauseAutoBattleForFightCaptcha()) {
+            clearPendingAutoBattleSubmit();
+            AppLog.d(TAG, BG_TRACE_PREFIX + " autoBattleDelay: skip immediate submit, fight captcha pending");
+            return;
+        }
         lastAutoBattleSubmitAtMs = System.currentTimeMillis();
         lastAutoBattleSubmitPayloadKey = buildAutoBattleSubmitPayloadKey(payload);
         // Когда Activity не в foreground, WebView form.submit() реально не отправляет HTTP POST —
@@ -4324,6 +4450,12 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         return activeFightCaptchaDialog != null
                 && activeFightCaptchaDialog.isShowing()
                 && !isAlchemyCaptchaFinishUrl(activeFightFinishUrl);
+    }
+
+    private boolean shouldPauseAutoBattleForFightCaptcha() {
+        return isFightCaptchaDialogShowing()
+                || isPendingFightCaptchaFinishLink(activeFightFinishUrl)
+                || isPendingFightCaptchaFinishLink(AppVars.FightLink);
     }
 
     private boolean isPendingFightCaptchaFinishLink(String finishUrl) {

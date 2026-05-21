@@ -1027,8 +1027,8 @@ public final class AutoCutManager {
 
     /**
      * Runtime bootstrap после license-gated включения `AUTO_CUT`.
-     * Сбрасывает старые флаги, требует проверку серпа, reload-ит main frame и при необходимости
-     * стартует маршрут к первой непроверенной CSV-клетке.
+     * Сбрасывает старые флаги, если не идёт cleanup, требует проверку серпа, reload-ит main frame
+     * и при необходимости стартует маршрут к первой непроверенной CSV-клетке.
      */
     public void onAutoCutEnabled(AutoFunctionsManager manager) {
         onAutoCutEnabled(manager, AutoCutMode.HERB);
@@ -1037,18 +1037,31 @@ public final class AutoCutManager {
     /** Runtime bootstrap после license-gated включения AutoCut-like режима. */
     public void onAutoCutEnabled(AutoFunctionsManager manager, AutoCutMode mode) {
         AutoCutMode safeMode = safeMode(mode);
-        AppVars.AutoCutCheckSickle = true;
-        AppVars.AutoCutArmedSickle = false;
-        AppVars.AutoCutSickleHand = "";
-        AppVars.AutoCutSickleHandD = "";
-        AppVars.AutoCutCleanupPending = false;
-        AppVars.AutoCutCleanupReason = "";
-        AppVars.AutoFishMassa = "";
-        AppVars.AutoCutKnownMassMax = 0d;
-        massSnapshotSyncPending = false;
-        lastMassSnapshotSyncRequestAtMs = 0L;
-        clearTimerRouteState(safeMode.actionKey + "_enabled");
-        requestMainFrameReload("enabled_tool_check:" + safeMode.actionKey);
+        boolean preserveCleanupState;
+        synchronized (this) {
+            preserveCleanupState = AppVars.AutoCutCleanupPending
+                    || (lookRetryPending && isCleanupInventoryRetrySourceLocked());
+        }
+        if (preserveCleanupState) {
+            AppLog.i(TRACE_CHAIN, TAG, "enabled bootstrap preserves pending cleanup: mode="
+                    + safeMode.actionKey
+                    + ", reason=" + safe(AppVars.AutoCutCleanupReason)
+                    + ", retrySource=" + safe(lookRetrySource));
+        } else {
+            AppVars.AutoCutCheckSickle = true;
+            AppVars.AutoCutArmedSickle = false;
+            AppVars.AutoCutSickleHand = "";
+            AppVars.AutoCutSickleHandD = "";
+            AppVars.AutoCutCleanupPending = false;
+            AppVars.AutoCutCleanupReason = "";
+            AppVars.AutoFishMassa = "";
+            AppVars.AutoCutKnownMassMax = 0d;
+            massSnapshotSyncPending = false;
+            lastMassSnapshotSyncRequestAtMs = 0L;
+            clearTimerRouteState(safeMode.actionKey + "_enabled");
+        }
+        requestMainFrameReload((preserveCleanupState ? "enabled_cleanup_resume:" : "enabled_tool_check:")
+                + safeMode.actionKey);
         routeNextCellIfCurrentIsNotReady(manager, "enabled:" + safeMode.actionKey);
     }
 

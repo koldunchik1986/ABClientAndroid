@@ -43,6 +43,7 @@ public class AutoFunctionsManager {
     private static final String KEY_PREFIX = "auto_function_";
     private static final String KEY_AUTO_CUT = KEY_PREFIX + "auto_cut";
     private static final String KEY_AUTO_LUMBERJACK = KEY_PREFIX + "auto_lumberjack";
+    private static final String KEY_AUTO_MINE = KEY_PREFIX + "auto_mine";
     private static final String KEY_AUTO_SKIN = KEY_PREFIX + "auto_skin";
     private static final String KEY_AUTO_TREASURE = KEY_PREFIX + "auto_treasure";
     private static final String KEY_AUTO_ATTACK_LEGACY = KEY_PREFIX + "auto_attack";
@@ -55,8 +56,8 @@ public class AutoFunctionsManager {
     // - `full`/custom индивидуальный grant включает её через `QuickActionType.AUTO_CAPTCHA.getActionKey()`;
     // - при истечении grant `LicenseRuntime.requireSession(...)` обновляет сессию и вызывает
     //   `disableUnavailableFeatures(...)`, который сбрасывает этот persisted-флаг.
-    // Такой же non-public контракт применён к `AUTO_CUT` и `AUTO_LUMBERJACK`:
-    // флаги `auto_cut`/`auto_lumberjack` видны только в individual full/custom grant
+    // Такой же non-public контракт применён к `AUTO_CUT`, `AUTO_LUMBERJACK` и `AUTO_MINE`:
+    // флаги `auto_cut`/`auto_lumberjack`/`auto_mine` видны только в individual full/custom grant
     // и затираются тем же downgrade-проходом ниже.
     private static final String KEY_ANTI_CAPTCHA = KEY_PREFIX + "anti_captcha";
     private static final String PREF_ANTI_CAPTCHA_API_KEY = "anti_captcha_api_key";
@@ -135,6 +136,7 @@ public class AutoFunctionsManager {
         syncAutoSkinWithProfileIfPresent();
         syncAutoFightWithProfileIfPresent();
         syncAutoTreasureWithProfileIfPresent();
+        syncAutoMineWithProfileIfPresent();
     }
     
     public static synchronized AutoFunctionsManager getInstance(Context context) {
@@ -355,6 +357,10 @@ public class AutoFunctionsManager {
                 setAutoLumberjackEnabled(false);
                 AppLog.d(TAG, "setAutoFishEnabled: Авто-Лесоруб выключен");
             }
+            if (isAutoMineEnabled()) {
+                setAutoMineEnabled(false);
+                AppLog.d(TAG, "setAutoFishEnabled: Авто-Шахтёр выключен");
+            }
             if (isAutoBaitEnabled()) {
                 setAutoBaitEnabled(false);
                 AppLog.d(TAG, "setAutoFishEnabled: Авто-Приманка выключена");
@@ -477,11 +483,13 @@ public class AutoFunctionsManager {
         boolean autoTreasure = isAutoTreasureEnabled();
         boolean autoCut = isAutoCutEnabled();
         boolean autoLumberjack = isAutoLumberjackEnabled();
+        boolean autoMine = isAutoMineEnabled();
         AppLog.d(TAG, "restorePersistentAutoModesAfterLogin: autoFish=" + autoFish
                 + ", autoFight=" + autoFight
                 + ", autoTreasure=" + autoTreasure
                 + ", autoCut=" + autoCut
-                + ", autoLumberjack=" + autoLumberjack);
+                + ", autoLumberjack=" + autoLumberjack
+                + ", autoMine=" + autoMine);
 
         requestCharacterSyncAfterLogin();
         requestClanWarsSyncAfterLogin();
@@ -510,6 +518,14 @@ public class AutoFunctionsManager {
                     "restore after login: auto-lumberjack owns cold start bootstrap");
             restoreAutoFightRuntimeAfterLogin(autoFight, false);
             setAutoLumberjackEnabled(true);
+            return;
+        }
+
+        if (autoMine) {
+            AppLog.d(AutoMineManager.TRACE_CHAIN, TAG,
+                    "restore after login: auto-mine owns cold start bootstrap");
+            restoreAutoFightRuntimeAfterLogin(autoFight, false);
+            setAutoMineEnabled(true);
             return;
         }
 
@@ -827,6 +843,10 @@ public class AutoFunctionsManager {
                 setAutoLumberjackEnabled(false);
                 AppLog.d(TAG, "setAutoBaitEnabled: Авто-Лесоруб выключен");
             }
+            if (isAutoMineEnabled()) {
+                setAutoMineEnabled(false);
+                AppLog.d(TAG, "setAutoBaitEnabled: Авто-Шахтёр выключен");
+            }
         }
         prefs.edit().putBoolean(KEY_PREFIX + "auto_bait", enabled).apply();
         AppLog.d(TAG, "setAutoBaitEnabled: " + enabled);
@@ -893,6 +913,10 @@ public class AutoFunctionsManager {
             if (isAutoLumberjackEnabled()) {
                 setAutoLumberjackEnabled(false);
                 AppLog.d(TAG, "setAutoSkinEnabled: Авто-Лесоруб выключен");
+            }
+            if (isAutoMineEnabled()) {
+                setAutoMineEnabled(false);
+                AppLog.d(TAG, "setAutoSkinEnabled: Авто-Шахтёр выключен");
             }
             if (isAutoBaitEnabled()) {
                 setAutoBaitEnabled(false);
@@ -1018,6 +1042,16 @@ public class AutoFunctionsManager {
         prefs.edit().putBoolean(KEY_AUTO_TREASURE, profileValue).apply();
         AppVars.DoSearchBox = profileValue;
         AppLog.d(TAG, "syncAutoTreasureWithProfileIfPresent: AutoDig=" + profileValue);
+    }
+
+    /** Первичная синхронизация "Авто-Шахтёр" из профиля. */
+    private void syncAutoMineWithProfileIfPresent() {
+        if (AppVars.Profile == null) {
+            return;
+        }
+        boolean profileValue = AppVars.Profile.AutoMine;
+        prefs.edit().putBoolean(KEY_AUTO_MINE, profileValue).apply();
+        AppLog.d(TAG, "syncAutoMineWithProfileIfPresent: AutoMine=" + profileValue);
     }
     
     // === AUTO_ATTACK (Авто-Нападение) ===
@@ -1900,6 +1934,10 @@ public class AutoFunctionsManager {
                 setAutoLumberjackEnabled(false);
                 AppLog.d(AutoCutManager.TRACE_CHAIN, TAG, "setAutoTreasureEnabled: Авто-Лесоруб выключен как конфликтующая навигация");
             }
+            if (isAutoMineEnabled()) {
+                setAutoMineEnabled(false);
+                AppLog.d(AutoMineManager.TRACE_CHAIN, TAG, "setAutoTreasureEnabled: Авто-Шахтёр выключен как конфликтующая навигация");
+            }
         }
 
         if (AppVars.Profile != null && AppVars.Profile.AutoDig != enabled) {
@@ -1939,6 +1977,92 @@ public class AutoFunctionsManager {
                 }
             });
         }
+    }
+
+    // === AUTO_MINE (Авто-Шахтёр) ===
+
+    public boolean isAutoMineEnabled() {
+        if (!isFeatureAvailable(QuickActionType.AUTO_MINE, "isAutoMineEnabled")) {
+            if (AppVars.Profile != null && AppVars.Profile.AutoMine) {
+                AppVars.Profile.AutoMine = false;
+                AppVars.Profile.save(context);
+            }
+            prefs.edit().putBoolean(KEY_AUTO_MINE, false).apply();
+            AutoMineManager.getInstance(context).onAutoMineDisabled();
+            return false;
+        }
+        if (AppVars.Profile != null) {
+            boolean profileValue = AppVars.Profile.AutoMine;
+            boolean prefValue = prefs.getBoolean(KEY_AUTO_MINE, profileValue);
+            if (prefValue != profileValue) {
+                prefs.edit().putBoolean(KEY_AUTO_MINE, profileValue).apply();
+                AppLog.d(AutoMineManager.TRACE_CHAIN, TAG,
+                        "isAutoMineEnabled: sync pref from profile AutoMine=" + profileValue);
+            }
+            return profileValue;
+        }
+        return prefs.getBoolean(KEY_AUTO_MINE, false);
+    }
+
+    public void toggleAutoMine() {
+        setAutoMineEnabled(!isAutoMineEnabled());
+    }
+
+    public void setAutoMineEnabled(boolean enabled) {
+        if (rejectFeatureIfDenied(QuickActionType.AUTO_MINE, enabled, "setAutoMineEnabled")) {
+            prefs.edit().putBoolean(KEY_AUTO_MINE, false).apply();
+            if (AppVars.Profile != null) {
+                AppVars.Profile.AutoMine = false;
+                AppVars.Profile.save(context);
+            }
+            AutoMineManager.getInstance(context).onAutoMineDisabled();
+            requestQuickButtonsRefreshInternal("setAutoMineEnabled_denied");
+            return;
+        }
+        if (enabled) {
+            if (!isAutoFightEnabled()) {
+                setAutoFightEnabled(true);
+                AppLog.d(AutoMineManager.TRACE_CHAIN, TAG, "setAutoMineEnabled: Авто-Бой также включен");
+            }
+            if (isAutoFishEnabled()) {
+                setAutoFishEnabled(false);
+                AppLog.d(AutoMineManager.TRACE_CHAIN, TAG, "setAutoMineEnabled: Авто-Рыбалка выключена");
+            }
+            if (isAutoSkinEnabled()) {
+                setAutoSkinEnabled(false);
+                AppLog.d(AutoMineManager.TRACE_CHAIN, TAG, "setAutoMineEnabled: Авто-Охота выключена");
+            }
+            if (isAutoBaitEnabled()) {
+                setAutoBaitEnabled(false);
+                AppLog.d(AutoMineManager.TRACE_CHAIN, TAG, "setAutoMineEnabled: Авто-Приманка выключена");
+            }
+            if (isAutoTreasureEnabled()) {
+                setAutoTreasureEnabled(false);
+                AppLog.d(AutoMineManager.TRACE_CHAIN, TAG, "setAutoMineEnabled: Авто-Клад выключен как конфликтующая навигация");
+            }
+            if (isAutoCutEnabled()) {
+                setAutoCutEnabled(false);
+                AppLog.d(AutoMineManager.TRACE_CHAIN, TAG, "setAutoMineEnabled: Авто-Травник выключен как конфликтующая навигация");
+            }
+            if (isAutoLumberjackEnabled()) {
+                setAutoLumberjackEnabled(false);
+                AppLog.d(AutoMineManager.TRACE_CHAIN, TAG, "setAutoMineEnabled: Авто-Лесоруб выключен как конфликтующая навигация");
+            }
+        }
+
+        prefs.edit().putBoolean(KEY_AUTO_MINE, enabled).apply();
+        if (AppVars.Profile != null && AppVars.Profile.AutoMine != enabled) {
+            AppVars.Profile.AutoMine = enabled;
+            AppVars.Profile.save(context);
+        }
+        if (enabled) {
+            AutoMineManager.getInstance(context).onAutoMineEnabled(this);
+            requestCharacterSyncForAutoFunctionEnable("auto_mine");
+        } else {
+            AutoMineManager.getInstance(context).onAutoMineDisabled();
+        }
+        AppLog.d(AutoMineManager.TRACE_CHAIN, TAG, "setAutoMineEnabled: " + enabled);
+        requestQuickButtonsRefreshInternal("setAutoMineEnabled(" + enabled + ")");
     }
 
     public boolean isAutoTreasureDigEnabled() {
@@ -2306,6 +2430,10 @@ public class AutoFunctionsManager {
                 setAutoLumberjackEnabled(false);
                 AppLog.d(AutoCutManager.TRACE_CHAIN, TAG, "setAutoCutEnabled: Авто-Лесоруб выключен как общий AutoCut-контур");
             }
+            if (isAutoMineEnabled()) {
+                setAutoMineEnabled(false);
+                AppLog.d(AutoMineManager.TRACE_CHAIN, TAG, "setAutoCutEnabled: Авто-Шахтёр выключен как конфликтующая навигация");
+            }
             int selectedHerbs = AutoCutManager.getInstance(context).getSelectedHerbCount();
             if (selectedHerbs == 0) {
                 AppLog.w(AutoCutManager.TRACE_CHAIN, TAG,
@@ -2370,6 +2498,10 @@ public class AutoFunctionsManager {
             if (isAutoCutEnabled()) {
                 setAutoCutEnabled(false);
                 AppLog.d(AutoCutManager.TRACE_CHAIN, TAG, "setAutoLumberjackEnabled: Авто-Травник выключен как общий AutoCut-контур");
+            }
+            if (isAutoMineEnabled()) {
+                setAutoMineEnabled(false);
+                AppLog.d(AutoMineManager.TRACE_CHAIN, TAG, "setAutoLumberjackEnabled: Авто-Шахтёр выключен как конфликтующая навигация");
             }
             int selectedTrees = AutoCutManager.getInstance(context).getSelectedTreeCount();
             if (selectedTrees == 0) {
@@ -2715,6 +2847,7 @@ public class AutoFunctionsManager {
             case AUTO_TREASURE: return isAutoTreasureEnabled();
             case AUTO_CUT: return isAutoCutEnabled();
             case AUTO_LUMBERJACK: return isAutoLumberjackEnabled();
+            case AUTO_MINE: return isAutoMineEnabled();
             case AUTO_REFRESH: return isAutoRefreshEnabled();
             case AUTO_CAPTCHA: return isAntiCaptchaEnabled();
             default: return false;
@@ -2747,6 +2880,7 @@ public class AutoFunctionsManager {
             case AUTO_TREASURE: toggleAutoTreasure(); break;
             case AUTO_CUT: toggleAutoCut(); break;
             case AUTO_LUMBERJACK: toggleAutoLumberjack(); break;
+            case AUTO_MINE: toggleAutoMine(); break;
             case AUTO_REFRESH: toggleAutoRefresh(); break;
             case AUTO_CAPTCHA: toggleAntiCaptcha(); break;
             default: break;
@@ -2775,6 +2909,7 @@ public class AutoFunctionsManager {
         setAutoTreasureEnabled(false);
         setAutoCutEnabled(false);
         setAutoLumberjackEnabled(false);
+        setAutoMineEnabled(false);
         setAutoRefreshEnabled(false);
         setAntiCaptchaEnabled(false);
     }
@@ -2813,6 +2948,7 @@ public class AutoFunctionsManager {
         disableIfUnavailable(QuickActionType.AUTO_TREASURE, this::setAutoTreasureEnabled, disabled);
         disableIfUnavailable(QuickActionType.AUTO_CUT, this::setAutoCutEnabled, disabled);
         disableIfUnavailable(QuickActionType.AUTO_LUMBERJACK, this::setAutoLumberjackEnabled, disabled);
+        disableIfUnavailable(QuickActionType.AUTO_MINE, this::setAutoMineEnabled, disabled);
         disableIfUnavailable(QuickActionType.AUTO_REFRESH, this::setAutoRefreshEnabled, disabled);
         disableIfUnavailable(QuickActionType.AUTO_CAPTCHA, this::setAntiCaptchaEnabled, disabled);
         requestQuickButtonsRefreshInternal("license_sync:" + reason);
@@ -2886,6 +3022,10 @@ public class AutoFunctionsManager {
                 return prefs.getBoolean(KEY_AUTO_CUT, false);
             case AUTO_LUMBERJACK:
                 return prefs.getBoolean(KEY_AUTO_LUMBERJACK, false);
+            case AUTO_MINE:
+                return AppVars.Profile != null
+                        ? AppVars.Profile.AutoMine
+                        : prefs.getBoolean(KEY_AUTO_MINE, false);
             case AUTO_REFRESH:
                 return prefs.getBoolean(KEY_PREFIX + "auto_refresh", false);
             case AUTO_CAPTCHA:
