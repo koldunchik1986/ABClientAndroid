@@ -181,6 +181,8 @@
     <Compile Include="MyHelpers\FileLogger.cs" />
     <Compile Include="HerbCell.cs" />
     <Compile Include="InvEntry.cs" />
+    <Compile Include="Mine\AutoMineRuntime.cs" />
+    <Compile Include="Mine\MineCell.cs" />
     <Compile Include="Info\ForpostInfoController.cs" />
     <Compile Include="Info\ProfessionRatingMonitor.cs" />
     <Compile Include="Info\ProfessionRatingRepository.cs" />
@@ -486,6 +488,7 @@
     <Compile Include="PostFilter\MainPhpFast.cs" />
     <Compile Include="PostFilter\MainPhpFight.cs" />
     <Compile Include="PostFilter\MainPhpFish.cs" />
+    <Compile Include="PostFilter\MainPhpAutoMine.cs" />
     <Compile Include="PostFilter\MainPhpInsHp.cs" />
     <Compile Include="PostFilter\MainPhpInv.cs" />
     <Compile Include="PostFilter\MainPhpTied.cs" />
@@ -493,6 +496,8 @@
     <Compile Include="PostFilter\MapAjax.cs" />
     <Compile Include="PostFilter\MapAjaxPhp.cs" />
     <Compile Include="PostFilter\MapJs.cs" />
+    <Compile Include="PostFilter\MineAjaxPhp.cs" />
+    <Compile Include="PostFilter\MineJs.cs" />
     <Compile Include="PostFilter\NlPinfo.cs" />
     <Compile Include="PostFilter\TeleportAjax.cs" />
     <Compile Include="PostFilter\TradePhp.cs" />
@@ -690,6 +695,10 @@
     <None Include="forum_index.js" />
     <Content Include="anthings.xml">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="..\map_mines.xml">
+      <Link>map_mines.xml</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
     <Content Include="Info\recipe_tables.txt">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>

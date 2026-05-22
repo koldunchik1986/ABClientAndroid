@@ -599,6 +599,57 @@ namespace ANClient
             AppVars.NeverTimer = DateTime.Now.AddMilliseconds(msec);
         }
 
+        public string TraceMineRuntime(string message)
+        {
+            AppLog.i(AutoMineRuntime.TraceChain, "MineRuntime", message ?? string.Empty);
+            return "ok";
+        }
+
+        public string getCellImg(string x, string y)
+        {
+            return AutoMineRuntime.GetCellImg(x, y);
+        }
+
+        public string getMineCellHTML(string x, string y, string lvl)
+        {
+            return AutoMineRuntime.GetMineCellHtml(x, y, lvl);
+        }
+
+        public string mineMoveTo(string x, string y)
+        {
+            return AutoMineRuntime.MineMoveTo(x, y);
+        }
+
+        public string getNextMineMoveDirection(string x, string y, string lvl, string source)
+        {
+            return AutoMineRuntime.GetNextMineMoveDirection(x, y, lvl, source);
+        }
+
+        public bool hasPendingMineRoute()
+        {
+            return AutoMineRuntime.HasPendingMineRoute();
+        }
+
+        public string getMoveText()
+        {
+            return AutoMineRuntime.GetMoveText();
+        }
+
+        public int getMineAutoDigWaitMs()
+        {
+            return AutoMineRuntime.GetAutoDigWaitMs();
+        }
+
+        public bool DoMineAutoDig(string code)
+        {
+            return AutoMineRuntime.ShouldDispatchAutoDig(code, "bridge");
+        }
+
+        public void MarkMineRouteMoveDispatched(string x, string y, string lvl, string direction, string source)
+        {
+            AutoMineRuntime.MarkMineRouteMoveDispatched(x, y, lvl, direction, source);
+        }
+
         public string ShowHpMaTimers(string inner, double curHP, int maxHP, double intHP, double curMA, int maxMA, double intMA)
         {
             return FormMain.ShowHpMaTimers(inner, curHP, maxHP, intHP, curMA, maxMA, intMA);

@@ -166,6 +166,9 @@ namespace ANClient.PostFilter
                 if (address.Contains("/js/map.js"))
                     return MapJs(array);
 
+                if (address.Contains("/js/mine"))
+                    return MineJs(array);
+
                 if (address.Contains("/arena"))
                     return ArenaJs();
 
@@ -315,6 +318,11 @@ namespace ANClient.PostFilter
             if (address.StartsWith("http://www.neverlands.ru/gameplay/ajax/alchemy_ajax.php", StringComparison.OrdinalIgnoreCase))
             {
                 return AlchemyAjaxPhp(address, array);
+            }
+
+            if (address.StartsWith("http://www.neverlands.ru/gameplay/ajax/mine_ajax.php", StringComparison.OrdinalIgnoreCase))
+            {
+                return MineAjaxPhp(address, array);
             }
 
             if (address.StartsWith("http://www.neverlands.ru/gameplay/ajax/shop_ajax.php", StringComparison.OrdinalIgnoreCase))

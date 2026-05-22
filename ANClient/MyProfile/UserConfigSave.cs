@@ -102,6 +102,9 @@ namespace ANClient.MyProfile
                     xmlWriter.WriteStartAttribute("fishnv");
                     xmlWriter.WriteValue(Stat.FishNV);
                     xmlWriter.WriteEndAttribute();
+                    xmlWriter.WriteStartAttribute("resourcekg");
+                    xmlWriter.WriteValue(Stat.ResourceKg);
+                    xmlWriter.WriteEndAttribute();
                     xmlWriter.WriteEndElement();
 
                     xmlWriter.WriteStartElement("itemdrops");
@@ -118,6 +121,21 @@ namespace ANClient.MyProfile
                             xmlWriter.WriteEndAttribute();
                         }
 
+                        xmlWriter.WriteEndElement();
+                    }
+
+                    xmlWriter.WriteEndElement();
+
+                    xmlWriter.WriteStartElement("resourcedrops");
+                    for (var i = 0; i < Stat.ResourceDrop.Count; i++)
+                    {
+                        xmlWriter.WriteStartElement("resourcedrop");
+                        xmlWriter.WriteStartAttribute("name");
+                        xmlWriter.WriteString(Stat.ResourceDrop[i].Name);
+                        xmlWriter.WriteEndAttribute();
+                        xmlWriter.WriteStartAttribute("kg");
+                        xmlWriter.WriteValue(Stat.ResourceDrop[i].Kg);
+                        xmlWriter.WriteEndAttribute();
                         xmlWriter.WriteEndElement();
                     }
 
@@ -243,6 +261,24 @@ namespace ANClient.MyProfile
                     xmlWriter.WriteEndAttribute();
                     xmlWriter.WriteStartAttribute("axes");
                     xmlWriter.WriteString(AutoLumberjackAxesCsv ?? string.Empty);
+                    xmlWriter.WriteEndAttribute();
+                    xmlWriter.WriteEndElement();
+
+                    xmlWriter.WriteStartElement("automine");
+                    xmlWriter.WriteStartAttribute("enabled");
+                    xmlWriter.WriteValue(AutoMine);
+                    xmlWriter.WriteEndAttribute();
+                    xmlWriter.WriteStartAttribute("chatreport");
+                    xmlWriter.WriteValue(AutoMineChatReport);
+                    xmlWriter.WriteEndAttribute();
+                    xmlWriter.WriteStartAttribute("stopempty");
+                    xmlWriter.WriteValue(AutoMineStopOnEmpty);
+                    xmlWriter.WriteEndAttribute();
+                    xmlWriter.WriteStartAttribute("pickaxes");
+                    xmlWriter.WriteString(AutoMinePickaxesCsv ?? string.Empty);
+                    xmlWriter.WriteEndAttribute();
+                    xmlWriter.WriteStartAttribute("torches");
+                    xmlWriter.WriteString(AutoMineTorchesCsv ?? string.Empty);
                     xmlWriter.WriteEndAttribute();
                     xmlWriter.WriteEndElement();
 

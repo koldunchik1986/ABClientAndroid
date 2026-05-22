@@ -15,8 +15,10 @@ namespace ANClient.ANForms
                 }
 
                 AppVars.AdvArray = null;
+                AppVars.DoAutoMine = AppVars.Profile.AutoMine;
                 buttonAutoAnswer.Checked = AppVars.Profile.DoAutoAnswer;
                 buttonSilence.Checked = !AppVars.Profile.Sound.Enabled;
+                SyncAutoCutToolbarButtons();
                 Text = AppVars.AppVersion.NickProductShortVersion;
 
                 try

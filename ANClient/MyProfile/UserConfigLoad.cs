@@ -179,6 +179,7 @@ namespace ANClient.MyProfile
                     Stat.XP = (xmlReader["xp"] == null) ? 0 : Convert.ToInt64(xmlReader["xp"]);
                     Stat.NV = (xmlReader["nv"] == null) ? 0 : Convert.ToInt32(xmlReader["nv"]);
                     Stat.FishNV = (xmlReader["fishnv"] == null) ? 0 : Convert.ToInt32(xmlReader["fishnv"]);
+                    Stat.ResourceKg = (xmlReader["resourcekg"] == null) ? 0d : Convert.ToDouble(xmlReader["resourcekg"], CultureInfo.InvariantCulture);
                     break;
 
                 case "itemdrop":
@@ -188,6 +189,18 @@ namespace ANClient.MyProfile
                                            Count = (xmlReader["count"] == null) ? 1 : Convert.ToInt32(xmlReader["count"])
                                        };
                     Stat.ItemDrop.Add(itemdrop);
+                    break;
+
+                case "resourcedrop":
+                    var resourcedrop = new TypeResourceDrop
+                                           {
+                                               Name = xmlReader["name"] ?? string.Empty,
+                                               Kg = (xmlReader["kg"] == null) ? 0d : Convert.ToDouble(xmlReader["kg"], CultureInfo.InvariantCulture)
+                                           };
+                    if (!string.IsNullOrEmpty(resourcedrop.Name) && resourcedrop.Kg > 0d)
+                    {
+                        Stat.ResourceDrop.Add(resourcedrop);
+                    }
                     break;
 
                 case "splitter":
@@ -241,6 +254,10 @@ namespace ANClient.MyProfile
 
                 case "autolumberjack":
                     LoadAutoLumberjackSettings(xmlReader);
+                    break;
+
+                case "automine":
+                    LoadAutoMineSettings(xmlReader);
                     break;
 
                 case "showperformance":
@@ -1369,6 +1386,35 @@ namespace ANClient.MyProfile
             if (xmlReader["axes"] != null)
             {
                 AutoLumberjackAxesCsv = xmlReader["axes"];
+            }
+        }
+
+        private void LoadAutoMineSettings(XmlReader xmlReader)
+        {
+            bool boolValue;
+            if (bool.TryParse(xmlReader["enabled"], out boolValue))
+            {
+                AutoMine = boolValue;
+            }
+
+            if (bool.TryParse(xmlReader["chatreport"], out boolValue))
+            {
+                AutoMineChatReport = boolValue;
+            }
+
+            if (bool.TryParse(xmlReader["stopempty"], out boolValue))
+            {
+                AutoMineStopOnEmpty = boolValue;
+            }
+
+            if (xmlReader["pickaxes"] != null)
+            {
+                AutoMinePickaxesCsv = xmlReader["pickaxes"];
+            }
+
+            if (xmlReader["torches"] != null)
+            {
+                AutoMineTorchesCsv = xmlReader["torches"];
             }
         }
 

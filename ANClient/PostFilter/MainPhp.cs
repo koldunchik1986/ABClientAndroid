@@ -862,6 +862,13 @@ namespace ANClient.PostFilter
                 }
             }
 
+            var autoMineHtml = MainPhpAutoMine(address, html);
+            if (!string.IsNullOrEmpty(autoMineHtml))
+            {
+                html = autoMineHtml;
+                goto end;
+            }
+
             html = html.Replace(AppConsts.HtmlCounters, string.Empty);
 
             if (html.IndexOf(

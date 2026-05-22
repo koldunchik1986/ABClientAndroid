@@ -26,6 +26,7 @@ namespace ANClient.ANForms
         private static readonly ReaderWriterLock LockBaloon = new ReaderWriterLock();
         private FormWindowState _prevWindowState = FormWindowState.Normal;
         private ToolStripButton buttonAutoLumberjack;
+        private ToolStripButton buttonAutoMine;
         private ToolStripMenuItem miFastTopi;
         private ToolStripMenuItem miClanKazna;
 
@@ -39,6 +40,7 @@ namespace ANClient.ANForms
             InitializeComponent();
             InitializeContactsExtensions();
             InitializeAutoLumberjackToolbarButton();
+            InitializeAutoMineToolbarButton();
             InitForm();
             InitializeToolsSettingsMenu();
             InitializeTurotorTopiMenu();
@@ -238,6 +240,7 @@ namespace ANClient.ANForms
         {
             AddToolSettingsMenuItem("menuitemSettingsAutoCut", "Настройки Авто-Спила...", menuitemSettingsAutoCut_Click);
             AddToolSettingsMenuItem("menuitemSettingsAutoLumberjack", "Настройки Авто-Спила (деревья)...", menuitemSettingsAutoLumberjack_Click);
+            AddToolSettingsMenuItem("menuitemSettingsAutoMine", "Настройки АвтоШахтёра...", menuitemSettingsAutoMine_Click);
             AddToolSettingsMenuItem("menuitemSettingsAntiCaptcha", "Anti-Captcha...", menuitemSettingsAntiCaptcha_Click);
         }
 
@@ -266,6 +269,32 @@ namespace ANClient.ANForms
             }
         }
 
+        private void InitializeAutoMineToolbarButton()
+        {
+            if (buttonAutoMine != null)
+            {
+                return;
+            }
+
+            buttonAutoMine = new ToolStripButton();
+            buttonAutoMine.CheckOnClick = true;
+            buttonAutoMine.DisplayStyle = ToolStripItemDisplayStyle.Text;
+            buttonAutoMine.Name = "buttonAutoMine";
+            buttonAutoMine.Text = "АвтоШахтёр";
+            buttonAutoMine.ToolTipText = "Авто-Шахтёр";
+            buttonAutoMine.Click += buttonAutoMine_Click;
+            var anchor = buttonAutoLumberjack ?? buttonHerbAutoCut;
+            var insertIndex = toolbarGame.Items.IndexOf(anchor) + 1;
+            if (insertIndex <= 0 || insertIndex > toolbarGame.Items.Count)
+            {
+                toolbarGame.Items.Add(buttonAutoMine);
+            }
+            else
+            {
+                toolbarGame.Items.Insert(insertIndex, buttonAutoMine);
+            }
+        }
+
         private void AddToolSettingsMenuItem(string name, string text, EventHandler handler)
         {
             for (var i = 0; i < menuitemTools.DropDownItems.Count; i++)
@@ -280,16 +309,13 @@ namespace ANClient.ANForms
             item.Name = name;
             item.Click += handler;
             ToolStripItem anchor = menuitemFishAdvisor;
-            if (name.Equals("menuitemSettingsAntiCaptcha", StringComparison.Ordinal))
+            if (name.Equals("menuitemSettingsAutoMine", StringComparison.Ordinal))
             {
-                for (var i = 0; i < menuitemTools.DropDownItems.Count; i++)
-                {
-                    if (menuitemTools.DropDownItems[i].Name.Equals("menuitemSettingsAutoLumberjack", StringComparison.Ordinal))
-                    {
-                        anchor = menuitemTools.DropDownItems[i];
-                        break;
-                    }
-                }
+                anchor = FindToolSettingsMenuItem("menuitemSettingsAutoLumberjack") ?? FindToolSettingsMenuItem("menuitemSettingsAutoCut") ?? menuitemFishAdvisor;
+            }
+            else if (name.Equals("menuitemSettingsAntiCaptcha", StringComparison.Ordinal))
+            {
+                anchor = FindToolSettingsMenuItem("menuitemSettingsAutoMine") ?? FindToolSettingsMenuItem("menuitemSettingsAutoLumberjack") ?? menuitemFishAdvisor;
             }
 
             var insertIndex = menuitemTools.DropDownItems.IndexOf(anchor) + 1;
@@ -299,6 +325,19 @@ namespace ANClient.ANForms
             }
 
             menuitemTools.DropDownItems.Insert(insertIndex, item);
+        }
+
+        private ToolStripItem FindToolSettingsMenuItem(string name)
+        {
+            for (var i = 0; i < menuitemTools.DropDownItems.Count; i++)
+            {
+                if (menuitemTools.DropDownItems[i].Name.Equals(name, StringComparison.Ordinal))
+                {
+                    return menuitemTools.DropDownItems[i];
+                }
+            }
+
+            return null;
         }
 
         private void InitializeTurotorTopiMenu()
@@ -558,6 +597,12 @@ namespace ANClient.ANForms
             ShowAutoCutSettings(AutoCutMode.Tree);
         }
 
+        private void menuitemSettingsAutoMine_Click(object sender, EventArgs e)
+        {
+            SettingsGeneral();
+            SyncAutoCutToolbarButtons();
+        }
+
         private void ShowAutoCutSettings(AutoCutMode initialMode)
         {
             using (var formSettingsAutoCut = new FormSettingsAutoCut(initialMode))
@@ -574,6 +619,32 @@ namespace ANClient.ANForms
             if (buttonAutoLumberjack != null)
             {
                 buttonAutoLumberjack.Checked = AppVars.DoAutoLumberjack;
+            }
+
+            if (buttonAutoMine != null)
+            {
+                buttonAutoMine.Checked = AppVars.DoAutoMine;
+            }
+        }
+
+        internal void UpdateAutoMineOff()
+        {
+            if (InvokeRequired)
+            {
+                try
+                {
+                    BeginInvoke((MethodInvoker)UpdateAutoMineOff);
+                }
+                catch (InvalidOperationException)
+                {
+                }
+
+                return;
+            }
+
+            if (buttonAutoMine != null)
+            {
+                buttonAutoMine.Checked = false;
             }
         }
 
@@ -1133,6 +1204,7 @@ namespace ANClient.ANForms
             if (AppVars.DoHerbAutoCut)
             {
                 AppVars.DoAutoLumberjack = false;
+                DisableAutoMineFromConflictingToolbar();
                 if (buttonAutoLumberjack != null)
                 {
                     buttonAutoLumberjack.Checked = false;
@@ -1188,6 +1260,7 @@ namespace ANClient.ANForms
             if (AppVars.DoAutoLumberjack)
             {
                 AppVars.DoHerbAutoCut = false;
+                DisableAutoMineFromConflictingToolbar();
                 buttonHerbAutoCut.Checked = false;
             }
 
@@ -1232,6 +1305,61 @@ namespace ANClient.ANForms
 
             ReloadMainPhpInvoke();
             AutoCutRuntime.RouteNextCellIfCurrentIsNotReady("toolbar_lumberjack_enabled");
+        }
+
+        private void buttonAutoMine_Click(object sender, EventArgs e)
+        {
+            AppVars.DoAutoMine = buttonAutoMine.Checked;
+            if (AppVars.Profile != null)
+            {
+                AppVars.Profile.AutoMine = AppVars.DoAutoMine;
+                AppVars.Profile.Save();
+            }
+
+            if (!AppVars.DoAutoMine)
+            {
+                AutoMineRuntime.OnDisabled("toolbar_disabled");
+                return;
+            }
+
+            AppVars.DoHerbAutoCut = false;
+            AppVars.DoAutoLumberjack = false;
+            buttonHerbAutoCut.Checked = false;
+            if (buttonAutoLumberjack != null)
+            {
+                buttonAutoLumberjack.Checked = false;
+            }
+
+            if (AppVars.Profile != null)
+            {
+                AppVars.Profile.FishAuto = false;
+                AppVars.Profile.SkinAuto = false;
+                buttonAutoFish.Checked = false;
+                buttonAutoSkin.Checked = false;
+            }
+
+            AutoMineRuntime.OnEnabled("toolbar_enabled");
+            ReloadMainPhpInvoke();
+        }
+
+        private void DisableAutoMineFromConflictingToolbar()
+        {
+            if (!AppVars.DoAutoMine && (buttonAutoMine == null || !buttonAutoMine.Checked))
+                return;
+
+            AppVars.DoAutoMine = false;
+            if (AppVars.Profile != null)
+            {
+                AppVars.Profile.AutoMine = false;
+                AppVars.Profile.Save();
+            }
+
+            if (buttonAutoMine != null)
+            {
+                buttonAutoMine.Checked = false;
+            }
+
+            AutoMineRuntime.OnDisabled("conflicting_toolbar");
         }
 
         private void menuitemChatAdvisor_Click(object sender, EventArgs e)

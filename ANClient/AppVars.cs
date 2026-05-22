@@ -278,6 +278,24 @@ namespace ANClient
 
         internal static double AutoCutKnownMassMax { get; set; }
 
+        internal static bool DoAutoMine { get; set; }
+
+        internal static bool AutoMineCheckPickaxe { get; set; }
+
+        internal static bool AutoMineArmedPickaxe { get; set; }
+
+        internal static string AutoMinePickaxeHand { get; set; }
+
+        internal static string AutoMinePickaxeHandD { get; set; }
+
+        internal static bool AutoMineCheckTorch { get; set; }
+
+        internal static bool AutoMineTorchReady { get; set; }
+
+        internal static string AutoMineTorchHand { get; set; }
+
+        internal static string AutoMineTorchHandD { get; set; }
+
         internal static bool AutoFishCheckUd { get; set; }
 
         internal static bool AutoFishWearUd { get; set; }
@@ -496,6 +514,10 @@ namespace ANClient
             ClanKaznaComplectQueue = string.Empty;
             ClanKaznaComplectName = string.Empty;
             FastIslandTeleportIndex = -1;
+            AutoMinePickaxeHand = string.Empty;
+            AutoMinePickaxeHandD = string.Empty;
+            AutoMineTorchHand = string.Empty;
+            AutoMineTorchHandD = string.Empty;
         }
     }
 }

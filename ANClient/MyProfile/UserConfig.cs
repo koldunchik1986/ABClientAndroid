@@ -125,12 +125,14 @@ namespace ANClient.MyProfile
                 LastUpdateDay = DateTime.Now.DayOfYear,
                 Drop = string.Empty,
                 ItemDrop = new List<TypeItemDrop>(),
+                ResourceDrop = new List<TypeResourceDrop>(),
                 SavedTraffic = 0,
                 Show = 0,
                 Traffic = 0,
                 XP = 0,
                 NV = 0,
-                FishNV = 0
+                FishNV = 0,
+                ResourceKg = 0d
             };
 
             Splitter = new TSplitter
@@ -216,6 +218,11 @@ namespace ANClient.MyProfile
             AutoLumberjackByTimers = false;
             AutoLumberjackShiftSchedule = AutoCutCatalog.DefaultShiftSchedule;
             AutoLumberjackAxesCsv = string.Empty;
+            AutoMine = false;
+            AutoMineChatReport = true;
+            AutoMineStopOnEmpty = false;
+            AutoMinePickaxesCsv = string.Empty;
+            AutoMineTorchesCsv = string.Empty;
             AntiCaptchaEnabled = false;
             AntiCaptchaApiKey = string.Empty;
             AntiCaptchaPhrase = false;

@@ -107,9 +107,11 @@ namespace ANClient.ANForms
                     AppVars.Profile.Stat.SavedTraffic = 0;
                     AppVars.Profile.Stat.Drop = string.Empty;
                     AppVars.Profile.Stat.ItemDrop.Clear();
+                    AppVars.Profile.Stat.ResourceDrop.Clear();
                     AppVars.Profile.Stat.XP = 0;
                     AppVars.Profile.Stat.NV = 0;
                     AppVars.Profile.Stat.FishNV = 0;
+                    AppVars.Profile.Stat.ResourceKg = 0d;
                 }
                 finally
                 {
@@ -140,6 +142,9 @@ namespace ANClient.ANForms
                 case 4:
                     dropdownCurrentStat.Text = menuitemStatItem4.Text;
                     break;
+                case 5:
+                    dropdownCurrentStat.Text = menuitemStatItem5.Text;
+                    break;
             }
 
             if (!AppVars.Profile.Stat.Reset || (DateTime.Now.DayOfYear == AppVars.Profile.Stat.LastUpdateDay))
@@ -158,6 +163,7 @@ namespace ANClient.ANForms
             UpdateXP();
             UpdateNV();
             UpdateFishNV();
+            UpdateResourceKg();
         }
 
         private void UpdateXP()
@@ -178,6 +184,12 @@ namespace ANClient.ANForms
             UpdateStatString();
         }
 
+        private void UpdateResourceKg()
+        {
+            menuitemStatItem5.Text = string.Format("Добыто ресурсов: {0} кг", FormatResourceKg(AppVars.Profile.Stat.ResourceKg));
+            UpdateStatString();
+        }
+
         private void ShowAndClearStat()
         {
             var sb = new StringBuilder("Статистика за ");
@@ -188,9 +200,10 @@ namespace ANClient.ANForms
             sb.AppendLine(menuitemStatItem2.Text);
             sb.AppendLine(menuitemStatItem3.Text);
             sb.AppendLine(menuitemStatItem4.Text);
+            sb.AppendLine(menuitemStatItem5.Text);
             if (AppVars.Profile.Stat.ItemDrop.Count == 0)
             {
-                sb.Append("Вещей не найдено");
+                sb.AppendLine("Вещей не найдено");
             }
             else
             {
@@ -207,6 +220,21 @@ namespace ANClient.ANForms
                 }
             }
 
+            if (AppVars.Profile.Stat.ResourceDrop.Count == 0)
+            {
+                sb.AppendLine("Ресурсов не найдено");
+            }
+            else
+            {
+                sb.AppendLine("Добыты ресурсы:");
+                for (var index = 0; index < AppVars.Profile.Stat.ResourceDrop.Count; index++)
+                {
+                    sb.Append(AppVars.Profile.Stat.ResourceDrop[index].Name);
+                    sb.AppendFormat(" ({0} кг)", FormatResourceKg(AppVars.Profile.Stat.ResourceDrop[index].Kg));
+                    sb.AppendLine();
+                }
+            }
+
             using (var ff = new FormStatEdit(sb.ToString()))
             {
                 if (ff.ShowDialog() != DialogResult.OK)
@@ -217,6 +245,11 @@ namespace ANClient.ANForms
                 StatReset();
                 UpdateStat();
             }
+        }
+
+        private static string FormatResourceKg(double kg)
+        {
+            return kg.ToString("0.##", AppVars.Culture);
         }
     }
 }

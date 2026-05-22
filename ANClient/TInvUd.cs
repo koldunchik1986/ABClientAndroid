@@ -379,6 +379,53 @@ namespace ANClient
             return false;
         }
 
+        internal bool IsWearAutoMinePickaxe(string[] pickaxeNames)
+        {
+            AppVars.AutoMinePickaxeHand = string.Empty;
+            AppVars.AutoMinePickaxeHandD = string.Empty;
+            return IsWearAutoMineTool(pickaxeNames, true);
+        }
+
+        internal bool IsWearAutoMineTorch(string[] torchNames)
+        {
+            AppVars.AutoMineTorchHand = string.Empty;
+            AppVars.AutoMineTorchHandD = string.Empty;
+            return IsWearAutoMineTool(torchNames, false);
+        }
+
+        private bool IsWearAutoMineTool(string[] toolNames, bool pickaxe)
+        {
+            if (toolNames == null)
+                return false;
+
+            for (var i = 0; i < slist.Count; i++)
+            {
+                for (var j = 0; j < toolNames.Length; j++)
+                {
+                    var toolName = toolNames[j] ?? string.Empty;
+                    if (toolName.Length == 0 || slist[i].IndexOf(toolName, StringComparison.CurrentCultureIgnoreCase) < 0)
+                    {
+                        continue;
+                    }
+
+                    if (pickaxe)
+                    {
+                        AppVars.AutoMinePickaxeHand = slist[i];
+                        AppVars.AutoMinePickaxeHandD = i < dlist.Count ? dlist[i] : string.Empty;
+                    }
+                    else
+                    {
+                        AppVars.AutoMineTorchHand = slist[i];
+                        AppVars.AutoMineTorchHandD = i < dlist.Count ? dlist[i] : string.Empty;
+                    }
+
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
         internal static string[] GetAutoCutSickleNames()
         {
             return (string[]) AutoCutSickleNames.Clone();

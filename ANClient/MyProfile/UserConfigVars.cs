@@ -391,6 +391,16 @@ namespace ANClient.MyProfile
 
         internal string AutoLumberjackAxesCsv { get; set; }
 
+        internal bool AutoMine { get; set; }
+
+        internal bool AutoMineChatReport { get; set; }
+
+        internal bool AutoMineStopOnEmpty { get; set; }
+
+        internal string AutoMinePickaxesCsv { get; set; }
+
+        internal string AutoMineTorchesCsv { get; set; }
+
         /// <summary>
         /// Использовать внешний сервис anti-captcha.com перед локальным гуамодом.
         /// </summary>

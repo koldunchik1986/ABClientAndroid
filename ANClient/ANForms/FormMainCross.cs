@@ -604,6 +604,70 @@ namespace ANClient.ANForms
             UpdateFishNV();
         }
 
+        internal void UpdateMineResourceStatsSafe(Dictionary<string, double> deltaByResourceKg)
+        {
+            if (deltaByResourceKg == null || deltaByResourceKg.Count == 0)
+                return;
+
+            if (InvokeRequired)
+            {
+                BeginInvoke((MethodInvoker)(() => UpdateMineResourceStatsSafe(deltaByResourceKg)));
+                return;
+            }
+
+            try
+            {
+                LockStat.AcquireWriterLock(5000);
+                try
+                {
+                    foreach (var pair in deltaByResourceKg)
+                    {
+                        var name = (pair.Key ?? string.Empty).Trim();
+                        var kg = pair.Value;
+                        if (string.IsNullOrEmpty(name) || kg <= 0d)
+                            continue;
+
+                        AppVars.Profile.Stat.ResourceKg += kg;
+                        var added = false;
+                        var index = 0;
+                        while (index < AppVars.Profile.Stat.ResourceDrop.Count)
+                        {
+                            var result = String.Compare(name, AppVars.Profile.Stat.ResourceDrop[index].Name, StringComparison.Ordinal);
+                            if (result == 0)
+                            {
+                                AppVars.Profile.Stat.ResourceDrop[index].Kg += kg;
+                                added = true;
+                                break;
+                            }
+
+                            if (result < 0)
+                            {
+                                AppVars.Profile.Stat.ResourceDrop.Insert(index, new TypeResourceDrop { Name = name, Kg = kg });
+                                added = true;
+                                break;
+                            }
+
+                            index++;
+                        }
+
+                        if (!added)
+                        {
+                            AppVars.Profile.Stat.ResourceDrop.Add(new TypeResourceDrop { Name = name, Kg = kg });
+                        }
+                    }
+                }
+                finally
+                {
+                    LockStat.ReleaseWriterLock();
+                }
+            }
+            catch (ApplicationException)
+            {
+            }
+
+            UpdateResourceKg();
+        }
+
         internal void UpdateAccountError(string error)
         {
             AppVars.AccountError = error;

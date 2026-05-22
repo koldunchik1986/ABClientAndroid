@@ -251,6 +251,8 @@
     <Compile Include="HerbCell.cs" />
     <Compile Include="IdleManager.cs" />
     <Compile Include="InvEntry.cs" />
+    <Compile Include="Mine\AutoMineRuntime.cs" />
+    <Compile Include="Mine\MineCell.cs" />
     <Compile Include="Info\ForpostInfoController.cs" />
     <Compile Include="Info\ProfessionRatingMonitor.cs" />
     <Compile Include="Info\ProfessionRatingRepository.cs" />
@@ -570,6 +572,7 @@
     <Compile Include="PostFilter\MainPhpFast.cs" />
     <Compile Include="PostFilter\MainPhpFight.cs" />
     <Compile Include="PostFilter\MainPhpFish.cs" />
+    <Compile Include="PostFilter\MainPhpAutoMine.cs" />
     <Compile Include="PostFilter\MainPhpInsHp.cs" />
     <Compile Include="PostFilter\MainPhpInv.cs" />
     <Compile Include="PostFilter\MainPhpRaz.cs" />
@@ -580,6 +583,8 @@
     <Compile Include="PostFilter\MapActAjaxPhp.cs" />
     <Compile Include="PostFilter\MapAjax.cs" />
     <Compile Include="PostFilter\MapJs.cs" />
+    <Compile Include="PostFilter\MineAjaxPhp.cs" />
+    <Compile Include="PostFilter\MineJs.cs" />
     <Compile Include="PostFilter\NlPinfo.cs" />
     <Compile Include="PostFilter\OutpostJs.cs" />
     <Compile Include="PostFilter\RouletteAjaxPhp.cs" />
@@ -784,6 +789,10 @@
     </Content>
     <None Include="Icons\i_w28_86.gif" />
     <Content Include="map.xml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="..\map_mines.xml">
+      <Link>map_mines.xml</Link>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
     <Content Include="mapnav.js" />

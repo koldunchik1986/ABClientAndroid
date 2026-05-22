@@ -83,6 +83,7 @@ namespace ANClient.ANForms
             this.menuitemStatItem2 = new System.Windows.Forms.ToolStripMenuItem();
             this.menuitemStatItem3 = new System.Windows.Forms.ToolStripMenuItem();
             this.menuitemStatItem4 = new System.Windows.Forms.ToolStripMenuItem();
+            this.menuitemStatItem5 = new System.Windows.Forms.ToolStripMenuItem();
             this.statuslabelActivity = new System.Windows.Forms.ToolStripStatusLabel();
             this.statuslabelNumberOfThreads = new System.Windows.Forms.ToolStripStatusLabel();
             this.statuslabelLocation = new System.Windows.Forms.ToolStripStatusLabel();
@@ -441,7 +442,8 @@ namespace ANClient.ANForms
             this.menuitemStatItem1,
             this.menuitemStatItem2,
             this.menuitemStatItem3,
-            this.menuitemStatItem4});
+            this.menuitemStatItem4,
+            this.menuitemStatItem5});
             this.dropdownCurrentStat.ImageTransparentColor = System.Drawing.Color.Magenta;
             this.dropdownCurrentStat.Name = "dropdownCurrentStat";
             this.dropdownCurrentStat.Size = new System.Drawing.Size(240, 23);
@@ -494,6 +496,14 @@ namespace ANClient.ANForms
             this.menuitemStatItem4.Tag = "4";
             this.menuitemStatItem4.Text = "Заработано на рыбалке:";
             this.menuitemStatItem4.Click += new System.EventHandler(this.menuitemStatItem_Click);
+            //
+            // menuitemStatItem5
+            //
+            this.menuitemStatItem5.Name = "menuitemStatItem5";
+            this.menuitemStatItem5.Size = new System.Drawing.Size(220, 22);
+            this.menuitemStatItem5.Tag = "5";
+            this.menuitemStatItem5.Text = "Добыто ресурсов:";
+            this.menuitemStatItem5.Click += new System.EventHandler(this.menuitemStatItem_Click);
             // 
             // statuslabelActivity
             // 
@@ -2327,6 +2337,7 @@ namespace ANClient.ANForms
         private System.Windows.Forms.ToolStripButton buttonAutoAdv;
         private System.Windows.Forms.ToolStripStatusLabel statuslabelAutoAdv;
         private System.Windows.Forms.ToolStripMenuItem menuitemStatItem4;
+        private System.Windows.Forms.ToolStripMenuItem menuitemStatItem5;
         private System.Windows.Forms.ToolStripMenuItem menuitemMinimize;
         private System.Windows.Forms.ToolStripDropDownButton dropdownTimers;
         private System.Windows.Forms.ToolStripStatusLabel statuslabelClock;

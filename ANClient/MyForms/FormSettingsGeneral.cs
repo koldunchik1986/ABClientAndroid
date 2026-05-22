@@ -1,4 +1,5 @@
 using ANClient.MyProfile;
+using System.Collections.Generic;
 
 namespace ANClient.MyForms
 {
@@ -19,6 +20,11 @@ namespace ANClient.MyForms
         private readonly CheckBox checkCompassAutoAttack = new CheckBox();
         private readonly CheckBox checkCompassAutoWhisper = new CheckBox();
         private readonly NumericUpDown numCompassSearchRadius = new NumericUpDown();
+        private readonly CheckBox checkAutoMineEnabled = new CheckBox();
+        private readonly CheckBox checkAutoMineChatReport = new CheckBox();
+        private readonly CheckBox checkAutoMineStopOnEmpty = new CheckBox();
+        private readonly TextBox textAutoMinePickaxes = new TextBox();
+        private readonly TextBox textAutoMineTorches = new TextBox();
 
         internal FormSettingsGeneral()
         {
@@ -72,6 +78,8 @@ namespace ANClient.MyForms
             numCompassSearchRadius.Left = 310; numCompassSearchRadius.Top = 18;
             compassGroup.Controls.AddRange(new Control[] { checkCompassAutoEnabled, checkCompassAutoOnBattle, checkCompassAutoAttack, checkCompassAutoWhisper, lblRadius, numCompassSearchRadius });
             tabPage1.Controls.Add(compassGroup);
+
+            BuildAutoMineSettingsTab();
 
             checkBoxDoAutoDrinkBlaz.Checked = AppVars.Profile.DoAutoDrinkBlaz;
             textBoxAutoDrinkBlazTied.Text = AppVars.Profile.AutoDrinkBlazTied.ToString(CultureInfo.InvariantCulture);
@@ -289,6 +297,60 @@ namespace ANClient.MyForms
             checkCompassAutoAttack.Checked = AppVars.Profile.CompassAutoAttack;
             checkCompassAutoWhisper.Checked = AppVars.Profile.CompassAutoWhisper;
             numCompassSearchRadius.Value = Math.Max(numCompassSearchRadius.Minimum, AppVars.Profile.CompassSearchRadius);
+
+            checkAutoMineEnabled.Checked = AppVars.Profile.AutoMine;
+            checkAutoMineChatReport.Checked = AppVars.Profile.AutoMineChatReport;
+            checkAutoMineStopOnEmpty.Checked = AppVars.Profile.AutoMineStopOnEmpty;
+            textAutoMinePickaxes.Text = FormatAutoMineNames(AppVars.Profile.AutoMinePickaxesCsv, AutoMineRuntime.GetDefaultPickaxeNames());
+            textAutoMineTorches.Text = FormatAutoMineNames(AppVars.Profile.AutoMineTorchesCsv, AutoMineRuntime.GetDefaultTorchNames());
+        }
+
+        private void BuildAutoMineSettingsTab()
+        {
+            var tabPageAutoMine = new TabPage { Text = @"АвтоШахтёр", UseVisualStyleBackColor = true };
+            tabControlSettings.Controls.Add(tabPageAutoMine);
+
+            var group = new GroupBox { Text = @"Авто-Шахтёр", Dock = DockStyle.Top, Height = 245 };
+            checkAutoMineEnabled.Text = @"Включить автошахтёра";
+            checkAutoMineChatReport.Text = @"Писать отчёт о добыче в чат";
+            checkAutoMineStopOnEmpty.Text = @"Останавливать при пустой добыче";
+            checkAutoMineEnabled.Left = 10;
+            checkAutoMineEnabled.Top = 20;
+            checkAutoMineChatReport.Left = 10;
+            checkAutoMineChatReport.Top = 44;
+            checkAutoMineStopOnEmpty.Left = 10;
+            checkAutoMineStopOnEmpty.Top = 68;
+
+            var labelPickaxes = new Label { Text = @"Кирки через |:", Left = 10, Top = 104, AutoSize = true };
+            textAutoMinePickaxes.Left = 120;
+            textAutoMinePickaxes.Top = 100;
+            textAutoMinePickaxes.Width = 380;
+
+            var labelTorches = new Label { Text = @"Факелы через |:", Left = 10, Top = 136, AutoSize = true };
+            textAutoMineTorches.Left = 120;
+            textAutoMineTorches.Top = 132;
+            textAutoMineTorches.Width = 380;
+
+            var hint = new Label
+            {
+                Text = @"Пустое поле означает стандартный список из ПК-версии.",
+                Left = 10,
+                Top = 178,
+                AutoSize = true
+            };
+
+            group.Controls.AddRange(new Control[]
+            {
+                checkAutoMineEnabled,
+                checkAutoMineChatReport,
+                checkAutoMineStopOnEmpty,
+                labelPickaxes,
+                textAutoMinePickaxes,
+                labelTorches,
+                textAutoMineTorches,
+                hint
+            });
+            tabPageAutoMine.Controls.Add(group);
         }
 
         private void OnButtonOkClick(object sender, EventArgs e)
@@ -510,7 +572,42 @@ namespace ANClient.MyForms
             AppVars.Profile.CompassAutoWhisper = checkCompassAutoWhisper.Checked;
             AppVars.Profile.CompassSearchRadius = (int)numCompassSearchRadius.Value;
 
+            AppVars.Profile.AutoMine = checkAutoMineEnabled.Checked;
+            AppVars.Profile.AutoMineChatReport = checkAutoMineChatReport.Checked;
+            AppVars.Profile.AutoMineStopOnEmpty = checkAutoMineStopOnEmpty.Checked;
+            AppVars.Profile.AutoMinePickaxesCsv = NormalizeAutoMineNames(textAutoMinePickaxes.Text, AutoMineRuntime.GetDefaultPickaxeNames());
+            AppVars.Profile.AutoMineTorchesCsv = NormalizeAutoMineNames(textAutoMineTorches.Text, AutoMineRuntime.GetDefaultTorchNames());
+
             AppVars.Profile.Save();
+        }
+
+        private static string FormatAutoMineNames(string saved, string[] defaults)
+        {
+            return string.IsNullOrEmpty(saved) ? string.Join("|", defaults) : saved;
+        }
+
+        private static string NormalizeAutoMineNames(string value, string[] defaults)
+        {
+            var formattedDefault = string.Join("|", defaults);
+            if (string.IsNullOrEmpty(value))
+                return string.Empty;
+
+            var parts = value.Split(new[] { '|', ';', ',', '\r', '\n', '\t' }, StringSplitOptions.RemoveEmptyEntries);
+            var result = new List<string>();
+            for (var i = 0; i < parts.Length; i++)
+            {
+                var name = parts[i].Trim();
+                if (name.Length > 0)
+                {
+                    result.Add(name);
+                }
+            }
+
+            if (result.Count == 0)
+                return string.Empty;
+
+            var joined = string.Join("|", result.ToArray());
+            return joined.Equals(formattedDefault, StringComparison.OrdinalIgnoreCase) ? string.Empty : joined;
         }
 
         private void OnLinkChatSizeLogLinkClicked(object sender, LinkLabelLinkClickedEventArgs e)

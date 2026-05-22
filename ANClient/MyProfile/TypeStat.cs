@@ -14,6 +14,8 @@ namespace ANClient.MyProfile
         internal long XP;
         internal int NV;
         internal int FishNV;
+        internal double ResourceKg;
         internal List<TypeItemDrop> ItemDrop;
+        internal List<TypeResourceDrop> ResourceDrop;
     }
 }

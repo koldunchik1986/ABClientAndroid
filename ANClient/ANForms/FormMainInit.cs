@@ -113,6 +113,17 @@ namespace ANClient.ANForms
                 buttonAutoLumberjack.Checked = AppVars.DoAutoLumberjack;
             }
 
+            AppVars.DoAutoMine = AppVars.Profile.AutoMine;
+            if (buttonAutoMine != null)
+            {
+                buttonAutoMine.Checked = AppVars.DoAutoMine;
+            }
+
+            if (AppVars.DoAutoMine)
+            {
+                AutoMineRuntime.OnEnabled("profile_restore");
+            }
+
             buttonSilence.Checked = !AppVars.Profile.Sound.Enabled;
             statuslabelTorgAdv.Enabled = AppVars.Profile.TorgActive;
             if (AppVars.Profile.SelectedRightPanel < tabControlRight.TabCount)
