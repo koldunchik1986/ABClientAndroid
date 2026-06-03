@@ -68,8 +68,29 @@ namespace ANClient.PostFilter
                 return true;
             }
 
+            if (MainPhpIsAutoCutGarbageCleanup() &&
+                address.IndexOf("wca=60", StringComparison.OrdinalIgnoreCase) >= 0)
+            {
+                return true;
+            }
+
             return address.IndexOf("im=0", StringComparison.OrdinalIgnoreCase) >= 0 &&
                    address.IndexOf("wca=", StringComparison.OrdinalIgnoreCase) < 0;
+        }
+
+        private static bool MainPhpIsAutoCutGarbageCleanup()
+        {
+            return AppVars.AutoCutCleanupPending &&
+                   !string.IsNullOrEmpty(AppVars.BulkDropThing) &&
+                   AppVars.BulkDropThing.Equals(AutoCutRuntime.GarbageItemName, StringComparison.CurrentCultureIgnoreCase);
+        }
+
+        private static bool MainPhpShouldSwitchToGarbageInventoryCategory(string address)
+        {
+            return AutoCutRuntime.IsAutoCutLikeEnabled() &&
+                   MainPhpIsAutoCutGarbageCleanup() &&
+                   (string.IsNullOrEmpty(address) ||
+                    address.IndexOf("wca=60", StringComparison.OrdinalIgnoreCase) < 0);
         }
 
         private static bool MainPhpHasAutoCutDropPending()
@@ -844,6 +865,13 @@ namespace ANClient.PostFilter
             if (html.IndexOf("/invent/0.gif", StringComparison.OrdinalIgnoreCase) != -1)
             {
                 AppLog.d("MainPhp", "MainPhp: inventory page detected");
+                if (MainPhpShouldSwitchToGarbageInventoryCategory(address))
+                {
+                    AppLog.i("auto_cut_trace", "MainPhp", "garbage cleanup switch to quest inventory category: address=" + (address ?? string.Empty));
+                    html = BuildRedirect(AutoCutRuntime.GetModeTitle(AutoCutRuntime.GetActiveMode()) + ": cleanup категории хлама", "main.php?wca=60");
+                    goto end;
+                }
+
                 if (MainPhpHasAutoCutDropPending() &&
                     AutoCutRuntime.IsAutoCutLikeEnabled() &&
                     !MainPhpIsAutoCutCleanupInventoryAddress(address))
@@ -2129,8 +2157,18 @@ namespace ANClient.PostFilter
             if (AppVars.FastNeed)
             {
                 AppLog.d("MainPhp", "MainPhp: FastNeed=true, FastId=" + AppVars.FastId);
-                if (DateTime.Now > AppVars.NeverTimer)
+                var now = DateTime.Now;
+                var neverTimerReady = now > AppVars.NeverTimer;
+                var isFastTeleport = string.Equals(AppVars.FastId, "i_w28_22.gif", StringComparison.OrdinalIgnoreCase);
+                if (neverTimerReady || isFastTeleport)
                 {
+                    if (!neverTimerReady && isFastTeleport)
+                    {
+                        var waitMs = Math.Max(0, (int)AppVars.NeverTimer.Subtract(now).TotalMilliseconds);
+                        AppLog.d("MainPhp", "FastTeleport: processing outside NeverTimer, waitMs=" + waitMs +
+                                            ", address=" + address);
+                    }
+
                     string invHtml, fastHtml;
 
                     // Определяем, на что мы должны переключиться
@@ -2155,6 +2193,11 @@ namespace ANClient.PostFilter
                             invHtml = MainPhpFindInv(html, "&im=0&wca=28");
                             if (!string.IsNullOrEmpty(invHtml))
                             {
+                                if (isFastTeleport)
+                                {
+                                    AppLog.d("MainPhp", "FastTeleport: inventory redirect prepared outside main reload");
+                                }
+
                                 html = invHtml;
                                 goto end;
                             }
@@ -2179,7 +2222,19 @@ namespace ANClient.PostFilter
                                 else
                                 {
                                     if (AppVars.MainForm != null && AppVars.FastNick != null)
-                                        AppVars.MainForm.WriteChatMsgSafe($"Используем свиток на <b>{AppVars.FastNick}</b>");
+                                    {
+                                        if (string.Equals(AppVars.FastId, "i_w28_22.gif", StringComparison.OrdinalIgnoreCase))
+                                        {
+                                            var teleportDestination = AppVars.ResolveFastTeleportDestinationName(
+                                                AppVars.FastTeleportDestinationId,
+                                                AppVars.FastTeleportDestinationName);
+                                            AppVars.MainForm.WriteChatMsgSafe($"Телепорт: отправлен запрос в <b>{teleportDestination}</b>");
+                                        }
+                                        else
+                                        {
+                                            AppVars.MainForm.WriteChatMsgSafe($"Используем свиток на <b>{AppVars.FastNick}</b>");
+                                        }
+                                    }
 
                                     AppVars.FastCount--;
                                     if (AppVars.FastCount == 0)
@@ -2376,6 +2431,12 @@ namespace ANClient.PostFilter
                         default:
                             throw new NotImplementedException($"AppVars.FastId = {AppVars.FastId}");
                     }
+                }
+                else
+                {
+                    var waitMs = Math.Max(0, (int)AppVars.NeverTimer.Subtract(now).TotalMilliseconds);
+                    AppLog.d("MainPhp", "MainPhp: FastNeed waits NeverTimer, FastId=" + AppVars.FastId +
+                                        ", waitMs=" + waitMs);
                 }
             }
 

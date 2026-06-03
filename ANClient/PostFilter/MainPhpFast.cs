@@ -154,10 +154,20 @@ namespace ANClient.PostFilter
                     continue;
 
                 var sb = new StringBuilder();
+                var selectedTeleportDestinationId = AppVars.FastTeleportDestinationId;
+                var wtelid = selectedTeleportDestinationId >= AppVars.FastTeleportDestinationMinId &&
+                             selectedTeleportDestinationId <= AppVars.FastTeleportDestinationMaxId
+                    ? AppVars.SanitizeFastTeleportDestinationId(selectedTeleportDestinationId)
+                    : Dice.Make(12) + 1;
+                AppVars.FastTeleportDestinationId = wtelid;
+                AppVars.FastTeleportDestinationName = AppVars.ResolveFastTeleportDestinationName(wtelid, AppVars.FastTeleportDestinationName);
+                AppLog.d("MainPhp", "FastTeleport: submit prepared, wtelid=" + wtelid +
+                                    ", destinationName=" + AppVars.FastTeleportDestinationName);
+
                 sb.Append(
                     HelperErrors.Head() +
-                    "Используем телепорт");
-                sb.Append(AppVars.FastNick);
+                    "Используем телепорт: ");
+                sb.Append(AppVars.FastTeleportDestinationName);
                 sb.Append("...");
                 sb.Append("<form action=main.php method=POST name=ff>");
 
@@ -181,8 +191,6 @@ namespace ANClient.PostFilter
                 sb.Append(wsolid);
                 sb.Append(@""">");
 
-                int wtelid = Dice.Make(12) + 1;
-
                 sb.Append(@"<input name=wtelid type=hidden value=""");
                 sb.Append(wtelid);
                 sb.Append(@""">");
@@ -196,6 +204,7 @@ namespace ANClient.PostFilter
                 return sb.ToString();
             }
 
+            AppLog.w("MainPhp", "FastTeleport: w28_form for ordinary teleport not found");
             return null;
         }
 

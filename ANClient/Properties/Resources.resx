@@ -1054,4 +1054,19 @@
   <data name="i_w28_86" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Icons\i_w28_86.gif;System.Drawing.Bitmap, System.Drawing, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
+  <data name="auto_function_fish" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Icons\AutoFunctions\auto-fish.gif;System.Drawing.Bitmap, System.Drawing, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  </data>
+  <data name="auto_function_skin" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Icons\AutoFunctions\auto-skin.gif;System.Drawing.Bitmap, System.Drawing, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  </data>
+  <data name="auto_function_cut" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Icons\AutoFunctions\auto-cut.gif;System.Drawing.Bitmap, System.Drawing, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  </data>
+  <data name="auto_function_lumberjack" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Icons\AutoFunctions\auto-lumberjack.gif;System.Drawing.Bitmap, System.Drawing, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  </data>
+  <data name="auto_function_mine" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Icons\AutoFunctions\auto-mine.gif;System.Drawing.Bitmap, System.Drawing, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  </data>
 </root>

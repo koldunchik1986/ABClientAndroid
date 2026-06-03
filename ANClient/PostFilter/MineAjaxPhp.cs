@@ -27,6 +27,11 @@ namespace ANClient.PostFilter
                 return array;
 
             var shouldHandle = AppVars.DoAutoMine || AutoMineRuntime.HasPendingMineRoute() ||
+                               html.IndexOf("DIGG@", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                               html.IndexOf("Обнаружены ресурсы", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                               html.IndexOf("Добыты ресурсы", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                               html.IndexOf("Вы не нашли ни одного ресурса", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                               html.IndexOf("Вы не можете сейчас начать добычу", StringComparison.OrdinalIgnoreCase) >= 0 ||
                                html.IndexOf("вам нужен факел", StringComparison.OrdinalIgnoreCase) >= 0 ||
                                html.IndexOf("вам нужна кирка", StringComparison.OrdinalIgnoreCase) >= 0;
             if (!shouldHandle)

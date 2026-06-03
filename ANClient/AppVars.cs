@@ -412,6 +412,28 @@ namespace ANClient
         internal static bool FastNeedAbilDarkTeleport;
         internal static bool FastNeedAbilDarkFog;
 
+        internal const int FastTeleportDestinationMinId = 1;
+        internal const int FastTeleportDestinationMaxId = 12;
+
+        internal static readonly string[] FastTeleportDestinationNames =
+        {
+            "Город Форпост",
+            "Город Октал",
+            "Деревня Подгорная",
+            "Окрестность Фейдана, Телепорт",
+            "Окрестность Октала, Телепорт",
+            "Окрестности Эринграда, Телепорт",
+            "Окрестность Форпоста, Телепорт",
+            "Пустыня Самум-Бейт, Телепорт",
+            "Северский Тракт, Телепорт",
+            "Восточные Леса, Телепорт",
+            "Окрестности Кенджии, Телепорт",
+            "Ущелье Эль-Тэр, Телепорт"
+        };
+
+        internal static int FastTeleportDestinationId;
+        internal static string FastTeleportDestinationName;
+
         internal static bool FastWaitEndOfBoiActive;
         internal static bool FastWaitEndOfBoiCancel;
 
@@ -431,6 +453,27 @@ namespace ANClient
         internal static string ClanKaznaComplectQueue;
         internal static string ClanKaznaComplectName;
         internal static int FastIslandTeleportIndex;
+
+        internal static int SanitizeFastTeleportDestinationId(int destinationId)
+        {
+            if (destinationId < FastTeleportDestinationMinId || destinationId > FastTeleportDestinationMaxId)
+            {
+                return FastTeleportDestinationMinId;
+            }
+
+            return destinationId;
+        }
+
+        internal static string ResolveFastTeleportDestinationName(int destinationId, string fallbackName)
+        {
+            var index = destinationId - FastTeleportDestinationMinId;
+            if (index >= 0 && index < FastTeleportDestinationNames.Length)
+            {
+                return FastTeleportDestinationNames[index];
+            }
+
+            return string.IsNullOrEmpty(fallbackName) ? FastTeleportDestinationNames[0] : fallbackName.Trim();
+        }
 
         internal static string LocationName { get; set; }
 
@@ -513,6 +556,8 @@ namespace ANClient
             NextCheckNoConnection = DateTime.Now.AddMinutes(5);
             ClanKaznaComplectQueue = string.Empty;
             ClanKaznaComplectName = string.Empty;
+            FastTeleportDestinationId = 0;
+            FastTeleportDestinationName = string.Empty;
             FastIslandTeleportIndex = -1;
             AutoMinePickaxeHand = string.Empty;
             AutoMinePickaxeHandD = string.Empty;

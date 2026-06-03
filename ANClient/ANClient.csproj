@@ -1135,6 +1135,11 @@
     <None Include="Icons\16x16-close.png" />
     <None Include="Icons\16x16-camera.png" />
     <None Include="Icons\16x16-back.png" />
+    <None Include="Icons\AutoFunctions\auto-cut.gif" />
+    <None Include="Icons\AutoFunctions\auto-fish.gif" />
+    <None Include="Icons\AutoFunctions\auto-lumberjack.gif" />
+    <None Include="Icons\AutoFunctions\auto-mine.gif" />
+    <None Include="Icons\AutoFunctions\auto-skin.gif" />
   </ItemGroup>
   <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />

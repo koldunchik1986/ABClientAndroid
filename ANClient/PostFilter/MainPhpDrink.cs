@@ -2,6 +2,7 @@ namespace ANClient.PostFilter
 {
     using System;
     using System.Globalization;
+    using System.Text.RegularExpressions;
     using MyHelpers;
 
     internal static partial class Filter
@@ -82,6 +83,32 @@ namespace ANClient.PostFilter
             }
 
             return null;            
+        }
+
+        private static string MainPhpFindInvMenuArray(string html, string filter)
+        {
+            if (string.IsNullOrEmpty(html))
+            {
+                return null;
+            }
+
+            var match = Regex.Match(
+                html,
+                "\\[\\s*['\\\"]inv['\\\"]\\s*,\\s*['\\\"]Инвентарь['\\\"]\\s*,\\s*['\\\"]([^'\\\"]+)['\\\"]",
+                RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+            if (!match.Success)
+            {
+                return null;
+            }
+
+            var vcode = match.Groups[1].Value.Trim();
+            if (string.IsNullOrEmpty(vcode))
+            {
+                return null;
+            }
+
+            var link = string.Format(CultureInfo.InvariantCulture, "main.php?get_id=56&act=10&go=inv&vcode={0}{1}", vcode, filter);
+            return BuildRedirect("Переключение на инвентарь", link);
         }
 
         private static string MainPhpFindInv(string html, string filter)
@@ -178,6 +205,12 @@ namespace ANClient.PostFilter
 
                 var alink = string.Format(CultureInfo.InvariantCulture, "main.php?get_id=56&act=10&go=inv&vcode={0}{1}", avcode, filter);
                 return BuildRedirect("Переключение на инвентарь", alink);
+            }
+
+            var menuArrayHtml = MainPhpFindInvMenuArray(html, filter);
+            if (!string.IsNullOrEmpty(menuArrayHtml))
+            {
+                return menuArrayHtml;
             }
 
             if (html.IndexOf("Инвентарь", StringComparison.OrdinalIgnoreCase) == -1)

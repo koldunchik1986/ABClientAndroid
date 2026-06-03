@@ -40,6 +40,8 @@ namespace ANClient.ANForms
             AppVars.FastNick = null;
             AppVars.FastId = null;
             AppVars.FastCount = 0;
+            AppVars.FastTeleportDestinationId = 0;
+            AppVars.FastTeleportDestinationName = string.Empty;
             AppVars.FastIslandTeleportIndex = -1;
             AppVars.FastNeedAbilDarkTeleport = false;
             AppVars.FastNeedAbilDarkFog = false;

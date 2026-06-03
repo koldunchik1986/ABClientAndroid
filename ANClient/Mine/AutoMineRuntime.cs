@@ -306,6 +306,12 @@ namespace ANClient
                 return;
             }
 
+            if (lower.IndexOf("вы не можете сейчас начать добычу", StringComparison.OrdinalIgnoreCase) >= 0)
+            {
+                AppLog.w(TraceChain, "AutoMineRuntime", "server rejected dig during cooldown: address=" + Safe(address));
+                return;
+            }
+
             if (lower.IndexOf("вы не нашли ни одного ресурса", StringComparison.OrdinalIgnoreCase) >= 0 && AppVars.Profile != null && AppVars.Profile.AutoMineStopOnEmpty)
             {
                 DisableAutoMine("Пустая добыча. АвтоШахтёр выключен.");

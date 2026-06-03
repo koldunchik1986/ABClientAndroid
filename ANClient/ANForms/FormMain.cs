@@ -25,6 +25,7 @@ namespace ANClient.ANForms
         internal static readonly ReaderWriterLock LockOb = new ReaderWriterLock();
         private static readonly ReaderWriterLock LockBaloon = new ReaderWriterLock();
         private FormWindowState _prevWindowState = FormWindowState.Normal;
+        private ToolStripDropDownButton buttonFastTeleport;
         private ToolStripButton buttonAutoLumberjack;
         private ToolStripButton buttonAutoMine;
         private ToolStripMenuItem miFastTopi;
@@ -41,6 +42,8 @@ namespace ANClient.ANForms
             InitializeContactsExtensions();
             InitializeAutoLumberjackToolbarButton();
             InitializeAutoMineToolbarButton();
+            InitializeFastTeleportToolbarButton();
+            InitializeAutoFunctionToolbarIcons();
             InitForm();
             InitializeToolsSettingsMenu();
             InitializeTurotorTopiMenu();
@@ -242,6 +245,140 @@ namespace ANClient.ANForms
             AddToolSettingsMenuItem("menuitemSettingsAutoLumberjack", "Настройки Авто-Спила (деревья)...", menuitemSettingsAutoLumberjack_Click);
             AddToolSettingsMenuItem("menuitemSettingsAutoMine", "Настройки АвтоШахтёра...", menuitemSettingsAutoMine_Click);
             AddToolSettingsMenuItem("menuitemSettingsAntiCaptcha", "Anti-Captcha...", menuitemSettingsAntiCaptcha_Click);
+        }
+
+        private void InitializeAutoFunctionToolbarIcons()
+        {
+            ApplyAutoFunctionToolbarIcon(buttonAutoFish, "auto_function_fish", "Авторыбалка");
+            ApplyAutoFunctionToolbarIcon(buttonAutoSkin, "auto_function_skin", "Авторазделка");
+            ApplyAutoFunctionToolbarIcon(buttonHerbAutoCut, "auto_function_cut", "Авто-Травник");
+            ApplyAutoFunctionToolbarIcon(buttonAutoLumberjack, "auto_function_lumberjack", "Авто-Лесоруб");
+            ApplyAutoFunctionToolbarIcon(buttonAutoMine, "auto_function_mine", "Авто-Шахтёр");
+        }
+
+        private static void ApplyAutoFunctionToolbarIcon(ToolStripButton button, string resourceName, string tooltipText)
+        {
+            if (button == null)
+            {
+                return;
+            }
+
+            var image = Resources.ResourceManager.GetObject(resourceName) as System.Drawing.Image;
+            if (image == null)
+            {
+                button.ToolTipText = tooltipText;
+                return;
+            }
+
+            button.AutoSize = false;
+            button.DisplayStyle = ToolStripItemDisplayStyle.Image;
+            button.Image = image;
+            button.ImageScaling = ToolStripItemImageScaling.SizeToFit;
+            button.ImageTransparentColor = System.Drawing.Color.Magenta;
+            button.Size = new System.Drawing.Size(23, 25);
+            button.Text = string.Empty;
+            button.ToolTipText = tooltipText;
+        }
+
+        private void InitializeFastTeleportToolbarButton()
+        {
+            if (buttonFastTeleport != null)
+            {
+                return;
+            }
+
+            buttonFastTeleport = new ToolStripDropDownButton();
+            buttonFastTeleport.DisplayStyle = ToolStripItemDisplayStyle.Text;
+            buttonFastTeleport.Name = "buttonFastTeleport";
+            buttonFastTeleport.Text = "ТП";
+            buttonFastTeleport.ToolTipText = "Телепорт";
+            buttonFastTeleport.Enabled = miFastEnabled.Checked;
+            buttonFastTeleport.DropDownOpening += ButtonFastTeleportDropDownOpening;
+            RebuildFastTeleportDropDown();
+
+            var insertIndex = toolbarGame.Items.IndexOf(buttonAutoFish);
+            if (insertIndex < 0 || insertIndex > toolbarGame.Items.Count)
+            {
+                toolbarGame.Items.Add(buttonFastTeleport);
+            }
+            else
+            {
+                toolbarGame.Items.Insert(insertIndex, buttonFastTeleport);
+            }
+        }
+
+        private void ButtonFastTeleportDropDownOpening(object sender, EventArgs e)
+        {
+            RefreshFastTeleportDropDownChecks();
+        }
+
+        private void RebuildFastTeleportDropDown()
+        {
+            if (buttonFastTeleport == null)
+            {
+                return;
+            }
+
+            buttonFastTeleport.DropDownItems.Clear();
+            for (var index = 0; index < AppVars.FastTeleportDestinationNames.Length; index++)
+            {
+                var destinationId = index + AppVars.FastTeleportDestinationMinId;
+                var item = new ToolStripMenuItem(AppVars.FastTeleportDestinationNames[index]);
+                item.Tag = destinationId;
+                item.Click += FastTeleportDestinationClick;
+                buttonFastTeleport.DropDownItems.Add(item);
+            }
+
+            RefreshFastTeleportDropDownChecks();
+        }
+
+        private void RefreshFastTeleportDropDownChecks()
+        {
+            if (buttonFastTeleport == null)
+            {
+                return;
+            }
+
+            for (var index = 0; index < buttonFastTeleport.DropDownItems.Count; index++)
+            {
+                var item = buttonFastTeleport.DropDownItems[index] as ToolStripMenuItem;
+                if (item == null || !(item.Tag is int))
+                {
+                    continue;
+                }
+
+                item.Checked = (int)item.Tag == AppVars.FastTeleportDestinationId;
+            }
+        }
+
+        private void FastTeleportDestinationClick(object sender, EventArgs e)
+        {
+            var item = sender as ToolStripMenuItem;
+            if (item == null || !(item.Tag is int))
+            {
+                return;
+            }
+
+            StartFastTeleportToDestination((int)item.Tag);
+        }
+
+        private void StartFastTeleportToDestination(int destinationId)
+        {
+            var safeDestinationId = AppVars.SanitizeFastTeleportDestinationId(destinationId);
+            var destinationName = AppVars.ResolveFastTeleportDestinationName(safeDestinationId, null);
+            AppVars.FastTeleportDestinationId = safeDestinationId;
+            AppVars.FastTeleportDestinationName = destinationName;
+            WriteChatMsgSafe("Заказано применение телепорта: " + destinationName);
+            FastStartSafe("i_w28_22.gif", destinationName);
+            OpenFastTeleportScrollsFrame("toolbar");
+        }
+
+        private void OpenFastTeleportScrollsFrame(string source)
+        {
+            AppLog.i("MainPhp", "FastTeleport: open scroll inventory outside NeverTimer, source=" + source +
+                                ", destinationId=" + AppVars.FastTeleportDestinationId +
+                                ", destinationName=" + AppVars.FastTeleportDestinationName);
+            SetMainTopInvoke("http://www.neverlands.ru/main.php?im=0&wca=28");
         }
 
         private void InitializeAutoLumberjackToolbarButton()
@@ -1392,6 +1529,8 @@ namespace ANClient.ANForms
         private void MiFastEnabledChanged()
         {
             miFastTeleport.Enabled = miFastEnabled.Checked;
+            if (buttonFastTeleport != null)
+                buttonFastTeleport.Enabled = miFastEnabled.Checked;
             miFastElxVosst.Enabled = miFastEnabled.Checked;
             miFastF3.Enabled = miFastEnabled.Checked;
             miFastF4.Enabled = miFastEnabled.Checked;
@@ -1504,9 +1643,11 @@ namespace ANClient.ANForms
 
         private void MiFastTeleportClick(object sender, EventArgs e)
         {
+            AppVars.FastTeleportDestinationId = 0;
+            AppVars.FastTeleportDestinationName = string.Empty;
             WriteChatMsgSafe("Заказано применение телепорта в случайную локацию");
             AppVars.MainForm.FastStartSafe("i_w28_22.gif", AppVars.Profile.UserNick);
-            ReloadMainFrame();
+            OpenFastTeleportScrollsFrame("menu_random");
         }
 
         private void MiQuickCancelClick(object sender, EventArgs e)
