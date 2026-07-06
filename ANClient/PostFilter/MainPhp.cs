@@ -105,6 +105,16 @@ namespace ANClient.PostFilter
                 return string.Empty;
             }
 
+            var now = DateTime.Now;
+            if (now <= AppVars.NeverTimer)
+            {
+                var waitMs = Math.Max(0, (int)AppVars.NeverTimer.Subtract(now).TotalMilliseconds);
+                AppLog.d("auto_cut_trace", "MainPhp", "cleanup waits NeverTimer before inventory redirect: source=" + source +
+                    ", waitMs=" + waitMs.ToString(CultureInfo.InvariantCulture));
+                AutoCutRuntime.ScheduleLookRetry("cleanup_wait:" + source);
+                return string.Empty;
+            }
+
             var cleanupInvHtml = MainPhpFindInv(html, "&im=0");
             if (!string.IsNullOrEmpty(cleanupInvHtml))
             {
@@ -712,9 +722,16 @@ namespace ANClient.PostFilter
                 catch (InvalidOperationException)
                 {
                 }                
-            }           
+            }
 
             UnderAttack.Parse(html);
+
+            if (html.IndexOf("magic_slots();", StringComparison.OrdinalIgnoreCase) != -1)
+            {
+                AppLog.i("MainPhp", "MainPhp: FIGHT PAGE DETECTED (magic_slots), priority before automation");
+                html = MainPhpFight(html);
+                goto end;
+            }
 
             if (AppVars.ClanKaznaOpenRequested ||
                 !string.IsNullOrEmpty(AppVars.ClanKaznaComplectQueue) ||
@@ -890,6 +907,18 @@ namespace ANClient.PostFilter
                 }
             }
 
+            var tiedParsedBeforeAutoMine = false;
+            if (AutoMineRuntime.HasPendingMineRoute())
+            {
+                tiedParsedBeforeAutoMine = MainPhpTied(html);
+                var routeAutoDrinkBlazHtml = MainPhpTryAutoDrinkBlaz(address, html);
+                if (!string.IsNullOrEmpty(routeAutoDrinkBlazHtml))
+                {
+                    html = routeAutoDrinkBlazHtml;
+                    goto end;
+                }
+            }
+
             var autoMineHtml = MainPhpAutoMine(address, html);
             if (!string.IsNullOrEmpty(autoMineHtml))
             {
@@ -1052,13 +1081,6 @@ namespace ANClient.PostFilter
                 }
             }
 
-            if (html.IndexOf("magic_slots();", StringComparison.OrdinalIgnoreCase) != -1)
-            {
-                AppLog.i("MainPhp", "MainPhp: FIGHT PAGE DETECTED (magic_slots)");
-                html = MainPhpFight(html);
-                goto end;
-            }
-
             //if (AppVars.Profile.DoStopOnDig && (Dice.Make(10) == 0))
             if (AppVars.Profile.DoStopOnDig && (html.IndexOf("[\"dig\",\"Копать\",", StringComparison.Ordinal) != -1))
             {
@@ -1119,7 +1141,10 @@ namespace ANClient.PostFilter
                 }
             }
 
-            MainPhpTied(html);
+            if (!tiedParsedBeforeAutoMine)
+            {
+                MainPhpTied(html);
+            }
 
             // Надо ли лечить?
             if (AppVars.CureNeed && (DateTime.Now > AppVars.NeverTimer))
@@ -1275,99 +1300,11 @@ namespace ANClient.PostFilter
             }
 
             // Нужно ли выпить блаж (авто зелик/элик) ?
-
-            if (AutoCutRuntime.IsAutoCutLikeEnabled() && AppVars.AutoCutCleanupPending)
+            var autoDrinkBlazHtml = MainPhpTryAutoDrinkBlaz(address, html);
+            if (!string.IsNullOrEmpty(autoDrinkBlazHtml))
             {
-                var cleanupHtml = MainPhpAutoCutCleanupRedirect(
-                    address,
-                    html,
-                    AutoCutRuntime.GetModeTitle(AutoCutRuntime.GetActiveMode()),
-                    "before_auto_drink");
-                if (!string.IsNullOrEmpty(cleanupHtml))
-                {
-                    html = cleanupHtml;
-                    goto end;
-                }
-            }
-
-            if ((AppVars.Profile.DoAutoDrinkBlaz) && (AppVars.Tied >= AppVars.Profile.AutoDrinkBlazTied) && (DateTime.Now > AppVars.NeverTimer))
-            {
-                AppLog.d("MainPhp", "MainPhp: auto-drink blaz triggered, tied=" + AppVars.Tied + " >= " + AppVars.Profile.AutoDrinkBlazTied);
-                var preferPotion = AppVars.Profile.AutoDrinkBlazOrder == 0;
-                if (!MainPhpIsInv(html))
-                {
-                    AppVars.DrinkBlazPotOrElixirFirst = false;
-                    var invHtml = MainPhpFindInv(html, preferPotion ? "&im=0&wca=27" : "&im=6");
-                    if (!string.IsNullOrEmpty(invHtml))
-                    {
-                        html = invHtml;
-                        goto end;
-                    }
-                }
-
-                if (MainPhpIsInv(html))
-                {
-                    var cureHtml = MainPhpDrinkBlazPotOrElixir(html);
-                    if (string.IsNullOrEmpty(cureHtml))
-                    {
-                        var atPotionPage = MainPhpIsBlazPotionAddress(address);
-                        var atElixirPage = MainPhpIsBlazElixirAddress(address);
-                        AppLog.d("MainPhp", "MainPhp: auto-drink blaz item not found, address=" + address +
-                            ", firstChecked=" + AppVars.DrinkBlazPotOrElixirFirst +
-                            ", atPotion=" + atPotionPage + ", atElixir=" + atElixirPage);
-
-                        if (preferPotion)
-                        {
-                            if (atPotionPage)
-                            {
-                                AppVars.DrinkBlazPotOrElixirFirst = true;
-                                html = BuildRedirect("Переключение на эликсиры", "main.php?im=6");
-                                goto end;
-                            }
-
-                            if (!atElixirPage || !AppVars.DrinkBlazPotOrElixirFirst)
-                            {
-                                AppVars.DrinkBlazPotOrElixirFirst = false;
-                                html = BuildRedirect("Переключение на зелья", "main.php?im=0&wca=27");
-                                goto end;
-                            }
-                        }
-                        else
-                        {
-                            if (atElixirPage)
-                            {
-                                AppVars.DrinkBlazPotOrElixirFirst = true;
-                                html = BuildRedirect("Переключение на зелья", "main.php?im=0&wca=27");
-                                goto end;
-                            }
-
-                            if (!atPotionPage || !AppVars.DrinkBlazPotOrElixirFirst)
-                            {
-                                AppVars.DrinkBlazPotOrElixirFirst = false;
-                                html = BuildRedirect("Переключение на эликсиры", "main.php?im=6");
-                                goto end;
-                            }
-                        }
-
-                        AppVars.DrinkBlazPotOrElixirFirst = false;
-                        AppVars.MainForm.WriteChatMsgSafe("Ни зелье ни эликсир блаженства не найдены. Автопитье блажа отключено. Не забудьте включить его обратно.");
-                        AppVars.Profile.DoAutoDrinkBlaz = false;
-                    }
-                    else
-                    {
-                        AppVars.DrinkBlazPotOrElixirFirst = false;
-                        AppVars.Tied = 0;
-                        AppVars.SwitchToFlora = true;
-                        AppLog.i("MainPhp", "MainPhp: auto-drink blaz submitted, return to flora scheduled");
-                        if (AutoCutRuntime.IsAutoCutLikeEnabled())
-                        {
-                            AppLog.i("auto_cut_trace", "MainPhp", "auto-drink blaz submitted: return to flora before auto look");
-                        }
-
-                        html = cureHtml;
-                        goto end;
-                    }
-                }
+                html = autoDrinkBlazHtml;
+                goto end;
             }
 
             // Нужно ли войти в невидимость?
@@ -2654,6 +2591,112 @@ namespace ANClient.PostFilter
             }
 
             return array;
+        }
+
+        private static string MainPhpTryAutoDrinkBlaz(string address, string html)
+        {
+            if (AutoCutRuntime.IsAutoCutLikeEnabled() && AppVars.AutoCutCleanupPending)
+            {
+                var cleanupHtml = MainPhpAutoCutCleanupRedirect(
+                    address,
+                    html,
+                    AutoCutRuntime.GetModeTitle(AutoCutRuntime.GetActiveMode()),
+                    "before_auto_drink");
+                if (!string.IsNullOrEmpty(cleanupHtml))
+                {
+                    return cleanupHtml;
+                }
+            }
+
+            if (!AppVars.Profile.DoAutoDrinkBlaz || AppVars.Tied < AppVars.Profile.AutoDrinkBlazTied)
+            {
+                return null;
+            }
+
+            var now = DateTime.Now;
+            if (now <= AppVars.NeverTimer)
+            {
+                if (AutoMineRuntime.HasPendingMineRoute())
+                {
+                    var waitMs = Math.Max(0, (int)AppVars.NeverTimer.Subtract(now).TotalMilliseconds);
+                    AppLog.d(AutoMineRuntime.TraceChain, "MainPhp", "auto-drink blaz waits NeverTimer during mine route, tied=" + AppVars.Tied +
+                        " >= " + AppVars.Profile.AutoDrinkBlazTied + ", waitMs=" + waitMs);
+                }
+
+                return null;
+            }
+
+            AppLog.d("MainPhp", "MainPhp: auto-drink blaz triggered, tied=" + AppVars.Tied + " >= " + AppVars.Profile.AutoDrinkBlazTied);
+            var preferPotion = AppVars.Profile.AutoDrinkBlazOrder == 0;
+            if (!MainPhpIsInv(html))
+            {
+                AppVars.DrinkBlazPotOrElixirFirst = false;
+                var invHtml = MainPhpFindInv(html, preferPotion ? "&im=0&wca=27" : "&im=6");
+                if (!string.IsNullOrEmpty(invHtml))
+                {
+                    return invHtml;
+                }
+            }
+
+            if (!MainPhpIsInv(html))
+            {
+                return null;
+            }
+
+            var cureHtml = MainPhpDrinkBlazPotOrElixir(html);
+            if (string.IsNullOrEmpty(cureHtml))
+            {
+                var atPotionPage = MainPhpIsBlazPotionAddress(address);
+                var atElixirPage = MainPhpIsBlazElixirAddress(address);
+                AppLog.d("MainPhp", "MainPhp: auto-drink blaz item not found, address=" + address +
+                    ", firstChecked=" + AppVars.DrinkBlazPotOrElixirFirst +
+                    ", atPotion=" + atPotionPage + ", atElixir=" + atElixirPage);
+
+                if (preferPotion)
+                {
+                    if (atPotionPage)
+                    {
+                        AppVars.DrinkBlazPotOrElixirFirst = true;
+                        return BuildRedirect("Переключение на эликсиры", "main.php?im=6");
+                    }
+
+                    if (!atElixirPage || !AppVars.DrinkBlazPotOrElixirFirst)
+                    {
+                        AppVars.DrinkBlazPotOrElixirFirst = false;
+                        return BuildRedirect("Переключение на зелья", "main.php?im=0&wca=27");
+                    }
+                }
+                else
+                {
+                    if (atElixirPage)
+                    {
+                        AppVars.DrinkBlazPotOrElixirFirst = true;
+                        return BuildRedirect("Переключение на зелья", "main.php?im=0&wca=27");
+                    }
+
+                    if (!atPotionPage || !AppVars.DrinkBlazPotOrElixirFirst)
+                    {
+                        AppVars.DrinkBlazPotOrElixirFirst = false;
+                        return BuildRedirect("Переключение на эликсиры", "main.php?im=6");
+                    }
+                }
+
+                AppVars.DrinkBlazPotOrElixirFirst = false;
+                AppVars.MainForm.WriteChatMsgSafe("Ни зелье ни эликсир блаженства не найдены. Автопитье блажа отключено. Не забудьте включить его обратно.");
+                AppVars.Profile.DoAutoDrinkBlaz = false;
+                return null;
+            }
+
+            AppVars.DrinkBlazPotOrElixirFirst = false;
+            AppVars.Tied = 0;
+            AppVars.SwitchToFlora = true;
+            AppLog.i("MainPhp", "MainPhp: auto-drink blaz submitted, return to flora scheduled");
+            if (AutoCutRuntime.IsAutoCutLikeEnabled())
+            {
+                AppLog.i("auto_cut_trace", "MainPhp", "auto-drink blaz submitted: return to flora before auto look");
+            }
+
+            return cureHtml;
         }
     }
 }

@@ -143,3 +143,6 @@ app3/keys/
 /ANClient/obj
 /IBClient
 /IBClient2
+/Cache
+/.venv_anticaptcha_keras
+/ANClient/OCR

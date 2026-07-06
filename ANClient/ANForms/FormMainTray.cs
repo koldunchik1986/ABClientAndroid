@@ -3,13 +3,11 @@ namespace ANClient.ANForms
     using System;
     using System.Drawing;
     using System.Windows.Forms;
-    using Forms;
 
     internal sealed partial class FormMain
     {
         private int trayFlashFrame;
         private readonly Icon[] trayIcons = new Icon[] { null, null };
-        private FormCode m_fc;
         private DateTime trayDigitsWait = DateTime.Now;
 
         internal bool TrayIsDigitsWaitTooLong()
@@ -68,43 +66,9 @@ namespace ANClient.ANForms
         {
             if (trayIcon.Text.IndexOf("Ввод цифр", StringComparison.OrdinalIgnoreCase) != -1)
             {
-                if (m_fc != null)
-                {
-                    return;
-                }
-
-                m_fc = new FormCode();
-                m_fc.Location =
-                    new Point(
-                        Screen.PrimaryScreen.WorkingArea.Width - m_fc.Width - 5,
-                        Screen.PrimaryScreen.WorkingArea.Height - m_fc.Height - 5);
-                m_fc.ShowDialog();
-                var dr = m_fc.DialogResult;
-                AppVars.GuamodCode = m_fc.Code;
-                m_fc.Dispose();
-                m_fc = null;
-                if (dr == DialogResult.OK)
-                {
-                    if (string.IsNullOrEmpty(AppVars.FightLink))
-                    {
-                        AppVars.FightLink = "????";
-                    }
-                    else
-                    {
-                        AppVars.Autoboi = AutoboiState.AutoboiOn;
-                    }
-
-                    AppVars.FightLink = AppVars.FightLink.Replace("????", AppVars.GuamodCode);
-
-                    timerTray.Stop();
-                    trayIcon.Text = AppVars.Profile.UserNick;
-                    TrayShowFrame(0);
-                }
-
-                if (dr != DialogResult.Yes)
-                {
-                    return;
-                }
+                AppLog.w("Captcha", "MANUAL_CAPTCHA_TRAY_DISABLED");
+                UpdateGuamodMessage("Ручной ввод капчи отключён");
+                UpdateTexLog("Ручной ввод капчи отключён");
             }
 
             timerTray.Stop();

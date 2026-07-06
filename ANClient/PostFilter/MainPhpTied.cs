@@ -176,6 +176,7 @@ namespace ANClient.PostFilter
 
         private static void UpdateTiedFromMainPhp(int tied, string source)
         {
+            AppVars.Tied = tied;
             AppLog.d("MainPhp", "MainPhp: tied parsed from " + source + ", tied=" + tied + "%");
             try
             {

@@ -52,6 +52,9 @@ namespace ANClient.MyForms
             this.textUsername = new System.Windows.Forms.TextBox();
             this.label5 = new System.Windows.Forms.Label();
             this.textUserKey = new System.Windows.Forms.TextBox();
+            this.labelGameServer = new System.Windows.Forms.Label();
+            this.comboGameServer = new System.Windows.Forms.ComboBox();
+            this.buttonEditGameServers = new System.Windows.Forms.Button();
             this.groupBox2.SuspendLayout();
             this.groupBox1.SuspendLayout();
             this.SuspendLayout();
@@ -66,7 +69,7 @@ namespace ANClient.MyForms
             this.groupBox2.Controls.Add(this.textProxyAddress);
             this.groupBox2.Controls.Add(this.label2);
             this.groupBox2.Controls.Add(this.checkUseProxy);
-            this.groupBox2.Location = new System.Drawing.Point(11, 223);
+            this.groupBox2.Location = new System.Drawing.Point(11, 251);
             this.groupBox2.Name = "groupBox2";
             this.groupBox2.Size = new System.Drawing.Size(280, 140);
             this.groupBox2.TabIndex = 19;
@@ -152,7 +155,7 @@ namespace ANClient.MyForms
             this.groupBox1.Controls.Add(this.linkPasswordProtected);
             this.groupBox1.Controls.Add(this.checkVisiblePasswords);
             this.groupBox1.Controls.Add(this.checkAutoLogon);
-            this.groupBox1.Location = new System.Drawing.Point(11, 125);
+            this.groupBox1.Location = new System.Drawing.Point(11, 153);
             this.groupBox1.Name = "groupBox1";
             this.groupBox1.Size = new System.Drawing.Size(280, 91);
             this.groupBox1.TabIndex = 18;
@@ -213,7 +216,7 @@ namespace ANClient.MyForms
             // buttonCancel
             // 
             this.buttonCancel.DialogResult = System.Windows.Forms.DialogResult.Cancel;
-            this.buttonCancel.Location = new System.Drawing.Point(216, 383);
+            this.buttonCancel.Location = new System.Drawing.Point(216, 411);
             this.buttonCancel.Name = "buttonCancel";
             this.buttonCancel.Size = new System.Drawing.Size(75, 23);
             this.buttonCancel.TabIndex = 11;
@@ -225,7 +228,7 @@ namespace ANClient.MyForms
             this.buttonOk.DialogResult = System.Windows.Forms.DialogResult.OK;
             this.buttonOk.Enabled = false;
             this.buttonOk.Font = new System.Drawing.Font("Tahoma", 8.25F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(204)));
-            this.buttonOk.Location = new System.Drawing.Point(11, 383);
+            this.buttonOk.Location = new System.Drawing.Point(11, 411);
             this.buttonOk.Name = "buttonOk";
             this.buttonOk.Size = new System.Drawing.Size(199, 23);
             this.buttonOk.TabIndex = 10;
@@ -271,7 +274,7 @@ namespace ANClient.MyForms
             // label5
             // 
             this.label5.AutoSize = true;
-            this.label5.Location = new System.Drawing.Point(11, 98);
+            this.label5.Location = new System.Drawing.Point(11, 125);
             this.label5.Name = "label5";
             this.label5.Size = new System.Drawing.Size(39, 13);
             this.label5.TabIndex = 21;
@@ -279,10 +282,38 @@ namespace ANClient.MyForms
             // 
             // textUserKey
             // 
-            this.textUserKey.Location = new System.Drawing.Point(50, 95);
+            this.textUserKey.Location = new System.Drawing.Point(50, 122);
             this.textUserKey.Name = "textUserKey";
             this.textUserKey.Size = new System.Drawing.Size(241, 21);
             this.textUserKey.TabIndex = 20;
+            //
+            // labelGameServer
+            //
+            this.labelGameServer.AutoSize = true;
+            this.labelGameServer.Location = new System.Drawing.Point(11, 98);
+            this.labelGameServer.Name = "labelGameServer";
+            this.labelGameServer.Size = new System.Drawing.Size(47, 13);
+            this.labelGameServer.TabIndex = 23;
+            this.labelGameServer.Text = "Сервер:";
+            //
+            // comboGameServer
+            //
+            this.comboGameServer.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+            this.comboGameServer.FormattingEnabled = true;
+            this.comboGameServer.Location = new System.Drawing.Point(64, 95);
+            this.comboGameServer.Name = "comboGameServer";
+            this.comboGameServer.Size = new System.Drawing.Size(159, 21);
+            this.comboGameServer.TabIndex = 3;
+            //
+            // buttonEditGameServers
+            //
+            this.buttonEditGameServers.Location = new System.Drawing.Point(230, 94);
+            this.buttonEditGameServers.Name = "buttonEditGameServers";
+            this.buttonEditGameServers.Size = new System.Drawing.Size(61, 23);
+            this.buttonEditGameServers.TabIndex = 4;
+            this.buttonEditGameServers.Text = "Список";
+            this.buttonEditGameServers.UseVisualStyleBackColor = true;
+            this.buttonEditGameServers.Click += new System.EventHandler(this.ButtonEditGameServers_Click);
             // 
             // FormProfile
             // 
@@ -290,7 +321,10 @@ namespace ANClient.MyForms
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.CancelButton = this.buttonCancel;
-            this.ClientSize = new System.Drawing.Size(306, 436);
+            this.ClientSize = new System.Drawing.Size(306, 464);
+            this.Controls.Add(this.buttonEditGameServers);
+            this.Controls.Add(this.comboGameServer);
+            this.Controls.Add(this.labelGameServer);
             this.Controls.Add(this.label5);
             this.Controls.Add(this.textUserKey);
             this.Controls.Add(this.textUsername);
@@ -346,5 +380,8 @@ namespace ANClient.MyForms
         private System.Windows.Forms.LinkLabel linkPasswordProtected;
         private System.Windows.Forms.Label label5;
         private System.Windows.Forms.TextBox textUserKey;
+        private System.Windows.Forms.Label labelGameServer;
+        private System.Windows.Forms.ComboBox comboGameServer;
+        private System.Windows.Forms.Button buttonEditGameServers;
     }
 }

@@ -1344,37 +1344,7 @@ namespace ANClient.Lez
 
                             if (!AppVars.Profile.DoGuamod)
                             {
-                                if (AppVars.MainForm != null && AppVars.MainForm.TrayIsDigitsWaitTooLong())
-                                {
-                                    try
-                                    {
-                                        if (AppVars.MainForm != null)
-                                        {
-                                            AppVars.MainForm.BeginInvoke(
-                                                new UpdateGuamodTurnOnDelegate(
-                                                    AppVars.MainForm.UpdateGuamodTurnOn),
-                                                new object[] { });
-                                        }
-                                    }
-                                    catch (InvalidOperationException)
-                                    {
-                                    }
-                                }
-                                else
-                                {
-                                    MySounds.EventSounds.PlayDigits();
-                                    try
-                                    {
-                                        if (AppVars.MainForm != null)
-                                        {
-                                            AppVars.MainForm.BeginInvoke(
-                                                new UpdateTrayFlashDelegate(AppVars.MainForm.UpdateTrayFlash), "Ввод цифр");
-                                        }
-                                    }
-                                    catch (InvalidOperationException)
-                                    {
-                                    }
-                                }
+                                AppLog.i("LezFight", "ParseNonFight: manual captcha prompt disabled; automatic solver/refresh will handle captcha");
                             }
                         }
                     }

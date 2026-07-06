@@ -27,6 +27,7 @@ import ru.neverlands.anclient.proxy.CookiesManager;
 import ru.neverlands.anclient.proxy.ProxyRuntimeManager;
 import ru.neverlands.anclient.utils.AppVars;
 import ru.neverlands.anclient.utils.FileLogger;
+import ru.neverlands.anclient.utils.GameServerUrls;
 import ru.neverlands.anclient.utils.RuntimeNetTrace;
 import ru.neverlands.anclient.utils.SessionManager;
 
@@ -118,11 +119,7 @@ public class WebViewRequestInterceptor {
      * Проверяет, относится ли host к игровым доменам Neverlands.
      */
     private static boolean isNeverlandsHost(String host) {
-        if (host == null || host.isEmpty()) {
-            return false;
-        }
-        String lower = host.toLowerCase(Locale.ROOT);
-        return "neverlands.ru".equals(lower) || lower.endsWith(".neverlands.ru");
+        return GameServerUrls.isNeverlandsHost(host);
     }
 
     /**
@@ -147,8 +144,7 @@ public class WebViewRequestInterceptor {
         if (rawUrl == null || rawUrl.isEmpty()) {
             return "";
         }
-        String normalized = rawUrl.replaceFirst("^https://", "http://");
-        normalized = normalized.replaceFirst("^http://www\\.neverlands\\.ru", "http://neverlands.ru");
+        String normalized = GameServerUrls.normalizeNeverlandsUrlForCompare(rawUrl);
         int fragmentIndex = normalized.indexOf('#');
         if (fragmentIndex >= 0) {
             normalized = normalized.substring(0, fragmentIndex);
@@ -185,7 +181,13 @@ public class WebViewRequestInterceptor {
     public static WebResourceResponse intercept(WebResourceRequest request) {
         try {
             Uri uri = request.getUrl();
-            String urlString = uri.toString();
+            String originalUrlString = uri.toString();
+            String urlString = GameServerUrls.routeUrlToCurrentServer(originalUrlString);
+            if (!originalUrlString.equals(urlString)) {
+                AppLog.i(TAG, "SERVER_ROUTE: webview " + originalUrlString + " -> " + urlString);
+                RuntimeNetTrace.push("SERVER_ROUTE", "scope=webview url=" + trimUrlForTrace(urlString));
+                uri = Uri.parse(urlString);
+            }
             String host = uri.getHost();
 
             if (host == null) {
@@ -354,7 +356,8 @@ public class WebViewRequestInterceptor {
                         if ("User-Agent".equalsIgnoreCase(key)) {
                             reqUserAgent = value;
                         } else if ("Referer".equalsIgnoreCase(key)) {
-                            reqReferer = value;
+                            reqReferer = GameServerUrls.routeUrlToCurrentServer(value);
+                            value = reqReferer;
                         }
                     }
                     // Don't override Cookie or Accept-Encoding we already set
@@ -368,7 +371,7 @@ public class WebViewRequestInterceptor {
                 connection.setRequestProperty("User-Agent", reqUserAgent);
             }
             if (isChatEndpoint(urlString) && (reqReferer == null || reqReferer.isEmpty())) {
-                reqReferer = "http://neverlands.ru/main.php";
+                reqReferer = GameServerUrls.currentGameUrl("/main.php");
                 connection.setRequestProperty("Referer", reqReferer);
             }
             if (isChatEndpoint(urlString)) {
@@ -1044,26 +1047,23 @@ public class WebViewRequestInterceptor {
         CookieManager manager = CookieManager.getInstance();
         String cookie = manager.getCookie(urlString);
         String lowerHost = host == null ? "" : host.toLowerCase(Locale.ROOT);
-        String siblingCookie = null;
+        String mergedCookie = cookie;
+        if (GameServerUrls.isNeverlandsHost(lowerHost)) {
+            for (String cookieUrl : GameServerUrls.cookieUrls()) {
+                mergedCookie = mergeCookieHeaders(mergedCookie, manager.getCookie(cookieUrl));
+            }
+        }
+
+        if (mergedCookie != null && !mergedCookie.isEmpty()) {
+            return mergedCookie;
+        }
         if ("neverlands.ru".equals(lowerHost)) {
-            siblingCookie = manager.getCookie("http://www.neverlands.ru/");
-        } else if ("www.neverlands.ru".equals(lowerHost)) {
-            siblingCookie = manager.getCookie("http://neverlands.ru/");
+            return manager.getCookie("http://www.neverlands.ru/");
         }
-
-        if (cookie == null || cookie.isEmpty()) {
-            return siblingCookie;
+        if ("www.neverlands.ru".equals(lowerHost)) {
+            return manager.getCookie("http://neverlands.ru/");
         }
-        if (siblingCookie == null || siblingCookie.isEmpty()) {
-            return cookie;
-        }
-
-        boolean cookieHasSession = hasSessionCookieTokens(cookie);
-        boolean siblingHasSession = hasSessionCookieTokens(siblingCookie);
-        if (!cookieHasSession && siblingHasSession) {
-            return mergeCookieHeaders(siblingCookie, cookie);
-        }
-        return mergeCookieHeaders(cookie, siblingCookie);
+        return "";
     }
 
     /**

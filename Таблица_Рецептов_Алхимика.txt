@@ -1,0 +1,906 @@
+<!DOCTYPE html>
+<html lang="ru" dir="ltr" class="client-nojs">
+<head>
+<title>Таблица Рецептов Алхимика — Викиневер</title>
+<meta charset="UTF-8" />
+<meta name="generator" content="MediaWiki 1.19.2" />
+<link rel="shortcut icon" href="/favicon.ico" />
+<link rel="search" type="application/opensearchdescription+xml" href="/opensearch_desc.php" title="Викиневер (ru)" />
+<link rel="EditURI" type="application/rsd+xml" href="http://wiki.neverlands.ru/api.php?action=rsd" />
+<link rel="alternate" type="application/atom+xml" title="Викиневер — Atom-лента" href="/index.php?title=%D0%A1%D0%BB%D1%83%D0%B6%D0%B5%D0%B1%D0%BD%D0%B0%D1%8F:RecentChanges&amp;feed=atom" />
+<link rel="stylesheet" href="http://wiki.neverlands.ru/load.php?debug=false&amp;lang=ru&amp;modules=ext.categoryTree.css%7Cmediawiki.legacy.commonPrint%2Cshared%7Cskins.vector&amp;only=styles&amp;skin=vector&amp;*" />
+<meta name="ResourceLoaderDynamicStyles" content="" />
+<style>a:lang(ar),a:lang(ckb),a:lang(fa),a:lang(kk-arab),a:lang(mzn),a:lang(ps),a:lang(ur){text-decoration:none}a.new,#quickbar a.new{color:#ba0000}
+
+/* cache key: mediawiki-wiki_:resourceloader:filter:minify-css:7:c88e2bcd56513749bec09a7e29cb3ffa */
+</style>
+
+<script src="http://wiki.neverlands.ru/load.php?debug=false&amp;lang=ru&amp;modules=startup&amp;only=scripts&amp;skin=vector&amp;*"></script>
+<script>if(window.mw){
+mw.config.set({"wgCanonicalNamespace":"","wgCanonicalSpecialPageName":false,"wgNamespaceNumber":0,"wgPageName":"Таблица_Рецептов_Алхимика","wgTitle":"Таблица Рецептов Алхимика","wgCurRevisionId":21239,"wgArticleId":817,"wgIsArticle":true,"wgAction":"view","wgUserName":null,"wgUserGroups":["*"],"wgCategories":["Таблицы профессий","Таблицы алхимика"],"wgBreakFrames":false,"wgPageContentLanguage":"ru","wgSeparatorTransformTable":[",	."," 	,"],"wgDigitTransformTable":["",""],"wgRelevantPageName":"Таблица_Рецептов_Алхимика","wgRestrictionEdit":[],"wgRestrictionMove":[],"wgSearchNamespaces":[0],"wgVectorEnabledModules":{"collapsiblenav":true,"collapsibletabs":true,"editwarning":false,"expandablesearch":false,"footercleanup":false,"sectioneditlinks":false,"simplesearch":true,"experiments":true},"wgWikiEditorEnabledModules":{"toolbar":true,"dialogs":true,"hidesig":true,"templateEditor":false,"templates":false,"preview":true,"previewDialog":false,"publish":false,"toc":false},"wgCategoryTreePageCategoryOptions":"{\"mode\":0,\"hideprefix\":20,\"showcount\":true,\"namespaces\":false}"});
+}</script><script>if(window.mw){
+mw.loader.implement("user.options",function($){mw.user.options.set({"ccmeonemails":0,"cols":80,"date":"default","diffonly":0,"disablemail":0,"disablesuggest":0,"editfont":"default","editondblclick":0,"editsection":1,"editsectiononrightclick":0,"enotifminoredits":0,"enotifrevealaddr":0,"enotifusertalkpages":1,"enotifwatchlistpages":0,"extendwatchlist":0,"externaldiff":0,"externaleditor":0,"fancysig":0,"forceeditsummary":0,"gender":"unknown","hideminor":0,"hidepatrolled":0,"highlightbroken":1,"imagesize":2,"justify":0,"math":1,"minordefault":0,"newpageshidepatrolled":0,"nocache":0,"noconvertlink":0,"norollbackdiff":0,"numberheadings":0,"previewonfirst":0,"previewontop":1,"quickbar":5,"rcdays":7,"rclimit":50,"rememberpassword":0,"rows":25,"searchlimit":20,"showhiddencats":0,"showjumplinks":1,"shownumberswatching":1,"showtoc":1,"showtoolbar":1,"skin":"vector","stubthreshold":0,"thumbsize":2,"underline":2,"uselivepreview":0,"usenewrc":0,"watchcreations":0,"watchdefault":0,"watchdeletion":0,
+"watchlistdays":3,"watchlisthideanons":0,"watchlisthidebots":0,"watchlisthideliu":0,"watchlisthideminor":0,"watchlisthideown":0,"watchlisthidepatrolled":0,"watchmoves":0,"wllimit":250,"vector-simplesearch":1,"usebetatoolbar":1,"usebetatoolbar-cgd":1,"wikieditor-preview":1,"variant":"ru","language":"ru","searchNs0":true,"searchNs1":false,"searchNs2":false,"searchNs3":false,"searchNs4":false,"searchNs5":false,"searchNs6":false,"searchNs7":false,"searchNs8":false,"searchNs9":false,"searchNs10":false,"searchNs11":false,"searchNs12":false,"searchNs13":false,"searchNs14":false,"searchNs15":false});;},{},{});mw.loader.implement("user.tokens",function($){mw.user.tokens.set({"editToken":"+\\","watchToken":false});;},{},{});
+
+/* cache key: mediawiki-wiki_:resourceloader:filter:minify-js:7:7508123b28c8391f7dad903573c5f09c */
+}</script>
+<script>if(window.mw){
+mw.loader.load(["mediawiki.page.startup","mediawiki.legacy.wikibits","mediawiki.legacy.ajax"]);
+}</script>
+<!--[if lt IE 7]><style type="text/css">body{behavior:url("/skins/vector/csshover.min.htc")}</style><![endif]--></head>
+<body class="mediawiki ltr sitedir-ltr ns-0 ns-subject page-Таблица_Рецептов_Алхимика skin-vector action-view">
+		<div id="mw-page-base" class="noprint"></div>
+		<div id="mw-head-base" class="noprint"></div>
+		<!-- content -->
+		<div id="content" class="mw-body">
+			<a id="top"></a>
+			<div id="mw-js-message" style="display:none;"></div>
+						<!-- firstHeading -->
+			<h1 id="firstHeading" class="firstHeading">
+				<span dir="auto">Таблица Рецептов Алхимика</span>
+			</h1>
+			<!-- /firstHeading -->
+			<!-- bodyContent -->
+			<div id="bodyContent">
+								<!-- tagline -->
+				<div id="siteSub">Материал из Викиневер</div>
+				<!-- /tagline -->
+								<!-- subtitle -->
+				<div id="contentSub"></div>
+				<!-- /subtitle -->
+																<!-- jumpto -->
+				<div id="jump-to-nav" class="mw-jump">
+					Перейти к: <a href="#mw-head">навигация</a>,
+					<a href="#p-search">поиск</a>
+				</div>
+				<!-- /jumpto -->
+								<!-- bodycontent -->
+				<div id="mw-content-text" lang="ru" dir="ltr" class="mw-content-ltr"><div style="float:right; clear:right; margin-left:1ex; border:1px solid gray; padding:0.7ex; background-color:white;" class="CategoryTreeTag" data-ct-mode="20" data-ct-options="{&quot;mode&quot;:20,&quot;hideprefix&quot;:20,&quot;showcount&quot;:false,&quot;namespaces&quot;:false}"><div class="CategoryTreeSection"><div class="CategoryTreeItem"><span class="CategoryTreeBullet"><span class="CategoryTreeToggle" style="display: none;" data-ct-title="Таблицы_алхимика" title="развернуть" data-ct-state="collapsed">[<b>+</b>]</span> </span> <a class="CategoryTreeLabel  CategoryTreeLabelNs14 CategoryTreeLabelCategory" href="/wiki/%D0%9A%D0%B0%D1%82%D0%B5%D0%B3%D0%BE%D1%80%D0%B8%D1%8F:%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D1%8B_%D0%B0%D0%BB%D1%85%D0%B8%D0%BC%D0%B8%D0%BA%D0%B0">Таблицы алхимика</a></div>
+		<div class="CategoryTreeChildren" style="display:none"></div></div>
+		<div class="CategoryTreeSection"><div class="CategoryTreeItem"><span class="CategoryTreeBullet"><span class="CategoryTreeToggle" style="display: none;" data-ct-title="Таблицы_каллиграфа" title="развернуть" data-ct-state="collapsed">[<b>+</b>]</span> </span> <a class="CategoryTreeLabel  CategoryTreeLabelNs14 CategoryTreeLabelCategory" href="/wiki/%D0%9A%D0%B0%D1%82%D0%B5%D0%B3%D0%BE%D1%80%D0%B8%D1%8F:%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D1%8B_%D0%BA%D0%B0%D0%BB%D0%BB%D0%B8%D0%B3%D1%80%D0%B0%D1%84%D0%B0">Таблицы каллиграфа</a></div>
+		<div class="CategoryTreeChildren" style="display:none"></div></div>
+		<div class="CategoryTreeSection"><div class="CategoryTreeItem"><span class="CategoryTreeBullet"><span class="CategoryTreeToggle" style="display: none;" data-ct-title="Таблицы_повара" title="развернуть" data-ct-state="collapsed">[<b>+</b>]</span> </span> <a class="CategoryTreeLabel  CategoryTreeLabelNs14 CategoryTreeLabelCategory" href="/wiki/%D0%9A%D0%B0%D1%82%D0%B5%D0%B3%D0%BE%D1%80%D0%B8%D1%8F:%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D1%8B_%D0%BF%D0%BE%D0%B2%D0%B0%D1%80%D0%B0">Таблицы повара</a></div>
+		<div class="CategoryTreeChildren" style="display:none"></div></div>
+		<div class="CategoryTreeSection"><div class="CategoryTreeItem"><span class="CategoryTreeBullet"><span class="CategoryTreeToggle" style="display: none;" data-ct-title="Таблицы_ремесленника" title="развернуть" data-ct-state="collapsed">[<b>+</b>]</span> </span> <a class="CategoryTreeLabel  CategoryTreeLabelNs14 CategoryTreeLabelCategory" href="/wiki/%D0%9A%D0%B0%D1%82%D0%B5%D0%B3%D0%BE%D1%80%D0%B8%D1%8F:%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D1%8B_%D1%80%D0%B5%D0%BC%D0%B5%D1%81%D0%BB%D0%B5%D0%BD%D0%BD%D0%B8%D0%BA%D0%B0">Таблицы ремесленника</a></div>
+		<div class="CategoryTreeChildren" style="display:none"></div></div>
+		<div class="CategoryTreeSection"><div class="CategoryTreeItem"><span class="CategoryTreeBullet"><span class="CategoryTreeToggle" style="display: none;" data-ct-title="Таблицы_шахтера" title="развернуть" data-ct-state="collapsed">[<b>+</b>]</span> </span> <a class="CategoryTreeLabel  CategoryTreeLabelNs14 CategoryTreeLabelCategory" href="/wiki/%D0%9A%D0%B0%D1%82%D0%B5%D0%B3%D0%BE%D1%80%D0%B8%D1%8F:%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D1%8B_%D1%88%D0%B0%D1%85%D1%82%D0%B5%D1%80%D0%B0">Таблицы шахтера</a></div>
+		<div class="CategoryTreeChildren" style="display:none"></div></div>
+		<div class="CategoryTreeSection"><div class="CategoryTreeItem"><span class="CategoryTreeBullet"> </span> <a class="CategoryTreeLabel  CategoryTreeLabelNs0 CategoryTreeLabelPage" href="/wiki/%D0%94%D1%80%D0%B0%D0%B3%D0%BE%D1%86%D0%B5%D0%BD%D0%BD%D1%8B%D0%B5_%D0%BA%D0%B0%D0%BC%D0%BD%D0%B8">Драгоценные камни</a></div>
+		<div class="CategoryTreeChildren" style="display:none"></div></div>
+		<div class="CategoryTreeSection"><div class="CategoryTreeItem"><span class="CategoryTreeBullet"> </span> <a class="CategoryTreeLabel  CategoryTreeLabelNs0 CategoryTreeLabelPage" href="/wiki/%D0%9C%D0%B5%D1%82%D0%B0%D0%BB%D0%BB%D1%8B_%D0%B8_%D1%81%D0%BF%D0%BB%D0%B0%D0%B2%D1%8B">Металлы и сплавы</a></div>
+		<div class="CategoryTreeChildren" style="display:none"></div></div>
+		<div class="CategoryTreeSection"><div class="CategoryTreeItem"><span class="CategoryTreeBullet"> </span> <a class="CategoryTreeLabel  CategoryTreeLabelNs0 CategoryTreeLabelPage" href="/wiki/%D0%A0%D0%B5%D0%BF%D1%83%D1%82%D0%B0%D1%86%D0%B8%D1%8F">Репутация</a></div>
+		<div class="CategoryTreeChildren" style="display:none"></div></div>
+		<div class="CategoryTreeSection"><div class="CategoryTreeItem"><span class="CategoryTreeBullet"> </span> <a class="CategoryTreeLabel  CategoryTreeLabelNs0 CategoryTreeLabelPage" href="/wiki/%D0%A0%D1%83%D0%B4%D0%B0_%D0%B8_%D0%BC%D0%B8%D0%BD%D0%B5%D1%80%D0%B0%D0%BB%D1%8B">Руда и минералы</a></div>
+		<div class="CategoryTreeChildren" style="display:none"></div></div>
+		<div class="CategoryTreeSection"><div class="CategoryTreeItem"><span class="CategoryTreeBullet"> </span> <a class="CategoryTreeLabel  CategoryTreeLabelNs0 CategoryTreeLabelPage" href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%B7%D0%B0%D0%B3%D0%BE%D1%82%D0%BE%D0%B2%D0%BE%D0%BA_%D0%90%D0%BB%D1%85%D0%B8%D0%BC%D0%B8%D0%BA%D0%B0">Таблица заготовок Алхимика</a></div>
+		<div class="CategoryTreeChildren" style="display:none"></div></div>
+		<div class="CategoryTreeSection"><div class="CategoryTreeItem"><span class="CategoryTreeBullet"> </span> <a class="CategoryTreeLabel  CategoryTreeLabelNs0 CategoryTreeLabelPage" href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%B7%D0%B0%D0%B3%D0%BE%D1%82%D0%BE%D0%B2%D0%BE%D0%BA_%D0%9F%D0%BE%D0%B2%D0%B0%D1%80%D0%B0">Таблица заготовок Повара</a></div>
+		<div class="CategoryTreeChildren" style="display:none"></div></div>
+		<div class="CategoryTreeSection"><div class="CategoryTreeItem"><span class="CategoryTreeBullet"> </span> <a class="CategoryTreeLabel  CategoryTreeLabelNs0 CategoryTreeLabelPage" href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%B8%D1%81%D0%BF%D0%BE%D0%BB%D1%8C%D0%B7%D0%BE%D0%B2%D0%B0%D0%BD%D0%B8%D1%8F_%D0%B7%D0%B0%D0%B3%D0%BE%D1%82%D0%BE%D0%B2%D0%BE%D0%BA_%D0%B8_%D0%B4%D1%80%D0%BE%D0%B2">Таблица использования заготовок и дров</a></div>
+		<div class="CategoryTreeChildren" style="display:none"></div></div>
+		<div class="CategoryTreeSection"><div class="CategoryTreeItem"><span class="CategoryTreeBullet"> </span> <a class="CategoryTreeLabel  CategoryTreeLabelNs0 CategoryTreeLabelPage" href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%9B%D0%B5%D1%81%D0%BE%D1%80%D1%83%D0%B1%D0%B0">Таблица Лесоруба</a></div>
+		<div class="CategoryTreeChildren" style="display:none"></div></div>
+		<div class="CategoryTreeSection"><div class="CategoryTreeItem"><span class="CategoryTreeBullet"> </span> <a class="CategoryTreeLabel  CategoryTreeLabelNs0 CategoryTreeLabelPage" href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%BC%D0%B0%D1%82%D0%B5%D1%80%D0%B8%D0%B0%D0%BB%D0%BE%D0%B2_%D0%9A%D0%B0%D0%BB%D0%BB%D0%B8%D0%B3%D1%80%D0%B0%D1%84%D0%B0">Таблица материалов Каллиграфа</a></div>
+		<div class="CategoryTreeChildren" style="display:none"></div></div>
+		<div class="CategoryTreeSection"><div class="CategoryTreeItem"><span class="CategoryTreeBullet"> </span> <a class="CategoryTreeLabel  CategoryTreeLabelNs0 CategoryTreeLabelPage" href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%9E%D1%85%D0%BE%D1%82%D0%BD%D0%B8%D0%BA%D0%B0">Таблица Охотника</a></div>
+		<div class="CategoryTreeChildren" style="display:none"></div></div>
+		<div class="CategoryTreeSection"><div class="CategoryTreeItem"><span class="CategoryTreeBullet"> </span> <a class="CategoryTreeLabel  CategoryTreeLabelNs0 CategoryTreeLabelPage" href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%9F%D0%BB%D0%BE%D1%82%D0%BD%D0%B8%D0%BA%D0%B0">Таблица Плотника</a></div>
+		<div class="CategoryTreeChildren" style="display:none"></div></div>
+		<div class="CategoryTreeSection"><div class="CategoryTreeItem"><span class="CategoryTreeBullet"> </span> <a class="CategoryTreeLabel  CategoryTreeLabelNs0 CategoryTreeLabelPage" href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D1%80%D0%B5%D0%BC%D0%BE%D0%BD%D1%82%D0%B0">Таблица ремонта</a></div>
+		<div class="CategoryTreeChildren" style="display:none"></div></div>
+		<div class="CategoryTreeSection"><div class="CategoryTreeItem"><span class="CategoryTreeBullet"> </span> <a class="CategoryTreeLabel  CategoryTreeLabelNs0 CategoryTreeLabelPage" href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%A0%D0%B5%D1%86%D0%B5%D0%BF%D1%82%D0%BE%D0%B2_%D0%90%D0%BB%D1%85%D0%B8%D0%BC%D0%B8%D0%BA%D0%B0">Таблица Рецептов Алхимика</a></div>
+		<div class="CategoryTreeChildren" style="display:none"></div></div>
+		<div class="CategoryTreeSection"><div class="CategoryTreeItem"><span class="CategoryTreeBullet"> </span> <a class="CategoryTreeLabel  CategoryTreeLabelNs0 CategoryTreeLabelPage" href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D1%80%D0%B5%D1%86%D0%B5%D0%BF%D1%82%D0%BE%D0%B2_%D0%94%D0%BE%D0%BA%D1%82%D0%BE%D1%80%D0%B0">Таблица рецептов Доктора</a></div>
+		<div class="CategoryTreeChildren" style="display:none"></div></div>
+		<div class="CategoryTreeSection"><div class="CategoryTreeItem"><span class="CategoryTreeBullet"> </span> <a class="CategoryTreeLabel  CategoryTreeLabelNs0 CategoryTreeLabelPage" href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%A0%D0%B5%D1%86%D0%B5%D0%BF%D1%82%D0%BE%D0%B2_%D0%9A%D0%B0%D0%BB%D0%BB%D0%B8%D0%B3%D1%80%D0%B0%D1%84%D0%B0">Таблица Рецептов Каллиграфа</a></div>
+		<div class="CategoryTreeChildren" style="display:none"></div></div>
+		<div class="CategoryTreeSection"><div class="CategoryTreeItem"><span class="CategoryTreeBullet"> </span> <a class="CategoryTreeLabel  CategoryTreeLabelNs0 CategoryTreeLabelPage" href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%A0%D0%B5%D1%86%D0%B5%D0%BF%D1%82%D0%BE%D0%B2_%D0%9F%D0%BE%D0%B2%D0%B0%D1%80%D0%B0">Таблица Рецептов Повара</a></div>
+		<div class="CategoryTreeChildren" style="display:none"></div></div>
+		<div class="CategoryTreeSection"><div class="CategoryTreeItem"><span class="CategoryTreeBullet"> </span> <a class="CategoryTreeLabel  CategoryTreeLabelNs0 CategoryTreeLabelPage" href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%A0%D1%8B%D0%B1%D0%B0%D0%BA%D0%B0">Таблица Рыбака</a></div>
+		<div class="CategoryTreeChildren" style="display:none"></div></div>
+		<div class="CategoryTreeSection"><div class="CategoryTreeItem"><span class="CategoryTreeBullet"> </span> <a class="CategoryTreeLabel  CategoryTreeLabelNs0 CategoryTreeLabelPage" href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%A2%D1%80%D0%B0%D0%B2%D0%BD%D0%B8%D0%BA%D0%B0">Таблица Травника</a></div>
+		<div class="CategoryTreeChildren" style="display:none"></div></div>
+		<div class="CategoryTreeSection"><div class="CategoryTreeItem"><span class="CategoryTreeBullet"> </span> <a class="CategoryTreeLabel  CategoryTreeLabelNs0 CategoryTreeLabelPage" href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D1%87%D0%B5%D1%80%D1%82%D0%B5%D0%B6%D0%B5%D0%B9_%D0%B2%D0%B5%D1%89%D0%B5%D0%B9">Таблица чертежей вещей</a></div>
+		<div class="CategoryTreeChildren" style="display:none"></div></div>
+		<div class="CategoryTreeSection"><div class="CategoryTreeItem"><span class="CategoryTreeBullet"> </span> <a class="CategoryTreeLabel  CategoryTreeLabelNs0 CategoryTreeLabelPage" href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D1%87%D0%B5%D1%80%D1%82%D0%B5%D0%B6%D0%B5%D0%B9_%D0%BE%D1%80%D1%83%D0%B6%D0%B8%D1%8F">Таблица чертежей оружия</a></div>
+		<div class="CategoryTreeChildren" style="display:none"></div></div>
+		<div class="CategoryTreeSection"><div class="CategoryTreeItem"><span class="CategoryTreeBullet"> </span> <a class="CategoryTreeLabel  CategoryTreeLabelNs0 CategoryTreeLabelPage" href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D1%87%D0%B5%D1%80%D1%82%D0%B5%D0%B6%D0%B5%D0%B9_%D0%BF%D1%80%D0%BE%D1%84.%D0%B8%D0%BD%D0%B2%D0%B5%D0%BD%D1%82%D0%B0%D1%80%D1%8F">Таблица чертежей проф.инвентаря</a></div>
+		<div class="CategoryTreeChildren" style="display:none"></div></div>
+		<div class="CategoryTreeSection"><div class="CategoryTreeItem"><span class="CategoryTreeBullet"> </span> <a class="CategoryTreeLabel  CategoryTreeLabelNs0 CategoryTreeLabelPage" href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%AE%D0%B2%D0%B5%D0%BB%D0%B8%D1%80%D0%B0">Таблица Ювелира</a></div>
+		<div class="CategoryTreeChildren" style="display:none"></div></div>
+		</div>
+<div style="float:right; clear:right; margin-left:1ex; border:1px solid gray; padding:0.7ex; background-color:white;" class="CategoryTreeTag" data-ct-mode="20" data-ct-options="{&quot;mode&quot;:20,&quot;hideprefix&quot;:20,&quot;showcount&quot;:false,&quot;namespaces&quot;:false}"><div class="CategoryTreeSection"><div class="CategoryTreeItem"><span class="CategoryTreeBullet"> </span> <a class="CategoryTreeLabel  CategoryTreeLabelNs0 CategoryTreeLabelPage" href="/wiki/%D0%97%D0%B5%D0%BB%D1%8C%D0%B5">Зелье</a></div>
+		<div class="CategoryTreeChildren" style="display:none"></div></div>
+		<div class="CategoryTreeSection"><div class="CategoryTreeItem"><span class="CategoryTreeBullet"> </span> <a class="CategoryTreeLabel  CategoryTreeLabelNs0 CategoryTreeLabelPage" href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%B7%D0%B0%D0%B3%D0%BE%D1%82%D0%BE%D0%B2%D0%BE%D0%BA_%D0%90%D0%BB%D1%85%D0%B8%D0%BC%D0%B8%D0%BA%D0%B0">Таблица заготовок Алхимика</a></div>
+		<div class="CategoryTreeChildren" style="display:none"></div></div>
+		<div class="CategoryTreeSection"><div class="CategoryTreeItem"><span class="CategoryTreeBullet"> </span> <a class="CategoryTreeLabel  CategoryTreeLabelNs0 CategoryTreeLabelPage" href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%A0%D0%B5%D1%86%D0%B5%D0%BF%D1%82%D0%BE%D0%B2_%D0%90%D0%BB%D1%85%D0%B8%D0%BC%D0%B8%D0%BA%D0%B0">Таблица Рецептов Алхимика</a></div>
+		<div class="CategoryTreeChildren" style="display:none"></div></div>
+		<div class="CategoryTreeSection"><div class="CategoryTreeItem"><span class="CategoryTreeBullet"> </span> <a class="CategoryTreeLabel  CategoryTreeLabelNs0 CategoryTreeLabelPage" href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%A2%D1%80%D0%B0%D0%B2%D0%BD%D0%B8%D0%BA%D0%B0">Таблица Травника</a></div>
+		<div class="CategoryTreeChildren" style="display:none"></div></div>
+		</div>
+<p><br />
+В таблице представлены зелья изготавливаемые <a href="/wiki/%D0%90%D0%BB%D1%85%D0%B8%D0%BC%D0%B8%D0%BA" title="Алхимик" class="mw-redirect">Алхимиками</a>.<br />
+</p><p>Внимание: Без навыка "Зельеварение"  умение "Алхимия" всегда считается равным 0.
+</p><p>Заготовки алхимика, лаки, клей и  краски см. тут: <a href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%B7%D0%B0%D0%B3%D0%BE%D1%82%D0%BE%D0%B2%D0%BE%D0%BA_%D0%90%D0%BB%D1%85%D0%B8%D0%BC%D0%B8%D0%BA%D0%B0" title="Таблица заготовок Алхимика">Таблица заготовок Алхимика</a>
+</p>
+<table id="toc" class="toc"><tr><td><div id="toctitle"><h2>Содержание</h2></div>
+<ul>
+<li class="toclevel-1 tocsection-1"><a href="#.D0.97.D0.B5.D0.BB.D1.8C.D1.8F_.D1.83.D1.87.D0.B5.D0.BD.D0.B8.D0.BA.D0.B0-.D0.B0.D0.BB.D1.85.D0.B8.D0.BC.D0.B8.D0.BA.D0.B0"><span class="tocnumber">1</span> <span class="toctext">Зелья ученика-алхимика</span></a></li>
+<li class="toclevel-1 tocsection-2"><a href="#.D0.97.D0.B5.D0.BB.D1.8C.D1.8F_.D0.BC.D0.B0.D1.81.D1.82.D0.B5.D1.80.D0.B0-.D0.B0.D0.BB.D1.85.D0.B8.D0.BC.D0.B8.D0.BA.D0.B0"><span class="tocnumber">2</span> <span class="toctext">Зелья мастера-алхимика</span></a></li>
+<li class="toclevel-1 tocsection-3"><a href="#.D0.97.D0.B5.D0.BB.D1.8C.D1.8F_.D1.8D.D0.BA.D1.81.D0.BF.D0.B5.D1.80.D1.82.D0.B0-.D0.B0.D0.BB.D1.85.D0.B8.D0.BC.D0.B8.D0.BA.D0.B0"><span class="tocnumber">3</span> <span class="toctext">Зелья эксперта-алхимика</span></a></li>
+<li class="toclevel-1 tocsection-4"><a href="#.D0.97.D0.B5.D0.BB.D1.8C.D1.8F_.D1.87.D0.B0.D1.80.D0.BE.D0.B4.D0.B5.D1.8F-.D0.B0.D0.BB.D1.85.D0.B8.D0.BC.D0.B8.D0.BA.D0.B0"><span class="tocnumber">4</span> <span class="toctext">Зелья чародея-алхимика</span></a></li>
+</ul>
+</td></tr></table>
+<p><br />
+</p>
+<h2> <span class="mw-headline" id=".D0.97.D0.B5.D0.BB.D1.8C.D1.8F_.D1.83.D1.87.D0.B5.D0.BD.D0.B8.D0.BA.D0.B0-.D0.B0.D0.BB.D1.85.D0.B8.D0.BC.D0.B8.D0.BA.D0.B0"> Зелья ученика-алхимика </span></h2>
+<p>Зелья ученика-алхимика - это зелья, которые алхимик может варить с 0 до 90 умений. Использование - с 8 уровня.
+</p>
+<table class="wikitable sortable">
+<tr>
+<th>Зелье
+</th>
+<th>умение
+</th>
+<th>Рецепт
+</th>
+<th>Эффект
+</th></tr>
+<tr style="vertical-align:top;">
+<td><img src="http://image.neverlands.ru/weapon/i_w27_48.gif" alt="i_w27_48.gif" /> <br /> <b>Зелье Метаболизма</b>
+</td>
+<td style="text-align: center;">0
+</td>
+<td><img src="http://image.neverlands.ru/resources/86.gif" alt="86.gif" /> <b><a href="/wiki/%D0%A0%D0%B0%D1%81%D1%82%D0%B8%D1%82%D0%B5%D0%BB%D1%8C%D0%BD%D1%8B%D0%B5_%D1%80%D0%B5%D1%81%D1%83%D1%80%D1%81%D1%8B#.D0.92.D0.B8.D0.B4.D1.8B_.D1.82.D1.80.D0.B0.D0.B2" title="Растительные ресурсы" class="mw-redirect">Моховик</a></b> (Настой), заготовка - 24 часа<br />
+<p><img src="http://image.neverlands.ru/resources/67.gif" alt="67.gif" /> <b><a href="/wiki/%D0%A0%D0%B0%D1%81%D1%82%D0%B8%D1%82%D0%B5%D0%BB%D1%8C%D0%BD%D1%8B%D0%B5_%D1%80%D0%B5%D1%81%D1%83%D1%80%D1%81%D1%8B#.D0.92.D0.B8.D0.B4.D1.8B_.D1.82.D1.80.D0.B0.D0.B2" title="Растительные ресурсы" class="mw-redirect">Кассия</a></b> (Порошок из сушеных корней), заготовка - мгновенно<br /> 
+<img src="http://image.neverlands.ru/resources/25.gif" alt="25.gif" /> <b><a href="/wiki/%D0%A0%D0%B0%D1%81%D1%82%D0%B8%D1%82%D0%B5%D0%BB%D1%8C%D0%BD%D1%8B%D0%B5_%D1%80%D0%B5%D1%81%D1%83%D1%80%D1%81%D1%8B#.D0.92.D0.B8.D0.B4.D1.8B_.D1.82.D1.80.D0.B0.D0.B2" title="Растительные ресурсы" class="mw-redirect">Кости</a></b> (Молотые), заготовка - мгновенно
+</p>
+</td>
+<td>Увеличивает <a href="/wiki/%D0%A1%D0%B0%D0%BC%D0%BE%D0%BB%D0%B5%D1%87%D0%B5%D0%BD%D0%B8%D0%B5" title="Самолечение">скорость восстановления НР</a> на 100%. <br />Действует 4 часа
+</td></tr>
+<tr style="vertical-align:top;">
+<td><img src="http://image.neverlands.ru/weapon/i_w27_45.gif" alt="i_w27_45.gif" /> <br /> <b>Зелье Блаженства</b>
+</td>
+<td style="text-align: center;">5
+</td>
+<td><img src="http://image.neverlands.ru/resources/114.gif" alt="114.gif" /> <b><a href="/wiki/%D0%A0%D0%B0%D1%81%D1%82%D0%B8%D1%82%D0%B5%D0%BB%D1%8C%D0%BD%D1%8B%D0%B5_%D1%80%D0%B5%D1%81%D1%83%D1%80%D1%81%D1%8B#.D0.92.D0.B8.D0.B4.D1.8B_.D1.82.D1.80.D0.B0.D0.B2" title="Растительные ресурсы" class="mw-redirect">Лимон</a></b> (Сок), заготовка - мгновенно<br />
+<p><img src="http://image.neverlands.ru/resources/96.gif" alt="96.gif" /> <b><a href="/wiki/%D0%A0%D0%B0%D1%81%D1%82%D0%B8%D1%82%D0%B5%D0%BB%D1%8C%D0%BD%D1%8B%D0%B5_%D1%80%D0%B5%D1%81%D1%83%D1%80%D1%81%D1%8B#.D0.92.D0.B8.D0.B4.D1.8B_.D1.82.D1.80.D0.B0.D0.B2" title="Растительные ресурсы" class="mw-redirect">Осот</a></b> (Тертые плоды), заготовка - мгновенно<br /> 
+<img src="http://image.neverlands.ru/resources/25.gif" alt="25.gif" /> <b><a href="/wiki/%D0%9A%D0%BE%D1%81%D1%82%D0%B8" title="Кости" class="mw-redirect">Кости</a></b> (Молотые), биржа, заготовка - мгновенно
+</p>
+</td>
+<td>Мгновенно снимает <a href="/wiki/%D0%A3%D1%81%D1%82%D0%B0%D0%BB%D0%BE%D1%81%D1%82%D1%8C" title="Усталость">Усталость</a>
+</td></tr>
+<tr style="vertical-align:top;">
+<td><img src="http://image.neverlands.ru/weapon/i_w27_52.gif" alt="i_w27_52.gif" /> <br /> <b>Зелье Сильной Спины</b>
+</td>
+<td style="text-align: center;">10
+</td>
+<td><img src="http://image.neverlands.ru/resources/77.gif" alt="77.gif" /> <b><a href="/wiki/%D0%A0%D0%B0%D1%81%D1%82%D0%B8%D1%82%D0%B5%D0%BB%D1%8C%D0%BD%D1%8B%D0%B5_%D1%80%D0%B5%D1%81%D1%83%D1%80%D1%81%D1%8B#.D0.92.D0.B8.D0.B4.D1.8B_.D1.82.D1.80.D0.B0.D0.B2" title="Растительные ресурсы" class="mw-redirect">Гравилат</a></b> (Сушеные корни),, заготовка - 18 часов<br />
+<p><img src="http://image.neverlands.ru/resources/84.gif" alt="84.gif" /> <b><a href="/wiki/%D0%A0%D0%B0%D1%81%D1%82%D0%B8%D1%82%D0%B5%D0%BB%D1%8C%D0%BD%D1%8B%D0%B5_%D1%80%D0%B5%D1%81%D1%83%D1%80%D1%81%D1%8B#.D0.92.D0.B8.D0.B4.D1.8B_.D1.82.D1.80.D0.B0.D0.B2" title="Растительные ресурсы" class="mw-redirect">Хвоя</a></b> (Настой на иголках), заготовка - 24 часа<br /> 
+<img src="http://image.neverlands.ru/resources/226.gif" alt="226.gif" /> <b><a href="/wiki/%D0%A0%D1%8B%D0%B1%D0%B8%D0%B9_%D0%B6%D0%B8%D1%80" title="Рыбий жир" class="mw-redirect">Рыбий жир</a></b> (Очищенный), биржа, заготовка - 14 минут
+</p>
+</td>
+<td>Увеличивает <a href="/wiki/%D0%9C%D0%B0%D1%81%D1%81%D0%B0" title="Масса">массу</a> на 200 единиц. <br />Действует 20 часов
+</td></tr>
+<tr style="vertical-align:top;">
+<td><img src="http://image.neverlands.ru/weapon/i_w27_32.gif" alt="i_w27_32.gif" /> <br /> <b>Зелье Просветления</b>
+</td>
+<td style="text-align: center;">20
+</td>
+<td><img src="http://image.neverlands.ru/resources/47.gif" alt="47.gif" /> <b><a href="/wiki/%D0%A0%D0%B0%D1%81%D1%82%D0%B8%D1%82%D0%B5%D0%BB%D1%8C%D0%BD%D1%8B%D0%B5_%D1%80%D0%B5%D1%81%D1%83%D1%80%D1%81%D1%8B#.D0.92.D0.B8.D0.B4.D1.8B_.D1.82.D1.80.D0.B0.D0.B2" title="Растительные ресурсы" class="mw-redirect">Каланхое</a></b> (Сок), заготовка - мгновенно<br />
+<p><img src="http://image.neverlands.ru/resources/83.gif" alt="83.gif" /> <b><a href="/wiki/%D0%A0%D0%B0%D1%81%D1%82%D0%B8%D1%82%D0%B5%D0%BB%D1%8C%D0%BD%D1%8B%D0%B5_%D1%80%D0%B5%D1%81%D1%83%D1%80%D1%81%D1%8B#.D0.92.D0.B8.D0.B4.D1.8B_.D1.82.D1.80.D0.B0.D0.B2" title="Растительные ресурсы" class="mw-redirect">Кора сосны</a></b> Сосна (Отвар из коры), заготовка - 14 минут<br /> 
+<img src="http://image.neverlands.ru/resources/226.gif" alt="226.gif" /> <b><a href="/wiki/%D0%A0%D1%8B%D0%B1%D0%B8%D0%B9_%D0%B6%D0%B8%D1%80" title="Рыбий жир" class="mw-redirect">Рыбий жир</a></b> (Очищенный), биржа, заготовка - 14 минут
+</p>
+</td>
+<td>Увеличивает количество получаемого <a href="/wiki/%D0%9E%D0%BF%D1%8B%D1%82" title="Опыт">опыта</a> на 20%, <br />только в боях с персонажами. <br />Действует 5 часа
+</td></tr>
+
+<tr style="vertical-align:top;">
+<td><img src="http://image.neverlands.ru/weapon/i_w27_42.gif" alt="i_w27_42.gif" />  <br /> <b>Зелье Сокрушительных Ударов</b>
+</td>
+<td style="text-align: center;">30
+</td>
+<td><img src="http://image.neverlands.ru/resources/87.gif" alt="87.gif" /> <b><a href="/wiki/%D0%A0%D0%B0%D1%81%D1%82%D0%B8%D1%82%D0%B5%D0%BB%D1%8C%D0%BD%D1%8B%D0%B5_%D1%80%D0%B5%D1%81%D1%83%D1%80%D1%81%D1%8B#.D0.92.D0.B8.D0.B4.D1.8B_.D1.82.D1.80.D0.B0.D0.B2" title="Растительные ресурсы" class="mw-redirect">Бадан</a></b> (Настой из корневищ), заготовка - 24 часа<br />
+<p><img src="http://image.neverlands.ru/resources/25.gif" alt="25.gif" /> <b><a href="/wiki/%D0%9A%D0%BE%D1%81%D1%82%D0%B8" title="Кости" class="mw-redirect">Кости</a></b> (Молотые), биржа, заготовка - мгновенно<br /> 
+<img src="http://image.neverlands.ru/resources/213.gif" alt="213.gif" /> <b><a href="/wiki/%D0%9A%D1%80%D1%8B%D1%81%D0%B8%D0%BD%D1%8B%D0%B9_%D0%A5%D0%B2%D0%BE%D1%81%D1%82" title="Крысиный Хвост">Крысиный Хвост</a></b> (отвар), биржа, заготовка - 14 минут
+</p>
+</td>
+<td>Увеличивает <a href="/wiki/%D0%9C%D0%A4" title="МФ" class="mw-redirect">МФ</a> <a href="/wiki/%D0%A1%D0%BE%D0%BA%D1%80%D1%83%D1%88%D0%B5%D0%BD%D0%B8%D0%B5" title="Сокрушение" class="mw-redirect">Сокрушение</a> на +100. <br />Действует 3 часа
+</td></tr>
+<tr style="vertical-align:top;">
+<td><img src="http://image.neverlands.ru/weapon/i_w27_43.gif" alt="i_w27_43.gif" /> <br /> <b>Зелье Стойкости</b>
+</td>
+<td style="text-align: center;">40
+</td>
+<td><img src="http://image.neverlands.ru/resources/103.gif" alt="103.gif" /> <b><a href="/wiki/%D0%A0%D0%B0%D1%81%D1%82%D0%B8%D1%82%D0%B5%D0%BB%D1%8C%D0%BD%D1%8B%D0%B5_%D1%80%D0%B5%D1%81%D1%83%D1%80%D1%81%D1%8B#.D0.92.D0.B8.D0.B4.D1.8B_.D1.82.D1.80.D0.B0.D0.B2" title="Растительные ресурсы" class="mw-redirect">Тарвин</a></b> (Настой на коре), заготовка - 24 часа<br />
+<p><img src="http://image.neverlands.ru/resources/25.gif" alt="25.gif" /> <b><a href="/wiki/%D0%9A%D0%BE%D1%81%D1%82%D0%B8" title="Кости" class="mw-redirect">Кости</a></b> (Молотые), биржа, заготовка - мгновенно<br /> 
+<img src="http://image.neverlands.ru/resources/213.gif" alt="213.gif" /> <b><a href="/wiki/%D0%9A%D1%80%D1%8B%D1%81%D0%B8%D0%BD%D1%8B%D0%B9_%D0%A5%D0%B2%D0%BE%D1%81%D1%82" title="Крысиный Хвост">Крысиный Хвост</a></b> (отвар), биржа, заготовка - 14 минут
+</p>
+</td>
+<td>Увеличивает <a href="/wiki/%D0%9C%D0%A4" title="МФ" class="mw-redirect">МФ</a> <a href="/wiki/%D0%A1%D1%82%D0%BE%D0%B9%D0%BA%D0%BE%D1%81%D1%82%D1%8C" title="Стойкость" class="mw-redirect">Стойкость</a> на +100. <br />Действует 3 часа
+</td></tr>
+<tr style="vertical-align:top;">
+<td><img src="http://image.neverlands.ru/weapon/i_w27_44.gif" alt="i_w27_44.gif" /> <br /> <b>Зелье Недосягаемости</b>
+</td>
+<td style="text-align: center;">50
+</td>
+<td><img src="http://image.neverlands.ru/resources/108.gif" alt="108.gif" /> <b><a href="/wiki/%D0%A0%D0%B0%D1%81%D1%82%D0%B8%D1%82%D0%B5%D0%BB%D1%8C%D0%BD%D1%8B%D0%B5_%D1%80%D0%B5%D1%81%D1%83%D1%80%D1%81%D1%8B#.D0.92.D0.B8.D0.B4.D1.8B_.D1.82.D1.80.D0.B0.D0.B2" title="Растительные ресурсы" class="mw-redirect">Змеиный корень</a></b> (Отвар), заготовка - 14 минут<br />
+<p><img src="http://image.neverlands.ru/resources/25.gif" alt="25.gif" /> <b><a href="/wiki/%D0%9A%D0%BE%D1%81%D1%82%D0%B8" title="Кости" class="mw-redirect">Кости</a></b> (Молотые), биржа, заготовка - мгновенно<br /> 
+<img src="http://image.neverlands.ru/resources/213.gif" alt="213.gif" /> <b><a href="/wiki/%D0%9A%D1%80%D1%8B%D1%81%D0%B8%D0%BD%D1%8B%D0%B9_%D0%A5%D0%B2%D0%BE%D1%81%D1%82" title="Крысиный Хвост">Крысиный Хвост</a></b> (отвар), биржа, заготовка - 14 минут
+</p>
+</td>
+<td>Увеличивает <a href="/wiki/%D0%9C%D0%A4" title="МФ" class="mw-redirect">МФ</a> <a href="/wiki/%D0%A3%D0%BB%D0%BE%D0%B2%D0%BA%D0%B0" title="Уловка" class="mw-redirect">Уловка</a> на +100. <br />Действует 3 часа
+</td></tr>
+<tr style="vertical-align:top;">
+<td><img src="http://image.neverlands.ru/weapon/i_w27_51.gif" alt="i_w27_51.gif" /> <br /> <b>Зелье Точного Попадания</b>
+</td>
+<td style="text-align: center;">60
+</td>
+<td><img src="http://image.neverlands.ru/resources/91.gif" alt="91.gif" /> <b><a href="/wiki/%D0%A0%D0%B0%D1%81%D1%82%D0%B8%D1%82%D0%B5%D0%BB%D1%8C%D0%BD%D1%8B%D0%B5_%D1%80%D0%B5%D1%81%D1%83%D1%80%D1%81%D1%8B#.D0.92.D0.B8.D0.B4.D1.8B_.D1.82.D1.80.D0.B0.D0.B2" title="Растительные ресурсы" class="mw-redirect">Трифоль</a></b> (настой на листьях), заготовка - 12 часов<br />
+<p><img src="http://image.neverlands.ru/resources/25.gif" alt="25.gif" /> <b><a href="/wiki/%D0%9A%D0%BE%D1%81%D1%82%D0%B8" title="Кости" class="mw-redirect">Кости</a></b> (Молотые), биржа, заготовка - мгновенно<br /> 
+<img src="http://image.neverlands.ru/resources/213.gif" alt="213.gif" /> <b><a href="/wiki/%D0%9A%D1%80%D1%8B%D1%81%D0%B8%D0%BD%D1%8B%D0%B9_%D0%A5%D0%B2%D0%BE%D1%81%D1%82" title="Крысиный Хвост">Крысиный Хвост</a></b> (отвар), биржа, заготовка - 14 минут
+</p>
+</td>
+<td>Увеличивает <a href="/wiki/%D0%9C%D0%A4" title="МФ" class="mw-redirect">МФ</a> <a href="/wiki/%D0%A2%D0%BE%D1%87%D0%BD%D0%BE%D1%81%D1%82%D1%8C" title="Точность" class="mw-redirect">Точность</a> на +100. <br />Действует 3 часа
+</td></tr>
+<tr style="vertical-align:top;">
+<td><img src="http://image.neverlands.ru/weapon/i_w27_59.gif" alt="i_w27_59.gif" /> <br /> <b>Зелье Ловких Ударов</b>
+</td>
+<td style="text-align: center;">75
+</td>
+<td><img src="http://image.neverlands.ru/resources/115.gif" alt="115.gif" /> <b><a href="/wiki/%D0%A0%D0%B0%D1%81%D1%82%D0%B8%D1%82%D0%B5%D0%BB%D1%8C%D0%BD%D1%8B%D0%B5_%D1%80%D0%B5%D1%81%D1%83%D1%80%D1%81%D1%8B#.D0.92.D0.B8.D0.B4.D1.8B_.D1.82.D1.80.D0.B0.D0.B2" title="Растительные ресурсы" class="mw-redirect">Бегония</a></b> (Сушеные листья), заготовка - 18 часов<br />
+<p><img src="http://image.neverlands.ru/resources/25.gif" alt="25.gif" /> <b><a href="/wiki/%D0%9A%D0%BE%D1%81%D1%82%D0%B8" title="Кости" class="mw-redirect">Кости</a></b> (Молотые), биржа, заготовка - мгновенно<br /> 
+<img src="http://image.neverlands.ru/resources/214.gif" alt="214.gif" /> <b><a href="/wiki/%D0%9A%D1%80%D1%8B%D1%81%D0%B8%D0%BD%D0%B0%D1%8F_%D0%9B%D0%B0%D0%BF%D0%B0" title="Крысиная Лапа">Крысиная Лапа</a></b> (Отвар), биржа, заготовка - 14 минут
+</p>
+</td>
+<td>Увеличивает <a href="/wiki/%D0%9C%D0%A4" title="МФ" class="mw-redirect">МФ</a> <a href="/wiki/%D0%A3%D0%BB%D0%BE%D0%B2%D0%BA%D0%B0" title="Уловка" class="mw-redirect">Уловка</a> и <a href="/wiki/%D0%A2%D0%BE%D1%87%D0%BD%D0%BE%D1%81%D1%82%D1%8C" title="Точность" class="mw-redirect">Точность</a> на +90. <br />Действует 2 часа
+</td></tr>
+<tr style="vertical-align:top;">
+<td><img src="http://image.neverlands.ru/weapon/i_w27_51.gif" alt="i_w27_51.gif" /> <br /> <b>Зелье Мужества</b>
+</td>
+<td style="text-align: center;">90
+</td>
+<td><img src="http://image.neverlands.ru/resources/58.gif" alt="58.gif" /> <b><a href="/wiki/%D0%A0%D0%B0%D1%81%D1%82%D0%B8%D1%82%D0%B5%D0%BB%D1%8C%D0%BD%D1%8B%D0%B5_%D1%80%D0%B5%D1%81%D1%83%D1%80%D1%81%D1%8B#.D0.92.D0.B8.D0.B4.D1.8B_.D1.82.D1.80.D0.B0.D0.B2" title="Растительные ресурсы" class="mw-redirect">Алтей</a></b> (Сушеный корень), заготовка - 18 часов<br />
+<p><img src="http://image.neverlands.ru/resources/25.gif" alt="25.gif" /> <b><a href="/wiki/%D0%9A%D0%BE%D1%81%D1%82%D0%B8" title="Кости" class="mw-redirect">Кости</a></b> (Молотые), биржа, заготовка - мгновенно<br /> 
+<img src="http://image.neverlands.ru/resources/214.gif" alt="214.gif" /> <b><a href="/wiki/%D0%9A%D1%80%D1%8B%D1%81%D0%B8%D0%BD%D0%B0%D1%8F_%D0%9B%D0%B0%D0%BF%D0%B0" title="Крысиная Лапа">Крысиная Лапа</a></b> (Отвар), биржа, заготовка - 14 минут
+</p>
+</td>
+<td>Увеличивает <a href="/wiki/%D0%9C%D0%A4" title="МФ" class="mw-redirect">МФ</a> <a href="/wiki/%D0%A1%D0%BE%D0%BA%D1%80%D1%83%D1%88%D0%B5%D0%BD%D0%B8%D0%B5" title="Сокрушение" class="mw-redirect">Сокрушение</a> и <a href="/wiki/%D0%A1%D1%82%D0%BE%D0%B9%D0%BA%D0%BE%D1%81%D1%82%D1%8C" title="Стойкость" class="mw-redirect">Стойкость</a> на +90. <br />Действует 2 часа
+</td></tr>
+</table>
+<h2> <span class="mw-headline" id=".D0.97.D0.B5.D0.BB.D1.8C.D1.8F_.D0.BC.D0.B0.D1.81.D1.82.D0.B5.D1.80.D0.B0-.D0.B0.D0.BB.D1.85.D0.B8.D0.BC.D0.B8.D0.BA.D0.B0"> Зелья мастера-алхимика </span></h2>
+<p>Зелья мастера-алхимика - это зелья, которые алхимик может варить со 105 до 240 умений. Использование - с 8 уровня.
+</p>
+<table class="wikitable sortable">
+<tr>
+<th>Зелье
+</th>
+<th>умение
+</th>
+<th>Рецепт
+</th>
+<th>Эффект
+</th></tr>
+<tr style="vertical-align:top;">
+<td><img src="http://image.neverlands.ru/weapon/i_w27_40.gif" alt="i_w27_40.gif" /> <br />
+<p><b>Зелье Жизни</b>
+</p>
+</td>
+<td style="text-align: center;">105
+</td>
+<td><img src="http://image.neverlands.ru/resources/76.gif" alt="76.gif" /> <b><a href="/wiki/%D0%A0%D0%B0%D1%81%D1%82%D0%B8%D1%82%D0%B5%D0%BB%D1%8C%D0%BD%D1%8B%D0%B5_%D1%80%D0%B5%D1%81%D1%83%D1%80%D1%81%D1%8B#.D0.92.D0.B8.D0.B4.D1.8B_.D1.82.D1.80.D0.B0.D0.B2" title="Растительные ресурсы" class="mw-redirect">Бессмертник</a></b> (Сушеный стебель), заготовка - 18 часов<br />
+<p><img src="http://image.neverlands.ru/resources/98.gif" alt="98.gif" /> <b><a href="/wiki/%D0%A0%D0%B0%D1%81%D1%82%D0%B8%D1%82%D0%B5%D0%BB%D1%8C%D0%BD%D1%8B%D0%B5_%D1%80%D0%B5%D1%81%D1%83%D1%80%D1%81%D1%8B#.D0.92.D0.B8.D0.B4.D1.8B_.D1.82.D1.80.D0.B0.D0.B2" title="Растительные ресурсы" class="mw-redirect">Катарантус</a></b> (Сушеные листья), заготовка - 18 часов<br />
+<img src="http://image.neverlands.ru/resources/26.gif" alt="26.gif" /> <b><a href="/wiki/%D0%9F%D1%83%D0%B7%D1%8B%D1%80%D1%8C" title="Пузырь">Пузырь</a></b> (Сушеный, тёртый), биржа, заготовка - мгновенно
+</p>
+</td>
+<td>Увеличивает кол-во <a href="/wiki/%D0%9D%D0%A0" title="НР" class="mw-redirect">НР</a> на 300 единиц. <br />Действует 3 часа
+</td></tr>
+<tr style="vertical-align:top;">
+<td><img src="http://image.neverlands.ru/weapon/i_w27_35.gif" alt="i_w27_35.gif" /> <br />
+<p><b>Зелье Лечения</b>
+</p>
+</td>
+<td style="text-align: center;">110
+</td>
+<td><img src="http://image.neverlands.ru/resources/104.gif" alt="104.gif" /> <b><a href="/wiki/%D0%A0%D0%B0%D1%81%D1%82%D0%B8%D1%82%D0%B5%D0%BB%D1%8C%D0%BD%D1%8B%D0%B5_%D1%80%D0%B5%D1%81%D1%83%D1%80%D1%81%D1%8B#.D0.92.D0.B8.D0.B4.D1.8B_.D1.82.D1.80.D0.B0.D0.B2" title="Растительные ресурсы" class="mw-redirect">Жизненное древо</a></b> (Сушеные плоды), заготовка - 18 часов<br />
+<p><img src="http://image.neverlands.ru/resources/60.gif" alt="60.gif" /> <b><a href="/wiki/%D0%A0%D0%B0%D1%81%D1%82%D0%B8%D1%82%D0%B5%D0%BB%D1%8C%D0%BD%D1%8B%D0%B5_%D1%80%D0%B5%D1%81%D1%83%D1%80%D1%81%D1%8B#.D0.92.D0.B8.D0.B4.D1.8B_.D1.82.D1.80.D0.B0.D0.B2" title="Растительные ресурсы" class="mw-redirect">Астрагал</a></b> (Настой из листьев), заготовка - 24 часа<br />
+<img src="http://image.neverlands.ru/resources/26.gif" alt="26.gif" /> <b><a href="/wiki/%D0%9F%D1%83%D0%B7%D1%8B%D1%80%D1%8C" title="Пузырь">Пузырь</a></b> (Сушеный, тёртый), биржа, заготовка - мгновенно
+</p>
+</td>
+<td>восстанавливает <a href="/wiki/%D0%9D%D0%A0" title="НР" class="mw-redirect">НР</a> на 200 единиц
+</td></tr>
+<tr style="vertical-align:top;">
+<td><img src="http://image.neverlands.ru/weapon/i_w27_54.gif" alt="i_w27_54.gif" /> <br />
+<p><b>Зелье Восстановления Маны</b>
+</p>
+</td>
+<td style="text-align: center;">120
+</td>
+<td><img src="http://image.neverlands.ru/resources/80.gif" alt="80.gif" /> <b><a href="/wiki/%D0%A0%D0%B0%D1%81%D1%82%D0%B8%D1%82%D0%B5%D0%BB%D1%8C%D0%BD%D1%8B%D0%B5_%D1%80%D0%B5%D1%81%D1%83%D1%80%D1%81%D1%8B#.D0.92.D0.B8.D0.B4.D1.8B_.D1.82.D1.80.D0.B0.D0.B2" title="Растительные ресурсы" class="mw-redirect">Ведьмино кольцо</a></b> (Отвар), заготовка - 14 минут<br />
+<p><img src="http://image.neverlands.ru/resources/88.gif" alt="88.gif" /> <b><a href="/wiki/%D0%A0%D0%B0%D1%81%D1%82%D0%B8%D1%82%D0%B5%D0%BB%D1%8C%D0%BD%D1%8B%D0%B5_%D1%80%D0%B5%D1%81%D1%83%D1%80%D1%81%D1%8B#.D0.92.D0.B8.D0.B4.D1.8B_.D1.82.D1.80.D0.B0.D0.B2" title="Растительные ресурсы" class="mw-redirect">Болотник</a></b> (Сушеные листья), заготовка - 18 часов<br />
+<img src="http://image.neverlands.ru/resources/26.gif" alt="26.gif" /> <b><a href="/wiki/%D0%9F%D1%83%D0%B7%D1%8B%D1%80%D1%8C" title="Пузырь">Пузырь</a></b> (Сушеный, тёртый), биржа, заготовка - мгновенно
+</p>
+</td>
+<td>восстанавливает <a href="/wiki/%D0%9C%D0%B0%D0%BD%D0%B0" title="Мана">MР</a> на 100 единиц
+</td></tr>
+<tr style="vertical-align:top;">
+<td><img src="http://image.neverlands.ru/weapon/i_w27_57.gif" alt="i_w27_57.gif" /> <br />
+<p><b>Зелье Энергии</b>
+</p>
+</td>
+<td style="text-align: center;">130
+</td>
+<td><img src="http://image.neverlands.ru/resources/94.gif" alt="94.gif" /> <b><a href="/wiki/%D0%A0%D0%B0%D1%81%D1%82%D0%B8%D1%82%D0%B5%D0%BB%D1%8C%D0%BD%D1%8B%D0%B5_%D1%80%D0%B5%D1%81%D1%83%D1%80%D1%81%D1%8B#.D0.92.D0.B8.D0.B4.D1.8B_.D1.82.D1.80.D0.B0.D0.B2" title="Растительные ресурсы" class="mw-redirect">Анис</a></b> (Настой из плодов), заготовка - 24 часа<br />
+<p><img src="http://image.neverlands.ru/resources/90.gif" alt="90.gif" /> <b><a href="/wiki/%D0%A0%D0%B0%D1%81%D1%82%D0%B8%D1%82%D0%B5%D0%BB%D1%8C%D0%BD%D1%8B%D0%B5_%D1%80%D0%B5%D1%81%D1%83%D1%80%D1%81%D1%8B#.D0.92.D0.B8.D0.B4.D1.8B_.D1.82.D1.80.D0.B0.D0.B2" title="Растительные ресурсы" class="mw-redirect">Маклея</a></b> (Настой на листьях), заготовка - 12 часов<br />
+<img src="http://image.neverlands.ru/resources/26.gif" alt="26.gif" /> <b><a href="/wiki/%D0%9F%D1%83%D0%B7%D1%8B%D1%80%D1%8C" title="Пузырь">Пузырь</a></b> (Сушеный, тёртый), биржа, заготовка - мгновенно
+</p>
+</td>
+<td>восстанавливает <a href="/wiki/%D0%9D%D0%A0" title="НР" class="mw-redirect">НР</a> на 150 единиц<br /> и <a href="/wiki/%D0%9C%D0%B0%D0%BD%D0%B0" title="Мана">МP</a> на 100 единиц
+</td></tr>
+<tr style="vertical-align:top;">
+<td><img src="http://image.neverlands.ru/weapon/i_w27_55.gif" alt="i_w27_55.gif" /> <br />
+<p><b>Зелье Удачи</b>
+</p>
+</td>
+<td style="text-align: center;">140
+</td>
+<td><img src="http://image.neverlands.ru/resources/48.gif" alt="48.gif" /> <b><a href="/wiki/%D0%A0%D0%B0%D1%81%D1%82%D0%B8%D1%82%D0%B5%D0%BB%D1%8C%D0%BD%D1%8B%D0%B5_%D1%80%D0%B5%D1%81%D1%83%D1%80%D1%81%D1%8B#.D0.92.D0.B8.D0.B4.D1.8B_.D1.82.D1.80.D0.B0.D0.B2" title="Растительные ресурсы" class="mw-redirect">Каперс</a></b> (отвар на коре), заготовка - 14 минут<br />
+<p><img src="http://image.neverlands.ru/resources/56.gif" alt="56.gif" /> <b><a href="/wiki/%D0%A0%D0%B0%D1%81%D1%82%D0%B8%D1%82%D0%B5%D0%BB%D1%8C%D0%BD%D1%8B%D0%B5_%D1%80%D0%B5%D1%81%D1%83%D1%80%D1%81%D1%8B#.D0.92.D0.B8.D0.B4.D1.8B_.D1.82.D1.80.D0.B0.D0.B2" title="Растительные ресурсы" class="mw-redirect">Подберезовик</a></b> (толченая сушеная шляпка), заготовка - мгновенно<br />
+<img src="http://image.neverlands.ru/resources/23.gif" alt="23.gif" /> <b><a href="/wiki/%D0%A0%D1%8B%D0%B1%D0%B8%D0%B9_%D0%B3%D0%BB%D0%B0%D0%B7" title="Рыбий глаз">Рыбий глаз</a></b> (отвар), биржа, заготовка - 14 минут
+</p>
+</td>
+<td>Увеличивает <a href="/wiki/%D0%A3%D0%B4%D0%B0%D1%87%D0%B0" title="Удача">Удачу</a> на +10 . <br />Действует 3 часа
+</td></tr>
+<tr style="vertical-align:top;">
+<td><img src="http://image.neverlands.ru/weapon/i_w27_37.gif" alt="i_w27_37.gif" /> <br />
+<p><b>Зелье Силы</b>
+</p>
+</td>
+<td style="text-align: center;">150
+</td>
+<td><img src="http://image.neverlands.ru/resources/112.gif" alt="112.gif" /> <b><a href="/wiki/%D0%A0%D0%B0%D1%81%D1%82%D0%B8%D1%82%D0%B5%D0%BB%D1%8C%D0%BD%D1%8B%D0%B5_%D1%80%D0%B5%D1%81%D1%83%D1%80%D1%81%D1%8B#.D0.92.D0.B8.D0.B4.D1.8B_.D1.82.D1.80.D0.B0.D0.B2" title="Растительные ресурсы" class="mw-redirect">Кентарийская дикая роза</a></b> (Настой из лепестков), заготовка - 24 часа<br />
+<p><img src="http://image.neverlands.ru/resources/63.gif" alt="63.gif" /> <b><a href="/wiki/%D0%A0%D0%B0%D1%81%D1%82%D0%B8%D1%82%D0%B5%D0%BB%D1%8C%D0%BD%D1%8B%D0%B5_%D1%80%D0%B5%D1%81%D1%83%D1%80%D1%81%D1%8B#.D0.92.D0.B8.D0.B4.D1.8B_.D1.82.D1.80.D0.B0.D0.B2" title="Растительные ресурсы" class="mw-redirect">Девясил</a></b> (Отвар из всего растения),заготовка - 14 минут<br /> 
+<img src="http://image.neverlands.ru/resources/23.gif" alt="23.gif" /> <b><a href="/wiki/%D0%A0%D1%8B%D0%B1%D0%B8%D0%B9_%D0%B3%D0%BB%D0%B0%D0%B7" title="Рыбий глаз">Рыбий глаз</a></b> (отвар), биржа, заготовка - 14 минут
+</p>
+</td>
+<td>Увеличивает <a href="/wiki/%D0%A1%D0%B8%D0%BB%D0%B0" title="Сила">Силу</a> на +10 . <br />Действует 3 часа
+</td></tr>
+<tr style="vertical-align:top;">
+<td><img src="http://image.neverlands.ru/weapon/i_w27_46.gif" alt="i_w27_46.gif" /> <br />
+<p><b>Зелье Ловкости</b>
+</p>
+</td>
+<td style="text-align: center;">160
+</td>
+<td><img src="http://image.neverlands.ru/resources/89.gif" alt="89.gif" /> <b><a href="/wiki/%D0%A0%D0%B0%D1%81%D1%82%D0%B8%D1%82%D0%B5%D0%BB%D1%8C%D0%BD%D1%8B%D0%B5_%D1%80%D0%B5%D1%81%D1%83%D1%80%D1%81%D1%8B#.D0.92.D0.B8.D0.B4.D1.8B_.D1.82.D1.80.D0.B0.D0.B2" title="Растительные ресурсы" class="mw-redirect">Брусника</a></b> (Отвар из листьев), заготовка - 14 минут<br />
+<p><img src="http://image.neverlands.ru/resources/66.gif" alt="66.gif" /> <b><a href="/wiki/%D0%A0%D0%B0%D1%81%D1%82%D0%B8%D1%82%D0%B5%D0%BB%D1%8C%D0%BD%D1%8B%D0%B5_%D1%80%D0%B5%D1%81%D1%83%D1%80%D1%81%D1%8B#.D0.92.D0.B8.D0.B4.D1.8B_.D1.82.D1.80.D0.B0.D0.B2" title="Растительные ресурсы" class="mw-redirect">Истод</a></b> (Отвар из корней), заготовка - 14 минут<br />
+<img src="http://image.neverlands.ru/resources/23.gif" alt="23.gif" /> <b><a href="/wiki/%D0%A0%D1%8B%D0%B1%D0%B8%D0%B9_%D0%B3%D0%BB%D0%B0%D0%B7" title="Рыбий глаз">Рыбий глаз</a></b> (отвар), биржа, заготовка - 14 минут
+</p>
+</td>
+<td>Увеличивает <a href="/wiki/%D0%9B%D0%BE%D0%B2%D0%BA%D0%BE%D1%81%D1%82%D1%8C" title="Ловкость">Ловкость</a> на +10 . <br />Действует 3 часа
+</td></tr>
+<tr style="vertical-align:top;">
+<td><img src="http://image.neverlands.ru/weapon/i_w27_33.gif" alt="i_w27_33.gif" /> <br />
+<p><b>Зелье Гения</b>
+</p>
+</td>
+<td style="text-align: center;">170
+</td>
+<td><img src="http://image.neverlands.ru/resources/110.gif" alt="110.gif" /> <b><a href="/wiki/%D0%A0%D0%B0%D1%81%D1%82%D0%B8%D1%82%D0%B5%D0%BB%D1%8C%D0%BD%D1%8B%D0%B5_%D1%80%D0%B5%D1%81%D1%83%D1%80%D1%81%D1%8B#.D0.92.D0.B8.D0.B4.D1.8B_.D1.82.D1.80.D0.B0.D0.B2" title="Растительные ресурсы" class="mw-redirect">Прагениана</a></b> (Отвар из корней), заготовка - 14 минут<br />
+<p><img src="http://image.neverlands.ru/resources/92.gif" alt="92.gif" /> <b><a href="/wiki/%D0%A0%D0%B0%D1%81%D1%82%D0%B8%D1%82%D0%B5%D0%BB%D1%8C%D0%BD%D1%8B%D0%B5_%D1%80%D0%B5%D1%81%D1%83%D1%80%D1%81%D1%8B#.D0.92.D0.B8.D0.B4.D1.8B_.D1.82.D1.80.D0.B0.D0.B2" title="Растительные ресурсы" class="mw-redirect">Сыроежка</a></b> (Толченая сушеная шляпка), заготовка - мгновенно<br /> 
+<img src="http://image.neverlands.ru/resources/23.gif" alt="23.gif" /> <b><a href="/wiki/%D0%A0%D1%8B%D0%B1%D0%B8%D0%B9_%D0%B3%D0%BB%D0%B0%D0%B7" title="Рыбий глаз">Рыбий глаз</a></b> (отвар), биржа, заготовка - 14 минут
+</p>
+</td>
+<td>Увеличивает <a href="/wiki/%D0%97%D0%BD%D0%B0%D0%BD%D0%B8%D1%8F" title="Знания">Знания</a> на +10 . <br />Действует 3 часа
+</td></tr>
+<tr style="vertical-align:top;">
+<td><img src="http://image.neverlands.ru/weapon/i_w27_58.gif" alt="i_w27_58.gif" /> <br />
+<p><b>Зелье Боевой Славы</b>
+</p>
+</td>
+<td style="text-align: center;">180
+</td>
+<td><img src="http://image.neverlands.ru/resources/107.gif" alt="107.gif" /> <b><a href="/wiki/%D0%A0%D0%B0%D1%81%D1%82%D0%B8%D1%82%D0%B5%D0%BB%D1%8C%D0%BD%D1%8B%D0%B5_%D1%80%D0%B5%D1%81%D1%83%D1%80%D1%81%D1%8B#.D0.92.D0.B8.D0.B4.D1.8B_.D1.82.D1.80.D0.B0.D0.B2" title="Растительные ресурсы" class="mw-redirect">Ландыш</a></b> (Сушеные цветы), заготовка - 18 часов<br />
+<p><img src="http://image.neverlands.ru/resources/49.gif" alt="49.gif" /> <b><a href="/wiki/%D0%A0%D0%B0%D1%81%D1%82%D0%B8%D1%82%D0%B5%D0%BB%D1%8C%D0%BD%D1%8B%D0%B5_%D1%80%D0%B5%D1%81%D1%83%D1%80%D1%81%D1%8B#.D0.92.D0.B8.D0.B4.D1.8B_.D1.82.D1.80.D0.B0.D0.B2" title="Растительные ресурсы" class="mw-redirect">Кориандр</a></b> (Экстракт из плодов), заготовка - мгновенно<br /> 
+<img src="http://image.neverlands.ru/resources/23.gif" alt="23.gif" /> <b><a href="/wiki/%D0%A0%D1%8B%D0%B1%D0%B8%D0%B9_%D0%B3%D0%BB%D0%B0%D0%B7" title="Рыбий глаз">Рыбий глаз</a></b> (отвар), <a href="/wiki/%D0%91%D0%B8%D1%80%D0%B6%D0%B0_%D1%80%D0%B5%D1%81%D1%83%D1%80%D1%81%D0%BE%D0%B2" title="Биржа ресурсов">биржа</a> или разделка <a href="/wiki/%D0%A0%D1%8B%D0%B1%D0%B0" title="Рыба" class="mw-redirect">рыбы</a>, заготовка - 14 минут
+</p>
+</td>
+<td>Увеличивает <a href="/wiki/%D0%A1%D1%82%D0%B0%D1%82" title="Стат">статы</a> <a href="/wiki/%D0%9B%D0%BE%D0%B2%D0%BA%D0%BE%D1%81%D1%82%D1%8C" title="Ловкость">Ловкости</a> и <a href="/wiki/%D0%A3%D0%B4%D0%B0%D1%87%D0%B0" title="Удача">Удачи</a> на +7 . <br />Действует 2 часа
+</td></tr>
+<tr style="vertical-align:top;">
+<td><img src="http://image.neverlands.ru/weapon/i_w27_53.gif" alt="i_w27_53.gif" /> <br />
+<p><b>Зелье Невидимости</b>
+</p>
+</td>
+<td style="text-align: center;">190
+</td>
+<td><img src="http://image.neverlands.ru/resources/106.gif" alt="106.gif" /> <b><a href="/wiki/%D0%A0%D0%B0%D1%81%D1%82%D0%B8%D1%82%D0%B5%D0%BB%D1%8C%D0%BD%D1%8B%D0%B5_%D1%80%D0%B5%D1%81%D1%83%D1%80%D1%81%D1%8B#.D0.92.D0.B8.D0.B4.D1.8B_.D1.82.D1.80.D0.B0.D0.B2" title="Растительные ресурсы" class="mw-redirect">Люминсцентная поганка</a></b> (Настой), заготовка - 24 часа<br />
+<p><img src="http://image.neverlands.ru/resources/113.gif" alt="113.gif" /> <b><a href="/wiki/%D0%A0%D0%B0%D1%81%D1%82%D0%B8%D1%82%D0%B5%D0%BB%D1%8C%D0%BD%D1%8B%D0%B5_%D1%80%D0%B5%D1%81%D1%83%D1%80%D1%81%D1%8B#.D0.92.D0.B8.D0.B4.D1.8B_.D1.82.D1.80.D0.B0.D0.B2" title="Растительные ресурсы" class="mw-redirect">Антуриум хрустальный</a></b> (Сушеные листья), заготовка - 18 часов<br />
+<img src="http://image.neverlands.ru/resources/26.gif" alt="26.gif" /> <b><a href="/wiki/%D0%9F%D1%83%D0%B7%D1%8B%D1%80%D1%8C" title="Пузырь">Пузырь</a></b> (Сушеный, тёртый), биржа, заготовка - мгновенно<br />
+<img src="http://image.neverlands.ru/resources/470.gif" alt="470.gif" /> <b><a href="/wiki/%D0%AD%D0%BC%D0%B0%D0%BD%D0%B0%D1%86%D0%B8%D1%8F_%D0%BF%D1%80%D0%B8%D0%B7%D1%80%D0%B0%D0%BA%D0%B0" title="Эманация призрака">Эманация призрака</a></b>, выбивается с <a href="/wiki/%D0%91%D0%BE%D1%82#.D0.9C.D0.B0.D0.B3.D0.B8.D1.87.D0.B5.D1.81.D0.BA.D0.B8.D0.B5_.D0.B1.D0.BE.D1.82.D1.8B" title="Бот">призраков</a>
+</p>
+</td>
+<td>накладывает  эффект <a href="/wiki/%D0%9D%D0%B5%D0%B2%D0%B8%D0%B4%D0%B8%D0%BC%D0%BE%D1%81%D1%82%D1%8C" title="Невидимость">Невидимость</a>. <br />Действует 3 часа
+</td></tr>
+<tr style="vertical-align:top;">
+<td><img src="http://image.neverlands.ru/weapon/i_w27_63.gif" alt="i_w27_63.gif" /> <br />
+<p><b>Зелье Секрет Волшебника</b>
+</p>
+</td>
+<td style="text-align: center;">200
+</td>
+<td><img src="http://image.neverlands.ru/resources/74.gif" alt="74.gif" /> <b><a href="/wiki/%D0%A0%D0%B0%D1%81%D1%82%D0%B8%D1%82%D0%B5%D0%BB%D1%8C%D0%BD%D1%8B%D0%B5_%D1%80%D0%B5%D1%81%D1%83%D1%80%D1%81%D1%8B#.D0.92.D0.B8.D0.B4.D1.8B_.D1.82.D1.80.D0.B0.D0.B2" title="Растительные ресурсы" class="mw-redirect">Алоэ</a></b> (Настой из листьев), заготовка - 24 часа<br />
+<p><img src="http://image.neverlands.ru/resources/79.gif" alt="79.gif" /> <b><a href="/wiki/%D0%A0%D0%B0%D1%81%D1%82%D0%B8%D1%82%D0%B5%D0%BB%D1%8C%D0%BD%D1%8B%D0%B5_%D1%80%D0%B5%D1%81%D1%83%D1%80%D1%81%D1%8B#.D0.92.D0.B8.D0.B4.D1.8B_.D1.82.D1.80.D0.B0.D0.B2" title="Растительные ресурсы" class="mw-redirect">Термопсис</a></b> (Толченые сушеные корни), заготовка - мгновенно<br />
+<img src="http://image.neverlands.ru/resources/23.gif" alt="23.gif" /> <b><a href="/wiki/%D0%A0%D1%8B%D0%B1%D0%B8%D0%B9_%D0%B3%D0%BB%D0%B0%D0%B7" title="Рыбий глаз">Рыбий глаз</a></b> (отвар), биржа, заготовка - 14 минут
+</p>
+</td>
+<td>Увеличивает <a href="/wiki/%D0%97%D0%BD%D0%B0%D0%BD%D0%B8%D1%8F" title="Знания">Знания</a> на +7 <br /> и кол-во <a href="/wiki/%D0%9C%D0%B0%D0%BD%D0%B0" title="Мана">Маны</a> на 200. <br />Действует 2 часа
+</td></tr>
+<tr style="vertical-align:top;">
+<td><img src="http://image.neverlands.ru/weapon/i_w27_49.gif" alt="i_w27_49.gif" /> <br />
+<p><b>Зелье Медитации</b>
+</p>
+</td>
+<td style="text-align: center;">210
+</td>
+<td><img src="http://image.neverlands.ru/resources/65.gif" alt="65.gif" /> <b><a href="/wiki/%D0%A0%D0%B0%D1%81%D1%82%D0%B8%D1%82%D0%B5%D0%BB%D1%8C%D0%BD%D1%8B%D0%B5_%D1%80%D0%B5%D1%81%D1%83%D1%80%D1%81%D1%8B#.D0.92.D0.B8.D0.B4.D1.8B_.D1.82.D1.80.D0.B0.D0.B2" title="Растительные ресурсы" class="mw-redirect">Карагана</a></b> (Настой из всего растения), заготовка - 24 часа<br />
+<p><img src="http://image.neverlands.ru/resources/117.gif" alt="117.gif" /> <b><a href="/wiki/%D0%A0%D0%B0%D1%81%D1%82%D0%B8%D1%82%D0%B5%D0%BB%D1%8C%D0%BD%D1%8B%D0%B5_%D1%80%D0%B5%D1%81%D1%83%D1%80%D1%81%D1%8B#.D0.92.D0.B8.D0.B4.D1.8B_.D1.82.D1.80.D0.B0.D0.B2" title="Растительные ресурсы" class="mw-redirect">Смертоцвет</a></b> (Экстракт из семян), заготовка - мгновенно<br /> 
+<img src="http://image.neverlands.ru/resources/23.gif" alt="23.gif" /> <b><a href="/wiki/%D0%A0%D1%8B%D0%B1%D0%B8%D0%B9_%D0%B3%D0%BB%D0%B0%D0%B7" title="Рыбий глаз">Рыбий глаз</a></b> (отвар), биржа, заготовка - 14 минут
+</p>
+</td>
+<td>Увеличивает скорость регенерации <a href="/wiki/%D0%9C%D0%B0%D0%BD%D0%B0" title="Мана">Маны</a> на 100%. <br />Действует 3 часа
+</td></tr>
+<tr style="vertical-align:top;">
+<td><img src="http://image.neverlands.ru/weapon/i_w27_36.gif" alt="i_w27_36.gif" /> <br />
+<p><b>Зелье Иммунитета</b>
+</p>
+</td>
+<td style="text-align: center;">220
+</td>
+<td><img src="http://image.neverlands.ru/resources/52.gif" alt="52.gif" /> <b><a href="/wiki/%D0%A0%D0%B0%D1%81%D1%82%D0%B8%D1%82%D0%B5%D0%BB%D1%8C%D0%BD%D1%8B%D0%B5_%D1%80%D0%B5%D1%81%D1%83%D1%80%D1%81%D1%8B#.D0.92.D0.B8.D0.B4.D1.8B_.D1.82.D1.80.D0.B0.D0.B2" title="Растительные ресурсы" class="mw-redirect">Кора березы</a></b> (сок), заготовка - мгновенно<br />
+<p><img src="http://image.neverlands.ru/resources/68.gif" alt="68.gif" /> <b><a href="/wiki/%D0%A0%D0%B0%D1%81%D1%82%D0%B8%D1%82%D0%B5%D0%BB%D1%8C%D0%BD%D1%8B%D0%B5_%D1%80%D0%B5%D1%81%D1%83%D1%80%D1%81%D1%8B#.D0.92.D0.B8.D0.B4.D1.8B_.D1.82.D1.80.D0.B0.D0.B2" title="Растительные ресурсы" class="mw-redirect">Кипрей</a></b> (Сушеный), заготовка - 18 часов<br /> 
+<img src="http://image.neverlands.ru/resources/215.gif" alt="215.gif" /> <b><a href="/wiki/%D0%9A%D0%BE%D1%81%D1%82%D0%BD%D1%8B%D0%B9_%D0%BC%D0%BE%D0%B7%D0%B3" title="Костный мозг">Костный мозг</a></b> (экстракт), биржа, заготовка - мгновенно
+</p>
+</td>
+<td>Дает полный иммунитет от действия Яда. <br /> <small>Накладывается заранее (до получения игроком эффекта от Яда</small>. <br />Действует 10 часов
+</td></tr>
+<tr style="vertical-align:top;">
+<td><img src="http://image.neverlands.ru/weapon/i_w27_41.gif" alt="i_w27_41.gif" /> <br />
+<p><b>Яд</b>
+</p>
+</td>
+<td style="text-align: center;">230
+</td>
+<td><img src="http://image.neverlands.ru/resources/57.gif" alt="57.gif" /> <b><a href="/wiki/%D0%A0%D0%B0%D1%81%D1%82%D0%B8%D1%82%D0%B5%D0%BB%D1%8C%D0%BD%D1%8B%D0%B5_%D1%80%D0%B5%D1%81%D1%83%D1%80%D1%81%D1%8B#.D0.92.D0.B8.D0.B4.D1.8B_.D1.82.D1.80.D0.B0.D0.B2" title="Растительные ресурсы" class="mw-redirect">Поганка</a></b> (настой), заготовка - 24 часа<br />
+<p><img src="http://image.neverlands.ru/resources/93.gif" alt="93.gif" /> <b><a href="/wiki/%D0%A0%D0%B0%D1%81%D1%82%D0%B8%D1%82%D0%B5%D0%BB%D1%8C%D0%BD%D1%8B%D0%B5_%D1%80%D0%B5%D1%81%D1%83%D1%80%D1%81%D1%8B#.D0.92.D0.B8.D0.B4.D1.8B_.D1.82.D1.80.D0.B0.D0.B2" title="Растительные ресурсы" class="mw-redirect">Мухомор</a></b> (настой), заготовка - 24 часа<br />
+<img src="http://image.neverlands.ru/resources/216.gif" alt="216.gif" /> <b><a href="/wiki/%D0%AF%D0%B4%D0%BE%D0%B2%D0%B8%D1%82%D1%8B%D0%B5_%D0%B6%D0%B5%D0%BB%D0%B5%D0%B7%D1%8B" title="Ядовитые железы" class="mw-redirect">Ядовитые железы</a></b> (настой), биржа, заготовка - 24 часа
+</p>
+</td>
+<td>Понижает один произвольный <a href="/wiki/%D0%A1%D1%82%D0%B0%D1%82" title="Стат">Стат</a> на -50%,<br /> <a href="/wiki/%D0%9A%D0%BB%D0%B0%D1%81%D1%81_%D0%91%D1%80%D0%BE%D0%BD%D0%B8" title="Класс Брони">КБ</a> и <a href="/wiki/%D0%A3%D0%B4%D0%B0%D1%80" title="Удар" class="mw-redirect">Удар</a> на -10%, <br />добавляет +20 секунд к времени перемещения. <br />Действует 5 часов
+</td></tr>
+<tr style="vertical-align:top;">
+<td><img src="http://image.neverlands.ru/weapon/i_w27_34.gif" alt="i_w27_34.gif" /> <br />
+<p><b>Зелье Лечения Отравлений</b>
+</p>
+</td>
+<td style="text-align: center;">240
+</td>
+<td><img src="http://image.neverlands.ru/resources/50.gif" alt="50.gif" /> <b><a href="/wiki/%D0%A0%D0%B0%D1%81%D1%82%D0%B8%D1%82%D0%B5%D0%BB%D1%8C%D0%BD%D1%8B%D0%B5_%D1%80%D0%B5%D1%81%D1%83%D1%80%D1%81%D1%8B#.D0.92.D0.B8.D0.B4.D1.8B_.D1.82.D1.80.D0.B0.D0.B2" title="Растительные ресурсы" class="mw-redirect">Крестовник</a></b> (сушеный корень), заготовка - 18 часов<br />
+<p><img src="http://image.neverlands.ru/resources/101.gif" alt="101.gif" /> <b><a href="/wiki/%D0%A0%D0%B0%D1%81%D1%82%D0%B8%D1%82%D0%B5%D0%BB%D1%8C%D0%BD%D1%8B%D0%B5_%D1%80%D0%B5%D1%81%D1%83%D1%80%D1%81%D1%8B#.D0.92.D0.B8.D0.B4.D1.8B_.D1.82.D1.80.D0.B0.D0.B2" title="Растительные ресурсы" class="mw-redirect">Парибигус</a></b> (толченые корни), заготовка - мгновенно<br /> 
+<img src="http://image.neverlands.ru/resources/215.gif" alt="215.gif" /> <b><a href="/wiki/%D0%9A%D0%BE%D1%81%D1%82%D0%BD%D1%8B%D0%B9_%D0%BC%D0%BE%D0%B7%D0%B3" title="Костный мозг">Костный мозг</a></b> (экстракт), биржа, заготовка - мгновенно
+</p>
+</td>
+<td>Мгновенно лечит от отравления Ядом
+</td></tr>
+</table>
+<h2> <span class="mw-headline" id=".D0.97.D0.B5.D0.BB.D1.8C.D1.8F_.D1.8D.D0.BA.D1.81.D0.BF.D0.B5.D1.80.D1.82.D0.B0-.D0.B0.D0.BB.D1.85.D0.B8.D0.BC.D0.B8.D0.BA.D0.B0"> Зелья эксперта-алхимика </span></h2>
+<p>Зелья эксперта-алхимика - это зелья, которые алхимик может варить с 250 до 450 умений. 
+</p>
+<table class="wikitable sortable">
+<tr>
+<th>Зелье
+</th>
+<th>умение
+</th>
+<th>Рецепт
+</th>
+<th>Эффект
+</th></tr>
+<tr style="vertical-align:top;">
+<td><img src="http://image.neverlands.ru/weapon/i_w27_47.gif" alt="i_w27_47.gif" /> <br />
+<p><b>Зелье Огненного Ореола</b>
+</p>
+</td>
+<td style="text-align: center;">250
+</td>
+<td><img src="http://image.neverlands.ru/resources/46.gif" alt="46.gif" /> <b><a href="/wiki/%D0%A0%D0%B0%D1%81%D1%82%D0%B8%D1%82%D0%B5%D0%BB%D1%8C%D0%BD%D1%8B%D0%B5_%D1%80%D0%B5%D1%81%D1%83%D1%80%D1%81%D1%8B#.D0.92.D0.B8.D0.B4.D1.8B_.D1.82.D1.80.D0.B0.D0.B2" title="Растительные ресурсы" class="mw-redirect">Айва</a></b> (Настой из семян), заготовка - 24 часа<br />
+<p><img src="http://image.neverlands.ru/resources/111.gif" alt="111.gif" /> <b><a href="/wiki/%D0%A0%D0%B0%D1%81%D1%82%D0%B8%D1%82%D0%B5%D0%BB%D1%8C%D0%BD%D1%8B%D0%B5_%D1%80%D0%B5%D1%81%D1%83%D1%80%D1%81%D1%8B#.D0.92.D0.B8.D0.B4.D1.8B_.D1.82.D1.80.D0.B0.D0.B2" title="Растительные ресурсы" class="mw-redirect">Камелия</a></b> (Настой на стеблях), заготовка - 24 часа<br /> 
+<img src="http://image.neverlands.ru/resources/75.gif" alt="75.gif" /> <b><a href="/wiki/%D0%A0%D0%B0%D1%81%D1%82%D0%B8%D1%82%D0%B5%D0%BB%D1%8C%D0%BD%D1%8B%D0%B5_%D1%80%D0%B5%D1%81%D1%83%D1%80%D1%81%D1%8B#.D0.92.D0.B8.D0.B4.D1.8B_.D1.82.D1.80.D0.B0.D0.B2" title="Растительные ресурсы" class="mw-redirect">Аралия</a></b> (Сушеный корень), заготовка - 18 часов<br />
+<img src="http://image.neverlands.ru/resources/217.gif" alt="217.gif" /> <b><a href="/wiki/%D0%9A%D0%BB%D1%8B%D0%BA_%D0%BA%D0%B0%D0%B1%D0%B0%D0%BD%D0%B0" title="Клык кабана" class="mw-redirect">Клык кабана</a></b> (Тертый), биржа, заготовка - мгновенно
+</p>
+</td>
+<td>Увеличивает физ.<a href="/wiki/%D0%A3%D1%80%D0%BE%D0%BD" title="Урон">Урон</a> на 15-25 единиц. <br />Действует 3 часа
+</td></tr>
+<tr style="vertical-align:top;">
+<td><img src="http://image.neverlands.ru/weapon/i_w27_30.gif" alt="i_w27_30.gif" /> <br />
+<p><b>Зелье Колкости</b>
+</p>
+</td>
+<td style="text-align: center;">300
+</td>
+<td><img src="http://image.neverlands.ru/resources/82.gif" alt="82.gif" /> <b><a href="/wiki/%D0%A0%D0%B0%D1%81%D1%82%D0%B8%D1%82%D0%B5%D0%BB%D1%8C%D0%BD%D1%8B%D0%B5_%D1%80%D0%B5%D1%81%D1%83%D1%80%D1%81%D1%8B#.D0.92.D0.B8.D0.B4.D1.8B_.D1.82.D1.80.D0.B0.D0.B2" title="Растительные ресурсы" class="mw-redirect">Дягиль</a></b> (Настой из семян), заготовка - 24 часа<br />
+<p><img src="http://image.neverlands.ru/resources/99.gif" alt="99.gif" /> <b><a href="/wiki/%D0%A0%D0%B0%D1%81%D1%82%D0%B8%D1%82%D0%B5%D0%BB%D1%8C%D0%BD%D1%8B%D0%B5_%D1%80%D0%B5%D1%81%D1%83%D1%80%D1%81%D1%8B#.D0.92.D0.B8.D0.B4.D1.8B_.D1.82.D1.80.D0.B0.D0.B2" title="Растительные ресурсы" class="mw-redirect">Коризиус</a></b> (Настой из семян), заготовка - 24 часа<br /> 
+<img src="http://image.neverlands.ru/resources/218.gif" alt="218.gif" /> <b>Жвалы паука</b> (Тертые), биржа, заготовка - мгновенно<br />
+<img src="http://image.neverlands.ru/resources/221.gif" alt="221.gif" /> <b><a href="/wiki/%D0%A7%D0%B5%D1%80%D0%B5%D0%BF_%D1%81%D0%BA%D0%B5%D0%BB%D0%B5%D1%82%D0%B0" title="Череп скелета" class="mw-redirect">Череп скелета</a></b> (Отвар), биржа, заготовка - 14 минут
+</p>
+</td>
+<td>Увеличивает физ.<a href="/wiki/%D0%A3%D1%80%D0%BE%D0%BD" title="Урон">Урон</a> на 30%. <br />Действует 2 часа
+</td></tr>
+<tr style="vertical-align:top;">
+<td><img src="http://image.neverlands.ru/weapon/i_w27_31.gif" alt="i_w27_31.gif" /> <br />
+<p><b>Зелье Загрубелой Кожи</b>
+</p>
+</td>
+<td style="text-align: center;">350
+</td>
+<td><img src="http://image.neverlands.ru/resources/53.gif" alt="53.gif" /> <b><a href="/wiki/%D0%A0%D0%B0%D1%81%D1%82%D0%B8%D1%82%D0%B5%D0%BB%D1%8C%D0%BD%D1%8B%D0%B5_%D1%80%D0%B5%D1%81%D1%83%D1%80%D1%81%D1%8B#.D0.92.D0.B8.D0.B4.D1.8B_.D1.82.D1.80.D0.B0.D0.B2" title="Растительные ресурсы" class="mw-redirect">Кора дуба</a></b> (Отвар на коре), заготовка - 14 минут<br />
+<p><img src="http://image.neverlands.ru/resources/61.gif" alt="61.gif" /> <b><a href="/wiki/%D0%A0%D0%B0%D1%81%D1%82%D0%B8%D1%82%D0%B5%D0%BB%D1%8C%D0%BD%D1%8B%D0%B5_%D1%80%D0%B5%D1%81%D1%83%D1%80%D1%81%D1%8B#.D0.92.D0.B8.D0.B4.D1.8B_.D1.82.D1.80.D0.B0.D0.B2" title="Растительные ресурсы" class="mw-redirect">Вереск</a></b> (Сушеные верхушки стеблей), заготовка - 18 часов<br /> 
+<img src="http://image.neverlands.ru/resources/24.gif" alt="24.gif" /> <b>Рыбья Чешуя</b> (Отвар), биржа, заготовка - 14 минут<br />
+<img src="http://image.neverlands.ru/resources/222.gif" alt="222.gif" /> <b>Паутина</b> (Отвар), биржа, заготовка - 14 минут
+</p>
+</td>
+<td>Увеличивает <a href="/wiki/%D0%9A%D0%BB%D0%B0%D1%81%D1%81_%D0%91%D1%80%D0%BE%D0%BD%D0%B8" title="Класс Брони">Класс Брони</a> на 30%. <br />Действует 3 часа
+</td></tr>
+<tr style="vertical-align:top;">
+<td><img src="http://image.neverlands.ru/weapon/i_w27_65.gif" alt="i_w27_65.gif" /> <br />
+<p><b>Зелье Панциря</b>
+</p>
+</td>
+<td style="text-align: center;">400
+</td>
+<td><img src="http://image.neverlands.ru/resources/51.gif" alt="51.gif" /> <b><a href="/wiki/%D0%A0%D0%B0%D1%81%D1%82%D0%B8%D1%82%D0%B5%D0%BB%D1%8C%D0%BD%D1%8B%D0%B5_%D1%80%D0%B5%D1%81%D1%83%D1%80%D1%81%D1%8B#.D0.92.D0.B8.D0.B4.D1.8B_.D1.82.D1.80.D0.B0.D0.B2" title="Растительные ресурсы" class="mw-redirect">Секуринега</a></b> (Сушеные соцветия), заготовка - 18 часов<br />
+<p><img src="http://image.neverlands.ru/resources/97.gif" alt="97.gif" /> <b><a href="/wiki/%D0%A0%D0%B0%D1%81%D1%82%D0%B8%D1%82%D0%B5%D0%BB%D1%8C%D0%BD%D1%8B%D0%B5_%D1%80%D0%B5%D1%81%D1%83%D1%80%D1%81%D1%8B#.D0.92.D0.B8.D0.B4.D1.8B_.D1.82.D1.80.D0.B0.D0.B2" title="Растительные ресурсы" class="mw-redirect">Фенхель</a></b> (Отвар из соцветий), заготовка - 14 минут<br /> 
+<img src="http://image.neverlands.ru/resources/223.gif" alt="223.gif" /> <b>Копыто</b> (Тертое), биржа, заготовка - мгновенно<br />
+<img src="http://image.neverlands.ru/resources/219.gif" alt="219.gif" /> <b>Хитиновый панцирь</b> (Тертый), биржа, заготовка - мгновенно
+</p>
+</td>
+<td>Увеличивает физ.<a href="/wiki/%D0%A3%D1%80%D0%BE%D0%BD" title="Урон">Урон</a> и <a href="/wiki/%D0%9A%D0%BB%D0%B0%D1%81%D1%81_%D0%91%D1%80%D0%BE%D0%BD%D0%B8" title="Класс Брони">Класс Брони</a> на 20%. <br />Действует 2 часа
+</td></tr>
+<tr style="vertical-align:top;">
+<td><img src="http://image.neverlands.ru/weapon/i_w27_62.gif" alt="i_w27_62.gif" /> <br />
+<p><b>Зелье Человек-Гора</b>
+</p>
+</td>
+<td style="text-align: center;">450
+</td>
+<td><img src="http://image.neverlands.ru/resources/81.gif" alt="81.gif" /> <b><a href="/wiki/%D0%A0%D0%B0%D1%81%D1%82%D0%B8%D1%82%D0%B5%D0%BB%D1%8C%D0%BD%D1%8B%D0%B5_%D1%80%D0%B5%D1%81%D1%83%D1%80%D1%81%D1%8B#.D0.92.D0.B8.D0.B4.D1.8B_.D1.82.D1.80.D0.B0.D0.B2" title="Растительные ресурсы" class="mw-redirect">Амми</a></b> (Сушеные плоды), заготовка - 18 часов<br />
+<p><img src="http://image.neverlands.ru/resources/105.gif" alt="105.gif" /> <b><a href="/wiki/%D0%A0%D0%B0%D1%81%D1%82%D0%B8%D1%82%D0%B5%D0%BB%D1%8C%D0%BD%D1%8B%D0%B5_%D1%80%D0%B5%D1%81%D1%83%D1%80%D1%81%D1%8B#.D0.92.D0.B8.D0.B4.D1.8B_.D1.82.D1.80.D0.B0.D0.B2" title="Растительные ресурсы" class="mw-redirect">Кора секвойи</a></b> (Отвар из коры), заготовка - 14 минут<br />
+<img src="http://image.neverlands.ru/resources/224.gif" alt="224.gif" /> <b>Зуб скелета</b> (Толченый), биржа, заготовка - мгновенно<br />
+<img src="http://image.neverlands.ru/resources/220.gif" alt="220.gif" /> <b>Паучьи яйца</b> (Настой), биржа, заготовка - 24 часа
+</p>
+</td>
+<td>Увеличивает <a href="/wiki/%D0%A1%D1%82%D0%B0%D1%82" title="Стат">Статы</a> <a href="/wiki/%D0%A1%D0%B8%D0%BB%D0%B0" title="Сила">Силы</a>, <a href="/wiki/%D0%9B%D0%BE%D0%B2%D0%BA%D0%BE%D1%81%D1%82%D1%8C" title="Ловкость">Ловкости</a> и <a href="/wiki/%D0%A3%D0%B4%D0%B0%D1%87%D0%B0" title="Удача">Удачи</a> на +5 , <br /> <a href="/wiki/%D0%9A%D0%BB%D0%B0%D1%81%D1%81_%D0%91%D1%80%D0%BE%D0%BD%D0%B8" title="Класс Брони">КБ</a> на 30%. <br />Действует 2 часа
+</td></tr>
+</table>
+<h2> <span class="mw-headline" id=".D0.97.D0.B5.D0.BB.D1.8C.D1.8F_.D1.87.D0.B0.D1.80.D0.BE.D0.B4.D0.B5.D1.8F-.D0.B0.D0.BB.D1.85.D0.B8.D0.BC.D0.B8.D0.BA.D0.B0"> Зелья чародея-алхимика </span></h2>
+<p>Зелья чародея-алхимика - это зелья, которые алхимик может варить с 550 до 800 умений. Использование - с 10 уровня
+</p>
+<table class="wikitable sortable">
+<tr>
+<th>Зелье
+</th>
+<th>умение
+</th>
+<th>Рецепт
+</th>
+<th>Эффект
+</th></tr>
+<tr style="vertical-align:top;">
+<td><img src="http://image.neverlands.ru/weapon/w27_323.gif" alt="w27_323.gif" /> <br />
+<p><b>Зелье Скорости</b>
+</p>
+</td>
+<td style="text-align: center;">550
+</td>
+<td><img src="http://image.neverlands.ru/resources/73.gif" alt="73.gif" /> <b><a href="/wiki/%D0%A0%D0%B0%D1%81%D1%82%D0%B8%D1%82%D0%B5%D0%BB%D1%8C%D0%BD%D1%8B%D0%B5_%D1%80%D0%B5%D1%81%D1%83%D1%80%D1%81%D1%8B#.D0.92.D0.B8.D0.B4.D1.8B_.D1.82.D1.80.D0.B0.D0.B2" title="Растительные ресурсы" class="mw-redirect">Эфедра</a></b> (Настой из черенков), заготовка - 24 часа<br />
+<p><img src="http://image.neverlands.ru/resources/215.gif" alt="215.gif" /> <b>Костный мозг</b> (экстракт), биржа, заготовка - мгновенно<br />
+<img src="http://image.neverlands.ru/resources/214.gif" alt="214.gif" /> <b>Крысиная Лапа</b> (Отвар), биржа, заготовка - 14 минут<br />
+<img src="http://image.neverlands.ru/resources/245.gif" alt="245.gif" /> <b>Паучья лапа</b> (Тертая), биржа, заготовка - мгновенно<br />
+<img src="http://image.neverlands.ru/resources/226.gif" alt="226.gif" /> <b>Жир очищенный</b>
+</p>
+</td>
+<td>Увеличивает умение <a href="/wiki/%D0%A1%D1%82%D1%80%D0%B0%D0%BD%D0%BD%D0%B8%D0%BA" title="Странник">Странник</a> на 100 единиц за глоток. <br />Действует 1 час
+</td></tr>
+<tr style="vertical-align:top;">
+<td><img src="http://image.neverlands.ru/weapon/w27_324.gif" alt="w27_324.gif" /> <br />
+<p><b>Зелье Соколиный Взор</b>
+</p>
+</td>
+<td style="text-align: center;">600
+</td>
+<td><img src="http://image.neverlands.ru/resources/116.gif" alt="116.gif" /> <b><a href="/wiki/%D0%A0%D0%B0%D1%81%D1%82%D0%B8%D1%82%D0%B5%D0%BB%D1%8C%D0%BD%D1%8B%D0%B5_%D1%80%D0%B5%D1%81%D1%83%D1%80%D1%81%D1%8B#.D0.92.D0.B8.D0.B4.D1.8B_.D1.82.D1.80.D0.B0.D0.B2" title="Растительные ресурсы" class="mw-redirect">Цветки кипариса</a></b> (Сушеный стебель), заготовка - 18 часов<br />
+<p><img src="http://image.neverlands.ru/resources/54.gif" alt="54.gif" /> <b><a href="/wiki/%D0%A0%D0%B0%D1%81%D1%82%D0%B8%D1%82%D0%B5%D0%BB%D1%8C%D0%BD%D1%8B%D0%B5_%D1%80%D0%B5%D1%81%D1%83%D1%80%D1%81%D1%8B#.D0.92.D0.B8.D0.B4.D1.8B_.D1.82.D1.80.D0.B0.D0.B2" title="Растительные ресурсы" class="mw-redirect">Кора ивы</a></b> (Отвар на коре), заготовка - 14 минут<br />
+<img src="http://image.neverlands.ru/resources/55.gif" alt="55.gif" /> <b><a href="/wiki/%D0%A0%D0%B0%D1%81%D1%82%D0%B8%D1%82%D0%B5%D0%BB%D1%8C%D0%BD%D1%8B%D0%B5_%D1%80%D0%B5%D1%81%D1%83%D1%80%D1%81%D1%8B#.D0.92.D0.B8.D0.B4.D1.8B_.D1.82.D1.80.D0.B0.D0.B2" title="Растительные ресурсы" class="mw-redirect">Кора лиственницы</a></b> (Настой на коре), заготовка - 24 часа<br />
+<img src="http://image.neverlands.ru/resources/246.gif" alt="246.gif" /> <b>Крысиный Глаз</b> (Настой), биржа, заготовка - 24 часа<br />
+<img src="http://image.neverlands.ru/resources/215.gif" alt="215.gif" /> <b>Костный мозг</b> (экстракт), биржа, заготовка - мгновенно
+</p>
+</td>
+<td>Увеличивает <a href="/wiki/%D0%9D%D0%B0%D0%B1%D0%BB%D1%8E%D0%B4%D0%B0%D1%82%D0%B5%D0%BB%D1%8C%D0%BD%D0%BE%D1%81%D1%82%D1%8C" title="Наблюдательность" class="mw-redirect">Наблюдательность</a> на 50 единиц за глоток. <br />Действует 3 часа
+</td></tr>
+<tr style="vertical-align:top;">
+<td><img src="http://image.neverlands.ru/weapon/w27_325.gif" alt="w27_325.gif" /> <br />
+<p><b>Зелье Жажда Жизни</b>
+</p>
+</td>
+<td style="text-align: center;">670
+</td>
+<td><img src="http://image.neverlands.ru/resources/64.gif" alt="64.gif" /> <b><a href="/wiki/%D0%A0%D0%B0%D1%81%D1%82%D0%B8%D1%82%D0%B5%D0%BB%D1%8C%D0%BD%D1%8B%D0%B5_%D1%80%D0%B5%D1%81%D1%83%D1%80%D1%81%D1%8B#.D0.92.D0.B8.D0.B4.D1.8B_.D1.82.D1.80.D0.B0.D0.B2" title="Растительные ресурсы" class="mw-redirect">Дурман</a></b> (Отвар из корней), заготовка - 14 минут<br />
+<p><img src="http://image.neverlands.ru/resources/104.gif" alt="104.gif" /> <b><a href="/wiki/%D0%A0%D0%B0%D1%81%D1%82%D0%B8%D1%82%D0%B5%D0%BB%D1%8C%D0%BD%D1%8B%D0%B5_%D1%80%D0%B5%D1%81%D1%83%D1%80%D1%81%D1%8B#.D0.92.D0.B8.D0.B4.D1.8B_.D1.82.D1.80.D0.B0.D0.B2" title="Растительные ресурсы" class="mw-redirect">Жизненное древо</a></b> (Сушеные плоды), заготовка - 18 часов<br />
+<img src="http://image.neverlands.ru/resources/109.gif" alt="109.gif" /> <b><a href="/wiki/%D0%A0%D0%B0%D1%81%D1%82%D0%B8%D1%82%D0%B5%D0%BB%D1%8C%D0%BD%D1%8B%D0%B5_%D1%80%D0%B5%D1%81%D1%83%D1%80%D1%81%D1%8B#.D0.92.D0.B8.D0.B4.D1.8B_.D1.82.D1.80.D0.B0.D0.B2" title="Растительные ресурсы" class="mw-redirect">Пустынный агапантус</a></b> (Отвар из цветков), заготовка - 14 минут<br />
+<img src="http://image.neverlands.ru/resources/22.gif" alt="22.gif" /> х6 <b>Икра</b> (Толченная), биржа, заготовка - мгновенно<br />
+<img src="http://image.neverlands.ru/resources/220.gif" alt="220.gif" /> <b>Паучьи яйца</b> (Настой), биржа, заготовка - 24 часа
+</p>
+</td>
+<td>Мгновенно выжигает у противника 20% <a href="/wiki/HP" title="HP" class="mw-redirect">жизни</a>. <br />Использование: только в бою
+</td></tr>
+<tr style="vertical-align:top;">
+<td><img src="http://image.neverlands.ru/weapon/w27_326.gif" alt="w27_326.gif" /> <br />
+<p><b>Зелье Ментальная Жажда</b>
+</p>
+</td>
+<td style="text-align: center;">670
+</td>
+<td><img src="http://image.neverlands.ru/resources/80.gif" alt="80.gif" /> <b><a href="/wiki/%D0%A0%D0%B0%D1%81%D1%82%D0%B8%D1%82%D0%B5%D0%BB%D1%8C%D0%BD%D1%8B%D0%B5_%D1%80%D0%B5%D1%81%D1%83%D1%80%D1%81%D1%8B#.D0.92.D0.B8.D0.B4.D1.8B_.D1.82.D1.80.D0.B0.D0.B2" title="Растительные ресурсы" class="mw-redirect">Ведьмино кольцо</a></b> (Отвар), заготовка - 14 минут<br />
+<p><img src="http://image.neverlands.ru/resources/59.gif" alt="59.gif" /> <b><a href="/wiki/%D0%A0%D0%B0%D1%81%D1%82%D0%B8%D1%82%D0%B5%D0%BB%D1%8C%D0%BD%D1%8B%D0%B5_%D1%80%D0%B5%D1%81%D1%83%D1%80%D1%81%D1%8B#.D0.92.D0.B8.D0.B4.D1.8B_.D1.82.D1.80.D0.B0.D0.B2" title="Растительные ресурсы" class="mw-redirect">Арника</a></b> (Настой из цветков), заготовка - 24 часа<br />
+<img src="http://image.neverlands.ru/resources/72.gif" alt="72.gif" /> <b><a href="/wiki/%D0%A0%D0%B0%D1%81%D1%82%D0%B8%D1%82%D0%B5%D0%BB%D1%8C%D0%BD%D1%8B%D0%B5_%D1%80%D0%B5%D1%81%D1%83%D1%80%D1%81%D1%8B#.D0.92.D0.B8.D0.B4.D1.8B_.D1.82.D1.80.D0.B0.D0.B2" title="Растительные ресурсы" class="mw-redirect">Чернокорень</a></b> (Настой из корней), заготовка - 12 часов<br />
+<img src="http://image.neverlands.ru/resources/22.gif" alt="22.gif" /> <b><a href="/wiki/%D0%98%D0%BA%D1%80%D0%B0" title="Икра">Икра</a></b> (Толченная), биржа, заготовка - мгновенно<br />
+<img src="http://image.neverlands.ru/resources/220.gif" alt="220.gif" /> <b>Паучьи яйца</b> (Настой), биржа, заготовка - 24 часа
+</p>
+</td>
+<td>Мгновенно выжигает у противника 20% <a href="/wiki/MP" title="MP" class="mw-redirect">маны</a>. <br />Использование: только в бою
+</td></tr>
+<tr style="vertical-align:top;">
+<td><img src="http://image.neverlands.ru/weapon/w27_327.gif" alt="w27_327.gif" /> <br />
+<p><b>Зелье Подвижности</b>
+</p>
+</td>
+<td style="text-align: center;">700
+</td>
+<td><img src="http://image.neverlands.ru/resources/71.gif" alt="71.gif" /> <b><a href="/wiki/%D0%A0%D0%B0%D1%81%D1%82%D0%B8%D1%82%D0%B5%D0%BB%D1%8C%D0%BD%D1%8B%D0%B5_%D1%80%D0%B5%D1%81%D1%83%D1%80%D1%81%D1%8B#.D0.92.D0.B8.D0.B4.D1.8B_.D1.82.D1.80.D0.B0.D0.B2" title="Растительные ресурсы" class="mw-redirect">Рапонтикум</a></b> (Экстракт из семян), заготовка - мгновенно<br />
+<p><img src="http://image.neverlands.ru/resources/223.gif" alt="223.gif" /> <b><a href="/wiki/%D0%9A%D0%BE%D0%BF%D1%8B%D1%82%D0%BE" title="Копыто" class="mw-redirect">Копыто</a></b> (Тертое), биржа, заготовка - мгновенно<br />
+<img src="http://image.neverlands.ru/resources/214.gif" alt="214.gif" /> <b><a href="/wiki/%D0%9A%D1%80%D1%8B%D1%81%D0%B8%D0%BD%D0%B0%D1%8F_%D0%9B%D0%B0%D0%BF%D0%B0" title="Крысиная Лапа">Крысиная Лапа</a></b> (Отвар), биржа, заготовка - 14 минут<br />
+<img src="http://image.neverlands.ru/resources/245.gif" alt="245.gif" /> <b>Паучья лапа</b> (Тертая), биржа, заготовка - мгновенно<br />
+<img src="http://image.neverlands.ru/resources/226.gif" alt="226.gif" /> жир очищенный
+</p>
+</td>
+<td>Увеличивает <a href="/wiki/%D0%9E%D1%87%D0%BA%D0%B8_%D0%94%D0%B5%D0%B9%D1%81%D1%82%D0%B2%D0%B8%D1%8F" title="Очки Действия">ОД</a> на +50 единиц
+</td></tr>
+<tr style="vertical-align:top;">
+<td><img src="http://image.neverlands.ru/weapon/w27_328.gif" alt="w27_328.gif" /> <br />
+<p><b>Зелье Ярость Берсерка</b>
+</p>
+</td>
+<td style="text-align: center;">720
+</td>
+<td><img src="http://image.neverlands.ru/resources/95.gif" alt="95.gif" /> <b><a href="/wiki/%D0%A0%D0%B0%D1%81%D1%82%D0%B8%D1%82%D0%B5%D0%BB%D1%8C%D0%BD%D1%8B%D0%B5_%D1%80%D0%B5%D1%81%D1%83%D1%80%D1%81%D1%8B#.D0.92.D0.B8.D0.B4.D1.8B_.D1.82.D1.80.D0.B0.D0.B2" title="Растительные ресурсы" class="mw-redirect">Инжир</a></b> (Отвар из плодов), заготовка - 14 минут<br />
+<p><img src="http://image.neverlands.ru/resources/100.gif" alt="100.gif" /> <b><a href="/wiki/%D0%A0%D0%B0%D1%81%D1%82%D0%B8%D1%82%D0%B5%D0%BB%D1%8C%D0%BD%D1%8B%D0%B5_%D1%80%D0%B5%D1%81%D1%83%D1%80%D1%81%D1%8B#.D0.92.D0.B8.D0.B4.D1.8B_.D1.82.D1.80.D0.B0.D0.B2" title="Растительные ресурсы" class="mw-redirect">Куфис</a></b> (сушеный стебель), заготовка - 18 часов<br />
+<img src="http://image.neverlands.ru/resources/78.gif" alt="78.gif" /> <b><a href="/wiki/%D0%A0%D0%B0%D1%81%D1%82%D0%B8%D1%82%D0%B5%D0%BB%D1%8C%D0%BD%D1%8B%D0%B5_%D1%80%D0%B5%D1%81%D1%83%D1%80%D1%81%D1%8B#.D0.92.D0.B8.D0.B4.D1.8B_.D1.82.D1.80.D0.B0.D0.B2" title="Растительные ресурсы" class="mw-redirect">Родиола</a></b> (Толченый с сушеными плодами корень), заготовка - мгновенно<br />
+<img src="http://image.neverlands.ru/resources/246.gif" alt="246.gif" /> <b>Крысиный Глаз</b> (Настой), биржа, заготовка - 24 часа<br />
+<img src="http://image.neverlands.ru/resources/244.gif" alt="244.gif" /> <b>Кость скелета</b> (Отвар), биржа, заготовка - 14 минут
+</p>
+</td>
+<td>Увеличивает физический урон на 20%, а сокрушение - на 25% <br />Использование: только в бою, 1 бой
+</td></tr>
+<tr style="vertical-align:top;">
+<td><img src="http://image.neverlands.ru/weapon/w27_329.gif" alt="w27_329.gif" /> <br />
+<p><b>Зелье Хрупкости</b>
+</p>
+</td>
+<td style="text-align: center;">780
+</td>
+<td><img src="http://image.neverlands.ru/resources/95.gif" alt="95.gif" /> <b><a href="/wiki/%D0%A0%D0%B0%D1%81%D1%82%D0%B8%D1%82%D0%B5%D0%BB%D1%8C%D0%BD%D1%8B%D0%B5_%D1%80%D0%B5%D1%81%D1%83%D1%80%D1%81%D1%8B#.D0.92.D0.B8.D0.B4.D1.8B_.D1.82.D1.80.D0.B0.D0.B2" title="Растительные ресурсы" class="mw-redirect">Инжир</a></b> (Отвар из плодов), заготовка - 14 минут<br />
+<p><img src="http://image.neverlands.ru/resources/62.gif" alt="62.gif" /> <b><a href="/wiki/%D0%A0%D0%B0%D1%81%D1%82%D0%B8%D1%82%D0%B5%D0%BB%D1%8C%D0%BD%D1%8B%D0%B5_%D1%80%D0%B5%D1%81%D1%83%D1%80%D1%81%D1%8B#.D0.92.D0.B8.D0.B4.D1.8B_.D1.82.D1.80.D0.B0.D0.B2" title="Растительные ресурсы" class="mw-redirect">Галега</a></b> (Сушеные стебли), заготовка - 18 часов<br />
+<img src="http://image.neverlands.ru/resources/85.gif" alt="85.gif" /> <b><a href="/wiki/%D0%A0%D0%B0%D1%81%D1%82%D0%B8%D1%82%D0%B5%D0%BB%D1%8C%D0%BD%D1%8B%D0%B5_%D1%80%D0%B5%D1%81%D1%83%D1%80%D1%81%D1%8B#.D0.92.D0.B8.D0.B4.D1.8B_.D1.82.D1.80.D0.B0.D0.B2" title="Растительные ресурсы" class="mw-redirect">Подосиновик</a></b> (Толченая ножка), заготовка - мгновенно<br />
+<img src="http://image.neverlands.ru/resources/246.gif" alt="246.gif" /> <b>Крысиный Глаз</b> (Настой), биржа, заготовка - 24 часа<br />
+<img src="http://image.neverlands.ru/resources/244.gif" alt="244.gif" /> <b>Кость скелета</b> (Отвар), биржа, заготовка - 14 минут
+</p>
+</td>
+<td>Снижает класс брони цели на 20%, а её стойкость - на 25% <br />Использование: только в бою, 1 бой
+</td></tr>
+<tr style="vertical-align:top;">
+<td><img src="http://image.neverlands.ru/weapon/w27_330.gif" alt="w27_330.gif" /> <br />
+<p><b>Зелье элементалиста</b>
+</p>
+</td>
+<td style="text-align: center;">800
+</td>
+<td><img src="http://image.neverlands.ru/resources/105.gif" alt="105.gif" /> <b><a href="/wiki/%D0%A0%D0%B0%D1%81%D1%82%D0%B8%D1%82%D0%B5%D0%BB%D1%8C%D0%BD%D1%8B%D0%B5_%D1%80%D0%B5%D1%81%D1%83%D1%80%D1%81%D1%8B#.D0.92.D0.B8.D0.B4.D1.8B_.D1.82.D1.80.D0.B0.D0.B2" title="Растительные ресурсы" class="mw-redirect">Кора секвойи</a></b> (Отвар из коры), заготовка - 14 минут<br />
+<p><img src="http://image.neverlands.ru/resources/70.gif" alt="70.gif" /> <b><a href="/wiki/%D0%A0%D0%B0%D1%81%D1%82%D0%B8%D1%82%D0%B5%D0%BB%D1%8C%D0%BD%D1%8B%D0%B5_%D1%80%D0%B5%D1%81%D1%83%D1%80%D1%81%D1%8B#.D0.92.D0.B8.D0.B4.D1.8B_.D1.82.D1.80.D0.B0.D0.B2" title="Растительные ресурсы" class="mw-redirect">Плаун</a></b> (Отвар из корней), заготовка - 14 минут<br />
+<img src="http://image.neverlands.ru/resources/246.gif" alt="246.gif" /> <b>Крысиный Глаз</b> (Настой), биржа, заготовка - 24 часа<br />
+<img src="http://image.neverlands.ru/resources/244.gif" alt="244.gif" /> <b>Кость скелета</b> (Отвар), биржа, заготовка - 14 минут<br />
+<img src="http://image.neverlands.ru/resources/224.gif" alt="224.gif" /> <b>Зуб скелета</b> (Толченый), биржа, заготовка - мгновенно
+</p>
+</td>
+<td>увеличивает урон всеми типами стихийной магии на 20%, а также точность персонажа на 25%. <br />Использование: только в бою, 1 бой
+</td></tr>
+</table>
+<p><b>Обновление 10.03.2025</b> <br />
+Ресурсы, ранее "настаивающиеся" 3 суток, теперь будут готовы за 24 часа. <br />
+Ресурсы, чья заготовка занимала 2 суток, теперь готовятся 18 часов. <br />
+Ну и наконец суточные заготовки сокращены до 12 часов.
+</p>
+<!-- 
+NewPP limit report
+Preprocessor node count: 84/1000000
+Post-expand include size: 0/2097152 bytes
+Template argument size: 0/2097152 bytes
+Expensive parser function count: 0/100
+-->
+</div>				<!-- /bodycontent -->
+								<!-- printfooter -->
+				<div class="printfooter">
+				Источник — «<a href="http://wiki.neverlands.ru/index.php?title=%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%A0%D0%B5%D1%86%D0%B5%D0%BF%D1%82%D0%BE%D0%B2_%D0%90%D0%BB%D1%85%D0%B8%D0%BC%D0%B8%D0%BA%D0%B0&amp;oldid=21239">http://wiki.neverlands.ru/index.php?title=%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%A0%D0%B5%D1%86%D0%B5%D0%BF%D1%82%D0%BE%D0%B2_%D0%90%D0%BB%D1%85%D0%B8%D0%BC%D0%B8%D0%BA%D0%B0&amp;oldid=21239</a>»				</div>
+				<!-- /printfooter -->
+												<!-- catlinks -->
+				<div id='catlinks' class='catlinks'><div id="mw-normal-catlinks" class="mw-normal-catlinks"><a href="/wiki/%D0%A1%D0%BB%D1%83%D0%B6%D0%B5%D0%B1%D0%BD%D0%B0%D1%8F:Categories" title="Служебная:Categories">Категории</a>: <ul><li><a href="/wiki/%D0%9A%D0%B0%D1%82%D0%B5%D0%B3%D0%BE%D1%80%D0%B8%D1%8F:%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D1%8B_%D0%BF%D1%80%D0%BE%D1%84%D0%B5%D1%81%D1%81%D0%B8%D0%B9" title="Категория:Таблицы профессий">Таблицы профессий</a></li><li><a href="/wiki/%D0%9A%D0%B0%D1%82%D0%B5%D0%B3%D0%BE%D1%80%D0%B8%D1%8F:%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D1%8B_%D0%B0%D0%BB%D1%85%D0%B8%D0%BC%D0%B8%D0%BA%D0%B0" title="Категория:Таблицы алхимика">Таблицы алхимика</a></li></ul></div></div>				<!-- /catlinks -->
+												<div class="visualClear"></div>
+				<!-- debughtml -->
+								<!-- /debughtml -->
+			</div>
+			<!-- /bodyContent -->
+		</div>
+		<!-- /content -->
+		<!-- header -->
+		<div id="mw-head" class="noprint">
+			
+<!-- 0 -->
+<div id="p-personal" class="">
+	<h5>Личные инструменты</h5>
+	<ul>
+		<li id="pt-login"><a href="/index.php?title=%D0%A1%D0%BB%D1%83%D0%B6%D0%B5%D0%B1%D0%BD%D0%B0%D1%8F:UserLogin&amp;returnto=%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0+%D0%A0%D0%B5%D1%86%D0%B5%D0%BF%D1%82%D0%BE%D0%B2+%D0%90%D0%BB%D1%85%D0%B8%D0%BC%D0%B8%D0%BA%D0%B0" title="Здесь можно зарегистрироваться в системе, но это необязательно. [o]" accesskey="o">Представиться / зарегистрироваться</a></li>
+	</ul>
+</div>
+
+<!-- /0 -->
+			<div id="left-navigation">
+				
+<!-- 0 -->
+<div id="p-namespaces" class="vectorTabs">
+	<h5>Пространства имён</h5>
+	<ul>
+					<li  id="ca-nstab-main" class="selected"><span><a href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%A0%D0%B5%D1%86%D0%B5%D0%BF%D1%82%D0%BE%D0%B2_%D0%90%D0%BB%D1%85%D0%B8%D0%BC%D0%B8%D0%BA%D0%B0"  title="Содержание статьи [c]" accesskey="c">Статья</a></span></li>
+					<li  id="ca-talk" class="new"><span><a href="/index.php?title=%D0%9E%D0%B1%D1%81%D1%83%D0%B6%D0%B4%D0%B5%D0%BD%D0%B8%D0%B5:%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%A0%D0%B5%D1%86%D0%B5%D0%BF%D1%82%D0%BE%D0%B2_%D0%90%D0%BB%D1%85%D0%B8%D0%BC%D0%B8%D0%BA%D0%B0&amp;action=edit&amp;redlink=1"  title="Обсуждение содержания страницы [t]" accesskey="t">Обсуждение</a></span></li>
+			</ul>
+</div>
+
+<!-- /0 -->
+
+<!-- 1 -->
+<div id="p-variants" class="vectorMenu emptyPortlet">
+	<h4>
+		</h4>
+	<h5><span>Варианты</span><a href="#"></a></h5>
+	<div class="menu">
+		<ul>
+					</ul>
+	</div>
+</div>
+
+<!-- /1 -->
+			</div>
+			<div id="right-navigation">
+				
+<!-- 0 -->
+<div id="p-views" class="vectorTabs">
+	<h5>Просмотры</h5>
+	<ul>
+					<li id="ca-view" class="selected"><span><a href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%A0%D0%B5%D1%86%D0%B5%D0%BF%D1%82%D0%BE%D0%B2_%D0%90%D0%BB%D1%85%D0%B8%D0%BC%D0%B8%D0%BA%D0%B0" >Чтение</a></span></li>
+					<li id="ca-viewsource"><span><a href="/index.php?title=%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%A0%D0%B5%D1%86%D0%B5%D0%BF%D1%82%D0%BE%D0%B2_%D0%90%D0%BB%D1%85%D0%B8%D0%BC%D0%B8%D0%BA%D0%B0&amp;action=edit"  title="Эта страница защищена от изменений, но вы можете посмотреть и скопировать её исходный текст [e]" accesskey="e">Просмотр</a></span></li>
+					<li id="ca-history" class="collapsible"><span><a href="/index.php?title=%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%A0%D0%B5%D1%86%D0%B5%D0%BF%D1%82%D0%BE%D0%B2_%D0%90%D0%BB%D1%85%D0%B8%D0%BC%D0%B8%D0%BA%D0%B0&amp;action=history"  title="Журнал изменений страницы [h]" accesskey="h">История</a></span></li>
+			</ul>
+</div>
+
+<!-- /0 -->
+
+<!-- 1 -->
+<div id="p-cactions" class="vectorMenu emptyPortlet">
+	<h5><span>Действия</span><a href="#"></a></h5>
+	<div class="menu">
+		<ul>
+					</ul>
+	</div>
+</div>
+
+<!-- /1 -->
+
+<!-- 2 -->
+<div id="p-search">
+	<h5><label for="searchInput">Поиск</label></h5>
+	<form action="/index.php" id="searchform">
+				<div id="simpleSearch">
+						<input name="search" title="Искать это слово [f]" accesskey="f" id="searchInput" />						<button name="button" title="Найти страницы, содержащие указанный текст" id="searchButton"><img src="/skins/vector/images/search-ltr.png?303" alt="Найти" /></button>								<input type='hidden' name="title" value="Служебная:Search"/>
+		</div>
+	</form>
+</div>
+
+<!-- /2 -->
+			</div>
+		</div>
+		<!-- /header -->
+		<!-- panel -->
+			<div id="mw-panel" class="noprint">
+				<!-- logo -->
+					<div id="p-logo"><a style="background-image: url(http://wiki.neverlands.ru/img/logo.png);" href="/wiki/%D0%97%D0%B0%D0%B3%D0%BB%D0%B0%D0%B2%D0%BD%D0%B0%D1%8F_%D1%81%D1%82%D1%80%D0%B0%D0%BD%D0%B8%D1%86%D0%B0"  title="Заглавная страница"></a></div>
+				<!-- /logo -->
+				
+<!-- navigation -->
+<div class="portal" id='p-navigation'>
+	<h5>Навигация</h5>
+	<div class="body">
+		<ul>
+			<li id="n-allpages"><a href="/wiki/%D0%A1%D0%BB%D1%83%D0%B6%D0%B5%D0%B1%D0%BD%D0%B0%D1%8F:AllPages">Все страницы</a></li>
+			<li id="n-newpages"><a href="/wiki/%D0%A1%D0%BB%D1%83%D0%B6%D0%B5%D0%B1%D0%BD%D0%B0%D1%8F:NewPages">Новые страницы</a></li>
+			<li id="n-popularpages"><a href="/wiki/%D0%A1%D0%BB%D1%83%D0%B6%D0%B5%D0%B1%D0%BD%D0%B0%D1%8F:PopularPages">Популярные страницы</a></li>
+			<li id="n-wantedpages"><a href="/wiki/%D0%A1%D0%BB%D1%83%D0%B6%D0%B5%D0%B1%D0%BD%D0%B0%D1%8F:WantedPages">Требуемые страницы</a></li>
+			<li id="n-categories"><a href="/wiki/%D0%A1%D0%BB%D1%83%D0%B6%D0%B5%D0%B1%D0%BD%D0%B0%D1%8F:Categories">Категории</a></li>
+			<li id="n-wantedcategories"><a href="/wiki/%D0%A1%D0%BB%D1%83%D0%B6%D0%B5%D0%B1%D0%BD%D0%B0%D1%8F:WantedCategories">Требуемые категории</a></li>
+			<li id="n-recentchanges"><a href="/wiki/%D0%A1%D0%BB%D1%83%D0%B6%D0%B5%D0%B1%D0%BD%D0%B0%D1%8F:RecentChanges" title="Список последних изменений [r]" accesskey="r">Свежие правки</a></li>
+			<li id="n-randompage"><a href="/wiki/%D0%A1%D0%BB%D1%83%D0%B6%D0%B5%D0%B1%D0%BD%D0%B0%D1%8F:Random" title="Посмотреть случайную страницу [x]" accesskey="x">Случайная статья</a></li>
+		</ul>
+	</div>
+</div>
+
+<!-- /navigation -->
+
+<!-- SEARCH -->
+
+<!-- /SEARCH -->
+
+<!-- TOOLBOX -->
+<div class="portal" id='p-tb'>
+	<h5>Инструменты</h5>
+	<div class="body">
+		<ul>
+			<li id="t-whatlinkshere"><a href="/wiki/%D0%A1%D0%BB%D1%83%D0%B6%D0%B5%D0%B1%D0%BD%D0%B0%D1%8F:WhatLinksHere/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%A0%D0%B5%D1%86%D0%B5%D0%BF%D1%82%D0%BE%D0%B2_%D0%90%D0%BB%D1%85%D0%B8%D0%BC%D0%B8%D0%BA%D0%B0" title="Список всех страниц, которые ссылаются на эту страницу [j]" accesskey="j">Ссылки сюда</a></li>
+			<li id="t-recentchangeslinked"><a href="/wiki/%D0%A1%D0%BB%D1%83%D0%B6%D0%B5%D0%B1%D0%BD%D0%B0%D1%8F:RecentChangesLinked/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%A0%D0%B5%D1%86%D0%B5%D0%BF%D1%82%D0%BE%D0%B2_%D0%90%D0%BB%D1%85%D0%B8%D0%BC%D0%B8%D0%BA%D0%B0" title="Последние изменения в страницах, на которые ссылается эта страница [k]" accesskey="k">Связанные правки</a></li>
+			<li id="t-specialpages"><a href="/wiki/%D0%A1%D0%BB%D1%83%D0%B6%D0%B5%D0%B1%D0%BD%D0%B0%D1%8F:SpecialPages" title="Список служебных страниц [q]" accesskey="q">Спецстраницы</a></li>
+			<li><a href="/index.php?title=%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%A0%D0%B5%D1%86%D0%B5%D0%BF%D1%82%D0%BE%D0%B2_%D0%90%D0%BB%D1%85%D0%B8%D0%BC%D0%B8%D0%BA%D0%B0&amp;printable=yes" rel="alternate">Версия для печати</a></li>
+			<li id="t-permalink"><a href="/index.php?title=%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%A0%D0%B5%D1%86%D0%B5%D0%BF%D1%82%D0%BE%D0%B2_%D0%90%D0%BB%D1%85%D0%B8%D0%BC%D0%B8%D0%BA%D0%B0&amp;oldid=21239" title="Постоянная ссылка на эту версию страницы">Постоянная ссылка</a></li>
+<li id="t-cite"><a href="/index.php?title=%D0%A1%D0%BB%D1%83%D0%B6%D0%B5%D0%B1%D0%BD%D0%B0%D1%8F:Cite&amp;page=%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%A0%D0%B5%D1%86%D0%B5%D0%BF%D1%82%D0%BE%D0%B2_%D0%90%D0%BB%D1%85%D0%B8%D0%BC%D0%B8%D0%BA%D0%B0&amp;id=21239" title="Информация о том, как цитировать эту страницу">Цитировать страницу</a></li>		</ul>
+	</div>
+</div>
+
+<!-- /TOOLBOX -->
+
+<!-- LANGUAGES -->
+
+<!-- /LANGUAGES -->
+			</div>
+		<!-- /panel -->
+		<!-- footer -->
+		<div id="footer">
+							<ul id="footer-info">
+											<li id="footer-info-lastmod"> Последнее изменение этой страницы: 10:38, 11 марта 2025.</li>
+											<li id="footer-info-viewcount">К этой странице обращались 263 649 раз.</li>
+									</ul>
+							<ul id="footer-places">
+											<li id="footer-places-privacy"><a href="/wiki/%D0%92%D0%B8%D0%BA%D0%B8%D0%BD%D0%B5%D0%B2%D0%B5%D1%80:%D0%9F%D0%BE%D0%BB%D0%B8%D1%82%D0%B8%D0%BA%D0%B0_%D0%BA%D0%BE%D0%BD%D1%84%D0%B8%D0%B4%D0%B5%D0%BD%D1%86%D0%B8%D0%B0%D0%BB%D1%8C%D0%BD%D0%BE%D1%81%D1%82%D0%B8" title="Викиневер:Политика конфиденциальности">Политика конфиденциальности</a></li>
+											<li id="footer-places-about"><a href="/wiki/%D0%92%D0%B8%D0%BA%D0%B8%D0%BD%D0%B5%D0%B2%D0%B5%D1%80:%D0%9E%D0%BF%D0%B8%D1%81%D0%B0%D0%BD%D0%B8%D0%B5" title="Викиневер:Описание">Описание Викиневер</a></li>
+											<li id="footer-places-disclaimer"><a href="/wiki/%D0%92%D0%B8%D0%BA%D0%B8%D0%BD%D0%B5%D0%B2%D0%B5%D1%80:%D0%9E%D1%82%D0%BA%D0%B0%D0%B7_%D0%BE%D1%82_%D0%BE%D1%82%D0%B2%D0%B5%D1%82%D1%81%D1%82%D0%B2%D0%B5%D0%BD%D0%BD%D0%BE%D1%81%D1%82%D0%B8" title="Викиневер:Отказ от ответственности">Отказ от ответственности</a></li>
+									</ul>
+										<ul id="footer-icons" class="noprint">
+					<li id="footer-poweredbyico">
+						<a href="//www.mediawiki.org/"><img src="/skins/common/images/poweredby_mediawiki_88x31.png" alt="Powered by MediaWiki" width="88" height="31" /></a>
+					</li>
+				</ul>
+						<div style="clear:both"></div>
+		</div>
+		<!-- /footer -->
+		<script src="http://wiki.neverlands.ru/load.php?debug=false&amp;lang=ru&amp;modules=skins.vector&amp;only=scripts&amp;skin=vector&amp;*"></script>
+<script>if(window.mw){
+mw.loader.load(["ext.categoryTree","mediawiki.user","mediawiki.page.ready","mediawiki.legacy.mwsuggest","ext.vector.collapsibleNav","ext.vector.collapsibleTabs","ext.vector.simpleSearch"], null, true);
+}</script>
+<!-- Served in 0.107 secs. -->
+	</body>
+</html>

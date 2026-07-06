@@ -67,9 +67,7 @@ namespace ANClient.ANProxy
 
         private static bool IsNeverlandsHost(string host)
         {
-            return !string.IsNullOrEmpty(host) &&
-                   (host.Equals("neverlands.ru", StringComparison.OrdinalIgnoreCase) ||
-                    host.EndsWith(".neverlands.ru", StringComparison.OrdinalIgnoreCase));
+            return GameServerSelector.IsNeverlandsGameHost(host);
         }
 
         private static bool IsCache(Uri address)

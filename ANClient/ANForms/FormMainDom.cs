@@ -150,6 +150,77 @@ namespace ANClient.ANForms
             }
         }
 
+        internal bool TryCaptchaTrainingClickResources(string source)
+        {
+            var framebuttons = GetFrame("main_top");
+            if (framebuttons == null || framebuttons.Document == null)
+            {
+                AppLog.w("captcha_training", "FormMainDom", "CAPTCHA_TRAINING resources click skipped: main_top unavailable, source=" + (source ?? "unknown"));
+                return false;
+            }
+
+            try
+            {
+                if (TryClickResourcesElement(framebuttons.Document, "input", source) ||
+                    TryClickResourcesElement(framebuttons.Document, "button", source) ||
+                    TryClickResourcesElement(framebuttons.Document, "a", source))
+                {
+                    return true;
+                }
+
+                AppLog.w("captcha_training", "FormMainDom", "CAPTCHA_TRAINING resources click skipped: button not found, source=" + (source ?? "unknown"));
+                return false;
+            }
+            catch (Exception ex)
+            {
+                AppLog.w("captcha_training", "FormMainDom", "CAPTCHA_TRAINING resources click failed", ex);
+                return false;
+            }
+        }
+
+        private static bool TryClickResourcesElement(HtmlDocument document, string tagName, string source)
+        {
+            if (document == null)
+            {
+                return false;
+            }
+
+            var elements = document.GetElementsByTagName(tagName);
+            if (elements == null)
+            {
+                return false;
+            }
+
+            foreach (HtmlElement element in elements)
+            {
+                if (!IsResourcesElement(element))
+                {
+                    continue;
+                }
+
+                element.InvokeMember("click");
+                AppLog.i("captcha_training", "FormMainDom", "CAPTCHA_TRAINING resources click executed: tag=" + tagName + ", source=" + (source ?? "unknown"));
+                return true;
+            }
+
+            return false;
+        }
+
+        private static bool IsResourcesElement(HtmlElement element)
+        {
+            if (element == null)
+            {
+                return false;
+            }
+
+            var value = element.GetAttribute("value") ?? string.Empty;
+            var text = element.InnerText ?? string.Empty;
+            var outer = element.OuterHtml ?? string.Empty;
+            return value.IndexOf("Ресурсы", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                   text.IndexOf("Ресурсы", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                   outer.IndexOf("store_ajax.php", StringComparison.OrdinalIgnoreCase) >= 0;
+        }
+
         private HtmlWindow GetFrame(string name)
         {
             try

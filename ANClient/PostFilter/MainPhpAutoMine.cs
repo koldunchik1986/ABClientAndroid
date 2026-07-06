@@ -22,18 +22,18 @@ namespace ANClient.PostFilter
                 AutoMineRuntime.UpdateMinePageSnapshot(html, address);
             }
 
-            if (isMinePage && AutoMineRuntime.HasPendingMineRoute())
-            {
-                var routeScript = AutoMineRuntime.BuildPendingMoveInjection("main_php_mine_page_route");
-                if (!string.IsNullOrEmpty(routeScript))
-                    return InjectBeforeBodyEnd(html, routeScript);
-            }
-
             if (AppVars.AutoMineCheckTorch && (!AppVars.DoAutoMine || AutoMineRuntime.HasPendingMineRoute()))
             {
                 var torchHtml = ProcessAutoMineTorchCheck(address, html);
                 if (!string.IsNullOrEmpty(torchHtml))
                     return torchHtml;
+            }
+
+            if (isMinePage && AutoMineRuntime.HasPendingMineRoute())
+            {
+                var routeScript = AutoMineRuntime.BuildPendingMoveInjection("main_php_mine_page_route");
+                if (!string.IsNullOrEmpty(routeScript))
+                    return InjectBeforeBodyEnd(html, routeScript);
             }
 
             if (!AppVars.DoAutoMine)

@@ -4,7 +4,6 @@ namespace ANClient.ANForms
     using System.Globalization;
     using System.Text;
     using System.Windows.Forms;
-    using ANClient.Forms;
     using ANClient.Info;
     using ANClient.PostFilter;
     using MyChat;
@@ -13,6 +12,8 @@ namespace ANClient.ANForms
 
     internal sealed partial class FormMain
     {
+        private DateTime manualCaptchaDisabledReloadAt = DateTime.MinValue;
+
         private void TimerCrap()
         {
             if (AppVars.MustReload || (DateTime.Now > AppVars.NextCheckNoConnection))
@@ -334,41 +335,31 @@ namespace ANClient.ANForms
 
         private void PromptManualCaptcha()
         {
-            AppLog.i("Captcha", "MANUAL_CAPTCHA_PROMPT");
-            UpdateTexLog("Ожидание ручного ввода кода");
-            UpdateGuamodMessage("Введите код вручную");
+            AppLog.w("Captcha", "MANUAL_CAPTCHA_DISABLED");
+            UpdateTexLog("Ручной ввод капчи отключён");
+            UpdateGuamodMessage("Ручной ввод отключён");
 
-            using (var formCode = new FormCode())
+            if (Filter.CancelPendingAlchemyCut("manual_captcha_disabled", AutoCutRuntime.IsAlchemyActionPending()))
             {
-                formCode.StartPosition = FormStartPosition.CenterParent;
-                if (formCode.ShowDialog(this) != DialogResult.OK)
-                {
-                    AppLog.w("Captcha", "MANUAL_CAPTCHA_CANCELLED");
-                    Filter.CancelPendingAlchemyCut("manual_captcha_cancelled", AutoCutRuntime.IsAlchemyActionPending());
-                    AppVars.FightLink = string.Empty;
-                    AppVars.ClearCodePng();
-                    ChangeAutoboiState(AppVars.Profile.LezDoAutoboi ? AutoboiState.AutoboiOn : AutoboiState.AutoboiOff);
-                    return;
-                }
-
-                var code = (formCode.Code ?? string.Empty).Trim();
-                if (code.Length == 0)
-                {
-                    AppLog.w("Captcha", "MANUAL_CAPTCHA_EMPTY");
-                    return;
-                }
-
-                AppVars.GuamodCode = code;
-                AppVars.ClearCodePng();
-                if (!string.IsNullOrEmpty(AppVars.FightLink))
-                {
-                    AppVars.FightLink = AppVars.FightLink.Replace("????", AppVars.GuamodCode);
-                }
-
-                UpdateGuamodMessage("Ручной ввод: " + AppVars.GuamodCode);
-                UpdateTexLog("Ручной код: " + AppVars.GuamodCode);
-                AppLog.i("Captcha", "MANUAL_CAPTCHA_ENTERED len=" + AppVars.GuamodCode.Length);
+                return;
             }
+
+            if (string.IsNullOrEmpty(AppVars.FightLink) ||
+                AppVars.FightLink.IndexOf("????", StringComparison.Ordinal) == -1)
+            {
+                return;
+            }
+
+            var now = DateTime.Now;
+            if (now.Subtract(manualCaptchaDisabledReloadAt).TotalSeconds < 10d)
+            {
+                return;
+            }
+
+            manualCaptchaDisabledReloadAt = now;
+            AppVars.ClearCodePng();
+            AppLog.i("Captcha", "MANUAL_CAPTCHA_DISABLED_RELOAD");
+            ReloadMainPhpInvoke();
         }
 
         private void TimerClock()

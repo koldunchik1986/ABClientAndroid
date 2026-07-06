@@ -87,7 +87,7 @@ namespace ANClient
                     try
                     {
                         IdleManager.AddActivity();
-                        var wr = (HttpWebRequest) WebRequest.Create("http://neverlands.ru/ch.php?lo=1&");
+                        var wr = (HttpWebRequest) WebRequest.Create(GameServerSelector.RouteUrlToCurrentServer("http://neverlands.ru/ch.php?lo=1&"));
                         wr.Method = "GET";
                         wr.Proxy = AppVars.LocalProxy;
                         if (!DirectGameRequestGuard.Prepare(wr, "RoomManager.RoomAsync"))

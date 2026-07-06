@@ -159,7 +159,7 @@ namespace ANClient.Info
 
         private static string FetchRatingText(string url)
         {
-            var request = (HttpWebRequest)WebRequest.Create(url);
+            var request = (HttpWebRequest)WebRequest.Create(GameServerSelector.RouteUrlToCurrentServer(url));
             request.Method = "GET";
             request.UserAgent = UserAgent;
             request.Accept = "text/plain,*/*";

@@ -1,0 +1,2044 @@
+<!DOCTYPE html>
+<html lang="ru" dir="ltr" class="client-nojs">
+<head>
+<title>Таблица Травника — Викиневер</title>
+<meta charset="UTF-8" />
+<meta name="generator" content="MediaWiki 1.19.2" />
+<link rel="shortcut icon" href="/favicon.ico" />
+<link rel="search" type="application/opensearchdescription+xml" href="/opensearch_desc.php" title="Викиневер (ru)" />
+<link rel="EditURI" type="application/rsd+xml" href="http://wiki.neverlands.ru/api.php?action=rsd" />
+<link rel="alternate" type="application/atom+xml" title="Викиневер — Atom-лента" href="/index.php?title=%D0%A1%D0%BB%D1%83%D0%B6%D0%B5%D0%B1%D0%BD%D0%B0%D1%8F:RecentChanges&amp;feed=atom" />
+<link rel="stylesheet" href="http://wiki.neverlands.ru/load.php?debug=false&amp;lang=ru&amp;modules=ext.categoryTree.css%7Cmediawiki.legacy.commonPrint%2Cshared%7Cskins.vector&amp;only=styles&amp;skin=vector&amp;*" />
+<meta name="ResourceLoaderDynamicStyles" content="" />
+<style>a:lang(ar),a:lang(ckb),a:lang(fa),a:lang(kk-arab),a:lang(mzn),a:lang(ps),a:lang(ur){text-decoration:none}a.new,#quickbar a.new{color:#ba0000}
+
+/* cache key: mediawiki-wiki_:resourceloader:filter:minify-css:7:c88e2bcd56513749bec09a7e29cb3ffa */
+</style>
+
+<script src="http://wiki.neverlands.ru/load.php?debug=false&amp;lang=ru&amp;modules=startup&amp;only=scripts&amp;skin=vector&amp;*"></script>
+<script>if(window.mw){
+mw.config.set({"wgCanonicalNamespace":"","wgCanonicalSpecialPageName":false,"wgNamespaceNumber":0,"wgPageName":"Таблица_Травника","wgTitle":"Таблица Травника","wgCurRevisionId":21406,"wgArticleId":1432,"wgIsArticle":true,"wgAction":"view","wgUserName":null,"wgUserGroups":["*"],"wgCategories":["Ресурсы","Таблицы профессий","Таблицы алхимика"],"wgBreakFrames":false,"wgPageContentLanguage":"ru","wgSeparatorTransformTable":[",	."," 	,"],"wgDigitTransformTable":["",""],"wgRelevantPageName":"Таблица_Травника","wgRestrictionEdit":[],"wgRestrictionMove":[],"wgSearchNamespaces":[0],"wgVectorEnabledModules":{"collapsiblenav":true,"collapsibletabs":true,"editwarning":false,"expandablesearch":false,"footercleanup":false,"sectioneditlinks":false,"simplesearch":true,"experiments":true},"wgWikiEditorEnabledModules":{"toolbar":true,"dialogs":true,"hidesig":true,"templateEditor":false,"templates":false,"preview":true,"previewDialog":false,"publish":false,"toc":false},"wgCategoryTreePageCategoryOptions":"{\"mode\":0,\"hideprefix\":20,\"showcount\":true,\"namespaces\":false}"});
+}</script><script>if(window.mw){
+mw.loader.implement("user.options",function($){mw.user.options.set({"ccmeonemails":0,"cols":80,"date":"default","diffonly":0,"disablemail":0,"disablesuggest":0,"editfont":"default","editondblclick":0,"editsection":1,"editsectiononrightclick":0,"enotifminoredits":0,"enotifrevealaddr":0,"enotifusertalkpages":1,"enotifwatchlistpages":0,"extendwatchlist":0,"externaldiff":0,"externaleditor":0,"fancysig":0,"forceeditsummary":0,"gender":"unknown","hideminor":0,"hidepatrolled":0,"highlightbroken":1,"imagesize":2,"justify":0,"math":1,"minordefault":0,"newpageshidepatrolled":0,"nocache":0,"noconvertlink":0,"norollbackdiff":0,"numberheadings":0,"previewonfirst":0,"previewontop":1,"quickbar":5,"rcdays":7,"rclimit":50,"rememberpassword":0,"rows":25,"searchlimit":20,"showhiddencats":0,"showjumplinks":1,"shownumberswatching":1,"showtoc":1,"showtoolbar":1,"skin":"vector","stubthreshold":0,"thumbsize":2,"underline":2,"uselivepreview":0,"usenewrc":0,"watchcreations":0,"watchdefault":0,"watchdeletion":0,
+"watchlistdays":3,"watchlisthideanons":0,"watchlisthidebots":0,"watchlisthideliu":0,"watchlisthideminor":0,"watchlisthideown":0,"watchlisthidepatrolled":0,"watchmoves":0,"wllimit":250,"vector-simplesearch":1,"usebetatoolbar":1,"usebetatoolbar-cgd":1,"wikieditor-preview":1,"variant":"ru","language":"ru","searchNs0":true,"searchNs1":false,"searchNs2":false,"searchNs3":false,"searchNs4":false,"searchNs5":false,"searchNs6":false,"searchNs7":false,"searchNs8":false,"searchNs9":false,"searchNs10":false,"searchNs11":false,"searchNs12":false,"searchNs13":false,"searchNs14":false,"searchNs15":false});;},{},{});mw.loader.implement("user.tokens",function($){mw.user.tokens.set({"editToken":"+\\","watchToken":false});;},{},{});
+
+/* cache key: mediawiki-wiki_:resourceloader:filter:minify-js:7:7508123b28c8391f7dad903573c5f09c */
+}</script>
+<script>if(window.mw){
+mw.loader.load(["mediawiki.page.startup","mediawiki.legacy.wikibits","mediawiki.legacy.ajax"]);
+}</script>
+<!--[if lt IE 7]><style type="text/css">body{behavior:url("/skins/vector/csshover.min.htc")}</style><![endif]--></head>
+<body class="mediawiki ltr sitedir-ltr ns-0 ns-subject page-Таблица_Травника skin-vector action-view">
+		<div id="mw-page-base" class="noprint"></div>
+		<div id="mw-head-base" class="noprint"></div>
+		<!-- content -->
+		<div id="content" class="mw-body">
+			<a id="top"></a>
+			<div id="mw-js-message" style="display:none;"></div>
+						<!-- firstHeading -->
+			<h1 id="firstHeading" class="firstHeading">
+				<span dir="auto">Таблица Травника</span>
+			</h1>
+			<!-- /firstHeading -->
+			<!-- bodyContent -->
+			<div id="bodyContent">
+								<!-- tagline -->
+				<div id="siteSub">Материал из Викиневер</div>
+				<!-- /tagline -->
+								<!-- subtitle -->
+				<div id="contentSub"></div>
+				<!-- /subtitle -->
+																<!-- jumpto -->
+				<div id="jump-to-nav" class="mw-jump">
+					Перейти к: <a href="#mw-head">навигация</a>,
+					<a href="#p-search">поиск</a>
+				</div>
+				<!-- /jumpto -->
+								<!-- bodycontent -->
+				<div id="mw-content-text" lang="ru" dir="ltr" class="mw-content-ltr"><div style="float:right; clear:right; margin-left:1ex; border:1px solid gray; padding:0.7ex; background-color:white;" class="CategoryTreeTag" data-ct-mode="20" data-ct-options="{&quot;mode&quot;:20,&quot;hideprefix&quot;:20,&quot;showcount&quot;:false,&quot;namespaces&quot;:false}"><div class="CategoryTreeSection"><div class="CategoryTreeItem"><span class="CategoryTreeBullet"><span class="CategoryTreeToggle" style="display: none;" data-ct-title="Таблицы_алхимика" title="развернуть" data-ct-state="collapsed">[<b>+</b>]</span> </span> <a class="CategoryTreeLabel  CategoryTreeLabelNs14 CategoryTreeLabelCategory" href="/wiki/%D0%9A%D0%B0%D1%82%D0%B5%D0%B3%D0%BE%D1%80%D0%B8%D1%8F:%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D1%8B_%D0%B0%D0%BB%D1%85%D0%B8%D0%BC%D0%B8%D0%BA%D0%B0">Таблицы алхимика</a></div>
+		<div class="CategoryTreeChildren" style="display:none"></div></div>
+		<div class="CategoryTreeSection"><div class="CategoryTreeItem"><span class="CategoryTreeBullet"><span class="CategoryTreeToggle" style="display: none;" data-ct-title="Таблицы_каллиграфа" title="развернуть" data-ct-state="collapsed">[<b>+</b>]</span> </span> <a class="CategoryTreeLabel  CategoryTreeLabelNs14 CategoryTreeLabelCategory" href="/wiki/%D0%9A%D0%B0%D1%82%D0%B5%D0%B3%D0%BE%D1%80%D0%B8%D1%8F:%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D1%8B_%D0%BA%D0%B0%D0%BB%D0%BB%D0%B8%D0%B3%D1%80%D0%B0%D1%84%D0%B0">Таблицы каллиграфа</a></div>
+		<div class="CategoryTreeChildren" style="display:none"></div></div>
+		<div class="CategoryTreeSection"><div class="CategoryTreeItem"><span class="CategoryTreeBullet"><span class="CategoryTreeToggle" style="display: none;" data-ct-title="Таблицы_повара" title="развернуть" data-ct-state="collapsed">[<b>+</b>]</span> </span> <a class="CategoryTreeLabel  CategoryTreeLabelNs14 CategoryTreeLabelCategory" href="/wiki/%D0%9A%D0%B0%D1%82%D0%B5%D0%B3%D0%BE%D1%80%D0%B8%D1%8F:%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D1%8B_%D0%BF%D0%BE%D0%B2%D0%B0%D1%80%D0%B0">Таблицы повара</a></div>
+		<div class="CategoryTreeChildren" style="display:none"></div></div>
+		<div class="CategoryTreeSection"><div class="CategoryTreeItem"><span class="CategoryTreeBullet"><span class="CategoryTreeToggle" style="display: none;" data-ct-title="Таблицы_ремесленника" title="развернуть" data-ct-state="collapsed">[<b>+</b>]</span> </span> <a class="CategoryTreeLabel  CategoryTreeLabelNs14 CategoryTreeLabelCategory" href="/wiki/%D0%9A%D0%B0%D1%82%D0%B5%D0%B3%D0%BE%D1%80%D0%B8%D1%8F:%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D1%8B_%D1%80%D0%B5%D0%BC%D0%B5%D1%81%D0%BB%D0%B5%D0%BD%D0%BD%D0%B8%D0%BA%D0%B0">Таблицы ремесленника</a></div>
+		<div class="CategoryTreeChildren" style="display:none"></div></div>
+		<div class="CategoryTreeSection"><div class="CategoryTreeItem"><span class="CategoryTreeBullet"><span class="CategoryTreeToggle" style="display: none;" data-ct-title="Таблицы_шахтера" title="развернуть" data-ct-state="collapsed">[<b>+</b>]</span> </span> <a class="CategoryTreeLabel  CategoryTreeLabelNs14 CategoryTreeLabelCategory" href="/wiki/%D0%9A%D0%B0%D1%82%D0%B5%D0%B3%D0%BE%D1%80%D0%B8%D1%8F:%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D1%8B_%D1%88%D0%B0%D1%85%D1%82%D0%B5%D1%80%D0%B0">Таблицы шахтера</a></div>
+		<div class="CategoryTreeChildren" style="display:none"></div></div>
+		<div class="CategoryTreeSection"><div class="CategoryTreeItem"><span class="CategoryTreeBullet"> </span> <a class="CategoryTreeLabel  CategoryTreeLabelNs0 CategoryTreeLabelPage" href="/wiki/%D0%94%D1%80%D0%B0%D0%B3%D0%BE%D1%86%D0%B5%D0%BD%D0%BD%D1%8B%D0%B5_%D0%BA%D0%B0%D0%BC%D0%BD%D0%B8">Драгоценные камни</a></div>
+		<div class="CategoryTreeChildren" style="display:none"></div></div>
+		<div class="CategoryTreeSection"><div class="CategoryTreeItem"><span class="CategoryTreeBullet"> </span> <a class="CategoryTreeLabel  CategoryTreeLabelNs0 CategoryTreeLabelPage" href="/wiki/%D0%9C%D0%B5%D1%82%D0%B0%D0%BB%D0%BB%D1%8B_%D0%B8_%D1%81%D0%BF%D0%BB%D0%B0%D0%B2%D1%8B">Металлы и сплавы</a></div>
+		<div class="CategoryTreeChildren" style="display:none"></div></div>
+		<div class="CategoryTreeSection"><div class="CategoryTreeItem"><span class="CategoryTreeBullet"> </span> <a class="CategoryTreeLabel  CategoryTreeLabelNs0 CategoryTreeLabelPage" href="/wiki/%D0%A0%D0%B5%D0%BF%D1%83%D1%82%D0%B0%D1%86%D0%B8%D1%8F">Репутация</a></div>
+		<div class="CategoryTreeChildren" style="display:none"></div></div>
+		<div class="CategoryTreeSection"><div class="CategoryTreeItem"><span class="CategoryTreeBullet"> </span> <a class="CategoryTreeLabel  CategoryTreeLabelNs0 CategoryTreeLabelPage" href="/wiki/%D0%A0%D1%83%D0%B4%D0%B0_%D0%B8_%D0%BC%D0%B8%D0%BD%D0%B5%D1%80%D0%B0%D0%BB%D1%8B">Руда и минералы</a></div>
+		<div class="CategoryTreeChildren" style="display:none"></div></div>
+		<div class="CategoryTreeSection"><div class="CategoryTreeItem"><span class="CategoryTreeBullet"> </span> <a class="CategoryTreeLabel  CategoryTreeLabelNs0 CategoryTreeLabelPage" href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%B7%D0%B0%D0%B3%D0%BE%D1%82%D0%BE%D0%B2%D0%BE%D0%BA_%D0%90%D0%BB%D1%85%D0%B8%D0%BC%D0%B8%D0%BA%D0%B0">Таблица заготовок Алхимика</a></div>
+		<div class="CategoryTreeChildren" style="display:none"></div></div>
+		<div class="CategoryTreeSection"><div class="CategoryTreeItem"><span class="CategoryTreeBullet"> </span> <a class="CategoryTreeLabel  CategoryTreeLabelNs0 CategoryTreeLabelPage" href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%B7%D0%B0%D0%B3%D0%BE%D1%82%D0%BE%D0%B2%D0%BE%D0%BA_%D0%9F%D0%BE%D0%B2%D0%B0%D1%80%D0%B0">Таблица заготовок Повара</a></div>
+		<div class="CategoryTreeChildren" style="display:none"></div></div>
+		<div class="CategoryTreeSection"><div class="CategoryTreeItem"><span class="CategoryTreeBullet"> </span> <a class="CategoryTreeLabel  CategoryTreeLabelNs0 CategoryTreeLabelPage" href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%B8%D1%81%D0%BF%D0%BE%D0%BB%D1%8C%D0%B7%D0%BE%D0%B2%D0%B0%D0%BD%D0%B8%D1%8F_%D0%B7%D0%B0%D0%B3%D0%BE%D1%82%D0%BE%D0%B2%D0%BE%D0%BA_%D0%B8_%D0%B4%D1%80%D0%BE%D0%B2">Таблица использования заготовок и дров</a></div>
+		<div class="CategoryTreeChildren" style="display:none"></div></div>
+		<div class="CategoryTreeSection"><div class="CategoryTreeItem"><span class="CategoryTreeBullet"> </span> <a class="CategoryTreeLabel  CategoryTreeLabelNs0 CategoryTreeLabelPage" href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%9B%D0%B5%D1%81%D0%BE%D1%80%D1%83%D0%B1%D0%B0">Таблица Лесоруба</a></div>
+		<div class="CategoryTreeChildren" style="display:none"></div></div>
+		<div class="CategoryTreeSection"><div class="CategoryTreeItem"><span class="CategoryTreeBullet"> </span> <a class="CategoryTreeLabel  CategoryTreeLabelNs0 CategoryTreeLabelPage" href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%BC%D0%B0%D1%82%D0%B5%D1%80%D0%B8%D0%B0%D0%BB%D0%BE%D0%B2_%D0%9A%D0%B0%D0%BB%D0%BB%D0%B8%D0%B3%D1%80%D0%B0%D1%84%D0%B0">Таблица материалов Каллиграфа</a></div>
+		<div class="CategoryTreeChildren" style="display:none"></div></div>
+		<div class="CategoryTreeSection"><div class="CategoryTreeItem"><span class="CategoryTreeBullet"> </span> <a class="CategoryTreeLabel  CategoryTreeLabelNs0 CategoryTreeLabelPage" href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%9E%D1%85%D0%BE%D1%82%D0%BD%D0%B8%D0%BA%D0%B0">Таблица Охотника</a></div>
+		<div class="CategoryTreeChildren" style="display:none"></div></div>
+		<div class="CategoryTreeSection"><div class="CategoryTreeItem"><span class="CategoryTreeBullet"> </span> <a class="CategoryTreeLabel  CategoryTreeLabelNs0 CategoryTreeLabelPage" href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%9F%D0%BB%D0%BE%D1%82%D0%BD%D0%B8%D0%BA%D0%B0">Таблица Плотника</a></div>
+		<div class="CategoryTreeChildren" style="display:none"></div></div>
+		<div class="CategoryTreeSection"><div class="CategoryTreeItem"><span class="CategoryTreeBullet"> </span> <a class="CategoryTreeLabel  CategoryTreeLabelNs0 CategoryTreeLabelPage" href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D1%80%D0%B5%D0%BC%D0%BE%D0%BD%D1%82%D0%B0">Таблица ремонта</a></div>
+		<div class="CategoryTreeChildren" style="display:none"></div></div>
+		<div class="CategoryTreeSection"><div class="CategoryTreeItem"><span class="CategoryTreeBullet"> </span> <a class="CategoryTreeLabel  CategoryTreeLabelNs0 CategoryTreeLabelPage" href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%A0%D0%B5%D1%86%D0%B5%D0%BF%D1%82%D0%BE%D0%B2_%D0%90%D0%BB%D1%85%D0%B8%D0%BC%D0%B8%D0%BA%D0%B0">Таблица Рецептов Алхимика</a></div>
+		<div class="CategoryTreeChildren" style="display:none"></div></div>
+		<div class="CategoryTreeSection"><div class="CategoryTreeItem"><span class="CategoryTreeBullet"> </span> <a class="CategoryTreeLabel  CategoryTreeLabelNs0 CategoryTreeLabelPage" href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D1%80%D0%B5%D1%86%D0%B5%D0%BF%D1%82%D0%BE%D0%B2_%D0%94%D0%BE%D0%BA%D1%82%D0%BE%D1%80%D0%B0">Таблица рецептов Доктора</a></div>
+		<div class="CategoryTreeChildren" style="display:none"></div></div>
+		<div class="CategoryTreeSection"><div class="CategoryTreeItem"><span class="CategoryTreeBullet"> </span> <a class="CategoryTreeLabel  CategoryTreeLabelNs0 CategoryTreeLabelPage" href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%A0%D0%B5%D1%86%D0%B5%D0%BF%D1%82%D0%BE%D0%B2_%D0%9A%D0%B0%D0%BB%D0%BB%D0%B8%D0%B3%D1%80%D0%B0%D1%84%D0%B0">Таблица Рецептов Каллиграфа</a></div>
+		<div class="CategoryTreeChildren" style="display:none"></div></div>
+		<div class="CategoryTreeSection"><div class="CategoryTreeItem"><span class="CategoryTreeBullet"> </span> <a class="CategoryTreeLabel  CategoryTreeLabelNs0 CategoryTreeLabelPage" href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%A0%D0%B5%D1%86%D0%B5%D0%BF%D1%82%D0%BE%D0%B2_%D0%9F%D0%BE%D0%B2%D0%B0%D1%80%D0%B0">Таблица Рецептов Повара</a></div>
+		<div class="CategoryTreeChildren" style="display:none"></div></div>
+		<div class="CategoryTreeSection"><div class="CategoryTreeItem"><span class="CategoryTreeBullet"> </span> <a class="CategoryTreeLabel  CategoryTreeLabelNs0 CategoryTreeLabelPage" href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%A0%D1%8B%D0%B1%D0%B0%D0%BA%D0%B0">Таблица Рыбака</a></div>
+		<div class="CategoryTreeChildren" style="display:none"></div></div>
+		<div class="CategoryTreeSection"><div class="CategoryTreeItem"><span class="CategoryTreeBullet"> </span> <a class="CategoryTreeLabel  CategoryTreeLabelNs0 CategoryTreeLabelPage" href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%A2%D1%80%D0%B0%D0%B2%D0%BD%D0%B8%D0%BA%D0%B0">Таблица Травника</a></div>
+		<div class="CategoryTreeChildren" style="display:none"></div></div>
+		<div class="CategoryTreeSection"><div class="CategoryTreeItem"><span class="CategoryTreeBullet"> </span> <a class="CategoryTreeLabel  CategoryTreeLabelNs0 CategoryTreeLabelPage" href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D1%87%D0%B5%D1%80%D1%82%D0%B5%D0%B6%D0%B5%D0%B9_%D0%B2%D0%B5%D1%89%D0%B5%D0%B9">Таблица чертежей вещей</a></div>
+		<div class="CategoryTreeChildren" style="display:none"></div></div>
+		<div class="CategoryTreeSection"><div class="CategoryTreeItem"><span class="CategoryTreeBullet"> </span> <a class="CategoryTreeLabel  CategoryTreeLabelNs0 CategoryTreeLabelPage" href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D1%87%D0%B5%D1%80%D1%82%D0%B5%D0%B6%D0%B5%D0%B9_%D0%BE%D1%80%D1%83%D0%B6%D0%B8%D1%8F">Таблица чертежей оружия</a></div>
+		<div class="CategoryTreeChildren" style="display:none"></div></div>
+		<div class="CategoryTreeSection"><div class="CategoryTreeItem"><span class="CategoryTreeBullet"> </span> <a class="CategoryTreeLabel  CategoryTreeLabelNs0 CategoryTreeLabelPage" href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D1%87%D0%B5%D1%80%D1%82%D0%B5%D0%B6%D0%B5%D0%B9_%D0%BF%D1%80%D0%BE%D1%84.%D0%B8%D0%BD%D0%B2%D0%B5%D0%BD%D1%82%D0%B0%D1%80%D1%8F">Таблица чертежей проф.инвентаря</a></div>
+		<div class="CategoryTreeChildren" style="display:none"></div></div>
+		<div class="CategoryTreeSection"><div class="CategoryTreeItem"><span class="CategoryTreeBullet"> </span> <a class="CategoryTreeLabel  CategoryTreeLabelNs0 CategoryTreeLabelPage" href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%AE%D0%B2%D0%B5%D0%BB%D0%B8%D1%80%D0%B0">Таблица Ювелира</a></div>
+		<div class="CategoryTreeChildren" style="display:none"></div></div>
+		</div>
+<div style="float:right; clear:right; margin-left:1ex; border:1px solid gray; padding:0.7ex; background-color:white;" class="CategoryTreeTag" data-ct-mode="20" data-ct-options="{&quot;mode&quot;:20,&quot;hideprefix&quot;:20,&quot;showcount&quot;:false,&quot;namespaces&quot;:false}"><div class="CategoryTreeSection"><div class="CategoryTreeItem"><span class="CategoryTreeBullet"><span class="CategoryTreeToggle" style="display: none;" data-ct-title="Группы_трав_на_карте" title="свернуть" data-ct-loaded="1" data-ct-state="expanded">[<b>−</b>]</span> </span> <a class="CategoryTreeLabel  CategoryTreeLabelNs14 CategoryTreeLabelCategory" href="/wiki/%D0%9A%D0%B0%D1%82%D0%B5%D0%B3%D0%BE%D1%80%D0%B8%D1%8F:%D0%93%D1%80%D1%83%D0%BF%D0%BF%D1%8B_%D1%82%D1%80%D0%B0%D0%B2_%D0%BD%D0%B0_%D0%BA%D0%B0%D1%80%D1%82%D0%B5">Группы трав на карте</a></div>
+		<div class="CategoryTreeChildren" style="display:block"><div class="CategoryTreeSection"><div class="CategoryTreeItem"><span class="CategoryTreeBullet"> </span> <a class="CategoryTreeLabel  CategoryTreeLabelNs0 CategoryTreeLabelPage" href="/wiki/%D0%A2%D1%80%D0%B0%D0%B2%D1%8B_1_(%D0%9F%D1%83%D1%81%D1%82%D1%8B%D0%BD%D1%8F)">Травы 1 (Пустыня)</a></div>
+		<div class="CategoryTreeChildren" style="display:none"></div></div>
+		<div class="CategoryTreeSection"><div class="CategoryTreeItem"><span class="CategoryTreeBullet"> </span> <a class="CategoryTreeLabel  CategoryTreeLabelNs0 CategoryTreeLabelPage" href="/wiki/%D0%A2%D1%80%D0%B0%D0%B2%D1%8B_11_(%D0%9F%D0%BE%D0%BB%D1%8F)">Травы 11 (Поля)</a></div>
+		<div class="CategoryTreeChildren" style="display:none"></div></div>
+		<div class="CategoryTreeSection"><div class="CategoryTreeItem"><span class="CategoryTreeBullet"> </span> <a class="CategoryTreeLabel  CategoryTreeLabelNs0 CategoryTreeLabelPage" href="/wiki/%D0%A2%D1%80%D0%B0%D0%B2%D1%8B_2_(%D0%91%D0%BE%D0%BB%D0%BE%D1%82%D0%BE)">Травы 2 (Болото)</a></div>
+		<div class="CategoryTreeChildren" style="display:none"></div></div>
+		<div class="CategoryTreeSection"><div class="CategoryTreeItem"><span class="CategoryTreeBullet"> </span> <a class="CategoryTreeLabel  CategoryTreeLabelNs0 CategoryTreeLabelPage" href="/wiki/%D0%A2%D1%80%D0%B0%D0%B2%D1%8B_3_(%D0%9B%D1%83%D0%B3%D0%B0)">Травы 3 (Луга)</a></div>
+		<div class="CategoryTreeChildren" style="display:none"></div></div>
+		<div class="CategoryTreeSection"><div class="CategoryTreeItem"><span class="CategoryTreeBullet"> </span> <a class="CategoryTreeLabel  CategoryTreeLabelNs0 CategoryTreeLabelPage" href="/wiki/%D0%A2%D1%80%D0%B0%D0%B2%D1%8B_4_(%D0%9F%D0%BE%D0%B3%D1%80%D0%B0%D0%BD%D0%B8%D1%87%D0%BD%D1%8B%D0%B5_%D0%BB%D0%B5%D1%81%D0%B0)">Травы 4 (Пограничные леса)</a></div>
+		<div class="CategoryTreeChildren" style="display:none"></div></div>
+		<div class="CategoryTreeSection"><div class="CategoryTreeItem"><span class="CategoryTreeBullet"> </span> <a class="CategoryTreeLabel  CategoryTreeLabelNs0 CategoryTreeLabelPage" href="/wiki/%D0%A2%D1%80%D0%B0%D0%B2%D1%8B_5_(%D0%9B%D0%B5%D1%81%D0%B0_%D1%81%D1%80%D0%B5%D0%B4%D0%BD%D0%B5%D0%B9_%D0%BF%D0%BE%D0%BB%D0%BE%D1%81%D1%8B)">Травы 5 (Леса средней полосы)</a></div>
+		<div class="CategoryTreeChildren" style="display:none"></div></div>
+		<div class="CategoryTreeSection"><div class="CategoryTreeItem"><span class="CategoryTreeBullet"> </span> <a class="CategoryTreeLabel  CategoryTreeLabelNs0 CategoryTreeLabelPage" href="/wiki/%D0%A2%D1%80%D0%B0%D0%B2%D1%8B_6_(%D0%93%D0%BE%D1%80%D1%8B)">Травы 6 (Горы)</a></div>
+		<div class="CategoryTreeChildren" style="display:none"></div></div>
+		<div class="CategoryTreeSection"><div class="CategoryTreeItem"><span class="CategoryTreeBullet"> </span> <a class="CategoryTreeLabel  CategoryTreeLabelNs0 CategoryTreeLabelPage" href="/wiki/%D0%A2%D1%80%D0%B0%D0%B2%D1%8B_7_(%D0%AE%D0%B6%D0%BD%D1%8B%D0%B5_%D0%BB%D0%B5%D1%81%D0%B0)">Травы 7 (Южные леса)</a></div>
+		<div class="CategoryTreeChildren" style="display:none"></div></div>
+		<div class="CategoryTreeSection"><div class="CategoryTreeItem"><span class="CategoryTreeBullet"> </span> <a class="CategoryTreeLabel  CategoryTreeLabelNs0 CategoryTreeLabelPage" href="/wiki/%D0%A2%D1%80%D0%B0%D0%B2%D1%8B_8_(%D0%92%D0%B8%D0%BD%D0%BE%D0%B3%D1%80%D0%B0%D0%B4%D0%BD%D0%B8%D0%BA%D0%B8)">Травы 8 (Виноградники)</a></div>
+		<div class="CategoryTreeChildren" style="display:none"></div></div>
+		<div class="CategoryTreeSection"><div class="CategoryTreeItem"><span class="CategoryTreeBullet"> </span> <a class="CategoryTreeLabel  CategoryTreeLabelNs0 CategoryTreeLabelPage" href="/wiki/%D0%A2%D1%80%D0%B0%D0%B2%D1%8B_9_(%D0%92%D0%BE%D1%81%D1%82%D0%BE%D1%87%D0%BD%D1%8B%D0%B5_%D0%BB%D0%B5%D1%81%D0%B0)">Травы 9 (Восточные леса)</a></div>
+		<div class="CategoryTreeChildren" style="display:none"></div></div>
+		</div></div>
+		</div>
+<p><br />
+<b>Растительные ресурсы</b> (трава) - <a href="/wiki/%D0%9A%D0%B0%D1%82%D0%B5%D0%B3%D0%BE%D1%80%D0%B8%D1%8F:%D0%A0%D0%B5%D1%81%D1%83%D1%80%D1%81%D1%8B" title="Категория:Ресурсы">ресурсы</a>, которые добываются <a href="/wiki/%D0%A2%D1%80%D0%B0%D0%B2%D0%BD%D0%B8%D0%BA" title="Травник">травниками</a> и используются в других профессиях (<a href="/wiki/%D0%90%D0%BB%D1%85%D0%B8%D0%BC%D0%B8%D0%BA" title="Алхимик" class="mw-redirect">алхимик</a>, <a href="/wiki/%D0%9F%D0%BE%D0%B2%D0%B0%D1%80" title="Повар">повар</a>, <a href="/wiki/%D0%94%D0%BE%D0%BA%D1%82%D0%BE%D1%80" title="Доктор">доктор</a>, <a href="/wiki/%D0%A0%D0%B5%D0%BC%D0%B5%D1%81%D0%BB%D0%B5%D0%BD%D0%BD%D0%B8%D0%BA" title="Ремесленник">ремесленник</a>).
+</p><p>Скошенные травы можно: 
+</p>
+<ul><li> продать на <a href="/wiki/%D0%91%D0%B8%D1%80%D0%B6%D0%B0_%D1%80%D0%B5%D1%81%D1%83%D1%80%D1%81%D0%BE%D0%B2" title="Биржа ресурсов">Бирже ресурсов</a> 
+</li><li> заготовить самому для последующего использования: см.<a href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%B7%D0%B0%D0%B3%D0%BE%D1%82%D0%BE%D0%B2%D0%BE%D0%BA_%D0%90%D0%BB%D1%85%D0%B8%D0%BC%D0%B8%D0%BA%D0%B0" title="Таблица заготовок Алхимика">Таблица заготовок Алхимика</a> и <a href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%B7%D0%B0%D0%B3%D0%BE%D1%82%D0%BE%D0%B2%D0%BE%D0%BA_%D0%9F%D0%BE%D0%B2%D0%B0%D1%80%D0%B0" title="Таблица заготовок Повара">Таблица заготовок Повара</a> .
+</li><li> положить в <a href="/wiki/%D0%A5%D1%80%D0%B0%D0%BD%D0%B8%D0%BB%D0%B8%D1%89%D0%B5" title="Хранилище">Хранилище</a>
+</li></ul>
+<p><br />
+</p>
+<h2> <span class="mw-headline" id=".D0.92.D0.B8.D0.B4.D1.8B_.D1.82.D1.80.D0.B0.D0.B2"> Виды трав </span></h2>
+<table id="toc" class="toc"><tr><td><div id="toctitle"><h2>Содержание</h2></div>
+<ul>
+<li class="toclevel-1 tocsection-1"><a href="#.D0.92.D0.B8.D0.B4.D1.8B_.D1.82.D1.80.D0.B0.D0.B2"><span class="tocnumber">1</span> <span class="toctext">Виды трав</span></a>
+<ul>
+<li class="toclevel-2 tocsection-2"><a href="#.D0.93.D1.80.D1.83.D0.BF.D0.BF.D0.B0_1_.28.D0.9F.D1.83.D1.81.D1.82.D1.8B.D0.BD.D1.8F.29"><span class="tocnumber">1.1</span> <span class="toctext">Группа 1 (Пустыня)</span></a></li>
+<li class="toclevel-2 tocsection-3"><a href="#.D0.93.D1.80.D1.83.D0.BF.D0.BF.D0.B0_2_.28.D0.91.D0.BE.D0.BB.D0.BE.D1.82.D0.BE.29"><span class="tocnumber">1.2</span> <span class="toctext">Группа 2 (Болото)</span></a></li>
+<li class="toclevel-2 tocsection-4"><a href="#.D0.93.D1.80.D1.83.D0.BF.D0.BF.D0.B0_3_.28.D0.9B.D1.83.D0.B3.D0.B0.29"><span class="tocnumber">1.3</span> <span class="toctext">Группа 3 (Луга)</span></a></li>
+<li class="toclevel-2 tocsection-5"><a href="#.D0.93.D1.80.D1.83.D0.BF.D0.BF.D0.B0_4_.28.D0.9F.D0.BE.D0.B3.D1.80.D0.B0.D0.BD.D0.B8.D1.87.D0.BD.D1.8B.D0.B5_.D0.BB.D0.B5.D1.81.D0.B0.29"><span class="tocnumber">1.4</span> <span class="toctext">Группа 4 (Пограничные леса)</span></a></li>
+<li class="toclevel-2 tocsection-6"><a href="#.D0.93.D1.80.D1.83.D0.BF.D0.BF.D0.B0_5_.28.D0.9B.D0.B5.D1.81.D0.B0_.D1.81.D1.80.D0.B5.D0.B4.D0.BD.D0.B5.D0.B9_.D0.BF.D0.BE.D0.BB.D0.BE.D1.81.D1.8B.29"><span class="tocnumber">1.5</span> <span class="toctext">Группа 5 (Леса средней полосы)</span></a></li>
+<li class="toclevel-2 tocsection-7"><a href="#.D0.93.D1.80.D1.83.D0.BF.D0.BF.D0.B0_6_.28.D0.93.D0.BE.D1.80.D1.8B.29"><span class="tocnumber">1.6</span> <span class="toctext">Группа 6 (Горы)</span></a></li>
+<li class="toclevel-2 tocsection-8"><a href="#.D0.93.D1.80.D1.83.D0.BF.D0.BF.D0.B0_7_.28.D0.AE.D0.B6.D0.BD.D1.8B.D0.B5_.D0.BB.D0.B5.D1.81.D0.B0.29"><span class="tocnumber">1.7</span> <span class="toctext">Группа 7 (Южные леса)</span></a></li>
+<li class="toclevel-2 tocsection-9"><a href="#.D0.93.D1.80.D1.83.D0.BF.D0.BF.D0.B0_8_.28.D0.92.D0.B8.D0.BD.D0.BE.D0.B3.D1.80.D0.B0.D0.B4.D0.BD.D0.B8.D0.BA.D0.B8.29"><span class="tocnumber">1.8</span> <span class="toctext">Группа 8 (Виноградники)</span></a></li>
+<li class="toclevel-2 tocsection-10"><a href="#.D0.93.D1.80.D1.83.D0.BF.D0.BF.D0.B0_9_.28.D0.92.D0.BE.D1.81.D1.82.D0.BE.D1.87.D0.BD.D1.8B.D0.B5_.D0.BB.D0.B5.D1.81.D0.B0.29"><span class="tocnumber">1.9</span> <span class="toctext">Группа 9 (Восточные леса)</span></a></li>
+<li class="toclevel-2 tocsection-11"><a href="#.D0.93.D1.80.D1.83.D0.BF.D0.BF.D0.B0_11_.28.D0.9F.D0.BE.D0.BB.D1.8F.29"><span class="tocnumber">1.10</span> <span class="toctext">Группа 11 (Поля)</span></a></li>
+</ul>
+</li>
+<li class="toclevel-1 tocsection-12"><a href="#.D0.98.D1.81.D1.82.D0.BE.D1.80.D0.B8.D1.8F"><span class="tocnumber">2</span> <span class="toctext">История</span></a></li>
+</ul>
+</td></tr></table>
+<h3> <span class="mw-headline" id=".D0.93.D1.80.D1.83.D0.BF.D0.BF.D0.B0_1_.28.D0.9F.D1.83.D1.81.D1.82.D1.8B.D0.BD.D1.8F.29"> Группа 1 (Пустыня)</span></h3>
+<table class="wikitable sortable">
+
+<tr>
+<th> Растение </th>
+<th> Картинка </th>
+<th> Ст-ть,<br /> гос,NV </th>
+<th> Треб.<br /> умения <br /> травника </th>
+<th> Время<br /> роста </th>
+<th> Рост<br />в НЛ,шт  </th>
+<th> Очков <br />в рейтинг </th>
+<th> куда используется
+</th></tr>
+<tr>
+<td style="text-align: center;">Змеиный<br /> корень
+</td>
+<td style="text-align: center;"><img src="http://image.neverlands.ru/resources/108.gif" alt="108.gif" />
+</td>
+<td style="text-align: center;">18
+</td>
+<td style="text-align: center;">50
+</td>
+<td style="text-align: center;">1 час
+</td>
+<td style="text-align: center;">18
+</td>
+<td style="text-align: center;">9
+</td>
+<td><img src="http://image.neverlands.ru/weapon/i_w27_44.gif" alt="i_w27_44.gif" /> <a href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%A0%D0%B5%D1%86%D0%B5%D0%BF%D1%82%D0%BE%D0%B2_%D0%90%D0%BB%D1%85%D0%B8%D0%BC%D0%B8%D0%BA%D0%B0" title="Таблица Рецептов Алхимика">Зелье недосягаемости</a> (ученик) <br /> <a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:Doc_4.gif" class="image"><img alt="Doc 4.gif" src="/images/thumb/3/3f/Doc_4.gif/20px-Doc_4.gif" width="20" height="20" /></a> <a href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D1%80%D0%B5%D1%86%D0%B5%D0%BF%D1%82%D0%BE%D0%B2_%D0%94%D0%BE%D0%BA%D1%82%D0%BE%D1%80%D0%B0" title="Таблица рецептов Доктора">Сумки лекаря</a> (доктор)
+</td></tr>
+<tr>
+<td style="text-align: center;">Катарантус
+</td>
+<td style="text-align: center;"><img src="http://image.neverlands.ru/resources/98.gif" alt="98.gif" />
+</td>
+<td style="text-align: center;">18
+</td>
+<td style="text-align: center;">105
+</td>
+<td style="text-align: center;">1 час
+</td>
+<td style="text-align: center;">32
+</td>
+<td style="text-align: center;">5
+</td>
+<td><img src="http://image.neverlands.ru/weapon/i_w27_40.gif" alt="i_w27_40.gif" /> <a href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%A0%D0%B5%D1%86%D0%B5%D0%BF%D1%82%D0%BE%D0%B2_%D0%90%D0%BB%D1%85%D0%B8%D0%BC%D0%B8%D0%BA%D0%B0" title="Таблица Рецептов Алхимика">Зелье жизни</a> (мастер) <br /> <a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:Doc_4.gif" class="image"><img alt="Doc 4.gif" src="/images/thumb/3/3f/Doc_4.gif/20px-Doc_4.gif" width="20" height="20" /></a> <a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:Doc_5.gif" class="image"><img alt="Doc 5.gif" src="/images/thumb/f/f6/Doc_5.gif/20px-Doc_5.gif" width="20" height="20" /></a> <a href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D1%80%D0%B5%D1%86%D0%B5%D0%BF%D1%82%D0%BE%D0%B2_%D0%94%D0%BE%D0%BA%D1%82%D0%BE%D1%80%D0%B0" title="Таблица рецептов Доктора">Сумки лекаря</a> (доктор)
+</td></tr>
+<tr>
+<td style="text-align: center;">Фенхель
+</td>
+<td style="text-align: center;"><img src="http://image.neverlands.ru/resources/97.gif" alt="97.gif" />
+</td>
+<td style="text-align: center;">18
+</td>
+<td style="text-align: center;">400
+</td>
+<td style="text-align: center;">1 час
+</td>
+<td style="text-align: center;">20
+</td>
+<td style="text-align: center;">7
+</td>
+<td><img src="http://image.neverlands.ru/weapon/i_w27_65.gif" alt="i_w27_65.gif" /> <a href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%A0%D0%B5%D1%86%D0%B5%D0%BF%D1%82%D0%BE%D0%B2_%D0%90%D0%BB%D1%85%D0%B8%D0%BC%D0%B8%D0%BA%D0%B0" title="Таблица Рецептов Алхимика">Зелье панциря</a> (эксперт)
+</td></tr>
+<tr>
+<td style="text-align: center;">Пустынный<br /> агапантус
+</td>
+<td style="text-align: center;"><img src="http://image.neverlands.ru/resources/109.gif" alt="109.gif" />
+</td>
+<td style="text-align: center;">18
+</td>
+<td style="text-align: center;">640
+</td>
+<td style="text-align: center;">1 час
+</td>
+<td style="text-align: center;">10
+</td>
+<td style="text-align: center;">13
+</td>
+<td><img src="http://image.neverlands.ru/weapon/w27_325.gif" alt="w27_325.gif" /> <a href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%A0%D0%B5%D1%86%D0%B5%D0%BF%D1%82%D0%BE%D0%B2_%D0%90%D0%BB%D1%85%D0%B8%D0%BC%D0%B8%D0%BA%D0%B0" title="Таблица Рецептов Алхимика">Зелье жажда жизни</a> (чародей) <br /> <a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:Doc_6.gif" class="image"><img alt="Doc 6.gif" src="/images/thumb/b/bb/Doc_6.gif/20px-Doc_6.gif" width="20" height="20" /></a> <a href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D1%80%D0%B5%D1%86%D0%B5%D0%BF%D1%82%D0%BE%D0%B2_%D0%94%D0%BE%D0%BA%D1%82%D0%BE%D1%80%D0%B0#.D0.91.D0.BE.D0.B5.D0.B2.D1.8B.D0.B5_.D0.B0.D0.BF.D1.82.D0.B5.D1.87.D0.BA.D0.B8" title="Таблица рецептов Доктора">Боевые аптечки</a> (доктор)
+</td></tr>
+<tr>
+<td style="text-align: center;">Инжир
+</td>
+<td style="text-align: center;"><img src="http://image.neverlands.ru/resources/95.gif" alt="95.gif" />
+</td>
+<td style="text-align: center;">18
+</td>
+<td style="text-align: center;">720
+</td>
+<td style="text-align: center;">2 часа
+</td>
+<td style="text-align: center;">24
+</td>
+<td style="text-align: center;">11
+</td>
+<td><img src="http://image.neverlands.ru/weapon/w27_328.gif" alt="w27_328.gif" /> <a href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%A0%D0%B5%D1%86%D0%B5%D0%BF%D1%82%D0%BE%D0%B2_%D0%90%D0%BB%D1%85%D0%B8%D0%BC%D0%B8%D0%BA%D0%B0" title="Таблица Рецептов Алхимика">Зелье ярость берсерка</a> (чародей)<br /><img src="http://image.neverlands.ru/weapon/w27_329.gif" alt="w27_329.gif" /> <a href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%A0%D0%B5%D1%86%D0%B5%D0%BF%D1%82%D0%BE%D0%B2_%D0%90%D0%BB%D1%85%D0%B8%D0%BC%D0%B8%D0%BA%D0%B0" title="Таблица Рецептов Алхимика">Зелье хрупкости</a> (чародей)
+</td></tr>
+
+</table>
+<table>
+<tr><td></td></tr></table>
+<p>клетки:<br />
+14-232&#160;; 14-262&#160;; 14-263&#160;; 14-293&#160;; 14-294&#160;; 14-295&#160;; 14-325&#160;; 14-324&#160;; 14-323&#160;; 14-231&#160;; 14-230&#160;; 14-200&#160;; 14-199&#160;; 14-169&#160;; 14-168&#160;; 14-138&#160;; 14-137&#160;; 14-107&#160;; 14-106&#160;; 14-136&#160;; 14-105&#160;; 14-134&#160;; 14-163&#160;; 14-075&#160;; 14-045&#160;; 14-046&#160;; 14-047&#160;; 14-048&#160;; 14-049&#160;; 14-050&#160;; 14-051&#160;; 14-052&#160;; 14-053&#160;; 14-054&#160;; 14-055&#160;; 14-056&#160;; 14-026&#160;; 14-027&#160;; 13-567&#160;; 13-568&#160;; 13-538&#160;; 13-539&#160;; 13-509&#160;; 13-510&#160;; 13-480&#160;; 31-451&#160;; 31-421&#160;; 31-422&#160;; 31-392&#160;; 31-393&#160;; 31-363&#160;; 31-364&#160;; 31-334&#160;; 31-335&#160;; 31-305&#160;; 31-306&#160;; 31-307&#160;; 31-339&#160;; 31-370&#160;; 31-401&#160;; 31-432&#160;; 14-074&#160;; 14-044&#160;; 14-014&#160;; 13-554&#160;; 13-555&#160;; 13-525&#160;; 13-495&#160;; 13-496&#160;; 13-465&#160;; 13-466&#160;; 13-435&#160;; 13-436&#160;; 13-406&#160;; 13-407&#160;; 13-288&#160;; 13-257&#160;; 13-256&#160;; 13-255&#160;; 13-254&#160;; 13-253&#160;; 13-258&#160;; 13-259&#160;; 13-229&#160;; 13-199&#160;; 13-200&#160;; 13-170&#160;; 14-043&#160;; 14-013&#160;; 14-012&#160;; 14-042&#160;; 14-041&#160;; 14-040&#160;; 14-039&#160;; 14-038&#160;; 14-037&#160;; 14-067&#160;; 14-066&#160;; 14-065&#160;; 14-095&#160;; 14-094&#160;; 14-124&#160;; 14-153&#160;; 14-123&#160;; 14-122&#160;; 14-152&#160;; 14-151&#160;; 14-181&#160;; 6-210&#160;; 6-240&#160;; 6-209&#160;; 6-239&#160;; 6-269&#160;; 6-238&#160;; 6-268&#160;; 6-298&#160;; 6-327&#160;; 6-326&#160;; 6-356&#160;; 6-386&#160;; 6-417&#160;; 6-416&#160;; 6-415&#160;; 6-445&#160;; 6-446&#160;; 6-447&#160;; 6-448&#160;; 6-449&#160;; 6-479&#160;; 6-480&#160;; 6-510&#160;; 14-481&#160;; 14-482&#160;; 14-483&#160;; 14-453&#160;; 14-484&#160;; 14-514&#160;; 14-485&#160;; 6-476&#160;; 6-506&#160;; 6-536&#160;; 6-566&#160;; 9-026&#160;; 9-056&#160;; 9-057&#160;; 9-058&#160;; 9-089&#160;; 9-120&#160;; 15-121&#160;; 9-180&#160;; 9-088&#160;; 9-087&#160;; 9-086&#160;; 9-085&#160;; 9-084&#160;; 9-114&#160;; 9-083&#160;; 9-113&#160;; 9-112&#160;; 9-142&#160;; 9-141&#160;; 9-140&#160;; 9-139&#160;; 9-169&#160;; 9-168&#160;; 9-199&#160;; 9-229&#160;; 9-259&#160;; 9-380&#160;; 9-381&#160;; 9-411&#160;; 9-347&#160;; 9-377&#160;; 9-346&#160;; 9-407&#160;; 9-345&#160;; 9-344&#160;; 9-343&#160;; 9-342&#160;; 9-166&#160;; 9-165&#160;; 9-164&#160;; 6-414&#160;; 6-413&#160;; 6-383&#160;; 6-382&#160;; 6-381&#160;; 6-380&#160;; 6-379&#160;; 6-378&#160;; 6-351&#160;; 6-350&#160;; 6-349&#160;; 6-319&#160;; 6-289&#160;; 6-260&#160;; 6-230&#160;; 6-200&#160;; 6-170&#160;; 6-171&#160;; 6-142&#160;; 6-143&#160;; 6-083&#160;; 6-082&#160;; 6-053&#160;; 6-052&#160;; 6-051&#160;; 6-020&#160;; 6-019&#160;; 6-048&#160;; 6-047&#160;; 6-077&#160;; 6-018&#160;; 3-558&#160;; 3-528&#160;; 3-498&#160;; 3-468&#160;; 3-438&#160;; 3-408&#160;; 3-406&#160;; 3-376&#160;; 3-375&#160;; 3-374&#160;; 3-344&#160;; 3-343&#160;; 3-313&#160;; 3-282&#160;; 3-252&#160;; 3-222&#160;; 3-192&#160;; 3-162&#160;; 3-161&#160;; 3-131&#160;; 6-054&#160;; 6-055&#160;; 6-025&#160;; 6-026&#160;; 6-027&#160;; 6-028&#160;; 3-568&#160;; 6-029&#160;; 6-030&#160;; 14-001&#160;; 14-031&#160;; 14-032&#160;; 14-062&#160;; 14-063&#160;; 14-093&#160;; 3-378&#160;; 3-348&#160;; 3-349&#160;; 3-319&#160;; 3-289&#160;; 3-290&#160;; 3-260&#160;; 3-230&#160;; 3-200&#160;; 3-201&#160;; 3-171&#160;; 3-141&#160;; 3-172&#160;; 3-203&#160;; 3-234&#160;; 3-235&#160;; 3-236&#160;; 3-267&#160;; 3-268&#160;; 3-269&#160;; 3-300
+</p>
+<h3> <span class="mw-headline" id=".D0.93.D1.80.D1.83.D0.BF.D0.BF.D0.B0_2_.28.D0.91.D0.BE.D0.BB.D0.BE.D1.82.D0.BE.29"> Группа 2 (Болото)</span></h3>
+<table class="wikitable sortable">
+
+<tr>
+<th> Растение </th>
+<th> Картинка </th>
+<th> Ст-ть,<br /> гос,NV </th>
+<th> Треб.<br /> умения <br /> травника </th>
+<th> Время<br /> роста </th>
+<th> Рост<br />в НЛ,шт  </th>
+<th> Очков <br />в рейтинг </th>
+<th> куда используется
+</th></tr>
+<tr>
+<td style="text-align: center;">Водоросли<br /> приозерные
+</td>
+<td style="text-align: center;"><img src="http://image.neverlands.ru/resources/444.gif" alt="444.gif" />
+</td>
+<td style="text-align: center;">9
+</td>
+<td style="text-align: center;">5
+</td>
+<td style="text-align: center;">1 час
+</td>
+<td style="text-align: center;">50
+</td>
+<td style="text-align: center;">3
+</td>
+<td><a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:459.jpg" class="image"><img alt="459.jpg" src="/images/thumb/6/6c/459.jpg/20px-459.jpg" width="20" height="20" /></a> <a href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%B7%D0%B0%D0%B3%D0%BE%D1%82%D0%BE%D0%B2%D0%BE%D0%BA_%D0%9F%D0%BE%D0%B2%D0%B0%D1%80%D0%B0" title="Таблица заготовок Повара">Очищенные водоросли</a> (повар)<br /><a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:Doc_4.gif" class="image"><img alt="Doc 4.gif" src="/images/thumb/3/3f/Doc_4.gif/20px-Doc_4.gif" width="20" height="20" /></a> <a href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D1%80%D0%B5%D1%86%D0%B5%D0%BF%D1%82%D0%BE%D0%B2_%D0%94%D0%BE%D0%BA%D1%82%D0%BE%D1%80%D0%B0" title="Таблица рецептов Доктора">Сумки лекаря</a> (доктор)
+</td></tr>
+<tr>
+<td style="text-align: center;">Осот
+</td>
+<td style="text-align: center;"><img src="http://image.neverlands.ru/resources/96.gif" alt="96.gif" />
+</td>
+<td style="text-align: center;">18
+</td>
+<td style="text-align: center;">5
+</td>
+<td style="text-align: center;">1 час
+</td>
+<td style="text-align: center;">16
+</td>
+<td style="text-align: center;">3
+</td>
+<td><img src="http://image.neverlands.ru/weapon/i_w27_45.gif" alt="i_w27_45.gif" /> <a href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%A0%D0%B5%D1%86%D0%B5%D0%BF%D1%82%D0%BE%D0%B2_%D0%90%D0%BB%D1%85%D0%B8%D0%BC%D0%B8%D0%BA%D0%B0" title="Таблица Рецептов Алхимика">Зелье блаженства</a> (ученик)
+</td></tr>
+<tr>
+<td style="text-align: center;">Бадан
+</td>
+<td style="text-align: center;"><img src="http://image.neverlands.ru/resources/87.gif" alt="87.gif" />
+</td>
+<td style="text-align: center;">18
+</td>
+<td style="text-align: center;">30
+</td>
+<td style="text-align: center;">1 час
+</td>
+<td style="text-align: center;">18
+</td>
+<td style="text-align: center;">4
+</td>
+<td><img src="http://image.neverlands.ru/weapon/i_w27_42.gif" alt="i_w27_42.gif" /> <a href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%A0%D0%B5%D1%86%D0%B5%D0%BF%D1%82%D0%BE%D0%B2_%D0%90%D0%BB%D1%85%D0%B8%D0%BC%D0%B8%D0%BA%D0%B0" title="Таблица Рецептов Алхимика">Зелье сокрушительных ударов</a> (ученик) <br />  <a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:Doc_4.gif" class="image"><img alt="Doc 4.gif" src="/images/thumb/3/3f/Doc_4.gif/20px-Doc_4.gif" width="20" height="20" /></a> <a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:Doc_5.gif" class="image"><img alt="Doc 5.gif" src="/images/thumb/f/f6/Doc_5.gif/20px-Doc_5.gif" width="20" height="20" /></a> <a href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D1%80%D0%B5%D1%86%D0%B5%D0%BF%D1%82%D0%BE%D0%B2_%D0%94%D0%BE%D0%BA%D1%82%D0%BE%D1%80%D0%B0" title="Таблица рецептов Доктора">Сумки лекаря</a> (доктор)
+</td></tr>
+<tr>
+<td style="text-align: center;">Трифоль
+</td>
+<td style="text-align: center;"><img src="http://image.neverlands.ru/resources/91.gif" alt="91.gif" />
+</td>
+<td style="text-align: center;">18
+</td>
+<td style="text-align: center;">60
+</td>
+<td style="text-align: center;">1 час
+</td>
+<td style="text-align: center;">16
+</td>
+<td style="text-align: center;">4
+</td>
+<td><img src="http://image.neverlands.ru/weapon/i_w27_51.gif" alt="i_w27_51.gif" /> <a href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%A0%D0%B5%D1%86%D0%B5%D0%BF%D1%82%D0%BE%D0%B2_%D0%90%D0%BB%D1%85%D0%B8%D0%BC%D0%B8%D0%BA%D0%B0" title="Таблица Рецептов Алхимика">Зелье точного попадания</a> (ученик) <br />  <a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:Doc_4.gif" class="image"><img alt="Doc 4.gif" src="/images/thumb/3/3f/Doc_4.gif/20px-Doc_4.gif" width="20" height="20" /></a> <a href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D1%80%D0%B5%D1%86%D0%B5%D0%BF%D1%82%D0%BE%D0%B2_%D0%94%D0%BE%D0%BA%D1%82%D0%BE%D1%80%D0%B0" title="Таблица рецептов Доктора">Сумки лекаря</a> (доктор)
+</td></tr>
+<tr>
+<td style="text-align: center;">Болотник
+</td>
+<td style="text-align: center;"><img src="http://image.neverlands.ru/resources/88.gif" alt="88.gif" />
+</td>
+<td style="text-align: center;">18
+</td>
+<td style="text-align: center;">120
+</td>
+<td style="text-align: center;">1 час
+</td>
+<td style="text-align: center;">32
+</td>
+<td style="text-align: center;">3
+</td>
+<td><img src="http://image.neverlands.ru/weapon/i_w27_54.gif" alt="i_w27_54.gif" /> <a href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%A0%D0%B5%D1%86%D0%B5%D0%BF%D1%82%D0%BE%D0%B2_%D0%90%D0%BB%D1%85%D0%B8%D0%BC%D0%B8%D0%BA%D0%B0" title="Таблица Рецептов Алхимика">Зелье восстановления маны</a> (мастер) <br /> <a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:Doc_6.gif" class="image"><img alt="Doc 6.gif" src="/images/thumb/b/bb/Doc_6.gif/20px-Doc_6.gif" width="20" height="20" /></a> <a href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D1%80%D0%B5%D1%86%D0%B5%D0%BF%D1%82%D0%BE%D0%B2_%D0%94%D0%BE%D0%BA%D1%82%D0%BE%D1%80%D0%B0" title="Таблица рецептов Доктора">Сумки лекаря</a> (доктор)
+</td></tr>
+
+<tr>
+<td style="text-align: center;">Маклея
+</td>
+<td style="text-align: center;"><img src="http://image.neverlands.ru/resources/90.gif" alt="90.gif" />
+</td>
+<td style="text-align: center;">18
+</td>
+<td style="text-align: center;">130
+</td>
+<td style="text-align: center;">1 час
+</td>
+<td style="text-align: center;">32
+</td>
+<td style="text-align: center;">3
+</td>
+<td><img src="http://image.neverlands.ru/weapon/i_w27_57.gif" alt="i_w27_57.gif" /> <a href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%A0%D0%B5%D1%86%D0%B5%D0%BF%D1%82%D0%BE%D0%B2_%D0%90%D0%BB%D1%85%D0%B8%D0%BC%D0%B8%D0%BA%D0%B0" title="Таблица Рецептов Алхимика">Зелье энергии</a> (мастер) <br /> <a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:Doc_6.gif" class="image"><img alt="Doc 6.gif" src="/images/thumb/b/bb/Doc_6.gif/20px-Doc_6.gif" width="20" height="20" /></a> <a href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D1%80%D0%B5%D1%86%D0%B5%D0%BF%D1%82%D0%BE%D0%B2_%D0%94%D0%BE%D0%BA%D1%82%D0%BE%D1%80%D0%B0" title="Таблица рецептов Доктора">Сумки лекаря</a> (доктор)
+</td></tr>
+<tr>
+<td style="text-align: center;">Брусника
+</td>
+<td style="text-align: center;"><img src="http://image.neverlands.ru/resources/89.gif" alt="89.gif" />
+</td>
+<td style="text-align: center;">18
+</td>
+<td style="text-align: center;">160
+</td>
+<td style="text-align: center;">2 часа
+</td>
+<td style="text-align: center;">32
+</td>
+<td style="text-align: center;">4
+</td>
+<td><img src="http://image.neverlands.ru/weapon/i_w27_46.gif" alt="i_w27_46.gif" /> <a href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%A0%D0%B5%D1%86%D0%B5%D0%BF%D1%82%D0%BE%D0%B2_%D0%90%D0%BB%D1%85%D0%B8%D0%BC%D0%B8%D0%BA%D0%B0" title="Таблица Рецептов Алхимика">Зелье ловкости</a> (мастер)<br /><a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:174.gif" class="image"><img alt="174.gif" src="/images/thumb/2/23/174.gif/20px-174.gif" width="20" height="20" /></a> <a href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%B7%D0%B0%D0%B3%D0%BE%D1%82%D0%BE%D0%B2%D0%BE%D0%BA_%D0%9F%D0%BE%D0%B2%D0%B0%D1%80%D0%B0" title="Таблица заготовок Повара">Отвар из ягод</a> (повар)
+</td></tr>
+<tr>
+<td style="text-align: center;">Антуриум<br /> хрустальный
+</td>
+<td style="text-align: center;"><img src="http://image.neverlands.ru/resources/113.gif" alt="113.gif" />
+</td>
+<td style="text-align: center;">18
+</td>
+<td style="text-align: center;">190
+</td>
+<td style="text-align: center;">1 час
+</td>
+<td style="text-align: center;">10
+</td>
+<td style="text-align: center;">5
+</td>
+<td><img src="http://image.neverlands.ru/weapon/i_w27_53.gif" alt="i_w27_53.gif" /> <a href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%A0%D0%B5%D1%86%D0%B5%D0%BF%D1%82%D0%BE%D0%B2_%D0%90%D0%BB%D1%85%D0%B8%D0%BC%D0%B8%D0%BA%D0%B0" title="Таблица Рецептов Алхимика">Зелье невидимости</a> (мастер)
+</td></tr>
+<tr>
+<td style="text-align: center;">Дурман
+</td>
+<td style="text-align: center;"><img src="http://image.neverlands.ru/resources/64.gif" alt="64.gif" />
+</td>
+<td style="text-align: center;">18
+</td>
+<td style="text-align: center;">640
+</td>
+<td style="text-align: center;">2 часа
+</td>
+<td style="text-align: center;">28
+</td>
+<td style="text-align: center;">5
+</td>
+<td><img src="http://image.neverlands.ru/weapon/w27_325.gif" alt="w27_325.gif" /> <a href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%A0%D0%B5%D1%86%D0%B5%D0%BF%D1%82%D0%BE%D0%B2_%D0%90%D0%BB%D1%85%D0%B8%D0%BC%D0%B8%D0%BA%D0%B0" title="Таблица Рецептов Алхимика">Зелье жажда жизни</a> (чародей)<br /> <a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:535.gif" class="image"><img alt="535.gif" src="/images/thumb/7/75/535.gif/20px-535.gif" width="20" height="20" /></a> <a href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%B7%D0%B0%D0%B3%D0%BE%D1%82%D0%BE%D0%B2%D0%BE%D0%BA_%D0%9F%D0%BE%D0%B2%D0%B0%D1%80%D0%B0" title="Таблица заготовок Повара">Сушеные стебли</a> (повар)
+</td></tr>
+<tr>
+<td style="text-align: center;">Плаун
+</td>
+<td style="text-align: center;"><img src="http://image.neverlands.ru/resources/70.gif" alt="70.gif" />
+</td>
+<td style="text-align: center;">18
+</td>
+<td style="text-align: center;">800
+</td>
+<td style="text-align: center;">1 час
+</td>
+<td style="text-align: center;">36
+</td>
+<td style="text-align: center;">6
+</td>
+<td><img src="http://image.neverlands.ru/weapon/w27_330.gif" alt="w27_330.gif" /> <a href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%A0%D0%B5%D1%86%D0%B5%D0%BF%D1%82%D0%BE%D0%B2_%D0%90%D0%BB%D1%85%D0%B8%D0%BC%D0%B8%D0%BA%D0%B0" title="Таблица Рецептов Алхимика">Зелье элементалиста</a> (чародей)
+</td></tr>
+</table>
+<table>
+
+</table>
+<p>клетки:<br />
+5-003&#160;; 5-033&#160;; 5-063&#160;; 5-062&#160;; 5-092&#160;; 5-093&#160;; 5-123&#160;; 5-122&#160;; 8-326&#160;; 8-354&#160;; 8-384&#160;; 8-413&#160;; 8-414&#160;; 8-358&#160;; 8-389&#160;; 9-421&#160;; 9-422&#160;; 9-460&#160;; 9-551&#160;; 9-554&#160;; 9-525&#160;; 9-526&#160;; 9-528&#160;; 9-500&#160;; 8-467&#160;; 8-437&#160;; 14-386&#160;; 15-555&#160;; 18-292&#160;; 18-293&#160;; 18-494&#160;; 18-495&#160;; 19-205&#160;; 19-408&#160;; 27-163&#160;; 28-032&#160;; 29-314&#160;; 29-315&#160;; 3-254&#160;; 33-427&#160;; 4-396&#160;; 7-294&#160;; 7-295&#160;; 7-324&#160;; 7-325&#160;; 7-355&#160;; 7-552&#160;; 7-553&#160;; 7-554&#160;; 7-524&#160;; 7-494&#160;; 7-493&#160;; 8-223&#160;; 8-253&#160;; 8-224&#160;; 12-259&#160;; 12-229&#160;; 12-230&#160;; 12-231&#160;; 12-232&#160;; 12-204&#160;; 12-174&#160;; 12-177&#160;; 12-178&#160;; 12-208&#160;; 12-238&#160;; 12-237&#160;; 12-267&#160;; 12-297&#160;; 12-327&#160;; 12-326&#160;; 12-325&#160;; 12-355&#160;; 12-354&#160;; 12-324&#160;; 12-323&#160;; 12-322&#160;; 12-321&#160;; 12-320&#160;; 12-291&#160;; 12-292&#160;; 12-293&#160;; 12-294&#160;; 12-264&#160;; 12-265&#160;; 12-295&#160;; 12-266
+</p>
+<h3> <span class="mw-headline" id=".D0.93.D1.80.D1.83.D0.BF.D0.BF.D0.B0_3_.28.D0.9B.D1.83.D0.B3.D0.B0.29"> Группа 3 (Луга)</span></h3>
+<table class="wikitable sortable">
+
+<tr>
+<th> Растение </th>
+<th> Картинка </th>
+<th> Ст-ть,<br /> гос,NV </th>
+<th> Треб.<br /> умения <br /> травника </th>
+<th> Время<br /> роста </th>
+<th> Рост<br />в НЛ,шт  </th>
+<th> Очков <br />в рейтинг </th>
+<th> куда используется
+</th></tr>
+<tr>
+<td style="text-align: center;">Бледный<br /> анемон
+</td>
+<td style="text-align: center;"> <img src="http://image.neverlands.ru/resources/254.gif" alt="254.gif" />
+</td>
+<td style="text-align: center;">18
+</td>
+<td style="text-align: center;">0
+</td>
+<td style="text-align: center;">1 час
+</td>
+<td style="text-align: center;">18
+</td>
+<td style="text-align: center;">12
+</td>
+<td><a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:535.gif" class="image"><img alt="535.gif" src="/images/thumb/7/75/535.gif/20px-535.gif" width="20" height="20" /></a> <a href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%B7%D0%B0%D0%B3%D0%BE%D1%82%D0%BE%D0%B2%D0%BE%D0%BA_%D0%9F%D0%BE%D0%B2%D0%B0%D1%80%D0%B0" title="Таблица заготовок Повара">Тёртые сушеные цветки</a> (повар)<br /><a href="/wiki/%D0%9A%D0%B2%D0%B5%D1%81%D1%82%D1%8B_%D0%9F%D0%BB%D1%83%D1%82%D0%B0" title="Квесты Плута">Квест второй "Плутовское зелье"</a> (Квесты Плута)
+</td></tr>
+<tr>
+<td style="text-align: center;">Каланхое
+</td>
+<td style="text-align: center;"><img src="http://image.neverlands.ru/resources/47.gif" alt="47.gif" />
+</td>
+<td style="text-align: center;">18
+</td>
+<td style="text-align: center;">20
+</td>
+<td style="text-align: center;">1 час
+</td>
+<td style="text-align: center;">18
+</td>
+<td style="text-align: center;">12
+</td>
+<td><img src="http://image.neverlands.ru/weapon/i_w27_32.gif" alt="i_w27_32.gif" /> <a href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%A0%D0%B5%D1%86%D0%B5%D0%BF%D1%82%D0%BE%D0%B2_%D0%90%D0%BB%D1%85%D0%B8%D0%BC%D0%B8%D0%BA%D0%B0" title="Таблица Рецептов Алхимика">Зелье просветления</a> (ученик) <br /> <a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:Doc_4.gif" class="image"><img alt="Doc 4.gif" src="/images/thumb/3/3f/Doc_4.gif/20px-Doc_4.gif" width="20" height="20" /></a> <a href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D1%80%D0%B5%D1%86%D0%B5%D0%BF%D1%82%D0%BE%D0%B2_%D0%94%D0%BE%D0%BA%D1%82%D0%BE%D1%80%D0%B0" title="Таблица рецептов Доктора">Сумки лекаря</a> (доктор)
+</td></tr>
+<tr>
+<td style="text-align: center;">Кентарийская<br /> дикая роза
+</td>
+<td style="text-align: center;"><img src="http://image.neverlands.ru/resources/112.gif" alt="112.gif" />
+</td>
+<td style="text-align: center;">18
+</td>
+<td style="text-align: center;">150
+</td>
+<td style="text-align: center;">2 часа
+</td>
+<td style="text-align: center;">20
+</td>
+<td style="text-align: center;">15
+</td>
+<td><img src="http://image.neverlands.ru/weapon/i_w27_37.gif" alt="i_w27_37.gif" /> <a href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%A0%D0%B5%D1%86%D0%B5%D0%BF%D1%82%D0%BE%D0%B2_%D0%90%D0%BB%D1%85%D0%B8%D0%BC%D0%B8%D0%BA%D0%B0" title="Таблица Рецептов Алхимика">Зелье силы</a> (мастер) <br /> <a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:Doc_6.gif" class="image"><img alt="Doc 6.gif" src="/images/thumb/b/bb/Doc_6.gif/20px-Doc_6.gif" width="20" height="20" /></a> <a href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D1%80%D0%B5%D1%86%D0%B5%D0%BF%D1%82%D0%BE%D0%B2_%D0%94%D0%BE%D0%BA%D1%82%D0%BE%D1%80%D0%B0#.D0.91.D0.BE.D0.B5.D0.B2.D1.8B.D0.B5_.D0.B0.D0.BF.D1.82.D0.B5.D1.87.D0.BA.D0.B8" title="Таблица рецептов Доктора">Боевые аптечки</a> (доктор)
+</td></tr>
+<tr>
+<td style="text-align: center;">Истод
+</td>
+<td style="text-align: center;"><img src="http://image.neverlands.ru/resources/66.gif" alt="66.gif" />
+</td>
+<td style="text-align: center;"> 18
+</td>
+<td style="text-align: center;">160
+</td>
+<td style="text-align: center;">1 час
+</td>
+<td style="text-align: center;">20
+</td>
+<td style="text-align: center;">8
+</td>
+<td><img src="http://image.neverlands.ru/weapon/i_w27_46.gif" alt="i_w27_46.gif" /> <a href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%A0%D0%B5%D1%86%D0%B5%D0%BF%D1%82%D0%BE%D0%B2_%D0%90%D0%BB%D1%85%D0%B8%D0%BC%D0%B8%D0%BA%D0%B0" title="Таблица Рецептов Алхимика">Зелье ловкости</a> (мастер) <br /> <a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:Doc_5.gif" class="image"><img alt="Doc 5.gif" src="/images/thumb/f/f6/Doc_5.gif/20px-Doc_5.gif" width="20" height="20" /></a> <a href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D1%80%D0%B5%D1%86%D0%B5%D0%BF%D1%82%D0%BE%D0%B2_%D0%94%D0%BE%D0%BA%D1%82%D0%BE%D1%80%D0%B0" title="Таблица рецептов Доктора">Сумки лекаря</a> (доктор)
+</td></tr>
+<tr>
+<td style="text-align: center;">Прагениана
+</td>
+<td style="text-align: center;"><img src="http://image.neverlands.ru/resources/110.gif" alt="110.gif" />
+</td>
+<td style="text-align: center;">18
+</td>
+<td style="text-align: center;">170
+</td>
+<td style="text-align: center;">2 часа
+</td>
+<td style="text-align: center;">18
+</td>
+<td style="text-align: center;">15
+</td>
+<td><img src="http://image.neverlands.ru/weapon/i_w27_33.gif" alt="i_w27_33.gif" /> <a href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%A0%D0%B5%D1%86%D0%B5%D0%BF%D1%82%D0%BE%D0%B2_%D0%90%D0%BB%D1%85%D0%B8%D0%BC%D0%B8%D0%BA%D0%B0" title="Таблица Рецептов Алхимика">Зелье гения</a> (мастер) <br /> <a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:Doc_6.gif" class="image"><img alt="Doc 6.gif" src="/images/thumb/b/bb/Doc_6.gif/20px-Doc_6.gif" width="20" height="20" /></a> <a href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D1%80%D0%B5%D1%86%D0%B5%D0%BF%D1%82%D0%BE%D0%B2_%D0%94%D0%BE%D0%BA%D1%82%D0%BE%D1%80%D0%B0#.D0.91.D0.BE.D0.B5.D0.B2.D1.8B.D0.B5_.D0.B0.D0.BF.D1.82.D0.B5.D1.87.D0.BA.D0.B8" title="Таблица рецептов Доктора">Боевые аптечки</a> (доктор)
+</td></tr>
+<tr>
+<td style="text-align: center;">Смертоцвет
+</td>
+<td style="text-align: center;"><img src="http://image.neverlands.ru/resources/117.gif" alt="117.gif" />
+</td>
+<td style="text-align: center;">18
+</td>
+<td style="text-align: center;">210
+</td>
+<td style="text-align: center;">2 часа
+</td>
+<td style="text-align: center;">12
+</td>
+<td style="text-align: center;">15
+</td>
+<td><img src="http://image.neverlands.ru/weapon/i_w27_49.gif" alt="i_w27_49.gif" /> <a href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%A0%D0%B5%D1%86%D0%B5%D0%BF%D1%82%D0%BE%D0%B2_%D0%90%D0%BB%D1%85%D0%B8%D0%BC%D0%B8%D0%BA%D0%B0" title="Таблица Рецептов Алхимика">Зелье медитации</a> (мастер) <br /> <a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:Doc_6.gif" class="image"><img alt="Doc 6.gif" src="/images/thumb/b/bb/Doc_6.gif/20px-Doc_6.gif" width="20" height="20" /></a> <a href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D1%80%D0%B5%D1%86%D0%B5%D0%BF%D1%82%D0%BE%D0%B2_%D0%94%D0%BE%D0%BA%D1%82%D0%BE%D1%80%D0%B0#.D0.91.D0.BE.D0.B5.D0.B2.D1.8B.D0.B5_.D0.B0.D0.BF.D1.82.D0.B5.D1.87.D0.BA.D0.B8" title="Таблица рецептов Доктора">Боевые аптечки</a> (доктор)
+</td></tr>
+<tr>
+<td style="text-align: center;">Камелия
+</td>
+<td style="text-align: center;"><img src="http://image.neverlands.ru/resources/111.gif" alt="111.gif" />
+</td>
+<td style="text-align: center;">18
+</td>
+<td style="text-align: center;">250
+</td>
+<td style="text-align: center;">2 часа
+</td>
+<td style="text-align: center;">18
+</td>
+<td style="text-align: center;">15
+</td>
+<td><img src="http://image.neverlands.ru/weapon/i_w27_47.gif" alt="i_w27_47.gif" /> <a href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%A0%D0%B5%D1%86%D0%B5%D0%BF%D1%82%D0%BE%D0%B2_%D0%90%D0%BB%D1%85%D0%B8%D0%BC%D0%B8%D0%BA%D0%B0" title="Таблица Рецептов Алхимика">Зелье огненного ореола</a> (эксперт)
+</td></tr>
+<tr>
+<td style="text-align: center;">Секуринега
+</td>
+<td style="text-align: center;"><img src="http://image.neverlands.ru/resources/51.gif" alt="51.gif" />
+</td>
+<td style="text-align: center;">18
+</td>
+<td style="text-align: center;">400
+</td>
+<td style="text-align: center;">2 часа
+</td>
+<td style="text-align: center;">18
+</td>
+<td style="text-align: center;">14
+</td>
+<td><img src="http://image.neverlands.ru/weapon/i_w27_65.gif" alt="i_w27_65.gif" /> <a href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%A0%D0%B5%D1%86%D0%B5%D0%BF%D1%82%D0%BE%D0%B2_%D0%90%D0%BB%D1%85%D0%B8%D0%BC%D0%B8%D0%BA%D0%B0" title="Таблица Рецептов Алхимика">Зелье панциря</a> (эксперт)
+</td></tr>
+<tr>
+<td style="text-align: center;">Арника
+</td>
+<td style="text-align: center;"><img src="http://image.neverlands.ru/resources/59.gif" alt="59.gif" />
+</td>
+<td style="text-align: center;">18
+</td>
+<td style="text-align: center;">680
+</td>
+<td style="text-align: center;">1 час
+</td>
+<td style="text-align: center;">40
+</td>
+<td style="text-align: center;">8
+</td>
+<td><img src="http://image.neverlands.ru/weapon/w27_326.gif" alt="w27_326.gif" /> <a href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%A0%D0%B5%D1%86%D0%B5%D0%BF%D1%82%D0%BE%D0%B2_%D0%90%D0%BB%D1%85%D0%B8%D0%BC%D0%B8%D0%BA%D0%B0" title="Таблица Рецептов Алхимика">Зелье ментальная жажда</a> (чародей)<br /> <a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:202.gif" class="image"><img alt="202.gif" src="/images/thumb/1/1c/202.gif/20px-202.gif" width="20" height="20" /></a> <a href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%B7%D0%B0%D0%B3%D0%BE%D1%82%D0%BE%D0%B2%D0%BE%D0%BA_%D0%9F%D0%BE%D0%B2%D0%B0%D1%80%D0%B0" title="Таблица заготовок Повара">Настой на стеблях</a> (повар) <br /> <a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:Doc_6.gif" class="image"><img alt="Doc 6.gif" src="/images/thumb/b/bb/Doc_6.gif/20px-Doc_6.gif" width="20" height="20" /></a> <a href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D1%80%D0%B5%D1%86%D0%B5%D0%BF%D1%82%D0%BE%D0%B2_%D0%94%D0%BE%D0%BA%D1%82%D0%BE%D1%80%D0%B0#.D0.91.D0.BE.D0.B5.D0.B2.D1.8B.D0.B5_.D0.B0.D0.BF.D1.82.D0.B5.D1.87.D0.BA.D0.B8" title="Таблица рецептов Доктора">Боевые аптечки</a> (доктор)
+</td></tr>
+<tr>
+<td style="text-align: center;">Рапонтикум
+</td>
+<td style="text-align: center;"><img src="http://image.neverlands.ru/resources/71.gif" alt="71.gif" />
+</td>
+<td style="text-align: center;">18
+</td>
+<td style="text-align: center;">700
+</td>
+<td style="text-align: center;">2 часа
+</td>
+<td style="text-align: center;">28
+</td>
+<td style="text-align: center;">13
+</td>
+<td><img src="http://image.neverlands.ru/weapon/w27_327.gif" alt="w27_327.gif" /> <a href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%A0%D0%B5%D1%86%D0%B5%D0%BF%D1%82%D0%BE%D0%B2_%D0%90%D0%BB%D1%85%D0%B8%D0%BC%D0%B8%D0%BA%D0%B0" title="Таблица Рецептов Алхимика">Зелье подвижности</a> (чародей)
+</td></tr>
+<tr>
+<td style="text-align: center;">Галега
+</td>
+<td style="text-align: center;"><img src="http://image.neverlands.ru/resources/62.gif" alt="62.gif" />
+</td>
+<td style="text-align: center;">18
+</td>
+<td style="text-align: center;">780
+</td>
+<td style="text-align: center;">1 час
+</td>
+<td style="text-align: center;">20
+</td>
+<td style="text-align: center;">9
+</td>
+<td><img src="http://image.neverlands.ru/weapon/w27_329.gif" alt="w27_329.gif" /> <a href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%A0%D0%B5%D1%86%D0%B5%D0%BF%D1%82%D0%BE%D0%B2_%D0%90%D0%BB%D1%85%D0%B8%D0%BC%D0%B8%D0%BA%D0%B0" title="Таблица Рецептов Алхимика">Зелье хрупкости</a> (чародей)
+</td></tr>
+</table>
+<table>
+
+</table>
+<p>клетки:<br />
+</p><p>12-426&#160;; 12-396&#160;; 12-395&#160;; 12-366&#160;; 12-336&#160;; 12-306&#160;; 12-305&#160;; 12-304&#160;; 12-303&#160;; 12-274&#160;; 12-273&#160;; 12-272&#160;; 12-242&#160;; 12-213&#160;; 12-183&#160;; 12-182&#160;; 12-152&#160;; 12-153&#160;; 12-122&#160;; 12-123&#160;; 12-124&#160;; 12-125&#160;; 12-095&#160;; 12-065&#160;; 12-066&#160;; 12-096&#160;; 12-217&#160;; 12-187&#160;; 12-157&#160;; 12-188&#160;; 12-218&#160;; 12-219&#160;; 12-189&#160;; 12-220&#160;; 12-192&#160;; 12-193&#160;; 12-194&#160;; 12-163&#160;; 12-162&#160;; 12-131&#160;; 12-100&#160;; 12-101&#160;; 12-102&#160;; 12-132&#160;; 12-133&#160;; 12-103&#160;; 12-104&#160;; 12-134&#160;; 12-394&#160;; 12-393&#160;; 12-392&#160;; 12-362&#160;; 12-361&#160;; 12-421&#160;; 11-480&#160;; 11-510&#160;; 12-511&#160;; 12-541&#160;; 25-030&#160;; 25-059&#160;; 25-089&#160;; 25-118&#160;; 25-117&#160;; 25-146&#160;; 25-119&#160;; 25-090&#160;; 25-120&#160;; 27-061&#160;; 27-062&#160;; 27-063&#160;; 27-064&#160;; 27-094&#160;; 27-095&#160;; 27-127&#160;; 27-128&#160;; 27-129&#160;; 27-130&#160;; 27-131&#160;; 27-101&#160;; 27-102&#160;; 27-072&#160;; 27-042&#160;; 27-011&#160;; 27-012&#160;; 27-043&#160;; 27-044&#160;; 27-045&#160;; 27-076&#160;; 27-020&#160;; 12-560&#160;; 12-530&#160;; 12-501&#160;; 12-472&#160;; 27-081&#160;; 27-082&#160;; 27-132&#160;; 27-133&#160;; 27-162&#160;; 27-163&#160;; 27-164&#160;; 27-194&#160;; 27-224&#160;; 27-225&#160;; 27-254&#160;; 27-255&#160;; 27-284&#160;; 27-314&#160;; 27-287&#160;; 27-317&#160;; 27-348&#160;; 27-379&#160;; 27-410&#160;; 27-411&#160;; 27-442&#160;; 27-566&#160;; 27-288&#160;; 27-289&#160;; 27-259&#160;; 27-260&#160;; 27-261&#160;; 27-231&#160;; 27-232&#160;; 27-233&#160;; 27-234&#160;; 27-204&#160;; 27-205&#160;; 27-206&#160;; 27-236&#160;; 27-177&#160;; 27-148&#160;; 27-149&#160;; 27-150&#160;; 12-203&#160;; 12-144&#160;; 12-114&#160;; 12-115&#160;; 12-116&#160;; 12-117&#160;; 12-147&#160;; 12-118&#160;; 12-119&#160;; 12-148&#160;; 12-149&#160;; 12-150&#160;; 12-179&#160;; 12-180&#160;; 16-151&#160;; 16-152&#160;; 16-153&#160;; 16-182&#160;; 16-183&#160;; 16-213&#160;; 16-242&#160;; 12-209&#160;; 12-299&#160;; 12-330&#160;; 14-354&#160;; 14-355&#160;; 14-356&#160;; 14-387&#160;; 14-417&#160;; 14-418&#160;; 14-419&#160;; 12-087&#160;; 12-056&#160;; 12-057&#160;; 12-027&#160;; 12-026&#160;; 9-567&#160;; 9-537&#160;; 9-507&#160;; 9-508&#160;; 9-509&#160;; 9-479&#160;; 9-480&#160;; 9-510&#160;; 15-481&#160;; 15-511&#160;; 15-512&#160;; 15-542&#160;; 16-003&#160;; 15-513&#160;; 15-514&#160;; 15-515&#160;; 9-450&#160;; 9-420&#160;; 9-419&#160;; 9-418&#160;; 9-417&#160;; 9-473&#160;; 9-472&#160;; 9-500&#160;; 9-499&#160;; 9-498&#160;; 9-528&#160;; 9-497&#160;; 9-527&#160;; 9-557&#160;; 12-017&#160;; 9-526&#160;; 9-496&#160;; 9-495&#160;; 9-525&#160;; 9-524&#160;; 9-554&#160;; 9-523&#160;; 9-553&#160;; 9-522&#160;; 9-491&#160;; 9-521&#160;; 9-551&#160;; 9-520&#160;; 9-490&#160;; 9-489&#160;; 9-519&#160;; 9-549&#160;; 9-518&#160;; 9-488&#160;; 9-487&#160;; 9-517&#160;; 9-547&#160;; 9-546&#160;; 9-516&#160;; 9-486&#160;; 9-456&#160;; 9-425&#160;; 9-485&#160;; 9-515&#160;; 9-545&#160;; 9-514&#160;; 9-484&#160;; 9-454&#160;; 9-424&#160;; 9-423&#160;; 9-453&#160;; 9-483&#160;; 9-513&#160;; 9-543&#160;; 9-542&#160;; 9-452&#160;; 9-392&#160;; 9-362&#160;; 9-332&#160;; 9-302&#160;; 9-272&#160;; 9-241&#160;; 8-270&#160;; 8-269&#160;; 8-268&#160;; 8-298&#160;; 8-297&#160;; 8-476&#160;; 8-477&#160;; 8-507&#160;; 8-508&#160;; 8-478&#160;; 8-480&#160;; 8-450&#160;; 8-539&#160;; 8-569&#160;; 8-570&#160;; 8-567&#160;; 8-501&#160;; 8-500&#160;; 8-405&#160;; 8-375&#160;; 8-376&#160;; 8-343&#160;; 8-342&#160;; 8-341&#160;; 15-569&#160;; 15-570&#160;; 15-540&#160;; 33-511&#160;; 33-541&#160;; 33-542&#160;; 34-003&#160;; 34-004&#160;; 34-005&#160;; 34-039&#160;; 33-481&#160;; 33-482&#160;; 33-483&#160;; 33-454&#160;; 33-455&#160;; 33-398&#160;; 33-399&#160;; 33-400&#160;; 33-371&#160;; 33-372&#160;; 33-251&#160;; 33-250&#160;; 33-249&#160;; 33-218&#160;; 33-217&#160;; 33-216&#160;; 33-185&#160;; 33-254&#160;; 33-255&#160;; 33-226&#160;; 33-197&#160;; 18-354&#160;; 18-324&#160;; 18-261&#160;; 18-229&#160;; 18-228&#160;; 18-227&#160;; 18-226&#160;; 18-201&#160;; 18-172&#160;; 18-143&#160;; 18-113&#160;; 18-084&#160;; 18-055&#160;; 18-026&#160;; 18-027&#160;; 18-028&#160;; 18-029&#160;; 18-030&#160;; 7-088&#160;; 7-058&#160;; 7-057&#160;; 7-054&#160;; 7-084&#160;; 7-112&#160;; 7-111&#160;; 7-110&#160;; 7-140&#160;; 7-139
+</p><p><br />
+</p>
+<h3> <span class="mw-headline" id=".D0.93.D1.80.D1.83.D0.BF.D0.BF.D0.B0_4_.28.D0.9F.D0.BE.D0.B3.D1.80.D0.B0.D0.BD.D0.B8.D1.87.D0.BD.D1.8B.D0.B5_.D0.BB.D0.B5.D1.81.D0.B0.29"> Группа 4 (Пограничные леса)</span></h3>
+<table class="wikitable sortable">
+
+<tr>
+<th> Растение </th>
+<th> Картинка </th>
+<th> Ст-ть,<br /> гос,NV </th>
+<th> Треб.<br /> умения <br /> травника </th>
+<th> Время<br /> роста </th>
+<th> Рост<br />в НЛ,шт  </th>
+<th> Очков <br />в рейтинг </th>
+<th> куда используется
+</th></tr>
+<tr>
+<td style="text-align: center;">Кассия
+</td>
+<td style="text-align: center;"><img src="http://image.neverlands.ru/resources/67.gif" alt="67.gif" />
+</td>
+<td style="text-align: center;">18
+</td>
+<td style="text-align: center;">0
+</td>
+<td style="text-align: center;">1 час
+</td>
+<td style="text-align: center;">12
+</td>
+<td style="text-align: center;">3
+</td>
+<td><img src="http://image.neverlands.ru/weapon/i_w27_48.gif" alt="i_w27_48.gif" /> <a href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%A0%D0%B5%D1%86%D0%B5%D0%BF%D1%82%D0%BE%D0%B2_%D0%90%D0%BB%D1%85%D0%B8%D0%BC%D0%B8%D0%BA%D0%B0" title="Таблица Рецептов Алхимика">Зелье метаболизма</a> (ученик) <br /> <a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:Doc_5.gif" class="image"><img alt="Doc 5.gif" src="/images/thumb/f/f6/Doc_5.gif/20px-Doc_5.gif" width="20" height="20" /></a> <a href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D1%80%D0%B5%D1%86%D0%B5%D0%BF%D1%82%D0%BE%D0%B2_%D0%94%D0%BE%D0%BA%D1%82%D0%BE%D1%80%D0%B0" title="Таблица рецептов Доктора">Сумки лекаря</a> (доктор)
+</td></tr>
+<tr>
+<td style="text-align: center;">Тарвин
+</td>
+<td style="text-align: center;"><img src="http://image.neverlands.ru/resources/103.gif" alt="103.gif" />
+</td>
+<td style="text-align: center;">18
+</td>
+<td style="text-align: center;">40
+</td>
+<td style="text-align: center;">1 час
+</td>
+<td style="text-align: center;">16
+</td>
+<td style="text-align: center;">3
+</td>
+<td><img src="http://image.neverlands.ru/weapon/i_w27_43.gif" alt="i_w27_43.gif" /> <a href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%A0%D0%B5%D1%86%D0%B5%D0%BF%D1%82%D0%BE%D0%B2_%D0%90%D0%BB%D1%85%D0%B8%D0%BC%D0%B8%D0%BA%D0%B0" title="Таблица Рецептов Алхимика">Зелье стойкости</a> (ученик)
+</td></tr>
+<tr>
+<td style="text-align: center;">Астрагал
+</td>
+<td style="text-align: center;"><img src="http://image.neverlands.ru/resources/60.gif" alt="60.gif" />
+</td>
+<td style="text-align: center;">18
+</td>
+<td style="text-align: center;">110
+</td>
+<td style="text-align: center;">1 час
+</td>
+<td style="text-align: center;">20
+</td>
+<td style="text-align: center;">3
+</td>
+<td><img src="http://image.neverlands.ru/weapon/i_w27_35.gif" alt="i_w27_35.gif" /> <a href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%A0%D0%B5%D1%86%D0%B5%D0%BF%D1%82%D0%BE%D0%B2_%D0%90%D0%BB%D1%85%D0%B8%D0%BC%D0%B8%D0%BA%D0%B0" title="Таблица Рецептов Алхимика">Зелье лечения</a> (мастер) <br /> <a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:Doc_5.gif" class="image"><img alt="Doc 5.gif" src="/images/thumb/f/f6/Doc_5.gif/20px-Doc_5.gif" width="20" height="20" /></a> <a href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D1%80%D0%B5%D1%86%D0%B5%D0%BF%D1%82%D0%BE%D0%B2_%D0%94%D0%BE%D0%BA%D1%82%D0%BE%D1%80%D0%B0" title="Таблица рецептов Доктора">Сумки лекаря</a> (доктор)
+</td></tr>
+<tr>
+<td style="text-align: center;">Девясил
+</td>
+<td style="text-align: center;"><img src="http://image.neverlands.ru/resources/63.gif" alt="63.gif" />
+</td>
+<td style="text-align: center;">18
+</td>
+<td style="text-align: center;">150
+</td>
+<td style="text-align: center;">1 час
+</td>
+<td style="text-align: center;">20
+</td>
+<td style="text-align: center;">3
+</td>
+<td><img src="http://image.neverlands.ru/weapon/i_w27_37.gif" alt="i_w27_37.gif" /> <a href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%A0%D0%B5%D1%86%D0%B5%D0%BF%D1%82%D0%BE%D0%B2_%D0%90%D0%BB%D1%85%D0%B8%D0%BC%D0%B8%D0%BA%D0%B0" title="Таблица Рецептов Алхимика">Зелье силы</a> (мастер) <br /> <a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:Doc_6.gif" class="image"><img alt="Doc 6.gif" src="/images/thumb/b/bb/Doc_6.gif/20px-Doc_6.gif" width="20" height="20" /></a> <a href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D1%80%D0%B5%D1%86%D0%B5%D0%BF%D1%82%D0%BE%D0%B2_%D0%94%D0%BE%D0%BA%D1%82%D0%BE%D1%80%D0%B0" title="Таблица рецептов Доктора">Сумки лекаря</a> (доктор)
+</td></tr>
+<tr>
+<td style="text-align: center;">Ландыш
+</td>
+<td style="text-align: center;"><img src="http://image.neverlands.ru/resources/107.gif" alt="107.gif" />
+</td>
+<td style="text-align: center;">18
+</td>
+<td style="text-align: center;">180
+</td>
+<td style="text-align: center;">2 часа
+</td>
+<td style="text-align: center;">10
+</td>
+<td style="text-align: center;">5
+</td>
+<td><img src="http://image.neverlands.ru/weapon/i_w27_58.gif" alt="i_w27_58.gif" /> <a href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%A0%D0%B5%D1%86%D0%B5%D0%BF%D1%82%D0%BE%D0%B2_%D0%90%D0%BB%D1%85%D0%B8%D0%BC%D0%B8%D0%BA%D0%B0" title="Таблица Рецептов Алхимика">Зелье боевой славы</a> (мастер) <br /> <a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:Doc_6.gif" class="image"><img alt="Doc 6.gif" src="/images/thumb/b/bb/Doc_6.gif/20px-Doc_6.gif" width="20" height="20" /></a> <a href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D1%80%D0%B5%D1%86%D0%B5%D0%BF%D1%82%D0%BE%D0%B2_%D0%94%D0%BE%D0%BA%D1%82%D0%BE%D1%80%D0%B0#.D0.91.D0.BE.D0.B5.D0.B2.D1.8B.D0.B5_.D0.B0.D0.BF.D1.82.D0.B5.D1.87.D0.BA.D0.B8" title="Таблица рецептов Доктора">Боевые аптечки</a> (доктор)
+</td></tr>
+<tr>
+<td style="text-align: center;">Вереск
+</td>
+<td style="text-align: center;"><img src="http://image.neverlands.ru/resources/61.gif" alt="61.gif" />
+</td>
+<td style="text-align: center;">18
+</td>
+<td style="text-align: center;">350
+</td>
+<td style="text-align: center;">1 час
+</td>
+<td style="text-align: center;">32
+</td>
+<td style="text-align: center;">3
+</td>
+<td><img src="http://image.neverlands.ru/weapon/i_w27_31.gif" alt="i_w27_31.gif" /> <a href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%A0%D0%B5%D1%86%D0%B5%D0%BF%D1%82%D0%BE%D0%B2_%D0%90%D0%BB%D1%85%D0%B8%D0%BC%D0%B8%D0%BA%D0%B0" title="Таблица Рецептов Алхимика">Зелье загрубелой кожи</a> (эксперт)
+</td></tr>
+<tr>
+<td style="text-align: center;">Кора<br /> секвойи
+</td>
+<td style="text-align: center;"><img src="http://image.neverlands.ru/resources/105.gif" alt="105.gif" />
+</td>
+<td style="text-align: center;">18
+</td>
+<td style="text-align: center;">400
+</td>
+<td style="text-align: center;">1 час
+</td>
+<td style="text-align: center;">12
+</td>
+<td style="text-align: center;">3
+</td>
+<td><img src="http://image.neverlands.ru/weapon/i_w27_62.gif" alt="i_w27_62.gif" /> <a href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%A0%D0%B5%D1%86%D0%B5%D0%BF%D1%82%D0%BE%D0%B2_%D0%90%D0%BB%D1%85%D0%B8%D0%BC%D0%B8%D0%BA%D0%B0" title="Таблица Рецептов Алхимика">Зелье человек гора</a> (эксперт)<br /><img src="http://image.neverlands.ru/weapon/w27_330.gif" alt="w27_330.gif" /> <a href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%A0%D0%B5%D1%86%D0%B5%D0%BF%D1%82%D0%BE%D0%B2_%D0%90%D0%BB%D1%85%D0%B8%D0%BC%D0%B8%D0%BA%D0%B0" title="Таблица Рецептов Алхимика">Зелье элементалиста</a> (чародей)
+</td></tr>
+<tr>
+<td style="text-align: center;">Эфедра
+</td>
+<td style="text-align: center;"><img src="http://image.neverlands.ru/resources/73.gif" alt="73.gif" />
+</td>
+<td style="text-align: center;">18
+</td>
+<td style="text-align: center;">550
+</td>
+<td style="text-align: center;">1 час
+</td>
+<td style="text-align: center;">20
+</td>
+<td style="text-align: center;">4
+</td>
+<td><img src="http://image.neverlands.ru/weapon/w27_323.gif" alt="w27_323.gif" /> <a href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%A0%D0%B5%D1%86%D0%B5%D0%BF%D1%82%D0%BE%D0%B2_%D0%90%D0%BB%D1%85%D0%B8%D0%BC%D0%B8%D0%BA%D0%B0" title="Таблица Рецептов Алхимика">Зелье скорости</a> (чародей)
+</td></tr>
+<tr>
+<td style="text-align: center;">Цветки<br /> кипариса
+</td>
+<td style="text-align: center;"><img src="http://image.neverlands.ru/resources/116.gif" alt="116.gif" />
+</td>
+<td style="text-align: center;">18
+</td>
+<td style="text-align: center;">600
+</td>
+<td style="text-align: center;">2 часа
+</td>
+<td style="text-align: center;">10
+</td>
+<td style="text-align: center;">10
+</td>
+<td><img src="http://image.neverlands.ru/weapon/w27_324.gif" alt="w27_324.gif" /> <a href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%A0%D0%B5%D1%86%D0%B5%D0%BF%D1%82%D0%BE%D0%B2_%D0%90%D0%BB%D1%85%D0%B8%D0%BC%D0%B8%D0%BA%D0%B0" title="Таблица Рецептов Алхимика">Зелье соколиный взор</a> (чародей)
+</td></tr>
+<tr>
+<td style="text-align: center;">Чернокорень
+</td>
+<td style="text-align: center;"><img src="http://image.neverlands.ru/resources/72.gif" alt="72.gif" />
+</td>
+<td style="text-align: center;">18
+</td>
+<td style="text-align: center;">680
+</td>
+<td style="text-align: center;">1 час
+</td>
+<td style="text-align: center;">32
+</td>
+<td style="text-align: center;">4
+</td>
+<td><img src="http://image.neverlands.ru/weapon/w27_326.gif" alt="w27_326.gif" /> <a href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%A0%D0%B5%D1%86%D0%B5%D0%BF%D1%82%D0%BE%D0%B2_%D0%90%D0%BB%D1%85%D0%B8%D0%BC%D0%B8%D0%BA%D0%B0" title="Таблица Рецептов Алхимика">Зелье ментальная жажда</a> (чародей)
+</td></tr>
+</table>
+<table>
+
+</table>
+<p>клетки:
+34-368&#160;; 34-398&#160;; 34-428&#160;; 34-457&#160;; 34-487&#160;; 34-518&#160;; 34-549&#160;; 35-009&#160;; 35-040&#160;; 35-071&#160;; 35-102&#160;; 35-133&#160;; 35-164
+</p><p><br />
+</p>
+<h3> <span class="mw-headline" id=".D0.93.D1.80.D1.83.D0.BF.D0.BF.D0.B0_5_.28.D0.9B.D0.B5.D1.81.D0.B0_.D1.81.D1.80.D0.B5.D0.B4.D0.BD.D0.B5.D0.B9_.D0.BF.D0.BE.D0.BB.D0.BE.D1.81.D1.8B.29"> Группа 5 (Леса средней полосы)</span></h3>
+<table class="wikitable sortable">
+
+<tr>
+<th> Растение </th>
+<th> Картинка </th>
+<th> Ст-ть,<br /> гос,NV </th>
+<th> Треб.<br /> умения <br /> травника </th>
+<th> Время<br /> роста </th>
+<th> Рост<br />в НЛ,шт  </th>
+<th> Очков <br />в рейтинг </th>
+<th> куда используется
+</th></tr>
+<tr>
+<td style="text-align: center;">Моховик
+</td>
+<td style="text-align: center;"><img src="http://image.neverlands.ru/resources/86.gif" alt="86.gif" />
+</td>
+<td style="text-align: center;">18
+</td>
+<td style="text-align: center;">0
+</td>
+<td style="text-align: center;">1 час
+</td>
+<td style="text-align: center;">16
+</td>
+<td style="text-align: center;">5
+</td>
+<td><img src="http://image.neverlands.ru/weapon/i_w27_48.gif" alt="i_w27_48.gif" /> <a href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%A0%D0%B5%D1%86%D0%B5%D0%BF%D1%82%D0%BE%D0%B2_%D0%90%D0%BB%D1%85%D0%B8%D0%BC%D0%B8%D0%BA%D0%B0" title="Таблица Рецептов Алхимика">Зелье метаболизма</a> (ученик) <br /> <a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:Doc_6.gif" class="image"><img alt="Doc 6.gif" src="/images/thumb/b/bb/Doc_6.gif/20px-Doc_6.gif" width="20" height="20" /></a> <a href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D1%80%D0%B5%D1%86%D0%B5%D0%BF%D1%82%D0%BE%D0%B2_%D0%94%D0%BE%D0%BA%D1%82%D0%BE%D1%80%D0%B0" title="Таблица рецептов Доктора">Сумки лекаря</a> (доктор)
+</td></tr>
+<tr>
+<td style="text-align: center;">Подберезовик
+</td>
+<td style="text-align: center;"><img src="http://image.neverlands.ru/resources/56.gif" alt="56.gif" />
+</td>
+<td style="text-align: center;">18
+</td>
+<td style="text-align: center;">140
+</td>
+<td style="text-align: center;">1 час
+</td>
+<td style="text-align: center;">8
+</td>
+<td style="text-align: center;">7
+</td>
+<td><img src="http://image.neverlands.ru/weapon/i_w27_55.gif" alt="i_w27_55.gif" /> <a href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%A0%D0%B5%D1%86%D0%B5%D0%BF%D1%82%D0%BE%D0%B2_%D0%90%D0%BB%D1%85%D0%B8%D0%BC%D0%B8%D0%BA%D0%B0" title="Таблица Рецептов Алхимика">Зелье удачи</a> (мастер)
+</td></tr>
+<tr>
+<td style="text-align: center;">Сыроежка
+</td>
+<td style="text-align: center;"><img src="http://image.neverlands.ru/resources/92.gif" alt="92.gif" />
+</td>
+<td style="text-align: center;">18
+</td>
+<td style="text-align: center;">170
+</td>
+<td style="text-align: center;">1 час
+</td>
+<td style="text-align: center;">16
+</td>
+<td style="text-align: center;">5
+</td>
+<td><img src="http://image.neverlands.ru/weapon/i_w27_33.gif" alt="i_w27_33.gif" /> <a href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%A0%D0%B5%D1%86%D0%B5%D0%BF%D1%82%D0%BE%D0%B2_%D0%90%D0%BB%D1%85%D0%B8%D0%BC%D0%B8%D0%BA%D0%B0" title="Таблица Рецептов Алхимика">Зелье гения</a> (мастер) <br /> <a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:Doc_6.gif" class="image"><img alt="Doc 6.gif" src="/images/thumb/b/bb/Doc_6.gif/20px-Doc_6.gif" width="20" height="20" /></a> <a href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D1%80%D0%B5%D1%86%D0%B5%D0%BF%D1%82%D0%BE%D0%B2_%D0%94%D0%BE%D0%BA%D1%82%D0%BE%D1%80%D0%B0" title="Таблица рецептов Доктора">Сумки лекаря</a> (доктор)
+</td></tr>
+<tr>
+<td style="text-align: center;">Кора<br /> березы
+</td>
+<td style="text-align: center;"><img src="http://image.neverlands.ru/resources/52.gif" alt="52.gif" />
+</td>
+<td style="text-align: center;">18
+</td>
+<td style="text-align: center;">220
+</td>
+<td style="text-align: center;">2 часа
+</td>
+<td style="text-align: center;">8
+</td>
+<td style="text-align: center;">12
+</td>
+<td><img src="http://image.neverlands.ru/weapon/i_w27_36.gif" alt="i_w27_36.gif" /> <a href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%A0%D0%B5%D1%86%D0%B5%D0%BF%D1%82%D0%BE%D0%B2_%D0%90%D0%BB%D1%85%D0%B8%D0%BC%D0%B8%D0%BA%D0%B0" title="Таблица Рецептов Алхимика">Зелье иммунитета</a> (мастер)
+</td></tr>
+<tr>
+<td style="text-align: center;">Кипрей
+</td>
+<td style="text-align: center;"><img src="http://image.neverlands.ru/resources/68.gif" alt="68.gif" />
+</td>
+<td style="text-align: center;">18
+</td>
+<td style="text-align: center;">220
+</td>
+<td style="text-align: center;">1 час
+</td>
+<td style="text-align: center;">28
+</td>
+<td style="text-align: center;">3
+</td>
+<td><img src="http://image.neverlands.ru/weapon/i_w27_36.gif" alt="i_w27_36.gif" /> <a href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%A0%D0%B5%D1%86%D0%B5%D0%BF%D1%82%D0%BE%D0%B2_%D0%90%D0%BB%D1%85%D0%B8%D0%BC%D0%B8%D0%BA%D0%B0" title="Таблица Рецептов Алхимика">Зелье иммунитета</a> (мастер) <br /> <a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:Doc_6.gif" class="image"><img alt="Doc 6.gif" src="/images/thumb/b/bb/Doc_6.gif/20px-Doc_6.gif" width="20" height="20" /></a> <a href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D1%80%D0%B5%D1%86%D0%B5%D0%BF%D1%82%D0%BE%D0%B2_%D0%94%D0%BE%D0%BA%D1%82%D0%BE%D1%80%D0%B0" title="Таблица рецептов Доктора">Сумки лекаря</a> (доктор)
+</td></tr>
+<tr>
+<td style="text-align: center;">Поганка
+</td>
+<td style="text-align: center;"><img src="http://image.neverlands.ru/resources/57.gif" alt="57.gif" />
+</td>
+<td style="text-align: center;">18
+</td>
+<td style="text-align: center;">230
+</td>
+<td style="text-align: center;">1 час
+</td>
+<td style="text-align: center;">8
+</td>
+<td style="text-align: center;">7
+</td>
+<td><img src="http://image.neverlands.ru/weapon/i_w27_41.gif" alt="i_w27_41.gif" /> <a href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%A0%D0%B5%D1%86%D0%B5%D0%BF%D1%82%D0%BE%D0%B2_%D0%90%D0%BB%D1%85%D0%B8%D0%BC%D0%B8%D0%BA%D0%B0" title="Таблица Рецептов Алхимика">Яд</a> (мастер)
+</td></tr>
+<tr>
+<td style="text-align: center;">Коризиус
+</td>
+<td style="text-align: center;"><img src="http://image.neverlands.ru/resources/99.gif" alt="99.gif" />
+</td>
+<td style="text-align: center;">18
+</td>
+<td style="text-align: center;">300
+</td>
+<td style="text-align: center;">1 час
+</td>
+<td style="text-align: center;">20
+</td>
+<td style="text-align: center;">4
+</td>
+<td><img src="http://image.neverlands.ru/weapon/i_w27_30.gif" alt="i_w27_30.gif" /> <a href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%A0%D0%B5%D1%86%D0%B5%D0%BF%D1%82%D0%BE%D0%B2_%D0%90%D0%BB%D1%85%D0%B8%D0%BC%D0%B8%D0%BA%D0%B0" title="Таблица Рецептов Алхимика">Зелье колкости</a> (эксперт)
+</td></tr>
+<tr>
+<td style="text-align: center;">Кора дуба
+</td>
+<td style="text-align: center;"><img src="http://image.neverlands.ru/resources/53.gif" alt="53.gif" />
+</td>
+<td style="text-align: center;">18
+</td>
+<td style="text-align: center;">350
+</td>
+<td style="text-align: center;">2 часа
+</td>
+<td style="text-align: center;">12
+</td>
+<td style="text-align: center;">9
+</td>
+<td><img src="http://image.neverlands.ru/weapon/i_w27_31.gif" alt="i_w27_31.gif" /> <a href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%A0%D0%B5%D1%86%D0%B5%D0%BF%D1%82%D0%BE%D0%B2_%D0%90%D0%BB%D1%85%D0%B8%D0%BC%D0%B8%D0%BA%D0%B0" title="Таблица Рецептов Алхимика">Зелье загрубелой кожи</a> (эксперт)<br /><a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:535.gif" class="image"><img alt="535.gif" src="/images/thumb/7/75/535.gif/20px-535.gif" width="20" height="20" /></a> <a href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%B7%D0%B0%D0%B3%D0%BE%D1%82%D0%BE%D0%B2%D0%BE%D0%BA_%D0%9F%D0%BE%D0%B2%D0%B0%D1%80%D0%B0" title="Таблица заготовок Повара">Толченая кора</a> (повар)
+</td></tr>
+<tr>
+<td style="text-align: center;">Кора ивы
+</td>
+<td style="text-align: center;"><img src="http://image.neverlands.ru/resources/54.gif" alt="54.gif" />
+</td>
+<td style="text-align: center;">18
+</td>
+<td style="text-align: center;">600
+</td>
+<td style="text-align: center;">1 час
+</td>
+<td style="text-align: center;">12
+</td>
+<td style="text-align: center;">6
+</td>
+<td><img src="http://image.neverlands.ru/weapon/w27_324.gif" alt="w27_324.gif" /> <a href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%A0%D0%B5%D1%86%D0%B5%D0%BF%D1%82%D0%BE%D0%B2_%D0%90%D0%BB%D1%85%D0%B8%D0%BC%D0%B8%D0%BA%D0%B0" title="Таблица Рецептов Алхимика">Зелье соколиный взор</a> (чародей)
+</td></tr>
+<tr>
+<td style="text-align: center;">Подосиновик
+</td>
+<td style="text-align: center;"><img src="http://image.neverlands.ru/resources/85.gif" alt="85.gif" />
+</td>
+<td style="text-align: center;">18
+</td>
+<td style="text-align: center;">780
+</td>
+<td style="text-align: center;">1 час
+</td>
+<td style="text-align: center;">24
+</td>
+<td style="text-align: center;">6
+</td>
+<td><img src="http://image.neverlands.ru/weapon/w27_329.gif" alt="w27_329.gif" /> <a href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%A0%D0%B5%D1%86%D0%B5%D0%BF%D1%82%D0%BE%D0%B2_%D0%90%D0%BB%D1%85%D0%B8%D0%BC%D0%B8%D0%BA%D0%B0" title="Таблица Рецептов Алхимика">Зелье хрупкости</a> (чародей)
+</td></tr>
+</table>
+<table>
+
+</table>
+<p>клетки:<br />
+8-222&#160;; 8-221&#160;; 8-251&#160;; 8-250&#160;; 8-280&#160;; 8-249&#160;; 8-219&#160;; 8-218&#160;; 8-188&#160;; 8-217&#160;; 8-187&#160;; 8-158&#160;; 8-128&#160;; 8-098&#160;; 8-099&#160;; 8-069&#160;; 8-068&#160;; 8-039&#160;; 8-038&#160;; 8-037&#160;; 8-067&#160;; 8-097&#160;; 8-186&#160;; 8-185&#160;; 8-155&#160;; 8-184&#160;; 8-154&#160;; 8-183&#160;; 8-243&#160;; 8-273&#160;; 8-303&#160;; 8-302&#160;; 8-301&#160;; 7-328&#160;; 7-298&#160;; 7-297&#160;; 7-267&#160;; 7-264&#160;; 7-353&#160;; 7-382&#160;; 7-320&#160;; 7-290&#160;; 7-260&#160;; 7-229&#160;; 7-199&#160;; 7-082&#160;; 7-083&#160;; 7-024&#160;; 7-089&#160;; 7-090&#160;; 7-120&#160;; 8-091&#160;; 8-092&#160;; 8-122&#160;; 8-123&#160;; 8-162&#160;; 8-132&#160;; 8-102&#160;; 8-072&#160;; 8-042&#160;; 5-428&#160;; 5-458&#160;; 5-488&#160;; 5-489&#160;; 5-520&#160;; 5-550&#160;; 5-551&#160;; 5-552&#160;; 5-522&#160;; 5-492&#160;; 5-462&#160;; 19-233&#160;; 19-234&#160;; 19-232&#160;; 19-439&#160;; 19-470&#160;; 19-471&#160;; 19-501&#160;; 19-532&#160;; 19-562&#160;; 19-563&#160;; 19-534&#160;; 19-505&#160;; 19-536&#160;; 19-567&#160;; 20-026&#160;; 20-089&#160;; 20-119&#160;; 20-120&#160;; 19-538&#160;; 19-509&#160;; 19-480&#160;; 7-451&#160;; 7-422&#160;; 7-392&#160;; 7-391&#160;; 7-361&#160;; 7-331&#160;; 7-423&#160;; 7-424&#160;; 7-454&#160;; 7-484&#160;; 7-514&#160;; 7-544&#160;; 7-365&#160;; 7-336&#160;; 7-307&#160;; 7-278&#160;; 7-253&#160;; 7-250&#160;; 7-280&#160;; 7-310&#160;; 7-340&#160;; 7-370&#160;; 7-400&#160;; 7-430&#160;; 7-460&#160;; 7-459&#160;; 7-489&#160;; 7-488&#160;; 7-518
+</p><p><br />
+</p>
+<h3> <span class="mw-headline" id=".D0.93.D1.80.D1.83.D0.BF.D0.BF.D0.B0_6_.28.D0.93.D0.BE.D1.80.D1.8B.29"> Группа 6 (Горы)</span></h3>
+<table class="wikitable sortable">
+
+<tr>
+<th> Растение </th>
+<th> Картинка </th>
+<th> Ст-ть,<br /> гос,NV </th>
+<th> Треб.<br /> умения <br /> травника </th>
+<th> Время<br /> роста </th>
+<th> Рост<br />в НЛ,шт  </th>
+<th> Очков <br />в рейтинг </th>
+<th> куда используется
+</th></tr>
+<tr>
+<td style="text-align: center;">Гравилат
+</td>
+<td style="text-align: center;"><img src="http://image.neverlands.ru/resources/77.gif" alt="77.gif" />
+</td>
+<td style="text-align: center;">18
+</td>
+<td style="text-align: center;">20
+</td>
+<td style="text-align: center;">2 часа
+</td>
+<td style="text-align: center;">24
+</td>
+<td style="text-align: center;">5
+</td>
+<td><img src="http://image.neverlands.ru/weapon/i_w27_52.gif" alt="i_w27_52.gif" /> <a href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%A0%D0%B5%D1%86%D0%B5%D0%BF%D1%82%D0%BE%D0%B2_%D0%90%D0%BB%D1%85%D0%B8%D0%BC%D0%B8%D0%BA%D0%B0" title="Таблица Рецептов Алхимика">Зелье сильной спины</a> (ученик)
+</td></tr>
+<tr>
+<td style="text-align: center;">Бегония
+</td>
+<td style="text-align: center;"><img src="http://image.neverlands.ru/resources/115.gif" alt="115.gif" />
+</td>
+<td style="text-align: center;">18
+</td>
+<td style="text-align: center;">75
+</td>
+<td style="text-align: center;">1 час
+</td>
+<td style="text-align: center;">16
+</td>
+<td style="text-align: center;">5
+</td>
+<td><img src="http://image.neverlands.ru/weapon/i_w27_59.gif" alt="i_w27_59.gif" /> <a href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%A0%D0%B5%D1%86%D0%B5%D0%BF%D1%82%D0%BE%D0%B2_%D0%90%D0%BB%D1%85%D0%B8%D0%BC%D0%B8%D0%BA%D0%B0" title="Таблица Рецептов Алхимика">Зелье ловких ударов</a> (ученик) <br /> <a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:Doc_6.gif" class="image"><img alt="Doc 6.gif" src="/images/thumb/b/bb/Doc_6.gif/20px-Doc_6.gif" width="20" height="20" /></a> <a href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D1%80%D0%B5%D1%86%D0%B5%D0%BF%D1%82%D0%BE%D0%B2_%D0%94%D0%BE%D0%BA%D1%82%D0%BE%D1%80%D0%B0" title="Таблица рецептов Доктора">Сумки лекаря</a> (доктор)
+</td></tr>
+<tr>
+<td style="text-align: center;">Алтей
+</td>
+<td style="text-align: center;"><img src="http://image.neverlands.ru/resources/58.gif" alt="58.gif" />
+</td>
+<td style="text-align: center;">18
+</td>
+<td style="text-align: center;">90
+</td>
+<td style="text-align: center;">1 час
+</td>
+<td style="text-align: center;">32
+</td>
+<td style="text-align: center;">3
+</td>
+<td><img src="http://image.neverlands.ru/weapon/i_w27_51.gif" alt="i_w27_51.gif" /> <a href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%A0%D0%B5%D1%86%D0%B5%D0%BF%D1%82%D0%BE%D0%B2_%D0%90%D0%BB%D1%85%D0%B8%D0%BC%D0%B8%D0%BA%D0%B0" title="Таблица Рецептов Алхимика">Зелье мужества</a> (ученик) <br /> <a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:Doc_4.gif" class="image"><img alt="Doc 4.gif" src="/images/thumb/3/3f/Doc_4.gif/20px-Doc_4.gif" width="20" height="20" /></a> <a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:Doc_5.gif" class="image"><img alt="Doc 5.gif" src="/images/thumb/f/f6/Doc_5.gif/20px-Doc_5.gif" width="20" height="20" /></a> <a href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D1%80%D0%B5%D1%86%D0%B5%D0%BF%D1%82%D0%BE%D0%B2_%D0%94%D0%BE%D0%BA%D1%82%D0%BE%D1%80%D0%B0" title="Таблица рецептов Доктора">Сумки лекаря</a> (доктор)
+</td></tr>
+<tr>
+<td style="text-align: center;">Бессмертник
+</td>
+<td style="text-align: center;"><img src="http://image.neverlands.ru/resources/76.gif" alt="76.gif" />
+</td>
+<td style="text-align: center;">18
+</td>
+<td style="text-align: center;">105
+</td>
+<td style="text-align: center;">1 час
+</td>
+<td style="text-align: center;">32
+</td>
+<td style="text-align: center;">3
+</td>
+<td><img src="http://image.neverlands.ru/weapon/i_w27_40.gif" alt="i_w27_40.gif" /> <a href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%A0%D0%B5%D1%86%D0%B5%D0%BF%D1%82%D0%BE%D0%B2_%D0%90%D0%BB%D1%85%D0%B8%D0%BC%D0%B8%D0%BA%D0%B0" title="Таблица Рецептов Алхимика">Зелье жизни</a> (мастер)
+</td></tr>
+<tr>
+<td style="text-align: center;">Термопсис
+</td>
+<td style="text-align: center;"><img src="http://image.neverlands.ru/resources/79.gif" alt="79.gif" />
+</td>
+<td style="text-align: center;">18
+</td>
+<td style="text-align: center;">200
+</td>
+<td style="text-align: center;">1 час
+</td>
+<td style="text-align: center;">28
+</td>
+<td style="text-align: center;">3
+</td>
+<td><img src="http://image.neverlands.ru/weapon/i_w27_63.gif" alt="i_w27_63.gif" /> <a href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%A0%D0%B5%D1%86%D0%B5%D0%BF%D1%82%D0%BE%D0%B2_%D0%90%D0%BB%D1%85%D0%B8%D0%BC%D0%B8%D0%BA%D0%B0" title="Таблица Рецептов Алхимика">Зелье секрет волшебника</a> (мастер) <br /> <a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:Doc_5.gif" class="image"><img alt="Doc 5.gif" src="/images/thumb/f/f6/Doc_5.gif/20px-Doc_5.gif" width="20" height="20" /></a> <a href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D1%80%D0%B5%D1%86%D0%B5%D0%BF%D1%82%D0%BE%D0%B2_%D0%94%D0%BE%D0%BA%D1%82%D0%BE%D1%80%D0%B0" title="Таблица рецептов Доктора">Сумки лекаря</a> (доктор)
+</td></tr>
+<tr>
+<td style="text-align: center;">Парибигус
+</td>
+<td style="text-align: center;"><img src="http://image.neverlands.ru/resources/101.gif" alt="101.gif" />
+</td>
+<td style="text-align: center;">18
+</td>
+<td style="text-align: center;">240
+</td>
+<td style="text-align: center;">1 час
+</td>
+<td style="text-align: center;">12
+</td>
+<td style="text-align: center;">5
+</td>
+<td><img src="http://image.neverlands.ru/weapon/i_w27_34.gif" alt="i_w27_34.gif" /> <a href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%A0%D0%B5%D1%86%D0%B5%D0%BF%D1%82%D0%BE%D0%B2_%D0%90%D0%BB%D1%85%D0%B8%D0%BC%D0%B8%D0%BA%D0%B0" title="Таблица Рецептов Алхимика">Зелье лечения отравлений</a> (мастер)
+</td></tr>
+<tr>
+<td style="text-align: center;">Аралия
+</td>
+<td style="text-align: center;"><img src="http://image.neverlands.ru/resources/75.gif" alt="75.gif" />
+</td>
+<td style="text-align: center;">18
+</td>
+<td style="text-align: center;">250
+</td>
+<td style="text-align: center;">1 час
+</td>
+<td style="text-align: center;">24
+</td>
+<td style="text-align: center;">3
+</td>
+<td><img src="http://image.neverlands.ru/weapon/i_w27_47.gif" alt="i_w27_47.gif" /> <a href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%A0%D0%B5%D1%86%D0%B5%D0%BF%D1%82%D0%BE%D0%B2_%D0%90%D0%BB%D1%85%D0%B8%D0%BC%D0%B8%D0%BA%D0%B0" title="Таблица Рецептов Алхимика">Зелье огненного ореола</a> (эксперт) <br /> <a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:Doc_6.gif" class="image"><img alt="Doc 6.gif" src="/images/thumb/b/bb/Doc_6.gif/20px-Doc_6.gif" width="20" height="20" /></a> <a href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D1%80%D0%B5%D1%86%D0%B5%D0%BF%D1%82%D0%BE%D0%B2_%D0%94%D0%BE%D0%BA%D1%82%D0%BE%D1%80%D0%B0" title="Таблица рецептов Доктора">Сумки лекаря</a> (доктор)
+</td></tr>
+<tr>
+<td style="text-align: center;">Куфис
+</td>
+<td style="text-align: center;"><img src="http://image.neverlands.ru/resources/100.gif" alt="100.gif" />
+</td>
+<td style="text-align: center;">18
+</td>
+<td style="text-align: center;">720
+</td>
+<td style="text-align: center;">1 час
+</td>
+<td style="text-align: center;">24
+</td>
+<td style="text-align: center;">6
+</td>
+<td><img src="http://image.neverlands.ru/weapon/w27_328.gif" alt="w27_328.gif" /> <a href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%A0%D0%B5%D1%86%D0%B5%D0%BF%D1%82%D0%BE%D0%B2_%D0%90%D0%BB%D1%85%D0%B8%D0%BC%D0%B8%D0%BA%D0%B0" title="Таблица Рецептов Алхимика">Зелье ярость берсерка</a> (чародей)
+</td></tr>
+<tr>
+<td style="text-align: center;">Родиола
+</td>
+<td style="text-align: center;"><img src="http://image.neverlands.ru/resources/78.gif" alt="78.gif" />
+</td>
+<td style="text-align: center;">18
+</td>
+<td style="text-align: center;">720
+</td>
+<td style="text-align: center;">1 час
+</td>
+<td style="text-align: center;">36
+</td>
+<td style="text-align: center;">6
+</td>
+<td><img src="http://image.neverlands.ru/weapon/w27_328.gif" alt="w27_328.gif" /> <a href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%A0%D0%B5%D1%86%D0%B5%D0%BF%D1%82%D0%BE%D0%B2_%D0%90%D0%BB%D1%85%D0%B8%D0%BC%D0%B8%D0%BA%D0%B0" title="Таблица Рецептов Алхимика">Зелье ярость берсерка</a> (чародей)<br /><a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:181.gif" class="image"><img alt="181.gif" src="/images/thumb/c/cb/181.gif/20px-181.gif" width="20" height="20" /></a> <a href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%B7%D0%B0%D0%B3%D0%BE%D1%82%D0%BE%D0%B2%D0%BE%D0%BA_%D0%9F%D0%BE%D0%B2%D0%B0%D1%80%D0%B0" title="Таблица заготовок Повара">Отвар из корня</a> (повар)
+</td></tr>
+</table>
+<table>
+
+</table>
+<p>клетки:<br />
+1-444&#160;; 1-414&#160;; 1-385&#160;; 1-356&#160;; 1-327&#160;; 1-358&#160;; 1-388&#160;; 1-297&#160;; 1-268&#160;; 1-269&#160;; 1-296&#160;; 1-266&#160;; 1-265&#160;; 1-294&#160;; 1-324&#160;; 1-353&#160;; 1-352&#160;; 1-382&#160;; 1-412&#160;; 1-441&#160;; 1-440&#160;; 1-439&#160;; 1-471&#160;; 1-501&#160;; 1-503&#160;; 1-504&#160;; 1-448&#160;; 2-543&#160;; 5-004&#160;; 5-034&#160;; 5-064&#160;; 5-093&#160;; 5-035&#160;; 5-006&#160;; 2-547&#160;; 2-548&#160;; 2-549&#160;; 5-154&#160;; 5-155&#160;; 5-156&#160;; 5-186&#160;; 5-187&#160;; 5-191&#160;; 5-192&#160;; 5-162&#160;; 5-433&#160;; 5-523&#160;; 5-553&#160;; 8-103&#160;; 8-133&#160;; 8-164&#160;; 8-166&#160;; 8-138&#160;; 8-108&#160;; 8-079&#160;; 8-109&#160;; 8-139&#160;; 9-211&#160;; 9-213&#160;; 9-183&#160;; 9-154&#160;; 9-155&#160;; 9-126&#160;; 9-096&#160;; 9-066&#160;; 9-036&#160;; 9-037&#160;; 9-008&#160;; 6-548&#160;; 6-519&#160;; 6-550&#160;; 9-011&#160;; 9-042&#160;; 9-072&#160;; 9-102&#160;; 9-133&#160;; 9-163&#160;; 9-193&#160;; 9-222
+</p><p><br />
+</p>
+<h3> <span class="mw-headline" id=".D0.93.D1.80.D1.83.D0.BF.D0.BF.D0.B0_7_.28.D0.AE.D0.B6.D0.BD.D1.8B.D0.B5_.D0.BB.D0.B5.D1.81.D0.B0.29"> Группа 7 (Южные леса)</span></h3>
+<table class="wikitable sortable">
+
+<tr>
+<th> Растение </th>
+<th> Картинка </th>
+<th> Ст-ть,<br /> гос,NV </th>
+<th> Треб.<br /> умения <br /> травника </th>
+<th> Время<br /> роста </th>
+<th> Рост<br />в НЛ,шт  </th>
+<th> Очков <br />в рейтинг </th>
+<th> куда используется
+</th></tr>
+<tr>
+<td style="text-align: center;">Лимон
+</td>
+<td style="text-align: center;"><img src="http://image.neverlands.ru/resources/114.gif" alt="114.gif" />
+</td>
+<td style="text-align: center;">18
+</td>
+<td style="text-align: center;">5
+</td>
+<td style="text-align: center;">2 часа
+</td>
+<td style="text-align: center;">10
+</td>
+<td style="text-align: center;">20
+</td>
+<td><img src="http://image.neverlands.ru/weapon/i_w27_45.gif" alt="i_w27_45.gif" /> <a href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%A0%D0%B5%D1%86%D0%B5%D0%BF%D1%82%D0%BE%D0%B2_%D0%90%D0%BB%D1%85%D0%B8%D0%BC%D0%B8%D0%BA%D0%B0" title="Таблица Рецептов Алхимика">Зелье блаженства</a> (ученик)
+</td></tr>
+<tr>
+<td style="text-align: center;">Жизненное<br /> древо
+</td>
+<td style="text-align: center;"><img src="http://image.neverlands.ru/resources/104.gif" alt="104.gif" />
+</td>
+<td style="text-align: center;">18
+</td>
+<td style="text-align: center;">110
+</td>
+<td style="text-align: center;">1 час
+</td>
+<td style="text-align: center;">12
+</td>
+<td style="text-align: center;">5
+</td>
+<td><img src="http://image.neverlands.ru/weapon/i_w27_35.gif" alt="i_w27_35.gif" /> <a href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%A0%D0%B5%D1%86%D0%B5%D0%BF%D1%82%D0%BE%D0%B2_%D0%90%D0%BB%D1%85%D0%B8%D0%BC%D0%B8%D0%BA%D0%B0" title="Таблица Рецептов Алхимика">Зелье лечения</a> (мастер)<br /><img src="http://image.neverlands.ru/weapon/w27_325.gif" alt="w27_325.gif" /> <a href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%A0%D0%B5%D1%86%D0%B5%D0%BF%D1%82%D0%BE%D0%B2_%D0%90%D0%BB%D1%85%D0%B8%D0%BC%D0%B8%D0%BA%D0%B0" title="Таблица Рецептов Алхимика">Зелье жажда жизни</a> (чародей)
+</td></tr>
+<tr>
+<td style="text-align: center;">Анис
+</td>
+<td style="text-align: center;"><img src="http://image.neverlands.ru/resources/94.gif" alt="94.gif" />
+</td>
+<td style="text-align: center;">18
+</td>
+<td style="text-align: center;">130
+</td>
+<td style="text-align: center;">1 час
+</td>
+<td style="text-align: center;">32
+</td>
+<td style="text-align: center;">3
+</td>
+<td><img src="http://image.neverlands.ru/weapon/i_w27_57.gif" alt="i_w27_57.gif" /> <a href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%A0%D0%B5%D1%86%D0%B5%D0%BF%D1%82%D0%BE%D0%B2_%D0%90%D0%BB%D1%85%D0%B8%D0%BC%D0%B8%D0%BA%D0%B0" title="Таблица Рецептов Алхимика">Зелье энергии</a> (мастер)<br /><a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:211.gif" class="image"><img alt="211.gif" src="/images/thumb/c/cc/211.gif/20px-211.gif" width="20" height="20" /></a> <a href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%B7%D0%B0%D0%B3%D0%BE%D1%82%D0%BE%D0%B2%D0%BE%D0%BA_%D0%9F%D0%BE%D0%B2%D0%B0%D1%80%D0%B0" title="Таблица заготовок Повара">Анисовое масло</a> (повар) <br /> <a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:Doc_5.gif" class="image"><img alt="Doc 5.gif" src="/images/thumb/f/f6/Doc_5.gif/20px-Doc_5.gif" width="20" height="20" /></a> <a href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D1%80%D0%B5%D1%86%D0%B5%D0%BF%D1%82%D0%BE%D0%B2_%D0%94%D0%BE%D0%BA%D1%82%D0%BE%D1%80%D0%B0" title="Таблица рецептов Доктора">Сумки лекаря</a> (доктор)
+</td></tr>
+<tr>
+<td style="text-align: center;">Каперс
+</td>
+<td style="text-align: center;"><img src="http://image.neverlands.ru/resources/48.gif" alt="48.gif" />
+</td>
+<td style="text-align: center;">18
+</td>
+<td style="text-align: center;">140
+</td>
+<td style="text-align: center;">2 часа
+</td>
+<td style="text-align: center;">16
+</td>
+<td style="text-align: center;">10
+</td>
+<td><img src="http://image.neverlands.ru/weapon/i_w27_55.gif" alt="i_w27_55.gif" /> <a href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%A0%D0%B5%D1%86%D0%B5%D0%BF%D1%82%D0%BE%D0%B2_%D0%90%D0%BB%D1%85%D0%B8%D0%BC%D0%B8%D0%BA%D0%B0" title="Таблица Рецептов Алхимика">Зелье удачи</a> (мастер) <br /> <a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:Doc_6.gif" class="image"><img alt="Doc 6.gif" src="/images/thumb/b/bb/Doc_6.gif/20px-Doc_6.gif" width="20" height="20" /></a> <a href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D1%80%D0%B5%D1%86%D0%B5%D0%BF%D1%82%D0%BE%D0%B2_%D0%94%D0%BE%D0%BA%D1%82%D0%BE%D1%80%D0%B0#.D0.91.D0.BE.D0.B5.D0.B2.D1.8B.D0.B5_.D0.B0.D0.BF.D1.82.D0.B5.D1.87.D0.BA.D0.B8" title="Таблица рецептов Доктора">Боевые аптечки</a> (доктор)
+</td></tr>
+<tr>
+<td style="text-align: center;">Кориандр
+</td>
+<td style="text-align: center;"><img src="http://image.neverlands.ru/resources/49.gif" alt="49.gif" />
+</td>
+<td style="text-align: center;">18
+</td>
+<td style="text-align: center;">180
+</td>
+<td style="text-align: center;">1 час
+</td>
+<td style="text-align: center;">12
+</td>
+<td style="text-align: center;">5
+</td>
+<td><img src="http://image.neverlands.ru/weapon/i_w27_58.gif" alt="i_w27_58.gif" /> <a href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%A0%D0%B5%D1%86%D0%B5%D0%BF%D1%82%D0%BE%D0%B2_%D0%90%D0%BB%D1%85%D0%B8%D0%BC%D0%B8%D0%BA%D0%B0" title="Таблица Рецептов Алхимика">Зелье боевой славы</a> (мастер) <br /> <a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:Doc_6.gif" class="image"><img alt="Doc 6.gif" src="/images/thumb/b/bb/Doc_6.gif/20px-Doc_6.gif" width="20" height="20" /></a><a href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D1%80%D0%B5%D1%86%D0%B5%D0%BF%D1%82%D0%BE%D0%B2_%D0%94%D0%BE%D0%BA%D1%82%D0%BE%D1%80%D0%B0" title="Таблица рецептов Доктора">Сумки лекаря</a> (доктор)
+</td></tr>
+<tr>
+<td style="text-align: center;">Алоэ
+</td>
+<td style="text-align: center;"><img src="http://image.neverlands.ru/resources/74.gif" alt="74.gif" />
+</td>
+<td style="text-align: center;">18
+</td>
+<td style="text-align: center;">200
+</td>
+<td style="text-align: center;">2 часа
+</td>
+<td style="text-align: center;">32
+</td>
+<td style="text-align: center;">4
+</td>
+<td><img src="http://image.neverlands.ru/weapon/i_w27_63.gif" alt="i_w27_63.gif" /> <a href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%A0%D0%B5%D1%86%D0%B5%D0%BF%D1%82%D0%BE%D0%B2_%D0%90%D0%BB%D1%85%D0%B8%D0%BC%D0%B8%D0%BA%D0%B0" title="Таблица Рецептов Алхимика">Зелье секрет волшебника</a> (мастер) <br /> <a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:Doc_6.gif" class="image"><img alt="Doc 6.gif" src="/images/thumb/b/bb/Doc_6.gif/20px-Doc_6.gif" width="20" height="20" /></a> <a href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D1%80%D0%B5%D1%86%D0%B5%D0%BF%D1%82%D0%BE%D0%B2_%D0%94%D0%BE%D0%BA%D1%82%D0%BE%D1%80%D0%B0#.D0.91.D0.BE.D0.B5.D0.B2.D1.8B.D0.B5_.D0.B0.D0.BF.D1.82.D0.B5.D1.87.D0.BA.D0.B8" title="Таблица рецептов Доктора">Боевые аптечки</a> (доктор)
+</td></tr>
+<tr>
+<td style="text-align: center;">Айва
+</td>
+<td style="text-align: center;"><img src="http://image.neverlands.ru/resources/46.gif" alt="46.gif" />
+</td>
+<td style="text-align: center;">18
+</td>
+<td style="text-align: center;">250
+</td>
+<td style="text-align: center;">2 часа
+</td>
+<td style="text-align: center;">16
+</td>
+<td style="text-align: center;">7
+</td>
+<td><img src="http://image.neverlands.ru/weapon/i_w27_47.gif" alt="i_w27_47.gif" /> <a href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%A0%D0%B5%D1%86%D0%B5%D0%BF%D1%82%D0%BE%D0%B2_%D0%90%D0%BB%D1%85%D0%B8%D0%BC%D0%B8%D0%BA%D0%B0" title="Таблица Рецептов Алхимика">Зелье огненного ореола</a> (эксперт)
+</td></tr>
+<tr>
+<td style="text-align: center;">Амми
+</td>
+<td style="text-align: center;"><img src="http://image.neverlands.ru/resources/81.gif" alt="81.gif" />
+</td>
+<td style="text-align: center;">18
+</td>
+<td style="text-align: center;">415
+</td>
+<td style="text-align: center;">1 час
+</td>
+<td style="text-align: center;">24
+</td>
+<td style="text-align: center;">3
+</td>
+<td><img src="http://image.neverlands.ru/weapon/i_w27_62.gif" alt="i_w27_62.gif" /> <a href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%A0%D0%B5%D1%86%D0%B5%D0%BF%D1%82%D0%BE%D0%B2_%D0%90%D0%BB%D1%85%D0%B8%D0%BC%D0%B8%D0%BA%D0%B0" title="Таблица Рецептов Алхимика">Зелье человек гора</a> (эксперт)
+</td></tr>
+</table>
+<table>
+
+</table>
+<p>клетки:<br />
+7-183&#160;; 7-154&#160;; 7-184&#160;; 7-155&#160;; 7-185&#160;; 7-156&#160;; 7-186&#160;; 7-157&#160;; 7-187&#160;; 7-158&#160;; 7-188&#160;; 7-159&#160;; 7-160&#160;; 7-190&#160;; 7-220&#160;; 7-221&#160;; 7-222&#160;; 7-223&#160;; 7-191&#160;; 7-161&#160;; 7-162&#160;; 7-163&#160;; 7-133&#160;; 7-134&#160;; 7-135&#160;; 7-105&#160;; 7-076&#160;; 7-018&#160;; 4-559&#160;; 4-499&#160;; 4-469&#160;; 4-468&#160;; 4-467&#160;; 4-436&#160;; 4-375&#160;; 4-345&#160;; 4-315&#160;; 4-314&#160;; 4-223&#160;; 4-222&#160;; 4-159&#160;; 18-415&#160;; 18-385&#160;; 18-354&#160;; 18-324&#160;; 4-483&#160;; 4-482&#160;; 4-453&#160;; 4-454&#160;; 4-424&#160;; 4-394&#160;; 4-395&#160;; 7-094&#160;; 7-036&#160;; 7-006&#160;; 4-546&#160;; 5-184&#160;; 5-213&#160;; 5-214&#160;; 5-185&#160;; 5-248&#160;; 5-249&#160;; 5-279&#160;; 5-280&#160;; 5-251&#160;; 5-309&#160;; 5-339&#160;; 5-369&#160;; 5-399&#160;; 5-398&#160;; 9-395&#160;; 9-365&#160;; 9-335&#160;; 9-305&#160;; 9-306&#160;; 9-276&#160;; 9-277&#160;; 9-278&#160;; 9-248&#160;; 9-249&#160;; 9-250&#160;; 9-280
+</p><p><br />
+</p>
+<h3> <span class="mw-headline" id=".D0.93.D1.80.D1.83.D0.BF.D0.BF.D0.B0_8_.28.D0.92.D0.B8.D0.BD.D0.BE.D0.B3.D1.80.D0.B0.D0.B4.D0.BD.D0.B8.D0.BA.D0.B8.29"> Группа 8 (Виноградники)</span></h3>
+<table class="wikitable sortable">
+
+<tr>
+<th> Растение </th>
+<th> Картинка </th>
+<th> Ст-ть,<br /> гос,NV </th>
+<th> Треб.<br /> умения <br /> травника </th>
+<th> Время<br /> роста </th>
+<th> Рост<br />в НЛ,шт  </th>
+<th> Очков <br />в рейтинг </th>
+<th> куда используется
+</th></tr>
+<tr>
+<td style="text-align: center;">Виноград
+</td>
+<td style="text-align: center;"><img src="http://image.neverlands.ru/resources/119.gif" alt="119.gif" />
+</td>
+<td style="text-align: center;">18
+</td>
+<td style="text-align: center;">50
+</td>
+<td style="text-align: center;">1 час
+</td>
+<td style="text-align: center;">24
+</td>
+<td style="text-align: center;">3
+</td>
+<td><a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:212.gif" class="image"><img alt="212.gif" src="/images/thumb/7/72/212.gif/20px-212.gif" width="20" height="20" /></a> <a href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%B7%D0%B0%D0%B3%D0%BE%D1%82%D0%BE%D0%B2%D0%BE%D0%BA_%D0%9F%D0%BE%D0%B2%D0%B0%D1%80%D0%B0" title="Таблица заготовок Повара">Сок</a> (повар)
+</td></tr>
+</table>
+<h3> <span class="mw-headline" id=".D0.93.D1.80.D1.83.D0.BF.D0.BF.D0.B0_9_.28.D0.92.D0.BE.D1.81.D1.82.D0.BE.D1.87.D0.BD.D1.8B.D0.B5_.D0.BB.D0.B5.D1.81.D0.B0.29"> Группа 9 (Восточные леса)</span></h3>
+<table class="wikitable sortable">
+
+<tr>
+<th> Растение </th>
+<th> Картинка </th>
+<th> Ст-ть,<br /> гос,NV </th>
+<th> Треб.<br /> умения <br /> травника </th>
+<th> Время<br /> роста </th>
+<th> Рост<br />в НЛ,шт  </th>
+<th> Очков <br />в рейтинг </th>
+<th> куда используется
+</th></tr>
+<tr>
+<td style="text-align: center;">Боровик
+</td>
+<td style="text-align: center;"><img src="http://image.neverlands.ru/resources/447.gif" alt="447.gif" />
+</td>
+<td style="text-align: center;">9
+</td>
+<td style="text-align: center;">10
+</td>
+<td style="text-align: center;">1 час
+</td>
+<td style="text-align: center;">40
+</td>
+<td style="text-align: center;">3
+</td>
+<td><a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:462.gif" class="image"><img alt="462.gif" src="/images/thumb/d/dc/462.gif/20px-462.gif" width="20" height="20" /></a> <a href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%B7%D0%B0%D0%B3%D0%BE%D1%82%D0%BE%D0%B2%D0%BE%D0%BA_%D0%9F%D0%BE%D0%B2%D0%B0%D1%80%D0%B0" title="Таблица заготовок Повара">Сушеные грибы</a> (повар)
+</td></tr>
+<tr>
+<td style="text-align: center;">Лисичка
+</td>
+<td style="text-align: center;"><img src="http://image.neverlands.ru/resources/448.gif" alt="448.gif" />
+</td>
+<td style="text-align: center;">9
+</td>
+<td style="text-align: center;">10
+</td>
+<td style="text-align: center;">1 час
+</td>
+<td style="text-align: center;">40
+</td>
+<td style="text-align: center;">3
+</td>
+<td><a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:462.gif" class="image"><img alt="462.gif" src="/images/thumb/d/dc/462.gif/20px-462.gif" width="20" height="20" /></a> <a href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%B7%D0%B0%D0%B3%D0%BE%D1%82%D0%BE%D0%B2%D0%BE%D0%BA_%D0%9F%D0%BE%D0%B2%D0%B0%D1%80%D0%B0" title="Таблица заготовок Повара">Сушеные грибы</a> (повар)
+</td></tr>
+<tr>
+<td style="text-align: center;">Хвоя
+</td>
+<td style="text-align: center;"><img src="http://image.neverlands.ru/resources/84.gif" alt="84.gif" />
+</td>
+<td style="text-align: center;">18
+</td>
+<td style="text-align: center;">10
+</td>
+<td style="text-align: center;">1 час
+</td>
+<td style="text-align: center;">16
+</td>
+<td style="text-align: center;">7
+</td>
+<td><img src="http://image.neverlands.ru/weapon/i_w27_52.gif" alt="i_w27_52.gif" /> <a href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%A0%D0%B5%D1%86%D0%B5%D0%BF%D1%82%D0%BE%D0%B2_%D0%90%D0%BB%D1%85%D0%B8%D0%BC%D0%B8%D0%BA%D0%B0" title="Таблица Рецептов Алхимика">Зелье сильной спины</a> (ученик)
+</td></tr>
+<tr>
+<td style="text-align: center;">Кора сосны
+</td>
+<td style="text-align: center;"><img src="http://image.neverlands.ru/resources/83.gif" alt="83.gif" />
+</td>
+<td style="text-align: center;">18
+</td>
+<td style="text-align: center;">20
+</td>
+<td style="text-align: center;">1 час
+</td>
+<td style="text-align: center;">20
+</td>
+<td style="text-align: center;">4
+</td>
+<td><img src="http://image.neverlands.ru/weapon/i_w27_32.gif" alt="i_w27_32.gif" /> <a href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%A0%D0%B5%D1%86%D0%B5%D0%BF%D1%82%D0%BE%D0%B2_%D0%90%D0%BB%D1%85%D0%B8%D0%BC%D0%B8%D0%BA%D0%B0" title="Таблица Рецептов Алхимика">Зелье просветления</a> (ученик)
+</td></tr>
+<tr>
+<td style="text-align: center;">Ведьмино<br /> кольцо
+</td>
+<td style="text-align: center;"><img src="http://image.neverlands.ru/resources/80.gif" alt="80.gif" />
+</td>
+<td style="text-align: center;">18
+</td>
+<td style="text-align: center;">120
+</td>
+<td style="text-align: center;">1 час
+</td>
+<td style="text-align: center;">24
+</td>
+<td style="text-align: center;">3
+</td>
+<td><img src="http://image.neverlands.ru/weapon/i_w27_54.gif" alt="i_w27_54.gif" /> <a href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%A0%D0%B5%D1%86%D0%B5%D0%BF%D1%82%D0%BE%D0%B2_%D0%90%D0%BB%D1%85%D0%B8%D0%BC%D0%B8%D0%BA%D0%B0" title="Таблица Рецептов Алхимика">Зелье восстановления маны</a> (мастер)<br /><img src="http://image.neverlands.ru/weapon/w27_326.gif" alt="w27_326.gif" /> <a href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%A0%D0%B5%D1%86%D0%B5%D0%BF%D1%82%D0%BE%D0%B2_%D0%90%D0%BB%D1%85%D0%B8%D0%BC%D0%B8%D0%BA%D0%B0" title="Таблица Рецептов Алхимика">Зелье ментальная жажда</a> (чародей)
+</td></tr>
+<tr>
+<td style="text-align: center;">Люминсцентная<br /> поганка
+</td>
+<td style="text-align: center;"><img src="http://image.neverlands.ru/resources/106.gif" alt="106.gif" />
+</td>
+<td style="text-align: center;">18
+</td>
+<td style="text-align: center;">190
+</td>
+<td style="text-align: center;">1 час
+</td>
+<td style="text-align: center;">16
+</td>
+<td style="text-align: center;">5
+</td>
+<td><img src="http://image.neverlands.ru/weapon/i_w27_53.gif" alt="i_w27_53.gif" /> <a href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%A0%D0%B5%D1%86%D0%B5%D0%BF%D1%82%D0%BE%D0%B2_%D0%90%D0%BB%D1%85%D0%B8%D0%BC%D0%B8%D0%BA%D0%B0" title="Таблица Рецептов Алхимика">Зелье невидимости</a> (мастер)
+</td></tr>
+<tr>
+<td style="text-align: center;">Карагана
+</td>
+<td style="text-align: center;"><img src="http://image.neverlands.ru/resources/65.gif" alt="65.gif" />
+</td>
+<td style="text-align: center;">18
+</td>
+<td style="text-align: center;">210
+</td>
+<td style="text-align: center;">1 час
+</td>
+<td style="text-align: center;">20
+</td>
+<td style="text-align: center;">4
+</td>
+<td><img src="http://image.neverlands.ru/weapon/i_w27_49.gif" alt="i_w27_49.gif" /> <a href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%A0%D0%B5%D1%86%D0%B5%D0%BF%D1%82%D0%BE%D0%B2_%D0%90%D0%BB%D1%85%D0%B8%D0%BC%D0%B8%D0%BA%D0%B0" title="Таблица Рецептов Алхимика">Зелье медитации</a> (мастер) <br /> <a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:Doc_6.gif" class="image"><img alt="Doc 6.gif" src="/images/thumb/b/bb/Doc_6.gif/20px-Doc_6.gif" width="20" height="20" /></a> <a href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D1%80%D0%B5%D1%86%D0%B5%D0%BF%D1%82%D0%BE%D0%B2_%D0%94%D0%BE%D0%BA%D1%82%D0%BE%D1%80%D0%B0" title="Таблица рецептов Доктора">Сумки лекаря</a> (доктор)
+</td></tr>
+<tr>
+<td style="text-align: center;">Мухомор
+</td>
+<td style="text-align: center;"><img src="http://image.neverlands.ru/resources/93.gif" alt="93.gif" />
+</td>
+<td style="text-align: center;">18
+</td>
+<td style="text-align: center;">230
+</td>
+<td style="text-align: center;">1 час
+</td>
+<td style="text-align: center;">12
+</td>
+<td style="text-align: center;">6
+</td>
+<td><img src="http://image.neverlands.ru/weapon/i_w27_41.gif" alt="i_w27_41.gif" /> <a href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%A0%D0%B5%D1%86%D0%B5%D0%BF%D1%82%D0%BE%D0%B2_%D0%90%D0%BB%D1%85%D0%B8%D0%BC%D0%B8%D0%BA%D0%B0" title="Таблица Рецептов Алхимика">Яд</a> (мастер)
+</td></tr>
+<tr>
+<td style="text-align: center;">Дягиль
+</td>
+<td style="text-align: center;"><img src="http://image.neverlands.ru/resources/82.gif" alt="82.gif" />
+</td>
+<td style="text-align: center;">18
+</td>
+<td style="text-align: center;">300
+</td>
+<td style="text-align: center;">2 часа
+</td>
+<td style="text-align: center;">16
+</td>
+<td style="text-align: center;">7
+</td>
+<td><img src="http://image.neverlands.ru/weapon/i_w27_30.gif" alt="i_w27_30.gif" /> <a href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%A0%D0%B5%D1%86%D0%B5%D0%BF%D1%82%D0%BE%D0%B2_%D0%90%D0%BB%D1%85%D0%B8%D0%BC%D0%B8%D0%BA%D0%B0" title="Таблица Рецептов Алхимика">Зелье колкости</a> (эксперт)
+</td></tr>
+<tr>
+<td style="text-align: center;">Кора дуба
+</td>
+<td style="text-align: center;"><img src="http://image.neverlands.ru/resources/53.gif" alt="53.gif" />
+</td>
+<td style="text-align: center;">18
+</td>
+<td style="text-align: center;">350
+</td>
+<td style="text-align: center;">2 часа
+</td>
+<td style="text-align: center;">12
+</td>
+<td style="text-align: center;">9
+</td>
+<td><img src="http://image.neverlands.ru/weapon/i_w27_31.gif" alt="i_w27_31.gif" /> <a href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%A0%D0%B5%D1%86%D0%B5%D0%BF%D1%82%D0%BE%D0%B2_%D0%90%D0%BB%D1%85%D0%B8%D0%BC%D0%B8%D0%BA%D0%B0" title="Таблица Рецептов Алхимика">Зелье загрубелой кожи</a> (эксперт)<br /><a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:535.gif" class="image"><img alt="535.gif" src="/images/thumb/7/75/535.gif/20px-535.gif" width="20" height="20" /></a> <a href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%B7%D0%B0%D0%B3%D0%BE%D1%82%D0%BE%D0%B2%D0%BE%D0%BA_%D0%9F%D0%BE%D0%B2%D0%B0%D1%80%D0%B0" title="Таблица заготовок Повара">Толченая кора</a> (повар)
+</td></tr>
+<tr>
+<td style="text-align: center;">Кора<br /> лиственницы
+</td>
+<td style="text-align: center;"><img src="http://image.neverlands.ru/resources/55.gif" alt="55.gif" />
+</td>
+<td style="text-align: center;">18
+</td>
+<td style="text-align: center;">600
+</td>
+<td style="text-align: center;">1 час
+</td>
+<td style="text-align: center;">12
+</td>
+<td style="text-align: center;">6
+</td>
+<td><img src="http://image.neverlands.ru/weapon/w27_324.gif" alt="w27_324.gif" /> <a href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%A0%D0%B5%D1%86%D0%B5%D0%BF%D1%82%D0%BE%D0%B2_%D0%90%D0%BB%D1%85%D0%B8%D0%BC%D0%B8%D0%BA%D0%B0" title="Таблица Рецептов Алхимика">Зелье соколиный взор</a> (чародей)
+</td></tr>
+<tr>
+<td style="text-align: center;">Цветки<br /> кипариса
+</td>
+<td style="text-align: center;"><img src="http://image.neverlands.ru/resources/116.gif" alt="116.gif" />
+</td>
+<td style="text-align: center;">18
+</td>
+<td style="text-align: center;">600
+</td>
+<td style="text-align: center;">2 часа
+</td>
+<td style="text-align: center;">10
+</td>
+<td style="text-align: center;">10
+</td>
+<td><img src="http://image.neverlands.ru/weapon/w27_324.gif" alt="w27_324.gif" /> <a href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%A0%D0%B5%D1%86%D0%B5%D0%BF%D1%82%D0%BE%D0%B2_%D0%90%D0%BB%D1%85%D0%B8%D0%BC%D0%B8%D0%BA%D0%B0" title="Таблица Рецептов Алхимика">Зелье соколиный взор</a> (чародей)
+</td></tr>
+</table>
+<table>
+
+</table>
+<p>клетки:<br />
+15-516&#160;; 15-517&#160;; 15-547&#160;; 15-548&#160;; 15-549&#160;; 15-550&#160;; 15-551&#160;; 15-552&#160;; 15-553&#160;; 15-554&#160;; 15-555&#160;; 15-556&#160;; 16-016&#160;; 16-017&#160;; 16-018&#160;; 16-019&#160;; 16-020&#160;; 16-021&#160;; 16-022&#160;; 16-023&#160;; 16-024&#160;; 15-564&#160;; 15-565&#160;; 15-566&#160;; 15-567&#160;; 15-568&#160;; 16-048&#160;; 16-078&#160;; 16-108&#160;; 16-138&#160;; 16-168&#160;; 16-198&#160;; 16-199&#160;; 16-229&#160;; 16-259&#160;; 16-289&#160;; 16-319&#160;; 16-350&#160;; 16-351&#160;; 16-410&#160;; 16-409&#160;; 16-408&#160;; 16-377&#160;; 16-406&#160;; 16-435&#160;; 16-465&#160;; 16-495&#160;; 16-526&#160;; 16-404&#160;; 16-433&#160;; 16-462&#160;; 16-431&#160;; 16-400&#160;; 16-429&#160;; 16-458&#160;; 16-487&#160;; 16-486&#160;; 16-515&#160;; 16-485&#160;; 16-484&#160;; 16-453&#160;; 16-422&#160;; 16-391&#160;; 16-361&#160;; 16-331&#160;; 34-189&#160;; 34-218&#160;; 34-247&#160;; 34-276&#160;; 34-306&#160;; 34-335&#160;; 34-337&#160;; 34-220&#160;; 34-251&#160;; 34-252&#160;; 34-283&#160;; 34-284&#160;; 34-315&#160;; 34-160&#160;; 34-130&#160;; 34-131&#160;; 34-101&#160;; 34-100&#160;; 34-070&#160;; 34-069&#160;; 34-038&#160;; 34-037&#160;; 34-036&#160;; 34-035&#160;; 29-408&#160;; 29-378&#160;; 29-349&#160;; 29-320&#160;; 29-289&#160;; 29-258&#160;; 29-287&#160;; 29-316&#160;; 29-315&#160;; 29-314&#160;; 29-313&#160;; 29-342&#160;; 29-341&#160;; 29-340&#160;; 29-339&#160;; 29-338&#160;; 29-308&#160;; 29-278&#160;; 29-248&#160;; 29-218&#160;; 29-188&#160;; 29-157&#160;; 29-156&#160;; 29-126&#160;; 29-125&#160;; 29-124&#160;; 29-123&#160;; 29-122&#160;; 29-121&#160;; 16-184&#160;; 16-214&#160;; 16-215&#160;; 16-216&#160;; 16-217&#160;; 16-218&#160;; 16-248&#160;; 16-249&#160;; 16-279
+</p><p><br />
+</p>
+<h3> <span class="mw-headline" id=".D0.93.D1.80.D1.83.D0.BF.D0.BF.D0.B0_11_.28.D0.9F.D0.BE.D0.BB.D1.8F.29"> Группа 11 (Поля)</span></h3>
+<table class="wikitable sortable">
+
+<tr>
+<th> Растение </th>
+<th> Картинка </th>
+<th> Ст-ть,<br /> гос,NV </th>
+<th> Треб.<br /> умения <br /> травника </th>
+<th> Время<br /> роста </th>
+<th> Рост<br />в НЛ,шт  </th>
+<th> Очков <br />в рейтинг </th>
+<th> куда используется
+</th></tr>
+<tr>
+<td style="text-align: center;">Сахарный<br /> тростник
+</td>
+<td style="text-align: center;"><img src="http://image.neverlands.ru/resources/451.gif" alt="451.gif" />
+</td>
+<td style="text-align: center;">9
+</td>
+<td style="text-align: center;">5
+</td>
+<td style="text-align: center;">1 час
+</td>
+<td style="text-align: center;">20
+</td>
+<td style="text-align: center;">3
+</td>
+<td><a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:465.gif" class="image"><img alt="465.gif" src="/images/thumb/6/62/465.gif/20px-465.gif" width="20" height="20" /></a> <a href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%B7%D0%B0%D0%B3%D0%BE%D1%82%D0%BE%D0%B2%D0%BE%D0%BA_%D0%9F%D0%BE%D0%B2%D0%B0%D1%80%D0%B0" title="Таблица заготовок Повара">Сахар</a> (повар)
+</td></tr>
+<tr>
+<td style="text-align: center;">Лён
+</td>
+<td style="text-align: center;"><img src="http://image.neverlands.ru/resources/69.gif" alt="69.gif" />
+</td>
+<td style="text-align: center;">14
+</td>
+<td style="text-align: center;">5
+</td>
+<td style="text-align: center;">1 час
+</td>
+<td style="text-align: center;">50
+</td>
+<td style="text-align: center;">3
+</td>
+<td><a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:471.gif" class="image"><img alt="471.gif" src="/images/thumb/8/8b/471.gif/20px-471.gif" width="20" height="20" /></a> <a href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D1%80%D0%B5%D1%86%D0%B5%D0%BF%D1%82%D0%BE%D0%B2_%D0%94%D0%BE%D0%BA%D1%82%D0%BE%D1%80%D0%B0" title="Таблица рецептов Доктора">Ткань</a> (доктор)<br /><a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:471.gif" class="image"><img alt="471.gif" src="/images/thumb/8/8b/471.gif/20px-471.gif" width="20" height="20" /></a> <a href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D1%80%D0%B5%D0%BC%D0%BE%D0%BD%D1%82%D0%B0" title="Таблица ремонта">Ткань</a> (ремесленник)
+</td></tr>
+<tr>
+<td style="text-align: center;">Пшеница
+</td>
+<td style="text-align: center;"><img src="http://image.neverlands.ru/resources/102.gif" alt="102.gif" />
+</td>
+<td style="text-align: center;">18
+</td>
+<td style="text-align: center;">5
+</td>
+<td style="text-align: center;">1 час
+</td>
+<td style="text-align: center;">20
+</td>
+<td style="text-align: center;">4
+</td>
+<td><a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:535.gif" class="image"><img alt="535.gif" src="/images/thumb/7/75/535.gif/20px-535.gif" width="20" height="20" /></a> <a href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%B7%D0%B0%D0%B3%D0%BE%D1%82%D0%BE%D0%B2%D0%BE%D0%BA_%D0%9F%D0%BE%D0%B2%D0%B0%D1%80%D0%B0" title="Таблица заготовок Повара">Мука</a> (повар)
+</td></tr>
+<tr>
+<td style="text-align: center;">Перец<br /> форпостный
+</td>
+<td style="text-align: center;"><img src="http://image.neverlands.ru/resources/440.gif" alt="440.gif" />
+</td>
+<td style="text-align: center;">9
+</td>
+<td style="text-align: center;"> 10
+</td>
+<td style="text-align: center;">1 час
+</td>
+<td style="text-align: center;">40
+</td>
+<td style="text-align: center;">1
+</td>
+<td><a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:455.gif" class="image"><img alt="455.gif" src="/images/thumb/4/4e/455.gif/20px-455.gif" width="20" height="20" /></a> <a href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%B7%D0%B0%D0%B3%D0%BE%D1%82%D0%BE%D0%B2%D0%BE%D0%BA_%D0%9F%D0%BE%D0%B2%D0%B0%D1%80%D0%B0" title="Таблица заготовок Повара">Специи</a> (повар)
+</td></tr>
+<tr>
+<td style="text-align: center;">Перец<br /> октальский
+</td>
+<td style="text-align: center;"><img src="http://image.neverlands.ru/resources/439.gif" alt="439.gif" />
+</td>
+<td style="text-align: center;">9
+</td>
+<td style="text-align: center;"> 20
+</td>
+<td style="text-align: center;">1 час
+</td>
+<td style="text-align: center;">40
+</td>
+<td style="text-align: center;">1
+</td>
+<td><a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:455.gif" class="image"><img alt="455.gif" src="/images/thumb/4/4e/455.gif/20px-455.gif" width="20" height="20" /></a> <a href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%B7%D0%B0%D0%B3%D0%BE%D1%82%D0%BE%D0%B2%D0%BE%D0%BA_%D0%9F%D0%BE%D0%B2%D0%B0%D1%80%D0%B0" title="Таблица заготовок Повара">Специи</a> (повар)
+</td></tr>
+<tr>
+<td style="text-align: center;">Томат
+</td>
+<td style="text-align: center;"><img src="http://image.neverlands.ru/resources/450.gif" alt="450.gif" />
+</td>
+<td style="text-align: center;">9
+</td>
+<td style="text-align: center;"> 20
+</td>
+<td style="text-align: center;">1 час
+</td>
+<td style="text-align: center;">50
+</td>
+<td style="text-align: center;">1
+</td>
+<td><a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:453.gif" class="image"><img alt="453.gif" src="/images/thumb/9/9b/453.gif/20px-453.gif" width="20" height="20" /></a> <a href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%B7%D0%B0%D0%B3%D0%BE%D1%82%D0%BE%D0%B2%D0%BE%D0%BA_%D0%9F%D0%BE%D0%B2%D0%B0%D1%80%D0%B0" title="Таблица заготовок Повара">Овощная смесь</a> (повар)
+</td></tr>
+<tr>
+<td style="text-align: center;">Картофель
+</td>
+<td style="text-align: center;"><img src="http://image.neverlands.ru/resources/443.gif" alt="443.gif" />
+</td>
+<td style="text-align: center;">9
+</td>
+<td style="text-align: center;"> 20
+</td>
+<td style="text-align: center;">1 час
+</td>
+<td style="text-align: center;">60
+</td>
+<td style="text-align: center;">1
+</td>
+<td><a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:453.gif" class="image"><img alt="453.gif" src="/images/thumb/9/9b/453.gif/20px-453.gif" width="20" height="20" /></a> <a href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%B7%D0%B0%D0%B3%D0%BE%D1%82%D0%BE%D0%B2%D0%BE%D0%BA_%D0%9F%D0%BE%D0%B2%D0%B0%D1%80%D0%B0" title="Таблица заготовок Повара">Овощная смесь</a> (повар)
+</td></tr>
+<tr>
+<td style="text-align: center;">Сельдерей<br /> баалгорский
+</td>
+<td style="text-align: center;"><img src="http://image.neverlands.ru/resources/438.gif" alt="438.gif" />
+</td>
+<td style="text-align: center;">9
+</td>
+<td style="text-align: center;"> 20
+</td>
+<td style="text-align: center;">1 час
+</td>
+<td style="text-align: center;">50
+</td>
+<td style="text-align: center;">1
+</td>
+<td><a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:453.gif" class="image"><img alt="453.gif" src="/images/thumb/9/9b/453.gif/20px-453.gif" width="20" height="20" /></a> <a href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%B7%D0%B0%D0%B3%D0%BE%D1%82%D0%BE%D0%B2%D0%BE%D0%BA_%D0%9F%D0%BE%D0%B2%D0%B0%D1%80%D0%B0" title="Таблица заготовок Повара">Овощная смесь</a> (повар)
+</td></tr>
+<tr>
+<td style="text-align: center;">Петрушка<br /> кровавобережная
+</td>
+<td style="text-align: center;"><img src="http://image.neverlands.ru/resources/437.gif" alt="437.gif" />
+</td>
+<td style="text-align: center;">9
+</td>
+<td style="text-align: center;"> 20
+</td>
+<td style="text-align: center;">1 час
+</td>
+<td style="text-align: center;">40
+</td>
+<td style="text-align: center;">1
+</td>
+<td><a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:455.gif" class="image"><img alt="455.gif" src="/images/thumb/4/4e/455.gif/20px-455.gif" width="20" height="20" /></a> <a href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%B7%D0%B0%D0%B3%D0%BE%D1%82%D0%BE%D0%B2%D0%BE%D0%BA_%D0%9F%D0%BE%D0%B2%D0%B0%D1%80%D0%B0" title="Таблица заготовок Повара">Специи</a> (повар)
+</td></tr>
+<tr>
+<td style="text-align: center;">Чеснок
+</td>
+<td style="text-align: center;"><img src="http://image.neverlands.ru/resources/442.gif" alt="442.gif" />
+</td>
+<td style="text-align: center;">9
+</td>
+<td style="text-align: center;"> 30
+</td>
+<td style="text-align: center;">1 час
+</td>
+<td style="text-align: center;">50
+</td>
+<td style="text-align: center;">1
+</td>
+<td><a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:453.gif" class="image"><img alt="453.gif" src="/images/thumb/9/9b/453.gif/20px-453.gif" width="20" height="20" /></a> <a href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%B7%D0%B0%D0%B3%D0%BE%D1%82%D0%BE%D0%B2%D0%BE%D0%BA_%D0%9F%D0%BE%D0%B2%D0%B0%D1%80%D0%B0" title="Таблица заготовок Повара">Овощная смесь</a> (повар)
+</td></tr>
+<tr>
+<td style="text-align: center;">Укроп<br /> болотный
+</td>
+<td style="text-align: center;"><img src="http://image.neverlands.ru/resources/441.gif" alt="441.gif" />
+</td>
+<td style="text-align: center;">9
+</td>
+<td style="text-align: center;">30
+</td>
+<td style="text-align: center;">1 час
+</td>
+<td style="text-align: center;">40
+</td>
+<td style="text-align: center;">1
+</td>
+<td><a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:455.gif" class="image"><img alt="455.gif" src="/images/thumb/4/4e/455.gif/20px-455.gif" width="20" height="20" /></a> <a href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%B7%D0%B0%D0%B3%D0%BE%D1%82%D0%BE%D0%B2%D0%BE%D0%BA_%D0%9F%D0%BE%D0%B2%D0%B0%D1%80%D0%B0" title="Таблица заготовок Повара">Специи</a> (повар)
+</td></tr>
+<tr>
+<td style="text-align: center;">Крестовник
+</td>
+<td style="text-align: center;"><img src="http://image.neverlands.ru/resources/50.gif" alt="50.gif" />
+</td>
+<td style="text-align: center;">18
+</td>
+<td style="text-align: center;">240
+</td>
+<td style="text-align: center;">1 час
+</td>
+<td style="text-align: center;">12
+</td>
+<td style="text-align: center;">4
+</td>
+<td><img src="http://image.neverlands.ru/weapon/i_w27_34.gif" alt="i_w27_34.gif" /> <a href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%A0%D0%B5%D1%86%D0%B5%D0%BF%D1%82%D0%BE%D0%B2_%D0%90%D0%BB%D1%85%D0%B8%D0%BC%D0%B8%D0%BA%D0%B0" title="Таблица Рецептов Алхимика">Зелье лечения отравлений</a> (мастер) <br /><a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:Doc_6.gif" class="image"><img alt="Doc 6.gif" src="/images/thumb/b/bb/Doc_6.gif/20px-Doc_6.gif" width="20" height="20" /></a>  <a href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D1%80%D0%B5%D1%86%D0%B5%D0%BF%D1%82%D0%BE%D0%B2_%D0%94%D0%BE%D0%BA%D1%82%D0%BE%D1%80%D0%B0" title="Таблица рецептов Доктора">Сумки лекаря</a> (доктор)
+</td></tr>
+</table>
+<table>
+
+</table>
+<p>клетки:<br />
+12-405&#160;; 12-374&#160;; 12-343&#160;; 12-342&#160;; 12-371&#160;; 12-370&#160;; 12-369&#160;; 12-339&#160;; 12-309&#160;; 12-310&#160;; 12-311&#160;; 12-341&#160;; 12-314&#160;; 12-315&#160;; 12-285&#160;; 12-254&#160;; 12-224&#160;; 12-221&#160;; 12-251&#160;; 12-249&#160;; 12-248&#160;; 12-247&#160;; 12-277&#160;; 12-307&#160;; 27-341&#160;; 27-370&#160;; 27-399&#160;; 27-398&#160;; 27-374&#160;; 27-404&#160;; 27-405&#160;; 27-376&#160;; 27-407&#160;; 27-437&#160;; 27-438&#160;; 27-439&#160;; 27-468&#160;; 27-497&#160;; 27-496&#160;; 27-465&#160;; 27-435&#160;; 27-528&#160;; 27-529&#160;; 27-560&#160;; 27-561&#160;; 19-082&#160;; 19-083&#160;; 19-146&#160;; 19-147&#160;; 19-148&#160;; 19-178&#160;; 19-179&#160;; 19-180&#160;; 7-151&#160;; 7-181&#160;; 7-152&#160;; 7-182&#160;; 7-153&#160;; 7-123&#160;; 7-093&#160;; 7-063&#160;; 7-034&#160;; 7-035&#160;; 4-545&#160;; 4-515&#160;; 4-514&#160;; 4-513&#160;; 19-118&#160;; 19-119&#160;; 19-120&#160;; 7-091&#160;; 7-061&#160;; 19-060&#160;; 19-029&#160;; 19-058
+</p><p><br />
+</p>
+<h2> <span class="mw-headline" id=".D0.98.D1.81.D1.82.D0.BE.D1.80.D0.B8.D1.8F"> История </span></h2>
+<p><strike>Достоверно известно количество трав, вырастающих на карте в каждую смену. Однако в игре существует баг, из-за которого часть травы вырастает под фортами и замками, из-за чего <b>часть травы является недоступной</b> к спилу. </strike><br />
+</p><p><b>Баг исправлен 16.04.2025</b> <br />
+Исправлена знакомая опытным травникам и лесорубам проблема, когда зачастую количество некоторых ресурсов (трав и деревьев) на карте оказывалось меньше заявленного.<br />
+Ресурсы эти вырастали на "закрытых" клетках (замках, фортах, прочих объектах) и были недоступны для добычи.<br />
+Теперь все ресурсы будут генерируются в открытых локациях.
+</p>
+<!-- 
+NewPP limit report
+Preprocessor node count: 200/1000000
+Post-expand include size: 0/2097152 bytes
+Template argument size: 0/2097152 bytes
+Expensive parser function count: 0/100
+-->
+</div>				<!-- /bodycontent -->
+								<!-- printfooter -->
+				<div class="printfooter">
+				Источник — «<a href="http://wiki.neverlands.ru/index.php?title=%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%A2%D1%80%D0%B0%D0%B2%D0%BD%D0%B8%D0%BA%D0%B0&amp;oldid=21406">http://wiki.neverlands.ru/index.php?title=%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%A2%D1%80%D0%B0%D0%B2%D0%BD%D0%B8%D0%BA%D0%B0&amp;oldid=21406</a>»				</div>
+				<!-- /printfooter -->
+												<!-- catlinks -->
+				<div id='catlinks' class='catlinks'><div id="mw-normal-catlinks" class="mw-normal-catlinks"><a href="/wiki/%D0%A1%D0%BB%D1%83%D0%B6%D0%B5%D0%B1%D0%BD%D0%B0%D1%8F:Categories" title="Служебная:Categories">Категории</a>: <ul><li><a href="/wiki/%D0%9A%D0%B0%D1%82%D0%B5%D0%B3%D0%BE%D1%80%D0%B8%D1%8F:%D0%A0%D0%B5%D1%81%D1%83%D1%80%D1%81%D1%8B" title="Категория:Ресурсы">Ресурсы</a></li><li><a href="/wiki/%D0%9A%D0%B0%D1%82%D0%B5%D0%B3%D0%BE%D1%80%D0%B8%D1%8F:%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D1%8B_%D0%BF%D1%80%D0%BE%D1%84%D0%B5%D1%81%D1%81%D0%B8%D0%B9" title="Категория:Таблицы профессий">Таблицы профессий</a></li><li><a href="/wiki/%D0%9A%D0%B0%D1%82%D0%B5%D0%B3%D0%BE%D1%80%D0%B8%D1%8F:%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D1%8B_%D0%B0%D0%BB%D1%85%D0%B8%D0%BC%D0%B8%D0%BA%D0%B0" title="Категория:Таблицы алхимика">Таблицы алхимика</a></li></ul></div></div>				<!-- /catlinks -->
+												<div class="visualClear"></div>
+				<!-- debughtml -->
+								<!-- /debughtml -->
+			</div>
+			<!-- /bodyContent -->
+		</div>
+		<!-- /content -->
+		<!-- header -->
+		<div id="mw-head" class="noprint">
+			
+<!-- 0 -->
+<div id="p-personal" class="">
+	<h5>Личные инструменты</h5>
+	<ul>
+		<li id="pt-login"><a href="/index.php?title=%D0%A1%D0%BB%D1%83%D0%B6%D0%B5%D0%B1%D0%BD%D0%B0%D1%8F:UserLogin&amp;returnto=%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0+%D0%A2%D1%80%D0%B0%D0%B2%D0%BD%D0%B8%D0%BA%D0%B0" title="Здесь можно зарегистрироваться в системе, но это необязательно. [o]" accesskey="o">Представиться / зарегистрироваться</a></li>
+	</ul>
+</div>
+
+<!-- /0 -->
+			<div id="left-navigation">
+				
+<!-- 0 -->
+<div id="p-namespaces" class="vectorTabs">
+	<h5>Пространства имён</h5>
+	<ul>
+					<li  id="ca-nstab-main" class="selected"><span><a href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%A2%D1%80%D0%B0%D0%B2%D0%BD%D0%B8%D0%BA%D0%B0"  title="Содержание статьи [c]" accesskey="c">Статья</a></span></li>
+					<li  id="ca-talk"><span><a href="/wiki/%D0%9E%D0%B1%D1%81%D1%83%D0%B6%D0%B4%D0%B5%D0%BD%D0%B8%D0%B5:%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%A2%D1%80%D0%B0%D0%B2%D0%BD%D0%B8%D0%BA%D0%B0"  title="Обсуждение содержания страницы [t]" accesskey="t">Обсуждение</a></span></li>
+			</ul>
+</div>
+
+<!-- /0 -->
+
+<!-- 1 -->
+<div id="p-variants" class="vectorMenu emptyPortlet">
+	<h4>
+		</h4>
+	<h5><span>Варианты</span><a href="#"></a></h5>
+	<div class="menu">
+		<ul>
+					</ul>
+	</div>
+</div>
+
+<!-- /1 -->
+			</div>
+			<div id="right-navigation">
+				
+<!-- 0 -->
+<div id="p-views" class="vectorTabs">
+	<h5>Просмотры</h5>
+	<ul>
+					<li id="ca-view" class="selected"><span><a href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%A2%D1%80%D0%B0%D0%B2%D0%BD%D0%B8%D0%BA%D0%B0" >Чтение</a></span></li>
+					<li id="ca-viewsource"><span><a href="/index.php?title=%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%A2%D1%80%D0%B0%D0%B2%D0%BD%D0%B8%D0%BA%D0%B0&amp;action=edit"  title="Эта страница защищена от изменений, но вы можете посмотреть и скопировать её исходный текст [e]" accesskey="e">Просмотр</a></span></li>
+					<li id="ca-history" class="collapsible"><span><a href="/index.php?title=%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%A2%D1%80%D0%B0%D0%B2%D0%BD%D0%B8%D0%BA%D0%B0&amp;action=history"  title="Журнал изменений страницы [h]" accesskey="h">История</a></span></li>
+			</ul>
+</div>
+
+<!-- /0 -->
+
+<!-- 1 -->
+<div id="p-cactions" class="vectorMenu emptyPortlet">
+	<h5><span>Действия</span><a href="#"></a></h5>
+	<div class="menu">
+		<ul>
+					</ul>
+	</div>
+</div>
+
+<!-- /1 -->
+
+<!-- 2 -->
+<div id="p-search">
+	<h5><label for="searchInput">Поиск</label></h5>
+	<form action="/index.php" id="searchform">
+				<div id="simpleSearch">
+						<input name="search" title="Искать это слово [f]" accesskey="f" id="searchInput" />						<button name="button" title="Найти страницы, содержащие указанный текст" id="searchButton"><img src="/skins/vector/images/search-ltr.png?303" alt="Найти" /></button>								<input type='hidden' name="title" value="Служебная:Search"/>
+		</div>
+	</form>
+</div>
+
+<!-- /2 -->
+			</div>
+		</div>
+		<!-- /header -->
+		<!-- panel -->
+			<div id="mw-panel" class="noprint">
+				<!-- logo -->
+					<div id="p-logo"><a style="background-image: url(http://wiki.neverlands.ru/img/logo.png);" href="/wiki/%D0%97%D0%B0%D0%B3%D0%BB%D0%B0%D0%B2%D0%BD%D0%B0%D1%8F_%D1%81%D1%82%D1%80%D0%B0%D0%BD%D0%B8%D1%86%D0%B0"  title="Заглавная страница"></a></div>
+				<!-- /logo -->
+				
+<!-- navigation -->
+<div class="portal" id='p-navigation'>
+	<h5>Навигация</h5>
+	<div class="body">
+		<ul>
+			<li id="n-allpages"><a href="/wiki/%D0%A1%D0%BB%D1%83%D0%B6%D0%B5%D0%B1%D0%BD%D0%B0%D1%8F:AllPages">Все страницы</a></li>
+			<li id="n-newpages"><a href="/wiki/%D0%A1%D0%BB%D1%83%D0%B6%D0%B5%D0%B1%D0%BD%D0%B0%D1%8F:NewPages">Новые страницы</a></li>
+			<li id="n-popularpages"><a href="/wiki/%D0%A1%D0%BB%D1%83%D0%B6%D0%B5%D0%B1%D0%BD%D0%B0%D1%8F:PopularPages">Популярные страницы</a></li>
+			<li id="n-wantedpages"><a href="/wiki/%D0%A1%D0%BB%D1%83%D0%B6%D0%B5%D0%B1%D0%BD%D0%B0%D1%8F:WantedPages">Требуемые страницы</a></li>
+			<li id="n-categories"><a href="/wiki/%D0%A1%D0%BB%D1%83%D0%B6%D0%B5%D0%B1%D0%BD%D0%B0%D1%8F:Categories">Категории</a></li>
+			<li id="n-wantedcategories"><a href="/wiki/%D0%A1%D0%BB%D1%83%D0%B6%D0%B5%D0%B1%D0%BD%D0%B0%D1%8F:WantedCategories">Требуемые категории</a></li>
+			<li id="n-recentchanges"><a href="/wiki/%D0%A1%D0%BB%D1%83%D0%B6%D0%B5%D0%B1%D0%BD%D0%B0%D1%8F:RecentChanges" title="Список последних изменений [r]" accesskey="r">Свежие правки</a></li>
+			<li id="n-randompage"><a href="/wiki/%D0%A1%D0%BB%D1%83%D0%B6%D0%B5%D0%B1%D0%BD%D0%B0%D1%8F:Random" title="Посмотреть случайную страницу [x]" accesskey="x">Случайная статья</a></li>
+		</ul>
+	</div>
+</div>
+
+<!-- /navigation -->
+
+<!-- SEARCH -->
+
+<!-- /SEARCH -->
+
+<!-- TOOLBOX -->
+<div class="portal" id='p-tb'>
+	<h5>Инструменты</h5>
+	<div class="body">
+		<ul>
+			<li id="t-whatlinkshere"><a href="/wiki/%D0%A1%D0%BB%D1%83%D0%B6%D0%B5%D0%B1%D0%BD%D0%B0%D1%8F:WhatLinksHere/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%A2%D1%80%D0%B0%D0%B2%D0%BD%D0%B8%D0%BA%D0%B0" title="Список всех страниц, которые ссылаются на эту страницу [j]" accesskey="j">Ссылки сюда</a></li>
+			<li id="t-recentchangeslinked"><a href="/wiki/%D0%A1%D0%BB%D1%83%D0%B6%D0%B5%D0%B1%D0%BD%D0%B0%D1%8F:RecentChangesLinked/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%A2%D1%80%D0%B0%D0%B2%D0%BD%D0%B8%D0%BA%D0%B0" title="Последние изменения в страницах, на которые ссылается эта страница [k]" accesskey="k">Связанные правки</a></li>
+			<li id="t-specialpages"><a href="/wiki/%D0%A1%D0%BB%D1%83%D0%B6%D0%B5%D0%B1%D0%BD%D0%B0%D1%8F:SpecialPages" title="Список служебных страниц [q]" accesskey="q">Спецстраницы</a></li>
+			<li><a href="/index.php?title=%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%A2%D1%80%D0%B0%D0%B2%D0%BD%D0%B8%D0%BA%D0%B0&amp;printable=yes" rel="alternate">Версия для печати</a></li>
+			<li id="t-permalink"><a href="/index.php?title=%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%A2%D1%80%D0%B0%D0%B2%D0%BD%D0%B8%D0%BA%D0%B0&amp;oldid=21406" title="Постоянная ссылка на эту версию страницы">Постоянная ссылка</a></li>
+<li id="t-cite"><a href="/index.php?title=%D0%A1%D0%BB%D1%83%D0%B6%D0%B5%D0%B1%D0%BD%D0%B0%D1%8F:Cite&amp;page=%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%A2%D1%80%D0%B0%D0%B2%D0%BD%D0%B8%D0%BA%D0%B0&amp;id=21406" title="Информация о том, как цитировать эту страницу">Цитировать страницу</a></li>		</ul>
+	</div>
+</div>
+
+<!-- /TOOLBOX -->
+
+<!-- LANGUAGES -->
+
+<!-- /LANGUAGES -->
+			</div>
+		<!-- /panel -->
+		<!-- footer -->
+		<div id="footer">
+							<ul id="footer-info">
+											<li id="footer-info-lastmod"> Последнее изменение этой страницы: 12:34, 28 мая 2025.</li>
+											<li id="footer-info-viewcount">К этой странице обращались 146 665 раз.</li>
+									</ul>
+							<ul id="footer-places">
+											<li id="footer-places-privacy"><a href="/wiki/%D0%92%D0%B8%D0%BA%D0%B8%D0%BD%D0%B5%D0%B2%D0%B5%D1%80:%D0%9F%D0%BE%D0%BB%D0%B8%D1%82%D0%B8%D0%BA%D0%B0_%D0%BA%D0%BE%D0%BD%D1%84%D0%B8%D0%B4%D0%B5%D0%BD%D1%86%D0%B8%D0%B0%D0%BB%D1%8C%D0%BD%D0%BE%D1%81%D1%82%D0%B8" title="Викиневер:Политика конфиденциальности">Политика конфиденциальности</a></li>
+											<li id="footer-places-about"><a href="/wiki/%D0%92%D0%B8%D0%BA%D0%B8%D0%BD%D0%B5%D0%B2%D0%B5%D1%80:%D0%9E%D0%BF%D0%B8%D1%81%D0%B0%D0%BD%D0%B8%D0%B5" title="Викиневер:Описание">Описание Викиневер</a></li>
+											<li id="footer-places-disclaimer"><a href="/wiki/%D0%92%D0%B8%D0%BA%D0%B8%D0%BD%D0%B5%D0%B2%D0%B5%D1%80:%D0%9E%D1%82%D0%BA%D0%B0%D0%B7_%D0%BE%D1%82_%D0%BE%D1%82%D0%B2%D0%B5%D1%82%D1%81%D1%82%D0%B2%D0%B5%D0%BD%D0%BD%D0%BE%D1%81%D1%82%D0%B8" title="Викиневер:Отказ от ответственности">Отказ от ответственности</a></li>
+									</ul>
+										<ul id="footer-icons" class="noprint">
+					<li id="footer-poweredbyico">
+						<a href="//www.mediawiki.org/"><img src="/skins/common/images/poweredby_mediawiki_88x31.png" alt="Powered by MediaWiki" width="88" height="31" /></a>
+					</li>
+				</ul>
+						<div style="clear:both"></div>
+		</div>
+		<!-- /footer -->
+		<script src="http://wiki.neverlands.ru/load.php?debug=false&amp;lang=ru&amp;modules=skins.vector&amp;only=scripts&amp;skin=vector&amp;*"></script>
+<script>if(window.mw){
+mw.loader.load(["ext.categoryTree","mediawiki.user","mediawiki.page.ready","mediawiki.legacy.mwsuggest","ext.vector.collapsibleNav","ext.vector.collapsibleTabs","ext.vector.simpleSearch"], null, true);
+}</script>
+<!-- Served in 0.237 secs. -->
+	</body>
+</html>

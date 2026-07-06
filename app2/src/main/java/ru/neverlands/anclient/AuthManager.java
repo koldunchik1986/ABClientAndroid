@@ -25,6 +25,7 @@ import ru.neverlands.anclient.network.NetworkClient;
 import ru.neverlands.anclient.proxy.ProxyRuntimeManager;
 import ru.neverlands.anclient.utils.AppVars;
 import ru.neverlands.anclient.utils.FileLogger;
+import ru.neverlands.anclient.utils.GameServerUrls;
 
 public class AuthManager {
     private static final Pattern LAST_HTTP_CODE_PATTERN = Pattern.compile("(\\d{3})(?!.*\\d)");
@@ -43,7 +44,7 @@ public class AuthManager {
      * - {@link DebugLogger}: детальная трассировка шагов авторизации.
      *
      * Поведение:
-     * - выполняет основной сценарий через {@link #authorizeInternal(String, String, String, String)};
+     * - выполняет основной сценарий через authBaseUrl + выбранный профильный server code;
      * - если включен proxy и получена HTTP-ошибка уровня host-маршрута, выполняет один fallback
      *   на альтернативный host (`www <-> non-www`) после очистки cookies.
      */
@@ -52,22 +53,31 @@ public class AuthManager {
     }
 
     public AuthResult authorize(String username, String password, String flashPassword) {
+        String serverCode = AppVars.Profile == null ? GameServerUrls.DEFAULT_SERVER_CODE : AppVars.Profile.GameServerCode;
+        return authorize(username, password, flashPassword, serverCode);
+    }
+
+    public AuthResult authorize(String username, String password, String flashPassword, String gameServerCode) {
         FileLogger.log("AuthManager: Starting synchronous authorization for user: " + username);
-        final String primaryBaseUrl = resolveAuthBaseUrl();
+        String normalizedServerCode = GameServerUrls.normalizeServerCode(gameServerCode);
+        final String primaryBaseUrl = resolveAuthBaseUrl(normalizedServerCode);
         try {
-            AuthResult primary = authorizeInternal(username, password, flashPassword, primaryBaseUrl);
+            AuthResult primary = authorizeInternal(username, password, flashPassword, primaryBaseUrl, normalizedServerCode);
             if (!shouldRetryWithAlternateHost(primary)) {
                 return primary;
             }
 
             String alternateBaseUrl = resolveAlternateAuthBaseUrl(primaryBaseUrl);
+            if (primaryBaseUrl.equals(alternateBaseUrl)) {
+                return primary;
+            }
             FileLogger.log(
                     "AuthManager: proxy fallback for authorize, primary=" + primaryBaseUrl
                             + ", alternate=" + alternateBaseUrl
                             + ", reason=" + (primary == null ? "" : primary.getErrorMessage())
             );
             NetworkClient.clearCookies();
-            return authorizeInternal(username, password, flashPassword, alternateBaseUrl);
+            return authorizeInternal(username, password, flashPassword, alternateBaseUrl, normalizedServerCode);
         } finally {
             // DebugLogger.close() removed - using FileLogger now
         }
@@ -91,22 +101,36 @@ public class AuthManager {
                                            String flashPassword,
                                            String vcode,
                                            String verify) {
+        String serverCode = AppVars.Profile == null ? GameServerUrls.DEFAULT_SERVER_CODE : AppVars.Profile.GameServerCode;
+        return authorizeWithCaptcha(username, password, flashPassword, serverCode, vcode, verify);
+    }
+
+    public AuthResult authorizeWithCaptcha(String username,
+                                           String password,
+                                           String flashPassword,
+                                           String gameServerCode,
+                                           String vcode,
+                                           String verify) {
         FileLogger.log("AuthManager: Starting authorization with captcha for user: " + username);
-        final String primaryBaseUrl = resolveAuthBaseUrl();
+        String normalizedServerCode = GameServerUrls.normalizeServerCode(gameServerCode);
+        final String primaryBaseUrl = resolveAuthBaseUrl(normalizedServerCode);
         try {
-            AuthResult primary = authorizeWithCaptchaInternal(username, password, flashPassword, vcode, verify, primaryBaseUrl);
+            AuthResult primary = authorizeWithCaptchaInternal(username, password, flashPassword, vcode, verify, primaryBaseUrl, normalizedServerCode);
             if (!shouldRetryWithAlternateHost(primary)) {
                 return primary;
             }
 
             String alternateBaseUrl = resolveAlternateAuthBaseUrl(primaryBaseUrl);
+            if (primaryBaseUrl.equals(alternateBaseUrl)) {
+                return primary;
+            }
             FileLogger.log(
                     "AuthManager: proxy fallback for authorizeWithCaptcha, primary=" + primaryBaseUrl
                             + ", alternate=" + alternateBaseUrl
                             + ", reason=" + (primary == null ? "" : primary.getErrorMessage())
             );
             NetworkClient.clearCookies();
-            return authorizeWithCaptchaInternal(username, password, flashPassword, vcode, verify, alternateBaseUrl);
+            return authorizeWithCaptchaInternal(username, password, flashPassword, vcode, verify, alternateBaseUrl, normalizedServerCode);
         } finally {
             // DebugLogger.close() removed - using FileLogger now
         }
@@ -125,15 +149,17 @@ public class AuthManager {
      * - {@link #collectNeverlandsCookies(java.net.CookieManager)} собирает итоговый cookie-набор.
      */
     private AuthResult authorizeInternal(String username,
-                                         String password,
-                                         String flashPassword,
-                                         String authBaseUrl) {
+                                          String password,
+                                          String flashPassword,
+                                          String authBaseUrl,
+                                          String gameServerCode) {
         final String refererRoot = authBaseUrl + "/";
         final String gameUrl = authBaseUrl + "/game.php";
         final String mainUrl = authBaseUrl + "/main.php";
 
         OkHttpClient client = NetworkClient.getInstance();
         java.net.CookieManager cookieManager = NetworkClient.getCookieManager();
+        List<HttpCookie> responseCookies = new ArrayList<>();
 
         try {
             Request initialRequest = new Request.Builder()
@@ -146,15 +172,13 @@ public class AuthManager {
             FileLogger.log("AuthManager: 1. Initial GET request\n" + initialRequest);
             try (Response initialResponse = client.newCall(initialRequest).execute()) {
                 FileLogger.log("AuthManager: 1. Initial GET response\n" + initialResponse);
+                collectResponseCookies(initialResponse, responseCookies, "initial_get");
                 if (!initialResponse.isSuccessful()) {
                     return new AuthResult("Ошибка получения начальной страницы: " + initialResponse.code());
                 }
             }
 
-            RequestBody formBody = new FormBody.Builder(Charset.forName("windows-1251"))
-                    .add("player_nick", username)
-                    .add("player_password", password)
-                    .build();
+            RequestBody formBody = buildLoginFormBody(username, password, null, null, gameServerCode);
 
             Request loginRequest = new Request.Builder()
                     .url(gameUrl)
@@ -167,6 +191,7 @@ public class AuthManager {
             FileLogger.log("AuthManager: 2. Login POST request\n" + loginRequest);
             try (Response loginResponse = client.newCall(loginRequest).execute()) {
                 FileLogger.log("AuthManager: 2. Login POST response\n" + loginResponse);
+                collectResponseCookies(loginResponse, responseCookies, "login_post");
                 if (!loginResponse.isSuccessful()) {
                     return new AuthResult("Ошибка авторизации: " + loginResponse.code());
                 }
@@ -186,7 +211,7 @@ public class AuthManager {
                 if (loginResponseBody.contains("auth_form")) {
                     return new AuthResult("Ошибка авторизации: неверный логин или пароль.");
                 }
-                AuthResult flashResult = submitFlashPasswordIfRequired(client, gameUrl, authBaseUrl, loginResponseBody, flashPassword);
+                AuthResult flashResult = submitFlashPasswordIfRequired(client, gameUrl, authBaseUrl, loginResponseBody, flashPassword, responseCookies);
                 if (flashResult != null) {
                     return flashResult;
                 }
@@ -208,13 +233,14 @@ public class AuthManager {
             FileLogger.log("AuthManager: 3. Final GET request\n" + mainRequest);
             try (Response mainResponse = client.newCall(mainRequest).execute()) {
                 FileLogger.log("AuthManager: 3. Final GET response\n" + mainResponse);
+                collectResponseCookies(mainResponse, responseCookies, "main_get");
                 if (!mainResponse.isSuccessful()) {
                     return new AuthResult("Ошибка финализации сессии: " + mainResponse.code());
                 }
             }
 
             FileLogger.log("AuthManager: Full Authorization SUCCESS.");
-            List<HttpCookie> cookies = collectNeverlandsCookies(cookieManager);
+            List<HttpCookie> cookies = collectNeverlandsCookies(cookieManager, responseCookies);
             return new AuthResult(cookies);
         } catch (Exception e) {
             FileLogger.log("AuthManager: Authorization FAILED: " + e.getMessage());
@@ -235,24 +261,21 @@ public class AuthManager {
      * - итоговые cookies извлекаются через {@link #collectNeverlandsCookies(java.net.CookieManager)}.
      */
     private AuthResult authorizeWithCaptchaInternal(String username,
-                                                    String password,
-                                                    String flashPassword,
-                                                    String vcode,
-                                                    String verify,
-                                                    String authBaseUrl) {
+                                                     String password,
+                                                     String flashPassword,
+                                                     String vcode,
+                                                     String verify,
+                                                     String authBaseUrl,
+                                                     String gameServerCode) {
         final String gameUrl = authBaseUrl + "/game.php";
         final String mainUrl = authBaseUrl + "/main.php";
 
         OkHttpClient client = NetworkClient.getInstance();
         java.net.CookieManager cookieManager = NetworkClient.getCookieManager();
+        List<HttpCookie> responseCookies = new ArrayList<>();
 
         try {
-            RequestBody formBody = new FormBody.Builder(Charset.forName("windows-1251"))
-                    .add("vcode", vcode)
-                    .add("player_nick", username)
-                    .add("player_password", password)
-                    .add("verify", verify)
-                    .build();
+            RequestBody formBody = buildLoginFormBody(username, password, vcode, verify, gameServerCode);
 
             Request loginRequest = new Request.Builder()
                     .url(gameUrl)
@@ -265,6 +288,7 @@ public class AuthManager {
             FileLogger.log("AuthManager: 2. Captcha Login POST request\n" + loginRequest);
             try (Response loginResponse = client.newCall(loginRequest).execute()) {
                 FileLogger.log("AuthManager: 2. Captcha Login POST response\n" + loginResponse);
+                collectResponseCookies(loginResponse, responseCookies, "captcha_login_post");
                 if (!loginResponse.isSuccessful()) {
                     return new AuthResult("Ошибка авторизации с капчей: " + loginResponse.code());
                 }
@@ -284,7 +308,7 @@ public class AuthManager {
                 if (loginResponseBody.contains("auth_form")) {
                     return new AuthResult("Ошибка авторизации: неверный логин или пароль.");
                 }
-                AuthResult flashResult = submitFlashPasswordIfRequired(client, gameUrl, authBaseUrl, loginResponseBody, flashPassword);
+                AuthResult flashResult = submitFlashPasswordIfRequired(client, gameUrl, authBaseUrl, loginResponseBody, flashPassword, responseCookies);
                 if (flashResult != null) {
                     return flashResult;
                 }
@@ -306,13 +330,14 @@ public class AuthManager {
             FileLogger.log("AuthManager: 3. Final GET request\n" + mainRequest);
             try (Response mainResponse = client.newCall(mainRequest).execute()) {
                 FileLogger.log("AuthManager: 3. Final GET response\n" + mainResponse);
+                collectResponseCookies(mainResponse, responseCookies, "captcha_main_get");
                 if (!mainResponse.isSuccessful()) {
                     return new AuthResult("Ошибка финализации сессии: " + mainResponse.code());
                 }
             }
 
             FileLogger.log("AuthManager: Full Authorization SUCCESS.");
-            List<HttpCookie> cookies = collectNeverlandsCookies(cookieManager);
+            List<HttpCookie> cookies = collectNeverlandsCookies(cookieManager, responseCookies);
             return new AuthResult(cookies);
         } catch (Exception e) {
             FileLogger.log("AuthManager: Authorization FAILED: " + e.getMessage());
@@ -325,10 +350,11 @@ public class AuthManager {
      * с `flashvars="plid=..."`. ПК-клиент автоматически POST-ит `flcheck` и `nid`.
      */
     private AuthResult submitFlashPasswordIfRequired(OkHttpClient client,
-                                                     String gameUrl,
-                                                     String authBaseUrl,
-                                                     String html,
-                                                     String flashPassword) throws Exception {
+                                                      String gameUrl,
+                                                      String authBaseUrl,
+                                                      String html,
+                                                      String flashPassword,
+                                                      List<HttpCookie> responseCookies) throws Exception {
         String safeFlashPassword = flashPassword == null ? "" : flashPassword.trim();
         if (safeFlashPassword.isEmpty() || html == null || html.isEmpty()) {
             return null;
@@ -356,6 +382,7 @@ public class AuthManager {
         FileLogger.log("AuthManager: Flash password POST request, nid=" + pid.trim());
         try (Response flashResponse = client.newCall(flashRequest).execute()) {
             FileLogger.log("AuthManager: Flash password POST response\n" + flashResponse);
+            collectResponseCookies(flashResponse, responseCookies, "flash_post");
             if (!flashResponse.isSuccessful()) {
                 return new AuthResult("Ошибка ввода Flash-пароля: " + flashResponse.code());
             }
@@ -422,13 +449,16 @@ public class AuthManager {
      * Выбирает базовый host для auth-flow.
      *
      * Зависимости:
-     * - proxy-режим: `http://www.neverlands.ru`
-     * - direct-режим: `http://neverlands.ru`
+     * Proxy влияет только на транспорт OkHttp/local proxy, а endpoint выбирается
+     * текущим профилем через редактируемый список `GameServerUrls`.
      */
-    private String resolveAuthBaseUrl() {
+    private String resolveAuthBaseUrl(String gameServerCode) {
         boolean proxyActive = ProxyRuntimeManager.isRunning();
-        String baseUrl = proxyActive ? "http://www.neverlands.ru" : "http://neverlands.ru";
-        FileLogger.log("AuthManager: authBaseUrl=" + baseUrl + ", proxyActive=" + proxyActive);
+        String baseUrl = GameServerUrls.authBaseUrl(proxyActive, gameServerCode);
+        FileLogger.log("AuthManager: authBaseUrl=" + baseUrl
+                + ", proxyActive=" + proxyActive
+                + ", server=" + GameServerUrls.normalizeServerCode(gameServerCode)
+                + ", formServer=" + GameServerUrls.loginFormServerCode(gameServerCode));
         return baseUrl;
     }
 
@@ -443,10 +473,28 @@ public class AuthManager {
      * @return зеркальный host (`www` <-> `non-www`) для второй попытки auth-flow.
      */
     private String resolveAlternateAuthBaseUrl(String currentBaseUrl) {
-        if (currentBaseUrl != null && currentBaseUrl.contains("://www.neverlands.ru")) {
-            return "http://neverlands.ru";
+        return GameServerUrls.alternateAuthBaseUrl(currentBaseUrl);
+    }
+
+    private RequestBody buildLoginFormBody(String username,
+                                           String password,
+                                           String vcode,
+                                           String verify,
+                                           String gameServerCode) {
+        FormBody.Builder builder = new FormBody.Builder(Charset.forName("windows-1251"));
+        if (vcode != null && !vcode.isEmpty()) {
+            builder.add("vcode", vcode);
         }
-        return "http://www.neverlands.ru";
+        builder.add("player_nick", username);
+        builder.add("player_password", password);
+        if (verify != null && !verify.isEmpty()) {
+            builder.add("verify", verify);
+        }
+        String formServerCode = GameServerUrls.loginFormServerCode(gameServerCode);
+        if (formServerCode != null && !formServerCode.isEmpty()) {
+            builder.add("server", formServerCode);
+        }
+        return builder.build();
     }
 
     /**
@@ -456,7 +504,7 @@ public class AuthManager {
      * - основной источник: весь CookieStore (host-only + *.neverlands.ru);
      * - fallback-источник: явные URI `neverlands.ru` и `www.neverlands.ru`.
      */
-    private List<HttpCookie> collectNeverlandsCookies(java.net.CookieManager cookieManager) {
+    private List<HttpCookie> collectNeverlandsCookies(java.net.CookieManager cookieManager, List<HttpCookie> responseCookies) {
         List<HttpCookie> source = cookieManager.getCookieStore().getCookies();
         List<HttpCookie> result = new ArrayList<>();
         Set<String> dedup = new HashSet<>();
@@ -468,7 +516,7 @@ public class AuthManager {
             String domain = cookie.getDomain();
             String lowerDomain = domain == null ? "" : domain.toLowerCase(Locale.ROOT);
             boolean hostCookie = lowerDomain.isEmpty();
-            boolean neverlandsDomain = lowerDomain.contains("neverlands.ru");
+            boolean neverlandsDomain = GameServerUrls.isNeverlandsCookieDomain(lowerDomain);
             if (!hostCookie && !neverlandsDomain) {
                 continue;
             }
@@ -481,15 +529,29 @@ public class AuthManager {
         }
 
         if (result.isEmpty()) {
-            List<HttpCookie> fallback = cookieManager.getCookieStore().get(HttpUrl.get("http://neverlands.ru/").uri());
+            List<HttpCookie> fallback = cookieManager.getCookieStore().get(HttpUrl.get(GameServerUrls.neverlandsCookieUrl()).uri());
             if (fallback != null) {
                 result.addAll(fallback);
             }
             if (result.isEmpty()) {
-                List<HttpCookie> fallbackWww = cookieManager.getCookieStore().get(HttpUrl.get("http://www.neverlands.ru/").uri());
+                List<HttpCookie> fallbackWww = cookieManager.getCookieStore().get(HttpUrl.get(GameServerUrls.wwwNeverlandsCookieUrl()).uri());
                 if (fallbackWww != null) {
                     result.addAll(fallbackWww);
                 }
+            }
+        }
+
+        if (responseCookies != null) {
+            for (HttpCookie cookie : responseCookies) {
+                if (cookie == null) {
+                    continue;
+                }
+                String domain = cookie.getDomain();
+                String lowerDomain = domain == null ? "" : domain.toLowerCase(Locale.ROOT);
+                if (!lowerDomain.isEmpty() && !GameServerUrls.isNeverlandsCookieDomain(lowerDomain)) {
+                    continue;
+                }
+                result.add(cookie);
             }
         }
 
@@ -502,5 +564,41 @@ public class AuthManager {
         }
         FileLogger.log("AuthManager: collected cookies count=" + result.size() + " names=[" + names + "]");
         return result;
+    }
+
+    private void collectResponseCookies(Response response, List<HttpCookie> out, String stage) {
+        if (response == null || out == null) {
+            return;
+        }
+        List<String> setCookies = response.headers("Set-Cookie");
+        if (setCookies == null || setCookies.isEmpty()) {
+            return;
+        }
+        int added = 0;
+        StringBuilder names = new StringBuilder();
+        for (String header : setCookies) {
+            if (header == null || header.trim().isEmpty()) {
+                continue;
+            }
+            try {
+                List<HttpCookie> parsed = HttpCookie.parse(header);
+                for (HttpCookie cookie : parsed) {
+                    if (cookie == null || cookie.getName() == null || cookie.getName().trim().isEmpty()) {
+                        continue;
+                    }
+                    out.add(cookie);
+                    added++;
+                    if (names.length() > 0) {
+                        names.append(", ");
+                    }
+                    names.append(cookie.getName());
+                }
+            } catch (IllegalArgumentException ignored) {
+                FileLogger.log("AuthManager: ignored malformed Set-Cookie at " + stage + ": " + header);
+            }
+        }
+        if (added > 0) {
+            FileLogger.log("AuthManager: captured response cookies stage=" + stage + ", count=" + added + ", names=[" + names + "]");
+        }
     }
 }

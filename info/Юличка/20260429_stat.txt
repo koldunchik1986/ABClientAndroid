@@ -1,0 +1,14 @@
+DATE=20260429
+START_MS=1777466286245
+RESET_DATE=20260429
+XP=994
+FIGHTS=56
+NV=0
+FISH_NV=0.0
+KG_TOTAL=0.0
+HERB_CUT=Петрушка кровавобережная	1
+HERB_CUT=Чеснок	1
+HERB_CUT=Лён	17
+HERB_CUT=Картофель	15
+HERB_CUT=Сахарный тростник	9
+HERB_CUT=Пшеница	5

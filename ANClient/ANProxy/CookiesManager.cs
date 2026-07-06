@@ -12,7 +12,7 @@ namespace ANClient.ANProxy
 
         internal static void Assign(string host, string data)
         {
-            if (host.Equals("www.neverlands.ru", StringComparison.OrdinalIgnoreCase))
+            if (GameServerSelector.IsNeverlandsGameHost(host))
             {
                 const string nevernick = "NeverNick=";
                 if (data.StartsWith(nevernick, StringComparison.OrdinalIgnoreCase))
@@ -47,22 +47,28 @@ namespace ANClient.ANProxy
                 return;
             }
 
+            var hosts = GameServerSelector.IsNeverlandsGameHost(host)
+                            ? GameServerSelector.CookieHosts()
+                            : new[] { host };
             try
             {
                 Rwl.AcquireWriterLock(5000);
                 try
                 {
-                    CookiePack cookiePack;
-                    if (CookiePackCollection.TryGetValue(host, out cookiePack))
+                    for (var i = 0; i < hosts.Length; i++)
                     {
-                        cookiePack.Add(sheader, svalue);
-                        CookiePackCollection[host] = cookiePack;
-                    }
-                    else
-                    {
-                        cookiePack = new CookiePack();
-                        cookiePack.Add(sheader, svalue);
-                        CookiePackCollection.Add(host, cookiePack);
+                        CookiePack cookiePack;
+                        if (CookiePackCollection.TryGetValue(hosts[i], out cookiePack))
+                        {
+                            cookiePack.Add(sheader, svalue);
+                            CookiePackCollection[hosts[i]] = cookiePack;
+                        }
+                        else
+                        {
+                            cookiePack = new CookiePack();
+                            cookiePack.Add(sheader, svalue);
+                            CookiePackCollection.Add(hosts[i], cookiePack);
+                        }
                     }
                 }
                 finally
@@ -81,6 +87,18 @@ namespace ANClient.ANProxy
             if (host.Equals("forum.neverlands.ru", StringComparison.OrdinalIgnoreCase))
             {
                 host = "www.neverlands.ru"; 
+            }
+
+            if (GameServerSelector.IsNeverlandsGameHost(host))
+            {
+                var hosts = GameServerSelector.CookieHosts();
+                for (var i = 0; i < hosts.Length; i++)
+                {
+                    if (CookiePackCollection.TryGetValue(hosts[i], out cookiePack))
+                    {
+                        return cookiePack.ToString();
+                    }
+                }
             }
 
             return CookiePackCollection.TryGetValue(host, out cookiePack) ? cookiePack.ToString() : null;

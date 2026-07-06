@@ -310,6 +310,18 @@ namespace ANClient.MyProfile
                     xmlWriter.WriteStartAttribute("languagepool");
                     xmlWriter.WriteString(AntiCaptchaLanguagePool ?? "en");
                     xmlWriter.WriteEndAttribute();
+                    xmlWriter.WriteStartAttribute("localenabled");
+                    xmlWriter.WriteValue(LocalCaptchaOcrEnabled);
+                    xmlWriter.WriteEndAttribute();
+                    xmlWriter.WriteStartAttribute("localurl");
+                    xmlWriter.WriteString(LocalCaptchaOcrServiceUrl ?? string.Empty);
+                    xmlWriter.WriteEndAttribute();
+                    xmlWriter.WriteStartAttribute("localminconfidence");
+                    xmlWriter.WriteString(LocalCaptchaOcrMinConfidence.ToString("0.####", System.Globalization.CultureInfo.InvariantCulture));
+                    xmlWriter.WriteEndAttribute();
+                    xmlWriter.WriteStartAttribute("externalfallback");
+                    xmlWriter.WriteValue(LocalCaptchaExternalFallbackEnabled);
+                    xmlWriter.WriteEndAttribute();
                     xmlWriter.WriteEndElement();
 
                     xmlWriter.WriteStartElement("complects");
@@ -1150,6 +1162,10 @@ namespace ANClient.MyProfile
                 xmlWriter.WriteString(UserKey);
                 xmlWriter.WriteEndAttribute();
             }
+
+            xmlWriter.WriteStartAttribute(ConstAttibuteUserServer);
+            xmlWriter.WriteString(ANClient.GameServerSelector.NormalizeServerCode(GameServerCode));
+            xmlWriter.WriteEndAttribute();
 
             if (string.IsNullOrEmpty(ConfigHash))
             {

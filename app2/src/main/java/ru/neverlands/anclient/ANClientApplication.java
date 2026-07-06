@@ -10,6 +10,7 @@ import ru.neverlands.anclient.repository.ThingsRepository;
 import ru.neverlands.anclient.license.LicenseRuntime;
 import ru.neverlands.anclient.utils.AppVars;
 import ru.neverlands.anclient.utils.DataManager;
+import ru.neverlands.anclient.utils.GameServerUrls;
 import ru.neverlands.anclient.utils.ThemeModeManager;
 
 /**
@@ -28,6 +29,9 @@ public class ANClientApplication extends Application {
         
         // Инициализация глобальных переменных
         AppVars.init(this);
+
+        // Единый список game endpoints нужен до LoginActivity/MainActivity/proxy routing.
+        GameServerUrls.initialize(this);
 
         // LicenseRuntime держит активную capability-сессию после проверки profile.reg.
         LicenseRuntime.getInstance().initialize(this);

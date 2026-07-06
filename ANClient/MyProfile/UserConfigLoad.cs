@@ -769,6 +769,8 @@ namespace ANClient.MyProfile
         private void ReadUser(XmlReader xmlReader)
         {
             UserNick = xmlReader[ConstAttibuteUserNick] ?? string.Empty;
+            GameServerCode = ANClient.GameServerSelector.NormalizeServerCode(
+                xmlReader[ConstAttibuteUserServer] ?? xmlReader["gameserver"] ?? xmlReader["gameservercode"]);
             UserPassword = xmlReader[ConstAttibuteUserPassword] ?? string.Empty;
             UserKey = xmlReader[ConstAttibuteUserKey] ?? string.Empty;
             UserPasswordFlash = xmlReader[ConstAttibuteUserPasswordFlash] ?? string.Empty;
@@ -1328,6 +1330,43 @@ namespace ANClient.MyProfile
             if (!string.IsNullOrEmpty(languagePool))
             {
                 AntiCaptchaLanguagePool = languagePool.Equals("rn", StringComparison.OrdinalIgnoreCase) ? "rn" : "en";
+            }
+
+            if (bool.TryParse(xmlReader["localenabled"], out boolValue))
+            {
+                LocalCaptchaOcrEnabled = boolValue;
+            }
+
+            var localUrl = xmlReader["localurl"] ?? xmlReader["localserviceurl"];
+            if (!string.IsNullOrEmpty(localUrl))
+            {
+                LocalCaptchaOcrServiceUrl = localUrl;
+            }
+
+            if (xmlReader["localexe"] != null)
+            {
+                LocalCaptchaOcrExePath = xmlReader["localexe"];
+                if (string.IsNullOrEmpty(localUrl) &&
+                    LocalCaptchaOcrExePath.StartsWith("http", StringComparison.OrdinalIgnoreCase))
+                {
+                    LocalCaptchaOcrServiceUrl = LocalCaptchaOcrExePath;
+                }
+            }
+
+            if (xmlReader["localmodel"] != null)
+            {
+                LocalCaptchaOcrModelPath = xmlReader["localmodel"];
+            }
+
+            double doubleValue;
+            if (double.TryParse(xmlReader["localminconfidence"], NumberStyles.Float, CultureInfo.InvariantCulture, out doubleValue))
+            {
+                LocalCaptchaOcrMinConfidence = Math.Max(0d, Math.Min(1d, doubleValue));
+            }
+
+            if (bool.TryParse(xmlReader["externalfallback"], out boolValue))
+            {
+                LocalCaptchaExternalFallbackEnabled = boolValue;
             }
         }
 

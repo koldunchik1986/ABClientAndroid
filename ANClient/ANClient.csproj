@@ -203,6 +203,7 @@
     <Compile Include="ANProxy\Session.cs" />
     <Compile Include="ANProxy\Utilities.cs" />
     <Compile Include="AppConsts.cs" />
+    <Compile Include="GameServerSelector.cs" />
     <Compile Include="AppControls\Office2007Render.cs" />
     <Compile Include="AppTimer.cs" />
     <Compile Include="AppTimerManager.cs" />
@@ -508,6 +509,8 @@
       <SubType>Component</SubType>
     </Compile>
     <Compile Include="MyGuamod\AntiCaptchaManager.cs" />
+    <Compile Include="MyGuamod\CaptchaTrainingManager.cs" />
+    <Compile Include="MyGuamod\LocalCaptchaSolver.cs" />
     <Compile Include="MyGuamod\Recognizer.cs" />
     <Compile Include="MyHelpers\HelperConverters.cs" />
     <Compile Include="Helpers\Dice.cs" />

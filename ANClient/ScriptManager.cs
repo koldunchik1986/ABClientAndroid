@@ -620,6 +620,16 @@ namespace ANClient
             return AutoMineRuntime.MineMoveTo(x, y);
         }
 
+        public string mineMoveToFloorExit()
+        {
+            return AutoMineRuntime.MineMoveToFloorExit();
+        }
+
+        public bool hasMineFloorExit()
+        {
+            return AutoMineRuntime.HasMineFloorExit();
+        }
+
         public string getNextMineMoveDirection(string x, string y, string lvl, string source)
         {
             return AutoMineRuntime.GetNextMineMoveDirection(x, y, lvl, source);

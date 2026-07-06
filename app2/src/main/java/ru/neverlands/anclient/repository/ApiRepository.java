@@ -32,6 +32,7 @@ import ru.neverlands.anclient.proxy.ProxyRuntimeManager;
 import ru.neverlands.anclient.utils.AppVars;
 import ru.neverlands.anclient.utils.ContactRenderHelper;
 import ru.neverlands.anclient.utils.FileLogger;
+import ru.neverlands.anclient.utils.GameServerUrls;
 
 /**
  * Репозиторий для взаимодействия с внешним API игры.
@@ -77,8 +78,7 @@ public class ApiRepository {
             return false;
         }
         String lower = url.toLowerCase(Locale.ROOT);
-        return lower.contains("/modules/api/")
-                || lower.contains("service.neverlands.ru/info/clans.txt");
+        return lower.contains("service.neverlands.ru/info/clans.txt");
     }
 
     private static String extractHost(String url) {
@@ -93,9 +93,13 @@ public class ApiRepository {
     private static String buildBestEffortCookieHeader(String url, String host) {
         LinkedHashMap<String, String> cookieByName = new LinkedHashMap<>();
         addCookiePairs(cookieByName, CookiesManager.obtain(host));
+        addCookiePairs(cookieByName, CookiesManager.obtain(GameServerUrls.serverHost(GameServerUrls.currentServerCode())));
         addCookiePairs(cookieByName, CookiesManager.obtain("neverlands.ru"));
         addCookiePairs(cookieByName, CookiesManager.obtain("www.neverlands.ru"));
         try {
+            for (String cookieUrl : GameServerUrls.cookieUrls()) {
+                addCookiePairs(cookieByName, CookieManager.getInstance().getCookie(cookieUrl));
+            }
             addCookiePairs(cookieByName, CookieManager.getInstance().getCookie(url));
             addCookiePairs(cookieByName, CookieManager.getInstance().getCookie("http://neverlands.ru/"));
             addCookiePairs(cookieByName, CookieManager.getInstance().getCookie("http://www.neverlands.ru/"));

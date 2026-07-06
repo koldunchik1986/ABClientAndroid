@@ -10,6 +10,7 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.text.InputType;
 import android.text.TextUtils;
 import android.webkit.CookieManager;
 import android.view.LayoutInflater;
@@ -31,9 +32,13 @@ import androidx.core.content.ContextCompat;
 import com.bumptech.glide.Glide;
 
 import java.net.HttpCookie;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -48,6 +53,7 @@ import ru.neverlands.anclient.proxy.CookiesManager;
 import ru.neverlands.anclient.ui.LicenseRequestDialog;
 import ru.neverlands.anclient.utils.AppVars;
 import ru.neverlands.anclient.utils.CryptoUtils;
+import ru.neverlands.anclient.utils.GameServerUrls;
 
 public class LoginActivity extends AppCompatActivity {
     private static final int STORAGE_PERMISSION_REQUEST_CODE = 101;
@@ -55,6 +61,8 @@ public class LoginActivity extends AppCompatActivity {
     private static final long COOKIE_WARMUP_DELAY_MS = 250L;
     private static final int AUTH_MAX_RETRY_ATTEMPTS = 1;
     private static final long AUTH_RETRY_DELAY_MS = 1200L;
+    private static final long SERVER_PING_REFRESH_MS = 10_000L;
+    private static final int SERVER_PING_TIMEOUT_MS = 2_500;
     private static final String LOGIN_UI_PREFS = "login_ui_state";
     private static final String KEY_LAST_PROFILE_ID = "last_profile_id";
     private static final String KEY_ENCRYPTED_LOGIN_PASSWORD_PREFIX = "encrypted_login_password_";
@@ -72,6 +80,11 @@ public class LoginActivity extends AppCompatActivity {
     private List<UserConfig> profiles;
     private UserConfig selectedProfile;
     private String pendingProfileRegImportPath = "";
+    private ArrayAdapter<String> serverAdapter;
+    private final Handler serverPingHandler = new Handler(Looper.getMainLooper());
+    private ExecutorService serverPingExecutor;
+    private Runnable serverPingRunnable;
+    private final Map<String, Long> serverPingMsByCode = new ConcurrentHashMap<>();
 
     private final ActivityResultLauncher<Intent> profileActivityLauncher = registerForActivityResult(
             new ActivityResultContracts.StartActivityForResult(),
@@ -126,6 +139,7 @@ public class LoginActivity extends AppCompatActivity {
     }
 
     private void initializeUi() {
+        setupServerSelector();
         loadProfiles();
 
         binding.loginButton.setOnClickListener(v -> login());
@@ -137,6 +151,78 @@ public class LoginActivity extends AppCompatActivity {
         });
 
         binding.deleteProfileButton.setOnClickListener(v -> deleteSelectedProfile());
+    }
+
+    private void setupServerSelector() {
+        GameServerUrls.initialize(this);
+        serverAdapter = new ArrayAdapter<>(
+                this,
+                android.R.layout.simple_dropdown_item_1line,
+                new ArrayList<>(Arrays.asList(buildServerDisplayNames()))
+        );
+        binding.serverSpinner.setAdapter(serverAdapter);
+        binding.serverSpinner.setOnItemClickListener((parent, view, position, id) -> {
+            Object item = parent.getItemAtPosition(position);
+            String serverCode = GameServerUrls.codeForDisplayValue(item == null ? "" : item.toString());
+            applyServerCodeToSelectedProfile(serverCode, "selector_change", true);
+        });
+        binding.editServersButton.setOnClickListener(v -> showEditServersDialog());
+        startServerPingRefresh();
+    }
+
+    private void showEditServersDialog() {
+        EditText editor = new EditText(this);
+        editor.setSingleLine(false);
+        editor.setMinLines(5);
+        editor.setInputType(InputType.TYPE_CLASS_TEXT
+                | InputType.TYPE_TEXT_FLAG_MULTI_LINE
+                | InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS);
+        editor.setText(GameServerUrls.editableServerListText());
+        editor.setSelection(editor.getText().length());
+
+        AlertDialog dialog = new AlertDialog.Builder(this)
+                .setTitle("Серверы Neverlands")
+                .setMessage("Формат строки: CODE=host|server. Для neverlands.ru параметр server можно не указывать.")
+                .setView(editor)
+                .setPositiveButton("Сохранить", null)
+                .setNegativeButton("Отмена", null)
+                .setNeutralButton("Сброс", null)
+                .create();
+        dialog.setOnShowListener(shown -> {
+            dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
+                try {
+                    GameServerUrls.saveEditableServerList(this, editor.getText().toString());
+                    onServerListChanged("edit_save");
+                    dialog.dismiss();
+                    Toast.makeText(this, "Список серверов сохранен", Toast.LENGTH_SHORT).show();
+                } catch (IllegalArgumentException e) {
+                    editor.setError(e.getMessage());
+                    Toast.makeText(this, e.getMessage(), Toast.LENGTH_LONG).show();
+                }
+            });
+            dialog.getButton(AlertDialog.BUTTON_NEUTRAL).setOnClickListener(v -> {
+                GameServerUrls.resetServerList(this);
+                editor.setText(GameServerUrls.editableServerListText());
+                editor.setSelection(editor.getText().length());
+                onServerListChanged("edit_reset");
+                Toast.makeText(this, "Список серверов сброшен", Toast.LENGTH_SHORT).show();
+            });
+        });
+        dialog.show();
+    }
+
+    private void onServerListChanged(String stage) {
+        serverPingMsByCode.clear();
+        if (selectedProfile != null) {
+            selectedProfile.GameServerCode = GameServerUrls.normalizeServerCode(selectedProfile.GameServerCode);
+            if (!TextUtils.isEmpty(selectedProfile.UserNick)) {
+                selectedProfile.save(this);
+            }
+        }
+        updateServerDisplayNames();
+        refreshServerPingsAsync();
+        AppLog.i("LoginActivity", "LOGIN_UI: serverListChanged stage=" + stage
+                + ", selected=" + (selectedProfile == null ? "" : selectedProfile.GameServerCode));
     }
 
     private void deleteSelectedProfile() {
@@ -252,6 +338,10 @@ public class LoginActivity extends AppCompatActivity {
 
     private void applySelectedProfile(UserConfig profile) {
         if (profile == null) return;
+
+        String serverCode = GameServerUrls.normalizeServerCode(profile.GameServerCode);
+        profile.GameServerCode = serverCode;
+        binding.serverSpinner.setText(serverDisplayName(serverCode), false);
 
         if (profile.isEncrypted) {
             binding.passwordInputLayout.setHint("Пароль шифрования");
@@ -445,6 +535,14 @@ public class LoginActivity extends AppCompatActivity {
         }
 
         final UserConfig profileToLogin = selectedProfile;
+        String selectedServerText = binding.serverSpinner.getText() == null
+                ? ""
+                : binding.serverSpinner.getText().toString();
+        applyServerCodeToSelectedProfile(
+                GameServerUrls.codeForDisplayValue(selectedServerText),
+                "login_click",
+                false
+        );
         String gamePassword;
         String flashPassword;
 
@@ -490,6 +588,7 @@ public class LoginActivity extends AppCompatActivity {
                 "LoginActivity",
                 "LOGIN_UI: loginClick profileId=" + profileToLogin.id
                         + ", encrypted=" + profileToLogin.isEncrypted
+                        + ", server=" + profileToLogin.GameServerCode
                         + ", rememberChecked=" + binding.rememberCheckBox.isChecked()
                         + ", inputPasswordLen=" + safeLen(passwordOrKey)
         );
@@ -509,6 +608,7 @@ public class LoginActivity extends AppCompatActivity {
         result.isEncrypted = source.isEncrypted;
         result.UserPassword = plainUserPassword == null ? "" : plainUserPassword;
         result.UserPasswordFlash = plainFlashPassword == null ? "" : plainFlashPassword;
+        result.GameServerCode = source.GameServerCode;
         result.UseProxy = source.UseProxy;
         result.DoProxy = source.DoProxy;
         result.ProxyAddress = source.ProxyAddress;
@@ -644,7 +744,7 @@ public class LoginActivity extends AppCompatActivity {
         );
         executor.execute(() -> {
             AuthManager authManager = new AuthManager();
-            AuthResult result = authManager.authorize(username, gamePassword, flashPassword);
+            AuthResult result = authManager.authorize(username, gamePassword, flashPassword, profileToLogin.GameServerCode);
             handler.post(() -> handleAuthResult(
                     result,
                     username,
@@ -905,6 +1005,7 @@ public class LoginActivity extends AppCompatActivity {
                             username,
                             gamePassword,
                             flashPassword,
+                            profileToLogin.GameServerCode,
                             vcode,
                             verify
                     );
@@ -924,5 +1025,105 @@ public class LoginActivity extends AppCompatActivity {
         builder.setNegativeButton("Отмена", (dialog, which) -> dialog.cancel());
 
         builder.create().show();
+    }
+
+    private void applyServerCodeToSelectedProfile(String serverCode, String stage, boolean saveIfExisting) {
+        if (selectedProfile == null) {
+            return;
+        }
+        String normalized = GameServerUrls.codeForDisplayValue(serverCode);
+        boolean changed = !TextUtils.equals(selectedProfile.GameServerCode, normalized);
+        selectedProfile.GameServerCode = normalized;
+        binding.serverSpinner.setText(serverDisplayName(normalized), false);
+        if (saveIfExisting && changed && !TextUtils.isEmpty(selectedProfile.UserNick)) {
+            selectedProfile.save(this);
+            persistLastProfileId(selectedProfile);
+        }
+        AppLog.i(
+                "LoginActivity",
+                "LOGIN_UI: serverSelected stage=" + stage
+                        + ", profileId=" + selectedProfile.id
+                        + ", server=" + normalized
+                        + ", changed=" + changed
+        );
+    }
+
+    private void startServerPingRefresh() {
+        if (serverPingExecutor == null || serverPingExecutor.isShutdown()) {
+            serverPingExecutor = Executors.newSingleThreadExecutor();
+        }
+        if (serverPingRunnable != null) {
+            serverPingHandler.removeCallbacks(serverPingRunnable);
+        }
+        serverPingRunnable = new Runnable() {
+            @Override
+            public void run() {
+                refreshServerPingsAsync();
+                serverPingHandler.postDelayed(this, SERVER_PING_REFRESH_MS);
+            }
+        };
+        serverPingHandler.post(serverPingRunnable);
+    }
+
+    private void refreshServerPingsAsync() {
+        ExecutorService executor = serverPingExecutor;
+        if (executor == null || executor.isShutdown()) {
+            return;
+        }
+        List<GameServerUrls.ServerEntry> entries = GameServerUrls.serverEntries();
+        executor.execute(() -> {
+            for (GameServerUrls.ServerEntry entry : entries) {
+                serverPingMsByCode.put(
+                        entry.code,
+                        GameServerUrls.measureTcpPingMs(entry.code, SERVER_PING_TIMEOUT_MS)
+                );
+            }
+            serverPingHandler.post(this::updateServerDisplayNames);
+        });
+    }
+
+    private void updateServerDisplayNames() {
+        if (binding == null || serverAdapter == null) {
+            return;
+        }
+        String selectedServerCode = selectedProfile == null
+                ? GameServerUrls.DEFAULT_SERVER_CODE
+                : GameServerUrls.normalizeServerCode(selectedProfile.GameServerCode);
+        serverAdapter.clear();
+        serverAdapter.addAll(buildServerDisplayNames());
+        serverAdapter.notifyDataSetChanged();
+        binding.serverSpinner.setText(serverDisplayName(selectedServerCode), false);
+    }
+
+    private String[] buildServerDisplayNames() {
+        List<GameServerUrls.ServerEntry> entries = GameServerUrls.serverEntries();
+        String[] names = new String[entries.size()];
+        for (int i = 0; i < entries.size(); i++) {
+            GameServerUrls.ServerEntry entry = entries.get(i);
+            names[i] = GameServerUrls.displayName(entry.code, pingValueOrNull(serverPingMsByCode.get(entry.code)));
+        }
+        return names;
+    }
+
+    private String serverDisplayName(String serverCode) {
+        String normalized = GameServerUrls.normalizeServerCode(serverCode);
+        return GameServerUrls.displayName(normalized, pingValueOrNull(serverPingMsByCode.get(normalized)));
+    }
+
+    private Long pingValueOrNull(Long value) {
+        return value == null || value == Long.MIN_VALUE ? null : value;
+    }
+
+    @Override
+    protected void onDestroy() {
+        if (serverPingRunnable != null) {
+            serverPingHandler.removeCallbacks(serverPingRunnable);
+            serverPingRunnable = null;
+        }
+        if (serverPingExecutor != null) {
+            serverPingExecutor.shutdownNow();
+            serverPingExecutor = null;
+        }
+        super.onDestroy();
     }
 }

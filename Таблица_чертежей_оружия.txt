@@ -1,0 +1,3956 @@
+<!DOCTYPE html>
+<html lang="ru" dir="ltr" class="client-nojs">
+<head>
+<title>Таблица чертежей оружия — Викиневер</title>
+<meta charset="UTF-8" />
+<meta name="generator" content="MediaWiki 1.19.2" />
+<link rel="shortcut icon" href="/favicon.ico" />
+<link rel="search" type="application/opensearchdescription+xml" href="/opensearch_desc.php" title="Викиневер (ru)" />
+<link rel="EditURI" type="application/rsd+xml" href="http://wiki.neverlands.ru/api.php?action=rsd" />
+<link rel="alternate" type="application/atom+xml" title="Викиневер — Atom-лента" href="/index.php?title=%D0%A1%D0%BB%D1%83%D0%B6%D0%B5%D0%B1%D0%BD%D0%B0%D1%8F:RecentChanges&amp;feed=atom" />
+<link rel="stylesheet" href="http://wiki.neverlands.ru/load.php?debug=false&amp;lang=ru&amp;modules=ext.categoryTree.css%7Cmediawiki.legacy.commonPrint%2Cshared%7Cskins.vector&amp;only=styles&amp;skin=vector&amp;*" />
+<meta name="ResourceLoaderDynamicStyles" content="" />
+<style>a:lang(ar),a:lang(ckb),a:lang(fa),a:lang(kk-arab),a:lang(mzn),a:lang(ps),a:lang(ur){text-decoration:none}a.new,#quickbar a.new{color:#ba0000}
+
+/* cache key: mediawiki-wiki_:resourceloader:filter:minify-css:7:c88e2bcd56513749bec09a7e29cb3ffa */
+</style>
+
+<script src="http://wiki.neverlands.ru/load.php?debug=false&amp;lang=ru&amp;modules=startup&amp;only=scripts&amp;skin=vector&amp;*"></script>
+<script>if(window.mw){
+mw.config.set({"wgCanonicalNamespace":"","wgCanonicalSpecialPageName":false,"wgNamespaceNumber":0,"wgPageName":"Таблица_чертежей_оружия","wgTitle":"Таблица чертежей оружия","wgCurRevisionId":21398,"wgArticleId":2880,"wgIsArticle":true,"wgAction":"view","wgUserName":null,"wgUserGroups":["*"],"wgCategories":["Таблицы профессий","Таблицы ремесленника"],"wgBreakFrames":false,"wgPageContentLanguage":"ru","wgSeparatorTransformTable":[",	."," 	,"],"wgDigitTransformTable":["",""],"wgRelevantPageName":"Таблица_чертежей_оружия","wgRestrictionEdit":[],"wgRestrictionMove":[],"wgSearchNamespaces":[0],"wgVectorEnabledModules":{"collapsiblenav":true,"collapsibletabs":true,"editwarning":false,"expandablesearch":false,"footercleanup":false,"sectioneditlinks":false,"simplesearch":true,"experiments":true},"wgWikiEditorEnabledModules":{"toolbar":true,"dialogs":true,"hidesig":true,"templateEditor":false,"templates":false,"preview":true,"previewDialog":false,"publish":false,"toc":false},"wgCategoryTreePageCategoryOptions":"{\"mode\":0,\"hideprefix\":20,\"showcount\":true,\"namespaces\":false}"});
+}</script><script>if(window.mw){
+mw.loader.implement("user.options",function($){mw.user.options.set({"ccmeonemails":0,"cols":80,"date":"default","diffonly":0,"disablemail":0,"disablesuggest":0,"editfont":"default","editondblclick":0,"editsection":1,"editsectiononrightclick":0,"enotifminoredits":0,"enotifrevealaddr":0,"enotifusertalkpages":1,"enotifwatchlistpages":0,"extendwatchlist":0,"externaldiff":0,"externaleditor":0,"fancysig":0,"forceeditsummary":0,"gender":"unknown","hideminor":0,"hidepatrolled":0,"highlightbroken":1,"imagesize":2,"justify":0,"math":1,"minordefault":0,"newpageshidepatrolled":0,"nocache":0,"noconvertlink":0,"norollbackdiff":0,"numberheadings":0,"previewonfirst":0,"previewontop":1,"quickbar":5,"rcdays":7,"rclimit":50,"rememberpassword":0,"rows":25,"searchlimit":20,"showhiddencats":0,"showjumplinks":1,"shownumberswatching":1,"showtoc":1,"showtoolbar":1,"skin":"vector","stubthreshold":0,"thumbsize":2,"underline":2,"uselivepreview":0,"usenewrc":0,"watchcreations":0,"watchdefault":0,"watchdeletion":0,
+"watchlistdays":3,"watchlisthideanons":0,"watchlisthidebots":0,"watchlisthideliu":0,"watchlisthideminor":0,"watchlisthideown":0,"watchlisthidepatrolled":0,"watchmoves":0,"wllimit":250,"vector-simplesearch":1,"usebetatoolbar":1,"usebetatoolbar-cgd":1,"wikieditor-preview":1,"variant":"ru","language":"ru","searchNs0":true,"searchNs1":false,"searchNs2":false,"searchNs3":false,"searchNs4":false,"searchNs5":false,"searchNs6":false,"searchNs7":false,"searchNs8":false,"searchNs9":false,"searchNs10":false,"searchNs11":false,"searchNs12":false,"searchNs13":false,"searchNs14":false,"searchNs15":false});;},{},{});mw.loader.implement("user.tokens",function($){mw.user.tokens.set({"editToken":"+\\","watchToken":false});;},{},{});
+
+/* cache key: mediawiki-wiki_:resourceloader:filter:minify-js:7:7508123b28c8391f7dad903573c5f09c */
+}</script>
+<script>if(window.mw){
+mw.loader.load(["mediawiki.page.startup","mediawiki.legacy.wikibits","mediawiki.legacy.ajax"]);
+}</script>
+<!--[if lt IE 7]><style type="text/css">body{behavior:url("/skins/vector/csshover.min.htc")}</style><![endif]--></head>
+<body class="mediawiki ltr sitedir-ltr ns-0 ns-subject page-Таблица_чертежей_оружия skin-vector action-view">
+		<div id="mw-page-base" class="noprint"></div>
+		<div id="mw-head-base" class="noprint"></div>
+		<!-- content -->
+		<div id="content" class="mw-body">
+			<a id="top"></a>
+			<div id="mw-js-message" style="display:none;"></div>
+						<!-- firstHeading -->
+			<h1 id="firstHeading" class="firstHeading">
+				<span dir="auto">Таблица чертежей оружия</span>
+			</h1>
+			<!-- /firstHeading -->
+			<!-- bodyContent -->
+			<div id="bodyContent">
+								<!-- tagline -->
+				<div id="siteSub">Материал из Викиневер</div>
+				<!-- /tagline -->
+								<!-- subtitle -->
+				<div id="contentSub"></div>
+				<!-- /subtitle -->
+																<!-- jumpto -->
+				<div id="jump-to-nav" class="mw-jump">
+					Перейти к: <a href="#mw-head">навигация</a>,
+					<a href="#p-search">поиск</a>
+				</div>
+				<!-- /jumpto -->
+								<!-- bodycontent -->
+				<div id="mw-content-text" lang="ru" dir="ltr" class="mw-content-ltr"><div style="float:right; clear:right; margin-left:1ex; border:1px solid gray; padding:0.7ex; background-color:white;" class="CategoryTreeTag" data-ct-mode="20" data-ct-options="{&quot;mode&quot;:20,&quot;hideprefix&quot;:20,&quot;showcount&quot;:false,&quot;namespaces&quot;:false}"><div class="CategoryTreeSection"><div class="CategoryTreeItem"><span class="CategoryTreeBullet"><span class="CategoryTreeToggle" style="display: none;" data-ct-title="Таблицы_алхимика" title="развернуть" data-ct-state="collapsed">[<b>+</b>]</span> </span> <a class="CategoryTreeLabel  CategoryTreeLabelNs14 CategoryTreeLabelCategory" href="/wiki/%D0%9A%D0%B0%D1%82%D0%B5%D0%B3%D0%BE%D1%80%D0%B8%D1%8F:%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D1%8B_%D0%B0%D0%BB%D1%85%D0%B8%D0%BC%D0%B8%D0%BA%D0%B0">Таблицы алхимика</a></div>
+		<div class="CategoryTreeChildren" style="display:none"></div></div>
+		<div class="CategoryTreeSection"><div class="CategoryTreeItem"><span class="CategoryTreeBullet"><span class="CategoryTreeToggle" style="display: none;" data-ct-title="Таблицы_каллиграфа" title="развернуть" data-ct-state="collapsed">[<b>+</b>]</span> </span> <a class="CategoryTreeLabel  CategoryTreeLabelNs14 CategoryTreeLabelCategory" href="/wiki/%D0%9A%D0%B0%D1%82%D0%B5%D0%B3%D0%BE%D1%80%D0%B8%D1%8F:%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D1%8B_%D0%BA%D0%B0%D0%BB%D0%BB%D0%B8%D0%B3%D1%80%D0%B0%D1%84%D0%B0">Таблицы каллиграфа</a></div>
+		<div class="CategoryTreeChildren" style="display:none"></div></div>
+		<div class="CategoryTreeSection"><div class="CategoryTreeItem"><span class="CategoryTreeBullet"><span class="CategoryTreeToggle" style="display: none;" data-ct-title="Таблицы_повара" title="развернуть" data-ct-state="collapsed">[<b>+</b>]</span> </span> <a class="CategoryTreeLabel  CategoryTreeLabelNs14 CategoryTreeLabelCategory" href="/wiki/%D0%9A%D0%B0%D1%82%D0%B5%D0%B3%D0%BE%D1%80%D0%B8%D1%8F:%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D1%8B_%D0%BF%D0%BE%D0%B2%D0%B0%D1%80%D0%B0">Таблицы повара</a></div>
+		<div class="CategoryTreeChildren" style="display:none"></div></div>
+		<div class="CategoryTreeSection"><div class="CategoryTreeItem"><span class="CategoryTreeBullet"><span class="CategoryTreeToggle" style="display: none;" data-ct-title="Таблицы_ремесленника" title="развернуть" data-ct-state="collapsed">[<b>+</b>]</span> </span> <a class="CategoryTreeLabel  CategoryTreeLabelNs14 CategoryTreeLabelCategory" href="/wiki/%D0%9A%D0%B0%D1%82%D0%B5%D0%B3%D0%BE%D1%80%D0%B8%D1%8F:%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D1%8B_%D1%80%D0%B5%D0%BC%D0%B5%D1%81%D0%BB%D0%B5%D0%BD%D0%BD%D0%B8%D0%BA%D0%B0">Таблицы ремесленника</a></div>
+		<div class="CategoryTreeChildren" style="display:none"></div></div>
+		<div class="CategoryTreeSection"><div class="CategoryTreeItem"><span class="CategoryTreeBullet"><span class="CategoryTreeToggle" style="display: none;" data-ct-title="Таблицы_шахтера" title="развернуть" data-ct-state="collapsed">[<b>+</b>]</span> </span> <a class="CategoryTreeLabel  CategoryTreeLabelNs14 CategoryTreeLabelCategory" href="/wiki/%D0%9A%D0%B0%D1%82%D0%B5%D0%B3%D0%BE%D1%80%D0%B8%D1%8F:%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D1%8B_%D1%88%D0%B0%D1%85%D1%82%D0%B5%D1%80%D0%B0">Таблицы шахтера</a></div>
+		<div class="CategoryTreeChildren" style="display:none"></div></div>
+		<div class="CategoryTreeSection"><div class="CategoryTreeItem"><span class="CategoryTreeBullet"> </span> <a class="CategoryTreeLabel  CategoryTreeLabelNs0 CategoryTreeLabelPage" href="/wiki/%D0%94%D1%80%D0%B0%D0%B3%D0%BE%D1%86%D0%B5%D0%BD%D0%BD%D1%8B%D0%B5_%D0%BA%D0%B0%D0%BC%D0%BD%D0%B8">Драгоценные камни</a></div>
+		<div class="CategoryTreeChildren" style="display:none"></div></div>
+		<div class="CategoryTreeSection"><div class="CategoryTreeItem"><span class="CategoryTreeBullet"> </span> <a class="CategoryTreeLabel  CategoryTreeLabelNs0 CategoryTreeLabelPage" href="/wiki/%D0%9C%D0%B5%D1%82%D0%B0%D0%BB%D0%BB%D1%8B_%D0%B8_%D1%81%D0%BF%D0%BB%D0%B0%D0%B2%D1%8B">Металлы и сплавы</a></div>
+		<div class="CategoryTreeChildren" style="display:none"></div></div>
+		<div class="CategoryTreeSection"><div class="CategoryTreeItem"><span class="CategoryTreeBullet"> </span> <a class="CategoryTreeLabel  CategoryTreeLabelNs0 CategoryTreeLabelPage" href="/wiki/%D0%A0%D0%B5%D0%BF%D1%83%D1%82%D0%B0%D1%86%D0%B8%D1%8F">Репутация</a></div>
+		<div class="CategoryTreeChildren" style="display:none"></div></div>
+		<div class="CategoryTreeSection"><div class="CategoryTreeItem"><span class="CategoryTreeBullet"> </span> <a class="CategoryTreeLabel  CategoryTreeLabelNs0 CategoryTreeLabelPage" href="/wiki/%D0%A0%D1%83%D0%B4%D0%B0_%D0%B8_%D0%BC%D0%B8%D0%BD%D0%B5%D1%80%D0%B0%D0%BB%D1%8B">Руда и минералы</a></div>
+		<div class="CategoryTreeChildren" style="display:none"></div></div>
+		<div class="CategoryTreeSection"><div class="CategoryTreeItem"><span class="CategoryTreeBullet"> </span> <a class="CategoryTreeLabel  CategoryTreeLabelNs0 CategoryTreeLabelPage" href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%B7%D0%B0%D0%B3%D0%BE%D1%82%D0%BE%D0%B2%D0%BE%D0%BA_%D0%90%D0%BB%D1%85%D0%B8%D0%BC%D0%B8%D0%BA%D0%B0">Таблица заготовок Алхимика</a></div>
+		<div class="CategoryTreeChildren" style="display:none"></div></div>
+		<div class="CategoryTreeSection"><div class="CategoryTreeItem"><span class="CategoryTreeBullet"> </span> <a class="CategoryTreeLabel  CategoryTreeLabelNs0 CategoryTreeLabelPage" href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%B7%D0%B0%D0%B3%D0%BE%D1%82%D0%BE%D0%B2%D0%BE%D0%BA_%D0%9F%D0%BE%D0%B2%D0%B0%D1%80%D0%B0">Таблица заготовок Повара</a></div>
+		<div class="CategoryTreeChildren" style="display:none"></div></div>
+		<div class="CategoryTreeSection"><div class="CategoryTreeItem"><span class="CategoryTreeBullet"> </span> <a class="CategoryTreeLabel  CategoryTreeLabelNs0 CategoryTreeLabelPage" href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%B8%D1%81%D0%BF%D0%BE%D0%BB%D1%8C%D0%B7%D0%BE%D0%B2%D0%B0%D0%BD%D0%B8%D1%8F_%D0%B7%D0%B0%D0%B3%D0%BE%D1%82%D0%BE%D0%B2%D0%BE%D0%BA_%D0%B8_%D0%B4%D1%80%D0%BE%D0%B2">Таблица использования заготовок и дров</a></div>
+		<div class="CategoryTreeChildren" style="display:none"></div></div>
+		<div class="CategoryTreeSection"><div class="CategoryTreeItem"><span class="CategoryTreeBullet"> </span> <a class="CategoryTreeLabel  CategoryTreeLabelNs0 CategoryTreeLabelPage" href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%9B%D0%B5%D1%81%D0%BE%D1%80%D1%83%D0%B1%D0%B0">Таблица Лесоруба</a></div>
+		<div class="CategoryTreeChildren" style="display:none"></div></div>
+		<div class="CategoryTreeSection"><div class="CategoryTreeItem"><span class="CategoryTreeBullet"> </span> <a class="CategoryTreeLabel  CategoryTreeLabelNs0 CategoryTreeLabelPage" href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%BC%D0%B0%D1%82%D0%B5%D1%80%D0%B8%D0%B0%D0%BB%D0%BE%D0%B2_%D0%9A%D0%B0%D0%BB%D0%BB%D0%B8%D0%B3%D1%80%D0%B0%D1%84%D0%B0">Таблица материалов Каллиграфа</a></div>
+		<div class="CategoryTreeChildren" style="display:none"></div></div>
+		<div class="CategoryTreeSection"><div class="CategoryTreeItem"><span class="CategoryTreeBullet"> </span> <a class="CategoryTreeLabel  CategoryTreeLabelNs0 CategoryTreeLabelPage" href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%9E%D1%85%D0%BE%D1%82%D0%BD%D0%B8%D0%BA%D0%B0">Таблица Охотника</a></div>
+		<div class="CategoryTreeChildren" style="display:none"></div></div>
+		<div class="CategoryTreeSection"><div class="CategoryTreeItem"><span class="CategoryTreeBullet"> </span> <a class="CategoryTreeLabel  CategoryTreeLabelNs0 CategoryTreeLabelPage" href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%9F%D0%BB%D0%BE%D1%82%D0%BD%D0%B8%D0%BA%D0%B0">Таблица Плотника</a></div>
+		<div class="CategoryTreeChildren" style="display:none"></div></div>
+		<div class="CategoryTreeSection"><div class="CategoryTreeItem"><span class="CategoryTreeBullet"> </span> <a class="CategoryTreeLabel  CategoryTreeLabelNs0 CategoryTreeLabelPage" href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D1%80%D0%B5%D0%BC%D0%BE%D0%BD%D1%82%D0%B0">Таблица ремонта</a></div>
+		<div class="CategoryTreeChildren" style="display:none"></div></div>
+		<div class="CategoryTreeSection"><div class="CategoryTreeItem"><span class="CategoryTreeBullet"> </span> <a class="CategoryTreeLabel  CategoryTreeLabelNs0 CategoryTreeLabelPage" href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%A0%D0%B5%D1%86%D0%B5%D0%BF%D1%82%D0%BE%D0%B2_%D0%90%D0%BB%D1%85%D0%B8%D0%BC%D0%B8%D0%BA%D0%B0">Таблица Рецептов Алхимика</a></div>
+		<div class="CategoryTreeChildren" style="display:none"></div></div>
+		<div class="CategoryTreeSection"><div class="CategoryTreeItem"><span class="CategoryTreeBullet"> </span> <a class="CategoryTreeLabel  CategoryTreeLabelNs0 CategoryTreeLabelPage" href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D1%80%D0%B5%D1%86%D0%B5%D0%BF%D1%82%D0%BE%D0%B2_%D0%94%D0%BE%D0%BA%D1%82%D0%BE%D1%80%D0%B0">Таблица рецептов Доктора</a></div>
+		<div class="CategoryTreeChildren" style="display:none"></div></div>
+		<div class="CategoryTreeSection"><div class="CategoryTreeItem"><span class="CategoryTreeBullet"> </span> <a class="CategoryTreeLabel  CategoryTreeLabelNs0 CategoryTreeLabelPage" href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%A0%D0%B5%D1%86%D0%B5%D0%BF%D1%82%D0%BE%D0%B2_%D0%9A%D0%B0%D0%BB%D0%BB%D0%B8%D0%B3%D1%80%D0%B0%D1%84%D0%B0">Таблица Рецептов Каллиграфа</a></div>
+		<div class="CategoryTreeChildren" style="display:none"></div></div>
+		<div class="CategoryTreeSection"><div class="CategoryTreeItem"><span class="CategoryTreeBullet"> </span> <a class="CategoryTreeLabel  CategoryTreeLabelNs0 CategoryTreeLabelPage" href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%A0%D0%B5%D1%86%D0%B5%D0%BF%D1%82%D0%BE%D0%B2_%D0%9F%D0%BE%D0%B2%D0%B0%D1%80%D0%B0">Таблица Рецептов Повара</a></div>
+		<div class="CategoryTreeChildren" style="display:none"></div></div>
+		<div class="CategoryTreeSection"><div class="CategoryTreeItem"><span class="CategoryTreeBullet"> </span> <a class="CategoryTreeLabel  CategoryTreeLabelNs0 CategoryTreeLabelPage" href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%A0%D1%8B%D0%B1%D0%B0%D0%BA%D0%B0">Таблица Рыбака</a></div>
+		<div class="CategoryTreeChildren" style="display:none"></div></div>
+		<div class="CategoryTreeSection"><div class="CategoryTreeItem"><span class="CategoryTreeBullet"> </span> <a class="CategoryTreeLabel  CategoryTreeLabelNs0 CategoryTreeLabelPage" href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%A2%D1%80%D0%B0%D0%B2%D0%BD%D0%B8%D0%BA%D0%B0">Таблица Травника</a></div>
+		<div class="CategoryTreeChildren" style="display:none"></div></div>
+		<div class="CategoryTreeSection"><div class="CategoryTreeItem"><span class="CategoryTreeBullet"> </span> <a class="CategoryTreeLabel  CategoryTreeLabelNs0 CategoryTreeLabelPage" href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D1%87%D0%B5%D1%80%D1%82%D0%B5%D0%B6%D0%B5%D0%B9_%D0%B2%D0%B5%D1%89%D0%B5%D0%B9">Таблица чертежей вещей</a></div>
+		<div class="CategoryTreeChildren" style="display:none"></div></div>
+		<div class="CategoryTreeSection"><div class="CategoryTreeItem"><span class="CategoryTreeBullet"> </span> <a class="CategoryTreeLabel  CategoryTreeLabelNs0 CategoryTreeLabelPage" href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D1%87%D0%B5%D1%80%D1%82%D0%B5%D0%B6%D0%B5%D0%B9_%D0%BE%D1%80%D1%83%D0%B6%D0%B8%D1%8F">Таблица чертежей оружия</a></div>
+		<div class="CategoryTreeChildren" style="display:none"></div></div>
+		<div class="CategoryTreeSection"><div class="CategoryTreeItem"><span class="CategoryTreeBullet"> </span> <a class="CategoryTreeLabel  CategoryTreeLabelNs0 CategoryTreeLabelPage" href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D1%87%D0%B5%D1%80%D1%82%D0%B5%D0%B6%D0%B5%D0%B9_%D0%BF%D1%80%D0%BE%D1%84.%D0%B8%D0%BD%D0%B2%D0%B5%D0%BD%D1%82%D0%B0%D1%80%D1%8F">Таблица чертежей проф.инвентаря</a></div>
+		<div class="CategoryTreeChildren" style="display:none"></div></div>
+		<div class="CategoryTreeSection"><div class="CategoryTreeItem"><span class="CategoryTreeBullet"> </span> <a class="CategoryTreeLabel  CategoryTreeLabelNs0 CategoryTreeLabelPage" href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%AE%D0%B2%D0%B5%D0%BB%D0%B8%D1%80%D0%B0">Таблица Ювелира</a></div>
+		<div class="CategoryTreeChildren" style="display:none"></div></div>
+		</div>
+<div style="float:right; clear:right; margin-left:1ex; border:1px solid gray; padding:0.7ex; background-color:white;" class="CategoryTreeTag" data-ct-mode="20" data-ct-options="{&quot;mode&quot;:20,&quot;hideprefix&quot;:20,&quot;showcount&quot;:false,&quot;namespaces&quot;:false}"><div class="CategoryTreeSection"><div class="CategoryTreeItem"><span class="CategoryTreeBullet"> </span> <a class="CategoryTreeLabel  CategoryTreeLabelNs0 CategoryTreeLabelPage" href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D1%80%D0%B5%D0%BC%D0%BE%D0%BD%D1%82%D0%B0">Таблица ремонта</a></div>
+		<div class="CategoryTreeChildren" style="display:none"></div></div>
+		<div class="CategoryTreeSection"><div class="CategoryTreeItem"><span class="CategoryTreeBullet"> </span> <a class="CategoryTreeLabel  CategoryTreeLabelNs0 CategoryTreeLabelPage" href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D1%87%D0%B5%D1%80%D1%82%D0%B5%D0%B6%D0%B5%D0%B9_%D0%B2%D0%B5%D1%89%D0%B5%D0%B9">Таблица чертежей вещей</a></div>
+		<div class="CategoryTreeChildren" style="display:none"></div></div>
+		<div class="CategoryTreeSection"><div class="CategoryTreeItem"><span class="CategoryTreeBullet"> </span> <a class="CategoryTreeLabel  CategoryTreeLabelNs0 CategoryTreeLabelPage" href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D1%87%D0%B5%D1%80%D1%82%D0%B5%D0%B6%D0%B5%D0%B9_%D0%BE%D1%80%D1%83%D0%B6%D0%B8%D1%8F">Таблица чертежей оружия</a></div>
+		<div class="CategoryTreeChildren" style="display:none"></div></div>
+		<div class="CategoryTreeSection"><div class="CategoryTreeItem"><span class="CategoryTreeBullet"> </span> <a class="CategoryTreeLabel  CategoryTreeLabelNs0 CategoryTreeLabelPage" href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D1%87%D0%B5%D1%80%D1%82%D0%B5%D0%B6%D0%B5%D0%B9_%D0%BF%D1%80%D0%BE%D1%84.%D0%B8%D0%BD%D0%B2%D0%B5%D0%BD%D1%82%D0%B0%D1%80%D1%8F">Таблица чертежей проф.инвентаря</a></div>
+		<div class="CategoryTreeChildren" style="display:none"></div></div>
+		</div>
+<p><br />
+Примечания: 
+</p>
+<ul><li> В связи с обновлением от 14 августа 2018 года (<a rel="nofollow" target="_blank" class="external free" href="http://forum.neverlands.ru/11/1/879341/1/">http://forum.neverlands.ru/11/1/879341/1/</a>) были изменены цены на многие игровые ресурсы. Рецепты, где цена ресурсов целая, без дробной части, были проверены после данного обновления, количество ресурсов в других рецептах может отличаться.
+</li><li> у некоторых предметов требования умения указаны приблизительно, т.к. не все мастера проверяли требования "родными" умениями, а вещами умения добавляются не всегда линейно  
+</li><li> по информации с форума от Roberto Baggio [23]  на всё оружие 11 уровня надо 275 умения 
+</li></ul>
+<p><br />
+</p>
+<table id="toc" class="toc"><tr><td><div id="toctitle"><h2>Содержание</h2></div>
+<ul>
+<li class="toclevel-1 tocsection-1"><a href="#.D0.9E.D1.80.D1.83.D0.B6.D0.B8.D0.B5"><span class="tocnumber">1</span> <span class="toctext">Оружие</span></a>
+<ul>
+<li class="toclevel-2 tocsection-2"><a href="#.D0.9D.D0.BE.D0.B6.D0.B8"><span class="tocnumber">1.1</span> <span class="toctext">Ножи</span></a></li>
+<li class="toclevel-2 tocsection-3"><a href="#.D0.9C.D0.B5.D1.87.D0.B8"><span class="tocnumber">1.2</span> <span class="toctext">Мечи</span></a></li>
+<li class="toclevel-2 tocsection-4"><a href="#.D0.A2.D0.BE.D0.BF.D0.BE.D1.80.D1.8B"><span class="tocnumber">1.3</span> <span class="toctext">Топоры</span></a></li>
+<li class="toclevel-2 tocsection-5"><a href="#.D0.94.D1.80.D0.BE.D0.B1.D1.8F.D1.89.D0.B8.D0.B5"><span class="tocnumber">1.4</span> <span class="toctext">Дробящие</span></a></li>
+<li class="toclevel-2 tocsection-6"><a href="#.D0.9F.D0.B8.D0.BA.D0.B8_.D0.B8_.D0.90.D0.BB.D0.B5.D0.B1.D0.B0.D1.80.D0.B4.D1.8B"><span class="tocnumber">1.5</span> <span class="toctext">Пики и Алебарды</span></a></li>
+<li class="toclevel-2 tocsection-7"><a href="#.D0.9F.D0.BE.D1.81.D0.BE.D1.85.D0.B8"><span class="tocnumber">1.6</span> <span class="toctext">Посохи</span></a></li>
+<li class="toclevel-2 tocsection-8"><a href="#.D0.A9.D0.B8.D1.82.D1.8B"><span class="tocnumber">1.7</span> <span class="toctext">Щиты</span></a></li>
+</ul>
+</li>
+</ul>
+</td></tr></table>
+<h1> <span class="mw-headline" id=".D0.9E.D1.80.D1.83.D0.B6.D0.B8.D0.B5"> Оружие </span></h1>
+<h2> <span class="mw-headline" id=".D0.9D.D0.BE.D0.B6.D0.B8"> Ножи </span></h2>
+<table class="wikitable sortable">
+
+<tr style="vertical-align:top;">
+<th> Картинка
+</th>
+<th> Название предмета
+</th>
+<th> Треб.<br />умен.
+</th>
+<th> Уров.<br />предм.
+</th>
+<th> Гос.<br />цена
+</th>
+<th> Время<br />изг.
+</th>
+<th> Ресурсы для изготовления
+</th>
+<th> затр.<br />рес,NV
+</th>
+<th> Молот
+</th></tr>
+<tr style="vertical-align:top;">
+<td><img src="http://image.neverlands.ru/weapon/i_w4_101.gif" alt="i_w4_101.gif" />
+</td>
+<td> <b>Перочинный Нож</b>
+</td>
+<td>0
+</td>
+<td>1
+</td>
+<td>7 NV
+</td>
+<td>1 мин
+</td>
+<td><img src="http://image.neverlands.ru/resources/312.gif" alt="312.gif" /> Заготовка из орешника: 0.20 по 5.00
+<p><img src="http://image.neverlands.ru/resources/426.gif" alt="426.gif" /> Олово: 0.10 по 30.00 
+</p>
+</td>
+<td>5
+</td>
+<td><img src="http://image.neverlands.ru/tools/138.gif" alt="138.gif" />
+</td></tr>
+<tr style="vertical-align:top;">
+<td><img src="http://image.neverlands.ru/weapon/i_w4_104.gif" alt="i_w4_104.gif" />
+</td>
+<td> <b>Кинжал Убийцы</b>
+</td>
+<td>10
+</td>
+<td>3
+</td>
+<td>19 NV
+</td>
+<td>3 мин
+</td>
+<td><img src="http://image.neverlands.ru/resources/427.gif" alt="427.gif" /> Медь: 0.10 по 32.00
+<p><img src="http://image.neverlands.ru/resources/426.gif" alt="426.gif" /> Олово: 0.45 по 30.00 
+</p>
+</td>
+<td>17.7
+</td>
+<td><img src="http://image.neverlands.ru/tools/138.gif" alt="138.gif" />
+</td></tr>
+<tr style="vertical-align:top;">
+<td><img src="http://image.neverlands.ru/weapon/i_w4_103.gif" alt="i_w4_103.gif" />
+</td>
+<td> <b>Нож Охотника</b>
+</td>
+<td>10
+</td>
+<td>3
+</td>
+<td>19 NV
+</td>
+<td>3 мин
+</td>
+<td><img src="http://image.neverlands.ru/resources/312.gif" alt="312.gif" /> Заготовка из орешника: 1.00 по 5.00
+<p><img src="http://image.neverlands.ru/resources/426.gif" alt="426.gif" /> Олово: 0.40 по 30.00 
+</p>
+</td>
+<td>14
+</td>
+<td><img src="http://image.neverlands.ru/tools/138.gif" alt="138.gif" />
+</td></tr>
+<tr style="vertical-align:top;">
+<td><img src="http://image.neverlands.ru/weapon/i_w4_102.gif" alt="i_w4_102.gif" />
+</td>
+<td> <b>Мясницкий Тесак</b>
+</td>
+<td>10
+</td>
+<td>3
+</td>
+<td>20 NV
+</td>
+<td>3 мин
+</td>
+<td><img src="http://image.neverlands.ru/resources/312.gif" alt="312.gif" /> Заготовка из орешника: 0.60 по 5.00
+<p><img src="http://image.neverlands.ru/resources/426.gif" alt="426.gif" /> Олово: 0.50 по 30.00 
+</p>
+</td>
+<td>19
+</td>
+<td><img src="http://image.neverlands.ru/tools/138.gif" alt="138.gif" />
+</td></tr>
+<tr style="vertical-align:top;">
+<td><img src="http://image.neverlands.ru/weapon/i_w4_106.gif" alt="i_w4_106.gif" />
+</td>
+<td> <b>Нож Рог Оленя</b>
+</td>
+<td>25
+</td>
+<td>4
+</td>
+<td>26 NV
+</td>
+<td>4 мин
+</td>
+<td><img src="http://image.neverlands.ru/resources/427.gif" alt="427.gif" /> Медь: 0.10 по 32.00
+<p><img src="http://image.neverlands.ru/resources/426.gif" alt="426.gif" /> Олово: 0.50 по 30.00
+</p><p><img src="http://image.neverlands.ru/resources/314.gif" alt="314.gif" /> Заготовка из ольхи: 0.20 по 8.00 
+</p>
+</td>
+<td>20.8
+</td>
+<td><img src="http://image.neverlands.ru/tools/138.gif" alt="138.gif" />
+</td></tr>
+<tr style="vertical-align:top;">
+<td><img src="http://image.neverlands.ru/weapon/i_w4_107.gif" alt="i_w4_107.gif" />
+</td>
+<td> <b>Кинжал Жестокого Обращения</b>
+</td>
+<td>25
+</td>
+<td>4
+</td>
+<td>26 NV
+</td>
+<td>4 мин
+</td>
+<td><img src="http://image.neverlands.ru/resources/426.gif" alt="426.gif" /> Олово: 0.40 по 30.00
+<p><img src="http://image.neverlands.ru/resources/422.gif" alt="422.gif" /> Сталь: 0.20 по 38.00 
+</p>
+</td>
+<td>20.6
+</td>
+<td><img src="http://image.neverlands.ru/tools/138.gif" alt="138.gif" />
+</td></tr>
+<tr style="vertical-align:top;">
+<td><img src="http://image.neverlands.ru/weapon/i_w4_105.gif" alt="i_w4_105.gif" />
+</td>
+<td> <b>Засапожный Кинжал</b>
+</td>
+<td>25
+</td>
+<td>4
+</td>
+<td>27 NV
+</td>
+<td>4 мин
+</td>
+<td><img src="http://image.neverlands.ru/resources/426.gif" alt="426.gif" /> Олово: 0.70 по 30.00
+<p><img src="http://image.neverlands.ru/resources/313.gif" alt="313.gif" /> Заготовка из ивы: 0.30 по 5.00
+</p>
+</td>
+<td>23.5
+</td>
+<td><img src="http://image.neverlands.ru/tools/138.gif" alt="138.gif" />
+</td></tr>
+<tr style="vertical-align:top;">
+<td><img src="http://image.neverlands.ru/weapon/i_w4_108.gif" alt="i_w4_108.gif" />
+</td>
+<td> <b>Кинжал Недопустимости</b>
+</td>
+<td>50
+</td>
+<td>5
+</td>
+<td>40 NV
+</td>
+<td>5 мин
+</td>
+<td><img src="http://image.neverlands.ru/resources/406.gif" alt="406.gif" /> Бронза: 0.20 по 39.00
+<p><img src="http://image.neverlands.ru/resources/422.gif" alt="422.gif" /> Сталь: 0.60 по 38.00 
+</p>
+</td>
+<td>31.6
+</td>
+<td><img src="http://image.neverlands.ru/tools/138.gif" alt="138.gif" />
+</td></tr>
+<tr style="vertical-align:top;">
+<td><img src="http://image.neverlands.ru/weapon/i_w4_109.gif" alt="i_w4_109.gif" />
+</td>
+<td> <b>Мизерикордия</b>
+</td>
+<td>50
+</td>
+<td>5
+</td>
+<td>40 NV
+</td>
+<td>5 мин
+</td>
+<td><img src="http://image.neverlands.ru/resources/427.gif" alt="427.gif" /> Медь: 0.15 по 32.00
+<p><img src="http://image.neverlands.ru/resources/422.gif" alt="422.gif" /> Сталь: 0.40 по 38.00
+</p><p><img src="http://image.neverlands.ru/resources/407.gif" alt="407.gif" /> Латунь: 0.20 по 50.50 
+</p>
+</td>
+<td>31.1
+</td>
+<td><img src="http://image.neverlands.ru/tools/138.gif" alt="138.gif" />
+</td></tr>
+<tr style="vertical-align:top;">
+<td><img src="http://image.neverlands.ru/weapon/i_w4_110.gif" alt="i_w4_110.gif" />
+</td>
+<td> <b>Пронзающий Кинжал</b>
+</td>
+<td>50
+</td>
+<td>5
+</td>
+<td>40 NV
+</td>
+<td>5 мин
+</td>
+<td><img src="http://image.neverlands.ru/resources/406.gif" alt="406.gif" /> Бронза: 0.20 по 39.00
+<p><img src="http://image.neverlands.ru/resources/422.gif" alt="422.gif" /> Сталь: 0.50 по 38.00
+</p><p><img src="http://image.neverlands.ru/resources/427.gif" alt="427.gif" /> Медь: 0.10 по 32.00 
+</p>
+</td>
+<td>31
+</td>
+<td><img src="http://image.neverlands.ru/tools/138.gif" alt="138.gif" />
+</td></tr>
+<tr style="vertical-align:top;">
+<td><img src="http://image.neverlands.ru/weapon/i_w4_121.gif" alt="i_w4_121.gif" />
+</td>
+<td> <b>Алмазный Кинжал</b>
+</td>
+<td>70
+</td>
+<td>5
+</td>
+<td>75 NV
+</td>
+<td>6 мин
+</td>
+<td><img src="http://image.neverlands.ru/resources/426.gif" alt="426.gif" /> Олово: 0.50 по 30.00
+<p><img src="http://image.neverlands.ru/resources/407.gif" alt="407.gif" /> Латунь: 0.10 по 50.50
+</p><p><img src="http://image.neverlands.ru/resources/408.gif" alt="408.gif" /> Маргонит: 1.00 по 47.00 
+</p>
+</td>
+<td>67.05
+</td>
+<td><img src="http://image.neverlands.ru/tools/138.gif" alt="138.gif" />
+</td></tr>
+<tr style="vertical-align:top;">
+<td><img src="http://image.neverlands.ru/weapon/i_w4_122.gif" alt="i_w4_122.gif" />
+</td>
+<td> <b>Кинжал Мага</b>
+</td>
+<td>70
+</td>
+<td>5
+</td>
+<td>75 NV
+</td>
+<td>6 мин
+</td>
+<td><img src="http://image.neverlands.ru/resources/316.gif" alt="316.gif" /> Заготовка из берёзы: 1.00 по 10.00
+<p><img src="http://image.neverlands.ru/resources/427.gif" alt="427.gif" /> Медь: 0.50 по 32.00
+</p><p><img src="http://image.neverlands.ru/resources/422.gif" alt="422.gif" /> Сталь: 1.00 по 38.00 
+</p>
+</td>
+<td>161
+</td>
+<td><img src="http://image.neverlands.ru/tools/138.gif" alt="138.gif" />
+</td></tr>
+<tr style="vertical-align:top;">
+<td><img src="http://image.neverlands.ru/weapon/i_w4_111.gif" alt="i_w4_111.gif" />
+</td>
+<td> <b>Кинжал-Лепесток</b>
+</td>
+<td>80
+</td>
+<td>7
+</td>
+<td>70 NV
+</td>
+<td>7 мин
+</td>
+<td><img src="http://image.neverlands.ru/resources/427.gif" alt="427.gif" /> Медь: 0.25 по 32.00
+<p><img src="http://image.neverlands.ru/resources/428.gif" alt="428.gif" /> Железо: 0.25 по 36.00
+</p><p><img src="http://image.neverlands.ru/resources/406.gif" alt="406.gif" /> Бронза: 0.50 по 39.00 
+</p>
+</td>
+<td>37.5
+</td>
+<td><img src="http://image.neverlands.ru/tools/138.gif" alt="138.gif" />
+</td></tr>
+<tr style="vertical-align:top;">
+<td><img src="http://image.neverlands.ru/weapon/i_w4_112.gif" alt="i_w4_112.gif" />
+</td>
+<td> <b>Нож Наёмника</b>
+</td>
+<td>80
+</td>
+<td>7
+</td>
+<td>70 NV
+</td>
+<td>7 мин
+</td>
+<td><img src="http://image.neverlands.ru/resources/426.gif" alt="426.gif" /> Олово: 0.25 по 30.00
+<p><img src="http://image.neverlands.ru/resources/428.gif" alt="428.gif" /> Железо: 0.50 по 36.00
+</p><p><img src="http://image.neverlands.ru/resources/319.gif" alt="319.gif" /> Заготовка из тиса: 0.75 по 15.00 
+</p>
+</td>
+<td>37.75
+</td>
+<td><img src="http://image.neverlands.ru/tools/138.gif" alt="138.gif" />
+</td></tr>
+<tr style="vertical-align:top;">
+<td><img src="http://image.neverlands.ru/weapon/i_w4_113.gif" alt="i_w4_113.gif" />
+</td>
+<td> <b>Нож Дворцового Стража</b>
+</td>
+<td>80
+</td>
+<td>7
+</td>
+<td>70 NV
+</td>
+<td>7 мин
+</td>
+<td><img src="http://image.neverlands.ru/resources/406.gif" alt="406.gif" /> Бронза: 0.25 по 39.00
+<p><img src="http://image.neverlands.ru/resources/428.gif" alt="428.gif" /> Железо: 0.50 по 36.00
+</p><p><img src="http://image.neverlands.ru/resources/340.gif" alt="340.gif" /> Заготовка из бука: 0.75 по 12.00 
+</p>
+</td>
+<td>37.75
+</td>
+<td><img src="http://image.neverlands.ru/tools/138.gif" alt="138.gif" />
+</td></tr>
+<tr style="vertical-align:top;">
+<td><img src="http://image.neverlands.ru/weapon/i_w4_114.gif" alt="i_w4_114.gif" />
+</td>
+<td> <b>Кинжал Истинной Cути</b>
+</td>
+<td>125
+</td>
+<td>9
+</td>
+<td>90 NV
+</td>
+<td>9 мин
+</td>
+<td><img src="http://image.neverlands.ru/resources/422.gif" alt="422.gif" /> Сталь: 0.50 по 38.00
+<p><img src="http://image.neverlands.ru/resources/408.gif" alt="408.gif" /> Маргонит: 0.25 по 47.00
+</p><p><img src="http://image.neverlands.ru/resources/407.gif" alt="407.gif" /> Латунь: 0.25 по 50.50 
+</p>
+</td>
+<td>44.38
+</td>
+<td><img src="http://image.neverlands.ru/tools/139.gif" alt="139.gif" />
+</td></tr>
+<tr style="vertical-align:top;">
+<td><img src="http://image.neverlands.ru/weapon/i_w4_115.gif" alt="i_w4_115.gif" />
+</td>
+<td> <b>Нож Цветения</b>
+</td>
+<td>125
+</td>
+<td>9
+</td>
+<td>90 NV
+</td>
+<td>9 мин
+</td>
+<td><img src="http://image.neverlands.ru/resources/422.gif" alt="422.gif" /> Сталь: 0.50 по 38.00
+<p><img src="http://image.neverlands.ru/resources/428.gif" alt="428.gif" /> Железо: 0.50 по 36.00
+</p><p><img src="http://image.neverlands.ru/resources/427.gif" alt="427.gif" /> Медь: 0.25 по 32.00 
+</p>
+</td>
+<td>46
+</td>
+<td><img src="http://image.neverlands.ru/tools/139.gif" alt="139.gif" />
+</td></tr>
+<tr style="vertical-align:top;">
+<td><img src="http://image.neverlands.ru/weapon/i_w4_116.gif" alt="i_w4_116.gif" />
+</td>
+<td> <b>Тесак Мародёра</b>
+</td>
+<td>125
+</td>
+<td>9
+</td>
+<td>90 NV
+</td>
+<td>9 мин
+</td>
+<td><img src="http://image.neverlands.ru/resources/422.gif" alt="422.gif" /> Сталь: 0.25 по 38.00
+<p><img src="http://image.neverlands.ru/resources/426.gif" alt="426.gif" /> Олово: 0.75 по 30.00
+</p><p><img src="http://image.neverlands.ru/resources/320.gif" alt="320.gif" /> Заготовка из вяза: 0.75 по 19.00 
+</p>
+</td>
+<td>47.25
+</td>
+<td><img src="http://image.neverlands.ru/tools/139.gif" alt="139.gif" />
+</td></tr>
+<tr style="vertical-align:top;">
+<td><img src="http://image.neverlands.ru/weapon/i_w4_117.gif" alt="i_w4_117.gif" />
+</td>
+<td> <b>Кинжал Бессмысленного Убийства</b>
+</td>
+<td>170
+</td>
+<td>10
+</td>
+<td>110 NV
+</td>
+<td>10 мин
+</td>
+<td><img src="http://image.neverlands.ru/resources/406.gif" alt="406.gif" /> Бронза: 0.25 по 39.00
+<p><img src="http://image.neverlands.ru/resources/424.gif" alt="424.gif" /> Акмонитал: 0.25 по 73.00 
+</p><p><img src="http://image.neverlands.ru/resources/423.gif" alt="423.gif" /> Фехраль: 0.50 по 68.00 
+</p>
+</td>
+<td>63
+</td>
+<td><img src="http://image.neverlands.ru/tools/139.gif" alt="139.gif" />
+</td></tr>
+<tr style="vertical-align:top;">
+<td><img src="http://image.neverlands.ru/weapon/i_w4_118.gif" alt="i_w4_118.gif" />
+</td>
+<td> <b>Кинжал Незримой Поступи</b>
+</td>
+<td>170
+</td>
+<td>10
+</td>
+<td>110 NV
+</td>
+<td>10 мин
+</td>
+<td><img src="http://image.neverlands.ru/resources/429.gif" alt="429.gif" /> Серебро: 0.50 по 47.00
+<p><img src="http://image.neverlands.ru/resources/407.gif" alt="407.gif" /> Латунь: 0.25 по 50.50 
+</p><p><img src="http://image.neverlands.ru/resources/423.gif" alt="423.gif" /> Фехраль: 0.25 по 68.00 
+</p>
+</td>
+<td>54.13
+</td>
+<td><img src="http://image.neverlands.ru/tools/139.gif" alt="139.gif" />
+</td></tr>
+<tr style="vertical-align:top;">
+<td><img src="http://image.neverlands.ru/weapon/i_w4_119.gif" alt="i_w4_119.gif" />
+</td>
+<td> <b>Кинжал Обещаний</b>
+</td>
+<td>170
+</td>
+<td>10
+</td>
+<td>110 NV
+</td>
+<td>10 мин
+</td>
+<td><img src="http://image.neverlands.ru/resources/429.gif" alt="429.gif" /> Серебро: 0.25 по 47.00
+<p><img src="http://image.neverlands.ru/resources/425.gif" alt="425.gif" /> Булат: 0.50 по 69.50 
+</p><p><img src="http://image.neverlands.ru/resources/408.gif" alt="408.gif" /> Маргонит: 0.25 по 47.00 
+</p>
+</td>
+<td>59.25
+</td>
+<td><img src="http://image.neverlands.ru/tools/139.gif" alt="139.gif" />
+</td></tr>
+<tr style="vertical-align:top;">
+<td><img src="http://image.neverlands.ru/weapon/i_w4_120.gif" alt="i_w4_120.gif" />
+</td>
+<td> <b>Пламенный Кинжал</b>
+</td>
+<td>250
+</td>
+<td>11
+</td>
+<td>125 NV
+</td>
+<td>11 мин
+</td>
+<td><img src="http://image.neverlands.ru/resources/422.gif" alt="422.gif" /> Сталь: 0.25 по 38.00
+<p><img src="http://image.neverlands.ru/resources/407.gif" alt="407.gif" /> Латунь: 0.50 по 50.50 
+</p><p><img src="http://image.neverlands.ru/resources/430.gif" alt="430.gif" /> Золото: 0.25 по 56.00 
+</p><p><img src="http://image.neverlands.ru/resources/427.gif" alt="427.gif" /> Медь: 0.50 по 32.00 
+</p>
+</td>
+<td>65.75
+</td>
+<td><img src="http://image.neverlands.ru/tools/139.gif" alt="139.gif" />
+</td></tr>
+<tr style="vertical-align:top;">
+<td><img src="http://image.neverlands.ru/weapon/md4urg8z.gif" alt="md4urg8z.gif" />
+</td>
+<td> <b>Восточный Кинжал</b>
+</td>
+<td>420
+</td>
+<td>16
+</td>
+<td>400 NV
+</td>
+<td>16 мин
+</td>
+<td><img src="http://image.neverlands.ru/resources/351.gif" alt="351.gif" /> Заготовка из секвойи: 0.45 по 40.0
+<p><img src="http://image.neverlands.ru/resources/418.gif" alt="418.gif" /> Вулканит: 1.35 по 93.0
+</p><p><img src="http://image.neverlands.ru/resources/421.gif" alt="421.gif" /> Авальонн: 0.60 по 155.50
+</p>
+</td>
+<td>237.85
+</td>
+<td><img src="http://image.neverlands.ru/tools/140.gif" alt="140.gif" />
+</td></tr>
+<tr style="vertical-align:top;">
+<td><img src="http://image.neverlands.ru/weapon/0mbqad5u.gif" alt="0mbqad5u.gif" />
+</td>
+<td> <b>Ритуальный Кинжал</b>
+</td>
+<td>420
+</td>
+<td>16
+</td>
+<td>400 NV
+</td>
+<td>16 мин
+</td>
+<td><img src="http://image.neverlands.ru/resources/474.gif" alt="474.gif" /> Красная краска: 0.60 по 50.00
+<p><img src="http://image.neverlands.ru/resources/435.gif" alt="435.gif" /> Метеорит: 0.75 по 146.0
+</p><p><img src="http://image.neverlands.ru/resources/434.gif" alt="434.gif" /> Адамантин: 0.90 по 115.0
+</p>
+</td>
+<td>244
+</td>
+<td><img src="http://image.neverlands.ru/tools/140.gif" alt="140.gif" />
+</td></tr></table>
+<h2> <span class="mw-headline" id=".D0.9C.D0.B5.D1.87.D0.B8"> Мечи </span></h2>
+<table class="wikitable sortable">
+
+<tr style="vertical-align:top;">
+<th> Картинка
+</th>
+<th> Название предмета
+</th>
+<th> Треб.<br />умен.
+</th>
+<th> Уров.<br />предм.
+</th>
+<th> Гос.<br />цена
+</th>
+<th> Время<br />изг.
+</th>
+<th> Ресурсы для изготовления
+</th>
+<th> затр.<br />рес,NV
+</th>
+<th> Молот
+</th></tr>
+<tr style="vertical-align:top;">
+<td><img src="http://image.neverlands.ru/weapon/i_w1_101.gif" alt="i_w1_101.gif" />
+</td>
+<td> <b>Меч Ощущений</b>
+</td>
+<td>10
+</td>
+<td>2
+</td>
+<td>14 NV
+</td>
+<td>2 мин
+</td>
+<td><img src="http://image.neverlands.ru/resources/426.gif" alt="426.gif" /> Олово: 0.30 по 30.00
+<p><img src="http://image.neverlands.ru/resources/427.gif" alt="427.gif" /> Медь: 0.05 по 32.00 
+</p>
+</td>
+<td>11.6
+</td>
+<td><img src="http://image.neverlands.ru/tools/138.gif" alt="138.gif" />
+</td></tr>
+<tr style="vertical-align:top;">
+<td><img src="http://image.neverlands.ru/weapon/i_w1_102.gif" alt="i_w1_102.gif" />
+</td>
+<td> <b>Клинок Действия</b>
+</td>
+<td>10
+</td>
+<td>2
+</td>
+<td>14 NV
+</td>
+<td>2 мин
+</td>
+<td><img src="http://image.neverlands.ru/resources/426.gif" alt="426.gif" /> Олово: 0.20 по 30.00
+<p><img src="http://image.neverlands.ru/resources/427.gif" alt="427.gif" /> Медь: 0.10 по 32.00 
+</p>
+</td>
+<td>17.7
+</td>
+<td><img src="http://image.neverlands.ru/tools/138.gif" alt="138.gif" />
+</td></tr>
+<tr style="vertical-align:top;">
+<td><img src="http://image.neverlands.ru/weapon/i_w1_103.gif" alt="i_w1_103.gif" />
+</td>
+<td> <b>Меч Улыбки</b>
+</td>
+<td>25
+</td>
+<td>4
+</td>
+<td>60 NV
+</td>
+<td>4 мин
+</td>
+<td><img src="http://image.neverlands.ru/resources/407.gif" alt="407.gif" /> Латунь: 0.45 по 50.50
+<p><img src="http://image.neverlands.ru/resources/422.gif" alt="422.gif" /> Сталь: 0.70 по 38.00 
+</p>
+</td>
+<td>50.33
+</td>
+<td><img src="http://image.neverlands.ru/tools/138.gif" alt="138.gif" />
+</td></tr>
+<tr style="vertical-align:top;">
+<td><img src="http://image.neverlands.ru/weapon/i_w1_104.gif" alt="i_w1_104.gif" />
+</td>
+<td> <b>Двойной Клинок</b>
+</td>
+<td>25
+</td>
+<td>4
+</td>
+<td>60 NV
+</td>
+<td>4 мин
+</td>
+<td> <img src="http://image.neverlands.ru/resources/427.gif" alt="427.gif" /> Медь: 0.40 по 32.00
+<p><img src="http://image.neverlands.ru/resources/422.gif" alt="422.gif" /> Сталь: 1.00 по 38.00 
+</p>
+</td>
+<td>51.8
+</td>
+<td><img src="http://image.neverlands.ru/tools/138.gif" alt="138.gif" />
+</td></tr>
+<tr style="vertical-align:top;">
+<td><img src="http://image.neverlands.ru/weapon/i_w1_105.gif" alt="i_w1_105.gif" />
+</td>
+<td> <b>Искривленный Клинок</b>
+</td>
+<td>25
+</td>
+<td>4
+</td>
+<td>60 NV
+</td>
+<td>4 мин
+</td>
+<td> <img src="http://image.neverlands.ru/resources/427.gif" alt="427.gif" /> Медь: 0.70 по 32.00
+<p><img src="http://image.neverlands.ru/resources/422.gif" alt="422.gif" /> Сталь: 0.70 по 38.00 
+</p>
+</td>
+<td>50
+</td>
+<td><img src="http://image.neverlands.ru/tools/138.gif" alt="138.gif" />
+</td></tr>
+<tr style="vertical-align:top;">
+<td><img src="http://image.neverlands.ru/weapon/i_w1_106.gif" alt="i_w1_106.gif" />
+</td>
+<td> <b>Клинок Вершителя</b>
+</td>
+<td>50
+</td>
+<td>5
+</td>
+<td>90 NV
+</td>
+<td>5 мин
+</td>
+<td> <img src="http://image.neverlands.ru/resources/422.gif" alt="422.gif" /> Сталь: 1.40 по 38.00
+<p><img src="http://image.neverlands.ru/resources/406.gif" alt="406.gif" /> Бронза: 0.60 по 39.00 
+</p>
+</td>
+<td>77.6
+</td>
+<td><img src="http://image.neverlands.ru/tools/138.gif" alt="138.gif" />
+</td></tr>
+<tr style="vertical-align:top;">
+<td><img src="http://image.neverlands.ru/weapon/i_w1_107.gif" alt="i_w1_107.gif" />
+</td>
+<td> <b>Меч Гладиатора</b>
+</td>
+<td>50
+</td>
+<td>5
+</td>
+<td>90 NV
+</td>
+<td>5 мин
+</td>
+<td> <img src="http://image.neverlands.ru/resources/427.gif" alt="427.gif" /> Медь: 0.20 по 32.00
+<p><img src="http://image.neverlands.ru/resources/422.gif" alt="422.gif" /> Сталь: 1.70 по 38.00 
+</p><p><img src="http://image.neverlands.ru/resources/407.gif" alt="407.gif" /> Латунь: 0.10 по 50.50 
+</p>
+</td>
+<td>77.05
+</td>
+<td><img src="http://image.neverlands.ru/tools/138.gif" alt="138.gif" />
+</td></tr>
+<tr style="vertical-align:top;">
+<td><img src="http://image.neverlands.ru/weapon/i_w1_108.gif" alt="i_w1_108.gif" />
+</td>
+<td> <b>Меч Повреждений</b>
+</td>
+<td>50
+</td>
+<td>5
+</td>
+<td>90 NV
+</td>
+<td>5 мин
+</td>
+<td> <img src="http://image.neverlands.ru/resources/422.gif" alt="422.gif" /> Сталь: 1.90 по 38.00
+<p><img src="http://image.neverlands.ru/resources/406.gif" alt="406.gif" /> Бронза: 0.10 по 39.00 
+</p>
+</td>
+<td>77.1
+</td>
+<td><img src="http://image.neverlands.ru/tools/138.gif" alt="138.gif" />
+</td></tr>
+<tr style="vertical-align:top;">
+<td><img src="http://image.neverlands.ru/weapon/i_w1_112.gif" alt="i_w1_112.gif" />
+</td>
+<td> <b>Меч Рассудительности</b>
+</td>
+<td>100
+</td>
+<td>6
+</td>
+<td>130 NV
+</td>
+<td>6 мин
+</td>
+<td> <img src="http://image.neverlands.ru/resources/422.gif" alt="422.gif" /> Сталь: 0.75 по 38.00
+<p><img src="http://image.neverlands.ru/resources/407.gif" alt="407.gif" /> Латунь: 0.13 по 50.50 
+</p><p><img src="http://image.neverlands.ru/resources/428.gif" alt="428.gif" /> Железо: 0.50 по 36.00 
+</p>
+</td>
+<td>54.07
+</td>
+<td><img src="http://image.neverlands.ru/tools/138.gif" alt="138.gif" />
+</td></tr>
+<tr style="vertical-align:top;">
+<td><img src="http://image.neverlands.ru/weapon/i_w1_113.gif" alt="i_w1_113.gif" />
+</td>
+<td> <b>Меч Багрового Пламени</b>
+</td>
+<td>100
+</td>
+<td>6
+</td>
+<td>130 NV
+</td>
+<td>6 мин
+</td>
+<td> <img src="http://image.neverlands.ru/resources/422.gif" alt="422.gif" /> Сталь: 0.75 по 38.00
+<p><img src="http://image.neverlands.ru/resources/406.gif" alt="406.gif" /> Бронза: 0.50 по 39.00 
+</p><p><img src="http://image.neverlands.ru/resources/428.gif" alt="428.gif" /> Железо: 0.50 по 36.00 
+</p>
+</td>
+<td>67
+</td>
+<td><img src="http://image.neverlands.ru/tools/138.gif" alt="138.gif" />
+</td></tr>
+<tr style="vertical-align:top;">
+<td><img src="http://image.neverlands.ru/weapon/i_w1_115.gif" alt="i_w1_115.gif" />
+</td>
+<td> <b>Меч Славы</b>
+</td>
+<td>100
+</td>
+<td>6
+</td>
+<td>130 NV
+</td>
+<td>6 мин
+</td>
+<td> <img src="http://image.neverlands.ru/resources/422.gif" alt="422.gif" /> Сталь: 0.75 по 38.00
+<p><img src="http://image.neverlands.ru/resources/427.gif" alt="427.gif" /> Медь: 0.50 по 32.00 
+</p><p><img src="http://image.neverlands.ru/resources/406.gif" alt="406.gif" /> Бронза: 0.50 по 39.00 
+</p>
+</td>
+<td>65
+</td>
+<td><img src="http://image.neverlands.ru/tools/138.gif" alt="138.gif" />
+</td></tr>
+<tr style="vertical-align:top;">
+<td><img src="http://image.neverlands.ru/weapon/i_w1_116.gif" alt="i_w1_116.gif" />
+</td>
+<td> <b>Меч Ликантропии</b>
+</td>
+<td>150
+</td>
+<td>8
+</td>
+<td>220 NV
+</td>
+<td>8 мин
+</td>
+<td> <img src="http://image.neverlands.ru/resources/422.gif" alt="422.gif" /> Сталь: 1.00 по 38.00
+<p><img src="http://image.neverlands.ru/resources/427.gif" alt="427.gif" /> Медь: 1.00 по 32.00 
+</p><p><img src="http://image.neverlands.ru/resources/423.gif" alt="423.gif" /> Фехраль: 0.50 по 68.00 
+</p>
+</td>
+<td>105
+</td>
+<td><img src="http://image.neverlands.ru/tools/139.gif" alt="139.gif" />
+</td></tr>
+<tr style="vertical-align:top;">
+<td><img src="http://image.neverlands.ru/weapon/i_w1_117.gif" alt="i_w1_117.gif" />
+</td>
+<td> <b>Отражающий Меч</b>
+</td>
+<td>150
+</td>
+<td>8
+</td>
+<td>220 NV
+</td>
+<td>8 мин
+</td>
+<td> <img src="http://image.neverlands.ru/resources/422.gif" alt="422.gif" /> Сталь: 0.50 по 38.00
+<p><img src="http://image.neverlands.ru/resources/423.gif" alt="423.gif" /> Фехраль: 0.75 по 68.00 
+</p><p><img src="http://image.neverlands.ru/resources/408.gif" alt="408.gif" /> Маргонит: 0.75 по 47.00 
+</p>
+</td>
+<td>106.25
+</td>
+<td><img src="http://image.neverlands.ru/tools/139.gif" alt="139.gif" />
+</td></tr>
+<tr style="vertical-align:top;">
+<td><img src="http://image.neverlands.ru/weapon/i_w1_118.gif" alt="i_w1_118.gif" />
+</td>
+<td> <b>Меч Профессионала</b>
+</td>
+<td>150
+</td>
+<td>8
+</td>
+<td>220 NV
+</td>
+<td>8 мин
+</td>
+<td> <img src="http://image.neverlands.ru/resources/407.gif" alt="407.gif" /> Латунь: 0.38 по 50.50
+<p><img src="http://image.neverlands.ru/resources/423.gif" alt="423.gif" /> Фехраль: 1.25 по 68.00 
+</p>
+</td>
+<td>105.19
+</td>
+<td><img src="http://image.neverlands.ru/tools/139.gif" alt="139.gif" />
+</td></tr>
+<tr style="vertical-align:top;">
+<td><img src="http://image.neverlands.ru/weapon/i_w1_120.gif" alt="i_w1_120.gif" />
+</td>
+<td> <b>Великий Меч Урона</b>
+</td>
+<td>200
+</td>
+<td>10
+</td>
+<td>340 NV
+</td>
+<td>10 мин
+</td>
+<td> <img src="http://image.neverlands.ru/resources/430.gif" alt="430.gif" /> Золото: 0.50 по 56.00
+<p><img src="http://image.neverlands.ru/resources/423.gif" alt="423.gif" /> Фехраль: 0.50 по 68.00 
+</p><p><img src="http://image.neverlands.ru/resources/424.gif" alt="424.gif" /> Акмонитал: 1.25 по 73.00 
+</p>
+</td>
+<td>154.25
+</td>
+<td><img src="http://image.neverlands.ru/tools/139.gif" alt="139.gif" />
+</td></tr>
+<tr style="vertical-align:top;">
+<td><img src="http://image.neverlands.ru/weapon/i_w1_121.gif" alt="i_w1_121.gif" />
+</td>
+<td> <b>Меч Призрачного Счастья</b>
+</td>
+<td>200
+</td>
+<td>10
+</td>
+<td>340 NV
+</td>
+<td>10 мин
+</td>
+<td> <img src="http://image.neverlands.ru/resources/409.gif" alt="409.gif" /> Сильверит: 1.25 по 50.50
+<p><img src="http://image.neverlands.ru/resources/423.gif" alt="423.gif" /> Фехраль: 1.25 по 68.00 
+</p><p><img src="http://image.neverlands.ru/resources/407.gif" alt="407.gif" /> Латунь: 1.25 по 50.50 
+</p>
+</td>
+<td>212.25
+</td>
+<td><img src="http://image.neverlands.ru/tools/139.gif" alt="139.gif" />
+</td></tr>
+<tr style="vertical-align:top;">
+<td><img src="http://image.neverlands.ru/weapon/i_w1_122.gif" alt="i_w1_122.gif" />
+</td>
+<td> <b>Меч Гармоничного Развития</b>
+</td>
+<td>200
+</td>
+<td>10
+</td>
+<td>340 NV
+</td>
+<td>10 мин
+</td>
+<td> <img src="http://image.neverlands.ru/resources/425.gif" alt="425.gif" /> Булат: 1.25 по 69.50
+<p><img src="http://image.neverlands.ru/resources/422.gif" alt="422.gif" /> Сталь: 1.25 по 38.00 
+</p><p><img src="http://image.neverlands.ru/resources/406.gif" alt="406.gif" /> Бронза: 0.50 по 39.00 
+</p>
+</td>
+<td>154.88
+</td>
+<td><img src="http://image.neverlands.ru/tools/139.gif" alt="139.gif" />
+</td></tr>
+<tr style="vertical-align:top;">
+<td><img src="http://image.neverlands.ru/weapon/i_w1_123.gif" alt="i_w1_123.gif" />
+</td>
+<td> <b>Палаш Стремления</b>
+</td>
+<td>275
+</td>
+<td>11
+</td>
+<td>380 NV
+</td>
+<td>11 мин
+</td>
+<td> <img src="http://image.neverlands.ru/resources/410.gif" alt="410.gif" /> Тёмное серебро: 0.50 по 86.50
+<p><img src="http://image.neverlands.ru/resources/423.gif" alt="423.gif" /> Фехраль: 1.25 по 68.00 
+</p><p><img src="http://image.neverlands.ru/resources/429.gif" alt="429.gif" /> Серебро: 1.00 по 47.00 
+</p>
+</td>
+<td>176.25
+</td>
+<td><img src="http://image.neverlands.ru/tools/140.gif" alt="140.gif" />
+</td></tr>
+<tr style="vertical-align:top;">
+<td><img src="http://image.neverlands.ru/weapon/i_w1_124.gif" alt="i_w1_124.gif" />
+</td>
+<td> <b>Клинок Милости</b>
+</td>
+<td>275
+</td>
+<td>11
+</td>
+<td>380 NV
+</td>
+<td>11 мин
+</td>
+<td> <img src="http://image.neverlands.ru/resources/425.gif" alt="425.gif" /> Булат: 1.75 по 69.50
+<p><img src="http://image.neverlands.ru/resources/409.gif" alt="409.gif" /> Сильверит: 0.50 по 50.50 
+</p><p><img src="http://image.neverlands.ru/resources/430.gif" alt="430.gif" /> Золото: 0.38 по 56.00 
+</p><p><img src="http://image.neverlands.ru/resources/427.gif" alt="427.gif" /> Медь: 0.25 по 32.00 
+</p>
+</td>
+<td>177.16
+</td>
+<td><img src="http://image.neverlands.ru/tools/140.gif" alt="140.gif" />
+</td></tr>
+<tr style="vertical-align:top;">
+<td><img src="http://image.neverlands.ru/weapon/i_w1_125.gif" alt="i_w1_125.gif" />
+</td>
+<td> <b>Клинок Дремлющей Страсти</b>
+</td>
+<td>275
+</td>
+<td>11
+</td>
+<td>380 NV
+</td>
+<td>11 мин
+</td>
+<td> <img src="http://image.neverlands.ru/resources/423.gif" alt="423.gif" /> Фехраль: 1.75 по 68.00
+<p><img src="http://image.neverlands.ru/resources/430.gif" alt="430.gif" /> Золото: 0.50 по 56.00 
+</p><p><img src="http://image.neverlands.ru/resources/427.gif" alt="427.gif" /> Медь: 0.75 по 32.00 
+</p>
+</td>
+<td>172
+</td>
+<td><img src="http://image.neverlands.ru/tools/140.gif" alt="140.gif" />
+</td></tr>
+<tr style="vertical-align:top;">
+<td><img src="http://image.neverlands.ru/weapon/i_w1_129.gif" alt="i_w1_129.gif" />
+</td>
+<td> <b>Меч Преобладания</b>
+</td>
+<td>350
+</td>
+<td>12
+</td>
+<td>600 NV
+</td>
+<td>12 мин
+</td>
+<td> <img src="http://image.neverlands.ru/resources/413.gif" alt="413.gif" /> Белое Золото: 1.80 по 75.00
+<p><img src="http://image.neverlands.ru/resources/412.gif" alt="412.gif" /> Имперское Золото: 1.20 по 79.00 
+</p><p><img src="http://image.neverlands.ru/resources/418.gif" alt="418.gif" /> Вулканит: 0.90 по 93.00 
+</p><p><img src="http://image.neverlands.ru/resources/432.gif" alt="432.gif" /> Оливин: 0.60 по 83.00 
+</p>
+</td>
+<td>364.3
+</td>
+<td><img src="http://image.neverlands.ru/tools/140.gif" alt="140.gif" />
+</td></tr>
+<tr style="vertical-align:top;">
+<td><img src="http://image.neverlands.ru/weapon/i_w1_131.gif" alt="i_w1_131.gif" />
+</td>
+<td> <b>Стройный Меч</b>
+</td>
+<td>350
+</td>
+<td>12
+</td>
+<td>600 NV
+</td>
+<td>12 мин
+</td>
+<td> <img src="http://image.neverlands.ru/resources/433.gif" alt="433.gif" /> Мифрил: 0.90 по 100.00
+<p><img src="http://image.neverlands.ru/resources/416.gif" alt="416.gif" /> Лунный Камень: 0.90 по 116.00 
+</p><p><img src="http://image.neverlands.ru/resources/431.gif" alt="431.gif" /> Платина: 1.35 по 65.00
+</p><p><img src="http://image.neverlands.ru/resources/411.gif" alt="411.gif" /> Альвийское Серебро: 0.60 по 132.50 
+</p>
+</td>
+<td>362.65
+</td>
+<td><img src="http://image.neverlands.ru/tools/140.gif" alt="140.gif" />
+</td></tr>
+<tr style="vertical-align:top;">
+<td><img src="http://image.neverlands.ru/weapon/i_w1_132.gif" alt="i_w1_132.gif" />
+</td>
+<td> <b>Меч Безмолвия</b>
+</td>
+<td>350
+</td>
+<td>12
+</td>
+<td>700 NV
+</td>
+<td>12 мин
+</td>
+<td> <img src="http://image.neverlands.ru/resources/431.gif" alt="431.gif" /> Платина: 1.80 по 65.00
+<p><img src="http://image.neverlands.ru/resources/410.gif" alt="410.gif" /> Темное Серебро: 1.35 по 86.50 
+</p><p><img src="http://image.neverlands.ru/resources/418.gif" alt="418.gif" /> Вулканит: 1.20 по 93.00 
+</p><p><img src="http://image.neverlands.ru/resources/432.gif" alt="432.gif" /> Оливин: 0.90 по 83.00 
+</p>
+</td>
+<td>421.08
+</td>
+<td><img src="http://image.neverlands.ru/tools/140.gif" alt="140.gif" />
+</td></tr>
+<tr style="vertical-align:top;">
+<td><img src="http://image.neverlands.ru/weapon/xc1jmrzb.gif" alt="xc1jmrzb.gif" />
+</td>
+<td> <b>Проклятый Меч</b>
+</td>
+<td>455
+</td>
+<td>16
+</td>
+<td>1500 NV
+</td>
+<td>16 мин
+</td>
+<td> <img src="http://image.neverlands.ru/resources/414.gif" alt="414.gif" /> Драконий Камень: 1.65 по 147.50
+<p><img src="http://image.neverlands.ru/resources/419.gif" alt="419.gif" /> Альвийская Сталь: 1.50 по 168.00 
+</p><p><img src="http://image.neverlands.ru/resources/421.gif" alt="421.gif" /> Авальонн: 1.50 по 155.50 
+</p><p><img src="http://image.neverlands.ru/resources/434.gif" alt="434.gif" /> Адамантин: 1.50 по 115.0 
+</p>
+</td>
+<td>902.13
+</td>
+<td><img src="http://image.neverlands.ru/tools/141.gif" alt="141.gif" />
+</td></tr>
+<tr style="vertical-align:top;">
+<td><img src="http://image.neverlands.ru/weapon/u5phbg9a.gif" alt="u5phbg9a.gif" />
+</td>
+<td> <b>Хрустальный Меч</b>
+</td>
+<td>455
+</td>
+<td>16
+</td>
+<td>1500 NV
+</td>
+<td>16 мин
+</td>
+<td> <img src="http://image.neverlands.ru/resources/414.gif" alt="414.gif" /> Драконий камень: 2.10 по 147.50
+<p><img src="http://image.neverlands.ru/resources/419.gif" alt="419.gif" /> Альвийская сталь: 1.50 по 168.00 
+</p><p><img src="http://image.neverlands.ru/resources/416.gif" alt="416.gif" /> Лунный камень: 1.50 по 116.00
+</p><p><img src="http://image.neverlands.ru/resources/433.gif" alt="433.gif" /> Мифрил: 1.65 по 100.00 
+</p>
+</td>
+<td>901.75
+</td>
+<td><img src="http://image.neverlands.ru/tools/141.gif" alt="141.gif" />
+</td></tr>
+<tr style="vertical-align:top;">
+<td><img src="http://image.neverlands.ru/weapon/m1jeh9a6.gif" alt="m1jeh9a6.gif" />
+</td>
+<td> <b>Эспадон Гвардейца</b>
+</td>
+<td>475
+</td>
+<td>16
+</td>
+<td>2000 NV
+</td>
+<td>16 мин
+</td>
+<td> <img src="http://image.neverlands.ru/resources/435.gif" alt="435.gif" /> Метеорит: 1.50 по 146.00
+<p><img src="http://image.neverlands.ru/resources/419.gif" alt="419.gif" /> Альвийская сталь: 1.80 по 168.00 
+</p><p><img src="http://image.neverlands.ru/resources/421.gif" alt="421.gif" /> Авальонн: 1.80 по 155.50 
+</p><p><img src="http://image.neverlands.ru/resources/413.gif" alt="413.gif" /> Белое золото: 1.50 по 75.00
+</p><p><img src="http://image.neverlands.ru/resources/418.gif" alt="418.gif" /> Вулканит: 1.80 по 93.00 
+</p><p><img src="http://image.neverlands.ru/resources/430.gif" alt="430.gif" /> Золото: 2.10 по 56.00 
+</p>
+</td>
+<td>1199.8
+</td>
+<td><img src="http://image.neverlands.ru/tools/141.gif" alt="141.gif" />
+</td></tr></table>
+<h2> <span class="mw-headline" id=".D0.A2.D0.BE.D0.BF.D0.BE.D1.80.D1.8B"> Топоры </span></h2>
+<table class="wikitable sortable">
+
+<tr style="vertical-align:top;">
+<th> Картинка
+</th>
+<th> Название предмета
+</th>
+<th> Треб.<br />умен.
+</th>
+<th> Уров.<br />предм.
+</th>
+<th> Гос.<br />цена
+</th>
+<th> Время<br />изг.
+</th>
+<th> Ресурсы для изготовления
+</th>
+<th> затр.<br />рес,NV
+</th>
+<th> Молот
+</th></tr>
+<tr style="vertical-align:top;">
+<th>
+</th></tr>
+<tr style="vertical-align:top;">
+<td><img src="http://image.neverlands.ru/weapon/i_w2_102.gif" alt="i_w2_102.gif" />
+</td>
+<td> <b>Секира Поиска</b>
+</td>
+<td>10
+</td>
+<td>2
+</td>
+<td>15 NV
+</td>
+<td>2 мин
+</td>
+<td> <img src="http://image.neverlands.ru/resources/313.gif" alt="313.gif" /> Заготовка из ивы: 0.30 по 5.00
+<p><img src="http://image.neverlands.ru/resources/426.gif" alt="426.gif" /> Олово: 0.35 по 30.00 
+</p>
+</td>
+<td>13
+</td>
+<td><img src="http://image.neverlands.ru/tools/138.gif" alt="138.gif" />
+</td></tr>
+<tr style="vertical-align:top;">
+<td><img src="http://image.neverlands.ru/weapon/i_w2_101.gif" alt="i_w2_101.gif" />
+</td>
+<td> <b>Колун Дровосека</b>
+</td>
+<td>10
+</td>
+<td>2
+</td>
+<td>17 NV
+</td>
+<td>2 мин
+</td>
+<td> <img src="http://image.neverlands.ru/resources/312.gif" alt="312.gif" /> Заготовка из орешника: 0.90 по 5.00
+<p><img src="http://image.neverlands.ru/resources/426.gif" alt="426.gif" /> Олово: 0.30 по 30.00 
+</p>
+</td>
+<td>14.5
+</td>
+<td><img src="http://image.neverlands.ru/tools/138.gif" alt="138.gif" />
+</td></tr>
+<tr style="vertical-align:top;">
+<td><img src="http://image.neverlands.ru/weapon/i_w2_106.gif" alt="i_w2_106.gif" />
+</td>
+<td> <b>Топор Благоденствия</b>
+</td>
+<td>25
+</td>
+<td>4
+</td>
+<td>65 NV
+</td>
+<td>4 мин
+</td>
+<td> <img src="http://image.neverlands.ru/resources/422.gif" alt="422.gif" /> Сталь: 1.00 по 38.00
+<p><img src="http://image.neverlands.ru/resources/406.gif" alt="406.gif" /> Бронза: 0.45 по 39.00 
+</p>
+</td>
+<td>56.55
+</td>
+<td><img src="http://image.neverlands.ru/tools/138.gif" alt="138.gif" />
+</td></tr>
+<tr style="vertical-align:top;">
+<td><img src="http://image.neverlands.ru/weapon/i_w2_107.gif" alt="i_w2_107.gif" />
+</td>
+<td> <b>Топор Искажения</b>
+</td>
+<td>25
+</td>
+<td>4
+</td>
+<td>65 NV
+</td>
+<td>4 мин
+</td>
+<td> <img src="http://image.neverlands.ru/resources/422.gif" alt="422.gif" /> Сталь: 1.00 по 38.00
+<p><img src="http://image.neverlands.ru/resources/427.gif" alt="427.gif" /> Медь: 0.55 по 32.00 
+</p>
+</td>
+<td>56.6
+</td>
+<td><img src="http://image.neverlands.ru/tools/138.gif" alt="138.gif" />
+</td></tr>
+<tr style="vertical-align:top;">
+<td><img src="http://image.neverlands.ru/weapon/i_w2_108.gif" alt="i_w2_108.gif" />
+</td>
+<td> <b>Разрубающий Топор</b>
+</td>
+<td>25
+</td>
+<td>4
+</td>
+<td>65 NV
+</td>
+<td>4 мин
+</td>
+<td> <img src="http://image.neverlands.ru/resources/422.gif" alt="422.gif" /> Сталь: 1.00 по 38.00
+<p><img src="http://image.neverlands.ru/resources/314.gif" alt="314.gif" /> Заготовка из ольхи: 0.60 по 8.00 
+</p><p><img src="http://image.neverlands.ru/resources/426.gif" alt="426.gif" /> Олово: 0.45 по 30.00 
+</p>
+</td>
+<td>57.3
+</td>
+<td><img src="http://image.neverlands.ru/tools/138.gif" alt="138.gif" />
+</td></tr>
+<tr style="vertical-align:top;">
+<td><img src="http://image.neverlands.ru/weapon/i_w2_109.gif" alt="i_w2_109.gif" />
+</td>
+<td> <b>Топор Солнца</b>
+</td>
+<td>50
+</td>
+<td>5
+</td>
+<td>100 NV
+</td>
+<td>5 мин
+</td>
+<td> <img src="http://image.neverlands.ru/resources/407.gif" alt="407.gif" /> Латунь: 0.80 по 50.50
+<p><img src="http://image.neverlands.ru/resources/422.gif" alt="422.gif" /> Сталь: 1.00 по 38.00 
+</p><p><img src="http://image.neverlands.ru/resources/316.gif" alt="316.gif" /> Заготовка из берёзы: 0.50 по 10.00 
+</p>
+</td>
+<td>84.4
+</td>
+<td><img src="http://image.neverlands.ru/tools/138.gif" alt="138.gif" />
+</td></tr>
+<tr style="vertical-align:top;">
+<td><img src="http://image.neverlands.ru/weapon/i_w2_110.gif" alt="i_w2_110.gif" />
+</td>
+<td> <b>Агатовый Топор</b>
+</td>
+<td>50
+</td>
+<td>5
+</td>
+<td>100 NV
+</td>
+<td>5 мин
+</td>
+<td> <img src="http://image.neverlands.ru/resources/422.gif" alt="422.gif" /> Сталь: 0.80 по 38.00
+<p><img src="http://image.neverlands.ru/resources/427.gif" alt="427.gif" /> Медь: 0.50 по 32.00 
+</p><p><img src="http://image.neverlands.ru/resources/406.gif" alt="406.gif" /> Бронза: 1.00 по 39.00 
+</p>
+</td>
+<td>86.4
+</td>
+<td><img src="http://image.neverlands.ru/tools/138.gif" alt="138.gif" />
+</td></tr>
+<tr style="vertical-align:top;">
+<td><img src="http://image.neverlands.ru/weapon/i_w2_111.gif" alt="i_w2_111.gif" />
+</td>
+<td> <b>Топор Мстительности</b>
+</td>
+<td>50
+</td>
+<td>5
+</td>
+<td>100 NV
+</td>
+<td>5 мин
+</td>
+<td> <img src="http://image.neverlands.ru/resources/422.gif" alt="422.gif" /> Сталь: 1.50 по 38.00
+<p><img src="http://image.neverlands.ru/resources/406.gif" alt="406.gif" /> Бронза: 0.80 по 39.00 
+</p>
+</td>
+<td>81.4
+</td>
+<td><img src="http://image.neverlands.ru/tools/138.gif" alt="138.gif" />
+</td></tr>
+<tr style="vertical-align:top;">
+<td><img src="http://image.neverlands.ru/weapon/i_w2_112.gif" alt="i_w2_112.gif" />
+</td>
+<td> <b>Двойной Топор</b>
+</td>
+<td>100
+</td>
+<td>6
+</td>
+<td>145 NV
+</td>
+<td>6 мин
+</td>
+<td> <img src="http://image.neverlands.ru/resources/422.gif" alt="422.gif" /> Сталь: 0.75 по 38.00
+<p><img src="http://image.neverlands.ru/resources/407.gif" alt="407.gif" /> Латунь: 0.38 по 50.50 
+</p><p><img src="http://image.neverlands.ru/resources/406.gif" alt="406.gif" /> Бронза: 0.50 по 39.00 
+</p>
+</td>
+<td>68.19
+</td>
+<td><img src="http://image.neverlands.ru/tools/138.gif" alt="138.gif" />
+</td></tr>
+<tr style="vertical-align:top;">
+<td><img src="http://image.neverlands.ru/weapon/i_w2_113.gif" alt="i_w2_113.gif" />
+</td>
+<td> <b>Секира Встречи</b>
+</td>
+<td>100
+</td>
+<td>6
+</td>
+<td>145 NV
+</td>
+<td>6 мин
+</td>
+<td> <img src="http://image.neverlands.ru/resources/422.gif" alt="422.gif" /> Сталь: 0.75 по 38.00
+<p><img src="http://image.neverlands.ru/resources/427.gif" alt="427.gif" /> Медь: 0.50 по 32.00 
+</p><p><img src="http://image.neverlands.ru/resources/406.gif" alt="406.gif" /> Бронза: 0.50 по 39.00 
+</p>
+</td>
+<td>65
+</td>
+<td><img src="http://image.neverlands.ru/tools/138.gif" alt="138.gif" />
+</td></tr>
+<tr style="vertical-align:top;">
+<td><img src="http://image.neverlands.ru/weapon/i_w2_114.gif" alt="i_w2_114.gif" />
+</td>
+<td> <b>Боевой Топор</b>
+</td>
+<td>100
+</td>
+<td>6
+</td>
+<td>145 NV
+</td>
+<td>6 мин
+</td>
+<td> <img src="http://image.neverlands.ru/resources/422.gif" alt="422.gif" /> Сталь: 0.63 по 38.00
+<p><img src="http://image.neverlands.ru/resources/428.gif" alt="428.gif" /> Железо: 1.25 по 36.00 
+</p>
+</td>
+<td>69.94
+</td>
+<td><img src="http://image.neverlands.ru/tools/138.gif" alt="138.gif" />
+</td></tr>
+<tr style="vertical-align:top;">
+<td><img src="http://image.neverlands.ru/weapon/i_w2_116.gif" alt="i_w2_116.gif" />
+</td>
+<td> <b>Топор Крови</b>
+</td>
+<td>150
+</td>
+<td>8
+</td>
+<td>240 NV
+</td>
+<td>8 мин
+</td>
+<td> <img src="http://image.neverlands.ru/resources/427.gif" alt="427.gif" /> Медь: 0.75 по 32.00
+<p><img src="http://image.neverlands.ru/resources/422.gif" alt="422.gif" /> Сталь: 0.88 по 38.00 
+</p><p><img src="http://image.neverlands.ru/resources/408.gif" alt="408.gif" /> Маргонит: 1.25 по 47.00 
+</p>
+</td>
+<td>117.9
+</td>
+<td><img src="http://image.neverlands.ru/tools/139.gif" alt="139.gif" />
+</td></tr>
+<tr style="vertical-align:top;">
+<td><img src="http://image.neverlands.ru/weapon/i_w2_118.gif" alt="i_w2_118.gif" />
+</td>
+<td> <b>Топор Ведьмака</b>
+</td>
+<td>150
+</td>
+<td>8
+</td>
+<td>240 NV
+</td>
+<td>8 мин
+</td>
+<td> <img src="http://image.neverlands.ru/resources/407.gif" alt="407.gif" /> Латунь: 1.25 по 50.50
+<p><img src="http://image.neverlands.ru/resources/422.gif" alt="422.gif" /> Сталь: 1.38 по 38.00 
+</p>
+</td>
+<td>116.57
+</td>
+<td><img src="http://image.neverlands.ru/tools/139.gif" alt="139.gif" />
+</td></tr>
+<tr style="vertical-align:top;">
+<td><img src="http://image.neverlands.ru/weapon/i_w2_119.gif" alt="i_w2_119.gif" />
+</td>
+<td> <b>Секира Стремительной Смерти</b>
+</td>
+<td>150
+</td>
+<td>8
+</td>
+<td>240 NV
+</td>
+<td>8 мин
+</td>
+<td> <img src="http://image.neverlands.ru/resources/319.gif" alt="319.gif" /> Заготовка из тиса: 1.25 по 15.00
+<p><img src="http://image.neverlands.ru/resources/428.gif" alt="428.gif" /> Железо: 2.75 по 36.00 
+</p>
+</td>
+<td>118.75
+</td>
+<td><img src="http://image.neverlands.ru/tools/139.gif" alt="139.gif" />
+</td></tr>
+<tr style="vertical-align:top;">
+<td><img src="http://image.neverlands.ru/weapon/i_w2_120.gif" alt="i_w2_120.gif" />
+</td>
+<td> <b>Топор Молитвы</b>
+</td>
+<td>200
+</td>
+<td>10
+</td>
+<td>370 NV
+</td>
+<td>10 мин
+</td>
+<td> <img src="http://image.neverlands.ru/resources/429.gif" alt="429.gif" /> Серебро: 2.00 по 47.00
+<p><img src="http://image.neverlands.ru/resources/346.gif" alt="346.gif" /> Заготовка из платана: 2.50 по 20.00 
+</p><p><img src="http://image.neverlands.ru/resources/424.gif" alt="424.gif" /> Акмонитал: 0.25 по 73.00 
+</p><p><img src="http://image.neverlands.ru/resources/422.gif" alt="422.gif" /> Сталь: 0.50 по 38.00 
+</p>
+</td>
+<td>182.25
+</td>
+<td><img src="http://image.neverlands.ru/tools/139.gif" alt="139.gif" />
+</td></tr>
+<tr style="vertical-align:top;">
+<td><img src="http://image.neverlands.ru/weapon/i_w2_121.gif" alt="i_w2_121.gif" />
+</td>
+<td> <b>Топор Одиночества</b>
+</td>
+<td>200
+</td>
+<td>10
+</td>
+<td>370 NV
+</td>
+<td>10 мин
+</td>
+<td> <img src="http://image.neverlands.ru/resources/425.gif" alt="425.gif" /> Булат: 1.25 по 69.50
+<p><img src="http://image.neverlands.ru/resources/410.gif" alt="410.gif" /> Тёмное серебро: 0.50 по 86.50 
+</p><p><img src="http://image.neverlands.ru/resources/424.gif" alt="424.gif" /> Акмонитал: 0.75 по 73.00 
+</p>
+</td>
+<td>185.88
+</td>
+<td><img src="http://image.neverlands.ru/tools/139.gif" alt="139.gif" />
+</td></tr>
+<tr style="vertical-align:top;">
+<td><img src="http://image.neverlands.ru/weapon/i_w2_122.gif" alt="i_w2_122.gif" />
+</td>
+<td> <b>Секира Предвидения</b>
+</td>
+<td>200
+</td>
+<td>10
+</td>
+<td>370 NV
+</td>
+<td>10 мин
+</td>
+<td> <img src="http://image.neverlands.ru/resources/430.gif" alt="430.gif" /> Золото: 0.50 по 56.00
+<p><img src="http://image.neverlands.ru/resources/423.gif" alt="423.gif" /> Фехраль: 1.25 по 68.00
+</p><p><img src="http://image.neverlands.ru/resources/409.gif" alt="409.gif" /> Сильверит: 0.50 по 50.50 
+</p><p><img src="http://image.neverlands.ru/resources/427.gif" alt="427.gif" /> Медь: 1.25 по 32.00 
+</p>
+</td>
+<td>179.25
+</td>
+<td><img src="http://image.neverlands.ru/tools/139.gif" alt="139.gif" />
+</td></tr>
+<tr style="vertical-align:top;">
+<td><img src="http://image.neverlands.ru/weapon/i_w2_123.gif" alt="i_w2_123.gif" />
+</td>
+<td> <b>Топор Волчьего Оскала</b>
+</td>
+<td>275
+</td>
+<td>11
+</td>
+<td>410 NV
+</td>
+<td>11 мин
+</td>
+<td> <img src="http://image.neverlands.ru/resources/424.gif" alt="424.gif" /> Акмонитал: 0.50 по 73.00
+<p><img src="http://image.neverlands.ru/resources/425.gif" alt="425.gif" /> Булат: 1.75 по 69.50 
+</p><p><img src="http://image.neverlands.ru/resources/430.gif" alt="430.gif" /> Золото: 0.38 по 56.00 
+</p><p><img src="http://image.neverlands.ru/resources/406.gif" alt="406.gif" /> Бронза: 0.63 по 39.00 
+</p>
+</td>
+<td>204.98
+</td>
+<td><img src="http://image.neverlands.ru/tools/140.gif" alt="140.gif" />
+</td></tr>
+<tr style="vertical-align:top;">
+<td><img src="http://image.neverlands.ru/weapon/i_w2_124.gif" alt="i_w2_124.gif" />
+</td>
+<td> <b>Секира Самоуверенности</b>
+</td>
+<td>275
+</td>
+<td>11
+</td>
+<td>410 NV
+</td>
+<td>11 мин
+</td>
+<td> <img src="http://image.neverlands.ru/resources/410.gif" alt="410.gif" /> Тёмное серебро: 0.88 по 86.50
+<p><img src="http://image.neverlands.ru/resources/425.gif" alt="425.gif" /> Булат: 1.25 по 69.50 
+</p><p><img src="http://image.neverlands.ru/resources/427.gif" alt="427.gif" /> Медь: 1.38 по 32.00 
+</p>
+</td>
+<td>208.16
+</td>
+<td><img src="http://image.neverlands.ru/tools/140.gif" alt="140.gif" />
+</td></tr>
+<tr style="vertical-align:top;">
+<td><img src="http://image.neverlands.ru/weapon/i_w2_125.gif" alt="i_w2_125.gif" />
+</td>
+<td> <b>Топор Хмурого Рассвета</b>
+</td>
+<td>275
+</td>
+<td>11
+</td>
+<td>410 NV
+</td>
+<td>11 мин
+</td>
+<td> <img src="http://image.neverlands.ru/resources/429.gif" alt="429.gif" /> Серебро: 1.25 по 47.00
+<p><img src="http://image.neverlands.ru/resources/423.gif" alt="423.gif" /> Фехраль: 1.00 по 68.00 
+</p><p><img src="http://image.neverlands.ru/resources/422.gif" alt="422.gif" /> Сталь: 1.25 по 38.00 
+</p><p><img src="http://image.neverlands.ru/resources/409.gif" alt="409.gif" /> Сильверит: 0.50 по 50.50 
+</p>
+</td>
+<td>200.5
+</td>
+<td><img src="http://image.neverlands.ru/tools/140.gif" alt="140.gif" />
+</td></tr>
+<tr style="vertical-align:top;">
+<td><img src="http://image.neverlands.ru/weapon/i_w2_131.gif" alt="i_w2_131.gif" />
+</td>
+<td> <b>Безумный Топор</b>
+</td>
+<td>350
+</td>
+<td>12
+</td>
+<td>620 NV
+</td>
+<td>12 мин
+</td>
+<td> <img src="http://image.neverlands.ru/resources/431.gif" alt="431.gif" /> Платина: 1.50 по 65.00
+<p><img src="http://image.neverlands.ru/resources/418.gif" alt="418.gif" /> Вулканит: 1.50 по 93.00 
+</p><p><img src="http://image.neverlands.ru/resources/410.gif" alt="410.gif" /> Тёмное Серебро: 1.50 по 85.50 
+</p>
+</td>
+<td>367.75
+</td>
+<td><img src="http://image.neverlands.ru/tools/140.gif" alt="140.gif" />
+</td></tr>
+<tr style="vertical-align:top;">
+<td><img src="http://image.neverlands.ru/weapon/w2_vedm1.gif" alt="w2_vedm1.gif" />
+</td>
+<td> <b>Топор Ведьмака</b>
+</td>
+<td>370
+</td>
+<td>12
+</td>
+<td>620 NV
+</td>
+<td>12 мин
+</td>
+<td> <img src="http://image.neverlands.ru/resources/499.gif" alt="499.gif" /> Эссенция земли: 0.2 по 250
+<p><img src="http://image.neverlands.ru/resources/498.gif" alt="498.gif" /> Эссенция огня: 0.2 по 250
+</p><p><img src="http://image.neverlands.ru/resources/342.gif" alt="342.gif" /> Заготовка из граба: 1 по 20
+</p><p><img src="http://image.neverlands.ru/resources/408.gif" alt="408.gif" /> Маргонит: 2 по 47 
+</p><p><img src="http://image.neverlands.ru/resources/410.gif" alt="410.gif" /> Тёмное серебро: 1 по  87
+</p><p><img src="http://image.neverlands.ru/resources/425.gif" alt="425.gif" /> Булат: 1 по 70
+</p>
+</td>
+<td>372
+</td>
+<td><img src="http://image.neverlands.ru/tools/141.gif" alt="141.gif" />
+</td></tr>
+<tr style="vertical-align:top;">
+<td><img src="http://image.neverlands.ru/weapon/i_w2_132.gif" alt="i_w2_132.gif" />
+</td>
+<td> <b>Топор Огненного Зарева</b>
+</td>
+<td>350
+</td>
+<td>12
+</td>
+<td>730 NV
+</td>
+<td>12 мин
+</td>
+<td> <img src="http://image.neverlands.ru/resources/413.gif" alt="413.gif" /> Белое Золото: 1.80 по 75.00
+<p><img src="http://image.neverlands.ru/resources/432.gif" alt="432.gif" /> Оливин: 1.50 по 83.00 
+</p><p><img src="http://image.neverlands.ru/resources/412.gif" alt="412.gif" /> Имперское Золото: 1.20 по 79.00 
+</p><p><img src="http://image.neverlands.ru/resources/474.gif" alt="474.gif" /> Красная Краска: 1.65 по 50.00 
+</p>
+</td>
+<td>437.8
+</td>
+<td><img src="http://image.neverlands.ru/tools/140.gif" alt="140.gif" />
+</td></tr>
+<tr style="vertical-align:top;">
+<td><img src="http://image.neverlands.ru/weapon/i_w2_129.gif" alt="i_w2_129.gif" />
+</td>
+<td> <b>Топор Преобладания</b>
+</td>
+<td>350
+</td>
+<td>12
+</td>
+<td>620 NV
+</td>
+<td>12 мин
+</td>
+<td> <img src="http://image.neverlands.ru/resources/413.gif" alt="413.gif" /> Белое Золото: 0.90 по 75.00
+<p><img src="http://image.neverlands.ru/resources/432.gif" alt="432.gif" /> Оливин: 1.20 по 83.00 
+</p><p><img src="http://image.neverlands.ru/resources/418.gif" alt="418.gif" /> Вулканит: 1.50 по 93.00 
+</p><p><img src="http://image.neverlands.ru/resources/431.gif" alt="431.gif" /> Платина: 1.05 по 65.00 
+</p>
+</td>
+<td>375.85
+</td>
+<td><img src="http://image.neverlands.ru/tools/140.gif" alt="140.gif" />
+</td></tr>
+<tr style="vertical-align:top;">
+<td><img src="http://image.neverlands.ru/weapon/i_w2_130.gif" alt="i_w2_130.gif" />
+</td>
+<td> <b>Кристальный Топор</b>
+</td>
+<td>455
+</td>
+<td>16
+</td>
+<td>1600 NV
+</td>
+<td>16 мин
+</td>
+<td> <img src="http://image.neverlands.ru/resources/416.gif" alt="416.gif" /> Лунный Камень: 1.50 по 116.0
+<p><img src="http://image.neverlands.ru/resources/433.gif" alt="433.gif" /> Мифрил: 1.35 по 100.00 
+</p><p><img src="http://image.neverlands.ru/resources/414.gif" alt="414.gif" /> Драконий Камень: 1.35 по 147.50 
+</p><p><img src="http://image.neverlands.ru/resources/421.gif" alt="421.gif" /> Авальонн: 1.50 по 155.50 
+</p><p><img src="http://image.neverlands.ru/resources/435.gif" alt="435.gif" /> Метеорит: 1.50 по 146.00 
+</p>
+</td>
+<td>961.38
+</td>
+<td><img src="http://image.neverlands.ru/tools/141.gif" alt="141.gif" />
+</td></tr>
+<tr style="vertical-align:top;">
+<td><img src="http://image.neverlands.ru/weapon/twf4db5n.gif" alt="twf4db5n.gif" />
+</td>
+<td> <b>Кровавый Топор</b>
+</td>
+<td>475
+</td>
+<td>16
+</td>
+<td>2100 NV
+</td>
+<td>16 мин
+</td>
+<td> <img src="http://image.neverlands.ru/resources/412.gif" alt="412.gif" /> Имперское Золото: 2.70 по 79.00
+<p><img src="http://image.neverlands.ru/resources/434.gif" alt="434.gif" /> Адамантин: 1.80 по 115.00 
+</p><p><img src="http://image.neverlands.ru/resources/414.gif" alt="414.gif" /> Драконий Камень: 2.10 по 147.50 
+</p><p><img src="http://image.neverlands.ru/resources/421.gif" alt="421.gif" /> Авальонн: 1.80 по 155.50 
+</p><p><img src="http://image.neverlands.ru/resources/419.gif" alt="419.gif" /> Альвийская Сталь: 1.50 по 168.00 
+</p>
+</td>
+<td>
+<p>		1262.95
+</p>
+</td>
+<td><img src="http://image.neverlands.ru/tools/141.gif" alt="141.gif" />
+</td></tr>
+<tr style="vertical-align:top;">
+<td><img src="http://image.neverlands.ru/weapon/vph7940g.gif" alt="vph7940g.gif" />
+</td>
+<td> <b>Секира Солнца</b>
+</td>
+<td>455
+</td>
+<td>16
+</td>
+<td>1600 NV
+</td>
+<td>16 мин
+</td>
+<td> <img src="http://image.neverlands.ru/resources/412.gif" alt="412.gif" /> Имперское Золото: 2.10 по 79.00
+<p><img src="http://image.neverlands.ru/resources/413.gif" alt="413.gif" /> Белое Золото: 1.20 по 75.00 
+</p><p><img src="http://image.neverlands.ru/resources/430.gif" alt="430.gif" /> Золото: 2.40 по 56.00 
+</p><p><img src="http://image.neverlands.ru/resources/435.gif" alt="435.gif" /> Метеорит: 1.20 по 146.00  
+</p><p><img src="http://image.neverlands.ru/resources/419.gif" alt="419.gif" /> Альвийская Сталь: 1.20 по 168.00
+</p><p><img src="http://image.neverlands.ru/resources/420.gif" alt="420.gif" /> Агонит: 1.20 по 142.00  
+</p>
+</td>
+<td>938.5
+</td>
+<td><img src="http://image.neverlands.ru/tools/141.gif" alt="141.gif" />
+</td></tr>
+<tr style="vertical-align:top;">
+<td><img src="http://image.neverlands.ru/weapon/w2_vedm2.gif" alt="w2_vedm2.gif" />
+</td>
+<td> <b>Топор Истребителя Нечисти</b>
+</td>
+<td>550
+</td>
+<td>16
+</td>
+<td>1500 NV
+</td>
+<td>16 мин
+</td>
+<td> <img src="http://image.neverlands.ru/resources/499.gif" alt="499.gif" /> Эссенция земли: 0.2 по 250
+<p><img src="http://image.neverlands.ru/resources/498.gif" alt="498.gif" /> Эссенция огня: 0.2 по 250
+</p><p><img src="http://image.neverlands.ru/resources/338.gif" alt="338.gif" /> Заготовка из мангрового дерева: 0.5 по 185
+</p><p><img src="http://image.neverlands.ru/resources/475.gif" alt="475.gif" /> Чёрная краска: 1 по 50 
+</p><p><img src="http://image.neverlands.ru/resources/410.gif" alt="410.gif" /> Тёмное серебро: 2 по 87
+</p><p><img src="http://image.neverlands.ru/resources/414.gif" alt="414.gif" /> Драконий камень: 2 по 148
+</p>
+</td>
+<td>713.5
+</td>
+<td><img src="http://image.neverlands.ru/tools/141.gif" alt="141.gif" />
+</td></tr></table>
+<h2> <span class="mw-headline" id=".D0.94.D1.80.D0.BE.D0.B1.D1.8F.D1.89.D0.B8.D0.B5"> Дробящие </span></h2>
+<table class="wikitable sortable">
+
+<tr style="vertical-align:top;">
+<th> Картинка
+</th>
+<th> Название предмета
+</th>
+<th> Треб.<br />умен.
+</th>
+<th> Уров.<br />предм.
+</th>
+<th> Гос.<br />цена
+</th>
+<th> Время<br />изг.
+</th>
+<th> Ресурсы для изготовления
+</th>
+<th> затр.<br />рес,NV
+</th>
+<th> Молот
+</th></tr>
+<tr style="vertical-align:top;">
+<td><img src="http://image.neverlands.ru/weapon/i_w3_102.gif" alt="i_w3_102.gif" />
+</td>
+<td> <b>Дубинка Горожанина</b>
+</td>
+<td>10
+</td>
+<td>2
+</td>
+<td>13 NV
+</td>
+<td>2 мин
+</td>
+<td> <img src="http://image.neverlands.ru/resources/312.gif" alt="312.gif" /> Заготовка из орешника: 1.00 по 5.00
+<p><img src="http://image.neverlands.ru/resources/426.gif" alt="426.gif" /> Олово: 0.20 по 30.00 
+</p>
+</td>
+<td>12
+</td>
+<td><img src="http://image.neverlands.ru/tools/138.gif" alt="138.gif" />
+</td></tr>
+<tr style="vertical-align:top;">
+<td><img src="http://image.neverlands.ru/weapon/i_w3_104.gif" alt="i_w3_104.gif" />
+</td>
+<td> <b>Степной Меч</b>
+</td>
+<td>25
+</td>
+<td>4
+</td>
+<td>40 NV
+</td>
+<td>4 мин
+</td>
+<td> <img src="http://image.neverlands.ru/resources/406.gif" alt="406.gif" /> Бронза: 0.60 по 39.00
+<p><img src="http://image.neverlands.ru/resources/315.gif" alt="315.gif" /> Заготовка из осины: 1.00 по 8.00 
+</p>
+</td>
+<td>32.4
+</td>
+<td><img src="http://image.neverlands.ru/tools/138.gif" alt="138.gif" />
+</td></tr>
+<tr style="vertical-align:top;">
+<td><img src="http://image.neverlands.ru/weapon/i_w3_103.gif" alt="i_w3_103.gif" />
+</td>
+<td> <b>Молоток Подмастерья</b>
+</td>
+<td>25
+</td>
+<td>4
+</td>
+<td>58 NV
+</td>
+<td>4 мин
+</td>
+<td> <img src="http://image.neverlands.ru/resources/422.gif" alt="422.gif" /> Сталь: 1.10 по 38.00
+<p><img src="http://image.neverlands.ru/resources/316.gif" alt="316.gif" /> Заготовка из берёзы: 1.00 по 10.00 
+</p>
+</td>
+<td>52.8
+</td>
+<td><img src="http://image.neverlands.ru/tools/138.gif" alt="138.gif" />
+</td></tr>
+<tr style="vertical-align:top;">
+<td><img src="http://image.neverlands.ru/weapon/i_w3_105.gif" alt="i_w3_105.gif" />
+</td>
+<td> <b>Стальная Дубина</b>
+</td>
+<td>25
+</td>
+<td>4
+</td>
+<td>58 NV
+</td>
+<td>4 мин
+</td>
+<td> <img src="http://image.neverlands.ru/resources/422.gif" alt="422.gif" /> Сталь: 1.30 по 38.00
+</td>
+<td>50.4
+</td>
+<td><img src="http://image.neverlands.ru/tools/138.gif" alt="138.gif" />
+</td></tr>
+<tr style="vertical-align:top;">
+<td><img src="http://image.neverlands.ru/weapon/i_w3_106.gif" alt="i_w3_106.gif" />
+</td>
+<td> <b>Молот Испорченности</b>
+</td>
+<td>50
+</td>
+<td>5
+</td>
+<td>85 NV
+</td>
+<td>5 мин
+</td>
+<td> <img src="http://image.neverlands.ru/resources/422.gif" alt="422.gif" /> Сталь: 1.70 по 38.00
+<p><img src="http://image.neverlands.ru/resources/316.gif" alt="316.gif" /> Заготовка из берёзы: 0.70 по 10.00 
+</p>
+</td>
+<td>72.6
+</td>
+<td><img src="http://image.neverlands.ru/tools/138.gif" alt="138.gif" />
+</td></tr>
+<tr style="vertical-align:top;">
+<td><img src="http://image.neverlands.ru/weapon/i_w3_109.gif" alt="i_w3_109.gif" />
+</td>
+<td> <b>Клевец</b>
+</td>
+<td>50
+</td>
+<td>5
+</td>
+<td>85 NV
+</td>
+<td>5 мин
+</td>
+<td> <img src="http://image.neverlands.ru/resources/422.gif" alt="422.gif" /> Сталь: 1.70 по 38.00
+<p><img src="http://image.neverlands.ru/resources/427.gif" alt="427.gif" /> Медь: 0.20 по 32.00 
+</p>
+</td>
+<td>72
+</td>
+<td><img src="http://image.neverlands.ru/tools/138.gif" alt="138.gif" />
+</td></tr>
+<tr style="vertical-align:top;">
+<td><img src="http://image.neverlands.ru/weapon/i_w3_110.gif" alt="i_w3_110.gif" />
+</td>
+<td> <b>Утренняя Звезда</b>
+</td>
+<td>50
+</td>
+<td>5
+</td>
+<td>85 NV
+</td>
+<td>5 мин
+</td>
+<td> <img src="http://image.neverlands.ru/resources/422.gif" alt="422.gif" /> Сталь: 1.40 по 38.00
+<p><img src="http://image.neverlands.ru/resources/406.gif" alt="406.gif" /> Бронза: 0.50 по 39.00 
+</p>
+</td>
+<td>73.7
+</td>
+<td><img src="http://image.neverlands.ru/tools/138.gif" alt="138.gif" />
+</td></tr>
+<tr style="vertical-align:top;">
+<td><img src="http://image.neverlands.ru/weapon/i_w3_111.gif" alt="i_w3_111.gif" />
+</td>
+<td> <b>Булава Воспоминаний</b>
+</td>
+<td>100
+</td>
+<td>6
+</td>
+<td>130 NV
+</td>
+<td>6 мин
+</td>
+<td> <img src="http://image.neverlands.ru/resources/422.gif" alt="422.gif" /> Сталь: 0.50 по 38.00
+<p><img src="http://image.neverlands.ru/resources/428.gif" alt="428.gif" /> Железо: 0.50 по 36.00 
+</p><p><img src="http://image.neverlands.ru/resources/426.gif" alt="426.gif" /> Олово: 1.00 по 30.00 
+</p>
+</td>
+<td>68
+</td>
+<td><img src="http://image.neverlands.ru/tools/138.gif" alt="138.gif" />
+</td></tr>
+<tr style="vertical-align:top;">
+<td><img src="http://image.neverlands.ru/weapon/i_w3_112.gif" alt="i_w3_112.gif" />
+</td>
+<td> <b>Булава Просветления</b>
+</td>
+<td>100
+</td>
+<td>6
+</td>
+<td>130 NV
+</td>
+<td>6 мин
+</td>
+<td> <img src="http://image.neverlands.ru/resources/422.gif" alt="422.gif" /> Сталь: 0.75 по 38.00
+<p><img src="http://image.neverlands.ru/resources/428.gif" alt="428.gif" /> Железо: 1.00 по 36.00 
+</p>
+</td>
+<td>65.50
+</td>
+<td><img src="http://image.neverlands.ru/tools/138.gif" alt="138.gif" />
+</td></tr>
+<tr style="vertical-align:top;">
+<td><img src="http://image.neverlands.ru/weapon/i_w3_113.gif" alt="i_w3_113.gif" />
+</td>
+<td> <b>Молот Последнего Удара</b>
+</td>
+<td>100
+</td>
+<td>6
+</td>
+<td>130 NV
+</td>
+<td>6 мин
+</td>
+<td> <img src="http://image.neverlands.ru/resources/422.gif" alt="422.gif" /> Сталь: 0.75 по 38.00
+<p><img src="http://image.neverlands.ru/resources/426.gif" alt="426.gif" /> Олово: 1.00 по 30.00 
+</p><p><img src="http://image.neverlands.ru/resources/427.gif" alt="427.gif" /> Медь: 0.25 по 32.00 
+</p>
+</td>
+<td>67.5
+</td>
+<td><img src="http://image.neverlands.ru/tools/138.gif" alt="138.gif" />
+</td></tr>
+<tr style="vertical-align:top;">
+<td><img src="http://image.neverlands.ru/weapon/i_w3_116.gif" alt="i_w3_116.gif" />
+</td>
+<td> <b>Булава Преодоления</b>
+</td>
+<td>150
+</td>
+<td>8
+</td>
+<td>230 NV
+</td>
+<td>8 мин
+</td>
+<td> <img src="http://image.neverlands.ru/resources/423.gif" alt="423.gif" /> Фехраль: 0.75 по 68.00
+<p><img src="http://image.neverlands.ru/resources/422.gif" alt="422.gif" /> Сталь: 1.00 по 38.00 
+</p><p><img src="http://image.neverlands.ru/resources/407.gif" alt="407.gif" /> Латунь: 0.50 по 50.50 
+</p>
+</td>
+<td>115.25
+</td>
+<td><img src="http://image.neverlands.ru/tools/139.gif" alt="139.gif" />
+</td></tr>
+<tr style="vertical-align:top;">
+<td><img src="http://image.neverlands.ru/weapon/i_w3_117.gif" alt="i_w3_117.gif" />
+</td>
+<td> <b>Молот Покрова</b>
+</td>
+<td>150
+</td>
+<td>8
+</td>
+<td>230 NV
+</td>
+<td>8 мин
+</td>
+<td> <img src="http://image.neverlands.ru/resources/423.gif" alt="423.gif" /> Фехраль: 0.75 по 68.00
+<p><img src="http://image.neverlands.ru/resources/428.gif" alt="428.gif" /> Железо: 1.00 по 36.00 
+</p><p><img src="http://image.neverlands.ru/resources/340.gif" alt="340.gif" /> Заготовка из бука: 2.50 по 12.00 
+</p>
+</td>
+<td>118
+</td>
+<td><img src="http://image.neverlands.ru/tools/139.gif" alt="139.gif" />
+</td></tr>
+<tr style="vertical-align:top;">
+<td><img src="http://image.neverlands.ru/weapon/i_w3_118.gif" alt="i_w3_118.gif" />
+</td>
+<td> <b>Молот Правосудия</b>
+</td>
+<td>150
+</td>
+<td>8
+</td>
+<td>230 NV
+</td>
+<td>8 мин
+</td>
+<td> <img src="http://image.neverlands.ru/resources/424.gif" alt="424.gif" /> Акмонитал: 1.25 по 73.00
+<p><img src="http://image.neverlands.ru/resources/428.gif" alt="428.gif" /> Железо: 0.50 по 36.00 
+</p><p><img src="http://image.neverlands.ru/resources/422.gif" alt="422.gif" /> Сталь: 0.25 по 38.00 
+</p>
+</td>
+<td>119.75
+</td>
+<td><img src="http://image.neverlands.ru/tools/139.gif" alt="139.gif" />
+</td></tr>
+<tr style="vertical-align:top;">
+<td><img src="http://image.neverlands.ru/weapon/i_w3_120.gif" alt="i_w3_120.gif" />
+</td>
+<td> <b>Булава Броска</b>
+</td>
+<td>200
+</td>
+<td>10
+</td>
+<td>370 NV
+</td>
+<td>10 мин
+</td>
+<td> <img src="http://image.neverlands.ru/resources/429.gif" alt="429.gif" /> Серебро: 0.25 по 47.00
+<p><img src="http://image.neverlands.ru/resources/423.gif" alt="423.gif" /> Фехраль: 1.25 по 68.00 
+</p><p><img src="http://image.neverlands.ru/resources/425.gif" alt="425.gif" /> Булат: 1.25 по 69.50 
+</p>
+</td>
+<td>184.63
+</td>
+<td><img src="http://image.neverlands.ru/tools/139.gif" alt="139.gif" />
+</td></tr>
+<tr style="vertical-align:top;">
+<td><img src="http://image.neverlands.ru/weapon/i_w3_121.gif" alt="i_w3_121.gif" />
+</td>
+<td> <b>Молот Уважения</b>
+</td>
+<td>200
+</td>
+<td>10
+</td>
+<td>370 NV
+</td>
+<td>10 мин
+</td>
+<td> <img src="http://image.neverlands.ru/resources/425.gif" alt="425.gif" /> Булат: 1.50 по 69.50
+<p><img src="http://image.neverlands.ru/resources/424.gif" alt="424.gif" /> Акмонитал: 0.75 по 73.00 
+</p><p><img src="http://image.neverlands.ru/resources/406.gif" alt="406.gif" /> Бронза: 0.75 по 39.00 
+</p>
+</td>
+<td>189.25
+</td>
+<td><img src="http://image.neverlands.ru/tools/139.gif" alt="139.gif" />
+</td></tr>
+<tr style="vertical-align:top;">
+<td><img src="http://image.neverlands.ru/weapon/i_w3_122.gif" alt="i_w3_122.gif" />
+</td>
+<td> <b>Молот Последнего Вздоха</b>
+</td>
+<td>200
+</td>
+<td>10
+</td>
+<td>370 NV
+</td>
+<td>10 мин
+</td>
+<td> <img src="http://image.neverlands.ru/resources/429.gif" alt="429.gif" /> Серебро: 0.50 по 47.00
+<p><img src="http://image.neverlands.ru/resources/407.gif" alt="407.gif" /> Латунь: 1.75 по 50.50 
+</p><p><img src="http://image.neverlands.ru/resources/427.gif" alt="427.gif" /> Медь: 2.25 по 32.00 
+</p>
+</td>
+<td>184.88
+</td>
+<td><img src="http://image.neverlands.ru/tools/139.gif" alt="139.gif" />
+</td></tr>
+<tr style="vertical-align:top;">
+<td><img src="http://image.neverlands.ru/weapon/i_w3_123.gif" alt="i_w3_123.gif" />
+</td>
+<td> <b>Молот Изысканности</b>
+</td>
+<td>275
+</td>
+<td>11
+</td>
+<td>400 NV
+</td>
+<td>11 мин
+</td>
+<td> <img src="http://image.neverlands.ru/resources/424.gif" alt="424.gif" /> Акмонитал: 0.75 по 73.00
+<p><img src="http://image.neverlands.ru/resources/409.gif" alt="409.gif" /> Сильверит: 2.00 по 50.50 
+</p><p><img src="http://image.neverlands.ru/resources/427.gif" alt="427.gif" /> Медь: 0.50 по 32.00 
+</p><p><img src="http://image.neverlands.ru/resources/430.gif" alt="430.gif" /> Золото: 0.50 по 56.00 
+</p>
+</td>
+<td>200.75
+</td>
+<td><img src="http://image.neverlands.ru/tools/140.gif" alt="140.gif" />
+</td></tr>
+<tr style="vertical-align:top;">
+<td><img src="http://image.neverlands.ru/weapon/i_w3_124.gif" alt="i_w3_124.gif" />
+</td>
+<td> <b>Булава Проклятия</b>
+</td>
+<td>275
+</td>
+<td>11
+</td>
+<td>400 NV
+</td>
+<td>11 мин
+</td>
+<td> <img src="http://image.neverlands.ru/resources/424.gif" alt="424.gif" /> Акмонитал: 2.00 по 73.00
+<p><img src="http://image.neverlands.ru/resources/409.gif" alt="409.gif" /> Сильверит: 0.50 по 50.50 
+</p><p><img src="http://image.neverlands.ru/resources/426.gif" alt="426.gif" /> Олово: 0.75 по 30.00 
+</p><p><img src="http://image.neverlands.ru/resources/407.gif" alt="407.gif" /> Латунь: 0.25 по 50.50 
+</p>
+</td>
+<td>207.38
+</td>
+<td><img src="http://image.neverlands.ru/tools/140.gif" alt="140.gif" />
+</td></tr>
+<tr style="vertical-align:top;">
+<td><img src="http://image.neverlands.ru/weapon/i_w3_125.gif" alt="i_w3_125.gif" />
+</td>
+<td> <b>Булава Прихоти</b>
+</td>
+<td>275
+</td>
+<td>11
+</td>
+<td>400 NV
+</td>
+<td>11 мин
+</td>
+<td> <img src="http://image.neverlands.ru/resources/430.gif" alt="430.gif" /> Золото: 0.50 по 56.00
+<p><img src="http://image.neverlands.ru/resources/422.gif" alt="422.gif" /> Сталь: 3.00 по 38.00 
+</p><p><img src="http://image.neverlands.ru/resources/406.gif" alt="406.gif" /> Бронза: 0.50 по 39.00 
+</p><p><img src="http://image.neverlands.ru/resources/428.gif" alt="428.gif" /> Железо: 1.00 по 36.00 
+</p>
+</td>
+<td>198.5
+</td>
+<td><img src="http://image.neverlands.ru/tools/140.gif" alt="140.gif" />
+</td></tr>
+<tr style="vertical-align:top;">
+<td><img src="http://image.neverlands.ru/weapon/i_w3_130.gif" alt="i_w3_130.gif" />
+</td>
+<td> <b>Булава Отпора</b>
+</td>
+<td>345
+</td>
+<td>12
+</td>
+<td>620 NV
+</td>
+<td>12 мин
+</td>
+<td> <img src="http://image.neverlands.ru/resources/431.gif" alt="431.gif" /> Платина: 1.50 по 65.00
+<p><img src="http://image.neverlands.ru/resources/418.gif" alt="418.gif" /> Вулканит: 1.50 по 93.00 
+</p><p><img src="http://image.neverlands.ru/resources/410.gif" alt="410.gif" /> Темное Серебро:  0.30 по 86.50 
+</p><p><img src="http://image.neverlands.ru/resources/413.gif" alt="413.gif" /> Белое Золото: 1.50 по 75.00 
+</p>
+</td>
+<td>376.45
+</td>
+<td><img src="http://image.neverlands.ru/tools/140.gif" alt="140.gif" />
+</td></tr>
+<tr style="vertical-align:top;">
+<td><img src="http://image.neverlands.ru/weapon/i_w3_132.gif" alt="i_w3_132.gif" />
+</td>
+<td> <b>Молот Бури</b>
+</td>
+<td>345
+</td>
+<td>12
+</td>
+<td>710 NV
+</td>
+<td>12 мин
+</td>
+<td> <img src="http://image.neverlands.ru/resources/416.gif" alt="416.gif" /> Лунный Камень:  1.80 по 116.00
+<p><img src="http://image.neverlands.ru/resources/432.gif" alt="432.gif" /> Оливин: 1.20 по 83.00 
+</p><p><img src="http://image.neverlands.ru/resources/411.gif" alt="411.gif" /> Альвийское Серебро: 0.30 по 132.50 
+</p><p><img src="http://image.neverlands.ru/resources/418.gif" alt="418.gif" /> Вулканит: 0.90 по 93.00 
+</p>
+</td>
+<td>432.85
+</td>
+<td><img src="http://image.neverlands.ru/tools/140.gif" alt="140.gif" />
+</td></tr>
+<tr style="vertical-align:top;">
+<td><img src="http://image.neverlands.ru/weapon/i_w3_131.gif" alt="i_w3_131.gif" />
+</td>
+<td> <b>Неудержимая Булава</b>
+</td>
+<td>345
+</td>
+<td>12
+</td>
+<td>620 NV
+</td>
+<td>12 мин
+</td>
+<td> <img src="http://image.neverlands.ru/resources/413.gif" alt="413.gif" /> Белое Золото: 1.20 по 75.00
+<p><img src="http://image.neverlands.ru/resources/408.gif" alt="408.gif" /> Маргонит: 1.50 по 47.00 
+</p><p><img src="http://image.neverlands.ru/resources/429.gif" alt="429.gif" /> Серебро: 1.80 по 47.00 
+</p><p><img src="http://image.neverlands.ru/resources/418.gif" alt="418.gif" /> Вулканит: 0.60 по 93.00
+</p><p><img src="http://image.neverlands.ru/resources/416.gif" alt="416.gif" /> Лунный Камень: 0.60 по 116.00  
+</p>
+</td>
+<td>371.5
+</td>
+<td><img src="http://image.neverlands.ru/tools/140.gif" alt="140.gif" />
+</td></tr>
+<tr style="vertical-align:top;">
+<td><img src="http://image.neverlands.ru/weapon/i_w3_129.gif" alt="i_w3_129.gif" />
+</td>
+<td> <b>Кристальная Булава</b>
+</td>
+<td>455
+</td>
+<td>16
+</td>
+<td>1400 NV
+</td>
+<td>16 мин
+</td>
+<td> <img src="http://image.neverlands.ru/resources/433.gif" alt="433.gif" /> Мифрил: 1.20 по 100.00
+<p><img src="http://image.neverlands.ru/resources/431.gif" alt="431.gif" /> Платина: 1.95 по 65.00 
+</p><p><img src="http://image.neverlands.ru/resources/421.gif" alt="421.gif" /> Авальонн: 0.90 по 155.50 
+</p><p><img src="http://image.neverlands.ru/resources/435.gif" alt="435.gif" /> Метеорит: 1.20 по 146.00 
+</p><p><img src="http://image.neverlands.ru/resources/416.gif" alt="416.gif" /> Лунный Камень: 2.40 по 116.00  
+</p>
+</td>
+<td>841.3
+</td>
+<td><img src="http://image.neverlands.ru/tools/141.gif" alt="141.gif" />
+</td></tr>
+<tr style="vertical-align:top;">
+<td><img src="http://image.neverlands.ru/weapon/v52ga617.gif" alt="v52ga617.gif" />
+</td>
+<td> <b>Ядовитая Булава</b>
+</td>
+<td>455
+</td>
+<td>16
+</td>
+<td>1400 NV
+</td>
+<td>16 мин
+</td>
+<td> <img src="http://image.neverlands.ru/resources/351.gif" alt="351.gif" /> Заготовка из секвойи: 6.00 по 40.00
+<p><img src="http://image.neverlands.ru/resources/431.gif" alt="431.gif" /> Платина: 1.50 по 65.00
+</p><p><img src="http://image.neverlands.ru/resources/435.gif" alt="435.gif" /> Метеорит: 1.50 по 146.00 
+</p><p><img src="http://image.neverlands.ru/resources/422.gif" alt="422.gif" /> Сталь: 1.20 по 38.00 
+</p><p><img src="http://image.neverlands.ru/resources/419.gif" alt="419.gif" /> Альвийская Сталь:  1.50 по 168.00
+</p>
+</td>
+<td>855.1
+</td>
+<td><img src="http://image.neverlands.ru/tools/141.gif" alt="141.gif" />
+</td></tr>
+<tr style="vertical-align:top;">
+<td><img src="http://image.neverlands.ru/weapon/v6byralt.gif" alt="v6byralt.gif" />
+</td>
+<td> <b>Молот Разрушения</b>
+</td>
+<td>475
+</td>
+<td>16
+</td>
+<td>2000 NV
+</td>
+<td>16 мин
+</td>
+<td> <img src="http://image.neverlands.ru/resources/352.gif" alt="352.gif" /> Заготовка из ююбы: 6.00 по 44.00
+<p><img src="http://image.neverlands.ru/resources/419.gif" alt="419.gif" /> Альвийская Сталь: 2.10 по 168.00
+</p><p><img src="http://image.neverlands.ru/resources/421.gif" alt="421.gif" /> Авальонн: 1.80 по 155.50 
+</p><p><img src="http://image.neverlands.ru/resources/432.gif" alt="432.gif" /> Оливин:  1.50 по 83.00
+</p><p><img src="http://image.neverlands.ru/resources/431.gif" alt="431.gif" /> Платина: 1.50 по 65.00
+</p>
+</td>
+<td>1119.7
+</td>
+<td><img src="http://image.neverlands.ru/tools/141.gif" alt="141.gif" />
+</td></tr></table>
+<h2> <span class="mw-headline" id=".D0.9F.D0.B8.D0.BA.D0.B8_.D0.B8_.D0.90.D0.BB.D0.B5.D0.B1.D0.B0.D1.80.D0.B4.D1.8B"> Пики и Алебарды </span></h2>
+<table class="wikitable sortable">
+
+<tr style="vertical-align:top;">
+<th> Картинка
+</th>
+<th> Название предмета
+</th>
+<th> Треб.<br />умен.
+</th>
+<th> Уров.<br />предм.
+</th>
+<th> Гос.<br />цена
+</th>
+<th> Время<br />изг.
+</th>
+<th> Ресурсы для изготовления
+</th>
+<th> затр.<br />рес,NV
+</th>
+<th> Молот
+</th></tr>
+<tr style="vertical-align:top;">
+<td><img src="http://image.neverlands.ru/weapon/i_kop_001.gif" alt="i_kop_001.gif" />
+</td>
+<td> <b>Примитивное Копьё</b>
+</td>
+<td>10
+</td>
+<td>2
+</td>
+<td>15 NV
+</td>
+<td>2 мин
+</td>
+<td> <img src="http://image.neverlands.ru/resources/312.gif" alt="312.gif" /> Заготовка из орешника: 1.00 по 5.00
+<p><img src="http://image.neverlands.ru/resources/426.gif" alt="426.gif" /> Олово: 0.20 по 30.00 
+</p>
+</td>
+<td>12
+</td>
+<td><img src="http://image.neverlands.ru/tools/138.gif" alt="138.gif" />
+</td></tr>
+<tr style="vertical-align:top;">
+<td><img src="http://image.neverlands.ru/weapon/i_kop_002.gif" alt="i_kop_002.gif" />
+</td>
+<td> <b>Пилум</b>
+</td>
+<td>25
+</td>
+<td>4
+</td>
+<td>60 NV
+</td>
+<td>4 мин
+</td>
+<td> <img src="http://image.neverlands.ru/resources/422.gif" alt="422.gif" /> Сталь: 1.10 по 38.00
+<p><img src="http://image.neverlands.ru/resources/314.gif" alt="314.gif" /> Заготовка из ольхи: 1.00 по 8.00 
+</p>
+</td>
+<td>50.8
+</td>
+<td><img src="http://image.neverlands.ru/tools/138.gif" alt="138.gif" />
+</td></tr>
+<tr style="vertical-align:top;">
+<td><img src="http://image.neverlands.ru/weapon/i_kop_003.gif" alt="i_kop_003.gif" />
+</td>
+<td> <b>Копьё Парирования</b>
+</td>
+<td>25
+</td>
+<td>4
+</td>
+<td>60 NV
+</td>
+<td>4 мин
+</td>
+<td> <img src="http://image.neverlands.ru/resources/427.gif" alt="427.gif" /> Медь: 1.30 по 32.00
+<p><img src="http://image.neverlands.ru/resources/315.gif" alt="315.gif" /> Заготовка из осины: 1.20 по 8.00 
+</p>
+</td>
+<td>52.2
+</td>
+<td><img src="http://image.neverlands.ru/tools/138.gif" alt="138.gif" />
+</td></tr>
+<tr style="vertical-align:top;">
+<td><img src="http://image.neverlands.ru/weapon/i_kop_004.gif" alt="i_kop_004.gif" />
+</td>
+<td> <b>Копьё Авантюриста</b>
+</td>
+<td>50
+</td>
+<td>5
+</td>
+<td>90 NV
+</td>
+<td>5 мин
+</td>
+<td> <img src="http://image.neverlands.ru/resources/422.gif" alt="422.gif" /> Сталь: 1.00 по 38.00
+<p><img src="http://image.neverlands.ru/resources/427.gif" alt="427.gif" /> Медь: 1.20 по 32.00 
+</p>
+</td>
+<td>77.4
+</td>
+<td><img src="http://image.neverlands.ru/tools/138.gif" alt="138.gif" />
+</td></tr>
+<tr style="vertical-align:top;">
+<td><img src="http://image.neverlands.ru/weapon/i_kop_013.gif" alt="i_kop_013.gif" />
+</td>
+<td> <b>Трезубец</b>
+</td>
+<td>50
+</td>
+<td>5
+</td>
+<td>90 NV
+</td>
+<td>5 мин
+</td>
+<td> <img src="http://image.neverlands.ru/resources/422.gif" alt="422.gif" /> Cталь: 1.70 по 38.00
+<p><img src="http://image.neverlands.ru/resources/317.gif" alt="317.gif" /> Заготовка из липы: 1.00 по 12.00 
+</p>
+</td>
+<td>77.6
+</td>
+<td><img src="http://image.neverlands.ru/tools/138.gif" alt="138.gif" />
+</td></tr>
+<tr style="vertical-align:top;">
+<td><img src="http://image.neverlands.ru/weapon/i_ale_001.gif" alt="i_ale_001.gif" />
+</td>
+<td> <b>Алебарда Стражника</b>
+</td>
+<td>100
+</td>
+<td>6
+</td>
+<td>135 NV
+</td>
+<td>6 мин
+</td>
+<td> <img src="http://image.neverlands.ru/resources/428.gif" alt="428.gif" /> Железо: 1.00 по 36.00
+<p><img src="http://image.neverlands.ru/resources/317.gif" alt="317.gif" /> Заготовка из липы: 2.50 по 12.00 
+</p>
+</td>
+<td>66.0
+</td>
+<td><img src="http://image.neverlands.ru/tools/138.gif" alt="138.gif" />
+</td></tr>
+<tr style="vertical-align:top;">
+<td><img src="http://image.neverlands.ru/weapon/i_kop_005.gif" alt="i_kop_005.gif" />
+</td>
+<td> <b>Копьё Инея</b>
+</td>
+<td>100
+</td>
+<td>6
+</td>
+<td>135 NV
+</td>
+<td>6 мин
+</td>
+<td> <img src="http://image.neverlands.ru/resources/408.gif" alt="408.gif" /> Маргонит: 0.25 по 47.00
+<p><img src="http://image.neverlands.ru/resources/316.gif" alt="316.gif" /> Заготовка из берёзы: 2.50 по 10.00 
+</p><p><img src="http://image.neverlands.ru/resources/422.gif" alt="422.gif" /> Сталь: 0.75 по 38.00 
+</p>
+</td>
+<td>65.25
+</td>
+<td><img src="http://image.neverlands.ru/tools/138.gif" alt="138.gif" />
+</td></tr>
+<tr style="vertical-align:top;">
+<td><img src="http://image.neverlands.ru/weapon/i_kop_007.gif" alt="i_kop_007.gif" />
+</td>
+<td> <b>Пламенное Копьё</b>
+</td>
+<td>150
+</td>
+<td>8
+</td>
+<td>235 NV
+</td>
+<td>8 мин
+</td>
+<td> <img src="http://image.neverlands.ru/resources/320.gif" alt="320.gif" /> Заготовка из вяза: 2.50 по 19.00
+<p><img src="http://image.neverlands.ru/resources/407.gif" alt="407.gif" /> Латунь: 1.25 по 50.50 
+</p>
+</td>
+<td>110.63
+</td>
+<td><img src="http://image.neverlands.ru/tools/139.gif" alt="139.gif" />
+</td></tr>
+<tr style="vertical-align:top;">
+<td><img src="http://image.neverlands.ru/weapon/i_kop_016.gif" alt="i_kop_016.gif" />
+</td>
+<td> <b>Копьё Статичности</b>
+</td>
+<td>150
+</td>
+<td>8
+</td>
+<td>235 NV
+</td>
+<td>8 мин
+</td>
+<td> <img src="http://image.neverlands.ru/resources/340.gif" alt="340.gif" /> Заготовка из бука: 2.50 по 12.00
+<p><img src="http://image.neverlands.ru/resources/423.gif" alt="423.gif" /> Фехраль: 1.25 по 68.00 
+</p>
+</td>
+<td>115
+</td>
+<td><img src="http://image.neverlands.ru/tools/139.gif" alt="139.gif" />
+</td></tr>
+<tr style="vertical-align:top;">
+<td><img src="http://image.neverlands.ru/weapon/i_kop_008.gif" alt="i_kop_008.gif" />
+</td>
+<td> <b>Копьё Спасительной Тени</b>
+</td>
+<td>200
+</td>
+<td>10
+</td>
+<td>340 NV
+</td>
+<td>10 мин
+</td>
+<td> <img src="http://image.neverlands.ru/resources/429.gif" alt="429.gif" /> Серебро: 2.00 по 47.00
+<p><img src="http://image.neverlands.ru/resources/424.gif" alt="424.gif" /> Акмонитал: 0.50 по 73.00 
+</p><p><img src="http://image.neverlands.ru/resources/341.gif" alt="341.gif" /> Заготовка из кипариса: 2.50 по 13.00 
+</p>
+</td>
+<td>164.00
+</td>
+<td><img src="http://image.neverlands.ru/tools/139.gif" alt="139.gif" />
+</td></tr>
+<tr style="vertical-align:top;">
+<td><img src="http://image.neverlands.ru/weapon/i_kop_009.gif" alt="i_kop_009.gif" />
+</td>
+<td> <b>Копьё Подвига</b>
+</td>
+<td>200
+</td>
+<td>10
+</td>
+<td>340 NV
+</td>
+<td>10 мин
+</td>
+<td> <img src="http://image.neverlands.ru/resources/430.gif" alt="430.gif" /> Золото: 0.50 по 56.00
+<p><img src="http://image.neverlands.ru/resources/424.gif" alt="424.gif" /> Акмонитал: 1.38 по 73.00 
+</p><p><img src="http://image.neverlands.ru/resources/332.gif" alt="332.gif" /> Заготовка из бамбука: 2.50 по 15.00 
+</p>
+</td>
+<td>167.24
+</td>
+<td><img src="http://image.neverlands.ru/tools/139.gif" alt="139.gif" />
+</td></tr>
+<tr style="vertical-align:top;">
+<td><img src="http://image.neverlands.ru/weapon/i_ale_002.gif" alt="i_ale_002.gif" />
+</td>
+<td> <b>Гизарма</b>
+</td>
+<td>275
+</td>
+<td>11
+</td>
+<td>400 NV
+</td>
+<td>11 мин
+</td>
+<td> <img src="http://image.neverlands.ru/resources/429.gif" alt="429.gif" /> Серебро: 1.75 по 47.00
+<p><img src="http://image.neverlands.ru/resources/424.gif" alt="424.gif" /> Акмонитал: 0.88 по 73.00 
+</p><p><img src="http://image.neverlands.ru/resources/410.gif" alt="410.gif" /> Тёмное серебро: 0.50 по 86.50 
+</p>
+</td>
+<td>189.75
+</td>
+<td><img src="http://image.neverlands.ru/tools/140.gif" alt="140.gif" />
+</td></tr>
+<tr style="vertical-align:top;">
+<td><img src="http://image.neverlands.ru/weapon/i_ale_004.gif" alt="i_ale_004.gif" />
+</td>
+<td> <b>Боевая Алебарда</b>
+</td>
+<td>275
+</td>
+<td>11
+</td>
+<td>400 NV
+</td>
+<td>11 мин
+</td>
+<td> <img src="http://image.neverlands.ru/resources/425.gif" alt="425.gif" /> Булат: 1.25 по 69.50
+<p><img src="http://image.neverlands.ru/resources/409.gif" alt="409.gif" /> Сильверит: 0.88 по 50.50 
+</p><p><img src="http://image.neverlands.ru/resources/410.gif" alt="410.gif" /> Тёмное 
+			серебро: 0.75 по 86.50 
+</p>
+</td>
+<td>196.19
+</td>
+<td><img src="http://image.neverlands.ru/tools/140.gif" alt="140.gif" />
+</td></tr>
+<tr style="vertical-align:top;">
+<td><img src="http://image.neverlands.ru/weapon/w6_pala1.gif" alt="w6_pala1.gif" />
+</td>
+<td> <b>Пика Паладина</b>
+</td>
+<td>380
+</td>
+<td>12
+</td>
+<td>750 NV
+</td>
+<td>12 мин
+</td>
+<td> <img src="http://image.neverlands.ru/resources/497.gif" alt="497.gif" /> Эссенция воздуха: 0.2 по 250
+<p><img src="http://image.neverlands.ru/resources/496.gif" alt="496.gif" /> Эссенция воды: 0.2 по 250
+</p><p><img src="http://image.neverlands.ru/resources/329.gif" alt="329.gif" /> Заготовка из самшита: 1 по 50
+</p><p><img src="http://image.neverlands.ru/resources/472.gif" alt="472.gif" /> Синяя краска: 1 по 50 
+</p><p><img src="http://image.neverlands.ru/resources/410.gif" alt="410.gif" /> Тёмное серебро: 2 по  87
+</p><p><img src="http://image.neverlands.ru/resources/422.gif" alt="422.gif" /> Сталь: 2 по 38
+</p>
+</td>
+<td>501
+</td>
+<td><img src="http://image.neverlands.ru/tools/141.gif" alt="141.gif" />
+</td></tr>
+<tr style="vertical-align:top;">
+<td><img src="http://image.neverlands.ru/weapon/w6_pala2.gif" alt="w6_pala2.gif" />
+</td>
+<td> <b>Пика Экзорциста</b>
+</td>
+<td>550
+</td>
+<td>16
+</td>
+<td>750 NV
+</td>
+<td>16 мин
+</td>
+<td> <img src="http://image.neverlands.ru/resources/497.gif" alt="497.gif" /> Эссенция воздуха: 0.2 по 250
+<p><img src="http://image.neverlands.ru/resources/496.gif" alt="496.gif" /> Эссенция воды: 0.2 по 250
+</p><p><img src="http://image.neverlands.ru/resources/325.gif" alt="325.gif" /> Заготовка из серебристого тополя: 1 по 150
+</p><p><img src="http://image.neverlands.ru/resources/472.gif" alt="472.gif" /> Синяя краска: 1 по 50 
+</p><p><img src="http://image.neverlands.ru/resources/416.gif" alt="416.gif" /> Лунный камень: 1 по  116
+</p><p><img src="http://image.neverlands.ru/resources/433.gif" alt="433.gif" /> Мифрил: 1 по 100
+</p>
+</td>
+<td>517
+</td>
+<td><img src="http://image.neverlands.ru/tools/141.gif" alt="141.gif" />
+</td></tr></table>
+<h2> <span class="mw-headline" id=".D0.9F.D0.BE.D1.81.D0.BE.D1.85.D0.B8"> Посохи </span></h2>
+<table class="wikitable sortable">
+
+<tr style="vertical-align:top;">
+<th> Картинка
+</th>
+<th> Название предмета
+</th>
+<th> Треб.<br />умен.
+</th>
+<th> Уров.<br />предм.
+</th>
+<th> Гос.<br />цена
+</th>
+<th> Время<br />изг.
+</th>
+<th> Ресурсы для изготовления
+</th>
+<th> затр.<br />рес,NV
+</th>
+<th> Молот
+</th></tr>
+<tr style="vertical-align:top;">
+<td><img src="http://image.neverlands.ru/weapon/i_w7_102.gif" alt="i_w7_102.gif" />
+</td>
+<td> <b>Малый Жезл Полумесяца</b>
+</td>
+<td>100
+</td>
+<td>6
+</td>
+<td>150 NV
+</td>
+<td>6 мин
+</td>
+<td> <img src="http://image.neverlands.ru/resources/407.gif" alt="407.gif" /> Латунь: 0.50 по 50.50
+<p><img src="http://image.neverlands.ru/resources/427.gif" alt="427.gif" /> Медь: 0.63 по 32.00 
+</p><p><img src="http://image.neverlands.ru/resources/340.gif" alt="340.gif" /> Заготовка из бука: 2.50 по 12.00 
+</p>
+</td>
+<td>31.1
+</td>
+<td><img src="http://image.neverlands.ru/tools/138.gif" alt="138.gif" />
+</td></tr>
+<tr style="vertical-align:top;">
+<td><img src="http://image.neverlands.ru/weapon/i_w7_104.gif" alt="i_w7_104.gif" />
+</td>
+<td> <b>Малый Жезл Стремлений</b>
+</td>
+<td>100
+</td>
+<td>6
+</td>
+<td>150 NV
+</td>
+<td>6 мин
+</td>
+<td> <img src="http://image.neverlands.ru/resources/408.gif" alt="408.gif" /> Маргонит: 0.50 по 47.00
+<p><img src="http://image.neverlands.ru/resources/334.gif" alt="334.gif" /> Заготовка из эвкалипта: 2.50 по 21.00 
+</p>
+</td>
+<td>76.0
+</td>
+<td><img src="http://image.neverlands.ru/tools/138.gif" alt="138.gif" />
+</td></tr>
+<tr style="vertical-align:top;">
+<td><img src="http://image.neverlands.ru/weapon/i_w7_101.gif" alt="i_w7_101.gif" />
+</td>
+<td> <b>Малый Силовой Жезл</b>
+</td>
+<td>100
+</td>
+<td>6
+</td>
+<td>160 NV
+</td>
+<td>6 мин
+</td>
+<td> <img src="http://image.neverlands.ru/resources/426.gif" alt="426.gif" /> Олово: 0.25 по 30.00
+<p><img src="http://image.neverlands.ru/resources/320.gif" alt="320.gif" /> Заготовка из вяза: 2.50 по 19.00 
+</p><p><img src="http://image.neverlands.ru/resources/422.gif" alt="422.gif" /> Сталь: 0.50 по 38.00 
+</p>
+</td>
+<td>74
+</td>
+<td><img src="http://image.neverlands.ru/tools/138.gif" alt="138.gif" />
+</td></tr>
+<tr style="vertical-align:top;">
+<td><img src="http://image.neverlands.ru/weapon/i_w7_103.gif" alt="i_w7_103.gif" />
+</td>
+<td> <b>Малый Жезл Земных Благ</b>
+</td>
+<td>100
+</td>
+<td>6
+</td>
+<td>165 NV
+</td>
+<td>6 мин
+</td>
+<td> <img src="http://image.neverlands.ru/resources/407.gif" alt="407.gif" /> Латунь: 0.20 по 50.50
+<p><img src="http://image.neverlands.ru/resources/319.gif" alt="319.gif" /> Заготовка из тиса: 0.60 по 15.00 
+</p><p><img src="http://image.neverlands.ru/resources/318.gif" alt="318.gif" /> Заготовка из тополя: 1.00 по 14.00 
+</p>
+</td>
+<td>34.1
+</td>
+<td><img src="http://image.neverlands.ru/tools/138.gif" alt="138.gif" />
+</td></tr>
+<tr style="vertical-align:top;">
+<td><img src="http://image.neverlands.ru/weapon/i_w7_102.gif" alt="i_w7_102.gif" />
+</td>
+<td> <b>Жезл Полумесяца[8]</b>
+</td>
+<td>150
+</td>
+<td>8
+</td>
+<td>270 NV
+</td>
+<td>8 мин
+</td>
+<td> <img src="http://image.neverlands.ru/resources/430.gif" alt="430.gif" /> Золото: 1.00 по 56.00
+<p><img src="http://image.neverlands.ru/resources/321.gif" alt="321.gif" /> Заготовка из клёна: 3.50 по 22.00 
+</p>
+</td>
+<td>134.00
+</td>
+<td><img src="http://image.neverlands.ru/tools/139.gif" alt="139.gif" />
+</td></tr>
+<tr style="vertical-align:top;">
+<td><img src="http://image.neverlands.ru/weapon/i_w7_104.gif" alt="i_w7_104.gif" />
+</td>
+<td> <b>Жезл Стремлений[8]</b>
+</td>
+<td>150
+</td>
+<td>8
+</td>
+<td>270 NV
+</td>
+<td>8 мин
+</td>
+<td> <img src="http://image.neverlands.ru/resources/423.gif" alt="423.gif" /> Фехраль: 1.00 по 68.00
+<p><img src="http://image.neverlands.ru/resources/322.gif" alt="322.gif" /> Заготовка из ясеня: 3.00 по 23.00 
+</p>
+</td>
+<td>138.00
+</td>
+<td><img src="http://image.neverlands.ru/tools/139.gif" alt="139.gif" />
+</td></tr>
+<tr style="vertical-align:top;">
+<td><img src="http://image.neverlands.ru/weapon/i_w7_101.gif" alt="i_w7_101.gif" />
+</td>
+<td> <b>Силовой Жезл[8]</b>
+</td>
+<td>150
+</td>
+<td>8
+</td>
+<td>280 NV
+</td>
+<td>8 мин
+</td>
+<td> <img src="http://image.neverlands.ru/resources/343.gif" alt="343.gif" /> Заготовка из кедра: 2.50 по 24.00
+<p><img src="http://image.neverlands.ru/resources/425.gif" alt="425.gif" /> Булат: 1.00 по 69.50 
+</p><p><img src="http://image.neverlands.ru/resources/426.gif" alt="426.gif" /> Олово: 0.38 по 30.00 
+</p>
+</td>
+<td>141.90
+</td>
+<td><img src="http://image.neverlands.ru/tools/139.gif" alt="139.gif" />
+</td></tr>
+<tr style="vertical-align:top;">
+<td><img src="http://image.neverlands.ru/weapon/i_w7_103.gif" alt="i_w7_103.gif" />
+</td>
+<td> <b>Жезл Земных Благ[8]</b>
+</td>
+<td>150
+</td>
+<td>8
+</td>
+<td>290 NV
+</td>
+<td>8 мин
+</td>
+<td> <img src="http://image.neverlands.ru/resources/409.gif" alt="409.gif" /> Сильверит: 1.75 по 50.50
+<p><img src="http://image.neverlands.ru/resources/427.gif" alt="427.gif" /> Медь: 0.38 по 32.00 
+</p><p><img src="http://image.neverlands.ru/resources/341.gif" alt="341.gif" /> Заготовка из кипариса: 3.50 по 13.00 
+</p>
+</td>
+<td>147.04
+</td>
+<td><img src="http://image.neverlands.ru/tools/139.gif" alt="139.gif" />
+</td></tr>
+<tr style="vertical-align:top;">
+<td><img src="http://image.neverlands.ru/weapon/i_w7_102.gif" alt="i_w7_102.gif" />
+</td>
+<td> <b>Скипетр Полумесяца[11]</b>
+</td>
+<td>275
+</td>
+<td>11
+</td>
+<td>430 NV
+</td>
+<td>11 мин
+</td>
+<td> <img src="http://image.neverlands.ru/resources/430.gif" alt="430.gif" /> Золото: 1.13 по 56.00
+<p><img src="http://image.neverlands.ru/resources/346.gif" alt="346.gif" /> Заготовка из платана: 5.00 по 20.00 
+</p><p><img src="http://image.neverlands.ru/resources/407.gif" alt="407.gif" /> Латунь: 1.00 по 50.50 
+</p>
+</td>
+<td>214.78
+</td>
+<td><img src="http://image.neverlands.ru/tools/140.gif" alt="140.gif" />
+</td></tr>
+<tr style="vertical-align:top;">
+<td><img src="http://image.neverlands.ru/weapon/i_w7_101.gif" alt="i_w7_101.gif" />
+</td>
+<td> <b>Силовой Скипетр[11]</b>
+</td>
+<td>275
+</td>
+<td>11
+</td>
+<td>450 NV
+</td>
+<td>11 мин
+</td>
+<td> <img src="http://image.neverlands.ru/resources/406.gif" alt="406.gif" /> Бронза: 0.75 по 39.00
+<p><img src="http://image.neverlands.ru/resources/336.gif" alt="336.gif" /> Заготовка из латании: 2.50 по 26.00 
+</p><p><img src="http://image.neverlands.ru/resources/426.gif" alt="426.gif" /> Олово: 1.50 по 30.00 
+</p><p><img src="http://image.neverlands.ru/resources/410.gif" alt="410.gif" /> Тёмное серебро: 1.00 по 86.50 
+</p>
+</td>
+<td>226.75
+</td>
+<td><img src="http://image.neverlands.ru/tools/140.gif" alt="140.gif" />
+</td></tr>
+<tr style="vertical-align:top;">
+<td><img src="http://image.neverlands.ru/weapon/i_w7_103.gif" alt="i_w7_103.gif" />
+</td>
+<td> <b>Скипетр Земных Благ[11]</b>
+</td>
+<td>275
+</td>
+<td>11
+</td>
+<td>460 NV
+</td>
+<td>11 мин
+</td>
+<td> <img src="http://image.neverlands.ru/resources/430.gif" alt="430.gif" /> Золото: 1.50 по 56.00
+<p><img src="http://image.neverlands.ru/resources/323.gif" alt="323.gif" /> Заготовка из дуба: 4.50 по 30.00 
+</p>
+</td>
+<td>219
+</td>
+<td><img src="http://image.neverlands.ru/tools/140.gif" alt="140.gif" />
+</td></tr>
+<tr style="vertical-align:top;">
+<td><img src="http://image.neverlands.ru/weapon/i_w7_104.gif" alt="i_w7_104.gif" />
+</td>
+<td> <b>Скипетр Стремлений</b>
+</td>
+<td>275
+</td>
+<td>11
+</td>
+<td>460 NV
+</td>
+<td>11 мин
+</td>
+<td> <img src="http://image.neverlands.ru/resources/429.gif" alt="429.gif" /> Серебро: 1.00 по 47.00
+<p><img src="http://image.neverlands.ru/resources/347.gif" alt="347.gif" /> Заготовка из падуба: 5.00 по 22.00 
+</p><p><img src="http://image.neverlands.ru/resources/426.gif" alt="426.gif" /> Олово: 1.75 по 30.00 
+</p>
+</td>
+<td>209.5
+</td>
+<td><img src="http://image.neverlands.ru/tools/140.gif" alt="140.gif" />
+</td></tr>
+<tr style="vertical-align:top;">
+<td><img src="http://image.neverlands.ru/weapon/beoa6i2q.gif" alt="beoa6i2q.gif" />
+</td>
+<td> <b>Посох Иллюзий</b>
+</td>
+<td>350
+</td>
+<td>12
+</td>
+<td>600 NV
+</td>
+<td>12 мин
+</td>
+<td> <img src="http://image.neverlands.ru/resources/322.gif" alt="322.gif" /> Заготовка из Ясеня: 3.00 по 23.00
+<p><img src="http://image.neverlands.ru/resources/348.gif" alt="348.gif" /> Заготовка из тигрового дерева 3.00 по 22.00
+</p><p><img src="http://image.neverlands.ru/resources/411.gif" alt="411.gif" /> Альвийское серебро: 0.90 по 132.50
+</p><p><img src="http://image.neverlands.ru/resources/431.gif" alt="431.gif" /> Платина 0.90 по 65.00
+</p><p><img src="http://image.neverlands.ru/resources/429.gif" alt="429.gif" /> Серебро 1.05 по 47.00
+</p>
+</td>
+<td>363.10 NV
+</td>
+<td><img src="http://image.neverlands.ru/tools/140.gif" alt="140.gif" />
+</td></tr>
+<tr style="vertical-align:top;">
+<td><img src="http://image.neverlands.ru/weapon/th5jbdx1.gif" alt="th5jbdx1.gif" />
+</td>
+<td> <b>Посох Противоречий</b>
+</td>
+<td>350
+</td>
+<td>12
+</td>
+<td>600 NV
+</td>
+<td>12 мин
+</td>
+<td> <img src="http://image.neverlands.ru/resources/349.gif" alt="349.gif" /> Заготовка из камфорного дерева: 3.00 по 30.00
+<p><img src="http://image.neverlands.ru/resources/410.gif" alt="410.gif" /> Тёмное серебро: 1.50 по 86.50
+</p><p><img src="http://image.neverlands.ru/resources/432.gif" alt="432.gif" /> Оливин: 0.30 по 83.00
+</p><p><img src="http://image.neverlands.ru/resources/431.gif" alt="431.gif" /> Платина: 0.75 по 65.00 
+</p><p><img src="http://image.neverlands.ru/resources/412.gif" alt="412.gif" /> Имперское Золото: 0.90 по 79.00  
+</p>
+</td>
+<td>365.50
+</td>
+<td><img src="http://image.neverlands.ru/tools/140.gif" alt="140.gif" />
+</td></tr>
+<tr style="vertical-align:top;">
+<td><img src="http://image.neverlands.ru/weapon/nl73r12e.gif" alt="nl73r12e.gif" />
+</td>
+<td> <b>Посох вуду</b>
+</td>
+<td>350
+</td>
+<td>12
+</td>
+<td>600 NV
+</td>
+<td>12 мин
+</td>
+<td> <img src="http://image.neverlands.ru/resources/349.gif" alt="349.gif" /> заготовка из камфорного дерева: 3.00 по 30.00
+<p><img src="http://image.neverlands.ru/resources/346.gif" alt="346.gif" /> Заготовка из платана: 3.00 по 20.00 
+</p><p><img src="http://image.neverlands.ru/resources/412.gif" alt="412.gif" /> имперское золото: 1.05 по 79.00 
+</p><p><img src="http://image.neverlands.ru/resources/432.gif" alt="432.gif" /> оливин: 1.50 по 83.00
+</p>
+</td>
+<td>358.45
+</td>
+<td><img src="http://image.neverlands.ru/tools/140.gif" alt="140.gif" />
+</td></tr>
+<tr style="vertical-align:top;">
+<td><img src="http://image.neverlands.ru/weapon/q2a0wsu4.gif" alt="q2a0wsu4.gif" />
+</td>
+<td> <b>Ледяной посох</b>
+</td>
+<td>350
+</td>
+<td>12
+</td>
+<td>600 NV
+</td>
+<td>12 мин
+</td>
+<td> <img src="http://image.neverlands.ru/resources/347.gif" alt="347.gif" /> заготовка из падуба: 3.00 по 22.00
+<p><img src="http://image.neverlands.ru/resources/348.gif" alt="348.gif" /> Заготовка из тигрового дерева: 3.00 по 22.00 
+</p><p><img src="http://image.neverlands.ru/resources/433.gif" alt="433.gif" /> мифрил: 0.90 по 100.00 
+</p><p><img src="http://image.neverlands.ru/resources/412.gif" alt="412.gif" /> имперское золото: 0.60 по 79.00
+</p><p><img src="http://image.neverlands.ru/resources/432.gif" alt="432.gif" /> оливин: 0.30 по 83.00
+</p><p><img src="http://image.neverlands.ru/resources/411.gif" alt="411.gif" /> альвийское серебро: 0.30 по 132.50
+</p><p><img src="http://image.neverlands.ru/resources/472.gif" alt="472.gif" /> синяя краска: 0.60 по 50.00
+</p>
+</td>
+<td>365.05
+</td>
+<td><img src="http://image.neverlands.ru/tools/140.gif" alt="140.gif" />
+</td></tr>
+<tr style="vertical-align:top;">
+<td><img src="http://image.neverlands.ru/weapon/81ahv7ok.gif" alt="81ahv7ok.gif" />
+</td>
+<td> <b>Жезл Стража</b>
+</td>
+<td>460
+</td>
+<td>16
+</td>
+<td>1600 NV
+</td>
+<td>16 мин
+</td>
+<td> <img src="http://image.neverlands.ru/resources/325.gif" alt="325.gif" /> Заготовка из серебристого тополя: 3.90 по 150.00
+<p><img src="http://image.neverlands.ru/resources/435.gif" alt="435.gif" /> Метеорит: 0.60 по 146.00
+</p><p><img src="http://image.neverlands.ru/resources/413.gif" alt="413.gif" /> Белое Золото: 0.90 по 75.00
+</p><p><img src="http://image.neverlands.ru/resources/419.gif" alt="419.gif" /> Альвийская Сталь: 0.90 по 168.00
+</p><p><img src="http://image.neverlands.ru/resources/412.gif" alt="412.gif" /> Имперское Золото: 1.50 по 79.00 
+</p>
+</td>
+<td>1010.80
+</td>
+<td><img src="http://image.neverlands.ru/tools/141.gif" alt="141.gif" />
+</td></tr>
+<tr style="vertical-align:top;">
+<td><img src="http://image.neverlands.ru/weapon/ah93yxw0.gif" alt="ah93yxw0.gif" />
+</td>
+<td> <b>Посох Наваждения</b>
+</td>
+<td>460
+</td>
+<td>16
+</td>
+<td>1600 NV
+</td>
+<td>16 мин
+</td>
+<td> <img src="http://image.neverlands.ru/resources/350.gif" alt="350.gif" /> Заготовка из амириса: 9.00 по 35.00
+<p><img src="http://image.neverlands.ru/resources/435.gif" alt="435.gif" /> Метеорит: 1.50 по 146.00
+</p><p><img src="http://image.neverlands.ru/resources/430.gif" alt="430.gif" /> Золото: 1.50 по 56.00
+</p><p><img src="http://image.neverlands.ru/resources/421.gif" alt="421.gif" /> Авальонн: 1.50 по 155.50 
+</p><p><img src="http://image.neverlands.ru/resources/434.gif" alt="434.gif" /> Адамантин: 0.90 по 115.00 
+</p>
+</td>
+<td>955.75
+</td>
+<td><img src="http://image.neverlands.ru/tools/141.gif" alt="141.gif" />
+</td></tr>
+<tr style="vertical-align:top;">
+<td><img src="http://image.neverlands.ru/weapon/qcd51uiw.gif" alt="qcd51uiw.gif" />
+</td>
+<td> <b>Шаманский Посох</b>
+</td>
+<td>460
+</td>
+<td>16
+</td>
+<td>1600 NV
+</td>
+<td>16 мин
+</td>
+<td> <img src="http://image.neverlands.ru/resources/353.gif" alt="353.gif" /> Заготовка из красного дерева: 0.50 по 250.00
+<p><img src="http://image.neverlands.ru/resources/434.gif" alt="434.gif" /> Адамантин: 3.00 по 115.00
+</p><p><img src="http://image.neverlands.ru/resources/413.gif" alt="413.gif" /> Белое Золото: 2.00 по 75.00
+</p><p><img src="http://image.neverlands.ru/resources/419.gif" alt="419.gif" /> Альвийская Сталь: 1.00 по 168.00 
+</p><p><img src="http://image.neverlands.ru/resources/430.gif" alt="430.gif" /> Золото: 3.00 по 56.00
+</p>
+</td>
+<td>957.00
+</td>
+<td><img src="http://image.neverlands.ru/tools/141.gif" alt="141.gif" />
+</td></tr>
+<tr style="vertical-align:top;">
+<td><img src="http://image.neverlands.ru/weapon/18rwubhp.gif" alt="18rwubhp.gif" />
+</td>
+<td> <b>Энергетический Жезл</b>
+</td>
+<td>460
+</td>
+<td>16
+</td>
+<td>1600 NV
+</td>
+<td>16 мин
+</td>
+<td> <img src="http://image.neverlands.ru/resources/352.gif" alt="352.gif" /> Заготовка из ююбы: 9.00 по 44.00
+<p><img src="http://image.neverlands.ru/resources/412.gif" alt="412.gif" /> Имперское Золото: 1.50 по 79.00
+</p><p><img src="http://image.neverlands.ru/resources/430.gif" alt="430.gif" /> Золото: 1.50 по 56.00
+</p><p><img src="http://image.neverlands.ru/resources/421.gif" alt="421.gif" /> Авальонн: 1.20 по 155.50 
+</p><p><img src="http://image.neverlands.ru/resources/435.gif" alt="435.gif" /> Метеорит: 1.20 по 146.00
+</p>
+</td>
+<td>961.30
+</td>
+<td><img src="http://image.neverlands.ru/tools/141.gif" alt="141.gif" />
+</td></tr></table>
+<h2> <span class="mw-headline" id=".D0.A9.D0.B8.D1.82.D1.8B"> Щиты </span></h2>
+<table class="wikitable sortable">
+
+<tr style="vertical-align:top;">
+<th> Картинка
+</th>
+<th> Название предмета
+</th>
+<th> Треб.<br />умен.
+</th>
+<th> Уров.<br />предм.
+</th>
+<th> Гос.<br />цена
+</th>
+<th> Время<br />изг.
+</th>
+<th> Ресурсы для изготовления
+</th>
+<th> затр.<br />рес,NV
+</th>
+<th> Молот
+</th></tr>
+			 
+
+<tr style="vertical-align:top;">
+<td><img src="http://image.neverlands.ru/weapon/i_w20_103.gif" alt="i_w20_103.gif" />
+</td>
+<td> <b>Щит Упрямца</b>
+</td>
+<td>25
+</td>
+<td>3
+</td>
+<td>30 NV
+</td>
+<td>3 мин
+</td>
+<td> <img src="http://image.neverlands.ru/resources/316.gif" alt="316.gif" /> Заготовка из берёзы: 1.00 по 10.00
+<p><img src="http://image.neverlands.ru/resources/426.gif" alt="426.gif" /> Олово: 0.60 по 30.00 
+</p>
+</td>
+<td>29
+</td>
+<td><img src="http://image.neverlands.ru/tools/138.gif" alt="138.gif" />
+</td></tr>
+<tr style="vertical-align:top;">
+<td><img src="http://image.neverlands.ru/weapon/i_w20_102.gif" alt="i_w20_102.gif" />
+</td>
+<td> <b>Щит Преимущества</b>
+</td>
+<td>25
+</td>
+<td>3
+</td>
+<td>33 NV
+</td>
+<td>3 мин
+</td>
+<td> <img src="http://image.neverlands.ru/resources/331.gif" alt="331.gif" /> Заготовка из фигового дерева: 1.00 по 10.00
+<p><img src="http://image.neverlands.ru/resources/426.gif" alt="426.gif" /> Олово: 0.70 по 30.00 
+</p>
+</td>
+<td>32
+</td>
+<td><img src="http://image.neverlands.ru/tools/138.gif" alt="138.gif" />
+</td></tr>
+<tr style="vertical-align:top;">
+<td><img src="http://image.neverlands.ru/weapon/i_w20_105.gif" alt="i_w20_105.gif" />
+</td>
+<td> <b>Мрачный Щит</b>
+</td>
+<td>75
+</td>
+<td>5
+</td>
+<td>80 NV
+</td>
+<td>5 мин
+</td>
+<td> <img src="http://image.neverlands.ru/resources/406.gif" alt="406.gif" /> Бронза: 0.90 по 39.00
+<p><img src="http://image.neverlands.ru/resources/318.gif" alt="318.gif" /> Заготовка из тополя: 1.00 по 14.00 
+</p><p><img src="http://image.neverlands.ru/resources/319.gif" alt="319.gif" /> Заготовка из тиса: 2.00 по 15.00 
+</p>
+</td>
+<td>80.1
+</td>
+<td> <img src="http://image.neverlands.ru/tools/138.gif" alt="138.gif" />
+</td></tr>
+<tr style="vertical-align:top;">
+<td> <img src="http://image.neverlands.ru/weapon/i_w20_115.gif" alt="i_w20_115.gif" />
+</td>
+<td> <b>Щит Росы</b>
+</td>
+<td>75
+</td>
+<td>5
+</td>
+<td>80 NV
+</td>
+<td>5 мин
+</td>
+<td> <img src="http://image.neverlands.ru/resources/426.gif" alt="426.gif" /> Олово: 1.00 по 30.00
+<p><img src="http://image.neverlands.ru/resources/422.gif" alt="422.gif" /> Сталь: 0.55 по 38.00 
+</p><p><img src="http://image.neverlands.ru/resources/334.gif" alt="334.gif" /> Заготовка из эвкалипта: 1.30 по 21.00 
+</p>
+</td>
+<td>79.2
+</td>
+<td><img src="http://image.neverlands.ru/tools/138.gif" alt="138.gif" />
+</td></tr>
+<tr style="vertical-align:top;">
+<td><img src="http://image.neverlands.ru/weapon/i_w20_114.gif" alt="i_w20_114.gif" />
+</td>
+<td> <b>Щит Раскаяния</b>
+</td>
+<td>130
+</td>
+<td>7
+</td>
+<td>130 NV
+</td>
+<td>7 мин
+</td>
+<td> <img src="http://image.neverlands.ru/resources/329.gif" alt="329.gif" /> Заготовка из самшита: 0.50 по 50.00
+<p><img src="http://image.neverlands.ru/resources/429.gif" alt="429.gif" /> Серебро: 0.50 по 47.00 
+</p><p><img src="http://image.neverlands.ru/resources/428.gif" alt="428.gif" /> Железо: 0.50 по 36.00 
+</p>
+</td>
+<td>66.5
+</td>
+<td><img src="http://image.neverlands.ru/tools/139.gif" alt="139.gif" />
+</td></tr>
+<tr style="vertical-align:top;">
+<td><img src="http://image.neverlands.ru/weapon/i_w20_118.gif" alt="i_w20_118.gif" />
+</td>
+<td> <b>Щит Возможностей</b>
+</td>
+<td>130
+</td>
+<td>7
+</td>
+<td>130 NV
+</td>
+<td>7 мин
+</td>
+<td> <img src="http://image.neverlands.ru/resources/314.gif" alt="314.gif" /> Заготовка из ольхи: 2.50 по 8.00
+<p><img src="http://image.neverlands.ru/resources/423.gif" alt="423.gif" /> Фехраль: 0.25 по 68.00 
+</p><p><img src="http://image.neverlands.ru/resources/408.gif" alt="408.gif" /> Маргонит: 0.50 по 47.00 
+</p>
+</td>
+<td>60.5
+</td>
+<td><img src="http://image.neverlands.ru/tools/139.gif" alt="139.gif" />
+</td></tr>
+<tr style="vertical-align:top;">
+<td><img src="http://image.neverlands.ru/weapon/i_w20_120.gif" alt="i_w20_120.gif" />
+</td>
+<td> <b>Щит Благородства</b>
+</td>
+<td>180
+</td>
+<td>9
+</td>
+<td>200 NV
+</td>
+<td>9 мин
+</td>
+<td> <img src="http://image.neverlands.ru/resources/321.gif" alt="321.gif" /> Заготовка из клёна: 3.88 по 22.00
+<p><img src="http://image.neverlands.ru/resources/409.gif" alt="409.gif" /> Сильверит: 0.25 по 50.50 
+</p><p><img src="http://image.neverlands.ru/resources/427.gif" alt="427.gif" /> Медь: 0.13 по 32.00 
+</p>
+</td>
+<td>103.15
+</td>
+<td><img src="http://image.neverlands.ru/tools/139.gif" alt="139.gif" />
+</td></tr>
+<tr style="vertical-align:top;">
+<td><img src="http://image.neverlands.ru/weapon/i_w20_121.gif" alt="i_w20_121.gif" />
+</td>
+<td> <b>Щит Отражения</b>
+</td>
+<td>180
+</td>
+<td>9
+</td>
+<td>200 NV
+</td>
+<td>9 мин
+</td>
+<td> <img src="http://image.neverlands.ru/resources/323.gif" alt="323.gif" /> Заготовка из дуба: 2.25 по 30.00
+<p><img src="http://image.neverlands.ru/resources/425.gif" alt="425.gif" /> Булат: 0.50 по 69.50 
+</p>
+</td>
+<td>102.25
+</td>
+<td><img src="http://image.neverlands.ru/tools/139.gif" alt="139.gif" />
+</td></tr>
+<tr style="vertical-align:top;">
+<td><img src="http://image.neverlands.ru/weapon/i_w20_117.gif" alt="i_w20_117.gif" />
+</td>
+<td> <b>Свободный Щит</b>
+</td>
+<td>240
+</td>
+<td>10
+</td>
+<td>250 NV
+</td>
+<td>10 мин
+</td>
+<td><img src="http://image.neverlands.ru/resources/427.gif" alt="427.gif" /> Медь: 0.25 по 32.00
+<p><img src="http://image.neverlands.ru/resources/343.gif" alt="343.gif" /> Заготовка из кедра: 2.50 по 24.00 
+</p><p><img src="http://image.neverlands.ru/resources/409.gif" alt="409.gif" /> Сильверит: 0.25 по 50.50 
+</p><p><img src="http://image.neverlands.ru/resources/407.gif" alt="407.gif" /> Латунь: 0.25 по 50.50 
+</p><p><img src="http://image.neverlands.ru/resources/429.gif" alt="429.gif" /> Серебро: 0.25 по 47.00 
+</p><p><img src="http://image.neverlands.ru/resources/425.gif" alt="425.gif" /> Булат: 0.25 по 69.50 
+</p>
+</td>
+<td>122.38
+</td>
+<td><img src="http://image.neverlands.ru/tools/140.gif" alt="140.gif" />
+</td></tr>
+<tr style="vertical-align:top;">
+<td><img src="http://image.neverlands.ru/weapon/i_w20_124.gif" alt="i_w20_124.gif" />
+</td>
+<td> <b>Щит Василиска</b>
+</td>
+<td>240
+</td>
+<td>10
+</td>
+<td>250 NV
+</td>
+<td>10 мин
+</td>
+<td> <img src="http://image.neverlands.ru/resources/430.gif" alt="430.gif" /> Золото: 0.75 по 56.00
+<p><img src="http://image.neverlands.ru/resources/347.gif" alt="347.gif" /> Заготовка из падуба: 2.50 по 22.00 
+</p><p><img src="http://image.neverlands.ru/resources/410.gif" alt="410.gif" /> Тёмное серебро: 0.25 по 86.50 
+</p>
+</td>
+<td>118.63
+</td>
+<td><img src="http://image.neverlands.ru/tools/140.gif" alt="140.gif" />
+</td></tr>
+<tr style="vertical-align:top;">
+<td><img src="http://image.neverlands.ru/weapon/i_w20_116.gif" alt="i_w20_116.gif" />
+</td>
+<td> <b>Щит Удивления</b>
+</td>
+<td>320
+</td>
+<td>11
+</td>
+<td>300 NV
+</td>
+<td>11 мин
+</td>
+<td> <img src="http://image.neverlands.ru/resources/335.gif" alt="335.gif" /> Заготовка из лавра: 2.50 по 25.00
+<p><img src="http://image.neverlands.ru/resources/429.gif" alt="429.gif" /> Серебро: 0.50 по 47.00 
+</p><p><img src="http://image.neverlands.ru/resources/410.gif" alt="410.gif" /> Тёмное серебро: 0.50 по 86.50 
+</p><p><img src="http://image.neverlands.ru/resources/422.gif" alt="422.gif" /> Сталь: 0.50 по 38.00 
+</p>
+</td>
+<td>149.25
+</td>
+<td><img src="http://image.neverlands.ru/tools/140.gif" alt="140.gif" />
+</td></tr>
+<tr style="vertical-align:top;">
+<td><img src="http://image.neverlands.ru/weapon/w20_vedm1.gif" alt="w20_vedm1.gif" />
+</td>
+<td> <b>Щит Ведьмака</b>
+</td>
+<td>390
+</td>
+<td>12
+</td>
+<td>500 NV
+</td>
+<td>12 мин
+</td>
+<td> <img src="http://image.neverlands.ru/resources/499.gif" alt="499.gif" /> Эссенция земли: 0.1 по 250
+<p><img src="http://image.neverlands.ru/resources/498.gif" alt="498.gif" /> Эссенция огня: 0.1 по 250
+</p><p><img src="http://image.neverlands.ru/resources/423.gif" alt="423.gif" /> Фехраль: 2 по 68
+</p><p><img src="http://image.neverlands.ru/resources/427.gif" alt="427.gif" /> Медь: 1 по  32
+</p><p><img src="http://image.neverlands.ru/resources/422.gif" alt="422.gif" /> Сталь: 2 по 38
+</p>
+</td>
+<td>295
+</td>
+<td><img src="http://image.neverlands.ru/tools/141.gif" alt="141.gif" />
+</td></tr>
+<tr style="vertical-align:top;">
+<td><img src="http://image.neverlands.ru/weapon/w20_pala1.gif" alt="w20_pala1.gif" />
+</td>
+<td> <b>Щит Паладина</b>
+</td>
+<td>390
+</td>
+<td>12
+</td>
+<td>500 NV
+</td>
+<td>12 мин
+</td>
+<td><img src="http://image.neverlands.ru/resources/422.gif" alt="422.gif" /> Сталь: 2 по 38
+<p><img src="http://image.neverlands.ru/resources/424.gif" alt="424.gif" /> Акмонитал: 1 по 73
+</p><p><img src="http://image.neverlands.ru/resources/472.gif" alt="472.gif" /> Синяя краска: 1 по 50
+</p><p><img src="http://image.neverlands.ru/resources/496.gif" alt="496.gif" /> Эссенция воды: 0.2 по 250
+</p><p><img src="http://image.neverlands.ru/resources/497.gif" alt="497.gif" /> Эссенция воздуха: 0.2 по 250 
+</p>
+</td>
+<td>300
+</td>
+<td><img src="http://image.neverlands.ru/tools/141.gif" alt="141.gif" />
+</td></tr>
+<tr style="vertical-align:top;">
+<td><img src="http://image.neverlands.ru/weapon/i_w20_127.gif" alt="i_w20_127.gif" />
+</td>
+<td> <b>Шипованный Щит</b>
+</td>
+<td>320
+</td>
+<td>11
+</td>
+<td>300 NV
+</td>
+<td>11 мин
+</td>
+<td> <img src="http://image.neverlands.ru/resources/336.gif" alt="336.gif" /> Заготовка из латании: 2.50 по 26.00
+<p><img src="http://image.neverlands.ru/resources/429.gif" alt="429.gif" /> Серебро: 1.75 по 47.00 
+</p>
+</td>
+<td>147.25
+</td>
+<td><img src="http://image.neverlands.ru/tools/140.gif" alt="140.gif" />
+</td></tr>
+<tr style="vertical-align:top;">
+<td><img src="http://image.neverlands.ru/weapon/f7exoa40.gif" alt="f7exoa40.gif" />
+</td>
+<td> <b>Щит Паладина</b>
+</td>
+<td>480
+</td>
+<td>16
+</td>
+<td>1500 NV
+</td>
+<td>16 мин
+</td>
+<td> <img src="http://image.neverlands.ru/resources/351.gif" alt="351.gif" /> Заготовка из Секвойи: 0.60 по 40.00
+<p><img src="http://image.neverlands.ru/resources/413.gif" alt="413.gif" /> Белое Золото: 0.90 по 75.00
+</p><p><img src="http://image.neverlands.ru/resources/414.gif" alt="414.gif" /> Драконий Камень: 0.90 по 147.50
+</p><p><img src="http://image.neverlands.ru/resources/419.gif" alt="419.gif" /> Альвийская Сталь: 1.50 по 168.00
+</p><p><img src="http://image.neverlands.ru/resources/421.gif" alt="421.gif" /> Авальонн: 0.90 по 155.50
+</p><p><img src="http://image.neverlands.ru/resources/433.gif" alt="433.gif" /> Мифрил: 0.30 по 100.00
+</p><p><img src="http://image.neverlands.ru/resources/434.gif" alt="434.gif" /> Адамантин: 0.90 по 115.00 
+</p><p><img src="http://image.neverlands.ru/resources/474.gif" alt="474.gif" /> Красная Краска: 0.60 по 50.00
+</p><p><img src="http://image.neverlands.ru/resources/472.gif" alt="472.gif" /> Синяя Краска: 0.60 по 50.00
+</p>
+</td>
+<td>810.70
+</td>
+<td><img src="http://image.neverlands.ru/tools/141.gif" alt="141.gif" />
+</td></tr>
+<tr style="vertical-align:top;">
+<td><img src="http://image.neverlands.ru/weapon/rpw9ioae.gif" alt="rpw9ioae.gif" />
+</td>
+<td> <b>Щит Золотого Сфинкса</b>
+</td>
+<td>480
+</td>
+<td>16
+</td>
+<td>1500 NV
+</td>
+<td>16 мин
+</td>
+<td> <img src="http://image.neverlands.ru/resources/350.gif" alt="350.gif" /> Заготовка из Амириса: 9.00 по 35.00
+<p><img src="http://image.neverlands.ru/resources/410.gif" alt="410.gif" /> Темное Серебро: 1.50 по 86.50 
+</p><p><img src="http://image.neverlands.ru/resources/412.gif" alt="412.gif" /> Имперское Золото: 1.50 по 79.00
+</p><p><img src="http://image.neverlands.ru/resources/421.gif" alt="421.gif" /> Авальонн: 0.90 по 155.50
+</p><p><img src="http://image.neverlands.ru/resources/425.gif" alt="425.gif" /> Булат: 0.90 по 69.50
+</p><p><img src="http://image.neverlands.ru/resources/435.gif" alt="435.gif" /> Метеорит: 0.90 по 146.00
+</p>
+</td>
+<td>898.15
+</td>
+<td><img src="http://image.neverlands.ru/tools/141.gif" alt="141.gif" />
+</td></tr>
+<tr style="vertical-align:top;">
+<td><img src="http://image.neverlands.ru/weapon/w20_vedm2.gif" alt="w20_vedm2.gif" />
+</td>
+<td> <b>Щит Истребителя Нечисти</b>
+</td>
+<td>550
+</td>
+<td>16
+</td>
+<td>1500 NV
+</td>
+<td>16 мин
+</td>
+<td>
+<p><img src="http://image.neverlands.ru/resources/475.gif" alt="475.gif" /> Чёрная краска: 1 по 50 
+</p><p><img src="http://image.neverlands.ru/resources/499.gif" alt="499.gif" /> Эссенция земли: 0.2 по 250 
+</p><p><img src="http://image.neverlands.ru/resources/498.gif" alt="498.gif" /> Эссенция огня: 0.2 по 250
+</p><p><img src="http://image.neverlands.ru/resources/411.gif" alt="411.gif" /> Альвийское серебро: 1 по 133 
+</p><p><img src="http://image.neverlands.ru/resources/410.gif" alt="410.gif" /> Тёмное серебро: 2 по 87
+</p><p><img src="http://image.neverlands.ru/resources/435.gif" alt="435.gif" /> Метеорит: 2 по 146
+</p>
+</td>
+<td>750
+</td>
+<td><img src="http://image.neverlands.ru/tools/141.gif" alt="141.gif" />
+</td></tr>
+<tr style="vertical-align:top;">
+<td><img src="http://image.neverlands.ru/weapon/w20_pala2.gif" alt="w20_pala2.gif" />
+</td>
+<td> <b>Щит Экзорциста</b>
+</td>
+<td>550
+</td>
+<td>16
+</td>
+<td>1500 NV
+</td>
+<td>16 мин
+</td>
+<td> <img src="http://image.neverlands.ru/resources/497.gif" alt="497.gif" /> Эссенция воздуха: 0.5 по 250
+<p><img src="http://image.neverlands.ru/resources/496.gif" alt="496.gif" /> Эссенция воды: 0.5 по 250
+</p><p><img src="http://image.neverlands.ru/resources/416.gif" alt="416.gif" /> Лунный камень: 2 по 116
+</p><p><img src="http://image.neverlands.ru/resources/413.gif" alt="413.gif" /> Белое золото: 2 по 75
+</p><p><img src="http://image.neverlands.ru/resources/433.gif" alt="433.gif" /> Мифрил: 2 по 100
+</p><p><img src="http://image.neverlands.ru/resources/431.gif" alt="431.gif" /> Платина: 1 по 65
+</p>
+</td>
+<td>898
+</td>
+<td><img src="http://image.neverlands.ru/tools/141.gif" alt="141.gif" />
+</td></tr></table>
+
+<!-- 
+NewPP limit report
+Preprocessor node count: 85/1000000
+Post-expand include size: 0/2097152 bytes
+Template argument size: 0/2097152 bytes
+Expensive parser function count: 0/100
+-->
+</div>				<!-- /bodycontent -->
+								<!-- printfooter -->
+				<div class="printfooter">
+				Источник — «<a href="http://wiki.neverlands.ru/index.php?title=%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D1%87%D0%B5%D1%80%D1%82%D0%B5%D0%B6%D0%B5%D0%B9_%D0%BE%D1%80%D1%83%D0%B6%D0%B8%D1%8F&amp;oldid=21398">http://wiki.neverlands.ru/index.php?title=%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D1%87%D0%B5%D1%80%D1%82%D0%B5%D0%B6%D0%B5%D0%B9_%D0%BE%D1%80%D1%83%D0%B6%D0%B8%D1%8F&amp;oldid=21398</a>»				</div>
+				<!-- /printfooter -->
+												<!-- catlinks -->
+				<div id='catlinks' class='catlinks'><div id="mw-normal-catlinks" class="mw-normal-catlinks"><a href="/wiki/%D0%A1%D0%BB%D1%83%D0%B6%D0%B5%D0%B1%D0%BD%D0%B0%D1%8F:Categories" title="Служебная:Categories">Категории</a>: <ul><li><a href="/wiki/%D0%9A%D0%B0%D1%82%D0%B5%D0%B3%D0%BE%D1%80%D0%B8%D1%8F:%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D1%8B_%D0%BF%D1%80%D0%BE%D1%84%D0%B5%D1%81%D1%81%D0%B8%D0%B9" title="Категория:Таблицы профессий">Таблицы профессий</a></li><li><a href="/wiki/%D0%9A%D0%B0%D1%82%D0%B5%D0%B3%D0%BE%D1%80%D0%B8%D1%8F:%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D1%8B_%D1%80%D0%B5%D0%BC%D0%B5%D1%81%D0%BB%D0%B5%D0%BD%D0%BD%D0%B8%D0%BA%D0%B0" title="Категория:Таблицы ремесленника">Таблицы ремесленника</a></li></ul></div></div>				<!-- /catlinks -->
+												<div class="visualClear"></div>
+				<!-- debughtml -->
+								<!-- /debughtml -->
+			</div>
+			<!-- /bodyContent -->
+		</div>
+		<!-- /content -->
+		<!-- header -->
+		<div id="mw-head" class="noprint">
+			
+<!-- 0 -->
+<div id="p-personal" class="">
+	<h5>Личные инструменты</h5>
+	<ul>
+		<li id="pt-login"><a href="/index.php?title=%D0%A1%D0%BB%D1%83%D0%B6%D0%B5%D0%B1%D0%BD%D0%B0%D1%8F:UserLogin&amp;returnto=%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0+%D1%87%D0%B5%D1%80%D1%82%D0%B5%D0%B6%D0%B5%D0%B9+%D0%BE%D1%80%D1%83%D0%B6%D0%B8%D1%8F" title="Здесь можно зарегистрироваться в системе, но это необязательно. [o]" accesskey="o">Представиться / зарегистрироваться</a></li>
+	</ul>
+</div>
+
+<!-- /0 -->
+			<div id="left-navigation">
+				
+<!-- 0 -->
+<div id="p-namespaces" class="vectorTabs">
+	<h5>Пространства имён</h5>
+	<ul>
+					<li  id="ca-nstab-main" class="selected"><span><a href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D1%87%D0%B5%D1%80%D1%82%D0%B5%D0%B6%D0%B5%D0%B9_%D0%BE%D1%80%D1%83%D0%B6%D0%B8%D1%8F"  title="Содержание статьи [c]" accesskey="c">Статья</a></span></li>
+					<li  id="ca-talk" class="new"><span><a href="/index.php?title=%D0%9E%D0%B1%D1%81%D1%83%D0%B6%D0%B4%D0%B5%D0%BD%D0%B8%D0%B5:%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D1%87%D0%B5%D1%80%D1%82%D0%B5%D0%B6%D0%B5%D0%B9_%D0%BE%D1%80%D1%83%D0%B6%D0%B8%D1%8F&amp;action=edit&amp;redlink=1"  title="Обсуждение содержания страницы [t]" accesskey="t">Обсуждение</a></span></li>
+			</ul>
+</div>
+
+<!-- /0 -->
+
+<!-- 1 -->
+<div id="p-variants" class="vectorMenu emptyPortlet">
+	<h4>
+		</h4>
+	<h5><span>Варианты</span><a href="#"></a></h5>
+	<div class="menu">
+		<ul>
+					</ul>
+	</div>
+</div>
+
+<!-- /1 -->
+			</div>
+			<div id="right-navigation">
+				
+<!-- 0 -->
+<div id="p-views" class="vectorTabs">
+	<h5>Просмотры</h5>
+	<ul>
+					<li id="ca-view" class="selected"><span><a href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D1%87%D0%B5%D1%80%D1%82%D0%B5%D0%B6%D0%B5%D0%B9_%D0%BE%D1%80%D1%83%D0%B6%D0%B8%D1%8F" >Чтение</a></span></li>
+					<li id="ca-viewsource"><span><a href="/index.php?title=%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D1%87%D0%B5%D1%80%D1%82%D0%B5%D0%B6%D0%B5%D0%B9_%D0%BE%D1%80%D1%83%D0%B6%D0%B8%D1%8F&amp;action=edit"  title="Эта страница защищена от изменений, но вы можете посмотреть и скопировать её исходный текст [e]" accesskey="e">Просмотр</a></span></li>
+					<li id="ca-history" class="collapsible"><span><a href="/index.php?title=%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D1%87%D0%B5%D1%80%D1%82%D0%B5%D0%B6%D0%B5%D0%B9_%D0%BE%D1%80%D1%83%D0%B6%D0%B8%D1%8F&amp;action=history"  title="Журнал изменений страницы [h]" accesskey="h">История</a></span></li>
+			</ul>
+</div>
+
+<!-- /0 -->
+
+<!-- 1 -->
+<div id="p-cactions" class="vectorMenu emptyPortlet">
+	<h5><span>Действия</span><a href="#"></a></h5>
+	<div class="menu">
+		<ul>
+					</ul>
+	</div>
+</div>
+
+<!-- /1 -->
+
+<!-- 2 -->
+<div id="p-search">
+	<h5><label for="searchInput">Поиск</label></h5>
+	<form action="/index.php" id="searchform">
+				<div id="simpleSearch">
+						<input name="search" title="Искать это слово [f]" accesskey="f" id="searchInput" />						<button name="button" title="Найти страницы, содержащие указанный текст" id="searchButton"><img src="/skins/vector/images/search-ltr.png?303" alt="Найти" /></button>								<input type='hidden' name="title" value="Служебная:Search"/>
+		</div>
+	</form>
+</div>
+
+<!-- /2 -->
+			</div>
+		</div>
+		<!-- /header -->
+		<!-- panel -->
+			<div id="mw-panel" class="noprint">
+				<!-- logo -->
+					<div id="p-logo"><a style="background-image: url(http://wiki.neverlands.ru/img/logo.png);" href="/wiki/%D0%97%D0%B0%D0%B3%D0%BB%D0%B0%D0%B2%D0%BD%D0%B0%D1%8F_%D1%81%D1%82%D1%80%D0%B0%D0%BD%D0%B8%D1%86%D0%B0"  title="Заглавная страница"></a></div>
+				<!-- /logo -->
+				
+<!-- navigation -->
+<div class="portal" id='p-navigation'>
+	<h5>Навигация</h5>
+	<div class="body">
+		<ul>
+			<li id="n-allpages"><a href="/wiki/%D0%A1%D0%BB%D1%83%D0%B6%D0%B5%D0%B1%D0%BD%D0%B0%D1%8F:AllPages">Все страницы</a></li>
+			<li id="n-newpages"><a href="/wiki/%D0%A1%D0%BB%D1%83%D0%B6%D0%B5%D0%B1%D0%BD%D0%B0%D1%8F:NewPages">Новые страницы</a></li>
+			<li id="n-popularpages"><a href="/wiki/%D0%A1%D0%BB%D1%83%D0%B6%D0%B5%D0%B1%D0%BD%D0%B0%D1%8F:PopularPages">Популярные страницы</a></li>
+			<li id="n-wantedpages"><a href="/wiki/%D0%A1%D0%BB%D1%83%D0%B6%D0%B5%D0%B1%D0%BD%D0%B0%D1%8F:WantedPages">Требуемые страницы</a></li>
+			<li id="n-categories"><a href="/wiki/%D0%A1%D0%BB%D1%83%D0%B6%D0%B5%D0%B1%D0%BD%D0%B0%D1%8F:Categories">Категории</a></li>
+			<li id="n-wantedcategories"><a href="/wiki/%D0%A1%D0%BB%D1%83%D0%B6%D0%B5%D0%B1%D0%BD%D0%B0%D1%8F:WantedCategories">Требуемые категории</a></li>
+			<li id="n-recentchanges"><a href="/wiki/%D0%A1%D0%BB%D1%83%D0%B6%D0%B5%D0%B1%D0%BD%D0%B0%D1%8F:RecentChanges" title="Список последних изменений [r]" accesskey="r">Свежие правки</a></li>
+			<li id="n-randompage"><a href="/wiki/%D0%A1%D0%BB%D1%83%D0%B6%D0%B5%D0%B1%D0%BD%D0%B0%D1%8F:Random" title="Посмотреть случайную страницу [x]" accesskey="x">Случайная статья</a></li>
+		</ul>
+	</div>
+</div>
+
+<!-- /navigation -->
+
+<!-- SEARCH -->
+
+<!-- /SEARCH -->
+
+<!-- TOOLBOX -->
+<div class="portal" id='p-tb'>
+	<h5>Инструменты</h5>
+	<div class="body">
+		<ul>
+			<li id="t-whatlinkshere"><a href="/wiki/%D0%A1%D0%BB%D1%83%D0%B6%D0%B5%D0%B1%D0%BD%D0%B0%D1%8F:WhatLinksHere/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D1%87%D0%B5%D1%80%D1%82%D0%B5%D0%B6%D0%B5%D0%B9_%D0%BE%D1%80%D1%83%D0%B6%D0%B8%D1%8F" title="Список всех страниц, которые ссылаются на эту страницу [j]" accesskey="j">Ссылки сюда</a></li>
+			<li id="t-recentchangeslinked"><a href="/wiki/%D0%A1%D0%BB%D1%83%D0%B6%D0%B5%D0%B1%D0%BD%D0%B0%D1%8F:RecentChangesLinked/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D1%87%D0%B5%D1%80%D1%82%D0%B5%D0%B6%D0%B5%D0%B9_%D0%BE%D1%80%D1%83%D0%B6%D0%B8%D1%8F" title="Последние изменения в страницах, на которые ссылается эта страница [k]" accesskey="k">Связанные правки</a></li>
+			<li id="t-specialpages"><a href="/wiki/%D0%A1%D0%BB%D1%83%D0%B6%D0%B5%D0%B1%D0%BD%D0%B0%D1%8F:SpecialPages" title="Список служебных страниц [q]" accesskey="q">Спецстраницы</a></li>
+			<li><a href="/index.php?title=%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D1%87%D0%B5%D1%80%D1%82%D0%B5%D0%B6%D0%B5%D0%B9_%D0%BE%D1%80%D1%83%D0%B6%D0%B8%D1%8F&amp;printable=yes" rel="alternate">Версия для печати</a></li>
+			<li id="t-permalink"><a href="/index.php?title=%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D1%87%D0%B5%D1%80%D1%82%D0%B5%D0%B6%D0%B5%D0%B9_%D0%BE%D1%80%D1%83%D0%B6%D0%B8%D1%8F&amp;oldid=21398" title="Постоянная ссылка на эту версию страницы">Постоянная ссылка</a></li>
+<li id="t-cite"><a href="/index.php?title=%D0%A1%D0%BB%D1%83%D0%B6%D0%B5%D0%B1%D0%BD%D0%B0%D1%8F:Cite&amp;page=%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D1%87%D0%B5%D1%80%D1%82%D0%B5%D0%B6%D0%B5%D0%B9_%D0%BE%D1%80%D1%83%D0%B6%D0%B8%D1%8F&amp;id=21398" title="Информация о том, как цитировать эту страницу">Цитировать страницу</a></li>		</ul>
+	</div>
+</div>
+
+<!-- /TOOLBOX -->
+
+<!-- LANGUAGES -->
+
+<!-- /LANGUAGES -->
+			</div>
+		<!-- /panel -->
+		<!-- footer -->
+		<div id="footer">
+							<ul id="footer-info">
+											<li id="footer-info-lastmod"> Последнее изменение этой страницы: 09:55, 12 мая 2025.</li>
+											<li id="footer-info-viewcount">К этой странице обращались 72 894 раза.</li>
+									</ul>
+							<ul id="footer-places">
+											<li id="footer-places-privacy"><a href="/wiki/%D0%92%D0%B8%D0%BA%D0%B8%D0%BD%D0%B5%D0%B2%D0%B5%D1%80:%D0%9F%D0%BE%D0%BB%D0%B8%D1%82%D0%B8%D0%BA%D0%B0_%D0%BA%D0%BE%D0%BD%D1%84%D0%B8%D0%B4%D0%B5%D0%BD%D1%86%D0%B8%D0%B0%D0%BB%D1%8C%D0%BD%D0%BE%D1%81%D1%82%D0%B8" title="Викиневер:Политика конфиденциальности">Политика конфиденциальности</a></li>
+											<li id="footer-places-about"><a href="/wiki/%D0%92%D0%B8%D0%BA%D0%B8%D0%BD%D0%B5%D0%B2%D0%B5%D1%80:%D0%9E%D0%BF%D0%B8%D1%81%D0%B0%D0%BD%D0%B8%D0%B5" title="Викиневер:Описание">Описание Викиневер</a></li>
+											<li id="footer-places-disclaimer"><a href="/wiki/%D0%92%D0%B8%D0%BA%D0%B8%D0%BD%D0%B5%D0%B2%D0%B5%D1%80:%D0%9E%D1%82%D0%BA%D0%B0%D0%B7_%D0%BE%D1%82_%D0%BE%D1%82%D0%B2%D0%B5%D1%82%D1%81%D1%82%D0%B2%D0%B5%D0%BD%D0%BD%D0%BE%D1%81%D1%82%D0%B8" title="Викиневер:Отказ от ответственности">Отказ от ответственности</a></li>
+									</ul>
+										<ul id="footer-icons" class="noprint">
+					<li id="footer-poweredbyico">
+						<a href="//www.mediawiki.org/"><img src="/skins/common/images/poweredby_mediawiki_88x31.png" alt="Powered by MediaWiki" width="88" height="31" /></a>
+					</li>
+				</ul>
+						<div style="clear:both"></div>
+		</div>
+		<!-- /footer -->
+		<script src="http://wiki.neverlands.ru/load.php?debug=false&amp;lang=ru&amp;modules=skins.vector&amp;only=scripts&amp;skin=vector&amp;*"></script>
+<script>if(window.mw){
+mw.loader.load(["ext.categoryTree","mediawiki.user","mediawiki.page.ready","mediawiki.legacy.mwsuggest","ext.vector.collapsibleNav","ext.vector.collapsibleTabs","ext.vector.simpleSearch"], null, true);
+}</script>
+<!-- Served in 0.194 secs. -->
+	</body>
+</html>

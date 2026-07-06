@@ -61,7 +61,7 @@ namespace ANClient.ANForms
                             $"Ожидаем хода противника... <b>{timeDiff.Minutes}:{timeDiff.Seconds:00}</b>");
                 }
 
-                var httpWebRequest = (HttpWebRequest)WebRequest.Create("http://www.neverlands.ru/main.php");
+                var httpWebRequest = (HttpWebRequest)WebRequest.Create(GameServerSelector.RouteUrlToCurrentServer("http://www.neverlands.ru/main.php"));
                 httpWebRequest.Method = "GET";
                 httpWebRequest.Proxy = AppVars.LocalProxy;
                 if (!DirectGameRequestGuard.Prepare(httpWebRequest, "FormMain.WaitForTurnAsync"))

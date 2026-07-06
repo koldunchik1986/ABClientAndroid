@@ -207,7 +207,7 @@ namespace ANClient
             {
                 try
                 {
-                    var requestUri = new Uri(url);
+                    var requestUri = GameServerSelector.RouteUriToCurrentServer(new Uri(url));
                     if (!DirectGameRequestGuard.Prepare(wc, requestUri, source))
                     {
                         return null;
@@ -675,7 +675,7 @@ namespace ANClient
             {
                 try
                 {
-                    var requestUri = new Uri(url);
+                    var requestUri = GameServerSelector.RouteUriToCurrentServer(new Uri(url));
                     if (!DirectGameRequestGuard.Prepare(wc, requestUri, "NeverApi.GetInfo"))
                     {
                         return null;
@@ -685,7 +685,7 @@ namespace ANClient
                     wc.Headers[HttpRequestHeader.Accept] = "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8";
                     wc.Headers[HttpRequestHeader.AcceptLanguage] = "ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7";
                     wc.Headers[HttpRequestHeader.CacheControl] = "no-cache";
-                    wc.Headers[HttpRequestHeader.Referer] = "http://www.neverlands.ru/main.php";
+                    wc.Headers[HttpRequestHeader.Referer] = GameServerSelector.RouteUrlToCurrentServer("http://www.neverlands.ru/main.php");
                     var cookieHost = requestUri.Host.Equals("neverlands.ru", StringComparison.OrdinalIgnoreCase)
                         ? "www.neverlands.ru"
                         : requestUri.Host;

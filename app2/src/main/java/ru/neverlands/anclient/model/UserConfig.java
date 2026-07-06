@@ -21,6 +21,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.SortedMap;
 import java.util.TreeMap;
+import ru.neverlands.anclient.utils.GameServerUrls;
 
 // LezBotsGroup и LezSayType в том же пакете model — дополнительный импорт не нужен
 
@@ -39,6 +40,8 @@ public class UserConfig {
 
     /** Ник пользователя. */
     public String UserNick = "";
+    /** Код выбранного игрового сервера для формы входа: DE или KZ. */
+    public String GameServerCode = GameServerUrls.DEFAULT_SERVER_CODE;
     /** Пароль пользователя (в открытом виде, если не используется шифрование). */
     public String UserPassword = "";
     public String UserPasswordFlash = "";
@@ -478,6 +481,11 @@ public class UserConfig {
                     String tagName = parser.getName();
                     if ("user".equals(tagName)) {
                         this.UserNick = parser.getAttributeValue(null, "name");
+                        this.GameServerCode = GameServerUrls.normalizeServerCode(firstNonEmpty(
+                                getAttributeValueIgnoreCase(parser, "server"),
+                                getAttributeValueIgnoreCase(parser, "gameserver"),
+                                getAttributeValueIgnoreCase(parser, "gameservercode")
+                        ));
                         this.UserPassword = parser.getAttributeValue(null, "password");
                         String flashPassword = getAttributeValueIgnoreCase(parser, "flashpassword");
                         if (flashPassword == null) {
@@ -601,6 +609,9 @@ public class UserConfig {
                     } else if ("UserPasswordFlash".equalsIgnoreCase(tagName) || "FlashPassword".equalsIgnoreCase(tagName)) {
                         String value = parseNodeText(parser, this.UserPasswordFlash);
                         this.UserPasswordFlash = value == null ? "" : value.trim();
+                    } else if ("GameServerCode".equalsIgnoreCase(tagName) || "GameServer".equalsIgnoreCase(tagName)) {
+                        String value = parseNodeText(parser, this.GameServerCode);
+                        this.GameServerCode = GameServerUrls.normalizeServerCode(value);
                     } else if ("DoButtonSell".equalsIgnoreCase(tagName)) {
                         this.DoButtonSell = parseBoolNodeText(parser, this.DoButtonSell);
                     } else if ("DoButtonDrop".equalsIgnoreCase(tagName)) {
@@ -888,6 +899,7 @@ public class UserConfig {
             // Сохранение информации о пользователе
             serializer.startTag(null, "user");
             serializer.attribute(null, "name", this.UserNick);
+            serializer.attribute(null, "server", GameServerUrls.normalizeServerCode(this.GameServerCode));
             serializer.attribute(null, "password", this.UserPassword);
             serializer.attribute(null, "flashpassword", this.UserPasswordFlash != null ? this.UserPasswordFlash : "");
             serializer.attribute(null, "isEncrypted", String.valueOf(this.isEncrypted));
@@ -1201,6 +1213,18 @@ public class UserConfig {
         String val = getAttributeValueIgnoreCase(parser, attr);
         if (val == null || val.isEmpty()) return defaultVal;
         return Boolean.parseBoolean(val.trim());
+    }
+
+    private static String firstNonEmpty(String... values) {
+        if (values == null) {
+            return "";
+        }
+        for (String value : values) {
+            if (value != null && !value.trim().isEmpty()) {
+                return value.trim();
+            }
+        }
+        return "";
     }
 
     private static String intArrayToString(int[] arr) {

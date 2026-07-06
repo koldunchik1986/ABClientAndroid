@@ -161,6 +161,7 @@ namespace ANClient.PostFilter
             // Alchemy captcha state belongs to pendingAlchemyCut even if FightLink was already overwritten by fight flow.
             AppVars.CodeAddress = string.Empty;
             AppVars.ClearCodePng();
+            AntiCaptchaManager.ForgetSubmittedCaptcha("alchemy_cancelled:" + (source ?? "unknown"));
 
             AppLog.w(AlchemyTraceChain, "AlchemyAjaxPhp", "pending cut cancelled: source=" + (source ?? "unknown") + ", hadPending=" + hasPendingCut + ", hadLink=" + hasAlchemyLink);
             if (scheduleLookRetry && AutoCutRuntime.IsAutoCutLikeEnabled())
@@ -316,6 +317,7 @@ namespace ANClient.PostFilter
                 lower.IndexOf("код", StringComparison.OrdinalIgnoreCase) >= 0)
             {
                 AppLog.w(AlchemyTraceChain, "AlchemyAjaxPhp", "act3: wrong protection/captcha code response");
+                AntiCaptchaManager.SaveSubmittedCaptchaAfterWrongCode("alchemy_act3_wrong_code");
                 pendingAlchemyCut = null;
                 AppVars.FightLink = string.Empty;
                 AppVars.CodeAddress = string.Empty;
@@ -335,6 +337,7 @@ namespace ANClient.PostFilter
             var current = pendingAlchemyCut;
             pendingAlchemyCut = null;
             AppVars.FightLink = string.Empty;
+            AntiCaptchaManager.ForgetSubmittedCaptcha("alchemy_act3_success");
             if (foundGarbage)
             {
                 AutoCutRuntime.RequestGarbageCleanupAfterCut(current == null || current.IsExpired ? "alchemy_act3_unmatched" : "alchemy_act3");

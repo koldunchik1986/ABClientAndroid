@@ -8,6 +8,7 @@ using System.Threading;
 using System.Windows.Forms;
 using ANClient.ANForms;
 using ANClient.ANProxy;
+using ANClient.PostFilter;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
@@ -31,10 +32,17 @@ namespace ANClient.MyGuamod
         private static readonly Regex TextRegex = new Regex("\"text\"\\s*:\\s*\"([^\"]*)\"", RegexOptions.Compiled);
         private static readonly Regex ErrorCodeRegex = new Regex("\"errorCode\"\\s*:\\s*\"([^\"]*)\"", RegexOptions.Compiled);
         private static readonly Regex ErrorDescriptionRegex = new Regex("\"errorDescription\"\\s*:\\s*\"([^\"]*)\"", RegexOptions.Compiled);
+        private static readonly Regex CodeRegex = new Regex("^\\d{5}$", RegexOptions.Compiled);
         private static bool busy;
         private static string lastFailedChallenge = string.Empty;
         private static string waitingImageChallenge = string.Empty;
         private static DateTime waitingImageSince = DateTime.MinValue;
+        private static readonly object SubmittedCaptchaLock = new object();
+        private static byte[] submittedCaptchaPng;
+        private static string submittedCaptchaCode = string.Empty;
+        private static string submittedCaptchaSource = string.Empty;
+        private static double submittedCaptchaMinConfidence;
+        private static DateTime submittedCaptchaAt = DateTime.MinValue;
 
         internal static bool Busy
         {
@@ -53,7 +61,9 @@ namespace ANClient.MyGuamod
                 return false;
             }
 
-            if (string.IsNullOrEmpty(AppVars.Profile.AntiCaptchaApiKey))
+            var localOcrEnabled = LocalCaptchaSolver.IsEnabled();
+            var externalCaptchaEnabled = IsExternalAntiCaptchaEnabled();
+            if (!localOcrEnabled && !externalCaptchaEnabled)
             {
                 return false;
             }
@@ -152,6 +162,21 @@ namespace ANClient.MyGuamod
                    challenge.IndexOf("alchemy_ajax.php", StringComparison.OrdinalIgnoreCase) >= 0;
         }
 
+        private static bool IsFightCompletionCaptchaChallenge(string challenge)
+        {
+            return !string.IsNullOrEmpty(challenge) &&
+                   challenge.IndexOf("main.php", StringComparison.OrdinalIgnoreCase) >= 0 &&
+                   challenge.IndexOf("code=????", StringComparison.Ordinal) >= 0 &&
+                   challenge.IndexOf("get_id=61", StringComparison.OrdinalIgnoreCase) >= 0 &&
+                   challenge.IndexOf("act=7", StringComparison.OrdinalIgnoreCase) >= 0;
+        }
+
+        private static bool IsLowConfidenceDiagnostic(string diagnostic)
+        {
+            return !string.IsNullOrEmpty(diagnostic) &&
+                   diagnostic.StartsWith("low confidence", StringComparison.OrdinalIgnoreCase);
+        }
+
         private static bool IsSameCaptchaContext(string challenge, string codeAddress)
         {
             return string.Equals(AppVars.FightLink, challenge, StringComparison.Ordinal) &&
@@ -182,7 +207,7 @@ namespace ANClient.MyGuamod
             try
             {
                 var requestAddress = BuildCaptchaImageUrl(codeAddress);
-                var request = (HttpWebRequest)WebRequest.Create(requestAddress);
+                var request = (HttpWebRequest)WebRequest.Create(GameServerSelector.RouteUrlToCurrentServer(requestAddress));
                 request.Method = "GET";
                 request.UserAgent = BrowserUserAgent;
                 request.Accept = "image/png,image/*,*/*";
@@ -249,6 +274,40 @@ namespace ANClient.MyGuamod
         {
             try
             {
+                if (LocalCaptchaSolver.IsEnabled())
+                {
+                    string localCode;
+                    double localMinConfidence;
+                    string localDiagnostic;
+                    if (LocalCaptchaSolver.TrySolve(imageBytes, out localCode, out localMinConfidence, out localDiagnostic))
+                    {
+                        ApplySolvedCaptcha(challenge, codeAddress, localCode, "Local OCR", localMinConfidence, imageBytes);
+                        return;
+                    }
+
+                    if (IsFightCompletionCaptchaChallenge(challenge) && IsLowConfidenceDiagnostic(localDiagnostic))
+                    {
+                        FailAndFallback(challenge, "local OCR failed: " + localDiagnostic);
+                        return;
+                    }
+
+                    if (IsExternalAntiCaptchaEnabled())
+                    {
+                        AppLog.w(Tag, "LOCAL_OCR_TRACE fallback_external, diagnostic=" + TrimForLog(localDiagnostic));
+                    }
+                    else
+                    {
+                        FailAndFallback(challenge, "local OCR failed: " + localDiagnostic);
+                        return;
+                    }
+                }
+
+                if (!IsExternalAntiCaptchaEnabled())
+                {
+                    FailAndFallback(challenge, "external anti-captcha disabled");
+                    return;
+                }
+
                 var taskId = CreateTask(imageBytes);
                 if (taskId <= 0)
                 {
@@ -263,23 +322,10 @@ namespace ANClient.MyGuamod
                     return;
                 }
 
-                if (!IsSameCaptchaContext(challenge, codeAddress))
+                if (!ApplySolvedCaptcha(challenge, codeAddress, text, "anti-captcha.com", 1d, imageBytes))
                 {
-                    ClearCaptchaImageIfCurrent(codeAddress);
-                    AppLog.w(Tag, "ANTI_CAPTCHA_TRACE stale solution ignored");
-                    return;
+                    FailAndFallback(challenge, "invalid solution");
                 }
-
-                AppVars.GuamodCode = text.Trim();
-                AppVars.ClearCodePng();
-                AppVars.FightLink = AppVars.FightLink.Replace("????", AppVars.GuamodCode);
-                lastFailedChallenge = string.Empty;
-                TrySubmitSolvedAlchemyLink();
-                TrySubmitSolvedAutoboiFightLink();
-                UpdateGuamodMessage("Anti-Captcha: распознано " + AppVars.GuamodCode);
-                UpdateTexLog("Anti-Captcha код: " + AppVars.GuamodCode);
-                AppLog.i(Tag, "ANTI_CAPTCHA_TRACE solved, textLen=" + AppVars.GuamodCode.Length);
-                PostAntiCaptchaCodeSubmittedToChat(AppVars.GuamodCode);
             }
             catch (Exception ex)
             {
@@ -302,6 +348,176 @@ namespace ANClient.MyGuamod
 
             var token = AppVars.NormalizeCaptchaCodeAddress(value);
             return token.Length == 0 ? value : CaptchaImageUrlPrefix + token;
+        }
+
+        private static bool IsExternalAntiCaptchaEnabled()
+        {
+            return AppVars.Profile != null &&
+                   AppVars.Profile.LocalCaptchaExternalFallbackEnabled &&
+                   !string.IsNullOrEmpty(AppVars.Profile.AntiCaptchaApiKey);
+        }
+
+        private static bool ApplySolvedCaptcha(string challenge, string codeAddress, string code, string source, double minConfidence, byte[] imageBytes)
+        {
+            code = (code ?? string.Empty).Trim();
+            source = string.IsNullOrEmpty(source) ? "anti-captcha" : source;
+            if (!CodeRegex.IsMatch(code))
+            {
+                AppLog.w(Tag, "ANTI_CAPTCHA_TRACE invalid solution ignored, source=" + source + ", textLen=" + code.Length.ToString(CultureInfo.InvariantCulture));
+                return false;
+            }
+
+            if (!IsSameCaptchaContext(challenge, codeAddress))
+            {
+                ClearCaptchaImageIfCurrent(codeAddress);
+                AppLog.w(Tag, "ANTI_CAPTCHA_TRACE stale solution ignored, source=" + source);
+                return true;
+            }
+
+            AppVars.GuamodCode = code;
+            RememberSubmittedCaptcha(imageBytes, code, source, minConfidence);
+            AppVars.ClearCodePng();
+            AppVars.FightLink = AppVars.FightLink.Replace("????", AppVars.GuamodCode);
+            lastFailedChallenge = string.Empty;
+            TrySubmitSolvedAlchemyLink();
+            TrySubmitSolvedAutoboiFightLink();
+            UpdateGuamodMessage(source + ": распознано " + AppVars.GuamodCode);
+            UpdateTexLog(source + " код: " + AppVars.GuamodCode);
+            AppLog.i(Tag, "ANTI_CAPTCHA_TRACE solved, source=" + source + ", textLen=" + AppVars.GuamodCode.Length.ToString(CultureInfo.InvariantCulture) + ", minConfidence=" + minConfidence.ToString("0.0000", CultureInfo.InvariantCulture));
+            PostAntiCaptchaCodeSubmittedToChat(AppVars.GuamodCode, source);
+            return true;
+        }
+
+        internal static bool SaveSubmittedCaptchaAfterWrongCode(string reason)
+        {
+            byte[] imageBytes;
+            string code;
+            string source;
+            double minConfidence;
+            DateTime submittedAt;
+            lock (SubmittedCaptchaLock)
+            {
+                if (submittedCaptchaPng == null || submittedCaptchaPng.Length == 0)
+                {
+                    AppLog.w("auto_cut_trace", Tag, "wrong captcha image save skipped: no submitted captcha cache, reason=" + (reason ?? "unknown"));
+                    return false;
+                }
+
+                imageBytes = new byte[submittedCaptchaPng.Length];
+                Buffer.BlockCopy(submittedCaptchaPng, 0, imageBytes, 0, submittedCaptchaPng.Length);
+                code = submittedCaptchaCode;
+                source = submittedCaptchaSource;
+                minConfidence = submittedCaptchaMinConfidence;
+                submittedAt = submittedCaptchaAt;
+                ClearSubmittedCaptchaLocked();
+            }
+
+            try
+            {
+                var captchaDir = Path.Combine(Application.StartupPath, "Logs");
+                captchaDir = Path.Combine(captchaDir, "Captcha");
+                if (!Directory.Exists(captchaDir))
+                {
+                    Directory.CreateDirectory(captchaDir);
+                }
+
+                var fileName = BuildSavedCaptchaFileName(code);
+                var filePath = EnsureUniqueSavedCaptchaPath(Path.Combine(captchaDir, fileName));
+                fileName = Path.GetFileName(filePath);
+                File.WriteAllBytes(filePath, imageBytes);
+                AppLog.w(
+                    "auto_cut_trace",
+                    Tag,
+                    "wrong captcha image saved: file=" + fileName +
+                    ", bytes=" + imageBytes.Length.ToString(CultureInfo.InvariantCulture) +
+                    ", code=" + (code ?? string.Empty) +
+                    ", source=" + (source ?? string.Empty) +
+                    ", minConfidence=" + minConfidence.ToString("0.0000", CultureInfo.InvariantCulture) +
+                    ", submittedAt=" + submittedAt.ToString("HH:mm:ss.fff", CultureInfo.InvariantCulture) +
+                    ", reason=" + (reason ?? "unknown"));
+                return true;
+            }
+            catch (Exception ex)
+            {
+                AppLog.w("auto_cut_trace", Tag, "wrong captcha image save failed: " + ex.Message);
+                return false;
+            }
+        }
+
+        internal static void ForgetSubmittedCaptcha(string reason)
+        {
+            lock (SubmittedCaptchaLock)
+            {
+                if (submittedCaptchaPng == null || submittedCaptchaPng.Length == 0)
+                {
+                    return;
+                }
+
+                ClearSubmittedCaptchaLocked();
+            }
+
+            AppLog.d("auto_cut_trace", Tag, "submitted captcha cache cleared: reason=" + (reason ?? "unknown"));
+        }
+
+        private static void RememberSubmittedCaptcha(byte[] imageBytes, string code, string source, double minConfidence)
+        {
+            lock (SubmittedCaptchaLock)
+            {
+                if (imageBytes == null || imageBytes.Length == 0)
+                {
+                    ClearSubmittedCaptchaLocked();
+                    return;
+                }
+
+                submittedCaptchaPng = new byte[imageBytes.Length];
+                Buffer.BlockCopy(imageBytes, 0, submittedCaptchaPng, 0, imageBytes.Length);
+                submittedCaptchaCode = code ?? string.Empty;
+                submittedCaptchaSource = source ?? string.Empty;
+                submittedCaptchaMinConfidence = minConfidence;
+                submittedCaptchaAt = DateTime.Now;
+            }
+        }
+
+        private static void ClearSubmittedCaptchaLocked()
+        {
+            submittedCaptchaPng = null;
+            submittedCaptchaCode = string.Empty;
+            submittedCaptchaSource = string.Empty;
+            submittedCaptchaMinConfidence = 0d;
+            submittedCaptchaAt = DateTime.MinValue;
+        }
+
+        private static string BuildSavedCaptchaFileName(string code)
+        {
+            var safeCode = Regex.Replace(code ?? string.Empty, "[^0-9]", string.Empty);
+            if (safeCode.Length == 0)
+            {
+                safeCode = "unknown";
+            }
+
+            return safeCode + ".png";
+        }
+
+        private static string EnsureUniqueSavedCaptchaPath(string path)
+        {
+            if (!File.Exists(path))
+            {
+                return path;
+            }
+
+            var dir = Path.GetDirectoryName(path) ?? string.Empty;
+            var name = Path.GetFileNameWithoutExtension(path);
+            var ext = Path.GetExtension(path);
+            for (var i = 1; i < 1000; i++)
+            {
+                var candidate = Path.Combine(dir, name + "_" + i.ToString("000", CultureInfo.InvariantCulture) + ext);
+                if (!File.Exists(candidate))
+                {
+                    return candidate;
+                }
+            }
+
+            return Path.Combine(dir, name + "_" + DateTime.Now.Ticks.ToString(CultureInfo.InvariantCulture) + ext);
         }
 
         private static void TrySubmitSolvedAlchemyLink()
@@ -495,14 +711,86 @@ namespace ANClient.MyGuamod
         {
             lastFailedChallenge = challenge;
             AppLog.w(Tag, "ANTI_CAPTCHA_TRACE failed: " + message);
+
+            if (TryRefreshFightCaptchaAfterLocalOcrFailure(challenge, message))
+            {
+                return;
+            }
+
+            if (TryScheduleAlchemyRetryAfterLocalOcrFailure(challenge, message))
+            {
+                return;
+            }
+
             if (AppVars.Profile.DoGuamod && string.Equals(AppVars.FightLink, challenge, StringComparison.Ordinal) && AppVars.CodePng != null)
             {
+                AppLog.i(Tag, "LOCAL_OCR_TRACE fallback_neuro");
                 UpdateGuamodMessage("Anti-Captcha: ошибка, запускаю гуамод");
                 Recognizer.Perform();
                 return;
             }
 
-            UpdateGuamodMessage("Anti-Captcha: ошибка, нужен ручной ввод");
+            ForgetSubmittedCaptcha("anti_captcha_failed");
+            UpdateGuamodMessage("Anti-Captcha: ошибка, ручной ввод отключён");
+        }
+
+        private static bool TryRefreshFightCaptchaAfterLocalOcrFailure(string challenge, string message)
+        {
+            if (!IsFightCompletionCaptchaChallenge(challenge) ||
+                string.IsNullOrEmpty(message) ||
+                !message.StartsWith("local OCR failed:", StringComparison.Ordinal) ||
+                !string.Equals(AppVars.FightLink, challenge, StringComparison.Ordinal))
+            {
+                return false;
+            }
+
+            ResetCaptchaImageWait();
+            AppVars.ClearCodePng();
+            ForgetSubmittedCaptcha("fight_local_ocr_failed");
+            UpdateGuamodMessage("Anti-Captcha: OCR не уверен, обновляю капчу боя");
+            AppLog.w("LezFight", Tag, "fight captcha refresh scheduled after local OCR failure: " + TrimForLog(message));
+            RequestMainPhpReload("fight_captcha_local_ocr_failed");
+            return true;
+        }
+
+        private static void RequestMainPhpReload(string reason)
+        {
+            try
+            {
+                if (AppVars.MainForm != null)
+                {
+                    AppVars.MainForm.BeginInvoke(
+                        new ReloadMainPhpInvokeDelegate(AppVars.MainForm.ReloadMainPhpInvoke),
+                        new object[] { });
+                    AppLog.i("LezFight", Tag, "main.php reload queued: reason=" + (reason ?? "unknown"));
+                }
+            }
+            catch (InvalidOperationException ex)
+            {
+                AppLog.w("LezFight", Tag, "main.php reload queue failed", ex);
+            }
+        }
+
+        private static bool TryScheduleAlchemyRetryAfterLocalOcrFailure(string challenge, string message)
+        {
+            if (!IsAlchemyCaptchaChallenge(challenge) ||
+                string.IsNullOrEmpty(message) ||
+                !message.StartsWith("local OCR failed:", StringComparison.Ordinal) ||
+                !string.Equals(AppVars.FightLink, challenge, StringComparison.Ordinal))
+            {
+                return false;
+            }
+
+            if (!Filter.CancelPendingAlchemyCut("anti_captcha_failed:local_ocr", true))
+            {
+                return false;
+            }
+
+            lastFailedChallenge = string.Empty;
+            ForgetSubmittedCaptcha("local_ocr_failed");
+            UpdateGuamodMessage("Anti-Captcha: OCR не уверен, жду повторный огляд");
+            AppLog.w("auto_cut_trace", Tag, "anti-captcha alchemy retry scheduled after local OCR failure: " + TrimForLog(message));
+            return true;
         }
 
         private static void EnsureSecurityProtocol()
@@ -547,15 +835,18 @@ namespace ANClient.MyGuamod
             }
         }
 
-        private static void PostAntiCaptchaCodeSubmittedToChat(string code)
+        private static void PostAntiCaptchaCodeSubmittedToChat(string code, string source)
         {
             try
             {
                 var safeCode = EscapeHtmlText((code ?? string.Empty).Trim());
+                var safeSource = EscapeHtmlText(source ?? "anti-captcha");
                 if (AppVars.MainForm != null)
                 {
                     AppVars.MainForm.WriteChatMsgSafe(
-                        "<font color=#008000>[Анти-Captcha]: ответ сервиса '" +
+                        "<font color=#008000>[Анти-Captcha][" +
+                        safeSource +
+                        "]: ответ '" +
                         safeCode +
                         "' - код отправлен.</font>");
                 }

@@ -31,6 +31,7 @@ namespace ANClient.MyProfile
         internal UserConfig()
         {
             UserNick = string.Empty;
+            GameServerCode = ANClient.GameServerSelector.DefaultServerCode;
             UserPassword = string.Empty;
             UserKey = string.Empty;
             EncryptedUserPassword = string.Empty;
@@ -232,6 +233,12 @@ namespace ANClient.MyProfile
             AntiCaptchaMinLength = 5;
             AntiCaptchaMaxLength = 5;
             AntiCaptchaLanguagePool = "en";
+            LocalCaptchaOcrEnabled = false;
+            LocalCaptchaOcrServiceUrl = "http://127.0.0.1:8765/";
+            LocalCaptchaOcrExePath = string.Empty;
+            LocalCaptchaOcrModelPath = string.Empty;
+            LocalCaptchaOcrMinConfidence = 0.90d;
+            LocalCaptchaExternalFallbackEnabled = true;
             BossSearchWords = string.Empty;
             BossSearchInterval = 360;
             DoStopOnDig = true;

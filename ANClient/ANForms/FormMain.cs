@@ -4,6 +4,7 @@ using System.Net;
 using System.Threading;
 using ANClient.ExtMap;
 using ANClient.MyHelpers;
+using ANClient.MyGuamod;
 using ANClient.PostFilter;
 
 namespace ANClient.ANForms
@@ -30,6 +31,7 @@ namespace ANClient.ANForms
         private ToolStripButton buttonAutoMine;
         private ToolStripMenuItem miFastTopi;
         private ToolStripMenuItem miClanKazna;
+        private ToolStripMenuItem menuitemCaptchaTraining;
 
         //private readonly Boss _boss1 = new Boss("2303103");
         //private readonly Boss _boss2 = new Boss("2304578");
@@ -46,6 +48,7 @@ namespace ANClient.ANForms
             InitializeAutoFunctionToolbarIcons();
             InitForm();
             InitializeToolsSettingsMenu();
+            InitializeCaptchaTrainingMenu();
             InitializeTurotorTopiMenu();
             InitializeClanKaznaMenu();
         }
@@ -212,6 +215,46 @@ namespace ANClient.ANForms
             if (AppVars.CacheRefresh)
             {
                 Cache.Clear();
+            }
+        }
+
+        private void InitializeCaptchaTrainingMenu()
+        {
+            menuitemCaptchaTraining = new ToolStripMenuItem
+            {
+                Name = "menuitemCaptchaTraining",
+                CheckOnClick = true,
+                Size = new System.Drawing.Size(234, 22),
+                Text = "Обучение цифр",
+                ToolTipText = "Собирает fresh captcha через Ресурсы в Посёлке Лазурном"
+            };
+            menuitemCaptchaTraining.Click += menuitemCaptchaTraining_Click;
+
+            var insertIndex = menuitemSystem.DropDownItems.IndexOf(toolStripSeparator3);
+            if (insertIndex < 0)
+            {
+                insertIndex = menuitemSystem.DropDownItems.IndexOf(menuitemAbout);
+            }
+
+            if (insertIndex < 0)
+            {
+                menuitemSystem.DropDownItems.Add(menuitemCaptchaTraining);
+            }
+            else
+            {
+                menuitemSystem.DropDownItems.Insert(insertIndex, menuitemCaptchaTraining);
+            }
+        }
+
+        private void menuitemCaptchaTraining_Click(object sender, EventArgs e)
+        {
+            if (menuitemCaptchaTraining.Checked)
+            {
+                CaptchaTrainingManager.Start("menuitemCaptchaTraining");
+            }
+            else
+            {
+                CaptchaTrainingManager.Stop("menuitemCaptchaTraining");
             }
         }
 
@@ -2337,7 +2380,7 @@ namespace ANClient.ANForms
                 var url = $"http://www.neverlands.ru/ch.php?lo=1&r=m_{p.X}_{p.Y}";
                 try
                 {
-                    var httpWebRequest = (HttpWebRequest)WebRequest.Create(url);
+                    var httpWebRequest = (HttpWebRequest)WebRequest.Create(GameServerSelector.RouteUrlToCurrentServer(url));
                     httpWebRequest.Method = "GET";
                     httpWebRequest.Proxy = AppVars.LocalProxy;
                     if (!DirectGameRequestGuard.Prepare(httpWebRequest, "FormMain.ScanMap"))

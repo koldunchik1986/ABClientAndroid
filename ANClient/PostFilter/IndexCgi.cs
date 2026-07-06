@@ -69,6 +69,13 @@ namespace ANClient.PostFilter
             sb.Append(HttpUtility.HtmlEncode(AppVars.Profile.UserNick));
             sb.Append(@"""> <input name=player_password type=hidden value=""");
             sb.Append(HttpUtility.HtmlEncode(AppVars.Profile.UserPassword));
+            var loginFormServerCode = ANClient.GameServerSelector.LoginFormServerCode(AppVars.Profile.GameServerCode);
+            if (!string.IsNullOrEmpty(loginFormServerCode))
+            {
+                sb.Append(@"""> <input name=server type=hidden value=""");
+                sb.Append(HttpUtility.HtmlEncode(loginFormServerCode));
+            }
+
             sb.Append(
                 @"""></form>" +
                 @"<script language=""JavaScript"">" +

@@ -20,6 +20,18 @@ namespace ANClient
         private const int AutoDigExtraDelaySeconds = 2;
         private const int MineDiggEventDedupMilliseconds = 10000;
 
+        private sealed class MineFloorExitTarget
+        {
+            internal readonly int X;
+            internal readonly int Y;
+
+            internal MineFloorExitTarget(int x, int y)
+            {
+                X = x;
+                Y = y;
+            }
+        }
+
         private static readonly Regex DiggButtonRegex = new Regex(
             "[\\\"']digg[\\\"']\\s*,\\s*[\\\"']Начать добычу[\\\"']\\s*,\\s*[\\\"']([^\\\"']+)[\\\"']",
             RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
@@ -58,6 +70,14 @@ namespace ANClient
 
         private static readonly object MapLock = new object();
         private static readonly Dictionary<string, Dictionary<string, MineCell>> MapCells = new Dictionary<string, Dictionary<string, MineCell>>(StringComparer.OrdinalIgnoreCase);
+        private static readonly Dictionary<string, MineFloorExitTarget> FloorExitTargets = new Dictionary<string, MineFloorExitTarget>(StringComparer.OrdinalIgnoreCase)
+            {
+                { BuildMapKey("1", "1"), new MineFloorExitTarget(3, 3) },
+                { BuildMapKey("1", "2"), new MineFloorExitTarget(1, 20) },
+                { BuildMapKey("1", "3"), new MineFloorExitTarget(1, 6) },
+                { BuildMapKey("1", "4"), new MineFloorExitTarget(20, 13) },
+                { BuildMapKey("1", "5"), new MineFloorExitTarget(19, 12) }
+            };
         private static readonly List<string> PendingRouteKeys = new List<string>();
 
         private static bool mapLoaded;
@@ -339,12 +359,37 @@ namespace ANClient
                 return string.Empty;
 
             var isCurrent = hasLastPosition && ix == lastX && iy == lastY;
+            var isFloorExit = IsMineFloorExitCell(ix, iy, level);
             var isTarget = pendingTargetX.Equals(ix.ToString(CultureInfo.InvariantCulture), StringComparison.Ordinal) && pendingTargetY.Equals(iy.ToString(CultureInfo.InvariantCulture), StringComparison.Ordinal);
             var isRoute = IsPendingRouteCell(ix, iy);
             var cell = GetActiveCell(ix, iy);
-            var color = isCurrent ? "#ffff00" : isTarget ? "#66ff66" : isRoute ? "#ff3333" : cell != null && cell.Usefull > 0 ? "#9cff9c" : "#ffffff";
-            var border = isCurrent ? "border:2px solid #ffff00;" : isTarget ? "border:2px solid #66ff66;" : isRoute ? "border:2px solid #ff3333;" : string.Empty;
-            return "<span style=\"position:absolute;left:0;right:0;top:50px;text-align:center;font-family:Verdana;font-size:10px;font-weight:bold;color:" + color + ";text-shadow:1px 1px #000,-1px -1px #000;" + border + "\">" + ix.ToString(CultureInfo.InvariantCulture) + "-" + iy.ToString(CultureInfo.InvariantCulture) + "</span>";
+            var color = isCurrent ? "#ffff00" : isTarget || isFloorExit ? "#66ff66" : isRoute ? "#ff3333" : cell != null && cell.Usefull > 0 ? "#9cff9c" : "#ffffff";
+            var borderColor = isCurrent ? "#ffff00" : isTarget || isFloorExit ? "#66ff66" : isRoute ? "#ff3333" : string.Empty;
+            var frameClass = isCurrent ? " class=\"anc-mine-current-blink\"" : string.Empty;
+            var sb = new StringBuilder();
+            if (!string.IsNullOrEmpty(borderColor))
+            {
+                sb.Append("<div");
+                sb.Append(frameClass);
+                sb.Append(" style=\"position:absolute;left:0;top:0;width:100%;height:100%;box-sizing:border-box;z-index:1;pointer-events:none;border:3px solid ");
+                sb.Append(borderColor);
+                sb.Append(";\"></div>");
+            }
+
+            var arrow = GetPendingRouteArrow(ix, iy);
+            if (!string.IsNullOrEmpty(arrow))
+            {
+                sb.Append(BuildMineRouteArrowHtml(arrow));
+            }
+
+            sb.Append("<span style=\"position:absolute;left:0;right:0;top:50px;text-align:center;z-index:2;font-family:Verdana;font-size:10px;font-weight:bold;color:");
+            sb.Append(color);
+            sb.Append(";text-shadow:1px 1px #000,-1px -1px #000;\">");
+            sb.Append(ix.ToString(CultureInfo.InvariantCulture));
+            sb.Append("-");
+            sb.Append(iy.ToString(CultureInfo.InvariantCulture));
+            sb.Append("</span>");
+            return sb.ToString();
         }
 
         internal static string MineMoveTo(string x, string y)
@@ -359,7 +404,9 @@ namespace ANClient
             pendingTargetY = iy.ToString(CultureInfo.InvariantCulture);
             RefreshPendingRoute("mineMoveTo");
             AppLog.i(TraceChain, "AutoMineRuntime", "manual route target=" + pendingTargetX + "/" + pendingTargetY + ", first=" + GetFirstRouteDirection());
-            if (PendingRouteKeys.Count > 1)
+            var hasRoute = HasPendingMineRoute();
+            UpdateMineNavigatorState(hasRoute, "mineMoveTo");
+            if (hasRoute && PendingRouteKeys.Count > 1)
             {
                 AppVars.AutoMineCheckTorch = true;
             }
@@ -367,9 +414,38 @@ namespace ANClient
             return GetFirstRouteDirection();
         }
 
+        internal static bool HasMineFloorExit()
+        {
+            int targetX;
+            int targetY;
+            return TryGetMineFloorExitTarget(out targetX, out targetY);
+        }
+
+        internal static string MineMoveToFloorExit()
+        {
+            int targetX;
+            int targetY;
+            if (!TryGetMineFloorExitTarget(out targetX, out targetY))
+            {
+                AppLog.w(TraceChain, "AutoMineRuntime", "floor exit target not configured: mineId=" + Safe(lastMineId) + ", level=" + Safe(lastLevel));
+                return string.Empty;
+            }
+
+            AppLog.i(TraceChain, "AutoMineRuntime", "floor exit route target=" + targetX.ToString(CultureInfo.InvariantCulture) + "/" + targetY.ToString(CultureInfo.InvariantCulture) + ", mineId=" + Safe(lastMineId) + ", level=" + Safe(lastLevel));
+            return MineMoveTo(targetX.ToString(CultureInfo.InvariantCulture), targetY.ToString(CultureInfo.InvariantCulture));
+        }
+
         internal static bool HasPendingMineRoute()
         {
             return PendingRouteKeys.Count > 1 || (!string.IsNullOrEmpty(pendingTargetX) && !string.IsNullOrEmpty(pendingTargetY));
+        }
+
+        internal static void CancelPendingMineRoute(string source)
+        {
+            ClearPendingRoute("cancel:" + Safe(source));
+            AppVars.AutoMineCheckTorch = false;
+            lastDispatchedDirection = string.Empty;
+            AppLog.i(TraceChain, "AutoMineRuntime", "route cancel requested: source=" + Safe(source));
         }
 
         internal static string GetNextMineMoveDirection(string x, string y, string level, string source)
@@ -703,6 +779,21 @@ namespace ANClient
             pendingTargetY = string.Empty;
             pendingRouteSteps = -1;
             AppLog.i(TraceChain, "AutoMineRuntime", "route cleared: reason=" + reason);
+            UpdateMineNavigatorState(false, reason);
+        }
+
+        private static void UpdateMineNavigatorState(bool active, string source)
+        {
+            try
+            {
+                if (AppVars.MainForm != null)
+                {
+                    AppVars.MainForm.UpdateMineNavigatorStateSafe(active, source);
+                }
+            }
+            catch (InvalidOperationException)
+            {
+            }
         }
 
         private static bool IsPendingRouteCell(int x, int y)
@@ -715,6 +806,76 @@ namespace ANClient
             }
 
             return false;
+        }
+
+        private static bool IsMineFloorExitCell(int x, int y, string level)
+        {
+            int targetX;
+            int targetY;
+            return TryGetMineFloorExitTarget(lastMineId, CleanJsToken(level), out targetX, out targetY) && targetX == x && targetY == y;
+        }
+
+        private static bool TryGetMineFloorExitTarget(out int targetX, out int targetY)
+        {
+            return TryGetMineFloorExitTarget(lastMineId, lastLevel, out targetX, out targetY);
+        }
+
+        private static bool TryGetMineFloorExitTarget(string mineId, string level, out int targetX, out int targetY)
+        {
+            targetX = 0;
+            targetY = 0;
+
+            var safeLevel = string.IsNullOrEmpty(level) ? "1" : level;
+            MineFloorExitTarget target;
+            if (!FloorExitTargets.TryGetValue(BuildMapKey(mineId, safeLevel), out target))
+                return false;
+
+            targetX = target.X;
+            targetY = target.Y;
+            return true;
+        }
+
+        private static string GetPendingRouteArrow(int x, int y)
+        {
+            var key = BuildCellKey(x, y);
+            for (var i = 0; i < PendingRouteKeys.Count - 1; i++)
+            {
+                if (!PendingRouteKeys[i].Equals(key, StringComparison.OrdinalIgnoreCase))
+                    continue;
+
+                int nextX;
+                int nextY;
+                if (!TryParseCellKey(PendingRouteKeys[i + 1], out nextX, out nextY))
+                    return string.Empty;
+
+                if (nextX == x + 1 && nextY == y)
+                    return "right";
+                if (nextX == x - 1 && nextY == y)
+                    return "left";
+                if (nextX == x && nextY == y + 1)
+                    return "down";
+                if (nextX == x && nextY == y - 1)
+                    return "up";
+
+                return string.Empty;
+            }
+
+            return string.Empty;
+        }
+
+        private static string BuildMineRouteArrowHtml(string direction)
+        {
+            var style = "position:absolute;z-index:3;pointer-events:none;color:#ff3333;font-family:Arial,sans-serif;font-size:28px;font-weight:bold;text-shadow:1px 1px #000,-1px -1px #000;";
+            if (direction.Equals("right", StringComparison.OrdinalIgnoreCase))
+                return "<span style=\"" + style + "right:6px;top:48px;\">&rarr;</span>";
+            if (direction.Equals("left", StringComparison.OrdinalIgnoreCase))
+                return "<span style=\"" + style + "left:6px;top:48px;\">&larr;</span>";
+            if (direction.Equals("down", StringComparison.OrdinalIgnoreCase))
+                return "<span style=\"" + style + "left:0;right:0;bottom:6px;text-align:center;\">&darr;</span>";
+            if (direction.Equals("up", StringComparison.OrdinalIgnoreCase))
+                return "<span style=\"" + style + "left:0;right:0;top:6px;text-align:center;\">&uarr;</span>";
+
+            return string.Empty;
         }
 
         private static Dictionary<string, MineCell> GetActiveMap()

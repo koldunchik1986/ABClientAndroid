@@ -913,8 +913,8 @@
   <cell regnum="27-483" label="Тракт Прямой путь" cost="30" visited="12/9/2015 9:23:29 AM" verified="1/1/0001 12:00:00 AM" />
   <cell regnum="27-484" label="Тракт Прямой путь" cost="30" visited="12/9/2015 9:23:59 AM" verified="1/1/0001 12:00:00 AM" />
   <cell regnum="27-485" label="Тракт Прямой путь" cost="30" visited="12/9/2015 9:24:30 AM" verified="1/1/0001 12:00:00 AM" />
-  <cell regnum="27-486" label="Тракт Прямой путь" cost="0" visited="12/22/2015 11:28:17 AM" verified="1/1/0001 12:00:00 AM" />
-  <cell regnum="27-487" label="Тракт Прямой путь" cost="0" visited="12/22/2015 11:51:33 AM" verified="1/1/0001 12:00:00 AM" />
+  <cell regnum="27-486" label="Тракт Прямой путь" cost="30" visited="12/22/2015 11:28:17 AM" verified="1/1/0001 12:00:00 AM" />
+  <cell regnum="27-487" label="Тракт Прямой путь" cost="30" visited="12/22/2015 11:51:33 AM" verified="1/1/0001 12:00:00 AM" />
   <cell regnum="27-488" label="Зелест" cost="30" visited="12/22/2015 11:52:03 AM" verified="1/1/0001 12:00:00 AM" />
   <cell regnum="27-489" label="Зелест" cost="30" visited="12/22/2015 11:52:34 AM" verified="1/1/0001 12:00:00 AM" />
   <cell regnum="27-496" label="Сельскохозяйственные угодья" cost="40" visited="12/22/2015 11:15:03 AM" verified="1/1/0001 12:00:00 AM" />

@@ -6,6 +6,7 @@ import java.util.Date;
 import java.util.regex.Pattern;
 
 import ru.neverlands.anclient.utils.AppVars;
+import ru.neverlands.anclient.utils.GameServerUrls;
 import ru.neverlands.anclient.utils.Russian;
 
 // Маршрутизатор пост‑фильтров: выбирает обработчик по URL (JS/HTML/CGI).
@@ -208,6 +209,10 @@ public class Filter {
     private static String normalizeNeverlandsHost(String address) {
         if (address == null || address.isEmpty()) {
             return address;
+        }
+        String routedOrIpCanonical = GameServerUrls.normalizeNeverlandsUrlForCompare(address);
+        if (!routedOrIpCanonical.isEmpty()) {
+            address = routedOrIpCanonical;
         }
         final String wwwPrefix = "http://www.neverlands.ru/";
         if (address.startsWith(wwwPrefix)) {

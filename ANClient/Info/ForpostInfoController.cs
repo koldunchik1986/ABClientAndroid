@@ -481,7 +481,7 @@ namespace ANClient.Info
         private string FetchText(string url)
         {
             bool isForpostCityApi = IsForpostCityApiUrl(url);
-            var request = (HttpWebRequest)WebRequest.Create(url);
+            var request = (HttpWebRequest)WebRequest.Create(GameServerSelector.RouteUrlToCurrentServer(url));
             request.Method = "GET";
             request.UserAgent = UserAgent;
             request.Accept = isForpostCityApi ? GetCityBrowserAccept : "text/plain,text/html,*/*";

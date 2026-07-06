@@ -213,6 +213,7 @@ namespace ANClient.ANForms
                 }
             }
 
+            ANClient.MyGuamod.CaptchaTrainingManager.Stop("form_closing");
             RoomManager.StopTracing();
             WaitForTurnStop();
 

@@ -25,6 +25,11 @@ namespace ANClient.MyProfile
         internal string UserNick { get; set; }
 
         /// <summary>
+        /// Код выбранного игрового сервера для формы входа: DE или KZ
+        /// </summary>
+        internal string GameServerCode { get; set; }
+
+        /// <summary>
         /// Пароль пользователя для игры. Если пустой, это значит, что пароль зашифрован
         /// </summary>
         internal string UserPassword { get; set; }
@@ -421,6 +426,18 @@ namespace ANClient.MyProfile
         internal int AntiCaptchaMaxLength { get; set; }
 
         internal string AntiCaptchaLanguagePool { get; set; }
+
+        internal bool LocalCaptchaOcrEnabled { get; set; }
+
+        internal string LocalCaptchaOcrServiceUrl { get; set; }
+
+        internal string LocalCaptchaOcrExePath { get; set; }
+
+        internal string LocalCaptchaOcrModelPath { get; set; }
+
+        internal double LocalCaptchaOcrMinConfidence { get; set; }
+
+        internal bool LocalCaptchaExternalFallbackEnabled { get; set; }
 
         /// <summary>
         /// Рисовать ли уровни

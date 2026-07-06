@@ -900,7 +900,7 @@ namespace ANClient
                 try
                 {
                     IdleManager.AddActivity();
-                    var fightLogUri = new Uri("http://www.neverlands.ru/logs.fcg?fid=" + flog);
+                    var fightLogUri = GameServerSelector.RouteUriToCurrentServer(new Uri("http://www.neverlands.ru/logs.fcg?fid=" + flog));
                     if (DirectGameRequestGuard.Prepare(wc, fightLogUri, "Contact.FightLog"))
                     {
                         bufferLog = wc.DownloadData(fightLogUri);

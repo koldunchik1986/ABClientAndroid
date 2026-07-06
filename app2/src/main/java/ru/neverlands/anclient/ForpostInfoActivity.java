@@ -44,6 +44,7 @@ import ru.neverlands.anclient.info.RecipeDatabase;
 import ru.neverlands.anclient.network.NetworkClient;
 import ru.neverlands.anclient.proxy.CookiesManager;
 import ru.neverlands.anclient.utils.AppLog;
+import ru.neverlands.anclient.utils.GameServerUrls;
 
 /**
  * Порт WinForms-справочников APIForms/CityHall.cs и APIForms/ForpostBuildings.cs.
@@ -240,10 +241,14 @@ public class ForpostInfoActivity extends AppCompatActivity {
 
     private String buildBestEffortCookieHeader(String url) {
         LinkedHashMap<String, String> cookieByName = new LinkedHashMap<>();
+        addCookiePairs(cookieByName, CookiesManager.obtain(GameServerUrls.serverHost(GameServerUrls.currentServerCode())));
         addCookiePairs(cookieByName, CookiesManager.obtain("neverlands.ru"));
         addCookiePairs(cookieByName, CookiesManager.obtain("www.neverlands.ru"));
         try {
             CookieManager webCookieManager = CookieManager.getInstance();
+            for (String cookieUrl : GameServerUrls.cookieUrls()) {
+                addCookiePairs(cookieByName, webCookieManager.getCookie(cookieUrl));
+            }
             addCookiePairs(cookieByName, webCookieManager.getCookie(url));
             addCookiePairs(cookieByName, webCookieManager.getCookie("http://neverlands.ru/"));
             addCookiePairs(cookieByName, webCookieManager.getCookie("http://www.neverlands.ru/"));

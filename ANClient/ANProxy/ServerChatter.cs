@@ -185,7 +185,21 @@ namespace ANClient.ANProxy
                     _session.Request.Headers.Add("Accept-encoding", "gzip");
                 }
 
+                var originalHost = _session.Host;
+                var routeHost = GameServerSelector.ProxyRouteHost(originalHost);
+                var hostRouted = !string.Equals(originalHost, routeHost, StringComparison.OrdinalIgnoreCase);
+                if (hostRouted)
+                {
+                    AppLog.d("ProxySession", "SERVER_ROUTE: proxy origin=" + originalHost + " -> " + routeHost);
+                    _session.Request.Headers["Host"] = routeHost;
+                }
+
                 var headerarray = _session.Request.Headers.ToByteArray(true, true, WasForwarded);
+                if (hostRouted)
+                {
+                    _session.Request.Headers["Host"] = originalHost;
+                }
+
                 if (AppVars.Profile.DoHttpLog)
                 {
                     var sb = new StringBuilder();
@@ -248,7 +262,7 @@ namespace ANClient.ANProxy
         {
             string str;
             int port = _session.Port;
-            string hostPort = _session.Host;
+            string hostPort = GameServerSelector.ProxyRouteHost(_session.Host);
             Utilities.CrackHostAndPort(hostPort, out str, ref port);
             var remoteEp = Proxy.Gateway;
             if (remoteEp != null)

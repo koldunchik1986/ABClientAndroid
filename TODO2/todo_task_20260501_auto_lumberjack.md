@@ -95,6 +95,30 @@
 - [x] Новых runtime-маркеров `AB/ABC/ABCLIENT` в добавленных строках `app2/src/main` не найдено.
 - [-] `git diff --check` не показал whitespace errors, но Git продолжает выводить существующее предупреждение `.gitattributes" is not a valid attribute name: .gitattributes:7` и CRLF warnings для изменённых файлов.
 
+## Отладка 2026-05-14: popup перегруза рюкзака
+
+- [x] По логам `20260514_09_20_servernoticeparser.log` и `20260514_09_20_chat.log` подтверждено, что popup `Рюкзак слишком тяжелый! Замедленное перемещение.` попадает в чат через существующий контур `WebAppInterface.PostServerPopupToChat(...)` -> `MainPhp.postServerNotificationToChat(...)` -> `ServerNoticeParser.postServerNotificationToChat(...)`.
+- [x] Исправление внесено в существующий dedup-контур `ServerNoticeParser`, без нового JS/HTTP-контура и без закрытия/ack серверного popup.
+- [x] Добавлен узкий debounce `2000 ms` только для popup/bridge notice с нормализованным текстом `рюкзак слишком тяжелый` + `замедленное перемещение`; полезные ответы авто-лесоруба, включая `Всё прошло успешно.` и `Бесполезный хлам`, этим фильтром не подавляются.
+- [ ] Проверить live-лог: при повторе тяжелого рюкзака в пределах 2 секунд должен быть `SERVER_NOTICE_TRACE skip duplicate heavy backpack popup`, а успешный спил и найденный `Бесполезный хлам` должны появиться в чате и `AUTO_CUT_TRACE`.
+
+## Отладка 2026-05-14: сломанный серп/топор
+
+- [x] По новым логам `20260514_11_40`-`20260514_12_20` найден повторяющийся сценарий: `Оглядеться` (`alchemy_ajax.php?act=1`) обновляет snapshot клетки, затем `AlchemyAjaxPhp` пишет `act1: no selected available resource` и помечает клетку checked, хотя в snapshot остаются ресурсы вида `1/1`, `1/2`, `2/2`.
+- [x] Существующая точка исправления: `AlchemyAjaxPhp.processAlchemyAct1(...)`, где ресурс выбирался только если `availableCount > 0` и `cutVcode` не пустой. Пустой `cutVcode` соответствует неактивной кнопке спила/среза.
+- [x] Пользовательский серверный пример без топора/серпа подтвердил формат: `RESO@...@[0,"00000",992,1000,[261,"Орешник",30,30,0,0,0,0,1,"",9,1],...]`; поле 8 (`availableCount`) остаётся больше нуля, поле 9 (`cutVcode`) пустое, значит guard `availableCount > 0 && cutVcode empty` корректно отличает неактивную кнопку от отсутствия ресурса.
+- [x] Добавлен guard без нового HTTP-контура: если выбранный ресурс текущего режима доступен (`availableCount > 0`), но `cutVcode` пустой, клетка не помечается checked, маршрут не уходит дальше, а вызывается существующий `AutoCutManager.requestSickleCheckBeforeCut(...)` для проверки/надевания серпа или топора через `AutoCutHandler`.
+- [ ] Проверить live-лог: после `act1: selected resource available but cut button inactive, tool check requested` должен идти `tool not armed`/`wear tool`, возврат на карту и повторный `AUTO_CUT_JS start Ogl` на той же клетке.
+
+## Проверка 2026-05-14 после серверного примера
+
+- [x] `Ogl_bez_instrumenta.har` проверен: файл содержит пустой `entries`, поэтому источником истины для формата стал вставленный серверный `RESO@`-ответ.
+- [x] `./gradlew2.bat --no-daemon :app2:assembleDebug` выполнен успешно.
+- [x] В добавленных Java-строках нет новых обращений к `AppVars.VCode`.
+- [x] Прямые `android.util.Log`/`Log.*` по `app2/src/main/java` остались только в разрешённой инфраструктуре `FileLogger`/`LogcatFileRecorder`; новые строки используют `AppLog`.
+- [x] Mojibake-проверка изменённых `AlchemyAjaxPhp.java`, `ServerNoticeParser.java` и этого TODO не нашла повреждённой кириллицы; единственный self-hit в TODO является строкой с перечислением паттернов.
+- [-] `git diff --check -- app2 TODO2` не показал whitespace errors, но Git продолжает выводить существующее предупреждение `.gitattributes" is not a valid attribute name: .gitattributes:7` и CRLF warnings.
+
 ## Риски и проверки
 
 - Если `act=1` возвращает травы и деревья вместе, фильтр должен выбирать только ресурсы текущего режима.

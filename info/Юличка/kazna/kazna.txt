@@ -1,0 +1,199 @@
+{
+  "generatedAtMs": 1779359183533,
+  "sourceUrl": "http:\/\/neverlands.ru\/main.php?get_id=29&uid=104593803&wmas=55&nick=o3zone&vcode=c42aa747fc63dabcd788cf55363e3139&useaction=clan-action&addid=3",
+  "currentWca": "",
+  "currentCategoryTitle": "",
+  "categories": [
+    {
+      "wca": "4",
+      "title": "Ножи",
+      "iconUrl": "http:\/\/image.neverlands.ru\/gameplay\/invent\/cat\/0.gif",
+      "href": "http:\/\/neverlands.ru\/main.php?wca=4&useaction=clan-action&addid=3"
+    },
+    {
+      "wca": "1",
+      "title": "Мечи",
+      "iconUrl": "http:\/\/image.neverlands.ru\/gameplay\/invent\/cat\/1.gif",
+      "href": "http:\/\/neverlands.ru\/main.php?wca=1&useaction=clan-action&addid=3"
+    },
+    {
+      "wca": "2",
+      "title": "Топоры",
+      "iconUrl": "http:\/\/image.neverlands.ru\/gameplay\/invent\/cat\/2.gif",
+      "href": "http:\/\/neverlands.ru\/main.php?wca=2&useaction=clan-action&addid=3"
+    },
+    {
+      "wca": "3",
+      "title": "Дробящие",
+      "iconUrl": "http:\/\/image.neverlands.ru\/gameplay\/invent\/cat\/3.gif",
+      "href": "http:\/\/neverlands.ru\/main.php?wca=3&useaction=clan-action&addid=3"
+    },
+    {
+      "wca": "6",
+      "title": "Алебарды и копья",
+      "iconUrl": "http:\/\/image.neverlands.ru\/gameplay\/invent\/cat\/4.gif",
+      "href": "http:\/\/neverlands.ru\/main.php?wca=6&useaction=clan-action&addid=3"
+    },
+    {
+      "wca": "7",
+      "title": "Посохи",
+      "iconUrl": "http:\/\/image.neverlands.ru\/gameplay\/invent\/cat\/6.gif",
+      "href": "http:\/\/neverlands.ru\/main.php?wca=7&useaction=clan-action&addid=3"
+    },
+    {
+      "wca": "20",
+      "title": "Щиты",
+      "iconUrl": "http:\/\/image.neverlands.ru\/gameplay\/invent\/cat\/7.gif",
+      "href": "http:\/\/neverlands.ru\/main.php?wca=20&useaction=clan-action&addid=3"
+    },
+    {
+      "wca": "19",
+      "title": "Доспехи",
+      "iconUrl": "http:\/\/image.neverlands.ru\/gameplay\/invent\/cat\/11.gif",
+      "href": "http:\/\/neverlands.ru\/main.php?wca=19&useaction=clan-action&addid=3"
+    },
+    {
+      "wca": "23",
+      "title": "Шлемы",
+      "iconUrl": "http:\/\/image.neverlands.ru\/gameplay\/invent\/cat\/8.gif",
+      "href": "http:\/\/neverlands.ru\/main.php?wca=23&useaction=clan-action&addid=3"
+    },
+    {
+      "wca": "21",
+      "title": "Сапоги",
+      "iconUrl": "http:\/\/image.neverlands.ru\/gameplay\/invent\/cat\/14.gif",
+      "href": "http:\/\/neverlands.ru\/main.php?wca=21&useaction=clan-action&addid=3"
+    },
+    {
+      "wca": "17",
+      "title": "Штаны",
+      "iconUrl": "http:\/\/image.neverlands.ru\/gameplay\/invent\/cat\/24.gif",
+      "href": "http:\/\/neverlands.ru\/main.php?wca=17&useaction=clan-action&addid=3"
+    },
+    {
+      "wca": "26",
+      "title": "Пояса",
+      "iconUrl": "http:\/\/image.neverlands.ru\/gameplay\/invent\/cat\/9i.gif",
+      "href": "http:\/\/neverlands.ru\/main.php?wca=26&useaction=clan-action&addid=3"
+    },
+    {
+      "wca": "24",
+      "title": "Перчатки",
+      "iconUrl": "http:\/\/image.neverlands.ru\/gameplay\/invent\/cat\/12.gif",
+      "href": "http:\/\/neverlands.ru\/main.php?wca=24&useaction=clan-action&addid=3"
+    },
+    {
+      "wca": "80",
+      "title": "Наручи",
+      "iconUrl": "http:\/\/image.neverlands.ru\/gameplay\/invent\/cat\/13.gif",
+      "href": "http:\/\/neverlands.ru\/main.php?wca=80&useaction=clan-action&addid=3"
+    },
+    {
+      "wca": "22",
+      "title": "Ювелирные украшения",
+      "iconUrl": "http:\/\/image.neverlands.ru\/gameplay\/invent\/cat\/16.gif",
+      "href": "http:\/\/neverlands.ru\/main.php?wca=22&useaction=clan-action&addid=3"
+    },
+    {
+      "wca": "16",
+      "title": "Реликвии",
+      "iconUrl": "http:\/\/image.neverlands.ru\/gameplay\/invent\/cat\/25.gif",
+      "href": "http:\/\/neverlands.ru\/main.php?wca=16&useaction=clan-action&addid=3"
+    },
+    {
+      "wca": "28",
+      "title": "Свитки",
+      "iconUrl": "http:\/\/image.neverlands.ru\/gameplay\/invent\/cat\/17.gif",
+      "href": "http:\/\/neverlands.ru\/main.php?wca=28&useaction=clan-action&addid=3"
+    },
+    {
+      "wca": "27",
+      "title": "Зелья",
+      "iconUrl": "http:\/\/image.neverlands.ru\/gameplay\/invent\/cat\/21.gif",
+      "href": "http:\/\/neverlands.ru\/main.php?wca=27&useaction=clan-action&addid=3"
+    },
+    {
+      "wca": "85",
+      "title": "Сумки лекаря",
+      "iconUrl": "http:\/\/image.neverlands.ru\/gameplay\/invent\/cat\/85.gif",
+      "href": "http:\/\/neverlands.ru\/main.php?wca=85&useaction=clan-action&addid=3"
+    },
+    {
+      "wca": "61",
+      "title": "Эликсиры и еда",
+      "iconUrl": "http:\/\/image.neverlands.ru\/gameplay\/invent\/6.gif",
+      "href": "http:\/\/neverlands.ru\/main.php?wca=61&useaction=clan-action&addid=3"
+    },
+    {
+      "wca": "30",
+      "title": "Книги",
+      "iconUrl": "http:\/\/image.neverlands.ru\/gameplay\/invent\/cat\/22.gif",
+      "href": "http:\/\/neverlands.ru\/main.php?wca=30&useaction=clan-action&addid=3"
+    },
+    {
+      "wca": "60",
+      "title": "Квестовые предметы",
+      "iconUrl": "http:\/\/image.neverlands.ru\/gameplay\/invent\/cat\/23.gif",
+      "href": "http:\/\/neverlands.ru\/main.php?wca=60&useaction=clan-action&addid=3"
+    }
+  ],
+  "items": [
+    {
+      "uid": "",
+      "rowIndex": 1,
+      "displayName": "Ледяной Щит",
+      "baseName": "Ледяной Щит",
+      "owner": "Юличка",
+      "durabilityText": "288\/300",
+      "currentDurability": 288,
+      "maxDurability": 300,
+      "status": "свободен",
+      "free": true,
+      "artifactCoefficient": "",
+      "takeUrl": "",
+      "donateUrl": "",
+      "sourceUrl": "http:\/\/neverlands.ru\/main.php?get_id=29&uid=104593803&wmas=55&nick=o3zone&vcode=c42aa747fc63dabcd788cf55363e3139&useaction=clan-action&addid=3",
+      "categoryWca": "",
+      "categoryTitle": "",
+      "rowHtml": "<tr>\n <td bgcolor=\"#f0f0f0\"><font class=\"nickname\">1. <b>Ледяной Щит<\/b><\/font><\/td>\n <td bgcolor=\"#f0f0f0\">\n  <div align=\"center\">\n   <font class=\"weaponch\"><b>Юличка<\/b><\/font>\n  <\/div><\/td>\n <td bgcolor=\"#f0f0f0\">\n  <div align=\"center\">\n   <font class=\"weaponch\"><b>Долговечность:<\/b> 288\/300<\/font>\n  <\/div><\/td>\n <td bgcolor=\"#f0f0f0\">\n  <div align=\"center\">\n   <font class=\"weaponch\"><b><font color=\"#00A80C\">свободен<\/font><\/b><\/font>\n  <\/div><\/td>\n <td bgcolor=\"#f0f0f0\">\n  <div align=\"center\"><\/div><\/td>\n<\/tr>"
+    },
+    {
+      "uid": "129299604",
+      "rowIndex": 2,
+      "displayName": "Щит Золотого Сфинкса",
+      "baseName": "Щит Золотого Сфинкса",
+      "owner": "Flexi_spy",
+      "durabilityText": "0\/200",
+      "currentDurability": 0,
+      "maxDurability": 200,
+      "status": "свободен",
+      "free": true,
+      "artifactCoefficient": "",
+      "takeUrl": "http:\/\/neverlands.ru\/main.php?get_id=29&uid=129299604&wmas=55&nick=Flexi_spy&vcode=f12d3ed959668082237ed03e293be8e9&useaction=clan-action&addid=3",
+      "donateUrl": "",
+      "sourceUrl": "http:\/\/neverlands.ru\/main.php?get_id=29&uid=104593803&wmas=55&nick=o3zone&vcode=c42aa747fc63dabcd788cf55363e3139&useaction=clan-action&addid=3",
+      "categoryWca": "",
+      "categoryTitle": "",
+      "rowHtml": "<tr>\n <td bgcolor=\"#ffffff\"><font class=\"nickname\">2. <b>Щит Золотого Сфинкса<\/b><\/font><\/td>\n <td bgcolor=\"#ffffff\">\n  <div align=\"center\">\n   <font class=\"weaponch\"><b>Flexi_spy<\/b><\/font>\n  <\/div><\/td>\n <td bgcolor=\"#ffffff\">\n  <div align=\"center\">\n   <font class=\"weaponch\"><b>Долговечность:<\/b> 0\/200<\/font>\n  <\/div><\/td>\n <td bgcolor=\"#ffffff\">\n  <div align=\"center\">\n   <font class=\"weaponch\"><b><font color=\"#00A80C\">свободен<\/font><\/b><\/font>\n  <\/div><\/td>\n <td bgcolor=\"#ffffff\">\n  <div align=\"center\">\n   <input type=\"button\" class=\"invbut\" onclick=\"location='main.php?get_id=29&amp;uid=129299604&amp;wmas=55&amp;nick=Flexi_spy&amp;vcode=f12d3ed959668082237ed03e293be8e9&amp;useaction=clan-action&amp;addid=3'\" value=\"Взять из казны\">\n  <\/div><\/td>\n<\/tr>"
+    },
+    {
+      "uid": "",
+      "rowIndex": 3,
+      "displayName": "Щит Варвара (+3)",
+      "baseName": "Щит Варвара (+3)",
+      "owner": "Zavalyxa",
+      "durabilityText": "203\/300",
+      "currentDurability": 203,
+      "maxDurability": 300,
+      "status": "занят",
+      "free": false,
+      "artifactCoefficient": "",
+      "takeUrl": "",
+      "donateUrl": "",
+      "sourceUrl": "http:\/\/neverlands.ru\/main.php?get_id=29&uid=104593803&wmas=55&nick=o3zone&vcode=c42aa747fc63dabcd788cf55363e3139&useaction=clan-action&addid=3",
+      "categoryWca": "",
+      "categoryTitle": "",
+      "rowHtml": "<tr>\n <td bgcolor=\"#f0f0f0\"><font class=\"nickname\">3. <b>Щит Варвара (+3)<\/b><\/font><\/td>\n <td bgcolor=\"#f0f0f0\">\n  <div align=\"center\">\n   <font class=\"weaponch\"><b>Zavalyxa<\/b><\/font>\n  <\/div><\/td>\n <td bgcolor=\"#f0f0f0\">\n  <div align=\"center\">\n   <font class=\"weaponch\"><b>Долговечность:<\/b> 203\/300<\/font>\n  <\/div><\/td>\n <td bgcolor=\"#f0f0f0\">\n  <div align=\"center\">\n   <font class=\"weaponch\"><b><font color=\"#dd0000\">занят<\/font><\/b><\/font>\n  <\/div><\/td>\n <td bgcolor=\"#f0f0f0\">\n  <div align=\"center\"><\/div><\/td>\n<\/tr>"
+    }
+  ]
+}

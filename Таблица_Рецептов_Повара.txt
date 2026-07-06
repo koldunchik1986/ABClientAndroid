@@ -1,0 +1,560 @@
+<!DOCTYPE html>
+<html lang="ru" dir="ltr" class="client-nojs">
+<head>
+<title>Таблица Рецептов Повара — Викиневер</title>
+<meta charset="UTF-8" />
+<meta name="generator" content="MediaWiki 1.19.2" />
+<link rel="shortcut icon" href="/favicon.ico" />
+<link rel="search" type="application/opensearchdescription+xml" href="/opensearch_desc.php" title="Викиневер (ru)" />
+<link rel="EditURI" type="application/rsd+xml" href="http://wiki.neverlands.ru/api.php?action=rsd" />
+<link rel="alternate" type="application/atom+xml" title="Викиневер — Atom-лента" href="/index.php?title=%D0%A1%D0%BB%D1%83%D0%B6%D0%B5%D0%B1%D0%BD%D0%B0%D1%8F:RecentChanges&amp;feed=atom" />
+<link rel="stylesheet" href="http://wiki.neverlands.ru/load.php?debug=false&amp;lang=ru&amp;modules=ext.categoryTree.css%7Cmediawiki.legacy.commonPrint%2Cshared%7Cskins.vector&amp;only=styles&amp;skin=vector&amp;*" />
+<meta name="ResourceLoaderDynamicStyles" content="" />
+<style>a:lang(ar),a:lang(ckb),a:lang(fa),a:lang(kk-arab),a:lang(mzn),a:lang(ps),a:lang(ur){text-decoration:none}a.new,#quickbar a.new{color:#ba0000}
+
+/* cache key: mediawiki-wiki_:resourceloader:filter:minify-css:7:c88e2bcd56513749bec09a7e29cb3ffa */
+</style>
+
+<script src="http://wiki.neverlands.ru/load.php?debug=false&amp;lang=ru&amp;modules=startup&amp;only=scripts&amp;skin=vector&amp;*"></script>
+<script>if(window.mw){
+mw.config.set({"wgCanonicalNamespace":"","wgCanonicalSpecialPageName":false,"wgNamespaceNumber":0,"wgPageName":"Таблица_Рецептов_Повара","wgTitle":"Таблица Рецептов Повара","wgCurRevisionId":21097,"wgArticleId":743,"wgIsArticle":true,"wgAction":"view","wgUserName":null,"wgUserGroups":["*"],"wgCategories":["Таблицы профессий","Таблицы повара"],"wgBreakFrames":false,"wgPageContentLanguage":"ru","wgSeparatorTransformTable":[",	."," 	,"],"wgDigitTransformTable":["",""],"wgRelevantPageName":"Таблица_Рецептов_Повара","wgRestrictionEdit":[],"wgRestrictionMove":[],"wgSearchNamespaces":[0],"wgVectorEnabledModules":{"collapsiblenav":true,"collapsibletabs":true,"editwarning":false,"expandablesearch":false,"footercleanup":false,"sectioneditlinks":false,"simplesearch":true,"experiments":true},"wgWikiEditorEnabledModules":{"toolbar":true,"dialogs":true,"hidesig":true,"templateEditor":false,"templates":false,"preview":true,"previewDialog":false,"publish":false,"toc":false},"wgCategoryTreePageCategoryOptions":"{\"mode\":0,\"hideprefix\":20,\"showcount\":true,\"namespaces\":false}"});
+}</script><script>if(window.mw){
+mw.loader.implement("user.options",function($){mw.user.options.set({"ccmeonemails":0,"cols":80,"date":"default","diffonly":0,"disablemail":0,"disablesuggest":0,"editfont":"default","editondblclick":0,"editsection":1,"editsectiononrightclick":0,"enotifminoredits":0,"enotifrevealaddr":0,"enotifusertalkpages":1,"enotifwatchlistpages":0,"extendwatchlist":0,"externaldiff":0,"externaleditor":0,"fancysig":0,"forceeditsummary":0,"gender":"unknown","hideminor":0,"hidepatrolled":0,"highlightbroken":1,"imagesize":2,"justify":0,"math":1,"minordefault":0,"newpageshidepatrolled":0,"nocache":0,"noconvertlink":0,"norollbackdiff":0,"numberheadings":0,"previewonfirst":0,"previewontop":1,"quickbar":5,"rcdays":7,"rclimit":50,"rememberpassword":0,"rows":25,"searchlimit":20,"showhiddencats":0,"showjumplinks":1,"shownumberswatching":1,"showtoc":1,"showtoolbar":1,"skin":"vector","stubthreshold":0,"thumbsize":2,"underline":2,"uselivepreview":0,"usenewrc":0,"watchcreations":0,"watchdefault":0,"watchdeletion":0,
+"watchlistdays":3,"watchlisthideanons":0,"watchlisthidebots":0,"watchlisthideliu":0,"watchlisthideminor":0,"watchlisthideown":0,"watchlisthidepatrolled":0,"watchmoves":0,"wllimit":250,"vector-simplesearch":1,"usebetatoolbar":1,"usebetatoolbar-cgd":1,"wikieditor-preview":1,"variant":"ru","language":"ru","searchNs0":true,"searchNs1":false,"searchNs2":false,"searchNs3":false,"searchNs4":false,"searchNs5":false,"searchNs6":false,"searchNs7":false,"searchNs8":false,"searchNs9":false,"searchNs10":false,"searchNs11":false,"searchNs12":false,"searchNs13":false,"searchNs14":false,"searchNs15":false});;},{},{});mw.loader.implement("user.tokens",function($){mw.user.tokens.set({"editToken":"+\\","watchToken":false});;},{},{});
+
+/* cache key: mediawiki-wiki_:resourceloader:filter:minify-js:7:7508123b28c8391f7dad903573c5f09c */
+}</script>
+<script>if(window.mw){
+mw.loader.load(["mediawiki.page.startup","mediawiki.legacy.wikibits","mediawiki.legacy.ajax"]);
+}</script>
+<!--[if lt IE 7]><style type="text/css">body{behavior:url("/skins/vector/csshover.min.htc")}</style><![endif]--></head>
+<body class="mediawiki ltr sitedir-ltr ns-0 ns-subject page-Таблица_Рецептов_Повара skin-vector action-view">
+		<div id="mw-page-base" class="noprint"></div>
+		<div id="mw-head-base" class="noprint"></div>
+		<!-- content -->
+		<div id="content" class="mw-body">
+			<a id="top"></a>
+			<div id="mw-js-message" style="display:none;"></div>
+						<!-- firstHeading -->
+			<h1 id="firstHeading" class="firstHeading">
+				<span dir="auto">Таблица Рецептов Повара</span>
+			</h1>
+			<!-- /firstHeading -->
+			<!-- bodyContent -->
+			<div id="bodyContent">
+								<!-- tagline -->
+				<div id="siteSub">Материал из Викиневер</div>
+				<!-- /tagline -->
+								<!-- subtitle -->
+				<div id="contentSub"></div>
+				<!-- /subtitle -->
+																<!-- jumpto -->
+				<div id="jump-to-nav" class="mw-jump">
+					Перейти к: <a href="#mw-head">навигация</a>,
+					<a href="#p-search">поиск</a>
+				</div>
+				<!-- /jumpto -->
+								<!-- bodycontent -->
+				<div id="mw-content-text" lang="ru" dir="ltr" class="mw-content-ltr"><div style="float:right; clear:right; margin-left:1ex; border:1px solid gray; padding:0.7ex; background-color:white;" class="CategoryTreeTag" data-ct-mode="20" data-ct-options="{&quot;mode&quot;:20,&quot;hideprefix&quot;:20,&quot;showcount&quot;:false,&quot;namespaces&quot;:false}"><div class="CategoryTreeSection"><div class="CategoryTreeItem"><span class="CategoryTreeBullet"><span class="CategoryTreeToggle" style="display: none;" data-ct-title="Таблицы_алхимика" title="развернуть" data-ct-state="collapsed">[<b>+</b>]</span> </span> <a class="CategoryTreeLabel  CategoryTreeLabelNs14 CategoryTreeLabelCategory" href="/wiki/%D0%9A%D0%B0%D1%82%D0%B5%D0%B3%D0%BE%D1%80%D0%B8%D1%8F:%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D1%8B_%D0%B0%D0%BB%D1%85%D0%B8%D0%BC%D0%B8%D0%BA%D0%B0">Таблицы алхимика</a></div>
+		<div class="CategoryTreeChildren" style="display:none"></div></div>
+		<div class="CategoryTreeSection"><div class="CategoryTreeItem"><span class="CategoryTreeBullet"><span class="CategoryTreeToggle" style="display: none;" data-ct-title="Таблицы_каллиграфа" title="развернуть" data-ct-state="collapsed">[<b>+</b>]</span> </span> <a class="CategoryTreeLabel  CategoryTreeLabelNs14 CategoryTreeLabelCategory" href="/wiki/%D0%9A%D0%B0%D1%82%D0%B5%D0%B3%D0%BE%D1%80%D0%B8%D1%8F:%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D1%8B_%D0%BA%D0%B0%D0%BB%D0%BB%D0%B8%D0%B3%D1%80%D0%B0%D1%84%D0%B0">Таблицы каллиграфа</a></div>
+		<div class="CategoryTreeChildren" style="display:none"></div></div>
+		<div class="CategoryTreeSection"><div class="CategoryTreeItem"><span class="CategoryTreeBullet"><span class="CategoryTreeToggle" style="display: none;" data-ct-title="Таблицы_повара" title="развернуть" data-ct-state="collapsed">[<b>+</b>]</span> </span> <a class="CategoryTreeLabel  CategoryTreeLabelNs14 CategoryTreeLabelCategory" href="/wiki/%D0%9A%D0%B0%D1%82%D0%B5%D0%B3%D0%BE%D1%80%D0%B8%D1%8F:%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D1%8B_%D0%BF%D0%BE%D0%B2%D0%B0%D1%80%D0%B0">Таблицы повара</a></div>
+		<div class="CategoryTreeChildren" style="display:none"></div></div>
+		<div class="CategoryTreeSection"><div class="CategoryTreeItem"><span class="CategoryTreeBullet"><span class="CategoryTreeToggle" style="display: none;" data-ct-title="Таблицы_ремесленника" title="развернуть" data-ct-state="collapsed">[<b>+</b>]</span> </span> <a class="CategoryTreeLabel  CategoryTreeLabelNs14 CategoryTreeLabelCategory" href="/wiki/%D0%9A%D0%B0%D1%82%D0%B5%D0%B3%D0%BE%D1%80%D0%B8%D1%8F:%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D1%8B_%D1%80%D0%B5%D0%BC%D0%B5%D1%81%D0%BB%D0%B5%D0%BD%D0%BD%D0%B8%D0%BA%D0%B0">Таблицы ремесленника</a></div>
+		<div class="CategoryTreeChildren" style="display:none"></div></div>
+		<div class="CategoryTreeSection"><div class="CategoryTreeItem"><span class="CategoryTreeBullet"><span class="CategoryTreeToggle" style="display: none;" data-ct-title="Таблицы_шахтера" title="развернуть" data-ct-state="collapsed">[<b>+</b>]</span> </span> <a class="CategoryTreeLabel  CategoryTreeLabelNs14 CategoryTreeLabelCategory" href="/wiki/%D0%9A%D0%B0%D1%82%D0%B5%D0%B3%D0%BE%D1%80%D0%B8%D1%8F:%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D1%8B_%D1%88%D0%B0%D1%85%D1%82%D0%B5%D1%80%D0%B0">Таблицы шахтера</a></div>
+		<div class="CategoryTreeChildren" style="display:none"></div></div>
+		<div class="CategoryTreeSection"><div class="CategoryTreeItem"><span class="CategoryTreeBullet"> </span> <a class="CategoryTreeLabel  CategoryTreeLabelNs0 CategoryTreeLabelPage" href="/wiki/%D0%94%D1%80%D0%B0%D0%B3%D0%BE%D1%86%D0%B5%D0%BD%D0%BD%D1%8B%D0%B5_%D0%BA%D0%B0%D0%BC%D0%BD%D0%B8">Драгоценные камни</a></div>
+		<div class="CategoryTreeChildren" style="display:none"></div></div>
+		<div class="CategoryTreeSection"><div class="CategoryTreeItem"><span class="CategoryTreeBullet"> </span> <a class="CategoryTreeLabel  CategoryTreeLabelNs0 CategoryTreeLabelPage" href="/wiki/%D0%9C%D0%B5%D1%82%D0%B0%D0%BB%D0%BB%D1%8B_%D0%B8_%D1%81%D0%BF%D0%BB%D0%B0%D0%B2%D1%8B">Металлы и сплавы</a></div>
+		<div class="CategoryTreeChildren" style="display:none"></div></div>
+		<div class="CategoryTreeSection"><div class="CategoryTreeItem"><span class="CategoryTreeBullet"> </span> <a class="CategoryTreeLabel  CategoryTreeLabelNs0 CategoryTreeLabelPage" href="/wiki/%D0%A0%D0%B5%D0%BF%D1%83%D1%82%D0%B0%D1%86%D0%B8%D1%8F">Репутация</a></div>
+		<div class="CategoryTreeChildren" style="display:none"></div></div>
+		<div class="CategoryTreeSection"><div class="CategoryTreeItem"><span class="CategoryTreeBullet"> </span> <a class="CategoryTreeLabel  CategoryTreeLabelNs0 CategoryTreeLabelPage" href="/wiki/%D0%A0%D1%83%D0%B4%D0%B0_%D0%B8_%D0%BC%D0%B8%D0%BD%D0%B5%D1%80%D0%B0%D0%BB%D1%8B">Руда и минералы</a></div>
+		<div class="CategoryTreeChildren" style="display:none"></div></div>
+		<div class="CategoryTreeSection"><div class="CategoryTreeItem"><span class="CategoryTreeBullet"> </span> <a class="CategoryTreeLabel  CategoryTreeLabelNs0 CategoryTreeLabelPage" href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%B7%D0%B0%D0%B3%D0%BE%D1%82%D0%BE%D0%B2%D0%BE%D0%BA_%D0%90%D0%BB%D1%85%D0%B8%D0%BC%D0%B8%D0%BA%D0%B0">Таблица заготовок Алхимика</a></div>
+		<div class="CategoryTreeChildren" style="display:none"></div></div>
+		<div class="CategoryTreeSection"><div class="CategoryTreeItem"><span class="CategoryTreeBullet"> </span> <a class="CategoryTreeLabel  CategoryTreeLabelNs0 CategoryTreeLabelPage" href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%B7%D0%B0%D0%B3%D0%BE%D1%82%D0%BE%D0%B2%D0%BE%D0%BA_%D0%9F%D0%BE%D0%B2%D0%B0%D1%80%D0%B0">Таблица заготовок Повара</a></div>
+		<div class="CategoryTreeChildren" style="display:none"></div></div>
+		<div class="CategoryTreeSection"><div class="CategoryTreeItem"><span class="CategoryTreeBullet"> </span> <a class="CategoryTreeLabel  CategoryTreeLabelNs0 CategoryTreeLabelPage" href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%B8%D1%81%D0%BF%D0%BE%D0%BB%D1%8C%D0%B7%D0%BE%D0%B2%D0%B0%D0%BD%D0%B8%D1%8F_%D0%B7%D0%B0%D0%B3%D0%BE%D1%82%D0%BE%D0%B2%D0%BE%D0%BA_%D0%B8_%D0%B4%D1%80%D0%BE%D0%B2">Таблица использования заготовок и дров</a></div>
+		<div class="CategoryTreeChildren" style="display:none"></div></div>
+		<div class="CategoryTreeSection"><div class="CategoryTreeItem"><span class="CategoryTreeBullet"> </span> <a class="CategoryTreeLabel  CategoryTreeLabelNs0 CategoryTreeLabelPage" href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%9B%D0%B5%D1%81%D0%BE%D1%80%D1%83%D0%B1%D0%B0">Таблица Лесоруба</a></div>
+		<div class="CategoryTreeChildren" style="display:none"></div></div>
+		<div class="CategoryTreeSection"><div class="CategoryTreeItem"><span class="CategoryTreeBullet"> </span> <a class="CategoryTreeLabel  CategoryTreeLabelNs0 CategoryTreeLabelPage" href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%BC%D0%B0%D1%82%D0%B5%D1%80%D0%B8%D0%B0%D0%BB%D0%BE%D0%B2_%D0%9A%D0%B0%D0%BB%D0%BB%D0%B8%D0%B3%D1%80%D0%B0%D1%84%D0%B0">Таблица материалов Каллиграфа</a></div>
+		<div class="CategoryTreeChildren" style="display:none"></div></div>
+		<div class="CategoryTreeSection"><div class="CategoryTreeItem"><span class="CategoryTreeBullet"> </span> <a class="CategoryTreeLabel  CategoryTreeLabelNs0 CategoryTreeLabelPage" href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%9E%D1%85%D0%BE%D1%82%D0%BD%D0%B8%D0%BA%D0%B0">Таблица Охотника</a></div>
+		<div class="CategoryTreeChildren" style="display:none"></div></div>
+		<div class="CategoryTreeSection"><div class="CategoryTreeItem"><span class="CategoryTreeBullet"> </span> <a class="CategoryTreeLabel  CategoryTreeLabelNs0 CategoryTreeLabelPage" href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%9F%D0%BB%D0%BE%D1%82%D0%BD%D0%B8%D0%BA%D0%B0">Таблица Плотника</a></div>
+		<div class="CategoryTreeChildren" style="display:none"></div></div>
+		<div class="CategoryTreeSection"><div class="CategoryTreeItem"><span class="CategoryTreeBullet"> </span> <a class="CategoryTreeLabel  CategoryTreeLabelNs0 CategoryTreeLabelPage" href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D1%80%D0%B5%D0%BC%D0%BE%D0%BD%D1%82%D0%B0">Таблица ремонта</a></div>
+		<div class="CategoryTreeChildren" style="display:none"></div></div>
+		<div class="CategoryTreeSection"><div class="CategoryTreeItem"><span class="CategoryTreeBullet"> </span> <a class="CategoryTreeLabel  CategoryTreeLabelNs0 CategoryTreeLabelPage" href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%A0%D0%B5%D1%86%D0%B5%D0%BF%D1%82%D0%BE%D0%B2_%D0%90%D0%BB%D1%85%D0%B8%D0%BC%D0%B8%D0%BA%D0%B0">Таблица Рецептов Алхимика</a></div>
+		<div class="CategoryTreeChildren" style="display:none"></div></div>
+		<div class="CategoryTreeSection"><div class="CategoryTreeItem"><span class="CategoryTreeBullet"> </span> <a class="CategoryTreeLabel  CategoryTreeLabelNs0 CategoryTreeLabelPage" href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D1%80%D0%B5%D1%86%D0%B5%D0%BF%D1%82%D0%BE%D0%B2_%D0%94%D0%BE%D0%BA%D1%82%D0%BE%D1%80%D0%B0">Таблица рецептов Доктора</a></div>
+		<div class="CategoryTreeChildren" style="display:none"></div></div>
+		<div class="CategoryTreeSection"><div class="CategoryTreeItem"><span class="CategoryTreeBullet"> </span> <a class="CategoryTreeLabel  CategoryTreeLabelNs0 CategoryTreeLabelPage" href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%A0%D0%B5%D1%86%D0%B5%D0%BF%D1%82%D0%BE%D0%B2_%D0%9A%D0%B0%D0%BB%D0%BB%D0%B8%D0%B3%D1%80%D0%B0%D1%84%D0%B0">Таблица Рецептов Каллиграфа</a></div>
+		<div class="CategoryTreeChildren" style="display:none"></div></div>
+		<div class="CategoryTreeSection"><div class="CategoryTreeItem"><span class="CategoryTreeBullet"> </span> <a class="CategoryTreeLabel  CategoryTreeLabelNs0 CategoryTreeLabelPage" href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%A0%D0%B5%D1%86%D0%B5%D0%BF%D1%82%D0%BE%D0%B2_%D0%9F%D0%BE%D0%B2%D0%B0%D1%80%D0%B0">Таблица Рецептов Повара</a></div>
+		<div class="CategoryTreeChildren" style="display:none"></div></div>
+		<div class="CategoryTreeSection"><div class="CategoryTreeItem"><span class="CategoryTreeBullet"> </span> <a class="CategoryTreeLabel  CategoryTreeLabelNs0 CategoryTreeLabelPage" href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%A0%D1%8B%D0%B1%D0%B0%D0%BA%D0%B0">Таблица Рыбака</a></div>
+		<div class="CategoryTreeChildren" style="display:none"></div></div>
+		<div class="CategoryTreeSection"><div class="CategoryTreeItem"><span class="CategoryTreeBullet"> </span> <a class="CategoryTreeLabel  CategoryTreeLabelNs0 CategoryTreeLabelPage" href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%A2%D1%80%D0%B0%D0%B2%D0%BD%D0%B8%D0%BA%D0%B0">Таблица Травника</a></div>
+		<div class="CategoryTreeChildren" style="display:none"></div></div>
+		<div class="CategoryTreeSection"><div class="CategoryTreeItem"><span class="CategoryTreeBullet"> </span> <a class="CategoryTreeLabel  CategoryTreeLabelNs0 CategoryTreeLabelPage" href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D1%87%D0%B5%D1%80%D1%82%D0%B5%D0%B6%D0%B5%D0%B9_%D0%B2%D0%B5%D1%89%D0%B5%D0%B9">Таблица чертежей вещей</a></div>
+		<div class="CategoryTreeChildren" style="display:none"></div></div>
+		<div class="CategoryTreeSection"><div class="CategoryTreeItem"><span class="CategoryTreeBullet"> </span> <a class="CategoryTreeLabel  CategoryTreeLabelNs0 CategoryTreeLabelPage" href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D1%87%D0%B5%D1%80%D1%82%D0%B5%D0%B6%D0%B5%D0%B9_%D0%BE%D1%80%D1%83%D0%B6%D0%B8%D1%8F">Таблица чертежей оружия</a></div>
+		<div class="CategoryTreeChildren" style="display:none"></div></div>
+		<div class="CategoryTreeSection"><div class="CategoryTreeItem"><span class="CategoryTreeBullet"> </span> <a class="CategoryTreeLabel  CategoryTreeLabelNs0 CategoryTreeLabelPage" href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D1%87%D0%B5%D1%80%D1%82%D0%B5%D0%B6%D0%B5%D0%B9_%D0%BF%D1%80%D0%BE%D1%84.%D0%B8%D0%BD%D0%B2%D0%B5%D0%BD%D1%82%D0%B0%D1%80%D1%8F">Таблица чертежей проф.инвентаря</a></div>
+		<div class="CategoryTreeChildren" style="display:none"></div></div>
+		<div class="CategoryTreeSection"><div class="CategoryTreeItem"><span class="CategoryTreeBullet"> </span> <a class="CategoryTreeLabel  CategoryTreeLabelNs0 CategoryTreeLabelPage" href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%AE%D0%B2%D0%B5%D0%BB%D0%B8%D1%80%D0%B0">Таблица Ювелира</a></div>
+		<div class="CategoryTreeChildren" style="display:none"></div></div>
+		</div>
+<div style="float:right; clear:right; margin-left:1ex; border:1px solid gray; padding:0.7ex; background-color:white;" class="CategoryTreeTag" data-ct-mode="20" data-ct-options="{&quot;mode&quot;:20,&quot;hideprefix&quot;:20,&quot;showcount&quot;:false,&quot;namespaces&quot;:false}"><div class="CategoryTreeSection"><div class="CategoryTreeItem"><span class="CategoryTreeBullet"> </span> <a class="CategoryTreeLabel  CategoryTreeLabelNs0 CategoryTreeLabelPage" href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%B7%D0%B0%D0%B3%D0%BE%D1%82%D0%BE%D0%B2%D0%BE%D0%BA_%D0%9F%D0%BE%D0%B2%D0%B0%D1%80%D0%B0">Таблица заготовок Повара</a></div>
+		<div class="CategoryTreeChildren" style="display:none"></div></div>
+		<div class="CategoryTreeSection"><div class="CategoryTreeItem"><span class="CategoryTreeBullet"> </span> <a class="CategoryTreeLabel  CategoryTreeLabelNs0 CategoryTreeLabelPage" href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%A0%D0%B5%D1%86%D0%B5%D0%BF%D1%82%D0%BE%D0%B2_%D0%9F%D0%BE%D0%B2%D0%B0%D1%80%D0%B0">Таблица Рецептов Повара</a></div>
+		<div class="CategoryTreeChildren" style="display:none"></div></div>
+		</div>
+<p><br />
+В таблицах представлены рецепты блюд и напитков изготавливаемых <a href="/wiki/%D0%9F%D0%BE%D0%B2%D0%B0%D1%80" title="Повар">Поварами</a>.<br />
+</p><p>Как готовятся ингредиенты для блюд и напитков  можно почитать на странице <a href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%B7%D0%B0%D0%B3%D0%BE%D1%82%D0%BE%D0%B2%D0%BE%D0%BA_%D0%9F%D0%BE%D0%B2%D0%B0%D1%80%D0%B0" title="Таблица заготовок Повара">Таблица заготовок Повара</a>. 
+</p>
+<h2> <span class="mw-headline" id=".D0.A2.D0.B0.D0.B1.D0.BB.D0.B8.D1.86.D0.B0_.D0.B1.D0.BB.D1.8E.D0.B4">Таблица блюд</span></h2>
+<p>Все блюда поделены на 5 категорий (ученик, подмастерье, мастер, шеф-повар, гуру кулинарии).<br /> <br /> 
+Каждая категория требует своих инструментов (кроме гуру, ему подходят инструменты шеф-повара).<br /> 
+Блюда более низкой категории можно варить инструментами более высокой категории (но не наоборот)<br /> <br /> 
+При варке инструментами шеф-повара базовое время варки составляет 3 минуты на 1 блюдо<br /> 
+</p><p>Срок годности для всех блюд c 20.12.24 - 21 день.
+</p><p><br />
+Требуемое умение указанное в таблице - "родное", т.е. при добавлении умений вещами скорее всего потребуется больше умения (и тем больше, чем больше разница между родным умением и требуемым).
+</p><p><br />
+</p>
+<table class="wikitable">
+
+<tr style="vertical-align:top;">
+<th> <center> Умение </th>
+<th> Исходные ресурсы </th>
+<th> Блюдо </th>
+<th> Гос </th>
+<th>  Эффект </th>
+<th> Инструмент </th>
+<th>  Уровень повара
+</th></tr>
+<tr style="vertical-align:top;">
+<td>  0  </td>
+<td><img src="http://image.neverlands.ru/resources/36.gif" alt="36.gif" /> Филе 2<br /><img src="http://image.neverlands.ru/resources/455.gif" alt="455.gif" /> специи 1<br /><img src="http://image.neverlands.ru/resources/466.gif" alt="466.gif" /> Соль столовая 1<br />  </td>
+<td> <img src="http://image.neverlands.ru/weapon/w61_112.gif" alt="w61_112.gif" /> <br /> <b>рыбная похлебка</b> </td>
+<td> 100нв </td>
+<td> Мгновенно снимает -50 усталости </td>
+<td> <img src="http://image.neverlands.ru/tools/113.gif" alt="113.gif" /> Деревянная ложка <br />  <img src="http://image.neverlands.ru/tools/107.gif" alt="107.gif" /> Медный котел <br /> <img src="http://image.neverlands.ru/tools/126.gif" alt="126.gif" /> Глубокая тарелка </td>
+<td> Ученик. <br /> Кулинария I - (6 мин 0 сек / ед) <br />Кулинария II:- (5 мин 0 сек / ед)<br /> Кулинария III:- (4 мин 0 сек / ед) <br /> Кулинария IV:-(3 мин 0 сек / ед) <br />
+</td></tr>
+<tr style="vertical-align:top;">
+<td>  50  </td>
+<td><img src="http://image.neverlands.ru/resources/36.gif" alt="36.gif" /> Филе <b>2</b><br /><img src="http://image.neverlands.ru/resources/453.gif" alt="453.gif" />  Овощная смесь <b>1</b><br /><img src="http://image.neverlands.ru/resources/466.gif" alt="466.gif" /> Соль столовая <b>1</b><br />  </td>
+<td> <img src="http://image.neverlands.ru/weapon/w61_113.gif" alt="w61_113.gif" /> <br />  <b>рыбный суп-пюре</b> </td>
+<td> 100нв </td>
+<td> Макс HP +500,<br /> восстановление HP +100 </td>
+<td> <img src="http://image.neverlands.ru/tools/113.gif" alt="113.gif" /> Деревянная ложка <br />  <img src="http://image.neverlands.ru/tools/107.gif" alt="107.gif" /> Медный котел <br /> <img src="http://image.neverlands.ru/tools/126.gif" alt="126.gif" /> Глубокая тарелка </td>
+<td> Ученик. <br /> Кулинария I - (6 мин 0 сек / ед) <br />Кулинария II:- (5 мин 0 сек / ед) <br /> Кулинария III:- (4 мин 0 сек / ед) <br /> Кулинария IV:-(3 мин 0 сек / ед) <br />
+</td></tr>
+<tr style="vertical-align:top;">
+<td>  100  </td>
+<td><img src="http://image.neverlands.ru/resources/36.gif" alt="36.gif" /> Филе 2<br /><img src="http://image.neverlands.ru/resources/462.gif" alt="462.gif" /> Сушеные грибы 2<br /><img src="http://image.neverlands.ru/resources/466.gif" alt="466.gif" /> Соль столовая 1<br />  </td>
+<td> <img src="http://image.neverlands.ru/weapon/w61_119.gif" alt="w61_119.gif" /> <br /> <b>запеченная рыба</b> </td>
+<td> 100нв </td>
+<td> Макс MP +500,<br /> восстановление MP +100 </td>
+<td>  <img src="http://image.neverlands.ru/tools/113.gif" alt="113.gif" /> Деревянная ложка <br />  <img src="http://image.neverlands.ru/tools/107.gif" alt="107.gif" /> Медный котел <br /> <img src="http://image.neverlands.ru/tools/127.gif" alt="127.gif" /> Тарелка </td>
+<td>Ученик. <br /> Кулинария I - (6 мин 0 сек / ед) <br />Кулинария II:- (5 мин 0 сек / ед)<br /> Кулинария III:- (4 мин 0 сек / ед) <br /> Кулинария IV:-(3 мин 0 сек / ед) <br />
+</td></tr>
+<tr style="vertical-align:top;">
+<td>  150  </td>
+<td><img src="http://image.neverlands.ru/resources/36.gif" alt="36.gif" /> Филе 2<br /><img src="http://image.neverlands.ru/resources/454.gif" alt="454.gif" /> Коктейль из морепродуктов 0,5<br /><img src="http://image.neverlands.ru/resources/466.gif" alt="466.gif" /> Соль столовая 1<br />  </td>
+<td><img src="http://image.neverlands.ru/weapon/w61_120.gif" alt="w61_120.gif" /> <br /> <b>рыбные палочки</b> </td>
+<td> 100нв </td>
+<td> Доп. Масса + 500 </td>
+<td> <img src="http://image.neverlands.ru/tools/113.gif" alt="113.gif" /> Деревянная ложка <br />  <img src="http://image.neverlands.ru/tools/110.gif" alt="110.gif" /> Нож для резки овощей <br /> <img src="http://image.neverlands.ru/tools/127.gif" alt="127.gif" /> Тарелка </td>
+<td> Ученик. <br /> Кулинария I - (6 мин 0 сек / ед) <br />Кулинария II:- (5 мин 0 сек / ед)<br /> Кулинария III:- (4 мин 0 сек / ед) <br /> Кулинария IV:-(3 мин 0 сек / ед) <br />
+</td></tr>
+<tr style="vertical-align:top;">
+<td>  200  </td>
+<td><img src="http://image.neverlands.ru/resources/36.gif" alt="36.gif" /> Филе 5<br /><img src="http://image.neverlands.ru/resources/455.gif" alt="455.gif" /> специи 1<br /><img src="http://image.neverlands.ru/resources/458.gif" alt="458.gif" /> Очищенный картофель 2<br /><img src="http://image.neverlands.ru/resources/466.gif" alt="466.gif" /> Соль столовая 2<br />  </td>
+<td><img src="http://image.neverlands.ru/weapon/w61_114.gif" alt="w61_114.gif" /> <br /> <b>Рыбная солянка</b> </td>
+<td> 200нв </td>
+<td> +25 силы,<br /> + 250 стойкости </td>
+<td> <img src="http://image.neverlands.ru/tools/114.gif" alt="114.gif" /> Поварешка <br />  <img src="http://image.neverlands.ru/tools/108.gif" alt="108.gif" /> Бронзовый котел <br /> <img src="http://image.neverlands.ru/tools/126.gif" alt="126.gif" /> Глубокая тарелка </td>
+<td> Подмастерье. <br /> Кулинария II:- (5 мин 0 сек / ед)<br /> Кулинария III:- (4 мин 0 сек / ед) <br /> Кулинария IV:-(3 мин 0 сек / ед) <br />
+</td></tr>
+<tr style="vertical-align:top;">
+<td>  250  </td>
+<td><img src="http://image.neverlands.ru/resources/36.gif" alt="36.gif" /> Филе 5<br /><img src="http://image.neverlands.ru/resources/453.gif" alt="453.gif" /> Овощная смесь 1<br /><img src="http://image.neverlands.ru/resources/459.gif" alt="459.gif" /> Очищенные водоросли 2<br /><img src="http://image.neverlands.ru/resources/466.gif" alt="466.gif" /> Соль столовая 2<br />  </td>
+<td><img src="http://image.neverlands.ru/weapon/w61_123.gif" alt="w61_123.gif" /> <br />  <b>суши</b> </td>
+<td> 200нв </td>
+<td> +25 знаний,<br /> +250 точности </td>
+<td> <img src="http://image.neverlands.ru/tools/114.gif" alt="114.gif" /> Поварешка <br />  <img src="http://image.neverlands.ru/tools/111.gif" alt="111.gif" /> Нож кухонный <br /> <img src="http://image.neverlands.ru/tools/127.gif" alt="127.gif" /> Тарелка </td>
+<td> Подмастерье. <br /> Кулинария II:- (5 мин 0 сек / ед)<br /> Кулинария III:- (4 мин 0 сек / ед) <br /> Кулинария IV:-(3 мин 0 сек / ед) <br />
+</td></tr>
+<tr style="vertical-align:top;">
+<td>  300  </td>
+<td><img src="http://image.neverlands.ru/resources/36.gif" alt="36.gif" /> Филе 5<br /><img src="http://image.neverlands.ru/resources/462.gif" alt="462.gif" /> Сушеные грибы 2<br /><img src="http://image.neverlands.ru/resources/188.gif" alt="188.gif" /> Мука 1<br /><img src="http://image.neverlands.ru/resources/466.gif" alt="466.gif" /> Соль столовая 2<br />  </td>
+<td><img src="http://image.neverlands.ru/weapon/w61_125.gif" alt="w61_125.gif" /> <br />  <b>рыбный салат</b> </td>
+<td> 200нв </td>
+<td> +25 удачи,<br /> +250 сокрушения </td>
+<td> <img src="http://image.neverlands.ru/tools/113.gif" alt="113.gif" /> Деревянная ложка <br />  <img src="http://image.neverlands.ru/tools/111.gif" alt="111.gif" /> Нож кухонный <br /> <img src="http://image.neverlands.ru/tools/127.gif" alt="127.gif" /> Тарелка </td>
+<td> Подмастерье. <br /> Кулинария II:- (5 мин 0 сек / ед)<br /> Кулинария III:- (4 мин 0 сек / ед) <br /> Кулинария IV:-(3 мин 0 сек / ед) <br />
+</td></tr>
+<tr style="vertical-align:top;">
+<td>  350  </td>
+<td><img src="http://image.neverlands.ru/resources/36.gif" alt="36.gif" /> Филе 5<br /><img src="http://image.neverlands.ru/resources/454.gif" alt="454.gif" /> Коктейль из морепродуктов 0,5<br /><img src="http://image.neverlands.ru/resources/212.gif" alt="212.gif" /> Сок (виноград) 1<br /><img src="http://image.neverlands.ru/resources/466.gif" alt="466.gif" /> Соль столовая 2<br />  </td>
+<td> <img src="http://image.neverlands.ru/weapon/w61_124.gif" alt="w61_124.gif" /> <br />  <b>Жареная рыба с красной икрой</b> </td>
+<td> 200нв </td>
+<td> +25 ловкости,<br /> + 250 уловки </td>
+<td> <img src="http://image.neverlands.ru/tools/114.gif" alt="114.gif" /> Поварешка <br />  <img src="http://image.neverlands.ru/tools/108.gif" alt="108.gif" /> Бронзовый котел <br /> <img src="http://image.neverlands.ru/tools/127.gif" alt="127.gif" /> Тарелка </td>
+<td> Подмастерье. <br /> Кулинария II:- (5 мин 0 сек / ед)<br /> Кулинария III:- (4 мин 0 сек / ед) <br /> Кулинария IV:-(3 мин 0 сек / ед) <br />
+</td></tr>
+<tr style="vertical-align:top;">
+<td>  400  </td>
+<td><img src="http://image.neverlands.ru/resources/36.gif" alt="36.gif" /> Филе 7<br /><img src="http://image.neverlands.ru/resources/469.gif" alt="469.gif" /> Вырезка 2<br /><img src="http://image.neverlands.ru/resources/455.gif" alt="455.gif" /> специи 1<br /><img src="http://image.neverlands.ru/resources/458.gif" alt="458.gif" /> Очищенный картофель 2<br /><img src="http://image.neverlands.ru/resources/466.gif" alt="466.gif" /> Соль столовая 3<br />  </td>
+<td> <img src="http://image.neverlands.ru/weapon/w61_126.gif" alt="w61_126.gif" /> <br />  <b>вяленая рыба с белым соусом</b> </td>
+<td> 300нв </td>
+<td> +25 ОД,<br /> +100 странника </td>
+<td><img src="http://image.neverlands.ru/tools/115.gif" alt="115.gif" /> Черпак <br />  <img src="http://image.neverlands.ru/tools/109.gif" alt="109.gif" /> Железный котел <br /><img src="http://image.neverlands.ru/tools/112.gif" alt="112.gif" /> Поварский тесак <br /> <img src="http://image.neverlands.ru/tools/127.gif" alt="127.gif" /> Тарелка </td>
+<td> Шеф-Повар. <br /> Кулинария III:- (4 мин 0 сек / ед) <br /> Кулинария IV:-(3 мин 0 сек / ед) <br />
+</td></tr>
+<tr style="vertical-align:top;">
+<td>  450  </td>
+<td><img src="http://image.neverlands.ru/resources/36.gif" alt="36.gif" /> Филе 7<br /><img src="http://image.neverlands.ru/resources/469.gif" alt="469.gif" /> Вырезка 2<br /><img src="http://image.neverlands.ru/resources/453.gif" alt="453.gif" /> Овощная смесь 1<br /><img src="http://image.neverlands.ru/resources/459.gif" alt="459.gif" /> Очищенные водоросли 2<br /><img src="http://image.neverlands.ru/resources/466.gif" alt="466.gif" /> Соль столовая 3<br />  </td>
+<td> <img src="http://image.neverlands.ru/weapon/w61_121.gif" alt="w61_121.gif" /> <br /> <b>паштет с овощами</b> </td>
+<td> 300нв </td>
+<td> +100 сопротивления магии (4 стихии) </td>
+<td> <img src="http://image.neverlands.ru/tools/115.gif" alt="115.gif" /> Черпак <br />  <img src="http://image.neverlands.ru/tools/109.gif" alt="109.gif" /> Железный котел <br /><img src="http://image.neverlands.ru/tools/112.gif" alt="112.gif" /> Поварский тесак <br /> <img src="http://image.neverlands.ru/tools/127.gif" alt="127.gif" /> Тарелка </td>
+<td> Шеф-Повар. <br /> Кулинария III:- (4 мин 0 сек / ед) <br /> Кулинария IV:-(3 мин 0 сек / ед) <br />
+</td></tr>
+<tr style="vertical-align:top;">
+<td>  500  </td>
+<td><img src="http://image.neverlands.ru/resources/36.gif" alt="36.gif" /> Филе 7<br /><img src="http://image.neverlands.ru/resources/469.gif" alt="469.gif" /> Вырезка 2<br /><img src="http://image.neverlands.ru/resources/462.gif" alt="462.gif" /> Сушеные грибы 2<br /><img src="http://image.neverlands.ru/resources/188.gif" alt="188.gif" /> Мука 1<br /><img src="http://image.neverlands.ru/resources/466.gif" alt="466.gif" /> Соль столовая 3<br />  </td>
+<td><img src="http://image.neverlands.ru/weapon/w61_128.gif" alt="w61_128.gif" /> <br /> <b>рыбная паста по-Кентарийски</b> </td>
+<td> 300нв </td>
+<td> +100 КБ,<br /> +50 сопротивления физ. повр. </td>
+<td><img src="http://image.neverlands.ru/tools/115.gif" alt="115.gif" /> Черпак <br />  <img src="http://image.neverlands.ru/tools/109.gif" alt="109.gif" /> Железный котел <br /><img src="http://image.neverlands.ru/tools/112.gif" alt="112.gif" /> Поварский тесак <br /> <img src="http://image.neverlands.ru/tools/127.gif" alt="127.gif" /> Тарелка </td>
+<td> Шеф-Повар. <br /> Кулинария III:- (4 мин 0 сек / ед) <br /> Кулинария IV:-(3 мин 0 сек / ед) <br />
+</td></tr>
+<tr style="vertical-align:top;">
+<td>  550  </td>
+<td><img src="http://image.neverlands.ru/resources/36.gif" alt="36.gif" /> Филе 7<br /><img src="http://image.neverlands.ru/resources/469.gif" alt="469.gif" /> Вырезка 2<br /><img src="http://image.neverlands.ru/resources/454.gif" alt="454.gif" /> Коктейль из морепродуктов 0,5<br /><img src="http://image.neverlands.ru/resources/212.gif" alt="212.gif" /> Сок (виноград) 1<br /><img src="http://image.neverlands.ru/resources/466.gif" alt="466.gif" /> Соль столовая 3<br />  </td>
+<td> <img src="http://image.neverlands.ru/weapon/w61_122.gif" alt="w61_122.gif" /> <br /> <b>Паста из раковых шеек с мясом</b> </td>
+<td> 300нв </td>
+<td> +50/100 урона,<br /> +25% опыт пвп </td>
+<td> <img src="http://image.neverlands.ru/tools/115.gif" alt="115.gif" /> Черпак <br />  <img src="http://image.neverlands.ru/tools/109.gif" alt="109.gif" /> Железный котел <br /> <img src="http://image.neverlands.ru/tools/127.gif" alt="127.gif" /> Тарелка </td>
+<td> Шеф-Повар. <br /> Кулинария III:- (4 мин 0 сек / ед) <br /> Кулинария IV:-(3 мин 0 сек / ед) <br />
+</td></tr>
+<tr style="vertical-align:top;">
+<td>  600  </td>
+<td><img src="http://image.neverlands.ru/resources/461.gif" alt="461.gif" /> Мясо птицы - 1<br /><img src="http://image.neverlands.ru/resources/469.gif" alt="469.gif" /> Вырезка - 7<br /><img src="http://image.neverlands.ru/resources/455.gif" alt="455.gif" /> специи - 0.5<br /><img src="http://image.neverlands.ru/resources/453.gif" alt="453.gif" /> Овощная смесь - 1<br /><img src="http://image.neverlands.ru/resources/466.gif" alt="466.gif" /> Соль столовая - 3<br />  </td>
+<td> <img src="http://image.neverlands.ru/weapon/w61_130.gif" alt="w61_130.gif" /> <br />  <b>Бифштекс от элементаля</b> </td>
+<td> 500нв </td>
+<td>  +10% к урону магией земли </td>
+<td><img src="http://image.neverlands.ru/tools/160.gif" alt="160.gif" /> Половник шеф-повара <br />  <img src="http://image.neverlands.ru/tools/158.gif" alt="158.gif" /> Котел шеф-повара <br /><img src="http://image.neverlands.ru/tools/159.gif" alt="159.gif" /> Нож шеф-повара <br /> <img src="http://image.neverlands.ru/tools/127.gif" alt="127.gif" /> Тарелка </td>
+<td> Гуру кулинарии. <br />Кулинария IV:-(3 мин 0 сек / ед) <br />
+</td></tr>
+<tr style="vertical-align:top;">
+<td>  650  </td>
+<td><img src="http://image.neverlands.ru/resources/461.gif" alt="461.gif" /> Мясо птицы 5<br /><img src="http://image.neverlands.ru/resources/469.gif" alt="469.gif" /> Вырезка 7<br /><img src="http://image.neverlands.ru/resources/453.gif" alt="453.gif" /> Овощная смесь 2<br /><img src="http://image.neverlands.ru/resources/459.gif" alt="459.gif" /> Очищенные водоросли 4<br /><img src="http://image.neverlands.ru/resources/466.gif" alt="466.gif" /> Соль столовая 4<br />  </td>
+<td> <img src="http://image.neverlands.ru/weapon/w61_129.gif" alt="w61_129.gif" /> <br />  <b>Тушеное мясо с гарниром</b> </td>
+<td> 500нв </td>
+<td>  +10% к урону магией огня </td>
+<td> <img src="http://image.neverlands.ru/tools/160.gif" alt="160.gif" /> Половник шеф-повара <br />  <img src="http://image.neverlands.ru/tools/158.gif" alt="158.gif" /> Котел шеф-повара <br /> <img src="http://image.neverlands.ru/tools/127.gif" alt="127.gif" /> Тарелка </td>
+<td>Гуру кулинарии. <br />Кулинария IV:-(3 мин 0 сек / ед) <br />
+</td></tr>
+<tr style="vertical-align:top;">
+<td>  700  </td>
+<td><img src="http://image.neverlands.ru/resources/461.gif" alt="461.gif" /> Мясо птицы 5<br /><img src="http://image.neverlands.ru/resources/469.gif" alt="469.gif" /> Вырезка 7<br /><img src="http://image.neverlands.ru/resources/462.gif" alt="462.gif" /> Сушеные грибы 4<br /><img src="http://image.neverlands.ru/resources/188.gif" alt="188.gif" /> Мука 2<br /><img src="http://image.neverlands.ru/resources/466.gif" alt="466.gif" /> Соль столовая 4<br />  </td>
+<td><img src="http://image.neverlands.ru/weapon/w61_131.gif" alt="w61_131.gif" /> <br />  <b>Жаркое по-Кардиффски</b> </td>
+<td> 500нв </td>
+<td>  +10% к урону магией воды </td>
+<td><img src="http://image.neverlands.ru/tools/160.gif" alt="160.gif" /> Половник шеф-повара <br />  <img src="http://image.neverlands.ru/tools/158.gif" alt="158.gif" /> Котел шеф-повара <br /><img src="http://image.neverlands.ru/tools/159.gif" alt="159.gif" /> Нож шеф-повара <br /> <img src="http://image.neverlands.ru/tools/127.gif" alt="127.gif" /> Тарелка </td>
+<td> Гуру кулинарии. <br />Кулинария IV:-(3 мин 0 сек / ед) <br />
+</td></tr>
+<tr style="vertical-align:top;">
+<td>  750  </td>
+<td><img src="http://image.neverlands.ru/resources/461.gif" alt="461.gif" /> Мясо птицы 5<br /><img src="http://image.neverlands.ru/resources/469.gif" alt="469.gif" /> Вырезка 7<br /><img src="http://image.neverlands.ru/resources/454.gif" alt="454.gif" /> Коктейль из морепродуктов 1<br /><img src="http://image.neverlands.ru/resources/212.gif" alt="212.gif" /> Сок (виноград) 2<br /><img src="http://image.neverlands.ru/resources/466.gif" alt="466.gif" /> Соль столовая 4<br />  </td>
+<td> <img src="http://image.neverlands.ru/weapon/w61_127.gif" alt="w61_127.gif" /> <br /> <b>рыбное филе по-Альвийски</b> </td>
+<td> 500нв </td>
+<td>  +10% к урону магией воздуха </td>
+<td> <img src="http://image.neverlands.ru/tools/160.gif" alt="160.gif" /> Половник шеф-повара <br />  <img src="http://image.neverlands.ru/tools/158.gif" alt="158.gif" /> Котел шеф-повара <br /><img src="http://image.neverlands.ru/tools/159.gif" alt="159.gif" /> Нож шеф-повара <br /> <img src="http://image.neverlands.ru/tools/127.gif" alt="127.gif" /> Тарелка </td>
+<td> Гуру кулинарии. <br />Кулинария IV:-(3 мин 0 сек / ед) <br />
+</td></tr>
+<tr style="vertical-align:top;">
+<td>  800  </td>
+<td><img src="http://image.neverlands.ru/resources/36.gif" alt="36.gif" /> Филе 7<br /><img src="http://image.neverlands.ru/resources/469.gif" alt="469.gif" /> Вырезка 7<br /><img src="http://image.neverlands.ru/resources/461.gif" alt="461.gif" /> Мясо птицы 7<br /><img src="http://image.neverlands.ru/resources/453.gif" alt="453.gif" /> Овощная смесь 3<br /><img src="http://image.neverlands.ru/resources/513.gif" alt="513.gif" /> яйца 5<br /><img src="http://image.neverlands.ru/resources/466.gif" alt="466.gif" /> Соль столовая 5<br />  </td>
+<td> <img src="http://image.neverlands.ru/weapon/w61_133.gif" alt="w61_133.gif" /> <br /> <b>Фаршированная форель</b> </td>
+<td> 1000нв </td>
+<td> 50 к наблюдательности,<br /> +10% опыт пве </td>
+<td> <img src="http://image.neverlands.ru/tools/160.gif" alt="160.gif" /> Половник шеф-повара <br /> <img src="http://image.neverlands.ru/tools/158.gif" alt="158.gif" /> Котел шеф-повара <br /><img src="http://image.neverlands.ru/tools/159.gif" alt="159.gif" /> Нож шеф-повара <br /><img src="http://image.neverlands.ru/tools/126.gif" alt="126.gif" /> Глубокая тарелка </td>
+<td> Гуру кулинарии. <br />Кулинария IV:-(3 мин 0 сек / ед) <br />
+</td></tr>
+</table>
+<h2> <span class="mw-headline" id=".D0.A2.D0.B0.D0.B1.D0.BB.D0.B8.D1.86.D0.B0_.D0.BD.D0.B0.D0.BF.D0.B8.D1.82.D0.BA.D0.BE.D0.B2">Таблица напитков</span></h2>
+<p>Внимание! После окончания действия алкогольных напитков наступают отрицательные эффекты (похмелье) в основном в виде снижения статов/мф. 
+</p>
+<table class="wikitable">
+
+<tr style="vertical-align:top;">
+<th> Напиток </th>
+<th> Состав </th>
+<th> Эффекты </th>
+<th> Инструмент </th>
+<th> Треб.<br />Умения </th>
+<th> Цена,НВ
+</th></tr>
+<tr style="vertical-align:top;">
+<td style="text-align: center;"> <img src="http://image.neverlands.ru/weapon/w61_134.gif" alt="w61_134.gif" /> <br /> <b>Самогон <br /> 5/5</b> </td>
+<td> <b><img src="http://image.neverlands.ru/resources/174.gif" alt="174.gif" /> - Отвар из ягод (Брусника) - 1<br /> <img src="http://image.neverlands.ru/resources/458.gif" alt="458.gif" /> - Очищенный картофель - 2<br /><img src="http://image.neverlands.ru/resources/580.gif" alt="580.gif" /> - Спиртовой настой I - 1</b> </td>
+<td><b>Получаемый эффект:</b><br />Случ. стат <b>+10</b>,<br /> Опыт pvp <b>+3%</b><br /> Опыт pve <b>+1%</b><br /></td>
+<td> <b><img src="http://image.neverlands.ru/tools/128.gif" alt="128.gif" /><br /><img src="http://image.neverlands.ru/tools/115.gif" alt="115.gif" /><br /><img src="http://image.neverlands.ru/tools/109.gif" alt="109.gif" /> </b> </td>
+<td style="text-align: center;"> <b>425</b> </td>
+<td style="text-align: center;">  <img src="http://image.neverlands.ru/money_all.gif" alt="money_all.gif" /> <b>300 NV</b>
+</td></tr>
+<tr style="vertical-align:top;">
+<td style="text-align: center;"> <img src="http://image.neverlands.ru/weapon/w61_135.gif" alt="w61_135.gif" /> <br /> <b>Анисовая водка <br /> 5/5</b> </td>
+<td> <b><img src="http://image.neverlands.ru/resources/102.gif" alt="102.gif" /> - Пшеница - 2<br /> <img src="http://image.neverlands.ru/resources/580.gif" alt="580.gif" /> - Спиртовой настой I - 1<br /> <img src="http://image.neverlands.ru/resources/211.gif" alt="211.gif" /> - Анисовое масло - 1</b> </td>
+<td><b>Получаемый эффект:</b><br />Случ. мф. +100,<br /> Опыт pvp +3%,<br /> Опыт pve +1%<br /></td>
+<td><b><img src="http://image.neverlands.ru/tools/128.gif" alt="128.gif" /><br /><img src="http://image.neverlands.ru/tools/115.gif" alt="115.gif" /><br /><img src="http://image.neverlands.ru/tools/109.gif" alt="109.gif" /></b> </td>
+<td style="text-align: center;"> <b>475</b> </td>
+<td style="text-align: center;"> <img src="http://image.neverlands.ru/money_all.gif" alt="money_all.gif" /> <b>300 NV</b>
+</td></tr>
+<tr style="vertical-align:top;">
+<td style="text-align: center;"> <img src="http://image.neverlands.ru/weapon/w61_137.gif" alt="w61_137.gif" /> <br /> <b>Баалгорский настой <br /> 5/5</b> </td>
+<td> <b><img src="http://image.neverlands.ru/resources/465.gif" alt="465.gif" /> - Сахар - 2 <br /><img src="http://image.neverlands.ru/resources/537.gif" alt="537.gif" /> - Тёртые сушеные цветки (Бледный анемон) - 1 <br /><img src="http://image.neverlands.ru/resources/580.gif" alt="580.gif" /> - Спиртовой настой I</b> </td>
+<td><b>Получаемый эффект:</b><br />Случ. кб/урон +5%,<br /> Случ. стат +5, <br />Опыт pvp +3%<br /> Опыт pve  +1%<br /></td>
+<td> <b><img src="http://image.neverlands.ru/tools/128.gif" alt="128.gif" /><br /><img src="http://image.neverlands.ru/tools/115.gif" alt="115.gif" /><br /><img src="http://image.neverlands.ru/tools/109.gif" alt="109.gif" /></b> </td>
+<td style="text-align: center;"> <b>525</b> </td>
+<td style="text-align: center;"> <img src="http://image.neverlands.ru/money_all.gif" alt="money_all.gif" /><b>300 NV</b>
+</td></tr>
+<tr style="vertical-align:top;">
+<td style="text-align: center;"> <img src="http://image.neverlands.ru/weapon/w61_138.gif" alt="w61_138.gif" /> <br /> <b>Фейданский бренди <br /> 5/5</b> </td>
+<td> <b><img src="http://image.neverlands.ru/resources/212.gif" alt="212.gif" /> - Сок (Виноград) - 1 <br /><img src="http://image.neverlands.ru/resources/537.gif" alt="537.gif" /> - Тёртый шиповник - 1 <br /><img src="http://image.neverlands.ru/resources/580.gif" alt="580.gif" /> - Спиртовой настой I</b> </td>
+<td><b>Получаемый эффект:</b><br />Случ. кб/урон +10%,<br /> Опыт pvp +3%,<br /> Опыт pve  +1%<br /></td>
+<td> <b><img src="http://image.neverlands.ru/tools/128.gif" alt="128.gif" /><br /><img src="http://image.neverlands.ru/tools/115.gif" alt="115.gif" /><br /><img src="http://image.neverlands.ru/tools/109.gif" alt="109.gif" /></b> </td>
+<td style="text-align: center;"> <b>575</b> </td>
+<td style="text-align: center;"> <img src="http://image.neverlands.ru/money_all.gif" alt="money_all.gif" /> <b>300 NV</b>
+</td></tr>
+<tr style="vertical-align:top;">
+<td style="text-align: center;"> <img src="http://image.neverlands.ru/weapon/w61_136.gif" alt="w61_136.gif" /> <br /> <b>Жихорийский шнапс <br /> 5/5</b> </td>
+<td> <b><img src="http://image.neverlands.ru/resources/174.gif" alt="174.gif" /> - Отвар из ягод (Брусника) - 2<br /> <img src="http://image.neverlands.ru/resources/458.gif" alt="458.gif" /> - Очищенный картофель - 2<br /><img src="http://image.neverlands.ru/resources/579.gif" alt="579.gif" /> - Спиртовой настой II - 1<br /><img src="http://image.neverlands.ru/resources/144.gif" alt="144.gif" /> - Сушеные стебли (Дурман) - 2</b> </td>
+<td><b>Получаемый эффект:</b><br />Урон +14%,<br /> опыт pvp +5%,<br /> опыт pve +2%<br /></td>
+<td> <img src="http://image.neverlands.ru/tools/160.gif" alt="160.gif" /><br /> <img src="http://image.neverlands.ru/tools/158.gif" alt="158.gif" /><br /> <img src="http://image.neverlands.ru/tools/129.gif" alt="129.gif" /> </td>
+<td style="text-align: center;"> <b>625</b> </td>
+<td style="text-align: center;"> <img src="http://image.neverlands.ru/money_all.gif" alt="money_all.gif" /> <b>500 NV</b>
+</td></tr>
+<tr style="vertical-align:top;">
+<td style="text-align: center;"> <img src="http://image.neverlands.ru/weapon/w61_140.gif" alt="w61_140.gif" /> <br /> <b>Коньяк Дубовый <br /> 5/5</b> </td>
+<td> <b><img src="http://image.neverlands.ru/resources/102.gif" alt="102.gif" /> - Пшеница - 2<br /> <img src="http://image.neverlands.ru/resources/579.gif" alt="579.gif" /> - Спиртовой настой II - 1<br /> <img src="http://image.neverlands.ru/resources/211.gif" alt="211.gif" /> - Анисовое масло - 2<br /> <img src="http://image.neverlands.ru/resources/535.gif" alt="535.gif" /> - Толченая кора (Дуб) - 2</b> </td>
+<td><b>Получаемый эффект:</b><br />КБ +14%,<br /> опыт pvp +5%,<br /> опыт pve +2%<br /></td>
+<td> <b><img src="http://image.neverlands.ru/tools/129.gif" alt="129.gif" /><br /> <img src="http://image.neverlands.ru/tools/160.gif" alt="160.gif" /><br /><img src="http://image.neverlands.ru/tools/158.gif" alt="158.gif" /></b> </td>
+<td style="text-align: center;"> <b>675</b> </td>
+<td style="text-align: center;"> <img src="http://image.neverlands.ru/money_all.gif" alt="money_all.gif" /> <b>500 NV</b>
+</td></tr>
+<tr style="vertical-align:top;">
+<td style="text-align: center;"> <img src="http://image.neverlands.ru/weapon/w61_139.gif" alt="w61_139.gif" /> <br /> <b>Цветочный пунш <br /> 5/5</b> </td>
+<td> <b><img src="http://image.neverlands.ru/resources/465.gif" alt="465.gif" /> - Сахар - 2<br /> <img src="http://image.neverlands.ru/resources/579.gif" alt="579.gif" /> - Спиртовой настой II - 1<br /> <img src="http://image.neverlands.ru/resources/537.gif" alt="537.gif" /> - Тёртые сушеные цветки (Бледный анемон) - 1,5 <br /> <img src="http://image.neverlands.ru/resources/202.gif" alt="202.gif" /> - Настой на стеблях (Арника) - 2</b> </td>
+<td><b>Получаемый эффект:</b><br />урон стихийной магией +2%,<br /> опыт в pvp-боях - на +7%,<br /> опыт в pve-боях - на +3%<br /></td>
+<td> <b><img src="http://image.neverlands.ru/tools/129.gif" alt="129.gif" /><br /> <img src="http://image.neverlands.ru/tools/160.gif" alt="160.gif" /><br /><img src="http://image.neverlands.ru/tools/158.gif" alt="158.gif" /> </b> </td>
+<td style="text-align: center;"> <b>725</b> </td>
+<td style="text-align: center;"> <img src="http://image.neverlands.ru/money_all.gif" alt="money_all.gif" /> <b>500 NV</b>
+</td></tr>
+<tr style="vertical-align:top;">
+<td style="text-align: center;"> <img src="http://image.neverlands.ru/weapon/w61_156.gif" alt="w61_156.gif" /> <br /> <b>Фаросское вино <br /> 5/5</b> </td>
+<td><img src="http://image.neverlands.ru/resources/535.gif" alt="535.gif" /> <b>Тёртый шиповник - 1</b> <br /><img src="http://image.neverlands.ru/resources/579.gif" alt="579.gif" /> <b>Спиртовой настой II  -1</b> <br /><img src="http://image.neverlands.ru/resources/212.gif" alt="212.gif" /> <b>виноград(сок) - 1</b> <br /><img src="http://image.neverlands.ru/resources/181.gif" alt="181.gif" /> <b>родиола (отвар из корней) -2</b> </td>
+<td><b>Получаемый эффект:</b><br /> Наблюдательность персонажа на +10,<br /> опыт в pvp-боях - на +7%,<br /> опыт в pve-боях - на +3% <br /></td>
+<td> <b><img src="http://image.neverlands.ru/tools/129.gif" alt="129.gif" /><br /> <img src="http://image.neverlands.ru/tools/160.gif" alt="160.gif" /><br /><img src="http://image.neverlands.ru/tools/158.gif" alt="158.gif" /></b> </td>
+<td style="text-align: center;"> <b>775</b> </td>
+<td style="text-align: center;"> <img src="http://image.neverlands.ru/money_all.gif" alt="money_all.gif" /> <b>500 NV</b>
+</td></tr></table>
+<h3> <span class="mw-headline" id=".D0.98.D1.81.D1.82.D0.BE.D1.80.D0.B8.D1.8F">История</span></h3>
+<p>16 августа 2013 года Администрацией были добавлены рецепты спиртных напитков.
+Спиртные напитки имели срок годности 20 дней.<br />
+</p><p>15 августа 2018 года Администрацией были внесены глобальные изменения в рецепты, эффекты и содержимое таверн.<br />
+Из таверн убраны все напитки, которые готовятся поварами.<br />
+Вместе с этим в таверну добавлены 2 новых напитка:<br />
+- <b>эринградский квас</b> (добавляет +30 странника, +50 грузоподъемности на 3 часа за каждую кружку, можно пить до <b>5</b> кружек, эффект складывается)<br />
+- <b>кенджийский эль</b> (сокращает время работы в любой профессии (где есть таймер со временем работы) на 1%, можно пить до <b>5</b> кружек, эффект складывается)<br />
+- все напитки дают эффект на <b>3</b> часа, по истечении этого времени наступает похмелье(побочный эффект)<br />
+- всего можно сделать <b>5</b> глотков алкоголя
+</p>
+- изменены сроки годности алкоголя <b>(в сторону увеличения)</b><br /></center>
+
+<!-- 
+NewPP limit report
+Preprocessor node count: 329/1000000
+Post-expand include size: 0/2097152 bytes
+Template argument size: 0/2097152 bytes
+Expensive parser function count: 0/100
+-->
+</div>				<!-- /bodycontent -->
+								<!-- printfooter -->
+				<div class="printfooter">
+				Источник — «<a href="http://wiki.neverlands.ru/index.php?title=%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%A0%D0%B5%D1%86%D0%B5%D0%BF%D1%82%D0%BE%D0%B2_%D0%9F%D0%BE%D0%B2%D0%B0%D1%80%D0%B0&amp;oldid=21097">http://wiki.neverlands.ru/index.php?title=%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%A0%D0%B5%D1%86%D0%B5%D0%BF%D1%82%D0%BE%D0%B2_%D0%9F%D0%BE%D0%B2%D0%B0%D1%80%D0%B0&amp;oldid=21097</a>»				</div>
+				<!-- /printfooter -->
+												<!-- catlinks -->
+				<div id='catlinks' class='catlinks'><div id="mw-normal-catlinks" class="mw-normal-catlinks"><a href="/wiki/%D0%A1%D0%BB%D1%83%D0%B6%D0%B5%D0%B1%D0%BD%D0%B0%D1%8F:Categories" title="Служебная:Categories">Категории</a>: <ul><li><a href="/wiki/%D0%9A%D0%B0%D1%82%D0%B5%D0%B3%D0%BE%D1%80%D0%B8%D1%8F:%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D1%8B_%D0%BF%D1%80%D0%BE%D1%84%D0%B5%D1%81%D1%81%D0%B8%D0%B9" title="Категория:Таблицы профессий">Таблицы профессий</a></li><li><a href="/wiki/%D0%9A%D0%B0%D1%82%D0%B5%D0%B3%D0%BE%D1%80%D0%B8%D1%8F:%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D1%8B_%D0%BF%D0%BE%D0%B2%D0%B0%D1%80%D0%B0" title="Категория:Таблицы повара">Таблицы повара</a></li></ul></div></div>				<!-- /catlinks -->
+												<div class="visualClear"></div>
+				<!-- debughtml -->
+								<!-- /debughtml -->
+			</div>
+			<!-- /bodyContent -->
+		</div>
+		<!-- /content -->
+		<!-- header -->
+		<div id="mw-head" class="noprint">
+			
+<!-- 0 -->
+<div id="p-personal" class="">
+	<h5>Личные инструменты</h5>
+	<ul>
+		<li id="pt-login"><a href="/index.php?title=%D0%A1%D0%BB%D1%83%D0%B6%D0%B5%D0%B1%D0%BD%D0%B0%D1%8F:UserLogin&amp;returnto=%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0+%D0%A0%D0%B5%D1%86%D0%B5%D0%BF%D1%82%D0%BE%D0%B2+%D0%9F%D0%BE%D0%B2%D0%B0%D1%80%D0%B0" title="Здесь можно зарегистрироваться в системе, но это необязательно. [o]" accesskey="o">Представиться / зарегистрироваться</a></li>
+	</ul>
+</div>
+
+<!-- /0 -->
+			<div id="left-navigation">
+				
+<!-- 0 -->
+<div id="p-namespaces" class="vectorTabs">
+	<h5>Пространства имён</h5>
+	<ul>
+					<li  id="ca-nstab-main" class="selected"><span><a href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%A0%D0%B5%D1%86%D0%B5%D0%BF%D1%82%D0%BE%D0%B2_%D0%9F%D0%BE%D0%B2%D0%B0%D1%80%D0%B0"  title="Содержание статьи [c]" accesskey="c">Статья</a></span></li>
+					<li  id="ca-talk"><span><a href="/wiki/%D0%9E%D0%B1%D1%81%D1%83%D0%B6%D0%B4%D0%B5%D0%BD%D0%B8%D0%B5:%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%A0%D0%B5%D1%86%D0%B5%D0%BF%D1%82%D0%BE%D0%B2_%D0%9F%D0%BE%D0%B2%D0%B0%D1%80%D0%B0"  title="Обсуждение содержания страницы [t]" accesskey="t">Обсуждение</a></span></li>
+			</ul>
+</div>
+
+<!-- /0 -->
+
+<!-- 1 -->
+<div id="p-variants" class="vectorMenu emptyPortlet">
+	<h4>
+		</h4>
+	<h5><span>Варианты</span><a href="#"></a></h5>
+	<div class="menu">
+		<ul>
+					</ul>
+	</div>
+</div>
+
+<!-- /1 -->
+			</div>
+			<div id="right-navigation">
+				
+<!-- 0 -->
+<div id="p-views" class="vectorTabs">
+	<h5>Просмотры</h5>
+	<ul>
+					<li id="ca-view" class="selected"><span><a href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%A0%D0%B5%D1%86%D0%B5%D0%BF%D1%82%D0%BE%D0%B2_%D0%9F%D0%BE%D0%B2%D0%B0%D1%80%D0%B0" >Чтение</a></span></li>
+					<li id="ca-viewsource"><span><a href="/index.php?title=%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%A0%D0%B5%D1%86%D0%B5%D0%BF%D1%82%D0%BE%D0%B2_%D0%9F%D0%BE%D0%B2%D0%B0%D1%80%D0%B0&amp;action=edit"  title="Эта страница защищена от изменений, но вы можете посмотреть и скопировать её исходный текст [e]" accesskey="e">Просмотр</a></span></li>
+					<li id="ca-history" class="collapsible"><span><a href="/index.php?title=%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%A0%D0%B5%D1%86%D0%B5%D0%BF%D1%82%D0%BE%D0%B2_%D0%9F%D0%BE%D0%B2%D0%B0%D1%80%D0%B0&amp;action=history"  title="Журнал изменений страницы [h]" accesskey="h">История</a></span></li>
+			</ul>
+</div>
+
+<!-- /0 -->
+
+<!-- 1 -->
+<div id="p-cactions" class="vectorMenu emptyPortlet">
+	<h5><span>Действия</span><a href="#"></a></h5>
+	<div class="menu">
+		<ul>
+					</ul>
+	</div>
+</div>
+
+<!-- /1 -->
+
+<!-- 2 -->
+<div id="p-search">
+	<h5><label for="searchInput">Поиск</label></h5>
+	<form action="/index.php" id="searchform">
+				<div id="simpleSearch">
+						<input name="search" title="Искать это слово [f]" accesskey="f" id="searchInput" />						<button name="button" title="Найти страницы, содержащие указанный текст" id="searchButton"><img src="/skins/vector/images/search-ltr.png?303" alt="Найти" /></button>								<input type='hidden' name="title" value="Служебная:Search"/>
+		</div>
+	</form>
+</div>
+
+<!-- /2 -->
+			</div>
+		</div>
+		<!-- /header -->
+		<!-- panel -->
+			<div id="mw-panel" class="noprint">
+				<!-- logo -->
+					<div id="p-logo"><a style="background-image: url(http://wiki.neverlands.ru/img/logo.png);" href="/wiki/%D0%97%D0%B0%D0%B3%D0%BB%D0%B0%D0%B2%D0%BD%D0%B0%D1%8F_%D1%81%D1%82%D1%80%D0%B0%D0%BD%D0%B8%D1%86%D0%B0"  title="Заглавная страница"></a></div>
+				<!-- /logo -->
+				
+<!-- navigation -->
+<div class="portal" id='p-navigation'>
+	<h5>Навигация</h5>
+	<div class="body">
+		<ul>
+			<li id="n-allpages"><a href="/wiki/%D0%A1%D0%BB%D1%83%D0%B6%D0%B5%D0%B1%D0%BD%D0%B0%D1%8F:AllPages">Все страницы</a></li>
+			<li id="n-newpages"><a href="/wiki/%D0%A1%D0%BB%D1%83%D0%B6%D0%B5%D0%B1%D0%BD%D0%B0%D1%8F:NewPages">Новые страницы</a></li>
+			<li id="n-popularpages"><a href="/wiki/%D0%A1%D0%BB%D1%83%D0%B6%D0%B5%D0%B1%D0%BD%D0%B0%D1%8F:PopularPages">Популярные страницы</a></li>
+			<li id="n-wantedpages"><a href="/wiki/%D0%A1%D0%BB%D1%83%D0%B6%D0%B5%D0%B1%D0%BD%D0%B0%D1%8F:WantedPages">Требуемые страницы</a></li>
+			<li id="n-categories"><a href="/wiki/%D0%A1%D0%BB%D1%83%D0%B6%D0%B5%D0%B1%D0%BD%D0%B0%D1%8F:Categories">Категории</a></li>
+			<li id="n-wantedcategories"><a href="/wiki/%D0%A1%D0%BB%D1%83%D0%B6%D0%B5%D0%B1%D0%BD%D0%B0%D1%8F:WantedCategories">Требуемые категории</a></li>
+			<li id="n-recentchanges"><a href="/wiki/%D0%A1%D0%BB%D1%83%D0%B6%D0%B5%D0%B1%D0%BD%D0%B0%D1%8F:RecentChanges" title="Список последних изменений [r]" accesskey="r">Свежие правки</a></li>
+			<li id="n-randompage"><a href="/wiki/%D0%A1%D0%BB%D1%83%D0%B6%D0%B5%D0%B1%D0%BD%D0%B0%D1%8F:Random" title="Посмотреть случайную страницу [x]" accesskey="x">Случайная статья</a></li>
+		</ul>
+	</div>
+</div>
+
+<!-- /navigation -->
+
+<!-- SEARCH -->
+
+<!-- /SEARCH -->
+
+<!-- TOOLBOX -->
+<div class="portal" id='p-tb'>
+	<h5>Инструменты</h5>
+	<div class="body">
+		<ul>
+			<li id="t-whatlinkshere"><a href="/wiki/%D0%A1%D0%BB%D1%83%D0%B6%D0%B5%D0%B1%D0%BD%D0%B0%D1%8F:WhatLinksHere/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%A0%D0%B5%D1%86%D0%B5%D0%BF%D1%82%D0%BE%D0%B2_%D0%9F%D0%BE%D0%B2%D0%B0%D1%80%D0%B0" title="Список всех страниц, которые ссылаются на эту страницу [j]" accesskey="j">Ссылки сюда</a></li>
+			<li id="t-recentchangeslinked"><a href="/wiki/%D0%A1%D0%BB%D1%83%D0%B6%D0%B5%D0%B1%D0%BD%D0%B0%D1%8F:RecentChangesLinked/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%A0%D0%B5%D1%86%D0%B5%D0%BF%D1%82%D0%BE%D0%B2_%D0%9F%D0%BE%D0%B2%D0%B0%D1%80%D0%B0" title="Последние изменения в страницах, на которые ссылается эта страница [k]" accesskey="k">Связанные правки</a></li>
+			<li id="t-specialpages"><a href="/wiki/%D0%A1%D0%BB%D1%83%D0%B6%D0%B5%D0%B1%D0%BD%D0%B0%D1%8F:SpecialPages" title="Список служебных страниц [q]" accesskey="q">Спецстраницы</a></li>
+			<li><a href="/index.php?title=%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%A0%D0%B5%D1%86%D0%B5%D0%BF%D1%82%D0%BE%D0%B2_%D0%9F%D0%BE%D0%B2%D0%B0%D1%80%D0%B0&amp;printable=yes" rel="alternate">Версия для печати</a></li>
+			<li id="t-permalink"><a href="/index.php?title=%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%A0%D0%B5%D1%86%D0%B5%D0%BF%D1%82%D0%BE%D0%B2_%D0%9F%D0%BE%D0%B2%D0%B0%D1%80%D0%B0&amp;oldid=21097" title="Постоянная ссылка на эту версию страницы">Постоянная ссылка</a></li>
+<li id="t-cite"><a href="/index.php?title=%D0%A1%D0%BB%D1%83%D0%B6%D0%B5%D0%B1%D0%BD%D0%B0%D1%8F:Cite&amp;page=%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%A0%D0%B5%D1%86%D0%B5%D0%BF%D1%82%D0%BE%D0%B2_%D0%9F%D0%BE%D0%B2%D0%B0%D1%80%D0%B0&amp;id=21097" title="Информация о том, как цитировать эту страницу">Цитировать страницу</a></li>		</ul>
+	</div>
+</div>
+
+<!-- /TOOLBOX -->
+
+<!-- LANGUAGES -->
+
+<!-- /LANGUAGES -->
+			</div>
+		<!-- /panel -->
+		<!-- footer -->
+		<div id="footer">
+							<ul id="footer-info">
+											<li id="footer-info-lastmod"> Последнее изменение этой страницы: 09:10, 23 декабря 2024.</li>
+											<li id="footer-info-viewcount">К этой странице обращались 240 009 раз.</li>
+									</ul>
+							<ul id="footer-places">
+											<li id="footer-places-privacy"><a href="/wiki/%D0%92%D0%B8%D0%BA%D0%B8%D0%BD%D0%B5%D0%B2%D0%B5%D1%80:%D0%9F%D0%BE%D0%BB%D0%B8%D1%82%D0%B8%D0%BA%D0%B0_%D0%BA%D0%BE%D0%BD%D1%84%D0%B8%D0%B4%D0%B5%D0%BD%D1%86%D0%B8%D0%B0%D0%BB%D1%8C%D0%BD%D0%BE%D1%81%D1%82%D0%B8" title="Викиневер:Политика конфиденциальности">Политика конфиденциальности</a></li>
+											<li id="footer-places-about"><a href="/wiki/%D0%92%D0%B8%D0%BA%D0%B8%D0%BD%D0%B5%D0%B2%D0%B5%D1%80:%D0%9E%D0%BF%D0%B8%D1%81%D0%B0%D0%BD%D0%B8%D0%B5" title="Викиневер:Описание">Описание Викиневер</a></li>
+											<li id="footer-places-disclaimer"><a href="/wiki/%D0%92%D0%B8%D0%BA%D0%B8%D0%BD%D0%B5%D0%B2%D0%B5%D1%80:%D0%9E%D1%82%D0%BA%D0%B0%D0%B7_%D0%BE%D1%82_%D0%BE%D1%82%D0%B2%D0%B5%D1%82%D1%81%D1%82%D0%B2%D0%B5%D0%BD%D0%BD%D0%BE%D1%81%D1%82%D0%B8" title="Викиневер:Отказ от ответственности">Отказ от ответственности</a></li>
+									</ul>
+										<ul id="footer-icons" class="noprint">
+					<li id="footer-poweredbyico">
+						<a href="//www.mediawiki.org/"><img src="/skins/common/images/poweredby_mediawiki_88x31.png" alt="Powered by MediaWiki" width="88" height="31" /></a>
+					</li>
+				</ul>
+						<div style="clear:both"></div>
+		</div>
+		<!-- /footer -->
+		<script src="http://wiki.neverlands.ru/load.php?debug=false&amp;lang=ru&amp;modules=skins.vector&amp;only=scripts&amp;skin=vector&amp;*"></script>
+<script>if(window.mw){
+mw.loader.load(["ext.categoryTree","mediawiki.user","mediawiki.page.ready","mediawiki.legacy.mwsuggest","ext.vector.collapsibleNav","ext.vector.collapsibleTabs","ext.vector.simpleSearch"], null, true);
+}</script>
+<!-- Served in 0.100 secs. -->
+	</body>
+</html>

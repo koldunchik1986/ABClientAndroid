@@ -844,8 +844,17 @@ namespace ANClient
             AppLog.i("auto_cut_trace", "AutoCutRuntime", "cleanup completed, source=" + source);
             if (lookRetryAt != DateTime.MinValue)
             {
-                AppLog.i("auto_cut_trace", "AutoCutRuntime", "cleanup completed: keep current cell for pending retry, source=" + source);
-                return;
+                if (lookRetrySource.StartsWith("cleanup_wait:", StringComparison.OrdinalIgnoreCase))
+                {
+                    AppLog.i("auto_cut_trace", "AutoCutRuntime", "cleanup completed: clear consumed cleanup wait retry, source=" + source + ", retrySource=" + lookRetrySource);
+                    lookRetryAt = DateTime.MinValue;
+                    lookRetrySource = string.Empty;
+                }
+                else
+                {
+                    AppLog.i("auto_cut_trace", "AutoCutRuntime", "cleanup completed: keep current cell for pending retry, source=" + source);
+                    return;
+                }
             }
 
             if (RouteBackToTimerReturnIfNeeded("cleanup_completed:" + source))
@@ -932,15 +941,19 @@ namespace ANClient
 
         private static void ScheduleLookRetry(string source, int delayMilliseconds)
         {
-            var retry = DateTime.Now.AddMilliseconds(Math.Max(1500, delayMilliseconds));
+            var now = DateTime.Now;
+            var effectiveDelayMs = Math.Max(1500, delayMilliseconds);
+            var retry = now.AddMilliseconds(effectiveDelayMs);
+            var neverTimerApplied = false;
             if (AppVars.NeverTimer > retry)
             {
                 retry = AppVars.NeverTimer;
+                neverTimerApplied = true;
             }
 
             lookRetryAt = retry;
             lookRetrySource = source ?? string.Empty;
-            AppLog.i("auto_cut_trace", "AutoCutRuntime", "look retry scheduled: source=" + lookRetrySource + ", at=" + lookRetryAt.ToString("HH:mm:ss"));
+            AppLog.i("auto_cut_trace", "AutoCutRuntime", "look retry scheduled: source=" + lookRetrySource + ", at=" + lookRetryAt.ToString("HH:mm:ss.fff") + ", delayMs=" + effectiveDelayMs.ToString(CultureInfo.InvariantCulture) + ", neverTimerApplied=" + (neverTimerApplied ? "true" : "false") + ", neverTimerAt=" + FormatTraceTime(AppVars.NeverTimer));
         }
 
         private static void ScheduleLookRetryAtNextShift(string source)
@@ -971,15 +984,22 @@ namespace ANClient
 
         internal static bool ConsumeLookRetryIfDue()
         {
-            if (lookRetryAt == DateTime.MinValue || DateTime.Now < lookRetryAt)
+            var now = DateTime.Now;
+            if (lookRetryAt == DateTime.MinValue || now < lookRetryAt)
             {
                 return false;
             }
 
-            AppLog.i("auto_cut_trace", "AutoCutRuntime", "look retry consumed: source=" + lookRetrySource);
+            var dueLagMs = Math.Max(0, (int)now.Subtract(lookRetryAt).TotalMilliseconds);
+            AppLog.i("auto_cut_trace", "AutoCutRuntime", "look retry consumed: source=" + lookRetrySource + ", dueLagMs=" + dueLagMs.ToString(CultureInfo.InvariantCulture) + ", scheduledAt=" + lookRetryAt.ToString("HH:mm:ss.fff") + ", now=" + now.ToString("HH:mm:ss.fff"));
             lookRetryAt = DateTime.MinValue;
             lookRetrySource = string.Empty;
             return true;
+        }
+
+        private static string FormatTraceTime(DateTime value)
+        {
+            return value == DateTime.MinValue ? "min" : value.ToString("HH:mm:ss.fff");
         }
 
         private static void RouteNextCell(string source)

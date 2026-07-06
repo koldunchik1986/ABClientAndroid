@@ -1,0 +1,971 @@
+<!DOCTYPE html>
+<html lang="ru" dir="ltr" class="client-nojs">
+<head>
+<title>Таблица Плотника — Викиневер</title>
+<meta charset="UTF-8" />
+<meta name="generator" content="MediaWiki 1.19.2" />
+<link rel="shortcut icon" href="/favicon.ico" />
+<link rel="search" type="application/opensearchdescription+xml" href="/opensearch_desc.php" title="Викиневер (ru)" />
+<link rel="EditURI" type="application/rsd+xml" href="http://wiki.neverlands.ru/api.php?action=rsd" />
+<link rel="alternate" type="application/atom+xml" title="Викиневер — Atom-лента" href="/index.php?title=%D0%A1%D0%BB%D1%83%D0%B6%D0%B5%D0%B1%D0%BD%D0%B0%D1%8F:RecentChanges&amp;feed=atom" />
+<link rel="stylesheet" href="http://wiki.neverlands.ru/load.php?debug=false&amp;lang=ru&amp;modules=ext.categoryTree.css%7Cmediawiki.legacy.commonPrint%2Cshared%7Cskins.vector&amp;only=styles&amp;skin=vector&amp;*" />
+<meta name="ResourceLoaderDynamicStyles" content="" />
+<style>a:lang(ar),a:lang(ckb),a:lang(fa),a:lang(kk-arab),a:lang(mzn),a:lang(ps),a:lang(ur){text-decoration:none}a.new,#quickbar a.new{color:#ba0000}
+
+/* cache key: mediawiki-wiki_:resourceloader:filter:minify-css:7:c88e2bcd56513749bec09a7e29cb3ffa */
+</style>
+
+<script src="http://wiki.neverlands.ru/load.php?debug=false&amp;lang=ru&amp;modules=startup&amp;only=scripts&amp;skin=vector&amp;*"></script>
+<script>if(window.mw){
+mw.config.set({"wgCanonicalNamespace":"","wgCanonicalSpecialPageName":false,"wgNamespaceNumber":0,"wgPageName":"Таблица_Плотника","wgTitle":"Таблица Плотника","wgCurRevisionId":21578,"wgArticleId":1044,"wgIsArticle":true,"wgAction":"view","wgUserName":null,"wgUserGroups":["*"],"wgCategories":["Таблицы профессий"],"wgBreakFrames":false,"wgPageContentLanguage":"ru","wgSeparatorTransformTable":[",	."," 	,"],"wgDigitTransformTable":["",""],"wgRelevantPageName":"Таблица_Плотника","wgRestrictionEdit":[],"wgRestrictionMove":[],"wgSearchNamespaces":[0],"wgVectorEnabledModules":{"collapsiblenav":true,"collapsibletabs":true,"editwarning":false,"expandablesearch":false,"footercleanup":false,"sectioneditlinks":false,"simplesearch":true,"experiments":true},"wgWikiEditorEnabledModules":{"toolbar":true,"dialogs":true,"hidesig":true,"templateEditor":false,"templates":false,"preview":true,"previewDialog":false,"publish":false,"toc":false},"wgCategoryTreePageCategoryOptions":"{\"mode\":0,\"hideprefix\":20,\"showcount\":true,\"namespaces\":false}"});
+}</script><script>if(window.mw){
+mw.loader.implement("user.options",function($){mw.user.options.set({"ccmeonemails":0,"cols":80,"date":"default","diffonly":0,"disablemail":0,"disablesuggest":0,"editfont":"default","editondblclick":0,"editsection":1,"editsectiononrightclick":0,"enotifminoredits":0,"enotifrevealaddr":0,"enotifusertalkpages":1,"enotifwatchlistpages":0,"extendwatchlist":0,"externaldiff":0,"externaleditor":0,"fancysig":0,"forceeditsummary":0,"gender":"unknown","hideminor":0,"hidepatrolled":0,"highlightbroken":1,"imagesize":2,"justify":0,"math":1,"minordefault":0,"newpageshidepatrolled":0,"nocache":0,"noconvertlink":0,"norollbackdiff":0,"numberheadings":0,"previewonfirst":0,"previewontop":1,"quickbar":5,"rcdays":7,"rclimit":50,"rememberpassword":0,"rows":25,"searchlimit":20,"showhiddencats":0,"showjumplinks":1,"shownumberswatching":1,"showtoc":1,"showtoolbar":1,"skin":"vector","stubthreshold":0,"thumbsize":2,"underline":2,"uselivepreview":0,"usenewrc":0,"watchcreations":0,"watchdefault":0,"watchdeletion":0,
+"watchlistdays":3,"watchlisthideanons":0,"watchlisthidebots":0,"watchlisthideliu":0,"watchlisthideminor":0,"watchlisthideown":0,"watchlisthidepatrolled":0,"watchmoves":0,"wllimit":250,"vector-simplesearch":1,"usebetatoolbar":1,"usebetatoolbar-cgd":1,"wikieditor-preview":1,"variant":"ru","language":"ru","searchNs0":true,"searchNs1":false,"searchNs2":false,"searchNs3":false,"searchNs4":false,"searchNs5":false,"searchNs6":false,"searchNs7":false,"searchNs8":false,"searchNs9":false,"searchNs10":false,"searchNs11":false,"searchNs12":false,"searchNs13":false,"searchNs14":false,"searchNs15":false});;},{},{});mw.loader.implement("user.tokens",function($){mw.user.tokens.set({"editToken":"+\\","watchToken":false});;},{},{});
+
+/* cache key: mediawiki-wiki_:resourceloader:filter:minify-js:7:7508123b28c8391f7dad903573c5f09c */
+}</script>
+<script>if(window.mw){
+mw.loader.load(["mediawiki.page.startup","mediawiki.legacy.wikibits","mediawiki.legacy.ajax"]);
+}</script>
+<!--[if lt IE 7]><style type="text/css">body{behavior:url("/skins/vector/csshover.min.htc")}</style><![endif]--></head>
+<body class="mediawiki ltr sitedir-ltr ns-0 ns-subject page-Таблица_Плотника skin-vector action-view">
+		<div id="mw-page-base" class="noprint"></div>
+		<div id="mw-head-base" class="noprint"></div>
+		<!-- content -->
+		<div id="content" class="mw-body">
+			<a id="top"></a>
+			<div id="mw-js-message" style="display:none;"></div>
+						<!-- firstHeading -->
+			<h1 id="firstHeading" class="firstHeading">
+				<span dir="auto">Таблица Плотника</span>
+			</h1>
+			<!-- /firstHeading -->
+			<!-- bodyContent -->
+			<div id="bodyContent">
+								<!-- tagline -->
+				<div id="siteSub">Материал из Викиневер</div>
+				<!-- /tagline -->
+								<!-- subtitle -->
+				<div id="contentSub"></div>
+				<!-- /subtitle -->
+																<!-- jumpto -->
+				<div id="jump-to-nav" class="mw-jump">
+					Перейти к: <a href="#mw-head">навигация</a>,
+					<a href="#p-search">поиск</a>
+				</div>
+				<!-- /jumpto -->
+								<!-- bodycontent -->
+				<div id="mw-content-text" lang="ru" dir="ltr" class="mw-content-ltr"><div style="float:right; clear:right; margin-left:1ex; border:1px solid gray; padding:0.7ex; background-color:white;" class="CategoryTreeTag" data-ct-mode="20" data-ct-options="{&quot;mode&quot;:20,&quot;hideprefix&quot;:20,&quot;showcount&quot;:false,&quot;namespaces&quot;:false}"><div class="CategoryTreeSection"><div class="CategoryTreeItem"><span class="CategoryTreeBullet"><span class="CategoryTreeToggle" style="display: none;" data-ct-title="Таблицы_алхимика" title="развернуть" data-ct-state="collapsed">[<b>+</b>]</span> </span> <a class="CategoryTreeLabel  CategoryTreeLabelNs14 CategoryTreeLabelCategory" href="/wiki/%D0%9A%D0%B0%D1%82%D0%B5%D0%B3%D0%BE%D1%80%D0%B8%D1%8F:%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D1%8B_%D0%B0%D0%BB%D1%85%D0%B8%D0%BC%D0%B8%D0%BA%D0%B0">Таблицы алхимика</a></div>
+		<div class="CategoryTreeChildren" style="display:none"></div></div>
+		<div class="CategoryTreeSection"><div class="CategoryTreeItem"><span class="CategoryTreeBullet"><span class="CategoryTreeToggle" style="display: none;" data-ct-title="Таблицы_каллиграфа" title="развернуть" data-ct-state="collapsed">[<b>+</b>]</span> </span> <a class="CategoryTreeLabel  CategoryTreeLabelNs14 CategoryTreeLabelCategory" href="/wiki/%D0%9A%D0%B0%D1%82%D0%B5%D0%B3%D0%BE%D1%80%D0%B8%D1%8F:%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D1%8B_%D0%BA%D0%B0%D0%BB%D0%BB%D0%B8%D0%B3%D1%80%D0%B0%D1%84%D0%B0">Таблицы каллиграфа</a></div>
+		<div class="CategoryTreeChildren" style="display:none"></div></div>
+		<div class="CategoryTreeSection"><div class="CategoryTreeItem"><span class="CategoryTreeBullet"><span class="CategoryTreeToggle" style="display: none;" data-ct-title="Таблицы_повара" title="развернуть" data-ct-state="collapsed">[<b>+</b>]</span> </span> <a class="CategoryTreeLabel  CategoryTreeLabelNs14 CategoryTreeLabelCategory" href="/wiki/%D0%9A%D0%B0%D1%82%D0%B5%D0%B3%D0%BE%D1%80%D0%B8%D1%8F:%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D1%8B_%D0%BF%D0%BE%D0%B2%D0%B0%D1%80%D0%B0">Таблицы повара</a></div>
+		<div class="CategoryTreeChildren" style="display:none"></div></div>
+		<div class="CategoryTreeSection"><div class="CategoryTreeItem"><span class="CategoryTreeBullet"><span class="CategoryTreeToggle" style="display: none;" data-ct-title="Таблицы_ремесленника" title="развернуть" data-ct-state="collapsed">[<b>+</b>]</span> </span> <a class="CategoryTreeLabel  CategoryTreeLabelNs14 CategoryTreeLabelCategory" href="/wiki/%D0%9A%D0%B0%D1%82%D0%B5%D0%B3%D0%BE%D1%80%D0%B8%D1%8F:%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D1%8B_%D1%80%D0%B5%D0%BC%D0%B5%D1%81%D0%BB%D0%B5%D0%BD%D0%BD%D0%B8%D0%BA%D0%B0">Таблицы ремесленника</a></div>
+		<div class="CategoryTreeChildren" style="display:none"></div></div>
+		<div class="CategoryTreeSection"><div class="CategoryTreeItem"><span class="CategoryTreeBullet"><span class="CategoryTreeToggle" style="display: none;" data-ct-title="Таблицы_шахтера" title="развернуть" data-ct-state="collapsed">[<b>+</b>]</span> </span> <a class="CategoryTreeLabel  CategoryTreeLabelNs14 CategoryTreeLabelCategory" href="/wiki/%D0%9A%D0%B0%D1%82%D0%B5%D0%B3%D0%BE%D1%80%D0%B8%D1%8F:%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D1%8B_%D1%88%D0%B0%D1%85%D1%82%D0%B5%D1%80%D0%B0">Таблицы шахтера</a></div>
+		<div class="CategoryTreeChildren" style="display:none"></div></div>
+		<div class="CategoryTreeSection"><div class="CategoryTreeItem"><span class="CategoryTreeBullet"> </span> <a class="CategoryTreeLabel  CategoryTreeLabelNs0 CategoryTreeLabelPage" href="/wiki/%D0%94%D1%80%D0%B0%D0%B3%D0%BE%D1%86%D0%B5%D0%BD%D0%BD%D1%8B%D0%B5_%D0%BA%D0%B0%D0%BC%D0%BD%D0%B8">Драгоценные камни</a></div>
+		<div class="CategoryTreeChildren" style="display:none"></div></div>
+		<div class="CategoryTreeSection"><div class="CategoryTreeItem"><span class="CategoryTreeBullet"> </span> <a class="CategoryTreeLabel  CategoryTreeLabelNs0 CategoryTreeLabelPage" href="/wiki/%D0%9C%D0%B5%D1%82%D0%B0%D0%BB%D0%BB%D1%8B_%D0%B8_%D1%81%D0%BF%D0%BB%D0%B0%D0%B2%D1%8B">Металлы и сплавы</a></div>
+		<div class="CategoryTreeChildren" style="display:none"></div></div>
+		<div class="CategoryTreeSection"><div class="CategoryTreeItem"><span class="CategoryTreeBullet"> </span> <a class="CategoryTreeLabel  CategoryTreeLabelNs0 CategoryTreeLabelPage" href="/wiki/%D0%A0%D0%B5%D0%BF%D1%83%D1%82%D0%B0%D1%86%D0%B8%D1%8F">Репутация</a></div>
+		<div class="CategoryTreeChildren" style="display:none"></div></div>
+		<div class="CategoryTreeSection"><div class="CategoryTreeItem"><span class="CategoryTreeBullet"> </span> <a class="CategoryTreeLabel  CategoryTreeLabelNs0 CategoryTreeLabelPage" href="/wiki/%D0%A0%D1%83%D0%B4%D0%B0_%D0%B8_%D0%BC%D0%B8%D0%BD%D0%B5%D1%80%D0%B0%D0%BB%D1%8B">Руда и минералы</a></div>
+		<div class="CategoryTreeChildren" style="display:none"></div></div>
+		<div class="CategoryTreeSection"><div class="CategoryTreeItem"><span class="CategoryTreeBullet"> </span> <a class="CategoryTreeLabel  CategoryTreeLabelNs0 CategoryTreeLabelPage" href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%B7%D0%B0%D0%B3%D0%BE%D1%82%D0%BE%D0%B2%D0%BE%D0%BA_%D0%90%D0%BB%D1%85%D0%B8%D0%BC%D0%B8%D0%BA%D0%B0">Таблица заготовок Алхимика</a></div>
+		<div class="CategoryTreeChildren" style="display:none"></div></div>
+		<div class="CategoryTreeSection"><div class="CategoryTreeItem"><span class="CategoryTreeBullet"> </span> <a class="CategoryTreeLabel  CategoryTreeLabelNs0 CategoryTreeLabelPage" href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%B7%D0%B0%D0%B3%D0%BE%D1%82%D0%BE%D0%B2%D0%BE%D0%BA_%D0%9F%D0%BE%D0%B2%D0%B0%D1%80%D0%B0">Таблица заготовок Повара</a></div>
+		<div class="CategoryTreeChildren" style="display:none"></div></div>
+		<div class="CategoryTreeSection"><div class="CategoryTreeItem"><span class="CategoryTreeBullet"> </span> <a class="CategoryTreeLabel  CategoryTreeLabelNs0 CategoryTreeLabelPage" href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%B8%D1%81%D0%BF%D0%BE%D0%BB%D1%8C%D0%B7%D0%BE%D0%B2%D0%B0%D0%BD%D0%B8%D1%8F_%D0%B7%D0%B0%D0%B3%D0%BE%D1%82%D0%BE%D0%B2%D0%BE%D0%BA_%D0%B8_%D0%B4%D1%80%D0%BE%D0%B2">Таблица использования заготовок и дров</a></div>
+		<div class="CategoryTreeChildren" style="display:none"></div></div>
+		<div class="CategoryTreeSection"><div class="CategoryTreeItem"><span class="CategoryTreeBullet"> </span> <a class="CategoryTreeLabel  CategoryTreeLabelNs0 CategoryTreeLabelPage" href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%9B%D0%B5%D1%81%D0%BE%D1%80%D1%83%D0%B1%D0%B0">Таблица Лесоруба</a></div>
+		<div class="CategoryTreeChildren" style="display:none"></div></div>
+		<div class="CategoryTreeSection"><div class="CategoryTreeItem"><span class="CategoryTreeBullet"> </span> <a class="CategoryTreeLabel  CategoryTreeLabelNs0 CategoryTreeLabelPage" href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%BC%D0%B0%D1%82%D0%B5%D1%80%D0%B8%D0%B0%D0%BB%D0%BE%D0%B2_%D0%9A%D0%B0%D0%BB%D0%BB%D0%B8%D0%B3%D1%80%D0%B0%D1%84%D0%B0">Таблица материалов Каллиграфа</a></div>
+		<div class="CategoryTreeChildren" style="display:none"></div></div>
+		<div class="CategoryTreeSection"><div class="CategoryTreeItem"><span class="CategoryTreeBullet"> </span> <a class="CategoryTreeLabel  CategoryTreeLabelNs0 CategoryTreeLabelPage" href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%9E%D1%85%D0%BE%D1%82%D0%BD%D0%B8%D0%BA%D0%B0">Таблица Охотника</a></div>
+		<div class="CategoryTreeChildren" style="display:none"></div></div>
+		<div class="CategoryTreeSection"><div class="CategoryTreeItem"><span class="CategoryTreeBullet"> </span> <a class="CategoryTreeLabel  CategoryTreeLabelNs0 CategoryTreeLabelPage" href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%9F%D0%BB%D0%BE%D1%82%D0%BD%D0%B8%D0%BA%D0%B0">Таблица Плотника</a></div>
+		<div class="CategoryTreeChildren" style="display:none"></div></div>
+		<div class="CategoryTreeSection"><div class="CategoryTreeItem"><span class="CategoryTreeBullet"> </span> <a class="CategoryTreeLabel  CategoryTreeLabelNs0 CategoryTreeLabelPage" href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D1%80%D0%B5%D0%BC%D0%BE%D0%BD%D1%82%D0%B0">Таблица ремонта</a></div>
+		<div class="CategoryTreeChildren" style="display:none"></div></div>
+		<div class="CategoryTreeSection"><div class="CategoryTreeItem"><span class="CategoryTreeBullet"> </span> <a class="CategoryTreeLabel  CategoryTreeLabelNs0 CategoryTreeLabelPage" href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%A0%D0%B5%D1%86%D0%B5%D0%BF%D1%82%D0%BE%D0%B2_%D0%90%D0%BB%D1%85%D0%B8%D0%BC%D0%B8%D0%BA%D0%B0">Таблица Рецептов Алхимика</a></div>
+		<div class="CategoryTreeChildren" style="display:none"></div></div>
+		<div class="CategoryTreeSection"><div class="CategoryTreeItem"><span class="CategoryTreeBullet"> </span> <a class="CategoryTreeLabel  CategoryTreeLabelNs0 CategoryTreeLabelPage" href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D1%80%D0%B5%D1%86%D0%B5%D0%BF%D1%82%D0%BE%D0%B2_%D0%94%D0%BE%D0%BA%D1%82%D0%BE%D1%80%D0%B0">Таблица рецептов Доктора</a></div>
+		<div class="CategoryTreeChildren" style="display:none"></div></div>
+		<div class="CategoryTreeSection"><div class="CategoryTreeItem"><span class="CategoryTreeBullet"> </span> <a class="CategoryTreeLabel  CategoryTreeLabelNs0 CategoryTreeLabelPage" href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%A0%D0%B5%D1%86%D0%B5%D0%BF%D1%82%D0%BE%D0%B2_%D0%9A%D0%B0%D0%BB%D0%BB%D0%B8%D0%B3%D1%80%D0%B0%D1%84%D0%B0">Таблица Рецептов Каллиграфа</a></div>
+		<div class="CategoryTreeChildren" style="display:none"></div></div>
+		<div class="CategoryTreeSection"><div class="CategoryTreeItem"><span class="CategoryTreeBullet"> </span> <a class="CategoryTreeLabel  CategoryTreeLabelNs0 CategoryTreeLabelPage" href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%A0%D0%B5%D1%86%D0%B5%D0%BF%D1%82%D0%BE%D0%B2_%D0%9F%D0%BE%D0%B2%D0%B0%D1%80%D0%B0">Таблица Рецептов Повара</a></div>
+		<div class="CategoryTreeChildren" style="display:none"></div></div>
+		<div class="CategoryTreeSection"><div class="CategoryTreeItem"><span class="CategoryTreeBullet"> </span> <a class="CategoryTreeLabel  CategoryTreeLabelNs0 CategoryTreeLabelPage" href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%A0%D1%8B%D0%B1%D0%B0%D0%BA%D0%B0">Таблица Рыбака</a></div>
+		<div class="CategoryTreeChildren" style="display:none"></div></div>
+		<div class="CategoryTreeSection"><div class="CategoryTreeItem"><span class="CategoryTreeBullet"> </span> <a class="CategoryTreeLabel  CategoryTreeLabelNs0 CategoryTreeLabelPage" href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%A2%D1%80%D0%B0%D0%B2%D0%BD%D0%B8%D0%BA%D0%B0">Таблица Травника</a></div>
+		<div class="CategoryTreeChildren" style="display:none"></div></div>
+		<div class="CategoryTreeSection"><div class="CategoryTreeItem"><span class="CategoryTreeBullet"> </span> <a class="CategoryTreeLabel  CategoryTreeLabelNs0 CategoryTreeLabelPage" href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D1%87%D0%B5%D1%80%D1%82%D0%B5%D0%B6%D0%B5%D0%B9_%D0%B2%D0%B5%D1%89%D0%B5%D0%B9">Таблица чертежей вещей</a></div>
+		<div class="CategoryTreeChildren" style="display:none"></div></div>
+		<div class="CategoryTreeSection"><div class="CategoryTreeItem"><span class="CategoryTreeBullet"> </span> <a class="CategoryTreeLabel  CategoryTreeLabelNs0 CategoryTreeLabelPage" href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D1%87%D0%B5%D1%80%D1%82%D0%B5%D0%B6%D0%B5%D0%B9_%D0%BE%D1%80%D1%83%D0%B6%D0%B8%D1%8F">Таблица чертежей оружия</a></div>
+		<div class="CategoryTreeChildren" style="display:none"></div></div>
+		<div class="CategoryTreeSection"><div class="CategoryTreeItem"><span class="CategoryTreeBullet"> </span> <a class="CategoryTreeLabel  CategoryTreeLabelNs0 CategoryTreeLabelPage" href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D1%87%D0%B5%D1%80%D1%82%D0%B5%D0%B6%D0%B5%D0%B9_%D0%BF%D1%80%D0%BE%D1%84.%D0%B8%D0%BD%D0%B2%D0%B5%D0%BD%D1%82%D0%B0%D1%80%D1%8F">Таблица чертежей проф.инвентаря</a></div>
+		<div class="CategoryTreeChildren" style="display:none"></div></div>
+		<div class="CategoryTreeSection"><div class="CategoryTreeItem"><span class="CategoryTreeBullet"> </span> <a class="CategoryTreeLabel  CategoryTreeLabelNs0 CategoryTreeLabelPage" href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%AE%D0%B2%D0%B5%D0%BB%D0%B8%D1%80%D0%B0">Таблица Ювелира</a></div>
+		<div class="CategoryTreeChildren" style="display:none"></div></div>
+		</div>
+<p><b>Таблица плотника</b> - таблица, с помощью которой <a href="/wiki/%D0%9F%D0%BB%D0%BE%D1%82%D0%BD%D0%B8%D0%BA" title="Плотник">плотник</a> может ознакомиться с информацией по каждому конечному ресурсу: сколько надо умения на обработку, какое нужно <a href="/wiki/%D0%94%D0%B5%D1%80%D0%B5%D0%B2%D1%8C%D1%8F" title="Деревья">дерево</a> для этого, какую пилу использовать. Ознакомиться с <a href="/wiki/%D0%9F%D1%80%D0%BE%D1%84%D0%B5%D1%81%D1%81%D0%B8%D0%BE%D0%BD%D0%B0%D0%BB%D1%8C%D0%BD%D1%8B%D0%B9_%D0%B8%D0%BD%D0%B2%D0%B5%D0%BD%D1%82%D0%B0%D1%80%D1%8C" title="Профессиональный инвентарь">профессиональным инвентарем</a> плотника можно в статье <a href="/wiki/%D0%9C%D0%B0%D0%B3%D0%B0%D0%B7%D0%B8%D0%BD_%D0%B8%D0%BD%D1%81%D1%82%D1%80%D1%83%D0%BC%D0%B5%D0%BD%D1%82%D0%BE%D0%B2_(%D0%9B%D0%B5%D1%81%D0%BE%D0%BF%D0%B8%D0%BB%D0%BA%D0%B0)" title="Магазин инструментов (Лесопилка)">Магазин инструментов (Лесопилка)</a>.
+</p>
+<h3> <span class="mw-headline" id=".D0.A2.D0.B0.D0.B1.D0.BB.D0.B8.D1.86.D0.B0_.D0.BF.D0.BB.D0.BE.D1.82.D0.BD.D0.B8.D0.BA.D0.B0"> Таблица плотника </span></h3>
+<p>Информация неполная.<br />
+</p>
+<h4> <span class="mw-headline" id=".D0.9A.D1.83.D1.81.D0.BE.D0.BA_.D0.91.D0.B5.D1.80.D0.B5.D1.81.D1.82.D1.8B_.D0.B8_.D0.9B.D0.B8.D1.81.D1.82_.D0.91.D1.83.D0.BC.D0.B0.D0.B3.D0.B8"> Кусок Бересты и Лист Бумаги </span></h4>
+<table class="wikitable" style="text-align: center;">
+
+<tr>
+<th> Название </th>
+<th> Кол-во </th>
+<th> Время </th>
+<th> Исходные ресурсы </th>
+<th> Готовая продукция </th>
+<th> Инструментарий </th>
+<th> Умение плотник
+</th></tr>
+<tr>
+<td> Береста </td>
+<td> <b>1</b> </td>
+<td> <b>1 мин 0 сек</b>
+</td>
+<td style="text-align:left"> <img src="http://image.neverlands.ru/resources/316.gif" alt="316.gif" /> <b>1.00</b> Заготовка из берёзы
+</td>
+<td> <abbr title="Кусок Бересты"><img src="http://image.neverlands.ru/resources/486.gif" alt="486.gif" /></abbr><br /> <b>1.00</b> </td>
+<td> <abbr title="Пила ученика"><img src="http://image.neverlands.ru/tools/117.gif" alt="117.gif" /></abbr> </td>
+<td> 30
+</td></tr>
+<tr>
+<td> Бумага I </td>
+<td> <b>1</b> </td>
+<td> <b>1 мин 0 сек</b>
+</td>
+<td style="text-align:left"> <img src="http://image.neverlands.ru/resources/315.gif" alt="315.gif" /> <b>1.00</b> Заготовка из осины<br /> <abbr title="Клык кабана (Тёртый)"><img src="http://image.neverlands.ru/resources/234.gif" alt="234.gif" /></abbr> <b>1.00</b> Клык кабана (Тёртый)
+</td>
+<td> <abbr title="Лист бумаги"><img src="http://image.neverlands.ru/resources/485.gif" alt="485.gif" /></abbr><br /> <b>1.00</b> </td>
+<td> Не требуется </td>
+<td> 100
+</td></tr>
+<tr>
+<td> Бумага II </td>
+<td> <b>1</b> </td>
+<td> <b>1 мин 0 сек</b>
+</td>
+<td style="text-align:left"> <img src="http://image.neverlands.ru/resources/331.gif" alt="331.gif" /> <b>1.00</b> Заготовка из фигового дерева<br /> <abbr title="Клык кабана (Тёртый)"><img src="http://image.neverlands.ru/resources/234.gif" alt="234.gif" /></abbr> <b>0.90</b> Клык кабана (Тёртый)
+</td>
+<td> <abbr title="Лист бумаги"><img src="http://image.neverlands.ru/resources/485.gif" alt="485.gif" /></abbr><br /> <b>1.00</b> </td>
+<td> Не требуется </td>
+<td> 100
+</td></tr>
+<tr>
+<td> Бумага III </td>
+<td> <b>1</b> </td>
+<td> <b>1 мин 0 сек</b>
+</td>
+<td style="text-align:left"> <img src="http://image.neverlands.ru/resources/317.gif" alt="317.gif" /> <b>1.00</b> Заготовка из липы<br /> <abbr title="Клык кабана (Тёртый)"><img src="http://image.neverlands.ru/resources/234.gif" alt="234.gif" /></abbr> <b>0.80</b> Клык кабана (Тёртый)
+</td>
+<td> <abbr title="Лист бумаги"><img src="http://image.neverlands.ru/resources/485.gif" alt="485.gif" /></abbr><br /> <b>1.00</b> </td>
+<td> Не требуется </td>
+<td> 100
+</td></tr>
+<tr>
+<td> Бумага IV </td>
+<td> <b>1</b> </td>
+<td> <b>1 мин 0 сек</b>
+</td>
+<td style="text-align:left"> <img src="http://image.neverlands.ru/resources/318.gif" alt="318.gif" /> <b>1.00</b> Заготовка из тополя<br /> <abbr title="Клык кабана (Тёртый)"><img src="http://image.neverlands.ru/resources/234.gif" alt="234.gif" /></abbr> <b>0.70</b> Клык кабана (Тёртый)
+</td>
+<td> <abbr title="Лист бумаги"><img src="http://image.neverlands.ru/resources/485.gif" alt="485.gif" /></abbr><br /> <b>1.00</b> </td>
+<td> Не требуется </td>
+<td> 100
+</td></tr></table>
+<h4> <span class="mw-headline" id=".D0.97.D0.B0.D0.B3.D0.BE.D1.82.D0.BE.D0.B2.D0.BA.D0.B8_.D0.B8_.D0.94.D1.80.D0.BE.D0.B2.D0.B0"> Заготовки и Дрова </span></h4>
+<p>Из 1 ед. сырого ресурса получается 2 ед. готового. Время обработки 2 мин.
+</p>
+<table class="wikitable sortable" style="text-align: center;">
+
+<tr>
+<th> Требование<br /> умения </th>
+<th> Исходное Дерево </th>
+<th> Получаемые Ресурсы (цена) </th>
+<th> Инструмент </th>
+<th> Время роста
+</th></tr>
+
+<tr>
+<td> 0
+</td>
+<td> <b>Медный кактус</b><br /> <a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:%D0%9C%D0%B5%D0%B4%D0%BD%D1%8B%D0%B9_%D0%BA%D0%B0%D0%BA%D1%82%D1%83%D1%81.png" class="image"><img alt="Медный кактус.png" src="/images/9/99/%D0%9C%D0%B5%D0%B4%D0%BD%D1%8B%D0%B9_%D0%BA%D0%B0%D0%BA%D1%82%D1%83%D1%81.png" width="60" height="60" /></a>
+</td>
+<td> <b>Заготовка из</b><br /> <b>медного кактуса (5.00)</b><br /> <img src="http://image.neverlands.ru/resources/326.gif" alt="326.gif" />
+</td>
+<td> <br /> <b>Пила ученика</b><br /> <a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:%D0%9F%D0%B8%D0%BB%D0%B0_%D1%83%D1%87%D0%B5%D0%BD%D0%B8%D0%BA%D0%B0.gif" class="image"><img alt="Пила ученика.gif" src="/images/6/6a/%D0%9F%D0%B8%D0%BB%D0%B0_%D1%83%D1%87%D0%B5%D0%BD%D0%B8%D0%BA%D0%B0.gif" width="62" height="91" /></a><br /><br />
+</td>
+<td> 30 минут
+</td></tr>
+<tr>
+<td> 0
+</td>
+<td> <b>Орешник</b><br /> <a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:%D0%9E%D1%80%D0%B5%D1%88%D0%BD%D0%B8%D0%BA.png" class="image"><img alt="Орешник.png" src="/images/b/b6/%D0%9E%D1%80%D0%B5%D1%88%D0%BD%D0%B8%D0%BA.png" width="60" height="60" /></a>
+</td>
+<td> <b>Заготовка из орешника (5.00)</b><br /> <img src="http://image.neverlands.ru/resources/312.gif" alt="312.gif" />
+</td>
+<td> <br /> <b>Пила ученика</b><br /> <a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:%D0%9F%D0%B8%D0%BB%D0%B0_%D1%83%D1%87%D0%B5%D0%BD%D0%B8%D0%BA%D0%B0.gif" class="image"><img alt="Пила ученика.gif" src="/images/6/6a/%D0%9F%D0%B8%D0%BB%D0%B0_%D1%83%D1%87%D0%B5%D0%BD%D0%B8%D0%BA%D0%B0.gif" width="62" height="91" /></a><br />
+</td>
+<td> 30 минут
+</td></tr>
+<tr>
+<td> 0
+</td>
+<td> <b>Ива</b><br /> <a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:%D0%98%D0%B2%D0%B0.png" class="image"><img alt="Ива.png" src="/images/f/f6/%D0%98%D0%B2%D0%B0.png" width="60" height="60" /></a>
+</td>
+<td> <b>Заготовка из ивы (5.00)</b><br /> <img src="http://image.neverlands.ru/resources/313.gif" alt="313.gif" />
+</td>
+<td> <br /> <b>Пила ученика</b><br /> <a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:%D0%9F%D0%B8%D0%BB%D0%B0_%D1%83%D1%87%D0%B5%D0%BD%D0%B8%D0%BA%D0%B0.gif" class="image"><img alt="Пила ученика.gif" src="/images/6/6a/%D0%9F%D0%B8%D0%BB%D0%B0_%D1%83%D1%87%D0%B5%D0%BD%D0%B8%D0%BA%D0%B0.gif" width="62" height="91" /></a><br />
+</td>
+<td> 30 минут
+</td></tr>
+<tr>
+<td> 0
+</td>
+<td> <b>Дифенбахия</b><br /> <a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:%D0%94%D0%B8%D1%84%D1%84%D0%B5%D0%BD%D0%B1%D0%B0%D1%85%D0%B8%D1%8F.png" class="image"><img alt="Диффенбахия.png" src="/images/d/d7/%D0%94%D0%B8%D1%84%D1%84%D0%B5%D0%BD%D0%B1%D0%B0%D1%85%D0%B8%D1%8F.png" width="60" height="60" /></a>
+</td>
+<td> <b>Сухая дифенбахия (6.00)</b><br /> <a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:%D0%A1%D1%83%D1%85%D0%B0%D1%8F_%D0%B4%D0%B8%D1%84%D1%84%D0%B5%D0%BD%D0%B1%D0%B0%D1%85%D0%B8%D1%8F.gif" class="image"><img alt="Сухая диффенбахия.gif" src="/images/0/0c/%D0%A1%D1%83%D1%85%D0%B0%D1%8F_%D0%B4%D0%B8%D1%84%D1%84%D0%B5%D0%BD%D0%B1%D0%B0%D1%85%D0%B8%D1%8F.gif" width="60" height="60" /></a>
+</td>
+<td> <br /> <b>Пила-ножовка</b><br /> <a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:%D0%9F%D0%B8%D0%BB%D0%B0-%D0%BD%D0%BE%D0%B6%D0%BE%D0%B2%D0%BA%D0%B0.gif" class="image"><img alt="Пила-ножовка.gif" src="/images/9/90/%D0%9F%D0%B8%D0%BB%D0%B0-%D0%BD%D0%BE%D0%B6%D0%BE%D0%B2%D0%BA%D0%B0.gif" width="62" height="91" /></a><br />
+</td>
+<td> 30 минут
+</td></tr>
+<tr>
+<td> 20
+</td>
+<td> <b>Песчаная колючка</b><br /> <a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:%D0%9F%D0%B5%D1%81%D1%87%D0%B0%D0%BD%D0%B0%D1%8F_%D0%BA%D0%BE%D0%BB%D1%8E%D1%87%D0%BA%D0%B0.png" class="image"><img alt="Песчаная колючка.png" src="/images/6/6d/%D0%9F%D0%B5%D1%81%D1%87%D0%B0%D0%BD%D0%B0%D1%8F_%D0%BA%D0%BE%D0%BB%D1%8E%D1%87%D0%BA%D0%B0.png" width="60" height="60" /></a>
+</td>
+<td> <b>Заготовка из</b><br /> <b>песчаной колючки (6.00)</b><br /> <img src="http://image.neverlands.ru/resources/327.gif" alt="327.gif" />
+</td>
+<td> <br /> <b>Пила ученика</b><br /> <a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:%D0%9F%D0%B8%D0%BB%D0%B0_%D1%83%D1%87%D0%B5%D0%BD%D0%B8%D0%BA%D0%B0.gif" class="image"><img alt="Пила ученика.gif" src="/images/6/6a/%D0%9F%D0%B8%D0%BB%D0%B0_%D1%83%D1%87%D0%B5%D0%BD%D0%B8%D0%BA%D0%B0.gif" width="62" height="91" /></a><br />
+</td>
+<td> 30 минут
+</td></tr>
+<tr>
+<td> 20
+</td>
+<td> <b>Осина</b><br /> <a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:%D0%9E%D1%81%D0%B8%D0%BD%D0%B0.png" class="image"><img alt="Осина.png" src="/images/b/ba/%D0%9E%D1%81%D0%B8%D0%BD%D0%B0.png" width="60" height="60" /></a>
+</td>
+<td> <b>Заготовка из осины (8.00)</b><br /> <img src="http://image.neverlands.ru/resources/315.gif" alt="315.gif" />
+</td>
+<td> <br /> <b>Пила ученика</b><br /> <a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:%D0%9F%D0%B8%D0%BB%D0%B0_%D1%83%D1%87%D0%B5%D0%BD%D0%B8%D0%BA%D0%B0.gif" class="image"><img alt="Пила ученика.gif" src="/images/6/6a/%D0%9F%D0%B8%D0%BB%D0%B0_%D1%83%D1%87%D0%B5%D0%BD%D0%B8%D0%BA%D0%B0.gif" width="62" height="91" /></a><br />
+</td>
+<td> 30 минут
+</td></tr>
+<tr>
+<td> 20
+</td>
+<td> <b>Ольха</b><br /> <a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:%D0%9E%D0%BB%D1%8C%D1%85%D0%B0.png" class="image"><img alt="Ольха.png" src="/images/3/30/%D0%9E%D0%BB%D1%8C%D1%85%D0%B0.png" width="60" height="60" /></a>
+</td>
+<td> <b>Заготовка из ольхи (8.00)</b><br /> <img src="http://image.neverlands.ru/resources/314.gif" alt="314.gif" />
+</td>
+<td> <br /> <b>Пила ученика</b><br /> <a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:%D0%9F%D0%B8%D0%BB%D0%B0_%D1%83%D1%87%D0%B5%D0%BD%D0%B8%D0%BA%D0%B0.gif" class="image"><img alt="Пила ученика.gif" src="/images/6/6a/%D0%9F%D0%B8%D0%BB%D0%B0_%D1%83%D1%87%D0%B5%D0%BD%D0%B8%D0%BA%D0%B0.gif" width="62" height="91" /></a><br />
+</td>
+<td> 30 минут
+</td></tr>
+<tr>
+<td> 20
+</td>
+<td> <b>Жимолость южная</b><br /> <a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:%D0%96%D0%B8%D0%BC%D0%BE%D0%BB%D0%BE%D1%81%D1%82%D1%8C_%D0%AE%D0%B6%D0%BD%D0%B0%D1%8F.png" class="image"><img alt="Жимолость Южная.png" src="/images/1/14/%D0%96%D0%B8%D0%BC%D0%BE%D0%BB%D0%BE%D1%81%D1%82%D1%8C_%D0%AE%D0%B6%D0%BD%D0%B0%D1%8F.png" width="60" height="60" /></a>
+</td>
+<td> <b>Сухая жимолость (7.00)</b><br /> <a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:%D0%A1%D1%83%D1%85%D0%B0%D1%8F_%D0%B6%D0%B8%D0%BC%D0%BE%D0%BB%D0%BE%D1%81%D1%82%D1%8C.gif" class="image"><img alt="Сухая жимолость.gif" src="/images/9/96/%D0%A1%D1%83%D1%85%D0%B0%D1%8F_%D0%B6%D0%B8%D0%BC%D0%BE%D0%BB%D0%BE%D1%81%D1%82%D1%8C.gif" width="60" height="60" /></a>
+</td>
+<td> <br /> <b>Пила-ножовка</b><br /> <a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:%D0%9F%D0%B8%D0%BB%D0%B0-%D0%BD%D0%BE%D0%B6%D0%BE%D0%B2%D0%BA%D0%B0.gif" class="image"><img alt="Пила-ножовка.gif" src="/images/9/90/%D0%9F%D0%B8%D0%BB%D0%B0-%D0%BD%D0%BE%D0%B6%D0%BE%D0%B2%D0%BA%D0%B0.gif" width="62" height="91" /></a><br />
+</td>
+<td> 30 минут
+</td></tr>
+<tr>
+<td> 30
+</td>
+<td> <b>Берёза</b><br /> <a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:%D0%91%D0%B5%D1%80%D1%91%D0%B7%D0%B0.png" class="image"><img alt="Берёза.png" src="/images/6/6c/%D0%91%D0%B5%D1%80%D1%91%D0%B7%D0%B0.png" width="60" height="60" /></a>
+</td>
+<td> <b>1) Заготовка из берёзы (10.00)</b><br /> <img src="http://image.neverlands.ru/resources/316.gif" alt="316.gif" /><br /> <br />
+<p><b>2) Берёзовые дрова (10.00)</b><br /> <a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:%D0%91%D0%B5%D1%80%D1%91%D0%B7%D0%BE%D0%B2%D1%8B%D0%B5_%D0%B4%D1%80%D0%BE%D0%B2%D0%B0.gif" class="image"><img alt="Берёзовые дрова.gif" src="/images/b/bd/%D0%91%D0%B5%D1%80%D1%91%D0%B7%D0%BE%D0%B2%D1%8B%D0%B5_%D0%B4%D1%80%D0%BE%D0%B2%D0%B0.gif" width="60" height="60" /></a>
+</p>
+</td>
+<td> <br /> <b>1) Пила ученика</b><br /> <a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:%D0%9F%D0%B8%D0%BB%D0%B0_%D1%83%D1%87%D0%B5%D0%BD%D0%B8%D0%BA%D0%B0.gif" class="image"><img alt="Пила ученика.gif" src="/images/6/6a/%D0%9F%D0%B8%D0%BB%D0%B0_%D1%83%D1%87%D0%B5%D0%BD%D0%B8%D0%BA%D0%B0.gif" width="62" height="91" /></a><br />
+<p><b>2) Пила-ножовка</b><br /> <a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:%D0%9F%D0%B8%D0%BB%D0%B0-%D0%BD%D0%BE%D0%B6%D0%BE%D0%B2%D0%BA%D0%B0.gif" class="image"><img alt="Пила-ножовка.gif" src="/images/9/90/%D0%9F%D0%B8%D0%BB%D0%B0-%D0%BD%D0%BE%D0%B6%D0%BE%D0%B2%D0%BA%D0%B0.gif" width="62" height="91" /></a><br />  
+</p>
+</td>
+<td> 30 минут
+</td></tr>
+<tr>
+<td> 30
+</td>
+<td> <b>Ель</b><br /> <a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:%D0%95%D0%BB%D1%8C.png" class="image"><img alt="Ель.png" src="/images/6/66/%D0%95%D0%BB%D1%8C.png" width="60" height="60" /></a>
+</td>
+<td> <b>Еловые дрова (5.00)</b><br /> <a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:%D0%95%D0%BB%D0%BE%D0%B2%D1%8B%D0%B5_%D0%B4%D1%80%D0%BE%D0%B2%D0%B0.gif" class="image"><img alt="Еловые дрова.gif" src="/images/f/f3/%D0%95%D0%BB%D0%BE%D0%B2%D1%8B%D0%B5_%D0%B4%D1%80%D0%BE%D0%B2%D0%B0.gif" width="60" height="60" /></a>
+</td>
+<td> <br /> <b>Пила-ножовка</b><br /> <a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:%D0%9F%D0%B8%D0%BB%D0%B0-%D0%BD%D0%BE%D0%B6%D0%BE%D0%B2%D0%BA%D0%B0.gif" class="image"><img alt="Пила-ножовка.gif" src="/images/9/90/%D0%9F%D0%B8%D0%BB%D0%B0-%D0%BD%D0%BE%D0%B6%D0%BE%D0%B2%D0%BA%D0%B0.gif" width="62" height="91" /></a><br />
+</td>
+<td> 30 минут
+</td></tr>
+<tr>
+<td> 40
+</td>
+<td> <b>Фиговое дерево</b><br /> <a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:%D0%A4%D0%B8%D0%B3%D0%BE%D0%B2%D0%BE%D0%B5_%D0%B4%D0%B5%D1%80%D0%B5%D0%B2%D0%BE.png" class="image"><img alt="Фиговое дерево.png" src="/images/1/1b/%D0%A4%D0%B8%D0%B3%D0%BE%D0%B2%D0%BE%D0%B5_%D0%B4%D0%B5%D1%80%D0%B5%D0%B2%D0%BE.png" width="60" height="60" /></a>
+</td>
+<td> <b>Заготовка из</b><br /> <b>фигового дерева (10.00)</b><br /> <img src="http://image.neverlands.ru/resources/331.gif" alt="331.gif" />
+</td>
+<td> <br /> <b>Пила ученика</b><br /> <a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:%D0%9F%D0%B8%D0%BB%D0%B0_%D1%83%D1%87%D0%B5%D0%BD%D0%B8%D0%BA%D0%B0.gif" class="image"><img alt="Пила ученика.gif" src="/images/6/6a/%D0%9F%D0%B8%D0%BB%D0%B0_%D1%83%D1%87%D0%B5%D0%BD%D0%B8%D0%BA%D0%B0.gif" width="62" height="91" /></a><br />
+</td>
+<td> 30 минут
+</td></tr>
+<tr>
+<td> 40
+</td>
+<td> <b>Липа</b><br /> <a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:%D0%9B%D0%B8%D0%BF%D0%B0.png" class="image"><img alt="Липа.png" src="/images/1/18/%D0%9B%D0%B8%D0%BF%D0%B0.png" width="60" height="60" /></a>
+</td>
+<td> <b>1) Заготовка из липы (12.00)</b><br /> <a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:%D0%97%D0%B0%D0%B3%D0%BE%D1%82%D0%BE%D0%B2%D0%BA%D0%B0_%D0%B8%D0%B7_%D0%BB%D0%B8%D0%BF%D1%8B.gif" class="image"><img alt="Заготовка из липы.gif" src="/images/9/92/%D0%97%D0%B0%D0%B3%D0%BE%D1%82%D0%BE%D0%B2%D0%BA%D0%B0_%D0%B8%D0%B7_%D0%BB%D0%B8%D0%BF%D1%8B.gif" width="60" height="60" /></a><br /> <br />
+<p><b>2) Липовые дрова (12.00)</b><br /> <a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:Lipovye_drova.gif" class="image"><img alt="Lipovye drova.gif" src="/images/c/cc/Lipovye_drova.gif" width="60" height="60" /></a>
+</p>
+</td>
+<td> <br /> <b>1) Пила ученика</b><br /> <a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:%D0%9F%D0%B8%D0%BB%D0%B0_%D1%83%D1%87%D0%B5%D0%BD%D0%B8%D0%BA%D0%B0.gif" class="image"><img alt="Пила ученика.gif" src="/images/6/6a/%D0%9F%D0%B8%D0%BB%D0%B0_%D1%83%D1%87%D0%B5%D0%BD%D0%B8%D0%BA%D0%B0.gif" width="62" height="91" /></a><br />
+<p><b>2) Пила-ножовка</b><br /> <a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:%D0%9F%D0%B8%D0%BB%D0%B0-%D0%BD%D0%BE%D0%B6%D0%BE%D0%B2%D0%BA%D0%B0.gif" class="image"><img alt="Пила-ножовка.gif" src="/images/9/90/%D0%9F%D0%B8%D0%BB%D0%B0-%D0%BD%D0%BE%D0%B6%D0%BE%D0%B2%D0%BA%D0%B0.gif" width="62" height="91" /></a><br />  
+</p>
+</td>
+<td> 40 минут
+</td></tr>
+<tr>
+<td> 50
+</td>
+<td> <b>Сосна</b><br /> <a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:%D0%A1%D0%BE%D1%81%D0%BD%D0%B0.png" class="image"><img alt="Сосна.png" src="/images/5/58/%D0%A1%D0%BE%D1%81%D0%BD%D0%B0.png" width="60" height="60" /></a>
+</td>
+<td> <b>1) Заготовка из сосны (10.00)</b><br /> <a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:%D0%97%D0%B0%D0%B3%D0%BE%D1%82%D0%BE%D0%B2%D0%BA%D0%B0_%D0%B8%D0%B7_%D1%81%D0%BE%D1%81%D0%BD%D1%8B.gif" class="image"><img alt="Заготовка из сосны.gif" src="/images/7/7a/%D0%97%D0%B0%D0%B3%D0%BE%D1%82%D0%BE%D0%B2%D0%BA%D0%B0_%D0%B8%D0%B7_%D1%81%D0%BE%D1%81%D0%BD%D1%8B.gif" width="60" height="60" /></a><br />  <br />
+<p><b>2) Сосновые дрова (10.00)</b><br /> <a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:%D0%A1%D0%BE%D1%81%D0%BD%D0%BE%D0%B2%D1%8B%D0%B5_%D0%B4%D1%80%D0%BE%D0%B2%D0%B0.gif" class="image"><img alt="Сосновые дрова.gif" src="/images/1/1b/%D0%A1%D0%BE%D1%81%D0%BD%D0%BE%D0%B2%D1%8B%D0%B5_%D0%B4%D1%80%D0%BE%D0%B2%D0%B0.gif" width="60" height="60" /></a>
+</p>
+</td>
+<td> <br /> <b>1) Пила ученика</b><br /> <a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:%D0%9F%D0%B8%D0%BB%D0%B0_%D1%83%D1%87%D0%B5%D0%BD%D0%B8%D0%BA%D0%B0.gif" class="image"><img alt="Пила ученика.gif" src="/images/6/6a/%D0%9F%D0%B8%D0%BB%D0%B0_%D1%83%D1%87%D0%B5%D0%BD%D0%B8%D0%BA%D0%B0.gif" width="62" height="91" /></a><br />
+<p><b>2) Пила-ножовка</b><br /> <a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:%D0%9F%D0%B8%D0%BB%D0%B0-%D0%BD%D0%BE%D0%B6%D0%BE%D0%B2%D0%BA%D0%B0.gif" class="image"><img alt="Пила-ножовка.gif" src="/images/9/90/%D0%9F%D0%B8%D0%BB%D0%B0-%D0%BD%D0%BE%D0%B6%D0%BE%D0%B2%D0%BA%D0%B0.gif" width="62" height="91" /></a><br />  
+</p>
+</td>
+<td> 30 минут
+</td></tr>
+<tr>
+<td> 60
+</td>
+<td> <b>Тополь</b><br /> <a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:%D0%A2%D0%BE%D0%BF%D0%BE%D0%BB%D1%8C.png" class="image"><img alt="Тополь.png" src="/images/4/46/%D0%A2%D0%BE%D0%BF%D0%BE%D0%BB%D1%8C.png" width="60" height="60" /></a>
+</td>
+<td> <b>1) Заготовка из тополя (14.00)</b><br /> <a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:%D0%97%D0%B0%D0%B3%D0%BE%D1%82%D0%BE%D0%B2%D0%BA%D0%B0_%D0%B8%D0%B7_%D1%82%D0%BE%D0%BF%D0%BE%D0%BB%D1%8F.gif" class="image"><img alt="Заготовка из тополя.gif" src="/images/f/f9/%D0%97%D0%B0%D0%B3%D0%BE%D1%82%D0%BE%D0%B2%D0%BA%D0%B0_%D0%B8%D0%B7_%D1%82%D0%BE%D0%BF%D0%BE%D0%BB%D1%8F.gif" width="60" height="60" /></a><br /> <br />
+<p><b>2) Тополиные дрова (14.00)</b><br /> <a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:Topolinye_drova.gif" class="image"><img alt="Topolinye drova.gif" src="/images/5/5c/Topolinye_drova.gif" width="60" height="60" /></a>
+</p>
+</td>
+<td> <br /> <b>1) Пила ученика</b><br /> <a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:%D0%9F%D0%B8%D0%BB%D0%B0_%D1%83%D1%87%D0%B5%D0%BD%D0%B8%D0%BA%D0%B0.gif" class="image"><img alt="Пила ученика.gif" src="/images/6/6a/%D0%9F%D0%B8%D0%BB%D0%B0_%D1%83%D1%87%D0%B5%D0%BD%D0%B8%D0%BA%D0%B0.gif" width="62" height="91" /></a><br />
+<p><b>2) Пила-ножовка</b><br /> <a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:%D0%9F%D0%B8%D0%BB%D0%B0-%D0%BD%D0%BE%D0%B6%D0%BE%D0%B2%D0%BA%D0%B0.gif" class="image"><img alt="Пила-ножовка.gif" src="/images/9/90/%D0%9F%D0%B8%D0%BB%D0%B0-%D0%BD%D0%BE%D0%B6%D0%BE%D0%B2%D0%BA%D0%B0.gif" width="62" height="91" /></a><br />  
+</p>
+</td>
+<td> 40 минут
+</td></tr>
+<tr>
+<td> 60
+</td>
+<td> <b>Бамбук</b><br /> <a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:%D0%91%D0%B0%D0%BC%D0%B1%D1%83%D0%BA.png" class="image"><img alt="Бамбук.png" src="/images/c/cb/%D0%91%D0%B0%D0%BC%D0%B1%D1%83%D0%BA.png" width="60" height="60" /></a>
+</td>
+<td> <b>Заготовка из бамбука (15.00)</b><br /> <a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:%D0%97%D0%B0%D0%B3%D0%BE%D1%82%D0%BE%D0%B2%D0%BA%D0%B0_%D0%B8%D0%B7_%D0%B1%D0%B0%D0%BC%D0%B1%D1%83%D0%BA%D0%B0.gif" class="image"><img alt="Заготовка из бамбука.gif" src="/images/c/c4/%D0%97%D0%B0%D0%B3%D0%BE%D1%82%D0%BE%D0%B2%D0%BA%D0%B0_%D0%B8%D0%B7_%D0%B1%D0%B0%D0%BC%D0%B1%D1%83%D0%BA%D0%B0.gif" width="60" height="60" /></a>
+</td>
+<td> <br /> <b>Пила ученика</b><br /> <a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:%D0%9F%D0%B8%D0%BB%D0%B0_%D1%83%D1%87%D0%B5%D0%BD%D0%B8%D0%BA%D0%B0.gif" class="image"><img alt="Пила ученика.gif" src="/images/6/6a/%D0%9F%D0%B8%D0%BB%D0%B0_%D1%83%D1%87%D0%B5%D0%BD%D0%B8%D0%BA%D0%B0.gif" width="62" height="91" /></a><br />
+</td>
+<td> 30 минут
+</td></tr>
+<tr>
+<td> 60
+</td>
+<td> <b>Финиковая пальма</b><br /> <a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:%D0%A4%D0%B8%D0%BD%D0%B8%D0%BA%D0%BE%D0%B2%D0%B0%D1%8F_%D0%BF%D0%B0%D0%BB%D1%8C%D0%BC%D0%B0.png" class="image"><img alt="Финиковая пальма.png" src="/images/b/bf/%D0%A4%D0%B8%D0%BD%D0%B8%D0%BA%D0%BE%D0%B2%D0%B0%D1%8F_%D0%BF%D0%B0%D0%BB%D1%8C%D0%BC%D0%B0.png" width="60" height="60" /></a>
+</td>
+<td> <b>Заготовка из</b><br /> <b>финиковой пальмы (40.00)</b><br /> <a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:%D0%97%D0%B0%D0%B3%D0%BE%D1%82%D0%BE%D0%B2%D0%BA%D0%B0_%D0%B8%D0%B7_%D1%84%D0%B8%D0%BD%D0%B8%D0%BA%D0%BE%D0%B2%D0%BE%D0%B9_%D0%BF%D0%B0%D0%BB%D1%8C%D0%BC%D1%8B.gif" class="image"><img alt="Заготовка из финиковой пальмы.gif" src="/images/0/09/%D0%97%D0%B0%D0%B3%D0%BE%D1%82%D0%BE%D0%B2%D0%BA%D0%B0_%D0%B8%D0%B7_%D1%84%D0%B8%D0%BD%D0%B8%D0%BA%D0%BE%D0%B2%D0%BE%D0%B9_%D0%BF%D0%B0%D0%BB%D1%8C%D0%BC%D1%8B.gif" width="60" height="60" /></a>
+</td>
+<td> <br /> <b>Пила ученика</b><br /> <a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:%D0%9F%D0%B8%D0%BB%D0%B0_%D1%83%D1%87%D0%B5%D0%BD%D0%B8%D0%BA%D0%B0.gif" class="image"><img alt="Пила ученика.gif" src="/images/6/6a/%D0%9F%D0%B8%D0%BB%D0%B0_%D1%83%D1%87%D0%B5%D0%BD%D0%B8%D0%BA%D0%B0.gif" width="62" height="91" /></a><br />
+</td>
+<td> 1 час
+</td></tr>
+<tr>
+<td> 80
+</td>
+<td> <b>Тис</b><br /> <a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:%D0%A2%D0%B8%D1%81.png" class="image"><img alt="Тис.png" src="/images/8/8f/%D0%A2%D0%B8%D1%81.png" width="60" height="60" /></a>
+</td>
+<td> <b>1) Заготовка из тиса (15.00)</b><br /> <a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:%D0%97%D0%B0%D0%B3%D0%BE%D1%82%D0%BE%D0%B2%D0%BA%D0%B0_%D0%B8%D0%B7_%D1%82%D0%B8%D1%81%D0%B0.gif" class="image"><img alt="Заготовка из тиса.gif" src="/images/a/a6/%D0%97%D0%B0%D0%B3%D0%BE%D1%82%D0%BE%D0%B2%D0%BA%D0%B0_%D0%B8%D0%B7_%D1%82%D0%B8%D1%81%D0%B0.gif" width="60" height="60" /></a><br /> <br />
+<p><b>2) Тисовые дрова (15.00)</b><br /> <a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:Tisovye_drova.gif" class="image"><img alt="Tisovye drova.gif" src="/images/9/99/Tisovye_drova.gif" width="60" height="60" /></a>
+</p>
+</td>
+<td> <br /> <b>1) Пила ученика</b><br /> <a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:%D0%9F%D0%B8%D0%BB%D0%B0_%D1%83%D1%87%D0%B5%D0%BD%D0%B8%D0%BA%D0%B0.gif" class="image"><img alt="Пила ученика.gif" src="/images/6/6a/%D0%9F%D0%B8%D0%BB%D0%B0_%D1%83%D1%87%D0%B5%D0%BD%D0%B8%D0%BA%D0%B0.gif" width="62" height="91" /></a><br />
+<p><b>2) Пила-ножовка</b><br /> <a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:%D0%9F%D0%B8%D0%BB%D0%B0-%D0%BD%D0%BE%D0%B6%D0%BE%D0%B2%D0%BA%D0%B0.gif" class="image"><img alt="Пила-ножовка.gif" src="/images/9/90/%D0%9F%D0%B8%D0%BB%D0%B0-%D0%BD%D0%BE%D0%B6%D0%BE%D0%B2%D0%BA%D0%B0.gif" width="62" height="91" /></a><br />  
+</p>
+</td>
+<td> 45 минут
+</td></tr>
+<tr>
+<td> 80
+</td>
+<td> <b>Драцена</b><br /> <a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:%D0%94%D1%80%D0%B0%D1%86%D0%B5%D0%BD%D0%B0.png" class="image"><img alt="Драцена.png" src="/images/1/1d/%D0%94%D1%80%D0%B0%D1%86%D0%B5%D0%BD%D0%B0.png" width="60" height="60" /></a>
+</td>
+<td> <b>1) Заготовка из драцены (18.00)</b><br /> <a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:%D0%97%D0%B0%D0%B3%D0%BE%D1%82%D0%BE%D0%B2%D0%BA%D0%B0_%D0%B8%D0%B7_%D0%B4%D1%80%D0%B0%D1%86%D0%B5%D0%BD%D1%8B.gif" class="image"><img alt="Заготовка из драцены.gif" src="/images/0/07/%D0%97%D0%B0%D0%B3%D0%BE%D1%82%D0%BE%D0%B2%D0%BA%D0%B0_%D0%B8%D0%B7_%D0%B4%D1%80%D0%B0%D1%86%D0%B5%D0%BD%D1%8B.gif" width="60" height="60" /></a><br /> <br />
+<p><b>2) Сухая драцена (18.00)</b><br /> <a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:Suxaya_dracena.gif" class="image"><img alt="Suxaya dracena.gif" src="/images/2/25/Suxaya_dracena.gif" width="60" height="60" /></a>
+</p>
+</td>
+<td> <br /> <b>1) Пила ученика</b><br /> <a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:%D0%9F%D0%B8%D0%BB%D0%B0_%D1%83%D1%87%D0%B5%D0%BD%D0%B8%D0%BA%D0%B0.gif" class="image"><img alt="Пила ученика.gif" src="/images/6/6a/%D0%9F%D0%B8%D0%BB%D0%B0_%D1%83%D1%87%D0%B5%D0%BD%D0%B8%D0%BA%D0%B0.gif" width="62" height="91" /></a><br />
+<p><b>2) Пила-ножовка</b><br /> <a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:%D0%9F%D0%B8%D0%BB%D0%B0-%D0%BD%D0%BE%D0%B6%D0%BE%D0%B2%D0%BA%D0%B0.gif" class="image"><img alt="Пила-ножовка.gif" src="/images/9/90/%D0%9F%D0%B8%D0%BB%D0%B0-%D0%BD%D0%BE%D0%B6%D0%BE%D0%B2%D0%BA%D0%B0.gif" width="62" height="91" /></a><br />  
+</p>
+</td>
+<td> 30 минут
+</td></tr>
+<tr>
+<td> 80
+</td>
+<td> <b>Бук</b><br /> <a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:%D0%91%D1%83%D0%BA.png" class="image"><img alt="Бук.png" src="/images/a/a2/%D0%91%D1%83%D0%BA.png" width="60" height="60" /></a>
+</td>
+<td> <b>Заготовка из бука (12.00)</b><br /> <a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:%D0%97%D0%B0%D0%B3%D0%BE%D1%82%D0%BE%D0%B2%D0%BA%D0%B0_%D0%B8%D0%B7_%D0%B1%D1%83%D0%BA%D0%B0.gif" class="image"><img alt="Заготовка из бука.gif" src="/images/e/ea/%D0%97%D0%B0%D0%B3%D0%BE%D1%82%D0%BE%D0%B2%D0%BA%D0%B0_%D0%B8%D0%B7_%D0%B1%D1%83%D0%BA%D0%B0.gif" width="60" height="60" /></a>
+</td>
+<td> <br /> <b>Пила ученика</b><br /> <a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:%D0%9F%D0%B8%D0%BB%D0%B0_%D1%83%D1%87%D0%B5%D0%BD%D0%B8%D0%BA%D0%B0.gif" class="image"><img alt="Пила ученика.gif" src="/images/6/6a/%D0%9F%D0%B8%D0%BB%D0%B0_%D1%83%D1%87%D0%B5%D0%BD%D0%B8%D0%BA%D0%B0.gif" width="62" height="91" /></a><br />
+</td>
+<td> 30 минут
+</td></tr>
+<tr>
+<td> 100
+</td>
+<td> <b>Вяз</b><br /> <a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:%D0%92%D1%8F%D0%B7.png" class="image"><img alt="Вяз.png" src="/images/6/65/%D0%92%D1%8F%D0%B7.png" width="60" height="60" /></a>
+</td>
+<td> <b>1) Заготовка из вяза (19.00)</b><br /> <a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:%D0%97%D0%B0%D0%B3%D0%BE%D1%82%D0%BE%D0%B2%D0%BA%D0%B0_%D0%B8%D0%B7_%D0%B2%D1%8F%D0%B7%D0%B0.gif" class="image"><img alt="Заготовка из вяза.gif" src="/images/f/f5/%D0%97%D0%B0%D0%B3%D0%BE%D1%82%D0%BE%D0%B2%D0%BA%D0%B0_%D0%B8%D0%B7_%D0%B2%D1%8F%D0%B7%D0%B0.gif" width="60" height="60" /></a><br /> <br />
+<p><b>2) Дрова из вяза (19.00)</b><br /> <a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:%D0%94%D1%80%D0%BE%D0%B2%D0%B0_%D0%B8%D0%B7_%D0%B2%D1%8F%D0%B7%D0%B0.gif" class="image"><img alt="Дрова из вяза.gif" src="/images/3/33/%D0%94%D1%80%D0%BE%D0%B2%D0%B0_%D0%B8%D0%B7_%D0%B2%D1%8F%D0%B7%D0%B0.gif" width="60" height="60" /></a>
+</p>
+</td>
+<td> <br /> <b>1) Пила ученика</b><br /> <a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:%D0%9F%D0%B8%D0%BB%D0%B0_%D1%83%D1%87%D0%B5%D0%BD%D0%B8%D0%BA%D0%B0.gif" class="image"><img alt="Пила ученика.gif" src="/images/6/6a/%D0%9F%D0%B8%D0%BB%D0%B0_%D1%83%D1%87%D0%B5%D0%BD%D0%B8%D0%BA%D0%B0.gif" width="62" height="91" /></a><br />
+<p><b>2) Пила-ножовка</b><br /> <a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:%D0%9F%D0%B8%D0%BB%D0%B0-%D0%BD%D0%BE%D0%B6%D0%BE%D0%B2%D0%BA%D0%B0.gif" class="image"><img alt="Пила-ножовка.gif" src="/images/9/90/%D0%9F%D0%B8%D0%BB%D0%B0-%D0%BD%D0%BE%D0%B6%D0%BE%D0%B2%D0%BA%D0%B0.gif" width="62" height="91" /></a><br />  
+</p>
+</td>
+<td> 45 минут
+</td></tr>
+<tr>
+<td>100
+</td>
+<td> <b>Эвкалипт</b><br /> <a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:%D0%AD%D0%B2%D0%BA%D0%B0%D0%BB%D0%B8%D0%BF%D1%82.png" class="image"><img alt="Эвкалипт.png" src="/images/8/8c/%D0%AD%D0%B2%D0%BA%D0%B0%D0%BB%D0%B8%D0%BF%D1%82.png" width="60" height="60" /></a>
+</td>
+<td> <b>1) Заготовка из эвкалипта (21.00)</b><br /> <a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:%D0%97%D0%B0%D0%B3%D0%BE%D1%82%D0%BE%D0%B2%D0%BA%D0%B0_%D0%B8%D0%B7_%D1%8D%D0%B2%D0%BA%D0%B0%D0%BB%D0%B8%D0%BF%D1%82%D0%B0.gif" class="image"><img alt="Заготовка из эвкалипта.gif" src="/images/f/f8/%D0%97%D0%B0%D0%B3%D0%BE%D1%82%D0%BE%D0%B2%D0%BA%D0%B0_%D0%B8%D0%B7_%D1%8D%D0%B2%D0%BA%D0%B0%D0%BB%D0%B8%D0%BF%D1%82%D0%B0.gif" width="60" height="60" /></a><br /> <br />
+<p><b>2) Дрова из эвкалипта (21.00)</b><br /> <a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:%D0%94%D1%80%D0%BE%D0%B2%D0%B0_%D0%B8%D0%B7_%D1%8D%D0%B2%D0%BA%D0%B0%D0%BB%D0%B8%D0%BF%D1%82%D0%B0.gif" class="image"><img alt="Дрова из эвкалипта.gif" src="/images/6/6a/%D0%94%D1%80%D0%BE%D0%B2%D0%B0_%D0%B8%D0%B7_%D1%8D%D0%B2%D0%BA%D0%B0%D0%BB%D0%B8%D0%BF%D1%82%D0%B0.gif" width="60" height="60" /></a>
+</p>
+</td>
+<td> <br /> <b>1) Пила ученика</b><br /> <a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:%D0%9F%D0%B8%D0%BB%D0%B0_%D1%83%D1%87%D0%B5%D0%BD%D0%B8%D0%BA%D0%B0.gif" class="image"><img alt="Пила ученика.gif" src="/images/6/6a/%D0%9F%D0%B8%D0%BB%D0%B0_%D1%83%D1%87%D0%B5%D0%BD%D0%B8%D0%BA%D0%B0.gif" width="62" height="91" /></a><br />
+<p><b>2) Пила-ножовка</b><br /> <a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:%D0%9F%D0%B8%D0%BB%D0%B0-%D0%BD%D0%BE%D0%B6%D0%BE%D0%B2%D0%BA%D0%B0.gif" class="image"><img alt="Пила-ножовка.gif" src="/images/9/90/%D0%9F%D0%B8%D0%BB%D0%B0-%D0%BD%D0%BE%D0%B6%D0%BE%D0%B2%D0%BA%D0%B0.gif" width="62" height="91" /></a><br />  
+</p>
+</td>
+<td> 45 минут
+</td></tr>
+<tr>
+<td> 100
+</td>
+<td> <b>Граб</b><br /> <a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:%D0%93%D1%80%D0%B0%D0%B1.png" class="image"><img alt="Граб.png" src="/images/b/bf/%D0%93%D1%80%D0%B0%D0%B1.png" width="60" height="60" /></a>
+</td>
+<td> <b>Заготовка из граба (20.00)</b><br /> <a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:%D0%97%D0%B0%D0%B3%D0%BE%D1%82%D0%BE%D0%B2%D0%BA%D0%B0_%D0%B8%D0%B7_%D0%B3%D1%80%D0%B0%D0%B1%D0%B0.gif" class="image"><img alt="Заготовка из граба.gif" src="/images/9/98/%D0%97%D0%B0%D0%B3%D0%BE%D1%82%D0%BE%D0%B2%D0%BA%D0%B0_%D0%B8%D0%B7_%D0%B3%D1%80%D0%B0%D0%B1%D0%B0.gif" width="60" height="60" /></a>
+</td>
+<td> <br /> <b>Пила ученика</b><br /> <a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:%D0%9F%D0%B8%D0%BB%D0%B0_%D1%83%D1%87%D0%B5%D0%BD%D0%B8%D0%BA%D0%B0.gif" class="image"><img alt="Пила ученика.gif" src="/images/6/6a/%D0%9F%D0%B8%D0%BB%D0%B0_%D1%83%D1%87%D0%B5%D0%BD%D0%B8%D0%BA%D0%B0.gif" width="62" height="91" /></a><br />
+</td>
+<td> 1 час
+</td></tr>
+<tr>
+<td> 100
+</td>
+<td> <b>Самшит</b><br /> <a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:%D0%A1%D0%B0%D0%BC%D1%88%D0%B8%D1%82.png" class="image"><img alt="Самшит.png" src="/images/b/b4/%D0%A1%D0%B0%D0%BC%D1%88%D0%B8%D1%82.png" width="60" height="60" /></a>
+</td>
+<td> <b>Заготовка из самшита (50.00)</b><br /> <a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:%D0%97%D0%B0%D0%B3%D0%BE%D1%82%D0%BE%D0%B2%D0%BA%D0%B0_%D0%B8%D0%B7_%D1%81%D0%B0%D0%BC%D1%88%D0%B8%D1%82%D0%B0.gif" class="image"><img alt="Заготовка из самшита.gif" src="/images/0/06/%D0%97%D0%B0%D0%B3%D0%BE%D1%82%D0%BE%D0%B2%D0%BA%D0%B0_%D0%B8%D0%B7_%D1%81%D0%B0%D0%BC%D1%88%D0%B8%D1%82%D0%B0.gif" width="60" height="60" /></a>
+</td>
+<td> <br /> <b>Пила ученика</b><br /> <a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:%D0%9F%D0%B8%D0%BB%D0%B0_%D1%83%D1%87%D0%B5%D0%BD%D0%B8%D0%BA%D0%B0.gif" class="image"><img alt="Пила ученика.gif" src="/images/6/6a/%D0%9F%D0%B8%D0%BB%D0%B0_%D1%83%D1%87%D0%B5%D0%BD%D0%B8%D0%BA%D0%B0.gif" width="62" height="91" /></a><br />
+</td>
+<td> 1 час
+</td></tr>
+<tr>
+<td> 120
+</td>
+<td> <b>Клён</b><br /> <a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:%D0%9A%D0%BB%D1%91%D0%BD.png" class="image"><img alt="Клён.png" src="/images/e/e0/%D0%9A%D0%BB%D1%91%D0%BD.png" width="60" height="60" /></a>
+</td>
+<td> <b>Заготовка из клёна (22.00)</b><br /> <a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:%D0%97%D0%B0%D0%B3%D0%BE%D1%82%D0%BE%D0%B2%D0%BA%D0%B0_%D0%B8%D0%B7_%D0%BA%D0%BB%D1%91%D0%BD%D0%B0.gif" class="image"><img alt="Заготовка из клёна.gif" src="/images/5/58/%D0%97%D0%B0%D0%B3%D0%BE%D1%82%D0%BE%D0%B2%D0%BA%D0%B0_%D0%B8%D0%B7_%D0%BA%D0%BB%D1%91%D0%BD%D0%B0.gif" width="60" height="60" /></a>
+</td>
+<td> <br /> <b>Пила ученика</b><br /> <a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:%D0%9F%D0%B8%D0%BB%D0%B0_%D1%83%D1%87%D0%B5%D0%BD%D0%B8%D0%BA%D0%B0.gif" class="image"><img alt="Пила ученика.gif" src="/images/6/6a/%D0%9F%D0%B8%D0%BB%D0%B0_%D1%83%D1%87%D0%B5%D0%BD%D0%B8%D0%BA%D0%B0.gif" width="62" height="91" /></a><br />
+</td>
+<td> 1 час
+</td></tr>
+<tr>
+<td> 120
+</td>
+<td> <b>Кипарис</b><br /> <a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:%D0%9A%D0%B8%D0%BF%D0%B0%D1%80%D0%B8%D1%81.png" class="image"><img alt="Кипарис.png" src="/images/8/8f/%D0%9A%D0%B8%D0%BF%D0%B0%D1%80%D0%B8%D1%81.png" width="60" height="60" /></a>
+</td>
+<td> <b>Заготовка из кипариса (13.00)</b><br /> <a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:%D0%97%D0%B0%D0%B3%D0%BE%D1%82%D0%BE%D0%B2%D0%BA%D0%B0_%D0%B8%D0%B7_%D0%BA%D0%B8%D0%BF%D0%B0%D1%80%D0%B8%D1%81%D0%B0.gif" class="image"><img alt="Заготовка из кипариса.gif" src="/images/0/0c/%D0%97%D0%B0%D0%B3%D0%BE%D1%82%D0%BE%D0%B2%D0%BA%D0%B0_%D0%B8%D0%B7_%D0%BA%D0%B8%D0%BF%D0%B0%D1%80%D0%B8%D1%81%D0%B0.gif" width="60" height="60" /></a>
+</td>
+<td> <br /> <b>Пила ученика</b><br /> <a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:%D0%9F%D0%B8%D0%BB%D0%B0_%D1%83%D1%87%D0%B5%D0%BD%D0%B8%D0%BA%D0%B0.gif" class="image"><img alt="Пила ученика.gif" src="/images/6/6a/%D0%9F%D0%B8%D0%BB%D0%B0_%D1%83%D1%87%D0%B5%D0%BD%D0%B8%D0%BA%D0%B0.gif" width="62" height="91" /></a><br />
+</td>
+<td> 30 минут
+</td></tr>
+<tr>
+<td> 120
+</td>
+<td> <b>Лавр кучерявый</b><br /> <a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:%D0%9B%D0%B0%D0%B2%D1%80_%D0%BA%D1%83%D1%87%D0%B5%D1%80%D1%8F%D0%B2%D1%8B%D0%B9.png" class="image"><img alt="Лавр кучерявый.png" src="/images/6/6b/%D0%9B%D0%B0%D0%B2%D1%80_%D0%BA%D1%83%D1%87%D0%B5%D1%80%D1%8F%D0%B2%D1%8B%D0%B9.png" width="60" height="60" /></a>
+</td>
+<td> <b>Заготовка из лавра (25.00)</b><br /> <a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:%D0%97%D0%B0%D0%B3%D0%BE%D1%82%D0%BE%D0%B2%D0%BA%D0%B0_%D0%B8%D0%B7_%D0%BB%D0%B0%D0%B2%D1%80%D0%B0.gif" class="image"><img alt="Заготовка из лавра.gif" src="/images/9/95/%D0%97%D0%B0%D0%B3%D0%BE%D1%82%D0%BE%D0%B2%D0%BA%D0%B0_%D0%B8%D0%B7_%D0%BB%D0%B0%D0%B2%D1%80%D0%B0.gif" width="60" height="60" /></a>
+</td>
+<td> <br /> <b>Пила ученика</b><br /> <a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:%D0%9F%D0%B8%D0%BB%D0%B0_%D1%83%D1%87%D0%B5%D0%BD%D0%B8%D0%BA%D0%B0.gif" class="image"><img alt="Пила ученика.gif" src="/images/6/6a/%D0%9F%D0%B8%D0%BB%D0%B0_%D1%83%D1%87%D0%B5%D0%BD%D0%B8%D0%BA%D0%B0.gif" width="62" height="91" /></a><br />
+</td>
+<td> 1 час
+</td></tr>
+<tr>
+<td> 140
+</td>
+<td> <b>Ясень</b><br /> <a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:%D0%AF%D1%81%D0%B5%D0%BD%D1%8C.png" class="image"><img alt="Ясень.png" src="/images/a/af/%D0%AF%D1%81%D0%B5%D0%BD%D1%8C.png" width="60" height="60" /></a>
+</td>
+<td> <b>Заготовка из ясеня (23.00)</b><br /> <a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:%D0%97%D0%B0%D0%B3%D0%BE%D1%82%D0%BE%D0%B2%D0%BA%D0%B0_%D0%B8%D0%B7_%D1%8F%D1%81%D0%B5%D0%BD%D1%8F.gif" class="image"><img alt="Заготовка из ясеня.gif" src="/images/7/7f/%D0%97%D0%B0%D0%B3%D0%BE%D1%82%D0%BE%D0%B2%D0%BA%D0%B0_%D0%B8%D0%B7_%D1%8F%D1%81%D0%B5%D0%BD%D1%8F.gif" width="60" height="60" /></a>
+</td>
+<td> <br /> <b>Пила ученика</b><br /> <a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:%D0%9F%D0%B8%D0%BB%D0%B0_%D1%83%D1%87%D0%B5%D0%BD%D0%B8%D0%BA%D0%B0.gif" class="image"><img alt="Пила ученика.gif" src="/images/6/6a/%D0%9F%D0%B8%D0%BB%D0%B0_%D1%83%D1%87%D0%B5%D0%BD%D0%B8%D0%BA%D0%B0.gif" width="62" height="91" /></a><br />
+</td>
+<td> 1 час
+</td></tr>
+<tr>
+<td> 140
+</td>
+<td> <b>Латания</b><br /> <a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:%D0%9B%D0%B0%D1%82%D0%B0%D0%BD%D0%B8%D1%8F.png" class="image"><img alt="Латания.png" src="/images/5/53/%D0%9B%D0%B0%D1%82%D0%B0%D0%BD%D0%B8%D1%8F.png" width="60" height="60" /></a>
+</td>
+<td> <b>Заготовка из латании (26.00)</b><br /> <a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:%D0%97%D0%B0%D0%B3%D0%BE%D1%82%D0%BE%D0%B2%D0%BA%D0%B0_%D0%B8%D0%B7_%D0%BB%D0%B0%D1%82%D0%B0%D0%BD%D0%B8%D0%B8.gif" class="image"><img alt="Заготовка из латании.gif" src="/images/1/17/%D0%97%D0%B0%D0%B3%D0%BE%D1%82%D0%BE%D0%B2%D0%BA%D0%B0_%D0%B8%D0%B7_%D0%BB%D0%B0%D1%82%D0%B0%D0%BD%D0%B8%D0%B8.gif" width="60" height="60" /></a>
+</td>
+<td> <br /> <b>Пила ученика</b><br /> <a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:%D0%9F%D0%B8%D0%BB%D0%B0_%D1%83%D1%87%D0%B5%D0%BD%D0%B8%D0%BA%D0%B0.gif" class="image"><img alt="Пила ученика.gif" src="/images/6/6a/%D0%9F%D0%B8%D0%BB%D0%B0_%D1%83%D1%87%D0%B5%D0%BD%D0%B8%D0%BA%D0%B0.gif" width="62" height="91" /></a><br />
+</td>
+<td> 1 час
+</td></tr>
+<tr>
+<td> 140
+</td>
+<td> <b>Кедр</b><br /> <a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:%D0%9A%D0%B5%D0%B4%D1%80.png" class="image"><img alt="Кедр.png" src="/images/9/99/%D0%9A%D0%B5%D0%B4%D1%80.png" width="60" height="60" /></a>
+</td>
+<td> <b>1) Заготовка из кедра (24.00)</b><br /> <a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:%D0%97%D0%B0%D0%B3%D0%BE%D1%82%D0%BE%D0%B2%D0%BA%D0%B0_%D0%B8%D0%B7_%D0%BA%D0%B5%D0%B4%D1%80%D0%B0.gif" class="image"><img alt="Заготовка из кедра.gif" src="/images/9/91/%D0%97%D0%B0%D0%B3%D0%BE%D1%82%D0%BE%D0%B2%D0%BA%D0%B0_%D0%B8%D0%B7_%D0%BA%D0%B5%D0%B4%D1%80%D0%B0.gif" width="60" height="60" /></a><br /> <br />
+<p><b>2) Кедровые дрова (24.00)</b><br /> <a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:%D0%9A%D0%B5%D0%B4%D1%80%D0%BE%D0%B2%D1%8B%D0%B5_%D0%B4%D1%80%D0%BE%D0%B2%D0%B0.gif" class="image"><img alt="Кедровые дрова.gif" src="/images/8/81/%D0%9A%D0%B5%D0%B4%D1%80%D0%BE%D0%B2%D1%8B%D0%B5_%D0%B4%D1%80%D0%BE%D0%B2%D0%B0.gif" width="60" height="60" /></a>
+</p>
+</td>
+<td> <br /> <b>1) Пила ученика</b><br /> <a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:%D0%9F%D0%B8%D0%BB%D0%B0_%D1%83%D1%87%D0%B5%D0%BD%D0%B8%D0%BA%D0%B0.gif" class="image"><img alt="Пила ученика.gif" src="/images/6/6a/%D0%9F%D0%B8%D0%BB%D0%B0_%D1%83%D1%87%D0%B5%D0%BD%D0%B8%D0%BA%D0%B0.gif" width="62" height="91" /></a><br />
+<p><b>2) Пила-ножовка</b><br /> <a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:%D0%9F%D0%B8%D0%BB%D0%B0-%D0%BD%D0%BE%D0%B6%D0%BE%D0%B2%D0%BA%D0%B0.gif" class="image"><img alt="Пила-ножовка.gif" src="/images/9/90/%D0%9F%D0%B8%D0%BB%D0%B0-%D0%BD%D0%BE%D0%B6%D0%BE%D0%B2%D0%BA%D0%B0.gif" width="62" height="91" /></a><br />  
+</p>
+</td>
+<td> 1 час
+</td></tr>
+<tr>
+<td> 150
+</td>
+<td> <b>Сандал огненный</b><br /> <a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:%D0%A1%D0%B0%D0%BD%D0%B4%D0%B0%D0%BB_%D0%BE%D0%B3%D0%BD%D0%B5%D0%BD%D1%8B%D0%B9.gif" class="image"><img alt="Сандал огненый.gif" src="/images/c/c9/%D0%A1%D0%B0%D0%BD%D0%B4%D0%B0%D0%BB_%D0%BE%D0%B3%D0%BD%D0%B5%D0%BD%D1%8B%D0%B9.gif" width="60" height="60" /></a>
+</td>
+<td> <b>Заготовка из сандала (220.00)</b><br /> <a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:%D0%97%D0%B0%D0%B3%D0%BE%D1%82%D0%BE%D0%B2%D0%BA%D0%B0_%D0%B8%D0%B7_%D1%81%D0%B0%D0%BD%D0%B4%D0%B0%D0%BB%D0%B0.gif" class="image"><img alt="Заготовка из сандала.gif" src="/images/9/90/%D0%97%D0%B0%D0%B3%D0%BE%D1%82%D0%BE%D0%B2%D0%BA%D0%B0_%D0%B8%D0%B7_%D1%81%D0%B0%D0%BD%D0%B4%D0%B0%D0%BB%D0%B0.gif" width="60" height="60" /></a>
+</td>
+<td> <br /> <b>Пила подмастерья</b><br /> <a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:%D0%9F%D0%B8%D0%BB%D0%B0_%D0%BF%D0%BE%D0%B4%D0%BC%D0%B0%D1%81%D1%82%D0%B5%D1%80%D1%8C%D1%8F.gif" class="image"><img alt="Пила подмастерья.gif" src="/images/3/3f/%D0%9F%D0%B8%D0%BB%D0%B0_%D0%BF%D0%BE%D0%B4%D0%BC%D0%B0%D1%81%D1%82%D0%B5%D1%80%D1%8C%D1%8F.gif" width="62" height="91" /></a><br />
+</td>
+<td> 3 часа
+</td></tr>
+<tr>
+<td> 150
+</td>
+<td> <b>Сассафрас совиный</b><br /> <a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:%D0%A1%D0%B0%D1%81%D1%81%D0%B0%D1%84%D1%80%D0%B0%D1%81_%D1%81%D0%BE%D0%B2%D0%B8%D0%BD%D1%8B%D0%B9.png" class="image"><img alt="Сассафрас совиный.png" src="/images/6/6f/%D0%A1%D0%B0%D1%81%D1%81%D0%B0%D1%84%D1%80%D0%B0%D1%81_%D1%81%D0%BE%D0%B2%D0%B8%D0%BD%D1%8B%D0%B9.png" width="60" height="60" /></a>
+</td>
+<td> <b>Заготовка из</b><br /> <b>сассафраса (100.00)</b><br /> <a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:%D0%97%D0%B0%D0%B3%D0%BE%D1%82%D0%BE%D0%B2%D0%BA%D0%B0_%D0%B8%D0%B7_%D1%81%D0%B0%D1%81%D1%81%D0%B0%D1%84%D1%80%D0%B0%D1%81%D0%B0.gif" class="image"><img alt="Заготовка из сассафраса.gif" src="/images/1/11/%D0%97%D0%B0%D0%B3%D0%BE%D1%82%D0%BE%D0%B2%D0%BA%D0%B0_%D0%B8%D0%B7_%D1%81%D0%B0%D1%81%D1%81%D0%B0%D1%84%D1%80%D0%B0%D1%81%D0%B0.gif" width="60" height="60" /></a>
+</td>
+<td> <br /> <b>Пила ученика</b><br /> <a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:%D0%9F%D0%B8%D0%BB%D0%B0_%D1%83%D1%87%D0%B5%D0%BD%D0%B8%D0%BA%D0%B0.gif" class="image"><img alt="Пила ученика.gif" src="/images/6/6a/%D0%9F%D0%B8%D0%BB%D0%B0_%D1%83%D1%87%D0%B5%D0%BD%D0%B8%D0%BA%D0%B0.gif" width="62" height="91" /></a><br />
+</td>
+<td> 3 часа
+</td></tr>
+<tr>
+<td> 150
+</td>
+<td> <b>Мангровое дерево</b><br /> <a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:%D0%9C%D0%B0%D0%BD%D0%B3%D1%80%D0%BE%D0%B2%D0%BE%D0%B5-%D0%B4%D0%B5%D1%80%D0%B5%D0%B2%D0%BE.png" class="image"><img alt="Мангровое-дерево.png" src="/images/a/a1/%D0%9C%D0%B0%D0%BD%D0%B3%D1%80%D0%BE%D0%B2%D0%BE%D0%B5-%D0%B4%D0%B5%D1%80%D0%B5%D0%B2%D0%BE.png" width="60" height="60" /></a>
+</td>
+<td> <b>Заготовка из</b><br /> <b>мангрового дерева (185.00)</b><br /> <a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:%D0%97%D0%B0%D0%B3%D0%BE%D1%82%D0%BE%D0%B2%D0%BA%D0%B0_%D0%B8%D0%B7_%D0%BC%D0%B0%D0%BD%D0%B3%D1%80%D0%BE%D0%B2%D0%BE%D0%B3%D0%BE_%D0%B4%D0%B5%D1%80%D0%B5%D0%B2%D0%B0.gif" class="image"><img alt="Заготовка из мангрового дерева.gif" src="/images/5/51/%D0%97%D0%B0%D0%B3%D0%BE%D1%82%D0%BE%D0%B2%D0%BA%D0%B0_%D0%B8%D0%B7_%D0%BC%D0%B0%D0%BD%D0%B3%D1%80%D0%BE%D0%B2%D0%BE%D0%B3%D0%BE_%D0%B4%D0%B5%D1%80%D0%B5%D0%B2%D0%B0.gif" width="60" height="60" /></a>
+</td>
+<td> <br /> <b>Пила ученика</b><br /> <a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:%D0%9F%D0%B8%D0%BB%D0%B0_%D1%83%D1%87%D0%B5%D0%BD%D0%B8%D0%BA%D0%B0.gif" class="image"><img alt="Пила ученика.gif" src="/images/6/6a/%D0%9F%D0%B8%D0%BB%D0%B0_%D1%83%D1%87%D0%B5%D0%BD%D0%B8%D0%BA%D0%B0.gif" width="62" height="91" /></a><br />
+</td>
+<td> 3 часа
+</td></tr>
+<tr>
+<td> 160
+</td>
+<td> <b>Дуб</b><br /> <a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:%D0%94%D1%83%D0%B1.png" class="image"><img alt="Дуб.png" src="/images/6/67/%D0%94%D1%83%D0%B1.png" width="60" height="60" /></a>
+</td>
+<td> <b>Заготовка из дуба (30.00)</b><br /> <a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:%D0%97%D0%B0%D0%B3%D0%BE%D1%82%D0%BE%D0%B2%D0%BA%D0%B0_%D0%B8%D0%B7_%D0%B4%D1%83%D0%B1%D0%B0.gif" class="image"><img alt="Заготовка из дуба.gif" src="/images/d/db/%D0%97%D0%B0%D0%B3%D0%BE%D1%82%D0%BE%D0%B2%D0%BA%D0%B0_%D0%B8%D0%B7_%D0%B4%D1%83%D0%B1%D0%B0.gif" width="60" height="60" /></a>
+</td>
+<td> <br /> <b>Пила подмастерья</b><br /> <a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:%D0%9F%D0%B8%D0%BB%D0%B0_%D0%BF%D0%BE%D0%B4%D0%BC%D0%B0%D1%81%D1%82%D0%B5%D1%80%D1%8C%D1%8F.gif" class="image"><img alt="Пила подмастерья.gif" src="/images/3/3f/%D0%9F%D0%B8%D0%BB%D0%B0_%D0%BF%D0%BE%D0%B4%D0%BC%D0%B0%D1%81%D1%82%D0%B5%D1%80%D1%8C%D1%8F.gif" width="62" height="91" /></a><br />
+</td>
+<td> 1 час
+</td></tr>
+<tr>
+<td> 200
+</td>
+<td> <b>Платан остролистый</b><br /> <a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:%D0%9F%D0%BB%D0%B0%D1%82%D0%B0%D0%BD-%D0%BE%D1%81%D1%82%D1%80%D0%BE%D0%BB%D0%B8%D1%81%D1%82%D1%8B%D0%B9.png" class="image"><img alt="Платан-остролистый.png" src="/images/6/6a/%D0%9F%D0%BB%D0%B0%D1%82%D0%B0%D0%BD-%D0%BE%D1%81%D1%82%D1%80%D0%BE%D0%BB%D0%B8%D1%81%D1%82%D1%8B%D0%B9.png" width="60" height="60" /></a>
+</td>
+<td> <b>1) Заготовка из платана (20.00)</b><br /> <a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:%D0%97%D0%B0%D0%B3%D0%BE%D1%82%D0%BE%D0%B2%D0%BA%D0%B0_%D0%B8%D0%B7_%D0%BF%D0%BB%D0%B0%D1%82%D0%B0%D0%BD%D0%B0.gif" class="image"><img alt="Заготовка из платана.gif" src="/images/c/cb/%D0%97%D0%B0%D0%B3%D0%BE%D1%82%D0%BE%D0%B2%D0%BA%D0%B0_%D0%B8%D0%B7_%D0%BF%D0%BB%D0%B0%D1%82%D0%B0%D0%BD%D0%B0.gif" width="60" height="60" /></a><br /> <br />
+<p><b>2) Дрова из платана (20.00)</b><br /> <a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:Drova_iz_platana.gif" class="image"><img alt="Drova iz platana.gif" src="/images/e/e7/Drova_iz_platana.gif" width="60" height="60" /></a>
+</p>
+</td>
+<td> <br /> <b>1) Пила подмастерья</b><br /> <a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:%D0%9F%D0%B8%D0%BB%D0%B0_%D0%BF%D0%BE%D0%B4%D0%BC%D0%B0%D1%81%D1%82%D0%B5%D1%80%D1%8C%D1%8F.gif" class="image"><img alt="Пила подмастерья.gif" src="/images/3/3f/%D0%9F%D0%B8%D0%BB%D0%B0_%D0%BF%D0%BE%D0%B4%D0%BC%D0%B0%D1%81%D1%82%D0%B5%D1%80%D1%8C%D1%8F.gif" width="62" height="91" /></a><br />
+<p><b>2) Пила-ножовка</b><br /> <a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:%D0%9F%D0%B8%D0%BB%D0%B0-%D0%BD%D0%BE%D0%B6%D0%BE%D0%B2%D0%BA%D0%B0.gif" class="image"><img alt="Пила-ножовка.gif" src="/images/9/90/%D0%9F%D0%B8%D0%BB%D0%B0-%D0%BD%D0%BE%D0%B6%D0%BE%D0%B2%D0%BA%D0%B0.gif" width="62" height="91" /></a><br /> 
+</p>
+</td>
+<td> 30 минут
+</td></tr>
+<tr>
+<td> 200
+</td>
+<td> <b>Серебристый тополь</b><br /> <a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:%D0%A1%D0%B5%D1%80%D0%B5%D0%B1%D1%80%D0%B8%D1%81%D1%82%D1%8B%D0%B9-%D1%82%D0%BE%D0%BF%D0%BE%D0%BB%D1%8C.png" class="image"><img alt="Серебристый-тополь.png" src="/images/d/d9/%D0%A1%D0%B5%D1%80%D0%B5%D0%B1%D1%80%D0%B8%D1%81%D1%82%D1%8B%D0%B9-%D1%82%D0%BE%D0%BF%D0%BE%D0%BB%D1%8C.png" width="60" height="60" /></a>
+</td>
+<td> <b>Заготовка из</b><br /> <b>серебристого тополя (150.00)</b><br /> <a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:%D0%97%D0%B0%D0%B3%D0%BE%D1%82%D0%BE%D0%B2%D0%BA%D0%B0_%D0%B8%D0%B7_%D1%81%D0%B5%D1%80%D0%B5%D0%B1%D1%80%D0%B8%D1%81%D1%82%D0%BE%D0%B3%D0%BE_%D1%82%D0%BE%D0%BF%D0%BE%D0%BB%D1%8F.gif" class="image"><img alt="Заготовка из серебристого тополя.gif" src="/images/d/d6/%D0%97%D0%B0%D0%B3%D0%BE%D1%82%D0%BE%D0%B2%D0%BA%D0%B0_%D0%B8%D0%B7_%D1%81%D0%B5%D1%80%D0%B5%D0%B1%D1%80%D0%B8%D1%81%D1%82%D0%BE%D0%B3%D0%BE_%D1%82%D0%BE%D0%BF%D0%BE%D0%BB%D1%8F.gif" width="60" height="60" /></a>
+</td>
+<td> <br /> <b>Пила подмастерья</b><br /> <a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:%D0%9F%D0%B8%D0%BB%D0%B0_%D0%BF%D0%BE%D0%B4%D0%BC%D0%B0%D1%81%D1%82%D0%B5%D1%80%D1%8C%D1%8F.gif" class="image"><img alt="Пила подмастерья.gif" src="/images/3/3f/%D0%9F%D0%B8%D0%BB%D0%B0_%D0%BF%D0%BE%D0%B4%D0%BC%D0%B0%D1%81%D1%82%D0%B5%D1%80%D1%8C%D1%8F.gif" width="62" height="91" /></a><br />
+</td>
+<td> 3 часа
+</td></tr>
+<tr>
+<td> 200
+</td>
+<td> <b>Хурма</b><br /> <a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:%D0%A5%D1%83%D1%80%D0%BC%D0%B0.png" class="image"><img alt="Хурма.png" src="/images/5/58/%D0%A5%D1%83%D1%80%D0%BC%D0%B0.png" width="60" height="60" /></a>
+</td>
+<td> <b>Заготовка из хурмы (200.00)</b><br /> <a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:%D0%97%D0%B0%D0%B3%D0%BE%D1%82%D0%BE%D0%B2%D0%BA%D0%B0_%D0%B8%D0%B7_%D1%85%D1%83%D1%80%D0%BC%D1%8B.gif" class="image"><img alt="Заготовка из хурмы.gif" src="/images/b/b5/%D0%97%D0%B0%D0%B3%D0%BE%D1%82%D0%BE%D0%B2%D0%BA%D0%B0_%D0%B8%D0%B7_%D1%85%D1%83%D1%80%D0%BC%D1%8B.gif" width="60" height="60" /></a>
+</td>
+<td> <br /> <b>Пила подмастерья</b><br /> <a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:%D0%9F%D0%B8%D0%BB%D0%B0_%D0%BF%D0%BE%D0%B4%D0%BC%D0%B0%D1%81%D1%82%D0%B5%D1%80%D1%8C%D1%8F.gif" class="image"><img alt="Пила подмастерья.gif" src="/images/3/3f/%D0%9F%D0%B8%D0%BB%D0%B0_%D0%BF%D0%BE%D0%B4%D0%BC%D0%B0%D1%81%D1%82%D0%B5%D1%80%D1%8C%D1%8F.gif" width="62" height="91" /></a><br />
+</td>
+<td> 3 часа
+</td></tr>
+<tr>
+<td> 200
+</td>
+<td> <b>Чёрный кедр</b><br /> <a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:%D0%A7%D1%91%D1%80%D0%BD%D1%8B%D0%B9_%D0%BA%D0%B5%D0%B4%D1%80.gif" class="image"><img alt="Чёрный кедр.gif" src="/images/9/94/%D0%A7%D1%91%D1%80%D0%BD%D1%8B%D0%B9_%D0%BA%D0%B5%D0%B4%D1%80.gif" width="60" height="60" /></a>
+</td>
+<td> <b>Заготовка из</b><br /> <b>чёрного кедра (160.00)</b><br /> <a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:%D0%97%D0%B0%D0%B3%D0%BE%D1%82%D0%BE%D0%B2%D0%BA%D0%B0_%D0%B8%D0%B7_%D1%87%D1%91%D1%80%D0%BD%D0%BE%D0%B3%D0%BE_%D0%BA%D0%B5%D0%B4%D1%80%D0%B0.gif" class="image"><img alt="Заготовка из чёрного кедра.gif" src="/images/e/e2/%D0%97%D0%B0%D0%B3%D0%BE%D1%82%D0%BE%D0%B2%D0%BA%D0%B0_%D0%B8%D0%B7_%D1%87%D1%91%D1%80%D0%BD%D0%BE%D0%B3%D0%BE_%D0%BA%D0%B5%D0%B4%D1%80%D0%B0.gif" width="60" height="60" /></a>
+</td>
+<td> <br /> <b>Пила подмастерья</b><br /> <a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:%D0%9F%D0%B8%D0%BB%D0%B0_%D0%BF%D0%BE%D0%B4%D0%BC%D0%B0%D1%81%D1%82%D0%B5%D1%80%D1%8C%D1%8F.gif" class="image"><img alt="Пила подмастерья.gif" src="/images/3/3f/%D0%9F%D0%B8%D0%BB%D0%B0_%D0%BF%D0%BE%D0%B4%D0%BC%D0%B0%D1%81%D1%82%D0%B5%D1%80%D1%8C%D1%8F.gif" width="62" height="91" /></a><br />
+</td>
+<td> 3 часа
+</td></tr>
+<tr>
+<td> 230
+</td>
+<td> <b>Падуб</b><br /> <a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:%D0%9F%D0%B0%D0%B4%D1%83%D0%B1.gif" class="image"><img alt="Падуб.gif" src="/images/8/8c/%D0%9F%D0%B0%D0%B4%D1%83%D0%B1.gif" width="60" height="60" /></a>
+</td>
+<td> <b>1) Заготовка из падуба (22.00)</b><br /> <a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:%D0%97%D0%B0%D0%B3%D0%BE%D1%82%D0%BE%D0%B2%D0%BA%D0%B0_%D0%B8%D0%B7_%D0%BF%D0%B0%D0%B4%D1%83%D0%B1%D0%B0.gif" class="image"><img alt="Заготовка из падуба.gif" src="/images/5/50/%D0%97%D0%B0%D0%B3%D0%BE%D1%82%D0%BE%D0%B2%D0%BA%D0%B0_%D0%B8%D0%B7_%D0%BF%D0%B0%D0%B4%D1%83%D0%B1%D0%B0.gif" width="60" height="60" /></a><br /> <br />
+<p><b>2) Дрова из падуба (22.00)</b><br /> <a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:%D0%94%D1%80%D0%BE%D0%B2%D0%B0_%D0%B8%D0%B7_%D0%BF%D0%B0%D0%B4%D1%83%D0%B1%D0%B0.gif" class="image"><img alt="Дрова из падуба.gif" src="/images/6/6b/%D0%94%D1%80%D0%BE%D0%B2%D0%B0_%D0%B8%D0%B7_%D0%BF%D0%B0%D0%B4%D1%83%D0%B1%D0%B0.gif" width="60" height="60" /></a>
+</p>
+</td>
+<td> <br /> <b>1) Пила подмастерья</b><br /> <a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:%D0%9F%D0%B8%D0%BB%D0%B0_%D0%BF%D0%BE%D0%B4%D0%BC%D0%B0%D1%81%D1%82%D0%B5%D1%80%D1%8C%D1%8F.gif" class="image"><img alt="Пила подмастерья.gif" src="/images/3/3f/%D0%9F%D0%B8%D0%BB%D0%B0_%D0%BF%D0%BE%D0%B4%D0%BC%D0%B0%D1%81%D1%82%D0%B5%D1%80%D1%8C%D1%8F.gif" width="62" height="91" /></a><br />
+<p><b>2) Пила-ножовка</b><br /> <a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:%D0%9F%D0%B8%D0%BB%D0%B0-%D0%BD%D0%BE%D0%B6%D0%BE%D0%B2%D0%BA%D0%B0.gif" class="image"><img alt="Пила-ножовка.gif" src="/images/9/90/%D0%9F%D0%B8%D0%BB%D0%B0-%D0%BD%D0%BE%D0%B6%D0%BE%D0%B2%D0%BA%D0%B0.gif" width="62" height="91" /></a><br /> 
+</p>
+</td>
+<td> 30 минут
+</td></tr>
+<tr>
+<td> 250
+</td>
+<td> <b>Тайпал</b><br /> <a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:%D0%A2%D0%B0%D0%B9%D0%BF%D0%B0%D0%BB.gif" class="image"><img alt="Тайпал.gif" src="/images/2/2e/%D0%A2%D0%B0%D0%B9%D0%BF%D0%B0%D0%BB.gif" width="60" height="60" /></a>
+</td>
+<td> <b>Заготовка из тайпала (170.00)</b><br /> <a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:%D0%97%D0%B0%D0%B3%D0%BE%D1%82%D0%BE%D0%B2%D0%BA%D0%B0_%D0%B8%D0%B7_%D1%82%D0%B0%D0%B9%D0%BF%D0%B0%D0%BB%D0%B0.gif" class="image"><img alt="Заготовка из тайпала.gif" src="/images/4/44/%D0%97%D0%B0%D0%B3%D0%BE%D1%82%D0%BE%D0%B2%D0%BA%D0%B0_%D0%B8%D0%B7_%D1%82%D0%B0%D0%B9%D0%BF%D0%B0%D0%BB%D0%B0.gif" width="60" height="60" /></a>
+</td>
+<td>  <br /> <b>Пила подмастерья</b><br /> <a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:%D0%9F%D0%B8%D0%BB%D0%B0_%D0%BF%D0%BE%D0%B4%D0%BC%D0%B0%D1%81%D1%82%D0%B5%D1%80%D1%8C%D1%8F.gif" class="image"><img alt="Пила подмастерья.gif" src="/images/3/3f/%D0%9F%D0%B8%D0%BB%D0%B0_%D0%BF%D0%BE%D0%B4%D0%BC%D0%B0%D1%81%D1%82%D0%B5%D1%80%D1%8C%D1%8F.gif" width="62" height="91" /></a><br />
+</td>
+<td> 3 часа
+</td></tr>
+<tr>
+<td> 270
+</td>
+<td>  <b>Тигровое дерево</b><br /> <a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:%D0%A2%D0%B8%D0%B3%D1%80%D0%BE%D0%B2%D0%BE%D0%B5_%D0%B4%D0%B5%D1%80%D0%B5%D0%B2%D0%BE.gif" class="image"><img alt="Тигровое дерево.gif" src="/images/a/a5/%D0%A2%D0%B8%D0%B3%D1%80%D0%BE%D0%B2%D0%BE%D0%B5_%D0%B4%D0%B5%D1%80%D0%B5%D0%B2%D0%BE.gif" width="60" height="60" /></a>
+</td>
+<td>  <b>Заготовка из</b><br /> <b>тигрового дерева (22.00)</b><br /> <a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:%D0%97%D0%B0%D0%B3%D0%BE%D1%82%D0%BE%D0%B2%D0%BA%D0%B0_%D0%B8%D0%B7_%D1%82%D0%B8%D0%B3%D1%80%D0%BE%D0%B2%D0%BE%D0%B3%D0%BE_%D0%B4%D0%B5%D1%80%D0%B5%D0%B2%D0%B0.gif" class="image"><img alt="Заготовка из тигрового дерева.gif" src="/images/2/2e/%D0%97%D0%B0%D0%B3%D0%BE%D1%82%D0%BE%D0%B2%D0%BA%D0%B0_%D0%B8%D0%B7_%D1%82%D0%B8%D0%B3%D1%80%D0%BE%D0%B2%D0%BE%D0%B3%D0%BE_%D0%B4%D0%B5%D1%80%D0%B5%D0%B2%D0%B0.gif" width="60" height="60" /></a>
+</td>
+<td>  <br /> <b>Пила подмастерья</b><br /> <a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:%D0%9F%D0%B8%D0%BB%D0%B0_%D0%BF%D0%BE%D0%B4%D0%BC%D0%B0%D1%81%D1%82%D0%B5%D1%80%D1%8C%D1%8F.gif" class="image"><img alt="Пила подмастерья.gif" src="/images/3/3f/%D0%9F%D0%B8%D0%BB%D0%B0_%D0%BF%D0%BE%D0%B4%D0%BC%D0%B0%D1%81%D1%82%D0%B5%D1%80%D1%8C%D1%8F.gif" width="62" height="91" /></a><br />
+</td>
+<td> 30 минут
+</td></tr>
+<tr>
+<td> 350
+</td>
+<td> <b>Камфорное дерево</b><br /> <a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:%D0%9A%D0%B0%D0%BC%D1%84%D0%BE%D1%80%D0%BD%D0%BE%D0%B5_%D0%B4%D0%B5%D1%80%D0%B5%D0%B2%D0%BE.gif" class="image"><img alt="Камфорное дерево.gif" src="/images/a/aa/%D0%9A%D0%B0%D0%BC%D1%84%D0%BE%D1%80%D0%BD%D0%BE%D0%B5_%D0%B4%D0%B5%D1%80%D0%B5%D0%B2%D0%BE.gif" width="60" height="60" /></a>
+</td>
+<td>  <b>Заготовка из</b><br /> <b>камфорного дерева (30.00)</b><br /> <a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:%D0%97%D0%B0%D0%B3%D0%BE%D1%82%D0%BE%D0%B2%D0%BA%D0%B0_%D0%B8%D0%B7_%D0%BA%D0%B0%D0%BC%D1%84%D0%BE%D1%80%D0%BD%D0%BE%D0%B3%D0%BE_%D0%B4%D0%B5%D1%80%D0%B5%D0%B2%D0%B0.gif" class="image"><img alt="Заготовка из камфорного дерева.gif" src="/images/2/28/%D0%97%D0%B0%D0%B3%D0%BE%D1%82%D0%BE%D0%B2%D0%BA%D0%B0_%D0%B8%D0%B7_%D0%BA%D0%B0%D0%BC%D1%84%D0%BE%D1%80%D0%BD%D0%BE%D0%B3%D0%BE_%D0%B4%D0%B5%D1%80%D0%B5%D0%B2%D0%B0.gif" width="60" height="60" /></a>
+</td>
+<td> <br /> <b>Столярная пила</b><br /> <a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:%D0%A1%D1%82%D0%BE%D0%BB%D1%8F%D1%80%D0%BD%D0%B0%D1%8F_%D0%BF%D0%B8%D0%BB%D0%B0.gif" class="image"><img alt="Столярная пила.gif" src="/images/1/14/%D0%A1%D1%82%D0%BE%D0%BB%D1%8F%D1%80%D0%BD%D0%B0%D1%8F_%D0%BF%D0%B8%D0%BB%D0%B0.gif" width="62" height="91" /></a><br />
+</td>
+<td> 30 минут
+</td></tr>
+<tr>
+<td> 400
+</td>
+<td> <b>Амирис</b><br /> <a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:%D0%90%D0%BC%D0%B8%D1%80%D0%B8%D1%81.gif" class="image"><img alt="Амирис.gif" src="/images/3/32/%D0%90%D0%BC%D0%B8%D1%80%D0%B8%D1%81.gif" width="60" height="60" /></a>
+</td>
+<td>  <b>Заготовка из амириса (35.00)</b><br /> <a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:%D0%97%D0%B0%D0%B3%D0%BE%D1%82%D0%BE%D0%B2%D0%BA%D0%B0_%D0%B8%D0%B7_%D0%B0%D0%BC%D0%B8%D1%80%D0%B8%D1%81%D0%B0.gif" class="image"><img alt="Заготовка из амириса.gif" src="/images/5/5f/%D0%97%D0%B0%D0%B3%D0%BE%D1%82%D0%BE%D0%B2%D0%BA%D0%B0_%D0%B8%D0%B7_%D0%B0%D0%BC%D0%B8%D1%80%D0%B8%D1%81%D0%B0.gif" width="60" height="60" /></a>
+</td>
+<td>  <br /> <b>Столярная пила</b><br /> <a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:%D0%A1%D1%82%D0%BE%D0%BB%D1%8F%D1%80%D0%BD%D0%B0%D1%8F_%D0%BF%D0%B8%D0%BB%D0%B0.gif" class="image"><img alt="Столярная пила.gif" src="/images/1/14/%D0%A1%D1%82%D0%BE%D0%BB%D1%8F%D1%80%D0%BD%D0%B0%D1%8F_%D0%BF%D0%B8%D0%BB%D0%B0.gif" width="62" height="91" /></a><br />
+</td>
+<td> 30 минут
+</td></tr>
+<tr>
+<td> 500
+</td>
+<td> <b>Секвойя</b><br /> <a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:%D0%A1%D0%B5%D0%BA%D0%B2%D0%BE%D0%B9%D1%8F.gif" class="image"><img alt="Секвойя.gif" src="/images/b/b4/%D0%A1%D0%B5%D0%BA%D0%B2%D0%BE%D0%B9%D1%8F.gif" width="60" height="60" /></a>
+</td>
+<td> <br /> <b>Заготовка из секвойи (40.00)</b><br /> <a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:%D0%97%D0%B0%D0%B3%D0%BE%D1%82%D0%BE%D0%B2%D0%BA%D0%B0_%D0%B8%D0%B7_%D1%81%D0%B5%D0%BA%D0%B2%D0%BE%D0%B9%D0%B8.gif" class="image"><img alt="Заготовка из секвойи.gif" src="/images/0/08/%D0%97%D0%B0%D0%B3%D0%BE%D1%82%D0%BE%D0%B2%D0%BA%D0%B0_%D0%B8%D0%B7_%D1%81%D0%B5%D0%BA%D0%B2%D0%BE%D0%B9%D0%B8.gif" width="60" height="60" /></a><br />
+</td>
+<td> <br /> <b>Столярная пила</b><br /> <a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:%D0%A1%D1%82%D0%BE%D0%BB%D1%8F%D1%80%D0%BD%D0%B0%D1%8F_%D0%BF%D0%B8%D0%BB%D0%B0.gif" class="image"><img alt="Столярная пила.gif" src="/images/1/14/%D0%A1%D1%82%D0%BE%D0%BB%D1%8F%D1%80%D0%BD%D0%B0%D1%8F_%D0%BF%D0%B8%D0%BB%D0%B0.gif" width="62" height="91" /></a><br />
+</td>
+<td> 40 минут
+</td></tr>
+<tr>
+<td> 500
+</td>
+<td> <b>Красное дерево</b><br /> <a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:%D0%9A%D1%80%D0%B0%D1%81%D0%BD%D0%BE%D0%B5_%D0%B4%D0%B5%D1%80%D0%B5%D0%B2%D0%BE.gif" class="image"><img alt="Красное дерево.gif" src="/images/f/ff/%D0%9A%D1%80%D0%B0%D1%81%D0%BD%D0%BE%D0%B5_%D0%B4%D0%B5%D1%80%D0%B5%D0%B2%D0%BE.gif" width="60" height="60" /></a>
+</td>
+<td> <br /> <b>Заготовка из</b><br /> <b>красного дерева (250.00)</b><br /> <a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:%D0%97%D0%B0%D0%B3%D0%BE%D1%82%D0%BE%D0%B2%D0%BA%D0%B0_%D0%B8%D0%B7_%D0%BA%D1%80%D0%B0%D1%81%D0%BD%D0%BE%D0%B3%D0%BE_%D0%B4%D0%B5%D1%80%D0%B5%D0%B2%D0%B0.gif" class="image"><img alt="Заготовка из красного дерева.gif" src="/images/4/44/%D0%97%D0%B0%D0%B3%D0%BE%D1%82%D0%BE%D0%B2%D0%BA%D0%B0_%D0%B8%D0%B7_%D0%BA%D1%80%D0%B0%D1%81%D0%BD%D0%BE%D0%B3%D0%BE_%D0%B4%D0%B5%D1%80%D0%B5%D0%B2%D0%B0.gif" width="60" height="60" /></a><br />
+</td>
+<td> <br /> <b>Столярная пила</b><br /> <a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:%D0%A1%D1%82%D0%BE%D0%BB%D1%8F%D1%80%D0%BD%D0%B0%D1%8F_%D0%BF%D0%B8%D0%BB%D0%B0.gif" class="image"><img alt="Столярная пила.gif" src="/images/1/14/%D0%A1%D1%82%D0%BE%D0%BB%D1%8F%D1%80%D0%BD%D0%B0%D1%8F_%D0%BF%D0%B8%D0%BB%D0%B0.gif" width="62" height="91" /></a><br />
+</td>
+<td> 3 часа
+</td></tr>
+<tr>
+<td> 550
+</td>
+<td> <b>Ююба</b><br /> <a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:%D0%AE%D1%8E%D0%B1%D0%B0.gif" class="image"><img alt="Ююба.gif" src="/images/6/62/%D0%AE%D1%8E%D0%B1%D0%B0.gif" width="60" height="60" /></a>
+</td>
+<td> <br /> <b>Заготовка из ююбы (44.00)</b><br /> <a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:%D0%97%D0%B0%D0%B3%D0%BE%D1%82%D0%BE%D0%B2%D0%BA%D0%B0_%D0%B8%D0%B7_%D1%8E%D1%8E%D0%B1%D1%8B.gif" class="image"><img alt="Заготовка из ююбы.gif" src="/images/7/7f/%D0%97%D0%B0%D0%B3%D0%BE%D1%82%D0%BE%D0%B2%D0%BA%D0%B0_%D0%B8%D0%B7_%D1%8E%D1%8E%D0%B1%D1%8B.gif" width="60" height="60" /></a><br />
+</td>
+<td> <br /> <b>Столярная пила</b><br /> <a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:%D0%A1%D1%82%D0%BE%D0%BB%D1%8F%D1%80%D0%BD%D0%B0%D1%8F_%D0%BF%D0%B8%D0%BB%D0%B0.gif" class="image"><img alt="Столярная пила.gif" src="/images/1/14/%D0%A1%D1%82%D0%BE%D0%BB%D1%8F%D1%80%D0%BD%D0%B0%D1%8F_%D0%BF%D0%B8%D0%BB%D0%B0.gif" width="62" height="91" /></a><br />
+</td>
+<td> 40 минут
+</td></tr>
+<tr>
+<td> 900&#160;?
+</td>
+<td> <b>Гикори</b><br /> <a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:%D0%93%D0%B8%D0%BA%D0%BE%D1%80%D0%B8.gif" class="image"><img alt="Гикори.gif" src="/images/e/e8/%D0%93%D0%B8%D0%BA%D0%BE%D1%80%D0%B8.gif" width="60" height="60" /></a>
+</td>
+<td> <br /> <b>Заготовка из гикори (70.00)</b><br /> <a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:%D0%97%D0%B0%D0%B3%D0%BE%D1%82%D0%BE%D0%B2%D0%BA%D0%B0_%D0%B8%D0%B7_%D0%B3%D0%B8%D0%BA%D0%BE%D1%80%D0%B8.gif" class="image"><img alt="Заготовка из гикори.gif" src="/images/9/97/%D0%97%D0%B0%D0%B3%D0%BE%D1%82%D0%BE%D0%B2%D0%BA%D0%B0_%D0%B8%D0%B7_%D0%B3%D0%B8%D0%BA%D0%BE%D1%80%D0%B8.gif" width="60" height="60" /></a><br />
+</td>
+<td> <br /> <b>Столярная пила</b><br /> <a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:%D0%A1%D1%82%D0%BE%D0%BB%D1%8F%D1%80%D0%BD%D0%B0%D1%8F_%D0%BF%D0%B8%D0%BB%D0%B0.gif" class="image"><img alt="Столярная пила.gif" src="/images/1/14/%D0%A1%D1%82%D0%BE%D0%BB%D1%8F%D1%80%D0%BD%D0%B0%D1%8F_%D0%BF%D0%B8%D0%BB%D0%B0.gif" width="62" height="91" /></a><br />
+</td>
+<td> 40 минут&#160;?
+</td></tr>
+<tr>
+<td> 700&#160;?
+</td>
+<td> <b>Драконовое дерево</b><br /> <a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:%D0%94%D1%80%D0%B0%D0%BA%D0%BE%D0%BD%D0%BE%D0%B2%D0%BE%D0%B5_%D0%B4%D0%B5%D1%80%D0%B5%D0%B2%D0%BE.gif" class="image"><img alt="Драконовое дерево.gif" src="/images/7/73/%D0%94%D1%80%D0%B0%D0%BA%D0%BE%D0%BD%D0%BE%D0%B2%D0%BE%D0%B5_%D0%B4%D0%B5%D1%80%D0%B5%D0%B2%D0%BE.gif" width="60" height="60" /></a>
+</td>
+<td> <br /> <b>Заготовка из</b><br /> <b>драконового дерева (50.00)</b><br /> <a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:%D0%97%D0%B0%D0%B3%D0%BE%D1%82%D0%BE%D0%B2%D0%BA%D0%B0_%D0%B8%D0%B7_%D0%B4%D1%80%D0%B0%D0%BA%D0%BE%D0%BD%D0%BE%D0%B2%D0%BE%D0%B3%D0%BE_%D0%B4%D0%B5%D1%80%D0%B5%D0%B2%D0%B0.gif" class="image"><img alt="Заготовка из драконового дерева.gif" src="/images/7/7c/%D0%97%D0%B0%D0%B3%D0%BE%D1%82%D0%BE%D0%B2%D0%BA%D0%B0_%D0%B8%D0%B7_%D0%B4%D1%80%D0%B0%D0%BA%D0%BE%D0%BD%D0%BE%D0%B2%D0%BE%D0%B3%D0%BE_%D0%B4%D0%B5%D1%80%D0%B5%D0%B2%D0%B0.gif" width="60" height="60" /></a><br />
+</td>
+<td> <br /> <b>Столярная пила</b><br /> <a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:%D0%A1%D1%82%D0%BE%D0%BB%D1%8F%D1%80%D0%BD%D0%B0%D1%8F_%D0%BF%D0%B8%D0%BB%D0%B0.gif" class="image"><img alt="Столярная пила.gif" src="/images/1/14/%D0%A1%D1%82%D0%BE%D0%BB%D1%8F%D1%80%D0%BD%D0%B0%D1%8F_%D0%BF%D0%B8%D0%BB%D0%B0.gif" width="62" height="91" /></a><br />
+</td>
+<td> 40 минут&#160;?
+</td></tr>
+<tr>
+<td> -
+</td>
+<td> <b>Казуриана</b><br /> <a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:%D0%9A%D0%B0%D0%B7%D1%83%D1%80%D0%B8%D0%B0%D0%BD%D0%B0.gif" class="image"><img alt="Казуриана.gif" src="/images/a/aa/%D0%9A%D0%B0%D0%B7%D1%83%D1%80%D0%B8%D0%B0%D0%BD%D0%B0.gif" width="60" height="60" /></a>
+</td>
+<td> <br /> <b>Заготовка из казурианы (60.00)</b><br /> <a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:%D0%97%D0%B0%D0%B3%D0%BE%D1%82%D0%BE%D0%B2%D0%BA%D0%B0_%D0%B8%D0%B7_%D0%BA%D0%B0%D0%B7%D1%83%D1%80%D0%B8%D0%B0%D0%BD%D1%8B.gif" class="image"><img alt="Заготовка из казурианы.gif" src="/images/2/20/%D0%97%D0%B0%D0%B3%D0%BE%D1%82%D0%BE%D0%B2%D0%BA%D0%B0_%D0%B8%D0%B7_%D0%BA%D0%B0%D0%B7%D1%83%D1%80%D0%B8%D0%B0%D0%BD%D1%8B.gif" width="60" height="60" /></a><br />
+</td>
+<td> <br /> -<br /><br />
+</td></tr>
+<tr>
+<td> -
+</td>
+<td> <b>Каламандровое дерево</b><br /> <a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:%D0%9A%D0%B0%D0%BB%D0%B0%D0%BC%D0%B0%D0%BD%D0%B4%D1%80%D0%BE%D0%B2%D0%BE%D0%B5_%D0%B4%D0%B5%D1%80%D0%B5%D0%B2%D0%BE.gif" class="image"><img alt="Каламандровое дерево.gif" src="/images/d/d3/%D0%9A%D0%B0%D0%BB%D0%B0%D0%BC%D0%B0%D0%BD%D0%B4%D1%80%D0%BE%D0%B2%D0%BE%D0%B5_%D0%B4%D0%B5%D1%80%D0%B5%D0%B2%D0%BE.gif" width="60" height="60" /></a>
+</td>
+<td> <br /> <b>Заготовка из</b><br /> <b>каламандрового дерева (110.00)</b><br /> <a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:%D0%97%D0%B0%D0%B3%D0%BE%D1%82%D0%BE%D0%B2%D0%BA%D0%B0_%D0%B8%D0%B7_%D0%BA%D0%B0%D0%BB%D0%B0%D0%BC%D0%B0%D0%BD%D0%B4%D1%80%D0%BE%D0%B2%D0%BE%D0%B3%D0%BE_%D0%B4%D0%B5%D1%80%D0%B5%D0%B2%D0%B0.gif" class="image"><img alt="Заготовка из каламандрового дерева.gif" src="/images/7/75/%D0%97%D0%B0%D0%B3%D0%BE%D1%82%D0%BE%D0%B2%D0%BA%D0%B0_%D0%B8%D0%B7_%D0%BA%D0%B0%D0%BB%D0%B0%D0%BC%D0%B0%D0%BD%D0%B4%D1%80%D0%BE%D0%B2%D0%BE%D0%B3%D0%BE_%D0%B4%D0%B5%D1%80%D0%B5%D0%B2%D0%B0.gif" width="60" height="60" /></a><br />
+</td>
+<td> <br /> -<br /><br />
+</td></tr>
+<tr>
+<td> -
+</td>
+<td> <b>Мамонтовое дерево</b><br /> <a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:%D0%9C%D0%B0%D0%BC%D0%BE%D0%BD%D1%82%D0%BE%D0%B2%D0%BE%D0%B5_%D0%B4%D0%B5%D1%80%D0%B5%D0%B2%D0%BE.gif" class="image"><img alt="Мамонтовое дерево.gif" src="/images/4/4f/%D0%9C%D0%B0%D0%BC%D0%BE%D0%BD%D1%82%D0%BE%D0%B2%D0%BE%D0%B5_%D0%B4%D0%B5%D1%80%D0%B5%D0%B2%D0%BE.gif" width="60" height="60" /></a>
+</td>
+<td> <br /> <b>Заготовка из</b><br /> <b>мамонтового дерева (1000.00)</b><br /> <a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:%D0%97%D0%B0%D0%B3%D0%BE%D1%82%D0%BE%D0%B2%D0%BA%D0%B0_%D0%B8%D0%B7_%D0%BC%D0%B0%D0%BC%D0%BE%D0%BD%D1%82%D0%BE%D0%B2%D0%BE%D0%B3%D0%BE_%D0%B4%D0%B5%D1%80%D0%B5%D0%B2%D0%B0.gif" class="image"><img alt="Заготовка из мамонтового дерева.gif" src="/images/c/c2/%D0%97%D0%B0%D0%B3%D0%BE%D1%82%D0%BE%D0%B2%D0%BA%D0%B0_%D0%B8%D0%B7_%D0%BC%D0%B0%D0%BC%D0%BE%D0%BD%D1%82%D0%BE%D0%B2%D0%BE%D0%B3%D0%BE_%D0%B4%D0%B5%D1%80%D0%B5%D0%B2%D0%B0.gif" width="60" height="60" /></a><br />
+</td>
+<td> <br /> -<br /><br />
+</td></tr>
+<tr>
+<td> -
+</td>
+<td> <b>Эбеновое дерево</b><br /> <a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:%D0%AD%D0%B1%D0%B5%D0%BD%D0%BE%D0%B2%D0%BE%D0%B5_%D0%B4%D0%B5%D1%80%D0%B5%D0%B2%D0%BE.gif" class="image"><img alt="Эбеновое дерево.gif" src="/images/f/f2/%D0%AD%D0%B1%D0%B5%D0%BD%D0%BE%D0%B2%D0%BE%D0%B5_%D0%B4%D0%B5%D1%80%D0%B5%D0%B2%D0%BE.gif" width="60" height="60" /></a>
+</td>
+<td> <br /> <b>Заготовка из</b><br /> <b>эбенового дерева (100.00)</b><br /> <a href="/wiki/%D0%A4%D0%B0%D0%B9%D0%BB:%D0%97%D0%B0%D0%B3%D0%BE%D1%82%D0%BE%D0%B2%D0%BA%D0%B0_%D0%B8%D0%B7_%D1%8D%D0%B1%D0%B5%D0%BD%D0%BE%D0%B2%D0%BE%D0%B3%D0%BE_%D0%B4%D0%B5%D1%80%D0%B5%D0%B2%D0%B0.gif" class="image"><img alt="Заготовка из эбенового дерева.gif" src="/images/e/e9/%D0%97%D0%B0%D0%B3%D0%BE%D1%82%D0%BE%D0%B2%D0%BA%D0%B0_%D0%B8%D0%B7_%D1%8D%D0%B1%D0%B5%D0%BD%D0%BE%D0%B2%D0%BE%D0%B3%D0%BE_%D0%B4%D0%B5%D1%80%D0%B5%D0%B2%D0%B0.gif" width="60" height="60" /></a><br />
+</td>
+<td> <br /> -<br /><br />
+<p><br />
+</p>
+</td></tr></table>
+
+<!-- 
+NewPP limit report
+Preprocessor node count: 525/1000000
+Post-expand include size: 2602/2097152 bytes
+Template argument size: 722/2097152 bytes
+Expensive parser function count: 0/100
+-->
+</div>				<!-- /bodycontent -->
+								<!-- printfooter -->
+				<div class="printfooter">
+				Источник — «<a href="http://wiki.neverlands.ru/index.php?title=%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%9F%D0%BB%D0%BE%D1%82%D0%BD%D0%B8%D0%BA%D0%B0&amp;oldid=21578">http://wiki.neverlands.ru/index.php?title=%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%9F%D0%BB%D0%BE%D1%82%D0%BD%D0%B8%D0%BA%D0%B0&amp;oldid=21578</a>»				</div>
+				<!-- /printfooter -->
+												<!-- catlinks -->
+				<div id='catlinks' class='catlinks'><div id="mw-normal-catlinks" class="mw-normal-catlinks"><a href="/wiki/%D0%A1%D0%BB%D1%83%D0%B6%D0%B5%D0%B1%D0%BD%D0%B0%D1%8F:Categories" title="Служебная:Categories">Категория</a>: <ul><li><a href="/wiki/%D0%9A%D0%B0%D1%82%D0%B5%D0%B3%D0%BE%D1%80%D0%B8%D1%8F:%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D1%8B_%D0%BF%D1%80%D0%BE%D1%84%D0%B5%D1%81%D1%81%D0%B8%D0%B9" title="Категория:Таблицы профессий">Таблицы профессий</a></li></ul></div></div>				<!-- /catlinks -->
+												<div class="visualClear"></div>
+				<!-- debughtml -->
+								<!-- /debughtml -->
+			</div>
+			<!-- /bodyContent -->
+		</div>
+		<!-- /content -->
+		<!-- header -->
+		<div id="mw-head" class="noprint">
+			
+<!-- 0 -->
+<div id="p-personal" class="">
+	<h5>Личные инструменты</h5>
+	<ul>
+		<li id="pt-login"><a href="/index.php?title=%D0%A1%D0%BB%D1%83%D0%B6%D0%B5%D0%B1%D0%BD%D0%B0%D1%8F:UserLogin&amp;returnto=%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0+%D0%9F%D0%BB%D0%BE%D1%82%D0%BD%D0%B8%D0%BA%D0%B0" title="Здесь можно зарегистрироваться в системе, но это необязательно. [o]" accesskey="o">Представиться / зарегистрироваться</a></li>
+	</ul>
+</div>
+
+<!-- /0 -->
+			<div id="left-navigation">
+				
+<!-- 0 -->
+<div id="p-namespaces" class="vectorTabs">
+	<h5>Пространства имён</h5>
+	<ul>
+					<li  id="ca-nstab-main" class="selected"><span><a href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%9F%D0%BB%D0%BE%D1%82%D0%BD%D0%B8%D0%BA%D0%B0"  title="Содержание статьи [c]" accesskey="c">Статья</a></span></li>
+					<li  id="ca-talk" class="new"><span><a href="/index.php?title=%D0%9E%D0%B1%D1%81%D1%83%D0%B6%D0%B4%D0%B5%D0%BD%D0%B8%D0%B5:%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%9F%D0%BB%D0%BE%D1%82%D0%BD%D0%B8%D0%BA%D0%B0&amp;action=edit&amp;redlink=1"  title="Обсуждение содержания страницы [t]" accesskey="t">Обсуждение</a></span></li>
+			</ul>
+</div>
+
+<!-- /0 -->
+
+<!-- 1 -->
+<div id="p-variants" class="vectorMenu emptyPortlet">
+	<h4>
+		</h4>
+	<h5><span>Варианты</span><a href="#"></a></h5>
+	<div class="menu">
+		<ul>
+					</ul>
+	</div>
+</div>
+
+<!-- /1 -->
+			</div>
+			<div id="right-navigation">
+				
+<!-- 0 -->
+<div id="p-views" class="vectorTabs">
+	<h5>Просмотры</h5>
+	<ul>
+					<li id="ca-view" class="selected"><span><a href="/wiki/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%9F%D0%BB%D0%BE%D1%82%D0%BD%D0%B8%D0%BA%D0%B0" >Чтение</a></span></li>
+					<li id="ca-viewsource"><span><a href="/index.php?title=%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%9F%D0%BB%D0%BE%D1%82%D0%BD%D0%B8%D0%BA%D0%B0&amp;action=edit"  title="Эта страница защищена от изменений, но вы можете посмотреть и скопировать её исходный текст [e]" accesskey="e">Просмотр</a></span></li>
+					<li id="ca-history" class="collapsible"><span><a href="/index.php?title=%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%9F%D0%BB%D0%BE%D1%82%D0%BD%D0%B8%D0%BA%D0%B0&amp;action=history"  title="Журнал изменений страницы [h]" accesskey="h">История</a></span></li>
+			</ul>
+</div>
+
+<!-- /0 -->
+
+<!-- 1 -->
+<div id="p-cactions" class="vectorMenu emptyPortlet">
+	<h5><span>Действия</span><a href="#"></a></h5>
+	<div class="menu">
+		<ul>
+					</ul>
+	</div>
+</div>
+
+<!-- /1 -->
+
+<!-- 2 -->
+<div id="p-search">
+	<h5><label for="searchInput">Поиск</label></h5>
+	<form action="/index.php" id="searchform">
+				<div id="simpleSearch">
+						<input name="search" title="Искать это слово [f]" accesskey="f" id="searchInput" />						<button name="button" title="Найти страницы, содержащие указанный текст" id="searchButton"><img src="/skins/vector/images/search-ltr.png?303" alt="Найти" /></button>								<input type='hidden' name="title" value="Служебная:Search"/>
+		</div>
+	</form>
+</div>
+
+<!-- /2 -->
+			</div>
+		</div>
+		<!-- /header -->
+		<!-- panel -->
+			<div id="mw-panel" class="noprint">
+				<!-- logo -->
+					<div id="p-logo"><a style="background-image: url(http://wiki.neverlands.ru/img/logo.png);" href="/wiki/%D0%97%D0%B0%D0%B3%D0%BB%D0%B0%D0%B2%D0%BD%D0%B0%D1%8F_%D1%81%D1%82%D1%80%D0%B0%D0%BD%D0%B8%D1%86%D0%B0"  title="Заглавная страница"></a></div>
+				<!-- /logo -->
+				
+<!-- navigation -->
+<div class="portal" id='p-navigation'>
+	<h5>Навигация</h5>
+	<div class="body">
+		<ul>
+			<li id="n-allpages"><a href="/wiki/%D0%A1%D0%BB%D1%83%D0%B6%D0%B5%D0%B1%D0%BD%D0%B0%D1%8F:AllPages">Все страницы</a></li>
+			<li id="n-newpages"><a href="/wiki/%D0%A1%D0%BB%D1%83%D0%B6%D0%B5%D0%B1%D0%BD%D0%B0%D1%8F:NewPages">Новые страницы</a></li>
+			<li id="n-popularpages"><a href="/wiki/%D0%A1%D0%BB%D1%83%D0%B6%D0%B5%D0%B1%D0%BD%D0%B0%D1%8F:PopularPages">Популярные страницы</a></li>
+			<li id="n-wantedpages"><a href="/wiki/%D0%A1%D0%BB%D1%83%D0%B6%D0%B5%D0%B1%D0%BD%D0%B0%D1%8F:WantedPages">Требуемые страницы</a></li>
+			<li id="n-categories"><a href="/wiki/%D0%A1%D0%BB%D1%83%D0%B6%D0%B5%D0%B1%D0%BD%D0%B0%D1%8F:Categories">Категории</a></li>
+			<li id="n-wantedcategories"><a href="/wiki/%D0%A1%D0%BB%D1%83%D0%B6%D0%B5%D0%B1%D0%BD%D0%B0%D1%8F:WantedCategories">Требуемые категории</a></li>
+			<li id="n-recentchanges"><a href="/wiki/%D0%A1%D0%BB%D1%83%D0%B6%D0%B5%D0%B1%D0%BD%D0%B0%D1%8F:RecentChanges" title="Список последних изменений [r]" accesskey="r">Свежие правки</a></li>
+			<li id="n-randompage"><a href="/wiki/%D0%A1%D0%BB%D1%83%D0%B6%D0%B5%D0%B1%D0%BD%D0%B0%D1%8F:Random" title="Посмотреть случайную страницу [x]" accesskey="x">Случайная статья</a></li>
+		</ul>
+	</div>
+</div>
+
+<!-- /navigation -->
+
+<!-- SEARCH -->
+
+<!-- /SEARCH -->
+
+<!-- TOOLBOX -->
+<div class="portal" id='p-tb'>
+	<h5>Инструменты</h5>
+	<div class="body">
+		<ul>
+			<li id="t-whatlinkshere"><a href="/wiki/%D0%A1%D0%BB%D1%83%D0%B6%D0%B5%D0%B1%D0%BD%D0%B0%D1%8F:WhatLinksHere/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%9F%D0%BB%D0%BE%D1%82%D0%BD%D0%B8%D0%BA%D0%B0" title="Список всех страниц, которые ссылаются на эту страницу [j]" accesskey="j">Ссылки сюда</a></li>
+			<li id="t-recentchangeslinked"><a href="/wiki/%D0%A1%D0%BB%D1%83%D0%B6%D0%B5%D0%B1%D0%BD%D0%B0%D1%8F:RecentChangesLinked/%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%9F%D0%BB%D0%BE%D1%82%D0%BD%D0%B8%D0%BA%D0%B0" title="Последние изменения в страницах, на которые ссылается эта страница [k]" accesskey="k">Связанные правки</a></li>
+			<li id="t-specialpages"><a href="/wiki/%D0%A1%D0%BB%D1%83%D0%B6%D0%B5%D0%B1%D0%BD%D0%B0%D1%8F:SpecialPages" title="Список служебных страниц [q]" accesskey="q">Спецстраницы</a></li>
+			<li><a href="/index.php?title=%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%9F%D0%BB%D0%BE%D1%82%D0%BD%D0%B8%D0%BA%D0%B0&amp;printable=yes" rel="alternate">Версия для печати</a></li>
+			<li id="t-permalink"><a href="/index.php?title=%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%9F%D0%BB%D0%BE%D1%82%D0%BD%D0%B8%D0%BA%D0%B0&amp;oldid=21578" title="Постоянная ссылка на эту версию страницы">Постоянная ссылка</a></li>
+<li id="t-cite"><a href="/index.php?title=%D0%A1%D0%BB%D1%83%D0%B6%D0%B5%D0%B1%D0%BD%D0%B0%D1%8F:Cite&amp;page=%D0%A2%D0%B0%D0%B1%D0%BB%D0%B8%D1%86%D0%B0_%D0%9F%D0%BB%D0%BE%D1%82%D0%BD%D0%B8%D0%BA%D0%B0&amp;id=21578" title="Информация о том, как цитировать эту страницу">Цитировать страницу</a></li>		</ul>
+	</div>
+</div>
+
+<!-- /TOOLBOX -->
+
+<!-- LANGUAGES -->
+
+<!-- /LANGUAGES -->
+			</div>
+		<!-- /panel -->
+		<!-- footer -->
+		<div id="footer">
+							<ul id="footer-info">
+											<li id="footer-info-lastmod"> Последнее изменение этой страницы: 12:23, 12 января 2026.</li>
+											<li id="footer-info-viewcount">К этой странице обращались 82 603 раза.</li>
+									</ul>
+							<ul id="footer-places">
+											<li id="footer-places-privacy"><a href="/wiki/%D0%92%D0%B8%D0%BA%D0%B8%D0%BD%D0%B5%D0%B2%D0%B5%D1%80:%D0%9F%D0%BE%D0%BB%D0%B8%D1%82%D0%B8%D0%BA%D0%B0_%D0%BA%D0%BE%D0%BD%D1%84%D0%B8%D0%B4%D0%B5%D0%BD%D1%86%D0%B8%D0%B0%D0%BB%D1%8C%D0%BD%D0%BE%D1%81%D1%82%D0%B8" title="Викиневер:Политика конфиденциальности">Политика конфиденциальности</a></li>
+											<li id="footer-places-about"><a href="/wiki/%D0%92%D0%B8%D0%BA%D0%B8%D0%BD%D0%B5%D0%B2%D0%B5%D1%80:%D0%9E%D0%BF%D0%B8%D1%81%D0%B0%D0%BD%D0%B8%D0%B5" title="Викиневер:Описание">Описание Викиневер</a></li>
+											<li id="footer-places-disclaimer"><a href="/wiki/%D0%92%D0%B8%D0%BA%D0%B8%D0%BD%D0%B5%D0%B2%D0%B5%D1%80:%D0%9E%D1%82%D0%BA%D0%B0%D0%B7_%D0%BE%D1%82_%D0%BE%D1%82%D0%B2%D0%B5%D1%82%D1%81%D1%82%D0%B2%D0%B5%D0%BD%D0%BD%D0%BE%D1%81%D1%82%D0%B8" title="Викиневер:Отказ от ответственности">Отказ от ответственности</a></li>
+									</ul>
+										<ul id="footer-icons" class="noprint">
+					<li id="footer-poweredbyico">
+						<a href="//www.mediawiki.org/"><img src="/skins/common/images/poweredby_mediawiki_88x31.png" alt="Powered by MediaWiki" width="88" height="31" /></a>
+					</li>
+				</ul>
+						<div style="clear:both"></div>
+		</div>
+		<!-- /footer -->
+		<script src="http://wiki.neverlands.ru/load.php?debug=false&amp;lang=ru&amp;modules=skins.vector&amp;only=scripts&amp;skin=vector&amp;*"></script>
+<script>if(window.mw){
+mw.loader.load(["ext.categoryTree","mediawiki.user","mediawiki.page.ready","mediawiki.legacy.mwsuggest","ext.vector.collapsibleNav","ext.vector.collapsibleTabs","ext.vector.simpleSearch"], null, true);
+}</script>
+<!-- Served in 0.322 secs. -->
+	</body>
+</html>

@@ -23,6 +23,7 @@ namespace ANClient.MyProfile
 
         private const string ConstTagUser = "user";
         private const string ConstAttibuteUserNick = "name";
+        private const string ConstAttibuteUserServer = "server";
         private const string ConstAttibuteConfigHash = "hash";
         private const string ConstAttibuteEncryptedUserPassword = "encryptedpassword";
         private const string ConstEncryptedUserPasswordFlash = "encryptedflash";

@@ -12,6 +12,28 @@ namespace ANClient.ANForms
     {
         internal void MoveToDialog(string dest)
         {
+            if (AutoMineRuntime.HasPendingMineRoute())
+            {
+                AutoMineRuntime.CancelPendingMineRoute("navigator_button");
+                buttonNavigator.Checked = false;
+                AppVars.AutoMoving = false;
+                AppVars.AutoMovingMapPath = null;
+                try
+                {
+                    if (AppVars.MainForm != null)
+                    {
+                        AppVars.MainForm.BeginInvoke(
+                            new ReloadMainPhpInvokeDelegate(AppVars.MainForm.ReloadMainPhpInvoke),
+                            new object[] { });
+                    }
+                }
+                catch (InvalidOperationException)
+                {
+                }
+
+                return;
+            }
+
             if (string.IsNullOrEmpty(dest))
             {
                 MessageBox.Show(
@@ -60,6 +82,27 @@ namespace ANClient.ANForms
                     }
                 }
             }
+        }
+
+        internal void UpdateMineNavigatorStateSafe(bool active, string source)
+        {
+            if (InvokeRequired)
+            {
+                try
+                {
+                    BeginInvoke((MethodInvoker)(() => UpdateMineNavigatorStateSafe(active, source)));
+                }
+                catch (InvalidOperationException)
+                {
+                }
+
+                return;
+            }
+
+            buttonNavigator.Enabled = true;
+            buttonNavigator.Checked = active || AppVars.AutoMoving;
+            buttonNavigator.ToolTipText = active ? "Остановить маршрут шахты" : "Навигатор по природе";
+            AppLog.i(AutoMineRuntime.TraceChain, "FormMainNavigator", "mine navigator state: active=" + active + ", source=" + source);
         }
 
         internal void MoveToSafe(string dest)

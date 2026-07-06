@@ -26,6 +26,7 @@ import ru.neverlands.anclient.utils.AppLog;
 import ru.neverlands.anclient.postfilter.MainPhp;
 import ru.neverlands.anclient.utils.AppVars;
 import ru.neverlands.anclient.utils.FileLogger;
+import ru.neverlands.anclient.utils.GameServerUrls;
 import ru.neverlands.anclient.utils.RuntimeNetTrace;
 
 /**
@@ -567,8 +568,7 @@ final class LocalHttpProxyServer {
         if (host == null || host.isEmpty()) {
             return false;
         }
-        String lower = host.toLowerCase(Locale.ROOT);
-        return "neverlands.ru".equals(lower) || lower.endsWith(".neverlands.ru");
+        return GameServerUrls.isNeverlandsGameHost(host);
     }
 
     /**
@@ -692,8 +692,7 @@ final class LocalHttpProxyServer {
         if (host == null || host.isEmpty()) {
             return false;
         }
-        String lower = host.toLowerCase(Locale.ROOT);
-        return "neverlands.ru".equals(lower) || "www.neverlands.ru".equals(lower);
+        return GameServerUrls.isNeverlandsGameHost(host);
     }
 
     private int parseStatusCode(String statusLine) {
@@ -784,6 +783,17 @@ final class LocalHttpProxyServer {
             originPath = (uriToken == null || uriToken.isEmpty()) ? "/" : uriToken;
         }
 
+        boolean routeToSelectedGameServer = AppVars.Profile != null
+                && GameServerUrls.isNeverlandsGameHost(originHost)
+                && !GameServerUrls.isSelectedServerHost(originHost);
+        if (routeToSelectedGameServer) {
+            String selectedHost = GameServerUrls.serverHost(GameServerUrls.currentServerCode());
+            AppLog.d(LOG_CHAIN, TAG, "SERVER_ROUTE: proxy origin=" + originHost + ":" + originPort
+                    + " -> " + selectedHost + ":80");
+            originHost = selectedHost;
+            originPort = 80;
+        }
+
         String connectHost;
         int connectPort;
         String requestTarget;
@@ -792,7 +802,9 @@ final class LocalHttpProxyServer {
             connectHost = upstreamSettings.host;
             connectPort = upstreamSettings.port;
             if (uriToken.startsWith("http://") || uriToken.startsWith("https://")) {
-                requestTarget = uriToken;
+                requestTarget = routeToSelectedGameServer
+                        ? "http://" + originHost + originPath
+                        : uriToken;
             } else {
                 requestTarget = "http://" + originHost
                         + ((originPort == 80) ? "" : ":" + originPort)
@@ -986,7 +998,7 @@ final class LocalHttpProxyServer {
             return false;
         }
         String host = route.originHost == null ? "" : route.originHost.toLowerCase(Locale.ROOT);
-        if (!(host.equals("neverlands.ru") || host.equals("www.neverlands.ru"))) {
+        if (!GameServerUrls.isNeverlandsGameHost(host)) {
             return false;
         }
         String contentType = responseHead.contentTypeHeader == null

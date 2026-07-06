@@ -86,6 +86,13 @@ namespace ANClient.PostFilter
                     if (!string.IsNullOrEmpty(link))
                     {
                         AppVars.MainForm.WriteChatMsgSafe("Используем Эликсир Восстановления...");
+                        AppVars.SwitchToFlora = true;
+                        AppLog.i("MainPhp", "MainPhp: recovery elixir submitted, return to flora scheduled");
+                        if (AutoCutRuntime.IsAutoCutLikeEnabled())
+                        {
+                            AppLog.i("auto_cut_trace", "MainPhp", "recovery elixir submitted: return to flora before auto look");
+                        }
+
                         var htmlElixir = BuildRedirect("Используем Эликсир Восстановления...", link);
                         return htmlElixir;
                     }

@@ -339,7 +339,7 @@ namespace ANClient.ANForms
                 WebResponse response = null;
                 try
                 {                    
-                    var httpWebRequest = (HttpWebRequest)WebRequest.Create("http://www.neverlands.ru/modules/anclient/auth.php");
+                    var httpWebRequest = (HttpWebRequest)WebRequest.Create(GameServerSelector.RouteUrlToCurrentServer("http://www.neverlands.ru/modules/anclient/auth.php"));
                     httpWebRequest.Method = "POST";
                     httpWebRequest.Proxy = AppVars.LocalProxy;
                     if (!DirectGameRequestGuard.Prepare(httpWebRequest, "FormMain.CrossAuth"))

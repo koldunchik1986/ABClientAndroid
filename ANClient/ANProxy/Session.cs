@@ -6,6 +6,7 @@ namespace ANClient.ANProxy
     using System.Text;
     using System.Threading;
     using ANForms;
+    using MyGuamod;
     using MyHelpers;
     using PostFilter;
 
@@ -317,6 +318,7 @@ namespace ANClient.ANProxy
                     if (Url.StartsWith("www.neverlands.ru/modules/code/code.php?", StringComparison.OrdinalIgnoreCase))
                     {
                         var requestCodeAddress = "http://" + Url;
+                        CaptchaTrainingManager.OnCaptchaImageIntercepted(requestCodeAddress, ResponseBodyBytes);
                         if (AppVars.IsSameCaptchaCodeAddress(requestCodeAddress, AppVars.CodeAddress))
                         {
                             AppLog.i("ProxySession", "code.php intercepted, capturing current captcha PNG, codeAddressHash=" + AppVars.NormalizeCaptchaCodeAddress(requestCodeAddress).GetHashCode().ToString(CultureInfo.InvariantCulture));
@@ -648,8 +650,7 @@ namespace ANClient.ANProxy
 
         private void ExecuteBasicRequestManipulations()
         {
-            if (Host.Equals("neverlands.ru", StringComparison.OrdinalIgnoreCase) ||
-                Host.EndsWith(".neverlands.ru", StringComparison.OrdinalIgnoreCase))
+            if (GameServerSelector.IsNeverlandsGameHost(Host))
             {
                 _isGameHost = true;
                 AppLog.d("ProxySession", "ExecuteBasicRequestManipulations: game host detected: " + Host);

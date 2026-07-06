@@ -111,6 +111,7 @@ import ru.neverlands.anclient.utils.ExtMap;
 import ru.neverlands.anclient.utils.FileLogger;
 import ru.neverlands.anclient.utils.AppVars;
 import ru.neverlands.anclient.utils.Chat;
+import ru.neverlands.anclient.utils.GameServerUrls;
 import ru.neverlands.anclient.utils.LogcatFileRecorder;
 import ru.neverlands.anclient.utils.MapPath;
 import ru.neverlands.anclient.utils.RuntimeNetTrace;
@@ -208,8 +209,8 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     private static final long NAV_TICK_NETWORK_BACKOFF_MS = 8000L;
     private static final long NAV_TICK_ERROR_BURST_WINDOW_MS = 6000L;
     private static final int NAV_TICK_ERROR_BURST_THRESHOLD = 2;
-    private static final String LOGOUT_URL = "http://neverlands.ru/exit.php";
-    private static final String LOGOUT_REFERER = "http://neverlands.ru/game.php";
+    private static final String LOGOUT_PATH = "/exit.php";
+    private static final String LOGOUT_REFERER_PATH = "/game.php";
     private static final int LOGOUT_HTTP_TIMEOUT_MS = 10000;
     private static final long SESSION_RELOGIN_DEDUP_MS = 15000L;
     private static final String SESSION_RELOGIN_CHAIN = "session_relogin";
@@ -416,7 +417,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             return;
         }
 
-        String roomUrl = "http://neverlands.ru/ch.php?lo=1&" + now;
+        String roomUrl = GameServerUrls.currentGameUrl("/ch.php?lo=1&" + now);
         AppLog.d(TAG, "[AA_TRACE] requestRoomUsersRefreshSoon: " + roomUrl);
         AppVars.url_ch_list = roomUrl;
         chatUsersWebView.loadUrl(roomUrl);
@@ -1152,7 +1153,9 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             return;
         }
         AppVars.FightLink = "";
-        String absoluteUrl = finishUrl.startsWith("http") ? finishUrl : "http://neverlands.ru/" + finishUrl;
+        String absoluteUrl = finishUrl.startsWith("http")
+                ? GameServerUrls.routeUrlToCurrentServer(finishUrl)
+                : GameServerUrls.currentGameUrl(finishUrl);
         long nowMs = System.currentTimeMillis();
         if (absoluteUrl.equals(lastPendingFinishAbsoluteUrl)
                 && (nowMs - lastPendingFinishAtMs) <= PENDING_FINISH_REPEAT_WINDOW_MS) {
@@ -1171,7 +1174,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             pendingFinishRepeatCount = 0;
             lastPendingFinishAbsoluteUrl = "";
             lastPendingFinishAtMs = 0L;
-            binding.appBarMain.contentMain.webView.loadUrl("http://neverlands.ru/main.php");
+            binding.appBarMain.contentMain.webView.loadUrl(GameServerUrls.currentGameUrl("/main.php"));
             return;
         }
 
@@ -1600,8 +1603,8 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     private FightProbeResult loadFightProbeHtmlViaHttp() {
         long nonce = System.currentTimeMillis();
         List<String> probeUrls = Arrays.asList(
-                "http://neverlands.ru/main.php?ab_bg_probe=1&r=" + nonce,
-                "http://neverlands.ru/main.php?get_id=56&act=10&go=inf&ab_bg_probe=1&r=" + nonce
+                GameServerUrls.currentGameUrl("/main.php?ab_bg_probe=1&r=" + nonce),
+                GameServerUrls.currentGameUrl("/main.php?get_id=56&act=10&go=inf&ab_bg_probe=1&r=" + nonce)
         );
 
         String firstNonEmptyHtml = null;
@@ -1665,12 +1668,12 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             connection.setRequestProperty("Accept-Language", "ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7");
             connection.setRequestProperty("Cache-Control", "no-cache");
             connection.setRequestProperty("Pragma", "no-cache");
-            connection.setRequestProperty("Referer", "http://neverlands.ru/main.php");
+            connection.setRequestProperty("Referer", GameServerUrls.currentGameUrl("/main.php"));
             connection.setRequestProperty("User-Agent", AppVars.BROWSER_USER_AGENT);
 
             String cookie = CookieManager.getInstance().getCookie(probeUrl);
             if (cookie == null || cookie.isEmpty()) {
-                cookie = CookieManager.getInstance().getCookie("http://neverlands.ru/");
+                cookie = CookieManager.getInstance().getCookie(GameServerUrls.neverlandsCookieUrl());
             }
             if ((cookie == null || cookie.isEmpty()) && url.getHost() != null) {
                 cookie = CookiesManager.obtain(url.getHost());
@@ -2011,7 +2014,8 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             InputStream inputStream = null;
             ByteArrayOutputStream outputStream = null;
             try {
-                URL url = new URL("http://neverlands.ru/main.php");
+                String mainUrl = GameServerUrls.currentGameUrl("/main.php");
+                URL url = new URL(mainUrl);
                 java.net.Proxy activeProxy = ProxyRuntimeManager.getActiveJavaProxyOrNull();
                 if (activeProxy == null && ProxyRuntimeManager.isStrictProxyRequiredForCurrentProfile()) {
                     AppLog.e(TAG, TAG, BG_TRACE_PREFIX + " directHttpSubmit: PROXY_FAIL strict proxy required but unavailable");
@@ -2032,15 +2036,15 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                 connection.setRequestProperty("Accept-Language", "ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7");
                 connection.setRequestProperty("Cache-Control", "no-cache");
                 connection.setRequestProperty("Pragma", "no-cache");
-                connection.setRequestProperty("Referer", "http://neverlands.ru/main.php");
+                connection.setRequestProperty("Referer", mainUrl);
                 connection.setRequestProperty("User-Agent", AppVars.BROWSER_USER_AGENT);
 
-                String cookie = CookieManager.getInstance().getCookie("http://neverlands.ru/main.php");
+                String cookie = CookieManager.getInstance().getCookie(mainUrl);
                 if (cookie == null || cookie.isEmpty()) {
-                    cookie = CookieManager.getInstance().getCookie("http://neverlands.ru/");
+                    cookie = CookieManager.getInstance().getCookie(GameServerUrls.neverlandsCookieUrl());
                 }
                 if ((cookie == null || cookie.isEmpty())) {
-                    cookie = CookiesManager.obtain("neverlands.ru");
+                    cookie = CookiesManager.obtain(url.getHost());
                 }
                 if (cookie != null && !cookie.isEmpty()) {
                     connection.setRequestProperty("Cookie", cookie);
@@ -3614,8 +3618,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             return "";
         }
         try {
-            String normalized = rawUrl.replaceFirst("^https://", "http://");
-            normalized = normalized.replaceFirst("^http://www\\.neverlands\\.ru", "http://neverlands.ru");
+            String normalized = GameServerUrls.normalizeNeverlandsUrlForCompare(rawUrl);
             int fragmentIndex = normalized.indexOf('#');
             if (fragmentIndex >= 0) {
                 normalized = normalized.substring(0, fragmentIndex);
@@ -3639,8 +3642,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             return "";
         }
         try {
-            String normalized = rawUrl.replaceFirst("^https://", "http://");
-            normalized = normalized.replaceFirst("^http://www\\.neverlands\\.ru", "http://neverlands.ru");
+            String normalized = GameServerUrls.normalizeNeverlandsUrlForCompare(rawUrl);
             int fragmentIndex = normalized.indexOf('#');
             if (fragmentIndex >= 0) {
                 normalized = normalized.substring(0, fragmentIndex);
@@ -3674,10 +3676,11 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         InputStream inputStream = null;
         ByteArrayOutputStream outputStream = null;
         try {
-            URL url = new URL(captchaUrl);
+            String routedCaptchaUrl = GameServerUrls.routeUrlToCurrentServer(captchaUrl);
+            URL url = new URL(routedCaptchaUrl);
             java.net.Proxy activeProxy = ProxyRuntimeManager.getActiveJavaProxyOrNull();
             if (activeProxy == null && ProxyRuntimeManager.isStrictProxyRequiredForCurrentProfile()) {
-                AppLog.e(TAG, "PROXY_FAIL: strict proxy enabled and runtime proxy unavailable, blocking direct captcha download: " + captchaUrl);
+                AppLog.e(TAG, "PROXY_FAIL: strict proxy enabled and runtime proxy unavailable, blocking direct captcha download: " + routedCaptchaUrl);
                 return null;
             }
             connection = activeProxy != null
@@ -3692,12 +3695,12 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             connection.setRequestProperty("Accept-Language", "ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7");
             connection.setRequestProperty("Cache-Control", "no-cache");
             connection.setRequestProperty("Pragma", "no-cache");
-            connection.setRequestProperty("Referer", "http://neverlands.ru/main.php");
+            connection.setRequestProperty("Referer", GameServerUrls.currentGameUrl("/main.php"));
             connection.setRequestProperty("User-Agent", AppVars.BROWSER_USER_AGENT);
 
-            String cookie = CookieManager.getInstance().getCookie(captchaUrl);
+            String cookie = CookieManager.getInstance().getCookie(routedCaptchaUrl);
             if (cookie == null || cookie.isEmpty()) {
-                cookie = CookieManager.getInstance().getCookie("http://neverlands.ru/");
+                cookie = CookieManager.getInstance().getCookie(GameServerUrls.neverlandsCookieUrl());
             }
             if ((cookie == null || cookie.isEmpty()) && url.getHost() != null) {
                 cookie = CookiesManager.obtain(url.getHost());
@@ -3706,12 +3709,12 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                 connection.setRequestProperty("Cookie", cookie);
                 AppLog.d(TAG, "downloadCaptchaImageBytes: using cookie len=" + cookie.length());
             } else {
-                AppLog.w(TAG, "downloadCaptchaImageBytes: cookie is empty for " + captchaUrl);
+                AppLog.w(TAG, "downloadCaptchaImageBytes: cookie is empty for " + routedCaptchaUrl);
             }
 
             int responseCode = connection.getResponseCode();
             if (responseCode < 200 || responseCode >= 300) {
-                AppLog.w(TAG, "downloadCaptchaImageBytes: HTTP " + responseCode + " for " + captchaUrl);
+                AppLog.w(TAG, "downloadCaptchaImageBytes: HTTP " + responseCode + " for " + routedCaptchaUrl);
                 return null;
             }
 
@@ -3724,7 +3727,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             }
 
             byte[] data = outputStream.toByteArray();
-            AppLog.d(TAG, "downloadCaptchaImageBytes: loaded " + data.length + " bytes from " + captchaUrl);
+            AppLog.d(TAG, "downloadCaptchaImageBytes: loaded " + data.length + " bytes from " + routedCaptchaUrl);
             return data.length > 0 ? data : null;
         } catch (Exception e) {
             AppLog.e(TAG, "downloadCaptchaImageBytes: failed for " + captchaUrl, e);
@@ -4157,8 +4160,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                 }
             }
 
-            String urlNeverlands = "http://neverlands.ru/";
-            String urlWwwNeverlands = "http://www.neverlands.ru/";
+            java.util.List<String> cookieUrls = GameServerUrls.cookieUrls();
             for (java.net.HttpCookie cookie : filteredCookies) {
                 StringBuilder cookieValue = new StringBuilder()
                         .append(cookie.getName())
@@ -4168,8 +4170,9 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                 if (cookie.getSecure()) {
                     cookieValue.append("; Secure");
                 }
-                cookieManager.setCookie(urlNeverlands, cookieValue.toString());
-                cookieManager.setCookie(urlWwwNeverlands, cookieValue.toString());
+                for (String cookieUrl : cookieUrls) {
+                    cookieManager.setCookie(cookieUrl, cookieValue.toString());
+                }
             }
             cookieManager.flush();
             AppLog.d(TAG, "AUTH_COOKIE_SYNC: applied " + stage + " names=" + names);
@@ -4194,29 +4197,36 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         if (manager == null) {
             return;
         }
-        final String neverUrl = "http://neverlands.ru/";
-        final String wwwUrl = "http://www.neverlands.ru/";
-        String neverCookie = manager.getCookie(neverUrl);
-        String wwwCookie = manager.getCookie(wwwUrl);
-
-        boolean neverHasSession = hasSessionCookieTokens(neverCookie);
-        boolean wwwHasSession = hasSessionCookieTokens(wwwCookie);
-        AppLog.d(TAG, "AUTH_COOKIE_SYNC[" + stage + "]: never=" + summarizeCookieHeaderNames(neverCookie)
-                + ", www=" + summarizeCookieHeaderNames(wwwCookie));
-
+        java.util.List<String> cookieUrls = GameServerUrls.cookieUrls();
         boolean changed = false;
-        if (!neverHasSession && wwwHasSession) {
-            changed |= mirrorCookieHeaderToHost(manager, wwwCookie, neverUrl);
-        } else if (!wwwHasSession && neverHasSession) {
-            changed |= mirrorCookieHeaderToHost(manager, neverCookie, wwwUrl);
+        StringBuilder before = new StringBuilder();
+        for (String sourceUrl : cookieUrls) {
+            String sourceCookie = manager.getCookie(sourceUrl);
+            if (before.length() > 0) {
+                before.append("; ");
+            }
+            before.append(sourceUrl).append("=").append(summarizeCookieHeaderNames(sourceCookie));
+            if (sourceCookie == null || sourceCookie.isEmpty()) {
+                continue;
+            }
+            for (String targetUrl : cookieUrls) {
+                if (!sourceUrl.equalsIgnoreCase(targetUrl)) {
+                    changed |= mirrorCookieHeaderToHost(manager, sourceCookie, targetUrl);
+                }
+            }
         }
+        AppLog.d(TAG, "AUTH_COOKIE_SYNC[" + stage + "]: " + before);
 
         if (changed) {
             manager.flush();
-            String neverAfter = manager.getCookie(neverUrl);
-            String wwwAfter = manager.getCookie(wwwUrl);
-            AppLog.d(TAG, "AUTH_COOKIE_SYNC[" + stage + "]: mirrored never=" + summarizeCookieHeaderNames(neverAfter)
-                    + ", www=" + summarizeCookieHeaderNames(wwwAfter));
+            StringBuilder after = new StringBuilder();
+            for (String cookieUrl : cookieUrls) {
+                if (after.length() > 0) {
+                    after.append("; ");
+                }
+                after.append(cookieUrl).append("=").append(summarizeCookieHeaderNames(manager.getCookie(cookieUrl)));
+            }
+            AppLog.d(TAG, "AUTH_COOKIE_SYNC[" + stage + "]: mirrored " + after);
         }
     }
 
@@ -4320,10 +4330,10 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         WebView chatUsersWebView = binding.appBarMain.contentMain.chatUsersWebview;
         WebView chatButtonsWebView = binding.appBarMain.contentMain.chatButtonsWebview;
 
-        webView.loadUrl("http://neverlands.ru/main.php");
-        chatMsgWebView.loadUrl("http://neverlands.ru/ch/msg.php");
-        chatUsersWebView.loadUrl("http://neverlands.ru/ch.php?lo=1");
-        chatButtonsWebView.loadUrl("http://neverlands.ru/ch/but.php");
+        webView.loadUrl(GameServerUrls.currentGameUrl("/main.php"));
+        chatMsgWebView.loadUrl(GameServerUrls.currentGameUrl("/ch/msg.php"));
+        chatUsersWebView.loadUrl(GameServerUrls.currentGameUrl("/ch.php?lo=1"));
+        chatButtonsWebView.loadUrl(GameServerUrls.currentGameUrl("/ch/but.php"));
     }
 
     // Подписка на LocalBroadcast события приложения.
@@ -4774,9 +4784,9 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         int id = item.getItemId();
         
         if (id == R.id.nav_home) {
-            binding.appBarMain.contentMain.webView.loadUrl("http://neverlands.ru/");
+            binding.appBarMain.contentMain.webView.loadUrl(GameServerUrls.currentGameUrl("/"));
         } else if (id == R.id.nav_map) {
-            binding.appBarMain.contentMain.webView.loadUrl("http://neverlands.ru/map.php");
+            binding.appBarMain.contentMain.webView.loadUrl(GameServerUrls.currentGameUrl("/map.php"));
         } else if (id == R.id.nav_inventory) {
             // Пункт меню исторически назывался `Инвентарь`, но для ANClient/app2
             // теперь открывает портированный модуль `Казна`. Внутри `KaznaActivity`
@@ -4786,7 +4796,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             Intent intent = new Intent(this, KaznaActivity.class);
             startActivity(intent);
         } else if (id == R.id.nav_profile) {
-            binding.appBarMain.contentMain.webView.loadUrl("http://neverlands.ru/main.php?get_id=33&act=1");
+            binding.appBarMain.contentMain.webView.loadUrl(GameServerUrls.currentGameUrl("/main.php?get_id=33&act=1"));
         } else if (id == R.id.nav_quick_actions) {
             if (!LicenseRuntime.getInstance().isActionAllowed(QuickActionType.QUICK_ACTIONS)) {
                 Toast.makeText(this, "Быстрые действия недоступны", Toast.LENGTH_SHORT).show();
@@ -4948,7 +4958,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         }
         long ts = now;
         lastChatRefreshAtMs = ts;
-        String url = "http://neverlands.ru/ch.php?" + ts + "&show=1&fyo=" + chatFyo;
+        String url = GameServerUrls.currentGameUrl("/ch.php?" + ts + "&show=1&fyo=" + chatFyo);
         AppLog.d(TAG, BG_TRACE_PREFIX + " requestChatRefresh: " + url);
         try {
             chatRefrWebView.loadUrl(url);
@@ -5163,7 +5173,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     private void checkConnection() {
         if (System.currentTimeMillis() > AppVars.NextCheckNoConnection.getTime()) {
             AppVars.NextCheckNoConnection = new Date(System.currentTimeMillis() + 5 * 60 * 1000);
-            binding.appBarMain.contentMain.webView.loadUrl("http://neverlands.ru/main.php");
+            binding.appBarMain.contentMain.webView.loadUrl(GameServerUrls.currentGameUrl("/main.php"));
         }
     }
 
@@ -5181,7 +5191,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                     return;
                 }
                 long now = System.currentTimeMillis();
-                String reloadUrl = "http://neverlands.ru/main.php?get_id=56&act=10&go=inf&an_auto=1&r=" + now;
+                String reloadUrl = GameServerUrls.currentGameUrl("/main.php?get_id=56&act=10&go=inf&an_auto=1&r=" + now);
                 // RULE 5: VCode получается через SessionManager
                 String vcode = SessionManager.getInstance().getValidVCodeForAction("auto_cure_reload");
                 if (vcode != null && !vcode.isEmpty()) {
@@ -5311,7 +5321,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             if (!backgroundStepUrl.isEmpty()) {
                 reloadUrl = backgroundStepUrl;
             } else {
-                reloadUrl = "http://neverlands.ru/main.php?get_id=56&act=10&go=inf&an_nav_tick=1&r=" + now;
+                reloadUrl = GameServerUrls.currentGameUrl("/main.php?get_id=56&act=10&go=inf&an_nav_tick=1&r=" + now);
             }
         } else if (!autoCutRetrySource.isEmpty()) {
             if (isAutoCutCleanupInventoryRetrySource(autoCutRetrySource)) {
@@ -5330,7 +5340,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                 if (!backgroundLookUrl.isEmpty()) {
                     reloadUrl = backgroundLookUrl;
                 } else {
-                    reloadUrl = "http://neverlands.ru/main.php?get_id=56&act=10&go=ret";
+                    reloadUrl = GameServerUrls.currentGameUrl("/main.php?get_id=56&act=10&go=ret");
                     String vcode = SessionManager.getInstance().getValidVCodeForAction("server_timer_tick_auto_cut");
                     if (vcode != null && !vcode.isEmpty()) {
                         reloadUrl += "&vcode=" + vcode;
@@ -5354,17 +5364,17 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             // ⚠️ ЗАЩИТА: при активной рыбалке не отправляем af_tick, даже если vcode есть
             if (AppVars.suppressBackgroundProbesDuringFishing) {
                 // Рыбалка все еще идет - не отправляем af_tick, перезагружаем озеро для получения vcode
-                reloadUrl = "http://neverlands.ru/main.php?get_id=56&act=10&go=ret&r=" + now;
+                reloadUrl = GameServerUrls.currentGameUrl("/main.php?get_id=56&act=10&go=ret&r=" + now);
                 AppLog.w(TAG, "SERVER_TIMER_TICK: fishing still active! Reloading lake for fresh vcode instead of af_tick.");
             } else {
                 // RULE 5: VCode получается через SessionManager
                 String vcode = SessionManager.getInstance().getValidVCodeForAction("server_timer_tick_af_tick");
                 if (vcode == null || vcode.isEmpty()) {
                     // Vcode пуст - нужна защита: загружаем озеро чтобы получить свежий vcode
-                    reloadUrl = "http://neverlands.ru/main.php?get_id=56&act=10&go=ret&r=" + now;
+                    reloadUrl = GameServerUrls.currentGameUrl("/main.php?get_id=56&act=10&go=ret&r=" + now);
                     AppLog.w(TAG, "SERVER_TIMER_TICK: VCode пуст при af_tick! Загружаем озеро для получения vcode.");
                 } else {
-                    reloadUrl = "http://neverlands.ru/main.php?get_id=56&act=10&go=inf&af_tick=1&r=" + now + "&vcode=" + vcode;
+                    reloadUrl = GameServerUrls.currentGameUrl("/main.php?get_id=56&act=10&go=inf&af_tick=1&r=" + now + "&vcode=" + vcode);
                 }
             }
         }
@@ -5413,7 +5423,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     }
 
     private String buildAutoCutCleanupInventoryReloadUrl(String source, long now) {
-        String reloadUrl = "http://neverlands.ru/main.php?get_id=56&act=10&go=inv";
+        String reloadUrl = GameServerUrls.currentGameUrl("/main.php?get_id=56&act=10&go=inv");
         String vcode = SessionManager.getInstance().getValidVCodeForAction("server_timer_tick_auto_cut_cleanup_inventory");
         if (vcode == null || vcode.isEmpty()) {
             AppLog.w(AutoCutManager.TRACE_CHAIN, TAG,
@@ -5474,7 +5484,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             return "";
         }
 
-        String url = "http://neverlands.ru/gameplay/ajax/map_ajax.php?act=1"
+        String url = GameServerUrls.currentGameUrl("/gameplay/ajax/map_ajax.php?act=1")
                 + "&mx=" + position.X
                 + "&my=" + position.Y
                 + "&gti=" + gti
@@ -5514,7 +5524,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                     "SERVER_TIMER_TICK background auto-cut look waits for look button: current=" + current);
             return "";
         }
-        String url = "http://neverlands.ru/gameplay/ajax/alchemy_ajax.php?act=1&vcode="
+        String url = GameServerUrls.currentGameUrl("/gameplay/ajax/alchemy_ajax.php?act=1&vcode=")
                 + lookCode
                 + "&an_auto_cut_bg_look=1&r=" + now;
         AppLog.i(AutoCutManager.TRACE_CHAIN, TAG,
@@ -5629,12 +5639,14 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     }
 
     /**
-     * Серверный выход: `GET http://neverlands.ru/exit.php` с Referer как в браузере.
+     * Серверный выход: `GET /exit.php` с Referer как в браузере.
      */
     private void performLogoutRequestBestEffort() {
         HttpURLConnection connection = null;
         try {
-            URL url = new URL(LOGOUT_URL);
+            String logoutUrl = GameServerUrls.currentGameUrl(LOGOUT_PATH);
+            String logoutReferer = GameServerUrls.currentGameUrl(LOGOUT_REFERER_PATH);
+            URL url = new URL(logoutUrl);
             Proxy activeProxy = ProxyRuntimeManager.getActiveJavaProxyOrNull();
             if (activeProxy == null && ProxyRuntimeManager.isStrictProxyRequiredForCurrentProfile()) {
                 AppLog.e(TAG, "PROXY_FAIL: strict proxy enabled and runtime proxy unavailable, skip server logout request");
@@ -5654,12 +5666,12 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             connection.setRequestProperty("Accept-Language", "ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7");
             connection.setRequestProperty("Cache-Control", "no-cache");
             connection.setRequestProperty("Pragma", "no-cache");
-            connection.setRequestProperty("Referer", LOGOUT_REFERER);
+            connection.setRequestProperty("Referer", logoutReferer);
             connection.setRequestProperty("User-Agent", AppVars.BROWSER_USER_AGENT);
 
-            String cookie = CookieManager.getInstance().getCookie(LOGOUT_URL);
+            String cookie = CookieManager.getInstance().getCookie(logoutUrl);
             if (cookie == null || cookie.isEmpty()) {
-                cookie = CookieManager.getInstance().getCookie("http://neverlands.ru/");
+                cookie = CookieManager.getInstance().getCookie(GameServerUrls.neverlandsCookieUrl());
             }
             if ((cookie == null || cookie.isEmpty()) && url.getHost() != null) {
                 cookie = CookiesManager.obtain(url.getHost());
