@@ -44,6 +44,8 @@ public class FastActionManager {
     private static final int TELEPORT_DESTINATION_MAX_ID = 12;
     private static final int TELEPORT_DESTINATION_DEFAULT_ID = 1;
     private static final long FAST_FINALIZE_RESTORE_DELAY_MS = 900L;
+    private static final long FAST_WAIT_FIGHT_POLL_INTERVAL_MS = 1_250L;
+    private static final int FAST_WAIT_MAX_CONSECUTIVE_EMPTY_RESPONSES = 5;
     private static final String TELEPORT_DESTINATION_DEFAULT_NAME = "\u0413\u043E\u0440\u043E\u0434 \u0424\u043E\u0440\u043F\u043E\u0441\u0442";
     private static final int[] TELEPORT_DESTINATION_IDS = new int[] {
             1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12
@@ -692,56 +694,76 @@ public class FastActionManager {
         }
 
         String flog = userInfo.fightLog; // "" если не в бою
+        boolean waitFailed = false;
 
         // 2. Если цель в бою — ждём окончания
         if (!flog.isEmpty()) {
             int scans = 0;
+            int consecutiveEmptyResponses = 0;
             long startMs = System.currentTimeMillis();
             AppVars.FastWaitEndOfBoiCancel = false;
             AppVars.FastWaitEndOfBoiActive = true;
 
             AppLog.d(TAG, "fastAttackAsync: цель в бою flog=" + flog + ", начинаем ожидание");
 
-            while (!AppVars.FastWaitEndOfBoiCancel) {
-                String html = NeverApi.getFlog(flog);
-                if (html == null || html.isEmpty()) continue;
+            try {
+                while (!AppVars.FastWaitEndOfBoiCancel) {
+                    String html = NeverApi.getFlog(flog);
+                    if (html == null || html.isEmpty()) {
+                        consecutiveEmptyResponses++;
+                        AppLog.w(TAG, "fastAttackAsync: empty fight log response, consecutive="
+                                + consecutiveEmptyResponses + ", flog=" + flog);
+                        if (consecutiveEmptyResponses >= FAST_WAIT_MAX_CONSECUTIVE_EMPTY_RESPONSES) {
+                            waitFailed = true;
+                            break;
+                        }
+                        if (!waitBeforeNextFightLogPoll()) {
+                            AppVars.FastWaitEndOfBoiCancel = true;
+                            break;
+                        }
+                        continue;
+                    }
 
-                scans++;
+                    consecutiveEmptyResponses = 0;
+                    scans++;
 
-                // Условие окончания 1: "var off = 1;" в HTML лога боя
-                String off = ru.neverlands.abclient.utils.HelperStrings.subString(html, "var off = ", ";");
-                if (off == null) continue;
+                    // Условие окончания 1: "var off = 1;" в HTML лога боя
+                    String off = ru.neverlands.abclient.utils.HelperStrings.subString(html, "var off = ", ";");
+                    if (off != null && off.equals("1")) {
+                        AppLog.d(TAG, "fastAttackAsync: бой завершён (off=1), scans=" + scans);
+                        break;
+                    }
 
-                if (off.equals("1")) {
-                    AppLog.d(TAG, "fastAttackAsync: бой завершён (off=1), scans=" + scans);
-                    break;
-                }
+                    // Условие окончания 2: открытый бой + WaitOpen=false → не ждём
+                    if (!AppVars.WaitOpen) {
+                        boolean closedFight = html.contains("нападение бота")
+                                || html.contains("закрытый бой")
+                                || html.contains("закрытое нападение")
+                                || html.contains("закрытое кулачное нападение")
+                                || html.contains("закрытое боевое нападение");
+                        if (!closedFight) {
+                            AppLog.d(TAG, "fastAttackAsync: открытый бой, WaitOpen=false → не ждём");
+                            break;
+                        }
+                    }
 
-                // Условие окончания 2: открытый бой + WaitOpen=false → не ждём
-                if (!AppVars.WaitOpen) {
-                    boolean closedFight = html.contains("нападение бота")
-                            || html.contains("закрытый бой")
-                            || html.contains("закрытое нападение")
-                            || html.contains("закрытое кулачное нападение")
-                            || html.contains("закрытое боевое нападение");
-                    if (!closedFight) {
-                        AppLog.d(TAG, "fastAttackAsync: открытый бой, WaitOpen=false → не ждём");
+                    // Сообщения о прогрессе (аналог C#)
+                    if (scans == 1) {
+                        writeChatMsg("Ожидание окончания боя (отмена: меню → быстрые действия → отмена).");
+                    } else if (scans % 100 == 0) {
+                        long avgMs = (System.currentTimeMillis() - startMs) / scans;
+                        writeChatMsg("Ожидание окончания боя (запросов: " + scans + ", средн: " + avgMs + "мс)");
+                    }
+
+                    if (!waitBeforeNextFightLogPoll()) {
+                        AppVars.FastWaitEndOfBoiCancel = true;
                         break;
                     }
                 }
-
-                // Сообщения о прогрессе (аналог C#)
-                if (scans == 1) {
-                    writeChatMsg("Ожидание окончания боя (отмена: меню → быстрые действия → отмена).");
-                } else if (scans % 100 == 0) {
-                    long avgMs = (System.currentTimeMillis() - startMs) / scans;
-                    writeChatMsg("Ожидание окончания боя (запросов: " + scans + ", средн: " + avgMs + "мс)");
-                }
+            } finally {
+                AppVars.FastWaitEndOfBoiActive = false;
             }
         }
-
-        // Завершаем цикл ожидания окончания боя.
-        AppVars.FastWaitEndOfBoiActive = false;
 
         if (AppVars.FastWaitEndOfBoiCancel) {
             AppVars.FastWaitEndOfBoiCancel = false;
@@ -750,11 +772,28 @@ public class FastActionManager {
             return;
         }
 
+        if (waitFailed) {
+            AppLog.w(TAG, "fastAttackAsync: stop wait after repeated empty fight-log responses, flog=" + flog);
+            writeChatMsg("[FastAction] Ожидание боя остановлено: сервер не отвечает. Повторите действие позже.");
+            return;
+        }
+
         // 4. Бой закончился (или цель не была в бою) → запускаем быстрое действие
         // fastStart уже вызывает reloadMainFrame() внутри себя
         AppLog.d(TAG, "fastAttackAsync: армируем действие weapon=" + weapon + " nick=" + nick);
         int count = AppVars.DoPerenap ? Integer.MAX_VALUE : 1;
         fastStart(weapon, nick, count);
+    }
+
+    private static boolean waitBeforeNextFightLogPoll() {
+        try {
+            Thread.sleep(FAST_WAIT_FIGHT_POLL_INTERVAL_MS);
+            return true;
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            AppLog.w(TAG, "fastAttackAsync: fight wait interrupted", e);
+            return false;
+        }
     }
 
     /**

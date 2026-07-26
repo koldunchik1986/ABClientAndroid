@@ -12,6 +12,7 @@ import ru.neverlands.anclient.postfilter.FightAuto;
 import ru.neverlands.anclient.postfilter.MainPhp;
 import ru.neverlands.anclient.utils.AppVars;
 import ru.neverlands.anclient.utils.FileLogger;
+import ru.neverlands.anclient.utils.SessionManager;
 
 /**
  * ViewModel для управления боем.
@@ -110,6 +111,7 @@ public class FightViewModel extends ViewModel {
         // Это гарантирует что AutoModeForegroundService увидит актуальный pulse и не заблокирует autoTurn.
         // Иначе возникает race condition: service проверяет isFightSessionLikelyActive() до того как
         // background поток сумеет обновить LastFightPulseAtMs, и первый ход блокируется.
+        SessionManager.getInstance().markFightInProgress();
         LezFight syncFight = new LezFight(html);
         if (syncFight.IsValid && syncFight.IsBoi) {
             long fightPulseNow = System.currentTimeMillis();
@@ -121,6 +123,7 @@ public class FightViewModel extends ViewModel {
         }
 
         new Thread(() -> {
+            SessionManager.getInstance().markFightInProgress();
             LezFight fight = new LezFight(html);
             if (!fight.IsValid) {
                 String msg = BG_TRACE_PREFIX + " processFightHtml: skip, parsed fight invalid";
@@ -189,6 +192,7 @@ public class FightViewModel extends ViewModel {
         AppLog.d(TAG, TAG, msg3);
 
         new Thread(() -> {
+            SessionManager.getInstance().markFightInProgress();
             LezFight fight = new LezFight(html);
             if (!fight.IsValid) {
                 String msg = BG_TRACE_PREFIX + " autoTurnOnce: skip, parsed fight invalid";
@@ -254,6 +258,7 @@ public class FightViewModel extends ViewModel {
         AppLog.d(TAG, TAG, msg);
 
         new Thread(() -> {
+            SessionManager.getInstance().markFightInProgress();
             LezFight fight = new LezFight(html);
             if (fight.IsValid && fight.Result != null) {
                 // При авто-выборе результат отправляется сразу.

@@ -62,6 +62,9 @@ public class ContactsManager {
      * Однопоточный исполнитель для асинхронной записи в файл, чтобы не блокировать UI.
      */
     private static final ExecutorService executor = Executors.newSingleThreadExecutor();
+    private static final Object saveLock = new Object();
+    private static boolean saveScheduled;
+    private static boolean saveDirty;
 
     /**
      * Handler для выполнения колбэков в основном потоке UI.
@@ -87,11 +90,16 @@ public class ContactsManager {
      */
     // Инициализация: подготовка файла contacts.xml и загрузка в кеш.
     public static void initialize(Context context) {
-        File filesDir = context.getExternalFilesDir(null);
+        Context appContext = context != null && context.getApplicationContext() != null
+                ? context.getApplicationContext() : context;
+        if (appContext == null) {
+            return;
+        }
+        File filesDir = appContext.getExternalFilesDir(null);
         if (filesDir != null) {
             contactsFile = new File(filesDir, CONTACTS_FILE_NAME);
             if (!contactsFile.exists()) {
-                copyDefaultContactsFromAssets(context);
+                copyDefaultContactsFromAssets(appContext);
             }
             loadContactsFromXml();
         }
@@ -186,55 +194,71 @@ public class ContactsManager {
         if (contactsFile == null) {
             return;
         }
+        synchronized (saveLock) {
+            saveDirty = true;
+            if (saveScheduled) {
+                return;
+            }
+            saveScheduled = true;
+        }
         executor.execute(() -> {
-            try {
-                DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
-                DocumentBuilder builder = factory.newDocumentBuilder();
-                Document doc = builder.newDocument();
-
-                Element rootElement = doc.createElement("contacts");
-                doc.appendChild(rootElement);
-
-                for (Contact contact : contactsCache.values()) {
-                    Element contactElement = doc.createElement("contact");
-                    rootElement.appendChild(contactElement);
-                    
-                    // Создание XML-элементов для каждого поля контакта
-                    createChildElement(doc, contactElement, "playerID", contact.playerID);
-                    createChildElement(doc, contactElement, "nick", contact.nick);
-                    createChildElement(doc, contactElement, "playerLevel", String.valueOf(contact.playerLevel));
-                    createChildElement(doc, contactElement, "inclination", String.valueOf(contact.inclination));
-                    createChildElement(doc, contactElement, "inclinationName", contact.inclinationName);
-                    createChildElement(doc, contactElement, "clanNumber", contact.clanNumber);
-                    createChildElement(doc, contactElement, "clanIco", contact.clanIco);
-                    createChildElement(doc, contactElement, "clanName", contact.clanName);
-                    createChildElement(doc, contactElement, "clanStatus", contact.clanStatus);
-                    createChildElement(doc, contactElement, "gender", String.valueOf(contact.gender));
-                    createChildElement(doc, contactElement, "blockStatus", String.valueOf(contact.blockStatus));
-                    createChildElement(doc, contactElement, "jailStatus", String.valueOf(contact.jailStatus));
-                    createChildElement(doc, contactElement, "muteSeconds", String.valueOf(contact.muteSeconds));
-                    createChildElement(doc, contactElement, "muteForumSeconds", String.valueOf(contact.muteForumSeconds));
-                    createChildElement(doc, contactElement, "onlineStatus", String.valueOf(contact.onlineStatus));
-                    createChildElement(doc, contactElement, "geoLocation", contact.geoLocation);
-                    createChildElement(doc, contactElement, "warLogNumber", contact.warLogNumber);
-                    createChildElement(doc, contactElement, "classId", String.valueOf(contact.classId));
-                    createChildElement(doc, contactElement, "comment", contact.comment);
-                    createChildElement(doc, contactElement, "effectIds", contact.effectIds);
-                    createChildElement(doc, contactElement, "effectStates", contact.effectStates);
-                    // Сохраняем персональный инструмент авто-нападения.
-                    createChildElement(doc, contactElement, "toolId", String.valueOf(contact.toolId));
+            while (true) {
+                synchronized (saveLock) {
+                    if (!saveDirty) {
+                        saveScheduled = false;
+                        return;
+                    }
+                    saveDirty = false;
                 }
+                try {
+                    DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
+                    DocumentBuilder builder = factory.newDocumentBuilder();
+                    Document doc = builder.newDocument();
 
-                TransformerFactory transformerFactory = TransformerFactory.newInstance();
-                Transformer transformer = transformerFactory.newTransformer();
-                DOMSource source = new DOMSource(doc);
-                StreamResult result = new StreamResult(contactsFile);
-                transformer.transform(source, result);
+                    Element rootElement = doc.createElement("contacts");
+                    doc.appendChild(rootElement);
 
-                AppLog.i(TAG, "Contacts saved to XML.");
+                    for (Contact contact : contactsCache.values()) {
+                        Element contactElement = doc.createElement("contact");
+                        rootElement.appendChild(contactElement);
+                    
+                        // Создание XML-элементов для каждого поля контакта
+                        createChildElement(doc, contactElement, "playerID", contact.playerID);
+                        createChildElement(doc, contactElement, "nick", contact.nick);
+                        createChildElement(doc, contactElement, "playerLevel", String.valueOf(contact.playerLevel));
+                        createChildElement(doc, contactElement, "inclination", String.valueOf(contact.inclination));
+                        createChildElement(doc, contactElement, "inclinationName", contact.inclinationName);
+                        createChildElement(doc, contactElement, "clanNumber", contact.clanNumber);
+                        createChildElement(doc, contactElement, "clanIco", contact.clanIco);
+                        createChildElement(doc, contactElement, "clanName", contact.clanName);
+                        createChildElement(doc, contactElement, "clanStatus", contact.clanStatus);
+                        createChildElement(doc, contactElement, "gender", String.valueOf(contact.gender));
+                        createChildElement(doc, contactElement, "blockStatus", String.valueOf(contact.blockStatus));
+                        createChildElement(doc, contactElement, "jailStatus", String.valueOf(contact.jailStatus));
+                        createChildElement(doc, contactElement, "muteSeconds", String.valueOf(contact.muteSeconds));
+                        createChildElement(doc, contactElement, "muteForumSeconds", String.valueOf(contact.muteForumSeconds));
+                        createChildElement(doc, contactElement, "onlineStatus", String.valueOf(contact.onlineStatus));
+                        createChildElement(doc, contactElement, "geoLocation", contact.geoLocation);
+                        createChildElement(doc, contactElement, "warLogNumber", contact.warLogNumber);
+                        createChildElement(doc, contactElement, "classId", String.valueOf(contact.classId));
+                        createChildElement(doc, contactElement, "comment", contact.comment);
+                        createChildElement(doc, contactElement, "effectIds", contact.effectIds);
+                        createChildElement(doc, contactElement, "effectStates", contact.effectStates);
+                        // Сохраняем персональный инструмент авто-нападения.
+                        createChildElement(doc, contactElement, "toolId", String.valueOf(contact.toolId));
+                    }
 
-            } catch (Exception e) {
-                AppLog.e(TAG, "Error saving contacts to XML", e);
+                    TransformerFactory transformerFactory = TransformerFactory.newInstance();
+                    Transformer transformer = transformerFactory.newTransformer();
+                    DOMSource source = new DOMSource(doc);
+                    StreamResult result = new StreamResult(contactsFile);
+                    transformer.transform(source, result);
+
+                    AppLog.i(TAG, "Contacts saved to XML.");
+
+                } catch (Exception e) {
+                    AppLog.e(TAG, "Error saving contacts to XML", e);
+                }
             }
         });
     }

@@ -142,6 +142,29 @@ public class ApiRepository {
         }
     }
 
+    private static String describeRequestHeaders(Request request) {
+        if (request == null) {
+            return "";
+        }
+        StringBuilder result = new StringBuilder();
+        for (int index = 0; index < request.headers().size(); index++) {
+            if (result.length() > 0) {
+                result.append(", ");
+            }
+            String name = request.headers().name(index);
+            String value = request.headers().value(index);
+            result.append(name).append(": ");
+            if ("Cookie".equalsIgnoreCase(name)) {
+                result.append("<redacted, bytes=")
+                        .append(value == null ? 0 : value.length())
+                        .append(">");
+            } else {
+                result.append(value);
+            }
+        }
+        return result.toString();
+    }
+
     private static boolean ensureProxyReadyForRequest(String tracePrefix, ApiCallback<?> callback) {
         boolean strictProxyRequired = ProxyRuntimeManager.isStrictProxyRequiredForCurrentProfile();
         if (!strictProxyRequired) {
@@ -200,7 +223,7 @@ public class ApiRepository {
             Request request = buildSessionAwareGetRequest(url);
 
             FileLogger.log("REQUEST_URL: " + request.url());
-            FileLogger.log("REQUEST_HEADERS: " + request.headers().toString());
+            FileLogger.log("REQUEST_HEADERS: " + describeRequestHeaders(request));
 
             // Асинхронный вызов
             getClient().newCall(request).enqueue(new Callback() {
@@ -212,24 +235,26 @@ public class ApiRepository {
 
                 @Override
                 public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
-                    String responseBody = response.body() != null ? response.body().string() : "";
-                    FileLogger.log("RESPONSE_CODE: " + response.code());
-                    FileLogger.log("RESPONSE_BODY: " + responseBody);
+                    try (Response safeResponse = response) {
+                        String responseBody = safeResponse.body() != null ? safeResponse.body().string() : "";
+                        FileLogger.log("RESPONSE_CODE: " + safeResponse.code());
+                        FileLogger.log("RESPONSE_BODY: " + responseBody);
 
-                    if (!response.isSuccessful()) {
-                        callback.onFailure("Server error: " + response.code());
-                        return;
-                    }
-                    if (responseBody.isEmpty()) {
-                        callback.onFailure("Empty response from getid.cgi");
-                        return;
-                    }
+                        if (!safeResponse.isSuccessful()) {
+                            callback.onFailure("Server error: " + safeResponse.code());
+                            return;
+                        }
+                        if (responseBody.isEmpty()) {
+                            callback.onFailure("Empty response from getid.cgi");
+                            return;
+                        }
 
-                    String[] parts = responseBody.split("\\|");
-                    if (parts.length >= 1 && !parts[0].isEmpty()) {
-                        callback.onSuccess(responseBody); // Возвращаем всю строку "playerID|nick"
-                    } else {
-                        callback.onFailure("Could not parse playerID from response: " + responseBody);
+                        String[] parts = responseBody.split("\\|");
+                        if (parts.length >= 1 && !parts[0].isEmpty()) {
+                            callback.onSuccess(responseBody); // Возвращаем всю строку "playerID|nick"
+                        } else {
+                            callback.onFailure("Could not parse playerID from response: " + responseBody);
+                        }
                     }
                 }
             });
@@ -255,7 +280,7 @@ public class ApiRepository {
             Request request = buildSessionAwareGetRequest(url);
 
             FileLogger.log("REQUEST_URL: " + request.url());
-            FileLogger.log("REQUEST_HEADERS: " + request.headers().toString());
+            FileLogger.log("REQUEST_HEADERS: " + describeRequestHeaders(request));
 
             getClient().newCall(request).enqueue(new Callback() {
                 @Override
@@ -266,25 +291,27 @@ public class ApiRepository {
 
                 @Override
                 public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
-                    String responseBody = response.body() != null ? response.body().string() : "";
-                    FileLogger.log("RESPONSE_CODE: " + response.code());
-                    FileLogger.log("RESPONSE_BODY: " + responseBody);
+                    try (Response safeResponse = response) {
+                        String responseBody = safeResponse.body() != null ? safeResponse.body().string() : "";
+                        FileLogger.log("RESPONSE_CODE: " + safeResponse.code());
+                        FileLogger.log("RESPONSE_BODY: " + responseBody);
 
-                    if (!response.isSuccessful()) {
-                        callback.onFailure("Server error: " + response.code());
-                        return;
-                    }
-                    if (responseBody.isEmpty()) {
-                        callback.onFailure("Empty response from info.cgi");
-                        return;
-                    }
+                        if (!safeResponse.isSuccessful()) {
+                            callback.onFailure("Server error: " + safeResponse.code());
+                            return;
+                        }
+                        if (responseBody.isEmpty()) {
+                            callback.onFailure("Empty response from info.cgi");
+                            return;
+                        }
 
-                    try {
-                        // Парсинг ответа в объект Contact
-                        Contact contact = parseContactInfo(playerId, responseBody);
-                        callback.onSuccess(contact);
-                    } catch (Exception e) {
-                        callback.onFailure("Failed to parse contact info: " + e.getMessage());
+                        try {
+                            // Парсинг ответа в объект Contact
+                            Contact contact = parseContactInfo(playerId, responseBody);
+                            callback.onSuccess(contact);
+                        } catch (Exception e) {
+                            callback.onFailure("Failed to parse contact info: " + e.getMessage());
+                        }
                     }
                 }
             });
@@ -450,29 +477,31 @@ public class ApiRepository {
 
                 @Override
                 public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
-                    if (!response.isSuccessful() || response.body() == null) {
-                        FileLogger.log("DOWNLOAD_FILE_HTTP_ERROR: code=" + response.code()
-                                + ", url=" + url);
-                        callback.onFailure("Server error or empty response: " + response.code());
-                        return;
-                    }
-                    try (okhttp3.ResponseBody body = response.body()) {
-                        okio.BufferedSource source = body.source();
-                        // Создание родительских директорий, если их нет
-                        File parentDir = destinationFile.getParentFile();
-                        if (parentDir != null && !parentDir.exists()) {
-                            if (!parentDir.mkdirs()) {
-                                callback.onFailure("Failed to create directory: " + parentDir.getPath());
-                                return;
+                    try (Response safeResponse = response) {
+                        if (!safeResponse.isSuccessful() || safeResponse.body() == null) {
+                            FileLogger.log("DOWNLOAD_FILE_HTTP_ERROR: code=" + safeResponse.code()
+                                    + ", url=" + url);
+                            callback.onFailure("Server error or empty response: " + safeResponse.code());
+                            return;
+                        }
+                        try (okhttp3.ResponseBody body = safeResponse.body()) {
+                            okio.BufferedSource source = body.source();
+                            // Создание родительских директорий, если их нет
+                            File parentDir = destinationFile.getParentFile();
+                            if (parentDir != null && !parentDir.exists()) {
+                                if (!parentDir.mkdirs()) {
+                                    callback.onFailure("Failed to create directory: " + parentDir.getPath());
+                                    return;
+                                }
                             }
+                            // Запись файла на диск с использованием эффективной библиотеки Okio
+                            try (BufferedSink sink = Okio.buffer(Okio.sink(destinationFile))) {
+                                sink.writeAll(source);
+                            }
+                            callback.onSuccess(destinationFile.getPath());
+                        } catch (Exception e) {
+                            callback.onFailure("Failed to save file: " + e.getMessage());
                         }
-                        // Запись файла на диск с использованием эффективной библиотеки Okio
-                        try (BufferedSink sink = Okio.buffer(Okio.sink(destinationFile))) {
-                            sink.writeAll(source);
-                        }
-                        callback.onSuccess(destinationFile.getPath());
-                    } catch (Exception e) {
-                        callback.onFailure("Failed to save file: " + e.getMessage());
                     }
                 }
             });

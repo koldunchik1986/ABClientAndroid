@@ -6,9 +6,9 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.util.HashMap;
+import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.Map;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import ru.neverlands.abclient.ABClientApplication;
 
@@ -18,8 +18,10 @@ import ru.neverlands.abclient.ABClientApplication;
  */
 public class Cache {
     private static final String TAG = "Cache";
+    private static final long MAX_MEMORY_CACHE_BYTES = 16L * 1024L * 1024L;
     private static final Object lock = new Object();
-    private static final Map<String, byte[]> memCache = new HashMap<>();
+    private static final Map<String, byte[]> memCache = new LinkedHashMap<>(16, 0.75f, true);
+    private static long memCacheBytes = 0L;
     private static final File cacheDir = new File(ABClientApplication.getAppContext().getExternalFilesDir(null), "abcache");
     
     static {
@@ -67,7 +69,7 @@ public class Cache {
             if (data == null) {
                 data = getDisk(key, cacheRefresh);
                 if (data != null) {
-                    memCache.put(key, data);
+                    putMemory(key, data);
                 }
             }
             return data;
@@ -88,7 +90,7 @@ public class Cache {
         String key = getKey(url);
 
         synchronized (lock) {
-            memCache.put(key, data);
+            putMemory(key, data);
         }
 
         if (storeToDisk) {
@@ -102,6 +104,25 @@ public class Cache {
     public static void clear() {
         synchronized (lock) {
             memCache.clear();
+            memCacheBytes = 0L;
+        }
+    }
+
+    private static void putMemory(String key, byte[] data) {
+        if (data.length > MAX_MEMORY_CACHE_BYTES) {
+            AppLog.w(TAG, "Skip oversized memory-cache entry: key=" + key + ", bytes=" + data.length);
+            return;
+        }
+        byte[] previous = memCache.put(key, data);
+        if (previous != null) {
+            memCacheBytes -= previous.length;
+        }
+        memCacheBytes += data.length;
+        Iterator<Map.Entry<String, byte[]>> iterator = memCache.entrySet().iterator();
+        while (memCacheBytes > MAX_MEMORY_CACHE_BYTES && iterator.hasNext()) {
+            Map.Entry<String, byte[]> eldest = iterator.next();
+            memCacheBytes -= eldest.getValue().length;
+            iterator.remove();
         }
     }
     

@@ -440,13 +440,14 @@ public class ApiRepository {
 
                 @Override
                 public void onResponse(@NonNull Call call, @NonNull Response response) throws IOException {
-                    if (!response.isSuccessful() || response.body() == null) {
-                        FileLogger.log("DOWNLOAD_FILE_HTTP_ERROR: code=" + response.code()
-                                + ", url=" + url);
-                        callback.onFailure("Server error or empty response: " + response.code());
-                        return;
-                    }
-                    try (okhttp3.ResponseBody body = response.body()) {
+                    try (Response safeResponse = response) {
+                        if (!safeResponse.isSuccessful() || safeResponse.body() == null) {
+                            FileLogger.log("DOWNLOAD_FILE_HTTP_ERROR: code=" + safeResponse.code()
+                                    + ", url=" + url);
+                            callback.onFailure("Server error or empty response: " + safeResponse.code());
+                            return;
+                        }
+                        try (okhttp3.ResponseBody body = safeResponse.body()) {
                         okio.BufferedSource source = body.source();
                         // Создание родительских директорий, если их нет
                         File parentDir = destinationFile.getParentFile();
@@ -461,8 +462,9 @@ public class ApiRepository {
                             sink.writeAll(source);
                         }
                         callback.onSuccess(destinationFile.getPath());
-                    } catch (Exception e) {
-                        callback.onFailure("Failed to save file: " + e.getMessage());
+                        } catch (Exception e) {
+                            callback.onFailure("Failed to save file: " + e.getMessage());
+                        }
                     }
                 }
             });

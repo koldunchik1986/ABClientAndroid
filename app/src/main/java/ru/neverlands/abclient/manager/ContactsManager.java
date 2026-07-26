@@ -62,6 +62,9 @@ public class ContactsManager {
      * Однопоточный исполнитель для асинхронной записи в файл, чтобы не блокировать UI.
      */
     private static final ExecutorService executor = Executors.newSingleThreadExecutor();
+    private static final Object saveLock = new Object();
+    private static boolean saveScheduled;
+    private static boolean saveDirty;
 
     /**
      * Handler для выполнения колбэков в основном потоке UI.
@@ -87,11 +90,16 @@ public class ContactsManager {
      */
     // Инициализация: подготовка файла contacts.xml и загрузка в кеш.
     public static void initialize(Context context) {
-        File filesDir = context.getExternalFilesDir(null);
+        Context appContext = context != null && context.getApplicationContext() != null
+                ? context.getApplicationContext() : context;
+        if (appContext == null) {
+            return;
+        }
+        File filesDir = appContext.getExternalFilesDir(null);
         if (filesDir != null) {
             contactsFile = new File(filesDir, CONTACTS_FILE_NAME);
             if (!contactsFile.exists()) {
-                copyDefaultContactsFromAssets(context);
+                copyDefaultContactsFromAssets(appContext);
             }
             loadContactsFromXml();
         }
@@ -180,8 +188,23 @@ public class ContactsManager {
         if (contactsFile == null) {
             return;
         }
+        synchronized (saveLock) {
+            saveDirty = true;
+            if (saveScheduled) {
+                return;
+            }
+            saveScheduled = true;
+        }
         executor.execute(() -> {
-            try {
+            while (true) {
+                synchronized (saveLock) {
+                    if (!saveDirty) {
+                        saveScheduled = false;
+                        return;
+                    }
+                    saveDirty = false;
+                }
+                try {
                 DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
                 DocumentBuilder builder = factory.newDocumentBuilder();
                 Document doc = builder.newDocument();
@@ -227,8 +250,9 @@ public class ContactsManager {
 
                 AppLog.i(TAG, "Contacts saved to XML.");
 
-            } catch (Exception e) {
-                AppLog.e(TAG, "Error saving contacts to XML", e);
+                } catch (Exception e) {
+                    AppLog.e(TAG, "Error saving contacts to XML", e);
+                }
             }
         });
     }

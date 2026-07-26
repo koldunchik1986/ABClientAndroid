@@ -76,8 +76,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.Timer;
-import java.util.TimerTask;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.zip.GZIPInputStream;
@@ -145,6 +143,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     private static final long PENDING_FINISH_REPEAT_WINDOW_MS = 6000L;
     private static final int PENDING_FINISH_REPEAT_LIMIT = 4;
     private static final int AUTO_TURN_SERVER_PROBE_TIMEOUT_MS = 12000;
+    private static final long UI_TIMER_INTERVAL_MS = 1_000L;
     // C# parity: в ПК-версии NeverTimer write-only (нет аналога checkServerTimerDrivenActions).
     // Margin=0 означает, что Java TICK срабатывает ПОСЛЕ истечения таймера, а не на 300мс раньше.
     // Это устраняет преждевременные шаги навигации (сервер отвечает ERR если таймер не истёк).
@@ -157,7 +156,8 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     private static final String LOGOUT_REFERER = "http://neverlands.ru/game.php";
     private static final int LOGOUT_HTTP_TIMEOUT_MS = 10000;
     public ActivityMainBinding binding;
-    private Timer timer;
+    private final Handler timerHandler = createMainHandler();
+    private Runnable timerRunnable;
     private boolean isExiting = false;
     // DEPRECATED: RoomManager.startTracing() no longer needed after HTML injection fix
     // private boolean isRoomManagerStarted = false;
@@ -268,6 +268,13 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             return Handler.createAsync(Looper.getMainLooper());
         }
         return new Handler(Looper.getMainLooper());
+    }
+
+    private boolean isCurrentMainActivityInstance() {
+        return !isFinishing()
+                && !isDestroyed()
+                && AppVars.mainActivity != null
+                && AppVars.mainActivity.get() == this;
     }
 
     // Доступ к ViewModel боя для других компонентов/фрагментов.
@@ -496,7 +503,9 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                         ROOM_USERS_REFRESH_MIN_INTERVAL_MS,
                         autoFunctionsManager.getWalkersPollIntervalSec() * 1000L
                 );
-                roomUsersPollingHandler.postDelayed(this, delayMs);
+                if (roomUsersPollingRunnable == this && !isFinishing() && !isDestroyed()) {
+                    roomUsersPollingHandler.postDelayed(this, delayMs);
+                }
             }
         };
 
@@ -1177,6 +1186,10 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         final String probeReason = reason;
         new Thread(() -> {
             try {
+                if (!isCurrentMainActivityInstance()) {
+                    AppLog.d(TAG, BG_TRACE_PREFIX + " requestAutoTurn: skip obsolete server probe, reason=" + probeReason);
+                    return;
+                }
                 FightProbeResult probeResult = loadFightProbeHtmlViaHttp();
                 String probeHtml = probeResult.html;
                 if (probeHtml == null || probeHtml.isEmpty()) {
@@ -1184,6 +1197,11 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                     return;
                 }
                 runOnUiThread(() -> {
+                    if (!isCurrentMainActivityInstance()) {
+                        AppLog.d(TAG, BG_TRACE_PREFIX + " requestAutoTurn: discard obsolete server probe result, reason="
+                                + probeReason);
+                        return;
+                    }
                     AppLog.d(TAG, BG_TRACE_PREFIX + " requestAutoTurn: server probe htmlLen=" + probeHtml.length()
                             + ", hasFightMarkers=" + probeResult.hasFightMarkers
                             + ", probeUrl=" + probeResult.url
@@ -1439,6 +1457,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             return false;
         }
         try {
+            SessionManager.getInstance().markFightInProgress();
             LezFight fight = new LezFight(html);
             return fight.IsValid && fight.IsBoi;
         } catch (Exception e) {
@@ -3578,6 +3597,12 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         stopChatRefresh();
         stopRoomUsersPolling();
         clearPendingAutoBattleSubmit();
+        chatRefreshHandler.removeCallbacksAndMessages(null);
+        roomUsersPollingHandler.removeCallbacksAndMessages(null);
+        autoBattleDelayHandler.removeCallbacksAndMessages(null);
+        stopFightCaptchaAutoRefresh();
+        fightCaptchaHandler.removeCallbacksAndMessages(null);
+        activeFightCaptchaLoadSeq++;
         if (fightViewModel != null && fightSubmitObserver != null) {
             fightViewModel.getSubmitAction().removeObserver(fightSubmitObserver);
             fightSubmitObserver = null;
@@ -3590,11 +3615,17 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             activeFightCaptchaDialog.dismiss();
         }
         activeFightCaptchaDialog = null;
+        activeFightCaptchaInput = null;
         
         // Уничтожение всех вспомогательных вкладок
         if (tabManager != null) {
             tabManager.destroyAll();
         }
+
+        for (WebView popupWebView : new ArrayList<>(chatPopupWebViews)) {
+            destroyWebView(popupWebView);
+        }
+        chatPopupWebViews.clear();
 
         if (isExiting) {
             ProxyRuntimeManager.stop(true);
@@ -3605,6 +3636,12 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         destroyWebView(binding.appBarMain.contentMain.chatUsersWebview);
         destroyWebView(binding.appBarMain.contentMain.chatButtonsWebview);
         destroyWebView(chatRefrWebView);
+        chatRefrWebView = null;
+
+        if (AppVars.mainActivity != null && AppVars.mainActivity.get() == this) {
+            AppVars.mainActivity.clear();
+            AppVars.mainActivity = null;
+        }
 
         if (isExiting) {
             AutoModeForegroundService.syncServiceState(this, "onDestroy_exiting");
@@ -3623,6 +3660,9 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                 ((android.view.ViewGroup) parent).removeView(webView);
             }
             webView.stopLoading();
+            webView.removeJavascriptInterface("AndroidBridge");
+            webView.setWebChromeClient(null);
+            webView.setWebViewClient(null);
             webView.getSettings().setJavaScriptEnabled(false);
             webView.clearHistory();
             webView.removeAllViews();
@@ -3748,26 +3788,31 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     
     // Таймер UI: обновление часов + проверка соединения раз в секунду.
     private void startTimer() {
-        timer = new Timer();
-        timer.scheduleAtFixedRate(new TimerTask() {
+        stopTimer();
+        timerRunnable = new Runnable() {
             @Override
             public void run() {
-                runOnUiThread(() -> {
-                    updateClock();
-                    checkConnection();
-                    checkServerTimerDrivenActions();
-                    syncQuickButtonsRuntimeState();
-                    AppTimerManager.getInstance(MainActivity.this).processDueTimers();
-                });
+                if (timerRunnable != this || isFinishing() || isDestroyed()) {
+                    return;
+                }
+                updateClock();
+                checkConnection();
+                checkServerTimerDrivenActions();
+                syncQuickButtonsRuntimeState();
+                AppTimerManager.getInstance(MainActivity.this).processDueTimers();
+                if (timerRunnable == this && !isFinishing() && !isDestroyed()) {
+                    timerHandler.postDelayed(this, UI_TIMER_INTERVAL_MS);
+                }
             }
-        }, 0, 1000);
+        };
+        timerHandler.post(timerRunnable);
     }
     
     // Остановка таймера UI.
     private void stopTimer() {
-        if (timer != null) {
-            timer.cancel();
-            timer = null;
+        if (timerRunnable != null) {
+            timerHandler.removeCallbacks(timerRunnable);
+            timerRunnable = null;
         }
     }
 
@@ -3792,7 +3837,9 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                 } catch (Throwable t) {
                     AppLog.e(TAG, BG_TRACE_PREFIX + " requestChatRefresh runnable failed", t);
                 } finally {
-                    chatRefreshHandler.postDelayed(this, getEffectiveChatRefreshSeconds() * 1000L);
+                    if (chatRefreshRunnable == this && !isFinishing() && !isDestroyed()) {
+                        chatRefreshHandler.postDelayed(this, getEffectiveChatRefreshSeconds() * 1000L);
+                    }
                 }
             }
         };
@@ -3801,13 +3848,11 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
 
     // Остановка периодического опроса чата.
     private void stopChatRefresh() {
-        if (chatRefreshRunnable != null) {
-            chatRefreshHandler.removeCallbacks(chatRefreshRunnable);
-            chatRefreshRunnable = null;
-            AppLog.d(TAG, BG_TRACE_PREFIX + " stopChatRefresh: stopped");
-        } else {
-            AppLog.d(TAG, BG_TRACE_PREFIX + " stopChatRefresh: already stopped");
-        }
+        boolean wasActive = chatRefreshRunnable != null || chatPollRecoveryRunnable != null;
+        chatRefreshHandler.removeCallbacksAndMessages(null);
+        chatRefreshRunnable = null;
+        chatPollRecoveryRunnable = null;
+        AppLog.d(TAG, BG_TRACE_PREFIX + " stopChatRefresh: " + (wasActive ? "stopped" : "already stopped"));
     }
 
     // Запрос обновления чата через скрытый chatRefrWebView.
@@ -4863,14 +4908,15 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
 
     private byte[] readAssetFile(String fileName) throws IOException {
         AssetManager assetManager = getAssets();
-        InputStream inputStream = assetManager.open(fileName);
-        ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        byte[] buffer = new byte[1024];
-        int len;
-        while ((len = inputStream.read(buffer)) != -1) {
-            baos.write(buffer, 0, len);
+        try (InputStream inputStream = assetManager.open(fileName);
+             ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
+            byte[] buffer = new byte[1024];
+            int len;
+            while ((len = inputStream.read(buffer)) != -1) {
+                baos.write(buffer, 0, len);
+            }
+            return baos.toByteArray();
         }
-        return baos.toByteArray();
     }
 
     // Простейшее определение MIME по расширению (для внутренних ответов).

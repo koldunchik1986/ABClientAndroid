@@ -745,15 +745,21 @@ public class LoginActivity extends AppCompatActivity {
         executor.execute(() -> {
             AuthManager authManager = new AuthManager();
             AuthResult result = authManager.authorize(username, gamePassword, flashPassword, profileToLogin.GameServerCode);
-            handler.post(() -> handleAuthResult(
-                    result,
-                    username,
-                    gamePassword,
-                    flashPassword,
-                    profileToLogin,
-                    retryAttempt,
-                    attemptStartedAtMs
-            ));
+            handler.post(() -> {
+                if (isFinishing() || isDestroyed()) {
+                    AppLog.d("LoginActivity", "Authorization result ignored after activity destruction");
+                    return;
+                }
+                handleAuthResult(
+                        result,
+                        username,
+                        gamePassword,
+                        flashPassword,
+                        profileToLogin,
+                        retryAttempt,
+                        attemptStartedAtMs
+                );
+            });
         });
         // Одноразовый executor для конкретной попытки входа.
         executor.shutdown();
@@ -775,6 +781,9 @@ public class LoginActivity extends AppCompatActivity {
                                   UserConfig profileToLogin,
                                   int retryAttempt,
                                   long attemptStartedAtMs) {
+        if (isFinishing() || isDestroyed()) {
+            return;
+        }
         long attemptElapsedMs = Math.max(0L, System.currentTimeMillis() - attemptStartedAtMs);
         AppLog.d(
                 "LoginActivity",
@@ -805,7 +814,11 @@ public class LoginActivity extends AppCompatActivity {
                 binding.progressBar.setVisibility(View.VISIBLE);
                 binding.loginButton.setEnabled(false);
                 new Handler(Looper.getMainLooper()).postDelayed(
-                        () -> startAuthorizeRequest(username, gamePassword, flashPassword, profileToLogin, retryAttempt + 1),
+                        () -> {
+                            if (!isFinishing() && !isDestroyed()) {
+                                startAuthorizeRequest(username, gamePassword, flashPassword, profileToLogin, retryAttempt + 1);
+                            }
+                        },
                         AUTH_RETRY_DELAY_MS
                 );
                 return;
@@ -1009,15 +1022,21 @@ public class LoginActivity extends AppCompatActivity {
                             vcode,
                             verify
                     );
-                    handler.post(() -> handleAuthResult(
-                            result,
-                            username,
-                            gamePassword,
-                            flashPassword,
-                            profileToLogin,
-                            0,
-                            attemptStartedAtMs
-                    ));
+                    handler.post(() -> {
+                        if (isFinishing() || isDestroyed()) {
+                            AppLog.d("LoginActivity", "Captcha authorization result ignored after activity destruction");
+                            return;
+                        }
+                        handleAuthResult(
+                                result,
+                                username,
+                                gamePassword,
+                                flashPassword,
+                                profileToLogin,
+                                0,
+                                attemptStartedAtMs
+                        );
+                    });
                 });
                 executor.shutdown();
             }

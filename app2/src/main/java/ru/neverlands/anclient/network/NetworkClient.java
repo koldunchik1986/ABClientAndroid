@@ -24,6 +24,7 @@ public class NetworkClient {
     public static synchronized OkHttpClient getInstance() {
         String currentSignature = ProxyRuntimeManager.getRuntimeSignature();
         if (instance == null || !currentSignature.equals(runtimeSignature)) {
+            retireCurrentClient("runtime signature changed");
             AppLog.i(TAG, "PROXY_BINDING: rebuilding OkHttp client, signature=" + currentSignature);
             cookieManager = new CookieManager();
             cookieManager.setCookiePolicy(CookiePolicy.ACCEPT_ALL);
@@ -102,8 +103,22 @@ public class NetworkClient {
      *   чтобы следующий {@link #getInstance()} пересобрал клиента с новым proxy endpoint.
      */
     public static synchronized void invalidateInstance() {
-        instance = null;
+        retireCurrentClient("explicit invalidation");
         runtimeSignature = "";
         AppLog.i(TAG, "PROXY_BINDING: OkHttp instance invalidated");
+    }
+
+    private static void retireCurrentClient(String reason) {
+        if (instance == null) {
+            return;
+        }
+        try {
+            instance.connectionPool().evictAll();
+            AppLog.i(TAG, "PROXY_BINDING: retired idle OkHttp connections, reason=" + reason);
+        } catch (Exception e) {
+            AppLog.w(TAG, "PROXY_BINDING: failed to evict idle OkHttp connections, reason=" + reason, e);
+        } finally {
+            instance = null;
+        }
     }
 }

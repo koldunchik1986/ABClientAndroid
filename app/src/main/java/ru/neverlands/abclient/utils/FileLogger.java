@@ -9,8 +9,11 @@ import java.nio.charset.Charset;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Locale;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.RejectedExecutionException;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
 
 public final class FileLogger {
     private static final String TAG = "FileLogger";
@@ -20,11 +23,14 @@ public final class FileLogger {
     private static final Object FILE_LOCK = new Object();
     private static final long MAX_FILE_BYTES = 8L * 1024L * 1024L;
     private static final int MAX_ROTATIONS = 2;
-    private static final ExecutorService IO = Executors.newSingleThreadExecutor(r -> {
+    private static final int MAX_PENDING_WRITES = 1_024;
+    private static final AtomicLong DROPPED_WRITES = new AtomicLong();
+    private static final ThreadPoolExecutor IO = new ThreadPoolExecutor(1, 1, 0L, TimeUnit.MILLISECONDS,
+            new ArrayBlockingQueue<>(MAX_PENDING_WRITES), r -> {
         Thread thread = new Thread(r, "ab-file-logger");
         thread.setDaemon(true);
         return thread;
-    });
+    }, new ThreadPoolExecutor.AbortPolicy());
     
     /**
      * Отслеживание текущего 10-минутного сегмента для proxy-логов.
@@ -70,7 +76,7 @@ public final class FileLogger {
         final String safeLevel = level == null ? "TRACE" : level.trim().toUpperCase(Locale.ROOT);
         final String safeChain = sanitizeChain(chain);
         final String safeMessage = sanitizeMessage(message);
-        IO.execute(() -> appendLine(safeLevel, safeChain, safeMessage, error));
+        enqueueWrite(() -> appendLine(safeLevel, safeChain, safeMessage, error));
     }
 
     private static void writeToProxySegment(String level, String message, Throwable error) {
@@ -79,7 +85,18 @@ public final class FileLogger {
         }
         final String safeLevel = level == null ? "TRACE" : level.trim().toUpperCase(Locale.ROOT);
         final String safeMessage = sanitizeMessage(message);
-        IO.execute(() -> appendLineToProxySegment(safeLevel, safeMessage, error));
+        enqueueWrite(() -> appendLineToProxySegment(safeLevel, safeMessage, error));
+    }
+
+    private static void enqueueWrite(Runnable writeTask) {
+        try {
+            IO.execute(writeTask);
+        } catch (RejectedExecutionException ignored) {
+            long dropped = DROPPED_WRITES.incrementAndGet();
+            if (dropped == 1L || dropped % 100L == 0L) {
+                Log.w(TAG, "File log queue is full, dropped writes=" + dropped);
+            }
+        }
     }
 
     private static void appendLine(String level, String chain, String message, Throwable error) {

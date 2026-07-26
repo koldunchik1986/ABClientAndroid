@@ -24,6 +24,7 @@ import ru.neverlands.anclient.utils.FileLogger;
 import ru.neverlands.anclient.utils.HelperStrings;
 import ru.neverlands.anclient.utils.HtmlUtils;
 import ru.neverlands.anclient.utils.Russian;
+import ru.neverlands.anclient.utils.SessionManager;
 
 /**
  * Модуль боевого post-filter, выделенный из {@link MainPhp}.
@@ -215,6 +216,7 @@ public final class FightAuto {
         host.logFightVariable(html, "slots_my");
         host.logFightVariable(html, "LogBoi");
 
+        SessionManager.getInstance().markFightInProgress();
         LezFight fight = new LezFight(html);
         InsHpSnapshot insHpSnapshot = host.parseInsHpSnapshot(html);
 

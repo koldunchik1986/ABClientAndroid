@@ -41,6 +41,9 @@ public final class UnderAttackManager {
     private static volatile String lastFightLogId = "";
     private static volatile boolean isHumanFight = false;
     private static volatile boolean isMeAttacker = false;
+    private static final Object PARSE_QUEUE_LOCK = new Object();
+    private static String pendingFightHtml;
+    private static boolean parseScheduled;
 
     private UnderAttackManager() {
     }
@@ -57,7 +60,34 @@ public final class UnderAttackManager {
                 + ", hasSlotsEn=" + html.contains("var slots_en = [")
                 + ", hasLivesG1=" + html.contains("var lives_g1 = [")
                 + ", hasLivesG2=" + html.contains("var lives_g2 = ["));
-        EXECUTOR.execute(() -> parseInternal(html));
+        synchronized (PARSE_QUEUE_LOCK) {
+            pendingFightHtml = html;
+            if (parseScheduled) {
+                AppLog.d(TRACE_CHAIN, TAG, "parseAsync coalesced to latest fight frame");
+                return;
+            }
+            parseScheduled = true;
+        }
+        EXECUTOR.execute(UnderAttackManager::drainLatestFightFrame);
+    }
+
+    private static void drainLatestFightFrame() {
+        while (true) {
+            String html;
+            synchronized (PARSE_QUEUE_LOCK) {
+                html = pendingFightHtml;
+                pendingFightHtml = null;
+            }
+            if (html != null) {
+                parseInternal(html);
+            }
+            synchronized (PARSE_QUEUE_LOCK) {
+                if (pendingFightHtml == null) {
+                    parseScheduled = false;
+                    return;
+                }
+            }
+        }
     }
 
     public static boolean isHumanFight() {

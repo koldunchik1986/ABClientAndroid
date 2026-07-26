@@ -16,8 +16,15 @@ import java.nio.charset.StandardCharsets;
 import java.util.LinkedHashMap;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
+import java.util.Collections;
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.RejectedExecutionException;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 import java.util.zip.GZIPInputStream;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -52,6 +59,9 @@ final class LocalHttpProxyServer {
     private static final int SOCKET_TIMEOUT_MS = 20_000;
     private static final int LOG_DEDUP_WINDOW_MS = 5_000;
     private static final int SERVER_NOTICE_CAPTURE_MAX_BYTES = 96 * 1024;
+    private static final int PROXY_WORKER_CORE_THREADS = 8;
+    private static final int PROXY_WORKER_MAX_THREADS = 12;
+    private static final int PROXY_WORKER_QUEUE_CAPACITY = 24;
 
     private final int startPort;
     private final ProxyRuntimeManager.ProxyUpstreamSettings upstreamSettings;
@@ -61,6 +71,7 @@ final class LocalHttpProxyServer {
     private ServerSocket serverSocket;
     private ExecutorService acceptExecutor;
     private ExecutorService workerExecutor;
+    private final Set<Socket> activeClientSockets = Collections.newSetFromMap(new ConcurrentHashMap<Socket, Boolean>());
 
     LocalHttpProxyServer(int startPort, ProxyRuntimeManager.ProxyUpstreamSettings upstreamSettings) {
         this.startPort = startPort;
@@ -87,7 +98,14 @@ final class LocalHttpProxyServer {
         this.running = true;
 
         this.acceptExecutor = Executors.newSingleThreadExecutor();
-        this.workerExecutor = Executors.newCachedThreadPool();
+        this.workerExecutor = new ThreadPoolExecutor(
+                PROXY_WORKER_CORE_THREADS,
+                PROXY_WORKER_MAX_THREADS,
+                30L,
+                TimeUnit.SECONDS,
+                new ArrayBlockingQueue<>(PROXY_WORKER_QUEUE_CAPACITY),
+                new ThreadPoolExecutor.AbortPolicy()
+        );
 
         acceptExecutor.execute(this::acceptLoop);
         AppLog.i(LOG_CHAIN, TAG, "PROXY_BOOT: listener started at 127.0.0.1:" + boundPort);
@@ -117,6 +135,10 @@ final class LocalHttpProxyServer {
             workerExecutor.shutdownNow();
             workerExecutor = null;
         }
+        for (Socket clientSocket : activeClientSockets) {
+            closeQuietly(clientSocket);
+        }
+        activeClientSockets.clear();
         boundPort = -1;
         AppLog.i(LOG_CHAIN, TAG, "PROXY_BOOT: listener stopped");
     }
@@ -150,7 +172,14 @@ final class LocalHttpProxyServer {
                 client.setTcpNoDelay(true);
                 AppLog.d(LOG_CHAIN, TAG, "PROXY_SESSION: accepted client=" + client.getRemoteSocketAddress());
                 if (workerExecutor != null) {
-                    workerExecutor.execute(() -> handleClient(client));
+                    activeClientSockets.add(client);
+                    try {
+                        workerExecutor.execute(() -> handleClient(client));
+                    } catch (RejectedExecutionException e) {
+                        activeClientSockets.remove(client);
+                        closeQuietly(client);
+                        AppLog.w(LOG_CHAIN, TAG, "PROXY_SESSION: worker queue full, client rejected", e);
+                    }
                 } else {
                     closeQuietly(client);
                 }
@@ -245,6 +274,8 @@ final class LocalHttpProxyServer {
                 writeSimpleError(fallbackOut, 502, "Bad Gateway", "Proxy forwarding error");
             } catch (Throwable ignored) {
             }
+        } finally {
+            activeClientSockets.remove(client);
         }
     }
 
@@ -259,64 +290,67 @@ final class LocalHttpProxyServer {
     }
 
     private long forwardRequest(ResolvedRoute route, HttpRequest request, OutputStream clientOut) throws IOException {
-        try (Socket remote = new Socket()) {
-            remote.setTcpNoDelay(true);
-            remote.setSoTimeout(SOCKET_TIMEOUT_MS);
-            remote.connect(new InetSocketAddress(route.connectHost, route.connectPort), SOCKET_TIMEOUT_MS);
+        RetryConnection retryConnection = new RetryConnection();
+        try {
+            try (Socket remote = new Socket()) {
+                remote.setTcpNoDelay(true);
+                remote.setSoTimeout(SOCKET_TIMEOUT_MS);
+                remote.connect(new InetSocketAddress(route.connectHost, route.connectPort), SOCKET_TIMEOUT_MS);
 
-            OutputStream remoteOut = remote.getOutputStream();
-            InputStream remoteIn = remote.getInputStream();
+                OutputStream remoteOut = remote.getOutputStream();
+                InputStream remoteIn = remote.getInputStream();
 
-            writeRequest(remoteOut, route, request, route.requestTarget, true);
-            ResponseHead responseHead = readResponseHead(remoteIn);
-            logProxyResponse(route, request, route.requestTarget, 1, responseHead);
+                writeRequest(remoteOut, route, request, route.requestTarget, true);
+                ResponseHead responseHead = readResponseHead(remoteIn);
+                logProxyResponse(route, request, route.requestTarget, 1, responseHead);
 
-            if (shouldRetryAuthPostWithOriginForm(route, request, responseHead)) {
-                String absoluteWithPortTarget = buildAbsoluteTargetWithExplicitPort(route);
-                int retryAttempt = 2;
-                if (!absoluteWithPortTarget.equals(route.requestTarget)) {
-                    AppLog.w(LOG_CHAIN, TAG, "PROXY_UPSTREAM_RETRY: 405 on absolute-form POST /game.php, retry absolute-form with explicit port");
-                    ResponseHead retryHead = forwardSingleRetry(route, request, absoluteWithPortTarget, retryAttempt++);
-                    if (isAcceptableRetryResponse(retryHead)) {
-                        clientOut.write(retryHead.rawBytes);
-                        CopyResult retryCopy = copyStreamWithCapture(
-                                retryInputForLastRetry,
-                                clientOut,
-                                SERVER_NOTICE_CAPTURE_MAX_BYTES
-                        );
-                        handleServerNoticeFromCapturedPayload(route, request, absoluteWithPortTarget, retryHead, retryCopy.capturedBytes);
-                        cleanupRetrySocket();
-                        return retryHead.rawBytes.length + retryCopy.totalBytes;
+                if (shouldRetryAuthPostWithOriginForm(route, request, responseHead)) {
+                    String absoluteWithPortTarget = buildAbsoluteTargetWithExplicitPort(route);
+                    int retryAttempt = 2;
+                    if (!absoluteWithPortTarget.equals(route.requestTarget)) {
+                        AppLog.w(LOG_CHAIN, TAG, "PROXY_UPSTREAM_RETRY: 405 on absolute-form POST /game.php, retry absolute-form with explicit port");
+                        ResponseHead retryHead = forwardSingleRetry(route, request, absoluteWithPortTarget, retryAttempt++, retryConnection);
+                        if (isAcceptableRetryResponse(retryHead)) {
+                            clientOut.write(retryHead.rawBytes);
+                            CopyResult retryCopy = copyStreamWithCapture(
+                                    retryConnection.inputStream,
+                                    clientOut,
+                                    SERVER_NOTICE_CAPTURE_MAX_BYTES
+                            );
+                            handleServerNoticeFromCapturedPayload(route, request, absoluteWithPortTarget, retryHead, retryCopy.capturedBytes);
+                            return retryHead.rawBytes.length + retryCopy.totalBytes;
+                        }
+                        retryConnection.close();
                     }
-                    cleanupRetrySocket();
+
+                    String originFormTarget = buildOriginFormTarget(route);
+                    if (!originFormTarget.equals(route.requestTarget) && !originFormTarget.equals(absoluteWithPortTarget)) {
+                        AppLog.w(LOG_CHAIN, TAG, "PROXY_UPSTREAM_RETRY: 405 persists, retry origin-form POST target=" + originFormTarget);
+                        ResponseHead retryHead = forwardSingleRetry(route, request, originFormTarget, retryAttempt++, retryConnection);
+                        if (isAcceptableRetryResponse(retryHead)) {
+                            clientOut.write(retryHead.rawBytes);
+                            CopyResult retryCopy = copyStreamWithCapture(
+                                    retryConnection.inputStream,
+                                    clientOut,
+                                    SERVER_NOTICE_CAPTURE_MAX_BYTES
+                            );
+                            handleServerNoticeFromCapturedPayload(route, request, originFormTarget, retryHead, retryCopy.capturedBytes);
+                            return retryHead.rawBytes.length + retryCopy.totalBytes;
+                        }
+                        retryConnection.close();
+                    }
+
+                    AppLog.w(LOG_CHAIN, TAG, "PROXY_UPSTREAM_RETRY: 405 persists, retry via CONNECT tunnel");
+                    return forwardViaUpstreamConnectTunnel(route, request, clientOut);
                 }
 
-                String originFormTarget = buildOriginFormTarget(route);
-                if (!originFormTarget.equals(route.requestTarget) && !originFormTarget.equals(absoluteWithPortTarget)) {
-                    AppLog.w(LOG_CHAIN, TAG, "PROXY_UPSTREAM_RETRY: 405 persists, retry origin-form POST target=" + originFormTarget);
-                    ResponseHead retryHead = forwardSingleRetry(route, request, originFormTarget, retryAttempt++);
-                    if (isAcceptableRetryResponse(retryHead)) {
-                        clientOut.write(retryHead.rawBytes);
-                        CopyResult retryCopy = copyStreamWithCapture(
-                                retryInputForLastRetry,
-                                clientOut,
-                                SERVER_NOTICE_CAPTURE_MAX_BYTES
-                        );
-                        handleServerNoticeFromCapturedPayload(route, request, originFormTarget, retryHead, retryCopy.capturedBytes);
-                        cleanupRetrySocket();
-                        return retryHead.rawBytes.length + retryCopy.totalBytes;
-                    }
-                    cleanupRetrySocket();
-                }
-
-                AppLog.w(LOG_CHAIN, TAG, "PROXY_UPSTREAM_RETRY: 405 persists, retry via CONNECT tunnel");
-                return forwardViaUpstreamConnectTunnel(route, request, clientOut);
-            } else {
                 clientOut.write(responseHead.rawBytes);
                 CopyResult copyResult = copyStreamWithCapture(remoteIn, clientOut, SERVER_NOTICE_CAPTURE_MAX_BYTES);
                 handleServerNoticeFromCapturedPayload(route, request, route.requestTarget, responseHead, copyResult.capturedBytes);
                 return responseHead.rawBytes.length + copyResult.totalBytes;
             }
+        } finally {
+            retryConnection.close();
         }
     }
 
@@ -335,45 +369,53 @@ final class LocalHttpProxyServer {
         return head != null && head.statusCode > 0 && head.statusCode < 400;
     }
 
-    private Socket retrySocketRef;
-    private InputStream retryInputForLastRetry;
+    private final class RetryConnection {
+        private Socket socket;
+        private InputStream inputStream;
+
+        private void replace(Socket newSocket, InputStream newInputStream) {
+            close();
+            socket = newSocket;
+            inputStream = newInputStream;
+        }
+
+        private void close() {
+            if (inputStream != null) {
+                try {
+                    inputStream.close();
+                } catch (IOException ignored) {
+                }
+                inputStream = null;
+            }
+            if (socket != null) {
+                closeQuietly(socket);
+                socket = null;
+            }
+        }
+    }
 
     /**
      * Выполняет один дополнительный retry в upstream-режиме с альтернативным request-target.
-     * Возвращает разобранный head ответа, а body остаётся в {@code retryInputForLastRetry}
+     * Возвращает разобранный head ответа, а body остаётся в request-local retry connection
      * для последующего проброса в клиент.
      */
     private ResponseHead forwardSingleRetry(ResolvedRoute route,
                                             HttpRequest request,
                                             String retryTarget,
-                                            int attempt) throws IOException {
-        cleanupRetrySocket();
+                                            int attempt,
+                                            RetryConnection retryConnection) throws IOException {
+        retryConnection.close();
         Socket retrySocket = new Socket();
-        retrySocketRef = retrySocket;
         retrySocket.setTcpNoDelay(true);
         retrySocket.setSoTimeout(SOCKET_TIMEOUT_MS);
         retrySocket.connect(new InetSocketAddress(route.connectHost, route.connectPort), SOCKET_TIMEOUT_MS);
         OutputStream retryOut = retrySocket.getOutputStream();
         InputStream retryIn = retrySocket.getInputStream();
-        retryInputForLastRetry = retryIn;
+        retryConnection.replace(retrySocket, retryIn);
         writeRequest(retryOut, route, request, retryTarget, true);
         ResponseHead retryHead = readResponseHead(retryIn);
         logProxyResponse(route, request, retryTarget, attempt, retryHead);
         return retryHead;
-    }
-
-    private void cleanupRetrySocket() {
-        if (retryInputForLastRetry != null) {
-            try {
-                retryInputForLastRetry.close();
-            } catch (IOException ignored) {
-            }
-            retryInputForLastRetry = null;
-        }
-        if (retrySocketRef != null) {
-            closeQuietly(retrySocketRef);
-            retrySocketRef = null;
-        }
     }
 
     private String buildAbsoluteTargetWithExplicitPort(ResolvedRoute route) {

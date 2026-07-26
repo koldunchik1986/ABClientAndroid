@@ -19,6 +19,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.lang.ref.WeakReference;
 import java.net.URLEncoder;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -64,6 +65,7 @@ public class ContactsActivity extends AppCompatActivity implements ContactsAdapt
     }
 
     private SortType currentSort = SortType.DEFAULT;
+    private boolean contactsRefreshInFlight;
 
     /**
      * Внутренний класс для хранения информации о клане из clans.txt.
@@ -95,13 +97,33 @@ public class ContactsActivity extends AppCompatActivity implements ContactsAdapt
     }
 
     private void refreshContacts() {
+        if (contactsRefreshInFlight) {
+            AppLog.d("ContactsActivity", "Contact refresh already in progress");
+            return;
+        }
+        contactsRefreshInFlight = true;
         Toast.makeText(this, "Обновление списка контактов...", Toast.LENGTH_SHORT).show();
-        ContactsManager.refreshAllContacts(this, () -> {
-            runOnUiThread(() -> {
-                Toast.makeText(ContactsActivity.this, "Список контактов обновлен", Toast.LENGTH_SHORT).show();
-                loadContactsFromManager();
+        WeakReference<ContactsActivity> activityReference = new WeakReference<>(this);
+        ContactsManager.refreshAllContacts(getApplicationContext(), () -> {
+            ContactsActivity activity = activityReference.get();
+            if (activity == null || activity.isFinishing() || activity.isDestroyed()) {
+                return;
+            }
+            activity.runOnUiThread(() -> {
+                if (activity.isFinishing() || activity.isDestroyed()) {
+                    return;
+                }
+                activity.contactsRefreshInFlight = false;
+                Toast.makeText(activity, "Список контактов обновлен", Toast.LENGTH_SHORT).show();
+                activity.loadContactsFromManager();
             });
         });
+    }
+
+    @Override
+    protected void onDestroy() {
+        contactsRefreshInFlight = false;
+        super.onDestroy();
     }
 
     @Override

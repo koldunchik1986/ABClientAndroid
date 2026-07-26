@@ -56,6 +56,8 @@ public class WebAppInterface {
     private static final long SERVER_POPUP_DEDUP_MS = 1500L;
     private static final int CHAT_POST_MAX_ATTEMPTS = 3;
     private static final long CHAT_POST_RETRY_BASE_DELAY_MS = 350L;
+    private static final int CHAT_POST_CONNECT_TIMEOUT_MS = 12_000;
+    private static final int CHAT_POST_READ_TIMEOUT_MS = 20_000;
     private static volatile long lastNeverTimerLogAtMs = 0L;
     private static volatile long lastNeverTimerLoggedValueMs = Long.MIN_VALUE;
     private static volatile long lastMapBridgeLogAtMs = 0L;
@@ -71,12 +73,14 @@ public class WebAppInterface {
 
     /** Конструктор, инициализирующий контекст. */
     public WebAppInterface(Context c) {
-        mContext = c;
+        Context appContext = c != null ? c.getApplicationContext() : null;
+        mContext = appContext != null ? appContext : c;
     }
 
     private MainActivity getMainActivityOrNull() {
         if (AppVars.mainActivity == null) return null;
-        return AppVars.mainActivity.get();
+        MainActivity activity = AppVars.mainActivity.get();
+        return activity != null && !activity.isFinishing() && !activity.isDestroyed() ? activity : null;
     }
 
     private void logMapBridgeValue(String source, int mapBigWidth, int mapBigHeight, int mapBigScale, int halfW, int halfH) {
@@ -1274,6 +1278,8 @@ public class WebAppInterface {
                     connection.setRequestMethod("POST");
                     connection.setDoInput(true);
                     connection.setDoOutput(true);
+                    connection.setConnectTimeout(CHAT_POST_CONNECT_TIMEOUT_MS);
+                    connection.setReadTimeout(CHAT_POST_READ_TIMEOUT_MS);
                     connection.setRequestProperty("Content-Type", "application/x-www-form-urlencoded; charset=windows-1251");
                     connection.setRequestProperty("Accept-Encoding", "identity");
 

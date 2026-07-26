@@ -179,6 +179,7 @@ public class WebViewRequestInterceptor {
      *   до передачи ответа в WebView.
      */
     public static WebResourceResponse intercept(WebResourceRequest request) {
+        HttpURLConnection connection = null;
         try {
             Uri uri = request.getUrl();
             String originalUrlString = uri.toString();
@@ -312,7 +313,7 @@ public class WebViewRequestInterceptor {
                     + (activeProxy != null ? "local proxy" : "direct")
                     + ", url=" + urlString);
             RuntimeNetTrace.push("HTTP_OPEN", "route=" + (activeProxy != null ? "proxy" : "direct") + " url=" + trimUrlForTrace(urlString));
-            HttpURLConnection connection = activeProxy != null
+            connection = activeProxy != null
                     ? (HttpURLConnection) url.openConnection(activeProxy)
                     : (HttpURLConnection) url.openConnection();
             connection.setInstanceFollowRedirects(true);
@@ -375,14 +376,10 @@ public class WebViewRequestInterceptor {
                 connection.setRequestProperty("Referer", reqReferer);
             }
             if (isChatEndpoint(urlString)) {
-                String neverChatCookie = getCookieValueByName(effectiveCookie, "NeverChat");
-                String neverFuncCookie = getCookieValueByName(effectiveCookie, "NeverFunc");
                 String chatReqMessage = "CHAT_REQ_HEADERS: url=" + urlString
                         + ", ua=" + (reqUserAgent == null ? "" : reqUserAgent)
                         + ", referer=" + (reqReferer == null ? "" : reqReferer)
-                        + ", cookieSummary=" + summarizeCookieHeader(effectiveCookie)
-                        + ", neverChat=" + (neverChatCookie.isEmpty() ? "<empty>" : neverChatCookie)
-                        + ", neverFunc=" + (neverFuncCookie.isEmpty() ? "<empty>" : neverFuncCookie);
+                        + ", cookieSummary=" + summarizeCookieHeader(effectiveCookie);
                 AppLog.d("chat_poll", TAG, chatReqMessage);
             }
 
@@ -396,7 +393,10 @@ public class WebViewRequestInterceptor {
             InputStream responseStream = code >= 400 && connection.getErrorStream() != null
                     ? connection.getErrorStream()
                     : connection.getInputStream();
-            byte[] bytes = readAllBytes(responseStream);
+            byte[] bytes;
+            try (InputStream stream = responseStream) {
+                bytes = readAllBytes(stream);
+            }
             AppLog.d(TAG, "Raw bytes: " + bytes.length + " for " + urlString);
 
             // Сохраняем свежие байты картинки капчи завершения боя для отображения в popup без повторного HTTP-запроса.
@@ -435,7 +435,9 @@ public class WebViewRequestInterceptor {
             Map<String, List<String>> headers = connection.getHeaderFields();
             // Log all response headers for diagnostics
             for (Map.Entry<String, List<String>> hEntry : headers.entrySet()) {
-                AppLog.d(TAG, "Header [" + hEntry.getKey() + "] = " + hEntry.getValue() + " for " + urlString);
+                boolean sensitive = "set-cookie".equalsIgnoreCase(hEntry.getKey());
+                AppLog.d(TAG, "Header [" + hEntry.getKey() + "] = "
+                        + (sensitive ? "<redacted>" : hEntry.getValue()) + " for " + urlString);
             }
             List<String> setCookies = getHeaderIgnoreCase(headers, "Set-Cookie");
             if (setCookies != null) {
@@ -447,13 +449,13 @@ public class WebViewRequestInterceptor {
                 if (urlString.contains("ch.php") && urlString.contains("show=1")) {
                     String setNeverChat = getSetCookieValueByName(setCookies, "NeverChat");
                     if (!setNeverChat.isEmpty()) {
-                        String cookieMessage = "CHAT_SET_COOKIE: NeverChat=" + setNeverChat + " for " + urlString;
-                        AppLog.d("chat_poll", TAG, cookieMessage);
+                        AppLog.d("chat_poll", TAG, "CHAT_SET_COOKIE: NeverChat updated for " + urlString);
                     }
                 }
             }
 
             connection.disconnect();
+            connection = null;
 
             // Log first 200 chars of decoded HTML for diagnostics
             String preview = new String(bytes, Charset.forName("windows-1251"));
@@ -498,40 +500,46 @@ public class WebViewRequestInterceptor {
                 HttpURLConnection second = secondProxy != null
                         ? (HttpURLConnection) url.openConnection(secondProxy)
                         : (HttpURLConnection) url.openConnection();
-                second.setInstanceFollowRedirects(true);
-                second.setRequestMethod("GET");
-                second.setDoInput(true);
-                second.setConnectTimeout(12_000);
-                second.setReadTimeout(20_000);
-                second.setRequestProperty("Accept-Encoding", "identity");
-                String cookie2 = getCookieWithHostFallback(urlString, url.getHost());
-                if (cookie2 == null || cookie2.isEmpty()) {
-                    cookie2 = CookiesManager.obtain(url.getHost());
-                }
-                if (cookie2 != null && !cookie2.isEmpty()) {
-                    second.setRequestProperty("Cookie", cookie2);
-                }
-                int code2 = second.getResponseCode();
-                String contentEncoding2 = second.getContentEncoding();
-                InputStream stream2 = code2 >= 400 && second.getErrorStream() != null
-                        ? second.getErrorStream()
-                        : second.getInputStream();
-                byte[] secondBytes = readAllBytes(stream2);
-                if ("gzip".equalsIgnoreCase(contentEncoding2) && secondBytes.length > 2
-                        && (secondBytes[0] & 0xff) == 0x1f && (secondBytes[1] & 0xff) == 0x8b) {
-                    secondBytes = decompressGzip(secondBytes);
-                }
-                Map<String, List<String>> h2 = second.getHeaderFields();
-                List<String> sc2 = getHeaderIgnoreCase(h2, "Set-Cookie");
-                if (sc2 != null) {
-                    for (String sc : sc2) {
-                        CookiesManager.assign(url.getHost(), sc);
-                        CookieManager.getInstance().setCookie(url.getProtocol() + "://" + url.getHost(), sc);
+                try {
+                    second.setInstanceFollowRedirects(true);
+                    second.setRequestMethod("GET");
+                    second.setDoInput(true);
+                    second.setConnectTimeout(12_000);
+                    second.setReadTimeout(20_000);
+                    second.setRequestProperty("Accept-Encoding", "identity");
+                    String cookie2 = getCookieWithHostFallback(urlString, url.getHost());
+                    if (cookie2 == null || cookie2.isEmpty()) {
+                        cookie2 = CookiesManager.obtain(url.getHost());
                     }
-                    CookieManager.getInstance().flush();
+                    if (cookie2 != null && !cookie2.isEmpty()) {
+                        second.setRequestProperty("Cookie", cookie2);
+                    }
+                    int code2 = second.getResponseCode();
+                    String contentEncoding2 = second.getContentEncoding();
+                    byte[] secondBytes;
+                    InputStream stream2 = code2 >= 400 && second.getErrorStream() != null
+                            ? second.getErrorStream()
+                            : second.getInputStream();
+                    try (InputStream stream = stream2) {
+                        secondBytes = readAllBytes(stream);
+                    }
+                    if ("gzip".equalsIgnoreCase(contentEncoding2) && secondBytes.length > 2
+                            && (secondBytes[0] & 0xff) == 0x1f && (secondBytes[1] & 0xff) == 0x8b) {
+                        secondBytes = decompressGzip(secondBytes);
+                    }
+                    Map<String, List<String>> h2 = second.getHeaderFields();
+                    List<String> sc2 = getHeaderIgnoreCase(h2, "Set-Cookie");
+                    if (sc2 != null) {
+                        for (String sc : sc2) {
+                            CookiesManager.assign(url.getHost(), sc);
+                            CookieManager.getInstance().setCookie(url.getProtocol() + "://" + url.getHost(), sc);
+                        }
+                        CookieManager.getInstance().flush();
+                    }
+                    bytes = secondBytes;
+                } finally {
+                    second.disconnect();
                 }
-                second.disconnect();
-                bytes = secondBytes;
             }
 
             AppLog.d(TAG, "Calling Filter.process for " + urlString + " (" + bytes.length + " bytes)");
@@ -646,6 +654,10 @@ public class WebViewRequestInterceptor {
                 return buildStrictProxyBlockedResponse();
             }
             return null;
+        } finally {
+            if (connection != null) {
+                connection.disconnect();
+            }
         }
     }
 
@@ -787,7 +799,7 @@ public class WebViewRequestInterceptor {
                 return;
             }
             MainActivity activity = AppVars.mainActivity.get();
-            if (activity == null) {
+            if (activity == null || activity.isFinishing() || activity.isDestroyed()) {
                 return;
             }
             activity.onChatPollResponseMeta(
@@ -859,7 +871,7 @@ public class WebViewRequestInterceptor {
                 return;
             }
             MainActivity activity = AppVars.mainActivity.get();
-            if (activity == null) {
+            if (activity == null || activity.isFinishing() || activity.isDestroyed()) {
                 return;
             }
             activity.onSessionErrorHtmlDetected(url, source);

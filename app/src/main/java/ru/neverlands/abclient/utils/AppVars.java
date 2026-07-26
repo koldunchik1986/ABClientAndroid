@@ -520,11 +520,12 @@ public class AppVars {
     private static Context context;
 
     public static void init(Context context) {
-        AppVars.context = context;
-        assetManager = context.getAssets();
-        ru.neverlands.abclient.model.LezSpellCollection.init(context);
-        ExtMap.init(context);
-        logsDir = context.getExternalFilesDir("Logs");
+        Context appContext = context.getApplicationContext();
+        AppVars.context = appContext != null ? appContext : context;
+        assetManager = AppVars.context.getAssets();
+        ru.neverlands.abclient.model.LezSpellCollection.init(AppVars.context);
+        ExtMap.init(AppVars.context);
+        logsDir = AppVars.context.getExternalFilesDir("Logs");
         if (logsDir != null && !logsDir.exists()) {
             logsDir.mkdirs();
         }

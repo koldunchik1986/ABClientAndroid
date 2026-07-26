@@ -26,6 +26,7 @@ import androidx.annotation.Nullable;
  */
 public final class FightAnnounceHandler {
     private static final String TAG = "FightAnnounceHandler";
+    private static final int MAX_RETRY_ATTEMPTS = 3;
 
     private FightAnnounceHandler() {
     }
@@ -43,7 +44,14 @@ public final class FightAnnounceHandler {
             @Nullable String fighterNickname,
             boolean isCaptchaVisible,
             @NonNull Runnable onApprovedCallback) {
-        
+        onFightAnnounced(fighterNickname, isCaptchaVisible, onApprovedCallback, 0);
+    }
+
+    private static void onFightAnnounced(
+            @Nullable String fighterNickname,
+            boolean isCaptchaVisible,
+            @NonNull Runnable onApprovedCallback,
+            int retryAttempt) {
         String traceMsg = "[FIGHT_ANNOUNCE_EVENT] fighter=" + fighterNickname + ", captcha=" + isCaptchaVisible;
         AppLog.d(TAG, TAG, traceMsg);
         
@@ -64,7 +72,7 @@ public final class FightAnnounceHandler {
             String guardMsg = "[FIGHT_ANNOUNCE_BLOCKED] guard conditions not met";
             AppLog.w(TAG, TAG, guardMsg);
             // Retry через короткий промежуток времени
-            scheduleRetryAfterMs(onApprovedCallback, 500);
+            scheduleRetryAfterMs(fighterNickname, onApprovedCallback, 500, retryAttempt + 1);
             return;
         }
         
@@ -74,7 +82,7 @@ public final class FightAnnounceHandler {
             String vcodeMsg = "[FIGHT_ANNOUNCE_BLOCKED] no valid vcode available";
             AppLog.w(TAG, TAG, vcodeMsg);
             // Retry через промежуток для получения нового VCode
-            scheduleRetryAfterMs(onApprovedCallback, 800);
+            scheduleRetryAfterMs(fighterNickname, onApprovedCallback, 800, retryAttempt + 1);
             return;
         }
         
@@ -99,16 +107,45 @@ public final class FightAnnounceHandler {
      * @param callback Callback для повторного вызова
      * @param delayMs Время задержки в миллисекундах
      */
-    private static void scheduleRetryAfterMs(@NonNull Runnable callback, long delayMs) {
-        String msg = "[FIGHT_ANNOUNCE_RETRY_SCHEDULED] delayMs=" + delayMs;
-        FileLogger.trace(TAG, msg);
-        
+    private static void scheduleRetryAfterMs(
+            @Nullable String fighterNickname,
+            @NonNull Runnable callback,
+            long delayMs,
+            int retryAttempt) {
+        if (retryAttempt > MAX_RETRY_ATTEMPTS) {
+            AppLog.w(TAG, TAG, "[FIGHT_ANNOUNCE_REJECTED] retry limit reached, attempts="
+                    + MAX_RETRY_ATTEMPTS);
+            return;
+        }
+        String msg = "[FIGHT_ANNOUNCE_RETRY_SCHEDULED] delayMs=" + delayMs
+                + ", attempt=" + retryAttempt;
+        AppLog.i(TAG, TAG, msg);
+
         // Использовать Handler для асинхронной повторной попытки
         android.os.Handler handler = new android.os.Handler(android.os.Looper.getMainLooper());
         handler.postDelayed(() -> {
-            String retryMsg = "[FIGHT_ANNOUNCE_RETRY_TRIGGERED] attempting again after " + delayMs + "ms";
-            FileLogger.trace(TAG, retryMsg);
-            onFightAnnounced(null, false, callback);
+            boolean captchaVisible = isBlockingFightCaptchaVisible();
+            String retryMsg = "[FIGHT_ANNOUNCE_RETRY_TRIGGERED] attempting again after " + delayMs
+                    + "ms, attempt=" + retryAttempt + ", captcha=" + captchaVisible;
+            AppLog.i(TAG, TAG, retryMsg);
+            onFightAnnounced(fighterNickname, captchaVisible, callback, retryAttempt);
         }, delayMs);
+    }
+
+    private static boolean isBlockingFightCaptchaVisible() {
+        if (!AppVars.IsFightCaptchaDialogVisible) {
+            return false;
+        }
+        try {
+            ru.neverlands.anclient.MainActivity activity = AppVars.mainActivity != null
+                    ? AppVars.mainActivity.get() : null;
+            if (activity != null && !activity.isFinishing() && !activity.isDestroyed()
+                    && activity.isActiveAlchemyCaptchaDialog()) {
+                return false;
+            }
+        } catch (Exception ignored) {
+            // Fail safe: an unavailable activity must not bypass an active fight captcha.
+        }
+        return true;
     }
 }

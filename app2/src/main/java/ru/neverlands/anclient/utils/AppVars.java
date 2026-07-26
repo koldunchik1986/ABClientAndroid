@@ -613,18 +613,19 @@ public class AppVars {
     private static Context context;
 
     public static void init(Context context) {
-        AppVars.context = context;
-        assetManager = context.getAssets();
-        ru.neverlands.anclient.model.LezSpellCollection.init(context);
-        ExtMap.init(context);
-        logsDir = context.getExternalFilesDir("Logs");
+        Context appContext = context.getApplicationContext();
+        AppVars.context = appContext != null ? appContext : context;
+        assetManager = AppVars.context.getAssets();
+        ru.neverlands.anclient.model.LezSpellCollection.init(AppVars.context);
+        ExtMap.init(AppVars.context);
+        logsDir = AppVars.context.getExternalFilesDir("Logs");
         if (logsDir != null && !logsDir.exists()) {
             logsDir.mkdirs();
         }
         // files/info — постоянные пользовательские данные ANClient (license, chat, stats).
         // В отличие от files/Logs, эта директория не очищается кнопкой "Очистить логи".
-        infoDir = resolveInfoDir(context);
-        restorePersistentNeverTimer(context, "AppVars.init");
+        infoDir = resolveInfoDir(AppVars.context);
+        restorePersistentNeverTimer(AppVars.context, "AppVars.init");
     }
 
     public static synchronized void setNeverTimerDueAt(long dueAtMs, String source) {

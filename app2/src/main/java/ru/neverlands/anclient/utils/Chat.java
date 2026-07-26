@@ -28,6 +28,7 @@ public class Chat {
     // Зависимость: используется в sendChatMessage для retry при недоступности WebView
     private static final ConcurrentLinkedQueue<String> PENDING_MESSAGES = new ConcurrentLinkedQueue<>();
     private static final ConcurrentLinkedQueue<String> PENDING_DISPLAY_MESSAGES = new ConcurrentLinkedQueue<>();
+    private static final int MAX_PENDING_MESSAGES = 100;
     private static final long RETRY_DELAY_MS = 500L;
     private static volatile boolean chatWebViewRetryScheduled = false;
     private static volatile boolean chatDisplayRetryScheduled = false;
@@ -116,6 +117,7 @@ public class Chat {
         critical = false;
         scheduleAutoAnswer();
         retryPendingDisplayMessages();
+        schedulePendingMessagesRetry();
     }
 
     // Критическое состояние блокирует автоответы (аналог C# Critical).
@@ -161,7 +163,7 @@ public class Chat {
             return;
         }
         MainActivity activity = AppVars.mainActivity != null ? AppVars.mainActivity.get() : null;
-        if (activity == null) return;
+        if (!isActivityUsable(activity)) return;
         String msg = ANSWERS.poll();
         if (msg == null || msg.isEmpty()) return;
         lastAnswerTime = now;
@@ -172,6 +174,11 @@ public class Chat {
     // Отправка текста в форму чата (через chatButtonsWebview).
     private static void sendChatMessage(MainActivity activity, String message) {
         String safe = message == null ? "" : message;
+        if (!isActivityUsable(activity)) {
+            offerPendingMessage(PENDING_MESSAGES, safe, "send");
+            schedulePendingMessagesRetry();
+            return;
+        }
         com.google.gson.Gson gson = new com.google.gson.Gson();
         String json = gson.toJson(safe);
         AppLog.d(TAG, "sendChatMessage request: len=" + safe.length()
@@ -194,7 +201,7 @@ public class Chat {
                 AppLog.w(TAG, "sendChatMessage dropped: chatButtonsWebview is not ready, adding to retry queue");
                 FileLogger.log("[Chat.sendChatMessage] WebView not ready, queued: " + safe.substring(0, Math.min(80, safe.length())));
                 // Добавить сообщение в очередь для повторной попытки
-                PENDING_MESSAGES.offer(safe);
+                offerPendingMessage(PENDING_MESSAGES, safe, "send");
                 // Запланировать retry если ещё не запланирован
                 if (!chatWebViewRetryScheduled) {
                     chatWebViewRetryScheduled = true;
@@ -215,7 +222,7 @@ public class Chat {
      */
     private static void retryPendingMessages() {
         MainActivity activity = AppVars.mainActivity != null ? AppVars.mainActivity.get() : null;
-        if (activity == null || PENDING_MESSAGES.isEmpty()) {
+        if (!isActivityUsable(activity) || PENDING_MESSAGES.isEmpty()) {
             chatWebViewRetryScheduled = false;
             return;
         }
@@ -238,10 +245,8 @@ public class Chat {
             // WebView всё ещё не готов - запланировать новый retry
             AppLog.d(TAG, "retryPendingMessages: chatButtonsWebview still not ready, queued messages=" + PENDING_MESSAGES.size());
             FileLogger.log("[Chat.retryPendingMessages] WebView still not ready, " + PENDING_MESSAGES.size() + " messages waiting");
-            if (!chatWebViewRetryScheduled) {
-                chatWebViewRetryScheduled = true;
-                HANDLER.postDelayed(RETRY_PENDING_MESSAGES_RUNNABLE, RETRY_DELAY_MS);
-            }
+            chatWebViewRetryScheduled = false;
+            schedulePendingMessagesRetry();
         }
     }
 
@@ -259,9 +264,9 @@ public class Chat {
     public static void sendMessageToServer(String message) {
         if (message == null || message.trim().isEmpty()) return;
         MainActivity activity = AppVars.mainActivity != null ? AppVars.mainActivity.get() : null;
-        if (activity == null) {
-            AppLog.w(TAG, "sendMessageToServer: activity is null, skip");
-            FileLogger.log("[Chat.sendMessageToServer] FAILED: activity is null");
+        if (!isActivityUsable(activity)) {
+            AppLog.w(TAG, "sendMessageToServer: activity unavailable, skip");
+            FileLogger.log("[Chat.sendMessageToServer] FAILED: activity unavailable");
             return;
         }
         String trimmed = message.trim();
@@ -279,6 +284,8 @@ public class Chat {
     // Вставка сообщения в окно чата (chatMsgWebview) через add_msg JS.
     private static void schedulePendingDisplayMessagesRetry() {
         if (chatDisplayRetryScheduled) return;
+        MainActivity activity = AppVars.mainActivity != null ? AppVars.mainActivity.get() : null;
+        if (!isActivityUsable(activity)) return;
         chatDisplayRetryScheduled = true;
         HANDLER.postDelayed(RETRY_PENDING_DISPLAY_MESSAGES_RUNNABLE, RETRY_DELAY_MS);
     }
@@ -291,7 +298,7 @@ public class Chat {
 
     private static void queuePendingDisplayMessage(String message, String reason) {
         if (message == null || message.isEmpty()) return;
-        PENDING_DISPLAY_MESSAGES.offer(message);
+        offerPendingMessage(PENDING_DISPLAY_MESSAGES, message, "display");
         AppLog.w(TAG, TAG, "display queued: reason=" + reason
                 + ", pending=" + PENDING_DISPLAY_MESSAGES.size()
                 + ", preview=" + buildChatPreview(message));
@@ -299,12 +306,13 @@ public class Chat {
     }
 
     private static void deliverMessageToChatWebView(MainActivity activity, String message, boolean fromQueue) {
-        if (activity == null
+        if (!isActivityUsable(activity)
                 || activity.binding == null
                 || activity.binding.appBarMain == null
                 || activity.binding.appBarMain.contentMain == null
                 || activity.binding.appBarMain.contentMain.chatMsgWebview == null) {
-            queuePendingDisplayMessage(message, activity == null ? "activity_null" : "chat_webview_not_ready");
+            queuePendingDisplayMessage(message, !isActivityUsable(activity)
+                    ? "activity_unavailable" : "chat_webview_not_ready");
             return;
         }
 
@@ -337,11 +345,30 @@ public class Chat {
         if (message == null || message.isEmpty()) return;
 
         MainActivity activity = AppVars.mainActivity != null ? AppVars.mainActivity.get() : null;
-        if (activity == null) {
+        if (!isActivityUsable(activity)) {
             queuePendingDisplayMessage(message, "retry_without_activity");
             return;
         }
         activity.runOnUiThread(() -> deliverMessageToChatWebView(activity, message, true));
+    }
+
+    private static void schedulePendingMessagesRetry() {
+        if (!chatWebViewRetryScheduled && !PENDING_MESSAGES.isEmpty()) {
+            chatWebViewRetryScheduled = true;
+            HANDLER.postDelayed(RETRY_PENDING_MESSAGES_RUNNABLE, RETRY_DELAY_MS);
+        }
+    }
+
+    private static void offerPendingMessage(ConcurrentLinkedQueue<String> queue, String message, String queueName) {
+        while (queue.size() >= MAX_PENDING_MESSAGES) {
+            queue.poll();
+            AppLog.w(TAG, "pending " + queueName + " queue reached limit, dropped oldest message");
+        }
+        queue.offer(message);
+    }
+
+    private static boolean isActivityUsable(MainActivity activity) {
+        return activity != null && !activity.isFinishing() && !activity.isDestroyed();
     }
 
     public static void addMessageToChat(String message) {
@@ -350,7 +377,7 @@ public class Chat {
         try {
             captureSystemChatMessage(safe);
             MainActivity activity = AppVars.mainActivity != null ? AppVars.mainActivity.get() : null;
-            if (activity == null) {
+            if (!isActivityUsable(activity)) {
                 queuePendingDisplayMessage(safe, "entry_without_activity");
                 return;
             }

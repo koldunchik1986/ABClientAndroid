@@ -518,14 +518,20 @@ public class LoginActivity extends AppCompatActivity {
         executor.execute(() -> {
             AuthManager authManager = new AuthManager();
             AuthResult result = authManager.authorize(username, gamePassword);
-            handler.post(() -> handleAuthResult(
-                    result,
-                    username,
-                    gamePassword,
-                    profileToLogin,
-                    retryAttempt,
-                    attemptStartedAtMs
-            ));
+            handler.post(() -> {
+                if (isFinishing() || isDestroyed()) {
+                    AppLog.d("LoginActivity", "Authorization result ignored after activity destruction");
+                    return;
+                }
+                handleAuthResult(
+                        result,
+                        username,
+                        gamePassword,
+                        profileToLogin,
+                        retryAttempt,
+                        attemptStartedAtMs
+                );
+            });
         });
         // Одноразовый executor для конкретной попытки входа.
         executor.shutdown();
@@ -542,10 +548,13 @@ public class LoginActivity extends AppCompatActivity {
      */
     private void handleAuthResult(AuthResult result,
                                   String username,
-                                  String gamePassword,
-                                  UserConfig profileToLogin,
-                                  int retryAttempt,
-                                  long attemptStartedAtMs) {
+                                   String gamePassword,
+                                   UserConfig profileToLogin,
+                                   int retryAttempt,
+                                   long attemptStartedAtMs) {
+        if (isFinishing() || isDestroyed()) {
+            return;
+        }
         long attemptElapsedMs = Math.max(0L, System.currentTimeMillis() - attemptStartedAtMs);
         AppLog.d(
                 "LoginActivity",
@@ -576,7 +585,11 @@ public class LoginActivity extends AppCompatActivity {
                 binding.progressBar.setVisibility(View.VISIBLE);
                 binding.loginButton.setEnabled(false);
                 new Handler(Looper.getMainLooper()).postDelayed(
-                        () -> startAuthorizeRequest(username, gamePassword, profileToLogin, retryAttempt + 1),
+                        () -> {
+                            if (!isFinishing() && !isDestroyed()) {
+                                startAuthorizeRequest(username, gamePassword, profileToLogin, retryAttempt + 1);
+                            }
+                        },
                         AUTH_RETRY_DELAY_MS
                 );
                 return;
@@ -675,52 +688,11 @@ public class LoginActivity extends AppCompatActivity {
 
         // Запускаем фоновое обновление всех контактов
         AppLog.d("LoginActivity", "Starting background contact refresh after successful login.");
-        List<ru.neverlands.abclient.model.Contact> contactsToUpdate = ru.neverlands.abclient.manager.ContactsManager.getContactsFromCache();
-        if (contactsToUpdate != null && !contactsToUpdate.isEmpty()) {
-            updateContactsRecursive(contactsToUpdate, 0);
-        }
+        ru.neverlands.abclient.manager.ContactsManager.refreshAllContacts(getApplicationContext(), null);
 
         Intent intent = new Intent(LoginActivity.this, MainActivity.class);
         startActivity(intent);
         finish();
-    }
-
-    /**
-     * Рекурсивно обновляет список контактов один за другим с задержкой.
-     */
-    private void updateContactsRecursive(final List<ru.neverlands.abclient.model.Contact> contacts, final int index) {
-        if (index >= contacts.size()) {
-            AppLog.d("LoginActivity", "Background contact refresh completed.");
-            // Опционально: можно показать Toast, но это может сбить пользователя с толку, т.к. он уже на другом экране
-            // runOnUiThread(() -> Toast.makeText(getApplicationContext(), "Контакты обновлены в фоне", Toast.LENGTH_SHORT).show());
-            return;
-        }
-
-        new Handler(Looper.getMainLooper()).postDelayed(() -> {
-            final ru.neverlands.abclient.model.Contact oldContact = contacts.get(index);
-            if (oldContact.playerID == null || oldContact.playerID.isEmpty()) {
-                updateContactsRecursive(contacts, index + 1);
-                return;
-            }
-
-            ru.neverlands.abclient.repository.ApiRepository.getPlayerInfo(oldContact.playerID, new ru.neverlands.abclient.repository.ApiRepository.ApiCallback<ru.neverlands.abclient.model.Contact>() {
-                @Override
-                public void onSuccess(ru.neverlands.abclient.model.Contact newContact) {
-                    newContact.classId = oldContact.classId;
-                    newContact.comment = oldContact.comment;
-                    // Сохраняем персональный toolId при фоновом обновлении после логина.
-                    newContact.toolId = oldContact.toolId;
-                    ru.neverlands.abclient.manager.ContactsManager.updateContact(newContact);
-                    updateContactsRecursive(contacts, index + 1);
-                }
-
-                @Override
-                public void onFailure(String message) {
-                    AppLog.e("LoginActivity", "Failed to refresh contact by ID " + oldContact.playerID + ": " + message);
-                    updateContactsRecursive(contacts, index + 1);
-                }
-            });
-        }, 500);
     }
 
     private static long currentDotNetTicks() {
@@ -758,14 +730,20 @@ public class LoginActivity extends AppCompatActivity {
                 executor.execute(() -> {
                     AuthManager authManager = new AuthManager();
                     AuthResult result = authManager.authorizeWithCaptcha(username, gamePassword, vcode, verify);
-                    handler.post(() -> handleAuthResult(
-                            result,
-                            username,
-                            gamePassword,
-                            profileToLogin,
-                            0,
-                            attemptStartedAtMs
-                    ));
+                    handler.post(() -> {
+                        if (isFinishing() || isDestroyed()) {
+                            AppLog.d("LoginActivity", "Captcha authorization result ignored after activity destruction");
+                            return;
+                        }
+                        handleAuthResult(
+                                result,
+                                username,
+                                gamePassword,
+                                profileToLogin,
+                                0,
+                                attemptStartedAtMs
+                        );
+                    });
                 });
                 executor.shutdown();
             }

@@ -215,6 +215,7 @@ public final class FightAuto {
         host.logFightVariable(html, "slots_my");
         host.logFightVariable(html, "LogBoi");
 
+        ru.neverlands.abclient.utils.SessionManager.getInstance().markFightInProgress();
         LezFight fight = new LezFight(html);
         InsHpSnapshot insHpSnapshot = host.parseInsHpSnapshot(html);
 

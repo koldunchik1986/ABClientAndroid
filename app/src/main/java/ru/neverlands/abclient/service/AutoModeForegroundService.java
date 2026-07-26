@@ -249,12 +249,12 @@ public class AutoModeForegroundService extends Service {
     private void runBackgroundTick() {
         MainActivity activity = (AppVars.mainActivity != null) ? AppVars.mainActivity.get() : null;
         long now = System.currentTimeMillis();
-        if (activity == null) {
+        if (activity == null || activity.isFinishing() || activity.isDestroyed()) {
             if (lastMainActivitySeenAtMs == 0L) {
                 lastMainActivitySeenAtMs = now;
             }
             long noActivityForMs = now - lastMainActivitySeenAtMs;
-            AppLog.d(TAG, BG_TRACE_PREFIX + " tick: mainActivity=null, noActivityForMs=" + noActivityForMs);
+            AppLog.d(TAG, BG_TRACE_PREFIX + " tick: mainActivity unavailable, noActivityForMs=" + noActivityForMs);
             markClientAction("UI недоступен: " + (noActivityForMs / 1000) + "с");
             refreshForegroundNotification(false, false, false, false);
             if (noActivityForMs >= NO_ACTIVITY_STOP_TIMEOUT_MS) {

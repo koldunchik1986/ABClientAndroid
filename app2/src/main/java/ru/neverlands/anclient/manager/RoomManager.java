@@ -54,6 +54,7 @@ public class RoomManager {
     private static final long AUTO_CURE_POST_SUBMIT_VERIFY_DELAY_MS = 1_500L;
     private static final long MAP_PINFO_SYNC_COOLDOWN_MS = 3_000L;
     private static final long ROOM_RENDER_CACHE_TTL_MS = 20_000L;
+    private static final int MAX_ROOM_RUNTIME_CACHE_ENTRIES = 512;
     private static final String PREF_SHOW_ALL_ROOM_EFFECTS = "show_all_room_effects";
     private static final Pattern FIGHT_FID_PATTERN = Pattern.compile("(\\d{1,16})");
     private static volatile Boolean showAllRoomEffectsEnabled;
@@ -148,6 +149,7 @@ public class RoomManager {
     // 3) инжектирует сгенерированный HTML обратно в ответ сервера
     // Это обход проблемы с ch_list.js, которая не может отобразить список в изолированном WebView.
     public static String process(Context context, String html) {
+        pruneRoomRuntimeCaches(System.currentTimeMillis());
         syncCellNameFromRoomHtml(context, html);
         maybeSyncCellMetaFromOwnPinfo(context);
         AppLog.d(TAG, BG_TRACE_PREFIX + " process: htmlLen=" + (html == null ? 0 : html.length())
@@ -278,6 +280,47 @@ public class RoomManager {
                     + ", fastNick=" + AppVars.FastNick);
         }
         return html;
+    }
+
+    private static void pruneRoomRuntimeCaches(long nowMs) {
+        for (Map.Entry<String, Long> entry : autoAttackBlackList.entrySet()) {
+            Long createdAtMs = entry.getValue();
+            if (createdAtMs == null || nowMs - createdAtMs >= AUTO_ATTACK_BLACKLIST_MS) {
+                autoAttackBlackList.remove(entry.getKey());
+            }
+        }
+        for (Map.Entry<String, CachedRoomPinfoState> entry : autoCureRoomPinfoCache.entrySet()) {
+            CachedRoomPinfoState state = entry.getValue();
+            if (state == null || nowMs - state.capturedAtMs >= AUTO_CURE_ROOM_PINFO_CACHE_TTL_MS) {
+                autoCureRoomPinfoCache.remove(entry.getKey());
+            }
+        }
+        for (Map.Entry<String, AutoCureGuardState> entry : autoCureRoomGuardCache.entrySet()) {
+            AutoCureGuardState state = entry.getValue();
+            if (state == null || nowMs - state.capturedAtMs >= AUTO_CURE_ROOM_GUARD_CACHE_TTL_MS) {
+                autoCureRoomGuardCache.remove(entry.getKey());
+            }
+        }
+        for (Map.Entry<String, Long> entry : autoCureSkipNoticeAtMs.entrySet()) {
+            Long sentAtMs = entry.getValue();
+            if (sentAtMs == null || nowMs - sentAtMs >= AUTO_CURE_SKIP_NOTICE_DEDUP_MS) {
+                autoCureSkipNoticeAtMs.remove(entry.getKey());
+            }
+        }
+        trimRoomRuntimeCache(lastRoomChatEntryByNick);
+        trimRoomRuntimeCache(autoAttackBlackList);
+        trimRoomRuntimeCache(autoCureRoomPinfoCache);
+        trimRoomRuntimeCache(autoCureRoomGuardCache);
+        trimRoomRuntimeCache(autoCureSkipNoticeAtMs);
+    }
+
+    private static void trimRoomRuntimeCache(Map<String, ?> cache) {
+        for (Map.Entry<String, ?> entry : cache.entrySet()) {
+            if (cache.size() <= MAX_ROOM_RUNTIME_CACHE_ENTRIES) {
+                return;
+            }
+            cache.remove(entry.getKey());
+        }
     }
 
     /**
