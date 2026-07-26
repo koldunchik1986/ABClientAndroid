@@ -26,6 +26,7 @@ import ru.neverlands.anclient.utils.AppVars;
 import ru.neverlands.anclient.utils.ExtMap;
 import ru.neverlands.anclient.utils.FileLogger;
 import ru.neverlands.anclient.utils.MapPath;
+import ru.neverlands.anclient.utils.ParseUtils;
 
 public class MapAjax {
     private static final String TAG = "MapAjax";
@@ -1249,7 +1250,7 @@ public class MapAjax {
         lastAutoDrinkBlazStartupSyncAttemptAtMs = now;
         FileLogger.trace(TAG, "[MAPAJAX_STARTUP_SYNC_REQUEST] nick='" + nick + "', reg=" + currentRegNum);
 
-        int threshold = clampPercent(AppVars.Profile.AutoDrinkBlazTied);
+        int threshold = ParseUtils.clampPercent(AppVars.Profile.AutoDrinkBlazTied);
         NeverApi.PinfoVitals vitals = NeverApi.getPinfoVitalsFromInfoApi(nick, "auto_blaz_startup");
         if (vitals == null) {
             logAutoBlazDecision(
@@ -1333,7 +1334,7 @@ public class MapAjax {
             FileLogger.trace(TAG, "[MAPAJAX_SYNC_SKIP] Profile disabled for auto-drink blaz");
             return;
         }
-        int threshold = clampPercent(AppVars.Profile.AutoDrinkBlazTied);
+        int threshold = ParseUtils.clampPercent(AppVars.Profile.AutoDrinkBlazTied);
         int tied = CharacterVitalsManager.snapshot().tied;
         int syncBorder = Math.max(0, threshold - AUTO_DRINK_BLAZ_NEAR_THRESHOLD_DELTA);
         String checkMsg = "[MAPAJAX_SYNC_CHECK] tied=" + tied + ", threshold=" + threshold
@@ -1457,7 +1458,7 @@ public class MapAjax {
             FileLogger.trace(TAG, disabledMsg);
             return null;
         }
-        int threshold = clampPercent(AppVars.Profile.AutoDrinkBlazTied);
+        int threshold = ParseUtils.clampPercent(AppVars.Profile.AutoDrinkBlazTied);
         int tiedBeforeSync = CharacterVitalsManager.snapshot().tied;
         if (AppVars.FastNeed) {
             // === УСИЛЕННОЕ ЛОГИРОВАНИЕ ПРИ ПРОПУСКЕ ===
@@ -1735,7 +1736,4 @@ public class MapAjax {
         return raw;
     }
 
-    private static int clampPercent(int value) {
-        return Math.max(0, Math.min(100, value));
-    }
 }

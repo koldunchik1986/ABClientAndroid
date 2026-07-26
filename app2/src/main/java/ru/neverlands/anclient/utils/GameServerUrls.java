@@ -225,8 +225,51 @@ public final class GameServerUrls {
         return false;
     }
 
+    /**
+     * Базовый URL игры — <b>всегда публичный домен</b>, независимо от выбранного сервера.
+     *
+     * <p><b>Зачем так (исправление обрыва сессии на серверах DE/KZ).</b> Раньше здесь
+     * подставлялся хост выбранного сервера, то есть его IP: {@code http://136.243.18.79}.
+     * В результате IP попадал одновременно в URL, в заголовок {@code Host} и в ключи cookie,
+     * и сессия «размазывалась» по трём хостам. В логах это видно так:</p>
+     * <pre>
+     *   31 x neverlands.ru
+     *   18 x www.neverlands.ru
+     *   17 x 136.243.18.79
+     * </pre>
+     * <p>Игровой сервер такое поведение отвергает страницей «Сеанс работы прерван»
+     * (причина «Попытка доступа к ресурсам сайта с другого хоста»). Проверено: та же ошибка
+     * воспроизводится и на старой сборке {@code src_old}, то есть это давняя проблема
+     * выбора сервера, а не регрессия рефакторинга.</p>
+     *
+     * <p><b>Как выбор сервера работает теперь:</b></p>
+     * <ol>
+     *   <li>все URL, {@code Host} и cookie остаются на {@code neverlands.ru} — сессия единая;</li>
+     *   <li>физическое TCP-подключение уходит на IP выбранного сервера —
+     *       см. {@link #connectHostForServer(String)} и {@code LocalHttpProxyServer.resolveRoute(...)};</li>
+     *   <li>нужный игровой мир выбирается полем формы логина {@code server=de} / {@code server=KZ}
+     *       (см. {@link #loginFormServerCode(String)}), ровно как в ПК-версии
+     *       ({@code ANClient/PostFilter/IndexCgi.cs}).</li>
+     * </ol>
+     */
     public static String gameBaseUrl(String serverCode) {
-        return "http://" + serverHost(serverCode);
+        return "http://" + HOST_NEVERLANDS;
+    }
+
+    /**
+     * Хост для физического TCP-подключения к выбранному серверу (IP для DE/KZ).
+     *
+     * <p>Используется <b>только</b> прокси при установлении соединения. В URL, заголовок
+     * {@code Host} и ключи cookie это значение попадать не должно — иначе сессия окажется
+     * привязана к другому хосту и сервер её оборвёт.</p>
+     */
+    public static String connectHostForServer(String serverCode) {
+        return serverEntry(serverCode).host;
+    }
+
+    /** Хост для TCP-подключения к текущему выбранному серверу. */
+    public static String currentConnectHost() {
+        return connectHostForServer(currentServerCode());
     }
 
     public static String currentGameBaseUrl() {

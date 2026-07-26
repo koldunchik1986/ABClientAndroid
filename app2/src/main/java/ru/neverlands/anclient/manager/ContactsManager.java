@@ -4,6 +4,7 @@ import android.content.Context;
 import android.content.res.AssetManager;
 import android.os.Handler;
 import android.os.Looper;
+import android.os.SystemClock;
 import ru.neverlands.anclient.utils.AppLog;
 
 import org.w3c.dom.Document;
@@ -70,6 +71,52 @@ public class ContactsManager {
      * Handler для выполнения колбэков в основном потоке UI.
      */
     private static final Handler handler = new Handler(Looper.getMainLooper());
+
+    /**
+     * Токен для отложенных шагов цепочки обновления контактов.
+     *
+     * Назначение (D3):
+     * - позволяет отменить ВСЕ запланированные шаги одним вызовом
+     *   {@code handler.removeCallbacksAndMessages(REFRESH_TOKEN)};
+     * - используется вместе с {@link #refreshCancelled}, потому что цепочка продолжается
+     *   не только через Handler, но и из колбэков {@link ApiRepository} (их из очереди не убрать).
+     *
+     * Почему {@code postAtTime}, а не {@code postDelayed(r, token, delay)}:
+     * перегрузка с токеном доступна только с API 28, а minSdkVersion проекта — 21.
+     */
+    private static final Object REFRESH_TOKEN = new Object();
+
+    /**
+     * Флаг отмены текущей цепочки обновления контактов (D3).
+     * Сбрасывается при старте нового обновления, выставляется в {@link #cancelContactsRefresh(String)}.
+     */
+    private static volatile boolean refreshCancelled = false;
+
+    /**
+     * Отменяет активную цепочку обновления контактов.
+     *
+     * Зачем (D3): раньше рекурсивная цепочка {@code postDelayed} на статическом Handler
+     * не имела механизма отмены и удерживала Activity (через переданный Context и onComplete-лямбду)
+     * до полного обхода списка контактов — до нескольких минут после закрытия экрана.
+     *
+     * Вызывается из {@code ContactsActivity.onDestroy()}.
+     *
+     * @param reason причина отмены (для лога)
+     */
+    public static void cancelContactsRefresh(String reason) {
+        refreshCancelled = true;
+        handler.removeCallbacksAndMessages(REFRESH_TOKEN);
+        AppLog.d(TAG, "cancelContactsRefresh: chain cancelled, reason=" + reason);
+    }
+
+    /**
+     * Готовит новую цепочку обновления: снимает предыдущую отмену и чистит хвосты старых шагов.
+     */
+    private static void beginContactsRefresh(String source) {
+        handler.removeCallbacksAndMessages(REFRESH_TOKEN);
+        refreshCancelled = false;
+        AppLog.d(TAG, "beginContactsRefresh: source=" + source);
+    }
 
     // --- Интерфейсы для колбэков ---
 
@@ -426,7 +473,8 @@ public class ContactsManager {
             if (onComplete != null) handler.post(onComplete);
             return;
         }
-        updateContactsRecursive(context, currentContacts, 0, onComplete);
+        beginContactsRefresh("refreshAllContacts");
+        updateContactsRecursive(currentContacts, 0, onComplete);
     }
 
     /**
@@ -449,7 +497,8 @@ public class ContactsManager {
             }
             return;
         }
-        updateContactsRecursive(context, contactsToUpdate, 0, onComplete);
+        beginContactsRefresh("refreshGroupContacts");
+        updateContactsRecursive(contactsToUpdate, 0, onComplete);
     }
 
     // Обновление всех нейтралов (контактов без клана).
@@ -469,30 +518,52 @@ public class ContactsManager {
             }
             return;
         }
-        updateContactsRecursive(context, contactsToUpdate, 0, onComplete);
+        beginContactsRefresh("refreshNeutralContacts");
+        updateContactsRecursive(contactsToUpdate, 0, onComplete);
     }
 
     /**
      * Рекурсивно обновляет список контактов один за другим с задержкой, используя PlayerID.
+     *
+     * D3-изменения:
+     * - параметр {@code Context} удалён: внутри он не использовался, но протаскивался по всей
+     *   цепочке и удерживал Activity до её завершения;
+     * - шаги планируются через {@link #REFRESH_TOKEN}, поэтому вся цепочка снимается одним
+     *   {@link #cancelContactsRefresh(String)};
+     * - на каждом шаге и в колбэках проверяется {@link #refreshCancelled}, так как продолжение
+     *   цепочки приходит и из колбэков {@link ApiRepository}, которых нет в очереди Handler.
      */
     // Рекурсивное обновление контактов по одному с задержкой (чтобы не спамить сервер).
-    private static void updateContactsRecursive(Context context, final List<Contact> contacts, final int index, final Runnable onComplete) {
+    private static void updateContactsRecursive(final List<Contact> contacts, final int index, final Runnable onComplete) {
+        if (refreshCancelled) {
+            AppLog.d(TAG, "updateContactsRecursive: stop, chain cancelled at index=" + index);
+            return;
+        }
         if (index >= contacts.size()) {
             if (onComplete != null) handler.post(onComplete);
             return;
         }
 
-        handler.postDelayed(() -> {
+        // postAtTime с токеном вместо postDelayed: даёт возможность отмены на minSdk 21.
+        handler.postAtTime(() -> {
+            if (refreshCancelled) {
+                AppLog.d(TAG, "updateContactsRecursive: skip step, chain cancelled at index=" + index);
+                return;
+            }
             Contact oldContact = contacts.get(index);
             if (oldContact.playerID == null || oldContact.playerID.isEmpty()) {
                 AppLog.w(TAG, "Skipping contact refresh for " + oldContact.nick + " due to missing playerID.");
-                updateContactsRecursive(context, contacts, index + 1, onComplete);
+                updateContactsRecursive(contacts, index + 1, onComplete);
                 return;
             }
 
             ApiRepository.getPlayerInfo(oldContact.playerID, new ApiRepository.ApiCallback<Contact>() {
                 @Override
                 public void onSuccess(Contact newContact) {
+                    if (refreshCancelled) {
+                        AppLog.d(TAG, "updateContactsRecursive: drop result, chain cancelled (nick=" + oldContact.nick + ")");
+                        return;
+                    }
                     // Сохраняем кастомные поля, которые не приходят от сервера
                     newContact.classId = oldContact.classId;
                     newContact.comment = oldContact.comment;
@@ -500,17 +571,22 @@ public class ContactsManager {
                     newContact.toolId = oldContact.toolId;
                     updateContact(newContact); // Обновляем кэш и сохраняем в XML
                     // Сразу же вызываем следующий шаг рекурсии (задержка уже отработала)
-                    updateContactsRecursive(context, contacts, index + 1, onComplete);
+                    updateContactsRecursive(contacts, index + 1, onComplete);
                 }
 
                 @Override
                 public void onFailure(String message) {
+                    if (refreshCancelled) {
+                        AppLog.d(TAG, "updateContactsRecursive: drop failure, chain cancelled (nick=" + oldContact.nick + ")");
+                        return;
+                    }
                     AppLog.e(TAG, "Failed to refresh contact by ID " + oldContact.playerID + " ("+oldContact.nick+"): " + message);
                     // Все равно продолжаем, даже в случае ошибки
-                    updateContactsRecursive(context, contacts, index + 1, onComplete);
+                    updateContactsRecursive(contacts, index + 1, onComplete);
                 }
             });
-        }, 1200); // Задержка между info.cgi-запросами (anti-rate-limit 535/536)
+            // Задержка между info.cgi-запросами (anti-rate-limit 535/536)
+        }, REFRESH_TOKEN, SystemClock.uptimeMillis() + 1200);
     }
 
     // --- Вспомогательные методы для работы с XML ---

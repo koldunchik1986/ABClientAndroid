@@ -46,6 +46,7 @@ import ru.neverlands.anclient.manager.AutoFunctionsManager;
 import ru.neverlands.anclient.utils.AppVars;
 import ru.neverlands.anclient.utils.ExtMap;
 import ru.neverlands.anclient.utils.FileLogger;
+import ru.neverlands.anclient.utils.ParseUtils;
 
 /**
  * Навигатор клиента.
@@ -361,7 +362,8 @@ public class Navigator {
                 navigatorMiniMapView.stopLoading();
                 navigatorMiniMapView.loadUrl("about:blank");
                 navigatorMiniMapView.destroy();
-            } catch (Exception ignored) {
+            } catch (Exception e) {
+                AppLog.d("Navigator", "Navigator", "miniMap WebView destroy failed: " + e.getClass().getSimpleName());
             }
         }
         navigatorMiniMapView = null;
@@ -723,7 +725,7 @@ public class Navigator {
 
         ArrayList<String> groups = new ArrayList<>(index.herbGroups.keySet());
         // ✅ API 21 compatible sort (ArrayList#sort requires API 24)
-        Collections.sort(groups, (a, b) -> Integer.compare(parseIntSafe(a, Integer.MAX_VALUE), parseIntSafe(b, Integer.MAX_VALUE)));
+        Collections.sort(groups, (a, b) -> Integer.compare(ParseUtils.parseIntSafe(a, Integer.MAX_VALUE), ParseUtils.parseIntSafe(b, Integer.MAX_VALUE)));
 
         for (String group : groups) {
             addCollapsibleSection(
@@ -1645,11 +1647,11 @@ public class Navigator {
     private int compareLevelRanges(String left, String right) {
         String[] l = left.split("-");
         String[] r = right.split("-");
-        int lMin = parseIntSafe(l.length > 0 ? l[0].trim() : "", Integer.MAX_VALUE);
-        int rMin = parseIntSafe(r.length > 0 ? r[0].trim() : "", Integer.MAX_VALUE);
+        int lMin = ParseUtils.parseIntSafe(l.length > 0 ? l[0].trim() : "", Integer.MAX_VALUE);
+        int rMin = ParseUtils.parseIntSafe(r.length > 0 ? r[0].trim() : "", Integer.MAX_VALUE);
         if (lMin != rMin) return Integer.compare(lMin, rMin);
-        int lMax = parseIntSafe(l.length > 1 ? l[1].trim() : "", Integer.MAX_VALUE);
-        int rMax = parseIntSafe(r.length > 1 ? r[1].trim() : "", Integer.MAX_VALUE);
+        int lMax = ParseUtils.parseIntSafe(l.length > 1 ? l[1].trim() : "", Integer.MAX_VALUE);
+        int rMax = ParseUtils.parseIntSafe(r.length > 1 ? r[1].trim() : "", Integer.MAX_VALUE);
         if (lMax != rMax) return Integer.compare(lMax, rMax);
         return left.compareToIgnoreCase(right);
     }
@@ -1657,9 +1659,6 @@ public class Navigator {
     /**
      * Безопасный парсинг int с fallback-значением.
      */
-    private int parseIntSafe(String value, int fallback) {
-        try { return Integer.parseInt(value); } catch (Exception e) { return fallback; }
-    }
 
     /**
      * Null-safe trim.
@@ -1671,7 +1670,8 @@ public class Navigator {
     /**
      * Перевод dp в px.
      */
+    /** D6: реализация вынесена в {@link ru.neverlands.anclient.utils.UiUtils#dpToPx(android.content.Context, int)}. */
     private int dpToPx(int dp) {
-        return Math.round(dp * context.getResources().getDisplayMetrics().density);
+        return ru.neverlands.anclient.utils.UiUtils.dpToPx(context, dp);
     }
 }

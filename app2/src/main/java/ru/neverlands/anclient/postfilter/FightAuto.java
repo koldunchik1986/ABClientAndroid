@@ -1986,7 +1986,8 @@ public final class FightAuto {
             if (isSkinResult && skillRaiseRaw != null && !skillRaiseRaw.isEmpty()) {
                 try {
                     skinSkillRaised = skinSkillRaised || Integer.parseInt(skillRaiseRaw) > 0;
-                } catch (NumberFormatException ignore) {
+                } catch (NumberFormatException e) {
+                    AppLog.d(TAG, TAG, "skin skill raise parse skipped: '" + skillRaiseRaw + "'");
                 }
             }
             if (!lootItems.contains(lootName)) {
@@ -2073,7 +2074,8 @@ public final class FightAuto {
             ru.neverlands.anclient.MainActivity activity =
                     AppVars.mainActivity != null ? AppVars.mainActivity.get() : null;
             uiForegroundInteractive = activity != null && activity.isUiForegroundInteractive();
-        } catch (Exception ignore) {
+        } catch (Exception e) {
+            AppLog.d(TAG, TAG, "uiForegroundInteractive check failed: " + e.getClass().getSimpleName());
         }
         int fexp = 0;
         try {
@@ -2160,7 +2162,8 @@ public final class FightAuto {
                 String value = matcher.group(1);
                 return value == null ? "" : value.trim();
             }
-        } catch (Exception ignored) {
+        } catch (Exception e) {
+            AppLog.d(TAG, TAG, "extractBattleXpFromHtml parse skipped: " + e.getClass().getSimpleName());
         }
         return "";
     }

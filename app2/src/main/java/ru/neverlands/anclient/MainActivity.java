@@ -109,6 +109,7 @@ import ru.neverlands.anclient.utils.ExtMap;
 import ru.neverlands.anclient.utils.FileLogger;
 import ru.neverlands.anclient.utils.AppVars;
 import ru.neverlands.anclient.utils.Chat;
+import ru.neverlands.anclient.utils.FightCaptchaUtils;
 import ru.neverlands.anclient.utils.GameServerUrls;
 import ru.neverlands.anclient.utils.LogcatFileRecorder;
 import ru.neverlands.anclient.utils.MapPath;
@@ -139,6 +140,18 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     private static final long CHAT_POLL_FAILURE_DEDUP_MS = 600L;
     private static final long ROOM_USERS_SUPPRESS_AFTER_CHAT_FAIL_MS = 1800L;
     private static final long CHAT_ROOM_COLLISION_GUARD_MS = 700L;
+
+    /**
+     * Минимальный интервал между двумя запросами chat-poll.
+     *
+     * Зачем: опрос чата инициируется из двух независимых источников —
+     * периодического {@code chatRefreshRunnable} в {@code MainActivity} и
+     * bootstrap-вызова {@code AutoModeForegroundService.uiTick -> requestChatRefreshNow()}.
+     * По логам {@code logs/Critical/20260726_14_20_*} при входе они срабатывали с разницей
+     * 19 мс, давая два одновременных {@code ch.php?show=1}. Дубликат отбрасывается —
+     * следующий тик таймера всё равно выполнит опрос.
+     */
+    private static final long CHAT_REFRESH_MIN_INTERVAL_MS = 900L;
     private static final int AUTO_SUBMIT_RETRY_DELAY_MS = 180;
     private static final int AUTO_SUBMIT_MAX_RETRY_COUNT = 3;
     private static final long AUTO_BATTLE_LEGACY_RANDOM_MIN_DELAY_MS = 1000L;
@@ -159,7 +172,8 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
      * - `AutoModeForegroundService.resolveFightCaptchaUrlForPopup(...)` использует такой же TTL в фоне.
      */
     private static final long FIGHT_CAPTCHA_CAPTURE_FALLBACK_TTL_MS = 5_000L;
-    private static final int CAPTCHA_IMAGE_MIN_USABLE_BYTES = 1024;
+    // D6: константа переехала в FightCaptchaUtils (единый источник для проверки размера картинки).
+    private static final int CAPTCHA_IMAGE_MIN_USABLE_BYTES = FightCaptchaUtils.CAPTCHA_IMAGE_MIN_USABLE_BYTES;
     private static final int ANTI_CAPTCHA_CREATE_RETRY_MAX_COUNT = 5;
     private static final long ANTI_CAPTCHA_CREATE_RETRY_BASE_DELAY_MS = 10_000L;
     private static final Pattern MAP_DECL_PATTERN = Pattern.compile(
@@ -208,9 +222,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     private static final long NAV_TICK_NETWORK_BACKOFF_MS = 8000L;
     private static final long NAV_TICK_ERROR_BURST_WINDOW_MS = 6000L;
     private static final int NAV_TICK_ERROR_BURST_THRESHOLD = 2;
-    private static final String LOGOUT_PATH = "/exit.php";
-    private static final String LOGOUT_REFERER_PATH = "/game.php";
-    private static final int LOGOUT_HTTP_TIMEOUT_MS = 10000;
+    // D6: константы logout переехали в handlers/LogoutFlowHandler вместе со всей логикой выхода.
     private static final long SESSION_RELOGIN_DEDUP_MS = 15000L;
     private static final String SESSION_RELOGIN_CHAIN = "session_relogin";
     public ActivityMainBinding binding;
@@ -700,10 +712,9 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
      * Контракт: проверяем endpoint и `act=3`, потому именно этот запрос отправляет код captcha
      * в `AlchemyAjaxPhp`; обычные fight captcha идут через `main.php?get_id=61&act=7`.
      */
+    /** D6: реализация вынесена в {@link FightCaptchaUtils#isAlchemyCaptchaFinishUrl(String)}. */
     private boolean isAlchemyCaptchaFinishUrl(String finishUrl) {
-        return finishUrl != null
-                && finishUrl.contains("/gameplay/ajax/alchemy_ajax.php")
-                && finishUrl.contains("act=3");
+        return FightCaptchaUtils.isAlchemyCaptchaFinishUrl(finishUrl);
     }
 
     /**
@@ -936,7 +947,8 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             AppVars.Profile.LastLogin = currentDotNetTicksForSessionRelogin();
             AppVars.Profile.save(this);
         }
-        applyAuthCookiesToWebView(cookies, "session_relogin");
+        ru.neverlands.anclient.webview.CookieSyncHelper
+                .applyAuthCookiesToWebView(cookies, "session_relogin");
         SessionManager.getInstance().invalidateContext("session_relogin_success");
         SessionManager.getInstance().clearFightContext();
         AppVars.ContentMainPhp = "";
@@ -982,7 +994,8 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                 "session_relogin",
                 sourceUrl == null ? "" : sourceUrl
         );
-        finalizeLogoutAndOpenLogin();
+        // Сессия на сервере уже недействительна — выходим локально, без запроса exit.php.
+        ru.neverlands.anclient.handlers.LogoutFlowHandler.forceLogoutToLogin(this, () -> isExiting = true);
     }
 
     /**
@@ -1023,6 +1036,29 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
      * - {@link #requestAutoTurnFromServerProbe(String)} — восстановление бой-HTML;
      * - {@link FightViewModel#autoTurnOnce(String)} — отправка шага.
      */
+    /**
+     * Предел ожидания дозагрузки страницы боя в WebView.
+     *
+     * Ветка `FIGHT_RACE_CONDITION` задумывалась как защита от короткой гонки при multi-enemy бое:
+     * HTML ещё не дорисован, поэтому проверку хода откладываем на {@link #FIGHT_RACE_DEFER_STEP_MS}.
+     * Но ограничения по времени не было, а каждый внешний вызов `requestAutoTurn` заводил
+     * собственную цепочку повторов — цепочки накапливались и никогда не завершались.
+     *
+     * Замер реального зависания: страница застряла на 701 байте, цикл крутился
+     * с 19:14:44 до 19:19:59 (более 5 минут), 17 156 итераций, ~54 повтора в секунду,
+     * 6.5 МБ лога. Авто-бой при этом стоял.
+     */
+    private static final long FIGHT_RACE_DEFER_MAX_WINDOW_MS = 5_000L;
+
+    /** Шаг отката для ветки `FIGHT_RACE_CONDITION`. */
+    private static final long FIGHT_RACE_DEFER_STEP_MS = 200L;
+
+    /** Начало текущей серии отложенных проверок (0 — серии нет). */
+    private long fightRaceDeferStartedAtMs = 0L;
+
+    /** true, пока отложенный повтор уже запланирован: не даём цепочкам размножаться. */
+    private boolean fightRaceDeferScheduled = false;
+
     private void requestAutoTurnInternal(boolean allowServerProbeFallback) {
         if (AppVars.IsFightCaptchaDialogVisible) {
             if (isActiveAlchemyCaptchaDialog()) {
@@ -1039,6 +1075,8 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         if (shouldPauseAutoBattleForFightCaptcha()) {
             clearPendingAutoBattleSubmit();
             AppLog.d(TAG, BG_TRACE_PREFIX + " requestAutoTurn: skip, fight captcha pending");
+            // Пауза допустима только пока popup реально виден: иначе состояние зависает навсегда.
+            recoverPendingFightCaptchaDialogIfStuck();
             return;
         }
         if (shouldDeferAutoTurnForFirstFrameRender()) {
@@ -1078,14 +1116,47 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                         // Если HTML слишком мало (<1000 bytes), это означает что WebView еще loading
                         // Добавляем задержку вместо skip чтобы дать WebView время завершить page load
                         if (unquoted != null && unquoted.length() < 1000 && !hasFightMarkers(unquoted)) {
-                            String msg = "[FIGHT_RACE_CONDITION] html size too small (WebView loading), size=" + unquoted.length() 
-                                    + ". Deferring turn check 200ms";
-                            AppLog.w(TAG, BG_TRACE_PREFIX + " requestAutoTurn: " + msg);
-                            ru.neverlands.anclient.utils.FileLogger.trace("fight_auto", msg);
-                            // Откладываем проверку на 200ms чтобы дать WebView время завершить page load
-                            new Handler(Looper.getMainLooper()).postDelayed(this::requestAutoTurn, 200);
+                            long deferNowMs = android.os.SystemClock.elapsedRealtime();
+                            if (fightRaceDeferStartedAtMs == 0L) {
+                                fightRaceDeferStartedAtMs = deferNowMs;
+                            }
+                            long deferWaitedMs = deferNowMs - fightRaceDeferStartedAtMs;
+
+                            if (deferWaitedMs > FIGHT_RACE_DEFER_MAX_WINDOW_MS) {
+                                // Страница так и не догрузилась: это уже не гонка, а залипший WebView.
+                                // Дальше ждать бессмысленно — переключаемся на HTTP-probe,
+                                // тот же путь, что используется при свёрнутом приложении.
+                                String stuckMsg = "[FIGHT_RACE_CONDITION] page still too small after "
+                                        + deferWaitedMs + "ms, size=" + unquoted.length()
+                                        + ". Giving up on WebView, switching to server probe";
+                                AppLog.w(TAG, BG_TRACE_PREFIX + " requestAutoTurn: " + stuckMsg);
+                                ru.neverlands.anclient.utils.FileLogger.trace("fight_auto", stuckMsg);
+                                fightRaceDeferStartedAtMs = 0L;
+                                fightRaceDeferScheduled = false;
+                                if (allowServerProbeFallback) {
+                                    requestAutoTurnFromServerProbe("fight_race_defer_timeout");
+                                }
+                                return;
+                            }
+
+                            // Планируем повтор только если он ещё не запланирован:
+                            // иначе каждый внешний вызов заводит свою цепочку и они накапливаются.
+                            if (!fightRaceDeferScheduled) {
+                                String msg = "[FIGHT_RACE_CONDITION] html size too small (WebView loading), size="
+                                        + unquoted.length() + ". Deferring turn check " + FIGHT_RACE_DEFER_STEP_MS + "ms"
+                                        + ", waitedMs=" + deferWaitedMs;
+                                AppLog.w(TAG, BG_TRACE_PREFIX + " requestAutoTurn: " + msg);
+                                ru.neverlands.anclient.utils.FileLogger.trace("fight_auto", msg);
+                                fightRaceDeferScheduled = true;
+                                new Handler(Looper.getMainLooper()).postDelayed(() -> {
+                                    fightRaceDeferScheduled = false;
+                                    requestAutoTurn();
+                                }, FIGHT_RACE_DEFER_STEP_MS);
+                            }
                             return;
                         }
+                        // Страница дорисовалась — серия отложенных проверок завершена.
+                        fightRaceDeferStartedAtMs = 0L;
 
                         FightContextChoiceHandler.Decision decision = FightContextChoiceHandler.chooseForCurrentHtml(
                                 unquoted,
@@ -1148,6 +1219,8 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                 clearPendingAutoBattleSubmit();
                 AppLog.d(TAG, BG_TRACE_PREFIX + " requestAutoTurn: skip autoTurn, fight captcha pending, reason="
                         + decision.getProbeReason());
+                // Тот же разрыв блокировки, что и в основной ветке requestAutoTurn.
+                recoverPendingFightCaptchaDialogIfStuck();
                 return;
             }
             fightViewModel.autoTurnOnce(decision.getAutoTurnHtml());
@@ -1360,7 +1433,8 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                     return normalizeCompassCellRegNum(path.replace("/", ""));
                 }
             }
-        } catch (Exception ignored) {
+        } catch (Exception e) {
+            AppLog.d(TAG, "compass cell regnum parse failed: " + e.getClass().getSimpleName());
         }
 
         Matcher matcher = COMPASS_CELL_URL_PATTERN.matcher(trimmed);
@@ -1723,12 +1797,14 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                 try {
                     inputStream.close();
                 } catch (IOException ignored) {
+                    // Ожидаемая ветка cleanup: поток probe уже закрыт/оборван.
                 }
             }
             if (outputStream != null) {
                 try {
                     outputStream.close();
                 } catch (IOException ignored) {
+                    // Ожидаемая ветка cleanup: ByteArrayOutputStream close() не влияет на данные.
                 }
             }
             if (connection != null) {
@@ -2122,10 +2198,10 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                 AppLog.e(TAG, TAG, BG_TRACE_PREFIX + " directHttpSubmit: failed: " + e.getMessage());
             } finally {
                 if (inputStream != null) {
-                    try { inputStream.close(); } catch (IOException ignored) {}
+                    try { inputStream.close(); } catch (IOException ignored) { /* cleanup: поток уже закрыт */ }
                 }
                 if (outputStream != null) {
-                    try { outputStream.close(); } catch (IOException ignored) {}
+                    try { outputStream.close(); } catch (IOException ignored) { /* cleanup: поток уже закрыт */ }
                 }
                 if (connection != null) {
                     connection.disconnect();
@@ -2605,12 +2681,9 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         });
     }
 
+    /** D6: реализация вынесена в {@link FightCaptchaUtils#shouldRetryAntiCaptchaFailure(String)}. */
     private boolean shouldRetryAntiCaptchaFailure(String message) {
-        String normalized = message == null ? "" : message.toLowerCase(Locale.ROOT);
-        return normalized.contains("error_no_slot_available")
-                || normalized.contains("no idle workers")
-                || normalized.contains("http 5")
-                || normalized.contains("timeout");
+        return FightCaptchaUtils.shouldRetryAntiCaptchaFailure(message);
     }
 
     private void scheduleAntiCaptchaRetry(String failedChallengeKey,
@@ -2736,20 +2809,9 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                 .replace("'", "&#39;");
     }
 
+    /** D6: реализация вынесена в {@link FightCaptchaUtils#isAntiCaptchaSolutionValid(String, AntiCaptchaManager.Config)}. */
     private boolean isAntiCaptchaSolutionValid(String code, AntiCaptchaManager.Config config) {
-        if (code == null || code.isEmpty()) {
-            return false;
-        }
-        if (config != null && config.numeric == AutoFunctionsManager.ANTI_CAPTCHA_NUMERIC_NUMBERS_ONLY
-                && !code.matches("\\d+")) {
-            return false;
-        }
-        int minLength = config == null ? 0 : config.minLength;
-        int maxLength = config == null ? 0 : config.maxLength;
-        if (minLength > 0 && code.length() < minLength) {
-            return false;
-        }
-        return maxLength <= 0 || code.length() <= maxLength;
+        return FightCaptchaUtils.isAntiCaptchaSolutionValid(code, config);
     }
 
     private String resolveActiveCaptchaFinishUrl(String fallbackFinishUrl) {
@@ -2834,27 +2896,9 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         AppLog.d(TAG, "ANTI_CAPTCHA_TRACE reset: " + reason);
     }
 
+    /** D6: реализация вынесена в {@link FightCaptchaUtils#decodeUsableCaptchaBitmap(byte[], String)}. */
     private android.graphics.Bitmap decodeUsableCaptchaBitmap(byte[] captchaBytes, String source) {
-        String safeSource = source == null ? "captcha" : source;
-        if (captchaBytes == null || captchaBytes.length == 0) {
-            AppLog.w(TAG, safeSource + ": captcha image bytes are empty");
-            return null;
-        }
-        if (captchaBytes.length < CAPTCHA_IMAGE_MIN_USABLE_BYTES) {
-            AppLog.w(TAG, safeSource + ": captcha image bytes too small, bytes="
-                    + captchaBytes.length + ", min=" + CAPTCHA_IMAGE_MIN_USABLE_BYTES);
-            return null;
-        }
-        android.graphics.Bitmap bitmap = android.graphics.BitmapFactory.decodeByteArray(
-                captchaBytes,
-                0,
-                captchaBytes.length
-        );
-        if (bitmap == null) {
-            AppLog.w(TAG, safeSource + ": captcha bitmap decode failed, bytes=" + captchaBytes.length);
-            return null;
-        }
-        return bitmap;
+        return FightCaptchaUtils.decodeUsableCaptchaBitmap(captchaBytes, source);
     }
 
     /**
@@ -3001,35 +3045,9 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
      * - Uri.encode(...) для безопасной передачи пользовательского ввода;
      * - вызывается из showCaptchaDialog() перед submitCaptchaSolution().
      */
+    /** D6: реализация вынесена в {@link FightCaptchaUtils#appendOrReplaceCaptchaCode(String, String)}. */
     private String appendOrReplaceCaptchaCode(String finishUrl, String code) {
-        String submitUrl = finishUrl == null ? "" : finishUrl;
-        String encodedCode = Uri.encode(code == null ? "" : code);
-        if (submitUrl.isEmpty()) {
-            return "code=" + encodedCode;
-        }
-
-        String fragment = "";
-        int fragmentIndex = submitUrl.indexOf('#');
-        if (fragmentIndex >= 0) {
-            fragment = submitUrl.substring(fragmentIndex);
-            submitUrl = submitUrl.substring(0, fragmentIndex);
-        }
-
-        Pattern codeParamPattern = Pattern.compile("([?&])code=[^&]*");
-        Matcher codeMatcher = codeParamPattern.matcher(submitUrl);
-        if (codeMatcher.find()) {
-            submitUrl = codeMatcher.replaceFirst("$1code=" + encodedCode);
-        } else {
-            int queryIndex = submitUrl.indexOf('?');
-            if (queryIndex >= 0) {
-                String base = submitUrl.substring(0, queryIndex);
-                String query = submitUrl.substring(queryIndex + 1);
-                submitUrl = base + "?code=" + encodedCode + (query.isEmpty() ? "" : "&" + query);
-            } else {
-                submitUrl = submitUrl + "?code=" + encodedCode;
-            }
-        }
-        return submitUrl + fragment;
+        return FightCaptchaUtils.appendOrReplaceCaptchaCode(finishUrl, code);
     }
 
     /**
@@ -3594,16 +3612,9 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
      * - используется в логике защиты от «устаревшей» капчи, когда байты/диалог относятся
      *   к разным challenge.
      */
+    /** D6: реализация вынесена в {@link FightCaptchaUtils#isSameUrl(String, String)}. */
     private boolean isSameCaptchaUrl(String firstUrl, String secondUrl) {
-        if (firstUrl == null || firstUrl.isEmpty() || secondUrl == null || secondUrl.isEmpty()) {
-            return false;
-        }
-        String firstNormalized = normalizeCaptchaUrlForCompare(firstUrl);
-        String secondNormalized = normalizeCaptchaUrlForCompare(secondUrl);
-        if (firstNormalized.isEmpty() || secondNormalized.isEmpty()) {
-            return false;
-        }
-        return firstNormalized.equals(secondNormalized);
+        return FightCaptchaUtils.isSameUrl(firstUrl, secondUrl);
     }
 
     /**
@@ -3613,16 +3624,13 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
      * - `normalizeFightFinishUrlForCompare`,
      * - используется в `showCaptchaDialog` для определения: тот же challenge или новый.
      */
+    /**
+     * D6: реализация вынесена в {@link FightCaptchaUtils#isSameUrl(String, String)}.
+     * Прежние {@code normalizeCaptchaUrlForCompare} и {@code normalizeFightFinishUrlForCompare}
+     * имели идентичные тела и объединены в одну нормализацию.
+     */
     private boolean isSameFightFinishUrl(String firstUrl, String secondUrl) {
-        if (firstUrl == null || firstUrl.isEmpty() || secondUrl == null || secondUrl.isEmpty()) {
-            return false;
-        }
-        String firstNormalized = normalizeFightFinishUrlForCompare(firstUrl);
-        String secondNormalized = normalizeFightFinishUrlForCompare(secondUrl);
-        if (firstNormalized.isEmpty() || secondNormalized.isEmpty()) {
-            return false;
-        }
-        return firstNormalized.equals(secondNormalized);
+        return FightCaptchaUtils.isSameUrl(firstUrl, secondUrl);
     }
 
     /**
@@ -3630,20 +3638,9 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
      * - http/https + www выравниваются,
      * - query сохраняется (token критичен, должен совпадать с текущим challenge).
      */
+    /** D6: реализация вынесена в {@link FightCaptchaUtils#normalizeUrlForCompare(String)}. */
     private String normalizeCaptchaUrlForCompare(String rawUrl) {
-        if (rawUrl == null || rawUrl.isEmpty()) {
-            return "";
-        }
-        try {
-            String normalized = GameServerUrls.normalizeNeverlandsUrlForCompare(rawUrl);
-            int fragmentIndex = normalized.indexOf('#');
-            if (fragmentIndex >= 0) {
-                normalized = normalized.substring(0, fragmentIndex);
-            }
-            return normalized;
-        } catch (Exception ignored) {
-            return "";
-        }
+        return FightCaptchaUtils.normalizeUrlForCompare(rawUrl);
     }
 
     /**
@@ -3654,20 +3651,9 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
      * - выравнивает `https -> http` и `www.neverlands.ru -> neverlands.ru`,
      *   чтобы различия транспортного уровня не ломали детекцию «тот же бой/новый бой».
      */
+    /** D6: реализация вынесена в {@link FightCaptchaUtils#normalizeUrlForCompare(String)}. */
     private String normalizeFightFinishUrlForCompare(String rawUrl) {
-        if (rawUrl == null || rawUrl.isEmpty()) {
-            return "";
-        }
-        try {
-            String normalized = GameServerUrls.normalizeNeverlandsUrlForCompare(rawUrl);
-            int fragmentIndex = normalized.indexOf('#');
-            if (fragmentIndex >= 0) {
-                normalized = normalized.substring(0, fragmentIndex);
-            }
-            return normalized;
-        } catch (Exception ignored) {
-            return "";
-        }
+        return FightCaptchaUtils.normalizeUrlForCompare(rawUrl);
     }
 
     /**
@@ -3688,84 +3674,9 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
      * @param captchaUrl URL изображения капчи.
      * @return bytes изображения или {@code null} при ошибке/неуспешном HTTP-коде.
      */
+    /** D6: реализация вынесена в {@link FightCaptchaUtils#downloadCaptchaImageBytes(String)}. */
     private byte[] downloadCaptchaImageBytes(String captchaUrl) {
-        HttpURLConnection connection = null;
-        InputStream inputStream = null;
-        ByteArrayOutputStream outputStream = null;
-        try {
-            String routedCaptchaUrl = GameServerUrls.routeUrlToCurrentServer(captchaUrl);
-            URL url = new URL(routedCaptchaUrl);
-            java.net.Proxy activeProxy = ProxyRuntimeManager.getActiveJavaProxyOrNull();
-            if (activeProxy == null && ProxyRuntimeManager.isStrictProxyRequiredForCurrentProfile()) {
-                AppLog.e(TAG, "PROXY_FAIL: strict proxy enabled and runtime proxy unavailable, blocking direct captcha download: " + routedCaptchaUrl);
-                return null;
-            }
-            connection = activeProxy != null
-                    ? (HttpURLConnection) url.openConnection(activeProxy)
-                    : (HttpURLConnection) url.openConnection();
-            connection.setRequestMethod("GET");
-            connection.setConnectTimeout(10000);
-            connection.setReadTimeout(10000);
-            connection.setUseCaches(false);
-            connection.setRequestProperty("Accept", "image/webp,image/apng,image/*,*/*;q=0.8");
-            connection.setRequestProperty("Accept-Encoding", "identity");
-            connection.setRequestProperty("Accept-Language", "ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7");
-            connection.setRequestProperty("Cache-Control", "no-cache");
-            connection.setRequestProperty("Pragma", "no-cache");
-            connection.setRequestProperty("Referer", GameServerUrls.currentGameUrl("/main.php"));
-            connection.setRequestProperty("User-Agent", AppVars.BROWSER_USER_AGENT);
-
-            String cookie = CookieManager.getInstance().getCookie(routedCaptchaUrl);
-            if (cookie == null || cookie.isEmpty()) {
-                cookie = CookieManager.getInstance().getCookie(GameServerUrls.neverlandsCookieUrl());
-            }
-            if ((cookie == null || cookie.isEmpty()) && url.getHost() != null) {
-                cookie = CookiesManager.obtain(url.getHost());
-            }
-            if (cookie != null && !cookie.isEmpty()) {
-                connection.setRequestProperty("Cookie", cookie);
-                AppLog.d(TAG, "downloadCaptchaImageBytes: using cookie len=" + cookie.length());
-            } else {
-                AppLog.w(TAG, "downloadCaptchaImageBytes: cookie is empty for " + routedCaptchaUrl);
-            }
-
-            int responseCode = connection.getResponseCode();
-            if (responseCode < 200 || responseCode >= 300) {
-                AppLog.w(TAG, "downloadCaptchaImageBytes: HTTP " + responseCode + " for " + routedCaptchaUrl);
-                return null;
-            }
-
-            inputStream = connection.getInputStream();
-            outputStream = new ByteArrayOutputStream();
-            byte[] buffer = new byte[4096];
-            int read;
-            while ((read = inputStream.read(buffer)) != -1) {
-                outputStream.write(buffer, 0, read);
-            }
-
-            byte[] data = outputStream.toByteArray();
-            AppLog.d(TAG, "downloadCaptchaImageBytes: loaded " + data.length + " bytes from " + routedCaptchaUrl);
-            return data.length > 0 ? data : null;
-        } catch (Exception e) {
-            AppLog.e(TAG, "downloadCaptchaImageBytes: failed for " + captchaUrl, e);
-            return null;
-        } finally {
-            if (inputStream != null) {
-                try {
-                    inputStream.close();
-                } catch (IOException ignored) {
-                }
-            }
-            if (outputStream != null) {
-                try {
-                    outputStream.close();
-                } catch (IOException ignored) {
-                }
-            }
-            if (connection != null) {
-                connection.disconnect();
-            }
-        }
+        return FightCaptchaUtils.downloadCaptchaImageBytes(captchaUrl);
     }
 
     private final BroadcastReceiver screenStateReceiver = new BroadcastReceiver() {
@@ -3893,7 +3804,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                 navHeaderTitle.setText("v" + versionName);
             }
         } catch (PackageManager.NameNotFoundException e) {
-            e.printStackTrace();
+            AppLog.w(TAG, "navHeader versionName lookup failed", e);
             navHeaderTitle.setText("");
         }
 
@@ -4160,187 +4071,16 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             }
         }
 
-        applyAuthCookiesToWebView(AppVars.lastCookies, "lastCookies_apply");
+        ru.neverlands.anclient.webview.CookieSyncHelper
+                .applyAuthCookiesToWebView(AppVars.lastCookies, "lastCookies_apply");
         AppVars.lastCookies = null;
     }
 
-    private void applyAuthCookiesToWebView(List<java.net.HttpCookie> cookies, String stage) {
-        CookieManager cookieManager = CookieManager.getInstance();
-        if (cookies != null && !cookies.isEmpty()) {
-            java.util.List<java.net.HttpCookie> filteredCookies = new java.util.ArrayList<>();
-            java.util.Set<String> names = new java.util.HashSet<>();
-            for (int i = cookies.size() - 1; i >= 0; i--) {
-                java.net.HttpCookie cookie = cookies.get(i);
-                if (!names.contains(cookie.getName())) {
-                    filteredCookies.add(0, cookie);
-                    names.add(cookie.getName());
-                }
-            }
-
-            java.util.List<String> cookieUrls = GameServerUrls.cookieUrls();
-            for (java.net.HttpCookie cookie : filteredCookies) {
-                StringBuilder cookieValue = new StringBuilder()
-                        .append(cookie.getName())
-                        .append("=")
-                        .append(cookie.getValue() == null ? "" : cookie.getValue())
-                        .append("; Path=/");
-                if (cookie.getSecure()) {
-                    cookieValue.append("; Secure");
-                }
-                for (String cookieUrl : cookieUrls) {
-                    cookieManager.setCookie(cookieUrl, cookieValue.toString());
-                }
-            }
-            cookieManager.flush();
-            AppLog.d(TAG, "AUTH_COOKIE_SYNC: applied " + stage + " names=" + names);
-        }
-        syncSessionCookiesAcrossHosts(cookieManager, "after_" + stage);
-    }
+    // D6: cookie-синхронизация вынесена в ru.neverlands.anclient.webview.CookieSyncHelper.
+    // Блок был полностью изолирован (только CookieManager + GameServerUrls) и занимал ~176 строк.
+    // Заодно удалён мёртвый приватный hasSessionCookieTokens(...) — он нигде не вызывался.
 
     // Первичная загрузка основных и чат-фреймов.
-    /**
-     * Синхронизирует cookie между `neverlands.ru` и `www.neverlands.ru`.
-     *
-     * Назначение:
-     * - после auth-flow через один host устранить рассинхрон host-only cookie;
-     * - гарантировать валидную сессию для room/chat-фреймов.
-     *
-     * Зависимости:
-     * - CookieManager: общее WebView-хранилище cookie.
-     * - hasSessionCookieTokens(...): проверка наличия сессионных токенов.
-     * - mirrorCookieHeaderToHost(...): перенос cookie-пар в host без сессии.
-     */
-    private void syncSessionCookiesAcrossHosts(CookieManager manager, String stage) {
-        if (manager == null) {
-            return;
-        }
-        java.util.List<String> cookieUrls = GameServerUrls.cookieUrls();
-        boolean changed = false;
-        StringBuilder before = new StringBuilder();
-        for (String sourceUrl : cookieUrls) {
-            String sourceCookie = manager.getCookie(sourceUrl);
-            if (before.length() > 0) {
-                before.append("; ");
-            }
-            before.append(sourceUrl).append("=").append(summarizeCookieHeaderNames(sourceCookie));
-            if (sourceCookie == null || sourceCookie.isEmpty()) {
-                continue;
-            }
-            for (String targetUrl : cookieUrls) {
-                if (!sourceUrl.equalsIgnoreCase(targetUrl)) {
-                    changed |= mirrorCookieHeaderToHost(manager, sourceCookie, targetUrl);
-                }
-            }
-        }
-        AppLog.d(TAG, "AUTH_COOKIE_SYNC[" + stage + "]: " + before);
-
-        if (changed) {
-            manager.flush();
-            StringBuilder after = new StringBuilder();
-            for (String cookieUrl : cookieUrls) {
-                if (after.length() > 0) {
-                    after.append("; ");
-                }
-                after.append(cookieUrl).append("=").append(summarizeCookieHeaderNames(manager.getCookie(cookieUrl)));
-            }
-            AppLog.d(TAG, "AUTH_COOKIE_SYNC[" + stage + "]: mirrored " + after);
-        }
-    }
-
-    /**
-     * Копирует `name=value` cookie-пары из source-header в target-host.
-     *
-     * Важно:
-     * - cookie-атрибуты (`Path`, `Domain`, `Expires`, ...) не копируются;
-     * - переносится только полезная сессионная часть.
-     */
-    private boolean mirrorCookieHeaderToHost(CookieManager manager, String sourceHeader, String targetUrl) {
-        if (sourceHeader == null || sourceHeader.isEmpty() || targetUrl == null || targetUrl.isEmpty()) {
-            return false;
-        }
-        boolean changed = false;
-        String[] parts = sourceHeader.split(";");
-        for (String rawPart : parts) {
-            if (rawPart == null) {
-                continue;
-            }
-            String part = rawPart.trim();
-            if (part.isEmpty()) {
-                continue;
-            }
-            int eq = part.indexOf('=');
-            if (eq <= 0) {
-                continue;
-            }
-            String name = part.substring(0, eq).trim();
-            if (name.isEmpty() || isCookieAttributeName(name)) {
-                continue;
-            }
-            String value = part.substring(eq + 1).trim();
-            manager.setCookie(targetUrl, name + "=" + value + "; Path=/");
-            changed = true;
-        }
-        return changed;
-    }
-
-    /**
-     * Проверяет, содержит ли cookie-header признаки валидной игровой сессии.
-     */
-    private boolean hasSessionCookieTokens(String cookieHeader) {
-        if (cookieHeader == null || cookieHeader.isEmpty()) {
-            return false;
-        }
-        String lower = cookieHeader.toLowerCase(Locale.ROOT);
-        return lower.contains("phpsessid=")
-                || lower.contains("nevercode=")
-                || lower.contains("neverhash=")
-                || lower.contains("neverpuid=")
-                || lower.contains("watermark=");
-    }
-
-    /**
-     * Формирует краткую сводку cookie (`count + names`) для AUTH_COOKIE_SYNC логов.
-     */
-    private String summarizeCookieHeaderNames(String cookieHeader) {
-        if (cookieHeader == null || cookieHeader.isEmpty()) {
-            return "empty";
-        }
-        ArrayList<String> names = new ArrayList<>();
-        String[] parts = cookieHeader.split(";");
-        for (String rawPart : parts) {
-            if (rawPart == null) {
-                continue;
-            }
-            String part = rawPart.trim();
-            if (part.isEmpty()) {
-                continue;
-            }
-            int eq = part.indexOf('=');
-            if (eq <= 0) {
-                continue;
-            }
-            String name = part.substring(0, eq).trim();
-            if (!name.isEmpty() && !isCookieAttributeName(name)) {
-                names.add(name);
-            }
-        }
-        return "count=" + names.size() + ", names=" + names;
-    }
-
-    /**
-     * Возвращает `true`, если token является cookie-атрибутом, а не именем cookie.
-     */
-    private boolean isCookieAttributeName(String name) {
-        String lower = name == null ? "" : name.toLowerCase(Locale.ROOT);
-        return "path".equals(lower)
-                || "domain".equals(lower)
-                || "expires".equals(lower)
-                || "max-age".equals(lower)
-                || "secure".equals(lower)
-                || "httponly".equals(lower)
-                || "samesite".equals(lower);
-    }
-
     private void loadInitialUrls() {
         WebView webView = binding.appBarMain.contentMain.webView;
         WebView chatMsgWebView = binding.appBarMain.contentMain.chatMsgWebview;
@@ -4402,6 +4142,52 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
      * - метод может восстановить отсутствующий `IsFightCaptchaDialogVisible`, если есть валидные
      *   `FightLink + captchaUrl`; это чинит сценарий, где фон увидел captcha challenge до onResume.
      */
+    /** Минимальный интервал между попытками восстановить зависший popup боевой капчи. */
+    private static final long PENDING_FIGHT_CAPTCHA_RECOVERY_INTERVAL_MS = 2_000L;
+
+    /** Момент последней попытки восстановления (монотонные часы). */
+    private long lastPendingFightCaptchaRecoveryAtMs = 0L;
+
+    /**
+     * Разрывает взаимоблокировку «captcha pending, но popup не показан».
+     *
+     * Как возникала блокировка:
+     * 1. сервер после боя снова отдаёт страницу с капчей, `LezFight` генерирует
+     *    finish-link с маркером `code=????`, и {@link #shouldPauseAutoBattleForFightCaptcha()} → true;
+     * 2. {@code requestAutoTurn} выходит по «skip, fight captcha pending»;
+     * 3. значит {@code autoTurnOnce}/{@code processFightHtml} не вызываются;
+     * 4. значит {@code showPendingFightCaptchaFromParsedStateIfNeeded(...)} не вызывается
+     *    и popup не переоткрывается;
+     * 5. значит `AppVars.FightLink` не очищается — и всё возвращается к пункту 1.
+     *
+     * Наблюдалось живьём: после успешной отправки кода антикапчей состояние висело
+     * более пяти минут, авто-бой стоял, а окно капчи пользователю не показывалось.
+     *
+     * Почему именно {@link #restorePendingFightCaptchaDialogIfNeeded()}:
+     * это уже существующий контур восстановления, и он закрывает оба исхода —
+     * либо показывает popup с актуальным challenge, либо (если состояние невалидно)
+     * вызывает {@link #clearStaleFightCaptchaState(String)} и снимает паузу авто-боя.
+     * Раньше он висел только на `onResume`, поэтому без сворачивания приложения не срабатывал.
+     */
+    private void recoverPendingFightCaptchaDialogIfStuck() {
+        if (isFightCaptchaDialogShowing()) {
+            return;
+        }
+        long nowMs = android.os.SystemClock.elapsedRealtime();
+        if (nowMs - lastPendingFightCaptchaRecoveryAtMs < PENDING_FIGHT_CAPTCHA_RECOVERY_INTERVAL_MS) {
+            return;
+        }
+        lastPendingFightCaptchaRecoveryAtMs = nowMs;
+        AppLog.w(TAG, BG_TRACE_PREFIX + " requestAutoTurn: fight captcha pending without visible dialog, recovering"
+                + ", fightLink=" + (AppVars.FightLink == null ? "null" : AppVars.FightLink)
+                + ", codeAddress=" + (AppVars.CodeAddress == null ? "null" : AppVars.CodeAddress));
+        if (Looper.myLooper() != Looper.getMainLooper()) {
+            runOnUiThread(this::restorePendingFightCaptchaDialogIfNeeded);
+        } else {
+            restorePendingFightCaptchaDialogIfNeeded();
+        }
+    }
+
     private void restorePendingFightCaptchaDialogIfNeeded() {
         if (isFightCaptchaDialogShowing()) {
             return;
@@ -4417,9 +4203,14 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
 
         String captchaUrl = resolvePendingFightCaptchaUrlForRestore();
         if (captchaUrl == null || captchaUrl.trim().isEmpty()) {
-            if (AppVars.IsFightCaptchaDialogVisible) {
-                clearStaleFightCaptchaState("pending captchaUrl is empty");
-            }
+            // Финальная ссылка требует капчу, но картинки challenge нет ни в `CodeAddress`,
+            // ни среди свежеперехваченных — состояние заведомо протухшее.
+            //
+            // Очистка ОБЯЗАТЕЛЬНО безусловная: раньше она выполнялась только при поднятом
+            // `IsFightCaptchaDialogVisible`, а после закрытия popup этот флаг уже сброшен.
+            // Из-за этого `FightLink` с маркером `code=????` оставался навсегда и намертво
+            // ставил авто-бой на паузу (наблюдалось зависание больше пяти минут).
+            clearStaleFightCaptchaState("pending captchaUrl is empty");
             return;
         }
 
@@ -4577,25 +4368,12 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     // Общая настройка WebView (JS, cookies, bridge, окна).
     @SuppressWarnings("deprecation")
     private void setupWebView(WebView webView, WebViewClient client) {
-        WebSettings webSettings = webView.getSettings();
-        webSettings.setJavaScriptEnabled(true);
-        webSettings.setAllowFileAccess(true);
-        webSettings.setAllowFileAccessFromFileURLs(true);
-        webSettings.setAllowUniversalAccessFromFileURLs(true);
-        webSettings.setDomStorageEnabled(true);
-        webSettings.setDatabaseEnabled(true);
-        webSettings.setUseWideViewPort(true);
-        webSettings.setLoadWithOverviewMode(true);
-        webSettings.setSupportZoom(true);
-        webSettings.setBuiltInZoomControls(true);
-        webSettings.setDisplayZoomControls(false);
-        webSettings.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
-        webSettings.setSupportMultipleWindows(true);
+        // D2: настройки вынесены в единый ru.neverlands.anclient.webview.WebViewConfigurator.
+        // Там же сняты опасные setAllowFileAccessFromFileURLs / setAllowUniversalAccessFromFileURLs.
+        ru.neverlands.anclient.webview.WebViewConfigurator.applyGameSettings(
+                webView, ru.neverlands.anclient.webview.WebViewConfigurator.Profile.MAIN_GAME);
 
         webView.addJavascriptInterface(new WebAppInterface(this), "AndroidBridge");
-
-        CookieManager.getInstance().setAcceptCookie(true);
-        CookieManager.getInstance().setAcceptThirdPartyCookies(webView, true);
 
         webView.setWebViewClient(client);
         webView.setWebChromeClient(new WebChromeClient() {
@@ -4993,6 +4771,17 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             return;
         }
         long now = System.currentTimeMillis();
+
+        // Дедупликация chat-poll: таймер MainActivity и bootstrap из AutoModeForegroundService
+        // могут запросить опрос почти одновременно. Второй запрос отбрасываем —
+        // иначе сервер видит два параллельных ch.php и может оборвать сессию.
+        long chatDeltaMs = now - lastChatRefreshAtMs;
+        if (lastChatRefreshAtMs > 0L && chatDeltaMs >= 0 && chatDeltaMs < CHAT_REFRESH_MIN_INTERVAL_MS) {
+            AppLog.d("chat_poll", TAG, BG_TRACE_PREFIX + " requestChatRefresh: skip duplicate poll, deltaMs="
+                    + chatDeltaMs + ", minIntervalMs=" + CHAT_REFRESH_MIN_INTERVAL_MS);
+            return;
+        }
+
         long roomDeltaMs = now - lastRoomUsersRefreshAtMs;
         if (roomDeltaMs >= 0 && roomDeltaMs < CHAT_ROOM_COLLISION_GUARD_MS) {
             long waitMs = CHAT_ROOM_COLLISION_GUARD_MS - roomDeltaMs;
@@ -5001,9 +4790,14 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             chatRefreshHandler.postDelayed(() -> requestChatRefresh(refreshRoomUsers), waitMs);
             return;
         }
-        long ts = now;
-        lastChatRefreshAtMs = ts;
-        String url = GameServerUrls.currentGameUrl("/ch.php?" + ts + "&show=1&fyo=" + chatFyo);
+        lastChatRefreshAtMs = now;
+        // Анти-детект: игровой JS формирует cache-buster через Math.random(), поэтому в реальном
+        // трафике браузера (эталон Login.har) запрос выглядит как
+        //   ch.php?0.03977238288876905&show=1&fyo=0
+        // Раньше здесь подставлялся 13-значный epoch-миллисекундный штамп (ch.php?1785063903592&...),
+        // что визуально отличается от браузера в каждом запросе чата.
+        String cacheBuster = Double.toString(java.util.concurrent.ThreadLocalRandom.current().nextDouble());
+        String url = GameServerUrls.currentGameUrl("/ch.php?" + cacheBuster + "&show=1&fyo=" + chatFyo);
         AppLog.d(TAG, BG_TRACE_PREFIX + " requestChatRefresh: " + url);
         try {
             chatRefrWebView.loadUrl(url);
@@ -5643,6 +5437,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         try {
             savedBytes = Integer.parseInt(text);
         } catch (NumberFormatException ignored) {
+            // Ожидаемая ветка: в поле трафика ещё нет числа — стартуем с 0.
         }
         savedBytes += bytes;
         binding.appBarMain.contentMain.statusBar.trafficTextView.setText(String.valueOf(savedBytes));
@@ -5676,97 +5471,10 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         if (isExiting) {
             return;
         }
-        AppLog.i(TAG, "LOGOUT_FLOW: started from navigation drawer");
-        new Thread(() -> {
-            performLogoutRequestBestEffort();
-            runOnUiThread(this::finalizeLogoutAndOpenLogin);
-        }, "logout-flow").start();
-    }
-
-    /**
-     * Серверный выход: `GET /exit.php` с Referer как в браузере.
-     */
-    private void performLogoutRequestBestEffort() {
-        HttpURLConnection connection = null;
-        try {
-            String logoutUrl = GameServerUrls.currentGameUrl(LOGOUT_PATH);
-            String logoutReferer = GameServerUrls.currentGameUrl(LOGOUT_REFERER_PATH);
-            URL url = new URL(logoutUrl);
-            Proxy activeProxy = ProxyRuntimeManager.getActiveJavaProxyOrNull();
-            if (activeProxy == null && ProxyRuntimeManager.isStrictProxyRequiredForCurrentProfile()) {
-                AppLog.e(TAG, "PROXY_FAIL: strict proxy enabled and runtime proxy unavailable, skip server logout request");
-                return;
-            }
-
-            connection = activeProxy != null
-                    ? (HttpURLConnection) url.openConnection(activeProxy)
-                    : (HttpURLConnection) url.openConnection();
-            connection.setRequestMethod("GET");
-            connection.setConnectTimeout(LOGOUT_HTTP_TIMEOUT_MS);
-            connection.setReadTimeout(LOGOUT_HTTP_TIMEOUT_MS);
-            connection.setUseCaches(false);
-            connection.setInstanceFollowRedirects(false);
-            connection.setRequestProperty("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8");
-            connection.setRequestProperty("Accept-Encoding", "identity");
-            connection.setRequestProperty("Accept-Language", "ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7");
-            connection.setRequestProperty("Cache-Control", "no-cache");
-            connection.setRequestProperty("Pragma", "no-cache");
-            connection.setRequestProperty("Referer", logoutReferer);
-            connection.setRequestProperty("User-Agent", AppVars.BROWSER_USER_AGENT);
-
-            String cookie = CookieManager.getInstance().getCookie(logoutUrl);
-            if (cookie == null || cookie.isEmpty()) {
-                cookie = CookieManager.getInstance().getCookie(GameServerUrls.neverlandsCookieUrl());
-            }
-            if ((cookie == null || cookie.isEmpty()) && url.getHost() != null) {
-                cookie = CookiesManager.obtain(url.getHost());
-            }
-            if (cookie != null && !cookie.isEmpty()) {
-                connection.setRequestProperty("Cookie", cookie);
-            } else {
-                AppLog.w(TAG, "LOGOUT_FLOW: cookie is empty for server logout request");
-            }
-
-            int responseCode = connection.getResponseCode();
-            String location = connection.getHeaderField("Location");
-            AppLog.i(TAG, "LOGOUT_FLOW: exit.php responseCode=" + responseCode
-                    + ", location=" + (location == null ? "" : location));
-        } catch (Exception e) {
-            AppLog.w(TAG, "LOGOUT_FLOW: server logout request failed", e);
-        } finally {
-            if (connection != null) {
-                connection.disconnect();
-            }
-        }
-    }
-
-    /**
-     * Локальная очистка и возврат на LoginActivity.
-     */
-    private void finalizeLogoutAndOpenLogin() {
-        if (isFinishing() || isDestroyed()) {
-            return;
-        }
-        isExiting = true;
-        AppVars.lastCookies = null;
-        AppVars.clearRuntimeAuthCredentials();
-        NetworkClient.clearCookies();
-        CookiesManager.clear();
-        LicenseRuntime.getInstance().clear("logout_to_login");
-        try {
-            CookieManager manager = CookieManager.getInstance();
-            manager.removeSessionCookies(null);
-            manager.removeAllCookies(null);
-            manager.flush();
-        } catch (Throwable t) {
-            AppLog.w(TAG, "LOGOUT_FLOW: WebView cookie cleanup failed", t);
-        }
-
-        AutoModeForegroundService.syncServiceState(this, "logout_to_login");
-        Intent intent = new Intent(this, LoginActivity.class);
-        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
-        startActivity(intent);
-        finish();
+        // D6: весь сценарий выхода (серверный exit.php + очистка сессии + переход на логин)
+        // вынесен в ru.neverlands.anclient.handlers.LogoutFlowHandler.
+        // Здесь остаётся только координация: защита от повторного запуска и свой флаг isExiting.
+        ru.neverlands.anclient.handlers.LogoutFlowHandler.startLogout(this, () -> isExiting = true);
     }
 
     public void updateRoom(List<RoomManager.MenuItem> pvList, String travmText, List<RoomManager.MenuItem> travmList) {
@@ -5939,7 +5647,8 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                 host = parsedUri != null && parsedUri.getHost() != null
                         ? parsedUri.getHost().toLowerCase(Locale.ROOT)
                         : "";
-            } catch (Exception ignored) {
+            } catch (Exception e) {
+                AppLog.d(TAG, "host parse failed for url, treating as empty host: " + e.getClass().getSimpleName());
             }
             boolean isNeverlandsHost = "neverlands.ru".equals(host) || host.endsWith(".neverlands.ru");
             boolean isForumHost = "forum.neverlands.ru".equals(host);
@@ -6255,6 +5964,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                                 i += 4;
                                 break;
                             } catch (NumberFormatException ignored) {
+                                // Не \\uXXXX-последовательность — символ обрабатывается как обычный ниже.
                             }
                         }
                         sb.append('u');

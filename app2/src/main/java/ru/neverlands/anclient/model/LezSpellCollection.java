@@ -9,6 +9,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 
+import ru.neverlands.anclient.utils.AppLog;
+
 /**
  * Коллекция заклинаний.
  * Портировано из LezSpellCollection.cs.
@@ -92,7 +94,7 @@ public class LezSpellCollection {
                 }
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            AppLog.e("LezSpellCollection", "failed to load spells list", e);
         }
     }
 
@@ -113,7 +115,7 @@ public class LezSpellCollection {
         for (String e : sp) {
             try {
                 list.add(Integer.parseInt(e.trim()));
-            } catch (NumberFormatException ignored) {}
+            } catch (NumberFormatException ignored) { /* нечисловой id заклинания — пропускаем */ }
         }
         int[] res = new int[list.size()];
         for (int i = 0; i < list.size(); i++) res[i] = list.get(i);

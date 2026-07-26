@@ -33,6 +33,7 @@ import ru.neverlands.anclient.utils.AppLog;
 import ru.neverlands.anclient.utils.AppVars;
 import ru.neverlands.anclient.utils.ChatStats;
 import ru.neverlands.anclient.utils.SessionManager;
+import ru.neverlands.anclient.utils.ParseUtils;
 
 /**
  * Runtime и настройки Авто-Травника.
@@ -978,9 +979,7 @@ public final class AutoCutManager {
             tiredRouteRetryDestination = safeDestination;
         }
         long retryDelayMs = calculateTiredRouteRetryDelayMs(tiedNow, tiedThreshold);
-        new Handler(Looper.getMainLooper()).postDelayed(
-                () -> runTiredRouteRetry(source),
-                retryDelayMs);
+        postDelayedRouteTask(() -> runTiredRouteRetry(source), retryDelayMs);
         AppLog.w(TRACE_CHAIN, TAG, "auto-moving stopped by tiredness, route retry scheduled: destination="
                 + safeDestination + ", tied=" + tiedNow + ", threshold=" + tiedThreshold
                 + ", delayMs=" + retryDelayMs + ", source=" + safe(source));
@@ -1092,7 +1091,38 @@ public final class AutoCutManager {
     }
 
     /** Сброс runtime-флагов при ручном выключении или license downgrade/expiry. */
+    /**
+     * Общий Handler отложенных маршрутных задач Авто-Травника/Авто-Лесоруба (D3).
+     *
+     * Раньше отложенные переходы планировались анонимным {@code new Handler(...).postDelayed(...)}:
+     * ссылку никто не хранил, поэтому после выключения функции запланированный
+     * {@code startAutoMoving(...)} всё равно срабатывал и уводил персонажа по маршруту.
+     * Теперь задачи планируются с {@link #ROUTE_TOKEN} и снимаются в {@link #onAutoCutDisabled()}.
+     */
+    private static final Handler ROUTE_HANDLER = new Handler(Looper.getMainLooper());
+
+    /** Токен отложенных маршрутных задач (для {@code removeCallbacksAndMessages}). */
+    private static final Object ROUTE_TOKEN = new Object();
+
+    /**
+     * Планирует отложенную маршрутную задачу с возможностью отмены.
+     * postAtTime вместо postDelayed(r, token, delay): перегрузка с токеном доступна с API 28,
+     * а minSdkVersion проекта — 21.
+     */
+    private void postDelayedRouteTask(Runnable task, long delayMs) {
+        ROUTE_HANDLER.postAtTime(task, ROUTE_TOKEN, android.os.SystemClock.uptimeMillis() + delayMs);
+    }
+
+    /** Снимает все запланированные, но ещё не выполненные маршрутные задачи. */
+    private void cancelPendingRouteTasks(String reason) {
+        ROUTE_HANDLER.removeCallbacksAndMessages(ROUTE_TOKEN);
+        AppLog.d(TRACE_CHAIN, TAG, "pending route tasks cancelled, reason=" + reason);
+    }
+
     public void onAutoCutDisabled() {
+        // D3: снимаем отложенные маршрутные задачи до сброса состояния,
+        // иначе они выполнят startAutoMoving(...) уже после выключения функции.
+        cancelPendingRouteTasks("auto_cut_disabled");
         restoreAutosPausedForCleanup("auto_cut_disabled");
         AppVars.AutoCutCheckSickle = false;
         AppVars.AutoCutArmedSickle = false;
@@ -1621,7 +1651,7 @@ public final class AutoCutManager {
         }
         rememberTimerRouteReturnIfNeeded(dueTimer, current, source);
         final String destination = next;
-        new Handler(Looper.getMainLooper()).postDelayed(() -> manager.startAutoMoving(destination), ROUTE_NEXT_DELAY_MS);
+        postDelayedRouteTask(() -> manager.startAutoMoving(destination), ROUTE_NEXT_DELAY_MS);
         AppLog.i(TRACE_CHAIN, TAG, "route next: destination=" + destination
                 + ", reason=" + routeReason + ", source=" + source);
     }
@@ -1670,8 +1700,7 @@ public final class AutoCutManager {
         timerRouteReturning = true;
         try {
             AutoFunctionsManager manager = AutoFunctionsManager.getInstance(appContext);
-            new Handler(Looper.getMainLooper()).postDelayed(
-                    () -> manager.startAutoMoving(returnCell), ROUTE_NEXT_DELAY_MS);
+            postDelayedRouteTask(() -> manager.startAutoMoving(returnCell), ROUTE_NEXT_DELAY_MS);
             AppLog.i(TRACE_CHAIN, TAG, "timer-route return: destination=" + returnCell
                     + ", from=" + current + ", source=" + source);
             return true;
@@ -2278,7 +2307,9 @@ public final class AutoCutManager {
         try {
             storedShiftStartServerMs = Long.parseLong(parts[0]);
             storedShift = Integer.parseInt(parts[1]);
-        } catch (Exception ignored) {
+        } catch (Exception e) {
+            // Значения остаются -1 -> ниже состояние смены будет пересоздано.
+            AppLog.d(TRACE_CHAIN, TAG, "stored shift state parse failed: " + e.getClass().getSimpleName());
         }
         if (storedShift != shift || storedShiftStartServerMs != shiftStartServerMs) {
             return result;
@@ -2399,10 +2430,10 @@ public final class AutoCutManager {
             return null;
         }
         return new AutoCutShift(
-                parseIntSafe(matcher.group(1), 0),
-                parseIntSafe(matcher.group(2), 0),
-                parseIntSafe(matcher.group(3), 0),
-                parseIntSafe(matcher.group(4), 0));
+                ParseUtils.parseIntSafe(matcher.group(1), 0),
+                ParseUtils.parseIntSafe(matcher.group(2), 0),
+                ParseUtils.parseIntSafe(matcher.group(3), 0),
+                ParseUtils.parseIntSafe(matcher.group(4), 0));
     }
 
     private static List<AutoCutShift> defaultShifts() {
@@ -2518,16 +2549,6 @@ public final class AutoCutManager {
         return String.format(Locale.US, "%.2f", value).replaceAll("\\.?0+$", "");
     }
 
-    private static int parseIntSafe(String value, int fallback) {
-        if (value == null) {
-            return fallback;
-        }
-        try {
-            return Integer.parseInt(value.trim());
-        } catch (NumberFormatException ignored) {
-            return fallback;
-        }
-    }
 
     private TimerPlan buildTimerPlan(String herb, int growthMinutes, String regNum) {
         long localNow = System.currentTimeMillis();
@@ -2900,7 +2921,8 @@ public final class AutoCutManager {
             if (manager.isAutoLumberjackEnabled()) {
                 return AutoCutMode.TREE;
             }
-        } catch (Exception ignored) {
+        } catch (Exception e) {
+            AppLog.d(TRACE_CHAIN, TAG, "resolve AutoCutMode failed, fallback to HERB: " + e.getClass().getSimpleName());
         }
         return AutoCutMode.HERB;
     }
@@ -3015,10 +3037,10 @@ public final class AutoCutManager {
             String countPart = separator >= 0 ? entry.substring(separator + 1).trim() : "1";
             int slash = countPart.indexOf('/');
             int available = slash >= 0
-                    ? parseIntSafe(countPart.substring(0, slash), 0)
-                    : parseIntSafe(countPart, 0);
+                    ? ParseUtils.parseIntSafe(countPart.substring(0, slash), 0)
+                    : ParseUtils.parseIntSafe(countPart, 0);
             int total = slash >= 0
-                    ? parseIntSafe(countPart.substring(slash + 1), available)
+                    ? ParseUtils.parseIntSafe(countPart.substring(slash + 1), available)
                     : available;
             if (!name.isEmpty()) {
                 result.add(new CellHerbEntry(name, available, total));

@@ -259,6 +259,14 @@ final class LocalHttpProxyServer {
                     "mode=" + (upstreamSettings.enabled ? "UP" : "DIR")
                             + " bytes=" + copiedBytes + " ms=" + elapsed + " target=" + sessionTarget);
         } catch (Exception e) {
+            // Клиент ушёл до конца записи ответа — это не сбой прокси и не повод для красной тревоги.
+            // Отправлять 502 тоже некому: сокет уже закрыт.
+            if (isClientAbort(e)) {
+                AppLog.d(LOG_CHAIN, TAG, "PROXY_CLIENT_ABORT: client closed connection target=" + sessionTarget
+                        + ", cause=" + e.getClass().getSimpleName());
+                return;
+            }
+
             if (isPoolProxyLoggingEnabled()) {
                 FileLogger.proxyPoolError("SESSION_FAIL target=" + sessionTarget, e);
             }
@@ -273,7 +281,9 @@ final class LocalHttpProxyServer {
             try {
                 OutputStream fallbackOut = client.getOutputStream();
                 writeSimpleError(fallbackOut, 502, "Bad Gateway", "Proxy forwarding error");
-            } catch (Throwable ignored) {
+            } catch (Throwable t) {
+                // Клиент уже отвалился — 502 доставить некому, но факт важен для диагностики прокси-цепочки.
+                AppLog.d(LOG_CHAIN, TAG, "PROXY_SESSION: failed to deliver 502 fallback: " + t.getClass().getSimpleName());
             }
         } finally {
             activeClientSockets.remove(client);
@@ -386,6 +396,7 @@ final class LocalHttpProxyServer {
                 try {
                     inputStream.close();
                 } catch (IOException ignored) {
+                    // Ожидаемая ветка cleanup: поток уже закрыт/оборван, ресурс всё равно освобождается ниже.
                 }
                 inputStream = null;
             }
@@ -458,10 +469,13 @@ final class LocalHttpProxyServer {
                               HttpRequest request,
                               String requestTarget,
                               boolean includeProxyAuthorizationHeader) throws IOException {
+        // Анти-детект: внутренние маркеры клиента не должны попадать на сервер.
+        String sanitizedTarget = stripClientMarkersFromTarget(requestTarget);
+
         StringBuilder outHead = new StringBuilder();
         outHead.append(request.method)
                 .append(' ')
-                .append(requestTarget)
+                .append(sanitizedTarget)
                 .append(' ')
                 .append(request.httpVersion)
                 .append("\r\n");
@@ -479,8 +493,15 @@ final class LocalHttpProxyServer {
             if (shouldSkipRequestHeader(lower)) {
                 continue;
             }
+            // Анти-детект: идентифицирующие заголовки не пробрасываем как есть —
+            // ниже они переписываются согласованным браузерным набором.
+            if (isClientIdentityHeader(lower)) {
+                continue;
+            }
             outHead.append(key).append(": ").append(header.getValue()).append("\r\n");
         }
+
+        appendBrowserIdentityHeaders(outHead);
 
         if (!hasHostHeader) {
             outHead.append("Host: ").append(route.originHost);
@@ -830,15 +851,24 @@ final class LocalHttpProxyServer {
             originPath = (uriToken == null || uriToken.isEmpty()) ? "/" : uriToken;
         }
 
+        // ВЫБОР СЕРВЕРА (DE/KZ): подключаемся к IP выбранного сервера, но host НЕ подменяем.
+        //
+        // Раньше здесь выполнялось `originHost = selectedHost`, из-за чего IP сервера попадал
+        // в заголовок Host, в URL и в ключи cookie. Сессия оказывалась размазана между
+        // neverlands.ru / www.neverlands.ru / 136.243.18.79, и сервер обрывал её страницей
+        // «Сеанс работы прерван» (причина «доступ к ресурсам сайта с другого хоста»).
+        //
+        // Теперь: Host и cookie остаются на публичном домене (единая сессия), а на сервер
+        // DE/KZ уходит только TCP-соединение. Нужный игровой мир выбирается полем формы
+        // логина server=de / server=KZ (GameServerUrls.loginFormServerCode).
         boolean routeToSelectedGameServer = AppVars.Profile != null
                 && GameServerUrls.isNeverlandsGameHost(originHost)
                 && !GameServerUrls.isSelectedServerHost(originHost);
+        String selectedConnectHost = null;
         if (routeToSelectedGameServer) {
-            String selectedHost = GameServerUrls.serverHost(GameServerUrls.currentServerCode());
-            AppLog.d(LOG_CHAIN, TAG, "SERVER_ROUTE: proxy origin=" + originHost + ":" + originPort
-                    + " -> " + selectedHost + ":80");
-            originHost = selectedHost;
-            originPort = 80;
+            selectedConnectHost = GameServerUrls.currentConnectHost();
+            AppLog.d(LOG_CHAIN, TAG, "SERVER_ROUTE: connect " + originHost + ":" + originPort
+                    + " -> " + selectedConnectHost + ":80 (Host остаётся " + originHost + ")");
         }
 
         String connectHost;
@@ -848,18 +878,19 @@ final class LocalHttpProxyServer {
         if (upstreamSettings.enabled) {
             connectHost = upstreamSettings.host;
             connectPort = upstreamSettings.port;
+            // Через upstream-proxy выбрать конкретный сервер нельзя: DNS резолвит он сам,
+            // а подмена хоста в absolute-form вернула бы прежнюю проблему с сессией.
+            // Поэтому в upstream-режиме работаем с публичным доменом.
             if (uriToken.startsWith("http://") || uriToken.startsWith("https://")) {
-                requestTarget = routeToSelectedGameServer
-                        ? "http://" + originHost + originPath
-                        : uriToken;
+                requestTarget = uriToken;
             } else {
                 requestTarget = "http://" + originHost
                         + ((originPort == 80) ? "" : ":" + originPort)
                         + originPath;
             }
         } else {
-            connectHost = originHost;
-            connectPort = originPort;
+            connectHost = (selectedConnectHost != null) ? selectedConnectHost : originHost;
+            connectPort = (selectedConnectHost != null) ? 80 : originPort;
             requestTarget = originPath;
         }
 
@@ -967,6 +998,132 @@ final class LocalHttpProxyServer {
         }
     }
 
+    /**
+     * Удаляет из запроса внутренние маркеры клиента ({@code ab_*} / {@code an_*}).
+     *
+     * <p><b>Зачем (AGENTS п.4, анти-детект).</b> Клиент дописывает к игровым URL собственные
+     * служебные параметры, чтобы потом узнавать свои же запросы в пост-фильтрах:
+     * {@code ab_reload_probe}, {@code ab_bg_probe}, {@code ab_nav_bootstrap}, {@code ab_timer},
+     * {@code an_auto_cut_tick}, {@code an_auto_cut_cleanup_verify}, {@code an_kazna_action},
+     * {@code an_auto_mine_pickaxe}, {@code an_search_box_bootstrap} и другие (всего ~25).</p>
+     *
+     * <p>Ни один браузер такие параметры не отправляет — в серверных логах это однозначная
+     * подпись неофициального клиента, которую тривиально найти обычным grep. В логах
+     * {@code logs/Critical/20260726_14_*} наружу реально уходил
+     * {@code main.php?get_id=56&act=10&go=inf&ab_reload_probe=1&ts=...}.</p>
+     *
+     * <p><b>Почему это безопасно.</b> Маркеры нужны только внутренней логике приложения, и она
+     * читает их из своего собственного URL (например {@code Filter.process(context, urlString, ...)})
+     * <i>до</i> отправки. Здесь мы вырезаем их лишь из строки запроса, уходящей на сервер, —
+     * поведение постфильтров не меняется. Игровые параметры ({@code get_id}, {@code act},
+     * {@code go}, {@code im}, {@code wca}, {@code vcode}, {@code code}, {@code fexp} и т.д.)
+     * префиксов {@code ab_}/{@code an_} не имеют и не затрагиваются.</p>
+     *
+     * <p>Реализовано в единой точке — через прокси проходит весь игровой трафик, поэтому
+     * не требуется править ~25 мест формирования URL (и рисковать регрессиями в авто-функциях).</p>
+     *
+     * @param requestTarget строка запроса (origin-form или absolute-form)
+     * @return та же строка без служебных параметров клиента
+     */
+    private static String stripClientMarkersFromTarget(String requestTarget) {
+        if (requestTarget == null || requestTarget.isEmpty()) {
+            return requestTarget;
+        }
+        int queryStart = requestTarget.indexOf('?');
+        if (queryStart < 0 || queryStart == requestTarget.length() - 1) {
+            return requestTarget;
+        }
+
+        String path = requestTarget.substring(0, queryStart);
+        String query = requestTarget.substring(queryStart + 1);
+
+        // Фрагмент в запросе не передаётся, но подстрахуемся.
+        String fragment = "";
+        int hashPos = query.indexOf('#');
+        if (hashPos >= 0) {
+            fragment = query.substring(hashPos);
+            query = query.substring(0, hashPos);
+        }
+
+        StringBuilder kept = new StringBuilder();
+        StringBuilder removed = new StringBuilder();
+        for (String part : query.split("&")) {
+            if (part == null || part.isEmpty()) {
+                continue;
+            }
+            int eq = part.indexOf('=');
+            String name = (eq > 0 ? part.substring(0, eq) : part).toLowerCase(Locale.ROOT);
+            if (name.startsWith("ab_") || name.startsWith("an_")) {
+                if (removed.length() > 0) {
+                    removed.append(',');
+                }
+                removed.append(name);
+                continue;
+            }
+            if (kept.length() > 0) {
+                kept.append('&');
+            }
+            kept.append(part);
+        }
+
+        if (removed.length() == 0) {
+            return requestTarget;
+        }
+
+        String sanitized = kept.length() > 0 ? path + "?" + kept + fragment : path + fragment;
+        AppLog.d(LOG_CHAIN, TAG, "PROXY_STEALTH: stripped client markers=[" + removed + "], target=" + sanitized);
+        return sanitized;
+    }
+
+    /**
+     * Заголовки, выдающие Android-WebView вместо обычного браузера.
+     *
+     * <p>Зачем (AGENTS п.4, анти-детект): администрация проекта блокирует неофициальные клиенты,
+     * поэтому сервер не должен видеть ни одного признака приложения. Здесь перечислены
+     * заголовки, которые Android добавляет самостоятельно:</p>
+     * <ul>
+     *   <li>{@code X-Requested-With} — WebView может подставить <b>имя пакета приложения</b>
+     *       ({@code ru.neverlands.anclient}); это прямое разоблачение;</li>
+     *   <li>{@code Sec-CH-UA*} — client hints реального движка. Они бы сообщили
+     *       «Android WebView, Chrome 151», противореча нашему desktop User-Agent, —
+     *       рассинхрон сам по себе является признаком подделки;</li>
+     *   <li>{@code X-Android-*} — служебные заголовки Android-стека.</li>
+     * </ul>
+     *
+     * <p>Все они вырезаются и заменяются согласованным набором в
+     * {@link #appendBrowserIdentityHeaders(StringBuilder)}.</p>
+     */
+    private static boolean isClientIdentityHeader(String lowerKey) {
+        return "user-agent".equals(lowerKey)
+                || "x-requested-with".equals(lowerKey)
+                || lowerKey.startsWith("sec-ch-ua")
+                || lowerKey.startsWith("x-android");
+    }
+
+    /**
+     * Подставляет единый браузерный {@code User-Agent} вместо родного UA Android-WebView.
+     *
+     * <p><b>Почему здесь НЕТ client hints ({@code Sec-CH-UA*}).</b> Это проверено по эталонной
+     * записи реального трафика {@code Login.har}: Chrome 140 при работе по обычному
+     * {@code http://} <b>не отправляет</b> ни одного заголовка {@code Sec-CH-UA*} —
+     * client hints передаются только в secure context (HTTPS). Полный набор заголовков
+     * настоящего браузера в HAR: {@code accept}, {@code accept-encoding}, {@code accept-language},
+     * {@code cache-control}, {@code connection}, {@code content-length}, {@code content-type},
+     * {@code dnt}, {@code host}, {@code origin}, {@code referer},
+     * {@code upgrade-insecure-requests}, {@code user-agent}.</p>
+     *
+     * <p>Поэтому добавление {@code Sec-CH-UA} <i>усилило бы</i> детект, а не ослабило:
+     * игра работает по cleartext HTTP, и такие заголовки там выглядят чужеродно.
+     * Сами заголовки при этом продолжают вырезаться в {@link #isClientIdentityHeader(String)} —
+     * на случай, если их пришлёт WebView.</p>
+     *
+     * <p>Это единая точка нормализации: через локальный прокси проходит весь игровой трафик —
+     * и запросы WebView, и нативные запросы клиента.</p>
+     */
+    private static void appendBrowserIdentityHeaders(StringBuilder outHead) {
+        outHead.append("User-Agent: ").append(AppVars.BROWSER_USER_AGENT).append("\r\n");
+    }
+
     private boolean shouldSkipRequestHeader(String lowerKey) {
         return "connection".equals(lowerKey)
                 || "proxy-connection".equals(lowerKey)
@@ -979,6 +1136,16 @@ final class LocalHttpProxyServer {
                 || "upgrade".equals(lowerKey);
     }
 
+    /**
+     * Копирует ответ upstream в сокет клиента.
+     *
+     * Важно про источники ошибок:
+     * - `source.read(...)` — это upstream, его сбой = настоящая проблема прокси-цепочки;
+     * - `sink.write(...)` — это сокет клиента (все вызовы передают `clientOut`),
+     *   его сбой означает, что клиент ушёл (отменённая навигация, закрытый подфрейм).
+     * Второй случай оборачивается в {@link ClientAbortException}, чтобы вызывающий код
+     * не поднимал ложную тревогу `PROXY_FAIL` на успешно полученном ответе.
+     */
     private CopyResult copyStreamWithCapture(InputStream source,
                                              OutputStream sink,
                                              int captureLimitBytes) throws IOException {
@@ -987,7 +1154,11 @@ final class LocalHttpProxyServer {
         ByteArrayOutputStream capture = (captureLimitBytes > 0) ? new ByteArrayOutputStream() : null;
         int read;
         while ((read = source.read(buffer)) != -1) {
-            sink.write(buffer, 0, read);
+            try {
+                sink.write(buffer, 0, read);
+            } catch (IOException e) {
+                throw new ClientAbortException("client aborted while receiving response body", e);
+            }
             total += read;
             if (capture != null && capture.size() < captureLimitBytes) {
                 int remain = captureLimitBytes - capture.size();
@@ -997,8 +1168,58 @@ final class LocalHttpProxyServer {
                 }
             }
         }
-        sink.flush();
+        try {
+            sink.flush();
+        } catch (IOException e) {
+            throw new ClientAbortException("client aborted while flushing response body", e);
+        }
         return new CopyResult(total, capture == null ? new byte[0] : capture.toByteArray());
+    }
+
+    /**
+     * Клиент закрыл соединение до того, как прокси дописал ответ.
+     *
+     * Это НЕ сбой прокси: upstream-ответ уже получен (как правило со `status=200`),
+     * а сокет закрыл сам WebView — обычное поведение браузера при отменённой навигации
+     * или при загрузке фреймсета, когда часть подзапросов становится ненужной.
+     */
+    private static final class ClientAbortException extends IOException {
+        ClientAbortException(String message, Throwable cause) {
+            super(message, cause);
+        }
+    }
+
+    /**
+     * Отличает уход клиента от настоящего сбоя прокси-цепочки.
+     *
+     * Зачем нужно:
+     * - раньше любое исключение сессии поднимало `PROXY_FAIL` и красный индикатор в UI,
+     *   хотя в логах рядом стоял успешный `PROXY_RESP ... status=200`;
+     * - по замерам такие «сбои» давали ложную тревогу на старте приложения,
+     *   когда фреймсет отменяет часть собственных подзапросов.
+     *
+     * Проверяются оба признака: типизированный {@link ClientAbortException} из основного
+     * пути копирования и текст сообщения — на случай записи клиенту вне этого хелпера.
+     */
+    private static boolean isClientAbort(Throwable error) {
+        for (Throwable current = error; current != null; current = current.getCause()) {
+            if (current instanceof ClientAbortException) {
+                return true;
+            }
+            String message = current.getMessage();
+            if (message == null) {
+                continue;
+            }
+            String lower = message.toLowerCase(Locale.ROOT);
+            if (lower.contains("broken pipe")
+                    || lower.contains("connection reset")
+                    || lower.contains("connection abort")
+                    || lower.contains("socket closed")
+                    || lower.contains("stream closed")) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private void handleServerNoticeFromCapturedPayload(ResolvedRoute route,
@@ -1102,10 +1323,12 @@ final class LocalHttpProxyServer {
         try {
             return new String(payload, Charset.forName("windows-1251"));
         } catch (Exception ignored) {
+            // Ожидаемая ветка: charset недоступен/битые байты — ниже пробуем UTF-8.
         }
         try {
             return new String(payload, StandardCharsets.UTF_8);
-        } catch (Exception ignored) {
+        } catch (Exception e) {
+            AppLog.d(LOG_CHAIN, TAG, "decodeHtmlBody: both windows-1251 and UTF-8 decode failed: " + e.getClass().getSimpleName());
         }
         return "";
     }
@@ -1173,6 +1396,7 @@ final class LocalHttpProxyServer {
             out.write(body);
             out.flush();
         } catch (IOException ignored) {
+            // Ожидаемая ветка: сокет клиента уже закрыт, error-ответ доставить некуда.
         }
     }
 
@@ -1183,6 +1407,7 @@ final class LocalHttpProxyServer {
         try {
             socket.close();
         } catch (IOException ignored) {
+            // Ожидаемая ветка cleanup: серверный сокет уже закрыт при остановке прокси.
         }
     }
 
@@ -1193,6 +1418,7 @@ final class LocalHttpProxyServer {
         try {
             socket.close();
         } catch (IOException ignored) {
+            // Ожидаемая ветка cleanup: клиентский сокет уже закрыт/оборван.
         }
     }
 

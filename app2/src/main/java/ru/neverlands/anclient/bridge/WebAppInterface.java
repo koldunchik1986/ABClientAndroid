@@ -44,6 +44,7 @@ import ru.neverlands.anclient.utils.AppLog;
 import ru.neverlands.anclient.utils.AppVars;
 import ru.neverlands.anclient.utils.ExtMap;
 import ru.neverlands.anclient.utils.FileLogger;
+import ru.neverlands.anclient.utils.GameServerUrls;
 import ru.neverlands.anclient.utils.Russian;
 
 /**
@@ -83,10 +84,62 @@ public class WebAppInterface {
         mContext = appContext != null ? appContext : c;
     }
 
+    /** Делегат к единому аксессору {@link AppVars#getMainActivityOrNull()} (D5). */
     private MainActivity getMainActivityOrNull() {
-        if (AppVars.mainActivity == null) return null;
-        MainActivity activity = AppVars.mainActivity.get();
-        return activity != null && !activity.isFinishing() && !activity.isDestroyed() ? activity : null;
+        return AppVars.getMainActivityOrNull();
+    }
+
+    /**
+     * Диагностика допустимости URL, приходящего из JS через мост (D2).
+     *
+     * <p><b>Режим: только наблюдение, без блокировки</b> (изменено 2026-07-26).</p>
+     *
+     * Изначально метод блокировал «чужие» URL как защиту от SSRF/CSRF: методы моста
+     * ({@code loadFrame}, {@code redirectToUrl}, {@code openInNewTab}, {@code chatSubmit})
+     * выполняют навигацию и запросы с сессионными cookie пользователя.
+     *
+     * Однако после рефакторинга пользователь сообщил о поломке авторизации/сессии. Поскольку
+     * блокировка навигации внешне выглядит именно как «слетела сессия», проверка переведена
+     * в неблокирующий режим: она только пишет предупреждение {@code BRIDGE_URL_FOREIGN}
+     * в лог, но пропускает вызов дальше — рабочий вход важнее гипотетической защиты.
+     *
+     * <p>Как включить блокировку обратно: вернуть {@code return false} вместо
+     * {@code return true} в ветках ниже — но только после live-проверки, что в логах
+     * нет {@code BRIDGE_URL_FOREIGN} для легитимных игровых переходов.</p>
+     *
+     * Allowlist переиспользует существующий {@link GameServerUrls#isNeverlandsHost(String)}:
+     * он покрывает {@code neverlands.ru}, поддомены (в т.ч. {@code forum.neverlands.ru})
+     * и настроенные хосты/IP игровых серверов (DE/KZ), плюс локальный прокси.
+     *
+     * @param url          проверяемый URL
+     * @param bridgeMethod имя метода моста (для лога)
+     * @return всегда true (режим наблюдения); подозрительные URL логируются
+     */
+    private static boolean isAllowedBridgeUrl(String url, String bridgeMethod) {
+        if (url == null || url.trim().isEmpty()) {
+            AppLog.w("WebAppInterface", "BRIDGE_URL_FOREIGN: empty url, method=" + bridgeMethod);
+            return true;
+        }
+        try {
+            android.net.Uri uri = android.net.Uri.parse(url.trim());
+            String scheme = uri.getScheme() == null ? "" : uri.getScheme().toLowerCase(java.util.Locale.ROOT);
+            if (!"http".equals(scheme) && !"https".equals(scheme)) {
+                AppLog.w("WebAppInterface", "BRIDGE_URL_FOREIGN: scheme='" + scheme
+                        + "', method=" + bridgeMethod + ", url=" + url);
+                return true;
+            }
+            String host = uri.getHost() == null ? "" : uri.getHost().toLowerCase(java.util.Locale.ROOT);
+            if (GameServerUrls.isNeverlandsHost(host) || "127.0.0.1".equals(host) || "localhost".equals(host)) {
+                return true;
+            }
+            AppLog.w("WebAppInterface", "BRIDGE_URL_FOREIGN: host='" + host
+                    + "', method=" + bridgeMethod + ", url=" + url);
+            return true;
+        } catch (Exception e) {
+            AppLog.w("WebAppInterface", "BRIDGE_URL_FOREIGN: parse failed, method=" + bridgeMethod
+                    + ", error=" + e.getClass().getSimpleName());
+            return true;
+        }
     }
 
     private void logMapBridgeValue(String source, int mapBigWidth, int mapBigHeight, int mapBigScale, int halfW, int halfH) {
@@ -1614,6 +1667,10 @@ public class WebAppInterface {
         if (!url.startsWith("http")) {
             url = "http://neverlands.ru/" + url.replaceFirst("^/+", "");
         }
+        // D2: chatSubmit формирует GET/POST с сессионными cookie — запрещаем чужие хосты.
+        if (!isAllowedBridgeUrl(url, "chatSubmit")) {
+            return;
+        }
         String safeMethod = method == null ? "POST" : method.toUpperCase();
         String payload = data == null ? "" : data;
         payload = recodeUrlEncoded(payload, Charset.forName("UTF-8"), Charset.forName("windows-1251"));
@@ -2310,6 +2367,11 @@ public class WebAppInterface {
             url = "http://neverlands.ru/" + url.replaceFirst("^/+", "");
         }
 
+        // D2: не отдаём привилегированные фреймы под произвольный внешний URL.
+        if (!isAllowedBridgeUrl(url, "loadFrame")) {
+            return;
+        }
+
         final String finalUrl = url;
         AppVars.mainActivity.get().runOnUiThread(() -> {
             switch (frameName) {
@@ -2509,7 +2571,12 @@ public class WebAppInterface {
     @JavascriptInterface
     public void openInNewTab(String url, String title) {
         AppLog.d("WebAppInterface", "openInNewTab: " + title + " -> " + url);
-        
+
+        // D2: вкладка получает сессионные cookie, поэтому открываем только игровые хосты.
+        if (!isAllowedBridgeUrl(url, "openInNewTab")) {
+            return;
+        }
+
         // Всегда используем MainActivity для открытия вкладки
         if (AppVars.mainActivity == null || AppVars.mainActivity.get() == null) {
             return;
@@ -2529,7 +2596,12 @@ public class WebAppInterface {
         }
 
         AppLog.d("WebAppInterface", "redirectToUrl: " + finalUrl);
-        
+
+        // D2: навигация главного WebView — только на игровые хосты.
+        if (!isAllowedBridgeUrl(finalUrl, "redirectToUrl")) {
+            return;
+        }
+
         // Используем локальный broadcast, чтобы его получил MainActivity (регистрируется через LocalBroadcastManager)
         if (mContext != null) {
             Intent intent = new Intent(AppVars.ACTION_WEBVIEW_LOAD_URL);

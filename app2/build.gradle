@@ -4,9 +4,15 @@ plugins {
     id 'kotlin-kapt'
 }
 
+// A/B-диагностика авторизации: позволяет собрать APK из снапшота app2/src_old,
+// не перемещая файлы и не трогая обычную сборку.
+//   обычная сборка:  ./gradlew2.bat --no-daemon
+//   старый снапшот:  ./gradlew.bat --no-daemon :app2:assembleDebug -PuseOldSrc=true
+def useOldSrc = project.hasProperty('useOldSrc') && project.property('useOldSrc').toString().toBoolean()
+
 androidComponents {
     onVariants(selector().all()) { variant ->
-        def appName = "anclient"
+        def appName = useOldSrc ? "anclient_OLDSRC" : "anclient"
         variant.outputs.each { output ->
             def versionName = output.versionName.getOrNull()
             output.outputFileName.set("${appName}_v${versionName}.apk")
@@ -59,6 +65,20 @@ android {
     }
     buildFeatures {
         viewBinding true
+    }
+
+    // Переключение исходников на снапшот src_old (только при -PuseOldSrc=true).
+    // Нужно для сравнения рабочей авторизации старой версии с текущей.
+    if (useOldSrc) {
+        sourceSets {
+            main {
+                java.srcDirs = ['src_old/main/java']
+                res.srcDirs = ['src_old/main/res']
+                assets.srcDirs = ['src_old/main/assets']
+                manifest.srcFile 'src_old/main/AndroidManifest.xml'
+            }
+        }
+        logger.lifecycle("[app2] ВНИМАНИЕ: сборка из снапшота src_old (диагностика авторизации)")
     }
 }
 

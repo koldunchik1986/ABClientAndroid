@@ -31,7 +31,6 @@ import ru.neverlands.anclient.utils.ChatStats;
 import ru.neverlands.anclient.utils.FileLogger;
 import ru.neverlands.anclient.utils.GearParser;
 import ru.neverlands.anclient.utils.HelperStrings;
-import ru.neverlands.anclient.utils.InventoryParser;
 import ru.neverlands.anclient.utils.ParseUtils;
 import ru.neverlands.anclient.utils.Russian;
 import ru.neverlands.anclient.utils.SessionManager;
@@ -1964,18 +1963,9 @@ public final class FishAjaxPhp {
      * Возвращает MainActivity или null.
      */
     private static MainActivity getMainActivityOrNull() {
-        try {
-            if (AppVars.mainActivity == null) {
-                return null;
-            }
-            MainActivity activity = AppVars.mainActivity.get();
-            if (activity == null || activity.isFinishing()) {
-                return null;
-            }
-            return activity;
-        } catch (Exception ignored) {
-            return null;
-        }
+        // D5: делегат к единому аксессору AppVars.getMainActivityOrNull().
+        // Семантика ужесточена (добавлена проверка isDestroyed()), что безопаснее прежней версии.
+        return AppVars.getMainActivityOrNull();
     }
 
     /**
@@ -2270,8 +2260,10 @@ public final class FishAjaxPhp {
             String tryWearMsg = "FISH_GEAR_TRY_WEAR_HAND1: рука 1 пуста или требуется смена, ищем удочку в инвентаре";
             AppLog.i(TAG, TAG, tryWearMsg);
 
-            // Парсим инвентарь
-            List<InventoryParser.InventoryItem> inventory = InventoryParser.parseInventory(html);
+            // Парсим инвентарь через единый парсер postfilter.InventoryParser (см. D5:
+            // ранее здесь использовался дублирующий utils.InventoryParser с менее устойчивым
+            // извлечением имени/wear-ссылки; дубль удалён).
+            List<InventoryParser.WearInvEntry> inventory = InventoryParser.getWearInvList(html);
             if (inventory.isEmpty()) {
                 String noInvMsg = "❌ FISH_NO_INVENTORY: инвентарь пуст или не спарсен, не можем одеть удочку";
                 AppLog.e(TAG, TAG, noInvMsg);
@@ -2281,7 +2273,7 @@ public final class FishAjaxPhp {
 
             // Ищем подходящую удочку в инвентаре
             String rodPreference = AppVars.Profile.FishHandOne;
-            InventoryParser.InventoryItem rodToWear = InventoryParser.findSpecificRod(inventory, rodPreference);
+            InventoryParser.WearInvEntry rodToWear = findRodInInventory(inventory, rodPreference);
 
             if (rodToWear == null) {
                 String noRodMsg = "❌ FISH_NO_ROD_FOUND: удочка '" + rodPreference + "' не найдена в инвентаре";
@@ -2292,13 +2284,13 @@ public final class FishAjaxPhp {
 
             // Нашли удочку - одеваем её
             String wearMsg = String.format(
-                "✅ FISH_WEAR_ROD: одеваем '%s' (dur=%s) по ссылке: %s",
-                rodToWear.name, rodToWear.durability, rodToWear.wearUrl
+                "✅ FISH_WEAR_ROD: одеваем '%s' (uid=%s) по ссылке: %s",
+                rodToWear.name, rodToWear.uid, rodToWear.wearLink
             );
             AppLog.i(TAG, TAG, wearMsg);
 
             // Отправляем запрос на одевание
-            executeWearLink(rodToWear.wearUrl, rodToWear.name);
+            executeWearLink(rodToWear.wearLink, rodToWear.name);
             return true;  // Смена произведена, нужно ждать ответа сервера
 
         } catch (Exception e) {
@@ -3503,6 +3495,46 @@ public final class FishAjaxPhp {
 
     private static boolean isFishingRodName(String itemName) {
         return ru.neverlands.anclient.postfilter.InventoryParser.containsIgnoreCase(itemName, "\u0443\u0434\u043E\u0447\u043A\u0430") || ru.neverlands.anclient.postfilter.InventoryParser.containsIgnoreCase(itemName, "\u0441\u043F\u0438\u043D\u043D\u0438\u043D\u0433");
+    }
+
+    /**
+     * Ищет в распарсенном инвентаре первую надеваемую удочку под настройку профиля.
+     *
+     * Зависимости:
+     * - {@link InventoryParser#getWearInvList(String)} — единый парсер инвентаря (postfilter);
+     * - {@link #matchesFishingHandSetting(String, Integer, String)} — существующий decision point
+     *   сопоставления настройки руки ("Любая удочка" / конкретное название).
+     *
+     * Назначение (D5):
+     * - заменяет удалённый дубль {@code utils.InventoryParser.findSpecificRod(...)},
+     *   переиспользуя уже имеющуюся логику сопоставления вместо второго параллельного контура.
+     *
+     * @param inventory список записей инвентаря
+     * @param rodPreference настройка профиля {@code FishHandOne}; null/пусто трактуется как "Любая удочка"
+     * @return подходящая запись с непустой wear-ссылкой либо null
+     */
+    private static InventoryParser.WearInvEntry findRodInInventory(
+            List<InventoryParser.WearInvEntry> inventory, String rodPreference) {
+        if (inventory == null || inventory.isEmpty()) {
+            return null;
+        }
+        // Совместимость с прежним findSpecificRod: пустая настройка == "Любая удочка".
+        String preference = (rodPreference == null || rodPreference.trim().isEmpty())
+                ? "\u041B\u044E\u0431\u0430\u044F \u0443\u0434\u043E\u0447\u043A\u0430"
+                : rodPreference;
+        for (InventoryParser.WearInvEntry entry : inventory) {
+            if (entry == null || entry.name == null || entry.name.isEmpty()) {
+                continue;
+            }
+            // Без wear-ссылки предмет надеть нельзя — пропускаем.
+            if (entry.wearLink == null || entry.wearLink.isEmpty()) {
+                continue;
+            }
+            if (matchesFishingHandSetting(entry.name, null, preference)) {
+                return entry;
+            }
+        }
+        return null;
     }
 
     private static String formatInfoApiDurability(Integer durability) {

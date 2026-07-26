@@ -17,6 +17,7 @@ import okhttp3.ResponseBody;
 import ru.neverlands.anclient.proxy.ProxyRuntimeManager;
 import ru.neverlands.anclient.utils.AppLog;
 import ru.neverlands.anclient.utils.AppVars;
+import ru.neverlands.anclient.utils.ParseUtils;
 
 /**
  * HTTP-клиент внешнего сервиса anti-captcha.com для задачи ImageToTextTask.
@@ -73,10 +74,10 @@ public final class AntiCaptchaManager {
             this.clientKey = clientKey == null ? "" : clientKey.trim();
             this.phrase = phrase;
             this.caseSensitive = caseSensitive;
-            this.numeric = clamp(numeric, 0, 2);
-            this.math = clamp(math, 0, 1);
-            this.minLength = clamp(minLength, 0, 20);
-            this.maxLength = clamp(maxLength, 0, 20);
+            this.numeric = ParseUtils.clamp(numeric, 0, 2);
+            this.math = ParseUtils.clamp(math, 0, 1);
+            this.minLength = ParseUtils.clamp(minLength, 0, 20);
+            this.maxLength = ParseUtils.clamp(maxLength, 0, 20);
             String normalizedLanguage = languagePool == null ? "" : languagePool.trim().toLowerCase(java.util.Locale.ROOT);
             this.languagePool = "rn".equals(normalizedLanguage) ? "rn" : "en";
         }
@@ -211,41 +212,86 @@ public final class AntiCaptchaManager {
         return "";
     }
 
-    private static JSONObject postJson(String urlString, JSONObject body) throws Exception {
+    /**
+     * Кэшированный OkHttpClient для внешнего Anti-Captcha API (D3).
+     *
+     * Раньше клиент создавался заново на КАЖДЫЙ {@code postJson(...)}, а метод вызывается в цикле
+     * polling'а решения капчи — это плодило пулы соединений/потоков и лишние сокеты.
+     *
+     * Переиспользуется подход {@code NetworkClient}: клиент пересобирается только при смене
+     * proxy-сигнатуры. Собственный кэш (а не {@code NetworkClient.getInstance()}) нужен потому,
+     * что здесь принципиально другой маршрут — внешний HTTPS напрямую через upstream proxy,
+     * без локального 127.0.0.1 proxy.
+     */
+    private static OkHttpClient cachedApiClient;
+    private static String cachedApiClientSignature;
+
+    /**
+     * Возвращает клиент для текущего proxy-маршрута, пересобирая его только при смене сигнатуры.
+     *
+     * @param upstreamProxy      upstream proxy либо null для прямого маршрута
+     * @param upstreamAuthHeader заголовок Proxy-Authorization (может быть пустым)
+     */
+    private static synchronized OkHttpClient obtainApiClient(java.net.Proxy upstreamProxy, String upstreamAuthHeader) {
+        String signature = (upstreamProxy == null ? "direct" : String.valueOf(upstreamProxy))
+                + "|auth=" + (upstreamAuthHeader == null || upstreamAuthHeader.isEmpty() ? "0" : "1");
+        if (cachedApiClient != null && signature.equals(cachedApiClientSignature)) {
+            return cachedApiClient;
+        }
+
         OkHttpClient.Builder clientBuilder = new OkHttpClient.Builder()
                 .connectTimeout(CONNECT_TIMEOUT_MS, TimeUnit.MILLISECONDS)
                 .readTimeout(READ_TIMEOUT_MS, TimeUnit.MILLISECONDS)
                 .writeTimeout(READ_TIMEOUT_MS, TimeUnit.MILLISECONDS)
                 .followRedirects(true);
 
-        java.net.Proxy upstreamProxy = ProxyRuntimeManager.getActiveUpstreamJavaProxyOrNull();
-        boolean strictProxyRequired = ProxyRuntimeManager.isStrictProxyRequiredForCurrentProfile();
         if (upstreamProxy != null) {
-            // Внешний HTTPS route в proxy-профиле: идём сразу через upstream proxy.
-            // Локальный 127.0.0.1 proxy здесь запрещён, иначе Android OkHttp отправляет CONNECT
-            // в LocalHttpProxyServer и получает 501 Not Implemented.
             clientBuilder.proxy(upstreamProxy);
-            String upstreamAuthHeader = ProxyRuntimeManager.getActiveUpstreamBasicAuthHeaderOrEmpty();
-            if (!upstreamAuthHeader.isEmpty()) {
+            if (upstreamAuthHeader != null && !upstreamAuthHeader.isEmpty()) {
+                final String authHeader = upstreamAuthHeader;
                 clientBuilder.proxyAuthenticator((route, response) -> {
                     if (response.request().header("Proxy-Authorization") != null) {
                         return null;
                     }
                     return response.request().newBuilder()
-                            .header("Proxy-Authorization", upstreamAuthHeader)
+                            .header("Proxy-Authorization", authHeader)
                             .build();
                 });
             }
+        } else {
+            // Proxy не включён в профиле: явно задаём NO_PROXY, чтобы системные/старые WebView
+            // proxy-overrides не перехватили внешний Anti-Captcha HTTPS API.
+            clientBuilder.proxy(java.net.Proxy.NO_PROXY);
+        }
+
+        if (cachedApiClient != null) {
+            // Освобождаем соединения прежнего маршрута, чтобы не держать сокеты старого proxy.
+            cachedApiClient.connectionPool().evictAll();
+        }
+        cachedApiClient = clientBuilder.build();
+        cachedApiClientSignature = signature;
+        AppLog.i(TAG, "ANTI_CAPTCHA_TRACE http client rebuilt, signature=" + signature);
+        return cachedApiClient;
+    }
+
+    private static JSONObject postJson(String urlString, JSONObject body) throws Exception {
+        java.net.Proxy upstreamProxy = ProxyRuntimeManager.getActiveUpstreamJavaProxyOrNull();
+        boolean strictProxyRequired = ProxyRuntimeManager.isStrictProxyRequiredForCurrentProfile();
+        String upstreamAuthHeader = "";
+        if (upstreamProxy != null) {
+            // Внешний HTTPS route в proxy-профиле: идём сразу через upstream proxy.
+            // Локальный 127.0.0.1 proxy здесь запрещён, иначе Android OkHttp отправляет CONNECT
+            // в LocalHttpProxyServer и получает 501 Not Implemented.
+            upstreamAuthHeader = ProxyRuntimeManager.getActiveUpstreamBasicAuthHeaderOrEmpty();
             AppLog.i(TAG, "ANTI_CAPTCHA_TRACE route=upstream_proxy, url=" + urlString);
         } else {
             if (strictProxyRequired) {
                 throw new IllegalStateException("strict proxy enabled but runtime proxy unavailable");
             }
-            // Proxy не включён в профиле: явно задаём NO_PROXY, чтобы системные/старые WebView
-            // proxy-overrides не перехватили внешний Anti-Captcha HTTPS API.
-            clientBuilder.proxy(java.net.Proxy.NO_PROXY);
             AppLog.i(TAG, "ANTI_CAPTCHA_TRACE route=direct_external, url=" + urlString);
         }
+
+        OkHttpClient client = obtainApiClient(upstreamProxy, upstreamAuthHeader);
 
         byte[] payload = body.toString().getBytes(StandardCharsets.UTF_8);
         Request request = new Request.Builder()
@@ -255,7 +301,7 @@ public final class AntiCaptchaManager {
                 .header("User-Agent", AppVars.BROWSER_USER_AGENT)
                 .build();
 
-        try (Response response = clientBuilder.build().newCall(request).execute()) {
+        try (Response response = client.newCall(request).execute()) {
             int code = response.code();
             ResponseBody responseBody = response.body();
             String responseText = responseBody == null ? "" : responseBody.string();
@@ -279,7 +325,4 @@ public final class AntiCaptchaManager {
         }
     }
 
-    private static int clamp(int value, int min, int max) {
-        return Math.max(min, Math.min(max, value));
-    }
 }

@@ -75,13 +75,12 @@ public class ChListJs {
                     os.write(html.getBytes());
                 }
             } catch (IOException e) {
-                e.printStackTrace();
+                AppLog.w("ChListJs", "failed to write ChListJs_final.txt debug log", e);
             }
 
             AppLog.d("ChListJs", "Finished processing ch_list.js");
             return Russian.getBytes(html);
         } catch (Exception e) {
-            e.printStackTrace();
             AppLog.e("ChListJs", "Error processing ch_list.js", e);
             return new byte[0];
         }

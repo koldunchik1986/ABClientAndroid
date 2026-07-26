@@ -8,6 +8,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import ru.neverlands.anclient.utils.ParseUtils;
 
 public final class ContactRenderHelper {
 
@@ -84,11 +85,11 @@ public final class ContactRenderHelper {
                     continue;
                 }
                 String[] parts = trimmed.split(":", 3);
-                int id = parseIntSafe(parts.length > 0 ? parts[0] : "", 0);
+                int id = ParseUtils.parseIntSafe(parts.length > 0 ? parts[0] : "", 0);
                 if (id <= 0) {
                     continue;
                 }
-                int count = parseIntSafe(parts.length > 1 ? parts[1] : "", 1);
+                int count = ParseUtils.parseIntSafe(parts.length > 1 ? parts[1] : "", 1);
                 String timeout = parts.length > 2 ? sanitizeEffectStatePart(parts[2]) : "";
                 EffectState existing = byId.get(id);
                 if (existing == null) {
@@ -208,6 +209,7 @@ public final class ContactRenderHelper {
                     unique.add(value);
                 }
             } catch (Exception ignored) {
+                // Нечисловой элемент списка — пропускаем, остальные значения обрабатываются.
             }
         }
         return new ArrayList<>(unique);
@@ -231,16 +233,6 @@ public final class ContactRenderHelper {
         return sb.toString();
     }
 
-    private static int parseIntSafe(String value, int fallback) {
-        if (value == null) {
-            return fallback;
-        }
-        try {
-            return Integer.parseInt(value.trim());
-        } catch (Exception ignored) {
-            return fallback;
-        }
-    }
 
     private static String sanitizeEffectStatePart(String value) {
         if (value == null) {

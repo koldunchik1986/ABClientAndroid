@@ -126,65 +126,7 @@ public class QuickButtonsPanel {
      * Список зелий из `FormNewTimer.Designer.cs` (ПК-версия), без изменений состава/порядка.
      * Индекс `0` = "Не пить, просто таймер" (служебный пункт для валидации UI).
      */
-    private static final String[] TIMER_POTION_OPTIONS = new String[]{
-            "Не пить, просто таймер",
-            "Зелье Метаболизма",
-            "Зелье Блаженства",
-            "Зелье Сильной Спины",
-            "Зелье Просветления",
-            "Зелье Сокрушительных Ударов",
-            "Зелье Стойкости",
-            "Зелье Недосягаемости",
-            "Зелье Точного Попадания",
-            "Зелье Ловких Ударов",
-            "Зелье Мужества",
-            "Зелье Жизни",
-            "Зелье Лечения",
-            "Зелье Восстановления Маны",
-            "Зелье Энергии",
-            "Зелье Удачи",
-            "Зелье Силы",
-            "Зелье Ловкости",
-            "Зелье Гения",
-            "Зелье Боевой Славы",
-            "Зелье Невидимости",
-            "Зелье Секрет Волшебника",
-            "Зелье Медитации",
-            "Зелье Иммунитета",
-            "Яд",
-            "Зелье Лечения Отравлений",
-            "Зелье Огненного Ореола",
-            "Зелье Колкости",
-            "Зелье Загрубелой Кожи",
-            "Зелье Панциря",
-            "Зелье Человек-гора",
-            "Зелье Скорости",
-            "Жажда Жизни",
-            "Ментальная Жажда",
-            "Зелье подвижности",
-            "Ярость Берсерка",
-            "Зелье Хрупкости",
-            "Зелье Мифриловый Стержень",
-            "Зелье Соколиный взор",
-            "Секретное Зелье"
-    };
 
-    // Список доступных авто-функций для включения/отключения по таймеру.
-    // Перед показом список проходит `LicenseRuntime.filterAutoFunctionLabels(...)`, поэтому
-    // `Авто-Травник`, `Авто-Лесоруб` и `Анти-Captcha` появятся только при individual
-    // full/custom grant (`auto_cut`/`auto_lumberjack`/`anti_captcha`) и исчезнут после истечения expiresAt.
-    private static final String[] AUTO_FUNCTIONS = new String[]{
-            "Авто-Бой",
-            "Авто-Рыбалка",
-            "Авто-Охота",
-            "Авто-Питьё",
-            "Авто-Клад",
-            "Авто-Травник",
-            "Авто-Лесоруб",
-            "Авто-Шахтёр",
-            "Авто-Босс",
-            "Анти-Captcha"
-    };
     
     private final Context context;
     private final QuickButtonsManager buttonsManager;
@@ -361,79 +303,9 @@ public class QuickButtonsPanel {
     }
 
     // Карта внешних иконок (из image.neverlands.ru) для некоторых быстрых действий.
+    /** D6: реализация вынесена в {@link QuickActionIcons#getIconUrl(QuickActionType)} (единый источник иконок). */
     private String getIconUrlForAction(QuickActionType type) {
-        switch (type) {
-            case AUTO_FIGHT:
-                return "http://image.neverlands.ru/achievement/2/a_2_10.gif";
-            case QUICK_ACTIONS:
-                return null;
-            case AUTO_FISH:
-                return "http://image.neverlands.ru/achievement/40/a_40_10.gif";
-            case AUTO_BAIT:
-                return null;
-            case AUTO_SKIN:
-                return "http://image.neverlands.ru/achievement/70/a_70_10.gif";
-            case AUTO_ATTACK:
-                return "http://image.neverlands.ru/achievement/13/a_13_10.gif";
-            case AUTO_COMPASS:
-                return null;
-            case AUTO_BOSS:
-                return "http://image.neverlands.ru/achievement/23/a_23_10.gif";
-            case AUTO_INVISIBLE:
-                return "http://image.neverlands.ru/weapon/i_w27_53.gif";
-            case LOCATION_TRACKING:
-                return "http://image.neverlands.ru/signs/compass.gif";
-            case AUTO_DETECT:
-                return "http://image.neverlands.ru/achievement/26/a_26_10.gif";
-            case AUTO_SUMMON:
-                return "http://image.neverlands.ru/achievement/11/a_11_10.gif";
-            case AUTO_CURE:
-                return "http://image.neverlands.ru/achievement/150/a_150_10.gif";
-            case AUTO_DRINK:
-                return null;
-            case AUTO_MOVING:
-                return null;
-            case AUTO_TREASURE:
-                return "http://image.neverlands.ru/achievement/9/a_9_10.gif";
-            case AUTO_CUT:
-                return "http://image.neverlands.ru/achievement/20/a_20_10.gif";
-            case AUTO_LUMBERJACK:
-                return "http://image.neverlands.ru/achievement/30/a_30_10.gif";
-            case AUTO_MINE:
-                return "http://image.neverlands.ru/achievement/60/a_60_10.gif";
-            case AUTO_REFRESH:
-                return null;
-            case OPEN_CONTACTS:
-                return null;
-            case OPEN_PINFO:
-                return null;
-            case OPEN_LOGS:
-                return null;
-            case OPEN_STATS:
-                return null;
-            case TIMERS:
-                return null;
-            case REFRESH_CONTACTS:
-                return null;
-            case QUICK_SELF_RASS:
-                return "http://image.neverlands.ru/weapon/i_w28_23.gif";
-            case QUICK_OPEN_NEVID:
-                return "http://image.neverlands.ru/weapon/i_w28_28.gif";
-            case QUICK_TELEPORT:
-                return "http://image.neverlands.ru/weapon/i_w28_22.gif";
-            case QUICK_ISLAND:
-                return "http://image.neverlands.ru/weapon/i_w28_22.gif";
-            case QUICK_TOTEM:
-                return "http://image.neverlands.ru/signs/totems/9.gif";
-            case QUICK_ELIXIR_BLAZ:
-                return "http://image.neverlands.ru/weapon/i_w61_107.gif";
-            case QUICK_ELIXIR_CURE:
-                return "http://image.neverlands.ru/weapon/i_w61_104.gif";
-            case QUICK_ELIXIR_RESTORE:
-                return "http://image.neverlands.ru/weapon/i_w61_101.gif";
-            default:
-                return null;
-        }
+        return QuickActionIcons.getIconUrl(type);
     }
 
     // Локальные иконки/плейсхолдеры; при необходимости можно различать ON/OFF.
@@ -451,110 +323,15 @@ public class QuickButtonsPanel {
     }
     
     // Авто-функции имеют ON/OFF визуальное состояние.
+    /** D6: реализация вынесена в {@link QuickActionIcons#isAutoFunction(QuickActionType)}. */
     private boolean isAutoFunction(QuickActionType type) {
-        switch (type) {
-            case AUTO_FIGHT:
-            case AUTO_FISH:
-            case AUTO_BAIT:
-            case AUTO_SKIN:
-            case AUTO_ATTACK:
-            case AUTO_COMPASS:
-            case AUTO_BOSS:
-            case AUTO_INVISIBLE:
-            case LOCATION_TRACKING:
-            case AUTO_DETECT:
-            case AUTO_SUMMON:
-            case AUTO_CURE:
-            case AUTO_DRINK:
-            case AUTO_MOVING:
-            case AUTO_TREASURE:
-            case AUTO_CUT:
-            case AUTO_LUMBERJACK:
-            case AUTO_MINE:
-            case AUTO_REFRESH:
-            case AUTO_CAPTCHA:
-                return true;
-            default:
-                return false;
-        }
+        return QuickActionIcons.isAutoFunction(type);
     }
     
     // Fallback иконки по типу (локальные ресурсы приложения).
+    /** D6: реализация вынесена в {@link QuickActionIcons#getIconRes(QuickActionType)} (единый источник иконок). */
     private int getIconForAction(QuickActionType type) {
-        switch (type) {
-            case AUTO_FIGHT:
-                return R.drawable.ic_auto_fight;
-            case QUICK_ACTIONS:
-                return R.drawable.ic_sort;
-            case AUTO_FISH:
-                return R.drawable.ic_auto_fish;
-            case AUTO_BAIT:
-                return R.drawable.ic_add;
-            case AUTO_SKIN:
-                return R.drawable.ic_lez_fight;
-            case AUTO_ATTACK:
-                return R.drawable.ic_auto_attack;
-            case AUTO_COMPASS:
-                return R.drawable.ic_compas;
-            case AUTO_BOSS:
-                return R.drawable.ic_compas;
-            case AUTO_INVISIBLE:
-                return R.drawable.ic_auto_invisible;
-            case LOCATION_TRACKING:
-                return R.drawable.ic_location;
-            case AUTO_DETECT:
-                return R.drawable.ic_auto_detect;
-            case AUTO_SUMMON:
-                return R.drawable.ic_auto_summon;
-            case AUTO_CURE:
-                return R.drawable.ic_red_cross;
-            case AUTO_DRINK:
-                return R.drawable.ic_add;
-            case AUTO_MOVING:
-                return R.drawable.ic_globe;
-            case AUTO_TREASURE:
-                return R.drawable.ic_auto_detect;
-            case AUTO_CUT:
-                return R.drawable.ic_add;
-            case AUTO_LUMBERJACK:
-                return R.drawable.ic_add;
-            case AUTO_MINE:
-                return R.drawable.ic_add;
-            case AUTO_REFRESH:
-                return R.drawable.ic_refresh;
-            case AUTO_CAPTCHA:
-                return R.drawable.ic_auto_detect;
-            case OPEN_CONTACTS:
-                return R.drawable.ic_add_contact;
-            case OPEN_PINFO:
-                return R.drawable.ic_info;
-            case OPEN_LOGS:
-                return R.drawable.ic_add;
-            case OPEN_STATS:
-                return R.drawable.ic_info;
-            case TIMERS:
-                return R.drawable.ic_timer;
-            case REFRESH_CONTACTS:
-                return R.drawable.ic_refresh;
-            case QUICK_SELF_RASS:
-                return R.drawable.ic_back;
-            case QUICK_OPEN_NEVID:
-                return R.drawable.ic_expand_more;
-            case QUICK_TELEPORT:
-                return R.drawable.ic_sort;
-            case QUICK_ISLAND:
-                return R.drawable.ic_add;
-            case QUICK_TOTEM:
-                return R.drawable.ic_add;
-            case QUICK_ELIXIR_BLAZ:
-                return R.drawable.ic_add;
-            case QUICK_ELIXIR_CURE:
-                return R.drawable.ic_add;
-            case QUICK_ELIXIR_RESTORE:
-                return R.drawable.ic_add;
-            default:
-                return R.drawable.ic_add;
-        }
+        return QuickActionIcons.getIconRes(type);
     }
 
     // Исполнение действия кнопки: либо назначение, либо запуск функции.
@@ -1161,6 +938,7 @@ public class QuickButtonsPanel {
                         try {
                             thoroughMinAgeMinutes = Integer.parseInt(thoroughMinAgeRaw);
                         } catch (NumberFormatException ignored) {
+                            // Некорректный ввод пользователя — сохраняем ранее выбранное значение.
                         }
                     }
                     autoFunctionsManager.setAutoTreasureThoroughNeighborMinAgeMinutes(thoroughMinAgeMinutes);
@@ -1275,602 +1053,47 @@ public class QuickButtonsPanel {
                 .show();
     }
 
+    /**
+     * D6: девять диалогов Авто-Травника/Авто-Лесоруба вынесены в {@link AutoCutDialogs}.
+     * Экземпляр создаётся лениво: диалоги открываются редко, а держать их состояние
+     * между вызовами не требуется. Подписи методов сохранены, поэтому точки вызова
+     * в `showButtonOptions(...)` не менялись.
+     */
+    private AutoCutDialogs autoCutDialogs;
+
+    private AutoCutDialogs autoCutDialogs() {
+        if (autoCutDialogs == null) {
+            autoCutDialogs = new AutoCutDialogs(context, autoFunctionsManager);
+        }
+        return autoCutDialogs;
+    }
+
     private void showAutoCutSettingsDialog() {
-        final int pad = (int) (context.getResources().getDisplayMetrics().density * 12);
-        ScrollView scroll = new ScrollView(context);
-        LinearLayout root = new LinearLayout(context);
-        root.setOrientation(LinearLayout.VERTICAL);
-        root.setPadding(pad, pad, pad, pad);
-        scroll.addView(root);
-
-        TextView cellsTitle = new TextView(context);
-        cellsTitle.setText("Клетки для поиска (через запятую)");
-        root.addView(cellsTitle);
-
-        EditText cellsInput = new EditText(context);
-        cellsInput.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_MULTI_LINE);
-        cellsInput.setSingleLine(false);
-        cellsInput.setMinLines(2);
-        cellsInput.setHint("Например: 12-494, 13-501");
-        cellsInput.setText(autoFunctionsManager.getAutoCutCellsCsv());
-        root.addView(cellsInput);
-
-        CheckBox writeChat = new CheckBox(context);
-        writeChat.setText("Выводить результат в чат");
-        writeChat.setChecked(autoFunctionsManager.isAutoCutWriteChatEnabled());
-        writeChat.setPadding(0, pad / 2, 0, 0);
-        root.addView(writeChat);
-
-        CheckBox cleanupEnabled = new CheckBox(context);
-        cleanupEnabled.setText("После набора массы заходить в инвентарь для cleanup");
-        cleanupEnabled.setChecked(autoFunctionsManager.isAutoCutCleanupEnabled());
-        cleanupEnabled.setPadding(0, pad / 2, 0, 0);
-        root.addView(cleanupEnabled);
-
-        CheckBox cutByTimers = new CheckBox(context);
-        cutByTimers.setText("Срезать по таймерам");
-        cutByTimers.setChecked(autoFunctionsManager.isAutoCutCutByTimersEnabled());
-        cutByTimers.setPadding(0, pad / 2, 0, 0);
-        root.addView(cutByTimers);
-
-        TextView herbsSummary = new TextView(context);
-        herbsSummary.setText("Выбрано трав: " + autoFunctionsManager.getAutoCutSelectedHerbCount()
-                + ". Откройте полноценный список по группам 1-11.");
-        herbsSummary.setPadding(0, pad, 0, 0);
-        root.addView(herbsSummary);
-
-        Button herbListButton = new Button(context);
-        herbListButton.setText("Список трав");
-        herbListButton.setAllCaps(false);
-        herbListButton.setTextColor(ContextCompat.getColor(context, R.color.colorOnPrimarySurface));
-        herbListButton.setBackgroundColor(ContextCompat.getColor(context, R.color.purple_500));
-        root.addView(herbListButton);
-
-        Button sicklesButton = new Button(context);
-        sicklesButton.setText("Серпы");
-        sicklesButton.setAllCaps(false);
-        root.addView(sicklesButton);
-
-        Button shiftsButton = new Button(context);
-        shiftsButton.setText("Смены трав");
-        shiftsButton.setAllCaps(false);
-        root.addView(shiftsButton);
-
-        herbListButton.setOnClickListener(v -> showAutoCutHerbListDialog("Все"));
-        sicklesButton.setOnClickListener(v -> showAutoCutSickleSettingsDialog());
-        shiftsButton.setOnClickListener(v -> showAutoCutShiftSettingsDialog());
-
-        new AlertDialog.Builder(context)
-                .setTitle("Настройки Авто-Травника")
-                .setView(scroll)
-                .setPositiveButton("Сохранить", (dialog, which) -> {
-                    autoFunctionsManager.setAutoCutCellsCsv(cellsInput.getText() == null ? "" : cellsInput.getText().toString());
-                    autoFunctionsManager.setAutoCutWriteChatEnabled(writeChat.isChecked());
-                    autoFunctionsManager.setAutoCutCleanupEnabled(cleanupEnabled.isChecked());
-                    autoFunctionsManager.setAutoCutCutByTimersEnabled(cutByTimers.isChecked());
-                    Toast.makeText(context, "Настройки авто-травника сохранены", Toast.LENGTH_SHORT).show();
-                })
-                .setNegativeButton("Отмена", null)
-                .show();
+        autoCutDialogs().showAutoCutSettingsDialog();
     }
 
     private void showAutoCutHerbListDialog(String initialGroup) {
-        final int pad = (int) (context.getResources().getDisplayMetrics().density * 8);
-        final String[] groups = new String[]{"Все", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "Не определено"};
-        final String[] selectedGroup = new String[]{TextUtils.isEmpty(initialGroup) ? "Все" : initialGroup};
-
-        List<AutoCutManager.AutoCutHerb> herbs = autoFunctionsManager.getAutoCutHerbs();
-        LinkedHashSet<String> selectedKeys = new LinkedHashSet<>();
-        for (AutoCutManager.AutoCutHerb herb : herbs) {
-            if (herb.selected) {
-                selectedKeys.add(herb.key);
-            }
-        }
-
-        LinearLayout root = new LinearLayout(context);
-        root.setOrientation(LinearLayout.HORIZONTAL);
-        root.setPadding(pad, pad, pad, pad);
-
-        ScrollView groupScroll = new ScrollView(context);
-        LinearLayout groupColumn = new LinearLayout(context);
-        groupColumn.setOrientation(LinearLayout.VERTICAL);
-        groupScroll.addView(groupColumn);
-        root.addView(groupScroll, new LinearLayout.LayoutParams(dpToPx(112), LinearLayout.LayoutParams.MATCH_PARENT));
-
-        LinearLayout right = new LinearLayout(context);
-        right.setOrientation(LinearLayout.VERTICAL);
-        right.setPadding(pad, 0, 0, 0);
-        root.addView(right, new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.MATCH_PARENT, 1f));
-
-        TextView header = new TextView(context);
-        header.setTypeface(header.getTypeface(), android.graphics.Typeface.BOLD);
-        right.addView(header);
-
-        LinearLayout actionRow = new LinearLayout(context);
-        actionRow.setOrientation(LinearLayout.HORIZONTAL);
-        Button selectVisible = new Button(context);
-        selectVisible.setText("Отметить");
-        selectVisible.setAllCaps(false);
-        Button unselectVisible = new Button(context);
-        unselectVisible.setText("Снять");
-        unselectVisible.setAllCaps(false);
-        actionRow.addView(selectVisible, new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
-        actionRow.addView(unselectVisible, new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
-        right.addView(actionRow);
-
-        ScrollView herbScroll = new ScrollView(context);
-        LinearLayout herbList = new LinearLayout(context);
-        herbList.setOrientation(LinearLayout.VERTICAL);
-        herbScroll.addView(herbList);
-        right.addView(herbScroll, new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, dpToPx(420)));
-
-        final Runnable[] renderRef = new Runnable[1];
-        renderRef[0] = () -> {
-            herbList.removeAllViews();
-            header.setText("Группа: " + selectedGroup[0] + " | выбрано: " + selectedKeys.size());
-            int visibleCount = 0;
-            for (AutoCutManager.AutoCutHerb herb : autoFunctionsManager.getAutoCutHerbs()) {
-                String group = TextUtils.isEmpty(herb.group) ? "Не определено" : herb.group.trim();
-                if (!"Все".equals(selectedGroup[0]) && !group.equals(selectedGroup[0])) {
-                    continue;
-                }
-                CheckBox box = new CheckBox(context);
-                box.setText(herb.displayLabel());
-                box.setChecked(selectedKeys.contains(herb.key));
-                box.setOnCheckedChangeListener((buttonView, isChecked) -> {
-                    if (isChecked) selectedKeys.add(herb.key);
-                    else selectedKeys.remove(herb.key);
-                    header.setText("Группа: " + selectedGroup[0] + " | выбрано: " + selectedKeys.size());
-                });
-                box.setOnLongClickListener(v -> {
-                    showAutoCutHerbEditDialog(herb);
-                    return true;
-                });
-                herbList.addView(box);
-                visibleCount++;
-            }
-            if (visibleCount == 0) {
-                TextView empty = new TextView(context);
-                empty.setText("В этой группе пока нет трав.");
-                empty.setPadding(0, pad, 0, pad);
-                herbList.addView(empty);
-            }
-        };
-
-        for (String group : groups) {
-            Button groupButton = new Button(context);
-            groupButton.setText(group.equals("Все") ? "Все" : ("Гр. " + group));
-            groupButton.setAllCaps(false);
-            groupButton.setOnClickListener(v -> {
-                selectedGroup[0] = group;
-                renderRef[0].run();
-            });
-            groupColumn.addView(groupButton, new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT));
-        }
-
-        selectVisible.setOnClickListener(v -> {
-            for (AutoCutManager.AutoCutHerb herb : autoFunctionsManager.getAutoCutHerbs()) {
-                String group = TextUtils.isEmpty(herb.group) ? "Не определено" : herb.group.trim();
-                if ("Все".equals(selectedGroup[0]) || group.equals(selectedGroup[0])) {
-                    selectedKeys.add(herb.key);
-                }
-            }
-            renderRef[0].run();
-        });
-        unselectVisible.setOnClickListener(v -> {
-            for (AutoCutManager.AutoCutHerb herb : autoFunctionsManager.getAutoCutHerbs()) {
-                String group = TextUtils.isEmpty(herb.group) ? "Не определено" : herb.group.trim();
-                if ("Все".equals(selectedGroup[0]) || group.equals(selectedGroup[0])) {
-                    selectedKeys.remove(herb.key);
-                }
-            }
-            renderRef[0].run();
-        });
-
-        AlertDialog dialog = new AlertDialog.Builder(context)
-                .setTitle("Список трав")
-                .setView(root)
-                .setPositiveButton("Сохранить", (d, which) -> {
-                    autoFunctionsManager.setAutoCutHerbSelections(selectedKeys);
-                    Toast.makeText(context, "Список трав сохранён", Toast.LENGTH_SHORT).show();
-                })
-                .setNegativeButton("Отмена", null)
-                .create();
-        dialog.setOnShowListener(d -> renderRef[0].run());
-        dialog.show();
+        autoCutDialogs().showAutoCutHerbListDialog(initialGroup);
     }
 
     private void showAutoCutSickleSettingsDialog() {
-        String[] sickles = autoFunctionsManager.getAutoCutAvailableSickleNames();
-        List<String> enabled = autoFunctionsManager.getAutoCutEnabledSickleNames();
-        boolean[] checked = new boolean[sickles.length];
-        for (int i = 0; i < sickles.length; i++) {
-            checked[i] = enabled.contains(sickles[i]);
-        }
-        new AlertDialog.Builder(context)
-                .setTitle("Серпы Авто-Травника")
-                .setMultiChoiceItems(sickles, checked, (dialog, which, isChecked) -> checked[which] = isChecked)
-                .setPositiveButton("Сохранить", (dialog, which) -> {
-                    LinkedHashSet<String> selected = new LinkedHashSet<>();
-                    for (int i = 0; i < sickles.length; i++) {
-                        if (checked[i]) {
-                            selected.add(sickles[i]);
-                        }
-                    }
-                    if (selected.isEmpty()) {
-                        Toast.makeText(context, "Нужно выбрать хотя бы один серп", Toast.LENGTH_SHORT).show();
-                        return;
-                    }
-                    autoFunctionsManager.setAutoCutEnabledSickleNames(selected);
-                    Toast.makeText(context, "Список серпов сохранён", Toast.LENGTH_SHORT).show();
-                })
-                .setNegativeButton("Отмена", null)
-                .show();
+        autoCutDialogs().showAutoCutSickleSettingsDialog();
     }
 
     private void showAutoCutShiftSettingsDialog() {
-        final int pad = (int) (context.getResources().getDisplayMetrics().density * 12);
-        LinearLayout root = new LinearLayout(context);
-        root.setOrientation(LinearLayout.VERTICAL);
-        root.setPadding(pad, pad, pad, pad);
-
-        TextView hint = new TextView(context);
-        hint.setText("Одна смена на строку, формат 00:50-06:50. Можно добавить новую строку со своей сменой.");
-        root.addView(hint);
-
-        EditText shiftsInput = new EditText(context);
-        shiftsInput.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_MULTI_LINE);
-        shiftsInput.setSingleLine(false);
-        shiftsInput.setMinLines(5);
-        shiftsInput.setText(autoFunctionsManager.getAutoCutShiftScheduleText());
-        root.addView(shiftsInput);
-
-        Button resetButton = new Button(context);
-        resetButton.setText("Сбросить к 00:50/06:50/12:50/18:50");
-        resetButton.setAllCaps(false);
-        root.addView(resetButton);
-        resetButton.setOnClickListener(v -> shiftsInput.setText("00:50-06:50\n06:50-12:50\n12:50-18:50\n18:50-00:50"));
-
-        new AlertDialog.Builder(context)
-                .setTitle("Смены трав")
-                .setView(root)
-                .setPositiveButton("Сохранить", (dialog, which) -> {
-                    String value = shiftsInput.getText() == null ? "" : shiftsInput.getText().toString();
-                    if (!autoFunctionsManager.setAutoCutShiftScheduleText(value)) {
-                        Toast.makeText(context, "Не распознано ни одной смены", Toast.LENGTH_SHORT).show();
-                        return;
-                    }
-                    Toast.makeText(context, "Смены трав сохранены", Toast.LENGTH_SHORT).show();
-                })
-                .setNegativeButton("Отмена", null)
-                .show();
-    }
-
-    private void showAutoCutHerbEditDialog(AutoCutManager.AutoCutHerb herb) {
-        if (herb == null) {
-            return;
-        }
-        final int pad = (int) (context.getResources().getDisplayMetrics().density * 12);
-        LinearLayout root = new LinearLayout(context);
-        root.setOrientation(LinearLayout.VERTICAL);
-        root.setPadding(pad, pad, pad, pad);
-
-        TextView title = new TextView(context);
-        title.setText(herb.name);
-        title.setTypeface(title.getTypeface(), android.graphics.Typeface.BOLD);
-        root.addView(title);
-
-        EditText skillInput = new EditText(context);
-        skillInput.setHint("Умение");
-        skillInput.setInputType(InputType.TYPE_CLASS_NUMBER);
-        skillInput.setText(String.valueOf(herb.skill));
-        root.addView(skillInput);
-
-        EditText growthInput = new EditText(context);
-        growthInput.setHint("Время роста, минут");
-        growthInput.setInputType(InputType.TYPE_CLASS_NUMBER);
-        growthInput.setText(String.valueOf(herb.growthMinutes));
-        root.addView(growthInput);
-
-        EditText groupInput = new EditText(context);
-        groupInput.setHint("Группа трав");
-        groupInput.setInputType(InputType.TYPE_CLASS_TEXT);
-        groupInput.setText(herb.group);
-        root.addView(groupInput);
-
-        new AlertDialog.Builder(context)
-                .setTitle("Правка травы")
-                .setView(root)
-                .setPositiveButton("Сохранить", (dialog, which) -> {
-                    int skill = parseIntInRange(skillInput.getText() == null ? "" : skillInput.getText().toString(), 0, 999, herb.skill);
-                    int growth = parseIntInRange(growthInput.getText() == null ? "" : growthInput.getText().toString(), 1, 24 * 60, herb.growthMinutes);
-                    String group = groupInput.getText() == null ? "" : groupInput.getText().toString().trim();
-                    autoFunctionsManager.updateAutoCutHerbMeta(herb.key, skill, growth, group);
-                    Toast.makeText(context, "Трава обновлена", Toast.LENGTH_SHORT).show();
-                    showAutoCutSettingsDialog();
-                })
-                .setNegativeButton("Отмена", null)
-                .show();
+        autoCutDialogs().showAutoCutShiftSettingsDialog();
     }
 
     private void showAutoLumberjackSettingsDialog() {
-        final int pad = (int) (context.getResources().getDisplayMetrics().density * 12);
-        ScrollView scroll = new ScrollView(context);
-        LinearLayout root = new LinearLayout(context);
-        root.setOrientation(LinearLayout.VERTICAL);
-        root.setPadding(pad, pad, pad, pad);
-        scroll.addView(root);
-
-        TextView cellsTitle = new TextView(context);
-        cellsTitle.setText("Клетки для поиска деревьев (через запятую)");
-        root.addView(cellsTitle);
-
-        EditText cellsInput = new EditText(context);
-        cellsInput.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_MULTI_LINE);
-        cellsInput.setSingleLine(false);
-        cellsInput.setMinLines(2);
-        cellsInput.setHint("Например: 12-494, 13-501");
-        cellsInput.setText(autoFunctionsManager.getAutoLumberjackCellsCsv());
-        root.addView(cellsInput);
-
-        CheckBox writeChat = new CheckBox(context);
-        writeChat.setText("Выводить результат в чат");
-        writeChat.setChecked(autoFunctionsManager.isAutoLumberjackWriteChatEnabled());
-        writeChat.setPadding(0, pad / 2, 0, 0);
-        root.addView(writeChat);
-
-        CheckBox cleanupEnabled = new CheckBox(context);
-        cleanupEnabled.setText("После набора массы заходить в инвентарь для cleanup");
-        cleanupEnabled.setChecked(autoFunctionsManager.isAutoLumberjackCleanupEnabled());
-        cleanupEnabled.setPadding(0, pad / 2, 0, 0);
-        root.addView(cleanupEnabled);
-
-        CheckBox cutByTimers = new CheckBox(context);
-        cutByTimers.setText("Спиливать по таймерам");
-        cutByTimers.setChecked(autoFunctionsManager.isAutoLumberjackCutByTimersEnabled());
-        cutByTimers.setPadding(0, pad / 2, 0, 0);
-        root.addView(cutByTimers);
-
-        TextView treesSummary = new TextView(context);
-        treesSummary.setText("Выбрано деревьев: " + autoFunctionsManager.getAutoLumberjackSelectedTreeCount()
-                + ". Откройте список деревьев по группам.");
-        treesSummary.setPadding(0, pad, 0, 0);
-        root.addView(treesSummary);
-
-        Button treeListButton = new Button(context);
-        treeListButton.setText("Список деревьев");
-        treeListButton.setAllCaps(false);
-        treeListButton.setTextColor(ContextCompat.getColor(context, R.color.colorOnPrimarySurface));
-        treeListButton.setBackgroundColor(ContextCompat.getColor(context, R.color.purple_500));
-        root.addView(treeListButton);
-
-        Button axesButton = new Button(context);
-        axesButton.setText("Топоры");
-        axesButton.setAllCaps(false);
-        root.addView(axesButton);
-
-        Button shiftsButton = new Button(context);
-        shiftsButton.setText("Смены ресурсов");
-        shiftsButton.setAllCaps(false);
-        root.addView(shiftsButton);
-
-        treeListButton.setOnClickListener(v -> showAutoLumberjackTreeListDialog("Все"));
-        axesButton.setOnClickListener(v -> showAutoLumberjackAxeSettingsDialog());
-        shiftsButton.setOnClickListener(v -> showAutoCutShiftSettingsDialog());
-
-        new AlertDialog.Builder(context)
-                .setTitle("Настройки Авто-Лесоруба")
-                .setView(scroll)
-                .setPositiveButton("Сохранить", (dialog, which) -> {
-                    autoFunctionsManager.setAutoLumberjackCellsCsv(cellsInput.getText() == null ? "" : cellsInput.getText().toString());
-                    autoFunctionsManager.setAutoLumberjackWriteChatEnabled(writeChat.isChecked());
-                    autoFunctionsManager.setAutoLumberjackCleanupEnabled(cleanupEnabled.isChecked());
-                    autoFunctionsManager.setAutoLumberjackCutByTimersEnabled(cutByTimers.isChecked());
-                    Toast.makeText(context, "Настройки авто-лесоруба сохранены", Toast.LENGTH_SHORT).show();
-                })
-                .setNegativeButton("Отмена", null)
-                .show();
+        autoCutDialogs().showAutoLumberjackSettingsDialog();
     }
 
     private void showAutoLumberjackTreeListDialog(String initialGroup) {
-        final int pad = (int) (context.getResources().getDisplayMetrics().density * 8);
-        final String[] groups = new String[]{"Все", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "Не определено"};
-        final String[] selectedGroup = new String[]{TextUtils.isEmpty(initialGroup) ? "Все" : initialGroup};
-
-        List<AutoCutManager.AutoCutHerb> trees = autoFunctionsManager.getAutoLumberjackTrees();
-        LinkedHashSet<String> selectedKeys = new LinkedHashSet<>();
-        for (AutoCutManager.AutoCutHerb tree : trees) {
-            if (tree.selected) {
-                selectedKeys.add(tree.key);
-            }
-        }
-
-        LinearLayout root = new LinearLayout(context);
-        root.setOrientation(LinearLayout.HORIZONTAL);
-        root.setPadding(pad, pad, pad, pad);
-
-        ScrollView groupScroll = new ScrollView(context);
-        LinearLayout groupColumn = new LinearLayout(context);
-        groupColumn.setOrientation(LinearLayout.VERTICAL);
-        groupScroll.addView(groupColumn);
-        root.addView(groupScroll, new LinearLayout.LayoutParams(dpToPx(112), LinearLayout.LayoutParams.MATCH_PARENT));
-
-        LinearLayout right = new LinearLayout(context);
-        right.setOrientation(LinearLayout.VERTICAL);
-        right.setPadding(pad, 0, 0, 0);
-        root.addView(right, new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.MATCH_PARENT, 1f));
-
-        TextView header = new TextView(context);
-        header.setTypeface(header.getTypeface(), android.graphics.Typeface.BOLD);
-        right.addView(header);
-
-        LinearLayout actionRow = new LinearLayout(context);
-        actionRow.setOrientation(LinearLayout.HORIZONTAL);
-        Button selectVisible = new Button(context);
-        selectVisible.setText("Отметить");
-        selectVisible.setAllCaps(false);
-        Button unselectVisible = new Button(context);
-        unselectVisible.setText("Снять");
-        unselectVisible.setAllCaps(false);
-        actionRow.addView(selectVisible, new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
-        actionRow.addView(unselectVisible, new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
-        right.addView(actionRow);
-
-        ScrollView treeScroll = new ScrollView(context);
-        LinearLayout treeList = new LinearLayout(context);
-        treeList.setOrientation(LinearLayout.VERTICAL);
-        treeScroll.addView(treeList);
-        right.addView(treeScroll, new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, dpToPx(420)));
-
-        final Runnable[] renderRef = new Runnable[1];
-        renderRef[0] = () -> {
-            treeList.removeAllViews();
-            header.setText("Группа: " + selectedGroup[0] + " | выбрано: " + selectedKeys.size());
-            int visibleCount = 0;
-            for (AutoCutManager.AutoCutHerb tree : autoFunctionsManager.getAutoLumberjackTrees()) {
-                String group = TextUtils.isEmpty(tree.group) ? "Не определено" : tree.group.trim();
-                if (!"Все".equals(selectedGroup[0]) && !group.equals(selectedGroup[0])) {
-                    continue;
-                }
-                CheckBox box = new CheckBox(context);
-                box.setText(tree.displayLabel());
-                box.setChecked(selectedKeys.contains(tree.key));
-                box.setOnCheckedChangeListener((buttonView, isChecked) -> {
-                    if (isChecked) selectedKeys.add(tree.key);
-                    else selectedKeys.remove(tree.key);
-                    header.setText("Группа: " + selectedGroup[0] + " | выбрано: " + selectedKeys.size());
-                });
-                box.setOnLongClickListener(v -> {
-                    showAutoLumberjackTreeEditDialog(tree);
-                    return true;
-                });
-                treeList.addView(box);
-                visibleCount++;
-            }
-            if (visibleCount == 0) {
-                TextView empty = new TextView(context);
-                empty.setText("В этой группе пока нет деревьев.");
-                empty.setPadding(0, pad, 0, pad);
-                treeList.addView(empty);
-            }
-        };
-
-        for (String group : groups) {
-            Button groupButton = new Button(context);
-            groupButton.setText(group.equals("Все") ? "Все" : ("Гр. " + group));
-            groupButton.setAllCaps(false);
-            groupButton.setOnClickListener(v -> {
-                selectedGroup[0] = group;
-                renderRef[0].run();
-            });
-            groupColumn.addView(groupButton, new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT));
-        }
-
-        selectVisible.setOnClickListener(v -> {
-            for (AutoCutManager.AutoCutHerb tree : autoFunctionsManager.getAutoLumberjackTrees()) {
-                String group = TextUtils.isEmpty(tree.group) ? "Не определено" : tree.group.trim();
-                if ("Все".equals(selectedGroup[0]) || group.equals(selectedGroup[0])) {
-                    selectedKeys.add(tree.key);
-                }
-            }
-            renderRef[0].run();
-        });
-        unselectVisible.setOnClickListener(v -> {
-            for (AutoCutManager.AutoCutHerb tree : autoFunctionsManager.getAutoLumberjackTrees()) {
-                String group = TextUtils.isEmpty(tree.group) ? "Не определено" : tree.group.trim();
-                if ("Все".equals(selectedGroup[0]) || group.equals(selectedGroup[0])) {
-                    selectedKeys.remove(tree.key);
-                }
-            }
-            renderRef[0].run();
-        });
-
-        AlertDialog dialog = new AlertDialog.Builder(context)
-                .setTitle("Список деревьев")
-                .setView(root)
-                .setPositiveButton("Сохранить", (d, which) -> {
-                    autoFunctionsManager.setAutoLumberjackTreeSelections(selectedKeys);
-                    Toast.makeText(context, "Список деревьев сохранён", Toast.LENGTH_SHORT).show();
-                })
-                .setNegativeButton("Отмена", null)
-                .create();
-        dialog.setOnShowListener(d -> renderRef[0].run());
-        dialog.show();
+        autoCutDialogs().showAutoLumberjackTreeListDialog(initialGroup);
     }
 
     private void showAutoLumberjackAxeSettingsDialog() {
-        String[] axes = autoFunctionsManager.getAutoLumberjackAvailableAxeNames();
-        List<String> enabled = autoFunctionsManager.getAutoLumberjackEnabledAxeNames();
-        boolean[] checked = new boolean[axes.length];
-        for (int i = 0; i < axes.length; i++) {
-            checked[i] = enabled.contains(axes[i]);
-        }
-        new AlertDialog.Builder(context)
-                .setTitle("Топоры Авто-Лесоруба")
-                .setMultiChoiceItems(axes, checked, (dialog, which, isChecked) -> checked[which] = isChecked)
-                .setPositiveButton("Сохранить", (dialog, which) -> {
-                    LinkedHashSet<String> selected = new LinkedHashSet<>();
-                    for (int i = 0; i < axes.length; i++) {
-                        if (checked[i]) {
-                            selected.add(axes[i]);
-                        }
-                    }
-                    if (selected.isEmpty()) {
-                        Toast.makeText(context, "Нужно выбрать хотя бы один топор", Toast.LENGTH_SHORT).show();
-                        return;
-                    }
-                    autoFunctionsManager.setAutoLumberjackEnabledAxeNames(selected);
-                    Toast.makeText(context, "Список топоров сохранён", Toast.LENGTH_SHORT).show();
-                })
-                .setNegativeButton("Отмена", null)
-                .show();
-    }
-
-    private void showAutoLumberjackTreeEditDialog(AutoCutManager.AutoCutHerb tree) {
-        if (tree == null) {
-            return;
-        }
-        final int pad = (int) (context.getResources().getDisplayMetrics().density * 12);
-        LinearLayout root = new LinearLayout(context);
-        root.setOrientation(LinearLayout.VERTICAL);
-        root.setPadding(pad, pad, pad, pad);
-
-        TextView title = new TextView(context);
-        title.setText(tree.name);
-        title.setTypeface(title.getTypeface(), android.graphics.Typeface.BOLD);
-        root.addView(title);
-
-        EditText skillInput = new EditText(context);
-        skillInput.setHint("Умение лесоруба");
-        skillInput.setInputType(InputType.TYPE_CLASS_NUMBER);
-        skillInput.setText(String.valueOf(tree.skill));
-        root.addView(skillInput);
-
-        EditText growthInput = new EditText(context);
-        growthInput.setHint("Время роста, минут");
-        growthInput.setInputType(InputType.TYPE_CLASS_NUMBER);
-        growthInput.setText(String.valueOf(tree.growthMinutes));
-        root.addView(growthInput);
-
-        EditText groupInput = new EditText(context);
-        groupInput.setHint("Группа дерева");
-        groupInput.setInputType(InputType.TYPE_CLASS_TEXT);
-        groupInput.setText(tree.group);
-        root.addView(groupInput);
-
-        new AlertDialog.Builder(context)
-                .setTitle("Правка дерева")
-                .setView(root)
-                .setPositiveButton("Сохранить", (dialog, which) -> {
-                    int skill = parseIntInRange(skillInput.getText() == null ? "" : skillInput.getText().toString(), 0, 9999, tree.skill);
-                    int growth = parseIntInRange(growthInput.getText() == null ? "" : growthInput.getText().toString(), 1, 24 * 60, tree.growthMinutes);
-                    String group = groupInput.getText() == null ? "" : groupInput.getText().toString().trim();
-                    autoFunctionsManager.updateAutoLumberjackTreeMeta(tree.key, skill, growth, group);
-                    Toast.makeText(context, "Дерево обновлено", Toast.LENGTH_SHORT).show();
-                    showAutoLumberjackSettingsDialog();
-                })
-                .setNegativeButton("Отмена", null)
-                .show();
+        autoCutDialogs().showAutoLumberjackAxeSettingsDialog();
     }
 
     private void showAutoCureSettingsDialog() {
@@ -2117,6 +1340,7 @@ public class QuickButtonsPanel {
                             tiedHigh = Integer.parseInt(value);
                         }
                     } catch (Exception ignored) {
+                        // Некорректный ввод пользователя — сохраняем ранее выбранное значение.
                     }
                     AppVars.Profile.FishTiedHigh = Math.max(0, Math.min(99, tiedHigh));
                     AppVars.Profile.FishTiedZero = tiedZero.isChecked();
@@ -2621,6 +1845,7 @@ public class QuickButtonsPanel {
                             waitScrollSec = Integer.parseInt(value);
                         }
                     } catch (Exception ignored) {
+                        // Некорректный ввод пользователя — сохраняем ранее выбранное значение.
                     }
 
                     try {
@@ -2629,6 +1854,7 @@ public class QuickButtonsPanel {
                             searchTimeoutSec = Integer.parseInt(value);
                         }
                     } catch (Exception ignored) {
+                        // Некорректный ввод пользователя — сохраняем ранее выбранное значение.
                     }
 
                     try {
@@ -2637,6 +1863,7 @@ public class QuickButtonsPanel {
                             waitFightTimeoutSec = Integer.parseInt(value);
                         }
                     } catch (Exception ignored) {
+                        // Некорректный ввод пользователя — сохраняем ранее выбранное значение.
                     }
 
                     autoFunctionsManager.setAutoBossAskTargetEnabled(askTargetCheck.isChecked());
@@ -2893,590 +2120,17 @@ public class QuickButtonsPanel {
      * - у выбранной строки показываются мини-кнопки «Изменить»/«Удалить»;
      * - снизу всегда доступны «Отмена» и «Добавить» (фиолетовая).
      */
+    /**
+     * D6: диалоги таймеров вынесены в {@link TimerDialogs}.
+     * Точки вызова (`executeAction`, `showButtonOptions`) не менялись.
+     */
     private void showTimersDialog() {
-        final int pad = dpToPx(12);
-
-        LinearLayout root = new LinearLayout(context);
-        root.setOrientation(LinearLayout.VERTICAL);
-        root.setPadding(pad, pad, pad, pad);
-
-        TextView header = new TextView(context);
-        header.setText("Активные таймеры");
-        root.addView(header);
-
-        ScrollView scrollView = new ScrollView(context);
-        LinearLayout listContainer = new LinearLayout(context);
-        listContainer.setOrientation(LinearLayout.VERTICAL);
-        scrollView.addView(listContainer);
-        LinearLayout.LayoutParams listParams = new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                0,
-                1f
-        );
-        listParams.topMargin = dpToPx(8);
-        root.addView(scrollView, listParams);
-
-        LinearLayout bottom = new LinearLayout(context);
-        bottom.setOrientation(LinearLayout.HORIZONTAL);
-        bottom.setGravity(Gravity.END);
-        LinearLayout.LayoutParams bottomParams = new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT
-        );
-        bottomParams.topMargin = dpToPx(8);
-        root.addView(bottom, bottomParams);
-
-        Button cancelButton = new Button(context);
-        cancelButton.setText("Отмена");
-        cancelButton.setAllCaps(false);
-        bottom.addView(cancelButton);
-
-        Button addButton = new Button(context);
-        addButton.setText("Добавить");
-        addButton.setAllCaps(false);
-        addButton.setTextColor(ContextCompat.getColor(context, R.color.colorOnPrimarySurface));
-        addButton.setBackgroundColor(ContextCompat.getColor(context, R.color.purple_500));
-        LinearLayout.LayoutParams addParams = new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.WRAP_CONTENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT
-        );
-        addParams.leftMargin = dpToPx(8);
-        bottom.addView(addButton, addParams);
-
-        AlertDialog dialog = new AlertDialog.Builder(context)
-                .setTitle("Таймеры")
-                .setView(root)
-                .create();
-
-        final int[] selectedTimerId = new int[]{-1};
-        final Runnable[] rerenderRef = new Runnable[1];
-        rerenderRef[0] = () -> {
-            listContainer.removeAllViews();
-            List<AppTimer> timers = appTimerManager.getTimers();
-            if (timers.isEmpty()) {
-                TextView empty = new TextView(context);
-                empty.setText("Нет активных таймеров");
-                empty.setPadding(0, dpToPx(8), 0, dpToPx(8));
-                listContainer.addView(empty);
-                selectedTimerId[0] = -1;
-                return;
-            }
-
-            for (AppTimer timer : timers) {
-                final int timerId = timer.id;
-                final boolean selected = timerId == selectedTimerId[0];
-
-                LinearLayout row = new LinearLayout(context);
-                row.setOrientation(LinearLayout.HORIZONTAL);
-                row.setGravity(Gravity.CENTER_VERTICAL);
-                row.setPadding(dpToPx(8), dpToPx(8), dpToPx(8), dpToPx(8));
-                row.setClickable(true);
-                row.setFocusable(true);
-                row.setBackgroundColor(selected ? 0x334B2D90 : 0x00000000);
-
-                TextView timerText = new TextView(context);
-                timerText.setText(timer.toString());
-                timerText.setLayoutParams(new LinearLayout.LayoutParams(
-                        0,
-                        LinearLayout.LayoutParams.WRAP_CONTENT,
-                        1f
-                ));
-                row.addView(timerText);
-
-                ImageButton editButton = new ImageButton(context);
-                editButton.setImageResource(android.R.drawable.ic_menu_edit);
-                editButton.setBackgroundResource(android.R.color.transparent);
-                editButton.setContentDescription("Изменить");
-                editButton.setVisibility(selected ? View.VISIBLE : View.GONE);
-                row.addView(editButton);
-
-                ImageButton deleteButton = new ImageButton(context);
-                deleteButton.setImageResource(android.R.drawable.ic_menu_delete);
-                deleteButton.setBackgroundResource(android.R.color.transparent);
-                deleteButton.setContentDescription("Удалить");
-                deleteButton.setVisibility(selected ? View.VISIBLE : View.GONE);
-                row.addView(deleteButton);
-
-                row.setOnClickListener(view -> {
-                    selectedTimerId[0] = timerId;
-                    rerenderRef[0].run();
-                });
-
-                editButton.setOnClickListener(view -> showTimerEditorDialog(timer.copy(), () -> {
-                    selectedTimerId[0] = timerId;
-                    rerenderRef[0].run();
-                }));
-
-                deleteButton.setOnClickListener(view -> new AlertDialog.Builder(context)
-                        .setTitle("Удаление таймера")
-                        .setMessage("Удалить таймер?")
-                        .setPositiveButton("Удалить", (deleteDialog, which) -> {
-                            appTimerManager.removeTimerById(timerId);
-                            selectedTimerId[0] = -1;
-                            rerenderRef[0].run();
-                        })
-                        .setNegativeButton("Отмена", null)
-                        .show());
-
-                listContainer.addView(row);
-            }
-        };
-
-        cancelButton.setOnClickListener(view -> dialog.dismiss());
-        addButton.setOnClickListener(view -> showTimerEditorDialog(null, () -> {
-            selectedTimerId[0] = -1;
-            rerenderRef[0].run();
-        }));
-
-        dialog.setOnShowListener(dialogInterface -> rerenderRef[0].run());
-        dialog.show();
+        new TimerDialogs(context, appTimerManager).showTimersDialog();
     }
 
-    /**
-     * Форма создания/редактирования таймера (порт `FormNewTimer.cs`).
-     *
-     * Доступные действия:
-     * - «Просто таймер»;
-     * - «Пьём зелье по таймеру»;
-     * - «Перемещаемся по таймеру»;
-     * - «Одеваем комплект».
-     */
-    private void showTimerEditorDialog(AppTimer existingTimer, Runnable onSaved) {
-        final boolean isEdit = existingTimer != null;
-        final int pad = dpToPx(12);
-
-        ScrollView scroll = new ScrollView(context);
-        LinearLayout root = new LinearLayout(context);
-        root.setOrientation(LinearLayout.VERTICAL);
-        root.setPadding(pad, pad, pad, pad);
-        scroll.addView(root);
-
-        TextView nameLabel = new TextView(context);
-        nameLabel.setText("Имя таймера");
-        root.addView(nameLabel);
-
-        EditText nameInput = new EditText(context);
-        nameInput.setSingleLine(true);
-        nameInput.setText(isEdit ? existingTimer.description : "");
-        root.addView(nameInput);
-
-        TextView delayLabel = new TextView(context);
-        delayLabel.setPadding(0, pad, 0, 0);
-        delayLabel.setText("Сработает через");
-        root.addView(delayLabel);
-
-        LinearLayout delayRow = new LinearLayout(context);
-        delayRow.setOrientation(LinearLayout.HORIZONTAL);
-        delayRow.setGravity(Gravity.CENTER_VERTICAL);
-        root.addView(delayRow);
-
-        EditText hourInput = new EditText(context);
-        hourInput.setInputType(InputType.TYPE_CLASS_NUMBER);
-        hourInput.setSingleLine(true);
-        hourInput.setHint("часы");
-        LinearLayout.LayoutParams hourParams = new LinearLayout.LayoutParams(dpToPx(80), LinearLayout.LayoutParams.WRAP_CONTENT);
-        delayRow.addView(hourInput, hourParams);
-
-        TextView hourLabel = new TextView(context);
-        hourLabel.setText("час");
-        hourLabel.setPadding(dpToPx(4), 0, dpToPx(8), 0);
-        delayRow.addView(hourLabel);
-
-        EditText minuteInput = new EditText(context);
-        minuteInput.setInputType(InputType.TYPE_CLASS_NUMBER);
-        minuteInput.setSingleLine(true);
-        minuteInput.setHint("мин");
-        LinearLayout.LayoutParams minuteParams = new LinearLayout.LayoutParams(dpToPx(80), LinearLayout.LayoutParams.WRAP_CONTENT);
-        delayRow.addView(minuteInput, minuteParams);
-
-        TextView minLabel = new TextView(context);
-        minLabel.setText("мин");
-        minLabel.setPadding(dpToPx(4), 0, 0, 0);
-        delayRow.addView(minLabel);
-
-        RadioGroup modeGroup = new RadioGroup(context);
-        modeGroup.setOrientation(LinearLayout.VERTICAL);
-        modeGroup.setPadding(0, pad, 0, 0);
-        root.addView(modeGroup);
-
-        // ===== НОВЫЕ РЕЖИМЫ ТАЙМЕРОВ =====
-        RadioButton modeEnableAutoFunc = new RadioButton(context);
-        modeEnableAutoFunc.setText("Включить Авто-Функцию");
-        modeGroup.addView(modeEnableAutoFunc);
-
-        // Контейнер для режима "Включить Авто-Функцию"
-        LinearLayout enableAutoFuncContainer = new LinearLayout(context);
-        enableAutoFuncContainer.setOrientation(LinearLayout.HORIZONTAL);
-        enableAutoFuncContainer.setPadding(dpToPx(16), dpToPx(4), 0, 0);
-        enableAutoFuncContainer.setVisibility(View.GONE);
-        Spinner enableAutoFuncSpinner = new Spinner(context);
-        final String[] allowedAutoFunctions = getAllowedAutoFunctions();
-        ArrayAdapter<String> enableAdapter = new ArrayAdapter<>(context, android.R.layout.simple_spinner_item, allowedAutoFunctions);
-        enableAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-        enableAutoFuncSpinner.setAdapter(enableAdapter);
-        LinearLayout.LayoutParams spinnerParams = new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f);
-        enableAutoFuncContainer.addView(enableAutoFuncSpinner, spinnerParams);
-        root.addView(enableAutoFuncContainer);
-
-        RadioButton modeDisableAutoFunc = new RadioButton(context);
-        modeDisableAutoFunc.setText("Выключить Авто-Функцию");
-        modeGroup.addView(modeDisableAutoFunc);
-
-        // Контейнер для режима "Выключить Авто-Функцию"
-        LinearLayout disableAutoFuncContainer = new LinearLayout(context);
-        disableAutoFuncContainer.setOrientation(LinearLayout.HORIZONTAL);
-        disableAutoFuncContainer.setPadding(dpToPx(16), dpToPx(4), 0, 0);
-        disableAutoFuncContainer.setVisibility(View.GONE);
-        Spinner disableAutoFuncSpinner = new Spinner(context);
-        ArrayAdapter<String> disableAdapter = new ArrayAdapter<>(context, android.R.layout.simple_spinner_item, allowedAutoFunctions);
-        disableAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-        disableAutoFuncSpinner.setAdapter(disableAdapter);
-        disableAutoFuncContainer.addView(disableAutoFuncSpinner, spinnerParams);
-        root.addView(disableAutoFuncContainer);
-
-        // ===== ТРАДИЦИОННЫЕ РЕЖИМЫ =====
-
-        RadioButton modePotion = new RadioButton(context);
-        modePotion.setText("Пьем зелье по таймеру");
-        modeGroup.addView(modePotion);
-
-        RadioButton modeDestination = new RadioButton(context);
-        modeDestination.setText("Перемещаемся по таймеру");
-        modeGroup.addView(modeDestination);
-
-        RadioButton modeComplect = new RadioButton(context);
-        modeComplect.setText("Одеваем комплект");
-        modeGroup.addView(modeComplect);
-
-        // ===== КОНТЕЙНЕР ДЛЯ РЕЖИМА "ЗЕЛЬЕ" =====
-        LinearLayout potionContainer = new LinearLayout(context);
-        potionContainer.setOrientation(LinearLayout.VERTICAL);
-        potionContainer.setVisibility(View.GONE);
-
-        TextView potionTitle = new TextView(context);
-        potionTitle.setPadding(0, pad, 0, 0);
-        potionTitle.setText("Название зелья (из инвентаря)");
-        potionContainer.addView(potionTitle);
-
-        Spinner potionSpinner = new Spinner(context);
-        ArrayAdapter<String> potionAdapter = new ArrayAdapter<>(
-                context,
-                android.R.layout.simple_spinner_item,
-                TIMER_POTION_OPTIONS
-        );
-        potionAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-        potionSpinner.setAdapter(potionAdapter);
-        potionContainer.addView(potionSpinner);
-
-        LinearLayout drinkRow = new LinearLayout(context);
-        drinkRow.setOrientation(LinearLayout.HORIZONTAL);
-        drinkRow.setGravity(Gravity.CENTER_VERTICAL);
-        drinkRow.setPadding(0, dpToPx(4), 0, 0);
-        TextView drinkLabel = new TextView(context);
-        drinkLabel.setText("Делать глотков");
-        drinkRow.addView(drinkLabel);
-
-        EditText drinkCountInput = new EditText(context);
-        drinkCountInput.setInputType(InputType.TYPE_CLASS_NUMBER);
-        drinkCountInput.setSingleLine(true);
-        drinkCountInput.setText("1");
-        LinearLayout.LayoutParams drinkCountParams = new LinearLayout.LayoutParams(dpToPx(64), LinearLayout.LayoutParams.WRAP_CONTENT);
-        drinkCountParams.leftMargin = dpToPx(8);
-        drinkRow.addView(drinkCountInput, drinkCountParams);
-        potionContainer.addView(drinkRow);
-
-        CheckBox recurCheck = new CheckBox(context);
-        recurCheck.setText("Циклическое питье");
-        potionContainer.addView(recurCheck);
-
-        root.addView(potionContainer);
-
-        // ===== КОНТЕЙНЕР ДЛЯ РЕЖИМА "ПЕРЕМЕЩЕНИЕ" =====
-        LinearLayout destinationContainer = new LinearLayout(context);
-        destinationContainer.setOrientation(LinearLayout.VERTICAL);
-        destinationContainer.setVisibility(View.GONE);
-
-        TextView destinationTitle = new TextView(context);
-        destinationTitle.setPadding(0, pad, 0, 0);
-        destinationTitle.setText("Клетка назначения");
-        destinationContainer.addView(destinationTitle);
-
-        EditText destinationInput = new EditText(context);
-        destinationInput.setSingleLine(true);
-        destinationInput.setHint("Например: 12-345");
-        destinationContainer.addView(destinationInput);
-
-        root.addView(destinationContainer);
-
-        // ===== КОНТЕЙНЕР ДЛЯ РЕЖИМА "КОМПЛЕКТ" =====
-        LinearLayout complectContainer = new LinearLayout(context);
-        complectContainer.setOrientation(LinearLayout.VERTICAL);
-        complectContainer.setVisibility(View.GONE);
-
-        TextView complectTitle = new TextView(context);
-        complectTitle.setPadding(0, pad, 0, 0);
-        complectTitle.setText("Название комплекта");
-        complectContainer.addView(complectTitle);
-
-        // Получаем список сохраненных комплектов из профиля
-        String[] complectOptions = getComplectOptionsArray();
-        Spinner complectSpinner = new Spinner(context);
-        ArrayAdapter<String> complectAdapter = new ArrayAdapter<>(
-                context,
-                android.R.layout.simple_spinner_item,
-                complectOptions
-        );
-        complectAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-        complectSpinner.setAdapter(complectAdapter);
-        complectContainer.addView(complectSpinner);
-
-        root.addView(complectContainer);
-
-        Runnable syncModeControls = () -> {
-            boolean isEnable = modeEnableAutoFunc.isChecked();
-            boolean isDisable = modeDisableAutoFunc.isChecked();
-            boolean isPotion = modePotion.isChecked();
-            boolean isDestination = modeDestination.isChecked();
-            boolean isComplect = modeComplect.isChecked();
-
-            // Управление видимостью контейнеров
-            enableAutoFuncContainer.setVisibility(isEnable ? View.VISIBLE : View.GONE);
-            disableAutoFuncContainer.setVisibility(isDisable ? View.VISIBLE : View.GONE);
-            potionContainer.setVisibility(isPotion ? View.VISIBLE : View.GONE);
-            destinationContainer.setVisibility(isDestination ? View.VISIBLE : View.GONE);
-            complectContainer.setVisibility(isComplect ? View.VISIBLE : View.GONE);
-        };
-
-        modeGroup.setOnCheckedChangeListener((group, checkedId) -> syncModeControls.run());
-
-        int delayMinutes = 60;
-        if (isEdit) {
-            long deltaMs = Math.max(0L, existingTimer.triggerTime - System.currentTimeMillis());
-            delayMinutes = (int) Math.max(0L, deltaMs / 60_000L);
-        }
-        int delayHours = delayMinutes / 60;
-        int delayMinPart = delayMinutes % 60;
-        hourInput.setText(String.valueOf(delayHours));
-        minuteInput.setText(String.valueOf(delayMinPart));
-
-        if (isEdit) {
-            if (!TextUtils.isEmpty(existingTimer.enableAutoFunction)) {
-                modeEnableAutoFunc.setChecked(true);
-                for (int i = 0; i < allowedAutoFunctions.length; i++) {
-                    if (allowedAutoFunctions[i].equals(existingTimer.enableAutoFunction)) {
-                        enableAutoFuncSpinner.setSelection(i);
-                        break;
-                    }
-                }
-            } else if (!TextUtils.isEmpty(existingTimer.disableAutoFunction)) {
-                modeDisableAutoFunc.setChecked(true);
-                for (int i = 0; i < allowedAutoFunctions.length; i++) {
-                    if (allowedAutoFunctions[i].equals(existingTimer.disableAutoFunction)) {
-                        disableAutoFuncSpinner.setSelection(i);
-                        break;
-                    }
-                }
-            } else if (!TextUtils.isEmpty(existingTimer.potion)) {
-                modePotion.setChecked(true);
-                int potionIndex = findPotionOptionIndex(existingTimer.potion);
-                potionSpinner.setSelection(Math.max(0, potionIndex));
-                drinkCountInput.setText(String.valueOf(Math.max(1, existingTimer.drinkCount)));
-                recurCheck.setChecked(existingTimer.isRecur);
-            } else if (!TextUtils.isEmpty(existingTimer.destination)) {
-                modeDestination.setChecked(true);
-                destinationInput.setText(existingTimer.destination);
-            } else if (!TextUtils.isEmpty(existingTimer.complect)) {
-                modeComplect.setChecked(true);
-                int complectIndex = findComplectOptionIndex(existingTimer.complect);
-                complectSpinner.setSelection(Math.max(0, complectIndex));
-            }
-        } else {
-            // По умолчанию при создании нового таймера - выбрать первый режим
-            modeEnableAutoFunc.setChecked(true);
-        }
-
-        syncModeControls.run();
-
-        AlertDialog dialog = new AlertDialog.Builder(context)
-                .setTitle(isEdit ? "Изменить таймер" : "Новый таймер")
-                .setView(scroll)
-                .setPositiveButton("ОК", null)
-                .setNegativeButton("Отмена", null)
-                .create();
-
-        dialog.setOnShowListener(dialogInterface -> {
-            Button saveButton = dialog.getButton(AlertDialog.BUTTON_POSITIVE);
-            if (saveButton == null) {
-                return;
-            }
-            // Фиолетовый фон для кнопки "ОК"
-            saveButton.setBackgroundColor(ContextCompat.getColor(context, R.color.purple_500));
-            saveButton.setTextColor(ContextCompat.getColor(context, R.color.colorOnPrimarySurface));
-            saveButton.setOnClickListener(view -> {
-                int hours = parseIntInRange(hourInput.getText() == null ? "" : hourInput.getText().toString(), 0, 999, 0);
-                int minutes = parseIntInRange(minuteInput.getText() == null ? "" : minuteInput.getText().toString(), 0, 59, 0);
-                int triggerMinutes = (hours * 60) + minutes;
-
-                AppTimer timer = isEdit ? existingTimer.copy() : new AppTimer();
-                timer.triggerTime = System.currentTimeMillis() + (triggerMinutes * 60_000L);
-                timer.description = nameInput.getText() == null ? "" : nameInput.getText().toString().trim();
-                timer.potion = "";
-                timer.destination = "";
-                timer.complect = "";
-                timer.enableAutoFunction = "";
-                timer.disableAutoFunction = "";
-                timer.drinkCount = 0;
-                timer.isRecur = false;
-                timer.everyMinutes = 0;
-
-                if (modeEnableAutoFunc.isChecked()) {
-                    int autoFuncIndex = enableAutoFuncSpinner.getSelectedItemPosition();
-                    if (autoFuncIndex < 0 || autoFuncIndex >= allowedAutoFunctions.length) {
-                        Toast.makeText(context, "Выберите авто-функцию для включения", Toast.LENGTH_SHORT).show();
-                        return;
-                    }
-                    timer.enableAutoFunction = allowedAutoFunctions[autoFuncIndex];
-                    if (TextUtils.isEmpty(timer.description)) {
-                        timer.description = "Включаем " + timer.enableAutoFunction;
-                    }
-                    FileLogger.trace(TAG, "Timer: ENABLE auto=" + timer.enableAutoFunction);
-                } else if (modeDisableAutoFunc.isChecked()) {
-                    int autoFuncIndex = disableAutoFuncSpinner.getSelectedItemPosition();
-                    if (autoFuncIndex < 0 || autoFuncIndex >= allowedAutoFunctions.length) {
-                        Toast.makeText(context, "Выберите авто-функцию для отключения", Toast.LENGTH_SHORT).show();
-                        return;
-                    }
-                    timer.disableAutoFunction = allowedAutoFunctions[autoFuncIndex];
-                    if (TextUtils.isEmpty(timer.description)) {
-                        timer.description = "Выключаем " + timer.disableAutoFunction;
-                    }
-                    FileLogger.trace(TAG, "Timer: DISABLE auto=" + timer.disableAutoFunction);
-                } else if (modePotion.isChecked()) {
-                    int potionIndex = potionSpinner.getSelectedItemPosition();
-                    if (potionIndex <= 0 || potionIndex >= TIMER_POTION_OPTIONS.length) {
-                        Toast.makeText(context, "Выберите зелье", Toast.LENGTH_SHORT).show();
-                        return;
-                    }
-                    timer.potion = TIMER_POTION_OPTIONS[potionIndex];
-                    timer.drinkCount = parseIntInRange(
-                            drinkCountInput.getText() == null ? "" : drinkCountInput.getText().toString(),
-                            1,
-                            999,
-                            1
-                    );
-                    timer.isRecur = recurCheck.isChecked();
-                    if (timer.isRecur) {
-                        timer.everyMinutes = triggerMinutes;
-                    }
-                    if (TextUtils.isEmpty(timer.description)) {
-                        timer.description = "Выпьем " + timer.potion;
-                    }
-                } else if (modeDestination.isChecked()) {
-                    timer.destination = destinationInput.getText() == null ? "" : destinationInput.getText().toString().trim();
-                    if (TextUtils.isEmpty(timer.destination)) {
-                        Toast.makeText(context, "Укажите клетку назначения", Toast.LENGTH_SHORT).show();
-                        return;
-                    }
-                    if (TextUtils.isEmpty(timer.description)) {
-                        timer.description = "Идем на " + timer.destination;
-                    }
-                } else if (modeComplect.isChecked()) {
-                    int complectIndex = complectSpinner.getSelectedItemPosition();
-                    if (complectIndex <= 0 || complectIndex >= getComplectOptionsArray().length) {
-                        Toast.makeText(context, "Выберите комплект", Toast.LENGTH_SHORT).show();
-                        return;
-                    }
-                    timer.complect = getComplectOptionsArray()[complectIndex];
-                    String msg = "COMPLECT_TIMER_DIALOG_TRACE: selected index=" + complectIndex + ", complect=" + timer.complect;
-                    AppLog.d(TAG, TAG, msg);
-                    if (TextUtils.isEmpty(timer.description)) {
-                        timer.description = "Одеваем комплект " + timer.complect;
-                    }
-                }
-
-                if (isEdit) {
-                    if (!appTimerManager.updateTimer(existingTimer.id, timer)) {
-                        Toast.makeText(context, "Не удалось изменить таймер", Toast.LENGTH_SHORT).show();
-                        return;
-                    }
-                } else {
-                    AppTimer added = appTimerManager.addAppTimer(timer);
-                    if (added == null) {
-                        Toast.makeText(context, "Таймер не добавлен (время уже прошло)", Toast.LENGTH_SHORT).show();
-                        return;
-                    }
-                }
-
-                if (onSaved != null) {
-                    onSaved.run();
-                }
-                dialog.dismiss();
-            });
-        });
-
-        dialog.show();
-    }
-
-    private int findPotionOptionIndex(String potionName) {
-        if (TextUtils.isEmpty(potionName)) {
-            return 0;
-        }
-        for (int index = 0; index < TIMER_POTION_OPTIONS.length; index++) {
-            if (potionName.equalsIgnoreCase(TIMER_POTION_OPTIONS[index])) {
-                return index;
-            }
-        }
-        return 0;
-    }
-
-    /**
-     * Получает список доступных комплектов из профиля.
-     * Если комплектов нет, возвращает массив с одним пунктом "Комплектов не найдено".
-     */
-    private String[] getComplectOptionsArray() {
-        if (AppVars.Profile == null || TextUtils.isEmpty(AppVars.Profile.SavedComplectsList)) {
-            return new String[]{"Откройте инвентарь для обновления"};
-        }
-        String[] complects = AppVars.Profile.SavedComplectsList.split("\\|");
-        if (complects.length == 0) {
-            return new String[]{"Откройте инвентарь для обновления"};
-        }
-        return complects;
-    }
-
-    /**
-     * Находит индекс комплекта в списке.
-     * Если не найден, возвращает 0 (первый пункт).
-     */
-    private int findComplectOptionIndex(String complectName) {
-        if (TextUtils.isEmpty(complectName)) {
-            return 0;
-        }
-        String[] options = getComplectOptionsArray();
-        for (int index = 0; index < options.length; index++) {
-            if (complectName.equalsIgnoreCase(options[index])) {
-                return index;
-            }
-        }
-        return 0;
-    }
-
+    /** D6: реализация вынесена в {@link ru.neverlands.anclient.utils.ParseUtils#parseIntInRange(String, int, int, int)}. */
     private int parseIntInRange(String raw, int min, int max, int fallback) {
-        int value = fallback;
-        try {
-            String safeValue = raw == null ? "" : raw.trim();
-            if (!safeValue.isEmpty()) {
-                value = Integer.parseInt(safeValue);
-            }
-        } catch (Exception ignored) {
-        }
-        if (value < min) {
-            return min;
-        }
-        if (value > max) {
-            return max;
-        }
-        return value;
+        return ru.neverlands.anclient.utils.ParseUtils.parseIntInRange(raw, min, max, fallback);
     }
 
     private void openStats() {
@@ -3701,13 +2355,15 @@ public class QuickButtonsPanel {
         return String.format(java.util.Locale.US, "%.2f", kilograms);
     }
 
+    /** D6: список авто-функций и его лицензионная фильтрация вынесены в {@link AutoFunctionCatalog}. */
     private String[] getAllowedAutoFunctions() {
-        return LicenseRuntime.getInstance().filterAutoFunctionLabels(AUTO_FUNCTIONS);
+        return AutoFunctionCatalog.getAllowed();
     }
 
     // Утилита для перевода dp -> px.
+    /** D6: реализация вынесена в {@link ru.neverlands.anclient.utils.UiUtils#dpToPx(android.content.Context, int)}. */
     private int dpToPx(int dp) {
-        return Math.round(dp * context.getResources().getDisplayMetrics().density);
+        return ru.neverlands.anclient.utils.UiUtils.dpToPx(context, dp);
     }
 
     /**

@@ -587,9 +587,9 @@ public class ParsedDressed {
         }
     }
 
+    /** Делегат к канонической реализации {@link ru.neverlands.anclient.utils.HelperStrings#containsIgnoreCase(String, String)} (D5). */
     private static boolean containsIgnoreCase(String source, String token) {
-        if (source == null || token == null) return false;
-        return source.toLowerCase(Locale.ROOT).contains(token.toLowerCase(Locale.ROOT));
+        return ru.neverlands.anclient.utils.HelperStrings.containsIgnoreCase(source, token);
     }
 
     private static boolean equalsIgnoreCase(String left, String right) {

@@ -37,7 +37,7 @@ public final class ConverterUtils {
             String s3 = s2.replace("+", "%20");
             return s3.replace("%7C", "%2B"); // %7C это |
         } catch (UnsupportedEncodingException e) {
-            e.printStackTrace();
+            AppLog.w("ConverterUtils", "nickEncode failed", e);
             return nick; // fallback
         }
     }
@@ -53,7 +53,7 @@ public final class ConverterUtils {
                           .replace("%23", "#")
                           .replace("%3D", "=");
         } catch (UnsupportedEncodingException e) {
-            e.printStackTrace();
+            AppLog.w("ConverterUtils", "nickDecode failed", e);
             return nick; // fallback
         }
     }

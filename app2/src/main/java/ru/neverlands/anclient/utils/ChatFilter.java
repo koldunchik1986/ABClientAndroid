@@ -46,6 +46,7 @@ public class ChatFilter {
                 long xp = Long.parseLong(xpStr);
                 ChatStats.addXp(xp);
             } catch (NumberFormatException ignored) {
+                // Нечисловое значение опыта в чате — статистика просто не обновляется.
             }
         }
 

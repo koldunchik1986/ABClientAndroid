@@ -10,6 +10,7 @@ import ru.neverlands.anclient.utils.AppLog;
 import ru.neverlands.anclient.utils.AppVars;
 import ru.neverlands.anclient.utils.ExtMap;
 import ru.neverlands.anclient.utils.HelperStrings;
+import ru.neverlands.anclient.utils.ParseUtils;
 
 final class InventoryEngravingResolver {
     private static final String TAG = "InventoryEngravingResolver";
@@ -32,8 +33,8 @@ final class InventoryEngravingResolver {
         StringBuffer result = new StringBuffer(html.length());
         boolean changed = false;
         while (matcher.find()) {
-            int x = parseIntSafe(matcher.group(2));
-            int y = parseIntSafe(matcher.group(3));
+            int x = ParseUtils.parseIntSafe(matcher.group(2));
+            int y = ParseUtils.parseIntSafe(matcher.group(3));
             if (x <= 0 || y <= 0) {
                 continue;
             }
@@ -116,13 +117,6 @@ final class InventoryEngravingResolver {
         return "m_" + x + "_" + y;
     }
 
-    private static int parseIntSafe(String value) {
-        try {
-            return Integer.parseInt(value == null ? "" : value.trim());
-        } catch (NumberFormatException ignored) {
-            return 0;
-        }
-    }
 
     private static String normalizePlaceName(String value) {
         if (value == null) {

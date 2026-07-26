@@ -27,6 +27,7 @@ import java.util.Locale;
 import java.util.Map;
 
 import ru.neverlands.anclient.utils.AppLog;
+import ru.neverlands.anclient.utils.ParseUtils;
 
 /**
  * Общая база рецептов из HTML-таблиц Викиневера.
@@ -139,7 +140,7 @@ public final class RecipeDatabase {
                     if (!sections.contains(section)) {
                         sections.add(section);
                     }
-                    int tableIndex = parseIntSafe(parts[5]);
+                    int tableIndex = ParseUtils.parseIntSafe(parts[5]);
                     String imageUrl = parts[7];
                     String imageFile = parts[8].isEmpty() ? normalizeImageFile(imageUrl) : normalizeImageFile(parts[8]);
                     if (imageFile.isEmpty()) {
@@ -187,13 +188,6 @@ public final class RecipeDatabase {
         return section;
     }
 
-    private int parseIntSafe(String value) {
-        try {
-            return Integer.parseInt(value == null ? "0" : value.trim());
-        } catch (NumberFormatException e) {
-            return 0;
-        }
-    }
 
     public static String normalizeImageFile(String imageUrlOrFile) {
         if (imageUrlOrFile == null) {

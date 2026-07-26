@@ -105,6 +105,20 @@ public class LezFight {
     public String Result;
     public String Frame;
 
+    /**
+     * Код защиты текущего раунда боя (`fight_pm[4]`).
+     *
+     * Зачем публичный доступ:
+     * - сервер выдаёт новый `vcode` на каждый раунд, поэтому значение уникально идентифицирует раунд;
+     * - {@code FightViewModel} использует его как ключ анти-дубля, чтобы не отправлять один и тот же
+     *   ход по нескольку раз (автоход работает по таймеру, а не по факту смены раунда).
+     *
+     * @return vcode раунда или пустая строка, если `fight_pm[4]` отсутствует.
+     */
+    public String getVCode() {
+        return _vcode == null ? "" : _vcode;
+    }
+
     // Конструктор: сразу парсит HTML боя и готовит состояние.
     public LezFight(String html) {
         _html = html;
@@ -283,7 +297,7 @@ public class LezFight {
         List<Integer> lstandin = new ArrayList<>(Arrays.asList(0, 1));
         if (standin != null) {
             for (String s : standin) {
-                try { lstandin.add(Integer.parseInt(Strip(s))); } catch (Exception ignored) {}
+                try { lstandin.add(Integer.parseInt(Strip(s))); } catch (Exception ignored) { /* нечисловой элемент standin — пропускаем */ }
             }
         }
         AppLog.d("LezFight", "stand_in parsed: " + lstandin);
@@ -293,7 +307,7 @@ public class LezFight {
         List<Integer> lmagicin = new ArrayList<>();
         if (magicin != null) {
             for (String s : magicin) {
-                try { lmagicin.add(Integer.parseInt(Strip(s))); } catch (Exception ignored) {}
+                try { lmagicin.add(Integer.parseInt(Strip(s))); } catch (Exception ignored) { /* нечисловой элемент magicin — пропускаем */ }
             }
         }
         AppLog.d("LezFight", "magic_in parsed: " + lmagicin);
@@ -1271,7 +1285,8 @@ public class LezFight {
             }
 
             updateLastBoiDamageIfNeeded();
-        } catch (Exception ignored) {
+        } catch (Exception e) {
+            AppLog.d("LezFight", "updateLastBoiDamageIfNeeded failed: " + e.getClass().getSimpleName());
         }
 
         return true;

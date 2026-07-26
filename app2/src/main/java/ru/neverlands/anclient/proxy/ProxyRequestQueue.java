@@ -271,8 +271,9 @@ final class ProxyRequestQueue {
     }
 
     /** Case-insensitive contains для counter/read-only chat exceptions. */
+    /** Делегат к канонической реализации {@link ru.neverlands.anclient.utils.HelperStrings#containsIgnoreCase(String, String)} (D5). */
     private static boolean containsIgnoreCase(String value, String part) {
-        return value != null && part != null && value.toLowerCase(Locale.ROOT).contains(part.toLowerCase(Locale.ROOT));
+        return ru.neverlands.anclient.utils.HelperStrings.containsIgnoreCase(value, part);
     }
 
     /** Decision DTO без внешних зависимостей, чтобы не создавать параллельную state-модель. */

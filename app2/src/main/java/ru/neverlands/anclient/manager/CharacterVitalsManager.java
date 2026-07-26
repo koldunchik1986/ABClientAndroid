@@ -5,6 +5,7 @@ import ru.neverlands.anclient.utils.AppLog;
 import java.util.Locale;
 
 import ru.neverlands.anclient.utils.AppVars;
+import ru.neverlands.anclient.utils.ParseUtils;
 
 /**
  * Единый runtime-реестр параметров персонажа (HP/MA/усталость/интервалы регена).
@@ -115,7 +116,7 @@ public final class CharacterVitalsManager {
      */
     public static Snapshot updateTied(int tied, String source) {
         synchronized (LOCK) {
-            int normalized = clampPercent(tied);
+            int normalized = ParseUtils.clampPercent(tied);
             if (AppVars.Tied != normalized) {
                 AppLog.d(TAG, "VITALS_TRACE tied: " + AppVars.Tied + " -> " + normalized + ", source=" + source);
                 AppVars.Tied = normalized;
@@ -134,7 +135,7 @@ public final class CharacterVitalsManager {
      */
     public static Snapshot increaseTied(int delta, String source) {
         synchronized (LOCK) {
-            int normalized = clampPercent(AppVars.Tied + delta);
+            int normalized = ParseUtils.clampPercent(AppVars.Tied + delta);
             if (AppVars.Tied != normalized) {
                 AppLog.d(TAG, "VITALS_TRACE tied(step): " + AppVars.Tied + " -> " + normalized
                         + ", delta=" + delta + ", source=" + source);
@@ -338,7 +339,7 @@ public final class CharacterVitalsManager {
                 return snapshotLocked();
             }
             if (vitals.curTire != null) {
-                AppVars.Tied = clampPercent(vitals.curTire);
+                AppVars.Tied = ParseUtils.clampPercent(vitals.curTire);
             }
             if (vitals.curHp != null || vitals.maxHp != null || vitals.curMa != null || vitals.maxMa != null) {
                 int curHp = vitals.curHp != null ? vitals.curHp : AppVars.CurHP;
@@ -444,7 +445,7 @@ public final class CharacterVitalsManager {
                 AppVars.MaxHP,
                 AppVars.CurMA,
                 AppVars.MaxMA,
-                clampPercent(AppVars.Tied),
+                ParseUtils.clampPercent(AppVars.Tied),
                 AppVars.PersIntHP,
                 AppVars.PersIntMA,
                 poisonAndWounds[POISON_INDEX],
@@ -456,7 +457,4 @@ public final class CharacterVitalsManager {
         );
     }
 
-    private static int clampPercent(int value) {
-        return Math.max(0, Math.min(100, value));
-    }
 }

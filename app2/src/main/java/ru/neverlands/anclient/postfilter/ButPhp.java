@@ -105,7 +105,8 @@ public class ButPhp {
                     } else {
                         AppLog.d(TAG, "Parsed server time: " + hour + ":" + min + ":" + sec + ", diff(ms)=" + diff);
                     }
-                } catch (Exception ignored) {
+                } catch (Exception e) {
+                    AppLog.d(TAG, "server time parse skipped: " + e.getClass().getSimpleName());
                 }
             } else {
                 AppLog.w(TAG, "Server time not found in but.php (hour/min/sec parse failed)");

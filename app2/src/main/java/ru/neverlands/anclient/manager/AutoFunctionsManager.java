@@ -27,6 +27,7 @@ import ru.neverlands.anclient.service.AutoModeForegroundService;
 import ru.neverlands.anclient.utils.AppVars;
 import ru.neverlands.anclient.utils.ExtMap;
 import ru.neverlands.anclient.utils.MapPath;
+import ru.neverlands.anclient.utils.ParseUtils;
 
 /**
  * Менеджер автоматических функций (авто-бой, авто-рыбалка и т.д.).
@@ -2753,35 +2754,35 @@ public class AutoFunctionsManager {
     }
 
     public int getAntiCaptchaNumeric() {
-        return clampInt(prefs.getInt(PREF_ANTI_CAPTCHA_NUMERIC, ANTI_CAPTCHA_NUMERIC_NUMBERS_ONLY), 0, 2);
+        return ParseUtils.clamp(prefs.getInt(PREF_ANTI_CAPTCHA_NUMERIC, ANTI_CAPTCHA_NUMERIC_NUMBERS_ONLY), 0, 2);
     }
 
     public void setAntiCaptchaNumeric(int value) {
-        prefs.edit().putInt(PREF_ANTI_CAPTCHA_NUMERIC, clampInt(value, 0, 2)).apply();
+        prefs.edit().putInt(PREF_ANTI_CAPTCHA_NUMERIC, ParseUtils.clamp(value, 0, 2)).apply();
     }
 
     public int getAntiCaptchaMath() {
-        return clampInt(prefs.getInt(PREF_ANTI_CAPTCHA_MATH, 0), 0, 1);
+        return ParseUtils.clamp(prefs.getInt(PREF_ANTI_CAPTCHA_MATH, 0), 0, 1);
     }
 
     public void setAntiCaptchaMath(int value) {
-        prefs.edit().putInt(PREF_ANTI_CAPTCHA_MATH, clampInt(value, 0, 1)).apply();
+        prefs.edit().putInt(PREF_ANTI_CAPTCHA_MATH, ParseUtils.clamp(value, 0, 1)).apply();
     }
 
     public int getAntiCaptchaMinLength() {
-        return clampInt(prefs.getInt(PREF_ANTI_CAPTCHA_MIN_LENGTH, ANTI_CAPTCHA_MIN_LENGTH_DEFAULT), 0, 20);
+        return ParseUtils.clamp(prefs.getInt(PREF_ANTI_CAPTCHA_MIN_LENGTH, ANTI_CAPTCHA_MIN_LENGTH_DEFAULT), 0, 20);
     }
 
     public void setAntiCaptchaMinLength(int value) {
-        prefs.edit().putInt(PREF_ANTI_CAPTCHA_MIN_LENGTH, clampInt(value, 0, 20)).apply();
+        prefs.edit().putInt(PREF_ANTI_CAPTCHA_MIN_LENGTH, ParseUtils.clamp(value, 0, 20)).apply();
     }
 
     public int getAntiCaptchaMaxLength() {
-        return clampInt(prefs.getInt(PREF_ANTI_CAPTCHA_MAX_LENGTH, ANTI_CAPTCHA_MAX_LENGTH_DEFAULT), 0, 20);
+        return ParseUtils.clamp(prefs.getInt(PREF_ANTI_CAPTCHA_MAX_LENGTH, ANTI_CAPTCHA_MAX_LENGTH_DEFAULT), 0, 20);
     }
 
     public void setAntiCaptchaMaxLength(int value) {
-        prefs.edit().putInt(PREF_ANTI_CAPTCHA_MAX_LENGTH, clampInt(value, 0, 20)).apply();
+        prefs.edit().putInt(PREF_ANTI_CAPTCHA_MAX_LENGTH, ParseUtils.clamp(value, 0, 20)).apply();
     }
 
     public String getAntiCaptchaLanguagePool() {
@@ -3035,7 +3036,4 @@ public class AutoFunctionsManager {
         }
     }
 
-    private static int clampInt(int value, int min, int max) {
-        return Math.max(min, Math.min(max, value));
-    }
 }

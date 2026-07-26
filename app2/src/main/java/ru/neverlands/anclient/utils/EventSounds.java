@@ -13,6 +13,7 @@ public class EventSounds {
             }
             toneGenerator.startTone(ToneGenerator.TONE_PROP_BEEP, 120);
         } catch (Exception ignored) {
+            // Звук уведомления не критичен: аудиоустройство может быть занято/недоступно.
         }
     }
 }

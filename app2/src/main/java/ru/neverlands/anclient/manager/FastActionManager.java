@@ -222,11 +222,35 @@ public class FastActionManager {
      * Устанавливает глобальные переменные и инициирует перезагрузку main.php.
      */
     // Упрощённый вызов: одно действие без "перенаправления" (count=1).
+    /**
+     * Общий Handler отложенного восстановления non-combat авто-функций (D3).
+     *
+     * Раньше задача планировалась через анонимный {@code new Handler(...).postDelayed(...)}:
+     * ссылку никто не хранил, поэтому если в течение {@code FAST_FINALIZE_RESTORE_DELAY_MS}
+     * стартовало новое быстрое действие, отложенный restore всё равно срабатывал и мог
+     * восстановить уже неактуальный snapshot поверх нового fast-состояния.
+     */
+    private static final Handler RESTORE_HANDLER = new Handler(Looper.getMainLooper());
+
+    /** Токен отложенной задачи восстановления (для {@code removeCallbacksAndMessages}). */
+    private static final Object RESTORE_TOKEN = new Object();
+
+    /**
+     * Снимает отложенное восстановление non-combat авто-функций.
+     * Вызывается при старте нового fast-action и при немедленном restore.
+     */
+    private static void cancelPendingNonCombatRestore(String reason) {
+        RESTORE_HANDLER.removeCallbacksAndMessages(RESTORE_TOKEN);
+        FileLogger.trace(TAG, "[FAST_RESTORE_CANCEL] pending non-combat restore cancelled, reason='" + reason + "'");
+    }
+
     public static void fastStart(String id, String nick) {
         fastStart(id, nick, 1);
     }
 
     public static void fastStart(String id, String nick, int count) {
+        // D3: стартует новое быстрое действие — отложенный restore от предыдущего больше не актуален.
+        cancelPendingNonCombatRestore("fastStart:" + id);
         boolean prevFastNeed = AppVars.FastNeed;
         String prevFastId = AppVars.FastId;
         String prevFastNick = AppVars.FastNick;
@@ -336,8 +360,14 @@ public class FastActionManager {
         if (delayRestoreAfterFinalFast) {
             FileLogger.trace(TAG, "[FAST_RESTORE_DELAY] postpone non-combat restore by "
                     + FAST_FINALIZE_RESTORE_DELAY_MS + "ms, fastId='" + oldFastId + "'");
-            new Handler(Looper.getMainLooper()).postDelayed(restoreAutosTask, FAST_FINALIZE_RESTORE_DELAY_MS);
+            // D3: планируем с токеном, чтобы новый fastStart мог отменить устаревший restore.
+            // postAtTime вместо postDelayed(r, token, delay): перегрузка с токеном доступна с API 28,
+            // а minSdkVersion проекта — 21.
+            RESTORE_HANDLER.postAtTime(restoreAutosTask, RESTORE_TOKEN,
+                    android.os.SystemClock.uptimeMillis() + FAST_FINALIZE_RESTORE_DELAY_MS);
         } else {
+            // Немедленное восстановление отменяет ранее отложенное, чтобы оно не сработало повторно.
+            cancelPendingNonCombatRestore("immediate-restore:" + reason);
             restoreAutosTask.run();
         }
         

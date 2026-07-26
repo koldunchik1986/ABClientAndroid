@@ -63,6 +63,26 @@ public class LoginActivity extends AppCompatActivity {
     private static final long AUTH_RETRY_DELAY_MS = 1200L;
     private static final long SERVER_PING_REFRESH_MS = 10_000L;
     private static final int SERVER_PING_TIMEOUT_MS = 2_500;
+
+    /**
+     * Отложенный старт фонового обновления контактов после успешного входа.
+     *
+     * Зачем: сразу после логина клиент и так грузит главный фрейм, чат, комнату и probe-запросы.
+     * По логам {@code logs/Critical/20260726_14_20_*} очередь локального прокси в этот момент
+     * доходила до {@code waitMs=7877}, а сервер отвечал страницей «Сеанс работы прерван»
+     * (причина «попытка войти в другом окне») и {@code Server error: 535} на {@code info.cgi}.
+     * Даём входу полностью отработать, и только потом начинаем обновлять контакты.
+     */
+    private static final long LOGIN_CONTACT_REFRESH_START_DELAY_MS = 8_000L;
+
+    /**
+     * Пауза между запросами {@code info.cgi} при фоновом обновлении контактов.
+     *
+     * Раньше здесь было 500 мс — вдвое агрессивнее, чем в
+     * {@code ContactsManager.updateContactsRecursive(...)} (1200 мс), что и приводило
+     * к anti-rate-limit ответам {@code 535/536}. Приведено к единому значению.
+     */
+    private static final long LOGIN_CONTACT_REFRESH_STEP_DELAY_MS = 1_200L;
     private static final String LOGIN_UI_PREFS = "login_ui_state";
     private static final String KEY_LAST_PROFILE_ID = "last_profile_id";
     private static final String KEY_ENCRYPTED_LOGIN_PASSWORD_PREFIX = "encrypted_login_password_";
@@ -133,7 +153,7 @@ public class LoginActivity extends AppCompatActivity {
             String versionName = getPackageManager().getPackageInfo(getPackageName(), 0).versionName;
             binding.versionTextView.setText("v" + versionName);
         } catch (PackageManager.NameNotFoundException e) {
-            e.printStackTrace();
+            AppLog.w("LoginActivity", "versionName lookup failed", e);
             binding.versionTextView.setText("");
         }
     }
@@ -550,6 +570,8 @@ public class LoginActivity extends AppCompatActivity {
             try {
                 gamePassword = CryptoUtils.decrypt(profileToLogin.UserPassword, passwordOrKey);
                 flashPassword = decryptProfileSecret(profileToLogin.UserPasswordFlash, passwordOrKey);
+                // D1: ленивая миграция шифрования на актуальный формат ANC1 (AES-256-GCM).
+                migrateProfileEncryptionIfLegacy(profileToLogin, passwordOrKey, gamePassword, flashPassword);
             } catch (Exception e) {
                 Toast.makeText(this, "Неверный пароль шифрования", Toast.LENGTH_SHORT).show();
                 binding.progressBar.setVisibility(View.GONE);
@@ -622,6 +644,53 @@ public class LoginActivity extends AppCompatActivity {
             return "";
         }
         return CryptoUtils.decrypt(encryptedText, encryptionPassword);
+    }
+
+    /**
+     * Ленивая миграция шифрования профиля на актуальный формат {@code ANC1} (D1).
+     *
+     * <p>Зачем: прежняя схема использовала 3DES со статичной солью и 1000 итераций PBKDF2.
+     * Чтобы у пользователей не пропали уже сохранённые пароли, чтение старого формата оставлено,
+     * но при первом успешном входе профиль незаметно перешифровывается в AES-256-GCM
+     * тем же ключом шифрования, который пользователь только что ввёл.</p>
+     *
+     * <p>Вызывается только после успешной расшифровки, т.е. ключ гарантированно верный.
+     * Ошибка перешифровки не блокирует вход: профиль просто остаётся в старом формате.</p>
+     *
+     * @param profileToLogin   профиль, с которым выполняется вход
+     * @param encryptionPassword ключ шифрования, введённый пользователем
+     * @param gamePassword     уже расшифрованный игровой пароль
+     * @param flashPassword    уже расшифрованный flash-пароль
+     */
+    private void migrateProfileEncryptionIfLegacy(UserConfig profileToLogin,
+                                                  String encryptionPassword,
+                                                  String gamePassword,
+                                                  String flashPassword) {
+        if (profileToLogin == null || !profileToLogin.isEncrypted) {
+            return;
+        }
+        boolean legacyMainPassword = CryptoUtils.isLegacyFormat(profileToLogin.UserPassword);
+        boolean legacyFlashPassword = !TextUtils.isEmpty(profileToLogin.UserPasswordFlash)
+                && CryptoUtils.isLegacyFormat(profileToLogin.UserPasswordFlash);
+        if (!legacyMainPassword && !legacyFlashPassword) {
+            return;
+        }
+        try {
+            profileToLogin.UserPassword = CryptoUtils.encrypt(
+                    gamePassword == null ? "" : gamePassword, encryptionPassword);
+            if (TextUtils.isEmpty(profileToLogin.UserPasswordFlash)) {
+                profileToLogin.UserPasswordFlash = "";
+            } else {
+                profileToLogin.UserPasswordFlash = CryptoUtils.encrypt(
+                        flashPassword == null ? "" : flashPassword, encryptionPassword);
+            }
+            profileToLogin.save(getApplicationContext());
+            AppLog.i("LoginActivity", "CRYPTO_MIGRATION: profile re-encrypted to ANC1 (AES-256-GCM), profileId="
+                    + profileToLogin.id);
+        } catch (Exception e) {
+            // Не блокируем вход: профиль остаётся в старом формате и будет прочитан legacy-путём.
+            AppLog.w("LoginActivity", "CRYPTO_MIGRATION: re-encrypt to ANC1 failed, keeping legacy format", e);
+        }
     }
 
     private void showLicenseDialog(LicenseStatus status) {
@@ -919,13 +988,22 @@ public class LoginActivity extends AppCompatActivity {
         AppVars.AutoFuryHand = "";
         AppVars.AutoFuryHandD = "";
 
-        // Запускаем фоновое обновление всех контактов
-        AppLog.d("LoginActivity", "Starting background contact refresh after successful login.");
+        // Фоновое обновление контактов запускаем НЕ сразу: см. LOGIN_CONTACT_REFRESH_START_DELAY_MS.
+        // Иначе пачка info.cgi накладывается на загрузку главного фрейма/чата/probe-запросов,
+        // очередь прокси переполняется и сервер рвёт сессию.
         ru.neverlands.anclient.manager.ContactsManager.initialize(getApplicationContext());
         List<ru.neverlands.anclient.model.Contact> contactsToUpdate = ru.neverlands.anclient.manager.ContactsManager.getContactsFromCache();
-        AppLog.d("LoginActivity", "Background contact refresh queue size=" + (contactsToUpdate == null ? 0 : contactsToUpdate.size()));
+        int contactsQueueSize = contactsToUpdate == null ? 0 : contactsToUpdate.size();
+        AppLog.d("LoginActivity", "Background contact refresh scheduled: queueSize=" + contactsQueueSize
+                + ", startDelayMs=" + LOGIN_CONTACT_REFRESH_START_DELAY_MS
+                + ", stepDelayMs=" + LOGIN_CONTACT_REFRESH_STEP_DELAY_MS);
         if (contactsToUpdate != null && !contactsToUpdate.isEmpty()) {
-            updateContactsRecursive(contactsToUpdate, 0);
+            final List<ru.neverlands.anclient.model.Contact> delayedContacts = contactsToUpdate;
+            // Handler на main-looper: цепочка должна пережить finish() этой Activity.
+            new Handler(Looper.getMainLooper()).postDelayed(() -> {
+                AppLog.d("LoginActivity", "Starting background contact refresh after login settle window.");
+                updateContactsRecursive(delayedContacts, 0);
+            }, LOGIN_CONTACT_REFRESH_START_DELAY_MS);
         }
 
         Intent intent = new Intent(LoginActivity.this, MainActivity.class);
@@ -972,7 +1050,8 @@ public class LoginActivity extends AppCompatActivity {
                     updateContactsRecursive(contacts, index + 1);
                 }
             });
-        }, 500);
+            // Единый anti-rate-limit интервал (было 500 мс -> сервер отвечал 535/536).
+        }, LOGIN_CONTACT_REFRESH_STEP_DELAY_MS);
     }
 
     private static long currentDotNetTicks() {

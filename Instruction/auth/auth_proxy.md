@@ -1,92 +1,142 @@
-# Auth + Proxy (предварительный разбор, 2026-03-08)
+# Auth + Proxy: host-стратегия и BasicAuth
 
-## Цель
-Зафиксировать рабочий вариант входа через прокси, причины последних падений и безопасный путь для повторной проверки гипотезы `www` vs `non-www`.
+> Актуализировано: 2026-07-26. Модуль: `app2/` (ANClient).
+> Прежняя редакция (2026-03-08) фиксировала baseline «`www` + cp1251» и оставляла открытым
+> A/B-тест. **Вопрос закрыт** — см. §3. Ссылки на `app/.../abclient/AuthManager.java` устарели.
 
-## Симптомы до фикса
-- Через прокси авторизация в Android падала на шаге `POST /game.php`.
-- Типовой паттерн в логах:
-  - `GET /` -> `200`
-  - `POST /game.php` -> `405`
-  - fallback/retry -> `403` или `400` (squid/nginx).
+## 1. Текущее состояние кода (факт)
 
-## Что было изменено
-1. `AuthManager`:
-- В proxy-режиме auth-base переключён на `http://www.neverlands.ru`.
-- Для auth-запросов (`/`, `/game.php`, `/main.php`) используются URL от этого base.
+### Primary host — всегда `non-www`
 
-2. `ProxyRuntimeManager`:
-- Кодировка `Proxy-Authorization` приведена к `windows-1251` (как в ПК C#).
-
-3. `LocalHttpProxyServer`:
-- Добавлен дополнительный retry для `POST /game.php` в origin-form (`/game.php`) после `405`.
-
-4. `NetworkClient`:
-- Исправлен выбор timeout в login-phase: если proxy runtime уже поднят, режим timeout считается proxy.
-- В proxy-режиме увеличены timeout до `60s`.
-
-## Что показали логи
-### `Logs/logcat_runtime_20260308_30.txt` (до final-фикса)
-- `POST http://neverlands.ru/game.php` -> `405`
-- `POST /game.php` -> `400`
-
-### `Logs/logcat_runtime_20260308_31.txt` (после final-фиксов)
-- `GET http://www.neverlands.ru/` -> `200`
-- `POST http://www.neverlands.ru/game.php` -> `200`
-- `GET http://www.neverlands.ru/main.php` -> `200`
-- Авторизация успешна.
-
-## Важный вывод (текущий, предварительный)
-Пока нельзя на 100% доказать, что сработал только один фактор.
-
-На текущих данных:
-- Вклад `www` очень вероятен (именно с `www` POST перестал возвращать `405`).
-- Вклад `cp1251` в `Proxy-Authorization` тоже вероятен (полная 1:1 совместимость с ПК-профилем/прокси).
-
-Итого: рабочий production-вариант сейчас = `www + cp1251`.
-
-## План A/B проверки (чтобы точно отделить причину)
-### Вариант A (текущий baseline, рабочий)
-- `www` в `AuthManager.resolveAuthBaseUrl()` при proxy.
-- `cp1251` в `ProxyRuntimeManager` для BasicAuth.
-
-Ожидаемый маркер:
-- `POST http://www.neverlands.ru/game.php` -> `200`.
-
-### Вариант B (тест гипотезы пользователя)
-- Оставить `cp1251`.
-- Временно вернуть auth-base на `http://neverlands.ru` даже в proxy-режиме.
-
-Ожидаемый маркер:
-- Если снова `405/400` на `POST /game.php`, значит ключевой фактор — host `www`.
-- Если вход успешный, тогда ключевой фактор — кодировка BasicAuth (`cp1251`), а `www` не обязателен.
-
-## Быстрый откат/переключение
-Точка переключения только одна:
-- `app/src/main/java/ru/neverlands/abclient/AuthManager.java`
-- Метод: `resolveAuthBaseUrl()`.
-
-### Вернуть non-www для теста B
 ```java
-private String resolveAuthBaseUrl() {
-    return "http://neverlands.ru";
+// GameServerUrls.java:307
+public static String authBaseUrl(boolean proxyActive, String serverCode) {
+    return gameBaseUrl(serverCode);
+}
+
+// GameServerUrls.java:255
+public static String gameBaseUrl(String serverCode) {
+    return "http://" + HOST_NEVERLANDS;   // всегда http://neverlands.ru
 }
 ```
 
-### Вернуть рабочий baseline A
+Параметры `proxyActive` и `serverCode` **игнорируются**. Ветка «в proxy-режиме используем
+`www`» из кода убрана.
+
+### `www` остался только как одноразовый fallback
+
+`AuthManager.shouldRetryWithAlternateHost(result)` разрешает повтор, только если:
+
+- `ProxyRuntimeManager.isRunning()`;
+- результат не success и не captcha;
+- HTTP-код ∈ {400, 403, 405, 407, 429, 500, 502, 503, 504}.
+
+Тогда `GameServerUrls.alternateAuthBaseUrl(...)` меняет `non-www` → `www`, вызывается
+`NetworkClient.clearCookies()` и auth-flow повторяется **один раз**.
+
+### BasicAuth для upstream-прокси — cp1251 (сохранено)
+
 ```java
-private String resolveAuthBaseUrl() {
-    final boolean proxyActive = ProxyRuntimeManager.isRunning();
-    return proxyActive ? "http://www.neverlands.ru" : "http://neverlands.ru";
-}
+// ProxyRuntimeManager.java:331-332
+// 1:1 с ПК-версией C#: BasicAuth кодируется через cp1251 (AppVars.Codepage).
+String encoded = android.util.Base64.encodeToString(...);
 ```
 
-## Что держим в коде сейчас
-- Оставляем все фиксы (они не конфликтуют и дают лучший шанс совместимости с нестабильными proxy).
-- Следующий шаг только диагностический: разовый A/B тест варианта B с новым логом.
+### Таймауты
 
-## Чеклист
-- [x] Зафиксирован рабочий вариант (`www + cp1251`).
-- [x] Описан минимальный путь переключения на тест B.
-- [ ] Выполнить тест B (`non-www + cp1251`) и приложить лог.
-- [ ] Принять финальное решение по `resolveAuthBaseUrl()`.
+`NetworkClient`: `DIRECT_TIMEOUT_SECONDS = 30`, `PROXY_TIMEOUT_SECONDS = 60`.
+Если proxy runtime поднят, применяется proxy-таймаут. Клиент пересоздаётся при изменении
+`ProxyRuntimeManager.getRuntimeSignature()`.
+
+## 2. Исходные симптомы (исторический контекст)
+
+Через прокси авторизация падала на `POST /game.php`:
+
+```
+GET  /            -> 200
+POST /game.php    -> 405
+fallback/retry    -> 403 или 400 (squid/nginx)
+```
+
+Тогда были внесены 4 правки: `www` в proxy-режиме, cp1251 для `Proxy-Authorization`,
+retry origin-form в `LocalHttpProxyServer`, исправление выбора таймаута.
+Вход заработал на связке «`www` + cp1251», но вклад каждого фактора остался неразделённым.
+
+## 3. Разрешение A/B-вопроса
+
+Отдельный лабораторный тест не понадобился — **ответ дал продакшн**.
+
+При устранении регрессии обрыва сессии выяснилось, что корневой причиной было смешение
+хостов: выбор игрового сервера подставлял **IP** в URL, заголовок `Host` и домен cookies
+(`originHost = selectedHost`), из-за чего сессия расползалась по трём хостам.
+
+После фикса:
+
+- URL / `Host` / cookies — всегда домен `neverlands.ru` (**non-www**);
+- IP используется **только** для TCP-подключения (`connectHostForServer`, `resolveRoute`);
+- выбор сервера передаётся полем формы `server` = `de` / `KZ`.
+
+**Результат:** текущий продакшн работает в конфигурации «`non-www` + cp1251» — то есть
+ровно «Вариант B» из прежнего плана. Пользователь подтвердил стабильную сессию на DE, KZ и
+`neverlands.ru`.
+
+### Вывод
+
+| Гипотеза | Статус |
+| --- | --- |
+| `www` обязателен для входа через proxy | **Опровергнута.** `non-www` работает как primary |
+| cp1251 в `Proxy-Authorization` нужен | Сохранена. 1:1 с ПК-версией, снимать без нужды не стоит |
+| Реальная причина 405/400 — смешение хостов | **Вероятная** (см. оговорку ниже) |
+
+> **Оговорка о доказательности.** Симптом `405` наблюдался на более старом состоянии кода,
+> где host-mixing присутствовал. Прямого контрольного эксперимента «старый код + non-www»
+> не проводилось, поэтому связка «405 ⇐ host-mixing» — обоснованная, но не доказанная
+> гипотеза. Практически это уже не важно: текущая конфигурация стабильна, а `www` остаётся
+> защитным fallback'ом для нестабильных прокси.
+
+## 4. Точки переключения (если понадобится диагностика)
+
+| Что | Где |
+| --- | --- |
+| Primary host | `GameServerUrls.authBaseUrl(...)` / `gameBaseUrl(...)` |
+| Зеркальный host | `GameServerUrls.alternateAuthBaseUrl(...)` |
+| Условия fallback'а | `AuthManager.shouldRetryWithAlternateHost(...)` |
+| Кодировка BasicAuth | `ProxyRuntimeManager` (~L331) |
+| Таймауты | `NetworkClient` (`DIRECT_TIMEOUT_SECONDS` / `PROXY_TIMEOUT_SECONDS`) |
+| Connect-host (IP) | `GameServerUrls.connectHostForServer(...)`, `LocalHttpProxyServer.resolveRoute(...)` |
+
+> **Не менять `gameBaseUrl` на IP или на `www` «для теста» без отката.** Это ровно та правка,
+> которая вызвала обрыв сессии. Домен в URL/`Host`/cookies должен оставаться единым.
+
+## 5. Анти-детект в proxy-слое
+
+`LocalHttpProxyServer` приводит исходящий трафик к виду обычного браузера:
+
+- `isClientIdentityHeader` вырезает `X-Requested-With`, `X-Android-*`, `Sec-CH-UA*`;
+- `stripClientMarkersFromTarget` убирает служебные параметры `ab_*` / `an_*` из URL (13/13 тестов);
+- `appendBrowserIdentityHeaders` добавляет браузерный набор заголовков;
+- единый `User-Agent` Chrome/140 — сверен с реальным трафиком (`Login.har`).
+
+> **Важный урок:** ранее добавленные `Sec-CH-UA` пришлось убрать — реальный Chrome по HTTP
+> клиент-хинты **не отправляет** (проверено по `Login.har`), их наличие само по себе было
+> маркером неофициального клиента.
+
+`CookiesManager.toHostOnlyCookieHeader` приведён к C#-эталону: только `name=value; Path=/`,
+лишние атрибуты вырезаются.
+
+## 6. Диагностика в логах
+
+- `AuthManager: authBaseUrl=..., proxyActive=..., server=..., formServer=...` — выбранный host;
+- `AuthManager: proxy fallback for authorize, primary=..., alternate=..., reason=...` — сработал fallback;
+- `AuthManager: collected cookies count=N names=[...]` — итоговая сессия.
+
+Появление строки `proxy fallback` в норме означает проблему у upstream-прокси, а не в
+логике входа: primary-попытка на `non-www` должна проходить.
+
+## 7. Чеклист
+
+- [x] Зафиксировано текущее состояние: primary `non-www`, `www` — одноразовый fallback.
+- [x] Сохранена cp1251-кодировка BasicAuth (паритет с ПК).
+- [x] A/B-вопрос закрыт: `non-www` работает в продакшне (DE / KZ / neverlands.ru).
+- [x] Устранена корневая причина обрыва сессии (host-mixing IP ↔ домен).
+- [x] Документация приведена в соответствие с `app2/`.

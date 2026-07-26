@@ -866,7 +866,7 @@ public class UserConfig {
             this.LezDoFury = hasAnyLezFuryGroup();
             return true;
         } catch (IOException | XmlPullParserException e) {
-            e.printStackTrace();
+            AppLog.e(TAG, "load: failed to parse profile XML", e);
             return false;
         }
     }
@@ -1125,7 +1125,7 @@ public class UserConfig {
             serializer.endTag(null, "profile");
             serializer.endDocument();
         } catch (Exception e) {
-            e.printStackTrace();
+            AppLog.e(TAG, "save: failed to serialize profile XML", e);
         }
     }
 

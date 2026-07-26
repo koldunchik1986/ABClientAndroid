@@ -146,9 +146,9 @@ public final class InventoryParser {
         return parseWearInvEntry(htmlEntry);
     }
 
+    /** Делегат к канонической реализации {@link HelperStrings#containsIgnoreCase(String, String)} (D5). */
     public static boolean containsIgnoreCase(String value, String token) {
-        if (value == null || token == null) return false;
-        return value.toLowerCase(Locale.ROOT).contains(token.toLowerCase(Locale.ROOT));
+        return HelperStrings.containsIgnoreCase(value, token);
     }
 
     static boolean mainPhpIsInv(String html) {

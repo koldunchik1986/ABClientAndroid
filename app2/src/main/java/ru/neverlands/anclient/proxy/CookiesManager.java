@@ -78,7 +78,9 @@ public class CookiesManager {
                             }
                             AppVars.Profile.UserNick = nick;
                         }
-                    } catch (Exception ignored) {}
+                    } catch (Exception e) {
+                        AppLog.d("CookiesManager", "NeverNick decode failed: " + e.getClass().getSimpleName());
+                    }
                 }
             }
 
@@ -101,40 +103,50 @@ public class CookiesManager {
         }
     }
 
+    /**
+     * Приводит серверный {@code Set-Cookie} к виду, который хранится в WebView-CookieManager.
+     *
+     * <p><b>Поведение 1:1 с ПК-версией</b> (см. {@code ANClient/ANProxy/CookiesManager.cs} →
+     * {@code Assign(...)} и {@code ANClient/ANProxy/CookiePack.cs}).</p>
+     *
+     * В C# из заголовка берётся строго часть до первой {@code ';'}:
+     * <pre>
+     *   var posemi = data.IndexOf(';', poseq);
+     *   var svalue = (posemi == -1) ? data.Substring(poseq + 1)
+     *                               : data.Substring(poseq + 1, posemi - poseq - 1);
+     * </pre>
+     * а {@code CookiePack} хранит только пары {@code Name}/{@code Value} и отдаёт их как
+     * {@code name=value; name2=value2}. То есть ПК-клиент <b>физически не переносит</b>
+     * атрибуты cookie.
+     *
+     * <p><b>Почему это критично для сессии.</b> Прежняя Java-реализация отбрасывала только
+     * {@code Domain}, а {@code Expires}, {@code Max-Age}, {@code Secure} и {@code SameSite}
+     * передавала дальше. Android CookieManager честно их исполняет, поэтому:</p>
+     * <ul>
+     *   <li>{@code Expires}/{@code Max-Age} в прошлом (или короткий срок) — cookie удаляется,
+     *       сессия «слетает» прямо во время игры;</li>
+     *   <li>{@code Secure} — cookie перестаёт отправляться по {@code http://},
+     *       а игра работает именно по cleartext HTTP;</li>
+     *   <li>{@code SameSite} — cookie может не уйти при переходах между фреймами/хостами.</li>
+     * </ul>
+     *
+     * Поэтому здесь сохраняется только {@code name=value} и добавляется {@code Path=/},
+     * чтобы cookie была видна всем путям игрового хоста.
+     *
+     * @param cookieHeader сырое значение заголовка {@code Set-Cookie}
+     * @return {@code name=value; Path=/} либо пустая строка, если заголовок некорректен
+     */
     private static String toHostOnlyCookieHeader(String cookieHeader) {
         if (cookieHeader == null || cookieHeader.trim().isEmpty()) {
             return "";
         }
-        String[] parts = cookieHeader.split(";");
-        if (parts.length == 0) {
-            return "";
-        }
-        String nameValue = parts[0].trim();
+        // Как в C#: всё, что идёт после первой ';', является атрибутами и отбрасывается.
+        int semiPos = cookieHeader.indexOf(';');
+        String nameValue = (semiPos == -1 ? cookieHeader : cookieHeader.substring(0, semiPos)).trim();
         if (nameValue.isEmpty() || nameValue.indexOf('=') <= 0) {
             return "";
         }
-
-        StringBuilder result = new StringBuilder(nameValue);
-        boolean hasPath = false;
-        for (int i = 1; i < parts.length; i++) {
-            String part = parts[i] == null ? "" : parts[i].trim();
-            if (part.isEmpty()) {
-                continue;
-            }
-            int eq = part.indexOf('=');
-            String attrName = (eq > 0 ? part.substring(0, eq) : part).trim().toLowerCase(java.util.Locale.ROOT);
-            if ("domain".equals(attrName)) {
-                continue;
-            }
-            if ("path".equals(attrName)) {
-                hasPath = true;
-            }
-            result.append("; ").append(part);
-        }
-        if (!hasPath) {
-            result.append("; Path=/");
-        }
-        return result.toString();
+        return nameValue + "; Path=/";
     }
 
     private static String cookieName(String cookieHeader) {

@@ -359,7 +359,7 @@ public class ExtMap {
         cell.CellNumber = normalizedCellNumber;
         String costStr = parser.getAttributeValue(null, "cost");
         if (costStr != null) {
-            try { cell.Cost = Integer.parseInt(costStr.trim()); } catch (NumberFormatException ignored) {}
+            try { cell.Cost = Integer.parseInt(costStr.trim()); } catch (NumberFormatException ignored) { /* нечисловой cost в XML — остаётся 0 */ }
         }
         String hasFish = parser.getAttributeValue(null, "hasFish");
         cell.HasFish = "true".equalsIgnoreCase(hasFish);
@@ -485,7 +485,7 @@ public class ExtMap {
                         String costStr = parser.getAttributeValue(null, "cost");
                         int cost = 0;
                         if (costStr != null) {
-                            try { cost = Integer.parseInt(costStr.trim()); } catch (NumberFormatException ignored) {}
+                            try { cost = Integer.parseInt(costStr.trim()); } catch (NumberFormatException ignored) { /* нечисловой cost в XML — остаётся 0 */ }
                         }
                         if (cost == 0 && Cells.containsKey(regnum)) {
                             int jcost = Cells.get(regnum).Cost;
@@ -557,6 +557,7 @@ public class ExtMap {
                     return parsed.getTime();
                 }
             } catch (Exception ignored) {
+                // Ожидаемая ветка: формат не подошёл — пробуем следующий из списка.
             }
         }
         return 0L;

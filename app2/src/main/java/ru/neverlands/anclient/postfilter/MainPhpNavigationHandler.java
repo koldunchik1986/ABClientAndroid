@@ -220,7 +220,8 @@ final class MainPhpNavigationHandler {
                     return vcode;
                 }
             }
-        } catch (Exception ignored) {
+        } catch (Exception e) {
+            AppLog.d(TAG, "navigation vcode extraction failed: " + e.getClass().getSimpleName());
         }
         return null;
     }

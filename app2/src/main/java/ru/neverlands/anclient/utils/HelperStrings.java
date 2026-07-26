@@ -2,9 +2,33 @@ package ru.neverlands.anclient.utils;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Random;
 
 public class HelperStrings {
+
+    /**
+     * Каноническая (единственная) реализация case-insensitive проверки вхождения подстроки.
+     *
+     * Назначение (D5, AGENTS п.8):
+     * - До рефакторинга в проекте существовало 6 независимых копий этого метода
+     *   ({@code InventoryParser}, {@code MainPhp}, {@code TreasureDig}, {@code ParsedDressed},
+     *   {@code KaznaParser}, {@code ProxyRequestQueue}). Копии были семантически одинаковы,
+     *   но расходились бы при любой правке.
+     * - Теперь все они — тонкие делегаты к этому методу, чтобы точка принятия решения была одна.
+     *
+     * Поведение: null-safe (любой null -> false), сравнение по {@link Locale#ROOT}.
+     *
+     * @param value строка-источник
+     * @param token искомая подстрока
+     * @return true, если {@code value} содержит {@code token} без учёта регистра
+     */
+    public static boolean containsIgnoreCase(String value, String token) {
+        if (value == null || token == null) {
+            return false;
+        }
+        return value.toLowerCase(Locale.ROOT).contains(token.toLowerCase(Locale.ROOT));
+    }
 
     /**
      * Извлекает подстроку между двумя маркерами (case-insensitive).

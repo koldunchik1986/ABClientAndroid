@@ -11,6 +11,7 @@ import java.util.regex.Pattern;
 
 import android.os.Handler;
 import android.os.Looper;
+import android.os.SystemClock;
 
 import ru.neverlands.anclient.MainActivity;
 import ru.neverlands.anclient.postfilter.MainPhp;
@@ -18,6 +19,7 @@ import ru.neverlands.anclient.utils.AppLog;
 import ru.neverlands.anclient.utils.AppVars;
 import ru.neverlands.anclient.utils.Chat;
 import ru.neverlands.anclient.utils.FileLogger;
+import ru.neverlands.anclient.utils.ParseUtils;
 
 /**
  * Модуль авто-функции «Авто-Боссы».
@@ -808,11 +810,48 @@ final class BossAuto {
      * Здесь очищается внутреннее состояние и, при необходимости,
      * восстанавливается снимок ранее активных авто-функций.
      */
+    /**
+     * Общий Handler для отложенных чат-сообщений сценария босса (D3).
+     *
+     * Раньше каждое отложенное сообщение создавалось через анонимный
+     * {@code new Handler(Looper.getMainLooper()).postDelayed(...)}, ссылку на Runnable никто
+     * не хранил, поэтому отменить задачу было невозможно: сообщение уходило в чат даже после
+     * выключения Авто-Босса. Теперь все задачи планируются с {@link #CHAT_DELAY_TOKEN}
+     * и снимаются в {@link #cancelPendingChatMessages(String)}.
+     */
+    private static final Handler CHAT_DELAY_HANDLER = new Handler(Looper.getMainLooper());
+
+    /** Токен отложенных чат-задач сценария босса (для {@code removeCallbacksAndMessages}). */
+    private static final Object CHAT_DELAY_TOKEN = new Object();
+
+    /**
+     * Планирует отложенную отправку чат-сообщения с возможностью отмены.
+     *
+     * @param task     задача отправки
+     * @param delayMs  задержка (анти-DDoS пауза между сообщениями)
+     */
+    private void postDelayedChatTask(Runnable task, long delayMs) {
+        // postAtTime вместо postDelayed(r, token, delay): перегрузка с токеном доступна с API 28,
+        // а minSdkVersion проекта — 21.
+        CHAT_DELAY_HANDLER.postAtTime(task, CHAT_DELAY_TOKEN, SystemClock.uptimeMillis() + delayMs);
+    }
+
+    /**
+     * Снимает все запланированные, но ещё не отправленные чат-сообщения сценария.
+     */
+    private void cancelPendingChatMessages(String reason) {
+        CHAT_DELAY_HANDLER.removeCallbacksAndMessages(CHAT_DELAY_TOKEN);
+        AppLog.d(LOG_CHAIN, TAG, TRACE_PREFIX + " pending chat messages cancelled, reason=" + reason);
+    }
+
     private void stopAndRestore(String reason, boolean restoreSnapshot) {
         stopAndRestore(reason, restoreSnapshot, true);
     }
 
     private void stopAndRestore(String reason, boolean restoreSnapshot, boolean notifyChat) {
+        // D3: сценарий останавливается — снимаем ещё не отправленные отложенные чат-сообщения,
+        // чтобы они не ушли на сервер уже после выключения Авто-Босса.
+        cancelPendingChatMessages("stopAndRestore:" + reason);
         BossScenarioSnapshot snapshotToRestore = null;
         String oldTarget;
         synchronized (lock) {
@@ -1315,7 +1354,7 @@ final class BossAuto {
         String message = "%<" + target + "> Подскажи на какой клетке Босс?";
         // Отправляем private message с задержкой 500ms после clan message
         final String privateMsg = message;
-        new Handler(Looper.getMainLooper()).postDelayed(() -> {
+        postDelayedChatTask(() -> {
             Chat.sendMessageToServer(privateMsg);
             AppLog.d(TAG, TRACE_PREFIX + " ask target sent (delayed): target=" + target + ", message=" + privateMsg);
         }, CLAN_PRIVATE_MESSAGE_DELAY_MS);
@@ -1345,7 +1384,7 @@ final class BossAuto {
         // Отправляем private message с задержкой 500ms для DDoS protection
         final String singleMsg = message;
         final String finalNorm = normalizedTarget;
-        new Handler(Looper.getMainLooper()).postDelayed(() -> {
+        postDelayedChatTask(() -> {
             Chat.sendMessageToServer(singleMsg);
             String traceMsg = "[BOSS_PRIVATE_MSG_SENT] Single ask, target=" + finalNorm;
             AppLog.d(LOG_CHAIN, TAG, traceMsg);
@@ -1590,8 +1629,8 @@ final class BossAuto {
         Matcher matcher = FIGHT_ALLY_PATTERN.matcher(alliesPart);
         while (matcher.find()) {
             String nick = normalizeNick(matcher.group(1));
-            int curHp = parseIntSafe(matcher.group(2));
-            int maxHp = parseIntSafe(matcher.group(3));
+            int curHp = ParseUtils.parseIntSafe(matcher.group(2));
+            int maxHp = ParseUtils.parseIntSafe(matcher.group(3));
             if (isEmpty(nick) || maxHp <= 0) {
                 continue;
             }
@@ -1600,16 +1639,6 @@ final class BossAuto {
         return result;
     }
 
-    private int parseIntSafe(String value) {
-        if (isEmpty(value)) {
-            return 0;
-        }
-        try {
-            return Integer.parseInt(value.trim());
-        } catch (Exception ignored) {
-            return 0;
-        }
-    }
 
     private int parseClassIdSafe(String value) {
         if (isEmpty(value)) {
@@ -1898,7 +1927,7 @@ final class BossAuto {
         // (буферизация потока pinfo + compass + других запросов)
         final String clanMsg = message;
         final String finalNorm = normalizedTarget;
-        new Handler(Looper.getMainLooper()).postDelayed(() -> {
+        postDelayedChatTask(() -> {
             Chat.sendMessageToServer(clanMsg);
             String traceMsg = "[BOSS_CLAN_MSG_SENT] Delayed 1s, target=" + finalNorm + ", msg=" + clanMsg.substring(0, Math.min(80, clanMsg.length()));
             AppLog.d(LOG_CHAIN, TAG, traceMsg);

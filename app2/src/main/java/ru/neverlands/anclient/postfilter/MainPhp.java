@@ -1513,7 +1513,8 @@ public class MainPhp {
                     return vcode;
                 }
             }
-        } catch (Exception ignored) {
+        } catch (Exception e) {
+            AppLog.d(TAG, "vcode extraction from html failed: " + e.getClass().getSimpleName());
         }
         return null;
     }
@@ -2452,8 +2453,9 @@ public class MainPhp {
      * Назначение:
      * - Нормализация сравнения FastId/названий предметов при разном регистре и раскладке источника.
      */
+    /** Делегат к канонической реализации {@link HelperStrings#containsIgnoreCase(String, String)} (D5). */
     static boolean containsIgnoreCase(String value, String token) {
-        return InventoryParser.containsIgnoreCase(value, token);
+        return HelperStrings.containsIgnoreCase(value, token);
     }
     /**
      * Проверяет, что мы на странице инвентаря (аналог MainPhpIsInv в MainPhpDrink.cs:221-224).

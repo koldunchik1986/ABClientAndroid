@@ -4,6 +4,9 @@ import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.ViewModel;
 
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+
 import ru.neverlands.anclient.utils.AppLog;
 import ru.neverlands.anclient.MainActivity;
 import ru.neverlands.anclient.lez.LezFight;
@@ -28,6 +31,95 @@ public class FightViewModel extends ViewModel {
     // Команда для отправки действия в WebView (HTML form/post), одноразовое событие.
     private final MutableLiveData<String> _submitAction = new MutableLiveData<>(null);
     public LiveData<String> submitAction = _submitAction;
+
+    /**
+     * Пул для фонового разбора боевого HTML (D3).
+     *
+     * Раньше здесь создавались «сырые» {@code new Thread(...)} на каждый вызов
+     * ({@code processFightHtml}, {@code autoTurnOnce}, {@code autoSelect}), при этом у ViewModel
+     * не было {@code onCleared()} — потоки не отменялись и не учитывались при уничтожении экрана.
+     *
+     * Выбран {@code newCachedThreadPool}, а не однопоточный executor, чтобы **сохранить прежнюю
+     * параллельность** и не изменить тайминги боевой цепочки (AGENTS: не деградировать автобой).
+     * Пул переиспользует простаивающие потоки и корректно останавливается в {@link #onCleared()}.
+     */
+    private final ExecutorService fightExecutor = Executors.newCachedThreadPool();
+
+    /** true после {@link #onCleared()} — фоновые задачи не должны публиковать результат. */
+    private volatile boolean cleared = false;
+
+    /**
+     * Окно анти-дубля отправки хода.
+     *
+     * Почему именно окно, а не жёсткая блокировка:
+     * - в норме следующий раунд приходит с новым `vcode`, поэтому guard его не касается;
+     * - но если предыдущая отправка была потеряна (оборванный сокет / отброшенный ответ),
+     *   ход нужно повторить, иначе бой встанет до истечения таймера раунда.
+     * Значение выбрано по замеру реального боя: средняя длительность раунда ~2.8 c.
+     */
+    private static final long SAME_ROUND_RESUBMIT_GUARD_MS = 3_000L;
+
+    /** vcode раунда, для которого действие уже отправлено (ключ анти-дубля). */
+    private volatile String lastSubmittedTurnVCode = "";
+
+    /** Момент последней отправки хода (монотонные часы). */
+    private volatile long lastSubmittedTurnAtMs = 0L;
+
+    /**
+     * Освобождение ресурсов ViewModel: останавливаем фоновый разбор боя.
+     * Без этого фоновые задачи продолжали работать после уничтожения владельца.
+     */
+    @Override
+    protected void onCleared() {
+        cleared = true;
+        fightExecutor.shutdownNow();
+        AppLog.d(TAG, TAG, BG_TRACE_PREFIX + " onCleared: fight executor shutdown requested");
+        super.onCleared();
+    }
+
+    /**
+     * Анти-дубль отправки хода: один раунд — одна отправка.
+     *
+     * Зачем нужно:
+     * - автоход запускается по секундному таймеру и работает по кэшу `AppVars.ContentMainPhp`,
+     *   поэтому один и тот же раунд отправлялся по нескольку раз (замер: ~2.6 отправки на раунд);
+     * - лишние отправки обрывали предыдущий незавершённый ответ (Broken pipe в прокси),
+     *   давали красный `PROXY_FAIL` в статус-строке и забивали очередь запросов (waitMs до 3.6 c).
+     *
+     * Ключ дедупа — `vcode` из `fight_pm[4]`: сервер выдаёт его заново на каждый раунд.
+     * Сам `Result` для этой цели не годится: `inu`/`inb`/`ina` пересчитываются при каждой
+     * генерации комбинации, поэтому строка отличается даже внутри одного раунда.
+     *
+     * @param fight  разобранное состояние боя.
+     * @param source имя вызывающей цепочки (для трассировки).
+     * @return true — отправку нужно пропустить как дубль.
+     */
+    private boolean shouldSkipDuplicateTurn(LezFight fight, String source) {
+        String roundVCode = fight.getVCode();
+        if (roundVCode.isEmpty()) {
+            // Без vcode дедуп невозможен — поведение остаётся прежним, чтобы не потерять ход.
+            return false;
+        }
+        long nowMs = android.os.SystemClock.elapsedRealtime();
+        String shortVCode = roundVCode.length() > 8 ? roundVCode.substring(0, 8) : roundVCode;
+
+        if (roundVCode.equals(lastSubmittedTurnVCode)) {
+            long ageMs = nowMs - lastSubmittedTurnAtMs;
+            if (ageMs < SAME_ROUND_RESUBMIT_GUARD_MS) {
+                AppLog.d(TAG, TAG, BG_TRACE_PREFIX + " " + source
+                        + ": skip duplicate turn, same round vcode=" + shortVCode
+                        + ", ageMs=" + ageMs + ", guardMs=" + SAME_ROUND_RESUBMIT_GUARD_MS);
+                return true;
+            }
+            AppLog.w(TAG, TAG, BG_TRACE_PREFIX + " " + source
+                    + ": resubmit same round after guard window (предыдущая отправка могла потеряться)"
+                    + ", vcode=" + shortVCode + ", ageMs=" + ageMs);
+        }
+
+        lastSubmittedTurnVCode = roundVCode;
+        lastSubmittedTurnAtMs = nowMs;
+        return false;
+    }
 
     // КРИТИЧНЫЙ ФИХ для "Авто-Бой не бьёт при перелогине/пересоздании активити":
     // При пересоздании ViewModel (например, при relocation/relogin), восстанавливаем состояние из AppVars.
@@ -80,7 +172,8 @@ public class FightViewModel extends ViewModel {
                 uiForegroundInteractive = AppVars.mainActivity.get().isUiForegroundInteractive();
                 uiForegroundLikely = AppVars.mainActivity.get().isUiForegroundLikely();
             }
-        } catch (Exception ignored) {
+        } catch (Exception e) {
+            AppLog.d(TAG, TAG, BG_TRACE_PREFIX + " uiForeground flags check failed: " + e.getClass().getSimpleName());
         }
 
         // FIXME: REMOVED неправильная логика блокировки автобоя в foreground:
@@ -122,7 +215,8 @@ public class FightViewModel extends ViewModel {
             AppLog.d(TAG, TAG, pulseMsg);
         }
 
-        new Thread(() -> {
+        submitFightTask(() -> {
+            // Порядок вызовов критичен (AGENTS п.9): markFightInProgress() ПЕРЕД new LezFight(html).
             SessionManager.getInstance().markFightInProgress();
             LezFight fight = new LezFight(html);
             if (!fight.IsValid) {
@@ -161,10 +255,14 @@ public class FightViewModel extends ViewModel {
                 return;
             }
 
+            if (shouldSkipDuplicateTurn(fight, "processFightHtml")) {
+                return;
+            }
+
             _submitAction.postValue(fight.Result);
             String msg2 = BG_TRACE_PREFIX + " processFightHtml: submit posted, len=" + fight.Result.length();
             AppLog.d(TAG, TAG, msg2);
-        }).start();
+        });
     }
 
     /**
@@ -191,7 +289,8 @@ public class FightViewModel extends ViewModel {
         String msg3 = BG_TRACE_PREFIX + " autoTurnOnce: htmlLen=" + html.length();
         AppLog.d(TAG, TAG, msg3);
 
-        new Thread(() -> {
+        submitFightTask(() -> {
+            // Порядок вызовов критичен (AGENTS п.9): markFightInProgress() ПЕРЕД new LezFight(html).
             SessionManager.getInstance().markFightInProgress();
             LezFight fight = new LezFight(html);
             if (!fight.IsValid) {
@@ -223,10 +322,14 @@ public class FightViewModel extends ViewModel {
                 return;
             }
 
+            if (shouldSkipDuplicateTurn(fight, "autoTurnOnce")) {
+                return;
+            }
+
             _submitAction.postValue(fight.Result);
             String msg4 = BG_TRACE_PREFIX + " autoTurnOnce: submit posted, len=" + fight.Result.length();
             AppLog.d(TAG, TAG, msg4);
-        }).start();
+        });
     }
 
     // Переключение состояния авто‑боя.
@@ -257,7 +360,8 @@ public class FightViewModel extends ViewModel {
         String msg = BG_TRACE_PREFIX + " autoSelect: htmlLen=" + html.length();
         AppLog.d(TAG, TAG, msg);
 
-        new Thread(() -> {
+        submitFightTask(() -> {
+            // Порядок вызовов критичен (AGENTS п.9): markFightInProgress() ПЕРЕД new LezFight(html).
             SessionManager.getInstance().markFightInProgress();
             LezFight fight = new LezFight(html);
             if (fight.IsValid && fight.Result != null) {
@@ -266,7 +370,28 @@ public class FightViewModel extends ViewModel {
                 String msg2 = BG_TRACE_PREFIX + " autoSelect: submit posted, len=" + fight.Result.length();
                 AppLog.d(TAG, TAG, msg2);
             }
-        }).start();
+        });
+    }
+
+    /**
+     * Отправляет задачу разбора боя в управляемый пул (D3).
+     *
+     * Зачем нужен отдельный метод:
+     * - единая точка постановки фоновых боевых задач вместо трёх «сырых» {@code new Thread(...)};
+     * - защита от выполнения после {@link #onCleared()} (ViewModel уже уничтожен);
+     * - устойчивость к {@link java.util.concurrent.RejectedExecutionException} после shutdown.
+     */
+    private void submitFightTask(Runnable task) {
+        if (cleared) {
+            AppLog.d(TAG, TAG, BG_TRACE_PREFIX + " submitFightTask: skip, view model cleared");
+            return;
+        }
+        try {
+            fightExecutor.execute(task);
+        } catch (java.util.concurrent.RejectedExecutionException e) {
+            // Пул уже остановлен (onCleared произошёл между проверкой и постановкой задачи).
+            AppLog.d(TAG, TAG, BG_TRACE_PREFIX + " submitFightTask: rejected, executor is shut down");
+        }
     }
 
     // Сброс события отправки после выполнения.
@@ -350,7 +475,8 @@ public class FightViewModel extends ViewModel {
 
         try {
             fight.updateLastBoiFromLogs();
-        } catch (Exception ignored) {
+        } catch (Exception e) {
+            AppLog.d(TAG, TAG, BG_TRACE_PREFIX + " updateLastBoiFromLogs failed: " + e.getClass().getSimpleName());
         }
 
         MainPhp.notifyNewFightFromExternalSource(fight, html);
@@ -427,7 +553,8 @@ public class FightViewModel extends ViewModel {
             if (activity != null && activity.isActiveAlchemyCaptchaDialog()) {
                 return false;
             }
-        } catch (Exception ignored) {
+        } catch (Exception e) {
+            AppLog.d(TAG, TAG, BG_TRACE_PREFIX + " isActiveAlchemyCaptchaDialog check failed: " + e.getClass().getSimpleName());
         }
         return true;
     }

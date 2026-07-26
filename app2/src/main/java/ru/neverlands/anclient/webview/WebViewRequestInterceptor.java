@@ -292,10 +292,10 @@ public class WebViewRequestInterceptor {
 
             AppLog.d(TAG, "Intercepting: " + urlString);
 
-            // Обновление списка игроков чата: добавляем timestamp для защиты от кеша.
-            if (urlString.contains("ch.php?lo=1")) {
-                urlString += "&" + System.currentTimeMillis();
-            }
+            // Анти-детект: раньше сюда добавлялся timestamp (`ch.php?lo=1&1785063902504`),
+            // но в эталонной записи браузерного трафика (Login.har) этот запрос идёт
+            // строго как `ch.php?lo=1`, без cache-buster. Защита от кеша обеспечивается
+            // ниже заголовками no-cache и `connection.setUseCaches(false)`.
 
             URL url = new URL(urlString);
             java.net.Proxy activeProxy = ProxyRuntimeManager.getActiveJavaProxyOrNull();
@@ -706,7 +706,9 @@ public class WebViewRequestInterceptor {
     private static boolean isMainFrameRequest(WebResourceRequest request) {
         try {
             return request != null && request.isForMainFrame();
-        } catch (Throwable ignored) {
+        } catch (Throwable t) {
+            // WebResourceRequest API guard: считаем запрос не main-frame при любом сбое.
+            AppLog.d(TAG, "isMainFrameRequest check failed: " + t.getClass().getSimpleName());
             return false;
         }
     }
@@ -730,7 +732,9 @@ public class WebViewRequestInterceptor {
             Uri uri = Uri.parse(urlString);
             String host = uri != null && uri.getHost() != null ? uri.getHost() : "";
             return isNeverlandsHost(host);
-        } catch (Throwable ignored) {
+        } catch (Throwable t) {
+            // URL parse guard: считаем host неигровым при любом сбое парсинга.
+            AppLog.d(TAG, "isNeverlandsUrlString parse failed: " + t.getClass().getSimpleName());
             return false;
         }
     }
@@ -809,8 +813,9 @@ public class WebViewRequestInterceptor {
                     hasSetLmid,
                     hasMainTopMainPhpReload,
                     url);
-        } catch (Throwable ignored) {
+        } catch (Throwable t) {
             // Диагностический callback не должен ломать сетевой pipeline.
+            AppLog.d("chat_poll", TAG, "notifyChatPollMetaToActivity callback failed: " + t.getClass().getSimpleName());
         }
     }
 
@@ -875,8 +880,9 @@ public class WebViewRequestInterceptor {
                 return;
             }
             activity.onSessionErrorHtmlDetected(url, source);
-        } catch (Throwable ignored) {
+        } catch (Throwable t) {
             // Session recovery callback must not break WebView response delivery.
+            AppLog.d("session_relogin", TAG, "notifySessionErrorToActivity callback failed: " + t.getClass().getSimpleName());
         }
     }
 
@@ -1371,7 +1377,8 @@ public class WebViewRequestInterceptor {
             int min = Integer.parseInt(matcher.group(2));
             int sec = Integer.parseInt(matcher.group(3));
             updateServerTimeFromParts(hour, min, sec, headers, "chat", 5 * 60 * 1000L);
-        } catch (Exception ignored) {
+        } catch (Exception e) {
+            AppLog.d(TAG, "updateServerTimeFromChat parse skipped: " + e.getClass().getSimpleName());
         }
     }
 
@@ -1407,7 +1414,8 @@ public class WebViewRequestInterceptor {
                 int sec = Integer.parseInt(div.group(3));
                 updateServerTimeFromParts(hour, min, sec, headers, "but", Long.MAX_VALUE);
                 return;
-            } catch (Exception ignored) {
+            } catch (Exception e) {
+                AppLog.d(TAG, "updateServerTimeFromBut serverTime div parse skipped: " + e.getClass().getSimpleName());
             }
         }
         Pattern hmsPattern = Pattern.compile("\\b(\\d{1,2}):(\\d{2}):(\\d{2})\\b");
@@ -1419,7 +1427,8 @@ public class WebViewRequestInterceptor {
                 int sec = Integer.parseInt(hms.group(3));
                 updateServerTimeFromParts(hour, min, sec, headers, "but", Long.MAX_VALUE);
                 return;
-            } catch (Exception ignored) {
+            } catch (Exception e) {
+                AppLog.d(TAG, "updateServerTimeFromBut HH:mm:ss parse skipped: " + e.getClass().getSimpleName());
             }
         }
         Pattern hPattern = Pattern.compile("\\bhour\\s*=\\s*(\\d{1,2})", Pattern.CASE_INSENSITIVE);
@@ -1434,7 +1443,8 @@ public class WebViewRequestInterceptor {
                 int min = Integer.parseInt(mm.group(1));
                 int sec = Integer.parseInt(ms.group(1));
                 updateServerTimeFromParts(hour, min, sec, headers, "but", Long.MAX_VALUE);
-            } catch (Exception ignored) {
+            } catch (Exception e) {
+                AppLog.d(TAG, "updateServerTimeFromBut hour/min/sec parse skipped: " + e.getClass().getSimpleName());
             }
         }
     }
@@ -1484,7 +1494,8 @@ public class WebViewRequestInterceptor {
                         int d2 = Math.abs(m2 - httpMonth);
                         month = d1 <= d2 ? m1 : m2;
                     }
-                } catch (Exception ignored) {
+                } catch (Exception e) {
+                    AppLog.d(TAG, "serverDate month disambiguation skipped: " + e.getClass().getSimpleName());
                 }
             } else if (rawMonth >= 1 && rawMonth <= 12) {
                 month = rawMonth - 1;
@@ -1509,12 +1520,14 @@ public class WebViewRequestInterceptor {
                             return false;
                         }
                     }
-                } catch (Exception ignored) {
+                } catch (Exception e) {
+                    AppLog.d(TAG, "serverDate httpDate sanity check skipped: " + e.getClass().getSimpleName());
                 }
             }
             applyServerTime(serverMs, source + " jsDate");
             return true;
-        } catch (Exception ignored) {
+        } catch (Exception e) {
+            AppLog.d(TAG, "updateServerTimeFromJsDate parse skipped: " + e.getClass().getSimpleName());
             return false;
         }
     }
@@ -1581,7 +1594,8 @@ public class WebViewRequestInterceptor {
             if (shouldApplyServerTime(serverMs, maxDeltaMs, source)) {
                 applyServerTime(serverMs, source + " localDate");
             }
-        } catch (Exception ignored) {
+        } catch (Exception e) {
+            AppLog.d(TAG, "updateServerTimeFromParts skipped (" + source + "): " + e.getClass().getSimpleName());
         }
     }
 

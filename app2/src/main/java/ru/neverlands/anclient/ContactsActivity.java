@@ -123,6 +123,9 @@ public class ContactsActivity extends AppCompatActivity implements ContactsAdapt
     @Override
     protected void onDestroy() {
         contactsRefreshInFlight = false;
+        // D3: снимаем рекурсивную цепочку обновления контактов, иначе отложенные шаги
+        // (postAtTime + колбэки ApiRepository) продолжают держать эту Activity через onComplete.
+        ContactsManager.cancelContactsRefresh("contacts_activity_destroyed");
         super.onDestroy();
     }
 
@@ -423,7 +426,7 @@ public class ContactsActivity extends AppCompatActivity implements ContactsAdapt
             setResult(RESULT_OK, resultIntent);
             finish();
         } catch (Exception e) {
-            e.printStackTrace();
+            AppLog.e("ContactsActivity", "openPinfo URL encode failed", e);
             Toast.makeText(this, "Ошибка кодирования URL", Toast.LENGTH_SHORT).show();
         }
     }
@@ -654,7 +657,7 @@ public class ContactsActivity extends AppCompatActivity implements ContactsAdapt
                                         AppLog.e("ClanImport", "Failed to add " + nick + ": " + message);
                                     }
                                 });
-                                try { Thread.sleep(1000); } catch (InterruptedException e) { e.printStackTrace(); } 
+                                try { Thread.sleep(1000); } catch (InterruptedException e) { Thread.currentThread().interrupt(); AppLog.w("ClanImport", "clan import sleep interrupted", e); } 
                             }
                         }
                         break; 
@@ -715,17 +718,27 @@ public class ContactsActivity extends AppCompatActivity implements ContactsAdapt
         String groupTitle = isNeutralGroup ? NEUTRAL_GROUP_TITLE : groupKey;
         Toast.makeText(this, "Обновление группы " + groupTitle + "...", Toast.LENGTH_SHORT).show();
         Runnable onComplete = () -> {
+            // D3: цепочка обновления может завершиться уже после закрытия экрана —
+            // не трогаем UI мёртвой Activity.
+            if (isFinishing() || isDestroyed()) {
+                return;
+            }
             runOnUiThread(() -> {
+                if (isFinishing() || isDestroyed()) {
+                    return;
+                }
                 Toast.makeText(this, "Обновление группы завершено", Toast.LENGTH_SHORT).show();
                 // Перезагружаем данные из кэша и обновляем UI
                 allContacts = ru.neverlands.anclient.manager.ContactsManager.getContactsFromCache();
                 buildDisplayList();
             });
         };
+        // D3: передаём applicationContext вместо Activity (как в refreshContacts()),
+        // чтобы фоновая цепочка не удерживала экран.
         if (isNeutralGroup) {
-            ContactsManager.refreshNeutralContacts(this, onComplete);
+            ContactsManager.refreshNeutralContacts(getApplicationContext(), onComplete);
         } else {
-            ContactsManager.refreshGroupContacts(this, groupKey, onComplete);
+            ContactsManager.refreshGroupContacts(getApplicationContext(), groupKey, onComplete);
         }
     }
 

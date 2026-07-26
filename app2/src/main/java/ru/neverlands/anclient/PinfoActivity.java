@@ -49,6 +49,11 @@ public class PinfoActivity extends AppCompatActivity {
     private void setupWebView() {
         webView.setWebViewClient(new WebViewClient());
         webView.getSettings().setJavaScriptEnabled(true);
+        // Единый User-Agent сессии: этот WebView грузит игровой pinfo.cgi под теми же cookie.
+        // С родным Android-UA сервер видит «другой браузер» на той же сессии и рвёт её
+        // («Попытка войти в другом окне браузера»). См. WebViewConfigurator.
+        webView.getSettings().setUserAgentString(
+                ru.neverlands.anclient.utils.AppVars.BROWSER_USER_AGENT);
     }
 
     private void extractNickFromUrl(String url) {

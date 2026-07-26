@@ -136,64 +136,9 @@ public class FunctionListAdapter extends BaseAdapter {
         return convertView;
     }
 
+    /** D6: реализация вынесена в {@link ru.neverlands.anclient.ui.QuickActionIcons#getIconUrl(QuickActionType)}. */
     private String getIconUrlForAction(QuickActionType type) {
-        switch (type) {
-            case AUTO_FIGHT:
-                return "http://image.neverlands.ru/achievement/2/a_2_10.gif";
-            case AUTO_FISH:
-                return "http://image.neverlands.ru/achievement/40/a_40_10.gif";
-            case AUTO_SKIN:
-                return "http://image.neverlands.ru/achievement/70/a_70_10.gif";
-            case AUTO_ATTACK:
-                return "http://image.neverlands.ru/achievement/13/a_13_10.gif";
-            case AUTO_COMPASS:
-                return null;
-            case AUTO_BOSS:
-                return "http://image.neverlands.ru/achievement/23/a_23_10.gif";
-            case AUTO_INVISIBLE:
-                return "http://image.neverlands.ru/weapon/i_w27_53.gif";
-            case LOCATION_TRACKING:
-                return "http://image.neverlands.ru/signs/compass.gif";
-            case AUTO_DETECT:
-                return "http://image.neverlands.ru/achievement/26/a_26_10.gif";
-            case AUTO_SUMMON:
-                return "http://image.neverlands.ru/achievement/11/a_11_10.gif";
-            case AUTO_CURE:
-                return "http://image.neverlands.ru/achievement/150/a_150_10.gif";
-            case AUTO_DRINK:
-                return null;
-            case AUTO_MOVING:
-                return null;
-            case AUTO_TREASURE:
-                return "http://image.neverlands.ru/achievement/9/a_9_10.gif";
-            case AUTO_CUT:
-                return "http://image.neverlands.ru/achievement/20/a_20_10.gif";
-            case AUTO_LUMBERJACK:
-                return "http://image.neverlands.ru/achievement/30/a_30_10.gif";
-            case AUTO_MINE:
-                return "http://image.neverlands.ru/achievement/60/a_60_10.gif";
-            case AUTO_REFRESH:
-            case AUTO_CAPTCHA:
-                return null;
-            case QUICK_SELF_RASS:
-                return "http://image.neverlands.ru/weapon/i_w28_23.gif";
-            case QUICK_OPEN_NEVID:
-                return "http://image.neverlands.ru/weapon/i_w28_28.gif";
-            case QUICK_TELEPORT:
-                return "http://image.neverlands.ru/weapon/i_w28_22.gif";
-            case QUICK_ISLAND:
-                return "http://image.neverlands.ru/weapon/i_w28_22.gif";
-            case QUICK_TOTEM:
-                return "http://image.neverlands.ru/signs/totems/9.gif";
-            case QUICK_ELIXIR_BLAZ:
-                return "http://image.neverlands.ru/weapon/i_w61_107.gif";
-            case QUICK_ELIXIR_CURE:
-                return "http://image.neverlands.ru/weapon/i_w61_104.gif";
-            case QUICK_ELIXIR_RESTORE:
-                return "http://image.neverlands.ru/weapon/i_w61_101.gif";
-            default:
-                return null;
-        }
+        return ru.neverlands.anclient.ui.QuickActionIcons.getIconUrl(type);
     }
 
     private int getLocalIconForAction(QuickActionType type) {
@@ -349,27 +294,9 @@ public class FunctionListAdapter extends BaseAdapter {
             return convertView;
         }
 
+        /** D6: реализация вынесена в {@link ru.neverlands.anclient.ui.QuickActionIcons#getIconUrl(QuickActionType)}. */
         private String getIconUrlForAction(QuickActionType type) {
-            switch (type) {
-                case QUICK_SELF_RASS:
-                    return "http://image.neverlands.ru/weapon/i_w28_23.gif";
-                case QUICK_OPEN_NEVID:
-                    return "http://image.neverlands.ru/weapon/i_w28_28.gif";
-                case QUICK_TELEPORT:
-                    return "http://image.neverlands.ru/weapon/i_w28_22.gif";
-                case QUICK_ISLAND:
-                    return "http://image.neverlands.ru/weapon/i_w28_22.gif";
-                case QUICK_TOTEM:
-                    return "http://image.neverlands.ru/signs/totems/9.gif";
-                case QUICK_ELIXIR_BLAZ:
-                    return "http://image.neverlands.ru/weapon/i_w61_107.gif";
-                case QUICK_ELIXIR_CURE:
-                    return "http://image.neverlands.ru/weapon/i_w61_104.gif";
-                case QUICK_ELIXIR_RESTORE:
-                    return "http://image.neverlands.ru/weapon/i_w61_101.gif";
-                default:
-                    return null;
-            }
+            return ru.neverlands.anclient.ui.QuickActionIcons.getIconUrl(type);
         }
 
         private static class ViewHolder {

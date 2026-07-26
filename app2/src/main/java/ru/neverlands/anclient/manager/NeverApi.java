@@ -36,6 +36,7 @@ import ru.neverlands.anclient.utils.AppVars;
 import ru.neverlands.anclient.proxy.ProxyRuntimeManager;
 import ru.neverlands.anclient.utils.Russian;
 import ru.neverlands.anclient.postfilter.MainPhp;
+import ru.neverlands.anclient.utils.ParseUtils;
 
 /**
  * Портирование NeverApi.cs — прямые HTTP-запросы к API Neverlands.
@@ -1095,7 +1096,7 @@ public class NeverApi {
             Integer curMa = parseIntToken(parts[2]);
             Integer maxMa = parseIntToken(parts[3]);
             Integer maxTire = parseIntToken(parts[4]);
-            Integer curTire = maxTire == null ? null : clampPercent(100 - maxTire);
+            Integer curTire = maxTire == null ? null : ParseUtils.clampPercent(100 - maxTire);
             InfoApiHmuLine hmu = new InfoApiHmuLine(curHp, maxHp, curMa, maxMa, maxTire, curTire);
             AppLog.d(TAG, "INFO_API_TRACE source_module=" + sourceModule + ", stage=info_parse_ok_line4, id=" + playerId
                     + ", hp=" + safeInt(curHp) + "/" + safeInt(maxHp)
@@ -1623,7 +1624,7 @@ public class NeverApi {
                     Matcher maxTireDigits = Pattern.compile("(\\d{1,3})").matcher(hpmp[4]);
                     if (maxTireDigits.find()) {
                         int maxTire = Integer.parseInt(maxTireDigits.group(1));
-                        return clampPercent(100 - maxTire);
+                        return ParseUtils.clampPercent(100 - maxTire);
                     }
                 }
             }
@@ -1633,7 +1634,7 @@ public class NeverApi {
                     .compile("(?is)\\u0423\\u0441\\u0442\\u0430\\u043B\\u043E\\u0441\\u0442\\u044C[^\\d]{0,64}(\\d{1,3})\\s*%")
                     .matcher(html);
             if (textMatcher.find()) {
-                return clampPercent(Integer.parseInt(textMatcher.group(1)));
+                return ParseUtils.clampPercent(Integer.parseInt(textMatcher.group(1)));
             }
         } catch (Exception e) {
             AppLog.w(TAG, "AUTO_BLAZ_TRACE parseCurrentTiedFromPinfoHtml failed", e);
@@ -2010,7 +2011,7 @@ public class NeverApi {
                     maxMa = parseIntToken(hpmp[3]);
                     Integer maxTire = parseIntToken(hpmp[4]);
                     if (maxTire != null) {
-                        curTire = clampPercent(100 - maxTire);
+                        curTire = ParseUtils.clampPercent(100 - maxTire);
                     }
                 }
             }
@@ -2018,7 +2019,7 @@ public class NeverApi {
             if (curTire == null) {
                 Integer fallbackTied = parseCurrentTiedFromPinfoHtml(html);
                 if (fallbackTied != null) {
-                    curTire = clampPercent(fallbackTied);
+                    curTire = ParseUtils.clampPercent(fallbackTied);
                 }
             }
 
@@ -2219,9 +2220,6 @@ public class NeverApi {
         return Collections.unmodifiableList(new ArrayList<>(values));
     }
 
-    private static int clampPercent(int value) {
-        return Math.max(0, Math.min(100, value));
-    }
 
     // -----------------------------------------------------------------------
     // Внутренний HTTP-клиент

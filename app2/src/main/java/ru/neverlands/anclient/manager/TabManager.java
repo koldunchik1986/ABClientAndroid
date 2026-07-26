@@ -221,7 +221,8 @@ public class TabManager {
                 host = parsed != null && parsed.getHost() != null
                         ? parsed.getHost().toLowerCase(Locale.ROOT)
                         : "";
-            } catch (Exception ignored) {
+            } catch (Exception e) {
+                AppLog.d(TAG, "host parse failed, treating as empty host: " + e.getClass().getSimpleName());
             }
         }
         if ("forum.neverlands.ru".equals(host)) {
@@ -492,7 +493,8 @@ public class TabManager {
             if ("forum.neverlands.ru".equals(host)) {
                 return "forum.neverlands.ru";
             }
-        } catch (Exception ignored) {
+        } catch (Exception e) {
+            AppLog.d(TAG, "forum host detection failed: " + e.getClass().getSimpleName());
         }
 
         return url;
@@ -574,23 +576,14 @@ public class TabManager {
     @SuppressLint("SetJavaScriptEnabled")
     // Настройка WebView для вторичной вкладки (без чата).
     private void setupSecondaryWebView(WebView webView) {
-        WebSettings webSettings = webView.getSettings();
-        webSettings.setJavaScriptEnabled(true);
-        webSettings.setAllowFileAccess(true);
-        webSettings.setDomStorageEnabled(true);
-        webSettings.setUseWideViewPort(true);
-        webSettings.setLoadWithOverviewMode(true);
-        webSettings.setSupportZoom(true);
-        webSettings.setBuiltInZoomControls(true);
-        webSettings.setDisplayZoomControls(false);
-        webSettings.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
+        // D2: настройки вынесены в единый ru.neverlands.anclient.webview.WebViewConfigurator,
+        // чтобы профили основных и вторичных WebView больше не расходились.
+        ru.neverlands.anclient.webview.WebViewConfigurator.applyGameSettings(
+                webView, ru.neverlands.anclient.webview.WebViewConfigurator.Profile.SECONDARY_TAB);
 
         // Добавляем JS-мост
         WebAppInterface webAppInterface = new WebAppInterface(context);
         webView.addJavascriptInterface(webAppInterface, "AndroidBridge");
-
-        CookieManager.getInstance().setAcceptCookie(true);
-        CookieManager.getInstance().setAcceptThirdPartyCookies(webView, true);
 
         webView.setWebViewClient(new WebViewClient() {
             @Override
@@ -610,7 +603,8 @@ public class TabManager {
                     host = parsedUri != null && parsedUri.getHost() != null
                             ? parsedUri.getHost().toLowerCase(Locale.ROOT)
                             : "";
-                } catch (Exception ignored) {
+                } catch (Exception e) {
+                    AppLog.d(TAG, "tab host parse failed, treating as empty host: " + e.getClass().getSimpleName());
                 }
                 boolean isNeverlandsHost = "neverlands.ru".equals(host) || host.endsWith(".neverlands.ru");
                 boolean isForumHost = "forum.neverlands.ru".equals(host);

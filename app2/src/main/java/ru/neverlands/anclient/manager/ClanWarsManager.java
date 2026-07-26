@@ -19,6 +19,7 @@ import java.util.TimeZone;
 import ru.neverlands.anclient.repository.ApiRepository;
 import ru.neverlands.anclient.proxy.ProxyRuntimeManager;
 import ru.neverlands.anclient.utils.AppVars;
+import ru.neverlands.anclient.utils.ParseUtils;
 
 /**
  * Единый менеджер данных кланов/клановых войн.
@@ -374,15 +375,15 @@ public final class ClanWarsManager {
                 }
                 String clanTokenX = normalizeClanToken(parts[0]);
                 String clanNameX = safeTrim(parts[1]);
-                int inclinationX = parseIntSafe(parts[2]);
-                int clanLevelX = parseIntSafe(parts[3]);
+                int inclinationX = ParseUtils.parseIntSafe(parts[2]);
+                int clanLevelX = ParseUtils.parseIntSafe(parts[3]);
                 String clanTokenY = normalizeClanToken(parts[4]);
                 String clanNameY = safeTrim(parts[5]);
-                int inclinationY = parseIntSafe(parts[6]);
-                int clanLevelY = parseIntSafe(parts[7]);
+                int inclinationY = ParseUtils.parseIntSafe(parts[6]);
+                int clanLevelY = ParseUtils.parseIntSafe(parts[7]);
                 String warStatus = safeTrim(parts[8]);
-                int warScoreX = parseIntSafe(parts[9]);
-                int warScoreY = parseIntSafe(parts[10]);
+                int warScoreX = ParseUtils.parseIntSafe(parts[9]);
+                int warScoreY = ParseUtils.parseIntSafe(parts[10]);
                 long startUnixSec = parseLongSafe(parts[11]);
                 long stopUnixSec = parseLongSafe(parts[12]);
 
@@ -473,13 +474,6 @@ public final class ClanWarsManager {
         return format.format(date);
     }
 
-    private int parseIntSafe(String value) {
-        try {
-            return Integer.parseInt(safeTrim(value));
-        } catch (Exception e) {
-            return 0;
-        }
-    }
 
     private long parseLongSafe(String value) {
         try {

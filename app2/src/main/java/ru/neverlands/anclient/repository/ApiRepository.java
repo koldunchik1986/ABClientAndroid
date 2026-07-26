@@ -33,6 +33,7 @@ import ru.neverlands.anclient.utils.AppVars;
 import ru.neverlands.anclient.utils.ContactRenderHelper;
 import ru.neverlands.anclient.utils.FileLogger;
 import ru.neverlands.anclient.utils.GameServerUrls;
+import ru.neverlands.anclient.utils.ParseUtils;
 
 /**
  * Репозиторий для взаимодействия с внешним API игры.
@@ -104,7 +105,8 @@ public class ApiRepository {
             addCookiePairs(cookieByName, CookieManager.getInstance().getCookie("http://neverlands.ru/"));
             addCookiePairs(cookieByName, CookieManager.getInstance().getCookie("http://www.neverlands.ru/"));
             addCookiePairs(cookieByName, CookieManager.getInstance().getCookie("http://neverlands.ru/main.php"));
-        } catch (Throwable ignored) {
+        } catch (Throwable t) {
+            AppLog.d("ApiRepository", "cookie collection failed: " + t.getClass().getSimpleName());
         }
         if (cookieByName.isEmpty()) {
             return "";
@@ -344,18 +346,18 @@ public class ApiRepository {
                 throw new IllegalArgumentException("Invalid multiline info.cgi response format");
             }
             contact.nick = parts[0];
-            contact.playerLevel = parseIntSafe(parts[1], 0);
-            contact.inclination = parseIntSafe(parts[2], 0);
+            contact.playerLevel = ParseUtils.parseIntSafe(parts[1], 0);
+            contact.inclination = ParseUtils.parseIntSafe(parts[2], 0);
             contact.clanNumber = parts[3];
             contact.clanIco = parts[4];
             contact.clanName = parts[5];
             contact.clanStatus = parts[6];
-            contact.gender = parseIntSafe(parts[7], 0);
-            contact.blockStatus = parseIntSafe(parts[8], 0);
-            contact.jailStatus = parseIntSafe(parts[9], 0);
-            contact.muteSeconds = parseIntSafe(parts[10], 0);
-            contact.muteForumSeconds = parseIntSafe(parts[11], 0);
-            contact.onlineStatus = parseIntSafe(parts[12], 0);
+            contact.gender = ParseUtils.parseIntSafe(parts[7], 0);
+            contact.blockStatus = ParseUtils.parseIntSafe(parts[8], 0);
+            contact.jailStatus = ParseUtils.parseIntSafe(parts[9], 0);
+            contact.muteSeconds = ParseUtils.parseIntSafe(parts[10], 0);
+            contact.muteForumSeconds = ParseUtils.parseIntSafe(parts[11], 0);
+            contact.onlineStatus = ParseUtils.parseIntSafe(parts[12], 0);
             contact.geoLocation = parts[13];
             contact.warLogNumber = parts[14];
         } else {
@@ -364,18 +366,18 @@ public class ApiRepository {
                 throw new IllegalArgumentException("Invalid singleline info.cgi response format");
             }
             contact.nick = parts[1];
-            contact.playerLevel = parseIntSafe(parts[2], 0);
-            contact.inclination = parseIntSafe(parts[3], 0);
+            contact.playerLevel = ParseUtils.parseIntSafe(parts[2], 0);
+            contact.inclination = ParseUtils.parseIntSafe(parts[3], 0);
             contact.clanNumber = parts[4];
             contact.clanIco = parts[5];
             contact.clanName = parts[6];
             contact.clanStatus = parts[7];
-            contact.gender = parseIntSafe(parts[8], 0);
-            contact.blockStatus = parseIntSafe(parts[9], 0);
-            contact.jailStatus = parseIntSafe(parts[10], 0);
-            contact.muteSeconds = parseIntSafe(parts[11], 0);
-            contact.muteForumSeconds = parseIntSafe(parts[12], 0);
-            contact.onlineStatus = parseIntSafe(parts[13], 0);
+            contact.gender = ParseUtils.parseIntSafe(parts[8], 0);
+            contact.blockStatus = ParseUtils.parseIntSafe(parts[9], 0);
+            contact.jailStatus = ParseUtils.parseIntSafe(parts[10], 0);
+            contact.muteSeconds = ParseUtils.parseIntSafe(parts[11], 0);
+            contact.muteForumSeconds = ParseUtils.parseIntSafe(parts[12], 0);
+            contact.onlineStatus = ParseUtils.parseIntSafe(parts[13], 0);
             contact.geoLocation = parts[14];
             contact.warLogNumber = parts[15];
         }
@@ -417,11 +419,11 @@ public class ApiRepository {
                 continue;
             }
             String[] parts = effect.split("\\.", 4);
-            int effectId = parseIntSafe(parts.length > 0 ? parts[0] : "", 0);
+            int effectId = ParseUtils.parseIntSafe(parts.length > 0 ? parts[0] : "", 0);
             if (effectId <= 0) {
                 continue;
             }
-            int effectCount = parseIntSafe(parts.length > 2 ? parts[2] : "", 1);
+            int effectCount = ParseUtils.parseIntSafe(parts.length > 2 ? parts[2] : "", 1);
             String effectTimeout = parts.length > 3 ? parts[3] : "";
             ContactRenderHelper.EffectState existing = unique.get(effectId);
             if (existing == null) {
@@ -438,16 +440,6 @@ public class ApiRepository {
         return result;
     }
 
-    private static int parseIntSafe(String value, int fallback) {
-        if (value == null) {
-            return fallback;
-        }
-        try {
-            return Integer.parseInt(value.trim());
-        } catch (Exception ignored) {
-            return fallback;
-        }
-    }
 
     /**
      * Универсальный метод для скачивания файла по URL и сохранения его на диск.

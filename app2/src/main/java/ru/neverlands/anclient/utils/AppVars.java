@@ -200,7 +200,21 @@ public class AppVars {
      * - NeverApi/getInfo (опрос API и логов),
      * - MainActivity/downloadCaptchaImageBytes (загрузка изображения капчи).
      */
-    public static final String BROWSER_USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36";
+    /**
+     * User-Agent, под которым клиент представляется игровому серверу.
+     *
+     * <p>Значение сверено с эталонной записью реального браузерного трафика {@code Login.har}
+     * (корень репозитория): там Chrome отправляет ровно эту строку. Раньше здесь стояла
+     * версия {@code Chrome/124.0.0.0} — отличие от реального браузера пользователя является
+     * лишним отличительным признаком.</p>
+     *
+     * <p>Используется во ВСЕХ исходящих путях: {@code AuthManager}, {@code NeverApi},
+     * {@code ApiRepository}, прямые запросы {@code MainActivity}, {@code WebViewRequestInterceptor},
+     * {@code WebViewConfigurator} (UA самого WebView) и нормализация в {@code LocalHttpProxyServer}.
+     * UA обязан совпадать на всех запросах одной сессии: рассинхрон приводит к ответу сервера
+     * «Сеанс работы прерван» с причиной «попытка войти в другом окне браузера».</p>
+     */
+    public static final String BROWSER_USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36";
 
     public static byte[] lastMainPhpResponse;
     public static byte[] lastChatMsgResponse;
@@ -520,6 +534,35 @@ public class AppVars {
     // Авто-бой не должен зависеть от этого флага.
     public static volatile boolean TreasureDigPauseNonCombatAutoFunctions = false;
     public static WeakReference<MainActivity> mainActivity;
+
+    /**
+     * Единый безопасный аксессор к текущей {@link MainActivity}.
+     *
+     * Назначение (D5, AGENTS п.8):
+     * - До рефакторинга в проекте было две расходящиеся копии {@code getMainActivityOrNull()}:
+     *   в {@code WebAppInterface} (строгая: isFinishing + isDestroyed) и в {@code FishAjaxPhp}
+     *   (слабая: только isFinishing, с проглатыванием исключения).
+     * - Здесь закреплена **строгая** семантика как единственная точка принятия решения,
+     *   поскольку именно этот класс владеет {@link #mainActivity} WeakReference.
+     *
+     * @return живую Activity либо null, если ссылка пуста, Activity завершается или уничтожена
+     */
+    public static MainActivity getMainActivityOrNull() {
+        try {
+            WeakReference<MainActivity> ref = mainActivity;
+            if (ref == null) {
+                return null;
+            }
+            MainActivity activity = ref.get();
+            if (activity == null || activity.isFinishing() || activity.isDestroyed()) {
+                return null;
+            }
+            return activity;
+        } catch (Exception e) {
+            AppLog.d("AppVars", "getMainActivityOrNull failed: " + e.getClass().getSimpleName());
+            return null;
+        }
+    }
 
     public static java.util.Map<String, String> myCharsOld = new java.util.LinkedHashMap<>();
     public static int myNevids = 0;

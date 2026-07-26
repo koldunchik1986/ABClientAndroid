@@ -343,7 +343,8 @@ public final class LicenseRequestDialog {
                     return value == null ? "" : value;
                 }
             }
-        } catch (Exception ignored) {
+        } catch (Exception e) {
+            AppLog.d(TAG, "cursor column read failed: " + e.getClass().getSimpleName());
         }
         return "";
     }

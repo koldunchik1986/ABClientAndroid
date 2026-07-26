@@ -22,6 +22,7 @@ import java.util.TreeMap;
 
 import ru.neverlands.anclient.utils.AppLog;
 import ru.neverlands.anclient.utils.AppVars;
+import ru.neverlands.anclient.utils.ParseUtils;
 
 /**
  * Коллекция классов существ для автобоя.
@@ -190,7 +191,7 @@ public class LezBotsClassCollection {
             int eventType = parser.getEventType();
             while (eventType != XmlPullParser.END_DOCUMENT) {
                 if (eventType == XmlPullParser.START_TAG && "class".equalsIgnoreCase(parser.getName())) {
-                    int id = parseIntSafe(parser.getAttributeValue(null, "id"));
+                    int id = ParseUtils.parseIntSafe(parser.getAttributeValue(null, "id"));
                     String name = safeTrim(parser.getAttributeValue(null, "name"));
                     String plural = safeTrim(parser.getAttributeValue(null, "plural"));
                     String type = parser.getAttributeValue(null, "type");
@@ -344,13 +345,6 @@ public class LezBotsClassCollection {
         return Math.max(DYNAMIC_CLASS_ID_START, maxId + 1);
     }
 
-    private static int parseIntSafe(String value) {
-        try {
-            return Integer.parseInt(safeTrim(value));
-        } catch (Exception e) {
-            return 0;
-        }
-    }
 
     private static String normalizeNameKey(String value) {
         String normalized = safeTrim(value).replace('\u00A0', ' ');
